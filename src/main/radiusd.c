@@ -2236,6 +2236,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  kill it, and continue.
 	 */
 	if ((request->timestamp + max_request_time) <= info->now) {
+		child_pid = request->child_pid;
 #ifndef HAVE_PTHREAD_H
 		if (request->child_pid != NO_SUCH_CHILD_PID) {
 			/*
@@ -2243,7 +2244,7 @@ static int refresh_request(REQUEST *request, void *data)
 			 *   - kill it
 			 */
 			child_pid = request->child_pid;
-			radlog(L_ERR, "Killing unresponsive child %ld for request %d",
+			radlog(L_ERR, "Killing unresponsive child %lu for request %d",
 					child_pid, request->number);
 			child_kill(child_pid, SIGTERM);
 		} /* else no proxy reply, quietly fail */
@@ -2253,7 +2254,7 @@ static int refresh_request(REQUEST *request, void *data)
 		 */
 		rl_delete(request);
 #else
-		radlog(L_ERR, "WARNING: Unresponsive child %ld for request %d",
+		radlog(L_ERR, "WARNING: Unresponsive child thread (pid %lu) for request %d",
 		       child_pid, request->number);
 #endif
 		return RL_WALK_CONTINUE;
