@@ -167,7 +167,35 @@ CREATE TABLE nas (
 	naslocation	VARCHAR(32)
 );
 
+--
+-- Table structure for table 'radpostauth'
+--
+
+CREATE TABLE radpostauth (
+	id		BIGSERIAL PRIMARY KEY,
+	user		VARCHAR(64) NOT NULL,
+	pass		VARCHAR(64),
+	reply		VARCHAR(32),
+	authdate	TIMESTAMP with time zone NOT NULL default 'now'
+) ;
+
+--
+-- Table structure for table 'dictionary'
+-- This is not currently used by FreeRADIUS
+--
+-- CREATE TABLE dictionary (
+--     id              SERIAL PRIMARY KEY,
+--     Type            VARCHAR(30),
+--     Attribute       VARCHAR(64),
+--     Value           VARCHAR(64),
+--     Format          VARCHAR(20),
+--     Vendor          VARCHAR(32)
+-- );
+
 /*
+ * Note: (pnixon: 2003-12-10) The following function should not be required
+ * if you use the PG specific queries in raddb/postgresql.conf
+ *
  * Common utility function for date calculations. This is used in our
  * alternative account stop query to calculate the start of a session.
  *
