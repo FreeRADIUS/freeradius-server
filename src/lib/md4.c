@@ -34,6 +34,9 @@ unsigned int inlen;                     /* length of input block */
  *	CVS-$OpenBSD stuff deleted
  *	#includes commented out.
  *	Support context->count as uint32_t[2] instead of uint64_t
+ *	Add htole32 define from http://www.squid-cache.org/mail-archive/squid-dev/200307/0130.html
+ *		(The bswap32 definition in the patch.)
+ *		This is only used on BIG_ENDIAN systems, so we can always swap the bits.
  */
 
 /*
@@ -65,6 +68,12 @@ unsigned int inlen;                     /* length of input block */
 #define htole32_16(buf)		/* Nothing */
 
 #else
+
+#define htole32(x) \
+ (((((uint32_t)x) & 0xff000000) >> 24) | \
+ ((((uint32_t)x) & 0x00ff0000) >> 8) | \
+ ((((uint32_t)x) & 0x0000ff00) << 8) | \
+ ((((uint32_t)x) & 0x000000ff) << 24)) 
 
 #define htole32_4(buf) do {						\
 	(buf)[ 0] = htole32((buf)[ 0]);					\
