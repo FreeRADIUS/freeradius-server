@@ -925,6 +925,14 @@ int main(int argc, char *argv[])
 
 	radlog(L_INFO, "Ready to process requests.");
 
+
+	/* if we're running as a daemon, close other file descriptors. */
+	if (debug_flag == FALSE) {
+		close(STDIN_FILENO);
+		close(STDOUT_FILENO);
+		close(STDERR_FILENO);
+	}
+
 	/*
 	 *  Receive user requests
 	 */
