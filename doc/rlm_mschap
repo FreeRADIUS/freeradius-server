@@ -85,26 +85,26 @@ Hint: use `cut` to obtain LM and NT hashes separately.
 
 3. Known bugs:
 
+ - Mschap doesn't work after upgrading from older FreeRADIUS version.
+ The reason is dictionary incompatibility. Make sure to update
+ dictionary.microsoft located in raddb directory.
  - Only ASCII passwords are supported.
  Unicode conversion is not fully implemented yet and passwords with
- extended characters will not work unless you didn't exported NT/LM
- hashes from some some external source (for example from NT domain).
+ extended characters will not work unless you exported NT/LM hashes
+ from some some external source (for example from NT domain with pwdump).
  - FreeRADIUS doesn't correctly proxies MS-CHAP-MPPE-Keys reply for
  MS-CHAPv1 MPPE support between RRAS and ISA servers.
  Data in this attribute is encoded in a same fashion as User-Password
- attribute and thouse should be reassembled. FreeRADIUS architecture
+ attribute and attribute should be reassembled. FreeRADIUS architecture
  allows things like this (and it works for MS-CHAPv2 MPPE support), but
  for this specific type of encoding it's not implemented yet. If you
  really need this feature - call developers and it will be implemented.
  - 128 bit MPPE support is not implemented like RFC 3079 says.
  It's a bug of RFC 3079 commited by developers. Glenn Zorn <gwz@cisco.com>
- promised to submit the correction.
+ promised to submit the correction to RFC.
 
 
 4. FAQ
-
-Q: Mschap doesn't work after upgrading from older FreeRADIUS version
-A: Make sure to update dictionary.microsoft located in raddb directory.
 
 Q: Can I use rlm_mschap to authenticate against NT or Win2K domain?
 A: NO. rlm_mschap is supposed to perform MS-CHAP authentication, not
@@ -112,7 +112,7 @@ A: NO. rlm_mschap is supposed to perform MS-CHAP authentication, not
 
 Q: Can I migrate my dialup users from NT or Win2K domain to FreeRADIUS?
 A: Yes. You can use pwdump2 utility by Todd Sabin to obtain NT/LM hashed
-   passwords. Check http://www.packetstormsecurity.org for pwdump2 and same
+   passwords. Check http://www.packetstormsecurity.org for pwdump and same
    tools. This will produce SAMBA passwd file you can use with rlm_passwd
    module or you can export this data to some database.
 
