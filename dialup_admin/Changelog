@@ -15,6 +15,7 @@ Ver 1.63:
 * Update the TODO file
 * Add an entry in the FAQ about adding .php3 handling
 * Add a few installation notes
+* Fix a problem with user_stats.php3
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
