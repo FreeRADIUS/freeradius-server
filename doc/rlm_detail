@@ -34,10 +34,13 @@
 
   If you omit the detailfile option the server will automatically set
   it to:
-       %A/%{Client-IP-Address}/detail
+
+       %{radacctdir}/%{Client-IP-Address}/detail
+
   which expands to {radius accounting directory}/{nas IP address}/detail.
   This is the traditional place for the RADIUS daemons to generate the
-  file.
+  file.  See 'variables.txt' for a more complete description of the
+  variables available for use.
 
   Another option here is detailperm.  This allows you to configure the
   file permissions of the detailfile.  If omitted the default is 0600.
@@ -45,58 +48,8 @@
   You can also use the dirperm option to specify the permissions of the
   directories created by the daemon when logging.
 
-  The variables available for use with detailfile are:
-
-       %a       Protocol (SLIP/PPP)
-       %c       Callback-Number
-       %d       request day (DD)
-       %f       Framed IP address
-       %i       Calling Station ID
-       %l       request timestamp
-       %m       request month (MM)
-       %n       NAS IP address
-       %p       Port number
-       %s       Speed (PW_CONNECT_INFO)
-       %t       request in ctime format
-       %u       User name
-       %A       radacct_dir
-       %C       clientname
-       %D       request date (YYYYMMDD)
-       %L       radlog_dir
-       %M       MTU
-       %R       radius_dir
-       %S       request timestamp in SQL format
-       %T       request timestamp in database format
-       %U       Stripped User name
-       %V       Request-Authenticator (Verified/None)
-       %Y       request year (YYYY)
-       %Z       All request attributes except password (must have big buffer)
-       %{AttributeName}                Corresponding value for AttributeName
-                                       in request
-       %{request:AttributeName}        Corresponding value for AttributeName
-                                       in request
-       %{reply:AttributeName}          Corresponding value for AttributeName
-                                       in reply
-
   Some of these are more useful then others, but all are available.  You
   can even have one detail file per Username.
-
-  Additionally, you can use syntax like ${foo:-bar} in 'sh'.
-  Examples:
-
-  1.  %{Foo:-bar}
-      When attr Foo is set:  returns value of Foo
-      When attr Foo unset:   returns literal string 'bar'
-
-  2.  %{Foo:-%{bar}}
-      When attr Foo is set:  returns value of Foo
-      When attr Foo unset:   returns value of attr 'bar' (if any)
-
-  3.  %{Foo:-%{bar:-baz}}
-      When attr Foo is set:  returns value of Foo
-      When attr Foo unset:   returns value of attr 'bar' (if any)
-      When attr bar unset:   returns literal string 'baz'
-
 
 2. IMPLEMENTATION
 
