@@ -54,7 +54,7 @@ char * ip_hostname(UINT4 ipaddr)
 UINT4 ip_getaddr(char *host)
 {
 	struct hostent	*hp;
-	UINT4		a, ip_addr();
+	UINT4		a;
 
 	if ((a = ip_addr(host)) != 0)
 		return a;
