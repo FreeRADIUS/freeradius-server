@@ -97,6 +97,81 @@ static void proxy_addinfo(REQUEST *request)
 	pairadd(&request->proxy->vps, proxy_pair);
 }
 
+
+/*
+ *	Like realm find, but does load balancing, and we don't
+ *	wake up any sleeping realms.  Someone should already have
+ *	done that.
+ *
+ *	It also does NOT do fail-over to default if the realms are dead,
+ *	as that decision has already been made.
+ */
+static REALM *proxy_realm_ldb(const char *realm_name, int accounting)
+{
+	REALM	*cl;
+	REALM	*array[32];	/* maximum number of load balancing realms */
+	int	size;
+
+	size = 0;
+	for (cl = mainconfig.realms; cl; cl = cl->next) {
+		/*
+		 *	Asked for auth/acct, and the auth/acct server
+		 *	is not active.  Skip it.
+		 */
+		if ((!accounting && !cl->active) ||
+		    (accounting && !cl->acct_active)) {
+			continue;
+		}
+
+		/*
+		 *	The realm name doesn't match, skip it.
+		 */
+		if (strcasecmp(cl->realm, realm_name) != 0) {
+			continue;
+		}
+
+		/*
+		 *	Fail-over, pick the first one that matches.
+		 */
+		if ((size == 0) && /* if size > 0, we have round-robin */
+		    (cl->ldflag == 0)) {
+			return cl;
+		}
+
+		/*
+		 *	Else we're doing round-robin.
+		 */
+		array[size] = cl;
+		size++;
+
+		/*
+		 *	If too many realms are found, then limit
+		 *	the number to 32.
+		 */
+		if (size >= 32) {
+			break;
+		}
+	}
+
+	/*
+	 *	WTF?  We didn't find a live realm!
+	 *
+	 *	This means that 'rlm_realm' found a live realm for
+	 *	us, and then it was marked dead before code execution
+	 *	got here.  The only thing to do is to dump the request.
+	 */
+	if (size == 0) {
+		return NULL;
+	}
+
+	/*
+	 *	Pick a random realm.  It's not true round-robin,
+	 *	but over a large number of requests, it statistically
+	 *	distributes the requests evenly among the realms.
+	 */
+	return array[(int) (lrad_rand() % size)];
+}
+
 /*
  *	Relay the request to a remote server.
  *	Returns:
@@ -166,13 +241,11 @@ int proxy_send(REQUEST *request)
 	realmname = (char *)realmpair->strvalue;
 
 	/*
-	 *	Look for the realm, letting realm_find take care
-	 *	of the "NULL" realm.
-	 *
-	 *	If there is no such realm, then exit.
-	 *	Maybe we should log an error?
+	 *	Look for the realm, using the load balancing
+	 *	version of realm find.
 	 */
-	realm = realm_find(realmname, (request->packet->code == PW_ACCOUNTING_REQUEST));
+	realm = proxy_realm_ldb(realmname,
+				(request->packet->code == PW_ACCOUNTING_REQUEST));
 	if (realm == NULL) {
 		return RLM_MODULE_FAIL;
 	}
