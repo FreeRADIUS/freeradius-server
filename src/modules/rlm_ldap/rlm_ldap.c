@@ -189,15 +189,15 @@ static int rlm_ldap_pass(REQUEST *request, char *name, char *passwd)
     if (use_ldap_auth == 0) 
     {
       log(L_ERR,"LDAP Auth specified in users file, but not in ldapserver file");
-      return -1;
+      return RLM_AUTH_FAIL;
     }
     if (ld == NULL) {
   if ( (ld = ldap_init(ldap_server,ldap_port)) == NULL) 
-	return -1;
+	return RLM_AUTH_FAIL;
   if ( (ldap_simple_bind_s(ld,ldap_login,ldap_password)) != LDAP_SUCCESS) {
 	log(L_ERR,"LDAP ldap_simple_bind_s failed");
 	ldap_unbind_s(ld);
-	return -1;
+	return RLM_AUTH_FAIL;
   } 
 
     } else {
@@ -211,41 +211,42 @@ static int rlm_ldap_pass(REQUEST *request, char *name, char *passwd)
 
     if (ldap_search_s(ld,ldap_basedn,LDAP_SCOPE_SUBTREE,filter,attrs,1,&result) != LDAP_SUCCESS) {
 	ldap_unbind_s(ld);
-	return -1;
+	return RLM_AUTH_REJECT;
     }
 
     if ((ldap_count_entries(ld,result)) != 1) {
 	ldap_unbind_s(ld);
-	return -1;
+	return RLM_AUTH_REJECT;
     }
 
     if ((msg = ldap_first_entry(ld,result)) == NULL) {
 	ldap_unbind_s(ld);
-	return -1;
+	return RLM_AUTH_REJECT;
     }
 
     if ((dn = ldap_get_dn(ld,msg)) == NULL) {
 	ldap_unbind_s(ld);
-	return -1;
+	return RLM_AUTH_REJECT;
     }
 
     if (strlen(passwd) == 0) {
 	ldap_unbind_s(ld);
-	return -1;
+	return RLM_AUTH_REJECT;
     }
 
     if (ldap_simple_bind_s(ld,dn,passwd) != LDAP_SUCCESS) {
 	ldap_unbind_s(ld);
-	return -1;
+	return RLM_AUTH_REJECT;
     }
 
     free(dn);
     ldap_unbind_s(ld);
 
     DEBUG("User %s successfully authenticated via LDAP", name);
-    return 0;
+    return RLM_AUTH_OK;
 	} else {
-	return -1;
+        DEBUG("Should never get here");
+	return RLM_AUTH_FAIL;
 	}
 }
 
