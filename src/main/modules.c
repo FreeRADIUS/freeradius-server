@@ -61,6 +61,7 @@ typedef struct config_module_t {
 
 static config_module_t *authorize = NULL;
 static config_module_t *authenticate = NULL;
+static config_module_t *preacct = NULL;
 static config_module_t *accounting = NULL;
 
 static void config_list_free(config_module_t **cf)
@@ -95,6 +96,7 @@ static void module_list_free(void)
 	module_list = NULL;
 	config_list_free(&authenticate);
 	config_list_free(&authorize);
+	config_list_free(&preacct);
 	config_list_free(&accounting);
 }
 
@@ -382,13 +384,21 @@ int read_modules_file(char *filename)
 			exit(1);
 		}
 		add_to_list(&authenticate, this);
+	} else if (strcmp(control, "preacct") == 0) {
+		if (!this->module->preaccounting) {
+			fprintf(stderr, "[%s:%d] Module %s does not contain "
+					"a 'preacct' entry\n",
+					filename, lineno, this->module->name);
+			exit(1);
+		}
+		add_to_list(&preacct, this);
 	} else if (strcmp(control, "accounting") == 0) {
 		if (!this->module->accounting) {
 			fprintf(stderr, "[%s:%d] Module %s does not contain "
 					"an 'accounting' entry\n",
 					filename, lineno, this->module->name);
 			exit(1);
-	}
+		}
 		add_to_list(&accounting, this);
 	} else {
 		fprintf(stderr, "[%s:%d] Unknown control \"%s\".\n",
@@ -464,7 +474,6 @@ int module_authenticate(int auth_type, REQUEST *request)
  */
 int module_preacct(REQUEST *request)
 {
-#if 0
 	config_module_t	*this;
 	int		rcode;
 
@@ -478,7 +487,6 @@ int module_preacct(REQUEST *request)
 	}
 
 	return rcode;
-#endif
 }
 
 /*

@@ -91,7 +91,7 @@ static void	sig_hup (int);
 static int	rad_process (REQUEST *);
 static int	rad_respond (REQUEST *);
 static REQUEST	*rad_check_list(REQUEST *);
-static void	rad_spawn_child(REQUEST *, FUNP);
+static void	rad_spawn_child(REQUEST *, FUNP, int, int);
 
 /*
  *	Read config files.
@@ -163,6 +163,7 @@ int main(int argc, char **argv)
 	struct	sockaddr_in	*sin;
 	struct	servent		*svp;
 	fd_set			readfds;
+	struct timeval		tv, *tvp;
 	int			salen;
 	int			packet_length;
 	UINT4			packet_srcip;
@@ -514,13 +515,16 @@ int main(int argc, char **argv)
 			FD_SET(acctfd, &readfds);
 		if (proxyfd >= 0)
 			FD_SET(proxyfd, &readfds);
+		tvp = proxy_setuptimeout(&tv);
 
-		status = select(32, &readfds, NULL, NULL, NULL);
+		status = select(32, &readfds, NULL, NULL, tvp);
 		if (status == -1) {
 			if (errno == EINTR)
 				continue;
 			sig_fatal(101);
 		}
+		if (status == 0)
+			proxy_retry();
 		for (i = 0; i < 3; i++) {
 
 			if (i == 0) fd = sockfd;
@@ -546,7 +550,9 @@ int main(int argc, char **argv)
 						 (struct sockaddr *)&saremote,
 						 &salen);
 			if (packet_length < 0) {
-				log(L_ERR, "Failed to received packet on FD %d", fd);
+				log(L_ERR,
+				    "Failed to received packet on FD %d: %s",
+				    fd, strerror(errno));
 				continue;
 			}
 			packet_code = buffer[0];
@@ -636,13 +642,12 @@ int rad_process(REQUEST *request)
 {
 	int dospawn;
 	FUNP fun;
+	int already_proxied=0;
+	int replicating=0;
 
 	dospawn = FALSE;
 	fun = NULL;
 
-	/*
-	 *	First, see if we need to proxy this request.
-	 */
 	switch(request->packet->code) {
 
 	case PW_AUTHENTICATION_REQUEST:
@@ -660,13 +665,6 @@ int rad_process(REQUEST *request)
 		  request_free(request);
 		  return -1;
 		}
-		
-		/*
-		 *	We always call proxy_send, it returns non-zero
-		 *	if it did actually proxy the request.
-		 */
-		if (proxy_send(request) != 0)
-			return 0;
 		break;
 
 	case PW_AUTHENTICATION_ACK:
@@ -678,10 +676,13 @@ int rad_process(REQUEST *request)
 		 *	an error message logged, and the packet is dropped.
 		 */
 		if (request->packet->sockfd == proxyfd) {
-		  if (proxy_receive(request) < 0) {
-		  	return -1;
-		  }
-		  break;
+			int recvd=proxy_receive(request);
+			if (recvd < 0) {
+				return -1;
+			}
+			already_proxied=1;
+			replicating=recvd;
+			break;
 		}
 		/* NOT proxyfd: fall through to error message */
 
@@ -746,14 +747,23 @@ int rad_process(REQUEST *request)
 		}
 
 		if (dospawn) {
-			rad_spawn_child(request, fun);
+			rad_spawn_child(request, fun,
+					already_proxied, replicating);
 			/* AFTER spawning the child */
 			request_list_busy = FALSE;
 		} else {
 			/* BEFORE doing the request */
 			request_list_busy = FALSE;
 			(*fun)(request);
-			rad_respond(request);
+			if(!already_proxied) {
+				int sent;
+				sent=proxy_send(request);
+				if(sent==0 || sent==2)
+					rad_respond(request);
+			} else {
+				if(!replicating)
+					rad_respond(request);
+			}
 		}
 	}
 
@@ -943,11 +953,30 @@ static REQUEST *rad_check_list(REQUEST *request)
 	return request;
 }
 
+/* Remove a request from the pending list without looking at it or freeing
+ * it. Called from proxy code when it wants to take over */
+void remove_from_request_list(REQUEST *request)
+{
+  REQUEST *prevreq;
+  REQUEST *curreq;
+
+  for(prevreq=0,curreq=first_request;curreq;curreq=curreq->next) {
+    if(curreq==request) {
+      if(prevreq)
+	prevreq->next=request->next;
+      else
+	first_request=request->next;
+      break;
+    }
+  }
+}
+
 /*
  *	Spawns a child process or thread to perform
  *	authentication/accounting and respond to RADIUS clients.
  */
-static void rad_spawn_child(REQUEST *request, FUNP fun)
+static void rad_spawn_child(REQUEST *request, FUNP fun,
+			    int already_proxied, int replicating)
 {
 	child_pid_t		child_pid;
 

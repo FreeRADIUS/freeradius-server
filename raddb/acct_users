@@ -7,7 +7,7 @@
 
 #DEFAULT NAS-IP-Address == 10.0.0.1, Replicate-To-Realm := "realmname"
 
-# where 10.0.0.1 is the NAS in question and "replicateme" is defined in the
+# where 10.0.0.1 is the NAS in question and "realmname" is defined in the
 # realms file to point to the second RADIUS server. If you don't want
 # "username@realmname" to be accepted and replicated to the other server,
 # label that realm with the "notsuffix" option in the realms file.

@@ -8,6 +8,7 @@
 #define RADIUS_CLIENTS		"clients"
 #define RADIUS_NASLIST		"naslist"
 #define RADIUS_USERS		"users"
+#define RADIUS_ACCT_USERS	"acct_users"
 #define RADIUS_HOLD		"holdusers"
 #define RADIUS_LOG		"radius.log"
 #define RADIUS_HINTS		"hints"

@@ -17,6 +17,7 @@
 #		* Extra fields with options can follow. Currently
 #		  defined options:
 #		  - nostrip	do not strip @realm from the username
+#		  - notsuffix	do not match as username@suffix
 #
 
 # Realm                 Remote server [:port]		Options
@@ -24,4 +25,5 @@
 #isp2.com		radius.isp2.com			nostrip
 #company.com		radius.company.com:1600
 #bla.com		LOCAL
+#replicateme		radius2.company.com		notsuffix
 

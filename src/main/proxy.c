@@ -150,29 +150,54 @@ static int proxy_addrequest(REQUEST *request, int *proxied_packet_id)
 	request->next = proxy_requests;
 	proxy_requests = request;
 
+	/* Now get it off the pending request list in radiusd.c */
+	remove_from_request_list(request);
+
 	return id;
 }
 
 
 /*
  *	Relay the request to a remote server.
- *	Returns:  1 success (we reply, caller returns without replying)
+ *	Returns:  2 success (we replicate, caller replies normally)
+ *		  1 success (we reply, caller returns without replying)
  *	          0 fail (caller falls through to normal processing)
  *		 -1 fail (we don't reply, caller returns without replying)
  */
 int proxy_send(REQUEST *request)
 {
+	VALUE_PAIR		*proxypair;
+	VALUE_PAIR		*replicatepair;
+	VALUE_PAIR		*realmpair;
 	VALUE_PAIR		*namepair;
 	VALUE_PAIR		*passpair;
 	VALUE_PAIR		*vp, *vps;
 	CLIENT			*client;
 	REALM			*realm;
 	char			*realmname;
+	int			replicating;
 
 	/*
 	 *	First cleanup old outstanding requests.
 	 */
 	proxy_cleanup();
+
+	/* Look for proxy/replicate signs */
+	/* FIXME - What to do if multiple Proxy-To/Replicate-To attrs are
+	 * set...  Log an error? Actually replicate to multiple places? That
+	 * would be cool. For now though, I'll just take the first one and
+	 * ignore the rest. */
+	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
+	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
+	if(proxypair) {
+		realmpair=proxypair;
+		replicating=0;
+	} else if(replicatepair) {
+		realmpair=replicatepair;
+		replicating=1;
+	} else {
+		return 0;
+	}
 
 	/*
 	 *	Copy the request, then look up
@@ -184,31 +209,29 @@ int proxy_send(REQUEST *request)
 	 */
 	vps = paircopy(request->packet->vps);
 	namepair = pairfind(vps, PW_USER_NAME);
-	if (namepair == NULL) {
-		pairfree(vps);
-		return 0;
-	}
 	passpair = pairfind(vps, PW_PASSWORD);
 
-	/*
-	 *	Now check if we know this realm!
-	 *	A NULL realm is OK.
-	 *	If not found, we treat it as usual.
-	 *	Find the realm from the _end_ so that we can
-	 *	cascade realms: user@realm1@realm2.
-	 */
-	if ((realmname = strrchr(namepair->strvalue, '@')) != NULL)
-		realmname++;
+	realmname=realmpair->strvalue;
+
+	/* FIXME - this "NULL" realm is probably broken now. Does anyone
+	 * still need it? */
 	if ((realm = realm_find(realmname ? realmname : "NULL")) == NULL) {
 		pairfree(vps);
 		return 0;
 	}
-	if (realmname != NULL && realm->striprealm)
-			realmname[-1] = 0;
-	namepair->length = strlen(namepair->strvalue);
+	if(namepair) {
+		/* If the username happens to end in @realm, strip it off,
+		 * unless the realm definition says not to. This should
+		 * probably be done in the authorize module instead of here */
+		char *urealmname;
+		if (realm->striprealm &&
+		    (urealmname = strrchr(namepair->strvalue, '@')) &&
+		    !strcmp(urealmname+1, realmname))
+			*urealmname = 0;
+		namepair->length = strlen(namepair->strvalue);
+	}
 	pairadd(&request->packet->vps,
 		pairmake("Realm", realm->realm, T_OP_EQ));
-
 
 	/*
 	 *	Perhaps accounting proxying was turned off.
@@ -225,6 +248,9 @@ int proxy_send(REQUEST *request)
 	if (strcmp(realm->server, "LOCAL") == 0) {
 		pairfree(vps);
 		namepair = pairfind(request->packet->vps, PW_USER_NAME);
+		/* Here's another place where that "@suffix" logic is stuck
+		 * in the generic proxy code. If this breaks, I promise not
+		 * to care! --Pac. */
 		if (realm->striprealm &&
 		    ((realmname = strrchr(namepair->strvalue, '@')) != NULL)) {
 			*realmname = 0;
@@ -237,6 +263,8 @@ int proxy_send(REQUEST *request)
 	 *	Find the remote server in the "client" list-
 	 *	we need the secret.
 	 */
+	/* FIXME: couldn't this client_find lookup be cached in the realm
+	 * struct? They are both read at start and SIGHUP, right? */
 	if ((client = client_find(realm->ipaddr)) == NULL) {
 		log(L_PROXY, "cannot find secret for server %s in clients file",
 			realm->server);
@@ -297,15 +325,6 @@ int proxy_send(REQUEST *request)
 	proxy_addinfo(request->proxy);
 
 	/*
-	 *	We need to decode the password with the secret.
-	 *	rad_send() will re-encode it for us.
-	 */
-	if (passpair) {
-		rad_pwdecode(passpair->strvalue, passpair->length,
-			request->secret, request->packet->vector);
-	}
-
-	/*
 	 *	If there is no PW_CHAP_CHALLENGE attribute but there
 	 *	is a PW_CHAP_PASSWORD we need to add it since we can't
 	 *	use the request authenticator anymore - we changed it.
@@ -325,21 +344,28 @@ int proxy_send(REQUEST *request)
 	 *	Send the request.
 	 */
 	rad_send(request->proxy, client->secret);
+	memcpy(request->proxysecret, client->secret, 32);
+	request->proxy_is_replicate=replicating;
+	request->proxy_try_count=RETRY_COUNT;
+	request->proxy_next_try=request->timestamp+RETRY_DELAY;
 
+#if 0
 	/*
 	 *	We can free proxy->vps now, not needed anymore.
 	 */
 	pairfree(request->proxy->vps);
 	request->proxy->vps = NULL;
+#endif
 
-	return 1;
+	return replicating?2:1;
 }
 
 
 /*
  *	We received a response from a remote radius server.
  *	Find the original request, then return.
- *	Returns:   0 proxy found
+ *	Returns:   1 replication don't reply
+ *	           0 proxy found
  *		  -1 error don't reply
  */
 int proxy_receive(REQUEST *request)
@@ -350,9 +376,12 @@ int proxy_receive(REQUEST *request)
 	char		*s;
 	int		pp = -1;
 	int		i;
-	VALUE_PAIR	*namepair;
-        REALM                   *realm;
-        char                    *realmname;
+	VALUE_PAIR	*proxypair;
+	VALUE_PAIR	*replicatepair;
+	VALUE_PAIR	*realmpair;
+	int		replicating;
+        REALM           *realm;
+        char            *realmname;
 
 	/*
 	 *	First cleanup old outstanding requests.
@@ -437,10 +466,26 @@ int proxy_receive(REQUEST *request)
 			request->packet->vps = last->next;
 	}
 
-        namepair = pairfind(oldreq->packet->vps, PW_USER_NAME);
-        if ((realmname = strrchr(namepair->strvalue, '@')) != NULL)
-                realmname++;
+	proxypair = pairfind(oldreq->config_items, PW_PROXY_TO_REALM);
+	replicatepair = pairfind(oldreq->config_items, PW_REPLICATE_TO_REALM);
+	if(proxypair) {
+		realmpair=proxypair;
+		replicating=0;
+	} else if(replicatepair) {
+		realmpair=replicatepair;
+		replicating=1;
+	} else {
+		log(L_PROXY, "Proxy reply to packet with no Realm");
+		return -1;
+	}
+	realmname=realmpair->strvalue;
+	/* FIXME - this "NULL" realm is probably broken now. Does anyone
+	 * still need it? */
         realm = realm_find(realmname ? realmname : "NULL");
+
+	/* FIXME - do we want to use the trusted/allowed filters on replicate
+	 * replies, which are not going to be used for anything except maybe
+	 * a log file? */
 	if (realm->trusted) {
 	/*
 	 *	Only allow some attributes to be propagated from
@@ -472,11 +517,50 @@ int proxy_receive(REQUEST *request)
 	free(request->packet);
 	request->packet = oldreq->packet;
 	oldreq->packet = NULL;
+	request->username = oldreq->username;
 
 	request->timestamp = oldreq->timestamp;
 
 	request_free(oldreq);
 
-	return 0;
+	return replicating?1:0;
 }
 
+struct timeval *proxy_setuptimeout(struct timeval *tv)
+{
+  time_t now=time(0);
+  time_t difference, smallest;
+  int foundone=0;
+  REQUEST *p;
+  for (p = proxy_requests; p; p = p->next) {
+    if(!p->proxy_is_replicate)
+      continue;
+    difference=p->proxy_next_try-now;
+    if(!foundone) {
+      foundone=1;
+      smallest=difference;
+    } else {
+      if(difference<smallest)
+	smallest=difference;
+    }
+  }
+  if(!foundone)
+    return 0;
+  tv->tv_sec=smallest;
+  tv->tv_usec=0;
+  return tv;
+}
+
+void proxy_retry(void)
+{
+  time_t now=time(0);
+  REQUEST *p;
+  for (p = proxy_requests; p; p = p->next) {
+    if(p->proxy_next_try <= now) {
+      if(!--p->proxy_try_count)
+	continue;
+      p->proxy_next_try=now+RETRY_DELAY;
+      rad_send(p->proxy, p->proxysecret);
+    }
+  }
+}

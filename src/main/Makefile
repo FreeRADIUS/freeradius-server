@@ -104,6 +104,7 @@ clean:
 		radclient radzap builddbm
 
 install:
+	install -d -m 755			$(ROOT)$(sbindir)
 	install -m 755 -s radiusd		$(ROOT)$(sbindir)
 	install -m 755    checkrad.pl		$(ROOT)$(sbindir)/checkrad
 	install -d -m 755			$(ROOT)$(bindir)

@@ -37,16 +37,31 @@ int rad_accounting(REQUEST *request)
 	 *	not possible anymore. Perhaps we need an extra
 	 *	module entry point for this ?
 	 */
+	/* Like preacct? */
 
-	/*
-	 *	Keep the radutmp file in sync.
-	 */
-	radutmp_add(request);
+	if(!request->proxy) { /* Only need to do this once, before proxying */
+	  reply = module_preacct(request);
+	  if(reply!=RLM_PRAC_OK)
+		  return RLM_ACCT_FAIL;
 
-	/*
-	 *	Do accounting and if OK, reply.
-	 */
-	reply = module_accounting(request);
+	  /* Maybe one of the preacct modules has decided that a proxy should
+	   * be used. If so, get out of here and send the packet. */
+	  if(pairfind(request->config_items, PW_PROXY_TO_REALM))
+		  return 0;
+	}
+
+	reply=RLM_ACCT_OK;
+	if(!request->proxy) {
+		/*
+		 *	Keep the radutmp file in sync.
+		 */
+		radutmp_add(request);
+
+		/*
+		 *	Do accounting and if OK, reply.
+		 */
+		reply = module_accounting(request);
+	}
 	if (reply == RLM_ACCT_OK || reply == RLM_ACCT_FAIL_SOFT) {
 		/*
 		 *	Now send back an ACK to the NAS.

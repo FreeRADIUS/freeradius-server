@@ -11,6 +11,8 @@
 #include "conf.h"
 #include "missing.h"
 
+#include <sys/time.h>
+
 #if 0
 #if HAVE_PTHREAD_H
 #include	<pthread.h>
@@ -36,6 +38,15 @@ typedef struct auth_req {
 	char			secret[32];
 	child_pid_t    		child_pid;
 	time_t			timestamp;
+
+	/* Could almost keep a const char * here instead of a _copy_ of the
+	 * secret... but what if the CLIENT structure is freed because it was
+	 * taken out of the config file and SIGHUPed? */
+	char			proxysecret[32];
+	int			proxy_is_replicate;
+	int			proxy_try_count;
+	time_t			proxy_next_try;
+
 	int			finished;
 	struct auth_req		*prev;
 	struct auth_req		*next;
@@ -84,6 +95,9 @@ typedef struct pair_list {
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
 #define MAX_REQUESTS		255
+/* FIXME: these two should be command-line options */
+#define RETRY_DELAY             5
+#define RETRY_COUNT             3
 
 #define L_DBG			1
 #define L_AUTH			2
@@ -141,6 +155,7 @@ int		radutmp_checksimul(char *name, VALUE_PAIR *, int maxsimul);
 void		debug_pair(FILE *, VALUE_PAIR *);
 int		log_err (char *);
 void		sig_cleanup(int);
+void		remove_from_request_list(REQUEST *);
 
 /* util.c */
 struct passwd	*rad_getpwnam(const char *);
@@ -184,6 +199,8 @@ int		pam_pass(char *name, char *passwd, const char *pamauth);
 /* proxy.c */
 int proxy_send(REQUEST *request);
 int proxy_receive(REQUEST *request);
+struct timeval *proxy_setuptimeout(struct timeval *);
+void proxy_retry(void);
 
 /* auth.c */
 char		*auth_name(REQUEST *request, int do_cli);
