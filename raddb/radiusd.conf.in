@@ -169,20 +169,6 @@ log_auth	= no
 #
 log_auth_pass	= no
 
-#
-#  proxy_requests: Turns proxying of RADIUS requests on or off.
-#
-#  The server has proxying turned on by default.  If your system is NOT
-#  set up to proxy requests to another server, then you can turn proxying
-#  off here.  This will save a small amount of resources on the server.
-#
-#  If you have proxying turned off, and your configuration files say
-#  to proxy a request, then an error message will be logged.
-#
-# allowed values: {no, yes}
-#
-proxy_requests	= yes
-
 # 
 # usercollide:  Turn user collision code on and off.
 #               See README.usercollide
@@ -211,90 +197,43 @@ nospace_pass = no
 
 #######################################################################
 #
-#  SNMP configuration
+#  Include optional/module specific configurations.
+
+
+# PROXY CONFIGURATION
 #
-#  NOTE: This part will only work if your radiusd is compiled with SNMP
-#  support.
+#  proxy_requests: Turns proxying of RADIUS requests on or off.
 #
-#  smux_password: Password used for SMUX registration.
+#  The server has proxying turned on by default.  If your system is NOT
+#  set up to proxy requests to another server, then you can turn proxying
+#  off here.  This will save a small amount of resources on the server.
 #
-#  Specifies password used when connecting to the SNMP master agent.
-#  This must match the password as configured on the agent. The OID
-#  used to register the radius subagent is 1.3.6.1.4.1.3317.1.3.1.
-#  A sample entry for the ucd-snmp deamon looks like this:
-#
-#  smuxpeer .1.3.6.1.4.1.3317.1.3.1 verysecret
-#
-#  A sample entry for AIX 4.3 is:
-#
-#  smux 1.3.6.1.4.1.3317.1.3.1 verysecret
-#
-#  The default password is an empty password.
-#
-#smux_password = verysecret
-#
-#  snmp_write_access:
-#
-#  Controls if write access to the radiusd via SNMP is enabled or not.
-#  Set this value to yes, if you want to be able to reload radiusd from
-#  your network management station.
-#
-#  For this to work, you also have to make sure that your master agent
-#  is configured to allow SNMP set requests. For security reasons, this
-#  setting defaults to no.
+#  If you have proxying turned off, and your configuration files say
+#  to proxy a request, then an error message will be logged.
 #
 # allowed values: {no, yes}
 #
-#snmp_write_access = no
+#  To disable proxying, change the "yes" to "no", and comment the
+#  $INCLUDE line.
+proxy_requests  = yes
+$INCLUDE     ${confdir}/proxy.conf
 
-#######################################################################
+# CLIENTS CONFIGURATION
 #
-#  Proxy server configuration
+#  Client configuration is defined in "clients.conf".  If you don't
+#  use the "clients.conf", you can comment the following.  The use of
+#  "clients.conf" is recommended over the old "clients", though both
+#  are supported.
 #
-#  This entry controls the servers behaviour towards ALL other servers
-#  to which it sends proxy requests.
-#
-proxy server {
+$INCLUDE      ${confdir}/clients.conf
 
+# SNMP CONFIGURATION
 #
-#  If the NAS re-sends the request to us, we can immediately re-send
-#  the proxy request to the end server.  To do so, use 'yes' here.
-#
-#  If this is set to 'no', then we send the retries on our own schedule,
-#  and ignore any duplicate NAS requests.
-#
-#  If you want to have the server send proxy retries ONLY when the NAS
-#  sends it's retries to the server, then set this to 'yes', and
-#  set the other proxy configuration parameters to 0 (zero).
-#
-# allowed values: {no, yes}
-#
-	synchronous = no
+#  Snmp configuration is only valid if you enabled SNMP support when
+#  you compiled radius.  To enable SNMP configuration, uncomment the
+#  following line.
+$INCLUDE      ${confdir}/snmp.conf
 
-#
-#  After sending a proxied request to the end server, we wait
-#  'retry_delay' seconds for the response.  If we do not receive a response
-#  from the end server within that time, then the proxy request is sent
-#  again to the end server.  We then wait another for another retry_delay.
-#
-#  If this timeout is set too high, then the NAS *may* give up on the
-#  request before we send a reply back to it.  Most NAS boxes will give up
-#  on requests within 30 seconds.
-#
-#  If this timeout is set too low, then the end server may not have time
-#  to finish processing the request, before it receives the retry.  Many
-#  radius servers can take 2-3 seconds to process a request.
-#
-	retry_delay = 5
-
-#
-#  The number of times we send retry packets to the end server.
-#  If we send 'retry_count' packets without receiving a response,
-#  then we give up on that server, and return a rejection
-#  message to the NAS.
-#
-	retry_count = 3
-}
 
 #######################################################################
 #
@@ -360,101 +299,6 @@ thread pool {
 #
 	max_requests_per_server = 0
 }
-
-#######################################################################
-#
-#  Definition of a NAS or a client.
-#
-#  The information given here is in ADDITION to the 'clients' file.
-#
-#  If this is defined as "client foo" then the hostname/ipaddr "foo"
-#  will be looked up according to the source IP address of the radius
-#  rqeuest packet, and the secret here will be used to check the
-#  integrety of the request.
-#
-#  If this is defined as "nas foo" then foo will be looked up first
-#  as the NAS-IP-Address in the radius request, then as the NAS-Ident
-#  in the radius request.
-#
-#  Normally you'd use "client" unless the request came in through a
-#  proxy server and you want to define a short name for the NAS
-#  for logging purposes, or you want to do a "checkrad" back to the
-#  original NAS and not to the proxy radius server!
-#
-#  The "shortname" can be used for logging, and the "vendor",
-#  "type", "login" and "password" fields are mainly used for checkrad.
-#
-
-client 127.0.0.1 {
-	secret		= testing123
-	shortname	= localhost
-}
-
-#client some.host.org {
-#	secret		= testing123
-#	shortname	= localhost
-#}
-
-
-client 10.10.10.10 {
-	# secret and password are mapped through the "secrets" file.
-	secret      = testing123
-	shortname   = liv1
-	vendor      = livingston
-	# Type should extend to the line type, because of the "hole".
-	#Line#/T S Port  SNMP Port
-	#-------------------------
-	#1 PRI   0-22    1-23
-	#2 PRI   24-46   25-47
-	#1 CT1   0-23    1-24
-	#2 CT1   24-47   25-48
-	#1 E1    0-28    1-29
-	#2 E1    30-58   31-59
-	#And C0 is 96 in Radius.
-	type        = pm3-eur # pm3-i23 pm3-ct24 pm3-i30
-	login       = !root
-	password    = someadminpas
-}
-
-#######################################################################
-#
-#  Configuration for the proxy module.
-#
-#  The information given here is in ADDITION to the 'realms' file.
-#
-#realm isp2.com {
-#	type        = radius
-#	authhost    = radius.isp2.com:1645
-#	accthost    = radius.isp2.com:1646
-#	secret      = TheirKey
-#	nostrip
-#	utmpfile   += /var/log/radutmp.isp2
-#	wtmpfile   += /var/log/radwtmp.isp2
-#	detailfile += /var/log/radacct/isp2/detail
-#}
-
-#realm company.com {
-#	type		= radius
-#	authhost	= radius.company.com:1600
-#	accthost	= radius.company.com:1601
-#	secret		= testing123
-#}
-
-#realm bla.com {
-#	type		= radius
-#	authhost	= LOCAL
-#	accthost	= LOCAL
-#	secret		= testing123
-#}
-
-#realm myfakerealm {
-#      type            = radius
-#      authhost        = radius.company.com:1600
-#      accthost        = radius.company.com:1601
-#      secret          = testing123
-#      notsuffix
-#}
-
 
 modules {
 	pam {
