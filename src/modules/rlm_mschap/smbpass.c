@@ -44,6 +44,7 @@ void pdb_init_smb(struct smb_passwd *user)
         user->pass_last_set_time    = (time_t)-1;
         user->smb_passwd = NULL;
         user->smb_nt_passwd = NULL;
+        user->acct_ctrl = ACB_NORMAL;
         memset(user->smb_name_value,0,256);
         memset(user->smb_passwd_value,0,16);
         memset(user->smb_nt_passwd_value,0,16);
