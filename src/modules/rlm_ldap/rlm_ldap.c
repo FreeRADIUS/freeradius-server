@@ -57,6 +57,8 @@
  * May 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Instead of the Group attribute we now have the Ldap-Group attribute, to avoid
  *	  collisions with other modules
+ *	- If perform_search fails check the ld != NULL before using it. Based on a bug report
+ *	  by John <jhogenmiller@pennswoods.net>
  */
 static const char rcsid[] = "$Id$";
 
@@ -585,11 +587,11 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 		return 1;
 	}
 
-	if (inst->cache_timeout >0)
+	if (inst->cache_timeout >0 && conn->ld != NULL)
 		ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
 
         if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK){
-		if (inst->cache_timeout >0)
+		if (inst->cache_timeout >0 && conn->ld != NULL)
 			ldap_disable_cache(conn->ld);
                 if (res == RLM_MODULE_NOTFOUND){
                         DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found", (char *)check->strvalue);
@@ -629,7 +631,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
         }
 
         if ((res = perform_search(inst, conn, group_dn, LDAP_SCOPE_BASE, filter, attrs, &result)) != RLM_MODULE_OK){
-		if (inst->cache_timeout >0)
+		if (inst->cache_timeout >0 && conn->ld != NULL)
 			ldap_disable_cache(conn->ld);
 		ldap_release_conn(conn_id,inst->conns);
                 if (res == RLM_MODULE_NOTFOUND){
@@ -897,7 +899,7 @@ ldap_authorize(void *instance, REQUEST * request)
 			radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
 
 		if ((res = perform_search(instance, conn, group, LDAP_SCOPE_BASE, filter, attrs, &gr_result)) != RLM_MODULE_OK) {
-			if (inst->cache_timeout >0)
+			if (inst->cache_timeout >0 && conn->ld != NULL)
 				ldap_disable_cache(conn->ld);
 			ldap_msgfree(result);
 			ldap_release_conn(conn_id,inst->conns);
