@@ -88,6 +88,8 @@
  *	- Move the ldap_{get,release}_conn in ldap_groupcmp so that we hold a connection for the minimum time.
  *	- Now that ldap_groupcmp is complete we really don't need access_group. Removed it.
  *	- Remember to free groupmembership_attribute in ldap_detach
+ *	- Don't delete existing generic attributes in ldap_pairget when adding new ones. Since generic attributes
+ *	  have operators we don't need to try to be cleaver.
  */
 static const char rcsid[] = "$Id$";
 
@@ -1556,9 +1558,6 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 					if ( (newpair = pairread(&ptr, &dummy)) != NULL) {
 						DEBUG("rlm_ldap: extracted attribute %s from generic item %s", 
 						      newpair->name, vals[vals_idx]);
-						if (! vals_idx){
-							pairdelete(pairs,newpair->attribute);
-						}
 						pairadd(&pairlist, newpair);
 					} else {
 						radlog(L_ERR, "rlm_ldap: parsing %s failed: %s", 
