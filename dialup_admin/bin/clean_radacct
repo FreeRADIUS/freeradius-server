@@ -3,6 +3,7 @@ use DBI;
 use POSIX;
 
 $conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
+$back_days = 35;
 
 open CONF, "<$conf"
 	or die "Could not open configuration file\n";
@@ -18,7 +19,7 @@ while(<CONF>){
 close CONF;
 
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
-$date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - 1),$mon,$year,$wday,$yday,$isdst);
+$date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,$year,$wday,$yday,$isdst);
 print "$date\n";
 
 $dbh = DBI->connect("DBI:mysql:$sql_database:$sql_server","$sql_username","$sql_password");
