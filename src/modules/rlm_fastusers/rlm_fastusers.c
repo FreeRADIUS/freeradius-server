@@ -34,18 +34,21 @@
 struct fastuser_instance {
 	char *compat_mode;
 	int	 normal_defaults;
+	int	 hash_reload;
 
 	/* hash table */
 	long hashsize;
 	PAIR_LIST **hashtable;
-	PAIR_LIST *users;
 	PAIR_LIST *default_entry;
 
 	char *usersfile;
+	time_t next_reload;
 };
 
 /* Function declarations */
-static int fastuser_getfile(const char *filename, PAIR_LIST **hashtable);
+static int fastuser_buildhash(struct fastuser_instance *inst);
+static int fastuser_getfile(struct fastuser_instance *inst, const char *filename, 
+														PAIR_LIST **hashtable, PAIR_LIST *default_list);
 static int fastuser_hash(const char *s, long hashtablesize);
 static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *entry, int idx);
 static PAIR_LIST *fastuser_find(PAIR_LIST **hashtable, const char *user,
@@ -62,10 +65,61 @@ static CONF_PARSER module_config[] = {
 	{ "hashsize",     PW_TYPE_INTEGER, &config.hashsize, "100000" },
 	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
 	{ "normal_defaults", PW_TYPE_BOOLEAN, &config.normal_defaults, "yes" },
+	{ "hash_reload",     PW_TYPE_INTEGER, &config.hash_reload, "600" },
 	{ NULL, -1, NULL, NULL }
 };
 
-static int fastuser_getfile(const char *filename, PAIR_LIST **hashtable)
+static int fastuser_buildhash(struct fastuser_instance *inst) {
+	long memsize=0;
+	int rcode, hashindex;
+	PAIR_LIST **newhash=NULL, **oldhash=NULL;
+	PAIR_LIST *newdefaults=NULL, *olddefaults=NULL, *cur=NULL;
+
+	/* 
+	 * Allocate space for hash table here
+	 */
+	memsize = sizeof(PAIR_LIST *) * inst->hashsize;
+	if( (newhash = (PAIR_LIST **)malloc(memsize)) == NULL) {
+		radlog(L_ERR, "rlm_fastusers:  Can't build hashtable, out of memory!");
+		return -1;
+	}
+	memset((PAIR_LIST *)newhash, 0, memsize);
+
+	rcode = fastuser_getfile(inst, inst->usersfile, newhash, newdefaults);
+	if (rcode != 0) {
+		radlog(L_ERR|L_CONS, "rlm_fastusers:  Errors reading %s", inst->usersfile);
+		return -1;
+	}
+
+	/*
+	 * We need to do this now so that users auths
+	 * aren't blocked while we free the old table
+	 * below
+	 */
+	oldhash = inst->hashtable;
+	inst->hashtable = newhash;
+	olddefaults = inst->default_entry;
+	inst->default_entry = newdefaults;
+
+	/*
+	 * When we get here, we assume the hash built properly.
+	 * So we begin to tear down the old one
+	 */
+	if(oldhash) {
+		for(hashindex=0; hashindex<inst->hashsize; hashindex++) {
+			if(oldhash[hashindex]) {
+				cur = oldhash[hashindex];
+				pairlist_free(&cur);
+			}
+		} 
+		free(oldhash);
+		pairlist_free(&olddefaults);
+	}
+	return 0;	
+}
+
+static int fastuser_getfile(struct fastuser_instance *inst, const char *filename, 
+														PAIR_LIST **hashtable, PAIR_LIST *default_list)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;
@@ -73,14 +127,14 @@ static int fastuser_getfile(const char *filename, PAIR_LIST **hashtable)
 	PAIR_LIST *entry, *next, *cur;
 	VALUE_PAIR *vp;
 	int hashindex = 0;
-	int numdefaults = 0;
+	long numdefaults = 0, numusers=0;
 
 	rcode = pairlist_read(filename, &users, 1);
 	if (rcode < 0) {
 		return -1;
 	}
 
-	if (strcmp(config.compat_mode, "cistron") == 0) {
+	if (strcmp(inst->compat_mode, "cistron") == 0) {
 		compat_mode = TRUE;
 	}
         
@@ -198,19 +252,20 @@ static int fastuser_getfile(const char *filename, PAIR_LIST **hashtable)
 		if(strcmp(entry->name, "DEFAULT")==0) {
 				numdefaults++;
 				/* put it at the end of the list */
-				if(config.default_entry) {
-					for(cur=config.default_entry; cur->next; cur=cur->next);
+				if(default_list) {
+					for(cur=default_list; cur->next; cur=cur->next);
 					cur->next = entry;
 					entry->next = NULL;
 				} else {
-					config.default_entry = entry;
-					config.default_entry->next = NULL;
+					default_list = entry;
+					default_list->next = NULL; 
 				}
 
 		} else {
+			numusers++;
 
 			/* Hash the username */
-			hashindex = fastuser_hash(entry->name, config.hashsize);
+			hashindex = fastuser_hash(entry->name, inst->hashsize);
 
 			/* Store user in the hash */
 			fastuser_store(hashtable, entry, hashindex);
@@ -221,19 +276,12 @@ static int fastuser_getfile(const char *filename, PAIR_LIST **hashtable)
 
 	} /* while(entry) loop */
 
-	if(!config.normal_defaults && (numdefaults>1)) {
+	if(!inst->normal_defaults && (numdefaults>1)) {
 		radlog(L_INFO, "Warning:  fastusers found multiple DEFAULT entries.  Using the first.");
 	}
 
-	/* 
-	 * We *should* do this to help out clueless admins
-	 * but it's documented, so it will confuse those who
-	 * do read the docs if we do it here as well
-	if(!config.normal_defaults) {
-		pairdelete(&config.default_entry->check, PW_AUTHTYPE);
-	}
-	 */
-
+	radlog(L_INFO, "rlm_fastusers:  Loaded %ld users and %ld defaults",
+				numusers, numdefaults);
 	return 0;
 }
 
@@ -294,8 +342,6 @@ static PAIR_LIST *fastuser_find(PAIR_LIST **hashtable,
 static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct fastuser_instance *inst=0;
-	int rcode;
-	long memsize=0;
 
 	inst = malloc(sizeof *inst);
 	if (!inst) {
@@ -309,37 +355,22 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	/* 
-	 * Sue me.  The tradeoff for this extra variable
-	 * is clean code below
-	 */
-	memsize = sizeof(PAIR_LIST *) * config.hashsize;
-	/* 
-	 * Allocate space for hash table here
-	 */
-	if( (inst->hashtable = (PAIR_LIST **)malloc(memsize)) == NULL) {
-		radlog(L_ERR, "fastusers:  Can't build hashtable, out of memory!");
-		return -1;
-	}
-	memset((PAIR_LIST *)inst->hashtable, 0, memsize);
-
-	rcode = fastuser_getfile(config.usersfile, inst->hashtable);
-	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading %s", config.usersfile);
-		return -1;
-	}
-
 	inst->usersfile = config.usersfile;
 	inst->hashsize = config.hashsize;
 	inst->default_entry = config.default_entry;
 	inst->compat_mode = config.compat_mode;
 	inst->normal_defaults = config.normal_defaults;
-	inst->users = NULL;
+	inst->hash_reload = config.hash_reload;
+	inst->next_reload = time(NULL) + inst->hash_reload;
+	inst->hashtable = NULL;
+	if(fastuser_buildhash(inst) < 0) {
+		radlog(L_ERR, "rlm_fastusers:  error building user hash.  aborting");
+		return -1;
+	}
 
 	config.usersfile = NULL;
 	config.hashtable = NULL;
 	config.default_entry = NULL;
-	config.users = NULL;
 	config.compat_mode = NULL;
 
 	*instance = inst;
@@ -371,6 +402,19 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	request_pairs = request->packet->vps;
 	check_pairs = &request->config_items;
 	reply_pairs = &request->reply->vps;
+
+	/*
+	 * Do we need to reload the cache?
+	 * Really we should spawn a thread to do this
+	 */
+	if((inst->hash_reload) && (request->timestamp > inst->next_reload)) {
+		inst->next_reload = request->timestamp + inst->hash_reload;
+		radlog(L_INFO, "rlm_fastusers:  Reloading fastusers hash");
+		if(fastuser_buildhash(inst) < 0) {
+			radlog(L_ERR, "rlm_fastusers:  error building user hash.  aborting");
+			exit(1);
+		}
+	}
 
  	/*
 	 *	Grab the canonical user name.
@@ -554,7 +598,6 @@ static int fastuser_detach(void *instance)
 	int hashindex;
 	PAIR_LIST *cur;
 
-
 	/* Free hash table */
 	for(hashindex=0; hashindex<inst->hashsize; hashindex++) {
 		if(inst->hashtable[hashindex]) {
@@ -564,7 +607,6 @@ static int fastuser_detach(void *instance)
 	} 
 
 	free(inst->hashtable);
-	pairlist_free(&inst->users);
 	pairlist_free(&inst->default_entry);
 	free(inst->usersfile);
 	free(inst->compat_mode);

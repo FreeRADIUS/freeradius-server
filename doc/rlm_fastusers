@@ -31,6 +31,7 @@ Radius FastUsers Module
        hashsize = 1000
        compat = no
        normal_defaults = yes
+       hash_reload = 600
     }
 
     See below for a detailed explanation of the module options.
@@ -212,6 +213,16 @@ Radius FastUsers Module
                the DEFAULT entry, it will override the one you set
                for the user in the file.  Just don't do it, it's not
                worth the confusion.
+
+    F.  hash_reload = 600
+
+        Number of seconds between automatic reloading of the users
+        cache.  Using this option means the module will double memory
+        usage, but only while the reload is in progress.  However, it
+        will eliminate blocking of user access during a reload and
+        allow longer times between server HUPs.
+
+        You can disable this feature with hash_reload = 0;
 
 4.  CAVEATS
 
