@@ -35,6 +35,7 @@ dnl Check for GNU cc
 AC_PROG_CC
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
+AC_PROG_INSTALL
 AC_PROG_RANLIB
 
 PACKAGE=freeradius
@@ -652,6 +653,10 @@ dnl #
 dnl #  Substitute whatever libraries we found to be necessary
 dnl #
 AC_SUBST(LIBS)
+AC_SUBST(INSTALL)
+AC_SUBST(INSTALL_PROGRAM)
+AC_SUBST(INSTALL_DATA)
+AC_SUBST(INSTALL_SCRIPT)
 
 AC_OUTPUT(\
 	./Make.inc \
