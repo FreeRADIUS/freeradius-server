@@ -50,6 +50,8 @@ static const char rcsid[] = "$Id$";
 #	include <getopt.h>
 #endif
 
+#include <assert.h>
+
 #include "conf.h"
 #include "radpaths.h"
 #include "missing.h"
@@ -62,6 +64,22 @@ static int filedone = 0;
 static int totalapp = 0;
 static int totaldeny = 0;
 static int totallost = 0;
+
+static int server_port = 0;
+static int packet_code = 0;
+static uint32_t server_ipaddr = 0;
+static int resend_count = 1;
+static int done = 1;
+
+static int sockfd;
+static int radius_id[256];
+static int last_used_id = 0;
+
+static rbtree_t *filename_tree = NULL;
+static rbtree_t *radclient_tree = NULL;
+static rbtree_t *request_tree = NULL;
+
+static int sleep_time = -1;
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
@@ -91,6 +109,549 @@ static void usage(void)
 	exit(1);
 }
 
+
+typedef struct radclient_t {
+	const char	*filename;
+	char		password[256];
+	time_t		timestamp;
+	RADIUS_PACKET	*request;
+	RADIUS_PACKET	*reply;
+	int		resend;
+	int		tries;
+} radclient_t;
+
+
+/*
+ *	Free a radclient struct
+ */
+static void radclient_free(void *data)
+{
+	radclient_t *radclient = (radclient_t *) data;
+
+	if (!radclient) return;
+
+	if (radclient->request) rad_free(&radclient->request);
+	if (radclient->reply) rad_free(&radclient->reply);
+
+	free(radclient);
+}
+
+/*
+ *	Initialize a radclient data structure
+ */
+static radclient_t *radclient_init(const char *filename)
+{
+	FILE *fp;
+	VALUE_PAIR *vp;
+	radclient_t *radclient;
+
+	/*
+	 *	Allocate it.
+	 */
+	radclient = malloc(sizeof(*radclient));
+	if (!radclient) {
+		perror("radclient: ");
+		return NULL;
+	}
+	memset(radclient, 0, sizeof(*radclient));
+
+	radclient->request = rad_alloc(1);
+	if (!radclient->request) {
+		librad_perror("radclient: ");
+		radclient_free(radclient);
+		return NULL;
+	}
+
+	radclient->filename = filename;
+	radclient->request->id = -1; /* allocate when sending */
+
+	/*
+	 *	Read valuepairs.
+	 *	Maybe read them, from stdin, if there's no
+	 *	filename, or if the filename is '-'.
+	 */
+	if (filename && (strcmp(filename, "-") != 0)) {
+		fp = fopen(filename, "r");
+		if (!fp) {
+			fprintf(stderr, "radclient: Error opening %s: %s\n",
+				filename, strerror(errno));
+			radclient_free(radclient);
+			return NULL;
+		}
+	} else {
+		fp = stdin;
+	}
+	
+	/*
+	 *	Read the VP's.
+	 */
+	radclient->request->vps = readvp(fp);
+	if (fp != stdin) fclose(fp);
+	if (!radclient->request->vps) {
+		librad_perror("radclient: ");
+		radclient_free(radclient);
+		return NULL;
+	}
+
+
+	/*
+	 *	Keep a copy of the the User-Password attribute.
+	 */
+	if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
+		strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+		/*
+		 *	Otherwise keep a copy of the CHAP-Password attribute.
+		 */
+	} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
+		strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+	} else {
+		radclient->password[0] = '\0';
+	}
+	
+	/*
+	 *  Fix up Digest-Attributes issues
+	 */
+	for (vp = radclient->request->vps; vp != NULL; vp = vp->next) {
+		switch (vp->attribute) {
+		default:
+			break;
+
+			/*
+			 *	Allow it to set the packet type in
+			 *	the attributes read from the file.
+			 */
+		case PW_PACKET_TYPE:
+			radclient->request->code = vp->lvalue;
+			break;
+			
+		case PW_PACKET_DST_PORT:
+			radclient->request->dst_port = (vp->lvalue & 0xffff);
+			break;
+			
+		case PW_DIGEST_REALM:
+		case PW_DIGEST_NONCE:
+		case PW_DIGEST_METHOD:
+		case PW_DIGEST_URI:
+		case PW_DIGEST_QOP:
+		case PW_DIGEST_ALGORITHM:
+		case PW_DIGEST_BODY_DIGEST:
+		case PW_DIGEST_CNONCE:
+		case PW_DIGEST_NONCE_COUNT:
+		case PW_DIGEST_USER_NAME:
+			/* overlapping! */
+			memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
+			vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
+			vp->length += 2;
+			vp->strvalue[1] = vp->length;
+			vp->attribute = PW_DIGEST_ATTRIBUTES;
+			break;
+		}
+	} /* loop over the VP's we read in */
+
+	/*
+	 *	And we're done.
+	 */
+	return radclient;
+}
+
+
+/*
+ *	Sanity check each argument.
+ */
+static int radclient_walk(void *data)
+{
+	radclient_t *radclient = (radclient_t *) data;
+
+	if (radclient->request->dst_port == 0) {
+		radclient->request->dst_port = server_port;
+	}
+	radclient->request->dst_ipaddr = server_ipaddr;
+
+	if (radclient->request->code == 0) {
+		if (packet_code == -1) {
+			fprintf(stderr, "radclient: Request was \"auto\", but file %s did not contain Packet-Type\n", radclient->filename);
+			return -1;
+		}
+
+		radclient->request->code = packet_code;
+	}
+	radclient->request->sockfd = sockfd;
+
+	return 0;
+}
+
+
+/*
+ *	For request handline.
+ */
+static int filename_cmp(const void *one, const void *two)
+{
+	return strcmp((const char *) one, (const char *) two);
+}
+
+static int filename_walk(void *data)
+{
+	const char	*filename = data;
+	radclient_t	*radclient;
+
+	/*
+	 *	Initialize the request we're about
+	 *	to send.
+	 */
+	radclient = radclient_init(filename);
+	if (!radclient) {
+		exit(1);
+	}
+	
+	/*
+	 *	For now, don't deal with duplicate
+	 *	filenames.
+	 */
+	rbtree_insert(radclient_tree, radclient);
+
+	return 0;
+}
+
+
+/*
+ *	For request handline.
+ */
+static int radclient_cmp(const void *one, const void *two)
+{
+	return strcmp(((const radclient_t *) one)->filename,
+		      ((const radclient_t *) two)->filename);
+}
+
+
+/*
+ *	Compare two RADIUS_PACKET data structures, based on a number
+ *	of criteria.
+ */
+static int request_cmp(const void *one, const void *two)
+{
+	const radclient_t *a = one;
+	const radclient_t *b = two;
+
+	/*
+	 *	The following code looks unreasonable, but it's
+	 *	the only way to make the comparisons work.
+	 */
+	if (a->request->id < b->request->id) return -1;
+	if (a->request->id > b->request->id) return +1;
+
+	if (a->request->dst_ipaddr < b->request->dst_ipaddr) return -1;
+	if (a->request->dst_ipaddr > b->request->dst_ipaddr) return +1;
+
+	if (a->request->dst_port < b->request->dst_port) return -1;
+	if (a->request->dst_port > b->request->dst_port) return +1;
+
+	/*
+	 *	Everything's equal.  Say so.
+	 */
+	return 0;
+}
+
+/*
+ *	"Free" a request.
+ */
+static void request_free(void *data)
+{
+	radclient_t *radclient = (radclient_t *) data;
+
+	if (!radclient || !radclient->request ||
+	    (radclient->request->id < 0)) {
+		return;
+	}
+
+	/*
+	 *	One more unused RADIUS ID.
+	 */
+	radius_id[radclient->request->id] = 0;
+	radclient->request->id = -1;
+
+	/*
+	 *	If we've already sent a packet, free up the old one,
+	 *	and ensure that the next packet has a unique
+	 *	authentication vector.
+	 */
+	if (radclient->request->data) {
+		free(radclient->request->data);
+		radclient->request->data = NULL;
+	}
+
+	if (radclient->reply) rad_free(&radclient->reply);
+}
+
+
+/*
+ *	Send one packet.
+ */
+static int send_one_packet(radclient_t *radclient)
+{
+	int i;
+
+	/*
+	 *	Sent this packet as many times as requested.
+	 *	ignore it.
+	 *
+	 *	FIXME: Mark it to be deleted, so we don't do
+	 *	too much work (not that it matters...)
+	 */
+	if (radclient->resend > resend_count) {
+		return 0;
+	}
+
+	/*
+	 *	Remember when we have to wake up, to re-send the
+	 *	request, of we didn't receive a response.
+	 */
+	if ((sleep_time == -1) ||
+	    (sleep_time > (int) timeout)) {
+		sleep_time = (int) timeout;
+	}
+
+	/*
+	 *	Haven't sent the packet yet.  Initialize it.
+	 */
+	if (radclient->request->id == -1) {
+		int found = 0;
+
+		assert(radclient->reply == NULL);
+
+		/*
+		 *	Find a free packet Id
+		 */
+		for (i = 0; i < 256; i++) {
+			if (radius_id[(last_used_id + i) & 0xff] == 0) {
+				last_used_id = (last_used_id + i) & 0xff;
+				radius_id[last_used_id] = 1;
+				radclient->request->id = last_used_id++;
+				found = 1;
+				break;
+			}
+		}
+
+		/*
+		 *	Didn't find a free packet ID, we're not done,
+		 *	we don't sleep, and we stop trying to process
+		 *	this packet.
+		 */
+		if (!found) {
+			done = 0;
+			sleep_time = 0;
+			return 0;
+		}
+
+		assert(radclient->request->id != -1);
+		assert(radclient->request->data == NULL);
+		
+		librad_md5_calc(radclient->request->vector, radclient->request->vector,
+				sizeof(radclient->request->vector));
+		
+		/*
+		 *	Update the password, so it can be encrypted with the
+		 *	new authentication vector.
+		 */
+		if (radclient->password[0] != '\0') {
+			VALUE_PAIR *vp;
+
+			if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
+				strNcpy((char *)vp->strvalue, radclient->password, strlen(radclient->password) + 1);
+				vp->length = strlen(radclient->password);
+				
+			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
+				strNcpy((char *)vp->strvalue, radclient->password, strlen(radclient->password) + 1);
+				vp->length = strlen(radclient->password);
+				
+				rad_chap_encode(radclient->request, (char *) vp->strvalue, radclient->request->id, vp);
+				vp->length = 17;
+			}
+		}
+
+		radclient->timestamp = time(NULL);
+		radclient->tries = 1;
+		radclient->resend++;
+
+		/*
+		 *	Duplicate found.  Serious error!
+		 */
+		if (rbtree_insert(request_tree, radclient) == 0) {
+			assert(0 == 1);
+		}
+
+	} else if (radclient->tries == retries) {
+		rbnode_t *node;
+		assert(radclient->request->id >= 0);
+
+		/*
+		 *	Delete the request from the tree of outstanding
+		 *	requests.
+		 */
+		node = rbtree_find(request_tree, radclient);
+		assert(node != NULL);
+
+		fprintf(stderr, "radclient: no response from server for ID %d\n", radclient->request->id);
+		rbtree_delete(request_tree, node);
+		totallost++;
+		return -1;
+
+		/*
+		 *	FIXME: Do stuff for packet loss.
+		 */
+
+	} else {		/* radclient->request->id >= 0 */
+		time_t now = time(NULL);
+
+		/*
+		 *	FIXME: Accounting packets are never retried!
+		 *	The Acct-Delay-Time attribute is updated to
+		 *	reflect the delay, and the packet is re-sent
+		 *	from scratch!
+		 */
+
+		/*
+		 *	Not time for a retry, do so.
+		 */
+		if ((now - radclient->timestamp) < timeout) {
+			/*
+			 *	When we walk over the tree sending
+			 *	packets, we update the minimum time
+			 *	required to sleep.
+			 */
+			if ((sleep_time == -1) ||
+			    (sleep_time > (now - radclient->timestamp))) {
+				sleep_time = now - radclient->timestamp;
+			}
+			return 0;
+		}
+
+		radclient->timestamp = now;
+		radclient->tries++;
+	}
+
+
+	/*
+	 *	Send the packet.
+	 */
+	rad_send(radclient->request, NULL, secret);
+
+	return 0;
+}
+
+/*
+ *	Receive one packet, maybe.
+ */
+static int recv_one_packet(int wait_time)
+{
+	fd_set		set;
+	struct timeval  tv;
+	radclient_t	myclient, *radclient;
+	RADIUS_PACKET	myrequest, *reply;
+	rbnode_t	*node;
+
+	
+	/* And wait for reply, timing out as necessary */
+	FD_ZERO(&set);
+	FD_SET(sockfd, &set);
+	
+	if (wait_time <= 0) {
+		tv.tv_sec = 0;
+	} else {
+		tv.tv_sec = wait_time;
+	}
+	tv.tv_usec = 0;
+	
+	/*
+	 *	No packet was received.
+	 */
+	if (select(sockfd + 1, &set, NULL, NULL, &tv) != 1) {
+		return 0;
+	}
+	
+	/*
+	 *	Look for the packet.
+	 */
+	reply = rad_recv(sockfd);
+	if (!reply) {
+		fprintf(stderr, "radclient: received bad packet\n");
+		return -1;	/* bad packet */
+	}
+
+	myclient.request = &myrequest;
+	myrequest.id = reply->id;
+	myrequest.dst_ipaddr = reply->src_ipaddr;
+	myrequest.dst_port = reply->src_port;
+
+	node = rbtree_find(request_tree, &myclient);
+	if (!node) {
+		fprintf(stderr, "radclient: received response to request we did not send.\n");
+		return -1;	/* got reply to packet we didn't send */
+	}
+
+	radclient = rbtree_node2data(request_tree, node);
+	assert(radclient != NULL);
+	rbtree_delete(request_tree, node);
+	assert(radclient->request->id == -1);
+	assert(radclient->request->data == NULL);
+
+	assert(radclient->reply == NULL);
+	radclient->reply = reply;
+
+	/*
+	 *	FIXME: Do stuff to process the reply.
+	 */
+	if (rad_decode(reply, radclient->request, secret) != 0) {
+		librad_perror("rad_decode");
+		totallost++;
+		return -1;
+	}
+
+	/* libradius debug already prints out the value pairs for us */
+	if (!librad_debug && do_output) {
+		printf("Received response ID %d, code %d, length = %d\n",
+		       reply->id, reply->code, reply->data_len);
+		vp_printlist(stdout, reply->vps);
+	}
+	if (reply->code != PW_AUTHENTICATION_REJECT) {
+		totalapp++;
+	} else {
+		totaldeny++;
+	}
+
+	if (radclient->reply) rad_free(&radclient->reply);
+
+	return 0;
+}
+
+/*
+ *	Walk over the tree, sending packets.
+ */
+static int radsend_walk(void *data)
+{
+	radclient_t *radclient = (radclient_t *) data;
+
+	/*
+	 *	Send the current packet.
+	 */
+	send_one_packet(radclient);
+
+	/*
+	 *	Do rad_recv(), and look for the response in the tree,
+	 *	but don't wait for a response.
+	 */
+	recv_one_packet(0);
+
+	/*
+	 *	Still elements to wa
+	 */
+	if (radclient->resend < resend_count) {
+		done = 0;
+		sleep_time = 0;
+	}
+
+	return 0;
+}
+
 static int getport(const char *name)
 {
 	struct	servent		*svp;
@@ -103,216 +664,48 @@ static int getport(const char *name)
 	return ntohs(svp->s_port);
 }
 
-static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
-{
-	int i;
-	struct timeval	tv;
-
-	for (i = 0; i < retries; i++) {
-		fd_set		rdfdesc;
-
-		rad_send(req, NULL, secret);
-
-		/* And wait for reply, timing out as necessary */
-		FD_ZERO(&rdfdesc);
-		FD_SET(req->sockfd, &rdfdesc);
-
-		tv.tv_sec = (int)timeout;
-		tv.tv_usec = 1000000 * (timeout - (int) timeout);
-
-		/* Something's wrong if we don't get exactly one fd. */
-		if (select(req->sockfd + 1, &rdfdesc, NULL, NULL, &tv) != 1) {
-			continue;
-		}
-
-		*rep = rad_recv(req->sockfd);
-		if (*rep != NULL) {
-			/*
-			 *	If we get a response from a machine
-			 *	which we did NOT send a request to,
-			 *	then complain.
-			 */
-			if (((*rep)->src_ipaddr != req->dst_ipaddr) ||
-			    ((*rep)->src_port != req->dst_port)) {
-				char src[64], dst[64];
-
-				ip_ntoa(src, (*rep)->src_ipaddr);
-				ip_ntoa(dst, req->dst_ipaddr);
-				fprintf(stderr, "radclient: ERROR: Sent request to host %s:%d, got response from host %s:%d\n!",
-					dst, req->dst_port,
-					src, (*rep)->src_port);
-				totallost++;
-				return -1;
-			}
-			break;
-		} else {	/* NULL: couldn't receive the packet */
-			librad_perror("radclient:");
-			totallost++;
-			return -1;
-		}
-	}
-
-	/* No response or no data read (?) */
-	if (i == retries) {
-		fprintf(stderr, "radclient: no response from server\n");
-		totallost++;
-		return -1;
-	}
-
-	if (rad_decode(*rep, req, secret) != 0) {
-		librad_perror("rad_decode");
-		totallost++;
-		return -1;
-	}
-
-	/* libradius debug already prints out the value pairs for us */
-	if (!librad_debug && do_output) {
-		printf("Received response ID %d, code %d, length = %d\n",
-				(*rep)->id, (*rep)->code, (*rep)->data_len);
-		vp_printlist(stdout, (*rep)->vps);
-	}
-	if((*rep)->code == PW_AUTHENTICATION_ACK) {
-		totalapp++;
-	} else {
-		totaldeny++;
-	}
-
-	return 0;
-}
-
-/*
- *	Send request.
- */
-void send_request(RADIUS_PACKET *req, FILE *fp, int count)
-{
-	int loop;
-	char password[256];
-	VALUE_PAIR *vp;
-	RADIUS_PACKET *rep = NULL;
-
-	if ((req->sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("radclient: socket: ");
-		exit(1);
-	}
-
-	while(!filedone) {
-
-		if(req->vps) pairfree(&req->vps);
-
-		req->vps = readvp(fp);
-		if (req->vps == NULL) {
-			break;
-		}
-
-		/*
-		 *	Keep a copy of the the User-Password attribute.
-		 */
-		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
-			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
-		/*
-		 *	Otherwise keep a copy of the CHAP-Password attribute.
-		 */
-		} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
-			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
-		} else {
-			*password = '\0';
-		}
-
-		/*
-		 *  Fix up Digest-Attributes issues
-		 */
-		for (vp = req->vps; vp != NULL; vp = vp->next) {
-		  switch (vp->attribute) {
-		  default:
-		    break;
-
-		  case PW_DIGEST_REALM:
-		  case PW_DIGEST_NONCE:
-		  case PW_DIGEST_METHOD:
-		  case PW_DIGEST_URI:
-		  case PW_DIGEST_QOP:
-		  case PW_DIGEST_ALGORITHM:
-		  case PW_DIGEST_BODY_DIGEST:
-		  case PW_DIGEST_CNONCE:
-		  case PW_DIGEST_NONCE_COUNT:
-		  case PW_DIGEST_USER_NAME:
-		    /* overlapping! */
-		    memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
-		    vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
-		    vp->length += 2;
-		    vp->strvalue[1] = vp->length;
-		    vp->attribute = PW_DIGEST_ATTRIBUTES;
-		    break;
-		  }
-		}
-
-		/*
-		 *	Loop, sending the packet N times.
-		 */
-		for (loop = 0; loop < count; loop++) {
-			req->id++;
-
-			/*
-			 *	If we've already sent a packet, free up the old
-			 *	one, and ensure that the next packet has a unique
-			 *	ID and authentication vector.
-			 */
-			if (req->data) {
-				free(req->data);
-				req->data = NULL;
-			}
-
-			librad_md5_calc(req->vector, req->vector,
-					sizeof(req->vector));
-
-			if (*password != '\0') {
-				if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
-					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
-					vp->length = strlen(password);
-
-				} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
-					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
-					vp->length = strlen(password);
-
-					rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
-					vp->length = 17;
-				}
-			} /* there WAS a password */
-
-			send_packet(req, &rep);
-			if (rep != NULL) rad_free(&rep);
-		}
-	}
-}
-
 int main(int argc, char **argv)
 {
-	RADIUS_PACKET *req;
 	char *p;
 	int c;
-	int port = 0;
 	const char *radius_dir = RADDBDIR;
-	char *filename = NULL;
 	char filesecret[256];
 	FILE *fp;
-	int count = 1;
 	int do_summary = 0;
 	int id;
 
 	id = ((int)getpid() & 0xff);
 	librad_debug = 0;
 
+	filename_tree = rbtree_create(filename_cmp, NULL, 0);
+	if (!filename_tree) {
+		fprintf(stderr, "radclient: Out of memory\n");
+		exit(1);
+	}
+
+	radclient_tree = rbtree_create(radclient_cmp, radclient_free, 0);
+	if (!radclient_tree) {
+		fprintf(stderr, "radclient: Out of memory\n");
+		exit(1);
+	}
+
+	request_tree = rbtree_create(request_cmp, request_free, 0);
+	if (!request_tree) {
+		fprintf(stderr, "radclient: Out of memory\n");
+		exit(1);
+	}
+
 	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xv")) != EOF) switch(c) {
 		case 'c':
 			if (!isdigit((int) *optarg)) 
 				usage();
-			count = atoi(optarg);
+			resend_count = atoi(optarg);
 			break;
 		case 'd':
 			radius_dir = optarg;
 			break;
 		case 'f':
-			filename = optarg;
+			rbtree_insert(filename_tree, optarg);
 			break;
 		case 'q':
 			do_output = 0;
@@ -391,48 +784,53 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if ((req = rad_alloc(1)) == NULL) {
-		librad_perror("radclient");
-		exit(1);
-	}
-
-	req->id = id;
-
 	/*
 	 *	Strip port from hostname if needed.
 	 */
 	if ((p = strchr(argv[1], ':')) != NULL) {
 		*p++ = 0;
-		port = atoi(p);
+		server_port = atoi(p);
 	}
+
+	/*
+	 *	Grab the socket.
+	 */
+	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+		perror("radclient: socket: ");
+		exit(1);
+	}
+	memset(radius_id, 0, sizeof(radius_id));
 
 	/*
 	 *	See what kind of request we want to send.
 	 */
 	if (strcmp(argv[2], "auth") == 0) {
-		if (port == 0) port = getport("radius");
-		if (port == 0) port = PW_AUTH_UDP_PORT;
-		req->code = PW_AUTHENTICATION_REQUEST;
+		if (server_port == 0) server_port = getport("radius");
+		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
+		packet_code = PW_AUTHENTICATION_REQUEST;
 
 	} else if (strcmp(argv[2], "acct") == 0) {
-		if (port == 0) port = getport("radacct");
-		if (port == 0) port = PW_ACCT_UDP_PORT;
-		req->code = PW_ACCOUNTING_REQUEST;
+		if (server_port == 0) server_port = getport("radacct");
+		if (server_port == 0) server_port = PW_ACCT_UDP_PORT;
+		packet_code = PW_ACCOUNTING_REQUEST;
 		do_summary = 0;
 
 	} else if (strcmp(argv[2], "status") == 0) {
-		if (port == 0) port = getport("radius");
-		if (port == 0) port = PW_AUTH_UDP_PORT;
-		req->code = PW_STATUS_SERVER;
+		if (server_port == 0) server_port = getport("radius");
+		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
+		packet_code = PW_STATUS_SERVER;
 
 	} else if (strcmp(argv[2], "disconnect") == 0) {
-		if (port == 0) port = PW_POD_UDP_PORT;
-		req->code = PW_DISCONNECT_REQUEST;
+		if (server_port == 0) server_port = PW_POD_UDP_PORT;
+		packet_code = PW_DISCONNECT_REQUEST;
+
+	} else if (strcmp(argv[2], "auto") == 0) {
+		packet_code = -1;
 
 	} else if (isdigit((int) argv[2][0])) {
-		if (port == 0) port = getport("radius");
-		if (port == 0) port = PW_AUTH_UDP_PORT;
-		req->code = atoi(argv[2]);
+		if (server_port == 0) server_port = getport("radius");
+		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
+		packet_code = atoi(argv[2]);
 	} else {
 		usage();
 	}
@@ -440,9 +838,8 @@ int main(int argc, char **argv)
 	/*
 	 *	Resolve hostname.
 	 */
-	req->dst_port = port;
-	req->dst_ipaddr = ip_getaddr(argv[1]);
-	if (req->dst_ipaddr == INADDR_NONE) {
+	server_ipaddr = ip_getaddr(argv[1]);
+	if (server_ipaddr == INADDR_NONE) {
 		fprintf(stderr, "radclient: Failed to find IP address for host %s\n", argv[1]);
 		exit(1);
 	}
@@ -453,27 +850,53 @@ int main(int argc, char **argv)
 	if (argv[3]) secret = argv[3];
 
 	/*
-	 *	Read valuepairs.
-	 *	Maybe read them, from stdin, if there's no
-	 *	filename, or if the filename is '-'.
+	 *	Walk over the list of filenames, creating the requests.
 	 */
-	if (filename && (strcmp(filename, "-") != 0)) {
-		fp = fopen(filename, "r");
-		if (!fp) {
-			fprintf(stderr, "radclient: Error opening %s: %s\n",
-				filename, strerror(errno));
-			exit(1);
-		}
-	} else {
-		fp = stdin;
+	if (rbtree_walk(filename_tree, filename_walk, InOrder) != 0) {
+		exit(1);
 	}
-	
-	send_request(req, fp, count);
+
+	/*
+	 *	Walk over the tree, sanity checking everything.
+	 */
+	if (rbtree_walk(radclient_tree, radclient_walk, InOrder) != 0) {
+		exit(1);
+	}
+
+	last_used_id = getpid() & 0xff;
+
+	/*
+	 *	Walk over the packets to send, until
+	 *	we're all done.
+	 *
+	 *	FIXME: This currently busy-loops until it receives
+	 *	all of the packets.  It should really have some sort of
+	 *	send packet, get time to wait, select for time, etc.
+	 *	loop.
+	 */
+	do {
+		done = 1;
+		sleep_time = -1;
+		rbtree_walk(radclient_tree, radsend_walk, InOrder);
+
+		if (rbtree_num_elements(request_tree) > 0) {
+			done = 0;
+		}
+
+		/*
+		 *	Nothing to do until we receive a request, so
+		 *	sleep until then.
+		 */
+		if (!done && (sleep_time > 0)) {
+			recv_one_packet(sleep_time);
+		}
+	} while (!done);
 
 	if (do_summary) {
 		printf("\n\t   Total approved auths:  %d\n", totalapp);
 		printf("\t     Total denied auths:  %d\n", totaldeny);
 		printf("\t       Total lost auths:  %d\n", totallost);
 	}
+
 	return 0;
 }
