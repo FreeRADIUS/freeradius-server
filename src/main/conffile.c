@@ -217,14 +217,24 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
  *	Expand the variables in an input string.
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
-				       CONF_SECTION *cs,
+				       CONF_SECTION *outercs,
 				       char *output, const char *input)
 {
 	char *p;
 	const char *end, *ptr;
 	char name[8192];
-	CONF_PAIR *cpn;
-	CONF_SECTION *outercs;
+	CONF_SECTION *parentcs;
+	
+	/*
+	 *	Find the master parent conf section.
+	 *	We can't use mainconfig.config, because we're in the
+	 *	process of re-building it, and it isn't set up yet...
+	 */
+	for (parentcs = outercs;
+	     parentcs->item.parent != NULL;
+	     parentcs = parentcs->item.parent) {
+		/* do nothing */
+	}
 
 	p = output;
 	ptr = input;
@@ -233,6 +243,11 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		 *	Ignore anything other than "${"
 		 */
 		if ((*ptr == '$') && (ptr[1] == '{')) {
+			int up;
+			char *q;
+			CONF_PAIR *cp;
+			CONF_SECTION *cs;
+
 			/*
 			 *	Look for trailing '}', and log a
 			 *	warning for anything that doesn't match,
@@ -248,32 +263,87 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			
 			ptr += 2;
 			
-			memcpy(name, ptr, end - ptr);
-			name[end - ptr] = '\0';
-			
-			cpn = cf_pair_find(cs, name);
-			
+			cp = NULL;
+			up = 0;
+
 			/*
-			 *	Also look recursively up the section tree,
-			 *	so things like ${confdir} can be defined
-			 *	there and used inside the module config
-			 *	sections.
+			 *	${.foo} means "foo from the current section"
 			 */
-			for (outercs=cs->item.parent; 
-			     (cpn == NULL) && (outercs != NULL);
-			     outercs=outercs->item.parent) {
-				cpn = cf_pair_find(outercs, name);
+			if (*ptr == '.') {
+				up = 1;
+				cs = outercs;
+				ptr++;
+				
+				/*
+				 *	${..foo} means "foo from the section
+				 *	enclosing this section" (etc.)
+				 */
+				while (*ptr == '.') {
+					if (cs->item.parent)
+						cs = cs->item.parent;
+					ptr++;
+				}
+			} else { /* pick from this section. */
+				cs = outercs;
 			}
-			if (!cpn) {
-				radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
-				       cf, *lineno, name);
-				return NULL;
-			}
+
+			while (cp == NULL) {
+				/*
+				 *	Find the next section.
+				 */
+				for (q = name;
+				     (*ptr != 0) && (*ptr != '.') &&
+					     (ptr != end);
+				     q++, ptr++) {
+					*q = *ptr;
+				}
+				*q = '\0';
+
+				/*
+				 *	The character is a '.', find a
+				 *	section (as the user has given
+				 *	us a subsection to find)
+				 */
+				if (*ptr == '.') {
+					CONF_SECTION *next;
+					
+					ptr++;	/* skip the period */
+					
+					/*
+					 *	Find the sub-section.
+					 */
+					next = cf_section_sub_find(cs, name);
+					if (next == NULL) {
+						radlog(L_ERR, "config: No such section %s in variable %s", name, input);
+						return NULL;
+					}
+					cs = next;
+					
+				} else { /* no period, must be a conf-part */
+					/*
+					 *	Find in the current referenced
+					 *	section.
+					 */
+					cp = cf_pair_find(cs, name);
+					if (cp == NULL) {
+						/*
+						 *	It it was NOT ${..foo}
+						 *	then look in the
+						 *	top-level config items.
+						 */
+						if (!up) cp = cf_pair_find(parentcs, name);
+					}
+					if (cp == NULL) {
+						radlog(L_ERR, "config: No such entry %s for string %s", name, input);
+						return NULL;
+					}
+				}
+			} /* until cp is non-NULL */
 			
 			/*
 			 *  Substitute the value of the variable.
 			 */
-			strcpy(p, cpn->value);
+			strcpy(p, cp->value);
 			p += strlen(p);
 			ptr = end + 1;
 
@@ -470,8 +540,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
  *	Read a part of the config file.
  */
 static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
-		const char *name1, const char *name2,
-		CONF_SECTION *parent)
+				     const char *name1, const char *name2,
+				     CONF_SECTION *parent)
 {
 	CONF_SECTION *cs, *css;
 	CONF_PAIR *cpn;
@@ -648,7 +718,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (t2 == T_LCBRACE || t3 == T_LCBRACE) {
 			css = cf_section_read(cf, lineno, fp, buf1,
-					t2==T_LCBRACE ? NULL : buf2, cs);
+					      t2==T_LCBRACE ? NULL : buf2, cs);
 			if (css == NULL) {
 				cf_section_free(&cs);
 				return NULL;
