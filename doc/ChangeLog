@@ -1,4 +1,10 @@
 FreeRADIUS 1.0.0 ; $Date$, urgency=low
+	pre3 -> release
+	* Fix LDAP dictionary map loading.
+	* Check login time allowance to packet timestampe where available.
+	* Compilation fix for machines withouth <pthread.h>.
+	* Man page improvements.
+	* Grab latest config.sub and config.guess (2004-03-12).
 
 	pre2 -> pre3
 	* Make IPv6 support work better.

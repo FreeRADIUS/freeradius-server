@@ -1,11 +1,11 @@
-freeradius (0.9.3-pre-1.0.0-pre3-0) unstable; urgency=low
+freeradius (1.0.0-0) unstable; urgency=low
 
   * New upstream release
   * Added H323 billing stuff to the examples
   * Created Dialup-Admin package for the PHP-based web
     FreeRADIUS database (SQL/LDAP) frontend.
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 31 May 2004 23:11:01 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sat, 17 Jul 2004 16:21:38 +1000
 
 freeradius (0.9.3-1) unstable; urgency=low
 

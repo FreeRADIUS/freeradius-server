@@ -527,7 +527,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.10 
+# From configure.in Revision: 1.10.2.1 
 
 
 SMART_CFLAGS=
