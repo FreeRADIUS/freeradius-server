@@ -41,11 +41,16 @@ while(<CONF>){
 	$realm_strip = $val if ($key eq 'general_strip_realms');
 	$realm_del = $val if ($key eq 'general_realm_delimiter');
 	$realm_for = $val if ($key eq 'general_realm_format');
+	$sql_timeout = $val if ($key eq 'sql_connect_timeout');
+	$sql_extra = $val if ($key eq 'sql_extra_servers');
 }
 close CONF;
 $realm_del = '@' if ($realm_del eq '');
 $realm_for = 'suffix' if ($realm_for eq '');
 $pass = ($sql_password ne '') ? "-p$sql_password" : '';
+
+$opt = "-O connect_timeout=$sql_timeout" if ($sql_timeout);
+@extras = (split /\s+/,$sql_extra) if ($sql_extra ne '');
 
 open LOG, "<$file"
 	or die "Could not open file $file\n";
@@ -117,7 +122,10 @@ for(;;){
 					or die "Could not open temporary file\n";
 				print TMP "INSERT INTO $sql_accounting_table (UserName,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$addr','$port','$time','$time','0','0','0','$caller','$cause');";
 				close TMP;
-				`$mysql -h$sql_server -u$sql_username $pass $sql_database <$tmpfile`;
+				`$mysql -h$sql_server $opt -u$sql_username $pass $sql_database <$tmpfile`;
+				foreach $extra (@extras){
+					`$mysql -h$extra $opt -u$sql_username $pass $sql_database <$tmpfile`;
+				}
 			}
 		}
 	}

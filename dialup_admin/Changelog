@@ -20,6 +20,7 @@ Ver 1.62:
   credentials (that way there can be more than one administrator usernames, each with different privileges
   on the sql database).
 * Add more error messages when interacting with the SQL database
+* Add sql_connect_timeout and sql_extra_servers configuration directives to be used by the log_badlogins script
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
