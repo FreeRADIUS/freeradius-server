@@ -482,6 +482,8 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	char buf2[8192];
 	char buf3[8192];
 	int t1, t2, t3;
+	char *cbuf = buf;
+	int len;
 	
 	/*
 	 *	Ensure that the user can't add CONF_SECTIONs
@@ -500,12 +502,54 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	cs->item.lineno = *lineno;
 
 	/*
-	 *	Read.
+	 *	Read, checking for line continuations ('\\' at EOL)
 	 */
-	while (fgets(buf, sizeof(buf), fp) != NULL) {
-		(*lineno)++;
-		ptr = buf;
+	for (;;) {
+		int eof;
 
+		/*
+		 *	Get data, and remember if we are at EOF.
+		 */
+		eof = (fgets(cbuf, sizeof(buf) - (cbuf - buf), fp) == NULL);
+		(*lineno)++;
+
+		len = strlen(cbuf);
+
+		/*
+		 *	We've filled the buffer, and there isn't
+		 *	a CR in it.  Die!
+		 */
+		if ((len == sizeof(buf)) &&
+		    (cbuf[len - 1] != '\n')) {
+			radlog(L_ERR, "%s[%d]: Line too long",
+			       cf, *lineno);
+			cf_section_free(&cs);
+			return NULL;
+		}
+
+		/*
+		 *  Check for continuations.
+		 */
+		if (cbuf[len - 1] == '\n') len--;
+
+		/*
+		 *	Last character is '\\'.  Over-write it,
+		 *	and read another line.
+		 */
+		if (cbuf[len - 1] == '\\') {
+			cbuf[len - 1] = '\0';
+			cbuf += len - 1;
+			continue;
+		}
+
+		/*
+		 *  We're at EOF, and haven't read anything.  Stop.
+		 */
+		if (eof && (cbuf == buf)) {
+			break;
+		}
+
+		ptr = cbuf = buf;
 		t1 = gettoken(&ptr, buf1, sizeof(buf1));
 
 		/*
