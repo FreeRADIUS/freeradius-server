@@ -164,7 +164,7 @@ static int rlm_ldap_init (int argc, char **argv)
  *      Purpose: Check if user is authorized for remote access 
  *
  *************************************************************************/
-static int rlm_ldap_authorize(REQUEST *request, char *name, 
+static int rlm_ldap_authorize(REQUEST *request,
 			      VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
     LDAPMessage *result, *msg;
@@ -174,6 +174,9 @@ static int rlm_ldap_authorize(REQUEST *request, char *name,
         **vals;
     VALUE_PAIR      *check_tmp;
     VALUE_PAIR      *reply_tmp;
+    char *name;
+
+    name = request->username->strvalue;
 
     /*
      *      Check for valid input, zero length names not permitted
@@ -259,14 +262,27 @@ static int rlm_ldap_authorize(REQUEST *request, char *name,
  *
  *************************************************************************/
 
-static int rlm_ldap_authenticate(REQUEST *request, char *name, char *passwd)
+static int rlm_ldap_authenticate(REQUEST *request)
 {
     static LDAP *ld_user;
     LDAPMessage *result, *msg;
     char *filter, *dn,
 	*attrs[] = { "uid",
 		     NULL };
-    
+    char *name, char *passwd;
+
+    /*
+     *  Ensure that we're being passed a plain-text password,
+     *  and not anything else.
+     */
+    if (request->password->attribute != PW_PASSWORD) {
+      log(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+      return RLM_AUTH_REJECT;
+    }
+
+    name = request->username->strvalue;
+    passwd = request->password->strvalue;
+
     if (use_ldap_auth == 0) 
     {
       log(L_ERR,"LDAP Auth specified in users file, but not in ldapserver file");
