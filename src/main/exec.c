@@ -317,7 +317,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 *	Parse the output, if any.
 	 */
 	if (done) {
-		n = -1;
+		n = T_INVALID;
 		if (output_pairs) {
 			/*
 			 *	For backwards compatibility, first check
