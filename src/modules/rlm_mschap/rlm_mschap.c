@@ -618,7 +618,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		password = pairfind(request->config_items,
 				    PW_SMB_ACCOUNT_CTRL_TEXT);
 		if (password) {
-			smb_ctrl = pairmake("SMB-Account-CTRL", "", T_OP_SET);
+			smb_ctrl = pairmake("SMB-Account-CTRL", "0", T_OP_SET);
 			pairadd(&request->config_items, smb_ctrl);
 			smb_ctrl->lvalue = pdb_decode_acct_ctrl(password->strvalue);
 		}
