@@ -36,7 +36,7 @@ require_once('../lib/ldap/functions.php3');
 			if ($Fhomephone != '' && $Fhomephone != '-' && $Fhomephone != $homephone)
 				$mod['homephone'] = $Fhomephone;
 			if ($dn != ''){
-			       if ($config[ldap_debug] == 'true')
+			       if ($config[ldap_debug] == 'true'){
 					print "<b>DEBUG(LDAP): ldap_mod_replace(): DN='$dn'</b><br>\n";
 					print "<b>DEBUG(LDAP): ldap_mod_replace(): Data:";
 					print_r($mod);
