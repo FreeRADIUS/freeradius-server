@@ -8,7 +8,7 @@ require_once('../lib/ldap/functions.php3');
 	if ($ds){
 		$r = @da_ldap_bind($ds,$config);
 		if ($r){
-			list ($givenname,$sn) = split(' ',$Fcn,3);
+			list ($givenname,$sn) = split(' ',$Fcn,2);
 			$dn = 'uid=' . $login . ',' . $config[ldap_default_new_entry_suffix];
 			$new_user_entry["objectclass"][0]="top";
 			$new_user_entry["objectclass"][1]="person";

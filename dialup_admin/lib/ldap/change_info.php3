@@ -4,15 +4,33 @@ require_once('../lib/ldap/functions.php3');
 		$ds = @ldap_connect($config[ldap_write_server]);
 	else
 		$ds = @ldap_connect($config[ldap_server]);
+	if ($config[general_decode_normal_attributes] == 'yes'){
+		$decode_normal = 1;
+		if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php3"))
+			include_once("../lib/lang/$config[general_prefered_lang]/utf8.php3");
+		else
+			include_once('../lib/lang/default/utf8.php3');
+		$k = init_encoder();
+	}
 	if ($ds){
 		$r = @da_ldap_bind($ds,$config);
 		if ($r){
-			if ($Fcn != '' && $Fcn != '-' && $Fcn != $cn)
+			if ($Fcn != '' && $Fcn != '-' && $Fcn != $cn){
+				list ($givenname,$sn) = split(' ',$Fcn,2);
 				$mod['cn'] = $Fcn;
+				$mod['cn'] = ($decode_normal) ? encode_string($mod['cn'],$k) : $mod['cn'];
+				$mod['givenname'] = $givenname;
+			$mod['givenname'] = ($decode_normal) ? encode_string($mod['givenname'],$k) : $mod['givenname'];
+				$mod['sn'] = $sn;
+				$mod['sn'] = ($decode_normal) ? encode_string($mod['sn'],$k) : $mod['sn'];
+				
+			}
 			if ($Fmail != '' && $Fmail != '-' && $Fmail != $mail)
 				$mod['mail'] = $Fmail;
-			if ($Fou != '' && $Fou != '-' && $Fou != $ou)
+			if ($Fou != '' && $Fou != '-' && $Fou != $ou){
 				$mod['ou'] = $Fou;
+				$mod['ou'] = ($decode_normal) ? encode_string($mod['ou'],$k) : $mod['ou'];
+			}
 			if ($Ftelephonenumber != '' && $Ftelephonenumber != '-' && $Ftelephonenumber != $telephonenumber)
 				$mod['telephonenumber'] = $Ftelephonenumber;
 			if ($Fhomephone != '' && $Fhomephone != '-' && $Fhomephone != $homephone)
