@@ -122,6 +122,7 @@ typedef struct _eap_handler {
 
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*configured;
+        VALUE_PAIR      **reply_vps;
 
 	char	*identity;
 

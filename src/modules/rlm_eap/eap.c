@@ -751,6 +751,7 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 	}
 
 	handler->timestamp = time(NULL);
+	handler->reply_vps = &(request->reply->vps);
 	return handler;
 }
 
