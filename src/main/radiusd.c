@@ -1990,6 +1990,18 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 }
 #endif /* WITH_THREAD_POOL */
 
+
+static int sig_cleanup_walker(REQUEST *req, void *data)
+{
+	int pid = (int)data;
+		if ( req->child_pid != pid ) {
+			return RL_WALK_CONTINUE;
+		}
+	req->child_pid = NO_SUCH_CHILD_PID;
+	return 0;
+}
+
+
 /*ARGSUSED*/
 void sig_cleanup(int sig)
 {
@@ -2035,12 +2047,11 @@ void sig_cleanup(int sig)
 		 *  Loop over ALL of the active requests, looking
 		 *  for the one which caused the signal.
 		 */
-		for (curreq = rl_next(NULL); curreq != NULL; curreq = rl_next(curreq)) {
-			if (curreq->child_pid == pid) {
-				curreq->child_pid = NO_SUCH_CHILD_PID;
-				break;
-			}
+		if (rl_walk(sig_cleanup_walker, (void*)pid) != 0) {
+			radlog(L_ERR, "Failed to cleanup child %d", pid);
 		}
+		return;
+
 	}
 #endif /* !defined HAVE_PTHREAD_H */
 }
