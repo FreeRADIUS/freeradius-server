@@ -93,18 +93,17 @@ static void proxy_cleanup(void)
  */
 static void proxy_addinfo(RADIUS_PACKET *rp)
 {
-	VALUE_PAIR		*proxy_pair, *vp;
+	VALUE_PAIR		*proxy_pair;
 
-	if  (!(proxy_pair = paircreate(PW_PROXY_STATE, PW_TYPE_STRING))) {
+	proxy_pair = paircreate(PW_PROXY_STATE, PW_TYPE_STRING);
+	if  (proxy_pair == NULL) {
 		log(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 	sprintf(proxy_pair->strvalue, "%04x", rp->id);
 	proxy_pair->length = 4;
 
-	for (vp = rp->vps; vp && vp->next; vp = vp->next)
-		;
-	vp->next = proxy_pair;
+	pairadd(&rp->vps, proxy_pair);
 }
 
 /*
