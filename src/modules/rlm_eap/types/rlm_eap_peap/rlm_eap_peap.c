@@ -246,6 +246,17 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 				     "client EAP encryption");
 		return 1;
 
+		/*
+		 *	No response packet, MUST be proxying it.
+		 *	The main EAP module will take care of discovering
+		 *	that the request now has a "proxy" packet, and
+		 *	will proxy it, rather than returning an EAP packet.
+		 */
+	case RLM_MODULE_UPDATED:
+		rad_assert(handler->request->proxy != NULL);
+		return 1;
+		break;
+
 	default:
 		break;
 	}
@@ -253,6 +264,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	eaptls_fail(handler->eap_ds, 0);
 	return 0;
 }
+
 
 /*
  *	The module name should be the only globally exported symbol.

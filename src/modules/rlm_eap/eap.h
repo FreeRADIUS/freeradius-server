@@ -136,4 +136,16 @@ typedef struct eap_type_t {
 	int	(*detach)(void *type_data);
 } EAP_TYPE;
 
+#define REQUEST_DATA_EAP_HANDLER	 (1)
+#define REQUEST_DATA_EAP_TUNNEL_CALLBACK PW_EAP_MESSAGE
+
+/*
+ *	This is for tunneled callbacks
+ */
+typedef int (*eap_tunnel_callback_t)(EAP_HANDLER *handler, void *tls_session);
+typedef struct eap_tunnel_data_t {
+  void			*tls_session;
+  eap_tunnel_callback_t callback;
+} eap_tunnel_data_t;
+
 #endif /*_EAP_H*/

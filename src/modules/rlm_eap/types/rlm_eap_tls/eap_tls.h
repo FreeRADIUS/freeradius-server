@@ -241,8 +241,4 @@ unsigned int 	record_plus(record_t *buf, const unsigned char *ptr,
 			    unsigned int size);
 unsigned int 	record_minus(record_t *buf, unsigned char *ptr, 
 			     unsigned int size);
-
-/* TTLS processing */
-int		eapttls_process(REQUEST *request, tls_session_t *tls_session);
-
 #endif /*_EAP_TLS_H*/

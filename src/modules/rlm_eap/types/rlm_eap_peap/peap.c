@@ -251,6 +251,137 @@ static int eappeap_check_tlv(const uint8_t *data)
 	return 0;
 }
 
+
+/*
+ *	Use a reply packet to determine what to do.
+ */
+static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
+			 REQUEST *request, RADIUS_PACKET *reply)
+{
+	int rcode = RLM_MODULE_REJECT;
+	VALUE_PAIR *vp;
+	peap_tunnel_t *t = tls_session->opaque;
+
+	switch (reply->code) {
+	case PW_AUTHENTICATION_ACK:
+		DEBUG2("  PEAP: Tunneled authentication was successful.");
+		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
+		eappeap_success(handler, tls_session);
+		rcode = RLM_MODULE_OK;
+		
+		/*
+		 *	If we've been told to use the attributes from
+		 *	the reply, then do so.
+		 *
+		 *	WARNING: This may leak information about the
+		 *	tunneled user!
+		 */
+		if (t->use_tunneled_reply) {
+			pairadd(&request->reply->vps, reply->vps);
+			reply->vps = NULL;
+		}
+		break;
+
+	case PW_AUTHENTICATION_REJECT:
+		DEBUG2("  PEAP: Tunneled authentication was rejected.");
+		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
+		eappeap_failure(handler, tls_session);
+		rcode = RLM_MODULE_HANDLED;
+		break;
+
+	case PW_ACCESS_CHALLENGE:
+		DEBUG2("  PEAP: Got tunneled Access-Challenge");
+
+		/*
+		 *	Keep the State attribute, if necessary.
+		 *
+		 *	Get rid of the old State, too.
+		 */
+		pairfree(&t->state);
+		pairmove2(&t->state, &(reply->vps), PW_STATE);
+
+		/*
+		 *	PEAP takes only EAP-Message attributes inside
+		 *	of the tunnel.  Any Reply-Message in the
+		 *	Access-Challenge is ignored.
+		 */
+		vp = NULL;
+		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE);
+
+		/*
+		 *	Handle the ACK, by tunneling any necessary reply
+		 *	VP's back to the client.
+		 */
+		if (vp) {
+			vp2eap(tls_session, vp);
+			pairfree(&vp);
+		}
+
+		rcode = RLM_MODULE_HANDLED;
+		break;
+
+	default:
+		DEBUG2("  PEAP: Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		rcode = RLM_MODULE_REJECT;
+		break;
+	}
+
+	return rcode;
+}
+
+
+/*
+ *	Do post-proxy processing,
+ */
+static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
+{
+	int rcode;
+	tls_session_t *tls_session = (tls_session_t *) data;
+
+	DEBUG2("  PEAP: Passing reply from proxy back into the tunnel.");
+
+	/*
+	 *	Process the reply from the home server.
+	 */
+	rcode = process_reply(handler, tls_session, handler->request,
+			      handler->request->proxy_reply);
+
+	/*
+	 *	The proxy code uses the reply from the home server as
+	 *	the basis for the reply to the NAS.  We don't want that,
+	 *	so we toss it, after we've had our way with it.
+	 */
+	pairfree(&handler->request->proxy_reply->vps);
+
+	switch (rcode) {
+	case RLM_MODULE_REJECT:
+		DEBUG2("  PEAP: Reply was rejected");
+		eaptls_fail(handler->eap_ds, 0);
+		return 0;
+	  
+	case RLM_MODULE_HANDLED:
+		DEBUG2("  PEAP: Reply was handled");
+		eaptls_request(handler->eap_ds, tls_session);
+		return 1;
+
+	case RLM_MODULE_OK:
+		DEBUG2("  PEAP: Reply was OK");
+		eaptls_success(handler->eap_ds, 0);
+		eaptls_gen_mppe_keys(&handler->request->reply->vps, 
+				     tls_session->ssl,
+				     "client EAP encryption");
+		return 1;
+
+	default:
+		DEBUG2("  PEAP: Reply was unknown.");
+		break;
+	}
+
+	eaptls_fail(handler->eap_ds, 0);
+	return 0;
+}
+
+
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
@@ -529,68 +660,65 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 #endif
 
+	/*
+	 *	Decide what to do with the reply.
+	 */
 	switch (fake->reply->code) {
-	case PW_AUTHENTICATION_ACK:
-		DEBUG2("  PEAP: Tunneled authentication was successful.");
-		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-		eappeap_success(handler, tls_session);
-		rcode = RLM_MODULE_HANDLED;
-		
-		/*
-		 *	If we've been told to use the attributes from
-		 *	the reply, then do so.
-		 *
-		 *	WARNING: This may leak information about the
-		 *	tunneled user!
-		 */
-		if (t->use_tunneled_reply) {
-			pairadd(&request->reply->vps, fake->reply->vps);
-			fake->reply->vps = NULL;
-		}
-		break;
-
-	case PW_AUTHENTICATION_REJECT:
-		DEBUG2("  PEAP: Tunneled authentication was rejected.");
-		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
-		eappeap_failure(handler, tls_session);
-		rcode = RLM_MODULE_HANDLED;
-		break;
-
-	case PW_ACCESS_CHALLENGE:
-		DEBUG2("  PEAP: Got tunneled Access-Challenge");
-
-		/*
-		 *	Keep the State attribute, if necessary.
-		 *
-		 *	Get rid of the old State, too.
-		 */
-		pairfree(&t->state);
-		pairmove2(&t->state, &fake->reply->vps, PW_STATE);
-
-		/*
-		 *	PEAP takes only EAP-Message attributes inside
-		 *	of the tunnel.  Any Reply-Message in the
-		 *	Access-Challenge is ignored.
-		 */
-		vp = NULL;
-		pairmove2(&vp, &fake->reply->vps, PW_EAP_MESSAGE);
-
-		/*
-		 *	Handle the ACK, by tunneling any necessary reply
-		 *	VP's back to the client.
-		 */
+	case 0:			/* No reply code, must be proxied... */
+		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM);
 		if (vp) {
-			vp2eap(tls_session, vp);
-			pairfree(&vp);
+			eap_tunnel_data_t *tunnel;
+			DEBUG2("  PEAP: Tunneled authentication will be proxied to %s", vp->strvalue);
+
+			/*
+			 *	Tell the original request that it's going
+			 *	to be proxied.
+			 */
+			pairmove2(&(request->config_items),
+				  &(fake->config_items),
+				  PW_PROXY_TO_REALM);
+
+			/*
+			 *	Seed the proxy packet with the
+			 *	tunneled request.
+			 */
+			rad_assert(request->proxy == NULL);
+			request->proxy = fake->packet;
+			fake->packet = NULL;
+
+			/*
+			 *	Set up the callbacks for the tunnel
+			 */
+			tunnel = rad_malloc(sizeof(*tunnel));
+			memset(tunnel, 0, sizeof(*tunnel));
+
+			tunnel->tls_session = tls_session;
+			tunnel->callback = eappeap_postproxy;
+
+			/*
+			 *	Associate the callback with the request.
+			 */
+			rcode = request_data_add(request, 
+						 request->proxy,
+						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
+						 tunnel, free);
+			rad_assert(rcode == 0);
+			
+			/*
+			 *	Didn't authenticate the packet, but
+			 *	we're proxying it.
+			 */
+			rcode = RLM_MODULE_UPDATED;
+
+		} else {
+			DEBUG2("  PEAP: Unknown RADIUS packet type %d: rejecting tunneled user", fake->reply->code);
+			rcode = RLM_MODULE_REJECT;
 		}
-
-		rcode = RLM_MODULE_HANDLED;
 		break;
-
 
 	default:
-		DEBUG2("  PEAP: Unknown RADIUS packet type %d: rejecting tunneled user", fake->reply->code);
-		rcode = RLM_MODULE_REJECT;
+		rcode = process_reply(handler, tls_session, request,
+				      fake->reply);
 		break;
 	}
 	
@@ -598,4 +726,3 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	
 	return rcode;
 }
-

@@ -265,6 +265,9 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		  /*
 		   *	String, octet, etc.  Copy the data from the
 		   *	value field over verbatim.
+		   *
+		   *	FIXME: Ipv6 attributes ?
+		   *
 		   */
 		default:
 		  vp->length = size;
@@ -531,11 +534,222 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 	return 1;
 }
 
+/*
+ *	Use a reply packet to determine what to do.
+ */
+static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
+			 REQUEST *request, RADIUS_PACKET *reply)
+{
+	int rcode = RLM_MODULE_REJECT;
+	VALUE_PAIR *vp;
+	ttls_tunnel_t *t = tls_session->opaque;
+
+	/*
+	 *	If the response packet was Access-Accept, then
+	 *	we're OK.  If not, die horribly.
+	 *
+	 *	FIXME: Take MS-CHAP2-Success attribute, and
+	 *	tunnel it back to the client, to authenticate
+	 *	ourselves to the client.
+	 *
+	 *	FIXME: If we have an Access-Challenge, then
+	 *	the Reply-Message is tunneled back to the client.
+	 *
+	 *	FIXME: If we have an EAP-Message, then that message
+	 *	must be tunneled back to the client.
+	 *
+	 *	FIXME: If we have an Access-Challenge with a State
+	 *	attribute, then do we tunnel that to the client, or
+	 *	keep track of it ourselves?
+	 *
+	 *	FIXME: EAP-Messages can only start with 'identity',
+	 *	NOT 'eap start', so we should check for that....
+	 */
+	switch (reply->code) {
+	case PW_AUTHENTICATION_ACK:
+		DEBUG2("  TTLS: Got tunneled Access-Accept");
+
+		rcode = RLM_MODULE_OK;
+
+		/*
+		 *	MS-CHAP2-Success means that we do NOT return
+		 *	an Access-Accept, but instead tunnel that
+		 *	attribute to the client, and keep going with
+		 *	the TTLS session.  Once the client accepts
+		 *	our identity, it will respond with an empty
+		 *	packet, and we will send EAP-Success.
+		 */
+		vp = NULL;
+		pairmove2(&vp, &reply->vps, PW_MSCHAP2_SUCCESS);
+		if (vp) {
+#if 1
+			/*
+			 *	FIXME: Tunneling MS-CHAP2-Success causes
+			 *	the only client we have access to, to die.
+			 *
+			 *	We don't want that...
+			 */
+			pairfree(&vp);
+#else
+			DEBUG2("  TTLS: Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
+			rcode = RLM_MODULE_HANDLED;
+			t->authenticated = TRUE;
+#endif
+		} else { /* no MS-CHAP2-Success */
+			/*
+			 *	Can only have EAP-Message if there's
+			 *	no MS-CHAP2-Success.  (FIXME: EAP-MSCHAP?)
+			 *
+			 *	We also do NOT tunnel the EAP-Success
+			 *	attribute back to the client, as the client
+			 *	can figure it out, from the non-tunneled
+			 *	EAP-Success packet.
+			 */
+			pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE);
+			pairfree(&vp);
+
+			/*
+			 *	If we've been told to use the attributes from
+			 *	the reply, then do so.
+			 *
+			 *	WARNING: This may leak information about the
+			 *	tunneled user!
+			 */
+			if (t->use_tunneled_reply) {
+				pairadd(&request->reply->vps, reply->vps);
+				reply->vps = NULL;
+			}
+		}
+
+		/*
+		 *	Handle the ACK, by tunneling any necessary reply
+		 *	VP's back to the client.
+		 */
+		if (vp) {
+			vp2diameter(tls_session, vp);
+			pairfree(&vp);
+		}
+		break;
+
+
+	case PW_AUTHENTICATION_REJECT:
+		DEBUG2("  TTLS: Got tunneled Access-Reject");
+		rcode = RLM_MODULE_REJECT;
+		break;
+
+		/*
+		 *	Handle Access-Challenge, but only if we
+		 *	send tunneled reply data.  This is because
+		 *	an Access-Challenge means that we MUST tunnel
+		 *	a Reply-Message to the client.
+		 */
+	case PW_ACCESS_CHALLENGE:
+		DEBUG2("  TTLS: Got tunneled Access-Challenge");
+
+		/*
+		 *	Keep the State attribute, if necessary.
+		 *
+		 *	Get rid of the old State, too.
+		 */
+		pairfree(&t->state);
+		pairmove2(&t->state, &reply->vps, PW_STATE);
+
+		/*
+		 *	We should really be a bit smarter about this,
+		 *	and move over only those attributes which
+		 *	are relevant to the authentication request,
+		 *	but that's a lot more work, and this "dumb"
+		 *	method works in 99.9% of the situations.
+		 */
+		vp = NULL;
+		pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE);
+
+		/*
+		 *	There MUST be a Reply-Message in the challenge,
+		 *	which we tunnel back to the client.
+		 *
+		 *	If there isn't one in the reply VP's, then
+		 *	we MUST create one, with an empty string as
+		 *	it's value.
+		 */
+		pairmove2(&vp, &reply->vps, PW_REPLY_MESSAGE);
+
+		/*
+		 *	Handle the ACK, by tunneling any necessary reply
+		 *	VP's back to the client.
+		 */
+		if (vp) {
+			vp2diameter(tls_session, vp);
+			pairfree(&vp);
+		}
+		rcode = RLM_MODULE_HANDLED;
+		break;
+
+	default:
+		DEBUG2("  TTLS: Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		rcode = RLM_MODULE_REJECT;
+		break;
+	}
+
+	return rcode;
+}
+
+
+/*
+ *	Do post-proxy processing,
+ */
+static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
+{
+	int rcode;
+	tls_session_t *tls_session = (tls_session_t *) data;
+
+	DEBUG2("  TTLS: Passing reply from proxy back into the tunnel.");
+
+	/*
+	 *	Process the reply from the home server.
+	 */
+	rcode = process_reply(handler, tls_session, handler->request,
+			      handler->request->proxy_reply);
+
+	/*
+	 *	The proxy code uses the reply from the home server as
+	 *	the basis for the reply to the NAS.  We don't want that,
+	 *	so we toss it, after we've had our way with it.
+	 */
+	pairfree(&handler->request->proxy_reply->vps);
+
+	switch (rcode) {
+	case RLM_MODULE_REJECT:
+		DEBUG2("  TTLS: Reply was rejected");
+		return 0;
+	  
+	case RLM_MODULE_HANDLED:
+		DEBUG2("  TTLS: Reply was handled");
+		eaptls_request(handler->eap_ds, tls_session);
+		return 1;
+
+	case RLM_MODULE_OK:
+		DEBUG2("  TTLS: Reply was OK");
+		eaptls_success(handler->eap_ds, 0);
+		eaptls_gen_mppe_keys(&handler->request->reply->vps, 
+				     tls_session->ssl,
+				     "ttls keying material");
+		return 1;
+
+	default:
+		DEBUG2("  TTLS: Reply was unknown.");
+		break;
+	}
+
+	eaptls_fail(handler->eap_ds, 0);
+	return 0;
+}
+
 
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-int eapttls_process(REQUEST *request, tls_session_t *tls_session)
+int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 {
 	int i, err;
 	int rcode = PW_AUTHENTICATION_REJECT;
@@ -545,6 +759,7 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 	const uint8_t *data;
 	unsigned int data_len;
 	char buffer[1024];
+	REQUEST *request = handler->request;
 
 	/*
 	 *	Grab the dirty data, and copy it to our buffer.
@@ -830,141 +1045,67 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 	  }
 	}
 #endif
+	
 	/*
-	 *	If the response packet was Access-Accept, then
-	 *	we're OK.  If not, die horribly.
-	 *
-	 *	FIXME: Take MS-CHAP2-Success attribute, and
-	 *	tunnel it back to the client, to authenticate
-	 *	ourselves to the client.
-	 *
-	 *	FIXME: If we have an Access-Challenge, then
-	 *	the Reply-Message is tunneled back to the client.
-	 *
-	 *	FIXME: If we have an EAP-Message, then that message
-	 *	must be tunneled back to the client.
-	 *
-	 *	FIXME: If we have an Access-Challenge with a State
-	 *	attribute, then do we tunnel that to the client, or
-	 *	keep track of it ourselves?
-	 *
-	 *	FIXME: EAP-Messages can only start with 'identity',
-	 *	NOT 'eap start', so we should check for that....
+	 *	Decide what to do with the reply.
 	 */
-	rcode = 0;
-	if (fake->reply->code == PW_AUTHENTICATION_ACK) {
-		DEBUG2("  TTLS: Got tunneled Access-Accept");
-
-		rcode = fake->reply->code;
-
-		/*
-		 *	MS-CHAP2-Success means that we do NOT return
-		 *	an Access-Accept, but instead tunnel that
-		 *	attribute to the client, and keep going with
-		 *	the TTLS session.  Once the client accepts
-		 *	our identity, it will respond with an empty
-		 *	packet, and we will send EAP-Success.
-		 */
-		vp = NULL;
-		pairmove2(&vp, &fake->reply->vps, PW_MSCHAP2_SUCCESS);
+	switch (fake->reply->code) {
+	case 0:			/* No reply code, must be proxied... */
+		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM);
 		if (vp) {
-#if 1
-			/*
-			 *	FIXME: Tunneling MS-CHAP2-Success causes
-			 *	the only client we have access to, to die.
-			 *
-			 *	We don't want that...
-			 */
-			pairfree(&vp);
-#else
-			DEBUG2("  TTLS: Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
-			rcode = PW_ACCESS_CHALLENGE;
-			t->authenticated = TRUE;
-#endif
-		} else { /* no MS-CHAP2-Success */
-			/*
-			 *	Can only have EAP-Message if there's
-			 *	no MS-CHAP2-Success.  (FIXME: EAP-MSCHAP?)
-			 *
-			 *	We also do NOT tunnel the EAP-Success
-			 *	attribute back to the client, as the client
-			 *	can figure it out, from the non-tunneled
-			 *	EAP-Success packet.
-			 */
-			pairmove2(&vp, &fake->reply->vps, PW_EAP_MESSAGE);
-			pairfree(&vp);
+			eap_tunnel_data_t *tunnel;
+			DEBUG2("  TTLS: Tunneled authentication will be proxied to %s", vp->strvalue);
 
 			/*
-			 *	If we've been told to use the attributes from
-			 *	the reply, then do so.
-			 *
-			 *	WARNING: This may leak information about the
-			 *	tunneled user!
+			 *	Tell the original request that it's going
+			 *	to be proxied.
 			 */
-			if (t->use_tunneled_reply) {
-				pairadd(&request->reply->vps, fake->reply->vps);
-				fake->reply->vps = NULL;
-			}
+			pairmove2(&(request->config_items),
+				  &(fake->config_items),
+				  PW_PROXY_TO_REALM);
+
+			/*
+			 *	Seed the proxy packet with the
+			 *	tunneled request.
+			 */
+			rad_assert(request->proxy == NULL);
+			request->proxy = fake->packet;
+			fake->packet = NULL;
+
+			/*
+			 *	Set up the callbacks for the tunnel
+			 */
+			tunnel = rad_malloc(sizeof(*tunnel));
+			memset(tunnel, 0, sizeof(*tunnel));
+
+			tunnel->tls_session = tls_session;
+			tunnel->callback = eapttls_postproxy;
+
+			/*
+			 *	Associate the callback with the request.
+			 */
+			rcode = request_data_add(request, 
+						 request->proxy,
+						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
+						 tunnel, free);
+			rad_assert(rcode == 0);
+			
+			/*
+			 *	Didn't authenticate the packet, but
+			 *	we're proxying it.
+			 */
+			rcode = RLM_MODULE_UPDATED;
+
+		} else {
+			DEBUG2("  TTLS: Unknown RADIUS packet type %d: rejecting tunneled user", fake->reply->code);
+			rcode = RLM_MODULE_REJECT;
 		}
+		break;
 
-		/*
-		 *	Handle the ACK, by tunneling any necessary reply
-		 *	VP's back to the client.
-		 */
-		if (vp) {
-			vp2diameter(tls_session, vp);
-			pairfree(&vp);
-		}
-		
-		/*
-		 *	Handle Access-Challenge, but only if we
-		 *	send tunneled reply data.  This is because
-		 *	an Access-Challenge means that we MUST tunnel
-		 *	a Reply-Message to the client.
-		 */
-	} else if (fake->reply->code == PW_ACCESS_CHALLENGE) {
-		DEBUG2("  TTLS: Got tunneled Access-Challenge");
-
-		/*
-		 *	Keep the State attribute, if necessary.
-		 *
-		 *	Get rid of the old State, too.
-		 */
-		pairfree(&t->state);
-		pairmove2(&t->state, &fake->reply->vps, PW_STATE);
-
-		/*
-		 *	We should really be a bit smarter about this,
-		 *	and move over only those attributes which
-		 *	are relevant to the authentication request,
-		 *	but that's a lot more work, and this "dumb"
-		 *	method works in 99.9% of the situations.
-		 */
-		vp = NULL;
-		pairmove2(&vp, &fake->reply->vps, PW_EAP_MESSAGE);
-
-		/*
-		 *	There MUST be a Reply-Message in the challenge,
-		 *	which we tunnel back to the client.
-		 *
-		 *	If there isn't one in the reply VP's, then
-		 *	we MUST create one, with an empty string as
-		 *	it's value.
-		 */
-		pairmove2(&vp, &fake->reply->vps, PW_REPLY_MESSAGE);
-
-		/*
-		 *	Handle the ACK, by tunneling any necessary reply
-		 *	VP's back to the client.
-		 */
-		if (vp) {
-			vp2diameter(tls_session, vp);
-			pairfree(&vp);
-		}
-		rcode = fake->reply->code;
-
-	} else {
-		DEBUG2("  TTLS: Rejecting tunneled user");
+	default:
+		rcode = process_reply(handler, tls_session, request,
+				      fake->reply);
+		break;
 	}
 	
 	request_free(&fake);

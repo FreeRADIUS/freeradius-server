@@ -22,7 +22,6 @@
 #ifndef _EAP_PEAP_H
 #define _EAP_PEAP_H
 
-#include "rlm_eap.h"
 #include "rlm_eap_tls.h"
 
 typedef struct peap_tunnel_t {

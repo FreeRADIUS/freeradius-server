@@ -180,6 +180,16 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 }
 
 /*
+ *	Dumb wrapper.
+ *	FIXME: this should be done more intelligently...
+ */
+static void my_handler_free(void *data)
+{
+  EAP_HANDLER *handler = (EAP_HANDLER *) data;
+  eap_handler_free(&handler);
+}
+
+/*
  *	For backwards compatibility.
  */
 static int eap_authenticate(void *instance, REQUEST *request)
@@ -273,6 +283,43 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	}
 
 	/*
+	 *	Maybe the request was marked to be proxied.  If so,
+	 *	proxy it.
+	 */
+	if (request->proxy != NULL) {
+		VALUE_PAIR *vp;
+
+		rad_assert(request->proxy_reply == NULL);
+
+		/*
+		 *	Add the handle to the proxied list, so that we
+		 *	can retrieve it in the post-proxy stage, and
+		 *	send a response.
+		 */
+		rcode = request_data_add(request,
+					 instance, REQUEST_DATA_EAP_HANDLER,
+					 handler, my_handler_free);
+		rad_assert(rcode == 0);
+
+		/*
+		 *	Some simple sanity checks.  These should really
+		 *	be handled by the radius library...
+		 */
+		vp = pairfind(request->proxy->vps, PW_EAP_MESSAGE);
+		if (vp) {
+			vp = pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR);
+			if (!vp) {
+				vp = pairmake("Message-Authenticator", "", T_OP_EQ);
+				rad_assert(vp != NULL);
+				pairadd(&(request->proxy->vps), vp);
+			}
+		}
+
+		return RLM_MODULE_HANDLED;
+	}
+
+
+	/*
 	 *	We are done, wrap the EAP-request in RADIUS to send
 	 *	with all other required radius attributes
 	 */
@@ -304,7 +351,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	} else {
 		DEBUG2("  rlm_eap: Freeing handler");
-		/* handler is no more required, free it now */
+		/* handler is not required any more, free it now */
 		eap_handler_free(&handler);
 	}
 
@@ -401,15 +448,91 @@ static int eap_authorize(void *instance, REQUEST *request)
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static int eap_post_proxy(void *instance, REQUEST *request)
+static int eap_post_proxy(void *inst, REQUEST *request)
 {
-	int i, len;
-	VALUE_PAIR *vp = request->proxy_reply->vps;
+	int		i, len;
+	VALUE_PAIR	*vp;
+	EAP_HANDLER	*handler;
+
+	/*
+	 *	If there was a handler associated with this request,
+	 *	then it's a tunneled request which was proxied...
+	 */
+	handler = request_data_get(request, inst, REQUEST_DATA_EAP_HANDLER);
+	if (handler != NULL) {
+		int		rcode;
+		eap_tunnel_data_t *data;
+
+		/*
+		 *	Grab the tunnel callbacks from the request.
+		 */
+		data = (eap_tunnel_data_t *) request_data_get(request,
+							      request->proxy,
+							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
+		if (!data) {
+			radlog(L_ERR, "rlm_eap: Failed to retrieve callback for tunneled session!");
+			eap_handler_free(&handler);
+			return RLM_MODULE_FAIL;
+		}
+
+		/*
+		 *	Do the callback...
+		 */
+		rcode = data->callback(handler, data->tls_session);
+		free(data);
+		if (rcode == 0) {
+			eap_handler_free(&handler);
+			return RLM_MODULE_REJECT;
+		}
+		
+		/*
+		 *	We are done, wrap the EAP-request in RADIUS to send
+		 *	with all other required radius attributes
+		 */
+		rcode = eap_compose(handler);
+		
+		/*
+		 *	Add to the list only if it is EAP-Request, OR if
+		 *	it's LEAP, and a response.
+		 */
+		if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
+		    (handler->eap_ds->request->type.type >= PW_EAP_MD5)) {
+			eaplist_add(inst, handler);
+
+		} else {	/* couldn't have been LEAP, there's no tunnel */
+			DEBUG2("  rlm_eap: Freeing handler");
+			/* handler is not required any more, free it now */
+			eap_handler_free(&handler);
+		}
+		
+		/*
+		 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
+		 *	says that we MUST include a User-Name attribute in the
+		 *	Access-Accept.
+		 */
+		if ((request->reply->code == PW_AUTHENTICATION_ACK) &&
+		    request->username) {
+			/*
+			 *	Doesn't exist, add it in.
+			 */
+			vp = pairfind(request->reply->vps, PW_USER_NAME);
+			if (!vp) {
+				vp = pairmake("User-Name", request->username->strvalue,
+					      T_OP_EQ);
+				rad_assert(vp != NULL);
+				pairadd(&(request->reply->vps), vp);
+			}
+		}
+		
+		return RLM_MODULE_OK;
+	}
+
 
 	/*
 	 *	There may be more than one Cisco-AVPair.
 	 *	Ensure we find the one with the LEAP attribute.
 	 */
+	vp = request->proxy_reply->vps;
 	for (;;) {
 		/*
 		 *	Hmm... there's got to be a better way to

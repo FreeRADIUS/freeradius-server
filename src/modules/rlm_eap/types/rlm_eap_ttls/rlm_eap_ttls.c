@@ -232,29 +232,42 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	/*
 	 *	Process the TTLS portion of the request.
 	 */
-	rcode = eapttls_process(handler->request, tls_session);
-	if (rcode == PW_AUTHENTICATION_REJECT) {
+	rcode = eapttls_process(handler, tls_session);
+	switch (rcode) {
+	case PW_AUTHENTICATION_REJECT:
 		eaptls_fail(handler->eap_ds, 0);
 		return 0;
-	}
 
-	/*
-	 *	Access-Challenge, continue tunneled conversation.
-	 */
-	if (rcode == PW_ACCESS_CHALLENGE) {
+		/*
+		 *	Access-Challenge, continue tunneled conversation.
+		 */
+	case PW_ACCESS_CHALLENGE:
 		eaptls_request(handler->eap_ds, tls_session);
 		return 1;
-	}
 
-	/*
-	 *	Success: Return MPPE keys.
-	 */
-	if (rcode == PW_AUTHENTICATION_ACK) {
+		/*
+		 *	Success: Return MPPE keys.
+		 */
+	case PW_AUTHENTICATION_ACK:
 		eaptls_success(handler->eap_ds, 0);
 		eaptls_gen_mppe_keys(&handler->request->reply->vps, 
 				     tls_session->ssl,
 				     "ttls keying material");
 		return 1;
+
+		/*
+		 *	No response packet, MUST be proxying it.
+		 *	The main EAP module will take care of discovering
+		 *	that the request now has a "proxy" packet, and
+		 *	will proxy it, rather than returning an EAP packet.
+		 */
+	case RLM_MODULE_UPDATED:
+		rad_assert(handler->request->proxy != NULL);
+		return 1;
+		break;
+
+	default:
+		break;
 	}
 
 	/*
