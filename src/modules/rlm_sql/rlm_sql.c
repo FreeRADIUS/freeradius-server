@@ -322,12 +322,33 @@ static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
 	VALUE_PAIR	*auth_pair;
 	SQL_RES		*result;
 	SQL_ROW		row;
-	char		querystr[256];
+	char		*querystr;
+	char		*escaped_user;
+	char		query[] = "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'";
 
 	if ((auth_pair = pairfind(request->packet->vps, PW_AUTHTYPE)) == NULL)
 	   return RLM_AUTH_REJECT;
 
-	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", sql->config.sql_authcheck_table, user);
+	if ((escaped_user = malloc((strlen(user)*2)+1)) == NULL) {
+                log(L_ERR|L_CONS, "no memory");
+                exit(1);
+        }
+	if((escaped_user = sql_escape_string(user)) == NULL) {
+                log(L_ERR|L_CONS, "no memory");
+                exit(1);
+        }
+
+	if((querystr = malloc(strlen(escaped_user)+strlen(sql->config.sql_authcheck_table)+sizeof(query)))
+                == NULL) {
+                log(L_ERR|L_CONS, "no memory");
+                exit(1);
+        }
+
+	sprintf(querystr, query, sql->config.sql_authcheck_table, escaped_user);
+
+        free(escaped_user);
+        free(query);
+
 	sql_select_query(sql->AcctSock, querystr);
 	row = sql_fetch_row(sql->AcctSock);
 	sql_finsih_select_query(sql->AcctSock);

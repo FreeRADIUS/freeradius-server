@@ -279,3 +279,23 @@ int sql_affected_rows(SQLSOCK *socket) {
    rows = mysql_affected_rows(socket->conn);
    return rows;
 }
+
+
+/*************************************************************************
+ *
+ *      Function: sql_escape_string
+ *
+ *      Purpose: strdup() with the added feature of escaping binary
+ *              data in the string to safely fit into an SQL query
+ *
+ *************************************************************************/
+char *sql_escape_string(const char *from) {
+	char *to;
+
+	if(from==NULL) 
+        	return NULL;
+	if((to=malloc((strlen(from)*2) + 1)) == NULL)   
+        	return NULL;
+	mysql_escape_string(to,from,strlen(from));
+	return to;
+}
