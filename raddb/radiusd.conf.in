@@ -591,6 +591,8 @@ modules {
 	#  crypt: Unix crypt
 	#    md5: MD5 ecnryption
 	#   sha1: SHA1 encryption.
+	#     nt: NT-Password encryption
+	#     lm: LM-Password encryption
 	#  DEFAULT: crypt
 	pap {
 		encryption_scheme = crypt

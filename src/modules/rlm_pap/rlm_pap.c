@@ -40,7 +40,9 @@
 #define PAP_ENC_CRYPT		1
 #define PAP_ENC_MD5		2
 #define PAP_ENC_SHA1		3
-#define PAP_MAX_ENC		3
+#define PAP_ENC_NT		4
+#define PAP_ENC_LM		5
+#define PAP_MAX_ENC		5
 
 #define PAP_INST_FREE(inst) \
 	free((char *)inst->scheme); \
@@ -58,6 +60,7 @@ static const char rcsid[] = "$Id$";
 typedef struct rlm_pap_t {
         char *scheme;  /* password encryption scheme */
 	int sch;
+	char norm_passwd;
 } rlm_pap_t;
 
 /*
@@ -121,15 +124,26 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 		PAP_INST_FREE(inst);
 		return -1;
 	}
-	if (strcasecmp(inst->scheme,"clear") == 0)
+	if (strcasecmp(inst->scheme,"clear") == 0){
 		inst->sch = PAP_ENC_CLEAR;
+		inst->norm_passwd = 1;
+	}
 	else if (strcasecmp(inst->scheme,"crypt") == 0){
 		inst->sch = PAP_ENC_CRYPT;
+		inst->norm_passwd = 1;
 	}
-	else if (strcasecmp(inst->scheme,"md5") == 0)
+	else if (strcasecmp(inst->scheme,"md5") == 0){
 		inst->sch = PAP_ENC_MD5;
-	else if (strcasecmp(inst->scheme,"sha1") == 0)
+		inst->norm_passwd = 1;
+	}
+	else if (strcasecmp(inst->scheme,"sha1") == 0){
 		inst->sch = PAP_ENC_SHA1;
+		inst->norm_passwd = 1;
+	}
+	else if (strcasecmp(inst->scheme, "nt") == 0)
+		inst->sch = PAP_ENC_NT;
+	else if (strcasecmp(inst->scheme, "lm") == 0)
+		inst->sch = PAP_ENC_LM;
 	else{
 		radlog(L_ERR, "rlm_pap: Wrong password scheme passed");
 		PAP_INST_FREE(inst);
@@ -156,7 +170,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	SHA1_CTX sha1_context;
 	char digest[20];
 	char buff[MAX_STRING_LEN];
+	char buff2[MAX_STRING_LEN + 50];
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
+	int abort = 0;
 
 	/* quiet the compiler */
 	instance = instance;
@@ -187,15 +203,24 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	DEBUG("rlm_pap: login attempt by \"%s\" with password %s",
 		request->username->strvalue, request->password->strvalue);
 
-	if ((((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL) &&
-		((passwd_item = pairfind(request->config_items, PW_CRYPT_PASSWORD)) == NULL)) ||
-	    (passwd_item->length == 0) || (passwd_item->strvalue[0] == 0)) {
+	if (inst->norm_passwd){
+		if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL &&
+			(passwd_item = pairfind(request->config_items, PW_CRYPT_PASSWORD)) == NULL)
+			abort = 1;
+	}
+	else {
+		if ((inst->sch == PAP_ENC_NT && (passwd_item = pairfind(request->config_items, PW_NT_PASSWORD)) == NULL) ||
+		(inst->sch == PAP_ENC_LM && (passwd_item = pairfind(request->config_items, PW_LM_PASSWORD)) == NULL))
+		abort = 1;
+	}
+	if (abort || passwd_item == NULL || passwd_item->length == 0 || passwd_item->strvalue[0] == 0){
 		DEBUG("rlm_pap: No password (or empty password) to check against for for user %s",request->username->strvalue);
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: User password not available");
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
 		return RLM_MODULE_INVALID;
 	}
+
 	if (passwd_item->attribute == PW_CRYPT_PASSWORD){
 		if (inst->sch != PAP_ENC_CRYPT){
 			radlog(L_ERR, "rlm_pap: Crypt-Password attribute but encryption scheme is not set to CRYPT");
@@ -253,7 +278,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			MD5Final(digest, &md5_context);
 			pap_hexify(buff,digest,16);
 			buff[32] = '\0';
-			if (strcmp((char *)passwd_item->strvalue, buff) != 0){
+			if (strcasecmp((char *)passwd_item->strvalue, buff) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
@@ -278,9 +303,69 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			SHA1Final(digest,&sha1_context);
 			pap_hexify(buff,digest,20);
 			buff[40] = '\0';
-			if (strcmp((char *)passwd_item->strvalue, buff) != 0){
+			if (strcasecmp((char *)passwd_item->strvalue, buff) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+			break;
+		case PAP_ENC_NT:
+
+			DEBUG("rlm_pap: Using NT encryption.");
+
+			if (passwd_item->length != 32){
+				DEBUG("rlm_pap: Configured NT-Password has incorrect length");
+				sprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NT-Password has incorrect length");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+			sprintf(buff2,"%%{mschap:NT-Hash %s}",request->password->strvalue);
+			if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
+				DEBUG("rlm_pap: mschap xlat failed");
+				sprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+			pap_hexify(buff,digest,16);
+			buff[32] = '\0';
+			DEBUG("rlm_pap: Encrypted password: %s",buff);
+			if (strcasecmp((char *)passwd_item->strvalue, buff) != 0){
+				DEBUG("rlm_pap: Passwords don't match");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NT password check failed");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+			break;
+		case PAP_ENC_LM:
+
+			DEBUG("rlm_pap: Using LM encryption.");
+
+			if (passwd_item->length != 32){
+				DEBUG("rlm_pap: Configured LM-Password has incorrect length");
+				sprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured LM-Password has incorrect length");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+			sprintf(buff2,"%%{mschap:LM-Hash %s}",request->password->strvalue);
+			if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
+				DEBUG("rlm_pap: mschap xlat failed");
+				sprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+			pap_hexify(buff,digest,16);
+			buff[32] = '\0';
+			DEBUG("rlm_pap: Encrypted password: %s",buff);
+			if (strcasecmp((char *)passwd_item->strvalue, buff) != 0){
+				DEBUG("rlm_pap: Passwords don't match");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: LM password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;

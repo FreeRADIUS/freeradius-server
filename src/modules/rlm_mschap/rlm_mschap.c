@@ -498,6 +498,33 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		strNcpy(out, p, outlen);
 		return strlen(out);
 
+		/*
+		 * Return the NT-Hash of the passed string
+		 */
+	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
+		char *p;
+
+		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
+		if (p == '\0')	
+			return 0;
+		DEBUG("rlm_mschap: NT-Hash: %s",p);
+		ntpwdhash(out,p);
+		DEBUG("rlm_mschap: NT-Hash: Result: %s",out);
+		return strlen(out);
+
+		/*
+		 * Return the LM-Hash of the passed string
+		 */
+	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
+		char *p;
+
+		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
+		if (p == '\0')
+			return 0;
+		DEBUG("rlm_mschap: LM-Hash: %s",p);
+		smbdes_lmpwdhash(p,out);		
+		DEBUG("rlm_mschap: LM-Hash: Result: %s",out);
+		return strlen(out);
 	} else {
 		DEBUG2("  rlm_mschap: Unknown expansion string \"%s\"",
 		       fmt);
@@ -608,13 +635,15 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Create the dynamic translation.
 	 */
-	xlat_name = cf_section_name2(conf);
+	if (cf_section_name1(conf))
+		xlat_register(cf_section_name1(conf),mschap_xlat, inst);
+
+	if ((xlat_name = cf_section_name2(conf)) != NULL)
+		xlat_register(xlat_name, mschap_xlat, inst);
 	if (xlat_name == NULL)
 		xlat_name = cf_section_name1(conf);
-	if (xlat_name){
+	if (xlat_name)
 		inst->xlat_name = strdup(xlat_name);
-		xlat_register(xlat_name, mschap_xlat, inst);
-	}
 
 	return 0;
 }
