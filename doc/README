@@ -44,7 +44,7 @@
   Extra command line flags:
   o -y: log all login attempts in /var/log/radius.log, include (wrong)
         password for failed logins.
-  o -z: log the password of successful logins too (STRONLY discouraged).
+  o -z: log the password of successful logins, too (STRONGLY discouraged).
 
 2. COMPILE
 
@@ -74,6 +74,10 @@
   --without-dynamic-modules
 			Turn off dynamic modules even if your
 			system supports them.
+  --without-attrib-nmc  Turn off support for USR-style vendor specific
+			attributes.
+  --without-ascend-binary
+			Turn off support for Ascend binary filter attributes.
 
   To get the defaults that Cistron Radius used up to 1.5.4.3-beta18, use:
 
