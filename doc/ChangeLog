@@ -3,6 +3,11 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	* Many, many minor bug fixes and feature enhancements.
 	* Added many new dictionaries: 3GPP, 3GPP2, Propel, Karlnet,
 	  Sonicwall, Navini, Bristol University, Valemont, Mikrotik.
+	* Fixed a bug in libltdl which printed the wrong error message
+	  when trying to link to a library.  Found by Paul Stewart.
+	* Updates to radclient, so that you can specify multiple '-f'
+	  options, and it will send those packets in parallel.  This
+	  allows for significantly higher packet rates when load testing.
 	* Added red-black tree implementation to src/lib.  The
 	  dictionaries now use it, rather than singly linked lists.  Tests
 	  indicate that the server is up to 30% faster.
