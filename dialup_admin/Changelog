@@ -8,6 +8,9 @@ Ver 1.60:
 * Update the FAQ with an entry about the Online Users page not showing anything.
 * Update the FAQ with an entry about sessions.
 * Allow the user to add extra attributes in the test user page
+* Add a few comments in log_badlogins, support auth logs containing the password, work nice when the client
+  is localhost, add an option to scan the whole radius.log and add failed logins in the sql database (can be
+  used for initialization).
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
