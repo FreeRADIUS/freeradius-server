@@ -51,7 +51,6 @@ SERVER_HEADERS	= ../../include/radiusd.h ../../include/radius.h ../../include/mo
 $(STATIC_OBJS):  $(SERVER_HEADERS)
 $(DYNAMIC_OBJS): $(SERVER_HEADERS)
 
-
 #######################################################################
 #
 # define new rules
@@ -72,8 +71,29 @@ ifneq ($(TARGET),)
 $(TARGET).a: $(STATIC_OBJS)
 	$(LIBTOOL) --mode=link $(LD) -module -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
 
+#
+#  If the module is in the list of static modules, then the "dynamic"
+#  library is built statically, so that the '.la' file contains the
+#  libraries that the module depends on.
+#
+#  Yes, this is a horrible hack.
+#
+ifeq ($(findstring $(TARGET),$(STATIC_MODULES)),)
+LINK_MODE=-export-dynamic
+else
+LINK_MODE=-static
+endif
+
+#
+#  Also, if we're NOT using shared libraries, then force the
+#  link mode to static.
+#
+ifneq ($(USE_SHARED_LIBS),yes)
+LINK_MODE=-static
+endif
+
 $(TARGET).la: $(DYNAMIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -module -export-dynamic $(CFLAGS) \
+	$(LIBTOOL) --mode=link $(CC) -module $(LINK_MODE) $(CFLAGS) \
 	$(RLM_CFLAGS) -o $@ -rpath $(libdir) $^ $(RLM_LIBS)
 
 #######################################################################
@@ -85,19 +105,11 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
-ifeq ($(USE_STATIC_LIBS),yes)
 static: $(TARGET).a
 	@cp $< ../lib
-else
-static:
-endif
 
-ifeq ($(USE_SHARED_LIBS),yes)
 dynamic: $(TARGET).la
 	@cp $< ../lib
-else
-dynamic:
-endif
 
 #######################################################################
 #
