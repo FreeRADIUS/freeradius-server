@@ -23,17 +23,21 @@
 
   For example:
 	modules {
+		...
 		detail {
 			detailfile = %A/%n/detail-%Y%m
 			detailperm = 0600
 			dirperm = 0755
 		}
+		...
 	}
 
   If you omit the detailfile option the server will automatically set
   it to:
        %A/%n/detail
   which expands to {radius accounting directory}/{nas IP address}/detail.
+  This is the traditional place for the RADIUS daemons to generate the
+  file.
 
   Another option here is detailperm.  This allows you to configure the
   file permissions of the detailfile.  If omitted the default is 0600.
@@ -83,9 +87,8 @@
 2. IMPLEMENTATION
 
   The rlm_detail module only deals with accounting to a detail file.  The
-  module will automatically create the lowest level directory if it doesn't
-  already exist.  If you use the %A variable the radius accounting directory
-  must already exist.
+  module will automatically create the required directories if they don't
+  already exist.
 
   The expansion works by expanding the variables every time an accounting
   packet is to be written.  The variables are expanded to include the
