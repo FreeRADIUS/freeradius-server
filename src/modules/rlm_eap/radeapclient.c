@@ -58,6 +58,8 @@ static const char rcsid[] = "$Id$";
 #include "eap_types.h"
 #include "eap_sim.h"
 
+extern int sha1_data_problems;
+
 static int retries = 10;
 static float timeout = 3;
 static const char *secret = NULL;
@@ -548,6 +550,10 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	newvp->lvalue = eapsim_challenge;
 	pairreplace(&(rep->vps), newvp);
 
+	/*
+	 * fill the SIM_MAC with a field that will in fact get appended
+	 * to the packet before the MAC is calculated
+	 */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC,
 			   PW_TYPE_OCTETS);
 	memcpy(newvp->strvalue+EAPSIM_SRES_SIZE*0, sres1->strvalue, EAPSIM_SRES_SIZE);
@@ -894,7 +900,7 @@ int main(int argc, char **argv)
 
 	radlog_dest = RADLOG_STDERR;
 
-	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xv")) != EOF)
+	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xXv")) != EOF)
 	{
 		switch(c) {
 		case 'c':
@@ -915,6 +921,12 @@ int main(int argc, char **argv)
 		        debug_flag++;
 			librad_debug++;
 			break;
+
+		case 'X':
+		  sha1_data_problems = 1;
+		  break;
+
+
 
 		case 'r':
 			if (!isdigit((int) *optarg)) 
