@@ -144,13 +144,13 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 /*
  *	Copy the specified attribute to the specified list
  */
-static void mypairappend(VALUE_PAIR *item, VALUE_PAIR **to)
+static int mypairappend(VALUE_PAIR *item, VALUE_PAIR **to)
 {
   VALUE_PAIR *tmp;
   tmp = paircreate(item->attribute, item->type);
   if (!tmp) {
-	  radlog(L_ERR|L_CONS, "no memory");
-	  exit(1);
+	radlog(L_ERR|L_CONS, "no memory");
+	return -1;
   }
 
   /*
@@ -159,6 +159,7 @@ static void mypairappend(VALUE_PAIR *item, VALUE_PAIR **to)
   memcpy(tmp, item, sizeof(*tmp));
   tmp->next = NULL;
   pairadd(to, tmp);
+  return 0;
 }
 
 /*
@@ -332,7 +333,9 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 		     */
 
 		    if( check_item->operator == T_OP_SET ) {
-			mypairappend(check_item, &reply_tmp);
+			if (mypairappend(check_item, &reply_tmp) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 		    }
 		    check_item = check_item->next;
 
@@ -372,7 +375,9 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 
 		    /* only move attribute if it passed all rules */
 		    if (fail == 0 && pass > 0) {
-			mypairappend( reply_item, &reply_tmp);
+			if (mypairappend( reply_item, &reply_tmp) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 		    }
 
 		}
@@ -467,7 +472,9 @@ static int attr_filter_accounting(void *instance, REQUEST *request)
 		     */
 
 		    if (check_item->operator == T_OP_SET) {
-			mypairappend(check_item, &send_tmp);
+			if (mypairappend(check_item, &send_tmp) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 		    }
 		    check_item = check_item->next;
 		}
@@ -499,7 +506,9 @@ static int attr_filter_accounting(void *instance, REQUEST *request)
 		    }
 		    /* only send if attribute passed all rules */
 		    if (fail == 0 && pass > 0) {
-			mypairappend (send_item, &send_tmp);
+			if (mypairappend (send_item, &send_tmp) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 		    }
 		}
 		if (!fallthrough(pl->check))
@@ -575,7 +584,9 @@ static int attr_filter_preproxy (void *instance, REQUEST *request)
 		     * Append all SET operator attributes with no check.
 		     */
 		    if (check_item->operator == T_OP_SET) {
-			mypairappend(check_item, &send_tmp);
+			if (mypairappend(check_item, &send_tmp) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 		    }
 		    check_item = check_item->next;
 		}
@@ -614,7 +625,9 @@ static int attr_filter_preproxy (void *instance, REQUEST *request)
 
 		    /* only send if attribute passed all rules */
 		    if (fail == 0 && pass > 0) {
-			mypairappend (send_item, &send_tmp);
+			if (mypairappend (send_item, &send_tmp) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 		    }
 		}
 		if (!fallthrough(pl->check))
@@ -702,7 +715,9 @@ static int attr_filter_postproxy(void *instance, REQUEST *request)
 		     */
 
 		    if( check_item->operator == T_OP_SET ) {
-			mypairappend(check_item, &reply_tmp);
+			if (mypairappend(check_item, &reply_tmp) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 		    }
 		    check_item = check_item->next;
 
@@ -742,7 +757,9 @@ static int attr_filter_postproxy(void *instance, REQUEST *request)
 
 		    /* only move attribute if it passed all rules */
 		    if (fail == 0 && pass > 0) {
-			mypairappend( reply_item, &reply_tmp);
+			if (mypairappend( reply_item, &reply_tmp) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 		    }
 
 		}
