@@ -28,11 +28,6 @@
 #include "eap_leap.h"
 
 
-static int leap_attach(CONF_SECTION *conf, void **instance)
-{
-	return 0;
-}
-
 static void leap_session_free(void **opaque)
 {
 	leap_session_t *session;
@@ -96,10 +91,8 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 	leap_session_t	*session;
 	LEAP_PACKET	*packet;
 	LEAP_PACKET	*reply;
-	leap_packet_t	*request;
 	char*		username;
 	VALUE_PAIR	*password;
-	EAP_DS		*temp;
 
 	if (!handler->opaque) {
 		radlog(L_ERR, "rlm_eap_leap: Cannot authenticate without LEAP history");
@@ -127,12 +120,6 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 		eapleap_free(&packet);
 		return 0;
 	}
-
-	/*
-	 *	See if there was a previous stage...
-	 */
-	temp = (EAP_DS *)handler->prev_eapds;
-	request = temp ? (leap_packet_t *)(temp->request->type.data): NULL;
 
 	/*
 	 *	We've already sent the AP challenge.  This packet
@@ -204,19 +191,14 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 	return 1;
 }
 
-static int leap_detach(void **instance)
-{
-	return 0;
-}
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
 EAP_TYPE rlm_eap_leap = {
 	"eap_leap",
-	leap_attach,			/* attach */
-	leap_initiate,			/* Start the initial request, after Identity */
-	leap_authenticate,		/* authentication */
-	leap_detach			/* detach */
+	NULL,			/* attach */
+	leap_initiate,		/* Start the initial request, after Identity */
+	leap_authenticate,	/* authentication */
+	NULL,			/* detach */
 };
