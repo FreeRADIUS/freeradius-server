@@ -35,6 +35,8 @@ checkItem	Called-Station-Id		radiusCalledStationId
 checkItem	Calling-Station-Id		radiusCallingStationId
 checkItem	LM-Password			lmPassword
 checkItem	NT-Password			ntPassword
+checkItem	LM-Password			sambaLmPassword
+checkItem	NT-Password			sambaNtPassword
 checkItem	SMB-Account-CTRL-TEXT		acctFlags
 checkItem	Expiration			radiusExpiration
 
