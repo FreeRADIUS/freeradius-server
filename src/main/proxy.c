@@ -290,13 +290,11 @@ int proxy_send(REQUEST *request)
 	delaypair = pairfind(vps, PW_ACCT_DELAY_TIME);
 	request->proxy->timestamp = request->timestamp - (delaypair ? delaypair->lvalue : 0);
 
-#if 0
 	/*
 	 *	We can free proxy->vps now, not needed anymore.
 	 */
 	pairfree(request->proxy->vps);
 	request->proxy->vps = NULL;
-#endif
 
 	return replicating?2:1;
 }
