@@ -6,6 +6,8 @@
  *
  */
 
+#include <sys/types.h>
+
 #include "radius.h"
 #include "token.h"
 
