@@ -510,7 +510,14 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		       /*
 			*	Add the included conf to our CONF_SECTION
 			*/
-		       if (is && is->children ) cf_item_add(cs, is->children);
+			if (is != NULL) {
+				if (is->children != NULL) {
+					cf_item_add(cs, is->children);
+				} else {
+					/* the file was empty */
+					cf_section_free(&is);
+				}
+			}
 		
 		       continue;
 
