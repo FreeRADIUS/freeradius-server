@@ -11,7 +11,7 @@
  *  If we have BOTH utmp.h and utmpx.h, then
  *  we prefer to use utmp.h, but only on systems other than Solaris.
  */
-#ifndef sun
+#if !defined(sun) && !defined(sgi)
 #ifdef HAVE_UTMP_H
 #undef HAVE_UTMPX_H
 #endif
