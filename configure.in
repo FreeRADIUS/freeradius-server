@@ -391,20 +391,6 @@ dnl Check if we need -lnsl. Usually if we want to
 dnl link against -lsocket we need to include -lnsl as well.
 AC_CHECK_LIB(nsl, inet_ntoa)
 
-dnl #
-dnl #  Look for the SNMP libraries.
-dnl #  If we can't link to them, try adding -lcrypto to LIBS,
-dnl #  and try linking again.
-dnl #
-if test "x$WITH_SNMP" = "xyes"; then
-  AC_CHECK_LIB(snmp, snmp_build_var_op)
-fi
-
-POSTGRESQL_CHECKS
-MYSQL_CHECKS
-ORACLE_CHECKS
-ODBC_CHECKS
-
 dnl #############################################################
 dnl #
 dnl #  3. Checks for header files
@@ -430,24 +416,14 @@ AC_CHECK_HEADERS( \
 	syslog.h \
 	inttypes.h \
 	stdint.h \
+        stdio.h \
+        netdb.h \
 	arpa/inet.h \
 	netinet/in.h \
 	sys/types.h \
 	sys/socket.h \
 	sys/time.h
 )
-
-dnl #
-dnl #  If we have SNMP libraries, check for SNMP header files.
-dnl #
-if test "x$WITH_SNMP" = "xyes"; then
-  AC_CHECK_HEADER(snmp.h, AC_DEFINE(HAVE_SNMP_H),
-	AC_CHECK_HEADER(ucd-snmp/snmp.h, AC_DEFINE(HAVE_UCD_SNMP_SNMP_H)))
-  AC_CHECK_HEADER(snmp_impl.h, AC_DEFINE(HAVE_SNMP_IMPL_H),
-	AC_CHECK_HEADER(ucd-snmp/snmp_impl.h, AC_DEFINE(HAVE_UCD_SNMP_SNMP_IMPL_H)))
-  AC_CHECK_HEADER(asn1.h, AC_DEFINE(HAVE_ASN1_H),
-	AC_CHECK_HEADER(ucd-snmp/asn1.h, AC_DEFINE(HAVE_UCD_SNMP_ASN1_H)))
-fi
 
 REGEX=no
 AC_CHECK_HEADER(regex.h, REGEX=yes)
@@ -599,6 +575,15 @@ else
   AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT))
 fi
 
+if test "x$WITH_SNMP" = "xyes"; then
+  SNMP_CHECKS
+fi
+
+POSTGRESQL_CHECKS
+MYSQL_CHECKS
+ORACLE_CHECKS
+ODBC_CHECKS
+
 dnl #############################################################
 dnl #
 dnl #  8. Checks for system services
@@ -633,10 +618,6 @@ AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
 AC_SUBST(REGEX)
 AC_SUBST(REGEX_EXTENDED)
-
-if test "x$WITH_SNMP" = "xyes"; then
-  AC_DEFINE(WITH_SNMP)
-fi
 
 AC_OUTPUT(\
 	./Make.inc \

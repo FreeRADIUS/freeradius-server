@@ -8,11 +8,11 @@ SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
 		  modules.o modcall.o session.o xlat.o threads.o smux.o \
 		  radius_snmp.o client.o request_list.o
-INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/autoconf.h 
+INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/autoconf.h
 
-CFLAGS		+= -I../include
+CFLAGS		+= -I../include $(SNMP_INCLUDE) 
 LDFLAGS		+= -L../lib
-LIBS		+= -lradius 
+LIBS		+= -lradius $(SNMP_LIBS)
 MODULE_LIBS	= $(STATIC_MODULES)
 
 #
