@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2001  The FreeRADIUS server project
- * Copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
+ * Copyright 2002  The FreeRADIUS server project
+ * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 
 #include "config.h"
@@ -105,6 +105,11 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 	data->search_len = strlen(data->search);
 	data->replace_len = strlen(data->replace);
 
+	if (data->replace_len == 0 && data->new_attr){
+		radlog(L_ERR, "rlm_attr_rewrite: replace string must not be zero length in order to create new attribute.");
+		return -1;
+	}
+
 	if (data->num_matches < 1 || data->num_matches > MAX_STRING_LEN) {
 		radlog(L_ERR, "rlm_attr_rewrite: Illegal range for match number.");
 		return -1;
@@ -155,6 +160,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	regmatch_t pmatch;
 	int cflags = 0;
 	int err = 0;
+	char done_xlat = 0;
 	unsigned int len = 0;
 	char err_msg[MAX_STRING_LEN];
 	unsigned int i = 0;
@@ -212,11 +218,13 @@ do_again:
 			return ret;
 		}
 	}
-	if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL) && data->replace_len != 0) {
-		DEBUG2("rlm_attr_rewrite: xlat on replace string failed.");
-		return ret;
+	if (data->new_attr){
+		if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL)) {
+			DEBUG2("rlm_attr_rewrite: xlat on replace string failed.");
+			return ret;
+		}
+		replace_len = strlen(replace_STR);
 	}
-	replace_len = strlen(replace_STR);
 
 	if (!data->new_attr){
 		if ((err = regcomp(&preg,search_STR,cflags))) {
@@ -260,6 +268,16 @@ do_again:
 			ptr += len;
 			ptr2 += pmatch.rm_eo;
 
+			if (!done_xlat){
+				if (data->replace_len != 0 &&
+				radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL) == 0) {
+					DEBUG2("rlm_attr_rewrite: xlat on replace string failed.");
+					return ret;
+				}
+				replace_len = (data->replace_len != 0) ? strlen(replace_STR) : 0;
+				done_xlat = 1;
+			}
+
 			counter += replace_len;
 			if (counter >= MAX_STRING_LEN) {
 				regfree(&preg);
@@ -267,8 +285,10 @@ do_again:
 						data->attribute, attr_vp->strvalue);	
 				return ret;
 			}
-			strncpy(ptr, replace_STR, replace_len);
-			ptr += replace_len;	
+			if (replace_len){
+				strncpy(ptr, replace_STR, replace_len);
+				ptr += replace_len;	
+			}
 		}
 		regfree(&preg);
 		len = strlen(ptr2) + 1;		/* We add the ending NULL */
