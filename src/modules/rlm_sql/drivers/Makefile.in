@@ -16,6 +16,7 @@ install:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 common: 
+	@[ -d lib/ ] || mkdir lib
 	@for mod in $(SQL_MODULES); do \
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
