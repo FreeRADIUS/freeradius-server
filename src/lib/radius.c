@@ -358,8 +358,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 						 }
 					         lvalue = htonl((reply->lvalue & 0xffffff) |
 								((reply->flags.tag & 0xff) << 24));
+					  } else {
+					         lvalue = htonl(reply->lvalue);
 					  }
-					  lvalue = htonl(reply->lvalue);
 				  } else {
 					  lvalue = reply->lvalue;
 				  }
