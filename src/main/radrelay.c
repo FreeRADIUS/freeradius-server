@@ -257,13 +257,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 			}
 			if (!skip) {
 				vp = NULL;
-				/*
-				 * FIXME: We should check that the attribute
-				 * we've read atleast remotely ressembles
-				 * a correct attribute, otherwise we run the
-				 * risk of segfaulting in userparse().
-				 */
-				if (userparse(buf, &vp) >= 0 &&
+				if (userparse(buf, &vp) > 0 &&
 				    (vp->attribute < 256 ||
 				     vp->attribute > 65535) &&
 				    vp->attribute != PW_VENDOR_SPECIFIC) {
