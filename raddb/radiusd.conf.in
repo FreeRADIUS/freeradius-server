@@ -664,6 +664,9 @@ modules {
 	#            stored in memory and file is red on every request.
 	#   allowmultiplekeys - if few records for every key are allowed
 	#   ignorenislike - ignore NIS-related records
+	#   delimiter - symbol to use as a field separator in passwd file,
+	#            for format ':' symbol is always used. '\0', '\n' are
+        #	     not allowed 
 	#
 	#passwd etc_smbpasswd {
 	#	filename = /etc/smbpasswd
@@ -674,13 +677,15 @@ modules {
 	#	allowmultiplekeys = no
 	#}
 
-	#  Similar configuration, for the /etc/group file.
+	#  Similar configuration, for the /etc/group file. Adds Group-Name
+	#  attribute for every group user is member of
 	#passwd etc_group {
 	#	filename = /etc/group
 	#	format = "Group-Name:::*,User-Name"
 	#	hashsize = 50
 	#	ignorenislike = yes
-	#	allowmultiplekeys = no
+	#	allowmultiplekeys = yes
+	#	delimiter = ":"
 	#}
 
 	# Realm module, for proxying.
