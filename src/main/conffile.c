@@ -1031,6 +1031,33 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
 
 }
 
+
+/*
+ * Find a CONF_SECTION with both names.
+ */
+CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION *section,
+					const char *name1, const char *name2)
+{
+	CONF_ITEM    *ci;
+
+	if (!name2) return cf_section_sub_find(section, name1);
+
+	for (ci = section->children; ci; ci = ci->next) {
+		CONF_SECTION *cs;
+
+		if (ci->type != CONF_ITEM_SECTION)
+			continue;
+
+		cs = cf_itemtosection(ci);
+		if ((strcmp(cs->name1, name1) == 0) &&
+		    (cs->name2 != NULL) &&
+		    (strcmp(cs->name2, name2) == 0))
+			break;
+	}
+
+	return cf_itemtosection(ci);
+}
+
 /*
  * Return the next subsection after a CONF_SECTION
  * with a certain name1 (char *name1). If the requested
@@ -1038,8 +1065,8 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
  */
 
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
-		CONF_SECTION *subsection,
-		const char *name1)
+				      CONF_SECTION *subsection,
+				      const char *name1)
 {
 	CONF_ITEM	*ci;
 
@@ -1058,7 +1085,7 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
 		if ((name1 == NULL) ||
-				(strcmp(cf_itemtosection(ci)->name1, name1) == 0))
+		    (strcmp(cf_itemtosection(ci)->name1, name1) == 0))
 			break;
 	}
 
