@@ -58,6 +58,9 @@ typedef struct rlm_sql_postgres_sock {
    char            **row;
 } rlm_sql_postgres_sock;
 
+/* Prototypes */
+static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 
 /* Internal function. Return true if the postgresql status value
  * indicates successful completion of the query. Return false otherwise
@@ -199,6 +202,13 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	}
 
 	pg_sock->result = PQexec(pg_sock->conn, querystr);
+		/* Returns a result pointer or possibly a NULL pointer. 
+		 * A non-NULL pointer will generally be returned except in
+		 * out-of-memory conditions or serious errors such as inability
+		 * to send the command to the backend. If a NULL is returned,
+		 *  it should be treated like a PGRES_FATAL_ERROR result.
+		 * Use PQerrorMessage to get more information about the error.
+		 */
 	if (!pg_sock->result)
 	{
 		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL Query failed Error: %s", 
