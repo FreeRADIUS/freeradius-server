@@ -58,7 +58,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 		}
 	}
 
-	timeval = time(0);
+	timeval = time(NULL);
 #if HAVE_SYSLOG_H
 	if (use_syslog)
 		*buffer = '\0';
@@ -99,7 +99,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	/*
 	 *	Filter out characters not in Latin-1.
 	 */
-	for (p = (unsigned char *)buffer; *p; p++) {
+	for (p = (unsigned char *)buffer; *p != '\0'; p++) {
 		if (*p == '\r' || *p == '\n')
 			*p = ' ';
 		else if (*p < 32 || (*p >= 128 && *p <= 160))

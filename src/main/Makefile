@@ -67,7 +67,7 @@ session.o:  session.c $(INCLUDES) ../include/modules.h
 request_list.o:  request_list.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c request_list.c
 
-request_tree.o:  request_tre.c $(INCLUDES)
+request_tree.o:  request_tree.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c request_tree.c
 
 proxy.o:  proxy.c $(INCLUDES)
