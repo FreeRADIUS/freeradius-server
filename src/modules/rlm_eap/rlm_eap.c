@@ -309,11 +309,19 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		if (vp) {
 			vp = pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR);
 			if (!vp) {
-				vp = pairmake("Message-Authenticator", "", T_OP_EQ);
+				vp = pairmake("Message-Authenticator",
+					      "0x00", T_OP_EQ);
 				rad_assert(vp != NULL);
 				pairadd(&(request->proxy->vps), vp);
 			}
 		}
+
+		/*
+		 *	Delete the "proxied to" attribute, as it's
+		 *	set to 127.0.0.1 for tunneled requests, and
+		 *	we don't want to tell the world that...
+		 */
+		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO);
 
 		return RLM_MODULE_HANDLED;
 	}
