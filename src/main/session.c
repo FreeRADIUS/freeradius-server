@@ -187,6 +187,8 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 		/*
 		 *  Unknown NAS, so trusting radutmp.
 		 */
+		DEBUG2("checkrad: Unknown NAS %s, not checking",
+		       ip_ntoa(address, nasaddr));
 		return 1;
 	}
 
@@ -195,6 +197,7 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	 */
 	if ((cl->nastype[0] == '\0') ||
 	    (strcmp(cl->nastype, "other") == 0)) {
+		DEBUG2("checkrad: No NAS type, or type \"other\" not checking");
 		return 1;
 	}
 
@@ -202,7 +205,7 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	 *	Fork.
 	 */
 	if ((pid = rad_fork(1)) < 0) { /* do wait for the fork'd result */
-		radlog(L_ERR, "Accounting: fork: %s", strerror(errno));
+		radlog(L_ERR, "Accounting: Failed in fork(): Cannot run checkrad\n");
 		return -1;
 	}
 
@@ -224,14 +227,13 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 		}
 
 		/*
-		 *  It's taking too long.  Kill it.
+		 *	It's taking too long.  Stop waiting for it.
+		 *
+		 *	Don't bother to kill it, as we don't care what
+		 *	happens to it now.
 		 */
 		if (!found) {
-			kill(pid, SIGTERM);
-			sleep(1);
-			kill(pid, SIGKILL);
 			radlog(L_ERR, "Check-TS: timeout waiting for checkrad");
-			rad_waitpid(pid, &status, WNOHANG); /* to be safe */
 			return 2;
 		}
 
@@ -248,6 +250,15 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	 */
 	for (n = 256; n >= 3; n--)
 		close(n);
+
+	/*
+	 *  We don't close fd's 0, 1, and 2.  If we're in debugging mode,
+	 *  then they should go to stdout (etc), along with the other
+	 *  server log messages.
+	 *
+	 *  If we're not in debugging mode, then the code in radiusd.c
+	 *  takes care of connecting fd's 0, 1, and 2 to /dev/null.
+	 */
 
 	ip_ntoa(address, nasaddr);
 	sprintf(port, "%d", portnum);
