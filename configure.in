@@ -310,6 +310,10 @@ AC_CHECK_LIB(socket, getsockname,
 )
 AC_SUBST(SOCKETLIB)
 
+dnl Check for -lresolv
+dnl This library may be needed later.
+AC_CHECK_LIB(resolv, inet_aton)
+
 dnl Check for -lnsl. We don't need yp_all, but usually if we want to
 dnl link against -lsocket we need to include -lnsl as well.
 AC_CHECK_LIB(nsl, yp_all,
@@ -339,7 +343,8 @@ AC_CHECK_HEADERS( \
 	regex.h \
 	syslog.h \
 	inttypes.h \
-	stdint.h
+	stdint.h \
+	arpa/inet.h
 )
 
 dnl #############################################################
@@ -372,7 +377,14 @@ dnl Check for uint8_t
 AC_CACHE_CHECK(for uint8_t,
                fr_cv_uint8_t,
      [ fr_cv_uint8_t=no
-       AC_TRY_COMPILE([#include <stdint.h>],
+       AC_TRY_COMPILE([
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+],
          [uint8_t foo],
          fr_cv_uint8_t=yes,
          AC_DEFINE(uint8_t, unsigned char)
@@ -384,7 +396,14 @@ dnl Check for uint32_t
 AC_CACHE_CHECK(for uint32_t,
                fr_cv_uint32_t,
      [ fr_cv_uint32_t=no
-       AC_TRY_COMPILE([#include <stdint.h>],
+       AC_TRY_COMPILE([
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+],
          [uint32_t foo],
          fr_cv_uint32_t=yes,
          AC_DEFINE(uint32_t, unsigned int)
