@@ -64,11 +64,6 @@ int rad_accounting(REQUEST *request)
 	reply = RLM_MODULE_OK;
 	if (!request->proxy) {
 		/*
-		 *	Keep the radutmp file in sync.
-		 */
-		radutmp_add(request);
-
-		/*
 		 *	Do accounting and if OK, reply.
 		 */
 		reply = module_accounting(request);

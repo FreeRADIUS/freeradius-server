@@ -168,10 +168,12 @@ extern uint32_t		myip;
 extern int		log_auth_detail;
 extern int		auth_port;
 extern int		acct_port;
+extern int		acctfd;
 extern int		proxy_port;
 extern int		proxyfd;
 extern int		proxy_retry_count;
 extern int		proxy_retry_delay;
+extern int		spawn_flag;
 
 /* Define a global config structure */
 extern struct main_config_t mainconfig;
@@ -182,11 +184,6 @@ extern struct main_config_t mainconfig;
 
 /* acct.c */
 int		rad_accounting(REQUEST *);
-
-/* radutmp.c */
-int		radutmp_add(REQUEST *);
-int		radutmp_zap(uint32_t nas, int port, char *user, time_t t);
-int		radutmp_checksimul(char *name, VALUE_PAIR *, int maxsimul);
 
 /* session.c */
 int		rad_check_ts(uint32_t nasaddr, int port, const char *user,
@@ -199,6 +196,7 @@ int		session_zap(uint32_t nasaddr, int port, const char *user,
 void		debug_pair(FILE *, VALUE_PAIR *);
 int		log_err (char *);
 void		sig_cleanup(int);
+int		rad_process(REQUEST *, int);
 int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
 
 /* util.c */

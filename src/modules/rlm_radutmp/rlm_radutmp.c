@@ -44,126 +44,83 @@
 
 #define LOCK_LEN sizeof(struct radutmp)
 
-static char porttypes[] = "ASITX";
+static const char porttypes[] = "ASITX";
+
+/*
+ *	Internal wrapper for locking, to minimize the number of ifdef's
+ *	in the source.
+ *
+ *	Lock the utmp file, prefer lockf() over flock()
+ */
+static void radutmp_lock(int fd)
+{
+#if defined(F_LOCK) && !defined(BSD)
+	(void)lockf(fd, F_LOCK, LOCK_LEN);
+#else
+	(void)flock(fd, LOCK_EX);
+#endif
+}
+
+/*
+ *	Internal wrapper for unlocking, to minimize the number of ifdef's
+ *	in the source.
+ *
+ *	Unlock the utmp file, prefer lockf() over flock()
+ */
+static void radutmp_unlock(int fd)
+{
+#if defined(F_LOCK) && !defined(BSD)
+	(void)lockf(fd, F_ULOCK, LOCK_LEN);
+#else
+	(void)flock(fd, LOCK_UN);
+#endif
+}
 
 /*
  *	used for caching radutmp lookups in the accounting component. The
  *	session (checksimul) component doesn't use it, but probably should.
  */
 typedef struct nas_port {
-	UINT4			nasaddr;
+	uint32_t		nasaddr;
 	int			port;
 	off_t			offset;
 	struct nas_port 	*next;
 } NAS_PORT;
 
-struct acct_instance {
+struct radutmp_instance {
   NAS_PORT *nas_port_list;
-  char radutmp_fn[PATH_MAX];
+  char *radutmp_fn;
   int permission;
-  int callerid_ok:1;
+  int callerid_ok;
 };
 
-struct sess_instance {
-  char radutmp_fn[PATH_MAX];
+/*
+ *	A temporary holding area for config values to be extracted
+ *	into, before they are copied into the instance data
+ */
+static struct radutmp_instance config;
+
+static CONF_PARSER module_config[] = {
+  { "filename", PW_TYPE_STRING_PTR, &config.radutmp_fn,  RADUTMP },
+  { "perm",     PW_TYPE_INTEGER,    &config.permission,  "0644" },
+  { "callerid", PW_TYPE_BOOLEAN,    &config.callerid_ok, "no" },
+  { NULL, -1, NULL, NULL }		/* end the list */
 };
 
-
-/* RADDB/modules syntax for radutmp accounting:
- *  accounting rlm_radutmp.so [filename] [permission] [option...]
- * filename defaults to the old location (usually /var/log/radutmp)
- * permission defaults to 644, but the umask radiusd was started with applies
- * current options are "callerid" and "nocallerid". default is nocallerid
- * unless a restrictive permission is specified.
- *
- * For session component:
- *  session rlm_radutmp.so [filename] */
-static int radutmp_instantiate(int component, int argc, char **argv,
-			       void **instance)
+static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 {
-	switch(component) {
-		case RLM_COMPONENT_ACCT:
-		{
-			const char *fn=RADUTMP;
-			unsigned int perm=0644;
-			int callerid=-1;
-
-			if(argc) {
-				fn=argv[0];
-				--argc,++argv;
-			}
-			if(argc) {
-				if(sscanf(argv[0], "%o", &perm)!=1) {
-					log(L_ERR, "Invalid permission %s",
-					    argv[0]);
-				}
-				--argc,++argv;
-			}
-			while(argc) {
-				if(!strcmp(argv[0], "callerid")) {
-					callerid=1;
-				} else if(!strcmp(argv[0], "nocallerid")) {
-					callerid=0;
-				} else {
-					log(L_ERR, "Unknown option %s",
-					    argv[0]);
-					return -1;
-				}
-				--argc,++argv;
-			}
-
-			if(callerid==-1)
-				callerid = !(perm & 004);
-
-			*instance = malloc(sizeof(struct acct_instance));
-			if (!*instance) {
-				log(L_ERR|L_CONS, "Out of memory\n");
-				return -1;
-			}
-#define ru_instance ((struct acct_instance *)(*instance))
-			ru_instance->nas_port_list=0;
-			if(*fn=='/')
-				strNcpy(ru_instance->radutmp_fn, fn, PATH_MAX);
-			else
-				snprintf(ru_instance->radutmp_fn, PATH_MAX,
-					 "%s/%s", LOGDIR, fn);
-			ru_instance->permission=perm;
-			ru_instance->callerid_ok=callerid;
-#undef ru_instance
-		}
-			break;
-		case RLM_COMPONENT_SESS:
-		{
-			const char *fn=RADUTMP;
-
-			if(argc) {
-				fn=argv[0];
-				--argc,++argv;
-			}
-			if(argc) {
-				log(L_ERR,
-				    "Too many args in radutmp session config\n");
-				return -1;
-			}
-
-			*instance = malloc(sizeof(struct sess_instance));
-			if (!*instance) {
-				log(L_ERR|L_CONS, "Out of memory\n");
-				return -1;
-			}
-#define ru_instance ((struct sess_instance *)(*instance))
-			if(*fn=='/')
-				strNcpy(ru_instance->radutmp_fn, fn, PATH_MAX);
-			else
-				snprintf(ru_instance->radutmp_fn, PATH_MAX,
-					 "%s/%s", LOGDIR, fn);
-#undef ru_instance
-		}
-			break;
-		default:
-			*instance=0;
-			break;
+	*instance = rad_malloc(sizeof(struct radutmp_instance));
+	if (cf_section_parse(conf, module_config)) {
+		free(*instance);
+		return -1;
 	}
+#define ru_instance ((struct radutmp_instance *)(*instance))
+	ru_instance->nas_port_list = NULL;
+	ru_instance->radutmp_fn = config.radutmp_fn;
+	ru_instance->permission = config.permission;
+	ru_instance->callerid_ok = config.callerid_ok;
+	config.radutmp_fn = NULL;
+#undef ru_instance
 	return 0;
 }
 
@@ -171,32 +128,24 @@ static int radutmp_instantiate(int component, int argc, char **argv,
 /*
  *	Detach.
  */
-static int radutmp_detach(int component, void *instance)
+static int radutmp_detach(void *instance)
 {
-	switch(component) {
-		case RLM_COMPONENT_ACCT:
-		{
-			NAS_PORT *p, *next;
-			struct acct_instance *inst = instance;
+	NAS_PORT *p, *next;
+	struct radutmp_instance *inst = instance;
 
-			for(p=inst->nas_port_list ; p ; p=next) {
-				next=p->next;
-				free(p);
-			}
-			free(instance);
-		}
-			break;
-		case RLM_COMPONENT_SESS:
-			free(instance);
-			break;
+	for(p=inst->nas_port_list ; p ; p=next) {
+		next=p->next;
+		free(p);
 	}
+	free(inst->radutmp_fn);
+	free(inst);
 	return 0;
 }
 
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
-static int radutmp_zap(struct acct_instance *inst, UINT4 nasaddr, time_t t)
+static int radutmp_zap(struct radutmp_instance *inst, uint32_t nasaddr, time_t t)
 {
 	struct radutmp	u;
 	int		fd;
@@ -208,11 +157,8 @@ static int radutmp_zap(struct acct_instance *inst, UINT4 nasaddr, time_t t)
 		/*
 		 *	Lock the utmp file, prefer lockf() over flock().
 		 */
-#if defined(F_LOCK) && !defined(BSD)
-		(void)lockf(fd, F_LOCK, LOCK_LEN);
-#else
-		(void)flock(fd, LOCK_EX);
-#endif
+		radutmp_lock(fd);
+
 		/*
 		 *	Find the entry for this NAS / portno combination.
 		 */
@@ -224,8 +170,8 @@ static int radutmp_zap(struct acct_instance *inst, UINT4 nasaddr, time_t t)
 			 *	Match. Zap it.
 			 */
 			if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-				log(L_ERR, "Accounting: radutmp_zap: "
-					   "negative lseek!\n");
+				radlog(L_ERR, "Accounting: radutmp_zap: "
+					      "negative lseek!\n");
 				lseek(fd, (off_t)0, SEEK_SET);
 			}
 			u.type = P_IDLE;
@@ -233,6 +179,8 @@ static int radutmp_zap(struct acct_instance *inst, UINT4 nasaddr, time_t t)
 			write(fd, &u, sizeof(u));
 		}
 		close(fd);
+	} else {
+		radlog(L_ERR, "Accounting: %s: %m", inst->radutmp_fn);
 	}
 
 	return 0;
@@ -241,7 +189,7 @@ static int radutmp_zap(struct acct_instance *inst, UINT4 nasaddr, time_t t)
 /*
  *	Lookup a NAS_PORT in the nas_port_list
  */
-static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, UINT4 nasaddr, int port)
+static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, int port)
 {
 	NAS_PORT	*cl;
 
@@ -262,8 +210,8 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR	*vp;
 	int		rb_record = 0;
 	int		status = -1;
-	int		nas_address = 0;
-	int		framed_address = 0;
+	uint32_t	nas_address = 0;
+	uint32_t	framed_address = 0;
 	int		protocol = -1;
 	time_t		t;
 	int		fd;
@@ -271,14 +219,14 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	int		port_seen = 0;
 	int		nas_port_type = 0;
 	int		off;
-	struct acct_instance *inst = instance;
+	struct radutmp_instance *inst = instance;
 
 	/*
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) == NULL) {
-		log(L_ERR, "Accounting: no Accounting-Status-Type record.");
-		return RLM_ACCT_FAIL;
+		radlog(L_ERR, "Accounting: no Accounting-Status-Type record.");
+		return RLM_MODULE_NOOP;
 	}
 	status = vp->lvalue;
 	if (status == PW_STATUS_ACCOUNTING_ON ||
@@ -308,13 +256,13 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			check2 = 1;
 		if (check1 == 0 || check2 == 0) {
 #if 0 /* Cisco sometimes sends START records without username. */
-			log(L_ERR, "Accounting: no username in record");
-			return RLM_ACCT_FAIL;
+			radlog(L_ERR, "Accounting: no username in record");
+			return RLM_MODULE_FAIL;
 #else
 			break;
 #endif
 		}
-		log(L_INFO, "Accounting: converting reboot records.");
+		radlog(L_INFO, "Accounting: converting reboot records.");
 		if (status == PW_STATUS_STOP)
 			status = PW_STATUS_ACCOUNTING_OFF;
 		if (status == PW_STATUS_START)
@@ -378,7 +326,8 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				break;
 			case PW_CALLING_STATION_ID:
 				if(inst->callerid_ok)
-					strNcpy(ut.caller_id, vp->strvalue,
+					strNcpy(ut.caller_id,
+						(char *)vp->strvalue,
 						sizeof(ut.caller_id));
 				break;
 		}
@@ -405,16 +354,16 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	See if this was a portmaster reboot.
 	 */
 	if (status == PW_STATUS_ACCOUNTING_ON && nas_address) {
-		log(L_INFO, "NAS %s restarted (Accounting-On packet seen)",
+		radlog(L_INFO, "NAS %s restarted (Accounting-On packet seen)",
 			nas_name(nas_address));
 		radutmp_zap(inst, nas_address, ut.time);
-		return RLM_ACCT_OK;
+		return RLM_MODULE_OK;
 	}
 	if (status == PW_STATUS_ACCOUNTING_OFF && nas_address) {
-		log(L_INFO, "NAS %s rebooted (Accounting-Off packet seen)",
+		radlog(L_INFO, "NAS %s rebooted (Accounting-Off packet seen)",
 			nas_name(nas_address));
 		radutmp_zap(inst, nas_address, ut.time);
-		return RLM_ACCT_OK;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -423,9 +372,9 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	if (status != PW_STATUS_START &&
 	    status != PW_STATUS_STOP &&
 	    status != PW_STATUS_ALIVE) {
-		log(L_ERR, "NAS %s port %d unknown packet type %d)",
+		radlog(L_ERR, "NAS %s port %d unknown packet type %d)",
 			nas_name(nas_address), ut.nas_port, status);
-		return RLM_ACCT_FAIL_SOFT;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -436,7 +385,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	- with the username "!root" (console admin login)
 	 */
 	if (!port_seen || strncmp(ut.login, "!root", RUT_NAMESIZE) == 0)
-		return RLM_ACCT_OK;
+		return RLM_MODULE_NOOP;
 
 	/*
 	 *	Enter into the radutmp file.
@@ -449,11 +398,8 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		/*
 		 *	Lock the utmp file, prefer lockf() over flock().
 		 */
-#if defined(F_LOCK) && !defined(BSD)
-		(void)lockf(fd, F_LOCK, LOCK_LEN);
-#else
-		(void)flock(fd, LOCK_EX);
-#endif
+		radutmp_lock(fd);
+
 		/*
 		 *	Find the entry for this NAS / portno combination.
 		 */
@@ -478,7 +424,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				 *	send _only_ logout records).
 				 */
 				if (u.type == P_LOGIN)
-					log(L_ERR,
+					radlog(L_ERR,
 		"Accounting: logout: entry for NAS %s port %d has wrong ID",
 					nas_name(nas_address), u.nas_port);
 				r = -1;
@@ -490,13 +436,13 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			     sizeof(u.session_id)) == 0  &&
 			    u.time >= ut.time) {
 				if (u.type == P_LOGIN) {
-					log(L_INFO,
+					radlog(L_INFO,
 		"Accounting: login: entry for NAS %s port %d duplicate",
 					nas_name(nas_address), u.nas_port);
 					r = -1;
 					break;
 				}
-				log(L_ERR,
+				radlog(L_ERR,
 		"Accounting: login: entry for NAS %s port %d wrong order",
 				nas_name(nas_address), u.nas_port);
 				r = -1;
@@ -521,7 +467,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			}
 
 			if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-				log(L_ERR, "Accounting: negative lseek!\n");
+				radlog(L_ERR, "Accounting: negative lseek!\n");
 				lseek(fd, (off_t)0, SEEK_SET);
 				off = 0;
 			} else
@@ -551,7 +497,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				u.delay = ut.delay;
 				write(fd, &u, sizeof(u));
 			} else if (r == 0) {
-				log(L_ERR,
+				radlog(L_ERR,
 		"Accounting: logout: login entry for NAS %s port %d not found",
 				nas_name(nas_address), ut.nas_port);
 				r = -1;
@@ -559,58 +505,65 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		}
 		close(fd);
 	} else {
-		log(L_ERR, "Accounting: %s: %s", inst->radutmp_fn, strerror(errno));
-		return RLM_ACCT_FAIL;
+		radlog(L_ERR, "Accounting: %s: %m", inst->radutmp_fn);
+		return RLM_MODULE_FAIL;
 	}
 
-	return RLM_ACCT_OK;
+	return RLM_MODULE_OK;
 }
 
 /*
- *	See if a user is already logged in. Sets *count to the current
- *	session count for this user and sets *mpp to 2 if it looks like a
- *	multilink attempt based on the requested ipno, otherwise leaves it
- *	alone.
+ *	See if a user is already logged in. Sets request->simul_count to the
+ *	current session count for this user and sets request->simul_mpp to 2
+ *	if it looks like a multilink attempt based on the requested IP
+ *	address, otherwise leaves request->simul_mpp alone.
+ *
+ *	Check twice. If on the first pass the user exceeds his
+ *	max. number of logins, do a second pass and validate all
+ *	logins by querying the terminal server (using eg. SNMP).
  */
-static int radutmp_checksimul(void *instance, const char *name, int *count,
-			      int doradcheck, UINT4 ipno, int *mpp)
+static int radutmp_checksimul(void *instance, REQUEST *request)
 {
 	struct radutmp	u;
 	int		fd;
-	struct sess_instance *inst = instance;
+	VALUE_PAIR	*fra;
+	uint32_t	ipno = 0;
+	int		rcode;
+	const char *name = (char *)request->username->strvalue;
+	struct radutmp_instance *inst = instance;
 
 	if ((fd = open(inst->radutmp_fn, O_RDWR)) < 0) {
 		if(errno!=ENOENT)
-			return RLM_CSIM_FAIL;
-		*count=0;
-		return RLM_CSIM_OK;
+			return RLM_MODULE_FAIL;
+		request->simul_count=0;
+		return RLM_MODULE_OK;
 	}
 
-	if(!doradcheck) {
-		*count = 0;
-		while(read(fd, &u, sizeof(u)) == sizeof(u))
-			if (strncmp(name, u.login, RUT_NAMESIZE) == 0
-			    && u.type == P_LOGIN)
-				++*count;
-		close(fd);
-		return RLM_CSIM_OK;
+	request->simul_count = 0;
+	while(read(fd, &u, sizeof(u)) == sizeof(u)) {
+		if (strncmp(name, u.login, RUT_NAMESIZE) == 0
+		    && u.type == P_LOGIN)
+			++request->simul_count;
 	}
+
+	if(request->simul_count < request->simul_max) {
+		close(fd);
+		return RLM_MODULE_OK;
+	}
+	lseek(fd, (off_t)0, SEEK_SET);
+
+	/*
+	 *	Setup some stuff, like for MPP detection.
+	 */
+	if ((fra = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
+		ipno = fra->lvalue;
 
 	/*
 	 *	lockf() the file while reading/writing.
 	 */
-#if defined(F_LOCK) && !defined(BSD)
-		(void)lockf(fd, F_LOCK, LOCK_LEN);
-#else
-		(void)flock(fd, LOCK_EX);
-#endif
+		radutmp_lock(fd);
 
-	/*
-	 *	Check all registered logins by querying the
-	 *	terminal server directly.
-	 *	FIXME: rad_check_ts() runs with locked radutmp file!
-	 */
-	*count = 0;
+	request->simul_count = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
 		if (strncmp(name, u.login, RUT_NAMESIZE) == 0
 		    && u.type == P_LOGIN) {
@@ -618,15 +571,25 @@ static int radutmp_checksimul(void *instance, const char *name, int *count,
 			char session_id[sizeof u.session_id+1];
 			strNcpy(login, u.login, sizeof login);
 			strNcpy(session_id, u.session_id, sizeof session_id);
-			if (rad_check_ts(u.nas_address, u.nas_port, login, 
-					 session_id) == 1) {
-				++*count;
+
+			/*
+			 *	rad_check_ts may take seconds to return,
+			 *	and we don't want to block everyone else
+			 *	while that's happening.
+			 */
+			radutmp_unlock(fd);
+			rcode = rad_check_ts(u.nas_address, u.nas_port, login, 
+					     session_id);
+			radutmp_lock(fd);
+
+			if (rcode == 1) {
+				++request->simul_count;
 				/*
 				 *	Does it look like a MPP attempt?
 				 */
 				if (strchr("SCPA", u.proto) &&
 				    ipno && u.framed_address == ipno)
-					*mpp = 2;
+					request->simul_mpp = 2;
 			}
 			else {
 				/*
@@ -641,7 +604,7 @@ static int radutmp_checksimul(void *instance, const char *name, int *count,
 	}
 	close(fd);
 
-	return RLM_CSIM_OK;
+	return RLM_MODULE_OK;
 }
 
 /* globally exported name */
@@ -649,9 +612,10 @@ module_t rlm_radutmp = {
   "radutmp",
   0,                            /* type: reserved */
   NULL,                 	/* initialization */
-  radutmp_instantiate,          /* initialization */
+  radutmp_instantiate,          /* instantiation */
   NULL,                         /* authorization */
   NULL,                         /* authentication */
+  NULL,                         /* preaccounting */
   radutmp_accounting,           /* accounting */
   radutmp_checksimul,		/* checksimul */
   radutmp_detach,               /* detach */

@@ -11,7 +11,9 @@
 #define RADIUS_REALMS		"realms"
 
 #define RADUTMP			LOGDIR "/radutmp"
+#define SRADUTMP		LOGDIR "/sradutmp"
 #define RADWTMP			LOGDIR "/radwtmp"
+#define SRADWTMP		LOGDIR "/sradwtmp"
 
 #define CHECKRAD		SBINDIR "/checkrad"
 

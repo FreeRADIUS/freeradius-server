@@ -50,5 +50,6 @@ struct radutmp {
  *	Take the size of the structure from the actual structure definition.
  */
 #define RUT_NAMESIZE sizeof(((struct radutmp *) NULL)->login)
+#define RUT_SESSSIZE sizeof(((struct radutmp *) NULL)->session_id)
 
 #endif /* _RADUTMP_H */

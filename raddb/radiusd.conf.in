@@ -567,6 +567,25 @@ modules {
 		sqltrace = no
 	}
 
+	radutmp {
+		filename = ${logdir}/radutmp
+		perm = 0600
+		callerid = "yes"
+	}
+
+	# "Safe" radutmp - does not contain caller ID, so it can be
+	# world-readable, and radwho can work for normal users, without
+	# exposing any information that isn't already exposed by who(1).
+	#
+	# This is another instance of the radutmp module, but it is given
+	# then name "sradutmp" to identify it later in the "accounting"
+	# section.
+	radutmp sradutmp {
+		filename = ${logdir}/sradutmp
+		perm = 0644
+		callerid = "no"
+	}
+
 	#
 	# The "always" module is here for debugging purposes. Each instance simply
 	# returns the same result, always, without doing anything.
@@ -664,15 +683,18 @@ preacct {
 	preprocess
 }
 
-# Accounting. Log to detail file, and to the radwtmp file.
+# Accounting. Log to detail file, and to the radwtmp file, and maintain
+# radutmp.
 accounting {
 	#acct_unique
 	detail
 	unix
+	radutmp
+	#sradutmp
 }
 
 # Session database, used for checking Simultaneous-Use. The radutmp module
 # handles this
 session {
-	#radutmp
+	radutmp
 }

@@ -553,8 +553,7 @@ int rad_authenticate(REQUEST *request)
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (namepair &&
-		    (r = radutmp_checksimul((char *)namepair->strvalue,
-		    request->packet->vps, check_item->lvalue)) != 0) {
+		    (r = module_checksimul(request, check_item->lvalue)) != 0) {
 
 			if (check_item->lvalue > 1) {
 				sprintf(umsg,

@@ -113,7 +113,7 @@ struct	main_config_t 	mainconfig;
 
 static int		got_child = FALSE;
 static int		authfd;
-static int		acctfd;
+int			acctfd;
 int	        	proxyfd;
 static pid_t		radius_pid;
 static int		request_num_counter = 0; /* per-request unique ID */
@@ -132,7 +132,7 @@ static gid_t		server_gid;
 static const char	*uid_name = NULL;
 static const char	*gid_name = NULL;
 static int		proxy_requests = TRUE;
-static int		spawn_flag = TRUE;
+int			spawn_flag = TRUE;
 static struct rlimit	core_limits;
 
 static void	usage(void);
@@ -141,7 +141,6 @@ static void	sig_fatal (int);
 static void	sig_hup (int);
 
 static void	rad_reject(REQUEST *request);
-static int	rad_process (REQUEST *, int);
 static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
@@ -1352,8 +1351,12 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	Note that we do this CPU-intensive work in
 	 *	a child thread, not the master.  This helps to
 	 *	spread the load a little bit.
+	 *
+	 *	Internal requests (ones that never go on the
+	 *	wire) have ->data==NULL (data is the wire
+	 *	format) and don't need to be "decoded"
 	 */
-	if (rad_decode(packet, original, secret) != 0) {
+	if (packet->data && rad_decode(packet, original, secret) != 0) {
 		radlog(L_ERR, "%s", librad_errstr);
 		rad_reject(request);
 		goto finished_request;

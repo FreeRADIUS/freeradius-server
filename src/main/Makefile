@@ -6,7 +6,7 @@ include ../../Make.inc
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
-		  modules.o modcall.o radutmp.o xlat.o threads.o smux.o \
+		  modules.o modcall.o session.o xlat.o threads.o smux.o \
 		  radius_snmp.o client.o request_list.o
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/autoconf.h 
 
@@ -60,9 +60,6 @@ modules.o:  modules.c $(INCLUDES)
 
 modcall.o:  modcall.c $(INCLUDES)
 	$(CC) $(CFLAGS) $(INCLTDL) -c modcall.c
-
-radutmp.o:  radutmp.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c radutmp.c
 
 session.o:  session.c $(INCLUDES) ../include/modules.h
 	$(CC) $(CFLAGS) -c session.c
@@ -124,8 +121,8 @@ raduse: raduse.o
 radzap.o: radzap.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radzap.c
 
-radzap: radzap.o util.o nas.o radutmp.o log.o client.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o client.o $(LIBS)
+radzap: radzap.o util.o nas.o log.o client.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o log.o client.o $(LIBS)
 
 clean:
 	rm -rf *.o *.so *~ modules_static.h radiusd radwho raduse \
