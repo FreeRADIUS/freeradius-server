@@ -381,8 +381,10 @@ do_again:
 
 		DEBUG2("rlm_attr_rewrite: Changed value for attribute %s from '%s' to '%s'",
 				data->attribute, attr_vp->strvalue, new_str);
-		attr_vp->length = strlen(new_str);
-		strncpy(attr_vp->strvalue, new_str, (attr_vp->length + 1));
+		if (pairparsevalue(attr_vp, new_str) == NULL) {
+			DEBUG2("rlm_attr_rewrite: Could not write value '%s' into attribute %s: %s", new_str, data->attribute, librad_errstr);
+			return ret;
+		}
 
 to_do_again:
 		ret = RLM_MODULE_OK;
