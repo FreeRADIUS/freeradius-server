@@ -47,7 +47,7 @@ EOM;
 	exit();
 }
 
-$monthly_limit = ($item_vals['Max-Weekly-Session'][0] != '') ? $item_vals['Max-Weekly-Session'][0] : $default_vals['Max-Weekly-Session'][0];
+$monthly_limit = ($item_vals['Max-Monthly-Session'][0] != '') ? $item_vals['Max-Monthly-Session'][0] : $default_vals['Max-Monthly-Session'][0];
 $monthly_limit = ($monthly_limit) ? $monthly_limit : $config[counter_default_monthly];
 $weekly_limit = ($item_vals['Max-Weekly-Session'][0] != '') ? $item_vals['Max-Weekly-Session'][0] : $default_vals['Max-Weekly-Session'][0];
 $weekly_limit = ($weekly_limit) ? $weekly_limit : $config[counter_default_weekly];
@@ -154,6 +154,8 @@ if ($link){
 			$tmp = 0;
 			$extra_msg .= '(Out of weekly quota)';
 		}
+		if (!is_numeric($remaining))
+			$remaining = $tmp;
 		if ($remaining > $tmp)
 			$remaining = $tmp;
 		$log_color = ($remaining) ? 'green' : 'red';
