@@ -34,27 +34,20 @@ if ($user_type != 'group')
 	echo " <title>subscription configuration for $login ($cn)</title>\n";
 else
 	echo " <title>subscription configuration for $login</title>\n";
+?>
 
-echo <<<EOM
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
-EOM;
-
-if ($user_type != 'group')
-	include("password_generator.jsc");
-
-echo <<<EOM
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>
 <td align=center><img src="images/title2.gif"></td>
 </tr>
 </table>
-
 <table border=0 width=400 cellpadding=0 cellspacing=2>
-EOM;
 
+<?php
 if ($user_type != 'group')
 	include("../html/user_toolbar.html.php3");
 else
@@ -270,8 +263,6 @@ if ($user_type != 'group'){
 	echo <<<EOM
 <br><br>
 <input type=submit class=button value="Add to Badusers" OnClick="this.form.badusers.value=1">
-<br><br>
-<input type="button" class=button value="Auto/Password" OnClick="generatepassword(this.form.passwd,8);">
 EOM;
 }
 ?>
