@@ -43,6 +43,7 @@ much more configurable.
 %build
 CFLAGS="$RPM_OPT_FLAGS" \
 %configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
+	--mandir=/usr/man \
 	--with-threads \
 	--with-thread-pool \
 	--with-gnu-ld \
@@ -55,7 +56,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/etc/{logrotate.d,pam.d,rc.d/init.d}
 
 # install files
-make install prefix=$RPM_BUILD_ROOT/usr localstatedir=$RPM_BUILD_ROOT/var sysconfdir=$RPM_BUILD_ROOT/etc
+make install R=$RPM_BUILD_ROOT
 
 # remove unneeded stuff
 rm -f $RPM_BUILD_ROOT/usr/{man/man8/builddbm.8,sbin/rc.radiusd}
