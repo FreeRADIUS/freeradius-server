@@ -1,3 +1,11 @@
+radiusd-freeradius (0.1+beta1-1) unstable; urgency=low
+
+  * Fixed cron log rotation.  (Sergey I. Golod)
+  * Put module libraries in own directory.  (Sergey I. Golod)
+  * Added generalized SQL support for ODBC, Oracle, and Postgres.
+
+ -- Chad Miller <cmiller@debian.org>  [TBA]
+
 radiusd-freeradius (0.0.20010109-1) unstable; urgency=low
 
   * Changed priority, from standard to optional.

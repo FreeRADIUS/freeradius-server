@@ -1,5 +1,5 @@
 Source: radiusd-freeradius
-Build-Depends: libltdl-dev | libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbm1-dev, libopenldap1
+Build-Depends: libltdl-dev | libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbm1-dev, libopenldap1, libsnmp4.1-dev
 Section: net
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>

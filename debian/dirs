@@ -14,7 +14,9 @@ usr/share/doc/radiusd-freeradius
 usr/sbin
 usr/bin
 usr/lib
+usr/lib/freeradius
 var/
 var/log
-var/log/radacct
+var/log/freeradius
+var/log/freeradius/radacct
 var/run

@@ -1,9 +1,5 @@
 TODO list for the Debian package:
 
-22 Nov 2000 -- Javier Fernández-Sanguino Peña 
-Since libltdl is an independent Debian package this one should compile against
-current Debian version and should *not* install it by himself.
-
 26 Nov 2000 -- Chad Miller
 Begin writing manpages for topics listed in the debian/freeradius.undocumented
 file.

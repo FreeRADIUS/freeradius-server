@@ -26,7 +26,7 @@ build: clean
 	touch build
 
 # Architecture independant files.
-binary-indep:   build
+binary-indep:
 
 # Make a binary package (.deb file)
 binary-arch:	build
