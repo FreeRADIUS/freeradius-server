@@ -8,13 +8,11 @@
 #include	"autoconf.h"
 
 #include	<sys/types.h>
-#include	<sys/time.h>
 #include	<sys/file.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<fcntl.h>
-#include	<time.h>
 #include	<unistd.h>
 #include	<errno.h>
 #include	<stdarg.h>

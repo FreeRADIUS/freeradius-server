@@ -1,17 +1,18 @@
 /*
  * timestr.c	See if a string like 'Su2300-0700' matches (UUCP style).
  *
- * Version:	@(#)timestr.c  0.10  21-Mar-1999 miquels@cistron.nl
+ * Version:	$Id$
  *
  */
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <ctype.h>
+#include	"libradius.h"
 
 static const char *days[] =
 	{ "su", "mo", "tu", "we", "th", "fr", "sa", "wk", "any", "al" };
@@ -23,7 +24,7 @@ static const char *days[] =
 #ifdef DEBUG
 #  define xprintf if (1) printf
 #else
-#  define xprintf if (0) printf
+#  define xprintf
 #endif
 
 /*

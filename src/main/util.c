@@ -10,7 +10,6 @@ static const char rcsid[] = "$Id$";
 
 #include	<sys/types.h>
 #include	<sys/socket.h>
-#include	<sys/time.h>
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
 
@@ -19,7 +18,6 @@ static const char rcsid[] = "$Id$";
 #include	<string.h>
 #include	<netdb.h>
 #include	<pwd.h>
-#include	<time.h>
 #include	<ctype.h>
 #include	<signal.h>
 

@@ -11,10 +11,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <time.h>
 #include "sysutmp.h"
 #include "conf.h"
 #include "radpaths.h"
+#include "libradius.h"
 
 #ifdef HAVE_UTMPX_H
 #  define ut_time ut_xtime

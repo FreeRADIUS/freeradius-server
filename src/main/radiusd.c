@@ -13,7 +13,6 @@ static const char rcsid[] =
 
 #include	<sys/types.h>
 #include	<sys/socket.h>
-#include	<sys/time.h>
 #include	<sys/file.h>
 #include	<netinet/in.h>
 
@@ -22,7 +21,6 @@ static const char rcsid[] =
 #include	<string.h>
 #include	<netdb.h>
 #include	<fcntl.h>
-#include	<time.h>
 #include	<ctype.h>
 #include	<unistd.h>
 #include	<signal.h>
@@ -305,7 +303,8 @@ int main(int argc, char **argv)
 			break;
 
 		case 'a':
-			radacct_dir = optarg;
+			if (radacct_dir) free(radacct_dir);
+			radacct_dir = strdup(optarg);
 			break;
 		
 #if defined(WITH_DBM) || defined(WITH_NDBM)
@@ -318,7 +317,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			free(radius_dir);
+			if (radius_dir) free(radius_dir);
 			radius_dir = strdup(optarg);
 			break;
 		
@@ -339,7 +338,8 @@ int main(int argc, char **argv)
 			break;
 		
 		case 'l':
-			radlog_dir = optarg;
+			if (radlog_dir) free(radlog_dir);
+			radlog_dir = strdup(optarg);
 			break;
 
 		case 'n':
@@ -368,6 +368,8 @@ int main(int argc, char **argv)
 			 */
 		case 'X':
 #ifndef WITH_THREAD_POOL
+			spawn_flag = FALSE;
+#else
 			spawn_flag = FALSE;
 #endif
 			dont_fork = TRUE;
@@ -1197,7 +1199,7 @@ static int rad_clean_list(void)
 	for (id = 0; id < 256; id++) {
 		request_count += request_list[id].request_count;
 	}
-	
+
 	/*
 	 *	Only print this if anything's changed.
 	 */
@@ -1312,14 +1314,19 @@ static REQUEST *rad_check_list(REQUEST *request)
 				client_name(request->packet->src_ipaddr),
 				request->packet->id);
 				rad_send(curreq->reply, curreq->secret);
-
+				
 				/*
 				 *	There's no reply, but maybe there's
 				 *	an outstanding proxy request.
+				 *
+				 *	If so, then kick the proxy again.
 				 */
-			} else if (curreq->proxy_reply != NULL) {
-				/* FIXME: kick the remote server again ? */
-				DEBUG2("DUPLICATE got proxy reply???");
+			} else if (curreq->proxy != NULL) {
+				DEBUG2("Sending duplicate proxy request to client %s - ID: %d",
+				       client_name(curreq->proxy->dst_ipaddr),
+				       curreq->proxy->id);
+				curreq->proxy_next_try = curreq->timestamp + RETRY_DELAY;
+				rad_send(curreq->proxy, curreq->proxysecret);
 			} else {
 				log(L_ERR,
 				"Dropping duplicate authentication packet"

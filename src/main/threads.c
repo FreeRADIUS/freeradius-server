@@ -7,7 +7,6 @@
 #include <errno.h>
 #include <semaphore.h>
 #include <assert.h>
-#include <time.h>
 #include <signal.h>
 
 #if HAVE_MALLOC_H
@@ -88,9 +87,9 @@ static THREAD_POOL thread_pool;
  */
 static const CONF_PARSER thread_config[] = {
 	{ "start_servers",       PW_TYPE_INTEGER, &thread_pool.start_threads}, 
-	{ "max_servers",       PW_TYPE_INTEGER, &thread_pool.max_threads}, 
-	{ "min_spare_servers", PW_TYPE_INTEGER, &thread_pool.min_spare_threads}, 
-	{ "max_spare_servers", PW_TYPE_INTEGER, &thread_pool.max_spare_threads}, 
+	{ "max_servers",         PW_TYPE_INTEGER, &thread_pool.max_threads}, 
+	{ "min_spare_servers",   PW_TYPE_INTEGER, &thread_pool.min_spare_threads}, 
+	{ "max_spare_servers",   PW_TYPE_INTEGER, &thread_pool.max_spare_threads}, 
 	{ "max_requests_per_server", PW_TYPE_INTEGER, &thread_pool.max_requests_per_thread}, 
 	
 	{ NULL, -1, NULL}

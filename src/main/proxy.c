@@ -10,7 +10,6 @@ static const char rcsid[] = "$Id$";
 
 #include	<sys/types.h>
 #include	<sys/socket.h>
-#include	<sys/time.h>
 #include	<netinet/in.h>
 
 #include	<stdio.h>
@@ -18,7 +17,6 @@ static const char rcsid[] = "$Id$";
 #include	<unistd.h>
 #include	<ctype.h>
 #include	<string.h>
-#include	<time.h>
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>

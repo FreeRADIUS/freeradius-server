@@ -13,7 +13,6 @@ static const char rcsid[] = "$Id$";
 #include	<string.h>
 #include	<unistd.h>
 #include	<stdarg.h>
-#include	<time.h>
 #include	"radiusd.h"
 
 #if HAVE_SYSLOG_H
@@ -26,7 +25,7 @@ static const char rcsid[] = "$Id$";
  */
 static int do_log(int lvl, const char *fmt, va_list ap)
 {
-	FILE	*msgfd;
+	FILE	*msgfd = NULL;
 	const unsigned char  *s = ": ";
 	unsigned char *p;
 	char	buffer[2048];
@@ -52,9 +51,9 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 #endif
 	} else {
 		sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
-		if((msgfd = fopen(buffer, "a")) == NULL) {
+		if ((msgfd = fopen(buffer, "a")) == NULL) {
 			fprintf(stderr, "%s: Couldn't open %s for logging\n",
-					progname, buffer);
+				progname, buffer);
 			return -1;
 		}
 	}

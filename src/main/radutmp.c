@@ -12,7 +12,6 @@ static const char rcsid[] =
 
 #include	<sys/types.h>
 #include	<sys/socket.h>
-#include	<sys/time.h>
 #include	<sys/file.h>
 #include	<sys/stat.h>
 #include	<netinet/in.h>
@@ -22,7 +21,6 @@ static const char rcsid[] =
 #include	<stdlib.h>
 #include	<string.h>
 #include	<netdb.h>
-#include	<time.h>
 #include	<ctype.h>
 #include	<unistd.h>
 #include	<signal.h>

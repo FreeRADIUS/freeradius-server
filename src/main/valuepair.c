@@ -14,7 +14,6 @@ static const char rcsid[] = "$Id$";
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<time.h>
 #include	<netinet/in.h>
 
 #ifdef HAVE_MALLOC_H

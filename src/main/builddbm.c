@@ -10,7 +10,6 @@ char sccsid[] =
 #include	"autoconf.h"
 
 #include	<sys/types.h>
-#include	<sys/time.h>
 #include	<sys/stat.h>
 
 #include	<stdio.h>

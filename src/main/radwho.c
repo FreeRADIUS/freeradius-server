@@ -22,7 +22,6 @@ static const char rcsid[] =
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
-#include <time.h>
 #include <ctype.h>
 #include <netinet/in.h>
 
