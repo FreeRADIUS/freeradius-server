@@ -171,7 +171,6 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 	int		status;
 	int		n, left, done;
 	void		(*oldsig)(int) = NULL;
-	
 
 	/*
 	 *	(hs)	- Open a pipe for child/parent communication.
@@ -194,6 +193,11 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 	}
 
 	if ((pid = fork()) == 0) {
+#define MAX_ENVP 1024
+		char		*envp[MAX_ENVP];
+		int		envlen;
+		char		buffer[1024];
+
 		/*	
 		 *	Child
 		 */
@@ -226,10 +230,40 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 				log(L_ERR|L_CONS, "Can't dup stdout: %m");
 		}
 
+		/*
+		 *	Set up the environment variables.
+		 *	We're in the child, and it will exit in 4 lines
+		 *	anyhow, so memory allocation isn't an issue.
+		 */
+		envlen = 0;
+
+		for (vp = request; vp->next; vp = vp->next) {
+			char *p;
+
+			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
+			n = strlen(buffer);
+			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, 1);
+
+			for (p = buffer; *p != '='; p++) {
+			  if (*p == '-') {
+			    *p = '_';
+			  } else if (isalpha(*p)) {
+			    *p = toupper(*p);
+			  }
+			}
+
+			envp[envlen++] = strdup(buffer);
+		}
+
+		envp[envlen] = NULL;
+		
+
+
+
 		for(n = 32; n >= 3; n--)
 			close(n);
 
-		execvp(argv[0], argv);
+		execve(argv[0], argv, envp);
 
 		log(L_ERR, "Exec-Program: %s: %m", argv[0]);
 		exit(1);
