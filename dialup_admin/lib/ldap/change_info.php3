@@ -3,15 +3,15 @@
 	if ($ds){
 		$r = @ldap_bind($ds,"$config[ldap_binddn]",$config[ldap_bindpw]);
 		if ($r){
-			if ($Fcn != '' && $Fcn != $cn)
+			if ($Fcn != '' && $Fcn != '-' && $Fcn != $cn)
 				$mod['cn'] = $Fcn;
-			if ($Fmail != '' && $Fmail != $mail)
+			if ($Fmail != '' && $Fmail != '-' && $Fmail != $mail)
 				$mod['mail'] = $Fmail;
-			if ($Fou != '' && $Fou != $ou)
+			if ($Fou != '' && $Fou != '-' && $Fou != $ou)
 				$mod['ou'] = $Fou;
-			if ($Ftelephonenumber != '' && $Ftelephonenumber != $telephonenumber)
+			if ($Ftelephonenumber != '' && $Ftelephonenumber != '-' && $Ftelephonenumber != $telephonenumber)
 				$mod['telephonenumber'] = $Ftelephonenumber;
-			if ($Fhomephone != '' && $Fhomephone != $homephone)
+			if ($Fhomephone != '' && $Fhomephone != '-' && $Fhomephone != $homephone)
 				$mod['homephone'] = $Fhomephone;
 			if ($dn != ''){
 				@ldap_mod_replace($ds,$dn,$mod);
