@@ -19,10 +19,10 @@
 #include "radius.h"
 #include "token.h"
 
-#ifdef WIN32
-typedef unsigned char u_char;
-typedef unsigned short u_short;
-typedef unsigned int u_int;
+#ifdef SIZEOF_UNSIGNED_INT
+#if SIZEOF_UNSIGNED_INT != 4
+#error FATAL: sizeof(unsigned int) != 4
+#endif
 #endif
 
 #define AUTH_VECTOR_LEN		16
