@@ -94,7 +94,7 @@ endif
 
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -module $(LINK_MODE) $(CFLAGS) \
-	$(RLM_CFLAGS) -o $@ -rpath $(libdir) $^ $(RLM_LIBS)
+	$(RLM_CFLAGS) -o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #
