@@ -447,7 +447,9 @@ RADIUSD_NEED_DECLARATIONS( \
 	strcasecmp \
 	inet_aton \
 	gethostname \
-	setlinebuf
+	setlinebuf \
+	getusershell \
+	endusershell
 )
 
 AC_TYPE_SIGNAL

@@ -30,3 +30,11 @@ int gethostname(char *name, int len);
 #ifdef NEED_DECLARATION_SETLINEBUF
 #define setlinebuf(x)     0
 #endif
+
+#ifdef NEED_DECLARATION_GETUSERSHELL
+char *getusershell(void);
+#endif
+
+#ifdef NEED_DECLARATION_ENDUSERSHELL
+void endusershell(void);
+#endif
