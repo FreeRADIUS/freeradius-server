@@ -76,7 +76,7 @@ CREATE TABLE StopVoIP (
 	CiscoNASPort		VARCHAR(1),
 	H323GWID		VARCHAR(32),
 	H323CallOrigin		VARCHAR(10),
-	H323DisconnectCause	VARCHAR(2),
+	H323DisconnectCause	VARCHAR(20),
 	H323RemoteAddress	INET,
 	H323VoiceQuality	INTEGER,
 	H323ConfID		VARCHAR(35) NOT NULL
@@ -109,7 +109,7 @@ CREATE TABLE StopTelephony (
 	CiscoNASPort		VARCHAR(16),
 	H323GWID		VARCHAR(32),
 	H323CallOrigin		VARCHAR(10),
-	H323DisconnectCause	VARCHAR(2),
+	H323DisconnectCause	VARCHAR(20),
 	H323RemoteAddress	INET,
 	H323VoiceQuality	INTEGER,
 	H323ConfID		VARCHAR(35) NOT NULL
