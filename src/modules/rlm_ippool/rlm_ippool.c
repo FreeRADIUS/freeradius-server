@@ -226,14 +226,14 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 			
 			strcpy(key.nas, nas_init);
 			key.port = j;
-			key_datum.dptr = (ippool_key *) &key;
+			key_datum.dptr = (char *) &key;
 			key_datum.dsize = sizeof(ippool_key);
 
 			entry.ipaddr = ntohl(i);
 			entry.active = 0;
 			strcpy(entry.cli,cli);
 
-			data_datum.dptr = (ippool_info *) &entry;
+			data_datum.dptr = (char *) &entry;
 			data_datum.dsize = sizeof(ippool_info);
 
 			rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
@@ -319,7 +319,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
 	key.port = port;
 	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",key.nas,key.port);
-	key_datum.dptr = (ippool_key *) &key;
+	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
 	pthread_mutex_lock(&data->session_mutex);
@@ -335,7 +335,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_ippool: Deallocated entry for ip/port: %s/%d",ip_ntoa(str,entry.ipaddr),port);
 		entry.active = 0;
 
-		data_datum.dptr = (ippool_info *) &entry;
+		data_datum.dptr = (char *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
 
 		pthread_mutex_lock(&data->session_mutex);
@@ -350,7 +350,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		/*
 		 * Decrease allocated count from the ip index
 		 */
-		key_datum.dptr = (uint32_t *) &entry.ipaddr;
+		key_datum.dptr = (char *) &entry.ipaddr;
 		key_datum.dsize = sizeof(uint32_t);
 		pthread_mutex_lock(&data->ip_mutex);
 		data_datum = gdbm_fetch(data->ip, key_datum);
@@ -361,7 +361,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			if (num >0){
 				num--;
 				DEBUG("rlm_ippool: num: %d",num);
-				data_datum.dptr = (int *) &num;
+				data_datum.dptr = (char *) &num;
 				data_datum.dsize = sizeof(int);
 				pthread_mutex_lock(&data->ip_mutex);
 				rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
@@ -449,7 +449,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
 	key.port = port;	
 	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",key.nas,key.port);
-	key_datum.dptr = (ippool_key *) &key;
+	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
 	pthread_mutex_lock(&data->session_mutex);
@@ -466,7 +466,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			DEBUG("rlm_ippool: Found a stale entry for ip/port: %s/%d",ip_ntoa(str,entry.ipaddr),port);
 			entry.active = 0;
 
-			data_datum.dptr = (ippool_info *) &entry;
+			data_datum.dptr = (char *) &entry;
 			data_datum.dsize = sizeof(ippool_info);
 
 			pthread_mutex_lock(&data->session_mutex);
@@ -479,7 +479,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			}
 			/* Decrease allocated count from the ip index */
 
-			key_datum.dptr = (uint32_t *) &entry.ipaddr;
+			key_datum.dptr = (char *) &entry.ipaddr;
 			key_datum.dsize = sizeof(uint32_t);
 			pthread_mutex_lock(&data->ip_mutex);
 			data_datum = gdbm_fetch(data->ip, key_datum);
@@ -490,7 +490,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 				if (num >0){
 					num--;
 					DEBUG("rlm_ippool: num: %d",num);
-					data_datum.dptr = (int *) &num;
+					data_datum.dptr = (char *) &num;
 					data_datum.dsize = sizeof(int);
 					pthread_mutex_lock(&data->ip_mutex);
 					rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
@@ -573,7 +573,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 */
 	if (key_datum.dptr){
 		entry.active = 1;
-		data_datum.dptr = (ippool_info *) &entry;
+		data_datum.dptr = (char *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
 
 		if (delete){
@@ -588,7 +588,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		memset(key.nas,0,MAX_NAS_NAME_SIZE);
 		strncpy(key.nas,nas,MAX_NAS_NAME_SIZE - 1);
 		key.port = port;
-		key_datum.dptr = (ippool_key *) &key;
+		key_datum.dptr = (char *) &key;
 		key_datum.dsize = sizeof(ippool_key);
 		
 		DEBUG2("rlm_ippool: Allocating ip to nas/port: %s/%d",key.nas,key.port);
@@ -602,7 +602,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		}
 
 		/* Increase the ip index count */
-		key_datum.dptr = (uint32_t *) &entry.ipaddr;
+		key_datum.dptr = (char *) &entry.ipaddr;
 		key_datum.dsize = sizeof(uint32_t);	
 		pthread_mutex_lock(&data->ip_mutex);
 		data_datum = gdbm_fetch(data->ip, key_datum);
@@ -613,7 +613,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		}
 		num++;
 		DEBUG("rlm_ippool: num: %d",num);
-		data_datum.dptr = (int *) &num;
+		data_datum.dptr = (char *) &num;
 		data_datum.dsize = sizeof(int);
 		pthread_mutex_lock(&data->ip_mutex);
 		rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
