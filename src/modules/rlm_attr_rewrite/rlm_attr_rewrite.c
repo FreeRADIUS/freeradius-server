@@ -245,7 +245,7 @@ do_again:
 					DEBUG2("rlm_attr_rewrite: No match found for attribute %s with value '%s'",
 							data->attribute, attr_vp->strvalue);
 					regfree(&preg);
-					return RLM_MODULE_OK;
+					goto to_do_again;
 				} else
 					break;
 			}
@@ -310,6 +310,7 @@ do_again:
 		attr_vp->length = strlen(new_str);
 		strncpy(attr_vp->strvalue, new_str, (attr_vp->length + 1));
 
+to_do_again:
 		ret = RLM_MODULE_OK;
 
 		if (tmp != NULL){
