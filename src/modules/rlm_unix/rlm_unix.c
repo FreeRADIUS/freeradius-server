@@ -117,14 +117,15 @@ static int group_inst_explicit;
 
 #if HAVE_GETSPNAM
 #if defined(M_UNIX)
-	static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
-		if (spwd == NULL) return NULL;
-		return (spwd->pw_name);
-	}
-	static inline const char *get_shadow_encrypted_pwd(shadow_pwd_t *spwd) {
-		if (spwd == NULL) return NULL;
-		return (spwd->pw_passwd);
-	}
+static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
+	if (spwd == NULL) return NULL;
+	return (spwd->pw_name);
+}
+
+static inline const char *get_shadow_encrypted_pwd(shadow_pwd_t *spwd) {
+	if (spwd == NULL) return NULL;
+	return (spwd->pw_passwd);
+}
 #else /* M_UNIX */
 	static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
 		if (spwd == NULL) return NULL;
@@ -767,7 +768,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 #ifdef UT_HOSTSIZE
 	if (framed_address) {
 		ip_ntoa(buf, framed_address);
-		strncpy(ut.ut_host, buf, UT_HOSTSIZE);
+		strncpy(ut.ut_host, buf, sizeof(ut.ut_host));
 	}
 #endif
 #ifdef HAVE_UTMPX_H
