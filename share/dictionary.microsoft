@@ -1,5 +1,5 @@
 #
-#	Microsoft's VSA's, from draft-ietf-radius-ms-vsa-00.txt
+#	Microsoft's VSA's, from RFC 2548
 #
 #	$Id$
 #
@@ -14,6 +14,9 @@ ATTRIBUTE	MS-CHAP-CPW-2		4	octets
 ATTRIBUTE	MS-CHAP-LM-Enc-PW	5	octets
 ATTRIBUTE	MS-CHAP-NT-Enc-PW	6	octets
 ATTRIBUTE	MS-MPPE-Encryption-Policy 7	octets
+# This is referred to as both singular and plural in the RFC.
+# Plural seems to make more sense.
+ATTRIBUTE	MS-MPPE-Encryption-Type 8	octets
 ATTRIBUTE	MS-MPPE-Encryption-Types  8	octets
 ATTRIBUTE	MS-RAS-Vendor		9	integer	# content is Vendor-ID
 ATTRIBUTE	MS-CHAP-Domain		10	string
@@ -37,16 +40,13 @@ ATTRIBUTE	MS-CHAP2-Response	25	octets
 ATTRIBUTE	MS-CHAP2-Success	26	octets
 ATTRIBUTE	MS-CHAP2-CPW		27	octets
 
-#
-#	The draft defines two meanings for '28' and '29'
-#
-#ATTRIBUTE	MS-ARAP-Challenge	28	octets
-#ATTRIBUTE	MS-ARAP-Guest-Account	29	integer
-
 ATTRIBUTE	MS-Primary-DNS-Server	28	ipaddr
 ATTRIBUTE	MS-Secondary-DNS-Server	29	ipaddr
 ATTRIBUTE	MS-Primary-NBNS-Server	30	ipaddr
 ATTRIBUTE	MS-Secondary-NBNS-Server 31	ipaddr
+
+#ATTRIBUTE	MS-ARAP-Challenge	33	octets
+
 
 #
 #	Integer Translations
@@ -62,15 +62,8 @@ VALUE		MS-BAP-Usage		Required	2
 
 VALUE	MS-ARAP-PW-Change-Reason	Just-Change-Password		1
 VALUE	MS-ARAP-PW-Change-Reason	Expired-Password		2
-VALUE	MS-ARAP-PW-Change-Reason	Admin-Required-Password-Change	3
+VALUE	MS-ARAP-PW-Change-Reason	Admin-Requires-Password-Change	3
 VALUE	MS-ARAP-PW-Change-Reason	Password-Too-Short		4
-
-#	MS-ARAP-Guest-Account Values
-#
-#	The first value (0) is not in the draft, but it might make sense...
-#
-#VALUE		MS-ARAP-Guest-Account	Dont-Use-Guest-Account	0
-#VALUE		MS-ARAP-Guest-Account	Use-Guest-Account	1
 
 #	MS-Acct-Auth-Type Values
 
