@@ -12,12 +12,14 @@ $(DYNAMIC_OBJS): $(HEADERS)
 
 
 all:
-	
 	@$(MAKE) $(MFLAGS) static dynamic
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 allclean:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
+
+allinstall:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 
 common: 
 	@for dir in $(SUBDIRS); do \

@@ -7,6 +7,9 @@ all:
 clean:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
+install:
+	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
 common: 
 	@for mod in rlm_sql*; do \
 		what=$(WHAT_TO_MAKE); \
