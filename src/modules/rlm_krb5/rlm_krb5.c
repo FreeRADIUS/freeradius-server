@@ -39,9 +39,23 @@ static const char rcsid[] = "$Id$";
 #include <krb5.h>
 #include <com_err.h>
 
+typedef struct rlm_krb5_t {
+	const char *keytab;
+	const char *service_princ;
+	krb5_context *context;
+} rlm_krb5_t;
+
+static CONF_PARSER module_config[] = {
+	{ "keytab", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_krb5_t,keytab), NULL, NULL },
+	{ "service_principal", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_krb5_t,service_princ), NULL, NULL },
+	{ NULL, -1, 0, NULL, NULL }
+};
+
 #ifndef HEIMDAL_KRB5
-static int verify_krb5_tgt(krb5_context context, const char *user,
-                           krb5_ccache ccache)
+static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
+                           const char *user, krb5_ccache ccache)
 {
 	int r;
 	char phost[BUFSIZ];
@@ -49,9 +63,28 @@ static int verify_krb5_tgt(krb5_context context, const char *user,
 	krb5_keyblock *keyblock = 0;
 	krb5_data packet;
 	krb5_auth_context auth_context = NULL;
+	krb5_keytab keytab;
+	/* arbitrary 64-byte limit on service names; I've never seen a
+	   service name this long, and hope never to. -srl */
+	char service[64] = "host";
+	char *servername = NULL;
 
-	if ((r = krb5_sname_to_principal(context, NULL, NULL,
-	                                     KRB5_NT_SRV_HST, &princ)))
+	if (instance->service_princ != NULL) {
+		servername = strchr(instance->service_princ, '/');
+		if (servername != NULL) {
+			*servername = '\0';
+		}
+
+		strncpy(service,instance->service_princ,sizeof(service));
+		service[sizeof(service)-1] = '\0';
+
+		if (servername != NULL) {
+			*servername = '/';
+			servername++;
+		}
+	}
+	if ((r = krb5_sname_to_principal(context, servername, service,
+	                                    KRB5_NT_SRV_HST, &princ)))
 	{
 		radlog(L_DBG, "rlm_krb5: [%s] krb5_sname_to_principal failed: %s",
 			user, error_message(r));
@@ -61,27 +94,24 @@ static int verify_krb5_tgt(krb5_context context, const char *user,
 	strncpy(phost, krb5_princ_component(c, princ, 1)->data, BUFSIZ);
 	phost[BUFSIZ - 1] = '\0';
 
-	radlog(L_DBG, "rlm_krb5: krb5 server princ name: %s",phost);
-
 	/*
 	 * Do we have host/<host> keys?
 	 * (use default/configured keytab, kvno IGNORE_VNO to get the
 	 * first match, and enctype is currently ignored anyhow.)
 	 */
-	if ((r = krb5_kt_read_service_key(context, NULL, princ, 0,
+	if ((r = krb5_kt_read_service_key(context, instance->keytab, princ, 0,
 	                                  ENCTYPE_DES_CBC_MD5, &keyblock)))
 	{
 		/* Keytab or service key does not exist */
 		radlog(L_DBG, "rlm_krb5: verify_krb_v5_tgt: host key not found : %s",
 		       error_message(r));
-		r = RLM_MODULE_OK;
-		goto cleanup;
+		return RLM_MODULE_OK;
 	}
 	if (keyblock)
 		krb5_free_keyblock(context, keyblock);
 
 	/* Talk to the kdc and construct the ticket. */
-	r = krb5_mk_req(context, &auth_context, 0, "host", phost, NULL,
+	r = krb5_mk_req(context, &auth_context, 0, service, phost, NULL,
 	                ccache, &packet);
 	if (auth_context) {
 		krb5_auth_con_free(context, auth_context);
@@ -95,11 +125,29 @@ static int verify_krb5_tgt(krb5_context context, const char *user,
 		goto cleanup;
 	}
 
+	if (instance->keytab != NULL) {
+		r = krb5_kt_resolve(context, instance->keytab, &keytab);
+	}
+
+	if (instance->keytab == NULL || r) {
+		r = krb5_kt_default(context, &keytab);
+	}
+
+	/* Hmm?  The keytab was just fine a second ago! */
+	if (r) {
+		radlog(L_AUTH, "rlm_krb5: [%s] krb5_kt_resolve failed: %s",
+			user, error_message(r));
+		r = RLM_MODULE_REJECT;
+		goto cleanup;
+	}
+
 	/* Try to use the ticket. */
 	r = krb5_rd_req(context, &auth_context, &packet, princ,
-	                NULL, NULL, NULL);
+	                keytab, NULL, NULL);
 	if (auth_context)
 		krb5_auth_con_free(context, auth_context);
+
+	krb5_kt_close(context, keytab);
 
 	if (r) {
 		radlog(L_AUTH, "rlm_krb5: [%s] krb5_rd_req() failed: %s",
@@ -120,25 +168,37 @@ cleanup:
 static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 {
 	int r;
+	rlm_krb5_t *data;
 	krb5_context *context;
 
-	context = rad_malloc(sizeof(*context));
+	data = rad_malloc(sizeof(*data));
+
+	memset(data, 0, sizeof(*data));
+
+	if (cf_section_parse(conf, data, module_config) < 0) {
+		free(data);
+		return -1;
+	}
+
+	context = data->context = rad_malloc(sizeof(*context));
 
         if ((r = krb5_init_context(context)) ) {
 		radlog(L_AUTH, "rlm_krb5: krb5_init failed: %s",
 		       error_message(r));
+		free(data);
                 return -1;
         } else {
 		radlog(L_AUTH, "rlm_krb5: krb5_init ok");
 	}
 
-	*instance = context;
+	*instance = data;
 	return 0;
 }
 
 /* detach */
 static int krb5_detach(void *instance)
 {
+	free(((rlm_krb5_t *)instance)->context);
 	free(instance);
 	return 0;
 }
@@ -159,7 +219,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 	krb5_ccache ccache;
 	char cache_name[L_tmpnam + 8];
 
-	krb5_context context = *(krb5_context *) instance; /* copy data */
+	krb5_context context = *((rlm_krb5_t *)instance)->context; /* copy data */
 	const char *user, *pass;
 
 	/*
@@ -249,7 +309,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 		return RLM_MODULE_REJECT;
 	} else {
 		/* Now verify the KDC's identity. */
-		r = verify_krb5_tgt(context, user, ccache);
+		r = verify_krb5_tgt(context, (rlm_krb5_t *)instance, user, ccache);
 		krb5_free_cred_contents(context, &kcreds);
 		krb5_cc_destroy(context, ccache);
 		return r;
