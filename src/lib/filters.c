@@ -660,6 +660,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 				str++;
 				masklen = atoi(str);
 				if ((masklen < 0) || (masklen > 32)) return -1;
+				str += strspn(str, "0123456789");
 				netmask = masklen;
 				goto finalize;
 				break;
@@ -688,14 +689,14 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 	 *	We've hit the end of the IP address, and there's something
 	 *	else left over: die.
 	 */
-	if (!netmask && *str) return -1;
+	if (*str) return -1;
 
 	/*
 	 *	Set the default netmask.
 	 */
 	if (!netmask) {
 		if (!*ipaddr) {
-			netmask = 0;;
+			netmask = 0;
 		} else if ((*ipaddr & 0x80000000) == 0) {
 			netmask = 8;
 		} else if ((*ipaddr & 0xc0000000) == 0x80000000) {
