@@ -513,33 +513,32 @@ x99_token_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	    }
 
-	    /* Fast path if we didn't protect the state. */
-	    if (!(user_info.card_id & X99_CF_AM))
-		goto good_state;
-
-	    /* Verify the state. */
-	    (void) memset(challenge, 0, sizeof(challenge));
-	    (void) memcpy(challenge, vp->strvalue, inst->chal_len);
-	    (void) memcpy(&sflags, vp->strvalue + inst->chal_len, 4);
-	    (void) memcpy(&then, vp->strvalue + inst->chal_len + 4, 4);
-	    if (x99_gen_state(NULL,&state,challenge,sflags,then,hmac_key) != 0){
-		x99_log(X99_LOG_ERR, "auth: failed to generate state");
-		return RLM_MODULE_FAIL;
-	    }
-	    if (memcmp(state, vp->strvalue, vp->length)) {
-		x99_log(X99_LOG_AUTH,
-			"auth: bad state for [%s]: hmac", username);
+	    if (user_info.card_id & X99_CF_AM) {
+		/* Verify the state. */
+		(void) memset(challenge, 0, sizeof(challenge));
+		(void) memcpy(challenge, vp->strvalue, inst->chal_len);
+		(void) memcpy(&sflags, vp->strvalue + inst->chal_len, 4);
+		(void) memcpy(&then, vp->strvalue + inst->chal_len + 4, 4);
+		if (x99_gen_state(NULL, &state, challenge,
+				  sflags, then, hmac_key) != 0) {
+		    x99_log(X99_LOG_ERR, "auth: failed to generate state");
+		    return RLM_MODULE_FAIL;
+		}
+		if (memcmp(state, vp->strvalue, vp->length)) {
+		    x99_log(X99_LOG_AUTH,
+			    "auth: bad state for [%s]: hmac", username);
+		    free(state);
+		    return RLM_MODULE_REJECT;
+		}
 		free(state);
-		return RLM_MODULE_REJECT;
-	    }
-	    free(state);
 
-	    /* State is valid, but check expiry. */
-	    then = ntohl(then);
-	    if (time(NULL) - then > inst->chal_delay) {
-		x99_log(X99_LOG_AUTH,
-			"auth: bad state for [%s]: expired", username);
-		return RLM_MODULE_REJECT;
+		/* State is valid, but check expiry. */
+		then = ntohl(then);
+		if (time(NULL) - then > inst->chal_delay) {
+		    x99_log(X99_LOG_AUTH,
+			    "auth: bad state for [%s]: expired", username);
+		    return RLM_MODULE_REJECT;
+		}
 	    }
 	} else {
 	    /* This should only happen if the authorize code didn't run. */
@@ -549,9 +548,6 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	    return RLM_MODULE_FAIL;
 	}
     } /* if (!fast_sync) */
-
-good_state:
-	    /* State is good! */
 
     /* Get the time of the last authentication. */
     if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
