@@ -45,6 +45,16 @@ static const char *dtypes[] = {
 #endif
 
 /*
+ *	Quick pointers to the base 0..255 attributes.
+ *
+ *	These attributes are referenced a LOT, especially during
+ *	decoding of the on-the-wire packets.  It's useful to keep a
+ *	cache of their dictionary entries, so looking them up is
+ *	O(1), instead of O(N).  (N==number of dictionary entries...)
+ */
+static DICT_ATTR *base_attributes[256];
+
+/*
  *	Free the dictionary_attributes and dictionary_values lists.
  */
 static void dict_free(void)
@@ -65,10 +75,13 @@ static void dict_free(void)
 		enext = dvend->next;
 		free(dvend);
 	}
+
 	dictionary_attributes = NULL;
 	dictionary_values = NULL;
 	dictionary_vendors = NULL;
 	vendorno = 1;
+
+	memset(base_attributes, 0, sizeof(base_attributes));
 }
 
 /*
@@ -119,6 +132,12 @@ int dict_addattr(const char *name, int vendor, int type, int value)
 	attr->type = type;
 	if (vendor) {
 		attr->attr |= (vendor << 16);
+	} else if ((attr->attr >= 0) && (attr->attr < 256)) {
+		/*
+		 *	If it's an on-the-wire base attribute,
+		 *	then keep a quick reference to it, for speed.
+		 */
+		base_attributes[attr->attr] = attr;
 	}
 
 	/*
@@ -500,6 +519,14 @@ int dict_init(const char *dir, const char *fn)
 DICT_ATTR * dict_attrbyvalue(int val)
 {
 	DICT_ATTR	*a;
+
+	/*
+	 *	If it's an on-the-wire base attribute, return
+	 *	the cached value for it.
+	 */
+	if ((val >= 0) && (val < 256)) {
+		return base_attributes[val];
+	}
 
 	for (a = dictionary_attributes; a; a = a->next) {
 		if (a->attr == val)
