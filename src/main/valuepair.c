@@ -217,7 +217,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 		 *	sent to us by the user.  It ALWAYS matches.
 		 */
 		if ((check_item->operator == T_OP_SET) ||
-				(check_item->operator == T_OP_ADD)) {
+		    (check_item->operator == T_OP_ADD)) {
 			check_item = check_item->next;
 			continue;
 		}
@@ -230,7 +230,25 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 			case PW_CRYPT_PASSWORD:
 				check_item = check_item->next;
 				continue;
+				break;
+
+			/*
+			 *	IF the password attribute exists, THEN
+			 *	we can do comparisons against it.  If not,
+			 *	then the request did NOT contain a Password
+			 *	attribute, so we CANNOT do comparisons
+			 *	against it.
+			 *
+			 *	This hack makes CHAP-Password work..
+			 */
+			case PW_PASSWORD:
+				if (pairfind(request, PW_PASSWORD) == NULL) {
+					check_item = check_item->next;
+					continue;
+				}
+				break;
 		}
+
 		/*
 		 *	See if this item is present in the request.
 		 */
