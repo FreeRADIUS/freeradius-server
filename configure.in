@@ -25,8 +25,8 @@ AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
 dnl # The version of the software
-RADIUSD_MAJOR_VERSION=0
-RADIUSD_MINOR_VERSION=9-pre
+RADIUSD_MAJOR_VERSION=1
+RADIUSD_MINOR_VERSION=0.0-pre0
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
 
 dnl #############################################################
@@ -253,6 +253,29 @@ AC_ARG_WITH(experimental-modules,
     *)
   esac ]
 )
+
+dnl #
+dnl # extra argument: --openssl-includes=dir
+dnl #
+AC_ARG_WITH(openssl-includes,
+[  --with-openssl-includes=DIR      Directory to look for OpenSSL include files],
+[ case "$withval" in
+    *)
+	;;
+  esac ]
+)
+
+dnl #
+dnl # extra argument: --openssl-libraries=dir
+dnl #
+AC_ARG_WITH(openssl-libraries,
+[  --with-openssl-libraries=DIR     Directory to look for OpenSSL library files],
+[ case "$withval" in
+    *)
+	;;
+  esac ]
+)
+
 
 dnl #
 dnl #  These next two arguments don't actually do anything.  They're

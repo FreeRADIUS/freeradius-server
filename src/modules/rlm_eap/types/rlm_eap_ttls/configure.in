@@ -41,6 +41,32 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
+	dnl #
+	dnl # extra argument: --openssl-includes=dir
+	dnl #
+	AC_ARG_WITH(openssl-includes,
+	[  --with-openssl-includes=DIR       Directory to look for OpenSSL include files],
+	[ case "$withval" in
+	    *)
+		rlm_eap_ttls_inc_dir=$withval
+		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
+		;;
+	  esac ]
+	)
+
+	dnl #
+	dnl # extra argument: --openssl-libraries=dir
+	dnl #
+	AC_ARG_WITH(openssl-libraries,
+	[  --with-openssl-libraries=DIR      Directory to look for OpenSSL library files],
+	[ case "$withval" in
+	    *)
+		rlm_eap_ttls_lib_dir=$withval
+		SMART_LIBS="$SMART_LIBS -L$withval"
+		;;
+	  esac ]
+	)
+
 	smart_try_dir=$rlm_eap_ttls_inc_dir
 	AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
 	if test "x$ac_cv_header_openssl_ssl_h" != "xyes"; then

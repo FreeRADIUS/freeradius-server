@@ -12,7 +12,7 @@ if test x$with_[]modname != xno; then
 	dnl extra argument: --with-rlm-eap-tls-lib-dir
 	rlm_eap_tls_lib_dir=
 	AC_ARG_WITH(rlm-eap-tls-lib-dir,
-	[  --with-rlm-eap-tls-lib-dir=DIR   Directory for EAPTLS library files []],
+	[  --with-rlm-eap-tls-lib-dir=DIR    Directory for EAPTLS library files []],
 	[ case "$withval" in
 	    no)
 		AC_MSG_ERROR(Need rlm-eap-tls-lib-dir)
@@ -41,6 +41,32 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
+	dnl #
+	dnl # extra argument: --openssl-includes=dir
+	dnl #
+	AC_ARG_WITH(openssl-includes,
+	[  --with-openssl-includes=DIR       Directory to look for OpenSSL include files],
+	[ case "$withval" in
+	    *)
+		rlm_eap_tls_inc_dir=$withval
+		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
+		;;
+	  esac ]
+	)
+
+	dnl #
+	dnl # extra argument: --openssl-libraries=dir
+	dnl #
+	AC_ARG_WITH(openssl-libraries,
+	[  --with-openssl-libraries=DIR      Directory to look for OpenSSL library files],
+	[ case "$withval" in
+	    *)
+		rlm_eap_tls_lib_dir=$withval
+		SMART_LIBS="$SMART_LIBS -L$withval"
+		;;
+	  esac ]
+	)
+
 	smart_try_dir=$rlm_eap_tls_inc_dir
 	AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
 	if test "x$ac_cv_header_openssl_ssl_h" != "xyes"; then
@@ -49,14 +75,14 @@ if test x$with_[]modname != xno; then
 
 	smart_try_dir=$rlm_eap_tls_lib_dir
 	AC_SMART_CHECK_LIB(crypto, DH_new)
-    if test "x$ac_cv_lib_crypto_DH_new" != "xyes"; then
+	if test "x$ac_cv_lib_crypto_DH_new" != "xyes"; then
  	    fail="$fail libcrypto"
-    fi
+	fi
 
 	AC_SMART_CHECK_LIB(ssl, SSL_new)
-    if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
+	if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
  	    fail="$fail libssl"
-    fi
+	fi
 
 AC_CHECK_HEADERS( \
 	openssl/err.h \
