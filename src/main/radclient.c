@@ -86,7 +86,9 @@ static VALUE_PAIR *readvp(FILE *fp)
 		if((buf[0] == '\n') && (list)) {
 			return error ? NULL: list;
 		} 
-		if((buf[0] == '\n') && (!list)) {
+		if((buf[0] == '\n') && (!list))
+			continue;
+		if((buf[0] == '#') && (!list)) {
 			continue;
 		} else {
 			do {
