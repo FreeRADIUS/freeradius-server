@@ -1499,8 +1499,9 @@ static int rad_clean_list(time_t curtime)
 				 *	currently 'alive' list of
 				 *	requests.
 				 */
-				DEBUG2("Cleaning up request ID %d with timestamp %08x",
-				       curreq->packet->id, curreq->timestamp);
+				DEBUG2("Cleaning up request ID %d with timestamp %08lx",
+				       curreq->packet->id,
+				       (unsigned long)curreq->timestamp);
 				prevreq = curreq->prev;
 				if (request_list[id].request_count == 0) {
 				  DEBUG("HORRIBLE ERROR!!!");
@@ -1745,8 +1746,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 				 *	currently 'alive' list of
 				 *	requests.
 				 */
-			DEBUG2("Cleaning up request ID %d with timestamp %08x",
-			       curreq->packet->id, curreq->timestamp);
+			DEBUG2("Cleaning up request ID %d with timestamp %08lx",
+			       curreq->packet->id,
+			       (unsigned long)curreq->timestamp);
 			prevreq = curreq->prev;
 			if (request_list[id].request_count == 0) {
 				DEBUG("HORRIBLE ERROR!!!");

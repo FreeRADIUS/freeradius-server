@@ -202,8 +202,16 @@ NAS		*nas_findbyname(char *nasname);
 void		version(void);
 
 /* log.c */
-int		radlog(int, const char *, ...);
-int		log_debug(const char *, ...);
+int		radlog(int, const char *, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
+int		log_debug(const char *, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 1, 2)))
+#endif
+;
 
 /* pam.c */
 #ifdef WITH_PAM

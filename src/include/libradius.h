@@ -195,9 +195,17 @@ int		userparse(char *buffer, VALUE_PAIR **first_pair);
  *	Error functions.
  */
 #ifdef _LIBRADIUS
-void		librad_log(const char *, ...);
+void		librad_log(const char *, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 1, 2)))
 #endif
-void		librad_perror(const char *, ...);
+;
+#endif
+void		librad_perror(const char *, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 1, 2)))
+#endif
+;
 extern char	librad_errstr[];
 extern int	librad_dodns;
 extern int	librad_debug;
