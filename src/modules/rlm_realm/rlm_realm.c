@@ -160,6 +160,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	/* make sure it's proxyable realm */
 	if ((realm->notrealm) ||
 	    (strcmp(realm->server, "LOCAL") == 0)) {
+		pairadd(vps, pairmake("Realm", realm->realm, T_OP_EQ));
 		return NULL;
 	}
 
