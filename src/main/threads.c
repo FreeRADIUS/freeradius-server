@@ -24,7 +24,7 @@
 #include "autoconf.h"
 #include "libradius.h"
 
-#ifdef WITH_THREAD_POOL
+#if HAVE_PTHREAD_H
 
 #include <stdlib.h>
 #include <string.h>

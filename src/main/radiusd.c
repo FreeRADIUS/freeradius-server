@@ -149,7 +149,7 @@ static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST *rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 static int refresh_request(REQUEST *request, void *data);
-#ifndef WITH_THREAD_POOL
+#if HAVE_PTHREAD_H
 static int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
 extern int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
@@ -855,7 +855,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-#if WITH_THREAD_POOL
+#if HAVE_PTHREAD_H
 	/*
 	 *  If we're spawning children, set up the thread pool.
 	 */
@@ -1670,7 +1670,7 @@ static struct timeval *rad_clean_list(time_t now)
 	last_request = NULL;
 	DEBUG2("--- Walking the entire request list ---");
 
-#if WITH_THREAD_POOL
+#if HAVE_PTHREAD_H
 	/*
 	 *  Only clean the thread pool if we've spawned child threads.
 	 */
@@ -1885,35 +1885,13 @@ static REQUEST *rad_check_list(REQUEST *request)
 	return request;
 }
 
-#ifndef WITH_THREAD_POOL
-#if HAVE_PTHREAD_H
-typedef struct spawn_thread_t {
-	REQUEST *request;
-	RAD_REQUEST_FUNP fun;
-} spawn_thread_t;
-
-/*
- *  Spawn a new child thread to handle this request, and ONLY
- *  this request.
- */
-static void *rad_spawn_thread(void *arg)
-{
-	spawn_thread_t *data = (spawn_thread_t *)arg;
-	
-	pthread_setcancelstate(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
-	rad_respond(data->request, data->fun);
-	free(data);
-	return NULL;
-}
-#endif
-#endif
-
 /*
  *  If we're using the thread pool, then the function in
  *  'threads.c' replaces this one.
+ *
+ *  This code is NOT well tested, and should NOT be used!
  */
-#ifndef WITH_THREAD_POOL
+#ifndef HAVE_PTHREAD_H
 /*
  *  Spawns a child process or thread to perform
  *  authentication/accounting and respond to RADIUS clients.
@@ -1927,43 +1905,6 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 * we refuse to handle SIGCHLDs normally until we're finished. */
 	signal(SIGCHLD, queue_sig_cleanup);
 
-#if HAVE_PTHREAD_H
-	{
-              int rcode;
-              spawn_thread_t *data;
-              pthread_attr_t attr;
-
-              data = (spawn_thread_t *) rad_malloc(sizeof(spawn_thread_t));
-              memset(data, 0, sizeof(data));
-              data->request = request;
-              data->fun = fun;
-
-              /*
-               *      Initialize the thread's attributes to detached.
-               *
-               *      We could call pthread_detach() later, but if
-               *      the thread exits between the create & detach
-               *      calls, it will need to be joined, which will
-               *      never happen.
-               */
-              pthread_attr_init(&attr);
-              pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-              /*
-               *  Create a child thread, complaining on error.
-               */
-              rcode = pthread_create(&request->child_pid, &attr,
-                                     rad_spawn_thread, data);
-              if (rcode != 0) {
-                      radlog(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
-                             nas_name2(request->packet), request->packet->id,
-			     strerror(errno));
-                      retval = -1;
-                      goto exit_child_critsec;
-              }
-              pthread_attr_destroy(&attr);
-	}
-#else
 	/*
 	 *  fork our child
 	 */
@@ -1990,7 +1931,6 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *  Register the Child
 	 */
 	request->child_pid = child_pid;
-#endif
 
 exit_child_critsec:
 	signal(SIGCHLD, sig_cleanup);
@@ -1999,10 +1939,7 @@ exit_child_critsec:
 	}
 	return retval;
 }
-#endif /* WITH_THREAD_POOL */
 
-
-#ifndef HAVE_PTHREAD_H
 static int sig_cleanup_walker(REQUEST *req, void *data)
 {
 	int pid = (int)data;
@@ -2012,7 +1949,7 @@ static int sig_cleanup_walker(REQUEST *req, void *data)
 	req->child_pid = NO_SUCH_CHILD_PID;
 	return 0;
 }
-#endif
+#endif /* HAVE_PTHREAD_H */
 
 /* used in critical section */
 void queue_sig_cleanup(int sig) {
@@ -2299,7 +2236,7 @@ static int refresh_request(REQUEST *request, void *data)
 				 *  This request seems to have hung
 				 *   - kill it
 				 */
-#if WITH_THREAD_POOL || HAVE_PTHREAD_H
+#if HAVE_PTHREAD_H
 				radlog(L_ERR, "Killing unresponsive thread for request %d",
 				       request->number);
 				pthread_cancel(child_pid);
