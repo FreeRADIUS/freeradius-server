@@ -62,6 +62,9 @@
  * June 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Add the ability to do a paircmp on the check items. Add a compare_check_items boolean
  *	  configuration directive which defaults to no. If it is set then we will do a compare
+ *	- Add another configuration directive. access_attr_used_for_allow. If it is set to yes
+ *	  then the access_attr will be used to allow user access. If it is set to no then it will
+ *	  be used to deny user access.
  */
 static const char rcsid[] = "$Id$";
 
@@ -126,6 +129,7 @@ typedef struct {
 	int		cache_timeout;
 	int		cache_size;
 	int		do_comp;
+	int		default_allow;
 	char           *login;
 	char           *password;
 	char           *filter;
@@ -177,6 +181,7 @@ static CONF_PARSER module_config[] = {
 	{"ldap_debug", PW_TYPE_INTEGER, offsetof(ldap_instance,ldap_debug), NULL, "0x0000"},
 	{"ldap_connections_number", PW_TYPE_INTEGER, offsetof(ldap_instance,num_conns), NULL, "5"},
 	{"compare_check_items", PW_TYPE_BOOLEAN, offsetof(ldap_instance,do_comp), NULL, "no"},
+	{"access_attr_used_for_allow", PW_TYPE_BOOLEAN, offsetof(ldap_instance,default_allow), NULL, "yes"},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -859,9 +864,22 @@ ldap_authorize(void *instance, REQUEST * request)
 	/* Remote access is controled by attribute of the user object */
 	if (inst->access_attr) {
 		if ((vals = ldap_get_values(conn->ld, msg, inst->access_attr)) != NULL) {
-			DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", request->username->strvalue, inst->access_attr);
-			if (!strncmp(vals[0], "FALSE", 5)) {
-				DEBUG("rlm_ldap: dialup access disabled");
+			if (inst->default_allow){
+				DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", request->username->strvalue, inst->access_attr);
+				if (!strncmp(vals[0], "FALSE", 5)) {
+					DEBUG("rlm_ldap: dialup access disabled");
+					snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
+					module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+					pairadd(&request->packet->vps, module_fmsg_vp);
+					ldap_msgfree(result);
+					ldap_value_free(vals);
+					ldap_release_conn(conn_id,inst->conns);
+					return RLM_MODULE_USERLOCK;
+				}
+				ldap_value_free(vals);
+			}
+			else{
+				DEBUG("rlm_ldap: %s attribute exists - access denied by default", inst->access_attr);
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
 				module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
@@ -870,15 +888,16 @@ ldap_authorize(void *instance, REQUEST * request)
 				ldap_release_conn(conn_id,inst->conns);
 				return RLM_MODULE_USERLOCK;
 			}
-			ldap_value_free(vals);
 		} else {
-			DEBUG("rlm_ldap: no %s attribute - access denied by default", inst->access_attr);
-			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
-			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			ldap_msgfree(result);
-			ldap_release_conn(conn_id,inst->conns);
-			return RLM_MODULE_USERLOCK;
+			if (inst->default_allow){
+				DEBUG("rlm_ldap: no %s attribute - access denied by default", inst->access_attr);
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
+				module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				ldap_msgfree(result);
+				ldap_release_conn(conn_id,inst->conns);
+				return RLM_MODULE_USERLOCK;
+			}
 		}
 	}
 	if (inst->cache_timeout >0)

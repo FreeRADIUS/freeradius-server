@@ -635,6 +635,8 @@ modules {
 		timeout = 4
 		timelimit = 3
 		net_timeout = 1
+		# compare_check_items = yes
+		# access_attr_used_for_allow = yes
 	}
 
 	# passwd module allows to do authorization via any passwd-like
