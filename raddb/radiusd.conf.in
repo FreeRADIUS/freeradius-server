@@ -477,6 +477,26 @@ thread pool {
 #  in other sections of this configuration file.
 #
 modules {
+	#
+	#  Each module has a configuration as follows:
+	#
+	#	name [ instance ] {
+	#		config_item = value
+	#		...
+	#	}
+	#
+	#  The 'name' is used to load the 'rlm_name' library
+	#  which implements the functionality of the module.
+	#
+	#  The 'instance' is optional.  To have two different instances
+	#  of a module, it first must be referred to by 'name'.
+	#  The different copies of the module are then created by
+	#  inventing two 'instance' names, e.g. 'instance1' and 'instance2'
+	#
+	#  The instance names can then be used in later configuration
+	#  INSTEAD of the original 'name'.  See the 'radutmp' configuration
+	#  below for an example.
+	#
 
 	# PAP module to authenticate users based on their stored password
 	#
@@ -942,12 +962,13 @@ modules {
 
 
 	#  Include another file that has the SQL-related configuration.
-	#  This is another file solely because it tends to be big.
+	#  This is another file only because it tends to be big.
 	#
 	#  The following configuration file is for use with MySQL.
 	#
 	#  For Postgresql, use:		${confdir}/postgresql.conf
 	#  For MS-SQL, use:	 	${confdir}/mssql.conf
+	#  For Oracle, use:	 	${confdir}/oraclesql.conf
 	#
 	$INCLUDE  ${confdir}/sql.conf
 
@@ -1003,7 +1024,7 @@ modules {
 	# world-readable, and radwho can work for normal users, without
 	# exposing any information that isn't already exposed by who(1).
 	#
-	# This is another instance of the radutmp module, but it is given
+	# This is another 'instance' of the radutmp module, but it is given
 	# then name "sradutmp" to identify it later in the "accounting"
 	# section.
 	radutmp sradutmp {
@@ -1365,5 +1386,5 @@ post-proxy {
 	#  hidden inside of the EAP packet, and the end server will
 	#  reject the EAP request.
 	#
-	# eap
+	eap
 }
