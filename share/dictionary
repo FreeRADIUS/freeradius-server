@@ -50,6 +50,7 @@ $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.erx
+$INCLUDE dictionary.extreme
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.itk
 $INCLUDE dictionary.juniper
