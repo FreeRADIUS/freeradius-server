@@ -1,9 +1,13 @@
-radiusd-freeradius (0.4+00000000-1) unstable; urgency=high
+radiusd-freeradius (0.5+cvs20020408-1) unstable; urgency=high
 
-  * New build-dep on libssl-dev.
-  * Added python module, and forced it to split off from the base package.
+  * New build-dep on libssl-dev, which is implied by another dep, but making 
+    explicit for builders on Potato.  (closes: Bug#131832)
+  * Built against new postgresql libraries, so automatic dep tracking has 
+    the correct version, now.  (closes: Bug#139290)
+  * Removed python example module.
+  * Explicitly disabled beta ippool module.
 
- -- Chad Miller <cmiller@debian.org>
+ -- Chad Miller <cmiller@debian.org>  Mon,  8 Apr 2002 11:48:30 -0400
 
 radiusd-freeradius (0.4-1) unstable; urgency=high
 
