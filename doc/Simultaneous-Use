@@ -119,8 +119,8 @@
 
 4. IF IT DOESN'T WORK
 
-  Note that you need to add the Simultaneous-Login parameter to the
-  check item (first line), not the reply item.
+  Note that you need to add the Simultaneous-Use parameter to the
+  check item (first line), not the reply item, using the '==' operator.
 
   You can edit the `checkrad' perl script and turn on debugging. Then
   watch the debug file. The `radius.log' file also gives some hints.
