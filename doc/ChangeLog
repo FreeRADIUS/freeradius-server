@@ -1,3 +1,25 @@
+FreeRADIUS 0.6.1 ; $Date$, urgency=high
+
+	* Added experimental Perl module.
+	* Added the relevant IETF RFC's (standards documents) to 'doc/rfc',
+	  along with some simple perl scripts to convert them to cross-
+	  referenced HTML.
+	* Updated the experimental Python module.
+	* Added Cisco SSG VSA's
+	* When rejecting authentication due to external Exec-Program, do
+	  NOT free the reply pairs, as the server core will take care of
+	  doing that.  Bug noted by Thomas Jalsovsky
+	* New experimental module: rlm_cram
+	  Supports APOP, CRAM-MD5, CRAM-MD4, CRAM-SHA1 with it's own
+	  VSA's. This module may be used for SMTP/POP3/IMAP4 server
+	  authentication.
+	* Make Exec-Program and Exec-Program-Wait work in debugging mode.
+	* Finalize the radrelay additions, based on Cistron RADIUS
+	  Patches from Simon <lists@routemeister.net>
+	* Fix issues with linking, by making libradius shared.
+	* Fix issues with MD4, MD5, SHA1, and use of OpenSSL
+	* Update rlm_x99_token module to compile.
+
 FreeRADIUS 0.6.0 ; $Date$, urgency=high
 
 	* Many bug fixes.  For explicit details, see:
