@@ -21,6 +21,11 @@ clean:
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	install -d -m 755	$(mandir);
+	for i in 1 5 8; do \
+		install -d -m 755	$(mandir)/man$$i; \
+		install -m 444 man/man$$i/*.$$i $(mandir)/man$$i; \
+	done
 	@echo "Creating/updating files in $(raddbdir)"; \
 	install -d -m 755	$(raddbdir); \
 	cd raddb; \
