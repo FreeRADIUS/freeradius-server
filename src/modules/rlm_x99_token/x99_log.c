@@ -34,11 +34,6 @@
 
 static const char rcsid[] = "$Id$";
 
-#ifdef FREERADIUS
-/* log.c */
-int vradlog(int lvl, const char *fmt, va_list ap);
-#endif
-
 void
 x99_log(int level, const char *format, ...)
 {
