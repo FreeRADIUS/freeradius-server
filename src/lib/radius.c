@@ -179,8 +179,19 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			  rad_pwencode(reply->strvalue,
 				       &(reply->length),
 				       secret, packet->vector);
+
+			  /*
+			   *	If there's a CHAP password, assume it's
+			   *    currently in clear text, and encode it
+			   *    in place.
+			   *
+			   *	The ID is taken from pseudo-random
+			   *	numbers somehow...
+			   */
 			} else if (reply->attribute == PW_CHAP_PASSWORD) {
-			  /* FIXME: encode it with CHAP-Challenge */
+			  rad_chap_encode(packet, reply->strvalue, packet->id,
+					  reply);
+			  reply->length = 1 + AUTH_VECTOR_LEN;
 			} 
 		      }
 		      
@@ -799,6 +810,51 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 	passwd[pwlen] = 0;
 
 	return pwlen;
+}
+
+/*
+ *	Encode a CHAP password
+ */
+int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *password)
+{
+	int		i;
+	char		*ptr;
+	char		string[MAX_STRING_LEN];
+	VALUE_PAIR	*challenge;
+
+	/*
+	 *	Sanity check the input parameters
+	 */
+	if ((packet == NULL) || (password == NULL)) {
+		return -1;
+	}
+
+	i = 0;
+	ptr = string;
+	*ptr++ = id;
+
+	i++;
+	memcpy(ptr, password->strvalue, password->length);
+	ptr += password->length;
+	i += password->length;
+
+	/*
+	 *	Use Chap-Challenge pair if present,
+	 *	Request-Authenticator otherwise.
+	 */
+	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE);
+	if (challenge) {
+		memcpy(ptr, challenge->strvalue, challenge->length);
+		i += challenge->length;
+	} else {
+		memcpy(ptr, packet->vector, AUTH_VECTOR_LEN);
+		i += AUTH_VECTOR_LEN; 
+	}
+
+	*output = id;
+	librad_md5_calc(output + 1, string, i);
+
+	return 0;
 }
 
 /*

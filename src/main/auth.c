@@ -643,6 +643,15 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	/*
+	 *	We might need this later.  The 'password' string
+	 *	is NOT used anywhere below here, except for logging,
+	 *	so it should be safe...
+	 */
+	if (auth_item->attribute == PW_CHAP_PASSWORD) {
+		password = "CHAP-Password";
+	}
+
+	/*
 	 *	See if we need to execute a program.
 	 *	FIXME: somehow cache this info, and only execute the
 	 *	program when we receive an Accounting-START packet.

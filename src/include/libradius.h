@@ -146,6 +146,7 @@ RADIUS_PACKET	*rad_alloc(int newvector);
 void		rad_free(RADIUS_PACKET *);
 int		rad_pwencode(char *encpw, int *len, const char *secret, const char *vector);
 int		rad_pwdecode(char *encpw, int len, const char *secret, const char *vector);
+int		rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *password);
 int		calc_digest (RADIUS_PACKET *packet, const char *secret);
 int		calc_acctdigest(RADIUS_PACKET *packet, const char *secret,
 			char *data, int len);
