@@ -461,4 +461,5 @@ AC_OUTPUT(\
 )
 
 AC_OUTPUT_COMMANDS([echo timestamp > src/include/stamp-h])
-AC_OUTPUT_COMMANDS([cd ./src/include/;/bin/sh ./build-radpaths-h])
+AC_OUTPUT_COMMANDS([(cd ./src/include && /bin/sh ./build-radpaths-h)])
+AC_OUTPUT_COMMANDS([(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
