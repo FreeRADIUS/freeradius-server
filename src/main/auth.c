@@ -188,9 +188,11 @@ static int rad_check_password(REQUEST *request)
 	 *	UNIX if auth_type was not set.
 	 */
 	if (auth_type < 0) {
-		if (password_pair && !strcmp(password_pair->strvalue, "UNIX"))
+		if (password_pair &&
+		    !strcmp((char *)password_pair->strvalue, "UNIX"))
 			auth_type = PW_AUTHTYPE_SYSTEM;
-		else if(password_pair && !strcmp(password_pair->strvalue,"PAM"))
+		else if(password_pair &&
+			!strcmp((char *)password_pair->strvalue,"PAM"))
 			auth_type = PW_AUTHTYPE_PAM;
 		else
 			auth_type = PW_AUTHTYPE_LOCAL;
@@ -203,9 +205,9 @@ static int rad_check_password(REQUEST *request)
 				result = auth_item->strvalue ? -1 : 0;
 				break;
 			}
-			if (strcmp(password_pair->strvalue,
-			    crypt(auth_item->strvalue,
-				  password_pair->strvalue)) != 0)
+			if (strcmp((char *)password_pair->strvalue,
+			    crypt((char *)auth_item->strvalue,
+				  (char *)password_pair->strvalue)) != 0)
 					result = -1;
 			break;
 		case PW_AUTHTYPE_LOCAL:
@@ -218,8 +220,8 @@ static int rad_check_password(REQUEST *request)
 				 *	Plain text password.
 				 */
 				if (password_pair == NULL ||
-				    strcmp(password_pair->strvalue,
-					   auth_item->strvalue)!=0)
+				    strcmp((char *)password_pair->strvalue,
+					   (char *)auth_item->strvalue)!=0)
 					result = -1;
 				break;
 			}
@@ -619,12 +621,12 @@ int rad_authenticate(REQUEST *request)
 	exec_wait = 0;
 	if ((auth_item = pairfind(request->reply->vps, PW_EXEC_PROGRAM)) != NULL) {
 		exec_wait = 0;
-		exec_program = strdup(auth_item->strvalue);
+		exec_program = strdup((char *)auth_item->strvalue);
 		pairdelete(&request->reply->vps, PW_EXEC_PROGRAM);
 	}
 	if ((auth_item = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
 		exec_wait = 1;
-		exec_program = strdup(auth_item->strvalue);
+		exec_program = strdup((char *)auth_item->strvalue);
 		pairdelete(&request->reply->vps, PW_EXEC_PROGRAM_WAIT);
 	}
 

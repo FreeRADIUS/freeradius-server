@@ -570,7 +570,7 @@ int H_groupcmp(VALUE_PAIR *check, char *username) {
 	/* let's find this group */
 	if(grphead) {
 		cur = grphead;
-		while((cur) && (strcmp(cur->gr_name, check->strvalue))) {
+		while((cur) && (strcmp(cur->gr_name, (char *)check->strvalue))){
 			cur = cur->next;	
 		}	
 		/* found the group, now compare it */

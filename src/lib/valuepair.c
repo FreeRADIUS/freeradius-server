@@ -226,8 +226,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			case T_OP_SUB:		/* -= */
 				if (found) {
 					if (!i->strvalue[0] ||
-					    (strcmp(found->strvalue,
-						    i->strvalue) == 0)) {
+					    (strcmp((char *)found->strvalue,
+						    (char *)i->strvalue) == 0)){
 					  pairdelete(to, found->attribute);
 					}
 				}

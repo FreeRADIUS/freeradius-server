@@ -103,7 +103,8 @@ char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 			case 'u': /* User name */
 				if ((tmp = pairfind(request,
 				     PW_USER_NAME)) != NULL)
-					strcpy(output + i, tmp->strvalue);
+					strcpy(output + i,
+						(char *)tmp->strvalue);
 				else
 					strcpy(output + i, "unknown");
 				i += strlen(output + i);
@@ -111,7 +112,8 @@ char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 			case 'U': /* Stripped User name */
 				if ((tmp = pairfind(request,
 				     PW_STRIPPED_USER_NAME)) != NULL)
-					strcpy(output + i, tmp->strvalue);
+					strcpy(output + i,
+						(char *)tmp->strvalue);
 				else
 					strcpy(output + i, "unknown");
 				i += strlen(output + i);
@@ -119,7 +121,8 @@ char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 			case 'i': /* Calling station ID */
 				if ((tmp = pairfind(request,
 				     PW_CALLING_STATION_ID)) != NULL)
-					strcpy(output + i, tmp->strvalue);
+					strcpy(output + i,
+						(char *)tmp->strvalue);
 				else
 					strcpy(output + i, "unknown");
 				i += strlen(output + i);
@@ -127,7 +130,8 @@ char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 			case 'c': /* Callback-Number */
 				if ((tmp = pairfind(reply,
 				     PW_CALLBACK_NUMBER)) != NULL)
-					strcpy(output + i, tmp->strvalue);
+					strcpy(output + i,
+						(char *)tmp->strvalue);
 				else
 					strcpy(output + i, "unknown");
 				i += strlen(output + i);
@@ -143,7 +147,8 @@ char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 			case 's': /* Speed */
 				if ((tmp = pairfind(request,
 				     PW_CONNECT_INFO)) != NULL)
-					strcpy(output + i, tmp->strvalue);
+					strcpy(output + i,
+						(char *)tmp->strvalue);
 				else
 					strcpy(output + i, "unknown");
 				i += strlen(output + i);

@@ -626,7 +626,7 @@ static int generate_realms(const char *filename)
 		      strlen(s), sizeof(c->secret) - 1);
 		  return -1;
 		}
-		strNcpy(c->secret, s, sizeof(c->secret));
+		strNcpy((char *)c->secret, s, sizeof(c->secret));
 
 		c->striprealm = 1;
 		
@@ -691,7 +691,7 @@ static int generate_clients(const char *filename)
 		}
 
 		c->ipaddr = ip_getaddr(hostnm);
-		strcpy(c->secret, secret);
+		strcpy((char *)c->secret, secret);
 		strcpy(c->shortname, shortnm);
 		ip_hostname(c->longname, sizeof(c->longname),
 			    c->ipaddr);

@@ -77,7 +77,8 @@ static int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
 				     request->length);
 			break;
 		case PW_TYPE_STRING:
-			ret = strcmp(request->strvalue, check->strvalue);
+			ret = strcmp((char *)request->strvalue,
+				     (char *)check->strvalue);
 			break;
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
@@ -314,13 +315,13 @@ static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
-	if ((strchr(check->strvalue, ',') == NULL) &&
-	    (strchr(check->strvalue, '-') == NULL)) {
+	if ((strchr((char *)check->strvalue, ',') == NULL) &&
+	    (strchr((char *)check->strvalue, '-') == NULL)) {
 		return (request->lvalue - check->lvalue);
 	}
 
 	/* Same size */
-	strcpy(buf, check->strvalue);
+	strcpy(buf, (char *)check->strvalue);
 	s = strtok(buf, ",");
 
 	while (s) {
@@ -367,7 +368,7 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	len = strlen((char *)check->strvalue);
 	switch (check->attribute) {
 		case PW_PREFIX:
-			ret = strncmp(name, check->strvalue, len);
+			ret = strncmp(name, (char *)check->strvalue, len);
 			if (ret == 0 && rest)
 				strcpy(rest, name + len);
 			break;
@@ -375,7 +376,8 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 			namelen = strlen(name);
 			if (namelen < len)
 				break;
-			ret = strcmp(name + namelen - len, check->strvalue);
+			ret = strcmp(name + namelen - len,
+				     (char *)check->strvalue);
 			if (ret == 0 && rest) {
 				strncpy(rest, name, namelen - len);
 				rest[namelen - len] = 0;
@@ -390,15 +392,15 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 		 *	I don't think we want to update the User-Name
 		 *	attribute in place... - atd
 		 */
-		strcpy(request->strvalue, rest);
+		strcpy((char *)request->strvalue, rest);
 		request->length = strlen(rest);
 	} else {
 		if ((vp = pairfind(check_pairs, PW_STRIPPED_USER_NAME)) != NULL){
-			strcpy(vp->strvalue, rest);
+			strcpy((char *)vp->strvalue, rest);
 			vp->length = strlen(rest);
 		} else if ((vp = paircreate(PW_STRIPPED_USER_NAME,
 			    PW_TYPE_STRING)) != NULL) {
-			strcpy(vp->strvalue, rest);
+			strcpy((char *)vp->strvalue, rest);
 			vp->length = strlen(rest);
 			pairadd(&request, vp);
 		} /* else no memory! Die, die!: FIXME!! */

@@ -185,7 +185,7 @@ static int presufcmp(VALUE_PAIR *check, char *name, char *rest)
 	len = strlen((char *)check->strvalue);
 	switch (check->attribute) {
 		case PW_PREFIX:
-			ret = strncmp(name, check->strvalue, len);
+			ret = strncmp(name, (char *)check->strvalue, len);
 			if (ret == 0 && rest)
 				strcpy(rest, name + len);
 			break;
@@ -193,7 +193,8 @@ static int presufcmp(VALUE_PAIR *check, char *name, char *rest)
 			namelen = strlen(name);
 			if (namelen < len)
 				break;
-			ret = strcmp(name + namelen - len, check->strvalue);
+			ret = strcmp(name + namelen - len,
+				     (char *)check->strvalue);
 			if (ret == 0 && rest) {
 				strncpy(rest, name, namelen - len);
 				rest[namelen - len] = 0;
@@ -333,7 +334,7 @@ static int hints_setup(REQUEST *request)
 	if (do_strip) {
 		tmp = pairfind(request_pairs, PW_STRIPPED_USER_NAME);
 		if (tmp) {
-			strcpy(tmp->strvalue, newname);
+			strcpy((char *)tmp->strvalue, newname);
 			tmp->length = strlen((char *)tmp->strvalue);
 		} else {
 			/*
@@ -344,7 +345,7 @@ static int hints_setup(REQUEST *request)
 				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
-			strcpy(tmp->strvalue, newname);
+			strcpy((char *)tmp->strvalue, newname);
 			tmp->length = strlen((char *)tmp->strvalue);
 			pairadd(&request_pairs, tmp);
 		}

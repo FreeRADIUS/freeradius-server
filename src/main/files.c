@@ -420,7 +420,7 @@ static int read_clients_file(const char *file)
 			    file, lineno, hostnm);
 			return -1;
 		}
-		strcpy(c->secret, secret);
+		strcpy((char *)c->secret, secret);
 		strcpy(c->shortname, shortnm);
 		ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
 

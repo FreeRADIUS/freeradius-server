@@ -832,7 +832,7 @@ int main(int argc, char **argv)
 	if (debug_flag) setlinebuf(stdout);
 
 	if (myip == 0) {
-		strcpy(buffer, "*");
+		strcpy((char *)buffer, "*");
 	} else {
 		ip_ntoa((char *)buffer, myip);
 	}
@@ -963,7 +963,7 @@ int main(int argc, char **argv)
 			request->child_pid = NO_SUCH_CHILD_PID;
 			request->prev = NULL;
 			request->next = NULL;
-			strNcpy(request->secret, cl->secret, sizeof(request->secret));
+			strNcpy(request->secret, (char *)cl->secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
 		} /* loop over authfd, acctfd, proxyfd */
 

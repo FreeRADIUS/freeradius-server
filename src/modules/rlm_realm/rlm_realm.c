@@ -67,7 +67,7 @@ static REALM *check_for_realm(REQUEST *request)
 				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
-			strcpy(vp->strvalue, name);
+			strcpy((char *)vp->strvalue, name);
 			vp->length = strlen((char *)vp->strvalue);
 			pairadd(&request->packet->vps, vp);
 			request->username = vp;

@@ -210,7 +210,8 @@ int radutmp_add(REQUEST *request)
 	for (vp = request->packet->vps; vp; vp = vp->next) {
 		switch (vp->attribute) {
 			case PW_USER_NAME:
-				strncpy(ut.login, vp->strvalue, RUT_NAMESIZE);
+				strncpy(ut.login, (char *)vp->strvalue,
+					RUT_NAMESIZE);
 				break;
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:
@@ -247,7 +248,7 @@ int radutmp_add(REQUEST *request)
 				nas_port_type = vp->lvalue;
 				break;
 			case PW_CALLING_STATION_ID:
-				strncpy(ut.caller_id, vp->strvalue,
+				strncpy(ut.caller_id, (char *)vp->strvalue,
 					sizeof(ut.caller_id));
 				ut.caller_id[sizeof(ut.caller_id) - 1] = 0;
 				break;

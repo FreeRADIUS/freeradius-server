@@ -812,7 +812,7 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vecto
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
-	strcpy(buffer, secret);
+	memcpy(buffer, secret, secretlen);
 	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
 	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN);
 
@@ -854,7 +854,7 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
-	strcpy(buffer, secret);
+	memcpy(buffer, secret, secretlen);
 	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
 	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN);
 

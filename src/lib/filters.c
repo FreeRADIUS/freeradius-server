@@ -644,10 +644,10 @@ unsigned char*  src;
     int		temp;
     unsigned char *src1;
 
-    src1 = (unsigned char *) strchr(src, 'x');
+    src1 = (unsigned char *) strchr((char *)src, 'x');
 
     if (src1 == NULL)
-	src1 = (unsigned char *) strchr(src,'X');
+	src1 = (unsigned char *) strchr((char *)src,'X');
 
     if (src1 == NULL)
 	src1 = src;

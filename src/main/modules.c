@@ -684,7 +684,7 @@ static void update_username(REQUEST *request, char *newname)
 			exit(1);
 		}
 		DEBUG2("  authorize: Creating Stripped-User-Name of %s", newname);
-		strcpy(vp->strvalue, newname);
+		strcpy((char *)vp->strvalue, newname);
 		vp->length = strlen((char *)vp->strvalue);
 		pairadd(&request->packet->vps, vp);
 		request->username = vp;
@@ -697,7 +697,7 @@ static void update_username(REQUEST *request, char *newname)
 	vp = request->username;
 	DEBUG2("  authorize: Updating Stripped-User-Name from %s to %s",
 	       vp->strvalue, newname);
-	strcpy(vp->strvalue, newname);
+	strcpy((char *)vp->strvalue, newname);
 	vp->length = strlen((char *)vp->strvalue);
 }
 
@@ -745,7 +745,7 @@ int module_authorize(REQUEST *request)
 					       request->username->strvalue);
 					continue;
 				}
-				strcpy(newname, vp->strvalue);
+				strcpy(newname, (char *)vp->strvalue);
 				strcat(newname, (char *)request->username->strvalue);
 				update_username(request, newname);
 				break;
@@ -757,7 +757,8 @@ int module_authorize(REQUEST *request)
 					       vp->strvalue);
 					continue;
 				}
-				strcpy(newname, request->username->strvalue);
+				strcpy(newname,
+					(char *)request->username->strvalue);
 				strcat(newname, (char *)vp->strvalue);
 				update_username(request, newname);
 				break;
