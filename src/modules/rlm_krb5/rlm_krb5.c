@@ -141,7 +141,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 
 module_t rlm_krb5 = {
   "Kerberos",
-  0,				/* type: reserved */
+  RLM_TYPE_THREAD_UNSAFE,	/* type: not thread safe */
   NULL,				/* initialize */
   krb5_instantiate,   		/* instantiation */
   NULL,				/* authorize */
