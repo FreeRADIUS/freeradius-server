@@ -56,5 +56,13 @@ table and not try to do a finger on the NAS.
 
 If you are using sessions then remember to use the 'Clear Cache' page after making any changes
 
+>
+> It is still not working
+>
+
+Check that the register_globals in php.ini is set to on. As of PHP 4.2.0 this is set to off by default. The latest
+versions of dialup_admin will work even if register_globals is set to off if the php version is > 4.1.0
+(Thanks to Evren Yurtesen <eyurtese@turkuamk.fi> for the suggestion).
+
 --
 kkalev

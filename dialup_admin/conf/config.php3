@@ -1,4 +1,11 @@
 <?php
+#
+# Things should work even if register_globals is set to off
+#
+$testVer=intval(str_replace(".", "",'4.1.0'));
+$curVer=intval(str_replace(".", "",phpversion()));
+if( $curVer >= $testVer )
+	import_request_variables('GPC');
 # If using sessions set use_session to 1 to also cache the config file
 #
 $use_session = 0;
