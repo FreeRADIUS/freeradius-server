@@ -445,10 +445,12 @@ static int rlm_sql_detach(void *instance)
 	}
 
 	if (inst->handle) {
+#if 0
 		/*
 		 *	FIXME: Call the modules 'destroy' function?
 		 */
 		lt_dlclose(inst->handle);	/* ignore any errors */
+#endif
 	}
 	free(inst);
 
