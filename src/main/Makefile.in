@@ -14,6 +14,7 @@ CFLAGS		+= -I../include $(SNMP_INCLUDE)
 LDFLAGS		+= -L../lib
 LIBS		+= -lradius $(SNMP_LIBS)
 MODULE_LIBS	= $(STATIC_MODULES)
+MODULE_OBJS	=
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
 BINARIES	= radiusd radwho radzap raduse radclient radrelay
@@ -24,11 +25,12 @@ BINARIES	= radiusd radwho radzap raduse radclient radrelay
 #
 ifneq ($(USE_SHARED_LIBS),yes)
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
+MODULE_OBJS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done)
 endif
 
 all:	$(BINARIES)
 
-radiusd: $(SERVER_OBJS) ../lib/libradius.a
+radiusd: $(SERVER_OBJS) ../lib/libradius.a $(LIBLTDL) $(MODULE_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LIBS) $(LCRYPT) \
