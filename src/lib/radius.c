@@ -1202,16 +1202,18 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			if (attrlen != 4) {
 				pair->type = PW_TYPE_OCTETS;
 				memcpy(pair->strvalue, ptr, attrlen);
-				pair->lvalue = 0xbaddbadd;
+				pair->lvalue = 0xbad1bad1;
 				break;
 			}
 
       			memcpy(&lvalue, ptr, 4);
 
-			if (attr->type != PW_TYPE_IPADDR)
+			if (attr->type != PW_TYPE_IPADDR) {
 				pair->lvalue = ntohl(lvalue);
-			else
+				ip_ntoa(pair->strvalue, pair->lvalue);
+			} else {
 				pair->lvalue = lvalue;
+			}
 
 			/*
 			 *  Only PW_TYPE_INTEGER should have tags.
