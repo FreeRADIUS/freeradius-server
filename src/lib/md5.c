@@ -30,6 +30,7 @@ void librad_md5_calc(unsigned char *output, unsigned char *input,
  *	with the following changes:
  *	#includes commented out.
  *	Support context->count as uint32_t[2] instead of uint64_t
+ *	u_int* to uint*
  */
 
 /*
@@ -104,7 +105,7 @@ MD5Update(MD5_CTX *ctx, const unsigned char *input, size_t len)
 	need = MD5_BLOCK_LENGTH - have;
 
 	/* Update bitcount */
-/*	ctx->count += (u_int64_t)len << 3;*/
+/*	ctx->count += (uint64_t)len << 3;*/
 	if ((ctx->count[0] += ((uint32_t)len << 3)) < (uint32_t)len) {
 	/* Overflowed ctx->count[0] */
 		ctx->count[1]++;

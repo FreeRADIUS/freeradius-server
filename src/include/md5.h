@@ -35,7 +35,7 @@
 #define MD5Transform	librad_MD5Transform
 
 /*  The below was retrieved from
- *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.c?rev=1.1
+ *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
  *  With the following changes: uint64_t => uint32_t[2]
  *  Commented out #include <sys/cdefs.h>
  *  Commented out the __BEGIN and __END _DECLS, and the __attributes.

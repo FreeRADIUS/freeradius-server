@@ -2,6 +2,7 @@
  * md4.h        Structures and prototypes for md4.
  *
  * Version:     $Id$
+ * License:		LGPL, but largely derived from a public domain source.
  *
  */
 
@@ -9,8 +10,6 @@
 #ifndef _LRAD_MD4_H
 #define _LRAD_MD4_H
 
-#ifndef _LRAD_PROTO_H
-#define _LRAD_PROTO_H
 #include "autoconf.h"
 
 #ifdef HAVE_INTTYPES_H
@@ -27,37 +26,6 @@
 
 #include <string.h>
 
-/* GLOBAL.H - RSAREF types and constants
- */
-
-/* PROTOTYPES should be set to one if and only if the compiler supports
-  function argument prototyping.
-  The following makes PROTOTYPES default to 0 if it has not already
-  been defined with C compiler flags.
- */
-#ifndef PROTOTYPES
-#  if __STDC__
-#    define PROTOTYPES 1
-#  else
-#    define PROTOTYPES 0
-#  endif
-#endif
-
-/* POINTER defines a generic pointer type */
-typedef unsigned char *POINTER;
-#define _POINTER_T
-
-/* PROTO_LIST is defined depending on how PROTOTYPES is defined above.
-   If using PROTOTYPES, then PROTO_LIST returns the list, otherwise it
-  returns an empty list.
- */
-#if PROTOTYPES
-#define PROTO_LIST(list) list
-#else
-#define PROTO_LIST(list) ()
-#endif
-#endif /* _LRAD_PROTO_H */
-
 /*
  *  FreeRADIUS defines to ensure globally unique MD4 function names,
  *  so that we don't pick up other MD4 libraries.
@@ -67,42 +35,63 @@ typedef unsigned char *POINTER;
 #define MD4Update	librad_MD4Update
 #define MD4Final       	librad_MD4Final
 
-/* MD4.H - header file for MD4C.C
+void md4_calc (unsigned char *, const unsigned char *, unsigned int);
+
+/*  The below was retrieved from
+ *  http://www.openbsd.org/cgi-bin/cvsweb/src/include/md4.h?rev=1.12
+ *  With the following changes: uint64_t => uint32_t[2]
+ *  Commented out #include <sys/cdefs.h>
+ *  Commented out the __BEGIN and __END _DECLS, and the __attributes.
+ *  Commented out MD4End, MD4File, MD4Data
+ *  Commented out header file protection #ifndef,#define,#endif
  */
 
-/* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
-   rights reserved.
+/*	$OpenBSD: md4.h,v 1.12 2004/04/28 16:54:00 millert Exp $	*/
 
-   License to copy and use this software is granted provided that it
-   is identified as the "RSA Data Security, Inc. MD4 Message-Digest
-   Algorithm" in all material mentioning or referencing this software
-   or this function.
-
-   License is also granted to make and use derivative works provided
-   that such works are identified as "derived from the RSA Data
-   Security, Inc. MD4 Message-Digest Algorithm" in all material
-   mentioning or referencing the derived work.
-
-   RSA Data Security, Inc. makes no representations concerning either
-   the merchantability of this software or the suitability of this
-   software for any particular purpose. It is provided "as is"
-   without express or implied warranty of any kind.
-
-   These notices must be retained in any copies of any part of this
-   documentation and/or software.
+/*
+ * This code implements the MD4 message-digest algorithm.
+ * The algorithm is due to Ron Rivest.  This code was
+ * written by Colin Plumb in 1993, no copyright is claimed.
+ * This code is in the public domain; do with it what you wish.
+ * Todd C. Miller modified the MD5 code to do MD4 based on RFC 1186.
+ *
+ * Equivalent code is available from RSA Data Security, Inc.
+ * This code has been tested against that, and is equivalent,
+ * except that you don't need to include two pages of legalese
+ * with every copy.
  */
 
-/* MD4 context. */
-typedef struct {
-  uint32_t state[4];                                   /* state (ABCD) */
-  uint32_t count[2];        /* number of bits, modulo 2^64 (lsb first) */
-  unsigned char buffer[64];                         /* input buffer */
+/*#ifndef _MD4_H_*/
+/*#define _MD4_H_*/
+
+#define	MD4_BLOCK_LENGTH		64
+#define	MD4_DIGEST_LENGTH		16
+#define	MD4_DIGEST_STRING_LENGTH	(MD4_DIGEST_LENGTH * 2 + 1)
+
+typedef struct MD4Context {
+	u_int32_t state[4];			/* state */
+	u_int32_t count[2];			/* number of bits, mod 2^64 */
+	u_int8_t buffer[MD4_BLOCK_LENGTH];	/* input buffer */
 } MD4_CTX;
 
-void md4_calc (unsigned char *, const unsigned char *, unsigned int);
-void MD4Init PROTO_LIST ((MD4_CTX *));
-void MD4Update PROTO_LIST
-  ((MD4_CTX *, const unsigned char *, unsigned int));
-void MD4Final PROTO_LIST ((unsigned char [16], MD4_CTX *));
+/*#include <sys/cdefs.h>*/
+
+/*__BEGIN_DECLS*/
+void	 MD4Init(MD4_CTX *);
+void	 MD4Update(MD4_CTX *, const u_int8_t *, size_t)
+/*		__attribute__((__bounded__(__string__,2,3)))*/;
+void	 MD4Final(u_int8_t [MD4_DIGEST_LENGTH], MD4_CTX *)
+/*		__attribute__((__bounded__(__minbytes__,1,MD4_DIGEST_LENGTH)))*/;
+void	 MD4Transform(u_int32_t [4], const u_int8_t [MD4_BLOCK_LENGTH])
+/*		__attribute__((__bounded__(__minbytes__,1,4)))
+		__attribute__((__bounded__(__minbytes__,2,MD4_BLOCK_LENGTH)))*/;
+/*char	*MD4End(MD4_CTX *, char [MD4_DIGEST_STRING_LENGTH])
+		__attribute__((__bounded__(__minbytes__,2,MD4_DIGEST_STRING_LENGTH)));
+char	*MD4File(char *, char [MD4_DIGEST_STRING_LENGTH])
+		__attribute__((__bounded__(__minbytes__,2,MD4_DIGEST_STRING_LENGTH)));
+char	*MD4Data(const u_int8_t *, size_t, char [MD4_DIGEST_STRING_LENGTH])
+		__attribute__((__bounded__(__string__,1,2)))
+		__attribute__((__bounded__(__minbytes__,3,MD4_DIGEST_STRING_LENGTH)));*/
+/*__END_DECLS*/
 
 #endif /* _LRAD_MD4_H */
