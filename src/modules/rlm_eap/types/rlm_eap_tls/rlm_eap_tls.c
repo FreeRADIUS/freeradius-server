@@ -34,6 +34,7 @@ static CONF_PARSER module_config[] = {
 	{ "dh_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, dh_file), NULL, "dh.pem" },
 	{ "random_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, random_file), NULL, "random.pem" },
 	{ "fragment_size", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, fragment_size), NULL, 0 },
+	{ "include_length", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, include_length), NULL, "yes" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -108,29 +109,23 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	eaptls = (eap_tls_t *)type_arg;
 
 	/*
-	printf(" private_key_file --- %s\n", eaptls->conf->private_key_file);
-	printf(" certificate_file --- %s\n", eaptls->conf->certificate_file);
-	printf(" CA_file --- %s\n", eaptls->conf->ca_file);
-	printf(" private_key_password --- %s\n", eaptls->conf->private_key_password);
-	printf(" dh_file --- %s\n", eaptls->conf->dh_file);
-	printf(" random_file --- %s\n", eaptls->conf->random_file);
-	printf(" fragment_size --- %d\n", eaptls->conf->fragment_size);
-	*/
-
-	/*
 	 * Every new session is started only from EAP-TLS-START
 	 * Before Sending EAP-TLS-START, Open a new SSL session
 	 * Create all the required data structures & store them in Opaque.
 	 * So that we can use these data structures when we get the response
 	 */
 	ssn = new_tls_session(eaptls);
+
+	ssn->offset = eaptls->conf->fragment_size;
+	ssn->length_flag = eaptls->conf->include_length;
+
+	handler->opaque = ((void *)ssn);
+	handler->free_opaque = session_free;
+
 	/*
 	 * TLS session initialization is over
 	 * Now handle TLS related hanshaking or Data
 	 */
-	ssn->offset = eaptls->conf->fragment_size;
-	handler->opaque = ((void *)ssn);
-	handler->free_opaque = session_free;
 	status = eaptls_start(handler->eap_ds);
 	if (status == 0)
 		return 0;
@@ -167,14 +162,18 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 	/* This case is when SSL generates Alert then we 
 	 * send that alert to the client and then send the EAP-Failure
 	 */
-
 	status = eaptls_verify(handler->eap_ds, handler->prev_eapds);
 	if (status == EAPTLS_INVALID)
 		return 0;
 
+	/* In case of EAPTLS_ACK, we need to send the next fragment
+	 * or send success or failure
+	 */
 	if (status == EAPTLS_ACK) {
 		if (eaptls_ack_handler(handler) != EAPTLS_NOOP)
 			return 1;
+		else
+			return 0;
 	}
 
 	if ((tlspacket = eaptls_extract(handler->eap_ds, status)) == NULL)

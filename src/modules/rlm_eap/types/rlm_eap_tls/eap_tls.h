@@ -97,8 +97,8 @@ typedef enum {
 /* Following enums from rfc2246 */
        enum {
            change_cipher_spec = 20, 
-	   alert = 21, 
-	   handshake = 22,
+           alert = 21, 
+           handshake = 22,
            application_data = 23
        } ContentType;
 
@@ -132,14 +132,14 @@ typedef enum {
 
        enum {
            hello_request = 0,
-	   client_hello = 1,
-	   server_hello = 2,
+           client_hello = 1,
+           server_hello = 2,
            certificate = 11,
-	   server_key_exchange  = 12,
+           server_key_exchange  = 12,
            certificate_request = 13,
-	   server_hello_done = 14,
+           server_hello_done = 14,
            certificate_verify = 15,
-	   client_key_exchange = 16,
+           client_key_exchange = 16,
            finished = 20
        } HandshakeType;
 
@@ -243,6 +243,8 @@ typedef struct _tls_info_t {
  * dirty_out - data EAP server sends. 
  * offset    - current fragment size transmitted
  * fragment  - In Fragment mode or not. If yes, the current fragment number
+ * length_flag - A flag to include length in every TLS Data/Alert packet
+ * 					if set to no then only the first fragment contains length
  */
 typedef struct _tls_session_t {
 
@@ -264,6 +266,7 @@ typedef struct _tls_session_t {
 	 */
 	unsigned int 	offset;
 	int 		fragment;
+	int			length_flag;
 } tls_session_t;
 
 
@@ -275,7 +278,8 @@ typedef struct eap_tls_conf {
 	char	*ca_file;
 	char	*dh_file;
 	char	*random_file;
-	int	fragment_size; /* always < 4096 (due to radius limit), 0 by default = 2048 */
+	int		include_length;
+	int		fragment_size; /* always < 4096 (due to radius limit), 0 by default = 2048 */
 } EAP_TLS_CONF;
 
 /* This structure gets stored in arg */

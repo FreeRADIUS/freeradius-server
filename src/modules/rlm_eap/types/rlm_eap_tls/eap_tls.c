@@ -142,7 +142,31 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	EAPTLS_PACKET	reply;
 	unsigned int	size;
 	unsigned int 	nlen;
-	unsigned int	lbit = 0;
+	unsigned int 	lbit = 0;
+	static unsigned int	total_length = 0;
+
+	/* This value determines whether we we set (L)ength flag for 
+		EVERY packet we send and add corresponding 
+		"TLS Message Length" field.
+
+	length_flag = TRUE;
+		This means we include L flag and "TLS Msg Len" in EVERY
+		packet we send out.
+       
+	length_flag = FALSE;
+		This means we include L flag and "TLS Msg Len" **ONLY**
+		in First packet of a fragment series. We do not use 
+		it anywhere else.
+
+		Having L flag in every packet is prefered.
+
+	*/
+	if (ssn->length_flag) {
+		lbit = 4;
+	}
+	if (ssn->fragment == 0) {
+		total_length = ssn->dirty_out.used;
+	}
 
 	reply.code = EAPTLS_REQUEST;
 	reply.id = eap_ds->response->id + 1;
@@ -152,8 +176,8 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	if (ssn->dirty_out.used > ssn->offset) {
 		size = ssn->offset;
 		reply.flags = SET_MORE_FRAGMENTS(reply.flags);
+		/* Length MUST be included if it is the First Fragment */
 		if (ssn->fragment == 0) {
-			reply.flags = SET_LENGTH_INCLUDED(reply.flags);
 			lbit = 4;
 		}
 		ssn->fragment++;
@@ -169,8 +193,9 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 
 	reply.data = malloc(reply.dlen);
 	if (lbit) {
-		nlen = htonl(ssn->dirty_out.used);
+		nlen = htonl(total_length);
 		memcpy(reply.data, &nlen, lbit);
+		reply.flags = SET_LENGTH_INCLUDED(reply.flags);
 	}
 	record_minus(&ssn->dirty_out, reply.data+lbit, size);
 
@@ -182,7 +207,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 
 /*
  * Acknowledge received is for one of the following messages sent earlier
- * 1. Handhake completed Messgage, so now send, EAP-Success
+ * 1. Handshake completed Message, so now send, EAP-Success
  * 2. Alert Message, now send, EAP-Failure
  * 3. Fragment Message, now send, next Fragment
  *
@@ -194,6 +219,7 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 
 	tls_session = (tls_session_t *)handler->opaque;
 	if ((tls_session == NULL) || (tls_session->info.origin == 0)) {
+		radlog(L_ERR, "rlm_eap_tls: Unexpected ACK received");
 		return EAPTLS_NOOP;
 	}
 
@@ -216,7 +242,8 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		}
 
 	default:
-		radlog(L_ERR, "rlm_eap_tls: Should never enter here\n");
+		radlog(L_ERR, "rlm_eap_tls: Invalid ACK received");
+		session_free(&handler->opaque);
 		return EAPTLS_NOOP;
 	}
 }
@@ -429,8 +456,9 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 		break;
 
 	default:
-		radlog(L_ERR, "rlm_eap_tls: Should never enter here\n");
-		break;
+		radlog(L_ERR, "rlm_eap_tls: Invalid EAP-TLS packet received");
+		eaptls_free(&tlspacket);
+		return NULL;
 	}
 
 	tlspacket->dlen = data_len;
