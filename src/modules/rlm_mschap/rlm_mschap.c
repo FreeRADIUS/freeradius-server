@@ -693,7 +693,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	struct smb_passwd smbPasswd, smbPasswd1Value, *smbPasswd1 = NULL;
 	AUTHTYPE at = NONE;
 	int res = 0;
+/*
 	int len = 0;
+*/
 	int chap = 0;
 	
 	pdb_init_smb(&smbPasswd);
@@ -797,6 +799,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			/*
 			 * Try NT response first if UseNT flag is set
 			 */
+			        DEBUG2("rlm_mschap: doing MS-CHAPv1 with NT-Password");
 				mschap(challenge->strvalue, &smbPasswd, calculated, 1);
 				if (memcmp(response->strvalue + 26, calculated, 24) == 0) {
 					res = RLM_MODULE_OK;
@@ -807,6 +810,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			/*
 			 *	Use LM response.
 			 */
+			        DEBUG2("rlm_mschap: doing MS-CHAPv1 with LM-Password");
 				mschap(challenge->strvalue, &smbPasswd, 
 					calculated, 0);
 				if (memcmp(response->strvalue + 2, calculated, 24) == 0) {
@@ -825,6 +829,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			 *	We need NT hash for it to calculate response
 			 */
 			if (smbPasswd.smb_nt_passwd) {
+			        DEBUG2("rlm_mschap: doing MS-CHAPv2 with NT-Password");
 				mschap2(response->strvalue + 2,  challenge->strvalue,
 					&smbPasswd, calculated);
 				if (memcmp(response->strvalue + 26, calculated, 24) == 0) {
@@ -846,6 +851,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		if (res == RLM_MODULE_OK) {
 			if (smbPasswd.acct_ctrl & ACB_AUTOLOCK) {
+				radlog(L_AUTH, "rlm_mschap: Account locked out");
 				add_reply( &request->reply->vps, *response->strvalue,
 					"MS-CHAP-Error", "E=647 R=0", 9);
 				return RLM_MODULE_USERLOCK;
@@ -854,6 +860,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			/* now create MPPE attributes */
 			if (inst->use_mppe) {
 				if (chap == 1){
+				        DEBUG2("rlm_mschap: adding MS-CHAPv1 MPPE keys");
 					memset (mppe_sendkey, 0, 32);
 					if (smbPasswd.smb_passwd) 
 						memcpy(mppe_sendkey, smbPasswd.smb_passwd, 8);
@@ -868,13 +875,15 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						memcpy (mppe_sendkey+8,smbPasswd.smb_nt_passwd,16);   
 					*/
 						md4_calc(mppe_sendkey+8, smbPasswd.smb_nt_passwd,16);
-					len = 32;
+/*
 					rad_pwencode(mppe_sendkey, &len, 
 						 request->secret, request->packet->vector);
+*/
 					mppe_add_reply( &request->reply->vps,
-						"MS-CHAP-MPPE-Keys",mppe_sendkey,len);
+						"MS-CHAP-MPPE-Keys",mppe_sendkey,32);
 				}
 				else if (chap == 2){
+				        DEBUG2("rlm_mschap: adding MS-CHAPv2 MPPE keys");
 					mppe_chap2_gen_keys128(request->secret,request->packet->vector,
 						smbPasswd.smb_nt_passwd,
 						response->strvalue + 26,
@@ -905,6 +914,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			
 			}
 			return res;
+		}
+		else {
+		        DEBUG2("rlm_mschap: Authentication failed");
 		}
 	}
 	
