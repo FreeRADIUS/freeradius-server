@@ -55,7 +55,7 @@ static const char rcsid[] = "$Id$";
  */
 typedef struct rlm_counter_t {
 	char *filename;  /* name of the database file */
-	char *reset;  /* daily, weekly, monthly */
+	char *reset;  /* daily, weekly, monthly, never */
 	char *key_name;  /* User-Name */
 	char *count_attribute;  /* Acct-Session-Time */
 	char *counter_name;  /* Daily-Session-Time */
@@ -163,6 +163,8 @@ static int find_next_reset(rlm_counter_t *data, time_t timeval)
 		tm->tm_mday = 1;
 		tm->tm_mon++;
 		data->reset_time = mktime(tm);
+	} else if (strcmp(data->reset, "never") == 0) {
+		data->reset_time = 0;
 	} else {
 		radlog(L_ERR, "rlm_counter: Unknown reset timer \"%s\"",
 				data->reset);
@@ -275,10 +277,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Find the attribute for the allowed protocol
 	 */
-	if (data->service_type == NULL) {
-		radlog(L_ERR, "rlm_counter: 'allowed-servicetype' must be set.");
-		exit(0);
-	}
 	if (data->service_type != NULL) {
 		if ((dval = dict_valbyname(PW_SERVICE_TYPE, data->service_type)) == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to find attribute number for %s",
@@ -534,7 +532,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 		 * not need to login again
 		 */
 
-		if (res >= (data->reset_time - request->timestamp))
+		if (data->reset_time && res >= (data->reset_time - request->timestamp))
 			res += check_vp->lvalue;
 
 		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
