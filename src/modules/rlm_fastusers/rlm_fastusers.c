@@ -600,7 +600,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		radlog(L_INFO, "rlm_fastusers:  Reloading fastusers hash");
 		if(fastuser_buildhash(inst) < 0) {
 			radlog(L_ERR, "rlm_fastusers:  error building user hash.  aborting");
-			exit(1);
+			return RLM_MODULE_FAIL;
 		}
 	}
 
@@ -832,6 +832,9 @@ static int fastuser_detach(void *instance)
  */
 static int fastuser_accounting(void *instance UNUSED, REQUEST *request UNUSED)
 {
+	/*
+	 * FIXME: should re rather return RLM_MODULE_NOOP here?
+	 */
 	return RLM_MODULE_FAIL;
 }
 
