@@ -34,6 +34,7 @@ dnl #############################################################
 dnl Check for GNU cc
 AC_PROG_CC
 AC_PROG_GCC_TRADITIONAL
+AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
 
 PACKAGE=freeradius
@@ -351,6 +352,10 @@ dnl #############################################################
 dnl If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 PTHREADLIB=
 if test "$WITH_THREADS" = "yes"; then 
+  if test $ac_cv_prog_suncc = "yes"; then
+    CFLAGS="$CFLAGS -mt"
+  fi
+
   AC_CHECK_HEADERS(pthread.h)
 
   if test "X$ac_cv_header_pthread_h" = "X"; then
