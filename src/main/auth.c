@@ -282,23 +282,23 @@ int rad_authenticate(REQUEST *request)
 	 *	Auth-Reject for fail. We also need to add the reply
 	 *	pairs from the server to the initial reply.
 	 */
-	if (request->proxy) {
-		if (request->proxy->code == PW_AUTHENTICATION_REJECT ||
-		    request->proxy->code == PW_AUTHENTICATION_ACK) {
+	if (request->proxy_reply) {
+		if (request->proxy_reply->code == PW_AUTHENTICATION_REJECT ||
+		    request->proxy_reply->code == PW_AUTHENTICATION_ACK) {
 			request->config_items = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
 			if (request->config_items == NULL) {
 				log(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
 		}
-		if (request->proxy->code == PW_AUTHENTICATION_REJECT)
+		if (request->proxy_reply->code == PW_AUTHENTICATION_REJECT)
 			request->config_items->lvalue = PW_AUTHTYPE_REJECT;
-		if (request->proxy->code == PW_AUTHENTICATION_ACK)
+		if (request->proxy_reply->code == PW_AUTHENTICATION_ACK)
 			request->config_items->lvalue = PW_AUTHTYPE_ACCEPT;
 
-		if (request->proxy->vps) {
-			user_reply = request->proxy->vps;
-			request->proxy->vps = NULL;
+		if (request->proxy_reply->vps) {
+			user_reply = request->proxy_reply->vps;
+			request->proxy_reply->vps = NULL;
 		}
 	}
 
