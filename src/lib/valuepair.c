@@ -323,17 +323,15 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					}
 				}
 				break;
-				
 
-			   /*
-			    *  Add the new element to the list, even
-			    *  if similar ones already exist.
-			    */
+			  /*
+			   *  Add the new element to the list, even
+			   *  if similar ones already exist.
+			   */
 			default:
-			case T_OP_ADD:		/* += */
+			case T_OP_ADD: /* += */
 				break;
 			}
-		
 		}
 		if (tailfrom)
 			tailfrom->next = next;
@@ -583,16 +581,19 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 #endif
 			/* raw octets: 0x01020304... */
 		case PW_TYPE_OCTETS:
-			vp->length = 0;
 			if (strncasecmp(value, "0x", 2) == 0) {
 				u_char *us;
 				cp = value + 2;
 				us = vp->strvalue;
+				vp->length = 0;
+
 				while (*cp && vp->length < MAX_STRING_LEN) {
 					unsigned int tmp;
 					
-					if (sscanf(cp, "%02x", &tmp) != 1)
-						break;
+					if (sscanf(cp, "%02x", &tmp) != 1) {
+						librad_log("Non-hex characters at %c%c", cp[0], cp[1]);
+						return NULL;
+					}
 
 					cp += 2;
 					*(us++) = tmp;
@@ -743,6 +744,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	/*  If it's a comment, then exit, as we haven't read a pair */
 	if (token == T_HASH) {
 		*eol = token;
+		librad_log("Read a comment instead of a token");
 		return NULL;
 	}
 
@@ -797,7 +799,6 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		vp = pairmake(attr, NULL, token);
 		
 		vp->flags.do_xlat = 1;
-		
 		strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
 		vp->length = 0;
 		break;
