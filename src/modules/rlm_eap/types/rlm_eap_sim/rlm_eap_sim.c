@@ -364,6 +364,7 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
 
 	vp = pairfind(handler->request->reply->vps, ATTRIBUTE_EAP_SIM_RAND1);
 	if(vp == NULL) {
+	        DEBUG2("   can not initiate sim, no RAND1 attribute");
 		return 0;
 	}
 
@@ -590,7 +591,11 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.8  2003-12-29 01:13:43  mcr
+ * Revision 1.9  2004-01-30 19:38:29  mcr
+ * 	added some debugging of why EAP-sim might not want to
+ * 	handle the request - lacking RAND1 attribute.
+ *
+ * Revision 1.8  2003/12/29 01:13:43  mcr
  * 	if the un-marshalling fails, then fail the packet.
  *
  * Revision 1.7  2003/11/22 00:21:17  mcr
