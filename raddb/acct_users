@@ -11,3 +11,17 @@
 # realms file to point to the second RADIUS server. If you don't want
 # "username@realmname" to be accepted and replicated to the other server,
 # label that realm with the "notsuffix" option in the realms file.
+
+#
+#  You can also try:
+#
+#DEFAULT Acct-Status-Type == Start
+#	Exec-Program = "/path/to/exec/acct/start"
+#
+#DEFAULT Acct-Status-Type == Stop
+#	Exec-Program = "/path/to/exec/acct/stop"
+#
+#  For information on how the attributes from the request are passed
+#  to the program, see 'doc/variables.txt'
+#
+#
