@@ -442,11 +442,13 @@ module_t rlm_attr_filter = {
 	0,				/* type: reserved */
 	NULL,				/* initialization */
 	attr_filter_instantiate,	/* instantiation */
-        attr_filter_authorize, 		/* authorization */
-	NULL,				/* authentication */
-	NULL,			        /* preaccounting */
-	NULL,				/* accounting */
-	NULL,				/* checksimul */
+	{
+		NULL,			/* authentication */
+		attr_filter_authorize, 	/* authorization */
+		NULL,			/* preaccounting */
+		NULL,			/* accounting */
+		NULL			/* checksimul */
+	},
 	attr_filter_detach,		/* detach */
 	NULL				/* destroy */
 };

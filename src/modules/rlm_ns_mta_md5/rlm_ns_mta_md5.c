@@ -165,11 +165,13 @@ module_t rlm_ns_mta_md5 = {
   0,				/* type: reserved */
   NULL,				/* initialize */
   NULL,				/* instantiation */
-  NULL,				/* authorize */
-  module_auth,			/* authenticate */
-  NULL,				/* pre-accounting */
-  NULL,				/* accounting */
-  NULL,				/* checksimul */
+  {
+	  module_auth,		/* authenticate */
+	  NULL,			/* authorize */
+	  NULL,			/* pre-accounting */
+	  NULL,			/* accounting */
+	  NULL			/* checksimul */
+  },
   NULL,				/* detach */
   NULL,				/* destroy */
 };

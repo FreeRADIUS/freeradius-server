@@ -462,11 +462,13 @@ module_t rlm_files = {
 	0,				/* type: reserved */
 	NULL,				/* initialization */
 	file_instantiate,		/* instantiation */
-	file_authorize, 		/* authorization */
-	NULL,				/* authentication */
-	file_preacct,			/* preaccounting */
-	NULL,				/* accounting */
-	NULL,				/* checksimul */
+	{
+		NULL,			/* authentication */
+		file_authorize, 	/* authorization */
+		file_preacct,		/* preaccounting */
+		NULL,			/* accounting */
+		NULL			/* checksimul */
+	},
 	file_detach,			/* detach */
 	NULL				/* destroy */
 };

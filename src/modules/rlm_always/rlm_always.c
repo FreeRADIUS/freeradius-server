@@ -159,11 +159,13 @@ module_t rlm_always = {
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	always_instantiate,		/* instantiation */
-	always_return,			/* authorization */
-	always_return,			/* authentication */
-	always_return,			/* preaccounting */
-	always_return,			/* accounting */
-	always_checksimul,		/* checksimul */
+	{
+		always_return,		/* authentication */
+		always_return,		/* authorization */
+		always_return,		/* preaccounting */
+		always_return,		/* accounting */
+		always_checksimul	/* checksimul */
+	},
 	always_detach,			/* detach */
 	NULL,				/* destroy */
 };

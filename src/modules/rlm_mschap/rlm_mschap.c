@@ -185,11 +185,13 @@ module_t rlm_mschap = {
   0,				/* type */
   NULL,				/* initialize */
   NULL,				/* instantiation */
-  NULL,				/* authorize */
-  mschap_auth,			/* authenticate */
-  NULL,				/* pre-accounting */
-  NULL,				/* accounting */
-  NULL,				/* checksimul */
+  {
+	  mschap_auth,		/* authenticate */
+	  NULL,			/* authorize */
+	  NULL,			/* pre-accounting */
+	  NULL,			/* accounting */
+	  NULL			/* checksimul */
+  },
   NULL,				/* detach */
   NULL,				/* destroy */
 };

@@ -66,7 +66,7 @@ static indexed_modcallable *components[RLM_COMPONENT_COUNT];
  *	Hmm... we probably should be getting these from the configuration
  *	file, too.
  */
-static const char *component_names[RLM_COMPONENT_COUNT] =
+const char *component_names[RLM_COMPONENT_COUNT] =
 {
   "authenticate",
   "authorize",

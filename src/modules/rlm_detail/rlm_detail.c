@@ -217,11 +217,13 @@ module_t rlm_detail = {
 	0,				/* type: reserved */
 	NULL,				/* initialization */
 	detail_instantiate,		/* instantiation */
-	NULL,		 		/* authorization */
-	NULL,				/* authentication */
-	NULL,				/* preaccounting */
-	detail_accounting,		/* accounting */
-	NULL,				/* checksimul */
+	{
+		NULL,			/* authentication */
+		NULL,		 	/* authorization */
+		NULL,			/* preaccounting */
+		detail_accounting,	/* accounting */
+		NULL			/* checksimul */
+	},
 	detail_detach,			/* detach */
 	NULL				/* destroy */
 };

@@ -336,11 +336,13 @@ module_t rlm_realm = {
   0,				/* type: reserved */
   NULL,				/* initialization */
   realm_instantiate,	       	/* instantiation */
-  realm_authorize,		/* authorization */
-  NULL,				/* authentication */
-  realm_preacct,		/* preaccounting */
-  NULL,				/* accounting */
-  NULL,				/* checksimul */
+  {
+	  NULL,			/* authentication */
+	  realm_authorize,	/* authorization */
+	  realm_preacct,	/* preaccounting */
+	  NULL,			/* accounting */
+	  NULL			/* checksimul */
+  },
   realm_detach,			/* detach */
   NULL,				/* destroy */
 };

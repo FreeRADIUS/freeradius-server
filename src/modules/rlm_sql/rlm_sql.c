@@ -485,11 +485,13 @@ module_t rlm_sql = {
 	RLM_TYPE_THREAD_SAFE,	/* type: reserved */
 	rlm_sql_init,		/* initialization */
 	rlm_sql_instantiate,	/* instantiation */
-	rlm_sql_authorize,	/* authorization */
-	rlm_sql_authenticate,	/* authentication */
-	NULL,			/* preaccounting */
-	rlm_sql_accounting,	/* accounting */
-	NULL,			/* checksimul */
+	{
+		rlm_sql_authenticate,	/* authentication */
+		rlm_sql_authorize,	/* authorization */
+		NULL,			/* preaccounting */
+		rlm_sql_accounting,	/* accounting */
+		NULL			/* checksimul */
+	},
 	rlm_sql_detach,		/* detach */
 	rlm_sql_destroy,	/* destroy */
 };

@@ -602,11 +602,13 @@ module_t rlm_radutmp = {
   0,                            /* type: reserved */
   NULL,                 	/* initialization */
   radutmp_instantiate,          /* instantiation */
-  NULL,                         /* authorization */
-  NULL,                         /* authentication */
-  NULL,                         /* preaccounting */
-  radutmp_accounting,           /* accounting */
-  radutmp_checksimul,		/* checksimul */
+  {
+	  NULL,                 /* authentication */
+	  NULL,                 /* authorization */
+	  NULL,                 /* preaccounting */
+	  radutmp_accounting,   /* accounting */
+	  radutmp_checksimul	/* checksimul */
+  },
   radutmp_detach,               /* detach */
   NULL,         	        /* destroy */
 };

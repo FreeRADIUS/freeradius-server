@@ -58,11 +58,13 @@ module_t rlm_dictionary = {
 	0,				/* type: reserved */
 	radius_init,			/* initialization */
 	NULL,            		/* instantiation */
-	NULL,            		/* authorization */
-	NULL,               		/* authentication */
-	NULL,            		/* preaccounting */
-	NULL,              		/* accounting */
-	NULL,              		/* checksimul */
+	{
+		NULL,               	/* authentication */
+		NULL,            	/* authorization */
+		NULL,            	/* preaccounting */
+		NULL,              	/* accounting */
+		NULL              	/* checksimul */
+	},
 	NULL,				/* detach */
 	NULL 				/* destroy */
 };

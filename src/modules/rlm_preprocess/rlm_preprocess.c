@@ -653,11 +653,13 @@ module_t rlm_preprocess = {
 	0,			/* type: reserved */
 	NULL,			/* initialization */
 	preprocess_instantiate,	/* instantiation */
-	preprocess_authorize,	/* authorization */
-	NULL,			/* authentication */
-	preprocess_preaccounting, /* pre-accounting */
-	NULL,			/* accounting */
-	NULL,			/* checksimul */
+	{
+		NULL,			/* authentication */
+		preprocess_authorize,	/* authorization */
+		preprocess_preaccounting, /* pre-accounting */
+		NULL,			/* accounting */
+		NULL			/* checksimul */
+	},
 	preprocess_detach,	/* detach */
 	NULL,			/* destroy */
 };

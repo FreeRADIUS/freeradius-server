@@ -153,11 +153,13 @@ module_t rlm_krb5 = {
   RLM_TYPE_THREAD_UNSAFE,	/* type: not thread safe */
   NULL,				/* initialize */
   krb5_instantiate,   		/* instantiation */
-  NULL,				/* authorize */
-  krb5_auth,			/* authenticate */
-  NULL,				/* pre-accounting */
-  NULL,				/* accounting */
-  NULL,				/* checksimul */
+  {
+	  krb5_auth,		/* authenticate */
+	  NULL,			/* authorize */
+	  NULL,			/* pre-accounting */
+	  NULL,			/* accounting */
+	  NULL			/* checksimul */
+  },
   krb5_detach,			/* detach */
   NULL,				/* destroy */
 };

@@ -9,17 +9,7 @@
 #define RADIUS_MODULES_H
 #include "conffile.h"
 
-/*
- *	The types of the functions which are supported by each module.
- *	The functional parameters are defined here, so we don't have to
- *	edit each and every module when we decide to add another type
- *	of request handler.
- */
-typedef int (*RLM_AUTHORIZE_FUNCP)(REQUEST *request);
-typedef int (*RLM_AUTHENTICATE_FUNCP)(REQUEST *request);
-typedef int (*RLM_POST_AUTHENTICATE_FUNCP)(REQUEST *request);
-typedef int (*RLM_PRE_ACCOUNTING_FUNCP)(REQUEST *request);
-typedef int (*RLM_ACCOUNTING_FUNCP)(REQUEST *request);
+typedef int (*packetmethod)(void *instance, REQUEST *request);
 
 #define RLM_COMPONENT_AUTH 0
 #define RLM_COMPONENT_AUTZ 1
@@ -36,14 +26,12 @@ typedef struct module_t {
 	int	type;			/* reserved */
 	int	(*init)(void);
 	int	(*instantiate)(CONF_SECTION *mod_cs, void **instance);
-	int	(*authorize)(void *instance, REQUEST *request);
-	int	(*authenticate)(void *instance, REQUEST *request);
-	int	(*preaccounting)(void *instance, REQUEST *request);
-	int	(*accounting)(void *instance, REQUEST *request);
-	int	(*checksimul)(void *instance, REQUEST *request);
+	packetmethod	methods[RLM_COMPONENT_COUNT];
 	int	(*detach)(void *instance);
  	int	(*destroy)(void);
 } module_t;
+
+extern const char *component_names[RLM_COMPONENT_COUNT];
 
 enum {
 	RLM_MODULE_REJECT,	/* immediately reject the request */

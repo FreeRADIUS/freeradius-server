@@ -781,14 +781,16 @@ static int fastuser_accounting(void *instance, REQUEST *request)
 module_t rlm_fastusers = {
 	"fastusers",
 	0,				/* type: reserved */
-	NULL,			/* initialization */
+	NULL,				/* initialization */
 	fastuser_instantiate,		/* instantiation */
-	fastuser_authorize, 		/* authorization */
-	fastuser_authenticate,		/* authentication */
-	fastuser_preacct,			/* preaccounting */
-	fastuser_accounting,		/* accounting */
-	NULL,									/* checksimul */
-	fastuser_detach,			/* detach */
+	{
+		fastuser_authenticate,	/* authentication */
+		fastuser_authorize,	/* authorization */
+		fastuser_preacct,	/* preaccounting */
+		fastuser_accounting,	/* accounting */
+		NULL			/* checksimul */
+	},
+	fastuser_detach,		/* detach */
 	NULL				/* destroy */
 };
 

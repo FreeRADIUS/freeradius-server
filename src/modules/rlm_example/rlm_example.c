@@ -233,11 +233,13 @@ module_t rlm_example = {
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	example_init,			/* initialization */
 	example_instantiate,		/* instantiation */
-	example_authorize,		/* authorization */
-	example_authenticate,		/* authentication */
-	example_preacct,		/* preaccounting */
-	example_accounting,		/* accounting */
-	example_checksimul,		/* checksimul */
+	{
+		example_authenticate,	/* authentication */
+		example_authorize,	/* authorization */
+		example_preacct,	/* preaccounting */
+		example_accounting,	/* accounting */
+		example_checksimul	/* checksimul */
+	},
 	example_detach,			/* detach */
 	NULL,				/* destroy */
 };

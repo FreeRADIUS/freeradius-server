@@ -267,11 +267,13 @@ module_t rlm_pam = {
   0,				/* type: reserved */
   NULL,				/* initialize */
   pam_instantiate,		/* instantiation */
-  NULL,				/* authorize */
-  pam_auth,			/* authenticate */
-  NULL,				/* pre-accounting */
-  NULL,				/* accounting */
-  NULL,				/* checksimul */
+  {
+	  pam_auth,		/* authenticate */
+	  NULL,			/* authorize */
+	  NULL,			/* pre-accounting */
+	  NULL,			/* accounting */
+	  NULL			/* checksimul */
+  },
   pam_detach,			/* detach */
   NULL,				/* destroy */
 };

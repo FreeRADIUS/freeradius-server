@@ -811,11 +811,13 @@ module_t        rlm_ldap = {
 	RLM_TYPE_THREAD_UNSAFE,	/* type: reserved 	 */
 	NULL,			/* initialization 	 */
 	ldap_instantiate,	/* instantiation 	 */
-	ldap_authorize,		/* authorization 	 */
-	ldap_authenticate,	/* authentication 	 */
-	NULL,			/* preaccounting 	 */
-	NULL,			/* accounting 		 */
-	NULL,			/* checksimul 		 */
+	{
+		ldap_authenticate,	/* authentication 	 */
+		ldap_authorize,		/* authorization 	 */
+		NULL,			/* preaccounting 	 */
+		NULL,			/* accounting 		 */
+		NULL			/* checksimul 		 */
+	},
 	ldap_detach,		/* detach 		 */
 	NULL,			/* destroy 		 */
 };

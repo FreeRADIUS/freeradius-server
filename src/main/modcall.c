@@ -198,28 +198,8 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 	int myresult = default_result;
 
 	safe_lock(sp->modinst);
-	switch(component) {
-	case RLM_COMPONENT_AUTZ:
-		myresult = sp->modinst->entry->module->authorize(
-				    sp->modinst->insthandle, request);
-		break;
-	case RLM_COMPONENT_AUTH:
-		myresult = sp->modinst->entry->module->authenticate(
-				    sp->modinst->insthandle, request);
-		break;
-	case RLM_COMPONENT_PREACCT:
-		myresult = sp->modinst->entry->module->preaccounting(
-				    sp->modinst->insthandle, request);
-		break;
-	case RLM_COMPONENT_ACCT:
-		myresult = sp->modinst->entry->module->accounting(
-				    sp->modinst->insthandle, request);
-		break;
-	case RLM_COMPONENT_SESS:
-		myresult = sp->modinst->entry->module->checksimul(
-				    sp->modinst->insthandle, request);
-		break;
-	}
+	myresult = sp->modinst->entry->module->methods[component](
+			    sp->modinst->insthandle, request);
 	safe_unlock(sp->modinst);
 
 	return myresult;
@@ -553,61 +533,12 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 static void sanity_check(int component, module_instance_t *inst, int lineno,
 			 const char *filename)
 {
-	switch (component) {
-		case RLM_COMPONENT_AUTH:
-			if (!inst->entry->module->authenticate) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"an 'authenticate' entry\n",
-					filename, lineno,
-					inst->entry->module->name);
-				exit(1);
-			}
-			break;
-		case RLM_COMPONENT_AUTZ:
-			if (!inst->entry->module->authorize) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"an 'authorize' entry\n",
-					filename, lineno,
-					inst->entry->module->name);
-				exit(1);
-			}
-			break;
-		case RLM_COMPONENT_PREACCT:
-			if (!inst->entry->module->preaccounting) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"a 'preacct' entry\n",
-					filename, lineno,
-					inst->entry->module->name);
-				exit(1);
-			}
-			break;
-		case RLM_COMPONENT_ACCT:
-			if (!inst->entry->module->accounting) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"an 'accounting' entry\n",
-					filename, lineno,
-					inst->entry->module->name);
-				exit(1);
-			}
-			break;
-		case RLM_COMPONENT_SESS:
-			if (!inst->entry->module->checksimul) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"a 'checksimul' entry\n",
-					filename, lineno,
-					inst->entry->module->name);
-				exit(1);
-			}
-			break;
-		default:
-			radlog(L_ERR|L_CONS, "%s[%d] Unknown component %d.\n",
-			       filename, lineno, component);
-			exit(1);
+	if (!inst->entry->module->methods[component]) {
+		radlog(L_ERR|L_CONS,
+			"%s[%d] Module %s does not contain a method for '%s'",
+			filename, lineno, inst->entry->module->name,
+			component_names[component]);
+		exit(1);
 	}
 }
 

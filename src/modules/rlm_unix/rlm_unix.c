@@ -600,11 +600,13 @@ module_t rlm_unix = {
   0,                            /* type: reserved */
   unix_init,                    /* initialization */
   unix_instantiate,		/* instantiation */
-  NULL,                         /* authorization */
-  unix_authenticate,            /* authentication */
-  NULL,                         /* preaccounting */
-  unix_accounting,              /* accounting */
-  NULL,                  	/* checksimul */
+  {
+	  unix_authenticate,    /* authentication */
+	  NULL,                 /* authorization */
+	  NULL,                 /* preaccounting */
+	  unix_accounting,      /* accounting */
+	  NULL                  /* checksimul */
+  },
   unix_detach,                 	/* detach */
   unix_destroy,                  /* destroy */
 };
