@@ -643,6 +643,15 @@ RADIUS_PACKET *rad_recv(int fd)
 		0, (struct sockaddr *)&saremote, &salen);
 
 	/*
+	 *	Check for socket errors.
+	 */
+	if (packet->data_len < 0) {
+		librad_log("Error receiving packet: %s", strerror(errno));
+		free(packet);
+		return NULL;
+	}
+
+	/*
 	 *	Fill IP header fields.  We need these for the error
 	 *	messages which may come later.
 	 */
@@ -654,17 +663,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	Explicitely set the VP list to empty.
 	 */
 	packet->vps = NULL;
-
-	/*
-	 *	Check for socket errors.
-	 */
-	if (packet->data_len < 0) {
-		librad_log("Error receiving packet from host %s: %s",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
-			   strerror(errno));
-		free(packet);
-		return NULL;
-	}
 
 	/*
 	 *	Check for packets smaller than the packet header.
