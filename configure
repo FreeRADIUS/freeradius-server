@@ -727,7 +727,7 @@ fi
 
 
 
-# From configure.in Revision: 1.177 
+# From configure.in Revision: 1.178 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=9-pre
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -8226,6 +8226,7 @@ fi
 
 
 top_builddir=`pwd`
+export top_builddir
 echo "$ac_t""top_builddir=$top_builddir" 1>&6
 
 
