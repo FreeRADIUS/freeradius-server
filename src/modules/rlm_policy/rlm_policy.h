@@ -232,7 +232,7 @@ extern const LRAD_NAME_NUMBER policy_reserved_words[];
 extern int rlm_policy_insert(rbtree_t *head, policy_named_t *policy);
 extern policy_named_t *rlm_policy_find(rbtree_t *head, const char *name);
 
-extern int rlm_policy_parse(rlm_policy_t * inst, const char *filename);
+extern int rlm_policy_parse(rbtree_t *policies, const char *filename);
 extern void rlm_policy_free_item(policy_item_t *item);
 extern void rlm_policy_print(const policy_item_t *item);
 extern int rlm_policy_evaluate(rlm_policy_t *inst, REQUEST *request,

@@ -22,6 +22,9 @@
 
 #include "rlm_policy.h"
 
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+#endif
 
 /*
  *	Explanations of what the lexical tokens are.
@@ -1224,14 +1227,69 @@ static int parse_named_policy(policy_lex_file_t *lexer)
  */
 static int parse_include(policy_lex_file_t *lexer)
 {
+	char *p;
 	policy_lex_t token;
-	char buffer[1024];
+	char filename[1024];
+	char buffer[2048];
 
-	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
+	token = policy_lex_file(lexer, 0, filename, sizeof(filename));
 	if (token != POLICY_LEX_DOUBLE_QUOTED_STRING) {
 		fprintf(stderr, "%s[%d]: Expected filename, got \"%s\"\n",
 			lexer->filename, lexer->lineno,
 			lrad_int2str(rlm_policy_tokens, token, "?"));
+		return 0;
+	}
+
+	/*
+	 *	See if we're including all of the files in a subdirectory.
+	 */
+	strNcpy(buffer, lexer->filename, sizeof(buffer));
+	p = strrchr(buffer, '/');
+	if (p) {
+		strNcpy(p + 1, filename, sizeof(buffer) - 1 - (p - buffer));
+
+#ifdef HAVE_DIRENT_H	
+		p = strrchr(p + 1, '/');
+		if (p && !p[1]) {
+			DIR		*dir;
+			struct dirent	*dp;
+			
+			p++;
+
+			dir = opendir(buffer);
+			if (!dir) {
+				fprintf(stderr, "%s[%d]: Error opening %s:%s\n",
+					lexer->filename, lexer->lineno,
+					buffer, strerror(errno));
+				return 0;
+			}
+			
+			/*
+			 *	Read the directory, ignoring "." files.
+			 */
+			while ((dp = readdir(dir)) != NULL) {
+				if (dp->d_name[0] == '.') continue;
+				
+				strNcpy(p, dp->d_name,
+					sizeof(buffer) - (p - buffer));
+				if (!rlm_policy_parse(lexer->policies, buffer)) {
+					closedir(dir);
+					return 0;
+				}
+			}
+			closedir(dir);
+			return 1;
+		} /* else it must have been a normalx file */
+#endif
+	} else {
+		snprintf(buffer, sizeof(buffer), "%s/%s",
+			 radius_dir, filename);
+	}
+	
+	/*
+	 *	Handle one include file.
+	 */
+	if (!rlm_policy_parse(lexer->policies, buffer)) {
 		return 0;
 	}
 
@@ -1242,7 +1300,7 @@ static int parse_include(policy_lex_file_t *lexer)
 /*
  *	Parse data from a file into a policy language.
  */
-int rlm_policy_parse(rlm_policy_t *inst, const char *filename)
+int rlm_policy_parse(rbtree_t *policies, const char *filename)
 {
 	FILE *fp;
 	policy_lex_t token;
@@ -1262,7 +1320,7 @@ int rlm_policy_parse(rlm_policy_t *inst, const char *filename)
 	lexer->fp = fp;
 	lexer->token = POLICY_LEX_BAD;
 	lexer->parse = NULL;	/* initial input */
-	lexer->policies = inst->policies;
+	lexer->policies = policies;
 
 	do {
 		int reserved;

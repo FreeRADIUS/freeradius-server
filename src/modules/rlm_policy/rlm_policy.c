@@ -109,7 +109,7 @@ static int policy_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Parse the policy from the file.
 	 */
-	if (!rlm_policy_parse(inst, inst->filename)) {
+	if (!rlm_policy_parse(inst->policies, inst->filename)) {
 		policy_detach(inst);
 		return -1;
 	}
