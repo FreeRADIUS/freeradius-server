@@ -1,44 +1,52 @@
-	Configurable Fail Over
+	Configurable Module Fail Over
+	-----------------------------
 
-Before configurable failover, we had this:
+Before configurable module failover, we had this kind of entry in
+"radiusd.conf":
 
+#---
 authorize {
   preprocess
   files
 }
+#---
 
-which instructed module_authorize to first pass the request through
-rlm_preprocess, and if that returned success, pass it through rlm_files,
-and if that returned success, module_authorize itself would then return
-success. Processing was strictly linear and if one module failed, the whole
-function would fail immediately.
+  This entry instructed the "authorize" section to first process the
+request through the "preprocess" module, and if that returned success,
+to process it through "files" module.  If that sequence returned
+success, then the "authorize" stage itself would then return success.
+Processing was strictly linear and if one module failed, the whole
+section would fail immediately.
 
-Configurable failover provides more flexibility. It takes advantage of the
-tree structure of radiusd.conf to support a config language that allows you
-to specify groups of modules that should work together in ways other than
-execute-in-order-return-on-fail. Basically you can redesign the flow of
-module_authorize to fit your needs, without touching C code, just by altering
-radiusd.conf.
+  Configurable failover provides more flexibility. It takes advantage
+of the tree structure of radiusd.conf to support a configuration
+language that allows you to "group" modules that should work together
+in ways other than simple lists.  You can control the flow of any
+stage (e.g. "authorize") to fit your needs, without touching C code,
+just by altering radiusd.conf.
 
-I will soon explain this new language in detail, but first, if you just want
-to know how to make failover happen without understanding why it works or how
-to tweak it, here's your quick fix: just put a redundant{} block around those
-module instances which refer to redundant databases. Example:
+  This configurable fail-over has a convenient short-hand, too.
+Administrators commonly want to say things like "try SQL1, if it's
+down, try SQL2, otherwise drop the request."
 
+  For example:
+
+#---
   modules {
     sql sql1 {
-      server="myfirstserver.example"
-      # Insert other necessary parameters here
+      # configuration to connect to SQL database one
     }
     sql sql2 {
-      server="mysecondserver.example"
-      # Insert other necessary parameters here
+      # configuration to connect to SQL database two
     }
     always handled {
       rcode = handled
     }
   }
+
+  #  Handle accounting packets
   accounting {
+      detail			# always log to detail, stopping if it fails
       redundant {
         sql1			# try module sql1
         sql2			# if that's down, try module sql2
@@ -47,9 +55,147 @@ module instances which refer to redundant databases. Example:
 				# module (see doc/rlm_always)
       }
   }
+#---
 
-OK, now for the exhaustive documentation. The things unexpectedly CAPITALIZED
-are the key terms...
+  The "redundant" section is a configuration directive which tells the
+server to process the second module if the first one fails.  Any
+number of modules can be listed in a "redundant" section.  The server
+will process each in turn, until one of the modules succeeds.  It willthen stop processing the "redundant" list.
+
+  Rewriting results for single modules
+  ------------------------------------
+
+  Normally, when a module fails, the entire section ("authorize",
+"accounting", etc.) stops being processed.  In some cases, we may want
+to permit "soft failures".  That is, we may want to tell the server
+that it is "ok" for a module to fail, and that the failure should not
+be treated as a fatal error.
+
+  In this case, the module is treated as a "section", rather than just
+as a single line in "radiusd.conf".  The configuration entries for
+that section are taken from the "configurable fail-over" code, and not
+from the configuration information for that module.
+
+  For example, the "detail" module normally returns "fail" if it is
+unable to write its information to the "detail" file.  As a test, we
+can configure the server so that it continues processing the request,
+even if the "detail" module fails.  The following example shows how:
+
+#--
+  #  Handle accounting packets
+  accounting {
+      detail {
+        fail = 1
+      }
+      redundant {
+        sql1
+        sql2
+	handled
+      }
+  }
+#--
+
+  The "fail = 1" entry tells the server to remember the "fail" code,
+with priority "1".  The normal configuration is "fail = return", which
+means "if the detail module fails, stop processing the accounting
+section".
+
+  Fail-over configuration entries
+  -------------------------------
+
+  Modules normally return on of the following codes as their result:
+
+	Code		Meaning
+	----		------
+	notfound	the user was not found
+	noop		the module did nothing
+	ok		the module succeeded
+	updated		the module updated information in the request
+	fail		the module failed
+	reject		the module rejected the user
+	userlock	the user was locked out
+	invalid		the users configuration entry was invilad
+	handled		the module has done everything to handle the request
+	
+  In a configurable fail-over section, each of these codes may be
+listed, with a value.  If the code is not listed, or a configurable
+fail-over section is not defined, then default values are used.
+
+  The values for each code may be one of two things:
+
+	Value		Meaning
+	-----		-------
+	<number>	Priority for this return code
+	return		stop processing this configurable fail-over list.
+
+  The <number> used for a value may be any decimal number between 1
+and 99999.  The number is used when processing a list of modules, to
+determine which code is returned from the list.  For example, if
+"module1" returns "fail" with priority "1", and a later "module2"
+returns "ok" with priority "3", the return code from the list of
+modules will be "ok", because it has higher priority than "fail".
+
+  This configurability allows the administrator to permit some modules
+to fail, so long as a later module succeds.
+
+
+  More Complex Configurations
+  ---------------------------
+
+  The "authorize" section is normally a list of module names.  We can
+create sub-lists by using the section name "group".  The "redundant"
+section above is just a short-hand for "group", with a set of default
+return codes, which are different than the normal "stop processing the
+list on failure".
+
+  For example, we can configure two detail modules, and allow either
+to fail, so long as one of them succeeds.
+
+#--
+  #  Handle accounting packets
+  accounting {
+      group {
+        detail1 {
+          fail = 1		# remember "fail" with priority 1
+	  ok = return		# if we succeed, don't do "detail2"
+        }
+	detail2 {
+	  fail = 1		# remember "fail" with priority 1
+	  ok = return		# if we succeed, return "ok"
+				# if "detail1" returned "fail"
+	}
+      }			# returns "fail" only if BOTH modules returned "fail"
+      redundant {
+        sql1
+        sql2
+	handled
+      }
+  }
+
+#--
+
+  This configuration says:
+
+	log to "detail1", and stop processing the "group" list if
+	"detail1" returned OK.
+
+	If "detail1" returned "fail", then continue, but remember the
+	"fail" code, with priority 1.
+
+	If "detail2" fails, then remember "fail" with priority 1.
+
+	If "detail2" returned "ok", return "ok" from the "group".
+
+  The return code from the "group" is the return code which was either
+forced to return (e.g. "ok" for "detail1"), or the highest priority
+return code found by processing the list.
+
+  This process can be extended to any number of modules listed in a
+"group" section.
+
+
+  The Gory Details
+  ----------------
 
 The fundamental object is called a MODCALLABLE, because it is something that
 can be passed a specific radius request and returns one of the RLM_MODULE_*
