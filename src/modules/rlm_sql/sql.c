@@ -112,7 +112,7 @@ void sql_poolfree(SQL_INST *inst) {
  *************************************************************************/
 int sql_close_socket(SQLSOCK *sqlsocket) {
 
-	DEBUG2("rlm_sql: Closing sqlsocket %d", sqlsocket->id);
+	radlog(L_DBG,"rlm_sql: Closing sqlsocket %d", sqlsocket->id);
 	sql_close(sqlsocket);
 	free(sqlsocket);
 	return 1;
@@ -135,7 +135,7 @@ SQLSOCK *sql_get_socket(SQL_INST *inst) {
 	pthread_mutex_lock(inst->lock);
 #endif
 	while (inst->used == inst->config->num_sql_socks) {
-		printf("Waiting queue to not be full\n");
+		radlog(L_DBG, "rlm_sql: Waiting for open sql socket");
 #if HAVE_PTHREAD_H
 		pthread_cond_wait(inst->notfull, inst->lock);
 #else
@@ -156,7 +156,7 @@ SQLSOCK *sql_get_socket(SQL_INST *inst) {
 #else
 			cur->in_use = SQLSOCK_LOCKED;
 #endif
-			printf("Reserved id %d\n", cur->id);
+			radlog(L_DBG,"rlm_sql: Reserved sql socket id: %d", cur->id);
 			return cur;
 		}
 	}
@@ -187,7 +187,7 @@ int sql_release_socket(SQL_INST *inst, SQLSOCK *sqlsocket) {
 	end = strtod(buff, NULL);
 	sprintf(buff, "%ld %2.0ld", sqlsocket->tv.tv_sec, sqlsocket->tv.tv_usec);
 	start = strtod(buff, NULL);
-	DEBUG2("rlm_sql: Socket %d used for %.2f seconds", sqlsocket->id, end - start);
+	radlog(L_DBG,"rlm_sql: Socket %d used for %.2f seconds", sqlsocket->id, end - start);
 
 	sqlsocket->tv.tv_sec = tv.tv_sec;
 	sqlsocket->tv.tv_usec = tv.tv_usec;
@@ -202,7 +202,7 @@ int sql_release_socket(SQL_INST *inst, SQLSOCK *sqlsocket) {
 	sqlsocket->in_use = 0;
 #endif
 
-	DEBUG2("rlm_sql: Released sqlsocket %d", sqlsocket->id);
+	radlog(L_DBG,"rlm_sql: Released sql socket id: %d", sqlsocket->id);
 
 #if HAVE_PTHREAD_H
 	pthread_mutex_unlock(inst->lock);
@@ -471,9 +471,7 @@ int sql_save_acct(SQL_INST *inst, SQLSOCK *sqlsocket, SQLACCTREC *sqlrecord) {
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int
-sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode)
-{
+int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
 
 	DICT_ATTR *attr;
 	VALUE_PAIR *pair, *check;
@@ -508,9 +506,7 @@ sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode)
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int
-sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR ** vp, char *user,
-							int mode)
+int sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR ** vp, char *user, int mode)
 {
 
 	char    querystr[256];

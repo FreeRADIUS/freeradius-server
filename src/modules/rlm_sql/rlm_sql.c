@@ -104,6 +104,16 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance) {
 	}
 	memset(inst->config, 0, sizeof(SQL_CONFIG));
 
+#if HAVE_PTHREAD_H
+	inst->lock = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));
+	if (inst->lock == NULL)
+		return -1;
+	pthread_mutex_init(inst->lock, NULL);
+
+	inst->notfull = (pthread_cond_t *)malloc(sizeof(pthread_cond_t));
+	pthread_cond_init(inst->notfull, NULL);
+#endif
+
 	/*
 	 * If the configuration parameters can't be parsed, then
 	 * fail.
@@ -115,8 +125,7 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance) {
 	}
 
 	if(config.num_sql_socks > MAX_SQL_SOCKS) {
-		radlog(L_ERR | L_CONS, "sql_instantiate:  number of sqlsockets cannot exceed %d",
-		 MAX_SQL_SOCKS);
+		radlog(L_ERR | L_CONS, "sql_instantiate:  number of sqlsockets cannot exceed %d", MAX_SQL_SOCKS);
 		free(inst->config);
 		free(inst);
 		return -1;
@@ -219,6 +228,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	if ((tmp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
 		nas_port = tmp->lvalue;
 
+
 	/*
 	 *      Find the entry for the user.
 	 */
@@ -239,13 +249,13 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	sql_release_socket(inst, sqlsocket);
 
 	if (!found) {
-		DEBUG2("rlm_sql: User %s not found and DEFAULT not found", name);
+		radlog(L_DBG,"rlm_sql: User %s not found and DEFAULT not found", name);
 		return RLM_MODULE_NOTFOUND;
 	}
 
 	if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
-		DEBUG2("rlm_sql: Pairs do not match [%s]", name);
-		return RLM_MODULE_OK;
+		radlog(L_INFO,"rlm_sql: Pairs do not match [%s]", name);
+		return RLM_MODULE_FAIL;
 	}
 
 	pairmove(&request->reply->vps, &reply_tmp);
@@ -276,8 +286,7 @@ rlm_sql_authenticate(void *instance, REQUEST *request)
 	if ((request->password == NULL) ||
 			(request->password->length == 0) ||
 			(request->password->attribute != PW_PASSWORD)) {
-		radlog(L_AUTH,
-					 "rlm_sql: Attribute \"Password\" is required for authentication.");
+		radlog(L_AUTH, "rlm_sql: Attribute \"Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -298,7 +307,11 @@ rlm_sql_authenticate(void *instance, REQUEST *request)
 	sql_select_query(inst, sqlsocket, querystr);
 	row = sql_fetch_row(sqlsocket);
 	sql_finish_select_query(sqlsocket);
+	sql_release_socket(inst, sqlsocket);
 	free(querystr);
+
+	if (row == NULL)
+		return RLM_MODULE_REJECT;
 
 	if (strncmp(request->password->strvalue, row[0], request->password->length)
 			!= 0)
