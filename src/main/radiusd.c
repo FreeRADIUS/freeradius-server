@@ -1055,6 +1055,8 @@ int rad_process(REQUEST *request, int dospawn)
 		case PW_STATUS_SERVER:
 			if (!mainconfig.status_server) {
 				DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+				request_free(&request);
+				return -1;
 			} else {
 				fun = rad_status_server;
 			}
