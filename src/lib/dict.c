@@ -85,7 +85,7 @@ static DICT_ATTR *base_attributes[256];
 /*
  *	Free the dictionary_attributes and dictionary_values lists.
  */
-static void dict_free(void)
+void dict_free(void)
 {
 	DICT_VENDOR	*dvend, *enext;
 
@@ -727,7 +727,7 @@ static int valuename_cmp(const void *a, const void *b)
 		 ((const DICT_VALUE *)b)->attr);
 	if (rcode != 0) return rcode;
 
-	return strcasecmp(((const DICT_VALUE *)a)->name,
+return strcasecmp(((const DICT_VALUE *)a)->name,
 			  ((const DICT_VALUE *)b)->name);
 }
 
@@ -775,7 +775,7 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 	}
 
-	values_byname = rbtree_create(valuename_cmp, NULL, 1);
+	values_byname = rbtree_create(valuename_cmp, free, 1);
 	if (!values_byname) {
 		return -1;
 	}
