@@ -1132,6 +1132,10 @@ RADIUS_PACKET *rad_recv(int fd)
 
 /*
  *	Calculate/check digest, and decode radius attributes.
+ *	Returns:
+ *	-1 on decoding error
+ *	-2 if decoding error implies the message should be silently dropped
+ *	0 on success
  */
 int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       const char *secret)
@@ -1195,7 +1199,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				char buffer[32];
 				librad_log("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
 					   ip_ntoa(buffer, packet->src_ipaddr));
-				return -1;
+				/* Silently drop packet, according to RFC 3579 */
+				return -2;
 			} /* else the message authenticator was good */
 
 			/*

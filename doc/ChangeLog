@@ -4,7 +4,7 @@ FreeRADIUS 1.1.0 ; $Date $, urgency=low
 	  ucd-snmp backwards compatibility mode.
 	* Move the Login-Time,Current-Time,Expiration attribute handling
 	  to new modules  rlm_logintime and rlm_expiration.
-        * Added %{mschap:NT-Hash <passwd>} and %{mschap: LM-Hash <passwd>},
+	* Added %{mschap:NT-Hash <passwd>} and %{mschap: LM-Hash <passwd>},
 	  and update rlm_pap to handle NT/LM-hashed passwords.
 	* New rlm_protocol_filter, which permits/denies requests containing
 	  certain attributes.
@@ -16,6 +16,8 @@ FreeRADIUS 1.1.0 ; $Date $, urgency=low
 	  but different numbers, aren't allowed.
 	* rlm_eap now uses trees, rather than linked lists, to maintain
 	  it's list of active sessions.
+	* Silently drop packets with bad Message-Authenticators, as per RFC3579
+	* Add Message-Authenticator to rlm_digest sample.
 	
 FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	pre3 -> release
