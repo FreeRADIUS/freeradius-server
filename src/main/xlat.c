@@ -30,21 +30,20 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,int type)
    else {
 	 switch (type) {
 	   case PW_TYPE_STRING :
-		  strncpy(out,"_",outlen-1);
+		  strNcpy(out,"_",outlen);
 		  break;
 	   case PW_TYPE_INTEGER :
-		  strncpy(out,"0",outlen-1);
+		  strNcpy(out,"0",outlen);
 		  break;
 	   case PW_TYPE_IPADDR :
-		  strncpy(out,"?.?.?.?",outlen-1);
+		  strNcpy(out,"?.?.?.?",outlen);
 		  break;
 	   case PW_TYPE_DATE :
-		  strncpy(out,"0",outlen-1);
+		  strNcpy(out,"0",outlen);
 		  break;
 	   default :
-		  strncpy(out,"unknown_type",outlen-1);
+		  strNcpy(out,"unknown_type",outlen);
 	 }
-	 out[outlen-1] = '\0';
 	 return strlen(out);
    }
 }
@@ -171,8 +170,8 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 			case 'd': /* request year */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%d",TM);
-				strncpy(q,tmpdt,freespace);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,tmpdt,freespace);
+				q += strlen(q);
 				break;
 			case 'f': /* Framed IP address */
 				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR);
@@ -182,14 +181,14 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 				break;
 			case 'l': /* request timestamp */
 				sprintf(tmpdt,"%ld",request->timestamp);
-				strncpy(q,tmpdt,freespace);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,tmpdt,freespace);
+				q += strlen(q);
 				break;
 			case 'm': /* request month */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%m",TM);
-				strncpy(q,tmpdt,freespace);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,tmpdt,freespace);
+				q += strlen(q);
 				break;
 			case 'n': /* NAS IP address */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR);
@@ -209,56 +208,56 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 			case 'y': /* request year */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%y",TM);
-				strncpy(q,tmpdt,freespace);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,tmpdt,freespace);
+				q += strlen(q);
 				break;
 			case 'A': /* radacct_dir */
-				strncpy(q,radacct_dir,freespace-1);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,radacct_dir,freespace-1);
+				q += strlen(q);
 				break;
 			case 'C': /* ClientName */
-				strncpy(q,client_name(request->packet->src_ipaddr),freespace-1);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,client_name(request->packet->src_ipaddr),freespace-1);
+				q += strlen(q);
 				break;
 			case 'D': /* request date */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%Y%m%d",TM);
-				strncpy(q,tmpdt,freespace);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,tmpdt,freespace);
+				q += strlen(q);
 				break;
 			case 'I': /* request timestamp */
-				strncpy(q,ctime(&request->timestamp),freespace);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,ctime(&request->timestamp),freespace);
+				q += strlen(q);
 				break;
 			case 'L': /* radlog_dir */
-				strncpy(q,radlog_dir,freespace-1);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,radlog_dir,freespace-1);
+				q += strlen(q);
 				break;
 			case 'R': /* radius_dir */
-				strncpy(q,radius_dir,freespace-1);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,radius_dir,freespace-1);
+				q += strlen(q);
 				break;
 			case 'T': /* request timestamp */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d-%H.%M.%S.000000",TM);
-				strncpy(q,tmpdt,freespace);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,tmpdt,freespace);
+				q += strlen(q);
 				break;
 			case 'U': /* Stripped User name */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME),PW_TYPE_STRING);
 				break;
 			case 'V': /* Request-Authenticator */
 				if (request->packet->verified)
-					strncpy(q,"Verified",freespace-1);
+					strNcpy(q,"Verified",freespace-1);
 				else
-					strncpy(q,"None",freespace-1);
-				i = strlen(q); q[i] = '\0'; q += i;
+					strNcpy(q,"None",freespace-1);
+				q += strlen(q);
 				break;
 			case 'Y': /* request year */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%Y",TM);
-				strncpy(q,tmpdt,freespace);
-				i = strlen(q); q[i] = '\0'; q += i;
+				strNcpy(q,tmpdt,freespace);
+				q += strlen(q);
 				break;
 			case 'Z': /* Full request pairs except password */
 				tmp = request->packet->vps;
@@ -279,21 +278,7 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 				break;
 		}
 	}
-	*q = 0;
+	*q = '\0';
 
 	return strlen(out);
 }
-
-/*
- * print a string passing by the radius_xlat2
- *
- */
-static void printf_xlat(char *str, REQUEST * request, VALUE_PAIR *reply)
-{
-  char * p;
-  p = malloc(4096);
-  radius_xlat2(p,4096,str,request,reply);
-  printf("%s",p);
-  free(p);
-}
-
