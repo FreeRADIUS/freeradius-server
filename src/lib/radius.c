@@ -1405,7 +1405,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
  *	password - a multiple of 16 bytes.
  */
 #define AUTH_PASS_LEN (16)
-int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
+int rad_pwencode(char *passwd, int *pwlen, const char *secret,
+		 const char *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
 	char	digest[AUTH_VECTOR_LEN];
@@ -1413,9 +1414,9 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vecto
 	int	len;
 
 	/*
-	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
+	 *	Pad password to multiple of AUTH_PASS_LEN bytes.
 	 */
-	len = strlen(passwd);
+	len = *pwlen;
 	if (len > 128) len = 128;
 	*pwlen = len;
 	if (len % AUTH_PASS_LEN != 0) {
