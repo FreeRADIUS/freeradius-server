@@ -56,7 +56,7 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 	
 	blen = p - buf;
 
-#ifdef 	TEST_CASE
+#if defined(TEST_CASE) || defined(DUMP_EAPSIM_KEYS)
 	{
 	  unsigned int i, j, k;
 	  
