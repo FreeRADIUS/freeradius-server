@@ -12,7 +12,8 @@ rlm_passwd reads configuration from config.cf which contains description
 of passwd file format. Every field of passwd file may be mapped to some
 RADIUS attribute. One of field is a key field. If attribute mapped to
 the key field is found in the request all other mapped attributes are added
-to configure items (if corresponding field in passwd file is not empty). 
+to configure items (if record corresponding to key field is found in passwd
+file and fields mapped to attributes are not empty). 
 
 rlm_passwd can cache information from passwd file and use hashtable for
 fast search, so it may be very effective for storing up to few thousands
