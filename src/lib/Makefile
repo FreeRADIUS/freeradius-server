@@ -9,11 +9,11 @@ INCLUDES	= ../include/radius.h ../include/libradius.h \
 
 CFLAGS		+= -D_LIBRADIUS -I../include
 
-all:	libradius.a
+all:	$(LIBPREFIX)radius.a
 
-libradius.a: $(OBJS)
-	$(AR) rv libradius.a $(OBJS)
-	$(RANLIB) libradius.a
+$(LIBPREFIX)radius.a: $(OBJS)
+	$(AR) rv $(LIBPREFIX)radius.a $(OBJS)
+	$(RANLIB) $(LIBPREFIX)radius.a
 
 filters.o: filters.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c filters.c
@@ -46,7 +46,7 @@ md5.o: md5.c md5.h
 	$(CC) $(CFLAGS) -c md5.c
 
 clean:
-	rm -f *.o libradius.a
+	rm -f *.o $(LIBPREFIX)radius.a
 
 install:
 

@@ -207,6 +207,17 @@ else
 fi
 AC_SUBST(LIBDL)
 
+dnl See if this is OS/2
+AC_MSG_CHECKING(type of OS)
+if test -f c:/config.sys; then
+	AC_MSG_RESULT(DOS or OS/2)
+	LIBPREFIX=
+else
+	AC_MSG_RESULT(some sort of Unix)
+	LIBPREFIX=lib
+fi
+AC_SUBST(LIBPREFIX)
+
 dnl Check for programs
 AC_PATH_PROG(PERL, perl, /usr/local/bin/perl)
 if test ! -x $ac_cv_path_PERL; then
