@@ -562,73 +562,80 @@ static int file_authorize(void *instance, REQUEST *request,
 #endif
 
 	for(pl = inst->users; pl; pl = pl->next) {
-
+#ifdef WITH_USERCOLLIDE
+		result = 1;
+#endif
 		/*
 		 *	If the current entry is NOT a default,
 		 *	AND the name does NOT match the current entry,
 		 *	then skip to the next entry.
 		 */
 		if ((strcmp(pl->name, "DEFAULT") != 0) &&
-		    (strcmp(name, pl->name) != 0))
+		    (strcmp(name, pl->name) != 0))  {
 			continue;
+		}
 
 		/*
 		 *	If the current request matches against the
 		 *	check pairs, then add the reply pairs from the
 		 *	entry to the current list of reply pairs.
 		 */
-		if (paircmp(request_pairs, pl->check, reply_pairs) == 0) {
 #ifdef WITH_USERCOLLIDE
+		if ((paircmp(request_pairs, pl->check, reply_pairs) == 0)) {
 			/* 
-			 * We check the pass as a config item with user collisions
-			 * Most of this is stolen out of rad_check_password()		 
+			 * We don't compare pass on default users or they never match.  Oops. 
 			 */
-			result = 1;
-
-			if ((auth_type_pair = pairfind(pl->check, PW_AUTHTYPE)) != NULL) {
-				auth_type = auth_type_pair->lvalue;
-				DEBUG2("  file_auth (Usercollide):  auth_type %d", auth_type);
-			}
-
-			/* Find pass in the REQ */
-			auth_item = request->password;
-			if (auth_item == NULL) {
-				DEBUG2("  file_auth (Usercollide): No password in the request");
-				return RLM_MODULE_OK;
-			}
+			if(strcmp(pl->name, "DEFAULT")) {
+				/* 
+				 * We check the pass as a config item with user collisions
+				 * Most of this is stolen out of rad_check_password()		 
+				 */
 	
-			/* Find the password from the users file. */
-			if ((password_pair = pairfind(pl->check, PW_CRYPT_PASSWORD)) != NULL)
-				auth_type = PW_AUTHTYPE_CRYPT;
-			else
-				password_pair = pairfind(pl->check, PW_PASSWORD);
-
-			switch(auth_type) {
-				case PW_AUTHTYPE_CRYPT:
-					DEBUG2("  file_auth (Usercollide): Checking Crypt");
-					if (password_pair == NULL) {
-						result = auth_item->strvalue ? 0 : 1;
-						break;
-					}
-					if (strcmp(password_pair->strvalue,
-						crypt(auth_item->strvalue,
-						password_pair->strvalue)) != 0)
-						result = 0;
-						break;
-				case PW_AUTHTYPE_LOCAL:
-					DEBUG2("  file_auth (Usercollide): Checking Local");
-					if (auth_item->attribute != PW_CHAP_PASSWORD) {
-						if (password_pair == NULL ||
-						strcmp(password_pair->strvalue,
-						auth_item->strvalue)!=0)
-						result = 0;
-						break;
-					}
-				case PW_AUTHTYPE_ACCEPT:
-					break;	
-				default:
-					continue;
-         }
+				if ((auth_type_pair = pairfind(pl->check, PW_AUTHTYPE)) != NULL) {
+					auth_type = auth_type_pair->lvalue;
+					DEBUG2("  file_auth (Usercollide):  auth_type %d", auth_type);
+				}
+	
+				/* Find pass in the REQ */
+				auth_item = request->password;
+				if (auth_item == NULL) {
+					DEBUG2("  file_auth (Usercollide): No password in the request");
+					return RLM_MODULE_OK;
+				}
+		
+				/* Find the password from the users file. */
+				if ((password_pair = pairfind(pl->check, PW_CRYPT_PASSWORD)) != NULL)
+					auth_type = PW_AUTHTYPE_CRYPT;
+				else
+					password_pair = pairfind(pl->check, PW_PASSWORD);
+	
+				switch(auth_type) {
+					case PW_AUTHTYPE_CRYPT:
+						DEBUG2("  file_auth (Usercollide): Checking Crypt");
+						if (password_pair == NULL) {
+							result = auth_item->strvalue ? 0 : 1;
+							break;
+						}
+						if (strcmp(password_pair->strvalue,
+							crypt(auth_item->strvalue,
+							password_pair->strvalue)) != 0)
+							result = 0;
+							break;
+					case PW_AUTHTYPE_LOCAL:
+						DEBUG2("  file_auth (Usercollide): Checking Local");
+						if (auth_item->attribute != PW_CHAP_PASSWORD) {
+							if (password_pair == NULL ||
+							strcmp(password_pair->strvalue,
+							auth_item->strvalue)!=0)
+							result = 0;
+							break;
+						}
+					case PW_AUTHTYPE_ACCEPT:
+						break;	
+					default:
+						continue;
+	         } /* switch(auth_type) */
+			} /* if(!default) */
 			if(result) { 
 #endif
 			DEBUG2("  users: Matched %s at %d", pl->name, pl->lineno);
@@ -685,7 +692,8 @@ static int file_authorize(void *instance, REQUEST *request,
 /*
  *	Authentication - unused.
  */
-static int file_authenticate(void *instance, REQUEST *request)
+static int file_authenticate(void *instance, REQUEST *request,
+	VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
 {
 	instance = instance;
 	request = request;
