@@ -34,7 +34,7 @@ install:
 	done; \
 	for i in dictionary*; do \
 		[ ! -f $(raddbdir)/$$i ] && install -m 644 $$i $(raddbdir); \
-		if [ $$i -nt $(raddbdir)/$$i ]; then \
+		if [ "`find $$i -newer $(raddbdir)/$$i`" ]; then \
 			echo "** $(raddbdir)/$$i"; \
 			nt=1; \
 		fi; \
