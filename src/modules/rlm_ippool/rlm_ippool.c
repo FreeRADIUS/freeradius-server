@@ -32,6 +32,8 @@
  * - Move from authorize to post-auth
  * - Use mutex locks when accessing the gdbm files
  * - Fail if we don't find nas port information
+ * Oct 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - Do a memset(0) on the key.nas before doing searches. Nusty bug
  */
 
 #include "config.h"
@@ -311,8 +313,10 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 	}
 
-	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE - 1);
+	memset(key.nas,0,MAX_NAS_NAME_SIZE);
+	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
 	key.port = port;
+	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",key.nas,key.port);
 	key_datum.dptr = (ippool_key *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
@@ -324,7 +328,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		/*
 		 * If the entry was found set active to zero
 		 */
-		memcpy(&entry, data_datum.dptr, sizeof(int));
+		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);
 		DEBUG("rlm_ippool: Deallocated entry for ip/port: %s/%d",ip_ntoa(str,entry.ipaddr),port);
 		entry.active = 0;
@@ -368,6 +372,8 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			}
 		}
 	}
+	else
+		DEBUG("rlm_ippool: Entry not found");
 
 	return RLM_MODULE_OK;
 }
@@ -437,9 +443,10 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
+	memset(key.nas,0,MAX_NAS_NAME_SIZE);
 	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
 	key.port = port;	
-	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",nas,port);
+	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",key.nas,key.port);
 	key_datum.dptr = (ippool_key *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
@@ -576,11 +583,13 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			pthread_mutex_unlock(&data->session_mutex);
 		}
 		free(key_datum.dptr);
+		memset(key.nas,0,MAX_NAS_NAME_SIZE);
 		strncpy(key.nas,nas,MAX_NAS_NAME_SIZE - 1);
 		key.port = port;
 		key_datum.dptr = (ippool_key *) &key;
 		key_datum.dsize = sizeof(ippool_key);
 		
+		DEBUG2("rlm_ippool: Allocating ip to nas/port: %s/%d",key.nas,key.port);
 		pthread_mutex_lock(&data->session_mutex);
 		rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		pthread_mutex_unlock(&data->session_mutex);
