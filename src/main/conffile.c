@@ -516,8 +516,10 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				if (is->children != NULL) {
 					cf_item_add(cs, is->children);
 				} else {
+#if 0 /* may be buggy? */
 					/* the file was empty */
 					cf_section_free(&is);
+#endif
 				}
 			}
 
