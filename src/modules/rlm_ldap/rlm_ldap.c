@@ -113,6 +113,8 @@
  * 	  the trivial DoS of username=*
  * 	- Remove the caching code. It does not exist in openldap21.
  *	  Based on a report from Mike Denka <mdenk@whidbey.net>
+ * May 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Don't do a double free on the attribute maps. Bug noted by Derrik Pates <dpates@dsdk12.net>
  */
 static const char rcsid[] = "$Id$";
 
@@ -1547,6 +1549,10 @@ ldap_detach(void *instance)
 		free((char *) inst->groupmemb_filt);
 	if (inst->groupmemb_attr)
 		free((char *) inst->groupmemb_attr);
+	if (inst->access_attr)
+		free((char *) inst->access_attr);
+	if (inst->profile_attr)
+		free((char *) inst->profile_attr);
 	if (inst->conns){
 		int i=0;
 
@@ -1579,13 +1585,8 @@ ldap_detach(void *instance)
 		pair = nextpair;
 	}
 
-	if (inst->atts){
-		int i = 0;
-
-		while(inst->atts[i])
-			free(inst->atts[i++]);
+	if (inst->atts)
 		free(inst->atts);
-	}
 
 	paircompare_unregister(PW_LDAP_GROUP, ldap_groupcmp);
 	xlat_unregister(inst->xlat_name,ldap_xlat);
