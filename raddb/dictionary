@@ -148,6 +148,8 @@ ATTRIBUTE	Suffix			1004	string
 ATTRIBUTE	Group			1005	string
 ATTRIBUTE	Crypt-Password		1006	string
 ATTRIBUTE	Connect-Rate		1007	integer
+ATTRIBUTE	Add-Prefix		1008	string
+ATTRIBUTE	Add-Suffix		1009	string
 
 #
 #	Integer Translations
