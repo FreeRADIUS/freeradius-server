@@ -16,7 +16,7 @@
  * Table structure for 'Start' tables
  */
 
-CREATE OR REPLACE TABLE StartVoIP (
+CREATE TABLE StartVoIP (
   RadAcctId SERIAL,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
@@ -48,7 +48,7 @@ create index startvoip_NASIPAddress on startvoip (NASIPAddress);
 create index startvoip_h323SetupTime on startvoip (h323SetupTime);
 
 
-CREATE OR REPLACE TABLE StartTelephony (
+CREATE TABLE StartTelephony (
   RadAcctId SERIAL,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
@@ -84,7 +84,7 @@ create index starttelephony_h323SetupTime on starttelephony (h323SetupTime);
 /*
  * Table structure for 'Stop' tables
  */
-CREATE OR REPLACE TABLE StopVoIP (
+CREATE TABLE StopVoIP (
   RadAcctId SERIAL,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
@@ -136,7 +136,7 @@ create index stopvoiph323remoteaddress on stopvoip (h323remoteaddress);
 create index stopvoiph323ConfID on stopvoip (h323ConfID);
 
 
-CREATE OR REPLACE TABLE StopTelephony (
+CREATE TABLE StopTelephony (
   RadAcctId SERIAL,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
