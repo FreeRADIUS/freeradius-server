@@ -99,7 +99,8 @@ typedef struct radius_packet {
  *	Printing functions.
  */
 void		librad_safeprint(char *in, int inlen, char *out, int outlen);
-int		vp_prints(char *out, int outlen, VALUE_PAIR *vp);
+int     vp_prints_value(char *out, int outlen, VALUE_PAIR *vp,int delimitst);
+int     vp_prints(char *out, int outlen, VALUE_PAIR *vp);
 void		vp_print(FILE *, VALUE_PAIR *);
 void		vp_printlist(FILE *, VALUE_PAIR *);
 #define		fprint_attr_val vp_print
