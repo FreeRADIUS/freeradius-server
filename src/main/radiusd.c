@@ -696,6 +696,9 @@ int main(int argc, char *argv[])
 	 *	Ensure that the configuration is initialized.
 	 */
 	memset(&mainconfig, 0, sizeof(mainconfig));
+	mainconfig.myip = htonl(INADDR_NONE);
+	mainconfig.port = -1;
+
 #ifdef HAVE_SIGACTION
 	memset(&act, 0, sizeof(act));
 	act.sa_flags = 0 ;
@@ -734,8 +737,11 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'i':
-				fprintf(stderr, "radiusd: -i <address> is deprecated.  Use a listen{} section in radiusd.conf.\n");
-				exit(1);
+				mainconfig.myip = ip_addr(optarg);
+				if (mainconfig.myip == htonl(INADDR_NONE)) {
+					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
+					exit(1);
+				}
 				break;
 
 			case 'l':
@@ -758,7 +764,12 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'p':
-				fprintf(stderr, "Ignoring deprecated command-line option -p");
+				mainconfig.port = atoi(optarg);
+				if ((mainconfig.port <= 0) ||
+				    (mainconfig.port >= 65536)) {
+					fprintf(stderr, "radiusd: Invalid port number %s\n", optarg);
+					exit(1);
+				}
 				break;
 
 			case 's':	/* Single process mode */
@@ -945,7 +956,7 @@ int main(int argc, char *argv[])
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
-		if (listener->ipaddr == INADDR_ANY) {
+		if (listener->ipaddr == htonl(INADDR_ANY)) {
 			strcpy((char *)buffer, "*");
 		} else {
 			ip_ntoa((char *)buffer, listener->ipaddr);
@@ -1357,7 +1368,9 @@ static void usage(int status)
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h              Print this help message.\n");
+	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY\n");
 	fprintf(output, "  -l log_dir      Log file is \"log_dir/radius.log\" (not used in debug mode)\n");
+	fprintf(output, "  -p port         Listen on port ONLY\n");
 	fprintf(output, "  -s              Do not spawn child processes to handle requests.\n");
 	fprintf(output, "  -S              Log stripped names.\n");
 	fprintf(output, "  -v              Print server version information.\n");

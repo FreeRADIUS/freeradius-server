@@ -190,7 +190,8 @@ typedef enum radlog_dest_t {
 typedef struct main_config_t {
 	struct main_config *next;
 	time_t		config_dead_time;
-	uint32_t	myip;
+	uint32_t	myip;	/* from the command-line only */
+	int		port;	/* from the command-line only */
 	int		log_auth;
 	int		log_auth_badpass;
 	int		log_auth_goodpass;

@@ -74,6 +74,7 @@ static gid_t server_gid;
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
 static int auth_port = 0;
+static uint32_t server_ip = 0;	/* INADDR_ANY */
 static char *syslog_facility = NULL;
 static const LRAD_NAME_NUMBER str2fac[] = {
 #ifdef LOG_KERN
@@ -214,7 +215,6 @@ static CONF_PARSER server_config[] = {
 	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
-	{ "bind_address", PW_TYPE_IPADDR, 0, &mainconfig.myip, "*" },
 	{ "user", PW_TYPE_STRING_PTR, 0, &mainconfig.uid_name, NULL},
 	{ "group", PW_TYPE_STRING_PTR, 0, &mainconfig.gid_name, NULL},
 	{ "usercollide", PW_TYPE_BOOLEAN, 0, &mainconfig.do_usercollide,  "no" },
@@ -230,6 +230,15 @@ static CONF_PARSER server_config[] = {
 	{ "log", PW_TYPE_SUBSECTION, 0, log_config, NULL },
 	{ "proxy", PW_TYPE_SUBSECTION, 0, proxy_config, NULL },
 	{ "security", PW_TYPE_SUBSECTION, 0, security_config, NULL },
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
+/*
+ *	Allowed to over-ride command-line
+ */
+static CONF_PARSER bind_config[] = {
+	{ "bind_address", PW_TYPE_IPADDR, 0, &server_ip, "*" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -1122,7 +1131,7 @@ int proxy_new_listener(void)
 
 	memset(this, 0, sizeof(*this));
 
-	this->ipaddr = mainconfig.myip;
+	this->ipaddr = server_ip;
 	this->type = RAD_LISTEN_PROXY;
 
 	/*
@@ -1178,13 +1187,15 @@ static int listen_init(const char *filename, rad_listen_t **head)
 	}
 
     	/*
-	 *	Find the first one (if any).
+	 *	Walk through the "listen" directives, but ONLY if there
+	 *	was no address specified on the command-line.
 	 */
-	for (cs = cf_subsection_find_next(mainconfig.config,
-					  NULL, "listen");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(mainconfig.config,
-					  cs, "listen")) {
+	if (mainconfig.myip == htonl(INADDR_NONE))
+		for (cs = cf_subsection_find_next(mainconfig.config,
+						  NULL, "listen");
+		     cs != NULL;
+		     cs = cf_subsection_find_next(mainconfig.config,
+						  cs, "listen")) {
 		memset(&listen_inst, 0, sizeof(listen_inst));
 		
 		/*
@@ -1266,7 +1277,7 @@ static int listen_init(const char *filename, rad_listen_t **head)
 		/*
 		 *	Create the proxy socket.
 		 */
-		this->ipaddr = mainconfig.myip;
+		this->ipaddr = server_ip;
 		this->type = RAD_LISTEN_PROXY;
 
 		/*
@@ -1300,12 +1311,13 @@ static int old_listen_init(rad_listen_t **head)
 	rad_listen_t 	*this, **last;
 
 	/*
-	 *	No "bind_address": all listen directives
-	 *	are in the "listen" clauses.
+	 *	No IP from the command-line, look for bind_address.
 	 */
-	cp = cf_pair_find(mainconfig.config, "bind_address");
-	if (!cp) return 0;
-	
+	if (mainconfig.myip == htonl(INADDR_NONE)) {
+		cp = cf_pair_find(mainconfig.config, "bind_address");
+		if (!cp) return 0;
+	}
+
 	last = head;
 
 	this = rad_malloc(sizeof(*this));
@@ -1314,7 +1326,7 @@ static int old_listen_init(rad_listen_t **head)
 	/*
 	 *	Create the authentication socket.
 	 */
-       	this->ipaddr = mainconfig.myip;
+       	this->ipaddr = server_ip; /* from command-line, or bind_address */
 	this->type = RAD_LISTEN_AUTH;
 	this->port = auth_port;
 
@@ -1341,7 +1353,7 @@ static int old_listen_init(rad_listen_t **head)
 	 *
 	 *	The accounting port is always the authentication port + 1
 	 */
-       	this->ipaddr = mainconfig.myip;
+       	this->ipaddr = server_ip;
 	this->type = RAD_LISTEN_ACCT;
 	this->port = auth_port + 1;
 
@@ -1376,6 +1388,22 @@ CONF_SECTION *read_radius_conf_file(void)
 	 *	radiusd.conf, the other configuration files exist.
 	 */
 	cf_section_parse(cs, NULL, server_config);
+
+	/*
+	 *	Read bind_address into server_ip, but only if an IP
+	 *	isn't specified on the command-line
+	 */
+	if (mainconfig.myip == htonl(INADDR_NONE)) {
+		cf_section_parse(cs, NULL, bind_config);
+	} else {
+		server_ip = mainconfig.myip; /* over-ride server_ip */
+	}
+
+	/*
+	 *	If the port is specified on the command-line,
+	 *	it over-rides the configuration file.
+	 */
+	if (mainconfig.port != -1) auth_port = mainconfig.port;
 
 	/*
 	 *	Parse the log destination & syslog facility,
@@ -1459,6 +1487,15 @@ int read_mainconfig(int reload)
 	oldcs = mainconfig.config;
 	mainconfig.config = cs;
 	cf_section_free(&oldcs);
+
+	/*
+	 *	Over-ride port & ipaddr with the command-line ones,
+	 *	if set.
+	 */
+	if (mainconfig.port != -1) {
+		auth_port = mainconfig.port;
+	}
+
 
 	/* old-style naslist file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);

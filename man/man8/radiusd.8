@@ -128,11 +128,11 @@ Defaults to \fI/etc/raddb\fP. \fBRadiusd\fP looks here for its configuration
 files such as the \fIdictionary\fP and the \fIusers\fP files.
 
 .IP "\-i \fIip-address\fP"
-Defines which IP addres to bind to for sending and receiving packets-
-useful for multi-homed hosts.
+Defines which IP address that the server uses for sending and
+receiving packets.
 
-This command line option is deprecated.  See the \fIbind_address\fP
-configuration item in the \fIradiusd.conf\fP file.
+If this command-line option is given, then the "bind_address" and all
+"listen{}" entries in \fIradiusd.conf\fP are ignored.
 
 .IP \-b
 If the \fBradius\fP server binary was compiled with \fIdbm\fP support,
@@ -160,12 +160,12 @@ Do not fork, stay running as a foreground process.
 
 .IP "\-p \fIport\fP"
 Normally radiusd listens on the ports specified in \fI/etc/services\fP
-(radius and radacct). With this option radiusd listens on the specified
-port for authentication requests and on the specified port +1 for
-accounting requests.
+(radius and radacct). When this option is given, radiusd listens on
+the specified port for authentication requests and on the specified
+port +1 for accounting requests.
 
-This command line option is deprecated.  See the \fIport\fP
-configuration item in the \fIradiusd.conf\fP file.
+If this command-line option is given, then the "port" directive in
+\fIradiusd.conf\fP is ignored.
 
 .IP \-s
 Run in "single server" mode.  The server normally runs with multiple
@@ -178,14 +178,13 @@ single server mode, the server will also not "daemonize"
 .IP \-v
 Print server version information and exit.
 
-.IP \-x
-Debug mode. In this mode the server will print details of every request
-on it's \fBstderr\fP output. Most useful in combination with \fB-s\fP.
-You can specify this option 2 times (-x -x or -xx) to get a bit more
-debugging output.
-
 .IP \-X
-Extended debug mode.  Equivalent to -sfxx, but simpler to explain.
+Debugging mode.  Equivalent to -sfxx.
+
+.IP \-x
+Finer-grained debug mode. In this mode the server will print details
+of every request on it's \fBstdout\fP output. You can specify this
+option multiple times (-x -x or -xx) to get more detailed output.
 
 .IP \-y
 Write details about every authentication request in the
