@@ -163,6 +163,12 @@ static int fallthrough(VALUE_PAIR *vp)
 	return tmp ? tmp->lvalue : 0;
 }
 
+/*
+ *  USE_DYNAMIC LOGS is set to FALSE, as this code should be rewritten.
+ */
+#define USER_DYNAMIC_LOGS 0
+
+#if USE_DYNAMIC_LOGS
 #define DL_FLAG_START	  1
 #define DL_FLAG_STOP	  2
 #define DL_FLAG_ACCT_ON   4
@@ -235,15 +241,17 @@ static void file_dynamic_log_init(void)
 
 
 }
+#endif
 
 
 static int file_init(void)
 {
+#if USE_DYNAMIC_LOGS
 	file_dynamic_log_init();
+#endif
 
 	return 0;
 }
-
 
 /*
  *	A temporary holding area for config values to be extracted
@@ -617,6 +625,7 @@ static int file_authenticate(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
+#if USE_DYNAMIC_LOGS
 /*
  * Write the dynamic log files
  */
@@ -672,6 +681,7 @@ static void file_write_dynamic_log(REQUEST * request)
 
 	}
 }
+#endif /* USE_DYNAMIC_LOGS */
 
 /*
  *	Pre-Accounting - read the acct_users file for check_items and
@@ -893,7 +903,10 @@ static int file_accounting(void *instance, REQUEST *request)
 		fputs("\n", outfp);
 		fclose(outfp);
 	}
+
+#if USE_DYNAMIC_LOGS
 	file_write_dynamic_log(request);
+#endif /* USE_DYNAMIC_LOGS */
 	return ret;
 }
 
