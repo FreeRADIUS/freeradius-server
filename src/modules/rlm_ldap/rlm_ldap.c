@@ -1715,7 +1715,7 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 			*result = RLM_MODULE_REJECT;
 		}
 		else {
-			radlog(L_ERR, "rlm_ldap: LDAP login failed: check login, password settings in ldap section of radiusd.conf");
+			radlog(L_ERR, "rlm_ldap: LDAP login failed: check identity, password settings in ldap section of radiusd.conf");
 			*result = RLM_MODULE_FAIL;
 		}
 		break;
