@@ -47,7 +47,7 @@ void librad_log(const char *fmt, ...)
 
 void librad_perror(const char *fmt, ...)
 {
-	va_list *ap;
+	va_list ap;
 
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
