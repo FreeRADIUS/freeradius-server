@@ -333,7 +333,7 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 
 	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
 		radlog(L_ERR, "rlm_sql_authenticate: database query error");
-		retval = RLM_MODULE_REJECT;
+		retval = RLM_MODULE_FAIL;
 		goto release_and_return;
 	}
 
