@@ -231,4 +231,15 @@ EON;
 else
 	$descr = '-';
 
+$expiration = $default_vals['Expiration'];
+if ($item_vals['Expiration'][0] != '')
+	$expiration = $item_vals['Expiration'][0];
+if ($expiration != ''){
+	$expiration = strtotime($expiration);
+	if ($expiration != -1 && $expiration < time())
+		$descr = <<<EOM
+<font color=red><b>User Account has expired</b></font>
+EOM;
+}
+
 require('../html/user_admin.html.php3');

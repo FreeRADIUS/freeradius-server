@@ -10,5 +10,7 @@ CREATE TABLE userinfo (
   WorkPhone varchar(200),
   HomePhone varchar(200),
   Mobile varchar(200),
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  KEY UserName (UserName),
+  KEY Departmet (Department)
 );

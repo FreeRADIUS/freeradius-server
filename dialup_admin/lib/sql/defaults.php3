@@ -62,11 +62,11 @@ if ($login != ''){
 					echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 				foreach($attrmap as $key => $val){
 					if (isset($tmp[$val])){
-						if ($tmp[$val][0] != '')
-							$default_vals["$key"] = $tmp[$val][0];
 						if ($use_op)
 							if ($tmp[$val][operator][0] != '')
 								$default_vals["$key"][operator] = $tmp[$val][operator][0];
+						if ($tmp[$val][0] != '')
+							$default_vals["$key"] = $tmp[$val][0];
 					}
 				}
 			}

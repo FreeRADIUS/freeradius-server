@@ -1,6 +1,11 @@
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
+* Add support for the Expiration attribute. Add it in the sql attribute map, in user_edit.attrs and
+  check for it in user_admin
+* Add a few more keys in the userinfo and badusers tables.
+* Fix a problem with lib/sql/defaults.php3 where the first character in the default value when using
+  operators was set to the opeator
 Ver 1.54:
 * Add attributes for the sql group tables in admin.conf. Now SQL group support should really work!
 Ver 1.53:

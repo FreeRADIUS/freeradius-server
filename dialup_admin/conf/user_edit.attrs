@@ -38,3 +38,4 @@ Dialup-Lock-Msg			<a href="help/lock_message_help.html" target=lm_help onclick=w
 #Max-Daily-Session		Daily Limit (secs)
 #Max-Weekly-Session		Weekly Limit (secs)
 #Login-Time			User Login Period <a href="help/login_time_help.html" target=lt_help onclick=window.open("help/login_time_help.html","lt_help","width=600,height=370,toolbar=no,scrollbars=no,resizable=yes") title="Login-Time Help Page"><font color="blue">(UUCP Format)</font></a>
+#Expiration			<a href="help/expiration_help.html" target=lt_help onclick=window.open("help/expiration_help.html","lt_help","width=600,height=180,toolbar=no,scrollbars=no,resizable=yes") title="Expiration Help Page"><font color="blue">User Expiration Date</font></a>

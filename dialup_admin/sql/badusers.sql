@@ -6,5 +6,7 @@ CREATE TABLE badusers (
   UserName varchar(30),
   Date	datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
   Reason varchar(200),
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  KEY UserName (UserName),
+  KEY Date (Date)
 );
