@@ -8,7 +8,7 @@
 # Please submit bugfixes or comments via http://www.suse.de/feedback/
 #
 
-# neededforbuild  cyrus-sasl-devel db-devel heimdal-devel heimdal-lib krb4-devel krb4-lib mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel postgresql postgresql-devel postgresql-libs python python-devel unixODBC unixODBC-devel
+# neededforbuild  cyrus-sasl-devel db-devel heimdal-devel heimdal-lib libiodbc libiodbc-devel mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel postgresql postgresql-devel postgresql-libs python python-devel
 
 Name:         freeradius
 License:      GPL
