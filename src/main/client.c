@@ -42,7 +42,7 @@ static const char rcsid[] = "$Id$";
 #include "radiusd.h"
 #include "conffile.h"
 
-RADCLIENT *clients;
+RADCLIENT *clients = NULL;
 
 /*
  *	Free a RADCLIENT list.
