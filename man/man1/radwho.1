@@ -3,6 +3,8 @@
 radwho - show online users
 .SH SYNOPSIS
 .B radwho
+.RB [ \-d
+.IR raddb_directory ]
 .RB [ \-l ]
 .RB [ \-h ]
 .RB [ \-f ]
@@ -17,6 +19,9 @@ The FreeRADIUS server can be configured to maintain an active session
 database in a file called \fIradutmp\fP. This utility shows the
 content of that session database.
 .SH OPTIONS
+.IP \-d\ \fIraddb_directory\fP
+The directory that contains the RADIUS configuration files. Defaults to
+\fI/etc/raddb\fP.
 .IP \-l
 Show local shell users too. In this case, \fBradwho\fP reads the
 local "session database" aka the systems \fIutmp\fP file as well
