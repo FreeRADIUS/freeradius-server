@@ -468,9 +468,44 @@ void rfc_clean(RADIUS_PACKET *packet)
 
 
 /*
+ *	For debugging
+ */
+static LRAD_NAME_NUMBER request_fail_reason[] = {
+	{ "no threads available to handle the request",
+	  REQUEST_FAIL_NO_THREADS },
+
+	{ "malformed RADIUS packet",
+	  REQUEST_FAIL_DECODE},
+
+	{ "pre-proxying failed",
+	  REQUEST_FAIL_PROXY},
+
+	{ "sending of the proxy packet failed",
+	  REQUEST_FAIL_PROXY_SEND},
+
+	{ "failure to be told how to respond",
+	  REQUEST_FAIL_NO_RESPONSE},
+
+	{ "no response from the home server",
+	  REQUEST_FAIL_HOME_SERVER},
+	
+	{ "no response from the home server after multiple tries",
+	  REQUEST_FAIL_HOME_SERVER2},
+	
+	{ "no response from the home server for a long period of time",
+	  REQUEST_FAIL_HOME_SERVER3},
+
+	{ "we were told to reject the request",
+	  REQUEST_FAIL_NORMAL_REJECT},
+
+	{ NULL, REQUEST_FAIL_UNKNOWN }
+};
+
+
+/*
  *  Reject a request, by sending a trivial reply packet.
  */
- void request_reject(REQUEST *request)
+ void request_reject(REQUEST *request, request_fail_t reason)
 {
 	VALUE_PAIR *vps;
 
@@ -481,7 +516,9 @@ void rfc_clean(RADIUS_PACKET *packet)
 		return;
 	}
 
-	DEBUG2("Server rejecting request %d.", request->number);
+	DEBUG2("Server rejecting request %d due to %s.",
+	       request->number, lrad_int2str(request_fail_reason,
+					     reason, "unknown"));
 	switch (request->packet->code) {
 		/*
 		 *  Accounting requests, etc. get dropped on the floor.

@@ -1319,7 +1319,7 @@ int main(int argc, char *argv[])
 					 *	FIXME: Maybe just drop
 					 *	the packet on the floor?
 					 */
-					request_reject(request);
+					request_reject(request, REQUEST_FAIL_NO_THREADS);
 					request->finished = TRUE;
 				}
 			} else
@@ -1466,7 +1466,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		switch (decoderesult) {
 			case -1:
 				radlog(L_ERR, "%s", librad_errstr);
-				request_reject(request);
+				request_reject(request, REQUEST_FAIL_DECODE);
 				goto finished_request;
 				break;
 			case -2:
@@ -1622,7 +1622,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			 */
 			case RLM_MODULE_FAIL:
 				DEBUG2("Error trying to proxy request %d: Rejecting it", request->number);
-				request_reject(request);
+				request_reject(request, REQUEST_FAIL_PROXY);
 				goto finished_request;
 				break;
 
@@ -1632,7 +1632,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			 */
 			case RLM_MODULE_REJECT:
 				DEBUG2("Request %d rejected in proxy_send.", request->number);
-				request_reject(request);
+				request_reject(request, REQUEST_FAIL_PROXY_SEND);
 				goto finished_request;
 				break;
 
@@ -1660,7 +1660,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *  is to REJECT the user.
 		 */
 		DEBUG2("There was no response configured: rejecting request %d", request->number);
-		request_reject(request);
+		request_reject(request, REQUEST_FAIL_NO_RESPONSE);
 		goto finished_request;
 	}
 

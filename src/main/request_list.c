@@ -1120,7 +1120,7 @@ static int refresh_request(REQUEST *request, void *data)
 			       request->number,
 			       client_name(request->packet->src_ipaddr),
 			       request->packet->src_port);
-			request_reject(request);
+			request_reject(request, REQUEST_FAIL_HOME_SERVER);
 			request->finished = TRUE;
 			return RL_WALK_CONTINUE;
 		}
@@ -1161,7 +1161,7 @@ static int refresh_request(REQUEST *request, void *data)
 		 *  Send a reject message for the request, mark it
 		 *  finished, and forget about the child.
 		 */
-		request_reject(request);
+		request_reject(request, REQUEST_FAIL_NORMAL_REJECT);
 		request->child_pid = NO_SUCH_CHILD_PID;
 		if (mainconfig.kill_unresponsive_children)
 			request->finished = TRUE;
@@ -1224,7 +1224,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 */
 	if (request->proxy_try_count == 0) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-		request_reject(request);
+		request_reject(request, REQUEST_FAIL_HOME_SERVER2);
 		realm_disable(request->proxy->dst_ipaddr,request->proxy->dst_port);
 		request->finished = TRUE;
 		goto setup_timeout;
@@ -1317,7 +1317,7 @@ setup_timeout:
 			 */
 			if (info->now > (request->timestamp + (mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count))) {
 				rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-				request_reject(request);
+				request_reject(request, REQUEST_FAIL_HOME_SERVER3);
 				
 				realm_disable(request->proxy->dst_ipaddr,
 					      request->proxy->dst_port);

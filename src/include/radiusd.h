@@ -264,6 +264,20 @@ typedef struct main_config_t {
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
+typedef enum request_fail_t {
+  REQUEST_FAIL_UNKNOWN = 0,
+  REQUEST_FAIL_NO_THREADS,	/* no threads to handle it */
+  REQUEST_FAIL_DECODE,		/* rad_decode didn't like it */
+  REQUEST_FAIL_PROXY,		/* call to proxy modules failed */
+  REQUEST_FAIL_PROXY_SEND,	/* proxy_send didn't like it */
+  REQUEST_FAIL_NO_RESPONSE,	/* we weren't told to respond, so we reject */
+  REQUEST_FAIL_HOME_SERVER,	/* the home server didn't respond */
+  REQUEST_FAIL_HOME_SERVER2,	/* another case of the above */
+  REQUEST_FAIL_HOME_SERVER3,	/* another case of the above */
+  REQUEST_FAIL_NORMAL_REJECT,	/* authentication failure */
+  
+} request_fail_t;
+
 /*
  *	Global variables.
  *
@@ -316,7 +330,7 @@ int		request_data_add(REQUEST *request,
 				 void *opaque, void (*free_opaque)(void *));
 void		*request_data_get(REQUEST *request,
 				  void *unique_ptr, int unique_int);
-void		request_reject(REQUEST *request);
+void		request_reject(REQUEST *request, request_fail_t reason);
 void		rfc_clean(RADIUS_PACKET *packet);
 
 /* client.c */
