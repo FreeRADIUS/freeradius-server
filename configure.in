@@ -365,18 +365,6 @@ dnl #
     PTHREADLIB="-lpthread"
   )
 
-dnl # HP/UX requires linking with librt, too, to get the sem_* symbols.  :\
-
-  AC_SEARCH_LIBS(sem_init, pthread rt,
-	[ 
-	dnl    Er, this usage of $ac_cv_search_sem_init may be unfounded 
-	dnl    chumminess with the autoconf internals.  -chad
-	dnl PTHREADLIB="$PTHREADLIB $ac_cv_search_sem_init"
-	],
-	[AC_MSG_ERROR(-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz)],
-	"-lpthread"
-  )
-
 dnl # 
 dnl # Except for *BSD, where it's in -lc_r,
 dnl # and where we've got to add extra CFLAGS.
@@ -395,6 +383,18 @@ dnl # Set libs, etc, if we have them.
     CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
   fi
 fi
+
+dnl # HP/UX requires linking with librt, too, to get the sem_* symbols.  :\
+
+  AC_SEARCH_LIBS(sem_init, pthread rt,
+	[ 
+	dnl    Er, this usage of $ac_cv_search_sem_init may be unfounded 
+	dnl    chumminess with the autoconf internals.  -chad
+	dnl PTHREADLIB="$PTHREADLIB $ac_cv_search_sem_init"
+	],
+	[AC_MSG_ERROR(-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz)],
+	"-lpthread"
+  )
 
 dnl # 
 dnl # If we have NO pthread libraries, remove any knowledge of threads.
