@@ -116,9 +116,7 @@ static void	sig_hup (int);
 static int	rad_process (REQUEST *, int);
 static int	rad_clean_list(int);
 static REQUEST	*rad_check_list(REQUEST *);
-#ifndef WITH_OLD_PROXY
 static REQUEST *proxy_check_list(REQUEST *request);
-#endif
 #ifndef WITH_THREAD_POOL
 static void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -808,30 +806,19 @@ int rad_process(REQUEST *request, int dospawn)
 	case PW_AUTHENTICATION_REJECT:
 	case PW_ACCOUNTING_RESPONSE:
 		/*
-		 *	Replies sent to the proxy port get passed through
-		 *	the proxy receive code.  All other replies get
-		 *	an error message logged, and the packet is dropped.
+		 *	Replies NOT sent to the proxy port get an
+		 *	error message logged, and the packet is
+		 *	dropped.
 		 */
-		if (request->packet->sockfd == proxyfd) {
-#ifdef WITH_OLD_PROXY
-			int recvd = proxy_receive(request);
-			if (recvd < 0) {
-				request_free(request);
-				return -1;
-			}
-			replicating = recvd;
-#endif
-			break;
+		if (request->packet->sockfd != proxyfd) {
+			log(L_ERR, "Reply packet code %d sent to request port from "
+			    "client %s - ID %d : IGNORED",
+			    request->packet->code,
+			    client_name(request->packet->src_ipaddr),
+			    request->packet->id);
+			request_free(request);
+			return -1;
 		}
-		/* NOT proxyfd: fall through to error message */
-
-		log(L_ERR, "Reply packet code %d sent to request port from "
-		    "client %s - ID %d : IGNORED",
-		    request->packet->code,
-		    client_name(request->packet->src_ipaddr),
-		    request->packet->id);
-		request_free(request);
-		return -1;
 		break;
 	}
 
@@ -841,17 +828,13 @@ int rad_process(REQUEST *request, int dospawn)
 	 */
 	switch(request->packet->code) {
 
-#ifndef WITH_OLD_PROXY
 	case PW_AUTHENTICATION_ACK:
 	case PW_AUTHENTICATION_REJECT:
-#endif
 	case PW_AUTHENTICATION_REQUEST:
 		fun = rad_authenticate;
 		break;
 	
-#ifndef WITH_OLD_PROXY
 	case PW_ACCOUNTING_RESPONSE:
-#endif
 	case PW_ACCOUNTING_REQUEST:
 		fun = rad_accounting;
 		break;
@@ -1142,7 +1125,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	REQUEST_LIST	*request_list_entry;
 	int		i;
 
-#ifndef WITH_OLD_PROXY
 	/*
 	 *	If the request has come in on the proxy FD, then
 	 *	it's a proxy reply, so pass it through the proxy
@@ -1159,7 +1141,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	} else if (request->proxy != NULL) {
 		return request;
 	}
-#endif
 
 	request_list_entry = &request_list[request->packet->id];
 	curreq = request_list_entry->first_request;
@@ -1209,15 +1190,13 @@ static REQUEST *rad_check_list(REQUEST *request)
 				client_name(request->packet->src_ipaddr),
 				request->packet->id);
 				rad_send(curreq->reply, curreq->secret);
-#ifndef WITH_OLD_PROXY
+
 				/*
 				 *	There's no reply, but maybe there's
 				 *	an outstanding proxy request.
 				 */
 			} else if (curreq->proxy_reply != NULL) {
 				/* FIXME: kick the remote server again ? */
-				DEBUG2("Doing stuff!");
-#endif
 			} else {
 				log(L_ERR,
 				"Dropping duplicate authentication packet"
@@ -1258,22 +1237,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 		request_list_busy = FALSE;
 		return NULL;
 	}
-
-
-#ifndef WITH_OLD_PROXY
-	/*
-	 *	Maybe we've received a proxy reply for a packet
-	 *	we've handled and forgotten. If so, ignore it.
-	 */
-	if (pkt->sockfd == proxyfd) {
-		DEBUG2("Unrecognized proxy reply from server %s - ID %d",
-			client_name(request->packet->src_ipaddr),
-			request->packet->id);
-		request_free(request);
-		request_list_busy = FALSE;
-		return NULL;
-	}
-#endif	
 
 	/*
 	 *	Count the total number of requests, to see if there
@@ -1571,7 +1534,6 @@ static void sig_hup(int sig)
 	need_reload = TRUE;
 }
 
-#ifndef WITH_OLD_PROXY
 /*
  *	Do a proxy check of the REQUEST_LIST when using the new proxy code.
  *
@@ -1624,4 +1586,3 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	request_free(request);
 	return oldreq;
 }
-#endif

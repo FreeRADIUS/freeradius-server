@@ -109,59 +109,6 @@ static void proxy_addinfo(RADIUS_PACKET *rp)
 	pairadd(&rp->vps, proxy_pair);
 }
 
-#ifdef WITH_OLD_PROXY
-
-/*
- *	Add the request to the list.
- */
-static int proxy_addrequest(REQUEST *request, int *proxied_packet_id)
-{
-	REQUEST		*a, *last = NULL;
-	int		id = -1;
-
-	/*
-	 *	See if we already have a similar outstanding request.
-	 */
-	for (a = proxy_requests; a; a = a->next) {
-		if (a->packet->src_ipaddr == request->packet->src_ipaddr &&
-		    a->packet->id == request->packet->id &&
-		    !memcmp(a->packet->vector, request->packet->vector, 16))
-			break;
-		last = a;
-	}
-	if (a) {
-		/*
-		 *	Yes, this is a retransmit so delete the
-		 *	old request.
-		 */
-		id = a->proxy->id;
-		if (last)
-			last->next = a->next;
-		else
-			proxy_requests = a->next;
-		request_free(a);
-		free(a);
-	}
-	if (id < 0) {
-		id = (*proxied_packet_id)++;
-		*proxied_packet_id &= 0xFFFF;
-	}
-
-	request->next = NULL;
-	request->child_pid = NO_SUCH_CHILD_PID;
-	request->timestamp = time(NULL);
-
-	request->next = proxy_requests;
-	proxy_requests = request;
-
-	/* Now get it off the pending request list in radiusd.c */
-	remove_from_request_list(request);
-
-	return id;
-}
-#endif
-
-
 /*
  *	Relay the request to a remote server.
  *	Returns:  2 success (we replicate, caller replies normally)
@@ -182,14 +129,13 @@ int proxy_send(REQUEST *request)
 	char			*realmname;
 	int			replicating;
 
-#ifdef WITH_OLD_PROXY
 	/*
-	 *	First cleanup old outstanding requests.
+	 *	Ensure that the request hangs around for a little
+	 *	while longer.
+	 *
+	 *	FIXME: This is a hack... it should be more intelligent.
 	 */
-	proxy_cleanup();
-#else
 	request->timestamp += 5;
-#endif
 
 	/* Look for proxy/replicate signs */
 	/* FIXME - What to do if multiple Proxy-To/Replicate-To attrs are
@@ -294,26 +240,14 @@ int proxy_send(REQUEST *request)
 		request->proxy->dst_port = realm->acct_port;
 	request->proxy->vps = vps;
 
-#ifdef WITH_OLD_PROXY
-	/*
-	 *	XXX: we re-use the vector from the original request
-	 *	here, since that's easy for retransmits ...
-	 */
-	memcpy(request->proxy->vector, request->packet->vector,
-		AUTH_VECTOR_LEN);
-#endif
-
 	/*
 	 *	Add the request to the list of outstanding requests.
 	 *	Note that request->proxy->id is a 16 bits value,
 	 *	while rad_send sends only the 8 least significant
 	 *	bits of that same value.
 	 */
-#ifdef WITH_OLD_PROXY
-	request->proxy->id = proxy_addrequest(request, &proxy_id);
-#else
 	request->proxy->id = (proxy_id++) & 0xff;
-#endif
+	proxy_id &= 0xffff;
 
 	/*
 	 *	Add PROXY_STATE attribute.
@@ -357,175 +291,6 @@ int proxy_send(REQUEST *request)
 
 	return replicating?2:1;
 }
-
-#ifdef WITH_OLD_PROXY
-/*
- *	We received a response from a remote radius server.
- *	Find the original request, then return.
- *	Returns:   1 replication don't reply
- *	           0 proxy found
- *		  -1 error don't reply
- */
-int proxy_receive(REQUEST *request)
-{
-	VALUE_PAIR	*vp, *last, *prev, *x;
-	VALUE_PAIR	*allowed_pairs;
-	REQUEST	*oldreq, *lastreq;
-	char		*s;
-	int		pp = -1;
-	int		i;
-	VALUE_PAIR	*proxypair;
-	VALUE_PAIR	*replicatepair;
-	VALUE_PAIR	*realmpair;
-	int		replicating;
-        REALM           *realm;
-
-	/*
-	 *	First cleanup old outstanding requests.
-	 */
-	proxy_cleanup();
-
-	/*
-	 *	FIXME: calculate md5 checksum!
-	 */
-
-	/*
-	 *	This isn't really necessary.  If it comes into
-	 *	our proxy FD from the right client with the right
-	 *	code, ID, and md5 checksum, then the Proxy-State
-	 *	attribute is unimportant.
-	 */
-	/*
-	 *	Find the last PROXY_STATE attribute.
-	 */
-	oldreq  = NULL;
-	lastreq = NULL;
-	last    = NULL;
-	x       = NULL;
-	prev    = NULL;
-
-	for (vp = request->packet->vps; vp; vp = vp->next) {
-		if (vp->attribute == PW_PROXY_STATE) {
-			prev = x;
-			last = vp;
-		}
-		x = vp;
-	}
-	if (last && last->strvalue) {
-		/*
-		 *	Merit really rapes the Proxy-State attribute.
-		 *	See if it still is a valid 4-digit hex number.
-		 */
-		s = last->strvalue;
-		if (strlen(s) == 4 && isxdigit(s[0]) && isxdigit(s[1]) &&
-		    isxdigit(s[2]) && isxdigit(s[3])) {
-			pp = strtol(last->strvalue, NULL, 16);
-		} else {
-			log(L_PROXY, "server %s mangled Proxy-State attribute",
-			client_name(request->packet->src_ipaddr));
-		}
-	}
-
-	/*
-	 *	Now find it in the list of outstanding requests.
-	 */
-
-	for (oldreq = proxy_requests; oldreq; oldreq = oldreq->next) {
-		/*
-		 *	Some servers drop the proxy pair. So
-		 *	compare in another way if needed.
-		 */
-		if (pp >= 0 && pp == oldreq->proxy->id)
-			break;
-		if (pp < 0 &&
-		    request->packet->src_ipaddr == oldreq->proxy->dst_ipaddr &&
-		    request->packet->id     == (oldreq->proxy->id & 0xFF))
-			break;
-		lastreq = oldreq;
-	}
-
-	if (oldreq == NULL) {
-		log(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
-			client_name(request->packet->src_ipaddr),
-			request->packet->id);
-		return -1;
-	}
-
-	/*
-	 *	Remove oldreq from list.
-	 */
-	if (lastreq)
-		lastreq->next = oldreq->next;
-	else
-		proxy_requests = oldreq->next;
-
-	/*
-	 *	Remove proxy pair from list.
-	 */
-	if (last) {
-		if (prev)
-			prev->next = last->next;
-		else
-			request->packet->vps = last->next;
-	}
-
-	proxypair = pairfind(oldreq->config_items, PW_PROXY_TO_REALM);
-	replicatepair = pairfind(oldreq->config_items, PW_REPLICATE_TO_REALM);
-	if(proxypair) {
-		realmpair=proxypair;
-		replicating=0;
-	} else if(replicatepair) {
-		realmpair=replicatepair;
-		replicating=1;
-	} else {
-		log(L_PROXY, "Proxy reply to packet with no Realm");
-		return -1;
-	}
-        realm = realm_find(realmpair->strvalue);
-
-	/* FIXME - do we want to use the trusted/allowed filters on replicate
-	 * replies, which are not going to be used for anything except maybe
-	 * a log file? */
-	if (realm->trusted) {
-	/*
-	 *	Only allow some attributes to be propagated from
-	 *	the remote server back to the NAS, for security.
-	 */
-	allowed_pairs = NULL;
-	for(i = 0; trusted_allowed[i]; i++)
-		pairmove2(&allowed_pairs, &(request->packet->vps), trusted_allowed[i]);
-	} else {
-	/*
-	 *	Only allow some attributes to be propagated from
-	 *	the remote server back to the NAS, for security.
-	 */
-	allowed_pairs = NULL;
-	for(i = 0; allowed[i]; i++)
-		pairmove2(&allowed_pairs, &(request->packet->vps), allowed[i]);
-	}
-
-	/*
-	 *	Now rebuild the AUTHREQ struct, so that the
-	 *	normal functions can process it.
-	 */
-	request->proxy = oldreq->proxy;
-	oldreq->proxy = NULL;
-	request->proxy->vps  = allowed_pairs;
-	request->proxy->code = request->packet->code;
-
-	pairfree(request->packet->vps);
-	free(request->packet);
-	request->packet = oldreq->packet;
-	oldreq->packet = NULL;
-	request->username = oldreq->username;
-
-	request->timestamp = oldreq->timestamp;
-
-	request_free(oldreq);
-
-	return replicating?1:0;
-}
-#endif
 
 /*
  *  FIXME: Maybe keeping the proxy_requests list sorted by
