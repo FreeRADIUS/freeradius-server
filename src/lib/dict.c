@@ -465,6 +465,16 @@ static int process_value(const char* fn, const int line, const char* data)
 	else
 		sscanf(valstr, "%i", &value);
 
+	/*
+	 *	valuepair.c will get excited when creating attributes,
+	 *	if it sees values which look like integers, so we can't
+	 *	use them here.
+	 */
+	if (isdigit(*namestr)) {
+		librad_log("dict_init: %s[%d]: Names for VALUEs cannot start with a digit.",
+			   fn, line);
+	}
+
 	if (dict_addvalue(namestr, attrstr, value) < 0) {
 		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
