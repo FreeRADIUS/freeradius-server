@@ -958,6 +958,17 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		pairmove(&request->config_items, &vp);
 		pairfree(&vp);
 	} 
+
+#if 0
+	/*
+	 *	Do we want to allow this?
+	 */
+	if ((get_hv_content(rad_request_hv, &vp)) > 0 ) {
+		pairfree(&request->packet->vps);
+		request->packet->vps = vp;
+	}
+#endif
+
 	}
 #ifdef USE_ITHREADS
 	pool_release(handle);
