@@ -645,11 +645,6 @@ good_state:
 	    if (x99_reset_failcount(inst->syncdir, username) != 0) {
 		radlog(L_ERR, "rlm_x99_token: auth: unable to reset failcount "
 			      "for [%s]", username);
-		/* NB: don't fail */
-	    }
-	    if (x99_upd_last_auth(inst->syncdir, username) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to update auth time "
-			      "for [%s]", username);
 		rc = RLM_MODULE_FAIL;
 	    }
 	}

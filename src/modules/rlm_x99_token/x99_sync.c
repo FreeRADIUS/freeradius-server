@@ -155,6 +155,8 @@ x99_get_last_auth(const char *syncdir, const char *username, time_t *last_auth)
  * Set the last auth time for a user to "now".
  * Returns 0 on success, non-zero otherwise.
  * Note that x99_set_sync_data() also resets the auth time.
+ * This function is no longer called, (the failcount() routines do this work),
+ * but I'm saving it here for reference.
  */
 int
 x99_upd_last_auth(const char *syncdir, const char *username)
@@ -192,12 +194,14 @@ x99_get_failcount(const char *syncdir, const char *username, int *failcount)
     return rc;
 }
 
-/* Atomically increment a user's failed login count. */
+/*
+ * Atomically increment a user's failed login count.
+ * Also updates last_auth.
+ */
 int
 x99_incr_failcount(const char *syncdir, const char *username)
 {
     int failcount, rc;
-    time_t last_auth;
     char *lock;
     char challenge[MAX_CHALLENGE_LEN + 1];
 
@@ -205,12 +209,12 @@ x99_incr_failcount(const char *syncdir, const char *username)
 	return -1;
 
     /* Get current value. */
-    rc = x99_get_sd(syncdir, username, challenge, &failcount, &last_auth);
+    rc = x99_get_sd(syncdir, username, challenge, &failcount, NULL);
     if (rc == 0) {
 	/* Increment. */
 	if (++failcount == INT_MAX)
 	    failcount--;
-	rc = x99_set_sd(syncdir, username, challenge, failcount, last_auth);
+	rc = x99_set_sd(syncdir, username, challenge, failcount, time(NULL));
     }
 
     x99_release_sd_lock(lock);
@@ -218,7 +222,7 @@ x99_incr_failcount(const char *syncdir, const char *username)
 }
 
 /*
- * Reset failure count to 0.
+ * Reset failure count to 0.  Also updates last_auth.
  * Returns 0 on success, non-zero otherwise.
  * This is almost just like x99_incr_failcount().
  * x99_set_sync_data() resets the failcount also, but that's because
@@ -229,16 +233,15 @@ int
 x99_reset_failcount(const char *syncdir, const char *username)
 {
     int rc;
-    time_t last_auth;
     char *lock;
     char challenge[MAX_CHALLENGE_LEN + 1];
 
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_get_sd(syncdir, username, challenge, NULL, &last_auth);
+    rc = x99_get_sd(syncdir, username, challenge, NULL, NULL);
     if (rc == 0)
-	rc = x99_set_sd(syncdir, username, challenge, 0, last_auth);
+	rc = x99_set_sd(syncdir, username, challenge, 0, time(NULL));
 
     x99_release_sd_lock(lock);
     return rc;
