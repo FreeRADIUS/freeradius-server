@@ -58,7 +58,7 @@ static PAIR_LIST *fastuser_find(PAIR_LIST **hashtable, const char *user,
 static struct fastuser_instance config;
 
 static CONF_PARSER module_config[] = {
-	{ "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, RADIUS_USERS },
+	{ "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, "${raddbdir}/users_fast" },
 	{ "hashsize",     PW_TYPE_INTEGER, &config.hashsize, "100000" },
 	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
 	{ "normal_defaults", PW_TYPE_BOOLEAN, &config.normal_defaults, "yes" },
