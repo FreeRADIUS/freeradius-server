@@ -298,9 +298,13 @@ ATTRIBUTE	Module-Failure-Message	1076	string
 ATTRIBUTE	Rewrite-Rule		1078	string
 ATTRIBUTE	Sql-Group		1079	string
 ATTRIBUTE	Response-Packet-Type	1080	integer
-ATTRIBUTE	Packet-Dst-Port		1081	integer
+# 1081 unused
 ATTRIBUTE	MS-CHAP-Use-NTLM-Auth	1082	integer
 ATTRIBUTE	NTLM-User-Name		1083	string
+ATTRIBUTE	Packet-Src-IP-Address	1084	ipaddr
+ATTRIBUTE	Packet-Dst-IP-Address	1085	ipaddr
+ATTRIBUTE	Packet-Src-Port		1086	integer
+ATTRIBUTE	Packet-Dst-Port		1087	integer
 
 #
 #	Range:	1084-1199

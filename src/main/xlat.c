@@ -229,10 +229,10 @@ static int xlat_packet(void *instance, REQUEST *request,
 		/*
 		 *	Some "magic" handlers, which are never in VP's, but
 		 *	which are in the packet.
-		 *
-		 *	FIXME: Add SRC/DST IP address!
 		 */
 		if (packet) {
+			VALUE_PAIR localvp;
+
 			switch (da->attr) {
 			case PW_PACKET_TYPE:
 			{
@@ -247,10 +247,36 @@ static int xlat_packet(void *instance, REQUEST *request,
 				return strlen(out);
 			}
 			break;
+
+			case PW_PACKET_SRC_IP_ADDRESS:
+				localvp.attribute = da->attr;
+				localvp.lvalue = packet->src_ipaddr;
+				break;
+			
+			case PW_PACKET_DST_IP_ADDRESS:
+				localvp.attribute = da->attr;
+				localvp.lvalue = packet->dst_ipaddr;
+				break;
+			
+			case PW_PACKET_SRC_PORT:
+				localvp.attribute = da->attr;
+				localvp.lvalue = packet->src_port;
+				break;
+			
+			case PW_PACKET_DST_PORT:
+				localvp.attribute = da->attr;
+				localvp.lvalue = packet->dst_port;
+				break;
 			
 			default:
+				return 0; /* not found */
 				break;
 			}
+
+			localvp.strvalue[0] = 0;
+			localvp.type = da->type;
+			return valuepair2str(out, outlen, &localvp,
+					     da->type, func);
 		}
 
 		/*

@@ -15,9 +15,23 @@
      %{proxy-reply:Attribute-Name}   The value of the given Attribute-Name
                                      in the proxy reply packet (if it exists)
 
-  The above variable expansions also support the meta-attribute
-Packet-Type as well. See the RADIUS dictionary for details on its
-values.
+  The above variable expansions also support the following
+meta-attributes.  These are not normal RADIUS attributes, but are
+created by the server to be used like them, for ease of use.  They can
+only be queried, and cannot be assigned.
+
+	Packet-Type		RADIUS packet type (Access-Request, etc.)
+
+	Packet-Src-IP-Address	IP address from which the packet was sent
+
+	Packet-Dst-IP-Address	IP address to which the packet was sent
+				This may be "0.0.0.0", if the server
+				was configured with "bind_address = *".
+
+	Packet-Src-Port		UDP port from which the packet was sent
+
+	Packet-Dst-Port		UDP port to which the packet was sent.
+
 	 
      %{check:Attribute-Name}         Corresponding value for Attribute-Name
                                      in check items for request
