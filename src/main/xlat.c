@@ -101,6 +101,7 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 			case '}':
 				openbraces--;
 				stop=1;
+				p++;
 				break;
 
 			case ':':
