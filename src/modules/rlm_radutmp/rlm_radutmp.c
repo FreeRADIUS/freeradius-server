@@ -336,6 +336,14 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				 *	last 8 bytes.
 				 */
 				off = vp->length - sizeof(ut.session_id);
+				/*
+				 * 	Ascend is br0ken - it adds a \0
+				 * 	to the end of any string.
+				 * 	Compensate.
+				 */
+				if (vp->length > 0 &&
+				    vp->strvalue[vp->length - 1] == 0)
+					off--;
 				if (off < 0) off = 0;
 				memcpy(ut.session_id, vp->strvalue + off,
 					sizeof(ut.session_id));

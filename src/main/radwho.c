@@ -47,15 +47,15 @@ static const char *hdr1 =
 "Login      Name              What  TTY  When      From      Location";
 static const char *ufmt1 = "%-10.10s %-17.17s %-5.5s %-4.4s %-9.9s %-9.9s %-.16s%s";
 static const char *ufmt1r = "%s,%s,%s,%s,%s,%s,%s%s";
-static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s S%-3d %-9.9s %-9.9s %-.19s%s";
-static const char *rfmt1r = "%s,%s,%s,S%d,%s,%s,%s%s";
+static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3d %-9.9s %-9.9s %-.19s%s";
+static const char *rfmt1r = "%s,%s,%s,%s%d,%s,%s,%s%s";
 
 static const char *hdr2 = 
 "Login      Port    What      When          From       Location";
-static const char *ufmt2 = "%-10.10s %-7.7d %-9.9s %-13.13s %-10.10s %-.16s%s";
+static const char *ufmt2 = "%-10.10s %-6.6d %-7.7s %-13.13s %-10.10s %-.16s%s";
 static const char *ufmt2r = "%s,%d,%s,%s,%s,%s%s";
-static const char *rfmt2 = "%-10.10s S%-5d  %-9.9s %-13.13s %-10.10s %-.28s%s";
-static const char *rfmt2r = "%s,S%d,%s,%s,%s,%s%s";
+static const char *rfmt2 = "%-10.10s %s%-5d  %-6.6s %-13.13s %-10.10s %-.28s%s";
+static const char *rfmt2r = "%s,%s%d,%s,%s,%s,%s%s";
 
 static const char *eol = "\n";
 static NAS *naslist;
@@ -302,13 +302,13 @@ static const char *ttyshort(char *tty)
 
 	if (strncmp(tty, "tty", 3) == 0) {
 		if (tty[3] >= '0' && tty[3] <= '9')
-			sprintf(tmp, "v%s", tty + 3);
+			sprintf(tmp, "v%.14s", tty + 3);
 		else
-			sprintf(tmp, "%s", tty + 3);
+			sprintf(tmp, "%.15s", tty + 3);
 		return tmp;
 	}
 	if (strncmp(tty, "vc", 2) == 0) {
-		sprintf(tmp, "v%s", tty + 2);
+		sprintf(tmp, "v.14%s", tty + 2);
 		return tmp;
 	}
 	if (strncmp(tty, "cu", 2) == 0) {
@@ -328,8 +328,11 @@ static const char *nasname(uint32_t ipaddr)
 	for(cl = naslist; cl; cl = cl->next)
 		if (cl->ipaddr == ipaddr)
 			break;
-	if (cl == NULL)
-		return "";
+	if (cl == NULL) {
+		static char buffer[32];
+		ip_ntoa(buffer, ntohl(ipaddr));
+		return buffer;
+	}
 	if (cl->shortname[0])
 		return cl->shortname;
 	return cl->longname;
@@ -383,8 +386,8 @@ int main(int argc, char **argv)
 	int hideshell = 0;
 	int showsid = 0;
 	int rawoutput = 0;
-	char *p, *q;
-	int c;
+	char *p, *q, *portind;
+	int c, portno;
 
 	while((c = getopt(argc, argv, "flhnsipcr")) != EOF) switch(c) {
 		case 'f':
@@ -531,20 +534,27 @@ int main(int argc, char **argv)
 
 			sprintf(session_id, "%.8s", rt.session_id);
 
+			if (!rawoutput && rt.nas_port > (showname ? 999 : 99999)) {
+				portind = ">";
+				portno = (showname ? 999 : 99999);
+			} else {
+				portind = "S";
+				portno = rt.nas_port;
+			}
 			if (showname)
 			    printf((rawoutput == 0? rfmt1: rfmt1r),
 				rt.login,
 				showcid ? rt.caller_id :
 				(showsid? session_id : fullname(rt.login)),
 				proto(rt.proto, rt.porttype),
-				rt.nas_port,
+				portind, portno,
 				dotime(rt.time),
 				nasname(rt.nas_address),
 				hostname(rt.framed_address), eol);
 			else
 			    printf((rawoutput == 0? rfmt2: rfmt2r),
 				rt.login,
-				rt.nas_port,
+				portind, portno,
 				proto(rt.proto, rt.porttype),
 				dotime(rt.time),
 				nasname(rt.nas_address),

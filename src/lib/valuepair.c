@@ -513,18 +513,9 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			break;
 		case PW_TYPE_INTEGER:
 			/*
-			 *	For PW_NAS_PORT_ID, allow a
-			 *	port range instead of just a port.
+			 * 	If it starts with a digit, it must
+			 * 	be a number (or a range).
 			 */
-			if (vp->attribute == PW_NAS_PORT_ID) {
-				for(s = value; *s; s++)
-					if (!isdigit(*s)) break;
-				if (*s) {
-					vp->type = PW_TYPE_STRING;
-					vp->length = strlen(value);
-					break;
-				}
-			}
 			if (isdigit(*value)) {
 				vp->lvalue = atoi(value);
 				vp->length = 4;
