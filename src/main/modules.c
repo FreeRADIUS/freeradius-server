@@ -333,7 +333,7 @@ module_instance_t *find_module_instance(const char *instname)
 		name1 = cf_section_name1(inst_cs);
 		name2 = cf_section_name2(inst_cs);
 		if ( (name2 && !strcmp(name2, instname)) ||
-				(!name2 && !strcmp(name1, instname)) )
+		     (!name2 && !strcmp(name1, instname)) )
 			break;
 	}
 	if (inst_cs == NULL) {
@@ -364,7 +364,9 @@ module_instance_t *find_module_instance(const char *instname)
 
 	}
 
-	/* XXX "radiusd.conf" is wrong here; must find cf filename */
+	/*
+	 *  FIXME: "radiusd.conf" is wrong here; must find cf filename
+	 */
 	node->entry = linkto_module(module_name, "radiusd.conf",
 				    cf_section_lineno(inst_cs));
 	if (!node->entry) {
@@ -377,7 +379,7 @@ module_instance_t *find_module_instance(const char *instname)
 	 *	Call the module's instantiation routine.
 	 */
 	if ((node->entry->module->instantiate) &&
-			((node->entry->module->instantiate)(inst_cs,
+	    ((node->entry->module->instantiate)(inst_cs,
 			&node->insthandle) < 0)) {
 		radlog(L_ERR|L_CONS,
 				"radiusd.conf[%d]: %s: Module instantiation failed.\n",
@@ -542,7 +544,7 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 			scs = cf_itemtosection(modref);
 
 			if (strcmp(cf_section_name1(scs),
-					subcomponent_names[comp]) == 0) {
+				   subcomponent_names[comp]) == 0) {
 				load_subcomponent_section(scs, comp, filename);
 				continue;
 			}
@@ -595,6 +597,10 @@ int setup_modules(void)
 {
 	int comp;
 	CONF_SECTION *cs;
+
+	/*
+	 *  FIXME: This should be pulled from somewhere else.
+	 */
 	const char *filename="radiusd.conf";
 
 	/*
@@ -637,6 +643,40 @@ int setup_modules(void)
 	} else {
 		module_list_free();
 	}
+
+	/*
+	 *  Look for the 'instantiate' section, which tells us
+	 *  the instantiation order of the modules, and also allows
+	 *  us to load modules with no authorize/authenticate/etc.
+	 *  sections.
+	 */
+	cs = cf_section_find("instantiate");
+	if (cs != NULL) {
+		CONF_ITEM *ci;
+		CONF_PAIR *cp;
+		module_instance_t *module;
+		const char *name;
+
+		/*
+		 *  Loop over the items in the 'instantiate' section.
+		 */
+		for (ci=cf_item_find_next(cs, NULL); ci != NULL; ci=cf_item_find_next(cs, ci)) {
+			if (cf_item_is_section(ci)) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] Subsection for module instantiate is not allowed\n", filename,
+				       
+				       cf_section_lineno(cf_itemtosection(ci)));
+				exit(1);
+			}
+	
+			cp = cf_itemtopair(ci);
+			name = cf_pair_attr(cp);
+			module = find_module_instance(name);
+			if (!module) {
+				exit(1);
+			}
+		} /* loop over items in the subsection */
+	} /* if there's an 'instantiate' section. */
 
 	/*
 	 *	Loop over all of the known components, finding their
