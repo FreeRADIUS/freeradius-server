@@ -647,6 +647,7 @@ int read_config_files()
 	char buffer[256];
 
         /* Initialize the dictionary */
+	DEBUG2("read_config_files:  reading dictionary");
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
 	        radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
 		    librad_errstr);
@@ -654,28 +655,33 @@ int read_config_files()
 	}
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
+	DEBUG2("read_config_files:  reading clients");
 	if (read_clients_file(buffer) < 0) {
 	        radlog(L_ERR|L_CONS, "Errors reading clients");
 		return -1;
 	}
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_REALMS);
+	DEBUG2("read_config_files:  reading realms");
 	if (read_realms_file(buffer) < 0) {
 	        radlog(L_ERR|L_CONS, "Errors reading realms");
 		return -1;
 	}
 
+	DEBUG2("read_config_files:  reading radiusd.conf");
 	if (read_radius_conf_file() < 0) {
 	        radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
 		return -1;
 	}
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
+	DEBUG2("read_config_files:  reading naslist");
 	if (read_naslist_file(buffer) < 0) {
 	        radlog(L_ERR|L_CONS, "Errors reading naslist");
 		return -1;
 	}
 
+	DEBUG2("read_config_files:  entering modules setup");
 	if (setup_modules() < 0) {
 		radlog(L_ERR|L_CONS, "Errors setting up modules");
 		return -1;
