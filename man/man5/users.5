@@ -1,4 +1,4 @@
-.TH USERS 5 "08 September 2001" "" "FreeRADIUS user authorization file"
+.TH USERS 5 "04 Jan 2004" "" "FreeRADIUS user authorization file"
 .SH NAME
 users \- user authorization file for the FreeRADIUS server
 .SH DESCRIPTION
@@ -163,28 +163,29 @@ Not allowed as a reply item.
 .SH EXAMPLES
 
 .DS
-bob	Auth-Type := Local, User-Password == "bob"
+bob	User-Password == "bob"
 
 .DE
 .RS
 Requests containing the User-Name attribute, with value "bob", will be
-authenticated using the local password "bob".  There are no reply
-items, so the reply will be empty.
+authenticated using the password "bob".  There are no reply items, so
+the reply will be empty.
 .RE
 
 .DS
-DEFAULT	Auth-Type := System
+DEFAULT	Auth-Type = System
 .br
 	Fall-Through = Yes
 
 .DE
 .RS
 For all users reaching this entry, perform authentication against the
-system.  Also, process any following entries which may match.
+system, unless Auth-Type has already been set.  Also, process any
+following entries which may match.
 .RE
 
 .DS
-DEFAULT Service-Type==Framed-User, Framed-Protocol==PPP
+DEFAULT Service-Type == Framed-User, Framed-Protocol == PPP
 .br
 	Service-Type = Framed-User,
 .br
