@@ -1596,6 +1596,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		  pairfree(&request->reply->vps);
 		  request->reply->code = 0;
 		  (*fun)(request);
+		  
+		  /*
+		   *	If the request took too long to process, don't do
+		   *	anything else.
+		   */
+		  if (request->options & RAD_REQUEST_OPTION_REJECTED) {
+			  finished = TRUE;
+			  goto postpone_request;
+		  }
 	  }
 	}
 

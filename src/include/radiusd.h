@@ -275,7 +275,7 @@ typedef enum request_fail_t {
   REQUEST_FAIL_HOME_SERVER2,	/* another case of the above */
   REQUEST_FAIL_HOME_SERVER3,	/* another case of the above */
   REQUEST_FAIL_NORMAL_REJECT,	/* authentication failure */
-  
+  REQUEST_FAIL_SERVER_TIMEOUT	/* the server took too long to process the request */
 } request_fail_t;
 
 /*

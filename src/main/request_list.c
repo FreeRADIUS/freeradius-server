@@ -1144,10 +1144,8 @@ static int refresh_request(REQUEST *request, void *data)
 			 */
 		} else if ((child_pid != NO_SUCH_CHILD_PID) &&
 			   ((request->options & RAD_REQUEST_OPTION_LOGGED_CHILD) == 0)) {
-			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d, in module %s in section %s",
-			       (unsigned long)child_pid, number,
-			       (request->module == NULL) ? "<none>" : request->module,
-			       (request->module == NULL) ? "<none>" : request->component);
+			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d",
+			       (unsigned long)child_pid, number);
 
 			/*
 			 *  Set the option that we've sent a log message,
@@ -1161,8 +1159,11 @@ static int refresh_request(REQUEST *request, void *data)
 		 *  Send a reject message for the request, mark it
 		 *  finished, and forget about the child.
 		 */
-		request_reject(request, REQUEST_FAIL_NORMAL_REJECT);
+		request_reject(request,
+			       REQUEST_FAIL_SERVER_TIMEOUT);
+		
 		request->child_pid = NO_SUCH_CHILD_PID;
+
 		if (mainconfig.kill_unresponsive_children)
 			request->finished = TRUE;
 		return RL_WALK_CONTINUE;

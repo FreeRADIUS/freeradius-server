@@ -575,4 +575,33 @@ static LRAD_NAME_NUMBER request_fail_reason[] = {
 	 *	Remember that it was rejected.
 	 */
 	request->options |= RAD_REQUEST_OPTION_REJECTED;
+
+	switch (reason) {
+	case REQUEST_FAIL_NO_THREADS:
+		DEBUG("WARNING: We recommend that you fix any TIMEOUT errors, or increase the value for \"max_servers\".");
+		break;
+
+	case REQUEST_FAIL_DECODE:
+		DEBUG("WARNING: Someone may be attacking your RADIUS server.");
+		break;
+
+	case REQUEST_FAIL_NO_RESPONSE:
+		DEBUG("WARNING: You did not configure the server to accept, or reject the user.  Double-check Auth-Type.");
+		break;
+
+	case REQUEST_FAIL_HOME_SERVER: /* Hmm... we may want only one */
+	case REQUEST_FAIL_HOME_SERVER2:
+	case REQUEST_FAIL_HOME_SERVER3:
+		break;
+
+	case REQUEST_FAIL_SERVER_TIMEOUT:
+		radlog(L_ERR, "TIMEOUT for request %d in module %s, component %s",
+		       request->number,
+		       request->module ? request->module : "<server core>",
+		       request->component ? request->component : "<server core>");
+		break;
+
+	default:		/* no additional messages, or things to do */
+		break;
+	}
 }
