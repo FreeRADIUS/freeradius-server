@@ -1,18 +1,16 @@
 #!/usr/bin/perl
 #
 # Author:       Peter Nixon <codemonkey@peternixon.net>
-# Date:         August 2002 
 # Summary:      Extract information from Radius detail log and
 #		compare/insert/update a Postgresql database.
-# Copy Policy:  GNU Public Licence Version 2 or later
+# Copy Policy:  GNU General Public Licence Version 2
 # URL:          http://www.peternixon.net/code/
 # Supported:    PostgreSQL (tested on version 7.2, 7.3, 7.4 and 8) and FreeRadius
 # Copyright:    2004 Peter Nixon http://www.petenixon.net
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-#  (at your option) any later version.
+# it under the terms of Version 2 of the GNU General Public License as
+# published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -206,20 +204,14 @@ sub process_record {
     	chomp;		# Strip trailing CR
 
 	$AcctStatusType = $_ if s/Acct-Status-Type = //;
-
-	if ($AcctStatusType eq "Start") {		# All the data we need is in Stop records.
+	if ($AcctStatusType eq "Stop") {		# All the data we need is in Stop records.
+	} elsif ($AcctStatusType eq "Start") {
 		if ($verbose > 1) { print "DEBUG: Skipping \"Start\" record\n"; }
 		return;
 	} elsif ($AcctStatusType eq "Alive"){
 		if ($verbose > 1) { print "DEBUG: Skipping \"Alive\" record\n"; }
 		return;
 	};
-
-	if (s/h323-call-type = \"h323-call-type=//) {
-                        $h323_call_type = substr($_, 0, -1);
-                } elsif (s/h323-call-type = //) {
-                        $h323_call_type = $_;
-            };
 
 	$UserName = $_ if s/User-Name = //;
 	$NasIPAddress = $_ if s/NAS-IP-Address = //;
@@ -230,6 +222,11 @@ sub process_record {
 	$Called_Station_Id = $_ if s/Called-Station-Id = //;
 	$Calling_Station_Id = $_ if s/Calling-Station-Id = //;
 	$Cisco_NAS_Port = $_ if s/Cisco-NAS-Port = //;
+	if (s/h323-call-type = \"h323-call-type=//) {
+                        $h323_call_type = substr($_, 0, -1);
+                } elsif (s/h323-call-type = //) {
+                        $h323_call_type = $_;
+            };
 	if (s/h323-remote-address = \"h323-remote-address=//) {
 			$h323_remote_address = $_;
 		} elsif (s/h323-remote-address = //) {
@@ -329,14 +326,13 @@ sub read_record {
 }
 
 sub read_detailfile {
-	my $filename = shift; my @record = ();
+	my $file_starttime = time(); my $filename = shift; my @record = (); my $record_no = 0;
 	if ($verbose > 1) { print "DEBUG: Reading detail file: $filename\n" }
-	# test if the file exists and is readable
-	if ((-r $filename) != 1) { 
+	if ((-r $filename) != 1) { 		# test if the file exists and is readable
 		if ($verbose >= 0) { print "INFO: Skipping file \"$filename\" as it is not readable or does not exist.\n" }
 		return;
 	 }
-	if ( $filename =~ /.gz$/ ) {
+	if ( $filename =~ /.gz$/ ) {		# Deal with compressed files
 		open (DETAIL, "$GZCAT $filename |") || warn "read_detailfile(\"$filename\"): $!\n";
 	} elsif ( $filename =~ /.Z$/ ) {
 		open (DETAIL, "$ZCAT $filename |") || warn "read_detailfile(\"$filename\"): $!\n";
@@ -351,12 +347,12 @@ sub read_detailfile {
 		$valid_input = 0 if (eof(DETAIL));
 		if ($verbose > 1) { print "DEBUG: Reading Record\n"; }
 		&read_record;
+		$record_no++;
 	}
-	my $runtime = (time() - $starttime);
-	if ($runtime > 0) { 
-	} else { $runtime = 1; }
-	my $speed = ($passno / $runtime); 
-        if ($verbose >= 0) { print "\n $passno records from $filename were processed in $runtime seconds ($speed records/sec) \n"; }
+	my $file_runtime = (time() - $file_starttime);
+	if ($file_runtime < 1) { $file_runtime = 1; }
+	my $file_speed = ($record_no / $file_runtime); 
+        if ($verbose >= 0) { print "\n $record_no total records read from $filename were processed in $file_runtime seconds ($file_speed records/sec) \n"; }
 }
 
 sub print_usage_info {
@@ -442,6 +438,11 @@ sub main {
 	        }
 		&process_duplicates;
 		&db_disconnect($db_host);
+
+		my $runtime = (time() - $starttime);
+		if ($runtime < 1) { $runtime = 1; }
+		my $speed = ($passno / $runtime); 
+	        if ($verbose >= 0) { print "\n $passno valid records were processed in $runtime seconds ($speed records/sec) \n"; }
 	} else {
 		print "ERROR: Please specify one or more detail file(s) to import.\n";
 		exit(FAILURE);
