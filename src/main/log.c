@@ -127,10 +127,10 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	}
 
 	if (radlog_dir != NULL) {
-		if (debug_flag || (radlog_dest = RADLOG_STDOUT)) {
+		if (debug_flag || (radlog_dest == RADLOG_STDOUT)) {
 			msgfd = stdout;
 
-		} else if (radlog_dest = RADLOG_STDERR) {
+		} else if (radlog_dest == RADLOG_STDERR) {
 			msgfd = stderr;
 
 		} else {
