@@ -1,4 +1,4 @@
-#! @PERL@
+#!@PERL@
 #
 # checkrad.pl	See if a user is (still) logged in on a certain port.
 #
@@ -617,7 +617,7 @@ sub tc_tccheck {
 	#	Thanks to Chris Jackson <chrisj@tidewater.net> for the
 	#	for the "-- Press Return for More --" workaround.
 	#
-	$telnet = new Net::Telnet (Timeout => 10,
+	$telnet = new Net::Telnet (Timeout => 5,
 				   Prompt => '/\>/');
 	$telnet->open($terminalserver);
 	$telnet->login($login, $password);
@@ -626,7 +626,7 @@ sub tc_tccheck {
 		($curline, $curprompt) = $telnet->waitfor
 			(String => "-- Press Return for More --",
 			 String => "\>",
-			 Timeout => 10);
+			 Timeout => 5);
 		$ok = $telnet->print("");
 		push @curlines, split(/^/m, $curline);
 	}
@@ -735,7 +735,7 @@ sub cyclades_telnet {
 	#	Based on PathRAS firmware version 1.2.3
 	#
 	$pr = new Net::Telnet (
-		Timeout		=> 10,
+		Timeout		=> 5,
 		Host		=> $ARGV[1],
 		ErrMode		=> 'return'
 	) || return 2;
@@ -981,7 +981,7 @@ sub usrnet_telnet {
 	#	Communicate with Netserver using Net::Telnet, then access
 	#	list connectionsto see who are logged in. 
 	# 
-	$telnet = new Net::Telnet (Timeout => 10,
+	$telnet = new Net::Telnet (Timeout => 5,
 				   Prompt => '/\>/');
 	$telnet->open($terminalserver);
 
@@ -998,7 +998,7 @@ sub usrnet_telnet {
 	while ($curprompt ne "\>") {
 		($curline, $curprompt) = $telnet->waitfor
 			( String => "\>",
-			 Timeout => 10);
+			 Timeout => 5);
 		$ok = $telnet->print("");
 		push @curlines, split(/^/m, $curline);
 	}
@@ -1161,7 +1161,7 @@ sub mikrotik_telnet {
   # MikroTik routeros doesnt tell us to which port the user is connected
   # practically this would limit us to a simple only-one user limit for
   # this script to work properly.
-  $t = new Net::Telnet (Timeout => 10,
+  $t = new Net::Telnet (Timeout => 5,
                         Prompt => '//\[.*@.*\] > /');
 
   $t->open($terminalserver);      
