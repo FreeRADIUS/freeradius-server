@@ -95,6 +95,52 @@ static pthread_mutex_t	proxy_mutex;
 #endif
 static rbtree_t		*proxy_tree;
 
+#ifdef PROXY_ID
+static rbtree_t		*proxy_id_tree;
+
+/*
+ *	We can use 256 RADIUS Id's per dst ipaddr/port, per server
+ *	socket.  So, to allocate them, we key off of dst ipaddr/port,
+ *	and then search the RADIUS Id's, looking for an unused socket.
+ */
+typedef struct proxy_id_t {
+	uint32_t	dst_ipaddr;
+	int		dst_port;
+
+	/*
+	 *	FIXME: Do stuff when this gets full...
+	 */
+	int		index;
+	int		id[1];	/* really id[256] */
+} proxy_id_t;
+
+
+/*
+ *	Find a matching entry in the proxy ID tree.
+ */
+static int proxy_id_cmp(const void *one, const void *two)
+{
+	const proxy_id_t *a = one;
+	const proxy_id_t *b = two;
+
+	/*
+	 *	The following comparisons look weird, but it's
+	 *	the only way to make the comparisons work.
+	 */
+	if (a->dst_ipaddr < b->dst_ipaddr) return -1;
+	if (a->dst_ipaddr > b->dst_ipaddr) return +1;
+
+	if (a->dst_port < b->dst_port) return -1;
+	if (a->dst_port > b->dst_port) return +1;
+	
+	/*
+	 *	Everything's equal.  Say so.
+	 */
+	return 0;
+}
+#endif /* PROXY_ID */
+
+
 /*
  *	Compare two REQUEST data structures, based on a number
  *	of criteria.
@@ -207,10 +253,24 @@ int rl_init(void)
 		rad_assert("FAIL" == NULL);
 	}
 
+	/*
+	 *	FIXME: Key off of mainconfig.proxy_requests,
+	 *	so we don't allocate things we won't use.
+	 */
 	proxy_tree = rbtree_create(proxy_cmp, NULL, 0);
 	if (!proxy_tree) {
 		rad_assert("FAIL" == NULL);
 	}
+
+#ifdef PROXY_ID
+	/*
+	 *	Create the tree for allocating proxy ID's.
+	 */
+	proxy_id_tree = rbtree_create(proxy_id_cmp, NULL, 0);
+	if (!proxy_id_tree) {
+		rad_assert("FAIL" == NULL);
+	}
+#endif /* PROXY_ID */
 
 #ifndef HAVE_PTHREAD_H
 	/*
@@ -323,7 +383,24 @@ void rl_delete(REQUEST *request)
 			pthread_mutex_lock(&proxy_mutex);
 			node = rbtree_find(proxy_tree, request);
 
+#ifndef PROXY_ID
 			if (node) rbtree_delete(proxy_tree, node);
+#else
+			if (node) {
+				proxy_id_t	myid, *entry;
+
+				rbtree_delete(proxy_tree, node);
+				
+				myid.dst_ipaddr = request->proxy->dst_ipaddr;
+				myid.dst_port = request->proxy->dst_port;
+
+				entry = rbtree_finddata(proxy_id_tree, &myid);
+				if (entry) {
+					rad_assert(entry->id[request->proxy->id] == 1);
+					entry->id[request->proxy->id] = 0;
+				} /* else die? */
+			}
+#endif /* PROXY_ID */
 			pthread_mutex_unlock(&proxy_mutex);
 		}
 	}
@@ -403,10 +480,53 @@ void rl_add_proxy(REQUEST *request)
 {
 	pthread_mutex_lock(&proxy_mutex);
 
+#ifdef PROXY_ID
 	/*
-	 *	FIXME: Assign proxy packet ID's here, and delete them
-	 *	when the reply comes back.
+	 *	Assign a proxy ID.
 	 */
+	{
+		int i, found;
+
+		proxy_id_t	myid, *entry;
+
+		myid.dst_ipaddr = request->proxy->dst_ipaddr;
+		myid.dst_port = request->proxy->dst_port;
+		
+		entry = rbtree_finddata(proxy_id_tree, &myid);
+		if (!entry) {	/* allocate it */
+			entry = rad_malloc(sizeof(*entry) + sizeof(int) * 255);
+
+			entry->dst_ipaddr = request->proxy->dst_ipaddr;
+			entry->dst_port = request->proxy->dst_port;
+			entry->index = 0;
+			memset(entry->id, 0, sizeof(int) * 256);
+		}
+		
+		/*
+		 *	Try to find a free Id.
+		 */
+		found = -1;
+		for (i = 0; i < 256; i++) {
+			if (entry->id[(i + entry->index) & 0xff] == 0) {
+				found = (i + entry->index) & 0xff;
+				break;
+			}
+		}
+
+		if (found < 0) {
+			rad_assert("FAILED TO ALLOCATE ID" == NULL);
+		}
+
+		/*
+		 *	Mark next (hopefully unused) entry.
+		 */
+		entry->index = (found + 1) & 0xff;
+
+		entry->id[found] = 1;
+		request->proxy->id = found;
+	}
+#endif /* PROXY_ID */
+
 
 	if (!rbtree_insert(proxy_tree, request)) {
 		rad_assert("FAILED" == 0);
@@ -452,6 +572,25 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 	if (node) {
 		maybe = rbtree_node2data(proxy_tree, node);
 		rbtree_delete(proxy_tree, node);
+
+#ifdef PROXY_ID
+		/*
+		 *	Find the entry in the Id tree, and mark
+		 *	it as unused, too.
+		 */
+		{
+			proxy_id_t	myid, *entry;
+			
+			myid.dst_ipaddr = packet->src_ipaddr;
+			myid.dst_port = packet->src_port;
+			
+			entry = rbtree_finddata(proxy_id_tree, &myid);
+			if (entry) {
+				rad_assert(entry->id[packet->id] == 1);
+				entry->id[packet->id] = 0;
+			} /* else die? */
+		}
+#endif /* PROXY_ID */
 	}
 
 	pthread_mutex_unlock(&proxy_mutex);
