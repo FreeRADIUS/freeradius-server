@@ -836,12 +836,9 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 };
 
 
-/* Parse a CONF_SECTION containing only result=action pairs */
-static int override_actions(modcallable *c, CONF_SECTION *cs,
-		const char *filename)
-{
-}
-
+/*
+ *	Compile one entry of a module call.
+ */
 static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 					 const char *filename, int grouptype,
 					 const char **modname)
@@ -886,6 +883,10 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 			csingle->type = MOD_LOAD_BALANCE;
 			return csingle;
 		}
+		/*
+		 *	Else it's a module reference, with updated return
+		 *	codes.
+		 */
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
 		lineno = cf_pair_lineno(cp);
@@ -998,7 +999,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		radlog(L_ERR|L_CONS,
 		       "%s: \"%s\" modules aren't allowed in '%s' sections -- they have no such method.",
 		       filename, this->entry->module->name,
-		       component_names[component]);
+		       comp2str[component]);
 		modcallable_free(&csingle);
 		return NULL;
 	}
@@ -1018,6 +1019,10 @@ modcallable *compile_modsingle(int component, CONF_ITEM *ci,
 	return ret;
 }
 
+
+/*
+ *	Internal compile group code.
+ */
 static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 					const char *filename, int grouptype,
 					int parentgrouptype)
@@ -1026,7 +1031,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 	modcallable *c;
 	CONF_ITEM *ci;
 
-	g = rad_malloc(sizeof *g);
+	g = rad_malloc(sizeof(*g));
 	g->grouptype = grouptype;
 
 	c = mod_grouptocallable(g);
@@ -1045,11 +1050,18 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 	c->type = MOD_GROUP;
 	g->children = NULL;
 
+	/*
+	 *	Loop over the children of this group.
+	 */
 	for (ci=cf_item_find_next(cs, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(cs, ci)) {
 
-		if(cf_item_is_section(ci)) {
+		/*
+		 *	Sections are references to other groups, or
+		 *	to modules with updated return codes.
+		 */
+		if (cf_item_is_section(ci)) {
 			const char *junk = NULL;
 			modcallable *single;
 			int lineno;
@@ -1113,7 +1125,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 }
 
 modcallable *compile_modgroup(int component, CONF_SECTION *cs,
-		const char *filename)
+			      const char *filename)
 {
 	modcallable *ret = do_compile_modgroup(component, cs, filename,
 					       GROUPTYPE_SIMPLE,

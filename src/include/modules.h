@@ -36,8 +36,6 @@ typedef struct module_t {
  	int	(*destroy)(void);
 } module_t;
 
-extern const char *component_names[RLM_COMPONENT_COUNT];
-
 enum {
 	RLM_MODULE_REJECT,	/* immediately reject the request */
 	RLM_MODULE_FAIL,	/* module failed, don't reply */

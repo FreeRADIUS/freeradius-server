@@ -60,50 +60,42 @@ typedef struct indexed_modcallable {
  */
 static indexed_modcallable *components[RLM_COMPONENT_COUNT];
 
+
+typedef struct section_type_value_t {
+	const char	*section;
+	const char	*typename;
+	int		attr;
+} section_type_value_t;
+
+
 /*
- *	The component names.
- *
- *	Hmm... we probably should be getting these from the configuration
- *	file, too.
+ *	Ordered by component
  */
-const char *component_names[RLM_COMPONENT_COUNT] =
-{
-	"authenticate",
-	"authorize",
-	"preacct",
-	"accounting",
-	"session",
-	"pre-proxy",
-	"post-proxy",
-	"post-auth"
+static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
+	{ "authenticate", "Auth-Type",       PW_AUTH_TYPE },
+	{ "authorize",    "Autz-Type",       PW_AUTZ_TYPE },
+	{ "preacct",      "Pre-Acct-Type",   PW_PRE_ACCT_TYPE },
+	{ "accounting",   "Acct-Type",       PW_ACCT_TYPE },
+	{ "session",      "Session-Type",    PW_SESSION_TYPE },
+	{ "pre-proxy",    "Pre-Proxy-Type",  PW_PRE_PROXY_TYPE },
+	{ "post-proxy",   "Post-Proxy-Type", PW_POST_PROXY_TYPE },
+	{ "post-auth",    "Post-Auth-Type",  PW_POST_AUTH_TYPE },
 };
 
 /*
  *	Delete ASAP.
  */
-static const char *old_subcomponent_names[RLM_COMPONENT_COUNT] =
-{
-	"authtype",
-	"autztype",
-	"preacctype",
-	"acctype",
-	"sesstype",
-	"pre-proxytype",
-	"post-proxytype",
-	"post-authtype"
+static const section_type_value_t old_section_type_value[] = {
+	{ "authenticate", "authtype", PW_AUTH_TYPE },
+	{ "authorize",    "autztype", PW_AUTZ_TYPE },
+	{ "preacct",      "Pre-Acct-Type",   PW_PRE_ACCT_TYPE },/* unused */
+	{ "accounting",   "acctype", PW_ACCT_TYPE },
+	{ "session",      "sesstype", PW_SESSION_TYPE },
+	{ "pre-proxy",    "Pre-Proxy-Type",  PW_PRE_PROXY_TYPE }, /* unused */
+	{ "post-proxy",   "Post-Proxy-Type", PW_POST_PROXY_TYPE }, /* unused */
+	{ "post-auth",	  "post-authtype", PW_POST_AUTH_TYPE }
 };
 
-static const char *subcomponent_names[RLM_COMPONENT_COUNT] =
-{
-	"Auth-Type",
-	"Autz-Type",
-	"Pre-Acct-Type",
-	"Acct-Type",
-	"Session-Type",
-	"Pre-Proxy-Type",
-	"Post-Proxy-Type",
-	"Post-Auth-Type"
-};
 
 static void indexed_modcallable_free(indexed_modcallable **cf)
 {
@@ -439,7 +431,7 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 	this = lookup_by_index(components[comp], idx);
 	if (!this) {
 		if (idx != 0) DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
-				     subcomponent_names[comp]);
+				     section_type_value[comp].typename);
 		/* Return a default value appropriate for the component */
 		switch(comp) {
 			case RLM_COMPONENT_AUTZ:    return RLM_MODULE_NOTFOUND;
@@ -455,11 +447,14 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 	}
 
 	DEBUG2("  Processing the %s section of radiusd.conf",
-	       component_names[comp]);
+	       section_type_value[comp].section);
 	return modcall(comp, this->modulelist, request);
 }
 
-/* Load a flat module list, as found inside an authtype{} block */
+/*
+ *	Load a sub-module list, as found inside an Auth-Type foo {}
+ *	block
+ */
 static int load_subcomponent_section(CONF_SECTION *cs, int comp,
 				     const char *filename)
 {
@@ -467,38 +462,43 @@ static int load_subcomponent_section(CONF_SECTION *cs, int comp,
 	indexed_modcallable *subcomp;
 	modcallable *ml;
 	DICT_VALUE *dval;
+	const char *name2 = cf_section_name2(cs);
 
 	static int meaningless_counter = 1;
 
+
+	rad_assert(comp >= RLM_COMPONENT_AUTH);
+	rad_assert(comp <= RLM_COMPONENT_COUNT);
+
+	/*
+	 *	Sanity check.
+	 */
+	if (!name2) {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d]: No name specified for %s block",
+		       filename, cf_section_lineno(cs),
+		       section_type_value[comp].typename);
+		return 1;
+	}
+
+	/*
+	 *	Compile the group.
+	 */
 	ml = compile_modgroup(comp, cs, filename);
 	if (!ml) {
 		return 0;
 	}	
 
-	/* We must assign a numeric index to this subcomponent. For
-	 * auth, it is generated and placed in the dictionary by
-	 * new_sectiontype_value(). The others are just numbers that are pulled
-	 * out of thin air, and the names are neither put into the dictionary
-	 * nor checked for uniqueness, but all that could be fixed in a few
-	 * minutes, if anyone finds a real use for indexed config of
-	 * components other than auth. */
-	dval = NULL;
-	if (comp==RLM_COMPONENT_AUTH) {
-		dval = dict_valbyname(PW_AUTH_TYPE, cf_section_name2(cs));
-	} else if (comp == RLM_COMPONENT_AUTZ) {
-		dval = dict_valbyname(PW_AUTZ_TYPE, cf_section_name2(cs));
-	} else if (comp == RLM_COMPONENT_ACCT) {
-		dval = dict_valbyname(PW_ACCT_TYPE, cf_section_name2(cs));
-	} else if (comp == RLM_COMPONENT_SESS) {
-		dval = dict_valbyname(PW_SESSION_TYPE, cf_section_name2(cs));
-	} else if (comp == RLM_COMPONENT_PRE_PROXY) {
-		dval = dict_valbyname(PW_PRE_PROXY_TYPE, cf_section_name2(cs));
-	} else if (comp == RLM_COMPONENT_POST_PROXY) {
-		dval = dict_valbyname(PW_POST_PROXY_TYPE, cf_section_name2(cs));
-	} else if (comp == RLM_COMPONENT_POST_AUTH) {
-		dval = dict_valbyname(PW_POST_AUTH_TYPE, cf_section_name2(cs));
-	}
-
+	/*
+	 *	We must assign a numeric index to this subcomponent.
+	 *	It is generated and placed in the dictionary by
+	 *	new_sectiontype_value(). The others are just numbers
+	 *	that are pulled out of thin air, and the names are
+	 *	neither put into the dictionary nor checked for
+	 *	uniqueness, but all that could be fixed in a few
+	 *	minutes, if anyone cares...
+	 */
+	dval = dict_valbyname(section_type_value[comp].attr, name2);
 	if (dval) {
 		idx = dval->value;
 	} else {
@@ -510,7 +510,7 @@ static int load_subcomponent_section(CONF_SECTION *cs, int comp,
 		radlog(L_ERR|L_CONS,
 		       "%s[%d] %s %s already configured - skipping",
 		       filename, cf_section_lineno(cs),
-		       subcomponent_names[comp], cf_section_name2(cs));
+		       section_type_value[comp].typename, name2);
 		modcallable_free(&ml);
 		return 1;
 	}
@@ -529,10 +529,21 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 	const char *modname;
 	char *visiblename;
 
+	/*
+	 *	Loop over the entries in the named section.
+	 */
 	for (modref=cf_item_find_next(cs, NULL);
-			modref != NULL;
-			modref=cf_item_find_next(cs, modref)) {
+	     modref != NULL;
+	     modref=cf_item_find_next(cs, modref)) {
 
+		/*
+		 *	Look for Auth-Type foo {}, which are special
+		 *	cases of named sections, and allowable ONLY
+		 *	at the top-level.
+		 *
+		 *	i.e. They're not allowed in a "group" or "redundant"
+		 *	subsection.
+		 */
 		if (cf_item_is_section(modref)) {
 			const char *sec_name;
 			CONF_SECTION *scs;
@@ -540,7 +551,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 
 			sec_name = cf_section_name1(scs);
 			if (strcmp(sec_name,
-				   subcomponent_names[comp]) == 0) {
+				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(scs, comp,
 							       filename)) {
 					return 0; /* FIXME: memleak? */
@@ -552,7 +563,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 			 *	Allow old names, too.
 			 */
 			if (strcmp(sec_name,
-				   old_subcomponent_names[comp]) == 0) {
+				   old_section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(scs, comp,
 							       filename)) {
 					return 0; /* FIXME: memleak? */
@@ -565,9 +576,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 		}
 
 		/*
-		 *	FIXME: This calls exit if the reference can't be
-		 *	found.  We should instead print a better error,
-		 *	and return the failure code up the stack.
+		 *	Try to compile one entry.
 		 */
 		this = compile_modsingle(comp, modref, filename, &modname);
 		if (!this) {
@@ -589,7 +598,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 				 */
 				radlog(L_ERR|L_CONS, "%s[%d] Unknown Auth-Type \"%s\" in %s section.",
 				       filename, cf_section_lineno(cs),
-				       modname, component_names[comp]);
+				       modname, section_type_value[comp].section);
 				return -1;
 			}
 			idx = dval->value;
@@ -603,7 +612,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 		if (subcomp == NULL) {
 			radlog(L_INFO|L_CONS,
 					"%s %s %s already configured - skipping",
-					filename, subcomponent_names[comp],
+					filename, section_type_value[comp].typename,
 					modname);
 			modcallable_free(&this);
 			continue;
@@ -621,35 +630,6 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 	return 0;
 }
 
-typedef struct section_type_value_t {
-	const char	*section;
-	const char	*typename;
-	int		attr;
-} section_type_value_t;
-
-static const section_type_value_t section_type_value[] = {
-	{ "authorize",    "Autz-Type",       PW_AUTZ_TYPE },
-	{ "authenticate", "Auth-Type",       PW_AUTH_TYPE },
-	{ "accounting",   "Acct-Type",       PW_ACCT_TYPE },
-	{ "session",      "Session-Type",    PW_SESSION_TYPE },
-	{ "post-auth",    "Post-Auth-Type",  PW_POST_AUTH_TYPE },
-	{ "preacct",      "Pre-Acct-Type",   PW_PRE_ACCT_TYPE },
-	{ "post-proxy",   "Post-Proxy-Type", PW_POST_PROXY_TYPE },
-	{ "pre-proxy",    "Pre-Proxy-Type",  PW_PRE_PROXY_TYPE },
-	{ NULL, NULL, 0 }
-};
-
-/*
- *	Delete ASAP.
- */
-static const section_type_value_t old_section_type_value[] = {
-	{ "authorize",    "autztype", PW_AUTZ_TYPE },
-	{ "authenticate", "authtype", PW_AUTH_TYPE },
-	{ "accounting",   "acctype", PW_ACCT_TYPE },
-	{ "session",      "sesstype", PW_SESSION_TYPE },
-	{ "post-auth",	  "post-authtype", PW_POST_AUTH_TYPE },
-	{ NULL, NULL, 0 }
-};
 
 /*
  *	Parse the module config sections, and load
@@ -716,7 +696,7 @@ int setup_modules(void)
 	 *	let the user create new names, we've got to look for
 	 *	those names, and create DICT_VALUE's for them.
 	 */
-	for (comp = 0; section_type_value[comp].section != NULL; comp++) {
+	for (comp = RLM_COMPONENT_AUTH; comp < RLM_COMPONENT_COUNT; comp++) {
 		const char	*name2;
 		DICT_ATTR	*dattr;
 		DICT_VALUE	*dval;
@@ -739,7 +719,7 @@ int setup_modules(void)
 			 *	name.
 			 */
 			next = cf_subsection_find_next(cs, sub,
-						      section_type_value[comp].typename);
+						       section_type_value[comp].typename);
 
 			/*
 			 *	Allow some old names, too.
@@ -862,7 +842,7 @@ int setup_modules(void)
 	 *	configuration section, and loading it.
 	 */
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
-		cs = cf_section_find(component_names[comp]);
+		cs = cf_section_find(section_type_value[comp].section);
 		if (cs == NULL)
 			continue;
 
