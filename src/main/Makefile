@@ -106,8 +106,10 @@ clean:
 install:
 	install -m 755 -s radiusd		$(ROOT)$(sbindir)
 	install -m 755    checkrad.pl		$(ROOT)$(sbindir)/checkrad
+	install -d -m 755			$(ROOT)$(bindir)
 	install -m 755 -s radwho raduse		$(ROOT)$(bindir)
 	install -m 755 -s radzap $(BUILDDBM)	$(ROOT)$(bindir)
 	install -m 755    radlast		$(ROOT)$(bindir)
 	install -m 755    radtest radclient	$(ROOT)$(bindir)
-
+	install -d -m 755			$(ROOT)$(logdir)
+	install -d -m 755			$(ROOT)$(radacctdir)
