@@ -110,6 +110,8 @@ ATTRIBUTE	Exec-Program-Wait	1039	string
 ATTRIBUTE	Hint			1040	string
 ATTRIBUTE	Pam-Auth		1041	string
 ATTRIBUTE	Login-Time		1042	string
+ATTRIBUTE	Stripped-User-Name	1043	string
+ATTRIBUTE	Current-Time		1044	string
 
 #
 #	Non-Protocol Attributes
