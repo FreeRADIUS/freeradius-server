@@ -20,6 +20,29 @@ ATTRIBUTE	Cisco-AVPair		1	string		Cisco
 ATTRIBUTE	Cisco-NAS-Port		2	string		Cisco
 
 #
+#  T.37 Store-and-Forward attributes.
+#
+ATTRIBUTE       Cisco-Fax-Account-Id-Origin     3       string          Cisco
+ATTRIBUTE       Cisco-Fax-Msg-Id                4       string          Cisco
+ATTRIBUTE       Cisco-Fax-Pages                 5       string          Cisco
+ATTRIBUTE       Cisco-Fax-Coverpage-Flag        6       string          Cisco
+ATTRIBUTE       Cisco-Fax-Modem-Time            7       string          Cisco
+ATTRIBUTE       Cisco-Fax-Connect-Speed         8       string          Cisco
+ATTRIBUTE       Cisco-Fax-Recipient-Count       9       string          Cisco
+ATTRIBUTE       Cisco-Fax-Process-Abort-Flag    10      string          Cisco
+ATTRIBUTE       Cisco-Fax-Dsn-Address           11      string          Cisco
+ATTRIBUTE       Cisco-Fax-Dsn-Flag              12      string          Cisco
+ATTRIBUTE       Cisco-Fax-Mdn-Address           13      string          Cisco
+ATTRIBUTE       Cisco-Fax-Mdn-Flag              14      string          Cisco
+ATTRIBUTE       Cisco-Fax-Auth-Status           15      string          Cisco
+ATTRIBUTE       Cisco-Email-Server-Address      16      string          Cisco
+ATTRIBUTE       Cisco-Email-Server-Ack-Flag     17      string          Cisco
+ATTRIBUTE       Cisco-Gateway-Id                18      string          Cisco
+ATTRIBUTE       Cisco-Call-Type                 19      string          Cisco
+ATTRIBUTE       Cisco-Port-Used                 20      string          Cisco
+ATTRIBUTE       Cisco-Abort-Cause               21      string          Cisco
+
+#
 #  Voice over IP attributes.
 #
 ATTRIBUTE	h323-remote-address		23	string		Cisco
