@@ -237,16 +237,11 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		if (tls_session->info.handshake_type == finished) {
 			DEBUG2("  rlm_eap_tls: ack handshake is finished");
 			return EAPTLS_SUCCESS;
-		} else if (tls_session->fragment > 0) {
-			DEBUG2("  rlm_eap_tls: ack handshake fragment handler");
-			/* Fragmentation handler, send next fragment */
-			return EAPTLS_REQUEST;
 		}
 
-		/*
-		 *	We're done sending fragments.
-		 */
-		return EAPTLS_SUCCESS;
+		DEBUG2("  rlm_eap_tls: ack handshake fragment handler");
+		/* Fragmentation handler, send next fragment */
+		return EAPTLS_REQUEST;
 
 		/*
 		 *	For the rest of the conditions, switch over
