@@ -87,7 +87,7 @@ CREATE TABLE radcheck (
   id int(10) DEFAULT '0' NOT NULL auto_increment,
   UserName varchar(30) DEFAULT '' NOT NULL,
   Attribute varchar(30),
-  Value varchar(40),
+  Value varchar(253),
   op char(2),
   PRIMARY KEY (id),
   KEY UserName (UserName)
@@ -100,7 +100,7 @@ CREATE TABLE radgroupcheck (
   id int(10) DEFAULT '0' NOT NULL auto_increment,
   GroupName varchar(20) DEFAULT '' NOT NULL,
   Attribute varchar(40),
-  Value varchar(40),
+  Value varchar(253),
   op char(2),
   PRIMARY KEY (id),
   KEY GroupName (GroupName)
@@ -113,7 +113,7 @@ CREATE TABLE radgroupreply (
   id int(10) DEFAULT '0' NOT NULL auto_increment,
   GroupName varchar(20) DEFAULT '' NOT NULL,
   Attribute varchar(40),
-  Value varchar(40),
+  Value varchar(253),
   op char(2),
   PRIMARY KEY (id),
   KEY GroupName (GroupName)
@@ -126,7 +126,7 @@ CREATE TABLE radreply (
   id int(10) DEFAULT '0' NOT NULL auto_increment,
   UserName varchar(30) DEFAULT '' NOT NULL,
   Attribute varchar(30),
-  Value varchar(40),
+  Value varchar(253),
   op char(2),
   PRIMARY KEY (id),
   KEY UserName (UserName)
