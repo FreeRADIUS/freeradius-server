@@ -25,30 +25,7 @@
 
 #include <ltdl.h>
 #include "eap.h"
-
-#define EAP_START		2
-#define NAME_LEN		32
-
-enum {
-	EAP_NOTFOUND,    /* not found */
-	EAP_FOUND,       /* found, continue */
-	EAP_OK,		 /* ok, continue */
-	EAP_FAIL,        /* failed, don't reply */
-	EAP_NOOP,        /* succeeded without doing anything */
-	EAP_INVALID,     /* invalid, don't reply */
-	EAP_VALID       /* valid, continue */
-};
-
-/*
- * Structure to represent packet format of eap
- */
-typedef struct eap_packet_t {
-	unsigned char	code;
-	unsigned char	id;
-	unsigned char	length[2];
-	unsigned char	data[1];
-} eap_packet_t;
-
+#include "eap_types.h"
 
 /*
  * Keep track of which sub modules we've loaded.

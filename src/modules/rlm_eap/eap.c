@@ -66,55 +66,6 @@ static const char *eap_codes[] = {
   "failure"
 };
 
-static const char *eap_types[] = {
-  "",   
-  "identity",
-  "notification",
-  "nak",			/* 3 */
-  "md5",
-  "otp",
-  "gtc",			/* ascii data back & forth */
-  "7",
-  "8",
-  "9",
-  "10",
-  "11",
-  "12",
-  "tls",			/* 13 */
-  "14",
-  "15",
-  "16",
-  "leap",			/* 17 */
-  "18",
-  "19",
-  "20",
-  "ttls",			/* 21 */
-  "22",
-  "23",
-  "24",
-  "peap",			/* 25 */
-  "mschapv2",			/* 26 */
-  "27",
-  "28",
-  "cisco_mschapv2"		/* 29 */
-};
-
-/*
- *	Return an EAP-Type for a particular name.
- */
-int eaptype_name2type(const char *name)
-{
-	int i;
-
-	for (i = 0; i <= PW_EAP_MAX_TYPES; i++) {
-		if (strcmp(name, eap_types[i]) == 0) {
-			return i;
-		}
-	}
-	
-	return -1;
-}
-
 /*
  * Load all the required eap authentication types.
  * Get all the supported EAP-types from config file. 
