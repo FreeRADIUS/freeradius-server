@@ -134,7 +134,8 @@ static CONF_PARSER server_config[] = {
  *	Xlat for %{config:section.subsection.attribute}
  */
 static int xlat_config(void *instance, REQUEST *request,
-		       char *fmt, char *out, int outlen,
+		       char *fmt, char *out,
+		       size_t outlen,
 		       RADIUS_ESCAPE_STRING func)
 {
 	CONF_SECTION *cs;
