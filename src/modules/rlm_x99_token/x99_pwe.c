@@ -39,6 +39,8 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
+#include <string.h>
+
 static const char rcsid[] = "$Id$";
 
 
@@ -59,7 +61,7 @@ x99_pwe_init(void)
      *     It should be sized as (number of password types * 2)
      * This is temporary until this code becomes modular.
      */
-    memset(pwattr, 0, sizeof(pwattr));
+    (void) memset(pwattr, 0, sizeof(pwattr));
 
     /* PAP */
     if ((da = dict_attrbyname("User-Password")) != NULL) {
