@@ -932,7 +932,7 @@ fi
 		smart_try_dir=$PY_INC_DIR
 		
 
-ac_safe=`echo "Python.h" | sed 'y%./+-%__p_%'`
+ac_safe=`echo "Python.h" | sed 'y%./+-%__pm%'`
 echo $ac_n "checking for Python.h""... $ac_c" 1>&6
 echo "configure:938: checking for Python.h" >&5
 
@@ -943,12 +943,13 @@ smart_include_dir=
   cat > conftest.$ac_ext <<EOF
 #line 945 "configure"
 #include "confdefs.h"
-#include <Python.h>
+
+		  #include <Python.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:952: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:953: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include=" "
 else
@@ -992,14 +993,15 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
       CFLAGS="$old_CFLAGS -I$try"
 
       cat > conftest.$ac_ext <<EOF
-#line 996 "configure"
+#line 997 "configure"
 #include "confdefs.h"
-#include <Python.h>
+
+		       #include <Python.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:1003: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:1005: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include="-I$try"
 else
@@ -1040,24 +1042,25 @@ fi
 		smart_try_dir=$PY_LIB_DIR
 		
 
+sm_lib_safe=`echo "python${PY_VERSION}" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "Py_Initialize" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for Py_Initialize in -lpython${PY_VERSION}""... $ac_c" 1>&6
-echo "configure:1045: checking for Py_Initialize in -lpython${PY_VERSION}" >&5
+echo "configure:1049: checking for Py_Initialize in -lpython${PY_VERSION}" >&5
 
 smart_lib=
 smart_lib_dir=
-ac_safe=`echo "python${PY_VERSION}" | sed 'y%./+-%__p_%'`
 
   old_LIBS="$LIBS"
   LIBS="$LIBS -lpython${PY_VERSION}"
   cat > conftest.$ac_ext <<EOF
-#line 1054 "configure"
+#line 1057 "configure"
 #include "confdefs.h"
 extern char Py_Initialize();
 int main() {
  Py_Initialize()
 ; return 0; }
 EOF
-if { (eval echo configure:1061: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1064: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lpython${PY_VERSION}"
 else
@@ -1126,14 +1129,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lpython${PY_VERSION}"
 
       cat > conftest.$ac_ext <<EOF
-#line 1130 "configure"
+#line 1133 "configure"
 #include "confdefs.h"
 extern char Py_Initialize();
 int main() {
  Py_Initialize()
 ; return 0; }
 EOF
-if { (eval echo configure:1137: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1140: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lpython${PY_VERSION}"
 else
@@ -1150,7 +1153,7 @@ rm -f conftest*
 
         if test "x$smart_lib" != "x"; then
     echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_$ac_safe_Py_Initialize=yes"
+    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
     LIBS="$old_LIBS $smart_lib"
     SMART_LIBS="$SMART_LIBS $smart_lib"
   else
@@ -1160,7 +1163,7 @@ fi
 		LIBS=$old_LIBS
 
 		if test "x$ac_cv_lib_${ac_safe_Py_Initialize}" = "xyes"; then
-		python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lm"  # libm ?  FIXME?
+		python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lm -lpython${PY_VERSION}"
 		targetname=rlm_python
 		else
 			targetname=
