@@ -1,0 +1,84 @@
+From: miquels@cistron-office.nl (Miquel van Smoorenburg)
+Subject: Serverside IP pools design [was: Re: Questions on IP address allocation]
+Date: Tue, 13 Nov 2001 13:29:24 +0000 (UTC)
+Message-ID: <9sr77k$ofn$1@ncc1701.cistron.net>
+To: freeradius-devel@lists.cistron.nl,freeradius-users@lists.cistron.nl
+
+In article <DE6495F924D2304DA0FAD60FC1C00601150E3B@AVIANSERVER.aviancommunications.com>,
+John Padula <john_padula@aviancommunications.com> wrote:
+>I'm still looking into IP address allocation via the "+" option.
+>I wanted to check if there's any sense of a lease or expiration on the
+>IP address
+>given out.
+
+No, and that's not really neccesary either, since other than with
+DHCP you have strictly defined session start- and stop points.
+
+>I've checked the RFC and didn't see any mention of this, but
+>wanted to 
+>make sure.
+
+Because IP address allocation is completely outside the scope
+of the Radius RFC / protocol.
+
+>Coming from the DHCP world, where there's a large blob of
+>processing
+>devoted to lease negotiation, it seems strange that (a) we just give out
+>an IP 'forever'
+
+Not forever - until the end of the session.
+
+>and (b) we just keep incrementing based on nas-port-id.  There's no way
+>to define 
+>a range of IPs.
+
+That's because it really is an ugly hack.
+
+>Is there any way to establish a hook (in the 'module' model) where
+>a user could call some external function that would return an IP and
+>possibly manage that IP?
+
+It's hard but not impossible. You would have to write a routine/module
+that knows about several pools (probably defined in radius.conf)
+and keeps an on-disk database that accounts for the IP addresses
+given out. It should look at all accounting-stop messages and mark
+the IP as free at the end of a session.
+
+There is also the problem of 'lost packets'. If an accounting-stop
+packet gets lost, or if authentication fails on the NAS after you've
+send an authentication ack so that start and stop packets might
+not be sent at all, the IP address you allocated will not
+be freed - ever. So when the pool reaches a high watermark (>90%)
+then you will need to scan all sessions in the pool to see if
+they are still active, using "checkrad", until you're under the
+low watermark (<80%) again. High and low watermarks would presumably
+be defined as part of the pool definition in radius.conf
+
+Other ways to keep the pool clean is to also check all authentication
+and accounting start packets for NAS/portno combination and if
+that matches with a presumably still active pool allocation,
+kill the allocation, since the original user is gone anyway.
+And perhaps a time-limit - use a minimum "Session-Timeout = 86400"
+for all sessions with addresses from the pool and periodically
+clean up all session that are older than (86400 * 1.2) or so.
+That should also be made part of the pool definition in radius.conf
+
+ip-pool pool1 {
+	range-start	= 192.168.10.10
+	range-end	= 192.168.10.19
+	cleanup-start	= 90%
+	cleanup-end	= 80%
+	session-timeout = 86400
+	session-stale	= 90000
+	session-db	= /var/log/radius/pool1.db
+}
+
+.. or something. You get the idea.
+
+The above is a description of how you could make serverside
+IP pools possible. Now someone needs to write the code.
+
+Mike.
+-- 
+"Only two things are infinite, the universe and human stupidity,
+ and I'm not sure about the former" -- Albert Einstein.
