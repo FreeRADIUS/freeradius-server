@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.3 
+# From configure.in Revision: 1.4 
 
 
 fail=
@@ -792,10 +792,10 @@ if test "${with_rlm_sql_postgresql_include_dir+set}" = set; then
 fi
 
 
-	smart_try_dir="$rlm_sql_postgresql_include_dir /usr/include/postgresql /usr/local/pgsql/include"
+	smart_try_dir="$rlm_sql_postgresql_include_dir /usr/include/postgresql /usr/local/pgsql/include /usr/include/pgsql"
 	
 
-ac_safe=`echo "libpq-fe.h" | sed 'y%./+-%__p_%'`
+ac_safe=`echo "libpq-fe.h" | sed 'y%./+-%__pm%'`
 echo $ac_n "checking for libpq-fe.h""... $ac_c" 1>&6
 echo "configure:801: checking for libpq-fe.h" >&5
 
@@ -806,12 +806,13 @@ smart_include_dir=
   cat > conftest.$ac_ext <<EOF
 #line 808 "configure"
 #include "confdefs.h"
-#include <libpq-fe.h>
+
+		  #include <libpq-fe.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:815: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:816: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include=" "
 else
@@ -855,14 +856,15 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
       CFLAGS="$old_CFLAGS -I$try"
 
       cat > conftest.$ac_ext <<EOF
-#line 859 "configure"
+#line 860 "configure"
 #include "confdefs.h"
-#include <libpq-fe.h>
+
+		       #include <libpq-fe.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:866: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:868: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include="-I$try"
 else
@@ -896,8 +898,10 @@ fi
 	smart_try_dir="$rlm_sql_postgresql_lib_dir /usr/lib /usr/local/pgsql/lib"
 	
 
+sm_lib_safe=`echo "pq" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "PQconnectdb" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for PQconnectdb in -lpq""... $ac_c" 1>&6
-echo "configure:901: checking for PQconnectdb in -lpq" >&5
+echo "configure:905: checking for PQconnectdb in -lpq" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -905,14 +909,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lpq"
   cat > conftest.$ac_ext <<EOF
-#line 909 "configure"
+#line 913 "configure"
 #include "confdefs.h"
 extern char PQconnectdb();
 int main() {
  PQconnectdb()
 ; return 0; }
 EOF
-if { (eval echo configure:916: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:920: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lpq"
 else
@@ -981,14 +985,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lpq"
 
       cat > conftest.$ac_ext <<EOF
-#line 985 "configure"
+#line 989 "configure"
 #include "confdefs.h"
 extern char PQconnectdb();
 int main() {
  PQconnectdb()
 ; return 0; }
 EOF
-if { (eval echo configure:992: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:996: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lpq"
 else
@@ -1005,7 +1009,7 @@ rm -f conftest*
 
         if test "x$smart_lib" != "x"; then
     echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_pq_PQconnectdb=yes"
+    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
     LIBS="$old_LIBS $smart_lib"
     SMART_LIBS="$SMART_LIBS $smart_lib"
   else
