@@ -80,7 +80,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		/*	
 		 *	Child
 		 */
-		buf = radius_xlat2(answer, sizeof(answer), cmd, request);
+		radius_xlat2(answer, sizeof(answer), cmd, request);
+		buf = answer;
 
 		/*
 		 *	XXX FIXME: This is debugging info.
