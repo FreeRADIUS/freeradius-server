@@ -25,6 +25,9 @@ static const char rcsid[] = "$Id$";
 #  include	<malloc.h>
 #endif
 
+#if HAVE_REGEX_H
+#  include	<regex.h>
+#endif
 
 static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",
@@ -250,8 +253,9 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			   */
 			case T_OP_SUB:		/* -= */
 				if (found) {
-					if (strcmp(found->strvalue,
-						   i->strvalue) == 0) {
+					if (!i->strvalue[0] ||
+					    (strcmp(found->strvalue,
+						    i->strvalue) == 0)) {
 					  pairdelete(to, found->attribute);
 					}
 				}
@@ -259,12 +263,60 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 				continue;
 				break;
 				
+/* really HAVE_REGEX_H */
+#if 0 
+				/*
+				 *  Attr-Name =~ "s/find/replace/"
+				 *
+				 *  Very bad code.  Barely working,
+				 *  if at all.
+				 */
+
+			case T_OP_REG_EQ:
+			  if (found &&
+			      (i->strvalue[0] == 's')) {
+			    regex_t		reg;
+			    regmatch_t		match[1];
+
+			    char *str;
+			    char *p, *q;
+
+			    p = i->strvalue + 1;
+			    q = strchr(p + 1, *p);
+			    if (!q || (q[strlen(q) - 1] != *p)) {
+			      tailfrom = i;
+			      continue;
+			    }
+			    str = strdup(i->strvalue + 2);
+			    q = strchr(str, *p);
+			    *(q++) = '\0';
+			    q[strlen(q) - 1] = '\0';
+			    
+			    regcomp(&reg, str, 0);
+			    if (regexec(&reg, found->strvalue,
+					1, match, 0) == 0) {
+			      fprintf(stderr, "\"%s\" will have %d to %d replaced with %s\n",
+				      found->strvalue, match[0].rm_so,
+				      match[0].rm_eo, q);
+
+			    }
+			    regfree(&reg);
+			    free(str);
+			  }
+			  tailfrom = i;	/* don't copy it over */
+			  continue;
+			  break;
+#endif
+
+			default:
+			  DEBUG("Unknown operator for attribute %s: "
+				"using '='", i->name);
+
 			  /*
 			   *  If a similar attribute is found,
 			   *  ignore the new one.  Otherwise,
 			   *  add the new one to the list.
 			   */
-			default:
 			case T_OP_EQ:		/* = */
 				if (found) {
 					tailfrom = i;
