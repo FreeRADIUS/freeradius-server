@@ -158,6 +158,7 @@
 #define PW_MODULE_SUCCESS_MESSAGE	1075
 #define PW_MODULE_FAILURE_MESSAGE	1076
 #define PW_X99_FAST			1077
+#define PW_REWRITE_RULE			1078
 
 /*
  *	Integer Translations

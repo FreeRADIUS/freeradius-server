@@ -52,6 +52,7 @@ typedef struct rlm_attr_rewrite_t {
 	char *replace;		/* The replacement */
 	int  nocase;		/* Ignore case */
 	int  num_matches;	/* Maximum number of matches */
+	char *name;		/* The module name */
 } rlm_attr_rewrite_t;
 
 
@@ -70,6 +71,7 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_attr_rewrite_t *data;
 	DICT_ATTR *dattr;
+	char *instance_name = NULL;
 	
 	/*
 	 *	Set up a storage area for instance data
@@ -125,6 +127,12 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	data->attr_num = dattr->attr;
+	/* Add the module instance name */
+	data->name = NULL;
+	instance_name = cf_section_name2(conf);
+	if (instance_name != NULL)
+		data->name = strdup(instance_name);
+	
 	
 	*instance = data;
 	
@@ -149,6 +157,11 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	char search_STR[MAX_STRING_LEN];
 	char replace_STR[MAX_STRING_LEN];
 	int replace_len = 0;
+
+	if ((attr_vp = pairfind(request->config_items, PW_REWRITE_RULE)) != NULL){
+		if (data->name == NULL || strcmp(data->name,attr_vp->strvalue))
+			return RLM_MODULE_NOOP;
+	}
 
 	switch (data->searchin) {
 		case RLM_REGEX_INPACKET:
@@ -294,6 +307,8 @@ static int attr_rewrite_detach(void *instance)
 	free(data->attribute);
 	free(data->search);
 	free(data->replace);
+	if (data->name)
+		free(data->name);
 
 	free(instance);
 	return 0;
