@@ -112,6 +112,7 @@ static:
 
 dynamic: $(TARGET).la $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=dynamic common
+	@[ -d .libs ] && cp .libs/* $(top_builddir)/src/modules/lib
 	@cp $< $(top_builddir)/src/modules/lib
 
 #######################################################################
