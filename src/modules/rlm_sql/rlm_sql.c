@@ -955,27 +955,33 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting ALIVE record - %s",
 					       inst->config->xlat_name,
 					       (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+					ret = RLM_MODULE_FAIL;
+				}
+				else {
+					numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
+					if (numaffected < 1) {
 
-					/*
-					 * We failed the update above.  It's probably because
-					 * the start record hasn't come in.  We try
-					 * our alternate query now (typically an INSERT)
-					 */
-					radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query_alt, request, sql_escape_func);
-					query_log(request, inst, querystr);
-					if (*querystr) { /* non-empty query */
-						if (rlm_sql_query(sqlsocket, inst, querystr)) {
-							radlog(L_ERR, "rlm_sql (%s): Couldn't insert SQL accounting ALIVE record - %s",
-								   inst->config->xlat_name,
-								   (char *)(inst->module->sql_error)(sqlsocket, inst->config));
-							ret = RLM_MODULE_FAIL;
+						/*
+						 * If our update above didn't match anything
+						 * we assume it's because we haven't seen a
+						 * matching Start record.  So we have to
+						 * insert this update rather than do an update
+						 */
+						radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query_alt, request, sql_escape_func);
+						query_log(request, inst, querystr);
+						if (*querystr) { /* non-empty query */
+							if (rlm_sql_query(sqlsocket, inst, querystr)) {
+								radlog(L_ERR, "rlm_sql (%s): Couldn't insert SQL accounting ALIVE record - %s",
+									   inst->config->xlat_name,
+									   (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+								ret = RLM_MODULE_FAIL;
+							}
+							(inst->module->sql_finish_query)(sqlsocket, inst->config);
 						}
-						(inst->module->sql_finish_query)(sqlsocket, inst->config);
 					}
 				}
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
-
 			break;
 
 			/*
