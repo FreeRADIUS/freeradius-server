@@ -15,7 +15,8 @@
 #		livingston_snmp  1.1	Author: miquels@cistron.nl
 #		portslave_finger 1.0	Author: miquels@cistron.nl
 #		max40xx_finger	 1.0	Author: costa@mdi.ca
-#		computone_finger 1.1	Author: costa@mdi.ca
+#		ascend_snmp      1.1    Author: blaz@amis.net
+#		computone_finger 1.2	Author: pacman-radius@cqc.com
 #		sub tc_tccheck	 1.1	Author: alexisv@compass.com.ph
 #		cyclades_telnet	 1.1	Author: accdias@sst.com.br
 #		patton_snmp	 1.0	Author: accdias@sst.com.br
@@ -295,25 +296,55 @@ sub multitech_snmp {
 }
 
 #
-#	Check a Computone Powerrack via finger
+#       Check a Computone Powerrack via finger
 #
-#	Author: Shiloh Costa of MDI Internet Inc. <costa@mdi.ca>
+#       Old Author: Shiloh Costa of MDI Internet Inc. <costa@mdi.ca>
+#       New Author: Alan Curry of ComQuest Internet Services. <pacman@cqc.com>
+#
+# The finger response format is version-dependent. To do this *right*, you
+# need to know exactly where the port number and username are. I know that
+# for 1.7.2, but for others I just guess.
+# Oh yeah and on top of it all, the thing truncates usernames. --Pac.
+#
+# 1.7.2 looks like this:
+#
+# 0    0 000 00:56 luser         pppfsm  Incoming PPP, ppp00, 10.0.0.1
+#
+# and the truncated ones look like this:
+#
+# 25   0 000 00:15 longnameluse..pppfsm  Incoming PPP, ppp25, 209.43.25.164
+#
+# Yes, the fields run together. Long Usernames Considered Harmful.
 #
 sub computone_finger {
-	$online = 0;
-	open(FD, "finger \@$ARGV[1]|");
-	while(<FD>) {  
-	   @line = <FD>;
-	   }
-	 $numline = @line;
-	 for ($num = 0; $num < $numline; $num++) {
-	   if( $line[$num]  =~ / $ARGV[3] / ){
-	     #print "$ARGV[3] is online\n";
-	     $online = 1; # user is online
-	   }
-	 }
+	my $trunc, $ver;
+
+	open(FD, "finger \@$ARGV[1]|") or return 2;
+	<FD>; # the [hostname] line is definitely uninteresting
+	$trunc = substr($ARGV[3], 0, 12);
+	$ver = "";
+	while(<FD>) {
+		if(/cnx kernel release ([^ ,]+)[, ]/) {
+			$ver = $1;
+			next;
+		}
+		# Check for 1.7.2
+		if ($ver eq '1.7.2') {
+			if (/^\Q$ARGV[2]\E\s+\S+\s+\S+\s+\S+\s+\Q$trunc\E(\s+|\.\.)/) {
+	 			close FD;
+				return 1;
+			}
+			next;
+		}
+		# All others.
+		if (/^\s*\Q$ARGV[2]\E\s+.*\s+\Q$trunc\E\s+/) {
+			close FD;
+			return 1;
+		}
+	}
+
 	close FD;
-	return $online;
+	return 0;
 }
 
 #
@@ -336,6 +367,38 @@ sub max40xx_finger {
 	}
 	close FD;
 }
+
+
+#
+#	Check an Ascend Max4000 or similar model via SNMP
+#
+#	Author: Blaz Zupan of Medinet <blaz@amis.net>
+#
+$asm   = '.iso.org.dod.internet.private.enterprises.529';
+sub ascend_snmp {
+	my $sess_id;
+	my $l1, $l2;
+
+	$l1 = '';
+	$l2 = '';
+
+	#
+	#	If it looks like hex, only try it as hex,
+	#	otherwise try it as both decimal and hex.
+	#
+	$sess_id = $ARGV[4];
+	if ($sess_id !~ /^0/ && $sess_id !~ /[a-f]/i) {
+		$l1 = snmpget($ARGV[1], "public", "$asm.12.3.1.4.$sess_id");
+	}
+	$sess_id = hex $ARGV[4];
+	$l2 = snmpget($ARGV[1], "public", "$asm.12.3.1.4.$sess_id");
+
+	print LOG "  user at port S$ARGV[2]: $l1 (dec)\n" if ($debug && $l1);
+	print LOG "  user at port S$ARGV[2]: $l2 (hex)\n" if ($debug && $l2);
+
+	(($l1 && $l1 eq $ARGV[3]) || ($l2 && $l2 eq $ARGV[3])) ? 1 : 0;
+}
+
 
 #
 #	See if the user is logged in using the portslave finger.
@@ -676,6 +739,12 @@ sub cyclades_snmp {
    $oid = ".1.3.6.1.4.1.2925.3.3.6.1.1.2";
 
    if (-e $snmpwalk && -x $snmpwalk) { 	
+      #
+      # Get a list of logged in users via snmpwalk
+      #
+      # I'm looking for a way to do this using SNMP_Session
+      # module. Any help would be great.
+      #
       $_ = `$snmpwalk $ARGV[1] public $oid`;
       $ret = (/$ARGV[3]/ ? 1 : 0);
    } else {
@@ -870,6 +939,8 @@ if ($ARGV[0] eq 'livingston') {
 	$ret = &computone_finger;
 } elsif ($ARGV[0] eq 'max40xx') {
 	$ret = &max40xx_finger;
+} elsif ($ARGV[0] eq 'ascend') {
+	$ret = &ascend_snmp;
 } elsif ($ARGV[0] eq 'portslave') {
 	$ret = &portslave_finger;
 } elsif ($ARGV[0] eq 'tc') {

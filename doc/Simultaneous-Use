@@ -87,7 +87,8 @@
   cisco       Cisco       SNMP            SNMP                No
   computone   Computone   finger          -                   No
   livingston  Livingston  SNMP            SNMP                No	[1]
-  max40xx     Ascend      finger          -                   No
+  max40xx     Lucent      finger          -                   No
+  ascend      Lucent      SNMP            SNMP                No
   multitech   Multitech   SNMP            SNMP                No
   netserver   USR/3com    telnet          CPAN Net::Telnet    Yes
   pathras     Cyclades    telnet          CPAN Net::Telnet    Yes
