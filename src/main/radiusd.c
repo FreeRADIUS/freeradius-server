@@ -1167,6 +1167,22 @@ int main(int argc, char *argv[])
 			 *	catches that, and exits.
 			 */
 			if (errno == EINTR) {
+#ifdef MEMORY_USE_DEBUGGING
+				/*
+				 *	Run the server in debugging mode,
+				 *	without threads, and give it a
+				 *	SIGHUP.  It will clean up after
+				 *	itself, and any memory left over
+				 *	should be allocated by C libraries,
+				 *	and the like.
+				 */
+				detach_modules();
+				rl_deinit();
+				free_mainconfig();
+				xlat_free();
+				dict_free();
+				exit(1);
+#endif
 				tv = rl_clean_list(time(NULL));
 				continue;
 			}
