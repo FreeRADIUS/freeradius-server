@@ -153,6 +153,7 @@ static int str2action(const char *s, const char *filename, int lineno)
 	return -1;
 }
 
+#if 0
 static const char *action2str(int action)
 {
 	static char buf[32];
@@ -161,6 +162,7 @@ static const char *action2str(int action)
 	snprintf(buf, sizeof buf, "%d", action);
 	return buf;
 }
+#endif
 
 /* Some short names for debugging output */
 static const char *comp2str[] = {
@@ -295,6 +297,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	return myresult;
 }
 
+#if 0
 /* If you suspect a bug in the parser, you'll want to use these dump
  * functions. dump_tree should reproduce a whole tree exactly as it was found
  * in radiusd.conf, but in long form (all actions explicitly defined) */
@@ -327,6 +330,12 @@ static void dump_tree(int comp, modcallable *c)
 	DEBUG("[%s]", comp2str[comp]);
 	dump_mc(c, 0);
 }
+#else
+static void dump_tree(int comp, modcallable *c)
+{
+	return;
+}
+#endif
 
 #define GROUPTYPE_SIMPLEGROUP 0
 #define GROUPTYPE_REDUNDANT 1
@@ -647,7 +656,7 @@ modcallable *compile_modsingle(int component, CONF_ITEM *ci,
 	modcallable *ret = do_compile_modsingle(component, ci, filename,
 		GROUPTYPE_SIMPLEGROUP,
 		modname);
-	/*dump_tree(component, ret);*/
+	dump_tree(component, ret);
 	return ret;
 }
 
@@ -716,7 +725,7 @@ modcallable *compile_modgroup(int component, CONF_SECTION *cs,
 	modcallable *ret = do_compile_modgroup(component, cs, filename,
 			GROUPTYPE_SIMPLEGROUP,
 			GROUPTYPE_SIMPLEGROUP);
-	/*dump_tree(component, ret);*/
+	dump_tree(component, ret);
 	return ret;
 }
 
