@@ -385,6 +385,10 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 					         lvalue = htonl(reply->lvalue);
 					  }
 				  } else {
+					  /*
+					   *  IP address is already in
+					   *  network byte order.
+					   */
 					  lvalue = reply->lvalue;
 				  }
 				  memcpy(ptr, &lvalue, 4);
@@ -392,6 +396,18 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				  total_length += 4;
 				  break;
 
+				  /*
+				   *  There are no tagged date attributes.
+				   */
+			  case PW_TYPE_DATE:
+				  *length_ptr += 4;
+				  if (vsa_length_ptr) *vsa_length_ptr += 4;
+
+				  lvalue = htonl(reply->lvalue);
+				  memcpy(ptr, &lvalue, 4);
+				  ptr += 4;
+				  total_length += 4;
+				  break;
 			  default:
 				  break;
 			  }
