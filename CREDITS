@@ -1,19 +1,22 @@
+  FreeRADIUS is the result of the work done by a large number of
+people.  The major contributors are listed here.
+
+
 Miquel van Smoorenburg <miquels@cistron.nl>
 	Wrote the original Cistron server, and started the FreeRADIUS
 	source tree.
 
 Alan DeKok <aland@ox.org>
 	Registered and maintains www.freeradius.org.  Wrote the module
-	code.  Made the server use libltdl, for modular support across
-	multiple platforms.
+	code.  Made the server threaded.  Maintains the autoconf and
+	libtool scripts for the server.
 
-Alan Curry
-	Has contributed many patches for proxying, replication, realm
-	support, etc.
+Alan Curry <pacman-radius@cqc.com>
+	Contributed many patches for proxying, replication, realm
+	support.
 
 Mike Machado (mike@innercite.com) 
-	Author of the MySQL module for the server, and programmer of the
-	ICRADIUS server, which is a variant of Cistron.
+	Author of the SQL module.
 
 Adrian Pavlykevych <pam@polynet.lviv.ua>
 	LDAP module.
@@ -25,4 +28,10 @@ miguel a.l. paraz <map@iphil.net>
 	Wrote the original code which was the basis for the PAM module.
 
 Jochen Friedrich <jochen+freeradius-devel@scram.de>
-	Contributed SMUX / SNMP patches.
+	SMUX / SNMP support.
+
+Nathan Neulinger <nneul@umr.edu>
+	Kerberos authentication module.
+
+Brandon Lee Poyner <bpoyner@thebiz.net>
+	Netscape-MTA-MD5 authentication module.
