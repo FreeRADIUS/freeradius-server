@@ -129,11 +129,13 @@ CONF_PARSER rad_config[] = {
   { "max_request_time",   PW_TYPE_INTEGER,    &max_request_time },
   { "cleanup_delay",      PW_TYPE_INTEGER,    &cleanup_delay    },
   { "max_requests",       PW_TYPE_INTEGER,    &max_requests     },
-  { "allow_core_dumps",   PW_TYPE_INTEGER,    &allow_core_dumps },
-  { "log_stripped_names", PW_TYPE_INTEGER,    &log_stripped_names },
-  { "log_auth",           PW_TYPE_INTEGER,    &log_auth },
-  { "log_auth_pass",      PW_TYPE_INTEGER,    &log_auth_pass },
+  { "allow_core_dumps",   PW_TYPE_BOOLEAN,    &allow_core_dumps },
+  { "log_stripped_names", PW_TYPE_BOOLEAN,    &log_stripped_names },
+  { "log_auth",           PW_TYPE_BOOLEAN,    &log_auth },
+  { "log_auth_pass",      PW_TYPE_BOOLEAN,    &log_auth_pass },
   { "pidfile",            PW_TYPE_STRING_PTR, &pid_file },
+  { "log_dir",            PW_TYPE_STRING_PTR, &radlog_dir },
+  { "acct_dir",           PW_TYPE_STRING_PTR, &radacct_dir },
 #if 0
   { "confdir",            PW_TYPE_STRING_PTR, &radius_dir },
 #endif
@@ -246,9 +248,9 @@ int main(int argc, char **argv)
 
 	debug_flag = 0;
 	spawn_flag = TRUE;
-	radacct_dir = RADACCT_DIR ;
+	radacct_dir = strdup(RADACCT_DIR);
 	radius_dir = strdup(RADIUS_DIR);
-	radlog_dir = RADLOG_DIR ;
+	radlog_dir = strdup(RADLOG_DIR);
 	pid_file = strdup(RADIUS_PID);
 
 	signal(SIGHUP, sig_hup);

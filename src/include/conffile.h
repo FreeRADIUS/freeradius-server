@@ -31,6 +31,7 @@ typedef struct conf_part {
  *  user-supplied variables.
  */
 #define PW_TYPE_STRING_PTR	100
+#define PW_TYPE_BOOLEAN		101
 
 typedef struct CONF_PARSER {
   const char *name;

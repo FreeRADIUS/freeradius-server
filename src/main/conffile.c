@@ -162,14 +162,23 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 		
 		switch (variables[i].type)
 		{
-		case PW_TYPE_INTEGER:
+		case PW_TYPE_BOOLEAN:
 			if (strcasecmp(cp->value, "yes") == 0) {
 				*(int *)variables[i].data = 1;
 			} else if (strcasecmp(cp->value, "no") == 0) {
 				*(int *)variables[i].data = 0;
 			} else {
-				*(int *)variables[i].data = atoi(cp->value);
+				*(int *)variables[i].data = 0;
+				log(L_ERR, "Bad value \"%s\" for boolean variable %s", cp->value, cp->attr);
 			}
+			DEBUG2("Config: %s.%s = %s",
+			       cs->name1,
+			       variables[i].name,
+			       cp->value);
+			break;
+
+		case PW_TYPE_INTEGER:
+			*(int *)variables[i].data = atoi(cp->value);
 			DEBUG2("Config: %s.%s = %d",
 			       cs->name1,
 			       variables[i].name,
