@@ -97,7 +97,8 @@ int radutmp_zap(UINT4 nasaddr, int port, char *user, time_t t)
 		while (read(fd, &u, sizeof(u)) == sizeof(u)) {
 			if (((nasaddr != 0 && nasaddr != u.nas_address) ||
 			      (port >= 0   && port    != u.nas_port) ||
-			      (user != NULL && strcmp(u.login, user) != 0) ||
+			      (user != NULL &&
+			       strncmp(u.login, user, sizeof(u.login)) != 0) ||
 			       u.type != P_LOGIN))
 				continue;
 			/*
