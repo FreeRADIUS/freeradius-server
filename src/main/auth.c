@@ -201,10 +201,10 @@ static int rad_check_password(REQUEST *request, int activefd,
 	 */
 	if (auth_item != NULL && auth_item->attribute == PW_PASSWORD) {
 		memcpy(string, auth_item->strvalue, auth_item->length);
-		*userpass_len = rad_pwdecode(string, auth_item->length,
-					    request->secret,
-					    request->packet->vector);
-		strncpy(userpass, string, *userpass_len + 1);
+		rad_pwdecode(string, auth_item->length,
+			     request->secret, request->packet->vector);
+		strncpy(userpass, string, auth_item->length + 1);
+		*userpass_len = auth_item->length;
 	}
 
 #if 0 /* DEBUG */

@@ -11,7 +11,6 @@ char radius_sccsid[] =
 #include	"autoconf.h"
 
 #include	<sys/types.h>
-#include	<sys/socket.h>
 #include	<sys/time.h>
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
@@ -37,6 +36,14 @@ char radius_sccsid[] =
  */
 #define PACKET_DATA_LEN 1600
 
+typedef struct radius_packet_t {
+  u_char	code;
+  u_char	id;
+  u_char	length[2];
+  u_char	vector[16];
+  u_char	data[1];
+} radius_packet_t;
+
 /*
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
@@ -52,11 +59,12 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 	int			secretlen;
 	int			vendorcode, vendorpec;
 	u_short			total_length, tmp;
-	u_char			*hdr, *ptr, *length_ptr;
+	u_char			*ptr, *length_ptr;
 	u_char			digest[16];
 	char			*what;
+	radius_packet_t		*hdr;
 
-	hdr = (u_char *)send_buffer;
+	hdr = (radius_packet_t *)send_buffer;
 	reply = packet->vps;
 
 	switch (packet->code) {
@@ -87,12 +95,12 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 	/*
 	 *	Build standard header
 	 */
-	hdr[0] = packet->code;
-	hdr[1] = packet->id;
+	hdr->code = packet->code;
+	hdr->id = packet->id;
 	if (packet->code == PW_ACCOUNTING_REQUEST)
-		memset(hdr + 4, 0, AUTH_VECTOR_LEN);
+		memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 	else
-		memcpy(hdr + 4, packet->vector, AUTH_VECTOR_LEN);
+		memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 
 	DEBUG("Sending %s of id %d to %s\n",
 		what, packet->id,
@@ -103,7 +111,7 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 	/*
 	 *	Load up the configuration values for the user
 	 */
-	ptr = hdr + AUTH_HDR_LEN;
+	ptr = hdr->data;
 	while (reply != NULL) {
 		debug_pair(reply);
 
@@ -189,7 +197,7 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 	}
 
 	tmp = htons(total_length);
-	memcpy(hdr + 2, &tmp, sizeof(u_short));
+	memcpy(hdr->length, &tmp, sizeof(u_short));
 
 	/*
 	 *	If this is not an authentication request, we
@@ -201,7 +209,7 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 		memcpy((char *)send_buffer + total_length, secret, secretlen);
 		librad_md5_calc(digest, (char *)send_buffer,
 			total_length + secretlen);
-		memcpy(hdr + 4, digest, AUTH_VECTOR_LEN);
+		memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
 		memset((char *)send_buffer + total_length, 0, secretlen);
 	}
 
@@ -270,10 +278,10 @@ RADIUS_PACKET *rad_recv(int fd)
 	struct sockaddr_in	saremote;
 	int			totallen;
 	int			salen;
-	u_char			*hdr;
 	u_short			len;
 	u_char			*attr;
 	int			count;
+	radius_packet_t		*hdr;
 
 	/*
 	 *	Allocate the new request data structure
@@ -323,8 +331,8 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	i.e. We've received 128 bytes, and the packet header
 	 *	says it's 256 bytes long.
 	 */
-	hdr = (u_char *)packet->data;
-	memcpy(&len, hdr + 2, sizeof(u_short));
+	hdr = (radius_packet_t *)packet->data;
+	memcpy(&len, hdr->length, sizeof(u_short));
 	totallen = ntohs(len);
 	if (packet->data_len != totallen) {
 		librad_log("Malformed RADIUS packet: received %d octets, packet size says %d", packet->data_len, totallen);
@@ -345,7 +353,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	or with an intentional attack.  Either way, we do NOT want
 	 *	to be vulnerable to this problem.
 	 */
-	attr = hdr + AUTH_HDR_LEN;
+	attr = hdr->data;
 	count = totallen - AUTH_HDR_LEN;
 	while (count > 0) {
 	  count -= attr[1];	/* grab the attribute length */
@@ -365,16 +373,16 @@ RADIUS_PACKET *rad_recv(int fd)
 
 	DEBUG("rad_recv: Packet from host %s code=%d, id=%d, length=%d\n",
 			inet_ntoa(saremote.sin_addr),
-			hdr[0], hdr[1], totallen);
+			hdr->code, hdr->id, totallen);
 
 	/*
 	 *	Fill header fields
 	 */
 	packet->src_ipaddr = saremote.sin_addr.s_addr;
 	packet->src_port = ntohs(saremote.sin_port);
-	packet->code = hdr[0];
-	packet->id = hdr[1];
-	memcpy(packet->vector, hdr + 4, AUTH_VECTOR_LEN);
+	packet->code = hdr->code;
+	packet->id = hdr->id;
+	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
 
 	return packet;
 }
@@ -391,13 +399,14 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 	VALUE_PAIR		*first_pair;
 	VALUE_PAIR		*prev;
 	VALUE_PAIR		*pair;
-	u_char			*hdr, *ptr;
+	u_char			*ptr;
 	int			length;
 	int			attribute;
 	int			attrlen;
 	int			vendorlen;
+	radius_packet_t		*hdr;
 
-	hdr = (u_char *)packet->data;
+	hdr = (radius_packet_t *)packet->data;
 	length = packet->data_len;
 
 	/*
@@ -429,7 +438,7 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 	/*
 	 *	Extract attribute-value pairs
 	 */
-	ptr = hdr + AUTH_HDR_LEN;
+	ptr = hdr->data;
 	length -= AUTH_HDR_LEN;
 	first_pair = NULL;
 	prev = NULL;
