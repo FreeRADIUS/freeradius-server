@@ -24,7 +24,7 @@ all:
 	@$(MAKE) $(MFLAGS) radeapclient
 
 radeapclient: radeapclient.o ../../lib/libradius.a
-	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) ${RLM_CFLAGS} $(LDFLAGS) -o radeapclient radeapclient.o $(CLIENTLIBS) $(LIBS)
+	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) ${RLM_CFLAGS} $(LDFLAGS) -o radeapclient radeapclient.o $(CLIENTLIBS) $(LIBS) $(LCRYPT)
 
 radeapclient.o: radeapclient.c $(INCLUDES)
 	$(CC) $(CFLAGS) ${RLM_CFLAGS} -c radeapclient.c
