@@ -35,3 +35,4 @@ $(DYNAMIC_OBJS): $(HEADERS)
 
 config.mak config.h:
 	@../checkconfig -l LIBLDAP ldap_init "-pthread -lldap_r -llber -L$(LDAP_LOCATION)/lib -lsasl -L$(SASL_LOCATION)/lib -lssl -lcrypto -L$(OpenSSL_LOCATION)/lib" "-I$(LDAP_LOCATION)/include -pthread -DHAVE_TLS -I$(OpenSSL_LOCATON)/include -I$(SASL_LOCATION)/include"
+	@../checkconfig -l LIBLDAP ldap_init "-pthread -lldap_r -llber -L$(LDAP_LOCATION)/lib -lssl -lcrypto -L$(OpenSSL_LOCATION)/lib" "-I$(LDAP_LOCATION)/include -pthread -DHAVE_TLS -I$(OpenSSL_LOCATON)/include"
