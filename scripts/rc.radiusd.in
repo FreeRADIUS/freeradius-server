@@ -16,7 +16,7 @@ rundir=${localstatedir}/run
 
 RADIUSD=$sbindir/radiusd
 WATCHER=$sbindir/radwatch
-DESC="Cistron radius server"
+DESC="Freeradius server"
 NAME1=radiusd
 NAME2=radwatch
 
