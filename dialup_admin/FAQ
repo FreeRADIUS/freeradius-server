@@ -41,5 +41,15 @@ Everything should work ok after that.
 
 Make sure that magic quotes in PHP are turned off
 
+>
+> The Online Users page does not show me anything
+>
+
+Check conf/admin.conf and especially the comments about general_finger_type. Make sure that bin/snmpfinger
+uses the correct snmpwalk command and that it returns the correct results (snmfinger works on cisco access
+servers). Try commenting out general_finger_type so that the Online Users page will just query the radacct
+table and not try to do a finger on the NAS.
+
+
 --
 kkalev
