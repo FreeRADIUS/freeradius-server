@@ -40,7 +40,7 @@ LIBS		= @LIBS@
 
 LOGDIR		= ${logdir}
 RADDBDIR	= ${raddbdir}
-RUNDIR		= ${localstatedir}/run
+RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
 

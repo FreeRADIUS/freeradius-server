@@ -31,7 +31,7 @@ radacctdir = @radacctdir@
 
 #  Location of config and logfiles.
 confdir = ${raddbdir}
-run_dir = ${localstatedir}/run
+run_dir = ${localstatedir}/run/radiusd
 
 #
 # libdir: Where to find the rlm_* modules.
@@ -74,7 +74,7 @@ libdir = @libdir@
 #
 #  This file is written when ONLY running in daemon mode.
 #
-#  e.g.:  kill -HUP `cat /var/run/radiusd.pid`
+#  e.g.:  kill -HUP `cat /var/run/radiusd/radiusd.pid`
 #
 pidfile = ${run_dir}/radiusd.pid
 

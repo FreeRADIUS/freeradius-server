@@ -65,12 +65,6 @@ if [ "$1" = "0" ]; then
 	/sbin/chkconfig --add radiusd
 fi
 
-mkdir -p /var/log/radius/radacct
-chmod 700 /var/log/radius
-chmod 700 /var/log/radius/radacct
-chown root:root /var/log/radius
-chown root:root /var/log/radius/radacct
-
 # Done here to avoid messing up existing installations
 for i in radius/radutmp radius/radwtmp # radius/radius.log radius/radwatch.log radius/checkrad.log
 do
@@ -93,14 +87,14 @@ rm -rf $RPM_BUILD_ROOT
 /usr/bin/*
 /usr/sbin/*
 /usr/lib/*
-#%dir(missingok) /var/log/radius/radacct/
-#/var/log/radius/checkrad.log
-#/var/log/radius/radwatch.log
-#/var/log/radius/radius.log
-#/var/log/radius/radwtmp
-#/var/log/radius/radutmp
+%attr(0700,root,root) %dir /var/log/radius
+%attr(0700,root,root) %dir /var/log/radius/radacct
+%attr(0700,root,root) %dir /var/run/radiusd
 
 %changelog
+* Sun May 26 2002 Frank Cusack <frank@google.com>
+- move /var dirs from %%post to %%files
+
 * Thu Feb 14 2002 Marko Myllynen
 - use dir name macros in all configure options
 - libtool is required only when building the package
@@ -112,7 +106,7 @@ rm -rf $RPM_BUILD_ROOT
 - clean up name/version
 
 * Fri Jan 18 2002 Frank Cusack <frank@google.com>
-- remove (noreplace) for /etc/raddb/*
+- remove (noreplace) for /etc/raddb/* (due to rpm bugs)
 
 * Fri Sep 07 2001 Ivan F. Martinez <ivanfm@ecodigit.com.br>
 - changes to make compatible with default config file shipped

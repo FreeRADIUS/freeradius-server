@@ -20,7 +20,7 @@ exec_prefix=@exec_prefix@
 sbindir=@sbindir@
 localstatedir=@localstatedir@
 logdir=@logdir@
-rundir=${localstatedir}/run
+rundir=${localstatedir}/run/radius
 
 MAILTO=root
 RADIUSD=$sbindir/radiusd
