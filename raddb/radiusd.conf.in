@@ -676,17 +676,28 @@ modules {
 			#  In these cases, fragment size should be
 			#  1024 or less.
 			#
-		#		fragment_size = 1024
+		#	fragment_size = 1024
 
-				#  include_length is a flag which is
-				#  by default set to yes If set to
-				#  yes, Total Length of the message is
-				#  included in EVERY packet we send.
-				#  If set to no, Total Length of the
-				#  message is included ONLY in the
-				#  First packet of a fragment series.
-				#
-		#		include_length = yes
+			#  include_length is a flag which is
+			#  by default set to yes If set to
+			#  yes, Total Length of the message is
+			#  included in EVERY packet we send.
+			#  If set to no, Total Length of the
+			#  message is included ONLY in the
+			#  First packet of a fragment series.
+			#
+		#	include_length = yes
+
+			#  Check the Certificate Revocation List
+			#  
+			#  1) Copy CA certificates and CRLs to same directory.
+			#  2) Execute 'c_rehash <CA certs&CRLs Directory>'.
+			#    'c_rehash' is OpenSSL's command.
+			#  3) Add 'CA_path=<CA certs&CRLs directory>'
+			#      to radiusd.conf's tls section.
+			#  4) uncomment the line below.
+			#  5) Restart radiusd
+		#	check_crl = yes
 		#}
 
 		#  The TTLS module implements the EAP-TTLS protocol,
