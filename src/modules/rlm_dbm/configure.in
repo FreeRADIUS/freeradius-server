@@ -64,11 +64,13 @@ if test x$with_[]modname != xno; then
 		smart_try_dir=$rlm_dbm_lib_dir
 		AC_SMART_CHECK_LIB(ndbm, dbm_open)
 		if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
+			dnl GNU DBM < 1.8.1
 			AC_SMART_CHECK_LIB(gdbm, dbm_open)
 			if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
+				dnl GNU DBM >= 1.8.1
 				AC_SMART_CHECK_LIB(gdbm_compat, dbm_open)
-				if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
-					fail="$fail (libndbm or libgdm)"
+				if test "x$ac_cv_lib_gdbm_compat_dbm_open" != "xyes"; then
+					fail="$fail (libndbm or libgdbm or libgdbm_compat)"
 				fi
 			fi
 		fi
