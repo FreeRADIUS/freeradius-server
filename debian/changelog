@@ -8,6 +8,7 @@ radiusd-freeradius (?) unstable; urgency=low
   * Added user 'freerad' into the 'shadow' group.
   * Fixed UUCP-style of restricting time of log-in.
   * Changed debugging messages to give more info about execution flow.
+  * Better counter module.  
 
  -- Chad Miller <cmiller@debian.org>  [TBA]
 

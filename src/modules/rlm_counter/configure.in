@@ -4,11 +4,27 @@ AC_DEFUN(modname,[rlm_counter])
 
 if test x$with_[]modname != xno; then
 
+	AC_PROG_CPP
 	AC_SMART_CHECK_INCLUDE(gdbm.h)
 	AC_SMART_CHECK_LIB(gdbm, gdbm_open)
 	if test "x$ac_cv_lib_gdbm_gdbm_open" != "xyes"; then
-          fail="$fail libgdbm"
-        fi
+		fail="$fail libgdbm"
+	fi
+
+	AC_MSG_CHECKING(to see GDBM_SYNC status)
+	AC_EGREP_CPP(found-gdbm-sync, [
+#include <gdbm.h>
+#ifdef GDBM_SYNC
+	found-gdbm-sync!
+#else
+	not found.  this version must use sync by default.
+#endif
+		], [
+			AC_DEFINE(NEED_GDBM_SYNC, yes) 
+			AC_MSG_RESULT(needs it.)
+		], [
+			AC_MSG_RESULT(SYNCs by default.)
+		])
 
 	targetname=modname
 else
@@ -31,4 +47,5 @@ counter_cflags=$SMART_CFLAGS
 AC_SUBST(counter_ldflags)
 AC_SUBST(counter_cflags)
 AC_SUBST(targetname)
+AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(Makefile)

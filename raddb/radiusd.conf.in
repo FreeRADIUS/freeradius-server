@@ -595,7 +595,7 @@ modules {
 	#  file used to access that counter.  e.g.
 	#
 	#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
-	#	    Reply-Message = "You've used up more than one hour today"
+	#      Reply-Message = "You've used up more than one hour today"
 	#
 	counter {
 		filename = ${raddbdir}/db.counter
@@ -603,9 +603,11 @@ modules {
 		count-attribute = Acct-Session-Time
 		reset = daily
 		counter-name = Daily-Session-Time
+		check-name = Max-Daily-Session
+		allowed-servicetype = Framed-User
+		cache-size = 5000
 	}
 
-	#
 	# The "always" module is here for debugging purposes. Each instance simply
 	# returns the same result, always, without doing anything.
 	#
