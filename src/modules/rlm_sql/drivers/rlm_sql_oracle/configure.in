@@ -13,8 +13,14 @@ if test x$with_[]modname != xno; then
 	AC_MSG_CHECKING([for oci.h])
 
 	dnl #
-	dnl #  First, see if we can build it WITHOUT using any special includes
+	dnl # See if the user passed in the oracle_home_dir option and
+	dnl # use that first.  If not, use $ORACLE_HOME.  If that's
+	dnl # not defined, give up.  There's no point in blindly
+	dnl # hunting around for Oracle - there's no standard place
+	dnl # for it.  Any sane Oracle user/developer should have $ORACLE_HOME
+	dnl # defined anyways.
 	dnl #
+
 	AC_TRY_COMPILE([#include <oci.h>],
 		[ int a = 1;],
 		ORACLE_INCLUDE=" ",
@@ -27,21 +33,32 @@ if test x$with_[]modname != xno; then
 
 		AC_LOCATE_DIR(oracle_home_dir,oci.h)
 
-		for try in /usr/local/include/oracle /usr/local/oracle/include $oracle_include_dir; do
-			CFLAGS="$old_CFLAGS -I${try}/rdbms/demo ${try}/rdbms/public -I${try}/plsql/public -I${try}/network/public -I${try}/oci/include"
+		for try in $oracle_home_dir $oracle_include_dir; do
+			CFLAGS="$old_CFLAGS -I${try}/rdbms/demo -I${try}/rdbms/public -I${try}/plsql/public -I${try}/network/public -I${try}/oci/include"
 			AC_TRY_COMPILE([#include <oci.h>],
 				[ int a = 1; ],
-				ORACLE_HOME=$try,
-				ORACLE_HOME=
+				OHOME=$try,
+				OHOME=
 			)
-			if test "x$ORACLE_HOME" != "x"; then
+			if test "x$OHOME" != "x"; then
 				break;
 			fi
 		done
+
+		if test "x$OHOME" = "x" -a "x$ORACLE_HOME" != "x"; then
+			CFLAGS="$old_CFLAGS -I${ORACLE_HOME}/rdbms/demo -I${ORACLE_HOME}/rdbms/public -I${ORACLE_HOME}/plsql/public -I${ORACLE_HOME}/network/public -I${ORACLE_HOME}/oci/include"
+			AC_TRY_COMPILE([#include <oci.h>],
+				[ int a = 1; ],
+				OHOME=$ORACLE_HOME,
+				OHOME=
+			)
+		fi
+
 		CFLAGS="$old_CFLAGS"
 
-		if test "x$ORACLE_HOME" != "x"; then
-			ORACLE_INCLUDE="-I${ORACLE_HOME}/rdbms/demo ${ORACLE_HOME}/rdbms/public -I${ORACLE_HOME}/plsql/public -I${ORACLE_HOME}/network/public -I${ORACLE_HOME}/oci/include"
+		if test "x$OHOME" != "x"; then
+			ORACLE_HOME=$OHOME
+			ORACLE_INCLUDE="-I${ORACLE_HOME}/rdbms/demo -I${ORACLE_HOME}/rdbms/public -I${ORACLE_HOME}/plsql/public -I${ORACLE_HOME}/network/public -I${ORACLE_HOME}/oci/include"
 		fi
 	fi     ##  this section sets $ORACLE_HOME, if found.
 
@@ -79,7 +96,7 @@ if test x$with_[]modname != xno; then
 			## we must have an Oracle8i tree
 
 			# FIXME: we might do some checking, just to be nice
-			ORACLE_LIBS="-L$ORACLE_HOME/lib -lclntsh -lwtc8 -lm"
+			ORACLE_LIBS="-L$ORACLE_HOME/lib -lclntsh -lm"
 
 		else
 			AC_MSG_CHECKING([for oracle_init in -loracleclient])
@@ -106,7 +123,8 @@ if test x$with_[]modname != xno; then
 			LIBS="$old_LIBS"
 
 			dnl #
-			dnl #  If one or the other isn't found, disable them both..
+			dnl #  If one or the other isn't found, disable
+			dnl #  them both..
 			dnl #  If both are found, enable them both.
 			dnl #
 			if test "x$ORACLE_LIBS" = "x"; then
