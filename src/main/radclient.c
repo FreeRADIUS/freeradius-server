@@ -35,6 +35,11 @@
 #include	"libradius.h"
 #include	"radpaths.h"
 
+static int		retries = 10;
+static float		timeout = 3;
+static const char	*secret = "secret";
+static int		do_output = 1;
+
 /*
  *	Read valuepairs from the fp up to End-Of-File.
  */
@@ -66,7 +71,17 @@ static VALUE_PAIR *readvp(FILE *fp)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [-d raddb ] [-f file] [-r retries] [-t timeout] [-nx]\n		server acct|auth <secret>\n");
+	fprintf(stderr, "Usage: radclient [ -c count] [-d raddb ] [-f file] [-r retries] [-t timeout] [-qvx]\n		server acct|auth <secret>\n");
+	
+	fprintf(stderr, " -c count    Send 'count' packets.\n");
+	fprintf(stderr, " -d raddb    Set dictionary directory.\n");
+	fprintf(stderr, " -f file     Read packets from file, not stdin.\n");
+	fprintf(stderr, " -r retries  If timeout, retry sending the packet 'retires' times.\n");
+	fprintf(stderr, " -t timeout  Wait 'timeout' seconds before retrying.\n");
+	fprintf(stderr, " -q          Do not print anything out.\n");
+	fprintf(stderr, " -v          Show program version information.\n");
+	fprintf(stderr, " -x          Debugging mode.\n");
+
 	exit(1);
 }
 
@@ -82,31 +97,83 @@ static int getport(const char *name)
 	return ntohs(svp->s_port);
 }
 
+static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
+{
+	int i;
+	struct timeval	tv;
+
+	for (i = 0; i < retries; i++) {
+		fd_set		rdfdesc;
+
+		rad_send(req, secret);
+
+		/* And wait for reply, timing out as necessary */
+		FD_ZERO(&rdfdesc);
+		FD_SET(req->sockfd, &rdfdesc);
+
+		tv.tv_sec = (int)timeout;
+		tv.tv_usec = 1000000 * (timeout - (int)timeout);
+
+		/* Something's wrong if we don't get exactly one fd. */
+		if (select(req->sockfd + 1, &rdfdesc, NULL, NULL, &tv) != 1) {
+			continue;
+		}
+
+		*rep = rad_recv(req->sockfd);
+		if (*rep != NULL) {
+			break;
+		} else {	/* NULL: couldn't receive the packet */
+			librad_perror("radclient:");
+			exit(1);
+		}
+	}
+
+	/* No response or no data read (?) */
+	if (i == retries) {
+		fprintf(stderr, "radclient: no response from server\n");
+		exit(1);
+	}
+
+	if (rad_decode(*rep, secret) != 0) {
+		librad_perror("rad_decode");
+		exit(1);
+	}
+
+	/* libradius debug already prints out the value pairs for us */
+	if (!librad_debug && do_output) {
+		printf("Received response ID %d, code %d, length = %d\n",
+		       (*rep)->id, (*rep)->code, (*rep)->data_len);
+		vp_printlist(stdout, (*rep)->vps);
+	}
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	RADIUS_PACKET	*req;
 	RADIUS_PACKET	*rep = NULL;
-	struct timeval	tv;
 	char		*p;
-	const char	*secret = "secret";
-	int		do_output = 1;
 	int		c;
 	int		port = 0;
-	int		retries = 10;
-	float		timeout = 3;
-	int		i;
 	const char	*radius_dir = RADDBDIR;
 	char		*filename = NULL;
 	FILE		*fp;
+	int		count = 1;
+	int		loop;
 
-	while ((c = getopt(argc, argv, "d:f:nt:r:xv")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "c:d:f:hqt:r:xv")) != EOF) switch(c) {
+		case 'c':
+			if (!isdigit(*optarg)) usage();
+			count = atoi(optarg);
+			break;
 		case 'd':
 			radius_dir = optarg;
 			break;
        		case 'f':
 			filename = optarg;
 			break;
-		case 'n':
+		case 'q':
 			do_output = 0;
 			break;
 		case 'x':
@@ -124,6 +191,7 @@ int main(int argc, char **argv)
 			printf("radclient: $Id$ built on " __DATE__ "\n");
 			exit(0);
 			break;
+		case 'h':
 		default:
 			usage();
 			break;
@@ -216,46 +284,33 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	for (i = 0; i < retries; i++) {
-		fd_set		rdfdesc;
+	/*
+	 *	Loop, sending the packet N times.
+	 */
+	for (loop = 0; loop < count; loop++) {
+		req->id++;
 
-		rad_send(req, secret);
-
-		/* And wait for reply, timing out as necessary */
-		FD_ZERO(&rdfdesc);
-		FD_SET(req->sockfd, &rdfdesc);
-
-		tv.tv_sec = (int)timeout;
-		tv.tv_usec = 1000000 * (timeout - (int)timeout);
-
-		/* Something's wrong if we don't get exactly one fd. */
-		if (select(req->sockfd + 1, &rdfdesc, NULL, NULL, &tv) != 1) {
-			continue;
+		/*
+		 *	If we've already sent a packet, free up the old
+		 *	one, and ensure that the next packet has a unique
+		 *	ID and authentication vector.
+		 */
+		if (req->data) {
+			VALUE_PAIR *pass;
+			free(req->data);
+			req->data = NULL;
+			
+			pass = pairfind(req->vps, PW_PASSWORD);
+			rad_pwencode(pass->strvalue,
+				     &(pass->length),
+				     secret, req->vector);
+			
+			librad_md5_calc(req->vector, req->vector,
+					sizeof(req->vector));
 		}
 
-		rep = rad_recv(req->sockfd);
-		if (rep != NULL) {
-			break;
-		} else {	/* NULL: couldn't receive the packet */
-			librad_perror("radclient:");
-			exit(1);
-		}
+		send_packet(req, &rep);
 	}
-
-	/* No response or no data read (?) */
-	if (i == retries) {
-		fprintf(stderr, "radclient: no response from server\n");
-		exit(1);
-	}
-
-	if (rad_decode(rep, secret) != 0) {
-		librad_perror("rad_decode");
-		exit(1);
-	}
-
-	/* libradius debug already prints out the value pairs for us */
-	if (!librad_debug && do_output)
-		vp_printlist(stdout, rep->vps);
 
 	return 0;
 }
