@@ -36,7 +36,7 @@ binary-arch: build
 	dh_installdirs
 	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) libdir=$(libdir) R=$(radiusd_freeradius_dir)
 	# clean up install cruft.  $$&@!%
-	test ! -d $(radiusd_freeradius_dir)/$(execprefix)/include || rmdir $(radiusd_freeradius_dir)/$(execprefix)/include
+	test ! -d $(radiusd_freeradius_dir)/$(execprefix)/include || rm -rf $(radiusd_freeradius_dir)/$(execprefix)/include
 	rm $(radiusd_freeradius_dir)/$(execprefix)/usr/sbin/rc.radiusd
 	# split out inconvenient/controversal modules to other places
 	for modname in krb5 ldap mysql postgresql; do \

@@ -1,4 +1,4 @@
-radiusd-freeradius (0.8-1) unstable; urgency=low
+radiusd-freeradius (0.7+cvs20021113-1) unstable; urgency=low
  
   * Explicitly excluding modules not in the "stable" list.
   * Updated policy version number.
@@ -12,8 +12,11 @@ radiusd-freeradius (0.8-1) unstable; urgency=low
   * Removed "conflicts" with other radiusds.
   * Added new build-dep on libtool.
   * Changed section to "net" from "admin".
+  * New config.guess.  (closes: Bug#168647)
+  * Run with freerad user and group.  (closes: Bug#168272)
+  * Added libssl-dev as build-dep.  (closes: #131832)
 
- -- Chad Miller <cmiller@debian.org>  Wed,  6 Nov 2002 11:08:15 -0500
+ -- Chad Miller <cmiller@debian.org>  Wed, 13 Nov 2002 17:01:19 -0500
 
 radiusd-freeradius (0.5+cvs20020408-1) unstable; urgency=high
 
