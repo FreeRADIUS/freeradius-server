@@ -166,6 +166,9 @@ static void *request_handler_thread(void *arg)
 				self->thread_num, self->request->number,
 				self->request_count);
 		
+		/*
+		 *  This responds, and resets request->child_pid
+		 */
 		rad_respond(self->request, self->fun);
 		self->request = NULL;
 
@@ -513,6 +516,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	DEBUG2("Thread %d assigned request %d", found->thread_num, request->number);
 	move2tail(found);
+	request->child_pid = handle->pthread_id;
 	found->request = request;
 	found->fun = fun;
 	found->request_count++;
