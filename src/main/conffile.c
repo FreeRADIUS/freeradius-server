@@ -536,7 +536,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *	Last character is '\\'.  Over-write it,
 		 *	and read another line.
 		 */
-		if (cbuf[len - 1] == '\\') {
+		if ((len > 0) && (cbuf[len - 1] == '\\')) {
 			cbuf[len - 1] = '\0';
 			cbuf += len - 1;
 			continue;
