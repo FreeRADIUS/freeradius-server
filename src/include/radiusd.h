@@ -34,6 +34,11 @@ typedef pid_t child_pid_t;
 #define REQUEST_MAGIC (0xdeadbeef)
 #endif
 
+/*
+ *	See util.c
+ */
+typedef struct request_data_t request_data_t;
+
 typedef struct auth_req {
 #ifndef NDEBUG
 	uint32_t		magic; /* for debugging only */
@@ -45,6 +50,7 @@ typedef struct auth_req {
 	VALUE_PAIR		*config_items;
 	VALUE_PAIR		*username;
 	VALUE_PAIR		*password;
+	request_data_t		*data;
 	char			secret[32];
 	child_pid_t    		child_pid;
 	time_t			timestamp;
@@ -75,6 +81,7 @@ typedef struct auth_req {
 #define RAD_REQUEST_OPTION_DONT_CACHE      (1 << 2)
 #define RAD_REQUEST_OPTION_FAKE_REQUEST    (1 << 3)
 #define RAD_REQUEST_OPTION_REJECTED        (1 << 4)
+#define RAD_REQUEST_OPTION_PROXIED         (1 << 5)
 
 /*
  *  Function handler for requests.
@@ -268,6 +275,11 @@ void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		xfree(const char *ptr);
 REQUEST		*request_alloc(void);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
+int		request_data_add(REQUEST *request,
+				 void *unique_ptr, int unique_int,
+				 void *opaque, void (*free_opaque)(void *));
+void		*request_data_get(REQUEST *request,
+				  void *unique_ptr, int unique_int);
 
 /* client.c */
 int		read_clients_file(const char *file);

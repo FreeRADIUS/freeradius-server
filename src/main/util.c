@@ -84,6 +84,92 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
 #endif
 }
 
+/*
+ *	Per-request data, added by modules...
+ */
+struct request_data_t {
+	request_data_t	*next;
+	
+	void		*unique_ptr;
+	int		unique_int;
+	void		*opaque;
+	void		(*free_opaque)(void *);
+};
+
+/*
+ *	Add opaque data (with a "free" function) to a REQUEST.
+ *
+ *	The unique ptr is meant to be a malloc'd module configuration,
+ *	and the unique integer allows the caller to have multiple
+ *	opaque data associated with a REQUEST.
+ */
+int request_data_add(REQUEST *request,
+		     void *unique_ptr, int unique_int,
+		     void *opaque, void (*free_opaque)(void *))
+{
+	request_data_t *this, **last, *next;
+
+	/*
+	 *	Some simple sanity checks.
+	 */
+	if (!request || !opaque) return -1;
+
+	this = next = NULL;
+	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
+		if (((*last)->unique_ptr == unique_ptr) &&
+		    ((*last)->unique_int == unique_int)) {
+			this = *last;
+
+			next = this->next;
+
+			if (this->opaque && /* free it, if necessary */
+			    this->free_opaque)
+				this->free_opaque(this->opaque);
+			break;	/* replace the existing entry */
+		}
+	}
+
+	if (!this) this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	this->next = next;
+	this->unique_ptr = unique_ptr;
+	this->unique_int = unique_int;
+	this->opaque = opaque;
+	this->free_opaque = free_opaque;
+
+	*last = this;
+
+	return 0;
+}
+
+
+/*
+ *	Get opaque data from a request.
+ */
+void *request_data_get(REQUEST *request,
+		       void *unique_ptr, int unique_int)
+{
+	request_data_t **last;
+
+	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
+		if (((*last)->unique_ptr == unique_ptr) &&
+		    ((*last)->unique_int == unique_int)) {
+			request_data_t *this = *last;
+			void *ptr = this->opaque;
+
+			/*
+			 *	Remove the entry from the list, and free it.
+			 */
+			*last = this->next;
+			free(this);
+			return ptr; /* don't free it, the caller does that */
+		}
+	}
+
+	return NULL;		/* wasn't found, too bad... */
+}
+
 
 /*
  *	Free a REQUEST struct.
@@ -120,6 +206,19 @@ void request_free(REQUEST **request_ptr)
 
 	request->username = NULL;
 	request->password = NULL;
+
+	if (request->data) {
+		request_data_t *this, *next;
+
+		for (this = request->data; this != NULL; this = next) {
+			next = this->next;
+			if (this->opaque && /* free it, if necessary */
+			    this->free_opaque)
+				this->free_opaque(this->opaque);
+			free(this);
+		}
+		request->data = NULL;
+	}
 
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
