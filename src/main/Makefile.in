@@ -50,7 +50,7 @@ radiusd: $(SERVER_OBJS) ../lib/libradius.a $(MODULE_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LCRYPT) $(MODULE_LIBS) $(LIBS) \
-		$(PTHREADLIB) $(LIBLTDL) 
+		$(PTHREADLIB) $(LIBLTDL) $(LCRYPT)
 
 radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
 	$(CC) $(CFLAGS) -c radiusd.c
