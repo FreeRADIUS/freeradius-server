@@ -9,7 +9,7 @@ case "$1" in
 	groups freerad >/dev/null || adduser --system --no-create-home --home /etc/raddb --ingroup freerad --disabled-password freerad
 
 	# make sure there is a user and group 'freerad'
-	groups freerad |grep freerad >/dev/null
+	groups freerad |grep freerad 2>/dev/null
 
 	# put user freerad in group shadow, so the daemon can auth locally
 	usermod -G shadow freerad
