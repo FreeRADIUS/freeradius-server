@@ -83,6 +83,7 @@ int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	/* FIXME: Someone write the oracle specific disconnect and free code!! */
 
 	free(sqlsocket);
+	return 0;
 }
 
 /*************************************************************************
@@ -394,6 +395,8 @@ int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	}
 	free(oracle_sock->results);
 	oracle_sock->results=NULL;
+
+	return 0;
 }
 
 
@@ -467,7 +470,7 @@ int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	/* Nothing to do here for Oracle */
-	sql_free_result(sqlsocket);
+	sql_free_result(sqlsocket, config);
 }
 
 
@@ -524,6 +527,5 @@ rlm_sql_module_t rlm_sql_oracle = {
 	sql_close,
 	sql_finish_query,
 	sql_finish_select_query,
-	sql_affected_rows,
-	sql_escape_string
+	sql_affected_rows
 };
