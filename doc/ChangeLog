@@ -1,5 +1,17 @@
 FreeRADIUS 0.8 ; $Date$, urgency=low
 
+	* Added Oracle-specific queries.
+	* Updated SQL queries to match schema.
+	* PostGreSQL reconnect patch.
+	* Added documentation on how to build on MAC OSX.
+	* Allowed SQL module to ignore unknown Acct-Status-Type values.
+	* Updated PostGreSQL queries and schema.
+	* Updated the log rotation configuration files.
+	* Colubris and updated Nomadix dictionaries, from Marko Myllynen.
+	* Normalized error messages from the SQL modules, so that they're
+	  more informative.
+	* Added Suse specific directory and configuration files, from
+	  Peter Nixon
 	* SQL fail-over patch, so that the module returns FAIL if
 	  the back-end database is down.  Based on a patch from
 	  Thomas Jalsovsky.
