@@ -1,5 +1,5 @@
 /*
- * sql_postgresql.c		SQL Module
+ * sql_postgresql.c		Postgresql rlm_sql driver
  *
  * Version:	$Id$
  *
@@ -22,193 +22,363 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
+/* Modification of rlm_sql_mysql to handle postgres */
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include        "radiusd.h"
-#include        "rlm_sql.h"
-
+#include 	"radiusd.h"
+#include	"sql_postgresql.h"
 
 
 /*************************************************************************
  *
- *      Function: sql_connect
+ *	Function: sql_create_socket
  *
- *      Purpose: Connect to the sql server
+ *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-int sql_connect(void) {
+int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
-        /* Connect to the database server */
-        if (!(sql->AuthSock->conn = PQsetdbLogin(
-                sql->config.sql_server,
-                NULL,
-                NULL,
-                NULL,
-                sql->config.sql_db,
-                sql->config.sql_login,
-                sql->config.sql_password))) {
-             radlog(L_ERR, "Init: Couldn't connect authentication socket to Postgres SQL server on %s as %s",
-                        sql->config.sql_server, sql->config.sql_login);
-             sql->AuthSock->conn = NULL;
-        }
-        if (!(sql->AcctSock->conn = PQsetdbLogin(
-                sql->config.sql_server,
-                NULL,
-                NULL,
-                NULL,
-                sql->config.sql_db,
-                sql->config.sql_login,
-                sql->config.sql_password))) {
-             radlog(L_ERR, "Init: Couldn't connect accounting socket to Postgres SQL server on %s as %s",
-                        sql->config.sql_server, sql->config.sql_login);
-             sql->AcctSock->conn = NULL;
-        }
-           
-       return 0;
+	rlm_sql_postgres_sock *pg_sock;
+
+        sqlsocket->conn = (rlm_sql_postgres_sock *)rad_malloc(sizeof(rlm_sql_postgres_sock));
+
+	pg_sock = sqlsocket->conn;
+   
+	char connstring[2048];
+	snprintf(connstring,2048,"dbname=%s host=%s user=%s password=%s", config->sql_db, config->sql_server, config->sql_login, config->sql_password);
+
+	pg_sock->row=NULL;
+	pg_sock->result=NULL;
+	pg_sock->conn=PQconnectdb(connstring);
+
+	if (PQstatus(sqlsocket->conn) == CONNECTION_BAD) {
+		radlog(L_ERR, "rlm_sql: Couldn't connect socket to PostgreSQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
+		radlog(L_ERR, "rlm_sql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));
+		PQfinish(pg_sock->conn);
+		return -1;
+	}
+
+	PQsetnonblocking(pg_sock->conn, 1);
+	return 0;
 }
 
- 
-
 /*************************************************************************
  *
- *      Function: sql_checksocket
+ *	Function: sql_query
  *
- *      Purpose: Make sure our database connection is up
+ *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-int sql_checksocket(const char *facility) {
-        if ((strncmp(facility, "Auth", 4) == 0)) {
-                if (sql->AuthSock->conn == NULL) {
-                        if (sql->config.sql_keepopen)
-                                radlog(L_ERR, "%s: Keepopen set but had to reconnect to Postgres SQL", facility);
-                        /* Connect to the database server */
-                        if (!(sql->AuthSock->conn = PQsetdbLogin(
-                                sql->config.sql_server,
-                                NULL,
-                                NULL,
-                                NULL,
-                                sql->config.sql_login,
-                                sql->config.sql_password,
-                                sql->config.sql_db))) {
-                                radlog(L_ERR, "Auth: Couldn't connect authentication socket to Postgres SQL server on %s as %s",
-                                sql->config.sql_server, sql->config.sql_login);
-                                sql->AuthSock->conn = NULL;
-                                return 0;
-                        }
-                }
-        } else {
-                if (sql->AcctSock->conn == NULL) {
-                        if (sql->config.sql_keepopen)
-                                radlog(L_ERR, "%s: Keepopen set but had to reconnect to Postgres SQL", facility);
-                        /* Connect to the database ******/
-SQL_ROW sql_fetch_row(SQLSOCK *socket) {
-        int fields,tuples;
-        int i,j;
-        char *key,*value;
+int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
-        tuples = PQntuples(socket->result);
-        fields = PQnfields(socket->result);
-        for(i=0;i<tuples;i++) {
-                for(j=0;j<fields;j++) {
-                        value = PQgetvalue(socket->result,i,j);
-                        key = PQfname(j);
-                        /* what now we have no row structure to insert into? */
-                }
-        }
-        return NULL; /* ? */
 
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+	if (config->sqltrace)
+		radlog(L_DBG,"query:  %s", querystr);
+
+	if (pg_sock->conn == NULL) {
+		radlog(L_ERR, "Socket not connected");
+		return -1;
+	}
+
+	while (pg_sock->result!=NULL) 
+		pg_sock->result=PQgetResult(pg_sock->conn);
+
+	return PQsendQuery(pg_sock->conn, querystr);
 }
 
 
+/*************************************************************************
+ *
+ *	Function: sql_select_query
+ *
+ *	Purpose: Issue a select query to the database
+ *
+ *************************************************************************/
+int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
+
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+	if (config->sqltrace)
+		radlog(L_DBG, querystr);
+
+	if (pg_sock->conn == NULL) {
+		radlog(L_ERR, "Socket not connected");
+		return -1;
+	}
+
+	while (pg_sock->result!=NULL) 
+		pg_sock->result=PQgetResult(pg_sock->conn);
+		PQsendQuery(pg_sock->conn, querystr);
+
+	if (sql_store_result(sqlsocket, config) && sql_num_fields(sqlsocket, config))
+		return 0;
+	else
+		return -1;
+}
+
 
 /*************************************************************************
  *
- *      Function: sql_free_result
+ *	Function: sql_store_result
  *
- *      Purpose: database specific free_result. Frees memory allocated
+ *	Purpose: database specific store_result function. Returns a result
+ *               set for the query.
+ *
+ *************************************************************************/
+int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+
+	int status;
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+	if (pg_sock->conn == NULL) {
+		radlog(L_ERR, "Socket not connected");
+		return -1'
+	}
+
+	pg_sock->cur_row = 0;
+	pg_sock->result = PQgetResult(pg_sock->conn);
+	status=PQresultStatus(pg_sock->result);
+
+	if ((status!=PGRES_COMMAND_OK) && (status!=PGRES_TUPLES_OK)) {
+		radlog(L_ERR, "PostgreSQL Error: Cannot get result");
+		radlog(L_ERR, "PostgreSQL Error: %s", PQerrorMessage(pg_sock->conn));
+		return -1;
+	}
+	return 0;
+}
+
+
+/*************************************************************************
+ *
+ *	Function: sql_num_fields
+ *
+ *	Purpose: database specific num_fields function. Returns number
+ *               of columns from query
+ *
+ *************************************************************************/
+int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+
+	int     num = 0;
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+	if (!(num = PQnfields(pg_sock->result))) {
+		radlog(L_ERR, "PostgreSQL Error: Cannot get result");
+		radlog(L_ERR, "PostgreSQL error: %s", PQerrorMessage(pg_sock->conn));
+	}
+	return num;
+}
+
+
+/*************************************************************************
+ *
+ *	Function: sql_num_rows
+ *
+ *	Purpose: database specific num_rows. Returns number of rows in
+ *               query
+ *
+ *************************************************************************/
+int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+	return PQntuples(pg_sock->result);
+}
+
+
+/*************************************************************************
+ *
+ *	Function: sql_fetch_row
+ *
+ *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
+ *               with all the data for the query
+ *
+ *************************************************************************/
+SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+
+	int records, i, len;
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+	if (pg_sock->cur_row >= PQntuples(pg_sock->result))
+		return NULL;
+
+	if (pg_sock->row != NULL) {
+		for (i = pg_sock->num_fields-1; i >= 0; i--) {
+			if (pg_sock->row[i] != NULL) {
+				xfree(pg_sock->row[i]);
+			}
+		}
+		if (pg_sock->row != NULL) {
+			xfree(pg_sock->row);
+			pg_sock->row = NULL;
+		}
+		pg_sock->num_fields = 0;
+	}
+
+	records = PQnfields(pg_sock->result);
+	pg_sock->num_fields = records;
+
+	if ((PQntuples(pg_sock->result) > 0) && (records > 0)) {
+		pg_sock->row = (char **)rad_malloc(records*sizeof(char *)+1);
+		memset(pg_sock->row, '\0', records*sizeof(char *)+1);
+
+		for (i = 0; i < records; i++) {
+			len = PQgetlength(pg_sock->result, pg_sock->cur_row, i);
+			pg_sock->row[i] = (char *)rad_malloc(len+1);
+			memset(pg_sock->row[i], '\0', len+1);
+			strncpy(pg_sock->row[i], PQgetvalue(pg_sock->result, pg_sock->cur_row,i),len);
+		}
+		pg_sock->cur_row++;
+		return pg_sock->row;
+	} else {
+		return NULL;
+	}
+}
+
+
+
+/*************************************************************************
+ *
+ *	Function: sql_free_result
+ *
+ *	Purpose: database specific free_result. Frees memory allocated
  *               for a result set
  *
  *************************************************************************/
-void sql_free_result(SQLSOCK *socket) {
+int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
-   PQclear(socket->result);
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
+	if (pg_sock->result) {
+		PQclear(pg_sock->result);
+	}
+
+	return 0;
 }
 
 
 
 /*************************************************************************
  *
- *      Function: sql_error
+ *	Function: sql_error
  *
- *      Purpose: database specific error. Returns error associated with
+ *	Purpose: database specific error. Returns error associated with
  *               connection
  *
  *************************************************************************/
-char *sql_error(SQLSOCK *socket) {
+char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
-        radlog(L_ERR,"PQSQL error: %s",PQerrorMessage(socket->conn));
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
+	return PQerrorMessage(pg_sock->conn);
 }
 
 
 /*************************************************************************
  *
- *      Function: sql_close
+ *	Function: sql_close
  *
- *      Purpose: database specific close. Closes an open database
+ *	Purpose: database specific close. Closes an open database
  *               connection
  *
  *************************************************************************/
-void sql_close(SQLSOCK *socket) {
+int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
-   PQfinish(socket->conn);
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
+	PQfinish(pg_sock->conn);
+	pg_sock->conn = NULL;
+
+	return 0;
 }
 
 
 /*************************************************************************
  *
- *      Function: sql_finish_query
+ *	Function: sql_finish_query
  *
- *      Purpose: End the query, such as freeing memory
+ *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-void sql_finish_query(SQLSOCK *socket) {
+int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
-        PQclear(socket->result);
-
+	return sql_free_result(sqlsocket, config);
 }
 
 
 
 /*************************************************************************
  *
- *      Function: sql_finish_select_query
+ *	Function: sql_finish_select_query
  *
- *      Purpose: End the select query, such as freeing memory or result
+ *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-void sql_finish_select_query(SQLSOCK *socket) {
+int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
-   PQclear(socket->result);
+	return sql_free_result(sqlsocket, config);
 }
 
 
 /*************************************************************************
  *
- *      Function: sql_affected_rows
+ *	Function: sql_affected_rows
  *
- *      Purpose: End the select quh as freeing memory or result
+ *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-int sql_affected_rows(SQLSOCK *socket) {
-   int rows;
+int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
-        rows = PQntuples(socket->result);
-        return rows;
+	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+	return atoi(PQcmdTuples(pg_sock->result));
 }
 
 
+/*************************************************************************
+ *
+ *      Function: sql_escape_string
+ *
+ *      Purpose: Esacpe "'" and any other wierd charactors
+ *
+ *************************************************************************/
+int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length) {
+
+	int x, y;
+
+	for(x=0, y=0; x < length; x++) {
+		if (from[x] == '\'') {
+			to[y++]='\'';
+		}
+		to[y++]=from[x];
+	}
+
+	to[y]=0;
+
+	return 0;
+}
+
+/* Exported to rlm_sql */
+rlm_sql_module_t rlm_sql_postgresql = {
+        "rlm_sql_postgresql",
+        sql_init_socket,
+        sql_destroy_socket,
+        sql_query,
+        sql_select_query,
+        sql_store_result,
+        sql_num_fields,
+        sql_num_rows,
+        sql_fetch_row,
+        sql_free_result,
+        sql_error,
+        sql_close,
+        sql_finish_query,
+        sql_finish_select_query,
+        sql_affected_rows,
+        sql_escape_string
+};

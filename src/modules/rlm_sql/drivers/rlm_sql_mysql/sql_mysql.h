@@ -14,7 +14,7 @@ typedef struct rlm_sql_mysql_sock {
 	MYSQL_RES *result;
 } rlm_sql_mysql_sock;
 
-int	sql_create_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+int	sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 int	sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 int     sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr);
 int     sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr);
