@@ -64,6 +64,7 @@ $now_str = date("$config[sql_date_format]",$now + 86400);
 $week_str = date("$config[sql_date_format]",$week);
 $day = date('w');
 $week_start = date($config[sql_date_format],$now - ($day)*86400);
+$month_start = date($config[sql_date_format],$now - date('j')*86400);
 $today = $day;
 $now_tmp = $now;
 for ($i = $day; $i >-1; $i--){
@@ -112,6 +113,17 @@ if ($link){
 	}
 	else
 		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
+	if ($monthly_limit != 'none' || $config[counter_monthly_calculate_usage] == 'true'){
+		$search = @da_sql_query($link,$config,
+		"SELECT sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE UserName = '$login'
+		AND AcctStartTime >= '$month_start' AND AcctStartTime <= '$now_str';");
+		if ($search){
+			$row = @da_sql_fetch_array($search,$config);
+			$monthly_used = $row['sum(AcctSessionTime)'];
+		}
+		else
+			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
+	}
 	$search = @da_sql_query($link,$config,
 	"SELECT COUNT(*) FROM $config[sql_accounting_table] WHERE UserName = '$login'
 	AND AcctStopTime >= '$week_str' AND AcctStopTime <= '$now_str'
@@ -171,6 +183,24 @@ if ($link){
 	$weekly_used = time2str($weekly_used);
 	if ($weekly_limit != 'none' && !$tmp)
 		$weekly_used = "<font color=red>$weekly_used</font>";
+
+	if ($monthly_limit != 'none'){
+		$tmp = $monthly_limit - $monthly_used;
+		if ($tmp <=0){
+			$tmp = 0;
+			$extra_msg .= '(Out of monthly quota)';
+		}
+		if (!is_numeric($remaining))
+			$remaining = $tmp;
+		if ($remaining > $tmp)
+			$remaining = $tmp;
+		$log_color = ($remaining) ? 'green' : 'red';
+	}
+	if ($config[counter_monthly_calculate_usage] == 'true'){
+		$monthly_used = time2str($monthly_used);
+		if ($monthly_limit != 'none' && !$tmp)
+			$monthly_used = "<font color=red>$monthly_used</font>";
+	}
 
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_accounting_table]

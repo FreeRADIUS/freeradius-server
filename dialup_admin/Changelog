@@ -44,6 +44,9 @@ Ver 1.63:
 * Calculate weekly used time correctly (from Sunday 00:00:00)
 * Allow for defining the ldap_filter used when searching for a user. The filter supports dynamic variables
   like %u (username) and %U (username provided though http auth)
+* Add a configuration directive counter_monthly_calculate_usage to calculate the monthly usage time. Calculate
+  it in user_admin if monthly_limit != 'none' or if this directive is set.
+  Based on a report by "apellido jr., wilfredo p"
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
