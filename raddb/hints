@@ -34,17 +34,17 @@
 #
 
 
-DEFAULT	Suffix = ".ppp", Strip-User-Name = Yes
+DEFAULT	Suffix == ".ppp", Strip-User-Name = Yes
 	Hint = "PPP",
 	Service-Type = Framed-User,
 	Framed-Protocol = PPP
 
-DEFAULT	Suffix = ".slip", Strip-User-Name = Yes
+DEFAULT	Suffix == ".slip", Strip-User-Name = Yes
 	Hint = "SLIP",
 	Service-Type = Framed-User,
 	Framed-Protocol = SLIP
 
-DEFAULT	Suffix = ".cslip", Strip-User-Name = Yes
+DEFAULT	Suffix == ".cslip", Strip-User-Name = Yes
 	Hint = "CSLIP",
 	Service-Type = Framed-User,
 	Framed-Protocol = SLIP,
@@ -56,20 +56,20 @@ DEFAULT	Suffix = ".cslip", Strip-User-Name = Yes
 #	They confuse too many people when "Peter" logs in, and the
 #	server thinks that the user "eter" is asking for PPP.
 #
-#DEFAULT	Prefix = "U", Strip-User-Name = No
+#DEFAULT	Prefix == "U", Strip-User-Name = No
 #	Hint = "UUCP"
 
-#DEFAULT	Prefix = "P", Strip-User-Name = Yes
+#DEFAULT	Prefix == "P", Strip-User-Name = Yes
 #	Hint = "PPP",
 #	Service-Type = Framed-User,
 #	Framed-Protocol = PPP
 
-#DEFAULT	Prefix = "S", Strip-User-Name = Yes
+#DEFAULT	Prefix == "S", Strip-User-Name = Yes
 #	Hint = "SLIP",
 #	Service-Type = Framed-User,
 #	Framed-Protocol = SLIP
 
-#DEFAULT	Prefix = "C", Strip-User-Name = Yes
+#DEFAULT	Prefix == "C", Strip-User-Name = Yes
 #	Hint = "CSLIP",
 #	Service-Type = Framed-User,
 #	Framed-Protocol = SLIP,
