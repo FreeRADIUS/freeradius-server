@@ -72,6 +72,8 @@ typedef struct THREAD_POOL {
 	int		min_spare_threads;
 	int		max_spare_threads;
 	int		max_requests_per_thread;
+	time_t		time_last_spawned;
+	int		cleanup_delay;
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
@@ -90,6 +92,8 @@ static const CONF_PARSER thread_config[] = {
 	  &thread_pool.max_spare_threads,       "10" }, 
 	{ "max_requests_per_server",            PW_TYPE_INTEGER,
 	  &thread_pool.max_requests_per_thread, "0"}, 
+	{ "cleanup_delay",			PW_TYPE_INTEGER,
+	  &thread_pool.cleanup_delay,		"5"}, 
 	
 	{ NULL, -1, NULL, NULL }
 };
@@ -282,7 +286,7 @@ static void move2tail(THREAD_HANDLE *handle)
  *	The thread is started initially in the blocked state, waiting
  *	for the semaphore.
  */
-static THREAD_HANDLE *spawn_thread(void)
+static THREAD_HANDLE *spawn_thread(time_t now)
 {
 	int rcode;
 	THREAD_HANDLE *handle;
@@ -366,6 +370,11 @@ static THREAD_HANDLE *spawn_thread(void)
 	move2tail(handle);
 
 	/*
+	 *	Update the time we last spawned a thread.
+	 */
+	thread_pool.time_last_spawned = now;
+
+	/*
 	 *	And return the new handle to the caller.
 	 */
 	return handle;
@@ -380,8 +389,10 @@ int thread_pool_init(void)
 	int i;
 	THREAD_HANDLE	*handle;
 	CONF_SECTION	*pool_cf;
+	time_t		now;
 
 	DEBUG("Initializing the thread pool...");
+	now = time(NULL);
 
 	/*
 	 *	Initialize the thread pool to some reasonable values.
@@ -391,6 +402,7 @@ int thread_pool_init(void)
 	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
 	thread_pool.max_thread_num = 1;
+	thread_pool.cleanup_delay = 5;
 
 	pool_cf = cf_section_find("thread");
 	if (pool_cf) {
@@ -403,7 +415,7 @@ int thread_pool_init(void)
 	 *	If we fail while creating them, do something intelligent.
 	 */
 	for (i = 0; i < thread_pool.start_threads; i++) {
-		handle = spawn_thread();
+		handle = spawn_thread(now);
 		if (handle == NULL) {
 			return -1;
 		}
@@ -462,7 +474,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	If we can't spawn a new one, complain, and exit.
 	 */
 	if (found == NULL) {
-		found = spawn_thread();
+		found = spawn_thread(request->timestamp);
 		if (found == NULL) {
 			radlog(L_INFO, "The maximum number of threads (%d) are active, cannot spawn new thread to handle request", thread_pool.max_threads);
 			return -1;
@@ -495,7 +507,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
  *	If there are too many or too few threads waiting, then we
  *	either create some more, or delete some.
  */
-int thread_pool_clean(void)
+int thread_pool_clean(time_t now)
 {
 	int spare;
 	int i, total;
@@ -513,7 +525,7 @@ int thread_pool_clean(void)
 	}
 
 	spare = thread_pool.total_threads - active_threads;
-	{
+	if (debug_flag) {
 		static int old_total = -1;
 		static int old_active = -1;
 
@@ -537,7 +549,7 @@ int thread_pool_clean(void)
 		 *	Create a number of spare threads.
 		 */
 		for (i = 0; i < total; i++) {
-			handle = spawn_thread();
+			handle = spawn_thread(now);
 			if (handle == NULL) {
 				return -1;
 			}
@@ -546,6 +558,15 @@ int thread_pool_clean(void)
 		/*
 		 *	And exit, as there can't be too many spare threads.
 		 */
+		return 0;
+	}
+
+	/*
+	 *	Only delete the spare threads if sufficient time has
+	 *	passed since we last created one.  This helps to minimize
+	 *	the amount of create/delete cycles.
+	 */
+	if ((now - thread_pool.time_last_spawned) < thread_pool.cleanup_delay) {
 		return 0;
 	}
 

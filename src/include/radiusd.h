@@ -264,6 +264,6 @@ int            radius_xlat2(char * out, int outlen, char *str,
 #ifdef WITH_THREAD_POOL
 /* threads.c */
 extern		int thread_pool_init(void);
-extern		int thread_pool_clean(void);
+extern		int thread_pool_clean(time_t now);
 #endif
 #endif /*RADIUSD_H*/

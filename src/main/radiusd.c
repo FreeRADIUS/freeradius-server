@@ -1208,6 +1208,8 @@ int rad_process(REQUEST *request, int dospawn)
  */
 static void rad_reject(REQUEST *request)
 {
+	VALUE_PAIR *vps;
+	
 	DEBUG2("Server rejecting request.");
 	switch (request->packet->code) {
 		/*
@@ -1223,7 +1225,14 @@ static void rad_reject(REQUEST *request)
 		 *	reject message sent.
 		 */
 	case PW_AUTHENTICATION_REQUEST:
-		request->reply->code = PW_AUTHENTICATION_REJECT;
+		request->reply->code = PW_AUTHENTICATION_REJECT; 
+
+		/*
+		 *	Need to copy Proxy-State from request->packet->vps
+		 */
+		vps = paircopy2(request->packet->vps, PW_PROXY_STATE);
+		if (vps != NULL)
+			pairadd(&(request->reply->vps), vps);
 		break;
 	}
 	
@@ -1234,6 +1243,33 @@ static void rad_reject(REQUEST *request)
 		rad_send(request->reply, request->secret);
 	}
 }
+
+/*
+ *	Perform any RFC specified cleaning of outgoing replies
+ */
+static void rfc_clean(RADIUS_PACKET *packet)
+{
+	VALUE_PAIR *vps = NULL;
+	
+	switch (packet->code) {
+	default:
+		break;
+		
+		/*
+		 *	Authentication REJECT's can have only
+		 *	Reply-Mesaage and Proxy-State.  We delete
+		 *	everything other than Reply-Message, and
+		 *	Proxy-State is added below, just before
+		 *	the reply is sent.
+		 */
+	case PW_AUTHENTICATION_REJECT:
+		pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
+		pairfree(packet->vps);
+		packet->vps = vps;
+		break;
+	}
+}
+
 
 /*
  *	Respond to a request packet.
@@ -1342,7 +1378,12 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	assert(request->magic == REQUEST_MAGIC);
 	if (request->reply->code != 0) {
-		VALUE_PAIR *vp;
+		VALUE_PAIR *vp = NULL;
+
+		/*
+		 *	Perform RFC limitations on outgoing replies.
+		 */
+		rfc_clean(request->reply);
 
 		/*
 		 *	Need to copy Proxy-State from request->packet->vps
@@ -1456,7 +1497,7 @@ static int rad_clean_list(time_t curtime)
 	 *	Only clean the thread pool if we've spawned child threads.
 	 */
 	if (spawn_flag) {
-		thread_pool_clean();
+		thread_pool_clean(curtime);
 	}
 #endif
 
