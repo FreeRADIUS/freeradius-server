@@ -181,6 +181,44 @@ proxy_requests	= yes
 
 #######################################################################
 #
+#  SNMP configuration
+#
+#  NOTE: This part is only working if your radiusd is compiled with SNMP
+#  support.
+#
+#  smux_password: Password used for SMUX registration.
+#
+#  Specifies password used when connecting to the SNMP master agent.
+#  This must match the password as configured on the agent. The OID
+#  used to register the radius subagent is 1.3.6.1.4.1.3317.1.3.1.
+#  A sample entry for the ucd-snmp deamon looks like this:
+#
+#  smuxpeer .1.3.6.1.4.1.3317.1.3.1 verysecret
+#
+#  A sample entry for AIX 4.3 is:
+#
+#  smux 1.3.6.1.4.1.3317.1.3.1 verysecret
+#
+#  The default password is an empty password.
+#
+#smux_password = verysecret
+#
+#  snmp_write_access:
+#
+#  Controls if write access to the radiusd via SNMP is enabled or not.
+#  Set this value to yes, if you want to be able to reload radiusd from
+#  your network management station.
+#
+#  For this to work, you also have to make sure that your master agent
+#  is configured to allow SNMP set requests. For security reasons, this
+#  setting defaults to no.
+#
+# allowed values: {no, yes}
+#
+#snmp_write_access = yes
+
+#######################################################################
+#
 #  Proxy server configuration
 #
 #  This entry controls the servers behaviour towards ALL other servers

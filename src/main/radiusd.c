@@ -73,6 +73,7 @@ char			*radlog_dir = NULL;
 const char		*radlib_dir = NULL;
 #ifdef WITH_SNMP
 char			*smux_password = NULL;
+int			snmp_write_access = FALSE;
 int			snmp_acctotalrequests = 0;
 int			snmp_authtotalrequests = 0;
 enum smux_event         smux_event = SMUX_NONE;
@@ -180,6 +181,7 @@ static CONF_PARSER server_config[] = {
   { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "0" },
 #ifdef WITH_SNMP
   { "smux_password",      PW_TYPE_STRING_PTR, &smux_password,     "" },
+  { "snmp_write_access",  PW_TYPE_BOOLEAN,    &snmp_write_access, "no" },
 #endif
   { NULL, -1, NULL, NULL }
 };

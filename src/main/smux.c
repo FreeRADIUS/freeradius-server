@@ -51,6 +51,9 @@ size_t smux_oid_len;
 /* SMUX password. */
 extern char *smux_password;
 
+/* SNMP write access allowed */
+extern int snmp_write_access;
+
 /* SMUX socket */
 extern int smuxfd;
 
@@ -383,8 +386,9 @@ smux_var (char *ptr, int len, oid objid[], size_t *objid_len,
   return ptr;
 }
 
-/* NOTE: all 3 functions (smux_set, smux_get & smux_getnext) are based on ucd-snmp
-   smux and as such suppose, that the peer recieves in the message only one variable */
+/* NOTE: all 3 functions (smux_set, smux_get & smux_getnext) are based on
+   ucd-snmp smux and as such suppose, that the peer receives in the message
+   only one variable. Fortunately, IBM seems to do the same in AIX. */
 
 int
 smux_set (oid *reqid, size_t *reqid_len,
@@ -400,6 +404,9 @@ smux_set (oid *reqid, size_t *reqid_len,
   int result;
   u_char *statP = NULL;
   WriteMethod *write_method = NULL;
+
+  if (!snmp_write_access)
+    return SNMP_ERR_NOSUCHNAME;
 
   /* Check */
   for (l = treelist; l; l=l->next)
@@ -447,11 +454,11 @@ smux_set (oid *reqid, size_t *reqid_len,
               /* If above execution is failed or oid is small (so
                  there is no further match). */
               if (result < 0)
-                return SNMP_NOSUCHOBJECT;
+                return SNMP_ERR_NOSUCHNAME;
             }
         }
     }
-  return SNMP_NOSUCHOBJECT;
+  return SNMP_ERR_NOSUCHNAME;
 }
 
 int
@@ -502,7 +509,7 @@ smux_get (oid *reqid, size_t *reqid_len, int exact,
 
 		  /* There is no instance. */
 		  if (*val == NULL)
-		    return SNMP_NOSUCHINSTANCE;
+		    return SNMP_ERR_NOSUCHNAME;
 
 		  /* Call is suceed. */
 		  *val_type = v->type;
@@ -513,11 +520,11 @@ smux_get (oid *reqid, size_t *reqid_len, int exact,
 	      /* If above execution is failed or oid is small (so
                  there is no further match). */
 	      if (result < 0)
-		return SNMP_NOSUCHOBJECT;
+		return SNMP_ERR_NOSUCHNAME;
 	    }
 	}
     }
-  return SNMP_NOSUCHOBJECT;
+  return SNMP_ERR_NOSUCHNAME;
 }
 
 int
@@ -540,7 +547,8 @@ smux_getnext (oid *reqid, size_t *reqid_len, int exact,
   oid_copy (save, reqid, *reqid_len);
   savelen = *reqid_len;
 
-  /* Check */
+  /* Check for best matching subtree */
+
   for (l = treelist; l; l=l->next)
     {
       subtree = l->data;
@@ -548,22 +556,34 @@ smux_getnext (oid *reqid, size_t *reqid_len, int exact,
       subresult = oid_compare_part (reqid, *reqid_len, 
 				    subtree->name, subtree->name_len);
 
-      /* If request is in the tree. The agent has to make sure we
-         only receive requests we have registered for. */
-      if (subresult == 0)
-	{
+     /* If request is in the tree. The agent has to make sure we
+        only receive requests we have registered for. */
+     /* Unfortunately, that's not true. In fact, a SMUX subagent has to
+        behave as if it manages the whole SNMP MIB tree itself. It's the
+        duty of the master agent to collect the best answer and return it
+        to the manager. See RFC 1227 chapter 3.1.6 for the glory details
+        :-). ucd-snmp really behaves bad here as it actually might ask
+        multiple times for the same GETNEXT request as it throws away the
+        answer when it expects it in a different subtree and might come
+        back later with the very same request. --jochen */
 
+      if (subresult <= 0)
+	{
 	  /* Prepare suffix. */
 	  suffix = reqid + subtree->name_len;
 	  suffix_len = *reqid_len - subtree->name_len;
-	  result = subresult;
-
+	  if (subresult < 0)
+	    {
+	      oid_copy(reqid, subtree->name, subtree->name_len);
+	      *reqid_len = subtree->name_len;
+	    }
 	  for (j = 0; j < subtree->variables_num; j++)
 	    {
+	      result = subresult;
 	      v = &subtree->variables[j];
 
 	      /* Next then check result >= 0. */
-	      if (result >= 0)
+	      if (result == 0)
 		result = oid_compare_part (suffix, suffix_len,
 					   v->name, v->namelen);
 
@@ -590,7 +610,7 @@ smux_getnext (oid *reqid, size_t *reqid_len, int exact,
   memcpy (reqid, save, savelen * sizeof(oid));
   *reqid_len = savelen;
 
-  return SNMP_NOSUCHOBJECT;
+  return SNMP_ERR_NOSUCHNAME;
 }
 
 /* GET message header. */
@@ -947,7 +967,7 @@ smux_register ()
 		          &priority, sizeof (u_long));
 
       /* Operation. */
-      operation = 1;
+      operation = snmp_write_access ? 2 : 1; /* Register R/O or R/W */
       ptr = asn_build_int (ptr, &len, 
 		          (u_char)(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_INTEGER),
 		          &operation, sizeof (u_long));
@@ -1114,8 +1134,8 @@ void
 smux_register_mib(char *descr, struct variable *var, size_t width, int num, 
 		  oid name[], size_t namelen)
 {
-  struct subtree *tree;
-  struct list *l;
+  struct subtree *tree, *tt;
+  struct list *l, *ll;
 
   tree = (struct subtree *)malloc(sizeof(struct subtree));
   oid_copy (tree->name, name, namelen);
@@ -1127,14 +1147,30 @@ smux_register_mib(char *descr, struct variable *var, size_t width, int num,
   l = (struct list *)malloc(sizeof(struct list));
   l->data = tree;
   l->next = NULL;
+/* Build a treelist sorted by the name. This makes GETNEXT simpler */
   if (treelist == NULL)
-    treelist = l;
-  else
     {
-      struct list *ll;
-      for (ll = treelist; ll->next; ll=ll->next);
-      ll->next = l;
+      treelist = l;
+      return;
     }
+  tt = (struct subtree*) treelist->data;
+  if (oid_compare(name, namelen, tt->name, tt->name_len) < 0)
+    {
+      l->next = treelist;
+      treelist = l;
+      return;
+    }
+  for (ll = treelist; ll->next; ll=ll->next)
+    {
+      tt = (struct subtree*) ll->next->data;
+      if (oid_compare(name, namelen, tt->name, tt->name_len) < 0)
+	{
+	  l->next = ll->next;
+	  ll->next = l;
+	  return;
+	}
+    }
+  ll->next = l;
 }
 
 void

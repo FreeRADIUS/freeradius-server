@@ -124,7 +124,7 @@ static struct variable radiusacc_variables[] =
   {RADIUSACCSERVTOTALPACKETSDROPPED, COUNTER, RONLY, radAccServ, 1, {11}},
   {RADIUSACCSERVTOTALNORECORDS, COUNTER, RONLY, radAccServ, 1, {12}},
   {RADIUSACCSERVTOTALUNKNOWNTYPES, COUNTER, RONLY, radAccServ, 1, {13}},
-  {RADIUSACCCLIENTADDRESS, STRING, RONLY, radAccEntry, 3, {14,1,2}},
+  {RADIUSACCCLIENTADDRESS, IPADDRESS, RONLY, radAccEntry, 3, {14,1,2}},
   {RADIUSACCCLIENTID, STRING, RONLY, radAccEntry, 3, {14,1,3}},
   {RADIUSACCSERVPACKETSDROPPED, COUNTER, RONLY, radAccEntry, 3, {14,1,4}},
   {RADIUSACCSERVREQUESTS, COUNTER, RONLY, radAccEntry, 3, {14,1,5}},
@@ -153,7 +153,7 @@ static struct variable radiusauth_variables[] =
   {RADIUSAUTHSERVTOTALBADAUTHENTICATORS, COUNTER, RONLY, radAuthServ, 1, {12}},
   {RADIUSAUTHSERVTOTALPACKETSDROPPED, COUNTER, RONLY, radAuthServ, 1, {13}},
   {RADIUSAUTHSERVTOTALUNKNOWNTYPES, COUNTER, RONLY, radAuthServ, 1, {14}},
-  {RADIUSAUTHCLIENTADDRESS, STRING, RONLY, radAuthEntry, 3, {15,1,2}},
+  {RADIUSAUTHCLIENTADDRESS, IPADDRESS, RONLY, radAuthEntry, 3, {15,1,2}},
   {RADIUSAUTHCLIENTID, STRING, RONLY, radAuthEntry, 3, {15,1,3}},
   {RADIUSAUTHSERVACCESSREQUESTS, COUNTER, RONLY, radAuthEntry, 3, {15,1,4}},
   {RADIUSAUTHSERVDUPACCESSREQUESTS, COUNTER, RONLY, radAuthEntry, 3, {15,1,5}},
@@ -229,7 +229,7 @@ radServReset (int action,
     oid      *name,
     size_t   name_len)
 {
-    int ret, i;
+    long i;
     int big = SNMP_MAX_LEN;
 
     switch (action)
@@ -340,12 +340,16 @@ radAccEntry(struct variable *vp,
     switch (vp->magic) {
 
     case RADIUSACCCLIENTADDRESS:
-        *var_len = strlen(c->longname);
-        return c->longname;
+        *var_len = sizeof(c->ipaddr);
+        return (unsigned char *)&(c->ipaddr);
 
     case RADIUSACCCLIENTID:
-        *var_len = strlen(c->shortname);
-        return c->shortname;
+	if (strlen(c->shortname)) {
+		*var_len = strlen(c->shortname);
+        	return c->shortname;
+	}
+        *var_len = strlen(c->longname);
+        return c->longname;
 
     case RADIUSACCSERVPACKETSDROPPED:
         return (unsigned char *) NULL;
@@ -465,12 +469,16 @@ radAuthEntry(struct variable *vp,
     switch (vp->magic) {
 
     case RADIUSAUTHCLIENTADDRESS:
-        *var_len = strlen(c->longname);
-        return (unsigned char *) c->longname;
+        *var_len = sizeof(c->ipaddr);
+        return (unsigned char *)&(c->ipaddr);
 
     case RADIUSAUTHCLIENTID:
-        *var_len = strlen(c->shortname);
-        return (unsigned char *) c->shortname;
+	if (strlen(c->shortname)) {
+		*var_len = strlen(c->shortname);
+        	return c->shortname;
+	}
+        *var_len = strlen(c->longname);
+        return c->longname;
 
     case RADIUSAUTHSERVACCESSREQUESTS:
         return (unsigned char *) NULL;
