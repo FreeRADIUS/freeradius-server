@@ -163,6 +163,7 @@
 #define PW_X99_FAST			1077
 #define PW_REWRITE_RULE			1078
 #define PW_SQL_GROUP			1079
+#define PW_RESPONSE_PACKET_TYPE		1080
 
 /*
  *	Integer Translations

@@ -211,6 +211,7 @@ ATTRIBUTE	Module-Failure-Message	1076	string
 #		X99-Fast		1077	integer
 ATTRIBUTE	Rewrite-Rule		1078	string
 ATTRIBUTE	Sql-Group		1079	string
+ATTRIBUTE	Response-Packet-Type	1080	integer
 
 #
 #	Non-Protocol Attributes
@@ -435,3 +436,17 @@ VALUE		Packet-Type	Accounting-Message		10
 VALUE		Packet-Type	Access-Challenge		11
 VALUE		Packet-Type	Status-Server			12
 VALUE		Packet-Type	Status-Client			13
+
+VALUE		Response-Packet-Type	Access-Request			1
+VALUE		Response-Packet-Type	Access-Accept			2
+VALUE		Response-Packet-Type	Access-Reject			3
+VALUE		Response-Packet-Type	Accounting-Request		4
+VALUE		Response-Packet-Type	Accounting-Response		5
+VALUE		Response-Packet-Type	Accounting-Status		6
+VALUE		Response-Packet-Type	Password-Request		7
+VALUE		Response-Packet-Type	Password-Accept			8
+VALUE		Response-Packet-Type	Password-Reject			9
+VALUE		Response-Packet-Type	Accounting-Message		10
+VALUE		Response-Packet-Type	Access-Challenge		11
+VALUE		Response-Packet-Type	Status-Server			12
+VALUE		Response-Packet-Type	Status-Client			13
