@@ -47,7 +47,7 @@ $password    = "";
 
 #### You should not have to modify anything below here
 $progname = "H323 Detail to DB parser";
-$version = 2;
+$version = 2.1;
 
 # Set up some basic variables
 $passno = 0; $double_match_no = 0; $verbose = 0;
@@ -342,14 +342,15 @@ sub print_usage_info {
 	$underbar =~ s/./-/g;
 	print "$leader\n$underbar\n";
 	print "\n";
-	print "  Syntax:   h323detail2db.pl [ options ] file\n";
+	print "  Syntax:   h323detail2db.pl [ options ] detailfile(s)\n";
 	print "\n";
+	print "    -d --database                    Database to use\n";
 	print "    -h --help                        Show this usage information\n";
-	print "    -v --verbose                     Turn on verbose\n";
-	print "    -x --debug                       Turn on debugging\n";
-	print "    -p --procedure                   Use Postgresql stored procedure (faster!)\n";
-	print "    -V --version                     Show version and copyright\n";
 	print "    -H --host                        Database host to connect to (Default: localhost)\n";
+	print "    -p --procedure                   Use Postgresql stored procedure (faster!)\n";
+	print "    -v --verbose                     Turn on verbose\n";
+	print "    -V --version                     Show version and copyright\n";
+	print "    -x --debug                       Turn on debugging\n";
 	print "\n";
 }
 
@@ -370,7 +371,7 @@ sub main {
 	};
 
 	# See the Getopt::Long man page for details on the syntax of this line
-	@valid_opts = ("h|help", "V|version", "f|file=s", "x|debug", "v|verbose+" => \$verbose, "q|quiet+" => \$quiet, "D|date=s", "H|host=s", "p|procedure");
+	@valid_opts = ("h|help", "V|version", "f|file=s", "x|debug", "d|database=s", "v|verbose+" => \$verbose, "q|quiet+" => \$quiet, "D|date=s", "H|host=s", "p|procedure");
 	Getopt::Long::Configure("no_getopt_compat", "bundling", "no_ignore_case");
 	Getopt::Long::GetOptions(@valid_opts);
 
@@ -386,7 +387,7 @@ sub main {
 
 		print "\n";
 		print "$progname Version $version by Peter Nixon <codemonkey\@peternixon.net>\n";
-		print "Copyright (c) 2002-2003, 2003 Peter Nixon\n";
+		print "Copyright (c) 2002-2004, 2004 Peter Nixon\n";
 		print "  ($rcs_info)\n";
 		print "\n";
 		return SUCCESS;
@@ -400,6 +401,10 @@ sub main {
 		$verbose = 2;
 	} elsif ($quiet) { $verbose -= $quiet; }
 	&procedure_set($opt_p);
+	if ($opt_d) { 
+		if ($verbose > 0) { print "DEBUG: Using database \"$opt_d\" instead of default database \"$database\"\n"; }
+		$database = $opt_d;
+	}
 
 	if (@ARGV) {
 		if ($opt_H) { &db_connect($opt_H);
