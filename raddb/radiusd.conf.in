@@ -1358,6 +1358,7 @@ modules {
 		#  Allowed values are:
 		#
 		#	request		attributes from the request
+		#	config		attributes from the configuration items list
 		#	reply		attributes from the reply
 		#	proxy-request	attributes from the proxy request
 		#	proxy-reply	attributes from the proxy reply
