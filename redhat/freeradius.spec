@@ -1,16 +1,12 @@
 Summary: High-performance and highly configurable RADIUS server
 URL: http://www.freeradius.org/
 Name: freeradius
-Version: 0.5
+Version: 0.6
 Release: 1
 License: GPL
 Group: Networking/Daemons
 Packager: FreeRADIUS.org
 Source0: %{name}-%{version}.tar.gz
-# FIXME: won't be good to include these contrib examples?
-# Source1: http://www.ping.de/~fdc/radius/radacct-replay
-# Source2: http://www.ping.de/~fdc/radius/radlast-0.03
-# Source3: ftp://ftp.freeradius.org/pub/radius/contrib/radwho.cgi
 Prereq: /sbin/chkconfig
 BuildPreReq: libtool
 # FIXME: snmpwalk, snmpget and rusers POSSIBLY needed by checkrad
@@ -35,15 +31,26 @@ CFLAGS="$RPM_OPT_FLAGS" \
 	--with-threads \
 	--with-thread-pool \
 	--with-gnu-ld \
-	--disable-ltdl-install
+	--disable-ltdl-install \
+	--with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
+	--with-rlm-krb5-include-dir=/usr/kerberos/include \
+	--with-rlm-krb5-lib-dir=/usr/kerberos/lib
 make
 
 %install
-rm -rf $RPM_BUILD_ROOT
+[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/etc/{logrotate.d,pam.d,rc.d/init.d}
 
 make install R=$RPM_BUILD_ROOT
+
+# set radiusd as default user/group
+sed -e 's/^user =.*$/user = radiusd/' -e 's/^group =.*$/group = radiusd/' < $RPM_BUILD_ROOT/etc/raddb/radiusd.conf > $RPM_BUILD_ROOT/radiusd.conf.tmp
+mv $RPM_BUILD_ROOT/radiusd.conf.tmp $RPM_BUILD_ROOT/etc/raddb/radiusd.conf
+
+# shadow password file MUST be defined on Linux
+sed -e 's/#	shadow =/shadow =/' < $RPM_BUILD_ROOT/etc/raddb/radiusd.conf > $RPM_BUILD_ROOT/radiusd.conf.tmp
+mv $RPM_BUILD_ROOT/radiusd.conf.tmp $RPM_BUILD_ROOT/etc/raddb/radiusd.conf
 
 # remove unneeded stuff
 rm -f $RPM_BUILD_ROOT%{_mandir}/man8/builddbm.8
@@ -55,26 +62,38 @@ install -m 644 radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
 install -m 644 radiusd-pam       $RPM_BUILD_ROOT/etc/pam.d/radius
 cd ..
 
+%pre
+/usr/sbin/useradd -c "radiusd user" -r -s /bin/false -u 95 -d / radiusd 2>/dev/null || :
+
 %preun
 if [ "$1" = "0" ]; then
+	/sbin/service radiusd stop > /dev/null 2>&1
 	/sbin/chkconfig --del radiusd
 fi
 
 %post
-if [ "$1" = "0" ]; then
-	/sbin/chkconfig --add radiusd
-fi
+/sbin/ldconfig
+/sbin/chkconfig --add radiusd
 
 # Done here to avoid messing up existing installations
-for i in radius/radutmp radius/radwtmp # radius/radius.log radius/radwatch.log radius/checkrad.log
+for i in radius/radutmp radius/radwtmp radius/radius.log # radius/radwatch.log radius/checkrad.log
 do
-  touch /var/log/$i
-  chown root:root /var/log/$i
-  chmod 600 /var/log/$i
+	touch /var/log/$i
+	chown radiusd:radiusd /var/log/$i
+	chmod 600 /var/log/$i
 done
 
+%postun
+if [ "$1" -ge "1" ]; then
+	/sbin/service radiusd condrestart >/dev/null 2>&1
+fi
+if [ $1 = 0 ]; then
+	/usr/sbin/userdel radiusd > /dev/null 2>&1 || :
+fi
+/sbin/ldconfig
+
 %clean
-rm -rf $RPM_BUILD_ROOT
+[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
@@ -88,11 +107,15 @@ rm -rf $RPM_BUILD_ROOT
 /usr/bin/*
 /usr/sbin/*
 /usr/lib/*
-%attr(0700,root,root) %dir /var/log/radius
-%attr(0700,root,root) %dir /var/log/radius/radacct
-%attr(0700,root,root) %dir /var/run/radiusd
+%attr(0700,radiusd,radiusd) %dir /var/log/radius
+%attr(0700,radiusd,radiusd) %dir /var/log/radius/radacct
+%attr(0700,radiusd,radiusd) %dir /var/run/radiusd
 
 %changelog
+* Tue Jun 18 2002 Marko Myllynen
+- run as radiusd user instead of root
+- added some options for configure
+
 * Thu Jun  6 2002 Marko Myllynen
 - set noreplace for non-dictionary files in /etc/raddb
 
