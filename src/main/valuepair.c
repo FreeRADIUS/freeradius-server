@@ -382,7 +382,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 					 */
 					if ((compare != 0) ||
 					    (rxmatch[i].rm_so == -1)) {
-						p = request_data_get(request, request,
+						p = request_data_get(req, req,
 								     REQUEST_DATA_REGEX | i);
 						if (p) {
 							free(p);
@@ -413,8 +413,8 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 					 *	the only error we can get...
 					 */
 					p = strdup(buffer);
-					request_data_add(request,
-							 request,
+					request_data_add(req,
+							 req,
 							 REQUEST_DATA_REGEX | i,
 							 p, free);
 				}
