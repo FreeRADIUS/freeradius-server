@@ -24,8 +24,6 @@ $all_file=shift||'no';
 # CHANGE THESE TO MATCH YOUR SETUP
 #
 #$regexp = 'from client localhost port 135|from client blabla ';
-$domain='company.com';
-$mysql='/usr/local/mysql/bin/mysql';
 $tmpfile='/var/tmp/mysql.input';
 #
 #
@@ -43,14 +41,19 @@ while(<CONF>){
 	$realm_strip = $val if ($key eq 'general_strip_realms');
 	$realm_del = $val if ($key eq 'general_realm_delimiter');
 	$realm_for = $val if ($key eq 'general_realm_format');
+	$domain = $val if ($key eq 'general_domain');
 	$sql_timeout = $val if ($key eq 'sql_connect_timeout');
 	$sql_extra = $val if ($key eq 'sql_extra_servers');
+	$mysql = $val if ($key eq 'sql_command');
 }
 close CONF;
 $realm_del = '@' if ($realm_del eq '');
 $realm_for = 'suffix' if ($realm_for eq '');
 $pass = ($sql_password ne '') ? "-p$sql_password" : '';
 die "SQL server not defined\n" if ($sql_server eq '');
+
+die "sql_command directive is not set in admin.conf\n" if ($mysql eq '');
+die "Could not find mysql binary. Please make sure that the \$mysql variable points to the right location\n" if (! -x $mysql);
 
 $opt = "-O connect_timeout=$sql_timeout" if ($sql_timeout);
 @servers = (split /\s+/,$sql_extra) if ($sql_extra ne '');

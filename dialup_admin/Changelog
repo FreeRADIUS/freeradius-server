@@ -22,6 +22,13 @@ Ver 1.65:
 * Add a few help pages for the nomadix radius attributes by Ulrich Walcher
 * Update the HOWTO with instructions about the ldap configuration directives and the scripts in the bin folder
 * Update the AUTHORS file
+* Check for the binaries used (mysql/snmpwalk) in the scripts in the bin folder before using them
+* Update the HOWTO file
+* Use the general_domain variable from the admin.conf file in log_badlogins instead of a new one
+* Add a sql_command directive in admin.conf containing the path to the mysql binary. That can be used by the
+  scripts in the bin folder instead of setting a variable in each script
+* Add a general_nas_type and a per nas type directive and pass that to snmpfinger. Updated snmpfinger to also
+  support lucent equipment apart from cisco
 Ver 1.63:
 * Do an eval on the attribute description strings in the user_edit page. That will allow the login-time creation
   page to work properly.

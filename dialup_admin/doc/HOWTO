@@ -31,6 +31,10 @@ Version 0.1 Sun Oct 26 04:03:00 EET 2003
 	2.2 The bin/ scripts
 		2.2.1 The snmpfinger script
 		2.2.2 The log_badlogins script
+		2.2.3 The clean_radacct script
+		2.2.4 The truncate_radacct script
+		2.2.5 The tot_stats script
+		2.2.6 The monthly_tot_stats script
 	2.3 User Attributes
 	2.4 Finishing Off
 
@@ -67,6 +71,8 @@ which is the current FreeRadius package at the time of writting.
 
 Dialup Admin has it's own web page hosted at Sourceforge at 
 http://sourceforge.net/projects/dialup-admin/
+Though that page is not updated very often. The primary store for dialupadmin
+is the freeradius CVS tree so the latest version will always be contained there
 
 Finally one could get the cvs version of Dialup Admin by issuing the 
 following commands:
@@ -151,6 +157,10 @@ Note: The -c argument should not be used from that point on since it creates
 On the next restart of apache the dialup/ directory is only accessable by a
 username/password verification which in our case is administrator:password
 
+The HTTP authentication we have just configured can be used by dialupadmin
+when connecting to the ldap and sql databases (see sections on sql and ldap
+options).
+
 At this point when we connect to the url http://localhost/dialup we should 
 see the Dialup Admin pages
 
@@ -168,6 +178,9 @@ shell> mysql -h mysql.host.com -u username -p
 mysql> CREATE DATABASE radius;
 mysql> exit
 
+This step is only necessary if you haven't already created a corresponding database
+for the freeradius server.
+
 At dialup_admin/sql there are four files containg the SQL command to create 
 the required tables. This is done as follows:
 
@@ -175,6 +188,9 @@ shell> mysql -h mysql.host.com -u username -p radius < badusers.sql
 shell> mysql -h mysql.host.com -u username -p radius < mtotacct.sql
 shell> mysql -h mysql.host.com -u username -p radius < totacct.sql
 shell> mysql -h mysql.host.com -u username -p radius < userinfo.sql
+
+The userinfo table though is only needed if you want to keep your user database in sql.
+If you keep your users in ldap then it's not needed.
 
 NOTE: Remember we named our database "radius". Have you named it somewhat 
       different replace the "radius" argument on the above commands with 
@@ -186,8 +202,6 @@ NOTE: Remember we named our database "radius". Have you named it somewhat
 This is the most important part of this document since the configuration must
 match your needs.
 The configuration file is located at dialup_admin/conf/admin.conf
-However due to the fact that i haven't work with LDAP there are no 
-documentations regarding this issue. Any contributions are welcome.
 
 [2.1] Configuration Options
 
@@ -243,8 +257,7 @@ Options that specifies the way dialup admin handles users. SQL or LDAP
 
 > general_lib_type: sql
 
-This can have as values either ldap or sql. Since I haven't worked with LDAP
-we stick with the 'sql' argument
+This can have as values either ldap or sql.
 
 For the following values there shouldn't be any need for changes
 
@@ -264,11 +277,13 @@ regarding the Online Users.
 
 > general_finger_type: snmp
 
-What should be the default quering method of the nas.
+What should be the default quering method of the nas. It can be 'snmp' (for snmpfinger)
+or empty to query the radacct table without first querying the nas
 
 > general_snmpfinger_bin: %{general_base_dir}/bin/snmpfinger
 
 This probably does not need to be changed
+For now snmpfinger will only work with Cisco equipment.
 
 > general_radclient_bin: /usr/local/bin/radclient
 
@@ -504,6 +519,8 @@ The row limit used in the accounting page in order to limit the output
 > sql_extra_servers: sql2.company.com sql3.company.com
 
 The above options are used by bin/log_badlogins (See Section 2.x.x)
+The sql_connect_timeout is also used by the mysql driver and the sql_extra_servers
+is also used when adding users in the badusers table
 
 > sql_debug: false
 
@@ -515,6 +532,11 @@ If set to yes then the HTTP credentials (http authentication) will be used
 to connect to the sql server instead of sql_username and sql_password. 
 That way multiple admins with different rights on the sql database can 
 connect through one dialup_admin interface.
+
+> sql_command: /usr/local/bin/mysql
+This variable is used by the scripts in the bin folder
+It should contain the path to the sql binary used to run
+sql commands (mysql is only supported for now)
 
 
 [2.1.10] Limits Timers
@@ -539,7 +561,7 @@ Use the totacct table for statistics
 
 > general_use_session: yes
 
-Set it to yes to use sessions and cache the various mappings You can also
+Set it to yes to use sessions and cache the various mappings. You can also
 set use_session = 1 in config.php3 to also cache the admin.conf
 
 NOTE: Remember to use the 'Clear Cache' page if you use sessions and 
@@ -602,6 +624,12 @@ bin/log_badlogins /var/log/radius/radius.log /usr/local/dialup_admin/conf/admin.
 
 Of cource the proper file locations must be set
 
+Also log_badlogins will concatenate the client shortname and the general_domain variable
+defined in admin.conf in order to find the nas ip address. So it is important to make sure
+that $client_shortname.$domain resolves to the correct nas ip address.
+regular expression matching is also supported. If the $regexp variable is set then
+only failed login lines matching the regular expression will be logged.
+
 [2.2.3] The clean_radacct script
 
 The clean_radacct script can be used to clear the database of stale open sessions
@@ -638,7 +666,10 @@ a day to create the corresponding entries in the mtotacct table.
 First of all check conf/user_edit.atts and see if the attribute you are 
 interested in is commented out. If it is just enable it by uncommenting it.
 If the attribute is not included in the file add it. 
-If you use SQL check conf/sql.attrmap. 
+
+If you use SQL check conf/sql.attrmap. Attributes that are not contained in this file
+are assumed to be reply items and map to the same name as the one used by dialup_admin
+
 If you use LDAP check ${freeradius_install_dir}/etc/raddb/ldap.attrmap 
 and check if the attribute is included in the attribute mapping. 
 

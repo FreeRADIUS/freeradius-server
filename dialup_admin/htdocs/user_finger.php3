@@ -56,6 +56,7 @@ if ($link){
 		$portnum = $nas . '_port_num';
 		$finger_type = $nas . '_finger_type';
 
+
 		if ($config[$name] == ''){
 			$i--;
 			break;
@@ -76,7 +77,15 @@ if ($link){
 			putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
 		$extra = "";
 		if ($config[$finger_type] != 'database' && $config[general_finger_type] == 'snmp'){
-			$users=exec("$config[general_snmpfinger_bin] $name_data $community_data");
+			$nas_type = $nas . '_type';
+			if ($config[$nas_type] == '')
+				$nas_type = $config[general_nas_type];
+			else
+				$nas_type = $config[$nas_type];
+			if ($nas_type == '')
+				$nas_type = 'cisco';
+
+			$users=exec("$config[general_snmpfinger_bin] $name_data $community_data $nas_type");
 			if (strlen($users))
 				$extra = "AND UserName IN ($users)";
 		}
