@@ -56,6 +56,7 @@ int read_clients_file(const char *file)
 	char	hostnm[256];
 	char	secret[256];
 	char	shortnm[256];
+	uint32_t mask;
 	int	lineno = 0;
 	char	*p;
 
@@ -66,16 +67,26 @@ int read_clients_file(const char *file)
 		radlog(L_CONS|L_ERR, "cannot open %s", file);
 		return -1;
 	}
+
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
 		if (strchr(buffer, '\n') == NULL) {
 			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			return -1;
 		}
-		if (buffer[0] == '#' || buffer[0] == '\n')
-			continue;
 
+		/*
+		 *	Skip whitespace.
+		 */
 		p = buffer;
+		while (*p &&
+		       ((*p == ' ') || (*p == '\t'))) p++;
+
+		/*
+		 *	Skip comments and blank lines.
+		 */
+		if ((*p == '#') || (*p == '\n') || (*p == '\r'))
+			continue;
 
 		if (!getword(&p, hostnm, sizeof(hostnm)) ||
 		    !getword(&p, secret, sizeof(secret))) {
@@ -85,6 +96,31 @@ int read_clients_file(const char *file)
 		}
 
 		(void)getword(&p, shortnm, sizeof(shortnm));
+
+		/*
+		 *	Look for a mask in the hostname
+		 */
+		p = strchr(hostnm, '/');
+		mask = ~0;
+
+		if (p) {
+			int i, mask_length;
+
+			*p = '\0';
+			p++;
+
+			mask_length = atoi(p);
+			if ((mask_length <= 0) || (mask_length > 32)) {
+				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
+				       file, lineno, p);
+				return -1;
+			}
+
+			mask = (1 << 31);
+			for (i = 1; i < mask_length; i++) {
+				mask |= (mask >> 1);
+			}
+		}
 
 		/*
 		 *	Double-check lengths to be sure they're sane
@@ -118,11 +154,14 @@ int read_clients_file(const char *file)
 		}
 
 		c->ipaddr = ip_getaddr(hostnm);
-		if (c->ipaddr == 0) {
+		if (c->ipaddr == INADDR_NONE) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 			    file, lineno, hostnm);
 			return -1;
 		}
+		c->netmask = htonl(mask);
+		c->ipaddr &= mask;
+
 		strcpy((char *)c->secret, secret);
 		strcpy(c->shortname, shortnm);
 		ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
@@ -142,12 +181,18 @@ int read_clients_file(const char *file)
 RADCLIENT *client_find(uint32_t ipaddr)
 {
 	RADCLIENT *cl;
+	RADCLIENT *match = NULL;
 
-	for(cl = clients; cl; cl = cl->next)
-		if (ipaddr == cl->ipaddr)
-			break;
+	for(cl = clients; cl; cl = cl->next) {
+		if ((ipaddr & cl->netmask) == cl->ipaddr) {
+			if ((!match) ||
+			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
+				match = cl;
+			}
+		}
+	}
 
-	return cl;
+	return match;
 }
 
 /*

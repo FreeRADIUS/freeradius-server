@@ -785,12 +785,11 @@ static int generate_realms(const char *filename)
  * Create the linked list of realms from the new configuration type
  * This way we don't have to change to much in the other source-files
  */
-
 static int generate_clients(const char *filename)
 {
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
-	char		*hostnm, *secret, *shortnm;
+	char		*hostnm, *secret, *shortnm, *netmask;
 
 	for (cs = cf_subsection_find_next(config, NULL, "client")
 	     ; cs ;
@@ -805,6 +804,7 @@ static int generate_clients(const char *filename)
 		hostnm = cs->name2;
 		secret = cf_section_value_find(cs, "secret");
 		shortnm = cf_section_value_find(cs, "shortname");
+		netmask = strchr(hostnm, '/');
 
 		if (strlen(secret) >= sizeof(c->secret)) {
 			radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
@@ -813,7 +813,7 @@ static int generate_clients(const char *filename)
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(c->shortname)) {
-			radlog(L_ERR, "%s[%d]: NAS short name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: Client short name of length %d is greater than the allowed maximum of %d.",
 			    filename, cs->item.lineno,
 			    strlen(shortnm), sizeof(c->shortname) - 1);
 			return -1;
@@ -826,11 +826,50 @@ static int generate_clients(const char *filename)
 			return -1;
 		}
 
+		/*
+		 *	Look for netmasks.
+		 */
+		c->netmask = ~0;
+		if (netmask) {
+			int i, mask_length;
+
+			mask_length = atoi(netmask + 1);
+			if ((mask_length <= 0) || (mask_length > 32)) {
+				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
+				       filename, cs->item.lineno, netmask + 1);
+				return -1;
+			}
+			
+			c->netmask = (1 << 31);
+			for (i = 1; i < mask_length; i++) {
+				c->netmask |= (c->netmask >> 1);
+			}
+
+			*netmask = '\0';
+			c->netmask = htonl(c->netmask);
+		}
+
 		c->ipaddr = ip_getaddr(hostnm);
+		if (c->ipaddr == INADDR_NONE) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
+			    filename, cs->item.lineno, hostnm);
+			return -1;
+		}
+
+		/*
+		 *	Update the client name again...
+		 */
+		if (netmask) {
+			*netmask = '/';
+			c->ipaddr &= c->netmask;
+			strcpy(c->longname, hostnm);
+		} else {
+			ip_hostname(c->longname, sizeof(c->longname),
+				    c->ipaddr);
+		}
+
 		strcpy((char *)c->secret, secret);
 		strcpy(c->shortname, shortnm);
-		ip_hostname(c->longname, sizeof(c->longname),
-			    c->ipaddr);
 
 		c->next = clients;
 		clients = c;
