@@ -58,6 +58,7 @@ static const char rcsid[] = "$Id$";
 typedef struct rlm_pap_t {
         char *scheme;  /* password encryption scheme */
 	int sch;
+	pthread_mutex_t mutex;	
 } rlm_pap_t;
 
 /*
@@ -119,8 +120,10 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	if (strcasecmp(inst->scheme,"clear") == 0)
 		inst->sch = PAP_ENC_CLEAR;
-	else if (strcasecmp(inst->scheme,"crypt") == 0)
+	else if (strcasecmp(inst->scheme,"crypt") == 0){
 		inst->sch = PAP_ENC_CRYPT;
+		pthread_mutex_init(&inst->mutex, NULL);
+	}
 	else if (strcasecmp(inst->scheme,"md5") == 0)
 		inst->sch = PAP_ENC_MD5;
 	else if (strcasecmp(inst->scheme,"sha1") == 0)
@@ -213,15 +216,19 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			break;
 		case PAP_ENC_CRYPT:
 			DEBUG("rlm_pap: Using CRYPT encryption.");
+			pthread_mutex_lock(&inst->mutex);
 			if (strncmp((char *) passwd_item->strvalue,
 				crypt((char *) request->password->strvalue, (char *)passwd_item->strvalue),
 					passwd_item->length) != 0){
+				pthread_mutex_unlock(&inst->mutex);
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CRYPT password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
 			}
+			else
+				pthread_mutex_unlock(&inst->mutex);
 			break;
 		case PAP_ENC_MD5:
 
@@ -266,6 +273,7 @@ static int pap_detach(void *instance)
 {
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
 
+	pthread_mutex_destroy(&inst->mutex);
 	PAP_INST_FREE(inst);
 	return 0;
 }
