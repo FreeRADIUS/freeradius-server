@@ -428,7 +428,7 @@ void record_close(record_t *rec)
 }
 
 unsigned int record_plus(record_t *rec, const unsigned char *ptr,
-		unsigned int size)
+			 unsigned int size)
 {
 	unsigned int added = MAX_RECORD_SIZE - rec->used;
 
@@ -481,10 +481,8 @@ void tls_session_information(tls_session_t *tls_session)
 	}
 
 	if (tls_session->info.version == SSL3_VERSION ||
-		tls_session->info.version == TLS1_VERSION)
-	{
-		switch (tls_session->info.content_type)
-		{
+	    tls_session->info.version == TLS1_VERSION) {
+		switch (tls_session->info.content_type) {
 		case 20:
 			str_content_type = "ChangeCipherSpec";
 			break;
@@ -496,14 +494,12 @@ void tls_session_information(tls_session_t *tls_session)
 			break;
 		}
 
-		if (tls_session->info.content_type == 21) /* Alert */
-		{
+		if (tls_session->info.content_type == 21) { /* Alert */
 			str_details1 = ", ???";
 			
 			if (tls_session->info.record_len == 2) {
 
-				switch (tls_session->info.alert_level)
-				{
+				switch (tls_session->info.alert_level) {
 				case 1:
 					str_details1 = ", warning";
 					break;
@@ -513,8 +509,7 @@ void tls_session_information(tls_session_t *tls_session)
 				}
 
 				str_details2 = " ???";
-				switch (tls_session->info.alert_description)
-				{
+				switch (tls_session->info.alert_description) {
 				case 0:
 					str_details2 = " close_notify";
 					break;
@@ -632,5 +627,5 @@ void tls_session_information(tls_session_t *tls_session)
 	sprintf(tls_session->info.info_description, "%s %s%s [length %04lx]%s%s\n", 
 		str_write_p, str_version, str_content_type, 
 		(unsigned long)tls_session->info.record_len, str_details1, str_details2);
-	printf("%s\n", tls_session->info.info_description);
+	DEBUG2("rlm_eap_tls: %s\n", tls_session->info.info_description);
 }
