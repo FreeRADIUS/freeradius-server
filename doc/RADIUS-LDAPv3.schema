@@ -546,7 +546,6 @@ objectclass
             radiusClientIPAddress $ radiusFilterId $ radiusFramedAppleTalkLink $
             radiusFramedAppleTalkNetwork $ radiusFramedAppleTalkZone $
             radiusFramedCompression $ radiusFramedIPAddress $
-            radiusFramedCompression $ radiusFramedIPAddress $
             radiusFramedIPNetmask $ radiusFramedIPXNetwork $
             radiusFramedMTU $ radiusFramedProtocol $
 	    radiusCheckItem $ radiusReplyItem $
@@ -558,16 +557,9 @@ objectclass
             radiusPortLimit $ radiusPrompt $ radiusProxyToRealm $
             radiusRealm $ radiusReplicateToRealm $ radiusServiceType $
             radiusSessionTimeout $ radiusStripUserName $
-            radiusTerminationAction $ radiusTunnelAssignmentId $
-            radiusTunnelClientEndpoint $ radiusIdleTimeout $
-            radiusLoginIPHost $ radiusLoginLATGroup $ radiusLoginLATNode $
-            radiusLoginLATPort $ radiusLoginLATService $ radiusLoginService $
-            radiusLoginTCPPort $ radiusPasswordRetry $ radiusPortLimit $
-            radiusPrompt $ radiusProfileDn $ radiusServiceType $
-            radiusSessionTimeout $ radiusSimultaneousUse $
-            radiusTerminationAction $ radiusTunnelAssignmentId $
-            radiusTunnelClientEndpoint $ radiusTunnelMediumType $
-            radiusTunnelPassword $ radiusTunnelPreference $
+            radiusTerminationAction $ radiusTunnelClientEndpoint $ radiusProfileDn $
+            radiusSimultaneousUse $ radiusTunnelAssignmentId $
+            radiusTunnelMediumType $ radiusTunnelPassword $ radiusTunnelPreference $
             radiusTunnelPrivateGroupId $ radiusTunnelServerEndpoint $
             radiusTunnelType $ radiusUserCategory $ radiusVSA $
             radiusExpiration $ dialupAccess )
