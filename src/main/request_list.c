@@ -377,9 +377,15 @@ void rl_delete(REQUEST *request)
 
 
 		/*
-		 *	Delete it from the proxy tree, too.
+		 *	If there's a proxied packet, but no reply
+		 *	to it, then delete the packet from the list
+		 *	of outstanding proxied requests.
+		 *
+		 *	If there IS a reply, then the packets have
+		 *	already been deleted from the relevant trees,
+		 *	so we don't need to do it here.
 		 */
-		if (request->proxy) {
+		if (request->proxy && !request->proxy_reply) {
 			pthread_mutex_lock(&proxy_mutex);
 			node = rbtree_find(proxy_tree, request);
 
