@@ -1,4 +1,4 @@
-freeradius (1.0.cvs20050305-0) unstable; urgency=low
+freeradius (1.0.cvs20050326-0) unstable; urgency=low
 
   * Current CVS version
   * FreeRADIUS 1.1.0 is now able to use net-snmp in ucd-snmp
@@ -19,8 +19,11 @@ freeradius (1.0.cvs20050305-0) unstable; urgency=low
      Closes: #280942
   * FreeRADIUS-dialupadmin's help.php3 can now find README.
      Closes: #280941
+  * rlm_eap_* link statically to libeap and rlm_eap_tls as
+    neccessary, since trying to do it dynamically fails
+    to build due to libtool being too clever.
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 29 Dec 2004 16:52:05 +1100
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sat, 26 Mar 2005 23:45:09 +1100
 
 freeradius (1.0.0-0) unstable; urgency=low
 

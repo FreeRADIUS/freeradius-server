@@ -33,6 +33,9 @@ else
 	confflags += --host $(DEB_BUILD_GNU_TYPE) --build $(DEB_HOST_GNU_TYPE)
 endif
 
+# Libtool won't play nice, so we won't play at all
+export RLM_EAP_LINK_MODE = -static
+
 build-simple stamp-build:
 	dh_testdir
 	# dh_testroot
