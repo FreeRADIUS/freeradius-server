@@ -132,7 +132,7 @@ int read_naslist_file(char *file)
  *	Find a nas by IP address.
  *	If it can't be found, return the DEFAULT nas, instead.
  */
-NAS *nas_find(UINT4 ipaddr)
+NAS *nas_find(uint32_t ipaddr)
 {
 	NAS *nas;
 	NAS *default_nas;
@@ -176,7 +176,7 @@ NAS *nas_findbyname(char *nasname)
 /*
  *	Find the name of a nas (prefer short name).
  */
-char *nas_name(UINT4 ipaddr)
+char *nas_name(uint32_t ipaddr)
 {
 	NAS *cl;
 
@@ -194,8 +194,8 @@ char *nas_name(UINT4 ipaddr)
  */
 char *nas_name2(RADIUS_PACKET *packet)
 {
-	UINT4	ipaddr;
-	NAS	*cl;
+	uint32_t	ipaddr;
+	NAS	        *cl;
 	VALUE_PAIR	*pair;
 
 	if ((pair = pairfind(packet->vps, PW_NAS_IP_ADDRESS)) != NULL)

@@ -389,7 +389,7 @@ int read_clients_file(const char *file)
 /*
  *	Find a client in the CLIENTS list.
  */
-CLIENT *client_find(UINT4 ipaddr)
+CLIENT *client_find(uint32_t ipaddr)
 {
 	CLIENT *cl;
 
@@ -404,7 +404,7 @@ CLIENT *client_find(UINT4 ipaddr)
 /*
  *	Find the name of a client (prefer short name).
  */
-char *client_name(UINT4 ipaddr)
+char *client_name(uint32_t ipaddr)
 {
 	CLIENT *cl;
 

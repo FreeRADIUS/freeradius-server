@@ -680,7 +680,7 @@ static int file_accounting(REQUEST *request)
 	char		buffer[512];
 	char		*s;
 	VALUE_PAIR	*pair;
-	UINT4		nas;
+	uint32_t	nas;
 	NAS		*cl;
 	long		curtime;
 	int		ret = RLM_ACCT_OK;

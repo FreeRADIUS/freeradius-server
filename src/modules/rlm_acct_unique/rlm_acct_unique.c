@@ -46,7 +46,7 @@ static int unique_accounting(REQUEST *request)
    */
   vp = pairfind(request->packet->vps, PW_ACCT_SESSION_START_TIME);
   if (!vp) {
-    UINT4 start_time;
+    time_t start_time;
     
     start_time = request->timestamp;
 

@@ -24,6 +24,7 @@ typedef struct conf_part {
 
 CONF_SECTION	*conf_read(const char *conffile);
 CONF_PAIR	*cf_pair_alloc(const char *attr, const char *value, int operator);
+void		cf_pair_add(CONF_SECTION *cs, CONF_PAIR *cp_new);
 void		cf_pair_free(CONF_PAIR *cp);
 CONF_SECTION	*cf_section_alloc(const char *name1, const char *name2);
 void		cf_section_free(CONF_SECTION *cp);
@@ -31,9 +32,9 @@ void		cf_section_free_all(CONF_SECTION *cp);
 
 /* JLN -- Newly added */
 
-CLIENT		*client_find(UINT4 ipno);
+CLIENT		*client_find(uint32_t ipno);
 REALM		*realm_find(const char *realm);
-char		*client_name(UINT4 ipaddr);
+char		*client_name(uint32_t ipaddr);
 		
 CONF_PAIR	*cf_pair_find(CONF_SECTION *section, const char *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *name);

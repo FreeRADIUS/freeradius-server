@@ -33,7 +33,7 @@ int		librad_debug = 0;
  *	Return a printable host name (or IP address in dot notation)
  *	for the supplied IP address.
  */
-char * ip_hostname(UINT4 ipaddr)
+char * ip_hostname(uint32_t ipaddr)
 {
 	struct		hostent *hp;
 	static char	hstname[128];
@@ -59,10 +59,10 @@ char * ip_hostname(UINT4 ipaddr)
  *	Return an IP address in from a host
  *	name or address in dot notation.
  */
-UINT4 ip_getaddr(const char *host)
+uint32_t ip_getaddr(const char *host)
 {
 	struct hostent	*hp;
-	UINT4		a;
+	uint32_t	 a;
 
 	if ((a = ip_addr(host)) != 0)
 		return a;
@@ -75,16 +75,16 @@ UINT4 ip_getaddr(const char *host)
 	}
 
 	if ((hp = gethostbyname(host)) == NULL)
-		return (UINT4)0;
+		return (uint32_t)0;
 
-	return (*(UINT4 *)hp->h_addr);
+	return (*(uint32_t *)hp->h_addr);
 }
 
 
 /*
  *	Return an IP address in standard dot notation
  */
-char *ip_ntoa(char *buffer, UINT4 ipaddr)
+char *ip_ntoa(char *buffer, uint32_t ipaddr)
 {
 	struct in_addr	in;
 	char		*r;
@@ -102,7 +102,7 @@ char *ip_ntoa(char *buffer, UINT4 ipaddr)
  *	Return an IP address from
  *	one supplied in standard dot notation.
  */
-UINT4 ip_addr(const char *ip_str)
+uint32_t ip_addr(const char *ip_str)
 {
 	struct in_addr	in;
 

@@ -93,7 +93,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	 */
 	if (!packet->data) {
 		  radius_packet_t	*hdr;
-		  UINT4			lvalue;
+		  int32_t		lvalue;
 		  u_char		*ptr, *length_ptr;
 		  u_char		digest[16];
 		  int			secretlen;
@@ -227,15 +227,15 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 #ifdef ATTRIB_NMC
 		      if (vendorpec != VENDORPEC_USR)
 #endif
-			*ptr++ = sizeof(UINT4) + 2;
-		      if (length_ptr) *length_ptr += sizeof(UINT4)+ 2;
+			*ptr++ = sizeof(uint32_t) + 2;
+		      if (length_ptr) *length_ptr += sizeof(uint32_t)+ 2;
 		      if (reply->type != PW_TYPE_IPADDR)
 			lvalue = htonl(reply->lvalue);
 		      else
 			lvalue = reply->lvalue;
-		      memcpy(ptr, &lvalue, sizeof(UINT4));
-		      ptr += sizeof(UINT4);
-		      total_length += sizeof(UINT4) + 2;
+		      memcpy(ptr, &lvalue, sizeof(uint32_t));
+		      ptr += sizeof(uint32_t);
+		      total_length += sizeof(uint32_t) + 2;
 		      break;
 #ifdef ASCEND_BINARY
 		    case PW_TYPE_ABINARY:
@@ -481,8 +481,8 @@ RADIUS_PACKET *rad_recv(int fd)
 		return NULL;
 	}
 
-	DEBUG("rad_recv: Packet from host %s code=%d, id=%d, length=%d\n",
-	      ip_ntoa(host_ipaddr, packet->src_ipaddr),
+	DEBUG("rad_recv: Packet from host %s:%d code=%d, id=%d, length=%d\n",
+	      ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port,
 	      hdr->code, hdr->id, totallen);
 
 	/*
@@ -501,9 +501,9 @@ RADIUS_PACKET *rad_recv(int fd)
 int rad_decode(RADIUS_PACKET *packet, const char *secret)
 {
 	DICT_ATTR		*attr;
-	UINT4			lvalue;
-	UINT4			vendorcode;
-	UINT4			vendorpec;
+	uint32_t		lvalue;
+	uint32_t		vendorcode;
+	uint32_t		vendorpec;
 	VALUE_PAIR		*first_pair;
 	VALUE_PAIR		*prev;
 	VALUE_PAIR		*pair;

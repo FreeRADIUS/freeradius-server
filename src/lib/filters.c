@@ -56,7 +56,7 @@
 
 #define IPX_NODE_ADDR_LEN		6
 
-typedef UINT4			IpxNet;
+typedef uint32_t		IpxNet;
 typedef unsigned char		IpxNode[ IPX_NODE_ADDR_LEN ];
 typedef unsigned short		IpxSocket;
 
@@ -113,8 +113,8 @@ typedef enum {
      *	fill:		Round things out to a dword boundary.
      */
 typedef struct radip {
-    UINT4  		srcip;
-    UINT4  		dstip;
+    uint32_t  		srcip;
+    uint32_t  		dstip;
     unsigned char 	srcmask;
     unsigned char 	dstmask;
     unsigned char	proto;
@@ -361,8 +361,8 @@ static char	curString[512];
 static int findKey ( const char *string, KeywordStruct *list );
 static int isAllDigit ( const char *token );
 static short a2octet ( const char *tok, char *retBuf );
-static char defaultNetmask ( UINT4 address );
-static int ipAddressStringToValue ( char *string, UINT4 *ipAddress,
+static char defaultNetmask ( uint32_t address );
+static int ipAddressStringToValue ( char *string, uint32_t *ipAddress,
 					 char *netmask);
 static int parseIpFilter ( RadFilter *curEntry );
 static int parseGenericFilter ( RadFilter *curEntry );
@@ -513,7 +513,7 @@ a2octet(const char *tok, char *retBuf)
      */
 static char
 defaultNetmask(address)
-UINT4	address;
+uint32_t	address;
 {
     char netmask;
 
@@ -560,7 +560,7 @@ static char ipAddressDigits[] = "1234567890./";
      */
 
 static int
-ipAddressStringToValue(char *string, UINT4 *ipAddress,
+ipAddressStringToValue(char *string, uint32_t *ipAddress,
 	char *netmask)
 {
     u_char*	dst;

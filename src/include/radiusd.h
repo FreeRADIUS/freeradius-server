@@ -53,7 +53,7 @@ typedef struct auth_req {
 } REQUEST;
 
 typedef struct client {
-	UINT4			ipaddr;
+	uint32_t			ipaddr;
 	char			longname[256];
 	u_char			secret[32];
 	char			shortname[32];
@@ -61,7 +61,7 @@ typedef struct client {
 } CLIENT;
 
 typedef struct nas {
-	UINT4			ipaddr;
+	uint32_t			ipaddr;
 	char			longname[256];
 	char			shortname[32];
 	char			nastype[32];
@@ -71,7 +71,7 @@ typedef struct nas {
 typedef struct realm {
 	char			realm[64];
 	char			server[64];
-	UINT4			ipaddr;
+	uint32_t			ipaddr;
 	int			auth_port;
 	int			acct_port;
 	int			striprealm;
@@ -125,12 +125,12 @@ extern const char	*radacct_dir;
 extern const char	*radlog_dir;
 extern const char	*radius_dir;
 extern const char	*radius_libdir;
-extern UINT4		expiration_seconds;
+extern uint32_t		expiration_seconds;
 extern int		radius_pid;
 extern int		use_dbm;
 extern int		log_stripped_names;
 extern int		cache_passwd;
-extern UINT4		myip;
+extern uint32_t		myip;
 extern int		log_auth_detail;
 extern int		log_auth;
 extern int		log_auth_pass;
@@ -148,7 +148,7 @@ int		rad_accounting(REQUEST *);
 
 /* radutmp.c */
 int		radutmp_add(REQUEST *);
-int		radutmp_zap(UINT4 nas, int port, char *user, time_t t);
+int		radutmp_zap(uint32_t nas, int port, char *user, time_t t);
 int		radutmp_checksimul(char *name, VALUE_PAIR *, int maxsimul);
 
 /* radiusd.c */
@@ -168,8 +168,8 @@ RADIUS_PACKET *	build_reply(int code, REQUEST *request,
 			VALUE_PAIR *vps, const char *user_msg);
 
 /* files.c */
-CLIENT		*client_find(UINT4 ipno);
-char		*client_name(UINT4 ipno);
+CLIENT		*client_find(uint32_t ipno);
+char		*client_name(uint32_t ipno);
 int		read_clients_file(const char *);
 REALM		*realm_find(const char *);
 PAIR_LIST	*pairlist_read(const char *file, int complain);
@@ -178,8 +178,8 @@ int		read_config_files(void);
 
 /* nas.c */
 int		read_naslist_file(char *);
-NAS		*nas_find(UINT4 ipno);
-char		*nas_name(UINT4 ipno);
+NAS		*nas_find(uint32_t ipno);
+char		*nas_name(uint32_t ipno);
 char		*nas_name2(RADIUS_PACKET *r);
 NAS		*nas_findbyname(char *nasname);
 

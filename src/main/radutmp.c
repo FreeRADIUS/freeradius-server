@@ -44,7 +44,7 @@ static char porttypes[] = "ASITX";
  *	used for caching radutmp lookups.
  */
 typedef struct nas_port {
-	UINT4			nasaddr;
+	uint32_t	        nasaddr;
 	int			port;
 	off_t			offset;
 	struct nas_port 	*next;
@@ -55,7 +55,7 @@ static NAS_PORT *nas_port_list = NULL;
 /*
  *	Lookup a NAS_PORT in the nas_port_list
  */
-static NAS_PORT *nas_port_find(UINT4 nasaddr, int port)
+static NAS_PORT *nas_port_find(uint32_t nasaddr, int port)
 {
 	NAS_PORT	*cl;
 
@@ -70,7 +70,7 @@ static NAS_PORT *nas_port_find(UINT4 nasaddr, int port)
 /*
  *	Zap a user, or all users on a NAS, from the radutmp file.
  */
-int radutmp_zap(UINT4 nasaddr, int port, char *user, time_t t)
+int radutmp_zap(uint32_t nasaddr, int port, char *user, time_t t)
 {
 	struct radutmp	u;
 	FILE		*fp;
@@ -543,7 +543,7 @@ int radutmp_checksimul(char *name, VALUE_PAIR *request, int maxsimul)
 {
 	VALUE_PAIR	*fra;
 	struct radutmp	u;
-	UINT4		ipno = 0;
+	uint32_t	ipno = 0;
 	int		fd;
 	int		count;
 	int		mpp = 1;

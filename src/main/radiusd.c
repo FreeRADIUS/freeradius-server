@@ -57,7 +57,7 @@ int			log_stripped_names;
 int 			cache_passwd = FALSE;
 int			debug_flag;
 int			use_dbm	= FALSE;
-UINT4			myip = INADDR_ANY;
+uint32_t		myip = INADDR_ANY;
 int			log_auth_detail	= FALSE;
 int			log_auth = FALSE;
 int			log_auth_pass  = FALSE;
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
 	struct timeval		tv, *tvp;
 	int			salen;
 	int			packet_length;
-	UINT4			packet_srcip;
+	uint32_t		packet_srcip;
 	int			packet_code;
 	int			result;
 	int			argval;
@@ -1074,10 +1074,7 @@ void sig_cleanup(int sig)
 		while (curreq != (REQUEST *)NULL) {
 			if (curreq->child_pid == pid) {
 				curreq->child_pid = NO_SUCH_CHILD_PID;
-				/*
-				 *	FIXME: UINT4 ?
-				 */
-				curreq->timestamp = (UINT4)time(NULL);
+				curreq->timestamp = time(NULL);
 				break;
 			}
 			curreq = curreq->next;

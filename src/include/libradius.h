@@ -12,6 +12,10 @@
 #include "autoconf.h"
 #include <sys/types.h>
 
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
 #include "radius.h"
 #include "token.h"
 
@@ -41,8 +45,6 @@ typedef unsigned int u_int;
 				} while(0)
 #endif
 
-typedef unsigned int UINT4;
-
 typedef struct dict_attr {
 	char			name[32];
 	int			attr;
@@ -71,10 +73,10 @@ typedef struct value_pair {
 	int			attribute;
 	int			type;
 	int			length; /* of strvalue */
-	UINT4			lvalue;
+	uint32_t		lvalue;
 	int			operator;
 	int			addport;
-	u_char			strvalue[MAX_STRING_LEN];
+	uint8_t			strvalue[MAX_STRING_LEN];
 	struct value_pair	*next;
 } VALUE_PAIR;
 
@@ -89,8 +91,8 @@ typedef struct value_pair {
  */
 typedef struct radius_packet {
 	int			sockfd;
-	UINT4			src_ipaddr;
-	UINT4			dst_ipaddr;
+	uint32_t		src_ipaddr;
+	uint32_t		dst_ipaddr;
 	u_short			src_port;
 	u_short			dst_port;
 	int			id;
@@ -180,10 +182,10 @@ extern int	librad_debug;
 /*
  *	Several handy miscellaneous functions.
  */
-char *		ip_hostname (UINT4);
-UINT4		ip_getaddr (const char *);
-char *		ip_ntoa(char *, UINT4);
-UINT4		ip_addr(const char *);
+char *		ip_hostname (uint32_t);
+uint32_t	ip_getaddr (const char *);
+char *		ip_ntoa(char *, uint32_t);
+uint32_t	ip_addr(const char *);
 char		*strNcpy(char *dest, const char *src, int n);
 
 #ifdef ASCEND_BINARY
