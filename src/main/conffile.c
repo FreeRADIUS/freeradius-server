@@ -234,8 +234,8 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
  *	Expand the variables in an input string.
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
-		CONF_SECTION *cs,
-		char *output, const char *input)
+				       CONF_SECTION *cs,
+				       char *output, const char *input)
 {
 	char *p;
 	const char *end, *ptr;
@@ -885,8 +885,18 @@ static int generate_realms(const char *filename)
 		} else {
 			c->acct_port = acct_port;
 		}
-		if (strcmp(authhost, "LOCAL") != 0)
+		if (strcmp(authhost, "LOCAL") == 0) {
+			/*
+			 *	Local realms don't have an IP address,
+			 *	secret, or port.
+			 */
+			c->ipaddr = htonl(INADDR_NONE);
+			c->secret[0] = '\0';
+			c->auth_port = auth_port;
+			c->acct_port = acct_port;
+		} else {
 			c->ipaddr = ip_getaddr(authhost);
+		}
 
 		/* 
 		 * Double check length, just to be sure!

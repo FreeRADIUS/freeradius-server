@@ -183,9 +183,9 @@ int proxy_send(REQUEST *request)
 	 *	Maybe they're proxying it to a LOCAL realm, in which
 	 *	case do nothing.
 	 */
-	if ((realm->ipaddr == htonl(INADDR_LOOPBACK)) &&
-			(realm->auth_port == auth_port) &&
-			(realm->acct_port == acct_port)) {
+	if ((realm->ipaddr == htonl(INADDR_NONE)) &&
+	    (realm->auth_port == auth_port) &&
+	    (realm->acct_port == acct_port)) {
 		return 0;
 	}
 	
