@@ -11,7 +11,6 @@ Depends: ${shlibs:Depends}
 Recommends: logrotate
 Provides: radius-server
 Suggests: radiusd-freeradius-ldap, radiusd-freeradius-postgresql, radiusd-freeradius-mysql, radiusd-freeradius-krb5
-Conflicts: radius-server
 Description: A high-performance and highly configurable RADIUS server
  A high-performance RADIUS server derived from Cistron's server, and
  generally similar to Livingston's 2.0 server, with support for...

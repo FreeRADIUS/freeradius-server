@@ -1,5 +1,5 @@
-radiusd-freeradius () unstable; urgency=low
-/* this is a work-in-progress!!! */
+radiusd-freeradius (0.8-1) unstable; urgency=low
+ 
   * Explicitly excluding modules not in the "stable" list.
   * Updated policy version number.
   * Moved from non-US/main to main.
@@ -9,8 +9,9 @@ radiusd-freeradius () unstable; urgency=low
   * Init script handles failure better. (closes: Bug#151264)
   * New upstream release.  (closes: Bug#140536)
   * Uses available version of postgresql.  (closes: Bug#139290)
+  * Removed "conflicts" with other radiusds.
 
- -- Chad Miller <cmiller@debian.org>  Wed, 25 Sep 2002 11:10:52 -0400
+ -- Chad Miller <cmiller@debian.org>  Wed,  6 Nov 2002 11:08:15 -0500
 
 radiusd-freeradius (0.5+cvs20020408-1) unstable; urgency=high
 
