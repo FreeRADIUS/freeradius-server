@@ -22,7 +22,7 @@
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
-#include "libradius.h"
+#include	"libradius.h"
 
 #include	<sys/stat.h>
 
@@ -41,7 +41,7 @@ static const char rcsid[] = "$Id$";
 
 struct detail_instance {
 	/* detail file */
-	const char *detailfile;
+	char *detailfile;
 
 	/* detail file permissions */
 	int detailperm;
@@ -50,7 +50,7 @@ struct detail_instance {
 	int dirperm;
 
 	/* last made directory */
-	const char *last_made_directory;
+	char *last_made_directory;
 };
 
 /*
@@ -60,7 +60,7 @@ struct detail_instance {
 static struct detail_instance config;
 
 static CONF_PARSER module_config[] = {
-	{ "detailfile",    PW_TYPE_STRING_PTR, &config.detailfile, "%A/%n/detail" },
+	{ "detailfile",    PW_TYPE_STRING_PTR, &config.detailfile, "%A/%{Client-IP-Address}/detail" },
 	{ "detailperm",    PW_TYPE_INTEGER,    &config.detailperm, "0600" },
 	{ "dirperm",       PW_TYPE_INTEGER,    &config.dirperm,    "0755" },
 	{ NULL, -1, NULL, NULL }
@@ -118,6 +118,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *	variables.
 	 */
 	radius_xlat2(buffer, sizeof(buffer), inst->detailfile, request);
+	DEBUG2("rlm_detail: %s expands to %s", inst->detailfile, buffer);
 
 	/*
 	 *	Grab the last directory delimiter.
