@@ -281,7 +281,7 @@ INSTALLATION
   EAP and EAP-MD5 doesnot require any additional packages.
   Freeradius contains all the required packages.
   For EAP-TLS, OPENSSL, <http://www.openssl.org/>, is required to be installed.
-  Any version from 0.9.6b, should fairly work with this module.
+  Any version from 0.9.7, should fairly work with this module.
 
 
 CAVEATS
