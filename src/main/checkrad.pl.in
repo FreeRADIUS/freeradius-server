@@ -484,7 +484,7 @@ sub computone_finger {
 sub max40xx_finger {
 	open(FD, "$finger $ARGV[3]\@$ARGV[1]|");
 	while(<FD>) {
-	   $line = <FD>;
+	   $line = $_;
 	   if( $line =~ /Session/ ){
 		next;
 	   }
