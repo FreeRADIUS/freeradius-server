@@ -53,6 +53,9 @@ void version(void)
 #if defined(ATTRIB_NMC)
 	fprintf(stderr, " ATTRIB_NMC");
 #endif
+#if defined(WITH_SNMP)
+	fprintf(stderr," WITH_SNMP");
+#endif
 	fprintf(stderr,"\n");
 	exit (0);
 }
