@@ -108,15 +108,19 @@ ATTRIBUTE	Connect-Info		77	string
 #
 #	Experimental Non Protocol Attributes used by Cistron-Radiusd
 #
+
+# 	These attributes CAN go in the reply item list.
+ATTRIBUTE	Fall-Through		500	integer
+ATTRIBUTE	Add-Port-To-IP-Address	501	integer
+ATTRIBUTE	Exec-Program		502	string
+ATTRIBUTE	Exec-Program-Wait	503	string
+
+#	These attributes CANNOT go in the reply item list.
 ATTRIBUTE	User-Category		1029	string
 ATTRIBUTE	Group-Name		1030	string
 ATTRIBUTE	Huntgroup-Name		1031	string
 ATTRIBUTE	Simultaneous-Use	1034	integer
 ATTRIBUTE	Strip-User-Name		1035	integer
-ATTRIBUTE	Fall-Through		1036	integer
-ATTRIBUTE	Add-Port-To-IP-Address	1037	integer
-ATTRIBUTE	Exec-Program		1038	string
-ATTRIBUTE	Exec-Program-Wait	1039	string
 ATTRIBUTE	Hint			1040	string
 ATTRIBUTE	Pam-Auth		1041	string
 ATTRIBUTE	Login-Time		1042	string
