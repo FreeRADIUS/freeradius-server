@@ -573,10 +573,24 @@ static CONF_SECTION *conf_read(const char *fromfile, int fromline, const char *c
 	return cs;
 }
 
+/*
+ *	These are not used anywhere else..
+ */
+static const char *localstatedir = NULL;
+static const char *prefix = NULL;
+
 static CONF_PARSER directory_config[] = {
-  { "logdir",             PW_TYPE_STRING_PTR, &radlog_dir,        RADLOG_DIR },
-  { "libdir",             PW_TYPE_STRING_PTR, &radlib_dir,        LIBDIR },
-  { "radacctdir",         PW_TYPE_STRING_PTR, &radacct_dir,       RADACCT_DIR },
+  /*
+   *	FIXME: 'prefix' is the ONLY one which should be configured
+   *	at compile time.  Hard-coding it here is bad.  It will be cleaned
+   *	up once we clean up the hard-coded defines for the locations of
+   *	the various files.
+   */
+  {  "prefix",            PW_TYPE_STRING_PTR, &prefix,            "/usr/local"},
+  { "localstatedir",      PW_TYPE_STRING_PTR, &localstatedir,     "${prefix}/var"}, 
+  { "logdir",             PW_TYPE_STRING_PTR, &radlog_dir,        "${localstatedir}/log"},
+  { "libdir",             PW_TYPE_STRING_PTR, &radlib_dir,        "${prefix}/lib"},
+  { "radacctdir",         PW_TYPE_STRING_PTR, &radacct_dir,       "${logdir}/radacct" },
   { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "0" },
 
   /*
