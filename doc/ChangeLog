@@ -1,5 +1,5 @@
 FreeRADIUS 1.0.2 ; $Date$, urgency=medium
-    * Don't declare zero-length arrays in rlm_passwd
+	* Don't declare zero-length arrays in rlm_passwd
 	* Bug fix to make udpfromto code work
 	* radrelay shouldn't dump core if it can't read a VP from the
 	  detail file.
@@ -10,6 +10,8 @@ FreeRADIUS 1.0.2 ; $Date$, urgency=medium
 	* Treat Quintium VSAs like Cisco VSAs
 	* Locking fixes in threading code
 	* rlm_krb5 includes /usr/include/et for Fedora Core
+	* Fix post-auth REJECT stanza processing for rejections from external
+	  processes or home RADIUS servers
 
 FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03 , urgency=high
 	Denial-of-Service Security Fix
