@@ -50,11 +50,11 @@
   #
   # Simultaneous use restrictions.
   #
-  DEFAULT Group = "staff", Simultaneous-Use = 4
+  DEFAULT Group == "staff", Simultaneous-Use := 4
           Fall-Through = 1
-  DEFAULT Group = "business", Simultaneous-Use = 2
+  DEFAULT Group == "business", Simultaneous-Use := 2
           Fall-Through = 1
-  DEFAULT Simultaneous-Use = 1
+  DEFAULT Simultaneous-Use := 1
           Fall-Through = 1
 
 
