@@ -349,7 +349,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		/*
 		 *	Nothing else, it MUST be a bare attribute name.
 		 */
-	} else if (decode_attr_packet(&attrname[6], &q, freespace, request->reply, func)) {
+	} else if (decode_attr_packet(&attrname, &q, freespace, request->packet, func)) {
 		found = 1;
 	} else {
 		/*
