@@ -185,6 +185,9 @@ static int file_init(int argc, char **argv)
 	char		fn[1024];
 	char		*ptr;
 
+	/*
+	 *  This really should be fixed to do something better...
+	 */
 	ptr = argv[0] ? argv[0] : RADIUS_USERS;
 	sprintf(fn, "%s/%s", radius_dir, ptr);
 

@@ -94,7 +94,7 @@ typedef struct radius_packet {
 /*
  *	Printing functions.
  */
-void		vp_prints(char *out, int outlen, VALUE_PAIR *vp);
+int		vp_prints(char *out, int outlen, VALUE_PAIR *vp);
 void		vp_print(FILE *, VALUE_PAIR *);
 void		vp_printlist(FILE *, VALUE_PAIR *);
 #define		fprint_attr_val vp_print
@@ -147,6 +147,7 @@ VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr);
+VALUE_PAIR	*pairmake(char *attribute, char *value, int operator);
 VALUE_PAIR	*pairread(char **ptr, int *eol);
 int		userparse(char *buffer, VALUE_PAIR **first_pair);
 

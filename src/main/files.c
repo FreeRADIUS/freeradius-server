@@ -95,6 +95,7 @@ static void auth_type_fixup(VALUE_PAIR *check)
 		exit(1);
 	}
 	vp->lvalue = n;
+	vp->operator = T_OP_EQ;
 
 	vp->next = c->next;
 	c->next = vp;
@@ -489,7 +490,6 @@ int read_config_files()
 		    librad_errstr);
 		return -1;
 	}
-
 	sprintf(buffer, "%s/%s", radius_dir, RADIUS_MODULES);
 	if (read_modules_file(buffer) < 0) {
 	        log(L_ERR|L_CONS, "Errors reading modules");

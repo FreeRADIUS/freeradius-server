@@ -55,7 +55,7 @@ static void librad_safeprint(char *in, int inlen, char *out, int outlen)
 				sp = 't';
 				break;
 			default:
-				if (*str < 32 || (*str >= 128 && *str <= 160)){
+				if (*str < 32 || (*str >= 128)){
 					sprintf(out, "\\%03o", *str);
 					done += 4;
 					out  += 4;
@@ -78,17 +78,21 @@ static void librad_safeprint(char *in, int inlen, char *out, int outlen)
 /*
  *	Print one attribute and value into a string.
  */
-void vp_prints(char *out, int outlen, VALUE_PAIR *vp)
+int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 {
 	DICT_VALUE	*v;
 	char		buf[1024];
 	char		*a;
 	time_t		t;
 	int		len;
+	char		*orig = out;
+
+	if (!vp) return 0;
 
 	out[0] = 0;
-	if (strlen(vp->name) + 3 > outlen)
-		return;
+	if (strlen(vp->name) + 3 > outlen) {
+		return 0;
+	}
 
 	sprintf(out, "%s = ", vp->name);
 	len = strlen(out);
@@ -134,6 +138,7 @@ void vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 	}
 	strncpy(out, a, outlen);
 	out[outlen - 1] = 0;
+	return strlen(orig);
 }
 
 

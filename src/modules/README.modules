@@ -1,3 +1,6 @@
+  New module authors should look at 'rlm_example' for hints on how
+to write and configure a new module.
+
 
 Each module has a name and 5 entry points.
 
