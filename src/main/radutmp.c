@@ -449,8 +449,8 @@ static void alrm_handler(int sig)
 /*
  *	Check one terminal server to see if a user is logged in.
  */
-static int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
-                        const char *session_id)
+int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
+                 const char *session_id)
 {
 	int	pid, st, e;
 	int	n;

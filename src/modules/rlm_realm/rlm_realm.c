@@ -220,6 +220,7 @@ module_t rlm_realm = {
   NULL,				/* authentication */
   realm_preacct,		/* preaccounting */
   NULL,				/* accounting */
+  NULL,				/* checksimul */
   NULL,				/* detach */
   NULL,				/* destroy */
 };

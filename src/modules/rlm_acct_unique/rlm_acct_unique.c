@@ -221,6 +221,7 @@ module_t rlm_acct_unique = {
   NULL,				/* authentication */
   NULL,				/* preaccounting */
   unique_accounting,		/* accounting */
+  NULL,				/* checksimul */
   unique_detach,				/* detach */
   NULL,				/* destroy */
 };

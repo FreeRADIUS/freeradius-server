@@ -214,6 +214,7 @@ module_t rlm_pam = {
   pam_auth,			/* authenticate */
   NULL,				/* pre-accounting */
   NULL,				/* accounting */
+  NULL,				/* checksimul */
   NULL,				/* detach */
   NULL,				/* destroy */
 };

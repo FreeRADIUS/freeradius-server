@@ -595,6 +595,7 @@ module_t rlm_preprocess = {
 	NULL,				/* authentication */
 	preprocess_preaccounting,	/* pre-accounting */
 	NULL,				/* accounting */
+	NULL,				/* checksimul */
 	NULL,				/* detach */
 	preprocess_destroy,		/* destroy */
 };

@@ -846,6 +846,7 @@ module_t rlm_ldap = {
   rlm_ldap_authenticate,        /* authentication */
   NULL,				/* preaccounting */
   NULL,				/* accounting */
+  NULL,    			/* checksimul */
   rlm_ldap_detach,            	/* detach */
   NULL,				/* destroy */
 };

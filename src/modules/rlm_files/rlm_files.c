@@ -731,6 +731,7 @@ module_t rlm_files = {
 	file_authenticate,		/* authentication */
 	file_preacct,			/* preaccounting */
 	NULL,				/* accounting */
+	NULL,				/* checksimul */
 	file_detach,			/* detach */
 	NULL				/* destroy */
 };

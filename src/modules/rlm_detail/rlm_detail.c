@@ -219,6 +219,7 @@ module_t rlm_detail = {
 	NULL,				/* authentication */
 	NULL,				/* preaccounting */
 	detail_accounting,		/* accounting */
+	NULL,				/* checksimul */
 	detail_detach,			/* detach */
 	NULL				/* destroy */
 };

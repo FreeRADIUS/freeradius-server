@@ -157,6 +157,25 @@ static int radius_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
+/*
+ *	See if a user is already logged in. Sets request->simul_count to the
+ *	current session count for this user and sets request->simul_mpp to 2
+ *	if it looks like a multilink attempt based on the requested IP
+ *	address, otherwise leaves request->simul_mpp alone.
+ *
+ *	Check twice. If on the first pass the user exceeds his
+ *	max. number of logins, do a second pass and validate all
+ *	logins by querying the terminal server (using eg. SNMP).
+ */
+static int radius_checksimul(void *instance, REQUEST *request)
+{
+  instance = instance;
+
+  request->simul_count=0;
+
+  return RLM_MODULE_OK;
+}
+
 static int radius_detach(void *instance)
 {
 	free(((struct example_config_t *)instance)->string);
@@ -174,6 +193,7 @@ module_t rlm_example = {
 	radius_authenticate,		/* authentication */
 	radius_preacct,			/* preaccounting */
 	radius_accounting,		/* accounting */
+	radius_checksimul,		/* checksimul */
 	radius_detach,			/* detach */
 	NULL,				/* destroy */
 };

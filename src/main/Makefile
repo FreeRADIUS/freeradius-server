@@ -55,6 +55,9 @@ modules.o:  modules.c $(INCLUDES)
 radutmp.o:  radutmp.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radutmp.c
 
+session.o:  session.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c session.c
+
 proxy.o:  proxy.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c proxy.c
 

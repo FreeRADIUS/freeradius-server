@@ -40,6 +40,7 @@ module_t rlm_dictionary = {
 	NULL,               		/* authentication */
 	NULL,            		/* preaccounting */
 	NULL,              		/* accounting */
+	NULL,              		/* checksimul */
 	NULL,				/* detach */
 	NULL 				/* destroy */
 };

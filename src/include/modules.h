@@ -25,7 +25,8 @@ typedef int (*RLM_ACCOUNTING_FUNCP)(REQUEST *request);
 #define RLM_COMPONENT_AUTZ 1
 #define RLM_COMPONENT_PREACCT 2
 #define RLM_COMPONENT_ACCT 3
-#define RLM_COMPONENT_COUNT 4 /* How many components are there */
+#define RLM_COMPONENT_SESS 4
+#define RLM_COMPONENT_COUNT 5 /* How many components are there */
 
 typedef struct module_t {
 	const char	*name;
@@ -36,6 +37,7 @@ typedef struct module_t {
 	int	(*authenticate)(void *instance, REQUEST *request);
 	int	(*preaccounting)(void *instance, REQUEST *request);
 	int	(*accounting)(void *instance, REQUEST *request);
+	int	(*checksimul)(void *instance, REQUEST *request);
 	int	(*detach)(void *instance);
  	int	(*destroy)(void);
 } module_t;
@@ -58,5 +60,6 @@ int module_authorize(REQUEST *request);
 int module_authenticate(int type, REQUEST *request);
 int module_preacct(REQUEST *request);
 int module_accounting(REQUEST *request);
+int module_checksimul(REQUEST *request, int maxsimul);
 
 #endif /* RADIUS_MODULES_H */

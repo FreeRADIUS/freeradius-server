@@ -55,6 +55,10 @@ typedef struct auth_req {
 	int			proxy_try_count;
 	time_t			proxy_next_try;
 
+	int                     simul_max;
+	int                     simul_count;
+	int                     simul_mpp; /* WEIRD: 1 is false, 2 is true */
+
 	int			finished;
 	struct auth_req		*prev;
 	struct auth_req		*next;
@@ -170,6 +174,13 @@ int		rad_accounting(REQUEST *);
 int		radutmp_add(REQUEST *);
 int		radutmp_zap(uint32_t nas, int port, char *user, time_t t);
 int		radutmp_checksimul(char *name, VALUE_PAIR *, int maxsimul);
+
+/* session.c */
+int		rad_check_ts(uint32_t nasaddr, int port, const char *user,
+			     const char *sessionid);
+int		session_zap(uint32_t nasaddr, int port, const char *user,
+			    const char *sessionid, uint32_t cliaddr,
+			    char proto, time_t t);
 
 /* radiusd.c */
 void		debug_pair(FILE *, VALUE_PAIR *);

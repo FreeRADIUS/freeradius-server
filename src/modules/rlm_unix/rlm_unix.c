@@ -580,6 +580,7 @@ module_t rlm_unix = {
   unix_authenticate,            /* authentication */
   NULL,                         /* preaccounting */
   unix_accounting,              /* accounting */
+  NULL,                  	/* checksimul */
   unix_detach,                 	/* detach */
   unix_destroy,                  /* destroy */
 };

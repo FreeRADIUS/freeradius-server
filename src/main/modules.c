@@ -62,6 +62,7 @@ static config_module_t *authorize = NULL;
 static indexed_config_module_t *authenticate = NULL;
 static config_module_t *preacct = NULL;
 static config_module_t *accounting = NULL;
+static config_module_t *session = NULL;
 
 static void config_list_free(config_module_t **cf)
 {
@@ -113,6 +114,7 @@ static void module_list_free(void)
 	config_list_free(&authorize);
 	config_list_free(&preacct);
 	config_list_free(&accounting);
+	config_list_free(&session);
 
 	instance_list_free(&module_instance_list);
 
@@ -583,6 +585,17 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 			}
 			add_to_list(&accounting, this);
 			break;
+		case RLM_COMPONENT_SESS:
+			if (!this->entry->module->checksimul) {
+				radlog(L_ERR|L_CONS,
+					"%s[%d] Module %s does not contain "
+					"a 'checksimul' entry\n",
+ 					filename, modreflineno,
+ 					this->entry->module->name);
+ 				exit(1);
+			}
+			add_to_list(&session, this);
+			break;
 		default:
 			radlog(L_ERR|L_CONS, "%s[%d] Unknown component %d.\n",
 				filename, modreflineno, comp);
@@ -652,6 +665,7 @@ int setup_modules(void)
 		case RLM_COMPONENT_AUTZ: control="authorize"; break;
 		case RLM_COMPONENT_PREACCT: control="preacct"; break;
 		case RLM_COMPONENT_ACCT: control="accounting"; break;
+		case RLM_COMPONENT_SESS: control="session"; break;
 		default: control="unknown";
 		}
 		
@@ -840,6 +854,44 @@ int module_accounting(REQUEST *request)
 	}
 
 	return rcode;
+}
+
+/*
+ *	See if a user is already logged in.
+ *
+ *	Returns: 0 == OK, 1 == double logins, 2 == multilink attempt
+ */
+int module_checksimul(REQUEST *request, int maxsimul)
+{
+	config_module_t	*this;
+	int		rcode;
+
+	if(!session)
+		return 0;
+
+	if(!request->username)
+		return 0;
+
+	request->simul_count = 0;
+	request->simul_max = maxsimul;
+	request->simul_mpp = 1;
+
+	this = session;
+	rcode = RLM_MODULE_FAIL;
+
+	while (this && (rcode == RLM_MODULE_FAIL)) {
+		DEBUG2("  checksimul: %s", this->instance->entry->module->name);
+		rcode = (this->instance->entry->module->checksimul)
+				(this->instance->insthandle, request);
+		this = this->next;
+	}
+
+	if(rcode != RLM_MODULE_OK) {
+		/* FIXME: Good spot for a *rate-limited* warning to the log */
+		return 0;
+	}
+
+	return (request->simul_count < maxsimul) ? 0 : request->simul_mpp;
 }
 
 /*

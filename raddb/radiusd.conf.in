@@ -652,3 +652,9 @@ accounting {
 	detail
 	unix
 }
+
+# Session database, used for checking Simultaneous-Use. The radutmp module
+# handles this
+session {
+       radutmp
+}
