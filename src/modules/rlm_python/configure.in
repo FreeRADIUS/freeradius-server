@@ -84,7 +84,8 @@ if test x$with_[]modname != xno; then
 		AC_SMART_CHECK_LIB(python${PY_VERSION}, Py_Initialize)
 		LIBS=$old_LIBS
 
-		if test "x$ac_cv_lib_${ac_safe_Py_Initialize}" = "xyes"; then
+		eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
+		if test "x$t" = "xyes"; then
 			python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lpython${PY_VERSION} -lm"
 			targetname=modname
 		else
