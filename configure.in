@@ -404,6 +404,8 @@ fi
 
 POSTGRESQL_CHECKS
 MYSQL_CHECKS
+ODBC_CHECKS
+ORACLE_CHECKS
 
 dnl #############################################################
 dnl #
