@@ -39,7 +39,7 @@
 void eapsim_calculate_keys(struct eapsim_keys *ek)
 {
 	SHA1_CTX context;
-	u_int8_t fk[160];
+	uint8_t fk[160];
 	unsigned char buf[256];
 	unsigned char *p;
 	unsigned int  blen;

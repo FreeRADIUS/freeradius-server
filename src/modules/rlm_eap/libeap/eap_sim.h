@@ -149,9 +149,9 @@ struct eapsim_keys {
  * interfaces in eapsimlib.c
  */
 extern int  eapsim_checkmac(VALUE_PAIR *rvps,
-			    u_int8_t key[8],
-			    u_int8_t *extra, int extralen,
-			    u_int8_t calcmac[20]);
+			    uint8_t key[8],
+			    uint8_t *extra, int extralen,
+			    uint8_t calcmac[20]);
 
 /*
  * in eapcrypto.c
