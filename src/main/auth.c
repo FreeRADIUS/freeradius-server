@@ -577,7 +577,7 @@ int rad_authenticate(REQUEST *request)
 		 *	Authentication is OK. Now see if this
 		 *	user may login at this time of the day.
 		 */
-		r = timestr_match(check_item->strvalue, time(NULL));
+		r = timestr_match(check_item->strvalue, request->timestamp);
 		/*
 		 *	Session-Timeout needs to be at least
 		 *	60 seconds, some terminal servers

@@ -98,7 +98,7 @@ static int otherattr(int attr)
 
 /*
  *	Register a function as compare function.
- *	Otherattr is the attribute in the request we want to
+ *	compare_attr is the attribute in the request we want to
  *	compare with. Normally this is the same as "attr".
  *	You can set this to:
  *
@@ -109,7 +109,7 @@ static int otherattr(int attr)
  *	For example, PW_GROUP in a check item needs to be compared
  *	with PW_USER_NAME in the incoming request.
  */
-int paircompare_register(int attr, int otherattr, COMPARE fun)
+int paircompare_register(int attr, int compare_attr, COMPARE fun)
 {
 	struct cmp	*c;
 
@@ -117,10 +117,10 @@ int paircompare_register(int attr, int otherattr, COMPARE fun)
 
 	if ((c = malloc(sizeof(struct cmp))) == NULL)
 		return -1;
-	if (otherattr < 0) otherattr = attr;
+	if (compare_attr < 0) compare_attr = attr;
 	c->compare = fun;
 	c->attribute = attr;
-	c->otherattr = otherattr;
+	c->otherattr = compare_attr;
 	c->next = cmp;
 	cmp = c;
 
@@ -273,6 +273,9 @@ static int connectcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 {
 	int	rate;
 
+	check_pairs = check_pairs; /* shut the compiler up */
+	reply_pairs = reply_pairs;
+
 	rate = atoi(request->strvalue);
 	return rate - check->lvalue;
 }
@@ -288,6 +291,9 @@ static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	char		*s, *p;
 	int		lo, hi;
 	int		port = request->lvalue;
+
+	check_pairs = check_pairs; /* shut the compiler up */
+	reply_pairs = reply_pairs;
 
 	/* Same size */
 	strcpy(buf, check->strvalue);
@@ -326,6 +332,8 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	char		rest[MAX_STRING_LEN];
 	int		len, namelen;
 	int		ret = -1;
+
+	reply_pairs = reply_pairs; /* shut the compiler up */
 
 #if 0 /* DEBUG */
 	printf("Comparing %s and %s, check->attr is %d\n",
@@ -383,6 +391,10 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 static int timecmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
+	request = request;	/* shut the compiler up */
+	check_pairs = check_pairs;
+	reply_pairs = reply_pairs;
+
 	if (timestr_match(check->strvalue, time(NULL)) >= 0) {
 		return 0;
 	}
