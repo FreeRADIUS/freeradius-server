@@ -167,14 +167,14 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 			return -1;
 
 		if (strncasecmp("select", querystr, 6) != 0) {
-		/* store the number of affected rows because the sql module
-		 * calls finish_query before it retrieves the number of affected
-		 * rows from the driver */
-		pg_sock->affected_rows = affected_rows(pg_sock->result);
-		return 0;
+			/* store the number of affected rows because the sql module
+			 * calls finish_query before it retrieves the number of affected
+			 * rows from the driver */
+			pg_sock->affected_rows = affected_rows(pg_sock->result);
+			return 0;
 		} else {
 			if ((sql_store_result(sqlsocket, config) == 0)
-					&& (sql_num_fields(sqlsocket, config)>=0))
+					&& (sql_num_fields(sqlsocket, config) >= 0))
 				return 0;
 			else
 				return -1;
