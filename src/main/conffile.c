@@ -33,8 +33,8 @@ CONF_SECTION	*config = NULL;
 extern RADCLIENT *clients;
 extern REALM	 *realms;
 
-static int generate_realms(void);
-static int generate_clients(void);
+static int generate_realms(const char *filename);
+static int generate_clients(const char *filename);
 
 #ifndef RADIUS_CONFIG
 #define RADIUS_CONFIG "radiusd.conf"
@@ -231,7 +231,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
  *	Read a part of the config file.
  */
 static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
-				      const char *name1, const char *name2)
+				     const char *name1, const char *name2)
 {
 	CONF_SECTION	*cs, *csp, *css;
 	CONF_PAIR	*cpn;
@@ -267,6 +267,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 *	Allocate new section.
 	 */
 	cs = cf_section_alloc(name1, name2);
+	cs->lineno = *lineno;
 
 	/*
 	 *	Read.
@@ -396,6 +397,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
 		cpn = cf_pair_alloc(buf1, buf, t2);
+		cpn->lineno = *lineno;
 		cf_pair_add(cs, cpn);
 	}
 
@@ -463,16 +465,15 @@ int read_radius_conf_file(void)
 	 * Fail if we can't generate list of clients
 	 */
 
-	if (generate_clients() < 0) {
-		log(L_ERR|L_CONS, "Error generation clients list");
+	if (generate_clients(buffer) < 0) {
 		return -1;
 	}
 
 	/*
 	 * If there isn't any realms it isn't fatal..
 	 */
-	if (generate_realms() < 0) {
-		log(L_ERR|L_CONS, "Error generation realms list");
+	if (generate_realms(buffer) < 0) {
+		return -1;
 	}
 
 	return 0;	
@@ -483,7 +484,7 @@ int read_radius_conf_file(void)
  * This way we don't have to change to much in the other source-files
  */
 
-static int generate_realms(void)
+static int generate_realms(const char *filename)
 {
 	CONF_SECTION	*cs;
 	REALM		*c;
@@ -492,16 +493,14 @@ static int generate_realms(void)
 	for (cs = config->sub; cs; cs = cs->next) {
 		if (strcmp(cs->name1, "realm") == 0) {
 			if (!cs->name2) {
-				/* FIXME: would be nice to have the line
-				 * number here */
-				log(L_CONS|L_ERR, "Missing realm name");
+				log(L_CONS|L_ERR, "%s[%d]: Missing realm name", filename, cs->lineno);
 				return -1;
 			}
 			/*
 			 * We've found a realm, allocate space for it
 			 */
 			if ((c = malloc(sizeof(REALM))) == NULL) {
-				log(L_CONS|L_ERR, "Out of memory while generating realms list");
+				log(L_CONS|L_ERR, "Out of memory");
 				return -1;
 			}
 			memset(c, 0, sizeof(REALM));
@@ -510,8 +509,8 @@ static int generate_realms(void)
 			 */
 			if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
 				log(L_CONS|L_ERR, 
-					"No authhost entry for realm: %s", 
-					cs->name2);
+				    "%s[%d]: No authhost entry in realm", 
+				    filename, cs->lineno);
 				return -1;
 			}
 			if ((s = strchr(authhost, ':')) != NULL) {
@@ -533,17 +532,16 @@ static int generate_realms(void)
 			/* 
 			 * Double check length, just to be sure!
 			 */
-
 			if (strlen(authhost) >= sizeof(c->server)) {
-				log(L_ERR, "[%s] servername of length %d is greater that allowed: %d",
-					authhost, strlen(authhost), 
-					sizeof(c->server) - 1);
+				log(L_ERR, "%s[%d]: Server name of length %d is greater that allowed: %d",
+				    filename, cs->lineno,
+				    strlen(authhost), sizeof(c->server) - 1);
 				return -1;
 			}
 			if (strlen(cs->name2) >= sizeof(c->realm)) {
-				log(L_ERR, "[%s] realm of length %d is greater that allowed: %d",
-					cs->name2, strlen(cs->name2), 
-					sizeof(c->server) - 1);
+				log(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
+				    filename, cs->lineno,
+				    strlen(cs->name2), sizeof(c->server) - 1);
 				return -1;
 			}
 			
@@ -552,13 +550,15 @@ static int generate_realms(void)
 
 			s = cf_section_value_find(cs, "secret");
 			if (s == NULL) {
-			  log(L_ERR, "[realm %s]: You MUST supply a shared secret for a realm!");
-			  return -1;
+				log(L_ERR, "%s[%d]: No shared secret supplied for realm",
+				    filename, cs->lineno);
+				return -1;
 			}
 
 			if (strlen(s) >= sizeof(c->secret)) {
-			  log(L_ERR, "[realm %s]: secret of length %d is greater than the allowed maximum of %d.",
-			      c->realm, strlen(s), sizeof(c->secret) - 1);
+			  log(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+			      filename, cs->lineno,
+			      strlen(s), sizeof(c->secret) - 1);
 			  return -1;
 			}
 			strNcpy(c->secret, s, sizeof(c->secret));
@@ -586,7 +586,7 @@ static int generate_realms(void)
  * This way we don't have to change to much in the other source-files
  */
 
-static int generate_clients(void)
+static int generate_clients(const char *filename)
 {
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
@@ -595,9 +595,7 @@ static int generate_clients(void)
 	for (cs = config->sub; cs; cs = cs->next) {
 		if (strcmp(cs->name1, "client") == 0) {
 			if (!cs->name2) {
-				/* FIXME: would be nice to have the line
-				 * number here */
-				log(L_CONS|L_ERR, "Missing client name");
+				log(L_CONS|L_ERR, "%s[%d]: Missing client name", filename, cs->lineno);
 				return -1;
 			}
 			/*
@@ -608,14 +606,14 @@ static int generate_clients(void)
 			shortnm = cf_section_value_find(cs, "shortname");
 
 			if (strlen(secret) >= sizeof(c->secret)) {
-				log(L_ERR, "[%s]: secret of length %d is greater than the allowed maximum of %d.",
-				    hostnm,
+				log(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+				    filename, cs->lineno,
 				    strlen(secret), sizeof(c->secret) - 1);
 				return -1;
 			}
 			if (strlen(shortnm) > sizeof(c->shortname)) {
-				log(L_ERR, "[%s]: short name of length %d is greater than the allowed maximum of %d.",
-				    hostnm,
+				log(L_ERR, "%s[%d]: NAS short name of length %d is greater than the allowed maximum of %d.",
+				    filename, cs->lineno,
 				    strlen(shortnm), sizeof(c->shortname) - 1);
 				return -1;
 			}
@@ -623,8 +621,7 @@ static int generate_clients(void)
 			 * The size is fine.. Let's create the buffer
 			 */
 			if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
-				log(L_CONS|L_ERR, "[%s]: out of memory while doint client",
-					hostnm);
+				log(L_CONS|L_ERR, "Out of memory");
 				return -1;
 			}
 

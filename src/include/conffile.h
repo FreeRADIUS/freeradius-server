@@ -14,12 +14,14 @@ typedef struct conf_pair {
 	char			*attr;
 	char			*value;
 	int			operator;
+	int			lineno;
 	struct conf_pair	*next;
 } CONF_PAIR;
 
 typedef struct conf_part {
 	char			*name1;
 	char			*name2;
+	int			lineno;
 	CONF_PAIR		*cps;
 	struct conf_part	*sub;
 	struct conf_part	*next;
