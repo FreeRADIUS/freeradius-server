@@ -16,7 +16,7 @@
 #include "conf.h"
 #include "radpaths.h"
 
-#ifdef __svr4__
+#ifdef HAVE_UTMPX_H
 #  define ut_time ut_xtime
 #endif
 
