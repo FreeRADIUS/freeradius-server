@@ -25,7 +25,7 @@ all: common
 
 radeapclient: radeapclient.o ../../lib/libradius.la
 	(cd libeap && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit 1
-	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) ${RLM_CFLAGS} $(LDFLAGS) -o radeapclient radeapclient.o -static $(CLIENTLIBS) -shared $(LIBS) $(LCRYPT)
+	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) ${RLM_CFLAGS} $(LDFLAGS) -o radeapclient radeapclient.o -static $(CLIENTLIBS) $(LIBS) $(LCRYPT)
 
 radeapclient.o: radeapclient.c $(INCLUDES)
 	$(CC) $(CFLAGS) ${RLM_CFLAGS} -c radeapclient.c
