@@ -2126,6 +2126,7 @@ RADIUS_PACKET *rad_alloc(int newvector)
 	memset(rp, 0, sizeof(RADIUS_PACKET));
 	if (newvector)
 		random_vector(rp->vector);
+	lrad_rand();
 
 	return rp;
 }
