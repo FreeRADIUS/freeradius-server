@@ -29,6 +29,7 @@
 static CONF_PARSER module_config[] = {
 	{ "private_key_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, private_key_file), NULL, "priv_key.pem" },
 	{ "certificate_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, certificate_file), NULL, "certificate.pem" },
+	{ "CA_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, ca_file), NULL, "ca_list.pem" },
 	{ "private_key_password", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, private_key_password), NULL, "pass" },
 	{ "dh_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, dh_file), NULL, "dh.pem" },
 	{ "random_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, random_file), NULL, "random.pem" },
@@ -109,6 +110,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	/*
 	printf(" private_key_file --- %s\n", eaptls->conf->private_key_file);
 	printf(" certificate_file --- %s\n", eaptls->conf->certificate_file);
+	printf(" CA_file --- %s\n", eaptls->conf->ca_file);
 	printf(" private_key_password --- %s\n", eaptls->conf->private_key_password);
 	printf(" dh_file --- %s\n", eaptls->conf->dh_file);
 	printf(" random_file --- %s\n", eaptls->conf->random_file);
@@ -166,9 +168,9 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 	 * send that alert to the client and then send the EAP-Failure
 	 */
 
-        status = eaptls_verify(handler->eap_ds, handler->prev_eapds);
-        if (status == EAPTLS_INVALID)
-                return 0;
+	status = eaptls_verify(handler->eap_ds, handler->prev_eapds);
+	if (status == EAPTLS_INVALID)
+		return 0;
 
 	if (status == EAPTLS_ACK) {
 		if (eaptls_ack_handler(handler) != EAPTLS_NOOP)
@@ -177,7 +179,6 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 
 	if ((tlspacket = eaptls_extract(handler->eap_ds, status)) == NULL)
 		return 0;
-
 
 	eaptls_operation(tlspacket, status, handler);
 

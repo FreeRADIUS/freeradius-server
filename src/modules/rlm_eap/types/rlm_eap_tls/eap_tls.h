@@ -270,6 +270,7 @@ typedef struct eap_tls_conf {
         char	*private_key_password;
         char	*private_key_file;
         char	*certificate_file;
+        char	*ca_file;
         char	*dh_file;
         char	*random_file;
 	int	fragment_size; /* always < 4096 (due to radius limit), 0 by default = 2048 */

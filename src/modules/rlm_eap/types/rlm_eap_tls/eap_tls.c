@@ -43,14 +43,14 @@
  */
 EAPTLS_PACKET *eaptls_alloc(void)
 {
-        EAPTLS_PACKET   *rp;
+	EAPTLS_PACKET   *rp;
 
-        if ((rp = malloc(sizeof(EAPTLS_PACKET))) == NULL) {
-                radlog(L_ERR, "rlm_eap_tls: out of memory");
-                return NULL;
-        }
-        memset(rp, 0, sizeof(EAPTLS_PACKET));
-        return rp;
+	if ((rp = malloc(sizeof(EAPTLS_PACKET))) == NULL) {
+		radlog(L_ERR, "rlm_eap_tls: out of memory");
+		return NULL;
+	}
+	memset(rp, 0, sizeof(EAPTLS_PACKET));
+	return rp;
 }
 
 /*
@@ -58,17 +58,17 @@ EAPTLS_PACKET *eaptls_alloc(void)
  */
 void eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr)
 {
-        EAPTLS_PACKET *eaptls_packet;
+	EAPTLS_PACKET *eaptls_packet;
 
-        if (!eaptls_packet_ptr) return;
-        eaptls_packet = *eaptls_packet_ptr;
-        if (eaptls_packet == NULL) return;
+	if (!eaptls_packet_ptr) return;
+	eaptls_packet = *eaptls_packet_ptr;
+	if (eaptls_packet == NULL) return;
 
-        if (eaptls_packet->data) {
+	if (eaptls_packet->data) {
 		free(eaptls_packet->data);
 		eaptls_packet->data = NULL;
 	}
-        *eaptls_packet_ptr = NULL;
+	*eaptls_packet_ptr = NULL;
 }
 
 /*
@@ -78,7 +78,6 @@ void eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr)
 int eaptls_start(EAP_DS *eap_ds)
 {
 	EAPTLS_PACKET 	reply;
-
 
 	reply.code = EAPTLS_START;
 	reply.id = eap_ds->response->id + 1/*Incrementor*/;
@@ -90,7 +89,7 @@ int eaptls_start(EAP_DS *eap_ds)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-        eaptls_compose(eap_ds, &reply);
+	eaptls_compose(eap_ds, &reply);
 
 	return 1;
 }
@@ -99,7 +98,6 @@ int eaptls_success(EAP_DS *eap_ds)
 {
 	EAPTLS_PACKET	reply;
 
-
 	reply.code = EAPTLS_SUCCESS;
 	reply.id = eap_ds->response->id + 1;
 	reply.length = TLS_HEADER_LEN;
@@ -107,7 +105,7 @@ int eaptls_success(EAP_DS *eap_ds)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-        eaptls_compose(eap_ds, &reply);
+	eaptls_compose(eap_ds, &reply);
 
 	return 1;
 }
@@ -116,7 +114,6 @@ int eaptls_fail(EAP_DS *eap_ds)
 {
 	EAPTLS_PACKET	reply;
 
-
 	reply.code = EAPTLS_FAIL;
 	reply.id = eap_ds->response->id + 1;
 	reply.length = TLS_HEADER_LEN;
@@ -124,7 +121,7 @@ int eaptls_fail(EAP_DS *eap_ds)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-        eaptls_compose(eap_ds, &reply);
+	eaptls_compose(eap_ds, &reply);
 
 	return 1;
 }
@@ -167,7 +164,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	memcpy(reply.data, &nlen, 4/*TLS-Length*/);
 	record_minus(&ssn->dirty_out, reply.data+4/*TLS-Length*/, size);
 
-        eaptls_compose(eap_ds, &reply);
+	eaptls_compose(eap_ds, &reply);
 	free(reply.data);
 
 	return 1;
@@ -192,7 +189,7 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 
 	switch (tls_session->info.content_type) {
 
-	case alert :
+	case alert:
 		eaptls_fail(handler->eap_ds);
 		session_free(&handler->opaque);
 		if(handler->opaque) printf("OPAQUE IS NOT NULL\n");
@@ -206,13 +203,15 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 			if(handler->opaque) printf("OPAQUE IS NOT NULL\n");
 			//handler->free_opaque = NULL;
 			return EAPTLS_SUCCESS;
+		} else {
+			/* Fragmentation handler, send next fragment */
+			eaptls_request(handler->eap_ds, tls_session);
+			return EAPTLS_REQUEST;
 		}
-		return EAPTLS_NOOP;
 
 	default:
-		/* Fragmentation handler, send next fragment */
-		eaptls_request(handler->eap_ds, tls_session);
-		return EAPTLS_REQUEST;
+		radlog(L_ERR, "rlm_eap_tls: Should never enter here\n");
+		return EAPTLS_NOOP;
 	}
 }
 
@@ -241,7 +240,7 @@ int eaptls_send_ack(EAP_DS *eap_ds)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-        eaptls_compose(eap_ds, &reply);
+	eaptls_compose(eap_ds, &reply);
 
 	return 1;
 }
@@ -256,7 +255,7 @@ int eaptls_send_ack(EAP_DS *eap_ds)
  */
 eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 {
-        eaptls_packet_t	*eaptls_packet, *eaptls_prev;
+	eaptls_packet_t	*eaptls_packet, *eaptls_prev;
 
 	if ((eap_ds == NULL) 					|| 
 		(eap_ds->response == NULL)			|| 
@@ -264,13 +263,13 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 		(eap_ds->response->length < EAP_HEADER_LEN)	||
 		(eap_ds->response->type.type != PW_EAP_TLS)) {
 
-                radlog(L_ERR, "rlm_eap_tls: corrupted data");
+		radlog(L_ERR, "rlm_eap_tls: corrupted data");
 		return EAPTLS_INVALID;
 	}
 
 	/* FIXME: check for nulls before assigning */
-        eaptls_packet = (eaptls_packet_t *)eap_ds->response->type.data;
-        eaptls_prev = (eaptls_packet_t *)prev_eap_ds->response->type.data;
+	eaptls_packet = (eaptls_packet_t *)eap_ds->response->type.data;
+	eaptls_prev = (eaptls_packet_t *)prev_eap_ds->response->type.data;
 
 	/*
 	 * check for ACK
@@ -314,7 +313,8 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 			 * 	(It is because Last fragment will not have M bit set)
 			 */
 			if ((prev_eap_ds->response == NULL) ||
-				(TLS_MORE_FRAGMENTS(eaptls_prev->flags) == 0)) {
+					(eaptls_prev == NULL) ||
+					(TLS_MORE_FRAGMENTS(eaptls_prev->flags) == 0)) {
 
 				radlog(L_INFO, "rlm_eap_tls:  Received EAP-TLS First Fragment of the message");
 				return EAPTLS_FIRST_FRAGMENT;
@@ -344,13 +344,13 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
  * code   =  EAP-code
  * id     =  EAP-id
  * length = code + id + length + flags + tlsdata
- *	  =  1   +  1 +   2    +  1    +  X
+ *        =  1   +  1 +   2    +  1    +  X
  * length = EAP-length - 1(EAP-Type = 1 octet)
  * flags  = EAP-typedata[0] (1 octet)
  * dlen   = EAP-typedata[1-4] (4 octets), if L flag set
- * 	  = length - 5(code+id+length+flags), otherwise
+ *        = length - 5(code+id+length+flags), otherwise
  * data   = EAP-typedata[5-n], if L flag set
- * 	  = EAP-typedata[1-n], otherwise
+ *        = EAP-typedata[1-n], otherwise
  * packet = EAP-typedata (complete typedata)
  *
  * Points to consider during EAP-TLS data extraction
@@ -359,8 +359,8 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
  */
 EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 {
-        EAPTLS_PACKET	*tlspacket;
-	uint32_t	data_len;
+	EAPTLS_PACKET	*tlspacket;
+	uint32_t	data_len = 0;
 	uint8_t		*data = NULL;
 
 	if (status  == EAPTLS_INVALID)
@@ -377,7 +377,7 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	 * but eaptls_length = eap_length - 1(EAP-Type = 1 octet)
 	 *
 	 * length = code + id + length + flags + tlsdata
-	 *	  =  1   +  1 +   2    +  1    +  X
+	 *        =  1   +  1 +   2    +  1    +  X
 	 */
 	tlspacket->code = eap_ds->response->code;
 	tlspacket->id = eap_ds->response->id;
@@ -389,7 +389,6 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	} else {
 		tlspacket->flags = eap_ds->response->type.data[0];
 	}
-
 
 	switch (status) {
 	/*
@@ -427,7 +426,7 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 		break;
 
 	default:
-		printf("Should never enter here\n");
+		radlog(L_ERR, "rlm_eap_tls: Should never enter here\n");
 		break;
 
 	}
@@ -537,9 +536,13 @@ void eaptls_operation(EAPTLS_PACKET *eaptls_packet, eaptls_status_t status, EAP_
 	 * 	CAUTION while reinitializing this buffer.
 	 * 	It should be reinitialized only when this M bit is NOT set.
 	 */
-	record_plus(&tls_session->dirty_in, eaptls_packet->data, eaptls_packet->dlen);
+	if (eaptls_packet->dlen != 
+			record_plus(&tls_session->dirty_in, eaptls_packet->data, eaptls_packet->dlen)) {
+			radlog(L_ERR, "rlm_eap_tls: Exceeded maximum record size");
+			return;
+	}
 
-		/* send the next fragment */
+	/* send the next fragment */
 	/*
 	if (status == EAPTLS_ACK) {
 		eaptls_request(handler->eap_ds, tls_session);

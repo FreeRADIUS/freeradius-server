@@ -92,7 +92,7 @@ SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	ctx = SSL_CTX_new(meth);
 
 	/* Load our keys and certificates*/
-	if(!(SSL_CTX_use_certificate_file(ctx, conf->private_key_file, SSL_FILETYPE_PEM)))
+	if(!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, SSL_FILETYPE_PEM)))
 		err_exit("Couldn't read certificate file");
 
 	/* 
@@ -104,7 +104,7 @@ SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	SSL_CTX_set_default_passwd_cb(ctx, password_cb);
 
 	if(!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, SSL_FILETYPE_PEM)))
-		err_exit("Couldn't read key file");
+		err_exit("Couldn't read private key file");
 
 	/*
 	 * ctx_options
@@ -132,8 +132,8 @@ SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	SSL_CTX_set_verify(ctx, verify_mode, NULL);
 
 	/* Load the CAs we trust */
-	if(!(SSL_CTX_load_verify_locations(ctx, conf->certificate_file, 0)))
-		err_exit("Couldn't read CA list");
+	if(!(SSL_CTX_load_verify_locations(ctx, conf->ca_file, 0)))
+		err_exit("Couldn't read Trusted root CA list");
 
 	SSL_CTX_set_verify_depth(ctx, 1);
 
@@ -147,38 +147,38 @@ SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 tls_session_t *new_tls_session(eap_tls_t *eaptls)
 {
 	tls_session_t *state = NULL;
-        SSL *new_tls = NULL;
+	SSL *new_tls = NULL;
 	int verify_mode = 0;
 
-        if((new_tls = SSL_new(eaptls->ctx)) == NULL) {
-                radlog(L_ERR, "rlm_eap_tls: Error creating new SSL");
-                ERR_print_errors_fp(stderr);
-                return NULL;
-        }
+	if((new_tls = SSL_new(eaptls->ctx)) == NULL) {
+		radlog(L_ERR, "rlm_eap_tls: Error creating new SSL");
+		ERR_print_errors_fp(stderr);
+		return NULL;
+	}
 
-        /* We use the SSL's "app_data" to indicate a call-back */
-        SSL_set_app_data(new_tls, NULL);
+	/* We use the SSL's "app_data" to indicate a call-back */
+	SSL_set_app_data(new_tls, NULL);
 
 	state = (tls_session_t *)malloc(sizeof(tls_session_t));
 	session_init(state);
-        state->ssl = new_tls;
+	state->ssl = new_tls;
 
-        /*
-         * Create & hook the BIOs to handle the dirty side of the SSL
+	/*
+	 * Create & hook the BIOs to handle the dirty side of the SSL
 	 * This is *very important* as we want to handle the transmission part.
 	 * Now the only IO interface that SSL is aware of, is our defined BIO buffers.
-         */
-        state->into_ssl = BIO_new(BIO_s_mem());
-        state->from_ssl = BIO_new(BIO_s_mem());
-        SSL_set_bio(state->ssl, state->into_ssl, state->from_ssl);
+	 */
+	state->into_ssl = BIO_new(BIO_s_mem());
+	state->from_ssl = BIO_new(BIO_s_mem());
+	SSL_set_bio(state->ssl, state->into_ssl, state->from_ssl);
 
-        /*
-         * Add the message callback to identify
+	/*
+	 * Add the message callback to identify
 	 * what type of message/handshake is passed
-         */
+	 */
 	state->bio_type = BIO_new_fp(stdout, BIO_NOCLOSE);
-        SSL_set_msg_callback(new_tls, cbtls_msg);
-        SSL_set_msg_callback_arg(new_tls, state);
+	SSL_set_msg_callback(new_tls, cbtls_msg);
+	SSL_set_msg_callback_arg(new_tls, state);
 	SSL_set_info_callback(new_tls, cbtls_info);
 
 	/* Always verify the peer certificate */
@@ -188,8 +188,8 @@ tls_session_t *new_tls_session(eap_tls_t *eaptls)
 	SSL_set_verify(state->ssl, verify_mode, NULL);
 	//SSL_set_verify_depth(state->ssl, verify_depth);
 	
-        /* In Server mode we only accept.  */
-        SSL_set_accept_state(state->ssl);
+	/* In Server mode we only accept.  */
+	SSL_set_accept_state(state->ssl);
 
 	return state;
 }
