@@ -115,7 +115,7 @@ void rl_add(REQUEST *request)
 
 	assert(request->container == NULL);
 
-	request->container = malloc(sizeof(REQNODE));
+	request->container = rad_malloc(sizeof(REQNODE));
 	((REQNODE *)request->container)->req = request;
 
 	((REQNODE *)request->container)->prev = NULL;
