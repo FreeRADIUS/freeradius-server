@@ -18,7 +18,7 @@
 #		ascend_snmp      1.1    Author: blaz@amis.net
 #		computone_finger 1.2	Author: pacman-radius@cqc.com
 #		sub tc_tccheck	 1.1	Author: alexisv@compass.com.ph
-#		cyclades_telnet	 1.1	Author: accdias@sst.com.br
+#		cyclades_telnet	 1.2	Author: accdias@sst.com.br
 #		patton_snmp	 1.0	Author: accdias@sst.com.br
 #		digitro_rusers	 1.1	Author: accdias@sst.com.br
 #		cyclades_snmp	 1.0	Author: accdias@sst.com.br
@@ -573,113 +573,123 @@ sub tc_tccheck {
 #
 #	Check a Cyclades PathRAS via telnet
 #
-#	Version: 1.1
+#	Version: 1.2
 #
 #	Author: Antonio Dias of SST Internet <accdias@sst.com.br>
 #
 sub cyclades_telnet {
-   #
-   #	Localize all variables first.
-   #
-   my (@users, $pathras, $port, $errmsg, $user, $login, $password);
-   #
-   #	Do we have Net::Telnet installed?
-   #
-   return 2 unless (check_net_telnet());
-   #
-   #	Get login name and password for NAS from $naspass file.
-   #
-   ($login, $password) = naspasswd($ARGV[1], 1);
-   #
-   #	NAS doesn't have a password defined
-   #
-   return 2 if ($password eq "");
-   #
-   #	Communicate with PathRAS using Net::Telnet, then access
-   #	menu option 6.8 to see who are logged in. This assumes 
-   #	you are using the default Prompt String (menu option 6.2)
-   #	and is based on PathRAS firmware version 1.1.9g
-   # 
-   #
-   $pathras = new Net::Telnet (
-   	Timeout => 10, 
-   	Prompt => '/(.*)\s:*$/', 
-   	Errmode => 'return'
-   );
-   #
-   #
-   #
-   if (!$pathras->open($ARGV[1])) {;
-      print LOG "  Error: " . $pathras->errmsg . "\n" if ($debug);
-      $pathras->close;
-      return 2;
-   }
-   #
-   #	Dunno why but PathRAS only issue its banner and 
-   #	the login prompt after receive a "CR" 
-   #
-   if (!$pathras->print("")) {
-      print LOG "  Error: " . $pathras->errmsg . "\n" if ($debug);
-      $pathras->close;
-      return 2;
+	#
+	#	Localize all variables first.
+	#
+	my ($pr, $pr_login, $pr_passwd, $pr_prompt, $endlist, @list, $port, $user);
+	#
+	#	This variable must match PathRAS' command prompt 
+	#	string as entered in menu option 6.2.
+	#	The value below matches the default command prompt.
+	#
+	$pr_prompt = '/Select option ==\>$/i';
 
-   }
-   #
-   #	Log on PathRAS
-   #
-   if (!($pathras->login($login, $password))) {
-      print LOG "  Error: " . $pathras->errmsg . "\n" if ($debug);
-      $pathras->close;
-      return 2;
-   }
-   #
-   #  Access menu option 6 "PathRAS Management"
-   #
-   if (!($pathras->cmd(String => '6', 
-   	Prompt => '/ ==\> $/', 
-   	Timeout => 10))) {
-      print LOG "  Error: " . $pathras->errmsg . "\n" if ($debug);
-      $pathras->close;
-      return 2;
-   }
-   #
-   #  Access menu option 8 "Show Active Ports"
-   #
-   if (!(@users = $pathras->cmd(String => '8', 
-   	Prompt => '/Type \<enter\>/', 
-   	Timeout => 10))) {
-      print LOG "  Error: " . $pathras->errmsg . "\n" if ($debug);
-      $pathras->close;
-      return 2;
-   }
-   #
-   # Since we got the info we want, let's close the session
-   #
-   $pathras->close;
-   #
-   #	Telnet closed.  We got the info so let's examine it.
-   #
-   foreach(@users) {
-      if (m/PPP Active|SLIP Active/) {
-         ($port, $user) = split;
-         #
-         # Strip out any prefixes and suffixes 
-         # from the username
-         #
-         $user = strip_username($user);
-         #
-         # Check if $user is already connected
-         #
-         if ($user eq $ARGV[3]) {
-            print LOG "  User $ARGV[3] found on " . 
-               "NAS $ARGV[1] port $port.\n" if ($debug);
-            return 1;
-         }
-      }
-   }
-   print LOG "  User $ARGV[3] not found on " .
-   	"NAS $ARGV[1].\n" if ($debug);
-   0;
+	#
+	#	This variable match the end of userslist.
+	#
+	$endlist = '/Type \<enter\>/i';
+
+	#
+	#	Do we have Net::Telnet installed?
+	#
+	return 2 unless (check_net_telnet());
+
+	#
+	#	Get login name and password for NAS 
+	#	from $naspass file.
+	#
+	($pr_login, $pr_passwd) = naspasswd($ARGV[1], 1);
+
+	#
+	#	Communicate with PathRAS using Net::Telnet, then access
+	#	menu option 6.8 to see who are logged in.
+	#	Based on PathRAS firmware version 1.2.3
+	#
+	$pr = new Net::Telnet (
+		Timeout		=> 10,
+		Host		=> $ARGV[1],
+		ErrMode		=> 'return'
+	) || return 2;
+
+	#
+	#	Force PathRAS shows its banner.
+	#
+	$pr->break();
+
+	#
+	#	Log on PathRAS
+	#
+	if ($pr->waitfor(Match => '/login : $/i') == 1) {
+		$pr->print($pr_login);
+	} else { 
+		print LOG " Error: sending login name to PathRAS\n" if ($debug);
+		$pr->close;
+		return 2;	
+	}
+
+	if ($pr->waitfor(Match => '/password : $/i') == 1) {
+		$pr->print($pr_passwd);
+	} else { 
+		print LOG " Error: sending password to PathRAS.\n" if ($debug);
+		$pr->close;
+		return 2;	
+	}
+
+	$pr->print();
+
+	#
+	#	Access menu option 6 "PathRAS Management"
+	#
+	if ($pr->waitfor(Match => $pr_prompt) == 1) {
+		$pr->print('6');
+	} else { 
+		print LOG "  Error: acessing menu option '6'.\n" if ($debug);
+		$pr->close;
+		return 2;
+	}
+	#
+	#	Access menu option 8 "Show Active Ports"
+	#
+	if ($pr->waitfor(Match => $pr_prompt) == 1) {
+		@list = $pr->cmd(String => '8', Prompt => $endlist);
+	} else { 
+		print LOG "  Error: acessing menu option '8'.\n" if ($debug);
+		$pr->close;
+		return 2;
+	}
+	#
+	#	Since we got the info we want, let's close 
+	#	the telnet session
+	#
+	$pr->close;
+
+	#
+	#	Lets examine the userlist stored in @list
+	#
+	foreach(@list) {
+		#
+		#	We are interested in active sessions only
+		#
+		if (/Active/i) {
+			($port, $user) = split;
+			#
+			#	Strip out any prefix, suffix and
+			#	realm from $user check to see if
+			#	$ARGV[3] matches.
+			#
+			if($ARGV[3] eq strip_username($user)) {
+				print LOG "  User '$ARGV[3]' found on '$ARGV[1]:$port'.\n" if ($debug);
+				return 1;
+			}
+		}
+	}
+	print LOG "  User '$ARGV[3]' not found on '$ARGV[1]'.\n" if ($debug);
+   	0;
 }
 
 #
