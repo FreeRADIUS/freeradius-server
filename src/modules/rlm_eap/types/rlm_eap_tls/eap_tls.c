@@ -235,7 +235,7 @@ int eaptls_send_ack(EAP_DS *eap_ds)
 
 	reply.code = EAPTLS_ACK;
 	reply.id = eap_ds->response->id + 1;
-	reply.length = TLS_HEADER_LEN;
+	reply.length = TLS_HEADER_LEN + 1/*flags*/;
 	reply.flags = 0x00;
 	reply.data = NULL;
 	reply.dlen = 0;
@@ -259,8 +259,8 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 
 	if ((eap_ds == NULL) 					|| 
 		(eap_ds->response == NULL)			|| 
-        	(eap_ds->response->code != PW_EAP_RESPONSE)	||
-		(eap_ds->response->length < EAP_HEADER_LEN)	||
+		(eap_ds->response->code != PW_EAP_RESPONSE)	||
+		(eap_ds->response->length <= EAP_HEADER_LEN + 1)	||
 		(eap_ds->response->type.type != PW_EAP_TLS)) {
 
 		radlog(L_ERR, "rlm_eap_tls: corrupted data");
@@ -276,8 +276,8 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 	 * 1. Find if this is a reply to the previous request sent
 	 * 2. If typedata[0] == NULL && length == EAP_HEADER_LEN && ALLTLSFLAGS == 0
 	 */
-	if ((eap_ds->response->length == EAP_HEADER_LEN + 1/*EAPtype*/) && 
-		((eaptls_packet == NULL) || /*not required*/(eaptls_packet->flags == 0x00))) {
+	if ((eap_ds->response->length == EAP_HEADER_LEN + 2/*EAPtype+flags*/) && 
+		((eaptls_packet != NULL) && (eaptls_packet->flags == 0x00))) {
 
 		if (prev_eap_ds->request->id == eap_ds->response->id) {
 			radlog(L_INFO, "rlm_eap_tls:  Received EAP-TLS ACK message");
@@ -306,10 +306,10 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 */
 	if (TLS_LENGTH_INCLUDED(eaptls_packet->flags)) {
 		if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-			/* 
-			 * FIRST_FRAGMENT is identified 
+			/*
+			 * FIRST_FRAGMENT is identified
 			 * 1. If there is no previous EAP-response received.
-			 * 2. If EAP-response received, then its M bit not set. 
+			 * 2. If EAP-response received, then its M bit not set.
 			 * 	(It is because Last fragment will not have M bit set)
 			 */
 			if ((prev_eap_ds->response == NULL) ||
