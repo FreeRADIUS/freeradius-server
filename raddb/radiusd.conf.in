@@ -1170,7 +1170,7 @@ modules {
 	#  This module logs response packets from a home server.
 	#
 	#  You will also need to un-comment the 'post_proxy_log' line
-	#  in the 'post-post' section, below.
+	#  in the 'post-proxy' section, below.
 	#
 	# detail post_proxy_log {
 		# detailfile = ${radacctdir}/%{Client-IP-Address}/post-proxy-detail-%Y%m%d
