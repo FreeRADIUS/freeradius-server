@@ -152,7 +152,7 @@ int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	OCIParam	*param;
 	OCIDefine	*define;
 	ub2		dtype;
-	ub4		dsize;
+	ub2		dsize;
 	char		**rowdata=NULL;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
