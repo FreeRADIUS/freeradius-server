@@ -74,10 +74,7 @@ void rl_delete(REQUEST *request)
  */
 void rl_add(REQUEST *request)
 {
-	int id;
-	REQUEST *curreq;
-
-	id = request->packet->id;
+	int id = request->packet->id;
 
 	request->prev = NULL;
 	request->next = NULL;
