@@ -235,11 +235,4 @@ void 		session_free(void *ssn);
 void 		session_close(tls_session_t *ssn);
 void 		session_init(tls_session_t *ssn);
 
-/* record */
-void 		record_init(record_t *buf);
-void 		record_close(record_t *buf);
-unsigned int 	record_plus(record_t *buf, const unsigned char *ptr,
-			    unsigned int size);
-unsigned int 	record_minus(record_t *buf, unsigned char *ptr,
-			     unsigned int size);
 #endif /*_EAP_TLS_H*/

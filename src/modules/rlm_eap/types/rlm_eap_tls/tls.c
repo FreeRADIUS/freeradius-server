@@ -22,6 +22,14 @@
  */
 #include "eap_tls.h"
 
+/* record */
+static void 		record_init(record_t *buf);
+static void 		record_close(record_t *buf);
+static unsigned int 	record_plus(record_t *buf, const unsigned char *ptr,
+				    unsigned int size);
+static unsigned int 	record_minus(record_t *buf, unsigned char *ptr,
+				     unsigned int size);
+
 tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 {
 	tls_session_t *state = NULL;
@@ -244,6 +252,7 @@ int tls_handshake_send(tls_session_t *ssn)
 		}
 	}
 
+	record_init(&ssn->clean_in);
 	return 1;
 }
 
@@ -306,12 +315,12 @@ void session_free(void *ssn)
 	free(sess);
 }
 
-void record_init(record_t *rec)
+static void record_init(record_t *rec)
 {
 	rec->used = 0;
 }
 
-void record_close(record_t *rec)
+static void record_close(record_t *rec)
 {
 	rec->used = 0;
 }
@@ -321,8 +330,8 @@ void record_close(record_t *rec)
  *	Copy data to the intermediate buffer, before we send
  *	it somewhere.
  */
-unsigned int record_plus(record_t *rec, const unsigned char *ptr,
-			 unsigned int size)
+static unsigned int record_plus(record_t *rec, const unsigned char *ptr,
+				unsigned int size)
 {
 	unsigned int added = MAX_RECORD_SIZE - rec->used;
 
@@ -338,8 +347,8 @@ unsigned int record_plus(record_t *rec, const unsigned char *ptr,
 /*
  *	Take data from the buffer, and give it to the caller.
  */
-unsigned int record_minus(record_t *rec, unsigned char *ptr,
-			  unsigned int size)
+static unsigned int record_minus(record_t *rec, unsigned char *ptr,
+				 unsigned int size)
 {
 	unsigned int taken = rec->used;
 

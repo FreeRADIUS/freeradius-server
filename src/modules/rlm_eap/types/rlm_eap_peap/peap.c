@@ -51,7 +51,6 @@ static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	FIXME: Check the return code.
 	 */
 	tls_handshake_send(tls_session);
-	(tls_session->record_init)(&tls_session->clean_in);
 	
 	return 1;
 }
@@ -86,7 +85,6 @@ static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	FIXME: Check the return code.
 	 */
 	tls_handshake_send(tls_session);
-	(tls_session->record_init)(&tls_session->clean_in);
 
 	return 1;
 }
@@ -222,7 +220,6 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	(tls_session->record_plus)(&tls_session->clean_in, vp->strvalue, vp->length);
 #endif
 	tls_handshake_send(tls_session);
-	(tls_session->record_init)(&tls_session->clean_in);
 
 	return 1;
 }
