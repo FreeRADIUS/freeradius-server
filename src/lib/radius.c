@@ -998,10 +998,21 @@ RADIUS_PACKET *rad_recv(int fd)
 			break;
 			
 		case PW_VENDOR_SPECIFIC:
-			if (attr[1] < 6) {
+			if (attr[1] <= 6) {
 				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has invalid length %d",
 					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 					   attr[1] - 2);
+				free(packet);
+				return NULL;
+			}
+
+			/*
+			 *	Don't allow VSA's with vendor zero.
+			 */
+			if ((attr[2] == 0) && (attr[3] == 0) &&
+			    (attr[4] == 0) && (attr[5] == 0)) {
+				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has vendor ID of zero",
+					   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 				free(packet);
 				return NULL;
 			}
@@ -1237,7 +1248,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	vendorcode = 0;
 	vendorlen  = 0;
 
-	while(length > 0) {
+	while (length > 0) {
 		if (vendorlen > 0) {
 			attribute = *ptr++ | (vendorcode << 16);
 			attrlen   = *ptr++;
@@ -1254,35 +1265,43 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *
 		 */
 		if ((vendorlen <= 0) &&
-		    (attribute == PW_VENDOR_SPECIFIC) && 
-		    (attrlen > 6)) {
+		    (attribute == PW_VENDOR_SPECIFIC)) {
+			/*
+			 *	attrlen was checked to be >= 6, in rad_recv
+			 */
+
 			memcpy(&lvalue, ptr, 4);
 			vendorcode = ntohl(lvalue);
-			if (vendorcode != 0) {
 
-				if (vendorcode == VENDORPEC_USR) {
-					ptr += 4;
-					memcpy(&lvalue, ptr, 4);
-					/*printf("received USR %04x\n", ntohl(lvalue));*/
-					attribute = (ntohl(lvalue) & 0xFFFF) |
-							(vendorcode << 16);
-					ptr += 4;
-					attrlen -= 8;
-					length -= 8;
-
-				} else {
-					ptr += 4;
-					vendorlen = attrlen - 4;
-					attribute = *ptr++ | (vendorcode << 16);
-					attrlen   = *ptr++;
-					attrlen -= 2;
-					length -= 6;
-				}
-			}
 			/*
-			 *  Else the vendor wasn't found...
+			 *	vendorcode was checked to be non-zero
+			 *	above, in rad_recv.
 			 */
-		}
+			
+			/*
+			 *	FIXME: Key off of the information
+			 *	in the dictionaries, not the
+			 *	hard-coded vendor!
+			 */
+			if (vendorcode == VENDORPEC_USR) {
+				ptr += 4;
+				memcpy(&lvalue, ptr, 4);
+				/*printf("received USR %04x\n", ntohl(lvalue));*/
+				attribute = (ntohl(lvalue) & 0xFFFF) |
+					(vendorcode << 16);
+				ptr += 4;
+				attrlen -= 8;
+				length -= 8;
+				
+			} else {
+				ptr += 4;
+				vendorlen = attrlen - 4;
+				attribute = *ptr++ | (vendorcode << 16);
+				attrlen   = *ptr++;
+				attrlen -= 2;
+				length -= 6;
+			}
+		} /* else it wasn't a VSA */
 
 		/*
 		 *	FIXME: should we us paircreate() ?
