@@ -41,51 +41,7 @@
 
 #include "rad_assert.h"
 
-#define PW_EAP_REQUEST		1
-#define PW_EAP_RESPONSE		2
-#define PW_EAP_SUCCESS		3
-#define PW_EAP_FAILURE		4
-#define PW_EAP_MAX_CODES	4
-
-#define PW_EAP_IDENTITY		1
-#define PW_EAP_NOTIFICATION	2
-#define PW_EAP_NAK		3
-#define PW_EAP_MD5		4
-#define PW_EAP_OTP		5
-#define PW_EAP_GTC		6
-#define PW_EAP_TLS		13
-#define PW_EAP_LEAP		17
-#define PW_EAP_TTLS		21
-#define PW_EAP_PEAP		25
-#define PW_EAP_MSCHAPV2		26
-#define PW_EAP_CISCO_MSCHAPV2	29
-#define PW_EAP_MAX_TYPES	29
-
-#define EAP_HEADER_LEN 		4
-
-/*
- * EAP-Type specific data.
- */
-typedef struct eaptype_t {
-	unsigned char	type;
-	unsigned int	length;
-	unsigned char	*data;
-} eaptype_t;
-
-/*
- * Structure to hold EAP data.
- *
- * length = code + id + length + type + type.data
- *        =  1   +  1 +   2    +  1   +  X
- */
-typedef struct eap_packet {
-	unsigned char	code;
-	unsigned char	id;
-	unsigned int	length;
-	eaptype_t	type;
-
-	unsigned char   *packet;
-} EAP_PACKET;
+#include "eap_types.h"
 
 /*
  * EAP_DS contains all the received/sending information
