@@ -6,8 +6,9 @@ freeradius (0.9.1~pre0-0) unstable; urgency=low
     new libtool 1.5 package.
   * Merged multiple sed calls into a single sed call in debian/rules
   * Installed SQL database examples into /usr/share/doc/freeradius/examples
+  * Modify initscript to only -HUP the parent process
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 26 Aug 2003 03:59:10 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 28 Aug 2003 10:43:59 +1000
 
 freeradius (0.9.0-1) unstable; urgency=low
 
