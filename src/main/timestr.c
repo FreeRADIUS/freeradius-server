@@ -249,8 +249,9 @@ int timestr_match(char *tmstr, time_t t)
 			break;
 	}
 
-	if (tot != 0) 
+	if (tot == 0) 
 		return -1;
+
 	return (i == now) ? 0 : tot;
 }
 
