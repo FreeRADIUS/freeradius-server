@@ -7,3 +7,16 @@
 #  For further information, this web page seems to be good:
 #
 # http://www.frontios.com/freeradius.html
+#
+#
+#  More information about tips for configuring MySQL can be found at:
+#
+# http://www.mysql.com/doc/S/e/Server_parameters.html
+#
+# http://www.mysql.com/doc/S/E/SEC456.html
+#
+# http://www.mysql.com/doc/E/X/EXPLAIN.html <-(useful)
+#
+# http://www.mysql.com/doc/T/i/Tips.html
+#
+# http://www.mysql.com/doc/M/e/Memory_use.html
