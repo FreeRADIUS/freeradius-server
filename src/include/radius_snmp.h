@@ -9,10 +9,12 @@
 #include	<asn1.h>
 #include	<snmp.h>
 #include	<snmp_impl.h>
-#elifdef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
+#else
+#ifdef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
 #include	<ucd-snmp/asn1.h>
 #include	<ucd-snmp/snmp.h>
 #include	<ucd-snmp/snmp_impl.h>
+#endif
 #endif
 
 #include        "smux.h"
