@@ -1483,10 +1483,15 @@ $INCLUDE ${confdir}/eap.conf
 	#  attribute in the user profiles and use different pools
 	#  for different users. The Pool-Name attribute is a *check* item not
 	#  a reply item.
+	#  The Pool-Name should be set to the ippool module instance name or to
+	#  DEFAULT to much any module.
 	#
 	# Example:
 	# radiusd.conf: ippool students { [...] }
+	#		ippool teachers { [...] }
 	# users file  : DEFAULT Group == students, Pool-Name := "students"
+	#		DEFAULT Group == teachers, Pool-Name := "teachers"
+	#		DEFAULT	Group == other, Pool-Name := "DEFAULT"
 	#
 	# ********* IF YOU CHANGE THE RANGE PARAMETERS YOU MUST *********
 	# ********* THEN ERASE THE DB FILES                     *********
