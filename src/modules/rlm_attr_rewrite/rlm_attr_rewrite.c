@@ -210,6 +210,16 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			case RLM_REGEX_INREPLY:
 				pairadd(&request->reply->vps,attr_vp);
 				break;
+			case RLM_REGEX_INPROXY:
+				if (!request->proxy)
+					return RLM_MODULE_NOOP;
+				pairadd(&request->proxy->vps, attr_vp);
+				break;
+			case RLM_REGEX_INPROXYREPLY:
+				if (!request->proxy_reply)
+					return RLM_MODULE_NOOP;
+				pairadd(&request->proxy_reply->vps, attr_vp);
+				break;
 			default:
 				radlog(L_ERR, "rlm_attr_rewrite: Illegal value for searchin. Changing to packet.");
 				data->searchin = RLM_REGEX_INPACKET;
