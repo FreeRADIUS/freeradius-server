@@ -55,6 +55,8 @@
 
 #include "rlm_eap.h"
 
+static const char rcsid[] = "$Id$";
+
 static const char *eap_types[] = {
   "",   
   "identity",
@@ -166,6 +168,8 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 {
 	DEBUG2("  rlm_eap: processing type %s", atype->typename);
 
+	rad_assert(atype != NULL);
+
 	switch (handler->stage) {
 	case INITIATE:
 		if (!atype->type->initiate(atype->type_data, handler))
@@ -214,28 +218,36 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 */
 	if ((eaptype->type == 0) ||
 	    (eaptype->type > PW_EAP_MAX_TYPES)) {
+		DEBUG2(" rlm_eap: Asked to select bad type");
 		return EAP_INVALID;
 	}
 
 	switch(eaptype->type) {
 	case PW_EAP_IDENTITY:
 		DEBUG2("  rlm_eap: EAP Identity");
-	do_default_type:
-		handler->stage = INITIATE;
-		if (eaptype_call(inst->types[inst->default_eap_id],
-				 handler) == 0)
-			return EAP_INVALID;
-			break;
 
-	case PW_EAP_NAK:
-		DEBUG2("  rlm_eap: EAP NAK");
 		/*
-		 * It is invalid to request identity, notification & nak in nak
+		 *	We haven't configured it, it doesn't exist.
 		 */
-		if ((eaptype->data != NULL) &&
-		    (eaptype->data[0] < PW_EAP_MD5)) {
+		if (!inst->types[inst->default_eap_id]) {
+			DEBUG2(" rlm_eap: Default type is unavailable");
 			return EAP_INVALID;
 		}
+
+		handler->stage = INITIATE;
+		if (eaptype_call(inst->types[inst->default_eap_id],
+				 handler) == 0) {
+			DEBUG2(" rlm_eap: Default handler failed in initiate");
+			return EAP_INVALID;
+		}
+		break;
+
+	case PW_EAP_NAK:
+		/*
+		 *	The one byte of NAK data is the preferred EAP type
+		 *	of the client.
+		 */
+		DEBUG2("  rlm_eap: EAP NAK");
 
 		/*
 		 *	Delete old data, if necessary.
@@ -248,52 +260,74 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		handler->stage = INITIATE;
 
 		/*
-		 *	The one byte of NAK data is the preferred EAP type
-		 *	of the client.
+		 *	It is invalid to request identity,
+		 *	notification & nak in nak
 		 */
-		switch (eaptype->data[0]) {
-		case PW_EAP_MD5:
-		case PW_EAP_TLS:
-		case PW_EAP_LEAP:
-			DEBUG2("  rlm_eap: EAP_TYPE - %s",
-				eap_types[eaptype->data[0]]);
+		if ((eaptype->data == NULL) ||
+		    (eaptype->data[0] < PW_EAP_MD5)) {
+			DEBUG2(" rlm_eap: NAK asked for bad type");
+			return EAP_INVALID;
+		}
 
-			/*
-			 *	Call the type.
-			 */
-			if (eaptype_call(inst->types[eaptype->data[0]],
-					 handler) == 0)
-				return EAP_INVALID;
-		  
-			break;
-		default :
-			DEBUG2("  rlm_eap: Unknown EAP type %d, reverting to default_eap_type %s",
-			       eaptype->data[0], inst->default_eap_type);
+		/*
+		 *	The NAK is for a type we *really* don't
+		 *	understand.  Die.
+		 */
+		if (eaptype->data[0] > PW_EAP_MAX_TYPES) {
+			DEBUG2(" rlm_eap: NAK asked for invalid type %d",
+			       eaptype->data[0]);
+			return EAP_INVALID;
+		}
 
-			/*
-			 * Unsupported type, default to configured one.
-			 * or rather reject it
-			 */
-			/* handler->eap_ds->request->code = PW_EAP_FAILURE; */
-			goto do_default_type;
-			break;
+		/*
+		 *	We haven't configured it, it doesn't exit.
+		 */
+		if (!inst->types[eaptype->data[0]]) {
+			DEBUG2(" rlm_eap: NAK asked for unknown type %d",
+			       eaptype->data[0]);
+			return EAP_INVALID;
+		}
+		
+		DEBUG2("  rlm_eap: EAP_TYPE - %s",
+		       eap_types[eaptype->data[0]]);
+
+		/*
+		 *	Call the type, if we have it.  If not,
+		 *	die.
+		 */
+		if (eaptype_call(inst->types[eaptype->data[0]],
+				 handler) == 0) {
+			DEBUG2(" rlm_eap: NAK handler failed in initiate");
+			return EAP_INVALID;
 		}
 		break;
-		case PW_EAP_MD5:
-		case PW_EAP_OTP:
-		case PW_EAP_GTC:
-		case PW_EAP_TLS:
-		case PW_EAP_LEAP:
+
+		/*
+		 *	Key off of the configured sub-modules.
+		 */
 		default:
 			DEBUG2("  rlm_eap: EAP_TYPE - %s",
-				eap_types[eaptype->type]);
-
+			       eap_types[eaptype->type]);
+			
+			/*
+			 *	We haven't configured it, it doesn't exit.
+			 */
+			if (!inst->types[eaptype->type]) {
+				DEBUG2(" rlm_eap: EAP type %d is unsupported",
+				       eaptype->type);
+				return EAP_INVALID;
+			}
+			
 			rad_assert(handler->stage == AUTHENTICATE);
 			if (eaptype_call(inst->types[eaptype->type],
-					 handler) == 0)
+					 handler) == 0) {
+				DEBUG2(" rlm_eap: Handler failed in EAP type %d",
+				       eaptype->type);
 				return EAP_INVALID;
+			}
 		break;
 	}
+
 	return EAP_OK;
 }
 
