@@ -48,6 +48,7 @@ static const char rcsid[] = "$Id$";
 #include	<unistd.h>
 #include	<pthread.h>
 
+#include        "libradius.h"
 #include	"radiusd.h"
 #include	"conffile.h"
 #include	"modules.h"
@@ -122,7 +123,6 @@ static CONF_PARSER module_config[] = {
 #define LDAP_VALID_SESSION      0x2
 #define LDAP_VALID(ld)  ( (ld)->ld_valid == LDAP_VALID_SESSION )
 
-static char    *make_filter(char *, char *);
 #ifdef FIELDCPY
 static void     fieldcpy(char *, char **);
 #endif
@@ -266,9 +266,8 @@ read_mappings(ldap_instance* inst)
 static int 
 perform_search(void *instance, char *search_basedn, int scope, char *filter, char **attrs, LDAPMessage ** result)
 {
-	int             msgid;
 	int             res = RLM_MODULE_OK;
-	int             rc;
+	int		ldap_errno = 0;
 	ldap_instance  *inst = instance;
 
 	if (!inst->bound) {
@@ -284,32 +283,17 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 		inst->bound = 1;
 	}
 	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn, filter);
-	msgid = ldap_search(inst->ld, search_basedn, scope, filter, attrs, 0);
-	if (msgid == -1) {
-		radlog(L_ERR, "rlm_ldap: ldap_search() failed\n");
-		inst->bound = 0;
-		return (RLM_MODULE_FAIL);
-	}
-	rc = ldap_result(inst->ld, msgid, 1, timeout, result);
-
-	if (rc < 1) {
-		ldap_perror(inst->ld, "rlm_ldap: ldap_result()");
-		radlog(L_ERR, "rlm_ldap: ldap_result() failed - %s\n", strerror(errno));
-		ldap_msgfree(*result);
-		inst->bound = 0;
-		return (RLM_MODULE_FAIL);
-	}
-	switch (ldap_result2error(inst->ld, *result, 0)) {
+	switch (ldap_search_st(inst->ld, search_basedn, scope, filter, attrs, 0, timeout, result)) {
 	case LDAP_SUCCESS:
 		break;
 
-	case LDAP_TIMELIMIT_EXCEEDED:
-		radlog(L_ERR, "rlm_ldap: Warning timelimit exceeded, using partial results\n");
-		break;
-
 	default:
-		DEBUG("rlm_ldap: ldap_search() failed");
-		ldap_msgfree(*result);
+		ldap_get_option(inst->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s", ldap_err2string(ldap_errno));
+/*
+		if(*result != NULL)
+			ldap_msgfree(*result);
+*/
 		inst->bound = 0;
 		return (RLM_MODULE_FAIL);
 	}
@@ -333,8 +317,10 @@ ldap_authorize(void *instance, REQUEST * request)
 {
 	LDAPMessage    *result, *msg, *gr_result;
 	ldap_instance  *inst = instance;
-	char           *filter, *name, *user_dn;
+	char           *user_dn;
 	char           *attrs[] = {"*", NULL};
+	static char	filter[MAX_AUTH_QUERY_LEN];
+	static char 	*filt_patt = "(| (& (objectClass=GroupOfNames) (member=%{Ldap-UserDn})) (& (objectClass=GroupOfUniqueNames) (uniquemember=%{Ldap-UserDn})))"; 
 	VALUE_PAIR     *check_tmp;
 	VALUE_PAIR     *reply_tmp;
 	int             res;
@@ -350,18 +336,20 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	check_pairs = &request->config_items;
 	reply_pairs = &request->reply->vps;
-	name = request->username->strvalue;
 
 	/*
 	 * Check for valid input, zero length names not permitted
 	 */
-	if (name[0] == 0) {
+	if (request->username->strvalue == 0) {
 		radlog(L_ERR, "rlm_ldap: zero length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
-	DEBUG("rlm_ldap: performing user authorization for %s", name);
+	DEBUG("rlm_ldap: performing user authorization for %s",
+	       request->username->strvalue);
 
-	filter = make_filter(inst->filter, name);
+	if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->filter,
+			request, NULL)) 
+		radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
 
 	if ((res = perform_search(instance, inst->basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
 		DEBUG("rlm_ldap: search failed");
@@ -377,10 +365,15 @@ ldap_authorize(void *instance, REQUEST * request)
 		ldap_msgfree(result);
 		return RLM_MODULE_FAIL;
 	}
+	/*
+	 * Adding new attribute containing DN for LDAP object associated with
+	 * given username
+	 */
+	pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
 	/* Remote access is controled by attribute of the user object */
 	if (inst->access_attr) {
 		if ((vals = ldap_get_values(inst->ld, msg, inst->access_attr)) != NULL) {
-			DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", name, inst->access_attr);
+			DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", request->username->strvalue, inst->access_attr);
 			if (!strncmp(vals[0], "FALSE", 5)) {
 				DEBUG("rlm_ldap: dialup access disabled");
 				ldap_msgfree(result);
@@ -400,7 +393,10 @@ ldap_authorize(void *instance, REQUEST * request)
 		 * since we have objectclass groupOfNames and
 		 * groupOfUniqueNames
 		 */
-		filter = make_filter("(| (& (objectClass=GroupOfNames) (member=%u)) (& (objectClass=GroupOfUniqueNames) (uniquemember=%u)))", user_dn);
+		if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, filt_patt,
+			        request, NULL)) 
+			radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
+ 
 		res = perform_search(instance, inst->access_group, LDAP_SCOPE_BASE, filter, NULL, &gr_result);
 		ldap_msgfree(gr_result);
 
@@ -424,18 +420,14 @@ ldap_authorize(void *instance, REQUEST * request)
 	if (pairfind(*check_pairs, PW_AUTHTYPE) == NULL)
 		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_CMP_EQ));
 
-	/*
-	 * Adding new attribute containing DN for LDAP object associated with
-	 * given username
-	 */
-	pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
 
 	if ((reply_tmp = ldap_pairget(inst->ld, msg, inst->reply_item_map)) != NULL)
 		pairadd(reply_pairs, reply_tmp);
 
-	DEBUG("rlm_ldap: user %s authorized to use remote access", name);
+	DEBUG("rlm_ldap: user %s authorized to use remote access",
+	      request->username->strvalue);
 	ldap_msgfree(result);
 	return RLM_MODULE_OK;
 }
@@ -453,7 +445,8 @@ ldap_authenticate(void *instance, REQUEST * request)
 	LDAP           *ld_user;
 	LDAPMessage    *result, *msg;
 	ldap_instance  *inst = instance;
-	char           *filter, *passwd, *user_dn, *name, *attrs[] = {"uid", NULL};
+	char           *user_dn, *attrs[] = {"uid", NULL};
+	static char	filter[MAX_AUTH_QUERY_LEN];
 	int             res;
 	VALUE_PAIR     *vp_user_dn;
 
@@ -478,19 +471,18 @@ ldap_authenticate(void *instance, REQUEST * request)
 		return RLM_MODULE_INVALID;
 	}
 
-	name = request->username->strvalue;
-	passwd = request->password->strvalue;
-
-	if (strlen(passwd) == 0) {
+	if (request->password->strvalue == 0) {
 		radlog(L_ERR, "rlm_ldap: empty password supplied");
 		return RLM_MODULE_INVALID;
 	}
-	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"", name, passwd);
-	filter = make_filter(inst->filter, name);
+	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"", 
+	       request->username->strvalue, request->password->strvalue);
+	if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->filter,
+			request, NULL)) 
+		radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
 
 	if ((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL) {
 		if ((res = perform_search(instance, inst->basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
-			DEBUG("rlm_ldap: search did not return ok value");
 			return (res);
 		}
 		if ((msg = ldap_first_entry(inst->ld, result)) == NULL) {
@@ -510,12 +502,14 @@ ldap_authenticate(void *instance, REQUEST * request)
 
 	DEBUG("rlm_ldap: user DN: %s", user_dn);
 
-	ld_user = ldap_connect(instance, user_dn, passwd, 1, &res);
+	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
+			       1, &res);
 
 	if (ld_user == NULL)
 		return (res);
 
-	DEBUG("rlm_ldap: user %s authenticated succesfully", name);
+	DEBUG("rlm_ldap: user %s authenticated succesfully",
+	      request->username->strvalue);
 	ldap_unbind_s(ld_user);
 	return RLM_MODULE_OK;
 }
@@ -526,6 +520,7 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	ldap_instance  *inst = instance;
 	LDAP           *ld;
 	int             msgid, rc;
+	int		ldap_errno = 0;
 	LDAPMessage    *res;
 
 	DEBUG("rlm_ldap: (re)connect to %s:%d, authentication %d", inst->server, inst->port, auth);
@@ -549,42 +544,51 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	}
 #endif
 
-	DEBUG("rlm_ldap: connect as %s/%s", dn, password);
+	DEBUG("rlm_ldap: bind as %s/%s", dn, password);
 	msgid = ldap_bind(ld, dn, password, LDAP_AUTH_SIMPLE);
 	if (msgid == -1) {
-		ldap_perror(ld, "rlm_ldap: ldap_connect()");
+		DEBUG("rlm_ldap: ldap_bind()");
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "rlm_ldap: %s bind failed: %s", dn, ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
 		return (NULL);
 	}
-	DEBUG("rlm_ldap: ldap_connect() waiting for bind result ...");
+	DEBUG("rlm_ldap: waiting for bind result ...");
 
 	if (inst->timeout.tv_sec < 0)
 		rc = ldap_result(ld, msgid, 1, NULL, &res);
 	else
 		rc = ldap_result(ld, msgid, 1, &(inst->timeout), &res);
 
-	if (rc < 1) {
-		ldap_perror(ld, "rlm_ldap: ldap_result()");
+	ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+	if(rc < 1) {
+		DEBUG("rlm_ldap: ldap_result()");
+		radlog(L_ERR, "rlm_ldap: %s bind failed: %s", dn, (rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
 		return (NULL);
 	}
-	DEBUG("rlm_ldap: ldap_connect() bind finished");
-	switch (ldap_result2error(ld, res, 1)) {
+	ldap_errno = ldap_result2error(ld, res, 1);
+	switch (ldap_errno) {
 	case LDAP_SUCCESS:
 		*result = RLM_MODULE_OK;
 		break;
 
 	case LDAP_INVALID_CREDENTIALS:
-		if (auth) {
+		if (auth) 
 			*result = RLM_MODULE_REJECT;
-			break;
-		}
+		else {
+			radlog(L_ERR, "rlm_ldap: LDAP login failed: check login, password settings in ldap section of radiusd.conf");
+			*result = RLM_MODULE_FAIL;
+		}		
+		break;
+		
 	default:
-		DEBUG("rlm_ldap: LDAP FAILURE");
+		radlog(L_ERR,"rlm_ldap: %s bind failed %s", dn, ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 	}
+
 	if (*result != RLM_MODULE_OK) {
 		ldap_unbind_s(ld);
 		ld = NULL;
@@ -643,67 +647,6 @@ ldap_detach(void *instance)
 	free(inst);
 
 	return 0;
-}
-
-/*****************************************************************************
- *	Replace %<whatever> in a string.
- *
- *	%u   User name
- *
- *****************************************************************************/
-static char    *
-make_filter(char *str, char *name)
-{
-	static char     buf[MAX_AUTH_QUERY_LEN];
-	int             i = 0, c;
-	char           *p;
-
-	for (p = str; *p; p++) {
-		c = *p;
-		if (c != '%' && c != '\\') {
-			buf[i++] = *p;
-			continue;
-		}
-		if (*++p == 0)
-			break;
-		if (c == '%')
-			switch (*p) {
-			case '%':
-				buf[i++] = *p;
-				break;
-			case 'u':	/* User name */
-				if (name != NULL)
-					strcpy(buf + i, name);
-				else
-					strcpy(buf + i, " ");
-				i += strlen(buf + i);
-				break;
-			default:
-				buf[i++] = '%';
-				buf[i++] = *p;
-				break;
-			}
-		if (c == '\\')
-			switch (*p) {
-			case 'n':
-				buf[i++] = '\n';
-				break;
-			case 'r':
-				buf[i++] = '\r';
-				break;
-			case 't':
-				buf[i++] = '\t';
-				break;
-			default:
-				buf[i++] = '\\';
-				buf[i++] = *p;
-				break;
-			}
-	}
-	if (i >= MAX_AUTH_QUERY_LEN)
-		i = MAX_AUTH_QUERY_LEN - 1;
-	buf[i++] = 0;
-	return buf;
 }
 
 #ifdef FIELDCPY
