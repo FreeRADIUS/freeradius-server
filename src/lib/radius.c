@@ -174,7 +174,8 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		   */
 		  hdr->code = packet->code;
 		  hdr->id = packet->id;
-		  if (packet->code == PW_ACCOUNTING_REQUEST) {
+		  if ((packet->code == PW_ACCOUNTING_REQUEST) ||
+		      (packet->code == PW_DISCONNECT_REQUEST)) {
 			  memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 		  } else {
 			  memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
@@ -785,7 +786,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	Code of 16 or greate is not understood.
 	 */
 	if ((hdr->code == 0) ||
-	    (hdr->code >= 16)) {
+	    (hdr->code >= 52)) {
 		librad_log("WARNING: Bad RADIUS packet from host %s: unknown packet code %d",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 			   hdr->code);
@@ -1000,7 +1001,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	}
 
 	if (librad_debug) {
-		if ((hdr->code > 0) && (hdr->code < 14)) {
+		if ((hdr->code > 0) && (hdr->code < 52)) {
 			printf("rad_recv: %s packet from host %s:%d",
 			       packet_codes[hdr->code],
 			       ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port);
@@ -1119,6 +1120,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	switch(packet->code) {
 		case PW_AUTHENTICATION_REQUEST:
 		case PW_STATUS_SERVER:
+		case PW_DISCONNECT_REQUEST:
 			/*
 			 *	The authentication vector is random
 			 *	nonsense, invented by the client.
