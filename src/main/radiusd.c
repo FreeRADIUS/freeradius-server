@@ -214,49 +214,46 @@ static CONF_PARSER server_config[] = {
 static int switch_users() {
 	
 	/*
-	 *  Set the UID and GID, but only if we're NOT running
-	 *  in debugging mode.
+	 *  Switch UID and GID to what is specified in the config file
 	 */
-	if (!debug_flag) {
 
-		/*  Set GID.  */
-		if (gid_name != NULL) {
-			struct group *gr;
+	/*  Set GID.  */
+	if (gid_name != NULL) {
+		struct group *gr;
 
-			gr = getgrnam(gid_name);
-			if (gr == NULL) {
-				if (errno == ENOMEM) {
-					radlog(L_ERR|L_CONS, "Cannot switch to Group %s: out of memory", gid_name);
-				} else {
-					radlog(L_ERR|L_CONS, "Cannot switch group; %s doesn't exist", gid_name);
-				}
-				exit(1);
+		gr = getgrnam(gid_name);
+		if (gr == NULL) {
+			if (errno == ENOMEM) {
+				radlog(L_ERR|L_CONS, "Cannot switch to Group %s: out of memory", gid_name);
+			} else {
+				radlog(L_ERR|L_CONS, "Cannot switch group; %s doesn't exist", gid_name);
 			}
-			server_gid = gr->gr_gid;
-			if (setgid(server_gid) < 0) {
-				radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s", gid_name, strerror(errno));
-				exit(1);
-			}
+			exit(1);
 		}
+		server_gid = gr->gr_gid;
+		if (setgid(server_gid) < 0) {
+			radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s", gid_name, strerror(errno));
+			exit(1);
+		}
+	}
 
-		/*  Set UID.  */
-		if (uid_name != NULL) {
-			struct passwd *pw;
+	/*  Set UID.  */
+	if (uid_name != NULL) {
+		struct passwd *pw;
 
-			pw = getpwnam(uid_name);
-			if (pw == NULL) {
-				if (errno == ENOMEM) {
-					radlog(L_ERR|L_CONS, "Cannot switch to User %s: out of memory", uid_name);
-				} else {
-					radlog(L_ERR|L_CONS, "Cannot switch user; %s doesn't exist", uid_name);
-				}
-				exit(1);
+		pw = getpwnam(uid_name);
+		if (pw == NULL) {
+			if (errno == ENOMEM) {
+				radlog(L_ERR|L_CONS, "Cannot switch to User %s: out of memory", uid_name);
+			} else {
+				radlog(L_ERR|L_CONS, "Cannot switch user; %s doesn't exist", uid_name);
 			}
-			server_uid = pw->pw_uid;
-			if (setuid(server_uid) < 0) {
-				radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", uid_name, strerror(errno));
-				exit(1);
-			}
+			exit(1);
+		}
+		server_uid = pw->pw_uid;
+		if (setuid(server_uid) < 0) {
+			radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", uid_name, strerror(errno));
+			exit(1);
 		}
 	}
 	return(0);

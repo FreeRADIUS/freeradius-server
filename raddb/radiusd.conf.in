@@ -81,6 +81,10 @@ pidfile = ${run_dir}/radiusd.pid
 
 # user/group: The name (or #number) of the user/group to run radiusd as.
 #
+#   If these are commented out, the server will run as the user/group
+#   that started it.  In order to change to a different user/group, you
+#   WILL need to be root ( or have root privleges ) to start the server.
+#
 #   We STRONGLY recommend that you run the server with as few permissions
 #   as possible.  That is, if you're not using shadow passwords, the
 #   user and group items below should be set to 'nobody'.
@@ -96,8 +100,8 @@ pidfile = ${run_dir}/radiusd.pid
 #  that the debugging mode server is running as a user that can read the
 #  shadow info, and the user listed below can not.
 #
-user = root
-group = root
+#user = nobody
+#group = nobody
 
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
