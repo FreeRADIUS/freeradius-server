@@ -30,7 +30,7 @@ ifneq ($(USE_SHARED_LIBS),yes)
 #  For static linking...
 #
 MODULES += rlm_eap_md5  rlm_eap_leap rlm_eap_tls rlm_eap_ttls rlm_eap_sim
-MODULES += rlm_eap_peap rlm_eap_mschapv2
+MODULES += rlm_eap_peap rlm_eap_mschapv2 rlm_eap_gtc
 ifneq ($(OPENSSL_LIBS),)
 LIBS += -L$(OPENSSL_LIBS) -L../modules/rlm_eap/libeap -leap -lcrypto -lssl -lcrypto -lssl 
 endif
