@@ -108,10 +108,16 @@ int read_naslist_file(char *file)
 			return -1;
 		}
 
-		c->ipaddr = ip_getaddr(hostnm);
 		strcpy(c->nastype, nastype);
 		strcpy(c->shortname, shortnm);
-		strcpy(c->longname, ip_hostname(c->ipaddr));
+
+		if (strcmp(hostnm, "DEFAULT") == 0) {
+			c->ipaddr = 0;
+			strcpy(c->longname, hostnm);
+		} else {
+			c->ipaddr = ip_getaddr(hostnm);
+			strcpy(c->longname, ip_hostname(c->ipaddr));
+		}
 
 		c->next = naslist;
 		naslist = c;
@@ -123,34 +129,47 @@ int read_naslist_file(char *file)
 
 
 /*
- *	Find a nas in the NAS list.
+ *	Find a nas by IP address.
+ *	If it can't be found, return the DEFAULT nas, instead.
  */
 NAS *nas_find(UINT4 ipaddr)
 {
-	NAS *cl;
+	NAS *nas;
+	NAS *default_nas;
 
-	for (cl = naslist; cl; cl = cl->next)
-		if (ipaddr == cl->ipaddr)
-			break;
+	default_nas = NULL;
 
-	return cl;
+	for (nas = naslist; nas; nas = nas->next) {
+		if (ipaddr == nas->ipaddr)
+			return nas;
+		if (strcmp(nas->longname, "DEFAULT") == 0)
+			default_nas = nas;
+	}
+
+	return default_nas;
 }
 
 
 /*
  *	Find a nas by name.
+ *	If it can't be found, return the DEFAULT nas, instead.
  */
 NAS *nas_findbyname(char *nasname)
 {
 	NAS	*nas;
+	NAS	*default_nas;
+
+	default_nas = NULL;
 
 	for (nas = naslist; nas; nas = nas->next) {
 		if (strcmp(nasname, nas->shortname) == 0 ||
 		    strcmp(nasname, nas->longname) == 0)
-			break;
+			return nas;
+		if (strcmp(nas->longname, "DEFAULT") == 0)
+			default_nas = nas;
 	}
 
-	return nas;
+	return default_nas;
 }
 
 
