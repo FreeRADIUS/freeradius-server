@@ -666,7 +666,10 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		if (((eap_msg->strvalue[0] == PW_EAP_REQUEST) ||
 		     (eap_msg->strvalue[0] == PW_EAP_RESPONSE)) &&
 		    (eap_msg->length > EAP_HEADER_LEN)) {
-
+			/*
+			 *	Create an EAP-Type of the type which
+			 *	was NAK'd, or of the type in the packet.
+			 */
 			vp = paircreate(PW_EAP_TYPE, PW_TYPE_INTEGER);
 			if (vp) {
 				vp->lvalue = eap_msg->strvalue[4];
@@ -679,15 +682,42 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 			 *	Return "NOOP", which will cause the
 			 *	eap_authorize() to return NOOP.
 			 *
-			 *	FIXME: We should do something similar
-			 *	for NAKs, too, else we will handle them,
-			 *	and then send EAP-Failure.
+			 *	EAP-Identity, Notification, and NAK
+			 *	are all handled internally, so they'll
+			 *	never hanve handlers.
 			 */
-			if (inst->ignore_unknown_eap_types &&
+			if ((eap_msg->strvalue[4] >= PW_EAP_MD5) &&
+			    inst->ignore_unknown_eap_types &&
 			    ((eap_msg->strvalue[4] == 0) ||
 			     (eap_msg->strvalue[4] > PW_EAP_MAX_TYPES) ||
 			     (inst->types[eap_msg->strvalue[4]] == NULL))) {
 				return EAP_NOOP;
+			}
+
+			/*
+			 *	They're NAKing the EAP type we wanted
+			 *	to use, and asking for one which we don't
+			 *	support.  Crap.
+			 *
+			 *	NAK is code + id + length1 + length + NAK
+			 *             + requested EAP type.
+			 */
+			if ((eap_msg->strvalue[4] == PW_EAP_NAK) &&
+			    (eap_msg->length >= (EAP_HEADER_LEN + 2)) &&
+			    ((eap_msg->strvalue[5] == 0) ||
+			     (eap_msg->strvalue[5] > PW_EAP_MAX_TYPES) ||
+			     (inst->types[eap_msg->strvalue[5]] == NULL))) {
+
+				/*
+				 *	Hmm... we KNOW at this point
+				 *	that we can't handle the request.
+				 *
+				 *	We should either return an EAP-Fail
+				 *	here, or we should see if we can
+				 *	proxy it to another RADIUS server,
+				 *	which CAN handle the request/
+				 */
+				return EAP_NOTFOUND;
 			}
 		}
  
