@@ -33,6 +33,9 @@ if ($type eq 'cisco'){
 elsif ($type eq 'lucent'){
 	$walk =`$snmpwalkcmd .iso.org.dod.internet.private.enterprises.529.10.4.1.12`;
 }
+elsif ($type eq 'usrhiper'){
+	$walk =`$snmpwalkcmd .iso.org.dod.internet.private.enterprises.429.4.10.1.1.18`;
+}
 
 while($walk=~/\"([\@\.\w\-]+?)\"/g){
  $user=lc($1);
