@@ -172,10 +172,49 @@ SQL_ROW sql_fetch_row(SQL_RES *result) {
 
 
 
+/*************************************************************************
+ *
+ *	Function: sql_free_result
+ *
+ *	Purpose: database specific free_result. Frees memory allocated
+ *               for a result set
+ *
+ *************************************************************************/
+int sql_free_result(SQL_RES *result) {
+
+   return mysql_free_result(result);
+
+}
 
 
 
+/*************************************************************************
+ *
+ *	Function: sql_error
+ *
+ *	Purpose: database specific error. Returns error associated with
+ *               connection
+ *
+ *************************************************************************/
+char *sql_error(SQLSOCK *socket) {
+
+  return (mysql_error(socket));
+
+}
 
 
+/*************************************************************************
+ *
+ *	Function: sql_close
+ *
+ *	Purpose: database specific close. Closes an open database
+ *               connection
+ *
+ *************************************************************************/
+int sql_close(SQLSOCK *socket) {
+
+   return mysql_close(socket);
+
+}
 
 

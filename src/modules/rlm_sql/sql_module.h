@@ -4,6 +4,8 @@
  * Mike Machado <mike@innercite.com>
  */
 
-typedef SQLSOCK         MYSQL;
-typedef SQL_ROW         MYSQL_ROW;
-typedef SQL_RES         MYSQL_RES;
+#include	<mysql/mysql.h>
+
+typedef MYSQL		SQLSOCK;
+typedef MYSQL_ROW	SQL_ROW;
+typedef MYSQL_RES         SQL_RES;

@@ -4,6 +4,10 @@
 *          mike@innercite.com
 */
 
+#include "radiusd.h"
+
+#include "sql_module.h"
+
 #define QUERYLOG	"/var/log/radacct/radius.sql"
 #define SQLCONFIGFILE	"radius.conf"
 #define SQLBACKUP	"/var/log/radacct/sqlbackup.dat"
@@ -48,7 +52,7 @@ typedef struct sqlconfig {
 	char		sql_password[20];
 	char		sql_db[20];
 	char		sql_acct_table[MAX_TABLE_LEN];
-	cha		sql_authcheck_table[MAX_TABLE_LEN];
+	char		sql_authcheck_table[MAX_TABLE_LEN];
 	char		sql_authreply_table[MAX_TABLE_LEN];
 	char		sql_groupcheck_table[MAX_TABLE_LEN];
 	char		sql_groupreply_table[MAX_TABLE_LEN];
@@ -65,13 +69,14 @@ typedef struct sql {
 	SQLSOCK		*AuthSock;
 	SQLSOCK		*AcctSock;
 	SQLREC		*sqlrecord;
+	SQLREC		*backuprecord;
 	SQLCONFIG	config;
 } SQL;
 	
 #define SQL_LOCK_LEN sizeof(SQLREC)
 
 int		sql_start();
-int		sql_save_acct(void);
+int		sql_save_acct(SQLREC *sqlrecord);
 int		sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row);
 int		sql_checksocket(const char *facility);
 int		sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode);

@@ -32,10 +32,10 @@
  *
  *************************************************************************/
 
-int sql_save_acct() {
+int sql_save_acct(SQLREC *sqlrecord) {
 
 	char		querystr[2048];
-	FILE		*mysqlfile;
+	FILE		*sqlfile;
 	FILE		*backupfile;
 	int		num = 0;
 	SQL_RES		*result;
@@ -46,13 +46,13 @@ int sql_save_acct() {
 	
 
 
-     if((mysqlfile = fopen(QUERYLOG, "a")) == (FILE *)NULL) {
+     if((sqlfile = fopen(QUERYLOG, "a")) == (FILE *)NULL) {
             log(L_ERR, "Acct: Couldn't open file %s", QUERYLOG);
      } else { 
         #if defined(F_LOCK) && !defined(BSD)
-              (void)lockf((int)mysqlfile, (int)F_LOCK, (off_t)SQL_LOCK_LEN);
+              (void)lockf((int)sqlfile, (int)F_LOCK, (off_t)SQL_LOCK_LEN);
         #else
-              (void)flock(mysqlfile, SQL_LOCK_EX);
+              (void)flock(sqlfile, SQL_LOCK_EX);
         #endif
      }
 
@@ -78,32 +78,28 @@ int sql_save_acct() {
          /* The Terminal server informed us that it was rebooted
          * STOP all records from this NAS */
 
-         sprintf(querystr, "UPDATE %s SET AcctStopTime='%s', AcctSessionTime=unix_timestamp('%s') - unix_timestamp(AcctStartTime), AcctTerminateCause='%s' WHERE AcctSessionTime=0 AND AcctStopTime=0 AND NASIPAddress= '%s' AND AcctStartTime <= '%s'", mysql_acct_table, sqlrecord->AcctTimeStamp, sqlrecord->AcctTimeStamp, sqlrecord->AcctTerminateCause, sqlrecord->NASIPAddress, sqlrecord->AcctTimeStamp);
+         sprintf(querystr, "UPDATE %s SET AcctStopTime='%s', AcctSessionTime=unix_timestamp('%s') - unix_timestamp(AcctStartTime), AcctTerminateCause='%s' WHERE AcctSessionTime=0 AND AcctStopTime=0 AND NASIPAddress= '%s' AND AcctStartTime <= '%s'", sql->config.sql_acct_table, sqlrecord->AcctTimeStamp, sqlrecord->AcctTimeStamp, sqlrecord->AcctTerminateCause, sqlrecord->NASIPAddress, sqlrecord->AcctTimeStamp);
 
- 	 if (sqltrace)
-	      DEBUG(querystr);
-       	 if (mysql_query(MyAcctSock, (const char *) querystr) < 0)
-	      log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", mysql_error(MyAcctSock));
+       	 if (sql_query(sql->AcctSock, (const char *) querystr) < 0)
+	      log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(sql->AcctSock));
 
-         if (mysqlfile) {
-              fputs(querystr, mysqlfile);
-              fputs(";\n", mysqlfile);
-              fclose(mysqlfile);
+         if (sqlfile) {
+              fputs(querystr, sqlfile);
+              fputs(";\n", sqlfile);
+              fclose(sqlfile);
           }
           return 0;
       } 
 
 	if (sqlrecord->AcctStatusTypeId == PW_STATUS_ALIVE) {
-		sprintf(querystr, "UPDATE %s SET Framed-IP-Address = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress= '%s'", mysql_acct_table, sqlrecord->FramedIPAddress, sqlrecord->AcctSessionId, sqlrecord->UserName, sqlrecord->NASIPAddress);
-		if (sqltrace)
-			DEBUG(querystr);
-		if (mysql_query(MyAcctSock, (const char *) querystr) < 0)
-		log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", mysql_error(MyAcctSock));
+		sprintf(querystr, "UPDATE %s SET Framed-IP-Address = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress= '%s'", sql->config.sql_acct_table, sqlrecord->FramedIPAddress, sqlrecord->AcctSessionId, sqlrecord->UserName, sqlrecord->NASIPAddress);
+		if (sql_query(sql->AcctSock, (const char *) querystr) < 0)
+		log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(sql->AcctSock));
 
-		if (mysqlfile) {
-			fputs(querystr, mysqlfile);
-			fputs(";\n", mysqlfile);
-			fclose(mysqlfile);
+		if (sqlfile) {
+			fputs(querystr, sqlfile);
+			fputs(";\n", sqlfile);
+			fclose(sqlfile);
 		}
 		return 0;
 	}
@@ -114,23 +110,21 @@ int sql_save_acct() {
              
              /* Set start time on record with only a stop record */
  	     snprintf(querystr, 2048, "UPDATE %s SET AcctStartTime = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress = '%s'", 
-	     mysql_acct_table,
+	     sql->config.sql_acct_table,
              sqlrecord->AcctTimeStamp,
              sqlrecord->AcctSessionId,
              sqlrecord->UserName,
              sqlrecord->NASIPAddress
              );
- 	     if (sqltrace)
-	        DEBUG(querystr);
-       	     if (mysql_query(MyAcctSock, (const char *) querystr) < 0)
-	        log(L_ERR, "Acct: Couldn't update SQL accounting START record - %s", mysql_error(MyAcctSock));
+       	     if (sql_query(sql->AcctSock, (const char *) querystr) < 0)
+	        log(L_ERR, "Acct: Couldn't update SQL accounting START record - %s", sql_error(sql->AcctSock));
 
-             num = mysql_affected_rows(MyAcctSock);
+             num = sql_affected_rows(sql->AcctSock);
              if (num == 0) {
 
                 /* Insert new record with blank stop time until stop record is got */
                 snprintf(querystr, 2048, "INSERT INTO %s VALUES (0, '%s', '%s', '%s', '%s', %ld, '%s', '%s', 0, 0, '%s', '%s', 0, 0, '%s', '%s', '', '%s', '%s', '%s', %ld)",
-                mysql_acct_table,
+                sql->config.sql_acct_table,
                 sqlrecord->AcctSessionId,
                 sqlrecord->UserName,
                 sqlrecord->Realm,
@@ -148,34 +142,30 @@ int sql_save_acct() {
                 sqlrecord->AcctDelayTime
                 );                  
 
- 		if (sqltrace)
-		   DEBUG(querystr);
-       	        if (mysql_query(MyAcctSock, (const char *) querystr) < 0)
-	   	  log(L_ERR, "Acct: Couldn't insert SQL accounting START record - %s", mysql_error(MyAcctSock));
+       	        if (sql_query(sql->AcctSock, (const char *) querystr) < 0)
+	   	  log(L_ERR, "Acct: Couldn't insert SQL accounting START record - %s", sql_error(sql->AcctSock));
              }
 
            /* Got stop record */
            } else {
 
-             sprintf(querystr, "SELECT RadAcctId FROM %s WHERE AcctSessionId='%s' AND NASIPAddress='%s' AND UserName='%s'", mysql_acct_table, sqlrecord->AcctSessionId, sqlrecord->NASIPAddress, sqlrecord->UserName);
- 	      if (sqltrace)
-  	        DEBUG(querystr);
-              mysql_query(MyAcctSock, querystr);
-              if (!(result = mysql_store_result(MyAcctSock)) && mysql_num_fields(MyAcctSock)) {
-                   log(L_ERR,"MYSQL Error: Cannot get result");
-                   log(L_ERR,"MYSQL error: %s",mysql_error(MyAcctSock));
-                    mysql_close(MyAcctSock);
-                    MyAcctSock = NULL;
+             sprintf(querystr, "SELECT RadAcctId FROM %s WHERE AcctSessionId='%s' AND NASIPAddress='%s' AND UserName='%s'", sql->config.sql_acct_table, sqlrecord->AcctSessionId, sqlrecord->NASIPAddress, sqlrecord->UserName);
+              sql_query(sql->AcctSock, querystr);
+              if (!(result = sql_store_result(sql->AcctSock)) && sql_num_fields(sql->AcctSock)) {
+                   log(L_ERR,"SQL Error: Cannot get result");
+                   log(L_ERR,"SQL error: %s",sql_error(sql->AcctSock));
+                    sql_close(sql->AcctSock);
+                    sql->AcctSock = NULL;
               } else {
-                    num = mysql_num_rows(result);
-	       	    mysql_free_result(result);
+                    num = sql_num_rows(result);
+	       	    sql_free_result(result);
               }
 
              if (num > 0) {
 
                 /* Set stop time on matching record with start time */
  	        snprintf(querystr, 2048, "UPDATE %s SET AcctStopTime = '%s', AcctSessionTime = '%lu', AcctInputOctets = '%u', AcctOutputOctets = '%u', AcctTerminateCause = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress = '%s'", 
-	        mysql_acct_table,
+	        sql->config.sql_acct_table,
                 sqlrecord->AcctTimeStamp,
                 sqlrecord->AcctSessionTime,
                 sqlrecord->AcctInputOctets,
@@ -187,17 +177,15 @@ int sql_save_acct() {
                 );
 
 
- 	        if (sqltrace)
-  	          DEBUG(querystr);
-       	        if (mysql_query(MyAcctSock, (const char *) querystr) < 0)
-	           log(L_ERR, "Acct: Couldn't update SQL accounting STOP record - %s", mysql_error(MyAcctSock));
+       	        if (sql_query(sql->config.AcctSock, (const char *) querystr) < 0)
+	           log(L_ERR, "Acct: Couldn't update SQL accounting STOP record - %s", sql_error(sql->AcctSock));
 
              } else if (num == 0) {
 
             
                 /* Insert record with no start time until matching start record comes */
                 snprintf(querystr, 2048, "INSERT INTO %s VALUES (0, '%s', '%s', '%s', '%s', %ld, '%s', 0, '%s', '%lu', '%s', '%s', '%u', '%u', '%s', '%s', '%s', '%s', '%s', '%s', %ld)",
-                mysql_acct_table,
+                sql->config.sql_acct_table,
                 sqlrecord->AcctSessionId,
                 sqlrecord->UserName,
                 sqlrecord->Realm,
@@ -219,18 +207,16 @@ int sql_save_acct() {
                 sqlrecord->AcctDelayTime
                 );                  
 
- 	        if (sqltrace)
-  	           DEBUG(querystr);
-       	        if (mysql_query(MyAcctSock, (const char *) querystr) < 0)
-		   log(L_ERR, "Acct: Couldn't insert SQL accounting STOP record - %s", mysql_error(MyAcctSock));
+       	        if (sql->config.sql_query(sql->AcctSock, (const char *) querystr) < 0)
+		   log(L_ERR, "Acct: Couldn't insert SQL accounting STOP record - %s", sql_error(sql->AcctSock));
              }
 
           }
-          if (mysqlfile) {
-                fputs(querystr, mysqlfile);
-                fputs(";\n", mysqlfile);
-                fflush(mysqlfile);
-                fclose(mysqlfile);
+          if (sqlfile) {
+                fputs(querystr, sqlfile);
+                fputs(";\n", sqlfile);
+                fflush(sqlfile);
+                fclose(sqlfile);
           }
 
 
@@ -241,19 +227,19 @@ int sql_save_acct() {
              *  So open up the backup file to save records in
 	     */
 
-             if((backupfile = fopen(MYSQLBACKUP, "a")) == (FILE *)NULL) {
-                 log(L_ERR, "Acct: Couldn't open file %s", MYSQLBACKUP);
+             if((backupfile = fopen(SQLBACKUP, "a")) == (FILE *)NULL) {
+                 log(L_ERR, "Acct: Couldn't open file %s", SQLBACKUP);
              } else {
                   /*
-                   * Lock the mysql backup file, prefer lockf() over flock().
+                   * Lock the sql backup file, prefer lockf() over flock().
                    */
                    #if defined(F_LOCK) && !defined(BSD)
                        (void)lockf((int)backupfile, (int)F_LOCK, (off_t)SQL_LOCK_LEN);
                    #else
                        (void)flock(backupfile, SQL_LOCK_EX);
                    #endif
-                   if(fwrite(sqlrecord, sizeof(MYSQLREC), 1, backupfile) < 1) {
-                       log(L_ERR, "Acct: Couldn't write to file %s", MYSQLBACKUP);
+                   if(fwrite(sqlrecord, sizeof(SQLREC), 1, backupfile) < 1) {
+                       log(L_ERR, "Acct: Couldn't write to file %s", SQLBACKUP);
                    }
                    fclose(backupfile);
               }
@@ -267,12 +253,12 @@ int sql_save_acct() {
 
 /*************************************************************************
  *
- *	Function: mysql_userparse
+ *	Function: sql_userparse
  *
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int mysql_userparse(VALUE_PAIR **first_pair, MYSQL_ROW row) {
+int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row) {
 
 	int x;
 	char		*s;
@@ -296,7 +282,7 @@ int mysql_userparse(VALUE_PAIR **first_pair, MYSQL_ROW row) {
 		return 0;
 
 	if((pair = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == (VALUE_PAIR *)NULL) {
-		log(L_CONS|L_ERR, "mysql_userparse: no memory");
+		log(L_CONS|L_ERR, "sql_userparse: no memory");
 		exit(1);
 	}
 	strcpy(pair->name, attr->name);
@@ -402,47 +388,6 @@ int mysql_userparse(VALUE_PAIR **first_pair, MYSQL_ROW row) {
 }
 
 
-/*************************************************************************
- *
- *	Function: mysql_checksocket
- *
- *	Purpose: Make sure our database connection is up
- *
- *************************************************************************/
-int mysql_checksocket(const char *facility) {
-
-	if ((strncmp(facility, "Auth", 4) == 0)) {
-		if (MyAuthSock == NULL) {
-			if (mysql_keepopen)
-				log(L_ERR, "%s: Keepopen set but had to reconnect to MySQL", facility);
-			/* Connect to the database server */
-			mysql_init(&MyAuthConn);
-			if (!(MyAuthSock = mysql_real_connect(&MyAuthConn, mysql_server, mysql_login, mysql_password, mysql_db, 0, NULL, 0))) {
-				log(L_ERR, "Auth: Couldn't connect authentication socket to MySQL server on %s as %s", mysql_server, mysql_login);
-				MyAuthSock = NULL;
-				return 0;
-			}
-		}
-
-	} else {
-		if (MyAcctSock == NULL) {
-			if (mysql_keepopen)
-				log(L_ERR, "%s: Keepopen set but had to reconnect to MySQL", facility);
-			/* Connect to the database server */
-			mysql_init(&MyAcctConn);
-			if (!(MyAcctSock = mysql_real_connect(&MyAcctConn, mysql_server, mysql_login, mysql_password, mysql_db, 0, NULL, 0))) {
-				log(L_ERR, "Acct: Couldn't connect accounting socket to MySQL server on %s as %s", mysql_server, mysql_login);
-				MyAcctSock = NULL;
-				return 0;
-			}
-		}
-
-	}
-
-	return 1;
-
-}
-
 
 /*************************************************************************
  *
@@ -461,22 +406,22 @@ int sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode) {
 	if (mode == PW_VP_USERDATA)
 		sprintf(querystr, "SELECT * FROM %s WHERE UserName = '%s'", table, user);
 	else if (mode == PW_VP_GROUPDATA)
-		sprintf(querystr, "SELECT %s.* FROM %s, %s WHERE %s.UserName = '%s' AND %s.GroupName = %s.GroupName ORDER BY %s.id", table, table, mysql_usergroup_table, mysql_usergroup_table, user, mysql_usergroup_table, table, table);
+		sprintf(querystr, "SELECT %s.* FROM %s, %s WHERE %s.UserName = '%s' AND %s.GroupName = %s.GroupName ORDER BY %s.id", table, table, sql->config.sql_usergroup_table, sql->config.sql_usergroup_table, user, sql->config.sql_usergroup_table, table, table);
 	else if (mode == PW_VP_REALMDATA)
-		sprintf(querystr, "SELECT %s.* FROM %s, %s WHERE %s.RealmName = '%s' AND %s.GroupName = %s.GroupName ORDER BY %s.id", table, table, mysql_realmgroup_table, mysql_realmgroup_table, user, mysql_realmgroup_table, table, table);
+		sprintf(querystr, "SELECT %s.* FROM %s, %s WHERE %s.RealmName = '%s' AND %s.GroupName = %s.GroupName ORDER BY %s.id", table, table, sql->config.sql_realmgroup_table, sql->config.sql_realmgroup_table, user, sql->config.sql_realmgroup_table, table, table);
         sql_checksocket("Auth");
 	sql_query(sql->AuthSock, querystr);
 	if ((result = sql_store_result(sql->AuthSock)) && sql_num_fields(sql->AuthSock)) {
 		rows = sql_num_rows(result);
 		while ((row = sql_fetch_row(result))) {
 
-			if (mysql_userparse(vp, row) != 0) {
-		 		log(L_ERR|L_CONS, "Error getting data from MySQL");
-				mysql_free_result(result);
+			if (sql_userparse(vp, row) != 0) {
+		 		log(L_ERR|L_CONS, "Error getting data from SQL database");
+				sql_free_result(result);
 				return -1;
 			}
 		}
-		mysql_free_result(result);
+		sql_free_result(result);
 	}
 
 	return rows;
@@ -492,12 +437,12 @@ static void alrm_handler()
 
 /*************************************************************************
  *
- *	Function: mysql_check_ts
+ *	Function: sql_check_ts
  *
  *	Purpose: Checks the terminal server for a spacific login entry
  *
  *************************************************************************/
-static int mysql_check_ts(MYSQL_ROW row) {
+static int sql_check_ts(SQL_ROW row) {
 
 	int     pid, st, e;
 	int     n;
@@ -579,36 +524,34 @@ static int mysql_check_ts(MYSQL_ROW row) {
 
 /*************************************************************************
  *
- *	Function: mysql_check_multi
+ *	Function: sql_check_multi
  *
  *	Purpose: Check radius accounting for duplicate logins
  *
  *************************************************************************/
-int mysql_check_multi(char *name, VALUE_PAIR *request, int maxsimul) {
+int sql_check_multi(char *name, VALUE_PAIR *request, int maxsimul) {
 
 	char		querystr[256];
 	VALUE_PAIR	*fra;
-	MYSQL_RES	*result;
-	MYSQL_ROW	row;
+	SQL_RES		*result;
+	SQL_ROW		row;
 	int		count = 0;
 	UINT4		ipno = 0;
 	int		mpp = 1;
 
-	if (!mysql_checksocket("Auth"))
+	if (!sql_checksocket("Auth"))
 		return 0;
-	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE UserName = '%s' AND AcctStopTime = 0", mysql_acct_table, name);
-	if (sqltrace)
-		DEBUG(querystr);
-	mysql_query(MyAuthSock, querystr);
-	if (!(result = mysql_store_result(MyAuthSock)) && mysql_num_fields(MyAuthSock)) {
-   		log(L_ERR,"MYSQL Error: Cannot get result");
-   		log(L_ERR,"MYSQL error: %s",mysql_error(MyAuthSock));
-   		mysql_close(MyAuthSock);
-  		MyAuthSock = NULL;
+	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE UserName = '%s' AND AcctStopTime = 0", sql->config.sql_acct_table, name);
+	sql_query(sql->AuthSock, querystr);
+	if (!(result = sql_store_result(sql->AuthSock)) && sql_num_fields(sql->AuthSock)) {
+   		log(L_ERR,"SQL Error: Cannot get result");
+   		log(L_ERR,"SQL error: %s",sql_error(sql->AuthSock));
+   		sql_close(sql->AuthSock);
+  		sql->AuthSock = NULL;
 	} else {
-		row = mysql_fetch_row(result);
+		row = sql_fetch_row(result);
 		count = atoi(row[0]);
-		mysql_free_result(result);
+		sql_free_result(result);
 	}
 
 	if (count < maxsimul)
@@ -621,18 +564,16 @@ int mysql_check_multi(char *name, VALUE_PAIR *request, int maxsimul) {
 		ipno = htonl(fra->lvalue);
 
 	count = 0;
-	sprintf(querystr, "SELECT * FROM %s WHERE UserName = '%s' AND AcctStopTime = 0", mysql_acct_table, name);
-	if (sqltrace)
-		DEBUG(querystr);
-	mysql_query(MyAuthSock, querystr);
-	if (!(result = mysql_store_result(MyAuthSock)) && mysql_num_fields(MyAuthSock)) {
-   		log(L_ERR,"MYSQL Error: Cannot get result");
-   		log(L_ERR,"MYSQL error: %s",mysql_error(MyAuthSock));
-   		mysql_close(MyAuthSock);
-  		MyAuthSock = NULL;
+	sprintf(querystr, "SELECT * FROM %s WHERE UserName = '%s' AND AcctStopTime = 0", sql->config.sql_acct_table, name);
+	sql_query(sql->AuthSock, querystr);
+	if (!(result = sql_store_result(sql->AuthSock)) && sql_num_fields(sql->AuthSock)) {
+   		log(L_ERR,"SQL Error: Cannot get result");
+   		log(L_ERR,"SQL error: %s",sql_error(sql->AuthSock));
+   		sql_close(sql->AuthSock);
+  		sql->AuthSock = NULL;
 	} else {
-		while ((row = mysql_fetch_row(result))) {
-			if (mysql_check_ts(row) == 1) {
+		while ((row = sql_fetch_row(result))) {
+			if (sql_check_ts(row) == 1) {
 				count++;
 
 				if (ipno && atoi(row[18]) == ipno)
@@ -643,14 +584,12 @@ int mysql_check_multi(char *name, VALUE_PAIR *request, int maxsimul) {
 				 *	False record - zap it
 				 */
 
-				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'", mysql_acct_table, row[0]);
-				if (sqltrace)
-					DEBUG(querystr);
-				mysql_query(MyAuthSock, querystr);
+				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'", sql->config.sql_acct_table, row[0]);
+				sql_query(sql->AuthSock, querystr);
 				
 			}
 		}
-		mysql_free_result(result);
+		sql_free_result(result);
 	}
 
 	return (count < maxsimul) ? 0 : mpp; 

@@ -3,11 +3,10 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
-#include <mysql/mysql.h>
 
-#include "radiusd.h"
 #include "modules.h"
 #include "rlm_sql.h"
+#include "sql_module.h"
 
 
 SQL *sql = NULL;
@@ -225,7 +224,7 @@ static int rlm_sql_init(int rehup) {
        sql->config.sql_server,
        sql->config.sql_db);
 
-       if (sql_keepopen)
+       if (sql->config.sql_keepopen)
 	   sql_connect();
            
        return 0;
@@ -283,11 +282,11 @@ static int rlm_sql_authorize(REQUEST *request, char *name, VALUE_PAIR **check_pa
 #endif /* NT_DOMAIN_HACK */
 
 
-	if ((found = sql_getvpdata(sql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) <= 0)
+	if ((found = sql_getvpdata(sql->config.sql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) <= 0)
 		return RLM_AUTZ_NOTFOUND;
-	sql_getvpdata(sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
-	sql_getvpdata(sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
-	sql_getvpdata(sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
+	sql_getvpdata(sql->config.sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
+	sql_getvpdata(sql->config.sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
+	sql_getvpdata(sql->config.sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
 
 	pairmove(reply_pairs, &reply_tmp);
 	pairmove(check_pairs, &check_tmp);
@@ -482,7 +481,7 @@ static int rlm_sql_accounting(REQUEST *request) {
        
 
 	/* If backup file exists we know the database was down */
-	if(stat(MYSQLBACKUP, &backup) == 0) {
+	if(stat(SQLBACKUP, &backup) == 0) {
 		if(backup.st_size > 0) {
 
 			/* We'll fork a child to load records in the backup file */
@@ -494,8 +493,8 @@ static int rlm_sql_accounting(REQUEST *request) {
 			}
 			/* Child Process */
 			if(sqlpid == 0) {
-				if((backupfile = fopen(MYSQLBACKUP, "rwb")) == (FILE *)NULL) {
-					log(L_ERR, "Acct: (Child) Couldn't open file %s", MYSQLBACKUP);
+				if((backupfile = fopen(SQLBACKUP, "rwb")) == (FILE *)NULL) {
+					log(L_ERR, "Acct: (Child) Couldn't open file %s", SQLBACKUP);
 					exit(1);
 				}
 
@@ -506,28 +505,28 @@ static int rlm_sql_accounting(REQUEST *request) {
 				(void)flock(backupfile, SQL_LOCK_LEN);
 #endif  
 
-				log(L_INFO, "Acct:  Clearing out sql backup file - %s", MYSQLBACKUP);
+				log(L_INFO, "Acct:  Clearing out sql backup file - %s", SQLBACKUP);
 
 				while(!feof(backupfile)) {
-					if(fread(&backuprecord, sizeof(MYSQLREC), 1, backupfile) == 1) {
+					if(fread(sql->backuprecord, sizeof(SQLREC), 1, backupfile) == 1) {
 
 						/* pass our filled structure to the
 					 	   function that will write to the database */
-						if (mysql_save_acct(&backuprecord) == 0)
+						if (sql_save_acct(sql->backuprecord) == 0)
 							return RLM_ACCT_FAIL_SOFT;
 
 					}
 
 				}
-				unlink((const char *)MYSQLBACKUP);
+				unlink((const char *)SQLBACKUP);
 				exit(0);
 			}
 		}
 	}
-	if (mysql_save_acct(&sqlrecord) == 0)
+	if (sql_save_acct(sql->sqlrecord) == 0)
 		return RLM_ACCT_FAIL_SOFT;
-	if (!mysql_keepopen) {
-		mysql_close(sql->AcctSock);
+	if (!sql->config.sql_keepopen) {
+		sql_close(sql->AcctSock);
 		sql->AcctSock = NULL;
 	}
 
