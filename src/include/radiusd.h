@@ -50,9 +50,12 @@ typedef struct auth_req {
 	time_t			timestamp;
 	int			number; /* internal server number */
 
-	/* Could almost keep a const char * here instead of a _copy_ of the
-	 * secret... but what if the RADCLIENT structure is freed because it was
-	 * taken out of the config file and SIGHUPed? */
+	/*
+	 *	We could almost keep a const char here instead of a
+	 *	_copy_ of the secret... but what if the RADCLIENT
+	 *	structure is freed because it was taken out of the
+	 *	config file and SIGHUPed?
+	 */
 	char			proxysecret[32];
 	int			proxy_is_replicate;
 	int			proxy_try_count;
@@ -258,7 +261,6 @@ int		rad_mkdir(char *directory, int mode);
 int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		xfree(const char *ptr);
-void		rad_assert_fail (const char *file, unsigned int line);
 
 /* client.c */
 int		read_clients_file(const char *file);
