@@ -196,6 +196,8 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	
 	inst = rad_malloc(sizeof(rlm_exec_t));
+	if (!inst)
+		return -1;
 	memset(inst, 0, sizeof(rlm_exec_t));
 		
 	/*
