@@ -3775,12 +3775,12 @@ AC_TRY_COMPILE([
 #include <ucd-snmp/snmp_impl.h>],
                [ int a = 1;],
                SNMP_INCLUDE="";ucdsnmp=yes,
-               SNMP_INCLUDE=)
+               ucdsnmp=)
 
 dnl #
 dnl #  If not, look for it in a number of directories and in ucd-snmp.
 dnl #
-if test "x$SNMP_INCLUDE" = "x"; then
+if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
   for try in /usr/include /usr/local/include $snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
@@ -3805,15 +3805,15 @@ if test "x$SNMP_INCLUDE" = "x"; then
 #include <ucd-snmp/snmp_impl.h>],
                    [ int a = 1;],
                    SNMP_INCLUDE="-I$try";ucdsnmp=yes,
-                   SNMP_INCLUDE=)
-    if test "x$SNMP_INCLUDE" != "x"; then
+                   ucdsnmp=)
+    if test "x$ucdsnmp" != "x"; then
       break;
     fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
-if test "x$SNMP_INCLUDE" = "x"; then
+if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
   for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
@@ -3840,9 +3840,9 @@ AC_TRY_COMPILE([
 #include <snmp.h>
 #include <snmp_impl.h>],
                [ int a = 1;],
-               SNMP_INCLUDE="",
-               SNMP_INCLUDE=)
-    if test "x$SNMP_INCLUDE" != "x"; then
+               SNMP_INCLUDE="";ucdsnmp=no,
+               ucdsnmp=)
+    if test "x$ucdsnmp" != "x"; then
       break;
     fi
   done
@@ -3852,7 +3852,7 @@ fi
 dnl #
 dnl #  If not, look for it in a number of directories and without ucd-snmp
 dnl #
-if test "x$SNMP_INCLUDE" = "x"; then
+if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
   for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
@@ -3876,16 +3876,16 @@ if test "x$SNMP_INCLUDE" = "x"; then
 #include <snmp.h>
 #include <snmp_impl.h>],
                    [ int a = 1;],
-                   SNMP_INCLUDE="-I$try",
-                   SNMP_INCLUDE=)
-    if test "x$SNMP_INCLUDE" != "x"; then
+                   SNMP_INCLUDE="-I$try";ucdsnmp=no,
+                   ucdsnmp=)
+    if test "x$ucdsnmp" != "x"; then
       break;
     fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
-if test "x$SNMP_INCLUDE" = "x"; then
+if test "x$ucdsnmp" = "x"; then
   AC_MSG_RESULT(no)
 else
   if test "x$ucdsnmp" = "xyes"; then
