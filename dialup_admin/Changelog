@@ -23,6 +23,7 @@ Ver 1.75:
   variables.
 * Make pagesize 'all' work again. Bug found by apellido jr., wilfredo p.
 * Make 'Add NAS' function in the nas admin page more easily accessible
+* Fix a small bug in user_admin.php3 found by Joerg Staedele
 Ver 1.72:
 * Move the xlat function to a separate file in lib/xlat.php3
 * Add a lib/sql/nas_list.php3 to also get the nas list from sql (naslist.conf still works)
