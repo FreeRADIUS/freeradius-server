@@ -27,7 +27,10 @@
 #include "radiusd.h"
 #include "modules.h"
 
-#define  BUFFERLEN  2048
+/*
+ *  Room for at least 16 attributes.
+ */
+#define  BUFFERLEN  4096
 
 static const char rcsid[] = "$Id$";
 
@@ -154,7 +157,7 @@ static int unique_instantiate(CONF_SECTION *conf, void **instance) {
  *  Create a (hopefully) unique Acct-Unique-Session-Id from
  *  attributes listed in 'key' from radiusd.conf
  */
-static int unique_accounting(void *instance, REQUEST *request)
+static int add_unique_id(void *instance, REQUEST *request)
 {
   char buffer[BUFFERLEN];
   u_char md5_buf[16];
@@ -170,10 +173,21 @@ static int unique_accounting(void *instance, REQUEST *request)
   left = BUFFERLEN;
   length = 0;
   cur = inst->head;
-  
+
+  /*
+   *  A unique ID already exists: don't do anything.
+   */
+  vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID);
+  if (vp) {
+	  return RLM_MODULE_NOOP;
+  }
+
   /* loop over items to create unique identifiers */
   while (cur) {
 	  vp = pairfind(request->packet->vps, cur->attr);
+	  if (!vp) {
+		  DEBUG2("rlm_acct_unique: WARNING: Attribute %d was not found in request, unique ID MAY be inconsistent", cur->attr);
+	  }
 	  length = vp_prints(p, left, vp);
 	  left -= length + 1;	/* account for ',' in between elements */
 	  p += length;
@@ -221,7 +235,6 @@ static int unique_detach(void *instance) {
 	return 0;
 }
 
-/* FIXME: unique_accounting should probably be called from preacct */
 /* globally exported name */
 module_t rlm_acct_unique = {
   "Acct-Unique-Session-Id",
@@ -230,9 +243,9 @@ module_t rlm_acct_unique = {
   unique_instantiate,		/* instantiation */
   {
 	  NULL,			/* authentication */
-	  NULL,			/* authorization */
-	  NULL,			/* preaccounting */
-	  unique_accounting,	/* accounting */
+	  add_unique_id,	/* authorization */
+	  add_unique_id,	/* preaccounting */
+	  add_unique_id,	/* accounting */
 	  NULL,			/* checksimul */
 	  NULL,			/* pre-proxy */
 	  NULL,			/* post-proxy */
