@@ -10,9 +10,11 @@ function da_sql_host_connect($server,$config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
-	// FIXME: This function is still Postgres specific. Needs to be configurable.
-	return @dbx_connect(DBX_PGSQL, "$server", "$config[sql_database]",
-			"$SQL_user", "$SQL_passwd", DBX_PERSISTENT);
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,PG DRIVER): Connect: User=$SQL_user,Password=$SQL_passwd </b><br>\n";
+	return @pg_connect("host=$server port=$config[sql_port]
+			dbname=$config[sql_database] user=$SQL_user
+			password=$SQL_passwd");
 }
 
 function da_sql_connect($config)
@@ -26,9 +28,11 @@ function da_sql_connect($config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
-	// FIXME: This function is still Postgres specific. Needs to be configurable.
-	return @dbx_connect(DBX_PGSQL, "$server", "$config[sql_database]",
-			"$SQL_user", "$SQL_passwd");
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,PG DRIVER): Connect: User=$SQL_user,Password=$SQL_passwd </b><br>\n";
+	return @pg_connect("host=$config[sql_server] port=$config[sql_port]
+			dbname=$config[sql_database] user=$SQL_user
+			password=$SQL_passwd");
 }
 
 function da_sql_pconnect($config)
@@ -42,14 +46,16 @@ function da_sql_pconnect($config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
-	// FIXME: This function is still Postgres specific. Needs to be configurable.
-	return @dbx_connect(DBX_PGSQL, "$server", "$config[sql_database]",
-			"$SQL_user", "$SQL_passwd", DBX_PERSISTENT);
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,PG DRIVER): Connect: User=$SQL_user,Password=$SQL_passwd </b><br>\n";
+	return @pg_pconnect("host=$config[sql_server] port=$config[sql_port]
+			dbname=$config[sql_database] user=$SQL_user
+			password=$SQL_passwd");
 }
 
 function da_sql_close($link,$config)
 {
-	@dbx_close($link);
+	@pg_close($link);
 }
 
 function da_sql_escape_string($string)
@@ -59,56 +65,56 @@ function da_sql_escape_string($string)
 
 function da_sql_query($link,$config,$query)
 {
-	if ($config[sql_debug] == 'true') {
+	if ($config[sql_debug] == 'true')
 		print "<b>DEBUG(SQL,PG DRIVER): Query: <i>$query</i></b><br>\n";
-	}
-	return @dbx_query($link,$query);
+	return @pg_exec($link,$query);
 }
 
 function da_sql_num_rows($result,$config)
 {
 	if ($config[sql_debug] == 'true')
-		print "<b>DEBUG(SQL,PG DRIVER): Query Result: Num rows:: " . $result->rows . "</b><br>\n";
-	return $result->rows;
+		print "<b>DEBUG(SQL,PG DRIVER): Query Result: Num rows:: " . @pg_numrows($result) . "</b><br>\n";
+	return @pg_numrows($result);
 }
 
-$dbx_global_record_counter = array() ;
 function da_sql_fetch_array($result,$config)
 {
-
-	global $dbx_global_record_counter;
-	if (!$dbx_global_record_counter[$result->handle]){
-		$dbx_global_record_counter[$result->handle] = 0;
+	$row = @pg_fetch_array($result,$config[tmp_pg_array_num][$result]++,PGSQL_ASSOC);
+	if ($row && $config[sql_debug] == 'true'){
+		print "<b>DEBUG(SQL,PG DRIVER): Query Result: <pre>";
+		print_r($row);
+		print  "</b></pre>\n";
 	}
-
-	if ($dbx_global_record_counter[$result->handle] <= $result->rows - 1 ){
-		return $result->data[$dbx_global_record_counter[$result->handle]++];
-	} elseif ($dbx_global_record_counter[$result->handle] > $result->rows - 1 ) {
-		$dbx_global_record_counter[$result->handle]++;
-		return NULL;
-	} else {
-		$dbx_global_record_counter[$result->handle]++;
-		return FALSE;
-	}
+	if (!$row)
+		$config[tmp_pg_array_num][$result] = 0;
+	return $row;
 }
 
 function da_sql_affected_rows($link,$result,$config)
 {
-	// FIXME: This function is still Postgres specific.
 	if ($config[sql_debug] == 'true')
-		print "<b>DEBUG(SQL,PG DRIVER): Query Result: Affected rows:: " . @pg_cmdtuples($result->handle) . "</b><br>\n";
-	return @pg_cmdtuples($result->handle);
+		print "<b>DEBUG(SQL,PG DRIVER): Query Result: Affected rows:: " . @pg_cmdtuples($result) . "</b><br>\n";
+	return @pg_cmdtuples($result);
 }
 
 function da_sql_list_fields($table,$link,$config)
 {
-	$res = @dbx_query($link,"SELECT * FROM ".$table." LIMIT 1 ;"); 
+	$res = @pg_exec($link,
+		"select count(*) from pg_attribute where attnum > '0' and
+		attrelid = (select oid from pg_class where relname='$table');");
 	if ($res){
-		$fields[num] = $res->cols;
+		$row = @pg_fetch_row($res,0);
+		if ($row){
+			if (!$row[0])
+				return NULL;
+			$fields[num] = $row[0];
+		}
 	}
-	$res = @dbx_query($link,"SELECT * FROM ".$table." LIMIT 1 ;");
+	$res = @pg_exec($link,
+		"select attname from pg_attribute where attnum > '0' and
+		attrelid = (select oid from pg_class where relname='$table');");
 	if ($res)
-		$fields[res] = $res->info[name];
+		$fields[res]=$res;
 	else
 		return NULL;
 
@@ -123,12 +129,15 @@ function da_sql_num_fields($fields,$config)
 
 function da_sql_field_name($fields,$num,$config)
 {
-	if ($fields)
-		return $fields[res][$num];
+	if ($fields){
+		$row = @pg_fetch_row($fields[res],$num);	
+		if ($row)
+			return $row[0];
+	}
 }
 
 function da_sql_error($link,$config)
 {
-	return dbx_error($link);
+	return pg_errormessage($link);
 }
 ?>
