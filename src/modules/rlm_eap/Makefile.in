@@ -34,6 +34,7 @@ allclean:
 
 install-types:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
+	$(INSTALL) -m 755 radeapclient	$(R)$(bindir)
 
 common:
 	@for dir in $(RLM_SUBDIRS); do  \
