@@ -230,10 +230,15 @@ int rad_check_password(REQUEST *request)
 	/*
 	 *	Find the password from the users file.
 	 */
-	if ((password_pair = pairfind(request->config_items, PW_CRYPT_PASSWORD)) != NULL)
-		auth_type = PW_AUTHTYPE_CRYPT;
-	else
+	if ((password_pair = pairfind(request->config_items, PW_CRYPT_PASSWORD)) != NULL) {
+		/*
+		 *	Re-write Auth-Type, but ONLY if it isn't already
+		 *	set.
+		 */
+		if (auth_type == -1) auth_type = PW_AUTHTYPE_CRYPT;
+	} else {
 		password_pair = pairfind(request->config_items, PW_PASSWORD);
+	}
 
 	if (auth_type < 0) {
 		if (password_pair) {
@@ -559,11 +564,6 @@ autz_redo:
 			}
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
-
-		/*
-		 *	Hope that the module returning REJECT is smart
-		 *	enough to do pairfre(&request->reply->vps)...
-		 */
 		return r;
 	}
 	if (!autz_retry){
