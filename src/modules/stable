@@ -11,12 +11,14 @@ rlm_detail
 rlm_digest
 rlm_eap
 rlm_exec
+rlm_expiration
 rlm_expr
 rlm_fastusers
 rlm_files
 rlm_ippool
 rlm_krb5
 rlm_ldap
+rlm_logintime
 rlm_mschap
 rlm_ns_mta_md5
 rlm_pam

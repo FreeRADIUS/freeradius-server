@@ -60,45 +60,6 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
 }
 
 
-/*
- *	Check if account has expired, and if user may login now.
- */
-static int check_expiration(REQUEST *request)
-{
-	int result;
-	VALUE_PAIR *check_item = request->config_items;
-
-	result = 0;
-	while (result == 0 && check_item != NULL) {
-
-		/*
-		 *	Check expiration date if we are doing password aging.
-		 */
-		if (check_item->attribute == PW_EXPIRATION) {
-			/*
-			 *	Has this user's password expired?
-			 *
-			 *	If so, remove ALL reply attributes,
-			 *	and add our own Reply-Message, saying
-			 *	why they're being rejected.
-			 */
-			if (check_item->lvalue < (unsigned) time(NULL)) {
-				VALUE_PAIR *vp;
-
-				result = -1;
-				vp = pairmake("Reply-Message",
-						"Password Has Expired\r\n",
-						T_OP_ADD);
-				pairfree(&request->reply->vps);
-				request->reply->vps = vp;
-				break;
-			}
-		}
-		check_item = check_item->next;
-	}
-	return result;
-}
-
 
 /*
  * Make sure user/pass are clean
@@ -613,8 +574,6 @@ autz_redo:
 	 *	Validate the user
 	 */
 	do {
-		if ((result = check_expiration(request)) < 0)
-				break;
 		result = rad_check_password(request);
 		if (result > 0) {
 			/* don't reply! */
@@ -712,65 +671,6 @@ autz_redo:
 				rad_authlog(logstr, request, 1);
 
 				result = -1;
-			}
-		}
-	}
-
-	if (result >= 0 &&
-	    (check_item = pairfind(request->config_items, PW_LOGIN_TIME)) != NULL) {
-
-		/*
-		 *	Authentication is OK. Now see if this
-		 *	user may login at this time of the day.
-		 */
-		r = timestr_match((char *)check_item->strvalue,
-				  request->timestamp);
-
-		if (r == 0) {	/* unlimited */
-			/*
-			 *	Do nothing: login-time is OK.
-			 */
-
-			/*
-			 *	Session-Timeout needs to be at least
-			 *	60 seconds, some terminal servers
-			 *	ignore smaller values.
-			 */
-		} else if (r < 60) {
-			/*
-			 *	User called outside allowed time interval.
-			 */
-			result = -1;
-			user_msg = "You are calling outside your allowed timespan\r\n";
-
-			request->reply->code = PW_AUTHENTICATION_REJECT;
-			pairfree(&request->reply->vps);
-
-			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
-			request->reply->vps = tmp;
-
-			snprintf(logstr, sizeof(logstr), "Outside allowed timespan (time allowed %s)",
-				 check_item->strvalue);
-			rad_authlog(logstr, request, 1);
-
-		} else if (r > 0) {
-
-			/*
-			 *	User is allowed, but set Session-Timeout.
-			 */
-			if ((reply_item = pairfind(request->reply->vps,
-					PW_SESSION_TIMEOUT)) != NULL) {
-				if (reply_item->lvalue > (unsigned) r)
-					reply_item->lvalue = r;
-			} else {
-				if ((reply_item = paircreate(
-						PW_SESSION_TIMEOUT,
-						PW_TYPE_INTEGER)) == NULL) {
-					radlog(L_ERR|L_CONS, "no memory");
-					exit(1);
-				}
-				reply_item->lvalue = r;
-				pairadd(&request->reply->vps, reply_item);
 			}
 		}
 	}

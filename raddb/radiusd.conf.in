@@ -1375,6 +1375,46 @@ $INCLUDE ${confdir}/eap.conf
 	}
 
 	#
+	# The expiration module. This handles the Expiration attribute
+	# It should be included in the *end* of the authorize section
+	# in order to handle user Expiration. It should also be included
+	# in the instantiate section in order to register the Expiration
+	# compare function
+	#
+	expiration {
+		#
+		# The Reply-Message which will be sent back in case the
+		# account has expired. Dynamic substitution is supported
+		#
+		reply-message = "Password Has Expired\r\n" 
+#		reply-message = "Your account has expired, %{User-Name}\r\n"
+	}
+
+	#
+	# The logintime module. Handles the Login-Time and Current-Time attributes.
+	# It should be included in the *end* of the authorize section
+	# in order to handle Login-Time checks. It should also be included in
+	# the instantiate section in order to register the Current-Time compare
+	# function.
+	# If the user is allowed to logon a Session-Timeout is calculated based on the
+	# remaining time.
+	#
+	logintime {
+		#
+		# The Reply-Message which will be sent back in case the account
+		# is calling outside of the allowed timespan. Dynamic substitution is
+		# supported.
+		#
+		reply-message = "You are calling outside your allowed timespan\r\n"
+#		reply-message = "Outside allowed timespan (%{check:Login-Time}), %{User-Name}\r\n"
+		#
+		# The minimum timeout (in seconds) a user is allowed to have. If the calculated
+		# timeout is lower we don't allow the logon. Some NASes do not handle
+		# values lower than 60 seconds well.
+		#
+		minimum-timeout = 60
+	}
+	#
 	#  Execute external programs
 	#
 	#  This module is useful only for 'xlat'.  To use it,

@@ -5,7 +5,7 @@
 include ../../Make.inc
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
-		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
+		  version.o proxy.o exec.o auth.o conffile.o \
 		  modules.o modcall.o session.o xlat.o threads.o smux.o \
 		  radius_snmp.o client.o request_list.o mainconfig.o
 INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
@@ -81,9 +81,6 @@ conffile.o: conffile.c $(INCLUDES) ../include/modules.h
 
 mainconfig.o: mainconfig.c $(INCLUDES) ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c mainconfig.c
-
-timestr.o: timestr.c $(INCLUDES)
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c timestr.c
 
 modules.o:  modules.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(VFLAGS) $(INCLTDL) -c modules.c

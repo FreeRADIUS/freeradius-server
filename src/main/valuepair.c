@@ -599,29 +599,6 @@ static int presufcmp(void *instance,
 
 
 /*
- *	Compare the current time to a range.
- */
-static int timecmp(void *instance,
-		   REQUEST *req,
-		   VALUE_PAIR *request, VALUE_PAIR *check,
-	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
-{
-	instance = instance;
-	request = request;	/* shut the compiler up */
-	check_pairs = check_pairs;
-	reply_pairs = reply_pairs;
-
-	/*
-	 *	If there's a request, use that timestamp.
-	 */
-	if (timestr_match((char *)check->strvalue,
-			  req ? req->timestamp : time(NULL)) >= 0) {
-		return 0;
-	}
-	return -1;
-}
-
-/*
  *	Matches if there is NO SUCH ATTRIBUTE as the one named
  *	in check->strvalue.  If there IS such an attribute, it
  *	doesn't match.
@@ -666,32 +643,6 @@ static int attrcmp(void *instance,
 }
 
 /*
- *	Compare the expiration date.
- */
-static int expirecmp(void *instance, REQUEST *req UNUSED,
-		     VALUE_PAIR *request, VALUE_PAIR *check,
-		     VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
-{
-	time_t now;
-
-	instance = instance;
-	request = request;	/* shut the compiler up */
-	check_pairs = check_pairs;
-	reply_pairs = reply_pairs;
-
-	/*
-	 *  FIXME!  This should be request->timestamp!
-	 */
-	now = time(NULL);
-
-	if (now <= (signed)check->lvalue) {
-		return 0;
-	}
-
-	return +1;
-}
-
-/*
  *	Compare the request packet type.
  */
 static int packetcmp(void *instance UNUSED, REQUEST *req,
@@ -733,9 +684,7 @@ void pair_builtincompare_init(void)
 	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp, NULL);
 	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp, NULL);
 	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, NULL);
-	paircompare_register(PW_CURRENT_TIME, 0, timecmp, NULL);
 	paircompare_register(PW_NO_SUCH_ATTRIBUTE, 0, attrcmp, NULL);
-	paircompare_register(PW_EXPIRATION, 0, expirecmp, NULL);
 	paircompare_register(PW_PACKET_TYPE, 0, packetcmp, NULL);
 	paircompare_register(PW_RESPONSE_PACKET_TYPE, 0, responsecmp, NULL);
 }
