@@ -37,20 +37,18 @@
  * TODO: support other than ILP32 (for State)
  */
 
-#ifdef FREERADIUS
-#include "radiusd.h"
-#include "modules.h"
-#include "conffile.h"
-#endif
-#include "x99.h"
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <netinet/in.h>	/* htonl() */
+
+#ifdef FREERADIUS
+#include "radiusd.h"
+#include "modules.h"
+#endif
+#include "x99.h"
 
 static const char rcsid[] = "$Id$";
 

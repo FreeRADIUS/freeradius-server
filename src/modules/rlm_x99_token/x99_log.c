@@ -24,7 +24,7 @@
 #endif
 #include "x99.h"
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #ifndef FREERADIUS
