@@ -2072,9 +2072,6 @@ static void sig_fatal(int sig)
 	}
 
 	switch(sig) {
-		case 100:
-			radlog(L_ERR, "%saccounting process died - exit.", me);
-			break;
 		case 101:
 			radlog(L_ERR, "%sfailed in select() - exit.", me);
 			break;
