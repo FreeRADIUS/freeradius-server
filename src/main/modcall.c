@@ -925,8 +925,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	this = find_module_instance(modrefname);
 	if (this == NULL) {
 		radlog(L_ERR|L_CONS, "%s[%d] Unknown module \"%s\".", filename,
-		       cf_section_lineno(cf_itemtosection(ci)),
-		       modrefname);
+		       lineno, modrefname);
 		exit(1); /* FIXME */
 	}
 
