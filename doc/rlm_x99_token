@@ -12,29 +12,29 @@
 
 	CRYPTOCard (RB-1, KT-1)
 	<http://www.cryptocard.com/>
-	Full support
+	Full support.
 
 	Secure Computing (SafeWord (various models))
 	<http://www.securecomputing.com/index.cfm?sKey=688>
-	Not supported
+	Not supported.
 	Formerly Enigma Logic.
 
 	VASCO (DigiPass (various models))
 	<http://www.vasco.com/R3DEngine.asp?reference=03-01.01-01&lang=en>
-	Not supported
+	Not supported.
 
 	ActivCard (ActivCard One)
 	<http://www.activcard.com/>
-	Not supported (patented sync mode)
+	Not supported (patented sync mode).
 
 	PassGo (Defender aka SNK, Defender Plus, Defender One)
 	<http://www.passgo.com/products/defender/>
-	Not supported
+	Not supported.
 	This product has a history of acquisition:
 	PassGo, Symantec, AXENT, AssureNet Pathways (name change only),
 	Digital Pathways.  Also, to add to the fun, PassGo was acquired
 	by AXENT, whom Symantec then acquired.  The original product
-	seems to have been called "SecureNet Key" or SNK or SNK/4.
+	seems to have been called "SecureNet Key" aka SNK or SNK/4.
 
     If you know of other vendors, please email me (frank@google.com)
     and I'll add them to the list above.  If you own any of the above
@@ -65,7 +65,7 @@
 
     In addition to this freeradius module, I will make a PAM module available
     that will support the same file format.  These docs will be updated
-    when the module is available (ETA before Dec 2001).
+    when the module is available (ETA before Dec 31, 2001).
 
 
 1.  STRONG WARNING SECTION
@@ -93,7 +93,7 @@
 
     You will also need /dev/urandom available.  AFAIK, this is available on
     Linux and *BSD.  For Solaris, you'll need to install the SUNWski
-    package (look on SunSolve).  Information for other OS's are welcome.
+    package (look on SunSolve).  Information for other OS's is welcome.
 
     This module will only work on ILP32 machines, so if you build it
     as 64-bit under Solaris, you'll find that it fails at runtime.
@@ -109,11 +109,6 @@
 
 3.  END-USER OPERATION
 
-    This section is a bit wedged in, but it makes a little more sense to
-    talk about how to use this module first before going on about server
-    configuration.  This section isn't strictly end-user, some internals
-    are described.
-
     "Normally", upon login, users would enter enter the challenge into
     their token and give the server the response.  However, this is unsafe
     given that DES is so weak.  Luckily, most tokens support a synchronous
@@ -128,32 +123,49 @@
     So instead of presenting the synchronous challenge, the server ALWAYS
     displays a random challenge.  Instead of verifying that the challenge
     matches the token display, the user should just press "ENT" and enter
-    the response.
+    the response.  This might be confusing, you will need to train users.
+    Even with training, they will forget.  Be warned!
 
-    For some tokens, this is pretty transparent to the user; in sync mode
-    the user doesn't go through the verification step.  For other tokens,
-    the user may be confused as to which number they should enter as the
-    response.  User training is essential.
+    For other tokens, the token does not display the synchronous
+    challenge, only the response is displayed.  This is a bit easier on
+    the user, they won't be confused as to which number to enter for the
+    response.  Since the token's challenge display really just serves
+    to verify the sync state, and we don't present that information,
+    I recommend operating tokens in the no-challenge-display mode if
+    possible.  The disadvantage is that the user cannot resync the token.
 
-    So that takes care of sync mode -- an attacker does not see the
-    plaintext, so we avoid the vulnerability.  But we need async mode for
-    two reasons: 1) to sync/resync the token, and 2) to support multiple
-    RADIUS servers (only one can run in sync mode).  Note that only some
-    tokens support "user" sync/resync.  For others, an admin must create
-    the initial state and manual intervention is required for resync.
+    I will go out on a limb here and say that as long as the user doesn't
+    play with the token, the token will almost never get out of sync.
+    The only way I can see this really happening (besides state file
+    corruption) is if a future response, within ewindow_size, differs
+    from the "current" response by only a digit or a transposition, and
+    the user typos the response entry -- a near impossible turn of events.
 
-    Even if you avoid the initial sync step (ie, do it automatically),
-    and you train your users to not play with the token, you will still
-    need to handle the possibility of the state files on the server
-    getting corrupted, etc.
+    In addition to the shielding of the plaintext, and ease of use,
+    another advantage of sync mode is to support authentication methods
+    where a challenge cannot be presented to the user, e.g. when using
+    the Microsoft Windows VPN client.  [This support does not exist yet.]
+    
 
-    Since this is unsafe, I came up with the concept of the "site-specific
-    challenge transform".  For the user, this means that instead of
-    entering the challenge as presented to them, they enter something
-    based on the challenge.  For example, a simple transform would be
-    to enter the challenge backwards; if the server presents "123456"
-    the user enters "654321".  This has the effect that an observer
-    does not have access to the plaintext.
+4.  SITE-SPECIFIC CHALLENGE TRANSFORM
+
+    Even though the normal mode of operation will be sync mode,
+    we want async mode support for (at least) two reasons:
+
+        1) to sync/resync the token, and
+        2) because state is not shared across multiple RADIUS servers.
+
+    Note that only some tokens support "user" sync/resync.  For others,
+    an admin must create the initial state and manual intervention is
+    required for resync.
+
+    Since pure challenge/response is unsafe, I came up with the concept
+    of the "site-specific challenge transform".  For the user, this
+    means that instead of entering the challenge as presented to them,
+    they enter something based on the challenge.  For example, a simple
+    transform would be to enter the challenge backwards; if the server
+    presents "123456" the user enters "654321".  This has the effect
+    that an observer does not have access to the plaintext.
 
     This is security through obscurity, and is not really "safe", but
     for an outsider it may present at least some barrier.  Even though
@@ -170,9 +182,6 @@
     x99_token instances.  If someone can supply a working config
     example, I will include it here.
 
-
-4.  SITE-SPECIFIC CHALLENGE TRANSFORM
-
     x99_site.c implements the site-specific challenge transform.  The
     default transform is to replace the challenge with the text "DISABLED".
     This effectively disables async mode (the user will not be able to
@@ -183,14 +192,17 @@
     may have some benefit, since your users don't need to be trained.
     I can guarantee your most annoying user will complain when they can't
     remember what they really are supposed to enter into the token.
+    Also, this can be safe if you diligently reprogram tokens when async
+    mode has been used.  You might automatically disable a token after two
+    async authentications.
 
-    DO NOT use the suggestion above, reversing the challenge.  That is
-    now exceptionally weak.  An example of a possibly strong transform is
-    to have the user enter the square of the challenge.  The VASCO
-    DigiPass 500 is also a [regular] calculator, so this could be a
-    good one if you use that token.  Well, there's no support for that
-    token yet, and now that I've mentioned it, it is another exceptionally
-    weak transform, but you get the idea.
+    DO NOT use the transform suggested above, reversing the challenge.
+    That is now exceptionally weak.  An example of a possibly strong
+    transform is to have the user enter the square of the challenge.
+    The VASCO DigiPass 500 is also a [regular] calculator, so this
+    could be a good one if you use that token.  Well, there's no support
+    for that token yet, and now that I've mentioned it, it is another
+    exceptionally weak transform, but you get the idea.
 
     Note that the CRYPTOCard RB-1 supports arbitrarily long challenge
     strings.  You should take advantage of this when implementing your
@@ -224,7 +236,7 @@
 
 7.  LOG MESSAGES
 
-    All errors contain the word/phrase "unable" or "bad".  You will want
+    All errors contain the word "unable" or "bad".  You will want
     to scan for these automatically or periodically.  "bad state" messages
     indicate a problem with the State attribute, which the server uses
     to track challenges (for async mode).  They are all of the form
