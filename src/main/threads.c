@@ -168,9 +168,6 @@ static const CONF_PARSER thread_config[] = {
  *	This function gets called ONLY from the main handler thread...
  *
  *	This function should never fail.
- *
- *	FIXME: implement some kind of "maximum #" for the waiting
- *	requests...
  */
 static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
@@ -210,8 +207,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 			/*
 			 *	Mark the request as done.
 			 */
-			DEBUG("  ERROR! SERVER IS BLOCKED: Discarding new request %d", request->number);
-			
+			radlog(L_ERR|L_CONS, "!!! ERROR !!! The server is blocked: discarding new request %d", request->number);
 			request->finished = TRUE;
 			return;
 		}
