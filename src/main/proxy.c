@@ -220,7 +220,7 @@ int proxy_send(REQUEST *request)
 	 *	Perhaps accounting proxying was turned off.
 	 */
 	if (request->packet->code == PW_ACCOUNTING_REQUEST &&
-	    realm-acct_port == 0) {
+	    realm->acct_port == 0) {
 		pairfree(vps);
 		return 0;
 	}
