@@ -17,6 +17,7 @@ Ver 1.70:
   protect ourselves from sql injection.
 * Use the ldap_userdn directive where applicable in the functions.php3 file
 * Add an sql_xlat function
+* Add a nas administration page for sql based clients
 
 TODO: Check out the sql queries in lin/sql for sql injection.
 
