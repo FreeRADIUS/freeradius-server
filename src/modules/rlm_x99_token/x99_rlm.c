@@ -34,7 +34,6 @@
 /*
  * TODO: all requests (success or fail) should take ~ the same amount of time.
  * TODO: x99_pwe: change add_vps to success_vps and fail_vps.
- * TODO: add Auth-Type config item if not present?
  * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
@@ -244,19 +243,18 @@ x99_token_authorize(void *instance, REQUEST *request)
     int i, rc;
 
     x99_user_info_t user_info;
-    int user_found, auth_type;
+    int user_found, auth_type_found;
     int pwattr;
     int32_t sflags = 0; /* flags for state */
     VALUE_PAIR *vp;
 
-    /* Early exit if Auth-Type == reject */
+    /* Early exit if Auth-Type != x99_token */
+    auth_type_found = 0;
     if ((vp = pairfind(request->config_items, PW_AUTHTYPE)) != NULL) {
-	auth_type = 1;
-	if (!strcmp(vp->strvalue, "Reject")) {
+	auth_type_found = 1;
+	if (strcmp(vp->strvalue, "x99_token")) {
 	    return RLM_MODULE_NOOP;
 	}
-    } else {
-	auth_type = 0;
     }
 
     /* The State attribute will be present if this is a response. */
@@ -326,6 +324,10 @@ x99_token_authorize(void *instance, REQUEST *request)
 	    }
 	    pairadd(&request->config_items, vp);
 	    DEBUG("rlm_x99_token: autz: using fast_sync");
+
+	    if (!auth_type_found)
+		pairadd(&request->config_items,
+			pairmake("Auth-Type", "x99_token", T_OP_EQ));
 	    return RLM_MODULE_OK;
 
 	}
@@ -396,6 +398,9 @@ gen_challenge:
     request->reply->code = PW_ACCESS_CHALLENGE;
     DEBUG("rlm_x99_token: Sending Access-Challenge.");
 
+    if (!auth_type_found)
+	pairadd(&request->config_items,
+		pairmake("Auth-Type", "x99_token", T_OP_EQ));
     return RLM_MODULE_HANDLED;
 }
 

@@ -237,6 +237,13 @@
     try again.  It's 'e'window because I am reserving twindow for
     time synchronous modes.
 
+    radiusd.conf:  x99_token must be listed in both the authorize and
+    authenticate stanzas.  In the authorize code, x99_token will set
+    the Auth-Type to x99_token (ie, itself) if the Auth-Type attribute
+    isn't already present.  You can use this to selectively authenticate
+    users via a token.  Any examples I could give here would be poor,
+    and subject to other modules' [changing] operations, so it's probably
+    best to direct any questions to freeradius-users@lists.cistron.nl.
 
 6.  FILES
 
