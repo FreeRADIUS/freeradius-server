@@ -1,8 +1,6 @@
+During conversion from radiusd-freeradius* packages to freeradius* packages,
+the directory for configuration has moved to /etc/freeradius from
+/etc/raddb. Since a number of things have changed in the way freeradius
+is configured this package does not automatically copy your old
+configuration; please do that manually.
 
-In the radiusd.conf file, broken/useless things are commented-out 
-by '#deb#' :
- - example is a development example
-
-Chad Miller <cmiller@debian.org>  Sun,  6 May 2001 16:29:11 -0400
-
-$Id$
