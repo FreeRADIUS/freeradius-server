@@ -226,7 +226,7 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAI
 		return -1;
 
 	if (group_inst->group_file)
-		grp = fgetgrnam(group_inst->passwd_file, (char *)check->strvalue);
+		grp = fgetgrnam(group_inst->group_file, (char *)check->strvalue);
 	else
 		grp = getgrnam((char *)check->strvalue);
 	if (grp == NULL)
