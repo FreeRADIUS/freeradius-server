@@ -433,9 +433,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'a': /* Protocol: */
 				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER, func);
+				p++;
 				break;
 			case 'c': /* Callback-Number */
 				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER),PW_TYPE_STRING, func);
+				p++;
 				break;
 			case 'd': /* request day */
 				TM = localtime_r(&request->timestamp, &s_TM);
@@ -484,6 +486,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'u': /* User name */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING, func);
+				p++;
 				break;
 			case 'A': /* radacct_dir */
 				strNcpy(q,radacct_dir,freespace-1);
