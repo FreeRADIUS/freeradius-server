@@ -43,8 +43,10 @@
 #define PAP_ENC_SHA1		3
 #define PAP_ENC_NT		4
 #define PAP_ENC_LM		5
-#define PAP_ENC_AUTO		6
-#define PAP_MAX_ENC		6
+#define PAP_ENC_SMD5		6
+#define PAP_ENC_SSHA		7
+#define PAP_ENC_AUTO		8
+#define PAP_MAX_ENC		8
 
 
 static const char rcsid[] = "$Id$";
@@ -61,6 +63,146 @@ typedef struct rlm_pap_t {
 	int sch;
 	char norm_passwd;
 } rlm_pap_t;
+
+static char table64[]=
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  
+/*
+ * base64_encode()
+ *
+ * Returns the length of the newly created base64 string. The third argument
+ * is a pointer to an allocated area holding the base64 data. If something
+ * went wrong, -1 is returned.
+ *
+ */
+static int base64_encode(const void *inp, int insize, char **outptr)
+{
+  unsigned char ibuf[3];
+  unsigned char obuf[4];
+  int i;
+  int inputparts;
+  char *output;
+  char *base64data;
+
+  char *indata = (char *)inp;
+
+  if(0 == insize)
+    insize = strlen(indata);
+
+  base64data = output = (char*)malloc(insize*4/3+4);
+  if(NULL == output)
+    return -1;
+
+  while(insize > 0) {
+    for (i = inputparts = 0; i < 3; i++) { 
+      if(insize > 0) {
+        inputparts++;
+        ibuf[i] = *indata;
+        indata++;
+        insize--;
+      }
+      else
+        ibuf[i] = 0;
+    }
+                       
+    obuf [0] = (ibuf [0] & 0xFC) >> 2;
+    obuf [1] = ((ibuf [0] & 0x03) << 4) | ((ibuf [1] & 0xF0) >> 4);
+    obuf [2] = ((ibuf [1] & 0x0F) << 2) | ((ibuf [2] & 0xC0) >> 6);
+    obuf [3] = ibuf [2] & 0x3F;
+
+    switch(inputparts) {
+    case 1: /* only one byte read */
+      sprintf(output, "%c%c==", 
+              table64[obuf[0]],
+              table64[obuf[1]]);
+      break;
+    case 2: /* two bytes read */
+      sprintf(output, "%c%c%c=", 
+              table64[obuf[0]],
+              table64[obuf[1]],
+              table64[obuf[2]]);
+      break;
+    default:
+      sprintf(output, "%c%c%c%c", 
+              table64[obuf[0]],
+              table64[obuf[1]],
+              table64[obuf[2]],
+              table64[obuf[3]] );
+      break;
+    }
+    output += 4;
+  }
+  *output=0;
+  *outptr = base64data; /* make it return the actual data memory */
+
+  return strlen(base64data); /* return the length of the new data */
+}
+
+static void decodeQuantum(unsigned char *dest, char *src)
+{
+  unsigned int x = 0;
+  int i;
+  for(i = 0; i < 4; i++) {
+    if(src[i] >= 'A' && src[i] <= 'Z')
+      x = (x << 6) + (unsigned int)(src[i] - 'A' + 0);
+    else if(src[i] >= 'a' && src[i] <= 'z')
+      x = (x << 6) + (unsigned int)(src[i] - 'a' + 26);
+    else if(src[i] >= '0' && src[i] <= '9') 
+      x = (x << 6) + (unsigned int)(src[i] - '0' + 52);
+    else if(src[i] == '+')
+      x = (x << 6) + 62;
+    else if(src[i] == '/')
+      x = (x << 6) + 63;
+    else if(src[i] == '=')
+      x = (x << 6);
+  }
+
+  dest[2] = (unsigned char)(x & 255); x >>= 8;
+  dest[1] = (unsigned char)(x & 255); x >>= 8;
+  dest[0] = (unsigned char)(x & 255); x >>= 8;
+}
+/* base64Decode
+ * Given a base64 string at src, decode it into the memory pointed
+ * to by dest. If rawLength points to a valid address (ie not NULL),
+ * store the length of the decoded data to it.
+ */
+
+static void base64Decode(unsigned char *dest, char *src, int *rawLength)
+{
+  int length = 0;
+  int equalsTerm = 0;
+  int i;
+  int numQuantums;
+  unsigned char lastQuantum[3];
+	
+  while((src[length] != '=') && src[length])
+    length++;
+  while(src[length+equalsTerm] == '=')
+    equalsTerm++;
+  
+  numQuantums = (length + equalsTerm) / 4;
+  if(rawLength)
+    *rawLength = (numQuantums * 3) - equalsTerm;
+  
+  for(i = 0; i < numQuantums - 1; i++) {
+    decodeQuantum(dest, src);
+    dest += 3; src += 4;
+  }
+
+  decodeQuantum(lastQuantum, src);
+  for(i = 0; i < 3 - equalsTerm; i++)
+    dest[i] = lastQuantum[i];
+	
+}
+
+
+static int base64_decode(const char *str, void *data)
+{
+  int ret;
+
+  base64Decode((unsigned char *)data, (char *)str, &ret);
+  return ret;
+}
 
 /*
  *      A mapping of configuration file names to internal variables.
@@ -83,49 +225,11 @@ static const LRAD_NAME_NUMBER schemes[] = {
   { "sha1", PAP_ENC_SHA1 },
   { "nt", PAP_ENC_NT },
   { "lm", PAP_ENC_LM },
+  { "smd5", PAP_ENC_SMD5 },
+  { "ssha", PAP_ENC_SSHA },
   { "auto", PAP_ENC_AUTO },
   { NULL, PAP_ENC_INVALID }
 };
-
-
-static const char *pap_hextab = "0123456789abcdef";
-
-/*
- *  Smaller & faster than snprintf("%x");
- *  Completely stolen from ns_mta_md5 module
- */
-static void pap_hexify(char *buffer, char *str, int len)
-{
-	char *pch = str;
-	char ch;
-	int i;
-
-	for(i = 0;i < len; i ++) {
-		ch = pch[i];
-		buffer[2*i] = pap_hextab[(ch>>4) & 15];
-		buffer[2*i + 1] = pap_hextab[ch & 15];
-	}
-	buffer[len * 2] = '\0';
-	return;
-}
-
-/*
- *	hex2bin converts hexadecimal strings into binary
- */
-static int hex2bin (const char *szHex, unsigned char* szBin, int len)
-{
-	char * c1, * c2;
-	int i;
-
-   	for (i = 0; i < len; i++) {
-		if( !(c1 = memchr(pap_hextab, tolower((int) szHex[i << 1]), 16)) ||
-		    !(c2 = memchr(pap_hextab, tolower((int) szHex[(i << 1) + 1]), 16)))
-		     break;
-                 szBin[i] = ((c1-pap_hextab)<<4) + (c2-pap_hextab);
-        }
-
-        return i;
-}
 
 
 static int pap_detach(void *instance)
@@ -240,7 +344,6 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			case PW_CRYPT_PASSWORD:
 				goto do_crypt;
 				
-				
 			case PW_MD5_PASSWORD:
 				goto do_md5;
 				
@@ -252,6 +355,12 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 			case PW_LM_PASSWORD:
 				goto do_lm;
+
+			case PW_SMD5_PASSWORD:
+				goto do_smd5;
+
+			case PW_SSHA_PASSWORD:
+				goto do_ssha;
 
 			default:
 				break;	/* ignore it */
@@ -288,11 +397,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		DEBUG("rlm_pap: Using clear text password.");
 		if (strcmp((char *) vp->strvalue,
 			   (char *) request->password->strvalue) != 0){
-			DEBUG("rlm_pap: Passwords don't match");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
 	done:
 		DEBUG("rlm_pap: User authenticated succesfully");
@@ -304,11 +410,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		DEBUG("rlm_pap: Using CRYPT encryption.");
 		if (lrad_crypt_check((char *) request->password->strvalue,
 				     (char *) vp->strvalue) != 0) {
-			DEBUG("rlm_pap: Passwords don't match");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CRYPT password check failed");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
 		goto done;
 		break;
@@ -317,24 +420,52 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_md5:
 		DEBUG("rlm_pap: Using MD5 encryption.");
 
-		if (vp->length != 32) {
-			DEBUG("rlm_pap: Configured MD5 password has incorrect length");
+		if (vp->length == 32) {
+			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue, 16);
+		}
+		if (vp->length != 16) {
+		DEBUG("rlm_pap: Configured MD5 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured MD5 password has incorrect length");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
 		
 		MD5Init(&md5_context);
-		MD5Update(&md5_context, request->password->strvalue, request->password->length);
+		MD5Update(&md5_context, request->password->strvalue,
+			  request->password->length);
 		MD5Final(digest, &md5_context);
-		pap_hexify(buff,digest,16);
-		if (strcasecmp((char *)vp->strvalue, buff) != 0){
-			DEBUG("rlm_pap: Passwords don't match");
+		if (memcmp(digest, vp->strvalue, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
+		}
+		goto done;
+		break;
+		
+	case PW_SMD5_PASSWORD:
+	do_smd5:
+		DEBUG("rlm_pap: Using SMD5 encryption.");
+
+		if (vp->length >= 32) {
+			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue,
+						  vp->length / 2);
+		}
+		if (vp->length <= 16) {
+			DEBUG("rlm_pap: Configured SMD5 password has incorrect length");
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SMD5 password has incorrect length");
+			goto make_msg;
+		}
+		
+		MD5Init(&md5_context);
+		MD5Update(&md5_context, request->password->strvalue,
+			  request->password->length);
+		MD5Update(&md5_context, &vp->strvalue[16], vp->length - 16);
+		MD5Final(digest, &md5_context);
+
+		/*
+		 *	Compare only the MD5 hash results, not the salt.
+		 */
+		if (memcmp(digest, vp->strvalue, 16) != 0) {
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SMD5 password check failed");
+			goto make_msg;
 		}
 		goto done;
 		break;
@@ -343,24 +474,49 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_sha:
 		DEBUG("rlm_pap: Using SHA1 encryption.");
 		
-		if (vp->length != 40) {
+		if (vp->length == 40) {
+			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue, 20);
+		}
+		if (vp->length != 20) {
 			DEBUG("rlm_pap: Configured SHA1 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SHA1 password has incorrect length");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
 		
 		SHA1Init(&sha1_context);
-		SHA1Update(&sha1_context, request->password->strvalue, request->password->length);
+		SHA1Update(&sha1_context, request->password->strvalue,
+			   request->password->length);
 		SHA1Final(digest,&sha1_context);
-		pap_hexify(buff,digest,20);
-		if (strcasecmp((char *)vp->strvalue, buff) != 0){
-			DEBUG("rlm_pap: Passwords don't match");
+		if (memcmp(digest, vp->strvalue, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
+		}
+		goto done;
+		break;
+		
+	case PW_SSHA_PASSWORD:
+	do_ssha:
+		DEBUG("rlm_pap: Using SSHA encryption.");
+		
+		if (vp->length >= 40) {
+			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue,
+				vp->length / 2);
+		}
+		if (vp->length <= 20) {
+			DEBUG("rlm_pap: Configured SSHA password has incorrect length");
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SHA password has incorrect length");
+			goto make_msg;
+		}
+
+		
+		SHA1Init(&sha1_context);
+		SHA1Update(&sha1_context, request->password->strvalue,
+			   request->password->length);
+		SHA1Update(&sha1_context, &vp->strvalue[20], vp->length - 20);
+		SHA1Final(digest,&sha1_context);
+		if (memcmp(digest, vp->strvalue, 20) != 0) {
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SSHA password check failed");
+			goto make_msg;
 		}
 		goto done;
 		break;
@@ -370,32 +526,25 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		DEBUG("rlm_pap: Using NT encryption.");
 
 		if  (vp->length == 32) {
-			vp->length = hex2bin(vp->strvalue, vp->strvalue, 16);
+			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue, 16);
 		}
 		if (vp->length != 16) {
 			DEBUG("rlm_pap: Configured NT-Password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NT-Password has incorrect length");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
 		
-		sprintf(buff2,"%%{mschap:NT-Hash %s}",request->password->strvalue);
+		sprintf(buff2,"%%{mschap:NT-Hash %s}",
+			request->password->strvalue);
 		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
 			DEBUG("rlm_pap: mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
-		pap_hexify(buff,vp->strvalue,16);
-		DEBUG("rlm_pap: Encrypted password: %s", digest);
-		if (strcasecmp(buff, digest) != 0){
-			DEBUG("rlm_pap: Passwords don't match");
+		if ((lrad_hex2bin(digest, digest, 16) != vp->length) ||
+		    (memcmp(digest, vp->strvalue, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NT password check failed");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_fmsg_vp);
-				return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
 		goto done;
 		break;
@@ -405,29 +554,26 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		DEBUG("rlm_pap: Using LM encryption.");
 		
 		if  (vp->length == 32) {
-			vp->length = hex2bin(vp->strvalue, vp->strvalue, 16);
+			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue, 16);
 		}
 		if (vp->length != 16) {
 			DEBUG("rlm_pap: Configured LM-Password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured LM-Password has incorrect length");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
 		sprintf(buff2,"%%{mschap:LM-Hash %s}",request->password->strvalue);
 		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
 			DEBUG("rlm_pap: mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-			return RLM_MODULE_REJECT;
+			goto make_msg;
 		}
-		pap_hexify(buff,vp->strvalue,16);
-		DEBUG("rlm_pap: Encrypted password: %s",buff);
-		if (strcasecmp(buff, digest) != 0){
-			DEBUG("rlm_pap: Passwords don't match");
+		if ((lrad_hex2bin(digest, digest, 16) != vp->length) ||
+		    (memcmp(digest, vp->strvalue, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: LM password check failed");
-			module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+		make_msg:
+			DEBUG("rlm_pap: Passwords don't match");
+			module_fmsg_vp = pairmake("Module-Failure-Message",
+						  module_fmsg, T_OP_EQ);
 			pairadd(&request->packet->vps, module_fmsg_vp);
 			return RLM_MODULE_REJECT;
 		}
