@@ -1,12 +1,8 @@
 #ifndef _EAP_H
 #define _EAP_H
 
-#if HAVE_PTHREAD_H
-#include	<pthread.h>
-#endif
-
-#if HAVE_SEMAPHORE_H
-#include	<semaphore.h>
+#if HAVE_NETINET_IN_H
+#include <netinet/in.h>
 #endif
 
 #include	<ltdl.h>
@@ -15,8 +11,6 @@
 #include "libradius.h"
 #include "radiusd.h"
 #include "modules.h"
-
-#include <netinet/in.h>
 
 #define EAP_START		2
 
