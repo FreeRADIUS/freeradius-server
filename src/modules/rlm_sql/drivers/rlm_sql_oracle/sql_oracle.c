@@ -297,10 +297,11 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 		 * for char/string type columns).
 		 */
 		switch(dtype) {
-		case SQLT_AFC:
-		case SQLT_VCS:
-		case SQLT_CHR:
-		case SQLT_STR:
+		case SQLT_AFC:	/* ansii fixed char */
+		case SQLT_AFV:	/* ansii var char */
+		case SQLT_VCS:	/* var char */
+		case SQLT_CHR:	/* char */
+		case SQLT_STR:	/* string */
 			x=OCIAttrGet((dvoid*)param, (ub4) OCI_DTYPE_PARAM,
 				   (dvoid*) &dsize, (ub4 *)0, (ub4) OCI_ATTR_DATA_SIZE,
 				   oracle_sock->errHandle);
