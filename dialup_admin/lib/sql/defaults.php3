@@ -31,10 +31,28 @@ if ($login != ''){
 					$member_groups[] = $row[GroupName];
 			}
 			if (isset($member_groups)){
-				foreach ($member_groups as $group){
+				$in = '(';
+				foreach ($member_groups as $group)
+					$in .= "'$group',";
+				$in = substr($in,0,-1);
+				$in .= ')';	
+				$res = @da_sql_query($link,$config,
+				"SELECT Attribute,Value $op FROM $config[sql_groupcheck_table]
+				WHERE GroupName IN $in;");
+				if ($res){
+					while(($row = @da_sql_fetch_array($res,$config))){
+						$attr = $row[Attribute];
+						$val = $row[Value];
+						if ($use_op){
+							$oper = $row[op];
+							$tmp["$attr"][operator][]="$oper";
+						}
+						$tmp["$attr"][]="$val";
+						$tmp["$attr"][count]++;
+					}
 					$res = @da_sql_query($link,$config,
-					"SELECT Attribute,Value $op FROM $config[sql_groupcheck_table]
-					WHERE GroupName = '$group';");
+					"SELECT Attribute,Value $op FROM $config[sql_groupreply_table]
+					WHERE GroupName IN $in;");
 					if ($res){
 						while(($row = @da_sql_fetch_array($res,$config))){
 							$attr = $row[Attribute];
@@ -43,46 +61,31 @@ if ($login != ''){
 								$oper = $row[op];
 								$tmp["$attr"][operator][]="$oper";
 							}
-							$tmp["$attr"][]="$val";
+							$tmp["$attr"][] = "$val";
 							$tmp["$attr"][count]++;
 						}
-						$res = @da_sql_query($link,$config,
-						"SELECT Attribute,Value $op FROM $config[sql_groupreply_table]
-						WHERE GroupName = '$group';");
-						if ($res){
-							while(($row = @da_sql_fetch_array($res,$config))){
-								$attr = $row[Attribute];
-								$val = $row[Value];
-								if ($use_op){
-									$oper = $row[op];
-									$tmp["$attr"][operator][]="$oper";
-								}
-								$tmp["$attr"][] = "$val";
-								$tmp["$attr"][count]++;
-							}
-						}
-						else
-							echo "<b>Database query failed partially: " . da_sql_error($link,$config) . "</b><br>\n";
 					}
 					else
-						echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
-					if (isset($tmp)){
-						foreach(array_keys($tmp) as $val){
-							if ($val == '')
-								continue;
-							$key = $rev_attrmap["$val"];
-							if ($key == ''){
-								$key = $val;
-								$attrmap["$key"] = $val;
-								$attr_type["$key"] = 'replyItem';
-								$rev_attrmap["$val"] = $key;
-							}
-							if (!isset($default_vals["$key"]) || $overwrite_defaults){
-								if ($use_op)
-									$default_vals["$key"][operator] = $tmp["$val"][operator];
-								if ($tmp[$val][0] != '')
-									$default_vals["$key"] = $tmp["$val"];
-							}
+						echo "<b>Database query failed partially: " . da_sql_error($link,$config) . "</b><br>\n";
+				}
+				else
+					echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
+				if (isset($tmp)){
+					foreach(array_keys($tmp) as $val){
+						if ($val == '')
+							continue;
+						$key = $rev_attrmap["$val"];
+						if ($key == ''){
+							$key = $val;
+							$attrmap["$key"] = $val;
+							$attr_type["$key"] = 'replyItem';
+							$rev_attrmap["$val"] = $key;
+						}
+						if (!isset($default_vals["$key"]) || $overwrite_defaults){
+							if ($use_op)
+								$default_vals["$key"][operator] = $tmp["$val"][operator];
+							if ($tmp[$val][0] != '')
+								$default_vals["$key"] = $tmp["$val"];
 						}
 					}
 				}
