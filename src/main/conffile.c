@@ -22,6 +22,9 @@
 #include "token.h"
 #include "modules.h"
 
+static const char rcsid[] =
+"$Id$";
+
 #define xalloc malloc
 #define xstrdup strdup
 
