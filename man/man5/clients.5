@@ -1,9 +1,11 @@
-.TH CLIENTS 5 "15 September 1997"
+.TH CLIENTS 5 "16 March 2001"
 .SH NAME
 clients \- RADIUS clients file
 .SH DESCRIPTION
 The \fIclients\fP file resides in the radius database directory,
-by default \fI/etc/raddb\fP. It contains a list of RADIUS clients.
+by default \fI/etc/raddb\fP. Its use is depreciated in favour of 
+\fIclients.conf\fP.
+
 Every line starting with a hash sign
 .RB (' # ')
 is treated as comment and ignored.
@@ -25,4 +27,5 @@ file is read by \fBradiusd\fP on startup only.
 .I /etc/raddb/clients
 .SH "SEE ALSO"
 .BR radiusd (8),
-.BR naslist (5rad)
+.BR clients.conf (5)
+.BR naslist (5)

@@ -10,14 +10,14 @@ radclient -- send packets to a RADIUS server, show reply
 .RB [ \-i
 .IR source_ip ]
 .RB [ \-xy ]
-\fIserver acct|auth secret\fP
+\fIserver {acct|auth} secret\fP
 .SH DESCRIPTION
-\fBRadclient\fP is a radius client program. It can send arbitrary radius
+\fBradclient\fP is a radius client program. It can send arbitrary radius
 packets to a radius server, then shows the reply. It can be used to
 test changes you made in the configuration of the radius server,
 or it can be used to monitor if a radius server is up.
 .PP
-\fBRadclient\fP reads radius attribute/value pairs from it standard
+\fBradclient\fP reads radius attribute/value pairs from it standard
 input, or from a file specified on the command line. It then encodes
 these attribute/value pairs using the dictionary, and sends them
 to the remote server.
@@ -26,24 +26,24 @@ The \fIPassword\fP attribute is automatically encrypted by \fIradclient\fP.
 
 .SH OPTIONS
 
-.IP "\-d \fIraddb_directory\fP"
+.IP \-d\ \fIraddb_directory\fP
 The directory that contains the RADIUS dictionary files. Defaults to
 \fI/etc/raddb\fP.
 
-.IP "\-f \fIfile\fP"
+.IP \-f\ \fIfile\fP
 File to read the attribute/value pairs from. If this is not specified,
 they are read from stdin.
 
-.IP \-i \fIsource_ip\fP"
+.IP \-i\ \fIsource_ip\fP
 The source IP address to use for sending radius packets.
 
-.IP \-x 
+.IP \-x
 Print out extra debugging information.
 
 .IP \-q
 Go to quiet mode, and do not print out anything.
 
-.IP "server[:port]"
+.IP server[:port]
 The hostname or IP address of the remote server. Optionally a UDP port
 can be specified. If no UDP port is specified, it is looked up in
 \fI/etc/services\fP. The service name looked for is \fBradacct\fP for
@@ -51,7 +51,7 @@ accounting packets, and \fBradius\fP for all other requests. If a
 service is not found in \fI/etc/services\fP, 1646 and 1645 are used
 respectively.
 
-.IP "acct|auth"
+.IP acct\ |\ auth
 Use \fBauth\fP to send an authentication packet, or \fBacct\fP to send
 an accounting packet. Instead of \fBauth\fP or \fBacct\fP, you can
 also use a decimal code here. For example, code 12 is \fBStatus-Server\fP.
