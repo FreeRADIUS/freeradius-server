@@ -33,25 +33,27 @@ int		librad_debug = 0;
  *	Return a printable host name (or IP address in dot notation)
  *	for the supplied IP address.
  */
-char * ip_hostname(uint32_t ipaddr)
+char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 {
 	struct		hostent *hp;
-	static char	hstname[128];
 
 	/*
 	 *	No DNS: don't look up host names
 	 */
 	if (!librad_dodns) {
-		ip_ntoa(hstname, ipaddr);
-		return(hstname);
+		ip_ntoa(buf, ipaddr);
+		return buf;
 	}
 
 	hp = gethostbyaddr((char *)&ipaddr, sizeof (struct in_addr), AF_INET);
-	if (hp == 0) {
-		ip_ntoa(hstname, ipaddr);
-		return(hstname);
+	if ((hp == 0) ||
+	    (strlen((char *)hp->h_name) >= buflen)) {
+		ip_ntoa(buf, ipaddr);
+		return buf;
 	}
-	return (char *)hp->h_name;
+
+	strNcpy(buf, (char *)hp->h_name, buflen);
+	return buf;
 }
 
 

@@ -122,9 +122,7 @@ static NAS *my_read_naslist_file(char *file)
 		c->ipaddr = ip_getaddr(hostnm);
 		strNcpy(c->nastype, nastype, sizeof(c->nastype));
 		strNcpy(c->shortname, shortnm, sizeof(c->shortname));
-		strNcpy(c->longname, ip_hostname(c->ipaddr),
-			sizeof(c->longname));
-
+		ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
 		c->next = cl;
 		cl = c;
 	}
@@ -342,11 +340,11 @@ static const char *nasname(uint32_t ipaddr)
 /*
  *	Print address of NAS.
  */
-static const char *hostname(uint32_t ipaddr)
+static const char *hostname(char *buf, size_t buflen, uint32_t ipaddr)
 {
 	if (ipaddr == 0 || ipaddr == (uint32_t)-1 || ipaddr == (uint32_t)-2)
 		return "";
-	return ip_hostname(ipaddr);
+	return ip_hostname(buf, buflen, ipaddr);
 }
 
 
@@ -380,6 +378,7 @@ int main(int argc, char **argv)
 	int hdrdone = 0;
 	char inbuf[128];
 	char myname[128];
+	char othername[256];
 	char session_id[16];
 	int fingerd = 0;
 	int showlocal = 0;
@@ -550,7 +549,7 @@ int main(int argc, char **argv)
 				portind, portno,
 				dotime(rt.time),
 				nasname(rt.nas_address),
-				hostname(rt.framed_address), eol);
+				hostname(othername, sizeof(othername), rt.framed_address), eol);
 			else
 			    printf((rawoutput == 0? rfmt2: rfmt2r),
 				rt.login,
@@ -558,7 +557,7 @@ int main(int argc, char **argv)
 				proto(rt.proto, rt.porttype),
 				dotime(rt.time),
 				nasname(rt.nas_address),
-				hostname(rt.framed_address), eol);
+				hostname(othername, sizeof(othername), rt.framed_address), eol);
 		}
 	}
 	fflush(stdout);

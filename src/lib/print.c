@@ -130,7 +130,9 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			if (vp->strvalue[0])
 				a = vp->strvalue;
 			else
-				a = ip_ntoa(NULL, vp->lvalue);
+				a = ip_hostname(vp->strvalue,
+						sizeof(vp->strvalue),
+						vp->lvalue);
 			break;
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY

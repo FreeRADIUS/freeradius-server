@@ -372,7 +372,7 @@ int read_clients_file(const char *file)
 		}
 		strcpy(c->secret, secret);
 		strcpy(c->shortname, shortnm);
-		strcpy(c->longname, ip_hostname(c->ipaddr));
+		ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
 
 		c->next = clients;
 		clients = c;
@@ -411,7 +411,14 @@ char *client_name(uint32_t ipaddr)
 		else
 			return cl->longname;
 	}
-	return ip_hostname(ipaddr);
+
+	/*
+	 *	FIXME!
+	 *
+	 *	We should NEVER reach this piece of code, as we should
+	 *	NEVER be looking up client names for clients we don't know!
+	 */
+	return NULL;
 }
 
 #ifndef BUILDDBM /* HACK HACK */

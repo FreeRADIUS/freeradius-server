@@ -650,7 +650,6 @@ static int file_accounting(REQUEST *request)
 	FILE		*outfd;
 	char		nasname[128];
 	char		buffer[512];
-	char		*s;
 	VALUE_PAIR	*pair;
 	uint32_t	nas;
 	NAS		*cl;
@@ -689,10 +688,7 @@ static int file_accounting(REQUEST *request)
 	}
 
 	if (cl == NULL) {
-		s = ip_hostname(nas);
-		if (strlen(s) >= sizeof(nasname) || strchr(s, '/'))
-			return -1;
-		strcpy(nasname, s);
+		ip_hostname(nasname, sizeof(nasname), nas);
 	}
 
 	/*

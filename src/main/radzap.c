@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 	if (nas) ip = nas->ipaddr;
 
 	printf("radzap: zapping termserver %s, port %d",
-		ip_hostname(ip), nas_port);
+		ip_hostname(buf, sizeof(buf), ip), nas_port);
 	if (user) printf(", user %s", user);
 	printf("\n");
 

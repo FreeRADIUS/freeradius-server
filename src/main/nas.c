@@ -116,7 +116,8 @@ int read_naslist_file(char *file)
 			strcpy(c->longname, hostnm);
 		} else {
 			c->ipaddr = ip_getaddr(hostnm);
-			strcpy(c->longname, ip_hostname(c->ipaddr));
+			ip_hostname(c->longname, sizeof(c->longname),
+				    c->ipaddr);
 		}
 
 		c->next = naslist;
@@ -179,6 +180,7 @@ NAS *nas_findbyname(char *nasname)
 char *nas_name(uint32_t ipaddr)
 {
 	NAS *cl;
+	char buf[256];
 
 	if ((cl = nas_find(ipaddr)) != NULL) {
 		if (cl->shortname[0])
@@ -186,7 +188,13 @@ char *nas_name(uint32_t ipaddr)
 		else
 			return cl->longname;
 	}
-	return ip_hostname(ipaddr);
+
+	/*
+	 *	FIXME!
+	 *
+	 *	This isn't multi-threaded safe!
+	 */
+	return ip_hostname(buf, sizeof(buf), ipaddr);
 }
 
 /*
@@ -197,6 +205,7 @@ char *nas_name2(RADIUS_PACKET *packet)
 	uint32_t	ipaddr;
 	NAS	        *cl;
 	VALUE_PAIR	*pair;
+	char		buf[256];
 
 	if ((pair = pairfind(packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
 		ipaddr = pair->lvalue;
@@ -209,6 +218,12 @@ char *nas_name2(RADIUS_PACKET *packet)
 		else
 			return cl->longname;
 	}
-	return ip_hostname(ipaddr);
+
+	/*
+	 *	FIXME!!!
+	 *
+	 *	This isn't multi-threaded safe!
+	 */
+	return ip_hostname(buf, sizeof(buf), ipaddr);
 }
 
