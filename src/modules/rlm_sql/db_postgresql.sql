@@ -1,0 +1,150 @@
+/*
+ * --- David Nicklay [ Wed Nov  3 23:18:46 EST 1999 ]
+ */
+
+/*
+ * - Postgres wants C style comments.
+ * - not sure how to do sequences without using SERIAL
+ *   (i.e. these below are limited to int4 right now)
+ *   numeric(10) doesn't seem to work for sequences...
+ *   haven't tried int8 yet as a sequence type yet
+ * - datetime DEFAULT '0000-00-00 00:00:00' should be
+ *   DEFAULT 'now' in postgres
+ * - postgres apparently creates an index for each
+ *   column specified as UNIQUE 
+ */
+
+
+
+/*
+ * Table structure for table 'dictionary'
+ */
+CREATE TABLE dictionary (
+  id SERIAL,
+  Type VARCHAR(30),
+  Attribute VARCHAR(32),
+  Value VARCHAR(32),
+  Format VARCHAR(20),
+  Vendor VARCHAR(32),
+  PRIMARY KEY (id)
+);
+
+/*
+ * Table structure for table 'nas'
+ */
+CREATE TABLE nas (
+  id SERIAL,
+  nasname VARCHAR(128),
+  shortname VARCHAR(32),
+  ipaddr VARCHAR(15),
+  type VARCHAR(30),
+  ports int4,
+  secret VARCHAR(60),
+  community VARCHAR(50),
+  snmp VARCHAR(10),
+  PRIMARY KEY (id)
+);
+
+/*
+ * Table structure for table 'radacct'
+ */
+CREATE TABLE radacct (
+  RadAcctId SERIAL,
+  AcctSessionId VARCHAR(32) DEFAULT '' UNIQUE NOT NULL,
+  UserName VARCHAR(32) DEFAULT '' UNIQUE NOT NULL,
+  Realm VARCHAR(30) DEFAULT '',
+  NASIPAddress VARCHAR(15) DEFAULT '' UNIQUE NOT NULL,
+  NASPortId NUMERIC(12),
+  NASPortType VARCHAR(32),
+  AcctStartTime datetime DEFAULT 'now' UNIQUE NOT NULL,
+  AcctStopTime datetime DEFAULT 'now' UNIQUE NOT NULL,
+  AcctSessionTime NUMERIC(12),
+  AcctAuthentic VARCHAR(32),
+  ConnectInfo VARCHAR(32),
+  AcctInputOctets NUMERIC(12),
+  AcctOutputOctets NUMERIC(12),
+  CalledStationId VARCHAR(10) DEFAULT '' NOT NULL,
+  CallingStationId VARCHAR(10) DEFAULT '' NOT NULL,
+  AcctTerminateCause VARCHAR(32) DEFAULT '' NOT NULL,
+  ServiceType VARCHAR(32),
+  FramedProtocol VARCHAR(32),
+  FramedIPAddress VARCHAR(15) DEFAULT '' UNIQUE NOT NULL,
+  AcctStartDelay NUMERIC(12),
+  AcctStopDelay NUMERIC(12),
+  PRIMARY KEY (RadAcctId)
+);
+
+/*
+ * Table structure for table 'radcheck'
+ */
+CREATE TABLE radcheck (
+  id SERIAL,
+  UserName VARCHAR(30) DEFAULT '' UNIQUE NOT NULL,
+  Attribute VARCHAR(30),
+  Value VARCHAR(40),
+  PRIMARY KEY (id)
+);
+
+/*
+ * Table structure for table 'radgroupcheck'
+ */
+CREATE TABLE radgroupcheck (
+  id SERIAL,
+  GroupName VARCHAR(20) DEFAULT '' UNIQUE NOT NULL,
+  Attribute VARCHAR(40),
+  Value VARCHAR(40),
+  PRIMARY KEY (id)
+);
+
+/*
+ * Table structure for table 'radgroupreply'
+ */
+CREATE TABLE radgroupreply (
+  id SERIAL,
+  GroupName VARCHAR(20) DEFAULT '' UNIQUE NOT NULL,
+  Attribute VARCHAR(40),
+  Value VARCHAR(40),
+  PRIMARY KEY (id)
+);
+
+/*
+ * Table structure for table 'radreply'
+ */
+CREATE TABLE radreply (
+  id SERIAL,
+  UserName VARCHAR(30) DEFAULT '' UNIQUE NOT NULL,
+  Attribute VARCHAR(30),
+  Value VARCHAR(40),
+  PRIMARY KEY (id)
+);
+
+/*
+ * Table structure for table 'usergroup'
+ */
+CREATE TABLE usergroup (
+  id SERIAL,
+  UserName VARCHAR(30) DEFAULT '' UNIQUE NOT NULL,
+  GroupName VARCHAR(30),
+  PRIMARY KEY (id)
+);
+
+/*
+ * Table structure for table 'realmgroup'
+ */
+CREATE TABLE realmgroup (
+  id SERIAL,
+  RealmName VARCHAR(30) DEFAULT '' UNIQUE NOT NULL,
+  GroupName VARCHAR(30),
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE realms (
+  id SERIAL,
+  realmname VARCHAR(64),
+  nas VARCHAR(128),
+  authport int4,
+  options VARCHAR(128) DEFAULT '',
+  PRIMARY KEY (id)
+);
+
+
