@@ -405,6 +405,10 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		/*  We have nothing related to MS-CHAP or NTLM */
 		return RLM_MODULE_NOOP;
 	}
+	if (!request->username || *request->username->strvalue == 0) {
+		/* Usernam must present */
+		return RLM_MODULE_NOOP;
+	}
 	if (password && !inst->ignore_password)
 		smbPasswd = createsmbpw(request->username->strvalue, password->strvalue);
 	else if (inst->passwd_file) {
@@ -511,7 +515,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	 */
 
 	password = pairfind(request->packet->vps, PW_PASSWORD);
-	if (password) {
+	if (password && request->username && *request->username->strvalue!= 0) {
 		at = CLEARTEXT;
 		smbPasswd1 = createsmbpw(request->username->strvalue, password->strvalue);
 		if ( (smbPasswd.smb_passwd && !memcmp(smbPasswd1->smb_passwd, smbPasswd.smb_passwd, 16)) ||
