@@ -386,10 +386,9 @@ int main(int argc, char **argv)
 		 */
 		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
 			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
-
 			rad_pwencode((char *)vp->strvalue,
-				&(vp->length),
-				secret, (char *)req->vector);
+				     &(vp->length),
+				     secret, (char *)req->vector);
 
 		/*
 		 *	Not there, encrypt the CHAP-Password attribute.
@@ -398,6 +397,7 @@ int main(int argc, char **argv)
 			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
 			rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
 			vp->length = 17;
+
 
 		} else {
 			*password = '\0';
@@ -418,18 +418,27 @@ int main(int argc, char **argv)
 				free(req->data);
 				req->data = NULL;
 
+				librad_md5_calc(req->vector, req->vector,
+						sizeof(req->vector));
+				
 				if (*password != '\0') {
 					vp = pairfind(req->vps, PW_PASSWORD);
 					if (vp) {
-						strNcpy((char *)vp->strvalue, password,
-								(vp->length)+1);
+  						strNcpy((char *)vp->strvalue, password, vp->length + 1);
 						vp->length = strlen(password);
-					}
-				}
+						
+						rad_pwencode((char *)vp->strvalue,
+							     &(vp->length),
+							     secret, (char *)req->vector);
+					} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
+  						strNcpy((char *)vp->strvalue, password, vp->length + 1);
+						vp->length = strlen(password);
 
-				librad_md5_calc(req->vector, req->vector,
-						sizeof(req->vector));
-			}
+						rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
+						vp->length = 17;
+					}
+				} /* there WAS a password */
+			} /* there WAS a packet sent. */
 			send_packet(req, &rep);
 			rad_free(&rep);
 		}
