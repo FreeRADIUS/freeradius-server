@@ -897,7 +897,39 @@ autz_redo:
 
 	if (exec_program) 
 		free(exec_program);
-	return RLM_MODULE_OK;
+
+	/*
+	 *	Do post-authentication calls. ignoring the return code.
+	 *	If the post-authentication
+	 */
+	result = module_post_auth(request);
+	switch (result) {
+	  break;
+	  
+	  /*
+	   *	The module failed, or said to reject the user: Do so.
+	   */
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_INVALID:
+	  request->reply->code = PW_AUTHENTICATION_REJECT;
+	  result = RLM_MODULE_REJECT;
+	  break;
+
+	  /*
+	   *	The module had a number of OK return codes.
+	   */
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_NOOP:
+	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_OK:
+	case RLM_MODULE_HANDLED:
+	  result = RLM_MODULE_OK;
+	  break;
+	}
+
+	return result;
 }
 
 
