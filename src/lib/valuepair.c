@@ -607,8 +607,9 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
 	}
 
 	/*  It's not a comment, so it MUST be an attribute */
-	if (attr[0] == 0) {
-		librad_log("No token read");
+	if ((token == T_EOL) ||
+	    (attr[0] == 0)) {
+		librad_log("No token read where we expected an attribute name");
 		return NULL;
 	}
 
@@ -619,9 +620,9 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
 		return NULL;
 	}
 
-	/* Read value. */
-	gettoken(ptr, value, sizeof(value));
-	if (value[0] == 0) {
+	/* Read value.  Note that empty string values are allowed */
+	t = gettoken(ptr, value, sizeof(value));
+	if (t == T_EOL) {
 		librad_log("failed to get value");
 		return NULL;
 	}
