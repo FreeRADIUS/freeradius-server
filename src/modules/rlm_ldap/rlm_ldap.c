@@ -635,9 +635,9 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 
 	rc = ldap_result(ld, msgid, 1, &(inst->timeout), &res);
 
-	ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 	if(rc < 1) {
 		DEBUG("rlm_ldap: ldap_result()");
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "rlm_ldap: %s bind failed: %s", dn, (rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
