@@ -471,7 +471,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		free(inst);	/* FIXME: detach */
 		return -1;
 	}
-	inst->conns = malloc(sizeof(LDAP_CONN)*inst->num_conns);
+	inst->conns = malloc(sizeof(*(inst->conns))*inst->num_conns);
 	if (inst->conns == NULL){
 		radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
 		free(inst);	/* FIXME: detach */
@@ -493,7 +493,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 *	(RADIUS server) credentials associated with the
 	 *	'inst->conns' connection pool.
 	 */
-	inst->apc_conns = malloc(sizeof(LDAP_CONN)*inst->num_conns);
+	inst->apc_conns = malloc(sizeof(*(inst->apc_conns))*inst->num_conns);
 	if (inst->apc_conns == NULL){
 		radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
 		free(inst);	/* FIXME: detach */
