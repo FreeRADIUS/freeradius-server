@@ -114,18 +114,17 @@ void pairdelete(VALUE_PAIR **first, int attr)
 /*
  *	Add a pair at the end of a VALUE_PAIR list.
  */
-void pairadd(VALUE_PAIR **first, VALUE_PAIR *new)
+void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 {
 	VALUE_PAIR *i;
 
-	new->next = NULL;
 	if (*first == NULL) {
-		*first = new;
+		*first = add;
 		return;
 	}
 	for(i = *first; i->next; i = i->next)
 		;
-	i->next = new;
+	i->next = add;
 }
 
 /*
@@ -133,10 +132,10 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *new)
  */
 VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 {
-	VALUE_PAIR	*first, *n, *last;
+	VALUE_PAIR	*first, *n, **last;
 
 	first = NULL;
-	last = NULL;
+	last = &first;
 
 	while (vp) {
 		if (attr >= 0 && vp->attribute != attr) {
@@ -147,11 +146,8 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 			return first;
 		memcpy(n, vp, sizeof(VALUE_PAIR));
 		n->next = NULL;
-		if (last == NULL)
-			first = n;
-		else
-			last->next = n;
-		last = n;
+		*last = n;
+		last = &n->next;
 		vp = vp->next;
 	}
 	return first;
