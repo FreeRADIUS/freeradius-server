@@ -67,6 +67,13 @@ the rlm_ldap module:
 #		
 	default_profile = "cn=RadProfile,o=My Org,c=UA"
 
+#	profile_attribute: user object attribute, which contains DN of 
+#	radiusProfile object for this user.
+#	default: NULL - use only user specific attributes or attributes,
+#       supplied by other modules.
+#
+#	profile_attribute = "radiusProfileDn"
+
 #	access_group: membership in this group controls radius access for user
 #	default: NULL 
 #	(means all users located in the LDAP tree under specified "basedn")

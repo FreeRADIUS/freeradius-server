@@ -408,6 +408,7 @@ modules {
 		basedn = "o=My Org,c=UA"
 		filter = "(uid=%u)"
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
+		# profile_attribute = "radiusProfileDn"
 		access_group = "cn=clients,ou=dialup,o=My Org,c=UA"
 		access_attr = "dialupAccess"
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
