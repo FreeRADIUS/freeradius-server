@@ -156,7 +156,8 @@ static int getthing(char **ptr, char *buf, int buflen, int tok)
 		p++;
 	*ptr = p;
 
-	return (buf[0]) ? 0 : T_EOL;
+	/* we got SOME form out output string, even if it is empty */
+	return 0;
 }
 
 /*
