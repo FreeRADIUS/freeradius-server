@@ -885,7 +885,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 		case FILTER_EST:
 			filter->established = 1;
 			argv++;
-			argc++;
+			argc--;
 			flags = 0x07;
 			break;
 			
@@ -904,9 +904,9 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 	 *	We should have parsed everything by now.
 	 */
 	if (argc != 0) {
-			librad_log("Unknown extra string \"%s\" in IP data filter",
-				   argv[0]);
-			return -1;
+		librad_log("Unknown extra string \"%s\" in IP data filter",
+			   argv[0]);
+		return -1;
 	}
 
 	return 0;
