@@ -188,6 +188,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	rlm_counter_t *data;
 	DICT_ATTR *dattr;
 	DICT_VALUE *dval;
+	ATTR_FLAGS flags;
 	time_t now;
 	int cache_size;
 	
@@ -243,7 +244,9 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_counter: 'counter-name' must be set.");
 		exit(0);
 	}
-	dict_addattr(data->counter_name, 0, PW_TYPE_INTEGER, -1);
+
+	memset(&flags, 0, sizeof(flags));
+	dict_addattr(data->counter_name, 0, PW_TYPE_INTEGER, -1, flags);
 	dattr = dict_attrbyname(data->counter_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to create counter attribute %s",
@@ -261,7 +264,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_counter: 'check-name' must be set.");
 		exit(0);
 	}
-	dict_addattr(data->check_name, 0, PW_TYPE_INTEGER, -1);
+	dict_addattr(data->check_name, 0, PW_TYPE_INTEGER, -1, flags);
 	dattr = dict_attrbyname(data->check_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to create check attribute %s",
