@@ -1088,8 +1088,8 @@ int rad_process(REQUEST *request, int dospawn)
 			 *  and ignore them, if so.
 			 */
 			if (request->packet->sockfd != authfd) {
-				radlog(L_ERR, "Request packet code %d sent to authentication port from "
-					"client %s:%d - ID %d : IGNORED", request->packet->code,
+				radlog(L_ERR, "Authentication-Request sent to a non-authentication port from "
+					"client %s:%d - ID %d : IGNORED",
 					client_name(request->packet->src_ipaddr), request->packet->src_port,
 				request->packet->id);
 				request_free(&request);
@@ -1104,8 +1104,8 @@ int rad_process(REQUEST *request, int dospawn)
 			 *  and ignore them, if so.
 			 */
 			if (request->packet->sockfd != acctfd) {
-				radlog(L_ERR, "Request packet code %d sent to accounting port from "
-					"client %s:%d - ID %d : IGNORED", request->packet->code,
+				radlog(L_ERR, "Accounting-Request packet sent to a non-accounting port from "
+					"client %s:%d - ID %d : IGNORED",
 					client_name(request->packet->src_ipaddr), request->packet->src_port,
 					request->packet->id);
 				request_free(&request);
@@ -1123,7 +1123,7 @@ int rad_process(REQUEST *request, int dospawn)
 			 *  dropped.
 			 */
 			if (request->packet->sockfd != proxyfd) {
-				radlog(L_ERR, "Reply packet code %d sent to request port from "
+				radlog(L_ERR, "Reply packet code %d sent to a non-proxy reply port from "
 						"client %s:%d - ID %d : IGNORED", request->packet->code,
 						client_name(request->packet->src_ipaddr), request->packet->src_port,
 						request->packet->id);
@@ -1415,8 +1415,8 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 	/* Reprocess if we rejected last time */
 	if ((fun == rad_authenticate) &&
-			(request->reply->code == PW_AUTHENTICATION_REJECT) &&
-			(reprocess))  {
+	    (request->reply->code == PW_AUTHENTICATION_REJECT) &&
+	    (reprocess))  {
 		pairfree(&request->config_items);
 		(*fun)(request);
 	}
@@ -1440,7 +1440,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			}
 		}
 	} else if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-			(request->reply == NULL)) {
+		   (request->reply == NULL)) {
 		/*
 		 *  We're not configured to reply to the packet,
 		 *  and we're not proxying, so the DEFAULT behaviour
