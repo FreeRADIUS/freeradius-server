@@ -67,6 +67,10 @@ ATTRIBUTE	h323-preferred-lang		107	string		Cisco
 ATTRIBUTE	h323-redirect-ip-address	108	string		Cisco
 ATTRIBUTE	h323-billing-model		109	string		Cisco
 ATTRIBUTE	h323-currency			110	string		Cisco
+ATTRIBUTE       subscriber                      111     string          Cisco
+ATTRIBUTE       gw-rxd-cdn                      112     string          Cisco
+ATTRIBUTE       gw-final-xlated-cdn             113     string          Cisco
+
 
 # SIP Attributes
 ATTRIBUTE       call-id                         141     string          Cisco
