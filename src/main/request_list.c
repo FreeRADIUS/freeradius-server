@@ -838,6 +838,9 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 	myproxy.dst_ipaddr = packet->src_ipaddr;
 	myproxy.dst_port = packet->src_port;
 
+#ifndef NDEBUG
+	myrequest.magic = REQUEST_MAGIC;
+#endif
 	myrequest.proxy = &myproxy;
 
 	pthread_mutex_lock(&proxy_mutex);
