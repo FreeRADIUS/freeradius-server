@@ -1,9 +1,9 @@
 <?php
+require('../conf/config.php3');
 if ($show == 1){
 	header("Location: user_admin.php3?login=$login");
 	exit;
 }
-require('../conf/config.php3');
 require('../lib/attrshow.php3');
 require('../lib/defaults.php3');
 
