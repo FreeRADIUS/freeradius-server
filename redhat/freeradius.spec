@@ -95,7 +95,7 @@ rm -rf $RPM_BUILD_ROOT
 %config /etc/pam.d/radius
 %config /etc/logrotate.d/radiusd
 %config /etc/rc.d/init.d/radiusd
-%config(noreplace) /etc/raddb/*
+%config /etc/raddb/*
 /usr/man/*
 /usr/bin/*
 /usr/sbin/*
@@ -108,6 +108,9 @@ rm -rf $RPM_BUILD_ROOT
 #/var/log/radius/radutmp
 
 %changelog
+* Fri Jan 18 2002 Frank Cusack <frank@google.com>
+- remove (noreplace) for /etc/raddb/*
+
 * Fri Sep 07 2001 Ivan F. Martinez <ivanfm@ecodigit.com.br>
 - changes to make compatible with default config file shipped
 - adjusts log files are on /var/log/radius instead of /var/log
