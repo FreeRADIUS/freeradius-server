@@ -434,6 +434,27 @@ static int huntgroup_access(VALUE_PAIR *request_pairs)
 }
 
 /*
+ *	If the NAS wasn't smart enought to add a NAS-IP-Address
+ *	to the request, then add it ourselves.
+ */
+static void add_nas_attr(REQUEST *request)
+{
+	VALUE_PAIR *nas;
+
+	nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
+	if (!nas) {
+		nas = paircreate(PW_NAS_IP_ADDRESS, PW_TYPE_IPADDR);
+		if (!nas) {
+			log(L_ERR, "No memory");
+			exit(1);
+		}
+		nas->lvalue = request->packet->src_ipaddr;
+		pairadd(&request->packet->vps, nas);
+	}
+}
+
+
+/*
  *	Initialize.
  */
 static int preprocess_init(int argc, char **argv)
@@ -490,13 +511,15 @@ static int preprocess_authorize(REQUEST *request,
 		return RLM_AUTZ_REJECT;
 	}
 
+	add_nas_attr(request);
+
 	return RLM_AUTZ_NOTFOUND; /* Meaning: try next autorization module */
 }
 
 /*
  *	Preprocess a request before accounting
  */
-static int preprocess_accounting(REQUEST *request)
+static int preprocess_preaccounting(REQUEST *request)
 {
 	/*
 	 *  Ensure that we have the SAME user name for both
@@ -505,7 +528,12 @@ static int preprocess_accounting(REQUEST *request)
 	rad_mangle(request);
 	hints_setup(request);
 
-	return RLM_ACCT_OK;
+	/*
+	 *  Ensure that we log the NAS IP Address in the packet.
+	 */
+	add_nas_attr(request);
+
+	return RLM_PRAC_OK;
 }
 
 /*
@@ -527,8 +555,8 @@ module_t rlm_preprocess = {
 	preprocess_init,		/* initialization */
 	preprocess_authorize,		/* authorization */
 	NULL,				/* authentication */
-	NULL,				/* pre-accounting */
-	preprocess_accounting,		/* accounting */
+	preprocess_preaccounting,	/* pre-accounting */
+	NULL,				/* accounting */
 	preprocess_detach,		/* detach */
 };
 
