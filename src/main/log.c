@@ -30,7 +30,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	FILE	*msgfd = NULL;
 	const char  *s = ": ";
 	unsigned char *p;
-	char	buffer[2048];
+	char	buffer[8192];
 	time_t	timeval;
 	int	len;
 #if HAVE_SYSLOG_H
