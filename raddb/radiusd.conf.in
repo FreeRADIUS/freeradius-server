@@ -587,15 +587,25 @@ modules {
 	# PAP module to authenticate users based on their stored password
 	#
 	#  Supports multiple encryption schemes
-	#  clear: Clear text
-	#  crypt: Unix crypt
-	#    md5: MD5 ecnryption
-	#   sha1: SHA1 encryption.
-	#     nt: NT-Password encryption
-	#     lm: LM-Password encryption
-	#  DEFAULT: crypt
+	#
+	#  name   description                   attribute
+	#  ----   -----------                   ---------
+	#
+	#  clear  Clear text			User-Password
+	#  crypt  Unix crypt			Crypt-Password
+	#    md5  MD5 ecnryption		MD5-Password
+	#   sha1  SHA1 encryption.		SHA-Password
+	#     nt  NT-Password encryption	NT-Password
+	#     lm  LM-Password encryption	LM-Password
+	#   auto  Automatically figure out what to do
+	#
+	#  For "auto" to work, the passwords given to the server by
+	#  a back-end database MUST be placed into the attribute listed
+	#  above.
+	#
+	#  DEFAULT: auto
 	pap {
-		encryption_scheme = crypt
+		encryption_scheme = auto
 	}
 
 	# CHAP module
@@ -801,7 +811,7 @@ $INCLUDE ${confdir}/eap.conf
 		# Set password_attribute = nspmPassword to get user's password
 		# from a Novell eDirectory backend. This will work *only if*
 		# freeRADIUS is configured to build with --with-edir option.
-		#                                                                               
+		#
 		# password_attribute = userPassword
 		#
 		# Un-comment the following to disable Novell eDirectory account
