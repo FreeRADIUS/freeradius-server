@@ -274,6 +274,15 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
+	 *	If the server has already decided to reject the request,
+	 *	then don't try to proxy it.
+	 */
+	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
+		DEBUG2("Cancelling proxy as request was already rejected");
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
 	 *	Length == 0 means it exists, but there's no realm.
 	 *	Don't proxy it.
 	 */
