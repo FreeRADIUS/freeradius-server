@@ -387,30 +387,6 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		request->proxy_reply = NULL;
 
 		/*
-		 *	We MAY have deleted the state.  If so, add
-		 *	it back in.
-		 */
-		vp = pairfind(fake->packet->vps, PW_STATE);
-		if (!vp) {
-			vp = pairmake("State", "0x00", T_OP_EQ);
-			memcpy(vp->strvalue, handler->state,
-			       sizeof(handler->state));
-			vp->length = sizeof(handler->state);
-			pairadd(&fake->packet->vps, vp);
-		}
-
-		/*
-		 *	The NT Domain may have been removed, too.
-		 *	Add it back in.
-		 */
-		vp = pairfind(fake->packet->vps, PW_USER_NAME);
-		if (vp) {
-			strNcpy(vp->strvalue, handler->identity,
-				sizeof(vp->strvalue));
-			vp->length = strlen(vp->strvalue);
-		}
-
-		/*
 		 *	Perform a post-auth stage, which will get the EAP
 		 *	handler, too...
 		 */
