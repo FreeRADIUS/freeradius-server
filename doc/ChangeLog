@@ -1,3 +1,4 @@
+FreeRADIUS 0.9.2 ; Date: $Date$, urgency=low
 FreeRADIUS 0.9.1 ; Date: 2003/09/04 14:56:34, urgency=low
 
 	* Replicate-To-Realm is deprecated, and hence no longer documented
