@@ -138,7 +138,7 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	if (pg_sock->conn == NULL) {
 		radlog(L_ERR, "Socket not connected");
-		return -1'
+		return -1;
 	}
 
 	pg_sock->cur_row = 0;
