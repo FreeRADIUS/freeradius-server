@@ -29,6 +29,59 @@
 
 #include <rad_assert.h>
 
+typedef struct rlm_eap_mschapv2_t {
+        int with_ntdomain_hack;
+} rlm_eap_mschapv2_t;
+
+static CONF_PARSER module_config[] = {
+	{ "with_ntdomain_hack",     PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_mschapv2_t,with_ntdomain_hack), NULL, "no" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
+
+/*
+ *	Detach the module.
+ */
+static int mschapv2_detach(void *arg)
+{
+	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
+
+	free(inst);
+
+	return 0;
+}
+
+
+/*
+ *	Attach the module.
+ */
+static int mschapv2_attach(CONF_SECTION *cs, void **instance)
+{
+	rlm_eap_mschapv2_t *inst;
+
+	inst = malloc(sizeof(*inst));
+	if (!inst) {
+		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
+
+	/*
+	 *	Parse the configuration attributes.
+	 */
+	if (cf_section_parse(cs, inst, module_config) < 0) {
+		mschapv2_detach(inst);
+		return -1;
+	}
+
+	*instance = inst;
+
+	return 0;
+}
+
+
 /*
  *	Compose the response.
  */
@@ -432,7 +485,9 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	home server.
 	 */
 	if (handler->request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
+		char *username = NULL;
 		eap_tunnel_data_t *tunnel;
+		rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 		
 		/*
 		 *	Set up the callbacks for the tunnel
@@ -466,8 +521,25 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off
-		 *	the NT Domain.
+		 *	the NT Domain, if we're told to, and a User-Name
+		 *	exists, and there's a \\, meaning an NT-Domain
+		 *	in the user name, THEN discard the user name.
 		 */
+		if (inst->with_ntdomain_hack &&
+		    ((challenge = pairfind(handler->request->packet->vps,
+					   PW_USER_NAME)) != NULL) &&
+		    ((username = strchr(challenge->strvalue, '\\')) != NULL)) {
+			/*
+			 *	Wipe out the NT domain.
+			 *
+			 *	FIXME: Put it into MS-CHAP-Domain?
+			 */
+			username++; /* skip the \\ */
+			memmove(challenge->strvalue,
+				username,
+				strlen(username) + 1); /* include \0 */
+			challenge->length = strlen(challenge->strvalue);
+		}
 
 		/*
 		 *	Remember that in the post-proxy stage, we've got
@@ -536,9 +608,9 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
  */
 EAP_TYPE rlm_eap_mschapv2 = {
 	"eap_mschapv2",
-	NULL,				/* attach */
+	mschapv2_attach,		/* attach */
 	mschapv2_initiate,	        /* Start the initial request */
 	NULL,				/* authorization */
 	mschapv2_authenticate,		/* authentication */
-	NULL				/* detach */
+	mschapv2_detach			/* detach */
 };
