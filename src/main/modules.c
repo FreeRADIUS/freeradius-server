@@ -475,6 +475,10 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 		dval = dict_valbyname(PW_AUTZTYPE, cf_section_name2(cs));
 	} else if (comp == RLM_COMPONENT_ACCT) {
 		dval = dict_valbyname(PW_ACCTTYPE, cf_section_name2(cs));
+	} else if (comp == RLM_COMPONENT_SESS) {
+		dval = dict_valbyname(PW_SESSTYPE, cf_section_name2(cs));
+	} else if (comp == RLM_COMPONENT_POST_AUTH) {
+		dval = dict_valbyname(PW_POSTAUTHTYPE, cf_section_name2(cs));
 	}
 
 	if (dval) {
@@ -571,6 +575,8 @@ static const section_type_value_t section_type_value[] = {
 	{ "authorize",    "autztype", PW_AUTZTYPE },
 	{ "authenticate", "authtype", PW_AUTHTYPE },
 	{ "accounting",   "accttype", PW_ACCTTYPE },
+	{ "session",     "sesstype", PW_SESSTYPE },
+	{ "post-auth",	"post-authtype", PW_POSTAUTHTYPE },
 	{ NULL, NULL, 0 }
 };
 
@@ -782,9 +788,9 @@ int module_preacct(REQUEST *request)
 /*
  *	Do accounting for ALL configured sessions
  */
-int module_accounting(REQUEST *request)
+int module_accounting(int acct_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_ACCT, 0, request);
+	return indexed_modcall(RLM_COMPONENT_ACCT, acct_type, request);
 }
 
 /*
@@ -792,7 +798,7 @@ int module_accounting(REQUEST *request)
  *
  *	Returns: 0 == OK, 1 == double logins, 2 == multilink attempt
  */
-int module_checksimul(REQUEST *request, int maxsimul)
+int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 {
 	int rcode;
 
@@ -806,7 +812,7 @@ int module_checksimul(REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	rcode = indexed_modcall(RLM_COMPONENT_SESS, 0, request);
+	rcode = indexed_modcall(RLM_COMPONENT_SESS, sess_type, request);
 
 	if (rcode != RLM_MODULE_OK) {
 		/* FIXME: Good spot for a *rate-limited* warning to the log */
@@ -835,8 +841,8 @@ int module_post_proxy(REQUEST *request)
 /*
  *	Do post-authentication for ALL configured sessions
  */
-int module_post_auth(REQUEST *request)
+int module_post_auth(int postauth_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_POST_AUTH, 0, request);
+	return indexed_modcall(RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
 

@@ -416,6 +416,7 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	VALUE_PAIR	*autz_type_item = NULL;
+	VALUE_PAIR	*postauth_type_item = NULL;
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
 	const char	*user_msg = NULL;
@@ -426,6 +427,7 @@ int rad_authenticate(REQUEST *request)
 	char		buf[1024], logstr[1024];
 	char		autz_retry = 0;
 	int		autz_type = 0;
+	int		postauth_type = 0;
 
 	password = "";
 
@@ -616,12 +618,19 @@ autz_redo:
 
 	if (result >= 0 &&
 			(check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
+		VALUE_PAIR	*session_type;
+		int		sess_type = 0;
+
+		session_type = pairfind(request->config_items, PW_SESSTYPE);
+		if (session_type)
+			sess_type = session_type->lvalue;
+
 		/*
 		 *	User authenticated O.K. Now we have to check
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (namepair &&
-		    (r = module_checksimul(request, check_item->lvalue)) != 0) {
+		    (r = module_checksimul(sess_type,request, check_item->lvalue)) != 0) {
 			char mpp_ok = 0;
 
 			if (r == 2){
@@ -888,7 +897,10 @@ autz_redo:
 	 *	Do post-authentication calls. ignoring the return code.
 	 *	If the post-authentication
 	 */
-	result = module_post_auth(request);
+	postauth_type_item = pairfind(request->config_items, PW_POSTAUTHTYPE);
+	if (postauth_type_item)
+		postauth_type = postauth_type_item->lvalue;
+	result = module_post_auth(postauth_type, request);
 	switch (result) {
 	  break;
 	  

@@ -50,6 +50,7 @@ int rad_accounting(REQUEST *request)
 		int		exec_wait;
 		VALUE_PAIR	*vp;
 		int		rcode;
+		int		acct_type = 0;
 
 		reply = module_preacct(request);
 		if (reply != RLM_MODULE_NOOP &&
@@ -62,7 +63,10 @@ int rad_accounting(REQUEST *request)
 		 *	This is to ensure that we log the packet
 		 *	immediately, even if the proxy never does.
 		 */
-		reply = module_accounting(request);
+		vp = pairfind(request->config_items, PW_ACCTTYPE);
+		if (vp)
+			acct_type = vp->lvalue;
+		reply = module_accounting(acct_type,request);
 		
 		/*
 		 *	See if we need to execute a program.
