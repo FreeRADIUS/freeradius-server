@@ -696,22 +696,22 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	int len = 0;
 	int chap = 0;
 	
-	
-	
 	pdb_init_smb(&smbPasswd);
 	setsmbname(&smbPasswd,request->username->strvalue);
 	password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
-	if(password){
+	if (password) {
 		smbPasswd.acct_ctrl = password->lvalue;
-		if (smbPasswd.acct_ctrl&ACB_PWNOTREQ) return RLM_MODULE_OK;
+		if (smbPasswd.acct_ctrl & ACB_PWNOTREQ) return RLM_MODULE_OK;
 	}
+
         password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL_TEXT);
-        if(password) {
+        if (password) {
 		smbPasswd.acct_ctrl = pdb_decode_acct_ctrl(password->strvalue);
-                if (smbPasswd.acct_ctrl&ACB_PWNOTREQ) return RLM_MODULE_OK;
+                if (smbPasswd.acct_ctrl & ACB_PWNOTREQ) return RLM_MODULE_OK;
         }
+
 	password = pairfind(request->config_items, PW_LM_PASSWORD);
-	if(password){
+	if (password) {
 		if(password->length == 16) {
 			smbPasswd.smb_passwd = password->strvalue;
 			res++;
@@ -725,9 +725,10 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 		
 	}
+
 	password = pairfind(request->config_items, PW_NT_PASSWORD);
-	if(password){
-		if(password->length == 16){
+	if (password) {
+		if (password->length == 16) {
 			smbPasswd.smb_nt_passwd = password->strvalue;
 			res++;
 		}
@@ -754,15 +755,30 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	 */
 
 	password = pairfind(request->packet->vps, PW_PASSWORD);
-	if (password && request->username && *request->username->strvalue!= 0) {
+	if (password && request->username && 
+	    (request->username->strvalue[0] != '\0')) {
 		at = CLEARTEXT;
 		smbPasswd1 = createsmbpw(&smbPasswd1Value,request->username->strvalue, password->strvalue);
-		if ( (smbPasswd.smb_passwd && !memcmp(smbPasswd1->smb_passwd, smbPasswd.smb_passwd, 16)) ||
-			(smbPasswd.smb_nt_passwd && !memcmp(smbPasswd1->smb_nt_passwd, smbPasswd.smb_nt_passwd, 16)) )
-			return RLM_MODULE_OK;
-		else return RLM_MODULE_REJECT;
+		if (smbPasswd.smb_passwd) {
+			if (memcmp(smbPasswd1->smb_passwd, smbPasswd.smb_passwd, 16) == 0) {
+				return RLM_MODULE_OK;
+			}
+			DEBUG2("rlm_mschap: Found SMB password, but user supplied password is incorrect");
+
+		} else if (smbPasswd.smb_nt_passwd) {
+			if (memcmp(smbPasswd1->smb_nt_passwd, smbPasswd.smb_nt_passwd, 16)) {
+				return RLM_MODULE_OK;
+			}
+			DEBUG2("rlm_mschap: Found NT Password, but user supplied password is incorrect");
+		} else {
+			DEBUG2("rlm_mschap: No SMB or NT Password was configured for the user: Rejecting them.");
+		}
+			
+		return RLM_MODULE_REJECT;
 	}
-	else if ( (challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE)) ){
+
+	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
+	if (challenge) {
 		/*
 		 *	We need an MS-CHAP-Challenge attribute to calculate
 		 *	the response.
@@ -822,13 +838,14 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					chap = 2;
 				}
 			}
-		}
-		else {
+
+		} else {
 			radlog(L_AUTH, "rlm_mschap: Response attribute is not found");
 			return RLM_MODULE_INVALID;
 		}
-		if (res == RLM_MODULE_OK){
-			if (smbPasswd.acct_ctrl&ACB_AUTOLOCK) {
+
+		if (res == RLM_MODULE_OK) {
+			if (smbPasswd.acct_ctrl & ACB_AUTOLOCK) {
 				add_reply( &request->reply->vps, *response->strvalue,
 					"MS-CHAP-Error", "E=647 R=0", 9);
 				return RLM_MODULE_USERLOCK;
@@ -893,6 +910,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	
 	add_reply( &request->reply->vps, *response->strvalue,
 		"MS-CHAP-Error", "E=691 R=1", 9);
+	DEBUG2("rlm_mschap: Nothing in the packet I recognise: Rejecting the user");
+
 	return RLM_MODULE_REJECT;
 #undef inst
 }
