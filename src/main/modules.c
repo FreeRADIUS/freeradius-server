@@ -162,7 +162,7 @@ int new_authtype_value(char *name)
   old_value->next = new_value;
 
   /* set it up */
-  strcpy(new_value->name, name);
+  strNcpy(new_value->name, name, sizeof(new_value->name));
   new_value->value = max_value++;
 
   return new_value->value;
@@ -241,9 +241,10 @@ int read_modules_file(char *filename)
 		 * won't get exported to pam_foo.so.
 		 */
 		if (*library != '/')
-			sprintf(libraryfile, "%s/%s", radius_dir, library);
+			sprintf(libraryfile, "%.500s/%.500s",
+				radius_dir, library);
 		else
-			strcpy(libraryfile, library);
+			strNcpy(libraryfile, library, sizeof(libraryfile));
 		handle = dlopen(libraryfile, RTLD_NOW | RTLD_GLOBAL);
 
 		if (handle == NULL) {
@@ -279,14 +280,14 @@ int read_modules_file(char *filename)
 #ifdef HAVE_LIBDL
 		this->handle = handle;
 #endif
-		strcpy(this->filename, library);
+		strNcpy(this->filename, library, sizeof(this->filename));
 
 		/* find the structure name from the library name */
 		p = strrchr(library, '/');
 		if (p)
-			strcpy(module_name, p + 1);
+			strNcpy(module_name, p + 1, sizeof(module_name));
 		else
-			strcpy(module_name, library);
+			strNcpy(module_name, library, sizeof(module_name));
 		p = strchr(module_name, '.');
 		*p = '\0';
 
@@ -307,7 +308,7 @@ int read_modules_file(char *filename)
 		/* If there's an authentication method, add a new Auth-Type */
 		if (this->module->authenticate)
 			this->auth_type =
-				new_authtype_value(this->module->name);
+				new_authtype_value((char *)this->module->name);
 
 		/* split up the rest of the string into argv */
 		p = strtok(buffer, " \t");  /* find name */

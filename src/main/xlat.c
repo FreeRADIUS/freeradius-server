@@ -1,11 +1,13 @@
 /*
  * xlat.c	Translate strings.
  *
- * Version: $Id$
+ * Version:	$Id$
  *
- *
- * This is the first version of xlat incorporated to RADIUS
+ *		This is the first version of xlat incorporated to RADIUS
  */
+
+static const char rcsid[] = 
+"$Id$";
 
 #include	"autoconf.h"
 

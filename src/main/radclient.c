@@ -88,7 +88,6 @@ int main(int argc, char **argv)
 	int		do_output = 1;
 	int		c;
 	int		port = 0;
-	int		s;
 	int		retries = 10;
 	float		timeout = 3;
 	int		i;
@@ -203,7 +202,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Send request.
 	 */
-	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+	if ((req->sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("radclient: socket: ");
 		exit(1);
 	}
@@ -211,21 +210,21 @@ int main(int argc, char **argv)
 	for (i = 0; i < retries; i++) {
 		fd_set		rdfdesc;
 
-		rad_send(req, s, secret);
+		rad_send(req, secret);
 
 		/* And wait for reply, timing out as necessary */
 		FD_ZERO(&rdfdesc);
-		FD_SET(s, &rdfdesc);
+		FD_SET(req->sockfd, &rdfdesc);
 
 		tv.tv_sec = (int)timeout;
 		tv.tv_usec = 1000000 * (timeout - (int)timeout);
 
 		/* Something's wrong if we don't get exactly one fd. */
-		if (select(s+1, &rdfdesc, NULL, NULL, &tv) != 1) {
+		if (select(req->sockfd + 1, &rdfdesc, NULL, NULL, &tv) != 1) {
 			continue;
 		}
 
-		rep = rad_recv(s);
+		rep = rad_recv(req->sockfd);
 		if (rep != NULL) {
 			break;
 		} else {	/* NULL: couldn't receive the packet */

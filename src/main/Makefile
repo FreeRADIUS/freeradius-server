@@ -6,7 +6,7 @@ MODULE_PATHS	= $(shell ./makemodules.sh paths $(LIBDL))
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o \
-		  modules.o radutmp.o $(MODULE_PATHS)
+		  modules.o radutmp.o xlat.o $(MODULE_PATHS)
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h
 
 CFLAGS		+= -I../include
@@ -57,6 +57,9 @@ valuepair.o:  valuepair.c $(INCLUDES)
 
 version.o: version.c $(INCLUDES)
 	$(CC) $(CFLAGS) -o version.o -c version.c
+
+xlat.o: xlat.c $(INCLUDES)
+	$(CC) $(CFLAGS) -o xlat.o -c xlat.c
 
 radclient: radclient.o
 	$(CC) $(LDFLAGS) -o radclient radclient.o $(LIBS)

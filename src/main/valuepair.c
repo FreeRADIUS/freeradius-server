@@ -264,6 +264,7 @@ static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	int		lo, hi;
 	int		port = request->lvalue;
 
+	/* Same size */
 	strcpy(buf, check->strvalue);
 	s = strtok(buf, ",");
 

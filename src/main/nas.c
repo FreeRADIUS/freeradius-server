@@ -2,12 +2,11 @@
  * nas.c	Functions to do with a NASLIST. This is here because
  *		radzap needs it as well.
  *
- * Version:     @(#)nas.c  1.00  08-Aug-1999  miquels@cistron.nl
+ * Version:     $Id$
  *
  */
 
-char nas_sccsid[] =
-"@(#)nas.c	1.00 Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 

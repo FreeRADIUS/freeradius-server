@@ -2,9 +2,11 @@
  * log.c	Functions in the library call radlib_log() which
  *		sets a global error string "char *librad_errstr".
  *
- * Version:	@(#)log.c  1.00  25-Oct-1998  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
+
+static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
 
@@ -33,6 +35,9 @@ void librad_log(char *fmt, ...)
 	vsnprintf(my_errstr, sizeof(my_errstr), fmt, ap);
 #else
 	vsprintf(my_errstr, fmt, ap);
+	if (strlen(my_errstr) >= sizeof(my_errstr))
+		/* What can we do .. */
+		_exit(42);
 #endif
 	strcpy(librad_errstr, my_errstr);
 	va_end(ap);

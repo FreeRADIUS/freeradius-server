@@ -6,7 +6,8 @@
  */
 
 /* don't look here for the version, run radiusd -v or look in version.c */
-static const char rcsid[] = "$Id$";
+static const char rcsid[] =
+"$Id$";
 
 #include	"autoconf.h"
 

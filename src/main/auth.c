@@ -327,6 +327,7 @@ int rad_mangle(REQUEST *request)
 	if ((ptr = strchr(namepair->strvalue, '\\')) != NULL) {
 		strncpy(newname, ptr + 1, sizeof(newname));
 		newname[sizeof(newname) - 1] = 0;
+		/* Same size */
 		strcpy(namepair->strvalue, newname);
 		namepair->length = strlen(newname);
 	}
@@ -654,7 +655,7 @@ int rad_authenticate(REQUEST *request)
 		seen_callback_id = 1;
 		ptr = radius_xlate(auth_item->strvalue,
 			request->packet->vps, user_reply);
-		strcpy(auth_item->strvalue, ptr);
+		strNcpy(auth_item->strvalue, ptr, sizeof(auth_item->strvalue));
 		auth_item->length = strlen(auth_item->strvalue);
 	}
 
@@ -722,7 +723,8 @@ int rad_authenticate(REQUEST *request)
 		    PW_REPLY_MESSAGE)) != NULL) {
 			user_msg = radius_xlate(reply_item->strvalue,
 				request->packet->vps, user_reply);
-			strcpy(reply_item->strvalue, user_msg);
+			strNcpy(reply_item->strvalue, user_msg,
+				sizeof(reply_item->strvalue));
 			reply_item->length = strlen(reply_item->strvalue);
 			user_msg = NULL;
 		}

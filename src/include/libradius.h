@@ -182,6 +182,7 @@ char *		ip_hostname (UINT4);
 UINT4		ip_getaddr (char *);
 char *		ip_ntoa(char *, UINT4);
 UINT4		ip_addr(char *);
+char		*strNcpy(char *dest, char *src, int n);
 
 #ifdef ASCEND_BINARY
 /* filters.c */

@@ -1,11 +1,12 @@
 /*
  * radutmp.c	Radius session management.
  *
- * Version:	@(#)radutmp.c	1.00  10--Aug-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
-char radutmp_sccsid[] =
-"@(#)radutmp.c  1.00  Copyright 1999 Cistron Internet Services B.V.";
+
+static const char rcsid[] =
+"$Id$";
 
 #include	"autoconf.h"
 

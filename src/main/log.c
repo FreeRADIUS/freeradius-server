@@ -1,10 +1,10 @@
 /*
  * log.c	Logging module.
  *
+ * Version:	$Id$
  */
 
-char log_sccsid[] =
-"@(#)log.c      1.3 Copyright 1999 Cistron Internet Services B.V,";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -40,7 +40,7 @@ static int do_log(int lvl, char *fmt, va_list ap)
 	if (radlog_dir == NULL || debug_flag) return 0;
 
 	if (strcmp(radlog_dir, "stdout") != 0) {
-		sprintf(buffer, "%s/%s", radlog_dir, RADIUS_LOG);
+		sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
 		if((msgfd = fopen(buffer, "a")) == NULL) {
 			fprintf(stderr, "%s: Couldn't open %s for logging\n",
 					progname, buffer);
@@ -72,7 +72,14 @@ static int do_log(int lvl, char *fmt, va_list ap)
 	strcpy(buffer + 24, s);
 	len = strlen(buffer);
 
+#ifdef HAVE_VSNPRINTF
+	vsnprintf(buffer + len, sizeof(buffer) - len -1, fmt, ap);
+#else
 	vsprintf(buffer + len, fmt, ap);
+	if (strlen(buffer) >= sizeof(buffer) - 1)
+		/* What can we do? */
+		_exit(42);
+#endif
 
 	/*
 	 *	Filter out characters not in Latin-1.

@@ -127,7 +127,7 @@ int main(int argc, char **argv)
 		len = strlen(content);
 		makelist(content + len, sizeof(content) - len, users->reply);
 
-		strcpy(name, users->name);
+		strNcpy(name, users->name, sizeof(name));
 		if (strcmp(name, "DEFAULT") == 0) {
 			if (defno > 0)
 				sprintf(name, "DEFAULT%d", defno);

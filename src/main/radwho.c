@@ -3,11 +3,14 @@
  *		Can also be installed as fingerd on the UNIX
  *		machine RADIUS runs on.
  *
- * Version:	@(#)radwho  1.25  27-Apr-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  * Patch:	22-Apr-1999	promera@cistron.nl
  *		Added support for raw, comma seperated output
  */
+
+static const char rcsid[] =
+"$Id$";
 
 #include "autoconf.h"
 
@@ -106,7 +109,7 @@ static NAS *my_read_naslist_file(char *file)
 		if (buffer[0] == '#' || buffer[0] == '\n')
 			continue;
 		shortnm[0] = 0;
-		if (sscanf(buffer, "%s%s%s", hostnm, shortnm, nastype) < 2) {
+		if (sscanf(buffer, "%127s%31s%31s", hostnm, shortnm, nastype) < 2) {
 			fprintf(stderr, "%s[%d]: syntax error\n", file, lineno);
 			continue;
 		}
@@ -117,9 +120,10 @@ static NAS *my_read_naslist_file(char *file)
 		}
 
 		c->ipaddr = ip_getaddr(hostnm);
-		strcpy(c->nastype, nastype);
-		strcpy(c->shortname, shortnm);
-		strcpy(c->longname, ip_hostname(c->ipaddr));
+		strNcpy(c->nastype, nastype, sizeof(c->nastype));
+		strNcpy(c->shortname, shortnm, sizeof(c->shortname));
+		strNcpy(c->longname, ip_hostname(c->ipaddr),
+			sizeof(c->longname));
 
 		c->next = cl;
 		cl = c;
@@ -264,7 +268,8 @@ char *idletime(char *line)
 		strcpy(tty, "/dev/");
 	else
 		tty[0] = 0;
-	strcat(tty, line);
+	strncat(tty, line, 10);
+	tty[15] = 0;
 
 	tmp[0] = 0;
 	if (stat(tty, &st) == 0) {

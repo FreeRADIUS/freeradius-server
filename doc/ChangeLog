@@ -1,3 +1,14 @@
+1999-09-28  Miquel van Smoorenburg (miquels@cistron.nl)
+
+	* Changed some strcpy()s over to strNcpy. It would be better
+	  to check the sizes before the strNcpy() and log an error,
+	  if you feel the urge grep for strNcpy in the source.
+	* Audited all scanf() and sprintf() functions
+	* Audited radius_xlate()
+	* Done: lib/*, main/*, todo: modules/*
+	* Added xlat.c to Makefile to get the thing to compile
+	* fixed usage of socket and rad_send() in radclient.c
+
 1999-09-18  Miquel van Smoorenburg (miquels@cistron.nl)
 
 	* Change a couple of Makefile.ins to plain Makefiles

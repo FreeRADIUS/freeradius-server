@@ -96,3 +96,18 @@ UINT4 ip_addr(char *ip_str)
 	return in.s_addr;
 }
 
+
+/*
+ *	Like strncpy, but always adds \0
+ */
+char *strNcpy(char *dest, char *src, int n)
+{
+	if (n > 0)
+		strncpy(dest, src, n);
+	else
+		n = 1;
+	dest[n - 1] = 0;
+
+	return dest;
+}
+

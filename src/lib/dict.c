@@ -188,6 +188,12 @@ static int my_dict_init(char *dir, char *fn)
 	int	is_nmc;
 #endif
 
+	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
+	    strlen(dir) >= sizeof(dirtmp) / 2) {
+		librad_log("dict_init: filename name too long");
+		return -1;
+	}
+
 	/*
 	 *	First see if fn is relative to dir. If so, create
 	 *	new filename. If not, remember the absolute dir.

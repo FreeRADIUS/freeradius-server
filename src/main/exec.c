@@ -42,12 +42,14 @@ char exec_sccsid[] =
  */
 char *radius_xlate(char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
 {
-	static char buf[2048];
+	static char buf[MAX_STRING_LEN * 2];
 	int n, i = 0, c;
 	char *p;
 	VALUE_PAIR *tmp;
 
 	for (p = str; *p; p++) {
+		if (i >= MAX_STRING_LEN)
+			break;
 		c = *p;
 		if (c != '%') {
 			buf[i++] = *p;
