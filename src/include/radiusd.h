@@ -160,6 +160,7 @@ typedef int (*RAD_COMPARE_FUNC)(void *instance, VALUE_PAIR *, VALUE_PAIR *, VALU
  */
 extern const char	*progname;
 extern int		debug_flag;
+extern int		syslog_facility;
 extern const char	*radacct_dir;
 extern const char	*radlog_dir;
 extern const char	*radlib_dir;

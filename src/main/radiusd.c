@@ -97,6 +97,7 @@ const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlog_dir = NULL;
 const char *radlib_dir = NULL;
+int syslog_facility;
 int log_stripped_names;
 int debug_flag;
 int use_dbm = FALSE;
@@ -464,11 +465,11 @@ int main(int argc, char *argv[])
 	int fd = 0;
 	int devnull;
 	int status;
-	int syslog_facility = LOG_DAEMON;
 	int radius_port = 0;
 	struct servent *svp;
 	struct timeval *tv = NULL;
 
+	syslog_facility = LOG_DAEMON;
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
 #endif
