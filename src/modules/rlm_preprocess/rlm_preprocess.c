@@ -318,10 +318,12 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 
 	/*
 	 *	Now add all attributes to the request list,
-	 *	except the PW_STRIP_USER_NAME one.
+	 *	except the PW_STRIP_USER_NAME one, and
+	 *	xlat them.
 	 */
 	pairdelete(&add, PW_STRIP_USER_NAME);
-	pairadd(&request->packet->vps, add);
+	pairxlatmove(request, &request->packet->vps, &add);
+	pairfree(&add);
 
 	return RLM_MODULE_UPDATED;
 }
