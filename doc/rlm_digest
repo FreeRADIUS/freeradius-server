@@ -1,0 +1,52 @@
+	Digest module configuration
+
+0. INTRODUCTION
+
+  The digest module performs HTTP digest authentication, as per
+  the IETF draft rfc/draft-sterman-aaa-sip-00.txt.  It has been
+  successfully tested against a Cisco SIP server.
+
+  However, the draft has been expired by the IETF, so it's unlikely to
+  become an "official" standard.
+
+1. USAGE
+
+  To use this module, copy the digest configuration section from
+  raddb/experimental.conf, to the 'modules' section of
+  raddb/radiusd.conf.
+
+  For example:
+	modules {
+		...
+		digest {
+		}
+		...
+	}
+
+  Then add the word 'digest' to both the 'authorize' and
+  'authenticate' configuration sections.  It should probably be listed
+  near the top of both sections, as it does not require information
+  from other modules.
+
+2. TESTING
+
+  Add the following lines to the top of your 'raddb/users' file:
+
+#---
+test	Auth-Type := Digest, User-Password = "test"
+	Reply-Message = "Hello, test with digest"
+#---
+
+
+  Once the server has been re-started (debugging mode is recommended),
+  use 'radclient' to send the following packet to the server:
+
+  $  radclient -f digest localhost auth testing123
+
+  Where 'digest' is a file containing:
+
+User-Name = "test", Digest-Response = "631d6d73147add2f9e437f59bbc3aeb7", Digest-Realm = "testrealm", Digest-Nonce = "1234abcd", Digest-Method = "INVITE", Digest-URI = "sip:5555551212@example.com", Digest-Algorithm = "MD5", Digest-User-Name = "test"
+
+  You should see authentication succeed.
+
+$Id$
