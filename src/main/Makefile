@@ -1,3 +1,6 @@
+#
+# $Id$
+#
 
 include ../../Make.inc
 
@@ -8,7 +11,7 @@ INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h
 
 CFLAGS		+= -I../include
 LDFLAGS		+= -L../lib
-LIBS		+= -lradius
+LIBS		+= -lradius $(NSLLIB) $(SOCKETLIB)
 
 #
 # Pick up the static module libraries and linker flags.
