@@ -253,15 +253,16 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		}
 		
 		/*
-		 *	Look for trailing '}', and silently
-		 *	ignore anything that doesn't match.
-		 *
-		 *	FIXME!  This is probably wrong...
+		 *	Look for trailing '}', and log a
+		 *	warning for anything that doesn't match,
+		 *	and exit with a fatal error.
 		 */
 		end = strchr(ptr, '}');
 		if (end == NULL) {
 			*(p++) = *(ptr++);
-			continue;
+			radlog(L_INFO, "%s[%d]: Variable expansion missing }",
+					cf, *lineno);
+			return NULL;
 		}
 		
 		ptr += 2;
