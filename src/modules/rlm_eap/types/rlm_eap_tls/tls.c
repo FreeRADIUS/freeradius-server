@@ -300,6 +300,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 	}
 
 	/* Some Extra STATE information for easy debugging */
+	/*
 	if (SSL_is_init_finished(ssn->ssl)) {
 		printf("SSL Connection Established\n");
 	}
@@ -315,6 +316,7 @@ int tls_handshake_recv(tls_session_t *ssn)
    	if (SSL_in_connect_init(ssn->ssl)) {
 		printf("In SSL Connect mode \n");
 	}
+	*/
 
 	if (ssn->info.content_type != application_data) {
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data, MAX_RECORD_SIZE);
@@ -328,7 +330,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 		}
 	} else {
 		radlog(L_INFO, "rlm_eap_tls: Application Data");
-		/* Its application data, do whatever we want */
+		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
 	}
 
@@ -374,6 +376,13 @@ void session_init(tls_session_t *ssn)
 	record_init(&ssn->clean_out);
 	record_init(&ssn->dirty_in);
 	record_init(&ssn->dirty_out);
+
+	memset(&ssn->info, 0, sizeof(ssn->info));
+
+	ssn->offset = 0;
+	ssn->fragment = 0;
+	ssn->tls_msg_len = 0;
+	ssn->length_flag = 0;
 }
 
 void session_close(tls_session_t *ssn)

@@ -48,7 +48,6 @@
 
 #ifndef NO_OPENSSL
 #include <openssl/err.h>
-#include <openssl/engine.h>
 #include <openssl/ssl.h>
 #endif /* !defined(NO_OPENSSL) */
 
@@ -242,7 +241,8 @@ typedef struct _tls_info_t {
  * clean_out - data that is cleaned after receiving.
  * dirty_out - data EAP server sends. 
  * offset    - current fragment size transmitted
- * fragment  - In Fragment mode or not. If yes, the current fragment number
+ * fragment  - Flag, In fragment mode or not.
+ * tls_msg_len - Actual/Total TLS message length.
  * length_flag - A flag to include length in every TLS Data/Alert packet
  * 					if set to no then only the first fragment contains length
  */
@@ -263,6 +263,7 @@ typedef struct _tls_session_t {
 	 * if present, can also be used to set this
 	 */
 	unsigned int 	offset;
+	unsigned int 	tls_msg_len;
 	int 		fragment;
 	int			length_flag;
 } tls_session_t;

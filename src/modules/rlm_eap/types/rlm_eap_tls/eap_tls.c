@@ -145,9 +145,8 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	unsigned int	size;
 	unsigned int 	nlen;
 	unsigned int 	lbit = 0;
-	static unsigned int	total_length = 0;
 
-	/* This value determines whether we we set (L)ength flag for 
+	/* This value determines whether we set (L)ength flag for 
 		EVERY packet we send and add corresponding 
 		"TLS Message Length" field.
 
@@ -167,7 +166,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 		lbit = 4;
 	}
 	if (ssn->fragment == 0) {
-		total_length = ssn->dirty_out.used;
+		ssn->tls_msg_len = ssn->dirty_out.used;
 	}
 
 	reply.code = EAPTLS_REQUEST;
@@ -182,12 +181,10 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 		if (ssn->fragment == 0) {
 			lbit = 4;
 		}
-		ssn->fragment++;
+		ssn->fragment = 1;
 	} else {
 		size = ssn->dirty_out.used;
-		if (ssn->fragment) {
-			ssn->fragment = 0;
-		}
+		ssn->fragment = 0;
 	}
 
 	reply.dlen = lbit + size;
@@ -195,7 +192,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 
 	reply.data = malloc(reply.dlen);
 	if (lbit) {
-		nlen = htonl(total_length);
+		nlen = htonl(ssn->tls_msg_len);
 		memcpy(reply.data, &nlen, lbit);
 		reply.flags = SET_LENGTH_INCLUDED(reply.flags);
 	}
