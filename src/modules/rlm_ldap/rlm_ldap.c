@@ -73,6 +73,13 @@
  *	- When ldap_search returns NO_SUCH_OBJECT don't return fail but notfound
  * July 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Fix the logic when we get an LDAP_SERVER_DOWN or we have conn->ld == NULL in perform_search
+ *	- Try to minimize the penalty of having the ldap server go down. The comments before
+ *	  MAX_FAILED_CONNS_* definitions should explain things.
+ *	- Check for a number of error codes from ldap_search and log corresponding error messages
+ *	  We should only reconnect when that can help things.
+ *	- In ldap_groupcmp instead of first searching for the group object and then checking user
+ *	  group membership combine them in one ldap search operation. That should make group
+ *	  membership checks a lot faster.
  */
 static const char rcsid[] = "$Id$";
 
@@ -106,7 +113,37 @@ static const char rcsid[] = "$Id$";
 
 
 #define MAX_AUTH_QUERY_LEN      256
+#define MAX_GROUP_STR_LEN	1024
 #define TIMELIMIT 5
+
+/*
+ * These are used in case ldap_search returns LDAP_SERVER_DOWN
+ * In that case we do conn->failed_conns++ and then check it:
+ * If conn->failed_conns <= MAX_FAILED_CONNS_START then we try
+ * to reconnect
+ * conn->failed_conns is also checked on entrance in perform_search:
+ * If conn->failed_conns > MAX_FAILED_CONNS_START then we don't
+ * try to do anything and we just do conn->failed_conns++ and
+ * return RLM_MODULE_FAIL
+ * if conn->failed_conns >= MAX_FAILED_CONNS_END then we give it
+ * another chance and we set it to MAX_FAILED_CONNS_RESTART and
+ * try to reconnect.
+ *
+ *
+ * We are assuming that the majority of the LDAP_SERVER_DOWN cases
+ * will either be an ldap connection timeout or a temporary ldap
+ * server problem.
+ * As a result we make a few attempts to reconnect hoping that the problem
+ * will soon go away. If it does not go away then we just return
+ * RLM_MODULE_FAIL on entrance in perform_search until conn->failed_conns
+ * gets to MAX_FAILED_CONNS_END. After that we give it one more chance by
+ * going back to MAX_FAILED_CONNS_RESTART
+ *
+ */
+
+#define MAX_FAILED_CONNS_END		20
+#define MAX_FAILED_CONNS_RESTART	4
+#define MAX_FAILED_CONNS_START		5
 
 /* linked list of mappings between RADIUS attributes and LDAP attributes */
 struct TLDAP_RADIUS {
@@ -120,6 +157,7 @@ typedef struct ldap_conn {
 	LDAP		*ld;
 	char		bound;
 	char		locked;
+	int		failed_conns;
 	pthread_mutex_t	mutex;
 } LDAP_CONN;
 
@@ -297,6 +335,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	for(;i<inst->num_conns;i++){
 		inst->conns[i].bound = 0;
 		inst->conns[i].locked = 0;
+		inst->conns[i].failed_conns = 0;
 		inst->conns[i].ld = NULL;
 		pthread_mutex_init(&inst->conns[i].mutex, NULL);
 	}	
@@ -483,6 +522,13 @@ perform_search(void *instance, LDAP_CONN *conn, char *search_basedn, int scope, 
 		radlog(L_ERR, "rlm_ldap: NULL connection handle passed");
 		return RLM_MODULE_FAIL;
 	}
+	if (conn->failed_conns > MAX_FAILED_CONNS_START){
+		conn->failed_conns++;
+		if (conn->failed_conns >= MAX_FAILED_CONNS_END){
+			conn->failed_conns = MAX_FAILED_CONNS_RESTART;
+			conn->bound = 0;
+		}
+	}
 retry:
 	if (!conn->bound || conn->ld == NULL) {
 		DEBUG2("rlm_ldap: attempting LDAP reconnection");
@@ -494,9 +540,12 @@ retry:
 		}
 		if ((conn->ld = ldap_connect(instance, inst->login, inst->password, 0, &res)) == NULL) {
 			radlog(L_ERR, "rlm_ldap: (re)connection attempt failed");
+			if (search_retry == 0)
+				conn->failed_conns++;
 			return (RLM_MODULE_FAIL);
 		}
 		conn->bound = 1;
+		conn->failed_conns = 0;
 	}
 	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn ? search_basedn : "(null)" , filter);
 	switch (ldap_search_st(conn->ld, search_basedn, scope, filter, attrs, 0, &(inst->timeout), result)) {
@@ -505,15 +554,34 @@ retry:
 		break;
 	case LDAP_SERVER_DOWN:
 		radlog(L_ERR, "rlm_ldap: ldap_search() failed: LDAP connection lost.");
+		conn->failed_conns++;
 		if (search_retry == 0){
-			radlog(L_INFO, "rlm_ldap: Attempting reconnect");
-			search_retry = 1;
-			conn->bound = 0;
-			ldap_msgfree(*result);	
-			goto retry;
+			if (conn->failed_conns <= MAX_FAILED_CONNS_START){
+				radlog(L_INFO, "rlm_ldap: Attempting reconnect");
+				search_retry = 1;
+				conn->bound = 0;
+				ldap_msgfree(*result);	
+				goto retry;
+			}
 		}
 		ldap_msgfree(*result);
 		return RLM_MODULE_FAIL;
+	case LDAP_INSUFFICIENT_ACCESS:
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed: Insufficient access. Check the identity and password configuration directives.");
+		ldap_msgfree(*result);
+		return RLM_MODULE_FAIL;
+	case LDAP_TIMEOUT:
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed: Timed out while waiting for server to respond. Please increase the timeout.");
+		ldap_msgfree(*result);
+		return RLM_MODULE_FAIL;
+	case LDAP_TIMELIMIT_EXCEEDED:
+	case LDAP_BUSY:
+	case LDAP_UNAVAILABLE:
+		/* We don't need to reconnect in these cases so we don't set conn->bound */
+		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s", ldap_err2string(ldap_errno));
+		ldap_msgfree(*result);	
+		return (RLM_MODULE_FAIL);
 	default:
 		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s", ldap_err2string(ldap_errno));
@@ -538,8 +606,8 @@ retry:
 static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
                 VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
-        char            filter[MAX_AUTH_QUERY_LEN];
-        char            *group_dn;
+        char            filter[MAX_GROUP_STR_LEN];
+        char            gr_filter[MAX_AUTH_QUERY_LEN];
         int             res;
         LDAPMessage     *result = NULL;
         LDAPMessage     *msg = NULL;
@@ -606,21 +674,22 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
                 ldap_msgfree(result);
         }
 
-        snprintf(filter,MAX_AUTH_QUERY_LEN - 1, "(%s=%s)",inst->groupname_attr,(char *)check->strvalue);
-
+        if(!radius_xlat(gr_filter, MAX_GROUP_STR_LEN, inst->groupmemb_filt, req, NULL)){
+                DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter.");
+		if (conn_id != -1)
+			ldap_release_conn(conn_id,inst->conns);
+                return 1;
+        }
 	if (conn_id == -1 && (conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1){
 		radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
 		return 1;
 	}
 
-	if (inst->cache_timeout >0 && conn->ld != NULL)
-		ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
+	snprintf(filter,MAX_GROUP_STR_LEN - 1, "(&(%s=%s)%s)",inst->groupname_attr,(char *)check->strvalue,gr_filter);
 
         if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK){
-		if (inst->cache_timeout >0 && conn->ld != NULL)
-			ldap_disable_cache(conn->ld);
                 if (res == RLM_MODULE_NOTFOUND){
-                        DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found", (char *)check->strvalue);
+                        DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found or user is not a member", (char *)check->strvalue);
 			ldap_release_conn(conn_id,inst->conns);
                         return 1;
                 }
@@ -628,58 +697,12 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 		ldap_release_conn(conn_id,inst->conns);
                 return 1;
         }
-        if ((msg = ldap_first_entry(conn->ld, result)) == NULL){
-                DEBUG("rlm_ldap::ldap_groupcmp: ldap_first_entry() failed");
-		if (inst->cache_timeout >0)
-			ldap_disable_cache(conn->ld);
-		ldap_release_conn(conn_id,inst->conns);
-                ldap_msgfree(result);
-                return 1;
-        }
-        if ((group_dn = ldap_get_dn(conn->ld, msg)) == NULL){
-                DEBUG("rlm_ldap:ldap_groupcmp:: ldap_get_dn() failed");
-		if (inst->cache_timeout >0)
-			ldap_disable_cache(conn->ld);
-		ldap_release_conn(conn_id,inst->conns);
-                ldap_msgfree(result);
-                return 1;
-        }
+
+	DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",(char *)check->strvalue);
 	ldap_msgfree(result);
-
-
-        if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->groupmemb_filt, req, NULL)){
-                DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter.");
-		if (inst->cache_timeout >0)
-			ldap_disable_cache(conn->ld);
-		ldap_release_conn(conn_id,inst->conns);
-		ldap_memfree(group_dn);
-                return 1;
-        }
-
-        if ((res = perform_search(inst, conn, group_dn, LDAP_SCOPE_BASE, filter, attrs, &result)) != RLM_MODULE_OK){
-		if (inst->cache_timeout >0 && conn->ld != NULL)
-			ldap_disable_cache(conn->ld);
-		ldap_release_conn(conn_id,inst->conns);
-                if (res == RLM_MODULE_NOTFOUND){
-			DEBUG("rlm_ldap::ldap_groupcmp: User not found in group %s",group_dn);
-			ldap_memfree(group_dn);
-			return -1;
-                }
-                DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
-		ldap_memfree(group_dn);
-                return 1;
-        }
-        else{
-                DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",group_dn);
-		if (inst->cache_timeout >0)
-			ldap_disable_cache(conn->ld);
-		ldap_memfree(group_dn);
-                ldap_msgfree(result);
-        }
 	ldap_release_conn(conn_id,inst->conns);
 
         return 0;
-
 }
 
 /*
