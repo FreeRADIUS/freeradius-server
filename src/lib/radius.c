@@ -31,6 +31,10 @@ char radius_sccsid[] =
 #  include	<malloc.h>
 #endif
 
+/*
+ *  ??? Why this number?  The RFC says 4096 octets max,
+ *  and most packets are less than 256.
+ */
 #define PACKET_DATA_LEN 1600
 
 /*
@@ -94,12 +98,12 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 		what, packet->id,
 		inet_ntoa(*(struct in_addr *)&packet->dst_ipaddr));
 
-	total_length = 20;
+	total_length = AUTH_HDR_LEN;
 
 	/*
 	 *	Load up the configuration values for the user
 	 */
-	ptr = hdr + 20;
+	ptr = hdr + AUTH_HDR_LEN;
 	while (reply != NULL) {
 		debug_pair(reply);
 
@@ -268,6 +272,8 @@ RADIUS_PACKET *rad_recv(int fd)
 	int			salen;
 	u_char			*hdr;
 	u_short			len;
+	u_char			*attr;
+	int			count;
 
 	/*
 	 *	Allocate the new request data structure
@@ -291,6 +297,10 @@ RADIUS_PACKET *rad_recv(int fd)
 	salen = sizeof(saremote);
 	packet->data_len = recvfrom(fd, packet->data, PACKET_DATA_LEN,
 		0, (struct sockaddr *)&saremote, &salen);
+
+	/*
+	 *	Check for socket errors.
+	 */
 	if (packet->data_len < 0) {
 		free(packet->data);
 		free(packet);
@@ -298,22 +308,60 @@ RADIUS_PACKET *rad_recv(int fd)
 		return NULL;
 	}
 
-	if (packet->data_len < 20) {
+	/*
+	 *	Check for packets smaller than the packet header.
+	 */
+	if (packet->data_len < AUTH_HDR_LEN) {
 		free(packet->data);
 		free(packet);
 		librad_log("Malformed RADIUS packet: too small");
 		return NULL;
 	}
 
+	/*
+	 *	Check for packets with mismatched size.
+	 *	i.e. We've received 128 bytes, and the packet header
+	 *	says it's 256 bytes long.
+	 */
 	hdr = (u_char *)packet->data;
 	memcpy(&len, hdr + 2, sizeof(u_short));
 	totallen = ntohs(len);
 	if (packet->data_len != totallen) {
-		librad_log("Malformed RADIUS packet: received %d octets, packet says %d", packet->data_len, totallen);
+		librad_log("Malformed RADIUS packet: received %d octets, packet size says %d", packet->data_len, totallen);
 		free(packet->data);
 		free(packet);
 		return NULL;
 	}
+
+	/*
+	 *	Walk through the packet's attributes, ensuring that
+	 *	they add up EXACTLY to the size of the packet.
+	 *
+	 *	If they don't, then the attributes either under-fill
+	 *	or over-fill the packet.  Any parsing of the packet
+	 *	is impossible, and will result in unknown side effects.
+	 *
+	 *	This would ONLY happen with buggy RADIUS implementations,
+	 *	or with an intentional attack.  Either way, we do NOT want
+	 *	to be vulnerable to this problem.
+	 */
+	attr = hdr + AUTH_HDR_LEN;
+	count = totallen - AUTH_HDR_LEN;
+	while (count > 0) {
+	  count -= attr[1];	/* grab the attribute length */
+	  attr += attr[1];
+	}
+
+	/*
+	 *	If the attributes add up to a packet, it's allowed.
+	 *
+	 *	If not, we complain, and throw the packet away.
+	 */
+	if (count != 0) {
+		librad_log("Malformed RADIUS packet: packet attributes do NOT exactly fill the packet");
+		free(packet->data);
+		free(packet);
+		return NULL;	}
 
 	DEBUG("rad_recv: Packet from host %s code=%d, id=%d, length=%d\n",
 			inet_ntoa(saremote.sin_addr),
@@ -381,7 +429,7 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 	/*
 	 *	Extract attribute-value pairs
 	 */
-	ptr = hdr + 20;
+	ptr = hdr + AUTH_HDR_LEN;
 	length -= AUTH_HDR_LEN;
 	first_pair = NULL;
 	prev = NULL;
