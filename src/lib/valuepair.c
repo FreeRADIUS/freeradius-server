@@ -410,15 +410,32 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			   */
 			case T_OP_SET:		/* := */
 				if (found) {
-					pairdelete(to, found->attribute);
+					VALUE_PAIR *mynext = found->next;
+
+					/*
+					 *	Do NOT call pairdelete()
+					 *	here, due to issues with
+					 *	re-writing "request->username".
+					 *
+					 *	Everybody calls pairmove,
+					 *	and expects it to work.
+					 *	We can't update request->username
+					 *	here, so instead we over-write
+					 *	the vp that it's pointing to.
+					 */
+					memcpy(found, i, sizeof(*found));
+					found->next = mynext;
+
+					pairdelete(&found->next, found->attribute);
+
 					/*
 					 *	'tailto' may have been
 					 *	deleted...
 					 */
-					tailto = to;
-					for(j = *to; j; j = j->next) {
+					for(j = found; j; j = j->next) {
 						tailto = &j->next;
 					}
+					continue;
 				}
 				break;
 
