@@ -201,11 +201,17 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	strcat(buffer, "\n");
 	
 	/*
-	 *  Small debug levels: no timestamp
+	 *   If we're debugging, for small values of debug, then
+	 *   we don't do timestamps.
 	 */
-	if (debug_flag < 3) {
+	if ((debug_flag == 1) || (debug_flag == 2)) {
 		p = buffer + len;
+
 	} else {
+		/*
+		 *  No debugging, or lots of debugging.  Print
+		 *  the time stamps.
+		 */
 		p = buffer;
 	}
 
