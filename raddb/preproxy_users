@@ -1,0 +1,12 @@
+#
+#  This is an experimental file, which the 'files' module uses to
+#  re-write requests which are about to be sent to a home server.
+#
+
+#
+#  For all proxied packets, set the User-Name in the proxied packet
+#  to the Stripped-User-Name, if it exists.  If not, set it to the
+#  User-Name from the original request.
+#
+#DEFAULT
+#	User-Name := `%{Stripped-User-Name:-%{User-Name}}`
