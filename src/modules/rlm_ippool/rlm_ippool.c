@@ -28,6 +28,8 @@
  * - Check the return value of a gdbm_fetch() we didn't check
  * - Change the nas entry in the ippool_key structure from uint32 to string[64]
  *   That should allow us to also use the NAS-Identifier attribute
+ * Sep 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - Move from authorize to post-auth
  */
 
 #include "config.h"
@@ -377,7 +379,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static int ippool_authorize(void *instance, REQUEST *request)
+static int ippool_postauth(void *instance, REQUEST *request)
 {
 	rlm_ippool_t *data = (rlm_ippool_t *) instance;
 	int port = 0;
@@ -660,13 +662,13 @@ module_t rlm_ippool = {
 	ippool_instantiate,		/* instantiation */
 	{
 		NULL,			/* authentication */
-		ippool_authorize, 	/* authorization */
+		NULL,		 	/* authorization */
 		NULL,			/* preaccounting */
 		ippool_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		ippool_postauth		/* post-auth */
 	},
 	ippool_detach,			/* detach */
 	NULL,				/* destroy */
