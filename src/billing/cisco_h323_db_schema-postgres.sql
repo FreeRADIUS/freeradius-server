@@ -34,7 +34,7 @@ CREATE TABLE StartVoIP (
 	AcctDelayTime		INTEGER,
 	H323GWID		VARCHAR(32),
 	h323CallOrigin		VARCHAR(10),
-	CallID			VARCHAR(50) NOT NULL,
+	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
 create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
@@ -53,7 +53,7 @@ CREATE TABLE StartTelephony (
 	AcctDelayTime		INTEGER,
 	H323GWID		VARCHAR(32),
 	h323CallOrigin		VARCHAR(10),
-	CallID			VARCHAR(35) NOT NULL,
+	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
 create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress);
@@ -84,7 +84,7 @@ CREATE TABLE StopVoIP (
 	H323DisconnectCause	VARCHAR(20),
 	H323RemoteAddress	INET,
 	H323VoiceQuality	INTEGER,
-	CallID			VARCHAR(50) NOT NULL,
+	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
 create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, CallID);
@@ -118,7 +118,7 @@ CREATE TABLE StopTelephony (
 	H323DisconnectCause	VARCHAR(20),
 	H323RemoteAddress	INET,
 	H323VoiceQuality	INTEGER,
-	CallID			VARCHAR(35) NOT NULL,
+	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
 -- You can have more than one record that is identical except for CiscoNASPort if you have a VoIP dial peer
