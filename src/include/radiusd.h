@@ -11,6 +11,10 @@
 #include "conf.h"
 #include "missing.h"
 
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #if HAVE_PTHREAD_H
 #include	<pthread.h>
 typedef pthread_t child_pid_t;
@@ -196,7 +200,7 @@ NAS		*nas_findbyname(char *nasname);
 void		version(void);
 
 /* log.c */
-int		log(int, const char *, ...);
+int		radlog(int, const char *, ...);
 int		log_debug(const char *, ...);
 
 /* pam.c */
