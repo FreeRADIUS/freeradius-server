@@ -193,14 +193,19 @@ AC_ARG_WITH(spcj-hack,
 
 dnl extra argument: --with-dict-nocase
 AC_ARG_WITH(dict-nocase,
-[  --with-dict-nocase      Make dictionary case-independant],
-[ case "$withval" in
+[  --with-dict-nocase      Make dictionary case-independant (default=yes)],
+[WITH_DICT_NOCASE=$withval
+  case "$withval" in
     no)
-	;;
+	WITH_DICT_NOCASE="";;
     yes)
 	AC_DEFINE(WITH_DICT_NOCASE)
   esac ]
 )
+dnl if they haven't said to use it, do so.
+if test "$WITH_DICT_NOCASE" = "";then
+  AC_DEFINE(WITH_DICT_NOCASE)
+fi
 
 dnl extra argument: --with-attrib-nmc
 ATTRIB_NMC=
@@ -209,7 +214,7 @@ AC_ARG_WITH(attrib-nmc,
 [ ATTRIB_NMC=$withval
  case "$withval" in
     no)
-	;;
+	ATTRIB_NMC="";;
     yes)
 	AC_DEFINE(ATTRIB_NMC)
   esac ]
@@ -342,6 +347,7 @@ dnl #
     )
   fi
   LIBS="$LIBS $PTHREADLIB"
+  CFLAGS="$CFLAGS -D_REENTRANT"
 fi
 
 dnl #
