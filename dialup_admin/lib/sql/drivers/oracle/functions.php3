@@ -54,10 +54,11 @@ function da_sql_escape_string($string)
 
 function da_sql_query($link,$config,$query)
 {
+	$trimmed_query = rtrim($query, ";");
 	if ($config[sql_debug] == 'true') {
-		print "<b>DEBUG(SQL,OCI DRIVER): Query: <i>$query</i></b><br>\n";
+		print "<b>DEBUG(SQL,OCI DRIVER): Query: <i>$trimmed_query</i></b><br>\n";
 	}
-	$statement = OCIParse($link,$query);
+	$statement = OCIParse($link,$trimmed_query);
 	OCIExecute($statement);
 	return $statement;
 }
@@ -68,7 +69,6 @@ function da_sql_num_rows($statement,$config)
 	$rows = OCIFetchStatement($statement,$res); 
 
         if ($config[sql_debug] == 'true'){
-                // print "<b>DEBUG(SQL,OCI DRIVER): Query Result: Num rows:: " . @ocirowcount($statement) . "</b><br>\n";
                 print "<b>DEBUG(SQL,OCI DRIVER): Query Result: Num rows:: " . $rows . "</b><br>\n";
         }
 	// Unfortunately we need to re-execute because the statement cursor is reset after OCIFetchStatement :-(
