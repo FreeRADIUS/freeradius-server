@@ -94,7 +94,7 @@ typedef struct realm {
 	int			acct_port;
 	int			striprealm;
 	int			trusted;
-	int			notsuffix;
+	int			notrealm;
 	struct realm		*next;
 } REALM;
 

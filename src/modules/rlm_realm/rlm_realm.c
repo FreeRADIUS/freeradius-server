@@ -47,6 +47,10 @@ static REALM *check_for_realm(REQUEST *request)
 	if (realm == NULL)
 	  return NULL;
 
+	/* make sure it's proxyable realm */
+	if (realm->notrealm)
+	  return NULL;
+
 	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
 	       name, realm->realm);
 

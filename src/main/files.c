@@ -598,8 +598,10 @@ static int read_realms_file(const char *file)
 				c->acct_port = 0;
 			if (strstr(opts, "trusted") != NULL)
 				c->trusted = 1;
+			if (strstr(opts, "notrealm") != NULL)
+				c->notrealm = 1;
 			if (strstr(opts, "notsuffix") != NULL)
-				c->notsuffix = 1;
+				c->notrealm = 1;
 		}
 
 		c->next = realms;
