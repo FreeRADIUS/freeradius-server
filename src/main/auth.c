@@ -426,7 +426,8 @@ int rad_authenticate(REQUEST *request)
 		 *	Reply of ACCEPT means accept, ALL other
 		 *	replies mean reject.  This is fail-safe.
 		 */
-		if (request->proxy_reply->code == PW_AUTHENTICATION_ACK)
+		if ((request->proxy_reply->code == PW_AUTHENTICATION_ACK) ||
+		    (request->proxy_reply->code == PW_ACCESS_CHALLENGE))
 			tmp->lvalue = PW_AUTHTYPE_ACCEPT;
 		else
 			tmp->lvalue = PW_AUTHTYPE_REJECT;
@@ -438,6 +439,7 @@ int rad_authenticate(REQUEST *request)
 		 */
 		if (request->proxy_reply->vps) {
 			request->reply->vps = request->proxy_reply->vps;
+			request->reply->code = request->proxy_reply->code;
 			request->proxy_reply->vps = NULL;
 		}
 
@@ -447,7 +449,8 @@ int rad_authenticate(REQUEST *request)
 		 *	rejected, so we minimize the amount of work
 		 *	done by the server, by rejecting them here.
 		 */
-		if (request->proxy_reply->code != PW_AUTHENTICATION_ACK) {
+		if ((request->proxy_reply->code != PW_AUTHENTICATION_ACK) &&
+		    (request->proxy_reply->code != PW_ACCESS_CHALLENGE)) {
 			rad_authlog("Home server says invalid user", request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			return RLM_MODULE_REJECT;
@@ -791,7 +794,12 @@ int rad_authenticate(REQUEST *request)
 		}
 	}
 
-	request->reply->code = PW_AUTHENTICATION_ACK;
+	/*
+	 *	Set the reply to Access-Accept, if it hasn't already
+	 *	been set to something.  (i.e. Access-Challenge)
+	 */
+	if (request->reply->code == 0)
+	  request->reply->code = PW_AUTHENTICATION_ACK;
 
 	rad_authlog("Login OK", request, 1);
 	if (exec_program && !exec_wait) {

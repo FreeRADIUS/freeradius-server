@@ -148,7 +148,7 @@ static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST *rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 static int refresh_request(REQUEST *request, void *data);
-#if HAVE_PTHREAD_H
+#ifndef HAVE_PTHREAD_H
 static int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
 extern int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
@@ -1061,6 +1061,7 @@ int main(int argc, char *argv[])
  *  	 a client network access server.
  *
  *  	PW_AUTHENTICATION_ACK
+ *  	PW_ACCESS_CHALLENGE
  *  	PW_AUTHENTICATION_REJECT
  *  	PW_ACCOUNTING_RESPONSE - Reply from a remote Radius server.
  *  	 Relay reply back to original NAS.
@@ -1117,6 +1118,7 @@ int rad_process(REQUEST *request, int dospawn)
 			break;
 
 		case PW_AUTHENTICATION_ACK:
+		case PW_ACCESS_CHALLENGE:
 		case PW_AUTHENTICATION_REJECT:
 		case PW_ACCOUNTING_RESPONSE:
 			/*
