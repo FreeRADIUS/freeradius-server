@@ -71,6 +71,9 @@ typedef struct sql_inst {
 	SQL_CONFIG	*config;
 
 	rlm_sql_module_t *module;
+
+        int socknr;
+        pthread_mutex_t mutex;
 } SQL_INST;
 
 

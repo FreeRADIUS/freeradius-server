@@ -88,6 +88,7 @@ int sql_init_socketpool(SQL_INST * inst) {
 	inst->connect_after = 0;
 	inst->used = 0;
 	inst->sqlpool = NULL;
+	inst->socknr = 0;
 
 	for (i = 0; i < inst->config->num_sql_socks; i++) {
 
@@ -118,6 +119,8 @@ int sql_init_socketpool(SQL_INST * inst) {
 		sqlsocket->next = inst->sqlpool;
 		inst->sqlpool = sqlsocket;
 	}
+
+	pthread_mutex_init(&inst->mutex, NULL);
 
 	return 1;
 }
@@ -166,7 +169,7 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket) {
  *
  *************************************************************************/
 SQLSOCK * sql_get_socket(SQL_INST * inst) {
-	SQLSOCK *cur;
+	SQLSOCK *cur, *cur2;
 	int tried_to_connect = 0;
 
 	while (inst->used == inst->config->num_sql_socks) {
@@ -174,7 +177,22 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 		return NULL;
 	}
 
-	for (cur = inst->sqlpool; cur; cur = cur->next) {
+	/*
+	 * Rotating the socket so that all get used and none get closed due to
+	 * inactivity from the SQL server ( such as mySQL ).
+	 */
+	pthread_mutex_lock(&inst->mutex);
+	if(inst->socknr == 0) {
+	        inst->socknr = inst->config->num_sql_socks;
+	}
+	inst->socknr--;
+	cur2 = inst->sqlpool;
+	while (inst->socknr != cur2->id) {
+	        cur2 = cur2->next;
+	}
+	pthread_mutex_unlock(&inst->mutex);
+
+	for (cur = cur2; cur; cur = cur->next) {
 
 		/* if we happen upon an unconnected socket, and this instance's grace 
 		 * period on (re)connecting has expired, then try to connect it.  This 
