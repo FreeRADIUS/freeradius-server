@@ -1,761 +1,881 @@
-/**************************************************************
- * Original:
- * Patrick Powell Tue Apr 11 09:48:21 PDT 1995
- * A bombproof version of doprnt (dopr) included.
- * Sigh.  This sort of thing is always nasty do deal with.  Note that
- * the version here does not include floating point...
- *
- * snprintf() is used instead of sprintf() as it does limit checks
- * for string length.  This covers a nasty loophole.
- *
- * The other functions are there to prevent NULL pointers from
- * causing nast effects.
- *
- * More Recently:
- *  Brandon Long <blong@fiction.net> 9/15/96 for mutt 0.43
- *  This was ugly.  It is still ugly.  I opted out of floating point
- *  numbers, but the formatter understands just about everything
- *  from the normal C string format, at least as far as I can tell from
- *  the Solaris 2.5 printf(3S) man page.
- *
- *  Brandon Long <blong@fiction.net> 10/22/97 for mutt 0.87.1
- *    Ok, added some minimal floating point support, which means this
- *    probably requires libm on most operating systems.  Don't yet
- *    support the exponent (e,E) and sigfig (g,G).  Also, fmtint()
- *    was pretty badly broken, it just wasn't being exercised in ways
- *    which showed it, so that's been fixed.  Also, formated the code
- *    to mutt conventions, and removed dead code left over from the
- *    original.  Also, there is now a builtin-test, just compile with:
- *           gcc -DTEST_SNPRINTF -o snprintf snprintf.c -lm
- *    and run snprintf for results.
- *
- *  Thomas Roessler <roessler@guug.de> 01/27/98 for mutt 0.89i
- *    The PGP code was using unsigned hexadecimal formats.
- *    Unfortunately, unsigned formats simply didn't work.
- *
- *  Michael Elkins <me@cs.hmc.edu> 03/05/98 for mutt 0.90.8
- *    The original code assumed that both snprintf() and vsnprintf() were
- *    missing.  Some systems only have snprintf() but not vsnprintf(), so
- *    the code is now broken down under HAVE_SNPRINTF and HAVE_VSNPRINTF.
- *
- **************************************************************/
+
+/*
+   Unix snprintf implementation.
+   Version 1.4
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU Library General Public License as published by
+   the Free Software Foundation; either version 2 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU Library General Public License for more details.
+
+   You should have received a copy of the GNU Library General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+   Revision History:
+
+   1.4:
+      *  integrate in FreeRADIUS's libradius:
+	  *  Fetched from: http://savannah.gnu.org/cgi-bin/viewcvs/mailutils/mailutils/lib/snprintf.c?rev=1.4
+	  *  Fetched from: http://savannah.gnu.org/cgi-bin/viewcvs/mailutils/mailutils/lib/snprintf.h?rev=1.4
+	  *  Replace config.h with autoconf.h
+	  *  Protect with HAVE_LOCAL_SNPRINTF
+  
+   1.3:
+      *  add #include <config.h> ifdef HAVE_CONFIG_H
+      *  cosmetic change, when exponent is 0 print xxxE+00
+         instead of xxxE-00
+   1.2:
+      *  put the program under LGPL.
+   1.1:
+      *  added changes from Miles Bader
+      *  corrected a bug with %f
+      *  added support for %#g
+      *  added more comments :-)
+   1.0:
+      *  supporting must ANSI syntaxic_sugars
+   0.0:
+      *  suppot %s %c %d
+
+ THANKS(for the patches and ideas):
+     Miles Bader
+     Cyrille Rustom
+     Jacek Slabocewiz
+     Mike Parker(mouse)
+
+*/
 
 #include "autoconf.h"
 
 #ifdef HAVE_LOCAL_SNPRINTF
 
-#if defined(HAVE_STRING_H)
-#include <string.h>
-#endif
-#if defined(HAVE_STRINGS_H)
-#include <strings.h>
-#endif
-#include <ctype.h>
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
-#include <stdarg.h>
-
-#define HAVE_STDARGS    /* let's hope that works everywhere (mj) */
-#define VA_LOCAL_DECL   va_list ap
-#define VA_START(f)     va_start(ap, f)
-#define VA_SHIFT(v,t)  ;   /* no-op for ANSI */
-#define VA_END          va_end(ap)
-
-static void dopr (char *buffer, size_t maxlen, const char *format,
-                  va_list args);
-static void fmtstr (char *buffer, size_t *currlen, size_t maxlen,
-		    char *value, int flags, int min, int max);
-static void fmtint (char *buffer, size_t *currlen, size_t maxlen,
-		    long value, int base, int min, int max, int flags);
-static void fmtfp (char *buffer, size_t *currlen, size_t maxlen,
-		   long double fvalue, int min, int max, int flags);
-static void dopr_outch (char *buffer, size_t *currlen, size_t maxlen, char c );
+#include "snprintf.h"
 
 /*
- * dopr(): poor man's version of doprintf
+ * Find the nth power of 10
  */
-
-/* format read states */
-#define DP_S_DEFAULT 0
-#define DP_S_FLAGS   1
-#define DP_S_MIN     2
-#define DP_S_DOT     3
-#define DP_S_MAX     4
-#define DP_S_MOD     5
-#define DP_S_CONV    6
-#define DP_S_DONE    7
-
-/* format flags - Bits */
-#define DP_F_MINUS 	(1 << 0)
-#define DP_F_PLUS  	(1 << 1)
-#define DP_F_SPACE 	(1 << 2)
-#define DP_F_NUM   	(1 << 3)
-#define DP_F_ZERO  	(1 << 4)
-#define DP_F_UP    	(1 << 5)
-#define DP_F_UNSIGNED 	(1 << 6)
-
-/* Conversion Flags */
-#define DP_C_SHORT   1
-#define DP_C_LONG    2
-#define DP_C_LDOUBLE 3
-
-#define char_to_int(p) (p - '0')
-#define THEMAX(p,q) (((p) >= (q)) ? (p) : (q))
-
-static void dopr (char *buffer, size_t maxlen, const char *format, va_list args)
+PRIVATE double
+#ifdef __STDC__
+pow_10(int n)
+#else
+pow_10(n)
+int n;
+#endif
 {
-  char ch;
-  long value;
-  long double fvalue;
-  char *strvalue;
-  int min;
-  int max;
+  int i;
+  double P;
+
+  if (n < 0)
+    for (i = 1, P = 1., n = -n ; i <= n ; i++) {P *= .1;}
+  else
+    for (i = 1, P = 1. ; i <= n ; i++) {P *= 10.0;}
+  return P;
+}
+
+/*
+ * Find the integral part of the log in base 10
+ * Note: this not a real log10()
+         I just need and approximation(integerpart) of x in:
+          10^x ~= r
+ * log_10(200) = 2;
+ * log_10(250) = 2;
+ */
+PRIVATE int
+#ifdef __STDC__
+log_10(double r)
+#else
+log_10(r)
+double r;
+#endif
+{
+  int i = 0;
+  double result = 1.;
+
+  if (r < 0.)
+    r = -r;
+
+  if (r < 1.) {
+    while (result >= r) {result *= .1; i++;}
+    return (-i);
+  } else {
+    while (result <= r) {result *= 10.; i++;}
+    return (i - 1);
+  }
+}
+
+/*
+ * This function return the fraction part of a double
+ * and set in ip the integral part.
+ * In many ways it resemble the modf() found on most Un*x
+ */
+PRIVATE double
+#ifdef __STDC__
+integral(double real, double * ip)
+#else
+integral(real, ip)
+double real;
+double * ip;
+#endif
+{
+  int j;
+  double i, s, p;
+  double real_integral = 0.;
+
+/* take care of the obvious */
+/* equal to zero ? */
+  if (real == 0.) {
+    *ip = 0.;
+    return (0.);
+  }
+
+/* negative number ? */
+  if (real < 0.)
+    real = -real;
+
+/* a fraction ? */
+  if ( real < 1.) {
+    *ip = 0.;
+    return real;
+  }
+/* the real work :-) */
+  for (j = log_10(real); j >= 0; j--) {
+    p = pow_10(j);
+    s = (real - real_integral)/p;
+    i = 0.;
+    while (i + 1. <= s) {i++;}
+    real_integral += i*p;
+  }
+  *ip = real_integral;
+  return (real - real_integral);
+}
+
+#define PRECISION 1.e-6
+/*
+ * return an ascii representation of the integral part of the number
+ * and set fract to be an ascii representation of the fraction part
+ * the container for the fraction and the integral part or staticly
+ * declare with fix size
+ */
+PRIVATE char *
+#ifdef __STDC__
+numtoa(double number, int base, int precision, char ** fract)
+#else
+numtoa(number, base, precision, fract)
+double number;
+int base;
+int precision;
+char ** fract;
+#endif
+{
+  register int i, j;
+  double ip, fp; /* integer and fraction part */
+  double fraction;
+  int digits = MAX_INT - 1;
+  static char integral_part[MAX_INT];
+  static char fraction_part[MAX_FRACT];
+  double sign;
+  int ch;
+
+/* taking care of the obvious case: 0.0 */
+  if (number == 0.) {
+    integral_part[0] = '0';
+    integral_part[1] = '\0';
+    fraction_part[0] = '0';
+    fraction_part[1] = '\0';
+    return integral_part;
+  }
+
+/* for negative numbers */
+  if ((sign = number) < 0.) {
+    number = -number;
+    digits--; /* sign consume one digit */
+  }
+
+  fraction = integral(number, &ip);
+  number = ip;
+/* do the integral part */
+  if ( ip == 0.) {
+    integral_part[0] = '0';
+    i = 1;
+  } else {
+    for ( i = 0; i < digits && number != 0.; ++i) {
+      number /= base;
+      fp = integral(number, &ip);
+      ch = (int)((fp + PRECISION)*base); /* force to round */
+      integral_part[i] = (ch <= 9) ? ch + '0' : ch + 'a' - 10;
+      if (! isxdigit(integral_part[i])) /* bail out overflow !! */
+        break;
+      number = ip;
+     }
+  }
+
+/* Oh No !! out of bound, ho well fill it up ! */
+  if (number != 0.)
+    for (i = 0; i < digits; ++i)
+      integral_part[i] = '9';
+
+/* put the sign ? */
+  if (sign < 0.)
+    integral_part[i++] = '-';
+
+  integral_part[i] = '\0';
+
+/* reverse every thing */
+  for ( i--, j = 0; j < i; j++, i--)
+    SWAP_INT(integral_part[i], integral_part[j]);
+
+/* the fractionnal part */
+  for (i=0, fp=fraction; precision > 0 && i < MAX_FRACT ; i++, precision--	) {
+    fraction_part[i] = (int)((fp + PRECISION)*10. + '0');
+    if (! isdigit(fraction_part[i])) /* underflow ? */
+      break;
+    fp = (fp*10.0) - (double)(long)((fp + PRECISION)*10.);
+  }
+  fraction_part[i] = '\0';
+
+  if (fract != (char **)0)
+    *fract = fraction_part;
+
+  return integral_part;
+
+}
+
+/* for %d and friends, it puts in holder
+ * the representation with the right padding
+ */
+PRIVATE void
+#ifdef __STDC__
+decimal(struct DATA *p, double d)
+#else
+decimal(p, d)
+struct DATA *p;
+double d;
+#endif
+{
+  char *tmp;
+
+  tmp = itoa(d);
+  p->width -= strlen(tmp);
+  PAD_RIGHT(p);
+  PUT_PLUS(d, p);
+  PUT_SPACE(d, p);
+  while (*tmp) { /* the integral */
+    PUT_CHAR(*tmp, p);
+    tmp++;
+  }
+  PAD_LEFT(p);
+}
+
+/* for %o octal representation */
+PRIVATE void
+#ifdef __STDC__
+octal(struct DATA *p, double d)
+#else
+octal(p, d)
+struct DATA *p;
+double d;
+#endif
+{
+  char *tmp;
+
+  tmp = otoa(d);
+  p->width -= strlen(tmp);
+  PAD_RIGHT(p);
+  if (p->square == FOUND) /* had prefix '0' for octal */
+    PUT_CHAR('0', p);
+  while (*tmp) { /* octal */
+    PUT_CHAR(*tmp, p);
+    tmp++;
+  }
+  PAD_LEFT(p);
+}
+
+/* for %x %X hexadecimal representation */
+PRIVATE void
+#ifdef __STDC__
+hexa(struct DATA *p, double d)
+#else
+hexa(p, d)
+struct DATA *p;
+double d;
+#endif
+{
+  char *tmp;
+
+  tmp = htoa(d);
+  p->width -= strlen(tmp);
+  PAD_RIGHT(p);
+  if (p->square == FOUND) { /* prefix '0x' for hexa */
+    PUT_CHAR('0', p); PUT_CHAR(*p->pf, p);
+  }
+  while (*tmp) { /* hexa */
+    PUT_CHAR((*p->pf == 'X' ? toupper(*tmp) : *tmp), p);
+    tmp++;
+  }
+  PAD_LEFT(p);
+}
+
+/* %s strings */
+PRIVATE void
+#ifdef __STDC__
+strings(struct DATA *p, char *tmp)
+#else
+strings(p, tmp)
+struct DATA *p;
+char *tmp;
+#endif
+{
+  int i;
+
+  i = strlen(tmp);
+  if (p->precision != NOT_FOUND) /* the smallest number */
+    i = (i < p->precision ? i : p->precision);
+  p->width -= i;
+  PAD_RIGHT(p);
+  while (i-- > 0) { /* put the sting */
+    PUT_CHAR(*tmp, p);
+    tmp++;
+  }
+  PAD_LEFT(p);
+}
+
+/* %f or %g  floating point representation */
+PRIVATE void
+#ifdef __STDC__
+floating(struct DATA *p, double d)
+#else
+floating(p, d)
+struct DATA *p;
+double d;
+#endif
+{
+  char *tmp, *tmp2;
+  int i;
+
+  DEF_PREC(p);
+  d = ROUND(d, p);
+  tmp = dtoa(d, p->precision, &tmp2);
+  /* calculate the padding. 1 for the dot */
+  p->width = p->width -
+            ((d > 0. && p->justify == RIGHT) ? 1:0) -
+            ((p->space == FOUND) ? 1:0) -
+            strlen(tmp) - p->precision - 1;
+  PAD_RIGHT(p);
+  PUT_PLUS(d, p);
+  PUT_SPACE(d, p);
+  while (*tmp) { /* the integral */
+    PUT_CHAR(*tmp, p);
+    tmp++;
+  }
+  if (p->precision != 0 || p->square == FOUND)
+    PUT_CHAR('.', p);  /* put the '.' */
+  if (*p->pf == 'g' || *p->pf == 'G') /* smash the trailing zeros */
+    for (i = strlen(tmp2) - 1; i >= 0 && tmp2[i] == '0'; i--)
+       tmp2[i] = '\0';
+  for (; *tmp2; tmp2++)
+    PUT_CHAR(*tmp2, p); /* the fraction */
+
+  PAD_LEFT(p);
+}
+
+/* %e %E %g exponent representation */
+PRIVATE void
+#ifdef __STDC__
+exponent(struct DATA *p, double d)
+#else
+exponent(p, d)
+struct DATA *p;
+double d;
+#endif
+{
+  char *tmp, *tmp2;
+  int j, i;
+
+  DEF_PREC(p);
+  j = log_10(d);
+  d = d / pow_10(j);  /* get the Mantissa */
+  d = ROUND(d, p);
+  tmp = dtoa(d, p->precision, &tmp2);
+  /* 1 for unit, 1 for the '.', 1 for 'e|E',
+   * 1 for '+|-', 3 for 'exp' */
+  /* calculate how much padding need */
+  p->width = p->width -
+             ((d > 0. && p->justify == RIGHT) ? 1:0) -
+             ((p->space == FOUND) ? 1:0) - p->precision - 7;
+  PAD_RIGHT(p);
+  PUT_PLUS(d, p);
+  PUT_SPACE(d, p);
+  while (*tmp) {/* the integral */
+    PUT_CHAR(*tmp, p);
+    tmp++;
+  }
+  if (p->precision != 0 || p->square == FOUND)
+    PUT_CHAR('.', p);  /* the '.' */
+  if (*p->pf == 'g' || *p->pf == 'G') /* smash the trailing zeros */
+    for (i = strlen(tmp2) - 1; i >= 0 && tmp2[i] == '0'; i--)
+       tmp2[i] = '\0';
+  for (; *tmp2; tmp2++)
+    PUT_CHAR(*tmp2, p); /* the fraction */
+
+  if (*p->pf == 'g' || *p->pf == 'e') { /* the exponent put the 'e|E' */
+    PUT_CHAR('e', p);
+  } else
+    PUT_CHAR('E', p);
+  if (j >= 0) {  /* the sign of the exp */
+    PUT_CHAR('+', p);
+  } else {
+    PUT_CHAR('-', p);
+    j = -j;
+  }
+  tmp = itoa((double)j);
+  if (j < 9) {  /* need to pad the exponent with 0 '000' */
+    PUT_CHAR('0', p); PUT_CHAR('0', p);
+  } else if (j < 99)
+    PUT_CHAR('0', p);
+  while (*tmp) { /* the exponent */
+    PUT_CHAR(*tmp, p);
+    tmp++;
+  }
+  PAD_LEFT(p);
+}
+
+/* initialize the conversion specifiers */
+PRIVATE void
+#ifdef __STDC__
+conv_flag(char * s, struct DATA * p)
+#else
+conv_flag(s, p)
+char * s;
+struct DATA * p;
+#endif
+{
+  char number[MAX_FIELD/2];
+  int i;
+
+  /* reset the flags.  */
+  p->precision = p->width = NOT_FOUND;
+  p->star_w = p->star_p = NOT_FOUND;
+  p->square = p->space = NOT_FOUND;
+  p->a_long = p->justify = NOT_FOUND;
+  p->a_longlong = NOT_FOUND;
+  p->pad = ' ';
+
+  for(;s && *s ;s++) {
+    switch(*s) {
+      case ' ': p->space = FOUND; break;
+      case '#': p->square = FOUND; break;
+      case '*': if (p->width == NOT_FOUND)
+                  p->width = p->star_w = FOUND;
+                else
+                  p->precision = p->star_p = FOUND;
+                break;
+      case '+': p->justify = RIGHT; break;
+      case '-': p->justify = LEFT; break;
+      case '.': if (p->width == NOT_FOUND)
+                  p->width = 0;
+                break;
+      case '0': p->pad = '0'; break;
+      case '1': case '2': case '3':
+      case '4': case '5': case '6':
+      case '7': case '8': case '9':     /* gob all the digits */
+        for (i = 0; isdigit(*s); i++, s++)
+          if (i < MAX_FIELD/2 - 1)
+            number[i] = *s;
+        number[i] = '\0';
+        if (p->width == NOT_FOUND)
+          p->width = atoi(number);
+        else
+          p->precision = atoi(number);
+        s--;   /* went to far go back */
+        break;
+    }
+  }
+}
+
+PUBLIC int
+#ifdef __STDC__
+vsnprintf(char *string, size_t length, const char * format, va_list args)
+#else
+vsnprintf(string, length, format, args)
+char *string;
+size_t length;
+char * format;
+va_list args;
+#endif
+{
+  struct DATA data;
+  char conv_field[MAX_FIELD];
+  double d; /* temporary holder */
   int state;
-  int flags;
-  int cflags;
-  size_t currlen;
+  int i;
 
-  state = DP_S_DEFAULT;
-  currlen = flags = cflags = min = 0;
-  max = -1;
-  ch = *format++;
+  data.length = length - 1; /* leave room for '\0' */
+  data.holder = string;
+  data.pf = format;
+  data.counter = 0;
 
-  while (state != DP_S_DONE)
-  {
-    if ((ch == '\0') || (currlen >= maxlen))
-      state = DP_S_DONE;
 
-    switch(state)
-    {
-    case DP_S_DEFAULT:
-      if (ch == '%')
-	state = DP_S_FLAGS;
-      else
-	dopr_outch (buffer, &currlen, maxlen, ch);
-      ch = *format++;
-      break;
-    case DP_S_FLAGS:
-      switch (ch)
-      {
-      case '-':
-	flags |= DP_F_MINUS;
-        ch = *format++;
-	break;
-      case '+':
-	flags |= DP_F_PLUS;
-        ch = *format++;
-	break;
-      case ' ':
-	flags |= DP_F_SPACE;
-        ch = *format++;
-	break;
-      case '#':
-	flags |= DP_F_NUM;
-        ch = *format++;
-	break;
-      case '0':
-	flags |= DP_F_ZERO;
-        ch = *format++;
-	break;
-      default:
-	state = DP_S_MIN;
-	break;
-      }
-      break;
-    case DP_S_MIN:
-      if (isdigit((int)ch))
-      {
-	min = 10*min + char_to_int (ch);
-	ch = *format++;
-      }
-      else if (ch == '*')
-      {
-	min = va_arg (args, int);
-	ch = *format++;
-	state = DP_S_DOT;
-      }
-      else
-	state = DP_S_DOT;
-      break;
-    case DP_S_DOT:
-      if (ch == '.')
-      {
-	state = DP_S_MAX;
-	ch = *format++;
-      }
-      else
-	state = DP_S_MOD;
-      break;
-    case DP_S_MAX:
-      if (isdigit((int)ch))
-      {
-	if (max < 0)
-	  max = 0;
-	max = 10*max + char_to_int (ch);
-	ch = *format++;
-      }
-      else if (ch == '*')
-      {
-	max = va_arg (args, int);
-	ch = *format++;
-	state = DP_S_MOD;
-      }
-      else
-	state = DP_S_MOD;
-      break;
-    case DP_S_MOD:
-      /* Currently, we don't support Long Long, bummer */
-      switch (ch)
-      {
-      case 'h':
-	cflags = DP_C_SHORT;
-	ch = *format++;
-	break;
-      case 'l':
-	cflags = DP_C_LONG;
-	ch = *format++;
-	break;
-      case 'L':
-	cflags = DP_C_LDOUBLE;
-	ch = *format++;
-	break;
-      default:
-	break;
-      }
-      state = DP_S_CONV;
-      break;
-    case DP_S_CONV:
-      switch (ch)
-      {
-      case 'd':
-      case 'i':
-	if (cflags == DP_C_SHORT)
-	  value = va_arg (args, short int);
-	else if (cflags == DP_C_LONG)
-	  value = va_arg (args, long int);
-	else
-	  value = va_arg (args, int);
-	fmtint (buffer, &currlen, maxlen, value, 10, min, max, flags);
-	break;
-      case 'o':
-	flags |= DP_F_UNSIGNED;
-	if (cflags == DP_C_SHORT)
-	  value = va_arg (args, unsigned short int);
-	else if (cflags == DP_C_LONG)
-	  value = va_arg (args, unsigned long int);
-	else
-	  value = va_arg (args, unsigned int);
-	fmtint (buffer, &currlen, maxlen, value, 8, min, max, flags);
-	break;
-      case 'u':
-	flags |= DP_F_UNSIGNED;
-	if (cflags == DP_C_SHORT)
-	  value = va_arg (args, unsigned short int);
-	else if (cflags == DP_C_LONG)
-	  value = va_arg (args, unsigned long int);
-	else
-	  value = va_arg (args, unsigned int);
-	fmtint (buffer, &currlen, maxlen, value, 10, min, max, flags);
-	break;
-      case 'X':
-	flags |= DP_F_UP;
-      case 'x':
-	flags |= DP_F_UNSIGNED;
-	if (cflags == DP_C_SHORT)
-	  value = va_arg (args, unsigned short int);
-	else if (cflags == DP_C_LONG)
-	  value = va_arg (args, unsigned long int);
-	else
-	  value = va_arg (args, unsigned int);
-	fmtint (buffer, &currlen, maxlen, value, 16, min, max, flags);
-	break;
-      case 'f':
-	if (cflags == DP_C_LDOUBLE)
-	  fvalue = va_arg (args, long double);
-	else
-	  fvalue = va_arg (args, double);
-	/* um, floating point? */
-	fmtfp (buffer, &currlen, maxlen, fvalue, min, max, flags);
-	break;
-      case 'E':
-	flags |= DP_F_UP;
-      case 'e':
-	if (cflags == DP_C_LDOUBLE)
-	  fvalue = va_arg (args, long double);
-	else
-	  fvalue = va_arg (args, double);
-	break;
-      case 'G':
-	flags |= DP_F_UP;
-      case 'g':
-	if (cflags == DP_C_LDOUBLE)
-	  fvalue = va_arg (args, long double);
-	else
-	  fvalue = va_arg (args, double);
-	break;
-      case 'c':
-	dopr_outch (buffer, &currlen, maxlen, va_arg (args, int));
-	break;
-      case 's':
-	strvalue = va_arg (args, char *);
-	if (max < 0)
-	  max = maxlen; /* ie, no max */
-	fmtstr (buffer, &currlen, maxlen, strvalue, flags, min, max);
-	break;
-      case 'p':
-	strvalue = va_arg (args, void *);
-	fmtint (buffer, &currlen, maxlen, (long) strvalue, 16, min, max, flags);
-	break;
-      case 'n':
-	if (cflags == DP_C_SHORT)
-	{
-	  short int *num;
-	  num = va_arg (args, short int *);
-	  *num = currlen;
-        }
-	else if (cflags == DP_C_LONG)
-	{
-	  long int *num;
-	  num = va_arg (args, long int *);
-	  *num = currlen;
-        }
-	else
-	{
-	  int *num;
-	  num = va_arg (args, int *);
-	  *num = currlen;
-        }
-	break;
-      case '%':
-	dopr_outch (buffer, &currlen, maxlen, ch);
-	break;
-      case 'w':
-	/* not supported yet, treat as next char */
-	ch = *format++;
-	break;
-      default:
-	/* Unknown, skip */
-	break;
-      }
-      ch = *format++;
-      state = DP_S_DEFAULT;
-      flags = cflags = min = 0;
-      max = -1;
-      break;
-    case DP_S_DONE:
-      break;
-    default:
-      /* hmm? */
-      break; /* some picky compilers need this */
+/* sanity check, the string must be > 1 */
+  if (length < 1)
+    return -1;
+
+
+  for (; *data.pf && (data.counter < data.length); data.pf++) {
+    if ( *data.pf == '%' ) { /* we got a magic % cookie */
+      conv_flag((char *)0, &data); /* initialise format flags */
+      for (state = 1; *data.pf && state;) {
+        switch (*(++data.pf)) {
+          case '\0': /* a NULL here ? ? bail out */
+            *data.holder = '\0';
+            return data.counter;
+            break;
+          case 'f':  /* float, double */
+            STAR_ARGS(&data);
+            if (data.a_long == FOUND)
+               d = va_arg(args, LONG_DOUBLE);
+            else
+               d = va_arg(args, double);
+            floating(&data, d);
+            state = 0;
+            break;
+          case 'g':
+          case 'G':
+            STAR_ARGS(&data);
+            DEF_PREC(&data);
+            if (data.a_long == FOUND)
+               d = va_arg(args, LONG_DOUBLE);
+            else
+               d = va_arg(args, double);
+            i = log_10(d);
+            /*
+             * for '%g|%G' ANSI: use f if exponent
+             * is in the range or [-4,p] exclusively
+             * else use %e|%E
+             */
+            if (-4 < i && i < data.precision)
+              floating(&data, d);
+            else
+              exponent(&data, d);
+            state = 0;
+            break;
+          case 'e':
+          case 'E':  /* Exponent double */
+            STAR_ARGS(&data);
+            if (data.a_long == FOUND)
+               d = va_arg(args, LONG_DOUBLE);
+            else
+               d = va_arg(args, double);
+            exponent(&data, d);
+            state = 0;
+            break;
+	  case 'u':  /* unsigned decimal */
+	    STAR_ARGS(&data);
+            if (data.a_longlong == FOUND)
+              d = va_arg(args, unsigned LONG_LONG);
+            else if (data.a_long == FOUND)
+              d = va_arg(args, unsigned long);
+            else
+              d = va_arg(args, unsigned int);
+	    decimal(&data, d);
+            state = 0;
+            break;
+          case 'd':  /* decimal */
+            STAR_ARGS(&data);
+            if (data.a_longlong == FOUND)
+              d = va_arg(args, LONG_LONG);
+            else if (data.a_long == FOUND)
+              d = va_arg(args, long);
+            else
+              d = va_arg(args, int);
+            decimal(&data, d);
+            state = 0;
+            break;
+          case 'o':  /* octal */
+            STAR_ARGS(&data);
+            if (data.a_longlong == FOUND)
+              d = va_arg(args, LONG_LONG);
+            else if (data.a_long == FOUND)
+              d = va_arg(args, long);
+            else
+              d = va_arg(args, int);
+            octal(&data, d);
+            state = 0;
+            break;
+          case 'x':
+          case 'X':  /* hexadecimal */
+            STAR_ARGS(&data);
+            if (data.a_longlong == FOUND)
+              d = va_arg(args, LONG_LONG);
+            else if (data.a_long == FOUND)
+              d = va_arg(args, long);
+            else
+              d = va_arg(args, int);
+            hexa(&data, d);
+            state = 0;
+            break;
+          case 'c': /* character */
+            d = va_arg(args, int);
+            PUT_CHAR(d, &data);
+            state = 0;
+            break;
+          case 's':  /* string */
+            STAR_ARGS(&data);
+            strings(&data, va_arg(args, char *));
+            state = 0;
+            break;
+          case 'n':
+            *(va_arg(args, int *)) = data.counter; /* what's the count ? */
+            state = 0;
+            break;
+          case 'q':
+            data.a_longlong = FOUND;
+            break;
+          case 'L':
+          case 'l':
+            if (data.a_long == FOUND)
+              data.a_longlong = FOUND;
+            else
+              data.a_long = FOUND;
+            break;
+          case 'h':
+            break;
+          case '%':  /* nothing just % */
+            PUT_CHAR('%', &data);
+            state = 0;
+            break;
+          case '#': case ' ': case '+': case '*':
+          case '-': case '.': case '0': case '1':
+          case '2': case '3': case '4': case '5':
+          case '6': case '7': case '8': case '9':
+           /* initialize width and precision */
+            for (i = 0; isflag(*data.pf); i++, data.pf++)
+              if (i < MAX_FIELD - 1)
+                conv_field[i] = *data.pf;
+            conv_field[i] = '\0';
+            conv_flag(conv_field, &data);
+            data.pf--;   /* went to far go back */
+            break;
+          default:
+            /* is this an error ? maybe bail out */
+            state = 0;
+            break;
+        } /* end switch */
+      } /* end of for state */
+    } else { /* not % */
+      PUT_CHAR(*data.pf, &data);  /* add the char the string */
     }
   }
-  if (currlen < maxlen - 1)
-    buffer[currlen] = '\0';
-  else
-    buffer[maxlen - 1] = '\0';
+
+  *data.holder = '\0'; /* the end ye ! */
+
+  return data.counter;
 }
 
-static void fmtstr (char *buffer, size_t *currlen, size_t maxlen,
-		    char *value, int flags, int min, int max)
+#ifndef HAVE_SNPRINTF
+
+PUBLIC int
+#if __STDC__
+snprintf(char *string, size_t length, const char * format, ...)
+#else
+snprintf(string, length, format, va_alist)
+char *string;
+size_t length;
+char * format;
+va_dcl
+#endif
 {
-  int padlen, strln;     /* amount to pad */
-  int cnt = 0;
+  int rval;
+  va_list args;
 
-  if (value == 0)
-  {
-    value = "<NULL>";
-  }
-
-  for (strln = 0; value[strln]; ++strln); /* strlen */
-  padlen = min - strln;
-  if (padlen < 0)
-    padlen = 0;
-  if (flags & DP_F_MINUS)
-    padlen = -padlen; /* Left Justify */
-
-  while ((padlen > 0) && (cnt < max))
-  {
-    dopr_outch (buffer, currlen, maxlen, ' ');
-    --padlen;
-    ++cnt;
-  }
-  while (*value && (cnt < max))
-  {
-    dopr_outch (buffer, currlen, maxlen, *value++);
-    ++cnt;
-  }
-  while ((padlen < 0) && (cnt < max))
-  {
-    dopr_outch (buffer, currlen, maxlen, ' ');
-    ++padlen;
-    ++cnt;
-  }
-}
-
-/* Have to handle DP_F_NUM (ie 0x and 0 alternates) */
-
-static void fmtint (char *buffer, size_t *currlen, size_t maxlen,
-		    long value, int base, int min, int max, int flags)
-{
-  int signvalue = 0;
-  unsigned long uvalue;
-  char convert[20];
-  int place = 0;
-  int spadlen = 0; /* amount to space pad */
-  int zpadlen = 0; /* amount to zero pad */
-  int caps = 0;
-
-  if (max < 0)
-    max = 0;
-
-  uvalue = value;
-
-  if(!(flags & DP_F_UNSIGNED))
-  {
-    if( value < 0 ) {
-      signvalue = '-';
-      uvalue = -value;
-    }
-    else
-      if (flags & DP_F_PLUS)  /* Do a sign (+/i) */
-	signvalue = '+';
-    else
-      if (flags & DP_F_SPACE)
-	signvalue = ' ';
-  }
-
-  if (flags & DP_F_UP) caps = 1; /* Should characters be upper case? */
-
-  do {
-    convert[place++] =
-      (caps? "0123456789ABCDEF":"0123456789abcdef")
-      [uvalue % (unsigned)base  ];
-    uvalue = (uvalue / (unsigned)base );
-  } while(uvalue && (place < 20));
-  if (place == 20) place--;
-  convert[place] = 0;
-
-  zpadlen = max - place;
-  spadlen = min - THEMAX (max, place) - (signvalue ? 1 : 0);
-  if (zpadlen < 0) zpadlen = 0;
-  if (spadlen < 0) spadlen = 0;
-  if (flags & DP_F_ZERO)
-  {
-    zpadlen = THEMAX(zpadlen, spadlen);
-    spadlen = 0;
-  }
-  if (flags & DP_F_MINUS)
-    spadlen = -spadlen; /* Left Justifty */
-
-#ifdef DEBUG_SNPRINTF
-  dprint (1, (debugfile, "zpad: %d, spad: %d, min: %d, max: %d, place: %d\n",
-      zpadlen, spadlen, min, max, place));
+#if __STDC__
+  va_start(args, format);
+#else
+  va_start(args);
 #endif
 
-  /* Spaces */
-  while (spadlen > 0)
-  {
-    dopr_outch (buffer, currlen, maxlen, ' ');
-    --spadlen;
-  }
+  rval = vsnprintf (string, length, format, args);
 
-  /* Sign */
-  if (signvalue)
-    dopr_outch (buffer, currlen, maxlen, signvalue);
+  va_end(args);
 
-  /* Zeros */
-  if (zpadlen > 0)
-  {
-    while (zpadlen > 0)
-    {
-      dopr_outch (buffer, currlen, maxlen, '0');
-      --zpadlen;
-    }
-  }
-
-  /* Digits */
-  while (place > 0)
-    dopr_outch (buffer, currlen, maxlen, convert[--place]);
-
-  /* Left Justified spaces */
-  while (spadlen < 0) {
-    dopr_outch (buffer, currlen, maxlen, ' ');
-    ++spadlen;
-  }
+  return rval;
 }
 
-static long double abs_val (long double value)
+#endif /* HAVE_SNPRINTF */
+
+
+#ifdef DRIVER
+
+#include <stdio.h>
+
+/* set of small tests for snprintf() */
+int main()
 {
-  long double result = value;
+  char holder[100];
+  int i;
 
-  if (value < 0)
-    result = -value;
+/*
+  printf("Suite of test for snprintf:\n");
+  printf("a_format\n");
+  printf("printf() format\n");
+  printf("snprintf() format\n\n");
+*/
+/* Checking the field widths */
 
-  return result;
+  printf("/%%d/, 336\n");
+  snprintf(holder, sizeof holder, "/%d/\n", 336);
+  printf("/%d/\n", 336);
+  printf("%s\n", holder);
+
+  printf("/%%2d/, 336\n");
+  snprintf(holder, sizeof holder, "/%2d/\n", 336);
+  printf("/%2d/\n", 336);
+  printf("%s\n", holder);
+
+  printf("/%%10d/, 336\n");
+  snprintf(holder, sizeof holder, "/%10d/\n", 336);
+  printf("/%10d/\n", 336);
+  printf("%s\n", holder);
+
+  printf("/%%-10d/, 336\n");
+  snprintf(holder, sizeof holder, "/%-10d/\n", 336);
+  printf("/%-10d/\n", 336);
+  printf("%s\n", holder);
+
+/* long long  */
+
+  printf("/%%lld/, 336\n");
+  snprintf(holder, sizeof holder, "/%lld/\n", (LONG_LONG)336);
+  printf("/%lld/\n", (LONG_LONG)336);
+  printf("%s\n", holder);
+
+  printf("/%%2qd/, 336\n");
+  snprintf(holder, sizeof holder, "/%2qd/\n", (LONG_LONG)336);
+  printf("/%2qd/\n", (LONG_LONG)336);
+  printf("%s\n", holder);
+
+/* floating points */
+
+  printf("/%%f/, 1234.56\n");
+  snprintf(holder, sizeof holder, "/%f/\n", 1234.56);
+  printf("/%f/\n", 1234.56);
+  printf("%s\n", holder);
+
+  printf("/%%e/, 1234.56\n");
+  snprintf(holder, sizeof holder, "/%e/\n", 1234.56);
+  printf("/%e/\n", 1234.56);
+  printf("%s\n", holder);
+
+  printf("/%%4.2f/, 1234.56\n");
+  snprintf(holder, sizeof holder, "/%4.2f/\n", 1234.56);
+  printf("/%4.2f/\n", 1234.56);
+  printf("%s\n", holder);
+
+  printf("/%%3.1f/, 1234.56\n");
+  snprintf(holder, sizeof holder, "/%3.1f/\n", 1234.56);
+  printf("/%3.1f/\n", 1234.56);
+  printf("%s\n", holder);
+
+  printf("/%%10.3f/, 1234.56\n");
+  snprintf(holder, sizeof holder, "/%10.3f/\n", 1234.56);
+  printf("/%10.3f/\n", 1234.56);
+  printf("%s\n", holder);
+
+  printf("/%%10.3e/, 1234.56\n");
+  snprintf(holder, sizeof holder, "/%10.3e/\n", 1234.56);
+  printf("/%10.3e/\n", 1234.56);
+  printf("%s\n", holder);
+
+  printf("/%%+4.2f/, 1234.56\n");
+  snprintf(holder, sizeof holder, "/%+4.2f/\n", 1234.56);
+  printf("/%+4.2f/\n", 1234.56);
+  printf("%s\n", holder);
+
+  printf("/%%010.2f/, 1234.56\n");
+  snprintf(holder, sizeof holder, "/%010.2f/\n", 1234.56);
+  printf("/%010.2f/\n", 1234.56);
+  printf("%s\n", holder);
+
+#define BLURB "Outstanding acting !"
+/* strings precisions */
+
+  printf("/%%2s/, \"%s\"\n", BLURB);
+  snprintf(holder, sizeof holder, "/%2s/\n", BLURB);
+  printf("/%2s/\n", BLURB);
+  printf("%s\n", holder);
+
+  printf("/%%22s/ %s\n", BLURB);
+  snprintf(holder, sizeof holder, "/%22s/\n", BLURB);
+  printf("/%22s/\n", BLURB);
+  printf("%s\n", holder);
+
+  printf("/%%22.5s/ %s\n", BLURB);
+  snprintf(holder, sizeof holder, "/%22.5s/\n", BLURB);
+  printf("/%22.5s/\n", BLURB);
+  printf("%s\n", holder);
+
+  printf("/%%-22.5s/ %s\n", BLURB);
+  snprintf(holder, sizeof holder, "/%-22.5s/\n", BLURB);
+  printf("/%-22.5s/\n", BLURB);
+  printf("%s\n", holder);
+
+/* see some flags */
+
+  printf("%%x %%X %%#x, 31, 31, 31\n");
+  snprintf(holder, sizeof holder, "%x %X %#x\n", 31, 31, 31);
+  printf("%x %X %#x\n", 31, 31, 31);
+  printf("%s\n", holder);
+
+  printf("**%%d**%% d**%% d**, 42, 42, -42\n");
+  snprintf(holder, sizeof holder, "**%d**% d**% d**\n", 42, 42, -42);
+  printf("**%d**% d**% d**\n", 42, 42, -42);
+  printf("%s\n", holder);
+
+/* other flags */
+
+  printf("/%%g/, 31.4\n");
+  snprintf(holder, sizeof holder, "/%g/\n", 31.4);
+  printf("/%g/\n", 31.4);
+  printf("%s\n", holder);
+
+  printf("/%%.6g/, 31.4\n");
+  snprintf(holder, sizeof holder, "/%.6g/\n", 31.4);
+  printf("/%.6g/\n", 31.4);
+  printf("%s\n", holder);
+
+  printf("/%%.1G/, 31.4\n");
+  snprintf(holder, sizeof holder, "/%.1G/\n", 31.4);
+  printf("/%.1G/\n", 31.4);
+  printf("%s\n", holder);
+
+  printf("abc%%n\n");
+  printf("abc%n", &i); printf("%d\n", i);
+  snprintf(holder, sizeof holder, "abc%n", &i);
+  printf("%s", holder); printf("%d\n\n", i);
+
+  printf("%%*.*s --> 10.10\n");
+  snprintf(holder, sizeof holder, "%*.*s\n", 10, 10, BLURB);
+  printf("%*.*s\n", 10, 10, BLURB);
+  printf("%s\n", holder);
+
+  printf("%%%%%%%%\n");
+  snprintf(holder, sizeof holder, "%%%%\n");
+  printf("%%%%\n");
+  printf("%s\n", holder);
+
+#define BIG "Hello this is a too big string for the buffer"
+/*  printf("A buffer to small of 10, trying to put this:\n");*/
+  printf("<%%>, %s\n", BIG);
+  i = snprintf(holder, 10, "%s\n", BIG);
+  printf("<%s>\n", BIG);
+  printf("<%s>\n", holder);
+
+  return 0;
 }
-
-static long double pow10 (int exp)
-{
-  long double result = 1;
-
-  while (exp)
-  {
-    result *= 10;
-    exp--;
-  }
-
-  return result;
-}
-
-static long round (long double value)
-{
-  long intpart;
-
-  intpart = value;
-  value = value - intpart;
-  if (value >= 0.5)
-    intpart++;
-
-  return intpart;
-}
-
-static void fmtfp (char *buffer, size_t *currlen, size_t maxlen,
-		   long double fvalue, int min, int max, int flags)
-{
-  int signvalue = 0;
-  long double ufvalue;
-  char iconvert[20];
-  char fconvert[20];
-  int iplace = 0;
-  int fplace = 0;
-  int padlen = 0; /* amount to pad */
-  int zpadlen = 0;
-  int caps = 0;
-  long intpart;
-  long fracpart;
-
-  /*
-   * AIX manpage says the default is 0, but Solaris says the default
-   * is 6, and sprintf on AIX defaults to 6
-   */
-  if (max < 0)
-    max = 6;
-
-  ufvalue = abs_val (fvalue);
-
-  if (fvalue < 0)
-    signvalue = '-';
-  else
-    if (flags & DP_F_PLUS)  /* Do a sign (+/i) */
-      signvalue = '+';
-    else
-      if (flags & DP_F_SPACE)
-	signvalue = ' ';
-
-#if 0
-  if (flags & DP_F_UP) caps = 1; /* Should characters be upper case? */
 #endif
-
-  intpart = ufvalue;
-
-  /*
-   * Sorry, we only support 9 digits past the decimal because of our
-   * conversion method
-   */
-  if (max > 9)
-    max = 9;
-
-  /* We "cheat" by converting the fractional part to integer by
-   * multiplying by a factor of 10
-   */
-  fracpart = round ((pow10 (max)) * (ufvalue - intpart));
-
-  if (fracpart >= pow10 (max))
-  {
-    intpart++;
-    fracpart -= pow10 (max);
-  }
-
-#ifdef DEBUG_SNPRINTF
-  dprint (1, (debugfile, "fmtfp: %f =? %d.%d\n", fvalue, intpart, fracpart));
-#endif
-
-  /* Convert integer part */
-  do {
-    iconvert[iplace++] =
-      (caps? "0123456789ABCDEF":"0123456789abcdef")[intpart % 10];
-    intpart = (intpart / 10);
-  } while(intpart && (iplace < 20));
-  if (iplace == 20) iplace--;
-  iconvert[iplace] = 0;
-
-  /* Convert fractional part */
-  do {
-    fconvert[fplace++] =
-      (caps? "0123456789ABCDEF":"0123456789abcdef")[fracpart % 10];
-    fracpart = (fracpart / 10);
-  } while(fracpart && (fplace < 20));
-  if (fplace == 20) fplace--;
-  fconvert[fplace] = 0;
-
-  /* -1 for decimal point, another -1 if we are printing a sign */
-  padlen = min - iplace - max - 1 - ((signvalue) ? 1 : 0);
-  zpadlen = max - fplace;
-  if (zpadlen < 0)
-    zpadlen = 0;
-  if (padlen < 0)
-    padlen = 0;
-  if (flags & DP_F_MINUS)
-    padlen = -padlen; /* Left Justifty */
-
-  if ((flags & DP_F_ZERO) && (padlen > 0))
-  {
-    if (signvalue)
-    {
-      dopr_outch (buffer, currlen, maxlen, signvalue);
-      --padlen;
-      signvalue = 0;
-    }
-    while (padlen > 0)
-    {
-      dopr_outch (buffer, currlen, maxlen, '0');
-      --padlen;
-    }
-  }
-  while (padlen > 0)
-  {
-    dopr_outch (buffer, currlen, maxlen, ' ');
-    --padlen;
-  }
-  if (signvalue)
-    dopr_outch (buffer, currlen, maxlen, signvalue);
-
-  while (iplace > 0)
-    dopr_outch (buffer, currlen, maxlen, iconvert[--iplace]);
-
-  /*
-   * Decimal point.  This should probably use locale to find the correct
-   * char to print out.
-   */
-  dopr_outch (buffer, currlen, maxlen, '.');
-
-  while (fplace > 0)
-    dopr_outch (buffer, currlen, maxlen, fconvert[--fplace]);
-
-  while (zpadlen > 0)
-  {
-    dopr_outch (buffer, currlen, maxlen, '0');
-    --zpadlen;
-  }
-
-  while (padlen < 0)
-  {
-    dopr_outch (buffer, currlen, maxlen, ' ');
-    ++padlen;
-  }
-}
-
-static void dopr_outch (char *buffer, size_t *currlen, size_t maxlen, char c)
-{
-  if (*currlen < maxlen)
-    buffer[(*currlen)++] = c;
-}
-
-int vsnprintf (char *str, size_t count, const char *fmt, va_list args)
-{
-  str[0] = 0;
-  dopr(str, count, fmt, args);
-  return(strlen(str));
-}
-
-int snprintf (char *str,size_t count,const char *fmt,...)
-{
-  VA_LOCAL_DECL;
-
-  VA_START (fmt);
-  VA_SHIFT (str, char *);
-  VA_SHIFT (count, size_t );
-  VA_SHIFT (fmt, char *);
-  (void) vsnprintf(str, count, fmt, ap);
-  VA_END;
-  return(strlen(str));
-}
-
-#ifdef TEST_SNPRINTF
-#ifndef LONG_STRING
-#define LONG_STRING 1024
-#endif
-int main (void)
-{
-  char buf1[LONG_STRING];
-  char buf2[LONG_STRING];
-  char *fp_fmt[] = {
-    "%-1.5f",
-    "%1.5f",
-    "%123.9f",
-    "%10.5f",
-    "% 10.5f",
-    "%+22.9f",
-    "%+4.9f",
-    "%01.3f",
-    "%4f",
-    "%3.1f",
-    "%3.2f",
-    NULL
-  };
-  double fp_nums[] = { -1.5, 134.21, 91340.2, 341.1234, 0203.9, 0.96, 0.996,
-    0.9996, 1.996, 4.136, 0};
-  char *int_fmt[] = {
-    "%-1.5d",
-    "%1.5d",
-    "%123.9d",
-    "%5.5d",
-    "%10.5d",
-    "% 10.5d",
-    "%+22.33d",
-    "%01.3d",
-    "%4d",
-    NULL
-  };
-  long int_nums[] = { -1, 134, 91340, 341, 0203, 0};
-  int x, y;
-  int fail = 0;
-  int num = 0;
-
-  printf ("Testing snprintf format codes against system sprintf...\n");
-
-  for (x = 0; fp_fmt[x] != NULL ; x++)
-    for (y = 0; fp_nums[y] != 0 ; y++)
-    {
-      snprintf (buf1, sizeof (buf1), fp_fmt[x], fp_nums[y]);
-      sprintf (buf2, fp_fmt[x], fp_nums[y]);
-      if (strcmp (buf1, buf2))
-      {
-	printf("snprintf doesn't match Format: %s\n\tsnprintf = %s\n\tsprintf  = %s\n",
-	    fp_fmt[x], buf1, buf2);
-	fail++;
-      }
-      num++;
-    }
-
-  for (x = 0; int_fmt[x] != NULL ; x++)
-    for (y = 0; int_nums[y] != 0 ; y++)
-    {
-      snprintf (buf1, sizeof (buf1), int_fmt[x], int_nums[y]);
-      sprintf (buf2, int_fmt[x], int_nums[y]);
-      if (strcmp (buf1, buf2))
-      {
-	printf("snprintf doesn't match Format: %s\n\tsnprintf = %s\n\tsprintf  = %s\n",
-	    int_fmt[x], buf1, buf2);
-	fail++;
-      }
-      num++;
-    }
-  printf ("%d tests failed out of %d.\n", fail, num);
-}
-#endif /* SNPRINTF_TEST */
 
 #endif /* !HAVE_LOCAL_SNPRINTF */
