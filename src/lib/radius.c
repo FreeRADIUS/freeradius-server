@@ -30,6 +30,10 @@ static const char rcsid[] = "$Id$";
 #  include	<malloc.h>
 #endif
 
+#ifdef WIN32
+#include	<process.h>
+#endif
+
 /*
  *  The RFC says 4096 octets max, and most packets are less than 256.
  *  However, this number is just larger than the maximum MTU of just
@@ -49,7 +53,7 @@ typedef struct radius_packet_t {
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
  */
-int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
+int rad_send(RADIUS_PACKET *packet, char *secret)
 {
 	VALUE_PAIR		*reply;
 	struct	sockaddr	saremote;
@@ -293,7 +297,7 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 	sin->sin_addr.s_addr = packet->dst_ipaddr;
 	sin->sin_port = htons(packet->dst_port);
 
-	sendto(activefd, (char *)packet->data, (int)packet->data_len, 0,
+	sendto(packet->sockfd, packet->data, (int)packet->data_len, 0,
 			&saremote, sizeof(struct sockaddr_in));
 
 	return 0;
@@ -382,6 +386,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	/*
 	 *	Fill IP header fields
 	 */
+	packet->sockfd = fd;
 	packet->src_ipaddr = saremote.sin_addr.s_addr;
 	packet->src_port = ntohs(saremote.sin_port);
 

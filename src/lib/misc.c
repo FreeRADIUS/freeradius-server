@@ -19,7 +19,6 @@ static const char rcsid[] =
 #include	<stdlib.h>
 #include	<string.h>
 #include	<netdb.h>
-#include	<pwd.h>
 #include	<time.h>
 #include	<ctype.h>
 #include	<signal.h>

@@ -15,6 +15,12 @@
 #include "radius.h"
 #include "token.h"
 
+#ifdef WIN32
+typedef unsigned char u_char;
+typedef unsigned short u_short;
+typedef unsigned int u_int;
+#endif
+
 #define AUTH_VECTOR_LEN		16
 #define MAX_STRING_LEN		254	/* RFC2138: string 0-253 octets */
 

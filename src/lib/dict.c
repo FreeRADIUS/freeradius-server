@@ -12,7 +12,6 @@ static const char rcsid[] = "$Id$";
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<sys/types.h>
-#include	<pwd.h>
 #include	<ctype.h>
 #include	<string.h>
 
