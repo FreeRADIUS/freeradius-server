@@ -211,7 +211,8 @@ int rad_check_password(REQUEST *request)
 		auth_type = auth_type_pair->lvalue;
 		auth_type_count++;
 
-		DEBUG2("  rad_check_password:  Found auth-type %d", auth_type);
+		DEBUG2("  rad_check_password:  Found auth-type %s",
+		       auth_type_pair->strvalue);
 		cur_config_item = auth_type_pair->next;
 
 		if (auth_type == PW_AUTHTYPE_REJECT) {
@@ -228,9 +229,9 @@ int rad_check_password(REQUEST *request)
 	/*
 	 *	This means we have a proxy reply or an accept  
 	 *  and it wasn't rejected in the above loop.  So 
-   *  that means it is accepted and we do no further 
+	 *  that means it is accepted and we do no further 
 	 *  authentication
-   */
+	 */
 	if ((auth_type == PW_AUTHTYPE_ACCEPT) || (request->proxy)) {
 		DEBUG2("  rad_check_password: Auth-Type = Accept, accepting the user");
 		return 0;
@@ -239,8 +240,6 @@ int rad_check_password(REQUEST *request)
 	/*
 	 *	Find the password sent by the user. It SHOULD be there,
 	 *	if it's not authentication fails.
-	 *
-	 *	FIXME: add MS-CHAP support ?
 	 */
 	auth_item = request->password;
 	if (auth_item == NULL) {
