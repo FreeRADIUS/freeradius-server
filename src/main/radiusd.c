@@ -1719,6 +1719,7 @@ typedef struct spawn_thread_t {
  */
 static void sig_term(int sig)
 {
+	sig = sig;			/* -Wunused */
 	pthread_exit(NULL);
 }
 
@@ -1731,6 +1732,15 @@ static void *rad_spawn_thread(void *arg)
 	int replicating;
 	spawn_thread_t *data = (spawn_thread_t *)arg;
 	
+	/*
+	 *	Note that this behaviour only works on Linux.
+	 *
+	 *	It's generally NOT the thing to do, and should
+	 *	be fixed somehow.
+	 *
+	 *	Q: How do we signal a hung thread, and tell it to
+	 *	kill itself?
+	 */
 	signal(SIGTERM, sig_term);
 	
 	/*
@@ -1830,7 +1840,7 @@ void sig_cleanup(int sig)
 {
 	int		i;
 	int		status;
-        pid_t		pid;
+        child_pid_t	pid;
 	REQUEST		*curreq;
 	sig = sig; /* -Wunused */
  
