@@ -96,10 +96,8 @@ static int		request_list_busy = FALSE;
 static int		authfd;
 static int		acctfd;
 int	        	proxyfd;
-static int		spawn_flag = TRUE;
 static pid_t		radius_pid;
-static struct rlimit	core_limits;
-static int		proxy_requests = TRUE;
+static int		request_num_counter = 0; /* per-request unique ID */
 
 /*
  *  Configuration items.
@@ -114,6 +112,9 @@ static uid_t		server_uid;
 static gid_t		server_gid;
 static const char	*uid_name = NULL;
 static const char	*gid_name = NULL;
+static int		proxy_requests = TRUE;
+static int		spawn_flag = TRUE;
+static struct rlimit	core_limits;
 
 static void	usage(void);
 
@@ -991,6 +992,7 @@ int main(int argc, char **argv)
 			request->username = NULL;
 			request->password = NULL;
 			request->timestamp = time(NULL);
+			request->number = request_num_counter++;
 			request->child_pid = NO_SUCH_CHILD_PID;
 			request->prev = NULL;
 			request->next = NULL;
@@ -1204,7 +1206,7 @@ static void rad_reject(REQUEST *request)
 {
 	VALUE_PAIR *vps;
 	
-	DEBUG2("Server rejecting request.");
+	DEBUG2("Server rejecting request %d.", request->number);
 	switch (request->packet->code) {
 		/*
 		 *	Accounting requests, etc. get dropped on the floor.
@@ -1233,9 +1235,7 @@ static void rad_reject(REQUEST *request)
 	/*
 	 *	If a reply exists, send it.
 	 */
-	if (request->reply->code) {
-		rad_send(request->reply, request->secret);
-	}
+	if (request->reply->code) rad_send(request->reply, request->secret);
 }
 
 /*
@@ -1438,7 +1438,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	and we're not proxying, so the DEFAULT behaviour
 		 *	is to REJECT the user.
 		 */
-		DEBUG2("There was no response configured: rejecting the user.");
+		DEBUG2("There was no response configured: rejecting request %d", request->number);
 		rad_reject(request);
 		goto finished_request;
 	}
@@ -1461,8 +1461,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	Need to copy Proxy-State from request->packet->vps
 		 */
 		vp = paircopy2(request->packet->vps, PW_PROXY_STATE);
-		if (vp != NULL)
-			pairadd(&(request->reply->vps), vp);
+		if (vp != NULL) pairadd(&(request->reply->vps), vp);
 
 		rad_send(request->reply, request->secret);
 	}
@@ -1500,13 +1499,12 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		request->password = NULL;
 	}
 	if (request->reply && request->reply->vps) {
-		pairfree(&request->reply->vps);
-	}
-	if (request->config_items) {
-		pairfree(&request->config_items);
+	  pairfree(&request->reply->vps);
 	}
 
-	DEBUG2("Finished request");
+	if (request->config_items) pairfree(&request->config_items);
+
+	DEBUG2("Finished request %d", request->number);
 	finished = TRUE;
 	
 	/*
@@ -2251,8 +2249,8 @@ static int refresh_request(REQUEST *request, void *data)
 		 *	Request completed, delete it, and unlink it
 		 *	from the currently 'alive' list of requests.
 		 */
-		DEBUG2("Cleaning up request ID %d with timestamp %08lx",
-		       request->packet->id,
+		DEBUG2("Cleaning up request %d ID %d with timestamp %08lx",
+		       request->number, request->packet->id,
 		       (unsigned long)request->timestamp);
 		
 		/*
@@ -2274,8 +2272,8 @@ static int refresh_request(REQUEST *request, void *data)
 			 *	 - kill it
 			 */
 			child_pid = request->child_pid;
-			radlog(L_ERR, "Killing unresponsive child %d",
-			       child_pid);
+			radlog(L_ERR, "Killing unresponsive child %d for request %d",
+			       child_pid, request->number);
 			child_kill(child_pid, SIGTERM);
 		} /* else no proxy reply, quietly fail */
 		

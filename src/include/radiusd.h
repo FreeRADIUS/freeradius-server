@@ -45,6 +45,7 @@ typedef struct auth_req {
 	char			secret[32];
 	child_pid_t    		child_pid;
 	time_t			timestamp;
+	int			number; /* internal server number */
 
 	/* Could almost keep a const char * here instead of a _copy_ of the
 	 * secret... but what if the RADCLIENT structure is freed because it was
