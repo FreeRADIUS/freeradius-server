@@ -130,8 +130,9 @@ endif
 clean:
 	@rm -f *.a *.o *.lo *.la *~
 	@rm -rf .libs _libs
+	@rm -f config.log config.status config.cache
 
-distclean:
+distclean: clean
 	@rm -f config.h config.mak
 
 #
