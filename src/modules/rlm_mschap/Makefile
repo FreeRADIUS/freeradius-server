@@ -18,4 +18,4 @@ smbencrypt: smbencrypt.o smbdes.o $(HEADERS)
 
 smbencrypt-install:
 	$(INSTALL) -d -m 755 $(R)$(bindir)
-	$(INSTALL) -m 755 $(INSTALLSTRIP) smbencrypt $(R)$(bindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) smbencrypt$(EXEEXT) $(R)$(bindir)

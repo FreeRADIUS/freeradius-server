@@ -150,13 +150,11 @@ clean:
 	rm -rf *.o *.so *~ $(BINARIES) .libs
 
 install:
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd	$(R)$(sbindir)
-	$(INSTALL) -m 755 $(INSTALLSTRIP) radwho		$(R)$(bindir)
-	$(INSTALL) -m 755 $(INSTALLSTRIP) radzap		$(R)$(bindir)
-	$(INSTALL) -m 755    radlast		$(R)$(bindir)
-	$(INSTALL) -m 755    radclient		$(R)$(bindir)
-	$(INSTALL) -m 755    radrelay		$(R)$(bindir)
-	$(INSTALL) -m 755    radtest 		$(R)$(bindir)
-	$(INSTALL) -d -m 755			$(R)$(logdir)
-	$(INSTALL) -d -m 755			$(R)$(radacctdir)
-	$(INSTALL) -m 755    checkrad.pl	$(R)$(sbindir)/checkrad
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd$(EXEEXT)	$(R)$(sbindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) radwho$(EXEEXT)	$(R)$(bindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) radzap$(EXEEXT)	$(R)$(bindir)
+	$(INSTALL) -m 755    radlast			$(R)$(bindir)
+	$(INSTALL) -m 755    radclient$(EXEEXT)		$(R)$(bindir)
+	$(INSTALL) -m 755    radrelay$(EXEEXT)		$(R)$(bindir)
+	$(INSTALL) -m 755    radtest 			$(R)$(bindir)
+	$(INSTALL) -m 755    checkrad.pl		$(R)$(sbindir)/checkrad
