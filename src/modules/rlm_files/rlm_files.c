@@ -34,10 +34,10 @@ static const char rcsid[] = "$Id$";
 #include	<netdb.h>
 #include	<ctype.h>
 #include	<fcntl.h>
-#include        <limits.h>
+#include	<limits.h>
 
 #if HAVE_MALLOC_H
-#  include	<malloc.h>
+#	include	<malloc.h>
 #endif
 
 #include	"radiusd.h"
@@ -46,13 +46,13 @@ static const char rcsid[] = "$Id$";
 struct file_instance {
 	char *compat_mode;
 
-        /* autz */
-        char *usersfile;
-        PAIR_LIST *users;
+	/* autz */
+	char *usersfile;
+	PAIR_LIST *users;
 
-        /* preacct */
-        char *acctusersfile;
-        PAIR_LIST *acctusers;
+	/* preacct */
+	char *acctusersfile;
+	PAIR_LIST *acctusers;
 };
 
 /*
@@ -74,79 +74,79 @@ static int fallthrough(VALUE_PAIR *vp)
 static struct file_instance config;
 
 static CONF_PARSER module_config[] = {
-        { "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, "${raddbdir}/users" },
-        { "acctusersfile", PW_TYPE_STRING_PTR, &config.acctusersfile, "${raddbdir}/acct_users" },
-	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
+	{ "usersfile",	PW_TYPE_STRING_PTR, &config.usersfile, "${raddbdir}/users" },
+	{ "acctusersfile",	PW_TYPE_STRING_PTR, &config.acctusersfile, "${raddbdir}/acct_users" },
+	{ "compat",	PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
 	{ NULL, -1, NULL, NULL }
 };
 
 static int getusersfile(const char *filename, PAIR_LIST **pair_list)
 {
 	int rcode;
-        PAIR_LIST *users = NULL;
+	PAIR_LIST *users = NULL;
 
 	rcode = pairlist_read(filename, &users, 1);
 	if (rcode < 0) {
 		return -1;
 	}
 
-        /*
-         *	Walk through the 'users' file list, if we're debugging,
+	/*
+	 *	Walk through the 'users' file list, if we're debugging,
 	 *	or if we're in compat_mode.
-         */
-        if ((debug_flag) ||
-	    (strcmp(config.compat_mode, "cistron") == 0)) {
-                PAIR_LIST *entry;
-                VALUE_PAIR *vp;
+	 */
+	if ((debug_flag) ||
+			(strcmp(config.compat_mode, "cistron") == 0)) {
+		PAIR_LIST *entry;
+		VALUE_PAIR *vp;
 		int compat_mode = FALSE;
 
 		if (strcmp(config.compat_mode, "cistron") == 0) {
 			compat_mode = TRUE;
 		}
-        
-                entry = users;
-                while (entry) {
+	
+		entry = users;
+		while (entry) {
 			if (compat_mode) {
 				DEBUG("[%s]:%d Cistron compatibility checks for entry %s ...",
-				      filename, entry->lineno,
-				      entry->name);
+						filename, entry->lineno,
+						entry->name);
 			}
 
-                        /*
-                         *	Look for improper use of '=' in the
-                         *	check items.  They should be using
-                         *	'==' for on-the-wire RADIUS attributes,
-                         *	and probably ':=' for server
-                         *	configuration items.
-                         */
-                        for (vp = entry->check; vp != NULL; vp = vp->next) {
-                                /*
-                                 *	Ignore attributes which are set
-                                 *	properly.
-                                 */
-                                if (vp->operator != T_OP_EQ) {
-                                        continue;
-                                }
+			/*
+			 *	Look for improper use of '=' in the
+			 *	check items.  They should be using
+			 *	'==' for on-the-wire RADIUS attributes,
+			 *	and probably ':=' for server
+			 *	configuration items.
+			 */
+			for (vp = entry->check; vp != NULL; vp = vp->next) {
+				/*
+				 *	Ignore attributes which are set
+				 *	properly.
+				 */
+				if (vp->operator != T_OP_EQ) {
+					continue;
+				}
 
-                                /*
-                                 *	If it's a vendor attribute,
-                                 *	or it's a wire protocol, 
-                                 *	ensure it has '=='.
-                                 */
-                                if (((vp->attribute & ~0xffff) != 0) ||
-                                    (vp->attribute < 0x100)) {
+				/*
+				 *	If it's a vendor attribute,
+				 *	or it's a wire protocol, 
+				 *	ensure it has '=='.
+				 */
+				if (((vp->attribute & ~0xffff) != 0) ||
+						(vp->attribute < 0x100)) {
 					if (!compat_mode) {
 						DEBUG("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-						      filename, entry->lineno,
-						      vp->name, vp->name,
-						      entry->name);
+								filename, entry->lineno,
+								vp->name, vp->name,
+								entry->name);
 					} else {
 						DEBUG("\tChanging '%s =' to '%s =='",
-						      vp->name, vp->name);
+								vp->name, vp->name);
 					}
 					vp->operator = T_OP_CMP_EQ;
 					continue;
-                                }
+				}
 				
 				/*
 				 *	Cistron Compatibility mode.
@@ -164,56 +164,56 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list)
 					 *	become ==
 					 */
 					if ((vp->attribute >= 0x100) &&
-					    (vp->attribute <= 0xffff) &&
-					    (vp->attribute != PW_HINT) &&
-					    (vp->attribute != PW_HUNTGROUP_NAME)) {
+							(vp->attribute <= 0xffff) &&
+							(vp->attribute != PW_HINT) &&
+							(vp->attribute != PW_HUNTGROUP_NAME)) {
 						DEBUG("\tChanging '%s =' to '%s +='",
-						      vp->name, vp->name);
+								vp->name, vp->name);
 						vp->operator = T_OP_ADD;
 					} else {
 						DEBUG("\tChanging '%s =' to '%s =='",
-						      vp->name, vp->name);
+								vp->name, vp->name);
 						vp->operator = T_OP_CMP_EQ;
 					}
 				}
 				
-                        } /* end of loop over check items */
-                
-                
-                        /*
-                         *	Look for server configuration items
-                         *	in the reply list.
-                         *
-                         *	It's a common enough mistake, that it's
-                         *	worth doing.
-                         */
-                        for (vp = entry->reply; vp != NULL; vp = vp->next) {
-                                /*
-                                 *	If it's NOT a vendor attribute,
-                                 *	and it's NOT a wire protocol
-                                 *	and we ignore Fall-Through,
-                                 *	then bitch about it, giving a
-                                 *	good warning message.
-                                 */
-                                if (!(vp->attribute & ~0xffff) &&
-                                    (vp->attribute > 0xff) &&
-                                    (vp->attribute > 1000)) {
-                                        log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
-                                                  "\tfound in reply item list for user \"%s\".\n"
-                                                  "\tThis attribute MUST go on the first line"
-                                                  " with the other check items", 
-                                                  filename, entry->lineno, vp->name,
-                                                  entry->name);
-                                }
-                        }
-                
-                        entry = entry->next;
-                }
-        
-        }
+			} /* end of loop over check items */
+		
+		
+			/*
+			 *	Look for server configuration items
+			 *	in the reply list.
+			 *
+			 *	It's a common enough mistake, that it's
+			 *	worth doing.
+			 */
+			for (vp = entry->reply; vp != NULL; vp = vp->next) {
+				/*
+				 *	If it's NOT a vendor attribute,
+				 *	and it's NOT a wire protocol
+				 *	and we ignore Fall-Through,
+				 *	then bitch about it, giving a
+				 *	good warning message.
+				 */
+				if (!(vp->attribute & ~0xffff) &&
+					(vp->attribute > 0xff) &&
+					(vp->attribute > 1000)) {
+					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
+							"\tfound in reply item list for user \"%s\".\n"
+							"\tThis attribute MUST go on the first line"
+							" with the other check items", 
+							filename, entry->lineno, vp->name,
+							entry->name);
+				}
+			}
+		
+			entry = entry->next;
+		}
+	
+	}
 
 	*pair_list = users;
-        return 0;
+	return 0;
 }
 
 /*
@@ -221,49 +221,49 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list)
  */
 static int file_instantiate(CONF_SECTION *conf, void **instance)
 {
-        struct file_instance *inst;
+	struct file_instance *inst;
 	int rcode;
 
-        inst = malloc(sizeof *inst);
-        if (!inst) {
-                radlog(L_ERR|L_CONS, "Out of memory\n");
-                return -1;
-        }
+	inst = malloc(sizeof *inst);
+	if (!inst) {
+		radlog(L_ERR|L_CONS, "Out of memory\n");
+		return -1;
+	}
 
-        if (cf_section_parse(conf, module_config) < 0) {
-                free(inst);
-                return -1;
-        }
+	if (cf_section_parse(conf, module_config) < 0) {
+		free(inst);
+		return -1;
+	}
 
-        inst->usersfile = config.usersfile;
-        inst->acctusersfile = config.acctusersfile;
-        inst->compat_mode = config.compat_mode;
-        config.usersfile = NULL;
-        config.acctusersfile = NULL;
+	inst->usersfile = config.usersfile;
+	inst->acctusersfile = config.acctusersfile;
+	inst->compat_mode = config.compat_mode;
+	config.usersfile = NULL;
+	config.acctusersfile = NULL;
 
 	rcode = getusersfile(inst->usersfile, &inst->users);
-        if (rcode != 0) {
-                radlog(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
-                free(inst->usersfile);
-                free(inst->acctusersfile);
-                free(inst);
-                return -1;
-        }
+	if (rcode != 0) {
+		radlog(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
+		free(inst->usersfile);
+		free(inst->acctusersfile);
+		free(inst);
+		return -1;
+	}
 
 	rcode = getusersfile(inst->acctusersfile, &inst->acctusers);
-        if (rcode != 0) {
-                radlog(L_ERR|L_CONS, "Errors reading %s", inst->acctusersfile);
-                pairlist_free(&inst->users);
-                free(inst->usersfile);
-                free(inst->acctusersfile);
-                free(inst);
-                return -1;
-        }
+	if (rcode != 0) {
+		radlog(L_ERR|L_CONS, "Errors reading %s", inst->acctusersfile);
+		pairlist_free(&inst->users);
+		free(inst->usersfile);
+		free(inst->acctusersfile);
+		free(inst);
+		return -1;
+	}
 
-        config.compat_mode = NULL;
+	config.compat_mode = NULL;
 
-        *instance = inst;
-        return 0;
+	*instance = inst;
+	return 0;
 }
 
 /*
@@ -464,13 +464,13 @@ static int file_preacct(void *instance, REQUEST *request)
  */
 static int file_detach(void *instance)
 {
-        struct file_instance *inst = instance;
-        pairlist_free(&inst->users);
-        pairlist_free(&inst->acctusers);
-        free(inst->usersfile);
-        free(inst->acctusersfile);
-        free(inst->compat_mode);
-        free(inst);
+	struct file_instance *inst = instance;
+	pairlist_free(&inst->users);
+	pairlist_free(&inst->acctusers);
+	free(inst->usersfile);
+	free(inst->acctusersfile);
+	free(inst->compat_mode);
+	free(inst);
 	return 0;
 }
 
