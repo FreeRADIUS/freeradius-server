@@ -33,7 +33,7 @@ all:	$(BINARIES)
 radiusd: $(SERVER_OBJS) ../lib/libradius.a $(MODULE_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
-		$(SERVER_OBJS) $(LIBS) $(LCRYPT) \
+		$(SERVER_OBJS) $(LCRYPT) $(LIBS) \
 		$(PTHREADLIB) $(LIBLTDL) $(MODULE_LIBS) 
 
 radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
