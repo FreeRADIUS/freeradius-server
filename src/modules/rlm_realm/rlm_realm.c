@@ -20,7 +20,7 @@ static const char rcsid[] = "$Id$";
 static int realm_authorize(REQUEST *request,
 			   VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
-	const char *realmname;
+	char *realmname;
 	VALUE_PAIR *vp;
 	REALM *realm;
 	const char *name = request->username->strvalue;
@@ -42,6 +42,34 @@ static int realm_authorize(REQUEST *request,
 	if (realm->notsuffix)
 	  return RLM_AUTZ_NOTFOUND;
 	
+	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
+	       name, realm->realm);
+
+	/*
+	 *	Create the Stripped-User-Name attribute, if it doesn't exist.
+	 *
+	 *	This code is copied from rlm_preprocess.
+	 */
+	vp = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
+	if (!vp) {
+		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+		if (!vp) {
+			log(L_ERR|L_CONS, "no memory");
+			exit(1);
+		}
+		strcpy(vp->strvalue, name);
+		vp->length = strlen(vp->strvalue);
+		pairadd(&request->packet->vps, vp);
+		request->username = vp;
+	}
+
+	/*
+	 *	Let's strip the Stripped-User-Name attribute.
+	 */
+	realmname = strrchr(vp->strvalue, '@');
+	*realmname = '\0';
+	vp->length = strlen(vp->strvalue);
+
 	/*
 	 *  'realmname' may be NULL, while realm->realm isn't.
 	 */
@@ -76,7 +104,7 @@ static int realm_authorize(REQUEST *request,
 static int realm_preacct(REQUEST *request)
 {
 	const char *name = request->username->strvalue;
-	const char *realmname;
+	char *realmname;
 	VALUE_PAIR *vp;
 	REALM *realm;
 	
@@ -90,7 +118,35 @@ static int realm_preacct(REQUEST *request)
 	realm = realm_find(realmname);
 	if (realm == NULL)
 	  return RLM_PRAC_OK;
-	
+
+	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
+	       name, realm->realm);
+
+	/*
+	 *	Create the Stripped-User-Name attribute, if it doesn't exist.
+	 *
+	 *	This code is copied from rlm_preprocess.
+	 */
+	vp = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
+	if (!vp) {
+		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+		if (!vp) {
+			log(L_ERR|L_CONS, "no memory");
+			exit(1);
+		}
+		strcpy(vp->strvalue, name);
+		vp->length = strlen(vp->strvalue);
+		pairadd(&request->packet->vps, vp);
+		request->username = vp;
+	}
+
+	/*
+	 *	Let's strip the Stripped-User-Name attribute.
+	 */
+	realmname = strrchr(vp->strvalue, '@');
+	*realmname = '\0';
+	vp->length = strlen(vp->strvalue);
+
 	/*
 	 *  'realmname' may be NULL, while realm->realm isn't.
 	 */
