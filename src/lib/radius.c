@@ -1291,7 +1291,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			    pair->type == PW_TYPE_STRING) {
 				int offset = 0;
 
-				if(TAG_VALID(*ptr)) {
+				if ((pair->length > 0) && TAG_VALID(*ptr)) {
 					pair->flags.tag = *ptr;
 					pair->length--;
 					offset = 1;
@@ -1305,11 +1305,15 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					 * otherwise, the Tag field SHOULD be ignored.
 					 */
 					pair->flags.tag = 0x00;
-					pair->length--;
+					if (pair->length > 0) pair->length--;
 					offset = 1;
 				} else {
 				       pair->flags.tag = 0x00;
 				}
+
+				/*
+				 *	pair->length may be zero here...
+				 */
 				memcpy(pair->strvalue, ptr + offset,
 				       pair->length);
 			} else {
