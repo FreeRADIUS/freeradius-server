@@ -532,8 +532,8 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	uint32_t	ipno = 0;
 	char		*call_num = NULL;
 	int		rcode;
-	const char *name = (char *)request->username->strvalue;
 	struct radutmp_instance *inst = instance;
+	char		login[256];
 
 	if ((fd = open(inst->radutmp_fn, O_RDWR)) < 0) {
 		if(errno!=ENOENT)
@@ -542,9 +542,14 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 		return RLM_MODULE_OK;
 	}
 
+	*login = '\0';
+	radius_xlat(login, sizeof(login), inst->username, request, NULL);
+	if(*login == '\0') 
+			return RLM_MODULE_FAIL;
+
 	request->simul_count = 0;
 	while(read(fd, &u, sizeof(u)) == sizeof(u)) {
-		if (strncmp(name, u.login, RUT_NAMESIZE) == 0
+		if (strncmp(login, u.login, RUT_NAMESIZE) == 0
 		    && u.type == P_LOGIN)
 			++request->simul_count;
 	}
@@ -570,11 +575,9 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 
 	request->simul_count = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
-		if (strncmp(name, u.login, RUT_NAMESIZE) == 0
+		if (strncmp(login, u.login, RUT_NAMESIZE) == 0
 		    && u.type == P_LOGIN) {
-			char login[sizeof u.login+1];
 			char session_id[sizeof u.session_id+1];
-			strNcpy(login, u.login, sizeof login);
 			strNcpy(session_id, u.session_id, sizeof session_id);
 
 			/*
