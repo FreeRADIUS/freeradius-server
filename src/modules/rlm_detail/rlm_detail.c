@@ -37,11 +37,6 @@ struct detail_instance {
 	const char *last_made_directory;
 };
 
-static int detail_init(void)
-{
-	return 0;
-}
-
 /*
  *	A temporary holding area for config values to be extracted
  *	into, before they are copied into the instance data
@@ -292,7 +287,7 @@ static int detail_detach(void *instance)
 module_t rlm_detail = {
 	"detail",
 	0,				/* type: reserved */
-	detail_init,			/* initialization */
+	NULL,				/* initialization */
 	detail_instantiate,		/* instantiation */
 	NULL,		 		/* authorization */
 	NULL,				/* authentication */
