@@ -1,47 +1,42 @@
 #
-# spec file to build FreeRadius on SuSE/United Linux
+# spec file for package freeradius (Version 0.8.1)
 #
-# Copyright (c) 2002 SuSE Linux AG, Nuernberg, Germany.
+# Copyright (c) 2003 SuSE Linux AG, Nuernberg, Germany.
 # This file and all modifications and additions to the pristine
 # package are under the same license as the package itself.
 #
-# Please send bugfixes or comments to nix@susesecurity.com.
+# Please submit bugfixes or comments via http://www.suse.de/feedback/
 #
 
-# neededforbuild  cyrus-sasl-devel heimdal-devel heimdal-lib mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel postgresql postgresql-devel postgresql-libs python python-devel unixODBC unixODBC-devel ucdsnmp
-# usedforbuild    aaa_base aaa_version acl attr bash bind9-utils bison cpio cpp cyrus-sasl db devs diffutils e2fsprogs file filesystem fileutils fillup findutils flex gawk gdbm-devel glibc glibc-devel glibc-locale gpm grep groff gzip kbd less libgcc libstdc++ libxcrypt m4 make man mktemp modutils ncurses ncurses-devel net-tools netcfg pam pam-devel pam-modules patch permissions ps rcs readline sed sendmail sh-utils shadow strace syslogd sysvinit tar texinfo textutils timezone unzip util-linux vim zlib-devel autoconf automake binutils bzip2 cracklib cyrus-sasl-devel gcc gdbm gettext heimdal-devel heimdal-lib libtool mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel perl postgresql postgresql-devel postgresql-libs python python-devel rpm unixODBC unixODBC-devel zlib ucdsnmp
+# neededforbuild  cyrus-sasl-devel db-devel heimdal-devel heimdal-lib krb4-devel krb4-lib mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel postgresql postgresql-devel postgresql-libs python python-devel unixODBC unixODBC-devel
 
 Name:         freeradius
 License:      GPL
 Group:        Productivity/Networking/Radius/Servers
-Packager:     FreeRADIUS.org
 Provides:     radiusd
 Conflicts:    radiusd-livingston radiusd-cistron icradius
 Version:      0.9.0
 Release:      0
 URL:          http://www.freeradius.org/
-Summary:      Very high configurable Radius-server
-Source0:      %{name}-%{version}.tar.gz
-#Source0:      freeradius-snapshot-20021107.tar.gz
+Summary:      Very highly Configurable Radius-Server.
+Source0:      %{name}-%{version}.tar.bz2
 Source1:      rcradiusd
-Source2:      radiusd-pam
-Source3:      radiusd-logrotate
 %if %suse_version > 800
 PreReq:       %insserv_prereq %fillup_prereq
 %endif
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
-        
-%description
-The FreeRADIUS server has a number of features which are found in other
-servers, and additional features which are not found in any other server.
-Rather than doing a feature by feature comparison, we will simply list
-the features of the server, and let you decide if they satisfy your needs.
 
-Support for RFC and VSA Attributes
-Additional server configuration attributes
-Selecting a particular configuration
-Authentication methods
+%description
+The FreeRADIUS server has a number of features found in other servers,
+and additional features not found in any other server. Rather than
+doing a feature by feature comparison, we will simply list the features
+of the server, and let you decide if they satisfy your needs.
+
+Support for RFC and VSA Attributes Additional server configuration
+attributes Selecting a particular configuration Authentication methods
 Accounting methods
+
+
 
 Authors:
 --------
@@ -58,6 +53,8 @@ Summary:      FreeRADIUS development files (static libs)
 %description devel
 These are the static libraries of the FreeRADIUS package
 
+
+
 Authors:
 --------
     Miquel van Smoorenburg <miquels@cistron.nl>
@@ -67,8 +64,8 @@ Authors:
     various other people
 
 %prep
-#%setup -n freeradius-snapshot-20021107
 %setup
+rm -rf `find . -name CVS`
 
 %build
 CFLAGS="$RPM_OPT_FLAGS" ./configure \
@@ -76,20 +73,20 @@ CFLAGS="$RPM_OPT_FLAGS" ./configure \
                 --sysconfdir=%{_sysconfdir} \
 		--infodir=%{_infodir} \
 		--mandir=%{_mandir} \
-                --libdir=%{_libdir} \
+                --libdir=/usr/lib/freeradius \
 		--localstatedir=/var \
 		--with-threads \
 		--with-thread-pool \
-		--with-system-libtool \
+		--with-snmp \
+		--with-large-files \
 		--disable-ltdl-install \
 		--with-ltdl-lib=/usr/lib \
 		--with-ltdl-include=/usr/include \
 		--with-gnu-ld \
 		--enable-heimdal-krb5 \
 		--with-rlm-krb5-include-dir=/usr/include/heimdal/ \
-		--with-rlm-krb5-lib-dir=%{_libdir}
-#		--without-rlm-krb5 
-
+		--with-rlm-krb5-lib-dir=%{_libdir} \
+		--enable-strict-dependencies
 make
 
 %install
@@ -97,21 +94,21 @@ make
 $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT
 make install R=$RPM_BUILD_ROOT
-ldconfig -n $RPM_BUILD_ROOT%{_libdir}
+ldconfig -n $RPM_BUILD_ROOT/usr/lib/freeradius
 # logs
-touch $RPM_BUILD_ROOT/var/log/radius/radius.log
-#touch $RPM_BUILD_ROOT/var/log/radius/radwatch.log
-touch $RPM_BUILD_ROOT/var/log/radius/radwtmp
 touch $RPM_BUILD_ROOT/var/log/radius/radutmp
 # SuSE
 install -d     $RPM_BUILD_ROOT/etc/pam.d
 install -d     $RPM_BUILD_ROOT/etc/logrotate.d
-install -m 644 %SOURCE2 $RPM_BUILD_ROOT/etc/pam.d/radiusd
-install -m 644 %SOURCE3 $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
+install -m 644 suse/radiusd-pam $RPM_BUILD_ROOT/etc/pam.d/radiusd
+install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
 install -d -m 755 $RPM_BUILD_ROOT/etc/init.d
 install    -m 744 %SOURCE1 $RPM_BUILD_ROOT/etc/init.d/radiusd
 ln -sf ../../etc/init.d/radiusd $RPM_BUILD_ROOT/usr/sbin/rcradiusd
 mv -v doc/README doc/README.doc
+rm -rf doc/00-OLD
+rm -f $RPM_BUILD_ROOT/etc/raddb/experimental.conf $RPM_BUILD_ROOT/usr/sbin/radwatch $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
+rm -rf $RPM_BUILD_ROOT/usr/share/doc/freeradius*
 
 %post
 %{fillup_and_insserv -s radiusd START_RADIUSD }
@@ -124,7 +121,7 @@ mv -v doc/README doc/README.doc
 
 %files
 # doc
-%doc doc/* LICENSE COPYRIGHT CREDITS README 
+%doc doc/* LICENSE COPYRIGHT CREDITS README
 %doc src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
 %doc scripts/create-users.pl
 %doc scripts/cryptpasswd scripts/exec-program-wait scripts/radiusd2ldif.pl
@@ -135,17 +132,18 @@ mv -v doc/README doc/README.doc
 /usr/sbin/rcradiusd
 # configs
 %dir /etc/raddb
+%config /etc/raddb/dictionary
 %config(noreplace) /etc/raddb/acct_users
 %config(noreplace) /etc/raddb/attrs
 %attr(640,root,root) %config(noreplace) /etc/raddb/clients
 %attr(640,root,root) %config(noreplace) /etc/raddb/clients.conf
-%config /etc/raddb/diction*
 %config(noreplace) /etc/raddb/hints
 %config(noreplace) /etc/raddb/huntgroups
 %config(noreplace) /etc/raddb/ldap.attrmap
 %attr(640,root,root) %config(noreplace) /etc/raddb/mssql.conf
 %config(noreplace) /etc/raddb/naslist
 %attr(640,root,root) %config(noreplace) /etc/raddb/naspasswd
+%attr(640,root,root) %config(noreplace) /etc/raddb/oraclesql.conf
 %attr(640,root,root) %config(noreplace) /etc/raddb/postgresql.conf
 %attr(640,root,root) %config(noreplace) /etc/raddb/preproxy_users
 %attr(640,root,root) %config(noreplace) /etc/raddb/proxy.conf
@@ -156,45 +154,27 @@ mv -v doc/README doc/README.doc
 %attr(640,root,root) %config(noreplace) /etc/raddb/users
 %config(noreplace) /etc/raddb/x99.conf
 %attr(640,root,root) %config(noreplace) /etc/raddb/x99passwd.sample
+%attr(700,root,root) %dir /var/run/radiusd/
 # binaries
 /usr/bin/*
 /usr/sbin/check-radiusd-config
 /usr/sbin/checkrad
 /usr/sbin/radiusd
-#/usr/sbin/radwatch
 # shared libs
-/%{_libdir}/*.so*
-/%{_libdir}/*.la*
+%attr(755,root,root) %dir /usr/lib/freeradius
+/usr/lib/freeradius/*.so*
+/usr/lib/freeradius/*.la
 # man-pages
 %doc %{_mandir}/man1/*
 %doc %{_mandir}/man5/*
 %doc %{_mandir}/man8/*
+# dictionaries
+%attr(755,root,root) %dir /usr/share/freeradius
+/usr/share/freeradius/*
 # logs
 %attr(700,root,root) %dir /var/log/radius/
 %attr(700,root,root) %dir /var/log/radius/radacct/
-%attr(700,root,root) %dir /var/run/radiusd/
 /var/log/radius/radutmp
-%ghost /var/log/radius/radwtmp
-%ghost /var/log/radius/radius.log
-#%ghost /var/log/radius/radwatch.log
 
 %files devel
-/%{_libdir}/*.a
-
-%changelog -n freeradius
-* Thu Jun 12 2003 - nix@susesecurity.com
-- Update for FreeRadius 0.9 release and enable Krb5
-* Fri Nov 8 2002 - nix@susesecurity.com
-- Removed radwatch from the spec file as it's no longer supported.
-* Thu Nov 7 2002 - nix@susesecurity.com
-- Merged some changes from stark@suse.de including if statement to
-  take care of > SuSE 8.0
-* Wed Nov 6 2002 - nix@susesecurity.com
-- Finally got modules working on SuSE 8.0
-- added /var/run/radiusd to spec file
-* Mon Nov 4 2002 - nix@susesecurity.com
-- Received this spec file from stark@suse.de who said he had managed to hack it
-  enough to get a working FreeRadius0.8pre
-- After commenting out some SuSE 8.1 specific and PPC specific stuff I managed
-  to get it to build on SuSE 8.0
-- Modules still don't work
+/usr/lib/freeradius/*.a
