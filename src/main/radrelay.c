@@ -235,6 +235,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	if (x == -1)
 		return 0;
 
+redo:
 	s = NULL;
 	fseek(fp, fpos, SEEK_SET);
 	fpos = ftell(fp);
@@ -249,7 +250,10 @@ int read_one(FILE *fp, struct relay_request *r_req)
 		 */
 		if (buf[strlen(buf) - 1] != '\n') {
 			fprintf(stdout, "read_one: BROKEN ATTRIBUTE\n");
-			fseek(fp, fpos + strlen(buf), SEEK_SET);
+			if (strlen(buf))
+				fseek(fp, fpos + strlen(buf), SEEK_SET);
+			else
+				fseek(fp, fpos + 1, SEEK_SET);
 			break;
 		}
 		if (r_req->state == STATE_BUSY1) {
@@ -298,6 +302,27 @@ int read_one(FILE *fp, struct relay_request *r_req)
 		/*
 		 *	w00 - we just completed reading a record in full.
 		 */
+
+		/*
+		 * Check that we have an Acct-Status-Type attribute. If not
+		 * reject the record
+		 */
+		if (pairfind(r_req->req->vps, PW_ACCT_STATUS_TYPE) == NULL){
+			fprintf(stdout, "read_one: No Acct-Status-Type attribute present. Rejecting record.\n");
+			r_req->state = STATE_BUSY1;
+			if (r_req->req->vps != NULL) {
+				pairfree(&r_req->req->vps);
+				r_req->req->vps = NULL;
+			}
+			if (r_req->req->data != NULL) {
+				free (r_req->req->data);
+				r_req->req->data = NULL;
+			}
+			r_req->retrans = 0;
+			r_req->timestamp = 0;
+			r_req->client_ip = 0;
+			goto redo;
+		}
 		if (r_req->timestamp == 0)
 			r_req->timestamp = time(NULL);
 		if ((vp = pairfind(r_req->req->vps, PW_ACCT_DELAY_TIME)) != NULL) {
