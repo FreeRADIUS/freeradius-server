@@ -23,7 +23,7 @@ EOM;
 	exit();
 }
 
-$operators=array( '=','<', '>', '<=', '>=' );
+$operators=array( '=','<', '>', '<=', '>=', 'regexp', 'like' );
 
 $link = @da_sql_pconnect ($config) or die('cannot connect to sql databse');
 $fields = @da_sql_list_fields($config[sql_accounting_table],$link,$config);
