@@ -105,7 +105,7 @@ sub procedure_insert {		# FIXME: Does not work with current SQL schema. Use stan
 
 sub db_insert {
 	if ($h323_call_type eq 'VoIP') { 
-        $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (
+        $sth2 = $dbh->prepare("INSERT into StopVoIP (
 		AcctTime, UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets,
 		CalledStationId, CallingStationId, AcctDelayTime, H323RemoteAddress, h323gwid, h323callorigin,
 		callid, h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
@@ -118,10 +118,11 @@ sub db_insert {
 
 	}
 	elsif ($h323_call_type eq 'Telephony') {
-        $sth2 = $dbh->prepare("INSERT into StopTelephony (UserName, NASIPAddress, AcctSessionTime,
+        $sth2 = $dbh->prepare("INSERT into StopTelephony (
+		AcctTime, UserName, NASIPAddress, AcctSessionTime,
                 AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId, AcctDelayTime,
                 CiscoNASPort, h323callorigin, callid, h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
-                values('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
+                values(($Timestamp)::abstime, '$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
                 '$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$Cisco_NAS_Port', '$h323_call_origin', '$h323_conf_id',
 		'$h323_connect_time', '$h323_disconnect_cause', '$h323_disconnect_time', '$h323_setup_time', '$h323_voice_quality')");
 	} else { 
@@ -370,6 +371,7 @@ sub print_usage_info {
 	print "    -h --help                        Show this usage information\n";
 	print "    -H --host                        Database host to connect to (Default: localhost)\n";
 	print "    -p --procedure                   Use Postgresql stored procedure (BROKEN!)\n";
+	print "    -q --quiet                       Turn on quiet mode (No Output)\n";
 	print "    -v --verbose                     Turn on verbose\n";
 	print "    -V --version                     Show version and copyright\n";
 	print "    -x --debug                       Turn on debugging\n";
