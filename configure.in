@@ -425,16 +425,16 @@ AC_CHECK_HEADERS( \
 	sys/time.h
 )
 
-REGEX=no
-AC_CHECK_HEADER(regex.h, REGEX=yes)
-
-REGEX_EXTENDED=no
-AC_EGREP_CPP(yes,
-  [#include <regex.h>
-   #ifdef REG_EXTENDED
-     yes
-   #endif
-   ], [AC_DEFINE(HAVE_REG_EXTENDED) REGEX_EXTENDED=yes])
+AC_CHECK_HEADER(regex.h, AC_DEFINE(HAVE_REGEX_H))
+if test "x$ac_cv_header_regex_h" = "xyes"; then
+  REGEX_EXTENDED=no
+  AC_EGREP_CPP(yes,
+    [#include <regex.h>
+     #ifdef REG_EXTENDED
+       yes
+     #endif
+     ], [AC_DEFINE(HAVE_REG_EXTENDED) REGEX_EXTENDED=yes])
+fi
 
 dnl #############################################################
 dnl #
@@ -616,8 +616,6 @@ AC_SUBST(USE_SHARED_LIBS)
 USE_STATIC_LIBS=$enable_static
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
-AC_SUBST(REGEX)
-AC_SUBST(REGEX_EXTENDED)
 
 AC_OUTPUT(\
 	./Make.inc \
