@@ -237,6 +237,11 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		}
 
 		/*
+		 *	We're done sending fragments.
+		 */
+		return EAPTLS_SUCCESS;
+
+		/*
 		 *	For the rest of the conditions, switch over
 		 *	to the default section below.
 		 */
