@@ -1159,7 +1159,6 @@ int rad_process(REQUEST *request, int dospawn)
 	}
 	
 	assert(request->magic == REQUEST_MAGIC);
-	assert(request->reply == NULL);
 
 	/*
 	 *  The request passes many of our sanity checks.  From
@@ -1168,19 +1167,21 @@ int rad_process(REQUEST *request, int dospawn)
 	 *
 	 *  Build the reply template from the request template.
 	 */
-	if ((request->reply = rad_alloc(0)) == NULL) {
-		radlog(L_ERR, "No memory");
-		exit(1);
+	if (!request->reply) {
+		if ((request->reply = rad_alloc(0)) == NULL) {
+			radlog(L_ERR, "No memory");
+			exit(1);
+		}
+		request->reply->sockfd = request->packet->sockfd;
+		request->reply->dst_ipaddr = request->packet->src_ipaddr;
+		request->reply->dst_port = request->packet->src_port;
+		request->reply->id = request->packet->id;
+		request->reply->code = 0; /* UNKNOWN code */
+		memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
+		request->reply->vps = NULL;
+		request->reply->data = NULL;
+		request->reply->data_len = 0;
 	}
-	request->reply->sockfd = request->packet->sockfd;
-	request->reply->dst_ipaddr = request->packet->src_ipaddr;
-	request->reply->dst_port = request->packet->src_port;
-	request->reply->id = request->packet->id;
-	request->reply->code = 0; /* UNKNOWN code */
-	memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
-	request->reply->vps = NULL;
-	request->reply->data = NULL;
-	request->reply->data_len = 0;
 
 	/*
 	 *  If we're spawning a child thread, let it do all of
@@ -1359,8 +1360,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (request->proxy) {
 		int replicating;
 		replicating = proxy_receive(request);
-		if (replicating != 0) {
-			goto next_request;
+              switch (replicating) {
+                      case -1:
+                              /* on error just continue with next request */
+                              goto next_request;
+                      case 1:
+                              /* if this was a replicated request, mark it as
+                               * finished first, because it was postponed
+                               */
+                              goto finished_request;
 		}
 	}
 	
@@ -1441,7 +1449,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			}
 		}
 	} else if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-		   (request->reply == NULL)) {
+		   (request->reply->code == 0)) {
 		/*
 		 *  We're not configured to reply to the packet,
 		 *  and we're not proxying, so the DEFAULT behaviour
@@ -1516,16 +1524,16 @@ finished_request:
 	 *  pretty much finished, and we have no more need for any
 	 *  of the value-pair's in it, including the proxy stuff.
 	 */
-	if (request->reply) {
+	if (request->reply->code != 0) {
 		pairfree(&request->reply->vps);
-		if (request->proxy) {
-			pairfree(&request->proxy->vps);
-		}
-		if (request->proxy_reply) {
-			pairfree(&request->proxy_reply->vps);
-		}
 	}
 	pairfree(&request->config_items);
+	if (request->proxy) {
+		pairfree(&request->proxy->vps);
+	}
+	if (request->proxy_reply) {
+		pairfree(&request->proxy_reply->vps);
+	}
 
 	DEBUG2("Finished request %d", request->number);
 	finished = TRUE;
@@ -2156,15 +2164,6 @@ static REQUEST *proxy_check_list(REQUEST *request)
 				request_free(&request);
 				return NULL;
 			}
-		} else if (oldreq->reply) {
-		  /*
-		   *  Maybe we've already sent a reply to the NAS, in
-		   *  which case the new 'request' is really a
-		   *  duplicate, that should just be dropped.
-		   */
-			DEBUG2("Ignoring proxy reply, after we've sent a reply to the NAS");
-			request_free(&request);
-			return NULL;
 		}
 
 	} else {
@@ -2293,8 +2292,13 @@ static int refresh_request(REQUEST *request, void *data)
 	if (!proxy_requests) goto setup_timeout;
 
 	/*
-	 *  We're proxying synchronously, so the retry_delay is zero.
+	 *  We're proxying synchronously, so we don't retry it here.
 	 *  Some other code takes care of retrying the proxy requests.
+	 */
+	if (proxy_synchronous) goto setup_timeout;
+
+	/*
+	 *  The proxy retry delay is zero, meaning don't retry.
 	 */
 	if (proxy_retry_delay == 0) goto setup_timeout;
 
