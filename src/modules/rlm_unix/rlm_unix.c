@@ -477,7 +477,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	endusershell();
 	if (shell == NULL) {
 		radlog(L_AUTH, "rlm_unix: [%s]: invalid shell [%s]",
-			name, pws->pw_shell);
+			name, pwd->pw_shell);
 		return RLM_MODULE_REJECT;
 	}
 #endif
