@@ -116,14 +116,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 	inst->config = rad_malloc(sizeof(SQL_CONFIG));
 	memset(inst->config, 0, sizeof(SQL_CONFIG));
 
-#if HAVE_PTHREAD_H
-	inst->lock = (pthread_mutex_t *) rad_malloc(sizeof(pthread_mutex_t));
-	pthread_mutex_init(inst->lock, NULL);
-
-	inst->notfull = (pthread_cond_t *) rad_malloc(sizeof(pthread_cond_t));
-	pthread_cond_init(inst->notfull, NULL);
-#endif
-
 	/*
 	 * If the configuration parameters can't be parsed, then
 	 * fail.

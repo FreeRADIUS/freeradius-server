@@ -100,10 +100,13 @@ int sql_init_socketpool(SQL_INST * inst) {
 		sqlsocket->state = sockunconnected;
 
 #if HAVE_PTHREAD_H
+		/*
+		 *  FIXME! Check return codes!
+		 */
 		sqlsocket->semaphore = (sem_t *) rad_malloc(sizeof(sem_t));
 		sem_init(sqlsocket->semaphore, 0, SQLSOCK_UNLOCKED);
 #else
-		sqlsocket->in_use = 0;
+		sqlsocket->in_use = SQLSOCK_UNLOCKED;
 #endif
 
 		if (time(NULL) > inst->connect_after) {
@@ -133,10 +136,6 @@ void sql_poolfree(SQL_INST * inst) {
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
 		sql_close_socket(inst, cur);
 	}
-#if HAVE_PTHREAD_H
-	pthread_mutex_destroy(inst->lock);
-	pthread_cond_destroy(inst->notfull);
-#endif
 }
 
 
@@ -171,19 +170,9 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 	struct timeval timeout;
 	int tried_to_connect = 0;
 
-#if HAVE_PTHREAD_H
-	pthread_mutex_lock(inst->lock);
-#endif
 	while (inst->used == inst->config->num_sql_socks) {
-		radlog(L_DBG, "rlm_sql: Waiting for open sql socket");
-#if HAVE_PTHREAD_H
-		pthread_cond_wait(inst->notfull, inst->lock);
-#else
-		/* this should be portable... */
-		timeout.tv_sec = 0;
-		timeout.tv_usec = 200;
-		select(0, NULL, NULL, NULL, &timeout)
-#endif
+		radlog(L_ERR, "rlm_sql: All sockets are being used! Please increase the maximum number of sockets!");
+	  return NULL;
 	}
 
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
@@ -210,19 +199,13 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 		if (cur->in_use == SQLSOCK_UNLOCKED) {
 #endif
 			(inst->used)++;
-#if HAVE_PTHREAD_H
-			pthread_mutex_unlock(inst->lock);
-#else
+#ifne HAVE_PTHREAD_H
 			cur->in_use = SQLSOCK_LOCKED;
 #endif
 			radlog(L_DBG, "rlm_sql: Reserving sql socket id: %d", cur->id);
 			return cur;
 		}
 	}
-
-#if HAVE_PTHREAD_H
-	pthread_mutex_unlock(inst->lock);
-#endif
 
 	/* We get here if every DB handle is unconnected and unconnectABLE */
 	radlog((tried_to_connect = 0) ? (L_DBG) : (L_CONS | L_ERR), "rlm_sql:  There are no DB handles to use!");
@@ -238,22 +221,14 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
  *************************************************************************/
 int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
 
-#if HAVE_PTHREAD_H
-	pthread_mutex_lock(inst->lock);
-#endif
 	(inst->used)--;
 #if HAVE_PTHREAD_H
 	sem_post(sqlsocket->semaphore);
 #else
-	sqlsocket->in_use = 0;
+	sqlsocket->in_use = SQLSOCK_UNLOCKED;
 #endif
 
 	radlog(L_DBG, "rlm_sql: Released sql socket id: %d", sqlsocket->id);
-
-#if HAVE_PTHREAD_H
-	pthread_mutex_unlock(inst->lock);
-	pthread_cond_signal(inst->notfull);
-#endif
 
 	return 1;
 }

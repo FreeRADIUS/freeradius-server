@@ -10,7 +10,7 @@
 #include        <semaphore.h>
 #endif
 
-#include <ltdl.h>
+#include	<ltdl.h>
 
 #include "conf.h"
 #include "conffile.h"
@@ -68,10 +68,6 @@ typedef struct sql_inst {
 	time_t connect_after;
 	SQLSOCK		*sqlpool;
 	SQL_CONFIG	*config;
-#if HAVE_PTHREAD_H
-	pthread_mutex_t	*lock;
-	pthread_cond_t	*notfull;
-#endif
 
 	rlm_sql_module_t *module;
 } SQL_INST;
