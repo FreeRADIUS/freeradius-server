@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# $Id$
+#
+#  Sample script to run when a user's file entry is like:
+#
+#bob	Password == "bob"
+#	Exec-Program-Wait = "/path/to/program/exec-program-wait"
+#
+#
+#  The 
+#
+echo "Reply-Message += \"Hello, %u\","
+echo "Reply-Message += \"PATH=$PATH\","
+echo Framed-IP-Address = 255.255.255.255
+exit 0

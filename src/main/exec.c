@@ -268,7 +268,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		if (vp)
 			pairfree(&vp);
 
-		if (n != 0) {
+		if (n < 0) {
 			radlog(L_DBG, "Exec-Program-Wait: plaintext: %s", answer);
 			if (user_msg) {
 				strncpy(message, answer, sizeof(message));
@@ -298,7 +298,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				answer[strlen(answer) - 1] = '\0';
 
 			radlog(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
-			if (userparse(answer, &vp) != 0)
+			if (userparse(answer, &vp) < 0)
 				radlog(L_ERR,
 		"Exec-Program-Wait: %s: unparsable reply", cmd);
 			else {
