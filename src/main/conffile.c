@@ -248,6 +248,11 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			CONF_SECTION *cs;
 
 			/*
+			 *	FIXME: Add support for ${foo:-bar},
+			 *	like in xlat.c
+			 */
+
+			/*
 			 *	Look for trailing '}', and log a
 			 *	warning for anything that doesn't match,
 			 *	and exit with a fatal error.
