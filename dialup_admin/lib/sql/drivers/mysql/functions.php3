@@ -53,9 +53,13 @@ function da_sql_close($link,$config)
 	return @mysql_close($link);
 }
 
+function da_sql_escape_string($string)
+{
+	return @mysql_escape_string($string);
+}
+
 function da_sql_query($link,$config,$query)
 {
-	@mysql_escape_string($query);
 	if ($config[sql_debug] == 'true')
 		print "<b>DEBUG(SQL,MYSQL DRIVER): Query: <i>$query</i></b><br>\n";
 	return @mysql_db_query($config[sql_database],$query,$link);

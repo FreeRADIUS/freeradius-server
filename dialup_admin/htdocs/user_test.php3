@@ -57,9 +57,9 @@ EOM;
 	<tr><td>
 
 <?php
-if ($server == '')
+if ($server == '' || !preg_match('/^[\w\.]+$/',$server))
 	$server = $config[general_radius_server];
-if ($port == 0)
+if ($port == 0 || !is_int($port))
 	$port = $config[general_radius_server_port];
 if ($auth_proto == '')
 	$auth_proto = $config[general_radius_server_auth_proto];
@@ -88,10 +88,10 @@ if ($test_user == 1){
 		}
 		else{
 			fwrite($fp, "User-Name = \"$login\"\n");
-			if ($auth_proto == 'pap')
-				fwrite($fp, "User-Password = \"$passwd\"\n");
-			else if ($auth_proto == 'chap')
+			if ($auth_proto == 'chap')
 				fwrite($fp, "CHAP-Password = \"$passwd\"\n");
+			else
+				fwrite($fp, "User-Password = \"$passwd\"\n");
 			if (strlen($extra))
 				fwrite($fp,$extra);
 			pclose($fp);

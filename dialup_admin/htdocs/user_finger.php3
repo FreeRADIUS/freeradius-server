@@ -39,6 +39,10 @@ EOM;
 
 $date = strftime('%A, %e %B %Y, %T %Z');
 
+$sql_extra_query = '';
+if ($config[sql_accounting_extra_query] != '')
+	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
+
 $link = @da_sql_pconnect($config);
 $link2 = connect2db($config);
 $tot_in = $tot_rem = 0;
@@ -92,7 +96,7 @@ if ($link){
 		$search = @da_sql_query($link,$config,
 		"SELECT DISTINCT username,acctstarttime,framedipaddress,callingstationid
 		FROM $config[sql_accounting_table] WHERE
-		acctstoptime IS NULL AND nasipaddress = '$name_data' $extra
+		acctstoptime IS NULL AND nasipaddress = '$name_data' $extra $sql_extra_query
 		GROUP BY username ORDER BY acctstarttime;");
 		if ($search){
 			$now = time();

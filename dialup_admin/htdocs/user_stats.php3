@@ -28,7 +28,11 @@ if ($start == '' && $stop == ''){
 	$now -= 604800;
 	$start = date($config[sql_date_format],$now);
 }
+$start = da_sql_escape_string($start);
+$stop = da_sql_escape_string($stop);
 $pagesize = ($pagesize) ? $pagesize : 10;
+if (!is_int($pagesize))
+	$pagezise = 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
 $order = ($order) ? $order : $config[general_accounting_info_order];
@@ -38,12 +42,18 @@ if ($sortby != '')
 	$order_attr = ($sortby == 'num') ? 'connnum' : 'conntotduration';
 else
 	$order_attr = 'connnum';
-if ($server != '' && $server != 'all')
+if ($server != '' && $server != 'all'){
+	$server = da_sql_escape_string($server);
 	$server_str = "AND nasipaddress = '$server'";
+}
 $login_str = ($login) ? "AND username = '$login' " : '';
 
 $selected[$order] = 'selected';
 $selected[$sortby] = 'selected';
+
+$sql_extra_query = '';
+if ($config[sql_accounting_extra_query] != '')
+	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
 
 ?>
 
@@ -91,7 +101,7 @@ $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_total_accounting_table]
-	WHERE acctdate >= '$start' AND acctdate <= '$stop' $server_str $login_str
+	WHERE acctdate >= '$start' AND acctdate <= '$stop' $server_str $login_str $sql_extra_query
 	ORDER BY $order_attr $order $limit;");
 
 	if ($search){

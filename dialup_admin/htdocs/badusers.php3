@@ -25,8 +25,14 @@ EOM;
 $now = time();
 $now_str = ($now_str != '') ? "$now_str" : date($config[sql_date_format],$now + 86400);
 $prev_str = ($prev_str != '') ? "$prev_str" : "0001-01-01 00:00:00";
+
+$now_str = da_sql_escape_string($now_str);
+$prev_str = da_sql_escape_string($prev_str);
+
 $num = 0;
 $pagesize = ($pagesize) ? $pagesize : 10;
+if (!is_int($pagesize))
+	$pagesize = 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
 $login = ($login != '') ? $login : 'anyone';
@@ -132,11 +138,15 @@ EOM;
 
 <?php
 $auth_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+if ($config[general_restrict_badusers_access] == 'yes'){
+	$auth_user = da_sql_escape_string($auth_user);
+	$extra_query = "AND Admin == '$auth_user'";
+}
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_badusers_table]
-	WHERE UserName $usercheck AND Date <= '$now_str'
+	WHERE UserName $usercheck $extra_query AND Date <= '$now_str'
 	AND Date >= '$prev_str' ORDER BY Date $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){

@@ -54,11 +54,28 @@ if ($use_session == 0 && $config[general_use_session] == 'yes'){
 	// Start session
 	@session_start();
 }
+//Make sure we are only passed allowed strings in username
+if ($login != '')
+	$login = preg_replace("/[^\w\s\.\/\@\:]\-i\=/",'',$login);
+
 if ($login != '' && $config[general_strip_realms] == 'yes'){
 	$realm_del = ($config[general_realm_delimiter] != '') ? $config[general_realm_delimiter] : '@';
 	$realm_for = ($config[general_realm_format] != '') ? $config[general_realm_format] : 'suffix';
 	$new = explode($realm_del,$login,2);
 	if (count($new) == 2)
 		$login = ($realm_for == 'suffix') ? $new[0] : $new[1];
+}
+if (!isset($mappings) && $config[general_username_mappings_file] != ''){
+	$ARR = file($config[general_username_mappings_file]);
+	foreach($ARR as $val){
+		$val=chop($val);
+		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+			continue;
+		list($key,$realm,$v)=split(":[[:space:]]*",$val,2);
+		if ($realm == 'accounting' || $realm == 'userdb')
+			$mappings["$key"][$realm] = $v;
+	}
+	if ($config[general_use_session] == 'yes')
+		session_register('mappings');
 }
 ?>

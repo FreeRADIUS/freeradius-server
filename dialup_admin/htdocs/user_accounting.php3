@@ -4,6 +4,7 @@ require('../conf/config.php3');
 <html>
 <?php
 require('../lib/functions.php3');
+require('../lib/sql/functions.php3');
 require('../lib/attrshow.php3');
 
 if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
@@ -28,12 +29,16 @@ $now_str = ($now_str != '') ? "$now_str" : date($config[sql_date_format],$now + 
 $prev_str = ($prev_str != '') ? "$prev_str" : date($config[sql_date_format], $now - 604800 );
 $num = 0;
 $pagesize = ($pagesize) ? $pagesize : 10;
+if (!is_int($pagesize))
+	$pagesize = 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
 $order = ($order != '') ? $order : $config[general_accounting_info_order];
 if ($order != 'desc' && $order != 'asc')
 	$order = 'desc';
 $selected[$order] = 'selected';
+$now_str = da_sql_escape_string($now_str);
+$prev_str = da_sql_escape_string($prev_str);
 
 
 echo <<<EOM
@@ -83,6 +88,9 @@ for($i=1;$i<=9;$i++){
 	if ($acct_attrs['ua']["$i"] != '')
 		echo "<th>" . $acct_attrs['ua']["$i"] . "</th>\n";
 }
+$sql_extra_query = '';
+if ($config[sql_accounting_extra_query] != '')
+	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
 ?>
 	</tr>
 
@@ -92,7 +100,7 @@ if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_accounting_table]
 	WHERE username = '$login' AND acctstarttime <= '$now_str'
-	AND acctstarttime >= '$prev_str' ORDER BY acctstarttime $order $limit;");
+	AND acctstarttime >= '$prev_str' $sql_extra_query ORDER BY acctstarttime $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$tr_color='white';

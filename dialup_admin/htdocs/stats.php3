@@ -90,8 +90,13 @@ while(1){
 	$i++;
 }
 ksort($servers);
-if ($server != 'all' && $server != '')
+if ($server != 'all' && $server != ''){
+	$server = da_sql_escape_string($server);
 	$s = "AND nasipaddress = '$server'";
+}
+$sql_extra_query = '';
+if ($config[sql_accounting_extra_query] != '')
+	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
 
 $link = @da_sql_pconnect($config);
 if ($link){
@@ -100,12 +105,12 @@ if ($link){
 		if ($config[general_stats_use_totacct] == 'yes')
 			$search = @da_sql_query($link,$config,
 			"SELECT $res[1],$res[2],$res[3] FROM $config[sql_total_accounting_table]
-			$sql_val[user] AND acctdate = '$day' $s;");
+			$sql_val[user] AND acctdate = '$day' $s $sql_extra_query;");
 		else
 			$search = @da_sql_query($link,$config,
 			"SELECT $res[1],$res[2],$res[3] FROM $config[sql_accounting_table]
 			$sql_val[user] AND acctstoptime >= '$day 00:00:00' 
-			AND acctstoptime <= '$day 23:59:59' $s;");
+			AND acctstoptime <= '$day 23:59:59' $s $sql_extra_query;");
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);
 			$data[$day][1] = $row[res_1];

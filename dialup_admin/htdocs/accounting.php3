@@ -2,6 +2,7 @@
 
 require('../conf/config.php3');
 require('../lib/functions.php3');
+require('../lib/sql/functions.php3');
 require('../lib/acctshow.php3');
 
 if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
@@ -203,6 +204,17 @@ EOM;
 if ($queryflag == 1){
 $i = 1;
 while (${"item_of_w$i"}){
+	$op_found = 0;
+	foreach ($operators as $operator){
+		if (${"operator_of_w$i"} == $operator){
+			$op_found = 1;
+			break;
+		}
+	}
+	if (!$op_found)
+		die("Operator passed is not valid. Exiting abnormaly.");
+	${"item_of_w$i"} = preg_replace('/\s/','',${"item_of_w$i});
+	${"value_of_w$i"} = da_sql_escape_string(${"value_of_w$i"});
 	$where .= ($i == 1) ? ' WHERE ' . ${"item_of_w$i"} . ' ' . ${"operator_of_w$i"} . " '" . ${"value_of_w$i"} . "'" :
 				' AND ' . ${"item_of_w$i"} . ' ' . ${"operator_of_w$i"} . " '" . ${"value_of_w$i"} . "'" ;
 	$i++;
@@ -213,7 +225,10 @@ $order = ($order_by != '') ? "$order_by" : 'username';
 foreach ($accounting_show_attrs as $val)
 	$query_view .= $val . ',';
 $query_view = ereg_replace(',$','',$query_view);
-$query="SELECT $query_view FROM $config[sql_accounting_table] $where ORDER BY $order LIMIT $maxresults;";
+$sql_extra_query = '';
+if ($config[sql_accounting_extra_query] != '')
+	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
+$query="SELECT $query_view FROM $config[sql_accounting_table] $where $sql_extra_query ORDER BY $order LIMIT $maxresults;";
 
 echo <<<EOM
 <html>

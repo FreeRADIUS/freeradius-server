@@ -52,6 +52,11 @@ function da_sql_close($link,$config)
 	@pg_close($link);
 }
 
+function da_sql_escape_string($string)
+{
+	return addslashes($string);
+}
+
 function da_sql_query($link,$config,$query)
 {
 	if ($config[sql_debug] == 'true')

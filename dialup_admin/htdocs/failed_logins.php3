@@ -28,17 +28,27 @@ if ($last == 0)
 $start = $now - ($last*60);
 $now_str = date($config[sql_full_date_format],$now);
 $prev_str = date($config[sql_full_date_format],$start);
+
+$now_str = da_sql_escape_string($now_str);
+$prev_str = da_sql_escape_string($prev_str);
+
 $pagesize = ($pagesize) ? $pagesize : 10;
+if (!is_int($pagesize))
+	$pagesize = 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
 $order = ($order != '') ? $order : $config[general_accounting_info_order];
 if ($order != 'desc' && $order != 'asc')
 	$order = 'desc';
 $selected[$order] = 'selected';
-if ($callerid != '')
+if ($callerid != ''){
+	$callerid = da_sql_escape_string($callerid);
 	$callerid_str = "AND callingstationid = '$callerid'";
-if ($server != '' && $server != 'all')
+}
+if ($server != '' && $server != 'all'){
+	$server = da_sql_escape_string($server);
 	$server_str = "AND nasipaddress = '$server'";
+}
 
 ?>
 
@@ -85,6 +95,9 @@ if ($acct_attrs['fl'][2] != '') echo "<th>" . $acct_attrs['fl'][2] . "</th>\n";
 if ($acct_attrs['fl'][7] != '') echo "<th>" . $acct_attrs['fl'][7] . "</th>\n";
 if ($acct_attrs['fl'][8] != '') echo "<th>" . $acct_attrs['fl'][8] . "</th>\n";
 if ($acct_attrs['fl'][9] != '') echo "<th>" . $acct_attrs['fl'][9] . "</th>\n";
+$sql_extra_query = '';
+if ($config[sql_accounting_extra_query] != '')
+	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
 ?>
 	</tr>
 
@@ -97,7 +110,7 @@ if ($link){
 	WHERE acctstoptime <= '$now_str' AND acctstoptime >= '$prev_str'
 	AND (acctterminatecause LIKE 'Login-Incorrect%' OR
 	acctterminatecause LIKE 'Invalid-User%' OR
-	acctterminatecause LIKE 'Multiple-Logins%') $callerid_str $server_str
+	acctterminatecause LIKE 'Multiple-Logins%') $callerid_str $server_str $sql_extra_query
 	ORDER BY acctstoptime $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){

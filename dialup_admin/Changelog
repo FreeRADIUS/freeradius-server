@@ -3,6 +3,22 @@ Ver 1.70:
 * Add ldap_userdn as a configuration directive. If set we use that for
   user DN's (variables supported) instead of performing and ldap search for
   each user. That can be somewhat faster.
+* Add a check_user_passwd() and a get_user_dn() functions in lib/ldap/functions.php3
+* Add general_restrict_badusers_access directive. If set to yes we only allow each administrator
+  access to their own entries in the badusers table
+* Add a username.mappings table. We are able to map each administrator username to additional queries
+  on te accounting and user settings tables.
+* Add an sql_extra_query directive. If set this query is included in all queries to the accounting tables.
+  Combined with admin username mappings we are able to easily restrict access on specific accounting data
+  to each administrator.
+* Escape bad characters in the $login variable
+* Add a da_sql_escape_string function. We use that for every element we pass to sql queries in order to
+  protect ourselves from sql injection.
+* Use the ldap_userdn directive where applicable in the functions.php3 file
+* Add an sql_xlat function
+
+TODO: Check out the sql queries in lin/sql for sql injection.
+
 Ver 1.68:
 * Huge PostgreSQL compatibility patch by Guy Fraser <guy@incentre.net>
 * Also support the Crypt-Password attribute in lib/sql/password_check.php3. Patch by Guy Fraser <guy@incentre.net>

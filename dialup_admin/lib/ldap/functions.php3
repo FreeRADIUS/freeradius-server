@@ -1,4 +1,17 @@
 <?php
+function ldap_xlat($filter,$login,$config)
+{
+	$string = $filter;
+	if ($filter != ''){
+		$string = preg_replace('/%u/',$login,$string);
+		$string = preg_replace('/%U/',$HTTP_SERVER_VARS["PHP_AUTH_USER"],$string);
+		$string = preg_replace('/%ma/',$mappings[$http_user][accounting],$string);
+		$string = preg_replace('/%mu/',$mappings[$http_user][userdb],$string);
+	}
+
+	return $string;
+}
+
 function da_ldap_bind($ds,$config)
 {
 	if ($ds){
@@ -51,7 +64,24 @@ function get_user_info($ds,$user,$config,$decode_normal,$k)
 {
 	if ($ds){
 		$attrs = array('cn');
-		$sr=@ldap_search($ds,"$config[ldap_base]", "uid=" . $user,$attrs);
+		if ($config[ldap_userdn] == ''){
+			if ($config[ldap_filter] != '')
+				$filter = ldap_xlat($config[ldap_filter],$login,$config);
+			else
+				$filter = 'uid=' . $login;
+		}
+		else
+			$filter = ldap_xlat($config[ldap_userdn],$login,$config);
+		if ($config[ldap_debug] == 'true'){
+			if ($config[ldap_userdn] == '')
+	print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='$filter'</b><br>\n";
+			else
+	print "<b>DEBUG(LDAP): Search Query: BASE='$filter',FILTER='(objectclass=radiusprofile)'</b><br>\n";
+		}
+		if ($config[ldap_userdn] == '')
+			$sr=@ldap_search($ds,"$config[ldap_base]", $filter,$attrs);
+		else
+			$sr=@ldap_read($ds,$filter, '(objectclass=radiusprofile)',$attrs);
 		$info = @ldap_get_entries($ds, $sr);
 		$cn = $info[0]["cn"][0];
 		if ($cn != '' && $decode_normal == 1)
@@ -62,19 +92,54 @@ function get_user_info($ds,$user,$config,$decode_normal,$k)
 	}
 }
 
+function get_user_dn($ds,$user,$config)
+{
+	if ($ds){
+		$attrs = array('dn');
+		if ($config[ldap_userdn] == ''){
+			if ($config[ldap_filter] != '')
+				$filter = ldap_xlat($config[ldap_filter],$login,$config);
+			else
+				$filter = 'uid=' . $login;
+		}
+		else
+			$filter = ldap_xlat($config[ldap_userdn],$login,$config);
+		if ($config[ldap_debug] == 'true'){
+			if ($config[ldap_userdn] == '')
+	print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='$filter'</b><br>\n";
+			else
+	print "<b>DEBUG(LDAP): Search Query: BASE='$filter',FILTER='(objectclass=radiusprofile)'</b><br>\n";
+		}
+		if ($config[ldap_userdn] == '')
+			$sr=@ldap_search($ds,"$config[ldap_base]", $filter,$attrs);
+		else
+			$sr=@ldap_read($ds,$filter, '(objectclass=radiusprofile)',$attrs);
+		$entry = ldap_first_entry($ds, $sr);
+		if ($entry)
+			$dn = ldap_get_dn($ds,$entry);
+		return $dn;
+	}
+}
+
+function check_user_passwd($dn,$passwd,$config)
+{
+	$ds=@ldap_connect("$config[ldap_server]");
+	if ($ds && $dn != '' && $passwd != ''){
+		$r = @ldap_bind($ds,$dn,$passwd);
+		if ($r)
+			return TRUE;
+		else
+			return FALSE;
+	}
+	else
+		return FALSE;
+
+	return FALSE;
+}      
+
 function closedb($ds,$config)
 {
 	if ($ds)
 		@ldap_close($ds);
-}
-function ldap_xlat($filter,$login,$config)
-{
-	$string = $filter;
-	if ($filter != ''){
-		$string = preg_replace('/%u/',$login,$string);
-		$string = preg_replace('/%U/',$HTTP_SERVER_VARS["PHP_AUTH_USER"],$string);
-	}
-
-	return $string;
 }
 ?>

@@ -39,6 +39,10 @@ include("../html/user_toolbar.html.php3");
 
 $open_sessions = 0;
 
+$sql_extra_query = '';
+if ($config[sql_accounting_extra_query] != '')
+	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
+
 print <<<EOM
 </table>
 
@@ -63,7 +67,7 @@ if ($clear_sessions == 1){
 	if ($link){
 		$res = @da_sql_query($link,$config,
 		"DELETE FROM $config[sql_accounting_table]
-		WHERE username='$login' AND acctstoptime = 0;");
+		WHERE username='$login' AND acctstoptime = 0 $sql_extra_query;");
 		if ($res)
 			echo "<b>Deleted open sessions from accounting table</b><br>\n";
 		else
@@ -86,7 +90,7 @@ else{
 	if ($link){
 		$search = @da_sql_query($link,$config,
 		"SELECT COUNT(*) AS counter FROM $config[sql_accounting_table]
-		WHERE username = '$login' AND acctstoptime IS NULL;");
+		WHERE username = '$login' AND acctstoptime IS NULL $sql_extra_query;");
 		if ($search){
 			if ($row = @da_sql_fetch_array($search,$config))
 				$open_sessions = $row[counter];
