@@ -21,15 +21,11 @@ static const char rcsid[] = "$Id$";
 #include	"conffile.h"
 #include	"ltdl.h"
 
-#define	RLM_AUTHORIZE		1
-#define	RLM_AUTHENTICATE	2
-#define RLM_ACCOUNTING		4
-
 /*
  *	Keep track of which modules we've loaded.
  */
 typedef struct module_list_t {
-	char			filename[MAX_STRING_LEN];
+	char			name[MAX_STRING_LEN];
 	int			default_auth_type;
 	module_t		*module;
 	lt_dlhandle		handle;
@@ -159,7 +155,7 @@ static int new_authtype_value(const char *name)
   /* allocate a new value */
   new_value = (DICT_VALUE *) malloc(sizeof(DICT_VALUE));
   if (!new_value) {
-    fprintf(stderr, "Out of memory\n");
+    radlog(L_ERR|L_CONS, "Out of memory\n");
     exit(1);
   }
 
@@ -174,7 +170,10 @@ static int new_authtype_value(const char *name)
   return new_value->value;
 }
 
-static module_list_t *find_module(module_list_t *head, const char *filename,
+/*
+ *	Find a module on disk or in memory, and link to it.
+ */
+static module_list_t *linkto_module(module_list_t *head,
 				  const char *module_name,
 				  const char *cffilename, int cflineno)
 {
@@ -184,7 +183,7 @@ static module_list_t *find_module(module_list_t *head, const char *filename,
 	const char	*error;
 
 	while (head) {
-		if (strcmp(head->filename, filename) == 0)
+		if (strcmp(head->name, module_name) == 0)
 			return head;
 		head = head->next;
 	}
@@ -205,18 +204,18 @@ static module_list_t *find_module(module_list_t *head, const char *filename,
 	 * pam_foo.so.  Without RTLD_GLOBAL, the functions in libpam.so
 	 * won't get exported to pam_foo.so.
 	 */
-	handle = lt_dlopenext(filename);
+	handle = lt_dlopenext(module_name);
 	if (handle == NULL) {
-		fprintf(stderr, "%s[%d] Failed to link to module '%s':"
-			" %s\n", cffilename, cflineno, filename, lt_dlerror());
+		radlog(L_ERR|L_CONS, "%s[%d] Failed to link to module '%s':"
+		       " %s\n", cffilename, cflineno, module_name, lt_dlerror());
 		return NULL;
 	}
 
 	/* make room for the module type */
 	new = (module_list_t *) malloc(sizeof(module_list_t));
 	if (new == NULL) {
-		fprintf(stderr, "%s[%d] Failed to allocate memory.\n",
-			cffilename, cflineno);
+		radlog(L_ERR|L_CONS, "%s[%d] Failed to allocate memory.\n",
+		       cffilename, cflineno);
 		lt_dlclose(handle);	/* ignore any errors */
 		return NULL;
 	}
@@ -224,20 +223,23 @@ static module_list_t *find_module(module_list_t *head, const char *filename,
 	/* fill in the module structure */
 	new->next = NULL;
 	new->handle = handle;
-	strNcpy(new->filename, filename, sizeof(new->filename));
-
+	strNcpy(new->name, module_name, sizeof(new->name));
+	
+	/*
+	 *	Link to the module's rlm_FOO{} module structure.
+	 */
 	new->module = (module_t *) lt_dlsym(new->handle, module_name);
 	error = lt_dlerror();
 	if (!new->module) {
-		fprintf(stderr, "%s[%d] Failed linking to "
-				"%s structure in %s: %s\n",
-				cffilename, cflineno,
-				module_name, cffilename, error);
+		radlog(L_ERR|L_CONS, "%s[%d] Failed linking to "
+		       "%s structure in %s: %s\n",
+		       cffilename, cflineno,
+		       module_name, cffilename, error);
 		lt_dlclose(new->handle);	/* ignore any errors */
 		free(new);
 		return NULL;
 	}
-
+	
 	/* If there's an authentication method, add a new Auth-Type */
 	if (new->module->authenticate)
 		new->default_auth_type =
@@ -246,9 +248,9 @@ static module_list_t *find_module(module_list_t *head, const char *filename,
 	/* call the modules initialization */
 	if (new->module->init &&
 	    (new->module->init)() < 0) {
-		fprintf(stderr,
-		   "%s[%d] Module initialization failed.\n",
-			cffilename, cflineno);
+		radlog(L_ERR|L_CONS,
+		       "%s[%d] Module initialization failed.\n",
+		       cffilename, cflineno);
 		lt_dlclose(new->handle);	/* ignore any errors */
 		free(new);
 		return NULL;
@@ -261,32 +263,38 @@ static module_list_t *find_module(module_list_t *head, const char *filename,
 	return new;
 }
 
+/*
+ *	Find a module instance.
+ */
 static module_instance_t *find_module_instance(module_instance_t *head,
 					       const char *instname)
 {
 	CONF_SECTION *cs, *inst_cs;
 	const char *name1, *name2;
 	module_instance_t *new;
-	char library[256];
 	char module_name[256];
 
+	/*
+	 *	Look for a pre-existing module instance.
+	 *	If found, return that.
+	 */
 	while (head) {
 		if (strcmp(head->name, instname) == 0)
 			return head;
 		head = head->next;
 	}
 
-	/* Instance doesn't exist yet. Try to find the corresponding config
-	 * section and create it. */
+	/*
+	 *	Instance doesn't exist yet. Try to find the
+	 *	corresponding configuration section and create it.
+	 */
 
-	new = malloc(sizeof *new);
-	if (!new) {
-		fprintf(stderr, "Out of memory\n");
-		exit(1);
-	}
-
+	/*
+	 *	Look for the 'modules' configuration section.
+	 */
 	cs = cf_section_find("modules");
 	if (!cs) {
+		radlog(L_ERR|L_CONS, "ERROR: Cannot find a 'modules' section in the configuration file.\n");
 		return NULL;
 	}
 
@@ -303,35 +311,61 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 		     (!name2 && !strcmp(name1, instname)) )
 			break;
 	}
-	if (!inst_cs)
+	if (!inst_cs) {
+		radlog(L_ERR|L_CONS, "ERROR: Cannot find a configuration entry for module \"%s\".\n", instname);
 		return NULL;
+	}
 
-	snprintf(library, sizeof library, "rlm_%s.so", name1);
-	snprintf(module_name, sizeof module_name, "rlm_%s", name1);
-	new->entry = find_module(module_list, library, module_name,
-				 "radiusd.conf", cf_section_lineno(inst_cs));
+	/*
+	 *	Found the configuration entry.
+	 */
+	new = malloc(sizeof(*new));
+	if (!new) {
+		radlog(L_ERR|L_CONS, "Out of memory\n");
+		exit(1);
+	}
+	
+	/*
+	 *	Link to the module by name: rlm_FOO
+	 */
+	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
+	new->entry = linkto_module(module_list, module_name,
+				   "radiusd.conf", cf_section_lineno(inst_cs));
 	if(!new->entry) {
 		free(new);
+		/* linkto_module logs any errors */
 		return NULL;
 	}
-
+	
+	/*
+	 *	Nothing to instantiate, so no instantiation handle.
+	 */
 	if(!new->entry->module->instantiate) {
-		new->insthandle = 0;
+		new->insthandle = NULL;
+
+
+		/*
+		 *	Else call the module's instantiation routine.
+		 */
 	} else if((new->entry->module->instantiate)(inst_cs,
 						    &new->insthandle) < 0) {
-		fprintf(stderr,
-			"radiusd.conf[%d]: %s: Module instantiation failed.\n",
-			cf_section_lineno(inst_cs), instname);
+		radlog(L_ERR|L_CONS,
+		       "radiusd.conf[%d]: %s: Module instantiation failed.\n",
+		       cf_section_lineno(inst_cs), instname);
 		free(new);
 		return NULL;
 	}
-
+	
+	/*
+	 *	We're done.  Fill in the rest of the data structure,
+	 *	and link it to the module instance list.
+	 */
 	strNcpy(new->name, instname, sizeof(new->name));
 	new->next = module_instance_list;
 	module_instance_list = new;
 
 	DEBUG("Module: Instantiated %s (%s) ", name1, new->name);
-
+	
 	return new;
 }
 
@@ -350,7 +384,7 @@ static void add_to_list(config_module_t **head, module_instance_t *instance)
 
 	node = (config_module_t *) malloc(sizeof(config_module_t));
 	if (!node) {
-		fprintf(stderr, "Out of memory\n");
+		radlog(L_ERR|L_CONS, "Out of memory\n");
 		exit(1);
 	}
 
@@ -375,9 +409,9 @@ static indexed_config_module_t *new_sublist(indexed_config_module_t **head,
 		node = node->next;
 	}
 
-	node = malloc(sizeof *node);
+	node = malloc(sizeof(*node));
 	if (!node) {
-		fprintf(stderr, "Out of memory\n");
+		radlog(L_ERR|L_CONS, "Out of memory\n");
 		exit(1);
 	}
 
@@ -442,7 +476,8 @@ static void load_authtype_subsection(CONF_SECTION *cs, const char *filename)
 
 		this = find_module_instance(module_instance_list, modrefname);
 		if (this == NULL) {
-			exit(1); /* FIXME */
+			/* find_module_instance logs any errors */
+			exit(1);
 		}
 
 		if (!this->entry->module->authenticate) {
@@ -450,11 +485,10 @@ static void load_authtype_subsection(CONF_SECTION *cs, const char *filename)
 				"%s[%d] Module %s does not contain "
 				"an 'authenticate' entry\n",
 				filename, modreflineno,
-				this->entry->module->name);
+			       this->entry->module->name);
 			exit(1);
 		}
 		add_to_list(&auth_type_config->modulelist, this);
-
 	}
 }
 
@@ -468,7 +502,7 @@ static void load_indexed_module_section(CONF_SECTION *cs, int comp, const char *
 
 	/* This function does not yet need or want to handle anything but
 	 * authtypes. */
-	assert(comp==RLM_COMPONENT_AUTH);
+	assert(comp == RLM_COMPONENT_AUTH);
 
 	for(modref=cf_item_find_next(cs, NULL)
 	    ; modref ;
@@ -492,23 +526,25 @@ static void load_indexed_module_section(CONF_SECTION *cs, int comp, const char *
 
 		this = find_module_instance(module_instance_list, modrefname);
 		if (this == NULL) {
-			exit(1); /* FIXME */
+			/* find_module_instance logs any errors */
+			exit(1);
 		}
 
 		if (!this->entry->module->authenticate) {
 			radlog(L_ERR|L_CONS,
-				"%s[%d] Module %s does not contain "
-				"an 'authenticate' entry\n",
-				filename, modreflineno,
-				this->entry->module->name);
+			       "%s[%d] Module %s does not contain "
+			       "an 'authenticate' entry\n",
+			       filename, modreflineno,
+			       this->entry->module->name);
 			exit(1);
 		}
 		auth_type_config = new_sublist(&authenticate,
 					       this->entry->default_auth_type);
 		if (!auth_type_config) {
 			radlog(L_ERR|L_CONS,
-			    "%s[%d] authtype %s already configured - skipping",
-			    filename, modreflineno, this->entry->module->name);
+			       "%s[%d] authtype %s already configured - skipping",
+			       filename, modreflineno,
+			       this->entry->module->name);
 			continue;
 		}
 		add_to_list(&auth_type_config->modulelist, this);
@@ -525,7 +561,7 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 
 	/* Authentication is special - it is not an ordered list but an
 	 * associative array keyed on auth-type */
-	if (comp==RLM_COMPONENT_AUTH) {
+	if (comp == RLM_COMPONENT_AUTH) {
 		load_indexed_module_section(cs, comp, filename);
 		return;
 	}
@@ -548,7 +584,8 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 
 		this = find_module_instance(module_instance_list, modrefname);
 		if (this == NULL) {
-			exit(1); /* FIXME */
+			/* find_module_instance logs any errors */
+			exit(1);
 		}
 
 		switch (comp) {
@@ -631,7 +668,7 @@ int setup_modules(void)
 	 */
 	if (!module_list) {
 		if (lt_dlinit() != 0) {
-			fprintf(stderr, "Failed to initialize libraries: %s\n",
+			radlog(L_ERR|L_CONS, "Failed to initialize libraries: %s\n",
 				lt_dlerror());
 			exit(1); /* FIXME */
 			
@@ -659,7 +696,7 @@ int setup_modules(void)
 		module_list_free();
 	}
 
-	for (comp=0; comp<RLM_COMPONENT_COUNT; ++comp) {
+	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		switch(comp) {
 		case RLM_COMPONENT_AUTH: control="authenticate"; break;
 		case RLM_COMPONENT_AUTZ: control="authorize"; break;
