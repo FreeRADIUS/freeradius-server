@@ -267,6 +267,7 @@ int		paircompare_register(int attr, int otherattr,
 void		paircompare_unregister(int attr, RAD_COMPARE_FUNC func);
 int		paircmp(VALUE_PAIR *request, VALUE_PAIR *check,
 			VALUE_PAIR **reply);
+int             simplepaircmp(VALUE_PAIR *, VALUE_PAIR *);
 void		pair_builtincompare_init(void);
 
 /* xlat.c */

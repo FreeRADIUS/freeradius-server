@@ -301,6 +301,17 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 	return result;
 }
 
+/*
+ *      Compare two attributes simply.  Calls paircompare.
+ */
+
+int simplepaircmp(VALUE_PAIR *first, VALUE_PAIR *second)
+{
+
+    return paircompare( first, second, NULL, NULL );
+
+}
+
 
 /*
  *	Compare a Connect-Info and a Connect-Rate
