@@ -4,9 +4,11 @@
 #
 
 SHELL=/bin/bash
+DH_VERBOSE=1
 
 package = freeradius
-tmp     = $(shell pwd)/debian/tmp
+debiandir = $(shell pwd)/debian
+tmp     = $(debiandir)/tmp
 
 prefix	= /
 exec_prefix	= /usr
@@ -20,7 +22,7 @@ build:
 # Builds the binary package.
 	dh_testdir
 	# dh_testroot
-	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies
+	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies --without-rlm_krm5
 	make
 	touch build
 
@@ -35,6 +37,11 @@ binary-arch: build
 	# clean up install cruft.  $$&@!%
 	rmdir $(tmp)/$(execprefix)/include
 	rm $(tmp)/$(execprefix)/usr/sbin/rc.radiusd
+	# split out inconvenient/controversal modules to other places
+	for modname in ldap mysql postgresql; do \
+		mkdir -p $(debiandir)/radiusd-freeradius-$$modname/$(libdir); \
+		mv $(tmp)/$(libdir)/rlm*_$${modname}.* $(debiandir)/radiusd-freeradius-$$modname/$(libdir)/; \
+	done
 	# man pages & docs
 	dh_undocumented 
 	install -g root -m 644 CREDITS $(tmp)/$(pkgdocdir)/credits
@@ -50,7 +57,6 @@ binary-arch: build
 	cat $$TEMPFILE \
 		| sed -e 's/        /	/g' \
 		| sed -e '/^	example {/,/^	}/s/^/#/' \
-		| sed -e '/^	always .*{/,/^	}/s/^/#/' \
 		| sed -e 's/^		#	shadow		=/		shadow		=/' \
 		| sed -e 's/^group = nobody/group = freerad/' \
 		| sed -e 's/^user = nobody/user = freerad/' \
@@ -58,12 +64,12 @@ binary-arch: build
 	rm $$TEMPFILE
 	# 
 	dh_strip
-	dh_installdeb
 	dh_installchangelogs
-	dh_compress
-	dh_fixperms
 	dh_makeshlibs
 	dh_shlibdeps
+	dh_installdeb
+	dh_compress
+	dh_fixperms
 	dh_md5sums
 	dh_gencontrol
 	dh_builddeb
@@ -72,7 +78,7 @@ clean:
 	rm -f build debian/{files,substvars} debian/*.debhelper
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
-	rm -rf $(tmp)
+	rm -rf $(tmp) radiusd-freeradius-{ldap,postgresql,mysql}{,.substvars}
 
 binary: binary-indep binary-arch
 

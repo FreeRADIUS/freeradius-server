@@ -1,5 +1,5 @@
 Source: radiusd-freeradius
-Build-Depends: debhelper, libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbmg1-dev, libldap2-dev, libsasl-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, comerr-dev
+Build-Depends: debhelper, libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbmg1-dev, libldap2-dev, libsasl-dev, libsnmp4.2-dev, libiodbc2-dev
 Section: net
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
@@ -15,7 +15,23 @@ Description: A high-performance and highly configurable RADIUS server
  generally similar to Livingston's 2.0 server, with support for...
   - many vendor-specific attributes
   - proxying and replicating requests by any criteria
-  - authentication on system passwd, SQL, LDAP, users, kerberos, or PAM
+  - authentication on system passwd, SQL, LDAP, users file, or PAM
   - multiple DEFAULT configurations
   - regexp matching in string attributes
  and lots more.
+
+Package: radiusd-freeradius-ldap
+Architecture: any
+Depends: radiusd-freeradius, ${shlibs:Depends}
+Description: LDAP module for FreeRADIUS server.
+
+Package: radiusd-freeradius-postgresql
+Architecture: any
+Depends: radiusd-freeradius, ${shlibs:Depends}
+Description: PostgreSQL module for FreeRADIUS server.
+
+Package: radiusd-freeradius-mysql
+Architecture: any
+Depends: radiusd-freeradius, ${shlibs:Depends}
+Description: MySQL module for FreeRADIUS server.
+
