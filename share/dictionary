@@ -42,6 +42,8 @@ $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.cisco
 $INCLUDE dictionary.cisco.vpn3000
+$INCLUDE dictionary.cisco.vpn5000
+$INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.quintum

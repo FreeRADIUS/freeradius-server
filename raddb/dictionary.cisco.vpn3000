@@ -5,9 +5,9 @@
 #
 #	$Id$
 #
-VENDOR		Cisco-VPN	3076
+VENDOR		Cisco-VPN3000	3076
 
-BEGIN-VENDOR Cisco-VPN
+BEGIN-VENDOR Cisco-VPN3000
 ATTRIBUTE	CVPN3000-Access-Hours			1	string
 ATTRIBUTE	CVPN3000-Simultaneous-Logins		2	integer
 ATTRIBUTE	CVPN3000-Primary-DNS			3	ipaddr
@@ -28,4 +28,4 @@ ATTRIBUTE	CVPN3000-IPSec-Mode-Config		17	integer
 ATTRIBUTE	CVPN3000-IPSec-User-Group-Lock		18	integer
 ATTRIBUTE	CVPN3000-IPSec-Through-NAT		19	integer
 ATTRIBUTE	CVPN3000-IPSec-Through-NAT-Port		20	integer
-END-VENDOR	Cisco-VPN
+END-VENDOR	Cisco-VPN3000
