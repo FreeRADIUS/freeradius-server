@@ -475,15 +475,17 @@ int rad_authenticate(REQUEST *request)
 	 */
 	r = module_authorize(request);
 	if (r != RLM_MODULE_NOTFOUND &&
-			r != RLM_MODULE_NOOP &&
-			r != RLM_MODULE_OK &&
-			r != RLM_MODULE_UPDATED) {
+	    r != RLM_MODULE_NOOP &&
+	    r != RLM_MODULE_OK &&
+	    r != RLM_MODULE_UPDATED) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
 			rad_authlog("Invalid user", request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
-		pairfree(&request->reply->vps);
-		request->reply->vps = NULL;
+		/*
+		 *	Hope that the module returning REJECT is smart
+		 *	enough to do pairfre(&request->reply->vps)...
+		 */
 		return r;
 	}
 
