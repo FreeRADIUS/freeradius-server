@@ -52,6 +52,8 @@ $tot_in = $tot_rem = 0;
 if ($link){
 	$h = 21;
 	$servers_num = 0;
+	if ($config[general_ld_library_path] != '')
+		putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
 	foreach($nas_list as $nas){
 		$num = 0;
 
@@ -69,14 +71,12 @@ if ($link){
 		$community_data = $nas[community];
 		$server_name[$servers_num] = $nas[name];
 		$server_model[$servers_num] = $nas[model];
-		if ($config[general_ld_library_path] != '')
-			putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
 		$extra = "";
-		if ($config[$finger_type] != 'database' && $config[general_finger_type] == 'snmp'){
-			if ($config[$nas_type] == '')
-				$nas_type = $config[general_nas_type];
-			else
-				$nas_type = $nas[type];
+		$finger_type = $config[general_finger_type];
+		if ($nas[finger_type] != '')
+			$finger_type = $nas[finger_type];
+		if ($finger_type == 'snmp'){
+			$nas_type = ($nas[type] != '') ? $nas[type] : $config[general_nas_type];
 			if ($nas_type == '')
 				$nas_type = 'cisco';
 
