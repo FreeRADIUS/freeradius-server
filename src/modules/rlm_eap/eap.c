@@ -59,7 +59,7 @@ static const char *eap_types[] = {
   "",   
   "identity",
   "notification",
-  "nak",
+  "nak",			/* NAK */
   "md5",
   "otp",
   "gtc",
@@ -73,7 +73,15 @@ static const char *eap_types[] = {
   "14",
   "15",
   "16",
-  "leap"			/* 17 */
+  "leap",			/* 17 */
+  "18",
+  "19",
+  "20",
+  "ttls",			/* 21 */
+  "22",
+  "23",
+  "24",
+  "peap"			/* 25 */
 };
 
 /*
@@ -241,11 +249,13 @@ int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
 	eaptype = &handler->eap_ds->response->type;
 	switch(eaptype->type) {
 	case PW_EAP_IDENTITY:
+		DEBUG2("  rlm_eap: EAP Identity");
 		if (eaptype_call(type, INITIATE, type_list, handler) == 0)
 			return EAP_INVALID;
 			break;
 
 	case PW_EAP_NAK:
+		DEBUG2("  rlm_eap: EAP NAK");
 		/*
 		 * It is invalid to request identity, notification & nak in nak
 		 */
@@ -253,9 +263,15 @@ int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
 			(eaptype->data[0] < PW_EAP_MD5)) {
 			return EAP_INVALID;
 		}
+
+		/*
+		 *	The one byte of NAK data is the preferred EAP type
+		 *	of the client.
+		 */
 		switch (eaptype->data[0]) {
 		case PW_EAP_MD5:
 		case PW_EAP_TLS:
+		case PW_EAP_LEAP:
 			/*
 			 * eap-type specified in typdata is supported
 			 */
@@ -264,6 +280,8 @@ int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
 				return EAP_INVALID;
 			break;
 		default :
+			DEBUG2("  rlm_eap: Unknown EAP type %d, reverting to default_eap_type",
+			       eaptype->data[0]);
 			/*
 			 * Unsupported type, default to configured one.
 			 * or rather reject it
@@ -612,11 +630,13 @@ int eap_start(REQUEST *request)
 	 *	to match this EAP-Message to an ongoing conversation.
 	 */
 	if (eap_msg->length != EAP_START) {
+		DEBUG2("  rlm_eap: EAP Start not found");
 		return EAP_NOTFOUND;
 	}
 
 	DEBUG2("  rlm_eap: Got EAP_START message");
 	if ((eapstart = eap_ds_alloc()) == NULL) {
+		DEBUG2("  rlm_eap: EAP Start failed in allocation");
 		return EAP_FAIL;
 	}
 
