@@ -4,7 +4,30 @@ RLM Module Interface (for developers)
 
 Section 1 - overview
 
-Section 1.1 Intent of the modules.
+Section 1.1 Intent of the server.
+
+FreeRADIUS is an authentication server.  It does RADIUS authorization,
+authentication, and accounting.  It does NOT do database management,
+user configuration updates, or email.  All of those functions may be
+more easily (and correctly) performed in programs outside of the
+server.
+
+The only functionality performed by the server is:
+
+	- receive a RADIUS request
+	- process the request
+		- look up information one or more databases
+		- store information in one or more databases
+		  (proxying can be viewed this way)
+	- respond to the request
+
+There is no room, or need, for timers, listening on sockets, or
+anything else in the server.  Adding those functions to the server
+means that it will become more complex, more unstable, more insecure,
+and more difficult to maintain.
+
+
+Section 1.2 Intent of the modules.
 
 The intent of modules is that they do small, simple, well-defined
 things when RADIUS packets are received.  If the module does things
@@ -13,17 +36,19 @@ the server.  Similarly, the module infrastructure is NOT intended to
 allow servers, applications, timed events, or anything other than
 handling incoming RADIUS packets.
 
-Allowing modules to do many things means that the server becomes
-more unreliable, more difficult to maintain, and much more likely to
-be vulnerable to security problems.
-
-So the modules do something when RADIUS packets are received.  Modules
+Modules perform an action when RADIUS packets are received.  Modules
 which do more (creating threads, forking programs) will NOT be added
 to the server, and the server core will NOT be modified to enable
 these kinds of modules.  Those functions more properly belong in a
 seperate application.
 
-Section 1.2 Module outline
+Modules ARE permitted to open sockets to other network programs, and
+to send and receive data on those sockets.  Modules are NOT permitted
+to open sockets, and to listen for requests.  Only the server core has
+that functionality, and it only listens for RADIUS requests.
+
+
+Section 1.3 Module outline
 
 The fundamental concepts of the rlm interface are module, instance, and
 component.
