@@ -109,7 +109,9 @@ EOM;
 	</tr>
 EOM;
 	}
-	echo <<<EOM
+	if ($config[general_lib_type] == 'ldap' ||
+	($config[general_lib_type] == 'sql' && $config[sql_use_user_info_table] == 'true')){
+		echo <<<EOM
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Name (First Name Surname)
@@ -153,6 +155,7 @@ EOM;
 		</td>
 	</tr>
 EOM;
+	}
 	foreach($show_attrs as $key => $desc){
 		$name = $attrmap["$key"];
 		if ($name == 'none')
