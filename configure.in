@@ -417,7 +417,11 @@ AC_CHECK_HEADERS( \
 	netinet/in.h \
 	sys/types.h \
 	sys/socket.h \
-	sys/time.h
+	sys/time.h \
+	sys/security.h \
+	prot.h \
+	sia.h \
+	siad.h
 )
 
 REGEX=no
@@ -434,6 +438,19 @@ if test "x$ac_cv_header_regex_h" = "xyes"; then
 fi
 AC_SUBST(REGEX)
 AC_SUBST(REGEX_EXTENDED)
+
+dnl #
+dnl #  other checks which require headers
+dnl #
+if test "x$ac_cv_header_sys_security_h" = "xyes" && test "x$ac_cv_header_prot_h" = "xyes"
+then
+  AC_DEFINE(OSFC2)
+fi
+
+if test "x$ac_cv_header_sia_h" = "xyes" && test "x$ac_cv_header_siad_h" = "xyes"
+then
+  AC_DEFINE(OSFSIA)
+fi
 
 
 dnl #############################################################

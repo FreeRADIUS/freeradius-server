@@ -48,6 +48,11 @@ static const char rcsid[] = "$Id$";
 #  include	<prot.h>
 #endif
 
+#ifdef OSFSIA
+#  include	<sia.h>
+#  include	<siad.h>
+#endif
+
 #include	"radiusd.h"
 #include	"modules.h"
 #include	"sysutmp.h"
@@ -266,6 +271,11 @@ static int unix_authenticate(void *instance, REQUEST *request)
 #ifdef OSFC2
 	struct pr_passwd *pr_pw;
 #endif
+#ifdef OSFSIA
+	char		*info[2];
+	char		*progname = "radius";
+	SIAENTITY	*ent = NULL;
+#endif
 #ifdef HAVE_GETUSERSHELL
 	char		*shell;
 #endif
@@ -304,6 +314,24 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	    (ret = H_unix_pass(inst->cache, name, passwd, &request->reply->vps)) != -2)
 		return (ret == 0) ? RLM_MODULE_OK : RLM_MODULE_REJECT;
 
+#ifdef OSFSIA
+	info[0] = progname;
+	info[1] = NULL;
+	if (sia_ses_init (&ent, 1, info, NULL, name, NULL, 0, NULL) !=
+	    SIASUCCESS)
+		return RLM_MODULE_NOTFOUND;
+	if ((ret = sia_ses_authent (NULL, passwd, ent)) != SIASUCCESS) {
+		if (ret & SIASTOP)
+			sia_ses_release (&ent);
+		return RLM_MODULE_NOTFOUND;
+	}
+	if (sia_ses_estab (NULL, ent) == SIASUCCESS) {
+		sia_ses_release (&ent);
+		return RLM_MODULE_OK;
+	}
+
+	return RLM_MODULE_NOTFOUND;
+#else /* OSFSIA */
 #ifdef OSFC2
 	if ((pr_pw = getprpwnam(name)) == NULL)
 		return RLM_MODULE_NOTFOUND;
@@ -403,6 +431,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_REJECT;
 
 	return RLM_MODULE_OK;
+#endif /* OSFSIA */
 #undef inst
 }
 

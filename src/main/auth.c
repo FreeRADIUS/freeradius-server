@@ -35,11 +35,6 @@ static const char rcsid[] = "$Id$";
 #	include <crypt.h>
 #endif
 
-#ifdef OSFC2
-#	include <sys/security.h>
-#	include <prot.h>
-#endif
-
 #if HAVE_NETINET_IN_H
 #	include <netinet/in.h>
 #endif
