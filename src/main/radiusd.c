@@ -889,6 +889,7 @@ int main(int argc, char *argv[])
 
 			case 's':	/* Single process mode */
 				spawn_flag = FALSE;
+				dont_fork = TRUE
 				break;
 
 			case 'v':
@@ -1128,7 +1129,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Disconnect from session
 	 */
-	if (debug_flag == 0 && dont_fork == 0) {
+	if (debug_flag == 0 && dont_fork == FALSE) {
 		pid = fork();
 		if(pid < 0) {
 			radlog(L_ERR|L_CONS, "Couldn't fork");
