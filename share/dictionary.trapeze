@@ -13,5 +13,5 @@ VENDOR		Trapeze		14525
 
 ATTRIBUTE	Trapeze-VLAN-Name		1	string	Trapeze
 ATTRIBUTE	Trapeze-Mobility-Profile	2	string	Trapeze
-ATTRIBUTE	Trapeze-Encryption-Type		3	integer	Trapeze
+ATTRIBUTE	Trapeze-Encryption-Type		3	string	Trapeze
 ATTRIBUTE	Trapeze-Time-Of-Day		4	string	Trapeze
