@@ -137,8 +137,9 @@ clean:
 	@rm -f config.cache config.log config.status
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
 
-distclean:
+distclean: clean
 	@rm -f config.h config.mak
+	@test -f Makefile.in && rm -f Makefile
 
 #
 #  Do any module-specific installation.
