@@ -3,6 +3,13 @@ It is written in PHP4 (although the files have an extension of php3 for historic
 It is modular and right now it assumes that user information is stored in an ldap server
 or an sql database and accounting in an sql server.
 
+INSTALLATION:
+
+Put dialup_admin in /usr/local/dialupadmin
+Create a link from your htdocs directory to /usr/local/dialupadmin/htdocs
+Edit /usr/local/dialupadmin/conf/* files to match your needs
+
+
 There are also a few more things included:
 
 * sql/badusers.sql: It will create a table named badusers which can be used to hold the

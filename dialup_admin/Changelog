@@ -14,6 +14,7 @@ Ver 1.63:
 * Add a per nas finger_type directive
 * Update the TODO file
 * Add an entry in the FAQ about adding .php3 handling
+* Add a few installation notes
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
