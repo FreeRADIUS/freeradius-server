@@ -10,20 +10,18 @@
 
 static const char rcsid[] = "$Id$";
 
+
 /*
- *  Examine a request for a username with an @suffix, and if it
- *  corresponds to something in the realms file, set that realm as
- *  Proxy-To.
+ *	Internal function to cut down on duplicated code.
  *
- *  This should very nearly duplicate the old proxy_send() code
+ *	Returns NULL on don't proxy, realm otherwise.
  */
-static int realm_authorize(REQUEST *request,
-			   VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+static REALM *realm_proxy(REQUEST *request)
 {
+	const char *name = request->username->strvalue;
 	char *realmname;
 	VALUE_PAIR *vp;
 	REALM *realm;
-	const char *name = request->username->strvalue;
 
 	/*
 	 *	If the request has a proxy entry, then it's a proxy
@@ -33,114 +31,7 @@ static int realm_authorize(REQUEST *request,
 	 *	again.
 	 */
 	if (request->proxy != NULL) {
-		return RLM_AUTZ_NOTFOUND;
-	}
-	
-	reply_pairs = reply_pairs; /* -Wunused */
-	
-	/*
-	 *	Find realms from the END, so that 'joe@realm1@realm2'
-	 *	can work.
-	 */
-	realmname = strrchr(name, '@');
-	if (realmname != NULL)
-		realmname++;
-
-	realm = realm_find(realmname);
-	if (realm == NULL)
-	  return RLM_AUTZ_NOTFOUND;
-	
-	if (realm->notsuffix)
-	  return RLM_AUTZ_NOTFOUND;
-	
-	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
-	       name, realm->realm);
-
-	/*
-	 *	Create the Stripped-User-Name attribute, if it doesn't exist.
-	 *
-	 *	This code is copied from rlm_preprocess.
-	 */
-	vp = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
-	if (!vp) {
-		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
-		if (!vp) {
-			log(L_ERR|L_CONS, "no memory");
-			exit(1);
-		}
-		strcpy(vp->strvalue, name);
-		vp->length = strlen(vp->strvalue);
-		pairadd(&request->packet->vps, vp);
-		request->username = vp;
-	}
-
-	/*
-	 *	Let's strip the Stripped-User-Name attribute.
-	 */
-	realmname = strrchr(vp->strvalue, '@');
-	*realmname = '\0';
-	vp->length = strlen(vp->strvalue);
-
-	/*
-	 *	Add a 'realm' attribute to the incoming request.
-	 */
-	vp = pairmake("Realm", realm->realm, T_OP_EQ);
-	if (!vp) {
-		log(L_ERR|L_CONS, "no memory");
-		exit(1);
-	}
-	pairadd(&request->packet->vps, vp);
-	
-	/*
-	 *	The special server LOCAL?
-	 *
-	 *	Do nothing.  Just return, without telling the server
-	 *	to proxy anything.
-	 */
-	if (strcmp(realm->server, "LOCAL") == 0) {
-		return RLM_AUTZ_NOTFOUND;
-	}
-
-	/*
-	 *  'realmname' may be NULL, while realm->realm isn't.
-	 */
-	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
-	if (!vp) {
-	  log(L_ERR|L_CONS, "no memory");
-	  exit(1);
-	}
-	
-	/*
-	 *  Add it, even if it's already present.
-	 */
-	pairadd(check_pairs, vp);
-	
-	return RLM_AUTZ_NOTFOUND; /* try the next module */
-}
-
-/*
- * This does the exact same thing as the realm_authorize, it's just called
- * differently.
- */
-static int realm_preacct(REQUEST *request)
-{
-	const char *name = request->username->strvalue;
-	char *realmname;
-	VALUE_PAIR *vp;
-	REALM *realm;
-	
-	if (!name)
-	  return RLM_PRAC_OK;
-	
-	/*
-	 *	If the request has a proxy entry, then it's a proxy
-	 *	reply, and we're walking through the module list again.
-	 *
-	 *	In that case, don't bother trying to proxy the request
-	 *	again.
-	 */
-	if (request->proxy != NULL) {
-		return RLM_PRAC_OK;
+		return NULL;
 	}
 
 	realmname = strrchr(name, '@');
@@ -149,7 +40,7 @@ static int realm_preacct(REQUEST *request)
 	
 	realm = realm_find(realmname);
 	if (realm == NULL)
-	  return RLM_PRAC_OK;
+	  return NULL;
 
 	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
 	       name, realm->realm);
@@ -192,15 +83,105 @@ static int realm_preacct(REQUEST *request)
 	/*
 	 *	The special server LOCAL?
 	 *
-	 *	Do nothing.  Just return, without telling the server
-	 *	to proxy anything.
+	 *	Do nothing.  Just return, as we're not proxying to
+	 *	any realm.
 	 */
 	if (strcmp(realm->server, "LOCAL") == 0) {
+		return NULL;
+	}
+
+	/*
+	 *	Perhaps accounting proxying was turned off.
+	 */
+	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+	    (realm->acct_port == 0)) {
+		/* log a warning that the packet isn't getting proxied ??? */
+		return NULL;
+	}
+
+	/*
+	 *	Perhaps authentication proxying was turned off.
+	 */
+	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	    (realm->auth_port == 0)) {
+		/* log a warning that the packet isn't getting proxied ??? */
+		return NULL;
+	}
+
+
+	return realm;
+}
+
+/*
+ *  Examine a request for a username with an @suffix, and if it
+ *  corresponds to something in the realms file, set that realm as
+ *  Proxy-To.
+ *
+ *  This should very nearly duplicate the old proxy_send() code
+ */
+static int realm_authorize(REQUEST *request,
+			   VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+{
+	VALUE_PAIR *vp;
+	REALM *realm;
+
+	reply_pairs = reply_pairs; /* -Wunused */
+	
+	/*
+	 *	Check if we've got to proxy the request.
+	 *	If not, return without adding a Proxy-To-Realm
+	 *	attribute.
+	 */
+	realm = realm_proxy(request);
+	if (!realm) {
+		return RLM_AUTZ_NOTFOUND;
+	}
+
+	/*
+	 *	Tell the server to proxy this request to another
+	 *	realm.
+	 */
+	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
+	if (!vp) {
+	  log(L_ERR|L_CONS, "no memory");
+	  exit(1);
+	}
+	
+	/*
+	 *  Add it, even if it's already present.
+	 */
+	pairadd(check_pairs, vp);
+	
+	return RLM_AUTZ_NOTFOUND; /* try the next module */
+}
+
+/*
+ * This does the exact same thing as the realm_authorize, it's just called
+ * differently.
+ */
+static int realm_preacct(REQUEST *request)
+{
+	const char *name = request->username->strvalue;
+	VALUE_PAIR *vp;
+	REALM *realm;
+	
+	if (!name)
+	  return RLM_PRAC_OK;
+	
+
+	/*
+	 *	Check if we've got to proxy the request.
+	 *	If not, return without adding a Proxy-To-Realm
+	 *	attribute.
+	 */
+	realm = realm_proxy(request);
+	if (!realm) {
 		return RLM_PRAC_OK;
 	}
 
 	/*
-	 *  'realmname' may be NULL, while realm->realm isn't.
+	 *	Tell the server to proxy this request to another
+	 *	realm.
 	 */
 	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
 	if (!vp) {

@@ -217,24 +217,6 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
-	 *	Perhaps accounting proxying was turned off.
-	 */
-	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-	    (realm->acct_port == 0)) {
-		/* log a warning that the packet isn't getting proxied ??? */
-		return 0;
-	}
-
-	/*
-	 *	Perhaps authentication proxying was turned off.
-	 */
-	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-	    (realm->auth_port == 0)) {
-		/* log a warning that the packet isn't getting proxied ??? */
-		return 0;
-	}
-
-	/*
 	 *	Copy the request, then look up
 	 *	name and plain-text password in the copy.
 	 *
