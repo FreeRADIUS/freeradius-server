@@ -6,7 +6,7 @@
 
 include ../Make.inc
 
-SUBDIRS		= lib modules main include
+SUBDIRS		= include lib modules main
 WHAT_TO_MAKE	= all
 
 all:
