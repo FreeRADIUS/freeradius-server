@@ -12,32 +12,29 @@ prefix	= /
 exec_prefix	= /usr
 mandir	= $(exec_prefix)/share/man
 libdir	= $(exec_prefix)/lib/freeradius
-logdir	= /var/log/freeradius
+logdir	= /var/log/radiusd-freeradius
 pkgdocdir	= $(exec_prefix)/share/doc/radiusd-freeradius
 raddbdir	= $(prefix)/etc/raddb
 
-build: clean
+build:
 # Builds the binary package.
 	dh_testdir
 	# dh_testroot
-	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no
+	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies
 	make
 	touch build
 
 # Architecture independant files.
-binary-indep: clean
+binary-indep: build
 
 # Make a binary package (.deb file)
-binary-arch:	build
+binary-arch: build
 	dh_clean
 	dh_installdirs
 	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) libdir=$(libdir) R=$(tmp)
 	# clean up install cruft.  $$&@!%
 	rmdir $(tmp)/$(execprefix)/include
 	rm $(tmp)/$(execprefix)/usr/sbin/rc.radiusd
-	# fix install permissions
-	chmod 700 $(tmp)/$(raddbdir)
-	chmod 600 $(tmp)/$(raddbdir)/*
 	# man pages & docs
 	dh_undocumented 
 	install -g root -m 644 CREDITS $(tmp)/$(pkgdocdir)/credits
@@ -48,17 +45,17 @@ binary-arch:	build
 	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/$(prefix)/etc/cron.daily/freeradius
 	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/$(prefix)/etc/cron.monthly/freeradius
 	install -g root -m 755 scripts/rc.radiusd $(tmp)/$(prefix)/etc/init.d/freeradius
-	# fix up conf file  --  all of these should be commented on in README.Debian
-	cp $(tmp)/$(raddbdir)/radiusd.conf newconf
-	cat newconf \
+	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`
+	cp $(tmp)/$(raddbdir)/radiusd.conf $$TEMPFILE
+	cat $$TEMPFILE \
 		| sed -e 's/        /	/g' \
-		| sed -e '/^	example {/,/^	}/s/^/#deb#/' \
-		| sed -e '/^	sql .*{/,/^	}/s/^/#deb#/' \
-		| sed -e '/^	always .*{/,/^	}/s/^/#deb#/' \
+		| sed -e '/^	example {/,/^	}/s/^/#/' \
+		| sed -e '/^	always .*{/,/^	}/s/^/#/' \
 		| sed -e 's/^		#	shadow		=/		shadow		=/' \
-		| sed -e 's/^group = nobody/group = nogroup/' \
+		| sed -e 's/^group = nobody/group = freerad/' \
+		| sed -e 's/^user = nobody/user = freerad/' \
 			> $(tmp)/$(raddbdir)/radiusd.conf
-	rm newconf
+	rm $$TEMPFILE
 	# 
 	dh_strip
 	dh_installdeb
@@ -72,9 +69,9 @@ binary-arch:	build
 	dh_builddeb
 
 clean:	
-	dh_clean
-	[ -f Make.inc ] && make distclean || true
 	rm -f build debian/{files,substvars} debian/*.debhelper
+	[ -f Make.inc ] && make distclean || true
+	dh_clean
 	rm -rf $(tmp)
 
 binary: binary-indep binary-arch

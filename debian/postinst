@@ -1,24 +1,34 @@
-#! /bin/sh -e
+#! /bin/sh
+
+set -e
 
 case "$1" in
   configure)
+
+	addgroup --system freerad || true
+	adduser --system --no-create-home --home /etc/raddb --ingroup freerad --disabled-password freerad || true
+
+	# make sure there is a user and group 'freerad'
+	groups freerad |grep freerad 
+
 	update-rc.d freeradius defaults 50 >/dev/null
-	if [ ! -d /var/log/freeradius ]
-	then
-		mkdir -p /var/log/freeradius
+
+	if [ ! -d /var/log/radiusd-freeradius ]; then
+		mkdir -p /var/log/radiusd-freeradius
 	fi
-	if [ ! -f /var/log/freeradius/radius.log ]
-	then
-		touch /var/log/freeradius/radius.log
-		chmod 640 /var/log/freeradius/radius.log
-		chown nobody:adm /var/log/freeradius/radius.log
+
+	if [ ! -f /var/log/radiusd-freeradius/radius.log ]; then
+		touch /var/log/radiusd-freeradius/radius.log
 	fi
-	if [ ! -f /var/log/freeradius/radwtmp ]
-	then
-		touch /var/log/freeradius/radwtmp
-		chmod 644 /var/log/freeradius/radwtmp
-		chown nobody:adm /var/log/freeradius/radwtmp
+
+	if [ ! -f /var/log/radiusd-freeradius/radwtmp ]; then
+		touch /var/log/radiusd-freeradius/radwtmp
 	fi
+
+	find /etc/raddb -type f -exec chgrp freerad {} \; -exec chmod 660 {} \;
+	find /etc/raddb -type d -exec chgrp freerad {} \; -exec chmod 2770 {} \;
+	find /var/log/radiusd-freeradius -exec chown freerad {} \; -exec chgrp freerad {} \;
+
 	/etc/init.d/freeradius start
 	;;
   abort-upgrade)
