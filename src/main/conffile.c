@@ -26,15 +26,15 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
 #if HAVE_NETINET_IN_H
-#include	<netinet/in.h>
+#	include <netinet/in.h>
 #endif
 
 #include "radiusd.h"
@@ -122,7 +122,7 @@ CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
  *	Create a new CONF_PAIR
  */
 static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
-				int operator, CONF_SECTION *parent)
+		int operator, CONF_SECTION *parent)
 {
 	CONF_PAIR	*cp;
 
@@ -144,8 +144,10 @@ void cf_pair_free(CONF_PAIR **cp)
 {
 	if (!cp || !*cp) return;
 
-	if ((*cp)->attr)  free((*cp)->attr);
-	if ((*cp)->value) free((*cp)->value);
+	if ((*cp)->attr)
+		free((*cp)->attr);
+	if ((*cp)->value)
+		free((*cp)->value);
 
 #ifndef NDEBUG
 	memset(*cp, 0, sizeof(*cp));
@@ -159,16 +161,17 @@ void cf_pair_free(CONF_PAIR **cp)
  *	Allocate a CONF_SECTION
  */
 static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
-                                      CONF_SECTION *parent)
+		CONF_SECTION *parent)
 {
 	CONF_SECTION	*cs;
 
-	if (name1 == NULL || !name1[0]) name1 = "main";
+	if (name1 == NULL || !name1[0]) 
+		name1 = "main";
 
 	cs = (CONF_SECTION *)rad_malloc(sizeof(CONF_SECTION));
 	memset(cs, 0, sizeof(CONF_SECTION));
 	cs->item.type = CONF_ITEM_SECTION;
-        cs->item.parent = parent;
+	cs->item.parent = parent;
 	cs->name1 = xstrdup(name1);
 	cs->name2 = (name2 && *name2) ? xstrdup(name2) : NULL;
 
@@ -229,8 +232,8 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
  *	Expand the variables in an input string.
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
-				       CONF_SECTION *cs,
-				       char *output, const char *input)
+					CONF_SECTION *cs,
+					char *output, const char *input)
 {
 	char            *p;
 	const char      *end, *ptr;
@@ -244,8 +247,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		/*
 		 *	Ignore anything other than "${"
 		 */
-		if ((*ptr != '$') ||
-		    (ptr[1] != '{')) {
+		if ((*ptr != '$') || (ptr[1] != '{')) {
 			*(p++) = *(ptr++);
 			continue;
 		}
@@ -275,14 +277,14 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		 *	there and used inside the module config
 		 *	sections.
 		 */
-		for (outercs=cs->item.parent
-			     ; !cpn && outercs ;
-		     outercs=outercs->item.parent) {
+		for (outercs=cs->item.parent; 
+				(cpn == NULL) && (outercs != NULL);
+				outercs=outercs->item.parent) {
 			cpn = cf_pair_find(outercs, name);
 		}
 		if (!cpn) {
 			radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
-			       cf, *lineno, name);
+					cf, *lineno, name);
 			return NULL;
 		}
 		
@@ -352,10 +354,10 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			 *	Allow yes/no and on/off
 			 */
 			if ((strcasecmp(value, "yes") == 0) ||
-			    (strcasecmp(value, "on") == 0)) {
+					(strcasecmp(value, "on") == 0)) {
 				*(int *)variables[i].data = 1;
 			} else if ((strcasecmp(value, "no") == 0) ||
-				   (strcasecmp(value, "off") == 0)) {
+						(strcasecmp(value, "off") == 0)) {
 				*(int *)variables[i].data = 0;
 			} else {
 				*(int *)variables[i].data = 0;
@@ -363,17 +365,17 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 				return -1;
 			}
 			DEBUG2(" %s: %s = %s",
-			       cs->name1,
-			       variables[i].name,
-			       value);
+				cs->name1,
+				variables[i].name,
+				value);
 			break;
 
 		case PW_TYPE_INTEGER:
 			*(int *)variables[i].data = strtol(value, 0, 0);
 			DEBUG2(" %s: %s = %d",
-			       cs->name1,
-			       variables[i].name,
-			       *(int *)variables[i].data);
+				cs->name1,
+				variables[i].name,
+				*(int *)variables[i].data);
 			break;
 			
 		case PW_TYPE_STRING_PTR:
@@ -395,9 +397,9 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			}
 
 			DEBUG2(" %s: %s = \"%s\"",
-			       cs->name1,
-			       variables[i].name,
-			       value ? value : "(null)");
+				cs->name1,
+				variables[i].name,
+				value ? value : "(null)");
 			*q = value ? strdup(value) : NULL;
 			break;
 
@@ -415,9 +417,9 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 				return -1;
 			}
 			DEBUG2(" %s: %s = %s IP address [%s]",
-			       cs->name1,
-			       variables[i].name,
-			       value, ip_ntoa(buffer, ipaddr));
+				cs->name1,
+				variables[i].name,
+				value, ip_ntoa(buffer, ipaddr));
 			*(uint32_t *) variables[i].data = ipaddr;
 			break;
 			
@@ -435,8 +437,8 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
  *	Read a part of the config file.
  */
 static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
-				     const char *name1, const char *name2,
-                                     CONF_SECTION *parent)
+					const char *name1, const char *name2,
+					CONF_SECTION *parent)
 {
 	CONF_SECTION	*cs, *css;
 	CONF_PAIR	*cpn;
@@ -454,7 +456,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 */
 	if ((name1 != NULL) && (name1[0] == '_')) {
 		radlog(L_ERR, "%s[%d]: Illegal configuration section name",
-		    cf, *lineno);
+			cf, *lineno);
 		return NULL;
 	}
 
@@ -488,26 +490,26 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *      inside section.  -cparker
 		 */
 		if ((strcasecmp(buf1, "$INCLUDE") == 0) &&
-		    (name1 == NULL) && (name2 == NULL)) {
+			(name1 == NULL) && (name2 == NULL)) {
 
-		       CONF_SECTION      *is;
+			CONF_SECTION      *is;
 
-		       t2 = getword(&ptr, buf2, sizeof(buf2));
+			t2 = getword(&ptr, buf2, sizeof(buf2));
 
-		       value = cf_expand_variables(cf, lineno, cs, buf, buf2);
-		       if (!value) {
-			       cf_section_free(&cs);
-			       return NULL;
-		       }
+			value = cf_expand_variables(cf, lineno, cs, buf, buf2);
+			if (!value) {
+				cf_section_free(&cs);
+				return NULL;
+			}
 
-		       DEBUG2( "Config:   including file: %s", value );
-		       
-		       if ((is = conf_read(cf, *lineno, value)) == NULL) {
-			       cf_section_free(&cs);
-			       return NULL;
-		       }
-		       
-		       /*
+			DEBUG2( "Config:   including file: %s", value );
+
+			if ((is = conf_read(cf, *lineno, value)) == NULL) {
+				cf_section_free(&cs);
+				return NULL;
+			}
+
+			/*
 			*	Add the included conf to our CONF_SECTION
 			*/
 			if (is != NULL) {
@@ -518,9 +520,8 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 					cf_section_free(&is);
 				}
 			}
-		
-		       continue;
 
+			continue;
 		}
 
 		/*
@@ -540,7 +541,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		if (t1 == T_RCBRACE) {
 			if (name1 == NULL || buf2[0]) {
 				radlog(L_ERR, "%s[%d]: Unexpected end of section",
-					cf, *lineno);
+						cf, *lineno);
 				cf_section_free(&cs);
 				return NULL;
 			}
@@ -552,7 +553,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (t2 == T_LCBRACE || t3 == T_LCBRACE) {
 			css = cf_section_read(cf, lineno, fp, buf1,
-					      t2==T_LCBRACE ? NULL : buf2, cs);
+					t2==T_LCBRACE ? NULL : buf2, cs);
 			if (css == NULL) {
 				cf_section_free(&cs);
 				return NULL;
@@ -573,7 +574,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		if (buf1[0] != 0 && buf2[0] == 0 && buf3[0] == 0) {
 			t2 = T_OP_EQ;
 		} else if (buf1[0] == 0 || buf2[0] == 0 || buf3[0] == 0 ||
-			  (t2 < T_EQSTART || t2 > T_EQEND)) {
+				(t2 < T_EQSTART || t2 > T_EQEND)) {
 			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 				cf, *lineno);
 			cf_section_free(&cs);
@@ -633,10 +634,10 @@ static CONF_SECTION *conf_read(const char *fromfile, int fromline, const char *c
 	if ((fp = fopen(conffile, "r")) == NULL) {
 		if (fromfile) {
 			radlog(L_ERR|L_CONS, "%s[%d]: Unable to open file \"%s\": %s",
-			       fromfile, fromline, conffile, strerror(errno));
+				fromfile, fromline, conffile, strerror(errno));
 		} else {
 			radlog(L_ERR|L_CONS, "Unable to open file \"%s\": %s",
-			       conffile, strerror(errno));
+				conffile, strerror(errno));
 		}
 		return NULL;
 	}
@@ -715,11 +716,11 @@ int read_radius_conf_file(void)
 	 */
 	cf_section_parse(cs, directory_config);
 
-        /* Initialize the dictionary */
+	/* Initialize the dictionary */
 	DEBUG2("read_config_files:  reading dictionary");
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
-	        radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
-		    librad_errstr);
+		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
+			librad_errstr);
 		return -1;
 	}
 
@@ -727,7 +728,7 @@ int read_radius_conf_file(void)
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
 	DEBUG2("read_config_files:  reading clients");
 	if (read_clients_file(buffer) < 0) {
-	        radlog(L_ERR|L_CONS, "Errors reading clients");
+		radlog(L_ERR|L_CONS, "Errors reading clients");
 		return -1;
 	}
 
@@ -743,7 +744,7 @@ int read_radius_conf_file(void)
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_REALMS);
 	DEBUG2("read_config_files:  reading realms");
 	if (read_realms_file(buffer) < 0) {
-	        radlog(L_ERR|L_CONS, "Errors reading realms");
+		radlog(L_ERR|L_CONS, "Errors reading realms");
 		return -1;
 	}
 
@@ -759,7 +760,7 @@ int read_radius_conf_file(void)
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
 	DEBUG2("read_config_files:  reading naslist");
 	if (read_naslist_file(buffer) < 0) {
-	        radlog(L_ERR|L_CONS, "Errors reading naslist");
+		radlog(L_ERR|L_CONS, "Errors reading naslist");
 		return -1;
 	}
 
@@ -777,9 +778,8 @@ static int generate_realms(const char *filename)
 	REALM		*c;
 	char		*s, *authhost, *accthost;
 
-	for (cs = cf_subsection_find_next(config, NULL, "realm")
-	     ; cs ;
-	     cs = cf_subsection_find_next(config, cs, "realm")) {
+	for (cs = cf_subsection_find_next(config, NULL, "realm"); cs != NULL;
+			cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!cs->name2) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Missing realm name", filename, cs->item.lineno);
 			return -1;
@@ -794,8 +794,8 @@ static int generate_realms(const char *filename)
 		 */
 		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
 			radlog(L_CONS|L_ERR, 
-			    "%s[%d]: No authhost entry in realm", 
-			    filename, cs->item.lineno);
+				"%s[%d]: No authhost entry in realm", 
+				filename, cs->item.lineno);
 			return -1;
 		}
 		if ((s = strchr(authhost, ':')) != NULL) {
@@ -819,14 +819,14 @@ static int generate_realms(const char *filename)
 		 */
 		if (strlen(authhost) >= sizeof(c->server)) {
 			radlog(L_ERR, "%s[%d]: Server name of length %d is greater that allowed: %d",
-			    filename, cs->item.lineno,
-			    strlen(authhost), sizeof(c->server) - 1);
+					filename, cs->item.lineno,
+					strlen(authhost), sizeof(c->server) - 1);
 			return -1;
 		}
 		if (strlen(cs->name2) >= sizeof(c->realm)) {
 			radlog(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
-			    filename, cs->item.lineno,
-			    strlen(cs->name2), sizeof(c->server) - 1);
+					filename, cs->item.lineno,
+					strlen(cs->name2), sizeof(c->server) - 1);
 			return -1;
 		}
 		
@@ -836,15 +836,15 @@ static int generate_realms(const char *filename)
 		s = cf_section_value_find(cs, "secret");
 		if (s == NULL) {
 			radlog(L_ERR, "%s[%d]: No shared secret supplied for realm",
-			    filename, cs->item.lineno);
+					filename, cs->item.lineno);
 			return -1;
 		}
 
 		if (strlen(s) >= sizeof(c->secret)) {
-		  radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
-		      filename, cs->item.lineno,
-		      strlen(s), sizeof(c->secret) - 1);
-		  return -1;
+			radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+					filename, cs->item.lineno,
+					strlen(s), sizeof(c->secret) - 1);
+			return -1;
 		}
 		strNcpy((char *)c->secret, s, sizeof(c->secret));
 
@@ -880,9 +880,8 @@ static int generate_clients(const char *filename)
 	RADCLIENT	*c;
 	char		*hostnm, *secret, *shortnm, *netmask;
 
-	for (cs = cf_subsection_find_next(config, NULL, "client")
-	     ; cs ;
-	     cs = cf_subsection_find_next(config, cs, "client")) {
+	for (cs = cf_subsection_find_next(config, NULL, "client"); cs != NULL; 
+			cs = cf_subsection_find_next(config, cs, "client")) {
 		if (!cs->name2) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name", filename, cs->item.lineno);
 			return -1;
@@ -897,14 +896,14 @@ static int generate_clients(const char *filename)
 
 		if (strlen(secret) >= sizeof(c->secret)) {
 			radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
-			    filename, cs->item.lineno,
-			    strlen(secret), sizeof(c->secret) - 1);
+				filename, cs->item.lineno,
+				strlen(secret), sizeof(c->secret) - 1);
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(c->shortname)) {
 			radlog(L_ERR, "%s[%d]: Client short name of length %d is greater than the allowed maximum of %d.",
-			    filename, cs->item.lineno,
-			    strlen(shortnm), sizeof(c->shortname) - 1);
+					filename, cs->item.lineno,
+					strlen(shortnm), sizeof(c->shortname) - 1);
 			return -1;
 		}
 		/*
@@ -922,7 +921,7 @@ static int generate_clients(const char *filename)
 			mask_length = atoi(netmask + 1);
 			if ((mask_length <= 0) || (mask_length > 32)) {
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
-				       filename, cs->item.lineno, netmask + 1);
+						filename, cs->item.lineno, netmask + 1);
 				return -1;
 			}
 			
@@ -938,7 +937,7 @@ static int generate_clients(const char *filename)
 		c->ipaddr = ip_getaddr(hostnm);
 		if (c->ipaddr == INADDR_NONE) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
-			    filename, cs->item.lineno, hostnm);
+					filename, cs->item.lineno, hostnm);
 			return -1;
 		}
 
@@ -951,7 +950,7 @@ static int generate_clients(const char *filename)
 			strcpy(c->longname, hostnm);
 		} else {
 			ip_hostname(c->longname, sizeof(c->longname),
-				    c->ipaddr);
+					c->ipaddr);
 		}
 
 		strcpy((char *)c->secret, secret);
@@ -1103,8 +1102,8 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
  */
 
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
-				      CONF_SECTION *subsection,
-				      const char *name1)
+		CONF_SECTION *subsection,
+		const char *name1)
 {
 	CONF_ITEM	*ci;
 
@@ -1122,8 +1121,8 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 	for (; ci; ci = ci->next) {
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
-		if (name1 == NULL ||
-		    strcmp(cf_itemtosection(ci)->name1, name1) == 0)
+		if ((name1 == NULL) || 
+				(strcmp(cf_itemtosection(ci)->name1, name1) == 0))
 			break;
 	}
 
