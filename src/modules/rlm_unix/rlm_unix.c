@@ -191,14 +191,16 @@ static shadow_pwd_t *fgetspnam(const char *fname, const char *name) {
 /*
  *	The Group = handler.
  */
-static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
-	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
+		    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
+		    VALUE_PAIR **reply_pairs)
 {
 	struct passwd	*pwd;
 	struct group	*grp;
 	char		**member;
 	char		*username;
 	int		retval;
+	VALUE_PAIR	*vp;
 
 	instance = instance;
 	check_pairs = check_pairs;
@@ -212,10 +214,14 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAI
 	/*
 	 *	No user name, doesn't compare.
 	 */
-	if (!req->username) {
-		return -1;
+	vp = pairfind(request, PW_STRIPPED_USER_NAME);
+	if (!vp) {
+		vp = pairfind(request, PW_USER_NAME);
+		if (!vp) {
+			return -1;
+		}
 	}
-	username = (char *)req->username->strvalue;
+	username = (char *)vp->strvalue;
 
 	if (group_inst->cache_passwd &&
 	    (retval = H_groupcmp(group_inst->cache, check, username)) != -2)
