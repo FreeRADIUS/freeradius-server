@@ -34,6 +34,12 @@ confdir = ${raddbdir}
 run_dir = ${localstatedir}/run/radiusd
 
 #
+#  The logging messages for the server are appended to the
+#  tail of this file.
+#
+log_file = ${logdir}/radius.log
+
+#
 # libdir: Where to find the rlm_* modules.
 #
 #   This should be automatically set at configuration time.
