@@ -942,7 +942,25 @@ modules {
 
 }
 
+# Instantiation
+#
+# This section orders the loading of the modules.  Modules
+# listed here will get loaded BEFORE the later sections like
+# authorize, authenticate, etc. get examined.
+#
+# This section is not strictly needed.  When a section like
+# authorize refers to a module, it's automatically loaded and
+# initialized.  However, some modules may not be listed in any
+# of the following sections, so they can be listed here.
+#
+# Also, listing modules here ensures that you have control over
+# the order in which they are initalized.  If one module needs
+# something defined by another module, you can list them in order
+# here, and ensure that the configuration will be OK.
+#
+instantiate {
 
+}
 
 # Authorization. First preprocess (hints and huntgroups files),
 # then realms, and finally look in the "users" file.
