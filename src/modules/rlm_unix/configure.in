@@ -49,6 +49,8 @@ if test x$with_[]modname != xno; then
 		]
 	)
 
+	AC_CHECK_FUNCS(fgetpwent fgetspent fgetgrent)
+
 	targetname=modname
 else
 	targetname=

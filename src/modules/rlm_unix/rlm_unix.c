@@ -60,6 +60,7 @@ static const char rcsid[] = "$Id$";
 #include	"sysutmp.h"
 #include	"cache.h"
 #include	"conffile.h"
+#include	"compat.h"
 
 static char trans[64] =
    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -116,7 +117,6 @@ static int group_inst_explicit;
 
 #if HAVE_GETSPNAM
 #if defined(M_UNIX)
-	typedef struct passwd shadow_pwd_t;
 	static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
 		if (spwd == NULL) return NULL;
 		return (spwd->pw_name);
@@ -126,7 +126,6 @@ static int group_inst_explicit;
 		return (spwd->pw_passwd);
 	}
 #else /* M_UNIX */
-	typedef struct spwd shadow_pwd_t;
 	static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
 		if (spwd == NULL) return NULL;
 		return (spwd->sp_namp);

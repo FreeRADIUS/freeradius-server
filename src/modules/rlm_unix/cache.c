@@ -34,7 +34,7 @@ static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
 #include	"libradius.h"
-
+#include "config.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -56,7 +56,7 @@ static const char rcsid[] = "$Id$";
 
 #include "radiusd.h"
 #include "cache.h"
-#include "config.h"
+#include "compat.h"
 
 /*
  *  Static prototypes
