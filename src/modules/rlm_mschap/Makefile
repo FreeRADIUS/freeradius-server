@@ -1,6 +1,6 @@
 TARGET		= rlm_mschap
-SRCS		= rlm_mschap.c smbpass.c
-HEADERS		= smbpass.h
+SRCS		= rlm_mschap.c
+HEADERS		= 
 RLM_CFLAGS	=
 RLM_UTILS   	= smbencrypt
 RLM_INSTALL 	= smbencrypt-install
