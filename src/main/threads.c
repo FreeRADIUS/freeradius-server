@@ -721,6 +721,8 @@ int thread_pool_clean(time_t now)
 	return 0;
 }
 
+static int exec_initialized = FALSE;
+
 /*
  *	Initialize the stuff for keeping track of child processes.
  */
@@ -742,6 +744,8 @@ void rad_exec_init(void)
 		forkers[i].child_pid = -1;
 		forkers[i].status = 0;
 	}
+
+	exec_initialized = TRUE;
 }
 
 /*
@@ -761,7 +765,7 @@ pid_t rad_fork(int exec_wait)
 	 *	Or, there no NO threads, so we can just do the fork
 	 *	thing.
 	 */
-	if (!exec_wait || !pool_initialized) {
+	if (!exec_wait || !exec_initialized) {
 		return fork();
 	}
 
