@@ -169,8 +169,11 @@ static CONF_PARSER module_config[] = {
 };
 
 /*
- *  Read the modules file, parse the structure into memory,
- *  and call each module's init() function.
+ *	Read the modules file, parse the structure into memory,
+ *	and call each module's init() function.
+ *
+ *	Libtool makes your life a LOT easier, especially with libltdl.
+ *	see: http://www.gnu.org/software/libtool/
  */
 int read_modules_file(char *filename)
 {
@@ -183,7 +186,6 @@ int read_modules_file(char *filename)
 	char		library[256];
 	char		module_name[256];
 	int		lineno = 0;
-	char		libraryfile[1024];
 	void		*handle;
 	const char	*error;
 	int		argc;			/* for calling the modules */
@@ -200,21 +202,43 @@ int read_modules_file(char *filename)
 	}
 
 	/*
-	 *	Set the search path to ONLY our library directory.
-	 *	This prevents the modules fromn being found from
-	 *	any location on the disk.
+	 *	No current list of modules: Go initialize libltdl.
 	 */
-	lt_dlsetsearchpath(radlib_dir);
+	if (!module_list) {
+		if (lt_dlinit() != 0) {
+			fprintf(stderr, "Failed to initialize libraries: %s\n",
+				lt_dlerror());
+			exit(1); /* FIXME */
+			
+		}
+		/*
+		 *	Set the default list of preloaded symbols.
+		 *	This is used to initialize libltdl's list of
+		 *	preloaded modules. 
+		 *
+		 *	i.e. Static modules.
+		 */
+		LTDL_SET_PRELOADED_SYMBOLS();
 
-	/*
-	 *	Add 'raddb' directory, so that testing the server
-	 *	in the source directory can work.
-	 */
-	lt_dladdsearchdir(radius_dir);
+		/*
+		 *	Set the search path to ONLY our library directory.
+		 *	This prevents the modules fromn being found from
+		 *	any location on the disk.
+		 */
+		lt_dlsetsearchpath(radlib_dir);
+		
+		/*
+		 *	Add 'raddb' directory, so that testing the server
+		 *	in the source directory can work.
+		 */
+		lt_dladdsearchdir(radius_dir);
+		
+		DEBUG2("modules: Library search path is %s",
+		       lt_dlgetsearchpath());
 
-
-	if (module_list)
+	} else {
 		module_list_free();
+	}
 
 	/* read the modules file */
 	fp = fopen(filename, "r");
@@ -237,7 +261,7 @@ int read_modules_file(char *filename)
 
 	/* split it up */
 	if (sscanf(buffer, "%255s%255s", control, library) != 2) {
-		fprintf(stderr, "[%s:%d] Parse error.\n",
+		fprintf(stderr, "%s[%d] Parse error.\n",
 			filename, lineno);
 		exit(1); /* FIXME */
 	}
@@ -253,17 +277,17 @@ int read_modules_file(char *filename)
 		 * pam_foo.so.  Without RTLD_GLOBAL, the functions in libpam.so
 		 * won't get exported to pam_foo.so.
 		 */
-		handle = lt_dlopen(library);
+		handle = lt_dlopenext(library);
 		if (handle == NULL) {
-			fprintf(stderr, "[%s:%d] Failed to link to module %s:"
-				" %s\n", filename, lineno, libraryfile, lt_dlerror());
+			fprintf(stderr, "%s[%d] Failed to link to module %s:"
+				" %s\n", filename, lineno, library, lt_dlerror());
 			exit(1); /* FIXME */
 		}
 
 		/* make room for the module type */
 		this = (module_list_t *) malloc(sizeof(module_list_t));
 		if (this == NULL) {
-			fprintf(stderr, "[%s:%d] Failed to allocate memory.\n",
+			fprintf(stderr, "%s[%d] Failed to allocate memory.\n",
 				filename, lineno);
 			exit(1);
 		}
@@ -286,7 +310,7 @@ int read_modules_file(char *filename)
 		this->module = (module_t *) lt_dlsym(this->handle, module_name);
 		error = lt_dlerror();
 		if (!this->module) {
-			fprintf(stderr, "[%s:%d] Failed linking to "
+			fprintf(stderr, "%s[%d] Failed linking to "
 					"%s structure in %s: %s\n",
 					filename, lineno, q,
 					library, error);
@@ -309,7 +333,7 @@ int read_modules_file(char *filename)
 			p = strtok(NULL, " \t\r\n");
 
 			if (argc > 31) {
-				fprintf(stderr, "[%s:%d]  Too many arguments "
+				fprintf(stderr, "%s[%d]  Too many arguments "
 						"to module.\n",
 						filename, lineno);
 				exit(1);
@@ -321,7 +345,7 @@ int read_modules_file(char *filename)
 		if (this->module->init &&
 		    (this->module->init)(argc, argv) < 0) {
 			fprintf(stderr,
-			   "[%s:%d] Module initialization failed.\n",
+			   "%s[%d] Module initialization failed.\n",
 				filename, lineno);
 			exit(1);
 		}
@@ -334,7 +358,7 @@ int read_modules_file(char *filename)
 
 	if (strcmp(control, "authorize") == 0) {
 		if (!this->module->authorize) {
-			fprintf(stderr, "[%s:%d] Module %s does not contain "
+			fprintf(stderr, "%s[%d] Module %s does not contain "
 					"an 'authorize' entry\n",
 					filename, lineno, this->module->name);
 			exit(1);
@@ -342,7 +366,7 @@ int read_modules_file(char *filename)
 		add_to_list(&authorize, this);
 	} else if (strcmp(control, "authenticate") == 0) {
 		if (!this->module->authenticate) {
-			fprintf(stderr, "[%s:%d] Module %s does not contain "
+			fprintf(stderr, "%s[%d] Module %s does not contain "
 					"an 'authenticate' entry\n",
 					filename, lineno, this->module->name);
 			exit(1);
@@ -350,7 +374,7 @@ int read_modules_file(char *filename)
 		add_to_list(&authenticate, this);
 	} else if (strcmp(control, "preacct") == 0) {
 		if (!this->module->preaccounting) {
-			fprintf(stderr, "[%s:%d] Module %s does not contain "
+			fprintf(stderr, "%s[%d] Module %s does not contain "
 					"a 'preacct' entry\n",
 					filename, lineno, this->module->name);
 			exit(1);
@@ -358,14 +382,14 @@ int read_modules_file(char *filename)
 		add_to_list(&preacct, this);
 	} else if (strcmp(control, "accounting") == 0) {
 		if (!this->module->accounting) {
-			fprintf(stderr, "[%s:%d] Module %s does not contain "
+			fprintf(stderr, "%s[%d] Module %s does not contain "
 					"an 'accounting' entry\n",
 					filename, lineno, this->module->name);
 			exit(1);
 		}
 		add_to_list(&accounting, this);
 	} else {
-		fprintf(stderr, "[%s:%d] Unknown control \"%s\".\n",
+		fprintf(stderr, "%s[%d] Unknown control \"%s\".\n",
 			filename, lineno, control);
 		exit(1);
 	}
