@@ -374,7 +374,8 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if ((request->proxy == NULL) &&
 	    (pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL)) {
-		  return 0;
+		pairfree(user_reply);
+		return 0;
 	}
 
 	/*
