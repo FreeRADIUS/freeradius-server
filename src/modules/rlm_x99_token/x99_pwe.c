@@ -67,24 +67,30 @@ x99_pwe_init(void)
     /* CHAP */
     if ((da = dict_attrbyname("CHAP-Challenge")) != NULL) {
 	pwattr[i++] = da->attr;
-	da = dict_attrbyname("CHAP-Password");
-	pwattr[i++] = da->attr;
+	if ((da = dict_attrbyname("CHAP-Password")) != NULL)
+	    pwattr[i++] = da->attr;
+	else
+	    pwattr[--i] = 0;
     }
 
 #if 0
     /* MS-CHAP (recommended not to use) */
     if ((da = dict_attrbyname("MS-CHAP-Challenge")) != NULL) {
 	pwattr[i++] = da->attr;
-	da = dict_attrbyname("MS-CHAP-Response");
-	pwattr[i++] = da->attr;
+	if ((da = dict_attrbyname("MS-CHAP-Response")) != NULL)
+	    pwattr[i++] = da->attr;
+	else
+	    pwattr[--i] = 0;
     }
 #endif /* 0 */
 
     /* MS-CHAPv2 */
     if ((da = dict_attrbyname("MS-CHAP-Challenge")) != NULL) {
 	pwattr[i++] = da->attr;
-	da = dict_attrbyname("MS-CHAP2-Response");
-	pwattr[i++] = da->attr;
+	if ((da = dict_attrbyname("MS-CHAP2-Response")) != NULL)
+	    pwattr[i++] = da->attr;
+	else
+	    pwattr[--i] = 0;
     }
 }
 
