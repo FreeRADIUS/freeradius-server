@@ -244,6 +244,13 @@ static void move2tail(THREAD_HANDLE *handle)
 		return;
 	}
 
+	/*
+	 *	It's already at the tail.  Stop.
+	 */
+	if (thread_pool.tail == handle) {
+		return;
+	}
+
 	rad_assert(thread_pool.total_threads >= 1);
 	prev = handle->prev;
 	next = handle->next;
