@@ -9,53 +9,9 @@ if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
 
-	dnl #
-	dnl # extra argument: --openssl-includes=dir
-	dnl #
-	AC_ARG_WITH(openssl-includes,
-	[  --with-openssl-includes=DIR       Directory to look for OpenSSL include files],
-	[ case "$withval" in
-	    *)
-		rlm_eap_peap_inc_dir="$rlm_eap_peap_inc_dir $withval"
-		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
-		;;
-	  esac ]
-	)
-
-	dnl #
-	dnl # extra argument: --openssl-libraries=dir
-	dnl #
-	AC_ARG_WITH(openssl-libraries,
-	[  --with-openssl-libraries=DIR      Directory to look for OpenSSL library files],
-	[ case "$withval" in
-	    *)
-		rlm_eap_peap_lib_dir="$rlm_eap_peap_lib_dir $withval"
-		SMART_LIBS="$SMART_LIBS -L$withval"
-		;;
-	  esac ]
-	)
-
-	smart_try_dir=$rlm_eap_peap_inc_dir
-	FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
-	if test "x$ac_cv_header_openssl_ssl_h" != "xyes"; then
-		fail="$fail (openssl/ssl.h)"
+	if test "x$OPENSSL_LIBS" = "x"; then
+		fail="$fail OpenSSL"
 	fi
-
-	smart_try_dir=$rlm_eap_peap_lib_dir
-	FR_SMART_CHECK_LIB(crypto, DH_new)
-    if test "x$ac_cv_lib_crypto_DH_new" != "xyes"; then
- 	    fail="$fail libcrypto"
-    fi
-
-	FR_SMART_CHECK_LIB(ssl, SSL_new)
-    if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
- 	    fail="$fail libssl"
-    fi
-
-	AC_CHECK_HEADERS( \
-		openssl/err.h \
-		openssl/engine.h \
-	)
 
 	targetname=modname
 else
@@ -84,5 +40,4 @@ eap_sim_cflags=$SMART_CFLAGS
 AC_SUBST(eap_sim_ldflags)
 AC_SUBST(eap_sim_cflags)
 AC_SUBST(targetname)
-AC_CONFIG_HEADER([config.h])
 AC_OUTPUT(Makefile)
