@@ -65,7 +65,6 @@
 #define GDBM_IPPOOL_OPTS (GDBM_SYNCOPT)
 #endif
 
-#define ALL_ONES 4294967295
 #define MAX_NAS_NAME_SIZE 64
 
 static const char rcsid[] = "$Id$";
@@ -217,8 +216,10 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 			 * Net and Broadcast addresses are excluded
 			 */
 			or_result = i | data->netmask;
-			if (or_result == data->netmask || or_result == ALL_ONES){
-				DEBUG("rlm_ippool: IP %s exlcluded",ip_ntoa(str,ntohl(i)));
+			if (or_result == data->netmask ||
+			    (~or_result == 0)) {
+				DEBUG("rlm_ippool: IP %s excluded",
+				      ip_ntoa(str, ntohl(i)));
 				continue;
 			}
 			
@@ -632,6 +633,21 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		vp->lvalue = entry.ipaddr;
 		ip_ntoa(vp->strvalue, vp->lvalue);
 		pairadd(&request->reply->vps, vp);
+
+		/*
+		 *	If there is no Framed-Netmask attribute in the
+		 *	reply, add one
+		 */
+		if (pairfind(request->reply->vps, PW_FRAMED_IP_NETMASK) == NULL) {
+			if ((vp = paircreate(PW_FRAMED_IP_NETMASK, PW_TYPE_IPADDR)) == NULL)
+				radlog(L_ERR|L_CONS, "no memory");
+			else {
+				vp->lvalue = ntohl(data->netmask);
+				ip_ntoa(vp->strvalue, vp->lvalue);
+				pairadd(&request->reply->vps, vp);
+			}
+		}
+
 	}
 	else{
 		DEBUG("rlm_ippool: No available ip addresses in pool.");
