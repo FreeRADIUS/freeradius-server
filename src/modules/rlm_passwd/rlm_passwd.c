@@ -367,6 +367,7 @@ static CONF_PARSER module_config[] = {
 	   offsetof(struct passwd_instance, allowmultiple), NULL,  "no" },
 	{ "hashsize",   PW_TYPE_INTEGER,
 	   offsetof(struct passwd_instance, hashsize), NULL,  "100" },
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 static int passwd_instantiate(CONF_SECTION *conf, void **instance)
@@ -484,7 +485,7 @@ static int passwd_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct mypasswd * pw, char when, char *listname)
+static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct mypasswd * pw, char when, const char *listname)
 {
 	int i;
 	VALUE_PAIR *newpair;
