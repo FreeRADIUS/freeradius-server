@@ -498,7 +498,7 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
    Identifier value in the subsequent fragment contained within an EAP-
    Reponse.
 */
-	eap_ds->request->type.data = malloc(reply->length - TLS_HEADER_LEN);
+	eap_ds->request->type.data = malloc(reply->length - TLS_HEADER_LEN + 1);
 	if (eap_ds->request->type.data == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: out of memory");
 		return 0;
@@ -510,8 +510,7 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 	ptr = eap_ds->request->type.data;
 	*ptr++ = (uint8_t)(reply->flags & 0xFF);
 
-	//memcpy(ptr, reply->data, reply->length - 4/*EAPTLS_Header*/ - 1/*flags*/);
-	memcpy(ptr, reply->data, reply->dlen);
+	if (reply->dlen) memcpy(ptr, reply->data, reply->dlen);
 
 	switch (reply->code) {
 	case EAPTLS_ACK:
