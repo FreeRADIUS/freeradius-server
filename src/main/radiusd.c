@@ -88,7 +88,6 @@ static int		spawn_flag = TRUE;
 static pid_t		radius_pid;
 static int		need_reload = FALSE;
 static struct rlimit	core_limits;
-static time_t		last_cleaned_list;
 static int		proxy_requests = TRUE;
 
 /*
@@ -126,7 +125,7 @@ static void	sig_hup (int);
 
 static void	rad_reject(REQUEST *request);
 static int	rad_process (REQUEST *, int);
-static int	rad_clean_list(void);
+static int	rad_clean_list(time_t curtime);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 static struct timeval *setuptimeout(struct timeval *);
@@ -727,11 +726,6 @@ int main(int argc, char **argv)
 	 */
 	pair_builtincompare_init();
 
-	/*
-	 *  Initialize other, miscellaneous variables.
-	 */
-	last_cleaned_list = time(NULL);
-
 #if 0
 	/*
 	 *	Connect 0, 1 and 2 to /dev/null.
@@ -834,6 +828,8 @@ int main(int argc, char **argv)
 	 *	Receive user requests
 	 */
 	for(;;) {
+		time_t now;
+
 		if (need_reload) {
 			reread_config(TRUE);
 			need_reload = FALSE;
@@ -847,27 +843,26 @@ int main(int argc, char **argv)
 		if (proxyfd >= 0)
 			FD_SET(proxyfd, &readfds);
 		
-		/*
-		 *  Default to NOT waking up, ever!
-		 */
-		tv.tv_sec = 0;
-		tv.tv_usec = 0;
 		status = select(32, &readfds, NULL, NULL,
 				setuptimeout(&tv));
-
+		now = time(NULL);
 		if (status == -1) {
 			/*
 			 *	On interrupts, we clean up the
 			 *	request list.
 			 */
 			if (errno == EINTR) {
-				rad_clean_list();
+				rad_clean_list(now);
 				continue;
 			}
 			sig_fatal(101);
 		}
-		if ((status == 0) &&
-		    proxy_requests) {
+
+		/*
+		 *	When receiving a packet, or timeout,
+		 *	service the proxy request list.
+		 */
+		if ((status == 0) && proxy_requests) {
 			proxy_retry();
 		}
 		for (i = 0; i < 3; i++) {
@@ -924,7 +919,7 @@ int main(int argc, char **argv)
 			request->config_items = NULL;
 			request->username = NULL;
 			request->password = NULL;
-			request->timestamp = time(NULL);
+			request->timestamp = now;
 			request->child_pid = NO_SUCH_CHILD_PID;
 			request->prev = NULL;
 			request->next = NULL;
@@ -937,7 +932,7 @@ int main(int argc, char **argv)
 		 *	check if we've got to delete old requests
 		 *	from the request list.
 		 */
-		rad_clean_list();
+		rad_clean_list(now);
 	}
 }
 
@@ -1320,17 +1315,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
  *	- killing any processes which are NOT finished after a delay
  *	- deleting any requests which are finished, and expired
  */
-static int rad_clean_list(void)
+static int rad_clean_list(time_t curtime)
 {
+	static time_t	last_cleaned_list = 0;
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
-	time_t		curtime;
 	child_pid_t    	child_pid;
 	int		id;
 	int		request_count;
 	int		cleaned = FALSE;
-
-	curtime = time(NULL);
 
 	/*
 	 *  Don't bother checking the list if we've done it
@@ -2057,15 +2050,21 @@ static REQUEST *proxy_check_list(REQUEST *request)
 						return NULL;
 					} else {
 						/*
-						 *	got other stuff...
+						 *	??? New reply ???
 						 */
 						continue;
 					}
 				} /* else no reply, this one must match */
+
+				/*
+				 *	Exit from request list loop
+				 *	while oldreq != NULL, which will
+				 *	cause the outer loop to stop, too.
+				 */
 				break;
-			}
-		}
-	}
+			} /* the reply matches a proxied request */
+		} /* for all requests in the id request list */
+	} /* for all 256 id's*/
 	
 	/*
 	 *	If we haven't found the old request, complain.
@@ -2092,8 +2091,13 @@ static REQUEST *proxy_check_list(REQUEST *request)
 }
 
 /*
- *	Set up the proxy timeouts, so that we know
- *	when to wake up and re-send a request.
+ *	Walk through all of the requests, checking cleanup times,
+ *	proxy retry times, and maximum request times.  We then set the
+ *	time delay until the server has to service the request queue.
+ *
+ *	This time delay is used by the main select() loop, to sleep
+ *	until either a packet comes in, or until there's some work
+ *	to be done.
  */
 static struct timeval *setuptimeout(struct timeval *tv)
 {
@@ -2150,13 +2154,16 @@ static struct timeval *setuptimeout(struct timeval *tv)
 				if (difference < smallest)
 					smallest = difference;
 			}
+
 			if (difference == 0) break; /* short-circuit */
 		} /* loop over linked list for that ID */
+
 		if (difference == 0) break; /* short-circuit */
 	} /* loop over 256 ID's */
 
 	/*
-	 *	Not found one, return without modifying the timeout.
+	 *	We haven't found a time at which we need to wake up.
+	 *	Return NULL, so that the select() call will sleep forever.
 	 */
 	if (!foundone) {
 		return NULL;
