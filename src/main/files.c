@@ -160,6 +160,20 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 			return -1;
 		}
 		if (buffer[0] == '#' || buffer[0] == '\n') continue;
+
+		/*
+		 *	If the line contains nothing but whitespace,
+		 *	ignore it.
+		 */
+		ptr = buffer;
+		while ((ptr[0] == ' ') ||
+		       (ptr[0] == '\t') ||
+		       (ptr[0] == '\r') ||
+		       (ptr[0] == '\n')) {
+			ptr++;
+		}
+		if (ptr[0] == '\0') continue;
+
 parse_again:
 		if(mode == FIND_MODE_NAME) {
 			/*
