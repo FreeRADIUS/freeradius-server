@@ -34,7 +34,7 @@ EOM;
 }
 
 
-if ($clear_fields == 1)
+if ($clear_fields == 1 || ($do_it == 0 && $select_nas == 0))
 	$selected_nas = $readonly = '';
 else
 	$readonly = 'readonly';
@@ -264,9 +264,9 @@ EOM;
 <br>
 <select name=action size=1>
 <?php
-if ($clear_fields == 1)
+if ($clear_fields == 1 || ($do_it == 0 && $select_nas == 0))
 	echo "<option value=\"add_nas\">Add NAS\n";
-else
+if ($clear_fields == 0)
 	echo <<<EOM
 <option value="change_nas">Change NAS Info
 <option value="del_nas">Delete Selected NAS
