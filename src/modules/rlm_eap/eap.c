@@ -120,7 +120,7 @@ int eaptype_load(EAP_TYPES **type_list, const char *type_name,
 	node->typeid = 0;
 	memset(node->typename, 0, NAME_LEN);
 	node->type_stuff = NULL;
-	snprintf(node->typename, sizeof(type_name), "%s", type_name);
+	strNcpy(node->typename, type_name, sizeof(node->typename));
 	for (i = PW_EAP_MAX_TYPES; i > 0; i--) {
 		if (!strcmp(type_name, eap_types[i])) {
 			node->typeid = i;
