@@ -295,44 +295,48 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 	/*
 	 *	For fast lookups.
 	 */
-	if (ci_new->type == CONF_ITEM_PAIR) {
-		rbtree_insert(cs->pair_tree, ci_new);
+	while (ci_new) {
+		if (ci_new->type == CONF_ITEM_PAIR) {
+			rbtree_insert(cs->pair_tree, ci_new);
+			
+		} else if (ci_new->type == CONF_ITEM_SECTION) {
+			CONF_SECTION *cs_new = cf_itemtosection(ci_new);
 
-	} else if (ci_new->type == CONF_ITEM_SECTION) {
-		CONF_SECTION *cs_new = cf_itemtosection(ci_new);
-
-		if (!cs->section_tree) {
-			cs->section_tree = rbtree_create(section_cmp, NULL, 0);
-			/* ignore any errors */
-		}
-
-		if (cs->section_tree) {
-			rbtree_insert(cs->section_tree, cs_new);
-		}
-
-		/*
-		 *	Two names: find the named instance.
-		 */
-		if (cs_new->name2) {
-			CONF_SECTION *old_cs;
-
+			if (!cs->section_tree) {
+				cs->section_tree = rbtree_create(section_cmp, NULL, 0);
+				/* ignore any errors */
+			}
+			
+			if (cs->section_tree) {
+				rbtree_insert(cs->section_tree, cs_new);
+			}
+			
 			/*
-			 *	Find the FIRST CONF_SECTION having the
-			 *	given name1, and create a new tree
-			 *	under it.
+			 *	Two names: find the named instance.
 			 */
-			old_cs = rbtree_finddata(cs->section_tree, cs_new);
-			if (!old_cs) return; /* this is a bad error! */
+			if (cs_new->name2) {
+				CONF_SECTION *old_cs;
+				
+				/*
+				 *	Find the FIRST CONF_SECTION having the
+				 *	given name1, and create a new tree
+				 *	under it.
+				 */
+				old_cs = rbtree_finddata(cs->section_tree, cs_new);
+				if (!old_cs) return; /* this is a bad error! */
+				
+				if (!old_cs->name2_tree) {
+					old_cs->name2_tree = rbtree_create(name2_cmp,
+									   NULL, 0);
+				}
+				if (old_cs->name2_tree) {
+					rbtree_insert(old_cs->name2_tree, cs_new);
+				}
+			} /* had a name2 */
+		} /* was a section */
 
-			if (!old_cs->name2_tree) {
-				old_cs->name2_tree = rbtree_create(name2_cmp,
-								   NULL, 0);
-			}
-			if (old_cs->name2_tree) {
-				rbtree_insert(old_cs->name2_tree, cs_new);
-			}
-		} /* had a name2 */
-	} /* was a section */
+		ci_new = ci_new->next;
+	} /* loop over ci_new */
 }
 
 /*
