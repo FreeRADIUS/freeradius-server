@@ -190,7 +190,7 @@ static int pdb_decode_acct_ctrl(const char *p)
 static void ntpwdhash (char *szHash, const char *szPassword)
 {
 	char szUnicodePass[513];
-	char nPasswordLen;
+	int nPasswordLen;
 	int i;
 
 	/*
@@ -1097,6 +1097,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		nt_password = pairmake("NT-Password", "", T_OP_EQ);
 		if (!nt_password) {
 			radlog(L_ERR, "No memory");
+			return RLM_MODULE_FAIL;
 		} else {
 			ntpwdhash(nt_password->strvalue, password->strvalue);
 			nt_password->length = 16;
