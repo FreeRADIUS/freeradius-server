@@ -106,7 +106,7 @@ make install R=$RPM_BUILD_ROOT
 ldconfig -n $RPM_BUILD_ROOT%{_libdir}
 # logs
 touch $RPM_BUILD_ROOT/var/log/radius/radius.log
-touch $RPM_BUILD_ROOT/var/log/radius/radwatch.log
+#touch $RPM_BUILD_ROOT/var/log/radius/radwatch.log
 touch $RPM_BUILD_ROOT/var/log/radius/radwtmp
 touch $RPM_BUILD_ROOT/var/log/radius/radutmp
 # SuSE
@@ -167,7 +167,7 @@ mv -v doc/README doc/README.doc
 /usr/sbin/check-radiusd-config
 /usr/sbin/checkrad
 /usr/sbin/radiusd
-/usr/sbin/radwatch
+#/usr/sbin/radwatch
 # shared libs
 /%{_libdir}/*.so*
 /%{_libdir}/*.la*
@@ -182,13 +182,15 @@ mv -v doc/README doc/README.doc
 /var/log/radius/radutmp
 %ghost /var/log/radius/radwtmp
 %ghost /var/log/radius/radius.log
-%ghost /var/log/radius/radwatch.log
+#%ghost /var/log/radius/radwatch.log
 
 %files devel
 /%{_libdir}/*.a
 
 %changelog -n freeradius
-* Wed Nov 7 2002 - nix@susesecurity.com
+* Fri Nov 8 2002 - nix@susesecurity.com
+- Removed radwatch from the spec file as it's no longer supported.
+* Thu Nov 7 2002 - nix@susesecurity.com
 - Merged some changes from stark@suse.de including if statement to
   take care of > SuSE 8.0
 * Wed Nov 6 2002 - nix@susesecurity.com

@@ -9,7 +9,7 @@
 #             the server.
 #
 #             If you want to watch and re-start the server, we recommend
-#             reading the file ../doc/supervise-radiusd.txt
+#             reading the file doc/supervise-radiusd.txt
 #
 #
 # Version:	$Id$

@@ -10,8 +10,12 @@ waits for it to terminate, which should never happen. If it does
 happen, \fBradwatch\fP sends mail to \fIroot\fP informing her of
 the event, waits 10 seconds, then restarts the server.
 .PP
-The FreeRADIUS server should now stable enough that this wrapper
-is probably no longer needed.
+This script \fBSHOULD NOT BE USED\fP!  It's only here for historical
+purposes, and WILL be deleted in a future version of the
+the server.
+.PP
+Please see '\fIdoc/supervise-radiusd.txt\fP' for info on methods of
+supervising your radius installation.
 .SH OPTIONS
 Passed directly to the radius server - see the manpage of \fBradiusd\fP.
 .SH SEE ALSO

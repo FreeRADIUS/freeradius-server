@@ -11,8 +11,10 @@ Supervising the Radiusd Daemon
 
     This text describes how to setup both the free radius daemon so that
     it is automatically restarted upon death.  To do this, we'll use
-    either Dan Bernstein's 'daemontools' package, the inittab file or
-    radwatch tool from this distribution.
+    either Dan Bernstein's 'daemontools' package or the inittab file.
+
+    Note: The radwatch script that used to be part of this distribution,
+    is depreciated and SHOULD NOT BE USED.
 
 1.  SETTING UP DAEMONTOOLS
 
@@ -95,18 +97,14 @@ Supervising the Radiusd Daemon
     properly.  If it doesn't work, that means your radius start command
     is bad and you need to fix it.
 
-4.  SUPERVISING WITH RADWATCH
-
-    See man radwatch for details
-
-5.  ACKNOWLEDGEMENTS
+4.  ACKNOWLEDGEMENTS
  
     Document author:  Jeff Carneal
     daemontools auther:  Dan Bernstein
     Further daemontool notes (below):  Antonio Dias
     Radwatch note: Andrey Melnikov
 
-6.  FURTHER DAEMONTOOLS NOTES
+5.  FURTHER DAEMONTOOLS NOTES
 
     Here are some notes by Antonia Dias sent to the free radius mailing list.
     Some of you may find this useful after reading the above and the docs for
