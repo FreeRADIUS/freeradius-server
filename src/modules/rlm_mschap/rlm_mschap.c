@@ -94,6 +94,60 @@ static void bin2hex (const unsigned char *szBin, char *szHex, int len)
 	}
 }
 
+
+/* Allowable account control bits */
+#define ACB_DISABLED   0x0001  /* 1 = User account disabled */
+#define ACB_HOMDIRREQ  0x0002  /* 1 = Home directory required */
+#define ACB_PWNOTREQ   0x0004  /* 1 = User password not required */
+#define ACB_TEMPDUP    0x0008  /* 1 = Temporary duplicate account */
+#define ACB_NORMAL     0x0010  /* 1 = Normal user account */
+#define ACB_MNS        0x0020  /* 1 = MNS logon user account */
+#define ACB_DOMTRUST   0x0040  /* 1 = Interdomain trust account */
+#define ACB_WSTRUST    0x0080  /* 1 = Workstation trust account */
+#define ACB_SVRTRUST   0x0100  /* 1 = Server trust account */
+#define ACB_PWNOEXP    0x0200  /* 1 = User password does not expire */
+#define ACB_AUTOLOCK   0x0400  /* 1 = Account auto locked */
+
+static int pdb_decode_acct_ctrl(const char *p)
+{
+	int acct_ctrl = 0;
+	int finished = 0;
+
+	/*
+	 * Check if the account type bits have been encoded after the
+	 * NT password (in the form [NDHTUWSLXI]).
+	 */
+
+	if (*p != '[') return 0;
+
+	for (p++; *p && !finished; p++)
+	{
+		switch (*p)
+		{
+			case 'N': { acct_ctrl |= ACB_PWNOTREQ ; break; /* 'N'o password. */ }
+			case 'D': { acct_ctrl |= ACB_DISABLED ; break; /* 'D'isabled. */ }
+			case 'H': { acct_ctrl |= ACB_HOMDIRREQ; break; /* 'H'omedir required. */ }
+			case 'T': { acct_ctrl |= ACB_TEMPDUP  ; break; /* 'T'emp account. */ } 
+			case 'U': { acct_ctrl |= ACB_NORMAL   ; break; /* 'U'ser account (normal). */ } 
+			case 'M': { acct_ctrl |= ACB_MNS      ; break; /* 'M'NS logon user account. What is this ? */ } 
+			case 'W': { acct_ctrl |= ACB_WSTRUST  ; break; /* 'W'orkstation account. */ } 
+			case 'S': { acct_ctrl |= ACB_SVRTRUST ; break; /* 'S'erver account. */ } 
+			case 'L': { acct_ctrl |= ACB_AUTOLOCK ; break; /* 'L'ocked account. */ } 
+			case 'X': { acct_ctrl |= ACB_PWNOEXP  ; break; /* No 'X'piry on password */ } 
+			case 'I': { acct_ctrl |= ACB_DOMTRUST ; break; /* 'I'nterdomain trust account. */ }
+		        case ' ': { break; }
+			case ':':
+			case '\n':
+			case '\0': 
+			case ']':
+			default:  { finished = 1; }
+		}
+	}
+
+	return acct_ctrl;
+}
+
+
 /*
  *	ntpwdhash converts Unicode password to 16-byte NT hash
  *	with MD4
@@ -509,7 +563,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 #define inst ((struct mschap_instance *)instance)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 	VALUE_PAIR *password = NULL;
-	VALUE_PAIR *lm_password, *nt_password;
+	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
 	VALUE_PAIR *reply_attr;
 	uint8_t calculated[32];
 	uint8_t msch2resp[42];
@@ -517,6 +571,35 @@ static int mschap_authenticate(void * instance, REQUEST *request)
         uint8_t mppe_recvkey[34];
 	int chap = 0;
 	
+	/*
+	 *	Find the SMB-Account-Ctrl attribute, or the
+	 *	SMB-Account-Ctrl-Text attribute.
+	 */
+	smb_ctrl = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
+	if (!smb_ctrl) {
+		password = pairfind(request->config_items,
+				    PW_SMB_ACCOUNT_CTRL_TEXT);
+		if (password) {
+			smb_ctrl = pairmake("SMB-Account-CTRL", "", T_OP_SET);
+			pairadd(&request->config_items, smb_ctrl);
+			smb_ctrl->lvalue = pdb_decode_acct_ctrl(password->strvalue);
+		}
+	}
+
+	/*
+	 *	We're configured to do MS-CHAP authentication.
+	 *	and account control information exists.  Enforce it.
+	 */
+	if (smb_ctrl) {
+		/*
+		 *	Password is not required.
+		 */
+		if ((smb_ctrl->lvalue & ACB_PWNOTREQ) != 0) {
+			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says no password is required.");
+			return RLM_MODULE_OK;
+		}
+	}
+
 	/*
 	 *	Decide how to get the passwords.
 	 */
@@ -751,6 +834,36 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
+	/*
+	 *	We have a CHAP response, but the account may be
+	 *	disabled.  Reject the user with the same error code
+	 *	we use when their password is invalid.
+	 */
+	if (smb_ctrl) {
+		/*
+		 *	Account is disabled.
+		 *
+		 *	They're found, but they don't exist, so we
+		 *	return 'not found'.
+		 */
+		if (((smb_ctrl->lvalue & ACB_DISABLED) != 0) ||
+		    ((smb_ctrl->lvalue & ACB_NORMAL) == 0)) {
+			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says that the account is disabled, or is not a normal account.");
+			add_reply( &request->reply->vps, *response->strvalue,
+				   "MS-CHAP-Error", "E=691 R=1", 9);
+			return RLM_MODULE_NOTFOUND;
+		}
+
+		/*
+		 *	User is locked out.
+		 */
+		if ((smb_ctrl->lvalue & ACB_AUTOLOCK) != 0) {
+			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says that the account is locked out.");
+			add_reply( &request->reply->vps, *response->strvalue,
+				   "MS-CHAP-Error", "E=647 R=0", 9);
+			return RLM_MODULE_USERLOCK;
+		}
+	}
 
 	/* now create MPPE attributes */
 	if (inst->use_mppe) {
