@@ -99,7 +99,7 @@ sub db_insert {
 	if ($h323_call_type eq 'VoIP') { 
         $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (
 		UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
-		AcctDelayTime, H323RemoteAddress, h323callorigin, h323confid,
+		AcctDelayTime, H323RemoteAddress, h323callorigin, callid,
 		h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
 		values('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
 		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$h323_remote_address',
@@ -108,7 +108,7 @@ sub db_insert {
 	elsif ($h323_call_type eq 'Telephony') {
         $sth2 = $dbh->prepare("INSERT into StopTelephony (UserName, NASIPAddress, AcctSessionTime,
                 AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId, AcctDelayTime,
-                CiscoNASPort, h323callorigin, h323confid, h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
+                CiscoNASPort, h323callorigin, callid, h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
                 values('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
                 '$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$Cisco_NAS_Port', '$h323_call_origin', '$h323_conf_id',
 		'$h323_connect_time', '$h323_disconnect_cause', '$h323_disconnect_time', '$h323_setup_time', '$h323_voice_quality')");
@@ -125,7 +125,7 @@ sub db_insert {
 sub db_update {
 	my $sth2= $dbh->prepare("UPDATE radacct SET CalledStationId = '$Called_Station_Id', 
 		AcctTerminateCause = '$AcctTerminateCause', H323RemoteAddress = '$h323_remote_address',
-		AcctStatusType = '$AcctStatusType', h323confid = '$h323_conf_id', h323calltype = '$h323_call_type',
+		AcctStatusType = '$AcctStatusType', callid = '$h323_conf_id', h323calltype = '$h323_call_type',
 		CiscoNASPort = '$Cisco_NAS_Port', h323disconnectcause = '$h323_disconnect_cause',
 		h323connecttime = '$h323_connect_time', h323disconnecttime = '$h323_disconnect_time',
 		h323setuptime = '$h323_setup_time' WHERE AcctSessionId = 'AcctSessionId' AND UserName = '$UserName'
@@ -143,7 +143,7 @@ sub db_read {
 	my $sth = $dbh->prepare("SELECT RadAcctId FROM Stop$h323_call_type
 		WHERE h323SetupTime = '$h323_setup_time'
 		AND NASIPAddress = '$NasIPAddress'
-		AND h323confid = '$h323_conf_id'")
+		AND callid = '$h323_conf_id'")
                 or die "Couldn't prepare statement: " . $dbh->errstr;
 
           my @data;
