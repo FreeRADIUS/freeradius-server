@@ -568,6 +568,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	int openbraces=0;
 
 	/*
+	 *	Catch bad modules.
+	 */
+	if (!fmt || !out || !request) return 0;
+
+	/*
 	 *  Ensure that we always have an escaping function.
 	 */
 	if (func == NULL) {
