@@ -19,7 +19,7 @@ static int radius_init(void)
 {
         /* Initialize the dictionary */
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
-		log(L_ERR|L_CONS, "Errors reading dictionary %s/%s: %s",
+		radlog(L_ERR|L_CONS, "Errors reading dictionary %s/%s: %s",
 		    radius_dir, RADIUS_DICTIONARY, librad_errstr);
 		return -1;
 	}
