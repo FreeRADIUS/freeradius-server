@@ -396,8 +396,14 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		(*lineno)++;
 		ptr = buf;
 
-		if (*ptr == '#')
+		t1 = gettoken(&ptr, buf1, sizeof(buf1));
+
+		/*
+		 *	Skip comments and blank lines immediately.
+		 */
+		if ((*buf1 == '#') || (*buf1 == '\0')) {
 			continue;
+		}
 
 		/*
 		 *	Allow for $INCLUDE files
@@ -406,12 +412,11 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *      level of config.  IE you cannot have an $INCLUDE nested
 		 *      inside section.  -cparker
 		 */
-		
-		if ((ptr[0] == '$') && (name1 == NULL) && (name2 == NULL)) {
+		if ((strcasecmp(buf1, "$INCLUDE") == 0) &&
+		    (name1 == NULL) && (name2 == NULL)) {
 
 		       CONF_SECTION      *is;
 
-		       t1 = getword(&ptr, buf1, sizeof(buf1));
 		       t2 = getword(&ptr, buf2, sizeof(buf2));
 
 		       cf_expand_variables(cf, lineno, cs, buf, buf2);
@@ -426,29 +431,22 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		       /*
 			*	Add the included conf to our CONF_SECTION
 			*/
-		       if( is && is->children ) cf_item_add(cs, is->children);
+		       if (is && is->children ) cf_item_add(cs, is->children);
 		
 		       continue;
 
 		}
 
-
-
 		/*
 		 *	No '=': must be a section or sub-section.
 		 */
 		if (strchr(ptr, '=') == NULL) {
-			t1 = gettoken(&ptr, buf1, sizeof(buf1));
 			t2 = gettoken(&ptr, buf2, sizeof(buf2));
 			t3 = gettoken(&ptr, buf3, sizeof(buf3));
 		} else {
-			t1 = gettoken(&ptr, buf1, sizeof(buf1));
 			t2 = gettoken(&ptr, buf2, sizeof(buf2));
 			t3 = getword(&ptr, buf3, sizeof(buf3));
 		}
-
-		if (buf1[0] == 0 || buf1[0] == '#')
-			continue;
 
 		/*
 		 *	See if it's the end of a section.
