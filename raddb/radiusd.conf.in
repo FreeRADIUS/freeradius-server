@@ -584,8 +584,14 @@ modules {
 authenticate {
 	pam
 	unix
-#       sql
-#       sql2
+# By grouping modules together in an authtype block, that authtype will be
+# tried on each module in sequence until one returns REJECT or OK. This
+# allows authentication failover if the first SQL server has crashed, for
+# example.
+#       authtype SQL {
+#       	sql
+#       	sql2
+#       }
 # Uncomment this if you want to use ldap (Auth-Type = LDAP)
 #	ldap
 }

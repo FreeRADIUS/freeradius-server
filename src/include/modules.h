@@ -20,8 +20,8 @@ typedef int (*RLM_PRE_ACCOUNTING_FUNCP)(REQUEST *request);
 typedef int (*RLM_ACCOUNTING_FUNCP)(REQUEST *request);
 
 /* Shouldn't need these anymore */
-#define RLM_COMPONENT_AUTZ 0
-#define RLM_COMPONENT_AUTH 1
+#define RLM_COMPONENT_AUTH 0
+#define RLM_COMPONENT_AUTZ 1
 #define RLM_COMPONENT_PREACCT 2
 #define RLM_COMPONENT_ACCT 3
 #define RLM_COMPONENT_COUNT 4 /* How many components are there */

@@ -14,6 +14,7 @@ static const char rcsid[] = "$Id$";
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
+#include	<assert.h>
 
 #include	"radiusd.h"
 #include	"modules.h"
@@ -29,7 +30,7 @@ static const char rcsid[] = "$Id$";
  */
 typedef struct module_list_t {
 	char			filename[MAX_STRING_LEN];
-	int			auth_type;
+	int			default_auth_type;
 	module_t		*module;
 	lt_dlhandle		handle;
 	struct module_list_t	*next;
@@ -51,8 +52,14 @@ typedef struct config_module_t {
 	struct config_module_t	*next;
 } config_module_t;
 
+typedef struct indexed_config_module_t {
+	int idx;
+	config_module_t *modulelist;
+	struct indexed_config_module_t *next;
+} indexed_config_module_t;
+
 static config_module_t *authorize = NULL;
-static config_module_t *authenticate = NULL;
+static indexed_config_module_t *authenticate = NULL;
 static config_module_t *preacct = NULL;
 static config_module_t *accounting = NULL;
 
@@ -63,6 +70,20 @@ static void config_list_free(config_module_t **cf)
 	c = *cf;
 	while (c) {
 		next = c->next;
+		free(c);
+		c = next;
+	}
+	*cf = NULL;
+}
+
+static void indexed_config_list_free(indexed_config_module_t **cf)
+{
+	indexed_config_module_t	*c, *next;
+
+	c = *cf;
+	while (c) {
+		next = c->next;
+		config_list_free(&c->modulelist);
 		free(c);
 		c = next;
 	}
@@ -88,7 +109,7 @@ static void module_list_free(void)
 {
 	module_list_t *ml, *next;
 
-	config_list_free(&authenticate);
+	indexed_config_list_free(&authenticate);
 	config_list_free(&authorize);
 	config_list_free(&preacct);
 	config_list_free(&accounting);
@@ -217,7 +238,7 @@ static module_list_t *find_module(module_list_t *head, const char *filename,
 
 	/* If there's an authentication method, add a new Auth-Type */
 	if (new->module->authenticate)
-		new->auth_type =
+		new->default_auth_type =
 			new_authtype_value(new->module->name);
 
 	/* call the modules initialization */
@@ -336,6 +357,45 @@ static void add_to_list(config_module_t **head, module_instance_t *instance)
 	*last = node;
 }
 
+static indexed_config_module_t *new_sublist(indexed_config_module_t **head,
+					    int idx)
+{
+	indexed_config_module_t	*node = *head;
+	indexed_config_module_t **last = head;
+
+	while (node) {
+		if (node->idx == idx) {
+			/* It is an error to try to create a sublist that
+			 * already exists. */
+			return NULL;
+		}
+		last = &node->next;
+		node = node->next;
+	}
+
+	node = malloc(sizeof *node);
+	if (!node) {
+		fprintf(stderr, "Out of memory\n");
+		exit(1);
+	}
+
+	node->next = NULL;
+	node->modulelist = NULL;
+	node->idx = idx;
+	*last = node;
+	return node;
+}
+
+static config_module_t *lookup_indexed_config(indexed_config_module_t *head,
+					      int idx)
+{
+	indexed_config_module_t *p;
+	for (p=head; p; p=p->next) {
+		if(p->idx==idx)
+			return p->modulelist;
+	}
+	return NULL;
+}
 
 /* Why is this both here and in radiusd.c:server_config? --Pac. */
 static CONF_PARSER module_config[] = {
@@ -344,6 +404,116 @@ static CONF_PARSER module_config[] = {
   { NULL, -1, NULL, NULL }
 };
 
+static void load_authtype_subsection(CONF_SECTION *cs, const char *filename)
+{
+	module_instance_t *this;
+	CONF_ITEM *modref;
+        int modreflineno;
+        const char *modrefname;
+	int auth_type;
+	indexed_config_module_t *auth_type_config;
+
+	auth_type = new_authtype_value(cf_section_name2(cs));
+	auth_type_config = new_sublist(&authenticate, auth_type);
+	if (!auth_type_config) {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d] authtype %s already configured - skipping",
+		       filename, cf_section_lineno(cs), cf_section_name2(cs));
+		return;
+	}
+
+	for(modref=cf_item_find_next(cs, NULL)
+	    ; modref ;
+	    modref=cf_item_find_next(cs, modref)) {
+
+		if(cf_item_is_section(modref)) {
+			CONF_SECTION *scs;
+			scs = cf_itemtosection(modref);
+			modreflineno = cf_section_lineno(scs);
+			modrefname = cf_section_name1(scs);
+		} else {
+			CONF_PAIR *cp;
+			cp = cf_itemtopair(modref);
+			modreflineno = cf_pair_lineno(cp);
+			modrefname = cf_pair_attr(cp);
+		}
+
+		this = find_module_instance(module_instance_list, modrefname);
+		if (this == NULL) {
+			exit(1); /* FIXME */
+		}
+
+		if (!this->entry->module->authenticate) {
+			radlog(L_ERR|L_CONS,
+				"%s[%d] Module %s does not contain "
+				"an 'authenticate' entry\n",
+				filename, modreflineno,
+				this->entry->module->name);
+			exit(1);
+		}
+		add_to_list(&auth_type_config->modulelist, this);
+
+	}
+}
+
+static void load_indexed_module_section(CONF_SECTION *cs, int comp, const char *filename)
+{
+	module_instance_t *this;
+	CONF_ITEM	*modref;
+        int		modreflineno;
+        const char	*modrefname;
+	indexed_config_module_t *auth_type_config;
+
+	/* This function does not yet need or want to handle anything but
+	 * authtypes. */
+	assert(comp==RLM_COMPONENT_AUTH);
+
+	for(modref=cf_item_find_next(cs, NULL)
+	    ; modref ;
+	    modref=cf_item_find_next(cs, modref)) {
+
+		if(cf_item_is_section(modref)) {
+			CONF_SECTION *scs;
+			scs = cf_itemtosection(modref);
+			if (!strcmp(cf_section_name1(scs), "authtype")) {
+				load_authtype_subsection(scs, filename);
+				continue;
+			}
+			modreflineno = cf_section_lineno(scs);
+			modrefname = cf_section_name1(scs);
+		} else {
+			CONF_PAIR *cp;
+			cp = cf_itemtopair(modref);
+			modreflineno = cf_pair_lineno(cp);
+			modrefname = cf_pair_attr(cp);
+		}
+
+		this = find_module_instance(module_instance_list, modrefname);
+		if (this == NULL) {
+			exit(1); /* FIXME */
+		}
+
+		if (!this->entry->module->authenticate) {
+			radlog(L_ERR|L_CONS,
+				"%s[%d] Module %s does not contain "
+				"an 'authenticate' entry\n",
+				filename, modreflineno,
+				this->entry->module->name);
+			exit(1);
+		}
+		auth_type_config = new_sublist(&authenticate,
+					       this->entry->default_auth_type);
+		if (!auth_type_config) {
+			radlog(L_ERR|L_CONS,
+			    "%s[%d] authtype %s already configured - skipping",
+			    filename, modreflineno, this->entry->module->name);
+			continue;
+		}
+		add_to_list(&auth_type_config->modulelist, this);
+
+  	}
+}
+
 static void load_module_section(CONF_SECTION *cs, int comp, const char *filename)
 {
 	module_instance_t *this;
@@ -351,17 +521,27 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
         int		modreflineno;
         const char	*modrefname;
 
+	/* Authentication is special - it is not an ordered list but an
+	 * associative array keyed on auth-type */
+	if (comp==RLM_COMPONENT_AUTH) {
+		load_indexed_module_section(cs, comp, filename);
+		return;
+	}
+
 	for(modref=cf_item_find_next(cs, NULL)
 	    ; modref ;
 	    modref=cf_item_find_next(cs, modref)) {
 
 		if(cf_item_is_section(modref)) {
-			modreflineno =
-				cf_section_lineno(cf_itemtosection(modref));
-			modrefname = cf_section_name1(cf_itemtosection(modref));
-		} else  {
-			modreflineno = cf_pair_lineno(cf_itemtopair(modref));
-			modrefname = cf_pair_attr(cf_itemtopair(modref));
+			CONF_SECTION *scs;
+			scs = cf_itemtosection(modref);
+			modreflineno = cf_section_lineno(scs);
+			modrefname = cf_section_name1(scs);
+		} else {
+			CONF_PAIR *cp;
+			cp = cf_itemtopair(modref);
+			modreflineno = cf_pair_lineno(cp);
+			modrefname = cf_pair_attr(cp);
 		}
 
 		this = find_module_instance(module_instance_list, modrefname);
@@ -380,17 +560,6 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 				exit(1);
 			}
 			add_to_list(&authorize, this);
-			break;
-		case RLM_COMPONENT_AUTH:
-			if (!this->entry->module->authenticate) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"an 'authenticate' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-				exit(1);
-			}
-			add_to_list(&authenticate, this);
 			break;
 		case RLM_COMPONENT_PREACCT:
 			if (!this->entry->module->preaccounting) {
@@ -479,8 +648,8 @@ int setup_modules(void)
 
 	for (comp=0; comp<RLM_COMPONENT_COUNT; ++comp) {
 		switch(comp) {
-		case RLM_COMPONENT_AUTZ: control="authorize"; break;
 		case RLM_COMPONENT_AUTH: control="authenticate"; break;
+		case RLM_COMPONENT_AUTZ: control="authorize"; break;
 		case RLM_COMPONENT_PREACCT: control="preacct"; break;
 		case RLM_COMPONENT_ACCT: control="accounting"; break;
 		default: control="unknown";
@@ -608,6 +777,7 @@ int module_authorize(REQUEST *request)
 int module_authenticate(int auth_type, REQUEST *request)
 {
 	config_module_t	*this;
+	int		rcode = RLM_MODULE_FAIL;
 
 	/*
 	 *  We MUST have a password, of SOME type!
@@ -616,20 +786,16 @@ int module_authenticate(int auth_type, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	this = authenticate;
-	while (this && this->instance->entry->auth_type != auth_type)
+	this = lookup_indexed_config(authenticate, auth_type);
+
+	while (this && rcode == RLM_MODULE_FAIL) {
+		DEBUG2("  authenticate: %s",
+			this->instance->entry->module->name);
+		rcode = (this->instance->entry->module->authenticate)(
+			this->instance->insthandle, request);
 		this = this->next;
-
-	if (!this || !this->instance->entry->module->authenticate) {
-		/*
-		 *	No such auth_type, or module auth_type not defined
-		 */
-		return RLM_MODULE_FAIL;
 	}
-
-	DEBUG2("  authenticate: %s", this->instance->entry->module->name);
-	return (this->instance->entry->module->authenticate)(
-		this->instance->insthandle, request);
+	return rcode;
 }
 
 
