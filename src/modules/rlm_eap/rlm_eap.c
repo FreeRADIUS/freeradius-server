@@ -22,7 +22,8 @@
  */
 
 #include "autoconf.h"
-#include "eap.h"
+#include "rlm_eap.h"
+#include "modules.h"
 
 static CONF_PARSER module_config[] = {
 	{ "default_eap_type", PW_TYPE_STRING_PTR, offsetof(EAP_CONF, default_eap_type), NULL, "md5" },
@@ -51,26 +52,31 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	eap_stuff = (rlm_eap_t **)instance;
 	types	 = NULL;
 	conf	 = NULL;
-        auth_name = NULL;
+	auth_name = NULL;
 
 	conf = (EAP_CONF *)malloc(sizeof(EAP_CONF));
 	if (conf == NULL) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return -1;
 	}
-        if (cf_section_parse(cs, conf, module_config) < 0) {
-                free(conf);
-                return -1;
-        }
+	if (cf_section_parse(cs, conf, module_config) < 0) {
+		free(conf);
+		return -1;
+	}
 
-        for(scs=cf_subsection_find_next(cs, NULL, NULL);
-                        scs != NULL;
-                        scs=cf_subsection_find_next(cs, scs, NULL)) {
-                auth_name = cf_section_name1(scs);
+	for(scs=cf_subsection_find_next(cs, NULL, NULL);
+		scs != NULL;
+		scs=cf_subsection_find_next(cs, scs, NULL)) {
 
-                if (!auth_name)  continue;
-		eaptype_load(&types, auth_name, scs);
-        }
+		auth_name = cf_section_name1(scs);
+
+		if (!auth_name)  continue;
+
+		if (eaptype_load(&types, auth_name, scs) < 0) {
+			free(conf);
+			return -1;
+		}
+	}
 
 	if (!types) {
 		free(conf->default_eap_type);
@@ -200,7 +206,6 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 		*/
 	}
-
 
 	/*
 	 * Select the appropriate eap_type or default to the configured one

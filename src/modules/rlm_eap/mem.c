@@ -21,18 +21,18 @@
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  */
 #include <stdio.h>
-#include "eap.h"
+#include "rlm_eap.h"
 
 /*
  *      Allocate a new EAP_PACKET
  */
 EAP_PACKET *eap_packet_alloc(void)
 {
-        EAP_PACKET   *rp;
+	EAP_PACKET   *rp;
 
 	rp = rad_malloc(sizeof(EAP_PACKET));
-        memset(rp, 0, sizeof(EAP_PACKET));
-        return rp;
+	memset(rp, 0, sizeof(EAP_PACKET));
+	return rp;
 }
 
 /*
@@ -40,13 +40,13 @@ EAP_PACKET *eap_packet_alloc(void)
  */
 void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 {
-        EAP_PACKET *eap_packet;
+	EAP_PACKET *eap_packet;
 
-        if (!eap_packet_ptr) return;
-        eap_packet = *eap_packet_ptr;
+	if (!eap_packet_ptr) return;
+	eap_packet = *eap_packet_ptr;
 	if (!eap_packet) return;
 
-        if (eap_packet->type.data) {
+   	if (eap_packet->type.data) {
 		/*
 		 * This is just a pointer in the packet
 		 * so we do not free it but we NULL it
@@ -60,9 +60,9 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 		eap_packet->packet = NULL;
 	}
 
-        free(eap_packet);
+	free(eap_packet);
 
-        *eap_packet_ptr = NULL;
+	*eap_packet_ptr = NULL;
 }
 
 /*
@@ -70,10 +70,10 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
  */
 EAP_DS *eap_ds_alloc(void)
 {
-        EAP_DS	*eap_ds;
+	EAP_DS	*eap_ds;
         
-        eap_ds = rad_malloc(sizeof(EAP_DS));
-        memset(eap_ds, 0, sizeof(EAP_DS));
+	eap_ds = rad_malloc(sizeof(EAP_DS));
+	memset(eap_ds, 0, sizeof(EAP_DS));
 	if ((eap_ds->response = eap_packet_alloc()) == NULL) {
 		eap_ds_free(&eap_ds);
 		return NULL;
@@ -88,7 +88,7 @@ EAP_DS *eap_ds_alloc(void)
 
 void eap_ds_free(EAP_DS **eap_ds_p)
 {
-        EAP_DS *eap_ds;
+	EAP_DS *eap_ds;
 
 	if (!eap_ds_p) return;
         eap_ds = *eap_ds_p;
@@ -106,15 +106,13 @@ void eap_ds_free(EAP_DS **eap_ds_p)
  */
 EAP_HANDLER *eap_handler_alloc(void)
 {
-        EAP_HANDLER	*handler;
+	EAP_HANDLER	*handler;
         
-        if ((handler = malloc(sizeof(EAP_HANDLER))) == NULL) {
-                radlog(L_ERR, "out of memory");
-                return NULL;
-        }
-        handler = rad_malloc(sizeof(EAP_HANDLER));
-        /*memset(handler, 0, sizeof(EAP_HANDLER));
-	 */
+	if ((handler = malloc(sizeof(EAP_HANDLER))) == NULL) {
+		radlog(L_ERR, "out of memory");
+		return NULL;
+	}
+	handler = rad_malloc(sizeof(EAP_HANDLER));
 	return handler;
 }
 
@@ -267,15 +265,15 @@ EAP_HANDLER *eaplist_findhandler(EAP_HANDLER *list, unsigned char id[])
 	EAP_HANDLER *node;
 	node = list;
 	
-        while (node) {
-                /*
-                 * Match is identified by the same IDs 
-                 */
+	while (node) {
+		/*
+		 * Match is identified by the same IDs 
+		 */
 		if (memcmp(node->id, id, id[0]) == 0) {
 			radlog(L_INFO, "rlm_eap: EAP Handler found in the list ");
 			return node;
 		}
-                node = node->next;
+		node = node->next;
 	}
 	return NULL;
 }

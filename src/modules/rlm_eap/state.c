@@ -20,8 +20,9 @@
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  */
 
-#include "eap.h"
 #include <fcntl.h>
+#include <stdlib.h>
+#include "radiusd.h"
 
 static const char rcsid[] = "$Id$";
 
@@ -66,7 +67,7 @@ static unsigned char state_key[AUTH_VECTOR_LEN];
 static void generate_random(uint8_t *vector, int length)
 {
 	int		i;
-    	static unsigned char random_vector_pool[AUTH_VECTOR_LEN * 2];
+	static unsigned char random_vector_pool[AUTH_VECTOR_LEN * 2];
 	static int	did_srand = 0;
 	static int	counter = 0;
 #ifdef __linux__

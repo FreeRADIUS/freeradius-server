@@ -1,25 +1,36 @@
+/*
+ * eap.h    Header file containing the interfaces for all EAP types.
+ *
+ * Version:     $Id$
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ */
 #ifndef _EAP_H
 #define _EAP_H
 
-/*
- * TODO: This file needs cleanup.
- * 	Some local definitions & structures
- * 	should be removed from here.
- */
-#include <ltdl.h>
- 
 #include "conffile.h"
 #include "libradius.h"
 #include "radiusd.h"
-#include "modules.h"
 
 #if HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
 
 #include <string.h>
-
-#define EAP_START		2
 
 #define PW_EAP_REQUEST		1
 #define PW_EAP_RESPONSE		2
@@ -38,31 +49,8 @@
 
 #define EAP_HEADER_LEN 		4
 
-#define NAME_LEN		32
-
-
-enum {
-        EAP_NOTFOUND,    /* not found */
-        EAP_FOUND,       /* found, continue */
-        EAP_OK,		 /* ok, continue */
-        EAP_FAIL,        /* failed, don't reply */
-        EAP_NOOP,        /* succeeded without doing anything */
-        EAP_INVALID,     /* invalid, don't reply */
-        EAP_VALID       /* valid, continue */
-};
-
 /*
- * structure to represent packet format of eap
- */
-typedef struct eap_packet_t {
-	unsigned char	code;
-	unsigned char	id;
-	unsigned char	length[2];
-	unsigned char	data[1];
-} eap_packet_t;
-
-/*
- * Contains EAP-Type specific data
+ * EAP-Type specific data.
  */
 typedef struct eaptype_t {
 	unsigned char	type;
@@ -71,10 +59,10 @@ typedef struct eaptype_t {
 } eaptype_t;
 
 /*
- * core data structure that is through out.
+ * Structure to hold EAP data.
  *
  * length = code + id + length + type + type.data
- *	  =  1   +  1 +   2    +  1   +  X
+ *        =  1   +  1 +   2    +  1   +  X
  */
 typedef struct eap_packet {
 	unsigned char	code;
@@ -86,10 +74,13 @@ typedef struct eap_packet {
 } EAP_PACKET;
 
 /*
- * DS with all the required information
+ * EAP_DS contains all the received/sending information
+ * response = Received EAP packet
+ * request = Sending EAP packet
+ *
  * Note: We are authentication server, 
- *    we get EAP-Response and we send 
- *    EAP-Request/EAP-success/EAP-failure
+ *  we get ONLY EAP-Responses and 
+ *  we send EAP-Request/EAP-success/EAP-failure
  */
 typedef struct eap_ds {
 	EAP_PACKET	*response;
@@ -139,7 +130,9 @@ typedef struct _eap_handler {
 	struct _eap_handler *next;
 } EAP_HANDLER;
 
-/* Prototype to call eap sub mdoules */
+/* 
+ * Interface to call EAP sub mdoules
+ */
 typedef struct eap_type_t {
 	const 	char *name;
 	int	(*attach)(CONF_SECTION *conf, void **type_arg);
@@ -147,84 +140,5 @@ typedef struct eap_type_t {
 	int	(*authenticate)(void *type_arg, EAP_HANDLER *handler);
 	int	(*detach)(void **type_arg);
 } EAP_TYPE;
-
-typedef enum operation_t {
-	INITIATE = 0,
-	AUTHENTICATE
-} operation_t;
-
-/*
- * Keep track of which sub modules we've loaded.
- */
-typedef struct eap_types_t {
-        struct eap_types_t  	*next;
-	int		typeid;
-        char            typename[NAME_LEN];
-        EAP_TYPE       	*type;
-        lt_dlhandle     handle;
-	CONF_SECTION	*cs;
-	void		*type_stuff;
-} EAP_TYPES;
-
-/*
- * currently this is not properly defined as
- * there is not much config stuff that eap depends on.
- */
-typedef struct eap_conf {
-        char*		default_eap_type;
-        int		timer_limit;
-} EAP_CONF;
-
-typedef struct rlm_eap_t {
-	EAP_HANDLER 	*echolist;
-	EAP_TYPES 	*typelist;
-	EAP_CONF	*conf;
-} rlm_eap_t;
-
-/* define the functions */
-
-/* EAP-Type */
-EAP_TYPES 	*eaptype_byid(EAP_TYPES **list, int type);
-EAP_TYPES 	*eaptype_byname(EAP_TYPES **list, const char *name);
-void      	eaptype_load(EAP_TYPES **tl, const char *tname, CONF_SECTION *cs);
-int       	eaptype_select(EAP_TYPES *tl, EAP_HANDLER *h, char *eaptype);
-int       	eaptype_call(int type, operation_t action, 
-          		EAP_TYPES *tl, EAP_HANDLER *h);
-void	    	eaptype_freelist(EAP_TYPES **tl);
-
-
-/* EAP */
-int  		eap_start(REQUEST *request);
-void 		eap_fail(REQUEST *request, EAP_PACKET *reply);
-void 		eap_success(REQUEST *request, EAP_PACKET *reply);
-int 		eap_validation(eap_packet_t *eap_msg);
-int 		eap_wireformat(EAP_PACKET *packet);
-int 		eap_compose(REQUEST *request, EAP_PACKET *reply);
-eap_packet_t 	*eap_attribute(VALUE_PAIR *vps);
-EAP_DS 		*eap_buildds(eap_packet_t **eap_msg);
-EAP_HANDLER 	*eap_handler(EAP_HANDLER **list, eap_packet_t **eap_msg, REQUEST *request);
-char 		*eap_identity(eap_packet_t *eap_packet);
-VALUE_PAIR 	*eap_useridentity(EAP_HANDLER *list, eap_packet_t *eap_packet, unsigned char id[]);
-unsigned char 	*eap_generateid(REQUEST *request, unsigned char response_id);
-unsigned char 	*eap_regenerateid(REQUEST *request, unsigned char response_id);
-
-/* Memory Management */
-EAP_PACKET  	*eap_packet_alloc(void);
-EAP_DS      	*eap_ds_alloc(void);
-EAP_HANDLER 	*eap_handler_alloc(void);
-void	    	eap_packet_free(EAP_PACKET **eap_packet);
-void	    	eap_ds_free(EAP_DS **eap_ds);
-void	    	eap_handler_free(EAP_HANDLER **handler);
-
-int 	    	eaplist_add(EAP_HANDLER **list, EAP_HANDLER *handler);
-void	    	eaplist_clean(EAP_HANDLER **list, time_t limit);
-void	    	eaplist_free(EAP_HANDLER **list);
-EAP_HANDLER 	*eaplist_isreply(EAP_HANDLER **list, unsigned char id[]);
-EAP_HANDLER 	*eaplist_findhandler(EAP_HANDLER *list, unsigned char id[]);
-
-/* State */
-void	    	generate_key(void);
-VALUE_PAIR  	*generate_state(void);
-int	    	verify_state(VALUE_PAIR *state);
 
 #endif /*_EAP_H*/
