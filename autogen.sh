@@ -16,5 +16,6 @@ mysubdirs=`echo $mysubdirs`
 for F in $mysubdirs
 do
 	echo "Configuring in $F..."
+	(cd $F && grep ^AC_CONFIG_HEADER configure.in > /dev/null && autoheader -I$parentdir)
 	(cd $F && autoconf -I$parentdir)
 done

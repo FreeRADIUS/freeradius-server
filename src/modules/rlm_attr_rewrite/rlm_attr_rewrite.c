@@ -21,14 +21,12 @@
  * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 
-#include "config.h"
 #include "autoconf.h"
 #include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "config.h"
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
 #endif

@@ -29,5 +29,4 @@ sqlcounter_cflags=$SMART_CFLAGS
 AC_SUBST(sqlcounter_ldflags)
 AC_SUBST(sqlcounter_cflags)
 AC_SUBST(targetname)
-AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(Makefile)

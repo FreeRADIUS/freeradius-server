@@ -766,7 +766,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		result = radius_exec_program(inst->ntlm_auth, request,
 					     TRUE, /* wait */
 					     buffer, sizeof(buffer),
-					     NULL, NULL);
+					     NULL, NULL, 1);
 		if (result != 0) {
 			DEBUG2("  rlm_mschap: External script failed.");
 			return -1;

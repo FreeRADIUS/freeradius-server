@@ -24,7 +24,7 @@ if test x$with_[]modname != xno; then
 	not found.  this version must use sync by default.
 #endif
 			], [
-			AC_DEFINE(NEED_GDBM_SYNC, yes) 
+			AC_DEFINE(NEED_GDBM_SYNC, yes, [do we need GDBM_SYNC]) 
 			AC_MSG_RESULT(needs it.)
 			], [
 			AC_MSG_RESULT(SYNCs by default.)
@@ -37,7 +37,7 @@ if test x$with_[]modname != xno; then
 	AC_CHECK_FUNC(gdbm_fdesc)
 	if test "x$ac_cv_func_gdbm_fdesc" = "xyes";
 	then
-		AC_DEFINE(HAVE_GDBM_FDESC)
+		AC_DEFINE(HAVE_GDBM_FDESC, [], [do we have gdbm_fdesc])
 	fi
 	LIBS=$old_LIBS
 
