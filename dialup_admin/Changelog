@@ -6,6 +6,7 @@ Ver 1.52:
 * Only run if $login is not NULL in lib/sql/defaults.php3
 * In group admin add a button to administer the selected user which will redirect the administrator to the
   corresponding user_admin page
+* Add a show_groups.php3 to show all active user groups
 Ver 1.51:
 * Only call user_info.php3 in user_new.php3 when we are creating a user
 * Fix a bug with personal information attributes in user_new.php3
