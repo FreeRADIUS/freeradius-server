@@ -38,6 +38,7 @@ void version(void)
 {
 
 	fprintf(stderr, "%s: %s\n", progname, radiusd_version);
+#if 0
 	fprintf(stderr, "Compilation flags: ");
 
 	/* here are all the conditional feature flags */
@@ -51,6 +52,7 @@ void version(void)
 	fprintf(stderr," WITH_SNMP");
 #endif
 	fprintf(stderr,"\n");
+#endif
 	exit (0);
 }
 
