@@ -346,6 +346,7 @@ static const KeywordStruct filterProtoName[] = {
     { "udp",  17 },
     { "ospf", 89 },
     { "icmp", 1 },
+    { "0", 0 },
     {  NULL , NO_TOKEN },
 };
 
@@ -1268,7 +1269,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   /*
    *  Just for paranoia: wrong size filters get printed as octets
    */
-  if (vp->length != SIZEOF_RADFILTER) {
+  if (vp->length > SIZEOF_RADFILTER) {
     strcpy(p, "0x");
     p += 2;
     for (i = 0; i < vp->length; i++) {
@@ -1284,8 +1285,9 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 
   i = snprintf(p, len, "%s %s %s",
 	       FindValue(filter.type, filterType),
-	       action[filter.forward & 0x01],
-	       direction[filter.indirection & 0x01]);
+	       direction[filter.indirection & 0x01],
+	       action[filter.forward & 0x01]);
+
   p += i;
   len -= i;
 
@@ -1293,6 +1295,12 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
    *	Handle IP filters
    */
   if (filter.type == RAD_FILTER_IP) {
+
+    i =  snprintf(p, len, " %s", 
+		  FindValue(filter.u.ip.proto, filterProtoName));
+    p += i;
+    len -= i;
+    
     if (filter.u.ip.dstip) {
       i = snprintf(p, len, " dstip %d.%d.%d.%d/%d",
 		   ((u_char *) &filter.u.ip.dstip)[0],
@@ -1315,10 +1323,6 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       len -= i;
     }
 
-    i =  snprintf(p, len, " %d", filter.u.ip.proto);
-    p += i;
-    len -= i;
-    
     if (filter.u.ip.dstPortComp) {
       i = snprintf(p, len, " dstport %s %d",
 		   FindValue(filter.u.ip.dstPortComp, filterCompare),
