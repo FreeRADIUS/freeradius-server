@@ -5,3 +5,7 @@ http://www.csn.ul.ie/~airlied/pam_smb/
 
   If there are ANY discrepancies between these files and pam_smb, then
 pam_smb SHOULD be taken to be the definitive source code.
+
+rfcnb-util.c has been modified to use FreeRADIUS's ip_getaddr function
+which does both inet_addr and gethostbyname{,_r} and returns just the
+uint32_t or INADDR_ANY on failure.

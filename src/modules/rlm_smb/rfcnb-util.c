@@ -318,11 +318,7 @@ int RFCNB_Name_To_IP(char *host, struct in_addr *Dest_IP)
 
         /* Use inet_addr to try to convert the address */
 
-  if ((addr = inet_addr(host)) == INADDR_NONE) { /* Oh well, a good try :-) */
-
-        /* Now try a name look up with gethostbyname */
-
-    if ((hp = gethostbyname(host)) == NULL) { /* Not in DNS */
+  if ((addr = ip_getaddr(host)) == INADDR_NONE) { /* Not in DNS */
 
         /* Try NetBIOS name lookup, how the hell do we do that? */
 
@@ -330,14 +326,8 @@ int RFCNB_Name_To_IP(char *host, struct in_addr *Dest_IP)
       RFCNB_saved_errno = errno;
       return(RFCNBE_Bad);
 
-    }
-    else {  /* We got a name */
-
-       memcpy((void *)Dest_IP, (void *)hp -> h_addr_list[0], sizeof(struct in_addr));
-
-    }
   }
-  else { /* It was an IP address */
+  else { /* We got an IP address */
 
     memcpy((void *)Dest_IP, (void *)&addr, sizeof(struct in_addr));
 
