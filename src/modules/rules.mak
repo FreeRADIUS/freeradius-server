@@ -85,11 +85,19 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
+ifeq ($(USE_STATIC_LIBS),yes)
 static: $(TARGET).a
 	@cp $< ../lib
+else
+static:
+endif
 
+ifeq ($(USE_SHARED_LIBS),yes)
 dynamic: $(TARGET).la
 	@cp $< ../lib
+else
+dynamic:
+endif
 
 #######################################################################
 #

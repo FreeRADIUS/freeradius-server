@@ -18,10 +18,10 @@ all:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 static:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@[$$USE_STATIC_LIBS = "yes" ] && $(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 dynamic:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@[$$USE_SHARED_LIBS = "yes" ] && $(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 install:
 	$(INSTALL) -d -m 755 $(libdir)

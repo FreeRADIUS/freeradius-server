@@ -586,6 +586,11 @@ dnl #  Substitute whatever libraries we found to be necessary
 dnl #
 AC_SUBST(LIBS)
 
+USE_SHARED_LIBS=$enable_shared
+AC_SUBST(USE_SHARED_LIBS)
+USE_STATIC_LIBS=$enable_static
+AC_SUBST(USE_STATIC_LIBS)
+
 AC_OUTPUT(\
 	./Make.inc \
 	./src/include/build-radpaths-h \
