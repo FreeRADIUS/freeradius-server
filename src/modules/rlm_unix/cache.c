@@ -1,6 +1,5 @@
 /*
  * cache.c:  Offers ability to cache /etc/group, /etc/passwd, /etc/shadow,
- *           and /var/log/radutmp 
  *
  * All users in the passwd/shadow files are stored in a hash table.
  * the hash lookup is VERY fast,  generally 1.0673 comparisons per
@@ -43,7 +42,6 @@ static const char rcsid[] = "$Id$";
 #endif 
 
 #include "radiusd.h"
-#include "radutmp.h"
 #include "cache.h"
 #include "config.h"
 
@@ -276,10 +274,6 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	fclose(shadow);
 #endif
 
-	/* Finally, let's look at radutmp and make a record of everyone
-	 * that's logged in currently */
-	/*unix_hashradutmp();*/
-
 	/* log how many entries we stored from the passwd file */
 	radlog(L_INFO, "HASH:  Stored %d entries from %s", numread, passwd_file);
 
@@ -389,24 +383,6 @@ int unix_buildGrpList(void) {
 	return 0;
 }
 
-/* This function changes the loggedin variable for a user
- * when they login or out.  This lets us keep track of 
- * what radutmp is doing without having to read it
- */
-static void chgLoggedin(char *user, int diff) {
-	struct mypasswd *cur;
-
-	cur = findHashUser(user);
-	if(cur) {
-		cur->loggedin += diff;
-		/* Can't have less than 0 logins */
-		if(cur->loggedin<0) {
-			cur->loggedin = 0;
-		}
-		DEBUG2("  HASH:  Changed user %s to %d logins", user, cur->loggedin);
-	}
-}
-
 /*
  * Looks up user in hashtable.  If user can't be found, returns 0.  
  * Otherwise returns a pointer to the structure for the user
@@ -454,32 +430,6 @@ static int hashUserName(const char *s) {
 
      return (hash % HASHTABLESIZE);
 }              
-
-/* Reads radutmp file, and increments the loggedin variable
- * for every login a user has...assuming we can find the user
- * in the hashtable
- */
-int unix_hashradutmp(void) {
-
-	int fd;
-	struct radutmp u;
-	struct mypasswd *cur;
-
-   if ((fd = open(RADUTMP, O_CREAT|O_RDONLY, 0644)) < 0)
-      return 0;
-
-   while(read(fd, &u, sizeof(u)) == sizeof(u)) {
-      if ((u.login) && (u.type == P_LOGIN)) {
-			cur = findHashUser(u.login);
-			if(cur) {
-				cur->loggedin++;		
-			}
-		}
-	}
-	close(fd);
-
-	return 1;
-}
 
 /*
  *	Emulate the cistron unix_pass function, but do it using 
