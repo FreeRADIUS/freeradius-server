@@ -96,6 +96,10 @@ static int always_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Set up a storage area for instance data
 	 */
 	data = rad_malloc(sizeof(*data));
+	if (!data) {
+		return -1;
+	}
+	memset(data, 0, sizeof(*data));
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
