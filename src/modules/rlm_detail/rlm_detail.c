@@ -29,6 +29,9 @@ struct detail_instance {
 
         /* detail file permissions */
         int detailperm;
+
+	/* directory permissions */
+	int dirperm;
 };
 
 static int detail_init(void)
@@ -45,6 +48,7 @@ static struct detail_instance config;
 static CONF_PARSER module_config[] = {
 	{ "detailfile",    PW_TYPE_STRING_PTR, &config.detailfile, "%A/%n/detail" },
         { "detailperm",    PW_TYPE_INTEGER,    &config.detailperm, "0600" },
+	{ "dirperm",       PW_TYPE_INTEGER,    &config.dirperm,    "0755" },
 	{ NULL, -1, NULL, NULL }
 };
 
@@ -68,6 +72,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 
         inst->detailfile = config.detailfile;
         inst->detailperm = config.detailperm;
+	inst->dirperm = config.dirperm;
 	config.detailfile = NULL;
 
         *instance = inst;
@@ -131,7 +136,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 
 	radius_xlat2(buffer, sizeof(buffer), filename, request,
 		     request->reply->vps);
-	if ((mkdir(buffer, 0755) == -1) && errno != EEXIST) {
+	if ((mkdir(buffer, inst->dirperm) == -1) && errno != EEXIST) {
 		radlog(L_ERR, "Detail: Couldn't create %s: %s",
 		       buffer, strerror(errno));
 		return RLM_MODULE_FAIL;
