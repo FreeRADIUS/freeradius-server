@@ -65,11 +65,6 @@ static int md5_authenticate(void *arg, EAP_HANDLER *handler)
 	VALUE_PAIR	*password;
 	EAP_DS		*temp;
 
-	if (!(packet = eapmd5_extract(handler->eap_ds)))
-		return 0;
-
-	username = (char *)handler->username->strvalue;
-
 	/*
 	 * Password is never sent over the wire.
 	 * Always get the configured password, for each user.
@@ -77,9 +72,16 @@ static int md5_authenticate(void *arg, EAP_HANDLER *handler)
 	password = pairfind(handler->configured, PW_PASSWORD);
 	if (password == NULL) {
 		radlog(L_INFO, "rlm_eap_md5: No password configured for this user");
-		eapmd5_free(&packet);
 		return 0;
 	}
+
+	/*
+	 *	Allocate memory AFTER doing sanity checks.
+	 */
+	if (!(packet = eapmd5_extract(handler->eap_ds)))
+		return 0;
+
+	username = (char *)handler->username->strvalue;
 
 	temp = (EAP_DS *)handler->prev_eapds;
 	request = temp?(md5_packet_t *)(temp->request->type.data):NULL;

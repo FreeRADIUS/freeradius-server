@@ -84,14 +84,14 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	MD5_PACKET	*packet;
 	unsigned short	name_len;
 
-	if (!eap_ds 						|| 
-		!eap_ds->response 				|| 
-        (eap_ds->response->code != PW_MD5_RESPONSE)	||
-		eap_ds->response->type.type != PW_EAP_MD5		||
-		!eap_ds->response->type.data 			||
-		(eap_ds->response->length < MD5_HEADER_LEN)	||
-		(eap_ds->response->type.data[0] <= 0)	) {
-
+	if (!eap_ds 					|| 
+	    !eap_ds->response 				|| 
+	    (eap_ds->response->code != PW_MD5_RESPONSE)	||
+	    eap_ds->response->type.type != PW_EAP_MD5	||
+	    !eap_ds->response->type.data 		||
+	    (eap_ds->response->length < MD5_HEADER_LEN)	||
+	    (eap_ds->response->type.data[0] <= 0)	) {
+	  
 		radlog(L_ERR, "rlm_eap_md5: corrupted data");
 		return NULL;
 	}
@@ -113,6 +113,11 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	data = (md5_packet_t *)eap_ds->response->type.data;
 
 	packet->value_size = data->value_size;
+	if (packet->value_size < 1) {
+		radlog(L_ERR, "rlm_eap_md5: Value size is too small");
+		eapmd5_free(&packet);
+		return NULL;
+	}
 
 	packet->value = malloc(packet->value_size);
 	if (packet->value == NULL) {
@@ -146,12 +151,14 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
  */
 int eapmd5_challenge(unsigned char *value, int len)
 {
+	int i;
+
 	/*
-	 * TODO: Make sure Challenge is always unique,
-	 * 	     no matter how many times it is called.
-	 * 	     random_vector() in lib/radius.c should be used.
+	 *	Get real pseudo-random numbers.
 	 */
-	librad_md5_calc((u_char *)value, (u_char *)value, len);
+	for (i = 0; i < len; i++) {
+		value[i] = lrad_rand();
+	}
 	radlog(L_INFO, "rlm_eap_md5: Issuing Challenge");
 
 	return 1;
@@ -172,6 +179,14 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 		return 0;
 	}
 
+	/*
+	 *	Sanity check it.
+	 */
+	if (packet->value_size != 16) {
+		radlog(L_ERR, "rlm_eap_md5: Expected 16 bytes of response to challenge, got %d", packet->value_size);
+		return 0;
+	}
+
 	len = 0;
 	ptr = string;
 
@@ -186,7 +201,10 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 
 	librad_md5_calc((u_char *)output, (u_char *)string, len);
 
-	if (memcmp(output, packet->value, packet->value_size) != 0) {
+	/*
+	 *	The length of the response is always 16 for MD5.
+	 */
+	if (memcmp(output, packet->value, 16) != 0) {
 		return 0;
 	}
 	return 1;
@@ -221,6 +239,7 @@ MD5_PACKET *eapmd5_process(MD5_PACKET *packet, int id,
 		else {
 			reply->code = PW_MD5_SUCCESS;
 		}
+
 	} else {
 		/*
 		 * Previous request not found.
@@ -229,7 +248,19 @@ MD5_PACKET *eapmd5_process(MD5_PACKET *packet, int id,
 		 * TODO: Later Send these challenges for the configurable
 		 * 		number of times for each user & stop.
 		 */
-		eapmd5_challenge(reply->value, MD5_LEN);
+
+		/*
+		 *	Ensure that the challenge is always of the correct
+		 *	length.  i.e. Don't take value size from data
+		 *	supplied by the client.
+		 */
+		if (reply->value_size != MD5_LEN) {
+			free(reply->value);
+			reply->value_size = MD5_LEN;
+			reply->value = malloc(reply->value_size);
+		}
+
+		eapmd5_challenge(reply->value, reply->value_size);
 		reply->code = PW_MD5_CHALLENGE;
 		radlog(L_INFO, "rlm_eap_md5: Previous request not found");
 		radlog(L_INFO, "rlm_eap_md5: Issuing Challenge to the user - %s",
@@ -279,7 +310,7 @@ MD5_PACKET *eapmd5_initiate(EAP_DS *eap_ds)
 		return NULL;
 	}
 
-	eapmd5_challenge(reply->value, MD5_LEN);
+	eapmd5_challenge(reply->value, reply->value_size);
 
 	return reply;
 }
