@@ -17,7 +17,7 @@
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
- * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2000-2003  The FreeRADIUS server project
  */
 
 static const char rcsid[] = "$Id$";
@@ -358,9 +358,10 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				  ptr          += 4;
 
 				  /*
-				   *	Each USR attribute gets it's own
-				   *	VSA wrapper, so we re-set the
-				   *	vendor specific information.
+				   *	Each USR-style attribute gets
+				   *	it's own VSA wrapper, so we
+				   *	re-set the vendor specific
+				   *	information.
 				   */
 				  vendorcode = 0;
 				  vendorpec = 0;
@@ -1314,18 +1315,47 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				length -= 6;
 
 				/*
-				 *	FIXME: Key off of the information
-				 *	in the dictionaries, not the
-				 *	hard-coded vendor!
+				 *	USR-style attributes are 4 octets,
+				 *	with the upper 2 octets being zero.
+				 *
+				 *	The upper octets may not be zero,
+				 *	but that then means we won't be
+				 *	able to pack the vendor & attribute
+				 *	into a 32-bit number, so we can't
+				 *	handle it.
+				 *
+				 *
+				 *	FIXME: Update the dictionaries so
+				 *	that we key off of per-attribute
+				 *	flags "4-octet", instead of hard
+				 *	coding USR here.  This will also
+				 *	let us send packets with other
+				 *	vendors having 4-octet attributes.
 				 */
-			} else if (vendorcode == VENDORPEC_USR) {
-				ptr += 4;
-				memcpy(&lvalue, ptr, 4);
-				attribute = ((ntohl(lvalue) & 0xFFFF) |
-					     (vendorcode << 16));
-				ptr += 4;
-				attrlen -= 8;
-				length -= 8;
+			} else if ((vendorcode == VENDORPEC_USR) &&
+				   ((ptr[4] == 0) && (ptr[5] == 0))) {
+				DICT_ATTR *da;
+				
+				da = dict_attrbyvalue((vendorcode << 16) |
+						      (ptr[6] << 8) |
+						      ptr[7]);
+
+				/*
+				 *	See if it's in the dictionary.
+				 *	If so, it's a valid USR style
+				 *	attribute.  If not, it's not...
+				 *
+				 *	Don't touch 'attribute' until
+				 *	we know what to do!
+				 */
+				if (da != NULL) {
+					attribute = ((vendorcode << 16) |
+						     (ptr[6] << 8) |
+						     ptr[7]);
+					ptr += 8;
+					attrlen -= 8;
+					length -= 8;
+				} /* else it's not in the dictionary */
 			} /* else it was a stupid vendor format */
 		} /* else it wasn't a VSA */
 
