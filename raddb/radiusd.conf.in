@@ -692,8 +692,6 @@ modules {
 		# directory attributes.
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
 
-		# ldap_cache_timeout = 120
-		# ldap_cache_size = 0
 		ldap_connections_number = 5
 		# password_header = "{clear}"
 		# password_attribute = userPassword

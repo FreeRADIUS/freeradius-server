@@ -111,6 +111,8 @@
  * Mar 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
  * 	- Add an ldap_escape_func. Escape the * character from the filter so that we can avoid
  * 	  the trivial DoS of username=*
+ * 	- Remove the caching code. It does not exist in openldap21.
+ *	  Based on a report from Mike Denka <mdenk@whidbey.net>
  */
 static const char rcsid[] = "$Id$";
 
@@ -200,8 +202,6 @@ typedef struct {
 	int             tls_mode;
 	int		start_tls;
 	int		num_conns;
-	int		cache_timeout;
-	int		cache_size;
 	int		do_comp;
 	int		default_allow;
 	int		failed_conns;
@@ -236,8 +236,6 @@ static CONF_PARSER module_config[] = {
 	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,timeout.tv_sec), NULL, "20"},
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "20"},
-	{"ldap_cache_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,cache_timeout), NULL, "0"},
-	{"ldap_cache_size", PW_TYPE_INTEGER, offsetof(ldap_instance,cache_size), NULL, "0"},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance,start_tls), NULL, "no"},
 	{"tls_mode", PW_TYPE_BOOLEAN, offsetof(ldap_instance,tls_mode), NULL, "no"},
@@ -576,8 +574,6 @@ retry:
 		DEBUG2("rlm_ldap: attempting LDAP reconnection");
 		if (conn->ld){
 			DEBUG2("rlm_ldap: closing existing LDAP connection");
-			if (inst->cache_timeout >0)
-				ldap_destroy_cache(conn->ld);
 			ldap_unbind_s(conn->ld);
 		}
 		if ((conn->ld = ldap_connect(instance, inst->login, inst->password, 0, &res)) == NULL) {
@@ -1105,8 +1101,6 @@ ldap_authorize(void *instance, REQUEST * request)
 			}
 		}
 	}
-	if (inst->cache_timeout >0)
-		ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
 
 	/*
 	 * Check for the default profile entry. If it exists then add the 
@@ -1135,8 +1129,6 @@ ldap_authorize(void *instance, REQUEST * request)
 				DEBUG("rlm_ldap: default_profile/user-profile search failed");
 		}
 	}
-	if (inst->cache_timeout >0)
-		ldap_disable_cache(conn->ld);
 
 	/*
 	 * Check for the profile attribute. If it exists, we assume that it 
@@ -1149,8 +1141,6 @@ ldap_authorize(void *instance, REQUEST * request)
 		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL) {
 			unsigned int i=0;
 			strNcpy(filter,"(objectclass=radiusprofile)",sizeof(filter));
-			if (inst->cache_timeout >0)
-				ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
 			while(vals[i] != NULL && strlen(vals[i])){
 				if ((res = perform_search(instance, conn,
 					vals[i], LDAP_SCOPE_BASE, 
@@ -1169,8 +1159,6 @@ ldap_authorize(void *instance, REQUEST * request)
 			ldap_value_free(vals);
 		}
 	}
-	if (inst->cache_timeout >0)
-		ldap_disable_cache(conn->ld);
 	if (inst->passwd_attr && strlen(inst->passwd_attr)){
 		VALUE_PAIR *passwd_item;
 
@@ -1564,8 +1552,6 @@ ldap_detach(void *instance)
 
 		for(;i<inst->num_conns;i++){
 			if (inst->conns[i].ld){
-				if (inst->cache_timeout >0)
-					ldap_destroy_cache(inst->conns[i].ld);
 				ldap_unbind_s(inst->conns[i].ld);
 			}
 			pthread_mutex_destroy(&inst->conns[i].mutex);
