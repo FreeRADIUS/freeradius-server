@@ -2,13 +2,45 @@
 
 # radius2ldif.pl
 #
-# Reads from input a radius definition file, as used by the old
-# Cistron server patched for LDAP, and outputs an ldif to be included
-# in an LDAP database
+#        To test this program, do the following
+#Take a radius users' file, for example with:
 #
-#  e.g. 'cat schema | radius2ldif.pl'
+#myuser Password = "apassword"
+#        User-Service = Framed-User,
+#        Framed-Protocol = PPP,
+#        Framed-Address = 255.255.255.255,
+#        Framed-Netmask = 255.255.255.255,
+#        Ascend-Metric = 2,
+#        Framed-Routing = None,
+#        Framed-Compression = 0,
+#        Ascend-Idle-Limit = 0,
+#        Ascend-Maximum-Time = 36000
 #
+#and do:
 #
+#cat users | ./radius2ldif
+#
+#Output is:
+#dn: cn=myuser, ou=Hardware, ou=EDUCAMADRID, ou=People, o=icm.es
+#objectclass: top
+#objectclass: person
+#objectclass: radiusprofile
+#cn: myuser
+#sn: myuser
+#userpassword: apassword
+#radiusServiceType: Framed-User
+#radiusFramedProtocol: PPP
+#radiusFramedIPAddress: 255.255.255.255
+#radiusFramedIPNetmask: 255.255.255.255
+#radiusFramedRouting: None
+#radiusFramedCompression: 0
+#
+#dn: ou=RadiusUser, ou=Groups, o=icm.es
+#description: RadiusUser
+#objectclass: top
+#objectclass: groupOfUniqueNames
+#cn: RadiusUser
+#uniquemember: dn: cn=myuser, ou=Hardware, ou=EDUCAMADRID, ou=People, o=icm.es
 #
 # (c) 2000 Javier Fern'andez-Sanguino Pen~a  <jfs@computer.org>
 # -------------------------------------------------------------------------
