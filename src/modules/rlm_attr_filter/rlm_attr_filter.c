@@ -152,6 +152,10 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 	int rcode;
 
         inst = rad_malloc(sizeof *inst);
+	if (!inst) {
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
 
         if (cf_section_parse(conf, inst, module_config) < 0) {
                 free(inst);
