@@ -18,48 +18,14 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 #ifndef _EAP_TLS_H
 #define _EAP_TLS_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <netdb.h>
-#include <fcntl.h>
-#include <signal.h>
-
-#include <ctype.h>
-#include <sys/time.h>
-#include <arpa/inet.h>
-
-#ifdef HAVE_LIMITS_H
-#include <limits.h>
-#endif
-
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#include "config.h"
-
-#ifndef NO_OPENSSL
-#include <openssl/err.h>
-#if HAVE_OPENSSL_ENGINE_H
-#include <openssl/engine.h>
-#endif
-#include <openssl/ssl.h>
-#endif /* !defined(NO_OPENSSL) */
-
-#include "eap.h"
+#include "rlm_eap_tls.h"
 
 #define BUFFER_SIZE 1024
-#define MAX_RECORD_SIZE 16384
 
 #define EAP_TLS_START          	1
 #define EAP_TLS_ACK          	2
@@ -69,9 +35,24 @@
 
 #define TLS_HEADER_LEN          4
 
-#define TLS_START(x) 		(((x) & 0x20) >> 5)
-#define TLS_MORE_FRAGMENTS(x) 	(((x) & 0x40) >> 6)
-#define TLS_LENGTH_INCLUDED(x) 	(((x) & 0x80) >> 7)
+/*
+ *	RFC 2716, Section 4.2:
+ *
+ *	   Flags
+ *
+ *      0 1 2 3 4 5 6 7 8
+ *      +-+-+-+-+-+-+-+-+
+ *      |L M S R R R R R|
+ *      +-+-+-+-+-+-+-+-+
+ *
+ *      L = Length included
+ *      M = More fragments
+ *      S = EAP-TLS start
+ *      R = Reserved
+ */
+#define TLS_START(x) 		(((x) & 0x20) != 0)
+#define TLS_MORE_FRAGMENTS(x) 	(((x) & 0x40) != 0)
+#define TLS_LENGTH_INCLUDED(x) 	(((x) & 0x80) != 0)
 
 #define TLS_CHANGE_CIPHER_SPEC(x) 	(((x) & 0x0014) == 0x0014)
 #define TLS_ALERT(x) 			(((x) & 0x0015) == 0x0015)
@@ -81,22 +62,6 @@
 #define SET_MORE_FRAGMENTS(x) 	((x) | (0x40))
 #define SET_LENGTH_INCLUDED(x) 	((x) | (0x80))
 
-typedef enum {
-        EAPTLS_INVALID = 0,	  	/* invalid, don't reply */
-        EAPTLS_REQUEST,       		/* request, ok to send, invalid to receive */
-        EAPTLS_RESPONSE,       		/* response, ok to receive, invalid to send */
-        EAPTLS_SUCCESS,       		/* success, send success */
-        EAPTLS_FAIL,       		/* fail, send fail */
-        EAPTLS_NOOP,       		/* noop, continue */
-
-        EAPTLS_START,       		/* start, ok to send, invalid to receive */
-        EAPTLS_OK, 	         	/* ok, continue */
-        EAPTLS_ACK,       		/* acknowledge, continue */
-        EAPTLS_FIRST_FRAGMENT,    	/* first fragment */
-        EAPTLS_MORE_FRAGMENTS,    	/* more fragments, to send/receive */
-        EAPTLS_LENGTH_INCLUDED,          	/* length included */
-        EAPTLS_MORE_FRAGMENTS_WITH_LENGTH    /* more fragments with length */
-} eaptls_status_t;
 
 /* Following enums from rfc2246 */
        enum {
@@ -202,88 +167,17 @@ typedef struct tls_packet {
 	//uint8_t		*packet;  /* Wired EAP-TLS packet as found in typdedata of EAP_PACKET */
 } EAPTLS_PACKET;
 
-/*
-   A single TLS record may be up to 16384 octets in length, but a TLS
-   message may span multiple TLS records, and a TLS certificate message
-   may in principle be as long as 16MB.
-
-   However, note that in order to protect against reassembly lockup and
-   denial of service attacks, it may be desirable for an implementation
-   to set a maximum size for one such group of TLS messages.
-
-   The TLS Message Length field is
-   four octets, and provides the total length of the TLS message or set
-   of messages that is being fragmented; this simplifies buffer
-   allocation.
-*/
-/*
- * FIXME: Dynamic allocation of buffer to overcome MAX_RECORD_SIZE overflows.
- * 	or configure TLS not to exceed MAX_RECORD_SIZE.
- */
-typedef struct _record_t {
-	unsigned char data[MAX_RECORD_SIZE];
-	unsigned int  used; 
-} record_t;
-
-typedef struct _tls_info_t {
-	unsigned char origin;
-	unsigned char content_type;
-	unsigned char handshake_type;
-	unsigned char alert_level;
-	unsigned char alert_description;
-	char 		info_description[256];
-	size_t		record_len;
-	int		version;
-}tls_info_t;
-
-/*
- * tls_session_t Structure gets stored as opaque in EAP_HANDLER
- * This contains EAP-REQUEST specific data 
- * (ie EAPTLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
- *
- * clean_in  - data that needs to be sent but only after it is soiled.
- * dirty_in  - data EAP server receives.
- * clean_out - data that is cleaned after receiving.
- * dirty_out - data EAP server sends. 
- * offset    - current fragment size transmitted
- * fragment  - Flag, In fragment mode or not.
- * tls_msg_len - Actual/Total TLS message length.
- * length_flag - A flag to include length in every TLS Data/Alert packet
- * 					if set to no then only the first fragment contains length
- */
-typedef struct _tls_session_t {
-
-	SSL 		*ssl;
-	tls_info_t	info;
-
-	BIO 		*into_ssl;
-	BIO 		*from_ssl;
-	record_t 	clean_in;
-	record_t 	clean_out;
-	record_t 	dirty_in;
-	record_t 	dirty_out;
-
-	/*
-	 * Framed-MTU attribute in RADIUS, 
-	 * if present, can also be used to set this
-	 */
-	unsigned int 	offset;
-	unsigned int 	tls_msg_len;
-	int 		fragment;
-	int			length_flag;
-} tls_session_t;
-
 
 /* configured values goes right here */
 typedef struct eap_tls_conf {
-	char	*private_key_password;
-	char	*private_key_file;
-	char	*certificate_file;
-	char	*random_file;
-	char	*ca_path;
-	char	*ca_file;
-	char	*dh_file;
-	char	*rsa_file;
+	char		*private_key_password;
+	char		*private_key_file;
+	char		*certificate_file;
+	char		*random_file;
+	char		*ca_path;
+	char		*ca_file;
+	char		*dh_file;
+	char		*rsa_file;
 	int		rsa_key;
 	int		dh_key;
 	int		rsa_key_length;
@@ -291,8 +185,13 @@ typedef struct eap_tls_conf {
 	int		verify_depth;
 	int		file_type;
 	int		include_length;
-	int		fragment_size; /* always < 4096 (due to radius limit), 0 by default = 2048 */
+
+	/*
+	 *	Always < 4096 (due to radius limit), 0 by default = 2048
+	 */
+	int		fragment_size;
 } EAP_TLS_CONF;
+
 
 /* This structure gets stored in arg */
 typedef struct _eap_tls_t {
@@ -304,17 +203,8 @@ typedef struct _eap_tls_t {
 /* EAP-TLS framework */
 EAPTLS_PACKET 	*eaptls_alloc(void);
 void 		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);
-eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds);
-int 		eaptls_start(EAP_DS *eap_ds);
-int 		eaptls_success(EAP_DS *eap_ds);
-int 		eaptls_fail(EAP_DS *eap_ds);
-int 		eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn);
-int 		eaptls_send_ack(EAP_DS *eap_ds);
-eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler);
+int 		eaptls_start(EAP_DS *eap_ds, int peap);
 int 		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
-EAPTLS_PACKET 	*eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status);
-void 		eaptls_operation(EAPTLS_PACKET *eaptls_packet, 
-			eaptls_status_t status, EAP_HANDLER *handler);
 
 /* Callbacks */
 int 		cbtls_password(char *buf, int num, int rwflag, void *userdata);
@@ -325,10 +215,7 @@ void 		cbtls_msg(int write_p, int msg_version, int content_type,
 RSA		*cbtls_rsa(SSL *s, int is_export, int keylength);
 
 /* TLS */
-SSL_CTX 	*init_tls_ctx(EAP_TLS_CONF *keyfile);
-tls_session_t 	*new_tls_session(eap_tls_t *eaptls);
-int 		load_dh_params(SSL_CTX *ctx, char *file);
-int 		generate_eph_rsa_key(SSL_CTX *ctx);
+tls_session_t 	*eaptls_new_session(SSL_CTX *ssl_ctx);
 int 		tls_handshake_recv(tls_session_t *ssn);
 int 		tls_handshake_send(tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *tls_session);
@@ -342,11 +229,11 @@ void 		session_init(tls_session_t *ssn);
 void 		record_init(record_t *buf);
 void 		record_close(record_t *buf);
 unsigned int 	record_plus(record_t *buf, const unsigned char *ptr, 
-			unsigned int size);
+			    unsigned int size);
 unsigned int 	record_minus(record_t *buf, unsigned char *ptr, 
-			unsigned int size);
+			     unsigned int size);
 
-/* MPPE key generation */
-void            eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s);
+/* TTLS processing */
+int		eapttls_process(REQUEST *request, tls_session_t *tls_session);
 
 #endif /*_EAP_TLS_H*/

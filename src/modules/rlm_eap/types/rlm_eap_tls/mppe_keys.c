@@ -113,29 +113,65 @@ static void PRF(const unsigned char *secret, unsigned int secret_len,
 	}
 }
 
-#define EAPTLS_PRF_LABEL        "client EAP encryption"
 #define EAPTLS_MPPE_KEY_LEN     32
 
+#define EAPTLS_PRF_LABEL "ttls keying material"
+
 /*
- * Generate keys according to RFC 2716 and add to reply
+ *	Generate keys according to RFC 2716 and add to reply
  */
-void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s)
+void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
+			  const char *prf_label)
 {
 	unsigned char out[2*EAPTLS_MPPE_KEY_LEN], buf[2*EAPTLS_MPPE_KEY_LEN];
-	unsigned char seed[sizeof(EAPTLS_PRF_LABEL)-1 + 2*SSL3_RANDOM_SIZE];
+	unsigned char seed[64 + 2*SSL3_RANDOM_SIZE];
 	unsigned char *p = seed;
+	size_t prf_size;
 
-	memcpy(p, EAPTLS_PRF_LABEL, sizeof(EAPTLS_PRF_LABEL)-1);
-	p += sizeof(EAPTLS_PRF_LABEL)-1;
+	prf_size = strlen(prf_label);
+
+	memcpy(p, prf_label, prf_size);
+	p += prf_size;
+
 	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
+	prf_size += SSL3_RANDOM_SIZE;
+
 	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+	prf_size += SSL3_RANDOM_SIZE;
 
 	PRF(s->session->master_key, s->session->master_key_length,
-	    seed, sizeof(seed), out, buf, 2*EAPTLS_MPPE_KEY_LEN);
+	    seed, prf_size, out, buf, sizeof(out));
 	    
 	p = out;
 	add_reply(reply_vps, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
 	p += EAPTLS_MPPE_KEY_LEN;
 	add_reply(reply_vps, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
+}
+
+
+#define EAPTLS_PRF_CHALLENGE        "ttls challenge"
+
+/*
+ *	Generate the TTLS challenge
+ *
+ *	It's in the TLS module simply because it's only a few lines
+ *	of code, and it needs access to the TLS PRF functions.
+ */
+void eapttls_gen_challenge(SSL *s, char *buffer, int size)
+{
+	unsigned char out[32], buf[32];
+	unsigned char seed[sizeof(EAPTLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
+	unsigned char *p = seed;
+
+	memcpy(p, EAPTLS_PRF_CHALLENGE, sizeof(EAPTLS_PRF_CHALLENGE)-1);
+	p += sizeof(EAPTLS_PRF_CHALLENGE)-1;
+	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+
+	PRF(s->session->master_key, s->session->master_key_length,
+	    seed, sizeof(seed), out, buf, sizeof(out));
+
+	memcpy(buffer, out, size);
 }

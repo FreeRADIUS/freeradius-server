@@ -18,180 +18,17 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 #include "eap_tls.h"
 
-/*
- * TODO: Check for the type of key exchange
- *  like conf->dh_key
- */
-int load_dh_params(SSL_CTX *ctx, char *file)
-{
-	DH *dh = NULL;
-	BIO *bio;
-
-	if ((bio = BIO_new_file(file, "r")) == NULL) {
-		radlog(L_ERR, "rlm_eap_tls: Unable to open DH file - %s", file);
-		return -1;
-	}
-
-	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
-	BIO_free(bio);
-	if (SSL_CTX_set_tmp_dh(ctx, dh) < 0) {
-		radlog(L_ERR, "rlm_eap_tls: Unable to set DH parameters");
-		DH_free(dh);
-		return -1;
-	}
-
-	DH_free(dh);
-	return 0;
-}
-
-int generate_eph_rsa_key(SSL_CTX *ctx)
-{
-	RSA *rsa;
-
-	rsa = RSA_generate_key(512, RSA_F4, NULL, NULL);
-
-	if (!SSL_CTX_set_tmp_rsa(ctx, rsa)) {
-		radlog(L_ERR, "rlm_eap_tls: Couldn't set RSA key");
-		return -1;
-	}
-
-	RSA_free(rsa);
-	return 0;
-}
-
-/*
- * Create Global context SSL and use it in every new session
- * # Load the trusted CAs
- * # Load the Private key & the certificate
- * # Set the Context options & Verify options
- */
-SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
-{
-	SSL_METHOD *meth;
-	SSL_CTX *ctx;
-	int verify_mode = 0;
-	int ctx_options = 0;
-	int type;
-
-	/*
-	 * Add all the default ciphers and message digests
-	 * Create our context
-	 */
-	SSL_library_init();
-	SSL_load_error_strings();
-
-	meth = TLSv1_method();
-	ctx = SSL_CTX_new(meth);
-
-	/*
-	 * Identify the type of certificates that needs to be loaded
-	 */
-	if (conf->file_type) {
-		type = SSL_FILETYPE_PEM;
-	} else {
-		type = SSL_FILETYPE_ASN1;
-	}
-
-	/* Load the CAs we trust */
-	if (!(SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) ||
-			(!SSL_CTX_set_default_verify_paths(ctx))) {
-		ERR_print_errors_fp(stderr);
-		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list");
-		return NULL;
-	}
-	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
-
-	/* 
-	 * Set the password to load private key
-	 */
-	if (conf->private_key_password) {
-		SSL_CTX_set_default_passwd_cb_userdata(ctx, conf->private_key_password);
-		SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
-	}
-
-	/* Load our keys and certificates*/
-	if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
-		ERR_print_errors_fp(stderr);
-		radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
-		return NULL;
-	}
-
-	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
-		ERR_print_errors_fp(stderr);
-		radlog(L_ERR, "rlm_eap_tls: Error reading private key file");
-		return NULL;
-	}
-
-	/*
-	 * Check if the loaded private key is the right one
-	 */
-	if (!SSL_CTX_check_private_key(ctx)) {
-		radlog(L_ERR, "rlm_eap_tls: Private key does not match the certificate public key");
-		return NULL;
-	}
-
-	/*
-	 * Set ctx_options
-	 */
-	ctx_options |= SSL_OP_NO_SSLv2;
-   	ctx_options |= SSL_OP_NO_SSLv3;
-	/* 
-       SSL_OP_SINGLE_DH_USE must be used in order to prevent 
-	   small subgroup attacks and forward secrecy. Always using
-       SSL_OP_SINGLE_DH_USE has an impact on the computer time
-       needed during negotiation, but it is not very large.
-	 */
-   	ctx_options |= SSL_OP_SINGLE_DH_USE;
-	SSL_CTX_set_options(ctx, ctx_options);
-
-	/*
-	 * TODO: Set the RSA & DH
-	SSL_CTX_set_tmp_rsa_callback(ctx, cbtls_rsa);
-	SSL_CTX_set_tmp_dh_callback(ctx, cbtls_dh);
-	 */
-
-	/*
-	 * set the message callback to identify the type of message.
-	 * For every new session, there can be a different callback argument
-	SSL_CTX_set_msg_callback(ctx, cbtls_msg);
-	 */
-
-	/* Set Info callback */
-	SSL_CTX_set_info_callback(ctx, cbtls_info);
-
-	/*
-	 * Set verify modes
-	 * Always verify the peer certificate
-	 */
-	verify_mode |= SSL_VERIFY_PEER;
-	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	SSL_CTX_set_verify(ctx, verify_mode, cbtls_verify);
-
-	if (conf->verify_depth) {
-		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
-	}
-
-	/* Load randomness */
-	if (!(RAND_load_file(conf->random_file, 1024*1024))) {
-		ERR_print_errors_fp(stderr);
-		radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
-		return NULL;
-	}
-
-	return ctx;
-}
-
-tls_session_t *new_tls_session(eap_tls_t *eaptls)
+tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx)
 {
 	tls_session_t *state = NULL;
 	SSL *new_tls = NULL;
 	int verify_mode = 0;
 
-	if ((new_tls = SSL_new(eaptls->ctx)) == NULL) {
+	if ((new_tls = SSL_new(ssl_ctx)) == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: Error creating new SSL");
 		ERR_print_errors_fp(stderr);
 		return NULL;
@@ -205,29 +42,38 @@ tls_session_t *new_tls_session(eap_tls_t *eaptls)
 	state->ssl = new_tls;
 
 	/*
-	 * Create & hook the BIOs to handle the dirty side of the SSL
-	 * This is *very important* as we want to handle the transmission part.
-	 * Now the only IO interface that SSL is aware of, is our defined BIO buffers.
+	 *	Create & hook the BIOs to handle the dirty side of the
+	 *	SSL.  This is *very important* as we want to handle
+	 *	the transmission part.  Now the only IO interface
+	 *	that SSL is aware of, is our defined BIO buffers.
+	 *
+	 *	This means that all SSL IO is done to/from memory,
+	 *	and we can update those BIOs from the EAP packets we've
+	 *	received.
 	 */
 	state->into_ssl = BIO_new(BIO_s_mem());
 	state->from_ssl = BIO_new(BIO_s_mem());
 	SSL_set_bio(state->ssl, state->into_ssl, state->from_ssl);
 
 	/*
-	 * Add the message callback to identify
-	 * what type of message/handshake is passed
+	 *	Add the message callback to identify what type of
+	 *	message/handshake is passed
 	 */
 	SSL_set_msg_callback(new_tls, cbtls_msg);
 	SSL_set_msg_callback_arg(new_tls, state);
 	SSL_set_info_callback(new_tls, cbtls_info);
 
-	/* Always verify the peer certificate */
+	/*
+	 *	Always verify the peer certificate
+	 */
 	verify_mode |= SSL_VERIFY_PEER;
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
 	SSL_set_verify(state->ssl, verify_mode, cbtls_verify);
 	
-	/* In Server mode we only accept.  */
+	/*
+	 *	In Server mode we only accept.
+	 */
 	SSL_set_accept_state(state->ssl);
 
 	return state;
@@ -291,7 +137,8 @@ int tls_handshake_recv(tls_session_t *ssn)
 	int err;
 
 	BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
-	err = SSL_read(ssn->ssl, ssn->clean_out.data, MAX_RECORD_SIZE);
+	err = SSL_read(ssn->ssl, ssn->clean_out.data,
+		       sizeof(ssn->clean_out.data));
 	if (err > 0) {
 		ssn->clean_out.used = err;
 	} else {
@@ -300,26 +147,25 @@ int tls_handshake_recv(tls_session_t *ssn)
 	}
 
 	/* Some Extra STATE information for easy debugging */
-	/*
 	if (SSL_is_init_finished(ssn->ssl)) {
-		printf("SSL Connection Established\n");
+		DEBUG2("SSL Connection Established\n");
 	}
    	if (SSL_in_init(ssn->ssl)) {
-		printf("In SSL Handshake Phase\n");
+		DEBUG2("In SSL Handshake Phase\n");
 	}
    	if (SSL_in_before(ssn->ssl)) {
-		printf("Before SSL Handshake Phase\n");
+		DEBUG2("Before SSL Handshake Phase\n");
 	}
    	if (SSL_in_accept_init(ssn->ssl)) {
-		printf("In SSL Accept mode \n");
+		DEBUG2("In SSL Accept mode \n");
 	}
    	if (SSL_in_connect_init(ssn->ssl)) {
-		printf("In SSL Connect mode \n");
+		DEBUG2("In SSL Connect mode \n");
 	}
-	*/
 
 	if (ssn->info.content_type != application_data) {
-		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data, MAX_RECORD_SIZE);
+		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
+			       sizeof(ssn->dirty_out.data));
 		if (err > 0) {
 			ssn->dirty_out.used = err;
 		} else {
@@ -339,30 +185,34 @@ int tls_handshake_recv(tls_session_t *ssn)
 	return 1;
 }
 
-/* We have clean data to send. so dirty it before sending. */
+/*
+ *	Take clear-text user data, and encrypt it into the output buffer,
+ *	to send to the client at the other end of the SSL connection.
+ */
 int tls_handshake_send(tls_session_t *ssn)
 {
 	int err;
 
 	/*
-	 * Fill the SSL with the clean data to dirt it
-	 * Based on Server's logic this clean_in is expected to
-	 * contain/filled with the data.
+	 *	If there's un-encrypted data in 'clean_in', then write
+	 *	that data to the SSL session, and then call the BIO function
+	 *	to get that encrypted data from the SSL session, into
+	 *	a buffer which we can then package into an EAP packet.
+	 *
+	 *	Based on Server's logic this clean_in is expected to
+	 *	contain the data to send to the client.
 	 */
 	if (ssn->clean_in.used > 0) {
 		SSL_write(ssn->ssl, ssn->clean_in.data, ssn->clean_in.used);
 
 		/* Get the dirty data from Bio to send it */
-		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data, MAX_RECORD_SIZE);
+		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
+			       sizeof(ssn->dirty_out.data));
 		if (err > 0) {
 			ssn->dirty_out.used = err;
 		} else {
 			int_ssl_check(ssn->ssl, err);
 		}
-	}
-
-	if (ssn->dirty_out.used > 0) {
-		record_init(&ssn->dirty_out);
 	}
 
 	return 1;
@@ -413,6 +263,15 @@ void session_free(void *ssn)
 	if (!ssn) return;
 
 	session_close(sess);
+
+	/*
+	 *	Free any opaque TTLS or PEAP data.
+	 */
+	if ((sess->opaque) && (sess->free_opaque)) {
+		sess->free_opaque(sess->opaque);
+		sess->opaque = NULL;
+	}
+
 	free(sess);
 }
 
@@ -426,6 +285,11 @@ void record_close(record_t *rec)
 	rec->used = 0;
 }
 
+
+/*
+ *	Copy data to the intermediate buffer, before we send
+ *	it somewhere.
+ */
 unsigned int record_plus(record_t *rec, const unsigned char *ptr,
 			 unsigned int size)
 {
@@ -440,8 +304,11 @@ unsigned int record_plus(record_t *rec, const unsigned char *ptr,
 	return added;
 }
 
+/*
+ *	Take data from the buffer, and give it to the caller.
+ */
 unsigned int record_minus(record_t *rec, unsigned char *ptr,
-		unsigned int size)
+			  unsigned int size)
 {
 	unsigned int taken = rec->used;
 
@@ -453,6 +320,9 @@ unsigned int record_minus(record_t *rec, unsigned char *ptr,
 		memcpy(ptr, rec->data, taken);
 	rec->used -= taken;
 
+	/*
+	 *	This is pretty bad...
+	 */
 	if(rec->used > 0)
 		memmove(rec->data, rec->data + taken, rec->used);
 	return taken;
@@ -460,7 +330,16 @@ unsigned int record_minus(record_t *rec, unsigned char *ptr,
 
 void tls_session_information(tls_session_t *tls_session)
 {
-	const char *str_write_p, *str_version, *str_content_type = "", *str_details1 = "", *str_details2= "";
+	const char *str_write_p, *str_version, *str_content_type = "";
+	const char *str_details1 = "", *str_details2= "";
+
+	/*
+	 *	Don't print this out in the normal course of
+	 *	operations.
+	 */
+	if (debug_flag == 0) {
+		return;
+	}
 	
 	str_write_p = tls_session->info.origin ? ">>>" : "<<<";
 
@@ -509,73 +388,73 @@ void tls_session_information(tls_session_t *tls_session)
 
 				str_details2 = " ???";
 				switch (tls_session->info.alert_description) {
-				case 0:
+				case SSL3_AD_CLOSE_NOTIFY:
 					str_details2 = " close_notify";
 					break;
-				case 10:
+				case SSL3_AD_UNEXPECTED_MESSAGE:
 					str_details2 = " unexpected_message";
 					break;
-				case 20:
+				case SSL3_AD_BAD_RECORD_MAC:
 					str_details2 = " bad_record_mac";
 					break;
-				case 21:
+				case TLS1_AD_DECRYPTION_FAILED:
 					str_details2 = " decryption_failed";
 					break;
-				case 22:
+				case TLS1_AD_RECORD_OVERFLOW:
 					str_details2 = " record_overflow";
 					break;
-				case 30:
+				case SSL3_AD_DECOMPRESSION_FAILURE:
 					str_details2 = " decompression_failure";
 					break;
-				case 40:
+				case SSL3_AD_HANDSHAKE_FAILURE:
 					str_details2 = " handshake_failure";
 					break;
-				case 42:
+				case SSL3_AD_BAD_CERTIFICATE:
 					str_details2 = " bad_certificate";
 					break;
-				case 43:
+				case SSL3_AD_UNSUPPORTED_CERTIFICATE:
 					str_details2 = " unsupported_certificate";
 					break;
-				case 44:
+				case SSL3_AD_CERTIFICATE_REVOKED:
 					str_details2 = " certificate_revoked";
 					break;
-				case 45:
+				case SSL3_AD_CERTIFICATE_EXPIRED:
 					str_details2 = " certificate_expired";
 					break;
-				case 46:
+				case SSL3_AD_CERTIFICATE_UNKNOWN:
 					str_details2 = " certificate_unknown";
 					break;
-				case 47:
+				case SSL3_AD_ILLEGAL_PARAMETER:
 					str_details2 = " illegal_parameter";
 					break;
-				case 48:
+				case TLS1_AD_UNKNOWN_CA:
 					str_details2 = " unknown_ca";
 					break;
-				case 49:
+				case TLS1_AD_ACCESS_DENIED:
 					str_details2 = " access_denied";
 					break;
-				case 50:
+				case TLS1_AD_DECODE_ERROR:
 					str_details2 = " decode_error";
 					break;
-				case 51:
+				case TLS1_AD_DECRYPT_ERROR:
 					str_details2 = " decrypt_error";
 					break;
-				case 60:
+				case TLS1_AD_EXPORT_RESTRICTION:
 					str_details2 = " export_restriction";
 					break;
-				case 70:
+				case TLS1_AD_PROTOCOL_VERSION:
 					str_details2 = " protocol_version";
 					break;
-				case 71:
+				case TLS1_AD_INSUFFICIENT_SECURITY:
 					str_details2 = " insufficient_security";
 					break;
-				case 80:
+				case TLS1_AD_INTERNAL_ERROR:
 					str_details2 = " internal_error";
 					break;
-				case 90:
+				case TLS1_AD_USER_CANCELLED:
 					str_details2 = " user_canceled";
 					break;
-				case 100:
+				case TLS1_AD_NO_RENEGOTIATION:
 					str_details2 = " no_renegotiation";
 					break;
 				}
@@ -626,5 +505,5 @@ void tls_session_information(tls_session_t *tls_session)
 	sprintf(tls_session->info.info_description, "%s %s%s [length %04lx]%s%s\n", 
 		str_write_p, str_version, str_content_type, 
 		(unsigned long)tls_session->info.record_len, str_details1, str_details2);
-	DEBUG2("rlm_eap_tls: %s\n", tls_session->info.info_description);
+	DEBUG2("  rlm_eap_tls: %s\n", tls_session->info.info_description);
 }

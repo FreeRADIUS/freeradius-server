@@ -60,6 +60,7 @@ if test x$with_[]modname != xno; then
 
 AC_CHECK_HEADERS( \
 	openssl/err.h \
+	openssl/rand.h \
 	openssl/engine.h
 	)
 

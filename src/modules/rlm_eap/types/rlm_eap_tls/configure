@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.3 
+# From configure.in Revision: 1.4 
 
 
 fail=
@@ -1226,22 +1226,23 @@ echo "$ac_t""$CPP" 1>&6
 
 for ac_hdr in \
 	openssl/err.h \
+	openssl/rand.h \
 	openssl/engine.h
 	
 do
 ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-echo "configure:1235: checking for $ac_hdr" >&5
+echo "configure:1236: checking for $ac_hdr" >&5
 if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 1240 "configure"
+#line 1241 "configure"
 #include "confdefs.h"
 #include <$ac_hdr>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:1245: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:1246: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*

@@ -37,9 +37,9 @@ void cbtls_info(const SSL *s, int where, int ret)
 	state = state ? state : "NULL";
 
 	if (where & SSL_CB_LOOP) {
-		radlog(L_INFO, "%s: %s\n", str, state);
+		if (debug_flag) radlog(L_INFO, "%s: %s\n", str, state);
 	} else if (where & SSL_CB_HANDSHAKE_START) {
-		radlog(L_INFO, "%s: %s\n", str, state);
+		if (debug_flag) radlog(L_INFO, "%s: %s\n", str, state);
 	} else if (where & SSL_CB_HANDSHAKE_DONE) {
 		radlog(L_INFO, "%s: %s\n", str, state);
 	} else if (where & SSL_CB_ALERT) {
@@ -56,28 +56,29 @@ void cbtls_info(const SSL *s, int where, int ret)
 }
 
 /*
- * Before trusting a certificate, you must make sure that the certificate is
-   'valid'. There are several steps that your application can take in 
-   determining if a certificate is valid. Commonly used steps are: 
-
-  1.Verifying the certificate's signature, and verifying that the certificate
-    has been issued by a trusted Certificate Authority. 
-
-  2.Verifying that the certificate is valid for the present date (i.e. it is
-    being presented within its validity dates). 
-
-  3.Verifying that the certificate has not been revoked by its issuing
-    Certificate Authority, by checking with respect to a Certificate
-    Revocation List (CRL). 
-
-  4.Verifying that the credentials presented by the certificate fulfill
-    additional requirements specific to the application, such as with respect
-    to access control lists or with respect to OCSP (Online Certificate Status
-    Processing). 
- */
-/*
- * NOTE: This callback will be called multiple times based on the 
- * depth of the root certificate chain
+ *	Before trusting a certificate, you must make sure that the
+ *	certificate is 'valid'. There are several steps that your
+ *	application can take in determining if a certificate is
+ *	valid. Commonly used steps are:
+ *
+ *	1.Verifying the certificate's signature, and verifying that
+ *	the certificate has been issued by a trusted Certificate
+ *	Authority.
+ *
+ *	2.Verifying that the certificate is valid for the present date
+ *	(i.e. it is being presented within its validity dates).
+ *
+ *	3.Verifying that the certificate has not been revoked by its
+ *	issuing Certificate Authority, by checking with respect to a
+ *	Certificate Revocation List (CRL).
+ *
+ *	4.Verifying that the credentials presented by the certificate
+ *	fulfill additional requirements specific to the application,
+ *	such as with respect to access control lists or with respect
+ *	to OCSP (Online Certificate Status Processing). 
+ *
+ *	NOTE: This callback will be called multiple times based on the
+ *	depth of the root certificate chain
  */
 int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 {
@@ -98,8 +99,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		radlog(L_ERR,"--> verify error:num=%d:%s\n",err,
 			X509_verify_cert_error_string(err));
 	/*
-	Catch too long Certificate chains
-	*/
+	 *	Catch too long Certificate chains
+	 */
 
 	/*
 	 * Retrieve the pointer to the SSL of the connection currently treated
@@ -109,13 +110,15 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	user_name = (char *)SSL_get_ex_data(ssl, data_index);
 
 	/*
-	 * Get the Subject & Issuer
+	 *	Get the Subject & Issuer
 	 */
 	subject[0] = issuer[0] = '\0';
 	X509_NAME_oneline(X509_get_subject_name(client_cert), subject, 256);
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer, 256);
 
-	/* Get the Common Name */
+	/*
+	 *	Get the Common Name
+	 */
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
              NID_commonName, buf, 256);
 
@@ -127,28 +130,34 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	case X509_V_ERR_CERT_NOT_YET_VALID:
 	case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
 		radlog(L_ERR, "notBefore=");
-		//ASN1_TIME_print(bio_err, X509_get_notBefore(ctx->current_cert));
+#if 0
+		ASN1_TIME_print(bio_err, X509_get_notBefore(ctx->current_cert));
+#endif
 		break;
 	case X509_V_ERR_CERT_HAS_EXPIRED:
 	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
 		radlog(L_ERR, "notAfter=");
-		//ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
+#if 0
+		ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
+#endif
 		break;
 	}
 
-	radlog(L_INFO, "chain-depth=%d, ", depth);
-	/*
-	if (depth > 0) {
-		return ok;
+	if (debug_flag > 0) {
+		radlog(L_INFO, "chain-depth=%d, ", depth);
+		/*
+		  if (depth > 0) {
+		  return ok;
+		  }
+		*/
+		radlog(L_INFO, "error=%d", err);
+		
+		radlog(L_INFO, "--> User-Name = %s", user_name);
+		radlog(L_INFO, "--> BUF-Name = %s", buf);
+		radlog(L_INFO, "--> subject = %s", subject);
+		radlog(L_INFO, "--> issuer  = %s", issuer);
+		radlog(L_INFO, "--> verify return:%d", ok);
 	}
-	*/
-	radlog(L_INFO, "error=%d", err);
-
-	radlog(L_INFO, "--> User-Name = %s", user_name);
-	radlog(L_INFO, "--> BUF-Name = %s", buf);
-	radlog(L_INFO, "--> subject = %s", subject);
-	radlog(L_INFO, "--> issuer  = %s", issuer);
-	radlog(L_INFO, "--> verify return:%d", ok);
 	return ok;
 }
 
@@ -184,8 +193,7 @@ RSA *cbtls_rsa(SSL *s, int is_export, int keylength)
 {
 	static RSA *rsa_tmp=NULL;
 
-	if (rsa_tmp == NULL)
-	{
+	if (rsa_tmp == NULL) {
 		radlog(L_INFO, "Generating temp (%d bit) RSA key...", keylength);
 		rsa_tmp=RSA_generate_key(keylength, RSA_F4, NULL, NULL);
 	}
@@ -193,4 +201,3 @@ RSA *cbtls_rsa(SSL *s, int is_export, int keylength)
 }
 
 #endif /* !defined(NO_OPENSSL) */
-

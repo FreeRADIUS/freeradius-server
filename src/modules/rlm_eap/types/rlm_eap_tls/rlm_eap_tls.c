@@ -18,13 +18,15 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 
 #include "autoconf.h"
-
-#include <stdio.h>
-#include <stdlib.h>
 #include "eap_tls.h"
+
+#ifdef HAVE_OPENSSL_RAND_H
+#include <openssl/rand.h>
+#endif
 
 static CONF_PARSER module_config[] = {
 	{ "rsa_key_exchange", PW_TYPE_BOOLEAN,
@@ -62,6 +64,184 @@ static CONF_PARSER module_config[] = {
 };
 
 
+/*
+ *	TODO: Check for the type of key exchange * like conf->dh_key
+ */
+static int load_dh_params(SSL_CTX *ctx, char *file)
+{
+	DH *dh = NULL;
+	BIO *bio;
+
+	if ((bio = BIO_new_file(file, "r")) == NULL) {
+		radlog(L_ERR, "rlm_eap_tls: Unable to open DH file - %s", file);
+		return -1;
+	}
+
+	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
+	BIO_free(bio);
+	if (SSL_CTX_set_tmp_dh(ctx, dh) < 0) {
+		radlog(L_ERR, "rlm_eap_tls: Unable to set DH parameters");
+		DH_free(dh);
+		return -1;
+	}
+
+	DH_free(dh);
+	return 0;
+}
+
+/*
+ *	Generte ephemeral RSA keys.
+ */
+static int generate_eph_rsa_key(SSL_CTX *ctx)
+{
+	RSA *rsa;
+
+	rsa = RSA_generate_key(512, RSA_F4, NULL, NULL);
+
+	if (!SSL_CTX_set_tmp_rsa(ctx, rsa)) {
+		radlog(L_ERR, "rlm_eap_tls: Couldn't set RSA key");
+		return -1;
+	}
+
+	RSA_free(rsa);
+	return 0;
+}
+
+
+/*
+ *	Create Global context SSL and use it in every new session
+ *
+ *	- Load the trusted CAs
+ *	- Load the Private key & the certificate
+ *	- Set the Context options & Verify options
+ */
+static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
+{
+	SSL_METHOD *meth;
+	SSL_CTX *ctx;
+	int verify_mode = 0;
+	int ctx_options = 0;
+	int type;
+
+	/*
+	 *	Add all the default ciphers and message digests
+	 *	Create our context.
+	 */
+	SSL_library_init();
+	SSL_load_error_strings();
+
+	meth = TLSv1_method();
+	ctx = SSL_CTX_new(meth);
+
+	/*
+	 * Identify the type of certificates that needs to be loaded
+	 */
+	if (conf->file_type) {
+		type = SSL_FILETYPE_PEM;
+	} else {
+		type = SSL_FILETYPE_ASN1;
+	}
+
+	/* Load the CAs we trust */
+	if (!(SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) ||
+	    (!SSL_CTX_set_default_verify_paths(ctx))) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list");
+		return NULL;
+	}
+	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
+
+	/* 
+	 * Set the password to load private key
+	 */
+	if (conf->private_key_password) {
+		SSL_CTX_set_default_passwd_cb_userdata(ctx, conf->private_key_password);
+		SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
+	}
+
+	/* Load our keys and certificates*/
+	if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
+		return NULL;
+	}
+
+	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error reading private key file");
+		return NULL;
+	}
+
+	/*
+	 * Check if the loaded private key is the right one
+	 */
+	if (!SSL_CTX_check_private_key(ctx)) {
+		radlog(L_ERR, "rlm_eap_tls: Private key does not match the certificate public key");
+		return NULL;
+	}
+
+	/*
+	 *	Set ctx_options
+	 */
+	ctx_options |= SSL_OP_NO_SSLv2;
+   	ctx_options |= SSL_OP_NO_SSLv3;
+
+	/* 
+	 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
+	 *	small subgroup attacks and forward secrecy. Always
+	 *	using
+	 *
+	 *	SSL_OP_SINGLE_DH_USE has an impact on the computer
+	 *	time needed during negotiation, but it is not very
+	 *	large.
+	 */
+   	ctx_options |= SSL_OP_SINGLE_DH_USE;
+	SSL_CTX_set_options(ctx, ctx_options);
+
+	/*
+	 *	TODO: Set the RSA & DH
+	 *	SSL_CTX_set_tmp_rsa_callback(ctx, cbtls_rsa);
+	 *	SSL_CTX_set_tmp_dh_callback(ctx, cbtls_dh);
+	 */
+
+	/*
+	 *	set the message callback to identify the type of
+	 *	message.  For every new session, there can be a
+	 *	different callback argument.
+	 *
+	 *	SSL_CTX_set_msg_callback(ctx, cbtls_msg);
+	 */
+
+	/* Set Info callback */
+	SSL_CTX_set_info_callback(ctx, cbtls_info);
+
+	/*
+	 *	Set verify modes
+	 *	Always verify the peer certificate
+	 */
+	verify_mode |= SSL_VERIFY_PEER;
+	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	SSL_CTX_set_verify(ctx, verify_mode, cbtls_verify);
+
+	if (conf->verify_depth) {
+		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
+	}
+
+	/* Load randomness */
+	if (!(RAND_load_file(conf->random_file, 1024*1024))) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
+		return NULL;
+	}
+
+	return ctx;
+}
+
+
+/*
+ *	Detach the EAP-TLS module.
+ */
 static int eaptls_detach(void *arg)
 {
 	EAP_TLS_CONF	 *conf;
@@ -94,9 +274,12 @@ static int eaptls_detach(void *arg)
 	return 0;
 }
 
+
+/*
+ *	Attach the EAP-TLS module.
+ */
 static int eaptls_attach(CONF_SECTION *cs, void **instance)
 {
-	SSL_CTX		 *ctx;
 	EAP_TLS_CONF	 *conf;
 	eap_tls_t 	 *inst;
 
@@ -108,7 +291,9 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	}
 	memset(inst, 0, sizeof(*inst));
 
-	/* Parse the config file & get all the configured values */
+	/*
+	 *	Parse the config file & get all the configured values
+	 */
 	conf = (EAP_TLS_CONF *)malloc(sizeof(*conf));
 	if (conf == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: out of memory");
@@ -123,19 +308,20 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	}
 
 
-	/* Initialize TLS */
-	ctx = init_tls_ctx(conf);
-	if (ctx == NULL) {
+	/*
+	 *	Initialize TLS
+	 */
+	inst->ctx = init_tls_ctx(conf);
+	if (inst->ctx == NULL) {
 		eaptls_detach(inst);
 		return -1;
 	}
-	inst->ctx = ctx;
 
-	if (load_dh_params(ctx, conf->dh_file) < 0) {
+	if (load_dh_params(inst->ctx, conf->dh_file) < 0) {
 		eaptls_detach(inst);
 		return -1;
 	}
-	if (generate_eph_rsa_key(ctx) < 0) {
+	if (generate_eph_rsa_key(inst->ctx) < 0) {
 		eaptls_detach(inst);
 		return -1;
 	}
@@ -147,18 +333,19 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 
 
 /*
- * send an initial eap-tls request
- * ie access challenge to the user/peer.
-
- * Frame eap reply packet.
- * len = header + type + tls_typedata
- * tls_typedata = flags(Start (S) bit set, and no data)
-
- * Once having received the peer's Identity, the EAP server MUST respond
- * with an EAP-TLS/Start packet, which is an EAP-Request packet with
- * EAP-Type=EAP-TLS, the Start (S) bit set, and no data.  The EAP-TLS
- * conversation will then begin, with the peer sending an EAP-Response
- * packet with EAP-Type=EAP-TLS.  The data field of that packet will
+ *	Send an initial eap-tls request to the peer.
+ *
+ *	Frame eap reply packet.
+ *	len = header + type + tls_typedata
+ *	tls_typedata = flags(Start (S) bit set, and no data)
+ *
+ *	Once having received the peer's Identity, the EAP server MUST
+ *	respond with an EAP-TLS/Start packet, which is an
+ *	EAP-Request packet with EAP-Type=EAP-TLS, the Start (S) bit
+ *	set, and no data.  The EAP-TLS conversation will then begin,
+ *	with the peer sending an EAP-Response packet with
+ *	EAP-Type = EAP-TLS.  The data field of that packet will
+ *	be the TLS data.
  */
 static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 {
@@ -169,20 +356,24 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	eaptls = (eap_tls_t *)type_arg;
 
 	/*
-	 * Every new session is started only from EAP-TLS-START
-	 * Before Sending EAP-TLS-START, Open a new SSL session
-	 * Create all the required data structures & store them in Opaque.
-	 * So that we can use these data structures when we get the response
+	 *	Every new session is started only from EAP-TLS-START.
+	 *	Before Sending EAP-TLS-START, open a new SSL session.
+	 *	Create all the required data structures & store them
+	 *	in Opaque.  So that we can use these data structures
+	 *	when we get the response
 	 */
-	ssn = new_tls_session(eaptls);
+	ssn = eaptls_new_session(eaptls->ctx);
+	if (!ssn) {
+		return 0;
+	}
 
 	/*
-	 * Create a structure for all the items required to 
-	 * be verified for each client and set that
-	 * as opaque data structure.
+	 *	Create a structure for all the items required to be
+	 *	verified for each client and set that as opaque data
+	 *	structure.
 	 *
-	 * NOTE: If we want to set each item sepearately then
-	 * this index should be global.
+	 *	NOTE: If we want to set each item sepearately then
+	 *	this index should be global.
 	 */
 	SSL_set_ex_data(ssn->ssl, 0, (void *)handler->identity);
 
@@ -195,10 +386,17 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	DEBUG2("  rlm_eap_tls: Initiate");
 
 	/*
-	 * TLS session initialization is over
-	 * Now handle TLS related hanshaking or Data
+	 *	PEAP-specific breakage.
 	 */
-	status = eaptls_start(handler->eap_ds);
+	if (handler->eap_type == PW_EAP_PEAP) {
+		ssn->peap_flag = 0x02;
+	}
+
+	/*
+	 *	TLS session initialization is over.  *Now handle TLS
+	 *	related handshaking or application data.
+	 */
+	status = eaptls_start(handler->eap_ds, ssn->peap_flag);
 	DEBUG2("  rlm_eap_tls: Start returned %d", status);
 	if (status == 0)
 		return 0;
@@ -212,56 +410,57 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 }
 
 /*
- * In the actual authentication first verify the packet and then create the data structure
- */
-/*
- * To process the TLS,
- *  INCOMING DATA:
- * 	1. EAP-TLS should get the compelete TLS data from the peer.
- * 	2. Store that data in a data structure with any other required info
- *	3. Hand this data structure to the TLS module.
- *	4. TLS module will perform its operations on the data and hands back to EAP-TLS
- *  OUTGOING DATA:
- * 	1. EAP-TLS if necessary will fragment it and send it to the destination.
- *
- * During EAP-TLS initialization, TLS Context object will be initialized and stored.
- * For every new authentication requests, TLS will open a new session object and that
- * session object should be *maintained* even after the session is completed, for
- * session resumption. (Probably later as a feature, as we donot know who maintains these
- * session objects ie, SSL_CTX (internally) or TLS module(explicitly). If TLS module, then
- * how to let SSL API know about these sessions.)
+ *	Do authentication, by letting EAP-TLS do most of the work.
  */
 static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 {
-	//tls_session_t *tls_session;
-	EAPTLS_PACKET	*tlspacket;
 	eaptls_status_t	status;
+	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 
 	DEBUG2("  rlm_eap_tls: Authenticate");
 
-	/* This case is when SSL generates Alert then we 
-	 * send that alert to the client and then send the EAP-Failure
-	 */
-	status = eaptls_verify(handler->eap_ds, handler->prev_eapds);
-	if (status == EAPTLS_INVALID)
-		return 0;
+	status = eaptls_process(handler);
+	DEBUG2("  eaptls_process returned %d\n", status);
+	switch (status) {
+		/*
+		 *	EAP-TLS handshake was successful, return an
+		 *	EAP-TLS-Success packet here.
+		 */
+	case EAPTLS_SUCCESS:
+		break;
 
-	/* In case of EAPTLS_ACK, we need to send the next fragment
-	 * or send success or failure
-	 */
-	if (status == EAPTLS_ACK) {
-		if (eaptls_ack_handler(handler) != EAPTLS_NOOP)
-			return 1;
-		else
-			return 0;
+		/*
+		 *	The TLS code is still working on the TLS
+		 *	exchange, and it's a valid TLS request.
+		 *	do nothing.
+		 */
+	case EAPTLS_HANDLED:
+		return 1;
+
+		/*
+		 *	Handshake is done, proceed with decoding tunneled
+		 *	data.
+		 */
+	case EAPTLS_OK:
+		DEBUG2("  rlm_eap_tls: Received unexpected tunneled data after successful handshake.");
+		eaptls_fail(handler->eap_ds, 0);
+		return 0;
+		break;
+
+		/*
+		 *	Anything else: fail.
+		 */
+	default:
+		return 0;
 	}
 
-	if ((tlspacket = eaptls_extract(handler->eap_ds, status)) == NULL)
-		return 0;
-
-	eaptls_operation(tlspacket, status, handler);
-
-	eaptls_free(&tlspacket);
+	/*
+	 *	Success: Return MPPE keys.
+	 */
+	eaptls_success(handler->eap_ds, 0);
+	eaptls_gen_mppe_keys(&handler->request->reply->vps, 
+			     tls_session->ssl,
+			     "client EAP encryption");
 	return 1;
 }
 
