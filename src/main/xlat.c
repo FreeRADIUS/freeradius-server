@@ -120,31 +120,27 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 	char buffer[MAX_STRING_LEN * 4];
 
 	if (pair != NULL) {
-		if (func) {
-			vp_prints_value(buffer, sizeof(buffer), pair, 0);
-			return func(out, outlen, buffer);
-		} else {
-			return vp_prints_value(out, outlen, pair, 0);
-		}
-	} else {
-		switch (type) {
-			case PW_TYPE_STRING :
-				strNcpy(out,"_",outlen);
-				break;
-			case PW_TYPE_INTEGER :
-				strNcpy(out,"0",outlen);
-				break;
-			case PW_TYPE_IPADDR :
-				strNcpy(out,"?.?.?.?",outlen);
-				break;
-			case PW_TYPE_DATE :
-				strNcpy(out,"0",outlen);
-				break;
-			default :
-				strNcpy(out,"unknown_type",outlen);
-		}
-	return strlen(out);
+		vp_prints_value(buffer, sizeof(buffer), pair, 0);
+		return func(out, outlen, buffer);
 	}
+
+	switch (type) {
+	case PW_TYPE_STRING :
+		strNcpy(out,"_",outlen);
+		break;
+	case PW_TYPE_INTEGER :
+		strNcpy(out,"0",outlen);
+		break;
+	case PW_TYPE_IPADDR :
+		strNcpy(out,"?.?.?.?",outlen);
+		break;
+	case PW_TYPE_DATE :
+		strNcpy(out,"0",outlen);
+		break;
+	default :
+		strNcpy(out,"unknown_type",outlen);
+	}
+	return strlen(out);
 }
 
 /*
@@ -248,6 +244,38 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 
 }
 
+/*
+ *  If the caller doesn't pass xlat an escape function, then
+ *  we use this one.  It simplifies the coding, as the check for
+ *  func == NULL only happens once.
+ */
+static int xlat_copy(char *out, int outlen, const char *in)
+{
+	int len = 0;
+
+	while (*in) {
+		/*
+		 *  Truncate, if too much.
+		 */
+		if (len >= outlen) {
+			break;
+		}
+
+		/*
+		 *  Copy data.
+		 *
+		 *  FIXME: Do escaping of bad stuff!
+		 */
+		*out = *in;
+
+		out++;
+		in++;
+		len++;
+	}
+
+	*out = '\0';
+	return len;
+}
 
 /*
  *	Replace %<whatever> in a string.
@@ -280,7 +308,6 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
  *	${request:AttributeName}	Corresponding value for AttributeName in request
  *	${reply:AttributeName}		Corresponding value for AttributeName in reply
  */
-
 int radius_xlat(char *out, int outlen, const char *fmt,
 		REQUEST *request, RADIUS_ESCAPE_STRING func)
 {
@@ -291,6 +318,13 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	struct tm *TM, s_TM;
 	char tmpdt[40]; /* For temporary storing of dates */
 	int openbraces=0;
+
+	/*
+	 *  Ensure that we always have an escaping function.
+	 */
+	if (func == NULL) {
+		func = xlat_copy;
+	}
 
 	q = out;
 	for (p = fmt; *p ; p++) {
