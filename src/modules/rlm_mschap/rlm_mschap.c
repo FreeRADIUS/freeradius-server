@@ -58,9 +58,7 @@
 #include	"sha1.h"
 #include	"rad_assert.h"
 
-#define PW_MSCHAP_RESPONSE	((311 << 16) | 1)
-#define PW_MSCHAP_CHALLENGE	((311 << 16) | 11)
-#define PW_MSCHAP2_RESPONSE	((311 << 16) | 25)
+static const char rcsid[] = "$Id$";
 
 static const char *letters = "0123456789ABCDEF";
 
