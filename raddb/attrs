@@ -94,9 +94,8 @@ DEFAULT
 	Framed-Protocol == SLIP,
 	Framed-Compression == Van-Jacobson-TCP-IP,
 	Framed-MTU >= 576,
-	Framed-MTU <= 1500,
-	Framed-Filter-ID =~ "*",
-	Reply-Message =~ "*",
+	Framed-Filter-ID =~ ".*",
+	Reply-Message =~ ".*",
 	Session-Timeout <= 28800,
 	Idle-Timeout <= 600,
 	Port-Limit <= 2
