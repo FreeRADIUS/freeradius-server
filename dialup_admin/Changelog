@@ -13,6 +13,7 @@ Ver 1.29:
 * unset item_vals before adding info in ldap and sql user_info files.
 * Add support for the rest of the operators. Created the lib/operators.php3 file containing helper functions
 * Fix a small bug in log_badlogins. The nas domain should be a variable not hard coded.
+* Fix a bug in lib/sql/delete_user.php3. Call da_sql_query with the correct arguments
 Ver 1.28:
 * Make user_delete.php3 print something when a user is deleted
 * Cache nas hostname lookups in user_accounting
