@@ -20,8 +20,8 @@ use POSIX;
 require DBI;
 require Getopt::Long;
 use Carp;
-use Symbol;
-use Time::Local;
+#use Symbol;
+#use Time::Local;
 #use strict;	# Errrm. That looks like effort :-)
 
 
@@ -166,7 +166,7 @@ sub record_match($) {
         # Spilt the Call record up into fields
         my @callrecord = split(/,/, $_);
 
-	if (scalar(@callrecord) == 70) { 
+	if (scalar(@callrecord) == 70) { 	# Check that we have the right number of fields for a Clarent record
         	if ($verbose > 1) { print "DEBUG: Clean Record: @callrecord\n"; }
 		$recordno++; %working_record = ();
 		$working_record{local_setuptime} = clarent2normaltime($callrecord[0]);
@@ -203,7 +203,7 @@ sub clarent2normaltime($) {
             \s
             \w*?:?                      # RESEND: (Discarded)
             \s?
-            \S{1}                       # U (Discarded)
+            \S{1}                       # U (Discarded) FIXME: does anyone know what this value means??
             /x ) {
                 my $month = $months_map{$1}; defined $month or croak "ERROR: Unknown month \"$1\"\n";
                 my $days = $2;
