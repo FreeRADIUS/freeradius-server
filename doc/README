@@ -15,7 +15,7 @@
       username pattern (Puser or user.ppp is PPP, plain "user" is rlogin etc).
     o Can execute an external program when user has authenticated (for example
       to run a sendmail queue).
-    o Can use `$INCLUDE filename' in users and dictionary files
+    o Can use `$INCLUDE filename' in radiusd.conf, users, and dictionary files
     o Can act as a proxy server, relaying requests to a remote server
     o Supports Vendor-Specific attributes
     o No good documentation at all, just like the original radiusd 1.16!
@@ -26,9 +26,6 @@
   specific) "hints" file will give unpredictable results. Well actually
   it will result in Prefix and Suffix probably not working in the "users"
   file if you already stripped them off in the "hints" file.
-
-  The documentation of the Livingston server is available on the web at:
-  <URL: http://www.livingston.com/Tech/Docs/RADIUS/guide/>
 
   Extra command line flags:
   o -y: log all login attempts in /var/log/radius.log, include (wrong)
@@ -42,19 +39,26 @@
   Radiusd now has autoconf support. This means you have to run
   ./configure --flags, then run make. You can set the following flags:
 
-  --prefix=		Prefix to install (default: /usr/local)
-  --localstatedir=	Base prefix for the logfiles. Defaults
-			to ${prefix}/var
-  --with-logdir=DIR	Directory for radutmp, radwtmp and radius.log.
-			Defaults to ${localstatedir}/log
-  --with-radacctdir=DIR	Directory for the detail files. Defaults to
-			${logdir}/radacct
-  --sysconfdir		Base prefix for the raddb directory. Defaults to
-			${prefix}/etc
-  --with-raddbdir=DIR	Configuration files. Defaults to ${sysconfdir}/raddb
-  --with-dict-nocase	Make dictionary case-independant
-  --without-ascend-binary
-			Turn off support for Ascend binary filter attributes.
+  --enable-shared[=PKGS]  build shared libraries [default=yes]
+  --enable-static[=PKGS]  build static libraries [default=yes]
+  --enable-fast-install[=PKGS]  optimize for fast installation [default=yes]
+  --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
+  --disable-libtool-lock  avoid locking (might break parallel builds)
+  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log] 
+  --with-radacctdir=PATH  Directory for detail files [LOGDIR/radacct] 
+  --with-raddbdir=DIR     Directory for config files [SYSCONFDIR/raddb] 
+  --with-dict-nocase      Make dictionary case-independant (default=yes)
+  --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)
+  --with-threads          Use threads, if available.  (default=yes) 
+  --with-thread-pool      Use a pool of threads for high-load systems.  (default=no) 
+  --with-snmp             Compile in SNMP support. (default=yes)
+  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found 
+  --with-mysql-lib-dir=DIR       Directory where the MySQL libraries may be found 
+  --with-mysql-dir=DIR    Base directory where MySQL is installed 
+  --disable-ltdl-install  Do not install libltdl
+  --with-static-modules=QUOTED-MODULE-LIST
+  --enable-developer      Turns on super-duper-extra-compile-warnings
+                              when using gcc.
 
   To get the defaults that Cistron Radius used up to 1.5.4.3-beta18, use:
 
@@ -280,11 +284,11 @@
   There is a linux-radius list run by miguel a.l. paraz <map@iphil.net>.
   See <URL: http://www.iphil.net/~map/radius/> for details.
 
-  Then ofcourse for general RADIUS questions, especially if you are using
+  Then of course for general RADIUS questions, especially if you are using
   Livingston  / Lucent RABU equipment, there is the portmaster-radius mailing
   list. Send mail to portmaster-radius-request@livingston.com to find
   out how to subscribe.
 
 
 $Date$
-Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999
+orig, Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999
