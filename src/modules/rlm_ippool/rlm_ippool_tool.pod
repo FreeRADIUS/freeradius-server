@@ -10,10 +10,14 @@ B<rlm_ippool_tool> - dump the contents of the FreeRadius ippool database files.
 
 B<rlm_ippool_tool> [B<options>] <I<session-db>> <I<index-db>> [B<ipaddress>]
 
+B<rlm_ippool_tool> I<-n> <I<session-db>> <I<index-db>> <I<ipaddress>> <I<nasIP>> <I<nasPort>>
+
 =head1 DESCRIPTION
 
-B<rlm_ippool_tool> dumps the contents of the FreeRadius ippool databases for
+B<rlm_ippool_tool> dumps the contents of the FreeRADIUS ippool databases for
 analyses or for removal of active (stuck?) entries.
+
+B<rlm_ippool_tool -n> adds a usage entry to the FreeRADIUS ippool databases.
 
 Options are:
 
@@ -35,11 +39,15 @@ Remove active entries.
 
 Verbose report of all entries
 
+=item B<-n>
+
+Database addition mode ("New")
+
 =back
 
 =head1 EXAMPLES
 
-The syntax in the FreeRadius radiusd.conf:
+Given the syntax in the FreeRadius radiusd.conf:
 
  ippool myippool {
 	range-start = 192.168.1.0
@@ -81,11 +89,18 @@ To see only information of one entry, use:
  $ rlm_ippool_tool -v ip-pool.db ip-index.db 192.168.1.1
  NAS:172.16.1.1 port:0x90 - ipaddr:192.168.1.1 active:0 cli:0 num:0
 
+To add an IP address usage entry, use:
+
+ $ rlm_ippool_tool -n ip-pool.db ip-index.db 192.168.1.1 172.16.1.1 0x90
+ rlm_ippool_tool: Allocating ip to nas/port: 172.16.1.1/144
+ rlm_ippool_tool: num: 1
+ rlm_ippool_tool: Allocated ip 192.168.1.1 to client on nas 172.16.1.1,port 144
+
 =head1 AUTHOR
 
+Currently part of the FreeRADIUS Project (http://www.freeradius.org)
 Originally by Edwin Groothuis, edwin@mavetju.org (http://www.mavetju.org)
 
 Mailing list details are at http://www.freeradius.org/
 
 =head1 BUGS
-

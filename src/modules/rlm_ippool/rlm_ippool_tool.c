@@ -17,6 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
+ * Copyright 2003  FreeRADIUS Project, http://www.freeradius.org/
  * Copyright 2003  Edwin Groothuis, edwin@mavetju.org
  * Permission from Edwin Groothuis for release under GPL is archived here:
  * http://lists.cistron.nl/archives/freeradius-devel/2003/09/frm00247.html
@@ -65,6 +66,7 @@ int aflag=0;
 int cflag=0;
 int rflag=0;
 int vflag=0;
+int nflag=0;
 
 typedef struct ippool_info {
     uint32_t        ipaddr;
@@ -81,6 +83,150 @@ typedef struct ippool_key {
 
 #define MATCH_IP(ip1,ip2) ((ip1)==NULL || strcmp((ip1),(ip2))==0)
 #define MATCH_ACTIVE(info) ((info).active==1 || !aflag)
+
+void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname, char*NASport) {
+    GDBM_FILE sessiondb;
+    GDBM_FILE indexdb;
+    datum key_datum,keynext_datum,data_datum;
+	datum nextkey;
+    ippool_key key;
+    ippool_info entry;
+    struct in_addr ipaddr;
+    int num;
+    int mode=GDBM_WRITER;
+    int rcode;
+	char *cli = NULL;
+	int delete = 0;
+
+    sessiondb=gdbm_open(sessiondbname,512,mode,0,NULL);
+    indexdb=gdbm_open(indexdbname,512,mode,0,NULL);
+
+	if (inet_pton(AF_INET, ipaddress, &ipaddr) == 0)
+	{
+		printf("rlm_ippool_tool: Unable to convert IP address '%s'\n", ipaddress);
+		return;
+	}
+	
+    if (sessiondb==NULL)
+	{
+		printf("rlm_ippool_tool: Unable to open DB '%s'\n", sessiondbname);
+		return;
+	}
+	
+    if (indexdb==NULL)
+	{
+		printf("rlm_ippool_tool: Unable to open DB '%s'\n", indexdbname);
+		return;
+	}
+	
+	/* Basically from rlm_ippool.c */
+
+	memset(key.nas,0,MAX_NAS_NAME_SIZE);
+	strncpy(key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
+	key.port = strtoul(NASport,NULL,0);
+	key_datum.dptr = (char *) &key;
+	key_datum.dsize = sizeof(ippool_key);
+
+	key_datum = gdbm_firstkey(sessiondb);
+	while(key_datum.dptr){
+		data_datum = gdbm_fetch(sessiondb, key_datum);
+		if (data_datum.dptr){
+			memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
+			free(data_datum.dptr);	
+			/* Found our entry? */
+			if (entry.ipaddr == ipaddr.s_addr){
+				datum tmp;
+
+				tmp.dptr = (char *) &entry.ipaddr;
+				tmp.dsize = sizeof(uint32_t);
+				data_datum = gdbm_fetch(indexdb, tmp);
+
+				/*
+				 * If we find an entry in the ip index and the number is zero (meaning
+				 * that we haven't allocated the same ip address to another nas/port pair)
+				 * or if we don't find an entry then delete the session entry so
+				 * that we can change the key (nas/port)
+				 * Else we don't delete the session entry since we haven't yet deallocated the
+				 * corresponding ip address and we continue our search.
+				 */
+
+				if (data_datum.dptr){
+					memcpy(&num,data_datum.dptr, sizeof(int));
+					free(data_datum.dptr);
+					if (num == 0){
+						delete = 1;
+						break;
+					}
+				}
+				else{
+					delete = 1;
+					break;
+				}
+			}
+		}
+		nextkey = gdbm_nextkey(sessiondb, key_datum);
+		free(key_datum.dptr);
+		key_datum = nextkey;
+	}
+	/*
+	 * If we have found our entry set active to 1 
+	 */
+	if (key_datum.dptr){
+		entry.active = 1;
+		data_datum.dptr = (char *) &entry;
+		data_datum.dsize = sizeof(ippool_info);
+
+		if (delete){
+			/*
+		 	 * Delete the entry so that we can change the key
+		 	 */
+			gdbm_delete(sessiondb, key_datum);
+		}
+		free(key_datum.dptr);
+		memset(key.nas,0,MAX_NAS_NAME_SIZE);
+		strncpy(key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
+		key.port = strtoul(NASport,NULL,0);
+		key_datum.dptr = (char *) &key;
+		key_datum.dsize = sizeof(ippool_key);
+		
+		printf("rlm_ippool_tool: Allocating ip to nas/port: %s/%u\n",key.nas,key.port);
+		rcode = gdbm_store(sessiondb, key_datum, data_datum, GDBM_REPLACE);
+		if (rcode < 0) {
+			printf("rlm_ippool_tool: Failed storing data to %s: %s\n",
+				sessiondbname, gdbm_strerror(gdbm_errno));
+			gdbm_close(indexdb);
+			gdbm_close(sessiondb);
+			return;
+		}
+
+		/* Increase the ip index count */
+		key_datum.dptr = (char *) &entry.ipaddr;
+		key_datum.dsize = sizeof(uint32_t);	
+		data_datum = gdbm_fetch(indexdb, key_datum);
+		if (data_datum.dptr){
+			memcpy(&num,data_datum.dptr,sizeof(int));
+			free(data_datum.dptr);
+		}
+		num=1;
+		printf("rlm_ippool_tool: num: %d\n",num);
+		data_datum.dptr = (char *) &num;
+		data_datum.dsize = sizeof(int);
+		rcode = gdbm_store(indexdb, key_datum, data_datum, GDBM_REPLACE);
+		if (rcode < 0) {
+			printf("rlm_ippool_tool: Failed storing data to %s: %s\n",
+				indexdbname, gdbm_strerror(gdbm_errno));
+			gdbm_close(indexdb);
+			gdbm_close(sessiondb);
+			return;
+		}
+			
+
+		printf("rlm_ippool_tool: Allocated ip %s to client on nas %s,port %u\n",ipaddress,
+				key.nas,strtoul(NASport,NULL,0));
+	}
+    gdbm_close(indexdb);
+    gdbm_close(sessiondb);
+}
 
 void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress) {
     GDBM_FILE sessiondb;
@@ -176,8 +322,10 @@ void usage(char *argv0) {
     printf("-c: report number of active entries\n");
     printf("-r: remove active entries\n");
     printf("-v: verbose report of all entries\n");
-    printf("If an ipaddress is specified then only that address is used to\n");
-    printf("limit the actions or output to that address only.\n");
+    printf("If an ipaddress is specified then that address is used to\n");
+    printf("limit the actions or output.\n");
+    printf("Usage: %s -n  <session-db> <index-db> <ipaddress> <nasIP> <nasPort>\n",argv0);
+    printf("-n: Mark the entry nasIP/nasPort as having ipaddress\n");
     exit(0);
 }
 
@@ -185,21 +333,25 @@ int main(int argc,char **argv) {
     int ch;
     char *argv0=argv[0];
 
-    while ((ch=getopt(argc,argv,"acrv"))!=-1)
+    while ((ch=getopt(argc,argv,"acrvn"))!=-1)
 	switch (ch) {
 	case 'a': aflag++;break;
 	case 'c': cflag++;break;
 	case 'r': rflag++;break;
 	case 'v': vflag=1;break;
+	case 'n': nflag=1;break;
 	default: usage(argv0);
 	}
     argc -= optind;
     argv += optind;
 
-    if (argc!=2 && argc!=3)
-	usage(argv0);
-    else
-	viewdb(argv[0],argv[1],argv[2]);
-    if (cflag) printf("%d\n",active);
+    if ((argc==2 || argc==3) && !nflag) {
+		viewdb(argv[0],argv[1],argv[2]);
+		if (cflag) printf("%d\n",active);
+	} else 
+		if (argc==5 && nflag)
+			addip(argv[0],argv[1],argv[2],argv[3],argv[4]);
+		else
+			usage(argv0);
     return 0;
 }

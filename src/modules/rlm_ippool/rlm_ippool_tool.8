@@ -129,16 +129,20 @@
 .\" ========================================================================
 .\"
 .IX Title "RLM_IPPOOL_TOOL 8"
-.TH RLM_IPPOOL_TOOL 8 "March 8th, 2003" " " "FreeRADIUS Daemon"
+.TH RLM_IPPOOL_TOOL 8 "October 2nd, 2003" " " "FreeRADIUS Daemon"
 .SH "NAME"
 \&\fBrlm_ippool_tool\fR \- dump the contents of the FreeRadius ippool database files.
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
 \&\fBrlm_ippool_tool\fR [\fBoptions\fR] <\fIsession-db\fR> <\fIindex-db\fR> [\fBipaddress\fR]
+.PP
+\&\fBrlm_ippool_tool\fR \fI\-n\fR <\fIsession-db\fR> <\fIindex-db\fR> <\fIipaddress\fR> <\fInasIP\fR> <\fInasPort\fR>
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
-\&\fBrlm_ippool_tool\fR dumps the contents of the FreeRadius ippool databases for
+\&\fBrlm_ippool_tool\fR dumps the contents of the FreeRADIUS ippool databases for
 analyses or for removal of active (stuck?) entries.
+.PP
+\&\fBrlm_ippool_tool \-n\fR adds a usage entry to the FreeRADIUS ippool databases.
 .PP
 Options are:
 .IP "\fB\-a\fR" 8
@@ -153,9 +157,12 @@ Remove active entries.
 .IP "\fB\-v\fR" 8
 .IX Item "-v"
 Verbose report of all entries
+.IP "\fB\-n\fR" 8
+.IX Item "-n"
+Database addition mode (\*(L"New\*(R")
 .SH "EXAMPLES"
 .IX Header "EXAMPLES"
-The syntax in the FreeRadius radiusd.conf:
+Given the syntax in the FreeRadius radiusd.conf:
 .PP
 .Vb 7
 \& ippool myippool {
@@ -206,10 +213,20 @@ To see only information of one entry, use:
 \& $ rlm_ippool_tool -v ip-pool.db ip-index.db 192.168.1.1
 \& NAS:172.16.1.1 port:0x90 - ipaddr:192.168.1.1 active:0 cli:0 num:0
 .Ve
+.PP
+To add an \s-1IP\s0 address usage entry, use:
+.PP
+.Vb 3
+\& $ rlm_ippool_tool -n ip-pool.db ip-index.db 192.168.1.1 172.16.1.1 0x90
+\& rlm_ippool_tool: Allocating ip to nas/port: 172.16.1.1/144
+\& rlm_ippool_tool: num: 1
+.Ve
 .SH "AUTHOR"
 .IX Header "AUTHOR"
+Currently part of the FreeRADIUS Project (http://www.freeradius.org)
 Originally by Edwin Groothuis, edwin@mavetju.org (http://www.mavetju.org)
 .PP
 Mailing list details are at http://www.freeradius.org/
 .SH "BUGS"
 .IX Header "BUGS"
+\&\-n doesn't support incrementing Multilink-PPP usage. It assumes usage is 1.
