@@ -80,6 +80,7 @@
  *	- In ldap_groupcmp instead of first searching for the group object and then checking user
  *	  group membership combine them in one ldap search operation. That should make group
  *	  membership checks a lot faster.
+ *	- Remember to do ldap_release_conn and ldap_msgfree when we do paircmp and the result is reject
  */
 static const char rcsid[] = "$Id$";
 
@@ -1100,6 +1101,8 @@ ldap_authorize(void *instance, REQUEST * request)
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Pairs do not match");
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
+		ldap_msgfree(result);
+		ldap_release_conn(conn_id,inst->conns);
 
 		return RLM_MODULE_REJECT;
 	}
