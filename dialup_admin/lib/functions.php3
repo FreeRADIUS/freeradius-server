@@ -52,9 +52,10 @@ function time2strclock($time)
 		$str["min"] = "$m";
 		$time = $time % 60;
 	}
-	if ($time)
+	if ($time){
 		if ($time < 10)
 			$time = "0" . $time;
+	}
 	else
 		$time = "00";
 	$str["sec"] = "$time";
