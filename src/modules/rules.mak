@@ -145,6 +145,7 @@ distclean: clean
 
 reconfig:
 	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -l $(RLM_DIR)../../..
+	@[ "x$(AUTOHEADER)" != "x" ] && [ -f ./config.h.in ] && $(AUTOHEADER)
 
 #
 #  Do any module-specific installation.
