@@ -91,7 +91,8 @@ LINK_MODE=-static
 endif
 
 $(TARGET).la: $(DYNAMIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -module $(LINK_MODE) $(CFLAGS) \
+	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	-module $(LINK_MODE) $(CFLAGS) \
 	$(RLM_SQL_CFLAGS) -o $@ -rpath $(libdir) $^ $(RLM_SQL_LIBS)
 
 #######################################################################
