@@ -178,7 +178,7 @@ void request_free(REQUEST **request_ptr)
 {
 	REQUEST *request;
 
-	if (request_ptr == NULL)
+	if ((request_ptr == NULL) || !*request_ptr)
 		return;
 
 	request = *request_ptr;
