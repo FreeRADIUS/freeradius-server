@@ -1,0 +1,12 @@
+TARGET      = @targetname@
+SRCS        = rlm_caching.c
+HEADERS     =
+RLM_CFLAGS  = @caching_cflags@
+RLM_LIBS    = @caching_ldflags@
+RLM_INSTALL =
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)
