@@ -98,7 +98,7 @@ const char *radlog_dir = NULL;
 const char *radlib_dir = NULL;
 int syslog_facility;
 int log_stripped_names;
-int debug_flag;
+int debug_flag = 0;
 int use_dbm = FALSE;
 uint32_t myip = INADDR_ANY;
 int log_auth_detail = FALSE;
@@ -150,6 +150,7 @@ static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST *rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 static int refresh_request(REQUEST *request, void *data);
+static int debug_level;		/* for configuration file stuff */
 #ifndef HAVE_PTHREAD_H
 static int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -192,6 +193,7 @@ static CONF_PARSER server_config[] = {
 	{ "nospace_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_pass, "no" },
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &proxy_requests, "yes" },
 	{ "proxy", PW_TYPE_SUBSECTION, 0, proxy_config, NULL },
+	{ "debug_level", PW_TYPE_INTEGER, 0, &debug_level, "0"},
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -256,6 +258,7 @@ static int reread_config(int reload)
 	int pid = getpid();
 	CONF_SECTION *cs;
 	struct rlimit core_limits;
+	static int old_debug_level = -1;
 
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
@@ -277,6 +280,24 @@ static int reread_config(int reload)
 		return -1;
 	}
 	cf_section_parse(cs, NULL, server_config);
+
+	/*
+	 *	Set the libraries debugging flag to whatever the main
+	 *	flag is.  Note that on a SIGHUP, to turn the debugging
+	 *	off, we do other magic.
+	 *
+	 *	Increase the debug level, if the configuration file
+	 *	says to, OR, if we're decreasing the debug from what it
+	 *	was before, allow that, too.
+	 */
+	fprintf(stderr, "XXXXXXXXXXXXX %d %d %d\n", old_debug_level, debug_level, debug_flag);
+	if ((debug_level > debug_flag) ||
+	    (debug_level <= old_debug_level)) {
+	  debug_flag = debug_level;
+	}
+	librad_debug = debug_flag;
+	old_debug_level = debug_level;
+	fprintf(stderr, "XXXXXXXXXXXXX %d %d %d\n", old_debug_level, debug_level, debug_flag);
 
 	/*  Reload the modules.  */
 	DEBUG2("read_config_files:  entering modules setup");
@@ -600,7 +621,6 @@ int main(int argc, char *argv[])
 				spawn_flag = FALSE;
 				dont_fork = TRUE;
 				debug_flag = 2;
-				librad_debug = 2;
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
@@ -609,7 +629,6 @@ int main(int argc, char *argv[])
 
 			case 'x':
 				debug_flag++;
-				librad_debug++;
 				break;
 			
 			case 'y':
