@@ -24,7 +24,7 @@ static const char *days[] =
 #ifdef DEBUG
 #  define xprintf if (1) printf
 #else
-#  define xprintf
+#  define xprintf if (0) printf
 #endif
 
 /*
