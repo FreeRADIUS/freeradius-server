@@ -113,19 +113,29 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	char clean_password[1024];
 	char clean_username[1024];
 	char buf[1024];
+	VALUE_PAIR *username = NULL;
 
 	if (!mainconfig.log_auth) {
 		return 0;
 	}
 
+	/*
+	 * Get the correct username based on the configured value
+	 */
+	if (log_stripped_names == 0) {
+		username = pairfind(request->packet->vps, PW_USER_NAME);
+	} else {
+		username = request->username;
+	}
+
 	/* 
 	 *	Clean up the username
 	 */
-	if (request->username == NULL) {
+	if (username == NULL) {
 		strcpy(clean_username, "<no User-Name attribute>");
 	} else {
-		librad_safeprint((char *)request->username->strvalue,
-				request->username->length,
+		librad_safeprint((char *)username->strvalue,
+				username->length,
 				clean_username, sizeof(clean_username));
 	}
 
