@@ -8,7 +8,7 @@ TARGET		= rlm_example
 SRCS		= rlm_example.c other.c
 HEADERS		= config.h other.h
 RLM_CFLAGS	=
-LIBS		=
+LIBS		= $(LIBC_STRCPY)
 
 ifeq ($(LIBC_STRCPY),)
 TARGET=

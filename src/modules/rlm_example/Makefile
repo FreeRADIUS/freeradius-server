@@ -27,7 +27,10 @@ include config.mak
 #
 # The LIBS definition should list ALL required libraries.
 # These libraries really should be pulled from the 'config.mak'
-# definitions.
+# definitions, if at all possible.  These definitions are also
+# echoed into another file in ../lib, where they're picked up by
+# ../main/Makefile for building the version of the server with
+# statically linked modules.
 #
 #######################################################################
 TARGET		= rlm_example
@@ -37,11 +40,16 @@ RLM_CFLAGS	= -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align \
 		  -Wwrite-strings -Wconversion -Wstrict-prototypes \
 		  -Wmissing-prototypes -Wmissing-declarations \
 		  -Wnested-externs
-LIBS		=
+LIBS		= $(LIBC_STRCPY)
 
 #######################################################################
 #
-# over-ride the previous assignment if we're not building anything
+#  over-ride the previous assignment of TARGET if we don't have a
+#  definition for LIBC_STRCPY.
+#
+#  The general use for this rule is to NOT build this module if the
+#  libraries it needs aren't installed on the system.  e.g. If there's
+#  no LDAP libraries, the rlm_ldap TARGET should be empty.
 #
 #######################################################################
 ifeq ($(LIBC_STRCPY),)
@@ -64,6 +72,10 @@ include ../rules.mak
 #  Note that we DO NOT list the '.a' or '.so' files here.  This
 #  will make our life easier on systems which do not use '.a' or '.so'.
 #
+#  The file '../rules.mak' defines STATIC_OBJS and DYNAMIC_OBJS
+#  from our SRCS definition, above.  This should hopefully hide any
+#  platform-dependent cruft in ../rules.mak.
+#
 #######################################################################
 $(STATIC_OBJS): $(HEADERS)
 
@@ -72,8 +84,8 @@ $(DYNAMIC_OBJS): $(HEADERS)
 #######################################################################
 #
 #  A fake example: is strcpy() in libc?
-#  If so, echo 'HAVE_STRCPY=-lc' > config.mak
-#  and    echo '#define HAVE_STRCPY 1' > config.h
+#  If so, echo 'HAVE_STRCPY=-lc' > ./config.mak
+#  and    echo '#define HAVE_STRCPY 1' > ./config.h
 #
 #######################################################################
 config.mak config.h:
