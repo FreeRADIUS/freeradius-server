@@ -39,14 +39,15 @@ static const char rcsid[] = "$Id$";
 #include	"modules.h"
 
 typedef struct rlm_preprocess_t {
-	const char	*huntgroup_file;
-	const char	*hints_file;
+	char		*huntgroup_file;
+	char		*hints_file;
 	PAIR_LIST	*huntgroups;
 	PAIR_LIST	*hints;
 	int		with_ascend_hack;
 	int		ascend_channels_per_line;
 	int		with_ntdomain_hack;
 	int		with_specialix_jetstream_hack;
+	int		with_cisco_vsa_hack;
 } rlm_preprocess_t;
 
 static CONF_PARSER module_config[] = {
@@ -66,6 +67,8 @@ static CONF_PARSER module_config[] = {
 	{ "with_specialix_jetstream_hack",  PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_specialix_jetstream_hack), NULL,
 	  "no" },
+	{ "with_cisco_vsa_hack",        PW_TYPE_BOOLEAN,
+	  offsetof(rlm_preprocess_t,with_cisco_vsa_hack), NULL, "no" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -93,6 +96,42 @@ static void ascend_nasport_hack(VALUE_PAIR *nas_port, int channels_per_line)
 		channel = nas_port->lvalue-((10000 * service)+(100 * line));
 		nas_port->lvalue =
 			(channel - 1) + (line - 1) * channels_per_line;
+	}
+}
+
+/*
+ *	ThomasJ --
+ *	This hack strips out Cisco's VSA duplicities in lines
+ *	(Cisco not implemented VSA's in standard way.
+ *
+ *	Cisco sends it's VSA attributes with the attribute name *again*
+ *	in the string, like:  H323-Attribute = "h323-attribute=value".
+ *	This sort of behaviour is nonsense.
+ */
+static void cisco_vsa_hack(VALUE_PAIR *vp)
+{
+	int		vendorpec, vendorcode;
+	char		*ptr;
+	char		newattr[MAX_STRING_LEN];
+
+	for ( ; vp != NULL; vp = vp->next) {
+		vendorcode = (vp->attribute >> 16); /* HACK! */
+		if (vendorcode == 0) continue;	/* ignore non-VSA attributes */
+
+		vendorpec  = dict_vendorpec(vendorcode);
+		if (vendorpec == 0) continue; /* ignore unknown VSA's */
+
+		if (vendorpec != 9) continue; /* not a Cisco VSA, continue */
+
+		/*
+		 *  We strip out the duplicity from the value field,
+		 *  we use only the value on the right side of = character.
+		 */
+		if ((ptr = strchr(vp->strvalue, '=')) != NULL) {
+			strNcpy(newattr, ptr + 1, sizeof(newattr));
+			strNcpy(vp->strvalue, newattr, sizeof(vp->strvalue));
+			vp->length = strlen(vp->strvalue);
+		}
 	}
 }
 
@@ -585,6 +624,14 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 				    data->ascend_channels_per_line);
 	}
 
+	if (data->with_cisco_vsa_hack) {
+	 	/*
+		 *	We need to run this hack because the h323-conf-id
+		 *	attribute should be used.
+		 */
+		cisco_vsa_hack(request->packet->vps);
+	}
+
 	/*
 	 *	Note that we add the Request-Src-IP-Address to the request
 	 *	structure BEFORE checking huntgroup access.  This allows
@@ -619,6 +666,14 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	 */
 	rad_mangle(data, request);
 
+	if (data->with_cisco_vsa_hack) {
+	 	/*
+		 *	We need to run this hack because the h323-conf-id
+		 *	attribute should be used.
+		 */
+		cisco_vsa_hack(request->packet->vps);
+	}
+
 	/*
 	 *  Ensure that we log the NAS IP Address in the packet.
 	 */
@@ -640,8 +695,8 @@ static int preprocess_detach(void *instance)
 	pairlist_free(&(data->huntgroups));
 	pairlist_free(&(data->hints));
 
-	free((char *) data->huntgroup_file);
-	free((char *) data->hints_file);
+	free(data->huntgroup_file);
+	free(data->hints_file);
 	free(data);
 
 	return 0;
