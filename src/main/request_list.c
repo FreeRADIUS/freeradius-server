@@ -25,6 +25,8 @@
  *	The functions in this file must be called ONLY from radiusd.c,
  *	in the main server processing thread.  These functions are NOT
  *	thread-safe!
+ *
+ *	Except for the proxy related code, which is protected by a mutex.
  */
 
 static const char rcsid[] = "$Id$";
@@ -42,13 +44,15 @@ static const char rcsid[] = "$Id$";
 
 
 /*
- *  We keep the incoming requests in an array, indexed by ID.
+ *	We keep the incoming requests in an array, indexed by ID.
  *
- *  Each array element contains a linked list of containers of
- *  active requests, a count of the number of requests, and a time
- *  at which the first request in the list must be serviced.
+ *	Each array element contains a linked list of containers of
+ *	active requests, a count of the number of requests, and a time
+ *	at which the first request in the list must be serviced.
+ *
+ *	Note that we ALSO keep a tree view of the same data, below.
+ *	Both views are needed for the server to work optimally.
  */
-
 typedef struct REQNODE {
 	struct REQNODE *prev, *next;
 	REQUEST *req;
@@ -63,8 +67,11 @@ typedef struct REQUESTINFO {
 
 static REQUESTINFO	request_list[256];
 
-#undef  WITH_RBTREE
-#ifdef WITH_RBTREE
+/*
+ *	Remember the next request at which we start walking
+ *	the list.
+ */
+static REQUEST *last_request = NULL;
 
 /*
  *	It MAY make more sense here to key off of the packet ID, just
@@ -172,14 +179,6 @@ static int proxy_cmp(const void *one, const void *two)
 	return 0;
 }
 
-#endif
-
-/*
- *	Remember the next request at which we start walking
- *	the list.
- */
-static REQUEST *last_request = NULL;
-
 
 /*
  *	Initialize the request list.
@@ -198,7 +197,6 @@ int rl_init(void)
 		request_list[i].last_cleaned_list = 0;
 	}
 
-#ifdef WITH_RBTREE
 	request_tree = rbtree_create(request_cmp, NULL, 0);
 	if (!request_tree) {
 		rad_assert("FAIL" == NULL);
@@ -220,7 +218,6 @@ int rl_init(void)
 		       strerror(errno));
 		exit(1);
 	}
-#endif
 #endif
 
 	return 0;
@@ -303,7 +300,6 @@ void rl_delete(REQUEST *request)
 	}
 #endif
 
-#ifdef WITH_RBTREE
 	/*
 	 *	Delete the request from the tree.
 	 */
@@ -321,20 +317,11 @@ void rl_delete(REQUEST *request)
 		if (request->proxy) {
 			pthread_mutex_lock(&proxy_mutex);
 			node = rbtree_find(proxy_tree, request);
+
 			if (node) rbtree_delete(proxy_tree, node);
 			pthread_mutex_unlock(&proxy_mutex);
 		}
-#if 0
-		/*
-		 *	For paranoia.  Delete when the RBTREE code
-		 *	is made live.
-		 */
-		DEBUG2(" Trees: %d %d\n",
-		       rbtree_num_elements(request_tree),
-		       rbtree_num_elements(proxy_tree));
-#endif
 	}
-#endif
 
 	request_free(&request);
 	request_list[id].request_count--;
@@ -371,14 +358,12 @@ void rl_add(REQUEST *request)
 		request_list[id].last_request = node;
 	}
 
-#ifdef WITH_RBTREE
 	/*
 	 *	Insert the request into the tree.
 	 */
 	if (rbtree_insert(request_tree, request) == 0) {
 		rad_assert("FAIL" == NULL);
 	}
-#endif
 
 	request_list[id].request_count++;
 }
@@ -395,51 +380,27 @@ void rl_add(REQUEST *request)
  */
 REQUEST *rl_find(RADIUS_PACKET *packet)
 {
-#ifdef WITH_RBTREE
 	REQUEST myrequest;
 
 	myrequest.packet = packet;
 
 	return rbtree_finddata(request_tree, &myrequest);
-#else
-	REQNODE *curreq;
-
-	for (curreq = request_list[packet->id].first_request;
-			curreq != NULL ;
-			curreq = ((REQNODE *)curreq->req->container)->next) {
-		/*
-		 *	FIXME: Check destination IP and port, too?
-		 *
-		 *	Can the same client send different packets
-		 *	from the same source IP/port to two different
-		 *	sockets on the server?
-		 *
-		 *	YES: If the server has multiple IP's, and the
-		 *	NAS thinks it's doing load balancing to two
-		 *	different servers..
-		 */
-		if ((curreq->req->packet->code == packet->code) &&
-		    (curreq->req->packet->src_ipaddr == packet->src_ipaddr) &&
-		    (curreq->req->packet->src_port == packet->src_port)) {
-			return curreq->req;
-		}
-	}
-
-	return NULL;
-#endif
 }
 
 
 /*
  *	Add an entry to the proxy tree.
+ *
+ *	This is the ONLY function in this source file which may be called
+ *	from a child thread.  It therefore needs mutexes...
  */
 void rl_add_proxy(REQUEST *request)
 {
-#ifdef WITH_RBTREE
 	pthread_mutex_lock(&proxy_mutex);
 
 	/*
-	 *	FIXME: Do magic to assign ID's, etc.
+	 *	FIXME: Assign proxy packet ID's here, and delete them
+	 *	when the reply comes back.
 	 */
 
 	if (!rbtree_insert(proxy_tree, request)) {
@@ -447,11 +408,6 @@ void rl_add_proxy(REQUEST *request)
 	}
 
 	pthread_mutex_unlock(&proxy_mutex);
-#else
-	/*
-	 *	Do nothing.
-	 */
-#endif
 }
 
 
@@ -467,7 +423,6 @@ void rl_add_proxy(REQUEST *request)
  */
 REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 {
-#ifdef WITH_RBTREE
 	REQUEST myrequest, *maybe = NULL;
 	RADIUS_PACKET myproxy;
 	rbnode_t *node;
@@ -483,41 +438,18 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 	myproxy.dst_port = packet->src_port;
 
 	pthread_mutex_lock(&proxy_mutex);
+
 	node = rbtree_find(proxy_tree, &myrequest);
 	if (node) {
 		maybe = rbtree_node2data(proxy_tree, node);
 		rbtree_delete(proxy_tree, node);
 	}
+
 	pthread_mutex_unlock(&proxy_mutex);
 	return maybe;
-#else
-	REQNODE *curreq = NULL;
-	int id;
-
-	/*
-	 *	The Proxy RADIUS Id is completely independent
-	 *	of the original request Id.  We've got to root through
-	 *	*all* requests, in order to find it.
-	 *
-	 *	FIXME: Maybe we want to use the original packet Id
-	 *	as the Proxy-State?
-	 */
-	for (id = 0; (id < 256) && (curreq == NULL); id++) {
-		for (curreq = request_list[id].first_request;
-		     curreq != NULL ;
-		     curreq = curreq->next) {
-			if (curreq->req->proxy &&
-			    (curreq->req->proxy->id == packet->id) &&
-			    (curreq->req->proxy->dst_ipaddr == packet->src_ipaddr) &&
-			    (curreq->req->proxy->dst_port == packet->src_port)) {
-				return curreq->req;
-			}
-		} /* loop over all requests for this id. */
-	} /* loop over all id's... this is horribly inefficient */
-
-	return NULL;
-#endif
 }
+
+
 /*
  *	Walk over all requests, performing a callback for each request.
  */
@@ -554,6 +486,7 @@ int rl_walk(RL_WALK_FUNC walker, void *data)
 
 	return 0;
 }
+
 
 /*
  *	Walk from one request to the next.
@@ -613,6 +546,7 @@ REQUEST *rl_next(REQUEST *request)
 	return NULL;
 }
 
+
 /*
  *	Return the number of requests in the request list.
  */
@@ -627,6 +561,7 @@ int rl_num_requests(void)
 
 	return request_count;
 }
+
 
 typedef struct rl_walk_t {
 	time_t	now;
@@ -1130,5 +1065,3 @@ struct timeval *rl_clean_list(time_t now)
 	last_tv_ptr = &last_tv;
 	return last_tv_ptr;
 }
-
-
