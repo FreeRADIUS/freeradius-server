@@ -5,6 +5,7 @@
  *			Dmitri Ageev <d_ageev@ortcc.ru>			  *
  **************************************************************************/
 
+#include <stdlib.h>
 #include <string.h>
 #include "radiusd.h"
 #include "sql_unixodbc.h"
