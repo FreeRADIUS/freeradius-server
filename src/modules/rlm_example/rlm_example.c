@@ -183,10 +183,18 @@ static int radius_detach(void *instance)
 	return 0;
 }
 
-/* globally exported name */
+/*
+ *	The module name should be the only globally exported symbol.
+ *	That is, everything else should be 'static'.
+ *
+ *	If the module needs to temporarily modify it's instantiation
+ *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	The server will then take care of ensuring that the module
+ *	is single-threaded.
+ */
 module_t rlm_example = {
-	"example",
-	0,				/* type: reserved */
+	"example",	
+	RLM_TYPE_THREAD_SAFE,		/* type */
 	radius_init,			/* initialization */
 	radius_instantiate,		/* instantiation */
 	radius_authorize,		/* authorization */
