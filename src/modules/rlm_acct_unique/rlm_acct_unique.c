@@ -66,6 +66,10 @@ static int unique_instantiate(CONF_SECTION *conf, void **instance) {
 
 	inst->head = config.head;
 	*instance = inst;
+
+	/* so it doesn't get free()'ed in cf_section_parse */
+	config.key = 0;
+
  	return 0;
 }
 
