@@ -17,7 +17,7 @@ information pertinent to VoIP.
 
 The good news is that with a few modifications to the configuration
 files and the use of Postgresql (or another heavy duty SQL server)
-insead of MySQL FreeRadius can be made into a reliable, flexable
+insead of MySQL FreeRadius can be made into a reliable, flexible
 and scalable (and free!) billing solution for VoIP providors.
 
 MySQL cannot be used as the configuration relies on the connect and
