@@ -111,7 +111,7 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, char **user_msg)
 static int rad_check_password(REQUEST *request, int activefd,
 	VALUE_PAIR *check_item,
 	VALUE_PAIR *namepair,
-	char **user_msg, char *userpass)
+	char **user_msg, u_char *userpass, int *userpass_len)
 {
 	VALUE_PAIR	*auth_type_pair;
 	VALUE_PAIR	*password_pair;
@@ -201,9 +201,10 @@ static int rad_check_password(REQUEST *request, int activefd,
 	 */
 	if (auth_item != NULL && auth_item->attribute == PW_PASSWORD) {
 		memcpy(string, auth_item->strvalue, auth_item->length);
-		rad_pwdecode(string, auth_item->length,
-			request->secret, request->packet->vector);
-		strcpy(userpass, string);
+		*userpass_len = rad_pwdecode(string, auth_item->length,
+					    request->secret,
+					    request->packet->vector);
+		strncpy(userpass, string, *userpass_len + 1);
 	}
 
 #if 0 /* DEBUG */
@@ -423,13 +424,14 @@ int rad_authenticate(REQUEST *request, int activefd)
 	VALUE_PAIR	*user_reply;
 	VALUE_PAIR	*tmp;
 	int		result, r;
-	char		userpass[MAX_STRING_LEN];
-	char		umsg[MAX_STRING_LEN];
+	u_char		userpass[MAX_STRING_LEN + 1];
+	char		umsg[MAX_STRING_LEN + 1];
 	char		*user_msg;
 	char		*ptr;
 	char		*exec_program;
 	int		exec_wait;
 	int		seen_callback_id;
+	int		userpass_len;
 
 	user_check = NULL;
 	user_reply = NULL;
@@ -504,7 +506,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 		if ((result = check_expiration(user_check, umsg, &user_msg))<0)
 				break;
 		result = rad_check_password(request, activefd, user_check,
-			namepair, &user_msg, userpass);
+			namepair, &user_msg, userpass, &userpass_len);
 		if (result > 0) {
 			pairfree(user_reply);
 			request->finished = TRUE;
@@ -526,9 +528,16 @@ int rad_authenticate(REQUEST *request, int activefd)
 		rad_send(rp, activefd, request->secret);
 		rad_free(rp);
 		if (log_auth) {
+			u_char clean_buffer[1024];
+			u_char *p;
+			p = userpass + userpass_len;
+			while ((p >= userpass) &&
+			       (*p == '\0')) p--;
+			librad_safeprint(userpass, p - userpass + 1,
+					 clean_buffer, sizeof(clean_buffer));
 			log(L_AUTH,
 				"Login incorrect: [%s/%s] (%s)",
-				namepair->strvalue, userpass,
+				namepair->strvalue, clean_buffer,
 				auth_name(request, 1));
 		}
 	}
@@ -733,10 +742,6 @@ int rad_authenticate(REQUEST *request, int activefd)
 	rad_free(rp);
 
 	if (log_auth) {
-#if 1 /* Hide the password for `miquels' :) */
-		if (strcmp(namepair->strvalue, "miquels") == 0)
-			strcpy(userpass, "guess");
-#endif
 		log(L_AUTH,
 			"Login OK: [%s%s%s] (%s)",
 			namepair->strvalue,

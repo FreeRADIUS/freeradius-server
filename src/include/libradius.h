@@ -1,3 +1,6 @@
+#ifndef LIBRADIUS_H
+#define LIBRADIUS_H
+
 /*
  * libradius.h	Structures and prototypes
  *		for the radius library.
@@ -94,6 +97,7 @@ typedef struct radius_packet {
 /*
  *	Printing functions.
  */
+void		librad_safeprint(char *in, int inlen, char *out, int outlen);
 int		vp_prints(char *out, int outlen, VALUE_PAIR *vp);
 void		vp_print(FILE *, VALUE_PAIR *);
 void		vp_printlist(FILE *, VALUE_PAIR *);
@@ -170,3 +174,4 @@ UINT4		ip_getaddr (char *);
 char *		ip_ntoa(char *, UINT4);
 UINT4		ip_addr(char *);
 
+#endif LIBRADIUS_H

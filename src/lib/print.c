@@ -22,7 +22,7 @@
  *	The output string has to be _at least_ 4x the size
  *	of the input string!
  */
-static void librad_safeprint(char *in, int inlen, char *out, int outlen)
+void librad_safeprint(char *in, int inlen, char *out, int outlen)
 {
 	unsigned char	*str = (unsigned char *)in;
 	int		done = 0;
