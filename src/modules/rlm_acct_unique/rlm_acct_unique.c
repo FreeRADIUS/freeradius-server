@@ -194,7 +194,7 @@ int unique_parse_key(char *key) {
 	return 0;
 }
 
-int unique_detach(void *instance) {
+static int unique_detach(void *instance) {
 	struct unique_config_t *inst = instance;
 	struct unique_attr_list *next = inst->head;
 	
