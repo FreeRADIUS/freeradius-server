@@ -1,90 +1,71 @@
-Like Auth-Type for authentication method selection freeradius also
-supports the Autz-Type to select between authorization methods.  The only
-problem is that authorization is the first thing to be called when an
-authentication request is handled.  As a result we first have to call the
-authorize section without checking for Autz-Type. After that we check for
-Autz-Type and if it exists we call the corresponding subsection in the
-authorize section.  In other words the authorize section in radiusd.conf
-should look like this:
+FreeRADIUS supports the Acct-Type attribute to select between
+accounting methods based on arbitrary attribute/value pairs contained
+in an accounting packet. Its use follows the same general configuration
+syntax as Auth-Type and Autz-Type. The main difference in configuration
+between Acct-Type and Auth/Autz-Type lies in where the Acct-Type
+method is assigned. With Auth/Autz-Type, the method is typically
+assigned in the 'users' file. The 'users' file, naturally, is not
+processed during the handling of the accounting {} section. However,
+part of the default files {} module is the 'acct_users' file, which
+serves the same purpose as the 'users' file, but applies to accounting
+packets.
 
+For example, a server administrator is responsible for handling the
+accounting data for two different realms, foo.com and bar.com, and
+wishes to use different instances of the SQL module for each. In
+addition, there is one RADIUS client sending accounting data that is
+to be logged only to a specific detail file. Everything else should
+use a third SQL instance.
 
-authorize{
-	suffix
-	preprocess
-	# whatever other authorize modules here
-	Autz-Type Ldap{
-		ldap
-	}
-	Autz-Type SQL{
-		sql
-	}
-	files
+The acct_users file would look something like this:
+
+---
+DEFAULT Realm == "foo.com", Acct-Type := "SQLFOO"
+
+DEFAULT Realm == "bar.com", Acct-Type := "SQLBAR"
+
+DEFAULT Client-IP-Address == "10.0.0.1", Acct-Type := "OTHERNAS"
+---
+
+And in radiusd.conf:
+---
+$INCLUDE  ${confdir}/sql0.conf # Instance named 'sql0'.
+$INCLUDE  ${confdir}/sql1.conf # Instance named 'sql1'.
+$INCLUDE  ${confdir}/sql2.conf # Instance named 'sql2'.
+
+detail othernas {
+        detailfile = ${radacctdir}/10.0.0.1/detail-%Y%m%d
 }
 
-What happens is that the first time the authorize section is examined the
-suffix, preprocess and files modules are executed.  If Autz-Type is set
-after that the server core checks for any matching Autz-Type subsection.
-If one is found it is called.  The users file should look something
-like this:
-
-DEFAULT	Called-Station-Id == "123456789", Autz-Type := Ldap
-
-DEFAULT Realm == "other.company.com", Autz-Type := SQL
-
-Autz-Type could also be used to select between multiple instances of
-a module (ie sql or ldap) which have been configured differently.  For
-example based on the user realm different ldap servers (belonging to
-different companies) could be queried.  If Auth-Type was also set then we
-could do both Authentication and Authorization with the user databases
-belonging to other companies.  In detail:
-
-radiusd.conf-----------------
-
-authenticate{
-	Auth-Type customer1{
-		ldap1
-	}
-	Auth-Type customer2{
-		ldap2
-	}
+preacct {
+        suffix # Add the Realm A/V pair.
+        files  # Add the Acct-Type A/V pair based on the Realm A/V pair.
 }
 
-authorize{
-	preprocess
-	suffix
-	Autz-Type customer1{
-		ldap1
-	}
-	Autz-Type customer2{
-		ldap2
-	}
-	files
+accounting {
+
+        # If Acct-Type is SQLFOO use the 'sql1' instance of the SQL module.
+
+        Acct-Type SQLFOO {
+                sql1
+        }
+
+        # If Acct-Type is SQLBAR, use the 'sql2' instance of the SQL module.
+
+        Acct-Type SQLBAR {
+                sql2
+        }
+
+        # If Acct-Type is OTHERNAS, use the 'othernas' instance of the detail
+        # module
+
+        Acct-Type OTHERNAS {
+                othernas
+        }
+
+        # If we've made it this far, we haven't matched an Acct-Type, so use
+        # the sql0 instance.
+
+        sql0
 }
-
------------------------------
-
-users file-------------------
-
-DEFAULT Realm == "customer1", Autz-Type := customer1, Auth-Type := customer2
-
-DEFAULT Realm == "customer2", Autz-Type := customer2, Auth-Type := customer2
-
-----------------------------
-
-Apart from Autz-Type the server also supports the use of
-Post-Auth-Type, Session-Type and Acct-Type for the corresponding
-sections. The corresponding section names in the radiusd.conf file are
-the same.  So for example:
-
-users file---
-
-DEFAULT Called-Station-Id == "236473", Session-Type := SQL
-
-radiusd.conf---
-
-session{
-	radutmp
-	Session-Type SQL {
-		sql
-	}
-}
+---
