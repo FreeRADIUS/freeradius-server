@@ -5,8 +5,6 @@
 
 SHELL=/bin/bash
 
-# export DH_VERBOSE=1
-
 package = freeradius
 tmp     = $(shell pwd)/debian/tmp
 
@@ -16,8 +14,9 @@ mandir	= $(exec_prefix)/share/man
 libdir	= $(exec_prefix)/lib/freeradius
 logdir	= /var/log/freeradius
 pkgdocdir	= $(exec_prefix)/share/doc/radiusd-freeradius
+raddbdir	= $(prefix)/etc/raddb
 
-build: sanitycheck clean
+build: clean
 # Builds the binary package.
 	dh_testdir
 	# dh_testroot
@@ -34,20 +33,23 @@ binary-arch:	build
 	dh_installdirs
 	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) libdir=$(libdir) R=$(tmp)
 	# clean up install cruft.  $$&@!%
-	rmdir $(tmp)/include
-	rm $(tmp)/usr/sbin/rc.radiusd
+	rmdir $(tmp)/$(execprefix)/include
+	rm $(tmp)/$(execprefix)/usr/sbin/rc.radiusd
+	# fix install permissions
+	chmod 700 $(tmp)/$(raddbdir)
+	chmod 600 $(tmp)/$(raddbdir)/*
 	# man pages & docs
 	dh_undocumented 
-	install -g root -m 644 CREDITS $(tmp)$(pkgdocdir)/credits
+	install -g root -m 644 CREDITS $(tmp)/$(pkgdocdir)/credits
 	find doc -type f -maxdepth 1 ! -path doc/ChangeLog -exec dh_installdocs {} \;
 	dh_installchangelogs doc/ChangeLog
 	dh_compress
 	# supporting programs
-	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/etc/cron.daily/freeradius
-	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/etc/cron.monthly/freeradius
-	install -g root -m 755 scripts/rc.radiusd $(tmp)/etc/init.d/freeradius
+	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/$(prefix)/etc/cron.daily/freeradius
+	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/$(prefix)/etc/cron.monthly/freeradius
+	install -g root -m 755 scripts/rc.radiusd $(tmp)/$(prefix)/etc/init.d/freeradius
 	# fix up conf file  --  all of these should be commented on in README.Debian
-	cp $(tmp)/etc/raddb/radiusd.conf newconf
+	cp $(tmp)/$(raddbdir)/radiusd.conf newconf
 	cat newconf \
 		| sed -e 's/        /	/g' \
 		| sed -e '/^	example {/,/^	}/s/^/#deb#/' \
@@ -55,7 +57,7 @@ binary-arch:	build
 		| sed -e '/^	always .*{/,/^	}/s/^/#deb#/' \
 		| sed -e 's/^		#	shadow		=/		shadow		=/' \
 		| sed -e 's/^group = nobody/group = nogroup/' \
-			> $(tmp)/etc/raddb/radiusd.conf
+			> $(tmp)/$(raddbdir)/radiusd.conf
 	rm newconf
 	# 
 	dh_strip
@@ -77,6 +79,7 @@ clean:
 
 binary: binary-indep binary-arch
 
+# for the maintainer only
 sanitycheck:
 	@echo -n "sanity: checking for overzealous undocumented file... "
 	@find man/ -type f |grep \. |sed -e 's%man/man./%%' | { \
@@ -89,7 +92,7 @@ sanitycheck:
 
 	@echo -n "sanity: making sure conffiles lists all raddb files... "
 	@{ \
-		tree=`find raddb/ -type f |egrep -v '\.in$$' |grep -v CVS |grep -v /Makefile |sort`; \
+		tree=`find raddb/ -type f |sed -e 's/\.in$$//' |grep -v CVS |grep -v /Makefile |sort |uniq`; \
 		debconf=`grep raddb debian/conffiles |sed -e 's%/etc/%%' |sort`; \
 		test "$$tree" = "$$debconf"; \
 	}

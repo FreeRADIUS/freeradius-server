@@ -5,6 +5,8 @@ radiusd-freeradius (0.1+beta1-1) unstable; urgency=low
   * Added generalized SQL support for ODBC, Oracle, and Postgres.
   * Removed bogus build-dep.  (closes: Bug#87277)
   * Added shasta, microsoft, and redback dictionaries.
+  * Fixed rc.d restart rule.
+  * Better permissions on /etc/raddb
 
  -- Chad Miller <cmiller@debian.org>  [TBA]
 
