@@ -272,13 +272,15 @@ ATTRIBUTE	Pre-Acct-Type		1017	integer
 
 #
 #	This is the EAP type of authentication, which is set
-#	by the EAP module, for informational purposed only.
+#	by the EAP module, for informational purposes only.
 #
 ATTRIBUTE	EAP-Type		1018	integer
 ATTRIBUTE	EAP-TLS-Require-Client-Cert	1019	integer
 ATTRIBUTE       EAP-Id                  1020    integer
 ATTRIBUTE	EAP-Code 		1021	integer
 ATTRIBUTE	EAP-MD5-Password	1022	string
+
+ATTRIBUTE	MS-CHAP-Use-NTLM-Auth	1023	integer
 
 # these are PW_EAP_X  + 1280
 ATTRIBUTE	EAP-Type-Identity	1281	string
@@ -719,3 +721,9 @@ VALUE	EAP-Code     Request     1
 VALUE   EAP-Code     Response    2
 VALUE   EAP-Code     Success     3
 VALUE   EAP-Code     Failure     4
+
+#
+#  For MS-CHAP, do we run ntlm_auth, or not.
+#
+VALUE	MS-CHAP-Use-NTLM-Auth	No	0
+VALUE	MS-CHAP-Use-NTLM-Auth	Yes	1
