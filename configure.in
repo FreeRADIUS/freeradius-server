@@ -262,6 +262,7 @@ AC_CHECK_HEADERS( \
 	sys/select.h \
 	dlfcn.h \
 	regex.h \
+	syslog.h
 )
 
 AC_CHECK_FUNCS( \
@@ -276,6 +277,7 @@ AC_CHECK_FUNCS( \
 	inet_aton \
 	gethostname \
 	setlinebuf \
+	getusershell \
 )
 
 dnl Check for socklen_t
