@@ -17,8 +17,9 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000,2001  The FreeRADIUS server project
+ * Copyright 2000-2003  The FreeRADIUS server project
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 /*
  *  EAP PACKET FORMAT
@@ -89,7 +90,7 @@ static const char *eap_types[] = {
 /*
  *	Return an EAP-Type for a particular name.
  */
-int eaptype_name2id(const char *name)
+int eaptype_name2type(const char *name)
 {
 	int i;
 
@@ -106,19 +107,19 @@ int eaptype_name2id(const char *name)
  * Load all the required eap authentication types.
  * Get all the supported EAP-types from config file. 
  */
-int eaptype_load(EAP_TYPES **type, int id, CONF_SECTION *cs)
+int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 {
 	char		buffer[64];
 	lt_dlhandle	handle;
 	EAP_TYPES	*node;
 
-	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eap_types[id]);
+	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eap_types[eap_type]);
 
 	/* Link the loaded EAP-Type */
 	handle = lt_dlopenext(buffer);
 	if (handle == NULL) {
 		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s", 
-				eap_types[id], lt_dlerror());
+				eap_types[eap_type], lt_dlerror());
 		return -1;
 	}
 
@@ -133,14 +134,13 @@ int eaptype_load(EAP_TYPES **type, int id, CONF_SECTION *cs)
 	/* fill in the structure */
 	node->handle = handle;
 	node->cs = cs;
-	node->typeid = id;
-	node->typename = eap_types[id];
+	node->typename = eap_types[eap_type];
 	node->type_data = NULL;
 	
 	node->type = (EAP_TYPE *)lt_dlsym(node->handle, buffer);
 	if (!node->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to %s structure in %s: %s",
-				buffer, eap_types[id], lt_dlerror());
+				buffer, eap_types[eap_type], lt_dlerror());
 		lt_dlclose(node->handle);	/* ignore any errors */
 		free(node);
 		return -1;
@@ -148,14 +148,14 @@ int eaptype_load(EAP_TYPES **type, int id, CONF_SECTION *cs)
 	if ((node->type->attach) && 
 		((node->type->attach)(node->cs, &(node->type_data)) < 0)) {
 
-		radlog(L_ERR, "rlm_eap: Failed to initialize the type %s",
-		       eap_types[id]);
+		radlog(L_ERR, "rlm_eap: Failed to initialize type %s",
+		       eap_types[eap_type]);
 		lt_dlclose(node->handle);
 		free(node);
 		return -1;
 	}
 
-	DEBUG("rlm_eap: Loaded and initialized the type %s", eap_types[id]);
+	DEBUG("rlm_eap: Loaded and initialized type %s", eap_types[eap_type]);
 	*type = node;
 	return 0;
 }
@@ -166,6 +166,8 @@ int eaptype_load(EAP_TYPES **type, int id, CONF_SECTION *cs)
  */
 static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 {
+	int rcode = 1;
+
 	DEBUG2("  rlm_eap: processing type %s", atype->typename);
 
 	rad_assert(atype != NULL);
@@ -173,7 +175,7 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 	switch (handler->stage) {
 	case INITIATE:
 		if (!atype->type->initiate(atype->type_data, handler))
-			return 0;
+			rcode = 0;
 		break;
 
 	case AUTHORIZE:
@@ -182,7 +184,7 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 		 */
 		if (!atype->type->authorize ||
 		    !atype->type->authorize(atype->type_data, handler))
-			return 0;
+			rcode = 0;
 		break;
 
 	case AUTHENTICATE:
@@ -191,15 +193,17 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 		 */
 		if (!atype->type->authenticate ||
 		    !atype->type->authenticate(atype->type_data, handler))
-			return 0;
+			rcode = 0;
 		break;
 
 	default:
 		/* Should never enter here */
-		radlog(L_DBG, "rlm_eap: Invalid operation  on eap_type");
+		radlog(L_DBG, "rlm_eap: Invalid operation on eap_type");
+		rcode = 0;
 		break;
 	}
-	return 1;
+
+	return rcode;
 }
 
 /*
@@ -209,7 +213,8 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
  */
 int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
-	eaptype_t *eaptype;
+	eaptype_t	*eaptype;
+	int	    	default_eap_type = inst->default_eap_type;
 
 	eaptype = &handler->eap_ds->response->type;
 
@@ -222,23 +227,57 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		return EAP_INVALID;
 	}
 
+	/*
+	 *	Figure out what to do.
+	 */
 	switch(eaptype->type) {
 	case PW_EAP_IDENTITY:
-		DEBUG2("  rlm_eap: EAP Identity");
+		{
+			VALUE_PAIR  *vp;
 
-		/*
-		 *	We haven't configured it, it doesn't exist.
-		 */
-		if (!inst->types[inst->default_eap_id]) {
-			DEBUG2(" rlm_eap: Default type is unavailable");
-			return EAP_INVALID;
-		}
+			DEBUG2("  rlm_eap: EAP Identity");
+			
+			/*
+			 *	Allow per-user configuration of EAP types.
+			 */
+			vp = pairfind(handler->request->config_items,
+				      PW_EAP_TYPE);
+			if (vp) default_eap_type = vp->lvalue;
 
-		handler->stage = INITIATE;
-		if (eaptype_call(inst->types[inst->default_eap_id],
-				 handler) == 0) {
-			DEBUG2(" rlm_eap: Default handler failed in initiate");
-			return EAP_INVALID;
+		do_initiate:
+			/*
+			 *	Ensure it's valid.
+			 */
+			if ((default_eap_type < PW_EAP_MD5) ||
+			    (default_eap_type > PW_EAP_MAX_TYPES) ||
+			    (inst->types[default_eap_type] == NULL)) {
+				DEBUG2(" rlm_eap: No such EAP type %d",
+				       default_eap_type);
+				return EAP_INVALID;
+			}
+			
+			handler->stage = INITIATE;
+			handler->eap_type = default_eap_type;
+
+			/*
+			 *	Wild & crazy stuff!  For TTLS & PEAP,
+			 *	we initiate a TLS session, and then pass
+			 *	that session data to TTLS or PEAP for
+			 *	the authenticate stage.
+			 *
+			 *	Handler->eap_type holds the TRUE
+			 *	type.
+			 */
+			if ((default_eap_type == PW_EAP_TTLS) ||
+			    (default_eap_type == PW_EAP_PEAP)) {
+				default_eap_type = PW_EAP_TLS;
+			}
+
+			if (eaptype_call(inst->types[default_eap_type],
+					 handler) == 0) {
+				DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", eap_types[default_eap_type]);
+				return EAP_INVALID;
+			}
 		}
 		break;
 
@@ -257,49 +296,23 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			handler->free_opaque = NULL;
 			handler->opaque = NULL;
 		}
-		handler->stage = INITIATE;
 
 		/*
 		 *	It is invalid to request identity,
 		 *	notification & nak in nak
 		 */
 		if ((eaptype->data == NULL) ||
-		    (eaptype->data[0] < PW_EAP_MD5)) {
+		    (eaptype->data[0] < PW_EAP_MD5) ||
+		    (eaptype->data[0] > PW_EAP_MAX_TYPES)) {
 			DEBUG2(" rlm_eap: NAK asked for bad type");
 			return EAP_INVALID;
 		}
 
-		/*
-		 *	The NAK is for a type we *really* don't
-		 *	understand.  Die.
-		 */
-		if (eaptype->data[0] > PW_EAP_MAX_TYPES) {
-			DEBUG2(" rlm_eap: NAK asked for invalid type %d",
-			       eaptype->data[0]);
-			return EAP_INVALID;
-		}
+		default_eap_type = eaptype->data[0];
+		DEBUG2(" rlm_eap: EAP-NAK asked for EAP-Type/%s",
+		       eap_types[default_eap_type]);
 
-		/*
-		 *	We haven't configured it, it doesn't exit.
-		 */
-		if (!inst->types[eaptype->data[0]]) {
-			DEBUG2(" rlm_eap: NAK asked for unknown type %d",
-			       eaptype->data[0]);
-			return EAP_INVALID;
-		}
-		
-		DEBUG2("  rlm_eap: EAP_TYPE - %s",
-		       eap_types[eaptype->data[0]]);
-
-		/*
-		 *	Call the type, if we have it.  If not,
-		 *	die.
-		 */
-		if (eaptype_call(inst->types[eaptype->data[0]],
-				 handler) == 0) {
-			DEBUG2(" rlm_eap: NAK handler failed in initiate");
-			return EAP_INVALID;
-		}
+		goto do_initiate;
 		break;
 
 		/*
@@ -319,6 +332,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			}
 			
 			rad_assert(handler->stage == AUTHENTICATE);
+			handler->eap_type = eaptype->type;
 			if (eaptype_call(inst->types[eaptype->type],
 					 handler) == 0) {
 				DEBUG2(" rlm_eap: Handler failed in EAP type %d",
@@ -428,7 +442,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
  *	i.e. code+id+length+data where data = null/type+typedata
  *	based on code.
  */
-int eap_wireformat(EAP_PACKET *reply)
+static int eap_wireformat(EAP_PACKET *reply)
 {
 	eap_packet_t	*hdr;
 	uint16_t total_length = 0;
@@ -455,7 +469,11 @@ int eap_wireformat(EAP_PACKET *reply)
 	total_length = htons(total_length);
 	memcpy(hdr->length, &total_length, sizeof(uint16_t));
 
-	if (reply->code < 3) {
+	/*
+	 *	Request and Response packets are special.
+	 */
+	if ((reply->code == PW_EAP_REQUEST) ||
+	    (reply->code == PW_EAP_RESPONSE)) {
 		hdr->data[0] = (reply->type.type & 0xFF);
 
 		/*
@@ -483,41 +501,53 @@ int eap_wireformat(EAP_PACKET *reply)
  *	Set the RADIUS reply codes based on EAP request codes.  Append
  *	any additonal VPs to RADIUS reply
  */
-int eap_compose(REQUEST *request, EAP_DS *eap_ds)
+int eap_compose(EAP_HANDLER *handler)
 {
 	uint16_t eap_len, len;
 	VALUE_PAIR *eap_msg;
-	EAP_PACKET *rq;
 	VALUE_PAIR *vp;
 	eap_packet_t *eap_packet;
 	unsigned char 	*ptr;
+	REQUEST *request = handler->request;
+	EAP_DS *eap_ds = handler->eap_ds;
 	EAP_PACKET *reply = eap_ds->request;
 	int rcode;
 
 	/*
-	 *	ID serves to suppport request/response
-	 *	retransmission in the EAP layer and as such must be
-	 *	different for 'adjacent' packets except in case of
-	 *	success/failure-replies.
-	 *
-	 *	RFC2716 (EAP_TLS) requires this to be incremented,
-	 *	RFC2284 only makes the above- mentioned restriction.
-	 */
-	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
-	rq = (EAP_PACKET *)eap_msg->strvalue;
-
-	/*
-	 *	The ID for the EAP packet to the NAS wasn't set.
+	 *	The Id for the EAP packet to the NAS wasn't set.
 	 *	Do so now.
+	 *
+	 *	LEAP requires the Id to be incremented on EAP-Success
+	 *	in Stage 4, so that we can carry on the conversation
+	 *	where the client asks us to authenticate ourselves
+	 *	in stage 5.
 	 */
 	if (!eap_ds->set_request_id) {
-		reply->id = rq->id;
+		/*
+		 *	Id serves to suppport request/response
+		 *	retransmission in the EAP layer and as such
+		 *	must be different for 'adjacent' packets
+		 *	except in case of success/failure-replies.
+		 *
+		 *	RFC2716 (EAP-TLS) requires this to be
+		 *	incremented, RFC2284 only makes the above-
+		 *	mentioned restriction.
+		 */
+		reply->id = handler->eap_ds->response->id;
 		
 		switch (reply->code) {
+			/*
+			 *	The Id is a simple "ack" for success
+			 *	and failure.
+			 */
 		case PW_EAP_SUCCESS:
 		case PW_EAP_FAILURE:
 	    		break;
 			
+			/*
+			 *	We've sent a response to their
+			 *	request, the Id is incremented.
+			 */
 		default:
 	    		++reply->id;
 		}
@@ -525,6 +555,24 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 		DEBUG2("  rlm_eap: Underlying EAP-Type set EAP ID to %d",
 		       reply->id);
 	}
+
+	/*
+	 *	For Request & Response packets, set the EAP sub-type,
+	 *	if the EAP sub-module didn't already set it.
+	 *
+	 *	This allows the TLS module to be "morphic", and means
+	 *	that the TTLS and PEAP modules can call it to do most
+	 *	of their dirty work.
+	 */
+	if (((eap_ds->request->code == PW_EAP_REQUEST) ||
+	     (eap_ds->request->code == PW_EAP_RESPONSE)) &&
+	    (eap_ds->request->type.type == 0)) {
+		rad_assert(handler->eap_type >= PW_EAP_MD5);
+		rad_assert(handler->eap_type <= PW_EAP_MAX_TYPES);
+
+		eap_ds->request->type.type = handler->eap_type;
+	}
+	  
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
 		return RLM_MODULE_INVALID;
@@ -605,7 +653,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	VALUE_PAIR *eap_msg;
-	EAP_DS *eapstart;
+	EAP_DS *eap_ds;
+	EAP_HANDLER handler;
 
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	if (eap_msg == NULL) {
@@ -614,16 +663,17 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	}
 
 	/*
-	 *  http://www.freeradius.org/rfc/rfc2869.html#EAP-Message
+	 *	http://www.freeradius.org/rfc/rfc2869.html#EAP-Message
+	 *
+	 *	This is handled by rad_recv().
 	 */
-	vp = pairfind(request->packet->vps, PW_MESSAGE_AUTHENTICATOR);
-	if (!vp) {
-		radlog(L_ERR, "rlm_eap: EAP-Message without Message-Authenticator: Ignoring the request due to RFC 2869 Section 5.13 requirements");
-		return EAP_NOOP;
-	}
 
+	/*
+	 *	We're allowed only a few codes.  Request, Response,
+	 *	Success, or Failure.
+	 */
 	if ((eap_msg->strvalue[0] == 0) ||
-	    (eap_msg->strvalue[0] > PW_EAP_MAX_TYPES)) {
+	    (eap_msg->strvalue[0] > PW_EAP_MAX_CODES)) {
 		DEBUG2("  rlm_eap: Unknown EAP packet");
 	} else {
 		DEBUG2("  rlm_eap: EAP packet type %s id %d length %d",
@@ -665,7 +715,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		 */
 		if (((eap_msg->strvalue[0] == PW_EAP_REQUEST) ||
 		     (eap_msg->strvalue[0] == PW_EAP_RESPONSE)) &&
-		    (eap_msg->length > EAP_HEADER_LEN)) {
+		    (eap_msg->length >= (EAP_HEADER_LEN + 1))) {
 			/*
 			 *	Create an EAP-Type of the type which
 			 *	was NAK'd, or of the type in the packet.
@@ -683,8 +733,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 			 *	eap_authorize() to return NOOP.
 			 *
 			 *	EAP-Identity, Notification, and NAK
-			 *	are all handled internally, so they'll
-			 *	never hanve handlers.
+			 *	are all handled internally, so they
+			 *	never have handlers.
 			 */
 			if ((eap_msg->strvalue[4] >= PW_EAP_MD5) &&
 			    inst->ignore_unknown_eap_types &&
@@ -697,29 +747,30 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 			/*
 			 *	They're NAKing the EAP type we wanted
 			 *	to use, and asking for one which we don't
-			 *	support.  Crap.
+			 *	support.
 			 *
 			 *	NAK is code + id + length1 + length + NAK
 			 *             + requested EAP type.
+			 *
+			 *	We know at this point that we can't
+			 *	handle the request.  We could either
+			 *	return an EAP-Fail here, but it's not
+			 *	too critical.
+			 *
+			 *	By returning "noop", we can ensure
+			 *	that authorize() returns NOOP, and
+			 *	another module may choose to proxy
+			 *	the request.
 			 */
 			if ((eap_msg->strvalue[4] == PW_EAP_NAK) &&
 			    (eap_msg->length >= (EAP_HEADER_LEN + 2)) &&
+			    inst->ignore_unknown_eap_types &&
 			    ((eap_msg->strvalue[5] == 0) ||
 			     (eap_msg->strvalue[5] > PW_EAP_MAX_TYPES) ||
 			     (inst->types[eap_msg->strvalue[5]] == NULL))) {
-
-				/*
-				 *	Hmm... we KNOW at this point
-				 *	that we can't handle the request.
-				 *
-				 *	We should either return an EAP-Fail
-				 *	here, or we should see if we can
-				 *	proxy it to another RADIUS server,
-				 *	which CAN handle the request/
-				 */
-				return EAP_NOTFOUND;
+				return EAP_NOOP;
 			}
-		}
+		} /* else it's not an EAP-Request or EAP-Response */
  
 		/*
 		 *	No EAP-Start found.
@@ -728,52 +779,66 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	}
 
 	DEBUG2("  rlm_eap: Got EAP_START message");
-	if ((eapstart = eap_ds_alloc()) == NULL) {
+	if ((eap_ds = eap_ds_alloc()) == NULL) {
 		DEBUG2("  rlm_eap: EAP Start failed in allocation");
 		return EAP_FAIL;
 	}
 
 	/*
-	 *	Hmm... why isn't this taken from the eap_msg?
+	 *	It's an EAP-Start packet.  Tell them to stop wasting
+	 *	our time, and give us an EAP-Identity packet.
+	 *
+	 *	Hmm... we should probably check the contents of the
+	 *	EAP-Start packet for something...
 	 */
-	eapstart->request->code = PW_EAP_REQUEST;
-	eapstart->request->type.type = PW_EAP_IDENTITY;
+	eap_ds->request->code = PW_EAP_REQUEST;
+	eap_ds->request->type.type = PW_EAP_IDENTITY;
 
-	eap_compose(request, eapstart);
+	/*
+	 *	We don't have a handler, but eap_compose needs one,
+	 *	(for various reasons), so we fake it out here.
+	 */
+	memset(&handler, 0, sizeof(handler));
+	handler.request = request;
+	handler.eap_ds = eap_ds;
 
-	eap_ds_free(&eapstart);
+	eap_compose(&handler);
+
+	eap_ds_free(&eap_ds);
 	return EAP_FOUND;
 }
 
 /*
- * compose EAP FAILURE packet in EAP-Message
+ *	compose EAP FAILURE packet in EAP-Message
  */
-void eap_fail(REQUEST *request, EAP_DS *eap_ds)
+void eap_fail(EAP_HANDLER *handler)
 {
-	eap_ds->request->code = PW_EAP_FAILURE;
-	eap_compose(request, eap_ds);
+	handler->eap_ds->request->code = PW_EAP_FAILURE;
+	eap_compose(handler);
 }
 
 /*
- * compose EAP SUCCESS packet in EAP-Message
+ *	compose EAP SUCCESS packet in EAP-Message
  */
-void eap_success(REQUEST *request, EAP_DS *eap_ds)
+void eap_success(EAP_HANDLER *handler)
 {
-	eap_ds->request->code = PW_EAP_SUCCESS;
-	eap_compose(request, eap_ds);
+	handler->eap_ds->request->code = PW_EAP_SUCCESS;
+	eap_compose(handler);
 }
 
 /*
  * Basic EAP packet verfications & validations
  */
-int eap_validation(eap_packet_t *eap_packet)
+static int eap_validation(eap_packet_t *eap_packet)
 {
 	uint16_t len;
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
 
-	/* High level EAP packet checks */
+	/*
+	 *	High level EAP packet checks
+	 */
 	if ((len <= EAP_HEADER_LEN) ||
  	    ((eap_packet->code != PW_EAP_RESPONSE) &&
  	     (eap_packet->code != PW_EAP_REQUEST)) ||
@@ -800,7 +865,7 @@ int eap_validation(eap_packet_t *eap_packet)
 /*
  *  Get the user Identity only from EAP-Identity packets
  */
-char *eap_identity(eap_packet_t *eap_packet)
+static char *eap_identity(eap_packet_t *eap_packet)
 {
 	int size;
 	uint16_t len;
@@ -838,19 +903,15 @@ char *eap_identity(eap_packet_t *eap_packet)
  */
 static EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
 {
-	EAP_DS *eap_ds = NULL;
-	eap_packet_t	*eap_packet = NULL;
-	int typelen;
-	uint16_t len;
-
-	eap_packet = *eap_packet_p;
-	if (eap_packet == NULL) {
-		return NULL;
-	}
+	EAP_DS		*eap_ds = NULL;
+	eap_packet_t	*eap_packet = *eap_packet_p;
+	int		typelen;
+	uint16_t	len;
 
 	if ((eap_ds = eap_ds_alloc()) == NULL) {
 		return NULL;
 	}
+
 	eap_ds->response->packet = (unsigned char *)eap_packet;
         eap_ds->response->code = eap_packet->code;
         eap_ds->response->id = eap_packet->id;
@@ -860,17 +921,23 @@ static EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
 	len = ntohs(len);
 	eap_ds->response->length = len;
 
-	/* First byte in eap_packet->data is *EAP-Type* */
 	/*
-	 * First 5 bytes, in eap, are code+id+length(2)+type
-	 * The rest is TypeData
-	 * skip *type* while getting typedata from data
+	 *	We've eaten the eap packet into the eap_ds.
 	 */
-	typelen = len - 5/*code+id+length+type*/;
+	*eap_packet_p = NULL;
+
+	/*
+	 *	First 5 bytes in eap, are code + id + length(2) + type.
+	 *
+	 *	The rest is type-specific data.  We skip type while
+	 *	getting typedata from data.
+	 */
+	typelen = len - 5/*code + id + length + type */;
 	if (typelen > 0) {
 		/*
-		 * Since packet contians the complete eap_packet, 
-		 * typedata will be a ptr in packet to its typedata
+		 *	Since the packet contains the complete
+		 *	eap_packet, typedata will be a ptr in packet
+		 *	to its typedata
 		 */
 		eap_ds->response->type.data = eap_ds->response->packet + 5/*code+id+length+type*/;
 		eap_ds->response->type.length = typelen;
@@ -879,7 +946,6 @@ static EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
 		eap_ds->response->type.data = NULL;
 	}
 
-	*eap_packet_p = NULL;
 	return eap_ds;
 }
 
@@ -896,62 +962,74 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			 REQUEST *request)
 {
 	EAP_HANDLER	*handler = NULL;
-	eap_packet_t	*eap_packet = NULL;
+	eap_packet_t	*eap_packet = *eap_packet_p;
 
-	eap_packet = *eap_packet_p;
+	/*
+	 *	Ensure it's a valid EAP-Request, or EAP-Response.
+	 */
 	if (eap_validation(eap_packet) == EAP_INVALID) {
+		free(*eap_packet_p);
+		*eap_packet_p = NULL;
 		return NULL;
 	}
 
 	/*
-	 * EAP_HANDLER MUST be found in the list if it is not EAP-Identity response
+	 *	EAP_HANDLER MUST be found in the list if it is not
+	 *	EAP-Identity response
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
-		handler = eaplist_find(inst, request, eap_packet->id);
+		handler = eaplist_find(inst, request, eap_packet);
 		if (handler == NULL) {
 			/* Either send EAP_Identity or EAP-Fail */
 			radlog(L_ERR, "rlm_eap: Either EAP-request timed out OR"
 				" EAP-response to an unknown EAP-request");
+			free(*eap_packet_p);
+			*eap_packet_p = NULL;
+			return NULL;
+		}
+
+		/*
+		 *	Even more paranoia.  Without this, some weird
+		 *	clients could do crazy things.
+		 *
+		 *	It's ok to send EAP sub-type NAK in response
+		 *	to a request for a particular type, but it's NOT
+		 *	OK to blindly return data for another type.
+		 */
+		if ((eap_packet->data[0] != PW_EAP_NAK) &&
+		    (eap_packet->data[0] != handler->eap_type)) {
+			radlog(L_ERR, "rlm_eap: Response appears to match, but EAP type is wrong.");
+			free(*eap_packet_p);
+			*eap_packet_p = NULL;
 			return NULL;
 		}
 	} else {
 		handler = eap_handler_alloc();
 		if (handler == NULL) {
 			radlog(L_ERR, "rlm_eap: out of memory");
+			free(*eap_packet_p);
+			*eap_packet_p = NULL;
 			return NULL;
 		}
 
 		/*
-		 *	all fields are set to zero.
+		 *	All fields in the handler are set to zero.
 		 */
 
 		handler->identity = eap_identity(eap_packet);
 		if (handler->identity == NULL) {
 			radlog(L_ERR, "rlm_eap: Identity Unknown, authentication failed");
+			free(*eap_packet_p);
+			*eap_packet_p = NULL;
 			eap_handler_free(&handler);
 			return NULL;
 		}
-
-		/* Get the User-Name */
-		if (request->username == NULL) {
-			handler->username = pairmake("User-Name", handler->identity, T_OP_EQ);
-		} else {
-			handler->username = paircopy(request->username);
-		}
-
-		/* No User-Name, No authentication */
-		/*
-		if (handler->username == NULL) {
-			radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
-			eap_handler_free(&handler);
-			return NULL;
-		}
-		*/
-
 	}
 
 	handler->eap_ds = eap_buildds(eap_packet_p);
 	if (handler->eap_ds == NULL) {
+		free(*eap_packet_p);
+		*eap_packet_p = NULL;
 		eap_handler_free(&handler);
 		return NULL;
 	}

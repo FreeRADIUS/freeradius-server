@@ -17,8 +17,9 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000,2001  The FreeRADIUS server project
+ * Copyright 2000-2003  The FreeRADIUS server project
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 
 #include "autoconf.h"
@@ -29,7 +30,7 @@ static const char rcsid[] = "$Id$";
 
 static const CONF_PARSER module_config[] = {
 	{ "default_eap_type", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_eap_t, default_eap_type), NULL, "md5" },
+	  offsetof(rlm_eap_t, default_eap_type_name), NULL, "md5" },
 	{ "timer_expire", PW_TYPE_INTEGER,
 	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
 	{ "ignore_unknown_eap_types", PW_TYPE_BOOLEAN,
@@ -62,10 +63,11 @@ static int eap_detach(void *instance)
 	}
 
 #if HAVE_PTHREAD_H
-	pthread_mutex_destroy(&(inst->mutex));
+	pthread_mutex_destroy(&(inst->session_mutex));
+	pthread_mutex_destroy(&(inst->module_mutex));
 #endif
 
-	if (inst->default_eap_type) free(inst->default_eap_type);
+	if (inst->default_eap_type_name) free(inst->default_eap_type_name);
 	free(inst);
 
 	return 0;
@@ -77,7 +79,7 @@ static int eap_detach(void *instance)
  */
 static int eap_instantiate(CONF_SECTION *cs, void **instance)
 {
-	int		id;
+	int		eap_type;
 	int		num_types;
 	CONF_SECTION 	*scs;
 	rlm_eap_t	*inst;
@@ -104,15 +106,30 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 		if (!auth_type)  continue;
 
-		id = eaptype_name2id(auth_type);
-		if (id < 0) {
+		eap_type = eaptype_name2type(auth_type);
+		if (eap_type < 0) {
 			radlog(L_ERR|L_CONS, "rlm_eap: Unknown EAP type %s",
 			       auth_type);
 			eap_detach(inst);
 			return -1;
 		}
 
-		if (eaptype_load(&inst->types[id], id, scs) < 0) {
+		/*
+		 *	If we're asked to load TTLS or PEAP, ensure
+		 *	that we've first loaded TLS.
+		 */
+		if (((eap_type == PW_EAP_TTLS) ||
+		     (eap_type == PW_EAP_PEAP)) &&
+		    (inst->types[PW_EAP_TLS] == NULL)) {
+			radlog(L_ERR, "rlm_eap: Unable to load EAP-Type/%s, as EAP-Type/TLS is required first.",
+			       auth_type);
+			return -1;
+		}
+
+		/*
+		 *	Load the type.
+		 */
+		if (eaptype_load(&inst->types[eap_type], eap_type, scs) < 0) {
 			eap_detach(inst);
 			return -1;
 		}
@@ -129,21 +146,21 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	/*
 	 *	Ensure that the default EAP type is loaded.
 	 */
-	id = eaptype_name2id(inst->default_eap_type);
-	if (id < 0) {
+	eap_type = eaptype_name2type(inst->default_eap_type_name);
+	if (eap_type < 0) {
 		radlog(L_ERR|L_CONS, "rlm_eap: Unknown default EAP type %s",
-		       inst->default_eap_type);
+		       inst->default_eap_type_name);
 		eap_detach(inst);
 		return -1;
 	}
 
-	if (inst->types[id] == NULL) {
+	if (inst->types[eap_type] == NULL) {
 		radlog(L_ERR|L_CONS, "rlm_eap: No such sub-type for default EAP type %s",
-		       inst->default_eap_type);
+		       inst->default_eap_type_name);
 		eap_detach(inst);
 		return -1;
 	}
-	inst->default_eap_id = id;
+	inst->default_eap_type = eap_type; /* save the numerical type */
 
 	/*
 	 *	List of sessions are set to NULL by the memset
@@ -154,7 +171,8 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	generate_key();
 
 #if HAVE_PTHREAD_H
-	pthread_mutex_init(&(inst->mutex), NULL);
+	pthread_mutex_init(&(inst->session_mutex), NULL);
+	pthread_mutex_init(&(inst->module_mutex), NULL);
 #endif
 	
 	*instance = inst;
@@ -176,7 +194,9 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	inst = (rlm_eap_t *) instance;
 
-	/* get the eap packet  to start with */
+	/*
+	 *	Get the eap packet  to start with
+	 */
 	eap_packet = eap_attribute(request->packet->vps);
 	if (eap_packet == NULL) {
 		radlog(L_ERR, "rlm_eap: Malformed EAP Message");
@@ -184,54 +204,70 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	The EAP internals aren't currently thread-safe,
-	 *	so we need a lock against other threads, before we
-	 *	process them.
-	 */
-#if HAVE_PTHREAD_H
-	pthread_mutex_lock(&(inst->mutex));
-	locked = TRUE;		/* for recursive calls to the module */
-#endif
-
-	/*
-	 *	Create the eap handler 
+	 *	Create the eap handler.  The eap_packet will end up being
+	 *	"swallowed" into the handler, so we can't access it after
+	 *	this call.
 	 */
 	handler = eap_handler(inst, &eap_packet, request);
 	if (handler == NULL) {
-#if HAVE_PTHREAD_H
-		if (locked) pthread_mutex_unlock(&(inst->mutex));
-#endif
 		DEBUG2("  rlm_eap: Failed in handler");
 		return RLM_MODULE_INVALID;
 	}
 
 	/*
-	 *	No User-Name, No authentication
+	 *	If it's a recursive request, then disallow
+	 *	TLS, TTLS, and PEAP, inside of the TLS tunnel.
 	 */
-	if (handler->username == NULL) {
-		radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
-		eap_fail(request, handler->eap_ds);
-		eap_handler_free(&handler);
+	if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) {
+		switch(handler->eap_ds->response->type.type) {
+		case PW_EAP_TLS:
+		case PW_EAP_TTLS:
+		case PW_EAP_PEAP:
+			DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
+			eap_fail(handler);
+			eap_handler_free(&handler);
+			return RLM_MODULE_INVALID;
+			break;
+
+		default:	/* It may be OK, allow it to proceed */
+			break;
+
+		}
+	}
 
 #if HAVE_PTHREAD_H
-		if (locked) pthread_mutex_unlock(&(inst->mutex));
-#endif
-		DEBUG2("  rlm_eap: No user name");
-		return RLM_MODULE_REJECT;
+	else {			/* it's a normal request from a NAS */
+		/*
+		 *	The OpenSSL code isn't strictly thread-safe,
+		 *	as we've got to provide callback functions.
+		 *
+		 *	Rather than doing that, we just ensure that the
+		 *	sub-modules are locked via a mutex.
+		 *
+		 *	Don't lock it if we're calling ourselves recursively,
+		 *	we've already got the lock.
+		 */
+		pthread_mutex_lock(&(inst->module_mutex));
+		locked = TRUE;	/* for recursive calls to the module */
 	}
+#endif
 
 	/*
 	 *	Select the appropriate eap_type or default to the
 	 *	configured one
 	 */
-	if (eaptype_select(inst, handler) == EAP_INVALID) {
-
-		eap_fail(request, handler->eap_ds);
-		eap_handler_free(&handler);
+	rcode = eaptype_select(inst, handler);
 
 #if HAVE_PTHREAD_H
-		if (locked) pthread_mutex_unlock(&(inst->mutex));
+	if (locked) pthread_mutex_unlock(&(inst->module_mutex));
 #endif
+
+	/*
+	 *	If it failed, die.
+	 */
+	if (rcode == EAP_INVALID) {
+		eap_fail(handler);
+		eap_handler_free(&handler);
 		DEBUG2("  rlm_eap: Failed in EAP select");
 		return RLM_MODULE_INVALID;
 	}
@@ -240,7 +276,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 *	We are done, wrap the EAP-request in RADIUS to send
 	 *	with all other required radius attributes
 	 */
-	rcode = eap_compose(request, handler->eap_ds);
+	rcode = eap_compose(handler);
 
 	/*
 	 *	Add to the list only if it is EAP-Request, OR if
@@ -271,15 +307,6 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		/* handler is no more required, free it now */
 		eap_handler_free(&handler);
 	}
-
-	/*
-	 *	The next bit doesn't use EAP internals, so we can
-	 *	unlock the mutex, and let other EAP request use
-	 *	this module.
-	 */
-#if HAVE_PTHREAD_H
-	if (locked) pthread_mutex_unlock(&(inst->mutex));
-#endif
 
 	/*
 	 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
@@ -349,7 +376,8 @@ static int eap_authorize(void *instance, REQUEST *request)
 	}
 	
 	/*
-	 * We should have User-Name to proceed further
+	 *	RFC 2869, Section 2.3.1.  If a NAS sends an EAP-Identity,
+	 *	it MUST copy the identity into the User-Name attribute.
 	 */
 	if (request->username == NULL) {
 		radlog(L_ERR, "rlm_eap: User-Name is required for EAP authentication");

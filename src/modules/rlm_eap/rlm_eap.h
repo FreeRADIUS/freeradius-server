@@ -18,6 +18,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 #ifndef _RLM_EAP_H
 #define _RLM_EAP_H
@@ -54,7 +55,6 @@ typedef struct eap_packet_t {
  */
 typedef struct eap_types_t {
 	const char	*typename;
-	int		typeid;
 	EAP_TYPE       	*type;
 	lt_dlhandle     handle;
 	CONF_SECTION	*cs;
@@ -66,8 +66,8 @@ typedef struct eap_types_t {
  * sessions[] = EAP_HANDLERS, keyed by the first octet of the State
  *              attribute, and composed of a linked list, ordered from
  *              oldest to newest.
- * typelist = All supported EAP-Types
- * conf     = configured values for rlm_eap only.
+ * types = All supported EAP-Types
+ * mutex = ensure only one thread is updating the sessions[] struct
  */
 typedef struct rlm_eap_t {
 	EAP_HANDLER 	*sessions[256];
@@ -76,33 +76,31 @@ typedef struct rlm_eap_t {
 	/*
 	 *	Configuration items.
 	 */
-	char		*default_eap_type;
+	char		*default_eap_type_name;
 	int		timer_limit;
-	int		default_eap_id;
+	int		default_eap_type;
 	int		ignore_unknown_eap_types;
 
 #if HAVE_PTHREAD_H
-	pthread_mutex_t	mutex;
+	pthread_mutex_t	session_mutex;
+	pthread_mutex_t	module_mutex;
 #endif
 } rlm_eap_t;
 
 /* function definitions */
 /* EAP-Type */
-int		eaptype_name2id(const char *name);
-int      	eaptype_load(EAP_TYPES **type, int id, CONF_SECTION *cs);
+int		eaptype_name2type(const char *name);
+int      	eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs);
 int       	eaptype_select(rlm_eap_t *inst, EAP_HANDLER *h);
 void		eaptype_free(EAP_TYPES *tl);
 
 /* EAP */
 int  		eap_start(rlm_eap_t *inst, REQUEST *request);
-void 		eap_fail(REQUEST *request, EAP_DS *eap_ds);
-void 		eap_success(REQUEST *request, EAP_DS *eap_ds);
-int 		eap_validation(eap_packet_t *eap_msg);
-int 		eap_wireformat(EAP_PACKET *packet);
-int 		eap_compose(REQUEST *request, EAP_DS *eap_ds);
+void 		eap_fail(EAP_HANDLER *handler);
+void 		eap_success(EAP_HANDLER *handler);
+int 		eap_compose(EAP_HANDLER *handler);
 eap_packet_t 	*eap_attribute(VALUE_PAIR *vps);
 EAP_HANDLER 	*eap_handler(rlm_eap_t *inst, eap_packet_t **eap_msg, REQUEST *request);
-char 		*eap_identity(eap_packet_t *eap_packet);
 
 /* Memory Management */
 EAP_PACKET  	*eap_packet_alloc(void);
@@ -114,7 +112,8 @@ void	    	eap_handler_free(EAP_HANDLER **handler);
 
 int 	    	eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler);
 void	    	eaplist_free(rlm_eap_t *inst);
-EAP_HANDLER 	*eaplist_find(rlm_eap_t *inst, REQUEST *request, int id);
+EAP_HANDLER 	*eaplist_find(rlm_eap_t *inst, REQUEST *request,
+			      eap_packet_t *eap_packet);
 
 /* State */
 void	    	generate_key(void);

@@ -18,6 +18,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 #ifndef _EAP_H
 #define _EAP_H
@@ -126,7 +127,6 @@ typedef enum operation_t {
  * eap_id = copy of EAP id we sent to the client.
  * timestamp  = timestamp when this handler was last used.
  * identity = Identity, as obtained, from EAP-Identity response.
- * username = as obtained in Radius request, It might differ from identity.
  * request = RADIUS request data structure
  * prev_eapds = Previous EAP request, for which eap_ds contains the response.
  * eap_ds   = Current EAP response.
@@ -146,14 +146,14 @@ typedef struct _eap_handler {
 
 	uint8_t		state[EAP_STATE_LEN];
 	uint32_t	src_ipaddr;
-	int		eap_id;
+	unsigned int	eap_id;
+	unsigned int	eap_type;
 
 	time_t		timestamp;
 
-	VALUE_PAIR	*username; /* SHOULD get rid of this! */
 	REQUEST		*request;
 
-	char		*identity; /* user identity? Huh? */
+	char		*identity; /* User name from EAP-Identity */
 
 	EAP_DS 		*prev_eapds;
 	EAP_DS 		*eap_ds;

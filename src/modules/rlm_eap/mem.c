@@ -129,8 +129,6 @@ void eap_handler_free(EAP_HANDLER **handler_p)
 		handler->identity = NULL;
 	}
 
-	if (handler->username) pairfree(&(handler->username));
-
 	if (handler->prev_eapds) eap_ds_free(&(handler->prev_eapds));
 	if (handler->eap_ds) eap_ds_free(&(handler->eap_ds));
 
@@ -211,6 +209,14 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	handler->src_ipaddr = handler->request->packet->src_ipaddr;
 	handler->eap_id = handler->eap_ds->request->id;
 
+#if HAVE_PTHREAD_H
+	/*
+	 *	Playing with a data structure shared among threads
+	 *	means that we need a lock, to avoid conflict.
+	 */
+	pthread_mutex_lock(&(inst->session_mutex));
+#endif
+
 	/*
 	 *	We key the array based on the challenge, which is
 	 *	a random number.  This "fans out" the sessions, and
@@ -218,8 +224,15 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	under heavy load.
 	 */
 	last = &(inst->sessions[state->strvalue[0]]);
+
 	while (*last) last = &((*last)->next);
 	
+	*last = handler;
+
+#if HAVE_PTHREAD_H
+	pthread_mutex_unlock(&(inst->session_mutex));
+#endif
+
 	/*
 	 *	The time at which this request was made was the time
 	 *	at which it was received by the RADIUS server.
@@ -233,7 +246,6 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 */
 	handler->request = NULL;
 
-	*last = handler;
 	return 1;
 }
 
@@ -247,9 +259,10 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
  *	Also since we fill the eap_ds with the present EAP-Response we
  *	got to free the prev_eapds & move the eap_ds to prev_eapds
  */
-EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request, int eap_id)
+EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
+			  eap_packet_t *eap_packet)
 {
-	EAP_HANDLER	*node, *next, *ret = NULL;
+	EAP_HANDLER	*node, *next;
 	VALUE_PAIR	*state;
 	EAP_HANDLER	**first,  **last;
 
@@ -262,6 +275,14 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request, int eap_id)
 	    (state->length != EAP_STATE_LEN)) {
 		return NULL;
 	}
+
+#if HAVE_PTHREAD_H
+	/*
+	 *	Playing with a data structure shared among threads
+	 *	means that we need a lock, to avoid conflict.
+	 */
+	pthread_mutex_lock(&(inst->session_mutex));
+#endif
 
 	last = first = &(inst->sessions[state->strvalue[0]]);
 
@@ -290,7 +311,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request, int eap_id)
 		 *	timeout, as they're guaranteed to be newer than
 		 *	the one we found.
 		 */
-		if ((node->eap_id == eap_id) &&
+		if ((node->eap_id == eap_packet->id) &&
 		    (node->src_ipaddr == request->packet->src_ipaddr) &&
 		    (memcmp(node->state, state->strvalue, state->length) == 0)) {
 			/*
@@ -302,7 +323,8 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request, int eap_id)
 			 */
 			if (verify_state(state, node->timestamp) != 0) {
 				radlog(L_ERR, "rlm_eap: State verification failed.");
-				return NULL;
+				node = NULL;
+				break;
 			}
 			
 			DEBUG2("  rlm_eap: Request found, released from the list");
@@ -325,16 +347,20 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request, int eap_id)
 			node->eap_ds = NULL;
 
 			/*
-			 *	And return it to the caller.
+			 *	Stop here.
 			 */
-			return node;
+			break;
 		} else  {
 			last = &(node->next);
 		}
 	}
 
-	if (!ret) {
+#if HAVE_PTHREAD_H
+	pthread_mutex_unlock(&(inst->session_mutex));
+#endif
+
+	if (!node) {
 		DEBUG2("  rlm_eap: Request not found in the list");
 	}
-	return ret;
+	return node;
 }
