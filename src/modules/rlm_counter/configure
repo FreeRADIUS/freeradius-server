@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision
+# From configure.in Revision: 1.1 
 
 
 if test x$with_rlm_counter != xno; then
@@ -564,7 +564,7 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
    counter_ldflags="-lgdbm" 
 else
   echo "$ac_t""no" 1>&6
- fail=yes 
+ fail=$fail" libgdbm" 
 fi
 
 
@@ -574,14 +574,16 @@ else
 	echo \*\*\* module rlm_counter is disabled.
 fi
 
-if test x"$fail" != "x"; then
-	if test x"${enable_rlm_best_guess+set}" = xset; then
-		echo "configure: warning: Silently not building rlm_counter." 1>&2; 
-		targetname=""
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependancies}" = x"yes"; then
+		{ echo "configure: error: set --without-rlm_counter to disable it explicitly." 1>&2; exit 1; }
 	else
-		{ echo "configure: error: set --without-rlm_counter if you wish to disable it." 1>&2; exit 1; }
+		echo "configure: warning: silently not building rlm_counter." 1>&2
+		echo "configure: warning: FAILURE: rlm_counter requires: $fail." 1>&2; 
+		targetname=""
 	fi
 fi
+
 
 
 
@@ -730,6 +732,7 @@ s%@oldincludedir@%$oldincludedir%g
 s%@infodir@%$infodir%g
 s%@mandir@%$mandir%g
 s%@counter_ldflags@%$counter_ldflags%g
+s%@counter_cflags@%$counter_cflags%g
 s%@targetname@%$targetname%g
 
 CEOF

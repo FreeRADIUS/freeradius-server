@@ -521,14 +521,15 @@ else
 fi
 
   # change 'example'
-# From configure.in Revision
+# From configure.in Revision: 1.1 
   # change 'example'
 
 if test x$with_rlm_example != xno; then
 
+
 			
 	echo $ac_n "checking for printf in -lc""... $ac_c" 1>&6
-echo "configure:532: checking for printf in -lc" >&5
+echo "configure:533: checking for printf in -lc" >&5
 ac_lib_var=`echo c'_'printf | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -536,7 +537,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lc  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 540 "configure"
+#line 541 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -547,7 +548,7 @@ int main() {
 printf()
 ; return 0; }
 EOF
-if { (eval echo configure:551: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:552: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -565,13 +566,13 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
    example_ldflags="$example_ldflags -lc" 
 else
   echo "$ac_t""no" 1>&6
- fail=yes 
+ fail=$fail" printf" 
 	
 fi
 
 
 	echo $ac_n "checking how to run the C preprocessor""... $ac_c" 1>&6
-echo "configure:575: checking how to run the C preprocessor" >&5
+echo "configure:576: checking how to run the C preprocessor" >&5
 # On Suns, sometimes $CPP names a directory.
 if test -n "$CPP" && test -d "$CPP"; then
   CPP=
@@ -586,13 +587,13 @@ else
   # On the NeXT, cc -E runs the code through the compiler's parser,
   # not just through cpp.
   cat > conftest.$ac_ext <<EOF
-#line 590 "configure"
+#line 591 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:596: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:597: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -603,13 +604,13 @@ else
   rm -rf conftest*
   CPP="${CC-cc} -E -traditional-cpp"
   cat > conftest.$ac_ext <<EOF
-#line 607 "configure"
+#line 608 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:613: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:614: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -620,13 +621,13 @@ else
   rm -rf conftest*
   CPP="${CC-cc} -nologo -E"
   cat > conftest.$ac_ext <<EOF
-#line 624 "configure"
+#line 625 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:630: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:631: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -652,17 +653,17 @@ echo "$ac_t""$CPP" 1>&6
 
 ac_safe=`echo "stdio.h" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for stdio.h""... $ac_c" 1>&6
-echo "configure:656: checking for stdio.h" >&5
+echo "configure:657: checking for stdio.h" >&5
 if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 661 "configure"
+#line 662 "configure"
 #include "confdefs.h"
 #include <stdio.h>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:666: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:667: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*
@@ -681,29 +682,33 @@ if eval "test \"`echo '$ac_cv_header_'$ac_safe`\" = yes"; then
    example_cflags="$example_cflags -I/usr/include" 
 else
   echo "$ac_t""no" 1>&6
- fail=yes 
+ fail=$fail" stdio.h" 
 	
 fi
 
 
+
 	targetname=rlm_example     # keep this!  Don't change!
 else
-		targetname=            # keep this!  Don't change!
+	targetname=            # keep this!  Don't change!
 	echo \*\*\* module rlm_example is disabled.  # keep this!  Don't change!
 fi
 
-if test x"$fail" != "x"; then
-	if test x"${enable_rlm_best_guess+set}" = xset; then
-		echo "configure: warning: Silently not building rlm_example." 1>&2; 
-		targetname=""
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependancies}" = x"yes"; then
+		{ echo "configure: error: set --without-rlm_example to disable it explicitly." 1>&2; exit 1; }
 	else
-		{ echo "configure: error: set --without-rlm_example if you wish to disable it." 1>&2; exit 1; }
+		echo "configure: warning: silently not building rlm_example." 1>&2
+		echo "configure: warning: FAILURE: rlm_example requires: $fail." 1>&2; 
+		targetname=""
 	fi
 fi
 
 
   # change 'example'
   # change 'example'
+
+
   # keep this!  Don't change!
 trap '' 1 2 15
 cat > confcache <<\EOF

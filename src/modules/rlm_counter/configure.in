@@ -6,7 +6,7 @@ if test x$with_[]modname != xno; then
 
 	AC_CHECK_LIB(gdbm, gdbm_open,
 		[ counter_ldflags="-lgdbm" ],
-		[ fail=yes ],
+		[ fail=$fail" libgdbm" ],
 	)
 
 	targetname=modname
@@ -15,15 +15,17 @@ else
 	echo \*\*\* module modname is disabled.
 fi
 
-if test x"$fail" != "x"; then
-	if test x"${enable_rlm_best_guess+set}" = xset; then
-		AC_MSG_WARN([Silently not building ]modname[.]); 
-		targetname=""
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependancies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
-		AC_MSG_ERROR([set --without-]modname[ if you wish to disable it.])
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
 	fi
 fi
 
 AC_SUBST(counter_ldflags)
+AC_SUBST(counter_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)
