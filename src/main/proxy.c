@@ -119,11 +119,11 @@ static void proxy_addinfo(REQUEST *request)
 static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 			      int accounting)
 {
-	REALM	*cl;
-	REALM	*array[32];	/* maximum number of load balancing realms */
-	int	size;
-
-	size = 0;
+	REALM		*cl, *lb;
+	uint32_t	count;
+	
+	lb = NULL;
+	count = 0;
 	for (cl = mainconfig.realms; cl; cl = cl->next) {
 		/*
 		 *	Wake up any sleeping realm.
@@ -158,43 +158,44 @@ static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 		/*
 		 *	Fail-over, pick the first one that matches.
 		 */
-		if ((size == 0) && /* if size > 0, we have round-robin */
+		if ((count == 0) && /* if size > 0, we have round-robin */
 		    (cl->ldflag == 0)) {
 			return cl;
 		}
 
 		/*
-		 *	Else we're doing round-robin.
+		 *	We're doing load-balancing.  Pick a random
+		 *	number, which will be used to determine which
+		 *	home server is chosen.
 		 */
-		array[size] = cl;
-		size++;
+		if (!lb) {
+			lb = cl;
+			count = 1;
+			continue;
+		}
 
 		/*
-		 *	If too many realms are found, then limit
-		 *	the number to 32.
+		 *	Keep track of how many load balancing servers
+		 *	we've gone through.
 		 */
-		if (size >= 32) {
-			break;
+		count++;
+
+		/*
+		 *	See the "camel book" for why this works.
+		 *
+		 *	If (rand(0..n) < 1), pick the current realm.
+		 *	We add a scale factor of 65536, to avoid
+		 *	floating point.
+		 */
+		if ((count * (lrad_rand() & 0xffff)) < (uint32_t) 0x10000) {
+			lb = cl;
 		}
-	}
+	} /* loop over the realms */
 
 	/*
-	 *	WTF?  We didn't find a live realm!
-	 *
-	 *	This means that 'rlm_realm' found a live realm for
-	 *	us, and then it was marked dead before code execution
-	 *	got here.  The only thing to do is to dump the request.
+	 *	Return the load-balanced realm.
 	 */
-	if (size == 0) {
-		return NULL;
-	}
-
-	/*
-	 *	Pick a random realm.  It's not true round-robin,
-	 *	but over a large number of requests, it statistically
-	 *	distributes the requests evenly among the realms.
-	 */
-	return array[(int) (lrad_rand() % size)];
+	return lb;
 }
 
 /*
