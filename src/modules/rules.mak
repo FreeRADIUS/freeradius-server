@@ -93,11 +93,8 @@ static: $(TARGET).a
 	@[ "$LDFLAGS" != "" ] && \
 		echo -n $(LDFLAGS) " " >> ../lib/STATIC_MODULE_LDFLAGS
 
-# $(TARGET).so
 dynamic: $(TARGET).la
 	@cp $< ../lib
-	@cp $(TARGET).so ../../../raddb
-
 
 #######################################################################
 #
