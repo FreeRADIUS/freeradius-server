@@ -145,6 +145,9 @@ REQUEST *rl_find(REQUEST *request)
 		}
 	}
 
+	if (curreq == NULL)
+		return(NULL);
+
 	return curreq->req;
 }
 
