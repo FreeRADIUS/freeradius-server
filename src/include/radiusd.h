@@ -10,7 +10,6 @@
 #include "libradius.h"
 #include "radpaths.h"
 #include "conf.h"
-#include "missing.h"
 #include "conffile.h"
 
 #include <stdarg.h>
@@ -35,6 +34,8 @@ typedef pid_t child_pid_t;
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
+
+#include "missing.h"
 
 #define NO_SUCH_CHILD_PID (child_pid_t) (0)
 
