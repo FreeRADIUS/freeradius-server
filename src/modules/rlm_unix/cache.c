@@ -45,6 +45,14 @@
 #include "radutmp.h"
 #include "cache.h"
 
+/*
+ *  Static prototypes
+ */
+static void chgLoggedin(char *user, int diff);
+static struct mypasswd *findHashUser(const char *user);
+static int storeHashUser(struct mypasswd *new, int index);
+static int hashUserName(const char *s);
+
 /* Make the tables global since so many functions rely on them */
 static struct mypasswd *hashtable[HASHTABLESIZE];
 static struct mygroup *grphead = NULL;
@@ -332,7 +340,7 @@ int buildGrpList(void) {
  * when they login or out.  This lets us keep track of 
  * what radutmp is doing without having to read it
  */
-void chgLoggedin(char *user, int diff) {
+static void chgLoggedin(char *user, int diff) {
 	struct mypasswd *cur;
 
 	cur = findHashUser(user);
@@ -350,7 +358,7 @@ void chgLoggedin(char *user, int diff) {
  * Looks up user in hashtable.  If user can't be found, returns 0.  
  * Otherwise returns a pointer to the structure for the user
  */
-struct mypasswd *findHashUser(const char *user) {
+static struct mypasswd *findHashUser(const char *user) {
 
 	struct mypasswd *cur;
 	int index;
@@ -374,7 +382,7 @@ struct mypasswd *findHashUser(const char *user) {
 }
 
 /* Stores the username sent into the hashtable */
-int storeHashUser(struct mypasswd *new, int index) {
+static int storeHashUser(struct mypasswd *new, int index) {
 
 	/* store new record at beginning of list */
 	new->next = hashtable[index];
@@ -384,7 +392,7 @@ int storeHashUser(struct mypasswd *new, int index) {
 }
 
 /* Hashes the username sent to it and returns index into hashtable */
-int hashUserName(const char *s) {
+static int hashUserName(const char *s) {
      unsigned long hash = 0;
 
      while (*s != '\0') {

@@ -35,10 +35,6 @@ struct mygroup {
 /* Function prototypes */
 int buildHashTable(void);
 int buildGrpList(void);
-void chgLoggedin(char *user, int diff);
-struct mypasswd *findHashUser(const char *user);
-int storeHashUser(struct mypasswd *new, int index);
-int hashUserName(const char *s);
 int hashradutmp(void);
 int H_unix_pass(char *name, char *passwd);
 int H_groupcmp(VALUE_PAIR *check, char *username);
