@@ -49,6 +49,7 @@ int rad_accounting(REQUEST *request)
 		char		*exec_program;
 		int		exec_wait;
 		VALUE_PAIR	*vp;
+		int		rcode;
 
 		reply = module_preacct(request);
 		if (reply != RLM_MODULE_NOOP &&
@@ -85,15 +86,25 @@ int rad_accounting(REQUEST *request)
 		
 		/*
 		 *	If we want to exec a program, but wait for it,
-		 *	do it first before sending the reply.
+		 *	do it first before sending the reply, or
+		 *	proxying the packet.
+		 *
+		 *	If we're NOT waiting, then also do this now, but
+		 *	don't check the return code.
 		 */
-		if (exec_program && exec_wait) {
-			if (radius_exec_program(exec_program, request,
-						exec_wait, NULL) != 0) {
-				
-				return reply;
+		if (exec_program) {
+			rcode = radius_exec_program(exec_program, request,
+						    exec_wait, NULL);
+			if (exec_wait) {
+				if (rcode != 0) {
+					free(exec_program);
+					return reply;
+				}
 			}
 		}
+
+		if (exec_program) 
+			free(exec_program);
 
 		/*
 		 *	Maybe one of the preacct modules has decided
