@@ -731,7 +731,7 @@ fi
 
 
 
-# From configure.in Revision: 1.182 
+# From configure.in Revision: 1.183 
 RADIUSD_MAJOR_VERSION=1
 RADIUSD_MINOR_VERSION=0.0-pre0
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -7549,7 +7549,7 @@ fi
 echo $ac_n "checking for developer gcc flags""... $ac_c" 1>&6
 echo "configure:7551: checking for developer gcc flags" >&5
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
-  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs"
+  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wfloat-equal -Wundef -Wmissing-format-attribute"
   CFLAGS="$CFLAGS $devflags"
   INSTALLSTRIP=""
   echo "$ac_t""yes.  Using $devflags" 1>&6
