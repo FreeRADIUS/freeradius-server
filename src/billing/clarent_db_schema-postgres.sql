@@ -1,5 +1,10 @@
 /*
+ * Id: postgresql.conf,v 1.8.2.11 2003/07/15 11:15:43 pnixon Exp $
+ *
  * --- Peter Nixon [ codemonkey@peternixon.net ]
+ * This is a custom SQL schema for doing Clarent VoIP accounting
+ * Clarents don't support RADIUS but I use this along with the other
+ * files in this directory to do billing so it can live here :-)
  *
  */
 
