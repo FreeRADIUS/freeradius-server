@@ -906,7 +906,7 @@ static int generate_realms(const char *filename)
 				c->acct_ipaddr = htonl(INADDR_NONE);
 				c->acct_port = acct_port;
 			} else {
-				c->acct_ipaddr = ip_getaddr(authhost);
+				c->acct_ipaddr = ip_getaddr(accthost);
 			}
 		}
 
