@@ -339,6 +339,33 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		  secretlen = strlen(secret);
 		  if (packet->code != PW_AUTHENTICATION_REQUEST &&
 		      packet->code != PW_STATUS_SERVER) {
+		      /*
+		       *	Set the Message-Authenticator attribute,
+		       *	BEFORE setting the reply authentication vector
+		       *	for CHALLENGE, ACCEPT and REJECT.
+		       */
+		      if (msg_auth_ptr) {
+			      uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
+
+			      switch (packet->code) {
+			      default:
+				break;
+				
+			      case PW_AUTHENTICATION_ACK:
+			      case PW_AUTHENTICATION_REJECT:
+			      case PW_ACCESS_CHALLENGE:
+				if (original) {
+				  memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
+				}
+				break;
+			      }
+
+			      memset(msg_auth_ptr + 2, 0, AUTH_VECTOR_LEN);
+			      lrad_hmac_md5(packet->data, packet->data_len,
+					    secret, secretlen, calc_auth_vector);
+			      memcpy(msg_auth_ptr + 2, calc_auth_vector, AUTH_VECTOR_LEN);
+			      memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
+		        }
 			memcpy((char *)hdr + packet->data_len, secret, secretlen);
 			librad_md5_calc(digest, (unsigned char *)hdr,
 					packet->data_len + secretlen);
@@ -349,9 +376,10 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 
 		  /*
 		   *	Set the Message-Authenticator attribute,
-		   *	AFTER setting the reply authentication vector!
+		   *	AFTER setting the authentication vector
+		   *	only for ACCESS-REQUESTS
 		   */
-		  if (msg_auth_ptr) {
+		  else if (msg_auth_ptr) {
 			  uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 			  switch (packet->code) {
@@ -735,7 +763,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			case PW_AUTHENTICATION_ACK:
 			case PW_AUTHENTICATION_REJECT:
 			case PW_ACCESS_CHALLENGE:
-			  memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
+			  if (original) {
+				  memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
+			  }
 			  break;
 			}
 
@@ -750,9 +780,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			} /* else the message authenticator was good */
 
 			/*
-			 *  Leave the Message-Authenticator filled with
-			 *  zero bytes.
+			 *	Reinitialize Authenticators.
 			 */
+			memcpy(&ptr[2], msg_auth_vector, AUTH_VECTOR_LEN);
+			memcpy(packet->data + 4, packet->vector, AUTH_VECTOR_LEN);
 			break;
 		} /* switch over the attributes */
 
