@@ -233,7 +233,8 @@ if [ -f $FILE ];then
   echo $DEF=$FILE >> config.mak
   echo "#define $DEF \"$FILE\"" >> config.h
 else
-  echo
+  echo "# $DEF=" >> config.mak
+  echo "/* #define $DEF \"$FILE\" */" >> config.h
 fi
 ;;
 
