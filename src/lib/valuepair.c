@@ -677,6 +677,11 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		      vp->length++;
 		    }
 		    *us = '\0';
+		  } else {	/* assume it's a raw string */
+			  vp->length = strlen(value);
+			  if (vp->length >= MAX_STRING_LEN) {
+				  vp->length = MAX_STRING_LEN - 1;
+			  }
 		  }
 		  break;
 
