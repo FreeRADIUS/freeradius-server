@@ -205,6 +205,12 @@ void lrad_hmac_md5(const unsigned char *text, int text_len,
 		   const unsigned char *key, int key_len,
 		   unsigned char *digest);
 
+/* hmacsha1.c */
+
+void lrad_hmac_sha1(const unsigned char *text, int text_len,
+		    const unsigned char *key, int key_len,
+		    unsigned char *digest);
+
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
 RADIUS_PACKET	*rad_recv(int fd);
@@ -220,9 +226,11 @@ int		rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *pa
 /* valuepair.c */
 VALUE_PAIR	*paircreate(int attr, int type);
 void		pairfree(VALUE_PAIR **);
+void            pairbasicfree(VALUE_PAIR *pair);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, int);
 void		pairdelete(VALUE_PAIR **, int);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
+void            pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
@@ -231,6 +239,7 @@ VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(char **ptr, LRAD_TOKEN *eol);
 LRAD_TOKEN	userparse(char *buffer, VALUE_PAIR **first_pair);
+VALUE_PAIR     *readvp2(FILE *fp, int *pfiledone, const char *errprefix);
 
 /*
  *	Error functions.

@@ -93,6 +93,17 @@ VALUE_PAIR *paircreate(int attr, int type)
 }
 
 /*
+ *      release the memory used by a single attribute-value pair
+ *      just a wrapper around free() for now.
+ */
+void pairbasicfree(VALUE_PAIR *pair)
+{
+	/* clear the memory here */
+	memset(pair, 0, sizeof(*pair));
+	free(pair);
+}
+
+/*
  *	Release the memory used by a list of attribute-value
  *	pairs, and sets the pair pointer to NULL.
  */
@@ -105,7 +116,7 @@ void pairfree(VALUE_PAIR **pair_ptr)
 
 	while (pair != NULL) {
 		next = pair->next;
-		free(pair);
+		pairbasicfree(pair);
 		pair = next;
 	}
 
@@ -136,7 +147,7 @@ void pairdelete(VALUE_PAIR **first, int attr)
 		next = i->next;
 		if (i->attribute == attr) {
 			*last = next;
-			free(i);
+			pairbasicfree(i);
 		} else {
 			last = &i->next;
 		}
@@ -156,6 +167,42 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 	}
 	for(i = *first; i->next; i = i->next)
 		;
+	i->next = add;
+}
+
+/*
+ *	Add or replace a pair at the end of a VALUE_PAIR list.
+ */
+void pairreplace(VALUE_PAIR **first, VALUE_PAIR *add)
+{
+	VALUE_PAIR *i, *next;
+	VALUE_PAIR **last = first;
+
+	if (*first == NULL) {
+		*first = add;
+		return;
+	}
+
+	/*
+	 * not an empty list, so find item if it is there,
+	 * and replace it. Note, we always replace first one,
+	 * and we ignore any others that might exist.
+	 */
+	for(i = *first; i->next; i = next) {
+		next = i->next;
+		if (i->attribute == add->attribute) {
+			*last = add;
+			add->next = next;
+			pairbasicfree(i);
+			return;
+		} else {
+			last = &i->next;
+		}
+	}
+
+	/* if we got here, we didn't find anything to replace,
+	 * so stopped at the last item, which we just append to.
+	 */
 	i->next = add;
 }
 
@@ -794,7 +841,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	if (value && (*value == ':' && da->flags.has_tag)) {
 	        /* If we already found a tag, this is invalid */
 	        if(found_tag) {
-		        free(vp);
+		        pairbasicfree(vp);
 			librad_log("Duplicate tag %s for attribute %s",
 				   value, vp->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
@@ -863,20 +910,20 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			regerror(res, &cre, msg, sizeof(msg));               
 			librad_log("Illegal regular expression in attribute: %s: %s",
 				vp->name, msg);
-			free(vp);
+			pairbasicfree(vp);
 			return NULL;
 		}
 		regfree(&cre);
 #else
 		librad_log("Regelar expressions not enabled in this build, error in attribute %s",
 				vp->name);
-		free(vp);
+		pairbasicfree(vp);
 		return NULL;
 #endif
 	}
 
 	if (value && (pairparsevalue(vp, value) == NULL)) {
-		free(vp);
+		pairbasicfree(vp);
 		return NULL;
 	}
 
@@ -1005,5 +1052,48 @@ LRAD_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
 	 *	And return the last token which we read.
 	 */
 	return last_token;
+}
+
+/*
+ *	Read valuepairs from the fp up to End-Of-File.
+ */
+VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
+{
+	char buf[8192];
+	LRAD_TOKEN last_token;
+	char *p;
+	VALUE_PAIR *vp;
+	VALUE_PAIR *list;
+	int error = 0;
+
+	list = NULL;
+
+	while (!error && fgets(buf, sizeof(buf), fp) != NULL) {
+
+		p = buf;
+
+		/* If we get a '\n' by itself, we assume that's the end of that VP */
+		if((buf[0] == '\n') && (list)) {
+			return error ? NULL: list;
+		} 
+		if((buf[0] == '\n') && (!list))
+			continue;
+		if(buf[0] == '#') {
+			continue;
+		} else {
+			do {
+				if ((vp = pairread(&p, &last_token)) == NULL) {
+					librad_perror(errprefix);
+					error = 1;
+					break;
+				}
+				pairadd(&list, vp);
+			} while (last_token == T_COMMA);
+		}
+	}
+
+	*pfiledone = 1;
+
+	return error ? NULL: list;
 }
 

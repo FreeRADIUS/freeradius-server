@@ -35,13 +35,13 @@
 
 void SHA1Transform(unsigned long state[5], const unsigned char buffer[64])
 {
-unsigned long a, b, c, d, e;
-typedef union {
+  unsigned long a, b, c, d, e;
+  typedef union {
     unsigned char c[64];
     unsigned long l[16];
-} CHAR64LONG16;
-CHAR64LONG16 *block;
-static unsigned char workspace[64];
+  } CHAR64LONG16;
+  CHAR64LONG16 *block;
+  static unsigned char workspace[64];
 
     block = (CHAR64LONG16*)workspace;
     memcpy(block, buffer, 64);
@@ -145,6 +145,26 @@ unsigned char finalcount[8];
     memset(context->state, 0, 20);
     memset(context->count, 0, 8);
     memset(&finalcount, 0, 8);
+#ifdef SHA1HANDSOFF  /* make SHA1Transform overwrite it's own static vars */
+    SHA1Transform(context->state, context->buffer);
+#endif
+}
+
+void SHA1FinalNoLen(unsigned char digest[20], SHA1_CTX* context)
+{
+  unsigned long i, j;
+
+    for (i = 0; i < 20; i++) {
+        digest[i] = (unsigned char)
+         ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
+    }
+
+    /* Wipe variables */
+    i = j = 0;
+    memset(context->buffer, 0, 64);
+    memset(context->state, 0, 20);
+    memset(context->count, 0, 8);
+
 #ifdef SHA1HANDSOFF  /* make SHA1Transform overwrite it's own static vars */
     SHA1Transform(context->state, context->buffer);
 #endif
