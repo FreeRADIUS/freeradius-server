@@ -1546,12 +1546,15 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	ldap_errno = ldap_result2error(ld, res, 1);
 	switch (ldap_errno) {
 	case LDAP_SUCCESS:
+		DEBUG("rlm_ldap: Bind was successful");
 		*result = RLM_MODULE_OK;
 		break;
 
 	case LDAP_INVALID_CREDENTIALS:
-		if (auth) 
+		if (auth){ 
+			DEBUG("rlm_ldap: Bind failed with invalid credentials");
 			*result = RLM_MODULE_REJECT;
+		}
 		else {
 			radlog(L_ERR, "rlm_ldap: LDAP login failed: check login, password settings in ldap section of radiusd.conf");
 			*result = RLM_MODULE_FAIL;
