@@ -79,6 +79,7 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 #include	"conffile.h"
 #include	"modules.h"
+#include	"rad_assert.h"
 
 
 #define MAX_AUTH_QUERY_LEN      256
@@ -130,6 +131,7 @@ typedef struct {
 	TLDAP_RADIUS   *reply_item_map;
 	LDAP_CONN	*conns;
 	int             ldap_debug; /* Debug flag for LDAP SDK */
+	char		*xlat_name; /* name used to xlat */
 }               ldap_instance;
 
 static CONF_PARSER module_config[] = {
@@ -218,6 +220,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	int check_map_num = 0;
 	int att_map[3] = {0,0,0};
 	TLDAP_RADIUS *pair;
+	char *xlat_name;
 
 	inst = rad_malloc(sizeof *inst);
 
@@ -244,7 +247,14 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, ldap_groupcmp, inst);
 #endif
 	DEBUG("conns: %p",inst->conns);
-	xlat_register("ldap",ldap_xlat,inst);
+
+	xlat_name = cf_section_name2(conf);
+	if (xlat_name == NULL) {
+		xlat_name = cf_section_name1(conf);
+		rad_assert(xlat_name != NULL); /* or all hell breaks loose */
+	}
+	inst->xlat_name = strdup(xlat_name);
+	xlat_register(xlat_name,ldap_xlat,inst);
 
 	if (inst->num_conns <= 0){
 		radlog(L_ERR, "rlm_ldap: Invalid ldap connections number passed.");
@@ -1287,7 +1297,8 @@ ldap_detach(void *instance)
 #ifdef PW_GROUP_NAME
 	paircompare_unregister(PW_GROUP_NAME, ldap_groupcmp);
 #endif
-	xlat_unregister("ldap",ldap_xlat);
+	xlat_unregister(inst->xlat_name,ldap_xlat);
+	free(inst->xlat_name);
 
 	free(inst);
 
