@@ -73,6 +73,14 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		return 0;
 	}
 
+	/*
+	 *	If we don't want any messages, then
+	 *	throw them away.
+	 */
+	if (radlog_dest == RADLOG_NULL) {
+		return 0;
+	}
+
 	if (debug_flag 
 	    || (radlog_dest == RADLOG_STDOUT)
 	    || (radlog_dir == NULL)) {

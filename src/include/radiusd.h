@@ -203,7 +203,8 @@ typedef enum radlog_dest_t {
   RADLOG_FILES = 0,
   RADLOG_SYSLOG,
   RADLOG_STDOUT,
-  RADLOG_STDERR
+  RADLOG_STDERR,
+  RADLOG_NULL
 } radlog_dest_t;
 
 /*
