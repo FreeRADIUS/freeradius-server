@@ -154,6 +154,26 @@ rm -rf $RPM_BUILD_ROOT/usr/share/doc/freeradius*
 %attr(640,root,root) %config(noreplace) /etc/raddb/users
 %config(noreplace) /etc/raddb/x99.conf
 %attr(640,root,root) %config(noreplace) /etc/raddb/x99passwd.sample
+%dir /etc/raddb/certs
+%config /etc/raddb/certs/README
+%config(noreplace) /etc/raddb/certs/cert-clt.der
+%config(noreplace) /etc/raddb/certs/cert-clt.p12
+%config(noreplace) /etc/raddb/certs/cert-clt.pem
+%config(noreplace) /etc/raddb/certs/cert-srv.der
+%config(noreplace) /etc/raddb/certs/cert-srv.p12
+%config(noreplace) /etc/raddb/certs/cert-srv.pem
+%config(noreplace) /etc/raddb/certs/demoCA/cacert.pem
+%config(noreplace) /etc/raddb/certs/demoCA/index.txt
+%config(noreplace) /etc/raddb/certs/demoCA/index.txt.old
+%config(noreplace) /etc/raddb/certs/demoCA/serial
+%config(noreplace) /etc/raddb/certs/demoCA/serial.old
+%config(noreplace) /etc/raddb/certs/dh
+%config(noreplace) /etc/raddb/certs/newcert.pem
+%config(noreplace) /etc/raddb/certs/newreq.pem
+%config(noreplace) /etc/raddb/certs/random
+%config(noreplace) /etc/raddb/certs/root.der
+%config(noreplace) /etc/raddb/certs/root.p12
+%config(noreplace) /etc/raddb/certs/root.pem
 %attr(700,root,root) %dir /var/run/radiusd/
 # binaries
 /usr/bin/*
