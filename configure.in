@@ -628,22 +628,6 @@ else
   AC_MSG_RESULT(no.)
 fi
 
-dnl #
-dnl # Check how to link command for libradius.a
-dnl #
-AC_MSG_CHECKING(how to link libradius.a)
-LDTYPE=`ld -V | head -1`
-if echo "$LDTYPE" | egrep -q "GNU ld" ; then
-  libradius_a="-Wl,-whole-archive -Wl,-lradius -Wl,--no-whole-archive"
-  AC_MSG_RESULT(whole-archive)
-elif echo "$LDTYPE" | egrep -q "Solaris-ELF" ; then
-  libradius_a="-Wl,-z -Wl,allextract -Wl,-lradius -Wl,-z -Wl,defaultextract"
-  AC_MSG_RESULT(allextract)
-else
-  AC_MSG_ERROR(unknown)
-fi
-AC_SUBST(libradius_a)
-
 dnl #############################################################
 dnl #
 dnl #  7. Checks for library functions
