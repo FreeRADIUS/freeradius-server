@@ -197,6 +197,8 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	attr->type = type;
 	attr->flags = flags;
 
+	if (vendor) attr->attr |= (vendor << 16);
+
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
@@ -223,9 +225,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		}
 	}
 
-	if (vendor) {
-		attr->attr |= (vendor << 16);
-	} else if ((attr->attr >= 0) && (attr->attr < 256)) {
+	if ((attr->attr >= 0) && (attr->attr < 256)) {
 		/*
 		 *	If it's an on-the-wire base attribute,
 		 *	then keep a quick reference to it, for speed.
