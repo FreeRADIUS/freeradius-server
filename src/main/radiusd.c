@@ -2346,15 +2346,9 @@ static int refresh_request(REQUEST *request, void *data)
 			} /* else no proxy reply, quietly fail */
 		
 			/*
-			 *  Delete the request.
+			 *	Maybe we haven't killed it.  In that
+			 *	case, print a warning.
 			 */
-			rl_delete(request);
-			child_pid = NO_SUCH_CHILD_PID; /* mark it as deleted. */
-
-		/*
-		 *	Maybe we haven't killed it.  In that case, print
-		 *	a warning.
-		 */
 		} else if ((child_pid != NO_SUCH_CHILD_PID) &&
 			   ((request->options & RAD_REQUEST_OPTION_LOGGED_CHILD) == 0)) {
 			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d",
@@ -2367,8 +2361,16 @@ static int refresh_request(REQUEST *request, void *data)
 			 */
 			request->options |= RAD_REQUEST_OPTION_LOGGED_CHILD;
 		}
+
+		/*
+		 *  Send a reject message for the request, mark it
+		 *  finished, and forget about the child.
+		 */
+		rad_reject(request);
+		request->child_pid = NO_SUCH_CHILD_PID;
+		request->finished = TRUE;
 		return RL_WALK_CONTINUE;
-	}
+	} /* the request has been in the queue for too long */
 
 	/*
 	 *  The request is finished.
