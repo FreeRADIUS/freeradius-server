@@ -1,3 +1,9 @@
+radiusd-freeradius (0.2+20010917-1) unstable; urgency=low
+
+  * Removed old mysql build-dep.  (closes: Bug#112541)
+
+ -- Chad Miller <cmiller@debian.org>  Mon, 17 Sep 2001 11:38:24 -0400
+
 radiusd-freeradius (0.2+20010912-1) unstable; urgency=low
 
   * Build-dep mysql changed package names.
