@@ -334,7 +334,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	char		*user_dn = NULL;
 	char		*attrs[] = {"*", NULL};
 	static char	filter[MAX_AUTH_QUERY_LEN];
-	static char 	*filt_patt = "(| (& (objectClass=GroupOfNames) (member=%{Ldap-UserDn})) (& (objectClass=GroupOfUniqueNames) (uniquemember=%{Ldap-UserDn})))"; 
+	static char 	filt_patt[] = "(| (& (objectClass=GroupOfNames) (member=%{Ldap-UserDn})) (& (objectClass=GroupOfUniqueNames) (uniquemember=%{Ldap-UserDn})))"; 
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	int		res;
