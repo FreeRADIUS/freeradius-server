@@ -52,7 +52,8 @@ Ver 1.63:
 * Don't show an account as locked if Dialup-Access does not exist and the mapping corresponds to 'none' attribute
 * Make clean_radacct and truncate_radacct work correctly
 * Fix a small bug in bytes2str. It will now also show GBs if appropriate
-* Add an ebtry about the failed_logins page
+* Add an entry about the failed_logins page
+* Update the help page for the lock message attribute
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
