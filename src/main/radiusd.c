@@ -886,8 +886,8 @@ int main(int argc, char **argv)
 			 *	Check if we know this client.
 			 */
 			if ((cl = client_find(packet->src_ipaddr)) == NULL) {
-				log(L_ERR, "Ignoring request from unknown client %s",
-					buffer);
+				log(L_ERR, "Ignoring request from unknown client %s:%d",
+					buffer, packet->src_port);
 				rad_free(packet);
 				continue;
 			}
@@ -899,7 +899,7 @@ int main(int argc, char **argv)
 			 *	packets here will make our life easier.
 			 */
 			if (packet->code > PW_ACCESS_CHALLENGE) {
-				log(L_ERR, "Ignoring request from client %s with unknown code %d", buffer, packet->code);
+				log(L_ERR, "Ignoring request from client %s:%d with unknown code %d", buffer, packet->src_port, packet->code);
 				rad_free(packet);
 				continue;
 			}
@@ -969,9 +969,10 @@ int rad_process(REQUEST *request, int dospawn)
 		 */
 		if (request->packet->sockfd != authfd) {
 		  log(L_ERR, "Request packet code %d sent to authentication port from "
-		      "client %s - ID %d : IGNORED",
+		      "client %s:%d - ID %d : IGNORED",
 		      request->packet->code,
 		      client_name(request->packet->src_ipaddr),
+		      request->packet->src_port,
 		      request->packet->id);
 		  request_free(request);
 		  return -1;
@@ -985,9 +986,10 @@ int rad_process(REQUEST *request, int dospawn)
 		 */
 		if (request->packet->sockfd != acctfd) {
 		  log(L_ERR, "Request packet code %d sent to accounting port from "
-		      "client %s - ID %d : IGNORED",
+		      "client %s:%d - ID %d : IGNORED",
 		      request->packet->code,
 		      client_name(request->packet->src_ipaddr),
+		      request->packet->src_port,
 		      request->packet->id);
 		  request_free(request);
 		  return -1;
@@ -1004,9 +1006,10 @@ int rad_process(REQUEST *request, int dospawn)
 		 */
 		if (request->packet->sockfd != proxyfd) {
 			log(L_ERR, "Reply packet code %d sent to request port from "
-			    "client %s - ID %d : IGNORED",
+			    "client %s:%d - ID %d : IGNORED",
 			    request->packet->code,
 			    client_name(request->packet->src_ipaddr),
+			    request->packet->src_port,
 			    request->packet->id);
 			request_free(request);
 			return -1;
@@ -1037,19 +1040,21 @@ int rad_process(REQUEST *request, int dospawn)
 		/*
 		 *	We don't support this anymore.
 		 */
-		log(L_ERR, "Deprecated password change request from client %s "
+		log(L_ERR, "Deprecated password change request from client %s:%d "
 		    "- ID %d : IGNORED",
 		    client_name(request->packet->src_ipaddr),
+		    request->packet->src_port,
 		    request->packet->id);
 		request_free(request);
 		return -1;
 		break;
 	
 	default:
-		log(L_ERR, "Unknown packet type %d from client %s "
+		log(L_ERR, "Unknown packet type %d from client %s:%d "
 		    "- ID %d : IGNORED",
 		    request->packet->code,
 		    client_name(request->packet->src_ipaddr),
+		    request->packet->src_port,
 		    request->packet->id);
 		request_free(request);
 		return -1;
@@ -1543,9 +1548,16 @@ static REQUEST *rad_check_list(REQUEST *request)
 			if (curreq->reply) {
 				log(L_INFO,
 				"Sending duplicate authentication reply"
-				" to client %s - ID: %d",
+				" to client %s:%d - ID: %d",
 				client_name(request->packet->src_ipaddr),
+				request->packet->src_port,
 				request->packet->id);
+
+				/*
+				 *	Use the SOURCE port as the DESTINATION
+				 *	port of the duplicate reply.
+				 */
+				curreq->reply->dst_port = request->packet->src_port;
 				rad_send(curreq->reply, curreq->secret);
 				
 				/*
@@ -1556,23 +1568,26 @@ static REQUEST *rad_check_list(REQUEST *request)
 				 */
 			} else if (curreq->proxy != NULL) {
 				if (proxy_synchronous) {
-					DEBUG2("Sending duplicate proxy request to client %s - ID: %d",
+					DEBUG2("Sending duplicate proxy request to client %s:%d - ID: %d",
 					       client_name(curreq->proxy->dst_ipaddr),
+					       request->packet->src_port,
 					       curreq->proxy->id);
 
 					curreq->proxy_next_try = request->timestamp + proxy_retry_delay;
 					rad_send(curreq->proxy, curreq->proxysecret);
 				} else {
 					DEBUG2("Ignoring duplicate authentication packet"
-					       " from client %s - ID: %d, due to outstanding proxy request.",
+					       " from client %s:%d - ID: %d, due to outstanding proxy request.",
 					       client_name(request->packet->src_ipaddr),
+					       request->packet->src_port,
 					       request->packet->id);
 				}
 			} else {
 				log(L_ERR,
 				"Dropping duplicate authentication packet"
-				" from client %s - ID: %d",
+				" from client %s:%d - ID: %d",
 				client_name(request->packet->src_ipaddr),
+				request->packet->src_port,
 				request->packet->id);
 			}
 
@@ -1602,8 +1617,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 				   */
 				log(L_ERR,
 				"Dropping conflicting authentication packet"
-				" from client %s - ID: %d",
+				" from client %s:%d - ID: %d",
 				client_name(request->packet->src_ipaddr),
+				request->packet->src_port,
 				request->packet->id);
 				request_free(request);
 				request = NULL;
@@ -1686,8 +1702,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 */
 		if (request_count > max_requests) {
 			log(L_ERR, "Dropping request (%d is too many): "
-			    "from client %s - ID: %d", request_count, 
+			    "from client %s:%d - ID: %d", request_count, 
 			    client_name(request->packet->src_ipaddr),
+			    request->packet->src_port,
 			    request->packet->id);
 			request_free(request);
 			request_list_busy = FALSE;
