@@ -629,7 +629,7 @@ int eap_start(REQUEST *request)
 		DEBUG2("  rlm_eap: EAP packet type %s id %d length %d",
 		       eap_types[eap_msg->strvalue[0]],
 		       eap_msg->strvalue[1],
-		       (eap_msg->strvalue[2] << 8) | eap_msg->strvalue[3]);
+		       eap_msg->length);
 	}
 
 	/*
@@ -654,6 +654,26 @@ int eap_start(REQUEST *request)
 	 */
 	if (eap_msg->length != EAP_START) {
 		DEBUG2("  rlm_eap: EAP Start not found");
+
+		/*
+		 *	Add the 'EAP-Type' attribute to the request,
+		 *	if it's part of an EAP conversation, and the
+		 *	EAP sub-type is in the EAP packet.
+		 *
+		 *	Store the EAP type in the request, so modules
+		 *	outside of EAP can check & use it.
+		 */
+		if (((eap_msg->strvalue[0] == PW_EAP_REQUEST) ||
+		     (eap_msg->strvalue[0] == PW_EAP_RESPONSE)) &&
+		    (eap_msg->length > EAP_HEADER_LEN)) {
+
+			vp = paircreate(PW_EAP_TYPE, PW_TYPE_INTEGER);
+			if (vp) {
+				vp->lvalue = eap_msg->strvalue[4];
+				pairadd(&(request->packet->vps), vp);
+			}
+		}
+ 
 		return EAP_NOTFOUND;
 	}
 
