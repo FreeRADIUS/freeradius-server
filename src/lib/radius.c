@@ -47,6 +47,19 @@ static const char rcsid[] = "$Id$";
  */
 #define PACKET_DATA_LEN 1600
 
+/*
+ *	The maximum number of attributes which we allow in an incoming
+ *	request.  If there are more attributes than this, the request
+ *	is rejected.
+ *
+ *	This helps to minimize the potential for a DoS, when an
+ *	attacker spoofs Access-Request packets, which don't have a
+ *	Message-Authenticator attribute.  This means that the packet
+ *	is unsigned, and the attacker can use resources on the server,
+ *	even if the end request is rejected.
+ */
+int librad_max_attributes = 0;
+
 typedef struct radius_packet_t {
   uint8_t	code;
   uint8_t	id;
@@ -110,7 +123,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		  int			vendorcode, vendorpec;
 		  u_short		total_length;
 		  int			len, allowed;
-		  uint8_t		*msg_auth_ptr = NULL;
+		  int			msg_auth_offset = 0;
 		  uint8_t		data[4096];
 		  
 		  /*
@@ -163,7 +176,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				   */
 				  reply->length = AUTH_VECTOR_LEN;
 				  memset(reply->strvalue, 0, AUTH_VECTOR_LEN);
-				  msg_auth_ptr = ptr;
+				  msg_auth_offset = total_length;
 			  }
 
 			  /*
@@ -348,6 +361,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 			  return -1;
 		  }
 		  memcpy(packet->data, data, packet->data_len);
+		  hdr = (radius_packet_t *) packet->data;
 
 		  total_length = htons(total_length);
 		  memcpy(hdr->length, &total_length, sizeof(u_short));
@@ -366,7 +380,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		       *	BEFORE setting the reply authentication vector
 		       *	for CHALLENGE, ACCEPT and REJECT.
 		       */
-		      if (msg_auth_ptr) {
+		      if (msg_auth_offset) {
 			      uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 			      switch (packet->code) {
@@ -382,10 +396,12 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				break;
 			      }
 
-			      memset(msg_auth_ptr + 2, 0, AUTH_VECTOR_LEN);
+			      memset(packet->data + msg_auth_offset + 2, 0,
+				     AUTH_VECTOR_LEN);
 			      lrad_hmac_md5(packet->data, packet->data_len,
 					    secret, secretlen, calc_auth_vector);
-			      memcpy(msg_auth_ptr + 2, calc_auth_vector, AUTH_VECTOR_LEN);
+			      memcpy(packet->data + msg_auth_offset + 2,
+				     calc_auth_vector, AUTH_VECTOR_LEN);
 			      memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 		      }
 
@@ -396,7 +412,6 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 
 		      memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
 		      memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
-		      memset((char *)hdr + packet->data_len, 0, secretlen);
 		  }
 
 		  /*
@@ -404,7 +419,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		   *	AFTER setting the authentication vector
 		   *	only for ACCESS-REQUESTS
 		   */
-		  else if (msg_auth_ptr) {
+		  else if (msg_auth_offset) {
 			  uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 			  switch (packet->code) {
@@ -420,13 +435,14 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 			    break;
 			  }
 
-			  memset(msg_auth_ptr + 2, 0, AUTH_VECTOR_LEN);
+			  memset(packet->data + msg_auth_offset + 2,
+				 0, AUTH_VECTOR_LEN);
 			  lrad_hmac_md5(packet->data, packet->data_len,
 					secret, secretlen, calc_auth_vector);
-			  memcpy(msg_auth_ptr + 2, calc_auth_vector, AUTH_VECTOR_LEN);
+			  memcpy(packet->data + msg_auth_offset + 2,
+				  calc_auth_vector, AUTH_VECTOR_LEN);
 			  memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 		  }
-
 
 		  /*
 		   *	If packet->data points to data, then we print out
@@ -552,6 +568,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	char			host_ipaddr[16];
 	int			seen_eap;
 	uint8_t			data[4096];
+	int			num_attributes;
 
 	/*
 	 *	Allocate the new request data structure
@@ -599,7 +616,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	Check for packets smaller than the packet header.
 	 */
 	if (packet->data_len < AUTH_HDR_LEN) {
-		librad_log("Malformed RADIUS packet from host %s: too short",
+		librad_log("WARNING: Malformed RADIUS packet from host %s: too short",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 		free(packet);
 		return NULL;
@@ -614,7 +631,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	memcpy(&len, hdr->length, sizeof(u_short));
 	totallen = ntohs(len);
 	if (packet->data_len != totallen) {
-		librad_log("Malformed RADIUS packet from host %s: received %d octets, packet size says %d",
+		librad_log("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet size says %d",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 			   packet->data_len, totallen);
 		free(packet);
@@ -636,13 +653,14 @@ RADIUS_PACKET *rad_recv(int fd)
 	attr = hdr->data;
 	count = totallen - AUTH_HDR_LEN;
 	seen_eap = 0;
+	num_attributes = 0;
 
 	while (count > 0) {
 		/*
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
-			librad_log("Malformed RADIUS packet from host %s: Invalid attribute 0",
+			librad_log("WARNING: Malformed RADIUS packet from host %s: Invalid attribute 0",
 				   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 			free(packet);
 			return NULL;
@@ -653,7 +671,7 @@ RADIUS_PACKET *rad_recv(int fd)
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
        		if (attr[1] < 2) {
-			librad_log("Malformed RADIUS packet from host %s: attribute %d too short",
+			librad_log("WARNING: Malformed RADIUS packet from host %s: attribute %d too short",
 				   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 				   attr[0]);
 			free(packet);
@@ -673,7 +691,7 @@ RADIUS_PACKET *rad_recv(int fd)
 
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
-				librad_log("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
+				librad_log("WARNING: Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
 					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 					   attr[1] - 2);
 				free(packet);
@@ -689,9 +707,9 @@ RADIUS_PACKET *rad_recv(int fd)
 		 *	integer/date/ip, the attribute length SHOULD
 		 *	be 6.
 		 */
-
 		count -= attr[1];	/* grab the attribute length */
 		attr += attr[1];
+		num_attributes++;	/* seen one more attribute */
 	}
 
 	/*
@@ -700,7 +718,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	If not, we complain, and throw the packet away.
 	 */
 	if (count != 0) {
-		librad_log("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
+		librad_log("WARNING: Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 		free(packet);
 		return NULL;
@@ -712,8 +730,22 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (((seen_eap & PW_EAP_MESSAGE) == PW_EAP_MESSAGE) &&
 	    ((seen_eap & PW_MESSAGE_AUTHENTICATOR) != PW_MESSAGE_AUTHENTICATOR)) {
-		librad_log("Malformed RADIUS packet from host %s: Contains EAP-Message, but no Message-Authenticator",
+		librad_log("WARNING: Malformed RADIUS packet from host %s: Contains EAP-Message, but no Message-Authenticator",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+		free(packet);
+		return NULL;
+	}
+
+	/*
+	 *	If we're configured to look for a maximum number of
+	 *	attributes, and we've seen more than that maximum,
+	 *	then throw the packet away, as a possible DoS.
+	 */
+	if ((librad_max_attributes > 0) &&
+	    (num_attributes > librad_max_attributes)) {
+		librad_log("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   num_attributes, librad_max_attributes);
 		free(packet);
 		return NULL;
 	}
