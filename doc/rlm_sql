@@ -253,3 +253,36 @@
 
 	Not allowed as a reply item.
 
+5. Instances
+
+  Just like any other module, multiple instances of the rlm_sql
+  module can be defined and used wherever you like.
+
+  The default .conf files for the different database types,
+  contain 1 instance without a name like so:
+  sql {
+    ...
+  }
+
+  You can create multiple named instances like so:
+  sql sql_instance1 {
+    ...
+  }
+  sql sql_instance2 {
+    ...
+  }
+
+  And then you can use a specific instance in radiusd.conf, like
+  so:
+  authorize {
+    ...
+    sql_instance1
+    ...
+  }
+  accounting {
+    ...
+    sql_instance1
+    sql_instance2
+    ...
+  }
+
