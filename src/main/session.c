@@ -24,12 +24,20 @@
 #include	"autoconf.h"
 
 #include	<stdio.h>
+#include	<stdlib.h>
 #include	<string.h>
-#include	<time.h>
+
+#ifdef HAVE_UNISTD_H
 #include	<unistd.h>
+#endif
+
 #include	<signal.h>
 #include	<errno.h>
 #include	<sys/wait.h>
+
+#ifdef HAVE_NETINET_IN_H
+#include	<netinet/in.h>
+#endif
 
 #include	"radiusd.h"
 #include	"modules.h"
