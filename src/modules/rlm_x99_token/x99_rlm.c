@@ -504,9 +504,10 @@ good_state:
 	    /* State is good! */
 
 	} else {
-	    /* This shouldn't happen, authorize code should handle it. */
+	    /* This should only happen if the authorize code didn't run. */
 	    radlog(L_ERR|L_CONS, "rlm_x99_token: auth: bad state for [%s]: "
-				 "missing", username);
+				 "missing (is x99_token listed in "
+				 "radiusd.conf's authorize stanza?)", username);
 	    return RLM_MODULE_FAIL;
 	}
     } /* if (!fast_sync) */
