@@ -115,6 +115,8 @@
  *	  Based on a report from Mike Denka <mdenk@whidbey.net>
  * May 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Don't do a double free on the attribute maps. Bug noted by Derrik Pates <dpates@dsdk12.net>
+ *	- Apply a patch from Alexander M. Pravking <fduch@antar.bryansk.ru> to do an xlat on the
+ *	  retrieved attributes.
  */
 static const char rcsid[] = "$Id$";
 
@@ -1121,10 +1123,16 @@ ldap_authorize(void *instance, REQUEST * request)
 				profile, LDAP_SCOPE_BASE, 
 				filter, inst->atts, &def_result)) == RLM_MODULE_OK){
 				if ((def_msg = ldap_first_entry(conn->ld,def_result))){
-					if ((check_tmp = ldap_pairget(conn->ld,def_msg,inst->check_item_map,check_pairs,1)))
-						pairadd(check_pairs,check_tmp);
-					if ((reply_tmp = ldap_pairget(conn->ld,def_msg,inst->reply_item_map,reply_pairs,0)))
-						pairadd(reply_pairs,reply_tmp);
+					if ((check_tmp = ldap_pairget(conn->ld,def_msg,inst->check_item_map,check_pairs,1))) {
+						/*pairadd(check_pairs,check_tmp);*/
+						pairxlatmove(request, check_pairs, &check_tmp);
+						pairfree(&check_tmp);
+					}
+					if ((reply_tmp = ldap_pairget(conn->ld,def_msg,inst->reply_item_map,reply_pairs,0))) {
+						/*pairadd(reply_pairs,reply_tmp);*/
+						pairxlatmove(request, reply_pairs, &reply_tmp);
+						pairfree(&reply_tmp);
+					}
 				}
 				ldap_msgfree(def_result);
 			} else 
@@ -1148,10 +1156,16 @@ ldap_authorize(void *instance, REQUEST * request)
 					vals[i], LDAP_SCOPE_BASE, 
 					filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
 					if ((def_attr_msg = ldap_first_entry(conn->ld,def_attr_result))){
-						if ((check_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->check_item_map,check_pairs,1)))
-							pairadd(check_pairs,check_tmp);
-						if ((reply_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->reply_item_map,reply_pairs,0)))
-							pairadd(reply_pairs,reply_tmp);
+						if ((check_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->check_item_map,check_pairs,1))) {
+							/*pairadd(check_pairs,check_tmp);*/
+							pairxlatmove(request, check_pairs, &check_tmp);
+							pairfree(&check_tmp);
+						}
+						if ((reply_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->reply_item_map,reply_pairs,0))) {
+							/*pairadd(reply_pairs,reply_tmp);*/
+							pairxlatmove(request, reply_pairs, &reply_tmp);
+							pairfree(&reply_tmp);
+						}
 					}
 					ldap_msgfree(def_attr_result);
 				} else 
@@ -1208,15 +1222,21 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	DEBUG("rlm_ldap: looking for check items in directory...");
 
-	if ((check_tmp = ldap_pairget(conn->ld, msg, inst->check_item_map,check_pairs,1)) != NULL)
-		pairadd(check_pairs, check_tmp);
+	if ((check_tmp = ldap_pairget(conn->ld, msg, inst->check_item_map,check_pairs,1)) != NULL) {
+		/*pairadd(check_pairs,check_tmp);*/
+		pairxlatmove(request, check_pairs, &check_tmp);
+		pairfree(&check_tmp);
+	}
 
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
 
 
-	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs,0)) != NULL)
-		pairadd(reply_pairs, reply_tmp);
+	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs,0)) != NULL) {
+		/*pairadd(reply_pairs,reply_tmp);*/
+		pairxlatmove(request, reply_pairs, &reply_tmp);
+		pairfree(&reply_tmp);
+	}
 
        if (inst->do_comp && paircmp(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
 		DEBUG("rlm_ldap: Pairs do not match. Rejecting user.");
