@@ -1,0 +1,28 @@
+Miquel van Smoorenburg <miquels@cistron.nl>
+	Wrote the original Cistron server, and started the FreeRADIUS
+	source tree.
+
+Alan DeKok <aland@ox.org>
+	Registered and maintains www.freeradius.org.  Wrote the module
+	code.  Made the server use libltdl, for modular support across
+	multiple platforms.
+
+Alan Curry
+	Has contributed many patches for proxying, replication, realm
+	support, etc.
+
+Mike Machado (mike@innercite.com) 
+	Author of the MySQL module for the server, and programmer of the
+	ICRADIUS server, which is a variant of Cistron.
+
+Adrian Pavlykevych <pam@polynet.lviv.ua>
+	LDAP module.
+
+Jeff Carneal, Apex Internet Services, Inc.
+	Wrote the caching support for the Unix module.
+
+miguel a.l. paraz <map@iphil.net>
+	Wrote the original code which was the basis for the PAM module.
+
+Jochen Friedrich <jochen+freeradius-devel@scram.de>
+	Contributed SMUX / SNMP patches.
