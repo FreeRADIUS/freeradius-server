@@ -665,7 +665,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		 */
 		c->netmask = ~0;
 		if (netmask) {
-			int i, mask_length;
+			int mask_length;
 
 			mask_length = atoi(netmask + 1);
 			if ((mask_length < 0) || (mask_length > 32)) {
@@ -675,9 +675,10 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 				return NULL;
 			}
 
-			c->netmask = (1 << 31);
-			for (i = 1; i < mask_length; i++) {
-				c->netmask |= (c->netmask >> 1);
+			if (mask_length == 0) {
+				c->netmask = 0;
+			} else {
+				c->netmask = ~0 << (32 - mask_length);
 			}
 
 			*netmask = '\0';

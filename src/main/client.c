@@ -121,7 +121,7 @@ int read_clients_file(const char *file)
 		mask = ~0;
 
 		if (p) {
-			int i, mask_length;
+			int mask_length;
 
 			*p = '\0';
 			p++;
@@ -133,9 +133,10 @@ int read_clients_file(const char *file)
 				return -1;
 			}
 
-			mask = (1 << 31);
-			for (i = 1; i < mask_length; i++) {
-				mask |= (mask >> 1);
+			if (mask_length == 0) {
+				mask = 0;
+			} else {
+				mask = ~0 << (32 - mask_length);
 			}
 		}
 
