@@ -362,12 +362,21 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	}
 
 	/*
-	 * Just compare the two 
+	 * Just compare the two, considering "Attribute" as second value
+	 * If the attribute name is "Crypt-Password", we assume an encrypted pasword in DB
+	 * Otherwise we should have a plain password in DB
 	 */
-	if (strncmp(request->password->strvalue, row[0], request->password->length) != 0) {
-		return RLM_MODULE_REJECT;
+	if ((strncmp(row[1], "Crypt-Password", 14)) &&
+		(strncmp(crypt(request->password->strvalue, row[0]), row[0], request->password->length)))
+	{
+		return RLM_MODULE_OK;
+	
 	}
-	return RLM_MODULE_OK;
+	else
+	    if (strncmp(request->password->strvalue, row[0], request->password->length)) {
+		return RLM_MODULE_OK;
+	    }
+	return RLM_MODULE_REJECT;
 
 }
 
