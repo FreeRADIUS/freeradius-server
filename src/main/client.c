@@ -239,6 +239,7 @@ void client_walk(void)
 const char *client_name(uint32_t ipaddr)
 {
 	RADCLIENT *cl;
+	char host_ipaddr[16];
 
 	if ((cl = client_find(ipaddr)) != NULL) {
 		if (cl->shortname[0])
@@ -246,6 +247,8 @@ const char *client_name(uint32_t ipaddr)
 		else
 			return cl->longname;
 	}
+	
+	radlog(L_ERR, "Couldn't lookup %s\n", ip_ntoa(host_ipaddr, ipaddr));
 
 	/*
 	 *	We should NEVER reach this piece of code, as we should
