@@ -43,6 +43,14 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 	state->ssl = new_tls;
 
 	/*
+	 *	Initialize callbacks
+	 */
+	state->record_init = record_init;
+	state->record_close = record_close;
+	state->record_plus = record_plus;
+	state->record_minus = record_minus;
+
+	/*
 	 *	Create & hook the BIOs to handle the dirty side of the
 	 *	SSL.  This is *very important* as we want to handle
 	 *	the transmission part.  Now the only IO interface

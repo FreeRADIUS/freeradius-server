@@ -21,7 +21,7 @@
  */
 
 #include "autoconf.h"
-#include "eap_tls.h"
+#include "rlm_eap_tls.h"
 #include "eap_peap.h"
 
 typedef struct rlm_eap_peap_t {
@@ -187,11 +187,11 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 			eap_packet.length[1] = EAP_HEADER_LEN + 1;
 			eap_packet.data[0] = PW_EAP_IDENTITY;
 
-			record_plus(&tls_session->clean_in,
-				    &eap_packet, sizeof(eap_packet));
-
+			(tls_session->record_plus)(&tls_session->clean_in,
+						  &eap_packet, sizeof(eap_packet));
+			
 			tls_handshake_send(tls_session);
-			record_init(&tls_session->clean_in);
+			(tls_session->record_init)(&tls_session->clean_in);
 		}
 		eaptls_request(handler->eap_ds, tls_session);
 		DEBUG2("  rlm_eap_peap: EAPTLS_SUCCESS");

@@ -19,7 +19,7 @@
  *
  *   Copyright 2003 Alan DeKok <aland@freeradius.org>
  */
-#include "eap_tls.h"
+#include "rlm_eap_tls.h"
 #include "eap_peap.h"
 
 /*
@@ -45,14 +45,14 @@ static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
 	tlv_packet[9] = 0;
 	tlv_packet[10] = EAP_TLV_FAILURE;
 
-	record_plus(&tls_session->clean_in, tlv_packet, 11);
+	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 11);
 
 	/*
 	 *	FIXME: Check the return code.
 	 */
 	tls_handshake_send(tls_session);
-	record_init(&tls_session->clean_in);
-
+	(tls_session->record_init)(&tls_session->clean_in);
+	
 	return 1;
 }
 
@@ -80,13 +80,13 @@ static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 	tlv_packet[9] = 0;
 	tlv_packet[10] = EAP_TLV_SUCCESS;
 
-	record_plus(&tls_session->clean_in, tlv_packet, 11);
+	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 11);
 
 	/*
 	 *	FIXME: Check the return code.
 	 */
 	tls_handshake_send(tls_session);
-	record_init(&tls_session->clean_in);
+	(tls_session->record_init)(&tls_session->clean_in);
 
 	return 1;
 }
@@ -216,13 +216,13 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	Send the EAP data, WITHOUT the header.
 	 */
 #if 1
-	record_plus(&tls_session->clean_in, vp->strvalue + EAP_HEADER_LEN,
+	(tls_session->record_plus)(&tls_session->clean_in, vp->strvalue + EAP_HEADER_LEN,
 		vp->length - EAP_HEADER_LEN);
 #else
-	record_plus(&tls_session->clean_in, vp->strvalue, vp->length);
+	(tls_session->record_plus)(&tls_session->clean_in, vp->strvalue, vp->length);
 #endif
 	tls_handshake_send(tls_session);
-	record_init(&tls_session->clean_in);
+	(tls_session->record_init)(&tls_session->clean_in);
 
 	return 1;
 }
@@ -551,7 +551,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *
 	 *	I *really* don't like these 'record_t' things...
 	 */
-	data_len = record_minus(&tls_session->dirty_in, buffer, sizeof(buffer));
+	data_len = (tls_session->record_minus)(&tls_session->dirty_in, buffer, sizeof(buffer));
 	data = buffer;
 
 	/*
@@ -566,7 +566,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	go there, too...
 	 */
 	BIO_write(tls_session->into_ssl, buffer, data_len);
-	record_init(&tls_session->clean_out);
+	(tls_session->record_init)(&tls_session->clean_out);
 
 	/*
 	 *	Read (and decrypt) the tunneled data from the SSL session,

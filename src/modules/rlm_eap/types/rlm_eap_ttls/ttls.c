@@ -19,7 +19,7 @@
  *
  *   Copyright 2003 Alan DeKok <aland@freeradius.org>
  */
-#include "eap_tls.h"
+#include "rlm_eap_tls.h"
 #include "eap_ttls.h"
 
 /*
@@ -540,13 +540,13 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		}
 #endif
 
-		record_plus(&tls_session->clean_in, buffer, total);
+		(tls_session->record_plus)(&tls_session->clean_in, buffer, total);
 
 		/*
 		 *	FIXME: Check the return code.
 		 */
 		tls_handshake_send(tls_session);
-		record_init(&tls_session->clean_in);
+		(tls_session->record_init)(&tls_session->clean_in);
 	}
 
 	/*
@@ -873,7 +873,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *
 	 *	I *really* don't like these 'record_t' things...
 	 */
-	data_len = record_minus(&tls_session->dirty_in, buffer, sizeof(buffer));
+	data_len = (tls_session->record_minus)(&tls_session->dirty_in, buffer, sizeof(buffer));
 	data = buffer;
 
 	/*
@@ -888,7 +888,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	go there, too...
 	 */
 	BIO_write(tls_session->into_ssl, buffer, data_len);
-	record_init(&tls_session->clean_out);
+	(tls_session->record_init)(&tls_session->clean_out);
 
 	/*
 	 *	Read (and decrypt) the tunneled data from the SSL session,
