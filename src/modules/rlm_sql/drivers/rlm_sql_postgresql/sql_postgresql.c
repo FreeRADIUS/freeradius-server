@@ -90,11 +90,17 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
  *************************************************************************/
 int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	char connstring[2048];
-	char *port;
+	char *port, *host;
 	rlm_sql_postgres_sock *pg_sock;
 
+	if (config->sql_server[0] != '\0') {
+	    host = " host=";
+	} else {
+	    host = "";
+	}
+
 	if (config->sql_port[0] != '\0') {
-	    port = "port=";
+	    port = " port=";
 	} else {
 	    port = "";
 	}
@@ -104,8 +110,8 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	pg_sock = sqlsocket->conn;
    
 	snprintf(connstring, sizeof(connstring),
-		 "dbname=%s host=%s %s%s user=%s password=%s",
-		 config->sql_db, config->sql_server,
+		 "dbname=%s%s%s%s%s user=%s password=%s",
+		 config->sql_db, host, config->sql_server,
 		 port, config->sql_port,
 		 config->sql_login, config->sql_password);
 	pg_sock->row=NULL;

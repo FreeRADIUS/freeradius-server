@@ -153,7 +153,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 	}
 
 	radlog(L_INFO, "rlm_sql: Driver %s loaded and linked", inst->config->sql_driver);
-	radlog(L_INFO, "rlm_sql: Attempting to connect to %s@%s:%s", inst->config->sql_login, inst->config->sql_server, inst->config->sql_db);
+	radlog(L_INFO, "rlm_sql: Attempting to connect to %s@%s:%s/%s", inst->config->sql_login, inst->config->sql_server, inst->config->sql_port, inst->config->sql_db);
 
 	if (sql_init_socketpool(inst) < 0) {
 		free(inst->config);
