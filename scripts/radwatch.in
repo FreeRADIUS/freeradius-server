@@ -4,15 +4,15 @@
 #		restarts radiusd when it dies [which ofcourse
 #		never happens :)]
 #
-# Version:	@(#)radwatch  1.20  19-Jul-1999  miquels@cistron.nl
+# Version:	$Id$
 #
 
-prefix          = @prefix@
-exec_prefix     = @exec_prefix@
-sbindir         = @sbindir@
-localstatedir   = @localstatedir@
-logdir          = @logdir@
-rundir          = ${localstatedir}/run
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+sbindir=@sbindir@
+localstatedir=@localstatedir@
+logdir=@logdir@
+rundir=${localstatedir}/run
 
 MAILTO=root
 RADIUSD=$sbindir/radiusd
