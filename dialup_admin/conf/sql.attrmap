@@ -3,8 +3,8 @@ checkItem	Simultaneous-Use		Simultaneous-Use
 checkItem	Called-Station-Id		Called-Station-Id
 checkItem	Calling-Station-Id		Calling-Station-Id
 checkItem	Dialup-Access			none
-checkItem	Max-Daily-Session		none
-checkItem	Max-Weekly-Session		none
+checkItem	Max-Daily-Session		Max-Daily-Session
+checkItem	Max-Weekly-Session		Max-Weekly-Session
 checkItem	Login-Time			Login-Time
 
 replyItem	Service-Type			Service-Type
