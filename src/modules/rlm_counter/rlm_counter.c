@@ -640,7 +640,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_counter: Could not find the requested key in the database.");
 		counter.user_counter = 0;
 		if (uniqueid_vp != NULL)
-			strncpy(uniqueid_vp->strvalue,counter.uniqueid,UNIQUEID_MAX_LEN - 1);
+			strncpy(counter.uniqueid,uniqueid_vp->strvalue,UNIQUEID_MAX_LEN - 1);
 		else
 			memset((char *)counter.uniqueid,0,UNIQUEID_MAX_LEN);
 	}
