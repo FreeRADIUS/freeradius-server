@@ -37,6 +37,13 @@ dnl #############################################################
 
 dnl Check for GNU cc
 AC_PROG_CC
+
+dnl #
+dnl # check for AIX, to allow us to use some BSD functions
+dnl # must be before macros that call the compiler.
+dnl #
+AC_AIX
+
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
@@ -49,11 +56,9 @@ dnl # AC_SYS_LARGEFILE
 
 PACKAGE=freeradius
 
-dnl #
-dnl # check for AIX, to allow us to use some BSD functions
-dnl # must be before macros that call the compiler.
-dnl #
-AC_AIX
+dnl # check for system bytesex
+dnl # AC_DEFINES WORDS_BIGENDIAN
+AC_C_BIGENDIAN
 
 dnl Find GNU Make.
 AC_CHECK_PROG(GMAKE, gmake, yes, no)
