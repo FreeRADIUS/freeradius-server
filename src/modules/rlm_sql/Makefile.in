@@ -1,4 +1,4 @@
-TARGET		= rlm_sql
+TARGET		= @targetname@
 SRCS		= rlm_sql.c sql.c
 HEADERS		= rlm_sql.h
 RLM_INSTALL	= install-drivers
