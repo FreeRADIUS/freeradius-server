@@ -15,17 +15,25 @@ function da_ldap_bind($ds,$config)
 			($din == '' && $pass == '')){
 			$din = $config[ldap_binddn];
 			$pass = $config[ldap_bindpw];
-		}	
-		if (preg_match('/[\s,]/',$din))		// It looks like a dn
-			return @ldap_bind($ds,$din,$pass);
+		}
+		if (preg_match('/[\s,]/',$din)){	// It looks like a dn
+			if ($config[ldap_debug] == 'true')
+				print "<b>DEBUG(LDAP): Bind Request: DN='$din',PASSWD='$pass'</b><br>\n";
+			return @ldap_bind($ds,"$din","$pass");
+		}
 		else{				// It's not a DN. Find a corresponding DN
+			if ($config[ldap_debug] == 'true')
+		print "<b>DEBUG(LDAP): Bind Request: DN='$config[ldap_binddn]',PASSWD='$config[ldap_bindpw]'</b><br>\n";
 			$r=@ldap_bind($ds,"$config[ldap_binddn]",$config[ldap_bindpw]);
 			if ($r){
 				$sr=@ldap_search($ds,"$config[ldap_base]", 'uid=' . $din);
 				$info = @ldap_get_entries($ds, $sr);
 				$din = $info[0]['dn'];
-				if ($din != '')
-					return @ldap_bind($ds,$din,$pass);
+				if ($din != ''){
+					if ($config[ldap_debug] == 'true')
+						print "<b>DEBUG(LDAP): Bind Request: DN='$din',PASSWD='$pass'</b><br>\n";
+					return @ldap_bind($ds,"$din","$pass");
+				}
 			}
 		}
 	}

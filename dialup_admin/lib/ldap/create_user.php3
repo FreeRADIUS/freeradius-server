@@ -34,8 +34,12 @@ require_once('../lib/ldap/functions.php3');
 				$new_user_entry[$attrmap['User-Password']]="{clear}" . $passwd;
 			}
 
-			print_r($new_user_entry);
-
+			if ($config[ldap_debug] == 'true'){
+				print "<b>DEBUG(LDAP): ldap_add(): DN='$dn'</b><br>\n";
+				print "<b>DEBUG(LDAP): ldap_add(): Entry Data:";
+				print_r($new_user_entry);
+				print "</b><br>\n";
+			}
 			@ldap_add($ds,$dn,$new_user_entry);
 
 			foreach($show_attrs as $key => $attr){
@@ -51,6 +55,12 @@ require_once('../lib/ldap/functions.php3');
 					continue;
 				$mod[$attrmap["$key"]] = $$attrmap["$key"];
 
+				if ($config[ldap_debug] == 'true'){
+					print "<b>DEBUG(LDAP): ldap_mod_add(): DN='$dn'</b><br>\n";
+					print "<b>DEBUG(LDAP): ldap_mod_add(): Data:";
+					print_r($mod);
+					print "</b><br>\n";
+				}
 				@ldap_mod_add($ds,$dn,$mod);
 			}
 		}

@@ -29,16 +29,25 @@ function da_sql_close($link,$config)
 
 function da_sql_query($link,$config,$query)
 {
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,PG DRIVER): Query: $query</b><br>\n";
 	return @pg_exec($link,$query);
 }
 
 function da_sql_num_rows($result,$config)
 {
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,PG DRIVER): Query Result: Num rows:: " . @pg_numrows($result) . "</b><br>\n";
 	return @pg_numrows($result);
 }
 
 function da_sql_fetch_array($result,$config)
 {
+	if ($config[sql_debug] == 'true'){
+		print "<b>DEBUG(SQL,PG DRIVER): Query Result: ";
+		print_r(@pg_fetch_array($result,$config[tmp_pg_array_num][$result]++,PGSQL_ASSOC));
+		print  "</b><br>\n";
+	}
 	$row = @pg_fetch_array($result,$config[tmp_pg_array_num][$result]++,PGSQL_ASSOC);
 	if (!$row)
 		$config[tmp_pg_array_num][$result] = 0;
@@ -47,6 +56,8 @@ function da_sql_fetch_array($result,$config)
 
 function da_sql_affected_rows($link,$result,$config)
 {
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,PG DRIVER): Query Result: Affected rows:: " . @pg_cmdtuples($result) . "</b><br>\n";
 	return @pg_cmdtuples($result);
 }
 

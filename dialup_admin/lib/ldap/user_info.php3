@@ -30,6 +30,8 @@ if ($config[general_decode_normal_attributes] == 'yes')
 $ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 if ($ds) {
 	$r=@da_ldap_bind($ds,$config);
+	if ($config[ldap_debug] == 'true')
+		print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='uid=$login'</b><br>\n";
 	$sr=@ldap_search($ds,"$config[ldap_base]", 'uid=' . $login);
 	$info = @ldap_get_entries($ds, $sr);
 	$dn = $info[0]['dn'];

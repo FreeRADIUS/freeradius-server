@@ -54,12 +54,30 @@ require_once('../lib/ldap/functions.php3');
 				}
 			}
 			if (isset($mod)){
+			       if ($config[ldap_debug] == 'true')
+					print "<b>DEBUG(LDAP): ldap_mod_del(): DN='$dn'</b><br>\n";
+					print "<b>DEBUG(LDAP): ldap_mod_del(): Data:";
+					print_r($mod);
+					print "</b><br>\n";
+				}
 				@ldap_mod_del($ds,$dn,$mod);
 			}
 			if (isset($add_r)){
+			       if ($config[ldap_debug] == 'true')
+					print "<b>DEBUG(LDAP): ldap_mod_add(): DN='$dn'</b><br>\n";
+					print "<b>DEBUG(LDAP): ldap_mod_add(): Data:";
+					print_r($add_r);
+					print "</b><br>\n";
+				}
 				@ldap_mod_add($ds,$dn,$add_r);
 			}
 			if (isset($del)){
+			       if ($config[ldap_debug] == 'true')
+					print "<b>DEBUG(LDAP): ldap_mod_replace(): DN='$dn'</b><br>\n";
+					print "<b>DEBUG(LDAP): ldap_mod_replace(): Data:";
+					print_r($del);
+					print "</b><br>\n";
+				}
 				@ldap_mod_del($ds,$dn,$del);
 			}
 		}

@@ -25,6 +25,8 @@ Ver 1.62:
   sql command succeeds we delete the corresponding input file. That way if an sql server is down we store the
   accounting info in the input file and then send it all when it comes back up.
 * Add a directive sql_debug. Add debuging statements in the sql library
+* Add a directive ldap_debug. Add debuging statements in the ldap library
+* Add debug statements in the pg driver
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future

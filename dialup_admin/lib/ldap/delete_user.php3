@@ -7,6 +7,8 @@ else
 if ($ds){
 	$r = @da_ldap_bind($ds,$config);
 	if ($r){
+		if ($config[ldap_debug] == 'true')
+			print "<b>DEBUG(LDAP): Delete Request: DN='$dn'</b><br>\n";
 		@ldap_delete($ds,$dn);
 		if (@ldap_error($ds) == 'Success')
 			echo "<b>User Deleted successfully</b><br>\n";
