@@ -1,4 +1,11 @@
 #
+#	THIS FILE IS DEPRECATED.
+#
+#	You should NOT be using this file to configure the server.
+#	It is here ONLY for backwards compatibility.  See 'clients.conf'
+#	for the new method of configuring the server.
+#
+#
 # naslist	This file contains a list of NASes (Network Access Servers,
 #		also known as terminal servers) which we know.
 #
@@ -21,4 +28,3 @@
 #portmaster1.isp.com	pm1.NY		livingston
 #portmaster2.isp.com	pm1.LA		livingston
 localhost		local		portslave
-
