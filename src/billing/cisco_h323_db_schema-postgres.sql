@@ -82,6 +82,13 @@ CREATE TABLE StopVoIP (
 	H323ConfID		VARCHAR(35) NOT NULL
 );
 create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, h323ConfID);
+/*
+ * Some Cisco CSPS do not have complete VSA details. If you have one of these you will want
+ * to use the following index, as the one above will drop records.
+ * 
+ *  create UNIQUE index stopvoipcombo on stopvoip (h323DisconnectTime, nasipaddress, CalledStationId);
+ *
+ */
 
 
 CREATE TABLE StopTelephony (
