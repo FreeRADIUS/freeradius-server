@@ -320,8 +320,12 @@ static int switch_users(void)
 		}
 		server_uid = pw->pw_uid;
 		if (initgroups(mainconfig.uid_name, server_gid) < 0) {
-			radlog(L_ERR|L_CONS, "Failed setting supplementary groups for User %s: %s", mainconfig.uid_name, strerror(errno));
-			exit(1);
+			if (errno == EPERM) {
+//				radlog(L_INFO|L_CONS, "Cannot setup supplementary groups for User %s: %s", mainconfig.uid_name, strerror(errno));
+			} else {
+				radlog(L_ERR|L_CONS, "Failed setting supplementary groups for User %s: %s", mainconfig.uid_name, strerror(errno));
+				exit(1);
+			}
 		}
 		if (setuid(server_uid) < 0) {
 			radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", mainconfig.uid_name, strerror(errno));
