@@ -1,5 +1,7 @@
 FreeRADIUS 0.7 ; $Date$, urgency=high
 
+	* Allow attributes of type 'date' to be sent in outgoing packets.
+	  Bug found by Loh John Wu <ljwu@sandvine.com>
 	* Add 'Realm' attribute, even if it's a LOCAL realm.
 	  Bug noted by Chris Brotsos.
 	* Added experimental SMB authentication module, which uses
