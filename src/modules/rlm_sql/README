@@ -1,9 +1,9 @@
 FreeRADIUS SQL Module
 
-You must run 'make' to build rlm_sql and the individual database drivers.
-Once built, run 'make install' and 'make install-drivers' to install everything.
+The core rlm_sql code handles database indepenent stuff and links the specific database drivers depending on your config. Sample sql configurations can be found in the raddb/sql.conf file.
+
 
 Mike Machado
 mike@innercite.com
 InnerCite Inc.
-Engineering Team Leader
+Engineering Director / CTO
