@@ -29,18 +29,44 @@ static const char rcsid[] = "$Id$";
 #include	"modules.h"
 
 typedef struct rlm_preprocess_t {
+	const char	*huntgroup_file;
+	const char	*hints_file;
 	PAIR_LIST	*huntgroups;
 	PAIR_LIST	*hints;
+	int		with_ascend_hack;
+	int		ascend_channels_per_line;
+	int		with_ntdomain_hack;
+	int		with_specialix_jetstream_hack;
 } rlm_preprocess_t;
 
-#ifdef WITH_ASCEND_HACK
+static rlm_preprocess_t config;
+
+static CONF_PARSER module_config[] = {
+	{ "huntgroups",			PW_TYPE_STRING_PTR,
+	  &config.huntgroup_file, 	"${raddbdir}/huntgroups" },
+	{ "hints",			PW_TYPE_STRING_PTR,
+	  &config.hints_file, 		"${raddbdir}/hints" },
+	{ "with_ascend_hack",		PW_TYPE_BOOLEAN,
+	  &config.with_ascend_hack,  	"no" },
+	{ "ascend_channels_per_line",   PW_TYPE_INTEGER,
+	  &config.ascend_channels_per_line,    "23" },
+
+	{ "with_ntdomain_hack",		PW_TYPE_BOOLEAN,
+	  &config.with_ntdomain_hack,  	"no" },
+	{ "with_ascend_hack",		PW_TYPE_BOOLEAN,
+	  &config.with_specialix_jetstream_hack,  	"no" },
+
+	{ NULL, -1, NULL, NULL }
+};
+
+
 /*
  *	dgreer --
  *	This hack changes Ascend's wierd port numberings
  *	to standard 0-??? port numbers so that the "+" works
  *	for IP address assignments.
  */
-static void ascend_nasport_hack(VALUE_PAIR *nas_port)
+static void ascend_nasport_hack(VALUE_PAIR *nas_port, int channels_per_line)
 {
 	int service;
 	int line;
@@ -55,25 +81,18 @@ static void ascend_nasport_hack(VALUE_PAIR *nas_port)
 		line = (nas_port->lvalue - (10000 * service)) / 100;
 		channel = nas_port->lvalue-((10000 * service)+(100 * line));
 		nas_port->lvalue =
-			(channel - 1) + (line - 1) * ASCEND_CHANNELS_PER_LINE;
+			(channel - 1) + (line - 1) * channels_per_line;
 	}
 }
-#endif
 
 /*
  *	Mangle username if needed, IN PLACE.
  */
-static void rad_mangle(REQUEST *request)
+static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	*tmp;
-#ifdef WITH_NTDOMAIN_HACK
-	char		newname[MAX_STRING_LEN];
-#endif
-#if defined(WITH_NTDOMAIN_HACK) || defined(WITH_SPECIALIX_JETSTREAM_HACK)
-	char		*ptr;
-#endif
 
 	/*
 	 *	Get the username from the request
@@ -86,37 +105,43 @@ static void rad_mangle(REQUEST *request)
 	  return;
 	}
 
-#ifdef WITH_NTDOMAIN_HACK
-	/*
-	 *	Windows NT machines often authenticate themselves as
-	 *	NT_DOMAIN\username. Try to be smart about this.
-	 *
-	 *	FIXME: should we handle this as a REALM ?
-	 */
-	if ((ptr = strchr(namepair->strvalue, '\\')) != NULL) {
-		strNcpy(newname, ptr + 1, sizeof(newname));
-		/* Same size */
-		strcpy(namepair->strvalue, newname);
-		namepair->length = strlen(newname);
-	}
-#endif /* WITH_NTDOMAIN_HACK */
+	if (data->with_ntdomain_hack) {
+		char		*ptr;
+		char		newname[MAX_STRING_LEN];
 
-#ifdef WITH_SPECIALIX_JETSTREAM_HACK
-	/*
-	 *	Specialix Jetstream 8500 24 port access server.
-	 *	If the user name is 10 characters or longer, a "/"
-	 *	and the excess characters after the 10th are
-	 *	appended to the user name.
-	 *
-	 *	Reported by Lucas Heise <root@laonet.net>
-	 */
-	if (strlen(namepair->strvalue) > 10 && namepair->strvalue[10] == '/') {
-		for (ptr = namepair->strvalue + 11; *ptr; ptr++)
-			*(ptr - 1) = *ptr;
-		*(ptr - 1) = 0;
-		namepair->length = strlen(namepair->strvalue);
+		/*
+		 *	Windows NT machines often authenticate themselves as
+		 *	NT_DOMAIN\username. Try to be smart about this.
+		 *
+		 *	FIXME: should we handle this as a REALM ?
+		 */
+		if ((ptr = strchr(namepair->strvalue, '\\')) != NULL) {
+			strNcpy(newname, ptr + 1, sizeof(newname));
+			/* Same size */
+			strcpy(namepair->strvalue, newname);
+			namepair->length = strlen(newname);
+		}
 	}
-#endif
+
+	if (data->with_specialix_jetstream_hack) {
+		char		*ptr;
+
+		/*
+		 *	Specialix Jetstream 8500 24 port access server.
+		 *	If the user name is 10 characters or longer, a "/"
+		 *	and the excess characters after the 10th are
+		 *	appended to the user name.
+		 *
+		 *	Reported by Lucas Heise <root@laonet.net>
+		 */
+		if ((strlen(namepair->strvalue) > 10) &&
+		    (namepair->strvalue[10] == '/')) {
+			for (ptr = namepair->strvalue + 11; *ptr; ptr++)
+				*(ptr - 1) = *ptr;
+			*(ptr - 1) = 0;
+			namepair->length = strlen(namepair->strvalue);
+		}
+	}
 
 	/*
 	 *	Small check: if Framed-Protocol present but Service-Type
@@ -473,9 +498,18 @@ static void add_nas_attr(REQUEST *request)
 static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 {
 	int	rcode;
-	char	buffer[256];
 	rlm_preprocess_t *data;
 
+	/*
+	 *	Read this modules configuration data.
+	 */
+        if (cf_section_parse(conf, module_config) < 0) {
+                return -1;
+        }
+
+	/*
+	 *	Allocate room to put the module's instantiation data.
+	 */
 	data = (rlm_preprocess_t *) malloc(sizeof(*data));
 	if (!data) {
 		radlog(L_ERR|L_CONS, "Out of memory\n");
@@ -483,20 +517,31 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
-	 *	FIXME:  Pull this from the configuration file...
+	 *	Copy the configuration over to the instantiation.
 	 */
-	sprintf(buffer, "%s/%s", radius_dir, RADIUS_HUNTGROUPS);
-	rcode = pairlist_read(buffer, &(data->huntgroups), 0);
+	memcpy(data, &config, sizeof(*data));
+	data->huntgroups = NULL;
+	data->hints = NULL;
+	config.huntgroup_file = NULL;
+	config.hints_file = NULL;
+
+	/*
+	 *	Read the huntgroups file.
+	 */
+	rcode = pairlist_read(data->huntgroup_file, &(data->huntgroups), 0);
 	if (rcode < 0) {
+		radlog(L_ERR|L_CONS, "rlm_preprocess: Error reading %s",
+		       data->huntgroup_file);
 		return -1;
 	}
 
 	/*
-	 *	FIXME:  Pull this from the configuration file...
+	 *	Read the hints file.
 	 */
-	sprintf(buffer, "%s/%s", radius_dir, RADIUS_HINTS);
-	rcode = pairlist_read(buffer, &(data->hints), 0);
+	rcode = pairlist_read(data->hints_file, &(data->hints), 0);
 	if (rcode < 0) {
+		radlog(L_ERR|L_CONS, "rlm_preprocess: Error reading %s",
+		       data->hints_file);
 		return -1;
 	}
 
@@ -525,19 +570,19 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	 *	Mangle the username, to get rid of stupid implementation
 	 *	bugs.
 	 */
-	rad_mangle(request);
+	rad_mangle(data, request);
 
-#ifdef WITH_ASCEND_HACK
-	/*
-	 *	If we're using Ascend systems, hack the NAS-Port-Id
-	 *	in place, to go from Ascend's weird values to something
-	 *	approaching rationality.
-	 */
-	ascend_nasport_hack(pairfind(request->packet->vps, PW_NAS_PORT_ID));
-#endif
-	if (data == NULL) {
-		fprintf(stderr, "FUCK ME\n");
+	if (data->with_ascend_hack) {
+		/*
+		 *	If we're using Ascend systems, hack the NAS-Port-Id
+		 *	in place, to go from Ascend's weird values to something
+		 *	approaching rationality.
+		 */
+		ascend_nasport_hack(pairfind(request->packet->vps,
+					     PW_NAS_PORT_ID),
+				    data->ascend_channels_per_line);
 	}
+
 	hints_setup(data->hints, request);
 	
 	/*
@@ -570,7 +615,7 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	 *  Ensure that we have the SAME user name for both
 	 *  authentication && accounting.
 	 */
-	rad_mangle(request);
+	rad_mangle(data, request);
 	r = hints_setup(data->hints, request);
 
 	/*
@@ -591,6 +636,9 @@ static int preprocess_detach(void *instance)
 	paircompare_unregister(PW_HUNTGROUP_NAME, huntgroup_cmp);
 	pairlist_free(&(data->huntgroups));
 	pairlist_free(&(data->hints));
+
+	free((char *) data->huntgroup_file);
+	free((char *) data->hints_file);
 	free(data);
 
 	return 0;
