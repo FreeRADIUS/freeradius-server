@@ -38,6 +38,7 @@ typedef struct sql_config {
 	char   *accounting_stop_query_alt;
 	int     sqltrace;
 	char   *tracefile;
+	char   *xlat_name;
 	int     deletestalesessions;
 	int     num_sql_socks;
 	int     connect_failure_retry_delay;

@@ -189,6 +189,7 @@ ATTRIBUTE	Connect-Rate		1007	integer
 ATTRIBUTE	Add-Prefix		1008	string
 ATTRIBUTE	Add-Suffix		1009	string
 ATTRIBUTE	Expiration		1010	date
+ATTRIBUTE	Autz-Type		1011	integer
 
 #
 #	Integer Translations
@@ -334,6 +335,8 @@ VALUE		Auth-Type		SecurID			2
 VALUE		Auth-Type		Crypt-Local		3
 VALUE		Auth-Type		Reject			4
 VALUE		Auth-Type		ActivCard		5
+
+VALUE		Autz-Type		Local			0
 
 #
 #	Cistron extensions

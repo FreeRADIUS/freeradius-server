@@ -159,7 +159,7 @@ static void module_list_free(void)
  * FIXME: move this to dict.c as dict_valadd() and dict_valdel()
  *        also clear value in module_list free (necessary?)
  */
-static int new_authtype_value(const char *name)
+static int new_sectiontype_value(const char *name,int type)
 {
 	static int max_value = 32767;
 	DICT_VALUE *old_value, *new_value;
@@ -168,11 +168,11 @@ static int new_authtype_value(const char *name)
 	 *  Check to see if it's already defined.
 	 *  If so, return the old value.
 	 */
-	old_value = dict_valbyname(PW_AUTHTYPE, name);
+	old_value = dict_valbyname(type, name);
 	if (old_value) 
 		return old_value->value; 
-	/* Look for the predefined Auth-Type value */
-	old_value = dict_valbyattr(PW_AUTHTYPE, 0);
+	/* Look for the predefined Type value */
+	old_value = dict_valbyattr(type, 0);
 	if (!old_value) 
 		return 0;	/* something WIERD is happening */
 	
@@ -469,13 +469,15 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 
 	/* We must assign a numeric index to this subcomponent. For
 	 * auth, it is generated and placed in the dictionary by
-	 * new_authtype_value(). The others are just numbers that are pulled
+	 * new_sectiontype_value(). The others are just numbers that are pulled
 	 * out of thin air, and the names are neither put into the dictionary
 	 * nor checked for uniqueness, but all that could be fixed in a few
 	 * minutes, if anyone finds a real use for indexed config of
 	 * components other than auth. */
 	if (comp==RLM_COMPONENT_AUTH)
-		idx = new_authtype_value(cf_section_name2(cs));
+		idx = new_sectiontype_value(cf_section_name2(cs),PW_AUTHTYPE);
+	else if (comp == RLM_COMPONENT_AUTZ)
+		idx = new_sectiontype_value(cf_section_name2(cs),PW_AUTZTYPE);
 	else
 		idx = meaningless_counter++;
 	
@@ -526,7 +528,7 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 		this = compile_modsingle(comp, modref, filename, &modname);
 
 		if (comp == RLM_COMPONENT_AUTH) {
-			idx = new_authtype_value(modname);
+			idx = new_sectiontype_value(modname, PW_AUTHTYPE);
 		} else {
 			/* See the comment in new_sublist() for explanation
 			 * of the special index 0 */
@@ -626,9 +628,9 @@ int setup_modules(void)
  *	Call all authorization modules until one returns
  *	somethings else than RLM_MODULE_OK
  */
-int module_authorize(REQUEST *request)
+int module_authorize(int autz_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_AUTZ, 0, request);
+	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
 /*

@@ -47,7 +47,7 @@ enum {
 };
 
 int setup_modules(void);
-int module_authorize(REQUEST *request);
+int module_authorize(int type, REQUEST *request);
 int module_authenticate(int type, REQUEST *request);
 int module_preacct(REQUEST *request);
 int module_accounting(REQUEST *request);

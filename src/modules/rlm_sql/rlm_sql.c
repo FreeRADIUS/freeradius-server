@@ -100,11 +100,64 @@ static int rlm_sql_init(void) {
 	return 0;
 }
 
+/*
+ * sql xlat function. Right now only SELECTs are supported. Only the first element of the
+ * SELECT result will be used.
+ */
+
+static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int freespace,
+			RADIUS_ESCAPE_STRING func)
+{
+	SQLSOCK *sqlsocket;
+	SQL_ROW row;
+	SQL_INST *inst=instance;
+	char querystr[MAX_QUERY_LEN];
+	int ret=0;
+
+	DEBUG("rlm_sql: - sql_xlat");
+	/*
+	 * Do an xlat on the provided string (nice recursive operation).
+	 */
+	if (!radius_xlat(querystr, sizeof(querystr), fmt, request, func)){
+		radlog(L_ERR, "rlm_sql: xlat failed.");
+		return 0;
+	}
+
+	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL)
+		return 0;
+	if ((inst->module->sql_select_query)(sqlsocket,inst->config,querystr) <0){
+		radlog(L_ERR, "rlm_sql: database query error");
+		sql_release_socket(inst,sqlsocket);
+		return 0;
+	}
+	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+	sql_release_socket(inst,sqlsocket);
+	if (row == NULL){
+		DEBUG("rlm_sql: SQL query did not return any results");
+		return 0;
+	}
+	if (row[0] == NULL){
+		DEBUG("rlm_sql: row[0] returned NULL");
+		return 0;
+	}
+	ret = strlen(row[0]);
+	if (ret > freespace){
+		DEBUG("rlm_sql: sql_xlat:: Insufficient string space");
+		return 0;
+	}
+	strncpy(out,row[0],ret);
+	DEBUG("rlm_sql: - sql_xlat finished");
+
+	return ret;
+}
 
 static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 
 	SQL_INST *inst;
 	lt_dlhandle *handle;
+	char *xlat_name;
 
 	inst = rad_malloc(sizeof(SQL_INST));
 	memset(inst, 0, sizeof(SQL_INST));
@@ -150,6 +203,13 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 		free(inst);
 		return -1;
 	}
+	xlat_name = cf_section_name2(conf);
+	if (xlat_name == NULL)
+		xlat_name = cf_section_name1(conf);
+	if (xlat_name){
+		inst->config->xlat_name = strdup(xlat_name);
+		xlat_register(xlat_name, sql_xlat, inst);
+	}
 
 	*instance = inst;
 
@@ -166,6 +226,8 @@ static int rlm_sql_detach(void *instance) {
 	SQL_INST *inst = instance;
 
 	sql_poolfree(inst);
+	if (inst->config->xlat_name)
+		xlat_unregister(inst->config->xlat_name,sql_xlat);
 	free(inst->config);
 	free(inst);
 
@@ -177,9 +239,11 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
+	VALUE_PAIR *passwd_item = NULL;
 	int     found = 0;
 	SQLSOCK *sqlsocket;
 	SQL_INST *inst = instance;
+	SQL_ROW row;
 	char    querystr[MAX_QUERY_LEN];
 
 	/* sqlusername holds the sql escaped username. The original
@@ -198,10 +262,6 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		return RLM_MODULE_INVALID;
 	}
 
-	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL) {
-		return(RLM_MODULE_NOOP);
-	}
 
 	/*
 	 *  After this point, ALL 'return's MUST release the SQL socket!
@@ -210,11 +270,17 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	/*
 	 * Set, escape, and check the user attr here
 	 */
-	if (sql_set_user(inst, request, sqlusername, 0) < 0) {
-		sql_release_socket(inst, sqlsocket);
+	if (sql_set_user(inst, request, sqlusername, 0) < 0)
 		return RLM_MODULE_FAIL;
-	}
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_check_query, request, NULL);
+
+	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL) {
+		/* Remove the username we (maybe) added above */
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+		return(RLM_MODULE_NOOP);
+	}
+
 	found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_USERDATA);
 	/*
 	 *      Find the entry for the user.
@@ -253,16 +319,13 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		if (gcheck)
 			found = 1;
 	}
-	/* Remove the username we (maybe) added above */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-
-	sql_release_socket(inst, sqlsocket);
-
 	if (!found) {
 		radlog(L_DBG, "rlm_sql: User %s not found and DEFAULT not found", sqlusername);
+		sql_release_socket(inst, sqlsocket);
+		/* Remove the username we (maybe) added above */
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 		return RLM_MODULE_NOTFOUND;
 	}
-
 #if 0 /* FIXME: Debug being printed elsewhere? */
 	/*
 	 * Uncomment these lines for debugging
@@ -280,6 +343,11 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 #endif
 	if (paircmp(request, request->packet->vps, check_tmp, &reply_tmp) != 0) {
 		radlog(L_INFO, "rlm_sql: Pairs do not match [%s]", sqlusername);
+		/* Remove the username we (maybe) added above */
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+		sql_release_socket(inst, sqlsocket);
+		pairfree(&reply_tmp);
+		pairfree(&check_tmp);
 		return RLM_MODULE_NOTFOUND;
 	}
 
@@ -288,113 +356,41 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	pairfree(&reply_tmp);
 	pairfree(&check_tmp);
 
-	return RLM_MODULE_OK;
-}
+	if (inst->config->authenticate_query){
+		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request, NULL);
+	
+		/* Remove the username we (maybe) added above */
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
-static int rlm_sql_authenticate(void *instance, REQUEST * request) {
+		if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
+			radlog(L_ERR, "rlm_sql_authorize: database query error");
+			sql_release_socket(inst, sqlsocket);
+			return RLM_MODULE_FAIL;
+		}
 
-	char   sqlusername[MAX_STRING_LEN];
-	char    querystr[MAX_QUERY_LEN];
-	int	retval;
-	SQL_ROW row;
-	SQLSOCK *sqlsocket;
-	SQL_INST *inst = instance;
-	VALUE_PAIR *auth_item;
-
-	/*
-	 *      Ensure that a password attribute exists.
-	 */
-	auth_item = request->password;
-	if ((auth_item == NULL) || (auth_item->length == 0)) {
-		DEBUG2("rlm_sql: auth: no password in the request\n");
-		return(RLM_MODULE_INVALID);
-	}
-
-	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL) {
-		return(RLM_MODULE_NOOP);
-	}
-
-	/*
-	 *  After this point, ALL 'return's MUST release the SQL socket!
-	 */
-
-	/*
-	 * 1. Set username to escaped value
-	 * 2. Translate vars in the query
-	 * 3. Remove SQL-User-Name local attr
-	 */
-	if (sql_set_user(inst, request, sqlusername, 0) < 0) {
-		retval = RLM_MODULE_FAIL;
+		row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst, sqlsocket);
-		return(retval);
-	}
 
-	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request, NULL);
+		if (row == NULL) {
+			radlog(L_ERR, "rlm_sql_authorize: no rows returned from query (no such user)");
+			return RLM_MODULE_OK;
+		}
+
+		if (row[0] == NULL) {
+			radlog(L_ERR, "rlm_sql_authorize: row[0] returned NULL.");
+			return RLM_MODULE_OK;
+		}
+		if ((passwd_item = pairmake("User-Password",row[0],T_OP_SET)) != NULL)
+			pairadd(&request->config_items,passwd_item);
+		goto move_on;
+	}
+	/* Remove the username we (maybe) added above */
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-
-	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
-		radlog(L_ERR, "rlm_sql_authenticate: database query error");
-		retval = RLM_MODULE_FAIL;
-		sql_release_socket(inst, sqlsocket);
-		return(retval);
-	}
-
-	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
-
-	if (row == NULL) {
-		radlog(L_ERR, "rlm_sql_authenticate: no rows returned from query (no such user)");
-		retval = RLM_MODULE_REJECT;
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst, sqlsocket);
-		return(retval);
-	}
-
-	if (row[0] == NULL) {
-		radlog(L_ERR, "rlm_sql_authenticate: row[0] returned NULL.");
-		retval = RLM_MODULE_REJECT;
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst, sqlsocket);
-		return(retval);
-	}
-
-	/*
-	 * Just compare the two, considering "Attribute" as second value
-	 * If the attribute name is "Crypt-Password", we assume an encrypted pasword in DB
-	 * Otherwise we should have a plain password in DB
-	 */
-
-	retval = RLM_MODULE_REJECT; /* by default */
-	if ((strcmp(row[1], "Crypt-Password") == 0) &&
-	    (strcmp(crypt(request->password->strvalue, row[0]), row[0]) == 0)) {
-		retval = RLM_MODULE_OK;
-	} else if (auth_item->attribute == PW_PASSWORD) {
-		if (strcmp(request->password->strvalue, row[0]) == 0) {
-			retval = RLM_MODULE_OK;
-		}
-	} else if (auth_item->attribute == PW_CHAP_PASSWORD) {
-		VALUE_PAIR *password_pair;
-		char string[MAX_STRING_LEN];
-		
-		password_pair = paircreate(PW_PASSWORD,PW_TYPE_STRING);
-		rad_assert(password_pair != NULL);
-		
-		memcpy(password_pair->strvalue, row[0],strlen(row[0]));
-		password_pair->strvalue[strlen(row[0])] = '\0';
-		password_pair->length = strlen(row[0]);
-		
-		rad_chap_encode(request->packet, string, auth_item->strvalue[0], password_pair);
-		
-		if (memcmp(string + 1, auth_item->strvalue + 1, CHAP_VALUE_LENGTH) == 0) {
-			retval = RLM_MODULE_OK;
-		}
-	} else {		/* was something unknown */
-		retval = RLM_MODULE_NOOP;
-	}
-
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 	sql_release_socket(inst, sqlsocket);
-	return(retval);
+
+move_on:
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -402,7 +398,7 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
  */
 static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
-	SQLSOCK *sqlsocket;
+	SQLSOCK *sqlsocket = NULL;
 	VALUE_PAIR *pair;
 	SQL_INST *inst = instance;
 	int     numaffected = 0;
@@ -415,9 +411,6 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	int     acctsessiontime = 0;
 #endif
 
-	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL)
-		return(RLM_MODULE_NOOP);
 
 	memset(querystr, 0, MAX_QUERY_LEN);
 
@@ -429,7 +422,6 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	} else {
 		radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  packet has no account status type.  [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
 		radlog(L_ERR, logstr);
-		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -444,6 +436,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_onoff_query, request, NULL);
 			query_log(inst, querystr);
 
+			sqlsocket = sql_get_socket(inst);
+			if (sqlsocket == NULL)
+				return(RLM_MODULE_NOOP);
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0)
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for Acct On/Off packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
@@ -460,6 +455,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_update_query, request, NULL);
 			query_log(inst, querystr);
 
+			sqlsocket = sql_get_socket(inst);
+			if (sqlsocket == NULL)
+				return(RLM_MODULE_NOOP);
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0)
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for ALIVE packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
@@ -476,14 +474,15 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			if(sql_set_user(inst, request, sqlusername, 0) < 0) {
-				sql_release_socket(inst, sqlsocket);
+			if(sql_set_user(inst, request, sqlusername, 0) < 0)
 				return RLM_MODULE_FAIL;
-			}
 
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query, request, NULL);
 			query_log(inst, querystr);
 
+			sqlsocket = sql_get_socket(inst);
+			if (sqlsocket == NULL)
+				return(RLM_MODULE_NOOP);
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting" " for START packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
@@ -515,14 +514,15 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			if(sql_set_user(inst, request, sqlusername, 0) < 0) {
-				sql_release_socket(inst, sqlsocket);
+			if(sql_set_user(inst, request, sqlusername, 0) < 0)
 				return RLM_MODULE_FAIL;
-			}
 
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query, request, NULL);
 			query_log(inst, querystr);
 
+			sqlsocket = sql_get_socket(inst);
+			if (sqlsocket == NULL)
+				return(RLM_MODULE_NOOP);
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
@@ -583,7 +583,7 @@ module_t rlm_sql = {
 	rlm_sql_init,		/* initialization */
 	rlm_sql_instantiate,	/* instantiation */
 	{
-		rlm_sql_authenticate,	/* authentication */
+		NULL,			/* authentication */
 		rlm_sql_authorize,	/* authorization */
 		NULL,			/* preaccounting */
 		rlm_sql_accounting,	/* accounting */

@@ -403,6 +403,7 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*reply_item;
 	VALUE_PAIR	*auth_item;
 	VALUE_PAIR	*tmp = NULL;
+	VALUE_PAIR	*autz_type_item = NULL;
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
 	const char	*user_msg = NULL;
@@ -411,6 +412,8 @@ int rad_authenticate(REQUEST *request)
 	int		exec_wait;
 	int		seen_callback_id;
 	char		buf[1024], logstr[1024];
+	char		autz_retry = 0;
+	int		autz_type = 0;
 
 	password = "";
 
@@ -508,7 +511,8 @@ int rad_authenticate(REQUEST *request)
 	/*
 	 *	Get the user's authorization information from the database
 	 */
-	r = module_authorize(request);
+autz_redo:
+	r = module_authorize(autz_type, request);
 	if (r != RLM_MODULE_NOTFOUND &&
 			r != RLM_MODULE_NOOP &&
 			r != RLM_MODULE_OK &&
@@ -533,6 +537,15 @@ int rad_authenticate(REQUEST *request)
 		 */
 		return r;
 	}
+	if (!autz_retry){
+		autz_type_item = pairfind(request->config_items, PW_AUTZTYPE);
+		if (autz_type_item){
+			autz_type = autz_type_item->lvalue;
+			autz_retry = 1;
+			goto autz_redo;
+		}
+	}
+
 
 	/*
 	 *	If we haven't already proxied the packet, then check
