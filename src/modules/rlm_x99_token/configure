@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.6 
+# From configure.in Revision: 1.7
 
 
 if test x$with_rlm_x99_token != xno; then
@@ -662,9 +662,9 @@ fi
 
 		x99_save_LIBS="$LIBS"
 	LIBS="$LIBS $x99_token_ldflags"
-	echo $ac_n "checking for des_cbc_encrypt in -lcrypto""... $ac_c" 1>&6
-echo "configure:667: checking for des_cbc_encrypt in -lcrypto" >&5
-ac_lib_var=`echo crypto'_'des_cbc_encrypt | sed 'y%./+-%__p_%'`
+       echo $ac_n "checking for DES_cbc_encrypt in -lcrypto""... $ac_c" 1>&6
+echo "configure:667: checking for DES_cbc_encrypt in -lcrypto" >&5
+ac_lib_var=`echo crypto'_'DES_cbc_encrypt | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -676,13 +676,51 @@ cat > conftest.$ac_ext <<EOF
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
     builtin and then its argument prototype would still apply.  */
+char DES_cbc_encrypt();
+
+int main() {
+DES_cbc_encrypt()
+; return 0; }
+EOF
+if { (eval echo configure:686: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  eval "ac_cv_lib_$ac_lib_var=yes"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  rm -rf conftest*
+  eval "ac_cv_lib_$ac_lib_var=no"
+fi
+rm -f conftest*
+LIBS="$ac_save_LIBS"
+
+fi
+if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
+  echo "$ac_t""yes" 1>&6
+   x99_token_ldflags="$x99_token_ldflags -lcrypto"
+else
+  echo "$ac_t""no" 1>&6
+echo $ac_n "checking for des_cbc_encrypt in -lcrypto""... $ac_c" 1>&6
+echo "configure:705: checking for des_cbc_encrypt in -lcrypto" >&5
+ac_lib_var=`echo crypto'_'des_cbc_encrypt | sed 'y%./+-%__p_%'`
+if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
+  echo $ac_n "(cached) $ac_c" 1>&6
+else
+  ac_save_LIBS="$LIBS"
+LIBS="-lcrypto  $LIBS"
+cat > conftest.$ac_ext <<EOF
+#line 713 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
 char des_cbc_encrypt();
 
 int main() {
 des_cbc_encrypt()
 ; return 0; }
 EOF
-if { (eval echo configure:686: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:724: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -701,6 +739,9 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
 else
   echo "$ac_t""no" 1>&6
  fail="$fail des_cbc_encrypt" 
+
+fi
+
 	
 fi
 
