@@ -193,6 +193,10 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			a = ifid_ntoa(buf, sizeof(buf), vp->strvalue);
 			break;
 
+		case PW_TYPE_IPV6ADDR:
+			a = ipv6_ntoa(buf, sizeof(buf), vp->strvalue);
+			break;
+
 		default:
 			a = 0;
 			break;

@@ -684,6 +684,15 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			vp->strvalue[vp->length] = '\0';
 			break;
 
+		case PW_TYPE_IPV6ADDR:
+			if (ipv6_addr(value, vp->strvalue) < 0) {
+				librad_log("failed to parse IPv6 address "
+					   "string \"%s\"", value);
+				return NULL;
+			}
+			vp->length = 16; /* length of IPv6 address */
+			vp->strvalue[vp->length] = '\0';
+			break;
 			/*
 			 *  Anything else.
 			 */

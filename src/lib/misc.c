@@ -304,7 +304,7 @@ char *ifid_ntoa(char *buffer, size_t size, uint8_t *ifid)
 uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
 {
 	static const char xdigits[] = "0123456789abcdef";
-	char *p, *pch;
+	const char *p, *pch;
 	int num_id = 0, val = 0, idx = 0;
 
 	for (p = ifid_str; ; ++p) {
@@ -342,4 +342,84 @@ uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
 			return NULL;
 	}
 	return ifid;
- }
+}
+/*
+ *	Return an IPv6 address in standard colon notation
+ */
+char *ipv6_ntoa(char *buffer, size_t size, void *ip6addr)
+{
+#ifdef HAVE_INET_NTO_P
+	return inet_ntop(AF_INET6, (struct in6_addr *) ip6addr, buffer, size);
+#else
+	/*
+	 *	Do it really stupidly.
+	 */
+	snprintf(buffer, size, "%x:%x:%x:%x:%x:%x:%x:%x",
+		 (((uint8_t *) ip6addr)[0] << 8) | ((uint8_t *) ip6addr)[1],
+		 (((uint8_t *) ip6addr)[2] << 8) | ((uint8_t *) ip6addr)[3],
+		 (((uint8_t *) ip6addr)[4] << 8) | ((uint8_t *) ip6addr)[5],
+		 (((uint8_t *) ip6addr)[6] << 8) | ((uint8_t *) ip6addr)[7],
+		 (((uint8_t *) ip6addr)[8] << 8) | ((uint8_t *) ip6addr)[9],
+		 (((uint8_t *) ip6addr)[10] << 8) | ((uint8_t *) ip6addr)[11],
+		 (((uint8_t *) ip6addr)[12] << 8) | ((uint8_t *) ip6addr)[13],
+		 (((uint8_t *) ip6addr)[14] << 8) | ((uint8_t *) ip6addr)[15]);
+	return buffer;
+#endif
+}
+
+
+/*
+ *	Return an IPv6 address from
+ *	one supplied in standard colon notation.
+ */
+int ipv6_addr(const char *ip6_str, void *ip6addr)
+{
+#ifdef HAVE_INET_PTON
+	if (inet_pton(AF_INET6, ip6_str, (struct in6_addr *) ip6addr) != 1)
+		return -1;
+#else
+	/*
+	 *	Copied from the 'ifid' code above, with minor edits.
+	 */
+	static const char xdigits[] = "0123456789abcdef";
+	const char *p, *pch;
+	int num_id = 0, val = 0, idx = 0;
+	uint8_t *addr = ip6addr;
+
+	for (p = ip6_str; ; ++p) {
+		if (*p == ':' || *p == '\0') {
+			if (num_id <= 0)
+				return -1;
+
+			/*
+			 *	Drop 'val' into the array.
+			 */
+			addr[idx] = (val >> 8) & 0xff;
+			addr[idx + 1] = val & 0xff;
+			if (*p == '\0') {
+				/*
+				 *	Must have all entries before
+				 *	end of the string.
+				 */
+				if (idx != 14)
+					return -1;
+				break;
+			}
+			val = 0;
+			num_id = 0;
+			if ((idx += 2) > 14)
+				return -1;
+		} else if ((pch = strchr(xdigits, tolower(*p))) != NULL) {
+			if (++num_id > 8) /* no more than 8 16-bit numbers */
+				return -1;
+			/*
+			 *	Dumb version of 'scanf'
+			 */
+			val <<= 4;
+			val |= (pch - xdigits);
+		} else
+			return -1;
+	}
+#endif
+	return 0;
+}
