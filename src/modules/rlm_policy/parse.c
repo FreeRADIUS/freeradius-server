@@ -26,6 +26,21 @@
 #include <dirent.h>
 #endif
 
+#include <modules.h>
+
+const LRAD_NAME_NUMBER policy_return_codes[] = {
+	{ "reject", RLM_MODULE_REJECT },
+	{ "fail", RLM_MODULE_FAIL },
+	{ "ok", RLM_MODULE_OK },
+	{ "handled", RLM_MODULE_HANDLED },
+	{ "invalid", RLM_MODULE_INVALID },
+	{ "userlock", RLM_MODULE_USERLOCK },
+	{ "notfound", RLM_MODULE_NOTFOUND },
+	{ "noop", RLM_MODULE_NOOP },
+	{ "updated", RLM_MODULE_UPDATED },
+	{ NULL, RLM_MODULE_NUMCODES }
+};
+
 /*
  *	Explanations of what the lexical tokens are.
  */
@@ -388,8 +403,6 @@ typedef struct policy_lex_file_t {
 
 #define debug_tokens if (lexer->debug & POLICY_DEBUG_PRINT_TOKENS) printf
 
-static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail,
-		      const char *name);
 
 /*
  *	Function to return a token saying what it read, and possibly
@@ -517,6 +530,7 @@ const LRAD_NAME_NUMBER policy_reserved_words[] = {
 	{ "proxy-request", POLICY_RESERVED_PROXY_REQUEST },
 	{ "proxy-reply", POLICY_RESERVED_PROXY_REPLY },
 	{ "include", POLICY_RESERVED_INCLUDE },
+	{ "return", POLICY_RESERVED_RETURN },
 	{ NULL, POLICY_RESERVED_UNKNOWN }
 };
 
@@ -632,15 +646,30 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 				
 			}
 			
-			this->lhs = strdup(lhs);
-			this->lhs_type = POLICY_LEX_BARE_WORD;
-			this->compare = POLICY_LEX_BARE_WORD;
-			this->child_condition = POLICY_LEX_BARE_WORD;
+			/*
+			 *	this->lhs set up below, after "check"
+			 */
+			this->lhs_type = POLICY_LEX_FUNCTION;
 
-			if (!parse_call(lexer, &this->child, lhs)) {
+			/*
+			 *	Copied from parse_call
+			 */
+			token = policy_lex_file(lexer, 0, NULL, 0);
+			if (token != POLICY_LEX_L_BRACKET) {
+				fprintf(stderr, "%s[%d]: Expected left bracket, got \"%s\"\n",
+					lexer->filename, lexer->lineno,
+					lrad_int2str(rlm_policy_tokens, token, "?"));
 				return 0;
 			}
-			break;
+			
+			token = policy_lex_file(lexer, 0, NULL, 0);
+			if (token != POLICY_LEX_R_BRACKET) {
+				fprintf(stderr, "%s[%d]: Expected right bracket, got \"%s\"\n",
+					lexer->filename, lexer->lineno,
+					lrad_int2str(rlm_policy_tokens, token, "?"));
+				return 0;
+			}
+			goto check;
 		} /* else it's a comparison? */
 
 	case POLICY_LEX_DOUBLE_QUOTED_STRING:
@@ -649,6 +678,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 		/*
 		 *	Got word.  May just be test for existence.
 		 */
+	check:
 		token = policy_lex_file(lexer, POLICY_LEX_FLAG_PEEK, NULL, 0);
 		if (token == POLICY_LEX_R_BRACKET) {
 			debug_tokens("[TEST %s] ", lhs);
@@ -892,6 +922,54 @@ static int parse_attribute_block(policy_lex_file_t *lexer,
 
 
 /*
+ *	Parse a return statement.
+ */
+static int parse_return(policy_lex_file_t *lexer, policy_item_t **tail)
+{
+	int rcode;
+	policy_lex_t token;
+	char buffer[32];
+	policy_return_t *this;
+
+	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
+	if (token != POLICY_LEX_BARE_WORD) {
+		fprintf(stderr, "%s[%d]: Unexpected token %s\n",
+			lexer->filename, lexer->lineno,
+			lrad_int2str(rlm_policy_tokens, token, "?"));
+		return 0;
+	}
+
+	rcode = lrad_str2int(policy_return_codes, buffer, RLM_MODULE_NUMCODES);
+	if (rcode == RLM_MODULE_NUMCODES) {
+		fprintf(stderr, "%s[%d]: Invalid return code %s\n",
+			lexer->filename, lexer->lineno, buffer);
+		return 0;
+	}
+
+	/*
+	 *	Look for more sutff
+	 */
+	token = policy_lex_file(lexer, POLICY_LEX_FLAG_PEEK,
+				NULL, sizeof(0));
+	if (token != POLICY_LEX_RC_BRACKET) {
+		fprintf(stderr, "%s[%d]: return statement must be the last statement in a policy.\n",
+			lexer->filename, lexer->lineno);
+		return 0;
+	}
+
+	this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	this->item.type = POLICY_TYPE_RETURN;
+	this->item.lineno = lexer->lineno;
+	this->rcode = rcode;
+
+	*tail = (policy_item_t *) this;
+
+	return 1;
+}
+
+/*
  *	Parse one statement.  'foo = bar', or 'if (...) {...}', or '{...}',
  *	and so on.
  */
@@ -940,6 +1018,13 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 			
 		case POLICY_RESERVED_PRINT:
 			if (parse_print(lexer, tail)) {
+				return 1;
+			}
+			return 0;
+			break;
+			
+		case POLICY_RESERVED_RETURN:
+			if (parse_return(lexer, tail)) {
 				return 1;
 			}
 			return 0;
@@ -1208,7 +1293,7 @@ static int parse_named_policy(policy_lex_file_t *lexer)
 	 *	For now, policy names aren't scoped, they're global.
 	 */
 	if (!rlm_policy_insert(lexer->policies, this)) {
-		fprintf(stderr, "Failed to insert %s\n", this->name);
+		fprintf(stderr, "Failed to insert policy \"%s\"\n", this->name);
 		rlm_policy_free_item((policy_item_t *) this);
 		return 0;
 	}
@@ -1269,9 +1354,11 @@ static int parse_include(policy_lex_file_t *lexer)
 			 */
 			while ((dp = readdir(dir)) != NULL) {
 				if (dp->d_name[0] == '.') continue;
-				
+				if (strchr(dp->d_name, '~') != NULL) continue;
+
 				strNcpy(p, dp->d_name,
 					sizeof(buffer) - (p - buffer));
+				debug_tokens("\nreading file %s\n", buffer);
 				if (!rlm_policy_parse(lexer->policies, buffer)) {
 					closedir(dir);
 					return 0;
@@ -1289,6 +1376,7 @@ static int parse_include(policy_lex_file_t *lexer)
 	/*
 	 *	Handle one include file.
 	 */
+	debug_tokens("\nreading file %s\n", buffer);
 	if (!rlm_policy_parse(lexer->policies, buffer)) {
 		return 0;
 	}
@@ -1304,7 +1392,7 @@ int rlm_policy_parse(rbtree_t *policies, const char *filename)
 {
 	FILE *fp;
 	policy_lex_t token;
-	policy_lex_file_t mylexer, *lexer;
+	policy_lex_file_t mylexer, *lexer = NULL;
 	char buffer[32];
 
 	fp = fopen(filename, "r");

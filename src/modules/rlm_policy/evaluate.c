@@ -113,8 +113,8 @@ static void policy_print(const policy_item_t *item, int indent)
 					break;
 				}
 
-				if (condition->lhs_type == POLICY_LEX_BARE_WORD) {
-					printf("%s", condition->lhs);
+				if (condition->lhs_type == POLICY_LEX_FUNCTION) {
+					printf("%s()", condition->lhs);
 				} else {
 					/*
 					 *	FIXME: escape ",
@@ -124,25 +124,21 @@ static void policy_print(const policy_item_t *item, int indent)
 					printf("\"%s\"", condition->lhs);
 				}
 
-				if (condition->compare == POLICY_LEX_BARE_WORD) {
-					printf("()");
+				/*
+				 *	We always print this condition.
+				 */
+				printf(" %s ", lrad_int2str(rlm_policy_tokens,
+							    condition->compare,
+							    "?"));
+				if (condition->rhs_type == POLICY_LEX_BARE_WORD) {
+					printf("%s", condition->rhs);
 				} else {
 					/*
-					 *	We always print this condition.
+					 *	FIXME: escape ",
+					 *	and move all of this logic
+					 *	to a function.
 					 */
-					printf(" %s ", lrad_int2str(rlm_policy_tokens,
-								    condition->compare,
-								    "?"));
-					if (condition->rhs_type == POLICY_LEX_BARE_WORD) {
-						printf("%s", condition->rhs);
-					} else {
-						/*
-						 *	FIXME: escape ",
-						 *	and move all of this logic
-						 *	to a function.
-						 */
-						printf("\"%s\"", condition->rhs);
-					}
+					printf("\"%s\"", condition->rhs);
 				}
 				printf(")");
 				
@@ -223,6 +219,18 @@ static void policy_print(const policy_item_t *item, int indent)
 			}
 			break;
 
+		case POLICY_TYPE_RETURN:
+			{
+				const policy_return_t *this;
+
+				this = (const policy_return_t *) item;
+				if (indent) printf("%*s", indent, " ");
+				printf("return %s\n",
+				       lrad_int2str(policy_return_codes,
+						    this->rcode, "???"));
+			}
+			break;
+
 		default:
 			if (indent) printf("%*s", indent, " ");
 			printf("[HUH?]\n");
@@ -252,6 +260,7 @@ void rlm_policy_print(const policy_item_t *item)
 typedef struct policy_state_t {
 	rlm_policy_t	*inst;
 	REQUEST		*request; /* so it's not passed on the C stack */
+	int		rcode;	/* for functions, etc. */
 	int		depth;
 	const policy_item_t *stack[POLICY_MAX_STACK];
 } policy_state_t;
@@ -373,6 +382,10 @@ static int evaluate_print(policy_state_t *state, const policy_item_t *item)
 		printf("%s", buffer);
 	}
 
+	/*
+	 *	Doesn't change state->rcode
+	 */
+
 	return 1;
 }
 
@@ -465,7 +478,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 	int rcode;
 	const policy_condition_t *this;
 	VALUE_PAIR *vp;
-	char *data = NULL;
+	const char *data = NULL;
 	int compare;
 #ifdef HAVE_REGEX_H
 	regex_t reg;
@@ -479,11 +492,22 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 	/*
 	 *	FIXME: Don't always do this...
 	 */
-	if ((this->compare != POLICY_LEX_L_BRACKET) &&
-	    (this->lhs_type == POLICY_LEX_DOUBLE_QUOTED_STRING)) {
-		if (radius_xlat(lhs_buffer, sizeof(lhs_buffer), this->lhs,
-				state->request, NULL) > 0) {
-			data = lhs_buffer;
+	if (this->compare != POLICY_LEX_L_BRACKET) {
+		if (this->lhs_type == POLICY_LEX_FUNCTION) {
+			/*
+			 *	We can't call evaluate_call here,
+			 *	because that just pushes stuff onto
+			 *	the stack, and we want to actually
+			 *	evaluate all of it...
+			 */
+			rcode = policy_evaluate_name(state, this->lhs);
+			data = lrad_int2str(policy_return_codes, rcode, "???");
+			strNcpy(lhs_buffer, data, sizeof(lhs_buffer)); /* FIXME: yuck */
+		} else if (this->lhs_type == POLICY_LEX_DOUBLE_QUOTED_STRING) {
+			if (radius_xlat(lhs_buffer, sizeof(lhs_buffer), this->lhs,
+					state->request, NULL) > 0) {
+				data = lhs_buffer;
+			}
 		}
 	}
 	
@@ -495,18 +519,6 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 	case POLICY_LEX_L_NOT:
 		rcode = evaluate_condition(state, this->child);
 		rcode = (rcode == FALSE); /* reverse sense of test */
-		break;
-
-	case POLICY_LEX_BARE_WORD:
-		/*
-		 *	We can't call evaluate_call here, because that just
-		 *	pushes stuff onto the stack, and we want to actually
-		 *	evaluate all of it...
-		 *
-		 *	Hmm.... why are these things different?
-		 */
-		rcode = policy_evaluate_name(state,
-					     ((const policy_named_t *) this->child)->name);
 		break;
 
 	case POLICY_LEX_CMP_TRUE: /* existence */
@@ -887,12 +899,14 @@ static int evaluate_attr_list(policy_state_t *state, const policy_item_t *item)
 		return 0;
 	}
 
+	state->rcode = RLM_MODULE_UPDATED; /* we did stuff */
+
 	return 1;
 }
 
 
 /*
- *	Evaluate an 'call foo' statement
+ *	Evaluate a reference call to a module.
  */
 static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 {
@@ -910,6 +924,12 @@ static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 	rad_assert(policy->policy->type != POLICY_TYPE_BAD);
 	rad_assert(policy->policy->type < POLICY_TYPE_NUM_TYPES);
 
+	/*
+	 *	Push the name of the function onto the stack,
+	 *	so that we can catch recursive calls.
+	 *
+	 *	The "pop" function will skip over it when it sees it.
+	 */
 	rcode = policy_stack_push(state, (const policy_item_t *) policy);
 	if (!rcode) {
 		return rcode;
@@ -925,6 +945,20 @@ static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 	}
 
 	return 1;
+}
+
+
+/*
+ *	Evaluate a return statement
+ */
+static int evaluate_return(policy_state_t *state, const policy_item_t *item)
+{
+	const policy_return_t *this;
+
+	this = (const policy_return_t *) item;
+	state->rcode = this->rcode;
+	
+	return 1;		/* we succeeded */
 }
 
 
@@ -945,7 +979,8 @@ static policy_evaluate_type_t evaluate_functions[POLICY_TYPE_NUM_TYPES] = {
 	evaluate_attr_list,
 	evaluate_print,
 	NULL,			/* define a named policy.. */
-	evaluate_call
+	evaluate_call,
+	evaluate_return
 };
 
 
@@ -990,7 +1025,7 @@ static int policy_evaluate_name(policy_state_t *state, const char *name)
 		}
 	} /* loop until the stack is empty */
 
-	return RLM_MODULE_OK;
+	return state->rcode;
 }
 
 
@@ -1007,6 +1042,7 @@ int rlm_policy_evaluate(rlm_policy_t *inst, REQUEST *request, const char *name)
 	memset(state, 0, sizeof(*state));
 	state->request = request;
 	state->inst = inst;
+	state->rcode = RLM_MODULE_OK;
 
 	rcode = policy_evaluate_name(state, name);
 

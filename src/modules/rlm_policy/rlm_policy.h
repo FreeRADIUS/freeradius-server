@@ -74,6 +74,7 @@ typedef enum policy_lex_t {
 	POLICY_LEX_MINUS_EQUALS, /* -= */
 	POLICY_LEX_CONCAT_EQUALS, /* .= */
 	POLICY_LEX_VARIABLE,	/* %{foo} */
+	POLICY_LEX_FUNCTION,	/* Hmmm... */
 	POLICY_LEX_DOUBLE_QUOTED_STRING,
 	POLICY_LEX_SINGLE_QUOTED_STRING,
 	POLICY_LEX_BACK_QUOTED_STRING,
@@ -89,6 +90,7 @@ typedef enum policy_type_t {
 	POLICY_TYPE_PRINT,
 	POLICY_TYPE_NAMED_POLICY,
 	POLICY_TYPE_CALL,
+	POLICY_TYPE_RETURN,
 	POLICY_TYPE_NUM_TYPES
 } policy_type_t;
 
@@ -109,6 +111,7 @@ typedef enum policy_reserved_word_t {
 	POLICY_RESERVED_PRINT,
 	POLICY_RESERVED_POLICY,
 	POLICY_RESERVED_INCLUDE,
+	POLICY_RESERVED_RETURN,
 	POLICY_RESERVED_NUM_WORDS
 } policy_reserved_word_t;
 
@@ -171,6 +174,15 @@ typedef struct policy_call_t {
 
 
 /*
+ *	Hold a return code
+ */
+typedef struct policy_return_t {
+	policy_item_t	item;
+	int		rcode;
+} policy_return_t;
+
+
+/*
  *	Holds an assignment.
  */
 typedef struct policy_assignment_t {
@@ -228,6 +240,7 @@ typedef struct rlm_policy_t {
  */
 extern const LRAD_NAME_NUMBER rlm_policy_tokens[];
 extern const LRAD_NAME_NUMBER policy_reserved_words[];
+extern const LRAD_NAME_NUMBER policy_return_codes[];
 
 extern int rlm_policy_insert(rbtree_t *head, policy_named_t *policy);
 extern policy_named_t *rlm_policy_find(rbtree_t *head, const char *name);
