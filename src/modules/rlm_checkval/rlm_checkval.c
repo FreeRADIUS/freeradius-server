@@ -55,6 +55,7 @@ typedef struct rlm_checkval_t {
 	int	dat_type;
 	int	item_attr;
 	int	chk_attr;
+	int	notfound_reject;	/* If we don't find the item_name in the request send back a reject */
 } rlm_checkval_t;
 
 /*
@@ -70,6 +71,7 @@ static CONF_PARSER module_config[] = {
   { "item-name",  PW_TYPE_STRING_PTR, offsetof(rlm_checkval_t,item_name), NULL,  NULL},
   { "check-name",  PW_TYPE_STRING_PTR, offsetof(rlm_checkval_t,check_name), NULL,  NULL},
   { "data-type",    PW_TYPE_STRING_PTR, offsetof(rlm_checkval_t,data_type),NULL, "integer"},
+  { "notfound-reject", PW_TYPE_BOOLEAN, offsetof(rlm_checkval_t,notfound_reject),NULL, "no"},
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -215,7 +217,19 @@ static int do_checkval(void *instance, REQUEST *request)
 	
 	if (!(item_vp = pairfind(request->packet->vps, data->item_attr))){
 		DEBUG2("rlm_checkval: Could not find item named %s in request", data->item_name);
-		return RLM_MODULE_NOTFOUND;
+		if (data->notfound_reject){
+			char module_fmsg[MAX_STRING_LEN];
+			VALUE_PAIR *module_fmsg_vp;
+
+			snprintf(module_fmsg,sizeof(module_fmsg), 
+				"rlm_checkval: Could not find item named %s in request", data->item_name);
+			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+			pairadd(&request->packet->vps, module_fmsg_vp);
+
+			return RLM_MODULE_REJECT;
+		}
+		else
+			return RLM_MODULE_NOTFOUND;
 	}
 	DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->strvalue);
 	tmp = request->config_items;
