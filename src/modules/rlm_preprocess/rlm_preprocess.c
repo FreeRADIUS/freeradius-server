@@ -562,7 +562,7 @@ static void add_nas_attr(REQUEST *request)
 	  exit(1);
 	}
 	nas->lvalue = request->packet->src_ipaddr;
-	ip_ntoa(nas->strvalue, nas->lvalue);
+	ip_hostname(nas->strvalue, sizeof(nas->strvalue), nas->lvalue);
 	pairadd(&request->packet->vps, nas);
 }
 
