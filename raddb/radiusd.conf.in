@@ -1615,6 +1615,11 @@ post-proxy {
 	#
 #	attr_rewrite
 
+	#  Uncomment the following line if you want to filter replies from
+	#  remote proxies based on the rules defined in the 'attrs' file.
+
+#	attr_filter
+
 	#
 	#  If you are proxing LEAP, you MUST configure the EAP
 	#  module, and you MUST list it here, in the post-proxy

@@ -408,6 +408,242 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 }
 
 /*
+ *      Find the named realm in the database.  Create the
+ *      set of attribute-value pairs to check and reply with
+ *      for this realm from the database.
+ */
+static int attr_filter_postproxy(void *instance, REQUEST *request)
+{
+	struct attr_filter_instance *inst = instance;
+	VALUE_PAIR	*request_pairs;
+	VALUE_PAIR	**reply_items;
+	VALUE_PAIR	*reply_item;
+	VALUE_PAIR	*reply_tmp = NULL;
+	VALUE_PAIR	*check_item;
+	PAIR_LIST	*pl;
+	int		found = 0;
+        int		compare;
+        int		pass, fail;
+#ifdef HAVE_REGEX_H
+	regex_t		reg;
+#endif
+	VALUE_PAIR	*realmpair;
+	REALM		*realm;
+	char		*realmname;
+
+	/*
+	 *	It's not a proxy reply, so return NOOP
+	 */
+
+	if( request->proxy == NULL ) {
+		return( RLM_MODULE_NOOP );
+	}
+
+	request_pairs = request->packet->vps;
+	reply_items = &request->proxy_reply->vps;
+
+	/*
+	 *	Get the realm.  Can't use request->config_items as
+	 *	that gets freed by rad_authenticate....  use the one
+	 *	set in the original request vps
+	 */
+	realmpair = pairfind(request_pairs, PW_REALM);
+	if(!realmpair) {
+		/*    Can't find a realm, so no filtering of attributes
+		 *    or should we use a DEFAULT entry?
+		 *    For now, just return NOTFOUND. (maybe NOOP?)
+		 */
+		return RLM_MODULE_NOTFOUND;
+	}
+
+	realmname = (char *) realmpair->strvalue;
+	realm = realm_find(realmname, FALSE);
+
+	/*
+	 *      Find the attr_filter profile entry for the realm.
+	 */
+	for(pl = inst->attrs; pl; pl = pl->next) {
+
+	    /*
+	     *  If the current entry is NOT a default,
+	     *  AND the realm does NOT match the current entry,
+	     *  then skip to the next entry.
+	     */
+	    if ( (strcmp(pl->name, "DEFAULT") != 0) &&
+		 (strcmp(realmname, pl->name) != 0) )  {
+		    continue;
+	    }
+
+	    DEBUG2("  attr_filter: Matched entry %s at line %d",
+		    pl->name, pl->lineno);
+	    found = 1;
+
+	    check_item = pl->check;
+
+	    while( check_item != NULL ) {
+
+		    /*
+		     *    If it is a SET operator, add the attribute to
+		     *    the reply list without checking reply_items.
+		     */
+
+		    if( check_item->operator == T_OP_SET ) {
+			mypairappend(check_item, &reply_tmp);
+		    }
+		    check_item = check_item->next;
+
+	    }  /* while( check_item != NULL ) */
+
+	    /*
+	     * Iterate through the reply items,
+	     * comparing each reply item to every rule,
+	     * then moving it to the reply_tmp list only if it matches all
+	     * rules for that attribute.
+	     * IE, Idle-Timeout is moved only if it matches
+	     * all rules that describe an Idle-Timeout.
+	     */
+
+	    for( reply_item = *reply_items;
+		 reply_item != NULL;
+		 reply_item = reply_item->next ) {
+
+		/* reset the pass,fail vars for each reply item */
+		pass = fail = 0;
+
+		/* reset the check_item pointer to the beginning of the list */
+		check_item = pl->check;
+
+		while( check_item != NULL ) {
+
+		    if(reply_item->attribute == check_item->attribute) {
+
+			compare = simplepaircmp(request, reply_item,
+                                                check_item);
+			switch(check_item->operator) {
+
+			    case T_OP_SET:	/* nothing to do for set */
+				break;
+			    case T_OP_EQ:
+				default:
+				radlog(L_ERR, "Invalid operator for item %s: "
+				              "reverting to '=='",
+					      check_item->name);
+
+			    case T_OP_CMP_TRUE:       /* compare always == 0 */
+			    case T_OP_CMP_FALSE:      /* compare always == 1 */
+			    case T_OP_CMP_EQ:
+				if (compare == 0) {
+				    pass++;
+				} else {
+				    fail++;
+				}
+				break;
+
+			    case T_OP_NE:
+				if (compare != 0) {
+				    pass++;
+				} else {
+				    fail++;
+				}
+				break;
+
+			    case T_OP_LT:
+				if (compare < 0) {
+				    pass++;
+				} else {
+				    fail++;
+				}
+				break;
+
+			    case T_OP_GT:
+				if (compare > 0) {
+				    pass++;
+				} else {
+				    fail++;
+				}
+				break;
+
+			    case T_OP_LE:
+				if (compare <= 0) {
+				    pass++;
+				} else {
+				    fail++;
+				}
+				break;
+
+			    case T_OP_GE:
+				if (compare >= 0) {
+				    pass++;
+				} else {
+				    fail++;
+				}
+				break;
+#ifdef HAVE_REGEX_H
+			    case T_OP_REG_EQ:
+				regcomp(&reg, (char *)check_item->strvalue, 0);
+				compare = regexec(&reg,
+						  (char *)reply_item->strvalue,
+						  0, NULL, 0);
+				regfree(&reg);
+				if (compare == 0) {
+				    pass++;
+				} else {
+				    fail++;
+				}
+				break;
+
+			    case T_OP_REG_NE:
+				regcomp(&reg, (char *)check_item->strvalue, 0);
+				compare = regexec(&reg,
+						  (char *)reply_item->strvalue,
+						  0, NULL, 0);
+				regfree(&reg);
+				if (compare != 0) {
+				    pass++;
+				} else {
+				    fail++;
+				}
+				break;
+#endif
+			}  /* switch( check_item->operator ) */
+
+		    }  /* if reply == check */
+
+		    check_item = check_item->next;
+
+		}  /* while( check ) */
+
+		/* only move attribute if it passed all rules */
+		    if (fail == 0 && pass > 0) {
+			mypairappend( reply_item, &reply_tmp);
+		    }
+
+	    }  /* for( reply ) */
+
+	    /* If we shouldn't fall through, break */
+	    if(!fallthrough(pl->check))
+		break;
+	}
+
+	pairfree(&request->proxy_reply->vps);
+	request->proxy_reply->vps = reply_tmp;
+
+	/*
+	 *	See if we succeeded.  If we didn't find the realm,
+	 *	then exit from the module.
+	 */
+	if (!found)
+	    return RLM_MODULE_OK;
+
+	/*
+	 *	Remove server internal parameters.
+	 */
+	pairdelete(reply_items, PW_FALL_THROUGH);
+
+	return RLM_MODULE_UPDATED;
+}
+
+/*
  *	Clean up.
  */
 static int attr_filter_detach(void *instance)
@@ -433,7 +669,7 @@ module_t rlm_attr_filter = {
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
+		attr_filter_postproxy,	/* post-proxy */
 		NULL			/* post-auth */
 	},
 	attr_filter_detach,		/* detach */
