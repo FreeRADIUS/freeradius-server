@@ -556,12 +556,15 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * If there is a Framed-IP-Address attribute in the reply, check for override
 	 */
 	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS) != NULL) {
+		DEBUG("rlm_ippool: Found Framed-IP-Address attribute in reply attribute list.");
 		if (data->override)
 		{
 			/* Override supplied Framed-IP-Address */
+			DEBUG("rlm_ippool: override is set to yes. Override the existing Framed-IP-Address attribute.");
 			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
 		} else {
 			/* Abort */
+			DEBUG("rlm_ippool: override is set to no. Return NOOP.");
 			return RLM_MODULE_NOOP;
 		}
 	}
