@@ -44,13 +44,12 @@ mkdir -p $RPM_BUILD_ROOT/etc/{logrotate.d,pam.d,rc.d/init.d}
 
 make install R=$RPM_BUILD_ROOT
 
+RADDB=$RPM_BUILD_ROOT/etc/raddb
 # set radiusd as default user/group
-sed -e 's/^user =.*$/user = radiusd/' -e 's/^group =.*$/group = radiusd/' < $RPM_BUILD_ROOT/etc/raddb/radiusd.conf > $RPM_BUILD_ROOT/radiusd.conf.tmp
-mv $RPM_BUILD_ROOT/radiusd.conf.tmp $RPM_BUILD_ROOT/etc/raddb/radiusd.conf
-
+perl -i -pe 's/^#user =.*$/user = radiusd/' $RADDB/radiusd.conf
+perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
 # shadow password file MUST be defined on Linux
-sed -e 's/#	shadow =/shadow =/' < $RPM_BUILD_ROOT/etc/raddb/radiusd.conf > $RPM_BUILD_ROOT/radiusd.conf.tmp
-mv $RPM_BUILD_ROOT/radiusd.conf.tmp $RPM_BUILD_ROOT/etc/raddb/radiusd.conf
+perl -i -pe 's/#	shadow =/shadow =/' $RADDB/radiusd.conf
 
 # remove unneeded stuff
 rm -f $RPM_BUILD_ROOT%{_mandir}/man8/builddbm.8
