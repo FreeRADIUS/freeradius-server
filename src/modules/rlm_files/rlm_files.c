@@ -453,13 +453,6 @@ static int file_authorize(REQUEST *request,
 			       pl->name, pl->lineno);
 			found = 1;
 			check_tmp = paircopy(pl->check);
-			/*
-			 *	Smash the operators to '+=', so that
-			 *	pairmove() will do the right thing...
-			 */
-			for (tmp = check_tmp; tmp; tmp = tmp->next) {
-			  tmp->operator = T_OP_ADD;
-			}
 			reply_tmp = paircopy(pl->reply);
 			pairmove(reply_pairs, &reply_tmp);
 			pairmove(check_pairs, &check_tmp);
@@ -497,10 +490,12 @@ static int file_authorize(REQUEST *request,
 		pairdelete(reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
 	}
 
+#if 0
 	/*
 	 *	Remove server internal parameters.
 	 */
 	pairdelete(reply_pairs, PW_FALL_THROUGH);
+#endif
 
 	return RLM_MODULE_OK;
 }
@@ -585,7 +580,6 @@ static int file_preacct(REQUEST *request)
 	VALUE_PAIR	*reply_pairs=0;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
-	VALUE_PAIR	*tmp;
 	PAIR_LIST	*pl;
 	int		found = 0;
 #if defined(WITH_DBM) || defined(WITH_NDBM)
@@ -626,7 +620,7 @@ static int file_preacct(REQUEST *request)
 		if (r > 0) found = 1;
 		if (r <= 0 || fallthrough(*reply_pairs)) {
 
-			pairdelete(reply_pairs, PW_FALL_THROUGH);
+//			pairdelete(reply_pairs, PW_FALL_THROUGH);
 
 			sprintf(buffer, "DEFAULT");
 			i = 0;
@@ -636,7 +630,7 @@ static int file_preacct(REQUEST *request)
 					found = 1;
 					if (!fallthrough(*reply_pairs))
 						break;
-					pairdelete(reply_pairs,PW_FALL_THROUGH);
+//					pairdelete(reply_pairs,PW_FALL_THROUGH);
 				}
 				sprintf(buffer, "DEFAULT%d", i++);
 			}
@@ -663,13 +657,6 @@ static int file_preacct(REQUEST *request)
 			       pl->name, pl->lineno);
 			found = 1;
 			check_tmp = paircopy(pl->check);
-			/*
-			 *	Smash the operators to '+=', so that
-			 *	pairmove() will do the right thing...
-			 */
-			for (tmp = check_tmp; tmp; tmp = tmp->next) {
-			  tmp->operator = T_OP_ADD;
-			}
 			reply_tmp = paircopy(pl->reply);
 			pairmove(&reply_pairs, &reply_tmp);
 			pairmove(config_pairs, &check_tmp);
