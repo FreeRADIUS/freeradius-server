@@ -22,11 +22,11 @@
  */
 #include "eap_tls.h"
 
-tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx)
+tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 {
 	tls_session_t *state = NULL;
 	SSL *new_tls = NULL;
-	int verify_mode = 0;
+	int verify_mode = SSL_VERIFY_NONE;
 
 	if ((new_tls = SSL_new(ssl_ctx)) == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: Error creating new SSL");
@@ -64,13 +64,16 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx)
 	SSL_set_info_callback(new_tls, cbtls_info);
 
 	/*
-	 *	Always verify the peer certificate
+	 *	Verify the peer certificate, if asked.
 	 */
-	verify_mode |= SSL_VERIFY_PEER;
-	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	if (client_cert) {
+		DEBUG2(" rlm_eap_tls: Requiring client certificate");
+		verify_mode = SSL_VERIFY_PEER;
+		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	}
 	SSL_set_verify(state->ssl, verify_mode, cbtls_verify);
-	
+
 	/*
 	 *	In Server mode we only accept.
 	 */
@@ -79,44 +82,63 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx)
 	return state;
 }
 
-static void int_ssl_check(SSL *s, int ret)
+/*
+ *	Print out some text describing the error.
+ */
+static void int_ssl_check(SSL *s, int ret, const char *text)
 {
 	int e;
 
 	ERR_print_errors_fp(stderr);
 	e = SSL_get_error(s, ret);
 
-	radlog(L_ERR, " Error code is ..... %d\n", e);
-
 	switch(e) {
-		/* These seem to be harmless and already "dealt with" by our
-		 * non-blocking environment. NB: "ZERO_RETURN" is the clean
-		 * "error" indicating a successfully closed SSL tunnel. We let
-		 * this happen because our IO loop should not appear to have
-		 * broken on this condition - and outside the IO loop, the
-		 * "shutdown" state is checked. */
+		/*
+		 *	These seem to be harmless and already "dealt
+		 *	with" by our non-blocking environment. NB:
+		 *	"ZERO_RETURN" is the clean "error"
+		 *	indicating a successfully closed SSL
+		 *	tunnel. We let this happen because our IO
+		 *	loop should not appear to have broken on
+		 *	this condition - and outside the IO loop, the
+		 *	"shutdown" state is checked.
+		 *
+		 *	Don't print anything if we ignore the error.
+		 */
 	case SSL_ERROR_NONE:
 	case SSL_ERROR_WANT_READ:
 	case SSL_ERROR_WANT_WRITE:
 	case SSL_ERROR_WANT_X509_LOOKUP:
 	case SSL_ERROR_ZERO_RETURN:
-		radlog(L_ERR, " SSL Error ..... %d\n", e);
 		return;
-		/* These seem to be indications of a genuine error that should
-		 * result in the SSL tunnel being regarded as "dead". */
+
+		/*
+		 *	These seem to be indications of a genuine
+		 *	error that should result in the SSL tunnel
+		 *	being regarded as "dead".
+		 */
 	case SSL_ERROR_SYSCALL:
-	case SSL_ERROR_SSL:
-		radlog(L_ERR, " Error in SSL ..... %d\n", e);
+		radlog(L_ERR, "rlm_eap_tls: %s failed in a system call (%d), TLS session fails.",
+		       text, ret);
 		SSL_set_app_data(s, (char *)1);
 		return;
+
+	case SSL_ERROR_SSL:
+		radlog(L_ERR, "rlm_eap_tls: %s failed inside of TLS (%d), TLS session fails.",
+		       text, ret);
+		SSL_set_app_data(s, (char *)1);
+		return;
+
 	default:
+		/*
+		 *	For any other errors that (a) exist, and (b)
+		 *	crop up - we need to interpret what to do with
+		 *	them - so "politely inform" the caller that
+		 *	the code needs updating here.
+		 */
+		radlog(L_ERR, "rlm_eap_tls: FATAL SSL error ..... %d\n", e);
 		break;
 	}
-	radlog(L_ERR, "Unknown Error ..... %d\n", e);
-	/* For any other errors that (a) exist, and (b) crop up - we need to
-	 * interpret what to do with them - so "politely inform" the caller that
-	 * the code needs updating here. */
-	abort();
 }
 
 /*
@@ -142,8 +164,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 	if (err > 0) {
 		ssn->clean_out.used = err;
 	} else {
-		radlog(L_INFO, "rlm_eap_tls: SSL_read Error");
-		int_ssl_check(ssn->ssl, err);
+		int_ssl_check(ssn->ssl, err, "SSL_read");
 	}
 
 	/* Some Extra STATE information for easy debugging */
@@ -169,8 +190,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 		if (err > 0) {
 			ssn->dirty_out.used = err;
 		} else {
-			radlog(L_ERR, "rlm_eap_tls: BIO_read Error");
-			int_ssl_check(ssn->ssl, err);
+			int_ssl_check(ssn->ssl, err, "BIO_read");
 			record_init(&ssn->dirty_in);
 			return 0;
 		}
@@ -211,7 +231,7 @@ int tls_handshake_send(tls_session_t *ssn)
 		if (err > 0) {
 			ssn->dirty_out.used = err;
 		} else {
-			int_ssl_check(ssn->ssl, err);
+			int_ssl_check(ssn->ssl, err, "handshake_send");
 		}
 	}
 

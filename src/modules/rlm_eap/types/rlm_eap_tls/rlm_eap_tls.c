@@ -353,12 +353,29 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
  */
 static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 {
-	int status;
+	int		status;
 	tls_session_t	*ssn;
-	eap_tls_t	*eaptls;
+	eap_tls_t	*inst;
 	VALUE_PAIR	*vp;
+	int		client_cert = TRUE;
 
-	eaptls = (eap_tls_t *)type_arg;
+	inst = (eap_tls_t *)type_arg;
+
+	/*
+	 *	If we're TTLS or PEAP, then do NOT require a client
+	 *	certificate.
+	 *
+	 *	FIXME: This should be more configurable.
+	 */
+	if (handler->eap_type != PW_EAP_TLS) {
+		vp = pairfind(handler->request->config_items,
+			      PW_EAP_TLS_REQUIRE_CLIENT_CERT);
+		if (!vp) {
+			client_cert = FALSE;
+		} else {
+			client_cert = vp->lvalue;
+		}
+	}
 
 	/*
 	 *	Every new session is started only from EAP-TLS-START.
@@ -367,7 +384,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	in Opaque.  So that we can use these data structures
 	 *	when we get the response
 	 */
-	ssn = eaptls_new_session(eaptls->ctx);
+	ssn = eaptls_new_session(inst->ctx, client_cert);
 	if (!ssn) {
 		return 0;
 	}
@@ -382,13 +399,13 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 */
 	SSL_set_ex_data(ssn->ssl, 0, (void *)handler->identity);
 
-	ssn->length_flag = eaptls->conf->include_length;
+	ssn->length_flag = inst->conf->include_length;
 
 	/*
 	 *	We set a default fragment size, unless the Framed-MTU
 	 *	tells us it's too big.
 	 */
-	ssn->offset = eaptls->conf->fragment_size;
+	ssn->offset = inst->conf->fragment_size;
 	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU);
 	if (vp && ((vp->lvalue - 4) < ssn->offset)) {
 		ssn->offset = vp->lvalue - 4;
