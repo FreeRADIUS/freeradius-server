@@ -1932,113 +1932,187 @@ static REQUEST *rad_check_list(REQUEST *request)
 	curreq = rl_find(request);
 	if (curreq != NULL) {
 		/*
-		 *  We now check the authentication vectors.
-		 *  If the client has sent us a request with
-		 *  identical code && ID, but different vector,
-		 *  then they MUST have gotten our response, so
-		 *  we can delete the original request, and process
-		 *  the new one.
+		 *	If the request (duplicate or now) is currently
+		 *	being processed, then discard the new request.
+		 */
+		if (curreq->child_pid != NO_SUCH_CHILD_PID) {
+			radlog(L_ERR, "Discarding new request from "
+			       "client %s:%d - ID: %d due to live request %d",
+			       client_name(curreq->packet->src_ipaddr),
+			       curreq->packet->src_port, curreq->packet->id,
+			       curreq->number);
+			request_free(&request);
+			return NULL;
+		}
+
+		/*
+		 *	The current request isn't finished, which
+		 *	means that the NAS sent us a new packet, while
+		 *	we were waiting for a proxy response.
 		 *
-		 *  If the vectors are the same, then it's a duplicate
-		 *  request, and we can send a duplicate reply.
+		 *	In that case, it doesn't matter if the vectors
+		 *	are the same, as deleting the un-finished request
+		 *	would mean that the (eventual) proxy response would
+		 *	be associated with the wrong NAS request.
+		 */
+		if (!curreq->finished) {
+			radlog(L_ERR, "Dropping conflicting packet from "
+			       "client %s:%d - ID: %d due to unfinished request %d",
+			       client_name(request->packet->src_ipaddr),
+			       request->packet->src_port,
+			       request->packet->id,
+			       curreq->number);
+			request_free(&request);
+			return NULL;
+		}
+
+		/*
+		 *	We now check the authentication vectors.  If
+		 *	the client has sent us a request with
+		 *	identical code && ID, but different vector,
+		 *	then they MUST have gotten our response, so
+		 *	we can delete the original request, and
+		 *	process the new one.
+		 *
+		 *	If the vectors are the same, then it's a
+		 *	duplicate request, and we can send a
+		 *	duplicate reply.
 		 */
 		if (memcmp(curreq->packet->vector, request->packet->vector,
 				sizeof(request->packet->vector)) == 0) {
-			/*
-			 *  Maybe we've saved a reply packet.  If so,
-			 *  re-send it.  Otherwise, just complain.
-			 */
-			if ((curreq->reply) && (curreq->reply->code != 0)) {
-				radlog(L_INFO, "Sending duplicate authentication reply"
-						" to client %s:%d - ID: %d", client_name(curreq->packet->src_ipaddr),
-						curreq->packet->src_port, curreq->packet->id);
-
-				rad_send(curreq->reply, curreq->packet, curreq->secret);
-
-				/*
-				 *  There's no reply, but maybe there's
-				 *  an outstanding proxy request.
-				 *
-				 *  If so, then kick the proxy again.
-				 */
-			} else if (curreq->proxy != NULL) {
-				if (proxy_synchronous) {
-					if (!curreq->proxy_reply) {
-						DEBUG2("Sending duplicate proxy request to client %s:%d - ID: %d",
-						       client_name(curreq->proxy->dst_ipaddr), request->packet->src_port,
-						       curreq->proxy->id);
-						
-						curreq->proxy_next_try = request->timestamp + proxy_retry_delay;
-						rad_send(curreq->proxy, curreq->packet, curreq->proxysecret);
-					} else {
-						DEBUG2("Ignoring duplicate authentication packet"
-						       " from client %s:%d - ID: %d, as the proxy reply is currently being processed.",
-						       client_name(request->packet->src_ipaddr),
-						       request->packet->src_port,
-						       request->packet->id);
-					}
-				} else {
-					DEBUG2("Ignoring duplicate authentication packet"
-							" from client %s:%d - ID: %d, due to outstanding proxy request.",
-							client_name(request->packet->src_ipaddr),
-							request->packet->src_port,
-							request->packet->id);
-				}
-			} else {
-				/*
-				 *  This request wasn't proxied.
-				 */
-				radlog(L_ERR, "Dropping duplicate authentication packet"
-						" from client %s:%d - ID: %d", client_name(request->packet->src_ipaddr),
-						request->packet->src_port, request->packet->id);
-			}
+			rad_assert(curreq->reply != NULL);
 
 			/*
-			 *  Delete the duplicate request.
-			 */
-			request_free(&request);
-			return NULL;
-			
-			/*
-			 *  The packet vectors are different, so
-			 *  we can delete the old request from
-			 *  the list.
-			 */
-		} else if (curreq->finished) {
-			if (last_request == curreq) {
-				last_request = rl_next(last_request);
-			}
-
-			/*
-			 *	If we're keeping a delayed reject, and we
-			 *	get a new request, then we send the reject
-			 *	before deleting it.
-			 */
-			if ((curreq->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0) {
-			  curreq->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
-			  rad_send(curreq->reply, curreq->packet,
-				   curreq->secret);
-			}
-
-			rl_delete(curreq);
-
-			/*
-			 *  ??? the client sent us a new request
-			 *  with the same ID, while we were
-			 *  processing the old one!  What should
-			 *  we do?
+			 *	If the packet has been delayed, then
+			 *	silently send a response, and clear the
+			 *	delayed flag.
 			 *
-			 *  Right now, we just drop the new packet..
+			 *	Note that this means if the NAS kicks
+			 *	us while we're delaying a reject, then
+			 *	the reject may be sent sooner than
+			 *	otherwise.
+			 *
+			 *	This COULD be construed as a bug.
+			 *	Maybe what we want to do is to ignore
+			 *	the duplicate packet, and send the
+			 *	reject later.
 			 */
-		} else {
-			radlog(L_ERR, "Dropping conflicting authentication packet"
-					" from client %s:%d - ID: %d",
-					client_name(request->packet->src_ipaddr),
-					request->packet->src_port,
-					request->packet->id);
+			if (curreq->options & RAD_REQUEST_OPTION_DELAYED_REJECT) {
+				curreq->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
+				rad_send(curreq->reply, curreq->packet, curreq->secret);
 				request_free(&request);
 				return NULL;
+			}
+
+			/*
+			 *	Maybe we've saved a reply packet.  If
+			 *	so, re-send it.  Otherwise, just
+			 *	complain.
+			 */
+			if (curreq->reply->code != 0) {
+				DEBUG2("Sending duplicate reply "
+				       "to client %s:%d - ID: %d",
+				       client_name(curreq->packet->src_ipaddr),
+				       curreq->packet->src_port, curreq->packet->id);
+				rad_send(curreq->reply, curreq->packet, curreq->secret);
+				request_free(&request);
+				return NULL;
+			}
+
+			/*
+			 *	At this point, there isn't a live
+			 *	thread handling the old request.  The
+			 *	old request isn't finished, AND
+			 *	there's no reply for it.
+			 *
+			 *	Therefore, we MUST be waiting for a reply
+			 *	from the proxy.
+			 *
+			 *	If not, then we have no clue what to
+			 *	do, so we drop the new request, and
+			 *	hope that the NAS doesn't bug us about
+			 *	it.
+			 */
+			if (!curreq->proxy) {
+				radlog(L_ERR, "Dropping packet from client "
+				       "%s:%d - ID: %d due to confused request %d",
+				       client_name(request->packet->src_ipaddr),
+				       request->packet->src_port,
+				       request->packet->id,
+				       curreq->number);
+				request_free(&request);
+				return NULL;
+			}
+
+			/*
+			 *	If there IS a reply from the proxy,
+			 *	then curreq SHOULD be marked alive, OR
+			 *	there should have been a reply sent to
+			 *	the NAS.  If none of these is true, then
+			 *	we don't know what to do, so we drop the
+			 *	request.
+			 */
+			if (curreq->proxy_reply) {
+				radlog(L_ERR, "Dropping packet from client "
+				       "%s:%d - ID: %d due to confused proxied request %d",
+				       client_name(request->packet->src_ipaddr),
+				       request->packet->src_port,
+				       request->packet->id,
+				       curreq->number);
+				request_free(&request);
+				return NULL;
+			}
+
+			/*
+			 *	We're taking care of sending duplicate
+			 *	proxied packets, so we ignore any duplicate
+			 *	requests from the NAS.
+			 */
+			if (!proxy_synchronous) {
+				DEBUG2("Ignoring duplicate packet from client "
+				       "%s:%d - ID: %d, due to outstanding proxied request %d.",
+				       client_name(request->packet->src_ipaddr),
+				       request->packet->src_port,
+				       request->packet->id,
+				       curreq->number);
+				
+				request_free(&request);
+				return NULL;
+			}
+
+			/*
+			 *	We ARE proxying the request, and we
+			 *	have NOT received a proxy reply yet,
+			 *	and we ARE doing synchronous proxying.
+			 *
+			 *	In that case, go kick the home RADIUS
+			 *	server again.
+			 */
+			DEBUG2("Sending duplicate proxied request to client %s:%d - ID: %d",
+			       client_name(curreq->proxy->dst_ipaddr), request->packet->src_port,
+			       curreq->proxy->id);
+			
+			curreq->proxy_next_try = request->timestamp + proxy_retry_delay;
+			rad_send(curreq->proxy, curreq->packet, curreq->proxysecret);
+			request_free(&request);
+			return NULL;
+		} /* else the vectors were different. */
+
+		/*
+		 *	If we're keeping a delayed reject, and we
+		 *	get a new request, then we discard the reject,
+		 *	in order to not confuse the NAS with an old
+		 *	response to a new request.
+		 */
+		
+		/*
+		 *	Fix up stuff.
+		 */
+		if (last_request == curreq) {
+			last_request = rl_next(last_request);
 		}
+
+		rl_delete(curreq);
 	} /* a similar packet already exists. */
 
 	/*
