@@ -326,9 +326,25 @@ int main(int argc, char **argv)
 			break;
 		}
 	
-		vp = pairfind(req->vps, PW_PASSWORD);
-		if (vp) {
-		  strNcpy(password, (char *)vp->strvalue, (vp->length)+1);
+
+		/*
+		 *	Encrypt the Password attribute.
+		 */
+		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
+		  strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+
+		  rad_pwencode((char *)vp->strvalue,
+			       &(vp->length),
+			       secret, (char *)req->vector);
+		  
+		  /*
+		   *	Not there, encrypt the CHAP-Password attribute.
+		   */
+		} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
+		  strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+		  rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
+		  vp->length = 17;
+
 		} else {
 		  *password = '\0';
 		}
