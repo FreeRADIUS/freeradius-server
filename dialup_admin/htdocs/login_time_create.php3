@@ -65,8 +65,10 @@ if ($add == 1){
 $Mstart_time = $Mstop_time = $Dstart_time = $Dstop_time = '';
 
 
-if ($rulestr != '')
+if ($rulestr != ''){
+	$rulestr = str_replace('"','',$rulestr);
 	$rules1 = preg_split('/[,|]/',$rulestr);
+}
 
 if ($rules1){
 	foreach ($rules1 as $rule){
@@ -146,7 +148,7 @@ foreach ($rules as $rule){
 if ($update == 1 && $val != '')
 	echo <<<EOM
 <script language="JavaScript1.1" type="text/javascript">
-window.opener.document.edituser.$val.value = "$rulestr";
+window.opener.document.edituser.$val.value = "\"$rulestr\"";
 window.close();
 </script>
 EOM;
