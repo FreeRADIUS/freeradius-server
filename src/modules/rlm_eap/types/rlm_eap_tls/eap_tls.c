@@ -214,43 +214,13 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 	tls_session_t *tls_session;
 
 	tls_session = (tls_session_t *)handler->opaque;
-	if ((tls_session == NULL) ||
-	    (tls_session->info.origin == 0)) {
+
+	if (tls_session == NULL){
 		radlog(L_ERR, "rlm_eap_tls: Unexpected ACK received");
 		return EAPTLS_FAIL;
 	}
 
-	switch (tls_session->info.content_type) {
-	case alert:
-		DEBUG2("  rlm_eap_tls: ack alert");
-		eaptls_fail(handler->eap_ds, tls_session->peap_flag);
-		return EAPTLS_FAIL;
-
-	case handshake:
-		if (tls_session->info.handshake_type == finished) {
-			DEBUG2("  rlm_eap_tls: ack handshake is finished");
-			return EAPTLS_SUCCESS;
-		} else if (tls_session->fragment > 0) {
-			DEBUG2("  rlm_eap_tls: ack handshake fragment handler");
-			/* Fragmentation handler, send next fragment */
-			return EAPTLS_REQUEST;
-		}
-
-		/*
-		 *	We're done sending fragments.
-		 */
-		return EAPTLS_SUCCESS;
-
-		/*
-		 *	For the rest of the conditions, switch over
-		 *	to the default section below.
-		 */
-	default:
-		DEBUG2("  rlm_eap_tls: ack default");
-		radlog(L_ERR, "rlm_eap_tls: Invalid ACK received: %d",
-		       tls_session->info.content_type);
-		return EAPTLS_FAIL;
-	}
+	return EAPTLS_REQUEST;
 }
 
 /*
