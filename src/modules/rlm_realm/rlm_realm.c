@@ -78,7 +78,17 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	 */
 	if ((request->proxy != NULL) ||
 	    (request->username == NULL)) {
-		DEBUG2("    rlm_realm: Request was proxied, or no user name.  Ignoring.");
+		DEBUG2("    rlm_realm: Proxy reply, or no user name.  Ignoring.");
+		return NULL;
+	}
+
+	/*
+	 *      Check for 'Realm' attribute.  If it exists, then we've proxied
+	 *      it already ( via another rlm_realm instance ) and should return.
+	 */
+
+	if ( (vp = pairfind(request->packet->vps, PW_REALM)) != NULL ) {
+	        DEBUG2("    rlm_realm: Request already proxied.  Ignoring.");
 		return NULL;
 	}
 
