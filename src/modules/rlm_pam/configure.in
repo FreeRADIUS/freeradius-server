@@ -7,7 +7,7 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_CHECK_LIB(dl, dl_open,
+	AC_CHECK_LIB(dl, dlopen,
 		[ pam_ldflags="-ldl" ]
 	)
 
