@@ -1,6 +1,6 @@
 Id: postgresql.conf,v 1.8.2.11 2003/07/15 11:15:43 pnixon Exp $
 
-	VOIP ACCOUNTING
+	VOIP ACCOUNTING WITH CISCO VSA
 
 INTRODUCTION
 
@@ -26,7 +26,15 @@ attributes "h323-connect-time" and "h323-disconnect-time") and
 MySQL limited date handling does not recognise full Cisco date
 stamps time as a valid "datetime". (While Oracle and possibly some
 other high end DBs should support Cisco time format they have not
-been tested at this time)
+been tested at this time). MySQL could possibly be supported in
+future but it would require extra pre-processing by a FreeRADIUS
+module to do so and there is no plan currently to impliment this,
+although working code that impliments this would be happily accepted.
+
+This reliance on VSA records REQUIRES that all cisco devices be
+configured to send VSA attributes. This system is not known to work
+with any non-cisco equipment, although it is theoretically possible
+for non-cisco equipment to impliment Cisco VSA attributes...
 
 This is required as the default FreeRadius SQL configuration (where
 RADIUS "Start" records are INSERTed into the database, and then
@@ -36,7 +44,7 @@ start and stop times are not contained in "standard" radius
 attributes (They are added/updated by FreeRadius when the record is
 logged in the default configuration.)
 
-This requires all equipment be kept is timesync with the use on NTP
+This REQUIRES all equipment be kept is timesync with the use on NTP
 otherwise similtaneous records from different gateways may have
 differing timestamps.
 
@@ -46,16 +54,21 @@ CONFIGURATION
 * Test that FreeRadius is recieving accounting records from your
   gateway. Do not proceed until you are certain this is working.
 
+* Configure all the NASes to send VSA attributes. On older Ciscos
+  use one of the following commands (depending if you are using 
+  SIP or H323):
+	"gw-accounting h323 vsa"
+	"gw-accounting sip vsa"
+  On Ciscos with newer versions of IOS need both of the following commands:
+	"gw-accounting aaa"
+	"radius-server vsa send"
+
+* In /etc/raddb/radiusd.conf set "with_cisco_vsa_hack = yes"
 
 * Create a Database to hold your billing records. ie:
 	"createdb radius"
 * Add the plperl language to the database. ie:
-	"createlang plperl radius"
-  Note: On some versions of SuSE Postgresql cannot find the correct
-	perl libraries so you have to symlink them. ie:
-	"ln -s \
-	 /usr/lib/perl5/5.8.0/i586-linux-thread-multi/CORE/libperl.so \
-	 /usr/lib/libperl.so"
+	"createlang plpgsql radius"
 
 * Import the SQL schema to your database. ie:
 	"psql radius < h323_db_postgresql.sql"
@@ -66,9 +79,8 @@ CONFIGURATION
 * In /etc/raddb/radiusd.conf add "$INCLUDE  ${confdir}/pgsql-voip.conf"
   You can find the correct section by searching for "sql.conf"
 
-* In /etc/raddb/radiusd.conf set "with_cisco_vsa_hack = yes"
 
-* In /etc/raddb/radiusd.conf add "sql" to the "accounting {" section
+* In /etc/raddb/radiusd.conf add "pgsql-voip" to the "accounting {" section
   just after the line "detail"
 
 * (re)Start radiusd
@@ -76,8 +88,7 @@ CONFIGURATION
 
 If you wish to do RADIUS SQL Authentication using the same database, you
 must use src/modules/rlm_sql/drivers/rlm_sql_postgresql/db_postgresql.sql
-as well as this schema and also modify your SQL queries to suit. This is
-not recomended, but is possible. It is left as an excercise for the reader.
+as well as this schema. This is left as an excercise for the reader.
 
    -- Peter Nixon [ codemonkey@peternixon.net ]
 
