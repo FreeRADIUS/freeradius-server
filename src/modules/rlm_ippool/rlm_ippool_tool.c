@@ -116,7 +116,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 	{
 		printf("rlm_ippool_tool: Unable to convert IP address '%s'\n", ipaddress);
 		return;
-	} //else printf("rlm_ippool_tool: Made '%s' into %08x\n", ipaddress, ipaddr.s_addr); 
+	}
 	
     if (sessiondb==NULL)
 	{
