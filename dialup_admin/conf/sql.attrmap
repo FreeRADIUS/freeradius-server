@@ -45,4 +45,4 @@ replyItem	Port-Limit			Port-Limit
 replyItem	Login-LAT-Port			Login-LAT-Port
 replyitem	Reply-Message			Reply-Message
 replyItem       Dialup-Lock-Msg			Reply-Message
-replyItem	User-Password			Password
+replyItem	User-Password			User-Password

@@ -19,6 +19,7 @@ Ver 1.56:
 * If we are editing a group show a comment that in the radiusd sql module the group tables are evaluated
   after the user tables. As a result user values should in general overwrite default values.
 * Add support for the default_user_profile of the sql module in lib/sql/defaults.php3
+* In sql.attrmap User-Password should map to User-Password, not Password
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
