@@ -787,6 +787,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	int		attr;
 	const char	*p;
 	VALUE_PAIR	*vp;
+	DICT_ATTR	*da;
 
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
@@ -833,27 +834,82 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 
 	/*
 	 *	We've now parsed the attribute properly, and verified
-	 *	it to be of type 'octets'.  Let's create it.
+	 *	it to have value 'octets'.  Let's create it.
 	 */
 	if ((vp = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL) {
 		librad_log("out of memory");
 		return NULL;
 	}
 	memset(vp, 0, sizeof(VALUE_PAIR));
-
-	vp->attribute = attr;
 	vp->type = PW_TYPE_OCTETS;
-	vp->operator = (operator == 0) ? T_OP_EQ : operator;
-	strcpy(vp->name, attribute);
-	vp->next = NULL;
 
 	/*
-	 *	It may not be valid hex characters.
+	 *	It may not be valid hex characters.  If not, die.
 	 */
 	if (pairparsevalue(vp, value) == NULL) {
 		pairfree(&vp);
 		return NULL;
 	}
+
+	/*
+	 *	Dictionary type over-rides what the caller says.
+	 *	This "converts" the parsed value into the appropriate
+	 *	type.
+	 *
+	 *	Also, normalize the name of the attribute...
+	 *
+	 *	Much of this code is copied from paircreate()
+	 */
+	if ((da = dict_attrbyvalue(attr)) != NULL) {
+		strcpy(vp->name, da->name);
+		vp->type = da->type;
+		vp->flags = da->flags;
+
+		/*
+		 *	Sanity check the type for length.  We don't
+		 *	want to look at attributes which are of the
+		 *	wrong length.
+		 */
+		switch (vp->type) {
+		case PW_TYPE_DATE:
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_IPADDR: /* always kept in network byte order */
+			if (vp->length != 4) {
+			length_error:
+				pairfree(&vp);
+				librad_log("Attribute has invalid length");
+				return NULL;
+			}
+			memcpy(&vp->lvalue, vp->strvalue, sizeof(vp->lvalue));
+			break;
+
+		case PW_TYPE_IFID:
+			if (vp->length != 8) goto length_error;
+			break;
+			
+		case PW_TYPE_IPV6ADDR:
+			if (vp->length != 16) goto length_error;
+			break;
+			
+#ifdef ASCEND_BINARY
+		case PW_TYPE_ABINARY:
+			if (vp->length != 32) goto length_error;
+			break;
+#endif		  
+		default:	/* string, octets, etc. */
+			break;
+		}
+
+	} else if (VENDOR(attr) == 0) {
+		sprintf(vp->name, "Attr-%u", attr);
+	} else {
+		sprintf(vp->name, "Vendor-%u-Attr-%u",
+			VENDOR(attr), attr & 0xffff);
+	}
+
+	vp->attribute = attr;
+	vp->operator = (operator == 0) ? T_OP_EQ : operator;
+	vp->next = NULL;
 
 	return vp;
 }
