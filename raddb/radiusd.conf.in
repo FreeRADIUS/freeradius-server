@@ -859,6 +859,12 @@ modules {
 		# require_strong always requires 128 bit key
 		# encryption
 		#	require_strong = yes
+
+		# Windows sends us a username in the form of
+		# DOMAIN\user, but sends the challenge response
+		# based on only the user portion.  This hack
+		# corrects for that incorrect behavior.
+		#	with_ntdomain_hack = no
 	}
 
 	# Lightweight Directory Access Protocol (LDAP)

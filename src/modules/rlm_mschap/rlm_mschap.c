@@ -299,7 +299,8 @@ static void auth_response(const char *username, const char *nt_password,
 struct mschap_instance {
 	int use_mppe;
 	int require_encryption;
-	int require_strong;
+        int require_strong;
+        int with_ntdomain_hack;
 	char *passwd_file;
 	char *auth_type;
 };
@@ -314,6 +315,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(struct mschap_instance,require_encryption), NULL, "no" },
 	{ "require_strong",    PW_TYPE_BOOLEAN,
 	  offsetof(struct mschap_instance,require_strong), NULL, "no" },
+	{ "with_ntdomain_hack",     PW_TYPE_BOOLEAN,
+	  offsetof(struct mschap_instance,with_ntdomain_hack), NULL, "no" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
 	  offsetof(struct mschap_instance, passwd_file), NULL,  NULL },
 	{ "authtype",   PW_TYPE_STRING_PTR,
@@ -608,6 +611,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	uint8_t msch2resp[42];
         uint8_t mppe_sendkey[34];
         uint8_t mppe_recvkey[34];
+	char *username_string;
 	int chap = 0;
 	
 	/*
@@ -839,6 +843,21 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog(L_AUTH, "rlm_mschap: We require a User-Name for MS-CHAPv2");
 			return RLM_MODULE_INVALID;
 		}
+
+
+		/*
+		 *with_ntdomain_hack moved here
+		 */
+		if((username_string = strchr(username->strvalue, '\\')) != NULL) {
+		        if(inst->with_ntdomain_hack) {
+			        username_string++;
+			} else {
+			        DEBUG2("  rlm_mschap: NT Domain delimeter found, should we have enabled with_ntdomain_hack?");
+				username_string = username->strvalue;
+			}
+		} else {
+		        username_string = username->strvalue;
+		}
 	    
 		/*
 		 *	We are doing MS-CHAPv2
@@ -851,7 +870,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		DEBUG2("  rlm_mschap: doing MS-CHAPv2 with NT-Password");
 		mschap2(response->strvalue + 2, challenge->strvalue,
-			username->strvalue, nt_password->strvalue,
+			username_string, nt_password->strvalue,
 			calculated);
 		if (memcmp(response->strvalue + 26, calculated, 24) != 0) {
 			DEBUG2("  rlm_mschap: FAILED: MS-CHAP2-Response is incorrect");
@@ -860,7 +879,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			return RLM_MODULE_REJECT;
 		}
 
-		auth_response(username->strvalue,
+		auth_response(username_string,
 			      nt_password->strvalue, calculated,
 			      response->strvalue + 2,
 			      challenge->strvalue,
