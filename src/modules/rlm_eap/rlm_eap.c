@@ -574,6 +574,11 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		if (strncasecmp(vp->strvalue, "leap:session-key=", 17) == 0) {
 			break;
 		}
+
+		/*
+		 *	Not this AV-pair.  Go to the next one.
+		 */
+		vp = vp->next;
 	}
 
 	/*
