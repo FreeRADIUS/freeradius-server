@@ -1,7 +1,7 @@
 #
 #	This file contains security and configuration information
 #	for each user.  The first field is the user's name and
-#	can be up to 8 characters in length.  This is followed (on
+#	can be up to 253 characters in length.  This is followed (on
 #	the same line) with the list of authentication requirements
 #	for that user.  This can include password, comm server name,
 #	comm server port number, protocol type (perhaps set by the "hints"
@@ -21,7 +21,7 @@
 #	file, the DEFAULT entries _have_ to be at the end of this file and
 #	you can't have multiple entries for one username.
 #
-#	You don't need to specify a password if you set Auth-Type = System
+#	You don't need to specify a password if you set Auth-Type := System
 #	on the list of authentication requirements. The RADIUS server
 #	will then check the system password file.
 #
@@ -47,6 +47,13 @@
 #	Framed-Filter-Id = "std.ppp",
 #	Framed-MTU = 1500,
 #	Framed-Compression = Van-Jacobsen-TCP-IP
+
+#
+# This is an entry for a user with a space in their name.
+# Note the double quotes surrounding the name.
+#
+#"John Doe"	Password == "hello", Auth-Type := Local
+#		Reply-Message = "Hello, John."
 
 #
 # Dial user back and telnet to the default host for that port
@@ -78,6 +85,21 @@
 #swilson	Service-Type == Framed-User, Huntgroup-Name == "alphen"
 #		Framed-IP-Address = 192.168.1.65,
 #		Fall-Through = Yes
+
+#
+# Deny access for a specific user.  Note that this entry MUST
+# be before any other 'Auth-Type' attribute which results in the user
+# being authenticated.
+#
+#lameuser	Auth-Type := Reject
+#		Reply-Message = "Your account has been disabled."
+
+#
+# Deny access for a group of users.
+#
+#DEFAULT	Group == "disabled", Auth-Type := Reject
+#		Reply-Message = "Your account has been disabled."
+#
 
 #
 # The rest of this file contains the several DEFAULT entries.
