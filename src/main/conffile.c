@@ -76,6 +76,8 @@ struct conf_part {
 	char *name2;
 	struct conf_item *children;
 	rbtree_t	*pair_tree; /* and a partridge.. */
+	rbtree_t	*section_tree; /* no jokes here */
+	rbtree_t	*name2_tree; /* for sections of the same name2 */
 };
 
 /*
@@ -161,6 +163,36 @@ static int pair_cmp(const void *a, const void *b)
 
 
 /*
+ *	rbtree callback function
+ */
+static int section_cmp(const void *a, const void *b)
+{
+	const CONF_SECTION *one = a;
+	const CONF_SECTION *two = b;
+
+	return strcmp(one->name1, two->name1);
+}
+
+
+/*
+ *	rbtree callback function
+ */
+static int name2_cmp(const void *a, const void *b)
+{
+	const CONF_SECTION *one = a;
+	const CONF_SECTION *two = b;
+
+	rad_assert(strcmp(one->name1, two->name1) == 0);
+
+	if (!one->name2 && !two->name2) return 0;
+	if (!one->name2) return -1;
+	if (!two->name2) return +1;
+
+	return strcmp(one->name2, two->name2);
+}
+
+
+/*
  *	Free a CONF_SECTION
  */
 void cf_section_free(CONF_SECTION **cs)
@@ -186,6 +218,10 @@ void cf_section_free(CONF_SECTION **cs)
 		free((*cs)->name2);
 	if ((*cs)->pair_tree)
 		rbtree_free((*cs)->pair_tree);
+	if ((*cs)->section_tree)
+		rbtree_free((*cs)->section_tree);
+	if ((*cs)->name2_tree)
+		rbtree_free((*cs)->name2_tree);
 
 	/*
 	 * And free the section
@@ -233,6 +269,10 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 		return NULL;
 	}
 
+	/*
+	 *	Don't create the section tree here, it may not
+	 *	be needed.
+	 */
 	return cs;
 }
 
@@ -257,7 +297,42 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 	 */
 	if (ci_new->type == CONF_ITEM_PAIR) {
 		rbtree_insert(cs->pair_tree, ci_new);
-	}
+
+	} else if (ci_new->type == CONF_ITEM_SECTION) {
+		CONF_SECTION *cs_new = cf_itemtosection(ci_new);
+
+		if (!cs->section_tree) {
+			cs->section_tree = rbtree_create(section_cmp, NULL, 0);
+			/* ignore any errors */
+		}
+
+		if (cs->section_tree) {
+			rbtree_insert(cs->section_tree, cs_new);
+		}
+
+		/*
+		 *	Two names: find the named instance.
+		 */
+		if (cs_new->name2) {
+			CONF_SECTION *old_cs;
+
+			/*
+			 *	Find the FIRST CONF_SECTION having the
+			 *	given name1, and create a new tree
+			 *	under it.
+			 */
+			old_cs = rbtree_finddata(cs->section_tree, cs_new);
+			if (!old_cs) return; /* this is a bad error! */
+
+			if (!old_cs->name2_tree) {
+				old_cs->name2_tree = rbtree_create(name2_cmp,
+								   NULL, 0);
+			}
+			if (old_cs->name2_tree) {
+				rbtree_insert(old_cs->name2_tree, cs_new);
+			}
+		} /* had a name2 */
+	} /* was a section */
 }
 
 /*
@@ -1064,11 +1139,22 @@ CONF_SECTION *cf_section_find(const char *name)
  * Find a sub-section in a section
  */
 
-CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
+CONF_SECTION *cf_section_sub_find(CONF_SECTION *cs, const char *name)
 {
 	CONF_ITEM *ci;
 
-	for (ci = section->children; ci; ci = ci->next) {
+	/*
+	 *	Do the fast lookup if possible.
+	 */
+	if (name && cs->section_tree) {
+		CONF_SECTION mycs;
+
+		mycs.name1 = name;
+		mycs.name2 = NULL;
+		return rbtree_finddata(cs->section_tree, &mycs);
+	}
+
+	for (ci = cs->children; ci; ci = ci->next) {
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
 		if (strcmp(cf_itemtosection(ci)->name1, name) == 0)
@@ -1083,14 +1169,31 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
 /*
  * Find a CONF_SECTION with both names.
  */
-CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION *section,
+CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION *cs,
 					const char *name1, const char *name2)
 {
 	CONF_ITEM    *ci;
 
-	if (!name2) return cf_section_sub_find(section, name1);
+	if (!name2) return cf_section_sub_find(cs, name1);
 
-	for (ci = section->children; ci; ci = ci->next) {
+	if (!cs) cs = mainconfig.config;
+
+	if (cs->section_tree) {
+		CONF_SECTION mycs, *master_cs;
+		
+		mycs.name1 = name1;
+		mycs.name2 = name2;
+		
+		master_cs = rbtree_finddata(cs->section_tree, &mycs);
+		if (master_cs) {
+			return rbtree_finddata(master_cs->name2_tree, &mycs);
+		}
+	}
+
+	/*
+	 *	Else do it the old-fashioned way.
+	 */
+	for (ci = cs->children; ci; ci = ci->next) {
 		CONF_SECTION *cs;
 
 		if (ci->type != CONF_ITEM_SECTION)
