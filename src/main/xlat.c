@@ -229,8 +229,6 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			     int *open, REQUEST *request,
 			     RADIUS_ESCAPE_STRING func)
 {
-	DICT_ATTR *tmpda;
-	VALUE_PAIR *tmppair;
 	char attrname[256];
 	const char *p;
 	char *q, *pa;
@@ -351,12 +349,14 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		 */
 	} else if (decode_attr_packet(attrname, &q, freespace, request->packet, func)) {
 		found = 1;
-	} else {
+
+	} else if (dict_attrbyname(attrname) == NULL) {
 		/*
 		 *	No attribute by that name, return an error.
 		 */
-		DEBUG2("WARNING: Attempt to use unknown xlat function or attribute in string %%{%s}", attrname);
-	}
+		DEBUG2("WARNING: Attempt to use unknown xlat function, or non-existent attribute in string %%{%s}", attrname);
+
+	} /* else the attribute is known, but not in the request */
 
 	/*
 	 * Skip to last '}' if attr is found
