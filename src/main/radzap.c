@@ -32,6 +32,8 @@
 #include	<fcntl.h>
 #include	<netdb.h>
 #include	<limits.h>
+#include	<sys/types.h>
+#include	<sys/socket.h>
 
 #if HAVE_NETINET_IN_H
 #  include      <netinet/in.h>
