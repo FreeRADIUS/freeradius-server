@@ -11,6 +11,7 @@ dynamic:
 
 clean:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@rm -f lib/rlm_*
 
 install:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
