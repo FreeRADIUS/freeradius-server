@@ -154,6 +154,7 @@
 #define PW_DIGEST_CNONCE		1070
 #define PW_DIGEST_NONCE_COUNT		1071
 #define PW_DIGEST_USER_NAME		1072
+#define PW_POOL_NAME			1073
 
 /*
  *	Integer Translations

@@ -190,6 +190,7 @@ ATTRIBUTE	Digest-Body-Digest	1069	string
 ATTRIBUTE	Digest-CNonce		1070	string
 ATTRIBUTE	Digest-Nonce-Count	1071	string
 ATTRIBUTE	Digest-User-Name	1072	string
+ATTRIBUTE	Pool-Name		1073	string
 
 #
 #	Non-Protocol Attributes

@@ -19,6 +19,11 @@
  *
  * Copyright 2001  The FreeRADIUS server project
  * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
+ * 
+ * March 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * Initial release
+ * April 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * Add support for the Pool-Name attribute
  */
 
 #include "config.h"
@@ -68,6 +73,7 @@ static const char rcsid[] = "$Id$";
 typedef struct rlm_ippool_t {
 	char *session_db;
 	char *ip_index;
+	char *name;
 	uint32_t range_start;
 	uint32_t range_stop;
 	uint32_t netmask;
@@ -129,6 +135,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	datum data_datum;
 	int i,j;
 	char *cli = "0";
+	char *pool_name = NULL;
 	
 	/*
 	 *	Set up a storage area for instance data
@@ -239,6 +246,12 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	else
 		free(key_datum.dptr);
+
+	/* Add the ip pool name */
+	data->name = NULL;
+	pool_name = cf_section_name2(conf);
+	if (pool_name != NULL)
+		data->name = strdup(pool_name);
 
 	*instance = data;
 	
@@ -375,6 +388,14 @@ static int ippool_authorize(void *instance, REQUEST *request)
 	/* quiet the compiler */
 	instance = instance;
 	request = request;
+
+	/* Check if Pool-Name attribute exists. If it exists check our name and
+	 * run only if they match
+	 */
+	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL){
+		if (data->name == NULL || strcmp(data->name,vp->strvalue))
+			return RLM_MODULE_NOOP;
+	}
 
 	/*
 	 * Get the nas ip address
