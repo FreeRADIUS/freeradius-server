@@ -7,6 +7,7 @@ Ver 1.61:
 * Fix a few bugs in log_badlogins
 * Fix a parse error in failed_logins.php3
 * Fix a bug in lib/defaults.php3 which did not allow the default.vals file to be used correctly
+* Include password.php3 in lib/ldap/password_check.php3
 Ver 1.60:
 * Use require_once when including lib/functions.php3 in lib/sql
 * In the buttons toolbar Edit User should not be clickable.
