@@ -589,8 +589,8 @@ radius_snmp_init (void)
    */
   memset(&rad_snmp, 0, sizeof(rad_snmp));
 
-  rad_snmp.auth.ident = "FreeRADIUS v0.1.0";
-  rad_snmp.acct.ident = "FreeRADIUS v0.1.0";
+  rad_snmp.auth.ident = "FreeRADIUS v0.1.0 " HOSTINFO;
+  rad_snmp.acct.ident = "FreeRADIUS v0.1.0 " HOSTINFO;
 
   rad_snmp.smux_event = SMUX_NONE;
   rad_snmp.smux_password = NULL;
