@@ -41,6 +41,18 @@ static const char rcsid[] = "$Id$";
 #	include <syslog.h>
 #endif
 
+ /*
+ * Logging facility names
+ */
+static LRAD_NAME_NUMBER levels[] = {
+	{ ": Debug: ",          L_DBG   },
+	{ ": Auth: ",           L_AUTH  },
+	{ ": Proxy: ",          L_PROXY },
+	{ ": Info: ",           L_INFO  },
+	{ ": Error: ",          L_ERR   },
+	{ NULL, 0 }
+};
+
 /*
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
@@ -90,29 +102,14 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	} else
 #endif
 	{
-		const char *s = ": ";
+		const char *s;
 		time_t timeval;
 
 		timeval = time(NULL);
 		ctime_r(&timeval, buffer);
 
-		switch(lvl & ~L_CONS) {
-			case L_DBG:
-				s = ": Debug: ";
-				break;
-			case L_AUTH:
-				s = ": Auth: ";
-				break;
-			case L_PROXY:
-				s = ": Proxy: ";
-				break;
-			case L_INFO:
-				s = ": Info: ";
-				break;
-			case L_ERR:
-				s = ": Error: ";
-				break;
-		}
+		s = lrad_int2str(levels, (lvl & ~L_CONS), ": ");
+
 		strcat(buffer, s);
 		len = strlen(buffer);
 	}
