@@ -1,6 +1,6 @@
 #
-#	Please read the documentation file ../doc/README.users
-#	for more information.
+#	Please read the documentation file ../doc/processing_users_file,
+#	or 'man users' (after installing the server) for more information.
 #
 #	This file contains security and configuration information
 #	for each user.  The first field is the user's name and
