@@ -107,6 +107,12 @@ static struct xlat_cmp *find_xlat_func(const char *module)
 			break;
 	}
 
+	if (c == NULL) {
+
+		DEBUG2("WARNING: Attempt to use unknown xlat function in string %%{%s}",
+		       module);
+	}
+
 	return c;
 }
 
