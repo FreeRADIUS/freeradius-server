@@ -279,7 +279,8 @@ x99_token_authorize(void *instance, REQUEST *request)
     user_found = 1;
     if ((rc = x99_get_user_info(inst->pwdfile, request->username->strvalue,
 				&user_info)) == -2) {
-	radlog(L_ERR, "rlm_x99_token: autz: error reading user info");
+	radlog(L_ERR, "rlm_x99_token: autz: error reading user [%s] info",
+	       request->username->strvalue);
 	return RLM_MODULE_FAIL;
     }
     if (rc == -1) {
@@ -314,8 +315,6 @@ x99_token_authorize(void *instance, REQUEST *request)
 	     * the authenticate code to ignore State.  We don't need
 	     * to set a value, /existence/ of the vp is the signal.
 	     */
-	    VALUE_PAIR *vp;
-
 	    if ((vp = paircreate(PW_X99_FAST, PW_TYPE_INTEGER)) == NULL) {
 		radlog(L_ERR|L_CONS, "rlm_x99_token: autz: no memory");
 		return RLM_MODULE_FAIL;
@@ -478,8 +477,8 @@ good_state:
 
 	} else {
 	    /* This shouldn't happen, authorize code should handle it. */
-	    radlog(L_ERR, "rlm_x99_token: auth: bad state for [%s]: "
-			  "missing", username);
+	    radlog(L_ERR|L_CONS, "rlm_x99_token: auth: bad state for [%s]: "
+				 "missing", username);
 	    return RLM_MODULE_FAIL;
 	}
     } /* if (!fast_sync) */
