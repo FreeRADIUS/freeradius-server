@@ -32,6 +32,11 @@
 
 static int rlm_sql_init(int argc, char **argv) {
 
+	if ((sql = malloc(sizeof(SQL))) == NULL) {
+		log(L_ERR|L_CONS, "no memory");
+		exit(1);
+	}
+
 	sql_init(0);
            
        return 0;

@@ -563,10 +563,8 @@ int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row, int mode) {
 	VALUE_PAIR	*pair, *check;
 
 
-	if((attr = dict_attrbyvalue((int)row[2])) == (DICT_ATTR *)NULL) {
-#if 1 /* Be quiet. */
+	if((attr = dict_attrbyname(row[2])) == (DICT_ATTR *)NULL) {
 		log(L_ERR|L_CONS, "unknown attribute %s", row[2]);
-#endif	
 		return(-1);
 	}                              
 
@@ -575,7 +573,7 @@ int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row, int mode) {
 	if ((check = pairfind(*first_pair, attr->attr)) != NULL && mode == PW_VP_GROUPDATA)
 		return 0;
 
-        pair = pairmake(row[2], row[3], T_OP_EQ);
+        pair = pairmake(row[2], row[3], T_OP_CMP_EQ);
         pairadd(first_pair, pair);
  
         return 0;
@@ -625,7 +623,7 @@ int sql_getvpdata(SQLSOCK *socket, char *table, VALUE_PAIR **vp, char *user, int
 	while ((row = sql_fetch_row(socket))) {
 
 		if (sql_userparse(vp, row, mode) != 0) {
-	 		log(L_ERR|L_CONS, "Error getting data from SQL");
+	 		log(L_ERR|L_CONS, "Error getting data from database");
 			sql_finish_select_query(socket);
 			return -1;
 		}
