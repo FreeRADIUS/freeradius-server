@@ -29,7 +29,7 @@ close CONF;
 die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
 die "Could not find sql binary. Please make sure that the \$sqlcmd variable points to the right location\n" if (! -x $sqlcmd);
 
-$sql_password = ($sql_password == '') ? '' : "-p$sql_password";
+$sql_password = ($sql_password eq '') ? '' : "-p$sql_password";
 $sql_password =~ s/(\W)/\\$1/g;
 
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;

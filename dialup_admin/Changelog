@@ -36,6 +36,7 @@ Ver 1.75:
 * In the show groups page, note that we only show groups with members
 * In lib/sql/group_info.php3 only unset variables if we need to. In lib/sql/defaults.php3 don't run for groups
   only for users
+* Fix Bug #167
 Ver 1.72:
 * Move the xlat function to a separate file in lib/xlat.php3
 * Add a lib/sql/nas_list.php3 to also get the nas list from sql (naslist.conf still works)
