@@ -1,7 +1,8 @@
 #! /bin/sh
-# Copyright (c) 2001 SuSE GmbH Nuernberg, Germany.
+# Copyright (c) 2001       SuSE GmbH Nuernberg, Germany.
+#               2002, 2003 SuSE Linux AG, Nuernberg, Germany.
 #
-# Author: Wolfgang Rosenauer <feedback@suse.de>, 2000, 2001
+# Author: Wolfgang Rosenauer <feedback@suse.de>, 2000-2003
 #
 # /etc/init.d/radiusd
 #
@@ -10,35 +11,36 @@
 # /usr/bin/rcradiusd
 #
 ### BEGIN INIT INFO
-# Provides:       radiusd
-# Required-Start: $network $syslog $remotefs
+# Provides:          radiusd
+# Required-Start:    $network $syslog $remotefs
 # Required-Stop:
-# Default-Start:  3 5
-# Default-Stop:   0 1 2 6
-# Description:    RADIUS-Server
+# Default-Start:     3 5
+# Default-Stop:      0 1 2 6
+# Short-Description: RADIUS-Server
+# Description:       Remote Authentication Dialin User Server
 ### END INIT INFO
 
+RADIUSD_BIN=/usr/sbin/radiusd
+test -x $RADIUSD_BIN || exit 5
 
 . /etc/rc.status
-
-test -x /usr/sbin/radiusd || exit 5
 
 rc_reset
 case "$1" in
     start)
-	echo -n "Starting service radiusd"
-	startproc /usr/sbin/radiusd 
+	echo -n "Starting RADIUS daemon "
+	startproc $RADIUSD_BIN >/dev/null
 	rc_status -v	
 	;;
     stop)
-	echo -n "Shutting down service radiusd"
-	killproc -TERM /usr/sbin/radiusd 
+	echo -n "Shutting down RADIUS daemon "
+	killproc -TERM $RADIUSD_BIN 
 	rc_status -v	
 	;;
     try-restart)
 	## If first returns OK call the second, if first or
 	## second command fails, set echo return value.
-	$0 stop  &&  $0 start
+	$0 status >/dev/null &&  $0 restart
 	rc_status
 	;;
     restart)
@@ -53,21 +55,21 @@ case "$1" in
         ## do this on signal 1 (SIGHUP).
         ## If it does not support it, restart.
 
-	echo -n "Reload service radiusd"
-        killproc -HUP /usr/sbin/radiusd
+	echo -n "Reload RADIUS daemon "
+        killproc -HUP $RADIUSD_BIN
         rc_status -v
 	;;
     reload)
         ## Like force-reload, but if daemon does not support
         ## signalling, do nothing (!)
 
-	echo -n "Reload service radiusd"
-	killproc -HUP /usr/sbin/radiusd 
+	echo -n "Reload RADIUS daemon "
+	killproc -HUP $RADIUSD_BIN 
 	rc_status -v
 	;;
     status)
-	echo -n "Checking for service radiusd: "
-	checkproc /usr/sbin/radiusd
+	echo -n "Checking for service radiusd "
+	checkproc $RADIUSD_BIN
 	rc_status -v
 	;;
     *)
