@@ -16,7 +16,9 @@
 typedef int (*RLM_AUTHORIZE_FUNCP)(REQUEST *request, 
 				   VALUE_PAIR **check_items,
 				   VALUE_PAIR **reply_items);
-typedef int (*RLM_AUTHENTICATE_FUNCP)(REQUEST *request);
+typedef int (*RLM_AUTHENTICATE_FUNCP)(REQUEST *request,
+				   VALUE_PAIR **check_items,
+				   VALUE_PAIR **reply_items);
 typedef int (*RLM_POST_AUTHENTICATE_FUNCP)(REQUEST *request);
 typedef int (*RLM_PRE_ACCOUNTING_FUNCP)(REQUEST *request);
 typedef int (*RLM_ACCOUNTING_FUNCP)(REQUEST *request);
@@ -35,7 +37,8 @@ typedef struct module_t {
 	int	(*instantiate)(CONF_SECTION *mod_cs, void **instance);
 	int	(*authorize)(void *instance, REQUEST *request, 
 			VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
-	int	(*authenticate)(void *instance, REQUEST *request);
+	int	(*authenticate)(void *instance, REQUEST *request, 
+			VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
 	int	(*preaccounting)(void *instance, REQUEST *request);
 	int	(*accounting)(void *instance, REQUEST *request);
 	int	(*detach)(void *instance);
@@ -52,7 +55,8 @@ enum {
 int setup_modules(void);
 int module_authorize(REQUEST *request, 
 	VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
-int module_authenticate(int type, REQUEST *request);
+int module_authenticate(int type, REQUEST *request, 
+   VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
 int module_preacct(REQUEST *request);
 int module_accounting(REQUEST *request);
 
