@@ -146,6 +146,11 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		encoded_size += roundedlen;
 	}
 
+	if (ep->code != PW_EAP_SUCCESS)
+		ep->code = eapcode;
+	ep->id = (id & 0xff);
+	ep->type.type = PW_EAP_SIM;
+
 	/*
 	 * if no attributes were found, do very little.
 	 *
@@ -153,14 +158,12 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	if(encoded_size == 0)
 	{
 	        encodedmsg = malloc(3);
+		/* FIX: could be NULL */
 
 		encodedmsg[0]=subtype;
 		encodedmsg[1]=0;
 		encodedmsg[2]=0;
 
- 	        ep->code = eapcode;
-		ep->id   = (id & 0xff);
-		ep->type.type = PW_EAP_SIM;
 		ep->type.length = 3;
 		ep->type.data = encodedmsg;
 
