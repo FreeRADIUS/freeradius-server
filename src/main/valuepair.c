@@ -406,8 +406,8 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 					 */
 					memcpy(buffer,
 					       auth_item->strvalue + rxmatch[i].rm_so,
-					       rxmatch[i].rm_eo);
-					buffer[rxmatch[i].rm_eo] = '\0';
+					       rxmatch[i].rm_eo - rxmatch[i].rm_so);
+					buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
 
 					/*
 					 *	Copy substring, and add it to
