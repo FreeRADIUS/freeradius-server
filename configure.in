@@ -369,8 +369,17 @@ dnl #
       PTHREADLIB="-lc_r"
     )
   fi
-  LIBS="$LIBS $PTHREADLIB"
-  CFLAGS="$CFLAGS -D_REENTRANT"
+
+dnl # 
+dnl # If we have NO pthread libraries, remove any knowledge of threads.
+dnl # 
+  if test "x$PTHREADLIB" = "x"; then
+    CFLAGS=$SAVED_CFLAGS
+    ac_cv_header_pthread_h="no"
+  else
+    LIBS="$LIBS $PTHREADLIB"
+    CFLAGS="$CFLAGS -D_REENTRANT"
+  fi
 fi
 
 dnl #
