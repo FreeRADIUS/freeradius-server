@@ -103,7 +103,7 @@ CREATE TABLE StopTelephony (
 	H323GWID		VARCHAR(32),
 	H323CallOrigin		VARCHAR(10),
 	H323DisconnectCause	VARCHAR(2),
-	H323RemoteAddress	BOOLEAN DEFAULT false,
+	H323RemoteAddress	INET,
 	H323VoiceQuality	INTEGER,
 	H323ConfID		VARCHAR(35) NOT NULL
 );
