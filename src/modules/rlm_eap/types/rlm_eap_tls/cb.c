@@ -152,14 +152,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	return ok;
 }
 
-void cbtls_msg(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg)
+void cbtls_msg(int write_p, int msg_version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg)
 {
 	tls_session_t *state = (tls_session_t *)arg;
 
 	state->info.origin = (unsigned char)write_p;
 	state->info.content_type = (unsigned char)content_type;
 	state->info.record_len = len;
-	state->info.version = version;
+	state->info.version = msg_version;
 
 	if (content_type == 21) {
 		state->info.alert_level = ((unsigned char*)buf)[0];
