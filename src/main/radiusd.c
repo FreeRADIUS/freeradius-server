@@ -115,10 +115,6 @@ static gid_t		server_gid;
 static const char	*uid_name = NULL;
 static const char	*gid_name = NULL;
 
-#if !defined(__linux__) && !defined(__GNU_LIBRARY__)
-extern int	errno;
-#endif
-
 static void	usage(void);
 
 static void	sig_fatal (int);
@@ -1581,6 +1577,7 @@ typedef struct rad_walk_t {
  *	- killing any processes which are NOT finished after a delay
  *	- deleting any marked requests.
  */
+static REQUEST *last_request = NULL;
 static struct timeval *rad_clean_list(time_t now)
 {
 	/*
@@ -1600,6 +1597,9 @@ static struct timeval *rad_clean_list(time_t now)
 
 	rad_walk_t info;
 
+	info.now = now;
+	info.smallest = -1;
+
 	/*
 	 *	If we've already set up the timeout or cleaned the
 	 *	request list this second, then don't do it again.  We
@@ -1617,12 +1617,44 @@ static struct timeval *rad_clean_list(time_t now)
 	if ((last_tv_ptr != NULL) &&
 	    (last_cleaned_list == now) &&
 	    (tv.tv_sec != 0)) {		
+		int i;
+
+		/*
+		 *	If we're NOT walking the entire request list,
+		 *	then we want to iteratively check the request
+		 *	list.
+		 *
+		 *	If there is NO previous request, go look for one.
+		 */
+		if (!last_request) last_request = rl_next(last_request);
+
+		/*
+		 *	On average, there will be one request per
+		 *	'cleanup_delay' requests, which needs to be
+		 *	serviced.
+		 *
+		 *	And only do this servicing, if we have a request
+		 *	to service.
+		 */
+		for (i = 0; i < cleanup_delay && last_request; i++) {
+			REQUEST *next = rl_next(last_request);
+			
+				/*
+				 *	This function call MAY delete
+				 *	'last_request'.
+				 */
+			refresh_request(last_request, &info);
+			last_request = next;
+		}
+
 		last_tv = tv;
 		DEBUG2("Waking up in %d seconds...",
 		       (int) last_tv_ptr->tv_sec);
 		return last_tv_ptr;
 	}
 	last_cleaned_list = now;
+	last_request = NULL;
+	DEBUG2("--- Walking the entire request list ---");
 
 #if WITH_THREAD_POOL
 	/*
@@ -1640,8 +1672,13 @@ static struct timeval *rad_clean_list(time_t now)
 	 */
 	request_list_busy = TRUE;
 
-	info.now = now;
-	info.smallest = -1;
+	/*
+	 *	Hmmm... this is Big Magic.  We make it seem like
+	 *	there's an additional second to wait, for a whole
+	 *	host of reasons which I can't explain adequately,
+	 *	but which cause the code to Just Work Right.
+	 */
+	info.now--;
 
 	rl_walk(refresh_request, &info);
 
@@ -1795,6 +1832,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *	the list.
 			 */
 		  } else if (curreq->finished) {
+			  if (last_request == curreq) {
+				  last_request = rl_next(last_request);
+			  }
 			  rl_delete(curreq);
 
 			  /*
