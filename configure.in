@@ -568,7 +568,6 @@ dnl #
 fi
 
 POSTGRESQL_CHECKS
-ORACLE_CHECKS
 ODBC_CHECKS
 
 dnl #############################################################

@@ -1,0 +1,108 @@
+AC_INIT(sql_oracle.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_sql_oracle])
+
+
+if test x$with_[]modname != xno; then
+
+	targetname=modname   # we might change this later.
+
+	AC_SUBST(ORACLE_LIBS)
+	AC_SUBST(ORACLE_INCLUDE)
+
+	AC_MSG_CHECKING([for oci.h])
+
+	dnl #
+	dnl #  First, see if we can build it WITHOUT using any special includes
+	dnl #
+	AC_TRY_COMPILE([#include <oci.h>],
+		[ int a = 1;],
+		ORACLE_INCLUDE=" ",
+		ORACLE_INCLUDE=
+	)
+
+	dnl #
+	dnl #  If not, look for it in a number of directories.
+	dnl #
+	if test "x$ORACLE_INCLUDE" = "x"; then
+		old_CFLAGS="$CFLAGS"
+
+		AC_LOCATE_DIR(oracle_include_dir,oci.h)
+
+		for try in /usr/local/include/oracle /usr/local/oracle/include $oracle_include_dir; do
+			CFLAGS="$old_CFLAGS -I$try"
+			AC_TRY_COMPILE([#include <oci.h>],
+				[ int a = 1; ],
+				ORACLE_INCLUDE="-I$try",
+				ORACLE_INCLUDE=
+			)
+			if test "x$ORACLE_INCLUDE" != "x"; then
+				break;
+			fi
+		done
+		CFLAGS="$old_CFLAGS"
+	fi
+
+	if test "x$ORACLE_INCLUDE" = "x"; then
+		AC_MSG_RESULT(no)
+		AC_MSG_WARN([oracle headers not found.  Use --with-oracle-include-dir=<path>.])
+		targetname=   # disabled module
+	else
+		sql_oracle_cflags="${sql_oracle_cflags} ${ORACLE_INCLUDE}"
+		AC_MSG_RESULT(yes)
+
+		dnl #
+		dnl #  Now do the same thing, looking for the Oracle library directory
+		dnl #
+		AC_MSG_CHECKING([for oracle_init in -loracleclient])
+
+		dnl #
+		dnl #  Look for it in a number of directories.
+		dnl #
+		old_LIBS="$LIBS"
+
+		AC_LOCATE_DIR(oracle_lib_dir,[liboracleclient.so])
+		AC_LOCATE_DIR(oracle_lib_dir,[liboracleclient.a])
+
+		for try in /usr/lib/oracle /usr/local/lib/oracle /usr/local/oracle/lib $oracle_lib_dir; do
+			LIBS="$old_LIBS -L$try -loracleclient"
+			AC_TRY_LINK([extern char oracle_init();],
+				[ oracle_init()],
+				ORACLE_LIBS="-L$try -loracleclient",
+				ORACLE_LIBS=
+			)
+			if test "x$ORACLE_LIBS" != "x"; then
+				break;
+			fi
+		done
+		LIBS="$old_LIBS"
+
+		dnl #
+		dnl #  If one or the other isn't found, disable them both..
+		dnl #  If both are found, enable them both.
+		dnl #
+		if test "x$ORACLE_LIBS" = "x"; then
+			AC_MSG_RESULT(no)
+			ORACLE_INCLUDE=
+			AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path>.])
+			targetname=   # disabled module
+		else
+			sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
+			AC_MSG_RESULT(yes)
+			AC_DEFINE(HAVE_OCI_H)
+		fi
+	fi
+
+	if test "x$targetname" = "x"; then
+		AC_MSG_WARN([sql submodule 'oracle' disabled])
+	fi
+
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+AC_SUBST(sql_oracle_ldflags)
+AC_SUBST(sql_oracle_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
