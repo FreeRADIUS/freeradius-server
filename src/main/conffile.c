@@ -248,56 +248,94 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		/*
 		 *	Ignore anything other than "${"
 		 */
-		if ((*ptr != '$') || (ptr[1] != '{')) {
-			*(p++) = *(ptr++);
-			continue;
-		}
-		
-		/*
-		 *	Look for trailing '}', and log a
-		 *	warning for anything that doesn't match,
-		 *	and exit with a fatal error.
-		 */
-		end = strchr(ptr, '}');
-		if (end == NULL) {
-			*(p++) = *(ptr++);
-			radlog(L_INFO, "%s[%d]: Variable expansion missing }",
-					cf, *lineno);
-			return NULL;
-		}
-		
-		ptr += 2;
+		if ((*ptr == '$') && (ptr[1] == '{')) {
+			/*
+			 *	Look for trailing '}', and log a
+			 *	warning for anything that doesn't match,
+			 *	and exit with a fatal error.
+			 */
+			end = strchr(ptr, '}');
+			if (end == NULL) {
+				*p = '\0';
+				radlog(L_INFO, "%s[%d]: Variable expansion missing }",
+				       cf, *lineno);
+				return NULL;
+			}
+			
+			ptr += 2;
+			
+			memcpy(name, ptr, end - ptr);
+			name[end - ptr] = '\0';
+			
+			cpn = cf_pair_find(cs, name);
+			
+			/*
+			 *	Also look recursively up the section tree,
+			 *	so things like ${confdir} can be defined
+			 *	there and used inside the module config
+			 *	sections.
+			 */
+			for (outercs=cs->item.parent; 
+			     (cpn == NULL) && (outercs != NULL);
+			     outercs=outercs->item.parent) {
+				cpn = cf_pair_find(outercs, name);
+			}
+			if (!cpn) {
+				radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
+				       cf, *lineno, name);
+				return NULL;
+			}
+			
+			/*
+			 *  Substitute the value of the variable.
+			 */
+			strcpy(p, cpn->value);
+			p += strlen(p);
+			ptr = end + 1;
 
-		memcpy(name, ptr, end - ptr);
-		name[end - ptr] = '\0';
+		} else if (memcmp(ptr, "$ENV{", 5) == 0) {
+			char *env;
 
-		cpn = cf_pair_find(cs, name);
-		
-		/*
-		 *	Also look recursively up the section tree,
-		 *	so things like ${confdir} can be defined
-		 *	there and used inside the module config
-		 *	sections.
-		 */
-		for (outercs=cs->item.parent; 
-				(cpn == NULL) && (outercs != NULL);
-				outercs=outercs->item.parent) {
-			cpn = cf_pair_find(outercs, name);
+			ptr += 5;
+
+			/*
+			 *	Look for trailing '}', and log a
+			 *	warning for anything that doesn't match,
+			 *	and exit with a fatal error.
+			 */
+			end = strchr(ptr, '}');
+			if (end == NULL) {
+				*p = '\0';
+				radlog(L_INFO, "%s[%d]: Environment variable expansion missing }",
+				       cf, *lineno);
+				return NULL;
+			}
+			
+			memcpy(name, ptr, end - ptr);
+			name[end - ptr] = '\0';
+			
+			/*
+			 *	Get the environment variable.
+			 *	If none exists, then make it an empty string.
+			 */
+			env = getenv(name);
+			if (env == NULL) {
+				*name = '\0';
+				env = name;
+			}
+
+			strcpy(p, env);
+			p += strlen(p);
+			ptr = end + 1;
+
+		} else {
+			/*
+			 *	Copy it over verbatim.
+			 */
+			*(p++) = *(ptr++);
 		}
-		if (!cpn) {
-			radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
-					cf, *lineno, name);
-			return NULL;
-		}
-		
-		/*
-		 *  Substitute the value of the variable.
-		 */
-		strcpy(p, cpn->value);
-		p += strlen(p);
-		ptr = end + 1;
 	} /* loop over all of the input string. */
-
+		
 	*p = '\0';
 
 	return output;
