@@ -1,3 +1,7 @@
+bob	User-Password = "hello", Gandalf-Around-The-Corner = "foo"
+	Gandalf-Around-The-Corner = "foo",
+	Reply-Message = "Hello %u"
+
 #
 #	Please read the documentation file ../doc/processing_users_file,
 #	or 'man 5 users' (after installing the server) for more information.
@@ -166,13 +170,13 @@ DEFAULT	Auth-Type = System
 #		Fall-Through = Yes
 
 #
-# Defaults for all framed connections.
+# Sample defaults for all framed connections.
 #
-DEFAULT	Service-Type == Framed-User
-	Framed-IP-Address = 255.255.255.254,
-	Framed-MTU = 576,
-	Service-Type = Framed-User,
-	Fall-Through = Yes
+#DEFAULT	Service-Type == Framed-User
+#	Framed-IP-Address = 255.255.255.254,
+#	Framed-MTU = 576,
+#	Service-Type = Framed-User,
+#	Fall-Through = Yes
 
 #
 # Default for PPP: dynamic IP address, PPP mode, VJ-compression.
