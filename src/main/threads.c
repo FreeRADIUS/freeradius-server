@@ -70,7 +70,8 @@ typedef struct THREAD_HANDLE {
 	struct THREAD_HANDLE *next;
 	pthread_t pthread_id;
 	int thread_num;
-	sem_t semaphore;
+	pthread_mutex_t lock;
+	pthread_cond_t	cond;
 	int status;
 	unsigned int request_count;
 	time_t timestamp;
@@ -182,9 +183,12 @@ static void *request_handler_thread(void *arg)
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
 				self->thread_num);
-		if (sem_wait(&self->semaphore) < 0) {
+		pthread_mutex_lock(&self->lock);
+		if (pthread_cond_wait(&self->cond,&self->lock) != 0) {
+			pthread_mutex_unlock(&self->lock);
 			break;
 		}
+		pthread_mutex_unlock(&self->lock);
 
 		/*
 		 *	If we've been told to kill ourselves,
@@ -218,7 +222,8 @@ static void *request_handler_thread(void *arg)
 	 *	associated with it (semaphore, etc), and free the thread
 	 *	handle memory.
 	 */
-	sem_destroy(&self->semaphore);
+	pthread_mutex_destroy(&self->lock);
+	pthread_cond_destroy(&self->cond);
 	free(self);
 	return NULL;
 }
@@ -374,13 +379,19 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	handle->timestamp = time(NULL);
 
 	/*
-	 *	Initialize the semaphore to be for this process only,
-	 *	and to have the thread block until the server gives it
-	 *	the semaphore.
+	 *	Initialize the mutex/conditional to be for this
+	 *	process only, and to have the thread block until the
+	 *	server signals it..
 	 */
-	rcode = sem_init(&handle->semaphore, 0, SEMAPHORE_LOCKED);
+	rcode = pthread_cond_init(&handle->cond,NULL);
 	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "FATAL: Failed to allocate semaphore: %s",
+		radlog(L_ERR|L_CONS, "FATAL: Failed to init cond: %s",
+				strerror(errno));
+		exit(1);
+	}
+	rcode = pthread_mutex_init(&handle->lock,NULL);
+	if (rcode != 0) {
+		radlog(L_ERR|L_CONS, "FATAL: Failed to init lock: %s",
 				strerror(errno));
 		exit(1);
 	}
@@ -586,7 +597,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	found->fun = fun;
 	found->request_count++;
 	thread_pool.request_count++;
-	sem_post(&found->semaphore);
+	pthread_cond_signal(&found->cond);
 	thread_pool.active_threads = active_threads;
 
 	return 0;
@@ -693,7 +704,7 @@ int thread_pool_clean(time_t now)
 			if (handle->request == NULL) {
 				delete_thread(handle);
 				handle->status = THREAD_CANCELLED;
-				sem_post(&handle->semaphore);
+				pthread_cond_signal(&handle->cond);
 				spare--;
 				break;
 			}
@@ -715,7 +726,7 @@ int thread_pool_clean(time_t now)
 			    (handle->request_count > thread_pool.max_requests_per_thread)) {
 				delete_thread(handle);
 				handle->status = THREAD_CANCELLED;
-				sem_post(&handle->semaphore);
+				pthread_cond_signal(&handle->cond);
 			}
 		}
 	}
