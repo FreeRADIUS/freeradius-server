@@ -50,10 +50,14 @@ char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 		return buf;
 	}
 
+#ifdef GETHOSTBYADDRRSTYLE
 #if GETHOSTBYADDRRSTYLE == SYSVSTYLE
 	hp = gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr), AF_INET, &result, buffer, sizeof(buffer), &error);
 #elif GETHOSTBYADDRRSTYLE == GNUSTYLE
 	gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr), AF_INET, &result, buffer, sizeof(buffer), &hp, &error);
+#else
+	hp = gethostbyaddr((char *)&ipaddr, sizeof(struct in_addr), AF_INET);
+#endif
 #else
 	hp = gethostbyaddr((char *)&ipaddr, sizeof(struct in_addr), AF_INET);
 #endif
