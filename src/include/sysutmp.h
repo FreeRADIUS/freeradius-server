@@ -26,11 +26,32 @@
 #  define UT_LINESIZE	32
 #  define UT_HOSTSIZE	64
 #endif
+
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(bsdi) || defined(__OpenBSD__)
 #  ifndef UTMP_FILE
 #    define UTMP_FILE "/var/run/utmp"
 #  endif
 #  define ut_user ut_name
+#endif
+
+/*
+ *	Generate definitions for systems which are too broken to
+ *	do it themselves.
+ *
+ *	Hmm... this means that we can probably get rid of a lot of
+ *	the static defines above, as the following lines will generate
+ *	the proper defines for any system.
+ */
+#ifndef UT_LINESIZE
+#define UT_LINESIZE sizeof(((struct utmp *) NULL)->ut_line)
+#endif
+
+#ifndef UT_NAMESIZE
+#define UT_NAMESIZE sizeof(((struct utmp *) NULL)->ut_user)
+#endif
+
+#ifndef UT_HOSTSIZE
+#define UT_HOSTSIZE sizeof(((struct utmp *) NULL)->ut_host)
 #endif
 
 #else /* HAVE_UTMP_H */
