@@ -408,8 +408,8 @@ int read_modules_file(char *filename)
  *	Call all authorization modules until one returns
  *	somethings else than RLM_AUTZ_NOTFOUND
  */
-int module_authorize(REQUEST *request, char *username,
-	VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
+int module_authorize(REQUEST *request,
+		     VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
 {
 	config_module_t	*this;
 	int		rcode = RLM_AUTZ_NOTFOUND;
@@ -420,7 +420,7 @@ int module_authorize(REQUEST *request, char *username,
 	while (this && rcode == RLM_AUTZ_NOTFOUND) {
 		DEBUG2("  authorize: %s", this->entry->module->name);
 		rcode = (this->entry->module->authorize)
-				(request, username, check_items, reply_items);
+				(request, check_items, reply_items);
 		this = this->next;
 	}
 
@@ -431,10 +431,17 @@ int module_authorize(REQUEST *request, char *username,
 /*
  *	Authenticate a user/password with various methods.
  */
-int module_authenticate(int auth_type, REQUEST *request,
-		char *username, char *password)
+int module_authenticate(int auth_type, REQUEST *request)
 {
 	config_module_t	*this;
+
+	/*
+	 *  We MUST have a password, of SOME type!
+	 */
+	if (request->password == NULL) {
+		return RLM_AUTH_FAIL;
+	}
+
 
 	this = authenticate;
 	while (this && this->entry->auth_type != auth_type)
@@ -448,7 +455,7 @@ int module_authenticate(int auth_type, REQUEST *request,
 	}
 
 	DEBUG2("  authenticate: %s", this->entry->module->name);
-	return (this->entry->module->authenticate)(request, username, password);
+	return (this->entry->module->authenticate)(request);
 }
 
 
