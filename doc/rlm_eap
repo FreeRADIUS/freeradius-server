@@ -92,6 +92,14 @@ EAP CODE ORGANIZATION
   rlm_eap/types/rlm_eap_tls -- EAP-TLS based authentication.
 
    
+    The LEAP protocol is not supported.  It is a Cisco proprietary
+    protocol, and no one has (as yet) submitted patches to enable
+    rlm_eap to work with LEAP.
+
+    For details on the LEAP protocol, see:
+
+	http://www.missl.cs.umd.edu/wireless/ethereal/leap.txt
+
 CONFIGURATION
 
   Add the eap configuration stanza to the modules section in radiusd.conf
@@ -280,7 +288,6 @@ CAVEATS
     It probably still has bugs.  Most notably, there is a small memory
     leak somewhere in the eap_tls code.  I suspect it's because of my 
     misuse of OPENSSL libraries, but I have no proof yet.
-
 
 IMPLEMENTATION (For Developers)
 
