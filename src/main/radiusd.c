@@ -1061,6 +1061,16 @@ int rad_process(REQUEST *request, int dospawn)
 	assert(request->magic == REQUEST_MAGIC);
 
 	switch(request->packet->code) {
+	default:
+		radlog(L_ERR, "Unknown packet type %d from client %s:%d "
+		    "- ID %d : IGNORED",
+		    request->packet->code,
+		    client_name(request->packet->src_ipaddr),
+		    request->packet->src_port,
+		    request->packet->id);
+		request_free(request);
+		return -1;
+		break;
 
 	case PW_AUTHENTICATION_REQUEST:
 		/*
@@ -1077,6 +1087,7 @@ int rad_process(REQUEST *request, int dospawn)
 		  request_free(request);
 		  return -1;
 		}
+		fun = rad_authenticate;
 		break;
 
 	case PW_ACCOUNTING_REQUEST:
@@ -1094,6 +1105,7 @@ int rad_process(REQUEST *request, int dospawn)
 		  request_free(request);
 		  return -1;
 		}
+		fun = rad_accounting;
 		break;
 
 	case PW_AUTHENTICATION_ACK:
@@ -1114,59 +1126,24 @@ int rad_process(REQUEST *request, int dospawn)
 			request_free(request);
 			return -1;
 		}
+		if (request->packet->code == PW_AUTHENTICATION_ACK) {
+			fun = rad_authenticate;
+		} else {
+			fun = rad_accounting;
+		}
 		break;
-	}
 
-	assert(request->magic == REQUEST_MAGIC);
-
-	/*
-	 *	Select the required function and indicate if
-	 *	we need to fork off a child to handle it.
-	 */
-	switch(request->packet->code) {
-
-	case PW_AUTHENTICATION_ACK:
-	case PW_AUTHENTICATION_REJECT:
-	case PW_AUTHENTICATION_REQUEST:
-		fun = rad_authenticate;
-		break;
-	
-	case PW_ACCOUNTING_RESPONSE:
-	case PW_ACCOUNTING_REQUEST:
-		fun = rad_accounting;
-		break;
-	
 	case PW_PASSWORD_REQUEST:
 		/*
 		 *	We don't support this anymore.
 		 */
-		radlog(L_ERR, "Deprecated password change request from client %s:%d "
-		    "- ID %d : IGNORED",
+		radlog(L_ERR, "Deprecated password change request from client %s:%d - ID %d : IGNORED",
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->src_port,
 		    request->packet->id);
 		request_free(request);
 		return -1;
 		break;
-	
-	default:
-		radlog(L_ERR, "Unknown packet type %d from client %s:%d "
-		    "- ID %d : IGNORED",
-		    request->packet->code,
-		    client_name(request->packet->src_ipaddr),
-		    request->packet->src_port,
-		    request->packet->id);
-		request_free(request);
-		return -1;
-		break;
-	}
-
-	/*
-	 *	If we did NOT select a function, then exit immediately.
-	 */
-	if (!fun) {
-		request_free(request);
-		return 0;
 	}
 
 	/*
@@ -1188,7 +1165,7 @@ int rad_process(REQUEST *request, int dospawn)
 	 *	Build the reply template from the request template.
 	 */
 	if ((request->reply = rad_alloc(0)) == NULL) {
-		fprintf(stderr, "out of memory\n");
+		radlog(L_ERR, "No memory");
 		exit(1);
 	}
 	request->reply->sockfd     = request->packet->sockfd;
@@ -1200,7 +1177,8 @@ int rad_process(REQUEST *request, int dospawn)
 	       sizeof(request->reply->vector));
 	request->reply->vps = NULL;
 	request->reply->data = NULL;
-	
+	request->reply->data_len = 0;
+
 	/*
 	 *	If we're spawning a child thread, let it do all of
 	 *	the work of handling a request, and exit.
@@ -1544,16 +1522,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
  next_request:
 	DEBUG2("Going to the next request");
-
-	/*
-	 *	If this is an accounting request, ensure
-	 *	that we delete it immediately, as there CANNOT be
-	 *	duplicate accounting packets.  If there are, then
-	 *	something else is seriously wrong...
-	 */
-	if (request->packet->code == PW_ACCOUNTING_REQUEST) {
-		request->timestamp = 0;
-	}
 
 #if WITH_THREAD_POOL
 	request->child_pid = NO_SUCH_CHILD_PID;
@@ -2276,15 +2244,24 @@ static int refresh_request(REQUEST *request, void *data)
 	time_t		difference;
 	child_pid_t    	child_pid;
 
+	assert(request->magic == REQUEST_MAGIC);
+
 	/*
 	 *	If the request has finished processing,
 	 *	AND it's child has been cleaned up,
 	 *	AND it's time to clean up the request,
+	 *	    OR, it's an accounting request.
 	 *	THEN, go delete it.
+	 *
+	 *	If this is an accounting request, we delete it
+	 *	immediately, as there CANNOT be duplicate accounting
+	 *	packets.  If there are, then something else is
+	 *	seriously wrong...
 	 */
 	if (request->finished &&
 	    (request->child_pid == NO_SUCH_CHILD_PID) &&
-	    (request->timestamp + cleanup_delay <= info->now)) {
+	    ((request->timestamp + cleanup_delay <= info->now) ||
+	     (request->packet->code == PW_ACCOUNTING_REQUEST))) {
 		/*
 		 *	Request completed, delete it, and unlink it
 		 *	from the currently 'alive' list of requests.
