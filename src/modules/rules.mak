@@ -41,6 +41,17 @@ CFLAGS		+= -I../../include
 
 #######################################################################
 #
+# Ensure that the modules get re-built if the server header files
+# change.
+#
+#######################################################################
+SERVER_HEADERS	= ../../include/radiusd.h ../../include/radius.h ../../include/modules.h
+$(STATIC_OBJS):  $(SERVER_HEADERS)
+$(DYNAMIC_OBJS): $(SERVER_HEADERS)
+
+
+#######################################################################
+#
 # define new rules
 #
 #######################################################################
