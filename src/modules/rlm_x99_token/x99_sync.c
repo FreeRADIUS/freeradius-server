@@ -40,9 +40,19 @@ static const char rcsid[] = "$Id$";
 
 
 /*
+ * Sync data fields changed slightly between v1 and v2, and were renamed.
+ * These routines, however, retain the v1 names.  The name:field mapping is:
+ *       *_last_auth: last_auth_t	last authentication time
+ *       *_failcount: last_auth_s	number of consecutive auth failures
+ *   *_last_auth_pos: last_auth_p	window pos. of last auth (not in v1)
+ */
+
+
+/*
  * Get sync data for a given user.
  * Returns 0 on success, non-zero otherwise.
  *
+ *  syncdir:  duh
  * username:  duh
  * card_id:   duh
  * ewin:      event window position (0 == now)
@@ -59,7 +69,7 @@ static const char rcsid[] = "$Id$";
  *               speeds things up since we don't have to iterate ewin times.
  *            If ewin > 0 and challenge points to an empty string, the
  *               stored "ewin 0" challenge value is run through the sync
- *               calculation ewin times. (NOT IMPLEMENTED)
+ *               calculation ewin times.
  * keyblock:  Similar to challenge.  It may be updated for key changing
  *            sync modes. (NOT IMPLEMENTED)
  */
@@ -70,16 +80,28 @@ x99_get_sync_data(const char *syncdir, const char *username,
 {
     /* ARGSUSED */
     des_cblock output;
-    int i, rc;
+    int i, rc = -1;
     char *lock;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
-	return -1;
-
     if (ewin == 0) {
-	rc = x99_get_sd(syncdir, username, challenge, NULL, NULL);
+	if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+	    return -1;
+	rc = x99_get_sd(syncdir, username, challenge, NULL, NULL, NULL);
+	x99_release_sd_lock(lock);
+	return rc;
 
     } else if (challenge[0]) {
+	ewin = 1; /* only iterate once */
+
+    } else {
+	/* The hard way.  Get the zeroeth challenge. */
+	rc = x99_get_sync_data(syncdir, username, card_id, 0, twin,
+			       challenge, keyblock);
+	if (rc)
+	    return rc;
+    }
+
+    while (ewin--) {
 	if (card_id & X99_CF_CRYPTOCARD) {
 	    if ((rc = x99_mac(challenge, output, keyblock)) == 0) {
 		for (i = 0; i < 8; ++i) {
@@ -90,17 +112,16 @@ x99_get_sync_data(const char *syncdir, const char *username,
 		}
 		(void) memcpy(challenge, output, 8);
 		challenge[8] = '\0';
+	    } else {
+		break;
 	    }
 	} else {
 	    /* No other vendors implemented yet. */
-	    rc =-1;
+	    rc = -1;
+	    break;
 	}
-
-    } else {
-	/* The hard way.  Might need to implement this someday. */
-	rc = -1;
     }
-    x99_release_sd_lock(lock);
+
     return rc;
 }
 
@@ -110,6 +131,7 @@ x99_get_sync_data(const char *syncdir, const char *username,
  * Side effects:
  * - Resets failure count to 0 on successful return.
  * - Sets last auth time to "now" on successful return.
+ * - Sets last auth window position to 0.
  * Because of the failure count reset, this should only be called for/after
  * successful authentications.
  *
@@ -129,7 +151,7 @@ x99_set_sync_data(const char *syncdir, const char *username,
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_set_sd(syncdir, username, challenge, 0, time(NULL));
+    rc = x99_set_sd(syncdir, username, challenge, 0, time(NULL), 0);
     x99_release_sd_lock(lock);
     return rc;
 }
@@ -147,7 +169,7 @@ x99_get_last_auth(const char *syncdir, const char *username, time_t *last_auth)
 
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
-    rc = x99_get_sd(syncdir, username, NULL, NULL, last_auth);
+    rc = x99_get_sd(syncdir, username, NULL, NULL, last_auth, NULL);
     x99_release_sd_lock(lock);
     return rc;
 }
@@ -165,13 +187,15 @@ x99_upd_last_auth(const char *syncdir, const char *username)
     int failcount, rc;
     char *lock;
     char challenge[MAX_CHALLENGE_LEN + 1];
+    unsigned pos;
 
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_get_sd(syncdir, username, challenge, &failcount, NULL);
+    rc = x99_get_sd(syncdir, username, challenge, &failcount, NULL, &pos);
     if (rc == 0)
-	rc = x99_set_sd(syncdir, username, challenge, failcount, time(NULL));
+	rc = x99_set_sd(syncdir, username, challenge, failcount, time(NULL),
+			pos);
 
     x99_release_sd_lock(lock);
     return rc;
@@ -188,17 +212,19 @@ x99_incr_failcount(const char *syncdir, const char *username)
     int failcount, rc;
     char *lock;
     char challenge[MAX_CHALLENGE_LEN + 1];
+    unsigned pos;
 
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
     /* Get current value. */
-    rc = x99_get_sd(syncdir, username, challenge, &failcount, NULL);
+    rc = x99_get_sd(syncdir, username, challenge, &failcount, NULL, &pos);
     if (rc == 0) {
 	/* Increment. */
 	if (++failcount == INT_MAX)
 	    failcount--;
-	rc = x99_set_sd(syncdir, username, challenge, failcount, time(NULL));
+	rc = x99_set_sd(syncdir, username, challenge, failcount, time(NULL),
+			pos);
     }
 
     x99_release_sd_lock(lock);
@@ -206,7 +232,7 @@ x99_incr_failcount(const char *syncdir, const char *username)
 }
 
 /*
- * Reset failure count to 0.  Also updates last_auth.
+ * Reset failure count to 0.  Also updates last_auth and resets pos.
  * Returns 0 on success, non-zero otherwise.
  * This is almost just like x99_incr_failcount().
  * x99_set_sync_data() resets the failcount also, but that's because
@@ -223,9 +249,9 @@ x99_reset_failcount(const char *syncdir, const char *username)
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_get_sd(syncdir, username, challenge, NULL, NULL);
+    rc = x99_get_sd(syncdir, username, challenge, NULL, NULL, NULL);
     if (rc == 0)
-	rc = x99_set_sd(syncdir, username, challenge, 0, time(NULL));
+	rc = x99_set_sd(syncdir, username, challenge, 0, time(NULL), 0);
 
     x99_release_sd_lock(lock);
     return rc;
@@ -234,8 +260,11 @@ x99_reset_failcount(const char *syncdir, const char *username)
 
 /*
  * checks the failure counter.
- * returns 0 if the user is allowed to authenticate, -1 otherwise.
- * caller does not need to log failures, we do it.
+ * returns 0 if the user is allowed to authenticate, < 0 otherwise:
+ *   FAIL_ERR if the user is failed due to internal error,
+ *   FAIL_HARD if the user is failed "hard",
+ *   FAIL_SOFT if the user is failed "soft".
+ * caller does not need to log failures, we do it (in order to be specific).
  */
 int
 x99_check_failcount(const char *username, const x99_token_t *inst)
@@ -246,12 +275,12 @@ x99_check_failcount(const char *username, const x99_token_t *inst)
     if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
 	x99_log(X99_LOG_ERR,
 		"auth: unable to get last auth time for [%s]", username);
-	return -1;
+	return FAIL_ERR;
     }
     if (x99_get_failcount(inst->syncdir, username, &failcount) != 0) {
 	x99_log(X99_LOG_ERR,
 		"auth: unable to get failure count for [%s]", username);
-	return -1;
+	return FAIL_ERR;
     }
 
     /* Check against hardfail setting. */
@@ -264,7 +293,7 @@ x99_check_failcount(const char *username, const x99_token_t *inst)
 		    "auth: unable to increment failure count for "
 		    "locked out user [%s]", username);
 	}
-	return -1;
+	return FAIL_HARD;
     }
 
     /* Check against softfail setting. */
@@ -298,16 +327,62 @@ x99_check_failcount(const char *username, const x99_token_t *inst)
 			"auth: unable to increment failure count for "
 			"delayed user [%s]", username);
 	    }
-	    return -1;
+	    return FAIL_SOFT;
 	}
     }
 
     return 0;
 }
 
+/*
+ * Get the last auth window position for ewindow2.
+ * Returns 0 on failure (caller cannot distinguish between failure and
+ * a 0 position).
+ */
+unsigned
+x99_get_last_auth_pos(const char *syncdir, const char *username)
+{
+    int rc;
+    char *lock;
+    char challenge[MAX_CHALLENGE_LEN + 1];
+    unsigned pos;
+
+    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+	return -1;
+
+    rc = x99_get_sd(syncdir, username, challenge, NULL, NULL, &pos);
+
+    x99_release_sd_lock(lock);
+    return rc ? 0 : pos;
+}
 
 /*
- * Return the failed login count and last auth time for a user.
+ * Record the last auth window position (for ewindow2).
+ */
+int
+x99_set_last_auth_pos(const char *syncdir, const char *username, unsigned pos)
+{
+    int rc;
+    char *lock;
+    char challenge[MAX_CHALLENGE_LEN + 1];
+    int failcount;
+    time_t last_auth;
+
+    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+	return -1;
+
+    rc = x99_get_sd(syncdir, username, challenge, &failcount, &last_auth, NULL);
+    if (rc == 0)
+	rc = x99_set_sd(syncdir, username, challenge, failcount, last_auth,
+			pos);
+
+    x99_release_sd_lock(lock);
+    return rc;
+}
+
+
+/*
+ * Return the failed login count for a user.
  * Returns 0 on success, non-zero otherwise.
  */
 static int
@@ -318,7 +393,7 @@ x99_get_failcount(const char *syncdir, const char *username, int *failcount)
 
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
-    rc = x99_get_sd(syncdir, username, NULL, failcount, NULL);
+    rc = x99_get_sd(syncdir, username, NULL, failcount, NULL, NULL);
     x99_release_sd_lock(lock);
     return rc;
 }
@@ -415,22 +490,23 @@ x99_release_sd_lock(char *lockfile)
 
 /*
  * x99_get_sd() returns 0 on success, non-zero otherwise.
- * On successful returns, challenge, failures and last_auth are filled in,
+ * On successful returns, challenge, failures, last_auth, pos are filled in,
  * if non-NULL.
- * On unsuccessful returns, challenge, failures and last_auth may be garbage.
+ * On unsuccessful returns, challenge, failures, last_auth, pos may be garbage.
  * challenge should be sized as indicated (if non-NULL).
  * The caller must have obtained an exclusive lock on the sync file.
  */
 static int
 x99_get_sd(const char *syncdir, const char *username,
 	   char challenge[MAX_CHALLENGE_LEN + 1], int *failures,
-	   time_t *last_auth)
+	   time_t *last_auth, unsigned *pos)
 {
     char syncfile[PATH_MAX + 1];
     FILE *fp;
 
     char syncdata[BUFSIZ];
     char *p, *q;
+    unsigned ver = UINT_MAX;
 
     (void) snprintf(syncfile, PATH_MAX, "%s/%s",  syncdir, username);
     syncfile[PATH_MAX] = '\0';
@@ -448,7 +524,7 @@ x99_get_sd(const char *syncdir, const char *username,
 	 */
 	if (failures)
 	    *failures = 0;
-	return x99_set_sd(syncdir, username, "NEWSTATE", 0, 0);
+	return x99_set_sd(syncdir, username, "NEWSTATE", 0, 0, 0);
     }
 
     /* Read sync data. */
@@ -462,24 +538,33 @@ x99_get_sd(const char *syncdir, const char *username,
     p = syncdata;
 
     /* Now, parse the sync data. */
-    /* Eat the version. */
-    if ((p = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data for user %s", username);
-	return -1;
-    }
-    p++;
-
-    /* Sanity check the username. */
+    /* Get the version. */
     if ((q = strchr(p, ':')) == NULL) {
 	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data for user %s", username);
 	return -1;
     }
     *q++ = '\0';
+    if ((sscanf(p, "%u", &ver) != 1) || (ver > 2)) {
+	x99_log(X99_LOG_ERR,
+		"x99_get_sd: invalid sync data (version) for user %s",
+		username);
+	return -1;
+    }
+    p = q;
+
+    /* Sanity check the username. */
+    if ((q = strchr(p, ':')) == NULL) {
+	x99_log(X99_LOG_ERR,
+		"x99_get_sd: invalid sync data (username) for user %s",
+		username);
+	return -1;
+    }
+    *q++ = '\0';
     if (strcmp(p, username)) {
 	x99_log(X99_LOG_ERR,
-		"x99_get_sd: sync data user mismatch for user %s", username);
+		"x99_get_sd: invalid sync data (user mismatch) for user %s",
+		username);
 	return -1;
     }
     p = q;
@@ -540,7 +625,19 @@ x99_get_sd(const char *syncdir, const char *username,
 		username);
 	return -1;
     }
+    p = q;
 
+    /* Get last auth position. */
+    if (pos) {
+	if (ver == 1) {
+	    *pos = 0;
+	} else if (sscanf(p, "%u", pos) != 1) {
+	    x99_log(X99_LOG_ERR,
+		    "x99_get_sd: invalid sync data (win. pos) for user %s",
+		    username);
+	    return -1;
+	}
+    }
     return 0;
 }
 
@@ -550,8 +647,8 @@ x99_get_sd(const char *syncdir, const char *username,
  * The caller must have obtained an exclusive lock on the sync file.
  */
 static int
-x99_set_sd(const char *syncdir, const char *username,
-	   const char *challenge, int failures, time_t last_auth)
+x99_set_sd(const char *syncdir, const char *username, const char *challenge,
+	   int failures, time_t last_auth, unsigned pos)
 {
     char syncfile[PATH_MAX + 1];
     FILE *fp;
@@ -565,9 +662,9 @@ x99_set_sd(const char *syncdir, const char *username,
 	return -1;
     }
 
-    /* Write our (version 1) sync data. */
-    (void) fprintf(fp, "1:%s:%s:%s:%d:%ld:\n", username, challenge, "",
-		   failures, last_auth);
+    /* Write our (version 2) sync data. */
+    (void) fprintf(fp, "2:%s:%s:%s:%d:%ld:%u:\n", username, challenge, "",
+		   failures, last_auth, pos);
     if (fclose(fp) != 0) {
 	x99_log(X99_LOG_ERR, "x99_set_sd: unable to write sync file %s: %s",
 		syncfile, strerror(errno));

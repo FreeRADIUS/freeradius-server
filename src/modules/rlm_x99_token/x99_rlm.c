@@ -68,6 +68,8 @@ static CONF_PARSER module_config[] = {
       NULL, CHALLENGE_PROMPT },
     { "challenge_length", PW_TYPE_INTEGER, offsetof(x99_token_t, chal_len),
       NULL, "6" },
+    { "challenge_delay", PW_TYPE_INTEGER, offsetof(x99_token_t, chal_delay),
+      NULL, "30" },
     { "softfail", PW_TYPE_INTEGER, offsetof(x99_token_t, softfail),
       NULL, "5" },
     { "hardfail", PW_TYPE_INTEGER, offsetof(x99_token_t, hardfail),
@@ -84,8 +86,10 @@ static CONF_PARSER module_config[] = {
       NULL, RESYNC_REQ },
     { "ewindow_size", PW_TYPE_INTEGER, offsetof(x99_token_t, ewindow_size),
       NULL, "0" },
-    { "maxdelay", PW_TYPE_INTEGER, offsetof(x99_token_t, maxdelay),
-      NULL, "30" },
+    { "ewindow2_size", PW_TYPE_INTEGER, offsetof(x99_token_t, ewindow2_size),
+      NULL, "0" },
+    { "ewindow2_delay", PW_TYPE_INTEGER, offsetof(x99_token_t, ewindow2_delay),
+      NULL, "60" },
     { "mschapv2_mppe", PW_TYPE_INTEGER,
       offsetof(x99_token_t, mschapv2_mppe_policy), NULL, "2" },
     { "mschapv2_mppe_bits", PW_TYPE_INTEGER,
@@ -146,31 +150,32 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
     }
 
     /* Verify ranges for those vars that are limited. */
-    if (data->chal_len < 5 || data->chal_len > MAX_CHALLENGE_LEN) {
+    if ((data->chal_len < 5) || (data->chal_len > MAX_CHALLENGE_LEN)) {
 	data->chal_len = 6;
 	x99_log(X99_LOG_ERR,
-		"invalid challenge length, range 5-%d, using default of 6",
+		"invalid challenge_length, range 5-%d, using default of 6",
 		MAX_CHALLENGE_LEN);
 
     }
 
     /* Enforce a single "%" sequence, which must be "%s" */
     p = strchr(data->chal_prompt, '%');
-    if (p == NULL || p != strrchr(data->chal_prompt, '%') || strncmp(p,"%s",2)){
+    if ((p == NULL) || (p != strrchr(data->chal_prompt, '%')) ||
+	strncmp(p,"%s",2)){
 	free(data->chal_prompt);
 	data->chal_prompt = strdup(CHALLENGE_PROMPT);
 	x99_log(X99_LOG_ERR,
-		"invalid challenge prompt, using default of \"%s\"",
+		"invalid challenge_prompt, using default of \"%s\"",
 		CHALLENGE_PROMPT);
     }
 
-    if (data->softfail < 0 ) {
+    if (data->softfail < 0) {
 	data->softfail = 5;
 	x99_log(X99_LOG_ERR, "softfail must be at least 1 "
 		"(or 0 == infinite), using default of 5");
     }
 
-    if (data->hardfail < 0 ) {
+    if (data->hardfail < 0) {
 	data->hardfail = 0;
 	x99_log(X99_LOG_ERR, "hardfail must be at least 1 "
 		"(or 0 == infinite), using default of 0");
@@ -189,25 +194,37 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 	return -1;
     }
 
-    if (data->ewindow_size > MAX_EWINDOW_SIZE || data->ewindow_size < 0) {
+    if ((data->ewindow_size > MAX_EWINDOW_SIZE) || (data->ewindow_size < 0)) {
 	data->ewindow_size = 0;
-	x99_log(X99_LOG_ERR, "max event window size is %d, using default of 0",
+	x99_log(X99_LOG_ERR, "max ewindow_size is %d, using default of 0",
 		MAX_EWINDOW_SIZE);
     }
 
-    if (data->mschapv2_mppe_policy > 2 || data->mschapv2_mppe_policy < 0) {
+    if (data->ewindow2_size && (data->ewindow2_size < data->ewindow_size)) {
+	data->ewindow2_size = 0;
+	x99_log(X99_LOG_ERR, "ewindow2_size must be at least as large as "
+			     "ewindow_size, using default of 0");
+    }
+
+    if (data->ewindow2_size && !data->ewindow2_delay) {
+	data->ewindow2_size = 0;
+	x99_log(X99_LOG_ERR, "ewindow2_size is non-zero, "
+			     "but ewindow2_delay is zero; disabling ewindow2");
+    }
+
+    if ((data->mschapv2_mppe_policy > 2) || (data->mschapv2_mppe_policy < 0)) {
 	data->mschapv2_mppe_policy = 2;
 	x99_log(X99_LOG_ERR,
 		"invalid value for mschapv2_mppe, using default of 2");
     }
 
-    if (data->mschapv2_mppe_types > 2 || data->mschapv2_mppe_types < 0) {
+    if ((data->mschapv2_mppe_types > 2) || (data->mschapv2_mppe_types < 0)) {
 	data->mschapv2_mppe_types = 2;
 	x99_log(X99_LOG_ERR,
 		"invalid value for mschapv2_mppe_bits, using default of 2");
     }
 
-    if (data->mschap_mppe_policy > 2 || data->mschap_mppe_policy < 0) {
+    if ((data->mschap_mppe_policy > 2) || (data->mschap_mppe_policy < 0)) {
 	data->mschap_mppe_policy = 2;
 	x99_log(X99_LOG_ERR,
 		"invalid value for mschap_mppe, using default of 2");
@@ -225,8 +242,8 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 	x99_log(X99_LOG_ERR, "max time window size is %d, using default of 0",
 		MAX_TWINDOW_SIZE);
     }
-    if (data->twindow_min > 0 || data->twindow_max < 0 ||
-	data->twindow_max < data->twindow_min) {
+    if ((data->twindow_min > 0) || (data->twindow_max < 0) ||
+	(data->twindow_max < data->twindow_min)) {
 	data->twindow_min = data->twindow_max = 0;
 	x99_log(X99_LOG_ERR,
 		"invalid values for time window, using default of 0");
@@ -425,9 +442,10 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
     x99_user_info_t user_info;
     char *username;
-    int i, pwattr, rc;
-    int32_t sflags = 0; /* flags from state */
-    time_t last_auth;
+    int i, pwattr, rc, fc;
+    int32_t sflags = 0; 	/* flags from state */
+    time_t last_auth;		/* time of last authentication */
+    unsigned auth_pos = 0;	/* window position of last authentication */
 
     char challenge[MAX_CHALLENGE_LEN + 1];
     char e_response[9];		/* expected response */
@@ -501,7 +519,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
 	    /* State is valid, but check expiry. */
 	    then = ntohl(then);
-	    if (then + inst->maxdelay < time(NULL)) {
+	    if (time(NULL) - then > inst->chal_delay) {
 		x99_log(X99_LOG_AUTH,
 			"auth: bad state for [%s]: expired", username);
 		return RLM_MODULE_REJECT;
@@ -518,9 +536,36 @@ good_state:
 	}
     } /* if (!fast_sync) */
 
+    /* Get the time of the last authentication. */
+    if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
+	x99_log(X99_LOG_ERR,
+		"auth: unable to get last auth time for [%s]", username);
+	return RLM_MODULE_FAIL;
+    }
+
     /* Check failure count. */
-    if (x99_check_failcount(username, inst))
+    fc = x99_check_failcount(username, inst);
+    if ((fc == FAIL_ERR) || (fc == FAIL_HARD))
 	return RLM_MODULE_USERLOCK;
+
+    /* Some checks for ewindow2_size logic. */
+    if (fc == FAIL_SOFT) {
+	if (!inst->ewindow2_size)	/* no auto-resync */
+	    return RLM_MODULE_USERLOCK;
+
+	if (!pairfind(request->config_items, PW_X99_FAST)) {
+	    /*
+	     * ewindow2 softfail override requires two consecutive sync
+	     * responses.  Fail, and record that this was async.
+	     */
+	    if (x99_set_last_auth_pos(inst->syncdir, username, 0))
+		x99_log(X99_LOG_ERR,
+			"auth: failed to record last auth pos for [%s]",
+			username);
+	    return RLM_MODULE_USERLOCK;
+	}
+	goto sync_response;
+    }
 
     /*
      * Don't bother to check async response if either
@@ -563,12 +608,7 @@ good_state:
 	}
 
 	/* Make sure this isn't a replay by forcing a delay. */
-	if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
-	    x99_log(X99_LOG_ERR,
-		    "auth: unable to get last auth time for [%s]", username);
-	    return RLM_MODULE_FAIL;
-	}
-	if (last_auth + inst->maxdelay > time(NULL)) {
+	if (time(NULL) - last_auth < inst->chal_delay) {
 	    x99_log(X99_LOG_AUTH,
 		    "auth: bad async for [%s]: too soon", username);
 	    rc = RLM_MODULE_REJECT;
@@ -589,7 +629,7 @@ good_state:
 	     * the failcount and the last auth time.  We "fail-out" if we
 	     * can't do this, because if we can't update the last auth time,
 	     * we will be open to replay attacks over the lifetime of the
-	     * State attribute (inst->maxdelay).
+	     * State attribute (inst->chal_delay).
 	     */
 	    if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
 				  1, 0, challenge, user_info.keyblock) != 0) {
@@ -604,7 +644,7 @@ good_state:
 		rc = RLM_MODULE_FAIL;
 	    }
 	} else {
-	    /* Just update last_auth, failcount. */
+	    /* Just update failcount, last_auth, auth_pos. */
 	    if (x99_reset_failcount(inst->syncdir, username) != 0) {
 		x99_log(X99_LOG_ERR,
 			"auth: unable to reset failcount for [%s]", username);
@@ -621,7 +661,27 @@ sync_response:
      * if a challenge or resync was explicitly requested.
      */
     if ((user_info.card_id & X99_CF_SM) && inst->allow_sync) {
-	for (i = 0; i <= inst->ewindow_size; ++i) {
+	int start = 0, end = inst->ewindow_size;
+
+	/*
+	 * Tweak start,end for ewindow2_size logic.
+	 *
+	 * If user is in softfail, and their last response was correct,
+	 * start at the first possible response that will get them in.
+	 * Because we always start at the next response, the response
+	 * sequence 6,5,6 won't work (but 6,5,6,7 will).  That's OK;
+	 * we want to optimize for the 6,7 sequence.  The user can't
+	 * generate the 6,5,6 sequence from the token anyway.
+	 */
+	if (fc == FAIL_SOFT) {
+	    start = x99_get_last_auth_pos(inst->syncdir, username);
+	    if (start)
+		start++;
+	    end = inst->ewindow2_size;
+	}
+
+	challenge[0] = '\0';	/* initialize for x99_get_sync_data() */
+	for (i = start; i <= end; ++i) {
 	    /* Get sync challenge and key. */
 	    if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
 				  i, 0, challenge, user_info.keyblock) != 0) {
@@ -650,13 +710,37 @@ sync_response:
 	    if (x99_pw_valid(request, inst, pwattr, e_response, &add_vps)) {
 		/*
 		 * Yay!  User authenticated via sync mode.  Resync.
-		 *
+		 */
+		rc = RLM_MODULE_OK;
+
+		/*
+		 * ewindow2_size logic
+		 */
+		if (fc == FAIL_SOFT) {
+		    /* User must authenticate twice in a row, ... */
+		    if (start && (i == start) &&
+			/* ... within ewindow2_delay seconds. */
+			(time(NULL) - last_auth < inst->ewindow2_delay)) {
+			/* This is the 2nd of two consecutive responses. */
+			x99_log(X99_LOG_AUTH,
+				"auth: ewindow2 softfail override for [%s] at "
+				"window position %d", username, i);
+		    } else {
+			/* correct, but not consecutive or not soon enough */
+			DEBUG("rlm_x99_token: auth: [%s] ewindow2 candidate "
+			      "at position %i", username, i);
+			auth_pos = i;
+			rc = RLM_MODULE_REJECT;
+			break;
+		    }
+		}
+
+		/*
 		 * The same failure/replay issue applies here as in the
 		 * identical code block in the async section above, with
 		 * the additional problem that a response can be reused
 		 * indefinitely!  (until the sync data is updated)
 		 */
-		rc = RLM_MODULE_OK;
 		if (x99_get_sync_data(inst->syncdir,username,user_info.card_id,
 				      1, 0, challenge,user_info.keyblock) != 0){
 		    x99_log(X99_LOG_ERR, "auth: unable to get sync data "
@@ -670,8 +754,8 @@ sync_response:
 		    rc = RLM_MODULE_FAIL;
 		}
 		goto return_pw_valid;
-	    }
 
+	    } /* if (password is valid) */
 	} /* for (each slot in the window) */
     } /* if (card is in sync mode and sync mode allowed) */
 
@@ -679,6 +763,11 @@ sync_response:
     if (x99_incr_failcount(inst->syncdir, username) != 0) {
 	x99_log(X99_LOG_ERR,
 		"auth: unable to increment failure count for user [%s]",
+		username);
+    }
+    if (x99_set_last_auth_pos(inst->syncdir, username, auth_pos)) {
+	x99_log(X99_LOG_ERR,
+		"auth: unable to set ewindow2 position for user [%s]",
 		username);
     }
     return RLM_MODULE_REJECT;

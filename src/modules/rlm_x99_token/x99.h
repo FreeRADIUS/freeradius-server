@@ -71,6 +71,7 @@ typedef struct x99_token_t {
     char *syncdir;	/* dir containing sync mode and state info         */
     char *chal_prompt;	/* text to present challenge to user, must have %s */
     int chal_len;	/* challenge length, min 5 digits                  */
+    int chal_delay;	/* max delay time for response, in seconds         */
     int softfail;	/* number of auth fails before time delay starts   */
     int hardfail;	/* number of auth fails when user is locked out    */
     int allow_sync;	/* useful to override pwdfile card_type settings   */
@@ -79,9 +80,10 @@ typedef struct x99_token_t {
     char *chal_req;	/* keyword requesting challenge for fast_sync mode */
     char *resync_req;	/* keyword requesting resync for fast_sync mode    */
     int ewindow_size;	/* sync mode event window size (right side value)  */
+    int ewindow2_size;	/* softfail override event window size             */
+    int ewindow2_delay;	/* softfail override max time delay                */
 #if defined(FREERADIUS)
     /* freeradius-specific items */
-    int maxdelay;		/* max delay time for response, in seconds */
     int mschapv2_mppe_policy;	/* whether or not do to mppe for mschapv2  */
     int mschapv2_mppe_types;	/* key type/length for mschapv2/mppe       */
     int mschap_mppe_policy;	/* whether or not do to mppe for mschap    */
@@ -167,6 +169,10 @@ extern int x99_get_user_info(const char *pwdfile, const char *username,
 			     x99_user_info_t *user_info);
 
 /* x99_sync.c */
+#define FAIL_ERR  -1
+#define FAIL_HARD -2
+#define FAIL_SOFT -3
+
 extern int x99_get_sync_data(const char *syncdir, const char *username,
 			     uint32_t card_id, int ewin, int twin,
 			     char challenge[MAX_CHALLENGE_LEN + 1],
@@ -177,8 +183,11 @@ extern int x99_check_failcount(const char *syncdir, const x99_token_t *inst);
 extern int x99_incr_failcount(const char *syncdir, const char *username);
 extern int x99_reset_failcount(const char *syncdir, const char *username);
 extern int x99_get_last_auth(const char *syncdir, const char *username,
-			      time_t *last_auth);
+			     time_t *last_auth);
 extern int x99_upd_last_auth(const char *syncdir, const char *username);
+extern unsigned x99_get_last_auth_pos(const char *syncdir,const char *username);
+extern int x99_set_last_auth_pos(const char *syncdir, const char *username,
+				 unsigned pos);
 
 /* x99_site.c */
 extern int x99_challenge_transform(const char *username,

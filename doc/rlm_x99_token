@@ -217,6 +217,60 @@ and redistribution information.
     try again.  It's 'e'window because I am reserving twindow for
     time synchronous modes.
 
+    ewindow2_size:  This is similar to ewindow_size.  In "delay mode",
+    users' responses are normally /not/ checked during the delay period.
+    However, if ewindow2_size is non-zero, the response /is/ checked up to
+    ewindow2_size events/counts.  If the user gets two consecutive sync
+    responses correct within ewindow2_delay seconds, he is authenticated.
+
+	For example, say softfail=1, ewindow_size=2 and ewindow2_size=8.
+	The server's state is such that the next 8 responses are
+	1, 2, ..., 8.  The user, however, has played with the token and
+	the response showing is '3'.
+
+	This is ahead of ewindow_size, so the server refuses them (and
+	records the fact the last response was '3').
+
+	The user tries again immediately, using '3' again.  Since the
+	user is now in "delay mode" (because softfail is only 1),
+	the server would normally refuse them (remember, we said they
+	tried again "immediately").  Even if the user weren't in delay
+	mode, the server would still refuse them because they are too
+	far ahead of the window.
+
+	But since ewindow2_size is non-zero, instead the server looks
+	ahead up to 8 responses.  It stops at 3 and since the previous
+	response was not '2', it refuses the user, but records that the
+	last response was '3'.
+
+	Now the user tries again immediately, this time using the next
+	response of '4'.  Again, normally this would be refused since
+	the user is in delay mode.  But because ewindow2_size is set,
+	the server will check up to 8 responses and since '4' is within
+	the window, and the user's previous response ('3') matches the
+	previous response in the window, the user is authenticated.
+
+	* If an attacker knows a response that is ahead of the window,
+	  they can launch a simple attack by just guessing in pairs:
+	  <known_response>, <guess>.  However, they could also simply
+	  just wait until the user advances the window so that their
+	  known response becomes valid, so this shouldn't be an issue.
+	  Nevertheless, you may wish to set hardfail when using
+	  ewindow2_size (but keep in mind the trivial DoS with hardfail).
+
+	* Setting ewindow2_size to ANY value increases CPU usage.
+	  Without it set, when a user is in softfail the server returns
+	  failure without checking response values.  With ewindow2_size
+	  set, the server now does check response values; and you
+	  normally want ewindow2_size to be somewhat large (compared to
+	  ewindow_size), so the number of values checked is GREATER when
+	  the softfail-imposed delay mode is in effect.
+
+	* Setting ewindow2_size to LARGE values may increase potential
+	  for abuse via DoS.  I  have not performed any server sizing
+	  exercises, but I expect that for most installations any modern
+	  hardware is fast enough for reasonable values.
+
     radiusd.conf:  x99_token must be listed in both the authorize and
     authenticate stanzas.  In the authorize code, x99_token will set
     the Auth-Type to x99_token (ie, itself) if the Auth-Type attribute

@@ -53,15 +53,19 @@ There is one state file per user, with the same name as the user.
 The default location for state files is in /etc/x99sync.d.  For most
 filesystems, this doesn't scale well beyond a few thousand users.
 
-The format is "version:user:challenge:key:failures:last_auth:".
+The format is
+  "version:user:challenge:key:last_auth_s:last_auth_t:last_auth_p:".
 Note that the trailing colon is required.
 
-  version: 1
-     user: this is a sanity check field
-challenge: the next synchronous challenge
-      key: the key used for the next challenge (currently unused)
- failures: number of consecutive failures
-last_auth: the last time the user authenticated (success or failure)
+    version: 2
+       user: this is a sanity check field
+  challenge: the next synchronous challenge
+        key: the key used for the next challenge (currently unused)
+last_auth_s: 0 if the last auth was successful,
+             number of consecutive failures if unsucessful
+last_auth_t: the last time the user authenticated (success or failure)
+last_auth_p: >1 if the last auth was sync+correct and user is in softfail,
+             0 otherwise; if >1, it is the ewindow position of the last auth.
 
 If this file does not exist, the user must authenticate asynchronously.
 Once that happens, the server will create this file.  For tokens/modes

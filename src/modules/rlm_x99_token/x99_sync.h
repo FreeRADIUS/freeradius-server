@@ -29,8 +29,9 @@ static void x99_release_sd_lock(char *lockfile);
 
 static int x99_get_sd(const char *syncdir, const char *username,
 		      char challenge[MAX_CHALLENGE_LEN + 1], int *failures,
-		      time_t *last_async);
+		      time_t *last_async, unsigned *pos);
 static int x99_set_sd(const char *syncdir, const char *username,
-		      const char *challenge, int failures, time_t last_async);
+		      const char *challenge, int failures, time_t last_async,
+		      unsigned pos);
 
 #endif /* X99_SYNC_H */
