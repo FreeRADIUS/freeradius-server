@@ -39,7 +39,7 @@
 struct eap_sim_server_state {
 	enum eapsim_serverstates state;
 	struct eapsim_keys keys;
-
+	int  sim_id;
 };
 
 /*
@@ -112,6 +112,11 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	words[1] = htons(EAP_SIM_VERSION);
 	words[2] = 0;
 	pairadd(vps, newvp);
+
+	/* set the EAP_ID - new value */
+	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
+	newvp->lvalue = ess->sim_id++;
+	pairreplace(vps, newvp);
 
 	/* record it in the ess */
 	ess->keys.versionlistlen = 2;
@@ -231,6 +236,11 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	newvp->length = 2+EAPSIM_RAND_SIZE*3;
 	pairadd(outvps, newvp);
 
+	/* set the EAP_ID - new value */
+	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
+	newvp->lvalue = ess->sim_id++;
+	pairreplace(outvps, newvp);
+
 	/* make a copy of the identity */
 	ess->keys.identitylen = strlen(handler->identity);
 	memcpy(ess->keys.identity, handler->identity, ess->keys.identitylen);
@@ -284,10 +294,16 @@ static int eap_sim_sendsuccess(EAP_HANDLER *handler)
         unsigned char *p;
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR **outvps;
+	VALUE_PAIR *newvp;
 
 	/* outvps is the data to the client. */
 	outvps= &handler->request->reply->vps;
 	ess = (struct eap_sim_server_state *)handler->opaque;
+
+	/* set the EAP_ID - new value */
+	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
+	newvp->lvalue = ess->sim_id++;
+	pairreplace(outvps, newvp);
 
 	p = ess->keys.msk;
 	add_reply(outvps, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
@@ -350,6 +366,7 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *outvps;
+	time_t n;
 
 	outvps = handler->request->reply->vps;
 
@@ -385,6 +402,12 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
 		return 0;
 	}
 
+	/*
+	 * this value doesn't have be strong, but it is good if it
+	 * is different now and then
+	 */
+	time(&n);
+	ess->sim_id = (n & 0xff);
 
 	eap_sim_stateenter(handler, ess, eapsim_server_start);
 
@@ -598,7 +621,10 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.11  2004-02-26 19:04:31  aland
+ * Revision 1.12  2004-03-19 02:20:35  mcr
+ * 	increment the EAP-id on each stage of the transaction.
+ *
+ * Revision 1.11  2004/02/26 19:04:31  aland
  * 	perl -i -npe "s/[ \t]+$//g" `find src -name "*.[ch]" -print`
  *
  * 	Whitespace changes only, from a fresh checkout.
@@ -645,5 +671,9 @@ EAP_TYPE rlm_eap_sim = {
  * Revision 1.3  2003/09/14 00:44:42  mcr
  * 	finished trivial challenge state.
  *
+ *
+ * Local Variables:
+ * c-file-style: "linux"
+ * End Variables:
  *
  */
