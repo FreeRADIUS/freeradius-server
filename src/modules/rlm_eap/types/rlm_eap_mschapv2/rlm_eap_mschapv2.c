@@ -406,20 +406,35 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	We should get a response ONLY after we've sent
 		 *	a challenge.
 		 */
-		case PW_EAP_MSCHAPV2_RESPONSE:
-			if (data->code != PW_EAP_MSCHAPV2_CHALLENGE) {
-				radlog(L_ERR, "rlm_eap_mschapv2: Unexpected response received");
-				return 0;
-			}
-
-		/*
-		 *	4 for EAP header, 1 for EAP-MSCHAPv2 code, and
-		 *	50 for
-		 */
-		if (eap_ds->response->length < (4 + 1 + MSCHAPV2_RESPONSE_LEN)) {
-			radlog(L_ERR, "rlm_eap_mschapv2: MS-CHAPV2-Response is too short (%d)", eap_ds->response->length - 5);
+	case PW_EAP_MSCHAPV2_RESPONSE:
+		if (data->code != PW_EAP_MSCHAPV2_CHALLENGE) {
+			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected response received");
 			return 0;
 		}
+
+		/*
+		 *	Ensure that we have at least enough data
+		 *	to do the following checks.
+		 *
+		 *	EAP header, EAP type, MS-CHAP opcode,
+		 *	MS-CHAP ident, MS-CHAP data length,
+		 *	MS-CHAP value length.
+		 */
+		if (eap_ds->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
+			radlog(L_ERR, "rlm_eap_mschapv2: Response is too short");
+			return 0;
+		}
+
+		/*
+		 *	The 'value_size' is the size of the response,
+		 *	which is supposed to be the response plus
+		 *	1 byte of flags at the end.
+		 */
+		if (eap_ds->response->type.data[4] != (MSCHAPV2_RESPONSE_LEN + 1)) {
+			radlog(L_ERR, "rlm_eap_mschapv2: Response is of incorrect length");
+			return 0;
+		}
+
 		break;
 
 	case PW_EAP_MSCHAPV2_SUCCESS:
@@ -459,13 +474,16 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	memcpy(challenge->strvalue, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
 	response = pairmake("MS-CHAP2-Response", "0x00", T_OP_EQ);
-	if (!challenge) {
+	if (!response) {
 		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 		return 0;
 	}
+
 	response->length = MSCHAPV2_RESPONSE_LEN;
 	memcpy(response->strvalue + 2, &eap_ds->response->type.data[5],
 	       MSCHAPV2_RESPONSE_LEN - 2);
+	response->strvalue[0] = eap_ds->response->type.data[1];
+	response->strvalue[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 
 	/*
 	 *	Add the pairs to the request, and call the 'mschap'
