@@ -422,15 +422,34 @@ static int counter_accounting(void *instance, REQUEST *request)
 		free(count_datum.dptr);
 	}
 
-	/*
-	 * if session time < diff then the user got in after the last reset. So add his session time
-	 * else add the diff.
-	 * That way if he logged in at 23:00 and we reset the daily counter at 24:00 and he logged out
-	 * at 01:00 then we will only count one hour (the one in the new day). That is the right thing
-	 */
+	if (count_vp->type == PW_TYPE_DATE) {
+		/*
+		 *	If session time < diff then the user got in after the
+		 *	last reset. So add his session time, otherwise add the
+		 *	diff.
+		 *
+		 *	That way if he logged in at 23:00 and we reset the
+		 *	daily counter at 24:00 and he logged out at 01:00
+		 *	then we will only count one hour (the one in the new
+		 *	day). That is the right thing
+		 */
+		diff = request->timestamp - data->last_reset;
+		counter += (count_vp->lvalue < diff) ? count_vp->lvalue : diff;
 
-	diff = request->timestamp - data->last_reset;
-	counter += (count_vp->lvalue < diff) ? count_vp->lvalue : diff;
+	} else if (count_vp->type == PW_TYPE_INTEGER) {
+		/*
+		 *	Integers get counted, without worrying about
+		 *	reset dates.
+		 */
+		counter += count_vp->lvalue;
+
+	} else {
+		/*
+		 *	The attribute is NOT an integer, just count once
+		 *	more that we've seen it.
+		 */
+		counter++;
+	}
 	count_datum.dptr = (char *) &counter;
 	count_datum.dsize = sizeof(int);
 
