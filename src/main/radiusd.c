@@ -662,18 +662,6 @@ int rad_process(REQUEST *request)
 		}
 		
 		/*
-		 *	Assert that the requests have a value User-Name
-		 *	attribute.
-		 */
-		if (request->username == NULL) {
-			log(L_ERR, "No username: [] (from nas %s)",
-			    nas_name2(request->packet));
-			request_free(request);
-			return -1;
-			break;
-		}
-
-		/*
 		 *	We always call proxy_send, it returns non-zero
 		 *	if it did actually proxy the request.
 		 */
