@@ -52,9 +52,9 @@ the rlm_ldap module:
 
 #	ldap_cache_timeout: The timeout for the ldap cache in secs
 #	If it is set to zero then ldap caching will be disabled
-#	default: 120
+#	default: 0 (disabled)
 
-	ldap_cache_timeout = 120
+	ldap_cache_timeout = 0
 
 #	ldap_cache_size: The maximum ldap cache size. If it is set to zero
 #	then the ldap cache size will be unlimited
