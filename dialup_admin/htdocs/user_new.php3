@@ -62,6 +62,9 @@ EOM;
 	else{
 		if (is_file("../lib/$config[general_lib_type]/create_user.php3"))
 			include("../lib/$config[general_lib_type]/create_user.php3");
+		require("../lib/defaults.php3");
+		if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
+			include("../lib/$config[general_lib_type]/user_info.php3");
 	}
 }
 ?>
@@ -85,6 +88,21 @@ EOM;
 		<input type=text name="passwd" size=35>
 		</td>
 	</tr>
+EOM;
+	if ($config[general_lib_type] == 'sql'){
+		if (isset($member_groups))
+			$group = $member_groups[0];
+		echo <<<EOM
+	<tr>
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
+		Group
+		</td><td>
+		<input type=text name="Fgroup" value="$group" size=35>
+		</td>
+	</tr>
+EOM;
+	}
+	echo <<<EOM
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Name (First Name Surname)

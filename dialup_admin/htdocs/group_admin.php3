@@ -1,4 +1,8 @@
 <?php
+if ($show == 1 && isset($del_members)){
+        header("Location: user_admin.php3?login=$del_members[0]");
+        exit;
+}
 require('../conf/config.php3');
 if ($config[general_lib_type] != 'sql'){
 	echo <<<EOM
@@ -83,6 +87,7 @@ if ($do_changes == 1){
    <form method=post>
       <input type=hidden name=login value=<?php echo $login ?>>
       <input type=hidden name=do_changes value=0>
+      <input type=hidden name=show value=0>
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
 <tr>
 <td align=right bgcolor="#d0ddb0">
@@ -109,6 +114,8 @@ New Group Member(s)<br>Separate group members<br> by whitespace or newline
 	</table>
 <br>
 <input type=submit class=button value="Commit Changes" OnClick="this.form.do_changes.value=1">
+<br><br>
+<input type=submit class=button value="Administer selected user" OnClick="this.form.show.value=1">
 </form>
 </td></tr>
 </table>

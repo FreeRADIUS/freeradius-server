@@ -1,5 +1,11 @@
 Ver 1.52:
 * Add Reply-Message in conf/user_edit.attrs so that it appears in the user/group edit pages
+* Allow the administrator to specify a group in the New User page. Update lib/sql/create_user.php3 to add
+  the user to the specified group
+* Call user_info.php3 and defaults.php3 in user_new.php3 after creating a user
+* Only run if $login is not NULL in lib/sql/defaults.php3
+* In group admin add a button to administer the selected user which will redirect the administrator to the
+  corresponding user_admin page
 Ver 1.51:
 * Only call user_info.php3 in user_new.php3 when we are creating a user
 * Fix a bug with personal information attributes in user_new.php3

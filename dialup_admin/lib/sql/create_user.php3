@@ -39,6 +39,26 @@ if ($link){
 				else
 					echo "<b>User already exists in user info table.</b><br>\n";
 			}
+			else
+				echo "<b>Could not add user information in user info table</b><br>\n";
+		}
+		if ($Fgroup != ''){
+			$res = @da_sql_query($link,$config,
+			"SELECT UserName FROM $config[sql_usergroup_table]
+			WHERE UserName = '$login' AND GroupName = '$Fgroup';");
+			if ($res){
+				if (!@da_sql_num_rows($res,$config)){
+					$res = @da_sql_query($link,$config,
+					"INSERT INTO $config[sql_usergroup_table]
+					(UserName,GroupName) VALUES ('$login','$Fgroup');");
+					if (!$res || !@da_sql_affected_rows($link,$res,$config))
+						echo "<b>Could not add user to group $Fgroup. SQL Error</b><br>\n";
+				}
+				else
+					echo "<b>User already is a member of group $Fgroup</b><br>\n";
+			}
+			else
+				echo "<b>Could not add user to group $Fgroup. SQL Error</b><br>\n";
 		}
 		if (!$da_abort){
 			foreach($show_attrs as $key => $attr){
