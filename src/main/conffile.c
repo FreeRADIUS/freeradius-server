@@ -150,6 +150,8 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 	int i;
 	char      	**q;
 	CONF_PAIR *cp;
+	uint32_t	ipaddr;
+	char		buffer[1024];
 	
 	/*
 	 *	Handle the user-supplied variables.
@@ -196,6 +198,26 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			       cp->value);
 			*q = strdup(cp->value);
 			break;
+
+		case PW_TYPE_IPADDR:
+			/*
+			 *	Allow '*' as any address
+			 */
+			if (strcmp(cp->value, "*") == 0) {
+				*(uint32_t *) variables[i].data = 0;
+				break;
+			}
+			ipaddr = ip_getaddr(cp->value);
+			if (ipaddr == 0) {
+				log(L_ERR, "Can't find IP address for host %s", cp->value);
+				break;
+			}
+			DEBUG2("Config: %s.%s = %s IP address [%s]",
+			       cs->name1,
+			       variables[i].name,
+			       cp->value, ip_ntoa(buffer, ipaddr));
+			*(uint32_t *) variables[i].data = ipaddr;
+			break;
 			
 		default:
 			log(L_ERR, "type %d not supported yet", variables[i].type);
@@ -231,6 +253,11 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		    cf, *lineno);
 		return NULL;
 	}
+
+	/*
+	 *	Allow for $INCLUDE files???
+	 */
+
 
 	/*
 	 *	Allocate new section.
