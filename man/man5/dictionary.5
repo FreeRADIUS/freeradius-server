@@ -1,48 +1,93 @@
-.TH dictionary 5 "02 May 2000"
+.TH dictionary 5 "04 Jan 2004"
 .SH NAME
 dictionary \- RADIUS dictionary file
 .SH DESCRIPTION
 The \fIdictionary\fP file resides in the radius database directory,
 by default \fI/etc/raddb\fP. It contains a list of RADIUS attributes
 and values, which the server uses to map between descriptive names and
-on-the-wire data.
+on-the-wire data.  The names have no meaning outside of the RADIUS
+server itself, and are never exchanged between server and clients.
+
 Every line starting with a hash sign
 .RB (' # ')
 is treated as comment and ignored.
 .PP
 Each line of the file can contain one of the following strings
 .TP 0.5i
-.B ATTRIBUTE name  number  type
-Define a name to RADIUS attribute number mapping.  The \fIname\fP
-field can be any non-space text.  The \fInumber\fP must contain
-an ASCII number for that name, as given in \fIRFC2865\fP. The
-\fItype\fP field can be one of \fIstring\fP, \fIipaddr\fP,
-\fIinteger\fP, or \fIdate\fP.
+.B ATTRIBUTE name  number  type [vendor|options]
+Define a RADIUS attribute name to number mapping.  The \fIname\fP
+field can be any non-space text, but is usually taken from
+\fIRFC2865\fP, and other related documents.  The \fInumber\fP field is
+also taken from the relevant documents, for that name.  The \fItype\fP
+field can be one of \fIstring\fP, \fIoctets\fP, \fIipaddr\fP,
+\fIinteger\fP, \fIdate\fP, \fIifid\fP, \fIipv6addr\fP,
+\fIipv6prefix\fP, or \fIabinary\fP.  See the RFC's, or the main
+\fIdictionary\fP file for a description of the various types.
+
+The last (optional) field of an attribute definition can have either a
+vendor name, or options for that attribute.  When a vendor name is
+given, the attribute is defined to be a vendor specific attribute.
+Alternately, the options may be the a comma-separated list of the
+following options:
+
+.TP 0.5i
+.DS
+	encrypt=[1-3]
+.DE
+.RS
+Mark the attribute as being encrypted with one of three methods.  "1"
+means that the attribute is encrypted with the method as defined in
+\fIRFC2865\fP for the User-Password attribute.  "2" means that the
+password is encrypted with the method as defined in \fIRFC2868\fP for
+the Tunnel-Password attribute.  "3" means that the attribute is
+encrypted as per Ascend's definitions for the Ascend-Send-Secret attribute.
+.RE
+
+.DS
+	has_tag
+.DE
+.RS
+Mark the attribute as being permitted to have a tag, as defined in
+\fIRFC2868\fP.  The purpose of the tag is to allow grouping of
+attributes for tunnelled users.  See \fIRFC2868\fP for more details.
+.RE
+
+When the server receives an encoded attribute in a RADIUS packet, it
+looks up that attribute by number in the dictionary, and uses the name
+found there for printing diagnostic and log messages.
 
 .TP 0.5i
 .B VALUE attribute-name value-name number
-Define a value name to value number mapping.  The \fIattribute-name\fP
-field must be previously defined by an \fIATTRIBUTE\fP entry.  The
-\fIvalue-name\fP can be any non-space text.  The \fInumber\fP must
-contain an ASCII number for that name, as given in \fIRFC2865\fP.
+Define an attribute value name to number mapping, for an attribute of
+type \fIinteger\fP.  The \fIattribute-name\fP field MUST be previously
+defined by an \fIATTRIBUTE\fP entry.  The \fIvalue-name\fP field can
+be any non-space text, but is usually taken from \fIRFC2865\fP, or
+other documents..  The \fInumber\fP field is also taken from the
+relevant documents, for that name.
+
+When the server receives an encoded value in a RADIUS packet, it looks
+up the value of that attribute by number in the dictionary, and uses
+the name found there for printing diagnostic and log messages.
 
 .TP 0.5i
 .B VENDOR vendor-name number
-Define a Vendor Specific Attribute encapsulation for \fIvendor-name\fP to
-\fInumber\fP.
+Define a Vendor Specific Attribute encapsulation for \fIvendor-name\fP
+to \fInumber\fP.  For a list of vendor names and numbers, see
+http://www.iana.org/enterprise-numbers.txt.
 
 .TP 0.5i
 .B $INCLUDE filename
 Include dictionary entries from the file \fIfilename\fP.  The
-\fIfilename\fP is taken as relative to the location of the
-\fIdictionary\fP which is doing the inclusion.
+\fIfilename\fP is taken as relative to the location of the file which
+is asking for the inclusion.
 
 .PP
 .SH FILES
-.I /etc/raddb/dictionary ,
-.I /etc/raddb/dictionary.*
+.I /etc/raddb/dictionary,
+.I /usr/share/freeradius/dictionary.*
 .SH "SEE ALSO"
 .BR radiusd (8),
 .BR naslist (5),
-.BR RFC2865 ,
-.BR RFC2866
+.BR RFC2865,
+.BR RFC2866,
+.BR RFC2868
