@@ -376,7 +376,15 @@ modules {
 		#tls {
 		#	private_key_password = password
 		#	private_key_file = /path/filename
+
+		#	Sometimes Private key & Certificate are located
+		#	in the same file, then private_key_file & certificate_file
+		#	must contain the same file name.
 		#	certificate_file = /path/filename
+
+		#	Trusted Root CA list
+		#	CA_file = /path/filename
+
 		#	dh_file = /path/filename
 		#	random_file = /path/filename
 		#
