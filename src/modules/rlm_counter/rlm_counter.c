@@ -47,7 +47,8 @@ typedef struct rlm_counter_t {
 	char	*filename;	/* name of the database file */
 	char    *reset;		/* daily, weekly, monthly */
 	char	*key_name;	/* User-Name */
-	char	*count_name;    /* Acct-Session-Time */
+	char	*count_attribute;    /* Acct-Session-Time */
+	char	*counter_name;    /* Daily-Session-Time */
 	int     key_attr;
 	int     count_attr;
 	time_t	reset_time;
@@ -69,12 +70,12 @@ static CONF_PARSER module_config[] = {
   { "filename",  PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,filename), NULL,  NULL},
   { "key",       PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,key_name), NULL,  NULL},
   { "reset",     PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,reset), NULL,  NULL},
-  { "count-attribute",  PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,count_name), NULL,  NULL},
+  { "count-attribute",  PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,count_attribute), NULL,  NULL},
+  { "counter-name",  PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,counter_name), NULL,  NULL},
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 #define SECONDS_PER_WEEK (SECONDS_PER_DAY * 7)
-#define COUNTER_ATTR (1055)
 
 /*
  *	See if the counter matches.
@@ -155,14 +156,27 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Discover the attribute number of the counter. 
 	 */
-	dattr = dict_attrbyname(data->count_name);
+	dattr = dict_attrbyname(data->count_attribute);
 	if (!dattr) {
 		radlog(L_ERR, "rlm_counter: No such attribute %s",
-		       data->count_name);
+		       data->count_attribute);
 		return -1;
 	}
 	data->count_attr = dattr->attr;
 
+	/*
+	 *  Create a new attribute for the counter.
+	 */
+	dict_addattr(data->counter_name, 0, PW_TYPE_INTEGER, -1);
+	dattr = dict_attrbyname(data->counter_name);
+	if (!dattr) {
+		radlog(L_ERR, "rlm_counter: Failed to create counter attribute %s",
+		       data->counter_name);
+		return -1;
+	}
+	data->dict_attr = dattr->attr;
+	DEBUG2("Counter attribute %s is number %d",
+	       data->counter_name, data->dict_attr);
 
 	/*
 	 *  Discover when next to reset the database.
@@ -212,13 +226,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
-	 *  Create a new attribute for the counter.
-	 */
-	//	dict_addattr("Counter", 0, PW_TYPE_INTEGER, COUNTER_ATTR);
-	data->dict_attr = COUNTER_ATTR;
-
-	/*
-	 *	Register the huntgroup comparison operation.
+	 *	Register the counter comparison operation.
 	 */
 	paircompare_register(data->dict_attr, 0, counter_cmp, data);
 
@@ -313,6 +321,21 @@ static int counter_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
+/*
+ *	Find the named user in this modules database.  Create the set
+ *	of attribute-value pairs to check and reply with for this user
+ *	from the database. The authentication code only needs to check
+ *	the password, the rest is done here.
+ */
+static int counter_authorize(void *instance, REQUEST *request)
+{
+	/* quiet the compiler */
+	instance = instance;
+	request = request;
+
+	return RLM_MODULE_NOOP;
+}
+
 static int counter_detach(void *instance)
 {
 	rlm_counter_t *data = (rlm_counter_t *) instance;
@@ -322,7 +345,8 @@ static int counter_detach(void *instance)
 	free(data->filename);
 	free(data->reset);
 	free(data->key_name);
-	free(data->count_name);
+	free(data->count_attribute);
+	free(data->counter_name);
 
 	free(instance);
 	return 0;
@@ -338,13 +362,13 @@ static int counter_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_counter = {
-	"Count",	
+	"Counter",	
 	RLM_TYPE_THREAD_UNSAFE,		/* type */
 	NULL,				/* initialization */
 	counter_instantiate,		/* instantiation */
 	{
 		NULL,			/* authentication */
-		NULL,			/* authorization */
+		counter_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		counter_accounting,	/* accounting */
 		NULL			/* checksimul */

@@ -533,6 +533,34 @@ modules {
 		attrsfile = ${confdir}/attrs
 	}
 
+	#######################################################################
+	#
+	#  Configuration for the counter module
+	#
+	#  This module takes an attribute (count-attribute), which MUST
+	#  be an 'integer' or 'time' attribute.  It also takes a key,
+	#  and creates a counter for each unique key.  The count is
+	#  incremented when accounting packets are received by the
+	#  server.  The value of the increment is the value of the
+	#  count-attribute.
+	#
+	#  The 'reset' parameter defines when the counters are all reset to
+	#  zero.  It can be hourly, daily, weekly, or monthly.
+	#
+	#  The counter-name is the name of the attribute in the 'users'
+	#  file used to access that counter.  e.g.
+	#
+	#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
+	#	    Reply-Message = "You've used up more than one hour today"
+	#
+	counter {
+		filename = ${raddbdir}/db.counter
+		key      = User-Name
+		count-attribute = Acct-Session-Time
+		reset    = daily
+		counter-name = Daily-Session-Time
+	}
+
 	#
 	# The "always" module is here for debugging purposes. Each instance simply
 	# returns the same result, always, without doing anything.
@@ -619,6 +647,7 @@ authenticate {
 # need to setup hints for the remote radius server
 authorize {
 	preprocess
+	#counter
 	#attr_filter
 	suffix
 	files
@@ -637,6 +666,7 @@ preacct {
 accounting {
 	#acct_unique
 	detail
+	#counter
 	unix
 	radutmp
 	#sradutmp
