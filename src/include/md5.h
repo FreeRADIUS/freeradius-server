@@ -1,6 +1,15 @@
 /* GLOBAL.H - RSAREF types and constants
  */
 
+/*
+ *  FreeRADIUS defines to ensure globally unique MD5 function names,
+ *  so that we don't pick up vendor-specific broken MD5 libraries.
+ */
+#define MD5_CTX		librad_MD5_CTX
+#define MD5Init		librad_MD5Init
+#define MD5Update	librad_MD5Update
+#define MD5Final       	librad_MD5Final
+
 /* PROTOTYPES should be set to one if and only if the compiler supports
   function argument prototyping.
   The following makes PROTOTYPES default to 0 if it has not already
@@ -69,7 +78,7 @@ typedef struct {
   unsigned char buffer[64];                         /* input buffer */
 } MD5_CTX;
 
-static void MD5Init PROTO_LIST ((MD5_CTX *));
-static void MD5Update PROTO_LIST
+void MD5Init PROTO_LIST ((MD5_CTX *));
+void MD5Update PROTO_LIST
   ((MD5_CTX *, unsigned char *, unsigned int));
-static void MD5Final PROTO_LIST ((unsigned char [16], MD5_CTX *));
+void MD5Final PROTO_LIST ((unsigned char [16], MD5_CTX *));
