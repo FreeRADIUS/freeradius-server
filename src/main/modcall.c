@@ -39,8 +39,9 @@ static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,
  * MOD_ACTION_RETURN, to cause an immediate return.
  * There's also the keyword "reject", represented here by MOD_ACTION_REJECT
  * to cause an immediate reject. */
-#define MOD_ACTION_RETURN (-1)
-#define MOD_ACTION_REJECT (-2)
+#define MOD_ACTION_INVALID (-1)
+#define MOD_ACTION_RETURN  (-2)
+#define MOD_ACTION_REJECT  (-3)
 
 /* Here are our basic types: modcallable, modgroup, and modsingle. For an
  * explanation of what they are all about, see ../../doc/README.failover */
@@ -124,7 +125,7 @@ static int str2rcode(const char *s, const char *filename, int lineno)
 		radlog(L_ERR|L_CONS,
 		       "%s[%d] Unknown module rcode '%s'.\n",
 		       filename, lineno, s);
-		exit(1);
+		return -1;
 	}
 
 	return rcode;
@@ -142,20 +143,13 @@ static int str2action(const char *s, const char *filename, int lineno)
 		/*
 		 *	Don't allow priority zero, for future use.
 		 */
-		if (rcode == 0) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d] Invalid action '%s'.\n",
-			       filename, lineno, s);
-			exit(1);
-		}
-		return rcode;
-	} else {
-		radlog(L_ERR|L_CONS,
-				"%s[%d] Unknown action '%s'.\n",
-				filename, lineno, s);
-		exit(1);
+		if (rcode > 0) return rcode;
 	}
-	return -1;
+	
+	radlog(L_ERR|L_CONS,
+	       "%s[%d] Unknown action '%s'.\n",
+	       filename, lineno, s);
+	return MOD_ACTION_INVALID;
 }
 
 #if 0
@@ -825,21 +819,9 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 	}
 };
 
-/* Bail out if the module in question does not supply the wanted component */
-static void sanity_check(int component, module_instance_t *inst,
-			 const char *filename)
-{
-	if (!inst->entry->module->methods[component]) {
-		radlog(L_ERR|L_CONS,
-				"%s: \"%s\" modules aren't allowed in '%s' sections -- they have no such method.",
-				filename, inst->entry->module->name,
-				component_names[component]);
-		exit(1);
-	}
-}
 
 /* Parse a CONF_SECTION containing only result=action pairs */
-static void override_actions(modcallable *c, CONF_SECTION *cs,
+static int override_actions(modcallable *c, CONF_SECTION *cs,
 		const char *filename)
 {
 	CONF_ITEM *ci;
@@ -853,16 +835,24 @@ static void override_actions(modcallable *c, CONF_SECTION *cs,
 			       "%s[%d] Subsection of module instance call "
 			       "not allowed\n", filename,
 			       cf_section_lineno(cf_itemtosection(ci)));
-			exit(1);
+			return 0;
 		}
 		cp = cf_itemtopair(ci);
 		attr = cf_pair_attr(cp);
 		value = cf_pair_value(cp);
 		lineno = cf_pair_lineno(cp);
 		rcode = str2rcode(attr, filename, lineno);
+		if (rcode < 0) {
+			return 0;
+		}
 		action = str2action(value, filename, lineno);
+		if (action == MOD_ACTION_INVALID) {
+			return 0;
+		}
 		c->actions[rcode] = action;
 	}
+
+	return 1;
 }
 
 static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
@@ -980,10 +970,24 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	 */
 	if (cf_item_is_section(ci)) {
 		/* override default actions with what's in the CONF_SECTION */
-		override_actions(csingle, cf_itemtosection(ci), filename);
+		if (!override_actions(csingle, cf_itemtosection(ci), filename)) {
+			modcallable_free(&csingle);
+			return NULL;
+		}
 	}
 
-	sanity_check(component, this, filename);
+	/*
+	 *	Bail out if the module in question does not supply the
+	 *	wanted component
+	 */
+	if (!this->entry->module->methods[component]) {
+		radlog(L_ERR|L_CONS,
+		       "%s: \"%s\" modules aren't allowed in '%s' sections -- they have no such method.",
+		       filename, this->entry->module->name,
+		       component_names[component]);
+		modcallable_free(&csingle);
+		return NULL;
+	}
 
 	single->modinst = this;
 	*modname = this->entry->module->name;
@@ -1073,8 +1077,16 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 				 * group. */
 				int rcode, action;
 				rcode = str2rcode(attr, filename, lineno);
+				if (rcode < 0) {
+					modcallable_free(&c);
+					return NULL;
+				}
+				
 				action = str2action(value, filename, lineno);
-
+				if (action == MOD_ACTION_INVALID) {
+					modcallable_free(&c);
+					return NULL;
+				}
 				c->actions[rcode] = action;
 			}
 		}
