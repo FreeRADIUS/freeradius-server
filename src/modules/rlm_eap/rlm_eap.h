@@ -28,17 +28,6 @@
 #include "eap_types.h"
 
 /*
- * Structure to represent packet format of eap
- */
-typedef struct eap_packet_t {
-	unsigned char	code;
-	unsigned char	id;
-	unsigned char	length[2];
-	unsigned char	data[1];
-} eap_packet_t;
-
-
-/*
  * Keep track of which sub modules we've loaded.
  */
 typedef struct eap_types_t {
@@ -77,7 +66,6 @@ typedef struct rlm_eap_t {
 
 /* function definitions */
 /* EAP-Type */
-int		eaptype_name2type(const char *name);
 int      	eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs);
 int       	eaptype_select(rlm_eap_t *inst, EAP_HANDLER *h);
 void		eaptype_free(EAP_TYPES *tl);
@@ -87,7 +75,6 @@ int  		eap_start(rlm_eap_t *inst, REQUEST *request);
 void 		eap_fail(EAP_HANDLER *handler);
 void 		eap_success(EAP_HANDLER *handler);
 int 		eap_compose(EAP_HANDLER *handler);
-eap_packet_t 	*eap_attribute(VALUE_PAIR *vps);
 EAP_HANDLER 	*eap_handler(rlm_eap_t *inst, eap_packet_t **eap_msg, REQUEST *request);
 
 /* Memory Management */

@@ -76,13 +76,13 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	lt_dlhandle	handle;
 	EAP_TYPES	*node;
 
-	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eap_types[eap_type]);
+	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eaptype_type2name(eap_type));
 
 	/* Link the loaded EAP-Type */
 	handle = lt_dlopenext(buffer);
 	if (handle == NULL) {
 		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s", 
-				eap_types[eap_type], lt_dlerror());
+				eaptype_type2name(eap_type), lt_dlerror());
 		return -1;
 	}
 
@@ -97,13 +97,13 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	/* fill in the structure */
 	node->handle = handle;
 	node->cs = cs;
-	node->typename = eap_types[eap_type];
+	node->typename = eaptype_type2name(eap_type);
 	node->type_data = NULL;
 	
 	node->type = (EAP_TYPE *)lt_dlsym(node->handle, buffer);
 	if (!node->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to %s structure in %s: %s",
-				buffer, eap_types[eap_type], lt_dlerror());
+				buffer, eaptype_type2name(eap_type), lt_dlerror());
 		lt_dlclose(node->handle);	/* ignore any errors */
 		free(node);
 		return -1;
@@ -112,17 +112,16 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 		((node->type->attach)(node->cs, &(node->type_data)) < 0)) {
 
 		radlog(L_ERR, "rlm_eap: Failed to initialize type %s",
-		       eap_types[eap_type]);
+		       eaptype_type2name(eap_type));
 		lt_dlclose(node->handle);
 		free(node);
 		return -1;
 	}
 
-	DEBUG("rlm_eap: Loaded and initialized type %s", eap_types[eap_type]);
+	DEBUG("rlm_eap: Loaded and initialized type %s", eaptype_type2name(eap_type));
 	*type = node;
 	return 0;
 }
-
 
 /*
  * Call the appropriate handle with the right eap_type.
@@ -249,7 +248,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 			if (eaptype_call(inst->types[default_eap_type],
 					 handler) == 0) {
-				DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", eap_types[default_eap_type]);
+				DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", eaptype_type2name(default_eap_type));
 				return EAP_INVALID;
 			}
 		}
@@ -289,12 +288,12 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 		default_eap_type = eaptype->data[0];
 		DEBUG2(" rlm_eap: EAP-NAK asked for EAP-Type/%s",
-		       eap_types[default_eap_type]);
+		       eaptype_type2name(default_eap_type));
 
 		if (handler->eap_type == default_eap_type) {
 			DEBUG2(" rlm_eap: ERROR! Our request for %s was NAK'd with a request for %s, what is the client thinking?",
-			       eap_types[default_eap_type],
-			       eap_types[default_eap_type]);
+			       eaptype_type2name(default_eap_type),
+			       eaptype_type2name(default_eap_type));
 		}
 
 		goto do_initiate;
@@ -305,7 +304,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 */
 		default:
 			DEBUG2("  rlm_eap: EAP_TYPE - %s",
-			       eap_types[eaptype->type]);
+			       eaptype_type2name(eaptype->type));
 			
 			/*
 			 *	We haven't configured it, it doesn't exit.
