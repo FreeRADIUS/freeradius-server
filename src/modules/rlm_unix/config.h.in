@@ -1,17 +1,5 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
-/* Define to 1 if you have the <crypt.h> header file. */
-#undef HAVE_CRYPT_H
-
-/* Define to 1 if you have the `fgetgrent' function. */
-#undef HAVE_FGETGRENT
-
-/* Define to 1 if you have the `fgetpwent' function. */
-#undef HAVE_FGETPWENT
-
-/* Define to 1 if you have the `fgetspent' function. */
-#undef HAVE_FGETSPENT
-
 /* Define to 1 if you have the `getspnam' function. */
 #undef HAVE_GETSPNAM
 
