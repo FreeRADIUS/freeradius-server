@@ -26,6 +26,16 @@
 #define PW_ACCESS_CHALLENGE		11
 #define PW_STATUS_SERVER		12
 #define PW_STATUS_CLIENT		13
+#define PW_DISCONNECT_REQUEST		40
+#define PW_DISCONNECT_ACK		41
+#define PW_DISCONNECT_NAK		42
+#define PW_COF_REQUEST			43
+#define PW_COF_ACK			44
+#define PW_COF_NAK			45
+
+#define PW_AUTH_UDP_PORT                1812
+#define PW_ACCT_UDP_PORT                1813
+#define PW_POD_UDP_PORT			1700
 
 #define	PW_USER_NAME			1
 #define	PW_USER_PASSWORD		2

@@ -65,9 +65,6 @@
 #define CHAP_VALUE_LENGTH       16
 #define MAX_STRING_LEN		254	/* RFC2138: string 0-253 octets */
 
-#define PW_AUTH_UDP_PORT                1812
-#define PW_ACCT_UDP_PORT                1813
-
 #ifdef _LIBRADIUS
 #  define AUTH_HDR_LEN		20
 #  define VENDORPEC_USR		429
