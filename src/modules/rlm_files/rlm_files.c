@@ -53,9 +53,6 @@ struct file_instance {
         /* preacct */
         char *acctusersfile;
         PAIR_LIST *acctusers;
-
-        /*acct*/
-        int detailperm;
 };
 
 #if defined(WITH_DBM) || defined(WITH_NDBM)
@@ -262,7 +259,6 @@ static struct file_instance config;
 static CONF_PARSER module_config[] = {
         { "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, RADIUS_USERS },
         { "acctusersfile", PW_TYPE_STRING_PTR, &config.acctusersfile, RADIUS_ACCT_USERS },
-        { "detailperm",    PW_TYPE_INTEGER,    &config.detailperm, "0600" },
 	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
 	{ NULL, -1, NULL, NULL }
 };
@@ -431,7 +427,6 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
                 return -1;
         }
 
-        inst->detailperm = config.detailperm;
         inst->usersfile = config.usersfile;
         inst->acctusersfile = config.acctusersfile;
         config.usersfile = NULL;
@@ -887,112 +882,6 @@ static int file_preacct(void *instance, REQUEST *request)
 }
 
 /*
- *	Accounting - write the detail files.
- */
-static int file_accounting(void *instance, REQUEST *request)
-{
-	int		outfd;
-	FILE		*outfp;
-	char		nasname[128];
-	char		buffer[512];
-	VALUE_PAIR	*pair;
-	uint32_t	nas;
-	NAS		*cl;
-	long		curtime;
-	int		ret = RLM_MODULE_OK;
-	struct stat	st;
-
-	struct file_instance *inst = instance;
-
-	/*
-	 *	See if we have an accounting directory. If not,
-	 *	return.
-	 */
-	if (stat(radacct_dir, &st) < 0) {
-		DEBUG("No accounting directory %s", radacct_dir);
-		return RLM_MODULE_NOOP;
-	}
-	curtime = time(0);
-
-	/*
-	 *	Find out the name of this terminal server. We try
-	 *	to find the PW_NAS_IP_ADDRESS in the naslist file.
-	 *	If that fails, we look for the originating address.
-	 *	Only if that fails we resort to a name lookup.
-	 */
-	cl = NULL;
-	nas = request->packet->src_ipaddr;
-	if ((pair = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
-		nas = pair->lvalue;
-	if (request->proxy && request->proxy->src_ipaddr)
-		nas = request->proxy->src_ipaddr;
-
-	if ((cl = nas_find(nas)) != NULL) {
-		if (cl->shortname[0])
-			strcpy(nasname, cl->shortname);
-		else
-			strcpy(nasname, cl->longname);
-	}
-
-	if (cl == NULL) {
-		ip_hostname(nasname, sizeof(nasname), nas);
-	}
-
-	/*
-	 *	Create a directory for this nas.
-	 */
-	sprintf(buffer, "%s/%s", radacct_dir, nasname);
-	(void) mkdir(buffer, 0755);
-
-	/*
-	 *	Write Detail file.
-	 */
-	sprintf(buffer, "%s/%s/%s", radacct_dir, nasname, "detail");
-	if ((outfd = open(buffer, O_WRONLY|O_APPEND|O_CREAT,
-			  inst->detailperm)) < 0) {
-		radlog(L_ERR, "Acct: Couldn't open file %s", buffer);
-		ret = RLM_MODULE_FAIL;
-	} else if ((outfp = fdopen(outfd, "a")) == NULL) {
-		radlog(L_ERR, "Acct: Couldn't open file %s: %s",
-		    buffer, strerror(errno));
-		ret = RLM_MODULE_FAIL;
-		close(outfd);
-	} else {
-
-		/* Post a timestamp */
-		fputs(ctime(&curtime), outfp);
-
-		/* Write each attribute/value to the log file */
-		pair = request->packet->vps;
-		while (pair) {
-			if (pair->attribute != PW_PASSWORD) {
-				fputs("\t", outfp);
-				fprint_attr_val(outfp, pair);
-				fputs("\n", outfp);
-			}
-			pair = pair->next;
-		}
-
-		/*
-		 *	Add non-protocol attibutes.
-		 */
-		fprintf(outfp, "\tTimestamp = %ld\n", curtime);
-		if (request->packet->verified)
-			fputs("\tRequest-Authenticator = Verified\n", outfp);
-		else
-			fputs("\tRequest-Authenticator = None\n", outfp);
-		fputs("\n", outfp);
-		fclose(outfp);
-	}
-
-#if USE_DYNAMIC_LOGS
-	file_write_dynamic_log(request);
-#endif /* USE_DYNAMIC_LOGS */
-	return ret;
-}
-
-
-/*
  *	Clean up.
  */
 static int file_detach(void *instance)
@@ -1016,7 +905,7 @@ module_t rlm_files = {
 	file_authorize, 		/* authorization */
 	file_authenticate,		/* authentication */
 	file_preacct,			/* preaccounting */
-	file_accounting,		/* accounting */
+	NULL,				/* accounting */
 	file_detach,			/* detach */
 	NULL				/* destroy */
 };
