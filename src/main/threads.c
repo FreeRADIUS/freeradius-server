@@ -97,31 +97,6 @@ static CONF_PARSER thread_config[] = {
 };
 
 /*
- *	If the child *thread* gets a termination signal,
- *	then exit from the thread.
- *
- *	This is ugly.  REALLY ugly.  It might not even be portable...
- */
-static void sig_term(int sig)
-{
-	pthread_t child_pid;
-	THREAD_HANDLE *handle;
-
-	child_pid = pthread_self();
-	for (handle = thread_pool.head; handle; handle = handle->next) {
-		if (pthread_equal(handle->child_pid, child_pid)) {
-			handle->status = THREAD_CANCELLED;
-			DEBUG2("Thread %d setting state to cancelled",
-			       child_pid);
-			break;
-		}
-	}
-
-	DEBUG2("Thread %d got SIGTERM: exiting thread", child_pid);
-	pthread_exit(NULL);
-}
-
-/*
  *	The main thread handler for requests.
  *
  *	Wait on the semaphore until we have it, and process the request.
@@ -130,18 +105,13 @@ static void *request_handler_thread(void *arg)
 {
 	THREAD_HANDLE	*self;
 	REQUEST		*request;
+	RAD_REQUEST_FUNP fun;
 	RADIUS_PACKET	*packet;
 	const char	*secret;
 	int		replicating;
 
 	self = (THREAD_HANDLE *) arg;
 	
-	/*
-	 *	Esnsure that any termination signals are caught
-	 *	by the child thread, and cause a forced exit.
-	 */
-	signal(SIGTERM, sig_term);
-
 	/*
 	 *	Loop forever, until pthread_cancel()'d, or SIGTERM'd.
 	 */
@@ -156,11 +126,20 @@ static void *request_handler_thread(void *arg)
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       self->child_pid);
 		sem_wait(&self->semaphore);
+
+		/*
+		 *	If we've been told to kill ourselves,
+		 *	then exit politely.
+		 */
+		if (self->status == THREAD_CANCELLED) {
+			break;
+		}
 		
 		DEBUG2("Thread %d handling request %08x, number %d",
 		       self->child_pid, self->request, self->request_count);
 		
 		request = self->request;
+		fun = self->fun;
 
 		/*
 		 *	Put the decoded packet into it's proper place.
@@ -183,14 +162,10 @@ static void *request_handler_thread(void *arg)
 		 */
 		if (rad_decode(packet, secret) != 0) {
 		    log(L_ERR, "%s", librad_errstr);
-		    request->child_pid = NO_SUCH_CHILD_PID;
-		    request->finished = TRUE;
-
 		    /*
 		     *	Send a reject?
 		     */
-
-		    goto next_request;
+		    goto finished_request;
 		}
 
 		/*
@@ -216,29 +191,47 @@ static void *request_handler_thread(void *arg)
 		 *	We have the semaphore, and have decoded the packet.
 		 *	Let's process the request.
 		 */
-		(*(self->fun))(request);
+		(*fun)(request);
 		
 		/*
-		 *	Respond to the request, including any
-		 *	proxy or replicate commands.
+		 *	If we don't already have a proxy
+		 *	packet for this request, we MIGHT have
+		 *	to go proxy it.
 		 */
-		rad_respond(request);
+		if (request->proxy == NULL) {
+			int sent;
+			sent = proxy_send(request);
+			
+			/*
+			 *	sent==1 means it's been proxied.  The child
+			 *	is done handling the request, but the request
+			 *	is NOT finished!
+			 */
+			if (sent == 1) {
+				goto next_request;
+			}
+		}
 
+		/*
+		 *	If there's a reply, send it to the NAS.
+		 */
+		if (request->reply)
+			rad_send(request->reply, request->secret);
+		
 		/*
 		 *	We're done processing the request, set the
 		 *	request to be finished, clean up as necessary,
 		 *	and forget about the request.
 		 */
-	next_request:
+	finished_request:
+		request->finished = TRUE;
+		
 		/*
-		 *	The proxy reply VP's aren't going to be used
-		 *	any more, so we might as well get rid of them
-		 *	in the child thread.
+		 *	Go to the next request, without marking
+		 *	the current one as finished.
 		 */
-		if (request->proxy_reply) {
-			pairfree(request->proxy_reply->vps);
-			request->proxy_reply->vps = NULL;
-		}
+	next_request:
+		request->child_pid = NO_SUCH_CHILD_PID;
 		self->request = NULL;
 
 		/*
@@ -247,6 +240,11 @@ static void *request_handler_thread(void *arg)
 		 *	where we wait for it's value to become non-zero.
 		 */
 	}
+
+	/*
+	 *	The parent thread takes care of freeing the 'self' handle.
+	 */
+	return NULL;
 }
 
 /*
@@ -398,7 +396,7 @@ static THREAD_HANDLE *spawn_thread(void)
 	memset(handle, 0, sizeof(THREAD_HANDLE));
 	handle->prev = NULL;
 	handle->next = NULL;
-	handle->child_pid = 0;
+	handle->child_pid = NO_SUCH_CHILD_PID;
 	handle->request_count = 0;
 	handle->status = THREAD_RUNNING;
 	handle->timestamp = time(NULL);
@@ -422,12 +420,17 @@ static THREAD_HANDLE *spawn_thread(void)
 	handle->fun = NULL;
 
 	/*
-	 *	Create the thread.
+	 *	Create the thread, and detach it so that it cleans up
+	 *	it's own memory when it exits.
 	 */
 	rcode = pthread_create(&handle->child_pid, NULL,
 			       request_handler_thread, handle);
 	if (rcode != 0) {
 		log(L_ERR|L_CONS, "Thread create failed: %s", strerror(errno));
+		exit(1);
+	}
+	if (pthread_detach(handle->child_pid) != 0) {
+		log(L_ERR|L_CONS, "Thread detach failed: %s", strerror(errno));
 		exit(1);
 	}
 
@@ -515,20 +518,6 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 		next = handle->next;
 
 		/*
-		 *	Prior to seeing if the thread is free, check
-		 *	if the thread has exited.
-		 */
-		if (handle->status == THREAD_CANCELLED) {
-			assert(handle->request == NULL);
-
-			DEBUG2("Thread joining child %d. Total threads in pool: %d", handle->child_pid, thread_pool.total_threads);
-			pthread_join(handle->child_pid, NULL);
-			handle->child_pid = NO_SUCH_CHILD_PID;
-			delete_thread(handle);
-			continue;
-		}
-
-		/*
 		 *	If we haven't found a free thread yet, then
 		 *	check it's semaphore lock.  We don't lock it,
 		 *	so if it's locked, then the thread MUST be the
@@ -600,8 +589,18 @@ int thread_pool_clean(void)
 	}
 
 	spare = thread_pool.total_threads - active_threads;
-	DEBUG2("Threads: total/active/spare threads = %d/%d/%d",
-	       thread_pool.total_threads, active_threads, spare);
+	{
+		static int old_total = -1;
+		static int old_active = -1;
+
+		if ((old_total != thread_pool.total_threads) ||
+		    (old_active != active_threads)) {
+			DEBUG2("Threads: total/active/spare threads = %d/%d/%d",
+			       thread_pool.total_threads, active_threads, spare);
+			old_total = thread_pool.total_threads;
+			old_active = active_threads;
+		}
+	}
 
 	/*
 	 *	If there are too few spare threads, create some more.
@@ -654,12 +653,9 @@ int thread_pool_clean(void)
 			 *	up from the list later.
 			 */
 			if (handle->request == NULL) {
-#ifdef HAVE_PTHREAD_CANCEL
-				pthread_cancel(handle->child_pid);
-#else
-				child_kill(handle->child_pid, SIGTERM);
-#endif
 				handle->status = THREAD_CANCELLED;
+				sem_post(&handle->semaphore);
+				delete_thread(handle);
 				spare--;
 				break;
 			}
