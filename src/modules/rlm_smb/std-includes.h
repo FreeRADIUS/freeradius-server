@@ -5,9 +5,8 @@
 
    Copyright (C) 1996, Richard Sharpe
 
-/* One day we will conditionalize these on OS types ... */
+   One day we will conditionalize these on OS types ...
 
-/*
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
@@ -23,17 +22,39 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include "config.h"
+
 #define BOOL int
 typedef short int16;
 
+#if HAVE_NETDB_H
 #include <netdb.h>
+#endif
+
+#if HAVE_SYS_TYPES_H
 #include <sys/types.h>
+#endif
+
+#if HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif
+
+#if HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif
+
+#if HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
 #include <signal.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#if HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 
 #define TRUE 1
 #define FALSE 0

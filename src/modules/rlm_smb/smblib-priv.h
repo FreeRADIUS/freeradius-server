@@ -23,10 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include "std-defines.h"
+#include "std-includes.h"
 #include "smblib-common.h"
-#include <sys/types.h>
-#include <unistd.h>
 
 typedef unsigned short uint16;
 typedef unsigned int   uint32;

@@ -27,8 +27,15 @@
 #include "rfcnb-priv.h"
 #include "rfcnb-util.h"
 #include "rfcnb-io.h"
+
+#if HAVE_SYS_UIO_H
 #include <sys/uio.h>
+#endif
+
+#if HAVE_SYS_SIGNAL_H
 #include <sys/signal.h>
+#endif
+
 #include <string.h>
 
 int RFCNB_Timeout = 0;    /* Timeout in seconds ... */

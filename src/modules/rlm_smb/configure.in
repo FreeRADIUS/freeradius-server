@@ -1,4 +1,5 @@
 AC_INIT(rlm_smb.c)
+AC_CONFIG_HEADER(config.h)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_smb])
 
@@ -39,7 +40,22 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
+	AC_CHECK_HEADERS(arpa/inet.h \
+			dirent.h \
+			sys/vfs.h \
+			netinet/in.h \
+			netinet/tcp.h \
+			sys/uio.h \
+			sys/signal.h \
+			sys/socket.h \
+			unistd.h \
+			ctype.h \
+			netdb.h \
+			signal.h \
+			)
+
 	targetname=modname
+	smb_cflags="-I."
 else
 	targetname=
 	echo \*\*\* module modname is disabled.

@@ -24,7 +24,6 @@
 */
 
 #include <string.h>
-#include <malloc.h>
 
 #include "std-includes.h"
 #include "rfcnb-priv.h"

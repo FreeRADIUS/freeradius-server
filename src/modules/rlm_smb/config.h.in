@@ -1,0 +1,34 @@
+/* config.h.in.  Generated automatically from configure.in by autoheader.  */
+
+/* Define if you have the <arpa/inet.h> header file.  */
+#undef HAVE_ARPA_INET_H
+
+/* Define if you have the <ctype.h> header file.  */
+#undef HAVE_CTYPE_H
+
+/* Define if you have the <dirent.h> header file.  */
+#undef HAVE_DIRENT_H
+
+/* Define if you have the <netdb.h> header file.  */
+#undef HAVE_NETDB_H
+
+/* Define if you have the <netinet/in.h> header file.  */
+#undef HAVE_NETINET_IN_H
+
+/* Define if you have the <netinet/tcp.h> header file.  */
+#undef HAVE_NETINET_TCP_H
+
+/* Define if you have the <sys/signal.h> header file.  */
+#undef HAVE_SYS_SIGNAL_H
+
+/* Define if you have the <sys/socket.h> header file.  */
+#undef HAVE_SYS_SOCKET_H
+
+/* Define if you have the <sys/uio.h> header file.  */
+#undef HAVE_SYS_UIO_H
+
+/* Define if you have the <sys/vfs.h> header file.  */
+#undef HAVE_SYS_VFS_H
+
+/* Define if you have the <unistd.h> header file.  */
+#undef HAVE_UNISTD_H

@@ -20,16 +20,16 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include <string.h>
-#include <arpa/inet.h>
-#include <dirent.h>
-#include <string.h>
-#include <sys/vfs.h>
-#include <netinet/in.h>
-
 #include "smblib-priv.h"
 #define uchar unsigned char
 extern int DEBUGLEVEL;
+
+#include <string.h>
+
+#include <string.h>
+#if HAVE_SYS_VFS_H
+#include <sys/vfs.h>
+#endif
 
 #include "byteorder.h"
 

@@ -23,8 +23,6 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include "autoconf.h"
-
 int SMBlib_errno;
 int SMBlib_SMB_Error;
 #define SMBLIB_ERRNO
@@ -32,8 +30,6 @@ int SMBlib_SMB_Error;
 #include "smblib-priv.h"
 
 #include "rfcnb.h"
-
-#include <signal.h>
 
 SMB_State_Types SMBlib_State;
 

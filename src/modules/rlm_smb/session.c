@@ -23,7 +23,6 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include <malloc.h>
 #include <string.h>
 
 int RFCNB_errno = 0;
@@ -31,7 +30,11 @@ int RFCNB_saved_errno = 0;
 #define RFCNB_ERRNO
 
 #include "std-includes.h"
+
+#if HAVE_NETINET_TCP_H
 #include <netinet/tcp.h>
+#endif
+
 #include "rfcnb-priv.h"
 #include "rfcnb-util.h"
 
