@@ -441,13 +441,10 @@ int main(int argc, char **argv)
 	sin->sin_addr.s_addr = myip;
 
 	/*
-	 *  Pick a pseudo-random initial proxy port,
-	 *  somewhere above 1024.
-	 *
-	 *  Hmmm.... this tells everyone in the world what out process ID
-	 *  is, which might not be such a good idea...
+	 *	Set the proxy port to be one more than the
+	 *	accounting port.
 	 */
-	for (proxy_port = (getpid() & 0x7fff) + 1024; proxy_port < 64000; proxy_port++) {
+	for (proxy_port = acct_port + 1; proxy_port < 64000; proxy_port++) {
 		sin->sin_port = htons(proxy_port);
 	  
 		result = bind (proxyfd, & salocal, sizeof (*sin));
