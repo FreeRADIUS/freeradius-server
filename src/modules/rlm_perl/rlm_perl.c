@@ -723,8 +723,10 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	
 	exitstatus = perl_parse(interp, xs_init, argc, embed, NULL);
-	
+
+#if PERL_REVISION >= 5 && PERL_VERSION >=8
 	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
+#endif
 
 	if(!exitstatus) {
 		exitstatus = perl_run(interp);
