@@ -355,7 +355,8 @@ int rad_mangle(REQUEST *request)
 	 */
 	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL) != NULL &&
 	    pairfind(request_pairs, PW_SERVICE_TYPE) == NULL) {
-		if (!(tmp = paircreate(PW_SERVICE_TYPE, PW_TYPE_INTEGER))) {
+		tmp = paircreate(PW_SERVICE_TYPE, PW_TYPE_INTEGER);
+		if (tmp) {
 			tmp->lvalue = PW_FRAMED_USER;
 			pairmove(&request_pairs, &tmp);
 		}
@@ -719,20 +720,21 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	/*
-	 *	Filter Reply-Message value through radius_xlate
-	 *
-	 *	FIXME: handle multiple Reply-Messages
+	 *	Filter (possibly multiple) Reply-Message attributes
+	 *	through radius_xlate
 	 */
 	if (user_msg == NULL) {
-		if ((reply_item = pairfind(user_reply,
-		    PW_REPLY_MESSAGE)) != NULL) {
+	  reply_item = pairfind(user_reply, PW_REPLY_MESSAGE);
+	  while (reply_item) {
 			user_msg = radius_xlate(reply_item->strvalue,
 				request->packet->vps, user_reply);
 			strNcpy(reply_item->strvalue, user_msg,
 				sizeof(reply_item->strvalue));
 			reply_item->length = strlen(reply_item->strvalue);
 			user_msg = NULL;
-		}
+			reply_item = pairfind(reply_item->next,
+					      PW_REPLY_MESSAGE);
+	  }
 	}
 
 	rp = build_reply(PW_AUTHENTICATION_ACK, request, user_reply, user_msg);
