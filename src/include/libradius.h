@@ -115,17 +115,17 @@ void		vp_printlist(FILE *, VALUE_PAIR *);
 /*
  *	Dictionary functions.
  */
-int		dict_addvendor(char *name, int value);
-int		dict_addattr(char *name, int vendor, int type, int value);
-int		dict_addvalue(char *namestr, char *attrstr, int value);
+int		dict_addvendor(const char *name, int value);
+int		dict_addattr(const char *name, int vendor, int type, int value);
+int		dict_addvalue(const char *namestr, char *attrstr, int value);
 int		dict_init(char *dir, char *fn);
 DICT_ATTR	*dict_attrbyvalue(int attr);
-DICT_ATTR	*dict_attrbyname(char *attr);
+DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(int attr, int val);
-DICT_VALUE	*dict_valbyname(char *val);
+DICT_VALUE	*dict_valbyname(const char *val);
 int		dict_vendorcode(int);
 int		dict_vendorpec(int);
-int		dict_vendorname(char *name);
+int		dict_vendorname(const char *name);
 
 #if 1 /* FIXME: compat */
 #define dict_attrget	dict_attrbyvalue
@@ -168,9 +168,9 @@ int		userparse(char *buffer, VALUE_PAIR **first_pair);
  *	Error functions.
  */
 #ifdef _LIBRADIUS
-void		librad_log(char *, ...);
+void		librad_log(const char *, ...);
 #endif
-void		librad_perror(char *, ...);
+void		librad_perror(const char *, ...);
 extern char	librad_errstr[];
 extern int	librad_dodns;
 extern int	librad_debug;

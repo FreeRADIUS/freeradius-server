@@ -23,7 +23,7 @@ extern char	*radlog_dir;
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
  */
-static int do_log(int lvl, char *fmt, va_list ap)
+static int do_log(int lvl, const char *fmt, va_list ap)
 {
 	FILE	*msgfd;
 	unsigned char	*s = ": ";
@@ -101,7 +101,7 @@ static int do_log(int lvl, char *fmt, va_list ap)
 	return 0;
 }
 
-int log_debug(char *msg, ...)
+int log_debug(const char *msg, ...)
 {
 	va_list ap;
 	int r;
@@ -113,7 +113,7 @@ int log_debug(char *msg, ...)
 	return r;
 }
 
-int log(int lvl, char *msg, ...)
+int log(int lvl, const char *msg, ...)
 {
 	va_list ap;
 	int r;

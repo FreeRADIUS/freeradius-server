@@ -26,7 +26,7 @@ char librad_errstr[1024];
  *  This also isn't multithreaded-safe, so it'll have to be changed
  *  in the future.
  */
-void librad_log(char *fmt, ...)
+void librad_log(const char *fmt, ...)
 {
 	va_list ap;
 	char my_errstr[sizeof(librad_errstr)];
@@ -45,7 +45,7 @@ void librad_log(char *fmt, ...)
 	va_end(ap);
 }
 
-void librad_perror(char *fmt, ...)
+void librad_perror(const char *fmt, ...)
 {
 	va_list *ap;
 

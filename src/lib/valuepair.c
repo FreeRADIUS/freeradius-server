@@ -26,7 +26,7 @@ static const char rcsid[] = "$Id$";
 #endif
 
 
-static char *months[] = {
+static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",
         "jul", "aug", "sep", "oct", "nov", "dec" };
 
@@ -341,7 +341,7 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr)
 /*
  *	Sort of strtok/strsep function.
  */
-static char *mystrtok(char **ptr, char *sep)
+static char *mystrtok(char **ptr, const char *sep)
 {
 	char	*res;
 

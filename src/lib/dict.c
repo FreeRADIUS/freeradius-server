@@ -28,7 +28,7 @@ static DICT_VALUE	*dictionary_values;
 static DICT_VENDOR	*dictionary_vendors;
 
 static int		vendorno = 1;
-static char *dtypes[] = {
+static const char *dtypes[] = {
 	"string",
 	"integer",
 	"ipaddr",
@@ -74,7 +74,7 @@ static void dict_free(void)
 /*
  *	Add vendor to the list.
  */
-int dict_addvendor(char *name, int value)
+int dict_addvendor(const char *name, int value)
 {
 	DICT_VENDOR *vval;
 
@@ -98,7 +98,7 @@ int dict_addvendor(char *name, int value)
 	return 0;
 }
 
-int dict_addattr(char *name, int vendor, int type, int value)
+int dict_addattr(const char *name, int vendor, int type, int value)
 {
 	DICT_ATTR	*attr;
 
@@ -132,7 +132,7 @@ int dict_addattr(char *name, int vendor, int type, int value)
 	return 0;
 }
 
-int dict_addvalue(char *namestr, char *attrstr, int value)
+int dict_addvalue(const char *namestr, char *attrstr, int value)
 {
 	DICT_VALUE	*dval;
 
@@ -508,7 +508,7 @@ DICT_ATTR * dict_attrbyvalue(int val)
 /*
  *	Get an attribute by its name.
  */
-DICT_ATTR * dict_attrbyname(char *name)
+DICT_ATTR * dict_attrbyname(const char *name)
 {
 	DICT_ATTR	*a;
 
@@ -538,7 +538,7 @@ DICT_VALUE * dict_valbyattr(int attr, int val)
 /*
  *	Get a value by its name.
  */
-DICT_VALUE * dict_valbyname(char *name)
+DICT_VALUE * dict_valbyname(const char *name)
 {
 	DICT_VALUE	*v;
 
@@ -581,7 +581,7 @@ int dict_vendorcode(int pec)
 /*
  *	Get the vendor code based on the vendor name
  */
-int dict_vendorname(char *name)
+int dict_vendorname(const char *name)
 {
 	DICT_VENDOR *v;
 
