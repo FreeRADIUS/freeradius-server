@@ -497,6 +497,27 @@ static int huntgroup_access(PAIR_LIST *huntgroups, VALUE_PAIR *request_pairs)
 		 */
 		r = RLM_MODULE_REJECT;
 		if (hunt_paircmp(request_pairs, i->reply) == 0) {
+			VALUE_PAIR *vp;
+
+			/*
+			 *  We've matched the huntgroup, so add it in
+			 *  to the list of request pairs.
+			 */
+			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME);
+			if (!vp) {
+				vp = paircreate(PW_HUNTGROUP_NAME,
+						PW_TYPE_STRING);
+				if (!vp) {
+					radlog(L_ERR, "No memory");
+					exit(1);
+				}
+				
+				strNcpy(vp->strvalue, i->name,
+					sizeof(vp->strvalue));
+				vp->length = strlen(vp->strvalue);
+
+				pairadd(&request_pairs, vp);
+			}
 			r = RLM_MODULE_OK;
 		}
 		break;
