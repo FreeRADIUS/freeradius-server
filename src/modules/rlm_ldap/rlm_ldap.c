@@ -416,7 +416,10 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		DICT_ATTR *dattr;
 
 		dattr = dict_attrbyname(inst->passwd_rad_attr_str);
-		inst->passwd_rad_attr = dattr->attr;
+		if (dattr)
+			inst->passwd_rad_attr = dattr->attr;
+		else
+			inst->passwd_rad_attr = PW_USER_PASSWORD;
 	}
 	else
 		inst->passwd_rad_attr = PW_USER_PASSWORD;
