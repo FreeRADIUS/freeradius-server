@@ -312,10 +312,10 @@ static int file_authorize(void *instance, REQUEST *request)
 				pairmove(check_pairs, &check_tmp);
 				pairfree(&check_tmp);
 	
-				DEBUG2("  users: Checking %s at %d", pl->name, pl->lineno);
+				DEBUG2("    users: Checking %s at %d", pl->name, pl->lineno);
 				/* Check the req to see if we matched */
 				if (rad_check_password(request)==0) {
-					DEBUG2("  users: Matched %s at %d", pl->name, pl->lineno);
+					DEBUG2("    users: Matched %s at %d", pl->name, pl->lineno);
 
 					found = 1;
 
@@ -342,7 +342,7 @@ static int file_authorize(void *instance, REQUEST *request)
 			/* No usercollide */
 			} else {
 		
-				DEBUG2("  users: Matched %s at %d", pl->name, pl->lineno);
+				DEBUG2("    users: Matched %s at %d", pl->name, pl->lineno);
 				found = 1;
 				check_tmp = paircopy(pl->check);
 				reply_tmp = paircopy(pl->reply);
@@ -408,7 +408,7 @@ static int file_preacct(void *instance, REQUEST *request)
 			continue;
 
 		if (paircmp(request_pairs, pl->check, &reply_pairs) == 0) {
-			DEBUG2("  acct_users: Matched %s at %d",
+			DEBUG2("    acct_users: Matched %s at %d",
 			       pl->name, pl->lineno);
 			found = 1;
 			check_tmp = paircopy(pl->check);

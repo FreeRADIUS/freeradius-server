@@ -18,17 +18,17 @@ int modcall(int component, modcallable *c, REQUEST *request);
 /* Parse a module-method's config section (e.g. authorize{}) into a tree that
  * may be called with modcall() */
 modcallable *compile_modgroup(int component, CONF_SECTION *cs,
-			      const char *filename);
+		const char *filename);
 
 /* Create a single modcallable node that references a module instance. This
  * may be a CONF_SECTION containing action specifiers like "notfound = return"
  * or a simple CONF_PAIR, in which case the default actions are used. */
 modcallable *compile_modsingle(int component, CONF_ITEM *ci,
-			       const char *filename, const char **modname);
+		const char *filename, const char **modname);
 
 /* Add an entry to the end of a modgroup, creating it first if necessary */
 void add_to_modcallable(modcallable **parent, modcallable *this,
-			int component, int lineno);
+		int component, char *name);
 
 /* Free a tree returned by compile_modgroup or compile_modsingle */
 void modcallable_free(modcallable **pc);

@@ -39,8 +39,8 @@ binary-arch: build
 	rm $(tmp)/$(execprefix)/usr/sbin/rc.radiusd
 	# split out inconvenient/controversal modules to other places
 	for modname in krb5 ldap mysql postgresql; do \
-		mkdir -p $(debiandir)/radiusd-freeradius-$$modname/$(libdir); \
-		mv $(tmp)/$(libdir)/rlm*_$${modname}.* $(debiandir)/radiusd-freeradius-$$modname/$(libdir)/; \
+		mkdir -p $(debiandir)/radiusd-freeradius-$${modname}/$(libdir); \
+		mv $(tmp)/$(libdir)/rlm*_$${modname}.* $(debiandir)/radiusd-freeradius-$${modname}/$(libdir)/; \
 	done
 	# man pages & docs
 	dh_undocumented 

@@ -243,7 +243,7 @@ int rad_check_password(REQUEST *request)
 	 */
 	auth_item = request->password;
 	if (auth_item == NULL) {
-		DEBUG2("  auth: No password in the request");
+		DEBUG2("auth: No password in the request");
 		return -1;
 	}
 
@@ -273,7 +273,7 @@ int rad_check_password(REQUEST *request)
 
 	switch(auth_type) {
 		case PW_AUTHTYPE_CRYPT:
-			DEBUG2("  auth: Crypt");
+			DEBUG2("auth: type Crypt");
 			if (password_pair == NULL) {
 				result = auth_item->strvalue ? -1 : 0;
 				break;
@@ -284,7 +284,7 @@ int rad_check_password(REQUEST *request)
 				result = -1;
 			break;
 		case PW_AUTHTYPE_LOCAL:
-			DEBUG2("  auth: Local");
+			DEBUG2("auth: type Local");
 			/*
 			 *	Local password is just plain text.
 	 		 */
@@ -320,7 +320,7 @@ int rad_check_password(REQUEST *request)
 				result = -1;
 			break;
 		default:
-			DEBUG2("  auth: %s",
+			DEBUG2("auth: type \"%s\"",
 					dict_valbyattr(PW_AUTHTYPE, auth_type)->name);
 			/*
 			 *	See if there is a module that handles
@@ -527,7 +527,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (result < 0) {
 
-		DEBUG2("  auth: Failed to validate the user.");
+		DEBUG2("auth: Failed to validate the user.");
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		
 		rad_authlog("Login incorrect", request, 0);

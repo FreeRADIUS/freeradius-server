@@ -172,7 +172,7 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 	memset(cs, 0, sizeof(CONF_SECTION));
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = parent;
-	cs->name1 = xstrdup(name1);
+	cs->name1 = strdup(name1);
 	cs->name2 = (name2 && *name2) ? xstrdup(name2) : NULL;
 
 	return cs;

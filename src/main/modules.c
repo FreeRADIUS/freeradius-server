@@ -110,6 +110,7 @@ static void instance_list_free(module_instance_t **i)
 #if HAVE_PTHREAD_H
 		if (c->mutex) {
 			/*
+			 *	FIXME
 			 *	The mutex MIGHT be locked...
 			 *	we'll check for that later, I guess.
 			 */
@@ -496,17 +497,18 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 	int idx;
 	indexed_modcallable *subcomp;
 	const char *modname;
+	char *visiblename;
 
-	for(modref=cf_item_find_next(cs, NULL); 
+	for (modref=cf_item_find_next(cs, NULL); 
 			modref != NULL;
 			modref=cf_item_find_next(cs, modref)) {
 
-		if(cf_item_is_section(modref)) {
+		if (cf_item_is_section(modref)) {
 			CONF_SECTION *scs;
 			scs = cf_itemtosection(modref);
 
-			if (!strcmp(cf_section_name1(scs),
-					subcomponent_names[comp])) {
+			if (strcmp(cf_section_name1(scs),
+					subcomponent_names[comp]) == 0) {
 				load_subcomponent_section(scs, comp, filename);
 				continue;
 			}
@@ -520,7 +522,7 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 
 		this = compile_modsingle(comp, modref, filename, &modname);
 
-		if (comp==RLM_COMPONENT_AUTH) {
+		if (comp == RLM_COMPONENT_AUTH) {
 			idx = new_authtype_value(modname);
 		} else {
 			/* See the comment in new_sublist() for explanation
@@ -529,10 +531,10 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 		}
 
 		subcomp = new_sublist(comp, idx);
-		if (!subcomp) {
+		if (subcomp == NULL) {
 			radlog(L_ERR|L_CONS,
-					"%s[%d] %s %s already configured - skipping",
-					filename, modreflineno, subcomponent_names[comp],
+					"%s %s %s already configured - skipping",
+					filename, subcomponent_names[comp],
 					modname);
 			modcallable_free(&this);
 			continue;
@@ -540,8 +542,11 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 
 		/* If subcomp->modulelist is NULL, add_to_modcallable will
 		 * create it */
+		visiblename = cf_section_name2(cs);
+		if (visiblename == NULL)
+			visiblename = cf_section_name1(cs);
 		add_to_modcallable(&subcomp->modulelist, this,
-				comp, modreflineno);
+				comp, visiblename);
 	}
 }
 

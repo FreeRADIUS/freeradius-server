@@ -43,7 +43,7 @@ static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,
 struct modcallable {
 	struct modcallable *next;
 	int actions[RLM_MODULE_NUMCODES];
-	int lineno;
+	char *name;
 	enum { MOD_SINGLE, MOD_GROUP } type;
 };
 
@@ -224,9 +224,11 @@ static int call_modgroup(int component, modgroup *g, REQUEST *request,
 		/* Call this child by recursing into modcall */
 		r = modcall(component, p, request);
 
-		DEBUG2("modcall[%s]: action for %s is %s",
+#if 0
+		DEBUG2("%s: action for %s is %s",
 			comp2str[component], rcode2str[r],
 			action2str(p->actions[r]));
+#endif
 
 		/* Find an action to go with the child's result. If "return",
 		 * break out of the loop so the rest of the children in the
@@ -262,8 +264,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		default: myresult = RLM_MODULE_FAIL;
 	}
 
-	if(!c) {
-		DEBUG2("modcall[%s]: Null object returns %s",
+	if(c == NULL) {
+		DEBUG2("modcall[%s]: NULL object returns %s",
 				comp2str[component], rcode2str[myresult]);
 		return myresult;
 	}
@@ -271,20 +273,20 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	if(c->type==MOD_GROUP) {
 		modgroup *g = mod_callabletogroup(c);
 
-		DEBUG2("modcall[%s]: Entering group at line %d",
-			comp2str[component], c->lineno);
+		DEBUG2("modcall: entering group %s",
+				c->name);
 
 		myresult = call_modgroup(component, g, request, myresult);
 
-		DEBUG2("modcall[%s]: Group at line %d returns %s",
-			comp2str[component], c->lineno, rcode2str[myresult]);
+		DEBUG2("modcall: group %s returns %s",
+				c->name, rcode2str[myresult]);
 	} else {
 		modsingle *sp = mod_callabletosingle(c);
 
 		myresult = call_modsingle(component, sp, request, myresult);
 
-		DEBUG2("modcall[%s]: Module at line %d returns %s",
-			 comp2str[component], c->lineno, rcode2str[myresult]);
+		DEBUG2("  modcall[%s]: module \"%s\" returns %s",
+			 comp2str[component], c->name, rcode2str[myresult]);
 	}
 
 	return myresult;
@@ -532,14 +534,14 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 };
 
 /* Bail out if the module in question does not supply the wanted component */
-static void sanity_check(int component, module_instance_t *inst, int lineno,
+static void sanity_check(int component, module_instance_t *inst,
 			 const char *filename)
 {
 	if (!inst->entry->module->methods[component]) {
 		radlog(L_ERR|L_CONS,
-			"%s[%d] Module %s does not contain a method for '%s'",
-			filename, lineno, inst->entry->module->name,
-			component_names[component]);
+				"%s: \"%s\" modules aren't allowed in '%s' sections -- they have no such method.",
+				filename, inst->entry->module->name,
+				component_names[component]);
 		exit(1);
 	}
 }
@@ -553,12 +555,12 @@ static void override_actions(modcallable *c, CONF_SECTION *cs,
 	const char *attr, *value;
 	int lineno, rcode, action;
 
-	for(ci=cf_item_find_next(cs, NULL); ci; ci=cf_item_find_next(cs, ci)) {
+	for(ci=cf_item_find_next(cs, NULL); ci != NULL; ci=cf_item_find_next(cs, ci)) {
 		if(cf_item_is_section(ci)) {
 			radlog(L_ERR|L_CONS,
-				"%s[%d] Subsection of module instance call "
-				"not allowed\n", filename,
-				cf_section_lineno(cf_itemtosection(ci)));
+					"%s[%d] Subsection of module instance call "
+					"not allowed\n", filename,
+					cf_section_lineno(cf_itemtosection(ci)));
 			exit(1);
 		}
 		cp = cf_itemtopair(ci);
@@ -581,7 +583,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	modcallable *csingle;
 	module_instance_t *this;
 
-	if(cf_item_is_section(ci)) {
+	if (cf_item_is_section(ci)) {
 		CONF_SECTION *cs = cf_itemtosection(ci);
 
 		lineno = cf_section_lineno(cs);
@@ -590,15 +592,15 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		/* group{}, redundant{}, or append{} may appear where a
 		 * single module instance was expected - in that case, we
 		 * hand it off to compile_modgroup */
-		if(!strcmp(modrefname, "group")) {
+		if (strcmp(modrefname, "group") == 0) {
 			*modname = "UnnamedGroup";
 			return do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_SIMPLEGROUP, grouptype);
-		} else if(!strcmp(modrefname, "redundant")) {
+		} else if (strcmp(modrefname, "redundant") == 0) {
 			*modname = "UnnamedGroup";
 			return do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_REDUNDANT, grouptype);
-		} else if(!strcmp(modrefname, "append")) {
+		} else if (strcmp(modrefname, "append") == 0) {
 			*modname = "UnnamedGroup";
 			return do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_APPEND, grouptype);
@@ -609,16 +611,17 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		modrefname = cf_pair_attr(cp);
 	}
 
-	single = rad_malloc(sizeof *single);
+	single = rad_malloc(sizeof(*single));
 	csingle = mod_singletocallable(single);
 	csingle->next = NULL;
 	memcpy(csingle->actions,
-		defaultactions[component][grouptype],
-		sizeof csingle->actions);
-	csingle->lineno = lineno;
+			defaultactions[component][grouptype],
+			sizeof csingle->actions);
+	assert(modrefname != NULL);
+	csingle->name = modrefname;
 	csingle->type = MOD_SINGLE;
 
-	if(cf_item_is_section(ci)) {
+	if (cf_item_is_section(ci)) {
 		/* override default actions with what's in the CONF_SECTION */
 		override_actions(csingle, cf_itemtosection(ci), filename);
 	}
@@ -628,7 +631,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		exit(1); /* FIXME */
 	}
 
-	sanity_check(component, this, csingle->lineno, filename);
+	sanity_check(component, this, filename);
 
 	single->modinst = this;
 	*modname = this->entry->module->name;
@@ -659,11 +662,12 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 	c->next = NULL;
 	memcpy(c->actions, defaultactions[component][parentgrouptype],
 		sizeof c->actions);
-	c->lineno = cf_section_lineno(cs);
+	c->name = cf_section_name1(cs);
+	assert(c->name != NULL);
 	c->type = MOD_GROUP;
 	g->children = NULL;
 
-	for(ci=cf_item_find_next(cs, NULL); ci; ci=cf_item_find_next(cs, ci)) {
+	for (ci=cf_item_find_next(cs, NULL); ci != NULL; ci=cf_item_find_next(cs, ci)) {
 		if(cf_item_is_section(ci)) {
 			const char *junk;
 			modcallable *single;
@@ -686,8 +690,8 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 				const char *junk;
 
 				single = do_compile_modsingle(component,
-					cf_pairtoitem(cp), filename,
-					grouptype, &junk);
+						cf_pairtoitem(cp), filename,
+						grouptype, &junk);
 				add_child(g, single);
 			} else {
 				/* ...or an action to be applied to this
@@ -714,11 +718,11 @@ modcallable *compile_modgroup(int component, CONF_SECTION *cs,
 }
 
 void add_to_modcallable(modcallable **parent, modcallable *this,
-		int component, int lineno)
+		int component, char *name)
 {
 	modgroup *g;
 
-	if(!*parent) {
+	if (*parent == NULL) {
 		modcallable *c;
 
 		g = rad_malloc(sizeof *g);
@@ -727,7 +731,8 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 		memcpy(c->actions,
 				defaultactions[component][GROUPTYPE_SIMPLEGROUP],
 				sizeof c->actions);
-		c->lineno = lineno;
+		assert(name != NULL);
+		c->name = name;
 		c->type = MOD_GROUP;
 		g->children = NULL;
 
