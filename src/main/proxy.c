@@ -106,7 +106,8 @@ static void proxy_addinfo(REQUEST *request)
  *	It also does NOT do fail-over to default if the realms are dead,
  *	as that decision has already been made.
  */
-static REALM *proxy_realm_ldb(const char *realm_name, int accounting)
+static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
+			      int accounting)
 {
 	REALM	*cl;
 	REALM	*array[32];	/* maximum number of load balancing realms */
@@ -114,6 +115,20 @@ static REALM *proxy_realm_ldb(const char *realm_name, int accounting)
 
 	size = 0;
 	for (cl = mainconfig.realms; cl; cl = cl->next) {
+		/*
+		 *	Wake up any sleeping realm.
+		 *
+		 *	Note that the 'realm find' function will only
+		 *	wake up the FIRST realm which matches.  We've
+		 *	got to wake up ALL of the matching realms.
+		 */
+		if (cl->wakeup <= request->timestamp) {
+			cl->active = TRUE;
+		}
+		if (cl->acct_wakeup <= request->timestamp) {
+			cl->acct_active = TRUE;
+		}
+
 		/*
 		 *	Asked for auth/acct, and the auth/acct server
 		 *	is not active.  Skip it.
@@ -244,7 +259,7 @@ int proxy_send(REQUEST *request)
 	 *	Look for the realm, using the load balancing
 	 *	version of realm find.
 	 */
-	realm = proxy_realm_ldb(realmname,
+	realm = proxy_realm_ldb(request, realmname,
 				(request->packet->code == PW_ACCOUNTING_REQUEST));
 	if (realm == NULL) {
 		return RLM_MODULE_FAIL;
