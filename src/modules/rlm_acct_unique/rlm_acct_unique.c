@@ -176,6 +176,22 @@ int unique_parse_key(char *key) {
 	return 0;
 }
 
+int unique_detach(void *instance) {
+	struct unique_config_t *inst = instance;
+	struct unique_attr_list *next = inst->head;
+	
+	free(inst->key);
+	while(inst->head) {
+		next = inst->head->next;
+		DEBUG("HERE:  %d", inst->head->attr);
+		free(inst->head);
+		inst->head = next;
+	}
+	free(inst);
+
+	return 0;
+}
+
 /* FIXME: unique_accounting should probably be called from preacct */
 /* globally exported name */
 module_t rlm_acct_unique = {
@@ -187,6 +203,6 @@ module_t rlm_acct_unique = {
   NULL,				/* authentication */
   NULL,				/* preaccounting */
   unique_accounting,		/* accounting */
-  NULL,				/* detach */
+  unique_detach,				/* detach */
   NULL,				/* destroy */
 };
