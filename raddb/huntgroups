@@ -7,7 +7,7 @@
 #		example: 1,2,3-8
 #
 #		Matching is done while RADIUS scans the user file; if it
-#		includes the selection criterium "Huntgroup-Name = XXX"
+#		includes the selection criterium "Huntgroup-Name == XXX"
 #		the huntgroup is looked up in this file to see if it
 #		matches. There can be multiple definitions of the same
 #		huntgroup; the first one that matches will be used.
