@@ -1644,20 +1644,23 @@ authorize {
 
 # Authentication.
 #
+#
 #  This section lists which modules are available for authentication.
 #  Note that it does NOT mean 'try each module in order'.  It means
-#  that you have to have a module from the 'authorize' section add
-#  a configuration attribute 'Auth-Type := FOO'.  That authentication type
-#  is then used to pick the apropriate module from the list below.
+#  that a module from the 'authorize' section adds a configuration
+#  attribute 'Auth-Type := FOO'.  That authentication type is then
+#  used to pick the apropriate module from the list below.
 #
-#  The default Auth-Type is Local.  That is, whatever is not included inside
-# an authtype section will be called only if Auth-Type is set to Local.
+
+#  In general, you SHOULD NOT set the Auth-Type attribute.  The server
+#  will figure it out on its own, and will do the right thing.  The
+#  most common side effect of erroneously setting the Auth-Type
+#  attribute is that one authentication method will work, but the
+#  others will not.
 #
-# So you should do the following:
-# - Set Auth-Type to an appropriate value in the authorize modules above.
-#   For example, the chap module will set Auth-Type to CHAP, ldap to LDAP, etc.
-# - After that create corresponding authtype sections in the
-#   authenticate section below and call the appropriate modules.
+#  The common reasons to set the Auth-Type attribute by hand
+#  is to either forcibly reject the user, or forcibly accept him.
+#
 authenticate {
 	#
 	#  PAP authentication, when a back-end database listed
@@ -1701,6 +1704,10 @@ authenticate {
 	unix
 
 	# Uncomment it if you want to use ldap for authentication
+	#
+	# Note that this means "check plain-text password against
+	# the ldap database", which means that EAP won't work,
+	# as it does not supply a plain-text password.
 #	Auth-Type LDAP {
 #		ldap
 #	}
