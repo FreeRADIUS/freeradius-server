@@ -1,4 +1,4 @@
-.TH radiusd.conf 5 "02 May 2000" "" "FreeRADIUS configuration file"
+.TH radiusd.conf 5 "23 Jan 2004" "" "FreeRADIUS configuration file"
 .SH NAME
 radiusd.conf \- configuration file for the FreeRADIUS server
 .SH DESCRIPTION
@@ -12,9 +12,9 @@ The file consists of attribute-value pairs, sections, and comments.
 Attribute-value pairs are of the form \fBname = value\fP.
 
 A section begins with a section name, followed on the same line by an
-open bracket \fB{\fP.  The section may contain other sections, or
-attribute-value pairs.  The section ends with a close bracket \fB}\fP,
-on a line by itself.
+open bracket \fB{\fP.  The section may contain other
+sections, or attribute-value pairs.  The section ends with a close
+bracket \fB}\fP, on a line by itself.
 
 Any line beginning with a (\fB#\fP) is deemed to be a comment, and is
 ignored.  Lines containing only whitespace are also ignored.
@@ -26,7 +26,10 @@ and there are no continuation lines.
 
 The value for a particular attribute may reference a previously
 defined attribute by name. The standard shell reference format
-\fB${name}\fP is used.
+\fB${name}\fP is used.  When the variable is in a section or
+subsection, it may be referenced as \fB${section.subsection.name}\fP.
+Forward references are not allowed.  Relative references are allowed,
+via pre-pending the name with one or more of '.'.
 
 The individidual configuration directives are too numerous to list
 here, so this manual page only documents the file format.  Please read
@@ -39,13 +42,16 @@ describing each of the allowed configuration directives.
 	foo = bar
 
 .DE
-Sets variable \fBfoo\fP to value \fBbar\fP.
+Sets variable \fBfoo\fP to have text value \fBbar\fP.
 
 .DS
 	blogs = ${foo}
 
 .DE
-Sets variable \fBblogs\fP to the value of variable \fBfoo\fP.
+Sets variable \fBblogs\fP to the value of variable \fBfoo\fP from the
+current section.  If there is no variable \fBfoo\fP in the current
+section, then it looks for that variable in the body of the main
+configuration file, e.g. \f${Blogdir}\fP
 
 .DS
 	my_section {
@@ -57,6 +63,28 @@ Sets variable \fBblogs\fP to the value of variable \fBfoo\fP.
 .DE
 Defines a section named \fBmy_section\fP, containing variable
 \fBbaz\fP.
+
+.DS
+	blogs = ${.foo}
+
+.DE
+Sets variable \fBblogs\fP to the value of variable \fBfoo\fP,
+from the current section.
+
+.DS
+	blogs = ${..foo}
+
+.DE
+Sets variable \fBblogs\fP to the value of variable \fBfoo\fP, from the
+section which contains the current section.
+
+.DS
+	blogs = ${modules.detail.detailfile}
+
+.DE
+Sets variable \fBblogs\fP to the value of variable \fBdetailfile\fP,
+of the \fBdetail\fP module, which is in the \fBmodules\fP section of
+the configuration file.
 
 .PP
 .SH FILES
