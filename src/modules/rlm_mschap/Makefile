@@ -14,7 +14,7 @@ $(STATIC_OBJS): $(HEADERS)
 $(DYNAMIC_OBJS): $(HEADERS)
 
 smbencrypt: smbencrypt.o smbdes.o $(HEADERS)
-	$(LIBTOOL) --mode=link $(CC) -I../../include $(LDFLAGS) -o smbencrypt smbencrypt.o smbdes.o ../../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) -I../../include $(LDFLAGS) $(LIBS) -o smbencrypt smbencrypt.o smbdes.o ../../lib/libradius.la
 
 smbencrypt-install:
 	$(INSTALL) -d -m 755 $(R)$(bindir)
