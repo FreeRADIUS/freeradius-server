@@ -197,8 +197,8 @@ if ($link){
 				$lastlog_server_port = $row['NASPortId'];
 				$lastlog_session_time = time2str($row['AcctSessionTime']);
 				$lastlog_client_ip = $row['FramedIPAddress'];	
-				$lastlog_server_name = gethostbyaddr($lastlog_server_ip);
-				$lastlog_client_name = gethostbyaddr($lastlog_client_ip);
+		$lastlog_server_name = ($lastlog_server_ip != '') ? gethostbyaddr($lastlog_server_ip) : '-';
+		$lastlog_client_name = ($lastlog_client_ip != '') ? gethostbyaddr($lastlog_client_ip) : '-';
 				$lastlog_input = $row['AcctInputOctets'];
 				$lastlog_input = bytes2str($lastlog_input);
 				$lastlog_output = $row['AcctOutputOctets'];

@@ -13,6 +13,7 @@ Ver 1.30:
 * Fix a small bug in user_admin.php3.
 * Pass the whole password as salt in da_encrypt() in password_check.php3
 * Refresh the online users page every 50 secs. Patch by Alexandre Strube <surak@barroco.com.br>
+* Check if the last logged in server and client ip are valid before calling gethostbyaddr
 Ver 1.29:
 * Add general_ld_library_path directive and set LD_LIBRARY_PATH accordingly (used in snmpfinger and
   radaclient).
