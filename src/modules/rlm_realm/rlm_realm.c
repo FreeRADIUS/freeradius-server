@@ -16,7 +16,7 @@ static const char rcsid[] = "$Id$";
  *
  *	Returns NULL on don't proxy, realm otherwise.
  */
-static REALM *realm_proxy(REQUEST *request)
+static REALM *check_for_realm(REQUEST *request)
 {
 	const char *name;
 	char *realmname;
@@ -51,46 +51,42 @@ static REALM *realm_proxy(REQUEST *request)
 	       name, realm->realm);
 
 	/*
-	 *	Create the Stripped-User-Name attribute, if it doesn't exist.
-	 *
-	 *	This code is copied from rlm_preprocess.
+	 *	If we've been told to strip the realm off, then do so.
 	 */
-	vp = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
-	if (!vp) {
-		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+	if (realm->striprealm) {
+		/*
+		 *	Create the Stripped-User-Name attribute, if it
+		 *	doesn't exist.
+		 *
+		 *	This code is copied from rlm_preprocess.
+		 */
+		vp = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
 		if (!vp) {
-			log(L_ERR|L_CONS, "no memory");
-			exit(1);
+			vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+			if (!vp) {
+				log(L_ERR|L_CONS, "no memory");
+				exit(1);
+			}
+			strcpy(vp->strvalue, name);
+			vp->length = strlen(vp->strvalue);
+			pairadd(&request->packet->vps, vp);
+			request->username = vp;
 		}
-		strcpy(vp->strvalue, name);
-		vp->length = strlen(vp->strvalue);
-		pairadd(&request->packet->vps, vp);
-		request->username = vp;
-	}
-
-	/*
-	 *	Let's strip the Stripped-User-Name attribute.
-	 */
-	realmname = strrchr(vp->strvalue, '@');
-	if (realmname != NULL) {
-		*realmname = '\0';
-		vp->length = strlen(vp->strvalue);
+		
+		/*
+		 *	Let's strip the Stripped-User-Name attribute.
+		 */
+		realmname = strrchr(vp->strvalue, '@');
+		if (realmname != NULL) {
+			*realmname = '\0';
+			vp->length = strlen(vp->strvalue);
+		}
 	}
 
 	/*
 	 *	Don't add a 'Realm' attribute, proxy.c does
 	 *	that for us.
 	 */
-
-	/*
-	 *	The special server LOCAL?
-	 *
-	 *	Do nothing.  Just return, as we're not proxying to
-	 *	any realm.
-	 */
-	if (strcmp(realm->server, "LOCAL") == 0) {
-		return NULL;
-	}
 
 	/*
 	 *	Perhaps accounting proxying was turned off.
@@ -115,6 +111,39 @@ static REALM *realm_proxy(REQUEST *request)
 }
 
 /*
+ *	Maybe add a "Proxy-To-Realm" attribute to the request.
+ *
+ *	If it's a LOCAL realm, then don't bother.
+ */
+static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
+{
+	VALUE_PAIR *vp;
+
+	/*
+	 *	If it's the LOCAL realm, we do NOT proxy it, but
+	 *	we DO strip the User-Name, if told to do so.
+	 */
+	if (strcmp(realm->server, "LOCAL") == 0) {
+		return;
+	}
+
+	/*
+	 *	Tell the server to proxy this request to another
+	 *	realm.
+	 */
+	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
+	if (!vp) {
+		log(L_ERR|L_CONS, "no memory");
+		exit(1);
+	}
+	
+	/*
+	 *  Add it, even if it's already present.
+	 */
+	pairadd(vps, vp);
+}
+
+/*
  *  Examine a request for a username with an @suffix, and if it
  *  corresponds to something in the realms file, set that realm as
  *  Proxy-To.
@@ -124,7 +153,6 @@ static REALM *realm_proxy(REQUEST *request)
 static int realm_authorize(REQUEST *request,
 			   VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
-	VALUE_PAIR *vp;
 	REALM *realm;
 
 	reply_pairs = reply_pairs; /* -Wunused */
@@ -134,26 +162,16 @@ static int realm_authorize(REQUEST *request,
 	 *	If not, return without adding a Proxy-To-Realm
 	 *	attribute.
 	 */
-	realm = realm_proxy(request);
+	realm = check_for_realm(request);
 	if (!realm) {
 		return RLM_AUTZ_NOTFOUND;
 	}
 
 	/*
-	 *	Tell the server to proxy this request to another
-	 *	realm.
+	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
-	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
-	if (!vp) {
-	  log(L_ERR|L_CONS, "no memory");
-	  exit(1);
-	}
-	
-	/*
-	 *  Add it, even if it's already present.
-	 */
-	pairadd(check_pairs, vp);
-	
+	add_proxy_to_realm(check_pairs, realm);
+
 	return RLM_AUTZ_NOTFOUND; /* try the next module */
 }
 
@@ -164,7 +182,6 @@ static int realm_authorize(REQUEST *request,
 static int realm_preacct(REQUEST *request)
 {
 	const char *name = request->username->strvalue;
-	VALUE_PAIR *vp;
 	REALM *realm;
 	
 	if (!name)
@@ -176,26 +193,17 @@ static int realm_preacct(REQUEST *request)
 	 *	If not, return without adding a Proxy-To-Realm
 	 *	attribute.
 	 */
-	realm = realm_proxy(request);
+	realm = check_for_realm(request);
 	if (!realm) {
 		return RLM_PRAC_OK;
 	}
 
+
 	/*
-	 *	Tell the server to proxy this request to another
-	 *	realm.
+	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
-	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
-	if (!vp) {
-	  log(L_ERR|L_CONS, "no memory");
-	  exit(1);
-	}
-	
-	/*
-	 *  Add it, even if it's already present.
-	 */
-	pairadd(&request->config_items, vp);
-	
+	add_proxy_to_realm(&request->config_items, realm);
+
 	return RLM_PRAC_OK; /* try the next module */
 }
 
