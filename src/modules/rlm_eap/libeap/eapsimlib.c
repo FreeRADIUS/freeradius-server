@@ -386,10 +386,13 @@ int unmap_eapsim_types(RADIUS_PACKET *r)
 
 /*
  * calculate the MAC for the EAP message, given the key.
+ * The "extra" will be appended to the EAP message and included in the 
+ * HMAC.
+ *
  */
 int
 eapsim_checkmac(VALUE_PAIR *rvps,
-		uint8_t key[EAPSIM_Kc_SIZE],
+		uint8_t key[EAPSIM_AUTH_SIZE],
 		uint8_t *extra, int extralen,
 		uint8_t calcmac[20])
 {
@@ -462,7 +465,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 		
 	/* now, HMAC-SHA1 it with the key. */
 	lrad_hmac_sha1(buffer, len,
-		       key, 8,
+		       key, 16,
 		       calcmac);
 
 	if(memcmp(&mac->strvalue[2], calcmac, 16) == 0)	{
@@ -550,10 +553,15 @@ main(int argc, char *argv[])
 	int filedone;
 	RADIUS_PACKET *req,*req2;
 	VALUE_PAIR *vp, *vpkey, *vpextra;
+	extern unsigned int sha1_data_problems;
 
 	req = NULL;
 	req2 = NULL;
 	filedone = 0;
+
+	if(argc>1) {
+	  sha1_data_problems = 1;
+	}
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		librad_perror("radclient");
