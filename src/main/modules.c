@@ -55,23 +55,28 @@ typedef struct module_instance_t {
 static module_instance_t *module_instance_list = NULL;
 
 /*
- *	For each authorize/authenticate/etc, we have an ordered
+ *	For each authorize/authtype/etc, we have an ordered
  *	list of instances to call.  This data structure keeps track
  *	of that order.
  */
 typedef struct config_module_t {
 	struct config_module_t	*next;
-	int index;
 	module_instance_t	*instance;
 #if HAVE_PTHREAD_H
 	pthread_mutex_t		*mutex;
 #endif
 } config_module_t;
 
+typedef struct indexed_config_module_t {
+	struct indexed_config_module_t *next;
+	int idx;
+	config_module_t *modulelist;
+} indexed_config_module_t;
+
 /*
  *	For each component, keep an ordered list of ones to call.
  */
-static config_module_t *components[RLM_COMPONENT_COUNT];
+static indexed_config_module_t *components[RLM_COMPONENT_COUNT];
 
 /*
  *	The component names.
@@ -86,6 +91,15 @@ static const char *component_names[RLM_COMPONENT_COUNT] =
   "preacct",
   "accounting",
   "session"
+};
+
+static const char *subcomponent_names[RLM_COMPONENT_COUNT] =
+{
+  "authtype",
+  "autztype",
+  "preacctype",
+  "acctype",
+  "sesstype"
 };
 
 static void config_list_free(config_module_t **cf)
@@ -105,6 +119,20 @@ static void config_list_free(config_module_t **cf)
 		}
 #endif
 		next = c->next;
+		free(c);
+		c = next;
+	}
+	*cf = NULL;
+}
+
+static void indexed_config_list_free(indexed_config_module_t **cf)
+{
+	indexed_config_module_t	*c, *next;
+
+	c = *cf;
+	while (c) {
+		next = c->next;
+		config_list_free(&c->modulelist);
 		free(c);
 		c = next;
 	}
@@ -135,7 +163,7 @@ static void module_list_free(void)
 	 *	Delete the internal component pointers.
 	 */
 	for (i = 0; i < RLM_COMPONENT_COUNT; i++) {
-		config_list_free(&components[i]);
+		indexed_config_list_free(&components[i]);
 	}
 
 	instance_list_free(&module_instance_list);
@@ -375,26 +403,45 @@ static module_instance_t *find_module_instance(const char *instname)
 	return node;
 }
 
+static indexed_config_module_t *lookup_by_index(indexed_config_module_t *head, int idx)
+{
+	indexed_config_module_t *p;
+
+	for (p = head; p != NULL; p = p->next) {
+		if( p->idx == idx)
+			return p;
+	}
+	return NULL;
+}
+
 /*
  *	Add one entry at the end of the config_module_t list.
  */
-static void add_to_list(int comp, module_instance_t *instance, int index)
+static void add_to_list(int comp, module_instance_t *instance, int idx)
 {
+	indexed_config_module_t *subcomp;
 	config_module_t	*node;
 	config_module_t **last;
 	config_module_t **head;
 	
-	head = &components[comp];
+	/* Step 1 - find the list corresponding to the given index. The
+	 * caller is responsible for ensuring that one exists by calling
+	 * new_sublist before calling add_to_list. */
+	subcomp = lookup_by_index(components[comp], idx);
+	assert(subcomp);
+
+	/* Step 2 - walk to the end of that list */
+	head = &subcomp->modulelist;
 	last = head;
 
 	for (node = *head; node != NULL; node = node->next) {
 		last = &node->next;
 	}
 
+	/* Step 3 - put a new config_module_t there */
 	node = (config_module_t *) rad_malloc(sizeof(config_module_t));
 	node->next = NULL;
 	node->instance = instance;
-	node->index = index;
 
 #if HAVE_PTHREAD_H
 	/*
@@ -420,15 +467,37 @@ static void add_to_list(int comp, module_instance_t *instance, int index)
 	*last = node;
 }
 
-static config_module_t *lookup_by_index(config_module_t *head, int index)
+static indexed_config_module_t *new_sublist(int comp, int idx)
 {
-	config_module_t *p;
+	indexed_config_module_t **head = &components[comp];
+	indexed_config_module_t	*node = *head;
+	indexed_config_module_t **last = head;
 
-	for (p = head; p != NULL; p = p->next) {
-		if( p->index == index)
-			return p;
+	while (node) {
+		/* It is an error to try to create a sublist that already
+		 * exists. It would almost certainly be caused by accidental
+		 * duplication in the config file.
+		 * 
+		 * index 0 is the exception, because it is used when we want
+		 * to collect _all_ listed modules under a single index by
+		 * default, which is currently the case in all components
+		 * except authenticate. */
+		if (node->idx == idx) {
+			if (idx == 0)
+				return node;
+			else
+				return NULL;
+		}
+		last = &node->next;
+		node = node->next;
 	}
-	return NULL;
+
+	node = rad_malloc(sizeof *node);
+	node->next = NULL;
+	node->modulelist = NULL;
+	node->idx = idx;
+	*last = node;
+	return node;
 }
 
 /* Bail out if the module in question does not supply the wanted component */
@@ -486,15 +555,42 @@ static void sanity_check(int comp, module_t *mod, const char *filename,
 			filename, lineno, comp);
 		exit(1);
 	}
-	return NULL;
 }
 
-static void load_module_section(CONF_SECTION *cs, int comp, const char *filename)
+/* Load a flat module list, as found inside an authtype{} block */
+static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *filename)
 {
 	module_instance_t *this;
-	CONF_ITEM	*modref;
-        int		modreflineno;
-        const char	*modrefname;
+	CONF_ITEM *modref;
+        int modreflineno;
+        const char *modrefname;
+	int idx;
+
+	static int meaningless_counter = 1;
+
+	/* We must assign a numeric index to this subcomponent. For
+	 * auth, it is generated and placed in the dictionary by
+	 * new_authtype_value(). The others are just numbers that are pulled
+	 * out of thin air, and the names are neither put into the dictionary
+	 * nor checked for uniqueness, but all that could be fixed in a few
+	 * minutes, if anyone finds a real use for indexed config of
+	 * components other than auth. */
+	switch (comp) {
+	case RLM_COMPONENT_AUTH:
+		idx = new_authtype_value(cf_section_name2(cs));
+		break;
+	default:
+		idx = meaningless_counter++;
+		break;
+	}
+	
+	if (!new_sublist(comp, idx)) {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d] %s %s already configured - skipping",
+		       filename, cf_section_lineno(cs),
+		       subcomponent_names[comp], cf_section_name2(cs));
+		return;
+	}
 
 	for(modref=cf_item_find_next(cs, NULL)
 	    ; modref ;
@@ -503,6 +599,46 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 		if(cf_item_is_section(modref)) {
 			CONF_SECTION *scs;
 			scs = cf_itemtosection(modref);
+			modreflineno = cf_section_lineno(scs);
+			modrefname = cf_section_name1(scs);
+		} else {
+			CONF_PAIR *cp;
+			cp = cf_itemtopair(modref);
+			modreflineno = cf_pair_lineno(cp);
+			modrefname = cf_pair_attr(cp);
+		}
+
+		this = find_module_instance(modrefname);
+		if (this == NULL) {
+			/* find_module_instance logs any errors */
+			exit(1);
+		}
+
+		sanity_check(comp, this->entry->module, filename, modreflineno);
+		add_to_list(comp, this, idx);
+	}
+}
+
+static void load_component_section(CONF_SECTION *cs, int comp, const char *filename)
+{
+	module_instance_t *this;
+	CONF_ITEM	*modref;
+        int		modreflineno;
+        const char	*modrefname;
+	int		idx;
+
+	for(modref=cf_item_find_next(cs, NULL)
+	    ; modref ;
+	    modref=cf_item_find_next(cs, modref)) {
+
+		if(cf_item_is_section(modref)) {
+			CONF_SECTION *scs;
+			scs = cf_itemtosection(modref);
+			if (!strcmp(cf_section_name1(scs),
+				    subcomponent_names[comp])) {
+				load_subcomponent_section(scs, comp, filename);
+				continue;
+			}
 			modreflineno = cf_section_lineno(scs);
 			modrefname = cf_section_name1(scs);
 		} else {
@@ -525,21 +661,26 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 		}
 
 		sanity_check(comp, this->entry->module, filename, modreflineno);
+
 		switch (comp) {
 		case RLM_COMPONENT_AUTH:
-			add_to_list(RLM_COMPONENT_AUTH, this, new_authtype_value(this->name));
-			break;
-		case RLM_COMPONENT_AUTZ:
-		case RLM_COMPONENT_PREACCT:
-		case RLM_COMPONENT_ACCT:
-		case RLM_COMPONENT_SESS:
-			add_to_list(comp, this, 0);
+			idx = new_authtype_value(this->name);
 			break;
 		default:
-			radlog(L_ERR|L_CONS, "%s[%d] Unknown component %d.\n",
-				filename, modreflineno, comp);
-			exit(1);
+			/* See the comment in new_sublist() for explanation
+			 * of the special index 0 */
+			idx = 0;
+			break;
 		}
+
+		if (!new_sublist(comp, idx)) {
+			radlog(L_ERR|L_CONS,
+			    "%s[%d] %s %s already configured - skipping",
+			    filename, modreflineno, subcomponent_names[comp],
+			    this->name);
+			continue;
+		}
+		add_to_list(comp, this, idx);
   	}
 }
 
@@ -605,7 +746,7 @@ int setup_modules(void)
 		cs = cf_section_find(component_names[comp]);
 		if (!cs) continue;
 		
-		load_module_section(cs, comp, filename);
+		load_component_section(cs, comp, filename);
 	}
 
 	return 0;
@@ -644,7 +785,7 @@ int module_authorize(REQUEST *request)
 	config_module_t	*this;
 	int		rcode = RLM_MODULE_OK;
 
-	this = components[RLM_COMPONENT_AUTZ];
+	this = lookup_by_index(components[RLM_COMPONENT_AUTZ], 0)->modulelist;
 	rcode = RLM_MODULE_OK;
 
 	while (this && rcode == RLM_MODULE_OK) {
@@ -667,19 +808,18 @@ int module_authenticate(int auth_type, REQUEST *request)
 	config_module_t	*this;
 	int		rcode = RLM_MODULE_FAIL;
 
-	this = lookup_by_index(components[RLM_COMPONENT_AUTH], auth_type);
+	this = lookup_by_index(components[RLM_COMPONENT_AUTH],
+			       auth_type)->modulelist;
 
-	/*
-	 *	Only check the FIRST component.  If we want multiple
-	 *	Auth-Types, then this function should be called multiple
-	 *	times.
-	 */
-	DEBUG2("  authenticate: %s",
-	       this->instance->entry->module->name);
-	safe_lock(this);
-	rcode = (this->instance->entry->module->authenticate)(
-			    this->instance->insthandle, request);
-	safe_unlock(this);
+	while (this && rcode == RLM_MODULE_FAIL) {
+		DEBUG2("  authenticate: %s",
+		       this->instance->entry->module->name);
+		safe_lock(this);
+		rcode = (this->instance->entry->module->authenticate)(
+			 this->instance->insthandle, request);
+		safe_unlock(this);
+		this = this->next;
+	}
 
 	return rcode;
 }
@@ -693,7 +833,7 @@ int module_preacct(REQUEST *request)
 	config_module_t	*this;
 	int		rcode;
 
-	this = components[RLM_COMPONENT_PREACCT];
+	this = lookup_by_index(components[RLM_COMPONENT_PREACCT], 0)->modulelist;
 	rcode = RLM_MODULE_OK;
 
 	while (this && (rcode == RLM_MODULE_OK)) {
@@ -716,7 +856,7 @@ int module_accounting(REQUEST *request)
 	config_module_t	*this;
 	int		rcode;
 
-	this = components[RLM_COMPONENT_ACCT];
+	this = lookup_by_index(components[RLM_COMPONENT_ACCT], 0)->modulelist;
 	rcode = RLM_MODULE_OK;
 
 	while (this && (rcode == RLM_MODULE_OK)) {
@@ -751,7 +891,7 @@ int module_checksimul(REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	this = components[RLM_COMPONENT_SESS];
+	this = lookup_by_index(components[RLM_COMPONENT_SESS], 0)->modulelist;
 	rcode = RLM_MODULE_FAIL;
 
 	while (this && (rcode == RLM_MODULE_FAIL)) {
