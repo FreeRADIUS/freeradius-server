@@ -10,8 +10,15 @@
 #   RADIUS-Attribute-Name = attribute name in RADIUS dictionary
 #   ldapAttributeName     = attribute name in LDAP schema
 #
-# This file should be made more complete....
+# If $GENERIC$ is specified as RADIUS-Attribute-Name, the line specifies
+# a LDAP attribute which can be used to store any RADIUS 
+# attribute/value-pair in LDAP directory.
 #
+# You should edit this file to suit it to your needs.
+#
+
+checkItem	$GENERIC$			radiusCheckItem
+replyItem	$GENERIC$			radiusReplyItem
 
 checkItem	Auth-Type			radiusAuthType
 checkItem	Simultaneous-Use		npSessionsAllowed
