@@ -108,9 +108,9 @@ ATTRIBUTE	Connect-Info		77	string
 #
 #	Experimental Non Protocol Attributes used by Cistron-Radiusd
 #
-ATTRIBUTE	Huntgroup-Name		221	string
 ATTRIBUTE	User-Category		1029	string
 ATTRIBUTE	Group-Name		1030	string
+ATTRIBUTE	Huntgroup-Name		1031	string
 ATTRIBUTE	Simultaneous-Use	1034	integer
 ATTRIBUTE	Strip-User-Name		1035	integer
 ATTRIBUTE	Fall-Through		1036	integer
