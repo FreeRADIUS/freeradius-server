@@ -134,7 +134,11 @@ if ($link){
 EOM;
 		}
 	}
+	else
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 }
+else
+	echo "<b>Could not connect to SQL database</b><br>\n";
 echo <<<EOM
 	</table>
 <tr><td>

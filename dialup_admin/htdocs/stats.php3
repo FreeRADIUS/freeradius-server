@@ -103,8 +103,12 @@ if ($link){
 			$data[sum][3] += $row["$res[3]"];
 			$num[3] = ($data[$day][3]) ? $num[3] + 1 : $num[3];
 		}
+		else
+			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	}
 }
+else
+	echo "<b>Could not connect to SQL database</b><br>\n";
 
 $num[1] = ($num[1]) ? $num[1] : 1;
 $num[2] = ($num[2]) ? $num[2] : 1;

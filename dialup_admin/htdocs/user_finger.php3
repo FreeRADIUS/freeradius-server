@@ -109,6 +109,8 @@ if ($link){
 		$server_rem[$servers_num] = ($config[$portnum]) ? ($config[$portnum] - $num) : 'unknown';
 	}
 }
+else
+	echo "<b>Could not connect to SQL database</b><br>\n";
 ?>
 
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

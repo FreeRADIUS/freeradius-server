@@ -147,7 +147,11 @@ EOM;
 		$acct_upload_sum = bytes2str($acct_upload_sum);
 		$acct_download_sum = bytes2str($acct_download_sum);
 	}
+	else
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 }
+else
+	echo "<b>Could not connect to SQL database</b><br>\n";
 echo <<<EOM
 			<tr bgcolor="lightyellow">
 			<td colspan=3 align="right">Page Total</td>

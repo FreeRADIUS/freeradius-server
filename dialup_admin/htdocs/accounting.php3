@@ -260,6 +260,8 @@ EOM;
 			echo "</tr>\n";
 		}
 	}
+	else
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 echo <<<EOM
 	</table>
 	</td></tr>

@@ -33,5 +33,5 @@ if ($link){
 		echo "<b>Error deleting user $login from reply table: " . da_sql_error($link,$config) . "</b><br>\n";
 }
 else
-	echo "<b>Could not connect to database</b><br>\n";
+	echo "<b>Could not connect to SQL database</b><br>\n";
 ?>

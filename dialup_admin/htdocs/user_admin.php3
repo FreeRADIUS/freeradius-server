@@ -100,6 +100,8 @@ if ($link){
 		$avg_output = bytes2str($row['avg(AcctOutputOctets)']);
 		$tot_conns = $row['COUNT(*)'];
 	}
+	else
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	$search = @da_sql_query($link,$config,
 	"SELECT COUNT(*) FROM $config[sql_accounting_table] WHERE UserName = '$login'
 	AND AcctStopTime >= '$week_str' AND AcctStopTime <= '$now_str'
@@ -110,6 +112,8 @@ if ($link){
 		$row = @da_sql_fetch_array($search,$config);
 		$tot_badlogins = $row['COUNT(*)'];
 	}
+	else
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	for($i = 0; $i <=6; $i++){
 		if ($days[$i] == '')
 			continue;
@@ -139,6 +143,8 @@ if ($link){
 					$daily_used = "<font color=red>$daily_used</font>";
 			}
 		}
+		else
+			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	}
 	if ($weekly_limit != 'none'){
 		$tmp = $weekly_limit - $weekly_used;
@@ -192,6 +198,8 @@ if ($link){
 				$lastlog_output = 'not available';
 		}
 	}
+	else
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	if (! $logged_now){
 		$search = @da_sql_query($link,$config,
 		"SELECT * FROM $config[sql_accounting_table]
@@ -218,8 +226,12 @@ if ($link){
 			else
 				$not_known = 1;
 		}
+		else
+			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	}
 }
+else
+	echo "<b>Could not connect to SQL database</b><br>\n";
 
 $monthly_limit = (is_numeric($monthly_limit)) ? time2str($monthly_limit) : $monthly_limit;
 $weekly_limit = (is_numeric($weekly_limit)) ? time2str($weekly_limit) : $weekly_limit;

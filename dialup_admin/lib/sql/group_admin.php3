@@ -40,5 +40,5 @@ if ($link){
 	}
 }
 else
-	echo "<b>Could not connect to database</b><br>\n";
+	echo "<b>Could not connect to SQL database</b><br>\n";
 ?>

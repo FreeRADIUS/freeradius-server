@@ -19,6 +19,7 @@ Ver 1.62:
 * Add sql_use_http_credentials configuration directive to connect to the sql database using the http user
   credentials (that way there can be more than one administrator usernames, each with different privileges
   on the sql database).
+* Add more error messages when interacting with the SQL database
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
