@@ -143,6 +143,7 @@ static void sig_fatal (int);
 static void sig_hup (int);
 
 static int switch_users(void);
+static void rfc_clean(RADIUS_PACKET *packet);
 static void rad_reject(REQUEST *request);
 static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST *rad_check_list(REQUEST *);
