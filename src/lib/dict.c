@@ -272,11 +272,11 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		 *	Perhaps this is an attribute.
 		 */
 		is_attrib = 0;
-		if (strcmp(keyword, "ATTRIBUTE") == 0)
+		if (DICT_STRCMP(keyword, "ATTRIBUTE") == 0)
 			is_attrib = 1;
 #ifdef ATTRIB_NMC
 		is_nmc = 0;
-		if (strcmp(keyword, "ATTRIB_NMC") == 0)
+		if (DICT_STRCMP(keyword, "ATTRIB_NMC") == 0)
 			is_attrib = is_nmc = 1;
 #endif
 		if (is_attrib) {
@@ -325,7 +325,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			 *	find the type.
 			 */
 			for (type = 0; dtypes[type]; type++) {
-				if (strcmp(typestr, dtypes[type]) == 0)
+				if (DICT_STRCMP(typestr, dtypes[type]) == 0)
 					break;
 			}
 			if (dtypes[type] == NULL) {
@@ -376,7 +376,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		/*
 		 *	Process VALUE lines.
 		 */
-		if (strcmp(keyword, "VALUE") == 0) {
+		if (DICT_STRCMP(keyword, "VALUE") == 0) {
 			if (sscanf(data, "%s%s%s", attrstr,
 						namestr, valstr) != 3) {
 				librad_log("dict_init: %s[%d]: invalid VALUE line",
@@ -386,7 +386,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			/*
 			 *	For Compatibility, skip "Server-Config"
 			 */
-			if (strcmp(attrstr, "Server-Config") == 0)
+			if (DICT_STRCMP(attrstr, "Server-Config") == 0)
 				continue;
 
 			/*
@@ -426,7 +426,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		/*
 		 *	Process VENDOR lines.
 		 */
-		if (strcmp(keyword, "VENDOR") == 0) {
+		if (DICT_STRCMP(keyword, "VENDOR") == 0) {
 
 			if (sscanf(data, "%s%s", attrstr, valstr) != 2) {
 				librad_log(
@@ -458,7 +458,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			continue;
 		}
 
-		if (strcmp(keyword, "BEGIN-VENDOR") == 0) {
+		if (DICT_STRCMP(keyword, "BEGIN-VENDOR") == 0) {
 			vendorstr[0] = 0;
 			if (sscanf(data, "%s", vendorstr) != 1) {
 				librad_log(
@@ -478,7 +478,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			continue;
 		}
 
-		if (strcmp(keyword, "END-VENDOR") == 0) {
+		if (DICT_STRCMP(keyword, "END-VENDOR") == 0) {
 			vendorstr[0] = 0;
 			if (sscanf(data, "%s", vendorstr) != 1) {
 				librad_log(
@@ -645,7 +645,7 @@ int dict_vendorname(const char *name)
 	 *	Find the vendor, if any.
 	 */
 	for (v = dictionary_vendors; v; v = v->next) {
-		if (strcmp(name, v->vendorname) == 0) {
+		if (DICT_STRCMP(name, v->vendorname) == 0) {
 			return v->vendorcode;
 		}
 	}
