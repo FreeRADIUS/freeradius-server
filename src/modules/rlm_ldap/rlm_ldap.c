@@ -1290,7 +1290,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	 */
 	if ((pairfind(*check_pairs, PW_AUTH_TYPE) == NULL) &&
 	    request->password &&
-	    (request->password->attribute == PW_USER_PASSWORD)) {
+	    (request->password->attribute == PW_USER_PASSWORD))
 		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
 
 
