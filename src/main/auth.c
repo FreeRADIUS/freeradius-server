@@ -34,7 +34,7 @@ static const char rcsid[] = "$Id$";
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
  */
-static char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
+char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 {
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
