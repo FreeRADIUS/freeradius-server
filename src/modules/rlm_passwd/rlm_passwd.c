@@ -319,6 +319,8 @@ static CONF_PARSER module_config[] = {
 	   offsetof(struct passwd_instance, ignorenislike), NULL,  "no" },
 	{ "hashsize",   PW_TYPE_INTEGER,
 	   offsetof(struct passwd_instance, hashsize), NULL,  "100" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 static int passwd_instantiate(CONF_SECTION *conf, void **instance)
