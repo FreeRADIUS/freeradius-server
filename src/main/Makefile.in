@@ -8,7 +8,7 @@ INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h
 BUILDDBM	= @BUILDDBM@
 
 CFLAGS		+= -I../include
-LDFLAGS		+= -L../lib
+LDFLAGS		+= -L../lib -rdynamic
 LIBS		+= -lradius
 
 CFLAGS		+= -DLOGDIR=\"@logdir@\" -DRADDBDIR=\"@raddbdir@\" \
