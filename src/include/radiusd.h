@@ -207,6 +207,7 @@ typedef struct main_config_t {
 	int		proxy_retry_count;
 	int		proxy_retry_delay;
 	int		proxy_fallback;
+	const char      *proxy_fail_type;
 	int		reject_delay;
 	int		status_server;
 	int		max_request_time;
@@ -316,7 +317,6 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 void		debug_pair(FILE *, VALUE_PAIR *);
 #endif
 int		log_err (char *);
-int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
 
 /* util.c */
 void (*reset_signal(int signo, void (*func)(int)))(int);
@@ -417,10 +417,9 @@ void		xlat_unregister(const char *module, RAD_XLAT_FUNC func);
 
 
 /* threads.c */
-extern		int thread_pool_init(void);
+extern		int thread_pool_init(int spawn_flag);
 extern		int thread_pool_clean(time_t now);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
-extern		void rad_exec_init(void);
 extern		pid_t rad_fork(int exec_wait);
 extern		pid_t rad_waitpid(pid_t pid, int *status, int options);
 extern		int rad_savepid(pid_t pid, int status);
