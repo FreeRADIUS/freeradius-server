@@ -6,8 +6,7 @@
  * Version:	@(#)rlm_unix.c  1.00  08-Aug-1999  miquels@cistron.nl
  *
  */
-char rlm_unix_sccsid[] =
-"@(#)rlm_unix.c	1.00 Copyright 1998-1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -353,7 +352,7 @@ static int unix_accounting(REQUEST *request)
 	for (vp = request->packet->vps; vp; vp = vp->next) {
 		switch (vp->attribute) {
 			case PW_USER_NAME:
-				strncpy(ut.ut_name, vp->strvalue, UT_NAMESIZE);
+				strNcpy(ut.ut_name, vp->strvalue, sizeof(ut.ut_name));
 				break;
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:
@@ -406,12 +405,8 @@ static int unix_accounting(REQUEST *request)
 	if ((cl = nas_find(nas_address)) != NULL)
 		s = cl->shortname;
 	if (s == NULL || s[0] == 0) s = uue(&(nas_address));
-#if UT_LINESIZE > 9
 	sprintf(buf, "%03d:%s", nas_port, s);
-#else
-	sprintf(buf, "%02d%s", nas_port, s);
-#endif
-	strncpy(ut.ut_line, buf, UT_LINESIZE);
+	strNcpy(ut.ut_line, buf, sizeof(ut.ut_line));
 
 	/*
 	 *	We store the dynamic IP address in the hostname field.
