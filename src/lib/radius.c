@@ -344,6 +344,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				   *	Ascend binary attributes are
 				   *	stored internally in binary form.
 				   */
+			  case PW_TYPE_IFID:
+			  case PW_TYPE_IPV6ADDR:
+			  case PW_TYPE_IPV6PREFIX:
 			  case PW_TYPE_ABINARY:
 			  case PW_TYPE_STRING:
 			  case PW_TYPE_OCTETS:
@@ -1442,6 +1445,48 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			}
 			break;
 			
+			/*
+			 *	IPv6 interface ID is 8 octets long.
+			 */
+		case PW_TYPE_IFID:
+			if (attrlen != 8)
+				pair->type = PW_TYPE_OCTETS;
+			memcpy(pair->strvalue, ptr, attrlen);
+			break;
+
+			/*
+			 *	IPv6 addresses are 16 octets long
+			 */
+		case PW_TYPE_IPV6ADDR:
+			if (attrlen != 16)
+				pair->type = PW_TYPE_OCTETS;
+			memcpy(pair->strvalue, ptr, attrlen);
+			break;
+
+			/*
+			 *	IPv6 prefixes are 2 to 18 octets long.
+			 *
+			 *	RFC 3162: The first octet is unused.
+			 *	The second is the length of the prefix
+			 *	the rest are the prefix data.
+			 *
+			 *	The prefix length can have value 0 to 128.
+			 */
+		case PW_TYPE_IPV6PREFIX:
+			if (attrlen < 2 || attrlen > 18)
+				pair->type = PW_TYPE_OCTETS;
+			if (attrlen >= 2) {
+				if (ptr[1] > 128) {
+					pair->type = PW_TYPE_OCTETS;
+				}
+				/*
+				 *	FIXME: double-check that
+				 *	(ptr[1] >> 3) matches attrlen + 2
+				 */
+			}
+			memcpy(pair->strvalue, ptr, attrlen);
+			break;
+
 		default:
 			DEBUG("    %s (Unknown Type %d)\n",
 			      attr->name,attr->type);

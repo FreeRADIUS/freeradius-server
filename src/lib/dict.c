@@ -46,6 +46,9 @@ static const LRAD_NAME_NUMBER type_table[] = {
 	{ "date",	PW_TYPE_DATE },
 	{ "abinary",	PW_TYPE_ABINARY },
 	{ "octets",	PW_TYPE_OCTETS },
+	{ "ifid",	PW_TYPE_IFID },
+	{ "ipv6addr",	PW_TYPE_IPV6ADDR },
+	{ "ipv6prefix", PW_TYPE_IPV6PREFIX },
 	{ NULL, 0 }
 };
 
