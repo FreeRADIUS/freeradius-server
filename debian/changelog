@@ -1,3 +1,10 @@
+radiusd-freeradius (?) unstable; urgency=low
+
+  * Integer values are printed as unsigned numbers, to comply with RFC2866.
+  * Fixed broken/reversed auth comparisons in SQL module.
+
+ -- Chad Miller <cmiller@debian.org>  [TBA]
+
 radiusd-freeradius (0.1+20010527-1) unstable; urgency=low
 
   * Updated config.{guess,sub} to recent versions.  (closes: Bug#98183)
