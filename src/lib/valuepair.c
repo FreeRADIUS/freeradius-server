@@ -535,8 +535,12 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 				vp->lvalue = atoi(value);
 				vp->length = 4;
 			}
-			else if ((dval = dict_valbyname(value)) == NULL) {
-				free(vp);
+			/*
+			 *	Look for the named value for the given
+			 *	attribute.
+			 */
+			else if ((dval = dict_valbyname(da->attr, value)) == NULL) {
+               			free(vp);
 				librad_log("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;

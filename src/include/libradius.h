@@ -149,7 +149,7 @@ int		dict_init(const char *dir, const char *fn);
 DICT_ATTR	*dict_attrbyvalue(int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(int attr, int val);
-DICT_VALUE	*dict_valbyname(const char *val);
+DICT_VALUE	*dict_valbyname(int attr, const char *val);
 int		dict_vendorcode(int);
 int		dict_vendorpec(int);
 int		dict_vendorname(const char *name);

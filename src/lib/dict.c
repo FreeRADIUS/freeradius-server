@@ -587,14 +587,20 @@ DICT_VALUE * dict_valbyattr(int attr, int val)
 
 /*
  *	Get a value by its name.
+ *      If you pass an actual attr, it will try to match it.
+ *      If you just want it to return on the first match,
+ *      send it 0 as the attr. I hope this works the way it
+ *      seems to. :) --kph
  */
-DICT_VALUE * dict_valbyname(const char *name)
+DICT_VALUE * dict_valbyname(int attr, const char *name)
 {
 	DICT_VALUE	*v;
 
 	for (v = dictionary_values; v; v = v->next) {
-		if (DICT_STRCMP(v->name, name) == 0)
-			return v;
+		if ((attr == 0 || v->attr == attr) &&
+		    DICT_STRCMP(v->name, name) == 0)
+		 return v;
+               
 	}
 
 	return NULL;

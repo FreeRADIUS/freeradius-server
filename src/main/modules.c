@@ -168,9 +168,8 @@ static int new_authtype_value(const char *name)
 	 *  Check to see if it's already defined.
 	 *  If so, return the old value.
 	 */
-	old_value = dict_valbyname(name);
-	if (old_value) return old_value->value;
-	
+	old_value = dict_valbyname(PW_AUTHTYPE, name);
+	if (old_value) return old_value->value; 
 	/* Look for the predefined Auth-Type value */
 	old_value = dict_valbyattr(PW_AUTHTYPE, 0);
 	if (!old_value) return 0;	/* something WIERD is happening */
