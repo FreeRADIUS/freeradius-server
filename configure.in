@@ -328,6 +328,23 @@ dnl AC_MSG_RESULT(" $INCLUDE")
 dnl AC_SUBST(INCLUDE)
 dnl AC_SUBST(IQUOTE)
 
+dnl extra argument: --with-udpfromto
+WITH_UDPFROMTO=no
+AC_ARG_WITH(udpfromto,
+[  --with-udpfromto        Compile in UDPFROMTO support. (default=no)],
+[ case "$withval" in
+    yes)
+	WITH_UDPFROMTO=yes
+        ;;
+    *)
+	WITH_UDPFROMTO=no
+  esac ]
+)
+
+if test "x$WITH_UDPFROMTO" = "xyes"; then
+	AC_DEFINE(WITH_UDPFROMTO)
+fi
+
 dnl #############################################################
 dnl #
 dnl #  1. Checks for programs
@@ -601,6 +618,13 @@ then
  then
    AC_DEFINE(ut_xtime,ut_tv.tv_sec)
  fi
+fi
+
+dnl # struct ip_pktinfo
+AC_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in_pktinfo], ipi_addr)
+if test "x$ac_cv_type_struct_in_pktinfo_has_ipi_addr" = "xyes"
+then
+	AC_DEFINE(HAVE_IP_PKTINFO)
 fi
 
 dnl #############################################################
