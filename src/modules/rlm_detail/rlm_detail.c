@@ -167,7 +167,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 		close(outfd);
 	} else {
 		/* Post a timestamp */
-		fputs(ctime(&request->timestamp), outfp);
+		fputs(ctime_r(&request->timestamp, buffer), outfp);
 
 		/* Write each attribute/value to the log file */
 		pair = request->packet->vps;

@@ -153,7 +153,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	if (radlog_dest == RADLOG_SYSLOG)
 		*buffer = '\0';
 	else {
-		strcpy(buffer, ctime(&timeval));
+		ctime_r(&timeval, buffer);
 
 		switch(lvl & ~L_CONS) {
 			case L_DBG:

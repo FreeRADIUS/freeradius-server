@@ -24,6 +24,10 @@ extern char *strsep(char **stringp, const char *delim);
 struct tm *localtime_r(const time_t *l_clock, struct tm *result);
 #endif
 
+#ifndef HAVE_CTIME_R
+char *ctime_r(const time_t *l_clock, char *l_buf);
+#endif
+
 #ifdef NEED_DECLARATION_CRYPT
 char *crypt(char *key, char *salt);
 #endif

@@ -159,3 +159,22 @@ struct tm *localtime_r(const time_t *l_clock, struct tm *result)
   return result;
 }
 #endif
+
+#ifndef HAVE_CTIME_R
+/*
+ *	We use ctime_r() by default in the server.
+ *
+ *	For systems which do NOT have ctime_r(), we make the
+ *	assumption that ctime() is re-entrant, and returns a
+ *	per-thread data structure.
+ *
+ *	Even if ctime is NOT re-entrant, this function will
+ *	lower the possibility of race conditions.
+ */
+char *ctime_r(const time_t *l_clock, char *l_buf)
+{
+  strcpy(l_buf, ctime(l_clock));
+
+  return l_buf;
+}
+#endif

@@ -380,7 +380,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING, func);
 				break;
 			case 't': /* request timestamp */
-				strNcpy(q,ctime(&request->timestamp),freespace);
+				ctime_r(&request->timestamp, q);
 				q += strlen(q);
 				break;
 			case 'u': /* User name */
