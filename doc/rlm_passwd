@@ -39,6 +39,11 @@ A: In case you configured realm to strip username, User-Password attribute
    All you need is to use Stripped-User-Name  instead of User-Name as a key
    field for passwd file.
 
+Q: How can I say passwd to add attribute even if it's value is empty?
+
+A: set ignoreempty to "no" in module configuration.
+
+
 5. Acknowlegements:
 
    ZARAZA, <3APA3A@security.nnov.ru>
