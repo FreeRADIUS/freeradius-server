@@ -31,10 +31,6 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 #include	<fcntl.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"modules.h"
 #define 	DIRLEN	8192
@@ -73,11 +69,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct detail_instance *inst;
 
-	inst = malloc(sizeof *inst);
-	if (!inst) {
-		radlog(L_ERR|L_CONS, "rlm_detail: Out of memory\n");
-		return -1;
-	}
+	inst = rad_malloc(sizeof *inst);
 
 	if (cf_section_parse(conf, module_config) < 0) {
 		free(inst);
