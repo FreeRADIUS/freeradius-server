@@ -357,7 +357,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			case T_OP_REG_EQ:
 			{
 				int i;
-				regmatch_t rxmatch[16];
+				regmatch_t rxmatch[9];
 
 				/*
 				 *	Include substring matches.
@@ -372,14 +372,29 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				/*
 				 *	Add %{0}, %{1}, etc.
 				 */
-				for (i = 0; i < 16; i++) {
+				for (i = 0; i <= 8; i++) {
 					char *p;
 					char buffer[sizeof(check_item->strvalue)];
 
 					/*
-					 *	-1 is end of matching.
+					 *	Didn't match: delete old
+					 *	match, if it existed.
 					 */
-					if (rxmatch[i].rm_so == -1) break;
+					if ((compare == 0) ||
+					    (rxmatch[i].rm_so == -1)) {
+						p = request_data_get(request, request,
+								     REQUEST_DATA_REGEX | i);
+						if (p) {
+							free(p);
+							continue;
+						}
+
+						/*
+						 *	No previous match
+						 *	to delete, stop.
+						 */
+						break;
+					}
 					
 					/*
 					 *	Copy substring into buffer.

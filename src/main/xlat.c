@@ -364,11 +364,11 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		char *regex = NULL;
 		
 		/*
-		 *	Only 1 through 15 are allowed.
+		 *	Only 0 through 8 are allowed.
 		 *	See valuepair.c for reasons why...
 		 */
 		regex_num = atoi(attrname);
-		if ((regex_num > 0) && (regex_num < 16)) {
+		if ((regex_num >= 0) && (regex_num <= 8)) {
 			regex = request_data_get(request, request,
 						 REQUEST_DATA_REGEX | regex_num);
 		}
