@@ -365,6 +365,13 @@ int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
 int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 	int ret;
 
+	/*
+	 *	If there's no query, return an error.
+	 */
+	if (!query || !*query) {
+		return -1;
+	}
+
 	ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
 
 	if (ret == SQL_DOWN) {
@@ -394,6 +401,13 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
  *************************************************************************/
 int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 	int ret;
+
+	/*
+	 *	If there's no query, return an error.
+	 */
+	if (!query || !*query) {
+		return -1;
+	}
 
 	ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
 
@@ -427,6 +441,13 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 
 	SQL_ROW row;
 	int     rows = 0;
+
+	/*
+	 *	If there's no query, return an error.
+	 */
+	if (!query || !*query) {
+		return -1;
+	}
 
 	if (rlm_sql_select_query(sqlsocket, inst, query)) {
 		radlog(L_ERR, "rlm_sql_getvpdata: database query error");

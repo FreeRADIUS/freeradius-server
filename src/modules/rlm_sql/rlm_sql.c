@@ -641,7 +641,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
-			if (querystr) {
+			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting for Acct On/Off packet - %s",
 					       inst->config->xlat_name,
@@ -669,7 +669,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
-			if (querystr) {
+			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting for ALIVE packet - %s",
 					       inst->config->xlat_name,
@@ -697,7 +697,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
-			if (querystr) {
+			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting" " for START packet - %s",
 					       inst->config->xlat_name,
@@ -711,7 +711,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					radius_xlat(querystr, sizeof(querystr), inst->config->accounting_start_query_alt, request, sql_escape_func);
 					query_log(inst, querystr);
 
-					if (querystr) {
+					if (*querystr) { /* non-empty query */
 						if (rlm_sql_query(sqlsocket, inst, querystr)) {
 							radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL" "accounting START record - %s",
 							       inst->config->xlat_name, 
@@ -741,7 +741,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
-			if (querystr) {
+			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting STOP record - %s",
 					       inst->config->xlat_name,
@@ -778,7 +778,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 						radius_xlat(querystr, sizeof(querystr), inst->config->accounting_stop_query_alt, request, sql_escape_func);
 						query_log(inst, querystr);
 
-						if (querystr) {
+						if (*querystr) { /* non-empty query */
 							if (rlm_sql_query(sqlsocket, inst, querystr)) {
 								radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 								ret = RLM_MODULE_FAIL;
