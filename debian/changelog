@@ -13,7 +13,7 @@ radiusd-freeradius (0.1-1) unstable; urgency=low
   * Better permissions on /etc/raddb
   * Use correct LDAP library.
 
- -- Chad Miller <cmiller@debian.org>  Fri,  4 May 2001 14:26:59 -0400
+ -- Chad Miller <cmiller@debian.org>  [TBA]
 
 radiusd-freeradius (0.0.20010109-1) unstable; urgency=low
 
