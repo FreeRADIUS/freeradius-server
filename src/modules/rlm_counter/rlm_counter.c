@@ -492,7 +492,19 @@ static int counter_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR *key_vp, *count_vp, *proto_vp;
 	int counter;
 	int rcode;
+	int acctstatustype = 0;
 	time_t diff;
+
+	if ((key_vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
+		acctstatustype = key_vp->lvalue;
+	else {
+		DEBUG("rlm_counter: Could not find account status type in packet.");
+		return RLM_MODULE_NOOP;
+	}
+	if (acctstatustype != PW_STATUS_STOP){
+		DEBUG("rlm_counter: We only run on Accounting-Stop packets.");
+		return RLM_MODULE_NOOP;
+	}
 
 	/*
 	 *	Before doing anything else, see if we have to reset
