@@ -289,6 +289,11 @@ For now snmpfinger will only work with Cisco equipment.
 
 Must point to the radclient binary
 
+> general_nas_type: cisco
+
+Defines the nas type. This is only used by snmpfinger
+cisco and lucent are supported for now
+
 
 [2.1.5] Test Variables
 
@@ -363,6 +368,11 @@ The community string used by the nas for queries via snmp
 
 The finger type for the specific nas. Comment out to use the 
 general_finger_type from above.
+
+> nas1_type: cisco
+
+The nas type for the specific nas. Comment out to use the
+general_nas_type from above.
 
 
 [2.1.8] LDAP Options
@@ -595,7 +605,8 @@ are utf8 encoded.
 
 This script make an snmp request to the nas server to retrieve 
 the online users directly from the NAS and is being used by dialup admin
-when general_finger_type: snmp is set. (See section 2.1.4). 
+when general_finger_type: snmp is set (or the per nas equivelant
+directive). (See section 2.1.4). 
 
 You also must have installed the net-snmp package obtained at 
 http://www.net-snmp.org
@@ -606,12 +617,11 @@ snmpwalk binary.
 Edit the line $SNMPWALK="/usr/local/bin/snmpwalk"; to represent the location 
 of snmpwalk binary
 
-Besides that the snmpfinger uses MIBs only for the CISCO XXXX NAS which may
-not work if your NAS is different. For example the mib for a Lucent MAX 3000 
-NAS is .1.3.6.1.4.1.529.10.4.1.12 and should also be replaced. 
+Besides that the snmpfinger uses MIBs only for the CISCO XXXX NAS or for Lucent
+equipment (at least for the MAX 3000) which may not work if your NAS is different.
 
 However the snmpfinger is not actually required if your accounting 
-is working properly
+is working properly.
 
 [2.2.2] The log_badlogins script
 
@@ -636,7 +646,9 @@ The clean_radacct script can be used to clear the database of stale open session
 (sessions for which an Accounting-Stop has not been received hence they remain open)
 The $back_days variable can be changed to specify how many days we should leave the
 sessions open before removing them. Make sure though that all your user sesions are
-short lived (no DSL users for example) before using the script.
+short lived (no DSL users for example) before using the script. If that is not the
+case edit the sql query to only match short lived sessions (depending on the NAS-Port-Type
+for example).
 
 [2.2.4] The truncate_radacct script
 
@@ -734,5 +746,5 @@ and ldap debug (ldap_debug: true)
 ---------------------------------
 
 This document is distributed under the terms of the GPL (GNU Public License). 
-Paris Stamatopoulos <mobius@hack.gr>
-
+Paris Stamatopoulos <mobius@hack.gr> (main author)
+Kostas Kalevras <kkalev@noc.ntua.gr> (a few additions)
