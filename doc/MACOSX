@@ -1,0 +1,51 @@
+	Installing FreeRADIUS on MAC OSX
+	--------------------------------
+
+0) download, unzip and untar freeradius.tar.gz
+
+1) $ ./configure --disable-shared   (So static libraries are built)
+
+2) Modify ./src/include/sysutmp.h to #undef HAVE_UTMP_H
+
+For 0.7 or earlier: 
+
+  3) Modify ./src/modules/rlm_pam/rlm_pam.c to
+     change the include directive from #include <security/pam_appl.h> to
+     #include <pam/pam_appl.h>
+
+   4) Modify ./src/modules/rlm_sql/drivers/rlm_sql_iodbc/sql_iodbc.c, line 214
+   to change the return type of that function to SQL_ROW so it matches
+   the function prototype in sql_iodbc.h.  One could also instead
+   change the return type to int in the header file sql_iodbc.h.
+
+Steps (3) and (4) should NOT be necessary for 0.8 and later.
+
+5) $ cd ./src
+
+6) $ make
+
+7) $ make install
+
+For 0.7 or earlier:
+
+  8) Modify radiusd.conf as follows:
+
+    In the unix section:
+
+    8a) set "cache = no"
+    8b) set "cache_reload = 0"
+    8c) COMMENT OUT the "passwd =", "shadow =", and "group =" lines.
+    8d) Save changes and exit whatever editor you used to edit radiusd.conf.
+
+Step (8) should NOT be necessary for 0.8 and later.
+
+9) Now run radiusd -X and test things out with radtest, as specified
+in the FAQ.
+
+10) Assuming everything works, set up your clients.conf and other config
+files as appropriate to suit your needs and set radiusd to run on boot and
+you're done.
+
+That's about it.  FreeRADIUS works for me and I'm happy now.  :-)
+
+Author: Philip Kearney <ioresult@mac.com>
