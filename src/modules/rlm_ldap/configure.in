@@ -8,12 +8,48 @@ SMART_CLFAGS=
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
+
+	dnl extra argument: --with-rlm-ldap-lib-dir
+	rlm_ldap_lib_dir=
+	AC_ARG_WITH(rlm-ldap-lib-dir,
+	[  --with-rlm-ldap-lib-dir=DIR       Directory for LDAP library files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-ldap-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_ldap_lib_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	dnl extra argument: --with-rlm-ldap-include-dir
+	rlm_ldap_inc_dir=
+	AC_ARG_WITH(rlm-ldap-include-dir,
+	[  --with-rlm-ldap-include-dir=DIR   Directory for LDAP include files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-ldap-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_ldap_include_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	smart_try_dir=$rlm_ldap_include_dir
 	AC_SMART_CHECK_INCLUDE(lber.h)
 	AC_SMART_CHECK_INCLUDE(ldap.h)
+
 	AC_SMART_CHECK_LIB(sasl, sasl_encode)
 	AC_SMART_CHECK_LIB(crypto, DH_new)
 	AC_SMART_CHECK_LIB(ssl, SSL_new)
 
+	smart_try_dir=$rlm_ldap_lib_dir
 	AC_SMART_CHECK_LIB(lber, ber_init)
         if test "x$ac_cv_lib_lber_ber_init" != "xyes"; then
 	  fail="$fail liblber"
