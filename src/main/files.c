@@ -156,7 +156,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	 */
 	while(fgets(buffer, sizeof(buffer), fp) != NULL) {
 		lineno++;
-		if (strchr(buffer, '\n') == NULL) {
+		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
 			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			pairlist_free(&pl);
 			return -1;
@@ -386,7 +386,7 @@ int read_realms_file(const char *file)
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
-		if (strchr(buffer, '\n') == NULL) {
+		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
 			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			return -1;
 		}

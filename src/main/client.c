@@ -87,7 +87,7 @@ int read_clients_file(const char *file)
 
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
-		if (strchr(buffer, '\n') == NULL) {
+		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
 			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			return -1;
 		}
@@ -207,10 +207,10 @@ RADCLIENT *client_find(uint32_t ipaddr)
 	RADCLIENT *cl;
 	RADCLIENT *match = NULL;
 
-	for(cl = clients; cl; cl = cl->next) {
+	for (cl = clients; cl; cl = cl->next) {
 		if ((ipaddr & cl->netmask) == cl->ipaddr) {
 			if ((!match) ||
-					(ntohl(cl->netmask) > ntohl(match->netmask))) {
+			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
 				match = cl;
 			}
 		}

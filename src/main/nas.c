@@ -78,7 +78,7 @@ int read_naslist_file(char *file)
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
-		if (strchr(buffer, '\n') == NULL) {
+		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
 			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			return -1;
 		}
