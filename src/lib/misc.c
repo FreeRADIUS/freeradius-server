@@ -76,26 +76,34 @@ char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 
 
 /*
- *	Return an IP address in from a host
+ *	Return an IP address from a host
  *	name or address in dot notation.
  */
 uint32_t ip_getaddr(const char *host)
 {
 	struct hostent	*hp;
 	uint32_t	 a;
-#ifdef HAVE_GETHOSTBYNAME_R
+#ifdef GETHOSTBYNAMERSTYLE
+#if (GETHOSTBYNAMERSTYLE == SYSVSTYLE) || (GETHOSTBYNAMERSTYLE == GNUSTYLE)
 	struct hostent result;
 	int error;
 	char buffer[2048];
+#endif
 #endif
 
 	if ((a = ip_addr(host)) != htonl(INADDR_NONE))
 		return a;
 
-#ifndef HAVE_GETHOSTBYNAME_R
-	hp = gethostbyname(host);
-#else
+#ifdef GETHOSTBYNAMERSTYLE
+#if GETHOSTBYNAMERSTYLE == SYSVSTYLE
 	hp = gethostbyname_r(host, &result, buffer, sizeof(buffer), &error);
+#elif GETHOSTBYNAMERSTYLE == GNUSTYLE
+	hp = gethostbyname_r(host, &result, buffer, sizeof(buffer), &hp, &error);
+#else
+	hp = gethostbyname(host);
+#endif
+#else
+	hp = gethostbyname(host);
 #endif
 	if (hp == NULL) {
 		return htonl((uint32_t) INADDR_NONE);

@@ -648,6 +648,10 @@ fi
 
 gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
+AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr(NULL, 0, 0)  ], [
+	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
+	gethostbyaddrrstyle=BSD
+])
 AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL) ] , [
 	AC_DEFINE(GETHOSTBYADDRRSTYLE, SYSVSTYLE)
 	gethostbyaddrrstyle=SYSV
@@ -657,17 +661,38 @@ AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0
 	gethostbyaddrrstyle=GNU
 ])
 
-AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr(NULL, 0, 0)  ], [
-	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
-	gethostbyaddrrstyle=BSD
-])
-
 if test "x$gethostbyaddrrstyle" = "x"; then
 	AC_MSG_RESULT([none!  It must not exist, here.])
 else
 	AC_MSG_RESULT([${gethostbyaddrrstyle}-style])
+	if test "$gethostbyaddrrstyle" = "BSD"; then
+		AC_MSG_WARN([ ****** BSD Style gethostbyaddr might NOT be thread-safe! ****** ])
+	fi
 fi
 
+gethostbynamerstyle=""
+AC_MSG_CHECKING([gethostbyname_r() syntax])
+AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyname(NULL)  ], [
+	AC_DEFINE(GETHOSTBYNAMERSTYLE, BSDSTYLE)
+	gethostbynamerstyle=BSD
+])
+AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL) ] , [
+	AC_DEFINE(GETHOSTBYNAMERSTYLE, SYSVSTYLE)
+	gethostbynamerstyle=SYSV
+])
+AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) ], [
+	AC_DEFINE(GETHOSTBYNAMERSTYLE, GNUSTYLE)
+	gethostbynamerstyle=GNU
+])
+
+if test "x$gethostbynamerstyle" = "x"; then
+	AC_MSG_RESULT([none!  It must not exist, here.])
+else
+	AC_MSG_RESULT([${gethostbynamerstyle}-style])
+	if test "$gethostbynamerstyle" = "BSD"; then
+		AC_MSG_WARN([ ****** BSD Style gethostbyname might NOT be thread-safe! ****** ])
+	fi
+fi
 
 dnl If configuring with large file support, determine the right flags to
 dnl use based on the platform.  This is the wrong approach; autoconf 2.50
