@@ -40,6 +40,8 @@ o Enable caching in the ldap module (try it first, the openldap code
 ------------ SQL MODULE --------------
 o Tune the num_sql_socks to be larger than the number of simultaneous
   authentication/accounting requests.
+o Use the sql module in the session section instead of the radutmp module.
+  It works *much* quicker.
 
 ------------ COUNTER MODULE ----------
 o Enable noatime on the counter db files.
@@ -48,3 +50,4 @@ o Tune the cache-size configuration directive to match your needs.
 
 ------------ RADUTMP MODULE ----------
 o Enable noatime on the radutmp file
+o Don't use it
