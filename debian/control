@@ -67,7 +67,8 @@ Description: iODBC module for FreeRADIUS server
 
 Package: freeradius-dialupadmin
 Architecture: all
-Depends:
+Depends: apache | httpd, php4 | php4-cgi
+Recommends: ${perl:Depends}
 Description: set of PHP scripts for administering a FreeRADIUS server
  These scripts provide a web-based interface for administering a FreeRADIUS
  server which stores authentication information in either SQL or LDAP.

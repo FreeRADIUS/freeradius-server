@@ -5,7 +5,7 @@ freeradius (0.9.3-cvs20040418-0) unstable; urgency=low
   * Created Dialup-Admin package for the PHP-based web
     FreeRADIUS database (SQL/LDAP) frontend.
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 18 Apr 2004 13:45:12 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 18 Apr 2004 23:11:43 +1000
 
 freeradius (0.9.3-cvs20040225-0) unstable; urgency=low
 

@@ -120,6 +120,7 @@ binary-arch: stamp-build
 	dh_install -p freeradius-dialupadmin -XCVS dialup_admin/conf/* etc/freeradius-dialupadmin/
 	dh_install -p freeradius-dialupadmin -XCVS -XChangelog -XREADME -Xconf/ dialup_admin/* usr/share/dialupadmin/
 	dh_link -p freeradius-dialupadmin etc/freeradius-dialupadmin/ usr/share/dialupadmin/conf
+	dh_perl -p freeradius-dialupadmin dialup_admin/bin/*
 
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	dh_strip
