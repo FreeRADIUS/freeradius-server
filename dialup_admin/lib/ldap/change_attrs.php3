@@ -44,7 +44,7 @@ require_once('../lib/ldap/functions.php3');
 //
 					else{
 						if (isset($item_vals["$key"][$j])){
-							$mod[$attrmap["$key"]][] = $item_vals["$key"][$j];
+							$del[$attrmap["$key"]][] = $item_vals["$key"][$j];
 							$add_r[$attrmap["$key"]][] = $val;
 						}
 						else{
@@ -53,14 +53,14 @@ require_once('../lib/ldap/functions.php3');
 					}
 				}
 			}
-			if (isset($mod)){
+			if (isset($del)){
 			       if ($config[ldap_debug] == 'true'){
 					print "<b>DEBUG(LDAP): ldap_mod_del(): DN='$dn'</b><br>\n";
 					print "<b>DEBUG(LDAP): ldap_mod_del(): Data:";
-					print_r($mod);
+					print_r($del);
 					print "</b><br>\n";
 				}
-				@ldap_mod_del($ds,$dn,$mod);
+				@ldap_mod_del($ds,$dn,$del);
 			}
 			if (isset($add_r)){
 			       if ($config[ldap_debug] == 'true'){
@@ -70,15 +70,6 @@ require_once('../lib/ldap/functions.php3');
 					print "</b><br>\n";
 				}
 				@ldap_mod_add($ds,$dn,$add_r);
-			}
-			if (isset($del)){
-			       if ($config[ldap_debug] == 'true'){
-					print "<b>DEBUG(LDAP): ldap_mod_replace(): DN='$dn'</b><br>\n";
-					print "<b>DEBUG(LDAP): ldap_mod_replace(): Data:";
-					print_r($del);
-					print "</b><br>\n";
-				}
-				@ldap_mod_del($ds,$dn,$del);
 			}
 		}
 		if (@ldap_error($ds) == 'Success')
