@@ -604,7 +604,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		return RLM_MODULE_REJECT;
 
 	} else if (t->status == PEAP_STATUS_SENT_TLV_FAILURE) {
-		DEBUG2("  rlm_eap_peap:  Had sent TLV failure, rejecting.");
+		DEBUG2("  rlm_eap_peap:  Had sent TLV failure.  User was rejcted rejected earlier in this session.");
 		return RLM_MODULE_REJECT;
 	}
 
