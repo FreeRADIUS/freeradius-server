@@ -1160,6 +1160,11 @@ if test x"$fail" != x""; then
 	fi
 fi
 
+if test x"$targetname" != x""; then
+	ippool_utils="rlm_ippool_tool"
+	ippool_install="rlm_ippool_install"
+fi
+
 ippool_ldflags=$SMART_LIBS
 ippool_cflags=$SMART_CFLAGS
 
@@ -1303,6 +1308,8 @@ s%@CPP@%$CPP%g
 s%@ippool_ldflags@%$ippool_ldflags%g
 s%@ippool_cflags@%$ippool_cflags%g
 s%@targetname@%$targetname%g
+s%@ippool_utils@%$ippool_utils%g
+s%@ippool_install@%$ippool_install%g
 
 CEOF
 EOF

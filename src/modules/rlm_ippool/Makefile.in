@@ -1,12 +1,27 @@
 TARGET      = @targetname@
 SRCS        = rlm_ippool.c
 HEADERS     =
+RLM_UTILS	= @ippool_utils@
 RLM_CFLAGS  = @ippool_cflags@
 RLM_LIBS    = @ippool_ldflags@
-RLM_INSTALL =
+RLM_INSTALL = @ippool_install@
 
 include ../rules.mak
+
+rlm_ippool_tool: rlm_ippool_tool.o
+	$(LIBTOOL) --mode=link $(CC) $^ $(LIBS) $(RLM_LIBS) -o $@
+
+rlm_ippool_tool.8: rlm_ippool_tool.pod
+	pod2man --release=" " --date="October 2nd, 2003" --center="FreeRADIUS Daemon" --section=8 rlm_ippool_tool.pod rlm_ippool_tool.8
 
 $(STATIC_OBJS): $(HEADERS)
 
 $(DYNAMIC_OBJS): $(HEADERS)
+
+# Install binary files into the bin directory
+rlm_ippool_install: rlm_ippool_tool.8
+	$(INSTALL) -m 755 -d								$(R)$(bindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_ippool_tool	$(R)$(bindir)
+	$(INSTALL) -m 755 -d								$(R)$(mandir)/man8
+	$(INSTALL) -m 644 rlm_ippool_tool.8					$(R)$(mandir)/man8
+
