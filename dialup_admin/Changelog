@@ -17,6 +17,7 @@ Ver 1.63:
 * Add a few installation notes
 * Fix a problem with user_stats.php3
 * Update the README file with notes about the scripts present in the bin folder
+* Add a <?php tag instead of a <?. Bug noted by Isam Ishaq <isam@planet.edu>
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime

@@ -3,7 +3,7 @@ require('../conf/config.php3');
 ?>
 <html>
 <head>
-<?
+<?php
 require('../lib/functions.php3');
 require('../lib/defaults.php3');
 $date = strftime('%A, %e %B %Y, %T %Z');
