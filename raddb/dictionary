@@ -220,6 +220,7 @@ ATTRIBUTE	Add-Prefix		1008	string
 ATTRIBUTE	Add-Suffix		1009	string
 ATTRIBUTE	Expiration		1010	date
 ATTRIBUTE	Autz-Type		1011	integer
+ATTRIBUTE	Acct-Type		1011	integer
 
 #
 #	Integer Translations
@@ -391,6 +392,10 @@ VALUE		Auth-Type		SMB			1033
 #
 VALUE		Autz-Type		Local			0
 
+#
+#	And accounting
+#
+VALUE		Acct-Type		Local			0
 #
 #	Experimental Non-Protocol Integer Translations for Cistron-Radiusd
 #
