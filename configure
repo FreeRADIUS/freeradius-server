@@ -4582,6 +4582,7 @@ trap 'rm -fr `echo "\
 	./scripts/check-radiusd-config \
 	./scripts/radiusd.cron.daily \
 	./scripts/radiusd.cron.monthly \
+	./scripts/cryptpasswd \
 	./raddb/radiusd.conf
  src/include/autoconf.h" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
 EOF
@@ -4717,6 +4718,7 @@ CONFIG_FILES=\${CONFIG_FILES-"\
 	./scripts/check-radiusd-config \
 	./scripts/radiusd.cron.daily \
 	./scripts/radiusd.cron.monthly \
+	./scripts/cryptpasswd \
 	./raddb/radiusd.conf
 "}
 EOF
@@ -4993,7 +4995,7 @@ fi
 echo timestamp > src/include/stamp-h
 (cd ./src/include && /bin/sh ./build-radpaths-h)
 (cd ./src/main   && chmod +x checkrad.pl radlast radtest)
-(cd ./scripts    && chmod +x rc.radiusd radwatch check-radiusd-config radiusd.cron.daily radiusd.cron.monthly)
+(cd ./scripts    && chmod +x rc.radiusd radwatch check-radiusd-config radiusd.cron.daily radiusd.cron.monthly cryptpasswd)
 
 cat >> src/include/autoconf.h <<EOF
 

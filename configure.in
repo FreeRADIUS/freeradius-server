@@ -727,13 +727,14 @@ AC_OUTPUT(\
 	./scripts/check-radiusd-config \
 	./scripts/radiusd.cron.daily \
 	./scripts/radiusd.cron.monthly \
+	./scripts/cryptpasswd \
 	./raddb/radiusd.conf
 )
 
 AC_OUTPUT_COMMANDS([echo timestamp > src/include/stamp-h])
 AC_OUTPUT_COMMANDS([(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_OUTPUT_COMMANDS([(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
-AC_OUTPUT_COMMANDS([(cd ./scripts    && chmod +x rc.radiusd radwatch check-radiusd-config radiusd.cron.daily radiusd.cron.monthly)])
+AC_OUTPUT_COMMANDS([(cd ./scripts    && chmod +x rc.radiusd radwatch check-radiusd-config radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
 AC_OUTPUT_COMMANDS([
 cat >> src/include/autoconf.h <<EOF
 
