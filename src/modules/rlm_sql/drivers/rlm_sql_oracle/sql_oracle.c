@@ -59,6 +59,8 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	sb4		errcode = 0;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
+	if (!oracle_sock) return "rlm_sql_oracle: no connection to db";
+
 	memset((void *) msgbuf, (int)'\0', sizeof(msgbuf));
 
 	OCIErrorGet((dvoid *) oracle_sock->errHandle, (ub4) 1, (text *) NULL,
