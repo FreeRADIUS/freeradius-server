@@ -93,8 +93,6 @@ int			proxy_retry_delay = RETRY_DELAY;
 int			proxy_retry_count = RETRY_COUNT;
 int			proxy_synchronous = TRUE;
 int			need_reload = FALSE;
-int			radius_port = 0;
-struct	servent		*svp;
 struct	main_config_t 	mainconfig;
 
 static int		got_child = FALSE;
@@ -243,26 +241,6 @@ static void reread_config(int reload)
 		return;
 
 	cf_section_parse(cs, server_config);
-
-	/*
-	 *	We prefer (in order) the port from the command-line,
-	 *	then the port from the configuration file, then
-	 *	the port that the system names "radius", then
-	 *	1645.
-	 */
-	svp = getservbyname ("radius", "udp");
-	if (radius_port) {
-		auth_port = radius_port;
-	} else {
-		radius_port = auth_port;
-	}
-
-	if (auth_port == 0) {
-		if (svp != NULL)
-			auth_port = ntohs(svp->s_port);
-		else
-			auth_port = PW_AUTH_UDP_PORT;
-	}
 
 	/*
 	 *	Go update our behaviour, based on the configuration
@@ -445,6 +423,8 @@ int main(int argc, char **argv)
 	int			devnull;
 	int			status;
 	int			syslog_facility = LOG_DAEMON;
+	int			radius_port = 0;
+	struct servent		*svp;
  
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
@@ -648,6 +628,28 @@ int main(int argc, char **argv)
 	  request_list[i].first_request = NULL;
 	  request_list[i].request_count = 0;
 	  request_list[i].service_time = 0;
+	}
+
+	/*
+	 *	We prefer (in order) the port from the command-line,
+	 *	then the port from the configuration file, then
+	 *	the port that the system names "radius", then
+	 *	1645.
+	 */
+	if (radius_port) {
+		auth_port = radius_port;
+	} /* else auth_port is set from the config file */
+	
+	/*
+	 *	Maybe auth_port *wasn't* set from the config file,
+	 *	or the config file set it to zero.
+	 */
+	if (auth_port == 0) {
+		svp = getservbyname ("radius", "udp");
+		if (svp != NULL)
+			auth_port = ntohs(svp->s_port);
+		else
+			auth_port = PW_AUTH_UDP_PORT;
 	}
 
 	/*
