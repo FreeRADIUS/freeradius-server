@@ -44,16 +44,30 @@ pidfile    = ${run_dir}/radiusd.pid
 #
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
-#  Requests which take more time to process than this are killed, and
+#  Requests which take more time than this to process are killed, and
 #  a REJECT message is returned.
+#
+#  Useful range of values: 5 to 120
 #
 max_request_time	= 30
 
 #
 #  cleanup_delay: The time to wait (in seconds) before cleaning up
-#  a reply which was already sent to the NAS.  If it is set too low,
-#  then duplicate requests from the NAS MAY NOT be detected,
-#  and will instead be handled as seperate requests.
+#  a reply which was sent to the NAS.
+#
+#  The RADIUS request is normally cached internally for a short period
+#  of time, after the reply is sent to the NAS.  The reply packet may be
+#  lost in the network, and the NAS will not see it.  The NAS will then
+#  re-send the request, and the server will respond quickly with the
+#  cached reply.
+#
+#  If this value is set too low, then duplicate requests from the NAS
+#  MAY NOT be detected, and will instead be handled as seperate requests.
+#
+#  If this value is set too high, then the server will cache too many
+#  requests, and some new requests may get blocked.  (See 'max_requests'.)
+#
+#  Useful range of values: 2 to 10
 #
 cleanup_delay		= 5
 
@@ -72,6 +86,8 @@ cleanup_delay		= 5
 #  If you aren't sure what it should be set to, it's better to set it
 #  too high than too low.  Setting it to 1000 per client is probably
 #  the highest it should be.
+#
+#  Useful range of values: 256 to infinity
 #
 max_requests		= 1024
 
