@@ -784,9 +784,7 @@ static int xlat_config(void *instance, REQUEST *request,
 		outlen = strlen(cp->value) + 1;
 	}
 	
-	strNcpy(out, cp->value, outlen);
-    
-	return outlen - 1;
+	return func(out, outlen, cp->value);
 }
 
 /*
