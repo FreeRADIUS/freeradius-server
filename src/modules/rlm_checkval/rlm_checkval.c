@@ -38,12 +38,6 @@
 #define REG_EXTENDED (0)
 #endif
 
-#define RLM_CHECKVAL_STR	0
-#define RLM_CHECKVAL_INT	1
-#define RLM_CHECKVAL_IPADDR	2
-#define RLM_CHECKVAL_DATE	3
-#define RLM_CHECKVAL_BIN	4
-
 /*
  *	Define a structure for our module configuration.
  *
@@ -55,7 +49,7 @@ typedef struct rlm_checkval_t {
 	char	*item_name;	/* The attribute inside Access-Request ie Calling-Station-Id */
 	char 	*check_name;	/* The attribute to check it with ie Allowed-Calling-Station-Id */
 	char	*data_type;	/* string,integer,ipaddr,date,abinary,octets */
-	char	dat_type;
+	int	dat_type;
 	int	item_attr;
 	int	chk_attr;
 } rlm_checkval_t;
@@ -77,6 +71,21 @@ static CONF_PARSER module_config[] = {
 };
 
 
+static int checkval_detach(void *instance)
+{
+	rlm_checkval_t *data = (rlm_checkval_t *) instance;
+
+	if (data->item_name)
+		free((char *)data->item_name);
+	if (data->check_name)
+		free((char *)data->check_name);
+	if (data->data_type)
+		free((char *)data->data_type);
+
+	free(instance);
+	return 0;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -92,6 +101,17 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	rlm_checkval_t *data;
 	DICT_ATTR *dattr;
 	ATTR_FLAGS flags;
+
+	static const LRAD_NAME_NUMBER names[] = {
+		{ "string", PW_TYPE_STRING },
+		{ "integer", PW_TYPE_INTEGER },
+		{ "ipaddr", PW_TYPE_IPADDR },
+		{ "date", PW_TYPE_DATE },
+		{ "abinary", PW_TYPE_OCTETS },
+		{ "octets", PW_TYPE_OCTETS },
+		{ "binary", PW_TYPE_OCTETS },
+		{ NULL, 0 }
+	};
 	
 	/*
 	 *	Set up a storage area for instance data
@@ -103,7 +123,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
+		checkval_detach(data);
 		return -1;
 	}
 
@@ -112,23 +132,17 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (!data->data_type || !strlen(data->data_type)){
 		radlog(L_ERR, "rlm_checkval: Data type not defined");
-		free(data->item_name);
-		free(data->check_name);
-		free(data);
+		checkval_detach(data);
 		return -1;
 	}
 	if (!data->item_name || !strlen(data->item_name)){
 		radlog(L_ERR, "rlm_checkval: Item name not defined");
-		free(data->data_type);
-		free(data->check_name);
-		free(data);
+		checkval_detach(data);
 		return -1;
 	}
 	if (!data->check_name || !strlen(data->check_name)){
 		radlog(L_ERR, "rlm_checkval: Check item name not defined");
-		free(data->data_type);
-		free(data->item_name);
-		free(data);
+		checkval_detach(data);
 		return -1;
 	}
 
@@ -139,7 +153,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	if (!dattr) {
 		radlog(L_ERR, "rlm_checkval: No such attribute %s",
 		       data->item_name);
-		free(data);
+		checkval_detach(data);
 		return -1;
 	}
 	data->item_attr = dattr->attr;
@@ -155,28 +169,24 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	if (!dattr){
 		radlog(L_ERR, "rlm_checkval: No such attribute %s",
 		       data->check_name);
-		free(data);
+		checkval_detach(data);
 		return -1;
 	}
 	data->chk_attr = dattr->attr;
 	DEBUG2("rlm_checkval: Registered name %s for attribute %d",
 		dattr->name,dattr->attr);
 
-	if (!strcmp(data->data_type,"integer") || !strcmp(data->data_type,"int"))
-		data->dat_type = RLM_CHECKVAL_INT;
-	else if (!strcmp(data->data_type,"string") || !strcmp(data->data_type,"str"))
-		data->dat_type = RLM_CHECKVAL_STR;
-	else if (!strcmp(data->data_type,"ipaddr") || !strcmp(data->data_type,"ip"))
-		data->dat_type = RLM_CHECKVAL_IPADDR;
-	else if (!strcmp(data->data_type,"octets") || !strcmp(data->data_type,"abinary") || \
-		!strcmp(data->data_type,"bin"))
-		data->dat_type = RLM_CHECKVAL_BIN;
-	else{
+	/*
+	 *	Convert the string type to an integer type,
+	 *	so we don't have to do string comparisons on each
+	 *	packet.
+	 */
+	data->dat_type = lrad_str2int(names, data->data_type, -1);
+	if (data->dat_type < 0) {
 		radlog(L_ERR, "rlm_checkval: Data type %s in not known",data->data_type);
-		free(data);
+		checkval_detach(data);
 		return -1;
 	}
-
 
 	*instance = data;
 	
@@ -220,13 +230,15 @@ static int checkval_authorize(void *instance, REQUEST *request)
 	 	* Check if item != check
 	 	*/
 		found = 1;
-		if (data->dat_type == RLM_CHECKVAL_STR || data->dat_type == RLM_CHECKVAL_BIN || \
-			data->dat_type == RLM_CHECKVAL_IPADDR){
+		if (data->dat_type == PW_TYPE_STRING ||
+		    data->dat_type == PW_TYPE_OCTETS ||
+		    data->dat_type == PW_TYPE_IPADDR) {
 			if (item_vp->length != chk_vp->length)
 				ret = RLM_MODULE_REJECT;
 			else{
-				if (!memcmp(item_vp->strvalue, chk_vp->strvalue, \
-					(size_t) chk_vp->length))
+				if (!memcmp(item_vp->strvalue,
+					    chk_vp->strvalue,
+					    (size_t) chk_vp->length))
 					ret = RLM_MODULE_OK;
 				else
 					ret = RLM_MODULE_REJECT;
@@ -240,7 +252,8 @@ static int checkval_authorize(void *instance, REQUEST *request)
 				ret = RLM_MODULE_REJECT;
 		}
 #ifdef HAVE_REGEX_H
-		if (ret == RLM_MODULE_REJECT && chk_vp->operator == T_OP_REG_EQ){
+		if (ret == RLM_MODULE_REJECT &&
+		    chk_vp->operator == T_OP_REG_EQ) {
 			regex_t reg;
 			int err;
 			char err_msg[MAX_STRING_LEN];
@@ -259,9 +272,10 @@ static int checkval_authorize(void *instance, REQUEST *request)
 		}
 #endif
 		tmp = chk_vp->next;
-	}while(ret == RLM_MODULE_REJECT && tmp != NULL);
+	} while (ret == RLM_MODULE_REJECT &&
+		 tmp != NULL);
 
-	if (ret == RLM_MODULE_REJECT){
+	if (ret == RLM_MODULE_REJECT) {
 		char module_fmsg[MAX_STRING_LEN];
 		VALUE_PAIR *module_fmsg_vp;
 
@@ -272,21 +286,6 @@ static int checkval_authorize(void *instance, REQUEST *request)
 
 
 	return ret;
-}
-
-static int checkval_detach(void *instance)
-{
-	rlm_checkval_t *data = (rlm_checkval_t *) instance;
-
-	if (data->item_name)
-		free((char *)data->item_name);
-	if (data->check_name)
-		free((char *)data->check_name);
-	if (data->data_type)
-		free((char *)data->data_type);
-
-	free(instance);
-	return 0;
 }
 
 /*
