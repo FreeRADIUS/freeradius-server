@@ -20,43 +20,53 @@ static const char rcsid[] = "$Id$";
 static int realm_authorize(REQUEST *request,
 			   VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
-  const char *realmname;
-  VALUE_PAIR *vp;
-  REALM *realm;
-  const char *name = request->username->strvalue;
+	const char *realmname;
+	VALUE_PAIR *vp;
+	REALM *realm;
+	const char *name = request->username->strvalue;
+	
+	reply_pairs = reply_pairs; /* -Wunused */
+	
+	/*
+	 *	Find realms from the END, so that 'joe@realm1@realm2'
+	 *	can work.
+	 */
+	realmname = strrchr(name, '@');
+	if (realmname != NULL)
+		realmname++;
 
-  reply_pairs = reply_pairs; /* -Wunused */
-
-  if ((realmname = strrchr(name, '@')) != NULL)
-    realmname++;
-  if ((realm = realm_find(realmname ? realmname : "NULL")) == NULL)
-    return RLM_AUTZ_NOTFOUND;
-
-  if (realm->notsuffix)
-    return RLM_AUTZ_NOTFOUND;
-
-  vp = pairmake("Proxy-To-Realm", realmname, T_OP_EQ);
-  if (!vp) {
-    log(L_ERR|L_CONS, "no memory");
-    exit(1);
-  }
-
-  /*
-   *  Add it, even if it's already present.
-   */
-  pairadd(check_pairs, vp);
-
-  /*
-   *  Add a 'realm' attribute to the incoming request.
-   */
-  vp = pairmake("Realm", realmname, T_OP_EQ);
-  if (!vp) {
-    log(L_ERR|L_CONS, "no memory");
-    exit(1);
-  }
-  pairadd(&request->packet->vps, vp);
-
-  return RLM_AUTZ_NOTFOUND; /* try the next module */
+	realm = realm_find(realmname);
+	if (realm == NULL)
+	  return RLM_AUTZ_NOTFOUND;
+	
+	if (realm->notsuffix)
+	  return RLM_AUTZ_NOTFOUND;
+	
+	/*
+	 *  'realmname' may be NULL, while realm->realm isn't.
+	 */
+	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
+	if (!vp) {
+	  log(L_ERR|L_CONS, "no memory");
+	  exit(1);
+	}
+	
+	/*
+	 *  Add it, even if it's already present.
+	 */
+	pairadd(check_pairs, vp);
+	
+	/*
+	 *  Add a 'realm' attribute to the incoming request.
+	 */
+	vp = pairmake("Realm", realm->realm, T_OP_EQ);
+	if (!vp) {
+	  log(L_ERR|L_CONS, "no memory");
+	  exit(1);
+	}
+	pairadd(&request->packet->vps, vp);
+	
+	return RLM_AUTZ_NOTFOUND; /* try the next module */
 }
 
 /*
@@ -65,41 +75,46 @@ static int realm_authorize(REQUEST *request,
  */
 static int realm_preacct(REQUEST *request)
 {
-  const char *name=request->username->strvalue;
-  const char *realmname;
-  VALUE_PAIR *vp;
-  REALM *realm;
-
-  if(!name)
-    return RLM_PRAC_OK;
-
-  if ((realmname = strrchr(name, '@')) != NULL)
-    realmname++;
-
-  if ((realm = realm_find(realmname ? realmname : "NULL")) == NULL)
-    return RLM_PRAC_OK;
-
-  vp = pairmake("Proxy-To-Realm", realmname, T_OP_EQ);
-  if (!vp) {
-    log(L_ERR|L_CONS, "no memory");
-    exit(1);
-  }
-
-  /*
-   *  Add it, even if it's already present.
-   */
-  pairadd(&request->config_items, vp);
-
-  /*
-   *  Add a 'realm' attribute to the incoming request.
-   */
-  vp = pairmake("Realm", realmname, T_OP_EQ);
-  if (!vp) {
-    log(L_ERR|L_CONS, "no memory");
-    exit(1);
-  }
-  pairadd(&request->packet->vps, vp);
-  return RLM_PRAC_OK; /* try the next module */
+	const char *name = request->username->strvalue;
+	const char *realmname;
+	VALUE_PAIR *vp;
+	REALM *realm;
+	
+	if (!name)
+	  return RLM_PRAC_OK;
+	
+	realmname = strrchr(name, '@');
+	if (realmname != NULL)
+	  realmname++;
+	
+	realm = realm_find(realmname);
+	if (realm == NULL)
+	  return RLM_PRAC_OK;
+	
+	/*
+	 *  'realmname' may be NULL, while realm->realm isn't.
+	 */
+	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
+	if (!vp) {
+	  log(L_ERR|L_CONS, "no memory");
+	  exit(1);
+	}
+	
+	/*
+	 *  Add it, even if it's already present.
+	 */
+	pairadd(&request->config_items, vp);
+	
+	/*
+	 *  Add a 'realm' attribute to the incoming request.
+	 */
+	vp = pairmake("Realm", realm->realm, T_OP_EQ);
+	if (!vp) {
+	  log(L_ERR|L_CONS, "no memory");
+	  exit(1);
+	}
+	pairadd(&request->packet->vps, vp);
+	return RLM_PRAC_OK; /* try the next module */
 }
 
 /* globally exported name */

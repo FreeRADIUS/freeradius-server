@@ -551,6 +551,14 @@ REALM *realm_find(const char *realm)
 {
 	REALM *cl;
 
+	/*
+	 *	If we're passed a NULL realm pointer,
+	 *	then look for a "NULL" realm string.
+	 */
+	if (realm == NULL) {
+		realm = "NULL";
+	}
+
 	for(cl = realms; cl; cl = cl->next)
 		if (strcmp(cl->realm, realm) == 0)
 			break;

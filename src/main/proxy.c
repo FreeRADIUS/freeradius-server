@@ -190,13 +190,30 @@ int proxy_send(REQUEST *request)
 	 * ignore the rest. */
 	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
 	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
-	if(proxypair) {
-		realmpair=proxypair;
-		replicating=0;
-	} else if(replicatepair) {
-		realmpair=replicatepair;
-		replicating=1;
+	if (proxypair) {
+		realmpair = proxypair;
+		replicating = 0;
+	} else if( replicatepair) {
+		realmpair = replicatepair;
+		replicating = 1;
 	} else {
+		/*
+		 *	Neither proxy or replicate attributes are set,
+		 *	so we can exit from the proxy code.
+		 */
+		return 0;
+	}
+
+	realmname = realmpair->strvalue;
+	/*
+	 *	Look for the realm, letting realm_find take care
+	 *	of the "NULL" realm.
+	 *
+	 *	If there is no such realm, then exit.
+	 *	Maybe we should log an error?
+	 */
+	realm = realm_find(realmname);
+	if (realm == NULL) {
 		return 0;
 	}
 
@@ -212,15 +229,7 @@ int proxy_send(REQUEST *request)
 	namepair = pairfind(vps, PW_USER_NAME);
 	passpair = pairfind(vps, PW_PASSWORD);
 
-	realmname=realmpair->strvalue;
-
-	/* FIXME - this "NULL" realm is probably broken now. Does anyone
-	 * still need it? */
-	if ((realm = realm_find(realmname ? realmname : "NULL")) == NULL) {
-		pairfree(vps);
-		return 0;
-	}
-	if(namepair) {
+	if (namepair) {
 		/* If the username happens to end in @realm, strip it off,
 		 * unless the realm definition says not to. This should
 		 * probably be done in the authorize module instead of here */
