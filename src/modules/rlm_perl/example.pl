@@ -1,3 +1,4 @@
+#
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
@@ -15,8 +16,12 @@
 #  Copyright 2002  The FreeRADIUS server project
 #  Copyright 2002  Boian Jordanov <bjordanov@orbitel.bg>
 #  
+
 #
-#You can use every module that comes with your perl distribution
+# Example code for use with rlm_perl
+#
+# You can use every module that comes with your perl distribution!
+#
 
 use strict;
 # use ...
@@ -45,74 +50,102 @@ use Data::Dumper;
 	use constant	RLM_MODULE_UPDATED=>   8;#  /* OK (pairs modified) */
 	use constant	RLM_MODULE_NUMCODES=>  9;#  /* How many return codes there are */
 
-sub accounting
-{
-	for (keys %RAD_REQUEST) {
-		# This is for test only 	
-		&radiusd::radlog(1, "rlm_perl:: $_ = $RAD_REQUEST{$_} ");
-	}
+# Function to handle authorize
+sub authorize {
+	# For debugging purposes only
+#	&log_request_attributes;
 
-	#
-	# You can call another subroutine from here 
-	#
+	# Here's where your authorization code comes
+	# You can call another function from here:
+	&test_call;
+
+	return RLM_MODULE_OK;
+}
+
+# Function to handle authenticate
+sub authenticate {
+	# For debugging purposes only
+#	&log_request_attributes;
+
+	if ($RAD_REQUEST{'User-Name'} =~ /^baduser/i) {
+		# Reject user and tell him why
+		$RAD_REPLY{'Reply-Message'} = "Denied access by rlm_perl function";
+		return RLM_MODULE_REJECT;
+	} else {
+		# Accept user and set some attribute
+		$RAD_REPLY{'h323-credit-amount'} = "100";
+		return RLM_MODULE_OK;
+	}
+}
+
+# Function to handle preacct
+sub preacct {
+	# For debugging purposes only
+#	&log_request_attributes;
 	
+	return RLM_MODULE_OK;
+}
+
+# Function to handle accounting
+sub accounting {
+	# For debugging purposes only
+#	&log_request_attributes;
+
+	# You can call another subroutine from here 
 	&test_call;
 	
-	#
-	# Add something to reply.
-	#
-	
 	return RLM_MODULE_OK;
 }
 
-sub test_call
-{
-	#
+# Function to handle checksimul
+sub checksimul {
+	# For debugging purposes only
+#	&log_request_attributes;
+
+	return RLM_MODULE_OK;
+}
+
+# Function to handle xlat
+sub xlat {
+	# For debugging purposes only
+#	&log_request_attributes;
+
+	# Loads some external perl and evaluate it
+	my ($filename,$a,$b,$c,$d) = @_;
+	&radiusd::radlog(1, "From xlat $filename ");
+	&radiusd::radlog(1,"From xlat $a $b $c $d ");
+	local *FH;
+	open FH, $filename or die "open '$filename' $!";
+	local($/) = undef;
+	my $sub = <FH>;
+	close FH;
+	my $eval = qq{ sub handler{ $sub;} };
+	eval $eval;
+	eval {main->handler;};
+}
+
+# Function to handle detach
+sub detach {
+	# For debugging purposes only
+#	&log_request_attributes;
+
+	# Do some logging.
+	&radiusd::radlog(0,"rlm_perl::Detaching. Reloading. Done.");
+}
+
+#
+# Some functions that can be called from other functions
+#
+
+sub test_call {
 	# Some code goes here 
-	#
-	
 }
 
-#
-# This is authentication	
-#
-#
-sub authenticate 
-{
-	# Do something 
-	# Authenticate the request !
-	# 
-	# Return some info to NAS 
-	
-	$RAD_REPLY{'h323-credit-amount'} = "100";
-	
-	#...
-	#
-	
-	return RLM_MODULE_OK;
-}
-sub detach 
-{
-	        &radiusd::radlog(0,"rlm_perl::Detaching. Reloading. Done.");
+sub log_request_attributes {
+	# This shouldn't be done in production environments!
+	# This is only meant for debugging!
+	for (keys %RAD_REQUEST) {
+		&radiusd::radlog(1, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
+	}
 }
 
-#
-# This is xlate function wich loads some external perl and evaluate it.
-#
-sub xlat
-{
-	        
-      my ($filename,$a,$b,$c,$d) = @_;
-		        
-      &radiusd::radlog(1, "From xlat $filename ");
-      &radiusd::radlog(1,"From xlat $a $b $c $d ");
-      local *FH;
-      open FH, $filename or die "open '$filename' $!";
-      local($/) = undef;
-      my $sub = <FH>;
-      close FH;
-      my $eval = qq{ sub handler{ $sub;} };
-      eval $eval;
-      eval {main->handler;};
-											        
-}
