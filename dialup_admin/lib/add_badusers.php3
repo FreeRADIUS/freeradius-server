@@ -7,7 +7,8 @@ else{
 }
 
 $date=date($config[sql_full_date_format]);
-$msg = $$attrmap['Dialup-Lock-Msg'];
+$lockmsg_name = $attrmap['Dialup-Lock-Msg'] . '0';
+$msg = $$lockmsg_name;
 if ($msg == '')
 	echo "<b>Lock Message should not be empty</b><br>\n";
 else{

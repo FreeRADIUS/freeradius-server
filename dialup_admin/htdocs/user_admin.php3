@@ -45,12 +45,16 @@ EOM;
 	exit();
 }
 
+$monthly_limit = ($item_vals['Max-Weekly-Session'][0] != '') ? $item_vals['Max-Weekly-Session'][0] : $default_vals['Max-Weekly-Session'];
+$monthly_limit = ($monthly_limit) ? $monthly_limit : $config[counter_default_monthly];
 $weekly_limit = ($item_vals['Max-Weekly-Session'][0] != '') ? $item_vals['Max-Weekly-Session'][0] : $default_vals['Max-Weekly-Session'];
 $weekly_limit = ($weekly_limit) ? $weekly_limit : $config[counter_default_weekly];
 $daily_limit = ($item_vals['Max-Daily-Session'][0] != '') ? $item_vals['Max-Daily-Session'][0] : $default_vals['Max-Daily-Session'];
 $daily_limit = ($daily_limit) ? $daily_limit : $config[counter_default_daily];
 $session_limit = ($item_vals['Session-Timeout'][0] != '') ? $item_vals['Session-Timeout'][0] : $default_vals['Session-Timeout'];
 $session_limit = ($session_limit) ? $session_limit : 'none';
+$remaining = 'unlimited time';
+$log_color = 'green';
 
 $now = time();
 $week = $now - 604800;
@@ -104,20 +108,22 @@ if ($link){
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);
 			$used[$i] = $row['sum(AcctSessionTime)'];
-			if ($used[$i] > $daily_limit)
+			if ($daily_limit != 'none' && $used[$i] > $daily_limit)
 				$used[$i] = "<font color=red>" . time2str($used[$i]) . "</font>";
 			else
 				$used[$i] = time2str($used[$i]);
 			if ($today == $i){
 				$daily_used = $row['sum(AcctSessionTime)'];
-				$remaining = $daily_limit - $daily_used;
-				if ($remaining <=0)
-					$remaining = 0;
-				$log_color = ($remaining) ? 'green' : 'red';
-				if (!$remaining)
-					$extra_msg = '(Out of daily quota)';
+				if ($daily_limit != 'none'){
+					$remaining = $daily_limit - $daily_used;
+					if ($remaining <=0)
+						$remaining = 0;
+					$log_color = ($remaining) ? 'green' : 'red';
+					if (!$remaining)
+						$extra_msg = '(Out of daily quota)';
+				}
 				$daily_used = time2str($daily_used);
-				if (!$remaining)
+				if ($daily_limit != 'none' && !$remaining)
 					$daily_used = "<font color=red>$daily_used</font>";
 			}
 		}
@@ -129,16 +135,18 @@ if ($link){
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
 		$weekly_used = $row['sum(AcctSessionTime)'];
-		$tmp = $weekly_limit - $weekly_used;
-		if ($tmp <=0){
-			$tmp = 0;
-			$extra_msg .= '(Out of weekly quota)';
+		if ($weekly_limit != 'none'){
+			$tmp = $weekly_limit - $weekly_used;
+			if ($tmp <=0){
+				$tmp = 0;
+				$extra_msg .= '(Out of weekly quota)';
+			}
+			if ($remaining > $tmp)
+				$remaining = $tmp;
+			$log_color = ($remaining) ? 'green' : 'red';
 		}
-		if ($remaining > $tmp)
-			$remaining = $tmp;
-		$log_color = ($remaining) ? 'green' : 'red';
 		$weekly_used = time2str($weekly_used);
-		if (!$tmp)
+		if ($weekly_limit != 'none' && !$tmp)
 			$weekly_used = "<font color=red>$weekly_used</font>";
 	}
 	$search = @da_sql_query($link,$config,
@@ -153,10 +161,12 @@ if ($link){
 			$lastlog_server_ip = $row['NASIPAddress'];
 			$lastlog_server_port = $row['NASPortId'];
 			$lastlog_session_time = date2timediv($lastlog_time);
-			$remaining = $daily_limit - $lastlog_session_time;
-			if ($remaining < 0)
-				$remaining = 0;
-			$log_color = ($remaining) ? 'green' : 'red'; 
+			if ($daily_limit != 'none'){
+				$remaining = $daily_limit - $lastlog_session_time;
+				if ($remaining < 0)
+					$remaining = 0;
+				$log_color = ($remaining) ? 'green' : 'red'; 
+			}
 			$lastlog_session_time_jvs = 1000 * $lastlog_session_time;
 			$lastlog_session_time = time2strclock($lastlog_session_time);
 			$lastlog_client_ip = $row['FramedIPAddress'];	
@@ -200,11 +210,11 @@ if ($link){
 	}
 }
 
-$monthly_limit = time2str($monthly_limit);
-$weekly_limit = time2str($weekly_limit);
-$daily_limit = time2str($daily_limit);
-$session_limit = time2str($session_limit);
-$remaining = time2str($remaining);
+$monthly_limit = (is_numeric($monthly_limit)) ? time2str($monthly_limit) : $monthly_limit;
+$weekly_limit = (is_numeric($weekly_limit)) ? time2str($weekly_limit) : $weekly_limit;
+$daily_limit = (is_numeric($daily_limit)) ? time2str($daily_limit) : $daily_limit;
+$session_limit = (is_numeric($session_limit)) ? time2str($session_limit) : $session_limit;
+$remaining = (is_numeric($remaining)) ? time2str($remaining) : $remaining;
 
 if ($item_vals['Dialup-Access'][0] == 'FALSE')
 	$msg =<<<EON

@@ -4,8 +4,12 @@ Ver 1.30:
   Bug noted by Timophey <bcloud@mail.ru>
 * Reaarange a few things in user_admin. Put Subscription Analysis first and 'Account Status' second. Make a
   few things bold.
-* Change log_badlogins to use the mysql binary instead of the DBI module. That way we don't have any dependencies
-  and we don't need to bother with connection maintainance (dead mysql connections etc).
+* Change log_badlogins to use the mysql binary instead of the DBI module. That way we don't have any
+  dependencies and we don't need to bother with connection maintainance (dead mysql connections etc).
+* html fixes in user_finger.php3
+* Fix a bug in lib/add_badusers.php3 which did not allow inserts in the badusers table.
+* Make lib/ldap/password_check.php3 behave properly when it is passed a null password
+* Allow for daily/weekly/monthly limits to be set to none and show correct results in the show user page
 Ver 1.29:
 * Add general_ld_library_path directive and set LD_LIBRARY_PATH accordingly (used in snmpfinger and
   radaclient).

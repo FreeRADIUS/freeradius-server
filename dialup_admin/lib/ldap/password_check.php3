@@ -5,6 +5,8 @@ if ($action == 'checkpass'){
 	$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 	if ($ds){
 		if ($dn != ''){
+			if ($passwd == '')
+				$passwd = 'not_exist';
 			$r = @ldap_bind($ds,$dn,$passwd);
 			if ($r)
 				$msg = '<font color=blue><b>YES It is that</b></font>';
