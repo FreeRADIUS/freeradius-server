@@ -416,6 +416,9 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 				data->filename, strerror(errno));
 		return -1;
 	}
+	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
+		radlog(L_ERR, "rlm_counter: Failed to set cache size");
+
 	/*
 	 * Look for the DEFAULT1 entry. This entry if it exists contains the
 	 * time of the next database reset. This time is set each time we reset
@@ -461,9 +464,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		if (ret != RLM_MODULE_OK)
 			return -1;
 	}
-
-	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
-		radlog(L_ERR, "rlm_counter: Failed to set cache size");
 
 
 	/*
