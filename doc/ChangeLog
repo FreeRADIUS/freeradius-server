@@ -1,3 +1,25 @@
+FreeRADIUS 0.3.0 ; urgency=low
+
+	* Added support for Exec-Program to acct.  Bug found by
+	  <magmike@mail.ru>
+	* Corrected rlm_files so that raddb/acct_users works
+        * When doing synchronous proxying, update proxy next try
+	  entries, so that the server doesn't eat CPU time.
+	  Raghu <raghud@hereuare.com>
+	* Add primitive dictionary.nomadix <CBoyd@apogeetelecom.com>
+	* Log messages to console, if the logger hasn't been
+	  initialized.  <vesselin@bgnet.bg>
+	* Log invalid user for proxy rejects, too. <help@visp.net>
+	* Fixed Expiration attribute handling.
+	* Added code to handle Ascend-Send-Secret and Ascend-Receive-Secret
+	* Removed non thread-pool code.  If we have threads, we now force
+	  the use of thread pools.
+	* Update version number
+	* correct bug where proxied accounting packets would never have a
+	  reply sent back to the NAS, or the reply would be sent twice.
+
+  --  Alan DeKok <aland@ox.org>
+	
 FreeRADIUS Alpha 0.2.0, July 30, 2001.
 
 	* call openlog() again when using PAM, to get the correct log
