@@ -127,6 +127,8 @@ fail-over section is not defined, then default values are used.
 	-----		-------
 	<number>	Priority for this return code
 	return		stop processing this configurable fail-over list.
+	reject		Stop processing this configurable fail-over list
+			and immediately return a reject.
 
   The <number> used for a value may be any decimal number between 1
 and 99999.  The number is used when processing a list of modules, to
@@ -355,11 +357,8 @@ in modcall.c (int defaultactions[][][]), or just trust me. They do the right
 thing.
 
 5. There are some rules that can't be implemented in this language - things
-like "if the absolutelypositivelymandatory module returns notfound, the group
-should immediately return reject". It would be possible to extend the
-language to include that, as "notfound = return-reject", and the obvious
-followup feature would be "notfound = 1-reject", "noop = 2-ok", "ok = 3-ok",
-etc. But I don't feel justified adding that complexity in the first draft.
+like "notfound = 1-reject", "noop = 2-ok", "ok = 3-ok", etc. But I don't feel
+justified adding that complexity in the first draft.
 There are already enough things here that may never see real-world usage.
 Like append{...}
 

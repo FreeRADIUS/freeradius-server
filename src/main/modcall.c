@@ -36,8 +36,11 @@ static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,
 
 /* Actions may be a positive integer (the highest one returned in the group
  * will be returned), or the keyword "return", represented here by
- * MOD_ACTION_RETURN, to cause an immediate return. */
+ * MOD_ACTION_RETURN, to cause an immediate return.
+ * There's also the keyword "reject", represented here by MOD_ACTION_REJECT
+ * to cause an immediate reject. */
 #define MOD_ACTION_RETURN (-1)
+#define MOD_ACTION_REJECT (-2)
 
 /* Here are our basic types: modcallable, modgroup, and modsingle. For an
  * explanation of what they are all about, see ../../doc/README.failover */
@@ -129,6 +132,8 @@ static int str2action(const char *s, const char *filename, int lineno)
 {
 	if(!strcasecmp(s, "return"))
 		return MOD_ACTION_RETURN;
+	else if(!strcasecmp(s, "reject"))
+		return MOD_ACTION_REJECT;
 	else if (strspn(s, "0123456789")==strlen(s)) {
 		int rcode = atoi(s);
 
@@ -157,6 +162,8 @@ static const char *action2str(int action)
 	static char buf[32];
 	if(action==MOD_ACTION_RETURN)
 		return "return";
+	if(action==MOD_ACTION_REJECT)
+		return "reject";
 	snprintf(buf, sizeof buf, "%d", action);
 	return buf;
 }
@@ -255,6 +262,12 @@ static int call_modgroup(int component, modgroup *g, REQUEST *request,
 		 * list will be skipped. */
 		if(p->actions[r] == MOD_ACTION_RETURN) {
 			myresult = r;
+			break;
+		}
+
+		/* If "reject" break out of the loop and return reject */
+		if (p->actions[r] == MOD_ACTION_REJECT) {
+			myresult = RLM_MODULE_REJECT;
 			break;
 		}
 
