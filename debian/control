@@ -9,6 +9,7 @@ Package: radiusd-freeradius
 Architecture: any
 Depends: ${shlibs:Depends}
 Provides: radiusd
+Suggests: radiusd-freeradius-ldap, radiusd-freeradius-postgresql, radiusd-freeradius-mysql
 Conflicts: radiusd, radiusd-livingston, radiusd-cistron
 Description: A high-performance and highly configurable RADIUS server
  A high-performance RADIUS server derived from Cistron's server, and

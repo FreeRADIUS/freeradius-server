@@ -1,3 +1,10 @@
+radiusd-freeradius (0.1-2) unstable; urgency=low
+
+  * Corrected spelling mistake of Kerberos configure setting.
+  * Set Suggests of modules to main package.
+
+ -- Chad Miller <cmiller@debian.org>  [TBA]
+
 radiusd-freeradius (0.1-1) unstable; urgency=low
 
   * First beta release!
@@ -15,7 +22,7 @@ radiusd-freeradius (0.1-1) unstable; urgency=low
   * Fork ldap, postgresql, and mysql modules into different packages.
   * Remove Kerberos, as it's restricted from export.
 
- -- Chad Miller <cmiller@debian.org>  [TBA]
+ -- Chad Miller <cmiller@debian.org>  Mon,  7 May 2001 16:37:46 -0400
 
 radiusd-freeradius (0.0.20010109-1) unstable; urgency=low
 
