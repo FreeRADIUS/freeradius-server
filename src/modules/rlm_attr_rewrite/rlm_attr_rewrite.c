@@ -144,8 +144,8 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	int err = 0;
 	unsigned int len = 0;
 	char err_msg[MAX_STRING_LEN];
-	register unsigned int i = 0;
-	register unsigned int counter = 0;
+	unsigned int i = 0;
+	unsigned int counter = 0;
 	char new_str[MAX_STRING_LEN];
 	char *ptr, *ptr2;
 
