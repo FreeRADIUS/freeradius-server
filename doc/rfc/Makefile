@@ -13,7 +13,7 @@ refs: $(RFC)
 	./genref.pl $(RFC) > refs
 
 clean:
-	rm -f refs *.html *~ .rewrite
+	rm -f refs rfc*.html *~ .rewrite
 
 install:
 	$(INSTALL) -d -m 755	$(R)$(datadir)/doc/freeradius-$(RADIUSD_VERSION)/rfc
