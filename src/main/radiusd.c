@@ -1571,7 +1571,7 @@ static int rad_clean_list(time_t curtime)
 {
 	static time_t	last_cleaned_list = 0;
 	REQUEST		*curreq;
-	REQUEST		*prevreq;
+	REQUEST		**prevreq;
 	child_pid_t    	child_pid;
 	int		id;
 	int		request_count;
@@ -1613,17 +1613,48 @@ static int rad_clean_list(time_t curtime)
 		
 	for (id = 0; id < 256; id++) {
 		curreq = request_list[id].first_request;
-		prevreq = NULL;
-
+		prevreq = &(request_list[id].first_request);
+		
 		while (curreq != NULL) {
 			assert(curreq->magic == REQUEST_MAGIC);
 
 			/*
-			 *	Maybe the child process handling the request
-			 *	has hung: kill it, and continue.
+			 *	If the request has finished processing,
+			 *	AND it's child has been cleaned up,
+			 *	AND it's time to clean up the request,
+			 *	THEN, go delete it.
 			 */
-			if (!curreq->finished &&
-			    (curreq->timestamp + max_request_time) <= curtime) {
+			if (curreq->finished &&
+			    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
+			    (curreq->timestamp + cleanup_delay <= curtime)) {
+				/*
+				 *	Request completed, delete it,
+				 *	and unlink it from the
+				 *	currently 'alive' list of
+				 *	requests.
+				 */
+				DEBUG2("Cleaning up request ID %d with timestamp %08lx",
+				       curreq->packet->id,
+				       (unsigned long)curreq->timestamp);
+
+				if (request_list[id].request_count == 0) {
+				  DEBUG("HORRIBLE ERROR!!!");
+				} else {
+				  request_list[id].request_count--;
+				  cleaned = TRUE;
+				}
+
+				/*
+				 *	Mark the request to be deleted.
+				 */
+				curreq->timestamp = 0;
+
+				/*
+				 *	Maybe the child process
+				 *	handling the request has hung:
+				 *	kill it, and continue.
+				 */
+			} else if ((curreq->timestamp + max_request_time) <= curtime) {
 				if (curreq->child_pid != NO_SUCH_CHILD_PID) {
 					/*
 					 *	This request seems to have hung
@@ -1641,50 +1672,31 @@ static int rad_clean_list(time_t curtime)
 				curreq->child_pid = NO_SUCH_CHILD_PID;
 				curreq->finished = TRUE;
 				curreq->timestamp = 0;
+				
 			}
 
 			/*
-			 *	Delete the current request, if it's
-			 *	marked as such.  That is, the request
-			 *	must be finished, there must be no
-			 *	child associated with that request,
-			 *	and it's timestamp must be marked to
-			 *	be deleted.
+			 *	If the request has been marked as deleted,
+			 *	then remove it from the request list.
 			 */
-			if (curreq->finished &&
-			    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
-			    (curreq->timestamp + cleanup_delay <= curtime)) {
+			if (curreq->timestamp == 0) {
 				/*
-				 *	Request completed, delete it,
-				 *	and unlink it from the
-				 *	currently 'alive' list of
-				 *	requests.
+				 *	Unlink the current request
+				 *	from the request queue.
 				 */
-				DEBUG2("Cleaning up request ID %d with timestamp %08lx",
-				       curreq->packet->id,
-				       (unsigned long)curreq->timestamp);
-				prevreq = curreq->prev;
-				if (request_list[id].request_count == 0) {
-				  DEBUG("HORRIBLE ERROR!!!");
-				} else {
-				  request_list[id].request_count--;
-				  cleaned = TRUE;
+				*prevreq = curreq->next;
+				if (curreq->next) {
+					curreq->next->prev = curreq->prev;
 				}
+				request_free(curreq);
+				curreq = *prevreq;
 
-				if (prevreq == NULL) {
-					request_list[id].first_request = curreq->next;
-					request_free(curreq);
-					curreq = request_list[id].first_request;
-				} else {
-					prevreq->next = curreq->next;
-					request_free(curreq);
-					curreq = prevreq->next;
-				}
-				if (curreq)
-					curreq->prev = prevreq;
-				
-			} else {	/* the request is still alive */
-				prevreq = curreq;
+				/*
+				 *	Else the request is still being
+				 *	processed.  Skip it.
+				 */
+			} else {
+				prevreq = &(curreq->next);
 				curreq = curreq->next;
 			}
 		} /* end of walking the request list for that ID */
@@ -2417,6 +2429,8 @@ static struct timeval *setuptimeout()
 	 */
 	if ((last_tv_ptr != NULL) &&
 	    (last_setup == now)) {
+		DEBUG2("Waking up in %d seconds...",
+		       (int) last_tv_ptr->tv_sec);
 		return last_tv_ptr;
 	}
 
