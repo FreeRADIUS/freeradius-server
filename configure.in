@@ -299,16 +299,16 @@ dnl #############################################################
 
 CHECKRAD=checkrad.pl
 AC_PATH_PROG(PERL, perl, /usr/local/bin/perl)
-if test [ "x$ac_cv_path_PERL" = "x" ]; then
+if test "x$ac_cv_path_PERL" = "x"; then
   AC_MSG_WARN(perl not found - Simultaneous-Use and checkrad.pl may not work)
 fi
 AC_PATH_PROG(SNMPGET, snmpget)
-if test [ "x$ac_cv_path_SNMPGET" = "x" ]; then
+if test "x$ac_cv_path_SNMPGET" = "x"; then
   AC_MSG_WARN(snmpget not found - Simultaneous-Use and checkrad.pl may not work)
 fi
 
 AC_PATH_PROG(SNMPWALK, snmpwalk)
-if test [ "x$ac_cv_path_SNMPWALK" = "x" ]; then
+if test "x$ac_cv_path_SNMPWALK" = "x"; then
   AC_MSG_WARN(snmpwalk not found - Simultaneous-Use and checkrad.pl may not work)
 fi
 
@@ -711,9 +711,14 @@ AC_SUBST(LIBTOOL)
 AC_SUBST(LIBLTDL)
 AC_SUBST(INCLTDL)
 top_builddir=`pwd`
-top_srcdir="$top_builddir"
 AC_SUBST(top_builddir)
-AC_SUBST(top_srcdir)
+
+dnl #
+dnl #  Work around stupid autoconf crap
+dnl #
+if test "x$INCLTDL" != "x";then
+  INCLTDL='-I${top_builddir}/''libltdl'
+fi
 
 dnl import libtool stuff
 

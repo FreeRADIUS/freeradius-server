@@ -721,7 +721,7 @@ fi
 
 
 
-# From configure.in Revision: 1.153 
+# From configure.in Revision: 1.154 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=6
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -5667,7 +5667,7 @@ else
   echo "$ac_t""no" 1>&6
 fi
 
-if test  "x$ac_cv_path_PERL" = "x" ; then
+if test "x$ac_cv_path_PERL" = "x"; then
   echo "configure: warning: perl not found - Simultaneous-Use and checkrad.pl may not work" 1>&2
 fi
 # Extract the first word of "snmpget", so it can be a program name with args.
@@ -5705,7 +5705,7 @@ else
   echo "$ac_t""no" 1>&6
 fi
 
-if test  "x$ac_cv_path_SNMPGET" = "x" ; then
+if test "x$ac_cv_path_SNMPGET" = "x"; then
   echo "configure: warning: snmpget not found - Simultaneous-Use and checkrad.pl may not work" 1>&2
 fi
 
@@ -5744,7 +5744,7 @@ else
   echo "$ac_t""no" 1>&6
 fi
 
-if test  "x$ac_cv_path_SNMPWALK" = "x" ; then
+if test "x$ac_cv_path_SNMPWALK" = "x"; then
   echo "configure: warning: snmpwalk not found - Simultaneous-Use and checkrad.pl may not work" 1>&2
 fi
 
@@ -8054,9 +8054,11 @@ LIBTOOL="`pwd`/libtool"
 
 
 top_builddir=`pwd`
-top_srcdir="$top_builddir"
 
 
+if test "x$INCLTDL" != "x";then
+  INCLTDL='-I${top_builddir}/''libltdl'
+fi
 
 
 if test "$WITH_THREAD_POOL" = "yes"; then
@@ -8302,7 +8304,6 @@ s%@SNMP_INCLUDE@%$SNMP_INCLUDE%g
 s%@LIBLTDL@%$LIBLTDL%g
 s%@INCLTDL@%$INCLTDL%g
 s%@top_builddir@%$top_builddir%g
-s%@top_srcdir@%$top_srcdir%g
 s%@MODULES@%$MODULES%g
 s%@INSTALLSTRIP@%$INSTALLSTRIP%g
 s%@USE_SHARED_LIBS@%$USE_SHARED_LIBS%g
