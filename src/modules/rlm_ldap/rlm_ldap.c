@@ -66,6 +66,7 @@
  *	  then the access_attr will be used to allow user access. If it is set to no then it will
  *	  be used to deny user access.
  *	- Remember to free inst->atts in ldap_detach()
+ *	- Add a forgotten ldap_free_urldesc in ldap_xlat()
  */
 static const char rcsid[] = "$Id$";
 
@@ -716,7 +717,8 @@ static int ldap_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 	}
 	if ((conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1){
 		radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
-		return 1;
+		ldap_free_urldesc(ldap_url);
+		return 0;
 	}
 	if ((res = perform_search(inst, conn, ldap_url->lud_dn, ldap_url->lud_scope, ldap_url->lud_filter, ldap_url->lud_attrs, &result)) != RLM_MODULE_OK){
 		if (res == RLM_MODULE_NOTFOUND){
