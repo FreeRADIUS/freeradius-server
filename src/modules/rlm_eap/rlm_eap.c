@@ -285,11 +285,30 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	}
 
 	/*
+	 *	If we're doing horrible tunneling work, remember it.
+	 */
+	if ((request->options & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
+		DEBUG2("  Not-EAP proxy set.  Not composing EAP");
+		/*
+		 *	Add the handle to the proxied list, so that we
+		 *	can retrieve it in the post-proxy stage, and
+		 *	send a response.
+		 */
+		rcode = request_data_add(request,
+					 inst, REQUEST_DATA_EAP_HANDLER,
+					 handler, my_handler_free);
+		rad_assert(rcode == 0);
+
+		return RLM_MODULE_HANDLED;
+	}
+
+
+	/*
 	 *	Maybe the request was marked to be proxied.  If so,
 	 *	proxy it.
 	 */
 	if (request->proxy != NULL) {
-		VALUE_PAIR *vp;
+		VALUE_PAIR *vp = NULL;
 
 		rad_assert(request->proxy_reply == NULL);
 
@@ -299,7 +318,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	send a response.
 		 */
 		rcode = request_data_add(request,
-					 instance, REQUEST_DATA_EAP_HANDLER,
+					 inst, REQUEST_DATA_EAP_HANDLER,
 					 handler, my_handler_free);
 		rad_assert(rcode == 0);
 
@@ -317,7 +336,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 				pairadd(&(request->proxy->vps), vp);
 			}
 		}
-
+			
 		/*
 		 *	Delete the "proxied to" attribute, as it's
 		 *	set to 127.0.0.1 for tunneled requests, and
@@ -325,9 +344,9 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO);
 
+		DEBUG2("  Tunneled session will be proxied.  Not doing EAP.");
 		return RLM_MODULE_HANDLED;
 	}
-
 
 	/*
 	 *	We are done, wrap the EAP-request in RADIUS to send
