@@ -9,8 +9,8 @@
  */
 CREATE TABLE mtotacct (
 	mtotacctid	INT PRIMARY KEY,
-	username	varchar(64) NOT NULL,
-	acctdate	DATE,
+	username	varchar(64) DEFAULT '' NOT NULL,
+	acctdate	DATE DEFAULT sysdate NOT NULL,
 	connnum		NUMERIC(12),
 	conntotduration	NUMERIC(12),
 	connmaxduration	NUMERIC(12),

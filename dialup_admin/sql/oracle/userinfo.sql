@@ -8,14 +8,14 @@
  */
 
 CREATE TABLE userinfo (
-    id INT PRIMARY KEY,
-    username VARCHAR(128),
-    name VARCHAR(128),
-    mail VARCHAR(128),
-    department VARCHAR(128),
-    workphone VARCHAR(128),
-    homephone VARCHAR(128),
-    mobile VARCHAR(128) 
+	id		INT PRIMARY KEY,
+	username	VARCHAR(128) DEFAULT '' NOT NULL,
+	name		VARCHAR(128) DEFAULT '' NOT NULL,
+	mail		VARCHAR(128) DEFAULT '' NOT NULL,
+	department	VARCHAR(128) DEFAULT '' NOT NULL,
+	workphone	VARCHAR(128) DEFAULT '' NOT NULL,
+	homephone	VARCHAR(128) DEFAULT '' NOT NULL,
+	mobile		VARCHAR(128) DEFAULT '' NOT NULL 
 );
 CREATE INDEX userinfo_department_idx ON userinfo (department);
 CREATE INDEX userinfo_username_idx ON userinfo (username);

@@ -9,10 +9,10 @@
 
 CREATE TABLE badusers (
 	id		INT PRIMARY KEY,
-	username	VARCHAR(30) NOT NULL,
-	actiondate	TIMESTAMP WITH TIME ZONE,
-	reason		VARCHAR(128) NOT NULL,
-	admin		VARCHAR(128) NOT NULL
+	username	VARCHAR(30) DEFAULT '' NOT NULL,
+	actiondate	TIMESTAMP WITH TIME ZONE DEFAULT sysdate NOT NULL,
+	reason		VARCHAR(128) DEFAULT '' NOT NULL,
+	admin		VARCHAR(128) DEFAULT '-' NOT NULL
 );
 CREATE SEQUENCE badusers_seq START WITH 1 INCREMENT BY 1;
 CREATE INDEX badusers_actiondate_idx ON badusers (actiondate);

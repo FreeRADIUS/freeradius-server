@@ -8,9 +8,9 @@
  * Table structure for table 'totacct'
  */
 CREATE TABLE totacct (
-        totacctid      INT PRIMARY KEY,
-        username        varchar(64) NOT NULL,
-        acctdate        DATE,
+        totacctid	INT PRIMARY KEY,
+        username        varchar(64) DEFAULT '' NOT NULL,
+        acctdate        DATE DEFAULT sysdate NOT NULL,
         connnum         NUMERIC(12),
         conntotduration NUMERIC(12),
         connmaxduration NUMERIC(12),
