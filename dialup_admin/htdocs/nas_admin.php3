@@ -45,6 +45,7 @@ if ($link){
 		$selected_nas = da_sql_escape_string($selected_nas);
 		switch ($action) {
 			case 'check_nas':
+				require_once('../lib/functions.php3');
 				if (!check_ip($selected_nas) && $selected_nas == gethostbyname($selected_nas))
 					$msg = "<b>The NAS name <font color=red>is not</font> valid</b><br>\n";
 				else
