@@ -12,7 +12,7 @@ endif
 
 include ../rules.mak
 
-LIBS	= $(LIBSHADOW) $(LIBCRYPT)
+RLM_LIBS	= $(LIBSHADOW) $(LIBCRYPT)
 
 
 rlm_unix.c: config.h

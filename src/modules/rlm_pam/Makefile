@@ -1,9 +1,9 @@
 # must be first
 include config.mak
 
-TARGET	= rlm_pam
-SRCS	= rlm_pam.c
-LIBS	= $(LIBPAM)
+TARGET		= rlm_pam
+SRCS		= rlm_pam.c
+RLM_LIBS	= $(LIBPAM)
 
 # over-ride the previous assignment if we're not building anything
 ifeq ($(LIBPAM),)

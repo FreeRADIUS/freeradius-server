@@ -6,7 +6,7 @@ TARGET		= rlm_acct_unique
 SRCS		= rlm_acct_unique.c
 HEADERS		= 
 RLM_CFLAGS	=
-LIBS		=
+RLM_LIBS	=
 
 include ../rules.mak
 

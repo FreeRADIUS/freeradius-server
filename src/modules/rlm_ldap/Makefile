@@ -8,7 +8,7 @@ TARGET		= rlm_ldap
 SRCS		= rlm_ldap.c
 HEADERS		= config.h
 RLM_CFLAGS	= $(LIBLDAP_CFLAGS)
-LIBS		= $(LIBLDAP) $(LIBLBER)
+RLM_LIBS	= $(LIBLDAP) $(LIBLBER)
 
 # check for LDAP
 #
