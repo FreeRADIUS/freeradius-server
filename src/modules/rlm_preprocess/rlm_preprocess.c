@@ -681,7 +681,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		 *	approaching rationality.
 		 */
 		ascend_nasport_hack(pairfind(request->packet->vps,
-					     PW_NAS_PORT_ID),
+					     PW_NAS_PORT),
 				    data->ascend_channels_per_line);
 	}
 

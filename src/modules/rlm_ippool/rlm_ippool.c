@@ -290,7 +290,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	}
 	switch(acctstatustype){
 		case PW_STATUS_STOP:
-			if ((vp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
+			if ((vp = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
 				port = vp->lvalue;
 			else {
 				DEBUG("rlm_ippool: Could not find port number in packet.");
@@ -436,7 +436,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * Find the port
 	 * If not fail
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
+	if ((vp = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
 		port = vp->lvalue;
 	else{
 		DEBUG("rlm_ippool: Could not find port information.");

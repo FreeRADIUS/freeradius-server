@@ -718,7 +718,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 			case PW_NAS_IP_ADDRESS:
 				nas_address = vp->lvalue;
 				break;
-			case PW_NAS_PORT_ID:
+			case PW_NAS_PORT:
 				nas_port = vp->lvalue;
 				port_seen = 1;
 				break;
@@ -733,7 +733,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 
 	/*
 	 *	We don't store !root sessions, or sessions
-	 *	where we didn't see a PW_NAS_PORT_ID.
+	 *	where we didn't see a NAS-Port attribute.
 	 */
 	if (strncmp(ut.ut_name, "!root", sizeof(ut.ut_name)) == 0 || !port_seen)
 		return RLM_MODULE_NOOP;
