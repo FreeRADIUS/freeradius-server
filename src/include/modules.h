@@ -60,5 +60,8 @@ int module_checksimul(REQUEST *request, int maxsimul);
 int module_pre_proxy(REQUEST *request);
 int module_post_proxy(REQUEST *request);
 int module_post_auth(REQUEST *request);
+int module_pre_proxy(REQUEST *request);
+int module_post_proxy(REQUEST *request);
+int module_post_auth(REQUEST *request);
 
 #endif /* RADIUS_MODULES_H */
