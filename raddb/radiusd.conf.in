@@ -472,10 +472,18 @@ modules {
 		#  The default is to cache them.
 		#
 		#  For FreeBSD, you do NOT want to enable the cache,
-		#  as it's password lookups are done via a database.
+		#  as it's password lookups are done via a database, so
+		#  set this value to 'no'.
+		#
+		#  Some systems (e.g. RedHat Linux with pam_pwbd) can
+		#  take *seconds* to check a password, if the password
+		#  file contains 1000's of entries.  For those systems,
+		#  you should set the cache value to 'yes', and set
+		#  the locations of the 'passwd', 'shadow', and 'group'
+		#  files, below.
 		#
 		# allowed values: {no, yes}
-		cache = yes
+		cache = no
 
 		# Reload the cache every 600 seconds (10mins). 0 to disable.
 		cache_reload = 600
@@ -490,11 +498,11 @@ modules {
 		#  To force the module to use the system password functions,
 		#  instead of reading the files, comment out the 'passwd'
 		#  and 'shadow' configuration entries.  This is required
-		#  for some systems, like FreeBSD.
+		#  for some systems, like FreeBSD, and Mac OSX.
 		#
-		passwd = /etc/passwd
+		#	passwd = /etc/passwd
 		#	shadow = /etc/shadow
-		group = /etc/group
+		#	group = /etc/group
 
 
 		#
