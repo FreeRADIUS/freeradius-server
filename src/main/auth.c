@@ -8,8 +8,7 @@
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
-
-#include	"radiusd.h"
+#include	"libradius.h"
 
 #include	<stdlib.h>
 #include	<string.h>
@@ -28,12 +27,8 @@ static const char rcsid[] = "$Id$";
 #  include	<netinet/in.h>
 #endif
 
+#include	"radiusd.h"
 #include	"modules.h"
-
-#if !HAVE_CRYPT_H
-  extern char *crypt();
-#endif
-
 
 /*
  *	Return a short string showing the terminal server, port

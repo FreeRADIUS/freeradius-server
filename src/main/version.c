@@ -7,8 +7,8 @@
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
+#include	"libradius.h"
 
-#include        <sys/types.h>
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	"radiusd.h"

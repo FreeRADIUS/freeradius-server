@@ -7,6 +7,7 @@
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
+#include	"libradius.h"
 
 #include	<stdlib.h>
 #include	<string.h>
@@ -35,9 +36,9 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 #endif
 	if ((lvl & L_CONS) || radlog_dir == NULL || debug_flag) {
 		lvl &= ~L_CONS;
-		if (!debug_flag) fprintf(stderr, "%s: ", progname);
-		vfprintf(stderr, fmt, ap);
-		fprintf(stderr, "\n");
+		if (!debug_flag) fprintf(stdout, "%s: ", progname);
+		vfprintf(stdout, fmt, ap);
+		fprintf(stdout, "\n");
 	}
 	if (radlog_dir == NULL || debug_flag) return 0;
 

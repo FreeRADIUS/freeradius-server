@@ -10,8 +10,7 @@ static const char rcsid[] =
 "$Id$";
 
 #include	"autoconf.h"
-
-#include	<sys/types.h>
+#include	"libradius.h"
 
 #include	<stdio.h>
 #include	<stdlib.h>
@@ -83,7 +82,6 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
  *	%s	 Speed (PW_CONNECT_INFO)
  *	%t	 MTU
  *	%u	 User name
- *	%y	 request year (YY)
  *	%A	 radacct_dir
  *	%C	 clientname
  *	%D	 request date (YYYYMMDD)
@@ -204,12 +202,6 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request, VALU
 				break;
 			case 'u': /* User name */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING);
-				break;
-			case 'y': /* request year */
-				TM = localtime(&request->timestamp);
-				strftime(tmpdt,sizeof(tmpdt),"%y",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
 				break;
 			case 'A': /* radacct_dir */
 				strNcpy(q,radacct_dir,freespace-1);

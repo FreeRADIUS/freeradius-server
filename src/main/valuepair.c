@@ -8,13 +8,15 @@
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
-
-#include	<sys/types.h>
+#include	"libradius.h"
 
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
+
+#if HAVE_NETINET_IN_H
 #include	<netinet/in.h>
+#endif
 
 #ifdef HAVE_MALLOC_H
 #  include	<malloc.h>

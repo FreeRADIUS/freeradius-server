@@ -7,14 +7,16 @@
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
+#include	"libradius.h"
 
-#include	<sys/types.h>
 #include	<sys/socket.h>
+
+#if HAVE_NETINET_IN_H
 #include	<netinet/in.h>
+#endif
 
 #include	<stdio.h>
 #include	<stdlib.h>
-#include	<unistd.h>
 #include	<ctype.h>
 #include	<string.h>
 

@@ -10,8 +10,7 @@ static const char rcsid[] =
 "$Id$";
 
 #include	"autoconf.h"
-
-#include	"radiusd.h"
+#include	"libradius.h"
 
 #include	<sys/socket.h>
 #include	<sys/file.h>
@@ -56,6 +55,7 @@ static const char rcsid[] =
 
 #include <assert.h>
 
+#include	"radiusd.h"
 #include	"conffile.h"
 #include	"modules.h"
 

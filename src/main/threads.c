@@ -1,4 +1,5 @@
-#include "autoconf.h"
+#include	"autoconf.h"
+#include	"libradius.h"
 
 #ifdef WITH_THREAD_POOL
 

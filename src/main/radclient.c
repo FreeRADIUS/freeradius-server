@@ -7,24 +7,26 @@
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
+#include	"libradius.h"
 
-#include	<sys/types.h>
 #include	<stdio.h>
 #include	<stdlib.h>
+
+#if HAVE_UNISTD_H
 #include	<unistd.h>
+#endif
+
 #include	<string.h>
 #include	<ctype.h>
 #include	<netdb.h>
 #include	<sys/socket.h>
+
+#if HAVE_NETINET_IN_H
 #include	<netinet/in.h>
-#include	<errno.h>
+#endif
 
 #if HAVE_SYS_SELECT_H
 #  include      <sys/select.h>
-#endif
-
-#if HAVE_ERRNO_H
-#  include      <errno.h>
 #endif
 
 #if HAVE_GETOPT_H
@@ -32,7 +34,6 @@ static const char rcsid[] = "$Id$";
 #endif
 
 #include	"conf.h"
-#include	"libradius.h"
 #include	"radpaths.h"
 #include	"missing.h"
 
