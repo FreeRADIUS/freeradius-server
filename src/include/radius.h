@@ -262,6 +262,15 @@
 #define PW_FREERADIUS_PROXIED_TO	((VENDORPEC_FREERADIUS<<16)|1)
 
 /*
+ *  Microsoft has vendor code 311.
+ */
+#define PW_MSCHAP_RESPONSE	((311 << 16) | 1)
+#define PW_MSCHAP_CHALLENGE	((311 << 16) | 11)
+#define PW_MSCHAP2_RESPONSE	((311 << 16) | 25)
+#define PW_MSCHAP2_SUCCESS	((311 << 16) | 26)
+
+
+/*
  *  Old nonsense.  Will be deleted ASAP
  */
 #define PW_AUTHTYPE			1000
