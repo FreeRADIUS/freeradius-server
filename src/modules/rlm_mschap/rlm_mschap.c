@@ -563,7 +563,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		authtype_name = inst->auth_type;
 	}
 
-	DEBUG2("  rlm_mschap: Found MS-CHAP attributes.  Setting 'Auth-Type := %s'", authtype_name);
+	DEBUG2("  rlm_mschap: Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", authtype_name);
 
 	/*
 	 *	Set Auth-Type to MS-CHAP.  The authentication code
@@ -571,7 +571,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	 *	NT/LM passwords.
 	 */
 	pairdelete(&request->config_items, PW_AUTHTYPE);
-	vp = pairmake("Auth-Type", authtype_name, T_OP_SET);
+	vp = pairmake("Auth-Type", authtype_name, T_OP_EQ);
 	rad_assert(vp != NULL);
 	pairadd(&request->config_items, vp);
 
