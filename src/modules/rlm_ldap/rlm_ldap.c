@@ -91,6 +91,18 @@ static const char rcsid[] = "$Id$";
 #define MAX_FAILED_CONNS_RESTART	4
 #define MAX_FAILED_CONNS_START		5
 
+#ifdef NOVELL_UNIVERSAL_PASSWORD
+
+/* Universal Password Length */
+#define UNIVERSAL_PASS_LEN 256
+
+int nmasldap_get_password(
+	LDAP	 *ld,
+	char     *objectDN,
+	size_t   *pwdSize,	// in bytes
+	char     *pwd );
+
+#endif
 /* linked list of mappings between RADIUS attributes and LDAP attributes */
 struct TLDAP_RADIUS {
 	char*                 attr;
@@ -1205,6 +1217,9 @@ ldap_authorize(void *instance, REQUEST * request)
 		}
 	}
 	if (inst->passwd_attr && strlen(inst->passwd_attr)){
+#ifdef NOVELL_UNIVERSAL_PASSWORD
+		if(strcasecmp(inst->passwd_attr,"nspmPassword")!= 0){
+#endif
 		VALUE_PAIR *passwd_item;
 
 		if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
@@ -1245,6 +1260,67 @@ ldap_authorize(void *instance, REQUEST * request)
 				ldap_value_free(passwd_vals);
 			}
 		}
+#ifdef NOVELL_UNIVERSAL_PASSWORD
+  		}
+		else{
+		/*
+	 	* Read Universal Password from eDirectory
+	 	*/
+			VALUE_PAIR	*passwd_item;
+			VALUE_PAIR	*vp_user_dn;
+			int		passwd_len;
+			char		*universal_password = NULL;
+			int		universal_password_len = UNIVERSAL_PASS_LEN;
+			char		*passwd_val = NULL;
+
+			res = 0;
+
+			if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
+			
+				universal_password = rad_malloc(universal_password_len);
+				memset(universal_password, 0, universal_password_len);
+
+				vp_user_dn = pairfind(request->config_items,PW_LDAP_USERDN);
+				res = nmasldap_get_password(conn->ld,vp_user_dn->strvalue,&universal_password_len,universal_password);
+
+				if (res == 0){
+					passwd_val = universal_password;
+
+					if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
+						passwd_val = strstr(passwd_val,inst->passwd_hdr);
+
+						if (passwd_val != NULL)
+							passwd_val += strlen((char*)inst->passwd_hdr);
+						else
+							DEBUG("rlm_ldap: Password header not found in password %s for user %s ",passwd_val,request->username->strvalue);
+					}
+
+					if (passwd_val){
+						if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
+							radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
+                                                	ldap_msgfree(result);
+							ldap_release_conn(conn_id,inst->conns);
+ 							memset(universal_password, 0, universal_password_len);
+							free(universal_password);
+							return RLM_MODULE_FAIL;
+						}
+
+						passwd_len = strlen(passwd_val);
+						strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
+						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
+						pairadd(&request->config_items,passwd_item);
+						DEBUG("rlm_ldap: Added the eDirectory password in check items");
+					}
+				}
+				else {
+					DEBUG("rlm_ldap: Error reading Universal Password.Return Code = %d",res);
+				}
+
+				memset(universal_password, 0, universal_password_len);
+				free(universal_password);
+			}
+		}			
+#endif
 	}
 
 

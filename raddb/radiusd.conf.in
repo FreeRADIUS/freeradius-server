@@ -798,6 +798,10 @@ $INCLUDE ${confdir}/eap.conf
 		#  Without the leading "0x", NT-Passwords will not work.
 		#  This goes for NT-Passwords stored in SQL, too.
 		#
+		# Set password_attribute = nspmPassword to get user's password
+		# from a Novell eDirectory backend. This will work *only if*
+		# freeRADIUS is configured to build with --with-edir option.
+		#                                                                               
 		# password_attribute = userPassword
 		# groupname_attribute = cn
 		# groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"
