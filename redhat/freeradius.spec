@@ -1,7 +1,7 @@
 Summary: High-performance and highly configurable RADIUS server
 URL: http://www.freeradius.org/
 Name: freeradius
-Version: 0.9.0
+Version: 0.9.1
 Release: 1
 License: GPL
 Group: Networking/Daemons
@@ -115,6 +115,9 @@ fi
 %attr(0700,radiusd,radiusd) %dir /var/run/radiusd
 
 %changelog
+* Fri Sep  5 2003 Paul Hampson
+- update for 0.9.1
+
 * Fri May 23 2003 Marko Myllynen
 - update for 0.9
 

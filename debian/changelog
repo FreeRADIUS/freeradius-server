@@ -1,6 +1,6 @@
-freeradius (0.9.1~pre0-0) unstable; urgency=low
+freeradius (0.9.1-0) unstable; urgency=low
 
-  * Unreleased 0.9.1 update to 0.9.0
+  * New upstream release.
   * Renamed radiusd(8) to freeradius(8) to match binary
   * Build-Depend on libtool1.4 | libtool (< 1.5) due to
     new libtool 1.5 package.
@@ -8,7 +8,7 @@ freeradius (0.9.1~pre0-0) unstable; urgency=low
   * Installed SQL database examples into /usr/share/doc/freeradius/examples
   * Modify initscript to only -HUP the parent process
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 28 Aug 2003 10:43:59 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Fri,  5 Sep 2003 00:54:41 +1000
 
 freeradius (0.9.0-1) unstable; urgency=low
 

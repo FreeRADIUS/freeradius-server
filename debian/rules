@@ -81,7 +81,7 @@ binary-arch: stamp-build
 	test ! -d $(freeradius_dir)/var/log/radius/radacct || rmdir $(freeradius_dir)/var/log/radius/radacct
 	test ! -d $(freeradius_dir)/var/log/radius || rmdir $(freeradius_dir)/var/log/radius
 #	Yuck! the makefile in doc/ does this.
-	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-0.9.0
+	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-0.9.1
 
 	# split out inconvenient/controversal modules to other places
 	for modname in krb5 ldap mysql postgresql; do \
