@@ -1403,10 +1403,10 @@ static void *rad_spawn_thread(void *arg)
 	/*
 	 *	Keep only allowed attributes in the request.
 	 */
-	if (request->proxy) {
-		replicating = proxy_receive(request);
+	if (data->request->proxy) {
+		replicating = proxy_receive(data->request);
 		if (replicating != 0) {
-			request->finished = TRUE;
+			data->request->finished = TRUE;
 			free(data);
 			return NULL;
 		}
