@@ -60,12 +60,26 @@ group = nobody
 #
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
-#  Requests which take more time than this to process are killed, and
+#  Requests which take more time than this to process may be killed, and
 #  a REJECT message is returned.
+#
+#  WARNING: If you notice that requests take a long time to be handled,
+#  then this MAY INDICATE a bug in the server, or in one of the modules
+#  used to handle a request.
 #
 #  Useful range of values: 5 to 120
 #
 max_request_time = 30
+
+#
+#  delete_blocked_requests: If the request takes MORE THAN 'max_request_time'
+#  to be handled, then maybe the server should delete it.
+#
+#  If you're running in threaded, or thread pool mode, this setting
+#  should probably be 'no'.  Setting it to 'yes' when using a threaded
+#  server MAY cause the server to crash!
+#
+delete_blocked_requests = no
 
 #
 #  cleanup_delay: The time to wait (in seconds) before cleaning up

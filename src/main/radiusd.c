@@ -123,6 +123,7 @@ static int request_num_counter = 0; /* per-request unique ID */
  */
 static int allow_core_dumps = FALSE;
 static int max_request_time = MAX_REQUEST_TIME;
+static int kill_unresponsive_children = FALSE;
 static int cleanup_delay = CLEANUP_DELAY;
 static int max_requests = MAX_REQUESTS;
 static int dont_fork = FALSE;
@@ -168,6 +169,7 @@ static CONF_PARSER server_config[] = {
 	{ "max_request_time", PW_TYPE_INTEGER, 0, &max_request_time, Stringify(MAX_REQUEST_TIME) },
 	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &cleanup_delay, Stringify(CLEANUP_DELAY) },
 	{ "max_requests", PW_TYPE_INTEGER, 0, &max_requests, Stringify(MAX_REQUESTS) },
+	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &kill_unresponsive_children, Stringify(FALSE) },
 	{ "port", PW_TYPE_INTEGER, 0, &auth_port, Stringify(PW_AUTH_UDP_PORT) },
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
@@ -2240,24 +2242,29 @@ static int refresh_request(REQUEST *request, void *data)
 
 		child_pid = request->child_pid;
 		number = request->number;
-#ifndef HAVE_PTHREAD_H
-		if (child_pid != NO_SUCH_CHILD_PID) {
-			/*
-			 *  This request seems to have hung
-			 *   - kill it
-			 */
-			radlog(L_ERR, "Killing unresponsive child %lu for request %d",
-					child_pid, request->number);
-			child_kill(child_pid, SIGTERM);
-		} /* else no proxy reply, quietly fail */
+
+		if (kill_unresponsive_children) {
+			if (child_pid != NO_SUCH_CHILD_PID) {
+				/*
+				 *  This request seems to have hung
+				 *   - kill it
+				 */
+				radlog(L_ERR, "Killing unresponsive child %lu for request %d",
+				       child_pid, request->number);
+				child_kill(child_pid, SIGTERM);
+			} /* else no proxy reply, quietly fail */
 		
+			/*
+			 *  Delete the request.
+			 */
+			rl_delete(request);
+			child_pid = NO_SUCH_CHILD_PID; /* mark it as deleted. */
+
 		/*
-		 *  Delete the request.
+		 *	Maybe we haven't killed it.  In that case, print
+		 *	a warning.
 		 */
-		rl_delete(request);
-		child_pid = NO_SUCH_CHILD_PID; /* mark it as deleted. */
-#endif
-		if (child_pid != NO_SUCH_CHILD_PID) {
+		} else if (child_pid != NO_SUCH_CHILD_PID) {
 			radlog(L_ERR, "WARNING: Unresponsive child thread (pid %lu) for request %d",
 			       child_pid, number);
 		}
