@@ -837,8 +837,8 @@ $INCLUDE ${confdir}/eap.conf
 	#
 	#  You can have multiple instances of the realm module to
 	#  support multiple realm syntaxs at the same time.  The
-	#  search order is defined the order in the authorize and
-	#  preacct blocks after the module config block.
+	#  search order is defined by the order in the authorize and
+	#  preacct sections.
 	#
 	#  Four config options:
 	#	format         -  must be 'prefix' or 'suffix'
@@ -848,7 +848,9 @@ $INCLUDE ${confdir}/eap.conf
 	#
 	#  ignore_default and ignore_null can be set to 'yes' to prevent
 	#  the module from matching against DEFAULT or NULL realms.  This
-	#  may be useful if you have have multiple realm module instances.
+	#  may be useful if you have have multiple instances of the
+	#  realm module.
+	#
 	#  They both default to 'no'.
 	#
 
@@ -879,6 +881,16 @@ $INCLUDE ${confdir}/eap.conf
 		ignore_default = no
 		ignore_null = no
 	}
+
+	#
+	#  'domain\user'
+	#
+	realm ntdomain {
+		format = prefix
+		delimiter = "\\"
+		ignore_default = no
+		ignore_null = no
+	}	
 
 	#  A simple value checking module
 	#
@@ -1573,7 +1585,14 @@ authorize {
 	#  that.
 #	IPASS
 
+	#
+	#  If you are using multiple kinds of realms, you probably
+	#  want to set "ignore_null = yes" for all of them.
+	#  Otherwise, when the first style of realm doesn't match,
+	#  the other styles won't be checked.
+	#
 	suffix
+#	ntdomain
 
 	#
 	#  This module takes care of EAP-MD5, EAP-TLS, and EAP-LEAP
@@ -1711,6 +1730,7 @@ preacct {
 	#  home server as authentication requests.
 #	IPASS
 	suffix
+#	ntdomain
 
 	#
 	#  Read the 'acct_users' file
