@@ -75,6 +75,7 @@ typedef struct rlm_counter_t {
 	int service_val;
 	int key_attr;
 	int count_attr;
+	int check_attr;
 	time_t reset_time;	/* The time of the next reset. */
 	time_t last_reset;	/* The time of the last reset. */
 	int dict_attr;		/* attribute number for the counter. */
@@ -378,6 +379,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 				data->counter_name);
 		return -1;
 	}
+	data->check_attr = dattr->attr;
 
 	/*
 	 * Find the attribute for the allowed protocol
@@ -618,7 +620,6 @@ static int counter_authorize(void *instance, REQUEST *request)
 	datum count_datum;
 	int counter=0;
 	int res=0;
-	DICT_ATTR *dattr;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
@@ -658,10 +659,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	/*
 	 *      Look for the check item
 	 */
-	if ((dattr = dict_attrbyname(data->check_name)) == NULL) {
-		return ret;
-	}
-	if ((check_vp= pairfind(request->config_items, dattr->attr)) == NULL) {
+	if ((check_vp= pairfind(request->config_items, data->check_attr)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
 		return ret;
 	}
