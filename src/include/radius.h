@@ -32,6 +32,10 @@
 #define	PW_PASSWORD			2
 #define	PW_CHAP_PASSWORD		3
 #define	PW_NAS_IP_ADDRESS		4
+#define	PW_NAS_PORT			5
+/*
+ *  FIXME: We should remove this...
+ */
 #define	PW_NAS_PORT_ID			5
 #define	PW_SERVICE_TYPE			6
 #define	PW_FRAMED_PROTOCOL		7
