@@ -290,7 +290,7 @@ static int pap_detach(void *instance)
  */
 module_t rlm_pap = {
 	"PAP",	
-	RLM_TYPE_THREAD_UNSAFE,		/* type */
+	0,				/* type */
 	NULL,				/* initialization */
 	pap_instantiate,		/* instantiation */
 	{
