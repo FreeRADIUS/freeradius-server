@@ -95,7 +95,7 @@ the rlm_ldap module:
 
 #	access_group: membership in this group controls radius access for user
 #	default: NULL 
-#	(means all users located in the LDAP tree under specified "basedn")
+#	(The default NULL means all users located in the LDAP tree under specified "basedn")
 #	
 		access_group = "cn=RemoteUsers,o=My Org,c=UA"
 
