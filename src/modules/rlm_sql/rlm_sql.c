@@ -505,6 +505,11 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			 */
 		case PW_STATUS_ALIVE:
 
+			/*
+			 * Set, escape, and check the user attr here
+			 */
+			sql_set_user(inst, request, sqlusername, 0);
+
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_update_query, request, sql_escape_func);
 			query_log(inst, querystr);
 
@@ -527,8 +532,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			if(sql_set_user(inst, request, sqlusername, 0) < 0)
-				return RLM_MODULE_FAIL;
+			sql_set_user(inst, request, sqlusername, 0);
 
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query, request, sql_escape_func);
 			query_log(inst, querystr);
@@ -567,8 +571,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			if(sql_set_user(inst, request, sqlusername, 0) < 0)
-				return RLM_MODULE_FAIL;
+			sql_set_user(inst, request, sqlusername, 0);
 
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query, request, sql_escape_func);
 			query_log(inst, querystr);
