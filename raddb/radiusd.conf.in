@@ -417,6 +417,14 @@ modules {
 		usersfile = ${confdir}/users
 		acctusersfile = ${confdir}/acct_users
 		detailperm = 0600
+
+		#
+		#  If you want to use the old Cistron 'users' file
+		#  with FreeRADIUS, you should change the next line
+		#  to 'compat = cistron'.  You can the copy your 'users'
+		#  file from Cistron.
+		#
+		compat = no
 	}
 
 #
