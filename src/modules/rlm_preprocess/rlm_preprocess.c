@@ -247,7 +247,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
  *	huntgroup, which normally only contains username or group.
  *	At least one of the "reply" items has to match.
  */
-static int hunt_paircmp(VALUE_PAIR *request, VALUE_PAIR *check)
+static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 {
 	VALUE_PAIR	*check_item = check;
 	VALUE_PAIR	*tmp;
@@ -260,7 +260,7 @@ static int hunt_paircmp(VALUE_PAIR *request, VALUE_PAIR *check)
 		tmp = check_item->next;
 		check_item->next = NULL;
 
-		result = paircmp(NULL, request, check_item, NULL);
+		result = paircmp(req, request, check_item, NULL);
 
 		check_item->next = tmp;
 		check_item = check_item->next;
@@ -329,7 +329,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 /*
  *	See if we have access to the huntgroup.
  */
-static int huntgroup_access(PAIR_LIST *huntgroups, VALUE_PAIR *request_pairs)
+static int huntgroup_access(REQUEST *request,
+			    PAIR_LIST *huntgroups, VALUE_PAIR *request_pairs)
 {
 	PAIR_LIST	*i;
 	int		r = RLM_MODULE_OK;
@@ -345,14 +346,14 @@ static int huntgroup_access(PAIR_LIST *huntgroups, VALUE_PAIR *request_pairs)
 		/*
 		 *	See if this entry matches.
 		 */
-		if (paircmp(NULL, request_pairs, i->check, NULL) != 0)
+		if (paircmp(request, request_pairs, i->check, NULL) != 0)
 			continue;
 
 		/*
 		 *	Now check for access.
 		 */
 		r = RLM_MODULE_REJECT;
-		if (hunt_paircmp(request_pairs, i->reply) == 0) {
+		if (hunt_paircmp(request, request_pairs, i->reply) == 0) {
 			VALUE_PAIR *vp;
 
 			/*
@@ -538,7 +539,8 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		pairadd(&request->packet->vps, vp);
 	}
 
-	if (huntgroup_access(data->huntgroups, request->packet->vps) != RLM_MODULE_OK) {
+	if (huntgroup_access(request, data->huntgroups,
+			     request->packet->vps) != RLM_MODULE_OK) {
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
