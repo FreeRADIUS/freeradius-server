@@ -57,6 +57,7 @@ static gid_t server_gid;
  */
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
+static const char *data_dir = NULL;
 static const char *dict_dir = NULL;
 
 /*
@@ -98,6 +99,7 @@ static CONF_PARSER server_config[] = {
 	{ "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
 	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
 	{ "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
+	{ "datadir",             PW_TYPE_STRING_PTR, 0, &data_dir,          "${prefix}/share"},
 	{ "dictdir",             PW_TYPE_STRING_PTR, 0, &dict_dir,          "${datadir}/freeradius"},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &librad_dodns,      "no" },
 #if WITH_SNMP
