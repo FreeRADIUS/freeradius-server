@@ -30,66 +30,63 @@
 /*
    Convert the value on a VALUE_PAIR to string
 */
-char * valuepair2str(VALUE_PAIR * pair,int type)
+int valuepair2str(char * buffer,VALUE_PAIR * pair,int type)
 {
-   static char buffer[256];
    DICT_VALUE * dv;
-   switch (type)
-	{
+   switch (type) {
 	  case PW_TYPE_STRING :
-		if (pair)
+		if (pair) {
 		  strcpy(buffer,pair->strvalue);
-		else
+		} else {
 		  strcpy(buffer,"_");
+		}
 		break;
 	  case PW_TYPE_INTEGER :
-		if (pair)
-		  {
+		if (pair) {
 			 dv = dict_valbyattr(pair->attribute,pair->lvalue);
-			 if (dv)
+			 if (dv) {
 			   strcpy(buffer,dv->name);
-			 else
+			 } else {
 			   sprintf(buffer,"%d",pair->lvalue);
-		  }
-		else
+			}
+		} else {
 		  strcpy(buffer,"0");
+		}
 		break;
 	  case PW_TYPE_IPADDR :
-		if (pair)
+		if (pair) {
 		  ip_ntoa(buffer, pair->lvalue);
-		else
+		} else {
 		  strcpy(buffer,"?.?.?.?");
+		}
 		break;
 	  case PW_TYPE_DATE :
-		if (pair)
+		if (pair) {
 		  sprintf(buffer,"%d",pair->lvalue);
-		else
+		} else {
 		  strcpy(buffer,"0");
+		}
 		break;
 	  default :
 		strcpy(buffer,"unknown_type");
 	}
-   return (&buffer[0]);
+   return strlen(buffer);
 }
 
 /*
   Returns a string with value of Attribute
 */
-char * valuebyname(VALUE_PAIR * request, char * attrname)
+int valuebyname(char * buffer,VALUE_PAIR * request, char * attrname)
 {
 	DICT_ATTR * da;
-	static char buffer;
 
 	da = dict_attrbyname(attrname);
-	if (da)
-	  {
-		 return (valuepair2str(pairfind(request,da->attr),da->type));
-	  }
-	else
-	  {
-		buffer = '\0';
-		return (&buffer);
-	  }
+	if (da) {
+	  return (valuepair2str(buffer,pairfind(request,da->attr),da->type));
+	} else {
+	  *buffer = '\0';
+	  return 0;
+	}
 }
 
 
@@ -114,24 +111,27 @@ char * valuebyname(VALUE_PAIR * request, char * attrname)
  *	%L	 radlog_dir
  *	%T	 request timestamp in database format
  *	%D	 request date (YYYYMMDD)
- *	%{AttributeName}   Corresponding value for AttributeName in request
- *	%{!AttributeName}  Corresponding value for AttributeName in reply
+ *	${AttributeName}		   Corresponding value for AttributeName in request
+ *	${request:AttributeName}   Corresponding value for AttributeName in request
+ *	${reply:AttributeName}	   Corresponding value for AttributeName in reply
  */
 
 char * radius_xlat2(char *str, REQUEST * request, VALUE_PAIR *reply)
 {
-    static char buf[4096];
+	static char buf[4096];
 	char attrname[128];
 	char *pa;
-	int n, i = 0, c;
+	int n, i, c;
 	char *p;
+	char *q;
 	VALUE_PAIR *tmp;
 	struct tm * TM;
 
+	q = buf;
 	for (p = str; *p; p++) {
 		c = *p;
 		if ((c != '%') && (c != '$')) {
-			buf[i++] = *p;
+			*q++ = *p;
 			continue;
 		}
 		if (*++p == 0) break;
@@ -139,116 +139,93 @@ char * radius_xlat2(char *str, REQUEST * request, VALUE_PAIR *reply)
 			case '{': /* Attribute by Name */
 				pa = &attrname[0];
 				p++;
-				while (*p && (*p != '}'))
-				  {
-					*pa++ = *p++;
-				  }
+				while (*p && (*p != '}')) {
+				  *pa++ = *p++;
+				}
 				*pa = '\0';
-				if (attrname[0] == '!')
-				  strcpy(buf+i,valuebyname(reply,attrname));
-				else
-				  strcpy(buf+i,valuebyname(request->packet->vps,attrname));
-				i += strlen(buf + i);
+				if (strnicmp(attrname,"reply:",6) == 0) {
+				  q += valuebyname(q,reply,&attrname[6]);
+				} else if (strnicmp(attrname,"request:",8) == 0) {
+				  q += valuebyname(q,request->packet->vps,&attrname[8]);
+				} else {
+				  q += valuebyname(q,request->packet->vps,attrname);
+				}
 				break;
 			default:
-				buf[i++] = c;
-				buf[i++] = *p;
+				*q++ = c;
+				*q++ = *p;
 				break;
 		}
 		else if (c == '%') switch(*p) {
 			case '%':
-				buf[i++] = *p;
+				*q++ = *p;
 				break;
 			case 'f': /* Framed IP address */
-				strcpy(buf+i,valuepair2str(pairfind(reply,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(reply,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR);
 				break;
 			case 'n': /* NAS IP address */
-				strcpy(buf+i,valuepair2str(pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR);
 				break;
 			case 't': /* MTU */
-				strcpy(buf+i,valuepair2str(pairfind(reply,PW_FRAMED_MTU),PW_TYPE_INTEGER));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(reply,PW_FRAMED_MTU),PW_TYPE_INTEGER);
 				break;
 			case 'p': /* Port number */
-				strcpy(buf+i,valuepair2str(pairfind(request->packet->vps,PW_NAS_PORT_ID),PW_TYPE_INTEGER));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(request->packet->vps,PW_NAS_PORT_ID),PW_TYPE_INTEGER);
 				break;
 			case 'u': /* User name */
-				strcpy(buf+i,valuepair2str(pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING);
 				break;
 			case 'i': /* Calling station ID */
-				strcpy(buf+i,valuepair2str(pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING);
 				break;
 			case 'c': /* Callback-Number */
-				strcpy(buf+i,valuepair2str(pairfind(reply,PW_CALLBACK_NUMBER),PW_TYPE_STRING));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(reply,PW_CALLBACK_NUMBER),PW_TYPE_STRING);
 				break;
 			case 'a': /* Protocol: */
-				strcpy(buf+i,valuepair2str(pairfind(reply,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(reply,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER);
 				break;
 			case 's': /* Speed */
-				strcpy(buf+i,valuepair2str(pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING));
-				i += strlen(buf + i);
+				q += valuepair2str(q,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING);
 				break;
 			case 'C': /* ClientName */
-				strcpy(buf+i,client_name(request->packet->src_ipaddr));
-				i += strlen(buf + i);
+				strcpy(q,client_name(request->packet->src_ipaddr));
+				i = strlen(q); q += i;
 				break;
 			case 'R': /* radius_dir */
-				strcpy(buf+i,radius_dir);
-				i += strlen(buf + i);
+				strcpy(q,radius_dir);
+				i = strlen(q); q += i;
 				break;
 			case 'A': /* radius_dir */
-				strcpy(buf+i,radacct_dir);
-				i += strlen(buf + i);
+				strcpy(q,radacct_dir);
+				i = strlen(q); q += i;
 				break;
 			case 'L': /* radlog_dir */
-				strcpy(buf+i,radlog_dir);
-				i += strlen(buf + i);
+				strcpy(q,radlog_dir);
+				i = strlen(q); q += i;
 				break;
 			case 'D': /* request date */
 				TM = localtime(&request->timestamp);
-				TM->tm_year += 1900;
-				TM->tm_mon += 1;
-				sprintf(buf+i,"%4.4d%2.2d%2.2d",
-						TM->tm_year,
-						TM->tm_mon,
-						TM->tm_mday);
-				i += strlen(buf + i);
+				q += strftime(q,100,"%Y%m%d",TM);
 				break;
 			case 'T': /* request timestamp */
 				TM = localtime(&request->timestamp);
-				TM->tm_year += 1900;
-				TM->tm_mon += 1;
-				sprintf(buf+i,"%4.4d-%2.2d-%2.2d-%2.2d.%2.2d.%2.2d.000000",
-						TM->tm_year,
-						TM->tm_mon,
-						TM->tm_mday,
-						TM->tm_hour,
-						TM->tm_min,
-						TM->tm_sec);
-				i += strlen(buf + i);
+				q += strftime(q,100,"%Y-%m-%d-%H.%M.%S.000000",TM);
 				break;
 			default:
-				buf[i++] = '%';
-				buf[i++] = *p;
+				*q++ = '%';
+				*q++ = *p;
 				break;
 		}
 	}
 /*
-    This routine make translations of strings, but can have larger results
-    If this check is need we can make a wrapper to do this truncation
+	This routine make translations of strings, but can have larger results
+	If this check is need we can make a wrapper to do this truncation
 */
 /*
-    if (i >= MAX_STRING_LEN)
+	if (i >= MAX_STRING_LEN)
 		i = MAX_STRING_LEN - 1;
 */
-	buf[i++] = 0;
+	*q = 0;
 
 	return buf;
 }
