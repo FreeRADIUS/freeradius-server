@@ -130,8 +130,10 @@ static int counter_detach(void *instance);
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
-		VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int counter_cmp(void *instance, 
+		       REQUEST *req UNUSED, 
+		       VALUE_PAIR *request, VALUE_PAIR *check,
+		       VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	rlm_counter_t *data = (rlm_counter_t *) instance;
 	datum key_datum;
@@ -141,6 +143,7 @@ static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_
 
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
+	req = req;
 
 	/*
 	 *	Find the key attribute.
@@ -174,7 +177,7 @@ static int add_defaults(rlm_counter_t *data)
 	
 	DEBUG2("rlm_counter: add_defaults: Start");
 
-	key_datum.dptr = (const char *) default1;
+	key_datum.dptr = (char *) default1;
 	key_datum.dsize = strlen(default1);
 	time_datum.dptr = (char *) &data->reset_time;
 	time_datum.dsize = sizeof(time_t);
@@ -186,7 +189,7 @@ static int add_defaults(rlm_counter_t *data)
 	}
 	DEBUG2("rlm_counter: DEFAULT1 set to %d",(int)data->reset_time);
 
-	key_datum.dptr = (const char *) default2;
+	key_datum.dptr = (char *) default2;
 	key_datum.dsize = strlen(default2);
 	time_datum.dptr = (char *) &data->last_reset;
 	time_datum.dsize = sizeof(time_t);
@@ -480,7 +483,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 * If DEFAULT1 and DEFAULT2 do not exist (new database) we add them to the database
 	 */
 
-	key_datum.dptr = (const char *)default1;
+	key_datum.dptr = (char *)default1;
 	key_datum.dsize = strlen(default1);
 
 	time_datum = gdbm_fetch(data->gdbm, key_datum);
@@ -501,7 +504,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		}
 		else
 			data->reset_time = next_reset;
-		key_datum.dptr = (const char *)default2;
+		key_datum.dptr = (char *)default2;
 		key_datum.dsize = strlen(default2);
 
 		time_datum = gdbm_fetch(data->gdbm, key_datum);	
@@ -587,7 +590,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP.");
 			return RLM_MODULE_NOOP;
 		}
-		if (proto_vp->lvalue != data->service_val){
+		if ((unsigned)proto_vp->lvalue != data->service_val){
 			DEBUG("rlm_counter: This Service-Type is not allowed. Returning NOOP.");
 			return RLM_MODULE_NOOP;
 		}
@@ -598,7 +601,8 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 */
 	key_vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME);
 	if (key_vp != NULL){
-		if (key_vp->lvalue != 0 && (request->timestamp - key_vp->lvalue) < data->last_reset){
+		if (key_vp->lvalue != 0 &&
+		    (request->timestamp - key_vp->lvalue) < data->last_reset){
 			DEBUG("rlm_counter: This packet is too old. Returning NOOP.");
 			return RLM_MODULE_NOOP;
 		}
@@ -687,7 +691,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	}
 
 	DEBUG("rlm_counter: User=%s, New Counter=%d.",request->username->strvalue,counter.user_counter);
-	count_datum.dptr = (rad_counter *) &counter;
+	count_datum.dptr = (char *) &counter;
 	count_datum.dsize = sizeof(rad_counter);
 
 	DEBUG("rlm_counter: Storing new value in database.");
@@ -717,7 +721,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	datum key_datum;
 	datum count_datum;
 	rad_counter counter;
-	int res=0;
+	unsigned int res=0;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
