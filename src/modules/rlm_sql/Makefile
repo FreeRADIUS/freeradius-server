@@ -1,25 +1,29 @@
-# must be first
-include config.mak
-
 TARGET		= rlm_sql
 SRCS		= rlm_sql.c sql.c
 HEADERS		= rlm_sql.h
-RLM_CFLAGS	= -I/usr/local/mysql/include # -DBINARY_FILTERS
-RLM_LIBS	=-L/usr/local/mysql/lib/mysql -lmysqlclient
+RLM_CFLAGS	= 
+RLM_LIBS	=
+
+SUBDIRS		= drivers
 
 $(STATIC_OBJS): $(HEADERS)
 
 $(DYNAMIC_OBJS): $(HEADERS) 
 
-###
-# over-ride the previous assignment if we're not building anything
-ifeq ($(LIBMYSQL),)
-TARGET        =
-endif
+
+all:
+	
+	@$(MAKE) $(MFLAGS) static dynamic
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
+allclean:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
+common: 
+	@for dir in $(SUBDIRS); do \
+		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
+		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit 1;\
+	done
 
 include ../rules.mak
-
-# must be last
-config.mak:
-	@../checkconfig -l LIBMYSQL mysql_init -lmysqlclient -L/usr/local/lib/mysql
 

@@ -1,5 +1,5 @@
 # must be first
-include ../../config.mak
+include config.mak
 
 TARGET		= rlm_sql_mysql
 SRCS		= sql_mysql.c
@@ -15,9 +15,9 @@ ifeq ($(LIBMYSQL),)
 TARGET        =
 endif
 
-include ../../../rules.mak
+include ../rules.mak
 
 # must be last
 config.mak:
-	@../../../checkconfig -l LIBMYSQL mysql_init -lmysqlclient -L/usr/local/lib/mysql
+	@../checkconfig -l LIBMYSQL mysql_init -lmysqlclient -L/usr/local/mysql/lib/mysql
 
