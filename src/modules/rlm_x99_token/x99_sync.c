@@ -375,7 +375,7 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
     /* We use dotfile locking. */
     lockfile = malloc(strlen(syncdir) + strlen(username) + 3);
     if (!lockfile) {
-	x99_log(X99_LOG_ERR, "x99_acquire_sd_lock: out of memory");
+	x99_log(X99_LOG_CRIT, "x99_acquire_sd_lock: out of memory");
 	return NULL;
     }
     (void) sprintf(lockfile, "%s/.%s", syncdir, username);

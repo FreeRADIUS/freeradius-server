@@ -336,7 +336,7 @@ x99_token_authorize(void *instance, REQUEST *request)
 	     * to set a value, /existence/ of the vp is the signal.
 	     */
 	    if ((vp = paircreate(PW_X99_FAST, PW_TYPE_INTEGER)) == NULL) {
-		x99_log(X99_LOG_ERR, "autz: no memory");
+		x99_log(X99_LOG_CRIT, "autz: no memory");
 		return RLM_MODULE_FAIL;
 	    }
 	    pairadd(&request->config_items, vp);

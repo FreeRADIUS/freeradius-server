@@ -224,7 +224,7 @@ x99_get_user_info(const char *pwdfile, const char *username,
      */
     p = malloc(strlen(username) + 2);
     if (!p) {
-	x99_log(X99_LOG_ERR, "x99_get_user_info: out of memory");
+	x99_log(X99_LOG_CRIT, "x99_get_user_info: out of memory");
 	return -2;
     }
     (void) sprintf(p, "%s:", username);
