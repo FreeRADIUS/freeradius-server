@@ -32,7 +32,7 @@ if test x$with_[]modname != xno; then
 	then
 		sql_mysql_ldflags=`mysql_config --libs`
 		sql_mysql_cflags=`mysql_config --cflags`
-		AC_DEFINE(HAVE_MYSQL_H)
+		AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
 	else
 		AC_CHECK_LIB(z, compress, LIBS="$LIBS -lz")
 
@@ -55,7 +55,7 @@ dnl			FR_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
 					MYSQL_INCLUDE=
 				)
 				if test "x$MYSQL_INCLUDE" != "x"; then
-					AC_DEFINE(HAVE_MYSQL_MYSQL_H)
+					AC_DEFINE(HAVE_MYSQL_MYSQL_H, [], [Define if you have <mysql/mysql.h>])
 					break;
 				fi
 			done
@@ -69,7 +69,7 @@ dnl			FR_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
 		else
 			sql_mysql_cflags="${sql_mysql_cflags} ${MYSQL_INCLUDE}"
 			AC_MSG_RESULT(yes)
-			AC_DEFINE(HAVE_MYSQL_H)
+			AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
   
 			AC_MSG_CHECKING([for mysql_init in -lmysqlclient])
 
