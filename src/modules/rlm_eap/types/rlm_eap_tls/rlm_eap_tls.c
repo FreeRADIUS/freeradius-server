@@ -200,6 +200,7 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 
 	eaptls_operation(tlspacket, status, handler);
 
+	eaptls_free(&tlspacket);
 	return 1;
 }
 
@@ -227,6 +228,8 @@ static int eaptls_detach(void **arg)
 
 	SSL_CTX_free((*eaptls)->ctx);
 	(*eaptls)->ctx = NULL;
+
+	free(*eaptls);
 	*eaptls = NULL;
 
 	return 0;

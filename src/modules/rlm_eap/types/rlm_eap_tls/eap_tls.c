@@ -68,6 +68,8 @@ void eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr)
 		free(eaptls_packet->data);
 		eaptls_packet->data = NULL;
 	}
+
+	free(eaptls_packet);
 	*eaptls_packet_ptr = NULL;
 }
 
@@ -201,6 +203,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 
 	eaptls_compose(eap_ds, &reply);
 	free(reply.data);
+	reply.data = NULL;
 
 	return 1;
 }
@@ -236,11 +239,15 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 			eaptls_success(handler->eap_ds);
 			session_free(&handler->opaque);
 			return EAPTLS_SUCCESS;
-		} else {
+		} else if (tls_session->fragment > 0) {
 			/* Fragmentation handler, send next fragment */
 			eaptls_request(handler->eap_ds, tls_session);
 			return EAPTLS_REQUEST;
 		}
+		/*
+		 * For the rest of the conditions,
+		 * switch over to the default section below.
+		 */
 
 	default:
 		radlog(L_ERR, "rlm_eap_tls: Invalid ACK received");
@@ -314,10 +321,10 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 		((eaptls_packet != NULL) && (eaptls_packet->flags == 0x00))) {
 
 		if (prev_eap_ds->request->id == eap_ds->response->id) {
-			radlog(L_INFO, "rlm_eap_tls:  Received EAP-TLS ACK message");
+			radlog(L_INFO, "rlm_eap_tls: Received EAP-TLS ACK message");
 			return EAPTLS_ACK;
 		} else {
-			radlog(L_ERR, "rlm_eap_tls:  Received Invalid EAP-TLS ACK message");
+			radlog(L_ERR, "rlm_eap_tls: Received Invalid EAP-TLS ACK message");
 			return EAPTLS_INVALID;
 		}
 	}
