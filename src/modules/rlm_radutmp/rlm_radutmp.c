@@ -302,7 +302,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 					sizeof(ut.session_id));
 				break;
 			case PW_NAS_PORT_TYPE:
-				if (vp->lvalue >= 0 && vp->lvalue <= 4)
+				if (vp->lvalue <= 4)
 					ut.porttype = porttypes[vp->lvalue];
 				nas_port_type = vp->lvalue;
 				break;
