@@ -568,24 +568,12 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		pairmove2(&t->state, &fake->reply->vps, PW_STATE);
 
 		/*
-		 *	We should really be a bit smarter about this,
-		 *	and move over only those attributes which
-		 *	are relevant to the authentication request,
-		 *	but that's a lot more work, and this "dumb"
-		 *	method works in 99.9% of the situations.
+		 *	PEAP takes only EAP-Message attributes inside
+		 *	of the tunnel.  Any Reply-Message in the
+		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
 		pairmove2(&vp, &fake->reply->vps, PW_EAP_MESSAGE);
-
-		/*
-		 *	There MUST be a Reply-Message in the challenge,
-		 *	which we tunnel back to the client.
-		 *
-		 *	If there isn't one in the reply VP's, then
-		 *	we MUST create one, with an empty string as
-		 *	it's value.
-		 */
-		pairmove2(&vp, &fake->reply->vps, PW_REPLY_MESSAGE);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -595,6 +583,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			vp2eap(tls_session, vp);
 			pairfree(&vp);
 		}
+
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
