@@ -97,6 +97,17 @@ the rlm_ldap module:
 #
 #	password_attribute = "userPassword"
 
+#	groupname_attribute: The attribute used for searching for a group in the ldap server.
+#	default: cn - Search filter is "(cn=%GroupName)"
+#
+#	groupname_attribute = "cn"
+
+#	groupmembership_filter: The filter to search for group membership of a particular user
+#	after we have found the DN for the group.
+#	default: (|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))
+#
+#	groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"	
+
 	}
 }
 

@@ -374,6 +374,8 @@ modules {
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
 		# password_header = "{clear}"
 		# password_attribute = userPassword
+		# groupname_attribute = cn
+		# groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"
 		timeout = 4
 		timelimit = 3
 		net_timeout = 1

@@ -34,6 +34,7 @@
  *	  the password_header directive rlm_ldap will strip the
  *	  password header if needed. This will make support for CHAP much easier.
  *	- Added module messages when we reject a user.
+ *	- Added ldap_groupcmp to allow searching for user group membership
  */
 static const char rcsid[] = "$Id$";
 
@@ -98,6 +99,8 @@ typedef struct {
 	char           *passwd_hdr;
 	char           *passwd_attr;
 	char           *dictionary_mapping;
+	char	       *groupname_attr;
+	char	       *groupmemb_filt;
 	TLDAP_RADIUS   *check_item_map;
 	TLDAP_RADIUS   *reply_item_map;
 	LDAP           *ld;
@@ -127,6 +130,8 @@ static CONF_PARSER module_config[] = {
 	/* LDAP attribute name that controls remote access */
 	{"access_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_attr), NULL, NULL},
 	/* file with mapping between LDAP and RADIUS attributes */
+	{"groupname_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,groupname_attr), NULL, "cn"},
+	{"groupmembership_filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,groupmemb_filt), NULL, "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"},
 	{"dictionary_mapping", PW_TYPE_STRING_PTR, offsetof(ldap_instance,dictionary_mapping), NULL, "${confdir}/ldap.attrmap"},
 	{"ldap_debug", PW_TYPE_INTEGER, offsetof(ldap_instance,ldap_debug), NULL, "0x0000"},
 
@@ -141,6 +146,7 @@ static CONF_PARSER module_config[] = {
 static void     fieldcpy(char *, char **);
 #endif
 static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **);
+static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *);
 static int     read_mappings(ldap_instance* inst);
 
@@ -178,6 +184,11 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->check_item_map = NULL;
 	inst->ld = NULL;
 
+	paircompare_register(PW_GROUP, PW_USER_NAME, ldap_groupcmp, inst);
+#ifdef PW_GROUP_NAME /* compat */
+	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, ldap_groupcmp, inst);
+#endif
+
 	if (read_mappings(inst) != 0) {
 		radlog(L_ERR, "rlm_ldap: Reading dictionary mappings from file %s failed",
 		       inst->dictionary_mapping);
@@ -188,6 +199,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 
 	return 0;
 }
+
 
 /*
  * read_mappings(...) reads a ldap<->radius mappings file to inst->reply_item_map and inst->check_item_map
@@ -326,6 +338,121 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 		ldap_msgfree(*result);	
 	}
 	return res;
+}
+
+
+/*
+ * ldap_groupcmp(). Implement the Group == "group" filter
+ */
+
+static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
+                VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+{
+        char            filter[MAX_AUTH_QUERY_LEN];
+        char            *group_dn;
+        int             res;
+        LDAPMessage     *result = NULL;
+        LDAPMessage     *msg = NULL;
+        char            basedn[1024];
+        ldap_instance   *inst = instance;
+
+        check_pairs = check_pairs;
+        reply_pairs = reply_pairs;
+
+	DEBUG("rlm_ldap: Entering ldap_groupcmp()");
+
+        if (check->strvalue == NULL || check->length == 0){
+                DEBUG("rlm_ldap::ldap_groupcmp: Illegal group name");
+                return 1;
+        }
+
+        if (req == NULL){
+                DEBUG("rlm_ldap::ldap_groupcmp: NULL request");
+                return 1;
+        }
+
+        if (!radius_xlat(basedn, sizeof(basedn), inst->basedn, req, NULL)) {
+                DEBUG("rlm_ldap::ldap_groupcmp: unable to create basedn.");
+                return 1;
+        }
+
+        if ((pairfind(req->packet->vps, LDAP_USERDN)) == NULL){
+                char            *user_dn = NULL;
+
+                if (!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->filter, req, NULL)) {
+                        DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter");
+                        return 1;
+                }
+                if ((res = perform_search(inst, basedn, LDAP_SCOPE_SUBTREE, filter, NULL, &result)) != RLM_MODULE_OK) {
+                        DEBUG("rlm_ldap::ldap_groupcmp: search failed");
+                        return 1;
+                }
+                if ((msg = ldap_first_entry(inst->ld, result)) == NULL) {
+                        DEBUG("rlm_ldap::ldap_groupcmp: ldap_first_entry() failed");
+                        ldap_msgfree(result);
+                        return 1;
+                }
+                if ((user_dn = ldap_get_dn(inst->ld, msg)) == NULL) {
+                        DEBUG("rlm_ldap:ldap_groupcmp:: ldap_get_dn() failed");
+                        ldap_msgfree(result);
+                        return 1;
+                }
+                /*
+                * Adding new attribute containing DN for LDAP object associated with
+                * given username
+                */
+                pairadd(&req->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+                ldap_memfree(user_dn);
+                ldap_msgfree(result);
+        }
+
+        snprintf(filter,MAX_AUTH_QUERY_LEN - 1, "(%s=%s)",inst->groupname_attr,(char *)check->strvalue);
+
+        if ((res = perform_search(inst, basedn, LDAP_SCOPE_SUBTREE, filter, NULL, &result)) != RLM_MODULE_OK){
+                if (res == RLM_MODULE_NOTFOUND){
+                        DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found", (char *)check->strvalue);
+                        return 1;
+                }
+                DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
+                return 1;
+        }
+        if ((msg = ldap_first_entry(inst->ld, result)) == NULL){
+                DEBUG("rlm_ldap::ldap_groupcmp: ldap_first_entry() failed");
+                ldap_msgfree(result);
+                return 1;
+        }
+        if ((group_dn = ldap_get_dn(inst->ld, msg)) == NULL){
+                DEBUG("rlm_ldap:ldap_groupcmp:: ldap_get_dn() failed");
+                ldap_msgfree(result);
+                return 1;
+        }
+	ldap_msgfree(result);
+
+
+        if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->groupmemb_filt, req, NULL)){
+                DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter.");
+		ldap_memfree(group_dn);
+                return 1;
+        }
+
+        if ((res = perform_search(inst, group_dn, LDAP_SCOPE_BASE, filter, NULL, &result)) != RLM_MODULE_OK){
+                if (res == RLM_MODULE_NOTFOUND){
+			DEBUG("rlm_ldap::ldap_groupcmp: User not found in group %s",group_dn);
+			ldap_memfree(group_dn);
+			return -1;
+                }
+                DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
+		ldap_memfree(group_dn);
+                return 1;
+        }
+        else{
+                DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",group_dn);
+		ldap_memfree(group_dn);
+                ldap_msgfree(result);
+        }
+
+        return 0;
+
 }
 
 /******************************************************************************
@@ -818,6 +945,10 @@ ldap_detach(void *instance)
 		free((char *) inst->passwd_hdr);
 	if (inst->passwd_attr)
 		free((char *) inst->passwd_attr);
+	if (inst->groupname_attr)
+		free((char *) inst->groupname_attr);
+	if (inst->groupmemb_filt)
+		free((char *) inst->groupmemb_filt);
 	if (inst->ld)
 		ldap_unbind_s(inst->ld);
 
@@ -840,6 +971,11 @@ ldap_detach(void *instance)
 		free(pair);
 		pair = nextpair;
 	}
+
+	paircompare_unregister(PW_GROUP, ldap_groupcmp);
+#ifdef PW_GROUP_NAME
+	paircompare_unregister(PW_GROUP_NAME, ldap_groupcmp);
+#endif
 
 	free(inst);
 
