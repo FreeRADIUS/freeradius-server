@@ -535,6 +535,7 @@ VALUE		Response-Packet-Type	Status-Client			13
 #
 #	See dictionary.microsoft, MS-Acct-EAP-Type for similar definitions
 #
+VALUE		EAP-Type	None			0
 VALUE		EAP-Type	Identity		1
 VALUE		EAP-Type	Notification		2
 VALUE		EAP-Type	NAK			3
