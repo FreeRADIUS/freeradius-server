@@ -355,7 +355,7 @@ security {
 	#  However, certain NAS boxes may require them.	
 	#
 	#  When sent a Status-Server message, the server responds with
-	#  and Access-Accept packet, containing a Reply-Message attribute,
+	#  an Access-Accept packet, containing a Reply-Message attribute,
 	#  which is a string describing how long the server has been
 	#  running.
 	#
@@ -736,6 +736,15 @@ modules {
 		#
 		#  Surprisingly, it works quite well.
 		#
+		#  The TTLS module needs the TLS module to be installed
+		#  and configured, in order to use the TLS tunnel
+		#  inside of the EAP packet.  You will still need to 
+		#  configure the TLS module, even if you do not want
+		#  to deploy EAP-TLS in your network.  Users will not
+		#  be able to request EAP-TLS, as it requires them to
+		#  have a client certificate.  EAP-TTLS does not
+		#  require a client certificate.
+		#
 		#ttls {
 			#  The tunneled EAP session needs a default
 			#  EAP type which is separate from the one for
@@ -782,6 +791,15 @@ modules {
 		#  which is separate from the one for the non-tunneled
 		#  EAP module.  Inside of the TLS/PEAP tunnel, we
 		#  recommend using EAP-MS-CHAPv2.
+		#
+		#  The PEAP module needs the TLS module to be installed
+		#  and configured, in order to use the TLS tunnel
+		#  inside of the EAP packet.  You will still need to 
+		#  configure the TLS module, even if you do not want
+		#  to deploy EAP-TLS in your network.  Users will not
+		#  be able to request EAP-TLS, as it requires them to
+		#  have a client certificate.  EAP-PEAP does not
+		#  require a client certificate.
 		#
 		# peap {
 			#  The tunneled EAP session needs a default
@@ -1046,6 +1064,10 @@ modules {
 		#
 		# If this is set to 'yes', then the NT_DOMAIN portion
 		# of the user-name is silently discarded.
+		#
+		# This configuration entry SHOULD NOT be used.
+		# See the "realms" module for a better way to handle
+		# NT domains.
 		with_ntdomain_hack = no
 
 		# Specialix Jetstream 8500 24 port access server.
@@ -1602,7 +1624,7 @@ authorize {
 	#  It takes care of processing the 'raddb/hints' and the
 	#  'raddb/huntgroups' files.
 	#
-	#  It also adds a Client-IP-Address attribute to the request.
+	#  It also adds the %{Client-IP-Address} attribute to the request.
 	preprocess
 
 	#
