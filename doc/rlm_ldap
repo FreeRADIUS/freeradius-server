@@ -147,6 +147,21 @@ On user rejection rlm_ldap will return the following module messages:
 These messages will be visible in radius.log as aditional information in
 "Login incorrect" and "Invalid user" log messages.
 
+LDAP XLAT:
+The ldap module now supports LDAP URLs in xlat strings. That is you can now
+add LDAP URLs in the configuration options and hopefully shortly also in the
+users file. The strings will be of the following form:
+
+%{ldap:ldap:///dc=company,dc=com?uid?sub?uid=%u}
+
+The requested attributes list MUST contain only ONE attribute. In case this attribute
+is multi valued which value is returned is considered UNDEFINED.
+Also, adding the host:port information SHOULD be avoided unless there are more than one
+ldap module instances in which case the host,port information can be used to distinguish
+which module will actually return the information (the xlat function will return NULL if
+the host,port information does not correspond to the configured attributes).
+ 
+
 DIRECTORY COMPATIBILITY NOTE:
 If you use LDAP only for authorization and authentication (e.g. you can not
  afford schema extention), I propose to set all necessary attributes in 

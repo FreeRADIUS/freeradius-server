@@ -39,6 +39,17 @@
  *	  %{ldap:ldap:///dc=company,dc=com?cn?sub?uid=user}
  * Nov 2001, Gordon Tetlow <gordont@gnf.org>
  *	- Do an xlat on the access_group attribute.
+ * Dec 2001, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Added ldap caching for the default/regular profiles and group entries.
+ *	- Fixed a memory leak in ldap_xlat.
+ *	- Removed dict_attrbyname from ldap_pairget. They are not needed.
+ *	- Moved the radius_xlat's for filter and basedn in ldap_authenticate() to
+ *	  the right place.
+ *	- Made the module thread safe. We create a connection pool and each thread
+ *	  will call ldap_get_conn to lock one of the ldap connections and release with
+ *	  a call to ldap_release_conn when it has finished.
+ *	- Request only the user attributes that interest us (radius attributes,regular
+ *	  profile,user password and access attribute).
  */
 static const char rcsid[] = "$Id$";
 
