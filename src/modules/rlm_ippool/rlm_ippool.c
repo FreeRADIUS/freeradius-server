@@ -406,6 +406,7 @@ static int ippool_authorize(void *instance, REQUEST *request)
 		if (data->name == NULL || strcmp(data->name,vp->strvalue))
 			return RLM_MODULE_NOOP;
 	} else {
+		DEBUG("rlm_ippool: Could not find Pool-Name attribute.");
 		return RLM_MODULE_NOOP;
 	}
 
