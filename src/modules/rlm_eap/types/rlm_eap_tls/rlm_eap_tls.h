@@ -53,7 +53,9 @@
 /*
  *	For RH 9, which apparently needs this.
  */
+#ifndef OPENSSL_NO_KRB5
 #define OPENSSL_NO_KRB5
+#endif
 #include <openssl/err.h>
 #ifdef HAVE_OPENSSL_ENGINE_H
 #include <openssl/engine.h>
