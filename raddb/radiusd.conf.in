@@ -1084,7 +1084,7 @@ accounting {
 
 
 # Session database, used for checking Simultaneous-Use. Either the radutmp 
-# or rlm_sql module can handle this
+# or rlm_sql module can handle this.
 session {
 	radutmp
 #	sql
