@@ -102,6 +102,7 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	* Add support to checkrad.pl for mikrotik-brand NASs over SNMP
 	* Add support for supplementary groups of switched-to user
 	* Add support for xlat-ing backquoted reply values from SQL queries.
+	* Add Public Domain MD5 implementation by Colin Plumb
 
 FreeRADIUS 0.9.3 ; Date: 2003/11/20 20:15:48, urgency=high
 

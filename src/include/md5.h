@@ -2,14 +2,13 @@
  * md5.h        Structures and prototypes for md5.
  *
  * Version:     $Id$
+ * License:		LGPL, but largely derived from a public domain source.
  *
  */
 
 #ifndef _LRAD_MD5_H
 #define _LRAD_MD5_H
 
-#ifndef _LRAD_PROTO_H
-#define _LRAD_PROTO_H
 #include "autoconf.h"
 
 #ifdef HAVE_INTTYPES_H
@@ -25,40 +24,6 @@
 #endif
 
 #include <string.h>
-
-/* GLOBAL.H - RSAREF types and constants
- */
-
-/* PROTOTYPES should be set to one if and only if the compiler supports
-  function argument prototyping.
-  The following makes PROTOTYPES default to 0 if it has not already
-  been defined with C compiler flags.
- */
-#ifndef PROTOTYPES
-#  if __STDC__
-#    define PROTOTYPES 1
-#  else
-#    define PROTOTYPES 0
-#  endif
-#endif
-
-/* POINTER defines a generic pointer type */
-#ifndef _POINTER_T
-typedef unsigned char *POINTER;
-#endif
-typedef const unsigned char *CONSTPOINTER;
-
-/* PROTO_LIST is defined depending on how PROTOTYPES is defined above.
-   If using PROTOTYPES, then PROTO_LIST returns the list, otherwise it
-  returns an empty list.
- */
-#if PROTOTYPES
-#define PROTO_LIST(list) list
-#else
-#define PROTO_LIST(list) ()
-#endif
-#endif /* _LRAD_PROTO_H */
-
 /*
  *  FreeRADIUS defines to ensure globally unique MD5 function names,
  *  so that we don't pick up vendor-specific broken MD5 libraries.
@@ -66,42 +31,48 @@ typedef const unsigned char *CONSTPOINTER;
 #define MD5_CTX		librad_MD5_CTX
 #define MD5Init		librad_MD5Init
 #define MD5Update	librad_MD5Update
-#define MD5Final       	librad_MD5Final
+#define MD5Final	librad_MD5Final
+#define MD5Transform	librad_MD5Transform
 
-/* MD5.H - header file for MD5C.C
+/*  The below was retrieved from
+ *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.c?rev=1.1
+ *  With the following changes: uint64_t => uint32_t[2]
+ *  Commented out #include <sys/cdefs.h>
+ *  Commented out the __BEGIN and __END _DECLS, and the __attributes.
  */
 
-/* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
-rights reserved.
-
-License to copy and use this software is granted provided that it
-is identified as the "RSA Data Security, Inc. MD5 Message-Digest
-Algorithm" in all material mentioning or referencing this software
-or this function.
-
-License is also granted to make and use derivative works provided
-that such works are identified as "derived from the RSA Data
-Security, Inc. MD5 Message-Digest Algorithm" in all material
-mentioning or referencing the derived work.
-
-RSA Data Security, Inc. makes no representations concerning either
-the merchantability of this software or the suitability of this
-software for any particular purpose. It is provided "as is"
-without express or implied warranty of any kind.
-
-These notices must be retained in any copies of any part of this
-documentation and/or software.
+/*
+ * This code implements the MD5 message-digest algorithm.
+ * The algorithm is due to Ron Rivest.  This code was
+ * written by Colin Plumb in 1993, no copyright is claimed.
+ * This code is in the public domain; do with it what you wish.
+ *
+ * Equivalent code is available from RSA Data Security, Inc.
+ * This code has been tested against that, and is equivalent,
+ * except that you don't need to include two pages of legalese
+ * with every copy.
  */
 
-/* MD5 context. */
-typedef struct {
-  uint32_t state[4];                                   /* state (ABCD) */
-  uint32_t count[2];        /* number of bits, modulo 2^64 (lsb first) */
-  unsigned char buffer[64];                         /* input buffer */
+#define	MD5_BLOCK_LENGTH		64
+#define	MD5_DIGEST_LENGTH		16
+
+typedef struct MD5Context {
+	uint32_t state[4];			/* state */
+	uint32_t count[2];			/* number of bits, mod 2^64 */
+	uint8_t buffer[MD5_BLOCK_LENGTH];	/* input buffer */
 } MD5_CTX;
 
-void MD5Init PROTO_LIST ((MD5_CTX *));
-void MD5Update PROTO_LIST
-  ((MD5_CTX *, const unsigned char *, unsigned int));
-void MD5Final PROTO_LIST ((unsigned char [16], MD5_CTX *));
+/* include <sys/cdefs.h> */
+
+/* __BEGIN_DECLS */
+void	 MD5Init(MD5_CTX *);
+void	 MD5Update(MD5_CTX *, const uint8_t *, size_t)
+/*		__attribute__((__bounded__(__string__,2,3)))*/;
+void	 MD5Final(uint8_t [MD5_DIGEST_LENGTH], MD5_CTX *)
+/*		__attribute__((__bounded__(__minbytes__,1,MD5_DIGEST_LENGTH)))*/;
+void	 MD5Transform(uint32_t [4], const uint8_t [MD5_BLOCK_LENGTH])
+/*		__attribute__((__bounded__(__minbytes__,1,4)))*/
+/*		__attribute__((__bounded__(__minbytes__,2,MD5_BLOCK_LENGTH)))*/;
+/* __END_DECLS */
+
 #endif /* _LRAD_MD5_H */
