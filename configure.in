@@ -16,7 +16,7 @@ else
 fi
 makever=`$ac_cv_path_MAKE --version 2>&1 | grep "GNU Make"`
 if test "$makever" = ""; then
-  AC_MSG_ERROR(GNU Make not installed  -fatal)
+  AC_MSG_ERROR(GNU Make is not installed.  Please download and install it from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing.)
 fi
 
 dnl Set Default CFLAGS
