@@ -290,11 +290,12 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 /*
  *	Compare a Connect-Info and a Connect-Rate
  */
-static int connectcmp(VALUE_PAIR *request, VALUE_PAIR *check,
+static int connectcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	int	rate;
 
+	instance = instance;
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
