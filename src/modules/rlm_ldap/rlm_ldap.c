@@ -95,6 +95,7 @@ static const char rcsid[] = "$Id$";
 struct TLDAP_RADIUS {
 	char*                 attr;
 	char*                 radius_attr;
+	LRAD_TOKEN	      operator;
 	struct TLDAP_RADIUS*  next;
 };
 typedef struct TLDAP_RADIUS TLDAP_RADIUS;
@@ -442,6 +443,8 @@ read_mappings(ldap_instance* inst)
 	char buf[MAX_LINE_LEN], itemType[MAX_LINE_LEN];
 	char radiusAttribute[MAX_LINE_LEN], ldapAttribute[MAX_LINE_LEN];
 	int linenumber;
+	LRAD_TOKEN operator;
+	char opstring[MAX_LINE_LEN];
 
 	/* open the mappings file for reading */
 
@@ -473,18 +476,36 @@ read_mappings(ldap_instance* inst)
 		if (buf[0] == 0) continue;
 
 		/* extract tokens from the string */
-		token_count = sscanf(buf, "%s %s %s", itemType,
-				     radiusAttribute, ldapAttribute);
+		token_count = sscanf(buf, "%s %s %s %s",
+				     itemType, radiusAttribute,
+				     ldapAttribute, opstring);
 
 		if (token_count <= 0) /* no tokens */
 			continue;
 
-		if (token_count != 3) {
+		if ((token_count < 3) || (token_count > 4)) {
 			radlog(L_ERR, "rlm_ldap: Skipping %s line %i: %s",
 			       filename, linenumber, buf);
-			radlog(L_ERR, "rlm_ldap: Expected 3 tokens "
+			radlog(L_ERR, "rlm_ldap: Expected 3 to 4 tokens "
 			       "(Item type, RADIUS Attribute and LDAP Attribute) but found only %i", token_count);
 			continue;
+		}
+
+		if (token_count == 3) {
+			operator = T_OP_INVALID; /* use defaults */
+		} else {
+			char *ptr;
+			
+			ptr = opstring;
+			operator = gettoken(&ptr, buf, sizeof(buf));
+			if ((token < T_OP_ADD) || (token > T_OP_CMP_EQ)) {
+				radlog(L_ERR, "rlm_ldap: file %s: skipping line %i: unknown or invalid operator %s",
+				       filename, linenumber, opstring);
+				free(pair->attr);
+				free(pair->radius_attr);
+				free(pair);
+				continue;
+			}
 		}
 
 		/* create new TLDAP_RADIUS list node */
@@ -492,6 +513,7 @@ read_mappings(ldap_instance* inst)
 
 		pair->attr = strdup(ldapAttribute);
 		pair->radius_attr = strdup(radiusAttribute);
+		pair->operator = operator;
 
 		if ( (pair->attr == NULL) || (pair->radius_attr == NULL) ) {
 			radlog(L_ERR, "rlm_ldap: Out of memory");
@@ -1815,7 +1837,15 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 					/* this is a one-to-one-mapped attribute */
 					token = gettoken(&ptr, value, sizeof(value) - 1);
 					if (token < T_EQSTART || token > T_EQEND) {
-						token = (is_check) ? T_OP_CMP_EQ : T_OP_EQ;
+						if (is_check) {
+							token = T_OP_CMP_EQ;
+						} else {
+							token = T_OP_EQ;
+						}
+
+						if (element->operator != T_OP_INVALID) {
+							token = element->operator;
+						}
 					} else {
 						gettoken(&ptr, value, sizeof(value) - 1);
 					}
