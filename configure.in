@@ -194,18 +194,17 @@ dnl AC_MSG_RESULT(" $INCLUDE")
 dnl AC_SUBST(INCLUDE)
 dnl AC_SUBST(IQUOTE)
 
-dnl Check if we have a dynamic linker.
-AC_MSG_CHECKING(for runtime dynamic linker)
-if test "$WITH_DYNAMIC_MODULES" = "yes" && test -f /usr/include/dlfcn.h
-then
-	AC_DEFINE(HAVE_LIBDL)
-	HAVE_LIBDL=1
-	LIBDL="-ldl"
-	AC_MSG_RESULT("found")
-else
-	AC_MSG_RESULT("not found")
-fi
+dnl Check for libdl
+dnl We use dlopen(3) which may be in libc (eg FreeBSD), or in libdl (Linux)
+AC_CHECK_LIB(dl, dlopen,
+  LIBDL="-ldl"
+)
 AC_SUBST(LIBDL)
+if test "$LIBDL" != ""; then
+  AC_DEFINE(HAVE_LIBDL)
+else
+  AC_CHECK_FUNC(dlopen)
+fi
 
 dnl See if this is OS/2
 AC_MSG_CHECKING(type of OS)
