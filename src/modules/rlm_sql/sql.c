@@ -1,7 +1,15 @@
+/***************************************************************************
+*  sql.c                              rlm_sql - FreeRADIUS SQL Module      *
+*                                                                          *
+*      Main code directly taken from ICRADIUS                              *
+*                                                                          *
+*                                     Mike Machado <mike@innercite.com>    *
+***************************************************************************/
 #include	<sys/types.h>
 #include	<sys/socket.h>
 #include	<sys/time.h>
 #include	<sys/file.h>
+#include	<string.h>
 #include	<sys/stat.h>
 #include	<netinet/in.h>
 
@@ -654,7 +662,7 @@ static int sql_check_ts(SQL_ROW row) {
 	/*
 	 *      Find NAS type.
 	 */
-	if ((nas = nas_find(ipstr2long(row[4]))) == NULL) {
+	if ((nas = nas_find(ip_addr(row[4]))) == NULL) {
                 log(L_ERR, "Accounting: unknown NAS [%s]", row[4]);
                 return -1;
         }

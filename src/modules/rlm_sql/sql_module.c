@@ -1,9 +1,10 @@
-/*
- * sql_module.c	- MySQL routines for FreeRADIUS SQL module 
- *
- * Mike Machado <mike@innercite.com>
- */
-
+/***************************************************************************
+*  sql_mysql.c                        rlm_sql - FreeRADIUS SQL Module      *
+*                                                                          *
+*      MySQL routines for rlm_sql                                          *
+*                                                                          *
+*                                     Mike Machado <mike@innercite.com>    *
+***************************************************************************/
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
@@ -144,7 +145,7 @@ int sql_num_rows(SQLSOCK *socket) {
  *
  *	Function: sql_fetch_row
  *
- *	Purpose: database specific fetch_row. Returns a SQL_RES struct
+ *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
  *               with all the data for the query
  *
  *************************************************************************/

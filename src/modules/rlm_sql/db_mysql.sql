@@ -1,3 +1,13 @@
+###########################################################################
+#  db_mysql.sql                     rlm_sql - FreeRADIUS SQL Module       #
+#                                                                         #
+#     Database schema for MySQL rlm_sql module                            #
+#                                                                         #
+#     To load:                                                            #
+#         mysql -uroot -prootpass radius < db_mysql.sql                   #
+#                                                                         #
+#                                   Mike Machado <mike@innercite.com>     #
+###########################################################################
 # MySQL dump 4.0
 #
 # Host: localhost    Database: radius

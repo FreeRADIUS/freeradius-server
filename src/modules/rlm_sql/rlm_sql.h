@@ -1,9 +1,10 @@
-/* freeradius sql module
-*          Mike Machado
-*          InnerCite
-*          mike@innercite.com
-*/
-
+/***************************************************************************
+*  rlm_sql.h                          rlm_sql - FreeRADIUS SQL Module      *
+*                                                                          *
+*      Header for main SQL module file                                     *
+*                                                                          *
+*                                     Mike Machado <mike@innercite.com>    *
+***************************************************************************/
 #include "sql_module.h"
 
 #define PW_VP_USERDATA		1

@@ -1,3 +1,10 @@
+/***************************************************************************
+*  rlm_sql.c                          rlm_sql - FreeRADIUS SQL Module      *
+*                                                                          *
+*      Main SQL module file. Most ICRADIUS code is located in sql.c        *
+*                                                                          *
+*                                     Mike Machado <mike@innercite.com>    *
+***************************************************************************/
 #include "autoconf.h"
 
 #include <stdio.h>
@@ -106,7 +113,7 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
                 return RLM_AUTZ_NOTFOUND;
         }
 
-        if (paircmp(request->packet->vps, check_tmp, reply_tmp) != 0) {
+        if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
 		DEBUG2("Pairs do not match [%s]", name);
 		return RLM_AUTZ_NOTFOUND;
 	}
@@ -150,6 +157,7 @@ static int rlm_sql_authenticate(REQUEST *request) {
 	char		query[] = "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'";
 
 	user = request->username->strvalue;
+	password = request->password->strvalue;
 
 	if ((auth_pair = pairfind(request->packet->vps, PW_AUTHTYPE)) == NULL)
 	   return RLM_AUTH_REJECT;

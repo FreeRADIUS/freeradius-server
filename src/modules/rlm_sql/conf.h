@@ -1,3 +1,10 @@
+/***************************************************************************
+*  conf.h                             rlm_sql - FreeRADIUS SQL Module      *
+*                                                                          *
+*      Configuration options for the SQL module                            *
+*                                                                          *
+*                                     Mike Machado <mike@innercite.com>    *
+***************************************************************************/
 #define CHECKRAD1		"/usr/sbin/checkrad"
 #define CHECKRAD2		"/usr/local/sbin/checkrad"
 

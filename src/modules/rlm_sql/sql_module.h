@@ -1,9 +1,10 @@
-/*
- * sql_module.h - MySQL header for FreeRADIUS SQL module
- *
- * Mike Machado <mike@innercite.com>
- */
-
+/***************************************************************************
+*  sql_module.h                       rlm_sql - FreeRADIUS SQL Module      *
+*                                                                          *
+*      MySQL headers for rlm_sql                                           *
+*                                                                          *
+*                                     Mike Machado <mike@innercite.com>    *
+***************************************************************************/
 #include	<mysql/mysql.h>
 #include	"conf.h"
 
