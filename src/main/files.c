@@ -265,7 +265,8 @@ parse_again:
 				 *	Parse the reply values
 				 */
 				parsecode = userparse(buffer, &reply_tmp);
-				if (parsecode < 0) {
+				/* valid tokens are 1 or greater */
+				if (parsecode < 1) {
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
 							"%s[%d]: Parse error (reply) for entry %s: %s",
