@@ -271,7 +271,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				nas_address = vp->lvalue;
 				ut.nas_address = vp->lvalue;
 				break;
-			case PW_NAS_PORT_ID:
+			case PW_NAS_PORT:
 				ut.nas_port = vp->lvalue;
 				port_seen = 1;
 				break;
@@ -407,11 +407,18 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	Perhaps we don't want to store this record into
 	 *	radutmp. We skip records:
 	 *
-	 *	- without a NAS-Port-Id (telnet / tcp access)
+	 *	- without a NAS-Port (telnet / tcp access)
 	 *	- with the username "!root" (console admin login)
 	 */
-	if (!port_seen ||
-	    (strncmp(ut.login, "!root", RUT_NAMESIZE) == 0)) {
+	if (!port_seen) {
+		DEBUG2("  rlm_radutmp: No NAS-Port seen.  Cannot do anything.");
+		DEBUG2("  rlm_radumtp: WARNING: checkrad will probably not work!");
+		return RLM_MODULE_NOOP;
+	}
+
+	if (strncmp(ut.login, "!root", RUT_NAMESIZE) == 0) {
+		DEBUG2("  rlm_radutmp: Not recording administrative user");
+
 		return RLM_MODULE_NOOP;
 	}
 
@@ -642,6 +649,12 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	 */
 	rad_lockfd(fd, LOCK_LEN);
 
+	/*
+	 *	FIXME: If we get a 'Start' for a user/nas/port which is
+	 *	listed, but for which we did NOT get a 'Stop', then
+	 *	it's not a duplicate session.  This happens with
+	 *	static IP's like DSL.
+	 */
 	request->simul_count = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
 		if (((strncmp(login, u.login, RUT_NAMESIZE) == 0) ||
