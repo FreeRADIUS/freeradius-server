@@ -21,13 +21,13 @@
 
 #include "autoconf.h"
 #include "libradius.h"
+#include "radiusd.h"
 #include "x99.h"
 
 #include <string.h>
 #include <openssl/des.h> /* des_cblock */
 #include <openssl/hmac.h>
 
-#include "radiusd.h"
 
 static const char rcsid[] = "$Id$";
 
@@ -81,7 +81,7 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
 	      const unsigned char key[16])
 {
     HMAC_CTX hmac_ctx;
-    unsigned char hmac[16];
+    unsigned char hmac[MD5_DIGEST_LENGTH];
     char *p;
     int i;
 
