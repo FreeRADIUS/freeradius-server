@@ -15,6 +15,9 @@ case "$1" in
 		chmod 644 /var/log/radwtmp
 		chown root:adm /var/log/radius.log
 	fi
+	[ -d /usr/doc -a ! -e /usr/doc/freeradius -a /usr/share/doc/freeradius ] && \
+		ln -sf ../share/doc/freeradius /usr/doc/freeradius
+	ldconfig
 	/etc/init.d/radiusd start
 	;;
   abort-upgrade)

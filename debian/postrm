@@ -5,6 +5,7 @@ case "$1" in
 		update-rc.d radiusd remove > /dev/null
 		;;
 	purge)
+		update-rc.d radiusd remove > /dev/null
 		rmdir /etc/raddb 2>/dev/null
 		cd /var/log
 		rm -f radius.log radius.log.0 radius.log.*.gz

@@ -3,9 +3,11 @@
 case "$1" in
   remove)
 	/etc/init.d/radiusd stop
+	[ -L /usr/doc/freeradius ] && rm -f /usr/doc/freeradius
 	;;
   upgrade)
 	/etc/init.d/radiusd stop
+	[ -L /usr/doc/freeradius ] && rm -f /usr/doc/freeradius
 	;;
   failed-upgrade)
 	;;

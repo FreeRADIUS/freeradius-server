@@ -1,16 +1,20 @@
-Source: radiusd-cistron
+Source: freeradius
 Section: net
 Priority: standard
-Maintainer: Miquel van Smoorenburg <miquels@cistron.nl>
-Standards-Version: 2.4.0.0
+Maintainer: Chad Miller <cmiller@surfsouth.com>
+Standards-Version: 3.2.1
 
-Package: radiusd-cistron
+Package: freeradius
 Architecture: any
 Depends: ${shlibs:Depends}
 Provides: radiusd
-Conflicts: radiusd, radiusd-livingston
-Description: Cistron version of Radius.
- This Radius server is based on the Livingston-1.16 server, but is largely
- compatible with the Livingston-2.01 server. Over radius-2.01, it has
- support for Exec-Program on authentication, it is possible to limit
- the number of concurrent logins reliably, and more.
+Conflicts: radiusd, radiusd-livingston, radiusd-cistron
+Description: A high-performance and highly configurable RADIUS server
+ A high-performance and highly configurable RADIUS server.  freeradius is 
+ similar to Livingston's 2.0 server, but has support for...
+  - many vendor-specific attributes
+  - proxying and replicating requests by any criteria
+  - authentication on system passwd, MySQL, LDAP, users, PAM
+  - multiple DEFAULT configurations
+  - regexp matching in string attributes
+ and lots more.

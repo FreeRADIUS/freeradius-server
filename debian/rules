@@ -1,6 +1,6 @@
 #! /usr/bin/make -f
 #
-#	debian/rules file for radiusd-cistron
+#	debian/rules file for freeradius
 #
 
 SHELL=/bin/bash
@@ -16,7 +16,8 @@ endef
 build:
 # Builds the binary package.
 	$(checkdir)
-	( cd src && make )
+	./configure --prefix=/ --exec_prefix='/usr' --infodir='$${exec_prefix}/share/info' --mandir='$${exec_prefix}/share/man' --with-datadir='$${exec_prefix}/share' --includedir='$$exec_prefix/include' --with-thread-pool --with-logdir='/var/log/radius'
+	make
 	touch build
 
 # Architecture independant files.
@@ -26,67 +27,36 @@ binary-indep:   build
 # Make a binary package (.deb file)
 binary-arch:	build checkroot
 	-rm -rf $(tmp)
-	install -d -g root -m 755 -o root $(tmp)
-	install -d -g root -m 755 -o root $(tmp)/{DEBIAN,usr,etc}
-	install -d -g root -m 755 -o root $(tmp)/etc/init.d
-	install -d -g root -m 755 -o root $(tmp)/etc/raddb
-	install -d -g root -m 755 -o root $(tmp)/usr/{doc,bin,sbin,man}
-	install -d -g root -m 755 -o root $(tmp)/usr/man/{man1,man5,man8}
-	install -d -g root -m 755 -o root $(tmp)/usr/doc/$(package)
-	install -d -g root -m 755 -o root $(tmp)/etc/cron.daily
-	install -d -g root -m 755 -o root $(tmp)/etc/cron.monthly
+	dh_installdirs
+	make install prefix=/ exec_prefix=/usr R=$(tmp)
+	for documented in man1/radlast.1 man5/acct_users.5 man8/builddbm.8; do \
+		chmod 644 $(tmp)/usr/share/man/$${documented}; \
+		gzip -9 $(tmp)/usr/share/man/$${documented}; \
+	done
+	dh_undocumented check-radiusd-config.1 checkrad.1 radiusd.1 radtest.1 radwatch.1 radwho.1 radzap.1
+	chmod 644 $(tmp)/usr/lib/*
+	#strip --strip-unneeded $(tmp)/usr/lib/*.{a,so.*}
+	dh_strip
 	#
-	install -g root -s -m 755 src/radiusd $(tmp)/usr/sbin/radiusd
-	install -g root -s -m 755 src/radzap $(tmp)/usr/bin
-	install -g root -s -m 755 src/radwho $(tmp)/usr/bin
-	install -g root -s -m 755 src/raduse $(tmp)/usr/bin
-	install -g root -m 755 src/radlast $(tmp)/usr/bin
-	install -g root -s -m 755 src/radtest $(tmp)/usr/bin
-	install -g root -m 755 scripts/radwatch $(tmp)/usr/sbin
-	install -g root -m 755 src/checkrad.pl $(tmp)/usr/sbin/checkrad
-	install -g root -m 755 scripts/rc.radiusd $(tmp)/etc/init.d/radiusd
-	install -g root -m 755 scripts/radiusd.cron.daily \
-		$(tmp)/etc/cron.daily/radiusd
-	install -g root -m 755 scripts/radiusd.cron.monthly \
-		$(tmp)/etc/cron.monthly/radiusd
-	perl -pi -e 's#/usr/local/sbin#/usr/sbin#' \
-		$(tmp)/usr/sbin/radwatch $(tmp)/etc/init.d/radiusd
-	#
-	install -g root -m 644 raddb/* $(tmp)/etc/raddb
-	chmod 640 $(tmp)/etc/raddb/users
-	chmod 640 $(tmp)/etc/raddb/clients
-	#
-	install -g root -m 644 doc/*.1 $(tmp)/usr/man/man1
-	install -g root -m 644 doc/*.5rad $(tmp)/usr/man/man5
-	install -g root -m 644 doc/radiusd.8 $(tmp)/usr/man/man8
-	install -g root -m 644 doc/radwatch.8 $(tmp)/usr/man/man8
-	##install -g root -m 644 doc/builddbm.8rad $(tmp)/usr/man/man8
-	gzip -9f $(tmp)/usr/man/man?/*
-	#
-	install -g root -m 644 debian/changelog \
-		$(tmp)/usr/doc/$(package)/changelog
-	install -g root -m 644 doc/README* \
-		$(tmp)/usr/doc/$(package)
-	gzip -9f $(tmp)/usr/doc/$(package)/*
-	cat COPYRIGHT.* > $(tmp)/usr/doc/$(package)/copyright
-	chown root:root $(tmp)/usr/doc/$(package)/copyright
-	chmod 644 $(tmp)/usr/doc/$(package)/copyright
-	#
-	install -g root -m 755 debian/postinst $(tmp)/DEBIAN
-	install -g root -m 755 debian/prerm $(tmp)/DEBIAN
-	install -g root -m 755 debian/postrm $(tmp)/DEBIAN
-	install -g root -m 644 debian/conffiles $(tmp)/DEBIAN
-	#
-	dpkg-shlibdeps src/radiusd
-	dpkg-gencontrol
+	install -g root -m 644 COPYRIGHT $(tmp)/usr/share/doc/freeradius/copyright
+	install -g root -m 644 CREDITS $(tmp)/usr/share/doc/freeradius/credits
+	rm $(tmp)/usr/sbin/rc.radiusd; install -g root -m 755 scripts/rc.radiusd $(tmp)/etc/init.d/radiusd
+	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/etc/cron.daily/radiusd
+	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/etc/cron.monthly/radiusd
+	dh_installdeb
+	dh_installchangelogs
+	dh_makeshlibs
+	dh_shlibdeps
+	dh_compress
+	dh_fixperms
+	dh_gencontrol
 	dpkg --build $(tmp) ..
 	rm -rf $(tmp)
 
 clean:	checkroot
-	( cd src && make clean )
+	[ -f Make.inc ] && make distclean || true
 	rm -f build debian/{files,substvars}
 	rm -rf $(tmp)
-	find . -name '*.bak' -o -name '*~' | xargs -r rm -f --
 
 binary: binary-indep binary-arch
 

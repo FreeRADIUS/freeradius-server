@@ -14,6 +14,7 @@
 /etc/raddb/naslist
 /etc/raddb/naspasswd
 /etc/raddb/users
+/etc/raddb/radiusd.conf
 /etc/raddb/realms
 /etc/init.d/radiusd
 /etc/cron.daily/radiusd
