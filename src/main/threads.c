@@ -451,7 +451,7 @@ static THREAD_HANDLE *spawn_thread(void)
  *	Allocate the thread pool, and seed it with an initial number
  *	of threads.
   */
-int thread_pool_init(int num_threads)
+int thread_pool_init(void)
 {
 	int i;
 	THREAD_HANDLE	*handle;
@@ -479,7 +479,7 @@ int thread_pool_init(int num_threads)
 	 *
 	 *	If we fail while creating them, do something intelligent.
 	 */
-	for (i = 0; i < num_threads; i++) {
+	for (i = 0; i < thread_pool.min_spare_threads; i++) {
 		handle = spawn_thread();
 		if (handle == NULL) {
 			return -1;
@@ -597,7 +597,7 @@ int thread_pool_clean(void)
 	}
 
 	spare = thread_pool.total_threads - active_threads;
-	DEBUG2("Threads: total/Active/Spare threads = %d/%d/%d",
+	DEBUG2("Threads: total/active/spare threads = %d/%d/%d",
 	       thread_pool.total_threads, active_threads, spare);
 
 	/*

@@ -577,7 +577,7 @@ int main(int argc, char **argv)
 	 *  This really should only be just after the 'setsid()', above.
 	 *  That way, we only create the thread pool for daemon mode.
 	 */
-	thread_pool_init(5);
+	thread_pool_init();
 #endif
 
 	/*
