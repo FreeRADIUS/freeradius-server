@@ -412,11 +412,14 @@ AC_CACHE_CHECK(for uint8_t,
 #endif
 ],
          [uint8_t foo],
-         fr_cv_uint8_t=yes,
-         AC_DEFINE(uint8_t, unsigned char)
+         fr_cv_uint8_t=yes
        )
      ]
 )
+
+if test "$fr_cv_uint8_t" != "yes"; then
+         AC_DEFINE(uint8_t, unsigned char)
+fi
 
 dnl Check for uint32_t
 AC_CACHE_CHECK(for uint32_t,
@@ -431,11 +434,15 @@ AC_CACHE_CHECK(for uint32_t,
 #endif
 ],
          [uint32_t foo],
-         fr_cv_uint32_t=yes,
-	 [AC_DEFINE(uint32_t, unsigned int) UINT32_T_AS_INT=yes]
+         fr_cv_uint32_t=yes
        )
      ]
 )
+
+if test "$fr_cv_uint32_t" != "yes"; then
+	AC_DEFINE(uint32_t, unsigned int)
+	UINT32_T_AS_INT=yes
+fi
 
 dnl #
 dnl #  If we don't have uint32_t, then verify that sizeof(unsigned int)==4
