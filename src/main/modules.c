@@ -714,7 +714,7 @@ int setup_modules(void)
 		 */
 		lt_dlsetsearchpath(radlib_dir);
 		
-		DEBUG2("modules: Library search path is %s",
+		DEBUG2("Module: Library search path is %s",
 		       lt_dlgetsearchpath());
 
 	} else {
