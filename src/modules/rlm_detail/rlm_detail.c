@@ -403,7 +403,7 @@ static int detail_detach(void *instance)
 /* globally exported name */
 module_t rlm_detail = {
 	"detail",
-	0,				/* type: reserved */
+	RLM_TYPE_THREAD_UNSAFE,        /* type: reserved */
 	NULL,				/* initialization */
 	detail_instantiate,		/* instantiation */
 	{
