@@ -479,10 +479,11 @@ static int gettime(const char *valstr, time_t *lvalue)
 	struct tm	*tm, s_tm;
 	char		buf[64];
 	char		*p;
-	char		*f[3];
+	char		*f[4];
 
-	time(&t);
-	tm = localtime_r(&t, &s_tm);
+	tm = &s_tm;
+	memset(tm, 0, sizeof(*tm));
+	tm->tm_isdst = -1;	/* don't know, and don't care about DST */
 
 	strNcpy(buf, valstr, sizeof(buf));
 
@@ -490,6 +491,7 @@ static int gettime(const char *valstr, time_t *lvalue)
 	f[0] = mystrtok(&p, " \t");
 	f[1] = mystrtok(&p, " \t");
 	f[2] = mystrtok(&p, " \t");
+	f[3] = mystrtok(&p, " \t"); /* may, or may not, be present */
 	if (!f[0] || !f[1] || !f[2]) return -1;
 
 	/*
@@ -546,6 +548,25 @@ static int gettime(const char *valstr, time_t *lvalue)
 	 */
 	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
 		return -1;
+	}
+
+	/*
+	 *	There may be %H:%M:%S.  Parse it in a hacky way.
+	 */
+	if (f[3]) {
+		f[0] = f[3];	/* HH */
+		f[1] = strchr(f[0], ':'); /* find : separator */
+		if (!f[1]) return -1;
+
+		*(f[1]++) = '\0'; /* nuke it, and point to MM:SS */
+
+		f[2] = strchr(f[1], ':'); /* find : separator */
+		if (!f[2]) return -1;
+		*(f[2]++) = '\0';	/* nuke it, and point to SS */
+
+		tm->tm_hour = atoi(f[0]);
+		tm->tm_min = atoi(f[1]);
+		tm->tm_sec = atoi(f[2]);
 	}
 
 	/*
