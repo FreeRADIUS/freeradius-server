@@ -93,7 +93,7 @@ ifneq ($(USE_SHARED_LIBS),yes)
 LINK_MODE=-static
 endif
 
-$(TARGET)-$(RADIUSD_VERSION).la: $(DYNAMIC_OBJS)
+$(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	-module $(LINK_MODE) $(CFLAGS) $(RLM_CFLAGS) $(RLM_LDFLAGS) \
 	-o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
@@ -111,7 +111,7 @@ static: $(TARGET).a  $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=static common
 	@cp $< $(top_builddir)/src/modules/lib
 
-dynamic: $(TARGET)-$(RADIUSD_VERSION).la $(RLM_UTILS)
+dynamic: $(TARGET).la $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=dynamic common
 	@cp $< $(top_builddir)/src/modules/lib
 
@@ -153,5 +153,6 @@ reconfig:
 #  Otherwise, install the libraries into $(libdir)
 #
 install:
-	[ "x$(TARGET)" = "x" ] || $(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET)-$(RADIUSD_VERSION).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
+	[ "x$(TARGET)" = "x" ] || $(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la $(R)$(libdir)/$(TARGET).la
+	ln -sf $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
 	@[ "x$(RLM_INSTALL)" = "x" ] || $(MAKE) $(MFLAGS) $(RLM_INSTALL)
