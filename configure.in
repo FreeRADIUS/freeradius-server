@@ -70,8 +70,8 @@ dnl esyscmd([find src/modules -type d -name rlm_\* -print |\
 dnl 	sed -e 's%src/modules/.*/% (sub)- %; s%.*/%- %' |\
 dnl 	awk '{print "                            "$0}']))
 
-AC_ARG_ENABLE(strict-dependancies,
-[  --enable-strict-dependancies  Fail configure on lack of module dependancy.])
+AC_ARG_ENABLE(strict-dependencies,
+[  --enable-strict-dependencies  Fail configure on lack of module dependancy.])
 
 AC_ARG_WITH(fooincludedir,
 [  --with-FOO-include-dir=DIR   Dir for includes for FOO, module dependancy.])

@@ -28,7 +28,7 @@ fi
 
 dnl  Don't change this.
 if test x"$fail" != x""; then
-	if test x"${enable_strict_dependancies}" = x"yes"; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])

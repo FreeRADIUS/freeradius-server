@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.1 
+# From configure.in Revision: 1.2 
 
 
 if test x$with_rlm_counter != xno; then
@@ -575,7 +575,7 @@ else
 fi
 
 if test x"$fail" != x""; then
-	if test x"${enable_strict_dependancies}" = x"yes"; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
 		{ echo "configure: error: set --without-rlm_counter to disable it explicitly." 1>&2; exit 1; }
 	else
 		echo "configure: warning: silently not building rlm_counter." 1>&2
