@@ -84,11 +84,21 @@
 2.  INSTALLATION
 
     You'll need to have openssl, <http://www.openssl.org/>, installed.
-    I am using 0.9.6b, but I suspect this module will work with all versions.
+    I am using 0.9.6b, but I suspect this module will work with all
+    versions.
 
-    You will also need /dev/urandom available.  AFAIK, this is available on
-    Linux and *BSD.  For Solaris, you'll need to install the SUNWski
-    package (look on SunSolve).  Information for other OS's is welcome.
+    You will also need /dev/urandom available.  AFAIK, this is available
+    on all Linux and *BSD.  For Solaris < 9, you'll need to install the
+    SUNWski or ANDIrand package (look at SunSolve doc 27606).  The easiest
+    way to get SUNWski is to download one of these patches:
+	- 105710-01 (sparc, intl),
+	- 106754-01 (sparc, us),
+	- 106755-01 (x86, intl), or
+	- 106756-01 (x86, us).
+    106756-01 seems to be broken as of this writing (download includes
+    just the README).  After installing SUNWski, you need to create a
+    symlink /dev/urandom -> /dev/random.  Note that SUNWski only works
+    with the 32-bit kernel.  Information for other OS's is welcome.
 
     This module will only work on ILP32 machines, so if you build it
     as 64-bit under Solaris, you'll find that it fails at runtime.
@@ -98,8 +108,8 @@
     has a need to run on those platforms.
 
     You'll also need to write a site-specific challenge transform in order
-    to use async mode.  You will almost certainly need async mode, to sync
-    the user's token with the server initially.  More on this below.
+    to use async mode.  You might need async mode to sync the user's token
+    with the server initially.  More on this below.
 
 
 3.  END-USER OPERATION
