@@ -43,7 +43,7 @@ static int leap_initiate(void *instance, EAP_HANDLER *handler)
 
 	DEBUG2("  rlm_eap_leap: Stage 2");
 	
-	reply = eapleap_initiate(handler->eap_ds, handler->username);
+	reply = eapleap_initiate(handler->eap_ds, handler->request->username);
 	if (reply == NULL)
 		return 0;
 
@@ -100,7 +100,7 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 	if (!(packet = eapleap_extract(handler->eap_ds)))
 		return 0;
 
-	username = (char *)handler->username->strvalue;
+	username = (char *)handler->request->username->strvalue;
 
 	/*
 	 *	The password is never sent over the wire.
@@ -155,7 +155,7 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 	case 6:			/* Issue session key */
 		DEBUG2("  rlm_eap_leap: Stage 6");
 		reply = eapleap_stage6(packet, handler->request,
-				       handler->username, password,
+				       handler->request->username, password,
 				       session, &handler->request->reply->vps);
 		break;
 
