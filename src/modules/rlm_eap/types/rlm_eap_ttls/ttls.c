@@ -39,13 +39,15 @@
 /*
  *	Verify that the diameter packet is valid.
  */
-static int diameter_verify(const uint8_t *data, int data_len)
+static int diameter_verify(const uint8_t *data, unsigned int data_len)
 {
 	uint32_t attr;
 	uint32_t length;
 	unsigned int offset;
+	unsigned int data_left = data_len;
 
-	while (data_len > 0) {
+	while (data_left > 0) {
+		rad_assert(data_left <= data_len);
 		memcpy(&attr, data, sizeof(attr));
 		data += 4;
 		attr = ntohl(attr);
@@ -108,10 +110,18 @@ static int diameter_verify(const uint8_t *data, int data_len)
 		 *
 		 *	FIXME: EAP-Message
 		 */
-		if ((length < offset) ||
-		    (length > (MAX_STRING_LEN + 8)) ||
-		    (length > data_len)) {
-			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d has invalid length %d", attr, length);
+		if (length < offset) {
+			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is too short (%d)to contain anything useful.", attr, length);
+			return 0;
+		}
+
+		if (length > (MAX_STRING_LEN + 8)) {
+			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is too long (%d) to pack into a RADIUS attribute.", attr, length);
+			return 0;
+		}
+		    
+		if (length > data_left) {
+			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is longer than room left in the packet (%d > %d).", attr, length, data_left);
 			return 0;
 		}
 
@@ -119,7 +129,7 @@ static int diameter_verify(const uint8_t *data, int data_len)
 		 *	Check for broken implementations, which don't
 		 *	pad the AVP to a 4-octet boundary.
 		 */
-		if (data_len == length) break;
+		if (data_left == length) break;
 
 		/*
 		 *	The length does NOT include the padding, so
@@ -136,17 +146,22 @@ static int diameter_verify(const uint8_t *data, int data_len)
 		 *	Otherwise, if the attribute over-flows the end
 		 *	of the packet, die.
 		 */
-		if (data_len > length) {
-			data_len -= length;
-			data += length - offset;
-
-		} else if (data_len < length) {
+		if (data_left < length) {
 			DEBUG2("  rlm_eap_ttls: ERROR! Diameter attribute overflows packet!");
 			return 0;
-
-		} else {	/* equal, end of packet... */
-			break;
 		}
+	
+		/*
+		 *	Check again for equality, now that we're padded
+		 *	length to a multiple of 4 octets.
+		 */
+		if (data_left == length) break;
+
+		/*
+		 *	data_left > length, continue.
+		 */
+		data_left -= length;
+		data += length - offset;
 	}
 
 	/*
@@ -164,13 +179,15 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 {
 	uint32_t	attr;
 	uint32_t	length;
-	int		offset;
+	unsigned int	offset;
 	int		size;
+	unsigned int	data_left = data_len;
 	VALUE_PAIR	*first = NULL;
 	VALUE_PAIR	**last = &first;
 	VALUE_PAIR	*vp;
 
-	while (data_len > 0) {
+	while (data_left > 0) {
+		rad_assert(data_left <= data_len);
 		memcpy(&attr, data, sizeof(attr));
 		data += 4;
 		attr = ntohl(attr);
@@ -234,29 +251,29 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		switch (vp->type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
-		  if (size != vp->length) {
-		    DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
-			   attr);
-			pairfree(&first);
-			return NULL;
-		  }
-		  memcpy(&vp->lvalue, data, vp->length);
-
-		  /*
-		   *	Stored in host byte order: change it.
-		   */
-		  vp->lvalue = ntohl(vp->lvalue);
-		  break;
-
+			if (size != vp->length) {
+				DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
+				       attr);
+				pairfree(&first);
+				return NULL;
+			}
+			memcpy(&vp->lvalue, data, vp->length);
+			
+			/*
+			 *	Stored in host byte order: change it.
+			 */
+			vp->lvalue = ntohl(vp->lvalue);
+			break;
+			
 		case PW_TYPE_IPADDR:
-		  if (size != vp->length) {
-		    DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
-			   attr);
-		    pairfree(&first);
-		    return NULL;
-		  }
+			if (size != vp->length) {
+				DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
+				       attr);
+				pairfree(&first);
+				return NULL;
+			}
 		  memcpy(&vp->lvalue, data, vp->length);
-
+		  
 		  /*
 		   *	Stored in network byte order: don't change it.
 		   */
@@ -270,9 +287,9 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		   *
 		   */
 		default:
-		  vp->length = size;
-		  memcpy(vp->strvalue, data, vp->length);
-		  break;
+			vp->length = size;
+			memcpy(vp->strvalue, data, vp->length);
+			break;
 		}
 
 		/*
@@ -285,16 +302,14 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		 */
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD:
-			{
-				int i;
+			rad_assert(vp->length <= 128); /* RFC requirements */
 
-				for (i = 0; i < vp->length; i++) {
-					if (vp->strvalue[i] == 0) {
-						vp->length = i;
-						break;
-					}
-				}
-			}
+			/*
+			 *	If the password is exactly 16 octets,
+			 *	it won't be zero-terminated.
+			 */
+			vp->strvalue[vp->length] = '\0';
+			vp->length = strlen(vp->strvalue);
 			break;
 
 			/*
@@ -355,6 +370,11 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		last = &(vp->next);
 
 		/*
+		 *	Catch non-aligned attributes.
+		 */
+		if (data_left == length) break;
+
+		/*
 		 *	The length does NOT include the padding, so
 		 *	we've got to account for it here by rounding up
 		 *	to the nearest 4-byte boundary.
@@ -362,7 +382,8 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		length += 0x03;
 		length &= ~0x03;
 
-		data_len -= length;
+		rad_assert(data_left >= length);
+		data_left -= length;
 		data += length - offset; /* already updated */
 	}
 
@@ -489,7 +510,7 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		 *	Align the data to a multiple of 4 bytes.
 		 */
 		if ((total & 0x03) != 0) {
-			int i;
+			unsigned int i;
 
 			length = total & 0x03;
 			for (i = 0; i < length; i++) {
@@ -503,10 +524,9 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 	/*
 	 *	Write the data in the buffer to the SSL session.
 	 */
-
 	if (total > 0) {
 #ifndef NDEBUG
-		int i;
+		unsigned int i;
 
 		if (debug_flag > 2) {
 			for (i = 0; i < total; i++) {
@@ -543,6 +563,8 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	int rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;
 	ttls_tunnel_t *t = tls_session->opaque;
+
+	handler = handler;	/* -Wunused */
 
 	/*
 	 *	If the response packet was Access-Accept, then
@@ -751,7 +773,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
  */
 int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 {
-	int i, err;
+	int err;
 	int rcode = PW_AUTHENTICATION_REJECT;
 	REQUEST *fake;
 	VALUE_PAIR *vp;
@@ -823,6 +845,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 #ifndef NDEBUG
 	if (debug_flag > 2) {
+		unsigned int i;
+
 		for (i = 0; i < data_len; i++) {
 			if ((i & 0x0f) == 0) printf("  TTLS tunnel data in %04x: ", i);
 
@@ -834,7 +858,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 #endif
 
-	if (!diameter_verify(data, (int) data_len)) {
+	if (!diameter_verify(data, data_len)) {
 		return PW_AUTHENTICATION_REJECT;
 	}
 
@@ -863,11 +887,11 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 #ifndef NDEBUG
 	if (debug_flag > 0) {
-	  printf("  TTLS: Got tunneled request\n");
-
-	  for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
-	    putchar('\t');vp_print(stdout, vp);putchar('\n');
-	  }
+		printf("  TTLS: Got tunneled request\n");
+		
+		for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
+			putchar('\t');vp_print(stdout, vp);putchar('\n');
+		}
 	}
 #endif
 
