@@ -16,6 +16,10 @@
  * OpenLDAP SDK is not thread safe when used with shared LDAP connection. -
  * Added configuration option for defining LDAP attribute of user object,
  * which controls remote access.
+ *
+ * 16 Feb 2001, Hannu Laurila <hannu.laurila@japo.fi>
+ *  - LDAP<->RADIUS attribute mappings are now read from a file
+ *  - Support for generic RADIUS check and reply attribute.
  */
 static const char rcsid[] = "$Id$";
 
@@ -49,17 +53,13 @@ static const char rcsid[] = "$Id$";
 #define MAX_AUTH_QUERY_LEN      256
 #define TIMELIMIT 5
 
-typedef struct {
-	const char     *attr;
-	const char     *radius_attr;
-}               TLDAP_RADIUS;
-
-static char    *make_filter(char *, char *);
-#ifdef FIELDCPY
-static void     fieldcpy(char *, char **);
-#endif
-static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *);
-static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *);
+/* linked list of mappings between RADIUS attributes and LDAP attributes */
+struct TLDAP_RADIUS {
+	char*                 attr;
+	char*                 radius_attr;
+	struct TLDAP_RADIUS*  next;
+};
+typedef struct TLDAP_RADIUS TLDAP_RADIUS;
 
 #define MAX_SERVER_LINE 1024
 /*
@@ -83,8 +83,12 @@ typedef struct {
 	char           *basedn;
 	char           *access_group;
 	char           *access_attr;
+	char           *dictionary_mapping;
+	TLDAP_RADIUS   *check_item_map;
+	TLDAP_RADIUS   *reply_item_map;
 	LDAP           *ld;
 	int             bound;
+	int             ldap_debug; /* Debug flag for LDAP SDK */
 }               ldap_instance;
 
 static CONF_PARSER module_config[] = {
@@ -104,8 +108,9 @@ static CONF_PARSER module_config[] = {
 	{"access_group", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_group), NULL, NULL},
 	/* LDAP attribute name that controls remote access */
 	{"access_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_attr), NULL, NULL},
-	/* cache size limited only by TTL */
-	/* cache objects TTL 30 secs */
+	/* file with mapping between LDAP and RADIUS attributes */
+	{"dictionary_mapping", PW_TYPE_STRING_PTR, offsetof(ldap_instance,dictionary_mapping), NULL, "${confdir}/ldap.attrmap"},
+	{"ldap_debug", PW_TYPE_INTEGER, offsetof(ldap_instance,ldap_debug), NULL, "0x0000"},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -114,48 +119,13 @@ static CONF_PARSER module_config[] = {
 #define LDAP_VALID_SESSION      0x2
 #define LDAP_VALID(ld)  ( (ld)->ld_valid == LDAP_VALID_SESSION )
 
-/*
- * Mappings of LDAP radius* attributes to RADIUS attributes
- * 
- * Hmm... these should really be read in from the configuration file
- */
-static TLDAP_RADIUS check_item_map[] = {
-	{"radiusAuthType", "Auth-Type"},
-	{"npSessionsAllowed", "Simultaneous-Use"},
-	{NULL, NULL}
-};
-static TLDAP_RADIUS reply_item_map[] = {
-	{"radiusServiceType", "Service-Type"},
-	{"radiusFramedProtocol", "Framed-Protocol"},
-	{"radiusFramedIPAddress", "Framed-IP-Address"},
-	{"radiusFramedIPNetmask", "Framed-IP-Netmask"},
-	{"radiusFramedRoute", "Framed-Route"},
-	{"radiusFramedRouting", "Framed-Routing"},
-	{"radiusFilterId", "Filter-Id"},
-	{"radiusFramedMTU", "Framed-MTU"},
-	{"radiusFramedCompression", "Framed-Compression"},
-	{"radiusLoginIPHost", "Login-IP-Host"},
-	{"radiusLoginService", "Login-Service"},
-	{"radiusLoginTCPPort", "Login-TCP-Port"},
-	{"radiusCallbackNumber", "Callback-Number"},
-	{"radiusCallbackId", "Callback-Id"},
-	{"radiusFramedIPXNetwork", "Framed-IPX-Network"},
-	{"radiusClass", "Class"},
-	{"radiusSessionTimeout", "Session-Timeout"},
-	{"radiusIdleTimeout", "Idle-Timeout"},
-	{"radiusTerminationAction", "Termination-Action"},
-	{"radiusCalledStationId", "Called-Station-Id"},
-	{"radiusCallingStationId", "Calling-Station-Id"},
-	{"radiusLoginLATService", "Login-LAT-Service"},
-	{"radiusLoginLATNode", "Login-LAT-Node"},
-	{"radiusLoginLATGroup", "Login-LAT-Group"},
-	{"radiusFramedAppleTalkLink", "Framed-AppleTalk-Link"},
-	{"radiusFramedAppleTalkNetwork", "Framed-AppleTalk-Network"},
-	{"radiusFramedAppleTalkZone", "Framed-AppleTalk-Zone"},
-	{"radiusPortLimit", "Port-Limit"},
-	{"radiusLoginLATPort", "Login-LAT-Port"},
-	{NULL, NULL}
-};
+static char    *make_filter(char *, char *);
+#ifdef FIELDCPY
+static void     fieldcpy(char *, char **);
+#endif
+static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *);
+static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *);
+static int     read_mappings(ldap_instance* inst);
 
 /*************************************************************************
  *
@@ -180,10 +150,113 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->net_timeout.tv_usec = 0;
 	inst->tls_mode = LDAP_OPT_X_TLS_TRY;
 	inst->bound = 0;
+	inst->reply_item_map = NULL;
+	inst->check_item_map = NULL;
 	
+	if (read_mappings(inst) != 0) {
+		radlog(L_ERR, "rlm_ldap: Reading dictionary mappings from file %s failed",
+		       inst->dictionary_mapping);
+		radlog(L_ERR, "rlm_ldap: Proceeding with no mappings");
+	}
+
 	*instance = inst;
 
 	return 0;
+}
+
+/*
+ * read_mappings(...) reads a ldap<->radius mappings file to inst->reply_item_map and inst->check_item_map
+ */
+
+#define MAX_LINE_LEN 160
+#define GENERIC_ATTRIBUTE_ID "$GENERIC$"
+
+static int
+read_mappings(ldap_instance* inst)
+{
+	FILE* mapfile;
+	char *filename;
+	/* all buffers are of MAX_LINE_LEN so we can use sscanf without being afraid of buffer overflows */
+	char buf[MAX_LINE_LEN], itemType[MAX_LINE_LEN], radiusAttribute[MAX_LINE_LEN], ldapAttribute[MAX_LINE_LEN];
+	int linenumber;
+
+	/* open the mappings file for reading */
+
+	filename = inst->dictionary_mapping;
+	DEBUG("rlm_ldap: reading ldap<->radius mappings from file %s", filename);
+	mapfile = fopen(filename, "r");
+
+	if (mapfile == NULL) {
+		radlog(L_ERR, "rlm_ldap: Opening file %s failed", filename);
+		return -1; /* error */
+	}
+
+	/* read file line by line. Note that if line length exceed MAX_LINE_LEN, line numbers will be mixed up */
+
+	linenumber = 0;
+
+	while (fgets(buf, sizeof buf, mapfile)!=NULL) {
+		char* ptr;
+		int token_count;
+		TLDAP_RADIUS* pair;
+
+		linenumber++;
+
+		/* strip comments */
+		ptr = strchr(buf, '#');
+		if (ptr) *ptr = 0;
+		
+		/* empty line */
+		if (buf[0] == 0) continue;
+		
+		/* extract tokens from the string */		
+		token_count = sscanf(buf, "%s %s %s", itemType, radiusAttribute, ldapAttribute);
+
+		if (token_count <= 0) /* no tokens */			
+			continue;
+
+		if (token_count != 3) {
+			radlog(L_ERR, "rlm_ldap: Skipping %s line %i: %s", filename, linenumber, buf);
+			radlog(L_ERR, "rlm_ldap: Expected 3 tokens "
+			       "(Item type, RADIUS Attribute and LDAP Attribute) but found only %i", token_count);
+			continue;
+		}
+
+		/* create new TLDAP_RADIUS list node */
+		pair = rad_malloc(sizeof(TLDAP_RADIUS));
+
+		pair->attr = strdup(ldapAttribute);
+		pair->radius_attr = strdup(radiusAttribute);
+
+		if ( (pair->attr == NULL) || (pair->radius_attr == NULL) ) {
+			radlog(L_ERR, "rlm_ldap: Out of memory");
+			fclose(mapfile);
+			return -1;
+		}
+			
+		/* push node to correct list */
+		if (strcasecmp(itemType, "checkItem") == 0) {
+			pair->next = inst->check_item_map;
+			inst->check_item_map = pair;
+		} else if (strcasecmp(itemType, "replyItem") == 0) {
+			pair->next = inst->reply_item_map;
+			inst->reply_item_map = pair;
+		} else {
+			radlog(L_ERR, "rlm_ldap: file %s: skipping line %i: unknown itemType %s", 
+			       filename, linenumber, itemType);
+			free(pair->attr);
+			free(pair->radius_attr);
+			free(pair);
+			continue;
+		}
+
+		DEBUG("rlm_ldap: LDAP %s mapped to RADIUS %s",
+		      pair->attr, pair->radius_attr);
+	}
+	
+	fclose(mapfile);
+
+	return 0; /* success */
 }
 
 static int 
@@ -326,7 +399,7 @@ ldap_authorize(void *instance, REQUEST * request)
 		}
 	}
 	DEBUG("rlm_ldap: looking for check items in directory...");
-	if ((check_tmp = ldap_pairget(inst->ld, msg, check_item_map)) != NULL)
+	if ((check_tmp = ldap_pairget(inst->ld, msg, inst->check_item_map)) != NULL)
 		pairadd(check_pairs, check_tmp);
 
 
@@ -345,7 +418,7 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
 
-	if ((reply_tmp = ldap_pairget(inst->ld, msg, reply_item_map)) != NULL)
+	if ((reply_tmp = ldap_pairget(inst->ld, msg, inst->reply_item_map)) != NULL)
 		pairadd(reply_pairs, reply_tmp);
 
 	DEBUG("rlm_ldap: user %s authorized to use remote access", name);
@@ -441,8 +514,8 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	if (inst->timelimit != -1 && ldap_set_option(ld, LDAP_OPT_TIMELIMIT, (void *) &(inst->timelimit)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_TIMELIMIT %d", inst->timelimit);
 	}
-	if (inst->debug && ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &(inst->debug)) != LDAP_OPT_SUCCESS) {
-		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", inst->debug);
+	if (inst->ldap_debug && ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &(inst->ldap_debug)) != LDAP_OPT_SUCCESS) {
+		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", inst->ldap_debug);
 	}
 #ifdef HAVE_TLS
 	if (inst->tls_mode && ldap_set_option(ld, LDAP_OPT_X_TLS, (void *) &(inst->tls_mode)) != LDAP_OPT_SUCCESS) {
@@ -502,6 +575,7 @@ static int
 ldap_detach(void *instance)
 {
 	ldap_instance  *inst = instance;
+	TLDAP_RADIUS *pair, *nextpair;
 
 	if (inst->server)
 		free((char *) inst->server);
@@ -513,10 +587,32 @@ ldap_detach(void *instance)
 		free((char *) inst->basedn);
 	if (inst->access_group)
 		free((char *) inst->access_group);
+	if (inst->dictionary_mapping)
+		free(inst->dictionary_mapping);
 	if (inst->filter)
 		free((char *) inst->filter);
 	if (inst->ld)
 		ldap_memfree(inst->ld);
+
+	pair = inst->check_item_map;
+	
+	while (pair != NULL) {
+		nextpair = pair->next;
+		free(pair->attr);
+		free(pair->radius_attr);
+		free(pair);
+		pair = nextpair;
+	}
+
+	pair = inst->reply_item_map;
+
+	while (pair != NULL) {
+		nextpair = pair->next;
+		free(pair->attr);
+		free(pair->radius_attr);
+		free(pair);
+		pair = nextpair;
+	}
 
 	free(inst);
 
@@ -634,6 +730,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	char           *ptr;
 	TLDAP_RADIUS   *element;
 	int             token;
+	int             is_generic_attribute;
 	char            value[64];
 	VALUE_PAIR     *pairlist;
 	VALUE_PAIR     *newpair = NULL;
@@ -643,7 +740,8 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 		return NULL;
 	}
 	do {
-		for (element = item_map; element->attr != NULL; element++) {
+		/* check if there is a mapping from this LDAP attribute to a RADIUS attribute */
+		for (element = item_map; element != NULL; element = element->next) {
 			if (!strcasecmp(attr, element->attr)) {
                                 /* mapping found, get the values */
 				if (((vals = ldap_get_values(ld, entry, attr)) == NULL)) {
@@ -651,28 +749,53 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
                                         break;
                                 }
 
+
+				/* check whether this is a one-to-one-mapped ldap attribute or a generic
+				   attribute and set flag accordingly */
+
+				if (strcasecmp(element->radius_attr, GENERIC_ATTRIBUTE_ID)==0)
+					is_generic_attribute = 1;
+				else
+					is_generic_attribute = 0;
+					
                                 /* find out how many values there are for the attribute and extract all of them */
 
                                 vals_count = ldap_count_values(vals);
 
                                 for (vals_idx = 0; vals_idx < vals_count; vals_idx++) {
                                         ptr = vals[vals_idx];
-
-                                        token = gettoken(&ptr, value, sizeof(value));
-                                        if (token < T_EQSTART || token > T_EQEND) {
-                                                token = T_OP_EQ;
-                                        } else {
-                                                gettoken(&ptr, value, sizeof(value));
-                                        }
-                                        if (value[0] == 0) {
-                                                DEBUG("rlm_ldap: Attribute %s has no value", attr);
-                                                break;
-                                        }
-                                        DEBUG("rlm_ldap: Adding %s as %s, value %s & op=%d", attr, element->radius_attr, value, token);
-                                        if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
-                                                continue;
-                                        pairadd(&pairlist, newpair);
-                                }
+					
+					if (is_generic_attribute) {
+						/* this is a generic attribute */
+						int dummy; /* makes pairread happy */
+						
+						/* not sure if using pairread here is ok ... */
+						if ( (newpair = pairread(&ptr, &dummy)) != NULL) {
+							DEBUG("rlm_ldap: extracted attribute %s from generic item %s", 
+							      newpair->name, vals[vals_idx]);
+							pairadd(&pairlist, newpair);
+						} else {
+							radlog(L_ERR, "rlm_ldap: parsing %s failed: %s", 
+							       attr, vals[vals_idx]);
+						}
+					} else {
+						/* this is a one-to-one-mapped attribute */
+						token = gettoken(&ptr, value, sizeof(value));
+						if (token < T_EQSTART || token > T_EQEND) {
+							token = T_OP_EQ;
+						} else {
+							gettoken(&ptr, value, sizeof(value));
+						}
+						if (value[0] == 0) {
+							DEBUG("rlm_ldap: Attribute %s has no value", attr);
+							break;
+						}
+						DEBUG("rlm_ldap: Adding %s as %s, value %s & op=%d", attr, element->radius_attr, value, token);
+						if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
+							continue;
+						pairadd(&pairlist, newpair);
+					}
+				}
                                 ldap_value_free(vals);
                         }
 		}
