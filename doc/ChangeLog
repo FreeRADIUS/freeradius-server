@@ -2,6 +2,8 @@ FreeRADIUS 1.0.0 ; Date: $Date$, urgency=low
 	* EAP-TTLS support in rlm_eap
 	* Fix compilation of rlm_counter when not building with pthreads
 	* Fix segfault due to poorly initialised value in rlm_mschap
+	* Added support for rejected packets to run an Post-Auth-Type REJECT
+	  stanza instead of skipping post-auth entirely.
 
 FreeRADIUS 0.9.1 ; Date: 2003/09/04 14:56:34, urgency=low
 

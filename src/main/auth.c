@@ -376,6 +376,53 @@ int rad_check_password(REQUEST *request)
 }
 
 /*
+ *	Post-authentication step processes the response before it is
+ *	sent to the NAS. It can receive both Access-Accept and Access-Reject
+ *	replies.
+ */
+static int rad_postauth(REQUEST *request)
+{
+	int	result;
+	int	postauth_type = 0;
+	VALUE_PAIR	*postauth_type_item = NULL;
+
+	/*
+	 *	Do post-authentication calls. ignoring the return code.
+	 */
+	postauth_type_item = pairfind(request->config_items, PW_POST_AUTH_TYPE);
+	if (postauth_type_item)
+		postauth_type = postauth_type_item->lvalue;
+	result = module_post_auth(postauth_type, request);
+	switch (result) {
+	default:
+	  break;
+	  
+	  /*
+	   *	The module failed, or said to reject the user: Do so.
+	   */
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_INVALID:
+	  request->reply->code = PW_AUTHENTICATION_REJECT;
+	  result = RLM_MODULE_REJECT;
+	  break;
+
+	  /*
+	   *	The module had a number of OK return codes.
+	   */
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_NOOP:
+	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_OK:
+	case RLM_MODULE_HANDLED:
+	  result = RLM_MODULE_OK;
+	  break;
+	}
+	return result;
+}
+
+/*
  *	Process and reply to an authentication request
  *
  *	The return value of this function isn't actually used right now, so
@@ -390,7 +437,6 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	VALUE_PAIR	*autz_type_item = NULL;
-	VALUE_PAIR	*postauth_type_item = NULL;
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
 	const char	*user_msg = NULL;
@@ -401,7 +447,6 @@ int rad_authenticate(REQUEST *request)
 	char		buf[1024], logstr[1024];
 	char		autz_retry = 0;
 	int		autz_type = 0;
-	int		postauth_type = 0;
 
 	password = "";
 
@@ -708,9 +753,22 @@ autz_redo:
 	}
 
 	/*
-	 *	Result should be >= 0 here - if not, we return.
+	 *	Result should be >= 0 here - if not, it means the user
+	 *	is rejected, so we overwrite the Post-Auth-Type with
+	 *	the value REJECT and cal the post-authentication
+	 *	step.
 	 */
 	if (result < 0) {
+		DICT_VALUE *dval;
+
+		dval = dict_valbyname(PW_POST_AUTH_TYPE, "REJECT");
+		if (dval) {
+			pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
+			tmp = paircreate(POW_POST_AUTH_TYPE, PW_TYPE_INTEGER);
+			tmp->lvalue = dval->value;
+			pairadd(&request->config_items, tmp);
+			rad_postauth(request);
+		}
 		return RLM_MODULE_OK;
 	}
 
@@ -888,40 +946,7 @@ autz_redo:
 	if (exec_program) 
 		free(exec_program);
 
-	/*
-	 *	Do post-authentication calls. ignoring the return code.
-	 *	If the post-authentication
-	 */
-	postauth_type_item = pairfind(request->config_items, PW_POST_AUTH_TYPE);
-	if (postauth_type_item)
-		postauth_type = postauth_type_item->lvalue;
-	result = module_post_auth(postauth_type, request);
-	switch (result) {
-	default:
-	  break;
-	  
-	  /*
-	   *	The module failed, or said to reject the user: Do so.
-	   */
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
-	case RLM_MODULE_INVALID:
-	  request->reply->code = PW_AUTHENTICATION_REJECT;
-	  result = RLM_MODULE_REJECT;
-	  break;
-
-	  /*
-	   *	The module had a number of OK return codes.
-	   */
-	case RLM_MODULE_NOTFOUND:
-	case RLM_MODULE_NOOP:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_OK:
-	case RLM_MODULE_HANDLED:
-	  result = RLM_MODULE_OK;
-	  break;
-	}
+	result = rad_postauth(request);
 
 	return result;
 }
