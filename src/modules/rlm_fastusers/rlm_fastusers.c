@@ -52,7 +52,7 @@ struct fastuser_instance {
 	long hashsize;
 	PAIR_LIST **hashtable;
 	PAIR_LIST *defaults;
-	int normal_defaults;
+	int stats;
 
 	char *usersfile;
 	time_t next_reload;
@@ -67,6 +67,7 @@ static int fastuser_hash(const char *s, long hashtablesize);
 static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *entry, int idx);
 static PAIR_LIST *fastuser_find(PAIR_LIST **hashtable, const char *user,
 															long hashsize);
+static void fastuser_tablestats(PAIR_LIST **hashtable, long size);
 
 /*
  *	A temporary holding area for config values to be extracted
@@ -77,6 +78,7 @@ static struct fastuser_instance config;
 static CONF_PARSER module_config[] = {
 	{ "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, "${raddbdir}/users_fast" },
 	{ "hashsize",     PW_TYPE_INTEGER, &config.hashsize, "100000" },
+	{ "stats",     PW_TYPE_BOOLEAN, &config.stats, "no" },
 	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
 	{ "hash_reload",     PW_TYPE_INTEGER, &config.hash_reload, "600" },
 	{ NULL, -1, NULL, NULL }
@@ -138,6 +140,10 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 		free(oldhash);
 		pairlist_free(&olddefaults);
 	}
+
+	if(inst->stats) 
+		fastuser_tablestats(inst->hashtable, inst->hashsize);
+
 	return 0;	
 }
 
@@ -325,11 +331,18 @@ int fastuser_hash(const char *s, long hashtablesize) {
 
 /* Stores the username sent into the hashtable */
 static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *new, int idx) {
+	PAIR_LIST *cur;
 
-   /* store new record at beginning of list */
-   new->next = hashtable[idx];
-   hashtable[idx] = new;
-
+	cur = hashtable[idx];
+	/* store new record at end of list */
+	if(cur) {
+		for(cur; cur->next; cur=cur->next);
+		cur->next = new;
+		new->next = NULL;
+	} else {
+		new->next = hashtable[idx];
+		hashtable[idx] = new;
+	}
    return 1;
 }
 
@@ -362,6 +375,40 @@ static PAIR_LIST *fastuser_find(PAIR_LIST **hashtable,
 
 }
 
+/*
+ * Generate and log statistics about our hash table
+ */
+static void fastuser_tablestats(PAIR_LIST **hashtable, long size) {
+	int i=0, count=0;
+	int countarray[256];
+	int toomany=0;
+	PAIR_LIST *cur;
+
+	memset(countarray, 0, sizeof(countarray));
+
+	for(i; i<size; i++) {
+		count = 0;
+		for(cur=hashtable[i]; cur; cur=cur->next) {
+			count++;
+		}
+		if(count<256) {
+			countarray[count]++;
+		} else {
+			toomany++;
+		}
+	}
+
+	for(i=0; i<256; i++) 
+		if(countarray[i]) {
+			radlog(L_INFO, "rlm_fastusers:  Hash buckets with %d users:  %d",
+						i, countarray[i]);
+		}
+
+	if(toomany) {
+		radlog(L_INFO, "rlm_fastusers:  Hash buckets with more than 256:  %d", 
+					toomany);
+	}
+}
 
 /*
  *	(Re-)read the "users" file into memory.
@@ -385,6 +432,7 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 	inst->usersfile = config.usersfile;
 	inst->hashsize = config.hashsize;
 	inst->defaults = config.defaults;
+	inst->stats =	config.stats;
 	inst->compat_mode = config.compat_mode;
 	inst->hash_reload = config.hash_reload;
 	inst->next_reload = time(NULL) + inst->hash_reload;
