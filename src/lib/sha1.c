@@ -6,9 +6,18 @@
  *  Version:	$Id$
  */
  
+#include "autoconf.h"
+
 #include <string.h>
+
+#ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
+#endif
+
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif
+
 #include "sha1.h"
 
 #define blk0(i) (block->l[i] = htonl(block->l[i]))
