@@ -1339,6 +1339,12 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       len -= i;
     }
 
+    if (filter.u.ip.established) {
+      i = snprintf(p, len, " est");
+      p += i;
+      len -= i;
+    }
+
     /*
      *	Handle IPX filters
      */
