@@ -38,8 +38,7 @@ module instances which refer to redundant databases. Example:
       rcode = handled
     }
   }
-  authenticate {
-    authtype SQL {
+  accounting {
       redundant {
         sql1			# try module sql1
         sql2			# if that's down, try module sql2
@@ -47,7 +46,6 @@ module instances which refer to redundant databases. Example:
 				# it's been "handled" by the "always"
 				# module (see doc/rlm_always)
       }
-    }
   }
 
 OK, now for the exhaustive documentation. The things unexpectedly CAPITALIZED
