@@ -2,18 +2,22 @@
 .SH NAME
 rlm_unix \- FreeRADIUS Module
 .SH DESCRIPTION
-The \fIrlm_unix\fP module allows authentication against the 
-system password, shadow, and group files.  It also provides
-FreeRADIUS an interface into a system wtmp file when
-added to the accounting section.
+The \fIrlm_unix\fP module allows authentication against the system
+password, shadow, and group files.  It also provides FreeRADIUS an
+interface into a radwtmp file (used by "radlast") when added to the
+accounting section.
+.PP
+The \fIrlm_unix\fP module provides the functionality for "Auth-Type =
+System", rather than "Auth-Type = Unix".  The "System" name is used
+for historical reasons.
 .PP
 The main configuration items to be aware of are:
 .IP cache
 This is a 'yes' or 'no' option.  If set to yes, FreeRADIUS will read
-the system files into memory, rather than perform a systemcall to
+the system files into memory, rather than perform a system call to
 lookup the information.  On *BSD systems, you should set this value to
 no.  On other systems, if you have a very large passwd and shadow
-files, you can try setting this to yes to increase RADIUS
+files, you can try setting this to yes, which may increase the servers
 performance.  The default is no.
 .IP cache_reload
 This is the number of seconds to wait between refreshing the cached 
@@ -38,7 +42,7 @@ attribute to be used as a check item.  Default is 'no'.
 .PP
 .DS
 modules {
-  ... stuff here ...
+  ...
 .br
   unix {
 .br
@@ -58,7 +62,7 @@ modules {
 .br
   }
 .br
-  ... stuff here ...
+  ...
 .br
 }
 .DE
