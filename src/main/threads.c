@@ -118,7 +118,10 @@ typedef struct rad_fork_t {
 	int		status;	/* exit status of the child */
 } rad_fork_t;
 
-#define NUM_FORKERS (1024)
+/*
+ *  This MUST be a power of 2 for it to work properly!
+ */
+#define NUM_FORKERS (8192)
 static rad_fork_t forkers[NUM_FORKERS];
 
 /*
@@ -752,13 +755,19 @@ void rad_exec_init(void)
 }
 
 /*
+ *	We use the PID number as a base for the array index, so that
+ *	we can quickly turn the PID into a free array entry, instead
+ *	of rooting blindly through the entire array.
+ */
+#define PID_2_ARRAY(pid) (((int) pid ) & (NUM_FORKERS - 1))
+
+/*
  *	Thread wrapper for fork().
  */
 pid_t rad_fork(int exec_wait)
 {
-	int i;
-	int found;
 	sigset_t set;
+	pid_t child_pid;	
 
 	/*
 	 *	The thread is NOT interested in waiting for the exit
@@ -770,41 +779,6 @@ pid_t rad_fork(int exec_wait)
 	 */
 	if (!exec_wait || !exec_initialized) {
 		return fork();
-	}
-
-	found = -1;
-
-	/*
-	 *	We may have multiple threads trying to find an empty
-	 *	position, so we lock the array until we've found an entry.
-	 */
-	pthread_mutex_lock(&fork_mutex);
-
-	/*
-	 *	FIXME: Keep a 'static' variable around of which entry
-	 *	was the last one freed.  This will reduce the search time
-	 *	in the critical section from O(N) to O(1).
-	 */
-	for (i = 0; i < NUM_FORKERS; i++) {
-		/*
-		 *	Empty entry, stop looking.
-		 */
-		if (forkers[i].thread_id == NO_SUCH_CHILD_PID) {
-			forkers[i].child_pid = -1; /* no possible match */
-			forkers[i].thread_id = pthread_self();
-			found = i;
-			break;
-		}
-	}
-	pthread_mutex_unlock(&fork_mutex);
-
-	/*
-	 *	Failed to find an open forking context.
-	 *
-	 *	Return an error.  (And fail to set 'errno')
-	 */
-	if (found < 0) {
-		return (pid_t) -1;
 	}
 
 	/*
@@ -820,20 +794,60 @@ pid_t rad_fork(int exec_wait)
 	/*
 	 *	Do the fork.
 	 */
-	forkers[found].child_pid = fork();
+	child_pid = fork();
 
 	/*
-	 *	Error: Clear the array entry.
+	 *	We managed to fork.  Let's see if we have a free
+	 *	array entry.
 	 */
-	if (forkers[found].child_pid < 0) {
-		forkers[found].thread_id = NO_SUCH_CHILD_PID;
+	if (child_pid > 0) { /* parent */
+		int i;
+		int found;
+
+		/*
+		 *	We store the information in the array
+		 *	indexed by PID.  This means that we have
+		 *	on average an O(1) lookup to find the element,
+		 *	instead of rooting through the entire array.
+		 */
+		i = PID_2_ARRAY(child_pid);
+		found = -1;
 		
-	} else if (forkers[found].child_pid > 0) {
+		/*
+		 *	We may have multiple threads trying to find an
+		 *	empty position, so we lock the array until
+		 *	we've found an entry.
+		 */
+		pthread_mutex_lock(&fork_mutex);
+		do {
+			if (forkers[i].thread_id == NO_SUCH_CHILD_PID) {
+				found = i;
+				break;
+			}
+
+			/*
+			 *  Increment it, within the array.
+			 */
+			i++;
+			i &= (NUM_FORKERS - 1);
+		} while (i != PID_2_ARRAY(child_pid));
+		pthread_mutex_unlock(&fork_mutex);
+
+		/*
+		 *	Arg.  We did a fork, and there was nowhere to
+		 *	put the answer.
+		 */
+		if (found < 0) {
+			return (pid_t) -1;
+		}
+
 		/*
 		 *	In the parent, set the status, and create the
 		 *	semaphore.
 		 */
 		forkers[found].status = -1;
+		forkers[found].child_pid = child_pid;
+		forkers[i].thread_id = pthread_self();
 		sem_init(&forkers[found].child_done, 0, SEMAPHORE_LOCKED);
 	}
 
@@ -846,7 +860,7 @@ pid_t rad_fork(int exec_wait)
 	/*
 	 *	Return whatever we were told.
 	 */
-	return forkers[found].child_pid;
+	return child_pid;
 }
 
 /*
@@ -867,16 +881,26 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 	}
 
 	/*
-	 *	Find the PID to wait for.
+	 *	Find the PID to wait for, starting at an index within
+	 *	the array.  This makes the lookups O(1) on average,
+	 *	instead of O(n), when the array is filling up.
 	 */
 	found = -1;
-	for (i = 0; i < NUM_FORKERS; i++) {
+	i = PID_2_ARRAY(pid);
+	do {
+		/*
+		 *	We were the ones who forked this specific
+		 *	child.
+		 */
 		if ((forkers[i].thread_id == self) &&
 		    (forkers[i].child_pid == pid)) {
 			found = i;
 			break;
 		}
-	}
+
+		i++;
+		i &= (NUM_FORKERS - 1);
+	} while (i != PID_2_ARRAY(pid));
 
 	/*
 	 *	No thread ID found: we're trying to wait for a child
@@ -930,10 +954,20 @@ int rad_savepid(pid_t pid, int status)
 	int i;
 
 	/*
+	 *	Find the PID to wait for, starting at an index within
+	 *	the array.  This makes the lookups O(1) on average,
+	 *	instead of O(n), when the array is filling up.
+	 */
+	i = PID_2_ARRAY(pid);
+
+	/*
 	 *	Do NOT lock the array, as nothing else sets the
 	 *	status and posts the semaphore.
 	 */
-	for (i = 0; i < NUM_FORKERS; i++) {
+	do {
+		/*
+		 *	Any thread can get the sigchild...
+		 */
 		if ((forkers[i].thread_id != NO_SUCH_CHILD_PID) &&
 		    (forkers[i].child_pid == pid)) {
 			/*
@@ -944,13 +978,18 @@ int rad_savepid(pid_t pid, int status)
 			sem_post(&forkers[i].child_done);
 
 			/*
-			 *  If the child is more than 60 seconds out
-			 *  of date, then delete it.
+			 *	FIXME: If the child is more than 60
+			 *	seconds out of date, then delete it.
+			 *
+			 *	That is, we've forked, and the forker
+			 *	is waiting nearly forever
 			 */
-
 			return 0;		
 		}
-	}
+
+		i++;
+		i &= (NUM_FORKERS - 1);
+	} while (i != PID_2_ARRAY(pid));
 
 	return -1;
 }
