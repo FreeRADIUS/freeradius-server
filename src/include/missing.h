@@ -44,6 +44,7 @@ int gethostname(char *name, int len);
 #else
 #define setlinebuf(x)     0
 #endif
+#endif
 
 #ifdef NEED_DECLARATION_SETLINEBUF
 #define setlinebuf(x)     0
