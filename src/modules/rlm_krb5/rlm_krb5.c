@@ -39,6 +39,81 @@ static const char rcsid[] = "$Id$";
 #include <krb5.h>
 #include <com_err.h>
 
+static int verify_krb5_tgt(krb5_context context, const char *user,
+                           krb5_ccache ccache)
+{
+	int r;
+	char phost[BUFSIZ];
+	krb5_principal princ;
+	krb5_keyblock *keyblock = 0;
+	krb5_data packet;
+	krb5_auth_context auth_context = NULL;
+
+	if ((r = krb5_sname_to_principal(context, NULL, NULL,
+	                                     KRB5_NT_SRV_HST, &princ)))
+	{
+		radlog(L_DBG, "rlm_krb5: [%s] krb5_sname_to_principal failed: %s",
+			user, error_message(r));
+		return RLM_MODULE_REJECT;
+	}
+
+	strncpy(phost, krb5_princ_component(c, princ, 1)->data, BUFSIZ);
+	phost[BUFSIZ - 1] = '\0';
+
+	radlog(L_DBG, "rlm_krb5: krb5 server princ name: %s",phost);
+
+	/*
+	 * Do we have host/<host> keys?
+	 * (use default/configured keytab, kvno IGNORE_VNO to get the
+	 * first match, and enctype is currently ignored anyhow.)
+	 */
+	if ((r = krb5_kt_read_service_key(context, NULL, princ, 0,
+	                                  ENCTYPE_DES_CBC_MD5, &keyblock)))
+	{
+		/* Keytab or service key does not exist */
+		radlog(L_DBG, "rlm_krb5: verify_krb_v5_tgt: host key not found : %s",
+		       error_message(r));
+		r = RLM_MODULE_OK;
+		goto cleanup;
+	}
+	if (keyblock)
+		krb5_free_keyblock(context, keyblock);
+
+	/* Talk to the kdc and construct the ticket. */
+	r = krb5_mk_req(context, &auth_context, 0, "host", phost, NULL,
+	                ccache, &packet);
+	if (auth_context) {
+		krb5_auth_con_free(context, auth_context);
+		auth_context = NULL; /* setup for rd_req */
+	}
+
+	if (r) {
+		radlog(L_DBG, "rlm_krb5: [%s] krb5_mk_req() failed: %s",
+		       user, error_message(r));
+		r = RLM_MODULE_REJECT;
+		goto cleanup;
+	}
+
+	/* Try to use the ticket. */
+	r = krb5_rd_req(context, &auth_context, &packet, princ,
+	                NULL, NULL, NULL);
+	if (auth_context)
+		krb5_auth_con_free(context, auth_context);
+
+	if (r) {
+		radlog(L_AUTH, "rlm_krb5: [%s] krb5_rd_req() failed: %s",
+		       user, error_message(r));
+		r = RLM_MODULE_REJECT;
+	} else {
+		r = RLM_MODULE_OK;
+	}
+
+cleanup:
+	if (packet.data)
+		krb5_free_data_contents(context, &packet);
+	return r;
+}
+
 /* instantiate */
 static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 {
@@ -76,6 +151,8 @@ static int krb5_auth(void *instance, REQUEST *request)
                 KRB5_TGS_NAME
         };
         krb5_creds kcreds;
+	krb5_ccache ccache;
+	char cache_name[L_tmpnam + 8];
 	krb5_context context = *(krb5_context *) instance; /* copy data */
 	const char *user, *pass;
 
@@ -112,6 +189,17 @@ static int krb5_auth(void *instance, REQUEST *request)
 	user = request->username->strvalue;
 	pass = request->password->strvalue;
 
+	/* Generate a unique cache_name */
+	memset(cache_name, 0, sizeof(cache_name));
+	strcpy(cache_name, "MEMORY:");
+	(void) tmpnam(&cache_name[7]);
+
+	if ((r = krb5_cc_resolve(context, cache_name, &ccache))) {
+		radlog(L_AUTH, "rlm_krb5: [%s] krb5_cc_resolve(): %s",
+		       user, error_message(r));
+		return RLM_MODULE_REJECT;
+	}
+
 	/*
 	 *	Actually perform the authentication
 	 */
@@ -119,6 +207,12 @@ static int krb5_auth(void *instance, REQUEST *request)
 	
 	if ( (r = krb5_parse_name(context, user, &kcreds.client)) ) {
 		radlog(L_AUTH, "rlm_krb5: [%s] krb5_parse_name failed: %s",
+		       user, error_message(r));
+		return RLM_MODULE_REJECT;
+	}
+
+	if ((r = krb5_cc_initialize(context, ccache, kcreds.client))) {
+		radlog(L_AUTH, "rlm_krb5: [%s] krb5_cc_initialize(): %s",
 		       user, error_message(r));
 		return RLM_MODULE_REJECT;
 	}
@@ -133,16 +227,23 @@ static int krb5_auth(void *instance, REQUEST *request)
 		0)) ) {
 		radlog(L_AUTH, "rlm_krb5: [%s] krb5_build_principal_ext failed: %s",
 			user, error_message(r));
+		krb5_cc_destroy(context, ccache);
 		return RLM_MODULE_REJECT;
 	}
 
 	if ( (r = krb5_get_in_tkt_with_password(context,
-		0, NULL, NULL, NULL, pass, 0, &kcreds, 0)) ) {
+		0, NULL, NULL, NULL, pass, ccache, &kcreds, 0)) ) {
 		radlog(L_AUTH, "rlm_krb5: [%s] krb5_g_i_t_w_p failed: %s",
 			user, error_message(r));
+		krb5_free_cred_contents(context, &kcreds);
+		krb5_cc_destroy(context, ccache);
 		return RLM_MODULE_REJECT;
 	} else {
-		return RLM_MODULE_OK;
+		/* Now verify the KDC's identity. */
+		r = verify_krb5_tgt(context, user, ccache);
+		krb5_free_cred_contents(context, &kcreds);
+		krb5_cc_destroy(context, ccache);
+		return r;
 	}
 	
 	return RLM_MODULE_REJECT;
