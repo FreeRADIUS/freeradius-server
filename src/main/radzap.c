@@ -154,7 +154,7 @@ int main(int argc, char **argv)
 		acct_port = atoi(argv[1]);
 		argc -= 2, argv+=2;
 	}
-	if (argc < 1 || argc > 3 || argv[1][0] == '-') {
+	if (argc < 1 || argc > 3 || argv[0][0] == '-') {
 		fprintf(stderr, "Usage: radzap termserver [port] [user]\n");
 		fprintf(stderr, "       radzap is only an admin tool to clean the radutmp file!\n");
 		exit(1);
