@@ -28,6 +28,7 @@ static const char rcsid[] =
 #include	<signal.h>
 #include	<errno.h>
 #include	<sys/wait.h>
+#include	<sys/resource.h>
 #if HAVE_GETOPT_H
 #  include	<getopt.h>
 #endif
@@ -363,7 +364,28 @@ int main(int argc, char **argv)
 	 *	Use linebuffered or unbuffered stdout if
 	 *	the debug flag is on.
 	 */
-	if (debug_flag) setlinebuf(stdout);
+	if (debug_flag) {
+		setlinebuf(stdout);
+
+		/*
+		 *	Not debugging: set the core size to zero, to prevent
+		 *	security breaches.
+		 *
+		 *	i.e. People reading passwords from the 'core' file.
+		 */
+	} else { 
+		struct rlimit limits;
+		
+		limits.rlim_cur = 0;
+		limits.rlim_max = 0;
+		
+		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
+			log(L_ERR|L_CONS, "Failed to set core limit: %s",
+			    strerror(errno));
+			exit(1);
+		}
+	}
+
 
 	/*
 	 *	If we are in forking mode, we will start a child
@@ -393,7 +415,6 @@ int main(int argc, char **argv)
 	 *	Receive user requests
 	 */
 	for(;;) {
-
 		if (need_reload) {
 			reread_config(1);
 			need_reload = 0;
@@ -773,7 +794,7 @@ void sig_cleanup(int sig)
 		 *	If so, kill ALL processes in the current
 		 *	process group, to prevent further attacks.
 		 */
-		if (WIFSIGNALED(status)) {
+		if (debug_flag && (WIFSIGNALED(status)) {
 			log(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch signal %d: killing all active servers.\n",
 			    pid, WTERMSIG(status));
 			kill(0, SIGTERM);
