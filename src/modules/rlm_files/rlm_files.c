@@ -490,12 +490,10 @@ static int file_authorize(REQUEST *request,
 		pairdelete(reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
 	}
 
-#if 0
 	/*
 	 *	Remove server internal parameters.
 	 */
 	pairdelete(reply_pairs, PW_FALL_THROUGH);
-#endif
 
 	return RLM_MODULE_OK;
 }
@@ -620,7 +618,7 @@ static int file_preacct(REQUEST *request)
 		if (r > 0) found = 1;
 		if (r <= 0 || fallthrough(*reply_pairs)) {
 
-//			pairdelete(reply_pairs, PW_FALL_THROUGH);
+		  pairdelete(reply_pairs, PW_FALL_THROUGH);
 
 			sprintf(buffer, "DEFAULT");
 			i = 0;
@@ -630,7 +628,7 @@ static int file_preacct(REQUEST *request)
 					found = 1;
 					if (!fallthrough(*reply_pairs))
 						break;
-//					pairdelete(reply_pairs,PW_FALL_THROUGH);
+					pairdelete(reply_pairs,PW_FALL_THROUGH);
 				}
 				sprintf(buffer, "DEFAULT%d", i++);
 			}
