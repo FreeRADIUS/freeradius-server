@@ -111,6 +111,7 @@ static int always_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	data->rcode = str2rcode(data->rcode_str);
 	free(data->rcode_str);
+	data->rcode_str = NULL;
 	if (data->rcode == -1) {
 		free(data);
 		return -1;
@@ -165,9 +166,9 @@ module_t rlm_always = {
 		always_return,		/* preaccounting */
 		always_return,		/* accounting */
 		always_checksimul,	/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		always_return,	       	/* pre-proxy */
+		always_return,		/* post-proxy */
+		always_return		/* post-auth */
 	},
 	always_detach,			/* detach */
 	NULL,				/* destroy */
