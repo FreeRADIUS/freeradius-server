@@ -1,8 +1,6 @@
 * Minimize database (ldap,mysql) connections.
 * Clean up html code to make it smaller
 * More messages
-* Skins
-* Other languages in html
 * Multilanguage support for ldap attributes
 * Add language attributes in user_new.php3
 * Finger facility. Should find a way to make it work with all nases. That will
@@ -17,4 +15,6 @@
 * Parse the radius dictionary files so that we can show a pull down menu of possible values
   for various attributes.
 * Check the sql user code for sql injections
-* Also be able to keep username mappings in sql. Create and administration page
+* Also be able to keep username mappings in sql. Create an administration page
+* Get rid of register_globals. We only need a few user passed variables, we should get those
+  from the superglobals.

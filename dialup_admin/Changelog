@@ -5,6 +5,12 @@ Ver 1.75:
 * Update FAQ about using php with no sql support.
 * Allow the user to select between viewing FAQ,HOWTO or README in the help page.
 * Use $_SERVER instead of $HTTP_SERVER_VARS
+* Add a drop down menu with existing groups in group_new.php3
+* Check for sql in show_groups.php3
+* In lib/sql/group_info.php3 if $login is not set, find available groups and place them in
+  $existing_groups along with a count of users per group. Use the functionality in group_new.php3
+  and show_groups.php3
+* Update TODO
 Ver 1.72:
 * Move the xlat function to a separate file in lib/xlat.php3
 * Add a lib/sql/nas_list.php3 to also get the nas list from sql (naslist.conf still works)

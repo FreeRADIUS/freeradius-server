@@ -22,6 +22,7 @@ EOM;
 
 require('../lib/attrshow.php3');
 require('../lib/defaults.php3');
+require("../lib/$config[general_lib_type]/group_info.php3");
 
 if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 	$colspan=2;
@@ -85,6 +86,22 @@ EOM;
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
 <?php
 	echo <<<EOM
+	<tr>
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
+		Available Groups
+		</td><td>
+EOM;
+		if (!isset($existing_groups))
+			echo "<b>No groups available</b>\n";
+		else{
+			echo "<select name=\"existing_groups\">\n";	
+			foreach ($existing_groups as $group)
+				echo "<option value=\"$group\">$group\n";
+			echo "</select>\n";
+		}
+	echo <<<EOM
+		</td>
+	</tr>
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Group name
