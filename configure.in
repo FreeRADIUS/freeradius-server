@@ -2,7 +2,7 @@ dnl #############################################################
 dnl #
 dnl #  For information about autoconf, see:
 dnl #
-dnl #  http://www.primate.wisc.edu/software/autoconf/
+dnl #  http://www.gnu.org/software/autoconf/
 dnl #  
 dnl #  The recommended order is:
 dnl #
@@ -319,7 +319,7 @@ PTHREADLIB=
 if test "$WITH_THREADS" = "yes"; then 
   AC_CHECK_HEADERS(pthread.h)
 
-  if text "X$ac_cv_header_pthread_h" = "X"; then
+  if test "X$ac_cv_header_pthread_h" = "X"; then
     AC_MSG_ERROR("You are trying to use threads without a POSIX <pthread.h>")
   fi
 
