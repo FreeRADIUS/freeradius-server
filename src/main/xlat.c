@@ -56,7 +56,7 @@ static const char *internal_xlat[] = {"check",
 				      "proxy-request",
 				      "proxy-reply",
 				      NULL};
-static int xlat_inst[] = { 0, 1, 2, 3, 4 };
+static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
 
 /*
@@ -182,6 +182,36 @@ static int xlat_packet(void *instance, REQUEST *request,
 	return valuepair2str(out, outlen, vp, da->type, func);
 }
 
+#ifdef HAVE_REGEX_H
+/*
+ *	Pull %{0} to %{8} out of the packet.
+ */
+static int xlat_regex(void *instance, REQUEST *request,
+		      char *fmt, char *out, size_t outlen,
+		      RADIUS_ESCAPE_STRING func)
+{
+	char *regex;
+
+	/*
+	 *	We cheat: fmt is "0" to "8", but those numbers
+	 *	are already in the "instance".
+	 */
+	fmt = fmt;		/* -Wunused */
+	func = func;		/* -Wunused FIXME: do escaping? */
+	
+	regex = request_data_get(request, request,
+				 REQUEST_DATA_REGEX | *(int *)instance);
+	if (!regex) return 0;
+
+	/*
+	 *	Copy UP TO "freespace" bytes, including
+	 *	a zero byte.
+	 */
+	strNcpy(out, regex, outlen);
+	free(regex); /* was strdup'd */
+	return strlen(out);
+}
+#endif				/* HAVE_REGEX_H */
 
 /*
  *	Compare two xlat_t structs, based ONLY on the module name.
@@ -235,14 +265,6 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	}
 
 	/*
-	 *	Don't allow new regex stuff to be registered.
-	 */
-	if (strspn(module, "0123456789") == strlen(module)) {
-		DEBUG("xlat_register: Cannot define numeric xlats");
-		return -1;
-	}
-
-	/*
 	 *	First time around, build up the tree...
 	 *
 	 *	FIXME: This code should be hoisted out of this function,
@@ -250,6 +272,9 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	 */
 	if (!xlat_root) {
 		int i;
+#ifdef HAVE_REGEX_H
+		char buffer[2];
+#endif
 
 		xlat_root = rbtree_create(xlat_cmp, free, 0);
 		if (!xlat_root) {
@@ -258,7 +283,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		}
 
 		/*
-		 *	Register the internal xlat's.
+		 *	Register the internal packet xlat's.
 		 */
 		for (i = 0; internal_xlat[i] != NULL; i++) {
 			xlat_register(internal_xlat[i], xlat_packet, &xlat_inst[i]);
@@ -266,6 +291,20 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 			rad_assert(c != NULL);
 			c->internal = TRUE;
 		}
+
+#ifdef HAVE_REGEX_H
+		/*
+		 *	Register xlat's for regexes.
+		 */
+		buffer[1] = '\0';
+		for (i = 0; i <= 8; i++) {
+			buffer[0] = '0' + i;
+			xlat_register(buffer, xlat_regex, &xlat_inst[i]);
+			c = xlat_find(buffer);
+			rad_assert(c != NULL);
+			c->internal = TRUE;
+		}
+#endif /* HAVE_REGEX_H */
 	}
 
 	/*
@@ -416,33 +455,9 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			q += retlen;
 		}
 
-	} else if ((attrname[0] >= '0') && (attrname[0] <= '9')) {
-		int regex_num;
-		char *regex = NULL;
-		
 		/*
-		 *	Only 0 through 8 are allowed.
-		 *	See valuepair.c for reasons why...
-		 */
-		regex_num = atoi(attrname);
-		if ((regex_num >= 0) && (regex_num <= 8)) {
-			regex = request_data_get(request, request,
-						 REQUEST_DATA_REGEX | regex_num);
-		}
-		if (regex) {
-			/*
-			 *	Copy UP TO "freespace" bytes, including
-			 *	a zero byte.
-			 */
-			strNcpy(q, regex, freespace);
-			q += strlen(q);
-			free(regex); /* was strdup'd */
-			found = 1;
-		}
-
-		/*
-		 *	Nothing else, it MUST be a bare attribute name, taken
-		 *	from the request ("1" in the magic structs. 
+		 *	Not in the default xlat database.  Must be
+		 *	a bare attribute number.
 		 */
 	} else if ((retlen = xlat_packet(&xlat_inst[1], request, attrname,
 					 q, freespace, func)) > 0) {
