@@ -1,0 +1,7 @@
+#
+# Version:	$Id$
+#
+VENDOR  Nomadix  3309
+#
+ATTRIBUTE Nomadix-Bw-Up		1	integer		Nomadix
+ATTRIBUTE Nomadix-Bw-Down	2	integer		Nomadix
