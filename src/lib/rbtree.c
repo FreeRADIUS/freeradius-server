@@ -261,6 +261,7 @@ int rbtree_insert(rbtree_t *tree, const void *Data)
 			/*
 			 *	Do replace the entry.
 			 */
+			if (tree->freeNode) tree->freeNode(Current->Data);
 			Current->Data = Data;
 			return 1;
 		}
