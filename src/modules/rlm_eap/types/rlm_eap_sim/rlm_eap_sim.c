@@ -221,16 +221,6 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	printf("+++> EAP-sim decoded packet:\n");
 	vp_printlist(stdout, *invps);
 	
-	/*
-	 * find the challenges and responses, record them in the state,
-	 */
-	if((eap_sim_getchalans(*outvps, 0, ess) +
-	    eap_sim_getchalans(*outvps, 1, ess) +
-	    eap_sim_getchalans(*outvps, 2, ess)) != 3)
-	{
-		return 0;
-	}
-
 	/* okay, we got the challenges! Put them into an attribute */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND,
 			   PW_TYPE_OCTETS);
@@ -359,10 +349,13 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
 {
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR *vp;
+	VALUE_PAIR *outvps;
+
+	outvps = handler->request->reply->vps;
 
 	type_data = type_data;  /* shut up compiler */
 
-	vp = pairfind(handler->request->reply->vps, ATTRIBUTE_EAP_SIM_RAND1);
+	vp = pairfind(outvps, ATTRIBUTE_EAP_SIM_RAND1);
 	if(vp == NULL) {
 	        DEBUG2("   can not initiate sim, no RAND1 attribute");
 		return 0;
@@ -378,6 +371,20 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
 	handler->free_opaque = eap_sim_state_free;
 
 	handler->stage = AUTHENTICATE;
+
+	/*
+	 * save the keying material, because it could change on a subsequent
+	 * retrival.
+	 *
+	 */
+	if((eap_sim_getchalans(outvps, 0, ess) +
+	    eap_sim_getchalans(outvps, 1, ess) +
+	    eap_sim_getchalans(outvps, 2, ess)) != 3)
+	{
+	        DEBUG2("   can not initiate sim, missing attributes");
+		return 0;
+	}
+
 
 	eap_sim_stateenter(handler, ess, eapsim_server_start);
 
@@ -591,7 +598,11 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.9  2004-01-30 19:38:29  mcr
+ * Revision 1.10  2004-01-30 20:35:33  mcr
+ * 	capture the RAND/SRES/Kc when we initialize the SIM
+ * 	rather than later, when they may have changed.
+ *
+ * Revision 1.9  2004/01/30 19:38:29  mcr
  * 	added some debugging of why EAP-sim might not want to
  * 	handle the request - lacking RAND1 attribute.
  *
