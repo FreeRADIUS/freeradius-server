@@ -12,6 +12,8 @@
 #include "conf.h"
 #include "missing.h"
 
+#include <stdarg.h>
+
 #if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -261,6 +263,7 @@ void		version(void);
 
 /* log.c */
 int radlogdir_iswritable(const char *);
+int		vradlog(int, const char *, va_list ap);
 int		radlog(int, const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
