@@ -1,0 +1,53 @@
+AC_INIT(rlm_krb5.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_krb5])
+
+if test x$with_[]modname != xno; then
+
+	AC_CHECK_LIB(k5crypto, FIXME,
+		[ krb5libcrypto="-lk5crypto" ],
+		[ echo \* FIX this test. \* ]
+	)
+
+	AC_CHECK_LIB(crypto, DH_new,
+		[ krb5libcrypto="-lcrypto" ]
+	)
+
+	if test x$krb5libcrypto = x; then
+		AC_MSG_WARN([neither krb5 'k5crypto' nor 'crypto' libraries are found!])
+	fi
+
+	AC_CHECK_LIB(com_err, set_com_err_hook,
+		[ krb5libcomerr="-lcom_err" ], 
+		AC_MSG_WARN([the comm_err library isn't found!]) 
+	)
+
+	AC_CHECK_LIB(krb5, krb5_init_context, 
+		[ 
+			krb5_ldflags="${krblibcrypto} ${krb5libcomerr}"
+			krb5_cflags=""  #fixme?
+		],
+		[ fail=$fail" krb5" ],
+		[ ${krblibcrypto} ${krb5libcomerr} ]
+	)
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependancies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+AC_SUBST(krb5_cflags)
+AC_SUBST(krb5_ldflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
