@@ -256,7 +256,6 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
 
 	/* set these to NULL to prevent other instances from reusing the data */
 
-	config.formatstring = NULL;
 	config.delim = NULL;
 
 	*instance = inst;
@@ -329,6 +328,24 @@ static int realm_preacct(void *instance, REQUEST *request)
 	return RLM_MODULE_OK; /* try the next module */
 }
 
+static int realm_detach(void *instance)
+{
+	struct realm_config_t *inst = instance;
+	free(inst->delim);
+	free(instance);
+	return 0;
+}
+
+static int realm_destroy(void)
+{
+	/* We reuse this buffer across multiple instances, instead of
+	 * freeing it in instantiate() after converting it to an int.
+	 * That makes it a module-global variable, so it must be freed
+	 * in destroy(). */
+	free(config.formatstring);
+	return 0;
+}
+
 /* globally exported name */
 module_t rlm_realm = {
   "realm",
@@ -340,6 +357,6 @@ module_t rlm_realm = {
   realm_preacct,		/* preaccounting */
   NULL,				/* accounting */
   NULL,				/* checksimul */
-  NULL,				/* detach */
-  NULL,				/* destroy */
+  realm_detach,			/* detach */
+  realm_destroy,		/* destroy */
 };
