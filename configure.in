@@ -369,18 +369,6 @@ dnl #
 	)
 fi
 
-dnl # HP/UX requires linking with librt, too, to get the sem_* symbols.  :\
-
-  AC_SEARCH_LIBS(sem_init, pthread rt,
-	[ 
-	dnl    Er, this usage of $ac_cv_search_sem_init may be unfounded 
-	dnl    chumminess with the autoconf internals.  -chad
-	dnl PTHREADLIB="$PTHREADLIB $ac_cv_search_sem_init"
-	],
-	[AC_MSG_ERROR(-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz)],
-	"-lpthread"
-  )
-
 dnl # 
 dnl # If we have NO pthread libraries, remove any knowledge of threads.
 dnl # 
@@ -389,6 +377,10 @@ if test "x$WITH_THREADS" != "xyes"; then
   ac_cv_header_pthread_h="no"
   WITH_THREADS=no
 else
+  dnl #
+  dnl #  We need sem_init() and friends, as they're the friendliest
+  dnl #  semaphore functions for threading.
+  dnl #
   dnl # HP/UX requires linking with librt, too, to get the sem_* symbols.
   dnl # Some systems have them in -lsem
   dnl # Solaris has them in -lposix4
@@ -560,7 +552,6 @@ AC_CHECK_FUNCS( \
 	gethostname \
 	setlinebuf \
 	setvbuf \
-	sem_init \
 	getusershell
 )
 RADIUSD_NEED_DECLARATIONS( \
