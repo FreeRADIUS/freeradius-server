@@ -49,10 +49,14 @@ VALUE_PAIR *paircreate(int attr, int type)
 	vp->attribute = attr;
 	vp->operator = T_OP_EQ;
 	vp->type = type;
-	if ((da = dict_attrbyvalue(attr)) != NULL)
+	if ((da = dict_attrbyvalue(attr)) != NULL) {
 		strcpy(vp->name, da->name);
-	else
+	} else if (VENDOR(attr) == 0) {
 		sprintf(vp->name, "Attr-%u", attr);
+	} else {
+		sprintf(vp->name, "Vendor-%u-Attr-%u",
+			VENDOR(attr), attr & 0xffff);
+	}
 	switch (vp->type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_IPADDR:
@@ -299,6 +303,11 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			  break;
 #endif
 			case T_OP_EQ:		/* = */
+				/*
+				 *  FIXME: Tunnel attributes with
+				 *  different tags are different
+				 *  attributes.
+				 */
 				if (found) {
 					tailfrom = i;
 					continue; /* with the loop */
@@ -776,15 +785,24 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			return vp;
 		}
 #ifdef HAVE_REGEX_H
-		res=regcomp(&cre, value, REG_EXTENDED|REG_NOSUB);
-		if (res!=0) {
+		/*
+		 *	Regular expression match with no regular
+		 *	expression is wrong.
+		 */
+		if (!value) {
+			pairfree(vp);
+			return NULL;
+		}
+
+		res = regcomp(&cre, value, REG_EXTENDED|REG_NOSUB);
+		if (res != 0) {
 			char	msg[128];
 
 			regerror(res, &cre, msg, sizeof(msg));               
-			librad_log("Illegal regular expression in attribute: %s: %s",        
-				vp->name, msg);                                    
+			librad_log("Illegal regular expression in attribute: %s: %s",
+				vp->name, msg);
 			free(vp);
-			return NULL;                                            
+			return NULL;
 		}
 		regfree(&cre);
 #else
