@@ -448,8 +448,8 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 
 	this = lookup_by_index(components[comp], idx);
 	if (!this) {
-		DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
-		       subcomponent_names[comp]);
+		if (idx != 0) DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
+				     subcomponent_names[comp]);
 		/* Return a default value appropriate for the component */
 		switch(comp) {
 			case RLM_COMPONENT_AUTZ:    return RLM_MODULE_NOTFOUND;
