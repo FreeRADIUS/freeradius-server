@@ -6,12 +6,12 @@ Section 1 - overview
 
 Section 1.1 Intent of the modules.
 
-The intent of modules is to do small, simple, well-defined things
-when RADIUS packets are received.  If the module is intended to do
-things when RADIUS packets are NOT received, then it has no business
-being in the server.  Similarly, the model infrastructure is NOT
-intended to allow other servers, applications, or anything else to
-execute inside of a module.
+The intent of modules is that they do small, simple, well-defined
+things when RADIUS packets are received.  If the module does things
+when RADIUS packets are NOT received, then it has no business being in
+the server.  Similarly, the module infrastructure is NOT intended to
+allow servers, applications, timed events, or anything other than
+handling incoming RADIUS packets.
 
 Allowing modules to do many things means that the server becomes
 more unreliable, more difficult to maintain, and much more likely to
@@ -52,9 +52,10 @@ requests at different stages. The components are:
   - preaccounting: decide whether to proxy the request, and possibly add
     attributes that should be included in any logs
   - accounting: record the request in the log
-  - checksimul (AVAILABLE AS EXTERNAL PATCH): count the number of active
-    sessions for the user
-  - postproxyauth (DOES NOT EXIST YET): filter attributes from a reply to a
+  - checksimul: count the number of active sessions for the user
+  - postauth: process the response before it's sent to the NAS
+  - preproxy: process a request before it's proxied
+  - postproxy: filter attributes from a reply to a
     proxied request
 
 A module declares which components it supports by putting function pointers
@@ -86,11 +87,13 @@ the module and generally point to the exact location of a database or enable
 optional features of the module. Each module should document what parameters
 it accepts and what they do.
 
-For each Access-Request that comes to the server, the authorize{} block is
-called. Then one of the authtype{} blocks from authenticate{} is called,
-depending on the Auth-Type attribute that was chosen by authorize{}. If
-authorize{} set the Proxy-To-Realm attribute, then proxying takes over and
-the local authenticate{} phase is skipped.
+For each Access-Request that comes to the server, the authorize{}
+block is called. Then one of the authtype{} blocks from authenticate{}
+is called, depending on the Auth-Type attribute that was chosen by
+authorize{}. Finally, the postauth{} block is called.  If authorize{}
+set the Proxy-To-Realm attribute, then proxying takes over via
+preproxy{} and postproxy{}, and the local authenticate{} phase is
+skipped.
 
 For each Accounting-Request that comes to the server, the preacct{} block is
 called, followed by the accounting{} block. accounting{} is skipped if
