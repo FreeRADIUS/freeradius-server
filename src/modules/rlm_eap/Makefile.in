@@ -16,7 +16,7 @@ $(STATIC_OBJS): $(HEADERS)
 #
 #  Statically link a few modules.
 # 
-STATIC_OBJS	+= $(shell ls -1 types/rlm_eap_gtc/rlm_eap_gtc.a types/rlm_eap_leap/rlm_eap_leap.a types/rlm_eap_md5/rlm_eap_md5.a types/rlm_eap_peap/rlm_eap_peap.a types/rlm_eap_sim/rlm_eap_sim.a types/rlm_eap_tls/rlm_eap_tls.a types/rlm_eap_ttls/rlm_eap_ttls.a 2>/dev/null)
+STATIC_OBJS	+= $(shell ls -1 types/rlm_eap_gtc/rlm_eap_gtc.a types/rlm_eap_leap/rlm_eap_leap.a types/rlm_eap_md5/rlm_eap_md5.a types/rlm_eap_mschapv2/rlm_eap_mschapv2.a types/rlm_eap_peap/rlm_eap_peap.a types/rlm_eap_sim/rlm_eap_sim.a types/rlm_eap_tls/rlm_eap_tls.a types/rlm_eap_ttls/rlm_eap_ttls.a 2>/dev/null)
 
 $(DYNAMIC_OBJS): $(HEADERS)
 
