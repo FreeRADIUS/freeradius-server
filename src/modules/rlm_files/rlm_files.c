@@ -316,7 +316,7 @@ static int file_init(int argc, char **argv)
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static int file_authorize(REQUEST *request, char *name,
+static int file_authorize(REQUEST *request,
 		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
 	int		nas_port = 0;
@@ -330,14 +330,14 @@ static int file_authorize(REQUEST *request, char *name,
 	int		i, r;
 	char		buffer[256];
 #endif
+	char		*name;
 
 	request_pairs = request->packet->vps;
 
 	/*
-	 *	over-ride whatever we're given with the canonical
-	 *	user name.
+	 *	Grab the canonical user name.
 	 */
-	name = request->name->strvalue;
+	name = request->username->strvalue;
 
 	/*
 	 *	Find the NAS port ID.
@@ -467,7 +467,7 @@ static int file_authorize(REQUEST *request, char *name,
 /*
  *	Authentication - unused.
  */
-static int file_authenticate(REQUEST *request, char *username, char *password)
+static int file_authenticate(REQUEST *request)
 {
 	return RLM_AUTH_OK;
 }
