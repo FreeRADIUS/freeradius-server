@@ -48,10 +48,16 @@ static rbtree_t *attributes_byvalue = NULL;
 static rbtree_t *values_byvalue = NULL;
 static rbtree_t *values_byname = NULL;
 
+typedef struct value_fixup_t {
+	char		attrstr[40];
+	DICT_VALUE	*dval;
+	struct value_fixup_t *next;
+} value_fixup_t;
+
 /*
  *	So VALUEs in the dictionary can have forward references.
  */
-static rbtree_t *values_fixup = NULL;
+static value_fixup_t *value_fixup = NULL;
 
 static const LRAD_NAME_NUMBER type_table[] = {
 	{ "string",	PW_TYPE_STRING },
@@ -253,6 +259,7 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 		librad_log("dict_addvalue: out of memory");
 		return -1;
 	}
+	memset(dval, 0, sizeof(*dval));
 
 	strcpy(dval->name, namestr);
 	dval->value = value;
@@ -265,8 +272,24 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 	if (dattr) {
 		dval->attr = dattr->attr;
 	} else {
-		dval->attr = (int) strdup(attrstr);
-		rbtree_insert(values_fixup, dval);
+		value_fixup_t *fixup;
+		
+		fixup = (value_fixup_t *) malloc(sizeof(*fixup));
+		if (!fixup) {
+			librad_log("dict_addvalue: out of memory");
+			return -1;
+		}
+		memset(fixup, 0, sizeof(*fixup));
+
+		strNcpy(fixup->attrstr, attrstr, sizeof(fixup->attrstr));
+		fixup->dval = dval;
+		
+		/*
+		 *	Insert to the head of the list.
+		 */
+		fixup->next = value_fixup;
+		value_fixup = fixup;
+
 		return 0;
 	}
 
@@ -724,57 +747,6 @@ static int valuevalue_cmp(const void *a, const void *b)
 }
 
 /*
- *	Compare values by name, keying off of the value number,
- *	and then the value number.
- */
-static int valuefixup_cmp(const void *a, const void *b)
-{
-	int rcode;
-	rcode = strcasecmp((const char *) ((const DICT_VALUE *)a)->attr,
-			   (const char *) ((const DICT_VALUE *)b)->attr);
-	if (rcode != 0) return rcode;
-
-	return (((const DICT_VALUE *)a)->value -
-		((const DICT_VALUE *)b)->value);
-}
-
-static int values_fixup_func(void *data)
-{
-	DICT_ATTR  *a;
-	DICT_VALUE *v;
-	DICT_VALUE *dval = data;
-
-	a = dict_attrbyname((const char *) dval->attr);
-	if (!a) {
-		librad_log("dict_addvalue: No attribute named %s for value %s", (const char *) dval->attr, dval->name);
-		return -1;
-	}
-
-	free ((const char *) dval->attr);
-	dval->attr = a->attr;
-
-	/*
-	 *	Add the value into the dictionary.
-	 */
-
-	if (rbtree_insert(values_byname, dval) == 0) {
-		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", dval->name, a->name);
-		return -1;
-	}
-
-	/*
-	 *	Allow them to use the old name, but prefer the new name
-	 *	when printing values.
-	 */
-	v = rbtree_find(values_byvalue, dval);
-	if (!v) {
-		rbtree_insert(values_byvalue, dval);
-	}
-
-	return 0;
-}
-
-/*
  *	Initialize the directory, then fix the attr member of
  *	all attributes.
  */
@@ -813,27 +785,52 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 	}
 
-	/*
-	 *	ONLY used in this function!
-	 */
-	values_fixup = rbtree_create(valuefixup_cmp, NULL, 1);
-	if (!values_fixup) {
-		return -1;
-	}
+	value_fixup = NULL;	/* just to be safe. */
 
 	if (my_dict_init(dir, fn, NULL, 0) < 0)
 		return -1;
 
-	/*
-	 *	Fix up the dictionary, based on values with an attribute
-	 *	of zero.
-	 */
-	if (rbtree_walk(values_fixup, values_fixup_func, InOrder) != 0) {
-		return -1;
-	}
+	if (value_fixup) {
+		DICT_ATTR *a;
+		value_fixup_t *this, *next;
 
-	rbtree_free(values_fixup);
-	values_fixup = NULL;
+		for (this = value_fixup; this != NULL; this = next) {
+			next = this->next;
+
+			a = dict_attrbyname(this->attrstr);
+			if (!a) {
+				librad_log(
+					"dict_init: No ATTRIBUTE \"%s\" defined for VALUE \"%s\"",
+					this->attrstr, this->dval->name);
+				return -1; /* leak, but they should die... */
+			}
+
+			this->dval->attr = a->attr;
+
+			/*
+			 *	Add the value into the dictionary.
+			 */
+			if (rbtree_insert(values_byname, this->dval) == 0) {
+				librad_log("dict_addvalue: Duplicate value name %s for attribute %s", this->dval->name, a->name);
+				return -1;
+			}
+			
+			/*
+			 *	Allow them to use the old name, but
+			 *	prefer the new name when printing
+			 *	values.
+			 */
+			if (!rbtree_find(values_byvalue, this->dval)) {
+				rbtree_insert(values_byvalue, this->dval);
+			}
+			free(this);
+
+			/*
+			 *	Just so we don't lose track of things.
+			 */
+			value_fixup = next;
+		}
+	}
 
 	return 0;
 }
