@@ -618,6 +618,11 @@ dnl #  And finally, output the results.
 dnl #
 dnl #############################################################
 
+dnl #
+dnl #  Substitute whatever libraries we found to be necessary
+dnl #
+AC_SUBST(LIBS)
+
 AC_OUTPUT(\
 	./Make.inc \
 	./src/include/build-radpaths-h \
