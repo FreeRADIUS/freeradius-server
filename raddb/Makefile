@@ -38,8 +38,8 @@ install:
 	if [ ! -d $(R)$(raddbdir)/certs ]; then \
 		mkdir $(R)$(raddbdir)/certs; \
 		mkdir $(R)$(raddbdir)/certs/demoCA; \
-		cp certs/demoCA/* $(R)$(raddbdir)/certs/demoCA; \
-		cp certs/* $(R)$(raddbdir)/certs 2>/dev/null; \
+		cp certs/demoCA/* $(R)$(raddbdir)/certs/demoCA || true; \
+		cp certs/* $(R)$(raddbdir)/certs 2>/dev/null || true; \
 	fi
 
 clean:
