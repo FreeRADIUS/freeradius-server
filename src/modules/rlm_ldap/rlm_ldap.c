@@ -88,8 +88,8 @@ static CONF_PARSER ldap_config[] = {
 #endif
 
 typedef struct {
-  char *attr;
-  char *radius_attr;
+	const char *attr;
+	const char *radius_attr;
 } TLDAP_RADIUS;
 
 /*
@@ -102,7 +102,36 @@ static TLDAP_RADIUS check_item_map[] = {
         {NULL, NULL}
 };
 static TLDAP_RADIUS reply_item_map[] = {
-        { "radiusFilterID", "Filter-Id" },
+	{ "radiusServiceType", "Service-Type" },
+	{ "radiusFramedProtocol", "Framed-Protocol" },
+	{ "radiusFramedIPAddress", "Framed-IP-Address" },
+	{ "radiusFramedIPNetmask", "Framed-IP-Netmask" },
+	{ "radiusFramedRoute", "Framed-Route" },
+	{ "radiusFramedRouting", "Framed-Routing" },
+	{ "radiusFilterId", "Filter-Id" },
+	{ "radiusFramedMTU", "Framed-MTU" },
+	{ "radiusFramedCompression", "Framed-Compression" },
+	{ "radiusLoginIPHost", "Login-IP-Host" },
+	{ "radiusLoginService", "Login-Service" },
+	{ "radiusLoginTCPPort", "Login-TCP-Port" },
+	{ "radiusCallbackNumber", "Callback-Number" },
+	{ "radiusCallbackId", "Callback-Id" },
+	{ "radiusFramedRoute", "Framed-Route" },
+	{ "radiusFramedIPXNetwork", "Framed-IPX-Network" },
+	{ "radiusClass", "Class" },
+	{ "radiusSessionTimeout", "Session-Timeout" },
+	{ "radiusIdleTimeout", "Idle-Timeout" },
+	{ "radiusTerminationAction", "Termination-Action" },
+	{ "radiusCalledStationId", "Called-Station-Id" },
+	{ "radiusCallingStationId", "Calling-Station-Id" },
+	{ "radiusLoginLATService", "Login-LAT-Service" },
+	{ "radiusLoginLATNode", "Login-LAT-Node" },
+	{ "radiusLoginLATGroup", "Login-LAT-Group" },
+	{ "radiusFramedAppleTalkLink", "Framed-AppleTalk-Link" },
+	{ "radiusFramedAppleTalkNetwork", "Framed-AppleTalk-Network" },
+	{ "radiusFramedAppleTalkZone", "Framed-AppleTalk-Zone" },
+	{ "radiusPortLimit", "Port-Limit" },
+	{ "radiusLoginLATPort", "Login-LAT-Port" },
         {NULL, NULL}
 };
 
@@ -228,7 +257,7 @@ static int rlm_ldap_authorize(REQUEST *request,
 	}
 	
 	DEBUG("LDAP looking for check items in directory..."); 
-	if((check_tmp = ldap_pairget(ld, msg, check_item_map)) != (VALUE_PAIR *)0) {
+	if ((check_tmp = ldap_pairget(ld, msg, check_item_map)) != (VALUE_PAIR *)0) {
 		pairadd(check_pairs, check_tmp);
 	}
 	
@@ -241,7 +270,7 @@ static int rlm_ldap_authorize(REQUEST *request,
 	}
 	
 	DEBUG("LDAP looking for reply items in directory..."); 
-	if((reply_tmp = ldap_pairget(ld,msg, reply_item_map)) != NULL) {
+	if ((reply_tmp = ldap_pairget(ld,msg, reply_item_map)) != NULL) {
 		pairadd(reply_pairs, reply_tmp);
 	}
 	
@@ -446,7 +475,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 	do {
 		for (element=item_map; element->attr != NULL; element++) {
 			DEBUG2("Comparing %s with %s", attr, element->attr);
-			if (!strncasecmp(attr,element->attr,strlen(element->attr))) {
+			if (!strcasecmp(attr,element->attr)) {
 				if (((vals = ldap_get_values(ld, entry, attr)) == NULL) ||
 				    (ldap_count_values(vals) > 1)) {
 					DEBUG("Attribute %s has multiple values", attr);
