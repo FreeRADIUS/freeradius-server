@@ -12,6 +12,7 @@ Ver 1.30:
 * Allow for daily/weekly/monthly limits to be set to none and show correct results in the show user page
 * Fix a small bug in user_admin.php3.
 * Pass the whole password as salt in da_encrypt() in password_check.php3
+* Refresh the online users page every 50 secs. Patch by Alexandre Strube <surak@barroco.com.br>
 Ver 1.29:
 * Add general_ld_library_path directive and set LD_LIBRARY_PATH accordingly (used in snmpfinger and
   radaclient).

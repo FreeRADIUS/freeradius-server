@@ -1,5 +1,6 @@
 <html>
 <head>
+<META HTTP-EQUIV="Refresh" CONTENT="50">
 <title>
 User Finger Facility
 </title>
