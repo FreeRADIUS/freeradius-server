@@ -107,12 +107,36 @@ To see Cisco-AVPair attributes in the Cisco debugging log:
 
    radius-server vsa accounting
 
-4.  CREDITS
+4.  Cisco 36xx & 26xx, keeping the NAS IP static
+
+The Cisco 36/26 by default selects (it seems at random) any IP address
+assigned to it (serial, ethernet etc.) as it's RADIUS client source
+address, thus the access request may be dropped by the RADIUS server,
+because it can not verify the client. To make the cisco box always use
+one fixed address, add the following to your configuration:
+
+    ip radius source-interface Loopback0
+
+and configure the loopback interface on your router as follows:
+
+    interface Loopback0
+      ip address 192.168.0.250 255.255.255.255
+
+Use a real world IP address and check the Cisco documentation for why
+it is a good idea to have working loopback interface configured on
+your router.
+
+If you don't want to use the loopback interface of course you can set
+the source-interface to any interface on your Cisco box which has an
+IP address.
+
+
+5.  CREDITS
 
 Original  - Alan DeKok <aland@ox.org>
 12.x Info - Chris Parker <cparker@starnetusa.net>  2000-10-12
 
-5.  MORE INFORMATION
+6.  MORE INFORMATION
 
 For more information, the following page on Cisco's web site may help:
 
