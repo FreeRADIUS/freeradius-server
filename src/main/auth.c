@@ -39,6 +39,14 @@ static const char rcsid[] = "$Id$";
 #endif
 
 
+static const char *auth_username(VALUE_PAIR *namepair)
+{
+	if (namepair) {
+		return namepair->strvalue;
+	}
+	return "<NONE>";
+}
+
 /*
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
@@ -103,7 +111,6 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, const char **use
  */
 static int rad_check_password(REQUEST *request,
 	VALUE_PAIR *check_item,
-	VALUE_PAIR *namepair,
 	const char **user_msg)
 {
 	VALUE_PAIR	*auth_type_pair;
@@ -166,13 +173,6 @@ static int rad_check_password(REQUEST *request,
 		else
 			auth_type = PW_AUTHTYPE_LOCAL;
 	}
-
-#if 0 /* DEBUG */
-	printf("auth_type=%d, string=%s, namepair=%s, password_pair=%s\n",
-		auth_type, string,
-		namepair ? namepair->strvalue : "",
-		password_pair ? password_pair->strvalue : "");
-#endif
 
 	switch(auth_type) {
 		case PW_AUTHTYPE_CRYPT:
@@ -312,14 +312,11 @@ int rad_authenticate(REQUEST *request)
 
 	/*
 	 *	Get the username from the request.
+	 *
+	 *	Note that namepair MAY be NULL, in which case there
+	 *	is no User-Name attribute in the request.
 	 */
 	namepair = request->username;
-	if ((namepair == NULL) || (namepair->length <= 0)) {
-		log(L_ERR, "zero length username not permitted\n");
-		request->reply = build_reply(PW_AUTHENTICATION_REJECT,
-					     request, NULL, NULL);
-		return RLM_MODULE_OK;
-	}
 
 	/*
 	 *	Decrypt the password, and remove trailing NULL's.
@@ -363,7 +360,7 @@ int rad_authenticate(REQUEST *request)
 	if (r != RLM_MODULE_OK) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
 			log(L_AUTH, "Invalid user: [%s%s%s] (%s)",
-			    namepair->strvalue,
+			    auth_username(namepair),
 			    log_auth_pass ? "/" : "",
 			    log_auth_pass ? password : "",
 			    auth_name(buf, sizeof(buf), request, 1));
@@ -401,7 +398,7 @@ int rad_authenticate(REQUEST *request)
 		if ((result = check_expiration(request->config_items, umsg, &user_msg))<0)
 				break;
 		result = rad_check_password(request, request->config_items,
-			namepair, &user_msg);
+			&user_msg);
 		if (result > 0) {
 			/* don't reply! */
 			pairfree(user_reply);
@@ -434,7 +431,8 @@ int rad_authenticate(REQUEST *request)
 			}
 			log(L_AUTH,
 				"Login incorrect: [%s/%s] (%s)%s",
-				namepair->strvalue, clean_buffer,
+				auth_username(namepair),
+			        clean_buffer,
 				auth_name(buf, sizeof(buf), request, 1),
 				((result == -2) ? " reject" : ""));
 			/* double check: maybe the secret is wrong? */
@@ -457,7 +455,8 @@ int rad_authenticate(REQUEST *request)
 		 *	User authenticated O.K. Now we have to check
 		 *	for the Simultaneous-Use parameter.
 		 */
-		if ((r = radutmp_checksimul(namepair->strvalue,
+		if (namepair &&
+		    (r = radutmp_checksimul(namepair->strvalue,
 		    request->packet->vps, check_item->lvalue)) != 0) {
 
 			if (check_item->lvalue > 1) {
@@ -504,7 +503,7 @@ int rad_authenticate(REQUEST *request)
 						     request, NULL, user_msg);
 			log(L_ERR, "Outside allowed timespan: [%s]"
 				   " (%s) time allowed: %s",
-					namepair->strvalue,
+					auth_username(namepair),
 					auth_name(buf, sizeof(buf), request, 1),
 					check_item->strvalue);
 		} else if (r > 0) {
@@ -600,7 +599,7 @@ int rad_authenticate(REQUEST *request)
 				log(L_AUTH,
 					"Login incorrect: [%s] (%s) "
 					"(external check failed)",
-					namepair->strvalue,
+					auth_username(namepair),
 					auth_name(buf, sizeof(buf), request, 1));
 			}
 			pairfree(user_reply);
@@ -653,7 +652,7 @@ int rad_authenticate(REQUEST *request)
 	if (log_auth) {
 		log(L_AUTH,
 			"Login OK: [%s%s%s] (%s)",
-			namepair->strvalue,
+			auth_username(namepair),
 			log_auth_pass ? "/" : "",
 			log_auth_pass ? password : "",
 			auth_name(buf, sizeof(buf), request, 0));
