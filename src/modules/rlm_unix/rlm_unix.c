@@ -55,6 +55,28 @@ static char trans[64] =
 #define ENC(c) trans[c]
 
 /*
+ *	Call getpwnam but cache the result.
+ */
+static struct passwd *rad_getpwnam(const char *name)
+{
+	static struct passwd *lastpwd;
+	static char lastname[64];
+	static time_t lasttime = 0;
+	time_t now;
+
+	now = time(NULL);
+
+	if ((now <= lasttime + 5 ) && strncmp(name, lastname, sizeof(lastname)) == 0)
+		return lastpwd;
+
+	strNcpy(lastname, name, sizeof(lastname));
+	lastpwd = getpwnam(name);
+	lasttime = now;
+
+	return lastpwd;
+}
+
+/*
  *	The Group = handler.
  */
 static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,

@@ -26,28 +26,6 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 
 /*
- *	Call getpwnam but cache the result.
- */
-struct passwd *rad_getpwnam(const char *name)
-{
-	static struct passwd *lastpwd;
-	static char lastname[64];
-	static time_t lasttime = 0;
-	time_t now;
-
-	now = time(NULL);
-
-	if ((now <= lasttime + 5 ) && strncmp(name, lastname, sizeof(lastname)) == 0)
-		return lastpwd;
-
-	strNcpy(lastname, name, sizeof(lastname));
-	lastpwd = getpwnam(name);
-	lasttime = now;
-
-	return lastpwd;
-}
-
-/*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in
  *	sa_flags, which causes grief if signal() is called in the
  *	handler before the cause of the signal has been cleared.

@@ -154,7 +154,6 @@ void		sig_cleanup(int);
 void		remove_from_request_list(REQUEST *);
 
 /* util.c */
-struct passwd	*rad_getpwnam(const char *);
 void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST *request);
 RADIUS_PACKET *	build_reply(int code, REQUEST *request,
