@@ -195,12 +195,62 @@ ATTRIBUTE	Digest-Attributes	207	octets	# stupid format
 #	Experimental Non Protocol Attributes used by FreeRADIUS
 #
 
+#	The attributes number ranges are allocates as follows:
+#
+#	Range:	500-999
+#		server-side attributes which can go in a reply list
+
 # 	These attributes CAN go in the reply item list.
 ATTRIBUTE	Fall-Through		500	integer
 ATTRIBUTE	Exec-Program		502	string
 ATTRIBUTE	Exec-Program-Wait	503	string
 
 #	These attributes CANNOT go in the reply item list.
+
+#
+#	Range:	1000+
+#		Attributes which cannot go in a reply list.
+#
+#
+#	Range:	1000-1199
+#		Miscellaneous server attributes.
+#
+#
+#	Non-Protocol Attributes
+#	These attributes are used internally by the server
+#
+ATTRIBUTE	Auth-Type		1000	integer
+ATTRIBUTE	Menu			1001	string
+ATTRIBUTE	Termination-Menu	1002	string
+ATTRIBUTE	Prefix			1003	string
+ATTRIBUTE	Suffix			1004	string
+ATTRIBUTE	Group			1005	string
+ATTRIBUTE	Crypt-Password		1006	string
+ATTRIBUTE	Connect-Rate		1007	integer
+ATTRIBUTE	Add-Prefix		1008	string
+ATTRIBUTE	Add-Suffix		1009	string
+ATTRIBUTE	Expiration		1010	date
+ATTRIBUTE	Autz-Type		1011	integer
+ATTRIBUTE	Acct-Type		1012	integer
+ATTRIBUTE	Session-Type		1013	integer
+ATTRIBUTE	Post-Auth-Type		1014	integer
+ATTRIBUTE	Pre-Proxy-Type		1015	integer
+ATTRIBUTE	Post-Proxy-Type		1016	integer
+ATTRIBUTE	Pre-Acct-Type		1017	integer
+
+#
+#	This is the EAP type of authentication, which is set
+#	by the EAP module, for informational purposes only.
+#
+ATTRIBUTE	EAP-Type		1018	integer
+ATTRIBUTE	EAP-TLS-Require-Client-Cert	1019	integer
+ATTRIBUTE       EAP-Id                  1020    integer
+ATTRIBUTE	EAP-Code 		1021	integer
+ATTRIBUTE	EAP-MD5-Password	1022	string
+#
+#	Range:	1022-1028
+#		unused
+#
 ATTRIBUTE	User-Category		1029	string
 ATTRIBUTE	Group-Name		1030	string
 ATTRIBUTE	Huntgroup-Name		1031	string
@@ -246,39 +296,51 @@ ATTRIBUTE	Rewrite-Rule		1078	string
 ATTRIBUTE	Sql-Group		1079	string
 ATTRIBUTE	Response-Packet-Type	1080	integer
 ATTRIBUTE	Packet-Dst-Port		1081	integer
+ATTRIBUTE	MS-CHAP-Use-NTLM-Auth	1082	integer
+ATTRIBUTE	NTLM-User-Name		1083	string
 
 #
-#	Non-Protocol Attributes
-#	These attributes are used internally by the server
+#	Range:	1084-1199
+#		unused.
 #
-ATTRIBUTE	Auth-Type		1000	integer
-ATTRIBUTE	Menu			1001	string
-ATTRIBUTE	Termination-Menu	1002	string
-ATTRIBUTE	Prefix			1003	string
-ATTRIBUTE	Suffix			1004	string
-ATTRIBUTE	Group			1005	string
-ATTRIBUTE	Crypt-Password		1006	string
-ATTRIBUTE	Connect-Rate		1007	integer
-ATTRIBUTE	Add-Prefix		1008	string
-ATTRIBUTE	Add-Suffix		1009	string
-ATTRIBUTE	Expiration		1010	date
-ATTRIBUTE	Autz-Type		1011	integer
-ATTRIBUTE	Acct-Type		1012	integer
-ATTRIBUTE	Session-Type		1013	integer
-ATTRIBUTE	Post-Auth-Type		1014	integer
-ATTRIBUTE	Pre-Proxy-Type		1015	integer
-ATTRIBUTE	Post-Proxy-Type		1016	integer
-ATTRIBUTE	Pre-Acct-Type		1017	integer
 
 #
-#	This is the EAP type of authentication, which is set
-#	by the EAP module, for informational purposes only.
+#	Range:	1200-1279
+#		EAP-SIM (and other EAP type) weirdness.
 #
-ATTRIBUTE	EAP-Type		1018	integer
-ATTRIBUTE	EAP-TLS-Require-Client-Cert	1019	integer
-ATTRIBUTE       EAP-Id                  1020    integer
-ATTRIBUTE	EAP-Code 		1021	integer
-ATTRIBUTE	EAP-MD5-Password	1022	string
+#	For EAP-SIM, some attribute definitions for database interface
+#
+ATTRIBUTE	EAP-Sim-Subtype         1200    integer
+
+ATTRIBUTE	EAP-Sim-Rand1           1201	octets
+ATTRIBUTE	EAP-Sim-Rand2           1202	octets
+ATTRIBUTE	EAP-Sim-Rand3           1203	octets
+
+ATTRIBUTE	EAP-Sim-SRES1           1204	octets
+ATTRIBUTE	EAP-Sim-SRES2           1205	octets
+ATTRIBUTE	EAP-Sim-SRES3           1206	octets
+
+VALUE           EAP-Sim-Subtype         Start             10
+VALUE           EAP-Sim-Subtype         Challenge         11
+VALUE           EAP-Sim-Subtype         Notification      12
+VALUE           EAP-Sim-Subtype         Re-authentication 13
+
+# this attribute is used internally by the client code.
+ATTRIBUTE 	EAP-Sim-State	        1207	integer
+
+ATTRIBUTE       EAP-Sim-IMSI            1208	string
+ATTRIBUTE       EAP-Sim-HMAC            1209	string
+ATTRIBUTE	EAP-Sim-KEY             1210    octets
+ATTRIBUTE	EAP-Sim-EXTRA           1211    octets
+
+ATTRIBUTE	EAP-Sim-KC1             1212	octets
+ATTRIBUTE	EAP-Sim-KC2             1213	octets
+ATTRIBUTE	EAP-Sim-KC3             1214	octets
+
+#
+#	Range:	1280 - 1535
+#		EAP-type specific attributes
+#
 
 # these are PW_EAP_X  + 1280
 ATTRIBUTE	EAP-Type-Identity	1281	string
@@ -293,6 +355,11 @@ ATTRIBUTE	EAP-Type-LEAP		1301	octets
 ATTRIBUTE	EAP-Type-SIM2		1302	octets
 ATTRIBUTE	EAP-Type-TTLS		1305	octets
 ATTRIBUTE	EAP-Type-PEAP		1309	octets
+
+#
+#	Range:	1536 - 1791
+#		EAP Sim sub-types.
+#
 
 # these are PW_EAP_SIM_X + 1536
 ATTRIBUTE       EAP-Sim-RAND            1537    octets
@@ -315,37 +382,21 @@ ATTRIBUTE       EAP-Sim-NEXT_PSEUDONUM  1668    octets
 ATTRIBUTE       EAP-Sim-NEXT_REAUTH_ID  1669    octets
 ATTRIBUTE       EAP-Sim-CHECKCODE       1670    octets
 
+
 #
-# For EAP-SIM, some attribute definitions for database interface
+#	Range:	1800-2999
+#		Free
 #
-ATTRIBUTE	EAP-Sim-Subtype         1023    integer
-
-ATTRIBUTE	EAP-Sim-Rand1           1024	octets
-ATTRIBUTE	EAP-Sim-Rand2           1025	octets
-ATTRIBUTE	EAP-Sim-Rand3           1026	octets
-
-ATTRIBUTE	EAP-Sim-SRES1           1027	octets
-ATTRIBUTE	EAP-Sim-SRES2           1028	octets
-ATTRIBUTE	EAP-Sim-SRES3           1029	octets
-
-VALUE           EAP-Sim-Subtype         Start             10
-VALUE           EAP-Sim-Subtype         Challenge         11
-VALUE           EAP-Sim-Subtype         Notification      12
-VALUE           EAP-Sim-Subtype         Re-authentication 13
-
-# this attribute is used internally by the client code.
-ATTRIBUTE 	EAP-Sim-State	        1030	integer
-
-ATTRIBUTE       EAP-Sim-IMSI            1031	string
-ATTRIBUTE       EAP-Sim-HMAC            1032	string
-ATTRIBUTE	EAP-Sim-KEY             1033    octets
-ATTRIBUTE	EAP-Sim-EXTRA           1034    octets
-
-ATTRIBUTE	EAP-Sim-KC1             1035	octets
-ATTRIBUTE	EAP-Sim-KC2             1036	octets
-ATTRIBUTE	EAP-Sim-KC3             1037	octets
-
-ATTRIBUTE	MS-CHAP-Use-NTLM-Auth	1300	integer
+#	Range:	3000-3999
+#		Site-local attributes (see raddb/dictionary.in)
+#		Do NOT define attributes in this range!
+#
+#	Range:	4000-65535
+#		Unused
+#
+#	Range:	65536-
+#		Invalid.  Don't use.
+#
 
 
 #

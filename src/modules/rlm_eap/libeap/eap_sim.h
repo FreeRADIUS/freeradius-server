@@ -17,7 +17,6 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * Copyright 2003  Michael Richardson <mcr@sandelman.ottawa.on.ca>
  *
  */
@@ -31,24 +30,24 @@
 /* base for dictionary values */
 #define ATTRIBUTE_EAP_SIM_BASE      (6*256)
 
-#define ATTRIBUTE_EAP_SIM_SUBTYPE   1023
-#define ATTRIBUTE_EAP_SIM_RAND1           1024
-#define ATTRIBUTE_EAP_SIM_RAND2           1025
-#define ATTRIBUTE_EAP_SIM_RAND3           1026
-
-#define ATTRIBUTE_EAP_SIM_SRES1           1027
-#define ATTRIBUTE_EAP_SIM_SRES2           1028
-#define ATTRIBUTE_EAP_SIM_SRES3           1029
-
-#define ATTRIBUTE_EAP_SIM_STATE           1030
-#define ATTRIBUTE_EAP_SIM_IMSI            1031
-#define ATTRIBUTE_EAP_SIM_HMAC            1032
-#define ATTRIBUTE_EAP_SIM_KEY             1033
-#define ATTRIBUTE_EAP_SIM_EXTRA           1034
-
-#define ATTRIBUTE_EAP_SIM_KC1             1035
-#define ATTRIBUTE_EAP_SIM_KC2             1036
-#define ATTRIBUTE_EAP_SIM_KC3             1037
+#define ATTRIBUTE_EAP_SIM_SUBTYPE   	1200
+#define ATTRIBUTE_EAP_SIM_RAND1         1201
+#define ATTRIBUTE_EAP_SIM_RAND2         1202
+#define ATTRIBUTE_EAP_SIM_RAND3         1203
+					
+#define ATTRIBUTE_EAP_SIM_SRES1         1204
+#define ATTRIBUTE_EAP_SIM_SRES2         1205
+#define ATTRIBUTE_EAP_SIM_SRES3         1206
+					
+#define ATTRIBUTE_EAP_SIM_STATE         1207
+#define ATTRIBUTE_EAP_SIM_IMSI          1208
+#define ATTRIBUTE_EAP_SIM_HMAC          1209
+#define ATTRIBUTE_EAP_SIM_KEY           1210
+#define ATTRIBUTE_EAP_SIM_EXTRA         1211
+					
+#define ATTRIBUTE_EAP_SIM_KC1           1212
+#define ATTRIBUTE_EAP_SIM_KC2           1213
+#define ATTRIBUTE_EAP_SIM_KC3           1214
 
 enum eapsim_subtype {
   eapsim_start       = 10,

@@ -184,8 +184,7 @@
 #define PW_SQL_GROUP			1079
 #define PW_RESPONSE_PACKET_TYPE		1080
 #define PW_PACKET_DST_PORT		1081
-
-#define PW_MS_CHAP_USE_NTLM_AUTH	1300
+#define PW_MS_CHAP_USE_NTLM_AUTH	1082
 
 /*
  *	Integer Translations
