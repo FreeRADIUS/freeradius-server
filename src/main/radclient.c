@@ -106,7 +106,7 @@ static VALUE_PAIR *readvp(FILE *fp)
 static void usage(void)
 {
 	fprintf(stderr, "Usage: radclient [-c count] [-d raddb] [-f file] [-r retries] [-t timeout]\n"
-			"[-i id] [-qvxS] server[:port] acct|auth [<secret>]\n");
+			"[-i id] [-qvxS] server[:port] auth|acct|status [<secret>]\n");
 	
 	fprintf(stderr, " -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, " -d raddb    Set dictionary directory.\n");
@@ -327,6 +327,10 @@ int main(int argc, char **argv)
 		if (port == 0) port = PW_ACCT_UDP_PORT;
 		req->code = PW_ACCOUNTING_REQUEST;
 		do_summary = 0;
+	} else if (strcmp(argv[2], "status") == 0) {
+		if (port == 0) port = getport("radius");
+		if (port == 0) port = PW_AUTH_UDP_PORT;
+		req->code = PW_STATUS_SERVER;
 	} else if (isdigit((int) argv[2][0])) {
 		if (port == 0) port = getport("radius");
 		if (port == 0) port = PW_AUTH_UDP_PORT;

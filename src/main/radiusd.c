@@ -139,6 +139,7 @@ static const char *uid_name = NULL;
 static const char *gid_name = NULL;
 static int proxy_requests = TRUE;
 static int needs_child_cleanup = 0;
+static time_t start_time = 0;
 int spawn_flag = TRUE;
 
 static void usage(void);
@@ -159,6 +160,7 @@ static int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
 extern int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #endif
+static int rad_status_server(REQUEST *request);
 
 /*
  *  Map the proxy server configuration parameters to variables.
@@ -940,6 +942,7 @@ int main(int argc, char *argv[])
 	}
 
 	radlog(L_INFO, "Ready to process requests.");
+	start_time = time(NULL);
 
 	/*
 	 *  Receive user requests
@@ -1050,7 +1053,7 @@ int main(int argc, char *argv[])
 			 *  a few, so stripping off obviously invalid
 			 *  packets here will make our life easier.
 			 */
-			if (packet->code > PW_ACCESS_CHALLENGE) {
+			if (packet->code > PW_STATUS_SERVER) {
 				radlog(L_ERR, "Ignoring request from client %s:%d with unknown code %d",
 				       ip_ntoa((char *)buffer, packet->src_ipaddr),
 				       packet->src_port, packet->code);
@@ -1205,6 +1208,10 @@ int rad_process(REQUEST *request, int dospawn)
 			}
 			break;
 
+		case PW_STATUS_SERVER:
+			fun = rad_status_server;
+			break;
+
 		case PW_PASSWORD_REQUEST:
 			/*
 			 *  We don't support this anymore.
@@ -1297,6 +1304,7 @@ static void rad_reject(REQUEST *request)
 		 */
 		default:
 		case PW_ACCOUNTING_REQUEST:
+		case PW_STATUS_SERVER:
 			break;
 
 		/*
@@ -1562,12 +1570,14 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 	
 	/*
-	 *  If we don't already have a proxy
-	 *  packet for this request, we MIGHT have
-	 *  to go proxy it.
+	 *  If we don't already have a proxy packet for this request,
+	 *  we MIGHT have to go proxy it.
+	 *
+	 *  Status-Server requests NEVER get proxied.
 	 */
 	if (proxy_requests) {
-		if (request->proxy == NULL) {
+		if ((request->proxy == NULL) &&
+		    (request->packet->code != PW_STATUS_SERVER)) {
 			int rcode;
 
 			/*
@@ -2532,13 +2542,14 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  been cleaned up, AND it's time to clean up the request,
 	 *  OR, it's an accounting request.  THEN, go delete it.
 	 *
-	 *  If this is an accounting request, we delete it
-	 *  immediately, as there CANNOT be duplicate accounting
-	 *  packets.  If there are, then something else is
+	 *  If this is an accounting or Status-Server request, we
+	 *  delete it immediately, as there CANNOT be duplicate
+	 *  accounting packets.  If there are, then something else is
 	 *  seriously wrong...
 	 */
 	if (request->finished &&
 	    ((request->timestamp + cleanup_delay <= info->now) ||
+	     (request->packet->code == PW_STATUS_SERVER) ||
 	     (request->packet->code == PW_ACCOUNTING_REQUEST))) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 		/*
@@ -2812,4 +2823,31 @@ setup_timeout:
 	}
 
 	return RL_WALK_CONTINUE;
+}
+
+/*
+ *	Process and reply to a server-status request.
+ *	Like rad_authenticate and rad_accounting this should
+ *	live in it's own file but it's so small we don't bother.
+ */
+static int rad_status_server(REQUEST *request)
+{
+	char		reply_msg[64];
+	time_t		t;
+	VALUE_PAIR	*vp;
+
+	/*
+	 *	Reply with an ACK. We might want to add some more
+	 *	interesting reply attributes, such as server uptime.
+	 */
+	t = request->timestamp - start_time;
+	sprintf(reply_msg, "FreeRadius up %d day%s, %02d:%02d",
+		(int)(t / 86400), (t / 86400) == 1 ? "" : "s",
+		(int)((t / 3600) % 24), (int)(t / 60) % 60);
+	request->reply->code = PW_AUTHENTICATION_ACK;
+
+	vp = pairmake("Reply-Message", reply_msg, T_OP_SET);
+	pairadd(&request->reply->vps, vp); /* don't need to check if !vp */
+
+	return 0;
 }
