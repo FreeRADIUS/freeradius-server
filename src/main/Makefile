@@ -6,8 +6,8 @@ include ../../Make.inc
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
-		  modules.o radutmp.o xlat.o threads.o smux.o radius_snmp.o \
-                  client.o request_list.o
+		  modules.o modcall.o radutmp.o xlat.o threads.o smux.o \
+		  radius_snmp.o client.o request_list.o
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/autoconf.h 
 
 CFLAGS		+= -I../include
@@ -31,7 +31,7 @@ radiusd: $(SERVER_OBJS) ../lib/libradius.a
 		$(SERVER_OBJS) $(LIBS) $(LCRYPT) \
 		$(PTHREADLIB) $(LIBLTDL) $(MODULE_LIBS) 
 
-radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h 
+radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
 	$(CC) $(CFLAGS) -c radiusd.c
 
 acct.o: acct.c $(INCLUDES) ../include/modules.h
@@ -57,6 +57,9 @@ timestr.o: timestr.c $(INCLUDES)
 
 modules.o:  modules.c $(INCLUDES)
 	$(CC) $(CFLAGS) $(INCLTDL) -c modules.c
+
+modcall.o:  modcall.c $(INCLUDES)
+	$(CC) $(CFLAGS) $(INCLTDL) -c modcall.c
 
 radutmp.o:  radutmp.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radutmp.c
