@@ -38,6 +38,7 @@ Ver 1.63:
 * Only delete sessions which are not open in truncate_radacct. Bug noted by Evren Yurtesen <yurtesen@ispro.net.tr>
 * Add a user input tag in user_stats.php3
 * Change AcctStopTime = '0' with AcctStopTime IS NULL
+* Add a few more attribute help pages from Ulrich Walcher <uwalcher@bcore.de>
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
