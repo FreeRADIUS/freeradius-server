@@ -60,7 +60,7 @@ fi
 #
 #######################################################################
 compile() {
-gcc $CFLAGS tmp$$.c $LIBS -o tmp$$ 2>/dev/null 1>/dev/null
+cc $CFLAGS tmp$$.c $LIBS -o tmp$$ 2>/dev/null 1>/dev/null
 if [ "$?" = "0" ];then
   echo yes
   echo $DEF=$LIBS >>config.mak
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
 }
 EOF
 
-gcc $CFLAGS tmp$$.c -o tmp$$ 2>/dev/null 1>/dev/null
+cc $CFLAGS tmp$$.c -o tmp$$ 2>/dev/null 1>/dev/null
 if [ "$?" = "0" ];then
   echo yes
   echo $DEF=$INCLUDE >>config.mak
