@@ -69,7 +69,7 @@ static char filesecret[256];
  */
 static VALUE_PAIR *readvp(FILE *fp)
 {
-	char buf[128];
+	char buf[8192];
 	int last_token;
 	char *p;
 	VALUE_PAIR *vp;
