@@ -1505,16 +1505,27 @@ finished_request:
 	if (proxy_sent)
 		goto postpone_request;
 
-	if (request->packet && request->packet->vps) {
+	if (request->packet) {
 		pairfree(&request->packet->vps);
 		request->username = NULL;
 		request->password = NULL;
 	}
-	if (request->reply && request->reply->vps) {
-		pairfree(&request->reply->vps);
-	}
 
-	if (request->config_items) pairfree(&request->config_items);
+	/*
+	 *  If we've sent a reply to the NAS, then this request is
+	 *  pretty much finished, and we have no more need for any
+	 *  of the value-pair's in it, including the proxy stuff.
+	 */
+	if (request->reply) {
+		pairfree(&request->reply->vps);
+		if (request->proxy) {
+			pairfree(&request->proxy->vps);
+		}
+		if (request->proxy_reply) {
+			pairfree(&request->proxy_reply->vps);
+		}
+	}
+	pairfree(&request->config_items);
 
 	DEBUG2("Finished request %d", request->number);
 	finished = TRUE;
@@ -1750,12 +1761,20 @@ static REQUEST *rad_check_list(REQUEST *request)
 				 */
 			} else if (curreq->proxy != NULL) {
 				if (proxy_synchronous) {
-					DEBUG2("Sending duplicate proxy request to client %s:%d - ID: %d",
-							client_name(curreq->proxy->dst_ipaddr), request->packet->src_port,
-							curreq->proxy->id);
-
-					curreq->proxy_next_try = request->timestamp + proxy_retry_delay;
-					rad_send(curreq->proxy, curreq->proxysecret);
+					if (!curreq->proxy_reply) {
+						DEBUG2("Sending duplicate proxy request to client %s:%d - ID: %d",
+						       client_name(curreq->proxy->dst_ipaddr), request->packet->src_port,
+						       curreq->proxy->id);
+						
+						curreq->proxy_next_try = request->timestamp + proxy_retry_delay;
+						rad_send(curreq->proxy, curreq->proxysecret);
+					} else {
+						DEBUG2("Ignoring duplicate authentication packet"
+						       " from client %s:%d - ID: %d, as the proxy reply is currently being processed.",
+						       client_name(request->packet->src_ipaddr),
+						       request->packet->src_port,
+						       request->packet->id);
+					}
 				} else {
 					DEBUG2("Ignoring duplicate authentication packet"
 							" from client %s:%d - ID: %d, due to outstanding proxy request.",
@@ -2335,7 +2354,15 @@ static int refresh_request(REQUEST *request, void *data)
 		free(request->proxy->data);
 		request->proxy->data = NULL;
 	} /* proxy accounting request */
-	
+
+	/*
+	 *  Assert that we have NOT seen the proxy reply yet.
+	 *
+	 *  If we HAVE seen it, then we SHOULD NOT be bugging the
+	 *  home server!
+	 */
+	assert(request->proxy_reply == NULL);
+
 	/*
 	 *  Send the proxy packet.
 	 */
