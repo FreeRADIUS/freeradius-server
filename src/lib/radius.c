@@ -1182,9 +1182,11 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_AUTHENTICATION_ACK:
 			case PW_AUTHENTICATION_REJECT:
 			case PW_ACCESS_CHALLENGE:
-			  if (original) {
-				  memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
+			  if (!original) {
+				  librad_log("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
+				  return -1;
 			  }
+			  memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
 			  break;
 			}
 
@@ -1195,7 +1197,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				char buffer[32];
 				librad_log("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
 					   ip_ntoa(buffer, packet->src_ipaddr));
-				return 1;
+				return -1;
 			} /* else the message authenticator was good */
 
 			/*
@@ -1231,7 +1233,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				librad_log("Received Accounting-Request packet "
 				    "from %s with invalid signature!  (Shared secret is incorrect.)",
 				    ip_ntoa(buffer, packet->src_ipaddr));
-				return 1;
+				return -1;
 			}
 			break;
 
@@ -1247,7 +1249,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					   packet_codes[packet->code],
 					   ip_ntoa(buffer, packet->src_ipaddr),
 					   rcode);
-				return 1;
+				return -1;
 			}
 		  break;
 	}
@@ -1783,9 +1785,8 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
 			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
 			librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
-		}
-		else {
-			memcpy(buffer + secretlen, passwd + n - AUTH_PASS_LEN, AUTH_PASS_LEN);	
+		} else {
+			memcpy(buffer + secretlen, passwd + n2 - AUTH_PASS_LEN, AUTH_PASS_LEN);	
 			librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
 		}
 		
