@@ -473,6 +473,7 @@ int rad_authenticate(REQUEST *request)
 		 *	we added, which MUST NOT go back to the NAS.
 		 */
 		if (request->proxy_reply->vps) {
+			pairfree(&request->reply->vps);
 			request->reply->vps = request->proxy_reply->vps;
 			pairdelete(&request->reply->vps, PW_PROXY_STATE);
 			request->reply->code = request->proxy_reply->code;
