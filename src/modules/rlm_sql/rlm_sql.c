@@ -172,7 +172,7 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
-		    strchr("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-", *in) == NULL) {
+		    strchr("@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-", *in) == NULL) {
 			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
 			in++;
 			out += 3;
@@ -373,7 +373,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
                 }
         }
 	if (!found) {
-		radlog(L_DBG, "rlm_sql: DEFAULT not found", sqlusername);
+		radlog(L_DBG, "rlm_sql: DEFAULT not found");
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
