@@ -97,46 +97,33 @@ static void add_child(modgroup *g, modcallable *c)
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
+static LRAD_NAME_NUMBER rcode_table[] = {
+	{ "reject",     RLM_MODULE_REJECT       },
+	{ "fail",       RLM_MODULE_FAIL         },
+	{ "ok",         RLM_MODULE_OK           },
+	{ "handled",    RLM_MODULE_HANDLED      },
+	{ "invalid",    RLM_MODULE_INVALID      },
+	{ "userlock",   RLM_MODULE_USERLOCK     },
+	{ "notfound",   RLM_MODULE_NOTFOUND     },
+	{ "noop",       RLM_MODULE_NOOP         },
+	{ "updated",    RLM_MODULE_UPDATED      },
+	{ NULL, 0 }
+};
+
 static int str2rcode(const char *s, const char *filename, int lineno)
 {
-	if(!strcasecmp(s, "reject"))
-		return RLM_MODULE_REJECT;
-	else if(!strcasecmp(s, "fail"))
-		return RLM_MODULE_FAIL;
-	else if(!strcasecmp(s, "ok"))
-		return RLM_MODULE_OK;
-	else if(!strcasecmp(s, "handled"))
-		return RLM_MODULE_HANDLED;
-	else if(!strcasecmp(s, "invalid"))
-		return RLM_MODULE_INVALID;
-	else if(!strcasecmp(s, "userlock"))
-		return RLM_MODULE_USERLOCK;
-	else if(!strcasecmp(s, "notfound"))
-		return RLM_MODULE_NOTFOUND;
-	else if(!strcasecmp(s, "noop"))
-		return RLM_MODULE_NOOP;
-	else if(!strcasecmp(s, "updated"))
-		return RLM_MODULE_UPDATED;
-	else {
+	int rcode;
+
+	rcode = lrad_str2int(rcode_table, s, -1);
+	if (rcode < 0) {
 		radlog(L_ERR|L_CONS,
-			"%s[%d] Unknown module rcode '%s'.\n",
-			filename, lineno, s);
+		       "%s[%d] Unknown module rcode '%s'.\n",
+		       filename, lineno, s);
 		exit(1);
 	}
-	return -1;
-}
 
-static const char *rcode2str[] = {
-	"reject",
-	"fail",
-	"ok",
-	"handled",
-	"invalid",
-	"userlock",
-	"notfound",
-	"noop",
-	"updated"
-};
+	return rcode;
+}
 
 static int str2action(const char *s, const char *filename, int lineno)
 {
@@ -234,7 +221,7 @@ static int call_modgroup(int component, modgroup *g, REQUEST *request,
 
 #if 0
 		DEBUG2("%s: action for %s is %s",
-			comp2str[component], rcode2str[r],
+			comp2str[component], lrad_int2str(rcode_table, r, "??"),
 			action2str(p->actions[r]));
 #endif
 
@@ -295,7 +282,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 	if(c == NULL) {
 		DEBUG2("modcall[%s]: NULL object returns %s",
-				comp2str[component], rcode2str[myresult]);
+		       comp2str[component],
+		       lrad_int2str(rcode_table, myresult, "??"));
 		return myresult;
 	}
 
@@ -308,14 +296,16 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		myresult = call_modgroup(component, g, request, myresult);
 
 		DEBUG2("modcall: group %s returns %s",
-				c->name, rcode2str[myresult]);
+		       c->name,
+		       lrad_int2str(rcode_table, myresult, "??"));
 	} else {
 		modsingle *sp = mod_callabletosingle(c);
 
 		myresult = call_modsingle(component, sp, request, myresult);
 
 		DEBUG2("  modcall[%s]: module \"%s\" returns %s",
-			 comp2str[component], c->name, rcode2str[myresult]);
+		       comp2str[component], c->name,
+		       lrad_int2str(rcode_table, myresult, "??"));
 	}
 
 	return myresult;
@@ -343,7 +333,8 @@ static void dump_mc(modcallable *c, int indent)
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
 		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
-			rcode2str[i], action2str(c->actions[i]));
+		      lrad_int2str(rcode_table, i, "??"),
+		      action2str(c->actions[i]));
 	}
 
 	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
