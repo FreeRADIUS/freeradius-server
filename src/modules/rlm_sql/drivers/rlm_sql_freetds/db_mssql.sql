@@ -66,7 +66,8 @@ CREATE TABLE [radgroupreply] (
 	[GroupName] [varchar] (64) NOT NULL ,
 	[Attribute] [varchar] (32) NOT NULL ,
 	[Value] [varchar] (253) NOT NULL ,
-	[op] [char] (2) NULL
+	[op] [char] (2) NULL ,
+	[prio] [int] NOT NULL 
 ) ON [PRIMARY]
 GO
 
