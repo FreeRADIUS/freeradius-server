@@ -233,7 +233,16 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					if (!i->strvalue[0] ||
 					    (strcmp((char *)found->strvalue,
 						    (char *)i->strvalue) == 0)){
-					  pairdelete(to, found->attribute);
+						pairdelete(to, found->attribute);
+						
+						/*
+						 *	'tailto' may have been
+						 *	deleted...
+						 */
+						tailto = to;
+						for(i = *to; i; i = i->next) {
+							tailto = &i->next;
+						}
 					}
 				}
 				tailfrom = i;
@@ -299,6 +308,14 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			case T_OP_SET:		/* := */
 				if (found) {
 					pairdelete(to, found->attribute);
+					/*
+					 *	'tailto' may have been
+					 *	deleted...
+					 */
+					tailto = to;
+					for(i = *to; i; i = i->next) {
+						tailto = &i->next;
+					}
 				}
 				break;
 				
@@ -327,8 +344,10 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			tailto = to;
 		}
 		*tailto = i;
-		i->next = NULL;
-		tailto = &i->next;
+		if (i) {
+			i->next = NULL;
+			tailto = &i->next;
+		}
 	}
 }
 
