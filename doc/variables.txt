@@ -1,15 +1,21 @@
 The variables defined by the server are:
 
      %{Attribute-Name}               Corresponding value for Attribute-Name
-                                     in request
+                                     in the request packet
      %{request:Attribute-Name}       Corresponding value for Attribute-Name
-                                     in request
+                                     in the request packet
      %{reply:Attribute-Name}         Corresponding value for Attribute-Name
-                                     in reply
+                                     in the reply packet
+     %{proxy-request:Attribute-Name} Corresponding value for Attribute-Name
+                                     in the proxy request packet (if it exists)
+     %{proxy-reply:Attribute-Name}   Corresponding value for Attribute-Name
+                                     in the proxy reply packet (if it exists)
+
+  The above support the meta-Attribute Packet-Type as well. See the RADIUS
+dictionary for details.
+	 
      %{check:Attribute-Name}         Corresponding value for Attribute-Name
                                      in check items for request
-     %{proxy-reply:Attribute-Name}   Corresponding value for Attribute-Name
-                                     in the proxy reply (if it exists)
 	
 
      %{config:section.subsection.item} Corresponding value in 'radiusd.conf'
