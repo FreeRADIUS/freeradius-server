@@ -106,7 +106,7 @@ if ($link){
 				$acct_server = $da_name_cache[$acct_server];
 				if (!isset($acct_server)){
 					$acct_server = $row[NASIPAddress];
-					$acct_server = gethostbyaddr($acct_server);
+					$acct_server = @gethostbyaddr($acct_server);
 					if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
 						$da_name_cache[$row[NASIPAddress]] = $acct_server;
 						session_register('da_name_cache');

@@ -111,7 +111,7 @@ if ($link){
 			$acct_download = bytes2str($acct_download);
 			$acct_server = $da_name_cache[$row[NASIPAddress]];
 			if (!isset($acct_server)){
-				$acct_server = gethostbyaddr($row[NASIPAddress]);
+				$acct_server = @gethostbyaddr($row[NASIPAddress]);
 				if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
 					$da_name_cache[$row[NASIPAddress]] = $acct_server;
 					session_register('da_name_cache');
