@@ -75,7 +75,7 @@ void rbtree_free(rbtree_t *tree)
 	/*
 	 *	Walk the tree, deleting the nodes...
 	 */
-	if (tree->Root != NULL) FreeWalker(tree, tree->Root);
+	if (tree->Root != NIL) FreeWalker(tree, tree->Root);
 
 #ifndef NDEBUG
 	tree->magic = 0;
@@ -563,6 +563,8 @@ int rbtree_num_elements(rbtree_t *tree)
  */
 void *rbtree_node2data(rbtree_t *tree, rbnode_t *node)
 {
+	tree = tree;		/* -Wunused */
+
 	if (!node) return NULL;
 
 	return node->Data;
