@@ -102,9 +102,9 @@ if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT COUNT(*) FROM $config[sql_accounting_table] WHERE UserName = '$login'
 	AND AcctStopTime >= '$week_str' AND AcctStopTime <= '$now_str'
-	AND AcctTerminateCause LIKE 'Login-Incorrect%' OR
+	AND (AcctTerminateCause LIKE 'Login-Incorrect%' OR
 	AcctTerminateCause LIKE 'Invalid-User%' OR
-	AcctTerminateCause LIKE 'Multiple-Logins%';");
+	AcctTerminateCause LIKE 'Multiple-Logins%');");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
 		$tot_badlogins = $row['COUNT(*)'];
