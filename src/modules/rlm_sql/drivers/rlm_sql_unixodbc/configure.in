@@ -1,0 +1,103 @@
+AC_INIT(sql_unixodbc.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_sql_unixodbc])
+
+AC_PROG_CC
+AC_PROG_CPP
+
+AC_ARG_WITH(unixodbc-include-dir,
+[  --with-unixodbc-include-dir=DIR       Directory where the unixODBC includes may be found ],
+[ unixodbc_include_dir="$withval" ]
+)
+
+AC_ARG_WITH(unixodbc-lib-dir,
+[  --with-unixodbc-lib-dir=DIR       Directory where the unixODBC libraries may be found ],
+[ unixodbc_lib_dir="$withval" ]
+)
+
+AC_ARG_WITH(unixodbc-dir,
+[  --with-unixodbc-dir=DIR       Base directory where unixODBC is installed ],
+[ unixodbc_lib_dir="$withval/lib"
+  unixodbc_include_dir="$withval/include"
+]
+)
+
+if test x$with_[]modname != xno; then
+
+	targetname=modname   # we might change this later.
+
+	AC_MSG_CHECKING([for sql.h])
+
+	AC_TRY_COMPILE([#include <sql.h>], [int a = 1;],
+		UNIXODBC_INCLUDE=" ",
+		UNIXODBC_INCLUDE=
+	)
+
+	if test "x$UNIXODBC_INCLUDE" = "x"; then
+		old_CFLAGS="$CFLAGS"
+
+		for try in /usr/local/include $unixodbc_include_dir; do
+			CFLAGS="$old_CFLAGS -I$try"
+			AC_TRY_COMPILE([#include <sql.h>], [int a = 1;],
+				UNIXODBC_INCLUDE="-I$try",
+				UNIXODBC_INCLUDE=
+			)
+			if test "x$UNIXODBC_INCLUDE" != "x"; then
+				break;
+			fi
+		done
+		CFLAGS="$old_CFLAGS"
+	fi
+
+	if test "x$UNIXODBC_INCLUDE" = "x"; then
+		AC_MSG_RESULT(no)
+		AC_MSG_WARN([unixODBC headers not found.  Use --with-unixodbc-include-dir=<path>.])
+		targetname=   # disabled module
+	else
+		sql_unixodbc_cflags="${sql_unixodbc_cflags} ${UNIXODBC_INCLUDE}"
+		AC_MSG_RESULT(yes)
+  
+		AC_MSG_CHECKING([for SQLConnect in -lodbc])
+
+		old_LIBS="$LIBS"
+
+		for try in /usr/local/lib $unixodbc_lib_dir; do
+			LIBS="$old_LIBS -L$try -lodbc"
+			AC_TRY_LINK([extern char SQLConnect();], [SQLConnect()],
+				UNIXODBC_LIBS="-L$try -lodbc",
+				UNIXODBC_LIBS=
+			)
+			if test "x$UNIXODBC_LIBS" != "x"; then
+				break;
+			fi
+		done
+		LIBS="$old_LIBS"
+
+		dnl #  If one or the other isn't found, disable them both..
+		dnl #  If both are found, enable them both.
+		if test "x$UNIXODBC_LIBS" = "x"; then
+			AC_MSG_RESULT(no)
+			UNIXODBC_INCLUDE=
+			AC_MSG_WARN([unixODBC libraries not found.  Use --with-unixODBC-lib-dir=<path>.])
+			targetname=   # disabled module
+		else
+			AC_MSG_RESULT(yes) 
+			sql_unixodbc_ldflags="$sql_unixodbc_ldflags $UNIXODBC_LIBS"
+		fi
+	fi
+
+	sql_unixodbc_ldflags="$sql_unixodbc_ldflags $LIBS"
+
+	if test "x$targetname" = "x"; then
+		AC_MSG_WARN([sql submodule 'unixodbc' disabled])
+	fi
+
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+AC_SUBST(sql_unixodbc_ldflags)
+AC_SUBST(sql_unixodbc_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
