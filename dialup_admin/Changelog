@@ -11,6 +11,10 @@ Ver 1.75:
   $existing_groups along with a count of users per group. Use the functionality in group_new.php3
   and show_groups.php3
 * Update TODO
+* Add the style sheet in the content.html
+* Enlarge the width for the left frame
+* Make show_groups and the drop down menu in group_new work
+
 Ver 1.72:
 * Move the xlat function to a separate file in lib/xlat.php3
 * Add a lib/sql/nas_list.php3 to also get the nas list from sql (naslist.conf still works)

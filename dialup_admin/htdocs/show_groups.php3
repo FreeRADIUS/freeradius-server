@@ -71,7 +71,7 @@ EOM;
 <?php
 unset($login);
 $num = 0;
-include_once('../lib/$config[general_lib_type]/group_info.php3');
+include_once("../lib/$config[general_lib_type]/group_info.php3");
 if (isset($existing_groups)){
 	foreach ($existing_groups as $num_members => $group){
 		$num++;
