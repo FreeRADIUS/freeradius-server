@@ -14,6 +14,8 @@ CFLAGS		+= -I../include $(SNMP_INCLUDE)
 LDFLAGS		+= -L../lib
 LIBS		+= -lradius $(SNMP_LIBS)
 MODULE_LIBS	= $(STATIC_MODULES)
+VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
+VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
 
 #
 #  Not using shared libraries, add in ALL known static modules
@@ -56,7 +58,7 @@ timestr.o: timestr.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c timestr.c
 
 modules.o:  modules.c $(INCLUDES)
-	$(CC) $(CFLAGS) $(INCLTDL) -c modules.c
+	$(CC) $(CFLAGS) $(VFLAGS) $(INCLTDL) -c modules.c
 
 modcall.o:  modcall.c $(INCLUDES)
 	$(CC) $(CFLAGS) $(INCLTDL) -c modcall.c

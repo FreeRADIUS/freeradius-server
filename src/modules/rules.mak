@@ -69,7 +69,8 @@ ifneq ($(TARGET),)
 #
 #######################################################################
 $(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) -module -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
+	$(LIBTOOL) --mode=link $(LD) -release $(RADIUSD_VERSION) \
+	-module -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
 
 #
 #  If the module is in the list of static modules, then the "dynamic"
@@ -93,8 +94,9 @@ LINK_MODE=-static
 endif
 
 $(TARGET).la: $(DYNAMIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -module $(LINK_MODE) $(CFLAGS) \
-	$(RLM_CFLAGS) $(RLM_LDFLAGS) -o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
+	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	-module $(LINK_MODE) $(CFLAGS) $(RLM_CFLAGS) $(RLM_LDFLAGS) \
+	-o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #

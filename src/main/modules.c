@@ -198,6 +198,8 @@ static module_list_t *linkto_module(const char *module_name,
 {
 	module_list_t **last, *node;
 	lt_dlhandle *handle;
+	char module_struct[256];
+	char *p;
 
 	/*
 	 *	Look through the global module library list for the
@@ -238,7 +240,12 @@ static module_list_t *linkto_module(const char *module_name,
 	/*
 	 *	Link to the module's rlm_FOO{} module structure.
 	 */
-	node->module = (module_t *) lt_dlsym(node->handle, module_name);
+	/* module_name has the version embedded; strip it. */
+	strcpy(module_struct, module_name);
+	p = strrchr(module_struct, '-');
+	if (p)
+		*p = '\0';
+	node->module = (module_t *) lt_dlsym(node->handle, module_struct);
 	if (!node->module) {
 		radlog(L_ERR|L_CONS, "%s[%d] Failed linking to "
 				"%s structure in %s: %s\n",
@@ -336,9 +343,14 @@ module_instance_t *find_module_instance(const char *instname)
 	node->insthandle = NULL;
 	
 	/*
-	 *	Link to the module by name: rlm_FOO
+	 *	Link to the module by name: rlm_FOO-major.minor
 	 */
-	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
+	if (strncmp(name1, "rlm_", 4))
+		snprintf(module_name, sizeof(module_name), "rlm_%s-%d.%d",
+			name1, RADIUSD_MAJOR_VERSION, RADIUSD_MINOR_VERSION);
+	else
+		strNcpy(module_name, name1, sizeof(module_name));
+	/* XXX "radiusd.conf" is wrong here; must find cf filename */
 	node->entry = linkto_module(module_name,
 			"radiusd.conf", cf_section_lineno(inst_cs));
 	if (!node->entry) {
