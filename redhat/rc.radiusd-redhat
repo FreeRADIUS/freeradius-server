@@ -1,0 +1,58 @@
+#!/bin/sh
+# radiusd
+# radiusd	Start the radius daemon.
+#
+#		This is a script suitable for the Redhat Linux distribution.
+#		Copy it to /etc/rc.d/init.d/radiusd.init and
+#		use tksysv or your favorite runlevel editor to start it
+#		at runlevel 3
+#
+# chkconfig: 345 98 10
+# description: Ativa/Desativa servidor Radius
+
+
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+RADIUSD=/usr/sbin/radiusd
+WATCHER=/usr/sbin/radwatch
+LOCKF=/var/lock/subsys/radiusd
+
+test -f $RADIUSD || exit 0
+test -f /etc/raddb/clients || exit 0
+
+case "$1" in
+  start)
+	[ -f /var/log/radutmp ] || touch /var/log/radutmp
+	echo -n 'Starting RADIUSD server: '
+	if [ -x $WATCHER ]
+	then
+		daemon $WATCHER $RADIUSD -y
+	else
+		daemon $RADIUSD -y
+	fi
+	touch $LOCKF
+	echo "done."
+	;;
+  stop)
+	echo -n 'Stopping RADIUSD server: '
+	if [ -x $WATCHER ]
+	then
+		killproc $WATCHER 2> /dev/null
+	fi
+	killproc $RADIUSD 2> /dev/null
+	echo "done."
+	rm -f $LOCKF
+	;;
+  reload|restart)
+	$0 stop
+	sleep 3
+	$0 start
+	;;
+  *)
+        echo "Usage: $0 {start|stop|reload}"
+        exit 1
+esac
+
+exit 0

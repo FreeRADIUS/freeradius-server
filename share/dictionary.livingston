@@ -1,0 +1,12 @@
+#
+# Vendor-Specific attributes use the SMI Network Management Private
+# Enterprise Code from the "Assigned Numbers" RFC
+#
+VENDOR		Livingston	307
+
+#
+# Livingston Vendor-Specific Attributes (requires ComOS 3.8)
+#
+ATTRIBUTE	LE-Terminate-Detail	2	string	Livingston
+ATTRIBUTE	LE-Advice-of-Charge	3	string	Livingston
+

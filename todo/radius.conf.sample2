@@ -1,0 +1,45 @@
+
+confdir:		/etc/raddb
+authlog:		/var/log/radius.log
+acctlog:		/var/log/radacct/%s/detail
+radwtmp:		/var/log/radwtmp
+radutmp:		/var/log/radutmp
+pidfile:		/var/run/radiusd.pid
+checkrad:		/usr/local/sbin/checkrad
+
+avgroup common {
+   auth-recv-allow:	Framed-MTU
+   auth-recv-allow:	Idle-Timeout
+   auth-recv-allow:	Reply-Message
+   auth-recv-allow:	Filter-Id
+   auth-recv-allow:	Port-Limit
+   auth-recv-allow:	Session-Timeout
+   auth-recv-allow:	Idle-Timeout
+   auth-recv-allow:	Framed-Protocol
+   auth-recv-allow:	Framed-Compression
+   auth-recv-allow:	Service-Type = Login-User
+   auth-recv-allow:	Login-Service
+   auth-recv-allow:	Login-IP-Host
+}
+
+proxy domain.com {
+   authproxy:		pr1.domain.com:1645
+   acctproxy:		pr1.domain.com:1646
+   auth-send-allow:	A/V pairs
+   auth-send-deny:  	ALL
+   auth-recv-allow:	Framed-Address = 192.168.1.2/26
+   auth-recv-allow:	Framed-Netmask = 255.255.255.255/26
+   auth-recv-allow:	common
+   auth-recv-deny:	ALL
+   acct-send-deny:	Caller-ID
+   acct-send-allow:	ALL
+   authlog:		/var/log/radius.pr1.log
+   acctlog:		/var/log/radacct/pr1/detail
+}
+
+nas 192.168.1.1 {
+   shortname:		cs-1.alp
+   type:		livingston
+}
+
+

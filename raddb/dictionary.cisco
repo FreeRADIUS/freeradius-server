@@ -1,0 +1,71 @@
+#
+# dictionary.cisco
+#
+#		Accounting VSAs by
+#		"Marcelo M. Sosa Lugones" <marcelo@sosa.com.ar>
+#
+# Version:	@(#)dictionary.cisco  1.01  21-Mar-1999  miquels@cistron.nl
+#
+
+VENDOR		Cisco		9
+
+#
+#	Standard attribute
+#
+ATTRIBUTE	Cisco-AVPair	1	string		Cisco
+
+#
+#	Extra attributes sent by the Cisco, if you configure
+#	"radius-server vsa accounting" (requires IOS11.2+).
+#
+ATTRIBUTE       Cisco-Multilink-ID              187     integer		Cisco
+ATTRIBUTE       Cisco-Num-In-Multilink          188     integer		Cisco
+ATTRIBUTE       Cisco-Pre-Input-Octets          190     integer		Cisco
+ATTRIBUTE       Cisco-Pre-Output-Octets         191     integer		Cisco
+ATTRIBUTE       Cisco-Pre-Input-Packets         192     integer		Cisco
+ATTRIBUTE       Cisco-Pre-Output-Packets        193     integer		Cisco
+ATTRIBUTE       Cisco-Maximun-Time              194     integer		Cisco
+ATTRIBUTE       Cisco-Disconnect-Cause          195     integer		Cisco
+ATTRIBUTE       Cisco-Data-Rate                 197     integer		Cisco
+ATTRIBUTE       Cisco-PreSession-Time           198     integer		Cisco
+ATTRIBUTE       Cisco-PW-Lifetime               208     integer		Cisco
+ATTRIBUTE       Cisco-IP-Direct                 209     integer		Cisco
+ATTRIBUTE       Cisco-PPP-VJ-Slot-Comp          210     integer		Cisco
+ATTRIBUTE       Cisco-PPP-Async-Map             212     integer		Cisco
+ATTRIBUTE       Cisco-IP-Pool-Definition        217     integer		Cisco
+ATTRIBUTE       Cisco-Asing-IP-Pool             218     integer		Cisco
+ATTRIBUTE       Cisco-Route-IP                  228     integer		Cisco
+ATTRIBUTE       Cisco-Link-Compression          233     integer		Cisco
+ATTRIBUTE       Cisco-Target-Util               234     integer		Cisco
+ATTRIBUTE       Cisco-Maximun-Channels          235     integer		Cisco
+ATTRIBUTE       Cisco-Data-Filter               242     integer		Cisco
+ATTRIBUTE       Cisco-Call-Filter               243     integer		Cisco
+ATTRIBUTE       Cisco-Idle-Limit                244     integer		Cisco
+ATTRIBUTE       Cisco-Xmit-Rate                 255     integer		Cisco
+
+VALUE           Cisco-Disconnect-Cause        Unknown                 2
+VALUE           Cisco-Disconnect-Cause        CLID-Authentication-Failure     4
+VALUE           Cisco-Disconnect-Cause        No-Carrier              10
+VALUE           Cisco-Disconnect-Cause        Lost-Carrier            11
+VALUE           Cisco-Disconnect-Cause        No-Detected-Result-Codes        12
+VALUE           Cisco-Disconnect-Cause        User-Ends-Session       20
+VALUE           Cisco-Disconnect-Cause        Idle-Timeout            21
+VALUE           Cisco-Disconnect-Cause        Exit-Telnet-Session     22
+VALUE           Cisco-Disconnect-Cause        No-Remote-IP-Addr       23
+VALUE           Cisco-Disconnect-Cause        Exit-Raw-TCP            24
+VALUE           Cisco-Disconnect-Cause        Password-Fail           25
+VALUE           Cisco-Disconnect-Cause        Raw-TCP-Disabled        26
+VALUE           Cisco-Disconnect-Cause        Control-C-Detected      27
+VALUE           Cisco-Disconnect-Cause        EXEC-Program-Destroyed  28
+VALUE           Cisco-Disconnect-Cause        Timeout-PPP-LCP         40
+VALUE           Cisco-Disconnect-Cause        Failed-PPP-LCP-Negotiation      41
+VALUE           Cisco-Disconnect-Cause        Failed-PPP-PAP-Auth-Fail        42
+VALUE           Cisco-Disconnect-Cause        Failed-PPP-CHAP-Auth    43
+VALUE           Cisco-Disconnect-Cause        Failed-PPP-Remote-Auth  44
+VALUE           Cisco-Disconnect-Cause        PPP-Remote-Terminate    45
+VALUE           Cisco-Disconnect-Cause        PPP-Closed-Event        46
+VALUE           Cisco-Disconnect-Cause        Session-Timeout         100
+VALUE           Cisco-Disconnect-Cause        Session-Failed-Security 101
+VALUE           Cisco-Disconnect-Cause        Session-End-Callback    102
+VALUE           Cisco-Disconnect-Cause        Invalid-Protocol        120
+

@@ -1,0 +1,40 @@
+#
+# Make.inc.in	Common Makefile stuff for the cistron-radius package.
+#
+# Version:	@(#)Makefile.inc.in  1.00 01-Jul-1999  miquels@cistron.nl
+#
+
+# Location of files.
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+sysconfdir	= @sysconfdir@
+localstatedir	= @localstatedir@
+libdir		= @libdir@
+bindir		= @bindir@
+sbindir		= @sbindir@
+mandir		= @mandir@
+logdir		= @logdir@
+raddbdir	= @raddbdir@
+radacctdir	= @radacctdir@
+
+CC		= @CC@
+RANLIB		= @RANLIB@
+INCLUDE		= 
+CFLAGS		= $(INCLUDE) @CFLAGS@
+LDFLAGS		= @LDFLAGS@
+
+LCRYPT		= @CRYPTLIB@
+LDBM		= @DBMLIB@
+LIBDL		= @LIBDL@
+SOCKETLIB	= @SOCKETLIB@
+NSLLIB		= @NSLLIB@
+
+LOGDIR		= @logdir@
+RADDBDIR	= @raddbdir@
+RUNDIR		= @localstatedir@/run
+SBINDIR		= @sbindir@
+RADIR		= @radacctdir@
+
+MODULES		= @MODULES@
+MODULE_PATHS	= @MODULE_PATHS@
+

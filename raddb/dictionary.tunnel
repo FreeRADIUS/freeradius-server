@@ -1,0 +1,50 @@
+#
+# dictionary.tunnel
+#
+#		Experimental tunneling attributes.
+#
+#
+# Version:	@(#)dictionary.tunnel  1.10  11-Nov-1998  miquels@cistron.nl
+#
+
+#
+#	Tunneling Attributes
+#
+ATTRIBUTE	Tunnel-Type			64	integer
+ATTRIBUTE	Tunnel-Medium-Type		65	integer
+ATTRIBUTE	Acct-Tunnel-Client-Endpoint	66	string
+ATTRIBUTE	Tunnel-Server-Endpoint		67	string
+ATTRIBUTE	Acct-Tunnel-Connection-Id	68	string
+ATTRIBUTE	Tunnel-Password			69	string
+ATTRIBUTE	Private-Group-Id		75	integer
+
+VALUE		Framed-Protocol		PPTP			9
+
+#  Some of the new Tunnel values 
+VALUE		Tunnel-Security		None			0
+VALUE		Tunnel-Security		Control-Only		1
+VALUE		Tunnel-Security		Data-Only		2
+VALUE		Tunnel-Security		Both			3
+
+#	Tunnel Type
+
+VALUE		Tunnel-Type	PPTP	1
+VALUE		Tunnel-Type	L2F	2
+VALUE		Tunnel-Type	L2TP	3
+VALUE		Tunnel-Type	ATMP	4
+VALUE		Tunnel-Type	VTP	5
+VALUE		Tunnel-Type	AH	6
+VALUE		Tunnel-Type	IP	7
+VALUE		Tunnel-Type	MIN-IP	8
+VALUE		Tunnel-Type	ESP	9
+VALUE		Tunnel-Type	GRE	10
+VALUE		Tunnel-Type	DVS	11
+#
+
+#	Tunnel Medium Type
+
+VALUE		Tunnel-Medium-Type	IP		1
+VALUE		Tunnel-Medium-Type	X25		2
+VALUE		Tunnel-Medium-Type	ATM		3
+VALUE		Tunnel-Medium-Type	Frame-Relay	4
+

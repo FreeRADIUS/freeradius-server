@@ -1,0 +1,19 @@
+.TH BUILDDBM 8 "20 Januari 1997" "" "Cistron Radius Daemon"
+.SH NAME
+builddbm -- build DBM file from RADIUS users file.
+.SH SYNOPSIS
+.B builddbm
+.SH DESCRIPTION
+This utility is used to build a DBM file (in DBM or NDBM format) from
+the radius \fIusers\fP file to save memory.
+.PP
+Usage of this utility is only encouraged if you don't use multiple
+DEFAULT entries (or only at the end of the \fIusers\fP file) and
+you have more then 500 entries in the \fIusers\fP file. Normally,
+\fBradiusd\fP reads the \fIusers\fP file into memory at startup. With
+very large files this may cost too many resources and it may then
+be wiser to use a DBM file to save memory.
+.SH SEE ALSO
+radiusd(8), users(5rad).
+.SH AUTHOR
+Miquel van Smoorenburg, miquels@cistron.nl.

@@ -1,0 +1,16 @@
+#! /bin/sh
+
+case "$1" in
+  remove)
+	/etc/init.d/radiusd stop
+	;;
+  upgrade)
+	/etc/init.d/radiusd stop
+	;;
+  failed-upgrade)
+	;;
+  deconfigure)
+	;;
+esac
+
+exit 0

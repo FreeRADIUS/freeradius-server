@@ -1,0 +1,56 @@
+
+		PAM Support for Cistron-radiusd
+
+
+0. INTRODUCTION
+
+   PAM support was done by Jeph Blaize. Miguel a.l. Paraz <map@iphil.net>
+   ported it to Cistron-Radius. Chris Dent <cdent@kiva.net> added the
+   Pam-Auth attribute. It is not complete yet but seems to work
+   (for authentication only).
+
+1. USAGE
+
+   Use Auth-Type = Pam in the users file. For backwards compatibility,
+   you can also use Password = "PAM" but, like Password = "UNIX", this
+   is depreciated.
+
+   You can also use ``Pam-Auth = "somestring"'' to specify an entry in
+   /etc/pam.d. The default is "radius".
+
+2. NOTES
+
+   Added the following hacks, see CFLAGS in src/Makefile to activate.
+   Crude support for PAM authentication (-DPAM), User-Password = "PAM".
+
+   Miguel has made PAM changes to the Cistron radiusd, since he now uses
+   it as the basis of many accounting systems. However, according to the
+   PAM experts, calling the pam_start function for each user to be
+   authenticated is a bad idea. Seems to work for him, though.
+
+   Besides, the Pam-Auth attribute only works if pam_start is called
+   everytime anyways ..
+
+3. TODO:
+
+   Real PAM support, figure out how we can write a module that will make
+   it blend in with PAM more seamlessly.  With this, we can replace the
+   DENY_SHELL with something more flexible such as a database.
+
+4. EXAMPLE:
+
+DEFAULT Auth-Type = Pam,  NAS-IP-Address = 206.97.64.5
+	Service-Type = Framed-User,
+	Framed-Protocol = PPP,
+	Framed-IP-Address = 255.255.255.254,
+	Filter-Id = "std.ppp",
+	Framed-MTU = 1500,
+	Framed-Compression = Van-Jacobson-TCP-IP
+DEFAULT Auth-Type = Pam,  Pam-Auth = "radius2", NAS-IP-Address = 127.0.0.1
+	Service-Type = Framed-User,
+	Framed-Protocol = PPP,
+	Framed-IP-Address = 255.255.255.254,
+	Filter-Id = "std.ppp",
+	Framed-MTU = 1500,
+	Framed-Compression = Van-Jacobson-TCP-IP
+

@@ -1,0 +1,29 @@
+#
+# Makefile	Makefile for the cistron-radius package.
+#
+# Version:	@(#)Makefile  1.00 01-Jul-1999  miquels@cistron.nl
+#
+
+@INCLUDE@ @IQUOTE@../../Make.inc@IQUOTE@
+
+WHAT_TO_MAKE	= all
+
+all:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
+clean:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@rm -f *~
+
+install:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
+common:
+	@for mod in $(MODULES); do \
+		dir=`echo $$mod | sed -e 's/\..*$$//'`; \
+		what=$(WHAT_TO_MAKE); \
+		[ "$$what" = "all" ] && what=$$mod; \
+		echo "Making $$what in $$dir..."; \
+		(cd $$dir ; $(MAKE) $(MFLAGS) $$what) || exit 1;\
+	done
+

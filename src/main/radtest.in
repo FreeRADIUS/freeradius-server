@@ -1,0 +1,46 @@
+#! /bin/sh
+#
+# radtest	Emulate the user interface of the old
+#		radtest that used to be part of cistron-radius.
+#
+# Version:	@(#)radtest.sh	1.10  25-Jul-1999  miquels@cistron.nl
+#
+
+prefix="@prefix@"
+exec_prefix="@exec_prefix@"
+bindir="@bindir@"
+
+usage() {
+	echo "Usage: radtest user passwd radius-server nas-port-id secret [ppphint] [nasname]" >&2
+	exit 1
+}
+
+radclient=$bindir/radclient
+if [ ! -x "$radclient" ] && [ -x ./radclient ]
+then
+	radclient=./radclient
+fi
+
+if [ $# -lt 5 ] || [ $# -gt 7 ]
+then
+	usage
+fi
+
+if [ "$7" ]
+then
+	nas=$7
+else
+	nas=`hostname`
+fi
+
+(
+	echo "User-Name = \"$1\""
+	echo "Password = \"$2\""
+	echo "NAS-IP-Address = $nas"
+	echo "NAS-Port-Id = $4"
+	if [ "$6" ]
+	then
+		echo "Framed-Protocol = PPP"
+	fi
+) | $radclient -dn $3 auth $5
+

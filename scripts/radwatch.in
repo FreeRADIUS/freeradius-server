@@ -1,0 +1,51 @@
+#! /bin/sh
+#
+# radwatch	Script to watch RADIUS. Sends mail to root and
+#		restarts radiusd when it dies [which ofcourse
+#		never happens :)]
+#
+# Version:	@(#)radwatch  1.20  19-Jul-1999  miquels@cistron.nl
+#
+
+prefix          = @prefix@
+exec_prefix     = @exec_prefix@
+sbindir         = @sbindir@
+localstatedir   = @localstatedir@
+logdir          = @logdir@
+rundir          = ${localstatedir}/run
+
+MAILTO=root
+RADIUSD=$sbindir/radiusd
+
+exec >> $logdir/radwatch.log 2>&1
+
+# get the path to the radiusd
+if [ "$1" ] && [ -x "$1" ]
+then
+	RADIUSD=$1
+	shift
+fi
+
+cd $logdir
+[ -d $logdir/radacct ] && cd $logdir/radacct
+ulimit -c unlimited
+
+(
+	trap 'echo `date`: exit; kill `cat $rundir/radiusd.pid`; exit 0' TERM
+	trap "" HUP TSTP
+
+	while :
+	do
+		# Use `wait', otherwise the trap doesn't work.
+		$RADIUSD -f $* &
+		wait
+		exec >> $logdir/radwatch.log 2>&1
+		echo "`date`: Radius died, restarting.."
+		date | mail -s "Radius died, restarting.." $MAILTO
+		sleep 10
+	done
+) &
+
+echo "$!" > $rundir/radwatch.pid
+
+sleep 1

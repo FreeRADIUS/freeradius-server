@@ -1,0 +1,16 @@
+#! /bin/sh
+#
+# radiusd	Cron script to rotate radwtmp file monthly.
+#		Debian/Linux: place this in /etc/cron.monthly.
+#
+
+umask 022
+cd /var/log
+
+# Take care of the standard logfiles.
+cd /var/log
+if [ -f radwtmp ]
+then
+	savelog -g adm -m 644 -c 6 radwtmp > /dev/null
+fi
+

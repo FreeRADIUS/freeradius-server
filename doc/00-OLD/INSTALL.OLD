@@ -1,0 +1,100 @@
+
+
+			How to install RADIUS
+
+Last modified 95/01/06
+
+(Also see the RADIUS Chapter in the manual.)
+
+The below examples assume you're installing RADIUS in /etc/raddb but
+you can place it anywhere if you change radius.h and recompile or use
+the -d flag to tell it what directory to find its configuration files in.
+
+If you have pminstall and aren't running NIS (Yellow Pages), run
+pminstall and choose "Install RADIUS", then as root do
+"chmod 700 /etc/raddb", then skip down to SETTING UP CLIENTS.
+
+If you don't have pminstall, do the following:
+
+Add the following 2 lines to /etc/services on your RADIUS server, or
+if you're running NIS (Yellow Pages) add these lines to your services
+NIS map on your NIS master and push the maps.
+
+radius          1645/udp        radiusd
+radacct		1646/udp
+
+Now execute the following commands as root:
+
+umask 22
+mkdir /etc/raddb /usr/adm/radacct
+chmod 700 /etc/raddb /usr/adm/radacct
+
+Copy the contents of /usr/portmaster/radius/raddb into /etc/raddb.
+Compile radiusd from /usr/portmaster/radius/src and place it in
+/etc/radiusd or wherever you prefer.
+
+
+SETTING UP CLIENTS
+
+
+The PortMaster's hostname and the shared secret are placed in
+/etc/raddb/clients, separated by a tab.  Your user entries are placed
+in /etc/raddb/users.  Examples of each can be found in clients.example
+and users.example.  You shouldn't need to change the dictionary file.
+
+Start radiusd (you'll probably want to add this to /etc/rc.local or
+some other file that gets run at system boot time).
+
+/etc/radiusd
+
+radiusd -x will produce debugging output which may be helpful if things
+don't seem to be working.
+
+If radiusd has problems it'll print to /etc/raddb/logfile or /dev/console
+if it can. 
+
+Note that Framed-Compression defaults to on if you don't specify it,
+so SLIP users who don't want VJ header compression MUST include
+Framed-Compression = None.
+
+Configure your PortMaster so that it knows which host the radiusd is
+running on and what the shared secret is.  On the PortMaster, set the
+RADIUS server and the shared secret using the "set authentic" and "set
+secret" commands, or from the Edit RADIUS menu on pmconsole.  The
+secret is case-sensitive and can be up to 16 characters long.  Do not
+use control characters in the secret.  You can configure a backup
+RADIUS server with "set alternate" but it's not required.  Make sure
+all ports have passthrough disabled with "set all security on" followed
+by "reset all" (Warning!  "reset all" will drop off anyone who's on the
+port at the moment.) On older versions of ComOS you'll need to do "set
+s0 security on", "set s1 security on", etc.  Do a "save all" to save
+the changes to nonvolatile memory.
+
+The PortMaster will check its local User Table first, and if it doesn't
+find the user there AND passthrough is disabled AND a RADIUS server is
+set, it will then query the RADIUS server.
+
+Make sure your DNS has an in-addr.arpa entry for the PortMaster if you're 
+using Rlogin to Linux. 
+
+If you're using Rlogin or PortMaster service and get prompted for the
+password twice, you can add the PortMaster's hostname to your
+/etc/hosts.equiv file to get rid of the second password prompt.  
+Do NOT do this if you're using Passthrough and not RADIUS!!!
+
+If you're already in production with the User Table, a good way to
+switch over to using RADIUS is first to add a user to RADIUS that's not
+in the PortMaster's User Table, test with that, and when everything
+checks out use pmreadpass (if on a supported platform) to copy everyone
+from the PortMaster to the /etc/raddb/users file, then get rid of the
+users in the PortMaster's local User Table.  Edit the output from
+pmreadpass to remove the ", Client-ID = 192.9.200.1" clause (the IP
+address will match your PortMaster's IP address).  pmreadpass is
+included in release 3.1 of the PortMaster administration software.
+You'll also need to modify Framed-Filter-Id if you have any.  
+ 
+        Framed-Filter-Id = "std.ppp" 
+ 
+means that the input filter is std.ppp.in (if it exists) and the output 
+filter is std.ppp.out (if it exists). 
+ 

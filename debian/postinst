@@ -1,0 +1,28 @@
+#! /bin/sh
+
+case "$1" in
+  configure)
+	update-rc.d radiusd defaults 50 > /dev/null
+	if [ ! -f /var/log/radius.log ]
+	then
+		touch /var/log/radius.log
+		chmod 640 /var/log/radius.log
+		chown root:adm /var/log/radius.log
+	fi
+	if [ ! -f /var/log/radwtmp ]
+	then
+		touch /var/log/radwtmp
+		chmod 644 /var/log/radwtmp
+		chown root:adm /var/log/radius.log
+	fi
+	/etc/init.d/radiusd start
+	;;
+  abort-upgrade)
+	;;
+  abort-remove)
+	;;
+  abort-deconfigure)
+	;;
+esac
+
+exit 0

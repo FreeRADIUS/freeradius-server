@@ -1,0 +1,32 @@
+
+		Cisco IOS 11.x and Radius
+
+For Cisco 11.1, you normally use
+
+   aaa new-model
+   aaa authentication ppp radppp if-needed radius
+   aaa authorization network radius none
+   aaa accounting network wait-start radius
+
+to get the Cisco to talk to a radius server.
+
+With IOS 11.3, you need to add:
+
+   aaa accounting update newinfo
+
+If you want the IP address of the user to show up in the radutmp file
+(and thus, the output of "radwho").
+
+This is because with IOS 11.3, the Cisco first sends a "Start" accounting
+packet without the IP address included. By setting "update newinfo" it
+will send an account "Alive" packet which updates the information. Cistron
+Radius understands the "Alive" packet since 1.5.4.3-beta7.
+
+
+Als you might see a lot of "duplicates" in the logfile. That can be
+fixed by
+
+   aaa accounting network wait radius
+   radius-server timeout 3
+
+

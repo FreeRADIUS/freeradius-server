@@ -1,0 +1,285 @@
+AC_INIT(src/main/radiusd.c)
+AC_CONFIG_HEADER(src/include/autoconf.h)
+AC_REVISION($Revision$)dnl
+dnl AC_PREFIX_DEFAULT(/usr/local)
+
+dnl Check for GNU cc
+AC_PROG_CC
+AC_PROG_RANLIB
+
+dnl Set Default CFLAGS
+if test "$GCC" = "yes"; then
+    CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
+fi
+
+dnl extra argument: --with-logdir
+logdir='${localstatedir}/log'
+AC_MSG_CHECKING(logdir)
+AC_ARG_WITH(logdir,
+[  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log] ],
+[ case "$withval" in
+    no)
+	AC_MSG_ERROR(Need logdir)
+	;;
+    yes)
+	;;
+    *)
+	logdir="$withval"
+	;;
+  esac ]
+)
+AC_SUBST(logdir)
+AC_MSG_RESULT($logdir)
+
+dnl extra argument: --with-radacctdir
+radacctdir='${logdir}/radacct'
+AC_MSG_CHECKING(radacctdir)
+AC_ARG_WITH(radacctdir,
+[  --with-radacctdir=PATH  Directory for detail files [LOGDIR/radacct] ],
+[ case "$withval" in
+    no)
+	AC_MSG_ERROR(Need radacctdir)
+	;;
+    yes)
+	;;
+    *)
+	radacctdir="$withval"
+	;;
+  esac ]
+)
+AC_SUBST(radacctdir)
+AC_MSG_RESULT($radacctdir)
+
+dnl extra argument: --with-raddbdir
+raddbdir='${sysconfdir}/raddb'
+AC_MSG_CHECKING(raddbdir)
+AC_ARG_WITH(raddbdir,
+[  --with-raddbdir=DIR     Directory for config files [SYSCONFDIR/raddb] ],
+[ case "$withval" in
+    no)
+	AC_MSG_ERROR(Need raddbdir)
+	;;
+    yes)
+	;;
+    *)
+	raddbdir="$withval"
+	;;
+  esac ]
+)
+AC_SUBST(raddbdir)
+AC_MSG_RESULT($raddbdir)
+
+dnl extra argument: --with-dbm
+DBMLIB=
+BUILDDBM=
+AC_ARG_WITH(dbm,
+[  --with-dbm              Compile in DBM support],
+[ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(WITH_DBM)
+	DBMLIB=-ldbm
+	BUILDDBM=builddbm
+  esac ]
+)
+
+dnl extra argument: --with-ndbm
+AC_ARG_WITH(ndbm,
+[  --with-ndbm             Compile in NDBM support],
+[ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(WITH_NDBM)
+	DBMLIB=-ldb
+	BUILDDBM=builddbm
+  esac ]
+)
+
+AC_SUBST(DBMLIB)
+AC_SUBST(BUILDDBM)
+
+dnl extra argument: --with-ascend-hack
+AC_ARG_WITH(ascend-hack,
+[  --with-ascend-hack      Include Ascend hacks],
+[ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(WITH_ASCEND_HACK)
+  esac ]
+)
+
+dnl extra argument: --with-ascend-cpl=N
+AC_ARG_WITH(ascend-cpl,
+[  --with-ascend-cpl=N     Set Ascend Channels Per Line to N [23] ],
+[ case "$withval" in
+    *)
+	AC_DEFINE_UNQUOTED(ASCEND_CHANNELS_PER_LINE, $withval)
+  esac ]
+)
+
+dnl extra argument: --with-ntdomain-hack
+AC_ARG_WITH(ntdomain-hack,
+[  --with-ntdomain-hack    Include NT Domain hack],
+[ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(WITH_NTDOMAIN_HACK)
+  esac ]
+)
+
+dnl extra argument: --with-spcj-hack
+AC_ARG_WITH(spcj-hack,
+[  --with-spcj-hack        Include Specialix Jetstream hacks],
+[ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(WITH_SPECIALIX_JETSTREAM_HACK)
+  esac ]
+)
+
+dnl extra argument: --with-dict-nocase
+AC_ARG_WITH(dict-nocase,
+[  --with-dict-nocase      Make dictionary case-independant],
+[ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(WITH_DICT_NOCASE)
+  esac ]
+)
+
+dnl extra argument: --with-dynamic_modules
+WITH_DYNAMIC_MODULES=yes
+AC_ARG_WITH(dynamic-modules,
+[  --with-dynamic-modules  Use runtime loadable modules ],
+[ case "$withval" in
+    *)
+	WITH_DYNAMIC_MODULES=$withval
+  esac ]
+)
+
+dnl See what include-style is used by the make program.
+AC_MSG_CHECKING(include style for make)
+echo "include /dev/null" > testmake.$$
+echo "all:" >> testmake.$$
+make -f testmake.$$ >/dev/null 2>&1
+if test $? = 0
+then
+	INCLUDE=include
+	IQUOTE=
+else
+	INCLUDE=.include
+	IQUOTE='"'
+fi
+rm -f testmake.$$
+AC_MSG_RESULT(" $INCLUDE")
+AC_SUBST(INCLUDE)
+AC_SUBST(IQUOTE)
+
+dnl Check if we have a dynamic linker.
+AC_MSG_CHECKING(for runtime dynamic linker)
+if test "$WITH_DYNAMIC_MODULES" = "yes" && test -f /usr/include/dlfcn.h
+then
+	AC_DEFINE(HAVE_LIBDL)
+	HAVE_LIBDL=1
+	LIBDL="-ldl"
+	AC_MSG_RESULT("found")
+else
+	AC_MSG_RESULT("not found")
+fi
+AC_SUBST(LIBDL)
+
+dnl Modules to be built.
+for i in `( cd src/modules; ls -1d rlm_* )`
+do
+	if test "$HAVE_LIBDL" = ""; then
+		MODULES="$MODULES$i.a "
+		MODULE_PATHS="$MODULE_PATHS../modules/$i/$i.a "
+	else
+		MODULES="$MODULES$i.so "
+	fi
+done
+AC_SUBST(MODULES)
+AC_SUBST(MODULE_PATHS)
+
+dnl Check for programs
+AC_PATH_PROG(PERL, perl, /usr/local/bin/perl)
+if test ! -x $ac_cv_path_PERL; then
+  AC_MSG_ERROR(perl not found - fatal)
+fi
+AC_PATH_PROG(SNMPGET, snmpget, /usr/local/bin/snmpget)
+AC_PATH_PROG(RUSERS, rusers, /usr/bin/rusers)
+
+dnl Check for headers
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+
+AC_CHECK_HEADERS( \
+	crypt.h \
+	errno.h \
+	resource.h \
+	getopt.h \
+	malloc.h \
+	sys/select.h \
+)
+
+AC_CHECK_FUNCS( \
+	getopt_long \
+	lockf \
+	strsignal \
+	snprintf \
+	vsnprintf \
+	setsid \
+)
+
+dnl Check for socklen_t
+AC_TRY_COMPILE([#include <sys/types.h>
+#include <sys/socket.h>],
+  [socklen_t foo],
+  AC_DEFINE(HAVE_SOCKLEN_T),
+)
+
+dnl Check for libcrypt
+dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
+AC_CHECK_LIB(crypt, crypt,
+  CRYPTLIB="-lcrypt",
+)
+AC_SUBST(CRYPTLIB)
+
+dnl Check for -lsocket
+AC_CHECK_LIB(socket, getsockname,
+  SOCKETLIB="-lsocket"
+)
+AC_SUBST(SOCKETLIB)
+
+dnl Check for -lnsl. We don't need yp_all, but usually if we want to
+dnl link against -lsocket we need to include -lnsl as well.
+AC_CHECK_LIB(nsl, yp_all,
+  NSLLIB="-lnsl",
+)
+AC_SUBST(NSLLIB)
+
+AC_OUTPUT(\
+	
+	./Make.inc \
+	./Makefile
+	./src/Makefile \
+	./src/lib/Makefile \
+	./src/main/Makefile \
+	./src/main/checkrad.pl \
+	./src/main/radlast \
+	./src/main/radtest \
+	./src/modules/Makefile \
+	./raddb/Makefile \
+	./doc/Makefile \
+	./scripts/Makefile \
+	./scripts/rc.radiusd \
+	./scripts/radwatch \
+)
+
+AC_OUTPUT_COMMANDS([echo timestamp > stamp-h])

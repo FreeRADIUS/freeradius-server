@@ -1,0 +1,72 @@
+
+		Cistron-Radius as a proxy radius server.
+
+
+0. INTRODUCTION
+
+  It is now possible to use Cistron Radius as a proxy radius server. This
+  means that it can consult a remote radius server to validate a user.
+  This is handy for roaming setups, or for renting ports to someone else.
+
+1. FILES
+
+  If a user logs in as username@realm, the "realm" part is looked up in
+  the file /etc/raddb/realms. The format of this file is, for now:
+
+  realm		remoteserver[:port]	options
+
+  All accounting data for proxied requests does NOT get stored in the
+  standard logfiles, but in a seperate directory. The name of this
+  directory is the name of the remote radius server, and if you want you
+  can define a nickname for it in /etc/raddb/naslist just as for normal NASes.
+
+  You need to add the hostname and secret for the remote server in the
+  file /etc/raddb/clients. On the remote server you need to add the
+  hostname of your server and the same secret to /etc/raddb/clients as well.
+
+  The realm "DEFAULT" (without the quotes) matches all realms.
+
+  If you set the remoteserver to "LOCAL", the request will be handled
+  locally as usual, without sending it to a remote radius server.
+
+  The realm "NULL" matches any requests WITHOUT a realm.
+
+  Normally the @realm is stripped from the username before sending it on
+  to the remote radius server. If you add the keyword "nostrip" to the
+  options, the @realm suffix will not be stripped.
+
+2. WHAT HAPPENS
+
+  The exact thing that happens is this:
+
+  - A user logs in with an @realm suffix
+  - The hints file gets processed as usual
+  - The user is checked against the huntgroups file. At this point
+    the user _might_ already be rejected.
+  - The realm is looked up in the realms file. If it isn't defined,
+    the users file is processed normally.
+  - The realm suffix is stripped from the username unless "nostrip" was
+    set, and the request is sent to a remote radius server. Note that
+    any stripping done in the hints file doesn't have an effect on the
+    username sent to the remote radius server.
+  - The remote server replies with ACK or REJECT
+
+    On ACK:       The initial Auth-Type is set to Accept
+    On REJECT:    The initial Auth-Type is set to Reject
+
+    The remote server also replies with a set of attributes. For security,
+    all attributes are stripped except:
+
+    Service-Type
+    Framed-Protocol
+    Filter-Id
+    Framed-MTU
+    Framed-Compression
+    Login-Service
+    Reply-Message
+    Session-Timeout
+    Idle-Timeout
+    Port-Limit
+
+    Then the users file is processed as usual.
+

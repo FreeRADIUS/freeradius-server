@@ -1,0 +1,14 @@
+/*
+ * modules_static.h	Defines the compiled-in modules of radiusd.
+ *			This is only used if the system doesn't
+ *			support runtime linking of modules.
+ *
+ * Version:		@(#)modules_static.h  1.00  08-Aug-1999  miquels
+ *
+ */
+
+typedef struct static_modules_t {
+	char *keyword;
+	module_t *module;
+} static_modules_t;
+

@@ -1,0 +1,17 @@
+
+			Cistron Radius and Y2K
+
+
+   I've checked the source code of radiusd-cistron-1.5.4.3-beta15 for
+   obvious Y2K problems (use of tm_year from struct tm for example)
+   and couldn't find any.
+
+   This doesn't mean you can sue me if there happens to be a Y2K problem
+   anyway. It does mean that I am pretty sure Cistron Radius will survive
+   31-12-1999 -> 01-01-2000 and that our ISP business will run uninterrupted.
+
+
+
+
+   README.Y2K  Miquel van Smoorenburg <miquels@cistron.nl>  26-Mar-1999
+

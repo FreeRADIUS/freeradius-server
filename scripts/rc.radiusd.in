@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# radiusd	Start the radius daemon.
+#
+#		This is a script suitable for the Debian Linux distribution.
+#		Copy it to /etc/init.d/radiusd, make it executable, and
+#		execute "update-rc.d radiusd defaults 50".
+#
+
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+sbindir		= @sbindir@
+localstatedir	= @localstatedir@
+logdir		= @logdir@
+rundir		= ${localstatedir}/run
+
+RADIUSD=$sbindir/radiusd
+WATCHER=$sbindir/radwatch
+DESC="Cistron radius server"
+NAME1=radiusd
+NAME2=radwatch
+
+ARGS="-y"
+
+test -f $RADIUSD || exit 0
+
+case "$1" in
+  start)
+	if [ ! -f $logdir/radutmp ]
+	then
+		:>$logdir/radutmp
+	fi
+	echo -n "Starting $DESC: "
+	if [ -x $WATCHER ]
+	then
+		echo -n "radwatch "
+		start-stop-daemon --start --quiet --startas $WATCHER \
+			--pidfile $rundir/$NAME2.pid --exec $RADIUSD -- $ARGS
+	else
+		start-stop-daemon --start --quiet \
+			--pidfile $rundir/$NAME1.pid --exec $RADIUSD -- $ARGS
+	fi
+	echo "radiusd."
+	;;
+  stop)
+	[ -z "$2" ] && echo -n "Stopping $DESC: "
+	if [ -x $WATCHER ]
+	then
+		[ -z "$2" ] && echo -n "radwatch "
+		start-stop-daemon --stop --quiet \
+			--pidfile $rundir/$NAME2.pid -- exec $RADWATCH
+		#killall -9 radwatch 2>/dev/null
+	else
+		start-stop-daemon --stop --quiet \
+			--pidfile $rundir/$NAME1.pid --exec $RADIUSD
+	fi
+	#killall radiusd 2>/dev/null
+	[ -z "$2" ] && echo "radiusd."
+	;;
+  reload|force-reload)
+	echo "Reloading $DESC configuration files."
+	start-stop-daemon --stop --signal 1 --quiet --pidfile \
+		$rundir/$NAME1.pid --exec $RADIUSD
+	;;
+  restart)
+	sh /etc/init.d/radiusd stop quiet
+	sleep 3
+	/etc/init.d/radiusd start
+	;;
+  *)
+        echo "Usage: /etc/init.d/$NAME1 {start|stop|reload|restart}"
+        exit 1
+esac
+
+exit 0

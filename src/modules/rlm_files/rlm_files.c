@@ -1,0 +1,471 @@
+/*
+ * rlm_files.c	authorization: Find a user in the "users" file.
+ *		accounting:    Write the "detail" files.
+ *
+ * Version:     @(#)rlm_files.c  1.00  07-Aug-1999  miquels@cistron.nl
+ *
+ */
+
+char rlm_files_sccsid[] =
+"@(#)rlm_files.c	1.00 Copyright 1999 Cistron Internet Services B.V.";
+
+#include	"autoconf.h"
+
+#include	<sys/types.h>
+#include	<sys/socket.h>
+#include	<sys/time.h>
+#include	<sys/stat.h>
+#include	<netinet/in.h>
+
+#include	<stdio.h>
+#include	<stdlib.h>
+#include	<string.h>
+#include	<netdb.h>
+#include	<pwd.h>
+#include	<grp.h>
+#include	<time.h>
+#include	<ctype.h>
+#include	<fcntl.h>
+
+#if HAVE_MALLOC_H
+#  include	<malloc.h>
+#endif
+
+#include	"radiusd.h"
+#include	"modules.h"
+
+#ifdef WITH_DBM
+#  include	<dbm.h>
+#endif
+#ifdef WITH_NDBM
+#  include	<ndbm.h>
+#endif
+
+#ifdef WITH_NDBM
+static DBM	*dbmfile;
+#endif
+
+PAIR_LIST	*users = NULL;
+
+#if defined(WITH_DBM) || defined(WITH_NDBM)
+/*
+ *	See if a potential DBM file is present.
+ */
+static int checkdbm(char *users, char *ext)
+{
+	char buffer[256];
+	struct stat st;
+
+	strcpy(buffer, users);
+	strcat(buffer, ext);
+
+	return stat(buffer, &st);
+}
+
+/*
+ *	Find the named user in the DBM user database.
+ *	Returns: -1 not found
+ *	          0 found but doesn't match.
+ *	          1 found and matches.
+ */
+static int dbm_find(char *name, VALUE_PAIR *request_pairs,
+		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+{
+	datum		named;
+	datum		contentd;
+	char		*ptr;
+	VALUE_PAIR	*check_tmp;
+	VALUE_PAIR	*reply_tmp;
+	int		ret = 0;
+
+	named.dptr = name;
+	named.dsize = strlen(name);
+#ifdef WITH_DBM
+	contentd = fetch(named);
+#endif
+#ifdef WITH_NDBM
+	contentd = dbm_fetch(dbmfile, named);
+#endif
+	if(contentd.dptr == NULL)
+		return -1;
+
+	check_tmp = NULL;
+	reply_tmp = NULL;
+
+	/*
+	 *	Parse the check values
+	 */
+	ptr = contentd.dptr;
+	contentd.dptr[contentd.dsize] = '\0';
+
+	if (*ptr != '\n' && userparse(ptr, &check_tmp) != 0) {
+		log(L_ERR|L_CONS, "Parse error (check) for user %s", name);
+		pairfree(check_tmp);
+		return -1;
+	}
+	while(*ptr != '\n' && *ptr != '\0') {
+		ptr++;
+	}
+	if(*ptr != '\n') {
+		log(L_ERR|L_CONS, "Parse error (no reply pairs) for user %s",
+			name);
+		pairfree(check_tmp);
+		return -1;
+	}
+	ptr++;
+
+	/*
+	 *	Parse the reply values
+	 */
+	if (userparse(ptr, &reply_tmp) != 0) {
+		log(L_ERR|L_CONS, "Parse error (reply) for user %s", name);
+		pairfree(check_tmp);
+		pairfree(reply_tmp);
+		return -1;
+	}
+
+	/*
+	 *	See if the check_pairs match.
+	 */
+	if (paircmp(request_pairs, check_tmp, reply_pairs) == 0) {
+		ret = 1;
+		pairmove(reply_pairs, &reply_tmp);
+		pairmove2(reply_pairs, &reply_tmp, PW_FALL_THROUGH);
+		pairmove(check_pairs, &check_tmp);
+	}
+	pairfree(reply_tmp);
+	pairfree(check_tmp);
+
+	return ret;
+}
+#endif /* DBM */
+
+
+#ifdef WITH_ASCEND_HACK
+/*
+ *	dgreer --
+ *	This hack changes Ascend's wierd port numberings
+ *      to standard 0-??? port numbers so that the "+" works
+ *      for IP address assignments.
+ */
+static int ascend_port_number(int nas_port)
+{
+	int service;
+	int line;
+	int channel;
+
+	if (nas_port > 9999) {
+		service = nas_port/10000; /* 1=digital 2=analog */
+		line = (nas_port - (10000 * service)) / 100;
+		channel = nas_port-((10000 * service)+(100 * line));
+		nas_port =
+			(channel - 1) + (line - 1) * ASCEND_CHANNELS_PER_LINE;
+	}
+	return nas_port;
+}
+#endif
+
+/*
+ *     See if a VALUE_PAIR list contains Fall-Through = Yes
+ */
+static int fallthrough(VALUE_PAIR *vp)
+{
+	VALUE_PAIR *tmp;
+ 
+	tmp = pairfind(vp, PW_FALL_THROUGH);
+ 
+	return tmp ? tmp->lvalue : 0;
+}
+
+/*
+ *	(Re-)read the "users" file into memory.
+ */
+static int file_init(int argc, char **argv)
+{
+	char		fn[1024];
+	char		*ptr;
+
+	ptr = argv[0] ? argv[0] : RADIUS_USERS;
+	sprintf(fn, "%s/%s", radius_dir, ptr);
+
+#if defined(WITH_DBM) || defined(WITH_NDBM)
+	if (!use_dbm &&
+	    (checkdbm(ptr, ".dir") == 0 ||
+	     checkdbm(ptr, ".db") == 0)) {
+		log(L_INFO|L_CONS, "DBM files found but no -b flag "
+			"given - NOT using DBM");
+	}
+#endif
+
+	if (!use_dbm) users = pairlist_read(fn, 1);
+
+	return users ? 0 : -1;
+}
+
+/*
+ *	Find the named user in the database.  Create the
+ *	set of attribute-value pairs to check and reply with
+ *	for this user from the database. The main code only
+ *	needs to check the password, the rest is done here.
+ */
+static int file_authorize(REQUEST *request, char *name,
+		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+{
+	int		nas_port = 0;
+	VALUE_PAIR	*request_pairs;
+	VALUE_PAIR	*check_tmp;
+	VALUE_PAIR	*reply_tmp;
+	VALUE_PAIR	*tmp, *tmp2;
+	PAIR_LIST	*pl;
+	int		found = 0;
+#if defined(WITH_DBM) || defined(WITH_NDBM)
+	int		i, r;
+	char		buffer[256];
+#endif
+
+	request_pairs = request->packet->vps;
+
+	/*
+	 *	Find the NAS port ID.
+	 */
+	if ((tmp = pairfind(request_pairs, PW_NAS_PORT_ID)) != NULL)
+		nas_port = tmp->lvalue;
+
+	/*
+	 *	Find the entry for the user.
+	 */
+#if defined(WITH_DBM) || defined(WITH_NDBM)
+	/*
+	 *	FIXME: move to rlm_dbm.c
+	 */
+	if (use_dbm) {
+		/*
+		 *	FIXME: No Prefix / Suffix support for DBM.
+		 */
+		sprintf(buffer, "%s/%s", radius_dir, RADIUS_USERS);
+#ifdef WITH_DBM
+		if (dbminit(buffer) != 0)
+#endif
+#ifdef WITH_NDBM
+		if ((dbmfile = dbm_open(buffer, O_RDONLY, 0)) == NULL)
+#endif
+		{
+			log(L_ERR|L_CONS, "cannot open dbm file %s",
+				buffer);
+			return RLM_AUTZ_FAIL;
+		}
+
+		r = dbm_find(name, request_pairs, check_pairs, reply_pairs);
+		if (r > 0) found = 1;
+		if (r <= 0 || fallthrough(*reply_pairs)) {
+
+			pairdelete(reply_pairs, PW_FALL_THROUGH);
+
+			sprintf(buffer, "DEFAULT");
+			i = 0;
+			while ((r = dbm_find(buffer, request_pairs,
+			       check_pairs, reply_pairs)) >= 0 || i < 2) {
+				if (r > 0) {
+					found = 1;
+					if (!fallthrough(*reply_pairs))
+						break;
+					pairdelete(reply_pairs,PW_FALL_THROUGH);
+				}
+				sprintf(buffer, "DEFAULT%d", i++);
+			}
+		}
+#ifdef WITH_DBM
+		dbmclose();
+#endif
+#ifdef WITH_NDBM
+		dbm_close(dbmfile);
+#endif
+	} else
+	/*
+	 *	Note the fallthrough through the #endif.
+	 */
+#endif
+
+	for(pl = users; pl; pl = pl->next) {
+
+		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
+			continue;
+
+		if (paircmp(request_pairs, pl->check, reply_pairs) == 0) {
+			DEBUG2("  users: Matched %s at %d",
+			       pl->name, pl->lineno);
+			found = 1;
+			check_tmp = paircopy(pl->check);
+			reply_tmp = paircopy(pl->reply);
+			pairmove(reply_pairs, &reply_tmp);
+			pairmove(check_pairs, &check_tmp);
+			pairfree(reply_tmp);
+			pairfree(check_tmp);
+
+			/*
+			 *	Fallthrough?
+			 */
+			if (!fallthrough(pl->reply))
+				break;
+		}
+	}
+
+	/*
+	 *	See if we succeeded.
+	 */
+	if (!found)
+		return RLM_AUTZ_NOTFOUND; /* didn't find the user */
+
+	/*
+	 *	Add the port number to the Framed-IP-Address if
+	 *	vp->addport is set, or if the Add-Port-To-IP-Address
+	 *	pair is present.
+	 *
+	 *	FIXME: this should not happen here, but
+	 *	after module_authorize in the main code!
+	 */
+	if ((tmp = pairfind(*reply_pairs, PW_FRAMED_IP_ADDRESS)) != NULL) {
+		tmp2 = pairfind(*reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
+		if (tmp->addport || (tmp2 && tmp2->lvalue)) {
+#ifdef WITH_ASCEND_HACK
+			nas_port = ascend_port_number(nas_port);
+#endif
+			tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
+			tmp->addport = 0;
+		}
+		pairdelete(reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
+	}
+
+	/*
+	 *	Remove server internal parameters.
+	 */
+	pairdelete(reply_pairs, PW_FALL_THROUGH);
+
+	return RLM_AUTZ_OK;
+}
+
+/*
+ *	Authentication - unused.
+ */
+static int file_authenticate(REQUEST *request, char *username, char *password)
+{
+	return RLM_AUTH_OK;
+}
+
+/*
+ *	Accounting - write the detail files.
+ */
+static int file_accounting(REQUEST *request)
+{
+	FILE		*outfd;
+	char		nasname[128];
+	char		buffer[512];
+	char		*s;
+	VALUE_PAIR	*pair;
+	UINT4		nas;
+	NAS		*cl;
+	long		curtime;
+	int		ret = RLM_ACCT_OK;
+	struct stat	st;
+
+	/*
+	 *	See if we have an accounting directory. If not,
+	 *	return.
+	 */
+	if (stat(radacct_dir, &st) < 0)
+		return RLM_ACCT_OK;
+	curtime = time(0);
+
+	/*
+	 *	Find out the name of this terminal server. We try
+	 *	to find the PW_NAS_IP_ADDRESS in the naslist file.
+	 *	If that fails, we look for the originating address.
+	 *	Only if that fails we resort to a name lookup.
+	 */
+	cl = NULL;
+	nas = request->packet->src_ipaddr;
+	if ((pair = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
+		nas = pair->lvalue;
+	if (request->proxy && request->proxy->src_ipaddr)
+		nas = request->proxy->src_ipaddr;
+
+	if ((cl = nas_find(nas)) != NULL) {
+		if (cl->shortname[0])
+			strcpy(nasname, cl->shortname);
+		else
+			strcpy(nasname, cl->longname);
+	}
+
+	if (cl == NULL) {
+		s = ip_hostname(nas);
+		if (strlen(s) >= sizeof(nasname) || strchr(s, '/'))
+			return -1;
+		strcpy(nasname, s);
+	}
+
+	/*
+	 *	Create a directory for this nas.
+	 */
+	sprintf(buffer, "%s/%s", radacct_dir, nasname);
+	(void) mkdir(buffer, 0755);
+
+	/*
+	 *	Write Detail file.
+	 */
+	sprintf(buffer, "%s/%s/%s", radacct_dir, nasname, "detail");
+	if ((outfd = fopen(buffer, "a")) == NULL) {
+		log(L_ERR, "Acct: Couldn't open file %s", buffer);
+		ret = RLM_ACCT_FAIL;
+	} else {
+
+		/* Post a timestamp */
+		fputs(ctime(&curtime), outfd);
+
+		/* Write each attribute/value to the log file */
+		pair = request->packet->vps;
+		while (pair) {
+			if (pair->attribute != PW_PASSWORD) {
+				fputs("\t", outfd);
+				fprint_attr_val(outfd, pair);
+				fputs("\n", outfd);
+			}
+			pair = pair->next;
+		}
+
+		/*
+		 *	Add non-protocol attibutes.
+		 */
+		fprintf(outfd, "\tTimestamp = %ld\n", curtime);
+		if (request->packet->verified)
+			fputs("\tRequest-Authenticator = Verified\n", outfd);
+		else
+			fputs("\tRequest-Authenticator = None\n", outfd);
+		fputs("\n", outfd);
+		fclose(outfd);
+	}
+
+	return ret;
+}
+
+
+/*
+ *	Clean up.
+ */
+static int file_detach(void)
+{
+	pairlist_free(&users);
+	return 0;
+}
+
+
+/* globally exported name */
+module_t rlm_files = {
+	"files",
+	0,				/* type: reserved */
+	file_init,			/* initialization */
+	file_authorize,			/* authorization */
+	file_authenticate,		/* authentication */
+	file_accounting,		/* accounting */
+	file_detach,			/* detach */
+};
+

@@ -1,0 +1,346 @@
+#!/bin/sh
+
+usage() {
+    cat <<EOF
+Usage: checkconfig [opts] DEFINE thingy bar
+ Echoes DEFINE to config.mak and config.h IF the conditions match.
+
+  -c LIBFOO function
+     Check if 'function' can be used without linking a library
+
+  -l LIBFOO function -lfoo ["additional compilation flags"]
+     Check if 'function' is defined in library 'foo'
+
+  -I HAVE_INCLUDE foo.h
+     Check if include file <foo.h> exists.
+
+  -f HAVE_FILE /path/to/file
+     Check if the specified file exists
+
+  -d HAVE_DIR /path/to/dir/
+     Check if the specified directory exists
+
+  -e PROGRAM program
+     Find out where the specified executable lives.
+
+EOF
+    exit 0
+}
+
+#######################################################################
+#
+# print out help
+#
+#######################################################################
+if [ "$#" -le "2" ];then
+  usage
+fi
+
+DEF=$2
+
+#######################################################################
+#
+# Check to see if a variable by the name of DEF is already defined.
+# If so, don't bother doing the check.
+#
+#######################################################################
+if [ -e config.mak ];then
+  ALREADY=`grep -w ^$DEF config.mak`
+  if [ "$ALREADY" != "" ];then
+    exit 0
+  fi
+fi
+
+#######################################################################
+#
+#  Define a function used to compile things
+#
+#######################################################################
+compile() {
+gcc $CFLAGS $LIBS tmp$$.c -o tmp$$ 2>/dev/null 1>/dev/null
+if [ "$?" = "0" ];then
+  echo yes
+  echo $DEF=$LIBS >>config.mak
+  if [ "$CFLAGS" != "" ];then
+    echo ${DEF}_CFLAGS=$CFLAGS >> config.mak
+  fi
+  echo "#define $DEF" 1 >> config.h
+else
+  echo no
+fi
+rm -f tmp$$.c tmp$$ 
+}
+
+#######################################################################
+#
+#  Do whatever check we've been asked to perform
+#
+#######################################################################
+case "$1" in
+
+#######################################################################
+#
+# -l: See if a library exists by trying to reference a function in it.
+#
+#######################################################################
+  -l)
+
+if [ "$#" -lt "4" ];then
+    usage
+fi
+
+if [ "$#" = "5" ];then
+  CFLAGS=$5
+fi
+
+FUNCTION=$3
+LIBS=$4
+
+echo -n "checking for $FUNCTION in $LIBS ... "
+
+cat >tmp$$.c <<EOF
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char $FUNCTION();
+
+int main(int argc, char **argv)
+{
+  $FUNCTION();
+  return 0;
+}
+EOF
+compile
+;;
+
+#######################################################################
+#
+# -I: See if an include file exists, by trying to #include it.
+#
+#######################################################################
+  -I)
+
+if [ "$#" -lt "3" ];then
+    usage
+fi
+
+INCLUDE=$3
+if [ "$#" = "4" ];then
+  CFLAGS=$4
+fi
+
+echo -n "checking for $INCLUDE ... "
+
+cat >tmp$$.c <<EOF
+#include <$INCLUDE>
+
+int main(int argc, char **argv)
+{
+  return 0;
+}
+EOF
+compile
+;;
+
+#######################################################################
+#
+# -p: See if an include file defines a particular prototype
+#
+# (sigh) this doesn't work.  I'm not sure how to get it to work, either.
+#
+#######################################################################
+  -p)
+if [ "$#" -lt "4" ];then
+    usage
+fi
+
+if [ "$#" = "5" ];then
+  CFLAGS=$5
+fi
+
+FUNCTION=$3
+INCLUDE=$4
+
+echo -n "checking if $INCLUDE has a prototype for $FUNCTION ... "
+
+cat >tmp$$.c <<EOF
+#include <$INCLUDE>
+
+int main(int argc, char **argv)
+{
+  void *foo=$FUNCTION;
+  return 0;
+}
+EOF
+compile
+;;
+
+#######################################################################
+#
+# -c: See if a function exists WITHOUT including a library
+#
+#######################################################################
+  -c)
+
+if [ "$#" != "3" ];then
+    usage
+fi
+
+FUNCTION=$3
+
+echo -n "checking if $FUNCTION exists ... "
+
+cat >tmp$$.c <<EOF
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char $FUNCTION();
+
+int main(int argc, char **argv)
+{
+  $FUNCTION();
+  return 0;
+}
+EOF
+compile
+;;
+
+#######################################################################
+#
+# -f: see if a file exists
+#
+#######################################################################
+  -f)
+if [ "$#" != "3" ];then
+    usage
+fi
+
+FILE=$3
+
+echo -n "checking what to use for $DEF ... "
+
+# see if it's a file
+if [ -f $FILE ];then
+  echo $FILE
+  echo $DEF=$FILE >> config.mak
+  echo "#define $DEF \"$FILE\"" >> config.h
+else
+  echo
+fi
+;;
+
+#######################################################################
+#
+# -d: see if a directory exists
+#
+#######################################################################
+  -d)
+if [ "$#" != "3" ];then
+    usage
+fi
+
+DIR=$3
+
+echo -n "checking what to use for $DEF ... "
+
+if [ -d $DIR ];then
+  echo $DIR
+  echo $DEF=$DIR >> config.mak
+  echo "#define $DEF \"$DIR\"" >> config.h
+else
+  echo
+fi
+;;
+
+#######################################################################
+#
+# -e: find out where an executable exists
+#
+#######################################################################
+  -e)
+if [ "$#" != "3" ];then
+    usage
+fi
+
+FILE=$3
+
+echo -n "checking for $FILE ... "
+
+dummy=`echo $PATH:/usr/ucb | sed 's/:/ /g;s/\/ //g;'`
+for dir in $dummy; do 
+  if [ -f $dir/$FILE ]; then
+    LOCATION=$dir/$FILE
+    break
+  fi
+done
+
+# see if it's a file
+if [ -f $LOCATION ];then
+  echo $LOCATION
+  echo $DEF=$LOCATION >> config.mak
+  echo "#define $DEF \"$LOCATION\"" >> config.h
+else
+  echo
+fi
+;;
+
+#######################################################################
+#
+# -s: See if an include file defines a particular structure
+#
+#  This doesn't work quite right now, as we have to have it automatically
+# include the appropriate library but...
+#
+#######################################################################
+  -s)
+if [ "$#" -lt "4" ];then
+    usage
+fi
+
+if [ "$#" = "5" ];then
+  CFLAGS=$5
+fi
+
+STRUCTURE=$3
+INCLUDE=$4
+
+echo -n "checking for $INCLUDE that defines $STRUCTURE ... "
+
+cat >tmp$$.c <<EOF
+#include <$INCLUDE>
+
+int main(int argc, char **argv)
+{
+  $STRUCTURE *foo;
+  return 0;
+}
+EOF
+
+gcc $CFLAGS tmp$$.c -o tmp$$ 2>/dev/null 1>/dev/null
+if [ "$?" = "0" ];then
+  echo yes
+  echo $DEF=$INCLUDE >>config.mak
+  if [ "$CFLAGS" != "" ];then
+    echo ${DEF}_CFLAGS=$CFLAGS >> config.mak
+  fi
+  echo "#ifdef USE_${DEF}" >> config.h
+  echo "#include <$INCLUDE>" >> config.h
+  echo "#endif USE_${DEF}" >> config.h
+else
+  echo no
+fi
+rm -f tmp$$.c tmp$$ 
+
+;;
+
+#######################################################################
+#
+# Anything else
+#
+#######################################################################
+  *)
+  usage
+;;
+
+esac
+exit 0

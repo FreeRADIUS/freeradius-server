@@ -1,0 +1,156 @@
+#
+#	This file contains security and configuration information
+#	for each user.  The first field is the user's name and
+#	can be up to 8 characters in length.  This is followed (on
+#	the same line) with the list of authentication requirements
+#	for that user.  This can include password, comm server name,
+#	comm server port number, protocol type (perhaps set by the "hints"
+#	file), and huntgroup name (set by the "huntgroups" file).
+#
+#	When an authentication request is received from the comm server,
+#	these values are tested. Only the first match is used unless the
+#	"Fall-Through" variable is set to "Yes".
+#
+#	A special user named "DEFAULT" matches on all usernames.
+#	You can have several DEFAULT entries. All entries are processed
+#	in the order they appear in this file. The first entry that
+#	matches the login-request will stop processing unless you use
+#	the Fall-Through variable.
+#
+#	If you use the database support to turn this file into a .db or .dbm
+#	file, the DEFAULT entries _have_ to be at the end of this file and
+#	you can't have multiple entries for one username.
+#
+#	You don't need to specify a password if you set Auth-Type = System
+#	on the list of authentication requirements. The RADIUS server
+#	will then check the system password file.
+#
+#	Indented (with the tab character) lines following the first
+#	line indicate the configuration values to be passed back to
+#	the comm server to allow the initiation of a user session.
+#	This can include things like the PPP configuration values
+#	or the host to log the user onto.
+#
+#	You can include another `users' file with `$INCLUDE users.other'
+#
+
+#
+# This is a complete entry for "steve". Note that there is no Fall-Through
+# entry so that no DEFAULT entry will be used.
+#
+#steve	Auth-Type = Local, Password = "testing"
+#	Service-Type = Framed-User,
+#	Framed-Protocol = PPP,
+#	Framed-IP-Address = 172.16.3.33,
+#	Framed-IP-Netmask = 255.255.255.0,
+#	Framed-Routing = Broadcast-Listen,
+#	Framed-Filter-Id = "std.ppp",
+#	Framed-MTU = 1500,
+#	Framed-Compression = Van-Jacobsen-TCP-IP
+
+#
+# Dial user back and telnet to the default host for that port
+#
+#Deg	Auth-Type = Local, Password = "ge55ged"
+#	Service-Type = Callback-Login-User,
+#	Login-IP-Host = 0.0.0.0,
+#	Callback-Number = "9,5551212",
+#	Login-Service = Telnet,
+#	Login-TCP-Port = 23
+
+#
+# Another complete entry. After the user "dialbk" has logged in, the
+# connection will be broken and the user will be dialed back after which
+# he will get a connection to the host "timeshare1".
+#
+#dialbk	Auth-Type = Local, Password = "callme"
+#	Service-Type = Callback-Login-User,
+#	Login-IP-Host = timeshare1,
+#	Login-Service = PortMaster,
+#	Callback-Number = "9,1-800-555-1212"
+
+#
+# user "swilson" will only get a static IP number if he logs in with
+# a framed protocol on a terminal server in Alphen (see the huntgroups file).
+# Note that by setting "Fall-Through" the rest will be gotten from the
+# appropriate DEFAULT entry.
+#
+#swilson	Service-Type = Framed-User, Huntgroup-Name = "alphen"
+#		Framed-IP-Address = 192.168.1.65,
+#		Fall-Through = Yes
+
+#
+# The rest of this file contains the several DEFAULT entries.
+# DEFAULT entries match with all login names.
+# Note that DEFAULT entries can also Fall-Through (see first entry).
+# A name-value pair from a DEFAULT entry will _NEVER_ override
+# an already existing name-value pair.
+#
+
+#
+# First setup all accounts to be checked against the UNIX /etc/passwd.
+# (Unless a password was already given earlier in this file).
+#
+DEFAULT	Auth-Type = System
+	Fall-Through = 1
+
+#
+# Set up different IP address pools for the terminal servers.
+# Note that the "+" behind the IP address means that this is the "base"
+# IP address. The Port-Id (S0, S1 etc) will be added to it.
+#
+#DEFAULT	Service-Type = Framed-User, Huntgroup-Name = "alphen"
+#		Framed-IP-Address = 192.168.1.32+,
+#		Fall-Through = Yes
+
+#DEFAULT	Service-Type = Framed-User, Huntgroup-Name = "delft"
+#		Framed-IP-Address = 192.168.2.32+,
+#		Fall-Through = Yes
+
+#
+# Defaults for all framed connections.
+#
+DEFAULT	Service-Type = Framed-User
+	Framed-IP-Address = 255.255.255.254,
+	Framed-MTU = 576,
+	Service-Type = Framed-User,
+	Fall-Through = Yes
+
+#
+# Default for PPP: dynamic IP address, PPP mode, VJ-compression.
+# NOTE: we do not use Hint = "PPP", since PPP might also be auto-detected
+#	by the terminal server in which case there may not be a "P" suffix.
+#	The terminal server sends "Framed-Protocol = PPP" for auto PPP.
+#
+DEFAULT	Framed-Protocol = PPP
+	Framed-Protocol = PPP,
+	Framed-Compression = Van-Jacobson-TCP-IP
+
+#
+# Default for CSLIP: dynamic IP address, SLIP mode, VJ-compression.
+#
+DEFAULT	Hint = "CSLIP"
+	Framed-Protocol = SLIP,
+	Framed-Compression = Van-Jacobson-TCP-IP
+
+#
+# Default for SLIP: dynamic IP address, SLIP mode.
+#
+DEFAULT	Hint = "SLIP"
+	Framed-Protocol = SLIP
+
+#
+# Last default: rlogin to our main server.
+#
+#DEFAULT
+#	Service-Type = Login-User,
+#	Login-Service = Rlogin,
+#	Login-IP-Host = shellbox.ispdomain.com
+
+# #
+# # Last default: shell on the local terminal server.
+# #
+# DEFAULT
+# 	Service-Type = Shell-User
+
+# On no match, the user is denied access.
