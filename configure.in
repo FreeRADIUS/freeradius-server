@@ -362,7 +362,7 @@ dnl #
 dnl # Set libs, etc, if we have them.
   if test "x$PTHREADLIB" != "x"; then
     LIBS="$LIBS $PTHREADLIB"
-    CFLAGS="$CFLAGS -D_REENTRANT"
+    CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
   fi
 fi
 
