@@ -157,14 +157,11 @@ REQUEST *rl_find(REQUEST *request)
 		if ((curreq->req->packet->code == request->packet->code) &&
 				(curreq->req->packet->src_ipaddr == request->packet->src_ipaddr) &&
 				(curreq->req->packet->src_port == request->packet->src_port)) {
-			break;
+			return curreq->req;
 		}
 	}
 
-	if (curreq == NULL)
-		return(NULL);
-
-	return curreq->req;
+	return NULL;
 }
 
 /*
@@ -191,15 +188,12 @@ REQUEST *rl_find_proxy(REQUEST *request)
 					(curreq->req->proxy->dst_ipaddr == request->packet->src_ipaddr) &&
 					(curreq->req->proxy->dst_port == request->packet->src_port)) {
 				
-				break;
+				return curreq->req;
 			}
 		} /* loop over all requests for this id. */
 	} /* loop over all id's... this is horribly inefficient */
 
-	if (curreq == NULL)
-		return(NULL);
-
-	return curreq->req;
+	return NULL;
 }
 /*
  *	Walk over all requests, performing a callback for each request.
