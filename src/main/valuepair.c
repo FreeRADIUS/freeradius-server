@@ -173,7 +173,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
-		 *	sent to us by the user.
+		 *	sent to us by the user.  It ALWAYS matches.
 		 */
 		if (check_item->operator == T_OP_SET) {
 			check_item = check_item->next;
@@ -261,7 +261,6 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 
 		  }
 
-		check_item->operator = T_OP_EQ;
 		if (result == 0)
 			check_item = check_item->next;
 	}

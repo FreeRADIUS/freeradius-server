@@ -404,12 +404,18 @@ static int file_authorize(REQUEST *request, char *name,
 			       pl->name, pl->lineno);
 			found = 1;
 			check_tmp = paircopy(pl->check);
+			/*
+			 *	Smash the operators to '+=', so that
+			 *	pairmove() will do the right thing...
+			 */
+			for (tmp = check_tmp; tmp; tmp = tmp->next) {
+			  tmp->operator = T_OP_ADD;
+			}
 			reply_tmp = paircopy(pl->reply);
 			pairmove(reply_pairs, &reply_tmp);
 			pairmove(check_pairs, &check_tmp);
 			pairfree(reply_tmp);
-			pairfree(check_tmp);
-
+			pairfree(check_tmp); /* should be NULL */
 			/*
 			 *	Fallthrough?
 			 */
@@ -535,8 +541,10 @@ static int file_accounting(REQUEST *request)
 	 *	See if we have an accounting directory. If not,
 	 *	return.
 	 */
-	if (stat(radacct_dir, &st) < 0)
+	if (stat(radacct_dir, &st) < 0) {
+		DEBUG("No accounting directory %s", radacct_dir);
 		return RLM_ACCT_OK;
+	}
 	curtime = time(0);
 
 	/*
