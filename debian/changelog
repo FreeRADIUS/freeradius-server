@@ -1,16 +1,19 @@
-radiusd-freeradius (0.1+beta1-1) unstable; urgency=low
+radiusd-freeradius (0.1-1) unstable; urgency=low
 
-  * Fixed cron log rotation.
-  * Put module libraries in own directory.
+  * First beta release!
   * Added generalized SQL support for ODBC, Oracle, MySQL, and Postgres.
-  * Removed bogus build-dep.  (closes: Bug#87277)
   * Added shasta, microsoft, and redback dictionaries.
   * Fixed rc.d restart rule.
-  * Better permissions on /etc/raddb
   * Added a user to own the daemon and logfiles.
+  * SQL DB handles more forgiving of unreachable servers at startup.
+  * SQL Crypt-Password attribute support.
+  * Fixed cron log rotation.
+  * Put module libraries in own directory.
+  * Removed bogus build-dep.  (closes: Bug#87277)
+  * Better permissions on /etc/raddb
   * Use correct LDAP library.
 
- -- Chad Miller <cmiller@debian.org>  [TBA]
+ -- Chad Miller <cmiller@debian.org>  Fri,  4 May 2001 14:26:59 -0400
 
 radiusd-freeradius (0.0.20010109-1) unstable; urgency=low
 
