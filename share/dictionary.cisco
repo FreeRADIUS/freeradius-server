@@ -24,7 +24,7 @@ ATTRIBUTE       Cisco-Pre-Input-Octets          190     integer		Cisco
 ATTRIBUTE       Cisco-Pre-Output-Octets         191     integer		Cisco
 ATTRIBUTE       Cisco-Pre-Input-Packets         192     integer		Cisco
 ATTRIBUTE       Cisco-Pre-Output-Packets        193     integer		Cisco
-ATTRIBUTE       Cisco-Maximun-Time              194     integer		Cisco
+ATTRIBUTE       Cisco-Maximum-Time              194     integer		Cisco
 ATTRIBUTE       Cisco-Disconnect-Cause          195     integer		Cisco
 ATTRIBUTE       Cisco-Data-Rate                 197     integer		Cisco
 ATTRIBUTE       Cisco-PreSession-Time           198     integer		Cisco
@@ -37,7 +37,7 @@ ATTRIBUTE       Cisco-Asing-IP-Pool             218     integer		Cisco
 ATTRIBUTE       Cisco-Route-IP                  228     integer		Cisco
 ATTRIBUTE       Cisco-Link-Compression          233     integer		Cisco
 ATTRIBUTE       Cisco-Target-Util               234     integer		Cisco
-ATTRIBUTE       Cisco-Maximun-Channels          235     integer		Cisco
+ATTRIBUTE       Cisco-Maximum-Channels          235     integer		Cisco
 ATTRIBUTE       Cisco-Data-Filter               242     integer		Cisco
 ATTRIBUTE       Cisco-Call-Filter               243     integer		Cisco
 ATTRIBUTE       Cisco-Idle-Limit                244     integer		Cisco
