@@ -110,7 +110,7 @@ static void ascend_nasport_hack(VALUE_PAIR *nas_port, int channels_per_line)
  */
 static void cisco_vsa_hack(VALUE_PAIR *vp)
 {
-	int		vendorpec, vendorcode;
+	int		vendorcode;
 	char		*ptr;
 	char		newattr[MAX_STRING_LEN];
 
@@ -118,18 +118,53 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		vendorcode = (vp->attribute >> 16); /* HACK! */
 		if (vendorcode == 0) continue;	/* ignore non-VSA attributes */
 
-		vendorpec  = dict_vendorpec(vendorcode);
-		if (vendorpec == 0) continue; /* ignore unknown VSA's */
+		if (vendorcode == 0) continue; /* ignore unknown VSA's */
 
-		if (vendorpec != 9) continue; /* not a Cisco VSA, continue */
+		if (vendorcode != 9) continue; /* not a Cisco VSA, continue */
 
-		if ((vp->attribute & 0xffff) == 1) continue; /* Cisco-AVPair */
+		if (vp->type != PW_TYPE_STRING) continue;
 
 		/*
-		 *  We strip out the duplicity from the value field,
-		 *  we use only the value on the right side of = character.
+		 *  No weird packing.  Ignore it.
 		 */
-		if ((ptr = strchr(vp->strvalue, '=')) != NULL) {
+		ptr = strchr(vp->strvalue, '='); /* find an '=' */
+		if (!ptr) continue;
+
+		/*
+		 *	Cisco-AVPair's get packed as:
+		 *
+		 *	Cisco-AVPair = "h323-foo-bar = baz"
+		 *
+		 *	which makes sense only if you're a lunatic.
+		 *	This code looks for the attribute named inside
+		 *	of the string, and if it exists, adds it as a new
+		 *	attribute.
+		 */
+		if ((vp->attribute & 0xffff) == 1) {
+			char *p;
+			DICT_ATTR	*dattr;
+
+			p = vp->strvalue;
+			getword(&p, newattr, sizeof(newattr));
+
+			if (((dattr = dict_attrbyname(newattr)) != NULL) &&
+			    (dattr->type == PW_TYPE_STRING)) {
+				VALUE_PAIR *newvp;
+				
+				/*
+				 *  Make a new attribute.
+				 */
+				newvp = pairmake(newattr, ptr + 1, T_OP_EQ);
+				if (newvp) {
+					pairadd(&vp, newvp);
+				}
+			}
+		} else {	/* h322-foo-bar = "h323-foo-bar = baz" */
+			/*
+			 *	We strip out the duplicity from the
+			 *	value field, we use only the value on
+			 *	the right side of the '=' character.
+			 */
 			strNcpy(newattr, ptr + 1, sizeof(newattr));
 			strNcpy((char *)vp->strvalue, newattr,
 				sizeof(vp->strvalue));
