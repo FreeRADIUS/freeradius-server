@@ -1,0 +1,63 @@
+.TH rlm_files 5 "5 February 2004" "" "FreeRADIUS Module"
+.SH NAME
+rlm_files \- FreeRADIUS Module
+.SH DESCRIPTION
+The \fIrlm_files\fP module uses the 'users' file for accessing
+authorization information for users.  Additionally, it supports
+a 'users' file syntax to be applied to the accounting and pre-proxy
+sections.
+.PP
+The main configuration items to be aware of are:
+.IP usersfile
+The filename of the 'users' file, which is parsed during the
+authorization stage of this module.
+.IP acctusersfile
+The filename of the 'users' file, which is parsed during the
+accounting stage of this module.
+.IP preproxy_usersfile
+The filename of the 'users' file, which is parsed during the
+pre_proxy stage of this module.
+.IP compat
+This option allows FreeRADIUS to parse an old style Cistron syntax.
+The default is 'no'.  If you need to parse an old style Cistron
+file, set this option to 'cistron'.
+.SH CONFIGURATION
+.PP
+.DS
+modules {
+  ... stuff here ...
+.br
+  files {
+.br
+    detailfile = %{confdir}/users
+.br
+    acctusersfile = %{confdir}/acct_users
+.br
+    preproxy_usersfile = %{confdir}/preproxy_users
+.br
+    compat = no
+.br
+  }
+.br
+  ... stuff here ...
+.br
+}
+.DE
+.PP
+.SH SECTIONS
+.BR authorization,
+.BR accounting,
+.BR pre_proxy
+.PP
+.SH FILES
+.I /etc/raddb/radiusd.conf,
+.I /etc/raddb/users,
+.I /etc/raddb/acct_users,
+.I /etc/raddb/preproxy_users
+.PP
+.SH "SEE ALSO"
+.BR radiusd (8),
+.BR radiusd.conf (5),
+.BR users (5)
+.SH AUTHORS
+Chris Parker, cparker@segv.org
