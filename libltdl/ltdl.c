@@ -2250,10 +2250,10 @@ find_handle_callback (filename, data, ignored)
      lt_ptr ignored;
 {
   lt_dlhandle  *handle	= (lt_dlhandle *) data;
-  int		found	= access (filename, R_OK);
+  int		got_access_error	= access (filename, R_OK);
 
   /* Bail out if file cannot be read...  */
-  if (!found)
+  if (got_access_error)
     return 0;
 
   /* Try to dlopen the file, but do not continue searching in any
@@ -2960,7 +2960,7 @@ lt_dlopenext (filename)
      failed, it is better to return an error message here than to
      report FILE_NOT_FOUND when the alternatives (foo.so etc) are not
      in the module search path.  */
-  if (handle || ((errors > 0) && file_not_found ()))
+  if (handle || ((errors > 0) && !file_not_found ()))
     {
       LT_DLFREE (tmp);
       return handle;
