@@ -295,8 +295,6 @@ AC_PATH_PROG(PERL, perl, /usr/local/bin/perl)
 if test ! -x $ac_cv_path_PERL; then
   AC_MSG_ERROR(perl not found - fatal)
 fi
-AC_PATH_PROG(SNMPGET, snmpget, /usr/local/bin/snmpget)
-AC_PATH_PROG(SNMPWALK, snmpwalk, /usr/local/bin/snmpwalk)
 AC_PATH_PROG(RUSERS, rusers, /usr/bin/rusers)
 
 dnl FIXME This is truly gross.
