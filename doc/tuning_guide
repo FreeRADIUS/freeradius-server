@@ -44,6 +44,8 @@ o Use the sql module in the session section instead of the radutmp module.
   It works *much* quicker.
 o Create a multi column index for the (UserName,AcctStopTime) attributes especially
   if you are using sql for double login detection.
+o If you are using mysql and you do a lot of accounting try using InnoDB for the radacct
+  table instead of MyISAM
 
 ------------ COUNTER MODULE ----------
 o Enable noatime on the counter db files.
