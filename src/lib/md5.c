@@ -23,7 +23,13 @@ These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
 
-#include "md5.h"
+/*
+ *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
+ *
+ *  If we don't do this, it might pick up the systems broken MD5.
+ *  - Alan DeKok <aland@ox.org>
+ */
+#include "../include/md5.h"
 
 /* Constants for MD5Transform routine.
  */
@@ -107,7 +113,7 @@ unsigned int inlen;                     /* length of input block */
 
 /* MD5 initialization. Begins an MD5 operation, writing a new context.
  */
-static void MD5Init (context)
+void MD5Init (context)
 MD5_CTX *context;                                        /* context */
 {
   context->count[0] = context->count[1] = 0;
@@ -123,7 +129,7 @@ MD5_CTX *context;                                        /* context */
   operation, processing another message block, and updating the
   context.
  */
-static void MD5Update (context, input, inputLen)
+void MD5Update (context, input, inputLen)
 MD5_CTX *context;                                        /* context */
 unsigned char *input;                                /* input block */
 unsigned int inputLen;                     /* length of input block */
@@ -165,7 +171,7 @@ unsigned int inputLen;                     /* length of input block */
 /* MD5 finalization. Ends an MD5 message-digest operation, writing the
   the message digest and zeroizing the context.
  */
-static void MD5Final (digest, context)
+void MD5Final (digest, context)
 unsigned char digest[16];                         /* message digest */
 MD5_CTX *context;                                       /* context */
 {

@@ -42,7 +42,7 @@ log.o:	log.c $(INCLUDES)
 missing.o:	missing.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c missing.c
 
-md5.o: md5.c md5.h
+md5.o: md5.c ../include/md5.h
 	$(CC) $(CFLAGS) -c md5.c
 
 clean:
