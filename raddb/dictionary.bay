@@ -145,55 +145,55 @@ VALUE	Annex-Modem-Disc-Reason			Modem-Retrain-Timeout	8
 
 #	Annex Connection Progress Values
 
-VALUE	Annex-Connect-Progress			Progress-Unknown		2
-VALUE	Annex-Connect-Progress			Call-Is-Up			10
-VALUE	Annex-Connect-Progress			CLI-Started			40
-VALUE	Annex-Connect-Progress			LAN-Session-Is-Up		60
-VALUE	Annex-Connect-Progress			LCP-Negotiations-Allowed	61
-VALUE	Annex-Connect-Progress			CCP-Negotiations-Allowed	62
-VALUE	Annex-Connect-Progress			IPCP-Negotiations-Allowed	63
-VALUE	Annex-Connect-Progress			LCP-Is-In-Open-State		65
-VALUE	Annex-Connect-Progress			CCP-Is-In-Open-State		66
-VALUE	Annex-Connect-Progress			IPCP-Is-In-Open-State		67
-VALUE	Annex-Connect-Progress			LCP-Is-In-Closed-State		71
-VALUE	Annex-Connect-Progress			LCP-Is-In-Stopped-State		72
-VALUE	Annex-Connect-Progress			LCP-Is-In-Closing-State		73
-VALUE	Annex-Connect-Progress			LCP-Is-In-Request-Sent-State	75
-VALUE	Annex-Connect-Progress			LCP-Is-In-Ack-Recvd-State	76
-VALUE	Annex-Connect-Progress			LCP-Is-In-Ack-Sent-State	77
-VALUE	Annex-Connect-Progress			IPXCP-Is-In-Open-State		80
+#VALUE	Annex-Connect-Progress		Progress-Unknown		2
+#VALUE	Annex-Connect-Progress		Call-Is-Up			10
+#VALUE	Annex-Connect-Progress		CLI-Started			40
+#VALUE	Annex-Connect-Progress		LAN-Session-Is-Up		60
+#VALUE	Annex-Connect-Progress		LCP-Negotiations-Allowed	61
+#VALUE	Annex-Connect-Progress		CCP-Negotiations-Allowed	62
+#VALUE	Annex-Connect-Progress		IPCP-Negotiations-Allowed	63
+#VALUE	Annex-Connect-Progress		LCP-Is-In-Open-State		65
+#VALUE	Annex-Connect-Progress		CCP-Is-In-Open-State		66
+#VALUE	Annex-Connect-Progress		IPCP-Is-In-Open-State		67
+#VALUE	Annex-Connect-Progress		LCP-Is-In-Closed-State		71
+#VALUE	Annex-Connect-Progress		LCP-Is-In-Stopped-State		72
+#VALUE	Annex-Connect-Progress		LCP-Is-In-Closing-State		73
+#VALUE	Annex-Connect-Progress		LCP-Is-In-Request-Sent-State	75
+#VALUE	Annex-Connect-Progress		LCP-Is-In-Ack-Recvd-State	76
+#VALUE	Annex-Connect-Progress		LCP-Is-In-Ack-Sent-State	77
+#VALUE	Annex-Connect-Progress		IPXCP-Is-In-Open-State		80
+					
+#VALUE	Annex-Multicast-Client		Multicast-No	0
+#VALUE	Annex-Multicast-Client		Multicast-Yes	1
 
-VALUE	Annex-Multicast-Client			Multicast-No	0
-VALUE	Annex-Multicast-Client			Multicast-Yes	1
+#VALUE	Annex-Inbound-Precedence		Routine			0
+#VALUE	Annex-Inbound-Precedence		Priority		1
+#VALUE	Annex-Inbound-Precedence		Immediate		2
+#VALUE	Annex-Inbound-Precedence		Flash			3
+#VALUE	Annex-Inbound-Precedence		Flash-Override		4
+#VALUE	Annex-Inbound-Precedence		CRITIC/ECP		5
+#VALUE	Annex-Inbound-Precedence		Internetwork-Control	6
+#VALUE	Annex-Inbound-Precedence		Network-Control		7
 
-VALUE	Annex-Inbound-Precedence		Routine			0
-VALUE	Annex-Inbound-Precedence		Priority		1
-VALUE	Annex-Inbound-Precedence		Immediate		2
-VALUE	Annex-Inbound-Precedence		Flash			3
-VALUE	Annex-Inbound-Precedence		Flash-Override		4
-VALUE	Annex-Inbound-Precedence		CRITIC/ECP		5
-VALUE	Annex-Inbound-Precedence		Internetwork-Control	6
-VALUE	Annex-Inbound-Precedence		Network-Control		7
+#VALUE   Annex-Outbound-Precedence		Routine			0
+#VALUE   Annex-Outbound-Precedence		Priority		1
+#VALUE   Annex-Outbound-Precedence		Immediate		2
+#VALUE   Annex-Outbound-Precedence		Flash			3
+#VALUE   Annex-Outbound-Precedence		Flash-Override		4
+#VALUE   Annex-Outbound-Precedence		CRITIC/ECP		5
+#VALUE   Annex-Outbound-Precedence		Internetwork-Control	6
+#VALUE   Annex-Outbound-Precedence		Network-Control		7
 
-VALUE   Annex-Outbound-Precedence		Routine			0
-VALUE   Annex-Outbound-Precedence		Priority		1
-VALUE   Annex-Outbound-Precedence		Immediate		2
-VALUE   Annex-Outbound-Precedence		Flash			3
-VALUE   Annex-Outbound-Precedence		Flash-Override		4
-VALUE   Annex-Outbound-Precedence		CRITIC/ECP		5
-VALUE   Annex-Outbound-Precedence		Internetwork-Control	6
-VALUE   Annex-Outbound-Precedence		Network-Control		7
+#VALUE	Annex-Gwy-Selection-Mode		Normal		0
+#VALUE	Annex-Gwy-Selection-Mode		Backup		1
+#VALUE	Annex-Gwy-Selection-Mode		Distribution	2
 
-VALUE	Annex-Gwy-Selection-Mode		Normal		0
-VALUE	Annex-Gwy-Selection-Mode		Backup		1
-VALUE	Annex-Gwy-Selection-Mode		Distribution	2
-
-VALUE	Annex-Pool-Id				Pool-One	1
-VALUE	Annex-Pool-Id				Pool-Two	2
-VALUE	Annex-Pool-Id				Pool-Three	3
-VALUE	Annex-Pool-Id				Pool-Four	4
-VALUE	Annex-Pool-Id				Pool-Five	5
-VALUE	Annex-Pool-Id				Pool-Six	6
+#VALUE	Annex-Pool-Id				Pool-One	1
+#VALUE	Annex-Pool-Id				Pool-Two	2
+#VALUE	Annex-Pool-Id				Pool-Three	3
+#VALUE	Annex-Pool-Id				Pool-Four	4
+#VALUE	Annex-Pool-Id				Pool-Five	5
+#VALUE	Annex-Pool-Id				Pool-Six	6
 
 VALUE	Annex-User-Level			Manager		2
 VALUE	Annex-User-Level			User		4
