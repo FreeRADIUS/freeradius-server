@@ -95,7 +95,7 @@ typedef struct nas {
 	struct nas		*next;
 } NAS;
 
-typedef struct realm {
+typedef struct _realm {
 	char			realm[64];
 	char			server[64];
 	uint32_t		ipaddr;
@@ -110,7 +110,7 @@ typedef struct realm {
 	time_t			wakeup;
 	int			acct_active;
 	time_t			acct_wakeup;
-	struct realm		*next;
+	struct _realm		*next;
 } REALM;
 
 typedef struct pair_list {
