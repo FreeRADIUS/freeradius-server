@@ -16,12 +16,12 @@ LDFLAGS		+= -L../lib
 LIBS		+= -lradius 
 MODULE_LIBS	= 
 
-all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
+all:	radiusd radwho radzap raduse radclient
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
-		$(SERVER_OBJS) $(LIBS) $(LDBM) $(SNMPLIB) $(LCRYPT) \
+		$(SERVER_OBJS) $(LIBS) $(SNMPLIB) $(LCRYPT) \
 		$(PTHREADLIB) $(LIBLTDL) $(MODULE_LIBS) 
 
 radiusd.o: radiusd.c $(INCLUDES)
