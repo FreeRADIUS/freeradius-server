@@ -522,7 +522,7 @@ modules {
 	}
 
 	# attr_filter - filters the attributes received in replies from
-	# proxy servers, to make sure we send back to the upstream
+	# proxied servers, to make sure we send back to our RADIUS client
 	# only allowed attributes.
 	attr_filter {
 		attrsfile = ${confdir}/attrs
