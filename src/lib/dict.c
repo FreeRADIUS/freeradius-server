@@ -20,9 +20,9 @@ static const char rcsid[] = "$Id$";
 #include	"libradius.h"
 #include	"missing.h"
 
-static DICT_ATTR	*dictionary_attributes;
-static DICT_VALUE	*dictionary_values;
-static DICT_VENDOR	*dictionary_vendors;
+static DICT_ATTR	*dictionary_attributes = NULL;
+static DICT_VALUE	*dictionary_values = NULL;
+static DICT_VENDOR	*dictionary_vendors = NULL;
 
 static int		vendorno = 1;
 static const char *dtypes[] = {
@@ -110,12 +110,37 @@ int dict_addvendor(const char *name, int value)
 
 int dict_addattr(const char *name, int vendor, int type, int value)
 {
+	static int      max_attr = 0;
 	DICT_ATTR	*attr;
 
 	if (strlen(name) > (sizeof(attr->name) -1)) {
 		librad_log("dict_addattr: attribute name too long");
 		return -1;
 	}
+
+	/*
+	 *	If the value is '-1', that means use a pre-existing
+	 *	one (if it already exists).  If one does NOT already exist,
+	 *	then create a new attribute, with a non-conflicting value,
+	 *	and use that.
+	 */
+	if (value == -1) {
+		attr = dict_attrbyname(name);
+		if (attr != NULL) {
+			return 0; /* exists, don't add it again */
+		}
+
+		value = ++max_attr;
+
+	} else if (vendor == 0) {
+		/*
+		 *  Update 'max_attr'
+		 */
+		if (value > max_attr) {
+			max_attr = value;
+		}
+	}
+
 
 	/*
 	 *	Create a new attribute for the list
