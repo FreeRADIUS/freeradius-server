@@ -2,6 +2,8 @@
 
 AUTOMAKE_OPTIONS = no-dependencies foreign
 
+DESTDIR = $(R)
+
 if INSTALL_LTDL
 include_HEADERS = ltdl.h
 lib_LTLIBRARIES = libltdl.la

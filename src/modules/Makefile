@@ -24,7 +24,7 @@ dynamic:
 	@[$$USE_SHARED_LIBS = "yes" ] && $(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 install:
-	$(INSTALL) -d -m 755 $(libdir)
+	$(INSTALL) -d -m 755 $(R)$(libdir)
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 clean:

@@ -21,22 +21,22 @@ clean:
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	$(INSTALL) -d -m 755	$(mandir);
+	$(INSTALL) -d -m 755	$(R)$(mandir);
 	for i in 1 5 8; do \
-		$(INSTALL) -d -m 755	$(mandir)/man$$i; \
-		$(INSTALL) -m 444 man/man$$i/*.$$i $(mandir)/man$$i; \
+		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
+		$(INSTALL) -m 444 man/man$$i/*.$$i $(R)$(mandir)/man$$i; \
 	done
-	@echo "Creating/updating files in $(raddbdir)"; \
-	$(INSTALL) -d -m 755	$(raddbdir); \
+	@echo "Creating/updating files in $(R)$(raddbdir)"; \
+	$(INSTALL) -d -m 755	$(R)$(raddbdir); \
 	cd raddb; \
 	for i in [a-c]* [e-z]*; do \
-		[ $$i != radiusd.conf.in -a ! -f $(raddbdir)/$$i ] && \
-                $(INSTALL) -m 644 $$i $(raddbdir); \
+		[ $$i != radiusd.conf.in -a ! -f $(R)$(raddbdir)/$$i ] && \
+                $(INSTALL) -m 644 $$i $(R)$(raddbdir); \
 	done; \
 	for i in dictionary*; do \
-		[ ! -f $(raddbdir)/$$i ] && $(INSTALL) -m 644 $$i $(raddbdir); \
-		if [ "`find $$i -newer $(raddbdir)/$$i`" ]; then \
-			echo "** $(raddbdir)/$$i"; \
+		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 644 $$i $(R)$(raddbdir); \
+		if [ "`find $$i -newer $(R)$(raddbdir)/$$i`" ]; then \
+			echo "** $(R)$(raddbdir)/$$i"; \
 			nt=1; \
 		fi; \
 	done; \

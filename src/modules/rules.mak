@@ -143,4 +143,4 @@ distclean:
 #  Otherwise, install the libraries into $(libdir)
 #
 install:
-	[ "x$(TARGET)" = "x" ] || $(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la $(libdir)/$(TARGET).la
+	[ "x$(TARGET)" = "x" ] || $(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la $(R)$(libdir)/$(TARGET).la

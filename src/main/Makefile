@@ -123,13 +123,13 @@ clean:
 		radclient radzap builddbm .libs
 
 install:
-	$(INSTALL) -d -m 755			$(sbindir)
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755 -s radiusd	$(sbindir)
-	$(INSTALL) -m 755    checkrad.pl	$(sbindir)/checkrad
-	$(INSTALL) -d -m 755			$(bindir)
-	$(INSTALL) -m 755 -s radwho raduse	$(bindir)
-	$(INSTALL) -m 755 -s radzap		$(bindir)
-	$(INSTALL) -m 755    radlast		$(bindir)
-	$(INSTALL) -m 755    radtest radclient	$(bindir)
-	$(INSTALL) -d -m 755			$(logdir)
-	$(INSTALL) -d -m 755			$(radacctdir)
+	$(INSTALL) -d -m 755			$(R)$(sbindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 -s radiusd	$(R)$(sbindir)
+	$(INSTALL) -m 755    checkrad.pl	$(R)$(sbindir)/checkrad
+	$(INSTALL) -d -m 755			$(R)$(bindir)
+	$(INSTALL) -m 755 -s radwho raduse	$(R)$(bindir)
+	$(INSTALL) -m 755 -s radzap		$(R)$(bindir)
+	$(INSTALL) -m 755    radlast		$(R)$(bindir)
+	$(INSTALL) -m 755    radtest radclient	$(R)$(bindir)
+	$(INSTALL) -d -m 755			$(R)$(logdir)
+	$(INSTALL) -d -m 755			$(R)$(radacctdir)
