@@ -433,24 +433,6 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		return RLM_MODULE_INVALID;
 	}
 
-#ifdef CISCO_ACCOUNTING_HACK
-	/*
-	 * If stop but zero session length AND no previous
-	 * session found, drop it as in invalid packet 
-	 * This is to fix CISCO's aaa from filling our  
-	 * table with bogus crap
-	 */
-	if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME)) != NULL)
-		acctsessiontime = pair->lvalue;
-
-	if ((acctsessiontime <= 0) && (acctstatustype == PW_STATUS_STOP)) {
-		radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
-		radlog(L_ERR, logstr);
-		sql_release_socket(inst, sqlsocket);
-		return RLM_MODULE_FAIL;
-	}
-#endif
-
 	switch (acctstatustype) {
 			/*
 			 * The Terminal server informed us that it was rebooted
@@ -556,6 +538,24 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				 * matching Start record.  So we have to
 				 * insert this stop rather than do an update
 				 */
+#ifdef CISCO_ACCOUNTING_HACK
+			        /*
+			         * If stop but zero session length AND no previous
+			         * session found, drop it as in invalid packet
+			         * This is to fix CISCO's aaa from filling our
+			         * table with bogus crap
+			         */
+			        if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME)) != NULL)
+			                acctsessiontime = pair->lvalue;
+
+			        if (acctsessiontime <= 0) {
+			                radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
+			                radlog(L_ERR, logstr);
+			                sql_release_socket(inst, sqlsocket);
+			                return RLM_MODULE_FAIL;
+			        }
+#endif
+
 				radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query_alt, request, NULL);
 				query_log(inst, querystr);
 
