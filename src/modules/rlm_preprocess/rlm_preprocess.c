@@ -644,7 +644,25 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	add_nas_attr(request);
 
 	hints_setup(data->hints, request);
-	
+
+	/*
+	 *      If there is a PW_CHAP_PASSWORD attribute but there
+	 *      is PW_CHAP_CHALLENGE we need to add it so that other
+	 *	modules can use it as a normal attribute.
+	 */
+	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD) &&
+	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE) == NULL) {
+		VALUE_PAIR *vp;
+		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
+		if (!vp) {
+			radlog(L_ERR|L_CONS, "no memory");
+			exit(1);
+		}
+		vp->length = AUTH_VECTOR_LEN;
+		memcpy(vp->strvalue, request->packet->vector, AUTH_VECTOR_LEN);
+		pairadd(&request->packet->vps, vp);
+	}
+
 	if (huntgroup_access(data->huntgroups, request->packet->vps) != RLM_MODULE_OK) {
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
