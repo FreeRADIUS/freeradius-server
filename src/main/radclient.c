@@ -13,9 +13,14 @@
 #include	<string.h>
 #include	<getopt.h>
 #include	<ctype.h>
+#include	<sys/types.h>
 #include	<sys/socket.h>
 #include	<sys/time.h>
 #include	<netinet/in.h>
+
+#if HAVE_SYS_SELECT_H
+#  include      <sys/select.h>
+#endif
 
 #include	"conf.h"
 #include	"libradius.h"
@@ -51,24 +56,27 @@ VALUE_PAIR *readvp(void)
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [-d raddb ] [-nx] server acct|auth <secret>\n");
+	fprintf(stderr, "Usage: radclient [-d raddb ] [-t timeout] [-nx] server acct|auth <secret>\n");
 	exit(1);
 }
 
 int main(int argc, char **argv)
 {
 	RADIUS_PACKET	*req;
-	RADIUS_PACKET	*rep;
+	RADIUS_PACKET	*rep = NULL;
 	VALUE_PAIR	*vp;
+	struct timeval	tv;
 	char		*p;
 	char		*secret = "secret";
 	int		do_output = 1;
 	int		c;
 	int		port = 0;
 	int		s;
+	int		timeout = 3;
+	int		i;
 	char		*radius_dir = RADDBDIR;
 
-	while ((c = getopt(argc, argv, "d:nx")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:nxt:")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -77,6 +85,9 @@ int main(int argc, char **argv)
 			break;
 		case 'x':
 			librad_debug = 1;
+			break;
+		case 't':
+			timeout = atoi(optarg);
 			break;
 		default:
 			usage();
@@ -159,14 +170,38 @@ int main(int argc, char **argv)
 		perror("radclient: socket: ");
 		exit(1);
 	}
-	rad_send(req, s, secret);
 
-	/*
-	 *	And wait for reply.
-	 */
-	rep = rad_recv(s);
-	if (rep == NULL)
+	for (i = 0; i < 10; i++) {
+		fd_set		rdfdesc;
+
+		rad_send(req, s, secret);
+
+		/* And wait for reply, timing out as necessary */
+		FD_ZERO(&rdfdesc);
+		FD_SET(s, &rdfdesc);
+
+		tv.tv_sec = timeout;
+		tv.tv_usec = 0;
+
+		/* Something's wrong if we don't get exactly one fd. */
+		if (select(s+1, &rdfdesc, NULL, NULL, &tv) != 1) {
+			continue;
+		}
+
+		rep = rad_recv(s);
+		if (rep != NULL) {
+			break;
+		} else {	/* NULL: couldn't receive the packet */
+			librad_perror("radclient:");
+			exit(1);
+		}
+	}
+
+	/* No response or no data read (?) */
+	if (i == 10) {
+		fprintf(stderr, "radclient: no response from server\n");
 		exit(1);
+	}
 
 	if (rad_decode(rep, secret) != 0) {
 		librad_perror("rad_decode");
