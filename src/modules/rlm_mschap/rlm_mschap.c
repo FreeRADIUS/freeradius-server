@@ -602,6 +602,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 	VALUE_PAIR *password = NULL;
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
+	VALUE_PAIR *username;
 	VALUE_PAIR *reply_attr;
 	uint8_t calculated[32];
 	uint8_t msch2resp[42];
@@ -833,7 +834,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	We also require a User-Name
 		 */
-		if (!request->username) {
+		username = pairfind(request->packet->vps, PW_USER_NAME);
+		if (username) {
 			radlog(L_AUTH, "rlm_mschap: We require a User-Name for MS-CHAPv2");
 			return RLM_MODULE_INVALID;
 		}
@@ -849,7 +851,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		DEBUG2("  rlm_mschap: doing MS-CHAPv2 with NT-Password");
 		mschap2(response->strvalue + 2, challenge->strvalue,
-			request->username->strvalue, nt_password->strvalue,
+			username->strvalue, nt_password->strvalue,
 			calculated);
 		if (memcmp(response->strvalue + 26, calculated, 24) != 0) {
 			DEBUG2("  rlm_mschap: FAILED: MS-CHAP2-Response is incorrect");
@@ -858,7 +860,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			return RLM_MODULE_REJECT;
 		}
 
-		auth_response(request->username->strvalue,
+		auth_response(username->strvalue,
 			      nt_password->strvalue, calculated,
 			      response->strvalue + 2,
 			      challenge->strvalue,
