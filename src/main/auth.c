@@ -257,35 +257,18 @@ int rad_check_password(REQUEST *request)
 	 */
 	if ((password_pair = pairfind(request->config_items, PW_CRYPT_PASSWORD)) != NULL)
 		auth_type = PW_AUTHTYPE_CRYPT;
-	else
-		password_pair = pairfind(request->config_items, PW_PASSWORD);
+	else if ((password_pair = pairfind(request->config_items, PW_PASSWORD)) != NULL)
+		auth_type = PW_AUTHTYPE_LOCAL;
 
-	/*
-	 *	For backward compatibility, we check the
-	 *	password to see if it is the magic value
-	 *	UNIX or PAM if auth_type was not set.
-	 *
-	 *	This allows the admin to just put a 'User-Password' in, and
-	 *	have it work.
-	 */
 	if (auth_type < 0) {
-		if (password_pair) {
-			if (!strcmp((char *)password_pair->strvalue, "UNIX"))
-				auth_type = PW_AUTHTYPE_SYSTEM;
-			else if (!strcmp((char *)password_pair->strvalue,"PAM"))
-				auth_type = PW_AUTHTYPE_PAM;
-			else
-				auth_type = PW_AUTHTYPE_LOCAL;
-		} else {
-			/*
-			 *	The admin hasn't told us how to
-			 *	authenticate the user, so we reject them!
-			 *
-			 *	This is fail-safe.
-			 */
-			DEBUG2("auth: No Auth-Type configuration for the request, rejecting the user");
-			return -2;
-		}
+		/*
+		 *	The admin hasn't told us how to
+		 *	authenticate the user, so we reject them!
+		 *
+		 *	This is fail-safe.
+		 */
+		DEBUG2("auth: No Auth-Type configuration for the request, rejecting the user");
+		return -2;
 	}
 
 	switch(auth_type) {

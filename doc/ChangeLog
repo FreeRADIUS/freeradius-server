@@ -2,6 +2,7 @@ FreeRADIUS 0.5.0 ; urgency=low
 
 	* Preliminary EAP Module with MD5 support
 	  Contributed by Raghu <raghud@hereuare.com>
+	* Password = "UNIX" or "PAM" backwards compabilitity removed.
 
 FreeRADIUS 0.4.0 ; urgency=low
 
