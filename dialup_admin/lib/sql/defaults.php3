@@ -110,4 +110,26 @@ if ($login != ''){
 			echo "<b>Could not connect to SQL database</b><br>\n";
 	}while($stop == 0);
 }
+else{
+	if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
+		include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+	else{
+		echo "<b>Could not include SQL library</b><br>\n";
+		exit();
+	}
+	unset($member_groups);
+	$link = @da_sql_pconnect($config);
+	if ($link){
+		$res = @da_sql_query($link,$config,
+		"SELECT DISTINCT GroupName FROM $config[sql_usergroup_table];");
+		if ($res){
+			while(($row = @da_sql_fetch_array($res,$config)))
+				$member_groups[] = $row[GroupName];
+		}
+		else
+			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
+	}
+	else
+		echo "<b>Could not connect to SQL database</b><br>\n";
+}
 ?>

@@ -91,13 +91,19 @@ EOM;
 EOM;
 	if ($config[general_lib_type] == 'sql'){
 		if (isset($member_groups))
-			$group = $member_groups[0];
+			$selected[$member_groups[0]] = 'selected';
 		echo <<<EOM
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Group
 		</td><td>
-		<input type=text name="Fgroup" value="$group" size=35>
+		<select name="Fgroup">
+EOM;
+		foreach ($member_groups as $group)
+			echo "<option value=\"$group\" $selected[$group]>$group\n";
+
+		echo <<<EOM
+		</select>
 		</td>
 	</tr>
 EOM;
