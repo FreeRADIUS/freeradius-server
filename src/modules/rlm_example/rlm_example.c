@@ -16,18 +16,18 @@ static const char rcsid[] = "$Id$";
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct example_config_t {
+typedef struct rlm_example_t {
 	int		boolean;
 	int		value;
 	char		*string;
 	uint32_t	ipaddr;
-} example_config_t;
+} rlm_example_t;
 
 /*
  *	A temporary holding area for config values to be extracted
  *	into, before they are copied into the instance data
  */
-static example_config_t config;
+static rlm_example_t config;
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -55,7 +55,7 @@ static CONF_PARSER module_config[] = {
  *	Try to avoid putting too much stuff in here - it's better to
  *	do it in instantiate() where it is not global.
  */
-static int radius_init(void)
+static int example_init(void)
 {
 	/*
 	 *	Everything's OK, return without an error.
@@ -73,37 +73,38 @@ static int radius_init(void)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int radius_instantiate(CONF_SECTION *conf, void **instance)
+static int example_instantiate(CONF_SECTION *conf, void **instance)
 {
-  /*
-   *	Set up a storage area for instance data
-   */
-  *instance = malloc(sizeof(struct example_config_t));
-  if(!*instance) {
-  	return -1;
-  }
+	rlm_example_t *data;
 
-  /*
-   *	If the configuration parameters can't be parsed, then
-   *	fail.
-   */
-  if (cf_section_parse(conf, module_config) < 0) {
-	  free(*instance);
-	  return -1;
-  }
-
-  /*
-   *	Copy the configuration into the instance data
-   */
-#define inst ((struct example_config_t *)*instance)
-  inst->boolean = config.boolean;
-  inst->value = config.value;
-  inst->string = config.string;
-  inst->ipaddr = config.ipaddr;
-#undef inst
-  config.string = 0; /* So cf_section_parse won't free it next time */
-
-  return 0;
+	/*
+	 *	If the configuration parameters can't be parsed, then
+	 *	fail.
+	 */
+	if (cf_section_parse(conf, module_config) < 0) {
+		return -1;
+	}
+	
+	/*
+	 *	Set up a storage area for instance data
+	 */
+	data = malloc(sizeof(*data));
+	if (!data) {
+		return -1;
+	}
+	
+	/*
+	 *	Copy the configuration into the instance data
+	 */
+	data->boolean = config.boolean;
+	data->value = config.value;
+	data->string = config.string;
+	config.string = NULL; /* So cf_section_parse won't free it next time */
+	
+	data->ipaddr = config.ipaddr;
+	*instance = data;
+	
+	return 0;
 }
 
 /*
@@ -112,7 +113,7 @@ static int radius_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int radius_authorize(void *instance, REQUEST *request)
+static int example_authorize(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -124,7 +125,7 @@ static int radius_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static int radius_authenticate(void *instance, REQUEST *request)
+static int example_authenticate(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -136,7 +137,7 @@ static int radius_authenticate(void *instance, REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static int radius_preacct(void *instance, REQUEST *request)
+static int example_preacct(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -148,7 +149,7 @@ static int radius_preacct(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static int radius_accounting(void *instance, REQUEST *request)
+static int example_accounting(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -167,7 +168,7 @@ static int radius_accounting(void *instance, REQUEST *request)
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static int radius_checksimul(void *instance, REQUEST *request)
+static int example_checksimul(void *instance, REQUEST *request)
 {
   instance = instance;
 
@@ -176,9 +177,9 @@ static int radius_checksimul(void *instance, REQUEST *request)
   return RLM_MODULE_OK;
 }
 
-static int radius_detach(void *instance)
+static int example_detach(void *instance)
 {
-	free(((struct example_config_t *)instance)->string);
+	free(((struct rlm_example_t *)instance)->string);
 	free(instance);
 	return 0;
 }
@@ -195,13 +196,13 @@ static int radius_detach(void *instance)
 module_t rlm_example = {
 	"example",	
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	radius_init,			/* initialization */
-	radius_instantiate,		/* instantiation */
-	radius_authorize,		/* authorization */
-	radius_authenticate,		/* authentication */
-	radius_preacct,			/* preaccounting */
-	radius_accounting,		/* accounting */
-	radius_checksimul,		/* checksimul */
-	radius_detach,			/* detach */
+	example_init,			/* initialization */
+	example_instantiate,		/* instantiation */
+	example_authorize,		/* authorization */
+	example_authenticate,		/* authentication */
+	example_preacct,		/* preaccounting */
+	example_accounting,		/* accounting */
+	example_checksimul,		/* checksimul */
+	example_detach,			/* detach */
 	NULL,				/* destroy */
 };
