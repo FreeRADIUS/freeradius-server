@@ -38,11 +38,19 @@ static const char rcsid[] =
 /*
    Convert the value on a VALUE_PAIR to string
 */
-static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,int type)
+static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
+			 int type, RADIUS_ESCAPE_STRING func)
 {
-	if (pair != NULL)
-		return vp_prints_value(out,outlen,pair,0);
-	else {
+	char buffer[MAX_STRING_LEN * 4];
+
+	if (pair != NULL) {
+		if (func) {
+			vp_prints_value(buffer, sizeof(buffer), pair, 0);
+			return func(out, outlen, buffer);
+		} else {
+			return vp_prints_value(out, outlen, pair, 0);
+		}
+	} else {
 		switch (type) {
 			case PW_TYPE_STRING :
 				strNcpy(out,"_",outlen);
@@ -64,25 +72,9 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,int type)
 }
 
 /*
-  Returns a string with value of Attribute
-*/
-static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrname)
-{
-	DICT_ATTR * da;
-
-	da = dict_attrbyname(attrname);
-	if (da != NULL) {
-		return (valuepair2str(out,outlen,pairfind(request,da->attr),da->type));
-	} else {
-		*out = '\0';
-		return 0;
-	}
-}
-
-/*
  *  Decode an attribute name into a string.
  */
-static void decode_attribute(const char **from, char **to, int freespace, int *open, REQUEST *request) {
+static void decode_attribute(const char **from, char **to, int freespace, int *open, REQUEST *request, RADIUS_ESCAPE_STRING func) {
 
 	DICT_ATTR *tmpda;
 	VALUE_PAIR *tmppair;
@@ -126,19 +118,19 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	if (strncasecmp(attrname,"reply:",6) == 0) {
 		if((tmpda = dict_attrbyname(&attrname[6])) && 
 				(tmppair = pairfind(request->reply->vps, tmpda->attr))) {
-			q += valuepair2str(q,freespace,tmppair,tmpda->type);
+			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
 		}
 	} else if (strncasecmp(attrname,"request:",8) == 0) {
 		if((tmpda = dict_attrbyname(&attrname[8])) && 
 				(tmppair = pairfind(request->packet->vps, tmpda->attr))) {
-			q += valuepair2str(q,freespace,tmppair,tmpda->type);
+			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
 		}
 	} else {
 		if((tmpda = dict_attrbyname(attrname)) && 
 				(tmppair = pairfind(request->packet->vps,tmpda->attr))) {
-			q += valuepair2str(q,freespace,tmppair,tmpda->type);
+			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
 		}
 	} 
@@ -246,7 +238,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 		} else if (c == '$') switch(*p) {
 			case '{': /* Attribute by Name */
-				decode_attribute(&p, &q, freespace, &openbraces, request);
+				decode_attribute(&p, &q, freespace, &openbraces, request, func);
 			default:
 				*q++ = c;
 				*q++ = *p;
@@ -254,17 +246,17 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 
 		} else if (c == '%') switch(*p) {
 			case '{':
-				decode_attribute(&p, &q, freespace, &openbraces, request);
+				decode_attribute(&p, &q, freespace, &openbraces, request, func);
 				break;
 
 			case '%':
 				*q++ = *p;
 				break;
 			case 'a': /* Protocol: */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER, func);
 				break;
 			case 'c': /* Callback-Number */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER),PW_TYPE_STRING);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER),PW_TYPE_STRING, func);
 				break;
 			case 'd': /* request year */
 				TM = localtime(&request->timestamp);
@@ -273,10 +265,10 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				break;
 			case 'f': /* Framed IP address */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR, func);
 				break;
 			case 'i': /* Calling station ID */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING, func);
 				break;
 			case 'l': /* request timestamp */
 				snprintf(tmpdt, sizeof(tmpdt), "%ld",request->timestamp);
@@ -290,20 +282,20 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				break;
 			case 'n': /* NAS IP address */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR, func);
 				break;
 			case 'p': /* Port number */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT_ID),PW_TYPE_INTEGER);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT_ID),PW_TYPE_INTEGER, func);
 				break;
 			case 's': /* Speed */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING, func);
 				break;
 			case 't': /* request timestamp */
 				strNcpy(q,ctime(&request->timestamp),freespace);
 				q += strlen(q);
 				break;
 			case 'u': /* User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING, func);
 				break;
 			case 'A': /* radacct_dir */
 				strNcpy(q,radacct_dir,freespace-1);
@@ -324,7 +316,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				break;
 			case 'M': /* MTU */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU),PW_TYPE_INTEGER);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU),PW_TYPE_INTEGER, func);
 				break;
 			case 'R': /* radius_dir */
 				strNcpy(q,radius_dir,freespace-1);
@@ -343,7 +335,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				break;
 			case 'U': /* Stripped User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME),PW_TYPE_STRING);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME),PW_TYPE_STRING, func);
 				break;
 			case 'V': /* Request-Authenticator */
 				if (request->packet->verified)

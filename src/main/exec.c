@@ -46,6 +46,54 @@ static const char rcsid[] = "$Id$";
 #include "radiusd.h"
 
 /*
+ *	Escape magic shell characters
+ */
+static int escape_shell(char *out, int outlen, const char *in)
+{
+	char *p = out;
+
+	DEBUG2("in = %s", in);
+
+	for ( ; outlen > 1 && *in; in++) {
+		switch (*in) {
+		default:
+			*(p++) = *in;
+			outlen--;
+			break;
+
+			/*
+			 *	Escape magic shell characters.
+			 */
+		case '\\':
+		case '\'':
+		case '"':
+		case '*':
+		case '!':
+		case '(':
+		case ')':
+		case '&':
+		case '$':
+		case '>':
+		case '<':
+		case '?':
+		case '[':
+		case ']':
+		case '`':
+		case ';':
+			*(p++) = '\\';
+			*(p++) = *in;
+			outlen -= 2;
+			break;
+		}
+	}
+	*p = '\0';
+
+	DEBUG2("out = %s", out);
+
+	return strlen(out);
+}
+
+/*
  *	Execute a program on successful authentication.
  *	Return 0 if exec_wait == 0.
  *	Return the exit code of the called program if exec_wait != 0.
@@ -96,7 +144,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		/*	
 		 *	Child
 		 */
-		radius_xlat(answer, sizeof(answer), cmd, request, NULL);
+		radius_xlat(answer, sizeof(answer), cmd, request, escape_shell);
 		buf = answer;
 
 		/*
