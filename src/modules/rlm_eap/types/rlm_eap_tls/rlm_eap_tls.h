@@ -118,6 +118,7 @@ typedef struct _tls_info_t {
 	char 		info_description[256];
 	size_t		record_len;
 	int		version;
+	char		initialized;
 } tls_info_t;
 
 /*

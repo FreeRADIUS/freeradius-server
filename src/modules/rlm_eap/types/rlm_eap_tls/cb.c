@@ -175,6 +175,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	state->info.content_type = (unsigned char)content_type;
 	state->info.record_len = len;
 	state->info.version = msg_version;
+	state->info.initialized = 1;
 
 	if (content_type == SSL3_RT_ALERT) {
 		state->info.alert_level = ((const unsigned char*)buf)[0];
