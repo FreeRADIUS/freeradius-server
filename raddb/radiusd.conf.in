@@ -881,12 +881,19 @@ modules {
 # need to setup hints for the remote radius server
 authorize {
 	preprocess
+
+# The chap module will set Auth-Type to CHAP if we are handling a CHAP request
+# and Auth-Type has not already been set
+#	chap
 #	counter
 #	attr_filter
 #	eap
 	suffix
 	files
 #	mschap
+
+# The ldap module will set Auth-Type to Ldap if it has not already been set
+#	ldap
 }
 
 
@@ -897,12 +904,36 @@ authorize {
 # that you have to have a module from the 'authorize' section add
 # a configuration attribute 'Auth-Type := FOO'.  That authentication type
 # is then used to pick the apropriate module from the list below.
+#
+# The default Auth-Type is Local. That is, whatever is not included inside
+# an authtype section will be called only if Auth-Type is set to Local
+#
+# So you should do the following:
+# Set Auth-Type to an appropriate value in the authorize section. For example chap
+# will set Auth-Type to CHAP, ldap to Ldap etc
+# After that create corresponding authtype sections in the authenticate section below
+# and call the appropriate modules (chap for CHAP etc)
 authenticate {
 #	pam
 	unix
-#	ldap
+
+# Uncomment it if you want to use ldap for authentication
+#	authtype Ldap {
+#		ldap
+#	}
 #	mschap
 #	eap
+# Uncomment it if you want to support CHAP
+#	authtype CHAP {
+#		chap
+#	}
+# Uncomment the following if you want to support PAP and you extract user
+# passwords from the user database (LDAP,SQL etc). You should use the files
+# module to set Auth-Type to PAP for this to work.
+#	authtype PAP {
+#		pap
+#	}
+#
 }
 
 
