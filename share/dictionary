@@ -307,6 +307,7 @@ ATTRIBUTE	Packet-Dst-IP-Address	1085	ipaddr
 ATTRIBUTE	Packet-Src-Port		1086	integer
 ATTRIBUTE	Packet-Dst-Port		1087	integer
 ATTRIBUTE	Packet-Authentication-Vector 1088 octets
+ATTRIBUTE	Time-Of-Day		1089	string
 
 #
 #	Range:	1084-1199
@@ -393,7 +394,45 @@ ATTRIBUTE       EAP-Sim-CHECKCODE       1670    octets
 
 
 #
-#	Range:	1800-2999
+#	Range: 1800-1899
+#	       Temporary attributes, for local storage.
+#
+ATTRIBUTE	Tmp-String-0		1800	string
+ATTRIBUTE	Tmp-String-1		1801	string
+ATTRIBUTE	Tmp-String-2		1802	string
+ATTRIBUTE	Tmp-String-3		1803	string
+ATTRIBUTE	Tmp-String-4		1804	string
+ATTRIBUTE	Tmp-String-5		1805	string
+ATTRIBUTE	Tmp-String-6		1806	string
+ATTRIBUTE	Tmp-String-7		1807	string
+ATTRIBUTE	Tmp-String-8		1808	string
+ATTRIBUTE	Tmp-String-9		1809	string
+
+ATTRIBUTE	Tmp-Integer-0		1810	integer
+ATTRIBUTE	Tmp-Integer-1		1811	integer
+ATTRIBUTE	Tmp-Integer-2		1812	integer
+ATTRIBUTE	Tmp-Integer-3		1813	integer
+ATTRIBUTE	Tmp-Integer-4		1814	integer
+ATTRIBUTE	Tmp-Integer-5		1815	integer
+ATTRIBUTE	Tmp-Integer-6		1816	integer
+ATTRIBUTE	Tmp-Integer-7		1817	integer
+ATTRIBUTE	Tmp-Integer-8		1818	integer
+ATTRIBUTE	Tmp-Integer-9		1819	integer
+
+ATTRIBUTE	Tmp-IP-Address-0	1820	ipaddr
+ATTRIBUTE	Tmp-IP-Address-1	1821	ipaddr
+ATTRIBUTE	Tmp-IP-Address-2	1822	ipaddr
+ATTRIBUTE	Tmp-IP-Address-3	1823	ipaddr
+ATTRIBUTE	Tmp-IP-Address-4	1824	ipaddr
+ATTRIBUTE	Tmp-IP-Address-5	1825	ipaddr
+ATTRIBUTE	Tmp-IP-Address-6	1826	ipaddr
+ATTRIBUTE	Tmp-IP-Address-7	1827	ipaddr
+ATTRIBUTE	Tmp-IP-Address-8	1828	ipaddr
+ATTRIBUTE	Tmp-IP-Address-9	1829	ipaddr
+
+
+#
+#	Range:	1900-2999
 #		Free
 #
 #	Range:	3000-3999

@@ -190,6 +190,7 @@
 #define PW_PACKET_SRC_PORT		1086
 #define PW_PACKET_DST_PORT		1087
 #define PW_PACKET_AUTHENTICATION_VECTOR	1088
+#define PW_TIME_OF_DAY			1089
 
 /*
  *	Integer Translations

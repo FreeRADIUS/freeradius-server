@@ -90,6 +90,78 @@ static int timecmp(void *instance,
 	return -1;
 }
 
+
+/*
+ *	Time-Of-Day support
+ */
+static int time_of_day(void *instance,
+		       REQUEST *req,
+		       VALUE_PAIR *request, VALUE_PAIR *check,
+		       VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+{
+	int scan;
+	int hhmmss, when;
+	char *p;
+	struct tm *tm, s_tm;
+
+	instance = instance;
+	request = request;      /* shut the compiler up */
+	check_pairs = check_pairs;
+	reply_pairs = reply_pairs;
+
+	/*
+	 *	Must be called with a request pointer.
+	 */
+	if (!req) return -1;
+  
+	if (strspn(check->strvalue, "0123456789: ") != strlen(check->strvalue)) {
+		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
+		      check->strvalue);
+		return -1;
+	}
+
+	tm = localtime_r(&req->timestamp, &s_tm);
+	hhmmss = (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec;
+
+	/*
+	 *	Time of day is a 24-hour clock
+	 */
+	p = check->strvalue;
+	scan = atoi(p);
+	p = strchr(p, ':');
+	if ((scan > 23) || !p) {
+		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
+		      check->strvalue);
+		return -1;
+	}
+	when = scan * 3600;
+	p++;
+
+	scan = atoi(p);
+	if (scan > 59) {
+		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
+		      check->strvalue);
+		return -1;
+	}
+	when += scan * 60;
+
+	p = strchr(p, ':');
+	if (p) {
+		scan = atoi(p + 1);
+		if (scan > 59) {
+			DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
+			      check->strvalue);
+			return -1;
+		}
+		when += scan;
+	}
+
+	fprintf(stderr, "returning %d - %d\n",
+		hhmmss, when);
+	
+	return hhmmss - when;
+}
+
 /*              
  *      Check if account has expired, and if user may login now.
  */		  
@@ -229,6 +301,7 @@ static int logintime_instantiate(CONF_SECTION *conf, void **instance)
 	 * Register a Current-Time comparison function
 	 */
 	paircompare_register(PW_CURRENT_TIME, 0, timecmp, data);
+	paircompare_register(PW_TIME_OF_DAY, 0, time_of_day, data);
 
 	*instance = data;
 
@@ -256,7 +329,7 @@ static int logintime_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_logintime = {
-	"Login Time",
+	"logintime",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	logintime_instantiate,		/* instantiation */
