@@ -173,7 +173,7 @@ static int realm_authorize(void *instance, REQUEST *request)
 	 */
 	add_proxy_to_realm(&request->config_items, realm);
 
-	return RLM_MODULE_OK; /* try the next module */
+	return RLM_MODULE_UPDATED; /* try the next module */
 }
 
 /*
