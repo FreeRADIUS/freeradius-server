@@ -367,6 +367,14 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 		return -1;
 	}
 
+	xlat_name = cf_section_name2(conf);
+	if (xlat_name == NULL)
+		xlat_name = cf_section_name1(conf);
+	if (xlat_name){
+		inst->config->xlat_name = strdup(xlat_name);
+		xlat_register(xlat_name, sql_xlat, inst);
+	}
+
 	if (inst->config->num_sql_socks > MAX_SQL_SOCKS) {
 		radlog(L_ERR | L_CONS, "rlm_sql (%s): sql_instantiate: number of sqlsockets cannot exceed MAX_SQL_SOCKS, %d",
 		       inst->config->xlat_name, MAX_SQL_SOCKS);
@@ -405,13 +413,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 		free(inst->config);
 		free(inst);
 		return -1;
-	}
-	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL)
-		xlat_name = cf_section_name1(conf);
-	if (xlat_name){
-		inst->config->xlat_name = strdup(xlat_name);
-		xlat_register(xlat_name, sql_xlat, inst);
 	}
 	paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
 
