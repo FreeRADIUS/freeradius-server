@@ -1,11 +1,10 @@
 /*
  * exec.c	Execute external programs.
  *
- * Version:	@(#)exec.c  1.83  07-Aug-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
-char exec_sccsid[] =
-"@(#)exec.c	1.83 Copyright 1999 Cistron Internet Services B.V."; 
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -99,6 +98,14 @@ char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 			case 'u': /* User name */
 				if ((tmp = pairfind(request,
 				     PW_USER_NAME)) != NULL)
+					strcpy(output + i, tmp->strvalue);
+				else
+					strcpy(output + i, "unknown");
+				i += strlen(output + i);
+				break;
+			case 'U': /* Stripped User name */
+				if ((tmp = pairfind(request,
+				     PW_STRIPPED_USER_NAME)) != NULL)
 					strcpy(output + i, tmp->strvalue);
 				else
 					strcpy(output + i, "unknown");
@@ -241,9 +248,6 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 			char *p;
 
 			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
-			n = strlen(buffer);
-			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, 1);
-
 			for (p = buffer; *p != '='; p++) {
 			  if (*p == '-') {
 			    *p = '_';
@@ -251,6 +255,9 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 			    *p = toupper(*p);
 			  }
 			}
+
+			n = strlen(buffer);
+			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, 1);
 
 			envp[envlen++] = strdup(buffer);
 		}
