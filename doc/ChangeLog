@@ -1,4 +1,12 @@
-FreeRADIUS 0.9.3 ; $Date$, urgency=high
+FreeRADIUS 0.9.4 ; $Date$, urgency=low
+
+    * Change rlm_eap to not log an error if given a non-EAP packet
+	  Inluded in 0.9.3 release
+
+	* Fix rlm_ippool's call to pod2man for perl versions before 5.6
+	  Inluded in 0.9.3 release
+
+FreeRADIUS 0.9.3 ; Date: 2003/11/20 20:15:48, urgency=high
 
 	* Fix a remote DoS and possible exploit due to mis-handling
 	  of tagged attributes, and Tunnel-Password attribute.
