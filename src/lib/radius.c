@@ -296,7 +296,8 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		   *	need to calculate the md5 hash over the entire packet
 		   *	and put it in the vector.
 		   */
-		  if (packet->code != PW_AUTHENTICATION_REQUEST) {
+		  if (packet->code != PW_AUTHENTICATION_REQUEST &&
+		      packet->code != PW_STATUS_SERVER) {
 		  	secretlen = strlen(secret);
 			memcpy((char *)hdr + packet->data_len, secret, secretlen);
 			librad_md5_calc(digest, (unsigned char *)hdr,
@@ -316,7 +317,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		for (reply = packet->vps; reply; reply = reply->next) {
 			/* FIXME: ignore attributes > 0xff */
 			debug_pair(reply);
-			reply = reply->next;
 		}
 	}
 	
@@ -593,6 +593,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	 */
 	switch(packet->code) {
 		case PW_AUTHENTICATION_REQUEST:
+		case PW_STATUS_SERVER:
 			/*
 			 *	The authentication vector is random
 			 *	nonsense, invented by the client.

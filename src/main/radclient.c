@@ -291,8 +291,9 @@ int main(int argc, char **argv)
 		req->code = PW_ACCOUNTING_REQUEST;
 		do_summary = 0;
 	} else if (isdigit(argv[2][0])) {
+		if (port == 0) port = getport("radius");
 		if (port == 0) port = PW_AUTH_UDP_PORT;
-		port = atoi(argv[2]);
+		req->code = atoi(argv[2]);
 	} else {
 		usage();
 	}
