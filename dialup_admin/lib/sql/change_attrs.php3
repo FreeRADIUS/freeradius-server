@@ -54,7 +54,7 @@ if ($link){
 				"UPDATE $table SET op = '$op_val' WHERE $query_key = '$login'
 				AND Attribute = '$sql_attr' AND Value = '$val';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
-					echo "<b>Operator change failed for attribute $key</b><br>\n";
+					echo "<b>Operator change failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
 
 	// 	if value is the same as that in the sql database do nothing
@@ -65,7 +65,7 @@ if ($link){
 				$res = @da_sql_query($link,$config,
 				"DELETE FROM $table WHERE $query_key = '$login' AND Attribute = '$sql_attr';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
-					echo "<b>Delete failed for attribute $key</b><br>\n";
+					echo "<b>Delete failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
 	//	if value is null then don't add it 
 			else if ($val == '')
@@ -83,7 +83,7 @@ if ($link){
 					"INSERT INTO $table ($query_key,Attribute,Value $text2)
 					VALUES ('$login','$sql_attr','$val' $op_val2);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
-					echo "<b>Change failed for attribute $key</b><br>\n";	
+					echo "<b>Change failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
 		}
 	}

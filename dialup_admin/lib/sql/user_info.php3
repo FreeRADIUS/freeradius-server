@@ -84,10 +84,12 @@ if ($link){
 						$mobile = ($row[Mobile] != '') ? $row[Mobile] : '-';
 					}
 				}			
+				else
+					echo "<b>Database query failed partially: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
 		}
 		else
-			echo "<b>Database query failed partially</b><br>\n";
+			echo "<b>Database query failed partially: " . da_sql_error($link,$config) . "</b><br>\n";
 		foreach($attrmap as $key => $val){
 			if (isset($tmp[$val])){
 				$item_vals["$key"] = $tmp[$val];
@@ -100,7 +102,7 @@ if ($link){
 
 	}
 	else
-		echo "<b>Database query failed</b><br>\n";	
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 }
 else
 	echo "<b>Could not connect to database</b><br>\n";

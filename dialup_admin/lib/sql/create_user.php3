@@ -40,7 +40,7 @@ if ($link){
 					echo "<b>User already exists in user info table.</b><br>\n";
 			}
 			else
-				echo "<b>Could not add user information in user info table: " . da_sql_error($link,config) . "</b><br>\n";
+				echo "<b>Could not add user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
 		if ($Fgroup != ''){
 			$res = @da_sql_query($link,$config,
