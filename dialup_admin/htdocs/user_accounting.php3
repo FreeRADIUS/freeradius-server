@@ -15,7 +15,7 @@ else{
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>
@@ -40,6 +40,10 @@ $selected[$order] = 'selected';
 $now_str = da_sql_escape_string($now_str);
 $prev_str = da_sql_escape_string($prev_str);
 
+unset($da_name_cache);
+if (isset($_SESSION['da_name_cache']))
+	$da_name_cache = $_SESSION['da_name_cache'];
+
 
 echo <<<EOM
 <head>
@@ -47,7 +51,7 @@ echo <<<EOM
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>

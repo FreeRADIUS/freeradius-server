@@ -82,6 +82,13 @@ Set general_prefered_lang to en
 If you are using sessions then remember to use the 'Clear Cache' page after making any changes
 
 >
+> When i try to access a dynamic web page it only shows a blank white page
+>
+
+You may have not enabled support for the corresponding sql driver in PHP. If you are also using ldap, check for
+php ldap support.
+
+>
 > It is still not working
 >
 

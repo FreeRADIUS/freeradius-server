@@ -26,14 +26,36 @@
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
 <br>
-<pre>
 
-<b>For now we just include the README file</b><br>
-
+<b>Please choose which file you wish to read:</b><br><br>
+<form name="readhelp" method=post>
+<select name=help_file>
 <?php
-readfile('../../README');
-?>
+$selected[$help_file] = 'selected';
 
+echo <<<EOM
+<option $selected[readme] value="readme">README File
+<option $selected[howto] value="howto">HOWTO File
+<option $selected[faq] value="faq">FAQ File
+EOM;
+?>
+</select>
+<br><br>
+<input type=submit class=button value="Read File">
+</form>
+
+<pre>
+<?php
+$in_file = '';
+if ($help_file == 'readme')
+	$in_file = '../../README';
+else if ($help_file == 'howto')
+	$in_file = '../../doc/HOWTO';
+else if ($help_file == 'faq')
+	$in_file = '../../doc/FAQ';
+if ($in_file != '')
+	readfile("$in_file");
+?>
 </pre>
 <br>
 </td></tr>

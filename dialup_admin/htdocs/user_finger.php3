@@ -29,7 +29,7 @@ if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
 else{
 	echo <<<EOM
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>
@@ -41,8 +41,10 @@ EOM;
 $date = strftime('%A, %e %B %Y, %T %Z');
 
 $sql_extra_query = '';
-if ($config[sql_accounting_extra_query] != '')
+if ($config[sql_accounting_extra_query] != ''){
 	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = da_sql_escape_string($sql_extra_query);
+}
 
 $link = @da_sql_pconnect($config);
 $link2 = connect2db($config);
@@ -127,7 +129,7 @@ if (isset($usage_summary)){
 }
 ?>
 
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>

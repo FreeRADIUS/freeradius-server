@@ -1,5 +1,8 @@
 <?php
 #Read sql attribute map
+unset($sql_attrs);
+if (isset($_SESSION['sql_attrs']))
+	$sql_attrs = $_SESSION["sql_attrs"];
 if (!isset($sql_attrs)){
 	$ARR = file($config[general_sql_attrs_file]);
 	foreach($ARR as $val){

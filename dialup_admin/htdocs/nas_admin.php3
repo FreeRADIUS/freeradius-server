@@ -8,7 +8,7 @@ else{
 <title>NAS Administration Page</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>
@@ -17,13 +17,13 @@ EOM;
 	exit();
 }
 if ($config[general_restrict_nasadmin_access] == 'yes'){
-	$auth_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+	$auth_user = $_SERVER["PHP_AUTH_USER"];
 	if ($auth_user == '' || $mappings[$auth_user][nasadmin] != 'yes'){
 		echo <<<EOM
 <title>NAS Administration Page</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Access is not allowed to this username.</b>
 </body>
@@ -64,6 +64,14 @@ if ($link){
 				if ($nasname == '' || $nassecret == '' || $nasshortname == '')
 					$msg = "<b>Error. Required fields are not set</b><br>\n";
 				else{
+					$nasshortname = da_sql_escape_string($nasshortname);
+					$nastype = da_sql_escape_string($nastype);
+					$nasportnum = da_sql_escape_string($nasportnum);
+					$nassecret = da_sql_escape_string($nassecret);
+					$nascommunity = da_sql_escape_string($nascommunity);
+					$nasdescription = da_sql_escape_string($nasdescription);
+					$nasname = da_sql_escape_string($nasname);
+
 					$res = @da_sql_query($link,$config,
 					"INSERT INTO $config[sql_nas_table]
 					(nasname,shortname,type,ports,secret,community,description)
@@ -81,6 +89,14 @@ if ($link){
 				if ($nassecret == '' || $nasshortname == '')
 					$msg = "<b>Error. Required fields are not set</b><br>\n";
 				else{
+					$nasshortname = da_sql_escape_string($nasshortname);
+					$nastype = da_sql_escape_string($nastype);
+					$nasportnum = da_sql_escape_string($nasportnum);
+					$nassecret = da_sql_escape_string($nassecret);
+					$nascommunity = da_sql_escape_string($nascommunity);
+					$nasdescription = da_sql_escape_string($nasdescription);
+					$nasname = da_sql_escape_string($nasname);
+
 					$res = @da_sql_query($link,$config,
 					"UPDATE $config[sql_nas_table] SET
 					shortname = '$nasshortname',
@@ -131,7 +147,7 @@ else
 <title>NAS Administration Page</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>

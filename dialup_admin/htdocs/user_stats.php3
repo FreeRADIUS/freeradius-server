@@ -15,7 +15,7 @@ else{
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>
@@ -35,7 +35,9 @@ $stop = da_sql_escape_string($stop);
 $pagesize = ($pagesize) ? $pagesize : 10;
 if (!is_numeric($pagesize))
 	$pagezise = 10;
-$limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
+if ($pagesize > 100)
+	$pagesize = 100;
+$limit = ($pagesize == 'all') ? 'LIMIT 100' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
 $order = ($order) ? $order : $config[general_accounting_info_order];
 if ($order != 'desc' && $order != 'asc')
@@ -54,8 +56,14 @@ $selected[$order] = 'selected';
 $selected[$sortby] = 'selected';
 
 $sql_extra_query = '';
-if ($config[sql_accounting_extra_query] != '')
+if ($config[sql_accounting_extra_query] != ''){
 	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = da_sql_escape_string($sql_extra_query);
+}
+
+unset($da_name_cache);
+if (isset($_SESSION['da_name_cache']))
+	$da_name_cache = $_SESSION['da_name_cache'];
 
 ?>
 
@@ -63,7 +71,7 @@ if ($config[sql_accounting_extra_query] != '')
 <title>User Statistics</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>

@@ -12,15 +12,15 @@ function myout(a) {
 }
 </script>
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <form action="user_admin.php3" method=get target="content">
 <table border=0 width=100 cellpadding=1 cellspacing=1>
 <tr><td align=center>
 <img src="images/logo2.gif" vspace=2>
 </td></tr>
 <?php
-if ($HTTP_SERVER_VARS["PHP_AUTH_USER"])
-	echo "<tr valign=top><td align=center><b>Logged in as " . $HTTP_SERVER_VARS["PHP_AUTH_USER"] . "...</b><br><br></td></tr>\n";
+if ($_SERVER["PHP_AUTH_USER"])
+	echo "<tr valign=top><td align=center><b>Logged in as " . $_SERVER["PHP_AUTH_USER"] . "...</b><br><br></td></tr>\n";
 ?>
 <tr bgcolor="black" valign=top><td>
 <table border=0 width=100% cellpadding=2 cellspacing=0>

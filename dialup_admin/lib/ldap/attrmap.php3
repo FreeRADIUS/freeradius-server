@@ -1,5 +1,8 @@
 <?php
 #Read ldap attribute map
+unset($attrmap);
+if (isset($_SESSION['attrmap']))
+	$attrmap = $_SESSION['attrmap'];
 if (!isset($attrmap)){
 	$ARR = file("$config[general_ldap_attrmap]");
 	foreach($ARR as $val){

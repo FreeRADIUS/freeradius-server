@@ -15,7 +15,7 @@ else{
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>
@@ -25,8 +25,10 @@ EOM;
 }
 
 $now = time();
-if ($last == 0)
+if (!isset($last))
 	$last = ($config[general_most_recent_fl]) ? $config[general_most_recent_fl] : 5;
+if (!is_numeric($last))
+	$last = 5;
 $start = $now - ($last*60);
 $now_str = date($config[sql_full_date_format],$now);
 $prev_str = date($config[sql_full_date_format],$start);
@@ -52,6 +54,10 @@ if ($server != '' && $server != 'all'){
 	$server_str = "AND nasipaddress = '$server'";
 }
 
+unset($da_name_cache);
+if (isset($_SESSION['da_name_cache']))
+	$da_name_cache = $_SESSION['da_name_cache'];
+
 ?>
 
 <head>
@@ -59,7 +65,7 @@ if ($server != '' && $server != 'all'){
 <meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>
@@ -97,9 +103,11 @@ if ($acct_attrs['fl'][2] != '') echo "<th>" . $acct_attrs['fl'][2] . "</th>\n";
 if ($acct_attrs['fl'][7] != '') echo "<th>" . $acct_attrs['fl'][7] . "</th>\n";
 if ($acct_attrs['fl'][8] != '') echo "<th>" . $acct_attrs['fl'][8] . "</th>\n";
 if ($acct_attrs['fl'][9] != '') echo "<th>" . $acct_attrs['fl'][9] . "</th>\n";
-$sql_extra_query = '';
-if ($config[sql_accounting_extra_query] != '')
+unset($sql_extra_query);
+if ($config[sql_accounting_extra_query] != ''){
 	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = da_sql_escape_string($sql_extra_query);
+}
 ?>
 	</tr>
 

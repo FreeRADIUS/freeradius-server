@@ -1,6 +1,9 @@
 <?php
 require('../conf/config.php3');
 
+unset($da_name_cache);
+if (isset($_SESSION['da_name_cache']))
+	$da_name_cache = $_SESSION['da_name_cache'];
 if ($config[sql_nas_table] != ''){
 
 	if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
@@ -11,7 +14,7 @@ if ($config[sql_nas_table] != ''){
 	}
 	$link = @da_sql_pconnect($config);
 	if ($link){
-		$auth_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+		$auth_user = $_SERVER["PHP_AUTH_USER"];
 		$extra = '';
 		if (isset($mappings[$auth_user][nasdb])){
 			$NAS_ARR = array();

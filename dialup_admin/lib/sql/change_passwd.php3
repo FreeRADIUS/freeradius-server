@@ -20,6 +20,7 @@ if ($link){
 	if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
 		include("../lib/crypt/$config[general_encryption_method].php3");
 		$passwd = da_encrypt($passwd);
+		$passwd = da_sql_escape_string($passwd);
 		$res = @da_sql_query($link,$config,
 			"SELECT value FROM $config[sql_check_table] WHERE username = '$login'
 			AND attribute = '$config[sql_password_attribute]';");

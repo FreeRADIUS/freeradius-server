@@ -8,7 +8,7 @@ require('../conf/config.php3');
 <title>Personal information page</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>

@@ -6,10 +6,14 @@ else{
 	exit();
 }
 
+unset($found_users);
+
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = da_sql_escape_string($search);
 	if (!is_numeric($max_results))
+		$max_results = 10;
+	if ($max_results > 500)
 		$max_results = 10;
 	if (($search_IN == 'name' || $search_IN == 'department' || $search_IN == 'username') && 
 			$config[sql_use_user_info_table] == 'true'){
@@ -31,6 +35,7 @@ if ($link){
 		}
 		$table = ($attr_type[$radius_attr] == 'checkItem') ? $config[sql_check_table] : $config[sql_reply_table];
 		$attr = $attrmap[$radius_attr];
+		$attr = da_sql_escape_string($attr);
 		$res = @da_sql_query($link,$config,
 		"SELECT username FROM $table WHERE attribute = '$attr' AND value LIKE '%$search%' LIMIT $max_results;");
 		if ($res){

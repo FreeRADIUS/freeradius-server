@@ -10,8 +10,8 @@ $date=date($config[sql_full_date_format]);
 $lockmsg_name = $attrmap['Dialup-Lock-Msg'] . '0';
 $msg = $$lockmsg_name;
 $admin = '-';
-if ($HTTP_SERVER_VARS["PHP_AUTH_USER"] != '')
-	$admin = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+if ($_SERVER["PHP_AUTH_USER"] != '')
+	$admin = $_SERVER["PHP_AUTH_USER"];
 if ($msg == '')
 	echo "<b>Lock Message should not be empty</b><br>\n";
 else{

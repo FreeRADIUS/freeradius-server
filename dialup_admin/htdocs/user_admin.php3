@@ -16,7 +16,7 @@ if (is_file("../lib/$config[general_lib_type]/user_info.php3")){
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <form action="user_admin.php3" method=get>
 <b>User Name&nbsp;&nbsp;</b>
@@ -38,7 +38,7 @@ else{
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>

@@ -12,11 +12,13 @@ if ($config[sql_use_operators] == 'true'){
 	$passwd_op = ",':='";
 }
 $da_abort=0;
+$op_val2 = '';
 $link = @da_sql_pconnect($config);
 if ($link){
 	if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
 		include("../lib/crypt/$config[general_encryption_method].php3");
 		$passwd = da_encrypt($passwd);
+		$passwd = da_sql_escape_string($passwd);
 		$res = @da_sql_query($link,$config,
 		"INSERT INTO $config[sql_check_table] (attribute,value,username $text)
 		VALUES ('$config[sql_password_attribute]','$passwd','$login' $passwd_op);");
@@ -92,6 +94,7 @@ if ($link){
 				$op_name = $attrmap["$key"] . '_op';
 				$op_val = $$op_name;
 				if ($op_val != ''){
+					$op_val = da_sql_escape_string($op_val);
 					if (check_operator($op_val,$type) == -1){
 						echo "<b>Invalid operator ($op_val) for attribute $key</b><br>\n";
 						coninue;

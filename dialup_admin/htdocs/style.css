@@ -29,4 +29,18 @@ body
 	scrollbar-highlight-color:#fffff0;
 	scrollbar-3dlight-color:#000000;
 	scrollbar-darkshadow-color:#000000;
+	bgcolor:#80a040;
+	background-image: url(images/greenlines1.gif);
+}
+a:link {
+	color: #000000;
+}
+a:visited {
+	color:#000000;
+}
+a:hover {
+	color:#000000;
+}
+a:active {
+	color:#000000;
 }

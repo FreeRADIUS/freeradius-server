@@ -1,3 +1,10 @@
+Ver 1.75:
+* A LOT of security related fixes. Now dialupadmin should hopefully be secure enough to
+  be accessed by normal users (not administrators).
+* Move a few elements in the CSS file from the body tag. Suggestion by Gary McKinney
+* Update FAQ about using php with no sql support.
+* Allow the user to select between viewing FAQ,HOWTO or README in the help page.
+* Use $_SERVER instead of $HTTP_SERVER_VARS
 Ver 1.72:
 * Move the xlat function to a separate file in lib/xlat.php3
 * Add a lib/sql/nas_list.php3 to also get the nas list from sql (naslist.conf still works)
@@ -20,6 +27,8 @@ Ver 1.72:
 * Set general_restrict_nasadmin_access to no by default. It causes confusion.
 * Set the general_username_mappings_file variable
 * Fix a small error in lib/sql/find.php3. This closes bug #103
+* Add a small note in the FAQ about checking for sql/ldap driver availability in PHP if the user get's
+  a blank white page back.
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for

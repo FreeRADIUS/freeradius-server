@@ -9,12 +9,17 @@ if( $curVer >= $testVer )
 # If using sessions set use_session to 1 to also cache the config file
 #
 $use_session = 0;
+unset($config);
+unset($nas_list);
 if ($use_session){
 	// Start session
 	@session_start();
+	if (isset($_SESSION['config']))
+		$config = $_SESSION['config'];
+	if (isset($_SESSION['nas_list']))
+		$nas_list = $_SESSION['nas_list'];
 }
 if (!isset($config)){
-	unset($nas_list);
 	$ARR=file("../conf/admin.conf");
 	$EXTRA_ARR = array();
 	foreach($ARR as $val) {
@@ -61,10 +66,12 @@ if (!isset($config)){
 if ($use_session == 0 && $config[general_use_session] == 'yes'){
 	// Start session
 	@session_start();
+	if (isset($nas_list))
+		session_register('nas_list');
 }
 //Make sure we are only passed allowed strings in username
 if ($login != '')
-	$login = preg_replace("/[^\w\s\.\/\@\:]\-i\=/",'',$login);
+	$login = preg_replace("/[^\w\s\.\/\@\:]/",'',$login);
 
 if ($login != '' && $config[general_strip_realms] == 'yes'){
 	$realm_del = ($config[general_realm_delimiter] != '') ? $config[general_realm_delimiter] : '@';
@@ -73,6 +80,9 @@ if ($login != '' && $config[general_strip_realms] == 'yes'){
 	if (count($new) == 2)
 		$login = ($realm_for == 'suffix') ? $new[0] : $new[1];
 }
+unset($mappings);
+if (isset($_SESSION['mappings']))
+	$mappings = $_SESSION['mappings'];
 if (!isset($mappings) && $config[general_username_mappings_file] != ''){
 	$ARR = file($config[general_username_mappings_file]);
 	foreach($ARR as $val){

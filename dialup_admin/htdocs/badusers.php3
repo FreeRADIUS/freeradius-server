@@ -13,7 +13,7 @@ else{
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>
@@ -48,7 +48,7 @@ echo <<<EOM
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>
@@ -79,7 +79,7 @@ if ($link){
 		$row = @da_sql_fetch_array($search,$config);
 		if ($row[id] == $row_id){
 			$admin = "$row[Admin]";
-			if (($admin != '-' && $HTTP_SERVER_VARS["PHP_AUTH_USER"] == $admin) || $admin == '-'){
+			if (($admin != '-' && $_SERVER["PHP_AUTH_USER"] == $admin) || $admin == '-'){
 				$sql_servers = array();
 				if ($config[sql_extra_servers] != '')
 					$sql_servers = explode(' ',$config[sql_extra_servers]);
@@ -137,7 +137,7 @@ EOM;
 	</tr>
 
 <?php
-$auth_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+$auth_user = $_SERVER["PHP_AUTH_USER"];
 if ($config[general_restrict_badusers_access] == 'yes'){
 	$auth_user = da_sql_escape_string($auth_user);
 	$extra_query = "AND Admin == '$auth_user'";

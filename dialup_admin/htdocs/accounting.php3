@@ -15,7 +15,7 @@ else{
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>
@@ -32,6 +32,8 @@ if ($config[sql_type] == 'pg'){
 $link = @da_sql_pconnect ($config) or die('cannot connect to sql databse');
 $fields = @da_sql_list_fields($config[sql_accounting_table],$link,$config);
 $no_fields = @da_sql_num_fields($fields,$config);
+
+unset($items);
 
 for($i=0;$i<$no_fields;$i++){
 	$key = strtolower(@da_sql_field_name($fields,$i,$config));
@@ -109,7 +111,7 @@ EOM;
 <meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 
 <?php
 if(!$queryflag) {
@@ -222,12 +224,20 @@ while (${"item_of_w$i"}){
 
 $order = ($order_by != '') ? "$order_by" : 'username';
 
+if (preg_match("/[\s;]/",$order))
+	die("ORDER BY pattern is illegal. Exiting abnornally.");
+
+if (!is_numeric($maxresults))
+	die("Max Results is not in numeric form. Exiting abnormally.");
+
+unset($query_view);
 foreach ($accounting_show_attrs as $val)
 	$query_view .= $val . ',';
 $query_view = ereg_replace(',$','',$query_view);
-$sql_extra_query = '';
+unset($sql_extra_query);
 if ($config[sql_accounting_extra_query] != '')
 	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = da_sql_escape_string($sql_extra_query);
 $query="SELECT $query_view FROM $config[sql_accounting_table] $where $sql_extra_query ORDER BY $order LIMIT $maxresults;";
 
 echo <<<EOM
@@ -235,7 +245,7 @@ echo <<<EOM
 <head>
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <br>
 <table border=0 width=940 cellpadding=1 cellspacing=1>
 <tr valign=top>

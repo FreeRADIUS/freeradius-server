@@ -23,6 +23,9 @@ $homephone = '-';
 $mobile = '-';
 $mail = '-';
 $mailalt = '-';
+$dn = '';
+$user_exists = 'no';
+unset($item_vals);
 
 if ($config[general_decode_normal_attributes] == 'yes')
 	$decode_normal = 1;
@@ -55,7 +58,6 @@ if ($ds) {
 	else{
 		$user_exists = 'yes';
 		$user_info = 1;
-		unset($item_vals);
 		$k = init_decoder();
 		$cn = ($info[0]['cn'][0]) ? $info[0]['cn'][0] : '-';
 		if ($decode_normal)

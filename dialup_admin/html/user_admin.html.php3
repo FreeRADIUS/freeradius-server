@@ -4,7 +4,7 @@ echo <<<EOM
 <title>user information for $cn</title>
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <link rel="stylesheet" href="style.css">
 EOM;
 if ($logged_now)

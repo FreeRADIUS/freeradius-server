@@ -9,7 +9,7 @@ else{
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <b>Could not include SQL library functions. Aborting</b>
 </body>
@@ -25,7 +25,7 @@ echo <<<EOM
 <meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
-<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<body>
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>
@@ -41,8 +41,10 @@ include("../html/user_toolbar.html.php3");
 $open_sessions = 0;
 
 $sql_extra_query = '';
-if ($config[sql_accounting_extra_query] != '')
+if ($config[sql_accounting_extra_query] != ''){
 	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = da_sql_escape_string($sql_extra_query);
+}
 
 print <<<EOM
 </table>

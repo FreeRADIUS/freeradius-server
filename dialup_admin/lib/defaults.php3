@@ -1,4 +1,8 @@
 <?php
+unset($text_default_vals);
+unset($default_vals);
+if (isset($_SESSION['text_default_vals']))
+	$text_default_vals = $_SESSION['text_default_vals'];
 if (!isset($text_default_vals)){
 	$ARR=file("$config[general_default_file]");
 	foreach($ARR as $val) {
