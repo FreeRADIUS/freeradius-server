@@ -637,7 +637,7 @@ static char *uue(void *in)
 static int unix_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
-	NAS		*cl;
+	RADCLIENT	*cl;
 	FILE		*fp;
 	struct utmp	ut;
 	time_t		t;
@@ -739,7 +739,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	and address so that the tty field is unique.
 	 */
 	s = "";
-	if ((cl = nas_find(nas_address)) != NULL)
+	if ((cl = client_find(nas_address)) != NULL)
 		s = cl->shortname;
 	if (s == NULL || s[0] == 0) s = uue(&(nas_address));
 	sprintf(buf, "%03d:%s", nas_port, s);
