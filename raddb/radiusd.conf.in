@@ -260,6 +260,18 @@ log_auth_goodpass = no
 # usercollide:  Turn "username collision" code on and off.  See the
 # "doc/duplicate-users" file
 #
+#  WARNING
+#  !!!!!!!  Setting this to "yes" may result in the server behaving
+#  !!!!!!!  strangely.  The "username collision" code will ONLY work
+#  !!!!!!!  with clear-text passwords.  Even then, it may not do what
+#  !!!!!!!  you want, or what you expect.
+#  !!!!!!!
+#  !!!!!!!  We STRONGLY RECOMMEND that you do not use this feature,
+#  !!!!!!!  and that you find another way of acheiving the same goal.
+#  !!!!!!!
+#  !!!!!!!  e,g. module fail-over.  See 'doc/configurable_failover'
+#  WARNING
+#
 usercollide = no
 
 # lower_user / lower_pass:  
