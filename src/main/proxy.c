@@ -230,7 +230,7 @@ int proxy_send(REQUEST *request)
 	VALUE_PAIR *namepair;
 	VALUE_PAIR *strippednamepair;
 	VALUE_PAIR *delaypair;
-	VALUE_PAIR *vp, *vps;
+	VALUE_PAIR *vp;
 	REALM *realm;
 	char *realmname;
 
@@ -309,64 +309,117 @@ int proxy_send(REQUEST *request)
 	}
 	
 	/*
-	 *	Copy the request, then look up
-	 *	name and plain-text password in the copy.
+	 *	Allocate the proxy packet, only if it wasn't already
+	 *	allocated by a module.  This check is mainly to support
+	 *	the proxying of EAP-TTLS and EAP-PEAP tunneled requests.
 	 *
-	 *	Note that the User-Name attribute is the *original*
-	 *	as sent over by the client.  The Stripped-User-Name
-	 *	attribute is the one hacked through the 'hints' file.
+	 *	In those cases, the EAP module creates a "fake"
+	 *	request, and recursively passes it through the
+	 *	authentication stage of the server.  The module then
+	 *	checks if the request was supposed to be proxied, and
+	 *	if so, creates a proxy packet from the TUNNELED request,
+	 *	and not from the EAP request outside of the tunnel.
+	 *
+	 *	The proxy then works like normal, except that the response
+	 *	packet is "eaten" by the EAP module, and encapsulated into
+	 *	an EAP packet.
 	 */
-	vps = paircopy(request->packet->vps);
-	namepair = pairfind(vps, PW_USER_NAME);
-	strippednamepair = pairfind(vps, PW_STRIPPED_USER_NAME);
+	if (!request->proxy) {
+		VALUE_PAIR	*vps;
 
-	/*
-	 *	If there's a Stripped-User-Name attribute in the
-	 *	request, then use THAT as the User-Name for the
-	 *	proxied request, instead of the original name.
-	 *
-	 *	This is done by making a copy of the Stripped-User-Name
-	 *	attribute, turning it into a User-Name attribute,
-	 *	deleting the Stripped-User-Name and User-Name attributes
-	 *	from the vps list, and making the new User-Name
-	 *	the head of the vps list.
-	 */
-	if (strippednamepair) {
-		vp = paircreate(PW_USER_NAME, PW_TYPE_STRING);
-		if (!vp) {
+		/*
+		 *	Now build a new RADIUS_PACKET.
+		 *
+		 *	FIXME: it could be that the id wraps around
+		 *	too fast if we have a lot of requests, it
+		 *	might be better to keep a seperate ID value
+		 *	per remote server.
+		 *
+		 *	OTOH the remote radius server should be smart
+		 *	enough to compare _both_ ID and vector.
+		 *	Right?
+		 */
+		if ((request->proxy = rad_alloc(TRUE)) == NULL) {
 			radlog(L_ERR|L_CONS, "no memory");
 			exit(1);
 		}
-		memcpy(vp->strvalue, strippednamepair->strvalue,
-				sizeof(vp->strvalue));
-		vp->length = strippednamepair->length;
-		pairdelete(&vps, PW_USER_NAME);
-		pairdelete(&vps, PW_STRIPPED_USER_NAME);
-		vp->next = vps;
-		namepair = vp;
-		vps = vp;
-	}
 
-	/*
-	 *	Now build a new RADIUS_PACKET and send it.
-	 *
-	 *	FIXME: it could be that the id wraps around too fast if
-	 *	we have a lot of requests, it might be better to keep
-	 *	a seperate ID value per remote server.
-	 *
-	 *	OTOH the remote radius server should be smart enough to
-	 *	compare _both_ ID and vector. Right ?
-	 */
-	if ((request->proxy = rad_alloc(TRUE)) == NULL) {
-		radlog(L_ERR|L_CONS, "no memory");
-		exit(1);
+		/*
+		 *	We now massage the attributes to be proxied...
+		 */
+
+		/*
+		 *	Copy the request, then look up name and
+		 *	plain-text password in the copy.
+		 *
+		 *	Note that the User-Name attribute is the
+		 *	*original* as sent over by the client.  The
+		 *	Stripped-User-Name attribute is the one hacked
+		 *	through the 'hints' file.
+		 */
+		vps = paircopy(request->packet->vps);
+		namepair = pairfind(vps, PW_USER_NAME);
+		strippednamepair = pairfind(vps, PW_STRIPPED_USER_NAME);
+		
+		/*
+		 *	If there's a Stripped-User-Name attribute in
+		 *	the request, then use THAT as the User-Name
+		 *	for the proxied request, instead of the
+		 *	original name.
+		 *
+		 *	This is done by making a copy of the
+		 *	Stripped-User-Name attribute, turning it into
+		 *	a User-Name attribute, deleting the
+		 *	Stripped-User-Name and User-Name attributes
+		 *	from the vps list, and making the new
+		 *	User-Name the head of the vps list.
+		 */
+		if (strippednamepair) {
+			vp = paircreate(PW_USER_NAME, PW_TYPE_STRING);
+			if (!vp) {
+				radlog(L_ERR|L_CONS, "no memory");
+				exit(1);
+			}
+			memcpy(vp->strvalue, strippednamepair->strvalue,
+			       sizeof(vp->strvalue));
+			vp->length = strippednamepair->length;
+			pairdelete(&vps, PW_USER_NAME);
+			pairdelete(&vps, PW_STRIPPED_USER_NAME);
+			vp->next = vps;
+			namepair = vp;
+			vps = vp;
+		}
+
+		/*
+		 *	If there is no PW_CHAP_CHALLENGE attribute but
+		 *	there is a PW_CHAP_PASSWORD we need to add it
+		 *	since we can't use the request authenticator
+		 *	anymore - we changed it.
+		 */
+		if (pairfind(vps, PW_CHAP_PASSWORD) &&
+		    pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
+			vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
+			if (!vp) {
+				radlog(L_ERR|L_CONS, "no memory");
+				exit(1);
+			}
+			vp->length = AUTH_VECTOR_LEN;
+			memcpy(vp->strvalue, request->packet->vector, AUTH_VECTOR_LEN);
+			pairadd(&vps, vp);
+		}
+
+		/*
+		 *	Drop the massaged VP's into the proxied packet.
+		 */
+		rad_assert(request->proxy->vps == NULL);
+		request->proxy->vps = vps;
 	}
 
 	/*
 	 *	Proxied requests get sent out the proxy FD ONLY.
 	 */
 	request->proxy->sockfd = proxyfd;
-
+	
 	request->proxy->code = request->packet->code;
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->proxy->dst_port = realm->auth_port;
@@ -375,8 +428,6 @@ int proxy_send(REQUEST *request)
 		request->proxy->dst_port = realm->acct_port;
 		request->proxy->dst_ipaddr = realm->acct_ipaddr;
 	}
-	rad_assert(request->proxy->vps == NULL);
-	request->proxy->vps = vps;
 
 	/*
 	 *	Add the request to the list of outstanding requests.
@@ -388,26 +439,10 @@ int proxy_send(REQUEST *request)
 	proxy_id &= 0xffff;
 
 	/*
-	 *	Add PROXY_STATE attribute.
+	 *	Add PROXY_STATE attribute, before pre-proxy stage,
+	 *	so the pre-proxy modules have access to it.
 	 */
 	proxy_addinfo(request);
-
-	/*
-	 *	If there is no PW_CHAP_CHALLENGE attribute but there
-	 *	is a PW_CHAP_PASSWORD we need to add it since we can't
-	 *	use the request authenticator anymore - we changed it.
-	 */
-	if (pairfind(vps, PW_CHAP_PASSWORD) &&
-	    pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
-		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
-		if (!vp) {
-			radlog(L_ERR|L_CONS, "no memory");
-			exit(1);
-		}
-		vp->length = AUTH_VECTOR_LEN;
-		memcpy(vp->strvalue, request->packet->vector, AUTH_VECTOR_LEN);
-		pairadd(&vps, vp);
-	}
 
 	/*
 	 *	Set up for sending the request.
@@ -415,7 +450,7 @@ int proxy_send(REQUEST *request)
 	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
 	request->proxy_try_count = mainconfig.proxy_retry_count - 1;
 	request->proxy_next_try = request->timestamp + mainconfig.proxy_retry_delay;
-	delaypair = pairfind(vps, PW_ACCT_DELAY_TIME);
+	delaypair = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
 	request->proxy->timestamp = request->timestamp - (delaypair ? delaypair->lvalue : 0);
 
 	/*
@@ -424,8 +459,8 @@ int proxy_send(REQUEST *request)
 	rcode = module_pre_proxy(request);
 
 	/*
-	 *	Do NOT free proxy->vps, the pairs are needed for the
-	 *	retries! --Pac.
+	 *	Do NOT free request->proxy->vps, the pairs are needed
+	 *	for the retries! --Pac.
 	 */
 
 	/*
