@@ -21,6 +21,20 @@ clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@rm -f *~
 
+#
+# The $(R) is a magic variable not defined anywhere in this source.
+# It's purpose is to allow an admin to create an installation 'tar'
+# file *without* actually installing it.  e.g.:
+#
+#  $ R=/home/root/tmp make install
+#  $ cd /home/root/tmp
+#  $ tar -cf ~/freeradius-package.tar *
+#
+# The 'tar' file can then be un-tar'd on any similar machine.  It's a
+# cheap way of creating packages, without using a package manager.
+# Many of the platform-specific packaging tools use the $(R) variable
+# when creating their packages.
+#
 install:
 	$(INSTALL) -d -m 755	$(R)$(sbindir)
 	$(INSTALL) -d -m 755	$(R)$(bindir)
