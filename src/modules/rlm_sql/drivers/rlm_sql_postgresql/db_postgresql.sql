@@ -49,13 +49,16 @@ CREATE UNIQUE INDEX radacct_combo on radacct (AcctStartTime, nasipaddress, AcctU
  * as they will slow down your DB too much.
  *  - pnixon 2003-07-13
  */
-#create index radacct_UserName on radacct (UserName);
-#create index radacct_AcctSessionId on radacct (AcctSessionId);
-#create index radacct_AcctUniqueId on radacct (AcctUniqueId);
-#create index radacct_FramedIPAddress on radacct (FramedIPAddress);
-#create index radacct_NASIPAddress on radacct (NASIPAddress);
-#create index radacct_AcctStartTime on radacct (AcctStartTime);
-#create index radacct_AcctStopTime on radacct (AcctStopTime);
+
+/*
+ * create index radacct_UserName on radacct (UserName);
+ * create index radacct_AcctSessionId on radacct (AcctSessionId);
+ * create index radacct_AcctUniqueId on radacct (AcctUniqueId);
+ * create index radacct_FramedIPAddress on radacct (FramedIPAddress);
+ * create index radacct_NASIPAddress on radacct (NASIPAddress);
+ * create index radacct_AcctStartTime on radacct (AcctStartTime);
+ * create index radacct_AcctStopTime on radacct (AcctStopTime);
+*/
 
 
 
