@@ -103,16 +103,21 @@ if ($link){
 			$acct_download = $row[AcctOutputOctets];
 			$acct_download_sum += $acct_download;
 			$acct_download = bytes2str($acct_download);
-			$acct_server = $da_name_cache[$row[NASIPAddress]];
-			if (!isset($acct_server)){
-				$acct_server = gethostbyaddr($row[NASIPAddress]);
-				if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
-					$da_name_cache[$row[NASIPAddress]] = $acct_server;
-					session_register('da_name_cache');
+			$acct_server = $row[NASIPAddress];
+			if ($acct_server != ''){
+				$acct_server = $da_name_cache[$row[NASIPAddress]];
+				if (!isset($acct_server)){
+					$acct_server = gethostbyaddr($row[NASIPAddress]);
+					if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
+						$da_name_cache[$row[NASIPAddress]] = $acct_server;
+						session_register('da_name_cache');
+					}
+					else
+						$da_name_cache[$row[NASIPAddress]] = $acct_server;
 				}
-				else
-					$da_name_cache[$row[NASIPAddress]] = $acct_server;
 			}
+			else
+				$acct_server = '-';
 			$acct_server = "$acct_server:$row[NASPortId]";
 			$acct_terminate_cause = "$row[AcctTerminateCause]";
 			if ($acct_terminate_cause == '')

@@ -118,7 +118,6 @@ for(;;){
 				print TMP "INSERT INTO $sql_accounting_table (UserName,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$addr','$port','$time','$time','0','0','0','$caller','$cause');";
 				close TMP;
 				`$mysql -h$sql_server -u$sql_username $pass $sql_database <$tmpfile`;
-				print "$mysql -h$sql_server -u$sql_username $pass $sql_database <$tmpfile\n";
 			}
 		}
 	}
