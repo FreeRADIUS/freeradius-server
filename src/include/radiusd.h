@@ -262,7 +262,6 @@ int		rad_mkdir(char *directory, int mode);
 int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		xfree(const char *ptr);
-void		rad_assert_fail (const char *file, unsigned int line);
 REQUEST		*request_alloc(void);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
 
