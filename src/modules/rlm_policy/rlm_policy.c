@@ -152,6 +152,18 @@ int rlm_policy_insert(rbtree_t *head, const char *name, policy_item_t *policy)
 
 
 /*
+ *	Insert a named policy into a list.
+ */
+rlm_policy_name_t *rlm_policy_find(rbtree_t *head, const char *name)
+{
+	rlm_policy_name_t mypolicy;
+
+	strNcpy(mypolicy.name, name, sizeof(mypolicy.name));
+	return rbtree_finddata(head, &mypolicy);
+}
+
+
+/*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
  *	from the database. The authentication code only needs to check

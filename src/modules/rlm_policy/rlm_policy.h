@@ -108,7 +108,6 @@ typedef enum policy_reserved_word_t {
 	POLICY_RESERVED_DEBUG,
 	POLICY_RESERVED_PRINT,
 	POLICY_RESERVED_POLICY,
-	POLICY_RESERVED_CALL,
 	POLICY_RESERVED_NUM_WORDS
 } policy_reserved_word_t;
 
@@ -239,6 +238,7 @@ extern const LRAD_NAME_NUMBER policy_reserved_words[];
 
 extern int rlm_policy_insert(rbtree_t *head, const char *name,
 			     policy_item_t *policy);
+extern rlm_policy_name_t *rlm_policy_find(rbtree_t *head, const char *name);
 
 extern int rlm_policy_parse(rlm_policy_t * inst, const char *filename);
 extern void rlm_policy_free_item(policy_item_t *item);

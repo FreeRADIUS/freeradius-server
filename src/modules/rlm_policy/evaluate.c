@@ -867,13 +867,11 @@ static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 {
 	int rcode;
 	const policy_call_t *this;
-	rlm_policy_name_t mypolicy;
 	const rlm_policy_name_t *policy;
 
 	this = (const policy_call_t *) item;
 
-	strNcpy(mypolicy.name, this->name, sizeof(mypolicy.name));
-	policy = rbtree_finddata(state->inst->policies, &mypolicy);
+	policy = rlm_policy_find(state->inst->policies, this->name);
 	if (!policy) return 0;	/* not found... */
 	
 	DEBUG2("rlm_policy: Evaluating policy %s", this->name);

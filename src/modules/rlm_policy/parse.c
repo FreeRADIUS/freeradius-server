@@ -501,7 +501,6 @@ const LRAD_NAME_NUMBER policy_reserved_words[] = {
 	{ "debug", POLICY_RESERVED_DEBUG },
 	{ "print", POLICY_RESERVED_PRINT },
 	{ "policy", POLICY_RESERVED_POLICY },
-	{ "call", POLICY_RESERVED_CALL },
 	{ "control", POLICY_RESERVED_CONTROL },
 	{ "request", POLICY_RESERVED_REQUEST },
 	{ "reply", POLICY_RESERVED_REPLY },
@@ -834,6 +833,7 @@ static int parse_named_policy(policy_lex_file_t *lexer, policy_item_t **tail)
 	policy_lex_t token;
 	char mystring[256];
 	policy_named_t *this;
+	DICT_ATTR *dattr;
 
 	tail = tail;		/* -Wunused */
 
@@ -850,6 +850,14 @@ static int parse_named_policy(policy_lex_file_t *lexer, policy_item_t **tail)
 		fprintf(stderr, "%s[%d]: Expected policy name, got \"%s\"\n",
 			lexer->filename, lexer->lineno,
 			lrad_int2str(rlm_policy_tokens, token, "?"));
+		rlm_policy_free_item((policy_item_t *) this);
+		return 0;
+	}
+
+	dattr = dict_attrbyname(mystring);
+	if (dattr) {
+		fprintf(stderr, "%s[%d]: Invalid policy name \"%s\": it is already defined as a dictionary attribute\n",
+			lexer->filename, lexer->lineno, mystring);
 		rlm_policy_free_item((policy_item_t *) this);
 		return 0;
 	}
@@ -886,13 +894,29 @@ static int parse_named_policy(policy_lex_file_t *lexer, policy_item_t **tail)
 /*
  *	Parse a reference to a named policy "call foo"
  */
-static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail)
+static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail,
+		      const char *name)
 {
 	policy_lex_t token;
-	char mystring[256];
 	policy_call_t *this;
 
 	debug_tokens("[CALL] ");
+
+	token = policy_lex_file(lexer, 0, NULL, 0);
+	if (token != POLICY_LEX_L_BRACKET) {
+		fprintf(stderr, "%s[%d]: Expected left bracket, got \"%s\"\n",
+			lexer->filename, lexer->lineno,
+			lrad_int2str(rlm_policy_tokens, token, "?"));
+		return 0;
+	}
+
+	token = policy_lex_file(lexer, 0, NULL, 0);
+	if (token != POLICY_LEX_R_BRACKET) {
+		fprintf(stderr, "%s[%d]: Expected right bracket, got \"%s\"\n",
+			lexer->filename, lexer->lineno,
+			lrad_int2str(rlm_policy_tokens, token, "?"));
+		return 0;
+	}
 
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
@@ -900,16 +924,7 @@ static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail)
 	this->item.type = POLICY_TYPE_CALL;
 	this->item.lineno = lexer->lineno;
 
-	token = policy_lex_file(lexer, 0, mystring, sizeof(mystring));
-	if (token != POLICY_LEX_BARE_WORD) {
-		fprintf(stderr, "%s[%d]: Expected policy name, got \"%s\"\n",
-			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
-		rlm_policy_free_item((policy_item_t *) this);
-		return 0;
-	}
-
-	this->name = strdup(mystring);
+	this->name = strdup(name);
 
 	*tail = (policy_item_t *) this;
 
@@ -1029,14 +1044,13 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 			return 0;
 			break;
 
-		case POLICY_RESERVED_CALL:
-			if (parse_call(lexer, tail)) {
-				return 1;
-			}
-			return 0;
-			break;
-
 		case POLICY_RESERVED_UNKNOWN: /* wasn't a reserved word */
+			if (rlm_policy_find(lexer->policies, lhs)) {
+				if (parse_call(lexer, tail, lhs)) {
+					return 1;
+				}
+			}
+
 			/*
 			 *	Maybe include another file.
 			 */
