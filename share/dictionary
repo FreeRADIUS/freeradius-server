@@ -74,6 +74,7 @@ $INCLUDE dictionary.extreme
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
+$INCLUDE dictionary.garderos
 $INCLUDE dictionary.itk
 $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
