@@ -26,7 +26,7 @@ AC_REVISION($Revision$)dnl
 
 dnl # The version of the software
 RADIUSD_MAJOR_VERSION=0
-RADIUSD_MINOR_VERSION=8-pre
+RADIUSD_MINOR_VERSION=9-pre
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
 
 dnl #############################################################

@@ -1,4 +1,7 @@
-FreeRADIUS 0.8 ; $Date$, urgency=low
+FreeRADIUS 0.9 ; $Date$, urgency=low
+
+
+FreeRADIUS 0.8 ; Date: 2002/11/18 15:37:24, urgency=low
 
 	* Added Oracle-specific queries.
 	* Updated SQL queries to match schema.
@@ -21,7 +24,7 @@ FreeRADIUS 0.8 ; $Date$, urgency=low
 	  and include files.
 	* radclient now complains if it receives a reply from a machine
 	  other than the one to which it sent the request.
-	* Updated Postgresql cSQL queries to get the operator, too.
+	* Updated Postgresql SQL queries to get the operator, too.
 	* Added Juniper dictionary.
 	* Added Cisco VPN3000, VPN5000, and BBSM dictionaries.
 	* New platform-neutral 'rc.radiusd'
