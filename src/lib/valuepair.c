@@ -181,37 +181,50 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 /*
  *	Add or replace a pair at the end of a VALUE_PAIR list.
  */
-void pairreplace(VALUE_PAIR **first, VALUE_PAIR *add)
+void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 {
 	VALUE_PAIR *i, *next;
-	VALUE_PAIR **last = first;
+	VALUE_PAIR **prev = first;
 
 	if (*first == NULL) {
-		*first = add;
+		*first = replace;
 		return;
 	}
 
 	/*
-	 * not an empty list, so find item if it is there,
-	 * and replace it. Note, we always replace first one,
-	 * and we ignore any others that might exist.
+	 *	Not an empty list, so find item if it is there, and
+	 *	replace it. Note, we always replace the first one, and
+	 *	we ignore any others that might exist.
 	 */
-	for(i = *first; i->next; i = next) {
+	for(i = *first; i; i = next) {
 		next = i->next;
-		if (i->attribute == add->attribute) {
-			*last = add;
-			add->next = next;
+
+		/*
+		 *	Found the first attribute, replace it,
+		 *	and return.
+		 */
+		if (i->attribute == replace->attribute) {
+			*prev = replace;
+
+			/*
+			 *	Should really assert that replace->next == NULL
+			 */
+			replace->next = next;
 			pairbasicfree(i);
 			return;
-		} else {
-			last = &i->next;
 		}
+
+		/*
+		 *	Point to where the attribute should go.
+		 */
+		prev = &i->next;
 	}
 
-	/* if we got here, we didn't find anything to replace,
-	 * so stopped at the last item, which we just append to.
+	/*
+	 *	If we got here, we didn't find anything to replace, so
+	 *	stopped at the last item, which we just append to.
 	 */
-	i->next = add;
+	*prev = replace;
 }
 
 /*
