@@ -35,6 +35,7 @@ typedef struct rlm_sql_oracle_sock {
 	OCIError	*errHandle;
 	OCISvcCtx	*conn;
 	OCIStmt		*queryHandle;
+	sb2		*indicators;
 	char		**results;
 	int		id;
 	int		in_use;
@@ -277,6 +278,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	ub2		dtype;
 	ub2		dsize;
 	char		**rowdata=NULL;
+	sb2		*indicators;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
 	if (config->sqltrace)
@@ -327,12 +329,16 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 
 	/* DEBUG2("sql_select_query(): colcount=%d",colcount); */
 
+	/*
+	 *	FIXME: These malloc's can probably go, as the schema
+	 *	is fixed...
+	 */
 	rowdata=(char **)rad_malloc(sizeof(char *) * (colcount+1) );
 	memset(rowdata, 0, (sizeof(char *) * (colcount+1) ));
+	indicators = (sb2 *) rad_malloc(sizeof(sb2) * (colcount+1) );
+	memset(indicators, 0, sizeof(sb2) * (colcount+1));
 
 	for (y=1; y <= colcount; y++) {
-		sb2 indicators[5];
-
 		x=OCIParamGet(oracle_sock->queryHandle, OCI_HTYPE_STMT,
 				oracle_sock->errHandle,
 				(dvoid **)&param,
@@ -406,6 +412,10 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 				(dvoid *) 0,
 				(dvoid *) 0,
 				OCI_DEFAULT);
+
+		/*
+		 *	FIXME: memory leaks of indicators & rowdata?
+		 */
 		if (x != OCI_SUCCESS) {
 			radlog(L_ERR,"rlm_sql_oracle: OCIDefineByPos() failed in sql_select_query: %s",
 				sql_error(sqlsocket, config));
@@ -414,6 +424,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	}
 
 	oracle_sock->results=rowdata;
+	oracle_sock->indicators=indicators;
 
 	return 0;
 }
@@ -527,6 +538,7 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			free(oracle_sock->results[x]);
 		}
 		free(oracle_sock->results);
+		free(oracle_sock->indicators);
 	}
 	oracle_sock->results=NULL;
 	return 0;
@@ -563,6 +575,7 @@ static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	if (oracle_sock->results) {
 		while(oracle_sock->results[x]) free(oracle_sock->results[x++]);
 		free(oracle_sock->results);
+		free(oracle_sock->indicators);
 		oracle_sock->results=NULL;
 	}
 
