@@ -268,7 +268,7 @@ x99_check_failcount(const char *username, const x99_token_t *inst)
     }
 
     /* Check against softfail setting. */
-    if (failcount >= inst->softfail) {
+    if (inst->softfail && failcount >= inst->softfail) {
 	time_t when;
 	int fcount;
 

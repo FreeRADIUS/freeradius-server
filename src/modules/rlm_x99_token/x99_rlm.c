@@ -164,9 +164,10 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 		CHALLENGE_PROMPT);
     }
 
-    if (data->softfail < 1 ) {
+    if (data->softfail < 0 ) {
 	data->softfail = 5;
-	x99_log(X99_LOG_ERR, "softfail must be at least 1, using default of 5");
+	x99_log(X99_LOG_ERR, "softfail must be at least 1 "
+		"(or 0 == infinite), using default of 5");
     }
 
     if (data->hardfail < 0 ) {
