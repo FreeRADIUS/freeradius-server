@@ -346,12 +346,17 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
  *	with the peer sending an EAP-Response packet with
  *	EAP-Type = EAP-TLS.  The data field of that packet will
  *	be the TLS data.
+ *
+ *	Fragment length is Framed-MTU - 4.
+ *
+ *	http://mail.frascone.com/pipermail/public/eap/2003-July/001426.html
  */
 static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 {
 	int status;
-	tls_session_t *ssn;
-	eap_tls_t    *eaptls;
+	tls_session_t	*ssn;
+	eap_tls_t	*eaptls;
+	VALUE_PAIR	*vp;
 
 	eaptls = (eap_tls_t *)type_arg;
 
@@ -377,8 +382,17 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 */
 	SSL_set_ex_data(ssn->ssl, 0, (void *)handler->identity);
 
-	ssn->offset = eaptls->conf->fragment_size;
 	ssn->length_flag = eaptls->conf->include_length;
+
+	/*
+	 *	We set a default fragment size, unless the Framed-MTU
+	 *	tells us it's too big.
+	 */
+	ssn->offset = eaptls->conf->fragment_size;
+	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU);
+	if (vp && ((vp->lvalue - 4) < ssn->offset)) {
+		ssn->offset = vp->lvalue - 4;
+	}
 
 	handler->opaque = ((void *)ssn);
 	handler->free_opaque = session_free;
