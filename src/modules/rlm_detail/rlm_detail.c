@@ -112,11 +112,11 @@ static int detail_accounting(void *instance, REQUEST *request)
 
 	/*
 	 *	There WAS a directory delimiter there, and
-	 *	the dir doesn't exist, so
-	 *	we create it (them)
+	 *	the file doesn't exist, so
+	 *	we prolly must create it the dir(s)
 	 */
 	if ((p) && (stat(buffer, &st) < 0)) {
-		
+		*p = '\0';	
 		/*
 		 *	NO previously cached directory name, so we've
 		 *	got to create a new one.
@@ -148,6 +148,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 			inst->last_made_directory = strdup(buffer);
 		}
 		
+		*p = '/';	
 	} /* else there was no directory delimiter. */
 
 	/*
