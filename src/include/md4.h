@@ -3,6 +3,20 @@
 
 #ifndef _LRAD_PROTO_H
 #define _LRAD_PROTO_H
+#include "autoconf.h"
+
+#if HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+
+#if HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
+#if HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
 /* GLOBAL.H - RSAREF types and constants
  */
 
@@ -22,18 +36,6 @@
 /* POINTER defines a generic pointer type */
 typedef unsigned char *POINTER;
 #define _POINTER_T
-
-/* UINT2 defines a two byte word */
-typedef unsigned short int UINT2;
-#define _UINT2_T
-
-/* UINT4 defines a four byte word */
-#if defined(__alpha) && (defined(__osf__) || defined(__linux__))
-typedef unsigned int UINT4;
-#else
-typedef unsigned long int UINT4;
-#endif
-#define _UINT4_T
 
 /* PROTO_LIST is defined depending on how PROTOTYPES is defined above.
    If using PROTOTYPES, then PROTO_LIST returns the list, otherwise it
@@ -82,8 +84,8 @@ typedef unsigned long int UINT4;
 
 /* MD4 context. */
 typedef struct {
-  UINT4 state[4];                                   /* state (ABCD) */
-  UINT4 count[2];        /* number of bits, modulo 2^64 (lsb first) */
+  uint32_t state[4];                                   /* state (ABCD) */
+  uint32_t count[2];        /* number of bits, modulo 2^64 (lsb first) */
   unsigned char buffer[64];                         /* input buffer */
 } MD4_CTX;
 
