@@ -4,7 +4,7 @@
 set -u
 
 prog="radiusd"
-program="/usr/sbin/radiusd"
+program="/usr/sbin/freeradiusd"
 pidfile="/var/run/radiusd-freeradius/radiusd.pid"
 descr="FreeRADIUS daemon"
 
