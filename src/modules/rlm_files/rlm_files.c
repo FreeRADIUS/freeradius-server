@@ -466,8 +466,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static int file_authorize(void *instance, REQUEST *request,
-		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+static int file_authorize(void *instance, REQUEST *request)
 {
 	int		nas_port = 0;
 	VALUE_PAIR	*namepair;
@@ -490,9 +489,12 @@ static int file_authorize(void *instance, REQUEST *request,
 	int   auth_type = -1;
 	int   result = 1;
 #endif
+	VALUE_PAIR **check_pairs, **reply_pairs;
 
 
 	request_pairs = request->packet->vps;
+	check_pairs = &request->config_items;
+	reply_pairs = &request->reply->vps;
 
  	/*
 	 *	Grab the canonical user name.
@@ -697,8 +699,7 @@ static int file_authorize(void *instance, REQUEST *request,
 /*
  *	Authentication - unused.
  */
-static int file_authenticate(void *instance, REQUEST *request,
-	VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
+static int file_authenticate(void *instance, REQUEST *request)
 {
 	instance = instance;
 	request = request;

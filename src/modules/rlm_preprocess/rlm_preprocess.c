@@ -508,15 +508,11 @@ static int preprocess_init(void)
 /*
  *	Preprocess a request.
  */
-static int preprocess_authorize(void *instance, REQUEST *request,
-	VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+static int preprocess_authorize(void *instance, REQUEST *request)
 {
 	char buf[1024];
 
 	instance = instance;
-
-	check_pairs = check_pairs; /* shut the compiler up */
-	reply_pairs = reply_pairs;
 
 	/*
 	 *	Mangle the username, to get rid of stupid implementation

@@ -150,13 +150,11 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
  *
  *  This should very nearly duplicate the old proxy_send() code
  */
-static int realm_authorize(void *instance, REQUEST *request,
-			   VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+static int realm_authorize(void *instance, REQUEST *request)
 {
 	REALM *realm;
 
 	instance = instance;
-	reply_pairs = reply_pairs; /* -Wunused */
 	
 	/*
 	 *	Check if we've got to proxy the request.
@@ -171,7 +169,7 @@ static int realm_authorize(void *instance, REQUEST *request,
 	/*
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
-	add_proxy_to_realm(check_pairs, realm);
+	add_proxy_to_realm(&request->config_items, realm);
 
 	return RLM_MODULE_OK; /* try the next module */
 }

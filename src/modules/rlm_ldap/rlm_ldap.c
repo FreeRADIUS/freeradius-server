@@ -363,8 +363,7 @@ fail:
  *      Purpose: Check if user is authorized for remote access 
  *
  *****************************************************************************/
-static int rlm_ldap_authorize(void *instance, REQUEST *request,
-			      VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+static int rlm_ldap_authorize(void *instance, REQUEST *request)
 {
     LDAPMessage *result, *msg, *gr_result, *gr_msg;
     char *filter, *name, *user_dn,
@@ -375,6 +374,10 @@ static int rlm_ldap_authorize(void *instance, REQUEST *request,
     VALUE_PAIR      *reply_tmp;
     int  i;
     int	 res;
+    VALUE_PAIR **check_pairs, **reply_pairs;
+
+    check_pairs = &request->config_items;
+    reply_pairs = &request->reply->vps;
 
     DEBUG("rlm_ldap: thread #%p - authorize", pthread_self());
     name = request->username->strvalue;
@@ -514,8 +517,7 @@ static int rlm_ldap_authorize(void *instance, REQUEST *request,
  *	Purpose: Check the user's password against ldap database 
  *
  *****************************************************************************/
-static int rlm_ldap_authenticate(void *instance, REQUEST *request,
-	VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
+static int rlm_ldap_authenticate(void *instance, REQUEST *request);
 {
     LDAP *ld_user;
     LDAPMessage *result, *msg;

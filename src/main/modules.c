@@ -550,9 +550,7 @@ int module_authorize(REQUEST *request)
 	while (this && rcode == RLM_MODULE_OK) {
 		DEBUG2("  authorize: %s", this->instance->entry->module->name);
 		rcode = (this->instance->entry->module->authorize)(
-			 this->instance->insthandle, request,
-			 &request->config_items,
-			 &request->reply->vps);
+			 this->instance->insthandle, request);
 		this = this->next;
 	}
 
@@ -634,8 +632,7 @@ int module_authenticate(int auth_type, REQUEST *request)
 
 	DEBUG2("  authenticate: %s", this->instance->entry->module->name);
 	return (this->instance->entry->module->authenticate)(
-		this->instance->insthandle, request,
-		&request->config_items, &request->reply->vps);
+		this->instance->insthandle, request);
 }
 
 

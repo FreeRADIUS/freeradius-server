@@ -112,14 +112,11 @@ static int radius_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int radius_authorize(void *instance, REQUEST *request,
-			    VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+static int radius_authorize(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
 	request = request;
-	check_pairs = check_pairs;
-	reply_pairs = reply_pairs;
 	
 	return RLM_MODULE_OK;
 }
@@ -127,8 +124,7 @@ static int radius_authorize(void *instance, REQUEST *request,
 /*
  *	Authenticate the user with the given password.
  */
-static int radius_authenticate(void *instance, REQUEST *request,
-	VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
+static int radius_authenticate(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;

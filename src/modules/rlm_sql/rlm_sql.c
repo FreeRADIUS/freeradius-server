@@ -125,7 +125,7 @@ static int rlm_sql_destroy(void) {
 }
 
 
-static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+static int rlm_sql_authorize(REQUEST *request)
 {
 	int		nas_port = 0;
 	VALUE_PAIR	*check_tmp = NULL;
@@ -180,8 +180,8 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
 	       return RLM_MODULE_OK;
        }
        
-       pairmove(reply_pairs, &reply_tmp);
-       pairmove(check_pairs, &check_tmp);
+       pairmove(&request->reply->vps, &reply_tmp);
+       pairmove(&request->config_items, &check_tmp);
        pairfree(reply_tmp);
        pairfree(check_tmp);
        
@@ -189,9 +189,9 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
        /*
         *      Fix dynamic IP address if needed.
         */
-       if ((tmp = pairfind(*reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS)) != NULL){
+       if ((tmp = pairfind(request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS)) != NULL){
                if (tmp->lvalue != 0) {
-                       tmp = pairfind(*reply_pairs, PW_FRAMED_IP_ADDRESS);
+                       tmp = pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS);
                        if (tmp) {
                                /*
                                 *      FIXME: This only works because IP
@@ -201,14 +201,13 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
                                tmp->lvalue += nas_port;
                        }
                }
-               pairdelete(reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
+               pairdelete(request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS);
        }
 
 	return RLM_MODULE_OK;
 }
 
-static int rlm_sql_authenticate(REQUEST *request,
-	VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
+static int rlm_sql_authenticate(REQUEST *request)
 {
 	
 	SQL_ROW		row;
