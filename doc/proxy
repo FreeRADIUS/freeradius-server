@@ -10,17 +10,29 @@
 
 1. FILES
 
-  If a user logs in as username@realm, the "realm" part is looked up in
-  the file /etc/raddb/realms. The format of this file is, for now:
 
-  realm		remoteserver[:port]	options
+  If a user logs in with a defined realm syntax, the "realm" portion is
+  matched against the configuration to determine how the request should
+  be handled.  Common realm formats are:
+
+                username@realm
+                realm/username
+  
+  The realms are configured in two places.  The first place is the
+  file /etc/raddb/proxy.conf, which is included by radiusd.conf.  The
+  second place is from the /etc/raddb/realms file.  The formats and
+  sample configurations are included as comments in the respective
+  files.  The preferred ( as it is more flexible for future options )
+  file is proxy.conf.  It is not recommended to use both, as that could
+  cause confusion.
 
   All accounting data for proxied requests does NOT get stored in the
   standard logfiles, but in a seperate directory. The name of this
   directory is the name of the remote radius server, and if you want you
   can define a nickname for it in /etc/raddb/naslist just as for normal NASes.
 
-  You need to add the hostname and secret for the remote server in the
+  If you use the /etc/raddb/realms file to enter realm configurations you will
+  need to add the hostname and secret for the remote server in the
   file /etc/raddb/clients. On the remote server you need to add the
   hostname of your server and the same secret to /etc/raddb/clients as well.
 
@@ -31,28 +43,37 @@
 
   The realm "NULL" matches any requests WITHOUT a realm.
 
-  There are two options you can add:
+  There are several options you can add in both files:
 
   - nostrip:
-    By default the @realm is stripped from the username before sending it
+    By default the realm is stripped from the username before sending it
     on to the remote radius server. By specifying the "nostrip" option
     the @realm suffix will not be stripped.
   - hints
     By default the original username is sent to the remote radius
     server. By specifying the "hints" option the username will be
     sent as it is after the "hints" file was processed.
+  - notrealm:
+    By default if a realm is matched, it will be proxied to the server
+    specified.  However, if you are using Replication functionality, you
+    may want to override this behaviour.  This option will prevent a
+    user who enters 'user@foobar' from being proxied if the 'foobar'
+    realm configuration contains 'notrealm'.  This function used to be
+    called 'notsuffix', and the old syntax is still supported.
 
 2. WHAT HAPPENS
 
   The exact thing that happens is this:
 
-  - A user logs in with an @realm suffix
+  - A user logs in with a realm
   - The hints file gets processed as usual
   - The user is checked against the huntgroups file. At this point
     the user _might_ already be rejected.
   - The realm is looked up in the realms file. If it isn't defined,
     the users file is processed normally.
-  - The realm suffix is stripped from the username unless "nostrip" was
+  - If the 'notrealm' option is defined, the user is processed
+    locally.
+  - The realm is stripped from the username unless "nostrip" was
     set, and the request is sent to a remote radius server. Note that
     any stripping done in the hints file doesn't have an effect on the
     username sent to the remote radius server unless you set the
