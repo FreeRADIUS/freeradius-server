@@ -333,7 +333,6 @@ client 10.10.10.10 {
 #	type        = radius
 #	authhost    = radius.isp2.com:1645
 #	accthost    = radius.isp2.com:1646
-# secret doesn't work here now
 #	secret      = TheirKey
 #	nostrip
 #	utmpfile   += /var/log/radutmp.isp2
