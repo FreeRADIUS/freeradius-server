@@ -489,7 +489,14 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	if (read_mappings(inst) != 0) {
 		radlog(L_ERR, "rlm_ldap: Reading dictionary mappings from file %s failed",
 		       inst->dictionary_mapping);
-		radlog(L_ERR, "rlm_ldap: Proceeding with no mappings");
+		free(inst);
+		return -1;
+	}
+	if (inst->check_item_map == NULL && inst->reply_item_map == NULL){
+		radlog(L_ERR, "rlm_ldap: dictionary mappings file %s did not contain any mappings",
+			inst->dictionary_mapping);
+		free(inst);
+		return -1;
 	}
 
 	pair = inst->check_item_map;
@@ -517,6 +524,8 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		return -1;
 	}
 	pair = inst->check_item_map;
+	if (pair == NULL)
+		pair = inst->reply_item_map;
 	for(i=0;i<atts_num;i++){
 		if (i <= check_map_num ){
 			inst->atts[i] = pair->attr;
