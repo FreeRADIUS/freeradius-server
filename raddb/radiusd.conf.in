@@ -587,6 +587,10 @@ modules {
 		md5 {
 		}
 
+		# Cisco LEAP
+		leap {
+		}
+
 		## EAP-TLS is highly experimental EAP-Type at the moment.  
 		#	Please give feedback on the mailing list.
 		#tls {
@@ -1268,4 +1272,32 @@ session {
 post-auth {
 	  #  Get an address from the IP Pool.
 	  #main_pool
+}
+
+#
+#  When the server decides to proxy a request to a home server,
+#  the proxied request is first passed through the pre-proxy
+#  stage.  This stage can re-write the request, or decide to
+#  cancel the proxy.
+#
+#  Only a few modules currently have this method.
+#
+pre-proxy {
+	# attr_rewrite
+}
+
+#
+#  When the server receives a reply to a request it proxied
+#  to a home server, the request may be massaged here, in the
+#  post-proxy stage.
+#
+post-proxy {
+	# attr_rewrite
+
+	#
+	#  If you are proxing LEAP, you MUST configure the EAP
+	#  module, and you MUST list it here, in the post-proxy
+	#  stage.
+	#
+	# eap
 }
