@@ -46,7 +46,8 @@
 /* End a session by faking a Stop packet to all accounting modules */
 int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 		const char *user,
-		const char *sessionid, uint32_t cliaddr, char proto)
+		const char *sessionid, uint32_t cliaddr, char proto,
+		int session_time)
 {
 	REQUEST *stopreq;
 	VALUE_PAIR *vp, *userpair;
@@ -97,7 +98,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 	}
 	if(cliaddr != 0)
 		IPPAIR(PW_FRAMED_IP_ADDRESS, cliaddr);
-	INTPAIR(PW_ACCT_SESSION_TIME, 0);
+	INTPAIR(PW_ACCT_SESSION_TIME, session_time);
 	INTPAIR(PW_ACCT_INPUT_OCTETS, 0);
 	INTPAIR(PW_ACCT_OUTPUT_OCTETS, 0);
 	INTPAIR(PW_ACCT_INPUT_PACKETS, 0);

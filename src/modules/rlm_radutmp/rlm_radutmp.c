@@ -736,7 +736,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 				session_zap(request,
 					    u.nas_address, u.nas_port, login,
 					    session_id, u.framed_address,
-					    u.proto);
+					    u.proto,0);
 			}
 		}
 	}

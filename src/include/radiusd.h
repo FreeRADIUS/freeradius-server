@@ -312,7 +312,7 @@ int		rad_check_ts(uint32_t nasaddr, unsigned int port, const char *user,
 int		session_zap(REQUEST *request, uint32_t nasaddr,
 			    unsigned int port, const char *user,
 			    const char *sessionid, uint32_t cliaddr,
-			    char proto);
+			    char proto,int session_time);
 
 /* radiusd.c */
 #ifndef _LIBRADIUS
