@@ -804,11 +804,19 @@ autz_redo:
 	 *	do it first before sending the reply.
 	 */
 	if (exec_program && exec_wait) {
-		if (radius_exec_program(exec_program, request,
+		r = radius_exec_program(exec_program, request,
 					exec_wait,
-					umsg, sizeof(umsg), TRUE) != 0) {
-			free(exec_program);
+					umsg, sizeof(umsg), &tmp);
+		free(exec_program);
+		exec_program = NULL;
 
+		/*
+		 *	Always add the value-pairs to the reply.
+		 */
+		pairmove(&request->reply->vps, &tmp);
+		pairfree(&tmp);
+
+		if (r < 0) {
 			/*
 			 *	Error. radius_exec_program() returns -1 on
 			 *	fork/exec errors, or >0 if the exec'ed program
@@ -892,7 +900,7 @@ autz_redo:
 		 *	No need to check the exit status here.
 		 */
 		radius_exec_program(exec_program, request, exec_wait,
-				    NULL, 0, FALSE);
+				    NULL, 0, NULL);
 	}
 
 	if (exec_program) 

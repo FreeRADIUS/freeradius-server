@@ -104,17 +104,24 @@ int rad_accounting(REQUEST *request)
 			 */
 			rcode = radius_exec_program(exec_program, request,
 						    exec_wait,
-						    NULL, 0, TRUE);
+						    NULL, 0, &vp);
+			free(exec_program);
+
+			/*
+			 *	Always add the value-pairs to the reply.
+			 *
+			 *	If we're not waiting, then the pairs
+			 *	will be empty, so this won't matter.
+			 */
+			pairmove(&request->reply->vps, &vp);
+			pairfree(&vp);
+				
 			if (exec_wait) {
 				if (rcode != 0) {
-					free(exec_program);
 					return reply;
 				}
 			}
 		}
-
-		if (exec_program) 
-			free(exec_program);
 
 		/*
 		 *	Maybe one of the preacct modules has decided

@@ -79,7 +79,7 @@ static int exec_xlat(void *instance, REQUEST *request,
 
 	DEBUG2("rlm_exec: %d %s", inst->wait, buffer);
 	result = radius_exec_program(buffer, request, inst->wait,
-				     out, outlen, FALSE);
+				     out, outlen, NULL);
 	DEBUG2("rlm_exec: result %d", result);
 	if (result != 0) {
 		out[0] = '\0';
