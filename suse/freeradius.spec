@@ -17,7 +17,7 @@ Group:        Productivity/Networking/Radius/Servers
 Packager:     FreeRADIUS.org
 Provides:     radiusd
 Conflicts:    radiusd-livingston radiusd-cistron icradius
-Version:      0.8.1
+Version:      0.9.0
 Release:      0
 URL:          http://www.freeradius.org/
 Summary:      Very high configurable Radius-server
@@ -26,8 +26,6 @@ Source0:      %{name}-%{version}.tar.gz
 Source1:      rcradiusd
 Source2:      radiusd-pam
 Source3:      radiusd-logrotate
-#Patch:        krb5.dif
-#Patch1:       ltconfig.dif
 %if %suse_version > 800
 PreReq:       %insserv_prereq %fillup_prereq
 %endif
@@ -71,10 +69,6 @@ Authors:
 %prep
 #%setup -n freeradius-snapshot-20021107
 %setup
-#%patch
-#%patch1
-# activate configure patch for heimdal
-#(cd src/modules/rlm_krb5; autoconf --include ../../../)
 
 %build
 CFLAGS="$RPM_OPT_FLAGS" ./configure \
@@ -91,10 +85,10 @@ CFLAGS="$RPM_OPT_FLAGS" ./configure \
 		--with-ltdl-lib=/usr/lib \
 		--with-ltdl-include=/usr/include \
 		--with-gnu-ld \
-		--without-rlm-krb5 
-#		--enable-heimdal-krb5 
-#		--with-rlm-krb5-include-dir=/usr/include/heimdal/ \
-#		--with-rlm-krb5-lib-dir=%{_libdir}
+		--enable-heimdal-krb5 \
+		--with-rlm-krb5-include-dir=/usr/include/heimdal/ \
+		--with-rlm-krb5-lib-dir=%{_libdir}
+#		--without-rlm-krb5 
 
 make
 
@@ -188,6 +182,8 @@ mv -v doc/README doc/README.doc
 /%{_libdir}/*.a
 
 %changelog -n freeradius
+* Thu Jun 12 2003 - nix@susesecurity.com
+- Update for FreeRadius 0.9 release and enable Krb5
 * Fri Nov 8 2002 - nix@susesecurity.com
 - Removed radwatch from the spec file as it's no longer supported.
 * Thu Nov 7 2002 - nix@susesecurity.com
