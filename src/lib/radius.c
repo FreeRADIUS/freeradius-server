@@ -1329,38 +1329,46 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
 	unsigned char	digest[AUTH_VECTOR_LEN];
-	char    salt[2];
+	char*   salt;
 	int	i, n, secretlen;
-	int	len;
+	unsigned len;
+	
+
 	
 	len = *pwlen;
 
-	if (len < 3) {
-	  return 0;
-	}
-	salt[0] = passwd[0];
-	salt[1] = passwd[1];
-
-	/* Advance pointer past the salt, which is first two chars of passwd */
-	passwd = passwd + 2;
-	len -= 2;
+	if (len > 127) len = 127;
+	/*
+	 * Shift the password 3 positions right to place a salt and original
+	 * length, tag will be added automatically on packet send
+	 */
+	for (n=len ; n>=0 ; n--) passwd[n+3] = passwd[n];
+	salt = passwd;
+	passwd += 2;
+	/*
+	 * save original password length as first password character;
+	 */
 	*passwd = len;
+	len += 1;
+
+
+	/* generate salt */
+	salt[0] = (vector[0] ^ vector[1] ^ 0x3A) | 0x80;
+	salt[1] = (vector[2] ^ vector[3] ^ vector[4]);
+
 	
 	/*
 	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
 	 */
-	if (len > 128) len = 128;
 	n = len % AUTH_PASS_LEN;
 	if (n) {
 		n = AUTH_PASS_LEN - n;
-		for (i = len; n > 0; n--, i++)
-			passwd[i] = 0;
-		len = i;
+		for (; n > 0; n--, len++)
+			passwd[len] = 0;
 	}
+	/* set new password length */
+	*pwlen = len + 2;
 	
-	*pwlen = len+2;
-	
-
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
@@ -1381,7 +1389,7 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 		for (i = 0; i < AUTH_PASS_LEN; i++)
 			passwd[i + n] ^= digest[i];
 	}
-
+	passwd[n] = 0;
 	return 0;
 }
 
@@ -1398,7 +1406,7 @@ int rad_tunnel_pwdecode(char *passwd, int * pwlen, const char *secret, const cha
 	unsigned char	digest[AUTH_VECTOR_LEN];
 	char    salt[2];
 	int	i, n, ntimes, secretlen;
-	int 	len;
+	unsigned len;
 	
 	len = *pwlen;
 
@@ -1433,13 +1441,16 @@ int rad_tunnel_pwdecode(char *passwd, int * pwlen, const char *secret, const cha
 	} while(ntimes--);
 	passwd[len] = '\0';
 
-	if (*(unsigned char*)passwd > len) {
+	if (*(unsigned char*)passwd >= len) {
 		/* Pasword is broken, original password should be longer */
 		*pwlen = 2;
 		passwd[0]=passwd[1]=0;
 		return 0;
 	}
-	return *pwlen = *passwd + 2; /* restore original length */
+	len = *pwlen = *passwd; /* restore original length */
+	for (n=0; n<len; n++) passwd[n-2]=passwd[n+1];
+	passwd[len-2] = 0;
+	return len;
 }
 
 /*
