@@ -39,8 +39,6 @@
      a. The user IS NOT found in radcheck
      b. The user IS found in radcheck, but the check items don't match
      c. The user IS found in radcheck, the check items DO match AND
-        Fall-Through is set in the radreply table
-     d. The user IS found in radcheck, the check items DO match AND
 	the read_groups directive is set to 'yes'
   4. If groups are to be processed for this user, the first thing that is
      done is the list of groups this user is a member of is pulled from the
@@ -53,33 +51,11 @@
      there is a match, the reply items for this group are pulled from the
      radgroupreply table and applied.
   6. Processing continues to the next group IF:
-     a. There was not a match for the last group's check items OR
-     b. Fall-Through was set in the last group's reply items
+     a. There was not a match for the last group's check items
      (The above is exactly the same as in the users file)
   7. Finally, if the user has a User-Profile attribute set or the Default
      Profile option is set in the sql.conf, then steps 4-6 are repeated for
      the groups that the profile is a member of.
-
-  For any fairly complex setup, it is likely that most of the actual
-  processing will be done in the groups.  In these cases, the user entry in
-  radcheck will be of limited use except for things like setting the user's
-  password.  So, one might have the following setup:
-
-  radcheck table:
-  joeuser        User-Password      ==       somepassword
-
-  radreply table:
-  joeuser        Fall-Through       =        Yes
-
-  radgroupcheck table:
-  Check items for various connection scenarios
-
-  radgroupreply table:
-  reply items for the groups
-
-  usergroup table:
-  joeuser      WLANgroup    1(this is the priority)
-  joeuser      PPPgroup     2
 
   A web page with some helpful documentation is:
 
