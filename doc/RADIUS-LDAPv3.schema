@@ -517,6 +517,22 @@ attributetype
       SINGLE-VALUE 
    )
 
+attributetype
+   ( 1.3.6.1.4.1.3317.4.3.1.59
+      NAME 'radiusCheckItem'
+      DESC ''
+      EQUALITY caseIgnoreIA5Match
+      SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+   )
+
+attributetype
+   ( 1.3.6.1.4.1.3317.4.3.1.60
+      NAME 'radiusReplyItem'
+      DESC ''
+      EQUALITY caseIgnoreIA5Match
+      SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+   )
+
 
 objectclass
    ( 1.3.6.1.4.1.3317.4.3.2.1
@@ -533,6 +549,7 @@ objectclass
             radiusFramedCompression $ radiusFramedIPAddress $
             radiusFramedIPNetmask $ radiusFramedIPXNetwork $
             radiusFramedMTU $ radiusFramedProtocol $
+	    radiusCheckItem $ radiusReplyItem $
             radiusFramedRoute $ radiusFramedRouting $ radiusIdleTimeout $
             radiusGroupName $ radiusHint $ radiusHuntgroupName $ 
             radiusLoginIPHost $ radiusLoginLATGroup $ radiusLoginLATNode $
