@@ -272,6 +272,10 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 
 	if (!inst->bound) {
 		DEBUG2("rlm_ldap: attempting LDAP reconnection");
+		if (inst->ld){
+			DEBUG2("rlm_ldap: closing existing LDAP connection");
+			ldap_unbind_s(inst->ld);
+		}
 		if ((inst->ld = ldap_connect(instance, inst->login, inst->password, 0, &res)) == NULL) {
 			radlog(L_ERR, "rlm_ldap: (re)connection attempt failed");
 			return (RLM_MODULE_FAIL);
@@ -281,9 +285,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn, filter);
 	msgid = ldap_search(inst->ld, search_basedn, scope, filter, attrs, 0);
 	if (msgid == -1) {
-		radlog(L_ERR, "rlm_ldap: ldap_search() API failed\n");
-		if(inst->ld)
-			ldap_unbind(inst->ld);
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed\n");
 		inst->bound = 0;
 		return (RLM_MODULE_FAIL);
 	}
@@ -293,8 +295,6 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 		ldap_perror(inst->ld, "rlm_ldap: ldap_result()");
 		radlog(L_ERR, "rlm_ldap: ldap_result() failed - %s\n", strerror(errno));
 		ldap_msgfree(*result);
-		if(inst->ld)
-			ldap_unbind(inst->ld);
 		inst->bound = 0;
 		return (RLM_MODULE_FAIL);
 	}
@@ -309,8 +309,6 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	default:
 		DEBUG("rlm_ldap: ldap_search() failed");
 		ldap_msgfree(*result);
-		if(inst->ld)
-			ldap_unbind(inst->ld);
 		inst->bound = 0;
 		return (RLM_MODULE_FAIL);
 	}
@@ -342,10 +340,15 @@ ldap_authorize(void *instance, REQUEST * request)
 	VALUE_PAIR    **check_pairs, **reply_pairs;
 	char          **vals;
 
+	DEBUG("rlm_ldap: - authorize");
+
+	if(!request->username){
+		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Name\" is required for authentication.\n");
+		return RLM_MODULE_INVALID;
+	}
+
 	check_pairs = &request->config_items;
 	reply_pairs = &request->reply->vps;
-
-	DEBUG("rlm_ldap: - authorize");
 	name = request->username->strvalue;
 
 	/*
@@ -458,10 +461,22 @@ ldap_authenticate(void *instance, REQUEST * request)
 	 * Ensure that we're being passed a plain-text password, and not
 	 * anything else.
 	 */
-	if (request->password->attribute != PW_PASSWORD) {
-		radlog(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+
+	if(!request->username){
+		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Name\" is required for authentication.\n");
 		return RLM_MODULE_INVALID;
 	}
+
+	if (!request->password){
+		radlog(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.");
+		return RLM_MODULE_INVALID;
+	}
+
+	if(request->password->attribute != PW_PASSWORD) {
+		radlog(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
+		return RLM_MODULE_INVALID;
+	}
+
 	name = request->username->strvalue;
 	passwd = request->password->strvalue;
 

@@ -10,8 +10,8 @@ if test x$with_[]modname != xno; then
 	AC_SMART_CHECK_INCLUDE(lber.h)
 	AC_SMART_CHECK_INCLUDE(ldap.h)
 	AC_SMART_CHECK_LIB(sasl, sasl_encode)
-	AC_SMART_CHECK_LIB(ssl, SSL_new)
 	AC_SMART_CHECK_LIB(crypto, DH_new)
+	AC_SMART_CHECK_LIB(ssl, SSL_new)
 
 	AC_SMART_CHECK_LIB(lber, ber_init)
         if test "x$ac_cv_lib_lber_ber_init" != "xyes"; then

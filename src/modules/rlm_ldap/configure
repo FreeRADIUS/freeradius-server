@@ -521,342 +521,928 @@ else
 fi
 
 
-# From configure.in Revision: 1.2 
+# From configure.in Revision: 1.4 
 
 
+fail=
+SMART_LIBS=
+SMART_CLFAGS=
 if test x$with_rlm_ldap != xno; then
 
-	echo $ac_n "checking for pthread_create in -lpthread""... $ac_c" 1>&6
-echo "configure:531: checking for pthread_create in -lpthread" >&5
-ac_lib_var=`echo pthread'_'pthread_create | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lpthread  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 539 "configure"
-#include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char pthread_create();
-
-int main() {
-pthread_create()
-; return 0; }
-EOF
-if { (eval echo configure:550: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
-fi
-rm -f conftest*
-LIBS="$ac_save_LIBS"
-
-fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_libs="${ldap_ldflags} -lpthread" 
-else
-  echo "$ac_t""no" 1>&6
- fail=$fail" libpthread" 
 	
-fi
 
+ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
+echo $ac_n "checking for lber.h""... $ac_c" 1>&6
+echo "configure:537: checking for lber.h" >&5
 
-	for headertofind in lber.h ldap.h; do
-		echo $ac_n "checking for ${headertofind}""... $ac_c" 1>&6
-echo "configure:575: checking for ${headertofind}" >&5
+smart_include=
+smart_include_dir=
 
-		# try no additional header first
-		cat > conftest.$ac_ext <<EOF
-#line 579 "configure"
+  old_CFLAGS="$CFLAGS"
+  cat > conftest.$ac_ext <<EOF
+#line 544 "configure"
 #include "confdefs.h"
-#include <${headertofind}>
+#include <lber.h>
 int main() {
- int a = 1; 
+ int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:586: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:551: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-   LDAP_INCLUDE=" " 
+  smart_include=" "
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-   LDAP_INCLUDE= 
-		
+  smart_include=
 fi
 rm -f conftest*
 
-		if test x${LDAP_INCLUDE} != x; then
-			old_CFLAGS=${CFLAGS}
-			for try in /usr/local/include $ldap_include_dir; do
-				CFLAGS="${old_CFLAGS} -I$try"
-				cat > conftest.$ac_ext <<EOF
-#line 603 "configure"
+  if test "x$smart_include" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=lber.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+
+
+    for try in $smart_include_dir /usr/local/include/ /opt/include; do
+      CFLAGS="$old_CFLAGS -I$try"
+
+      cat > conftest.$ac_ext <<EOF
+#line 595 "configure"
 #include "confdefs.h"
-#include <${headertofind}>
+#include <lber.h>
 int main() {
- int a = 1; 
+ int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:610: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:602: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-   LDAP_INCLUDE="-I$try" 
+  smart_include="-I$try"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-   LDAP_INCLUDE= 
-				
+  smart_include=
 fi
 rm -f conftest*
-				if test x${LDAP_INCLUDE} != x; then
-					break
-				fi
-			done
-			CFLAGS=${old_CFLAGS}
-		fi
 
-		if test x${LDAP_INCLUDE} = x; then
-			fail="$fail ${headertofind}"
-			headersuggestion="Use --with-ldap-include-dir=<dir> to specify header path."
-			echo "$ac_t""no" 1>&6
-		else
-			echo "$ac_t""yes" 1>&6
-			ldap_cflags="${ldap_cflags} ${LDAP_INCLUDE}"
-		fi
-	done
+      if test "x$smart_include" != "x"; then
+        break;
+      fi
+    done
+    CFLAGS="$old_CFLAGS"
+  fi
 
-	if test x$ldap_lib_dir != x; then
-		ldap_ldflags="${add_ldap_ldflag} ${ldap_ldflags}"
-		add_ldap_ldflag="-L${ldap_lib_dir}"
-	fi
+        if test "x$smart_include" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_header_$ac_safe=yes"
+    CFLAGS="$old_CFLAGS $smart_include"
+    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  else
+    echo "$ac_t""no" 1>&6 
+fi
 
-	echo $ac_n "checking for ldap_initialize in -lldap_r""... $ac_c" 1>&6
-echo "configure:644: checking for ldap_initialize in -lldap_r" >&5
-ac_lib_var=`echo ldap_r'_'ldap_initialize | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lldap_r  ${add_ldap_ldflag} -lpthread  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 652 "configure"
+	
+
+ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
+echo $ac_n "checking for ldap.h""... $ac_c" 1>&6
+echo "configure:633: checking for ldap.h" >&5
+
+smart_include=
+smart_include_dir=
+
+  old_CFLAGS="$CFLAGS"
+  cat > conftest.$ac_ext <<EOF
+#line 640 "configure"
 #include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char ldap_initialize();
-
+#include <ldap.h>
 int main() {
-ldap_initialize()
+ int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:663: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:647: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
+  smart_include=" "
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
+  smart_include=
 fi
 rm -f conftest*
-LIBS="$ac_save_LIBS"
 
+  if test "x$smart_include" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=ldap.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
 fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -lldap_r" 
-else
-  echo "$ac_t""no" 1>&6
- 
-			fail="$fail libldap_r" 
-			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
-		
-fi
+
+eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
 
-	echo $ac_n "checking for ber_init in -llber""... $ac_c" 1>&6
-echo "configure:689: checking for ber_init in -llber" >&5
-ac_lib_var=`echo lber'_'ber_init | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-llber  ${add_ldap_ldflag}  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 697 "configure"
+    for try in $smart_include_dir /usr/local/include/ /opt/include; do
+      CFLAGS="$old_CFLAGS -I$try"
+
+      cat > conftest.$ac_ext <<EOF
+#line 691 "configure"
 #include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char ber_init();
-
+#include <ldap.h>
 int main() {
-ber_init()
+ int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:708: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:698: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
+  smart_include="-I$try"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
+  smart_include=
 fi
 rm -f conftest*
-LIBS="$ac_save_LIBS"
 
+      if test "x$smart_include" != "x"; then
+        break;
+      fi
+    done
+    CFLAGS="$old_CFLAGS"
+  fi
+
+        if test "x$smart_include" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_header_$ac_safe=yes"
+    CFLAGS="$old_CFLAGS $smart_include"
+    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  else
+    echo "$ac_t""no" 1>&6 
 fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -llber" 
-else
-  echo "$ac_t""no" 1>&6
- 
-			fail="$fail liblber"
-			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
-		
-fi
 
+	
 
-	echo $ac_n "checking for sasl_encode in -lsasl""... $ac_c" 1>&6
-echo "configure:734: checking for sasl_encode in -lsasl" >&5
-ac_lib_var=`echo sasl'_'sasl_encode | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lsasl  ${add_ldap_ldflag}  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 742 "configure"
+echo $ac_n "checking for sasl_encode in -lsasl""... $ac_c" 1>&6
+echo "configure:728: checking for sasl_encode in -lsasl" >&5
+
+smart_lib=
+smart_lib_dir=
+
+  old_LIBS="$LIBS"
+  LIBS="$LIBS -lsasl"
+  cat > conftest.$ac_ext <<EOF
+#line 736 "configure"
 #include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char sasl_encode();
-
+extern char sasl_encode();
 int main() {
-sasl_encode()
+ sasl_encode()
 ; return 0; }
 EOF
-if { (eval echo configure:753: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:743: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
+  smart_lib="-lsasl"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
 fi
 rm -f conftest*
-LIBS="$ac_save_LIBS"
 
+  if test "x$smart_lib" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libsasl.so
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
 fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -lsasl" 
-else
-  echo "$ac_t""no" 1>&6
- 
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libsasl.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
 fi
 
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
-	echo $ac_n "checking for SSL_new in -lssl""... $ac_c" 1>&6
-echo "configure:776: checking for SSL_new in -lssl" >&5
-ac_lib_var=`echo ssl'_'SSL_new | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lssl  ${add_ldap_ldflag}  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 784 "configure"
+
+    for try in $smart_lib_dir /usr/local/lib/ /opt/lib; do
+      LIBS="$old_LIBS -L$try -lsasl"
+
+      cat > conftest.$ac_ext <<EOF
+#line 812 "configure"
 #include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char SSL_new();
-
+extern char sasl_encode();
 int main() {
-SSL_new()
+ sasl_encode()
 ; return 0; }
 EOF
-if { (eval echo configure:795: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:819: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
+  smart_lib="-L$try -lsasl"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
 fi
 rm -f conftest*
-LIBS="$ac_save_LIBS"
+      if test "x$smart_lib" != "x"; then
+        break;
+      fi
+    done
+    LIBS="$old_LIBS"
+  fi
 
+        if test "x$smart_lib" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_lib_sasl_sasl_encode=yes"
+    LIBS="$old_LIBS $smart_lib"
+    SMART_LIBS="$SMART_LIBS $smart_lib"
+  else
+    echo "$ac_t""no" 1>&6 
 fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -lssl" 
-else
-  echo "$ac_t""no" 1>&6
- 
-			fail="$fail libssl" 
-			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
-		
-fi
 
+	
 
-	echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
-echo "configure:821: checking for DH_new in -lcrypto" >&5
-ac_lib_var=`echo crypto'_'DH_new | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lcrypto  ${add_ldap_ldflag}  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 829 "configure"
+echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
+echo "configure:846: checking for DH_new in -lcrypto" >&5
+
+smart_lib=
+smart_lib_dir=
+
+  old_LIBS="$LIBS"
+  LIBS="$LIBS -lcrypto"
+  cat > conftest.$ac_ext <<EOF
+#line 854 "configure"
 #include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char DH_new();
-
+extern char DH_new();
 int main() {
-DH_new()
+ DH_new()
 ; return 0; }
 EOF
-if { (eval echo configure:840: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:861: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
+  smart_lib="-lcrypto"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
 fi
 rm -f conftest*
-LIBS="$ac_save_LIBS"
 
+  if test "x$smart_lib" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libcrypto.so
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
 fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -lcrypto" 
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libcrypto.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+    for try in $smart_lib_dir /usr/local/lib/ /opt/lib; do
+      LIBS="$old_LIBS -L$try -lcrypto"
+
+      cat > conftest.$ac_ext <<EOF
+#line 930 "configure"
+#include "confdefs.h"
+extern char DH_new();
+int main() {
+ DH_new()
+; return 0; }
+EOF
+if { (eval echo configure:937: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-L$try -lcrypto"
 else
-  echo "$ac_t""no" 1>&6
- 
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+      if test "x$smart_lib" != "x"; then
+        break;
+      fi
+    done
+    LIBS="$old_LIBS"
+  fi
+
+        if test "x$smart_lib" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_lib_crypto_DH_new=yes"
+    LIBS="$old_LIBS $smart_lib"
+    SMART_LIBS="$SMART_LIBS $smart_lib"
+  else
+    echo "$ac_t""no" 1>&6 
 fi
 
+	
+
+echo $ac_n "checking for SSL_new in -lssl""... $ac_c" 1>&6
+echo "configure:964: checking for SSL_new in -lssl" >&5
+
+smart_lib=
+smart_lib_dir=
+
+  old_LIBS="$LIBS"
+  LIBS="$LIBS -lssl"
+  cat > conftest.$ac_ext <<EOF
+#line 972 "configure"
+#include "confdefs.h"
+extern char SSL_new();
+int main() {
+ SSL_new()
+; return 0; }
+EOF
+if { (eval echo configure:979: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-lssl"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+
+  if test "x$smart_lib" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libssl.so
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libssl.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+    for try in $smart_lib_dir /usr/local/lib/ /opt/lib; do
+      LIBS="$old_LIBS -L$try -lssl"
+
+      cat > conftest.$ac_ext <<EOF
+#line 1048 "configure"
+#include "confdefs.h"
+extern char SSL_new();
+int main() {
+ SSL_new()
+; return 0; }
+EOF
+if { (eval echo configure:1055: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-L$try -lssl"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+      if test "x$smart_lib" != "x"; then
+        break;
+      fi
+    done
+    LIBS="$old_LIBS"
+  fi
+
+        if test "x$smart_lib" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_lib_ssl_SSL_new=yes"
+    LIBS="$old_LIBS $smart_lib"
+    SMART_LIBS="$SMART_LIBS $smart_lib"
+  else
+    echo "$ac_t""no" 1>&6 
+fi
+
+
+	
+
+echo $ac_n "checking for ber_init in -llber""... $ac_c" 1>&6
+echo "configure:1083: checking for ber_init in -llber" >&5
+
+smart_lib=
+smart_lib_dir=
+
+  old_LIBS="$LIBS"
+  LIBS="$LIBS -llber"
+  cat > conftest.$ac_ext <<EOF
+#line 1091 "configure"
+#include "confdefs.h"
+extern char ber_init();
+int main() {
+ ber_init()
+; return 0; }
+EOF
+if { (eval echo configure:1098: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-llber"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+
+  if test "x$smart_lib" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=liblber.so
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=liblber.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+    for try in $smart_lib_dir /usr/local/lib/ /opt/lib; do
+      LIBS="$old_LIBS -L$try -llber"
+
+      cat > conftest.$ac_ext <<EOF
+#line 1167 "configure"
+#include "confdefs.h"
+extern char ber_init();
+int main() {
+ ber_init()
+; return 0; }
+EOF
+if { (eval echo configure:1174: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-L$try -llber"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+      if test "x$smart_lib" != "x"; then
+        break;
+      fi
+    done
+    LIBS="$old_LIBS"
+  fi
+
+        if test "x$smart_lib" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_lib_lber_ber_init=yes"
+    LIBS="$old_LIBS $smart_lib"
+    SMART_LIBS="$SMART_LIBS $smart_lib"
+  else
+    echo "$ac_t""no" 1>&6 
+fi
+
+        if test "x$ac_cv_lib_lber_ber_init" != "xyes"; then
+	  fail="$fail liblber"
+        else
+          if test "x$ac_cv_header_pthread_h" = "xyes"; then
+    	    
+
+echo $ac_n "checking for ldap_initialize in -lldap_r""... $ac_c" 1>&6
+echo "configure:1205: checking for ldap_initialize in -lldap_r" >&5
+
+smart_lib=
+smart_lib_dir=
+
+  old_LIBS="$LIBS"
+  LIBS="$LIBS -lldap_r"
+  cat > conftest.$ac_ext <<EOF
+#line 1213 "configure"
+#include "confdefs.h"
+extern char ldap_initialize();
+int main() {
+ ldap_initialize()
+; return 0; }
+EOF
+if { (eval echo configure:1220: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-lldap_r"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+
+  if test "x$smart_lib" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libldap_r.so
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libldap_r.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+    for try in $smart_lib_dir /usr/local/lib/ /opt/lib; do
+      LIBS="$old_LIBS -L$try -lldap_r"
+
+      cat > conftest.$ac_ext <<EOF
+#line 1289 "configure"
+#include "confdefs.h"
+extern char ldap_initialize();
+int main() {
+ ldap_initialize()
+; return 0; }
+EOF
+if { (eval echo configure:1296: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-L$try -lldap_r"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+      if test "x$smart_lib" != "x"; then
+        break;
+      fi
+    done
+    LIBS="$old_LIBS"
+  fi
+
+        if test "x$smart_lib" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_lib_ldap_r_ldap_initialize=yes"
+    LIBS="$old_LIBS $smart_lib"
+    SMART_LIBS="$SMART_LIBS $smart_lib"
+  else
+    echo "$ac_t""no" 1>&6 
+fi
+
+            if test "x$ac_cv_lib_ldap_r_ldap_initialize" != "xyes"; then
+ 	      fail="$fail libldap_r"
+            fi
+          else
+  	    
+
+echo $ac_n "checking for ldap_initialize in -lldap""... $ac_c" 1>&6
+echo "configure:1327: checking for ldap_initialize in -lldap" >&5
+
+smart_lib=
+smart_lib_dir=
+
+  old_LIBS="$LIBS"
+  LIBS="$LIBS -lldap"
+  cat > conftest.$ac_ext <<EOF
+#line 1335 "configure"
+#include "confdefs.h"
+extern char ldap_initialize();
+int main() {
+ ldap_initialize()
+; return 0; }
+EOF
+if { (eval echo configure:1342: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-lldap"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+
+  if test "x$smart_lib" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libldap.so
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libldap.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+    for try in $smart_lib_dir /usr/local/lib/ /opt/lib; do
+      LIBS="$old_LIBS -L$try -lldap"
+
+      cat > conftest.$ac_ext <<EOF
+#line 1411 "configure"
+#include "confdefs.h"
+extern char ldap_initialize();
+int main() {
+ ldap_initialize()
+; return 0; }
+EOF
+if { (eval echo configure:1418: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-L$try -lldap"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+      if test "x$smart_lib" != "x"; then
+        break;
+      fi
+    done
+    LIBS="$old_LIBS"
+  fi
+
+        if test "x$smart_lib" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_lib_ldap_ldap_initialize=yes"
+    LIBS="$old_LIBS $smart_lib"
+    SMART_LIBS="$SMART_LIBS $smart_lib"
+  else
+    echo "$ac_t""no" 1>&6 
+fi
+
+            if test "x$ac_cv_lib_ldap_r_ldap_initialize" != "xyes"; then
+ 	      fail="$fail libldap_r"
+            fi
+          fi
+        fi
 
 	targetname=rlm_ldap
 else
@@ -880,7 +1466,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-
+ldap_cflags=$SMART_CFLAGS
+ldap_ldflags=$SMART_LIBS
 
 
 
