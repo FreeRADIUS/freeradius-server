@@ -210,8 +210,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			break;
 		case PAP_ENC_CLEAR:
 			DEBUG("rlm_pap: Using clear text password.");
-			if (strncmp((char *) passwd_item->strvalue,
-				    (char *) request->password->strvalue, passwd_item->length) != 0){
+			if (strcmp((char *) passwd_item->strvalue,
+				   (char *) request->password->strvalue) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
@@ -224,9 +224,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 #if HAVE_PTHREAD_H
 			pthread_mutex_lock(&inst->mutex);
 #endif
-			if (strncmp((char *) passwd_item->strvalue,
-				crypt((char *) request->password->strvalue, (char *)passwd_item->strvalue),
-					passwd_item->length) != 0){
+			if (strcmp((char *) passwd_item->strvalue,
+				   crypt((char *) request->password->strvalue,
+					 (char *) passwd_item->strvalue)) != 0) {
 #if HAVE_PTHREAD_H
 				pthread_mutex_unlock(&inst->mutex);
 #endif
@@ -257,7 +257,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			MD5Final(digest, &md5_context);
 			pap_hexify(buff,digest,16);
 			buff[32] = '\0';
-			if (strncmp((char *)passwd_item->strvalue, buff, passwd_item->length) != 0){
+			if (strcmp((char *)passwd_item->strvalue, buff) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
@@ -282,7 +282,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			SHA1Final(digest,&sha1_context);
 			pap_hexify(buff,digest,20);
 			buff[40] = '\0';
-			if (strncmp((char *)passwd_item->strvalue, buff, passwd_item->length) != 0){
+			if (strcmp((char *)passwd_item->strvalue, buff) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
