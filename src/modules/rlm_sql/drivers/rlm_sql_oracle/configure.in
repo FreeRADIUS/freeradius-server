@@ -30,6 +30,29 @@ if test x$with_[]modname != xno; then
 		ORACLE_INCLUDE=
 	)
 
+        # Look for Oracle10g "Instant Client" installed from RPM
+        if test "x$ORACLE_INCLUDE" = "x"; then
+                old_CFLAGS="$CFLAGS"
+
+        AC_MSG_WARN([PETER XXXXXXXXXXXXXXXX1.])
+                FR_LOCATE_DIR(oracle_include_dir,oci.h)
+
+                for try in /usr/include/oracle/10.1.0.3/client $oracle_include_dir; do
+                        CFLAGS="$old_CFLAGS -I$try"
+                        AC_TRY_COMPILE([#include <oci.h>],
+                                [ int a = 1; ],
+                                ORACLE_INCLUDE="-I$try",
+                                ORACLE_INCLUDE=
+                        )
+                        if test "x$ORACLE_INCLUDE" != "x"; then
+                                ORACLE_LIBS="-L$/usr/lib/oracle/10.1.0.3/client/lib -lclntsh -lm"
+                                break;
+                        fi
+                done
+                CFLAGS="$old_CFLAGS"
+        fi
+        # Finish Looking for Oracle10g includes installed from RPM
+
 	# Look for Oracle8i.
 	if test "x$ORACLE_INCLUDE" = "x"; then
 		old_CFLAGS="$CFLAGS"
