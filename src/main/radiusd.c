@@ -110,6 +110,7 @@ int proxy_retry_count = RETRY_COUNT;
 int proxy_synchronous = TRUE;
 int need_reload = FALSE;
 struct main_config_t mainconfig;
+const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 static int got_child = FALSE;
 static int authfd;

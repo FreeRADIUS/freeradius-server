@@ -32,18 +32,12 @@ static const char rcsid[] = "$Id$";
 #include "radiusd.h"
 
 /*
- *	Version number. This should ideally be created by autoconf
- *	or similar, so that this would always be up to date.
- */
-#define VERSION "FreeRADIUS ALPHA, built on " __DATE__ " at " __TIME__
-
-/*
  *	Display the revision number for this program
  */
 void version(void)
 {
 
-	fprintf(stderr, "%s: RADIUS version " VERSION ".\n", progname);
+	fprintf(stderr, "%s: %s\n", progname, radiusd_version);
 	fprintf(stderr, "Compilation flags: ");
 
 	/* here are all the conditional feature flags */

@@ -174,6 +174,7 @@ extern int		proxyfd;
 extern int		proxy_retry_count;
 extern int		proxy_retry_delay;
 extern int		spawn_flag;
+extern const char      *radiusd_version;
 
 /* Define a global config structure */
 extern struct main_config_t mainconfig;

@@ -23,7 +23,9 @@ dnl #############################################################
 AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
-dnl AC_PREFIX_DEFAULT(/usr/local)
+
+dnl # The version of the software, first beta, is 0.1
+RADIUSD_VERSION=0.1
 
 dnl #############################################################
 dnl #
@@ -642,6 +644,7 @@ AC_SUBST(USE_SHARED_LIBS)
 USE_STATIC_LIBS=$enable_static
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
+AC_SUBST(RADIUSD_VERSION)
 export CFLAGS LIBS
 
 AC_OUTPUT(\
@@ -666,5 +669,6 @@ AC_OUTPUT_COMMANDS([
 cat >> src/include/autoconf.h <<EOF
 
 #define HOSTINFO	"$host"
+#define RADIUSD_VERSION "$RADIUSD_VERSION"
 EOF
 ],host=$host)
