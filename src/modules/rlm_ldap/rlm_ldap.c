@@ -242,7 +242,6 @@ static CONF_PARSER module_config[] = {
 	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "20"},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance,start_tls), NULL, "no"},
-	{"tls_mode", PW_TYPE_BOOLEAN, offsetof(ldap_instance,tls_mode), NULL, "no"},
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, ""},
 	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, "o=notexist"},
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
@@ -347,8 +346,8 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	/* workaround for servers which support LDAPS but not START TLS */
 	if(inst->port == LDAPS_PORT)
 		inst->tls_mode = LDAP_OPT_X_TLS_HARD;
-	else if (inst->tls_mode)
-  		inst->tls_mode = LDAP_OPT_X_TLS_TRY;
+	else
+		inst->tls_mode = 0;
 	inst->reply_item_map = NULL;
 	inst->check_item_map = NULL;
 	inst->conns = NULL;
@@ -1450,7 +1449,6 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
  			radlog(L_ERR, "rlm_ldap: could not set LDAP_OPT_X_TLS option %s", ldap_err2string(ldap_errno));
 		}
 	}
-
 	if (inst->start_tls) {
 		DEBUG("rlm_ldap: starting TLS");
 		rc = ldap_start_tls_s(ld, NULL, NULL);

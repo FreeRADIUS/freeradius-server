@@ -710,11 +710,9 @@ modules {
 		# set this to 'yes' to use TLS encrypted connections
 		# to the LDAP database by using the StartTLS extended
 		# operation.
+		# The StartTLS operation is supposed to be used with normal
+		# ldap connections instead of using ldaps (port 689) connections
 		start_tls = no
-		# set this to 'yes' to use TLS encrypted connections to the
-		# LDAP database by passing the LDAP_OPT_X_TLS_TRY option to
-		# the ldap library.
-		tls_mode = no
 
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
 		# profile_attribute = "radiusProfileDn"
