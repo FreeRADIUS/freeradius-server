@@ -997,8 +997,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	DICT_ATTR		*attr;
 	uint32_t		lvalue;
 	uint32_t		vendorcode;
-	VALUE_PAIR		*first_pair;
-	VALUE_PAIR		*prev;
+	VALUE_PAIR		**tail;
 	VALUE_PAIR		*pair;
 	uint8_t			*ptr;
 	int			length;
@@ -1110,8 +1109,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	 */
 	ptr = hdr->data;
 	length = packet->data_len - AUTH_HDR_LEN;
-	first_pair = NULL;
-	prev = NULL;
+	packet->vps = NULL;
+	tail = &packet->vps;
 
 	vendorcode = 0;
 	vendorlen  = 0;
@@ -1167,7 +1166,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		 *	FIXME: should we us paircreate() ?
 		 */
 		if ((pair = malloc(sizeof(VALUE_PAIR))) == NULL) {
-			pairfree(&first_pair);
+			pairfree(&packet->vps);
 			librad_log("out of memory");
 			errno = ENOMEM;
 			return -1;
@@ -1176,7 +1175,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		memset(pair, 0, sizeof(VALUE_PAIR));
 		if ((attr = dict_attrbyvalue(attribute)) == NULL) {
 			snprintf(pair->name, sizeof(pair->name), "Attr-%d", attribute);
-			pair->type = PW_TYPE_STRING;
+			pair->type = PW_TYPE_OCTETS;
 		} else {
 			strcpy(pair->name, attr->name);
 			pair->type = attr->type;
@@ -1350,19 +1349,14 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		
 		if (pair) {
 			debug_pair(pair);
-			if (first_pair == NULL)
-				first_pair = pair;
-			else
-				  	prev->next = pair;
-			prev = pair;
+			*tail = pair;
+			tail = &pair->next;
 		}
 
 		ptr += attrlen;
 		length -= attrlen;
 		if (vendorlen > 0) vendorlen -= (attrlen + 2);
 	}
-
-	packet->vps = first_pair;
 
 	/*
 	 *	Merge information from the outside world into our
