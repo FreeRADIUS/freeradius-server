@@ -823,8 +823,8 @@ autz_redo:
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
-			request->reply->vps = tmp;
-			
+
+			pairadd(&request->reply->vps, tmp);
 			rad_authlog("Login incorrect (external check failed)", 
 					request, 0);
 
@@ -861,13 +861,13 @@ autz_redo:
 	if (user_msg == NULL) {
 		reply_item = pairfind(request->reply->vps, PW_REPLY_MESSAGE);
 		while (reply_item) {
-		  radius_xlat(buf, sizeof(reply_item->strvalue),
-			      (char *)reply_item->strvalue, request, NULL);
-		strNcpy((char *)reply_item->strvalue, buf,
+			radius_xlat(buf, sizeof(reply_item->strvalue),
+				    (char *)reply_item->strvalue, request, NULL);
+			strNcpy((char *)reply_item->strvalue, buf,
 				sizeof(reply_item->strvalue));
-		reply_item->length = strlen((char *)reply_item->strvalue);
-		user_msg = NULL;
-		reply_item = pairfind(reply_item->next, PW_REPLY_MESSAGE);
+			reply_item->length = strlen((char *)reply_item->strvalue);
+			user_msg = NULL;
+			reply_item = pairfind(reply_item->next, PW_REPLY_MESSAGE);
 		}
 	}
 
