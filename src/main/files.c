@@ -407,8 +407,8 @@ int read_realms_file(const char *file)
 			c->auth_port = atoi(s);
 			c->acct_port = c->auth_port + 1;
 		} else {
-			c->auth_port = auth_port;
-			c->acct_port = acct_port;
+			c->auth_port = PW_AUTH_UDP_PORT;
+			c->acct_port = PW_ACCT_UDP_PORT;
 		}
 
 		if (strcmp(hostnm, "LOCAL") == 0) {
