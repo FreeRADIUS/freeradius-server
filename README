@@ -8,3 +8,16 @@
 
 Please see the README and other documentation in the doc/ subdirectory
 
+
+  If you have ANY problems, concerns, or surprises when running the
+server, then run it in debugging mode, as root, from the command line:
+
+$ radiusd -X
+
+It will produce a large number of messages.  The answers to many
+questions, and the solution to many problems, can usually be found in
+these messages.
+
+  For further details, see:
+
+  http://www.freeradius.org/faq/
