@@ -208,7 +208,7 @@ CREATE OR REPLACE FUNCTION strip_dot (text) returns timestamp AS '
 
 
 /*
- * Some database VIEWs to simplify billing queries.
+ * Some sample database VIEWs to simplify billing queries.
  */
 CREATE OR REPLACE VIEW call_history AS
 SELECT pots.h323ConnectTime, pots.AcctSessionTime, pots.CalledStationId, ip.H323RemoteAddress, ip.NASIPAddress
@@ -220,13 +220,6 @@ SELECT h323ConnectTime, AcctSessionTime, CalledStationId, H323RemoteAddress, NAS
 FROM call_history
 WHERE AcctSessionTime > 0
 ORDER BY h323ConnectTime, CalledStationId, AcctSessionTime, H323RemoteAddress ASC;
-
-CREATE OR REPLACE VIEW call_errors AS
-SELECT h323SetupTime, h323disconnectcause, AcctSessionTime, CalledStationId, H323RemoteAddress
-FROM StopVoIP
-WHERE h323disconnectcause <> 0 AND h323disconnectcause <> 10
-AND h323disconnectcause <> 11 AND h323disconnectcause <> 13
-ORDER BY h323SetupTime, CalledStationId, H323RemoteAddress ASC;
 
 CREATE OR REPLACE VIEW call_history_daily AS
 SELECT pots.h323ConnectTime, pots.AcctSessionTime, pots.CalledStationId, ip.H323RemoteAddress, pots.NASIPAddress
@@ -240,4 +233,3 @@ FROM StopTelephony  AS pots, StopVoIP AS ip
 WHERE pots.h323ConfID = ip.h323ConfID AND ip.h323disconnectcause <> 0 AND ip.h323disconnectcause <> 10
 AND ip.h323disconnectcause <> 11 AND ip.h323disconnectcause <> 13
 ORDER BY H323ConnectTime, CalledStationId, H323RemoteAddress ASC;
-
