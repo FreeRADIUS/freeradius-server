@@ -591,7 +591,7 @@ int eap_compose(EAP_HANDLER *handler)
  */
 int eap_start(rlm_eap_t *inst, REQUEST *request)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *proxy;
 	VALUE_PAIR *eap_msg;
 	EAP_DS *eap_ds;
 	EAP_HANDLER handler;
@@ -633,16 +633,21 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	}
 
 	/*
-	 *	If we've been configured to proxy, do nothing.
-	 *
-	 *	Note that we don't check if the realm is local.
-	 *	We figure that anyone bright enough to add
-	 *	Proxy-To-Realm is bright enough to NOT do so
-	 *	when it's a local realm.
+	 *	Check for a Proxy-To-Realm.  Don't get excited over LOCAL
+	 *	realms (sigh).
 	 */
-	if ((vp = pairfind(request->config_items, PW_PROXY_TO_REALM)) != NULL) {
-		DEBUG2("  rlm_eap: Request is supposed to be proxied to Realm %s.  Not doing EAP.", vp->strvalue);
-	  	return EAP_NOOP;
+	proxy = pairfind(request->config_items, PW_PROXY_TO_REALM);
+	if (proxy) {
+		REALM *realm;
+
+		/*
+		 *	If it's a LOCAL realm, then we're not proxying
+		 *	to it.
+		 */
+		realm = realm_find(proxy->strvalue, 0);
+		if (realm && (realm->ipaddr == htonl(INADDR_NONE))) {
+			proxy = NULL;
+		}
 	}
 
 	/*
@@ -726,9 +731,19 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		} /* else it's not an EAP-Request or EAP-Response */
  
 		/*
-		 *	No EAP-Start found.
+		 *	No EAP-Start found.  Proxying: return NOOP.
+		 *	Not proxying, return NOTFOUND.
 		 */
+		if (proxy) goto do_proxy; /* 3 lines below. */
 		return EAP_NOTFOUND;
+
+	} else if (proxy) {
+	do_proxy:
+		/*
+		 *	EAP-Start, but proxied.  Don't do EAP.
+		 */
+		DEBUG2("  rlm_eap: Request is supposed to be proxied to Realm %s.  Not doing EAP.", proxy->strvalue);
+		return EAP_NOOP;
 	}
 
 	DEBUG2("  rlm_eap: Got EAP_START message");
