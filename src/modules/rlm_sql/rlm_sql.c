@@ -135,30 +135,38 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 	}
 
 	ret = rlm_sql_fetch_row(sqlsocket, inst);
-
 	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-	sql_release_socket(inst,sqlsocket);
+
 	if (ret) {
 		DEBUG("rlm_sql: SQL query did not succeed");
+		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
+
 	row = sqlsocket->row;
 	if (row == NULL) {
 		DEBUG("rlm_sql: SQL query did not return any results");
+		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
+
 	if (row[0] == NULL){
 		DEBUG("rlm_sql: row[0] returned NULL");
+		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
 	ret = strlen(row[0]);
 	if (ret > freespace){
 		DEBUG("rlm_sql: sql_xlat:: Insufficient string space");
+		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
+
 	strncpy(out,row[0],ret);
+
 	DEBUG("rlm_sql: - sql_xlat finished");
 
+	sql_release_socket(inst,sqlsocket);
 	return ret;
 }
 
