@@ -68,7 +68,7 @@
 #ifdef _LIBRADIUS
 #  define AUTH_HDR_LEN		20
 #  define VENDORPEC_USR		429
-#  define VENDOR(x)		(x >> 16)
+#  define VENDOR(x)		((x >> 16) & 0xffff)
 #  define DEBUG			if (librad_debug) printf
 #  define debug_pair(vp)	do { if (librad_debug) { \
 					putchar('\t'); \
