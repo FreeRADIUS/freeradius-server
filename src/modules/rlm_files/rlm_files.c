@@ -225,7 +225,7 @@ file_dynamic_log_init()
 	sprintf(fn,"%s/%s",radius_dir,"rlm_files_log.cfg");
 	logcnt = 0;
 	if (f = fopen(fn,"r")) {
-		printf("Loading %s\n",fn);
+		log_debug("Loading %s",fn);
 		while (logcnt < MAX_LOGS) {
 			file_getline(f,logcfg[logcnt].dir,sizeof(logcfg[logcnt].dir));
 			file_getline(f,logcfg[logcnt].fname,sizeof(logcfg[logcnt].fname));
@@ -240,10 +240,10 @@ file_dynamic_log_init()
 				break;
 			}
 		}
-		printf("%d logs configured\n",logcnt);
+		log_debug("%d logs configured",logcnt);
 		fclose(f);
 	} else {
-		printf("Error loading %s\n",fn);
+		log_debug("Error loading %s",fn);
 	}
 
 
@@ -487,11 +487,26 @@ file_write_dynamic_log(REQUEST * request)
 			if (strcasecmp(logcfg[x].mode,"d") == 0) {
 				remove(fn);
 			} else {
-				if (f = fopen(fn,logcfg[x].mode)) {
+				if (fn[y] == '|') {
+					f = popen(&fn[y],logcfg[x].mode);
+				} else {
+					f = fopen(fn,logcfg[x].mode);
+				}
+				if (f) {
 					/* FIXME must get the reply packet */
 					radius_xlat2(buffer,sizeof(buffer),logcfg[x].fmt,request,request->packet->vps);
 					fprintf(f,"%s",buffer);
-					fclose(f);
+					if (fn[y] == '|') {
+						pclose(f);
+					} else {
+						fclose(f);
+					}
+				} else {
+					if (fn[y] == '|') {
+						log_debug("Error opening pipe %s",fn[y]);
+					} else {
+						log_debug("Error opening log %s",fn);
+					}
 				}
 			}
 		}
