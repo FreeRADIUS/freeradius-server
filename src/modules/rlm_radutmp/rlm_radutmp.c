@@ -85,6 +85,10 @@ static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 	rlm_radutmp_t *inst;
 
 	inst = rad_malloc(sizeof(*inst));
+	if (!inst) {
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
 
 	if (cf_section_parse(conf, inst, module_config)) {
 		free(inst);

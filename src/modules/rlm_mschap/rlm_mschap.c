@@ -345,7 +345,12 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct mschap_instance *inst;
 
-	inst = *instance = rad_malloc(sizeof(struct mschap_instance));
+	inst = *instance = rad_malloc(sizeof(*inst));
+	if (!inst) {
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
+
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
 		return -1;

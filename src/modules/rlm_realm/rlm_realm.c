@@ -295,7 +295,11 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
         struct realm_config_t *inst;
 
         /* setup a storage area for instance data */
-        inst = rad_malloc(sizeof(struct realm_config_t));
+        inst = rad_malloc(sizeof(*inst));
+	if (!inst) {
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
 
 	if(cf_section_parse(conf, inst, module_config) < 0) {
 	       free(inst);

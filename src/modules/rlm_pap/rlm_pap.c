@@ -102,6 +102,10 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
          *      Set up a storage area for instance data
          */
         inst = rad_malloc(sizeof(*inst));
+	if (!inst) {
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
 
         /*
          *      If the configuration parameters can't be parsed, then
