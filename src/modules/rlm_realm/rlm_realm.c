@@ -79,10 +79,10 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	VALUE_PAIR *vp;
 	REALM *realm;
 
+        struct realm_config_t *inst = instance;
+
 	/* initiate returnrealm */
 	*returnrealm = NULL;
-
-        struct realm_config_t *inst = instance;
 
 	/*
 	 *	If the request has a proxy entry, then it's a proxy
