@@ -179,12 +179,12 @@ AC_ARG_WITH(threads,
 )
 
 dnl extra argument: --with-thread-pool
-WITH_THREAD_POOL=no
+WITH_THREAD_POOL=yes
 AC_ARG_WITH(thread-pool,
-[  --with-thread-pool      Use a pool of threads for high-load systems.  (default=no) ],
+[  --with-thread-pool      Use a pool of threads for high-load systems.  (default=yes ],
 [ case "$withval" in
-    yes)
-	WITH_THREAD_POOL=yes
+    no)
+	WITH_THREAD_POOL=no
 	;;
     *)
         ;;
@@ -340,16 +340,21 @@ dnl #
     )
   fi
 
-dnl # 
-dnl # If we have NO pthread libraries, remove any knowledge of threads.
-dnl # 
-  if test "x$PTHREADLIB" = "x"; then
-    CFLAGS=$SAVED_CFLAGS
-    ac_cv_header_pthread_h="no"
-  else
+dnl # Set libs, etc, if we have them.
+  if test "x$PTHREADLIB" != "x"; then
     LIBS="$LIBS $PTHREADLIB"
     CFLAGS="$CFLAGS -D_REENTRANT"
   fi
+fi
+
+dnl # 
+dnl # If we have NO pthread libraries, remove any knowledge of threads.
+dnl # 
+if test "x$PTHREADLIB" = "x"; then
+  CFLAGS=$SAVED_CFLAGS
+  ac_cv_header_pthread_h="no"
+  WITH_THREADS=no
+  WITH_THREAD_POOL=no
 fi
 
 dnl Check if we need -lsocket
