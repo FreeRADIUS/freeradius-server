@@ -643,7 +643,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
         int             res;
         LDAPMessage     *result = NULL;
         LDAPMessage     *msg = NULL;
-        char            basedn[1024];
+        char            basedn[MAX_GROUP_STR_LEN];
 	char		*attrs[] = {"dn",NULL};
         ldap_instance   *inst = instance;
 	LDAP_CONN	*conn;
@@ -712,7 +712,13 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
                 return 1;
         }
 
-	snprintf(filter,MAX_GROUP_STR_LEN - 1, "(&(%s=%s)%s)",inst->groupname_attr,(char *)check->strvalue,gr_filter);
+	if (strchr((char *)check->strvalue,',') != NULL) {
+		/* This looks like a DN */
+		snprintf(filter,MAX_GROUP_STR_LEN - 1, "%s",gr_filter);
+		snprintf(basedn,MAX_GROUP_STR_LEN - 1, "%s",(char *)check->strvalue);
+	} else 
+		snprintf(filter,MAX_GROUP_STR_LEN - 1, "(&(%s=%s)%s)",inst->groupname_attr,(char *)check->strvalue,gr_filter);
+
 
 	if ((conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1){
 		radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
