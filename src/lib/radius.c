@@ -302,10 +302,8 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	sa->sin_addr.s_addr = packet->dst_ipaddr;
 	sa->sin_port = htons(packet->dst_port);
 
-	sendto(packet->sockfd, packet->data, (int)packet->data_len, 0,
-			&saremote, sizeof(struct sockaddr_in));
-
-	return 0;
+	return sendto(packet->sockfd, packet->data, (int)packet->data_len, 0,
+		      &saremote, sizeof(struct sockaddr_in));
 }
 
 
@@ -731,10 +729,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 
 	packet->vps = first_pair;
 
-	free(packet->data);
-	packet->data = NULL;
-	packet->data_len = 0;
-
 	/*
 	 *	Merge information from the outside world into our
 	 *	random vector pool.  The MD5 is expensive, but it's
@@ -754,14 +748,14 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	 *	32 packets, and do less work the rest of the time.
 	 */
 	if ((random_vector_pool[0] & 0x1f) == 0x00) {
-	  memcpy((char *) random_vector_pool + AUTH_VECTOR_LEN,
-		 (char *) packet->vector, AUTH_VECTOR_LEN);
-	  librad_md5_calc((u_char *)random_vector_pool,
-			  (u_char *)random_vector_pool,
-			  sizeof(random_vector_pool));
-	} else {
-	  random_vector_pool[random_vector_pool[1] & 0x1f] ^= 
-	    packet->vector[random_vector_pool[2] & 0x0f];
+		memcpy((char *) random_vector_pool + AUTH_VECTOR_LEN,
+		       (char *) packet->vector, AUTH_VECTOR_LEN);
+		librad_md5_calc((u_char *)random_vector_pool,
+				(u_char *)random_vector_pool,
+				sizeof(random_vector_pool));
+
+	} else for (length = 0; length < AUTH_VECTOR_LEN; length++) {
+		random_vector_pool[length] += packet->vector[length];
 	}
 
 	return 0;
@@ -938,7 +932,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *pas
 /*
  *	Create a random vector of AUTH_VECTOR_LEN bytes.
  */
-static void random_vector(char *vector)
+static void random_vector(uint8_t *vector)
 {
 	int		i;
 	static int	did_srand = 0;
@@ -969,7 +963,7 @@ static void random_vector(char *vector)
 			/*
 			 *	Read 16 bytes.
 			 */
-			if (read(urandom_fd, vector, AUTH_VECTOR_LEN)
+			if (read(urandom_fd, (char *) vector, AUTH_VECTOR_LEN)
 			    == AUTH_VECTOR_LEN)
 				return;
 			/*
@@ -990,7 +984,7 @@ static void random_vector(char *vector)
 		 *	make it a little better by MD5'ing it.
 		 */
 		for (i = 0; i < (int)sizeof(random_vector_pool); i++) {
-			random_vector_pool[i] ^= rand() & 0xff;
+			random_vector_pool[i] += rand() & 0xff;
 		}
 
 		librad_md5_calc((u_char *) random_vector_pool,
@@ -1006,10 +1000,7 @@ static void random_vector(char *vector)
 	 *	so it's all mashed together.
 	 */
 	counter++;
-	random_vector_pool[AUTH_VECTOR_LEN]     ^= (counter & 0xff);
-	random_vector_pool[AUTH_VECTOR_LEN + 1] ^= ((counter >> 8) & 0xff);
-	random_vector_pool[AUTH_VECTOR_LEN + 2] ^= ((counter >> 16) & 0xff);
-	random_vector_pool[AUTH_VECTOR_LEN + 3] ^= ((counter >> 24) & 0xff);
+	random_vector_pool[AUTH_VECTOR_LEN] += (counter & 0xff);
 	librad_md5_calc((u_char *) random_vector_pool,
 			(u_char *) random_vector_pool,
 			sizeof(random_vector_pool));
@@ -1017,8 +1008,8 @@ static void random_vector(char *vector)
 	/*
 	 *	And do another MD5 hash of the result, to give
 	 *	the user a random vector.  This ensures that the
-	 *	user has a random vector, without us giving them
-	 *	and exact image of what's in the random pool.
+	 *	user has a random vector, without giving them
+	 *	an exact image of what's in the random pool.
 	 */
 	librad_md5_calc((u_char *) vector,
 			(u_char *) random_vector_pool,
@@ -1037,7 +1028,7 @@ RADIUS_PACKET *rad_alloc(int newvector)
 		return NULL;
 	memset(rp, 0, sizeof(RADIUS_PACKET));
 	if (newvector)
-		random_vector((char *)rp->vector);
+		random_vector(rp->vector);
 
 	return rp;
 }
