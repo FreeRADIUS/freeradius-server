@@ -120,27 +120,62 @@ static int pdb_decode_acct_ctrl(const char *p)
 
 	if (*p != '[') return 0;
 
-	for (p++; *p && !finished; p++)
-	{
-		switch (*p)
-		{
-			case 'N': { acct_ctrl |= ACB_PWNOTREQ ; break; /* 'N'o password. */ }
-			case 'D': { acct_ctrl |= ACB_DISABLED ; break; /* 'D'isabled. */ }
-			case 'H': { acct_ctrl |= ACB_HOMDIRREQ; break; /* 'H'omedir required. */ }
-			case 'T': { acct_ctrl |= ACB_TEMPDUP  ; break; /* 'T'emp account. */ } 
-			case 'U': { acct_ctrl |= ACB_NORMAL   ; break; /* 'U'ser account (normal). */ } 
-			case 'M': { acct_ctrl |= ACB_MNS      ; break; /* 'M'NS logon user account. What is this ? */ } 
-			case 'W': { acct_ctrl |= ACB_WSTRUST  ; break; /* 'W'orkstation account. */ } 
-			case 'S': { acct_ctrl |= ACB_SVRTRUST ; break; /* 'S'erver account. */ } 
-			case 'L': { acct_ctrl |= ACB_AUTOLOCK ; break; /* 'L'ocked account. */ } 
-			case 'X': { acct_ctrl |= ACB_PWNOEXP  ; break; /* No 'X'piry on password */ } 
-			case 'I': { acct_ctrl |= ACB_DOMTRUST ; break; /* 'I'nterdomain trust account. */ }
-		        case ' ': { break; }
+	for (p++; *p && !finished; p++) {
+		switch (*p) {
+			case 'N': /* 'N'o password. */
+			  acct_ctrl |= ACB_PWNOTREQ;
+			  break;
+
+			case 'D':  /* 'D'isabled. */
+			  acct_ctrl |= ACB_DISABLED ; 
+			  break;
+
+			case 'H':  /* 'H'omedir required. */
+			  acct_ctrl |= ACB_HOMDIRREQ;
+			  break;
+
+			case 'T': /* 'T'emp account. */
+			  acct_ctrl |= ACB_TEMPDUP;
+			  break;
+
+			case 'U': /* 'U'ser account (normal). */
+			  acct_ctrl |= ACB_NORMAL;
+			  break;
+
+			case 'M': /* 'M'NS logon user account. What is this? */
+			  acct_ctrl |= ACB_MNS;
+			  break;
+
+			case 'W': /* 'W'orkstation account. */
+			  acct_ctrl |= ACB_WSTRUST;
+			  break;
+
+			case 'S': /* 'S'erver account. */
+			  acct_ctrl |= ACB_SVRTRUST;
+			  break;
+
+			case 'L': /* 'L'ocked account. */
+			  acct_ctrl |= ACB_AUTOLOCK;
+			  break;
+
+			case 'X': /* No 'X'piry on password */
+			  acct_ctrl |= ACB_PWNOEXP;
+			  break;
+
+			case 'I': /* 'I'nterdomain trust account. */
+			  acct_ctrl |= ACB_DOMTRUST;
+			  break;
+
+		        case ' ': /* ignore spaces */
+			  break;
+
 			case ':':
 			case '\n':
 			case '\0': 
 			case ']':
-			default:  { finished = 1; }
+			default:
+			  finished = 1;
+			  break;
 		}
 	}
 
