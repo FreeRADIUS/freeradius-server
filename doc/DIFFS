@@ -93,7 +93,7 @@ SECTION 1 - CREATING AND SENDING YOUR CHANGE
       developer has to do additional work to read your patch, the odds
       are that it will be ignored completely.
 
-   5. E-mail size. 
+   6. E-mail size. 
 
       When sending patches, always follow step #5. 
 
@@ -102,13 +102,13 @@ SECTION 1 - CREATING AND SENDING YOUR CHANGE
       preferred that you store your patch on an Internet-accessible
       server, and provide instead a URL (link) pointing to your patch.
 
-   6. Name the version of the server.
+   7. Name the version of the server.
 
       It is important to note, either in the subject line or in the
       patch description, the server version to which this patch
       applies.
 
-   7. Don't get discouraged. Re-submit. 
+   8. Don't get discouraged. Re-submit. 
 
       After you have submitted your change, be patient and wait. If
       the patch is approved and applied, it will appear in the next
@@ -139,8 +139,8 @@ section Linus Computer Science 101.
 
    1. Read the Documentation and follow the CodingStyle 
 
-      The FreeRADIUS server has a common coding style.  Tabs are 8
-      characters.  There is whitespace in variable assignments.
+      The FreeRADIUS server has a common coding style.  Use real tabs
+	  to indent.  There is whitespace in variable assignments.
       (i = 1, NOT i=1).
 
       When in doubt, format your code to look the same as code already
