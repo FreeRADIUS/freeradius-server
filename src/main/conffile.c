@@ -121,31 +121,21 @@ static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 }
 
 /*
- *	Add an item to a configuration section.
- */
-static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
-{
-	CONF_ITEM *ci;
-	
-	for (ci = cs->children; ci && ci->next; ci = ci->next)
-		;
-
-	if (ci == NULL)
-		cs->children = ci_new;
-	else
-		ci->next = ci_new;
-}
-
-/*
  *	Free a CONF_PAIR
  */
-void cf_pair_free(CONF_PAIR *cp)
+void cf_pair_free(CONF_PAIR **cp)
 {
-	if (cp == NULL) return;
+	if (!cp || !*cp) return;
 
-	if (cp->attr)  free(cp->attr);
-	if (cp->value) free(cp->value);
-	free(cp);
+	if ((*cp)->attr)  free((*cp)->attr);
+	if ((*cp)->value) free((*cp)->value);
+
+#ifndef NDEBUG
+	memset(*cp, 0, sizeof(*cp));
+#endif
+	free(*cp);
+
+	*cp = NULL;
 }
 
 /*
@@ -171,27 +161,51 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 /*
  *	Free a CONF_SECTION
  */
-void cf_section_free(CONF_SECTION *cs)
+void cf_section_free(CONF_SECTION **cs)
 {
 	CONF_ITEM	*ci, *next;
 
-	if (cs == NULL) return;
+	if (!cs || !*cs) return;
 
-	for (ci = cs->children; ci; ci = next) {
+	for (ci = (*cs)->children; ci; ci = next) {
 		next = ci->next;
-		if (ci->type==CONF_ITEM_PAIR)
-			cf_pair_free(cf_itemtopair(ci));
-		else
-			cf_section_free(cf_itemtosection(ci));
+		if (ci->type==CONF_ITEM_PAIR) {
+			CONF_PAIR *pair = cf_itemtopair(ci);
+			cf_pair_free(&pair);
+		} else {
+			CONF_SECTION *section = cf_itemtosection(ci);
+			cf_section_free(&section);
+		}
 	}
 
-	if (cs->name1) free(cs->name1);
-	if (cs->name2) free(cs->name2);
+	if ((*cs)->name1) free((*cs)->name1);
+	if ((*cs)->name2) free((*cs)->name2);
 
 	/*
 	 * And free the section
 	 */
-	free(cs);
+#ifndef NDEBUG
+	memset(*cs, 0, sizeof(*cs));
+#endif
+	free(*cs);
+
+	*cs = NULL;
+}
+
+/*
+ *	Add an item to a configuration section.
+ */
+static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
+{
+	CONF_ITEM *ci;
+	
+	for (ci = cs->children; ci && ci->next; ci = ci->next)
+		;
+
+	if (ci == NULL)
+		cs->children = ci_new;
+	else
+		ci->next = ci_new;
 }
 
 /*
@@ -206,7 +220,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 	char            name[1024];
 	CONF_PAIR	*cpn;
 	CONF_SECTION    *outercs;
-	
+
 	p = output;
 	ptr = input;
 	while (*ptr >= ' ') {
@@ -237,7 +251,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		name[end - ptr] = '\0';
 
 		cpn = cf_pair_find(cs, name);
-
+		
 		/*
 		 *	Also look recursively up the section tree,
 		 *	so things like ${confdir} can be defined
@@ -252,10 +266,9 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		if (!cpn) {
 			radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
 			       cf, *lineno, name);
-			  cf_section_free(cs);
-			  return NULL;
+			return NULL;
 		}
-
+		
 		/*
 		 *  Substitute the value of the variable.
 		 */
@@ -358,8 +371,10 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			 *	been expanded.
 			 */
 			if (value && (value == variables[i].dflt)) {
-				cf_expand_variables(NULL, 0, cs, buffer,value);
-				value = buffer;
+				value = cf_expand_variables(NULL, 0, cs, buffer,value);
+				if (!value) {
+					return -1;
+				}
 			}
 
 			DEBUG2(" %s: %s = \"%s\"",
@@ -409,6 +424,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	CONF_SECTION	*cs, *css;
 	CONF_PAIR	*cpn;
 	char		*ptr;
+	const char      *value;
 	char		buf[8192];
 	char		buf1[1024];
 	char		buf2[1024];
@@ -461,12 +477,16 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 		       t2 = getword(&ptr, buf2, sizeof(buf2));
 
-		       cf_expand_variables(cf, lineno, cs, buf, buf2);
+		       value = cf_expand_variables(cf, lineno, cs, buf, buf2);
+		       if (!value) {
+			       cf_section_free(&cs);
+			       return NULL;
+		       }
 
-		       DEBUG2( "Config:   including file: %s", buf );
+		       DEBUG2( "Config:   including file: %s", value );
 		       
-		       if ((is = conf_read(cf, *lineno, buf)) == NULL) {
-			       cf_section_free(cs);
+		       if ((is = conf_read(cf, *lineno, value)) == NULL) {
+			       cf_section_free(&cs);
 			       return NULL;
 		       }
 		       
@@ -497,7 +517,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			if (name1 == NULL || buf2[0]) {
 				radlog(L_ERR, "%s[%d]: Unexpected end of section",
 					cf, *lineno);
-				cf_section_free(cs);
+				cf_section_free(&cs);
 				return NULL;
 			}
 			return cs;
@@ -510,7 +530,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			css = cf_section_read(cf, lineno, fp, buf1,
 					      t2==T_LCBRACE ? NULL : buf2, cs);
 			if (css == NULL) {
-				cf_section_free(cs);
+				cf_section_free(&cs);
 				return NULL;
 			}
 			cf_item_add(cs, cf_sectiontoitem(css));
@@ -532,7 +552,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			  (t2 < T_EQSTART || t2 > T_EQEND)) {
 			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 				cf, *lineno);
-			cf_section_free(cs);
+			cf_section_free(&cs);
 			return NULL;
 		}
 
@@ -543,19 +563,24 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		if (buf1[0] == '_') {
 			radlog(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
 				cf, *lineno, buf1);
-			cf_section_free(cs);
+			cf_section_free(&cs);
 			return NULL;
 		}
 		
 		/*
 		 *	Handle variable substitution via ${foo}
 		 */
-		cf_expand_variables(cf, lineno, cs, buf, buf3);
+		value = cf_expand_variables(cf, lineno, cs, buf, buf3);
+		if (!value) {
+			cf_section_free(&cs);
+			return NULL;
+		}
+
 
 		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
-		cpn = cf_pair_alloc(buf1, buf, t2, parent);
+		cpn = cf_pair_alloc(buf1, value, t2, parent);
 		cpn->item.lineno = *lineno;
 		cf_item_add(cs, cf_pairtoitem(cpn));
 	}
@@ -565,7 +590,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 */
 	if (name1 != NULL) {
 		radlog(L_ERR, "%s[%d]: Unexpected end of file", cf, *lineno);
-		cf_section_free(cs);
+		cf_section_free(&cs);
 		return NULL;
 	}
 
@@ -650,7 +675,7 @@ int read_radius_conf_file(void)
 	 *	Free the old configuration data, and replace it
 	 *	with the new one.
 	 */
-	cf_section_free(config);
+	cf_section_free(&config);
 	config = cs;
 	
 	/*
