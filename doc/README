@@ -63,19 +63,7 @@
   --sysconfdir		Base prefix for the raddb directory. Defaults to
 			${prefix}/etc
   --with-raddbdir=DIR	Configuration files. Defaults to ${sysconfdir}/raddb
-  --with-dbm		Include DBM support (Old-style DBM)
-  --with-ndbm		Include NDBM support
-  --with-ascend-hack	Include Ascend hacks
-  --with-ascend-cpl=N	Set Ascend Channels Per Line to N
-  --with-ntdomain-hack	Include NT Domain hack (strip first part of
-			NT_DOMAIN\loginname if seen)
-  --with-spcj-hack	Include Specialix Jetstream hacks
   --with-dict-nocase	Make dictionary case-independant
-  --without-dynamic-modules
-			Turn off dynamic modules even if your
-			system supports them.
-  --without-attrib-nmc  Turn off support for USR-style vendor specific
-			attributes.
   --without-ascend-binary
 			Turn off support for Ascend binary filter attributes.
 
@@ -89,14 +77,17 @@
 
   Now type "make". The binaries will be compiled.
 
-  Then you do a "make install". That will install JUST the binaries
-  for now. You need to install the rest by hand like this:
+  Then you do a "make install". That will install the binaries, the 'man'
+  pages, and MAY install the configuration files.  If you have not
+  installed a RADIUS server before, then the configuration files for
+  FreeRADIUS will be installed.  If you already have a RADIUS server
+  installed, then FreeRADIUS WILL NOT over-write your current
+  configuration.  It will warn you about the files it could not install.
 
   o Copy the examples in raddb to /etc/raddb and edit+rename the sample files.
   o If you have a Debian system, you might want to install rc.radiusd
     as /etc/init.d/radiusd and install startup symlinks with
     "update-rc.d radiusd defaults".
-  o If you use rc.radiusd, also install radwatch in /usr/local/sbin.
   o Start radiusd (using /etc/init.d/radiusd start if applicable).
 
 3. USAGE
