@@ -64,11 +64,10 @@ uint32_t		myip = INADDR_ANY;
 int			log_auth_detail	= FALSE;
 int			log_auth = FALSE;
 int			log_auth_pass  = FALSE;
-int			auth_port;
+int			auth_port = 0;
 int			acct_port;
 int			proxy_port;
 
-static int		radius_port = 0;
 static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
 static int		authfd;
@@ -131,7 +130,7 @@ CONF_PARSER rad_config[] = {
   { "max_request_time",   PW_TYPE_INTEGER,    &max_request_time },
   { "cleanup_delay",      PW_TYPE_INTEGER,    &cleanup_delay    },
   { "max_requests",       PW_TYPE_INTEGER,    &max_requests     },
-  { "port",               PW_TYPE_INTEGER,    &radius_port },
+  { "port",               PW_TYPE_INTEGER,    &auth_port },
   { "allow_core_dumps",   PW_TYPE_BOOLEAN,    &allow_core_dumps },
   { "log_stripped_names", PW_TYPE_BOOLEAN,    &log_stripped_names },
   { "log_auth",           PW_TYPE_BOOLEAN,    &log_auth },
@@ -225,7 +224,8 @@ int main(int argc, char **argv)
 	int			devnull;
 	int			status;
 	int			dont_fork = FALSE;
-
+	int			radius_port = 0;
+ 
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
 #endif
@@ -386,6 +386,11 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/*
+	 *	Read the configuration files, BEFORE doing anything else.
+	 */
+	reread_config(0);
+
 #if HAVE_SYSLOG_H
 	/*
 	 *	If they asked for syslog, then give it to them.
@@ -407,18 +412,25 @@ int main(int argc, char **argv)
 	/*
 	 *	Open Authentication socket.
 	 *
-	 *	We prefer (in order) the configured port,
-	 *	then the port that the system names "radius",
-	 *	then 1645.
+	 *	We prefer (in order) the port from the command-line,
+	 *	then the port from the configuration file, then
+	 *	the port that the system names "radius", then
+	 *	1645.
 	 */
 	svp = getservbyname ("radius", "udp");
-	if (radius_port)
+	if (radius_port) {
 		auth_port = radius_port;
-	else if (svp != NULL)
-		auth_port = ntohs(svp->s_port);
-	else
-		auth_port = PW_AUTH_UDP_PORT;
-	
+	} else {
+		radius_port = auth_port;
+	}
+
+	if (auth_port == 0) {
+		if (svp != NULL)
+			auth_port = ntohs(svp->s_port);
+		else
+			auth_port = PW_AUTH_UDP_PORT;
+	}
+
 	authfd = socket (AF_INET, SOCK_DGRAM, 0);
 	if (authfd < 0) {
 		perror("auth socket");
@@ -528,11 +540,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 		
-	/*
-	 *	Read config files.
-	 */
-	reread_config(0);
-
 	/*
 	 *	Register built-in compare functions.
 	 */
