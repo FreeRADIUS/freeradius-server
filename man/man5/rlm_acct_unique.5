@@ -5,27 +5,34 @@ rlm_acct_unique \- FreeRADIUS Module
 The \fIrlm_acct_unique\fP module creates a unique accounting session
 Id.
 .PP
+Many NAS vendors have their equipment supply an Acct-Session-Id
+attribute which is not unique over reboots.  This makes accounting
+difficult, as there will be many independent sessions with the same
+Acct-Session-Id attribute.  This module uses the Acct-Session-Id
+attribute, along with other attributes in the request, to create a
+more unique session ID, called Acct-Unique-Session-Id.
+.PP
 The main configuration items to be aware of are:
 .IP key
-List of the attributes to be used in calculating the md5 hash to be
-used as the value for the unique session id.
+A list of the attributes used in calculating an MD5 hash which is used
+as the value for the unique session id.
 .PP
 .DS
 modules {
-  ... stuff here ...
+  ...
 .br
   acct_unique {
 .br
-	key = "User-Name, Acct-Session-Id, NAS-IP-Address, NAS-Port-Id"
+	key = "User-Name, Acct-Session-Id, NAS-IP-Address, NAS-Port"
 .br
   }
 .br
-  ... stuff here ...
+  ...
 .br
 }
 .DE
 .PP
-After generating the md5 digest value, it adds it to the accounting
+After generating the MD5 hash, the module adds it to the accounting
 request packet received from the client.  It will look something like
 this in your detail file:
 .PP
