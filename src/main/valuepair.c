@@ -570,13 +570,17 @@ static int presufcmp(void *instance,
 	if (ret != 0)
 		return ret;
 
-	if (pairfind(check_pairs, PW_STRIP_USER_NAME)) {
-		/*
-		 *	I don't think we want to update the User-Name
-		 *	attribute in place... - atd
-		 */
-		strcpy((char *)request->strvalue, rest);
-		request->length = strlen(rest);
+	if ((vp = pairfind(check_pairs, PW_STRIP_USER_NAME)) != NULL) {
+		if (vp->lvalue == 1) {
+			/*
+			 *	I don't think we want to update the User-Name
+			 *	attribute in place... - atd
+			 */
+			strcpy((char *)request->strvalue, rest);
+			request->length = strlen(rest);
+		} else {
+			return ret;
+		}
 	} else {
 		if ((vp = pairfind(check_pairs, PW_STRIPPED_USER_NAME)) != NULL){
 			strcpy((char *)vp->strvalue, rest);
