@@ -66,7 +66,12 @@ if [ "$?" = "0" ];then
   fi
   echo "#define $DEF" 1 >> config.h
 else
+# We still want to output what we *would* have done to the
+# config files. But we output them commented out, so they don't take
+# affect.
   echo no
+  echo "# $DEF=$LIBS" >>config.mak
+  echo "/* #define $DEF 1 */" >> config.h
 fi
 rm -f tmp$$.c tmp$$ 
 }
