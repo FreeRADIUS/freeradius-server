@@ -483,6 +483,7 @@ ldap_authorize(void *instance, REQUEST * request)
 
 
 	DEBUG("rlm_ldap: looking for check items in directory...");
+
 	if ((check_tmp = ldap_pairget(inst->ld, msg, inst->check_item_map,check_pairs)) != NULL)
 		pairadd(check_pairs, check_tmp);
 
@@ -497,8 +498,10 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
 
+
 	if ((reply_tmp = ldap_pairget(inst->ld, msg, inst->reply_item_map,reply_pairs)) != NULL)
 		pairadd(reply_pairs, reply_tmp);
+
 
 	DEBUG("rlm_ldap: user %s authorized to use remote access",
 	      request->username->strvalue);
@@ -762,8 +765,6 @@ static VALUE_PAIR *
 ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	     TLDAP_RADIUS * item_map, VALUE_PAIR **pairs)
 {
-	BerElement     *berptr;
-	char           *attr;
 	char          **vals;
 	int             vals_count;
 	int             vals_idx;
@@ -772,87 +773,73 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	int             token;
 	int             is_generic_attribute;
 	char            value[64];
-	VALUE_PAIR     *pairlist;
+	VALUE_PAIR     *pairlist = NULL;
 	VALUE_PAIR     *newpair = NULL;
 	DICT_ATTR	*dattr;
-	pairlist = NULL;
-	if ((attr = ldap_first_attribute(ld, entry, &berptr)) == NULL) {
-		DEBUG("rlm_ldap: Object has no attributes");
-		return NULL;
-	}
-	do {
-		/* check if there is a mapping from this LDAP attribute to a RADIUS attribute */
-		for (element = item_map; element != NULL; element = element->next) {
-			if (!strcasecmp(attr, element->attr)) {
-                                /* mapping found, get the values */
-				if (((vals = ldap_get_values(ld, entry, attr)) == NULL)) {
-                                        DEBUG("rlm_ldap: ldap_get_values returned NULL for attribute %s", attr);
-                                        break;
-                                }
 
+	/* check if there is a mapping from this LDAP attribute to a RADIUS attribute */
+	for (element = item_map; element != NULL; element = element->next) {
+	if ((vals = ldap_get_values(ld,entry,element->attr)) != NULL){
+			/* check whether this is a one-to-one-mapped ldap attribute or a generic
+			   attribute and set flag accordingly */
 
-				/* check whether this is a one-to-one-mapped ldap attribute or a generic
-				   attribute and set flag accordingly */
+			if (strcasecmp(element->radius_attr, GENERIC_ATTRIBUTE_ID)==0)
+				is_generic_attribute = 1;
+			else
+				is_generic_attribute = 0;
 
-				if (strcasecmp(element->radius_attr, GENERIC_ATTRIBUTE_ID)==0)
-					is_generic_attribute = 1;
-				else
-					is_generic_attribute = 0;
+			/* find out how many values there are for the attribute and extract all of them */
+
+			vals_count = ldap_count_values(vals);
+
+			for (vals_idx = 0; vals_idx < vals_count; vals_idx++) {
+				ptr = vals[vals_idx];
+
+				if (is_generic_attribute) {
+					/* this is a generic attribute */
+					int dummy; /* makes pairread happy */
 					
-                                /* find out how many values there are for the attribute and extract all of them */
-
-                                vals_count = ldap_count_values(vals);
-
-                                for (vals_idx = 0; vals_idx < vals_count; vals_idx++) {
-                                        ptr = vals[vals_idx];
-					
-					if (is_generic_attribute) {
-						/* this is a generic attribute */
-						int dummy; /* makes pairread happy */
-						
-						/* not sure if using pairread here is ok ... */
-						if ( (newpair = pairread(&ptr, &dummy)) != NULL) {
-							DEBUG("rlm_ldap: extracted attribute %s from generic item %s", 
-							      newpair->name, vals[vals_idx]);
-							if (! vals_idx){
-								dattr=dict_attrbyname(element->radius_attr);
-								if (dattr)
-									pairdelete(pairs,dattr->attr);
-							}
-							pairadd(&pairlist, newpair);
-						} else {
-							radlog(L_ERR, "rlm_ldap: parsing %s failed: %s", 
-							       attr, vals[vals_idx]);
-						}
-					} else {
-						/* this is a one-to-one-mapped attribute */
-						token = gettoken(&ptr, value, sizeof(value));
-						if (token < T_EQSTART || token > T_EQEND) {
-							token = T_OP_EQ;
-						} else {
-							gettoken(&ptr, value, sizeof(value));
-						}
-						if (value[0] == 0) {
-							DEBUG("rlm_ldap: Attribute %s has no value", attr);
-							break;
-						}
-						DEBUG("rlm_ldap: Adding %s as %s, value %s & op=%d", attr, element->radius_attr, value, token);
-						if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
-							continue;
+					/* not sure if using pairread here is ok ... */
+					if ( (newpair = pairread(&ptr, &dummy)) != NULL) {
+						DEBUG("rlm_ldap: extracted attribute %s from generic item %s", 
+						      newpair->name, vals[vals_idx]);
 						if (! vals_idx){
 							dattr=dict_attrbyname(element->radius_attr);
 							if (dattr)
 								pairdelete(pairs,dattr->attr);
 						}
 						pairadd(&pairlist, newpair);
+					} else {
+						radlog(L_ERR, "rlm_ldap: parsing %s failed: %s", 
+						       element->attr, vals[vals_idx]);
 					}
+				} else {
+					/* this is a one-to-one-mapped attribute */
+					token = gettoken(&ptr, value, sizeof(value));
+					if (token < T_EQSTART || token > T_EQEND) {
+						token = T_OP_EQ;
+					} else {
+						gettoken(&ptr, value, sizeof(value));
+					}
+					if (value[0] == 0) {
+						DEBUG("rlm_ldap: Attribute %s has no value", element->attr);
+						break;
+					}
+					DEBUG("rlm_ldap: Adding %s as %s, value %s & op=%d", element->attr, element->radius_attr, value, token);
+						if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
+						continue;
+					if (! vals_idx){
+						dattr=dict_attrbyname(element->radius_attr);
+						if (dattr)
+							pairdelete(pairs,dattr->attr);
+					}
+					pairadd(&pairlist, newpair);
 				}
-                                ldap_value_free(vals);
-                        }
+			}
+			ldap_value_free(vals);
 		}
-	} while ((attr = ldap_next_attribute(ld, entry, berptr)) != NULL);
+	}
 
-	ber_free(berptr, 0);
 	return (pairlist);
 }
 
