@@ -11,6 +11,7 @@ Ver 1.63:
 * Add an entry in the FAQ about the Dialup-Access attribute
 * Add an entry in the FAQ about duplicate personal attributes in the user_admin page
 * Only show the personal attributes in the New User page if we have ldap or we are using the userinfo table in sql
+* Add a per nas finger_type directive
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
