@@ -22,7 +22,9 @@
 #ifndef X99_H
 #define X99_H
 
+#include <inttypes.h>
 #include <openssl/des.h> /* des_cblock */
+#include <time.h>        /* time_t */
 
 /*
  * Things you might like to change (although most are configurables)

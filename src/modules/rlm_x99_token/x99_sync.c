@@ -303,6 +303,7 @@ x99_check_failcount(const char *username, const x99_token_t *inst)
 	}
     }
 
+    return 0;
 }
 
 
