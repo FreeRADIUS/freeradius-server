@@ -36,6 +36,10 @@ static const char rcsid[] =
 #  include	<sys/select.h>
 #endif
 
+#if HAVE_SYSLOG_H
+#include	<syslog.h>
+#endif
+
 #include	"radiusd.h"
 
 /*
@@ -290,6 +294,15 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
+
+#if HAVE_SYSLOG_H
+	/*
+	 *	If they asked for syslog, then give it to them.
+	 */
+	if (strcmp(radlog_dir, "syslog") == 0) {
+		openlog("radiusd", LOG_PID, LOG_DAEMON);
+	}
+#endif
 
 	/*
 	 *	Open Authentication socket.

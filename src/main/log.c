@@ -16,6 +16,10 @@ static const char rcsid[] = "$Id$";
 #include	<time.h>
 #include	"radiusd.h"
 
+#if HAVE_SYSLOG_H
+#include	<syslog.h>
+#endif
+
 /*
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
@@ -28,7 +32,9 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	char	buffer[2048];
 	time_t	timeval;
 	int	len;
-
+#if HAVE_SYSLOG_H
+	int	use_syslog = FALSE;
+#endif
 	if ((lvl & L_CONS) || radlog_dir == NULL || debug_flag) {
 		lvl &= ~L_CONS;
 		if (!debug_flag) fprintf(stderr, "%s: ", progname);
@@ -37,37 +43,49 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	}
 	if (radlog_dir == NULL || debug_flag) return 0;
 
-	if (strcmp(radlog_dir, "stdout") != 0) {
+	if (strcmp(radlog_dir, "stdout") == 0) {
+		msgfd = stdout;
+
+#if HAVE_SYSLOG_H
+	} else if (strcmp(radlog_dir, "syslog") == 0) {
+		use_syslog = TRUE;
+#endif
+	} else {
 		sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
 		if((msgfd = fopen(buffer, "a")) == NULL) {
 			fprintf(stderr, "%s: Couldn't open %s for logging\n",
 					progname, buffer);
 			return -1;
 		}
-	} else {
-		msgfd = stdout;
 	}
 
 	timeval = time(0);
-	strcpy(buffer, ctime(&timeval));
-	switch(lvl) {
-		case L_DBG:
-			s = ": Debug: ";
-			break;
-		case L_AUTH:
-			s = ": Auth: ";
-			break;
-		case L_PROXY:
-			s = ": Proxy: ";
-			break;
-		case L_INFO:
-			s = ": Info: ";
-			break;
-		case L_ERR:
-			s = ": Error: ";
-			break;
+#if HAVE_SYSLOG_H
+	if (use_syslog)
+		*buffer = '\0';
+	else {
+		strcpy(buffer, ctime(&timeval));
+
+		switch(lvl) {
+			case L_DBG:
+			  s = ": Debug: ";
+			  break;
+			case L_AUTH:
+			  s = ": Auth: ";
+			  break;
+			case L_PROXY:
+			  s = ": Proxy: ";
+			  break;
+			case L_INFO:
+			  s = ": Info: ";
+			  break;
+			case L_ERR:
+			  s = ": Error: ";
+			  break;
+		}
+		strcat(buffer, s);
 	}
-	strcpy(buffer + 24, s);
+#endif
 	len = strlen(buffer);
 
 #ifdef HAVE_VSNPRINTF
@@ -90,11 +108,36 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	}
 	strcat(buffer, "\n");
 
-	fputs(buffer, msgfd);
-	if (msgfd != stdout)
-	  fclose(msgfd);
-	else
-	  fflush(stdout);
+#if HAVE_SYSLOG_H
+	if (!use_syslog) {
+		fputs(buffer, msgfd);
+#endif
+		if (msgfd != stdout)
+			fclose(msgfd);
+		else
+			fflush(stdout);
+#if HAVE_SYSLOG_H
+	} else {
+	  switch(lvl) {
+	  	case L_DBG:
+			lvl = LOG_DEBUG;
+			break;
+		case L_AUTH:
+			lvl = LOG_NOTICE;
+			break;
+		case L_PROXY:
+			lvl = LOG_NOTICE;
+			break;
+		case L_INFO:
+			lvl = LOG_INFO;
+			break;
+		case L_ERR:
+			lvl = LOG_ERR;
+			break;
+	  }
+	  syslog(lvl, "%s", buffer);
+	}
+#endif
 
 	return 0;
 }
