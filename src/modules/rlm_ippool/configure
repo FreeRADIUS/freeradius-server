@@ -1169,8 +1169,6 @@ ippool_ldflags=$SMART_LIBS
 ippool_cflags=$SMART_CFLAGS
 
 
-
-
 trap '' 1 2 15
 cat > confcache <<\EOF
 # This file is a shell script that caches the results of configure

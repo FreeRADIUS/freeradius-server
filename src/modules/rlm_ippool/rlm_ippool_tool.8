@@ -216,10 +216,11 @@ To see only information of one entry, use:
 .PP
 To add an \s-1IP\s0 address usage entry, use:
 .PP
-.Vb 3
+.Vb 4
 \& $ rlm_ippool_tool -n ip-pool.db ip-index.db 192.168.1.1 172.16.1.1 0x90
 \& rlm_ippool_tool: Allocating ip to nas/port: 172.16.1.1/144
 \& rlm_ippool_tool: num: 1
+\& rlm_ippool_tool: Allocated ip 192.168.1.1 to client on nas 172.16.1.1,port 144
 .Ve
 .SH "AUTHOR"
 .IX Header "AUTHOR"
@@ -229,4 +230,3 @@ Originally by Edwin Groothuis, edwin@mavetju.org (http://www.mavetju.org)
 Mailing list details are at http://www.freeradius.org/
 .SH "BUGS"
 .IX Header "BUGS"
-\&\-n doesn't support incrementing Multilink-PPP usage. It assumes usage is 1.

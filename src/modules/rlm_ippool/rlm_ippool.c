@@ -34,6 +34,16 @@
  * - Fail if we don't find nas port information
  * Oct 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  * - Do a memset(0) on the key.nas before doing searches. Nusty bug
+ * Jul 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - Make Multilink work this time
+ * - Instead of locking file operations, lock transactions. That means we only keep
+ *   one big transaction lock instead of per file locks (mutexes).
+ * Sep 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - Fix postauth to not leak ip's
+ *   Add an extra attribute in each entry <char extra> signifying if we need to delete this
+ *   entry in the accounting phase. This is only true in case we are doing MPPP
+ *   Various other code changes. Code comments should explain things
+ *   Highly experimental at this phase.
  */
 
 #include "config.h"
@@ -87,14 +97,14 @@ typedef struct rlm_ippool_t {
 	int override;
 	GDBM_FILE gdbm;
 	GDBM_FILE ip;
-	pthread_mutex_t session_mutex;
-	pthread_mutex_t ip_mutex;
+	pthread_mutex_t op_mutex;
 } rlm_ippool_t;
 
 typedef struct ippool_info {
 	uint32_t	ipaddr;
 	char		active;
 	char		cli[32];
+	char		extra;
 } ippool_info;
 
 typedef struct ippool_key {
@@ -238,6 +248,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 
 			entry.ipaddr = ntohl(i);
 			entry.active = 0;
+			entry.extra = 0;
 			strcpy(entry.cli,cli);
 
 			data_datum.dptr = (char *) &entry;
@@ -262,8 +273,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL)
 		data->name = strdup(pool_name);
-	pthread_mutex_init(&data->session_mutex, NULL);
-	pthread_mutex_init(&data->ip_mutex, NULL);
+	pthread_mutex_init(&data->op_mutex, NULL);
 
 	*instance = data;
 	
@@ -280,6 +290,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	rlm_ippool_t *data = (rlm_ippool_t *)instance;
 	datum key_datum;
 	datum data_datum;
+	datum save_datum;
 	int acctstatustype = 0;
 	unsigned int port = ~0;
 	int rcode;
@@ -294,7 +305,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
 		acctstatustype = vp->lvalue;
 	else {
-		DEBUG("rlm_ippool: Could not find account status type in packet.");
+		DEBUG("rlm_ippool: Could not find account status type in packet. Return NOOP.");
 		return RLM_MODULE_NOOP;
 	}
 	switch(acctstatustype){
@@ -302,7 +313,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			if ((vp = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
 				port = vp->lvalue;
 			else {
-				DEBUG("rlm_ippool: Could not find port number in packet.");
+				DEBUG("rlm_ippool: Could not find port number in packet. Return NOOP.");
 				return RLM_MODULE_NOOP;
 			}
 			if ((vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
@@ -311,13 +322,14 @@ static int ippool_accounting(void *instance, REQUEST *request)
 				if ((vp = pairfind(request->packet->vps, PW_NAS_IDENTIFIER)) != NULL)
 					strncpy(nas, vp->strvalue, MAX_NAS_NAME_SIZE - 1);
 				else {
-					DEBUG("rlm_ippool: Could not find nas information in packet.");
+					DEBUG("rlm_ippool: Could not find nas information in packet. Return NOOP.");
 					return RLM_MODULE_NOOP;
 				}
 			}
 			break;
 		default:
 			/* We don't care about any other accounting packet */
+			DEBUG("rlm_ippool: This is not an Accounting-Stop. Return NOOP.");
 
 			return RLM_MODULE_NOOP;
 	}
@@ -329,9 +341,8 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
-	pthread_mutex_lock(&data->session_mutex);
+	pthread_mutex_lock(&data->op_mutex);
 	data_datum = gdbm_fetch(data->gdbm, key_datum);
-	pthread_mutex_unlock(&data->session_mutex);
 	if (data_datum.dptr != NULL){
 
 		/*
@@ -342,15 +353,20 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_ippool: Deallocated entry for ip/port: %s/%u",ip_ntoa(str,entry.ipaddr),port);
 		entry.active = 0;
 
+		/*
+		 * Save the reference to the entry
+		 */
+		save_datum.dptr = key_datum.dptr;
+		save_datum.dsize = key_datum.dsize;
+
 		data_datum.dptr = (char *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
 
-		pthread_mutex_lock(&data->session_mutex);
 		rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
-		pthread_mutex_unlock(&data->session_mutex);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 					data->session_db, gdbm_strerror(gdbm_errno));
+			pthread_mutex_unlock(&data->op_mutex);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -359,9 +375,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		 */
 		key_datum.dptr = (char *) &entry.ipaddr;
 		key_datum.dsize = sizeof(uint32_t);
-		pthread_mutex_lock(&data->ip_mutex);
 		data_datum = gdbm_fetch(data->ip, key_datum);
-		pthread_mutex_unlock(&data->ip_mutex);
 		if (data_datum.dptr != NULL){
 			memcpy(&num, data_datum.dptr, sizeof(int));
 			free(data_datum.dptr);
@@ -370,19 +384,29 @@ static int ippool_accounting(void *instance, REQUEST *request)
 				DEBUG("rlm_ippool: num: %d",num);
 				data_datum.dptr = (char *) &num;
 				data_datum.dsize = sizeof(int);
-				pthread_mutex_lock(&data->ip_mutex);
 				rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
-				pthread_mutex_unlock(&data->ip_mutex);
 				if (rcode < 0) {
 					radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 							data->ip_index, gdbm_strerror(gdbm_errno));
+					pthread_mutex_unlock(&data->op_mutex);
 					return RLM_MODULE_FAIL;
+				}
+				if (num >0 && entry.extra == 1){
+					/*
+					 * We are doing MPPP and we still have nas/port entries referencing
+					 * this ip. Delete this entry so that eventually we only keep one
+					 * reference to this ip.
+					 */
+					gdbm_delete(data->gdbm,save_datum);
 				}
 			}
 		}
+		pthread_mutex_unlock(&data->op_mutex);
 	}
-	else
+	else{
+		pthread_mutex_unlock(&data->op_mutex);
 		DEBUG("rlm_ippool: Entry not found");
+	}
 
 	return RLM_MODULE_OK;
 }
@@ -392,12 +416,16 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	rlm_ippool_t *data = (rlm_ippool_t *) instance;
 	unsigned int port = 0;
 	int delete = 0;
+	int found = 0;
+	int mppp = 0;
+	int extra = 0;
 	int rcode;
 	int num = 0;
 	char nas[MAX_NAS_NAME_SIZE];
 	datum key_datum;
 	datum nextkey;
 	datum data_datum;
+	datum save_datum;
 	ippool_key key;
 	ippool_info entry;
 	VALUE_PAIR *vp;
@@ -430,7 +458,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		if ((vp = pairfind(request->packet->vps, PW_NAS_IDENTIFIER)) != NULL)
 			strncpy(nas, vp->strvalue, MAX_NAS_NAME_SIZE - 1);
 		else{
-			DEBUG("rlm_ippool: Could not find nas information.");
+			DEBUG("rlm_ippool: Could not find nas information. Return NOOP.");
 			return RLM_MODULE_NOOP;
 		}
 	}
@@ -448,7 +476,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
 		port = vp->lvalue;
 	else{
-		DEBUG("rlm_ippool: Could not find port information.");
+		DEBUG("rlm_ippool: Could not find nas port information. Return NOOP.");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -459,38 +487,41 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
-	pthread_mutex_lock(&data->session_mutex);
+	pthread_mutex_lock(&data->op_mutex);
 	data_datum = gdbm_fetch(data->gdbm, key_datum);
-	pthread_mutex_unlock(&data->session_mutex);
 	if (data_datum.dptr != NULL){
 		/*
 		 * If there is a corresponding entry in the database with active=1 it is stale.
 		 * Set active to zero
 		 */
+		found = 1;
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);
 		if (entry.active){
 			DEBUG("rlm_ippool: Found a stale entry for ip/port: %s/%u",ip_ntoa(str,entry.ipaddr),port);
 			entry.active = 0;
 
+			/*
+			 * Save the reference to the entry
+			 */
+			save_datum.dptr = key_datum.dptr;
+			save_datum.dsize = key_datum.dsize;
+
 			data_datum.dptr = (char *) &entry;
 			data_datum.dsize = sizeof(ippool_info);
 
-			pthread_mutex_lock(&data->session_mutex);
 			rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
-			pthread_mutex_unlock(&data->session_mutex);
 			if (rcode < 0) {
 				radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 					data->session_db, gdbm_strerror(gdbm_errno));
+				pthread_mutex_unlock(&data->op_mutex);
 				return RLM_MODULE_FAIL;
 			}
 			/* Decrease allocated count from the ip index */
 
 			key_datum.dptr = (char *) &entry.ipaddr;
 			key_datum.dsize = sizeof(uint32_t);
-			pthread_mutex_lock(&data->ip_mutex);
 			data_datum = gdbm_fetch(data->ip, key_datum);
-			pthread_mutex_unlock(&data->ip_mutex);
 			if (data_datum.dptr != NULL){
 				memcpy(&num, data_datum.dptr, sizeof(int));
 				free(data_datum.dptr);
@@ -499,18 +530,28 @@ static int ippool_postauth(void *instance, REQUEST *request)
 					DEBUG("rlm_ippool: num: %d",num);
 					data_datum.dptr = (char *) &num;
 					data_datum.dsize = sizeof(int);
-					pthread_mutex_lock(&data->ip_mutex);
 					rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
-					pthread_mutex_unlock(&data->ip_mutex);
 					if (rcode < 0) {
 						radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 								data->ip_index, gdbm_strerror(gdbm_errno));
+						pthread_mutex_unlock(&data->op_mutex);
 						return RLM_MODULE_FAIL;
+					}
+					if (num >0 && entry.extra == 1){
+						/*
+						 * We are doing MPPP and we still have nas/port entries referencing
+						 * this ip. Delete this entry so that eventually we only keep one
+						 * reference to this ip.
+						 */
+						gdbm_delete(data->gdbm,save_datum);
 					}
 				}
 			}
 		}
 	}
+
+	pthread_mutex_unlock(&data->op_mutex);
+
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply, check for override
 	 */
@@ -527,79 +568,162 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 	/*
 	 * Walk through the database searching for an active=0 entry.
+	 * We search twice. Once to see if we have an active entry with the same callerid
+	 * so that MPPP can work ok and then once again to find a free entry.
 	 */
 
-	pthread_mutex_lock(&data->session_mutex);
-	key_datum = gdbm_firstkey(data->gdbm);
-	while(key_datum.dptr){
-		data_datum = gdbm_fetch(data->gdbm, key_datum);
-		if (data_datum.dptr){
-			memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
-			free(data_datum.dptr);	
-			/*
-		 	* If we find an entry for the same caller-id and nas with active=1
-		 	* then we use that for multilink (MPPP) to work properly.
-		 	*/
-			if (cli != NULL && strcmp(entry.cli,cli) == 0 && entry.active){
-				memcpy(&key,key_datum.dptr,sizeof(ippool_key));
-				if (!strcmp(key.nas,nas))
-					break;
-			}
-			if (entry.active == 0){
-				datum tmp;		
+	pthread_mutex_lock(&data->op_mutex);
 
-				tmp.dptr = (char *) &entry.ipaddr;
-				tmp.dsize = sizeof(uint32_t);
-				pthread_mutex_lock(&data->ip_mutex);
-				data_datum = gdbm_fetch(data->ip, tmp);
-				pthread_mutex_unlock(&data->ip_mutex);
+	key_datum.dptr = NULL;
+	if (cli != NULL){	
+		key_datum = gdbm_firstkey(data->gdbm);
+		while(key_datum.dptr){
+			data_datum = gdbm_fetch(data->gdbm, key_datum);
+			if (data_datum.dptr){
+				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
+				free(data_datum.dptr);	
+				/*
+		 		* If we find an entry for the same caller-id and nas with active=1
+		 		* then we use that for multilink (MPPP) to work properly.
+		 		*/
+				if (strcmp(entry.cli,cli) == 0 && entry.active){
+					memcpy(&key,key_datum.dptr,sizeof(ippool_key));
+					if (!strcmp(key.nas,nas)){
+						mppp = 1;
+						break;
+					}
+				}
+			}
+			nextkey = gdbm_nextkey(data->gdbm, key_datum);
+			free(key_datum.dptr);
+			key_datum = nextkey;
+		}
+	}
+
+	if (key_datum.dptr == NULL){
+		key_datum = gdbm_firstkey(data->gdbm);
+		while(key_datum.dptr){
+			data_datum = gdbm_fetch(data->gdbm, key_datum);
+			if (data_datum.dptr){
+				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
+				free(data_datum.dptr);	
 
 				/*
-				 * If we find an entry in the ip index and the number is zero (meaning
-				 * that we haven't allocated the same ip address to another nas/port pair)
-				 * or if we don't find an entry then delete the session entry so
-				 * that we can change the key (nas/port)
-				 * Else we don't delete the session entry since we haven't yet deallocated the
-				 * corresponding ip address and we continue our search.
+				 * Find an entry with active == 0
 				 */
+				if (entry.active == 0){
+					datum tmp;		
 
-				if (data_datum.dptr){
-					memcpy(&num,data_datum.dptr, sizeof(int));
-					free(data_datum.dptr);
-					if (num == 0){
+					tmp.dptr = (char *) &entry.ipaddr;
+					tmp.dsize = sizeof(uint32_t);
+					data_datum = gdbm_fetch(data->ip, tmp);
+	
+					/*
+					 * If we find an entry in the ip index and the number is zero (meaning
+					 * that we haven't allocated the same ip address to another nas/port pair)
+					 * or if we don't find an entry then delete the session entry so
+					 * that we can change the key (nas/port)
+					 * Else we don't delete the session entry since we haven't yet deallocated the
+					 * corresponding ip address and we continue our search.
+					 */
+	
+					if (data_datum.dptr){
+						memcpy(&num,data_datum.dptr, sizeof(int));
+						free(data_datum.dptr);
+						if (num == 0){
+							delete = 1;
+							break;
+						}
+					}
+					else{
 						delete = 1;
 						break;
 					}
 				}
-				else{
-					delete = 1;
-					break;
-				}
 			}
+			nextkey = gdbm_nextkey(data->gdbm, key_datum);
+			free(key_datum.dptr);
+			key_datum = nextkey;
 		}
-		nextkey = gdbm_nextkey(data->gdbm, key_datum);
-		free(key_datum.dptr);
-		key_datum = nextkey;
 	}
-	pthread_mutex_unlock(&data->session_mutex);
 	/*
 	 * If we have found a free entry set active to 1 then add a Framed-IP-Address attribute to
 	 * the reply
+	 * We keep the operation mutex locked until after we have set the corresponding entry active
 	 */
 	if (key_datum.dptr){
-		entry.active = 1;
-		data_datum.dptr = (char *) &entry;
-		data_datum.dsize = sizeof(ippool_info);
-
-		if (delete){
+		if (found && !mppp){
 			/*
-		 	 * Delete the entry so that we can change the key
-		 	 */
-			pthread_mutex_lock(&data->session_mutex);
-			gdbm_delete(data->gdbm, key_datum);
-			pthread_mutex_unlock(&data->session_mutex);
+			 * Found == 1 means we have the nas/port combination entry in our database
+			 * We exchange the ip address between the nas/port entry and the free entry
+			 * Afterwards we will save the free ip address to the nas/port entry.
+			 * That is:
+			 *  ---------------------------------------------
+			 *  - NAS/PORT Entry  |||| Free Entry  ||| Time
+			 *  -    IP1                 IP2(Free)    BEFORE
+			 *  -    IP2(Free)           IP1          AFTER
+			 *  ---------------------------------------------
+			 *
+			 * We only do this if we are NOT doing MPPP
+			 *
+			 */
+			datum key_datum_tmp;
+			datum data_datum_tmp;
+			ippool_key key_tmp;	
+
+			memset(key_tmp.nas,0,MAX_NAS_NAME_SIZE);
+			strncpy(key_tmp.nas,nas,MAX_NAS_NAME_SIZE -1 );
+			key_tmp.port = port;
+			DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%u",key_tmp.nas,key_tmp.port);
+			key_datum_tmp.dptr = (char *) &key_tmp;
+			key_datum_tmp.dsize = sizeof(ippool_key);
+
+			data_datum_tmp = gdbm_fetch(data->gdbm, key_datum_tmp);
+			if (data_datum_tmp.dptr != NULL){
+
+				rcode = gdbm_store(data->gdbm, key_datum, data_datum_tmp, GDBM_REPLACE);
+				if (rcode < 0) {
+					radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
+						data->session_db, gdbm_strerror(gdbm_errno));
+						pthread_mutex_unlock(&data->op_mutex);
+					return RLM_MODULE_FAIL;
+				}
+				free(data_datum_tmp.dptr);
+			}
+		}
+		else{
+			/*
+			 * We have not found the nas/port combination
+			 */
+			if (delete){
+				/*
+		 	  	 * Delete the entry so that we can change the key
+			 	 * All is well. We delete one entry and we add one entry
+		 	 	 */
+				gdbm_delete(data->gdbm, key_datum);
+			}
+			else{
+				/*
+				 * We are doing MPPP. (mppp should be 1)
+				 * We don't do anything.
+				 * We will create an extra not needed entry in the database in this case
+				 * but we don't really care since we always also use the ip_index database
+				 * when we search for a free entry.
+				 * We will also delete that entry on the accounting section so that we only
+				 * have one nas/port entry referencing each ip
+				 */
+				if (mppp)
+					extra = 1;
+				if (!mppp)
+					radlog(L_ERR, "rlm_ippool: mppp is not one. Please report this behaviour.");
+			}
 		}
 		free(key_datum.dptr);
+		entry.active = 1;
+		if (extra)
+			entry.extra = 1;
+		data_datum.dptr = (char *) &entry;
+		data_datum.dsize = sizeof(ippool_info);
 		memset(key.nas,0,MAX_NAS_NAME_SIZE);
 		strncpy(key.nas,nas,MAX_NAS_NAME_SIZE - 1);
 		key.port = port;
@@ -607,37 +731,35 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		key_datum.dsize = sizeof(ippool_key);
 		
 		DEBUG2("rlm_ippool: Allocating ip to nas/port: %s/%u",key.nas,key.port);
-		pthread_mutex_lock(&data->session_mutex);
 		rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
-		pthread_mutex_unlock(&data->session_mutex);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 				data->session_db, gdbm_strerror(gdbm_errno));
+				pthread_mutex_unlock(&data->op_mutex);
 			return RLM_MODULE_FAIL;
 		}
 
 		/* Increase the ip index count */
 		key_datum.dptr = (char *) &entry.ipaddr;
 		key_datum.dsize = sizeof(uint32_t);	
-		pthread_mutex_lock(&data->ip_mutex);
 		data_datum = gdbm_fetch(data->ip, key_datum);
-		pthread_mutex_unlock(&data->ip_mutex);
 		if (data_datum.dptr){
 			memcpy(&num,data_datum.dptr,sizeof(int));
 			free(data_datum.dptr);
-		}
+		} else
+			num = 0;
 		num++;
 		DEBUG("rlm_ippool: num: %d",num);
 		data_datum.dptr = (char *) &num;
 		data_datum.dsize = sizeof(int);
-		pthread_mutex_lock(&data->ip_mutex);
 		rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
-		pthread_mutex_unlock(&data->ip_mutex);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 				data->ip_index, gdbm_strerror(gdbm_errno));
+			pthread_mutex_unlock(&data->op_mutex);
 			return RLM_MODULE_FAIL;
 		}
+		pthread_mutex_unlock(&data->op_mutex);
 			
 
 		DEBUG("rlm_ippool: Allocated ip %s to client on nas %s,port %u",ip_ntoa(str,entry.ipaddr),
@@ -666,6 +788,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 	}
 	else{
+		pthread_mutex_unlock(&data->op_mutex);
 		DEBUG("rlm_ippool: No available ip addresses in pool.");
 		return RLM_MODULE_NOOP;
 	}
@@ -681,8 +804,7 @@ static int ippool_detach(void *instance)
 	gdbm_close(data->ip);
 	free(data->session_db);
 	free(data->ip_index);
-	pthread_mutex_destroy(&data->session_mutex);
-	pthread_mutex_destroy(&data->ip_mutex);
+	pthread_mutex_destroy(&data->op_mutex);
 
 	free(instance);
 	return 0;

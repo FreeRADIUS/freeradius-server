@@ -59,6 +59,8 @@
 #include <fcntl.h>
 #include <gdbm.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 
 int active=0;
 
@@ -72,6 +74,7 @@ typedef struct ippool_info {
     uint32_t        ipaddr;
     char            active;
     char            cli[32];
+	char			extra;
 } ippool_info;
 
 
@@ -84,19 +87,27 @@ typedef struct ippool_key {
 #define MATCH_IP(ip1,ip2) ((ip1)==NULL || strcmp((ip1),(ip2))==0)
 #define MATCH_ACTIVE(info) ((info).active==1 || !aflag)
 
+void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname, char*NASport);
+void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress);
+void usage(char *argv0);
+
 void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname, char*NASport) {
     GDBM_FILE sessiondb;
     GDBM_FILE indexdb;
-    datum key_datum,keynext_datum,data_datum;
+    datum key_datum,data_datum,save_datum;
 	datum nextkey;
     ippool_key key;
     ippool_info entry;
     struct in_addr ipaddr;
-    int num;
+    int num=0;
+	int mppp=0;
     int mode=GDBM_WRITER;
-    int rcode;
+    signed int rcode;
 	char *cli = NULL;
 	int delete = 0;
+	int port;
+	int extra = 0;
+	int found = 0;
 
     sessiondb=gdbm_open(sessiondbname,512,mode,0,NULL);
     indexdb=gdbm_open(indexdbname,512,mode,0,NULL);
@@ -118,77 +129,168 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 		printf("rlm_ippool_tool: Unable to open DB '%s'\n", indexdbname);
 		return;
 	}
+
+	port = strtoul(NASport,NULL,0);
 	
 	/* Basically from rlm_ippool.c */
 
 	memset(key.nas,0,MAX_NAS_NAME_SIZE);
 	strncpy(key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
-	key.port = strtoul(NASport,NULL,0);
+	key.port = port;
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
-	key_datum = gdbm_firstkey(sessiondb);
-	while(key_datum.dptr){
-		data_datum = gdbm_fetch(sessiondb, key_datum);
-		if (data_datum.dptr){
-			memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
-			free(data_datum.dptr);	
-			/* Found our entry? */
-			if (entry.ipaddr == ipaddr.s_addr){
-				datum tmp;
+	data_datum = gdbm_fetch(sessiondb, key_datum);
+	if (data_datum.dptr != NULL){
+		found = 1;
+		memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
+		free(data_datum.dptr);	
+		if (entry.active){
+			printf("rlm_ippool_tool: Deleting stale entry for ip/port %s/%u",
+					ipaddress, port);
+			entry.active = 0;
+			save_datum.dptr = key_datum.dptr;
+			save_datum.dsize = key_datum.dsize;
 
-				tmp.dptr = (char *) &entry.ipaddr;
-				tmp.dsize = sizeof(uint32_t);
-				data_datum = gdbm_fetch(indexdb, tmp);
+			data_datum.dptr = (char*) &entry;
+			data_datum.dsize = sizeof(ippool_info);
 
+			rcode = gdbm_store(sessiondb, key_datum, data_datum, GDBM_REPLACE);
+			if (rcode < 0) {
+				printf("rlm_ippool_tool: Failed storing data to %s: %s\n",
+					sessiondbname, gdbm_strerror(gdbm_errno));
+				gdbm_close(indexdb);
+				gdbm_close(sessiondb);
+				return;
+			}
+
+			key_datum.dptr = (char *) &entry.ipaddr;
+			key_datum.dsize = sizeof(uint32_t);
+			data_datum = gdbm_fetch(indexdb, key_datum);
+			if (data_datum.dptr != NULL) {
+				memcpy(&num, data_datum.dptr, sizeof(int));
+				free(data_datum.dptr);
+				if (num > 0) {
+					num--;
+					data_datum.dptr = (char *) &num;
+					data_datum.dsize = sizeof(int);
+					rcode = gdbm_store(indexdb, key_datum, data_datum, GDBM_REPLACE);
+					if (rcode < 0) {
+						printf("rlm_ippool_tool: Failed storing data to %s: %s\n",
+							indexdbname, gdbm_strerror(gdbm_errno));
+						gdbm_close(indexdb);
+						gdbm_close(sessiondb);
+						return;
+					}
+					if (num > 0 && entry.extra == 1) {
+						gdbm_delete(sessiondb, save_datum);
+					}
+				}
+			}
+		}
+	}
+	key_datum.dptr = NULL;
+
+	if (cli != NULL){	
+		key_datum = gdbm_firstkey(sessiondb);
+		while(key_datum.dptr){
+			data_datum = gdbm_fetch(sessiondb, key_datum);
+			if (data_datum.dptr){
+				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
+				free(data_datum.dptr);	
 				/*
-				 * If we find an entry in the ip index and the number is zero (meaning
-				 * that we haven't allocated the same ip address to another nas/port pair)
-				 * or if we don't find an entry then delete the session entry so
-				 * that we can change the key (nas/port)
-				 * Else we don't delete the session entry since we haven't yet deallocated the
-				 * corresponding ip address and we continue our search.
-				 */
+		 		* If we find an entry for the same caller-id and nas with active=1
+		 		* then we use that for multilink (MPPP) to work properly.
+		 		*/
+				if (strcmp(entry.cli,cli) == 0 && entry.active){
+					memcpy(&key,key_datum.dptr,sizeof(ippool_key));
+					if (!strcmp(key.nas,NASname)){
+						mppp = 1;
+						break;
+					}
+				}
+			}
+			nextkey = gdbm_nextkey(sessiondb, key_datum);
+			free(key_datum.dptr);
+			key_datum = nextkey;
+		}
+	}
 
-				if (data_datum.dptr){
-					memcpy(&num,data_datum.dptr, sizeof(int));
-					free(data_datum.dptr);
-					if (num == 0){
+	if (key_datum.dptr == NULL) {
+		key_datum = gdbm_firstkey(sessiondb);
+		while (key_datum.dptr) {
+			data_datum = gdbm_fetch(sessiondb, key_datum);
+			if (data_datum.dptr != NULL) {
+				memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
+				free(data_datum.dptr);
+
+				if (entry.active == 0 && entry.ipaddr == ipaddr.s_addr) {
+					datum tmp;
+					tmp.dptr = (char *) &entry.ipaddr;
+					tmp.dsize = sizeof(uint32_t);
+					data_datum = gdbm_fetch(indexdb, tmp);
+					if (data_datum.dptr){
+						memcpy(&num, data_datum.dptr, sizeof(int));
+						free(data_datum.dptr);
+						if (num == 0){
+							delete = 1;
+							break;
+						}
+					} else {
 						delete = 1;
 						break;
 					}
 				}
-				else{
-					delete = 1;
-					break;
+			}
+			nextkey = gdbm_nextkey(sessiondb, key_datum);
+			free(key_datum.dptr);
+			key_datum = nextkey;
+		}
+	}
+
+	if (key_datum.dptr){
+		if (found && ! mppp){
+			datum key_datum_tmp,data_datum_tmp;
+			ippool_key key_tmp;
+			memset(key_tmp.nas,0,MAX_NAS_NAME_SIZE);
+			strncpy(key_tmp.nas,NASname,MAX_NAS_NAME_SIZE - 1);
+			key_tmp.port=port;
+			key_datum_tmp.dptr = (char *) &key_tmp;
+			key_datum_tmp.dsize = sizeof(ippool_key);
+
+			data_datum_tmp = gdbm_fetch(sessiondb, key_datum_tmp);
+			if (data_datum_tmp.dptr != NULL) {
+				rcode = gdbm_store(sessiondb, key_datum, data_datum_tmp, GDBM_REPLACE);
+				if (rcode < 0) {
+					printf("rlm_ippool_tool: Failed storing data to %s: %s\n",
+						sessiondbname, gdbm_strerror(gdbm_errno));
+						gdbm_close(indexdb);
+						gdbm_close(sessiondb);
+					return;
 				}
+				free(data_datum_tmp.dptr);
+			}
+		} else {
+			if (delete)
+				gdbm_delete(sessiondb, key_datum);
+			else {
+				if (mppp)
+					extra = 1;
+//				if (!mppp)
+//					printf("Error in if statements!!!\n");
 			}
 		}
-		nextkey = gdbm_nextkey(sessiondb, key_datum);
 		free(key_datum.dptr);
-		key_datum = nextkey;
-	}
-	/*
-	 * If we have found our entry set active to 1 
-	 */
-	if (key_datum.dptr){
-		entry.active = 1;
+		entry.active=1;
+		if (extra)
+			entry.extra=1;
 		data_datum.dptr = (char *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
-
-		if (delete){
-			/*
-		 	 * Delete the entry so that we can change the key
-		 	 */
-			gdbm_delete(sessiondb, key_datum);
-		}
-		free(key_datum.dptr);
 		memset(key.nas,0,MAX_NAS_NAME_SIZE);
 		strncpy(key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
-		key.port = strtoul(NASport,NULL,0);
+		key.port = port;
 		key_datum.dptr = (char *) &key;
 		key_datum.dsize = sizeof(ippool_key);
-		
 		printf("rlm_ippool_tool: Allocating ip to nas/port: %s/%u\n",key.nas,key.port);
 		rcode = gdbm_store(sessiondb, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
@@ -206,8 +308,9 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 		if (data_datum.dptr){
 			memcpy(&num,data_datum.dptr,sizeof(int));
 			free(data_datum.dptr);
-		}
-		num=1;
+		} else
+			num = 0;
+		num++;
 		printf("rlm_ippool_tool: num: %d\n",num);
 		data_datum.dptr = (char *) &num;
 		data_datum.dsize = sizeof(int);
@@ -219,10 +322,10 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 			gdbm_close(sessiondb);
 			return;
 		}
-			
 
-		printf("rlm_ippool_tool: Allocated ip %s to client on nas %s,port %u\n",ipaddress,
-				key.nas,strtoul(NASport,NULL,0));
+		printf("rlm_ippool_tool: Allocated ip %s to client on nas %s,port %u\n",
+				ipaddress, key.nas,port);
+
 	}
     gdbm_close(indexdb);
     gdbm_close(sessiondb);
@@ -231,7 +334,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress) {
     GDBM_FILE sessiondb;
     GDBM_FILE indexdb;
-    datum key_datum,keynext_datum,data_datum;
+    datum key_datum,keynext_datum,data_datum,save_datum;
     ippool_key key;
     ippool_info info;
     struct in_addr ipaddr;
@@ -275,24 +378,37 @@ void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress) {
 		//
 		if (rflag && MATCH_IP(ipaddress,ip)) {
 		    info.active=0;
+			save_datum.dptr = key_datum.dptr;
+			save_datum.dsize = key_datum.dsize;
 		    data_datum.dptr = (char *) &info;
 		    data_datum.dsize = sizeof(ippool_info);
 		    rcode=gdbm_store(sessiondb,key_datum,data_datum,GDBM_REPLACE);
-		    if (rcode < 0)
-			printf("Failed to update %s: %s\n",ip,gdbm_strerror(gdbm_errno));
+		    if (rcode < 0) {
+				printf("Failed to update %s: %s\n",ip,gdbm_strerror(gdbm_errno));
+				gdbm_close(indexdb);
+				gdbm_close(sessiondb);
+				return;
+			}
 		    key_datum.dptr=(char *)&info.ipaddr;
 		    key_datum.dsize = sizeof(uint32_t);
 		    data_datum=gdbm_fetch(indexdb,key_datum);
 		    if (data_datum.dptr!=NULL) {
-			memcpy(&num, data_datum.dptr, sizeof(int));
-			if (num>0) {
-			    num=0;
-			    data_datum.dptr = (char *) &num;
-			    data_datum.dsize = sizeof(int);
-			    rcode = gdbm_store(indexdb, key_datum, data_datum, GDBM_REPLACE);
-			    if (rcode < 0)
-				printf("Failed to update %s: %s\n",ip,gdbm_strerror(gdbm_errno));
-			}
+				memcpy(&num, data_datum.dptr, sizeof(int));
+				if (num>0) {
+					num--;
+					data_datum.dptr = (char *) &num;
+					data_datum.dsize = sizeof(int);
+					rcode = gdbm_store(indexdb, key_datum, data_datum, GDBM_REPLACE);
+					if (rcode < 0) {
+						printf("Failed to update %s: %s\n",ip,gdbm_strerror(gdbm_errno));
+						gdbm_close(indexdb);
+						gdbm_close(sessiondb);
+						return;
+					}
+					if (num > 0 && info.extra == 1) {
+						gdbm_delete(sessiondb, save_datum);
+					}
+				}
 		    }
 		}
 
