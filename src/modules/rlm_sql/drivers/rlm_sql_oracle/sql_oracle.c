@@ -388,14 +388,18 @@ SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	int i=0;
+	int num_fields;
+
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
-	for(i=0; i<sql_num_fields(sqlsocket, config); i++) {
-		free(oracle_sock->results[i]);
+	num_fields = sql_num_fields(sqlsocket, config);
+	if (num_fields >= 0) {
+		for(i=0; i < sql_num_fields; i++) {
+			free(oracle_sock->results[i]);
+		}
+		free(oracle_sock->results);
 	}
-	free(oracle_sock->results);
 	oracle_sock->results=NULL;
-
 	return 0;
 }
 
