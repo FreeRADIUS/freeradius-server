@@ -409,6 +409,9 @@ int main(int argc, char **argv)
 	 */
 	if (debug_flag) setlinebuf(stdout);
 
+	log(L_INFO, "Listening on ports %d/udp and %d/udp.",
+	    auth_port, acct_port);
+
 	/*
 	 *	If we are in forking mode, we will start a child
 	 *	to listen for Accounting requests.  If not, we will 
@@ -423,18 +426,14 @@ int main(int argc, char **argv)
 		if(acct_pid > 0) {
 			close(acctfd);
 			acctfd = -1;
-			log(L_INFO, "Ready to process requests: "
-			    "Listening on ports %d/udp and %d/udp.",
-			    auth_port, acct_port);
+			log(L_INFO, "Ready to process requests.");
 		}
 		else {
 			close(sockfd);
 			sockfd = -1;
 		}
 	} else
-		log(L_INFO, "Ready to process requests: "
-		    "Listening on ports %d/udp and %d/udp.",
-		    auth_port, acct_port);
+		log(L_INFO, "Ready to process requests.");
 
 	/*
 	 *	Receive user requests
