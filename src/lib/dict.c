@@ -182,6 +182,7 @@ static int my_dict_init(char *dir, char *fn)
 	int	value;
 	int	type;
 	int	vendor;
+	int	block_vendor;
 	int	is_attrib;
 #ifdef ATTRIB_NMC
 	int	vendor_usr_seen = 0;
@@ -211,6 +212,8 @@ static int my_dict_init(char *dir, char *fn)
 		librad_log("dict_init: Couldn't open dictionary: %s", fn);
 		return -1;
 	}
+
+	block_vendor = 0;
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 
@@ -253,7 +256,7 @@ static int my_dict_init(char *dir, char *fn)
 			if(sscanf(data, "%s%s%s%s", namestr,
 					valstr, typestr, vendorstr) < 3) {
 				librad_log(
-					"dict_init: %s[%d]: invalid attribute",
+					"dict_init: %s[%d]: invalid ATTRIBUTE line",
 					fn, line);
 				return -1;
 			}
@@ -308,12 +311,22 @@ static int my_dict_init(char *dir, char *fn)
 				return -1;
 			}
 
+			if (block_vendor && vendorstr[0] &&
+			    (block_vendor != vendor)) {
+				librad_log(
+					"dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
+					fn, line, vendorstr);
+				return -1;
+			}
+
+			if (block_vendor) vendor = block_vendor;
+
 			if (dict_addattr(namestr, vendor, type, value) < 0) {
 				librad_log("dict_init: %s[%d]: %s",
 					   fn, line, librad_errstr);
 				return -1;
 			}
-
+			continue;
 		}
 
 		/*
@@ -323,7 +336,7 @@ static int my_dict_init(char *dir, char *fn)
 
 			if (sscanf(data, "%s%s%s", attrstr,
 						namestr, valstr) != 3) {
-				librad_log("dict_init: %s[%d]: invalid value",
+				librad_log("dict_init: %s[%d]: invalid VALUE line",
 					fn, line);
 				return -1;
 			}
@@ -351,6 +364,7 @@ static int my_dict_init(char *dir, char *fn)
 					   fn, line, librad_errstr);
 				return -1;
 			}
+			continue;
 		}
 
 		/*
@@ -360,7 +374,7 @@ static int my_dict_init(char *dir, char *fn)
 
 			if (sscanf(data, "%s%s", attrstr, valstr) != 2) {
 				librad_log(
-				"dict_init: %s[%d] invalid vendor entry",
+				"dict_init: %s[%d] invalid VENDOR entry",
 					fn, line);
 				return -1;
 			}
@@ -385,7 +399,56 @@ static int my_dict_init(char *dir, char *fn)
 			if (value == VENDORPEC_USR)
 				vendor_usr_seen = 1;
 #endif
+			continue;
 		}
+
+		if (strcmp(keyword, "BEGIN-VENDOR") == 0) {
+			vendorstr[0] = 0;
+			if (sscanf(data, "%s", vendorstr) != 1) {
+				librad_log(
+				"dict_init: %s[%d] invalid BEGIN-VENDOR entry",
+					fn, line);
+				return -1;
+			}
+
+			vendor = dict_vendorname(vendorstr);
+			if (!vendor) {
+				librad_log(
+					"dict_init: %s[%d]: unknown vendor %s",
+					fn, line, vendorstr);
+				return -1;
+			}
+			block_vendor = vendor;
+			continue;
+		}
+
+		if (strcmp(keyword, "END-VENDOR") == 0) {
+			vendorstr[0] = 0;
+			if (sscanf(data, "%s", vendorstr) != 1) {
+				librad_log(
+				"dict_init: %s[%d] invalid END-VENDOR entry",
+					fn, line);
+				return -1;
+			}
+
+			vendor = dict_vendorname(vendorstr);
+			if (!vendor) {
+				librad_log(
+					"dict_init: %s[%d]: unknown vendor %s",
+					fn, line, vendorstr);
+				return -1;
+			}
+
+			if (vendor != block_vendor) {
+				librad_log(
+					"dict_init: %s[%d]: END-VENDOR %s does not match any previous BEGIN-VENDOR",
+					fn, line, vendorstr);
+				return -1;
+			}
+			block_vendor = 0;
+			continue;
+		}
+
 	}
 	fclose(fp);
 	return 0;
