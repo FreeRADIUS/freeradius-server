@@ -147,6 +147,8 @@ typedef struct {
 	char           *access_attr;
 	char           *passwd_hdr;
 	char           *passwd_attr;
+	char           *passwd_rad_attr_str;
+	int             passwd_rad_attr;
 	char           *dictionary_mapping;
 	char	       *groupname_attr;
 	char	       *groupmemb_filt;
@@ -200,6 +202,7 @@ static CONF_PARSER module_config[] = {
 	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,profile_attr), NULL, NULL},
 	{"password_header", PW_TYPE_STRING_PTR, offsetof(ldap_instance,passwd_hdr), NULL, NULL},
 	{"password_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,passwd_attr), NULL, NULL},
+	{"password_radius_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,passwd_rad_attr), NULL, NULL},
 	/* LDAP attribute name that controls remote access */
 	{"access_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_attr), NULL, NULL},
 	/* file with mapping between LDAP and RADIUS attributes */
@@ -408,6 +411,15 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		pthread_mutex_init(&inst->apc_conns[i].mutex, NULL);
 	}
 #endif
+
+	if (inst->passwd_rad_attr_str != NULL){
+		DICT_ATTR *dattr;
+
+		dattr = dict_attrbyname(inst->passwd_rad_attr_str);
+		inst->passwd_rad_attr = dattr->attr;
+	}
+	else
+		inst->passwd_rad_attr = PW_USER_PASSWORD;
 
 	if (read_mappings(inst) != 0) {
 		radlog(L_ERR, "rlm_ldap: Reading dictionary mappings from file %s failed",
@@ -1269,7 +1281,7 @@ ldap_authorize(void *instance, REQUEST * request)
 #endif
 		VALUE_PAIR *passwd_item;
 
-		if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
+		if ((passwd_item = pairfind(request->config_items, inst->passwd_rad_attr)) == NULL){
 			char **passwd_vals;
 			char *passwd_val = NULL;
 			int passwd_len;
@@ -1288,7 +1300,7 @@ ldap_authorize(void *instance, REQUEST * request)
 								DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0],request->username->strvalue);
 						}
 						if (passwd_val){
-							if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
+							if ((passwd_item = paircreate(inst->passwd_rad_attr,PW_TYPE_STRING)) == NULL){
 								radlog(L_ERR|L_CONS, "no memory");
 								ldap_value_free(passwd_vals);
 								ldap_msgfree(result);
@@ -1322,7 +1334,7 @@ ldap_authorize(void *instance, REQUEST * request)
 
 			res = 0;
 
-			if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
+			if ((passwd_item = pairfind(request->config_items, inst->passwd_rad_attr)) == NULL){
 			
 				universal_password = rad_malloc(universal_password_len);
 				memset(universal_password, 0, universal_password_len);
@@ -1343,7 +1355,7 @@ ldap_authorize(void *instance, REQUEST * request)
 					}
 
 					if (passwd_val){
-						if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
+						if ((passwd_item = paircreate(inst->passwd_rad_attr,PW_TYPE_STRING)) == NULL){
 							radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
                                                 	ldap_msgfree(result);
 							ldap_release_conn(conn_id,inst->conns);
