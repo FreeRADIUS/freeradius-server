@@ -227,8 +227,7 @@ dnl #
 dnl #  Enable developer C compiler warnings
 dnl #
 AC_ARG_ENABLE(developer,
-[  --enable-developer      Turns on super-duper-extra-compile-warnings 
-                              when using gcc.],
+[  --enable-developer      Turns on flags of interest to developers.],
 [ case "$withval" in
     *)
 	developer=no
@@ -519,10 +518,12 @@ AC_MSG_CHECKING(for developer gcc flags)
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
   devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs"
   CFLAGS="$CFLAGS $devflags"
+  INSTALLSTRIP=""
   AC_MSG_RESULT(yes.  Using $devflags)
 else
   devflags="none"
   CFLAGS="$CFLAGS -DNDEBUG"
+  INSTALLSTRIP="-s"
   AC_MSG_RESULT(no.)
 fi
 
@@ -641,6 +642,7 @@ dnl #
 dnl #  Substitute whatever libraries we found to be necessary
 dnl #
 AC_SUBST(LIBS)
+AC_SUBST(INSTALLSTRIP)
 
 USE_SHARED_LIBS=$enable_shared
 AC_SUBST(USE_SHARED_LIBS)

@@ -130,12 +130,12 @@ clean:
 
 install:
 	$(INSTALL) -d -m 755			$(R)$(sbindir)
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755 -s radiusd	$(R)$(sbindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd	$(R)$(sbindir)
 	$(INSTALL) -m 755    checkrad.pl	$(R)$(sbindir)/checkrad
 	$(INSTALL) -d -m 755			$(R)$(bindir)
-	$(INSTALL) -m 755 -s radwho		$(R)$(bindir)
-	$(INSTALL) -m 755 -s raduse		$(R)$(bindir)
-	$(INSTALL) -m 755 -s radzap		$(R)$(bindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) radwho		$(R)$(bindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) raduse		$(R)$(bindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) radzap		$(R)$(bindir)
 	$(INSTALL) -m 755    radlast		$(R)$(bindir)
 	$(INSTALL) -m 755    radclient		$(R)$(bindir)
 	$(INSTALL) -m 755    radtest 		$(R)$(bindir)
