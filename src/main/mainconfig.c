@@ -726,7 +726,8 @@ int read_mainconfig(int reload)
 	/* First read radiusd.conf */
 	DEBUG2("reread_config:  reading radiusd.conf");
 	if ((cs = read_radius_conf_file()) == NULL) {
-		if (debug_flag) {
+		if (debug_flag ||
+		    (radlog_dir == NULL)) {
 			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
 		} else {
 			radlog(L_ERR|L_CONS, "Errors reading %s/radiusd.conf: For more information, please read the tail end of %s", radlog_dir, mainconfig.log_file);
