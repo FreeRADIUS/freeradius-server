@@ -41,10 +41,6 @@ static const char rcsid[] = "$Id$";
 #  include	<shadow.h>
 #endif
 
-#if HAVE_CRYPT_H
-#  include <crypt.h>
-#endif
-
 #ifdef OSFC2
 #  include	<sys/security.h>
 #  include	<prot.h>
@@ -365,7 +361,6 @@ static int unix_authenticate(void *instance, REQUEST *request)
 #define inst ((struct unix_instance *)instance)
 	char *name, *passwd;
 	struct passwd	*pwd;
-	char		*encpw;
 	const char	*encrypted_pass;
 	int		ret;
 #if HAVE_GETSPNAM
@@ -601,8 +596,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Check encrypted password.
 	 */
-	encpw = crypt(passwd, encrypted_pass);
-	if (strcmp(encpw, encrypted_pass)) {
+	if (lrad_crypt_check(passwd, encrypted_pass)) {
 		radlog(L_AUTH, "rlm_unix: [%s]: invalid password", name);
 		return RLM_MODULE_REJECT;
 	}

@@ -58,9 +58,6 @@ static const char rcsid[] = "$Id$";
 typedef struct rlm_pap_t {
         char *scheme;  /* password encryption scheme */
 	int sch;
-#if HAVE_PTHREAD_H
-	pthread_mutex_t mutex;	
-#endif
 } rlm_pap_t;
 
 /*
@@ -124,9 +121,6 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 		inst->sch = PAP_ENC_CLEAR;
 	else if (strcasecmp(inst->scheme,"crypt") == 0){
 		inst->sch = PAP_ENC_CRYPT;
-#if HAVE_PTHREAD_H
-		pthread_mutex_init(&inst->mutex, NULL);
-#endif
 	}
 	else if (strcasecmp(inst->scheme,"md5") == 0)
 		inst->sch = PAP_ENC_MD5;
@@ -221,25 +215,14 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			break;
 		case PAP_ENC_CRYPT:
 			DEBUG("rlm_pap: Using CRYPT encryption.");
-#if HAVE_PTHREAD_H
-			pthread_mutex_lock(&inst->mutex);
-#endif
-			if (strcmp((char *) passwd_item->strvalue,
-				   crypt((char *) request->password->strvalue,
-					 (char *) passwd_item->strvalue)) != 0) {
-#if HAVE_PTHREAD_H
-				pthread_mutex_unlock(&inst->mutex);
-#endif
+			if (lrad_crypt_check((char *) request->password->strvalue,
+								 (char *) passwd_item->strvalue) != 0) {
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CRYPT password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
 			}
-#if HAVE_PTHREAD_H
-			else
-				pthread_mutex_unlock(&inst->mutex);
-#endif
 			break;
 		case PAP_ENC_MD5:
 			DEBUG("rlm_pap: Using MD5 encryption.");
@@ -301,10 +284,6 @@ static int pap_detach(void *instance)
 {
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
 
-#if HAVE_PTHREAD_H
-	if (inst->sch == PAP_ENC_CRYPT)
-		pthread_mutex_destroy(&inst->mutex);
-#endif
 	PAP_INST_FREE(inst);
 	return 0;
 }

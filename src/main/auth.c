@@ -31,10 +31,6 @@ static const char rcsid[] = "$Id$";
 #include <string.h>
 #include <ctype.h>
 
-#if HAVE_CRYPT_H
-#	include <crypt.h>
-#endif
-
 #if HAVE_NETINET_IN_H
 #	include <netinet/in.h>
 #endif
@@ -190,7 +186,6 @@ int rad_check_password(REQUEST *request)
 	VALUE_PAIR *password_pair;
 	VALUE_PAIR *auth_item;
 	char string[MAX_STRING_LEN];
-	const char *crypted_password;
 	int auth_type = -1;
 	int result;
 	int auth_type_count = 0;
@@ -276,16 +271,13 @@ int rad_check_password(REQUEST *request)
 				return -1;
 			}
 					
-			crypted_password = crypt((char *)auth_item->strvalue,
-						 (char *)password_pair->strvalue);
-			if (!crypted_password) {
-				rad_authlog("Login incorrect "
-					    "(system failed to supply an encrypted password for comparison)", request, 0);
-				return -1;
-			}
-			if (strcmp((char *)password_pair->strvalue,
-				   crypted_password) != 0) {
-				return -1;
+			switch (lrad_crypt_check((char *)auth_item->strvalue,
+									 (char *)password_pair->strvalue)) {
+			case -1:
+			  rad_authlog("Login incorrect "
+						  "(system failed to supply an encrypted password for comparison)", request, 0);
+			case 1:
+			  return -1;
 			}
 			break;
 		case PW_AUTHTYPE_LOCAL:

@@ -298,4 +298,7 @@ void lrad_mschap(const unsigned char *win_password,
 		 const unsigned char *challenge, unsigned char *response);
 
 
+/* crypt wrapper from crypt.c */
+int lrad_crypt_check(const char *key, const char *salt);
+
 #endif /*LIBRADIUS_H*/

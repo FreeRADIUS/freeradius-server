@@ -50,10 +50,6 @@ static const char rcsid[] = "$Id$";
 #  include <shadow.h>
 #endif
 
-#if HAVE_CRYPT_H
-#  include <crypt.h>
-#endif 
-
 #include "radiusd.h"
 #include "cache.h"
 #include "compat.h"
@@ -458,7 +454,6 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 {
 	struct mypasswd	*pwd;
 	char *encrypted_pass;
-	char *encpw;
 
 	/*
 	 *	Get encrypted password from password file
@@ -491,11 +486,10 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 				return 0;
 			}
 	
-			encpw = (char *)crypt(passwd, encrypted_pass);
 			/* 
 		 	 * Check password
 			 */
-			if(strcmp(encpw, encrypted_pass) == 0) {
+			if(lrad_crypt_check(passwd, encrypted_pass) == 0) {
 				/* 
 				 * Add 'Class' pair here with value of full
 				 * name from passwd
@@ -515,9 +509,7 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 		/*
 		 *	Check encrypted password.
 		 */
-		encpw = (char *)crypt(passwd, encrypted_pass);
-
-		if (strcmp(encpw, encrypted_pass))
+		if (lrad_crypt_check(passwd, encrypted_pass))
 			return -1;
 
 		return 0;
