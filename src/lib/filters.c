@@ -51,8 +51,8 @@
 #define IPX_NODE_ADDR_LEN		6
 
 typedef UINT4			IpxNet;
-typedef char			IpxNode[ IPX_NODE_ADDR_LEN ];
-typedef unsigned short	IpxSocket;
+typedef unsigned char		IpxNode[ IPX_NODE_ADDR_LEN ];
+typedef unsigned short		IpxSocket;
 
 #if ! defined( FALSE )
 # define FALSE		0
@@ -234,7 +234,7 @@ typedef struct {
      *
      */
 
-static KeywordStruct _filterPortType[] = {
+static KeywordStruct filterPortType[] = {
     { "ftp-data", 20 },
     { "ftp", 21 },
     { "telnet", 23 },
@@ -285,7 +285,7 @@ typedef enum {
 } FilterTokens;
 
 
-static KeywordStruct _filterKeywords[] = {
+static KeywordStruct filterKeywords[] = {
     { "ip", 	FILTER_IP_TYPE },
     { "generic",FILTER_GENERIC_TYPE },
     { "in", 	FILTER_IN },
@@ -336,7 +336,7 @@ static KeywordStruct _filterProtoName[] = {
     {  NULL , NO_TOKEN },
 };
 
-static KeywordStruct _filterCompare[] = {
+static KeywordStruct filterCompare[] = {
     { ">", RAD_COMPARE_GREATER },
     { "=", RAD_COMPARE_EQUAL },
     { "<", RAD_COMPARE_LESS },
@@ -346,7 +346,7 @@ static KeywordStruct _filterCompare[] = {
 
 static char	curString[512];
 
-int findKey ( char *string, KeywordStruct *list );
+static int findKey ( char *string, KeywordStruct *list );
 static int isAllDigit ( char *token );
 static short a2octet ( char *tok, char *retBuf );
 static char defaultNetmask ( unsigned long address );
@@ -742,7 +742,7 @@ RadFilter	*curEntry;
     ipx = &curEntry->u.ipx;
  
     while( token ) {
-  	tok = findKey( token, _filterKeywords );
+  	tok = findKey( token, filterKeywords );
 	switch( tok ) {
 	    case FILTER_IN:
 	    case FILTER_OUT:
@@ -814,7 +814,7 @@ RadFilter	*curEntry;
                 token = (char *) strtok( NULL, " " );
 
 		if ( token ) {
-		    cmp = findKey( token, _filterCompare );
+		    cmp = findKey( token, filterCompare );
 		    PRINTF((" cmp value = %d \n", cmp ));
 		    if( cmp != NO_TOKEN ) {
 		    token = (char *) strtok( NULL, " " );
@@ -922,7 +922,7 @@ RadFilter	*curEntry;
  
     while( token ) {
 	PRINTF((" token %s ", token ));
-  	tok = findKey( token, _filterKeywords );
+  	tok = findKey( token, filterKeywords );
 	switch( tok ) {
 	    case FILTER_IN:
 	    case FILTER_OUT:
@@ -980,7 +980,7 @@ RadFilter	*curEntry;
 			"FILTER_IP_DST_PORT":"FILTER_IP_SRC_PORT"));
 		token = (char *) strtok( NULL, " " );
 		if ( token ) {
-  		    cmp = findKey( token, _filterCompare );
+  		    cmp = findKey( token, filterCompare );
 		    PRINTF((" cmp value = %d \n", cmp ));
 		    if( cmp != NO_TOKEN ) {
 			token = (char *) strtok( NULL, " " );
@@ -988,7 +988,7 @@ RadFilter	*curEntry;
 			    if( isAllDigit( token ) ) {
 				port = atoi( (char *) token );
 			    } else {
-  		    	        port = findKey( token, _filterPortType );
+  		    	        port = findKey( token, filterPortType );
 			    }
 			    if( port != (short) NO_TOKEN ) {
 		    	    	PRINTF((" port = %d \n", port ));
@@ -1106,7 +1106,7 @@ RadFilter	*curEntry;
 
     while( token ) {
 	PRINTF((" token %s ", token ));
-  	tok = findKey( token, _filterKeywords );
+  	tok = findKey( token, filterKeywords );
    	PRINTF(("tok %d ", tok));
 	switch( tok ) {
 	    case FILTER_IN:
@@ -1220,7 +1220,7 @@ filterBinary(VALUE_PAIR *pair, char *valstr)
     strcpy( curString, valstr );
 
     token = (char *) strtok( (char *)valstr, " " );
-    tok = findKey( token, _filterKeywords );
+    tok = findKey( token, filterKeywords );
     pair->length = SIZEOF_RADFILTER;
     switch( tok ) {
       case FILTER_IP_TYPE:
@@ -1265,6 +1265,30 @@ filterBinary(VALUE_PAIR *pair, char *valstr)
     return(rc);
 }
 
+
+/********************************************************************/
+
+/*
+ *  The following code was written specifically for the FreeRADIUS
+ *  server by Alan DeKok <aland@ox.org>, and as such, falls under
+ *  the GPL, and not under the previous Ascend license.
+ */
+
+static const char *FindValue(int value, KeywordStruct *list)
+{
+  KeywordStruct	*entry;
+
+  entry = list;
+  while (entry->name) {
+    if (entry->value == value) {
+      return entry->name;
+    }
+    entry++;
+  }
+
+  return "???";
+}
+
 void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 {
   int i;
@@ -1274,7 +1298,6 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   static char *filter_type[] = {"generic", "ip", "ipx"};
   static char *action[] = {"drop", "forward"};
   static char *direction[] = {"output", "input"};
-  static char *compare[] = {"", "<", "=", ">", "!="};
   
   p = buffer;
 
@@ -1295,25 +1318,15 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   memcpy(&filter, vp->strvalue, SIZEOF_RADFILTER);
   len -= 2;
 
-  if (filter.type == RAD_FILTER_IP) {
-    i = snprintf(p, len, "%s %s",
-		 filter_type[filter.type],
-		 direction[filter.indirection & 0x01]);
-    p += i;
-    len -= i;
+  i = snprintf(p, len, "%s %s %s",
+	       filter_type[filter.type],
+	       action[filter.forward & 0x01],
+	       direction[filter.indirection & 0x01]);
+  p += i;
+  len -= i;
     
-    //   %s %d dstport %s %d srcport %s %d
-    if (filter.u.ip.srcip) {
-      i = snprintf(p, len, " srcip %d.%d.%d.%d/%d",
-		   ((u_char *) &filter.u.ip.srcip)[0],
-		   ((u_char *) &filter.u.ip.srcip)[1],
-		   ((u_char *) &filter.u.ip.srcip)[2],
-		   ((u_char *) &filter.u.ip.srcip)[3],
-		   filter.u.ip.srcmask);
-      p += i;
-      len -= i;
-    }
-		   
+
+  if (filter.type == RAD_FILTER_IP) {
     if (filter.u.ip.dstip) {
       i = snprintf(p, len, " dstip %d.%d.%d.%d/%d",
 		   ((u_char *) &filter.u.ip.dstip)[0],
@@ -1324,29 +1337,63 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       p += i;
       len -= i;
     }
+    
+    if (filter.u.ip.srcip) {
+      i = snprintf(p, len, " srcip %d.%d.%d.%d/%d",
+		   ((u_char *) &filter.u.ip.srcip)[0],
+		   ((u_char *) &filter.u.ip.srcip)[1],
+		   ((u_char *) &filter.u.ip.srcip)[2],
+		   ((u_char *) &filter.u.ip.srcip)[3],
+		   filter.u.ip.srcmask);
+      p += i;
+      len -= i;
+    }
 
-    i =  snprintf(p, len, " %s %d", action[filter.forward & 0x01],
-		  filter.u.ip.proto);
+    i =  snprintf(p, len, " %d", filter.u.ip.proto);
     p += i;
     len -= i;
-
+    
     if (filter.u.ip.dstPortComp) {
       i = snprintf(p, len, " dstport %s %d",
-		  compare[filter.u.ip.dstPortComp],
-		  ntohs(filter.u.ip.dstport));
+		   FindValue(filter.u.ip.dstPortComp, filterCompare),
+		   ntohs(filter.u.ip.dstport));
       p += i;
       len -= i;
     }
-
+    
     if (filter.u.ip.srcPortComp) {
       i = snprintf(p, len, " srcport %s %d",
-		  compare[filter.u.ip.srcPortComp],
-		  ntohs(filter.u.ip.srcport));
+		   FindValue(filter.u.ip.srcPortComp, filterCompare),
+		   ntohs(filter.u.ip.srcport));
       p += i;
       len -= i;
     }
-  }
+  } else if (filter.type == RAD_FILTER_IPX) {
+    /* print for source */
+    if (filter.u.ipx.srcIpxNet) {
+      i = snprintf(p, len, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
+		  ntohl(filter.u.ipx.srcIpxNet),
+		  filter.u.ipx.srcIpxNode[0], filter.u.ipx.srcIpxNode[1], 
+		  filter.u.ipx.srcIpxNode[2], filter.u.ipx.srcIpxNode[3], 
+		  filter.u.ipx.srcIpxNode[4], filter.u.ipx.srcIpxNode[5]);
+      p += i;
+      len -= i;
+    }
 
+    /* same for destination */
+    if (filter.u.ipx.dstIpxNet) {
+      i = snprintf(p, len, " dstipxnet 0x%04x dstipxnode 0x%02x%02x%02x%02x%02x%02x",
+		  ntohl(filter.u.ipx.dstIpxNet),
+		  filter.u.ipx.dstIpxNode[0], filter.u.ipx.dstIpxNode[1], 
+		  filter.u.ipx.dstIpxNode[2], filter.u.ipx.dstIpxNode[3], 
+		  filter.u.ipx.dstIpxNode[4], filter.u.ipx.dstIpxNode[5]);
+      p += i;
+      len -= i;
+    }
+
+
+  }
+  
   *(p++) = '"';
   *p = '\0';
 }
