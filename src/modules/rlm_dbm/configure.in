@@ -57,13 +57,17 @@ if test x$with_[]modname != xno; then
 			fi
 		fi
 	fi
-
-	smart_try_dir=$rlm_dbm_lib_dir
-	AC_SMART_CHECK_LIB(ndbm, dbm_open)
-	if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
-		AC_SMART_CHECK_LIB(gdbm, dbm_open)
-		if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
-			fail="$fail (libndbm or libgdm)"
+	AC_MSG_CHECKING([for dbm in default lib])
+	AC_TRY_LINK([extern void* dbm_open();],dbm_open(),[ac_cv_lib_default_dbm_open=yes
+		AC_MSG_RESULT(yes)],[AC_MSG_RESULT(no)])
+	if test "x$ac_cv_lib_default_dbm_open" != "xyes"; then
+		smart_try_dir=$rlm_dbm_lib_dir
+		AC_SMART_CHECK_LIB(ndbm, dbm_open)
+		if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
+			AC_SMART_CHECK_LIB(gdbm, dbm_open)
+			if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
+				fail="$fail (libndbm or libgdm)"
+			fi
 		fi
 	fi
 
