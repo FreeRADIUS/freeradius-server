@@ -138,7 +138,7 @@ int proxy_receive(REQUEST *request)
 /*
  *	Add a proxy-pair to the end of the request.
  */
-static void proxy_addinfo(RADIUS_PACKET *rp)
+static void proxy_addinfo(REQUEST *request)
 {
 	VALUE_PAIR		*proxy_pair;
 
@@ -147,10 +147,10 @@ static void proxy_addinfo(RADIUS_PACKET *rp)
 		log(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
-	sprintf(proxy_pair->strvalue, "%04x", rp->id);
-	proxy_pair->length = 4;
+	sprintf(proxy_pair->strvalue, "%d", request->packet->id);
+	proxy_pair->length = strlen(proxy_pair->strvalue);
 
-	pairadd(&rp->vps, proxy_pair);
+	pairadd(&request->proxy->vps, proxy_pair);
 }
 
 /*
@@ -302,7 +302,7 @@ int proxy_send(REQUEST *request)
 	/*
 	 *	Add PROXY_STATE attribute.
 	 */
-	proxy_addinfo(request->proxy);
+	proxy_addinfo(request);
 
 	/*
 	 *	If there is no PW_CHAP_CHALLENGE attribute but there
@@ -354,19 +354,28 @@ struct timeval *proxy_setuptimeout(struct timeval *tv)
 
 	smallest = 0;
 	for (p = proxy_requests; p; p = p->next) {
-	  if (!p->proxy_is_replicate)
-	    continue;
-	  difference = p->proxy_next_try - now;
-	  if (!foundone) {
-	    foundone = 1;
-	    smallest = difference;
-	  } else {
-	    if (difference < smallest)
-	      smallest = difference;
-	  }
+		if (!p->proxy_is_replicate)
+			continue;
+		difference = p->proxy_next_try - now;
+		if (!foundone) {
+			foundone = 1;
+			smallest = difference;
+		} else {
+			if (difference < smallest)
+				smallest = difference;
+		}
 	}
-	if (!foundone)
-	  return 0;
+
+	/*
+	 *	Not found one, tell the server to wake up a second
+	 *	later anyways, so that it can service the lists.
+	 */
+	if ((!foundone) ||
+	    (smallest == 0)) {
+		tv->tv_sec = 1;
+		tv->tv_usec = 0;
+		return tv;
+	}
 
 	tv->tv_sec = smallest;
 	tv->tv_usec = 0;
