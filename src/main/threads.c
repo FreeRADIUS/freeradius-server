@@ -208,7 +208,7 @@ static void *request_handler_thread(void *arg)
 					self->thread_num);
 			break;
 		}
-		
+
 		DEBUG2("Thread %d handling request %d, (%d handled so far)",
 				self->thread_num, self->request->number,
 				self->request_count);
@@ -389,6 +389,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	 */
 	if (thread_pool.tail) {
 		thread_pool.tail->next = handle;
+		handle->prev = thread_pool.tail;
 		thread_pool.tail = handle;
 	} else {
 		rad_assert(thread_pool.head == NULL);
