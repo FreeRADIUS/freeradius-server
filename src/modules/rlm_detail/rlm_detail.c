@@ -61,6 +61,7 @@ static CONF_PARSER module_config[] = {
 static int detail_instantiate(CONF_SECTION *conf, void **instance)
 {
         struct detail_instance *inst;
+	size_t p=0;
 
         inst = malloc(sizeof *inst);
         if (!inst) {
@@ -73,6 +74,18 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
                 return -1;
         }
 
+	/*
+	 *	Sanitize the name for security!  Only permit letters, numbers,
+	 *	-, _, / and \.  Anything else will be rejected.
+	 */
+
+	p = strspn(config.detailfile, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/%.");
+
+	if (p!=strlen(config.detailfile)) {
+		radlog(L_ERR|L_CONS, "Illegal character.");
+		return -1;
+	}
+			
         inst->detailfile = config.detailfile;
         inst->detailperm = config.detailperm;
 	inst->dirperm = config.dirperm;
@@ -94,6 +107,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	char		buffer[512];
 	char		filename[512];
 	char		*p;
+	size_t		l;
 	VALUE_PAIR	*pair;
 	uint32_t	nas;
 	NAS		*cl;
@@ -137,12 +151,27 @@ static int detail_accounting(void *instance, REQUEST *request)
 
 	radius_xlat2(buffer, sizeof(buffer), filename, request,
 		     request->reply->vps);
-	
+
 	/*
-	 *	FIXME: Sanitize the name for security!
+	 *	Sanitize the name for security!  Only permit letters, numbers,
+	 *	-, _, / and \.  Anything else will be rejected.
 	 */
 
-	p = strrchr(filename,'/');
+	if(strstr(buffer, "..")) {
+		radlog(L_ERR, "Detail: Directory \"%s\" contains \"..\" which is not valid.",
+			buffer);
+		return RLM_MODULE_FAIL;
+	}
+
+	l = strspn(buffer, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.");
+
+	if (l!=strlen(buffer)) {
+		radlog(L_ERR, "Detail: Directory \"%s\" contains an invalid character.",
+		       buffer);
+		return RLM_MODULE_FAIL;
+	}
+			
+	p = strrchr(buffer,'/');
 
 	/*
 	 *	There WAS a directory delimiter there, so let's
