@@ -53,10 +53,10 @@ static const char rcsid[] =
 /*
  *	Global variables.
  */
-const char		*progname;
-const char	        *radius_dir;
-const char		*radacct_dir;
-const char		*radlog_dir;
+const char		*progname = NULL;
+const char	        *radius_dir = NULL;
+const char		*radacct_dir = NULL;
+const char		*radlog_dir = NULL;
 int			log_stripped_names;
 int 			cache_passwd = FALSE;
 int			debug_flag;
@@ -87,6 +87,7 @@ static int		allow_core_dumps = FALSE;
 static int		max_request_time = MAX_REQUEST_TIME;
 static int		cleanup_delay = CLEANUP_DELAY;
 static int		max_requests = MAX_REQUESTS;
+static const char	*pid_file = NULL;
 
 #if !defined(__linux__) && !defined(__GNU_LIBRARY__)
 extern int	errno;
@@ -109,14 +110,18 @@ static void	rad_spawn_child(REQUEST *, FUNP, int);
  *	A mapping of configuration file names to internal integers
  */
 CONF_PARSER rad_config[] = {
-  { "max_request_time",   PW_TYPE_INTEGER, &max_request_time },
-  { "cleanup_delay",      PW_TYPE_INTEGER, &cleanup_delay    },
-  { "max_requests",       PW_TYPE_INTEGER, &max_requests     },
-  { "allow_core_dumps",   PW_TYPE_INTEGER, &allow_core_dumps },
-  { "log_stripped_names", PW_TYPE_INTEGER, &log_stripped_names },
-  { "log_auth",           PW_TYPE_INTEGER, &log_auth },
-  { "log_auth_pass",      PW_TYPE_INTEGER, &log_auth_pass },
-  
+  { "max_request_time",   PW_TYPE_INTEGER,    &max_request_time },
+  { "cleanup_delay",      PW_TYPE_INTEGER,    &cleanup_delay    },
+  { "max_requests",       PW_TYPE_INTEGER,    &max_requests     },
+  { "allow_core_dumps",   PW_TYPE_INTEGER,    &allow_core_dumps },
+  { "log_stripped_names", PW_TYPE_INTEGER,    &log_stripped_names },
+  { "log_auth",           PW_TYPE_INTEGER,    &log_auth },
+  { "log_auth_pass",      PW_TYPE_INTEGER,    &log_auth_pass },
+  { "pidfile",            PW_TYPE_STRING_PTR, &pid_file },
+#if 0
+  { "confdir",            PW_TYPE_STRING_PTR, &radius_dir },
+#endif
+
   { NULL, -1, NULL}
 };
 #endif
@@ -226,9 +231,10 @@ int main(int argc, char **argv)
 
 	debug_flag = 0;
 	spawn_flag = TRUE;
-	radacct_dir = RADACCT_DIR;
-	radius_dir = RADIUS_DIR;
-	radlog_dir = RADLOG_DIR;
+	radacct_dir = RADACCT_DIR ;
+	radius_dir = strdup(RADIUS_DIR);
+	radlog_dir = RADLOG_DIR ;
+	pid_file = strdup(RADIUS_PID);
 
 	signal(SIGHUP, sig_hup);
 	signal(SIGINT, sig_fatal);
@@ -278,7 +284,8 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			radius_dir = optarg;
+			free(radius_dir);
+			radius_dir = strdup(optarg);
 			break;
 		
 		case 'f':
@@ -459,9 +466,13 @@ int main(int argc, char **argv)
 
 	radius_pid = getpid();
 #ifdef RADIUS_PID
-	if ((fp = fopen(RADIUS_PID, "w")) != NULL) {
+	fp = fopen(pid_file, "w");
+	if (fp != NULL) {
 		fprintf(fp, "%d\n", radius_pid);
 		fclose(fp);
+	} else {
+		log(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
+		    pid_file, strerror(errno));
 	}
 #endif
 

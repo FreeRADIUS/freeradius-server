@@ -156,7 +156,8 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 	char		buf2[256];
 	char		buf3[256];
 	int		t1, t2, t3;
-
+	char      	**q;
+	
 	/*
 	 *	Ensure that the user can't add CONF_SECTIONs
 	 *	with 'internal' names;
@@ -279,6 +280,15 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 			}
 			DEBUG2("Config: %s = %d", variables[i].name,
 			       *(int *)variables[i].data);
+			break;
+
+		      case PW_TYPE_STRING_PTR:
+			q = (char **) variables[i].data;
+			if (*q != NULL) {
+			  free(*q);
+			}
+			DEBUG2("Config: %s = %s", variables[i].name, buf3);
+			*q = strdup(buf3);
 			break;
 
 		      default:
