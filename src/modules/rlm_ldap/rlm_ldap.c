@@ -34,7 +34,9 @@
  *	  the password_header directive rlm_ldap will strip the
  *	  password header if needed. This will make support for CHAP much easier.
  *	- Added module messages when we reject a user.
- *	- Added ldap_groupcmp to allow searching for user group membership
+ *	- Added ldap_groupcmp to allow searching for user group membership.
+ * Nov 2001, Gordon Tetlow <gordont@gnf.org>
+ *	- Do an xlat on the access_group attribute.
  */
 static const char rcsid[] = "$Id$";
 
@@ -477,7 +479,6 @@ ldap_authorize(void *instance, REQUEST * request)
 	const char	*attrs[] = {"*", NULL};
 	char		filter[MAX_AUTH_QUERY_LEN];
 	char		basedn[1024];
-	static const char filt_patt[] = "(| (& (objectClass=GroupOfNames) (member=%{Ldap-UserDn})) (& (objectClass=GroupOfUniqueNames) (uniquemember=%{Ldap-UserDn})))"; 
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	int		res;
@@ -571,17 +572,23 @@ ldap_authorize(void *instance, REQUEST * request)
 	}
 	/* Remote access controled by group membership of the user object */
 	if (inst->access_group != NULL) {
+		static char	group[MAX_AUTH_QUERY_LEN];
+
 		DEBUG("rlm_ldap: checking user membership in dialup-enabling group %s", inst->access_group);
 		/*
 		 * uniquemember appears in Netscape Directory Server's groups
 		 * since we have objectclass groupOfNames and
 		 * groupOfUniqueNames
 		 */
-		if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, filt_patt,
+		if(!radius_xlat(group, MAX_AUTH_QUERY_LEN, inst->access_group,
+				request, NULL)) 
+			radlog (L_ERR, "rlm_ldap: unable to munge group.\n"); 
+
+		if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->groupmemb_filt,
 			        request, NULL)) 
 			radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
 
-		if ((res = perform_search(instance, inst->access_group, LDAP_SCOPE_BASE, filter, NULL, &gr_result)) != RLM_MODULE_OK) {
+		if ((res = perform_search(instance, group, LDAP_SCOPE_BASE, filter, NULL, &gr_result)) != RLM_MODULE_OK) {
 			ldap_msgfree(result);
 			if (res == RLM_MODULE_NOTFOUND){
 				snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: User is not an access group member");
