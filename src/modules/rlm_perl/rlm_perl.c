@@ -253,7 +253,7 @@ static void rlm_perl_close_handles(void **handles)
 static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl)
 {
 	PerlInterpreter *clone;
-	UV	clone_flags = CLONEf_KEEP_PTR_TABLE;
+	UV	clone_flags = NULL;
 
 	PERL_SET_CONTEXT(perl);
 
@@ -893,11 +893,10 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
  */
 static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv) {
        char            *val;
-       int             val_len;
        VALUE_PAIR      *vpp;
 
-       if ((sv != NULL) && (SvPOK(sv))) {
-               val = SvPV(sv, val_len);
+       if (SvTRUE(sv)) {
+               val = SvPV_nolen(sv);
                vpp = pairmake(key, val, T_OP_EQ);
                if (vpp != NULL) {
                        pairadd(vp, vpp);
