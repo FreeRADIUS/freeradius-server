@@ -117,6 +117,8 @@
  *	- Don't do a double free on the attribute maps. Bug noted by Derrik Pates <dpates@dsdk12.net>
  *	- Apply a patch from Alexander M. Pravking <fduch@antar.bryansk.ru> to do an xlat on the
  *	  retrieved attributes.
+ * Aug 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- In case of a bad search filter, print out the corresponding filter
  */
 static const char rcsid[] = "$Id$";
 
@@ -617,6 +619,10 @@ retry:
 		return RLM_MODULE_FAIL;
 	case LDAP_TIMEOUT:
 		radlog(L_ERR, "rlm_ldap: ldap_search() failed: Timed out while waiting for server to respond. Please increase the timeout.");
+		ldap_msgfree(*result);
+		return RLM_MODULE_FAIL;
+	case LDAP_FILTER_ERROR:
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed: Bad search filter: %s",filter);
 		ldap_msgfree(*result);
 		return RLM_MODULE_FAIL;
 	case LDAP_TIMELIMIT_EXCEEDED:
