@@ -1,15 +1,15 @@
-freeradius (0.8.1+0.9pre20030508-1) unstable; urgency=low
+freeradius (0.8.1+0.9pre20030511-1) unstable; urgency=low
 
   * New Upstream release.
    - Dictionary files are in /usr/share/freeradius.
-  * Renamed pacakge to 'freeradius*' from radiusd-freeradius'*'.
+  * Renamed pacakge to 'freeradius*' from 'radiusd-freeradius*'.
   * Moved file hierarchy around to be neater:
    - /etc/raddb -> /etc/freeradius
    - /usr/share/doc/radiusd-freeradius -> /usr/share/doc/freeradius
    - /var/log/radiusd-freeradius -> /var/log/freeradius
    - /var/run/radiusd/radiusd.pid -> /var/run/freeradius/freeradius.pid
   * Included RFCs in documentation.
-  * Patch to 'configure' against with openssl0.9.7
+  * Patch to 'configure' to work with openssl0.9.7
   * Made /etc/init.d/freeradius actually able to find the process to stop.
   * Enabled the daemon to run under user 'freerad:freerad' by default.
 
