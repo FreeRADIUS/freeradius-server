@@ -669,7 +669,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	}
 	do {
 		for (element = item_map; element->attr != NULL; element++) {
-			if (!strncasecmp(attr, element->attr, strlen(element->attr))) {
+			if (!strcasecmp(attr, element->attr)) {
                                 /* mapping found, get the values */
 				if (((vals = ldap_get_values(ld, entry, attr)) == NULL)) {
                                         DEBUG("rlm_ldap: ldap_get_values returned NULL for attribute %s", attr);
