@@ -387,8 +387,8 @@ LEAP_PACKET *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	/*
 	 *	Fill the challenge with random bytes.
 	 */
-	for (i = 0; i < len; i++) {
-		value[i] = lrad_rand();
+	for (i = 0; i < reply->count; i++) {
+		reply->challenge[i] = lrad_rand();
 	}
 
 	DEBUG2("  rlm_eap_leap: Issuing AP Challenge");
