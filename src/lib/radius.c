@@ -1519,7 +1519,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				 *  Ascend-Receive-Secret
 				 */
 			case FLAG_ENCRYPT_ASCEND_SECRET:
-				{
+				if (!original) {
+					librad_log("ERROR: Ascend-Send-Secret attribute in request: Cannot decrypt it.");
+					return -1;
+				} else {
 					uint8_t my_digest[AUTH_VECTOR_LEN];
 					make_secret(my_digest,
 						    original->vector,
