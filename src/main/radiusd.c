@@ -254,6 +254,120 @@ static void reread_config(int reload)
 	}
 }
 
+/*
+ *	Parse a string into a syslog facility level.
+ */
+static int str2fac(const char *s)
+{
+#ifdef LOG_KERN
+	if(!strcmp(s, "kern"))
+		return LOG_KERN;
+	else
+#endif
+#ifdef LOG_USER
+	if(!strcmp(s, "user"))
+		return LOG_USER;
+	else
+#endif
+#ifdef LOG_MAIL
+	if(!strcmp(s, "mail"))
+		return LOG_MAIL;
+	else
+#endif
+#ifdef LOG_DAEMON
+	if(!strcmp(s, "daemon"))
+		return LOG_DAEMON;
+	else
+#endif
+#ifdef LOG_AUTH
+	if(!strcmp(s, "auth"))
+		return LOG_AUTH;
+	else
+#endif
+#ifdef LOG_SYSLOG
+	if(!strcmp(s, "auth"))
+		return LOG_AUTH;
+	else
+#endif
+#ifdef LOG_LPR
+	if(!strcmp(s, "lpr"))
+		return LOG_LPR;
+	else
+#endif
+#ifdef LOG_NEWS
+	if(!strcmp(s, "news"))
+		return LOG_NEWS;
+	else
+#endif
+#ifdef LOG_UUCP
+	if(!strcmp(s, "uucp"))
+		return LOG_UUCP;
+	else
+#endif
+#ifdef LOG_CRON
+	if(!strcmp(s, "cron"))
+		return LOG_CRON;
+	else
+#endif
+#ifdef LOG_AUTHPRIV
+	if(!strcmp(s, "authpriv"))
+		return LOG_AUTHPRIV;
+	else
+#endif
+#ifdef LOG_FTP
+	if(!strcmp(s, "ftp"))
+		return LOG_FTP;
+	else
+#endif
+#ifdef LOG_LOCAL0
+	if(!strcmp(s, "local0"))
+		return LOG_LOCAL0;
+	else
+#endif
+#ifdef LOG_LOCAL1
+	if(!strcmp(s, "local1"))
+		return LOG_LOCAL1;
+	else
+#endif
+#ifdef LOG_LOCAL2
+	if(!strcmp(s, "local2"))
+		return LOG_LOCAL2;
+	else
+#endif
+#ifdef LOG_LOCAL3
+	if(!strcmp(s, "local3"))
+		return LOG_LOCAL3;
+	else
+#endif
+#ifdef LOG_LOCAL4
+	if(!strcmp(s, "local4"))
+		return LOG_LOCAL4;
+	else
+#endif
+#ifdef LOG_LOCAL5
+	if(!strcmp(s, "local5"))
+		return LOG_LOCAL5;
+	else
+#endif
+#ifdef LOG_LOCAL6
+	if(!strcmp(s, "local6"))
+		return LOG_LOCAL6;
+	else
+#endif
+#ifdef LOG_LOCAL7
+	if(!strcmp(s, "local7"))
+		return LOG_LOCAL7;
+	else
+#endif
+	{
+		fprintf(stderr, "%s: Error: Unknown syslog facility: %s\n",
+			progname, s);
+		exit(1);
+	}
+	
+	/* this should never be reached */
+	return LOG_DAEMON;
+}
 
 int main(int argc, char **argv)
 {
@@ -276,6 +390,7 @@ int main(int argc, char **argv)
 	int			status;
 	int			dont_fork = FALSE;
 	int			radius_port = 0;
+	int			syslog_facility = LOG_DAEMON;
  
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
@@ -337,7 +452,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while((argval = getopt(argc, argv, "Aa:bcd:fhi:l:np:sSvxXyz")) != EOF) {
+	while((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:np:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
@@ -383,6 +498,14 @@ int main(int argc, char **argv)
 		case 'l':
 			if (radlog_dir) free(radlog_dir);
 			radlog_dir = strdup(optarg);
+			break;
+		
+			/*
+			 *	We should also have this as a configuration
+			 *	file directive.
+			 */
+		case 'g':
+			syslog_facility = str2fac(optarg);
 			break;
 
 		case 'n':
@@ -460,10 +583,13 @@ int main(int argc, char **argv)
 #if HAVE_SYSLOG_H
 	/*
 	 *	If they asked for syslog, then give it to them.
+	 *	Also, initialize the logging facility with the
+	 *	configuration that they asked for.
 	 */
-	if (strcmp(radlog_dir, "syslog") == 0) {
-		openlog("radiusd", LOG_PID, LOG_DAEMON);
+	if (!strcmp(radlog_dir, "syslog")) {
+		openlog(progname, LOG_PID, syslog_facility);
 	}
+	/* Do you want a warning if -g is used without a -l to activate it? */
 #endif
 
 	/*

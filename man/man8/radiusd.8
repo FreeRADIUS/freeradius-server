@@ -16,6 +16,8 @@ radiusd -- Authentication, Authorization and Accounting server
 .IR ip-address ]
 .RB [ \-l
 .IR log_directory ]
+.RB [ \-g
+.IR facility ]
 .RB [ \-p
 .IR port ]
 .RB [ \-s ]
@@ -64,7 +66,12 @@ This defaults to \fI/var/log\fP. \fBRadiusd\fP writes a logfile here called
 \fIradius.log\fP. It contains informational and error messages, and optionally
 a record of every login attempt (for aiding an ISP's helpdesk). The
 special argument \fIstdout\fP causes the information to get written
-to the standard output instead.
+to the standard output instead. The special argument \fIsyslog\fP sends the
+information with \fBsyslog\fP(3).
+
+.IP "\-g \fIfacility\fP"
+Specifies the syslog facility to be used with \fB-l syslog\fP. Default is
+\fIdaemon\fP. Another reasonable choice would be \fIauthpriv\fP.
 
 .IP "\-d \fIconfig directory\fP"
 Defaults to \fI/etc/raddb\fP. \fBRadiusd\fP looks here for its configuration
