@@ -9,7 +9,8 @@
 */
 
 #include <string.h>
-#include "../include/md5.h"
+#include "md5.h"
+#include "libradius.h"
 
 /*
 unsigned char*  text;                pointer to data stream
@@ -61,8 +62,8 @@ lrad_hmac_md5(const unsigned char *text, int text_len,
         /* start out by storing key in pads */
         memset( k_ipad, 0, sizeof(k_ipad));
         memset( k_opad, 0, sizeof(k_opad));
-        memset( k_ipad, key, key_len);
-        memset( k_opad, key, key_len);
+        memcpy( k_ipad, key, key_len);
+        memcpy( k_opad, key, key_len);
 
         /* XOR key with ipad and opad values */
         for (i = 0; i < 64; i++) {
