@@ -13,6 +13,7 @@
 #include	<string.h>
 #include	<getopt.h>
 #include	<ctype.h>
+#include	<netdb.h>
 #include	<sys/types.h>
 #include	<sys/socket.h>
 #include	<sys/time.h>
@@ -62,6 +63,18 @@ void usage(void)
 {
 	fprintf(stderr, "Usage: radclient [-d raddb ] [-f file] [-t timeout] [-nx] server acct|auth <secret>\n");
 	exit(1);
+}
+
+int getport(char *name)
+{
+	struct	servent		*svp;
+
+	svp = getservbyname (name, "udp");
+	if (!svp) {
+		return 0;
+	}
+
+	return ntohs(svp->s_port);
 }
 
 int main(int argc, char **argv)
@@ -132,13 +145,15 @@ int main(int argc, char **argv)
 	 *	See what kind of request we want to send.
 	 */
 	if (strcmp(argv[2], "auth") == 0) {
-		if (port == 0) port = 1645;
+		if (port == 0) port = getport("radius");
+		if (port == 0) port = PW_AUTH_UDP_PORT;
 		req->code = PW_AUTHENTICATION_REQUEST;
 	} else if (strcmp(argv[2], "acct") == 0) {
-		if (port == 0) port = 1646;
+		if (port == 0) port = getport("radacct");
+		if (port == 0) port = PW_ACCT_UDP_PORT;
 		req->code = PW_ACCOUNTING_REQUEST;
 	} else if (isdigit(argv[2][0])) {
-		if (port == 0) port = 1645;
+		if (port == 0) port = PW_AUTH_UDP_PORT;
 		port = atoi(argv[2]);
 	} else {
 		usage();
