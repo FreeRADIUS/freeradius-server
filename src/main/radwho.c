@@ -279,19 +279,21 @@ static void usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 
-	fprintf(output, "Usage: radwho [-d raddb] [-lhfnsipcr]\n");
+	fprintf(output, "Usage: radwho [-d raddb] [-cfihnprRsS] [-N nas] [-P nas_port] [-u user] [-U user]\n");
 	fprintf(output, "       -c: show caller ID, if available\n");
 	fprintf(output, "       -d: set the raddb directory (default is %s)\n",
 		RADIUS_DIR);
 	fprintf(output, "       -f: give fingerd output\n");
 	fprintf(output, "       -i: show session ID\n");
 	fprintf(output, "       -n: no full name\n");
+	fprintf(output, "       -N <nas-ip-address>: Show entries matching the given NAS IP address\n");
 	fprintf(output, "       -p: show port type\n");
+	fprintf(output, "       -P <port>: Show entries matching the given nas port\n");
 	fprintf(output, "       -r: output as raw data\n");
 	fprintf(output, "       -R: output as RADIUS attributes and values\n");
 	fprintf(output, "       -s: show full name\n");
 	fprintf(output, "       -S: hide shell users from radius\n");
-	fprintf(output, "       -u <user>: print information only for that user\n");
+	fprintf(output, "       -u <user>: Show entries matching the given user\n");
 	fprintf(output, "       -U <user>: like -u, but case-sensitive\n");
 	exit(status);
 }
@@ -322,10 +324,13 @@ int main(int argc, char **argv)
 	const char *user = NULL;
 	int user_cmp = 0;
 	time_t now = 0;
+	uint32_t nas_port = ~0;
+	uint32_t nas_ip_address = INADDR_NONE;
+	int zap = 0;
 
 	radius_dir = RADIUS_DIR;
 
-	while((c = getopt(argc, argv, "d:flnsSipcrRu:U:")) != EOF) switch(c) {
+	while((c = getopt(argc, argv, "d:flnN:sSipP:crRu:U:Z")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -342,6 +347,12 @@ int main(int argc, char **argv)
 		case 'n':
 			showname = 0;
 			break;
+		case 'N':
+			nas_ip_address = ip_addr(optarg);
+			if (nas_ip_address == INADDR_NONE) {
+				usage(1);
+			}
+			break;
 		case 's':
 			showname = 1;
 			break;
@@ -350,6 +361,9 @@ int main(int argc, char **argv)
 			break;
 		case 'p':
 			showptype = 1;
+			break;
+		case 'P':
+			nas_port = atoi(optarg);
 			break;
 		case 'c':
 			showcid = 1;
@@ -370,11 +384,35 @@ int main(int argc, char **argv)
 			user = optarg;
 			user_cmp = 1;
 			break;
+		case 'Z':
+			zap = 1;
+			break;
 		default:
 			usage(1);
 			break;
 	}
 
+	/*
+	 *	Be safe.
+	 */
+	if (zap && !radiusoutput) zap = 0;
+
+	/*
+	 *	Don't zap EVERYONE.	
+	 */
+	if (zap && (nas_ip_address == INADDR_NONE)) usage(1);
+
+	/*
+	 *	zap EVERYONE, but only on this nas
+	 */
+	if (zap && !user && (~nas_port == 0)) {
+		printf("Acct-Status-Type = Accounting-Off\n");
+		printf("NAS-IP-Address = %s\n",
+		       ip_hostname(buffer, sizeof(buffer), nas_ip_address));
+		printf("Acct-Delay-Time = 0\n");
+		exit(0);	/* don't bother printing anything else */
+	}
+	
 	/*
 	 *	Initialize mainconfig
 	 */
@@ -453,8 +491,6 @@ int main(int argc, char **argv)
 	 *	Read the file, printing out active entries.
 	 */
 	while (fread(&rt, sizeof(rt), 1, fp) == 1) {
-		int did_user = 0;
-
 		if (rt.type != P_LOGIN) continue; /* hide logout sessions */
 
 		/*
@@ -464,6 +500,9 @@ int main(int argc, char **argv)
 		if (hideshell && !strchr("PCS", rt.proto))
 			continue;
 
+		/*
+		 *	Print out sessions only for the given user.
+		 */
 		if (user) {	/* only for a particular user */
 			if (((user_cmp == 0) &&
 			     (strncasecmp(rt.login, user, strlen(user)) != 0)) ||
@@ -471,7 +510,20 @@ int main(int argc, char **argv)
 			     (strncmp(rt.login, user, strlen(user)) != 0))) {
 				continue;
 			}
-			did_user++;
+		}
+
+		/*
+		 *	Print out only for the given NAS port.
+		 */
+		if (~nas_port != 0) {
+			if (rt.nas_port != nas_port) continue;
+		}
+
+		/*
+		 *	Print out only for the given NAS IP address
+		 */
+		if (nas_ip_address != INADDR_NONE) {
+			if (rt.nas_address != nas_ip_address) continue;
 		}
 		
 		memcpy(session_id, rt.session_id, sizeof(rt.session_id));
@@ -486,10 +538,16 @@ int main(int argc, char **argv)
 		}
 
 #define CPY(foo) memcpy(buffer, foo, sizeof(foo));buffer[sizeof(foo)] = 0
+		/*
+		 *	Print output as RADIUS attributes
+		 */
 		if (radiusoutput) {
 			CPY(rt.login);
 			printf("User-Name = \"%s\"\n", buffer);
 			printf("Acct-Session-Id = \"%s\"\n", session_id);
+
+			if (zap) printf("Acct-Status-Type = Stop\n");
+
 			printf("NAS-IP-Address = %s\n",
 			       ip_hostname(buffer, sizeof(buffer),
 					   rt.nas_address));
@@ -516,15 +574,12 @@ int main(int argc, char **argv)
 			 *	Some sanity checks on the time
 			 */
 			if ((rt.time <= now) &&
-			    (now - rt.time) <= (86400 * 30)) {
+			    (now - rt.time) <= (86400 * 365)) {
 				printf("Acct-Session-Time = %ld\n",
 				       now - rt.time);
 			}
 
-			if (did_user) break; /* only print out first one */
-
 			printf("\n"); /* separate entries with a blank line */
-
 			continue;
 		}
 
