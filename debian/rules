@@ -16,7 +16,7 @@ endef
 build:
 # Builds the binary package.
 	$(checkdir)
-	./configure --prefix=/ --exec_prefix='/usr' --infodir='$${exec_prefix}/share/info' --mandir='$${exec_prefix}/share/man' --with-datadir='$${exec_prefix}/share' --includedir='$$exec_prefix/include' --with-thread-pool --with-logdir='/var/log/radius'
+	./configure --prefix=/ --exec_prefix='/usr' --infodir='$${exec_prefix}/share/info' --mandir='$${exec_prefix}/share/man' --with-datadir='$${exec_prefix}/share' --includedir='$${exec_prefix}/include' --with-thread-pool --with-logdir='/var/log/radius'
 	make
 	touch build
 
