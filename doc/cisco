@@ -47,6 +47,24 @@ to perform any configuration changes or anything requiring a higher level
 of access.  The username '!root' was used as an example here, you can make
 this any username you want, of course.
 
+1.1 Unique Acct-Session-Id's
+
+From: http://isp-lists.isp-planet.com/isp-australia/0201/msg05143.html
+
+Just a note to all cisco ISPs out there who want RFC2866 compliance need to 
+enable the hidden command 'radius-server unique-ident <n>'
+
+Minimum IOS: 12.1(4.1)T.
+
+Acct-Session-Id should be unique and wrap after every 256 reboots.
+
+You must reboot after entering this command to take effect. If not, you 
+will observe after 10 minutes
+of entering this command, the following message.
+
+%RADIUS-3-IDENTFAIL: Save of unique accounting ident aborted.
+
+
 2.  IOS 11.x
 
 For Cisco 11.1, you normally use
