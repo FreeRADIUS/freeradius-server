@@ -56,7 +56,7 @@ ATTRIBUTE	3GPP2-IP-QoS			36	integer
 # 37-38 ?
 ATTRIBUTE	3GPP2-Airlink-Priority		39	integer
 ATTRIBUTE	3GPP2-Airlink-Record-Type	40	integer # ?
-# 41 ?
+#ATTRIBUTE	3GPP2-R-P-Session-ID		41	string
 ATTRIBUTE	3GPP2-Airlink-Sequence-Number	42	integer # ?
 ATTRIBUTE	3GPP2-Received-HDLC-Octets	43	integer
 ATTRIBUTE	3GPP2-Correlation-Id		44	string
