@@ -279,6 +279,11 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
+			/*
+			 *	Clean up the tunneled reply.
+			 */
+			pairdelete(&reply->vps, PW_PROXY_STATE);
+
 			pairadd(&request->reply->vps, reply->vps);
 			reply->vps = NULL;
 		}
@@ -702,8 +707,6 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	done, THEN we proxy it...
 			 */
 			if (!t->proxy_tunneled_request_as_eap) {
-				int rcode;
-				
 				fake->options |= RAD_REQUEST_OPTION_PROXY_EAP;
 				
 				/*
