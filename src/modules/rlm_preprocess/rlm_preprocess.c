@@ -50,9 +50,9 @@ static void ascend_nasport_hack(VALUE_PAIR *nas_port)
 	}
 
 	if (nas_port->lvalue > 9999) {
-		service = nas_port/10000; /* 1=digital 2=analog */
-		line = (nas_port - (10000 * service)) / 100;
-		channel = nas_port-((10000 * service)+(100 * line));
+		service = nas_port->lvalue/10000; /* 1=digital 2=analog */
+		line = (nas_port->lvalue - (10000 * service)) / 100;
+		channel = nas_port->lvalue-((10000 * service)+(100 * line));
 		nas_port->lvalue =
 			(channel - 1) + (line - 1) * ASCEND_CHANNELS_PER_LINE;
 	}
@@ -477,7 +477,7 @@ static int preprocess_authorize(REQUEST *request,
 	 *	in place, to go from Ascend's weird values to something
 	 *	approaching rationality.
 	 */
-	ascend_nasport_hack(pairfind(request->vps, PW_NAS_PORT_ID));
+	ascend_nasport_hack(pairfind(request->packet->vps, PW_NAS_PORT_ID));
 #endif
 
 	hints_setup(request);
