@@ -355,7 +355,7 @@ static void dump_tree(int comp, modcallable *c)
 	dump_mc(c, 0);
 }
 #else
-static void dump_tree(int comp, modcallable *c)
+static void dump_tree(int comp UNUSED, modcallable *c UNUSED)
 {
 	return;
 }

@@ -1373,7 +1373,7 @@ static void rfc_clean(RADIUS_PACKET *packet)
 /*
  *  Lowercase the string value of a pair.
  */
-static int rad_lowerpair(REQUEST *request, VALUE_PAIR *vp) {
+static int rad_lowerpair(REQUEST *request UNUSED, VALUE_PAIR *vp) {
 	if (vp == NULL) {
 		return -1;
 	}
@@ -1386,7 +1386,7 @@ static int rad_lowerpair(REQUEST *request, VALUE_PAIR *vp) {
 /*
  *  Remove spaces in a pair.
  */
-static int rad_rmspace_pair(REQUEST *request, VALUE_PAIR *vp) {
+static int rad_rmspace_pair(REQUEST *request UNUSED, VALUE_PAIR *vp) {
 	if (vp == NULL) {
 		return -1;
 	}
