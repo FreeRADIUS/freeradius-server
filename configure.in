@@ -519,6 +519,8 @@ AC_CHECK_FUNCS( \
 	localtime_r \
 	ctime_r \
 	gmtime_r \
+	gethostbyname_r \
+	gethostbyaddr_r \
 	strsep \
 	inet_aton \
 	gethostname \

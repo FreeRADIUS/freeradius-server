@@ -35,6 +35,11 @@ int		librad_debug = 0;
 char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 {
 	struct		hostent *hp;
+#ifdef HAVE_GETHOSTBYADDR_R
+	char		buffer[2048];
+	struct          hostent result;
+	int		error;
+#endif
 
 	/*
 	 *	No DNS: don't look up host names
@@ -44,8 +49,13 @@ char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 		return buf;
 	}
 
-	hp = gethostbyaddr((char *)&ipaddr, sizeof (struct in_addr), AF_INET);
-	if ((hp == 0) ||
+#ifndef HAVE_GETHOSTBYADDR_R
+	hp = gethostbyaddr((char *)&ipaddr, sizeof(struct in_addr), AF_INET);
+#else
+	hp = gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr), AF_INET,
+			     buffer, sizeof(buffer), &error);
+#endif
+	if ((hp == NULL) ||
 	    (strlen((char *)hp->h_name) >= buflen)) {
 		ip_ntoa(buf, ipaddr);
 		return buf;
@@ -64,12 +74,23 @@ uint32_t ip_getaddr(const char *host)
 {
 	struct hostent	*hp;
 	uint32_t	 a;
+#ifdef HAVE_GETHOSTBYNAME_R
+	struct hostent result;
+	int error;
+	char buffer[2048];
+#endif
 
 	if ((a = ip_addr(host)) != htonl(INADDR_NONE))
 		return a;
 
-	if ((hp = gethostbyname(host)) == NULL)
+#ifndef HAVE_GETHOSTBYNAME_R
+	hp = gethostbyname(host);
+#else
+	hp = gethostbyname_r(host, &result, buffer, sizeof(buffer), &error);
+#endif
+	if (hp == NULL) {
 		return htonl((uint32_t) INADDR_NONE);
+	}
 
 	/*
 	 *	Paranoia from a Bind vulnerability.  An attacker
