@@ -270,9 +270,11 @@ AC_CHECK_LIB(dl, dlopen,
 AC_SUBST(LIBDL)
 if test "$LIBDL" != ""; then
   AC_DEFINE(HAVE_DLOPEN)
+  DYNAMIC_MODULES="yes"
 else
-  AC_CHECK_FUNC(dlopen, AC_DEFINE(HAVE_DLOPEN))
+  AC_CHECK_FUNC(dlopen, AC_DEFINE(HAVE_DLOPEN) DYNAMIC_MODULES="yes")
 fi
+AC_SUBST(DYNAMIC_MODULES)
 
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
