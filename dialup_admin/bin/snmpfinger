@@ -1,11 +1,14 @@
 #!/usr/bin/perl
 
-$SNMPWALK="/usr/bin/snmpwalk";
+$SNMPWALK="/usr/local/snmpd/bin/snmpwalk";
 $host=shift;
 $comm=shift || 'public';
 
-$walk =`$SNMPWALK $host $comm .iso.org.dod.internet.private.enterprises.9.2.9.2.1.18`;
-$walk.=`$SNMPWALK $host $comm .iso.org.dod.internet.private.enterprises.9.9.27.1.1.3.1.7`;
+$walk =`$SNMPWALK $host $comm .iso.org.dod.internet.private.enterprises.9.9.150.1.1.3.1.2`;
+if ($walk =~ /^$/){
+	$walk =`$SNMPWALK $host $comm .iso.org.dod.internet.private.enterprises.9.2.9.2.1.18`;
+	$walk.=`$SNMPWALK $host $comm .iso.org.dod.internet.private.enterprises.9.9.27.1.1.3.1.7`;
+}
 
 while($walk=~/\"([\w\-]+?)\"/g){
  $user=lc($1);

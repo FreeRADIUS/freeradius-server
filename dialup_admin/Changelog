@@ -13,6 +13,7 @@ Ver 1.60:
   used for initialization).
 * html fixes in accounting.php3
 * Fix a problem in user_accounting when NASIPAddress is not set.
+* Use CISCO-AAA-SESSION-MIB in snmpfinger
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
