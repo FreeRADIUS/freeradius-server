@@ -672,3 +672,11 @@ VALUE		EAP-Type	MS-CHAP-V2		26
 #
 VALUE	EAP-TLS-Require-Client-Cert No	0
 VALUE	EAP-TLS-Require-Client-Cert Yes	1
+
+#
+# 	These are the EAP-Code values.
+#
+VALUE	EAP-Code     Request     1
+VALUE   EAP-Code     Response    2
+VALUE   EAP-Code     Success     3
+VALUE   EAP-Code     Failure     4
