@@ -14,12 +14,6 @@ CFLAGS		+= -I../include -I../libltdl
 LDFLAGS		+= -L../lib
 LIBS		+= -lradius
 
-#
-# Pick up the static module libraries and linker flags.
-#
-STATIC_MODULE_LIBS	= $(wildcard ../modules/lib/*.a)
-STATIC_MODULE_LDFLAGS	= $(shell cat ../modules/lib/STATIC_MODULE_LDFLAGS)
-
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
@@ -46,7 +40,7 @@ util.o: util.c $(INCLUDES)
 nas.o:  nas.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c nas.c
 
-modules.o:  modules.c $(INCLUDES) modules_static.h
+modules.o:  modules.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c modules.c
 
 radutmp.o:  radutmp.c $(INCLUDES)
@@ -90,11 +84,6 @@ radwho: radwho.o util.o
 
 raduse: raduse.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o raduse raduse.o $(LIBS)
-
-modules_static.h: modules_static.h.in
-	rm -f modules_static.h
-	cp modules_static.h.in modules_static.h
-	./makemodules.sh static $(MODULES) >> modules_static.h
 
 radzap: radzap.o util.o nas.o radutmp.o log.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o $(LIBS)
