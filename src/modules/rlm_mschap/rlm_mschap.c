@@ -435,13 +435,13 @@ static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
 
 	mppe_chap2_get_keys128(nt_hashhash,response,enckey1,enckey2);
 
-	salt[0] = (vector[0] ^ vector[1]) | 0x80;
-	salt[1] = (vector[2] ^ vector[3]);
+	salt[0] = (vector[0] ^ vector[1] ^ 0x3A) | 0x80;
+	salt[1] = (vector[2] ^ vector[3] ^ vector[4]);
 
 	mppe_gen_respkey(secret,vector,salt,enckey1,sendkey);
 
-	salt[0] = (vector[4] ^ vector[5]) | 0x80;
-	salt[1] = (vector[6] ^ vector[7]);
+	salt[0] = (vector[0] ^ vector[1] ^ 0x4e) | 0x80;
+	salt[1] = (vector[5] ^ vector[6] ^ vector[7]);
 
 	mppe_gen_respkey(secret,vector,salt,enckey2,recvkey);
 }
@@ -611,7 +611,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	else if (inst->passwd_file) {
 		smbPasswd = getsmbfilepwname (inst->passwd_file, request->username->strvalue);
 	}
-	if (!smbPasswd) {
+	if (!smbPasswd || !smbPasswd->acct_ctrl&ACB_NORMAL) {
 		if(challenge && response){
 			add_reply( &request->reply->vps, *response->strvalue,
 				"MS-CHAP-Error", "E=691 R=1", 9);
@@ -634,15 +634,6 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		reply_attr->length = 16;
 		memcpy(reply_attr->strvalue, smbPasswd->smb_nt_passwd, 16);
 		pairadd(&request->config_items, reply_attr);
-	}
-	if (smbPasswd->acct_ctrl&ACB_DISABLED ||
-		smbPasswd->acct_ctrl&ACB_AUTOLOCK ||
-		!smbPasswd->acct_ctrl&ACB_NORMAL) {
-		if(challenge && response) {
-			add_reply( &request->reply->vps, *response->strvalue,
-				"MS-CHAP-Error", "E=647 R=0", 9);
-		}
-		return RLM_MODULE_USERLOCK;
 	}
 
 	reply_attr = pairmake("SMB-Account-CTRL", "0", T_OP_EQ);
@@ -684,9 +675,11 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	AUTHTYPE at = NONE;
 	int res = 0;
 	int len = 0;
+	int chap = 0;
 	
 	
 	
+	memset(&smbPasswd, 0, sizeof(smbPasswd));
 	smbPasswd.smb_name = request->username->strvalue;
 	password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
 	if(password){
@@ -760,29 +753,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					res = RLM_MODULE_OK;
 				}
 	    		}
-	    		if (res == RLM_MODULE_OK) {
-				if (inst->use_mppe) {
-					memset (mppe_sendkey, 0, 32);
-					if (smbPasswd.smb_passwd) 
-						memcpy(mppe_sendkey, smbPasswd.smb_passwd, 8);
-					if (smbPasswd.smb_nt_passwd)
-					/* 
-					   According to RFC 2548 we should send NT hash.
-					   But in practice it doesn't work and we should
-					   send nthashhash instead
-					   If someone have different information please
-					   feel free to feedback.
-
-						memcpy (mppe_sendkey+8,smbPasswd.smb_nt_passwd,16);   
-					*/
-						md4_calc(mppe_sendkey+8, smbPasswd.smb_nt_passwd,16);
-					len = 32;
-					rad_pwencode(mppe_sendkey, &len, 
-						 request->secret, request->packet->vector);
-					mppe_add_reply( &request->reply->vps,
-						"MS-CHAP-MPPE-Keys",mppe_sendkey,len);
-				}
-			}
+	    		chap = 1;
 		}
 		else if ( (response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE)) ){
 			if (response->length < 50 || challenge->length < 16) {
@@ -803,28 +774,56 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						msch2resp);
 					add_reply( &request->reply->vps, *response->strvalue,
 						"MS-CHAP2-Success", msch2resp, 42);
-					if (inst->use_mppe) {
-						mppe_chap2_gen_keys128(request->secret,request->packet->vector,
-							smbPasswd.smb_nt_passwd,
-							response->strvalue + 26,
-							mppe_sendkey,mppe_recvkey);
-						mppe_add_reply( &request->reply->vps,
-							"MS-MPPE-Recv-Key",mppe_recvkey,34);
-						mppe_add_reply( &request->reply->vps,
-							"MS-MPPE-Send-Key",mppe_sendkey,34);
-					}
-
-
 					res = RLM_MODULE_OK;
+					chap = 2;
 				}
 			}
 		}
 		else {
-			radlog(L_AUTH, "rlm_mschap: Response attribute not found");
+			radlog(L_AUTH, "rlm_mschap: Response attribute is not found");
 			return RLM_MODULE_INVALID;
 		}
 		if (res == RLM_MODULE_OK){
+			if (smbPasswd.acct_ctrl&ACB_DISABLED ||
+				smbPasswd.acct_ctrl&ACB_AUTOLOCK) {
+				add_reply( &request->reply->vps, *response->strvalue,
+					"MS-CHAP-Error", "E=647 R=0", 9);
+				return RLM_MODULE_USERLOCK;
+			}
+
+			/* now create MPPE attributes */
 			if (inst->use_mppe) {
+				if (chap == 1){
+					memset (mppe_sendkey, 0, 32);
+					if (smbPasswd.smb_passwd) 
+						memcpy(mppe_sendkey, smbPasswd.smb_passwd, 8);
+					if (smbPasswd.smb_nt_passwd)
+					/* 
+					   According to RFC 2548 we should send NT hash.
+					   But in practice it doesn't work and we should
+					   send nthashhash instead
+					   If someone have different information please
+					   feel free to feedback.
+
+						memcpy (mppe_sendkey+8,smbPasswd.smb_nt_passwd,16);   
+					*/
+						md4_calc(mppe_sendkey+8, smbPasswd.smb_nt_passwd,16);
+					len = 32;
+					rad_pwencode(mppe_sendkey, &len, 
+						 request->secret, request->packet->vector);
+					mppe_add_reply( &request->reply->vps,
+						"MS-CHAP-MPPE-Keys",mppe_sendkey,len);
+				}
+				else if (chap == 2){
+					mppe_chap2_gen_keys128(request->secret,request->packet->vector,
+						smbPasswd.smb_nt_passwd,
+						response->strvalue + 26,
+						mppe_sendkey,mppe_recvkey);
+					mppe_add_reply( &request->reply->vps,
+						"MS-MPPE-Recv-Key",mppe_recvkey,34);
+					mppe_add_reply( &request->reply->vps,
+						"MS-MPPE-Send-Key",mppe_sendkey,34);
+				}
 				reply_attr = pairmake("MS-MPPE-Encryption-Policy",
 					(inst->require_encryption)? "0x00000002":"0x00000001",
 					T_OP_EQ);
