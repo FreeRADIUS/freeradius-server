@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
 #include <netdb.h>
 #include <limits.h>
 #include <sys/types.h>
@@ -72,37 +71,6 @@ static CONF_PARSER server_config[] = {
 
 #define LOCK_LEN sizeof(struct radutmp)
 
-/*
- *	Internal wrapper for locking, to minimize the number of ifdef's
- *	in the source. Copied from rlm_radutmp.c (was src/main/radutmp.c),
- *	perhaps these wrappers should be #defined in radutmp.h
- *
- *	Lock the utmp file, prefer lockf() over flock()
- */
-static void radutmp_lock(int fd)
-{
-#if defined(F_LOCK) && !defined(BSD)
-	(void)lockf(fd, F_LOCK, LOCK_LEN);
-#else
-	(void)flock(fd, LOCK_EX);
-#endif
-}
-
-/*
- *	Internal wrapper for unlocking, to minimize the number of ifdef's
- *	in the source.
- *
- *	Unlock the utmp file, prefer lockf() over flock()
- */
-static void radutmp_unlock(int fd)
-{
-#if defined(F_LOCK) && !defined(BSD)
-	(void)lockf(fd, F_ULOCK, LOCK_LEN);
-#else
-	(void)flock(fd, LOCK_UN);
-#endif
-}
-
 static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr,
 		uint32_t port, const char *user)
 {
@@ -112,7 +80,7 @@ static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr,
 		/*
 		 *	Lock the utmp file, prefer lockf() over flock().
 		 */
-		radutmp_lock(fd);
+		rad_lockfd(fd, LOCK_LEN);
 
 		/*
 		 *	Find the entry for this NAS / portno combination.
