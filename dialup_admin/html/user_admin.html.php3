@@ -191,6 +191,21 @@ print <<<EOM
 	</td><td>
 	$descr
 	</td></tr>
+EOM;
+if ($logged_now){
+	print <<<EOM
+	<form name="kill_sess" action=post>
+	<tr><td align=center bgcolor="#d0ddb0">
+	Clear Current Session
+	</td><td>
+	<input type=hidden name=clear_sess value="0">
+	<input type=submit class=button value="Clear Session" OnClick="this.form.clear_sess.value=1">
+	</form>
+	</td></tr>
+EOM;
+}
+
+print <<<EOM
 	</table>
 	</table>
 </table>

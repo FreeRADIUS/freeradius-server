@@ -32,6 +32,7 @@ Ver 1.63:
 * Escape " in login_time create page before parsing the login-time string
 * Add Service-Type in user_edit.attrs
 * In user_finger page if $user is NULL then set it to &nbsp;
+* Add 3 more help pages from Stadler Karel <Karel.Stadler@psi.ch> for Service-Type,Framed-Protocol and Filter-ID
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime

@@ -6,15 +6,15 @@
 #
 #Auth-Type			Auth Type
 #Simultaneous-Use		<a href="help/simultaneous_use_help.html" target=su_help onclick=window.open("help/simultaneous_use_help.html","su_help","width=560,height=170,toolbar=no,scrollbars=no,resizable=yes") title="Simultaneous Use Help Page"><font color="blue">Simultaneous Use</font></a>
-Framed-Protocol			Protocol
+Framed-Protocol			<a href="help/framed_protocol_help.html" target=fpr_help onclick=window.open("help/framed_protocol_help.htlml","fpr_help","width=560,height=230,toolbar=no,scrollbars=no,resizable=yes") title="Framed-Protocol Help PPage"><font color="blue">Protocol</font></a>
 Framed-IP-Address		<a href="help/framed_ip_address_help.html" target=fia_help onclick=window.open("help/framed_ip_address_help.html","fia_help","width=560,height=230,toolbar=no,scrollbars=no,resizable=yes") title="Framed-IP-Address Help Page"><font color="blue">IP Address</font></a>
 Framed-IP-Netmask		IP Netmask
 #Framed-Route		Route
 #Framed-Routing
-#Filter-Id
+#Filter-Id			<a href="help/filter_id_help.html" target=fid_help onclick=window.open("help/flter_id_help.html","fid_help","width=560,height=230,toolbar=no,scrollbars=no,resizable=yes") title="Filter-ID Help Page"><font color="blue">Filter ID</font></a>
 Framed-MTU			MTU
 Framed-Compression		<a href="help/framed_compression_help.html" target=fc_help onclick=window.open("help/framed_compression_help.html","fc_help","width=600,height=210,toolbar=no,scrollbars=no,resizable=yes") title="Framed Compression Help Page"><font color="blue">Compression Used</font></a>
-Service-Type			Service Type
+Service-Type			<a href="help/service_type_help.html" target=st_help onclick=window.open("help/service_type_help.html","st_help","width=560,height=230,toolbar=no,scrollbars=no,resizable=yes") title="Service-Type Help Page"><font color="blue">Service Type</font></a>
 #Login-IP-Host
 #Login-Service
 #Login-TCP-Port
