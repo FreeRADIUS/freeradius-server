@@ -6,7 +6,7 @@ include ../../Make.inc
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
-		  modules.o radutmp.o xlat.o
+		  modules.o radutmp.o xlat.o threads.o
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h
 
 CFLAGS		+= -I../include
@@ -73,6 +73,9 @@ version.o: version.c $(INCLUDES)
 
 xlat.o: xlat.c $(INCLUDES)
 	$(CC) $(CFLAGS) -o xlat.o -c xlat.c
+
+threads.o: threads.c $(INCLUDES)
+	$(CC) $(CFLAGS) -o threads.o -c threads.c
 
 radclient: radclient.o ../lib/libradius.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o radclient radclient.o $(LIBS)
