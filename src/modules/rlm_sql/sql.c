@@ -238,7 +238,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 	}
 
 	/* We get here if every DB handle is unconnected and unconnectABLE */
-	radlog((tried_to_connect = 0) ? (L_DBG) : (L_CONS | L_ERR), "rlm_sql:  There are no DB handles to use!");
+	radlog((tried_to_connect == 0) ? (L_DBG) : (L_CONS | L_ERR), "rlm_sql:  There are no DB handles to use!");
 	return NULL;
 }
 
