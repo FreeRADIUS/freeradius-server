@@ -41,17 +41,74 @@
 
 #include	"radiusd.h"
 #include	"radutmp.h"
+#include	"conffile.h"
 
-/* FIXME: Some of the following are unused and just there to make the linker
- * happy. Also all of log.o is linked in mainly to make the linker happy. */
-int debug_flag = 0;
-const char *progname;
-const char *radlog_dir = NULL;
-const char *radius_dir = NULL;
-#if 0
-int auth_port; /* Not really used */
-#endif
-int acct_port = 0;
+const char		*progname;
+const char		*radlog_dir = NULL;
+const char              *radius_dir = NULL;
+const char              *radacct_dir = NULL;
+const char              *radlib_dir = NULL;
+static int              allow_core_dumps = FALSE;
+static int              cleanup_delay = CLEANUP_DELAY;
+static int              max_request_time = MAX_REQUEST_TIME;
+static int              max_requests = MAX_REQUESTS;
+static int              proxy_requests = TRUE;
+static const char       *gid_name = NULL;
+static const char       *pid_file = NULL;
+static const char       *uid_name = NULL;
+int			debug_flag = 0;
+int                     proxy_synchronous = TRUE;
+int                     auth_port = 0;
+int                     acct_port;
+int                     proxy_retry_delay = RETRY_DELAY;
+int                     proxy_retry_count = RETRY_COUNT;
+int                     log_stripped_names;
+uint32_t                myip = INADDR_ANY;
+struct  main_config_t   mainconfig;
+
+
+static CONF_PARSER proxy_config[] = {
+  { "retry_delay",  PW_TYPE_INTEGER,
+    &proxy_retry_delay, Stringify(RETRY_DELAY) },
+  { "retry_count",  PW_TYPE_INTEGER,
+    &proxy_retry_count, Stringify(RETRY_COUNT) },
+  { "synchronous",  PW_TYPE_BOOLEAN, &proxy_synchronous, "yes" },
+
+  { NULL, -1, NULL, NULL }
+};
+
+/*
+ *      A mapping of configuration file names to internal variables
+ */
+static CONF_PARSER server_config[] = {
+  { "max_request_time",   PW_TYPE_INTEGER,
+    &max_request_time,    Stringify(MAX_REQUEST_TIME) },
+  { "cleanup_delay",      PW_TYPE_INTEGER,
+    &cleanup_delay,       Stringify(CLEANUP_DELAY) },
+  { "max_requests",       PW_TYPE_INTEGER,
+    &max_requests,        Stringify(MAX_REQUESTS) },
+  { "port",               PW_TYPE_INTEGER,
+    &auth_port,           Stringify(PW_AUTH_UDP_PORT) },
+  { "allow_core_dumps",   PW_TYPE_BOOLEAN,    &allow_core_dumps,  "no" },
+  { "log_stripped_names", PW_TYPE_BOOLEAN,    &log_stripped_names,"no" },
+  { "log_auth",           PW_TYPE_BOOLEAN,    &mainconfig.log_auth,   "no" },
+  { "log_auth_badpass",   PW_TYPE_BOOLEAN,    &mainconfig.log_auth_badpass,  "no" },
+  { "log_auth_goodpass",  PW_TYPE_BOOLEAN,    &mainconfig.log_auth_goodpass, "no" },
+  { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          "${run_dir}/radiusd.pid"},
+  { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
+  { "user",           PW_TYPE_STRING_PTR, &uid_name,  "nobody"},
+  { "group",          PW_TYPE_STRING_PTR, &gid_name,  "nobody"},
+  { "usercollide",   PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide,  "no" },
+  { "lower_user",     PW_TYPE_STRING_PTR,    &mainconfig.do_lower_user, "no" },
+  { "lower_pass",     PW_TYPE_STRING_PTR,    &mainconfig.do_lower_pass, "no" },
+  { "nospace_user",   PW_TYPE_STRING_PTR,    &mainconfig.do_nospace_user, "no" },
+  { "nospace_pass",   PW_TYPE_STRING_PTR,    &mainconfig.do_nospace_pass, "no" },
+
+  { "proxy_requests", PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
+  { "proxy",          PW_TYPE_SUBSECTION, proxy_config,       NULL },
+  { NULL, -1, NULL, NULL }
+};
+
 
 #define LOCK_LEN sizeof(struct radutmp)
 
@@ -125,6 +182,7 @@ static int do_stop_packet(const struct radutmp *u);
  */
 int main(int argc, char **argv)
 {
+	CONF_SECTION *cs;
 	NAS	*nas;
 	uint32_t ip = 0;
 	int	nas_port = -1;
@@ -153,12 +211,19 @@ int main(int argc, char **argv)
 
 	radius_dir = strdup(RADIUS_DIR);
 
-	/*
-	 *	Read the "naslist" file.
-	 */
-	sprintf(buf, "%s/%s", RADIUS_DIR, RADIUS_NASLIST);
-	if (read_naslist_file(buf) < 0)
+	if(read_radius_conf_file() < 0) {
+		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);
 		exit(1);
+	}
+
+	cs = cf_section_find(NULL);
+	if(!cs) {
+		fprintf(stderr, "%s: No configuration information in radiusd.conf.\n",
+			argv[0]);
+		exit(1);
+	}
+	cf_section_parse(cs, server_config);
+
 
 	/*
 	 *	Find the IP address of the terminal server.
@@ -171,8 +236,8 @@ int main(int argc, char **argv)
 	}
 	if (nas) ip = nas->ipaddr;
 
-	printf("radzap: zapping termserver %s, port %d",
-		ip_hostname(buf, sizeof(buf), ip), nas_port);
+	printf("%s: zapping termserver %s, port %d",
+		progname, ip_hostname(buf, sizeof(buf), ip), nas_port);
 	if (user) printf(", user %s", user);
 	printf("\n");
 
@@ -203,12 +268,7 @@ static int getport(const char *name)
 static const char *getlocalhostsecret(void)
 {
 	RADCLIENT *cl;
-	char fn[PATH_MAX];
-	snprintf(fn, sizeof fn, "%s/%s", radius_dir, RADIUS_CLIENTS);
-	if(read_clients_file(fn)<0) {
-		radlog(L_ERR|L_CONS, "Errors reading clients");
-		exit(1);
-	}
+
 	cl=client_find(htonl(INADDR_LOOPBACK));
 	if(!cl) {
 		radlog(L_ERR|L_CONS, "No clients entry for localhost");
@@ -245,7 +305,7 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 {
 	int i, retries=5, timeout=3;
 	struct timeval tv;
-	RADIUS_PACKET *req, *rep;
+	RADIUS_PACKET *req, *rep = NULL;
 	VALUE_PAIR *vp;
 	const char *secret=getlocalhostsecret();
 
@@ -326,7 +386,7 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 
 	/* No response or no data read (?) */
 	if (i == retries) {
-		fprintf(stderr, "radzap: no response from server\n");
+		fprintf(stderr, "%s: no response from server\n", progname);
 		exit(1);
 	}
 
@@ -348,19 +408,3 @@ static int do_stop_packet(const struct radutmp *u)
 {
   return do_packet(0, 0, u);
 }
-
-#if 0
-/* FIXME: Not called. Needed for files.o to link. Ick */
-int setup_modules(void); /* -Wmissing-prototypes */
-int setup_modules(void)
-{
-  abort();
-}
-
-/* FIXME: Not called. Needed for files.o to link. Ick */
-int read_radius_conf_file(void); /* -Wmissing-prototypes */
-int read_radius_conf_file(void)
-{
-  abort();
-}
-#endif
