@@ -375,7 +375,8 @@ VALUE		Auth-Type		MS-CHAP			1028
 VALUE		Auth-Type		Kerberos		1029
 VALUE		Auth-Type		CRAM			1030
 VALUE		Auth-Type		NS-MTA-MD5		1031
-VALUE		Auth-Type		CRAM			1030
+VALUE		Auth-Type		CRAM			1032
+VALUE		Auth-Type		SMB			1033
 
 #
 #	Authorization type, too.

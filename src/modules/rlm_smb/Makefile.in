@@ -1,0 +1,11 @@
+TARGET     = @targetname@
+SRCS       = rlm_smb.c
+HEADERS    = 
+RLM_LIBS   = @smb_ldflags@
+RLM_CFLAGS = @smb_cflags@
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)

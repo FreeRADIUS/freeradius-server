@@ -1,0 +1,7 @@
+  Other than the make file and rlm_smb.c, these source code in this
+directory was taken from pam_smb, version 1.1.6, located at:
+
+http://www.csn.ul.ie/~airlied/pam_smb/
+
+  If there are ANY discrepancies between these files and pam_smb, then
+pam_smb SHOULD be taken to be the definitive source code.
