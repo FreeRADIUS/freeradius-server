@@ -38,7 +38,7 @@
 /*
  *	Read valuepairs from the fp up to End-Of-File.
  */
-VALUE_PAIR *readvp(FILE *fp)
+static VALUE_PAIR *readvp(FILE *fp)
 {
 	char		buf[128];
 	int 		eol;
@@ -64,13 +64,13 @@ VALUE_PAIR *readvp(FILE *fp)
 	return error ? NULL: list;
 }
 
-void usage(void)
+static void usage(void)
 {
 	fprintf(stderr, "Usage: radclient [-d raddb ] [-f file] [-r retries] [-t timeout] [-nx]\n		server acct|auth <secret>\n");
 	exit(1);
 }
 
-int getport(char *name)
+static int getport(const char *name)
 {
 	struct	servent		*svp;
 
@@ -88,14 +88,14 @@ int main(int argc, char **argv)
 	RADIUS_PACKET	*rep = NULL;
 	struct timeval	tv;
 	char		*p;
-	char		*secret = "secret";
+	const char	*secret = "secret";
 	int		do_output = 1;
 	int		c;
 	int		port = 0;
 	int		retries = 10;
 	float		timeout = 3;
 	int		i;
-	char		*radius_dir = RADDBDIR;
+	const char	*radius_dir = RADDBDIR;
 	char		*filename = NULL;
 	FILE		*fp;
 
@@ -145,14 +145,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-#define FAKE
-
-#ifndef FAKE
 	req->id = getpid() & 0xFF;
-#else
-	req->id = 0;
-	memset(req->vector, 0, sizeof(req->vector));
-#endif
 
 	/*
 	 *	Strip port from hostname if needed.
