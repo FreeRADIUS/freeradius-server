@@ -116,10 +116,6 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 
 	for ( ; vp != NULL; vp = vp->next) {
 		vendorcode = (vp->attribute >> 16); /* HACK! */
-		if (vendorcode == 0) continue;	/* ignore non-VSA attributes */
-
-		if (vendorcode == 0) continue; /* ignore unknown VSA's */
-
 		if (vendorcode != 9) continue; /* not a Cisco VSA, continue */
 
 		if (vp->type != PW_TYPE_STRING) continue;
@@ -134,6 +130,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 *	Cisco-AVPair's get packed as:
 		 *
 		 *	Cisco-AVPair = "h323-foo-bar = baz"
+		 *	Cisco-AVPair = "h323-foo-bar=baz"
 		 *
 		 *	which makes sense only if you're a lunatic.
 		 *	This code looks for the attribute named inside
@@ -145,7 +142,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 			DICT_ATTR	*dattr;
 
 			p = vp->strvalue;
-			getword(&p, newattr, sizeof(newattr));
+			gettoken(&p, newattr, sizeof(newattr));
 
 			if (((dattr = dict_attrbyname(newattr)) != NULL) &&
 			    (dattr->type == PW_TYPE_STRING)) {
