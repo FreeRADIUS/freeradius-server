@@ -90,15 +90,24 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
  *************************************************************************/
 int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	char connstring[2048];
-
+	char *port;
 	rlm_sql_postgres_sock *pg_sock;
+
+	if (config->sql_port[0] != '\0') {
+	    port = "port=";
+	} else {
+	    port = "";
+	}
 
         sqlsocket->conn = (rlm_sql_postgres_sock *)rad_malloc(sizeof(rlm_sql_postgres_sock));
 
 	pg_sock = sqlsocket->conn;
    
-	snprintf(connstring, sizeof(connstring),"dbname=%s host=%s user=%s password=%s", config->sql_db, config->sql_server, config->sql_login, config->sql_password);
-
+	snprintf(connstring, sizeof(connstring),
+		 "dbname=%s host=%s %s%s user=%s password=%s",
+		 config->sql_db, config->sql_server,
+		 port, config->sql_port,
+		 config->sql_login, config->sql_password);
 	pg_sock->row=NULL;
 	pg_sock->result=NULL;	 
 	pg_sock->conn=PQconnectdb(connstring);

@@ -11,6 +11,7 @@
 typedef struct sql_config {
 	char   *sql_driver;
 	char   *sql_server;
+	char   *sql_port;
 	char   *sql_login;
 	char   *sql_password;
 	char   *sql_db;
