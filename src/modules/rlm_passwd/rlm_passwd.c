@@ -475,7 +475,7 @@ static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct m
 				radlog(L_AUTH, "rlm_passwd: Unable to create %s: %s", inst->pwdfmt->field[i], pw->field[i]);
 				return;
 			}
-			radlog(L_INFO, "rlm_passwd: Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
+			radlog(L_DBG, "rlm_passwd: Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 			pairadd (vp, newpair);
 		}
 	}
