@@ -21,7 +21,7 @@
  *
  * Copyright 2000  The FreeRADIUS server project
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
- * Copyright 2000  Alan Curry <pacman-radius@cqc.com>
+ * Copyright 2000  Alan Curry <pacman@world.std.com>
  */
 static const char rcsid[] = "$Id$";
 

@@ -20,7 +20,7 @@
  * Copyright 2000  The FreeRADIUS server project
  * Copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
  * Copyright 2000  Alan DeKok <aland@ox.org>
- * Copyright 2000  Alan Curry <pacman-radius@cqc.com>
+ * Copyright 2000  Alan Curry <pacman@world.std.com>
  */
 
 static const char rcsid[] = "$Id$";

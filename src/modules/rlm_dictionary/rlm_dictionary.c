@@ -18,7 +18,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2000  The FreeRADIUS server project
- * Copyright 2000  Alan Curry <pacman-radius@cqc.com>
+ * Copyright 2000  Alan Curry <pacman@world.std.com>
  */
 
 #include "autoconf.h"

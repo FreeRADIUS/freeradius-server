@@ -17,7 +17,7 @@
 #		portslave_finger 1.0	Author: miquels@cistron.nl
 #		max40xx_finger	 1.0	Author: costa@mdi.ca
 #		ascend_snmp      1.1    Author: blaz@amis.net
-#		computone_finger 1.2	Author: pacman-radius@cqc.com
+#		computone_finger 1.2	Author: pacman@world.std.com
 #		sub tc_tccheck	 1.1	Author: alexisv@compass.com.ph
 #		cyclades_telnet	 1.2	Author: accdias@sst.com.br
 #		patton_snmp	 1.0	Author: accdias@sst.com.br
@@ -352,7 +352,7 @@ sub multitech_snmp {
 #       Check a Computone Powerrack via finger
 #
 #       Old Author: Shiloh Costa of MDI Internet Inc. <costa@mdi.ca>
-#       New Author: Alan Curry of ComQuest Internet Services. <pacman@cqc.com>
+#       New Author: Alan Curry <pacman@world.std.com>
 #
 # The finger response format is version-dependent. To do this *right*, you
 # need to know exactly where the port number and username are. I know that

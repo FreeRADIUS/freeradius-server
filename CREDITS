@@ -11,7 +11,7 @@ Alan DeKok <aland@ox.org>
 	code.  Made the server threaded.  Maintains the autoconf and
 	libtool scripts for the server.
 
-Alan Curry <pacman-radius@cqc.com>
+Alan Curry <pacman@world.std.com>
 	Contributed many patches for proxying, replication, realm
 	support.
 
