@@ -454,6 +454,7 @@ int setup_modules(void)
 		}
 
 		add_to_list(&authorize, this);
+		DEBUG("Module: Added '%s' to AUTHORIZE list", this->entry->module->name);
 	} else if (strcmp(control, "authenticate") == 0) {
 		if (!this->entry->module->authenticate) {
 			fprintf(stderr, "%s[%d] Module '%s' does not contain "
@@ -464,6 +465,7 @@ int setup_modules(void)
 		}
 
 		add_to_list(&authenticate, this);
+		DEBUG("Module: Added '%s' to AUTHENTICATE list", this->entry->module->name);
 	} else if (strcmp(control, "preacct") == 0) {
 		if (!this->entry->module->preaccounting) {
 			fprintf(stderr, "%s[%d] Module '%s' does not contain "
@@ -473,6 +475,7 @@ int setup_modules(void)
 			exit(1);
 		}
 		add_to_list(&preacct, this);
+		DEBUG("Module: Added '%s' to PREACCT list", this->entry->module->name);
 	} else if (strcmp(control, "accounting") == 0) {
 		if (!this->entry->module->accounting) {
 			fprintf(stderr, "%s[%d] Module '%s' does not contain "
@@ -483,6 +486,7 @@ int setup_modules(void)
 		}
 
 		add_to_list(&accounting, this);
+		DEBUG("Module: Added '%s' to ACCOUNTING list", this->entry->module->name);
 	} else {
 		fprintf(stderr, "%s[%d] Unknown control \"%s\".\n",
 			filename, modreflineno, control);
