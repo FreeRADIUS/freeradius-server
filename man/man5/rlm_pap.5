@@ -3,7 +3,9 @@
 rlm_pap \- FreeRADIUS Module
 .SH DESCRIPTION
 The \fIrlm_pap\fP module authenticates RADIUS Access-Request packets
-that contain a User-Password attribute.
+that contain a User-Password attribute.  The module should also be
+listed last in the \fIauthorize\fP section, so that it can set the
+Auth-Type attribute as appropriate.
 .PP
 When a RADIUS packet contains a clear-text password in the form of a
 User-Password attribute, the \fIrlm_pap\fP module may be used for
@@ -36,13 +38,31 @@ one of the following attributes:
     LM-Password             Windows Lan Manager (LM) passwords.
 .DE
 
+The module tries to be flexible when handling the MD5, SMD5, SHA,
+SSHA, NT, and LM passwords.  They are listed in the dictionary as type
+"octets", so FreeRADIUS expects them to be represented in the various
+configuration files using the follow format:
+.PP
+.DS
+.br
+    NT-Password = 0xB7C899154197E8A2A33121D76A240AB5
+.DE
+.PP
+External databases may, however, store these passwords as hex or
+base64 encoded strings.  As it is not practical to make the external
+databases return the passwords in a format expected by FreeRADIUS,
+this module will look for passwords in the above formats, and work
+with them to create a password in the format that FreeRADIUS can use.
+.SH CONFIGURATION
+.PP
 This module takes no configuration, as it automatically looks for one
 of the above "known good" passwords, and uses it for authentication.
 .PP
 For backwards compatibility, there are old configuration parameters
-which may be used.  Please see \fIradiusd.conf\fP for details.
-
+which may be used, although we do not recommend them.  Please see
+\fIradiusd.conf\fP for details.
 .SH SECTIONS
+.BR authorize
 .BR authenticate
 .PP
 .SH FILES
