@@ -66,6 +66,9 @@ struct detail_instance {
 	/* last made directory */
 	char *last_made_directory;
 
+	/* timestamp & stuff */
+	char *header;  
+
 	/* if we want file locking */
 	int locking;
 };
@@ -73,6 +76,8 @@ struct detail_instance {
 static CONF_PARSER module_config[] = {
 	{ "detailfile",    PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,detailfile), NULL, "%A/%{Client-IP-Address}/detail" },
+	{ "header",    PW_TYPE_STRING_PTR,
+	  offsetof(struct detail_instance,header), NULL, "%t" },
 	{ "detailperm",    PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,detailperm), NULL, "0600" },
 	{ "dirperm",       PW_TYPE_INTEGER,
@@ -114,6 +119,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 {
 	int		outfd;
 	FILE		*outfp;
+	char		timestamp[256];
 	char		buffer[DIRLEN];
 	char		*p;
 	struct stat	st;
@@ -269,7 +275,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	Post a timestamp
 	 */
 	fseek(outfp, 0L, SEEK_END);
-	fputs(CTIME_R(&request->timestamp, buffer, DIRLEN), outfp);
+	radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL);
+	fprintf(outfp, "%s\n", timestamp);
 
 	/* Write each attribute/value to the log file */
 	while (pair) {

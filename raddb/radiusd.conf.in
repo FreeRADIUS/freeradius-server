@@ -1080,6 +1080,18 @@ $INCLUDE ${confdir}/eap.conf
 		#  permissions restrictive, we can prevent unwanted
 		#  people from seeing that information.
 		detailperm = 0600
+
+		#
+		#  Every entry in th edetail file has a header which
+		#  is a timestamp.  By default, we use the ctime
+		#  format (see "man ctime" for details).
+		#
+		#  The header can be customized by editing this
+		#  string.  See "doc/variables.txt" for a description
+		#  of what can be put here.
+		#
+		header = "%t"
+
 	}
 
 	#
