@@ -27,7 +27,7 @@ endif
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
-	$(CC) $(LDFLAGS) $(DAEMON_LDFLAGS) -o $@ \
+	$(LIBTOOL) --mode=link $(CC) -export-dynamic $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LIBS) $(LDBM) $(LCRYPT) $(PTHREADLIB) \
 		$(MODULE_LIBS)
 

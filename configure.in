@@ -25,6 +25,9 @@ if test "$GCC" = "yes"; then
     CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
 fi
 
+dnl ensure that we're looking for dlopen
+AC_LIBTOOL_DLOPEN
+
 dnl Figure out how to build shared libraries
 AC_PROG_LIBTOOL
 
@@ -203,20 +206,9 @@ AC_ARG_WITH(ascend-binary,
   esac ]
 )
 dnl if they haven't said to use it, do so.
-if test "$ASCEND_BINARY" = "";then
+if test "X$ASCEND_BINARY" = "X";then
   AC_DEFINE(ASCEND_BINARY)
 fi
-
-
-dnl extra argument: --with-dynamic_modules
-WITH_DYNAMIC_MODULES=yes
-AC_ARG_WITH(dynamic-modules,
-[  --with-dynamic-modules  Use runtime loadable modules ],
-[ case "$withval" in
-    *)
-	WITH_DYNAMIC_MODULES=$withval
-  esac ]
-)
 
 dnl extra argument: --with-threads
 WITH_THREADS=yes
@@ -347,6 +339,7 @@ MODULE_LIBS=
 MODULE_CFLAGS=
 MODULE_LDFLAGS=
 MODULE_HAVE_DLERROR=0
+
 dnl *** dlopen() and dlsym() in system libraries
 if test -z "$DYNAMIC_MODULES"; then
 	AC_CHECK_FUNC(dlopen,
@@ -390,49 +383,8 @@ if test -z "$DYNAMIC_MODULES"; then
 	,)
 fi
 
-dnl *** how to build a shared object
-if test "$DYNAMIC_MODULES" != ""; then
-        AC_MSG_CHECKING(how to build a shared object)
-        LDFLAGS_orig=$LDFLAGS
-
-        LDFLAGS="$LDFLAGS -Bshareable"
-        AC_TRY_LINK(,[ return 0; ],
-                [ MODULE_LDFLAGS="-Bshareable" ],
-                  MODULE_LDFLAGS=""
-        )
-
-dnl *** Bret Watson <Bret.Watson@ticm.com> says HP ld uses '-b -B deferred'
-	if test -z "$MODULE_LDFLAGS"; then
-          LDFLAGS="$LDFLAGS_orig -b -B deferred"
-          AC_TRY_LINK(,[ return 0; ],
-                  [ MODULE_LDFLAGS="-b -B deferred" ],
-                    MODULE_LDFLAGS=""
-          )
-	fi
-
-        LDFLAGS=$LDFLAGS_orig
-	AC_MSG_RESULT(ld $MODULE_LDFLAGS)
-fi
-
 dnl *** additional checks for DYNAMIC_MODULES_DL
 if test "$DYNAMIC_MODULES" = "DYNAMIC_MODULES_DL"; then
-	dnl Check if the C compiler supports -rdynamic
-	AC_MSG_CHECKING(whether $CC accepts -rdynamic...)
-	CFLAGS_orig="$CFLAGS"
-	CFLAGS="$CFLAGS -rdynamic"
-	AC_TRY_COMPILE([], [int x = 0], DAEMON_LDFLAGS=-rdynamic)
-
-	if test -n "DAEMON_LDFLAGS"; then
-	  AC_MSG_RESULT(yes)
-	else
-	  AC_MSG_RESULT(no)
-	fi
-	CFLAGS="$CFLAGS_orig"
-
-	LIBS_orig="$LIBS"
-	LDFLAGS_orig="$LDFLAGS"
-	LIBS="$LIBS $MODULE_LIBS"
-	LDFLAGS="$LDFLAGS $MODULE_LDFLAGS"
 
 dnl *** check whether we need preceeding underscores
 	AC_MSG_CHECKING(for preceeding underscore in symbols)
@@ -473,7 +425,6 @@ fi
 
 AC_SUBST(DYNAMIC_MODULES)
 AC_DEFINE(HAVE_DLOPEN)
-AC_SUBST(DAEMON_LDFLAGS)
 AC_SUBST(MODULE_LIBS)
 AC_SUBST(MODULE_CFLAGS)
 AC_SUBST(MODULE_LDFLAGS)
@@ -481,9 +432,8 @@ AC_SUBST(MODULE_HAVE_DLERROR)
 
 dnl #
 dnl # Figure out where libtool is located,
-dnl # and set the LT_COMPILE and LT_LINK flags.
 dnl #
-LIBTOOL="/bin/sh `pwd`/libtool"
+LIBTOOL="`pwd`/libtool"
 AC_SUBST(LIBTOOL)
 
 AC_OUTPUT(\

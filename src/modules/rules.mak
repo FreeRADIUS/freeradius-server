@@ -1,5 +1,7 @@
 #######################################################################
 #
+# $Id$
+#
 #  Each module should have a few common defines at the TOP of the
 # Makefile, and the 'include ../rules.mak'
 #
@@ -27,7 +29,7 @@ all: static dynamic
 #  definitions for new dependencies on suffixes
 #
 #######################################################################
-.SUFFIXES: .lo .o .so .a
+.SUFFIXES: .lo .o .la .a
 
 #######################################################################
 #
@@ -59,7 +61,7 @@ $(DYNAMIC_OBJS): $(SERVER_HEADERS)
 	$(CC) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
 
 %.lo : %.c
-	$(CC) $(CFLAGS) $(RLM_CFLAGS) -fPIC -c $< -o $@
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $<
 
 ifneq ($(TARGET),)
 #######################################################################
@@ -68,17 +70,20 @@ ifneq ($(TARGET),)
 #
 #######################################################################
 $(TARGET).a: $(STATIC_OBJS)
-	$(AR) crv $@ $^
+	$(LIBTOOL) --mode=link $(LD) -static $(CFLAGS) $(RLM_CFLAGS) $(LIBS) $^ -o $@ 
 
-$(TARGET).so: $(DYNAMIC_OBJS)
-	$(LD) $(MODULE_LDFLAGS) $(LIBS) $^ -o $@
+$(TARGET).la: $(DYNAMIC_OBJS)
+	$(LIBTOOL) --mode=link $(CC) -export-dynamic $(CFLAGS) \
+	$(RLM_CFLAGS) -o $@ -module -rpath $(libdir) $^ \
+	$(LIBS) && ln -s .libs/$(TARGET).so .
+
 
 #######################################################################
 #
 #  Generic targets so we can sweep through all modules
 # without knowing what their names are.
 #
-#  These rules also allow us to copy the '.a' or '.so' up
+#  These rules also allow us to copy the '.a' or '.la' up
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
@@ -89,7 +94,7 @@ static: $(TARGET).a
 	@[ "$LDFLAGS" != "" ] && \
 		echo -n $(LDFLAGS) " " >> ../lib/STATIC_MODULE_LDFLAGS
 
-dynamic: $(TARGET).so
+dynamic: $(TARGET).la
 	@cp $< ../lib
 
 #######################################################################
@@ -111,7 +116,8 @@ endif
 #
 #######################################################################
 clean:
-	@rm -f *.a *.o *.lo *.so *~
+	@rm -f *.a *.o *.lo *.so *.la *~
+	rm -rf .libs _libs
 
 reallyclean: clean
 	@rm -f config.h config.mak

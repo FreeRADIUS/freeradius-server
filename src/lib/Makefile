@@ -12,8 +12,10 @@ CFLAGS		+= -D_LIBRADIUS -I../include
 all:	$(LIBPREFIX)radius.a
 
 $(LIBPREFIX)radius.a: $(OBJS)
-	$(AR) rv $(LIBPREFIX)radius.a $(OBJS)
-	$(RANLIB) $(LIBPREFIX)radius.a
+	$(LIBTOOL) --mode=link $(LD) $(OBJS) -o $(LIBPREFIX)radius.a
+
+#	$(AR) rv $(LIBPREFIX)radius.a $(OBJS)
+#	$(RANLIB) $(LIBPREFIX)radius.a
 
 filters.o: filters.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c filters.c
