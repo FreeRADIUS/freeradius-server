@@ -6,7 +6,8 @@ Ver 1.50:
 * Add support for the '=*' and '!*' operators
 * Added a HELP_WANTED file describing what are the major things missing which people could contribute.
 * Updated TODO
-* The new group page should only be available if the general library type is sql
+* Added a help page for the Session Timeout and Idle Timeout attributes.
+* The new group page should only be available if the general library type is sql.
 Ver 1.30:
 * Add limit of results returned in accounting.php3
 * Fix a bug in time2strclock() in lib/functions.php3. Seconds ammount more than 9 would not show.
