@@ -24,9 +24,7 @@
 #include	<time.h>
 #include	<ctype.h>
 
-#ifdef WITH_PAM
-#  include	<security/pam_appl.h>
-#endif
+#include	<security/pam_appl.h>
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>
@@ -35,7 +33,6 @@
 #include	"radiusd.h"
 #include	"modules.h"
 
-#ifdef WITH_PAM
 /*************************************************************************
  *
  *	Function: PAM_conv
@@ -158,15 +155,6 @@ static int pam_auth(REQUEST *request, char *username, char *password)
 	r = pam_pass(username, password, "radiusd");
 	return (r == 0) ? RLM_AUTH_OK : RLM_AUTH_REJECT;
 }
-
-#else /* WITH_PAM */
-
-static int pam_auth(REQUEST *request, char *username, char *password)
-{
-	return RLM_AUTH_REJECT;
-}
-
-#endif
 
 module_t rlm_pam = {
   "PAM",
