@@ -63,6 +63,7 @@ if ($ds) {
 		$title_lang = decode_string("$title_lang", $k);
 		$title_lang = ($title_lang) ? $title_lang : '-';
 		$mailalt = ($info[0]['mailalternateaddress'][0]) ? $info[0]['mailalternateaddress'][0] : '-';
+		$user_password_exists = ($info[0]['userpassword'][0] != '') ? 'yes' : 'no';
 		foreach($attrmap as $key => $val){
 			$item_vals["$key"] = $info[0]["$val"];
 		}

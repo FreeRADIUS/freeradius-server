@@ -13,6 +13,9 @@ Ver 1.56:
   attribute can be used for that. The same is very difficult to implement for sql, so for now user
   values overwrite default values in sql (user edit page).
   A lot of code and a lot of files where changed so there may be bugs somewhere.
+* In the user edit page print a message under the User Password field about if it exists or not. Update
+  the user_info.php3 lib files to check for it.
+* In lib/ldap/defaults.php3 Dialup-Access should not be added in the default_vals. It is not inherited.
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files

@@ -32,6 +32,7 @@ $homephone = '-';
 $mobile = '-';
 $mail = '-';
 $mailalt = '-';
+$user_password_exists = 'no';
 
 unset($item_vals);
 unset($tmp);
@@ -45,6 +46,8 @@ if ($link){
 		while(($row = @da_sql_fetch_array($res,$config))){
 			$attr = $row[Attribute];
 			$val = $row[Value];
+			if ($attr == $config[sql_password_attribute] && $val != '')
+				$user_password_exists = 'yes';
 			if ($use_op){
 				$oper = $row[op];
 				$tmp["$attr"][operator][]="$oper";

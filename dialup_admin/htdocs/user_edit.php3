@@ -112,6 +112,12 @@ if ($user_type != 'group'){
 <tr>
 <td align=right colspan=$colspan bgcolor="#d0ddb0">
 User Password (changes only)
+<?php
+if ($user_password_exists == 'yes')
+	echo "<font size=-2>User password <font color=\"green\"><b>exists</b></font></font>\n";
+else
+	echo "<font size=-2>User password <font color=\"red\"><b>does not exist</b></font></font>\n";
+?>
 </td>
 <td>
 <input type=password name=passwd value="" size=40>
