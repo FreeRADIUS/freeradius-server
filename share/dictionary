@@ -22,9 +22,12 @@
 #	integer - 32 bit value in big endian order (high byte first)
 #	date    - 32 bit value in big endian order - seconds since
 #					00:00:00 GMT,  Jan.  1,  1970
+#	ifid    - 8 octets in network byte order
+#	ipv6addr   - 16 octets in network byte order
+#	ipv6prefix - 18 octets in network byte order
 #
 #	FreeRADIUS includes extended data types which are not defined
-#	in RFC 2865 or RFC 2866.  These data types are:
+#	in RFC 2865 or RFC 2866, or RFC 3162.  These data types are:
 #
 #	abinary - Ascend's binary filter format.
 #	octets  - raw octets, printed and input as hex strings.
@@ -48,6 +51,7 @@
 #	in the logfiles, INSTEAD OF the new names.
 #
 $INCLUDE dictionary.compat	# compability issues
+$INCLUDE dictionary.3gpp
 $INCLUDE dictionary.acc
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alteon
@@ -166,10 +170,10 @@ ATTRIBUTE	ARAP-Challenge-Response	84	string	# 10 octets
 ATTRIBUTE	Acct-Interim-Interval   85      integer
 ATTRIBUTE	NAS-Port-Id		87	string
 ATTRIBUTE	Framed-Pool		88	string
-ATTRIBUTE	NAS-IPv6-Address	95	octets	# really IPv6
-ATTRIBUTE	Framed-Interface-Id	96	octets	# 8 octets
-ATTRIBUTE	Framed-IPv6-Prefix	97	octets	# stupid format
-ATTRIBUTE	Login-IPv6-Host		98	octets	# really IPv6
+ATTRIBUTE	NAS-IPv6-Address	95	ipv6addr
+ATTRIBUTE	Framed-Interface-Id	96	ifid
+ATTRIBUTE	Framed-IPv6-Prefix	97	octets # ipv6prefix
+ATTRIBUTE	Login-IPv6-Host		98	ipv6addr
 ATTRIBUTE	Framed-IPv6-Route	99	string
 ATTRIBUTE	Framed-IPv6-Pool	100	string
 
@@ -177,7 +181,7 @@ ATTRIBUTE	Digest-Response		206	string
 ATTRIBUTE	Digest-Attributes	207	octets	# stupid format
 
 #
-#	Experimental Non Protocol Attributes used by Cistron-Radiusd
+#	Experimental Non Protocol Attributes used by FreeRADIUS
 #
 
 # 	These attributes CAN go in the reply item list.
@@ -428,7 +432,7 @@ VALUE		Auth-Type		EAP			6
 VALUE		Auth-Type		ARAP			7
 
 #
-#	Cistron extensions
+#	FreeRADIUS extensions (most originally from Cistron)
 #
 VALUE		Auth-Type		Ldap			252
 VALUE		Auth-Type		Pam			253
@@ -465,7 +469,7 @@ VALUE		Session-Type		Local			0
 VALUE		Post-Auth-Type		Local			0
 
 #
-#	Experimental Non-Protocol Integer Translations for Cistron-Radiusd
+#	Experimental Non-Protocol Integer Translations for FreeRADIUS
 #
 VALUE		Fall-Through		No			0
 VALUE		Fall-Through		Yes			1
