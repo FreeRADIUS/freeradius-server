@@ -136,7 +136,7 @@ SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, C
 FROM StopVoIP;
 
 CREATE OR REPLACE VIEW Telephony AS
-SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, CalledStationId AS Number, EXTRACT(YEAR FROM (h323setuptime AT TIME ZONE 'UTC')) AS Year, EXTRACT(MONTH FROM (h323setuptime AT TIME ZONE 'UTC')) AS Month, EXTRACT(DAY FROM (h323setuptime AT TIME ZONE 'UTC')) AS Day, h323SetupTime::time AT TIME ZONE 'UTC' AS Time, h323DisconnectCause AS error_code, CiscoNASPort AS isdn_port, h323ConfID AS ConfID
+SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, CalledStationId AS Number, EXTRACT(YEAR FROM (h323setuptime AT TIME ZONE 'UTC')) AS Year, EXTRACT(MONTH FROM (h323setuptime AT TIME ZONE 'UTC')) AS Month, EXTRACT(DAY FROM (h323setuptime AT TIME ZONE 'UTC')) AS Day, h323SetupTime::time AT TIME ZONE 'UTC' AS Time, h323DisconnectCause AS error_code, split_part(split_part(CiscoNASPort,':',1),' ',2) AS PRI, split_part(CiscoNASPort,':',3) AS PRI_channel, CiscoNASPort AS isdn_port, h323ConfID AS ConfID
 FROM StopTelephony;
 
 CREATE OR REPLACE VIEW calls AS

@@ -289,6 +289,7 @@ sub process_record {
 	$h323_call_type =~ s/\"//g;
 	$h323_call_origin =~ s/\"//g;
 	$h323_voice_quality =~ s/\"//g;
+	$Cisco_NAS_Port =~ s/\"//g;
 
 	# Remove Remove . from the start of time fields (routers that have lost ntp timesync temporarily)
 	$h323_setup_time =~ s/^\.*//;
