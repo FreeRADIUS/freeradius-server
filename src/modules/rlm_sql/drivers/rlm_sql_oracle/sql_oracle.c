@@ -100,12 +100,12 @@ int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	if (config->sqltrace)
 		DEBUG(querystr);
-	 if (oracle_socket->conn == NULL) {
+	 if (oracle_sock->conn == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return 0;
 	}
 
-	if (OCIStmtPrepare (oracle_socket->queryHandle, oracle_socket->errHandle,
+	if (OCIStmtPrepare (oracle_sock->queryHandle, oracle_sock->errHandle,
 				querystr, strlen(querystr),
 				OCI_NTV_SYNTAX, OCI_DEFAULT))  {
 		radlog(L_ERR,"sql_query: prepare failed: %s",sql_error(sqlsocket, config));
