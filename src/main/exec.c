@@ -53,7 +53,7 @@ static const char rcsid[] = "$Id$";
  */
 int radius_exec_program(const char *cmd, REQUEST *request,
 			int exec_wait, char *user_msg,
-			int msg_len, int parse_vp)
+			int msg_len, VALUE_PAIR **pairs)
 {
 	VALUE_PAIR *vp;
 	char answer[4096];
@@ -67,6 +67,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	int n, left, done;
 
 	if (user_msg) *user_msg = '\0';
+	if (pairs) *pairs = NULL;
 
 	/*
 	 *	Open a pipe for child/parent communication, if
@@ -84,7 +85,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 *	message, or VP's.
 		 */
 		user_msg = NULL;
-		parse_vp = FALSE;
+		pairs = NULL;
 	}
 
 	/*
@@ -317,7 +318,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	if (done) {
 		n = -1;
-		if (parse_vp) {
+		if (pairs) {
 			/*
 			 *	For backwards compatibility, first check
 			 *	for plain text (user_msg).
@@ -363,10 +364,10 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 			} else {
 				/*
-				 *	Add the attributes to the reply.
+				 *	Tell the caller about the value
+				 *	pairs.
 				 */
-				pairmove(&request->reply->vps, &vp);
-				pairfree(&vp);
+				*pairs = vp;
 			}
 		} /* else the answer was a set of VP's, not a text message */
 	} /* else we didn't read anything from the child. */
