@@ -150,6 +150,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	VALUE_PAIR *vp;
 	char mycmd[1024];
 	char answer[4096];
+	char argv_buf[4096];
 	char *argv[256];
 	const char *from;
 	char *p, *to;
@@ -250,8 +251,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	/*
 	 *	Expand each string, as appropriate
 	 */
-	to = answer;
-	left = sizeof(answer);
+	to = argv_buf;
+	left = sizeof(argv_buf);
 	for (i = 0; i < argc; i++) {
 		int sublen;
 
