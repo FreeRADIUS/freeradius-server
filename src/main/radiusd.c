@@ -1445,6 +1445,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			 *  is NOT finished!
 			 */
 			if (proxy_sent == 1) {
+				finished = request->finished;
 				goto postpone_request;
 			}
 		}
@@ -1507,11 +1508,17 @@ finished_request:
 	 *  to make the server run more efficiently!
 	 */
 
-	/*  If we proxied this request, it's not safe to delete it until
-	 *  after the proxy reply
+	/*
+	 *  If we proxied this request, it's not safe to delete it until
+	 *  after the proxy reply.
+	 *
+	 *  However, we DO mark the request as no longer being handled
+	 *  by a thread.
 	 */
-	if (proxy_sent)
+	if (proxy_sent) {
+		finished = request->finished;
 		goto postpone_request;
+	}
 
 	if (request->packet) {
 		pairfree(&request->packet->vps);
@@ -1545,12 +1552,19 @@ finished_request:
 next_request:
 	DEBUG2("Going to the next request");
 
-#if WITH_THREAD_POOL
-	request->child_pid = NO_SUCH_CHILD_PID; /* finished with child, so initialize for next use */
+postpone_request:
+#if HAVE_PTHREAD_H
+	/*
+	 *  We are finished with the child thread.  The thread is detached,
+	 *  so that when it exits, there's nothing more for the server
+	 *  to do.
+	 *
+	 *  If we're running with thread pools, then this frees up the
+	 *  thread in the pool for another request.
+	 */
+	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 	request->finished = finished; /* do as the LAST thing before exiting */
-
-postpone_request:
 	return 0;
 }
 
