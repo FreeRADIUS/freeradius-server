@@ -48,12 +48,17 @@ typedef enum lrad_token_t {
   T_OP_CMP_FALSE,               /* !* */
   T_OP_CMP_EQ,			/* == */
   T_HASH,			/* # */
+  T_BARE_WORD,			/* bare word */
+  T_DOUBLE_QUOTED_STRING,	/* "foo" */
+  T_SINGLE_QUOTED_STRING,	/* 'foo' */
+  T_BACK_QUOTED_STRING,		/* `foo` */
 } LRAD_TOKEN;
 
 #define T_EQSTART	T_OP_ADD
 #define	T_EQEND		(T_OP_CMP_EQ + 1)
 
-LRAD_TOKEN	getword (char **ptr, char *buf, int buflen);
+int		getword (char **ptr, char *buf, int buflen);
+int		getbareword (char **ptr, char *buf, int buflen);
 LRAD_TOKEN	gettoken(char **ptr, char *buf, int buflen);
 
 #endif /* LRAD_TOKEN_H */

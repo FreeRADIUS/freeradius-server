@@ -67,6 +67,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 	int	escape;
 	int	x;
 	const TOKEN	*t;
+	LRAD_TOKEN rcode;
 
 	buf[0] = 0;
 
@@ -96,8 +97,10 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 
 	/* Read word. */
 	quote = 0;
-	if (*p == '"') {
-		quote = 1;
+	if ((*p == '"') ||
+	    (*p == '\'') ||
+	    (*p == '`')) {
+		quote = *p;
 		p++;
 	}
 	s = buf;
@@ -119,6 +122,12 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 				case '"':
 					*s++ = '"';
 					break;
+				case '\'':
+					*s++ = '\'';
+					break;
+				case '`':
+					*s++ = '`';
+					break;
 				default:
 					if (*p >= '0' && *p <= '9' &&
 					    sscanf(p, "%3o", &x) == 1) {
@@ -136,7 +145,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 			escape = 1;
 			continue;
 		}
-		if (quote && *p == '"') {
+		if (quote && (*p == quote)) {
 			p++;
 			break;
 		}
@@ -161,16 +170,50 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 	*ptr = p;
 
 	/* we got SOME form of output string, even if it is empty */
-	return T_INVALID;
+	switch (quote) {
+	default:
+	  rcode = T_BARE_WORD;
+	  break;
+
+	case '\'':
+	  rcode = T_SINGLE_QUOTED_STRING;
+	  break;
+
+	case '"':
+	  rcode = T_DOUBLE_QUOTED_STRING;
+	  break;
+
+	case '`':
+	  rcode = T_BACK_QUOTED_STRING;
+	  break;
+	}
+
+	return rcode;
 }
 
 /*
  *	Read a "word" - this means we don't honor
  *	tokens as delimiters.
  */
-LRAD_TOKEN getword(char **ptr, char *buf, int buflen)
+int getword(char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 0, tokens) == T_EOL ? 0 : 1;
+}
+
+/*
+ *	Read a bare "word" - this means we don't honor
+ *	tokens as delimiters.
+ */
+int getbareword(char **ptr, char *buf, int buflen)
+{
+	LRAD_TOKEN token;
+
+	token = getthing(ptr, buf, buflen, 0, NULL);
+	if (token != T_BARE_WORD) {
+		return 0;
+	}
+
+	return 1;
 }
 
 /*
