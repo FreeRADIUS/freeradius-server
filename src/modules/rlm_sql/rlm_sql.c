@@ -550,7 +550,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				        	        radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
 					                radlog(L_ERR, logstr);
 				        	        sql_release_socket(inst, sqlsocket);
-				                	return RLM_MODULE_FAIL;
+				                	return RLM_MODULE_NOOP;
 					        }
 #endif
 
