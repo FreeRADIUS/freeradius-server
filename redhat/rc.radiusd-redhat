@@ -36,7 +36,7 @@ WATCHER=/usr/sbin/radwatch
 LOCKF=/var/lock/subsys/radiusd
 
 test -f $RADIUSD || exit 0
-test -f /etc/raddb/clients || exit 0
+test -f /etc/raddb/radiusd.conf || exit 0
 
 case "$1" in
   start)
