@@ -49,7 +49,9 @@ The directory that contains the RADIUS dictionary files. Defaults to
 
 .IP \-f\ \fIfile\fP
 File to read the attribute/value pairs from. If this is not specified,
-they are read from stdin.
+they are read from stdin.  This option can be specified multiple
+times, in which case packets are sent in order by file, and within
+each file, by first to last.
 
 .IP \-i\ \fIid\fP
 Use \fIid\fP as the RADIUS request Id.
@@ -60,10 +62,13 @@ default, the requests are sent as fast as possible.  This option
 allows you to slow down the rate at which radclient sends requests.
 
 .IP \-p\ \fInum_requests_in_parallel\fP
-Send \fInum_requests_in_parallel\fP.  By default, radclient sends the
-first request listed in a file, waits for the response, and then sends
-the second request.   This option allows you to send many requests all
-at once.
+Send \fInum_requests_in_parallel\fP, without waiting for a response
+for each one.  By default, radclient sends the first request listed in
+a file, waits for the response, and once the response is received,
+sends the second request.  This option allows you to send many
+requests at a time.  Once \fInum_requests_in_parallel\fP are sent,
+radclient waits for all of the responses to arrive (or for the
+requests to time out), before sending any more packets.
 
 .IP \-q
 Go to quiet mode, and do not print out anything.
