@@ -523,6 +523,10 @@ modules {
 	#  For Linux, see:
 	#	http://www.kernel.org/pub/linux/libs/pam/index.html
 	#
+	#  WARNING: On many systems, the system PAM libraries have
+	#           memory leaks!  We STRONGLY SUGGEST that you do not
+	#	    use PAM for authentication, due to those memory leaks.
+	#
 	pam {
 		#
 		#  The name to use for PAM authentication.
