@@ -174,3 +174,8 @@ void *rad_malloc(size_t size)
 
 	return ptr;
 }
+
+void xfree(const char *ptr)
+{
+	free((char *)ptr);
+}
