@@ -89,7 +89,6 @@ int need_reload = FALSE;
 int sig_hup_block = FALSE;
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
-static int got_child = FALSE;
 static time_t time_now;
 static pid_t radius_pid;
 
@@ -97,7 +96,6 @@ static pid_t radius_pid;
  *  Configuration items.
  */
 static int dont_fork = FALSE;
-static int needs_child_cleanup = 0;
 static time_t start_time = 0;
 static int spawn_flag = TRUE;
 static int do_exit = 0;
@@ -109,9 +107,6 @@ static void usage(int);
 
 static void sig_fatal (int);
 static void sig_hup (int);
-#ifdef HAVE_PTHREAD_H
-static void sig_cleanup(int);
-#endif
 
 static int rad_status_server(REQUEST *request);
 
@@ -1008,29 +1003,6 @@ int main(int argc, char *argv[])
 #endif
 	}
 
-#ifdef HAVE_PTHREAD_H
-	/*
-	 *	If we have pthreads, then the child threads block
-	 *	SIGCHLD, and the main server thread catches it.
-	 *
-	 *	That way, the SIGCHLD handler can grab the exit status,
-	 *	and save it for the child thread.
-	 *
-	 *	If we don't have pthreads, then each child process
-	 *	will do a waitpid(), and we ignore SIGCHLD.
-	 *
-	 *	Once we have multiple child processes to handle
-	 *	requests, and shared memory, then we've got to
-	 *	re-enable SIGCHLD catching.
-	 */
-#ifdef HAVE_SIGACTION
-	act.sa_handler = sig_cleanup;
-	sigaction(SIGCHLD, &act, NULL);
-#else
-	signal(SIGCHLD, sig_cleanup);
-#endif
-#endif
-
 	radlog(L_INFO, "Ready to process requests.");
 	start_time = time(NULL);
 
@@ -1369,56 +1341,6 @@ int main(int argc, char *argv[])
 	} /* loop forever */
 }
 
-
-#ifdef HAVE_PTHREAD_H
-static void sig_cleanup(int sig)
-{
-	int status;
-	pid_t pid;
-
-	sig = sig; /* -Wunused */
-
-	got_child = FALSE;
-
-	needs_child_cleanup = 0;  /* reset the queued cleanup number */
-
-	/*
-	 *  Reset the signal handler, if required.
-	 */
-	reset_signal(SIGCHLD, sig_cleanup);
-
-	/*
-	 *	Wait for the child, without hanging.
-	 */
-	for (;;) {
-		pid = waitpid((pid_t)-1, &status, WNOHANG);
-		if (pid <= 0)
-			return;
-
-		/*
-		 *  Check to see if the child did a bad thing.
-		 *  If so, kill ALL processes in the current
-		 *  process group, to prevent further attacks.
-		 */
-		if (debug_flag && (WIFSIGNALED(status))) {
-			radlog(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch "
-					"signal %d: killing all active servers.\n",
-					pid, WTERMSIG(status));
-			kill(-radius_pid, SIGTERM);
-			exit(1);
-		}
-
-		/*
-		 *	If we have pthreads, then the only children
-		 *	are from Exec-Program.  We don't care about them,
-		 *	so once we've grabbed their PID's, we're done.
-		 */
-#ifdef HAVE_PTHREAD_H
-		rad_savepid(pid, status);
-#endif /* !defined HAVE_PTHREAD_H */
-	}
-}
-#endif /* HAVE_PTHREAD_H */
 
 /*
  *  Display the syntax for starting this program.

@@ -123,6 +123,7 @@ static THREAD_POOL thread_pool;
 static int pool_initialized = FALSE;
 static void rad_exec_init(void);
 
+
 /*
  *	Data structure to keep track of which child forked which
  *	request.  If we cared, we'd keep a list of "free" and "active"
@@ -636,6 +637,7 @@ int total_active_threads(void)
 	return (rcode);
 }
 
+
 /*
  *	Allocate the thread pool, and seed it with an initial number
  *	of threads.
@@ -947,7 +949,42 @@ int thread_pool_clean(time_t now)
 	return 0;
 }
 
+
 static int exec_initialized = FALSE;
+
+
+/*
+ *	Handle child signals.
+ */
+static void sig_child(int sig)
+{
+	int status;
+	pid_t pid;
+
+	sig = sig; /* -Wunused */
+
+	/*
+	 *  Reset the signal handler, if required.
+	 */
+	reset_signal(SIGCHLD, sig_child);
+
+	/*
+	 *	Wait for the child, without hanging.
+	 */
+	for (;;) {
+		pid = waitpid((pid_t)-1, &status, WNOHANG);
+		if (pid <= 0)
+			return;
+
+		/*
+		 *	If we have pthreads, then the only children
+		 *	are from Exec-Program.  We don't care about them,
+		 *	so once we've grabbed their PID's, we're done.
+		 */
+		rad_savepid(pid, status);
+	}
+}
+
 
 /*
  *	Initialize the stuff for keeping track of child processes.
@@ -955,6 +992,9 @@ static int exec_initialized = FALSE;
 static void rad_exec_init(void)
 {
 	int i;
+#ifdef HAVE_SIGACTION
+	struct sigaction act;
+#endif
 
 	/*
 	 *	Initialize the mutex used to remember calls to fork.
@@ -970,6 +1010,27 @@ static void rad_exec_init(void)
 		forkers[i].child_pid = -1;
 		forkers[i].status = 0;
 	}
+
+	/*
+	 *	If we have pthreads, then the child threads block
+	 *	SIGCHLD, and the main server thread catches it.
+	 *
+	 *	That way, the SIGCHLD handler can grab the exit status,
+	 *	and save it for the child thread.
+	 *
+	 *	If we don't have pthreads, then each child process
+	 *	will do a waitpid(), and we ignore SIGCHLD.
+	 *
+	 *	Once we have multiple child processes to handle
+	 *	requests, and shared memory, then we've got to
+	 *	re-enable SIGCHLD catching.
+	 */
+#ifdef HAVE_SIGACTION
+	act.sa_handler = sig_child;
+	sigaction(SIGCHLD, &act, NULL);
+#else
+	signal(SIGCHLD, sig_child);
+#endif
 
 	exec_initialized = TRUE;
 }
