@@ -1,16 +1,26 @@
 #
 # Updated 07-Nov-1998 to RFC 2138 and RFC 2139
 #
+# Version $Id$
+#
 #	This file contains dictionary translations for parsing
 #	requests and generating responses.  All transactions are
 #	composed of Attribute/Value Pairs.  The value of each attribute
 #	is specified as one of 4 data types.  Valid data types are:
 #
-#	string - 0-253 octets
-#	ipaddr - 4 octets in network byte order
+#	string  - 0-253 octets
+#	ipaddr  - 4 octets in network byte order
 #	integer - 32 bit value in big endian order (high byte first)
-#	date - 32 bit value in big endian order - seconds since
+#	date    - 32 bit value in big endian order - seconds since
 #					00:00:00 GMT,  Jan.  1,  1970
+#
+#	FreeRADIUS includes extended data types which are not defined
+#	in RFC 2138 or RFC 2139.  These data types are:
+#
+#	abinary - Ascend's binary filter format.
+#	octets  - raw octets, printed and input as hex strings.
+#		  e.g.: 0x123456789abcdef
+#
 #
 #	Enumerated values are stored in the user file with dictionary
 #	VALUE translations for easy administration.
@@ -115,6 +125,8 @@ ATTRIBUTE	Current-Time		1044	string
 ATTRIBUTE	Realm			1045	string
 ATTRIBUTE	No-Such-Attribute	1046	string
 ATTRIBUTE	Packet-Type		1047	integer
+ATTRIBUTE	Proxy-To-Realm		1048	string
+ATTRIBUTE	Replicate-To-Realm	1049	string
 
 #
 #	Non-Protocol Attributes

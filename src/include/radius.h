@@ -1,7 +1,7 @@
 /*
  * radius.h	Constants of the radius protocol.
  *
- * Version:	@(#)radius.h  1.10  24-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
@@ -96,6 +96,8 @@
 #define PW_REALM			1045
 #define PW_NO_SUCH_ATTRIBUTE		1046
 #define PW_PACKET_TYPE			1047
+#define PW_PROXY_TO_REALM      		1048
+#define PW_REPLICATE_TO_REALM  		1049
 
 /*
  *	Integer Translations
