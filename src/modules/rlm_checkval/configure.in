@@ -1,0 +1,38 @@
+AC_INIT(rlm_checkval.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_checkval])
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	## We may need more complex checking here.  Assume for now that 
+	## everyone has it.
+	AC_CHECK_HEADERS(regex.h)
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+
+AC_SUBST(checkval_cflags)
+AC_SUBST(chackval_ldflags)
+
+AC_CONFIG_HEADER(config.h)  # delete if you don't want a config.h file.
+
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
