@@ -10,17 +10,11 @@ static const char rcsid[] = "$Id$";
 #include	"autoconf.h"
 
 #include	<sys/stat.h>
-#include	<sys/types.h>
-#include	<netinet/in.h>
 
-#include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<errno.h>
-#include	<time.h>
 #include	<ctype.h>
 #include	<fcntl.h>
-#include	<unistd.h>
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>
@@ -94,12 +88,9 @@ static int detail_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR	*pair;
 	uint32_t	nas;
 	NAS		*cl;
-	long		curtime;
 	int		ret = RLM_MODULE_OK;
 
 	struct detail_instance *inst = instance;
-
-	curtime = time(NULL);
 
 	/*
 	 *	Find out the name of this terminal server. We try
@@ -172,7 +163,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 		close(outfd);
 	} else {
 		/* Post a timestamp */
-		fputs(ctime(&curtime), outfp);
+		fputs(ctime(&request->timestamp), outfp);
 
 		/* Write each attribute/value to the log file */
 		pair = request->packet->vps;
@@ -188,7 +179,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 		/*
 		 *	Add non-protocol attibutes.
 		 */
-		fprintf(outfp, "\tTimestamp = %ld\n", curtime);
+		fprintf(outfp, "\tTimestamp = %ld\n", request->timestamp);
 		if (request->packet->verified)
 			fputs("\tRequest-Authenticator = Verified\n", outfp);
 		else
