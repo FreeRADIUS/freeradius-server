@@ -1308,9 +1308,15 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 
 			if (attr->type != PW_TYPE_IPADDR) {
 				pair->lvalue = ntohl(lvalue);
-				ip_ntoa(pair->strvalue, pair->lvalue);
 			} else {
+				 /*
+				  *  It's an IP address, keep it in network
+				  *  byte order, and put the ASCII IP
+				  *  address or host name into the string
+				  *  value.
+				  */
 				pair->lvalue = lvalue;
+				ip_ntoa(pair->strvalue, pair->lvalue);
 			}
 
 			/*
@@ -1320,6 +1326,17 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			    pair->type == PW_TYPE_INTEGER) {
 			        pair->flags.tag = (pair->lvalue >> 24) & 0xff;
 				pair->lvalue &= 0x00ffffff;
+			}
+
+			if (attr->type == PW_TYPE_INTEGER) {
+				DICT_VALUE *dval;
+				dval = dict_valbyattr(pair->attribute,
+						      pair->lvalue);
+				if (dval) {
+					strNcpy(pair->strvalue,
+						dval->name,
+						sizeof(pair->strvalue));
+				}
 			}
 			break;
 			
