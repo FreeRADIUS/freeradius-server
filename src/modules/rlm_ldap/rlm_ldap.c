@@ -231,6 +231,18 @@ static const char rcsid[] = "$Id$";
 #define MAX_FAILED_CONNS_RESTART	4
 #define MAX_FAILED_CONNS_START		5
 
+#ifdef NOVELL_UNIVERSAL_PASSWORD
+
+/* Universal Password Length */
+#define UNIVERSAL_PASS_LEN 256
+
+int nmasldap_get_password(
+	LDAP	 *ld,
+	char     *objectDN,
+	size_t   *pwdSize,	/*  in bytes */
+	char     *pwd );
+
+#endif
 /* linked list of mappings between RADIUS attributes and LDAP attributes */
 struct TLDAP_RADIUS {
 	char*                 attr;
@@ -282,6 +294,10 @@ typedef struct {
 	TLDAP_RADIUS   *check_item_map;
 	TLDAP_RADIUS   *reply_item_map;
 	LDAP_CONN	*conns;
+#ifdef NOVELL
+	LDAP_CONN *apc_conns;
+	int			edir_account_policy_check;
+#endif
 	int             ldap_debug; /* Debug flag for LDAP SDK */
 	char		*xlat_name; /* name used to xlat */
 	char		*tls_cacertfile;
@@ -333,6 +349,9 @@ static CONF_PARSER module_config[] = {
 	{"compare_check_items", PW_TYPE_BOOLEAN, offsetof(ldap_instance,do_comp), NULL, "no"},
 	{"access_attr_used_for_allow", PW_TYPE_BOOLEAN, offsetof(ldap_instance,default_allow), NULL, "yes"},
 	{"do_xlat", PW_TYPE_BOOLEAN, offsetof(ldap_instance,do_xlat), NULL, "yes"},
+#ifdef NOVELL
+	{"edir_account_policy_check", PW_TYPE_BOOLEAN, offsetof(ldap_instance,edir_account_policy_check), NULL, "yes"},
+#endif
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -347,7 +366,7 @@ static void     fieldcpy(char *, char **);
 static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **,char);
 static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 static int ldap_xlat(void *,REQUEST *, char *, char *,int, RADIUS_ESCAPE_STRING);
-static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *);
+static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *, char **);
 static int     read_mappings(ldap_instance* inst);
 
 static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,void *instance)
@@ -469,6 +488,22 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	DEBUG("rlm_ldap: Registering ldap_xlat with xlat_name %s",xlat_name);
 	xlat_register(xlat_name,ldap_xlat,inst);
 
+#ifdef NOVELL
+	/*
+	 * (LDAP_Instance, V1) attribute-value pair in the config items list means
+	 * that the 'authorize' method of the instance 'V1' of the LDAP module has
+	 * processed this request.
+	 */
+	dict_addattr("LDAP-Instance", 0, PW_TYPE_STRING, -1, flags);
+	/*
+	 * ('eDir-APC', '1') in config items list => Do not perform eDirectory account
+	 *                                           policy check (APC)
+	 * ('eDir-APC', '2') in config items list => Perform eDirectory APC
+	 * ('eDir-APC', '3') in config items list => eDirectory APC has been completed
+	 */
+	dict_addattr("eDir-APC", 0, PW_TYPE_INTEGER, -1, flags);
+#endif
+
 	if (inst->num_conns <= 0){
 		radlog(L_ERR, "rlm_ldap: Invalid ldap connections number passed.");
 		free(inst);
@@ -487,6 +522,28 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		inst->conns[i].ld = NULL;
 		pthread_mutex_init(&inst->conns[i].mutex, NULL);
 	}
+
+#ifdef NOVELL
+	/*
+	 * 'inst->apc_conns' is a separate connection pool to be used for performing
+	 * eDirectory account policy check in the 'postauth' method. This avoids
+	 * changing the (RADIUS server) credentials associated with the 'inst->conns'
+	 * connection pool.
+	 */
+	inst->apc_conns = (LDAP_CONN *)malloc(sizeof(LDAP_CONN)*inst->num_conns);
+	if (inst->apc_conns == NULL){
+		radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
+		free(inst);
+		return -1;
+	}
+	for(i = 0; i < inst->num_conns; i++){
+		inst->apc_conns[i].bound = 0;
+		inst->apc_conns[i].locked = 0;
+		inst->apc_conns[i].failed_conns = 0;
+		inst->apc_conns[i].ld = NULL;
+		pthread_mutex_init(&inst->apc_conns[i].mutex, NULL);
+	}
+#endif
 
 	if (read_mappings(inst) != 0) {
 		radlog(L_ERR, "rlm_ldap: Reading dictionary mappings from file %s failed",
@@ -693,7 +750,7 @@ retry:
 			DEBUG2("rlm_ldap: closing existing LDAP connection");
 			ldap_unbind_s(conn->ld);
 		}
-		if ((conn->ld = ldap_connect(instance, inst->login, inst->password, 0, &res)) == NULL) {
+		if ((conn->ld = ldap_connect(instance, inst->login, inst->password, 0, &res, NULL)) == NULL) {
 			radlog(L_ERR, "rlm_ldap: (re)connection attempt failed");
 			if (search_retry == 0)
 				conn->failed_conns++;
@@ -1305,6 +1362,9 @@ ldap_authorize(void *instance, REQUEST * request)
 		}
 	}
 	if (inst->passwd_attr && strlen(inst->passwd_attr)){
+#ifdef NOVELL_UNIVERSAL_PASSWORD
+		if(strcasecmp(inst->passwd_attr,"nspmPassword")!= 0){
+#endif
 		VALUE_PAIR *passwd_item;
 
 		if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
@@ -1345,6 +1405,124 @@ ldap_authorize(void *instance, REQUEST * request)
 				ldap_value_free(passwd_vals);
 			}
 		}
+#ifdef NOVELL_UNIVERSAL_PASSWORD
+  		}
+		else{
+		/*
+	 	* Read Universal Password from eDirectory
+	 	*/
+			VALUE_PAIR	*passwd_item;
+			VALUE_PAIR	*vp_user_dn;
+			int		passwd_len;
+			char		*universal_password = NULL;
+			int		universal_password_len = UNIVERSAL_PASS_LEN;
+			char		*passwd_val = NULL;
+
+			res = 0;
+
+			if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
+			
+				universal_password = rad_malloc(universal_password_len);
+				memset(universal_password, 0, universal_password_len);
+
+				vp_user_dn = pairfind(request->config_items,PW_LDAP_USERDN);
+				res = nmasldap_get_password(conn->ld,vp_user_dn->strvalue,&universal_password_len,universal_password);
+
+				if (res == 0){
+					passwd_val = universal_password;
+
+					if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
+						passwd_val = strstr(passwd_val,inst->passwd_hdr);
+
+						if (passwd_val != NULL)
+							passwd_val += strlen((char*)inst->passwd_hdr);
+						else
+							DEBUG("rlm_ldap: Password header not found in password %s for user %s ",passwd_val,request->username->strvalue);
+					}
+
+					if (passwd_val){
+						if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
+							radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
+                                                	ldap_msgfree(result);
+							ldap_release_conn(conn_id,inst->conns);
+ 							memset(universal_password, 0, universal_password_len);
+							free(universal_password);
+							return RLM_MODULE_FAIL;
+						}
+
+						passwd_len = strlen(passwd_val);
+						strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
+						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
+						pairadd(&request->config_items,passwd_item);
+
+#ifdef NOVELL
+						{
+							DICT_ATTR *dattr;
+							VALUE_PAIR	*vp_inst, *vp_apc;
+							int inst_attr, apc_attr;
+
+							dattr = dict_attrbyname("LDAP-Instance");
+							inst_attr = dattr->attr;
+							dattr = dict_attrbyname("eDir-APC");
+							apc_attr = dattr->attr;
+
+							vp_inst = pairfind(request->config_items, inst_attr);
+							if(vp_inst == NULL){
+								/*
+								 * The authorize method of no other LDAP module instance has
+								 * processed this request.
+								 */
+								if ((vp_inst = paircreate(inst_attr, PW_TYPE_STRING)) == NULL){
+									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
+									ldap_msgfree(result);
+									ldap_release_conn(conn_id, inst->conns);
+									memset(universal_password, 0, universal_password_len);
+									free(universal_password);
+									return RLM_MODULE_FAIL;
+								}
+								strcpy(vp_inst->strvalue, inst->xlat_name);
+								vp_inst->length = strlen(vp_inst->strvalue);
+								pairadd(&request->config_items, vp_inst);
+
+								/*
+								 * Inform the authenticate / post-auth method about the presence
+								 * of UP in the config items list and whether eDirectory account
+								 * policy check is to be performed or not.
+								 */
+								if ((vp_apc = paircreate(apc_attr, PW_TYPE_INTEGER)) == NULL){
+									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
+									ldap_msgfree(result);
+									ldap_release_conn(conn_id, inst->conns);
+									memset(universal_password, 0, universal_password_len);
+									free(universal_password);
+									return RLM_MODULE_FAIL;
+								}
+
+								if(!inst->edir_account_policy_check){
+									/* Do nothing */
+									strcpy(vp_apc->strvalue, "1");
+								}else{
+									/* Perform eDirectory account-policy check */
+									strcpy(vp_apc->strvalue, "2");
+								}
+								vp_apc->length = 1;
+								pairadd(&request->config_items, vp_apc);
+							}
+						}
+#endif
+
+						DEBUG("rlm_ldap: Added the eDirectory password in check items");
+					}
+				}
+				else {
+					DEBUG("rlm_ldap: Error reading Universal Password.Return Code = %d",res);
+				}
+
+				memset(universal_password, 0, universal_password_len);
+				free(universal_password);
+			}
+		}			
+#endif
 	}
 
 
@@ -1374,6 +1552,20 @@ ldap_authorize(void *instance, REQUEST * request)
 	}
 
        if (inst->do_comp && paircmp(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
+#ifdef NOVELL
+		/* Don't perform eDirectory APC if RADIUS authorize fails */
+		int apc_attr;
+		VALUE_PAIR *vp_apc;
+		DICT_ATTR *dattr;
+
+		dattr = dict_attrbyname("eDir-APC");
+		apc_attr = dattr->attr;
+
+		vp_apc = pairfind(request->config_items, apc_attr);
+		if(vp_apc)
+			vp_apc->strvalue[0] = '1';
+#endif
+
 		DEBUG("rlm_ldap: Pairs do not match. Rejecting user.");
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Pairs do not match");
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
@@ -1415,7 +1607,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	LDAP           *ld_user;
 	LDAPMessage    *result, *msg;
 	ldap_instance  *inst = instance;
-	char           *user_dn, *attrs[] = {"uid", NULL};
+	char           *user_dn, *attrs[] = {"uid", NULL}, *err = NULL;
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
 	int             res;
@@ -1516,8 +1708,35 @@ ldap_authenticate(void *instance, REQUEST * request)
 
 	DEBUG("rlm_ldap: user DN: %s", user_dn);
 
+#ifndef NOVELL
 	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
-			       1, &res);
+			       1, &res, NULL);
+#else
+	
+	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
+			1, &res, &err);
+
+	if(err != NULL){
+		/* 'err' contains the LDAP connection error description */
+		DEBUG("rlm_ldap: %s", err);
+		pairadd(&request->reply->vps, pairmake("Reply-Message", err, T_OP_EQ));
+		ldap_memfree((void *)err);
+	}
+
+	/* Don't perform eDirectory APC again after attempting to bind here. */
+	{
+		int apc_attr;
+		DICT_ATTR *dattr;
+		VALUE_PAIR *vp_apc;
+
+		dattr = dict_attrbyname("eDir-APC");
+		apc_attr = dattr->attr;
+		vp_apc = pairfind(request->config_items, apc_attr);
+		if(vp_apc && vp_apc->strvalue[0] == '2')
+			vp_apc->strvalue[0] = '3';
+	}
+#endif
+
 	if (ld_user == NULL){
 		if (res == RLM_MODULE_REJECT){
 			inst->failed_conns = 0;
@@ -1540,8 +1759,151 @@ ldap_authenticate(void *instance, REQUEST * request)
 	return RLM_MODULE_OK;
 }
 
+#ifdef NOVELL
+/*****************************************************************************
+ *
+ *	Function: rlm_ldap_postauth
+ *
+ *	Purpose: Perform eDirectory account policy check and failed-login reporting
+ *	to eDirectory.
+ *
+ *****************************************************************************/
+static int
+ldap_postauth(void *instance, REQUEST * request)
+{
+	int res = RLM_MODULE_FAIL;
+	int inst_attr, apc_attr;
+	char password[UNIVERSAL_PASS_LEN];
+	ldap_instance  *inst = instance;
+	LDAP_CONN	*conn;
+	VALUE_PAIR *vp_inst, *vp_apc;
+	DICT_ATTR *dattr;
+
+	dattr = dict_attrbyname("LDAP-Instance");
+	inst_attr = dattr->attr;
+	dattr = dict_attrbyname("eDir-APC");
+	apc_attr = dattr->attr;
+
+	vp_inst = pairfind(request->config_items, inst_attr);
+
+	/*
+	 * Check if the password in the config items list is the user's UP which has
+	 * been read in the authorize method of this instance of the LDAP module.
+	 */
+	if((vp_inst == NULL) || strcmp(vp_inst->strvalue, inst->xlat_name))
+		return RLM_MODULE_NOOP;
+
+	vp_apc = pairfind(request->config_items, apc_attr);
+
+	switch(vp_apc->strvalue[0]){
+		case '1':
+			/* Account policy check not enabled */
+		case '3':
+			/* Account policy check has been completed */
+			res = RLM_MODULE_NOOP;
+			break;
+		case '2':
+			{
+				int err, conn_id = -1, i;
+				char *error_msg = NULL;
+				LDAP *ld;
+				VALUE_PAIR *vp_fdn, *vp_pwd;
+				DICT_ATTR *da;
+				ldap_instance	*inst = instance;
+				LDAP_CONN	*conn;
+
+				if(request->reply->code == PW_AUTHENTICATION_REJECT){
+					/* Bind to eDirectory as the RADIUS user with a wrong password. */
+					vp_pwd = pairfind(request->config_items, PW_PASSWORD);
+					strcpy(password, vp_pwd->strvalue);
+					if(strlen(password) > 0){
+						if(password[0] != 'a'){
+							password[0] = 'a';
+						}else{
+							password[0] = 'b';
+						}
+					}else{
+						strcpy(password, "dummy_password");
+					}
+					res = RLM_MODULE_REJECT;
+				}else{
+					/* Bind to eDirectory as the RADIUS user using the user's UP */
+					vp_pwd = pairfind(request->config_items, PW_PASSWORD);
+					if(vp_pwd == NULL){
+						DEBUG("rlm_ldap: User's Universal Password not in config items list.");
+						return RLM_MODULE_FAIL;
+					}
+					strcpy(password, vp_pwd->strvalue);
+				}
+
+				if ((da = dict_attrbyname("Ldap-UserDn")) == NULL) {
+					DEBUG("rlm_ldap: Attribute for user FDN not found in dictionary. Unable to proceed");
+					return RLM_MODULE_FAIL;
+				}
+
+				vp_fdn = pairfind(request->packet->vps, da->attr);
+				if(vp_fdn == NULL){
+					DEBUG("rlm_ldap: User's FQDN not in config items list.");
+					return RLM_MODULE_FAIL;
+				}
+
+				if ((conn_id = ldap_get_conn(inst->apc_conns, &conn, inst)) == -1){
+					radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
+					return RLM_MODULE_FAIL;
+				}
+
+				/*
+				 * If there is an existing LDAP connection to the directory, bind over
+				 * it. Otherwise, establish a new connection.
+				 */
+postauth_reconnect:
+				if (!conn->bound || conn->ld == NULL) {
+					DEBUG2("rlm_ldap: attempting LDAP reconnection");
+					if (conn->ld){
+						DEBUG2("rlm_ldap: closing existing LDAP connection");
+						ldap_unbind_s(conn->ld);
+					}
+					if ((conn->ld = ldap_connect(instance, (char *)vp_fdn->strvalue, password, 0, &res, &error_msg)) == NULL) {
+						radlog(L_ERR, "rlm_ldap: eDirectory account policy check failed.");
+
+						if(error_msg != NULL){
+							DEBUG("rlm_ldap: %s", error_msg);
+							pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
+							ldap_memfree((void *)error_msg);
+						}
+
+						vp_apc->strvalue[0] = '3';
+						ldap_release_conn(conn_id, inst->apc_conns);
+						return RLM_MODULE_REJECT;
+					}
+					conn->bound = 1;
+				}else if((err = ldap_simple_bind_s(conn->ld, (char *)vp_fdn->strvalue, password)) != LDAP_SUCCESS){
+					if(err == LDAP_SERVER_DOWN){
+						conn->bound = 0;
+						goto postauth_reconnect;
+					}
+					DEBUG("rlm_ldap: eDirectory account policy check failed.");
+					ldap_get_option(conn->ld, LDAP_OPT_ERROR_STRING, &error_msg);
+					if(error_msg != NULL){
+						DEBUG("rlm_ldap: %s", error_msg);
+						pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
+						ldap_memfree((void *)error_msg);
+					}
+					vp_apc->strvalue[0] = '3';
+					ldap_release_conn(conn_id, inst->apc_conns);
+					return RLM_MODULE_REJECT;
+				}
+				vp_apc->strvalue[0] = '3';
+				ldap_release_conn(conn_id, inst->apc_conns);
+				return RLM_MODULE_OK;
+			}
+	}
+	return res;
+}
+#endif
+
 static LDAP    *
-ldap_connect(void *instance, const char *dn, const char *password, int auth, int *result)
+ldap_connect(void *instance, const char *dn, const char *password, int auth, int *result, char **err)
 {
 	ldap_instance  *inst = instance;
 	LDAP           *ld = NULL;
@@ -1688,6 +2050,374 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	msgid = ldap_bind(ld, dn, password,LDAP_AUTH_SIMPLE);
 	if (msgid == -1) {
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		if ((conn->ld = ldap_connect(instance, inst->login,
+-					     inst->password, 0, &res)) == NULL) {
++					     inst->password, 0, &res, NULL)) == NULL) {
+ 			radlog(L_ERR, "rlm_ldap: (re)connection attempt failed");
+ 			if (search_retry == 0)
+ 				conn->failed_conns++;
+@@ -1205,6 +1264,9 @@
+ 		}
+ 	}
+ 	if (inst->passwd_attr && strlen(inst->passwd_attr)){
++#ifdef NOVELL_UNIVERSAL_PASSWORD
++		if(strcasecmp(inst->passwd_attr,"nspmPassword")!= 0){
++#endif
+ 		VALUE_PAIR *passwd_item;
+ 
+ 		if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
+@@ -1245,6 +1307,124 @@
+ 				ldap_value_free(passwd_vals);
+ 			}
+ 		}
++#ifdef NOVELL_UNIVERSAL_PASSWORD
++  		}
++		else{
++		/*
++	 	* Read Universal Password from eDirectory
++	 	*/
++			VALUE_PAIR	*passwd_item;
++			VALUE_PAIR	*vp_user_dn;
++			int		passwd_len;
++			char		*universal_password = NULL;
++			int		universal_password_len = UNIVERSAL_PASS_LEN;
++			char		*passwd_val = NULL;
++
++			res = 0;
++
++			if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
++			
++				universal_password = rad_malloc(universal_password_len);
++				memset(universal_password, 0, universal_password_len);
++
++				vp_user_dn = pairfind(request->config_items,PW_LDAP_USERDN);
++				res = nmasldap_get_password(conn->ld,vp_user_dn->strvalue,&universal_password_len,universal_password);
++
++				if (res == 0){
++					passwd_val = universal_password;
++
++					if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
++						passwd_val = strstr(passwd_val,inst->passwd_hdr);
++
++						if (passwd_val != NULL)
++							passwd_val += strlen((char*)inst->passwd_hdr);
++						else
++							DEBUG("rlm_ldap: Password header not found in password %s for user %s ",passwd_val,request->username->strvalue);
++					}
++
++					if (passwd_val){
++						if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
++							radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
++                                                	ldap_msgfree(result);
++							ldap_release_conn(conn_id,inst->conns);
++ 							memset(universal_password, 0, universal_password_len);
++							free(universal_password);
++							return RLM_MODULE_FAIL;
++						}
++
++						passwd_len = strlen(passwd_val);
++						strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
++						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
++						pairadd(&request->config_items,passwd_item);
++
++#ifdef NOVELL
++						{
++							DICT_ATTR *dattr;
++							VALUE_PAIR	*vp_inst, *vp_apc;
++							int inst_attr, apc_attr;
++
++							dattr = dict_attrbyname("LDAP-Instance");
++							inst_attr = dattr->attr;
++							dattr = dict_attrbyname("eDir-APC");
++							apc_attr = dattr->attr;
++
++							vp_inst = pairfind(request->config_items, inst_attr);
++							if(vp_inst == NULL){
++								/*
++								 * The authorize method of no other LDAP module instance has
++								 * processed this request.
++								 */
++								if ((vp_inst = paircreate(inst_attr, PW_TYPE_STRING)) == NULL){
++									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
++									ldap_msgfree(result);
++									ldap_release_conn(conn_id, inst->conns);
++									memset(universal_password, 0, universal_password_len);
++									free(universal_password);
++									return RLM_MODULE_FAIL;
++								}
++								strcpy(vp_inst->strvalue, inst->xlat_name);
++								vp_inst->length = strlen(vp_inst->strvalue);
++								pairadd(&request->config_items, vp_inst);
++
++								/*
++								 * Inform the authenticate / post-auth method about the presence
++								 * of UP in the config items list and whether eDirectory account
++								 * policy check is to be performed or not.
++								 */
++								if ((vp_apc = paircreate(apc_attr, PW_TYPE_INTEGER)) == NULL){
++									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
++									ldap_msgfree(result);
++									ldap_release_conn(conn_id, inst->conns);
++									memset(universal_password, 0, universal_password_len);
++									free(universal_password);
++									return RLM_MODULE_FAIL;
++								}
++
++								if(!inst->edir_account_policy_check){
++									/* Do nothing */
++									strcpy(vp_apc->strvalue, "1");
++								}else{
++									/* Perform eDirectory account-policy check */
++									strcpy(vp_apc->strvalue, "2");
++								}
++								vp_apc->length = 1;
++								pairadd(&request->config_items, vp_apc);
++							}
++						}
++#endif
++
++						DEBUG("rlm_ldap: Added the eDirectory password in check items");
++					}
++				}
++				else {
++					DEBUG("rlm_ldap: Error reading Universal Password.Return Code = %d",res);
++				}
++
++				memset(universal_password, 0, universal_password_len);
++				free(universal_password);
++			}
++		}			
++#endif
+ 	}
+ 
+ 
+@@ -1274,6 +1454,20 @@
+ 	}
+ 
+        if (inst->do_comp && paircmp(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
++#ifdef NOVELL
++		/* Don't perform eDirectory APC if RADIUS authorize fails */
++		int apc_attr;
++		VALUE_PAIR *vp_apc;
++		DICT_ATTR *dattr;
++
++		dattr = dict_attrbyname("eDir-APC");
++		apc_attr = dattr->attr;
++
++		vp_apc = pairfind(request->config_items, apc_attr);
++		if(vp_apc)
++			vp_apc->strvalue[0] = '1';
++#endif
++
+ 		DEBUG("rlm_ldap: Pairs do not match. Rejecting user.");
+ 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Pairs do not match");
+ 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+@@ -1315,7 +1509,7 @@
+ 	LDAP           *ld_user;
+ 	LDAPMessage    *result, *msg;
+ 	ldap_instance  *inst = instance;
+-	char           *user_dn, *attrs[] = {"uid", NULL};
++	char           *user_dn, *attrs[] = {"uid", NULL}, *err = NULL;
+ 	char		filter[MAX_FILTER_STR_LEN];
+ 	char		basedn[MAX_FILTER_STR_LEN];
+ 	int             res;
+@@ -1420,8 +1614,35 @@
+ 
+ 	DEBUG("rlm_ldap: user DN: %s", user_dn);
+ 
++#ifndef NOVELL
+ 	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
+-			       1, &res);
++			       1, &res, NULL);
++#else
++	
++	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
++			1, &res, &err);
++
++	if(err != NULL){
++		/* 'err' contains the LDAP connection error description */
++		DEBUG("rlm_ldap: %s", err);
++		pairadd(&request->reply->vps, pairmake("Reply-Message", err, T_OP_EQ));
++		ldap_memfree((void *)err);
++	}
++
++	/* Don't perform eDirectory APC again after attempting to bind here. */
++	{
++		int apc_attr;
++		DICT_ATTR *dattr;
++		VALUE_PAIR *vp_apc;
++
++		dattr = dict_attrbyname("eDir-APC");
++		apc_attr = dattr->attr;
++		vp_apc = pairfind(request->config_items, apc_attr);
++		if(vp_apc && vp_apc->strvalue[0] == '2')
++			vp_apc->strvalue[0] = '3';
++	}
++#endif
++
+ 	if (ld_user == NULL){
+ 		if (res == RLM_MODULE_REJECT){
+ 			inst->failed_conns = 0;
+@@ -1444,8 +1665,151 @@
+ 	return RLM_MODULE_OK;
+ }
+ 
++#ifdef NOVELL
++/*****************************************************************************
++ *
++ *	Function: rlm_ldap_postauth
++ *
++ *	Purpose: Perform eDirectory account policy check and failed-login reporting
++ *	to eDirectory.
++ *
++ *****************************************************************************/
++static int
++ldap_postauth(void *instance, REQUEST * request)
++{
++	int res = RLM_MODULE_FAIL;
++	int inst_attr, apc_attr;
++	char password[UNIVERSAL_PASS_LEN];
++	ldap_instance  *inst = instance;
++	LDAP_CONN	*conn;
++	VALUE_PAIR *vp_inst, *vp_apc;
++	DICT_ATTR *dattr;
++
++	dattr = dict_attrbyname("LDAP-Instance");
++	inst_attr = dattr->attr;
++	dattr = dict_attrbyname("eDir-APC");
++	apc_attr = dattr->attr;
++
++	vp_inst = pairfind(request->config_items, inst_attr);
++
++	/*
++	 * Check if the password in the config items list is the user's UP which has
++	 * been read in the authorize method of this instance of the LDAP module.
++	 */
++	if((vp_inst == NULL) || strcmp(vp_inst->strvalue, inst->xlat_name))
++		return RLM_MODULE_NOOP;
++
++	vp_apc = pairfind(request->config_items, apc_attr);
++
++	switch(vp_apc->strvalue[0]){
++		case '1':
++			/* Account policy check not enabled */
++		case '3':
++			/* Account policy check has been completed */
++			res = RLM_MODULE_NOOP;
++			break;
++		case '2':
++			{
++				int err, conn_id = -1, i;
++				char *error_msg = NULL;
++				LDAP *ld;
++				VALUE_PAIR *vp_fdn, *vp_pwd;
++				DICT_ATTR *da;
++				ldap_instance	*inst = instance;
++				LDAP_CONN	*conn;
++
++				if(request->reply->code == PW_AUTHENTICATION_REJECT){
++					/* Bind to eDirectory as the RADIUS user with a wrong password. */
++					vp_pwd = pairfind(request->config_items, PW_PASSWORD);
++					strcpy(password, vp_pwd->strvalue);
++					if(strlen(password) > 0){
++						if(password[0] != 'a'){
++							password[0] = 'a';
++						}else{
++							password[0] = 'b';
++						}
++					}else{
++						strcpy(password, "dummy_password");
++					}
++					res = RLM_MODULE_REJECT;
++				}else{
++					/* Bind to eDirectory as the RADIUS user using the user's UP */
++					vp_pwd = pairfind(request->config_items, PW_PASSWORD);
++					if(vp_pwd == NULL){
++						DEBUG("rlm_ldap: User's Universal Password not in config items list.");
++						return RLM_MODULE_FAIL;
++					}
++					strcpy(password, vp_pwd->strvalue);
++				}
++
++				if ((da = dict_attrbyname("Ldap-UserDn")) == NULL) {
++					DEBUG("rlm_ldap: Attribute for user FDN not found in dictionary. Unable to proceed");
++					return RLM_MODULE_FAIL;
++				}
++
++				vp_fdn = pairfind(request->packet->vps, da->attr);
++				if(vp_fdn == NULL){
++					DEBUG("rlm_ldap: User's FQDN not in config items list.");
++					return RLM_MODULE_FAIL;
++				}
++
++				if ((conn_id = ldap_get_conn(inst->apc_conns, &conn, inst)) == -1){
++					radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
++					return RLM_MODULE_FAIL;
++				}
++
++				/*
++				 * If there is an existing LDAP connection to the directory, bind over
++				 * it. Otherwise, establish a new connection.
++				 */
++postauth_reconnect:
++				if (!conn->bound || conn->ld == NULL) {
++					DEBUG2("rlm_ldap: attempting LDAP reconnection");
++					if (conn->ld){
++						DEBUG2("rlm_ldap: closing existing LDAP connection");
++						ldap_unbind_s(conn->ld);
++					}
++					if ((conn->ld = ldap_connect(instance, (char *)vp_fdn->strvalue, password, 0, &res, &error_msg)) == NULL) {
++						radlog(L_ERR, "rlm_ldap: eDirectory account policy check failed.");
++
++						if(error_msg != NULL){
++							DEBUG("rlm_ldap: %s", error_msg);
++							pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
++							ldap_memfree((void *)error_msg);
++						}
++
++						vp_apc->strvalue[0] = '3';
++						ldap_release_conn(conn_id, inst->apc_conns);
++						return RLM_MODULE_REJECT;
++					}
++					conn->bound = 1;
++				}else if((err = ldap_simple_bind_s(conn->ld, (char *)vp_fdn->strvalue, password)) != LDAP_SUCCESS){
++					if(err == LDAP_SERVER_DOWN){
++						conn->bound = 0;
++						goto postauth_reconnect;
++					}
++					DEBUG("rlm_ldap: eDirectory account policy check failed.");
++					ldap_get_option(conn->ld, LDAP_OPT_ERROR_STRING, &error_msg);
++					if(error_msg != NULL){
++						DEBUG("rlm_ldap: %s", error_msg);
++						pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
++						ldap_memfree((void *)error_msg);
++					}
++					vp_apc->strvalue[0] = '3';
++					ldap_release_conn(conn_id, inst->apc_conns);
++					return RLM_MODULE_REJECT;
++				}
++				vp_apc->strvalue[0] = '3';
++				ldap_release_conn(conn_id, inst->apc_conns);
++				return RLM_MODULE_OK;
++			}
++	}
++	return res;
++}
++#endif
++
+ static LDAP    *
+-ldap_connect(void *instance, const char *dn, const char *password, int auth, int *result)
++ldap_connect(void *instance, const char *dn, const char *password, int auth, int *result, char **err)
+ {
+ 	ldap_instance  *inst = instance;
+ 	LDAP           *ld = NULL;
+@@ -1601,6 +1965,9 @@
+ 	msgid = ldap_bind(ld, dn, password,LDAP_AUTH_SIMPLE);
+ 	if (msgid == -1) {
+ 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		if(err != NULL){
+			ldap_get_option(ld, LDAP_OPT_ERROR_STRING, err);
+		}
 		if (inst->is_url)
 			radlog(L_ERR, "rlm_ldap: %s bind to %s failed: %s",
 			 	dn, inst->server, ldap_err2string(ldap_errno));
@@ -1706,6 +2436,384 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	if(rc < 1) {
 		DEBUG("rlm_ldap: ldap_result()");
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		if ((conn->ld = ldap_connect(instance, inst->login,
+-					     inst->password, 0, &res)) == NULL) {
++					     inst->password, 0, &res, NULL)) == NULL) {
+ 			radlog(L_ERR, "rlm_ldap: (re)connection attempt failed");
+ 			if (search_retry == 0)
+ 				conn->failed_conns++;
+@@ -1205,6 +1264,9 @@
+ 		}
+ 	}
+ 	if (inst->passwd_attr && strlen(inst->passwd_attr)){
++#ifdef NOVELL_UNIVERSAL_PASSWORD
++		if(strcasecmp(inst->passwd_attr,"nspmPassword")!= 0){
++#endif
+ 		VALUE_PAIR *passwd_item;
+ 
+ 		if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
+@@ -1245,6 +1307,124 @@
+ 				ldap_value_free(passwd_vals);
+ 			}
+ 		}
++#ifdef NOVELL_UNIVERSAL_PASSWORD
++  		}
++		else{
++		/*
++	 	* Read Universal Password from eDirectory
++	 	*/
++			VALUE_PAIR	*passwd_item;
++			VALUE_PAIR	*vp_user_dn;
++			int		passwd_len;
++			char		*universal_password = NULL;
++			int		universal_password_len = UNIVERSAL_PASS_LEN;
++			char		*passwd_val = NULL;
++
++			res = 0;
++
++			if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
++			
++				universal_password = rad_malloc(universal_password_len);
++				memset(universal_password, 0, universal_password_len);
++
++				vp_user_dn = pairfind(request->config_items,PW_LDAP_USERDN);
++				res = nmasldap_get_password(conn->ld,vp_user_dn->strvalue,&universal_password_len,universal_password);
++
++				if (res == 0){
++					passwd_val = universal_password;
++
++					if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
++						passwd_val = strstr(passwd_val,inst->passwd_hdr);
++
++						if (passwd_val != NULL)
++							passwd_val += strlen((char*)inst->passwd_hdr);
++						else
++							DEBUG("rlm_ldap: Password header not found in password %s for user %s ",passwd_val,request->username->strvalue);
++					}
++
++					if (passwd_val){
++						if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
++							radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
++                                                	ldap_msgfree(result);
++							ldap_release_conn(conn_id,inst->conns);
++ 							memset(universal_password, 0, universal_password_len);
++							free(universal_password);
++							return RLM_MODULE_FAIL;
++						}
++
++						passwd_len = strlen(passwd_val);
++						strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
++						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
++						pairadd(&request->config_items,passwd_item);
++
++#ifdef NOVELL
++						{
++							DICT_ATTR *dattr;
++							VALUE_PAIR	*vp_inst, *vp_apc;
++							int inst_attr, apc_attr;
++
++							dattr = dict_attrbyname("LDAP-Instance");
++							inst_attr = dattr->attr;
++							dattr = dict_attrbyname("eDir-APC");
++							apc_attr = dattr->attr;
++
++							vp_inst = pairfind(request->config_items, inst_attr);
++							if(vp_inst == NULL){
++								/*
++								 * The authorize method of no other LDAP module instance has
++								 * processed this request.
++								 */
++								if ((vp_inst = paircreate(inst_attr, PW_TYPE_STRING)) == NULL){
++									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
++									ldap_msgfree(result);
++									ldap_release_conn(conn_id, inst->conns);
++									memset(universal_password, 0, universal_password_len);
++									free(universal_password);
++									return RLM_MODULE_FAIL;
++								}
++								strcpy(vp_inst->strvalue, inst->xlat_name);
++								vp_inst->length = strlen(vp_inst->strvalue);
++								pairadd(&request->config_items, vp_inst);
++
++								/*
++								 * Inform the authenticate / post-auth method about the presence
++								 * of UP in the config items list and whether eDirectory account
++								 * policy check is to be performed or not.
++								 */
++								if ((vp_apc = paircreate(apc_attr, PW_TYPE_INTEGER)) == NULL){
++									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
++									ldap_msgfree(result);
++									ldap_release_conn(conn_id, inst->conns);
++									memset(universal_password, 0, universal_password_len);
++									free(universal_password);
++									return RLM_MODULE_FAIL;
++								}
++
++								if(!inst->edir_account_policy_check){
++									/* Do nothing */
++									strcpy(vp_apc->strvalue, "1");
++								}else{
++									/* Perform eDirectory account-policy check */
++									strcpy(vp_apc->strvalue, "2");
++								}
++								vp_apc->length = 1;
++								pairadd(&request->config_items, vp_apc);
++							}
++						}
++#endif
++
++						DEBUG("rlm_ldap: Added the eDirectory password in check items");
++					}
++				}
++				else {
++					DEBUG("rlm_ldap: Error reading Universal Password.Return Code = %d",res);
++				}
++
++				memset(universal_password, 0, universal_password_len);
++				free(universal_password);
++			}
++		}			
++#endif
+ 	}
+ 
+ 
+@@ -1274,6 +1454,20 @@
+ 	}
+ 
+        if (inst->do_comp && paircmp(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
++#ifdef NOVELL
++		/* Don't perform eDirectory APC if RADIUS authorize fails */
++		int apc_attr;
++		VALUE_PAIR *vp_apc;
++		DICT_ATTR *dattr;
++
++		dattr = dict_attrbyname("eDir-APC");
++		apc_attr = dattr->attr;
++
++		vp_apc = pairfind(request->config_items, apc_attr);
++		if(vp_apc)
++			vp_apc->strvalue[0] = '1';
++#endif
++
+ 		DEBUG("rlm_ldap: Pairs do not match. Rejecting user.");
+ 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Pairs do not match");
+ 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+@@ -1315,7 +1509,7 @@
+ 	LDAP           *ld_user;
+ 	LDAPMessage    *result, *msg;
+ 	ldap_instance  *inst = instance;
+-	char           *user_dn, *attrs[] = {"uid", NULL};
++	char           *user_dn, *attrs[] = {"uid", NULL}, *err = NULL;
+ 	char		filter[MAX_FILTER_STR_LEN];
+ 	char		basedn[MAX_FILTER_STR_LEN];
+ 	int             res;
+@@ -1420,8 +1614,35 @@
+ 
+ 	DEBUG("rlm_ldap: user DN: %s", user_dn);
+ 
++#ifndef NOVELL
+ 	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
+-			       1, &res);
++			       1, &res, NULL);
++#else
++	
++	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
++			1, &res, &err);
++
++	if(err != NULL){
++		/* 'err' contains the LDAP connection error description */
++		DEBUG("rlm_ldap: %s", err);
++		pairadd(&request->reply->vps, pairmake("Reply-Message", err, T_OP_EQ));
++		ldap_memfree((void *)err);
++	}
++
++	/* Don't perform eDirectory APC again after attempting to bind here. */
++	{
++		int apc_attr;
++		DICT_ATTR *dattr;
++		VALUE_PAIR *vp_apc;
++
++		dattr = dict_attrbyname("eDir-APC");
++		apc_attr = dattr->attr;
++		vp_apc = pairfind(request->config_items, apc_attr);
++		if(vp_apc && vp_apc->strvalue[0] == '2')
++			vp_apc->strvalue[0] = '3';
++	}
++#endif
++
+ 	if (ld_user == NULL){
+ 		if (res == RLM_MODULE_REJECT){
+ 			inst->failed_conns = 0;
+@@ -1444,8 +1665,151 @@
+ 	return RLM_MODULE_OK;
+ }
+ 
++#ifdef NOVELL
++/*****************************************************************************
++ *
++ *	Function: rlm_ldap_postauth
++ *
++ *	Purpose: Perform eDirectory account policy check and failed-login reporting
++ *	to eDirectory.
++ *
++ *****************************************************************************/
++static int
++ldap_postauth(void *instance, REQUEST * request)
++{
++	int res = RLM_MODULE_FAIL;
++	int inst_attr, apc_attr;
++	char password[UNIVERSAL_PASS_LEN];
++	ldap_instance  *inst = instance;
++	LDAP_CONN	*conn;
++	VALUE_PAIR *vp_inst, *vp_apc;
++	DICT_ATTR *dattr;
++
++	dattr = dict_attrbyname("LDAP-Instance");
++	inst_attr = dattr->attr;
++	dattr = dict_attrbyname("eDir-APC");
++	apc_attr = dattr->attr;
++
++	vp_inst = pairfind(request->config_items, inst_attr);
++
++	/*
++	 * Check if the password in the config items list is the user's UP which has
++	 * been read in the authorize method of this instance of the LDAP module.
++	 */
++	if((vp_inst == NULL) || strcmp(vp_inst->strvalue, inst->xlat_name))
++		return RLM_MODULE_NOOP;
++
++	vp_apc = pairfind(request->config_items, apc_attr);
++
++	switch(vp_apc->strvalue[0]){
++		case '1':
++			/* Account policy check not enabled */
++		case '3':
++			/* Account policy check has been completed */
++			res = RLM_MODULE_NOOP;
++			break;
++		case '2':
++			{
++				int err, conn_id = -1, i;
++				char *error_msg = NULL;
++				LDAP *ld;
++				VALUE_PAIR *vp_fdn, *vp_pwd;
++				DICT_ATTR *da;
++				ldap_instance	*inst = instance;
++				LDAP_CONN	*conn;
++
++				if(request->reply->code == PW_AUTHENTICATION_REJECT){
++					/* Bind to eDirectory as the RADIUS user with a wrong password. */
++					vp_pwd = pairfind(request->config_items, PW_PASSWORD);
++					strcpy(password, vp_pwd->strvalue);
++					if(strlen(password) > 0){
++						if(password[0] != 'a'){
++							password[0] = 'a';
++						}else{
++							password[0] = 'b';
++						}
++					}else{
++						strcpy(password, "dummy_password");
++					}
++					res = RLM_MODULE_REJECT;
++				}else{
++					/* Bind to eDirectory as the RADIUS user using the user's UP */
++					vp_pwd = pairfind(request->config_items, PW_PASSWORD);
++					if(vp_pwd == NULL){
++						DEBUG("rlm_ldap: User's Universal Password not in config items list.");
++						return RLM_MODULE_FAIL;
++					}
++					strcpy(password, vp_pwd->strvalue);
++				}
++
++				if ((da = dict_attrbyname("Ldap-UserDn")) == NULL) {
++					DEBUG("rlm_ldap: Attribute for user FDN not found in dictionary. Unable to proceed");
++					return RLM_MODULE_FAIL;
++				}
++
++				vp_fdn = pairfind(request->packet->vps, da->attr);
++				if(vp_fdn == NULL){
++					DEBUG("rlm_ldap: User's FQDN not in config items list.");
++					return RLM_MODULE_FAIL;
++				}
++
++				if ((conn_id = ldap_get_conn(inst->apc_conns, &conn, inst)) == -1){
++					radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
++					return RLM_MODULE_FAIL;
++				}
++
++				/*
++				 * If there is an existing LDAP connection to the directory, bind over
++				 * it. Otherwise, establish a new connection.
++				 */
++postauth_reconnect:
++				if (!conn->bound || conn->ld == NULL) {
++					DEBUG2("rlm_ldap: attempting LDAP reconnection");
++					if (conn->ld){
++						DEBUG2("rlm_ldap: closing existing LDAP connection");
++						ldap_unbind_s(conn->ld);
++					}
++					if ((conn->ld = ldap_connect(instance, (char *)vp_fdn->strvalue, password, 0, &res, &error_msg)) == NULL) {
++						radlog(L_ERR, "rlm_ldap: eDirectory account policy check failed.");
++
++						if(error_msg != NULL){
++							DEBUG("rlm_ldap: %s", error_msg);
++							pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
++							ldap_memfree((void *)error_msg);
++						}
++
++						vp_apc->strvalue[0] = '3';
++						ldap_release_conn(conn_id, inst->apc_conns);
++						return RLM_MODULE_REJECT;
++					}
++					conn->bound = 1;
++				}else if((err = ldap_simple_bind_s(conn->ld, (char *)vp_fdn->strvalue, password)) != LDAP_SUCCESS){
++					if(err == LDAP_SERVER_DOWN){
++						conn->bound = 0;
++						goto postauth_reconnect;
++					}
++					DEBUG("rlm_ldap: eDirectory account policy check failed.");
++					ldap_get_option(conn->ld, LDAP_OPT_ERROR_STRING, &error_msg);
++					if(error_msg != NULL){
++						DEBUG("rlm_ldap: %s", error_msg);
++						pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
++						ldap_memfree((void *)error_msg);
++					}
++					vp_apc->strvalue[0] = '3';
++					ldap_release_conn(conn_id, inst->apc_conns);
++					return RLM_MODULE_REJECT;
++				}
++				vp_apc->strvalue[0] = '3';
++				ldap_release_conn(conn_id, inst->apc_conns);
++				return RLM_MODULE_OK;
++			}
++	}
++	return res;
++}
++#endif
++
+ static LDAP    *
+-ldap_connect(void *instance, const char *dn, const char *password, int auth, int *result)
++ldap_connect(void *instance, const char *dn, const char *password, int auth, int *result, char **err)
+ {
+ 	ldap_instance  *inst = instance;
+ 	LDAP           *ld = NULL;
+@@ -1601,6 +1965,9 @@
+ 	msgid = ldap_bind(ld, dn, password,LDAP_AUTH_SIMPLE);
+ 	if (msgid == -1) {
+ 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
++		if(err != NULL){
++			ldap_get_option(ld, LDAP_OPT_ERROR_STRING, err);
++		}
+ 		if (inst->is_url) {
+ 			radlog(L_ERR, "rlm_ldap: %s bind to %s failed: %s",
+ 			 	dn, inst->server, ldap_err2string(ldap_errno));
+@@ -1620,6 +1987,9 @@
+ 	if (rc < 1) {
+ 		DEBUG("rlm_ldap: ldap_result()");
+ 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		if(err != NULL){
+			ldap_get_option(ld, LDAP_OPT_ERROR_STRING, err);
+		}
 		if (inst->is_url)
 			radlog(L_ERR, "rlm_ldap: %s bind to %s failed: %s",
 				dn, inst->server, (rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
@@ -1733,6 +2841,9 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 			radlog(L_ERR, "rlm_ldap: LDAP login failed: check identity, password settings in ldap section of radiusd.conf");
 			*result = RLM_MODULE_FAIL;
 		}
+		if(err != NULL){
+			ldap_get_option(ld, LDAP_OPT_ERROR_STRING, err);
+		}
 		break;
 
 	default:
@@ -1744,6 +2855,9 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 				dn, inst->server, inst->port,
 				ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
+		if(err != NULL){
+			ldap_get_option(ld, LDAP_OPT_ERROR_STRING, err);
+		}
 	}
 
 	if (*result != RLM_MODULE_OK) {
@@ -1803,6 +2917,20 @@ ldap_detach(void *instance)
 		}
 		free(inst->conns);
 	}
+
+#ifdef NOVELL
+	if (inst->apc_conns){ 
+		int i;
+
+		for(i = 0; i < inst->num_conns; i++){
+			if (inst->apc_conns[i].ld){
+				ldap_unbind_s(inst->apc_conns[i].ld);
+			}
+			pthread_mutex_destroy(&inst->apc_conns[i].mutex);
+		}
+		free(inst->apc_conns);
+	}
+#endif
 
 	pair = inst->check_item_map;
 
@@ -1962,7 +3090,11 @@ module_t        rlm_ldap = {
 		NULL,			/* checksimul 		 */
 		NULL,			/* pre-proxy 		 */
 		NULL,			/* post-proxy 		 */
-		NULL			/* post-auth 		 */
+#ifdef NOVELL
+		ldap_postauth			/* post-auth 		 */
+#else
+		NULL
+#endif
 	},
 	ldap_detach,		/* detach 		 */
 	NULL,			/* destroy 		 */

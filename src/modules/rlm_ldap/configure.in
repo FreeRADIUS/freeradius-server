@@ -117,8 +117,24 @@ if test x"$fail" != x""; then
 	fi
 fi
 
+dnl extra argument: --with-edir
+dnl If using Novell eDirectory, enable UP and Novell specific code
+WITH_EDIRECTORY=no
+AC_ARG_WITH(edir,
+[  --with-edir           Enable Novell eDirectory integration.  (default=no) ],
+[ case "$withval" in
+    yes)
+	SMART_CFLAGS="$SMART_CFLAGS -DNOVELL_UNIVERSAL_PASSWORD "
+	edir="edir_ldapext.c"
+        ;;
+    *)
+        ;;
+  esac ]
+)
+
 ldap_ldflags=$SMART_LIBS
 ldap_cflags=$SMART_CFLAGS
+AC_SUBST(edir)
 AC_SUBST(ldap_ldflags)
 AC_SUBST(ldap_cflags)
 AC_SUBST(targetname)
