@@ -659,11 +659,13 @@ static void mppe_add_reply(VALUE_PAIR** vp,
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int do_mschap(VALUE_PAIR *password,
-		     uint8_t	*challenge,
-		     uint8_t	*response)
+static int do_mschap(rlm_mschap_t *inst, VALUE_PAIR *password,
+		     uint8_t *challenge, uint8_t *response,
+		     uint8_t *nthashhash)
 {
 	uint8_t		calculated[32];
+
+	inst = inst;		/* -Wunused (for later) */
 
 	/*
 	 *	No password: can't do authentication.
@@ -678,6 +680,16 @@ static int do_mschap(VALUE_PAIR *password,
 		return -1;
 	}
 
+	/*
+	 *	If the password exists, and is an NT-Password,
+	 *	then calculate the hash of the NT hash.  Doing this
+	 *	here minimizes work for later.
+	 */
+	if (password && (password->attribute == PW_NT_PASSWORD)) {
+		md4_calc(nthashhash, password->strvalue, 16);
+	} else {
+		memset(nthashhash, 0, 16);
+	}
 	return 0;
 }
 
@@ -781,15 +793,11 @@ static void mppe_chap2_get_keys128(uint8_t *nt_hashhash,uint8_t *nt_response,
 /*
  *	Generate MPPE keys.
  */
-static void mppe_chap2_gen_keys128(uint8_t *nt_hash,uint8_t *response,
+static void mppe_chap2_gen_keys128(uint8_t *nt_hashhash,uint8_t *response,
 				   uint8_t *sendkey,uint8_t *recvkey)
 {
 	uint8_t enckey1[16];
 	uint8_t enckey2[16];
-	/* uint8_t salt[2]; */
-	uint8_t nt_hashhash[16];
-
-	md4_calc(nt_hashhash,nt_hash,16);
 
 	mppe_chap2_get_keys128(nt_hashhash,response,enckey1,enckey2);
 
@@ -881,10 +889,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
 	VALUE_PAIR *username;
 	VALUE_PAIR *reply_attr;
-	uint8_t nthashhash[32];
+	uint8_t nthashhash[16];
 	uint8_t msch2resp[42];
-        uint8_t mppe_sendkey[34];
-        uint8_t mppe_recvkey[34];
 	char *username_string;
 	int chap = 0;
 
@@ -1037,8 +1043,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	Do the MS-CHAP authentication.
 		 */
-		if (do_mschap(password, challenge->strvalue,
-			      response->strvalue + offset) < 0) {
+		if (do_mschap(inst, password, challenge->strvalue,
+			      response->strvalue + offset, nthashhash) < 0) {
 			DEBUG2("  rlm_mschap: MS-CHAP-Response is incorrect.");
 			add_reply(&request->reply->vps, *response->strvalue,
 				  "MS-CHAP-Error", "E=691 R=1", 9);
@@ -1104,8 +1110,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		
 		DEBUG2("  rlm_mschap: doing MS-CHAPv2 with NT-Password");
 
-		if (do_mschap(nt_password, mschapv1_challenge,
-			      response->strvalue + 26) < 0) {
+		if (do_mschap(inst, nt_password, mschapv1_challenge,
+			      response->strvalue + 26, nthashhash) < 0) {
 			DEBUG2("  rlm_mschap: FAILED: MS-CHAP2-Response is incorrect");
 			add_reply(&request->reply->vps, *response->strvalue,
 				  "MS-CHAP-Error", "E=691 R=1", 9);
@@ -1113,9 +1119,10 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 
 		/*
-		 *	Get the NT-hash-hash
+		 *	Get the NT-hash-hash, if necessary
 		 */
-		md4_calc(nthashhash, nt_password->strvalue, 16);
+		if (nt_password) {
+		}
 
 		auth_response(username_string, /* without the domain */
 			      nthashhash, /* nt-hash-hash */
@@ -1165,6 +1172,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 	/* now create MPPE attributes */
 	if (inst->use_mppe) {
+		uint8_t mppe_sendkey[34];
+		uint8_t mppe_recvkey[34];
+
 		if (chap == 1){
 			DEBUG2("rlm_mschap: adding MS-CHAPv1 MPPE keys");
 			memset(mppe_sendkey, 0, 32);
@@ -1181,18 +1191,19 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				 *
 				 *	This is an error on RFC 2548.
 				 */
-				md4_calc(mppe_sendkey + 8,
-					 nt_password->strvalue, 16);
+				memcpy(mppe_sendkey + 8,
+				       nthashhash, 16);
 				mppe_add_reply(&request->reply->vps,
 					       "MS-CHAP-MPPE-Keys",
 					       mppe_sendkey, 32);
 			}
+
 		} else if (chap == 2) {
 			DEBUG2("rlm_mschap: adding MS-CHAPv2 MPPE keys");
-			mppe_chap2_gen_keys128(nt_password->strvalue,
+			mppe_chap2_gen_keys128(nthashhash,
 					       response->strvalue + 26,
 					       mppe_sendkey, mppe_recvkey);
-
+			
 			mppe_add_reply(&request->reply->vps,
 				       "MS-MPPE-Recv-Key",
 				       mppe_recvkey, 16);
