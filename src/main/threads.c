@@ -1048,13 +1048,14 @@ pid_t rad_fork(int exec_wait)
 			i++;
 			i &= (NUM_FORKERS - 1);
 		} while (i != PID_2_ARRAY(child_pid));
-		pthread_mutex_unlock(&fork_mutex);
 
 		/*
 		 *	Arg.  We did a fork, and there was nowhere to
 		 *	put the answer.
 		 */
 		if (found < 0) {
+			sigprocmask(SIG_UNBLOCK, &set, NULL);
+			pthread_mutex_unlock(&fork_mutex);
 			return (pid_t) -1;
 		}
 
@@ -1064,9 +1065,10 @@ pid_t rad_fork(int exec_wait)
 		 */
 		forkers[found].status = -1;
 		forkers[found].child_pid = child_pid;
-		forkers[i].thread_id = pthread_self();
-		forkers[i].time_forked = now;
+		forkers[found].thread_id = pthread_self();
+		forkers[found].time_forked = now;
 		sem_init(&forkers[found].child_done, 0, SEMAPHORE_LOCKED);
+		pthread_mutex_unlock(&fork_mutex);
 	}
 
 	/*
