@@ -47,6 +47,7 @@ User Collision in FreeRadius
 
         o  'users' file ( Auth-Types 'Local' and 'Crypt-Local' _ONLY_ )
         o  cached password (and shadow) file users
+				o  rlm_fastusers module (see README.rlm_fastusers)
 
         That's it so far.  Perhaps other module authors will include it in
         their code later, but that is for them to decide.
@@ -147,14 +148,12 @@ D.  *Does* it work?
 
 1.  USAGE
 
-    Run configure with the --with-usercollide option.  Then 'make' and
-    'make install' again.
+		Set 'usercollide=yes' in your radiusd.conf and either restart or
+    kill -HUP radiusd.
 
 2.  CAVEATS
 
-    It *only* works with cached passwd files and users (Local and
-    Crypt-Local _ONLY_) in your 'users' file.  Any other authentication
-    method will not cause user collisions not to work.
+    Currently does not work with all modules (ie, sql, ldap, etc).
 
 3.  ACKNOWLEDGEMENT
 
