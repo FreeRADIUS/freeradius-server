@@ -221,6 +221,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	/*
 	 *	Check the certificates for revocation.
 	 */
+#ifdef X509_V_FLAG_CRL_CHECK
 	if (conf->check_crl) {
 	  certstore = SSL_CTX_get_cert_store(ctx);
 	  if (certstore == NULL) {
@@ -230,6 +231,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	  }
 	  X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
 	}
+#endif
 
 	/*
 	 *	Set verify modes
