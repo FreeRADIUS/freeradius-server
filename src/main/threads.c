@@ -502,21 +502,6 @@ int thread_pool_init(void)
 		}
 	}
 
-	/*
-	 *	Initialize the mutex used to remember calls to fork.
-	 */
-	pthread_mutex_init(&fork_mutex, NULL);
-
-	/*
-	 *	Initialize the data structure where we remember the
-	 *	mappings of thread ID && child PID to exit status.
-	 */
-	for (i = 0; i < NUM_FORKERS; i++) {
-		forkers[i].thread_id = NO_SUCH_CHILD_PID;
-		forkers[i].child_pid = -1;
-		forkers[i].status = 0;
-	}
-
 	pool_initialized = TRUE;
 	return 0;
 }
@@ -737,6 +722,29 @@ int thread_pool_clean(time_t now)
 }
 
 /*
+ *	Initialize the stuff for keeping track of child processes.
+ */
+void rad_exec_init(void)
+{
+	int i;
+	
+	/*
+	 *	Initialize the mutex used to remember calls to fork.
+	 */
+	pthread_mutex_init(&fork_mutex, NULL);
+	
+	/*
+	 *	Initialize the data structure where we remember the
+	 *	mappings of thread ID && child PID to exit status.
+	 */
+	for (i = 0; i < NUM_FORKERS; i++) {
+		forkers[i].thread_id = NO_SUCH_CHILD_PID;
+		forkers[i].child_pid = -1;
+		forkers[i].status = 0;
+	}
+}
+
+/*
  *	Thread wrapper for fork().
  */
 pid_t rad_fork(int exec_wait)
@@ -845,13 +853,6 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 	pthread_t self = pthread_self();
 
 	/*
-	 *	No threads, nothing magic to do.
-	 */
-	if (!pool_initialized) {
-		return waitpid(pid, status, options);
-	}
-
-	/*
 	 *	We're only allowed to wait for a SPECIFIC pid.
 	 */
 	if (pid <= 0) {
@@ -920,13 +921,6 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 int rad_savepid(pid_t pid, int status)
 {
 	int i;
-
-	/*
-	 *	No threads, nothing magic to do.
-	 */
-	if (!pool_initialized) {
-		return 0;
-	}
 
 	/*
 	 *	Do NOT lock the array, as nothing else sets the

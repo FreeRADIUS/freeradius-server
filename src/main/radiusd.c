@@ -910,6 +910,8 @@ int main(int argc, char *argv[])
 	if (spawn_flag == TRUE) {
 		thread_pool_init();
 	}
+
+	rad_exec_init();
 #endif
 
 	/*

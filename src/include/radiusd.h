@@ -316,6 +316,7 @@ void		xlat_unregister(const char *module, RAD_XLAT_FUNC func);
 /* threads.c */
 extern		int thread_pool_init(void);
 extern		int thread_pool_clean(time_t now);
+extern		void rad_exec_init(void);
 extern		pid_t rad_fork(int exec_wait);
 extern		pid_t rad_waitpid(pid_t pid, int *status, int options);
 extern		int rad_savepid(pid_t pid, int status);
