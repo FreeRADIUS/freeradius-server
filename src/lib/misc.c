@@ -67,13 +67,6 @@ uint32_t ip_getaddr(const char *host)
 	if ((a = ip_addr(host)) != 0)
 		return a;
 
-	/*
-	 *	No DNS: don't look up host names
-	 */
-	if (!librad_dodns) {
-		return 0;
-	}
-
 	if ((hp = gethostbyname(host)) == NULL)
 		return (uint32_t)0;
 
