@@ -763,6 +763,8 @@ modules {
 	#	ignore_case = no
 	#	new_attribute = no
 	#	max_matches = 10
+	#	## If set to yes then the replace string will be appended to the original string
+	#	append = no
 	#}
 
 	# Preprocess the incoming RADIUS request, before handing it off

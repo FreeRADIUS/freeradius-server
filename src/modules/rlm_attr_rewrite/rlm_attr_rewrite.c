@@ -52,6 +52,7 @@ typedef struct rlm_attr_rewrite_t {
 	char searchin;		/* The same as above just coded as a number for speed */
 	char *replace;		/* The replacement */
 	int replace_len;	/* The length of the replacement string */
+	int  append;		/* Switch to control append mode (1,0) */ 
 	int  nocase;		/* Ignore case */
 	int  new_attr;		/* Boolean. Do we create a new attribute or not? */
 	int  num_matches;	/* Maximum number of matches */
@@ -64,6 +65,7 @@ static CONF_PARSER module_config[] = {
   { "searchfor", PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,search), NULL, NULL },
   { "searchin",  PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,searchin_str), NULL, "packet" },
   { "replacewith", PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,replace), NULL, NULL },
+  { "append", PW_TYPE_BOOLEAN, offsetof(rlm_attr_rewrite_t,append),NULL, "no" },
   { "ignore_case", PW_TYPE_BOOLEAN, offsetof(rlm_attr_rewrite_t,nocase), NULL, "yes" },
   { "new_attribute", PW_TYPE_BOOLEAN, offsetof(rlm_attr_rewrite_t,new_attr), NULL, "no" },
   { "max_matches", PW_TYPE_INTEGER, offsetof(rlm_attr_rewrite_t,num_matches), NULL, "10" },
@@ -256,6 +258,9 @@ do_again:
 			if (pmatch.rm_so == -1)
 				break;
 			len = pmatch.rm_so;
+			if (data->append) {
+				len = len + (pmatch.rm_eo - pmatch.rm_so);
+			} 
 			counter += len;
 			if (counter >= MAX_STRING_LEN) {
 				regfree(&preg);
