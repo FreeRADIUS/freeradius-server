@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include 	"radiusd.h"
+#include	"sql_oracle.h"
 #include	"rlm_sql.h"
 
 #define	MAX_DATASTR_LEN	64
