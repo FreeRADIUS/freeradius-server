@@ -106,11 +106,13 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 				if(*(p+1) && (*(p+1) == '-')) {
 					p+=2;
 					stop=1;
+					break;
 				}
-				break;
+				/* else FALL-THROUGH */
 
 			default:
 				*pa++ = *p++;
+				break;
 		}
 	}
 	*pa = '\0';
