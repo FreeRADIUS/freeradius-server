@@ -183,10 +183,6 @@ AC_ARG_WITH(snmp,
   esac ]
 )
 
-AC_SUBST(SNMPLIB)
-AC_SUBST(SNMPINC)
-
-
 AC_ARG_ENABLE(ltdl-install,
 [  --disable-ltdl-install  do not install libltdl])
 if test x"${enable_ltdl_install+set}" != xset; then
@@ -206,6 +202,26 @@ AC_ARG_WITH(static_modules,
     STATIC_MODULES="$STATIC_MODULES -dlpreopen ../modules/rlm_$i/rlm_$i.la"
   done
 ])
+
+dnl #
+dnl #  Enable developer C compiler warnings
+dnl #
+AC_ARG_ENABLE(developer,
+[  --enable-developer              Turns on super-duper-extra-compile-warnings
+                                  when using gcc.],
+[ case "$withval" in
+    *)
+	developer=no
+	;;
+    yes)
+	developer=yes
+  esac ]
+)
+
+if test "x$developer" != "xno" -a -d $srcdir/CVS; then
+  dnl turn on the developer flag when taken from a CVS checkout (not a release)
+  developer="yes"
+fi
 
 dnl See what include-style is used by the make program.
 dnl AC_MSG_CHECKING(include style for make)
@@ -496,9 +512,18 @@ AC_SUBST(LIBPREFIX)
 dnl #
 dnl # Set Default CFLAGS
 dnl #
-if test "$GCC" = "yes"; then
+if test "x$GCC" = "xyes"; then
     CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
 fi
+
+AC_MSG_CHECKING(for developer gcc flags)
+if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
+  devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes- Wmissing-prototypes -Wmissing-declarations -Wnested-externs"
+  CFLAGS="$CFLAGS $devflags"
+else
+  devflags="none"
+fi
+AC_MSG_RESULT($devflags)
 
 dnl #############################################################
 dnl #
@@ -550,6 +575,9 @@ AC_SUBST(USE_SHARED_LIBS)
 USE_STATIC_LIBS=$enable_static
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
+
+AC_SUBST(SNMPLIB)
+AC_SUBST(SNMPINC)
 
 AC_OUTPUT(\
 	./Make.inc \
