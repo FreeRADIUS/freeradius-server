@@ -25,11 +25,11 @@ The policy is composed of a series of named policies.  The following
 example defines a policy named "foo".
 .PP
 .DS
-policy foo {
+	policy foo {
 .br
-	...
+		...
 .br
-}
+	}
 .DE
 .PP
 Policy names MAY NOT be the same as attributes in the dictionary.
@@ -41,47 +41,68 @@ When the policy module is listed in a module section like "authorize",
 the module calls a policy named "authorize".  The "post-auth",
 etc. sections behave the same.  These names cannot be changed.
 .PP
+.DS
+	include "policy.txt"
+.DE
+.PP
+The filename must be in a double-quoted string, and is assumed to be
+relative to the location of the current file.  If the filename ends
+with a '/', then it is assumed to be a directory, and all files in
+that directory will be read.
+.PP
+.DS
+	include "dir/"
+.DE
+.PP
+All file in "dir/" will be read and included into the policy
+definition.  Any dot files (".", "..", etc.) will not be included,
+however.
+.PP
+.SS Including multiple files
+The main file referred to from the \fIradiusd.conf\fP may include one
+or more other files, as in the following example.
+.PP
 .SS Referencing a named policy
 The following example references a named policy
 .DS
-foo()
+	foo()
 .DE
 While the brackets are required, no arguments may be passed.
 .PP
-.SS "if" statements
-are supported.
+.SS Conditions
+"if" statements are supported.
 .PP
-if (expression) {
+	if (expression) {
 .br
-	...
+		...
 .br
-}
+	}
 .DE
 .PP
 and "else"
 .PP
-if (expression) {
+	if (expression) {
 .br
-	...
+		...
 .br
-} else {
+	} else {
 .br
-	...
+		...
 .br
-}
+	}
 .DE
 .PP
 also, "else if"
 .PP
-if (expression) {
+	if (expression) {
 .br
-	...
+		...
 .br
-} else if (expression) {
+	} else if (expression) {
 .br
-	...
+		...
 .br
-}
+	}
 .DE
 .PP
 .SS Expressions within "if" statements
@@ -141,14 +162,15 @@ Also known as "check" attributes (doc/variables.txt).
 .PP
 .PP
 .SS Adding attributes to reply packet (or other location)
-reply .= {
+	reply .= {
 .br
-	attribute-name = value
+		attribute-name = value
 .br
-	...
+		...
 .br
-	attribute-name = value
-}
+		attribute-name = value
+.br
+	}
 .DE
 .PP
 The first name can be "request", "reply", "control", "proxy-request",
