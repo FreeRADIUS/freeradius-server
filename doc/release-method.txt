@@ -1,24 +1,24 @@
 #  This is NOT a shell script!
 
 #
-#  For version 0.8 (or any others), this file documents the methods
+#  For version 0.7 (or any others), this file documents the methods
 #  used by the developers to perform a release of the software.
 #
 #  If you're not a developer, then you can ignore this file.
 #
 #
 VERSION=0
-REVISION=8
+REVISION=7
 
 # cvs -d :pserver:USER@cvs.freeradius.org:/source checkout -P -d freeradius-$(VERSION).$(REVISION) radiusd
-cvs -d :pserver:USER@cvs.freeradius.org:/source checkout -P -d freeradius-0.8 radiusd
+cvs -d :pserver:USER@cvs.freeradius.org:/source checkout -P -d freeradius-0.7 radiusd
 
 #
 #  Do NOT type 'configure', 'make', or anything else.
 #  We presume that 
 #
 # cd freeradius-$(VERSION).$(REVISION)
-cd freeradius-0.8
+cd freeradius-0.7
 
 #
 #  remove $$ surrounding the $Date ... $
@@ -46,7 +46,7 @@ cvs commit configure configure.in
 #  tag the files for the release
 #
 # cvs tag release_$(VERSION)_$(REVISION)_0
-cvs tag release_0.8
+cvs tag release_0_7_0
 
 #
 #  Delete the CVS directories.
@@ -96,3 +96,19 @@ ln -s freeradius-0.7.tar.gz freeradius.tar.gz
 
 # edit index.html, and add in the release notes under 'news'
 # edit getting.html, and update notes about current/old releases.
+
+# on your work machine again,
+rm -rf freeradius-0.7.tar.gz freeradius-0.7
+
+# go to your working directory
+# edit configure.in, to bump the version to '0.8-pre'
+autoconf
+cvs commit configure configure.in
+
+cd doc
+
+#
+#  Add in notes about next release, in preparation for more change log notes.
+#
+vi ChangeLog
+cvs commit ChangeLog
