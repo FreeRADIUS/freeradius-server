@@ -195,7 +195,7 @@ LEAP_PACKET *eapleap_extract(EAP_DS *eap_ds)
 /*
  *  Get the NT-Password hash.
  */
-static void eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
+static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 {
 	if (password->attribute == PW_PASSWORD) {
 		int i;
@@ -219,12 +219,19 @@ static void eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 		md4_calc(ntpwdhash, unicode, password->length * 2);
 
 	} else {		/* MUST be NT-Password */
-		/*
-		 *	FIXME: Check for broken (32-character)
-		 *	NT-Password's?
-		 */
+		if (password->length == 32) {
+			password->length = lrad_hex2bin(password->strvalue,
+							password->strvalue,
+							16);
+		}
+		if (password->length != 16) {
+			radlog(L_ERR, "rlm_eap_leap: Bad NT-Password");
+			return 0;
+		}
+
 		memcpy(ntpwdhash, password->strvalue, 16);
 	}
+	return 1;
 }
 
 
@@ -245,7 +252,9 @@ int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password,
 		return 0;
 	}
 
-	eapleap_ntpwdhash(ntpwdhash, password);
+	if (!eapleap_ntpwdhash(ntpwdhash, password)) {
+		return 0;
+	}
 
 	/*
 	 *	Calculate and verify the CHAP challenge.
@@ -316,7 +325,10 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	/*
 	 *  MPPE hash = ntpwdhash(ntpwdhash(unicode(pw)))
 	 */
-	eapleap_ntpwdhash(ntpwdhash, password);
+	if (!eapleap_ntpwdhash(ntpwdhash, password)) {
+		eapleap_free(&reply);
+		return NULL;
+	}
 	md4_calc(ntpwdhashhash, ntpwdhash, 16);
 
 	/*
