@@ -53,7 +53,7 @@ static CONF_PARSER module_config[] = {
 
 	{ "with_ntdomain_hack",		PW_TYPE_BOOLEAN,
 	  &config.with_ntdomain_hack,  	"no" },
-	{ "with_ascend_hack",		PW_TYPE_BOOLEAN,
+	{ "with_specialix_jetstream_hack",  PW_TYPE_BOOLEAN,
 	  &config.with_specialix_jetstream_hack,  	"no" },
 
 	{ NULL, -1, NULL, NULL }
