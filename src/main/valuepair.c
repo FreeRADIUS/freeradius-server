@@ -78,6 +78,14 @@ static int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 #endif
 
 	/*
+	 *      Check for =* and !* and return appropriately
+	 */
+	if( check->operator == T_OP_CMP_TRUE )
+	         return 0;  /* always return 0/EQUAL */
+	if( check->operator == T_OP_CMP_FALSE )
+	         return 1;  /* always return 1/NOT EQUAL */
+
+	/*
 	 *	See if there is a special compare function.
 	 */
 	for (c = cmp; c; c = c->next)
@@ -275,6 +283,8 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				radlog(L_ERR,  "Invalid operator for item %s: "
 						"reverting to '=='", check_item->name);
 				/*FALLTHRU*/
+		        case T_OP_CMP_TRUE:    /* compare always == 0 */
+		        case T_OP_CMP_FALSE:   /* compare always == 1 */
 			case T_OP_CMP_EQ:
 				if (compare != 0) result = -1;
 				break;

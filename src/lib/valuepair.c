@@ -575,11 +575,25 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		found_tag = 1;
 	}	
 	
+	if(found_tag) {
+	  vp->flags.tag = tag;
+	}
+
 	/*
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->strvalue.
 	 */
 	strNcpy((char *)vp->strvalue, value, MAX_STRING_LEN);
+
+	/*
+	 *      For =* and !* operators, the value is irrelevant
+	 *      so we return now.
+	 */
+
+	if( vp->operator == T_OP_CMP_TRUE 
+	    || vp->operator == T_OP_CMP_FALSE ) {
+	        return vp;
+	}
 
 	switch(da->type) {
 		case PW_TYPE_STRING:
@@ -689,9 +703,6 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			free(vp);
 			librad_log("unknown attribute type %d", da->type);
 			return NULL;
-	}
-	if(found_tag) {
-	  vp->flags.tag = tag;
 	}
 	return vp;
 }

@@ -30,6 +30,8 @@ static const TOKEN tokens[] = {
 	{ "+=",	T_OP_ADD,	},
 	{ "-=",	T_OP_SUB,	},
 	{ ":=",	T_OP_SET,	},
+	{ "=*", T_OP_CMP_TRUE,  },
+	{ "!*", T_OP_CMP_FALSE, },
 	{ "==",	T_OP_CMP_EQ,	},
 	{ "=",	T_OP_EQ,	},
 	{ "!=",	T_OP_NE,	},

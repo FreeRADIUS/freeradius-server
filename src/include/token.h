@@ -44,6 +44,8 @@ typedef enum lrad_token_t {
   T_OP_LT,			/* < */
   T_OP_REG_EQ,			/* =~ */
   T_OP_REG_NE,			/* !~ */
+  T_OP_CMP_TRUE,                /* =* */
+  T_OP_CMP_FALSE,               /* !* */
   T_OP_CMP_EQ,			/* == */
   T_HASH,			/* # */
 } LRAD_TOKEN;
