@@ -44,22 +44,43 @@ static char trans[64] =
    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define ENC(c) trans[c]
 
-/*
- *	Cache the password by default.
- */
-static int cache_passwd = TRUE;
-static char *passwd_file = NULL;
-static char *shadow_file = NULL;
-static char *group_file = NULL;
+struct unix_instance {
+	int cache_passwd;
+	char *passwd_file;
+	char *shadow_file;
+	char *group_file;
+	int usegroup;
+	struct pwcache *cache;
+};
+
+static struct unix_instance config;
 
 static CONF_PARSER module_config[] = {
-	{ "cache",  PW_TYPE_BOOLEAN,    &cache_passwd, "yes" },
-	{ "passwd", PW_TYPE_STRING_PTR, &passwd_file,  NULL },
-	{ "shadow", PW_TYPE_STRING_PTR, &shadow_file,  NULL },
-	{ "group",  PW_TYPE_STRING_PTR, &group_file,   NULL },
+	/*
+	 *	Cache the password by default.
+	 */
+	{ "cache",    PW_TYPE_BOOLEAN,    &config.cache_passwd, "yes" },
+	{ "passwd",   PW_TYPE_STRING_PTR, &config.passwd_file,  NULL },
+	{ "shadow",   PW_TYPE_STRING_PTR, &config.shadow_file,  NULL },
+	{ "group",    PW_TYPE_STRING_PTR, &config.group_file,   NULL },
+	{ "usegroup", PW_TYPE_BOOLEAN,    &config.usegroup,     "no" },
 	
 	{ NULL, -1, NULL, NULL }		/* end the list */
 };
+
+/*
+ * groupcmp is part of autz. But it uses the data from an auth instance. So
+ * here is where it gets it. By default this will be the first configured
+ * auth instance. That can be changed by putting "usegroup = yes" inside an
+ * auth instance to explicitly bind all Group checks to it.
+ */
+
+/* binds "Group=" to an instance (a particular passwd file) */
+static struct unix_instance *group_inst;
+
+/* Tells if the above binding was explicit (usegroup=yes specified in config
+ * file) or not ("Group=" was bound to the first instance of rlm_unix */
+static int group_inst_explicit;
 
 /*
  *	The Group = handler.
@@ -74,9 +95,15 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	int		retval;
 	check_pairs = check_pairs; reply_pairs = reply_pairs;
 
+	if (!group_inst) {
+		radlog(L_ERR, "groupcmp: no group list known.");
+		return 1;
+	}
+
 	username = (char *)request->strvalue;
 
-	if (cache_passwd && (retval = H_groupcmp(check, username)) != -2)
+	if (group_inst->cache_passwd &&
+	    (retval = H_groupcmp(group_inst->cache, check, username)) != -2)
 		return retval;
 
 	if ((pwd = getpwnam(username)) == NULL)
@@ -102,6 +129,8 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
  */
 static int unix_init(void)
 {
+	/* FIXME - delay these until a group file has been read so we know
+	 * groupcmp can actually do something */
 	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp);
 #ifdef PW_GROUP_NAME /* compat */
 	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp);
@@ -111,44 +140,78 @@ static int unix_init(void)
 
 static int unix_instantiate(CONF_SECTION *conf, void **instance)
 {
-	/*
-	 *	Not yet multiple-instance-aware. groupcmp is a real
-	 *	obstacle.
-	 */
-	static int alreadydone=0;
-
-	if (alreadydone) {
-		radlog(L_ERR,
-		    "rlm_unix: can't handle multiple authentication instances");
-		return -1;
+	*instance = malloc(sizeof(struct unix_instance));
+	if(!*instance) {
+	      return -1;
 	}
+
+#define inst ((struct unix_instance *)*instance)
 	if (cf_section_parse(conf, module_config) < 0) {
+		free(*instance);
 		return -1;
 	}
 
-	if (cache_passwd) {
+	/*
+	 *	Copy the configuration into the instance data
+	 */
+	inst->cache_passwd = config.cache_passwd;
+	inst->passwd_file = config.passwd_file;
+	inst->shadow_file = config.shadow_file;
+	inst->group_file = config.group_file;
+	inst->usegroup = config.usegroup;
+	config.passwd_file = NULL;
+	config.shadow_file = NULL;
+	config.group_file = NULL;
+
+	if (inst->cache_passwd) {
 		radlog(L_INFO, "HASH:  Reinitializing hash structures "
 			"and lists for caching...");
-		if (unix_buildHashTable(passwd_file, shadow_file) < 0) {
+		if ((inst->cache = unix_buildpwcache(inst->passwd_file,
+						     inst->shadow_file))==NULL)
+                {
 			radlog(L_ERR, "HASH:  unable to create user "
 				"hash table.  disable caching and run debugs");
-			return -1;
 		}
-		if (unix_buildGrpList() < 0) {
-			radlog(L_ERR, "HASH:  unable to cache groups file.  "
-				"disable caching and run debugs");
-			return -1;
-		}
+	} else {
+		inst->cache = NULL;
 	}
 
-	alreadydone = 1;
-	*instance = 0;
+	if (inst->usegroup) {
+		if (group_inst_explicit) {
+			radlog(L_ERR, "Only one group list may be active");
+		} else {
+			group_inst = inst;
+			group_inst_explicit = 1;
+		}
+	} else if (!group_inst) {
+		group_inst = inst;
+	}
+#undef inst
+
 	return 0;
 }
 
 /*
  *	Detach.
  */
+static int unix_detach(void *instance)
+{
+#define inst ((struct unix_instance *)instance)
+	if (group_inst == inst) {
+		group_inst = NULL;
+		group_inst_explicit = 0;
+	}
+	free(inst->passwd_file);
+	free(inst->shadow_file);
+	free(inst->group_file);
+	if (inst->cache) {
+		unix_freepwcache(inst->cache);
+	}
+#undef inst
+	free(instance);
+	return 0;
+}
+
 static int unix_destroy(void)
 {
 	paircompare_unregister(PW_GROUP, groupcmp);
@@ -165,6 +228,7 @@ static int unix_destroy(void)
  */
 static int unix_authenticate(void *instance, REQUEST *request)
 {
+#define inst ((struct unix_instance *)instance)
 	char *name, *passwd;
 	struct passwd	*pwd;
 	char		*encpw;
@@ -215,7 +279,8 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	name = (char *)request->username->strvalue;
 	passwd = (char *)request->password->strvalue;
 
-	if (cache_passwd && (ret = H_unix_pass(name, passwd, &request->reply->vps)) != -2)
+	if (inst->cache_passwd &&
+	    (ret = H_unix_pass(inst->cache, name, passwd, &request->reply->vps)) != -2)
 		return (ret == 0) ? RLM_MODULE_OK : RLM_MODULE_REJECT;
 
 #ifdef OSFC2
@@ -317,6 +382,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_REJECT;
 
 	return RLM_MODULE_OK;
+#undef inst
 }
 
 /*
@@ -514,7 +580,7 @@ module_t rlm_unix = {
   unix_authenticate,            /* authentication */
   NULL,                         /* preaccounting */
   unix_accounting,              /* accounting */
-  NULL,                  	/* detach */
+  unix_detach,                 	/* detach */
   unix_destroy,                  /* destroy */
 };
 

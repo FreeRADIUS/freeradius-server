@@ -49,18 +49,16 @@ static const char rcsid[] = "$Id$";
  *  Static prototypes
  */
 static void chgLoggedin(char *user, int diff);
-static struct mypasswd *findHashUser(const char *user);
-static int storeHashUser(struct mypasswd *new, int idx);
+static struct mypasswd *findHashUser(struct pwcache *cache, const char *user);
+static int storeHashUser(struct pwcache *cache, struct mypasswd *new, int idx);
 static int hashUserName(const char *s);
 
-/* Make the tables global since so many functions rely on them */
-static struct mypasswd *hashtable[HASHTABLESIZE];
-static struct mygroup *grphead = NULL;
-
 /* Builds the hash table up by storing passwd/shadow fields
- * in memory.  Returns -1 on failure, 0 on success.
+ * in memory.  Returns NULL on failure, pointer to the cache on success.
  */
-int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
+struct pwcache *unix_buildpwcache(const char *passwd_file,
+                                  const char *shadow_file)
+{
 	FILE *passwd;
 #if HAVE_SHADOW_H
 	FILE *shadow;
@@ -70,27 +68,25 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	char username[MAXUSERNAME];
 	char *ptr, *bufptr;
 	int len, hashindex, numread=0;
-	struct mypasswd *new, *cur, *next;
+	struct mypasswd *new;
 
-	memset((char *)username, 0, MAXUSERNAME);
+	int len2, idx;
+	struct group *grp;
+	struct mygroup *g_new;
+	char **member;
 
-	/* Initialize the table.  This works even if we're rebuilding it */
-	for(hashindex=0; hashindex<HASHTABLESIZE; hashindex++) {
-		if(hashtable[hashindex]) {
-			cur = hashtable[hashindex];
-			while(cur) {
-				next = cur->next;
-				free(cur->pw_name);	
-				free(cur->pw_passwd);	
-				free(cur->pw_gecos);	
-				free(cur);	
-				cur = next;
-			}
-		}
-	}	
+        struct pwcache *cache;
+
+	if((cache = malloc(sizeof *cache)) == NULL) {
+		radlog(L_ERR, "HASH:  Out of memory!");
+		return NULL;
+	}
+
+	memset(username, 0, MAXUSERNAME);
 
 	/* Init hash array */
-	memset((struct mypasswd *)hashtable, 0, (HASHTABLESIZE*(sizeof(struct mypasswd *))));
+	memset(cache->hashtable, 0, sizeof cache->hashtable);
+	cache->grphead = NULL;
 
 	/*
 	 *	If not set, use pre-defined defaults.
@@ -102,7 +98,8 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	if ((passwd = fopen(passwd_file, "r")) == NULL) {
 		radlog(L_ERR, "HASH:  Can't open file %s: %s",
 		    passwd_file, strerror(errno));
-		return -1;
+		unix_freepwcache(cache);
+		return NULL;
 	} else {
 		while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) {
 			numread++;
@@ -124,14 +121,19 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			/* Allocate space for structure to go in hashtable */
 			if((new = (struct mypasswd *)malloc(sizeof(struct mypasswd))) == NULL) {
 				radlog(L_ERR, "HASH:  Out of memory!");
-				return -1;
+				fclose(passwd);
+				unix_freepwcache(cache);
+				return NULL;
 			}
 			memset((struct mypasswd *)new, 0, sizeof(struct mypasswd));
 
 			/* Put username into new structure */
 			if((new->pw_name = (char *)malloc(strlen(username)+1)) == NULL) {
 				radlog(L_ERR, "HASH:  Out of memory!");
-				return -1;
+				free(new);
+				fclose(passwd);
+				unix_freepwcache(cache);
+				return NULL;
 			}
 			strncpy(new->pw_name, username, strlen(username)+1);
 
@@ -147,7 +149,11 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			len = ptr - bufptr;
 			if((new->pw_passwd = (char *)malloc(len+1)) == NULL) {
 				radlog(L_ERR, "HASH:  Out of memory!");
-				return -1;
+				free(new->pw_name);
+				free(new);
+				fclose(passwd);
+				unix_freepwcache(cache);
+				return NULL;
 			}
 			strncpy(new->pw_passwd, bufptr, len);
 			new->pw_passwd[len] = '\0';
@@ -189,7 +195,12 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			len = ptr - bufptr;
 			if((new->pw_gecos = (char *)malloc(len+1)) == NULL) {
 				radlog(L_ERR, "HASH:  Out of memory!");
-				return -1;
+				free(new->pw_passwd);
+				free(new->pw_name);
+				free(new);
+				fclose(passwd);
+				unix_freepwcache(cache);
+				return NULL;
 			}
 			strncpy(new->pw_gecos, bufptr, len);
 			new->pw_gecos[len] = '\0';
@@ -201,8 +212,8 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 
 			/*printf("User:  %s, UID:  %d, GID:  %d\n", new->pw_name, new->pw_uid, new->pw_gid);*/
 			/* Store user in the hash */
-			storeHashUser(new, hashindex);
-		}	/* End while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) { */
+			storeHashUser(cache, new, hashindex);
+		}	/* End while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) */
 	} /* End if */
 	fclose(passwd);
 
@@ -220,7 +231,8 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	if ((shadow = fopen(shadow_file, "r")) == NULL) {
 		radlog(L_ERR, "HASH:  Can't open file %s: %s",
 		    shadow_file, strerror(errno));
-		return -1;
+		unix_freepwcache(cache);
+		return NULL;
 	} else {
 		while(fgets(buffer, BUFSIZE , shadow) != (char *)NULL) {
 
@@ -233,7 +245,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			}
 			strncpy(username, buffer, len);
 			username[len] = '\0';
-			if((new = findHashUser(username)) == NULL) {
+			if((new = findHashUser(cache, username)) == NULL) {
 				radlog(L_ERR, "HASH:  Username %s in shadow but not passwd??", username);
 				continue;
 			}
@@ -265,7 +277,9 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 
 			if((new->pw_passwd = (char *)malloc(len+1)) == NULL) {
 				radlog(L_ERR, "HASH:  Out of memory!");
-				return -1;
+				fclose(shadow);
+				unix_freepwcache(cache);
+				return NULL;
 			}
 			strncpy(new->pw_passwd, bufptr, len);
 			new->pw_passwd[len] = '\0';
@@ -277,100 +291,92 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	/* log how many entries we stored from the passwd file */
 	radlog(L_INFO, "HASH:  Stored %d entries from %s", numread, passwd_file);
 
-	return 0;
-}
+	/* The remainder of this function caches the /etc/group file, so it's
+	 * one less thing we have to lookup on disk.  it uses getgrent(),
+	 * which is quite slow, but the group file is generally small enough
+	 * that it won't matter
+	 * As a side note, caching the user list per group was a major pain
+	 * in the ass, and I won't even need it.  I really hope that somebody
+	 * out there needs and appreciates it.
+	 */
 
-/* This function caches the /etc/group file, so it's one less thing
- * we have to lookup on disk.  it uses getgrent(), which is quite slow,
- * but the group file is generally small enough that it won't matter
- * As a side note, caching the user list per group was a major pain
- * in the ass, and I won't even need it.  I really hope that somebody
- * out there needs and appreciates it.
- * Returns -1 on failure, and 0 on success
- */
-int unix_buildGrpList(void) {
-
-	int len, len2, idx, numread=0;
-	struct group *grp;
-	struct mygroup *new, *cur, *next;
-	char **member;
-
-	cur = grphead;
-
-	/* Free up former grp list (we can use this as a rebuild function too */
-	while(cur) {
-		next = cur->next;
-
-		/* Free name, name, member list */
-		for(member = cur->gr_mem; *member; member++) {
-			free(*member);
-		}
-		free(cur->gr_mem);
-		free(cur->gr_name);
-		free(cur->gr_passwd);
-		free(cur);
-		cur = next;
-	}                                  
-	grphead = NULL;
-	
 	/* Make sure to begin at beginning */
 	setgrent();
+
+	numread = 0;
 
 	/* Get next entry from the group file */
 	while((grp = getgrent()) != NULL) {
 
 		/* Make new mygroup structure in mem */
-		if((new = (struct mygroup *)malloc(sizeof(struct mygroup))) == NULL) {
+		if((g_new = (struct mygroup *)malloc(sizeof(struct mygroup))) == NULL) {
 			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-			return -1;
+			unix_freepwcache(cache);
+			return NULL;
 		}
-		memset((struct mygroup*)new, 0, sizeof(struct mygroup));
+		memset((struct mygroup*)g_new, 0, sizeof(struct mygroup));
 	
 		/* copy grp entries to my structure */
 		len = strlen(grp->gr_name);
-		if((new->gr_name = (char *)malloc(len+1)) == NULL) {
+		if((g_new->gr_name = (char *)malloc(len+1)) == NULL) {
 			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-			return -1;
+			free(g_new);
+			unix_freepwcache(cache);
+			return NULL;
 		}
-		strncpy(new->gr_name, grp->gr_name, len);
-		new->gr_name[len] = '\0';
+		strncpy(g_new->gr_name, grp->gr_name, len);
+		g_new->gr_name[len] = '\0';
 		
 		len = strlen(grp->gr_passwd);
-		if((new->gr_passwd= (char *)malloc(len+1)) == NULL) {
+		if((g_new->gr_passwd= (char *)malloc(len+1)) == NULL) {
 			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-			return -1;
+			free(g_new->gr_name);
+			free(g_new);
+			unix_freepwcache(cache);
+			return NULL;
 		}
-		strncpy(new->gr_passwd, grp->gr_passwd, len);
-		new->gr_passwd[len] = '\0';
+		strncpy(g_new->gr_passwd, grp->gr_passwd, len);
+		g_new->gr_passwd[len] = '\0';
 
-		new->gr_gid = grp->gr_gid;	
+		g_new->gr_gid = grp->gr_gid;	
 		
 		/* Allocate space for user list, as much as I hate doing groups
 	  	 * that way.  
 		 */
 		for(member = grp->gr_mem; *member!=NULL; member++);
 		len = member - grp->gr_mem;
-		if((new->gr_mem = (char **)malloc((len+1)*sizeof(char **))) == NULL) {
+		if((g_new->gr_mem = (char **)malloc((len+1)*sizeof(char **))) == NULL) {
 			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-			return -1;
+			free(g_new->gr_passwd);
+			free(g_new->gr_name);
+			free(g_new);
+			unix_freepwcache(cache);
+			return NULL;
 		}
 		/* Now go back and copy individual users into it */
 		for(member = grp->gr_mem; *member; member++) {
 			len2 = strlen(*member);
 			idx = member - grp->gr_mem;
-			if((new->gr_mem[idx] = (char *)malloc(len2+1)) == NULL) {
+			if((g_new->gr_mem[idx] = (char *)malloc(len2+1)) == NULL) {
 				radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-				return -1;
+				for(--idx;idx>=0;--idx) {
+					free(g_new->gr_mem[idx]);
+				}
+				free(g_new->gr_passwd);
+				free(g_new->gr_name);
+				free(g_new);
+				unix_freepwcache(cache);
+				return NULL;
 			}
-			strncpy(new->gr_mem[idx], *member, len2);
-			new->gr_mem[idx][len2] = '\0';
+			strncpy(g_new->gr_mem[idx], *member, len2);
+			g_new->gr_mem[idx][len2] = '\0';
 		}
 		/* Make sure last entry in user list is 0 so we can loop thru it */
-		new->gr_mem[len] = 0;
+		g_new->gr_mem[len] = 0;
 
 		/* Insert at beginning of list */
-		new->next = grphead;
-		grphead = new;
+		g_new->next = cache->grphead;
+		cache->grphead = g_new;
 
 		numread++;
 	}
@@ -380,14 +386,56 @@ int unix_buildGrpList(void) {
 
 	radlog(L_INFO, "HASH:  Stored %d entries from /etc/group", numread);
 
-	return 0;
+	return cache;
+}
+
+void unix_freepwcache(struct pwcache *cache)
+{
+	int hashindex;
+	struct mypasswd *cur, *next;
+
+	struct mygroup *g_cur, *g_next;
+	char **member;
+
+	for(hashindex=0; hashindex<HASHTABLESIZE; hashindex++) {
+		if(cache->hashtable[hashindex]) {
+			cur = cache->hashtable[hashindex];
+			while(cur) {
+				next = cur->next;
+				free(cur->pw_name);	
+				free(cur->pw_passwd);	
+				free(cur->pw_gecos);	
+				free(cur);	
+				cur = next;
+			}
+		}
+	}	
+
+	g_cur = cache->grphead;
+
+	while(g_cur) {
+		g_next = g_cur->next;
+
+		/* Free name, name, member list */
+		for(member = g_cur->gr_mem; *member; member++) {
+			free(*member);
+		}
+		free(g_cur->gr_mem);
+		free(g_cur->gr_name);
+		free(g_cur->gr_passwd);
+		free(g_cur);
+		g_cur = g_next;
+	}                                  
+
+	free(cache);
 }
 
 /*
  * Looks up user in hashtable.  If user can't be found, returns 0.  
  * Otherwise returns a pointer to the structure for the user
  */
-static struct mypasswd *findHashUser(const char *user) {
+static struct mypasswd *findHashUser(struct pwcache *cache, const char *user)
+{
 
 	struct mypasswd *cur;
 	int idx;
@@ -395,7 +443,7 @@ static struct mypasswd *findHashUser(const char *user) {
 	/* first hash the username and get the index into the hashtable */
 	idx = hashUserName(user);
 
-	cur = hashtable[idx];
+	cur = cache->hashtable[idx];
 
 	while((cur != NULL) && (strcmp(cur->pw_name, user))) {
 		cur = cur->next;
@@ -411,11 +459,12 @@ static struct mypasswd *findHashUser(const char *user) {
 }
 
 /* Stores the username sent into the hashtable */
-static int storeHashUser(struct mypasswd *new, int idx) {
+static int storeHashUser(struct pwcache *cache, struct mypasswd *new, int idx)
+{
 
 	/* store new record at beginning of list */
-	new->next = hashtable[idx];
-	hashtable[idx] = new;
+	new->next = cache->hashtable[idx];
+	cache->hashtable[idx] = new;
 
 	return 1;
 }
@@ -438,7 +487,9 @@ static int hashUserName(const char *s) {
  * return -1 on failure
  * return -2 on error (let caller fall back to old method)
  */
-int H_unix_pass(char *name, char *passwd, VALUE_PAIR **reply_items) {
+int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
+		VALUE_PAIR **reply_items)
+{
 	struct mypasswd	*pwd;
 	char *encrypted_pass;
 	char *encpw;
@@ -446,7 +497,7 @@ int H_unix_pass(char *name, char *passwd, VALUE_PAIR **reply_items) {
 	/*
 	 *	Get encrypted password from password file
 	 */
-	if ((pwd = findHashUser(name)) == NULL) {
+	if ((pwd = findHashUser(cache, name)) == NULL) {
 		/* Default to old way if user isn't hashed */
 		return -2;
 	}
@@ -508,18 +559,19 @@ int H_unix_pass(char *name, char *passwd, VALUE_PAIR **reply_items) {
  * return -2 on error (let caller fall back to old method),
  * -1 on match fail, or 0 on success
  */
-int H_groupcmp(VALUE_PAIR *check, char *username) {
+int H_groupcmp(struct pwcache *cache, VALUE_PAIR *check, char *username)
+{
 	struct mypasswd *pwd;
 	struct mygroup *cur;
 	char **member;
 
 	/* get the user from the hash */
-	if (!(pwd = findHashUser(username)))
+	if (!(pwd = findHashUser(cache, username)))
 		return -2;
 
 	/* let's find this group */
-	if(grphead) {
-		cur = grphead;
+	if(cache->grphead) {
+		cur = cache->grphead;
 		while((cur) && (strcmp(cur->gr_name, (char *)check->strvalue))){
 			cur = cur->next;	
 		}	

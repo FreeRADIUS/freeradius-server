@@ -32,9 +32,15 @@ struct mygroup {
 	struct mygroup *next;    /* next */
 };         
 
+struct pwcache {
+  struct mypasswd *hashtable[HASHTABLESIZE];
+  struct mygroup *grphead;
+};
+
 /* Function prototypes */
-int unix_buildHashTable(const char *passwd_file, const char *shadow_file);
-int unix_buildGrpList(void);
-int unix_hashradutmp(void);
-int H_unix_pass(char *name, char *passwd, VALUE_PAIR **reply_items);
-int H_groupcmp(VALUE_PAIR *check, char *username);
+struct pwcache *unix_buildpwcache(const char *passwd_file,
+                                  const char *shadow_file);
+int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
+                VALUE_PAIR **reply_items);
+int H_groupcmp(struct pwcache *cache, VALUE_PAIR *check, char *username);
+void unix_freepwcache(struct pwcache *cache);
