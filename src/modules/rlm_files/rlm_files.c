@@ -2,12 +2,12 @@
  * rlm_files.c	authorization: Find a user in the "users" file.
  *		accounting:    Write the "detail" files.
  *
- * Version:     @(#)rlm_files.c  1.00  07-Aug-1999  miquels@cistron.nl
+ * Version:	@(#)rlm_files.c  1.00  07-Aug-1999  miquels@cistron.nl
  *
  */
 
 char rlm_files_sccsid[] =
-"@(#)rlm_files.c	1.00 Copyright 1999 Cistron Internet Services B.V.";
+"@(#)rlm_files.c        1.00 Copyright 1999 Cistron Internet Services B.V.";
 
 #include	"autoconf.h"
 
@@ -65,8 +65,8 @@ static int checkdbm(char *users, char *ext)
 /*
  *	Find the named user in the DBM user database.
  *	Returns: -1 not found
- *	          0 found but doesn't match.
- *	          1 found and matches.
+ *		  0 found but doesn't match.
+ *		  1 found and matches.
  */
 static int dbm_find(char *name, VALUE_PAIR *request_pairs,
 		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
@@ -145,8 +145,8 @@ static int dbm_find(char *name, VALUE_PAIR *request_pairs,
 /*
  *	dgreer --
  *	This hack changes Ascend's wierd port numberings
- *      to standard 0-??? port numbers so that the "+" works
- *      for IP address assignments.
+ *	to standard 0-??? port numbers so that the "+" works
+ *	for IP address assignments.
  */
 static int ascend_port_number(int nas_port)
 {
@@ -171,12 +171,83 @@ static int ascend_port_number(int nas_port)
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
- 
+
 	tmp = pairfind(vp, PW_FALL_THROUGH);
- 
+
 	return tmp ? tmp->lvalue : 0;
 }
 
+#define DL_FLAG_START	  1
+#define DL_FLAG_STOP	  2
+#define DL_FLAG_ACCT_ON   4
+#define DL_FLAG_ACCT_OFF  8
+#define DL_FLAG_ALIVE	 16
+
+typedef struct dyn_log {
+	char dir[256];
+	char fname[256];
+	char fmt[1024];
+	char mode[5];
+	int flags;
+} DYN_LOG;
+#define MAX_LOGS 20
+static DYN_LOG logcfg[MAX_LOGS];
+static int logcnt;
+
+/*
+ * Initialize dynamic logging
+ */
+file_getline(FILE *f,char * buff,int len)
+{
+	char tmp[2048];
+	int i;
+
+	tmp[0] = '\0';
+	while (!feof(f)) {
+		fgets(tmp,len,f);
+		if (tmp[0] != '#') {
+			break;
+		}
+	}
+	i = 0;
+	while (tmp[i] != '\n') {
+		*buff = tmp[i];
+		buff++;
+		i++;
+	}
+}
+
+file_dynamic_log_init()
+{
+	FILE * f;
+	char fn[1024];
+
+	sprintf(fn,"%s/%s",radius_dir,"rlm_files_log.cfg");
+	logcnt = 0;
+	if (f = fopen(fn,"r")) {
+		printf("Loading %s\n",fn);
+		while (logcnt < MAX_LOGS) {
+			file_getline(f,logcfg[logcnt].dir,sizeof(logcfg[logcnt].dir));
+			file_getline(f,logcfg[logcnt].fname,sizeof(logcfg[logcnt].fname));
+			file_getline(f,logcfg[logcnt].fmt,sizeof(logcfg[logcnt].fmt));
+			file_getline(f,logcfg[logcnt].mode,sizeof(logcfg[logcnt].mode));
+			file_getline(f,fn,sizeof(fn));
+			logcfg[logcnt].flags = atoi(fn);
+			if ((logcfg[logcnt].flags != 0) &&
+			    (strlen(logcfg[logcnt].mode) != 0)) {
+				logcnt++;
+			} else {
+				break;
+			}
+		}
+		printf("%d logs configured\n",logcnt);
+		fclose(f);
+	} else {
+		printf("Error loading %s\n",fn);
+	}
+
+
+}
 /*
  *	(Re-)read the "users" file into memory.
  */
@@ -184,6 +255,8 @@ static int file_init(int argc, char **argv)
 {
 	char		fn[1024];
 	char		*ptr;
+
+	file_dynamic_log_init();
 
 	/*
 	 *  This really should be fixed to do something better...
@@ -388,6 +461,46 @@ static int file_authenticate(REQUEST *request, char *username, char *password)
 }
 
 /*
+ * Write the dynamic log files
+ */
+file_write_dynamic_log(REQUEST * request)
+{
+	char fn[1024];
+	char buffer[4096];
+	int x,y;
+	VALUE_PAIR * pair;
+	FILE * f;
+
+	pair = pairfind(request->packet->vps,PW_ACCT_STATUS_TYPE);
+	for (x = 0; x < logcnt; x++) {
+		if (((pair->lvalue == PW_STATUS_START) && (logcfg[x].flags & DL_FLAG_START)) ||
+		    ((pair->lvalue == PW_STATUS_STOP) && (logcfg[x].flags & DL_FLAG_STOP)) ||
+		    ((pair->lvalue == PW_STATUS_ACCOUNTING_ON) && (logcfg[x].flags & DL_FLAG_ACCT_ON)) ||
+		    ((pair->lvalue == PW_STATUS_ACCOUNTING_OFF) && (logcfg[x].flags & DL_FLAG_ACCT_OFF)) ||
+		    ((pair->lvalue == PW_STATUS_ALIVE) && (logcfg[x].flags & DL_FLAG_ALIVE))) {
+			y = radius_xlat2(fn,sizeof(fn),logcfg[x].dir,request,request->packet->vps);
+			(void) mkdir(fn, 0755);
+			strcat(fn,"/");
+			y++;
+			/* FIXME must get the reply packet */
+			radius_xlat2(&fn[y],sizeof(fn)-y,logcfg[x].fname,request,request->packet->vps);
+			if (strcasecmp(logcfg[x].mode,"d") == 0) {
+				remove(fn);
+			} else {
+				if (f = fopen(fn,logcfg[x].mode)) {
+					/* FIXME must get the reply packet */
+					radius_xlat2(buffer,sizeof(buffer),logcfg[x].fmt,request,request->packet->vps);
+					fprintf(f,"%s",buffer);
+					fclose(f);
+				}
+			}
+		}
+
+
+	}
+}
+
+/*
  *	Accounting - write the detail files.
  */
 static int file_accounting(REQUEST *request)
@@ -478,7 +591,7 @@ static int file_accounting(REQUEST *request)
 		fputs("\n", outfd);
 		fclose(outfd);
 	}
-
+	file_write_dynamic_log(request);
 	return ret;
 }
 
@@ -498,7 +611,7 @@ module_t rlm_files = {
 	"files",
 	0,				/* type: reserved */
 	file_init,			/* initialization */
-	file_authorize,			/* authorization */
+	file_authorize, 		/* authorization */
 	file_authenticate,		/* authentication */
 	file_accounting,		/* accounting */
 	file_detach,			/* detach */
