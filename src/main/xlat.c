@@ -88,12 +88,15 @@ int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrname)
  *	%a	 Protocol (SLIP/PPP)
  *	%s	 Speed (PW_CONNECT_INFO)
  *	%i	 Calling Station ID
- *	%C	 clientname
+ *  %V   Request-Authenticator (Verified/None)
+ *  %C   clientname
  *	%R	 radius_dir
  *	%A	 radacct_dir
  *	%L	 radlog_dir
  *	%T	 request timestamp in database format
  *	%D	 request date (YYYYMMDD)
+ *  %I   request in ctime format
+ *  %Z   All request attributes except password (must have big buffer)
  *	${AttributeName}		   Corresponding value for AttributeName in request
  *	${request:AttributeName}   Corresponding value for AttributeName in request
  *	${reply:AttributeName}	   Corresponding value for AttributeName in reply
@@ -108,11 +111,12 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 	char *q;
 	VALUE_PAIR *tmp;
 	struct tm * TM;
-	char tmpdt[30]; /* For temporary storing of dates */
+    char tmpdt[40]; /* For temporary storing of dates */
 
 	q = out;
 	for (p = str; *p ; p++) {
-		freespace = outlen - ((int)q-(int)out);
+        /* Calculate freespace in output */
+        freespace = outlen - ((int)q-(int)out);
 		if (freespace <= 1)
 		  break;
 		c = *p;
@@ -174,40 +178,58 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING);
 				break;
 			case 'C': /* ClientName */
-				strncpy(q,client_name(request->packet->src_ipaddr),freespace);
-				q[i] = '\0';
-				i = strlen(q); q += i;
-				break;
+                strncpy(q,client_name(request->packet->src_ipaddr),freespace-1);
+                i = strlen(q); q[i] = '\0'; q += i;
+                break;
 			case 'R': /* radius_dir */
-				strncpy(q,radius_dir,freespace);
-				q[i] = '\0';
-				i = strlen(q); q += i;
-				break;
+                strncpy(q,radius_dir,freespace-1);
+                i = strlen(q); q[i] = '\0'; q += i;
+                break;
 			case 'A': /* radacct_dir */
-				strncpy(q,radacct_dir,freespace);
-				q[i] = '\0';
-				i = strlen(q); q += i;
-				break;
+                strncpy(q,radacct_dir,freespace-1);
+                i = strlen(q); q[i] = '\0'; q += i;
+                break;
 			case 'L': /* radlog_dir */
-				strncpy(q,radlog_dir,freespace);
-				q[i] = '\0';
-				i = strlen(q); q += i;
-				break;
-			case 'D': /* request date */
+                strncpy(q,radlog_dir,freespace-1);
+                i = strlen(q); q[i] = '\0'; q += i;
+                break;
+            case 'V': /* Request-Authenticator */
+                if (request->packet->verified)
+                    strncpy(q,"Verified",freespace-1);
+                else
+                    strncpy(q,"None",freespace-1);
+                i = strlen(q); q[i] = '\0'; q += i;
+                break;
+            case 'D': /* request date */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%Y%m%d",TM);
 				strncpy(q,tmpdt,freespace);
-				q[i] = '\0';
-				i = strlen(q); q += i;
+                i = strlen(q); q[i] = '\0'; q += i;
 				break;
 			case 'T': /* request timestamp */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d-%H.%M.%S.000000",TM);
 				strncpy(q,tmpdt,freespace);
-				q[i] = '\0';
-				i = strlen(q); q += i;
-				break;
-			default:
+                i = strlen(q); q[i] = '\0'; q += i;
+                break;
+            case 'I': /* request timestamp */
+                strncpy(q,ctime(&request->timestamp),freespace);
+                i = strlen(q); q[i] = '\0'; q += i;
+                break;
+            case 'Z': /* Full request pairs except password */
+                tmp = request->packet->vps;
+                while (tmp && (freespace > 3)) {
+                    if (tmp->attribute != PW_PASSWORD) {
+                        *q++ = '\t';
+                        i = vp_prints(q,freespace-2,tmp);
+                        q += i;
+                        freespace -= (i+2);
+                        *q++ = '\n';
+                    }
+                    tmp = tmp->next;
+                }
+                break;
+            default:
 				*q++ = '%';
 				*q++ = *p;
 				break;
