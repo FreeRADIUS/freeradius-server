@@ -8,19 +8,21 @@ if test x$with_[]modname != xno; then
 	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
 
+	dnl Do we really need to test for printf?  All cc's should link -lc.
 	AC_CHECK_LIB(c, printf,
 		[ x99_token_ldflags="$x99_token_ldflags -lc" ],
 		[ fail=$fail" printf" ]
 	)
 
-	AC_CHECK_LIB(crypto, des_cbc_encrypt,
-		[ x99_token_ldflags="$x99_token_ldflags -lcrypto" ],
-		[ fail=$fail" des_cbc_encrypt" ]
-	)
-
+	dnl Do we really need to test for stdio.h?
 	AC_CHECK_HEADER(stdio.h,
 		[ x99_token_cflags="$x99_token_cflags -I/usr/include" ],
 		[ fail=$fail" stdio.h" ]
+	)
+
+	AC_CHECK_HEADER(openssl/des.h,
+		[ x99_token_cflags="$x99_token_cflags" ],
+		[ fail=$fail" openssl/des.h" ]
 	)
 
 	AC_CHECK_HEADERS(stdio.h stdlib.h)  # for the config.h defs
