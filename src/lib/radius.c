@@ -72,10 +72,8 @@ static const char *packet_codes[] = {
 /*
  *  Internal prototypes
  */
-#ifdef ASCEND_SECRET
 static void make_secret(unsigned char *digest, u_int8_t *vector,
 			const char *secret, char *value);
-#endif
 
 /*
  *	Reply to the request.  Also attach
@@ -250,7 +248,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			  case PW_TYPE_ABINARY:
 			  case PW_TYPE_STRING:
 			  case PW_TYPE_OCTETS:
-#ifdef ASCEND_SECRET
 				  /*
 				   *  Hmm... this is based on names
 				   *  right now.  We really shouldn't do
@@ -264,7 +261,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 					  memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
 					  reply->length = AUTH_VECTOR_LEN;
 				  }
-#endif
 				  len = reply->length;
 				  
 				  /*
@@ -760,7 +756,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			case PW_TYPE_OCTETS:
 			case PW_TYPE_ABINARY:
 			case PW_TYPE_STRING:
-#ifdef ASCEND_SECRET
 				/*
 				 *  Hmm... this is based on names
 				 *  right now.  We really shouldn't do
@@ -776,7 +771,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 					pair->strvalue[AUTH_VECTOR_LEN] = '\0';
 					pair->length = strlen(pair->strvalue);
 				} else
-#endif
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
 				break;
@@ -1133,9 +1127,6 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	*radius_packet_ptr = NULL;
 }
 
-
-
-#ifdef ASCEND_SECRET
 /*************************************************************************
  *
  *      Function: make_secret
@@ -1164,4 +1155,3 @@ static void make_secret(unsigned char *digest, u_int8_t *vector,
 		digest[i] ^= value[i];
         }
 }
-#endif /* ASCEND_SECRET */
