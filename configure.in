@@ -341,7 +341,7 @@ dnl # HP/UX requires linking with librt, too, to get the sem_* symbols.  :\
 	[ 
 	dnl    Er, this usage of $ac_cv_search_sem_init may be unfounded 
 	dnl    chumminess with the autoconf internals.  -chad
-	PTHREADLIB="$PTHREADLIB $ac_cv_search_sem_init"
+	dnl PTHREADLIB="$PTHREADLIB $ac_cv_search_sem_init"
 	],
 	[],
 	"-lpthread"
