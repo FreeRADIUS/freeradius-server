@@ -1288,8 +1288,8 @@ static void rad_reject(REQUEST *request)
 		/*
 		 *  Accounting requests, etc. get dropped on the floor.
 		 */
-		case PW_ACCOUNTING_REQUEST:
 		default:
+		case PW_ACCOUNTING_REQUEST:
 			break;
 
 		/*
@@ -1525,30 +1525,33 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 	(*fun)(request);
 
-	/* See if we have to lower user/pass after processing */
-	if(strcmp(mainconfig.do_lower_user, "after") == 0) {
-		rad_lowerpair(request, request->username);
-		reprocess = 1;
-	}
-	if(strcmp(mainconfig.do_lower_pass, "after") == 0) {
+	/*
+	 *  Reprocess if we rejected last time
+	 */
+	if ((fun == rad_authenticate) &&
+	    (request->reply->code == PW_AUTHENTICATION_REJECT)) {
+	  /* See if we have to lower user/pass after processing */
+	  if (strcmp(mainconfig.do_lower_user, "after") == 0) {
+		  rad_lowerpair(request, request->username);
+		  reprocess = 1;
+	  }
+	  if (strcmp(mainconfig.do_lower_pass, "after") == 0) {
 		rad_lowerpair(request, rad_getpass(request));
 		reprocess = 1;
-	}
-	if(strcmp(mainconfig.do_nospace_user, "after") == 0) {
-		rad_rmspace_pair(request, request->username);
-		reprocess = 1;
-	}
-	if(strcmp(mainconfig.do_nospace_pass, "after") == 0) {
-		rad_rmspace_pair(request, rad_getpass(request));
-		reprocess = 1;
-	}
-
-	/* Reprocess if we rejected last time */
-	if ((fun == rad_authenticate) &&
-	    (request->reply->code == PW_AUTHENTICATION_REJECT) &&
-	    (reprocess))  {
-		pairfree(&request->config_items);
-		(*fun)(request);
+	  }
+	  if (strcmp(mainconfig.do_nospace_user, "after") == 0) {
+		  rad_rmspace_pair(request, request->username);
+		  reprocess = 1;
+	  }
+	  if (strcmp(mainconfig.do_nospace_pass, "after") == 0) {
+		  rad_rmspace_pair(request, rad_getpass(request));
+		  reprocess = 1;
+	  }
+	  
+	  if (reprocess) {
+		  pairfree(&request->config_items);
+		  (*fun)(request);
+	  }
 	}
 	
 	/*
@@ -2036,7 +2039,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 */
 			if (!curreq->proxy) {
 				radlog(L_ERR, "Dropping packet from client "
-				       "%s:%d - ID: %d due to confused request %d",
+				       "%s:%d - ID: %d due to dead request %d",
 				       client_name(request->packet->src_ipaddr),
 				       request->packet->src_port,
 				       request->packet->id,
