@@ -63,20 +63,25 @@
  */
 static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
 {
+	int rcode;
 	radlog(L_DBG, "rlm_sql (%s): Attempting to connect %s #%d",
 	       inst->config->xlat_name, inst->module->name, sqlsocket->id);
 
-	if ((inst->module->sql_init_socket)(sqlsocket, inst->config) < 0) {
-		radlog(L_CONS | L_ERR, "rlm_sql (%s): Failed to connect DB handle #%d", inst->config->xlat_name, sqlsocket->id);
-		inst->connect_after = time(NULL) + inst->config->connect_failure_retry_delay;
-		sqlsocket->state = sockunconnected;
-		return(-1);
-	} else {
+	rcode = (inst->module->sql_init_socket)(sqlsocket, inst->config);
+	if (rcode == 0) {
 		radlog(L_DBG, "rlm_sql (%s): Connected new DB handle, #%d",
 		       inst->config->xlat_name, sqlsocket->id);
 		sqlsocket->state = sockconnected;
 		return(0);
 	}
+
+	/*
+	 *  Error, or SQL_DOWN.
+	 */
+	radlog(L_CONS | L_ERR, "rlm_sql (%s): Failed to connect DB handle #%d", inst->config->xlat_name, sqlsocket->id);
+	inst->connect_after = time(NULL) + inst->config->connect_failure_retry_delay;
+	sqlsocket->state = sockunconnected;
+	return(-1);
 }
 
 
@@ -90,6 +95,7 @@ static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
 int sql_init_socketpool(SQL_INST * inst)
 {
 	int i, rcode;
+	int success = 0;
 	SQLSOCK *sqlsocket;
 
 	inst->connect_after = 0;
@@ -117,9 +123,13 @@ int sql_init_socketpool(SQL_INST * inst)
 #endif
 
 		if (time(NULL) > inst->connect_after) {
-			/* this sets the sqlsocket->state, and possibly sets inst->connect_after */
-			/* FIXME! check return code */
-			connect_single_socket(sqlsocket, inst);
+			/*
+			 *	This sets the sqlsocket->state, and
+			 *	possibly also inst->connect_after
+			 */
+			if (connect_single_socket(sqlsocket, inst) == 0) {
+				success = 1;
+			}
 		}
 
 		/* Add this socket to the list of sockets */
@@ -127,6 +137,11 @@ int sql_init_socketpool(SQL_INST * inst)
 		inst->sqlpool = sqlsocket;
 	}
 	inst->last_used = NULL;
+
+	if (!success) {
+		radlog(L_DBG, "rlm_sql (%s): Failed to connect to any SQL server.",
+		       inst->config->xlat_name);
+	}
 
 	return 1;
 }
