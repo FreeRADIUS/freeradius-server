@@ -475,8 +475,11 @@ static int unix_authenticate(void *instance, REQUEST *request)
 		}
 	}
 	endusershell();
-	if (shell == NULL)
+	if (shell == NULL) {
+		radlog(L_AUTH, "rlm_unix: [%s]: invalid shell [%s]",
+			name, pws->pw_shell);
 		return RLM_MODULE_REJECT;
+	}
 #endif
 
 #if defined(HAVE_GETSPNAM) && !defined(M_UNIX)
@@ -521,9 +524,10 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *	Check encrypted password.
 	 */
 	encpw = crypt(passwd, encrypted_pass);
-	if (strcmp(encpw, encrypted_pass))
+	if (strcmp(encpw, encrypted_pass)) {
+		radlog(L_AUTH, "rlm_unix: [%s]: invalid password", name);
 		return RLM_MODULE_REJECT;
-
+	}
 	return RLM_MODULE_OK;
 #endif /* OSFSIA */
 #undef inst
