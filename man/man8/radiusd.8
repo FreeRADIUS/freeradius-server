@@ -1,4 +1,4 @@
-.TH RADIUSD 8 "15 January 2001" "" "FreeRADIUS Daemon"
+.TH RADIUSD 8 "23 June 2003" "" "FreeRADIUS Daemon"
 .SH NAME
 radiusd - Authentication, Authorization and Accounting server
 .SH SYNOPSIS
@@ -23,6 +23,7 @@ radiusd - Authentication, Authorization and Accounting server
 .RB [ \-s ]
 .RB [ \-v ]
 .RB [ \-x ]
+.RB [ \-X ]
 .RB [ \-y ]
 .RB [ \-z ]
 .SH DESCRIPTION
@@ -137,6 +138,9 @@ Debug mode. In this mode the server will print details of every request
 on it's \fBstderr\fP output. Most useful in combination with \fB-s\fP.
 You can specify this option 2 times (-x -x or -xx) to get a bit more
 debugging output.
+
+.IP \-X
+Extended debug mode.  Equivalent to -sfxx, but simpler to explain.
 
 .IP \-y
 Write details about every authentication request in the
