@@ -2114,7 +2114,13 @@ static struct timeval *setuptimeout(struct timeval *tv)
 	 */
 	for (id = 0; id < 256; id++) {
 		for (curreq = request_list[id].first_request; curreq; curreq = curreq->next) {
-			if (curreq->finished) {
+			/*
+			 *	The request is marked to be
+			 *	cleaned up: ignore it.
+			 */
+			if (curreq->timestamp == 0) {
+				continue;
+			} else if (curreq->finished) {
 				/*
 				 *	The request is finished.
 				 *	Wake up when it's time to clean
@@ -2166,6 +2172,7 @@ static struct timeval *setuptimeout(struct timeval *tv)
 	 *	Return NULL, so that the select() call will sleep forever.
 	 */
 	if (!foundone) {
+		DEBUG2("Nothing to do.  Sleeping until we see a request.");
 		return NULL;
 	}
 
@@ -2175,6 +2182,7 @@ static struct timeval *setuptimeout(struct timeval *tv)
 	 */
 	tv->tv_sec = smallest;
 	tv->tv_usec = 0;
+	DEBUG2("Waking up in %d seconds...", (int) smallest);
 	return tv;
 }
 
