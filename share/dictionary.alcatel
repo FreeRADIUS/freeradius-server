@@ -1,9 +1,6 @@
 #
 # Alcatel Broadband Access Server dictionary.
 #
-#               Enable by putting the line "$INCLUDE dictionary.alcatel" into
-#               the main dictionary file.
-#
 # Version:      1.00  10-July-2002  Lasse Johnsen <lassejohnsen@bulldogcommunications.com>
 #		$Id$
 #
