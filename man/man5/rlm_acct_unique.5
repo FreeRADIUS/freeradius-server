@@ -16,7 +16,7 @@ The main configuration items to be aware of are:
 .IP key
 A list of the attributes used in calculating an MD5 hash which is used
 as the value for the unique session id.
-.PP
+.SH CONFIGURATION
 .DS
 modules {
   ...
@@ -27,6 +27,16 @@ modules {
 .br
   }
 .br
+  ...
+.br
+}
+.br
+ ...
+.br
+preacct {
+  ...
+.br
+  acct_unique
   ...
 .br
 }
