@@ -10,6 +10,8 @@ radiusd-freeradius (0.8-1) unstable; urgency=low
   * New upstream release.  (closes: Bug#140536)
   * Uses available version of postgresql.  (closes: Bug#139290)
   * Removed "conflicts" with other radiusds.
+  * Added new build-dep on libtool.
+  * Changed section to "net" from "admin".
 
  -- Chad Miller <cmiller@debian.org>  Wed,  6 Nov 2002 11:08:15 -0500
 
