@@ -32,6 +32,10 @@ RADIUS attributes, you must put the string into an back-quoted string:
 
        Session-Timeout = `%{expr: 2 + 3}`
 
+To do the dynamic translation in the 'radiusd.conf' (or some other
+configuration files), just use the variable as-is.  See 'radiusd.conf'
+for examples.
+
 
 Additionally, you can use conditional syntax similar to ${foo:-bar} as
 defined in 'sh'.  For example:
