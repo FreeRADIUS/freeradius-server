@@ -27,6 +27,7 @@ Ver 1.75:
 * Fix a small typo in the userinfo mysql schema. Found by Evert Meulie
 * Fix bug #136, bugs found by Pawel Foremski
 * Small type in login_time_create, close bug #141
+* In config.php3 remove whitespaces from $login. Don't remove '-'
 Ver 1.72:
 * Move the xlat function to a separate file in lib/xlat.php3
 * Add a lib/sql/nas_list.php3 to also get the nas list from sql (naslist.conf still works)

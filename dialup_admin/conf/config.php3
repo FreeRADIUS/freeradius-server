@@ -71,7 +71,7 @@ if ($use_session == 0 && $config[general_use_session] == 'yes'){
 }
 //Make sure we are only passed allowed strings in username
 if ($login != '')
-	$login = preg_replace("/[^\w\s\.\/\@\:]/",'',$login);
+	$login = preg_replace("/[^\w\.\/\@\:\-]/",'',$login);
 
 if ($login != '' && $config[general_strip_realms] == 'yes'){
 	$realm_del = ($config[general_realm_delimiter] != '') ? $config[general_realm_delimiter] : '@';
