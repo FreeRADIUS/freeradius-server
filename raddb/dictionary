@@ -140,6 +140,9 @@ ATTRIBUTE	Login-IPv6-Host		98	octets	# really IPv6
 ATTRIBUTE	Framed-IPv6-Route	99	string
 ATTRIBUTE	Framed-IPv6-Pool	100	string
 
+ATTRIBUTE	Digest-Response		206	string
+ATTRIBUTE	Digest-Attributes	207	octets	# stupid format
+
 #
 #	Experimental Non Protocol Attributes used by Cistron-Radiusd
 #
@@ -177,7 +180,16 @@ ATTRIBUTE	NT-Password		1058	octets
 ATTRIBUTE	SMB-Account-CTRL	1059	integer
 ATTRIBUTE	SMB-Account-CTRL-TEXT	1061	string
 ATTRIBUTE	User-Profile		1062	string
-
+ATTRIBUTE	Digest-Realm		1063	string
+ATTRIBUTE	Digest-Nonce		1064	string
+ATTRIBUTE	Digest-Method		1065	string
+ATTRIBUTE	Digest-URI		1066	string
+ATTRIBUTE	Digest-QOP		1067	string
+ATTRIBUTE	Digest-Algorithm	1068	string
+ATTRIBUTE	Digest-Body-Digest	1069	string
+ATTRIBUTE	Digest-CNonce		1070	string
+ATTRIBUTE	Digest-Nonce-Count	1071	string
+ATTRIBUTE	Digest-User-Name	1072	string
 
 #
 #	Non-Protocol Attributes
