@@ -60,7 +60,6 @@ static int retries = 10;
 static float timeout = 3;
 static const char *secret = NULL;
 static int do_output = 1;
-static int filedone = 0;
 static int totalapp = 0;
 static int totaldeny = 0;
 static int totallost = 0;
@@ -85,6 +84,7 @@ typedef struct radclient_t {
 	struct		radclient_t *next;
 
 	const char	*filename;
+	int		packet_number; /* in the file */
 	char		password[256];
 	time_t		timestamp;
 	RADIUS_PACKET	*request;
@@ -97,14 +97,6 @@ typedef struct radclient_t {
 static radclient_t *radclient_head = NULL;
 static radclient_t *radclient_tail = NULL;
 
-
-/*
- *	Read valuepairs from the fp up to End-Of-File.
- */
-static VALUE_PAIR *readvp(FILE *fp)
-{
-	return readvp2(fp, &filedone, "radclient:");
-}
 
 static void usage(void)
 {
@@ -164,114 +156,130 @@ static radclient_t *radclient_init(const char *filename)
 {
 	FILE *fp;
 	VALUE_PAIR *vp;
-	radclient_t *radclient;
+	radclient_t *start, *radclient, *prev = NULL;
+	int filedone = 0;
+	int packet_number = 1;
+
+	start = NULL;
 
 	/*
-	 *	Allocate it.
-	 */
-	radclient = malloc(sizeof(*radclient));
-	if (!radclient) {
-		perror("radclient: ");
-		return NULL;
-	}
-	memset(radclient, 0, sizeof(*radclient));
-
-	radclient->request = rad_alloc(1);
-	if (!radclient->request) {
-		librad_perror("radclient: ");
-		radclient_free(radclient);
-		return NULL;
-	}
-
-	radclient->filename = filename;
-	radclient->request->id = -1; /* allocate when sending */
-
-	/*
-	 *	Read valuepairs.
-	 *	Maybe read them, from stdin, if there's no
-	 *	filename, or if the filename is '-'.
+	 *	Determine where to read the VP's from.
 	 */
 	if (filename && (strcmp(filename, "-") != 0)) {
 		fp = fopen(filename, "r");
 		if (!fp) {
 			fprintf(stderr, "radclient: Error opening %s: %s\n",
 				filename, strerror(errno));
-			radclient_free(radclient);
 			return NULL;
 		}
 	} else {
 		fp = stdin;
 	}
-	
-	/*
-	 *	Read the VP's.
-	 */
-	radclient->request->vps = readvp(fp);
-	if (fp != stdin) fclose(fp);
-	if (!radclient->request->vps) {
-		librad_perror("radclient: ");
-		radclient_free(radclient);
-		return NULL;
-	}
 
 	/*
-	 *	Keep a copy of the the User-Password attribute.
+	 *	Loop until the file is done.
 	 */
-	if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
-		strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+	do {
 		/*
-		 *	Otherwise keep a copy of the CHAP-Password attribute.
+		 *	Allocate it.
 		 */
-	} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
-		strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
-	} else {
-		radclient->password[0] = '\0';
-	}
-	
-	/*
-	 *  Fix up Digest-Attributes issues
-	 */
-	for (vp = radclient->request->vps; vp != NULL; vp = vp->next) {
-		switch (vp->attribute) {
-		default:
-			break;
-
-			/*
-			 *	Allow it to set the packet type in
-			 *	the attributes read from the file.
-			 */
-		case PW_PACKET_TYPE:
-			radclient->request->code = vp->lvalue;
-			break;
-			
-		case PW_PACKET_DST_PORT:
-			radclient->request->dst_port = (vp->lvalue & 0xffff);
-			break;
-			
-		case PW_DIGEST_REALM:
-		case PW_DIGEST_NONCE:
-		case PW_DIGEST_METHOD:
-		case PW_DIGEST_URI:
-		case PW_DIGEST_QOP:
-		case PW_DIGEST_ALGORITHM:
-		case PW_DIGEST_BODY_DIGEST:
-		case PW_DIGEST_CNONCE:
-		case PW_DIGEST_NONCE_COUNT:
-		case PW_DIGEST_USER_NAME:
-			/* overlapping! */
-			memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
-			vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
-			vp->length += 2;
-			vp->strvalue[1] = vp->length;
-			vp->attribute = PW_DIGEST_ATTRIBUTES;
-			break;
+		radclient = malloc(sizeof(*radclient));
+		if (!radclient) {
+			perror("radclient: ");
+			return NULL; /* memory leak "start" */
 		}
-	} /* loop over the VP's we read in */
+		memset(radclient, 0, sizeof(*radclient));
+		
+		radclient->request = rad_alloc(1);
+		if (!radclient->request) {
+			librad_perror("radclient: ");
+			radclient_free(radclient);
+			return NULL; /* memory leak "start" */
+		}
+		
+		radclient->filename = filename;
+		radclient->request->id = -1; /* allocate when sending */
+		radclient->packet_number = packet_number++;
+		
+		/*
+		 *	Read the VP's.
+		 */
+		radclient->request->vps = readvp2(fp, &filedone, "radclient:");
+		if (!radclient->request->vps) {
+			radclient_free(radclient);
+			return NULL; /* memory leak "start" */
+		}
+		
+		/*
+		 *	Keep a copy of the the User-Password attribute.
+		 */
+		if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
+			strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+			/*
+			 *	Otherwise keep a copy of the CHAP-Password attribute.
+			 */
+		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
+			strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+		} else {
+			radclient->password[0] = '\0';
+		}
+		
+		/*
+		 *  Fix up Digest-Attributes issues
+		 */
+		for (vp = radclient->request->vps; vp != NULL; vp = vp->next) {
+			switch (vp->attribute) {
+			default:
+				break;
+				
+				/*
+				 *	Allow it to set the packet type in
+				 *	the attributes read from the file.
+				 */
+			case PW_PACKET_TYPE:
+				radclient->request->code = vp->lvalue;
+				break;
+				
+			case PW_PACKET_DST_PORT:
+				radclient->request->dst_port = (vp->lvalue & 0xffff);
+				break;
+				
+			case PW_DIGEST_REALM:
+			case PW_DIGEST_NONCE:
+			case PW_DIGEST_METHOD:
+			case PW_DIGEST_URI:
+			case PW_DIGEST_QOP:
+			case PW_DIGEST_ALGORITHM:
+			case PW_DIGEST_BODY_DIGEST:
+			case PW_DIGEST_CNONCE:
+			case PW_DIGEST_NONCE_COUNT:
+			case PW_DIGEST_USER_NAME:
+				/* overlapping! */
+				memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
+				vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
+				vp->length += 2;
+				vp->strvalue[1] = vp->length;
+				vp->attribute = PW_DIGEST_ATTRIBUTES;
+				break;
+			}
+		} /* loop over the VP's we read in */
 
+		if (!start) {
+			start = radclient;
+			prev = start;
+		} else {
+			prev->next = radclient;
+			radclient->prev = prev;
+			prev = radclient;
+		}
+	} while (!filedone); /* loop until the file is done. */
+	
+	if (fp != stdin) fclose(fp);
+	
 	/*
 	 *	And we're done.
 	 */
-	return radclient;
+	return start;
 }
 
 
@@ -287,7 +295,8 @@ static int radclient_sane(radclient_t *radclient)
 
 	if (radclient->request->code == 0) {
 		if (packet_code == -1) {
-			fprintf(stderr, "radclient: Request was \"auto\", but file %s did not contain Packet-Type\n", radclient->filename);
+			fprintf(stderr, "radclient: Request was \"auto\", but request %d in file %s did not contain Packet-Type\n",
+				radclient->packet_number, radclient->filename);
 			return -1;
 		}
 
@@ -329,6 +338,12 @@ static int filename_walk(void *data)
 		assert(radclient_tail->next == NULL);
 		radclient_tail->next = radclient;
 		radclient->prev = radclient_tail;
+
+		/*
+		 *	We may have a list of "radclient" structures
+		 *	returned.
+		 */
+		while (radclient->next) radclient = radclient->next;
 		radclient_tail = radclient;
 	}
 
