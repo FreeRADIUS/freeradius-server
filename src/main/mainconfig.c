@@ -577,6 +577,17 @@ static int switch_users(void)
 			exit(1);
 		}
 	}
+
+	/*
+	 *	We've probably written to the log file already as
+	 *	root.root, so if we have switched users, we've got to
+	 *	update the ownership of the file.
+	 */
+	if ((debug_flag == 0) &&
+	    (mainconfig.radlog_dest == RADLOG_FILES) &&
+	    (mainconfig.log_file != NULL)) {
+		chown(mainconfig.log_file, server_uid, server_gid);
+	}
 	return(0);
 }
 
@@ -1620,6 +1631,10 @@ int read_mainconfig(int reload)
 		 */
 		radlogdir_iswritable(mainconfig.uid_name);
 	}
+
+	/*
+	 *	We should really switch users earlier in the process.
+	 */
 	switch_users();
 
 	/*
