@@ -1,0 +1,193 @@
+#
+# Redback dictionary.
+#
+#		Enable by putting the line "$INCLUDE dictionary.redback" into
+#		the main dictionary file.
+#
+# Version:	1.00  14-Sep-2000  Chris Adams <cmadams@hiwaay.net>
+#
+
+VENDOR		Redback		2352
+
+#
+#	Redback Vendor Specific Extensions
+#
+ATTRIBUTE	Client_DNS_Pri			1	ipaddr		Redback
+ATTRIBUTE	Client_DNS_Sec			2	ipaddr		Redback
+ATTRIBUTE	DHCP_Max_Leases			3	integer		Redback
+ATTRIBUTE	Context-Name			4	string		Redback
+ATTRIBUTE	Bridge_Group			5	string		Redback
+ATTRIBUTE	BG_Aging_Time			6	string		Redback
+ATTRIBUTE	BG_Path_Cost			7	string		Redback
+ATTRIBUTE	BG_Span_Dis			8	string		Redback
+ATTRIBUTE	BG_Trans_BPDU			9	string		Redback
+ATTRIBUTE	Rate_Limit_Rate			10	integer		Redback
+ATTRIBUTE	Rate_Limit_Burst		11	integer		Redback
+ATTRIBUTE	Police_Rate			12	integer		Redback
+ATTRIBUTE	Police_Burst			13	integer		Redback
+ATTRIBUTE	Source_Validation		14	integer		Redback
+ATTRIBUTE	Tunnel_Domain			15	integer		Redback
+ATTRIBUTE	Tunnel_Local_Name		16	string		Redback
+ATTRIBUTE	Tunnel_Remote_Name		17	string		Redback
+ATTRIBUTE	Tunnel_Function			18	integer		Redback
+ATTRIBUTE	Tunnel_Max_Sessions		21	integer		Redback
+ATTRIBUTE	Tunnel_Max_Tunnels		22	integer		Redback
+ATTRIBUTE	Tunnel_Session_Auth		23	integer		Redback
+ATTRIBUTE	Tunnel_Window			24	integer		Redback
+ATTRIBUTE	Tunnel_Retransmit		25	integer		Redback
+ATTRIBUTE	Tunnel_Cmd_Timeout		26	integer		Redback
+ATTRIBUTE	PPPOE_URL			27	string		Redback
+ATTRIBUTE	PPPOE_MOTM			28	string		Redback
+ATTRIBUTE	Tunnel_Group			29	integer		Redback
+ATTRIBUTE	Tunnel_Context			30	string		Redback
+ATTRIBUTE	Tunnel_Algorithm		31	integer		Redback
+ATTRIBUTE	Tunnel_Deadtime			32	integer		Redback
+ATTRIBUTE	Mcast_Send			33	integer		Redback
+ATTRIBUTE	Mcast_Receive			34	integer		Redback
+ATTRIBUTE	Mcast_MaxGroups			35	integer		Redback
+ATTRIBUTE	Ip_Address_Pool_Name		36	string		Redback
+ATTRIBUTE	Tunnel_DNIS			37	integer		Redback
+ATTRIBUTE	Medium_Type			38	integer		Redback
+ATTRIBUTE	PVC_Encapsulation_Type		39	integer		Redback
+ATTRIBUTE	PVC_Profile_Name		40	string		Redback
+ATTRIBUTE	PVC_Circuit_Padding		41	integer		Redback
+ATTRIBUTE	Bind_Type			42	integer		Redback
+ATTRIBUTE	Bind_Auth_Protocol		43	integer		Redback
+ATTRIBUTE	Bind_Auth_Max_Sessions		44	integer		Redback
+ATTRIBUTE	Bind_Bypass_Bypass		45	string		Redback
+ATTRIBUTE	Bind_Auth_Context		46	string		Redback
+ATTRIBUTE	Bind_Auth_Service_Grp		47	string		Redback
+ATTRIBUTE	Bind_Bypass_Context		48	string		Redback
+ATTRIBUTE	Bind_Int_Context		49	string		Redback
+ATTRIBUTE	Bind_Tun_Context		50	string		Redback
+ATTRIBUTE	Bind_Ses_Context		51	string		Redback
+ATTRIBUTE	Bind_Dot1q_Slot			52	integer		Redback
+ATTRIBUTE	Bind_Dot1q_Port			53	integer		Redback
+ATTRIBUTE	Bind_Dot1q_Vlan_Tag_Id		54	integer		Redback
+ATTRIBUTE	Bind_Int_Interface_Name		55	string		Redback
+ATTRIBUTE	Bind_L2TP_Tunnel_Name		56	string		Redback
+ATTRIBUTE	Bind_L2TP_Flow_Control		57	integer		Redback
+ATTRIBUTE	Bind_Sub_User_At_Context	58	string		Redback
+ATTRIBUTE	Bind_Sub_Password		59	string		Redback
+ATTRIBUTE	Ip_Host_Addr			60	string		Redback
+ATTRIBUTE	IP_TOS_Field			61	integer		Redback
+ATTRIBUTE	NAS_Real_Port			62	integer		Redback
+ATTRIBUTE	Tunnel_Session_Auth_Ctx		63	string		Redback
+ATTRIBUTE	Tunnel_Session_Auth_Service_Grp	64	string		Redback
+ATTRIBUTE	Tunnel_Rate_Limit_Rate		65	integer		Redback
+ATTRIBUTE	Tunnel_Rate_Limit_Burst		66	integer		Redback
+ATTRIBUTE	Tunnel_Police_Rate		67	integer		Redback
+ATTRIBUTE	Tunnel_Police_Burst		68	integer		Redback
+ATTRIBUTE	Tunnel_L2F_Second_Password	69	string		Redback
+ATTRIBUTE	Acct_Input_Octets_64		128	integer		Redback
+ATTRIBUTE	Acct_Output_Octets_64		129	integer		Redback
+ATTRIBUTE	Acct_Input_Packets_64		130	integer		Redback
+ATTRIBUTE	Acct_Output_Packets_64		131	integer		Redback
+ATTRIBUTE	Assigned_IP_Address		132	ipaddr		Redback
+ATTRIBUTE	Acct_Mcast_In_Octets		133	integer		Redback
+ATTRIBUTE	Acct_Mcast_Out_Octets		134	integer		Redback
+ATTRIBUTE	Acct_Mcast_In_Packets		135	integer		Redback
+ATTRIBUTE	Acct_Mcast_Out_Packets		136	integer		Redback
+ATTRIBUTE	LAC_Port			137	integer		Redback
+ATTRIBUTE	LAC_Real_Port			138	integer		Redback
+ATTRIBUTE	LAC_Port_Type			139	integer		Redback
+ATTRIBUTE	LAC_Real_Port_Type		140	integer		Redback
+
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_RAW		1
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_ROUTE1483	2
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_AUTO1483		3
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_MULTI		4
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_BRIDGE1483	5
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_PPP		6
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_PPP_SERIAL	7
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_PPP_NLPID	8
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_PPP_AUTO		9
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_PPPOE		10
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_L2TP		11
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ATM_PPP_LLC		12
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_FRAME_AUTO1490	13
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_FRAME_MULTI		14
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_FRAME_BRIDGE1490	15
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_FRAME_PPP		16
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_FRAME_PPP_AUTO	17
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_FRAME_PPPOE		18
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_FRAME_ROUTE1490	19
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_FRAME_L2TP		20
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_L2TP_VC_MUXED	21
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ETH			22
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ETH_PPPOE		23
+VALUE	PVC_Encapsulation_Type	AAA_ENCAPS_ETH_MULTI		24
+VALUE	PVC_Circuit_Padding	AAA_CIRCUIT_PADDING		1
+VALUE	PVC_Circuit_Padding	AAA_CIRCUIT_NO_PADDING		2
+VALUE	Bind_Type		AAA_AUTH_BIND			1
+VALUE	Bind_Type		AAA_BYPASS_BIND			2
+VALUE	Bind_Type		AAA_INTERFACE_BIND		3
+VALUE	Bind_Type		AAA_SUBSCRIBE_BIND		4
+VALUE	Bind_Type		AAA_TUNNEL_BIND			5
+VALUE	Bind_Type		AAA_SESSION_BIND		6
+VALUE	Bind_Type		AAA_Q8021_BIND			7
+VALUE	Bind_Type		AAA_MULTI_BIND			8
+VALUE	Bind_Auth_Protocol	AAA_PPP_PAP			1
+VALUE	Bind_Auth_Protocol	AAA_PPP_CHAP			2
+VALUE	Bind_Auth_Protocol	AAA_PPP_CHAP_WAIT		3
+VALUE	Bind_Auth_Protocol	AAA_PPP_CHAP_PAP		4
+VALUE	Bind_Auth_Protocol	AAA_PPP_CHAP_WAIT_PAP		5
+
+VALUE	Tunnel_Function		LAC-Only			1
+VALUE	Tunnel_Function		LNS-Only			2
+VALUE	Tunnel_Function		LAC-LNS				3
+VALUE	Tunnel_Session_auth	CHAP				1
+VALUE	Tunnel_Session_auth	PAP				2
+VALUE	Tunnel_Session_auth	CHAP-PAP			3
+VALUE	Mcast_Send		NO-SEND				1
+VALUE	Mcast_Send		SEND				2
+VALUE	Mcast_Send		UNSOLICITED-SEND		3
+VALUE	Mcast_Receive		NO-RECEIVE			1
+VALUE	Mcast_Receive		RECEIVE				2
+
+VALUE	Tunnel_DNIS		DNIS				1
+VALUE	Tunnel_DNIS		DNIS-Only			2
+
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_10BT		40
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_100BT		41
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_DS3_FR		42
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_DS3_ATM		43
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_OC3		44
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_HSSI		45
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_EIA530		46
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_T1		47
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_CHAN_T3		48
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_DS1_FR		49
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_E3_ATM		50
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_IMA_ATM		51
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_DS3_ATM_2		52
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_OC3_ATM_2		53
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_1000BSX		54
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_E1_FR		55
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_E1_ATM		56
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_E3_FR		57
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_OC3_POS		58
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_OC12_POS		59
+VALUE	LAC_Port_Type		NAS_PORT_TYPE_PPPOE		60
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_10BT		40
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_100BT		41
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_DS3_FR		42
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_DS3_ATM		43
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_OC3		44
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_HSSI		45
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_EIA530		46
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_T1		47
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_CHAN_T3		48
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_DS1_FR		49
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_E3_ATM		50
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_IMA_ATM		51
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_DS3_ATM_2		52
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_OC3_ATM_2		53
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_1000BSX		54
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_E1_FR		55
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_E1_ATM		56
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_E3_FR		57
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_OC3_POS		58
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_OC12_POS		59
+VALUE	LAC_Real_Port_Type	NAS_PORT_TYPE_PPPOE		60
+
