@@ -14,8 +14,8 @@
 $INCLUDE	@prefix@/share/freeradius/dictionary
 
 #
-#	Place additional attributes here.  They will over-ride the
-#	definitions in the pre-defined dictionaries.
+#	Place additional attributes or $INCLUDEs here.  They will
+#	over-ride the definitions in the pre-defined dictionaries.
 #
 #	See the 'man' page for 'dictionary' for information on
 #	the format of the dictionary files.

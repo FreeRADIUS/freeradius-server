@@ -1,6 +1,17 @@
 #
 # Version $Id$
 #
+#	DO NOT EDIT THE FILES IN THIS DIRECTORY
+#
+#	The files in this directory are maintained and updated by
+#	the FreeRADIUS project.  Newer releases of software may update
+#	or change these files.
+#
+#	Use the main dictionary file (usually /etc/raddb/dictionary)
+#	for local system attributes and $INCLUDEs.
+#
+#
+#
 #	This file contains dictionary translations for parsing
 #	requests and generating responses.  All transactions are
 #	composed of Attribute/Value Pairs.  The value of each attribute
@@ -34,7 +45,7 @@
 #
 #	Include compatibility dictionary for older users file. Move this
 #	directive to the end of the file if you want to see the old names
-#	in the logfiles too.
+#	in the logfiles, INSTEAD OF the new names.
 #
 $INCLUDE dictionary.compat	# compability issues
 $INCLUDE dictionary.acc
