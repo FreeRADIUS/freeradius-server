@@ -27,6 +27,8 @@
  *	- Fix: check and reply attributes from LDAP _replace_ existing ones
  *	- Added "default_profile" directive, which points to radiusProfile 
  *	  object, which contains default values for RADIUS users
+ *	- Added "profile_attribute" directive, which specifies user object 
+ *	  attribute pointing to radiusProfile object.
  */
 static const char rcsid[] = "$Id$";
 
@@ -84,6 +86,7 @@ typedef struct {
 	char           *filter;
 	char           *basedn;
 	char           *default_profile;
+	char           *profile_attr;
 	char           *access_group;
 	char           *access_attr;
 	char           *dictionary_mapping;
@@ -103,11 +106,12 @@ static CONF_PARSER module_config[] = {
 	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,timeout.tv_sec), NULL, "20"},
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "20"},
-	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, NULL},
-	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, NULL},
+	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
+	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, ""},
 	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, NULL},
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, NULL},
 	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,default_profile), NULL, NULL},
+	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,profile_attr), NULL, NULL},
 	{"access_group", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_group), NULL, NULL},
 	/* LDAP attribute name that controls remote access */
 	{"access_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_attr), NULL, NULL},
@@ -315,7 +319,11 @@ ldap_authorize(void *instance, REQUEST * request)
 {
 	LDAPMessage	*result = NULL;
 	LDAPMessage	*msg = NULL;
+	LDAPMessage	*def_msg = NULL;
+	LDAPMessage	*def_attr_msg = NULL;
 	LDAPMessage	*gr_result = NULL;
+	LDAPMessage	*def_result = NULL;
+	LDAPMessage	*def_attr_result = NULL;
 	ldap_instance	*inst = instance;
 	char		*user_dn = NULL;
 	char		*attrs[] = {"*", NULL};
@@ -337,32 +345,6 @@ ldap_authorize(void *instance, REQUEST * request)
 	check_pairs = &request->config_items;
 	reply_pairs = &request->reply->vps;
 
-	/*
-	 * Check for the default profile entry. If it exists then add the 
-	 * attributes it contains in the check and reply pairs
-	 */
-	if (inst->default_profile){
-		if (radius_xlat(filter, MAX_AUTH_QUERY_LEN,
-				 "(objectclass=*)", request, NULL)){
-			if ((res = perform_search(instance, 
-				inst->default_profile, LDAP_SCOPE_BASE, 
-				filter, attrs, &result)) == RLM_MODULE_OK){
-				if ((msg = ldap_first_entry(inst->ld,result))){
-					if ((check_tmp = ldap_pairget(inst->ld,msg,inst->check_item_map,check_pairs)))
-						pairadd(check_pairs,check_tmp);
-					if ((reply_tmp = ldap_pairget(inst->ld,msg,inst->reply_item_map,reply_pairs)))
-						pairadd(reply_pairs,reply_tmp);
-				}
-				ldap_msgfree(result);
-			}
-			else{
-				DEBUG("rlm_ldap: default_profile search failed");
-			}
-		}
-		else{
-			DEBUG("rlm_ldap: unable to create filter for default user.");
-		}
-	}
 
 	/*
 	 * Check for valid input, zero length names not permitted
@@ -398,6 +380,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	 */
 	pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
 	ldap_memfree(user_dn);
+
 
 	/* Remote access is controled by attribute of the user object */
 	if (inst->access_attr) {
@@ -438,6 +421,61 @@ ldap_authorize(void *instance, REQUEST * request)
 			ldap_msgfree(gr_result);
 	
 	}
+
+	/*
+	 * Check for the default profile entry. If it exists then add the 
+	 * attributes it contains in the check and reply pairs
+	 */
+
+	if (inst->default_profile){
+		if (radius_xlat(filter, MAX_AUTH_QUERY_LEN,
+				 "(objectclass=*)", request, NULL)){
+			if ((res = perform_search(instance, 
+				inst->default_profile, LDAP_SCOPE_BASE, 
+				filter, attrs, &def_result)) == RLM_MODULE_OK){
+				if ((def_msg = ldap_first_entry(inst->ld,def_result))){
+					if ((check_tmp = ldap_pairget(inst->ld,def_msg,inst->check_item_map,check_pairs)))
+						pairadd(check_pairs,check_tmp);
+					if ((reply_tmp = ldap_pairget(inst->ld,def_msg,inst->reply_item_map,reply_pairs)))
+						pairadd(reply_pairs,reply_tmp);
+				}
+				ldap_msgfree(def_result);
+			} else 
+				DEBUG("rlm_ldap: default_profile search failed");
+		} else 
+			DEBUG("rlm_ldap: unable to create filter for default profile.");
+	}
+
+	/*
+	 * Check for the profile attribute. If it exists, we assume that it 
+	 * contains the DN of an entry containg a profile for the user. That
+	 * way we can have different general profiles for various user groups
+	 * (students,faculty,staff etc)
+	 */
+
+	if (inst->profile_attr){
+		if ((vals = ldap_get_values(inst->ld, msg, inst->profile_attr)) != NULL) {
+			if (radius_xlat(filter, MAX_AUTH_QUERY_LEN,
+				 	"(objectclass=*)", request, NULL)){
+				if ((res = perform_search(instance, 
+					vals[0], LDAP_SCOPE_BASE, 
+					filter, attrs, &def_attr_result)) == RLM_MODULE_OK){
+					if ((def_attr_msg = ldap_first_entry(inst->ld,def_attr_result))){
+						if ((check_tmp = ldap_pairget(inst->ld,def_attr_msg,inst->check_item_map,check_pairs)))
+							pairadd(check_pairs,check_tmp);
+						if ((reply_tmp = ldap_pairget(inst->ld,def_attr_msg,inst->reply_item_map,reply_pairs)))
+							pairadd(reply_pairs,reply_tmp);
+					}
+					ldap_msgfree(def_attr_result);
+				} else 
+					DEBUG("rlm_ldap: profile_attribute search failed");
+			} else 
+				DEBUG("rlm_ldap: unable to create filter for general profile.");
+			ldap_value_free(vals);
+		}
+	}
+
+
 	DEBUG("rlm_ldap: looking for check items in directory...");
 	if ((check_tmp = ldap_pairget(inst->ld, msg, inst->check_item_map,check_pairs)) != NULL)
 		pairadd(check_pairs, check_tmp);
