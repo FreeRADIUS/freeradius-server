@@ -50,6 +50,10 @@
  *	  a call to ldap_release_conn when it has finished.
  *	- Request only the user attributes that interest us (radius attributes,regular
  *	  profile,user password and access attribute).
+ * Mar 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Fixed a bug where the ldap server will kill the idle connections from the ldap
+ *	  connection pool. We now check if ldap_search returns LDAP_SERVER_DOWN and try to
+ *	  reconnect if it does. Bug noted by Dan Perik <dan_perik-work@ntm.org.pg>
  */
 static const char rcsid[] = "$Id$";
 
@@ -447,6 +451,7 @@ perform_search(void *instance, LDAP_CONN *conn, char *search_basedn, int scope, 
 	int             res = RLM_MODULE_OK;
 	int		ldap_errno = 0;
 	ldap_instance  *inst = instance;
+	int		search_retry = 0;
 
 	*result = NULL;
 
@@ -454,6 +459,7 @@ perform_search(void *instance, LDAP_CONN *conn, char *search_basedn, int scope, 
 		radlog(L_ERR, "rlm_ldap: NULL connection handle passed");
 		return RLM_MODULE_FAIL;
 	}
+retry:
 	if (!conn->bound) {
 		DEBUG2("rlm_ldap: attempting LDAP reconnection");
 		if (conn->ld){
@@ -472,7 +478,14 @@ perform_search(void *instance, LDAP_CONN *conn, char *search_basedn, int scope, 
 	switch (ldap_search_st(conn->ld, search_basedn, scope, filter, attrs, 0, &(inst->timeout), result)) {
 	case LDAP_SUCCESS:
 		break;
-
+	case LDAP_SERVER_DOWN:
+		if (search_retry == 0){
+			DEBUG("rlm_ldap: LDAP connection lost. Attempting reconnect");
+			search_retry = 1;
+			conn->bound = 0;
+			ldap_msgfree(*result);	
+			goto retry;
+		}
 	default:
 		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s", ldap_err2string(ldap_errno));
