@@ -574,24 +574,25 @@ static int presufcmp(void *instance,
 	if (ret != 0)
 		return ret;
 
-	if (pairfind(check_pairs, PW_STRIP_USER_NAME)) {
-		/*
-		 *	I don't think we want to update the User-Name
-		 *	attribute in place... - atd
-		 */
-		strcpy((char *)request->strvalue, rest);
-		request->length = strlen(rest);
-	} else {
-		if ((vp = pairfind(check_pairs, PW_STRIPPED_USER_NAME)) != NULL){
-			strcpy((char *)vp->strvalue, rest);
-			vp->length = strlen(rest);
-		} else if ((vp = paircreate(PW_STRIPPED_USER_NAME,
-				PW_TYPE_STRING)) != NULL) {
-			strcpy((char *)vp->strvalue, rest);
-			vp->length = strlen(rest);
-			pairadd(&request, vp);
-		} /* else no memory! Die, die!: FIXME!! */
+	/*
+	 *	If Strip-User-Name == No, then don't do any more.
+	 */
+	vp = pairfind(check_pairs, PW_STRIP_USER_NAME);
+	if (vp && !vp->lvalue) return ret;
+
+	/*
+	 *	See where to put the stripped user name.
+	 */
+	vp = pairfind(check_pairs, PW_STRIPPED_USER_NAME);
+	if (!vp) {
+		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+		if (!vp) return ret; /* no memory, do anything? */
+
+		pairadd(&request, vp);
 	}
+
+	strcpy((char *)vp->strvalue, rest);
+	vp->length = strlen(rest);
 
 	return ret;
 }
