@@ -117,9 +117,6 @@ radrelay: radrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o
 radrelay.o: radrelay.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radrelay.c
 
-builddbm.o: builddbm.c
-	$(CC) $(CFLAGS) -c builddbm.c
-
 radwho.o: radwho.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radwho.c
 
