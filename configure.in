@@ -290,13 +290,17 @@ dnl #  2. Checks for libraries
 dnl #
 dnl #############################################################
 
-dnl Check for libpthread
-dnl If using pthreads...
+dnl If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 if test "$WITH_THREADS" = "yes"; then 
   AC_CHECK_HEADERS(pthread.h)
   AC_CHECK_LIB(pthread, pthread_create,
     PTHREADLIB="-lpthread"
   )
+  if test "X$PTHREADLIB" = "X"; then
+    AC_CHECK_LIB(c_r, pthread_create,
+      PTHREADLIB="-lc_r"
+    )
+  fi
   AC_SUBST(PTHREADLIB)
 fi
 
