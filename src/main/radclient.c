@@ -111,7 +111,7 @@ static void usage(void)
 	fprintf(stderr, " -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, " -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, " -f file     Read packets from file, not stdin.\n");
-	fprintf(stderr, " -r retries  If timeout, retry sending the packet 'retires' times.\n");
+	fprintf(stderr, " -r retries  If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, " -t timeout  Wait 'timeout' seconds before retrying.\n");
 	fprintf(stderr, " -i id       Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, " -S file     read secret from file, not command line.\n");
