@@ -689,6 +689,7 @@ int setup_modules(void)
 		DICT_ATTR	*dattr;
 		DICT_VALUE	*dval;
 		CONF_SECTION	*sub, *next;
+		CONF_PAIR	*cp;
 
 		/*
 		 *  Big-time YUCK
@@ -715,7 +716,6 @@ int setup_modules(void)
 				next = cf_subsection_find_next(cs, sub,
 							      old_section_type_value[comp].typename);
 			}
-			if (!next) break;
 			sub = next;
 
 			/*
@@ -748,6 +748,43 @@ int setup_modules(void)
 				exit(1);
 			}
 		} while (sub != NULL);
+
+		/*
+		 *	Loop over the non-sub-sections, too.
+		 */
+		cp = NULL;
+		do {
+			/*
+			 *	See if there's a conf-pair by that
+			 *	name.
+			 */
+			cp = cf_pair_find_next(cs, cp, NULL);
+			if (!cp) break;
+
+
+			/*
+			 *	If the value already exists, don't
+			 *	create it again.
+			 */
+			name2 = cf_pair_attr(cp);
+			dval = dict_valbyname(section_type_value[comp].attr,
+					      name2);
+			if (dval) continue;
+
+			/*
+       			 *	Find the attribute for the value.
+			 */
+			dattr = dict_attrbyvalue(section_type_value[comp].attr);
+			if (!dattr) continue;
+
+			/*
+			 *	Finally, create the new attribute.
+			 */
+			if (dict_addvalue(name2, dattr->name, my_value++) < 0) {
+				radlog(L_ERR, "%s", librad_errstr);
+				exit(1);
+			}
+		} while (cp != NULL);
 	} /* over the sections which can have redundent sub-sections */
 
 	/*
