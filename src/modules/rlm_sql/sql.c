@@ -309,7 +309,7 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 
 static int got_alrm;
 static void
-alrm_handler(void) {
+alrm_handler(int i) {
 	got_alrm = 1;
 }
 
