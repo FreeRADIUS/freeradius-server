@@ -75,7 +75,7 @@ $(TARGET).a: $(STATIC_OBJS)
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic $(CFLAGS) \
 	$(RLM_CFLAGS) -o $@ -module -rpath $(libdir) $^ \
-	$(LIBS) && ln -s .libs/$(TARGET).so .
+	$(LIBS) && rm -f $(TARGET).so && ln -s .libs/$(TARGET).so $(TARGET).so 
 
 
 #######################################################################
