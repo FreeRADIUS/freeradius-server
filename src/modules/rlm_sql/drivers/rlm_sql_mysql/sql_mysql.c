@@ -313,24 +313,6 @@ int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 }
 
 
-/*************************************************************************
- *
- *      Function: sql_escape_string
- *
- *      Purpose: Esacpe "'" and any other wierd charactors
- *
- *************************************************************************
- * Unused.  Now provided in rlm_sql main module.
- * But left in here just in case...
- *
-int sql_escape_string(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *to, char *from, int length) {
-
-	mysql_escape_string(to, from, length);
-	return 0;
-}
-*/
-
-
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_mysql = {
 	"rlm_sql_mysql",

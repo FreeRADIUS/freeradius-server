@@ -59,11 +59,6 @@ typedef struct rlm_sql_module_t {
 	int (*sql_finish_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_finish_select_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_affected_rows)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-/*
- * Unused since we moved the escape string to the
- * main module
-	int (*sql_escape_string)(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length);
- */
 } rlm_sql_module_t;
 
 typedef struct sql_inst {

@@ -319,61 +319,6 @@ int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return (int)count;
 }
 
-
-/*************************************************************************
- *
- *      Function: sql_escape_string
- *
- *      Purpose: Esacpe "'" and any other wierd charactors
- *
- *************************************************************************
- * Unused.  Now provided in rlm_sql main module.
- * But left in here just in case...
- *
-int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length) {
->>>>>>> 1.6
-	int x, y;
-
-	for(x=0, y=0; (x < length) && (from[x]!='\0'); x++) {
-		switch (from[x]) {
-			case 0:				
-				to[y++]= '\\';
-				to[y++]= '0';
-				break;
-			case '\n':				
-				to[y++]= '\\';
-				to[y++]= 'n';
-				break;
-			case '\r':
-				to[y++]= '\\';
-				to[y++]= 'r';
-				break;
-			case '\\':
-				to[y++]= '\\';
-				to[y++]= '\\';
-				break;
-			case '\'':
-				to[y++]= '\\';
-				to[y++]= '\'';
-				break;
-			case '"':				
-				to[y++]= '\\';
-				to[y++]= '"';
-				break;
-			case '\032':			
-				to[y++]= '\\';
-				to[y++]= 'Z';
-				break;
-			default:
-				to[y++]= from[x];
-		}
-	}
-	to[y]=0;
-
-	return 0;
-}
-*/
-
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_iodbc = {
 	"rlm_sql_iodbc",
@@ -390,6 +335,5 @@ rlm_sql_module_t rlm_sql_iodbc = {
 	sql_close,
 	sql_finish_query,
 	sql_finish_select_query,
-	sql_affected_rows,
-	sql_escape_string
+	sql_affected_rows
 };
