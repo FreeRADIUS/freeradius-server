@@ -8,6 +8,7 @@ Ver 1.62:
 * Fix a typo in sql.attrmap. Fix by Evren Yurtesen <eyurtese@turkuamk.fi>
 * Work even when register_globals if off. Suggestion from Evren Yurtesen <eyurtese@turkuamk.fi>
   Also add an entry in the FAQ about that.
+* We don't need ORDER BY GroupName in show_groups.php3 since we have GROUP BY
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
