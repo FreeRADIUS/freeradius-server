@@ -74,11 +74,7 @@ typedef enum {
 	MSCHAP1,
 	MSCHAP2} AUTHTYPE;
 
-static void parity_key(char * szOut, const char * szIn);
-static void des_encrypt(const char *szClear, const char *szKey, char *szOut);
-static void mschap(const char *szChallenge, struct smb_passwd * smbPasswd, char *szResponse, int bUseNT);
 static void ntpwdhash (char *szHash, const char *szPassword);
-static void lmpwdhash (char *szHash, const char *szPassword);
 static struct smb_passwd *createsmbpw(struct smb_passwd *pw_buf, const char* username, const char *password);
 static void auth_response(struct smb_passwd * smbPasswd, char *ntresponse,
 		char *peer_challenge, char *auth_challenge,
@@ -106,51 +102,6 @@ static void mppe_GetMasterKey(uint8_t *nt_hashhash,uint8_t *nt_response,
 static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
                                int keylen,int issend);
 
-#if 0
-static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
-                       uint8_t* salt,uint8_t* enckey,uint8_t* key);
-#endif
-
-
-
-/* 
- *	parity_key takes a 7-byte string in szIn and returns an
- *	8-byte string in szOut.  It inserts a 1 into every 8th bit.
- *	DES just strips these back out.
- */
-static void parity_key(char * szOut, const char * szIn)
-{
-	int i;
-	unsigned char cNext = 0;
-	unsigned char cWorking = 0;
-	
-	for (i = 0; i < 7; i++) {
-		/* Shift operator works in place.  Copy the char out */
-		cWorking = szIn[i];
-		szOut[i] = (cWorking >> i) | cNext | 1;
-		cWorking = szIn[i];
-		cNext = (cWorking << (7 - i));
-	}
-	szOut[i] = cNext | 1;
-}
-
-/*
- *	des_encrypt takes an 8-byte string and a 7-byte key and
- *	returns an 8-byte DES encrypted string in szOut
- */
-static void des_encrypt(const char *szClear, const char *szKey, char *szOut)
-{
-	char szParityKey[9];
-	unsigned long ulK[16][2];
-	
-	parity_key(szParityKey, szKey); /* Insert parity bits */
-	strncpy(szOut, szClear, 8);     /* des encrypts in place */
-	deskey(ulK, (unsigned char *) szParityKey, 0);  /* generate keypair */
-	des(ulK, szOut);  /* encrypt */
-}
-
-
-
 /*
  *	ntpwdhash converts Unicode password to 16-byte NT hash
  *	with MD4
@@ -176,26 +127,6 @@ static void ntpwdhash (char *szHash, const char *szPassword)
 }
 
 
-
-/*
- *	lmpwdhash converts 14-byte null-padded uppercase OEM
- *	password to 16-byte DES hash with predefined salt string
- */
-static void lmpwdhash (char *szHash, const char *szPassword)
-{
-	char szOEMPass[14];
-	char stdText[] = "KGS!@#$%";
-	int i;
-
-	memset(szOEMPass, 0, 14);
-	for (i = 0; i < 14 && szPassword[i]; i++)
-		szOEMPass[i] = toupper((int) szPassword[i]);
-
-	/* Obtain DES hash of OEM password */
-	des_encrypt(stdText, szOEMPass, szHash); 
-	des_encrypt(stdText, szOEMPass+7, szHash+8);
-}
-
 /*
  *	createsmbpw() creates smb_passwd structure from given
  *	user name and cleartext or ntlm-encrypter password
@@ -214,7 +145,7 @@ static struct smb_passwd *createsmbpw(struct smb_passwd *pw_buf, const char * us
   
 	if (pw_buf->smb_passwd==NULL && pw_buf->smb_nt_passwd==NULL) {
 		ntpwdhash(pw_buf->smb_nt_passwd_value, password);
-		lmpwdhash(pw_buf->smb_passwd_value, password);
+		lrad_lmpwdhash(password, pw_buf->smb_passwd_value);
 		pw_buf->smb_passwd = pw_buf->smb_passwd_value;
 		pw_buf->smb_nt_passwd = pw_buf->smb_nt_passwd_value;
 	}
@@ -228,27 +159,14 @@ static struct smb_passwd *createsmbpw(struct smb_passwd *pw_buf, const char * us
  *	and returns a 24-byte response string in szResponse
  */
 static void mschap(const char *szChallenge, struct smb_passwd * smbPasswd,
-	char *szResponse, int bUseNT) {
-
-	char szMD4[21];
-	
-	/* initialize hash string */
-	memset(szMD4, 0, 21);
-	
-	memcpy(szMD4, (bUseNT)?
-		smbPasswd->smb_nt_passwd : smbPasswd->smb_passwd, 16);
-	
-	/*
-	 *
-	 *	challenge_response takes an 8-byte challenge string and a
-	 *	21-byte hash (16-byte hash padded to 21 bytes with zeros) and
-	 *	returns a 24-byte response in szResponse
-	 */
-	des_encrypt(szChallenge, szMD4, szResponse);
-	des_encrypt(szChallenge, szMD4 + 7, szResponse + 8);
-	des_encrypt(szChallenge, szMD4 + 14, szResponse + 16);
+	char *szResponse, int bUseNT)
+{
+	if (bUseNT) {
+		lrad_mschap(smbPasswd->smb_nt_passwd, szChallenge, szResponse);
+	} else {
+		lrad_mschap(smbPasswd->smb_passwd, szChallenge, szResponse);
+	}
 }   
-
 
 /*
  *	challenge_hash() is used by mschap2() and auth_response()
@@ -442,17 +360,13 @@ static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
 	md4_calc(nt_hashhash,nt_hash,16);
 
 	mppe_chap2_get_keys128(nt_hashhash,response,enckey1,enckey2);
-#if 0
-	salt[0] = (vector[0] ^ vector[1] ^ 0x3A) | 0x80;
-	salt[1] = (vector[2] ^ vector[3] ^ vector[4]);
 
-	mppe_gen_respkey(secret,vector,salt,enckey1,sendkey);
-
-	salt[0] = (vector[0] ^ vector[1] ^ 0x4e) | 0x80;
-	salt[1] = (vector[5] ^ vector[6] ^ vector[7]);
-
-	mppe_gen_respkey(secret,vector,salt,enckey2,recvkey);
-#endif
+	/*
+	 *	dictionary.microsoft defines these attributes as
+	 *	'encrypt=2'.  The functions in src/lib/radius.c will
+	 *	take care of encrypting/decrypting them as appropriate,
+	 *	so that we don't have to.
+	 */
 	memcpy (sendkey, enckey1, 16);
 	memcpy (recvkey, enckey2, 16);
 }
@@ -549,48 +463,6 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
        memcpy(sesskey,digest,keylen);
 }
 
-
-#if 0
-/*	Not requiered, because encoding will be performed by
-	tunnel_pwencode */
-static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
-                       uint8_t* salt,uint8_t* enckey,uint8_t* key)
-{
-       uint8_t plain[32];
-       uint8_t buf[16];
-       int i;
-       MD5_CTX Context;
-       int slen = strlen(secret);
-
-       memset(key,0,34);
-
-       memset(plain,0,32);
-       plain[0] = 16;
-       memcpy(plain + 1,enckey,16);
-
-       MD5Init(&Context);
-       MD5Update(&Context,secret,slen);
-       MD5Update(&Context,vector,AUTH_VECTOR_LEN);
-       MD5Update(&Context,salt,2);
-       MD5Final(buf,&Context);
-
-       for(i=0;i < 16;i++) {
-               plain[i] ^= buf[i];
-       }
-
-       MD5Init(&Context);
-       MD5Update(&Context,secret,slen);
-       MD5Update(&Context,plain,16);
-       MD5Final(buf,&Context);
-
-       for(i=0;i < 16;i++) {
-               plain[i + 16] ^= buf[i];
-       }
-
-       memcpy(key,salt,2);
-       memcpy(key + 2,plain,32);
-}
-#endif /* 0 */
 
 
 /*
