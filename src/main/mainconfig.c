@@ -789,24 +789,6 @@ static int listen_bind(rad_listen_t *this)
 	rad_listen_t	**last;
 
 	/*
-	 *	Find it in the old list.  If it's there, use that,
-	 *	rather than creating a new socket.  This allows HUP's
-	 *	to re-use the old sockets, which means that packets
-	 *	waiting in the socket queue don't get lost.
-	 */
-	for (last = &mainconfig.listen;
-	     *last != NULL;
-	     last = &((*last)->next)) {
-		if ((this->ipaddr == (*last)->ipaddr) &&
-		    (this->type == (*last)->type) &&
-		    (this->port == (*last)->port)) {
-			this->fd = (*last)->fd;
-			(*last)->fd = -1;
-			return 0;
-		}
-	}
-
-	/*
 	 *	If the port is zero, then it means the appropriate
 	 *	thing from /etc/services.
 	 */
@@ -835,6 +817,24 @@ static int listen_bind(rad_listen_t *this)
 		default:
 			radlog(L_ERR|L_CONS, "ERROR: Non-fatal internal sanity check failed in bind.");
 			return -1;
+		}
+	}
+
+	/*
+	 *	Find it in the old list, AFTER updating the port.  If
+	 *	it's there, use that, rather than creating a new
+	 *	socket.  This allows HUP's to re-use the old sockets,
+	 *	which means that packets waiting in the socket queue
+	 *	don't get lost.  */
+	for (last = &mainconfig.listen;
+	     *last != NULL;
+	     last = &((*last)->next)) {
+		if ((this->ipaddr == (*last)->ipaddr) &&
+		    (this->type == (*last)->type) &&
+		    (this->port == (*last)->port)) {
+			this->fd = (*last)->fd;
+			(*last)->fd = -1;
+			return 0;
 		}
 	}
 
