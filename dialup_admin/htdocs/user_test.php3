@@ -90,14 +90,15 @@ if ($test_user == 1){
 		}
 		$reply = file($tmp_file);
 		unlink($tmp_file);
+		$msg = "<b>" . strftime('%A, %e %B %Y, %T %Z') . "</b><br><br>\n";
 		if (ereg('code 2', $reply[0]))
-			$msg = "<b>Authentication was <font color=green>successful</font>";
+			$msg .= "<b>Authentication was <font color=green>successful</font>";
 		else if (ereg('code 3',$reply[0]))
-			$msg = "<b>Authentication <font color=red>failed</font>";
+			$msg .= "<b>Authentication <font color=red>failed</font>";
 		else if (ereg('no response from server', $reply[0]))
-			$msg = "<b><font color=red>No response from server</font>";
+			$msg .= "<b><font color=red>No response from server</font>";
 		else if (ereg('Connection refused',$reply[0]))
-			$msg = "<b><font color=red>Connection was refused</font>";
+			$msg .= "<b><font color=red>Connection was refused</font>";
 		if ($test_login)
 			$msg .= "</b><i> (test user $login)</i><br>\n";
 		else

@@ -1,6 +1,7 @@
 Ver 1.56:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
+* Show date in the user/server test page
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
