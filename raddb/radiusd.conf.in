@@ -464,7 +464,6 @@ modules {
 		usersfile = ${confdir}/users_fast
 		hashsize = 1000
 		compat = no
-		normal_defaults = yes
 		# Reload the hash every 600 seconds (10mins)
 		reload_hash = 600
 	}
