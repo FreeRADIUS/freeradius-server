@@ -62,14 +62,7 @@ static int unique_parse_key(char *key) {
 	prev = key;
 	
 	/* Let's remove spaces in the string */
-	while(ptr && *ptr!='\0') {
-		while(*ptr == ' ') 
-			ptr++;
-		*keyptr = *ptr;
-		keyptr++;
-		ptr++;
-	}
-	*keyptr = '\0';
+	rad_rmspace(key);
 	
 	ptr = key;
 	while(ptr) {
@@ -86,7 +79,7 @@ static int unique_parse_key(char *key) {
 			break;
 		case '\0':
 			if((a = dict_attrbyname(prev)) == NULL) {
-				radlog(L_ERR, "rlm_acct_unique: Cannot find '%s' in dictionary", prev);
+				radlog(L_ERR, "rlm_acct_unique: Cannot find attribute '%s' in dictionary", prev);
 				return -1;
 			}
 			unique_add_attr(a->attr);
