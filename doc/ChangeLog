@@ -8,7 +8,9 @@ FreeRADIUS 1.0.0 ; Date: $Date$, urgency=low
 	* Added support for %{check:Attribute-Name} to go with
 	  %{request:Attribute-Name} and the like.
 	* Add support to rlm_sql for post-authentication query execution.
-	* Imported iptool by Edwin Groothuis <edwin@mavetju.org>.
+	* Imported iptool by Edwin Groothuis <edwin@mavetju.org> as
+	  rlm_ippool_tool
+	* Added database modification support to rlm_ippool_tool
 
 FreeRADIUS 0.9.1 ; Date: 2003/09/04 14:56:34, urgency=low
 
