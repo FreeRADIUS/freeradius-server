@@ -147,6 +147,7 @@ typedef struct {
 	char           *access_attr;
 	char           *passwd_hdr;
 	char           *passwd_attr;
+	int		auto_header;
 	char           *dictionary_mapping;
 	char	       *groupname_attr;
 	char	       *groupmemb_filt;
@@ -259,11 +260,13 @@ static CONF_PARSER module_config[] = {
 	 offsetof(ldap_instance,passwd_hdr), NULL, NULL},
 	{"password_attribute", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,passwd_attr), NULL, NULL},
-	/* LDAP attribute name that controls remote access */
+	{"auto_header", PW_TYPE_BOOLEAN,
+	 offsetof(ldap_instance,auto_header), NULL, "no"},
 
 	/*
 	 *	Access limitations
 	 */
+	/* LDAP attribute name that controls remote access */
 	{"access_attr", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,access_attr), NULL, NULL},
 	{"access_attr_used_for_allow", PW_TYPE_BOOLEAN,
@@ -1146,6 +1149,22 @@ static int ldap_xlat(void *instance, REQUEST *request, char *fmt,
 }
 
 
+/*
+ *	For auto-header discovery.
+ */
+static const LRAD_NAME_NUMBER header_names[] = {
+	{ "{clear}",	PW_USER_PASSWORD },
+	{ "{cleartext}", PW_USER_PASSWORD },
+	{ "{md5}",	PW_MD5_PASSWORD },
+	{ "{smd5}",	PW_SMD5_PASSWORD },
+	{ "{crypt}",	PW_CRYPT_PASSWORD },
+	{ "{sha}",	PW_SHA_PASSWORD },
+	{ "{ssha}",	PW_SSHA_PASSWORD },
+	{ "{nt}",	PW_NT_PASSWORD },
+	{ NULL, 0 }
+};
+
+
 /******************************************************************************
  *
  *      Function: rlm_ldap_authorize
@@ -1369,8 +1388,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 #endif
 			VALUE_PAIR *passwd_item;
 			char **passwd_vals;
-			char *passwd_val = NULL;
-			int passwd_len, i;
+			char *value = NULL;
+			int i;
 			
 			/*
 			 *	Read the password from the DB, and
@@ -1385,31 +1404,52 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			if (passwd_vals) for (i = 0;
 					      passwd_vals[i] != NULL;
 					      i++) {
+				int attr = PW_USER_PASSWORD;
+				
 				if (strlen(passwd_vals[i]) == 0)
 					continue;
 				
-				passwd_val = passwd_vals[i];
+				value = passwd_vals[i];
+
+				if (inst->auto_header) {
+					char *p;
+					char autobuf[16];
+
+					p = strchr(value, '}');
+					if (!p) continue;
+					if ((p - value + 1) >= sizeof(autobuf))
+						continue; /* paranoia */
+					memcpy(autobuf, p, p - value + 1);
+					autobuf[p - value + 1] = '\0';
 				
-				if (inst->passwd_hdr &&
-				    strlen(inst->passwd_hdr)) {
-					passwd_val = strstr(passwd_val,
-							    inst->passwd_hdr);
-					if (passwd_val)
-						passwd_val += strlen(inst->passwd_hdr);
-					else
-						DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0],request->username->strvalue);
+					attr = lrad_str2int(header_names,
+							    autobuf, 0);
+					if (!attr) continue;
+					value = p + 1;
+					goto create_attr;
+
+				} else if (inst->passwd_hdr &&
+					   strlen(inst->passwd_hdr)) {
+					if (strncasecmp(value,
+							inst->passwd_hdr,
+							strlen(inst->passwd_hdr)) == 0) {
+						value += strlen(inst->passwd_hdr);
+					} else {
+						DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0], request->username->strvalue);
+					}
 				}
-				if (!passwd_val) continue;
-				if ((passwd_item = paircreate(PW_USER_PASSWORD,
-							      PW_TYPE_STRING)) == NULL){
+				if (!value) continue;
+				
+			create_attr:
+				passwd_item = paircreate(attr, PW_TYPE_STRING);
+				if (!passwd_item) {
 					radlog(L_ERR|L_CONS, "no memory");
 					ldap_value_free(passwd_vals);
 					ldap_msgfree(result);
 					ldap_release_conn(conn_id,inst->conns);
 					return RLM_MODULE_FAIL;
 				}
-				passwd_len = strlen(passwd_val);
-				strNcpy(passwd_item->strvalue, passwd_val,
+				strNcpy(passwd_item->strvalue, value,
 					sizeof(passwd_item->strvalue));
 				passwd_item->length = strlen(passwd_item->strvalue);
 				pairadd(&request->config_items,passwd_item);
