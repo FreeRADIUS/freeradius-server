@@ -3,26 +3,18 @@ TARGET      = rlm_eap
 SRCS        = rlm_eap.c eap.c mem.c state.c
 HEADERS     = eap.h rlm_eap.h
 RLM_CFLAGS  = $(INCLTDL)
-RLM_LIBS    = 
+RLM_LIBS    = $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
 RLM_INSTALL = install-types
 RLM_SUBDIRS = types
 
-#
-#  If Not using shared libraries, add in ALL known static eap_types
-# at build time.
-#
-#ifneq ($(USE_SHARED_LIBS),yes)
-#RLM_EAP_LIBS += $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
-#endif
-
 $(STATIC_OBJS): $(HEADERS)
 
-$(DYNAMIC_OBJS): $(HEADERS)
+#
+#  Statically link MD5 and LEAP.  They don't require any extra magic.
+#
+STATIC_OBJS	+= $(shell ls -1 types/rlm_eap_leap/rlm_eap_md5.a types/rlm_eap_md5/rlm_eap_leap.a 2>/dev/null)
 
-ifneq ($(USE_SHARED_LIBS),yes)
-#RLM_LIBS	+= $(shell for x in types/rlm_eap_*/*.la;do echo -dlpreopen $$x;done)
-STATIC_OBJS	+= $(shell for x in types/rlm_eap_*/*.a;do echo $$x;done)
-endif
+$(DYNAMIC_OBJS): $(HEADERS)
 
 all: 
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
