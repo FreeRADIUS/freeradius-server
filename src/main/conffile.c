@@ -82,7 +82,8 @@ extern int read_realms_file(const char *file);
 
 static int generate_realms(const char *filename);
 static int generate_clients(const char *filename);
-static CONF_SECTION *conf_read(const char *fromfile, int fromline, const char *conffile);
+static CONF_SECTION *conf_read(const char *fromfile, int fromline, 
+			       const char *conffile, CONF_SECTION *parent);
 
 #ifndef RADIUS_CONFIG
 #define RADIUS_CONFIG "radiusd.conf"
@@ -492,12 +493,10 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		/*
 		 *	Allow for $INCLUDE files
 		 *
-		 *      Currently this allows for includes only at the top 
-		 *      level of config.  IE you cannot have an $INCLUDE nested
-		 *      inside section.  -cparker
+		 *      This *SHOULD* work for any level include.  
+		 *      I really really really hate this file.  -cparker
 		 */
-		if ((strcasecmp(buf1, "$INCLUDE") == 0) &&
-			(name1 == NULL) && (name2 == NULL)) {
+		if (strcasecmp(buf1, "$INCLUDE") == 0) {
 
 			CONF_SECTION      *is;
 
@@ -511,7 +510,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 			DEBUG2( "Config:   including file: %s", value );
 
-			if ((is = conf_read(cf, *lineno, value)) == NULL) {
+			if ((is = conf_read(cf, *lineno, value, parent)) == NULL) {
 				cf_section_free(&cs);
 				return NULL;
 			}
@@ -652,7 +651,8 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 /*
  *	Read the config file.
  */
-static CONF_SECTION *conf_read(const char *fromfile, int fromline, const char *conffile)
+static CONF_SECTION *conf_read(const char *fromfile, int fromline, 
+			       const char *conffile, CONF_SECTION *parent)
 {
 	FILE		*fp;
 	int		lineno = 0;
@@ -669,7 +669,12 @@ static CONF_SECTION *conf_read(const char *fromfile, int fromline, const char *c
 		return NULL;
 	}
 
-	cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, NULL);
+	if(parent) {
+	    cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, parent);
+	} else {
+	    cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, NULL);
+	}
+
 	fclose(fp);
 
 	return cs;
@@ -719,7 +724,7 @@ int read_radius_conf_file(void)
 
 	/* Lets go look for the new configuration files */
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
-	if ((cs = conf_read(NULL, 0, buffer)) == NULL) {
+	if ((cs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
 		return -1;
 	}
 
