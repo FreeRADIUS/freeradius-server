@@ -140,6 +140,7 @@ AC_TRY_COMPILE([
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#include <ucd-snmp/ucd-snmp-config.h>
 #include <ucd-snmp/asn1.h>
 #include <ucd-snmp/snmp.h>
 #include <ucd-snmp/snmp_impl.h>],
@@ -170,6 +171,7 @@ if test "x$ucdsnmp" = "x"; then
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#include <ucd-snmp/ucd-snmp-config.h>
 #include <ucd-snmp/asn1.h>
 #include <ucd-snmp/snmp.h>
 #include <ucd-snmp/snmp_impl.h>],
