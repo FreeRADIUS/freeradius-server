@@ -575,18 +575,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	int chap = 0;
 	
 	pdb_init_smb(&smbPasswd);
-	setsmbname(&smbPasswd,request->username->strvalue);
-	password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
-	if (password) {
-		smbPasswd.acct_ctrl = password->lvalue;
-		if (smbPasswd.acct_ctrl & ACB_PWNOTREQ) return RLM_MODULE_OK;
-	}
-
-        password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL_TEXT);
-        if (password) {
-		smbPasswd.acct_ctrl = pdb_decode_acct_ctrl(password->strvalue);
-                if (smbPasswd.acct_ctrl & ACB_PWNOTREQ) return RLM_MODULE_OK;
-        }
 
 	password = pairfind(request->config_items, PW_LM_PASSWORD);
 	if (password) {
@@ -618,6 +606,28 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			res++;
 		}
 	}
+
+	if (!res && !inst->ignore_password){
+		password = pairfind(request->config_items, PW_PASSWORD);
+		if(password) {
+			createsmbpw(&smbPasswd, request->username->strvalue, password->strvalue);
+			res++;
+		}
+	}
+
+	setsmbname(&smbPasswd,request->username->strvalue);
+	password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
+	if (password) {
+		smbPasswd.acct_ctrl = password->lvalue;
+		if (smbPasswd.acct_ctrl & ACB_PWNOTREQ) return RLM_MODULE_OK;
+	}
+
+        password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL_TEXT);
+        if (password) {
+		smbPasswd.acct_ctrl = pdb_decode_acct_ctrl(password->strvalue);
+                if (smbPasswd.acct_ctrl & ACB_PWNOTREQ) return RLM_MODULE_OK;
+        }
+
 	if (!res) {
 	/*
          * We have neither NT nor LM passwords configured
@@ -625,6 +635,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		radlog(L_ERR, "rlm_mschap: No LM/NT password configured. Check authorization.");
 		return RLM_MODULE_INVALID;
 	 }
+
 	
 	/*
 	 *	If NAS sent cleartext password - encode it and check
