@@ -185,7 +185,16 @@ static void *request_handler_thread(void *arg)
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       self->thread_num);
+	re_wait:
 		if (sem_wait(&self->semaphore) != 0) {
+			/*
+			 *	Interrupted system call.  Go back to
+			 *	waiting, but DON'T print out any more
+			 *	text.
+			 */
+			if (errno == EINTR) {
+				goto re_wait;
+			}
 			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
 			       self->thread_num, strerror(errno));
 			break;
@@ -964,7 +973,11 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 			return 0; /* no child available */
 		}
 	} else {		/* wait forever */
-		sem_wait(&forkers[found].child_done);
+	re_wait:
+		rcode = sem_wait(&forkers[found].child_done);
+		if ((rcode != 0) && (errno == EINTR)) {
+			goto re_wait;
+		}
 	}
 
 	/*
