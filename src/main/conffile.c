@@ -239,7 +239,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 {
 	char *p;
 	const char *end, *ptr;
-	char name[1024];
+	char name[8192];
 	CONF_PAIR *cpn;
 	CONF_SECTION *outercs;
 
@@ -353,7 +353,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
 	CONF_PAIR *cp;
 	CONF_SECTION *subsection;
 	uint32_t ipaddr;
-	char buffer[1024];
+	char buffer[8192];
 	const char *value;
 	void *data;
 
@@ -492,9 +492,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	char *ptr;
 	const char *value;
 	char buf[8192];
-	char buf1[1024];
-	char buf2[1024];
-	char buf3[1024];
+	char buf1[8192];
+	char buf2[8192];
+	char buf3[8192];
 	int t1, t2, t3;
 	
 	/*
