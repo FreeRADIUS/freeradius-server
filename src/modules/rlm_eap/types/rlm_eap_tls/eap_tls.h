@@ -344,4 +344,8 @@ unsigned int 	record_plus(record_t *buf, const unsigned char *ptr,
 			unsigned int size);
 unsigned int 	record_minus(record_t *buf, unsigned char *ptr, 
 			unsigned int size);
+
+/* MPPE key generation */
+void            eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s);
+
 #endif /*_EAP_TLS_H*/

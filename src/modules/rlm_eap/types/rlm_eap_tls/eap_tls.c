@@ -234,6 +234,8 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 	case handshake:
 		if (tls_session->info.handshake_type == finished) {
 			eaptls_success(handler->eap_ds);
+			eaptls_gen_mppe_keys(handler->reply_vps, 
+					     tls_session->ssl);
 			session_free(&handler->opaque);
 			return EAPTLS_SUCCESS;
 		} else if (tls_session->fragment > 0) {
