@@ -2627,7 +2627,8 @@ static int refresh_request(REQUEST *request, void *data)
 		 */
 		rad_reject(request);
 		request->child_pid = NO_SUCH_CHILD_PID;
-		request->finished = TRUE;
+		if (kill_unresponsive_children)
+			request->finished = TRUE;
 		return RL_WALK_CONTINUE;
 	} /* the request has been in the queue for too long */
 
