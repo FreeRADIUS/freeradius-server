@@ -34,6 +34,9 @@ LCRYPT		= @CRYPTLIB@
 LDBM		= @DBMLIB@
 LIBS		= @LIBS@
 
+SNMPLIB		= @SNMPLIB@
+SNMPINC		= @SNMPINC@
+
 LOGDIR		= @logdir@
 RADDBDIR	= @raddbdir@
 RUNDIR		= @localstatedir@/run

@@ -261,6 +261,23 @@ AC_ARG_WITH(thread-pool,
   esac ]
 )
 
+dnl extra argument: --with-snmp
+AC_ARG_WITH(snmp,
+[  --with-snmp             Compile in SNMP support],
+[ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(WITH_SNMP)
+	SNMPLIB="-lsnmp -lcrypto"
+	SNMPINC=-I/usr/include/ucd-snmp
+  esac ]
+)
+
+AC_SUBST(SNMPLIB)
+AC_SUBST(SNMPINC)
+
+
 AC_ARG_ENABLE(ltdl-install,
 [  --disable-ltdl-install  do not install libltdl])
 if test x"${enable_ltdl_install+set}" != xset; then
@@ -426,7 +443,6 @@ AC_CHECK_HEADERS( \
 	utmp.h \
 	utmpx.h \
 	sys/select.h \
-	dlfcn.h \
 	regex.h \
 	syslog.h \
 	inttypes.h \
