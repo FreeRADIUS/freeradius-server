@@ -447,12 +447,14 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 				p = strrchr(s, '+');
 				*p = 0;
 				vp->addport = 1;
-			} else
+			} else {
 				p = NULL;
+				s = value;
+			}
 			vp->lvalue = librad_dodns ? ip_getaddr(s) :
 						    ip_addr(s);
 			vp->length = 4;
-			if (p) free(s);	/* yes, this is correct */
+			if (s != value) free(s);
 			break;
 		case PW_TYPE_INTEGER:
 			/*
