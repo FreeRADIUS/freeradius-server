@@ -78,7 +78,7 @@ char *ip_ntoa(char *buffer, UINT4 ipaddr)
 	r = inet_ntoa(in);
 
 	if (buffer)
-		strcpy(buffer, inet_ntoa(in));
+		strcpy(buffer, r);
 	return buffer ? buffer : r;
 }
 

@@ -299,6 +299,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	u_char			*attr;
 	int			count;
 	radius_packet_t		*hdr;
+	char			host_ipaddr[16];
 
 	/*
 	 *	Allocate the new request data structure
@@ -324,12 +325,20 @@ RADIUS_PACKET *rad_recv(int fd)
 		0, (struct sockaddr *)&saremote, &salen);
 
 	/*
+	 *	Fill IP header fields
+	 */
+	packet->src_ipaddr = saremote.sin_addr.s_addr;
+	packet->src_port = ntohs(saremote.sin_port);
+
+	/*
 	 *	Check for socket errors.
 	 */
 	if (packet->data_len < 0) {
+		librad_log("Error receiving packet from host %s: %s",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   strerror(errno));
 		free(packet->data);
 		free(packet);
-		librad_log("Error receiving packet: %s", strerror(errno));
 		return NULL;
 	}
 
@@ -337,9 +346,10 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	Check for packets smaller than the packet header.
 	 */
 	if (packet->data_len < AUTH_HDR_LEN) {
+		librad_log("Malformed RADIUS packet from host %s: too small",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 		free(packet->data);
 		free(packet);
-		librad_log("Malformed RADIUS packet: too small");
 		return NULL;
 	}
 
@@ -352,7 +362,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	memcpy(&len, hdr->length, sizeof(u_short));
 	totallen = ntohs(len);
 	if (packet->data_len != totallen) {
-		librad_log("Malformed RADIUS packet: received %d octets, packet size says %d", packet->data_len, totallen);
+		librad_log("Malformed RADIUS packet from host %s: received %d octets, packet size says %d",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   packet->data_len, totallen);
 		free(packet->data);
 		free(packet);
 		return NULL;
@@ -373,8 +385,15 @@ RADIUS_PACKET *rad_recv(int fd)
 	attr = hdr->data;
 	count = totallen - AUTH_HDR_LEN;
 	while (count > 0) {
-	  count -= attr[1];	/* grab the attribute length */
-	  attr += attr[1];
+       		if (attr[1] < 2) {
+			librad_log("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
+				   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+			free(packet->data);
+			free(packet);
+			return NULL;
+		}
+		count -= attr[1];	/* grab the attribute length */
+		attr += attr[1];
 	}
 
 	/*
@@ -383,20 +402,20 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	If not, we complain, and throw the packet away.
 	 */
 	if (count != 0) {
-		librad_log("Malformed RADIUS packet: packet attributes do NOT exactly fill the packet");
+		librad_log("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 		free(packet->data);
 		free(packet);
-		return NULL;	}
+		return NULL;
+	}
 
 	DEBUG("rad_recv: Packet from host %s code=%d, id=%d, length=%d\n",
-			inet_ntoa(saremote.sin_addr),
-			hdr->code, hdr->id, totallen);
+	      ip_ntoa(host_ipaddr, packet->src_ipaddr),
+	      hdr->code, hdr->id, totallen);
 
 	/*
-	 *	Fill header fields
+	 *	Fill RADIUS header fields
 	 */
-	packet->src_ipaddr = saremote.sin_addr.s_addr;
-	packet->src_port = ntohs(saremote.sin_port);
 	packet->code = hdr->code;
 	packet->id = hdr->id;
 	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
