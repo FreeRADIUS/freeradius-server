@@ -99,7 +99,7 @@ Hint: use `cut` to obtain LM and NT hashes separately.
 
 3. Known bugs:
 
-- MS-CHAP doesn't work after upgrading from older FreeRADIUS version.
+- MPPE doesn't work after upgrading from older FreeRADIUS version.
 
   The reason is dictionary incompatibility. Make sure to update
   dictionary.microsoft located in raddb directory.
@@ -108,23 +108,21 @@ Hint: use `cut` to obtain LM and NT hashes separately.
 
   Unicode conversion is not fully implemented yet and passwords with
   extended characters will not work unless you exported NT/LM hashes
-  from some some external source (for example from NT domain with
-  pwdump).
-
-- FreeRADIUS doesn't correctly proxies MS-CHAP-MPPE-Keys reply for
-MS-CHAPv1 MPPE support between RRAS and ISA servers.
-
-  Data in this attribute is encoded in a same fashion as User-Password
-  attribute and attribute should be reassembled. FreeRADIUS
-  architecture allows things like this (and it works for MS-CHAPv2
-  MPPE support), but for this specific type of encoding it's not
-  implemented yet. If you really need this feature - call developers
-  and it will be implemented.
+  from some external source (for example from NT domain with pwdump).
 
 - 128 bit MPPE support is not implemented like RFC 3079 says.
 
   It's a bug of RFC 3079 commited by developers. Glenn Zorn
   <gwz@cisco.com> has promised to submit a correction to the RFC.
+
+-  MS-CHAPv2 authentication may not work for users with realms (user@realm)
+
+   The problem is that MS-CHAPv2 uses Username to hash password. According
+   to RFC 2759 NT domain (in DOMAIN\username) should be stripped, but nothing
+   is about relarm or Windows 2000 domain form (username@DOMAIN). At least
+   Windows 2000 clients do not strip DOMAIN during password hashing. It means
+   rlm_mschap needs unstripped name to calculate valid hash.
+   Solution? Do not use realms or do not strip realms from user names.
 
 
 4. FAQ
