@@ -40,6 +40,7 @@ install:
 		[ $$i != radiusd.conf.in -a ! -f $(R)$(raddbdir)/$$i ] && \
                 $(INSTALL) -m 644 $$i $(R)$(raddbdir); \
 	done; \
+	chmod go-rwx $(R)$(raddbdir)/naspasswd; \
 	for i in dictionary*; do \
 		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 644 $$i $(R)$(raddbdir); \
 		if [ "`find $$i -newer $(R)$(raddbdir)/$$i`" ]; then \
