@@ -53,6 +53,8 @@ static const char rcsid[] = "$Id$";
 int proxy_receive(REQUEST *request)
 {
         int rcode;
+	int post_proxy_type = 0;
+	VALUE_PAIR *vp;
 
         /*
          *	Delete any reply we had accumulated until now.
@@ -63,7 +65,12 @@ int proxy_receive(REQUEST *request)
 	 *	Run the packet through the post-proxy stage,
 	 *	BEFORE playing games with the attributes.
 	 */
-        rcode = module_post_proxy(request);
+	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
+	if (vp) {
+		DEBUG2("  Found Post-Proxy-Type %s", vp->strvalue);
+		post_proxy_type = vp->lvalue;
+	}
+	rcode = module_post_proxy(post_proxy_type, request);
 
         /*
          *	Delete the Proxy-State Attributes from the reply.
@@ -208,6 +215,7 @@ static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 int proxy_send(REQUEST *request)
 {
 	int rcode;
+	int pre_proxy_type = 0;
 	VALUE_PAIR *realmpair;
 	VALUE_PAIR *strippedname;
 	VALUE_PAIR *delaypair;
@@ -432,7 +440,12 @@ int proxy_send(REQUEST *request)
 	/*
 	 *  Do pre-proxying
 	 */
-	rcode = module_pre_proxy(request);
+	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
+	if (vp) {
+		DEBUG2("  Found Pre-Proxy-Type %s", vp->strvalue);
+		pre_proxy_type = vp->lvalue;
+	}
+	rcode = module_pre_proxy(pre_proxy_type, request);
 
 	/*
 	 *	Do NOT free request->proxy->vps, the pairs are needed
