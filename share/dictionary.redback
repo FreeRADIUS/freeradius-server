@@ -5,12 +5,16 @@
 #		the main dictionary file.
 #
 # Version:	1.00  14-Sep-2000  Chris Adams <cmadams@hiwaay.net>
+#		$Id$
 #
 
 VENDOR		Redback		2352
 
 #
 #	Redback Vendor Specific Extensions
+#
+#	The names use underscores (_) instead of dashes (-), because
+#	that's what Redback uses in their documentation and examples.
 #
 ATTRIBUTE	Client_DNS_Pri			1	ipaddr		Redback
 ATTRIBUTE	Client_DNS_Sec			2	ipaddr		Redback
