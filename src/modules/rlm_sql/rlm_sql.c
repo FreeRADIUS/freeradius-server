@@ -83,6 +83,8 @@ static CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,sqltrace), NULL, "no"},
 	{"sqltracefile", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,tracefile), NULL, SQLTRACEFILE},
+	{"readclients", PW_TYPE_BOOLEAN,
+	 offsetof(SQL_CONFIG,do_clients), NULL, "no"},
 	{"deletestalesessions", PW_TYPE_BOOLEAN,
 	 offsetof(SQL_CONFIG,deletestalesessions), NULL, "no"},
 	{"num_sql_socks", PW_TYPE_INTEGER,
@@ -150,6 +152,7 @@ static int rlm_sql_init(void) {
  *	Yucky prototype.
  */
 static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
+static int generate_sql_clients(SQL_INST *inst);
 
 /*
  *	sql xlat function. Right now only SELECTs are supported. Only
@@ -238,6 +241,159 @@ static int sql_xlat(void *instance, REQUEST *request,
 	sql_release_socket(inst,sqlsocket);
 	return ret;
 }
+
+static int generate_sql_clients(SQL_INST *inst)
+{
+	SQLSOCK *sqlsocket;
+	SQL_ROW row;
+	char querystr[MAX_QUERY_LEN];
+	RADCLIENT *c;
+	char *netmask;
+	unsigned int i = 0;
+	
+	DEBUG("rlm_sql (%s): - generate_sql_clients",inst->config->xlat_name);
+
+	if (inst->config->sql_nas_table == NULL){
+		radlog(L_ERR, "rlm_sql (%s): sql_nas_table is NULL.",inst->config->xlat_name);
+		return -1;
+	}
+	snprintf(querystr,MAX_QUERY_LEN - 1,"SELECT * FROM %s",inst->config->sql_nas_table);
+
+	DEBUG("rlm_sql (%s): Query: %s",inst->config->xlat_name,querystr);
+	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL)
+		return -1;
+	if (rlm_sql_select_query(sqlsocket,inst,querystr)){
+		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
+			inst->config->xlat_name,querystr,
+			(char *)(inst->module->sql_error)(sqlsocket, inst->config));
+		sql_release_socket(inst,sqlsocket);
+		return -1;
+	}
+
+	while(rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+		i++;
+		row = sqlsocket->row;
+		if (row == NULL)
+			break;
+/*
+ * Format:
+ * Row1	Row2	Row3		Row4	Row5	Row6	Row7		Row8
+ *
+ * id	nasname	shortname	type	ports	secret	community	description
+ *
+ */
+
+		if (!row[0]){
+			radlog(L_ERR, "rlm_sql (%s): No row id found on pass %d",inst->config->xlat_name,i);
+			continue;
+		}
+		if (!row[1]){
+			radlog(L_ERR, "rlm_sql (%s): No nasname found for row %s",inst->config->xlat_name,row[0]);
+			continue;
+		}
+		if (strlen(row[1]) >= sizeof(c->longname)){
+			radlog(L_ERR, "rlm_sql (%s): nasname of length %d is greater than the allowed maximum of %d",
+				inst->config->xlat_name,strlen(row[1]),sizeof(c->longname) - 1);
+			continue;
+		}	
+		
+		if (!row[2]){
+			radlog(L_ERR, "rlm_sql (%s): No short name found for row %s",inst->config->xlat_name,row[0]);
+			continue;
+		}
+		if (strlen(row[2]) >= sizeof(c->shortname)){
+			radlog(L_ERR, "rlm_sql (%s): shortname of length %d is greater than the allowed maximum of %d",
+				inst->config->xlat_name,strlen(row[2]),sizeof(c->shortname) - 1);
+			continue;
+		}
+		if (row[3] && strlen(row[3]) >= sizeof(c->nastype)){
+			radlog(L_ERR, "rlm_sql (%s): nastype of length %d is greater than the allowed maximum of %d",
+				inst->config->xlat_name,strlen(row[3]),sizeof(c->nastype) - 1);
+			continue;
+		}
+		if (!row[5]){
+			radlog(L_ERR, "rlm_sql (%s): No secret found for row %s",inst->config->xlat_name,row[0]);
+			continue;
+		}
+		if (strlen(row[5]) >= sizeof(c->secret)){
+			radlog(L_ERR, "rlm_sql (%s): secret of length %d is greater than the allowed maximum of %d",
+				inst->config->xlat_name,strlen(row[5]),sizeof(c->secret) - 1);
+			continue;
+		}
+
+		DEBUG("rlm_sql (%s): Read entry nasname=%s,shortname=%s,secret=%s",inst->config->xlat_name,
+			row[1],row[2],row[5]);
+
+		c = rad_malloc(sizeof(RADCLIENT));
+		memset(c, 0, sizeof(RADCLIENT));
+
+		c->netmask = ~0;
+		netmask = strchr(row[1], '/');
+		
+		/*
+		 *      Look for netmasks.
+		 */
+		c->netmask = ~0;
+		if (netmask) {
+			int mask_length;
+
+			mask_length = atoi(netmask + 1);
+			if ((mask_length < 0) || (mask_length > 32)) {
+				radlog(L_ERR, "rlm_sql (%s): Invalid value '%s' for IP network mask for nasname %s.",
+						inst->config->xlat_name, netmask + 1,row[1]);
+				free(c);
+				continue;
+			}
+
+			if (mask_length == 0) {
+				c->netmask = 0;
+			} else {
+				c->netmask = ~0 << (32 - mask_length);
+			}
+
+			*netmask = '\0';
+			c->netmask = htonl(c->netmask);
+		}
+
+		c->ipaddr = ip_getaddr(row[1]);
+		if (c->ipaddr == INADDR_NONE) {
+			radlog(L_CONS|L_ERR, "rlm_sql (%s): Failed to look up hostname %s",
+					inst->config->xlat_name, row[1]);
+			free(c);
+			continue;
+		}
+
+		/*
+		 *      Update the client name again...
+		 */
+		if (netmask) {
+			*netmask = '/';
+			c->ipaddr &= c->netmask;
+			strcpy(c->longname, row[1]);
+		} else {
+			ip_hostname(c->longname, sizeof(c->longname),
+					c->ipaddr);
+		}
+
+		strcpy((char *)c->secret, row[5]);
+		strcpy(c->shortname, row[2]);
+		if(row[3] != NULL)
+			strcpy(c->nastype, row[3]);
+
+		DEBUG("rlm_sql (%s): Adding client %s (%s) to clients list",inst->config->xlat_name,
+			c->longname,c->shortname);
+
+		c->next = mainconfig.clients;
+		mainconfig.clients = c;
+
+	}
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+	sql_release_socket(inst, sqlsocket);
+
+	return 0;
+}
+
 
 /*
  *	Translate the SQL queries.
@@ -540,6 +696,14 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		return -1;
 	}
 	paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
+
+	if (inst->config->do_clients){
+		if (generate_sql_clients(inst) == -1){
+			radlog(L_ERR, "rlm_sql (%s): generate_sql_clients() returned error");
+			rlm_sql_detach(inst);
+			return -1;
+		}
+	}
 
 	*instance = inst;
 

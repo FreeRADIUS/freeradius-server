@@ -41,6 +41,7 @@ typedef struct sql_config {
 	char   *simul_verify_query;
 	char   *groupmemb_query;
 	int     sqltrace;
+	int	do_clients;
 	char   *tracefile;
 	char   *xlat_name;
 	int     deletestalesessions;

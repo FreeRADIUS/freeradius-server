@@ -152,16 +152,16 @@ CREATE TABLE radpostauth (
 #
 # Table structure for table 'nas'
 #
-#CREATE TABLE nas (
-#  id int(10) DEFAULT '0' NOT NULL auto_increment,
-#  nasname varchar(128),
-#  shortname varchar(32),
-#  ipaddr varchar(15),
-#  type varchar(30),
-#  ports int(5),
-#  secret varchar(60),
-#  community varchar(50),
-#  snmp varchar(10),
-#  PRIMARY KEY (id)
-#);
+CREATE TABLE nas (
+  id int(10) DEFAULT '0' NOT NULL auto_increment,
+  nasname varchar(128) NOT NULL,
+  shortname varchar(32),
+  type varchar(30) DEFAULT 'other',
+  ports int(5),
+  secret varchar(60) DEFAULT 'secret' NOT NULL,
+  community varchar(50),
+  description varchar(200) DEFAULT 'RADIUS Client',
+  PRIMARY KEY (id),
+  KEY nasname (nasname)
+);
 
