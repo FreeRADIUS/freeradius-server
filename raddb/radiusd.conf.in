@@ -419,11 +419,13 @@ modules {
 		#
 		#  Cache /etc/passwd, /etc/shadow, and /etc/group
 		#
-		#  The default is to NOT cache them.  However, caching them can
-		#  speed up system authentications by a substantial amount.
+		#  The default is to cache them.  There have been
+		#  reports that NOT caching doesn't work.  This is a bug
+		#  which needs to be tracked down.
 		#
 		# allowed values: {no, yes}
-		cache = no
+		cache = yes
+
 		# Reload the cache every 600 seconds (10mins). 0 to disable.
 		cache_reload = 600
 
