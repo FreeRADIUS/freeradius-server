@@ -1,20 +1,26 @@
-freeradius (0.8.1+0.9pre20030617-1) unstable; urgency=low
+freeradius (0.9.0-cvs20030724-0) unstable; urgency=low
+  
+  * Current CVS version
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 24 Jul 2003 01:01:39 +1000
+
+freeradius (0.9.0-1) unstable; urgency=low
 
   * New Upstream release.
    - Upstream dictionary files are in /usr/share/freeradius.
-  * Renamed pacakge to 'freeradius*' from 'radiusd-freeradius*'.
+   - Modified to 'configure{,.in}' to work with openssl 0.9.7 and 0.9.6
+  * Renamed pacakges to 'freeradius*' from 'radiusd-freeradius*'.
   * Moved file hierarchy around to be neater:
    - /etc/raddb -> /etc/freeradius
    - /usr/share/doc/radiusd-freeradius -> /usr/share/doc/freeradius
    - /var/log/radiusd-freeradius -> /var/log/freeradius
    - /var/run/radiusd/radiusd.pid -> /var/run/freeradius/freeradius.pid
   * Included RFCs in documentation.
-  * Patch to 'configure' to work with openssl0.9.7
   * Enabled the daemon to run under user 'freerad:freerad' by default.
   * Added support for DEB_BUILD_OPTIONS for policy 3.5.9 compliance.
-  * Included SNMP mibs for Radius
+  * Installed SNMP mibs for Radius
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 17 Jun 2003 02:35:17 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 20 Jul 2003 06:56:28 +1000
 
 radiusd-freeradius (0.7+cvs20021113-1) unstable; urgency=low
  
