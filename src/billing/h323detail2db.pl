@@ -3,7 +3,7 @@
 # Author:       Peter Nixon <codemonkey@peternixon.net>
 # Summary:      Extract information from Radius detail log and
 #		compare/insert/update a Postgresql database.
-# Copy Policy:  GNU General Public Licence Version 2
+# Copy Policy:  GNU Public Licence Version 2
 # URL:          http://www.peternixon.net/code/
 # Supported:    PostgreSQL (tested on version 7.2, 7.3, 7.4 and 8) and FreeRadius
 # Copyright:    2004 Peter Nixon http://www.petenixon.net
@@ -19,6 +19,7 @@
 #
 # $Id$
 #
+
 
 
 # Modules that we use to get things done.
@@ -105,10 +106,10 @@ sub procedure_insert {		# FIXME: Does not work with current SQL schema. Use stan
 sub db_insert {
 	if ($h323_call_type eq 'VoIP') { 
         $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (
-		AcctStopTime, UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets,
+		AcctTime, UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets,
 		CalledStationId, CallingStationId, AcctDelayTime, H323RemoteAddress, h323gwid, h323callorigin,
 		callid, h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
-		values('$radius_record_timestamp', '$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets',
+		values(($Timestamp)::abstime, '$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets',
 		'$AcctOutputOctets', '$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime',
 		NULLIF('$h323_remote_address', '')::INET, '$h323_gw_id','$h323_call_origin', '$h323_conf_id',
 		NULLIF('$h323_connect_time', '')::TIMESTAMPTZ, '$h323_disconnect_cause',
@@ -151,9 +152,9 @@ sub db_update {
 }
 
 sub db_read {
-	if ($verbose > 0) { print "Record: $passno) ConfID: $h323_conf_id Timestamp: $radius_record_timestamp Length: $AcctSessionTime"; }
+	if ($verbose > 0) { print "Record: $passno) ConfID: $h323_conf_id Timestamp: $radius_record_timestamp Length: $AcctSessionTime "; }
 	my $sth = $dbh->prepare("SELECT RadAcctId FROM Stop$h323_call_type
-		WHERE AcctStopTime = '$radius_record_timestamp'
+		WHERE AcctTime = ($Timestamp)::abstime
 		AND NASIPAddress = '$NasIPAddress'
 		AND callid = '$h323_conf_id'")
                 or die "\nCouldn't prepare statement: " . $dbh->errstr . "\n";
@@ -166,7 +167,7 @@ sub db_read {
           if ($sth->rows == 0) {
 		&db_insert;	# It's a new record. All systems go.
           } elsif ($sth->rows == 1) {
-                if ($verbose > 0) { print "Exists in DB.\n"; }
+                if ($verbose > 0) { print "already in DB.\n"; }
 		# FIXME: Make updates an option!
                 #while (@data = $sth->fetchrow_array()) {
                 #my $dbAcctSessionId = $data[1];
@@ -183,7 +184,7 @@ sub db_read {
 sub process_record {
 	$radius_record_timestamp = @record[0];
 	chomp $radius_record_timestamp;
-	if ($verbose > 1) { print "DEBUG: Processing new record with timestamp: $radius_record_timestamp \n"; }
+	if ($verbose > 1) { print "DEBUG: Processing new record with time: $radius_record_timestamp \n"; }
 	# Clear the variable we use so that we don't have rubbish from the last loop
 	$UserName=""; $NasPort=""; $NasPortType="";
 	$NasIPAddress = ""; $AcctStatusType=""; $AcctSessionTime="";
@@ -222,6 +223,7 @@ sub process_record {
 	$Called_Station_Id = $_ if s/Called-Station-Id = //;
 	$Calling_Station_Id = $_ if s/Calling-Station-Id = //;
 	$Cisco_NAS_Port = $_ if s/Cisco-NAS-Port = //;
+	$Timestamp = $_ if s/Timestamp = //;
 	if (s/h323-call-type = \"h323-call-type=//) {
                         $h323_call_type = substr($_, 0, -1);
                 } elsif (s/h323-call-type = //) {

@@ -23,12 +23,12 @@
 
 CREATE TABLE StartVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
-	h323SetupTime		TIMESTAMP with time zone NOT NULL,
+	AcctTime		TIMESTAMP with time zone NOT NULL,
+	h323SetupTime		TIMESTAMP with time zone,
 	H323ConnectTime		TIMESTAMP with time zone,
 	UserName		VARCHAR(64),
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
-	AcctTime		TIMESTAMP with time zone,
 	CalledStationId		VARCHAR(80),
 	CallingStationId	VARCHAR(80),
 	AcctDelayTime		INTEGER,
@@ -37,17 +37,17 @@ CREATE TABLE StartVoIP (
 	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
-create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
+create index startvoipcombo on startvoip (AcctTime, nasipaddress);
 
 
 CREATE TABLE StartTelephony (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
-	h323SetupTime		TIMESTAMP with time zone NOT NULL,
+	AcctTime		TIMESTAMP with time zone NOT NULL,
+	h323SetupTime		TIMESTAMP with time zone,
 	H323ConnectTime		TIMESTAMP with time zone,
 	UserName		VARCHAR(64),
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
-	AcctTime		TIMESTAMP with time zone,
 	CalledStationId		VARCHAR(80),
 	CallingStationId	VARCHAR(80),
 	AcctDelayTime		INTEGER,
@@ -56,7 +56,7 @@ CREATE TABLE StartTelephony (
 	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
-create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress);
+create index starttelephonycombo on starttelephony (AcctTime, nasipaddress);
 
 
 
@@ -65,13 +65,13 @@ create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress)
  */
 CREATE TABLE StopVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
+	AcctTime		TIMESTAMP with time zone NOT NULL,
 	H323SetupTime		TIMESTAMP with time zone,
 	H323ConnectTime		TIMESTAMP with time zone,
-	H323DisconnectTime	TIMESTAMP with time zone NOT NULL,
+	H323DisconnectTime	TIMESTAMP with time zone,
 	UserName		VARCHAR(32),
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
-	AcctTime		TIMESTAMP with time zone,
 	AcctSessionTime		BIGINT,
 	AcctInputOctets		BIGINT,
 	AcctOutputOctets	BIGINT,
@@ -87,25 +87,18 @@ CREATE TABLE StopVoIP (
 	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
-create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, CallID);
-/*
- * Some Cisco CSPS do not have complete VSA details. If you have one of these you will want
- * to use the following index, as the one above will drop records.
- * 
- *  create UNIQUE index stopvoipcombo on stopvoip (h323DisconnectTime, nasipaddress, CallID);
- *
- */
+create UNIQUE index stopvoipcombo on stopvoip (AcctStopTime, nasipaddress, CallID);
 
 
 CREATE TABLE StopTelephony (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
+	AcctTime		TIMESTAMP with time zone NOT NULL,
 	H323SetupTime		TIMESTAMP with time zone NOT NULL,
 	H323ConnectTime		TIMESTAMP with time zone NOT NULL,
 	H323DisconnectTime	TIMESTAMP with time zone NOT NULL,
 	UserName		VARCHAR(32) DEFAULT '' NOT NULL,
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
-	AcctTime		TIMESTAMP with time zone,
 	AcctSessionTime		BIGINT,
 	AcctInputOctets		BIGINT,
 	AcctOutputOctets	BIGINT,
@@ -121,9 +114,9 @@ CREATE TABLE StopTelephony (
 	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
--- You can have more than one record that is identical except for CiscoNASPort if you have a VoIP dial peer
+-- You can have more than one record that is identical except for CiscoNASPort if you have a dial peer hungroup
 -- configured for multiple PRIs.
-create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, CallID, CiscoNASPort);
+create UNIQUE index stoptelephonycombo on stoptelephony (AcctTime, nasipaddress, CallID, CiscoNASPort);
 
 /*
  * Table structure for 'gateways'
