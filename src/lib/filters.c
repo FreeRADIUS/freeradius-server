@@ -22,13 +22,13 @@
  *  and to fix all of the horrible crap of the current implementation.
  */
 
-#include <sys/types.h>
-#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <errno.h>
-#include <netinet/in.h>
 #include <stdlib.h>
+
+#if HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
 
 #include "libradius.h"
 

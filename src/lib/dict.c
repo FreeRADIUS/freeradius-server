@@ -9,15 +9,12 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
-#include	<stdio.h>
 #include	<stdlib.h>
-#include	<sys/types.h>
 #include	<ctype.h>
 #include	<string.h>
-#include	<errno.h>
 
 #if HAVE_MALLOC_H
-#  include	<malloc.h>
+#include	<malloc.h>
 #endif
 
 #include	"libradius.h"
