@@ -141,6 +141,9 @@ distclean: clean
 	@rm -f config.h config.mak
 	@test -f Makefile.in && rm -f Makefile
 
+reconfig:
+	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in] && $(AUTOCONF) -l ../../..
+
 #
 #  Do any module-specific installation.
 #
