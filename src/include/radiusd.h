@@ -28,6 +28,7 @@ typedef struct auth_req {
 	RADIUS_PACKET		*packet;
 	RADIUS_PACKET		*proxy;
 	RADIUS_PACKET		*reply;
+	RADIUS_PACKET		*proxy_reply;
 	VALUE_PAIR		*config_items;
 	VALUE_PAIR		*username;
 	VALUE_PAIR		*password;
@@ -158,6 +159,7 @@ void		debug_pair(FILE *, VALUE_PAIR *);
 int		log_err (char *);
 void		sig_cleanup(int);
 void		remove_from_request_list(REQUEST *);
+int		rad_respond (REQUEST *);
 
 /* util.c */
 void (*reset_signal(int signo, void (*func)(int)))(int);
@@ -194,6 +196,7 @@ int		pam_pass(char *name, char *passwd, const char *pamauth);
 #endif
 
 /* proxy.c */
+int replicate_send(REQUEST *request);
 int proxy_send(REQUEST *request);
 int proxy_receive(REQUEST *request);
 struct timeval *proxy_setuptimeout(struct timeval *);

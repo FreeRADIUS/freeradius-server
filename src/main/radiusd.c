@@ -73,8 +73,8 @@ static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
 static int		authfd;
 static int		acctfd;
-int	        proxyfd;
-static int		spawn_flag = FALSE;
+int	        	proxyfd;
+static int		spawn_flag = TRUE;
 static int		radius_pid;
 static int		need_reload = FALSE;
 static struct rlimit	core_limits;
@@ -113,11 +113,10 @@ static void	usage(void);
 static void	sig_fatal (int);
 static void	sig_hup (int);
 
-static int	rad_process (REQUEST *);
+static int	rad_process (REQUEST *, int);
 static void	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
 #ifndef WITH_THREAD_POOL
-static int	rad_respond (REQUEST *);
 static void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
 extern void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
@@ -360,7 +359,9 @@ int main(int argc, char **argv)
 			 *  TOO LAZY to type '-sfxxyz -l stdout' themselves.
 			 */
 		case 'X':
+#ifndef WITH_THREAD_POOL
 			spawn_flag = FALSE;
+#endif
 			dont_fork = TRUE;
 			debug_flag = 2;
 			librad_debug = 2;
@@ -722,6 +723,7 @@ int main(int argc, char **argv)
 			request->packet = packet;
 			request->proxy = NULL;
 			request->reply = NULL;
+			request->proxy_reply = NULL;
 			request->config_items = NULL;
 			request->username = pairfind(request->packet->vps, PW_USER_NAME);
 			request->password = NULL;
@@ -730,7 +732,7 @@ int main(int argc, char **argv)
 			request->prev = NULL;
 			request->next = NULL;
 			strcpy(request->secret, cl->secret);
-			rad_process(request);
+			rad_process(request, spawn_flag);
 
 			/*
 			 *	After processing the current request,
@@ -758,25 +760,38 @@ int main(int argc, char **argv)
  *				Relay reply back to original NAS.
  *
  */
-int rad_process(REQUEST *request)
+int rad_process(REQUEST *request, int dospawn)
 {
-	int dospawn;
 	RAD_REQUEST_FUNP fun;
 	int replicating = 0;
 
-	dospawn = FALSE;
 	fun = NULL;
 
 	switch(request->packet->code) {
 
 	case PW_AUTHENTICATION_REQUEST:
-	case PW_ACCOUNTING_REQUEST:
 		/*
-		 *	Check for requests sent to the proxy port,
+		 *	Check for requests sent to the wrongport,
 		 *	and ignore them, if so.
 		 */
-		if (request->packet->sockfd == proxyfd) {
-		  log(L_ERR, "Request packet code %d sent to proxy port from "
+		if (request->packet->sockfd != authfd) {
+		  log(L_ERR, "Request packet code %d sent to authentication port from "
+		      "client %s - ID %d : IGNORED",
+		      request->packet->code,
+		      client_name(request->packet->src_ipaddr),
+		      request->packet->id);
+		  request_free(request);
+		  return -1;
+		}
+		break;
+
+	case PW_ACCOUNTING_REQUEST:
+		/*
+		 *	Check for requests sent to the wrong port,
+		 *	and ignore them, if so.
+		 */
+		if (request->packet->sockfd != acctfd) {
+		  log(L_ERR, "Request packet code %d sent to accounting port from "
 		      "client %s - ID %d : IGNORED",
 		      request->packet->code,
 		      client_name(request->packet->src_ipaddr),
@@ -795,11 +810,13 @@ int rad_process(REQUEST *request)
 		 *	an error message logged, and the packet is dropped.
 		 */
 		if (request->packet->sockfd == proxyfd) {
+#ifdef WITH_OLD_PROXY
 			int recvd = proxy_receive(request);
 			if (recvd < 0) {
 				return -1;
 			}
 			replicating = recvd;
+#endif
 			break;
 		}
 		/* NOT proxyfd: fall through to error message */
@@ -820,11 +837,12 @@ int rad_process(REQUEST *request)
 	switch(request->packet->code) {
 
 	case PW_AUTHENTICATION_REQUEST:
-		dospawn = spawn_flag;
+		DEBUG2("Calling rad_authenticate");
 		fun = rad_authenticate;
 		break;
 	
 	case PW_ACCOUNTING_REQUEST:
+		DEBUG2("Calling rad_accounting");
 		fun = rad_accounting;
 		break;
 	
@@ -839,6 +857,14 @@ int rad_process(REQUEST *request)
 		return -1;
 		break;
 	
+#ifndef WITH_OLD_PROXY
+	case PW_AUTHENTICATION_ACK:
+	case PW_AUTHENTICATION_REJECT:
+	case PW_ACCOUNTING_RESPONSE:
+		DEBUG2("Calling proxy_receive");
+		fun = proxy_receive;
+		break;
+#endif
 
 	default:
 		log(L_ERR, "Unknown packet type %d from client %s "
@@ -863,6 +889,7 @@ int rad_process(REQUEST *request)
 	 */
 	request = rad_check_list(request);
 	if (request == NULL) {
+		DEBUG2("Dropped duplicate");
 		return 0;
 	}
 	
@@ -875,45 +902,16 @@ int rad_process(REQUEST *request)
 		return 0;
 	}
 
-/*
- *	This define is here only for debugging the thread pool.
- *	Normally, when in NON-spawning mode, there should be NO
- *	child threads.
- */
-#ifndef WITH_THREAD_POOL
 	/*
 	 *	We're the one who's supposed to handle the request,
 	 *	as everyone else gave up on it.  Let's do so.
 	 */
 	(*fun)(request);
-	
-	/*
-	 *	If we don't already have a proxy
-	 *	packet for this request, we MIGHT have
-	 *	to go proxy it.
-	 */
-	if (!request->proxy) {
-		int sent;
-		sent = proxy_send(request);
-		if (sent == 0 || sent == 2)
-			rad_respond(request);
-	} else {
-		if (replicating == 0) {
-					
-			rad_respond(request);
-		}
-	}
-#else
-	/*
-	 *	Temporary thread pools: always spawn, even if debugging.
-	 */
-	rad_spawn_child(request, fun);
-#endif
+	rad_respond(request);
 
 	return 0;
 }
 
-#ifndef WITH_THREAD_POOL
 /*
  *	Respond to a request packet.
  *
@@ -921,15 +919,46 @@ int rad_process(REQUEST *request)
  *	Maybe we proxy the request to another server, or else maybe
  *	we replicate it to another server.
  */
-static int rad_respond(REQUEST *request)
+int rad_respond(REQUEST *request)
 {
-  if (request->reply)
-  	rad_send(request->reply, request->secret);
+	/*
+	 *	If we don't already have a proxy
+	 *	packet for this request, we MIGHT have
+	 *	to go proxy it.
+	 */
+	if (request->proxy == NULL) {
+		int sent;
+		sent = proxy_send(request);
 
-  request->finished = TRUE;
-  return 0;
-}
+		/*
+		 *	sent==1 means it's been proxied.  The child
+		 *	is done handling the request, but the request
+		 *	is NOT finished!
+		 */
+		if (sent != 0 || sent != 2) {
+#ifdef WITH_THREAD_POOL
+			request->child_pid = NO_SUCH_CHILD_PID;
 #endif
+			return 0;
+		}
+
+#if 0
+	} else {
+		if (replicating != 0) {
+			/* ??? */
+		}
+#endif
+	}
+	
+	if (request->reply)
+		rad_send(request->reply, request->secret);
+	
+#ifdef WITH_THREAD_POOL
+	request->child_pid = NO_SUCH_CHILD_PID;
+#endif
+	request->finished = TRUE;
+	return 0;
+}
 
 /*
  *	Clean up the request list, every so often.
@@ -997,18 +1026,19 @@ static void rad_clean_list(void)
 			 *	Maybe the child process handling the request
 			 *	has hung: kill it, and continue.
 			 */
-			if (!curreq->finished && 
-			    (curreq->timestamp + max_request_time) <= curtime &&
-				curreq->child_pid != NO_SUCH_CHILD_PID) {
-				/*
-				 *	This request seems to have hung
-				 *	 - kill it
-				 */
-				child_pid = curreq->child_pid;
-				log(L_ERR, "Killing unresponsive child %d",
-				    child_pid);
-				child_kill(child_pid, SIGTERM);
-				
+			if (!curreq->finished &&
+			    (curreq->timestamp + max_request_time) <= curtime) {
+				if (curreq->child_pid != NO_SUCH_CHILD_PID) {
+					/*
+					 *	This request seems to have hung
+					 *	 - kill it
+					 */
+					child_pid = curreq->child_pid;
+					log(L_ERR, "Killing unresponsive child %d",
+					    child_pid);
+					child_kill(child_pid, SIGTERM);
+				} /* else no proxy reply, quietly fail */
+
 				/*
 				 *	Mark the request as unsalvagable.
 				 */
@@ -1074,6 +1104,10 @@ static void rad_clean_list(void)
  *	requests, and verifing that there is only one process
  *	responding to each request (duplicate requests are filtered
  *	out).
+ *
+ *	Also, check if the request is a reply from a request proxied to
+ *	a remote server.  If so, play games with the request, and return
+ *	the old one.
  */
 static REQUEST *rad_check_list(REQUEST *request)
 {
@@ -1083,6 +1117,20 @@ static REQUEST *rad_check_list(REQUEST *request)
 	int		request_count;
 	REQUEST_LIST	*request_list_entry;
 	int		i;
+
+#ifndef WITH_OLD_PROXY
+	/*
+	 *	If it's a proxy reply, then it can't be a duplicate
+	 *	request from one of our clients.
+	 *
+	 *	If the request already has a proxy packet, then it's
+	 *	obviously not a new one, either.
+	 */
+	if ((request->packet->sockfd == proxyfd) ||
+	    (request->proxy != NULL)) {
+		return request;
+	}
+#endif
 
 	request_list_entry = &request_list[request->packet->id];
 	curreq = request_list_entry->first_request;
@@ -1104,8 +1152,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 *	We do this be checking the src IP, (NOT port)
 		 *	the packet code, and ID.
 		 */
-		if (request &&
-		    (curreq->packet->src_ipaddr == pkt->src_ipaddr) &&
+		if ((curreq->packet->src_ipaddr == pkt->src_ipaddr) &&
 		    (curreq->packet->code == pkt->code) &&
 		    (curreq->packet->id == pkt->id)) {
 
@@ -1133,6 +1180,14 @@ static REQUEST *rad_check_list(REQUEST *request)
 				client_name(request->packet->src_ipaddr),
 				request->packet->id);
 				rad_send(curreq->reply, curreq->secret);
+#ifndef WITH_OLD_PROXY
+				/*
+				 *	There's no reply, but maybe there's
+				 *	an outstanding proxy request.
+				 */
+			} else if (curreq->proxy != NULL) {
+				/* FIXME: kick the remote server again ? */
+#endif
 			} else {
 				log(L_ERR,
 				"Dropping duplicate authentication packet"
@@ -1148,17 +1203,20 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 */
 			request_free(request);
 			request = NULL;
+			break;
 		  } else {
 		  	/*
 			 *	The packet vectors are different, so
-			 *	we can make the old request to be
+			 *	we can mark the old request to be
 			 *	deleted from the list.
 			 */
 		    if (curreq->finished) {
 				curreq->timestamp = 0;
+				break;
 		    }
 		  }
 		} /* checks for duplicate packets */
+
 		prevreq = curreq;
 		curreq = curreq->next;
 	} /* end of walking the request list */
@@ -1170,6 +1228,22 @@ static REQUEST *rad_check_list(REQUEST *request)
 		request_list_busy = FALSE;
 		return NULL;
 	}
+
+
+#ifndef WITH_OLD_PROXY
+	/*
+	 *	Maybe we've received a proxy reply for a packet
+	 *	we've handled and forgotten. If so, ignore it.
+	 */
+	if (pkt->sockfd == proxyfd) {
+		DEBUG2("Unrecognized proxy reply from server %s - ID %d",
+			client_name(request->packet->src_ipaddr),
+			request->packet->id);
+		request_free(request);
+		request_list_busy = FALSE;
+		return NULL;
+	}
+#endif	
 
 	/*
 	 *	Count the total number of requests, to see if there
@@ -1216,27 +1290,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	return request;
 }
 
-/* Remove a request from the pending list without looking at it or freeing
- * it. Called from proxy code when it wants to take over */
-void remove_from_request_list(REQUEST *request)
-{
-	REQUEST *prevreq;
-	REQUEST *curreq;
-
-	prevreq = NULL;
-	for (curreq = request_list[request->packet->id].first_request; curreq; curreq = curreq->next) {
-	  if (curreq == request) {
-	    if (prevreq) {
-	      prevreq->next = request->next;
-	    } else {
-	      request_list[request->packet->id].first_request = request->next;
-	    }
-	    request_list[request->packet->id].request_count--;
-	    return;
-	  }
-	}
-}
-
 #ifndef WITH_THREAD_POOL
 #ifdef HAVE_PTHREAD_H
 typedef struct spawn_thread_t {
@@ -1262,7 +1315,7 @@ static void *rad_spawn_thread(void *arg)
   spawn_thread_t *data = (spawn_thread_t *)arg;
 
   signal(SIGTERM, sig_term);
-  (*data->fun)(data->request);
+  (*(data->fun))(data->request);
   rad_respond(data->request);
   return NULL;
 }
@@ -1472,3 +1525,67 @@ static void sig_hup(int sig)
 	reset_signal(SIGHUP, sig_hup);
 	need_reload = TRUE;
 }
+
+#ifndef WITH_OLD_PROXY
+/*
+ *	Do a proxy receive of a packet, when using thread pools.
+ *
+ *	This function is here because it has to access the REQUEST_LIST
+ *	structure, which is 'static' to this C file.
+ */
+int proxy_receive(REQUEST *request)
+{
+	int id;
+	REQUEST *oldreq;
+	RADIUS_PACKET *pkt;
+
+	/*
+	 *	Find the original request in the request list
+	 */
+	oldreq = NULL;
+	pkt = request->packet;
+
+	for (id = 0; (id < 256) && (oldreq == NULL); id++) {
+		for (oldreq = request_list[id].first_request ;
+		     oldreq != NULL ;
+		     oldreq = oldreq->next) {
+			if (oldreq->proxy &&
+			    (oldreq->proxy->dst_ipaddr == pkt->src_ipaddr) &&
+			    (oldreq->proxy->dst_port == pkt->src_port) &&
+			    (oldreq->proxy->id == pkt->id)) {
+				break;
+			}
+		}
+	}
+
+	/*
+	 *	If we haven't found the old request, complain.
+	 */
+	if (oldreq == NULL) {
+		log(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
+			client_name(request->packet->src_ipaddr),
+			request->packet->id);
+		return -1;
+	}
+
+	/*
+	 *	Refresh the old request,. and update it.
+	 */
+	oldreq->timestamp += 5;
+	oldreq->child_pid = request->child_pid;
+	oldreq->proxy_reply = request->packet;
+	request->packet = NULL;
+
+	request->child_pid = NO_SUCH_CHILD_PID;
+	request->finished = TRUE;
+	request->timestamp = 0;
+
+	/*
+	 *	Process the request as if it came in
+	 *	from a NAS, but don't spawn a child thread to handle it.
+	 */
+	rad_process(oldreq, FALSE);
+
+	return 0;
+}
+#endif

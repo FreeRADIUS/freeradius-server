@@ -35,6 +35,12 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun);
 
 
 /*
+ *	Proxy file descriptor.  Yes, global variables are ugly.
+ */
+extern int proxyfd;
+
+
+/*
  *  A data structure which contains the information about
  *  the current thread.
  *
@@ -110,6 +116,7 @@ static void sig_term(int sig)
 static void *request_handler_thread(void *arg)
 {
 	THREAD_HANDLE	*self;
+	REQUEST		*request;
 
 	self = (THREAD_HANDLE *) arg;
 	
@@ -137,6 +144,9 @@ static void *request_handler_thread(void *arg)
 		DEBUG2("Thread %d handling request %08x, number %d",
 		       self->child_pid, self->request, self->request_count);
 		
+
+		request = self->request;
+
 		/*
 		 *	Decode the packet, verifying it's signature,
 		 *	and parsing the attributes into structures.
@@ -145,41 +155,41 @@ static void *request_handler_thread(void *arg)
 		 *	a child thread, not the master.  This helps to
 		 *	spread the load a little bit.
 		 */
-		if (rad_decode(self->request->packet, self->request->secret) != 0) {
+		if (rad_decode(request->packet, request->secret) != 0) {
 			log(L_ERR, "%s", librad_errstr);
+			request->child_pid = NO_SUCH_CHILD_PID;
+			request->finished = TRUE;
 			goto next_request;
 		}
 		
 		/*
 		 *	We have a User-Name attribute now, presumably.
 		 */
-		self->request->username = pairfind(self->request->packet->vps,
+		request->username = pairfind(request->packet->vps,
 						   PW_USER_NAME);
 		
 		/*
 		 *	We have the semaphore, and have decoded the packet.
 		 *	Let's process the request.
 		 */
-		(*(self->fun))(self->request);
+		(*(self->fun))(request);
 		
 		/*
-		 *	If there's a reply, go send it.
+		 *	Respond to the request, including any
+		 *	proxy or replicate commands.
 		 */
-		if (self->request->reply)
-			rad_send(self->request->reply, self->request->secret);
-		
+		rad_respond(request);
+
 		/*
 		 *	We're done processing the request, set the request
 		 *	to be finished, and forget about the request.
 		 */
 	next_request:
-		self->request->child_pid = NO_SUCH_CHILD_PID;
-		self->request->finished = TRUE;
 		self->request = NULL;
 
 		/*
 		 *	The semaphore's value is zero, because we've
-		 *	locked it.  We no go back to the top of the loop,
+		 *	locked it.  We now go back to the top of the loop,
 		 *	where we wait for it's value to become non-zero.
 		 */
 	}

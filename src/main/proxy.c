@@ -27,9 +27,11 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 
 
-static int	proxy_id = 1;
-static REQUEST	*proxy_requests;
+static uint32_t	proxy_id = 1;
 
+static REQUEST	*proxy_requests = NULL;
+
+#ifdef WITH_OLD_PROXY
 static int allowed [] = {
 	PW_SERVICE_TYPE,
 	PW_FRAMED_PROTOCOL,
@@ -87,6 +89,7 @@ static void proxy_cleanup(void)
 		last = a;
 	}
 }
+#endif
 
 /*
  *	Add a proxy-pair to the end of the request.
@@ -105,6 +108,8 @@ static void proxy_addinfo(RADIUS_PACKET *rp)
 
 	pairadd(&rp->vps, proxy_pair);
 }
+
+#ifdef WITH_OLD_PROXY
 
 /*
  *	Add the request to the list.
@@ -143,7 +148,7 @@ static int proxy_addrequest(REQUEST *request, int *proxied_packet_id)
 	}
 
 	request->next = NULL;
-	request->child_pid = -1;
+	request->child_pid = NO_SUCH_CHILD_PID;
 	request->timestamp = time(NULL);
 
 	request->next = proxy_requests;
@@ -154,6 +159,7 @@ static int proxy_addrequest(REQUEST *request, int *proxied_packet_id)
 
 	return id;
 }
+#endif
 
 
 /*
@@ -176,10 +182,14 @@ int proxy_send(REQUEST *request)
 	char			*realmname;
 	int			replicating;
 
+#ifdef WITH_OLD_PROXY
 	/*
 	 *	First cleanup old outstanding requests.
 	 */
 	proxy_cleanup();
+#else
+	request->timestamp += 5;
+#endif
 
 	/* Look for proxy/replicate signs */
 	/* FIXME - What to do if multiple Proxy-To/Replicate-To attrs are
@@ -266,7 +276,7 @@ int proxy_send(REQUEST *request)
 	 *	OTOH the remote radius server should be smart enough to
 	 *	compare _both_ ID and vector. Right ?
 	 */
-	if ((request->proxy = rad_alloc(0)) == NULL) {
+	if ((request->proxy = rad_alloc(TRUE)) == NULL) {
 		log(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
@@ -284,16 +294,14 @@ int proxy_send(REQUEST *request)
 		request->proxy->dst_port = realm->acct_port;
 	request->proxy->vps = vps;
 
-	printf("Destination port: %d, server %s (%d/%d)\n",
-		request->proxy->dst_port, realm->server,
-		realm->auth_port, realm->acct_port);
-
+#ifdef WITH_OLD_PROXY
 	/*
 	 *	XXX: we re-use the vector from the original request
 	 *	here, since that's easy for retransmits ...
 	 */
 	memcpy(request->proxy->vector, request->packet->vector,
 		AUTH_VECTOR_LEN);
+#endif
 
 	/*
 	 *	Add the request to the list of outstanding requests.
@@ -301,7 +309,11 @@ int proxy_send(REQUEST *request)
 	 *	while rad_send sends only the 8 least significant
 	 *	bits of that same value.
 	 */
+#ifdef WITH_OLD_PROXY
 	request->proxy->id = proxy_addrequest(request, &proxy_id);
+#else
+	request->proxy->id = (proxy_id++) & 0xff;
+#endif
 
 	/*
 	 *	Add PROXY_STATE attribute.
@@ -346,7 +358,7 @@ int proxy_send(REQUEST *request)
 	return replicating?2:1;
 }
 
-
+#ifdef WITH_OLD_PROXY
 /*
  *	We received a response from a remote radius server.
  *	Find the original request, then return.
@@ -367,7 +379,6 @@ int proxy_receive(REQUEST *request)
 	VALUE_PAIR	*realmpair;
 	int		replicating;
         REALM           *realm;
-        char            *realmname;
 
 	/*
 	 *	First cleanup old outstanding requests.
@@ -378,6 +389,12 @@ int proxy_receive(REQUEST *request)
 	 *	FIXME: calculate md5 checksum!
 	 */
 
+	/*
+	 *	This isn't really necessary.  If it comes into
+	 *	our proxy FD from the right client with the right
+	 *	code, ID, and md5 checksum, then the Proxy-State
+	 *	attribute is unimportant.
+	 */
 	/*
 	 *	Find the last PROXY_STATE attribute.
 	 */
@@ -464,10 +481,7 @@ int proxy_receive(REQUEST *request)
 		log(L_PROXY, "Proxy reply to packet with no Realm");
 		return -1;
 	}
-	realmname=realmpair->strvalue;
-	/* FIXME - this "NULL" realm is probably broken now. Does anyone
-	 * still need it? */
-        realm = realm_find(realmname ? realmname : "NULL");
+        realm = realm_find(realmpair->strvalue);
 
 	/* FIXME - do we want to use the trusted/allowed filters on replicate
 	 * replies, which are not going to be used for anything except maybe
@@ -511,6 +525,7 @@ int proxy_receive(REQUEST *request)
 
 	return replicating?1:0;
 }
+#endif
 
 /*
  *  FIXME: Maybe keeping the proxy_requests list sorted by
