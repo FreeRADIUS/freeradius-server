@@ -332,6 +332,22 @@ security {
 	#
 	#  Useful ranges: 1 to 5
 	reject_delay = 1
+
+	#
+	#  status_server: Whether or not the server will respond
+	#  to Status-Server requests.
+	#
+	#  Normally this should be set to "no", because they're useless.
+	#  See: http://www.freeradius.org/rfc/rfc2865.html#Keep-Alives
+	#
+	#  However, certain NAS boxes may require them.	
+	#
+	#  When sent a Status-Server message, the server responds with
+	#  and Access-Accept packet, containing a Reply-Message attribute,
+	#  which is a string describing how long the server has been
+	#  running.
+	#
+	status_server = no
 }
 
 # PROXY CONFIGURATION

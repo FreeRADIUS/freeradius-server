@@ -77,6 +77,7 @@ static CONF_PARSER proxy_config[] = {
 static CONF_PARSER security_config[] = {
 	{ "max_attributes",  PW_TYPE_INTEGER, 0, &librad_max_attributes, Stringify(0) },
 	{ "reject_delay",  PW_TYPE_INTEGER, 0, &mainconfig.reject_delay, Stringify(0) },
+	{ "status_server", PW_TYPE_BOOLEAN, 0, &mainconfig.status_server, "no"},
 	{ NULL, -1, 0, NULL, NULL }
 };
 
