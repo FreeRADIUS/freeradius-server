@@ -19,7 +19,6 @@
  *
  * Copyright 2001  The FreeRADIUS server project
  * Copyright 2001  Alan DeKok <aland@ox.org>
- * Copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 
 /* This module is based directly on the rlm_counter module */
@@ -37,6 +36,8 @@
 #include "radiusd.h"
 #include "modules.h"
 #include "conffile.h"
+
+#define MAX_QUERY_LEN 1024
 
 #include <time.h>
 
@@ -332,24 +333,24 @@ static int sqlcounter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VAL
 {
 	rlm_sqlcounter_t *data = (rlm_sqlcounter_t *) instance;
 	int counter;
-	char querystr[MAX_STRING_LEN];
-	char responsestr[MAX_STRING_LEN];
+	char querystr[MAX_QUERY_LEN];
+	char responsestr[MAX_QUERY_LEN];
 
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
 	/* first, expand %k, %b and %e in query */
-	sqlcounter_expand(querystr, MAX_STRING_LEN, data->query, instance);
+	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
 	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_STRING_LEN, querystr, req, NULL);
+	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, NULL);
 
 	/* third, wrap query with sql module call & expand */
 	sprintf(querystr, "%%{%%S:%s}", responsestr);
-	sqlcounter_expand(responsestr, MAX_STRING_LEN, querystr, instance);
+	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_STRING_LEN, responsestr, req, NULL);
+	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, req, NULL);
 
 	counter = atoi(querystr);
 
@@ -489,8 +490,8 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
-	char querystr[MAX_STRING_LEN];
-	char responsestr[MAX_STRING_LEN];
+	char querystr[MAX_QUERY_LEN];
+	char responsestr[MAX_QUERY_LEN];
 
 	/* quiet the compiler */
 	instance = instance;
@@ -534,17 +535,17 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	}
 
 	/* first, expand %k, %b and %e in query */
-	sqlcounter_expand(querystr, MAX_STRING_LEN, data->query, instance);
+	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
 	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_STRING_LEN, querystr, request, NULL);
+	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, NULL);
 
 	/* third, wrap query with sql module & expand */
 	sprintf(querystr, "%%{%%S:%s}", responsestr);
-	sqlcounter_expand(responsestr, MAX_STRING_LEN, querystr, instance);
+	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_STRING_LEN, responsestr, request, NULL);
+	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, NULL);
 
 	counter = atoi(querystr);
 
