@@ -14,7 +14,7 @@ install:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 common: 
-	@for mod in rlm_sql*; do \
+	@for mod in `echo rlm_sql_*/Makefile | sed 's:/Makefile::g'`; do \
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
 		echo "Making $$what in $$mod..."; \
