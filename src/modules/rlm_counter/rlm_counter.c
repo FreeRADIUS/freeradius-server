@@ -540,15 +540,19 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 *	The REAL username, after stripping.
 	 */
 	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr);
-	if (key_vp == NULL)
+	if (key_vp == NULL){
+		DEBUG("rlm_counter: Could not find the key-attribute in the request.");
 		return RLM_MODULE_NOOP;
+	}
 
 	/*
 	 *	Look for the attribute to use as a counter.
 	 */
 	count_vp = pairfind(request->packet->vps, data->count_attr);
-	if (count_vp == NULL)
+	if (count_vp == NULL){
+		DEBUG("rlm_counter: Could not find the count-attribute in the request.");
 		return RLM_MODULE_NOOP;
+	}
 
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
