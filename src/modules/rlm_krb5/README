@@ -1,0 +1,9 @@
+On linux, I had to change:
+
+deplibs_test_method="pass_all"
+
+in ../../libtool
+
+Otherwise, it complains if the krb5 libs aren't shared.
+
+-- Nathan
