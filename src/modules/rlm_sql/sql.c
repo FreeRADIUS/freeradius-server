@@ -156,8 +156,10 @@ int sql_init_socketpool(SQL_INST * inst)
 void sql_poolfree(SQL_INST * inst)
 {
 	SQLSOCK *cur;
+	SQLSOCK *next;
 
-	for (cur = inst->sqlpool; cur; cur = cur->next) {
+	for (cur = inst->sqlpool; cur; cur = next) {
+		next = cur->next;
 		sql_close_socket(inst, cur);
 	}
 }
