@@ -183,6 +183,7 @@
 #define PW_REWRITE_RULE			1078
 #define PW_SQL_GROUP			1079
 #define PW_RESPONSE_PACKET_TYPE		1080
+#define PW_PACKET_DST_PORT		1081
 
 /*
  *	Integer Translations

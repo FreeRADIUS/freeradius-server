@@ -245,6 +245,7 @@ ATTRIBUTE	Module-Failure-Message	1076	string
 ATTRIBUTE	Rewrite-Rule		1078	string
 ATTRIBUTE	Sql-Group		1079	string
 ATTRIBUTE	Response-Packet-Type	1080	integer
+ATTRIBUTE	Packet-Dst-Port		1081	integer
 
 #
 #	Non-Protocol Attributes
