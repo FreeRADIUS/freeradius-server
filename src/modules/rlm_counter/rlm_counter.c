@@ -64,22 +64,22 @@ static const char rcsid[] = "$Id$";
  *	be used as the instance handle.
  */
 typedef struct rlm_counter_t {
-	char *filename;  /* name of the database file */
-	char *reset;  /* daily, weekly, monthly, never or user defined */
-	char *key_name;  /* User-Name */
-	char *count_attribute;  /* Acct-Session-Time */
-	char *counter_name;  /* Daily-Session-Time */
-	char *check_name;  /* Daily-Max-Session */
-	char *service_type;  /* Service-Type to search for */
+	char *filename;		/* name of the database file */
+	char *reset;		/* daily, weekly, monthly, never or user defined */
+	char *key_name;		/* User-Name */
+	char *count_attribute;	/* Acct-Session-Time */
+	char *counter_name;	/* Daily-Session-Time */
+	char *check_name;	/* Daily-Max-Session */
+	char *service_type;	/* Service-Type to search for */
 	int cache_size;
 	int service_val;
 	int key_attr;
 	int count_attr;
-	time_t reset_time;  /* The time of the next reset. */
-	time_t last_reset;  /* The time of the last reset. */
-	int dict_attr;  /* attribute number for the counter. */
-	GDBM_FILE gdbm;
-	int fd;
+	time_t reset_time;	/* The time of the next reset. */
+	time_t last_reset;	/* The time of the last reset. */
+	int dict_attr;		/* attribute number for the counter. */
+	GDBM_FILE gdbm;		/* The gdbm file handle */
+	pthread_mutex_t mutex;	/* A mutex to lock the gdbm file for only one reader/writer */
 } rlm_counter_t;
 
 /*
@@ -196,7 +196,6 @@ static int reset_db(rlm_counter_t *data)
 				data->filename, strerror(errno));
 		return RLM_MODULE_FAIL;
 	}
-	if (data->fd >= 0) data->fd = gdbm_fdesc(data->gdbm);
 	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 		radlog(L_ERR, "rlm_counter: Failed to set cache size");
 	DEBUG2("rlm_counter: reset_db: Opened new database");
@@ -463,8 +462,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 			return -1;
 	}
 
-	if (data->fd >= 0) data->fd = gdbm_fdesc(data->gdbm);
-
 	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 		radlog(L_ERR, "rlm_counter: Failed to set cache size");
 
@@ -473,6 +470,11 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Register the counter comparison operation.
 	 */
 	paircompare_register(data->dict_attr, 0, counter_cmp, data);
+
+	/*
+	 * Init the mutex
+	 */
+	pthread_mutex_init(&data->mutex, NULL);
 
 	*instance = data;
 	
@@ -501,7 +503,9 @@ static int counter_accounting(void *instance, REQUEST *request)
 
 		data->last_reset = data->reset_time;
 		find_next_reset(data,request->timestamp);
+		pthread_mutex_lock(&data->mutex);
 		ret = reset_db(data);
+		pthread_mutex_unlock(&data->mutex);
 		if (ret != RLM_MODULE_OK)
 			return ret;
 	}
@@ -535,7 +539,9 @@ static int counter_accounting(void *instance, REQUEST *request)
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 
+	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
+	pthread_mutex_unlock(&data->mutex);
 	if (count_datum.dptr == NULL)
 		counter = 0;
 	else{
@@ -574,7 +580,9 @@ static int counter_accounting(void *instance, REQUEST *request)
 	count_datum.dptr = (char *) &counter;
 	count_datum.dsize = sizeof(int);
 
+	pthread_mutex_lock(&data->mutex);
 	rcode = gdbm_store(data->gdbm, key_datum, count_datum, GDBM_REPLACE);
+	pthread_mutex_unlock(&data->mutex);
 	if (rcode < 0) {
 		radlog(L_ERR, "rlm_counter: Failed storing data to %s: %s",
 				data->filename, gdbm_strerror(gdbm_errno));
@@ -616,7 +624,9 @@ static int counter_authorize(void *instance, REQUEST *request)
 
 		data->last_reset = data->reset_time;
 		find_next_reset(data,request->timestamp);
+		pthread_mutex_lock(&data->mutex);
 		ret2 = reset_db(data);
+		pthread_mutex_unlock(&data->mutex);
 		if (ret2 != RLM_MODULE_OK)
 			return ret2;
 	}
@@ -647,7 +657,9 @@ static int counter_authorize(void *instance, REQUEST *request)
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 	
+	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
+	pthread_mutex_unlock(&data->mutex);
 	if (count_datum.dptr != NULL){
 		memcpy(&counter, count_datum.dptr, sizeof(int));
 		free(count_datum.dptr);
@@ -735,6 +747,7 @@ static int counter_detach(void *instance)
 	free(data->key_name);
 	free(data->count_attribute);
 	free(data->counter_name);
+	pthread_mutex_destroy(&data->mutex);
 
 	free(instance);
 	return 0;
@@ -751,7 +764,7 @@ static int counter_detach(void *instance)
  */
 module_t rlm_counter = {
 	"Counter",	
-	RLM_TYPE_THREAD_UNSAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	counter_instantiate,		/* instantiation */
 	{
