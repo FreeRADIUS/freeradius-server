@@ -229,10 +229,6 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	
 	*last = handler;
 
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_unlock(&(inst->session_mutex));
-#endif
-
 	/*
 	 *	The time at which this request was made was the time
 	 *	at which it was received by the RADIUS server.
@@ -240,6 +236,14 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	handler->timestamp = handler->request->timestamp;
 	handler->status = 1;
 	handler->next = NULL;
+
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	Now that we've finished mucking with the list,
+	 *	unlock it.
+	 */
+	pthread_mutex_unlock(&(inst->session_mutex));
+#endif
 
 	/*
 	 *	We don't need this any more.
