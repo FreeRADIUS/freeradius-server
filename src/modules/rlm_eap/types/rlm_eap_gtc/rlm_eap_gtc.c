@@ -35,16 +35,17 @@
  *	protocol.
  */
 typedef struct rlm_eap_gtc_t {
-	const char *challenge;
-	const char *response;
+	const char	*challenge;
+	const char	*auth_type_name;
+	int		auth_type;
 } rlm_eap_gtc_t;
 
 static CONF_PARSER module_config[] = {
 	{ "challenge", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_gtc_t, challenge), NULL, "Password: " },
 
-	{ "response", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_eap_gtc_t, response), NULL, "%{config:User-Password}" },
+	{ "auth_type", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_gtc_t, auth_type_name), NULL, "PAP" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -58,7 +59,7 @@ static int gtc_detach(void *arg)
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) arg;
 
 	if (inst->challenge) free(inst->challenge);
-	if (inst->response) free(inst->response);
+	if (inst->auth_type_name) free(inst->auth_type_name);
 
 	free(inst);
 
@@ -70,11 +71,12 @@ static int gtc_detach(void *arg)
  */
 static int gtc_attach(CONF_SECTION *cs, void **instance)
 {
-	rlm_eap_gtc_t *inst;
+	rlm_eap_gtc_t	*inst;
+	DICT_VALUE	*dval;
 
 	inst = malloc(sizeof(*inst));
 	if (!inst) {
-		radlog(L_ERR, "rlm_eap_ttls: out of memory");
+		radlog(L_ERR, "rlm_eap_gtc: out of memory");
 		return -1;
 	}
 	memset(inst, 0, sizeof(*inst));
@@ -86,6 +88,18 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
 		gtc_detach(inst);
 		return -1;
 	}
+
+	dval = dict_valbyname(PW_AUTH_TYPE, inst->auth_type_name);
+	if (!dval) {
+		radlog(L_ERR, "rlm_eap_gtc: Unknown Auth-Type %s",
+		       inst->auth_type_name);
+		gtc_detach(inst);
+		return -1;
+	}
+
+	inst->auth_type = dval->value;
+
+	*instance = inst;
 
 	return 0;
 }
@@ -134,10 +148,11 @@ static int gtc_initiate(void *type_data, EAP_HANDLER *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int gtc_authenticate(void *arg, EAP_HANDLER *handler)
+static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 {
-	EAP_DS *eap_ds = handler->eap_ds;
 	VALUE_PAIR *vp;
+	EAP_DS *eap_ds = handler->eap_ds;
+	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) type_data;
 
 	/*
 	 *	Get the User-Password for this user.
@@ -151,10 +166,11 @@ static int gtc_authenticate(void *arg, EAP_HANDLER *handler)
 	 */
 	if (eap_ds->response->length <= 4) {
 		radlog(L_ERR, "rlm_eap_gtc: corrupted data");
+		eap_ds->request->code = PW_EAP_FAILURE;
 		return 0;
 	}
 	
-#ifndef NDEBUG
+#if 0
 	if (debug_flag > 2) {
 		int i;
 
@@ -169,26 +185,80 @@ static int gtc_authenticate(void *arg, EAP_HANDLER *handler)
 #endif
 
 	/*
-	 *	For now, do clear-text password authentication.
-	 *
-	 *	FIXME: allow crypt, md5, or other passwords.
+	 *	Handle passwords here.
 	 */
-	vp = pairfind(handler->request->config_items, PW_PASSWORD);
-	if (!vp) {
-		DEBUG2("  rlm_eap_gtc: ERROR: Clear-test User-Password is required for authentication.");
+	if (inst->auth_type == PW_AUTHTYPE_LOCAL) {
+		/*
+		 *	For now, do clear-text password authentication.
+		 */
+		vp = pairfind(handler->request->config_items, PW_PASSWORD);
+		if (!vp) {
+			DEBUG2("  rlm_eap_gtc: ERROR: Clear-test User-Password is required for authentication.");
+			eap_ds->request->code = PW_EAP_FAILURE;
+			return 0;
+		}
+		
+		if (eap_ds->response->type.length != vp->length) {
+			DEBUG2("  rlm_eap_gtc: ERROR: Passwords are of different length. %d %d", eap_ds->response->type.length, vp->length);
+			eap_ds->request->code = PW_EAP_FAILURE;
+			return 0;
+		}
+		
+		if (memcmp(eap_ds->response->type.data,
+			   vp->strvalue, vp->length) != 0) {
+			DEBUG2("  rlm_eap_gtc: ERROR: Passwords are different");
+			eap_ds->request->code = PW_EAP_FAILURE;
+			return 0;
+		}
+
+		/*
+		 *	EAP packets can be ~64k long maximum, and
+		 *	we don't like that.
+		 */
+	} else if (eap_ds->response->type.length <= 128) {
+		int rcode;
+
+		/*
+		 *	If there was a User-Password in the request,
+		 *	why the heck are they using EAP-GTC?
+		 */
+		rad_assert(handler->request->password == NULL);
+
+		vp = pairmake("User-Password", "", T_OP_EQ);
+		if (!vp) {
+			radlog(L_ERR, "rlm_eap_gtc: out of memory");
+			return 0;
+		}
+		vp->length = eap_ds->response->type.length;
+		memcpy(vp->strvalue, eap_ds->response->type.data, vp->length);
+		vp->strvalue[vp->length] = 0;
+
+		/*
+		 *	Add the password to the request, and allow
+		 *	another module to do the work of authenticating it.
+		 */
+		pairadd(&handler->request->packet->vps, vp);
+		handler->request->password = vp;
+
+		/*
+		 *	This is a wild & crazy hack.
+		 */
+		rcode = module_authenticate(inst->auth_type, handler->request);
+		if (rcode != RLM_MODULE_OK) {
+			eap_ds->request->code = PW_EAP_FAILURE;
+			return 0;
+		}
+		
+	} else {
+		radlog(L_ERR, "rlm_eap_gtc: Response is too large to understand");
+		eap_ds->request->code = PW_EAP_FAILURE;
 		return 0;
+		
 	}
 
-	if ((eap_ds->response->length - 4) != vp->length) {
-		DEBUG2("  rlm_eap_gtc: ERROR: Passwords are of different length.");
-		return 0;
-	}
+	DEBUG2("  rlm_eap_gtc: Everything is OK.");
 
-	if (memcmp(eap_ds->response->type.data,
-		   vp->strvalue, vp->length) != 0) {
-		DEBUG2("  rlm_eap_gtc: ERROR: Passwords are different");
-		return 0;
-	}
+	eap_ds->request->code = PW_EAP_SUCCESS;
 
 	return 1;
 }
