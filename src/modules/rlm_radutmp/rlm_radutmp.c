@@ -54,34 +54,43 @@ typedef struct nas_port {
 	struct nas_port 	*next;
 } NAS_PORT;
 
-struct radutmp_instance {
-  NAS_PORT *nas_port_list;
-  char *radutmp_fn;
-  char *username;
-  int permission;
-  int callerid_ok;
-};
+typedef struct rlm_radutmp_t {
+	NAS_PORT	*nas_port_list;
+	char		*filename;
+	char		*username;
+	int		case_sensitive;
+	int		check_nas;
+	int		permission;
+	int		callerid_ok;
+} rlm_radutmp_t;
 
 static CONF_PARSER module_config[] = {
-  { "filename", PW_TYPE_STRING_PTR,
-    offsetof(struct radutmp_instance,radutmp_fn), NULL,  RADUTMP },
-  { "username", PW_TYPE_STRING_PTR,
-    offsetof(struct radutmp_instance,username), NULL,  "%{User-Name}"},
-  { "perm",     PW_TYPE_INTEGER,
-    offsetof(struct radutmp_instance,permission), NULL,  "0644" },
-  { "callerid", PW_TYPE_BOOLEAN,
-    offsetof(struct radutmp_instance,callerid_ok), NULL, "no" },
-  { NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ "filename", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_radutmp_t,filename), NULL,  RADUTMP },
+	{ "username", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_radutmp_t,username), NULL,  "%{User-Name}"},
+	{ "case_sensitive", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_radutmp_t,case_sensitive), NULL,  "yes"},
+	{ "check_with_nas", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_radutmp_t,check_nas), NULL,  "yes"},
+	{ "perm",     PW_TYPE_INTEGER,
+	  offsetof(rlm_radutmp_t,permission), NULL,  "0644" },
+	{ "callerid", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_radutmp_t,callerid_ok), NULL, "no" },
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 {
-	struct radutmp_instance *inst;
+	rlm_radutmp_t *inst;
+
 	inst = rad_malloc(sizeof(*inst));
+
 	if (cf_section_parse(conf, inst, module_config)) {
 		free(inst);
 		return -1;
 	}
+
 	inst->nas_port_list = NULL;
 	*instance = inst;
 	return 0;
@@ -94,13 +103,13 @@ static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 static int radutmp_detach(void *instance)
 {
 	NAS_PORT *p, *next;
-	struct radutmp_instance *inst = instance;
+	rlm_radutmp_t *inst = instance;
 
-	for(p=inst->nas_port_list ; p ; p=next) {
-		next=p->next;
+	for (p = inst->nas_port_list ; p ; p=next) {
+		next = p->next;
 		free(p);
 	}
-	free(inst->radutmp_fn);
+	free(inst->filename);
 	free(inst);
 	return 0;
 }
@@ -108,14 +117,17 @@ static int radutmp_detach(void *instance)
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
-static int radutmp_zap(struct radutmp_instance *inst, uint32_t nasaddr, time_t t)
+static int radutmp_zap(rlm_radutmp_t *inst,
+		       const char *filename,
+		       uint32_t nasaddr,
+		       time_t t)
 {
 	struct radutmp	u;
 	int		fd;
 
 	if (t == 0) time(&t);
 
-	fd = open(inst->radutmp_fn, O_RDWR);
+	fd = open(filename, O_RDWR);
 	if (fd >= 0) {
 		/*
 		 *	Lock the utmp file, prefer lockf() over flock().
@@ -143,7 +155,7 @@ static int radutmp_zap(struct radutmp_instance *inst, uint32_t nasaddr, time_t t
 		}
 		close(fd);	/* and implicitely release the locks */
 	} else {
-		radlog(L_ERR, "Accounting: %s: %m", inst->radutmp_fn);
+		radlog(L_ERR, "Accounting: %s: %m", filename);
 	}
 
 	return 0;
@@ -182,8 +194,9 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	int		port_seen = 0;
 	int		nas_port_type = 0;
 	int		off;
-	struct radutmp_instance *inst = instance;
+	rlm_radutmp_t	*inst = instance;
 	char		buffer[256];
+	char		filename[1024];
 	char		ip_name[32]; /* 255.255.255.255 */
 	const char	*nas;
 
@@ -350,18 +363,23 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	ut.time = t - ut.delay;
 
 	/*
+	 *	Get the filename, via xlat.
+	 */
+	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL);
+
+	/*
 	 *	See if this was a portmaster reboot.
 	 */
 	if (status == PW_STATUS_ACCOUNTING_ON && nas_address) {
 		radlog(L_INFO, "NAS %s restarted (Accounting-On packet seen)",
 		       nas);
-		radutmp_zap(inst, nas_address, ut.time);
+		radutmp_zap(inst, filename, nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
 	if (status == PW_STATUS_ACCOUNTING_OFF && nas_address) {
 		radlog(L_INFO, "NAS %s rebooted (Accounting-Off packet seen)",
 		       nas);
-		radutmp_zap(inst, nas_address, ut.time);
+		radutmp_zap(inst, filename, nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
 
@@ -389,7 +407,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Enter into the radutmp file.
 	 */
-	fd = open(inst->radutmp_fn, O_RDWR|O_CREAT, inst->permission);
+	fd = open(filename, O_RDWR|O_CREAT, inst->permission);
 	if (fd >= 0) {
 		NAS_PORT *cache;
 		int r;
@@ -403,8 +421,9 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		 *	Find the entry for this NAS / portno combination.
 		 */
 		if ((cache = nas_port_find(inst->nas_port_list, ut.nas_address,
-					   ut.nas_port)) != NULL)
+					   ut.nas_port)) != NULL) {
 			lseek(fd, (off_t)cache->offset, SEEK_SET);
+		}
 
 		r = 0;
 		off = 0;
@@ -503,7 +522,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		}
 		close(fd);	/* and implicitely release the locks */
 	} else {
-		radlog(L_ERR, "Accounting: %s: %m", inst->radutmp_fn);
+		radlog(L_ERR, "Accounting: %s: %m", filename);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -528,10 +547,16 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	uint32_t	ipno = 0;
 	char		*call_num = NULL;
 	int		rcode;
-	struct radutmp_instance *inst = instance;
+	rlm_radutmp_t	*inst = instance;
 	char		login[256];
+	char		filename[1024];
 
-	if ((fd = open(inst->radutmp_fn, O_RDWR)) < 0) {
+	/*
+	 *	Get the filename, via xlat.
+	 */
+	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL);
+
+	if ((fd = open(filename, O_RDWR)) < 0) {
 		if(errno!=ENOENT)
 			return RLM_MODULE_FAIL;
 		request->simul_count=0;
@@ -540,17 +565,35 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 
 	*login = '\0';
 	radius_xlat(login, sizeof(login), inst->username, request, NULL);
-	if(*login == '\0') 
-			return RLM_MODULE_FAIL;
-
-	request->simul_count = 0;
-	while(read(fd, &u, sizeof(u)) == sizeof(u)) {
-		if (strncmp(login, u.login, RUT_NAMESIZE) == 0
-		    && u.type == P_LOGIN)
-			++request->simul_count;
+	if (!*login) {
+		return RLM_MODULE_FAIL;
 	}
 
-	if(request->simul_count < request->simul_max) {
+	/*
+	 *	WTF?  This is probably wrong... we probably want to
+	 *	be able to check users across multiple session accounting
+	 *	methods.
+	 */
+	request->simul_count = 0;
+
+	/*
+	 *	Loop over utmp, counting how many people MAY be logged in.
+	 */
+	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
+		if (((strncmp(login, u.login, RUT_NAMESIZE) == 0) ||
+		     (!inst->case_sensitive &&
+		      (strncasecmp(login, u.login, RUT_NAMESIZE) == 0))) &&
+		    (u.type == P_LOGIN)) {
+			++request->simul_count;
+		}
+	}
+
+	/*
+	 *	The number of users logged in is OK,
+	 *	OR, we've been told to not check the NAS.
+	 */
+	if ((request->simul_count < request->simul_max) ||
+	    !inst->check_nas) {
 		close(fd);
 		return RLM_MODULE_OK;
 	}
@@ -571,21 +614,43 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 
 	request->simul_count = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
-		if (strncmp(login, u.login, RUT_NAMESIZE) == 0
-		    && u.type == P_LOGIN) {
-			char session_id[sizeof u.session_id+1];
-			strNcpy(session_id, u.session_id, sizeof session_id);
+		if (((strncmp(login, u.login, RUT_NAMESIZE) == 0) ||
+		     (!inst->case_sensitive &&
+		      (strncasecmp(login, u.login, RUT_NAMESIZE) == 0))) &&
+		    (u.type == P_LOGIN)) {
+			char session_id[sizeof(u.session_id) + 1];
+			char utmp_login[sizeof(u.login) + 1];
+
+			strNcpy(session_id, u.session_id, sizeof(session_id));
 
 			/*
-			 *	rad_check_ts may take seconds to return,
-			 *	and we don't want to block everyone else
-			 *	while that's happening.
+			 *	The login name MAY fill the whole field,
+			 *	and thus won't be zero-filled.
+			 *
+			 *	Note that we take the user name from
+			 *	the utmp file, as that's the canonical
+			 *	form.  The 'login' variable may contain
+			 *	a string which is an upper/lowercase
+			 *	version of u.login.  When we call the
+			 *	routine to check the terminal server,
+			 *	the NAS may be case sensitive.
+			 *
+			 *	e.g. We ask if "bob" is using a port,
+			 *	and the NAS says "no", because "BOB"
+			 *	is using the port.
 			 */
-			rad_unlockfd(fd, LOCK_LEN);
-			rcode = rad_check_ts(u.nas_address, u.nas_port, login, 
-					     session_id);
-			rad_lockfd(fd, LOCK_LEN);
+			strNcpy(utmp_login, u.login, sizeof(u.login));
 
+			/*
+			 *	rad_check_ts may take seconds
+			 *	to return, and we don't want
+			 *	to block everyone else while
+			 *	that's happening.  */
+			rad_unlockfd(fd, LOCK_LEN);
+			rcode = rad_check_ts(u.nas_address, u.nas_port,
+					     utmp_login, session_id);
+			rad_lockfd(fd, LOCK_LEN);
+			
 			/*
 			 *	Failed to check the terminal server for
 			 *	duplicate logins: Return an error.
@@ -597,6 +662,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 
 			if (rcode == 1) {
 				++request->simul_count;
+
 				/*
 				 *	Does it look like a MPP attempt?
 				 */
