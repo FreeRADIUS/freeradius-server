@@ -113,9 +113,6 @@ typedef struct _realm {
 	int			acct_active;
 	time_t			acct_wakeup;
 	int			ldflag;
-	int			chose;
-	int			node;
-	int			total;
 	struct _realm		*next;
 } REALM;
 
@@ -279,7 +276,6 @@ int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);
 int		read_realms_file(const char *file);
-extern		void check_proxies(int);
 
 /* nas.c */
 int		read_naslist_file(char *);

@@ -539,7 +539,6 @@ int main(int argc, char *argv[])
 		/*
 		 *  Open Proxy Socket.
 		 */
-		check_proxies(mainconfig.max_proxies);
 		proxyfd = socket (AF_INET, SOCK_DGRAM, 0);
 		if (proxyfd < 0) {
 			perror ("proxy socket");
