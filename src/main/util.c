@@ -68,17 +68,25 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  */
 void request_free(REQUEST *request)
 {
-	if (request->packet)
+	if (request->packet) {
 		rad_free(request->packet);
-	if (request->proxy)
+		request->packet = NULL;
+	}
+	if (request->proxy) {
 		rad_free(request->proxy);
+		request->proxy = NULL;
+	}
 	if (request->reply) {
 		rad_free(request->reply);
+		request->reply = NULL;
 	}
-	if (request->proxy_reply)
+	if (request->proxy_reply) {
 		rad_free(request->proxy_reply);
+		request->proxy_reply = NULL;
+	}
 	if (request->config_items) {
 		pairfree(request->config_items);
+		request->config_items = NULL;
 	}
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
