@@ -74,28 +74,36 @@ int proxy_receive(REQUEST *request)
 	}
 
         /*
-         *  Delete the Proxy-State Attributes from the reply.
-         *  These include Proxy-State attributes from us and remote server.
-         */
-        pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
+         *	Delete any reply we had accumulated until now.
+	 */
+        pairfree(&request->reply->vps);
+
+	/*
+	 *	Run the packet through the post-proxy stage,
+	 *	BEFORE playing games with the attributes.
+	 */
+        rcode = module_post_proxy(request);
 
         /*
-         *  Create our initial reply pairs from the proxy-reply pairs
-         */
-        pairfree(&request->reply->vps);
-        request->reply->vps = request->proxy_reply->vps;
+         *	Delete the Proxy-State Attributes from the reply.
+         *	These include Proxy-State attributes from us and
+         *	remote server.
+	 */
+        pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
+
+	/*
+	 *	Add the attributes left in the proxy reply to
+	 *	the reply list.
+	 */
+        pairadd(&request->reply->vps, request->proxy_reply->vps);
         request->proxy_reply->vps = NULL;
 
         /*
-         *  Free any other configuration items and proxy pairs
+         *	Free any other configuration items and proxy pairs
          */
         pairfree(&request->config_items);
         pairfree(&request->proxy->vps);
 
-	/*
-	 *  Run the packet through the post-proxy stage.
-	 */
-        rcode = module_post_proxy(request);
         return rcode;
 }
 
