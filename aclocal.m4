@@ -3782,7 +3782,7 @@ dnl #  If not, look for it in a number of directories and in ucd-snmp.
 dnl #
 if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
-  for try in /usr/include /usr/local/include $snmp_include_dir; do
+  for try in /usr/include /usr/local/include $with_snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
     AC_TRY_COMPILE([
 #ifdef HAVE_SYS_TYPES_H
@@ -3815,7 +3815,7 @@ fi
 
 if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
-  for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
+  for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $with_snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
 dnl #
 dnl #  First, see if we can build it WITHOUT using any special includes and without ucd-snmp
@@ -3854,7 +3854,7 @@ dnl #  If not, look for it in a number of directories and without ucd-snmp
 dnl #
 if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
-  for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
+  for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $with_snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
     AC_TRY_COMPILE([
 #ifdef HAVE_SYS_TYPES_H
@@ -3911,7 +3911,7 @@ dnl #
               SNMP_LIBS=)
 
   if test "x$SNMP_LIBS" = "x"; then
-    for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $snmp_lib_dir; do
+    for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $with_snmp_lib_dir; do
       LIBS="$old_LIBS -L$try -lsnmp"
       AC_TRY_LINK([extern char snmp_build_var_op();],
                   [ snmp_build_var_op()],
@@ -3928,6 +3928,19 @@ dnl   #
       AC_TRY_LINK([extern char snmp_build_var_op();],
                   [ snmp_build_var_op()],
                   SNMP_LIBS="-L$try -lsnmp -lcrypto",
+                  SNMP_LIBS=)
+      if test "x$SNMP_LIBS" != "x"; then
+        break;
+      fi
+dnl   #
+dnl   #  That didn't work.  Try adding the '-lkstat' line.
+dnl   #  Some SNMP libraries are linked against Kernel Statistics,
+dnl   #  in particular, Solaris 9...
+dnl   #
+      LIBS="$old_LIBS -L$try -lsnmp -lcrypto -lkstat"
+      AC_TRY_LINK([extern char snmp_build_var_op();],
+                  [ snmp_build_var_op()],
+                  SNMP_LIBS="-L$try -lsnmp -lcrypto -lkstat",
                   SNMP_LIBS=)
       if test "x$SNMP_LIBS" != "x"; then
         break;
