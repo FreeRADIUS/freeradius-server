@@ -399,11 +399,11 @@ modules {
 
 	# This module definition allows you to use LDAP for
 	# authorization and authentication (Auth-Type = LDAP)
-	# See doc/README.rlm_ldap for description of configuration options 
+	# See doc/rlm_ldap for description of configuration options 
 	# and sample authorize{} and authenticate{} blocks 
 	ldap {
 		server = "ldap.your.domain"
-		# login = "cn=admin,o=My Org,c=US"
+		# identity = "cn=admin,o=My Org,c=US"
 		# password = mypass
 		basedn = "o=My Org,c=US"
 		filter = "(uid=%u)"
@@ -413,7 +413,6 @@ modules {
 		timeout = 4
 		timelimit = 3
 		net_timeout = 1
-		ldap_debug = 0x0000
 	}
 
 	#
