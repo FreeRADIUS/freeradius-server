@@ -40,7 +40,7 @@ static const char rcsid[] = "$Id$";
 
 #include "radiusd.h"
 #include "rad_assert.h"
-
+#include "modules.h"
 
 static uint32_t proxy_id = 1;
 
@@ -99,13 +99,15 @@ static void proxy_addinfo(REQUEST *request)
 
 /*
  *	Relay the request to a remote server.
- *	Returns:  2 success (we replicate, caller replies normally)
- *		  1 success (we reply, caller returns without replying)
- *	          0 fail (caller falls through to normal processing)
- *		 -1 fail (we don't reply, caller returns without replying)
+ *	Returns:
+ *
+ *      RLM_MODULE_FAIL: we don't reply, caller returns without replying
+ *      RLM_MODULE_NOOP: caller falls through to normal processing
+ *      RLM_MODULE_HANDLED  : we reply, caller returns without replying
  */
 int proxy_send(REQUEST *request)
 {
+	int rcode;
 	VALUE_PAIR *proxypair;
 	VALUE_PAIR *replicatepair;
 	VALUE_PAIR *realmpair;
@@ -122,7 +124,7 @@ int proxy_send(REQUEST *request)
 	 */
 	if ((request->packet->code != PW_AUTHENTICATION_REQUEST) &&
 	    (request->packet->code != PW_ACCOUNTING_REQUEST)) {
-	  return -1;
+	  return RLM_MODULE_FAIL;
 	}
 
 	/* 
@@ -150,7 +152,7 @@ int proxy_send(REQUEST *request)
 		 *	Neither proxy or replicate attributes are set,
 		 *	so we can exit from the proxy code.
 		 */
-		return 0;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -158,7 +160,7 @@ int proxy_send(REQUEST *request)
 	 *	Don't proxy it.
 	 */
 	if (realmpair->length == 0) {
-		return 0;
+		return RLM_MODULE_NOOP;
 	}
 
 	realmname = (char *)realmpair->strvalue;
@@ -172,7 +174,7 @@ int proxy_send(REQUEST *request)
 	 */
 	realm = realm_find(realmname, (request->packet->code == PW_ACCOUNTING_REQUEST));
 	if (realm == NULL) {
-		return -1;
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -181,7 +183,6 @@ int proxy_send(REQUEST *request)
 	pairadd(&request->packet->vps,
 		pairmake("Realm", realm->realm, T_OP_EQ));
 	
-
 	/*
 	 *	Access-Request: look for LOCAL realm.
 	 *	Accounting-Request: look for LOCAL realm.
@@ -190,7 +191,7 @@ int proxy_send(REQUEST *request)
 	     (realm->ipaddr == htonl(INADDR_NONE))) ||
 	    ((request->packet->code == PW_ACCOUNTING_REQUEST) &&	    
 	     (realm->acct_ipaddr == htonl(INADDR_NONE)))) {
-		return 0;
+		return RLM_MODULE_NOOP;
 	}
 	
 	/*
@@ -305,6 +306,11 @@ int proxy_send(REQUEST *request)
 	request->proxy->timestamp = request->timestamp - (delaypair ? delaypair->lvalue : 0);
 
 	/*
+	 *  Do pre-proxying
+	 */
+	rcode = module_pre_proxy(request);
+
+	/*
 	 *	Do NOT free proxy->vps, the pairs are needed for the
 	 *	retries! --Pac.
 	 */
@@ -316,8 +322,21 @@ int proxy_send(REQUEST *request)
 	 *	After this point, it becomes dangerous to play
 	 *	with the request data structure, as the reply MAY
 	 *	come in and get processed before we're done with it here.
+	 *
+	 *	Only proxy the packet if the pre-proxy code succeeded.
 	 */
-	rad_send(request->proxy, NULL, (char *)request->proxysecret);
+	if ((rcode == RLM_MODULE_OK) ||
+	    (rcode == RLM_MODULE_NOOP) ||
+	    (rcode == RLM_MODULE_UPDATED)) {
+		rad_send(request->proxy, NULL, (char *)request->proxysecret);
+		if (!replicating) {
+			rcode = RLM_MODULE_HANDLED; /* caller doesn't reply */
+		} else {
+			rcode = RLM_MODULE_NOOP; /* caller replies */
+		}
+	} else {
+		rcode = RLM_MODULE_FAIL; /* caller doesn't reply */
+	}
 
-	return replicating?2:1;
+	return rcode;
 }

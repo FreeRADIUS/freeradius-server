@@ -258,6 +258,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 		 *	See if this item is present in the request.
 		 */
 		other = otherattr(check_item->attribute);
+
 		auth_item = request;
 	try_again:
 		for (; auth_item != NULL; auth_item = auth_item->next) {
@@ -702,22 +703,11 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			 */
 		case T_OP_SET:		/* := */
 			if (found) {
+				VALUE_PAIR *vp;
 
-
-				/*
-				 *  FIXME: REPLACE the attribute,
-				 *  instead of moving it somewhere
-				 *  else!
-				 */
-				pairdelete(to, found->attribute);
-				/*
-				 *	'tailto' may have been
-				 *	deleted...
-				 */
-				tailto = to;
-				for(j = *to; j; j = j->next) {
-					tailto = &j->next;
-				}
+				vp = found->next;
+				memcpy(found, i, sizeof(*found));
+				found->next = vp;
 			}
 			break;
 			

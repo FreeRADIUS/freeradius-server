@@ -1564,35 +1564,37 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	if (proxy_requests) {
 		if (request->proxy == NULL) {
-			int proxy_sent = 0;
+			int rcode;
 
 			/*
-			 *  Try to proxy this request.  Returns:
-			 *  -1: error, drop the request
-			 *   0: OK, but don't proxy it.
-			 *   1: OK, it's been proxied, don't do any more here.
-			 *   2: OK, it's been proxied to one or more servers.
+			 *  Try to proxy this request.
 			 */
-			proxy_sent = proxy_send(request);
+			rcode = proxy_send(request);
 
 			/*
 			 *  There was an error trying to proxy the request.
 			 *  Drop it on the floor.
 			 */
-			if (proxy_sent < 0) {
+			if (rcode == RLM_MODULE_FAIL) {
 				DEBUG2("Error trying to proxy request %d: Rejecting it", request->number);
 				rad_reject(request);
 				goto finished_request;
 			}
 			
 			/*
-			 *  sent==1 means it's been proxied.  The child
-			 *  is done handling the request, but the request
-			 *  is NOT finished!
+			 *  If thie proxy code has handled the request,
+			 *  then postpone more processing, until we get
+			 *  the reply packet from the home server.
 			 */
-			if (proxy_sent == 1) {
+			if (rcode == RLM_MODULE_HANDLED) {
 				goto postpone_request;
 			}
+
+			/*
+			 *  Else rcode==RLM_MODULE_NOOP
+			 *  and the proxy code didn't do anything, so
+			 *  we continue handling the request here.
+			 */
 		}
 	} else if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
 		   (request->reply->code == 0)) {
