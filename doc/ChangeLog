@@ -1,60 +1,53 @@
 FreeRADIUS 1.0.0 ; $Date$, urgency=low
 
+	Non source-code changes
+	* Preliminary tests indicate that the server builds and runs on
+	  Interix (SFU).
+	* EAP module configuration is now in "raddb/eap.conf", as it was
+	  getting large.
+	* Updated GPL boilerplate in the source.
+	* Added new RFC's to doc/rfc/
+	* Added "man" pages for many of the modules.
+	* Added many more "man" pages for the modules.
+	* Added many new dictionaries: 3GPP, 3GPP2, Propel, Karlnet,
+	  Sonicwall, Navini, Bristol University, Valemont, Mikrotik.
+	* doc/configurable_failover is now understandable by mere humans.
+	* Update scripts/rc.radiusd with examples of how to deal with
+	  shared library issues.
+	* Added demo certs.
+	* Updates to configure scripts for MySQL.
+	* Updated doc/tuning_guide, with comments about SQL.
+
+	Core feature improvements
 	* Many, many minor bug fixes and feature enhancements.
-	* Fix a bug in the attr_filter module, which would throw away
-	  the tag from tagged attributes.
 	* Added "reject" action in configurable failover for modules
-	* Bug fixes to thread handling from Malcolm Caldwell.
-	* added ability for mschap module to use ntlm_auth, to perform
-	  MS-CHAPv1 and MS-CHAPv2 authentication against a Windows
-	  Domain Controller.
-	* Allow checking of EAP identity against certificate.
 	* Added a "listen" directive, which supersedes the old
 	  "bind_address" and "port" directives.  "listen" allows much
 	  finer-grained control over what IP's, ports, and packets the
 	  server pays attention to.
-	* Preliminary tests indicate that the server builds and runs on
-	  Interix (SFU).
 	* Regular expression matches in brackets can now be referenced
 	  as in Perl, via %{1}, %{2}, etc.
+	* added ability for mschap module to use ntlm_auth, to perform
+	  MS-CHAPv1 and MS-CHAPv2 authentication against a Windows
+	  Domain Controller.
 	* Check return value from registered xlat functions. If return
 	  value is 0, treat the attribute as not found.  This lets things
 	  like %{sql: select... :-FAILED} work.
-	* EAP module configuration is now in "raddb/eap.conf", as it was
-	  getting large.
 	* Realms can now be configured to ignore DEFAULT and NULL
 	  realms.  This makes prefix/suffix realms co-exists a little
 	  better.
-	* Added "man" pages for many of the modules.
-	* Added many new dictionaries: 3GPP, 3GPP2, Propel, Karlnet,
-	  Sonicwall, Navini, Bristol University, Valemont, Mikrotik.
-	* Fixed a bug in libltdl which printed the wrong error message
-	  when trying to link to a library.  Found by Paul Stewart.
-	* Updates to radclient, so that you can specify multiple '-f'
-	  options, and it will send those packets in parallel.  This
-	  allows for significantly higher packet rates when load testing.
 	* Added red-black tree implementation to src/lib.  The
 	  dictionaries now use it, rather than singly linked lists.  Tests
 	  indicate that the server is up to 30% faster.
 	* Updated MSCHAP module to be able to better deal with Windows
 	  machines which put a username with domain into User-Name, but
 	  which use only the username to create the MS-CHAP-Response.
-	* Added many more "man" pages for the modules.
 	* Made "hints" file more generic and flexible, without changing
 	  old functionality.
-	* Correct error condition in rlm_krb5.  Patch from Jon Moore.
-	* Added demo certs.
-	* Updates to configure scripts for MySQL.
 	* Enhanced configuration file variable handling.  See
 	  doc/variables.txt for details.
-	* doc/configurable_failover is now understandable by mere humans.
-	* Updates for 64-bit systems.
-	* Update scripts/rc.radiusd with examples of how to deal with
-	  shared library issues.
 	* Checks for OpenSSL now enforce version number, and are common
 	  across all modules, rather than being duplicated.
-	* Patch to make ctime_r work on non-compliant platforms.
-	  Patch from Oliver Graf.
 	* Implement "udpfromto", which allows the server to work better in
 	  LVS.  Code from Jan Berkel and Miquel van Smoorenburg.  To use
 	  it, do:   ./configure --with-udpfromto=yes
@@ -71,27 +64,12 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	* Removed support for Replicate-To-Realm.  Use radrelay.
 	* Print & parse unknown attributes as Attr-%d, Vendor-%d-Attr-%d,
 	  or VendorName-Attr-%d.
-	* Updated doc/tuning_guide, with comments about SQL.
-	* Added EAP-SIM.
-	* Enabled proxying of the authentication request which is tunneled
-	  inside of PEAP and TTLS.
 	* rlm_passwd is now marked "stable", and has many bugs fixed.
 	* More flexible configuration for rlm_ldap.
-	* Added EAP-PEAP support, with tunneled EAP-MSCHAP-V2.
-	  Patch from Masao Nishiku.  (Many, many thanks!)
-	* Updates to rlm_ippool for stability.
-	* Added ippool_tool, by Edwin Groothuis.
-	* Catch packets which are just about 4K in size.
-	   Bug found by Nils-Henner Krueger.
 	* New implementation of parser for Ascend's data filter
 	  attributes, that is now thread-safe and GPL'd.
-	* EAP-TLS now checks Certificate Revocation List
 	* Preliminary (not entirely complete) support for IPv6 attributes,
 	  including IFID.
-	* Updated GPL boilerplate in the source.
-	* Added new RFC's to doc/rfc/
-	* Many fixes to the SQL module & sub-modules.
-	* Added EAP-TTLS support in rlm_eap.  Tested with many clients.
 	* Added support for rejected packets to run an Post-Auth-Type REJECT
 	  stanza instead of skipping post-auth entirely.
 	* Added support for %{*:Packet-Type} translation. (Not for %{check:})
@@ -99,13 +77,44 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	  %{request:Attribute-Name} and the like.
 	* Add support to rlm_sql for post-authentication query execution.
 	* Add support to rlm_sql for accounting_update_query_alt
-	* Add support to checkrad.pl for mikrotik-brand NASs over SNMP
 	* Add support for supplementary groups of switched-to user
 	* Add support for xlat-ing backquoted reply values from SQL queries.
 	* Add Public Domain MD5 implementation by Colin Plumb
 	* Add Public Domain MD4 implementation by Colin Plumb and Todd C. Miller
 	* Remove smbdes.c from libradius, and add to rlm_mschap and rlm_eap_leap
 	* Replace GPL'd snprintf.c in libradius with LGPL'd snprintf.[ch]
+
+	EAP-module feature improvements
+	* Allow checking of EAP identity against certificate.
+	* EAP-TLS now checks Certificate Revocation List
+	* Added EAP-TTLS support in rlm_eap.  Tested with many clients.
+	* Added EAP-PEAP support, with tunneled EAP-MSCHAP-V2.
+	  Patch from Masao Nishiku.  (Many, many thanks!)
+	* Added EAP-SIM.
+	* Enabled proxying of the authentication request which is tunneled
+	  inside of PEAP and TTLS.
+
+	Utility improvements
+	* Add support to checkrad.pl for mikrotik-brand NASs over SNMP
+	* Added ippool_tool, by Edwin Groothuis.
+	* Updates to radclient, so that you can specify multiple '-f'
+	  options, and it will send those packets in parallel.  This
+	  allows for significantly higher packet rates when load testing.
+
+	Bug fixes
+	* Fix a bug in the attr_filter module, which would throw away
+	  the tag from tagged attributes.
+	* Bug fixes to thread handling from Malcolm Caldwell.
+	* Fixed a bug in libltdl which printed the wrong error message
+	  when trying to link to a library.  Found by Paul Stewart.
+	* Correct error condition in rlm_krb5.  Patch from Jon Moore.
+	* Updates for 64-bit systems.
+	* Patch to make ctime_r work on non-compliant platforms.
+	  Patch from Oliver Graf.
+	* Updates to rlm_ippool for stability.
+	* Catch packets which are just about 4K in size.
+	   Bug found by Nils-Henner Krueger.
+	* Many fixes to the SQL module & sub-modules.
 
 FreeRADIUS 0.9.3 ; Date: 2003/11/20 20:15:48, urgency=high
 
@@ -322,7 +331,7 @@ FreeRADIUS 0.8 ; Date: 2002/11/18 15:37:24, urgency=low
 	  garbage it previously showed.
 	* Cleaned up header files and function prototypes for the SQL
 	  sub-modules.
-	
+
 FreeRADIUS 0.7 ; Date: 2002/07/26 18:01:50 , urgency=high
 
 	* Allow attributes of type 'date' to be sent in outgoing packets.
@@ -447,7 +456,7 @@ FreeRADIUS 0.6.0 ; Date: Date: 2002/07/03 14:16:33 , urgency=high
 	  'make install'
 	* Fixed EAP module to use 16-bit integers, so that it will
 	  work on big-endian architectures.
-	
+
 FreeRADIUS 0.5.0 ; Date: 2002/03/14 22:18:22, urgency=medium
 
 	* Many bug fixes.  For explicit details, see:
@@ -589,7 +598,7 @@ FreeRADIUS 0.3.0 ; urgency=low
 	* Added support for Exec-Program to acct.  Bug found by
 	  <magmike@mail.ru>
 	* Corrected rlm_files so that raddb/acct_users works
-        * When doing synchronous proxying, update proxy next try
+	* When doing synchronous proxying, update proxy next try
 	  entries, so that the server doesn't eat CPU time.
 	  Raghu <raghud@hereuare.com>
 	* Add primitive dictionary.nomadix <CBoyd@apogeetelecom.com>
