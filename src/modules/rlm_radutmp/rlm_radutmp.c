@@ -458,6 +458,14 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		    u.nas_port	  != ut.nas_port)
 			continue;
 		
+		/*
+		 *	Don't compare stop records to unused entries.
+		 */
+		if (status == PW_STATUS_STOP &&
+		    u.type == P_IDLE) {
+			continue;
+		}
+
 		if (status == PW_STATUS_STOP &&
 		    strncmp(ut.session_id, u.session_id,
 			    sizeof(u.session_id)) != 0) {
