@@ -38,11 +38,11 @@
 #	proto:		Optional protocol field. Either a name or
 #			number. Known names are in FilterProtoName[].
 #			
-#	dstpost:	Keyword for destination port. Only valid with tcp
+#	dstport:	Keyword for destination port. Only valid with tcp
 #			or udp. 'cmp' are in FilterPortType[]. 'value' can be
 #			a name or number.
 #
-#	srcpost:	Keyword for source port. Only valid with tcp
+#	srcport:	Keyword for source port. Only valid with tcp
 #			or udp. 'cmp' are in FilterPortType[]. 'value' can be
 #			a name or number.
 #			
