@@ -681,6 +681,10 @@ modules {
 		#  The documents on http://www.freeradius.org/doc
 		#  are old, but may be helpful.
 		#
+		#  See also:
+		#
+		#  http://www.dslreports.com/forum/remark,9286052~mode=flat
+		#
 		#tls {
 		#	private_key_password = whatever
 		#	private_key_file = ${raddbdir}/certs/cert-srv.pem
@@ -1263,7 +1267,9 @@ modules {
 		#  characters, so that will limit the possible choices
 		#  of keys.
 		#
+		#  You may want instead: %{Stripped-User-Name:-%{User-Name}}
 		username = %{User-Name}
+
 
 		#  Whether or not we want to treat "user" the same
 		#  as "USER", or "User".  Some systems have problems
