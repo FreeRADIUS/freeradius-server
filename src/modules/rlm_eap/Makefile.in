@@ -3,6 +3,7 @@ SRCS        = rlm_eap.c eap.c mem.c state.c
 HEADERS     = eap.h rlm_eap.h
 RLM_CFLAGS  = $(INCLTDL) -I@srcdir@/libeap
 CLIENTLIBS  = -Llibeap -leap -L../../lib -lradius
+RLM_LIBS    = -Llibeap -leap
 #RLM_LIBS    = $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
 RLM_INSTALL = install-types
 RLM_SUBDIRS = libeap @eaptypes@ 
