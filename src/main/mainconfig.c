@@ -301,6 +301,8 @@ static int switch_users(void)
 			       mainconfig.gid_name, strerror(errno));
 			exit(1);
 		}
+	} else {
+		server_gid = getgid();
 	}
 
 	/*  Set UID.  */
@@ -317,6 +319,10 @@ static int switch_users(void)
 			exit(1);
 		}
 		server_uid = pw->pw_uid;
+		if (initgroups(mainconfig.uid_name, server_gid) < 0) {
+			radlog(L_ERR|L_CONS, "Failed setting supplementary groups for User %s: %s", mainconfig.uid_name, strerror(errno));
+			exit(1);
+		}
 		if (setuid(server_uid) < 0) {
 			radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", mainconfig.uid_name, strerror(errno));
 			exit(1);
