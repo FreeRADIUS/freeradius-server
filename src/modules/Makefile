@@ -21,7 +21,6 @@ all:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 static:
-	@rm -f lib/STATIC_MODULE_LDFLAGS
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 dynamic:
@@ -37,6 +36,7 @@ install:
 	[ "lib/*.so" != "" ] && install -m 755 lib/*.so $(libdir)
 
 common:
+	@rm -f lib/STATIC_MODULE_LDFLAGS
 	@for mod in rlm_*; do \
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
