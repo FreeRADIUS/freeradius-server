@@ -13,14 +13,15 @@ tmp     = $(shell pwd)/debian/tmp
 prefix	= /
 exec_prefix	= /usr
 mandir	= $(exec_prefix)/share/man
-logdir	= /var/log/freeradius
-pkgdocdir	= $(exec_prefix)/share/doc/freeradius
+libdir	= $(exec_prefix)/lib/radiusd-freeradius
+logdir	= /var/log/radiusd-freeradius
+pkgdocdir	= $(exec_prefix)/share/doc/radiusd-freeradius
 
 build: clean
 # Builds the binary package.
 	dh_testdir
 	# dh_testroot
-	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no
+	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no
 	make
 	touch build
 
@@ -31,7 +32,7 @@ binary-indep:   build
 binary-arch:	build
 	dh_clean
 	dh_installdirs
-	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) R=$(tmp)
+	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) libdir=$(libdir) R=$(tmp)
 	# clean up install cruft.  $$&@!%
 	rmdir $(tmp)/include
 	rm $(tmp)/usr/sbin/rc.radiusd
@@ -71,7 +72,8 @@ binary-arch:	build
 clean:	
 	dh_clean
 	[ -f Make.inc ] && make distclean || true
-	rm -f build debian/{files,substvars}
+	rm -f build debian/{files,substvars} debian/*.debhelper
+	rm -rf $(tmp)
 
 binary: binary-indep binary-arch
 

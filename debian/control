@@ -1,5 +1,5 @@
 Source: radiusd-freeradius
-Build-Depends: libltdl-dev | libltdl0-dev, libpam0g-dev
+Build-Depends: libltdl-dev | libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbm1-dev, libopenldap1
 Section: net
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
@@ -15,7 +15,7 @@ Description: A high-performance and highly configurable RADIUS server
  generally similar to Livingston's 2.0 server, with support for...
   - many vendor-specific attributes
   - proxying and replicating requests by any criteria
-  - authentication on system passwd, MySQL, LDAP, users, or PAM
+  - authentication on system passwd, SQL, LDAP, users, or PAM
   - multiple DEFAULT configurations
   - regexp matching in string attributes
  and lots more.

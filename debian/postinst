@@ -19,7 +19,6 @@ case "$1" in
 		chmod 644 /var/log/freeradius/radwtmp
 		chown nobody:adm /var/log/freeradius/radwtmp
 	fi
-	ldconfig
 	/etc/init.d/freeradius start
 	;;
   abort-upgrade)
