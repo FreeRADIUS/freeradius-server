@@ -213,7 +213,7 @@ while (${"item_of_w$i"}){
 	}
 	if (!$op_found)
 		die("Operator passed is not valid. Exiting abnormaly.");
-	${"item_of_w$i"} = preg_replace('/\s/','',${"item_of_w$i});
+	${"item_of_w$i"} = preg_replace('/\s/','',${"item_of_w$i"});
 	${"value_of_w$i"} = da_sql_escape_string(${"value_of_w$i"});
 	$where .= ($i == 1) ? ' WHERE ' . ${"item_of_w$i"} . ' ' . ${"operator_of_w$i"} . " '" . ${"value_of_w$i"} . "'" :
 				' AND ' . ${"item_of_w$i"} . ' ' . ${"operator_of_w$i"} . " '" . ${"value_of_w$i"} . "'" ;

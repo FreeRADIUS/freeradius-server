@@ -48,6 +48,9 @@ if ($HTTP_SERVER_VARS["PHP_AUTH_USER"])
 	<tr align=left><td id="menu3" onmouseover='myin("3");' onmouseout='myout("3");'>
 	<a id="a3" href="user_finger.php3" target="content" title="Show Online Users">Online Users</a>
 	</td></tr>
+	<tr align=left><td id="menu18" onmouseover='myin("18");' onmouseout='myout("18");'>
+	<a id="a18" href="nas_admin.php3" target="content" title="Administer RADIUS Clients">RADIUS Clients</a>
+	</td></tr>
 	<tr align=left><td id="menu7" onmouseover='myin("7");' onmouseout='myout("7");'>
 	<a id="a7" href="badusers.php3?login=anyone" target="content" title="Show Bad Users">Bad Users</a>
 	</td></tr>

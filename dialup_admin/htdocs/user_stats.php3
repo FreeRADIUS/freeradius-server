@@ -206,7 +206,7 @@ while(1){
 }
 ksort($servers);
 foreach ($servers as $name => $ip){
-	if ($server == $ip])
+	if ($server == $ip)
 		echo "<option selected value=\"$ip\">$name\n";
 	else
 		echo "<option value=\"$ip\">$name\n";
