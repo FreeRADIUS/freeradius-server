@@ -2072,25 +2072,28 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	return oldreq;
 }
 
+/*
+ *	Set up the proxy timeouts, so that we know
+ *	when to wake up and re-send a request.
+ */
 struct timeval *proxy_setuptimeout(struct timeval *tv)
 {
 	time_t now = time(NULL);
 	time_t difference, smallest = 0;
-	int foundone = 0;
+	int foundone = FALSE;
 	int id;
 	REQUEST *p;
 
 	if (proxy_requests) {
 		for (id = 0; id < 256; id++) {
-			for (p = request_list[id].first_request; p; p = p->next)
-			{
+			for (p = request_list[id].first_request; p; p = p->next) {
 				if (!p->proxy)
 					continue;
 				if (!p->proxy_is_replicate)
 					continue;
 				difference = p->proxy_next_try - now;
 				if (!foundone) {
-					foundone = 1;
+					foundone = TRUE;
 					smallest = difference;
 				} else {
 					if (difference < smallest)
@@ -2120,46 +2123,79 @@ struct timeval *proxy_setuptimeout(struct timeval *tv)
 	return tv;
 }
 
+/*
+ *	Walk the request list, seeing if we need to re-send
+ *	a proxy packet.
+ */
 void proxy_retry(void)
 {
 	time_t now = time(NULL);
 	REQUEST *p;
 	int id;
-
+	
+	/*
+	 *	Walk over all of the Id's.
+	 */
 	for (id = 0; id < 256; id++) {
-	  for (p = request_list[id].first_request; p; p = p->next) {
-	    if (!p->proxy)
-	      continue;
-	    if (p->proxy_next_try <= now) {
-	      if (p->proxy_try_count) {
+	for (p = request_list[id].first_request; p; p = p->next) {
+		/*
+		 *	No proxy request, or the next try is
+		 *	some time in the future.
+		 *
+		 *	Skip the try.
+		 *
+		 *	FIXME: These retries should be binned by
+		 *	the next try time, so we don't have to do
+		 *	all of this work on every second.
+		 */
+		if ((!p->proxy) ||
+		    (p->proxy_next_try > now)) {
+			continue;
+		}
+
+		/*
+		 *	If the proxy retry count is zero, then
+		 *	we've sent the last try, and have NOT received
+		 *	a reply from the end server.  In that case,
+		 *	we don't bother trying again, but just mark
+		 *	the request as finished, and go to the next one.
+		 */
+		if (p->proxy_try_count == 0) {
+			p->finished = TRUE;
+			continue;
+		}
+
+		/*
+		 *	We're trying one more time, so count down
+		 *	the tries, and set the next try time.
+		 */
 		--p->proxy_try_count;
 		p->proxy_next_try = now + proxy_retry_delay;
 		
 		/* Fix up Acct-Delay-Time */
 		if (p->proxy->code == PW_ACCOUNTING_REQUEST) {
-		  VALUE_PAIR *delaypair;
-		  delaypair = pairfind(p->proxy->vps, PW_ACCT_DELAY_TIME);
-
-		  if (!delaypair) {
-		    delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
-		    if (!delaypair) {
-		      log(L_ERR|L_CONS, "no memory");
-		      exit(1);
-		    }
-		    pairadd(&p->proxy->vps, delaypair);
-		  }
-		  delaypair->lvalue = now - p->proxy->timestamp;
-		  
-		  /* Must recompile the valuepairs to wire format */
-		  free(p->proxy->data);
-		  p->proxy->data = NULL;
-		}
+			VALUE_PAIR *delaypair;
+			delaypair = pairfind(p->proxy->vps, PW_ACCT_DELAY_TIME);
+			
+			if (!delaypair) {
+				delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
+				if (!delaypair) {
+					log(L_ERR|L_CONS, "no memory");
+					exit(1);
+				}
+				pairadd(&p->proxy->vps, delaypair);
+			}
+			delaypair->lvalue = now - p->proxy->timestamp;
+			
+			/* Must recompile the valuepairs to wire format */
+			free(p->proxy->data);
+			p->proxy->data = NULL;
+		} /* proxy accounting request */
 		
+		/*
+		 *	Send the proxy packet.
+		 */
 		rad_send(p->proxy, p->proxysecret);
-	      } else {
-		p->finished = TRUE;
-	      }
-	    }
-	  }
+	}
 	}
 }
