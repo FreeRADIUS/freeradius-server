@@ -100,7 +100,7 @@ typedef struct radius_packet {
 	char			vector[16];
 	time_t			timestamp;
 	int			verified;
-	char			*data;
+	uint8_t			*data;
 	int			data_len;
 	VALUE_PAIR		*vps;
 } RADIUS_PACKET;

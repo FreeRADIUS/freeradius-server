@@ -42,11 +42,11 @@ static const char rcsid[] = "$Id$";
 #define PACKET_DATA_LEN 1600
 
 typedef struct radius_packet_t {
-  u_char	code;
-  u_char	id;
-  u_char	length[2];
-  u_char	vector[16];
-  u_char	data[1];
+  uint8_t	code;
+  uint8_t	id;
+  uint8_t	length[2];
+  uint8_t	vector[16];
+  uint8_t	data[1];
 } radius_packet_t;
 
 /*
@@ -59,7 +59,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	struct	sockaddr	saremote;
 	struct	sockaddr_in	*sin;
 	const char		*what;
-	u_char			ip_buffer[16];
+	uint8_t			ip_buffer[16];
 
 	reply = packet->vps;
 
@@ -94,8 +94,8 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	if (!packet->data) {
 		  radius_packet_t	*hdr;
 		  int32_t		lvalue;
-		  u_char		*ptr, *length_ptr;
-		  u_char		digest[16];
+		  uint8_t		*ptr, *length_ptr;
+		  uint8_t		digest[16];
 		  int			secretlen;
 		  int			vendorcode, vendorpec;
 		  u_short		total_length, tmp;
@@ -365,7 +365,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	int			totallen;
 	int			salen;
 	u_short			len;
-	u_char			*attr;
+	uint8_t			*attr;
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[16];
@@ -507,7 +507,7 @@ int rad_decode(RADIUS_PACKET *packet, const char *secret)
 	VALUE_PAIR		*first_pair;
 	VALUE_PAIR		*prev;
 	VALUE_PAIR		*pair;
-	u_char			*ptr;
+	uint8_t			*ptr;
 	int			length;
 	int			attribute;
 	int			attrlen;
@@ -714,7 +714,7 @@ int rad_decode(RADIUS_PACKET *packet, const char *secret)
  */
 int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
 {
-	u_char	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
+	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
 	char	digest[AUTH_VECTOR_LEN];
 	int	i, n, secretlen;
 	int	len;
@@ -767,7 +767,7 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vecto
  */
 int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector)
 {
-	u_char	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
+	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
 	char	digest[AUTH_VECTOR_LEN];
 	char	r[AUTH_VECTOR_LEN];
 	char	*s;

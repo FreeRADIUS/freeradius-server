@@ -1,7 +1,7 @@
 /*
  * radzap	Zap a user from the radutmp and radwtmp file.
  *
- * Version:	@(#)radzap  2.13  08-Aug-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
@@ -36,7 +36,7 @@ const char *radlog_dir = NULL;
 int main(int argc, char **argv)
 {
 	NAS	*nas;
-	UINT4	ip = 0;
+	uint32_t ip = 0;
 	int	nas_port = -1;
 	char	*user = NULL;
 	char	*s;

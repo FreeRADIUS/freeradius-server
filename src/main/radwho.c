@@ -321,7 +321,7 @@ static const char *ttyshort(char *tty)
 /*
  *	Find name of NAS
  */
-static const char *nasname(UINT4 ipaddr)
+static const char *nasname(uint32_t ipaddr)
 {
 	NAS *cl;
 
@@ -339,9 +339,9 @@ static const char *nasname(UINT4 ipaddr)
 /*
  *	Print address of NAS.
  */
-static const char *hostname(UINT4 ipaddr)
+static const char *hostname(uint32_t ipaddr)
 {
-	if (ipaddr == 0 || ipaddr == (UINT4)-1 || ipaddr == (UINT4)-2)
+	if (ipaddr == 0 || ipaddr == (uint32_t)-1 || ipaddr == (uint32_t)-2)
 		return "";
 	return ip_hostname(ipaddr);
 }
