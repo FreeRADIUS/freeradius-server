@@ -1,6 +1,12 @@
+freeradius (0.9.1~pre0-0) unstable; urgency=low
+
+  * Unreleased 0.9.1 update to 0.9.0
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 24 Jul 2003 01:07:29 +1000
+
 freeradius (0.9.0-1) unstable; urgency=low
 
-  * New Upstream prerelease.
+  * New Upstream release.
    - Upstream dictionary files are in /usr/share/freeradius.
    - Modified to 'configure{,.in}' to work with openssl 0.9.7 and 0.9.6
   * Renamed pacakges to 'freeradius*' from 'radiusd-freeradius*'.
