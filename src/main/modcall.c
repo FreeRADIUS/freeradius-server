@@ -997,8 +997,8 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	 */
 	if (!this->entry->module->methods[component]) {
 		radlog(L_ERR|L_CONS,
-		       "%s: \"%s\" modules aren't allowed in '%s' sections -- they have no such method.",
-		       filename, this->entry->module->name,
+		       "%s[%d]: \"%s\" modules aren't allowed in '%s' sections -- they have no such method.",
+		       filename, lineno, this->entry->module->name,
 		       comp2str[component]);
 		modcallable_free(&csingle);
 		return NULL;
