@@ -51,8 +51,14 @@ struct modcallable {
 	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE } type;
 };
 
+#define GROUPTYPE_SIMPLE	0
+#define GROUPTYPE_REDUNDANT	1
+#define GROUPTYPE_APPEND	2
+#define GROUPTYPE_COUNT		3
+
 typedef struct {
 	modcallable mc;
+	int grouptype;	/* after mc */
 	modcallable *children;
 } modgroup;
 
@@ -60,6 +66,14 @@ typedef struct {
 	modcallable mc;
 	module_instance_t *modinst;
 } modsingle;
+
+
+static LRAD_NAME_NUMBER grouptype_table[] = {
+	{ "", GROUPTYPE_SIMPLE },
+	{ "redundant ", GROUPTYPE_REDUNDANT },
+	{ "append ", GROUPTYPE_APPEND },
+	{ NULL, -1 }
+};
 
 /* Simple conversions: modsingle and modgroup are subclasses of modcallable,
  * so we often want to go back and forth between them. */
@@ -423,13 +437,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		{
 			modgroup *g = mod_callabletogroup(c);
 			
-			DEBUG2("modcall: entering group %s for request %d",
+			DEBUG2("modcall: entering group %s%s for request %d",
+			       lrad_int2str(grouptype_table, g->grouptype, ""),
 			       c->name, request->number);
 			
 			myresult = call_modgroup(component, g, request,
 						 myresult);
 			
-			DEBUG2("modcall: group %s returns %s for request %d",
+			DEBUG2("modcall: leaving group %s%s (returns %s) for request %d",
+			       lrad_int2str(grouptype_table, g->grouptype, ""),
 			       c->name,
 			       lrad_int2str(rcode_table, myresult, "??"),
 			       request->number);
@@ -498,11 +514,6 @@ static void dump_tree(int comp UNUSED, modcallable *c UNUSED)
 	return;
 }
 #endif
-
-#define GROUPTYPE_SIMPLEGROUP 0
-#define GROUPTYPE_REDUNDANT 1
-#define GROUPTYPE_APPEND 2
-#define GROUPTYPE_COUNT 3
 
 /* These are the default actions. For each component, the group{} block
  * behaves like the code from the old module_*() function. redundant{} and
@@ -858,7 +869,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		if (strcmp(modrefname, "group") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(component, cs, filename,
-					GROUPTYPE_SIMPLEGROUP, grouptype);
+					GROUPTYPE_SIMPLE, grouptype);
 		} else if (strcmp(modrefname, "redundant") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(component, cs, filename,
@@ -870,7 +881,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		} else if (strcmp(modrefname, "load-balance") == 0) {
 			*modname = name2;
 			csingle= do_compile_modgroup(component, cs, filename,
-					GROUPTYPE_SIMPLEGROUP, grouptype);
+					GROUPTYPE_SIMPLE, grouptype);
 			if (!csingle) return NULL;
 			csingle->type = MOD_LOAD_BALANCE;
 			return csingle;
@@ -1001,7 +1012,7 @@ modcallable *compile_modsingle(int component, CONF_ITEM *ci,
 			       const char *filename, const char **modname)
 {
 	modcallable *ret = do_compile_modsingle(component, ci, filename,
-						GROUPTYPE_SIMPLEGROUP,
+						GROUPTYPE_SIMPLE,
 						modname);
 	dump_tree(component, ret);
 	return ret;
@@ -1016,11 +1027,12 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 	CONF_ITEM *ci;
 
 	g = rad_malloc(sizeof *g);
+	g->grouptype = grouptype;
 
 	c = mod_grouptocallable(g);
 	c->next = NULL;
 	memcpy(c->actions, defaultactions[component][parentgrouptype],
-	       sizeof c->actions);
+	       sizeof(c->actions));
 
 	/*
 	 *	Remember the name for printing, etc.
@@ -1029,7 +1041,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 	 *	rbtree, so that groups can reference each other...
 	 */
 	c->name = cf_section_name2(cs);
-	if (!c->name) c->name = "<anonymous>";
+	if (!c->name) c->name = "";
 	c->type = MOD_GROUP;
 	g->children = NULL;
 
@@ -1104,8 +1116,8 @@ modcallable *compile_modgroup(int component, CONF_SECTION *cs,
 		const char *filename)
 {
 	modcallable *ret = do_compile_modgroup(component, cs, filename,
-					       GROUPTYPE_SIMPLEGROUP,
-					       GROUPTYPE_SIMPLEGROUP);
+					       GROUPTYPE_SIMPLE,
+					       GROUPTYPE_SIMPLE);
 	dump_tree(component, ret);
 	return ret;
 }
@@ -1121,11 +1133,12 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 		modcallable *c;
 
 		g = rad_malloc(sizeof *g);
+		g->grouptype = GROUPTYPE_SIMPLE;
 		c = mod_grouptocallable(g);
 		c->next = NULL;
 		memcpy(c->actions,
-		       defaultactions[component][GROUPTYPE_SIMPLEGROUP],
-		       sizeof c->actions);
+		       defaultactions[component][GROUPTYPE_SIMPLE],
+		       sizeof(c->actions));
 		rad_assert(name != NULL);
 		c->name = name;
 		c->type = MOD_GROUP;
