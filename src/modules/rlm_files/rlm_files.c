@@ -58,8 +58,8 @@ static int fallthrough(VALUE_PAIR *vp)
 static struct file_instance config;
 
 static CONF_PARSER module_config[] = {
-        { "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, RADIUS_USERS },
-        { "acctusersfile", PW_TYPE_STRING_PTR, &config.acctusersfile, RADIUS_ACCT_USERS },
+        { "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, "${raddbdir}/users" },
+        { "acctusersfile", PW_TYPE_STRING_PTR, &config.acctusersfile, "${raddbdir}/acct_users" },
 	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
 	{ NULL, -1, NULL, NULL }
 };
