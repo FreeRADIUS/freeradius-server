@@ -330,8 +330,9 @@ int main(int argc, char **argv)
 			librad_md5_calc(req->vector, req->vector,
 					sizeof(req->vector));
 		}
-
 		send_packet(req, &rep);
+		rad_free(rep);
+		rep = NULL;
 	}
 
 	return 0;
