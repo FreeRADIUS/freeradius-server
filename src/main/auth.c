@@ -12,6 +12,7 @@ static const char rcsid[] = "$Id$";
 #include	<stdlib.h>
 #include	<string.h>
 #include	<ctype.h>
+#include <netinet/in.h>
 
 #if HAVE_MALLOC_H
 #  include <malloc.h>
@@ -119,7 +120,7 @@ static int check_expiration(REQUEST *request)
  *
  *	NOTE: NOT the same as the RLM_ values !
  */
-static int rad_check_password(REQUEST *request)
+int rad_check_password(REQUEST *request)
 {
 	VALUE_PAIR	*auth_type_pair;
 	VALUE_PAIR	*cur_config_item;
