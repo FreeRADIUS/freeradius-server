@@ -226,8 +226,6 @@ static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 int proxy_send(REQUEST *request)
 {
 	int rcode;
-	VALUE_PAIR *proxypair;
-	VALUE_PAIR *replicatepair;
 	VALUE_PAIR *realmpair;
 	VALUE_PAIR *namepair;
 	VALUE_PAIR *strippednamepair;
@@ -235,40 +233,27 @@ int proxy_send(REQUEST *request)
 	VALUE_PAIR *vp, *vps;
 	REALM *realm;
 	char *realmname;
-	int replicating;
 
 	/*
 	 *	Not authentication or accounting.  Stop it.
 	 */
 	if ((request->packet->code != PW_AUTHENTICATION_REQUEST) &&
 	    (request->packet->code != PW_ACCOUNTING_REQUEST)) {
-	  return RLM_MODULE_FAIL;
+		return RLM_MODULE_FAIL;
 	}
 
-	/* 
+	/*
 	 *	The timestamp is used below to figure the
 	 *	next_try. The request needs to "hang around" until
 	 *	either the other server sends a reply or the retry
 	 *	count has been exceeded.  Until then, it should not
 	 *	be eligible for the time-based cleanup.  --Pac. */
 
-	/* Look for proxy/replicate signs */
-	/* FIXME - What to do if multiple Proxy-To/Replicate-To attrs are
-	 * set...  Log an error? Actually replicate to multiple places? That
-	 * would be cool. For now though, I'll just take the first one and
-	 * ignore the rest. */
-	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
-	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
-	if (proxypair) {
-		realmpair = proxypair;
-		replicating = 0;
-	} else if (replicatepair) {
-		realmpair = replicatepair;
-		replicating = 1;
-	} else {
+	realmpair = pairfind(request->config_items, PW_PROXY_TO_REALM);
+	if (!realmpair) {
 		/*
-		 *	Neither proxy or replicate attributes are set,
-		 *	so we can exit from the proxy code.
+		 *	Not proxying, so we can exit from the proxy
+		 *	code.
 		 */
 		return RLM_MODULE_NOOP;
 	}
@@ -428,7 +413,6 @@ int proxy_send(REQUEST *request)
 	 *	Set up for sending the request.
 	 */
 	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
-	request->proxy_is_replicate = replicating;
 	request->proxy_try_count = mainconfig.proxy_retry_count - 1;
 	request->proxy_next_try = request->timestamp + mainconfig.proxy_retry_delay;
 	delaypair = pairfind(vps, PW_ACCT_DELAY_TIME);
@@ -458,11 +442,7 @@ int proxy_send(REQUEST *request)
 	    (rcode == RLM_MODULE_NOOP) ||
 	    (rcode == RLM_MODULE_UPDATED)) {
 		rad_send(request->proxy, NULL, (char *)request->proxysecret);
-		if (!replicating) {
-			rcode = RLM_MODULE_HANDLED; /* caller doesn't reply */
-		} else {
-			rcode = RLM_MODULE_NOOP; /* caller replies */
-		}
+		rcode = RLM_MODULE_HANDLED; /* caller doesn't reply */
 	} else {
 		rcode = RLM_MODULE_FAIL; /* caller doesn't reply */
 	}
