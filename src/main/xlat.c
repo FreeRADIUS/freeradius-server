@@ -165,6 +165,30 @@ static int xlat_packet(void *instance, REQUEST *request,
 			snprintf(out, outlen, "%d", index);
 			return strlen(out);
 		}
+
+		/*
+		 *	%{Attribute-Name[*]} returns ALL of the
+		 *	the attributes, separated by a newline.
+		 */		
+		if ((p[1] == '*') && (p[2] == ']')) {
+			int total = 0;
+
+			for (vp = pairfind(vps, da->attr);
+			     vp != NULL;
+			     vp = pairfind(vp->next, da->attr)) {
+				index = valuepair2str(out, outlen - 1, vp, da->type, func);
+				rad_assert(index <= outlen);
+				total += index + 1;
+				outlen -= (index + 1);
+				out += index;
+				
+				*(out++) = '\n';
+
+				if (outlen == 0) break;
+			}
+
+			return total;
+		}
 		
 		index = atoi(p + 1);
 

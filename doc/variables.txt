@@ -122,6 +122,14 @@ defined in 'sh'.  For example:
 
 	e.g. For most requests, %{request:User-Name[#]} == 1
 
+     %{Attribute-Name[*]}
+	Expands to a single string, with the value of each array
+	member separated by a newline.
+
+     %{#Attribute-Name[index]}
+	Expands to the length of the string %{Attribute-Name[index]}.
+
+
   Attributes as environment variables in executed programs
   --------------------------------------------------------
 
