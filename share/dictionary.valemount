@@ -18,4 +18,9 @@ ATTRIBUTE	VNC-PPPoE-CBQ-TX		2	integer
 ATTRIBUTE	VNC-PPPoE-CBQ-RX-Fallback	3	integer
 ATTRIBUTE	VNC-PPPoE-CBQ-TX-Fallback	4	integer
 
+ATTRIBUTE	VNC-Splash			10	integer
+
+VALUE	VNC-Splash	Show		1
+VALUE	VNC-Splash	No-Show		0
+
 END-VENDOR	ValemountNetworks
