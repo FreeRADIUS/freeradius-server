@@ -93,6 +93,10 @@ static const char *eap_types[] = {
   "23",
   "24",
   "peap"			/* 25 */
+  "26",
+  "27",
+  "28",
+  "mschapv2"
 };
 
 /*
@@ -886,7 +890,6 @@ static int eap_validation(eap_packet_t *eap_packet)
 
 	/* we don't expect notification, but we send it */
 	if (eap_packet->data[0] == PW_EAP_NOTIFICATION) {
-
 		radlog(L_AUTH, "rlm_eap: Got NOTIFICATION, "
 				"Ignoring the packet");
 		return EAP_INVALID;
