@@ -55,7 +55,8 @@ CREATE TABLE radcheck (
   id int(11) unsigned NOT NULL auto_increment,
   UserName varchar(64) NOT NULL default '',
   Attribute varchar(32)  NOT NULL default '',
-  Value varchar(64) NOT NULL default '',
+  Value varchar(253) NOT NULL default '',
+  op char(2),
   PRIMARY KEY  (id),
   KEY UserName (UserName(32))
 ) ;
@@ -68,7 +69,8 @@ CREATE TABLE radgroupcheck (
   id int(11) unsigned NOT NULL auto_increment,
   GroupName varchar(64) NOT NULL default '',
   Attribute varchar(32)  NOT NULL default '',
-  Value varchar(54)  NOT NULL default '',
+  Value varchar(253)  NOT NULL default '',
+  op char(2),
   PRIMARY KEY  (id),
   KEY GroupName (GroupName(32))
 ) ;
@@ -81,7 +83,8 @@ CREATE TABLE radgroupreply (
   id int(11) unsigned NOT NULL auto_increment,
   GroupName varchar(64) NOT NULL default '',
   Attribute varchar(32)  NOT NULL default '',
-  Value varchar(64)  NOT NULL default '',
+  Value varchar(253)  NOT NULL default '',
+  op char(2),
   prio int unsigned NOT NULL default '0',
   PRIMARY KEY  (id),
   KEY GroupName (GroupName(32))
@@ -95,7 +98,8 @@ CREATE TABLE radreply (
   id int(11) unsigned NOT NULL auto_increment,
   UserName varchar(64) NOT NULL default '',
   Attribute varchar(32) NOT NULL default '',
-  Value varchar(64) NOT NULL default '',
+  Value varchar(253) NOT NULL default '',
+  op char(2),
   PRIMARY KEY  (id),
   KEY UserName (UserName(32))
 ) ;
@@ -112,3 +116,39 @@ CREATE TABLE usergroup (
   PRIMARY KEY  (id),
   KEY UserName (UserName(32))
 ) ;
+
+######################################################################
+#
+#  The next two tables are commented out because they are not
+#  currently used in the server.
+#
+
+#
+# Table structure for table 'dictionary'
+#
+#CREATE TABLE dictionary (
+#  id int(10) DEFAULT '0' NOT NULL auto_increment,
+#  Type varchar(30),
+#  Attribute varchar(64),
+#  Value varchar(64),
+#  Format varchar(20),
+#  Vendor varchar(32),
+#  PRIMARY KEY (id)
+#);
+
+#
+# Table structure for table 'nas'
+#
+#CREATE TABLE nas (
+#  id int(10) DEFAULT '0' NOT NULL auto_increment,
+#  nasname varchar(128),
+#  shortname varchar(32),
+#  ipaddr varchar(15),
+#  type varchar(30),
+#  ports int(5),
+#  secret varchar(60),
+#  community varchar(50),
+#  snmp varchar(10),
+#  PRIMARY KEY (id)
+#);
+
