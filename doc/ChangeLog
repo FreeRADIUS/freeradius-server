@@ -1,5 +1,19 @@
 FreeRADIUS 1.0.0 ; $Date$, urgency=low
 
+	pre2 -> pre3
+	* Make IPv6 support work better.
+	* Updated 3com dictionary.
+	* Fixed MD5 code to be more portable.
+
+	pre1 -> pre2
+	* Updated SQL onoff query
+	* Updated Nomadix, RedBack and Valemont dictionaries.
+	* MD4/MD5 fixes.
+	* Don't complain about ports we're listening on when HUP'd.
+	* Permit -i to work for radclient.
+	* Fix bug in new proxy code.
+	* rlm_passwd is now a little friendlier.
+	
 	Non source-code changes
 	* Preliminary tests indicate that the server builds and runs on
 	  Interix (SFU on Windows XP).
