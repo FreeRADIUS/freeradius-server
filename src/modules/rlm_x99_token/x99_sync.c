@@ -366,12 +366,18 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 	return NULL;
     }
     if (st.st_mode != (S_IFDIR|S_IRUSR|S_IWUSR|S_IXUSR)) {
-	x99_log(X99_LOG_ERR, "syncdir %s has loose permissions", syncdir);
+	x99_log(X99_LOG_ERR,
+		"x99_acquire_sd_lock: syncdir %s has loose permissions",
+		syncdir);
 	return NULL;
     }
 
     /* We use dotfile locking. */
-    lockfile = rad_malloc(strlen(syncdir) + strlen(username) + 3);
+    lockfile = malloc(strlen(syncdir) + strlen(username) + 3);
+    if (!lockfile) {
+	x99_log(X99_LOG_ERR, "x99_acquire_sd_lock: out of memory");
+	return NULL;
+    }
     (void) sprintf(lockfile, "%s/.%s", syncdir, username);
 
     /*
