@@ -436,17 +436,17 @@ int main(int argc, char **argv)
 
 	/* Read radiusd.conf */
 	if(read_radius_conf_file() < 0) {
-		printf("Errors reading radiusd.conf\n");
+		fprintf(stderr, "%s: Errors reading radiusd.conf\n", argv[0]);
 		exit(1);
 	}
 
 	cs = cf_section_find(NULL);
 	if(!cs) {
-		printf("No configuration information in radiusd.conf!\n");
+		fprintf(stderr, "No configuration information in radiusd.conf!\n",
+			argv[0]);
 		exit(1);
 	}
 	cf_section_parse(cs, server_config);
-
 
 	/*
 	 *	See if we are "fingerd".
