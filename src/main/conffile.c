@@ -78,7 +78,6 @@ CONF_SECTION *config = NULL;
  */
 extern RADCLIENT *clients;
 extern REALM *realms;
-extern int read_realms_file(const char *file);
 
 static int generate_realms(const char *filename);
 static int generate_clients(const char *filename);

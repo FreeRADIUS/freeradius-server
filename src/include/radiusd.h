@@ -219,6 +219,7 @@ REALM		*realm_findbyaddr(uint32_t ipno);
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);
+int		read_realms_file(const char *file);
 
 /* nas.c */
 int		read_naslist_file(char *);
@@ -250,6 +251,7 @@ int proxy_send(REQUEST *request);
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 VALUE_PAIR	*rad_getpass(REQUEST *request);
+int		rad_check_password(REQUEST *request);
 
 /* exec.c */
 int		radius_exec_program(const char *,  REQUEST *,

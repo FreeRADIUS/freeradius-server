@@ -129,8 +129,9 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 */
 		if ((ptr = strchr(vp->strvalue, '=')) != NULL) {
 			strNcpy(newattr, ptr + 1, sizeof(newattr));
-			strNcpy(vp->strvalue, newattr, sizeof(vp->strvalue));
-			vp->length = strlen(vp->strvalue);
+			strNcpy((char *)vp->strvalue, newattr,
+				sizeof(vp->strvalue));
+			vp->length = strlen((char *)vp->strvalue);
 		}
 	}
 }
@@ -184,12 +185,12 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 		 *
 		 *	Reported by Lucas Heise <root@laonet.net>
 		 */
-		if ((strlen(namepair->strvalue) > 10) &&
+		if ((strlen((char *)namepair->strvalue) > 10) &&
 		    (namepair->strvalue[10] == '/')) {
-			for (ptr = namepair->strvalue + 11; *ptr; ptr++)
+			for (ptr = (char *)namepair->strvalue + 11; *ptr; ptr++)
 				*(ptr - 1) = *ptr;
 			*(ptr - 1) = 0;
-			namepair->length = strlen(namepair->strvalue);
+			namepair->length = strlen((char *)namepair->strvalue);
 		}
 	}
 

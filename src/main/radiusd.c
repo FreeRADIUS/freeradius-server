@@ -961,7 +961,7 @@ int main(int argc, char **argv)
 				RADCLIENT *cl;
 				if ((cl = client_find(packet->src_ipaddr)) == NULL) {
 					radlog(L_ERR, "Ignoring request from unknown client %s:%d",
-					ip_ntoa(buffer, packet->src_ipaddr),
+					ip_ntoa((char *)buffer, packet->src_ipaddr),
 					packet->src_port);
 					rad_free(&packet);
 					continue;
@@ -973,7 +973,7 @@ int main(int argc, char **argv)
 				REALM *rl;
 				if ((rl = realm_findbyaddr(packet->src_ipaddr)) == NULL) {
 					radlog(L_ERR, "Ignoring request from unknown proxy %s:%d",
-					ip_ntoa(buffer, packet->src_ipaddr),
+					ip_ntoa((char *)buffer, packet->src_ipaddr),
 					packet->src_port);
 					rad_free(&packet);
 					continue;
@@ -1284,7 +1284,7 @@ static int rad_lowerpair(REQUEST *request, VALUE_PAIR *vp) {
 		return -1;
 	}
 
-	rad_lowercase(vp->strvalue);
+	rad_lowercase((char *)vp->strvalue);
 	DEBUG2("rad_lowerpair:  %s now '%s'", vp->name, vp->strvalue);
 	return 0;
 }
@@ -1297,8 +1297,8 @@ static int rad_rmspace_pair(REQUEST *request, VALUE_PAIR *vp) {
 		return -1;
 	}
 	
-	rad_rmspace(vp->strvalue);
-	vp->length = strlen(vp->strvalue);
+	rad_rmspace((char *)vp->strvalue);
+	vp->length = strlen((char *)vp->strvalue);
 	DEBUG2("rad_rmspace_pair:  %s now '%s'", vp->name, vp->strvalue);
 	
 	return 0;
@@ -1972,7 +1972,6 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 void sig_cleanup(int sig)
 {
 #ifndef HAVE_PTHREAD_H
-	int i;
 	int status;
 	child_pid_t pid;
 	REQUEST *curreq;

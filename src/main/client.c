@@ -183,7 +183,7 @@ int read_clients_file(const char *file)
 		 *	Only do DNS lookups for machines.  Just print
 		 *	the network as the long name.
 		 */
-		if (c->netmask == ~0) {
+		if (c->netmask == ~0U) {
 			ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
 		} else {
 			hostnm[strlen(hostnm)] = '/';

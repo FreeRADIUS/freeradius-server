@@ -278,7 +278,8 @@ int proxy_send(REQUEST *request)
 
 		rad_pwencode((char *)vp->strvalue,
 				&(vp->length),
-				realm->secret, (char *)request->proxy->vector);
+				(char *)realm->secret,
+				(char *)request->proxy->vector);
  
 	/*
 	 *	If there is no PW_CHAP_CHALLENGE attribute but there

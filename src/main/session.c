@@ -93,7 +93,7 @@ int session_zap(uint32_t nasaddr, int port, const char *user,
 	} else {
 		INTPAIR(PW_SERVICE_TYPE, PW_LOGIN_USER); /* A guess, really */
 	}
-	if(cliaddr != NULL)
+	if(cliaddr != 0)
 		IPPAIR(PW_FRAMED_IP_ADDRESS, cliaddr);
 	INTPAIR(PW_ACCT_SESSION_TIME, 0);
 	INTPAIR(PW_ACCT_INPUT_OCTETS, 0);

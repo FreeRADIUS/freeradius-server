@@ -865,7 +865,7 @@ VALUE_PAIR *rad_getpass(REQUEST *request) {
 	auth_item->lvalue = PW_DECODED;
 
 	/* ignore more than one trailing '\0' */
-	auth_item->length = strlen(auth_item->strvalue);
+	auth_item->length = strlen((char *)auth_item->strvalue);
 
 	return auth_item;
 }
