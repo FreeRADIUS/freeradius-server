@@ -5,7 +5,22 @@ For details on obtaining source of OpenLDAP look at <http://www.openldap.org>.
 OpenLDAP SDK in turn depends on OpenSSL crypto libraries and (optionaly) on 
 Cyrus-SASL libraries.
 
-2. CONFIGURATION
+2. LDAP ATTRIBUTES
+
+The mapping between radius and ldap attributes is in raddb/ldap.attrmap. You should
+edit the file and add any new mapping which you need. The schema files is located in
+doc/RADIUS-LDAPv3.schema. Before adding any radius attributes the ldap server schema
+should be updated.
+All ldap entries containing radius attributes should contain at least
+objectclass: radiusprofile
+radiusCheckItem and radiusReplyItem are special. They allow the administrator to add any
+check or reply item respectively without adding it in the ldap schema. The format should be
+<ldap-attribute>: <radius-attribute> <operator> <value>
+
+ie
+radiusReplyItem: Cisco-AVPair := "ip:addr-pool=dialin_pool"
+
+3. CONFIGURATION
 
 Add following subsection to the modules{} section of radiusd.conf to control
 the rlm_ldap module:
