@@ -504,6 +504,7 @@ AC_CHECK_FUNCS( \
 	lockf \
 	strsignal \
 	sigaction \
+	sigprocmask \
 	snprintf \
 	vsnprintf \
 	setsid \
