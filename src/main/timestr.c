@@ -207,7 +207,7 @@ int timestr_match(char *tmstr, time_t t)
 	char bitmap[WEEKMIN / 8];
 	int now, tot, i;
 	int byte, bit;
-#if do_timestr_debug
+#ifdef do_timestr_debug
 	int y;
 	char *s;
 	char null[8];
@@ -219,7 +219,7 @@ int timestr_match(char *tmstr, time_t t)
 	memset(bitmap, 0, sizeof(bitmap));
 	week_fill(bitmap, tmstr);
 
-#if do_timestr_debug
+#ifdef do_timestr_debug
 	memset(null, 0, 8);
 	for (i = 0; i < 7; i++) {
 		timestr_debug("%d: ", i);
