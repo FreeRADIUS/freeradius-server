@@ -197,6 +197,14 @@ int proxy_send(REQUEST *request)
 		return 0;
 	}
 
+	/*
+	 *	Length == 0 means it exists, but there's no realm.
+	 *	Don't proxy it.
+	 */
+	if (realmpair->length == 0) {
+		return 0;
+	}
+
 	realmname = (char *)realmpair->strvalue;
 
 	/*
@@ -211,6 +219,23 @@ int proxy_send(REQUEST *request)
 		return 0;
 	}
 
+	/*
+	 *	Remember that we sent the request to a Realm.
+	 */
+	pairadd(&request->packet->vps,
+		pairmake("Realm", realm->realm, T_OP_EQ));
+	
+
+	/*
+	 *	Maybe they're proxying it to a LOCAL realm, in which
+	 *	case do nothing.
+	 */
+	if ((realm->ipaddr = htonl(0x7f000001)) &&	
+	    (realm->auth_port == auth_port) &&
+	    (realm->acct_port == acct_port)) {
+		return 0;
+	}
+	
 	/*
 	 *	Copy the request, then look up
 	 *	name and plain-text password in the copy.
@@ -249,12 +274,6 @@ int proxy_send(REQUEST *request)
 		namepair = vp;
 		vps = vp;
 	}
-
-	/*
-	 *	Remember that we sent the request to a Realm.
-	 */
-	pairadd(&request->packet->vps,
-		pairmake("Realm", realm->realm, T_OP_EQ));
 
 	/*
 	 *	Now build a new RADIUS_PACKET and send it.
