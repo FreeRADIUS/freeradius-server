@@ -66,7 +66,8 @@ typedef struct radius_packet_t {
   uint8_t	data[1];
 } radius_packet_t;
 
-static uint8_t random_vector_pool[AUTH_VECTOR_LEN*2];
+static lrad_randctx lrad_rand_pool;	/* across multiple calls */
+static int lrad_pool_initialized = 0;
 
 static const char *packet_codes[] = {
   "",
@@ -299,8 +300,8 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				  case FLAG_ENCRYPT_USER_PASSWORD:
 				    rad_pwencode((char *)reply->strvalue,
 						 &(reply->length),
-						 (char *)secret,
-						 (char *)packet->vector);
+						 (const char *)secret,
+						 (const char *)packet->vector);
 				    break;
 
 				  case FLAG_ENCRYPT_TUNNEL_PASSWORD:
@@ -695,6 +696,12 @@ RADIUS_PACKET *rad_recv(int fd)
 	packet->src_port = ntohs(saremote.sin_port);
 
 	/*
+	 *	FIXME: Do even more filtering by only permitting
+	 *	certain IP's.  The problem is that we don't know
+	 *	how to do this properly for all possible clients...
+	 */
+
+	/*
 	 *	Explicitely set the VP list to empty.
 	 */
 	packet->vps = NULL;
@@ -747,7 +754,6 @@ RADIUS_PACKET *rad_recv(int fd)
 			   hdr->code);
 		free(packet);
 		return NULL;
-		
 	}
 
 	/*
@@ -1375,11 +1381,13 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 
 	/*
 	 *	Merge information from the outside world into our
-	 *	random vector pool.
+	 *	random pool
 	 */
 	for (length = 0; length < AUTH_VECTOR_LEN; length++) {
-		random_vector_pool[length] ^= packet->vector[length];
+		lrad_rand_pool.randmem[length] += packet->vector[length];
 	}
+	lrad_rand_pool.randmem[lrad_rand_pool.randmem[0] & 0xff] += packet->id;
+	lrad_rand_pool.randmem[lrad_rand_pool.randmem[1] & 0xff] += packet->data_len;
 
 	return 0;
 }
@@ -1699,86 +1707,31 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *pas
  */
 static void random_vector(uint8_t *vector)
 {
-	int		i;
-	static int	did_srand = 0;
-	static int	counter = 0;
-#ifdef __linux__
-	static int	urandom_fd = -1;
+	int i;
 
-	/*
-	 *	Use /dev/urandom if available.
-	 */
-	if (urandom_fd > -2) {
-		/*
-		 *	Open urandom fd if not yet opened.
-		 */
-		if (urandom_fd < 0)
-			urandom_fd = open("/dev/urandom", O_RDONLY);
-		if (urandom_fd < 0) {
-			/*
-			 *	It's not there, don't try
-			 *	it again.
-			 */
-			DEBUG("Cannot open /dev/urandom, using rand()\n");
-			urandom_fd = -2;
-		} else {
-
-			fcntl(urandom_fd, F_SETFD, 1);
-
-			/*
-			 *	Read 16 bytes.
-			 */
-			if (read(urandom_fd, (char *) vector, AUTH_VECTOR_LEN)
-			    == AUTH_VECTOR_LEN)
-				return;
-			/*
-			 *	We didn't get 16 bytes - fall
-			 *	back on rand) and don't try again.
-			 */
-		DEBUG("Read short packet from /dev/urandom, using rand()\n");
-			urandom_fd = -2;
-		}
-	}
-#endif
-
-	if (!did_srand) {
-		srand(time(NULL) + getpid());
+	if (!lrad_pool_initialized) {
+		memset(&lrad_rand_pool, 0, sizeof(lrad_rand_pool));
 
 		/*
-		 *	Now that we have a bad random seed, let's
-		 *	make it a little better by MD5'ing it.
+		 *	Initialize the state to something, using
+		 *	numbers which aren't random, but which also
+		 *	aren't static.
 		 */
-		for (i = 0; i < (int)sizeof(random_vector_pool); i++) {
-			random_vector_pool[i] += rand() & 0xff;
-		}
+		lrad_rand_pool.randrsl[0] = (uint32_t) &lrad_pool_initialized;
+		lrad_rand_pool.randrsl[1] = (uint32_t) &i;
+		lrad_rand_pool.randrsl[2] = (uint32_t) vector;
 
-		librad_md5_calc((u_char *) random_vector_pool,
-				(u_char *) random_vector_pool,
-				sizeof(random_vector_pool));
-
-		did_srand = 1;
+		lrad_randinit(&lrad_rand_pool, 1);
 	}
 
-	/*
-	 *	Modify our random pool, based on the counter,
-	 *	and put the resulting information through MD5,
-	 *	so it's all mashed together.
-	 */
-	counter++;
-	random_vector_pool[AUTH_VECTOR_LEN] += (counter & 0xff);
-	librad_md5_calc((u_char *) random_vector_pool,
-			(u_char *) random_vector_pool,
-			sizeof(random_vector_pool));
+	lrad_isaac(&lrad_rand_pool);
 
 	/*
-	 *	And do another MD5 hash of the result, to give
-	 *	the user a random vector.  This ensures that the
-	 *	user has a random vector, without giving them
-	 *	an exact image of what's in the random pool.
+	 *	Copy the random data over.
 	 */
-	librad_md5_calc((u_char *) vector,
-			(u_char *) random_vector_pool,
-			sizeof(random_vector_pool));
+	for (i = 0; i < AUTH_VECTOR_LEN; i++) {
+		*(vector++) = lrad_rand_pool.randrsl[i] & 0xff;
+	}
 }
 
 
