@@ -474,7 +474,14 @@ modules {
 	}
 	
 	detail {
-		detailfile = ${radacctdir}/%n/detail
+		#
+		#  Note that we do NOT use NAS-IP-Address here, as that
+		#  attribute MAY BE from the originating NAS, and NOT
+		#  from the proxy which actually sent us the request.
+		#  The Client-IP-Address attribute is ALWAYS the address
+		#  of the client which sent us the request.
+		#
+		detailfile = ${radacctdir}/${Client-IP-Address}/detail
 		detailperm = 0600
 	}
 
@@ -482,7 +489,7 @@ modules {
 	# to an accounting packet based on the attributes listed
 	# below found in the packet.  see doc/README.rlm_acct_unique
 	acct_unique {
-		key = "User-Name, Acct-Session-Id, NAS-IP-Address, NAS-Port-Id"
+		key = "User-Name, Acct-Session-Id, NAS-IP-Address, Client-IP-Address, NAS-Port-Id"
 	}
 
 
