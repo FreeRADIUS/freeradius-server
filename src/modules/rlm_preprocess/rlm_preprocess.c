@@ -3,12 +3,11 @@
  *		Contains the functions for the "huntgroups" and "hints"
  *		files.
  *
- * Version:     @(#)rlm_preprocess.c  1.00  09-Aug-1999  miquels@cistron.nl
+ * Version:     $Id$
  *
  */
 
-char rlm_preprocess_sccsid[] =
-"@(#)rlm_preprocess.c	1.00 Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -229,7 +228,7 @@ static int hints_setup(VALUE_PAIR *request_pairs)
 
 	/*
 	 *	Now add all attributes to the request list,
-	 *	except the PW_STRIP_USERNAME one.
+	 *	except the PW_STRIP_USER_NAME one.
 	 */
 	pairdelete(&add, PW_STRIP_USER_NAME);
 	for(last = request_pairs; last && last->next; last = last->next)
@@ -261,7 +260,14 @@ static int huntgroup_cmp(VALUE_PAIR *request, VALUE_PAIR *check,
 		}
 	}
 
-	return (i != NULL);
+	/*
+	 *	paircmp() expects to see zero on match, so let's
+	 *	keep it happy.
+	 */
+	if (i == NULL) {
+		return -1;
+	}
+	return 0;
 }
 
 
@@ -323,7 +329,7 @@ static int preprocess_authorize(REQUEST *request, char *name,
 	VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
 	hints_setup(request->packet->vps);
-	if (!huntgroup_access(request->packet->vps)) {
+	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
 		log(L_AUTH, "No huntgroup access: [%s] (%s)",
 			request->username, auth_name(request, 1));
 		return RLM_AUTZ_REJECT;
