@@ -22,6 +22,10 @@ if ($link){
 	}
 	else if ($search_IN == 'radius' && $radius_attr != ''){
 		require("../lib/sql/attrmap.php3");
+		if ($attrmap["$radius_attr"] == ''){
+			$attrmap["$radius_attr"] = $radius_attr;
+			$attr_type["$radius_attr"] = 'replyItem';
+		}
 		$table = ($attr_type[$radius_attr] == 'checkItem') ? $config[sql_check_table] : $config[sql_reply_table];
 		$attr = $attrmap[$radius_attr];
 		$res = @da_sql_query($link,$config,

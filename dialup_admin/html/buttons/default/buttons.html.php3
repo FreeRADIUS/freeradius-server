@@ -18,6 +18,10 @@ function myout(a) {
 <tr><td align=center>
 <img src="images/logo2.gif" vspace=2>
 </td></tr>
+<?php
+if ($HTTP_SERVER_VARS["PHP_AUTH_USER"])
+	echo "<tr valign=top><td align=center><b>Logged in as " . $HTTP_SERVER_VARS["PHP_AUTH_USER"] . "...</b><br><br></td></tr>\n";
+?>
 <tr bgcolor="black" valign=top><td>
 <table border=0 width=100% cellpadding=2 cellspacing=0>
 <tr bgcolor="#907030" align=center valign=top><th>

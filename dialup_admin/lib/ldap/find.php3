@@ -1,7 +1,8 @@
 <?php
+require_once('../lib/ldap/functions.php3');
 $ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 if ($ds) {
-	$r=@ldap_bind($ds,"$config[ldap_binddn]",$config[ldap_bindpw]);
+	$r=@da_ldap_bind($ds,$config);
 	if ($search_IN == 'name' || $search_IN == 'ou')
 		$attr = ($search_IN == 'name') ? 'cn' : 'ou';
 	else if ($search_IN == 'radius'){

@@ -66,8 +66,17 @@ if ($login != ''){
 					}
 					else
 						echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
-					foreach($attrmap as $key => $val){
-						if (isset($tmp[$val])){
+					if (isset($tmp)){
+						foreach(array_keys($tmp) as $val){
+							if ($val == '')
+								continue;
+							$key = $rev_attrmap["$val"];
+							if ($key == ''){
+								$key = $val;
+								$attrmap["$key"] = $val;
+								$attr_type["$key"] = 'replyItem';
+								$rev_attrmap["$val"] = $key;
+							}
 							if (isset($default_vals["$key"]) && $overwrite_defaults){
 								if ($use_op)
 									$default_vals["$key"][operator] = $tmp["$val"][operator];

@@ -7,5 +7,6 @@ foreach($ARR as $val){
 		continue;
 	list($type,$key,$v)=split('[[:space:]]+',$val);
 	$attrmap["$key"]=$v;
+	$rev_attrmap["$v"] = $key;
 	$attr_type["$key"]=$type;
 }

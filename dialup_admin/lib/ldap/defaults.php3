@@ -1,10 +1,11 @@
 <?php
+require_once('../lib/ldap/functions.php3');
 if ($config[ldap_default_dn] != ''){
 	include('../lib/ldap/attrmap.php3');
 	$regular_profile_attr = $config[ldap_regular_profile_attr];
 	$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 	if ($ds) {
-       		$r=@ldap_bind($ds,"$config[ldap_binddn]",$config[ldap_bindpw]);
+       		$r=@da_ldap_bind($ds,$config);
        		$sr=@ldap_search($ds,"$config[ldap_default_dn]", 'objectclass=*');
        		if ($info = @ldap_get_entries($ds, $sr)){
        			$dn = $info[0]['dn'];

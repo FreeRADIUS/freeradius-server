@@ -29,11 +29,16 @@ if ($link){
 		foreach($show_attrs as $key => $attr){
 			if ($attrmap["$key"] == 'none')
 				continue;
-			if ($attr_type[$key] == 'checkItem'){
+			if ($attrmap["$key"] == ''){
+				$attrmap["$key"] = $key;
+				$attr_type["$key"] = 'replyItem';
+				$rev_attrmap["$key"] = $key;
+			}	
+			if ($attr_type["$key"] == 'checkItem'){
 				$table = "$config[sql_groupcheck_table]";
 				$type = 1;
 			}
-			else if ($attr_type[$key] == 'replyItem'){
+			else if ($attr_type["$key"] == 'replyItem'){
 				$table = "$config[sql_groupreply_table]";
 				$type = 2;
 			}

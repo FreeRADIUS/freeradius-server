@@ -1,5 +1,6 @@
 <?php
 require('../lib/ldap/attrmap.php3');
+require_once('../lib/ldap/functions.php3');
 if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php3"))
 	include_once("../lib/lang/$config[general_prefered_lang]/utf8.php3");
 else
@@ -25,7 +26,7 @@ $mailalt = '-';
 
 $ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 if ($ds) {
-	$r=@ldap_bind($ds,"$config[ldap_binddn]",$config[ldap_bindpw]);
+	$r=@da_ldap_bind($ds,$config);
 	$sr=@ldap_search($ds,"$config[ldap_base]", 'uid=' . $login);
 	$info = @ldap_get_entries($ds, $sr);
 	$dn = $info[0]['dn'];

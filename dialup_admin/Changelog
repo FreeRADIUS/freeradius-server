@@ -1,4 +1,4 @@
-Ver 1.56:
+Ver 1.60:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
 * Show date in the user/server test page
@@ -20,6 +20,19 @@ Ver 1.56:
   after the user tables. As a result user values should in general overwrite default values.
 * Add support for the default_user_profile of the sql module in lib/sql/defaults.php3
 * In sql.attrmap User-Password should map to User-Password, not Password
+* If an sql attribute is not contained in sql, assume that it has the same name as in dialup_admin and that
+  it is a reply item. Add a comment for that in conf/sql.attrmap.
+* Change the way radius attributes are read from the sql database. The change should make things somewhat
+  faster. Create a reverse mapping from radius attributes to dialup_admin attributes.
+* Add a configuration directive called ldap_use_http_credentials. If it is set to yes then we try to
+  connect to the ldap server with the username/password given in http authentication, not those contained
+  in admin.conf. That way multiple admins with different permissions on the ldap tree can work on a single
+  dialup_admin.
+* With the same logic we allow for multiple buttons html pages. We now create a folder html/buttons which
+  by default contains a folder default. If the user logs in with http authentication then we try
+  to open the file html/buttons/<username>/buttons.html.php3. If we can't we open
+  html/buttons/default/buttons.html.php3. That way we can create muiltiple views of say the online users
+  page based on which admin requests the page.
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files

@@ -64,13 +64,21 @@ if ($link){
 		}	
 		else
 			echo "<b>Database query failed partially: " . da_sql_error($link,$config) . "</b><br>\n";
-		foreach($attrmap as $key => $val){
-			if (isset($tmp[$val])){
+		if (isset($tmp)){
+			foreach(array_keys($tmp) as $val){
+				if ($val == '')
+					continue;
+				$key = $rev_attrmap["$val"];
+				if ($key == ''){
+					$key = $val;
+					$attrmap["$key"] = $val;
+					$attr_type["$key"] = 'replyItem';
+					$rev_attrmap["$val"] = $key;
+				}
 				$item_vals["$key"] = $tmp[$val];
 				$item_vals["$key"][count] = $tmp[$val][count];
 				if ($use_op)
 					$item_vals["$key"][operator] = $tmp[$val][operator];
-
 			}
 		}
 

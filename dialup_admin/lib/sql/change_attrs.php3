@@ -16,6 +16,11 @@ if ($link){
 	foreach($show_attrs as $key => $desc){
 		if ($attrmap["$key"] == 'none')
 			continue;
+		if ($attrmap["$key"] == ''){
+			$attrmap["$key"] = $key;
+			$attr_type["key"] = 'replyItem';
+			$rev_attrmap["$key"] = $key;
+		}
 		$i = 0;
 		$j = -1;
 		$name = $attrmap["$key"] . $i;
