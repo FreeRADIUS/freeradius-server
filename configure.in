@@ -446,14 +446,18 @@ AC_TYPE_UID_T
 dnl Check for socklen_t
 AC_CACHE_CHECK(for socklen_t,
                fr_cv_socklen_t,
-    [ socklen_t=no
+    [ fr_cv_socklen_t=no
       AC_TRY_COMPILE([#include <sys/types.h>
         #include <sys/socket.h>],
         [socklen_t foo],
-        AC_DEFINE(HAVE_SOCKLEN_T) fr_cv_socklen_t=yes,
+        fr_cv_socklen_t=yes,
       )
      ]
 )
+
+if test "$fr_cv_socklen_t" != "yes"; then
+         AC_DEFINE(socklen_t, int)
+fi
 
 dnl Check for uint8_t
 AC_CACHE_CHECK(for uint8_t,
