@@ -104,12 +104,12 @@ binary-arch: stamp-build
 	cp $(freeradius_dir)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
 	cat $$TEMPFILE \
 		| sed -e 's/        /	/g' \
-		| sed -e '/^	example {/,/^	}/s/^/#/' \
-		| sed -e 's/#	shadow = /shadow = /' \
-		| sed -e 's/^#\?group = nobody/group = freerad/' \
-		| sed -e 's/^#\?user = nobody/user = freerad/' \
-		| sed -e 's!/run/radiusd!/run/freeradius!' \
-		| sed -e 's!radiusd.pid!freeradius.pid!' \
+			-e '/^	example {/,/^	}/s/^/#/' \
+			-e 's/#	shadow = /shadow = /' \
+			-e 's/^#\?group = nobody/group = freerad/' \
+			-e 's/^#\?user = nobody/user = freerad/' \
+			-e 's!/run/radiusd!/run/freeradius!' \
+			-e 's!radiusd.pid!freeradius.pid!' \
 			> $(freeradius_dir)/$(raddbdir)/radiusd.conf; \
 	rm $$TEMPFILE
 
