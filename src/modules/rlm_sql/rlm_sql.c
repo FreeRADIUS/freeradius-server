@@ -172,7 +172,7 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
-		    strchr("@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-", *in) == NULL) {
+		    strchr("@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_", *in) == NULL) {
 			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
 			in++;
 			out += 3;
@@ -192,6 +192,41 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 	}
 	*out = '\0';
 	return len;
+}
+
+/*
+ *	Set the SQl user name.
+ */
+static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username) {
+	VALUE_PAIR *vp=NULL;
+	char tmpuser[MAX_STRING_LEN];
+
+	tmpuser[0]=0;
+	sqlusername[0]=0;
+
+	/* Remove any user attr we added previously */
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+
+	if (username != NULL) {
+		strNcpy(tmpuser, username, MAX_STRING_LEN);
+	} else if (strlen(inst->config->query_user)) {
+		radius_xlat(tmpuser, MAX_STRING_LEN, inst->config->query_user, request, sql_escape_func);
+	} else {
+		return 0;
+	}
+
+	if (strlen(tmpuser)) {
+		DEBUG2("sql_set_user:  escaped user --> '%s'", sqlusername);
+		vp = pairmake("SQL-User-Name", sqlusername, 0);
+		if (vp == NULL) {
+			radlog(L_ERR, "%s", librad_errstr);
+			return -1;
+		}
+
+		pairadd(&request->packet->vps, vp);
+		return 0;
+	}
+	return -1;
 }
 
 static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
@@ -311,7 +346,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	/*
 	 * Set, escape, and check the user attr here
 	 */
-	if (sql_set_user(inst, request, sqlusername, 0) < 0)
+	if (sql_set_user(inst, request, sqlusername, NULL) < 0)
 		return RLM_MODULE_FAIL;
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_check_query, request, sql_escape_func);
 
@@ -508,7 +543,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			sql_set_user(inst, request, sqlusername, 0);
+			sql_set_user(inst, request, sqlusername, NULL);
 
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_update_query, request, sql_escape_func);
 			query_log(inst, querystr);
@@ -532,7 +567,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			sql_set_user(inst, request, sqlusername, 0);
+			sql_set_user(inst, request, sqlusername, NULL);
 
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query, request, sql_escape_func);
 			query_log(inst, querystr);
@@ -571,7 +606,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			sql_set_user(inst, request, sqlusername, 0);
+			sql_set_user(inst, request, sqlusername, NULL);
 
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query, request, sql_escape_func);
 			query_log(inst, querystr);
@@ -630,7 +665,6 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 	return RLM_MODULE_OK;
 }
-
 
 /* globally exported name */
 module_t rlm_sql = {
