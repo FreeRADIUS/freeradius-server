@@ -48,8 +48,8 @@ typedef struct rlm_sql_mysql_sock {
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
+static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock;
 
 	sqlsocket->conn = (rlm_sql_mysql_sock *)rad_malloc(sizeof(rlm_sql_mysql_sock));
@@ -60,8 +60,14 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			sqlsocket->id);
 
 	mysql_init(&(mysql_sock->conn));
-	if (!(mysql_sock->sock = mysql_real_connect(&(mysql_sock->conn), config->sql_server, config->sql_login, config->sql_password,
-													config->sql_db, 0, NULL, CLIENT_FOUND_ROWS))) {
+	if (!(mysql_sock->sock = mysql_real_connect(&(mysql_sock->conn),
+						    config->sql_server,
+						    config->sql_login,
+						    config->sql_password,
+						    config->sql_db,
+						    atoi(config->sql_port),
+						    NULL,
+						    CLIENT_FOUND_ROWS))) {
 		radlog(L_ERR, "rlm_sql_mysql: Couldn't connect socket to MySQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
 		radlog(L_ERR, "rlm_sql_mysql: Mysql error '%s'", mysql_error(&mysql_sock->conn));
 		mysql_sock->sock = NULL;
@@ -80,8 +86,8 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and any private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	free(mysql_sock);
@@ -98,7 +104,8 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: check the error to see if the server is down
  *
  *************************************************************************/
-static int sql_check_error(int error) {
+static int sql_check_error(int error)
+{
 	switch(error) {
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
@@ -127,8 +134,8 @@ static int sql_check_error(int error) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
-
+static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	if (config->sqltrace)
@@ -151,8 +158,8 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	if (mysql_sock->sock == NULL) {
@@ -161,7 +168,8 @@ static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	}
 	if (!(mysql_sock->result = mysql_store_result(mysql_sock->sock))) {
 		radlog(L_ERR, "rlm_sql_mysql: MYSQL Error: Cannot get result");
-		radlog(L_ERR, "rlm_sql_mysql: MYSQL Error: %s", mysql_error(mysql_sock->sock));
+		radlog(L_ERR, "rlm_sql_mysql: MYSQL Error: %s",
+		       mysql_error(mysql_sock->sock));
 		return sql_check_error(mysql_errno(mysql_sock->sock));
 	}
 	return 0;
@@ -176,9 +184,8 @@ static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
-
+static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	int     num = 0;
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -188,7 +195,8 @@ static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	if (!(num = mysql_num_fields(mysql_sock->sock))) {
 #endif
 		radlog(L_ERR, "rlm_sql_mysql: MYSQL Error: No Fields");
-		radlog(L_ERR, "rlm_sql_mysql: MYSQL error: %s", mysql_error(mysql_sock->sock));
+		radlog(L_ERR, "rlm_sql_mysql: MYSQL error: %s",
+		       mysql_error(mysql_sock->sock));
 	}
 	return num;
 }
@@ -201,8 +209,9 @@ static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
-
+static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config,
+			    char *querystr)
+{
 	int ret;
 
 	ret = sql_query(sqlsocket, config, querystr);
@@ -231,11 +240,11 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
-	if(mysql_sock->result)
+	if (mysql_sock->result)
 		return mysql_num_rows(mysql_sock->result);
 
 	return 0;
@@ -251,8 +260,8 @@ static int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	sqlsocket->row = mysql_fetch_row(mysql_sock->result);
@@ -272,8 +281,8 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	if (mysql_sock->result) {
@@ -293,8 +302,8 @@ static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	if (mysql_sock == NULL || mysql_sock->sock == NULL) {
@@ -312,8 +321,8 @@ static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	if (mysql_sock && mysql_sock->sock){
@@ -332,8 +341,8 @@ static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	return 0;
 }
 
@@ -346,8 +355,8 @@ static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	sql_free_result(sqlsocket, config);
 
 	return 0;
@@ -361,8 +370,8 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-
+static int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+{
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	return mysql_affected_rows(mysql_sock->sock);
