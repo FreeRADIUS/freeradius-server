@@ -1,4 +1,4 @@
-FreeRADIUS 0.9 ; Date: 2003/07/04 21:01:29, urgency=low
+FreeRADIUS 0.9.0 ; Date: 2003/07/04 21:01:29, urgency=low
 
 	* Many, many, bug fixes and feature enhancements.
 	* radrelay now updates packet 'id' on retransmissions.
@@ -39,7 +39,6 @@ FreeRADIUS 0.9 ; Date: 2003/07/04 21:01:29, urgency=low
 	* Preliminary large file support in 'configure' and in the server,
 	  to support 2G+ detail files.
 	* Install documentation into /usr/local/share/doc/freeradius
-	* Dictionaries are now in /usr/local/share/freeradius
 	* New/updated dictionaries for RedCreek, Bintec, Alcatel,
 	  ITK, Telebit, and Cabletron.
 	* Updates to allow building on MAC OSX.
