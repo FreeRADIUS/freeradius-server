@@ -139,6 +139,7 @@ void sql_poolfree(SQL_INST * inst) {
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
 		sql_close_socket(inst, cur);
 	}
+	pthread_mutex_destroy(&inst->mutex);
 }
 
 
