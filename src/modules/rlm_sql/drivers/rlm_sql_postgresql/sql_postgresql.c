@@ -58,6 +58,9 @@ typedef struct rlm_sql_postgres_sock {
    char            **row;
 } rlm_sql_postgres_sock;
 
+/* Prototypes */
+static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 
 /* Internal function. Return true if the postgresql status value
  * indicates successful completion of the query. Return false otherwise
