@@ -5,6 +5,22 @@ if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php3"))
 else
 	include_once('../lib/lang/default/utf8.php3');
 
+$cn = '-';
+$cn_lang = '-';
+$homeaddress = '-';
+$homeaddress_lang = '-';
+$fax = '-';
+$url = '-';
+$ou = '-';
+$ou_lang = '-';
+$title = '-';
+$title_lang = '-';
+$telephonenumber = '-';
+$homephone = '-';
+$mobile = '-';
+$mail = '-';
+$mailalt = '-';
+
 $ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 if ($ds) {
 	$r=@ldap_bind($ds,"$config[ldap_binddn]",$config[ldap_bindpw]);

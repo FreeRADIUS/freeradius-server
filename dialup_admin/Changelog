@@ -17,6 +17,7 @@ Ver 1.50:
   lib/sql/group_admin.php3
 * Set a few more personal information attributes to defaults in lib/sql/user_info.php3
 * Fix a typo for department
+* Set personal information attributes to defaults in lib/ldap/user_info.php3
 Ver 1.30:
 * Add limit of results returned in accounting.php3
 * Fix a bug in time2strclock() in lib/functions.php3. Seconds ammount more than 9 would not show.
