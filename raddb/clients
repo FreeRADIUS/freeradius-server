@@ -5,21 +5,3 @@
 #	It is here ONLY for backwards compatibility.
 #
 #	See 'clients.conf' for the new configuration.
-#
-#
-# clients	This file contains a list of clients which are allowed to
-#		make authentication requests and their encryption key.
-#
-#		Description of the fields:
-#
-#		* The first field is a valid hostname or IP address
-#		  for the client.
-#		* The second field (seperated by blanks or tabs) is the 
-#		  encryption key.
-
-# Client Name		Key
-#----------------	----------
-#portmaster1.isp.com	testing123
-#portmaster2.isp.com	testing123
-#proxyradius.isp2.com	TheirKey
-#localhost		testing123
