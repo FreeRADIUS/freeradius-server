@@ -5,7 +5,7 @@
 
 SHELL=/bin/bash
 
-export DH_VERBOSE=1
+# export DH_VERBOSE=1
 
 package = freeradius
 tmp     = $(shell pwd)/debian/tmp
@@ -49,9 +49,6 @@ binary-arch:	build
 	cp $(tmp)/etc/raddb/radiusd.conf newconf
 	cat newconf \
 		| sed -e 's/        /	/g' \
-		| sed -e '/^	pam {/,/^	}/s/^/#deb#/' \
-		| sed -e 's/^	pam$$/#deb#	pam/' \
-		| sed -e 's/^	radutmp$$/#deb#	radutmp/' \
 		| sed -e '/^	example {/,/^	}/s/^/#deb#/' \
 		| sed -e '/^	sql .*{/,/^	}/s/^/#deb#/' \
 		| sed -e '/^	always .*{/,/^	}/s/^/#deb#/' \

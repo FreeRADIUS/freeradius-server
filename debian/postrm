@@ -2,6 +2,7 @@
 
 if [ "$1" = "remove" -o  "$1" = "purge" ]
 then
+	rm -f /etc/init.d/freeradius
 	update-rc.d -f freeradius remove >/dev/null
 fi
 

@@ -1,7 +1,7 @@
 Source: radiusd-freeradius
-Build-Depends: libltdl-dev | libltdl0-dev
+Build-Depends: libltdl-dev | libltdl0-dev, libpam0g-dev
 Section: net
-Priority: standard
+Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
 Standards-Version: 3.2.1
 
@@ -11,12 +11,11 @@ Depends: ${shlibs:Depends}, libltdl | libltdl0
 Provides: radiusd
 Conflicts: radiusd, radiusd-livingston, radiusd-cistron
 Description: A high-performance and highly configurable RADIUS server
- A high-performance and highly configurable RADIUS server.  freeradius is 
- similar to Livingston's 2.0 and derived from Cistron's server, but has 
- support for...
+ A high-performance RADIUS server derived from Cistron's server, and
+ generally similar to Livingston's 2.0 server, with support for...
   - many vendor-specific attributes
   - proxying and replicating requests by any criteria
-  - authentication on system passwd, MySQL, LDAP, users, PAM
+  - authentication on system passwd, MySQL, LDAP, users, or PAM
   - multiple DEFAULT configurations
   - regexp matching in string attributes
  and lots more.
