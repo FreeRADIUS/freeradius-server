@@ -209,7 +209,7 @@ static void reread_config(int reload)
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
 #ifdef WITH_USERCOLLIDE
-		radlog(L_INFO, "User collission code on ... ");
+		radlog(L_INFO, "User collision code on ... ");
 #endif
 	} else if (pid == radius_pid) {
 		radlog(L_INFO, "Reloading configuration files.");
@@ -1141,6 +1141,27 @@ int rad_process(REQUEST *request, int dospawn)
 	assert(request->magic == REQUEST_MAGIC);
 
 	/*
+	 *	The request passes many of our sanity checks.  From
+	 *	here on in, if anything goes wrong, we send a reject
+	 *	message, instead of dropping the packet.
+	 *
+	 *	Build the reply template from the request template.
+	 */
+	if ((request->reply = rad_alloc(0)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(1);
+	}
+	request->reply->sockfd     = request->packet->sockfd;
+	request->reply->dst_ipaddr = request->packet->src_ipaddr;
+	request->reply->dst_port   = request->packet->src_port;
+	request->reply->id         = request->packet->id;
+	request->reply->code       = 0;	/* UNKNOWN code */
+	memcpy(request->reply->vector, request->packet->vector,
+	       sizeof(request->reply->vector));
+	request->reply->vps = NULL;
+	request->reply->data = NULL;
+	
+	/*
 	 *	If we're spawning a child thread, let it do all of
 	 *	the work of handling a request, and exit.
 	 */
@@ -1181,15 +1202,14 @@ static void rad_reject(REQUEST *request)
 		 *	reject message sent.
 		 */
 	case PW_AUTHENTICATION_REQUEST:
-		request->reply = build_reply(PW_AUTHENTICATION_REJECT,
-					     request, NULL, NULL);
+		request->reply->code = PW_AUTHENTICATION_REJECT;
 		break;
 	}
 	
 	/*
 	 *	If a reply exists, send it.
 	 */
-	if (request->reply) {
+	if (request->reply->code) {
 		rad_send(request->reply, request->secret);
 	}
 }
@@ -1256,7 +1276,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		request->username = pairfind(request->packet->vps,
 					     PW_USER_NAME);
 	}
-	
+
 	/*
 	 *	We have the semaphore, and have decoded the packet.
 	 *	Let's process the request.
@@ -1295,12 +1315,24 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 
 	/*
-	 *	If there's a reply, send it to the NAS.
+	 *	If we have a reply to send, copy the Proxy-State
+	 *	attributes from the request to the tail of the reply,
+	 *	and send the packet.
 	 */
 	assert(request->magic == REQUEST_MAGIC);
-	if (request->reply)
+	if (request->reply->code != 0) {
+		VALUE_PAIR *vp;
+
+		/*
+		 *	Need to copy Proxy-State from request->packet->vps
+		 */
+		vp = paircopy2(request->packet->vps, PW_PROXY_STATE);
+		if (vp != NULL)
+			pairadd(&(request->reply->vps), vp);
+
 		rad_send(request->reply, request->secret);
-	
+	}
+
 	/*
 	 *	We're done processing the request, set the
 	 *	request to be finished, clean up as necessary,

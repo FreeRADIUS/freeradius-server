@@ -95,32 +95,14 @@ void request_free(REQUEST *request)
 }
 
 
+#if 0
 /*
  *	Build a reply radius packet, based on the request data.
  */
 RADIUS_PACKET *build_reply(int code, REQUEST *request,
 	VALUE_PAIR *vps, const char *user_msg)
 {
-	RADIUS_PACKET	*rp;
 	VALUE_PAIR	*vp;
-
-	if ((rp = rad_alloc(0)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(1);
-	}
-	rp->sockfd     = request->packet->sockfd;
-	rp->dst_ipaddr = request->packet->src_ipaddr;
-	rp->dst_port   = request->packet->src_port;
-	rp->id         = request->packet->id;
-	rp->code       = code;
-	memcpy(rp->vector, request->packet->vector, sizeof(rp->vector));
-	rp->vps        = paircopy(vps);
-
-	/*
-	 *	Need to copy PROXY_PAIRS from request->packet->vps
-	 */
-	if ((vp = paircopy2(request->packet->vps, PW_PROXY_STATE)) != NULL)
-		pairadd(&(rp->vps), vp);
 
 	if (user_msg && (vp = paircreate(PW_REPLY_MESSAGE, PW_TYPE_STRING))) {
 		strNcpy((char *)vp->strvalue, user_msg, sizeof(vp->strvalue));
@@ -138,3 +120,4 @@ RADIUS_PACKET *build_reply(int code, REQUEST *request,
 
 	return rp;
 }
+#endif

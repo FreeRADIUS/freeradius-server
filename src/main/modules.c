@@ -539,8 +539,7 @@ static void update_username(REQUEST *request, char *newname)
  *	Call all authorization modules until one returns
  *	somethings else than RLM_MODULE_OK
  */
-int module_authorize(REQUEST *request,
-		     VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
+int module_authorize(REQUEST *request)
 {
 	config_module_t	*this;
 	int		rcode = RLM_MODULE_OK;
@@ -551,8 +550,9 @@ int module_authorize(REQUEST *request,
 	while (this && rcode == RLM_MODULE_OK) {
 		DEBUG2("  authorize: %s", this->instance->entry->module->name);
 		rcode = (this->instance->entry->module->authorize)(
-			 this->instance->insthandle, request, check_items,
-			 reply_items);
+			 this->instance->insthandle, request,
+			 &request->config_items,
+			 &request->reply->vps);
 		this = this->next;
 	}
 
@@ -610,8 +610,7 @@ int module_authorize(REQUEST *request,
 /*
  *	Authenticate a user/password with various methods.
  */
-int module_authenticate(int auth_type, REQUEST *request, 
-		     VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
+int module_authenticate(int auth_type, REQUEST *request)
 {
 	config_module_t	*this;
 
@@ -635,7 +634,8 @@ int module_authenticate(int auth_type, REQUEST *request,
 
 	DEBUG2("  authenticate: %s", this->instance->entry->module->name);
 	return (this->instance->entry->module->authenticate)(
-		this->instance->insthandle, request, check_items, reply_items);
+		this->instance->insthandle, request,
+		&request->config_items, &request->reply->vps);
 }
 
 

@@ -60,8 +60,7 @@ int rad_accounting(REQUEST *request)
 		/*
 		 *	Now send back an ACK to the NAS.
 		 */
-		request->reply = build_reply(PW_ACCOUNTING_RESPONSE, request,
-					     NULL, NULL);
+		request->reply->code = PW_ACCOUNTING_RESPONSE;
 		reply = RLM_MODULE_OK;
 	}
 

@@ -53,10 +53,8 @@ enum {
 };
 
 int setup_modules(void);
-int module_authorize(REQUEST *request, 
-	VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
-int module_authenticate(int type, REQUEST *request, 
-   VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
+int module_authorize(REQUEST *request);
+int module_authenticate(int type, REQUEST *request);
 int module_preacct(REQUEST *request);
 int module_accounting(REQUEST *request);
 

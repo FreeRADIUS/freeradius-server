@@ -106,8 +106,7 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, const char **use
  *	NOTE: NOT the same as the RLM_ values !
  */
 static int rad_check_password(REQUEST *request,
-	VALUE_PAIR *check_item, VALUE_PAIR *user_reply, 
-	const char **user_msg)
+	VALUE_PAIR *check_item, const char **user_msg)
 {
 	VALUE_PAIR	*auth_type_pair;
 	VALUE_PAIR	*password_pair;
@@ -226,7 +225,7 @@ static int rad_check_password(REQUEST *request,
 			 *	status into the values as defined at
 			 *	the top of this function.
 			 */
-			result = module_authenticate(auth_type, request, &request->config_items, &user_reply);
+			result = module_authenticate(auth_type, request);
 			switch (result) {
 				/*
 				 *	An authentication module FAIL
@@ -262,7 +261,6 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*check_item;
 	VALUE_PAIR	*reply_item;
 	VALUE_PAIR	*auth_item;
-	VALUE_PAIR	*user_reply;
 	VALUE_PAIR	*tmp;
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
@@ -273,7 +271,6 @@ int rad_authenticate(REQUEST *request)
 	int		seen_callback_id;
 	char		buf[1024];
 
-	user_reply = NULL;
 	password = "";
 
 	/*
@@ -316,7 +313,7 @@ int rad_authenticate(REQUEST *request)
 		 *	the reply attributes from the proxy.
 		 */
 		if (request->proxy_reply->vps) {
-			user_reply = request->proxy_reply->vps;
+			request->reply->vps = request->proxy_reply->vps;
 			request->proxy_reply->vps = NULL;
 		}
 	}
@@ -368,7 +365,7 @@ int rad_authenticate(REQUEST *request)
 	/*
 	 *	Get the user's authorization information from the database
 	 */
-	r = module_authorize(request, &request->config_items, &user_reply);
+	r = module_authorize(request);
 	if (r != RLM_MODULE_OK) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
 			radlog(L_AUTH, "Invalid user: [%s%s%s] (%s)",
@@ -376,10 +373,10 @@ int rad_authenticate(REQUEST *request)
 			    log_auth_pass ? "/" : "",
 			    log_auth_pass ? password : "",
 			    auth_name(buf, sizeof(buf), request, 1));
-			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
-						     request, NULL, NULL);
+			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
-		pairfree(user_reply);
+		pairfree(request->reply->vps);
+		request->reply->vps = NULL;
 		return r;
 	}
 
@@ -391,7 +388,6 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if ((request->proxy == NULL) &&
 	    (pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL)) {
-		pairfree(user_reply);
 		return 0;
 	}
 
@@ -409,17 +405,11 @@ int rad_authenticate(REQUEST *request)
 	do {
 		if ((result = check_expiration(request->config_items, umsg, &user_msg))<0)
 				break;
-		result = rad_check_password(request, request->config_items, user_reply, 
+		result = rad_check_password(request, request->config_items, 
 			&user_msg);
 		if (result > 0) {
 			/* don't reply! */
-			pairfree(user_reply);
 			return -1;
-		}
-		if (result == -2) {
-			reply_item = pairfind(user_reply, PW_REPLY_MESSAGE);
-			if (reply_item != NULL)
-				user_msg = (char *)reply_item->strvalue;
 		}
 	} while(0);
 
@@ -428,8 +418,14 @@ int rad_authenticate(REQUEST *request)
 		 *	Failed to validate the user.
 		 */
 		DEBUG2("  auth: Failed to validate the user.");
-		request->reply = build_reply(PW_AUTHENTICATION_REJECT, request,
-					     NULL, user_msg);
+		request->reply->code = PW_AUTHENTICATION_REJECT;
+		pairfree(request->reply->vps);
+		request->reply->vps = NULL;
+		
+		/*
+		 *  FIXME! Add 'user_msg' to the reject!
+		 */
+
 		if (auth_item != NULL && log_auth) {
 			char clean_buffer[1024];
 			u_char *p;
@@ -481,13 +477,19 @@ int rad_authenticate(REQUEST *request)
 				user_msg =
 		"\r\nYou are already logged in - access denied\r\n\n";
 			}
-			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
-						     request, NULL, user_msg);
-		radlog(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
-				namepair->strvalue,
-				auth_name(buf, sizeof(buf), request, 1),
-				check_item->lvalue,
-				r == 2 ? " [MPP attempt]" : "");
+
+			request->reply->code = PW_AUTHENTICATION_REJECT;
+			pairfree(request->reply->vps);
+			request->reply->vps = NULL;
+
+			/*
+			 *  FIXME!  Add user_msg to the reject
+			 */
+			radlog(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
+			       namepair->strvalue,
+			       auth_name(buf, sizeof(buf), request, 1),
+			       check_item->lvalue,
+			       r == 2 ? " [MPP attempt]" : "");
 			result = -1;
 		}
 	}
@@ -513,8 +515,14 @@ int rad_authenticate(REQUEST *request)
 			result = -1;
 			user_msg =
 			"You are calling outside your allowed timespan\r\n";
-			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
-						     request, NULL, user_msg);
+
+			request->reply->code = PW_AUTHENTICATION_REJECT;
+			pairfree(request->reply->vps);
+			request->reply->vps = NULL;
+
+			/*
+			 *  FIXME!  Add user_msg to the reject
+			 */
 			radlog(L_ERR, "Outside allowed timespan: [%s]"
 				   " (%s) time allowed: %s",
 					auth_username(namepair),
@@ -525,7 +533,7 @@ int rad_authenticate(REQUEST *request)
 			/*
 			 *	User is allowed, but set Session-Timeout.
 			 */
-			if ((reply_item = pairfind(user_reply,
+			if ((reply_item = pairfind(request->reply->vps,
 			    PW_SESSION_TIMEOUT)) != NULL) {
 				if (reply_item->lvalue > (unsigned) r)
 					reply_item->lvalue = r;
@@ -537,7 +545,7 @@ int rad_authenticate(REQUEST *request)
 					exit(1);
 				}
 				reply_item->lvalue = r;
-				pairadd(&user_reply, reply_item);
+				pairadd(&request->reply->vps, reply_item);
 			}
 		}
 	}
@@ -546,7 +554,6 @@ int rad_authenticate(REQUEST *request)
 	 *	Result should be >= 0 here - if not, we return.
 	 */
 	if (result < 0) {
-		pairfree(user_reply);
 		return 0;
 	}
 
@@ -567,15 +574,15 @@ int rad_authenticate(REQUEST *request)
 	 */
 	exec_program = NULL;
 	exec_wait = 0;
-	if ((auth_item = pairfind(user_reply, PW_EXEC_PROGRAM)) != NULL) {
+	if ((auth_item = pairfind(request->reply->vps, PW_EXEC_PROGRAM)) != NULL) {
 		exec_wait = 0;
 		exec_program = strdup(auth_item->strvalue);
-		pairdelete(&user_reply, PW_EXEC_PROGRAM);
+		pairdelete(&request->reply->vps, PW_EXEC_PROGRAM);
 	}
-	if ((auth_item = pairfind(user_reply, PW_EXEC_PROGRAM_WAIT)) != NULL) {
+	if ((auth_item = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
 		exec_wait = 1;
 		exec_program = strdup(auth_item->strvalue);
-		pairdelete(&user_reply, PW_EXEC_PROGRAM_WAIT);
+		pairdelete(&request->reply->vps, PW_EXEC_PROGRAM_WAIT);
 	}
 
 	/*
@@ -583,11 +590,11 @@ int rad_authenticate(REQUEST *request)
 	 *	This is nice for certain Exec-Program programs.
 	 */
 	seen_callback_id = 0;
-	if ((auth_item = pairfind(user_reply, PW_CALLBACK_ID)) != NULL) {
+	if ((auth_item = pairfind(request->reply->vps, PW_CALLBACK_ID)) != NULL) {
 		seen_callback_id = 1;
 		radius_xlate(buf, sizeof(auth_item->strvalue),
 			     (char *)auth_item->strvalue,
-			     request->packet->vps, user_reply);
+			     request->packet->vps, request->reply->vps);
 		strNcpy((char *)auth_item->strvalue, buf,
 			sizeof(auth_item->strvalue));
 		auth_item->length = strlen((char *)auth_item->strvalue);
@@ -600,7 +607,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (exec_program && exec_wait) {
 		if (radius_exec_program(exec_program,
-		    request->packet->vps, &user_reply, exec_wait, &user_msg) != 0) {
+		    request->packet->vps, &request->reply->vps, exec_wait, &user_msg) != 0) {
 			/*
 			 *	Error. radius_exec_program() returns -1 on
 			 *	fork/exec errors, or >0 if the exec'ed program
@@ -608,8 +615,15 @@ int rad_authenticate(REQUEST *request)
 			 */
 			if (user_msg == NULL)
 		user_msg = "\r\nAccess denied (external check failed).";
-			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
-						     request, NULL, user_msg);
+
+			request->reply->code = PW_AUTHENTICATION_REJECT;
+			pairfree(request->reply->vps);
+			request->reply->vps = NULL;
+
+			/*
+			 *  FIXME!  Add user_msg to the request.
+			 */
+
 			if (log_auth) {
 				radlog(L_AUTH,
 					"Login incorrect: [%s] (%s) "
@@ -617,7 +631,6 @@ int rad_authenticate(REQUEST *request)
 					auth_username(namepair),
 					auth_name(buf, sizeof(buf), request, 1));
 			}
-			pairfree(user_reply);
 			return 0;
 		}
 	}
@@ -633,15 +646,15 @@ int rad_authenticate(REQUEST *request)
 	 *	(if you knew how I use the exec_wait, you'd understand).
 	 */
 	if (seen_callback_id) {
-		pairdelete(&user_reply, PW_FRAMED_PROTOCOL);
-		pairdelete(&user_reply, PW_FRAMED_IP_ADDRESS);
-		pairdelete(&user_reply, PW_FRAMED_IP_NETMASK);
-		pairdelete(&user_reply, PW_FRAMED_ROUTE);
-		pairdelete(&user_reply, PW_FRAMED_MTU);
-		pairdelete(&user_reply, PW_FRAMED_COMPRESSION);
-		pairdelete(&user_reply, PW_FILTER_ID);
-		pairdelete(&user_reply, PW_PORT_LIMIT);
-		pairdelete(&user_reply, PW_CALLBACK_NUMBER);
+		pairdelete(&request->reply->vps, PW_FRAMED_PROTOCOL);
+		pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
+		pairdelete(&request->reply->vps, PW_FRAMED_IP_NETMASK);
+		pairdelete(&request->reply->vps, PW_FRAMED_ROUTE);
+		pairdelete(&request->reply->vps, PW_FRAMED_MTU);
+		pairdelete(&request->reply->vps, PW_FRAMED_COMPRESSION);
+		pairdelete(&request->reply->vps, PW_FILTER_ID);
+		pairdelete(&request->reply->vps, PW_PORT_LIMIT);
+		pairdelete(&request->reply->vps, PW_CALLBACK_NUMBER);
 	}
 
 	/*
@@ -649,11 +662,11 @@ int rad_authenticate(REQUEST *request)
 	 *	through radius_xlate, modifying them in place.
 	 */
 	if (user_msg == NULL) {
-	  reply_item = pairfind(user_reply, PW_REPLY_MESSAGE);
+	  reply_item = pairfind(request->reply->vps, PW_REPLY_MESSAGE);
 	  while (reply_item) {
 	  	radius_xlate(buf, sizeof(reply_item->strvalue),
 			     (char *)reply_item->strvalue,
-			     request->packet->vps, user_reply);
+			     request->packet->vps, request->reply->vps);
 		strNcpy((char *)reply_item->strvalue, buf,
 			sizeof(reply_item->strvalue));
 		reply_item->length = strlen((char *)reply_item->strvalue);
@@ -662,8 +675,11 @@ int rad_authenticate(REQUEST *request)
 	  }
 	}
 
-	request->reply = build_reply(PW_AUTHENTICATION_ACK, request,
-				     user_reply, user_msg);
+	request->reply->code = PW_AUTHENTICATION_ACK;
+
+	/*
+	 * FIXME!  Add user_msg to the reply!
+	 */
 
 	if (log_auth) {
 		radlog(L_AUTH,
@@ -678,11 +694,10 @@ int rad_authenticate(REQUEST *request)
 		 *	No need to check the exit status here.
 		 */
 		radius_exec_program(exec_program,
-			request->packet->vps, &user_reply, exec_wait, NULL);
+			request->packet->vps, &request->reply->vps, exec_wait, NULL);
 	}
 
 	if (exec_program) free(exec_program);
-	pairfree(user_reply);
 	return 0;
 }
 
