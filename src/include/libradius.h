@@ -154,7 +154,7 @@ int		userparse(char *buffer, VALUE_PAIR **first_pair);
 void		librad_log(char *, ...);
 #endif
 void		librad_perror(char *, ...);
-extern char	*librad_errstr;
+extern char	librad_errstr[];
 extern int	librad_dodns;
 extern int	librad_debug;
 
