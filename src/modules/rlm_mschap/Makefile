@@ -16,4 +16,5 @@ smbencrypt: $(STATIC_OBJS)
 	$(CC) -I../../include $(LDFLAGS) -o smbencrypt smbencrypt.c deskey.o desport.o smbpass.o ../../lib/md4.o
 
 smbencrypt-install:
+	$(INSTALL) -d -m 755				$(R)$(bindir)
 	$(INSTALL) -m 755 $(INSTALLSTRIP) smbencrypt $(R)$(bindir)
