@@ -30,7 +30,22 @@ values.
 may leak secret information from your RADIUS server, if you use them
 in reply attributes to the NAS!
 
-  e.g.
+  If your system supports regular expressions, then regular expression
+matching defines other special variables, just like in Perl.
+
+     %{0}	What the regular expression matched
+     %{1}	The first group which matched
+     %{2}	The second group which matched
+     ...
+     %{8}	The eight group which matched.
+
+  These variables are defined during a regular expression match =~,
+and only when the expression matches.  They are NOT defined for the
+operator !~, or when =~ doesn't match.  Any use of =~ destroys all
+previous values of %{0}..%{8}, but the variables.
+
+
+  Some examples.
 
   %{User-Name}			 The string value of the User-Name attribute.
   %{proxy-reply:Framed-Protocol} The string value of the Framed-Protocol
@@ -38,6 +53,12 @@ in reply attributes to the NAS!
   %{config:modules.unix.passwd}  The string value of the 'passwd' configuration
 				 item in the 'unix' module, in the 'modules'
 				 section of radiusd.conf.
+
+DEFAULT  User-Name =~ "^([^@]+)@(.*)"
+	 All-That-Matched = `%{0}`
+	 Just-The-User-Name = `%{1}`
+	 Just-The-Realm-Name = `%{2}`
+
 
   The variables are used in dynamically translated strings.  Most of
 the configuration entries in radiusd.conf (and related files) will do
