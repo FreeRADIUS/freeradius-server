@@ -1,5 +1,9 @@
-  Please read the README in the doc/ subdirectory. Section 2 gives you
-complete details on how to configure, compile and install FreeRADIUS.
+1. INSTALLATION
+
+  Ignore this file if you have a pre-installed binary package.
+
+
+1a. SIMPLE INSTALLATION
 
   If you do not need to modify the default configuration, then take
 the following steps to build and install the server:
@@ -9,7 +13,83 @@ the following steps to build and install the server:
 	$ make
 	$ make install
 
-  Then, start the server in debugging mode:
+
+1b. CUSTOM INSTALLATION
+
+  FreeRADIUS has autoconf support. This means you have to run
+./configure, and then run make.  To see which configuration options
+are supported, run './configure --help', and read it's output.  The
+following list is a selection from the available flags:
+
+  --enable-shared[=PKGS]  build shared libraries [default=yes]
+  --enable-static[=PKGS]  build static libraries [default=yes]
+  --enable-fast-install[=PKGS]  optimize for fast installation [default=yes]
+  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log] 
+  --with-radacctdir=PATH  Directory for detail files [LOGDIR/radacct] 
+  --with-raddbdir=DIR     Directory for config files [SYSCONFDIR/raddb] 
+  --with-threads          Use threads, if available.  (default=yes) 
+  --with-snmp             Compile in SNMP support. (default=yes)
+  --disable-ltdl-install  Do not install libltdl
+  --with-experimental-modules      Use experimental and unstable modules. (default=no) 
+  --enable-developer      Turns on super-duper-extra-compile-warnings
+                              when using gcc.
+
+  To get the defaults that Cistron Radius used up to 1.5.4.3-beta18, use:
+
+	./configure --localstatedir=/var --sysconfdir=/etc
+
+  That means binaries will get installed in /usr/local/{bin,sbin},
+manpages in /usr/local/man, configuration files in /etc/raddb, and
+logfiles in /var/log and /var/log/radacct.
+
+  Now type "make". The binaries will be compiled.
+
+  Then do "make install". That will install the binaries, the 'man'
+pages, and MAY install the configuration files.  If you have not
+installed a RADIUS server before, then the configuration files for
+FreeRADIUS will be installed.  If you already have a RADIUS server
+installed, then FreeRADIUS WILL NOT over-write your current
+configuration.  It will warn you about the files it could not install.
+
+  If you DO see a warning message about files that could not be
+installed, then you should manually 'diff' the files.  There MAY be
+changes in the dictionary files which are REQUIRED for a new version
+of the software.  These files will NOT be installed over your current
+configuration, so you MUST verify and install any problem files by
+hand.
+
+  It is EXTREMELY helpful to read the output of both 'configure',
+'make', and 'make install'.  If a particular module you expected to be
+installed was NOT installed, then the output of the
+'configure;make;make install' sequence will tell you why that module
+was not installed.  Please do NOT post questions to the FreeRADIUS
+users list without carefully reading the output of this process.
+
+
+2. RUNNING THE SERVER
+
+  If the server builds and installs, but doesn't run correctly, then
+you may use debugging mode to figure out the problem. 
+
+  This is your BEST HOPE for understanding the problem.  Read ALL of
+the messages which are printed to the screen, the answer to your
+problem will often be in a warning or error message.
+
+  We really can't emphasize that last sentence enough.  Configuring a
+RADIUS server for complex local authentication isn't a trivial task.
+Your ONLY method for debugging it is to read the debug messages, where
+the server will tell you exactly what it's doing, and why.  You should
+then compare its behaviour to what you intended, and edit the
+configuration files as appropriate.
+
+  If you don't use debugging mode, then you will look dumb when you
+ask questions on the 'freeradius-users' list, and the final answer
+turns out to have been sitting in front of you all along.  Since the
+main developers of FreeRADIUS use debugging mode to track down their
+configuration problems with the server, it's probably a good idea for
+you to use it, too.
+
+  To start the server in debugging mode, do:
 
 	$ radiusd -X
 

@@ -1,7 +1,6 @@
-
 1. INTRO
 
-  All code in this server was written from scratch.
+  All code in this server was written for this project.
 
   The server is mostly compatible with livingston radiusd-2.01
   (no menus or s/key support though) but with more feautures, such as:
@@ -29,70 +28,9 @@
   it will result in Prefix and Suffix probably not working in the "users"
   file if you already stripped them off in the "hints" file.
 
-2. COMPILE
+2. INSTALLATION
 
-  Ignore this section (2) if you have a pre-installed binary package.
-
-  Radiusd now has autoconf support. This means you have to run
-  ./configure --flags, then run make. You can set the following flags:
-
-  --enable-shared[=PKGS]  build shared libraries [default=yes]
-  --enable-static[=PKGS]  build static libraries [default=yes]
-  --enable-fast-install[=PKGS]  optimize for fast installation [default=yes]
-  --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
-  --disable-libtool-lock  avoid locking (might break parallel builds)
-  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log] 
-  --with-radacctdir=PATH  Directory for detail files [LOGDIR/radacct] 
-  --with-raddbdir=DIR     Directory for config files [SYSCONFDIR/raddb] 
-  --with-dict-nocase      Make dictionary case-independant (default=yes)
-  --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)
-  --with-threads          Use threads, if available.  (default=yes) 
-  --with-snmp             Compile in SNMP support. (default=yes)
-  --disable-ltdl-install  Do not install libltdl
-  --with-static-modules=QUOTED-MODULE-LIST
-  --with-experimental-modules      Use experimental and unstable modules. (default=no) 
-  --enable-developer      Turns on super-duper-extra-compile-warnings
-                              when using gcc.
-
-  To get the defaults that Cistron Radius used up to 1.5.4.3-beta18, use:
-
-	./configure --localstatedir=/var --sysconfdir=/etc
-
-  That means binaries will get installed in /usr/local/{bin,sbin},
-  manpages in /usr/local/man, configuration files in /etc/raddb,
-  and logfiles in /var/log and /var/log/radacct.
-
-  Now type "make". The binaries will be compiled.
-
-  Then you do a "make install". That will install the binaries, the 'man'
-  pages, and MAY install the configuration files.  If you have not
-  installed a RADIUS server before, then the configuration files for
-  FreeRADIUS will be installed.  If you already have a RADIUS server
-  installed, then FreeRADIUS WILL NOT over-write your current
-  configuration.  It will warn you about the files it could not install.
-
-  o Copy the examples in raddb to /etc/raddb and edit+rename the sample files.
-  o Start radiusd (using /etc/init.d/radiusd start if applicable).
-
-  If the server builds and installs, but doesn't run correctly, then
-  use debugging mode to figure out the problem.  (radiusd -X).  This
-  is your BEST HOPE for understanding the problem.  Read ALL of the
-  messages which are printed to the screen, the answer to your problem
-  will often be in a warning or error message.
-
-  We really can't emphasize that enough.  Configuring a RADIUS server
-  for complex local installations isn't a trivial task.  Your ONLY
-  method for debugging it is to read the debug messages, where the
-  server tells you exactly what it's doing, and why.  You should then
-  compare its behaviour to what you intended, and then edit the
-  configuration files as appropriate.
-
-  If you don't use debugging mode, then you will look like an idiot
-  when you ask questions on the 'freeradius-users' list, and the final
-  answer turns out to have been sitting in front of you all along.
-  Since the main developers of FreeRADIUS use debugging mode to track
-  down their configuration problems with the server, it's probably a
-  good idea for you to use it, too.
+   See the INSTALL file, in the parent directory.
 
 3. CONFIGURATION FILES
 
@@ -287,5 +225,54 @@
 
 	http://lists.cistron.nl/archives/freeradius-devel/
 
+6.  OTHER INFORMATION
+
+  The files in other directories are:
+
+  debian/	Files to build a radiusd-freeradius Debian Linux package
+
+  dialup_admin/	A PHP web front-end to manage an SQL database associated
+		with the server.
+
+  doc/		Various snippets of documentation
+  doc/rfc/	Copies of the RFC's.  If you have Perl, do a 'make' in
+		that directory, and look at the HTML output.
+
+  libltdl/	Libtool platform independent library system.
+
+  man/		Unix Manual pages for the server, configuration files,
+		and associated utilities.
+
+  mibs/		SNMP Mibs for the server.
+
+  raddb/	Sample configuration files for the server.
+
+  redhat/	Additional files for a RedHat Linux system.
+
+  scripts/	Sample scripts for startup and maintenance
+
+  src/		Source code
+  src/main	source code for the daemon and associated utilities
+  src/lib	source code for the RADIUS library
+  src/include	header files
+  src/modules	dynamic plug-in modules  
+
+  todo/		TODO list and assorted files.
+
+
+  If you have ANY problems, concerns, or surprises when running the
+server, then run it in debugging mode, as root, from the command line:
+
+$ radiusd -X
+
+It will produce a large number of messages.  The answers to many
+questions, and the solution to many problems, can usually be found in
+these messages.
+
+  For further details, see:
+
+  http://www.freeradius.org/faq/
+
+  and the 'bugs' file, in this directory.
+
 $Date$
-originally by Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999

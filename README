@@ -1,38 +1,59 @@
+1. INTRODUCTION
 
-  debian/	Files to build a radiusd-freeradius Debian package
-  doc/		Various snippets of documentation
-  raddb/	Sample files for /etc/raddb
-  scripts/	Sample scripts for startup and maintenance
-  src/		Source code
-  todo/		TODO list and assorted files.
+  The FreeRADIUS Server Project is a high performance and highly
+configurable GPL'd free RADIUS server. The server is similar in some
+respects to Livingston's 2.0 server.  While FreeRADIUS started as a
+variant of the Cistron RADIUS server, they don't share a lot in common
+any more.  It now has many more features than Cistron or Livingston,
+and is much more configurable.
 
-Please see the README and other documentation in the doc/ subdirectory
+  FreeRADIUS is an Internet authentication daemon, which implements
+the RADIUS protocol, as defined in RFC 2865 (and others).  It allows
+Network Access Servers (NAS boxes) to perform authentication for
+dial-up users.  There are also RADIUS clients available for Web
+servers, firewalls, Unix logins, and more.  Using RADIUS allows
+authentication and authorization for a network to be centralized, and
+minimizes the amount of re-configuration which has to be done when
+adding or deleting new users.
+
+  Please see the main web page (http://www.freeradius.org) for more
+up-to-date information.
+
+2. INSTALLATION
+
+  To install the server, please see the INSTALL file in this
+directory.
+
+3. DEBUGGING THE SERVER
+
+  Run the server in debugging mode, (radiusd -X) and READ the output.
+We really can't emphasize this enough.
+
+  Read the FAQ.  Many questions are answered there.
+
+  Read the configuration files.  Many parts of the server have NO
+documentation, other than comments in the configuration file.
+
+  Search the mailing lists.  There is a Google link on the bottom of
+  the page:
+
+	http://www.freeradius.org/list/users.html
+
+  Type some key words into the search box, and you should find
+discussions about common problems and solution.
 
 
-  If you have ANY problems, concerns, or surprises when running the
-server, then run it in debugging mode, as root, from the command line:
+4. ADDITIONAL INFORMATION
 
-$ radiusd -X
+  See 'doc/README' for more information about FreeRADIUS.
 
-It will produce a large number of messages.  The answers to many
-questions, and the solution to many problems, can usually be found in
-these messages.
-
-  For further details, see:
-
-  http://www.freeradius.org/faq/
-
-  and ./doc/bugs
-
-
-For more general RADIUS information, the Livington internet site had a
-lot of information on radius online.  Unfortunately Livingston, and
+  For more general RADIUS information, the Livington internet site had
+a lot of information on radius online.  Unfortunately Livingston, and
 the site, don't exist anymore but there's a copy of the site still at:
 
 	http://portmasters.com/www.livingston.com/
 
-Especially worth a read is the "RADIUS for Unix administrators guide"
+  Especially worth a read is the "RADIUS for Unix administrators guide"
 
 HTML:  http://portmasters.com/tech/docs/radius/1185title.html
 PDF:   http://portmasters.com/tech/docs/pdf/radius.pdf
-
