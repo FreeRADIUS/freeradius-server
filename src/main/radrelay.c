@@ -207,6 +207,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	int skip;
 	long fpos;
 	int x;
+	unsigned int i = 0;
 
 	/* Never happens */
 	if (r_req->state == STATE_FULL)
@@ -224,10 +225,13 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	fpos = ftell(fp);
 	fseek(fp, 0L, SEEK_SET);
 	do {
-		x = rad_lockfd(fileno(fp), 0);
+		x = rad_lockfd_nonblock(fileno(fp), 0);
 		if (x == -1)
 			ms_sleep(25);
-	} while (x == -1);
+	} while (x == -1 && i++ < 80);
+
+	if (x == -1)
+		return 0;
 
 	s = NULL;
 	fseek(fp, fpos, SEEK_SET);
@@ -637,7 +641,7 @@ void loop(struct relay_misc *r_args)
 		for (i = 0; i < NR_SLOTS; i++) {
 			if (slots[i].state == STATE_FULL) {
 				n += do_send(&slots[i], r_args->secret);
-				if (n > 1) ms_sleep(140);
+				ms_sleep(140);
 				if (n > NR_SLOTS / 2)
 					break;
 			}
