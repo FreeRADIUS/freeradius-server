@@ -113,15 +113,11 @@ static void *request_handler_thread(void *arg)
 	self = (THREAD_HANDLE *) arg;
 	
 	/*
-	 *	Loop forever, until pthread_cancel()'d, or SIGTERM'd.
+	 *	Loop forever, until told to exit.
 	 */
 	for (;;) {
 		/*
 		 *	Wait for the semaphore to be given to us.
-		 *
-		 *	This is a thread cancellation point.  So if we're
-		 *	given a pthread_cancel(), then this function acts
-		 *	like pthread_exit().
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       self->child_pid);
@@ -132,6 +128,8 @@ static void *request_handler_thread(void *arg)
 		 *	then exit politely.
 		 */
 		if (self->status == THREAD_CANCELLED) {
+			DEBUG2("Thread %d exiting on request from parent.",
+			       self->child_pid);
 			break;
 		}
 		
@@ -242,8 +240,12 @@ static void *request_handler_thread(void *arg)
 	}
 
 	/*
-	 *	The parent thread takes care of freeing the 'self' handle.
+	 *	This thread is exiting.  Delete any additional resources
+	 *	associated with it (semaphore, etc), and free the thread
+	 *	handle memory.
 	 */
+	sem_destroy(&self->semaphore);
+	free(self);
 	return NULL;
 }
 
@@ -277,14 +279,6 @@ static void delete_thread(THREAD_HANDLE *handle)
 	} else {
 		next->prev = prev;
 	}
-
-	/*
-	 *	The handle has been removed from the list.
-	 *
-	 *	Go delete its semaphore, and free the thread handle memory.
-	 */
-	sem_destroy(&handle->semaphore);
-	free(handle);
 }
 
 /*
@@ -376,6 +370,7 @@ static THREAD_HANDLE *spawn_thread(void)
 {
 	int rcode;
 	THREAD_HANDLE *handle;
+	pthread_attr_t attr;
 
 	/*
 	 *	Ensure that we don't spawn too many threads.
@@ -420,19 +415,26 @@ static THREAD_HANDLE *spawn_thread(void)
 	handle->fun = NULL;
 
 	/*
-	 *	Create the thread, and detach it so that it cleans up
-	 *	it's own memory when it exits.
+	 *	Initialize the thread's attributes to detached.
+	 *
+	 *	We could call pthread_detach() later, but if the thread
+	 *	exits between the create & detach calls, it will need to
+	 *	be joined, which will never happen.
 	 */
-	rcode = pthread_create(&handle->child_pid, NULL,
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	
+	/*
+	 *	Create the thread detached, so that it cleans up it's
+	 *	own memory when it exits.
+	 */
+	rcode = pthread_create(&handle->child_pid, &attr,
 			       request_handler_thread, handle);
 	if (rcode != 0) {
 		log(L_ERR|L_CONS, "Thread create failed: %s", strerror(errno));
 		exit(1);
 	}
-	if (pthread_detach(handle->child_pid) != 0) {
-		log(L_ERR|L_CONS, "Thread detach failed: %s", strerror(errno));
-		exit(1);
-	}
+	pthread_attr_destroy(&attr);
 
 	/*
 	 *	One more thread to go into the list.
@@ -516,6 +518,13 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	active_threads = 0;
 	for (handle = thread_pool.head; handle; handle = next) {
 		next = handle->next;
+
+		/*
+		 *	Ignore threads which aren't running.
+		 */
+		if (handle->status != THREAD_RUNNING) {
+			continue;
+		}
 
 		/*
 		 *	If we haven't found a free thread yet, then
@@ -620,7 +629,7 @@ int thread_pool_clean(void)
 		}
 
 		/*
-		 *	And exit.
+		 *	And exit, as there can't be too many spare threads.
 		 */
 		return 0;
 	}
@@ -643,21 +652,21 @@ int thread_pool_clean(void)
 		 *	first N idle threads we come across.
 		 */
 		for (handle = thread_pool.head; (handle != NULL) && (spare > 0) ; handle = handle->next) {
-
 			/*
 			 *	If the thread is not handling a
-			 *	request, then cancel it, count down of
-			 *	the ones we need to signal, and exit.
+			 *	request, then tell it to exit.
 			 *
-			 *	The threads will actually be cleaned
-			 *	up from the list later.
+			 *	Note that we delete it from the thread
+			 *	pool BEFORE telling it to kill itself,
+			 *	as the child thread can free the 'handle'
+			 *	structure, without anyone else using it.
 			 */
 			if (handle->request == NULL) {
+				delete_thread(handle);
 				handle->status = THREAD_CANCELLED;
 				sem_post(&handle->semaphore);
-				delete_thread(handle);
 				spare--;
-				break;
+				return 0;
 			}
 		}
 	}
