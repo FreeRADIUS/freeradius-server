@@ -4,9 +4,8 @@ AC_DEFUN(modname,[rlm_example])  # change 'example'
 
 if test x$with_[]modname != xno; then
 
-
 	dnl put configuration checks here.  
-	dnl use AC_MSG_ERROR() on fatal errors.
+	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
 
 	AC_CHECK_LIB(c, printf,
@@ -19,6 +18,8 @@ if test x$with_[]modname != xno; then
 		[ fail=$fail" stdio.h" ]
 	)
 
+	AC_CHECK_HEADERS(stdio.h stdlib.h)  # for the config.h defs
+	AC_CHECK_FUNCS(printf)  # for the config.h defs
 
 	targetname=modname     # keep this!  Don't change!
 else
@@ -26,7 +27,7 @@ else
 	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
 fi
 
-dnl  Don't change this.
+dnl  Don't change this section.
 if test x"$fail" != x""; then
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
@@ -41,6 +42,7 @@ fi
 AC_SUBST(example_cflags)  # change 'example'
 AC_SUBST(example_ldflags)  # change 'example'
 
+AC_CONFIG_HEADER(config.h)  # delete if you don't want a config.h file.
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(Makefile)  # keep this!  Don't change!
