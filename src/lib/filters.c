@@ -29,7 +29,6 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <stdlib.h>
-#include <sys/time.h>	/* gettimeofday() */
 
 #include "libradius.h"
 

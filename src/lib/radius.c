@@ -10,7 +10,6 @@ static const char rcsid[] = "$Id$";
 #include	"autoconf.h"
 
 #include	<sys/types.h>
-#include	<sys/time.h>
 #include	<netinet/in.h>
 #include	<sys/socket.h>
 #include	<arpa/inet.h>
@@ -20,7 +19,6 @@ static const char rcsid[] = "$Id$";
 #include	<unistd.h>
 #include	<fcntl.h>
 #include	<string.h>
-#include	<time.h>
 #include	<ctype.h>
 #include	<errno.h>
 

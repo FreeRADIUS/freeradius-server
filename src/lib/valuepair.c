@@ -10,12 +10,10 @@ static const char rcsid[] = "$Id$";
 #include	"autoconf.h"
 
 #include	<sys/types.h>
-#include	<sys/time.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<time.h>
 #include	<ctype.h>
 
 #include	"libradius.h"
@@ -516,6 +514,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			/*
 			 * 	If it starts with a digit, it must
 			 * 	be a number (or a range).
+			 *
+			 *	Note that ALL integers are unsigned!
 			 */
 			if (isdigit(*value)) {
 				vp->lvalue = atoi(value);
@@ -545,7 +545,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
 			/*
-			 * special case to convert filter to binary
+			 *	Special case to convert filter to binary
 			 */
 		  	if ( filterBinary( vp, value ) < 0 ) {
 			  librad_log("failed to parse Ascend binary attribute: %s",
@@ -554,7 +554,11 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			  return NULL;
 			}
 			break;
-
+			/*
+			 *	If Ascend binary is NOT defined,
+			 *	then fall through to raw octets, so that
+			 *	the user can at least make them by hand...
+			 */
 #endif
 			/* raw octets: 0x01020304... */
 		case PW_TYPE_OCTETS:
