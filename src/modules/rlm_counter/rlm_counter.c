@@ -666,7 +666,7 @@ static int counter_detach(void *instance)
  */
 module_t rlm_counter = {
 	"Counter",	
-	RLM_TYPE_THREAD_UNSAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	counter_instantiate,		/* instantiation */
 	{

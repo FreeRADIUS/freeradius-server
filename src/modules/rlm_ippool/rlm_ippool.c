@@ -611,7 +611,7 @@ static int ippool_detach(void *instance)
  */
 module_t rlm_ippool = {
 	"IPPOOL",	
-	RLM_TYPE_THREAD_UNSAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	ippool_instantiate,		/* instantiation */
 	{
