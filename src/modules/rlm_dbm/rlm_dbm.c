@@ -284,7 +284,11 @@ static int rlm_dbm_instantiate(CONF_SECTION *conf, void **instance) {
 	struct rlm_dbm_t *inst;
 	
 	inst = rad_malloc(sizeof(rlm_dbm_t));
-	
+	if (!inst) {
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
+
         if (cf_section_parse(conf, inst, module_config) < 0) {
                 free(inst);      
                 return -1;
