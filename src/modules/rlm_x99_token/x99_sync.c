@@ -25,6 +25,7 @@
 #include "x99.h"
 #include "x99_sync.h"
 
+#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
