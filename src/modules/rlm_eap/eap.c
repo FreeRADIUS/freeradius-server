@@ -682,7 +682,17 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	if (eap_msg == NULL) {
-		radlog(L_ERR, "rlm_eap: No EAP-Message, not doing EAP");
+		DEBUG2("  rlm_eap: No EAP-Message, not doing EAP");
+		return EAP_NOOP;
+	}
+
+	/*
+	 *	Look for EAP-Type = None (FreeRADIUS specific attribute)
+	 *	this allows you to NOT do EAP for some users.
+	 */
+	vp = pairfind(request->packet->vps, PW_EAP_TYPE);
+	if (vp && vp->lvalue == 0) {
+		DEBUG2("  rlm_eap: Found EAP-Message, but EAP-Type = None, so we're not doing EAP.");
 		return EAP_NOOP;
 	}
 
