@@ -7,7 +7,8 @@ include ../../Make.inc
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o conffile.o \
 		  modules.o modcall.o session.o xlat.o threads.o smux.o \
-		  radius_snmp.o client.o request_list.o mainconfig.o
+		  radius_snmp.o client.o request_list.o mainconfig.o \
+		  request_process.o
 INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
 
 CFLAGS		+= -I../include 
@@ -93,6 +94,9 @@ session.o:  session.c $(INCLUDES) ../include/modules.h
 
 request_list.o:  request_list.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c request_list.c
+
+request_process.o:  request_process.c $(INCLUDES)
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c request_process.c
 
 proxy.o:  proxy.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c proxy.c
