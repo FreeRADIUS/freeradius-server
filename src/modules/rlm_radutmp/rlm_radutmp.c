@@ -128,35 +128,36 @@ static int radutmp_zap(rlm_radutmp_t *inst,
 	if (t == 0) time(&t);
 
 	fd = open(filename, O_RDWR);
-	if (fd >= 0) {
-		/*
-		 *	Lock the utmp file, prefer lockf() over flock().
-		 */
-		rad_lockfd(fd, LOCK_LEN);
-
-		/*
-		 *	Find the entry for this NAS / portno combination.
-		 */
-		while (read(fd, &u, sizeof(u)) == sizeof(u)) {
-			if ((nasaddr != 0 && nasaddr != u.nas_address) ||
-			      u.type != P_LOGIN)
-				continue;
-			/*
-			 *	Match. Zap it.
-			 */
-			if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-				radlog(L_ERR, "Accounting: radutmp_zap: "
-					      "negative lseek!\n");
-				lseek(fd, (off_t)0, SEEK_SET);
-			}
-			u.type = P_IDLE;
-			u.time = t;
-			write(fd, &u, sizeof(u));
-		}
-		close(fd);	/* and implicitely release the locks */
-	} else {
-		radlog(L_ERR, "Accounting: %s: %m", filename);
+	if (fd < 0) {
+		radlog(L_ERR, "rlm_radutmp: Error accessing file %s: %s",
+		       filename, strerror(errno));
+		return RLM_MODULE_FAIL;
 	}
+
+	/*
+	 *	Lock the utmp file, prefer lockf() over flock().
+	 */
+	rad_lockfd(fd, LOCK_LEN);
+	
+	/*
+	 *	Find the entry for this NAS / portno combination.
+	 */
+	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
+	  if ((nasaddr != 0 && nasaddr != u.nas_address) ||
+	      u.type != P_LOGIN)
+	    continue;
+	  /*
+	   *	Match. Zap it.
+	   */
+	  if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
+	    radlog(L_ERR, "rlm_radutmp: radutmp_zap: negative lseek!");
+	    lseek(fd, (off_t)0, SEEK_SET);
+	  }
+	  u.type = P_IDLE;
+	  u.time = t;
+	  write(fd, &u, sizeof(u));
+	}
+	close(fd);	/* and implicitely release the locks */
 
 	return 0;
 }
@@ -183,7 +184,6 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 {
 	struct radutmp	ut, u;
 	VALUE_PAIR	*vp;
-	int		rb_record = 0;
 	int		status = -1;
 	uint32_t	nas_address = 0;
 	uint32_t	framed_address = 0;
@@ -199,40 +199,35 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	char		filename[1024];
 	char		ip_name[32]; /* 255.255.255.255 */
 	const char	*nas;
+	NAS_PORT	*cache;
+	int		r;
 
 	/*
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) == NULL) {
-		radlog(L_ERR, "Accounting: no Accounting-Status-Type record.");
+		radlog(L_ERR, "rlm_radutmp: No Accounting-Status-Type record.");
 		return RLM_MODULE_NOOP;
 	}
 	status = vp->lvalue;
-	if (status == PW_STATUS_ACCOUNTING_ON ||
-	    status == PW_STATUS_ACCOUNTING_OFF) rb_record = 1;
 
 	/*
-	 *	Translate the User-Name attribute, or whatever else
-	 *	they told us to use.
+	 *	Look for weird reboot packets.
+	 *
+	 *	ComOS (up to and including 3.5.1b20) does not send
+	 *	standard PW_STATUS_ACCOUNTING_XXX messages.
+	 *
+	 *	Check for:  o no Acct-Session-Time, or time of 0
+	 *		    o Acct-Session-Id of "00000000".
+	 *
+	 *	We could also check for NAS-Port, that attribute
+	 *	should NOT be present (but we don't right now).
 	 */
-	*buffer = '\0';
-	radius_xlat(buffer, sizeof(buffer), inst->username, request, NULL);
-
-	if (!rb_record &&
-	    (*buffer != '\0')) do {
+	if ((status != PW_STATUS_ACCOUNTING_ON) &&
+	    (status != PW_STATUS_ACCOUNTING_OFF)) do {
 		int check1 = 0;
 		int check2 = 0;
 
-		/*
-		 *	ComOS (up to and including 3.5.1b20) does not send
-		 *	standard PW_STATUS_ACCOUNTING_XXX messages.
-		 *
-		 *	Check for:  o no Acct-Session-Time, or time of 0
-		 *		    o Acct-Session-Id of "00000000".
-		 *
-		 *	We could also check for NAS-Port, that attribute
-		 *	should NOT be present (but we don't right now).
-		 */
 		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME))
 		     == NULL || vp->lvalue == 0)
 			check1 = 1;
@@ -242,28 +237,22 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			check2 = 1;
 		if (check1 == 0 || check2 == 0) {
 #if 0 /* Cisco sometimes sends START records without username. */
-			radlog(L_ERR, "Accounting: no username in record");
+			radlog(L_ERR, "rlm_radutmp: no username in record");
 			return RLM_MODULE_FAIL;
 #else
 			break;
 #endif
 		}
-		radlog(L_INFO, "Accounting: converting reboot records.");
+		radlog(L_INFO, "rlm_radutmp: converting reboot records.");
 		if (status == PW_STATUS_STOP)
 			status = PW_STATUS_ACCOUNTING_OFF;
 		if (status == PW_STATUS_START)
 			status = PW_STATUS_ACCOUNTING_ON;
-		rb_record = 1;
 	} while(0);
 
 	time(&t);
 	memset(&ut, 0, sizeof(ut));
 	ut.porttype = 'A';
-
-	/*
-	 *  Copy the previous translated user name.
-	 */
-	strncpy(ut.login, buffer, RUT_NAMESIZE);
 
 	/*
 	 *	First, find the interesting attributes.
@@ -354,6 +343,9 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		}
 	}
 
+	/*
+	 *	Set the protocol field.
+	 */
 	if (protocol == PW_PPP)
 		ut.proto = 'P';
 	else if (protocol == PW_SLIP)
@@ -363,21 +355,26 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	ut.time = t - ut.delay;
 
 	/*
-	 *	Get the filename, via xlat.
+	 *	Get the utmp filename, via xlat.
 	 */
 	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL);
 
 	/*
-	 *	See if this was a portmaster reboot.
+	 *	See if this was a reboot.
+	 *
+	 *	Hmm... we may not want to zap all of the users when
+	 *	the NAS comes up, because of issues with receiving
+	 *	UDP packets out of order.
 	 */
 	if (status == PW_STATUS_ACCOUNTING_ON && nas_address) {
-		radlog(L_INFO, "NAS %s restarted (Accounting-On packet seen)",
+		radlog(L_INFO, "rlm_radutmp: NAS %s restarted (Accounting-On packet seen)",
 		       nas);
 		radutmp_zap(inst, filename, nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
+
 	if (status == PW_STATUS_ACCOUNTING_OFF && nas_address) {
-		radlog(L_INFO, "NAS %s rebooted (Accounting-Off packet seen)",
+		radlog(L_INFO, "rlm_radutmp: NAS %s rebooted (Accounting-Off packet seen)",
 		       nas);
 		radutmp_zap(inst, filename, nas_address, ut.time);
 		return RLM_MODULE_OK;
@@ -389,10 +386,22 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	if (status != PW_STATUS_START &&
 	    status != PW_STATUS_STOP &&
 	    status != PW_STATUS_ALIVE) {
-		radlog(L_ERR, "NAS %s port %d unknown packet type %d)",
+		radlog(L_ERR, "rlm_radutmp: NAS %s port %d unknown packet type %d)",
 		       nas, ut.nas_port, status);
 		return RLM_MODULE_NOOP;
 	}
+
+	/*
+	 *	Translate the User-Name attribute, or whatever else
+	 *	they told us to use.
+	 */
+	*buffer = '\0';
+	radius_xlat(buffer, sizeof(buffer), inst->username, request, NULL);
+
+	/*
+	 *  Copy the previous translated user name.
+	 */
+	strncpy(ut.login, buffer, RUT_NAMESIZE);
 
 	/*
 	 *	Perhaps we don't want to store this record into
@@ -401,130 +410,140 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	- without a NAS-Port-Id (telnet / tcp access)
 	 *	- with the username "!root" (console admin login)
 	 */
-	if (!port_seen || strncmp(ut.login, "!root", RUT_NAMESIZE) == 0)
+	if (!port_seen ||
+	    (strncmp(ut.login, "!root", RUT_NAMESIZE) == 0)) {
 		return RLM_MODULE_NOOP;
+	}
 
 	/*
 	 *	Enter into the radutmp file.
 	 */
 	fd = open(filename, O_RDWR|O_CREAT, inst->permission);
-	if (fd >= 0) {
-		NAS_PORT *cache;
-		int r;
-
-		/*
-		 *	Lock the utmp file, prefer lockf() over flock().
-		 */
-		rad_lockfd(fd, LOCK_LEN);
-
-		/*
-		 *	Find the entry for this NAS / portno combination.
-		 */
-		if ((cache = nas_port_find(inst->nas_port_list, ut.nas_address,
-					   ut.nas_port)) != NULL) {
-			lseek(fd, (off_t)cache->offset, SEEK_SET);
-		}
-
-		r = 0;
-		off = 0;
-		while (read(fd, &u, sizeof(u)) == sizeof(u)) {
-			off += sizeof(u);
-			if (u.nas_address != ut.nas_address ||
-			    u.nas_port	  != ut.nas_port)
-				continue;
-
-			if (status == PW_STATUS_STOP &&
-			    strncmp(ut.session_id, u.session_id,
-			     sizeof(u.session_id)) != 0) {
-				/*
-				 *	Don't complain if this is not a
-				 *	login record (some clients can
-				 *	send _only_ logout records).
-				 */
-				if (u.type == P_LOGIN)
-					radlog(L_ERR,
-		"Accounting: logout: entry for NAS %s port %d has wrong ID",
-					       nas, u.nas_port);
-				r = -1;
-				break;
-			}
-
-			if (status == PW_STATUS_START &&
-			    strncmp(ut.session_id, u.session_id,
-			     sizeof(u.session_id)) == 0  &&
-			    u.time >= ut.time) {
-				if (u.type == P_LOGIN) {
-					radlog(L_INFO,
-		"Accounting: login: entry for NAS %s port %d duplicate",
-					nas, u.nas_port);
-					r = -1;
-					break;
-				}
-				radlog(L_ERR,
-		"Accounting: login: entry for NAS %s port %d wrong order",
-				nas, u.nas_port);
-				r = -1;
-				break;
-			}
-
-			/*
-			 *	FIXME: the ALIVE record could need
-			 *	some more checking, but anyway I'd
-			 *	rather rewrite this mess -- miquels.
-			 */
-			if (status == PW_STATUS_ALIVE &&
-			    strncmp(ut.session_id, u.session_id,
-			     sizeof(u.session_id)) == 0  &&
-			    u.type == P_LOGIN) {
-				/*
-				 *	Keep the original login time.
-				 */
-				ut.time = u.time;
-				if (u.login[0] != 0)
-					just_an_update = 1;
-			}
-
-			if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-				radlog(L_ERR, "Accounting: negative lseek!\n");
-				lseek(fd, (off_t)0, SEEK_SET);
-				off = 0;
-			} else
-				off -= sizeof(u);
-			r = 1;
-			break;
-		}
-
-		if (r >= 0 &&  (status == PW_STATUS_START ||
-				status == PW_STATUS_ALIVE)) {
-			if (cache == NULL) {
-			   cache = rad_malloc(sizeof(NAS_PORT));
-			   cache->nasaddr = ut.nas_address;
-			   cache->port = ut.nas_port;
-			   cache->offset = off;
-			   cache->next = inst->nas_port_list;
-			   inst->nas_port_list = cache;
-			}
-			ut.type = P_LOGIN;
-			write(fd, &ut, sizeof(u));
-		}
-		if (status == PW_STATUS_STOP) {
-			if (r > 0) {
-				u.type = P_IDLE;
-				u.time = ut.time;
-				u.delay = ut.delay;
-				write(fd, &u, sizeof(u));
-			} else if (r == 0) {
-				radlog(L_ERR,
-		"Accounting: logout: login entry for NAS %s port %d not found",
-				nas, ut.nas_port);
-				r = -1;
-			}
-		}
-		close(fd);	/* and implicitely release the locks */
-	} else {
-		radlog(L_ERR, "Accounting: %s: %m", filename);
+	if (fd < 0) {
+		radlog(L_ERR, "rlm_radutmp: Error accessing file %s: %s",
+		       filename, strerror(errno));
 		return RLM_MODULE_FAIL;
 	}
+
+	/*
+	 *	Lock the utmp file, prefer lockf() over flock().
+	 */
+	rad_lockfd(fd, LOCK_LEN);
+	
+	/*
+	 *	Find the entry for this NAS / portno combination.
+	 */
+	if ((cache = nas_port_find(inst->nas_port_list, ut.nas_address,
+				   ut.nas_port)) != NULL) {
+		lseek(fd, (off_t)cache->offset, SEEK_SET);
+	}
+	
+	r = 0;
+	off = 0;
+	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
+		off += sizeof(u);
+		if (u.nas_address != ut.nas_address ||
+		    u.nas_port	  != ut.nas_port)
+			continue;
+		
+		if (status == PW_STATUS_STOP &&
+		    strncmp(ut.session_id, u.session_id,
+			    sizeof(u.session_id)) != 0) {
+			/*
+			 *	Don't complain if this is not a
+			 *	login record (some clients can
+			 *	send _only_ logout records).
+			 */
+			if (u.type == P_LOGIN)
+				radlog(L_ERR, "rlm_radutmp: Logout entry for NAS %s port %d has wrong ID",
+				       nas, u.nas_port);
+			r = -1;
+			break;
+		}
+		
+		if (status == PW_STATUS_START &&
+		    strncmp(ut.session_id, u.session_id,
+			    sizeof(u.session_id)) == 0  &&
+		    u.time >= ut.time) {
+			if (u.type == P_LOGIN) {
+				radlog(L_INFO, "rlm_radutmp: Login entry for NAS %s port %d duplicate",
+				       nas, u.nas_port);
+				r = -1;
+				break;
+			}
+			radlog(L_ERR, "rlm_radutmp: Login entry for NAS %s port %d wrong order",
+			       nas, u.nas_port);
+			r = -1;
+			break;
+		}
+		
+		/*
+		 *	FIXME: the ALIVE record could need
+		 *	some more checking, but anyway I'd
+		 *	rather rewrite this mess -- miquels.
+		 */
+		if (status == PW_STATUS_ALIVE &&
+		    strncmp(ut.session_id, u.session_id,
+			    sizeof(u.session_id)) == 0  &&
+		    u.type == P_LOGIN) {
+			/*
+			 *	Keep the original login time.
+			 */
+			ut.time = u.time;
+			if (u.login[0] != 0)
+				just_an_update = 1;
+		}
+		
+		if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
+			radlog(L_ERR, "rlm_radutmp: negative lseek!");
+			lseek(fd, (off_t)0, SEEK_SET);
+			off = 0;
+		} else
+			off -= sizeof(u);
+		r = 1;
+		break;
+	} /* read the file until we find a match */
+
+	/*
+	 *	Found the entry, do start/update it with
+	 *	the information from the packet.
+	 */
+	if (r >= 0 &&  (status == PW_STATUS_START ||
+			status == PW_STATUS_ALIVE)) {
+		/*
+		 *	Remember where the entry was, because it's
+		 *	easier than searching through the entire file.
+		 */
+		if (cache == NULL) {
+			cache = rad_malloc(sizeof(NAS_PORT));
+			cache->nasaddr = ut.nas_address;
+			cache->port = ut.nas_port;
+			cache->offset = off;
+			cache->next = inst->nas_port_list;
+			inst->nas_port_list = cache;
+		}
+		
+		ut.type = P_LOGIN;
+		write(fd, &ut, sizeof(u));
+	}
+	
+	/*
+	 *	The user has logged off, delete the entry by
+	 *	re-writing it in place.
+	 */
+	if (status == PW_STATUS_STOP) {
+		if (r > 0) {
+			u.type = P_IDLE;
+			u.time = ut.time;
+			u.delay = ut.delay;
+			write(fd, &u, sizeof(u));
+		} else if (r == 0) {
+			radlog(L_ERR, "rlm_radutmp: Logout for NAS %s port %d, but no Login record",
+			       nas, ut.nas_port);
+			r = -1;
+		}
+	}
+	close(fd);	/* and implicitely release the locks */
 
 	return RLM_MODULE_OK;
 }
@@ -557,16 +576,27 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL);
 
 	if ((fd = open(filename, O_RDWR)) < 0) {
-		if(errno!=ENOENT)
-			return RLM_MODULE_FAIL;
-		request->simul_count=0;
-		return RLM_MODULE_OK;
+		/*
+		 *	If the file doesn't exist, then no users
+		 *	are logged in.
+		 */
+		if (errno == ENOENT) {
+			request->simul_count=0;
+			return RLM_MODULE_OK;
+		}
+
+		/*
+		 *	Error accessing the file.
+		 */
+		radlog(L_ERR, "rlm_radumtp: Error accessing file %s: %s",
+		       filename, strerror(errno));
+		return RLM_MODULE_FAIL;
 	}
 
 	*login = '\0';
 	radius_xlat(login, sizeof(login), inst->username, request, NULL);
 	if (!*login) {
-		return RLM_MODULE_FAIL;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
