@@ -133,7 +133,7 @@ static void xs_init(pTHX)
 static int perl_instantiate(CONF_SECTION *conf, void **instance)
 {
 	PERL_INST	*inst;	
-	char *embed[1];
+	char *embed[2];
 	int exitstatus = 0;
 	
 	/*
@@ -170,9 +170,10 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	
 	PERL_SET_CONTEXT(inst->perl);
 
-	embed[0] = inst->config->persistent;
+	embed[0] = NULL;
+	embed[1] = inst->config->persistent;
 	
-	exitstatus = perl_parse(inst->perl, xs_init, 1, embed, NULL);
+	exitstatus = perl_parse(inst->perl, xs_init, 2, embed, NULL);
 
 	PERL_SET_CONTEXT(inst->perl);
 	if(!exitstatus) {
