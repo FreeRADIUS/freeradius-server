@@ -90,6 +90,7 @@ typedef struct attr_flags {
 	signed char		tag;
 	char			encrypt;	/* encryption method */
 	signed char		len_disp;	/* length displacement */
+	char			do_xlat;
 } ATTR_FLAGS;
 
 typedef struct dict_attr {
@@ -221,6 +222,7 @@ VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr);
+VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(char **ptr, LRAD_TOKEN *eol);
 LRAD_TOKEN	userparse(char *buffer, VALUE_PAIR **first_pair);

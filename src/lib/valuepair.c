@@ -490,15 +490,140 @@ static int gettime(const char *valstr, time_t *lvalue)
 }
 
 /*
+ *  Parse a string value into a given VALUE_PAIR
+ */
+VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
+{
+	char		*p, *s=0;
+	const char	*cp, *cs;
+	DICT_VALUE	*dval;
+
+	/*
+	 *	Even for integers, dates and ip addresses we
+	 *	keep the original string in vp->strvalue.
+	 */
+	strNcpy((char *)vp->strvalue, value, sizeof(vp->strvalue));
+	vp->length = strlen(vp->strvalue);
+
+	switch(vp->type) {
+		case PW_TYPE_STRING:
+			/*
+			 *	Already handled above.
+			 */
+			break;
+
+		case PW_TYPE_IPADDR:
+			/*
+			 *	FIXME: complain if hostname
+			 *	cannot be resolved, or resolve later!
+			 */
+			if ((p = strrchr(value, '+')) != NULL && !p[1]) {
+				cs = s = strdup(value);
+				p = strrchr(s, '+');
+				*p = 0;
+				vp->flags.addport = 1;
+			} else {
+				p = NULL;
+				cs = value;
+			}
+			vp->lvalue = librad_dodns ? ip_getaddr(cs) :
+						    ip_addr(cs);
+			if (s) free(s);
+			vp->length = 4;
+			break;
+		case PW_TYPE_INTEGER:
+			/*
+			 * 	If it starts with a digit, it must
+			 * 	be a number (or a range).
+			 *
+			 *	Note that ALL integers are unsigned!
+			 */
+			if (isdigit((int) *value)) {
+				vp->lvalue = atoi(value);
+				vp->length = 4;
+			}
+			/*
+			 *	Look for the named value for the given
+			 *	attribute.
+			 */
+			else if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
+               			free(vp);
+				librad_log("Unknown value %s for attribute %s",
+					   value, vp->name);
+				return NULL;
+			} else {
+				vp->lvalue = dval->value;
+				vp->length = 4;
+			}
+			break;
+
+		case PW_TYPE_DATE:
+			if (gettime(value, (time_t *)&vp->lvalue) < 0) {
+				free(vp);
+				librad_log("failed to parse time string "
+					   "\"%s\"", value);
+				return NULL;
+			}
+			vp->length = 4;
+			break;
+		case PW_TYPE_ABINARY:
+#ifdef ASCEND_BINARY
+			/*
+			 *	Special case to convert filter to binary
+			 */
+		  	if ( filterBinary( vp, value ) < 0 ) {
+			  librad_log("failed to parse Ascend binary attribute: %s",
+				     librad_errstr);
+			  free(vp);
+			  return NULL;
+			}
+			break;
+			/*
+			 *	If Ascend binary is NOT defined,
+			 *	then fall through to raw octets, so that
+			 *	the user can at least make them by hand...
+			 */
+#endif
+			/* raw octets: 0x01020304... */
+		case PW_TYPE_OCTETS:
+			vp->length = 0;
+			if (strncasecmp(value, "0x", 2) == 0) {
+				u_char *us;
+				cp = value + 2;
+				us = vp->strvalue;
+				while (*cp && vp->length < MAX_STRING_LEN) {
+					unsigned int tmp;
+					
+					if (sscanf(cp, "%02x", &tmp) != 1)
+						break;
+
+					cp += 2;
+					*(us++) = tmp;
+					vp->length++;
+				}
+				*us = '\0';
+			}
+			break;
+
+			/*
+			 *  Anything else.
+			 */
+		default:
+			free(vp);
+			librad_log("unknown attribute type %d", vp->type);
+			return NULL;
+	}
+
+	return vp;
+}
+
+/*
  *	Create a VALUE_PAIR from an ASCII attribute and value.
  */
 VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 {
 	DICT_ATTR	*da;
-	DICT_VALUE	*dval;
 	VALUE_PAIR	*vp;
-	char		*p, *s=0;
-	const char	*cp, *cs;
 	char            *tc, *ts;
 	signed char     tag;
 	int             found_tag;
@@ -552,7 +677,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	 *      a tag in the Attribute.
 	 */
 
-	if (*value == ':' && da->flags.has_tag) {
+	if (value && (*value == ':' && da->flags.has_tag)) {
 	        /* If we already found a tag, this is invalid */
 	        if(found_tag) {
 		        free(vp);
@@ -578,135 +703,26 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		found_tag = 1;
 	}	
 	
-	if(found_tag) {
+	if (found_tag) {
 	  vp->flags.tag = tag;
 	}
-
-	/*
-	 *	Even for integers, dates and ip addresses we
-	 *	keep the original string in vp->strvalue.
-	 */
-	strNcpy((char *)vp->strvalue, value, MAX_STRING_LEN);
 
 	/*
 	 *      For =* and !* operators, the value is irrelevant
 	 *      so we return now.
 	 */
-
-	if( vp->operator == T_OP_CMP_TRUE 
-	    || vp->operator == T_OP_CMP_FALSE ) {
+	if ((vp->operator == T_OP_CMP_TRUE) ||
+	    (vp->operator == T_OP_CMP_FALSE)) {
+		vp->strvalue[0] = '\0';
+		vp->length = 0;
 	        return vp;
 	}
 
-	switch(da->type) {
-		case PW_TYPE_STRING:
-			vp->length = strlen(value);
-			if (vp->length >= MAX_STRING_LEN) {
-			  vp->length = MAX_STRING_LEN - 1;
-			}
-			break;
-		case PW_TYPE_IPADDR:
-			/*
-			 *	FIXME: complain if hostname
-			 *	cannot be resolved, or resolve later!
-			 */
-			if ((p = strrchr(value, '+')) != NULL && !p[1]) {
-				cs = s = strdup(value);
-				p = strrchr(s, '+');
-				*p = 0;
-				vp->flags.addport = 1;
-			} else {
-				p = NULL;
-				cs = value;
-			}
-			vp->lvalue = librad_dodns ? ip_getaddr(cs) :
-						    ip_addr(cs);
-			vp->length = 4;
-			if (s) free(s);
-			break;
-		case PW_TYPE_INTEGER:
-			/*
-			 * 	If it starts with a digit, it must
-			 * 	be a number (or a range).
-			 *
-			 *	Note that ALL integers are unsigned!
-			 */
-			if (isdigit((int) *value)) {
-				vp->lvalue = atoi(value);
-				vp->length = 4;
-			}
-			/*
-			 *	Look for the named value for the given
-			 *	attribute.
-			 */
-			else if ((dval = dict_valbyname(da->attr, value)) == NULL) {
-               			free(vp);
-				librad_log("Unknown value %s for attribute %s",
-					   value, vp->name);
-				return NULL;
-			}
-			else {
-				vp->lvalue = dval->value;
-				vp->length = 4;
-			}
-			break;
-
-		case PW_TYPE_DATE:
-			if (gettime(value, (time_t *)&vp->lvalue) < 0) {
-				free(vp);
-				librad_log("failed to parse time string "
-					   "\"%s\"", value);
-				return NULL;
-			}
-			vp->length = 4;
-			break;
-		case PW_TYPE_ABINARY:
-#ifdef ASCEND_BINARY
-			/*
-			 *	Special case to convert filter to binary
-			 */
-		  	if ( filterBinary( vp, value ) < 0 ) {
-			  librad_log("failed to parse Ascend binary attribute: %s",
-				     librad_errstr);
-			  free(vp);
-			  return NULL;
-			}
-			break;
-			/*
-			 *	If Ascend binary is NOT defined,
-			 *	then fall through to raw octets, so that
-			 *	the user can at least make them by hand...
-			 */
-#endif
-			/* raw octets: 0x01020304... */
-		case PW_TYPE_OCTETS:
-		  vp->length = 0;
-		  if (strncasecmp(value, "0x", 2) == 0) {
-		    u_char *us;
-		    cp = value + 2;
-		    us = vp->strvalue;
-		    while (*cp && vp->length < MAX_STRING_LEN) {
-		      unsigned int tmp;
-
-		      if (sscanf(cp, "%02x", &tmp) != 1) break;
-		      cp += 2;
-		      *(us++) = tmp;
-		      vp->length++;
-		    }
-		    *us = '\0';
-		  } else {	/* assume it's a raw string */
-			  vp->length = strlen(value);
-			  if (vp->length >= MAX_STRING_LEN) {
-				  vp->length = MAX_STRING_LEN - 1;
-			  }
-		  }
-		  break;
-
-		default:
-			free(vp);
-			librad_log("unknown attribute type %d", da->type);
-			return NULL;
+	if (value && (pairparsevalue(vp, value) != NULL)) {
+		free(vp);
+		return NULL;
 	}
+
 	return vp;
 }
 
@@ -720,7 +736,8 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	char		attr[64];
 	char		value[256];
 	char		*p;
-	LRAD_TOKEN	token, t;
+	LRAD_TOKEN	token, t, xlat;
+	VALUE_PAIR	*vp;
 
 	*eol = 0;
 
@@ -748,8 +765,8 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	}
 
 	/* Read value.  Note that empty string values are allowed */
-	t = gettoken(ptr, value, sizeof(value));
-	if (t == T_EOL) {
+	xlat = gettoken(ptr, value, sizeof(value));
+	if (xlat == T_EOL) {
 		librad_log("failed to get value");
 		return NULL;
 	}
@@ -769,7 +786,28 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		*ptr = p;
 	}
 
-	return pairmake(attr, value, token);
+	switch (xlat) {
+		/*
+		 *	Make the full pair now.
+		 */
+	default:
+		vp = pairmake(attr, value, token);
+		break;
+
+		/*
+		 *	Mark the pair to be allocated later.
+		 */
+	case T_BACK_QUOTED_STRING:
+		vp = pairmake(attr, NULL, token);
+		
+		vp->flags.do_xlat = 1;
+		
+		strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
+		vp->length = 0;
+		break;
+	}
+	
+	return vp;
 }
 
 /*
