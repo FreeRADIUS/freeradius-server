@@ -760,7 +760,8 @@ sync_response:
     } /* if (card is in sync mode and sync mode allowed) */
 
     /* Both async and sync mode failed. */
-    if (x99_incr_failcount(inst->syncdir, username) != 0) {
+    if ((fc != FAIL_SOFT) /* !already incremented by x99_check_failcount() */ &&
+	(x99_incr_failcount(inst->syncdir, username) != 0)) {
 	x99_log(X99_LOG_ERR,
 		"auth: unable to increment failure count for user [%s]",
 		username);
