@@ -569,6 +569,20 @@ static int generate_realms(void)
 			
 			strcpy(c->realm, cs->name2);
 			strcpy(c->server, authhost);	
+
+			s = cf_section_value_find(cs, "secret");
+			if (s == NULL) {
+			  log(L_ERR, "[realm %s]: You MUST supply a shared secret for a realm!");
+			  return -1;
+			}
+
+			if (strlen(s) >= sizeof(c->secret)) {
+			  log(L_ERR, "[realm %s]: secret of length %d is greater than the allowed maximum of %d.",
+			      c->realm, strlen(s), sizeof(c->secret) - 1);
+			  return -1;
+			}
+			strNcpy(c->secret, s, sizeof(c->secret));
+
 			c->striprealm = 1;
 			
 			if ((cf_section_value_find(cs, "nostrip")) != NULL)
