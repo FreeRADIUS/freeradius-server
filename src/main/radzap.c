@@ -27,8 +27,8 @@
 #include	"radiusd.h"
 
 int debug_flag = 0;
-char *progname = "radzap";
-char *radlog_dir = NULL;
+const char *progname = "radzap";
+const char *radlog_dir = NULL;
 
 /*
  *	Zap a user from the radutmp and radwtmp file.

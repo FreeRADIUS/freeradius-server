@@ -118,7 +118,7 @@ void		vp_printlist(FILE *, VALUE_PAIR *);
 int		dict_addvendor(const char *name, int value);
 int		dict_addattr(const char *name, int vendor, int type, int value);
 int		dict_addvalue(const char *namestr, char *attrstr, int value);
-int		dict_init(char *dir, char *fn);
+int		dict_init(const char *dir, const char *fn);
 DICT_ATTR	*dict_attrbyvalue(int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(int attr, int val);

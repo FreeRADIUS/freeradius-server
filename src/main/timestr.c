@@ -13,7 +13,7 @@
 #include <time.h>
 #include <ctype.h>
 
-static char *days[] =
+static const char *days[] =
 	{ "su", "mo", "tu", "we", "th", "fr", "sa", "wk", "any", "al" };
 
 #define DAYMIN		(24*60)

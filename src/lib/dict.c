@@ -166,7 +166,7 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 /*
  *	Initialize the dictionary.
  */
-static int my_dict_init(char *dir, char *fn, char *src_file, int src_line)
+static int my_dict_init(const char *dir, const char *fn, const char *src_file, int src_line)
 {
 	FILE	*fp;
 	char 	dirtmp[256];
@@ -466,7 +466,7 @@ static int my_dict_init(char *dir, char *fn, char *src_file, int src_line)
  *	Initialize the directory, then fix the attr member of
  *	all attributes.
  */
-int dict_init(char *dir, char *fn)
+int dict_init(const char *dir, const char *fn)
 {
 	DICT_ATTR	*attr;
 	DICT_VALUE	*dval;

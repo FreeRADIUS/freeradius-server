@@ -41,10 +41,10 @@ static const char rcsid[] =
 /*
  *	Global variables.
  */
-char			*progname;
-char			*radius_dir;
-char			*radacct_dir;
-char			*radlog_dir;
+const char		*progname;
+const char	        *radius_dir;
+const char		*radacct_dir;
+const char		*radlog_dir;
 int			log_stripped_names;
 int 			cache_passwd = 0;
 int			debug_flag;
@@ -861,7 +861,7 @@ static void usage(void)
  */
 static void sig_fatal(int sig)
 {
-	char *me = "MASTER: ";
+	const char *me = "MASTER: ";
 
 	if (radius_pid == getpid()) {
 		/*
