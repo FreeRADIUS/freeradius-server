@@ -372,12 +372,12 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Discover the attribute number of the key. 
 	 */
 	if (data->key_name == NULL) {
-		radlog(L_ERR, "rlm_counter: 'key' must be set.");
+		radlog(L_ERR, "rlm_sqlcounter: 'key' must be set.");
 		exit(0);
 	}
 	dattr = dict_attrbyname(data->key_name);
 	if (dattr == NULL) {
-		radlog(L_ERR, "rlm_counter: No such attribute %s",
+		radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
 				data->key_name);
 		return -1;
 	}
@@ -494,10 +494,10 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	 *      Look for the key.  User-Name is special.  It means
 	 *      The REAL username, after stripping.
 	 */
-	DEBUG2("rlm_counter: Entering module authorize code");
+	DEBUG2("rlm_sqlcounter: Entering module authorize code");
 	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr);
 	if (key_vp == NULL) {
-		DEBUG2("rlm_counter: Could not find Key value pair");
+		DEBUG2("rlm_sqlcounter: Could not find Key value pair");
 		return ret;
 	}
 
@@ -571,9 +571,9 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 
 		ret=RLM_MODULE_OK;
 
-		DEBUG2("rlm_counter: Authorized user %s, check_item=%d, counter=%d",
+		DEBUG2("rlm_sqlcounter: Authorized user %s, check_item=%d, counter=%d",
 				key_vp->strvalue,check_vp->lvalue,counter);
-		DEBUG2("rlm_counter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
+		DEBUG2("rlm_sqlcounter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
 				key_vp->strvalue,reply_item->lvalue);
 	}
 	else{
@@ -589,7 +589,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		reply_item=pairmake("Reply-Message", msg, T_OP_EQ);
 		pairadd(&request->reply->vps, reply_item);
 
-		snprintf(module_msg, sizeof(module_msg), "rlm_counter: Maximum %s usage time reached", data->reset);
+		snprintf(module_msg, sizeof(module_msg), "rlm_sqlcounter: Maximum %s usage time reached", data->reset);
 		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_msg_vp);	
 
