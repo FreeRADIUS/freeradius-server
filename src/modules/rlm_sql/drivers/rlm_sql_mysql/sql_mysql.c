@@ -287,6 +287,7 @@ static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 
 	if (mysql_sock->result) {
 		mysql_free_result(mysql_sock->result);
+		mysql_sock->result = NULL;
 	}
 
 	return 0;
