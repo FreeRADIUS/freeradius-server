@@ -98,6 +98,7 @@ typedef struct auth_req {
 #define RAD_REQUEST_OPTION_REJECTED        (1 << 4)
 #define RAD_REQUEST_OPTION_PROXIED         (1 << 5)
 #define RAD_REQUEST_OPTION_STOP_NOW        (1 << 6)
+#define RAD_REQUEST_OPTION_REPROCESS       (1 << 7)
 
 /*
  *  Function handler for requests.
@@ -331,6 +332,9 @@ int		request_data_add(REQUEST *request,
 				 void *opaque, void (*free_opaque)(void *));
 void		*request_data_get(REQUEST *request,
 				  void *unique_ptr, int unique_int);
+
+/* request_process.c */
+int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun);
 void		request_reject(REQUEST *request, request_fail_t reason);
 void		rfc_clean(RADIUS_PACKET *packet);
 
