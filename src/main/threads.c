@@ -46,6 +46,7 @@ static const char rcsid[] =
 
 #define THREAD_RUNNING		(1)
 #define THREAD_CANCELLED	(2)
+#define THREAD_EXITED		(3)
 
 /*
  *	Prototype to shut the compiler up.
@@ -68,15 +69,15 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun);
 typedef struct THREAD_HANDLE {
 	struct THREAD_HANDLE *prev;
 	struct THREAD_HANDLE *next;
-	pthread_t pthread_id;
-	int thread_num;
-	pthread_mutex_t lock;
-	pthread_cond_t	cond;
-	int status;
-	unsigned int request_count;
-	time_t timestamp;
-	REQUEST *request;
-	RAD_REQUEST_FUNP fun;
+	pthread_t            pthread_id;
+	int                  thread_num;
+	pthread_mutex_t      lock;
+	pthread_cond_t       cond;
+	int                  status;
+	unsigned int         request_count;
+	time_t               timestamp;
+	REQUEST              *request;
+	RAD_REQUEST_FUNP     fun;
 } THREAD_HANDLE;
 
 /*
@@ -182,12 +183,18 @@ static void *request_handler_thread(void *arg)
 	for (;;) {
 		/*
 		 *	Wait for the semaphore to be given to us.
+		 *
+		 *	cond_wait atomically unlocks the mutex, and
+		 *	waits for the condition.  Once it receives
+		 *	the condition, it locks the mutex again.
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
 				self->thread_num);
 		pthread_mutex_lock(&self->lock);
-		if (pthread_cond_wait(&self->cond,&self->lock) != 0) {
+		if (pthread_cond_wait(&self->cond, &self->lock) != 0) {
 			pthread_mutex_unlock(&self->lock);
+			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
+			       self->thread_num, strerror(errno));
 			break;
 		}
 		pthread_mutex_unlock(&self->lock);
@@ -219,14 +226,13 @@ static void *request_handler_thread(void *arg)
 		 */
 	}
 
+	DEBUG2("Thread %d exiting...", self->thread_num);
+
 	/*
-	 *	This thread is exiting.  Delete any additional resources
-	 *	associated with it (semaphore, etc), and free the thread
-	 *	handle memory.
+	 *  Do this as the LAST thing before exiting.
 	 */
-	pthread_mutex_destroy(&self->lock);
-	pthread_cond_destroy(&self->cond);
-	free(self);
+	self->status = THREAD_EXITED;
+
 	return NULL;
 }
 
@@ -247,6 +253,9 @@ static void delete_thread(THREAD_HANDLE *handle)
 	rad_assert(thread_pool.total_threads > 0);
 	thread_pool.total_threads--;
 
+	/*
+	 *	Remove the handle from the list.
+	 */
 	if (prev == NULL) {
 		rad_assert(thread_pool.head == handle);
 		thread_pool.head = next;
@@ -267,6 +276,21 @@ static void delete_thread(THREAD_HANDLE *handle)
 	if (thread_pool.next_pick == handle) {
 		thread_pool.next_pick = next;
 	}
+
+	DEBUG2("Deleting thread %d", handle->thread_num);
+
+	/*
+	 *	This thread has exited.  Delete any additional
+	 *	resources associated with it (semaphore, etc).
+	 */
+	pthread_mutex_destroy(&handle->lock);
+	pthread_cond_destroy(&handle->cond);
+
+	/*
+	 *	Free the memory, now that we're sure the thread
+	 *	exited.
+	 */
+	free(handle);
 }
 
 
@@ -390,12 +414,12 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 int total_active_threads(void) 
 {
         int rcode = 0;
-	THREAD_HANDLE *pool_ptr = NULL, *next = NULL;
-	for(pool_ptr = thread_pool.head; pool_ptr; pool_ptr = next) {
-	       next = pool_ptr->next;
-	       if(pool_ptr->request != NULL) {
-		 rcode ++;
-	       }
+	THREAD_HANDLE *handle;
+	
+	for (handle = thread_pool.head; handle != NULL; handle = handle->next){
+		if (handle->request != NULL) {
+			rcode ++;
+		}
 	}
 	return (rcode);
 }
@@ -572,7 +596,10 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	found->fun = fun;
 	found->request_count++;
 	thread_pool.request_count++;
+
+	pthread_mutex_lock(&found->lock);
 	pthread_cond_signal(&found->cond);
+	pthread_mutex_unlock(&found->lock);
 
 	return 0;
 }
@@ -593,11 +620,26 @@ int thread_pool_clean(time_t now)
 	/*
 	 *	Loop over the thread pool, incrementing the 'active'
 	 *	counter if the thread is currently processing a request.
+	 *
+	 *	At this point, we also delete 'exited' threads.
 	 */
 	active_threads = 0;
-	for (handle = thread_pool.head; handle; handle = handle->next) {
+	for (handle = thread_pool.head; handle; handle = next) {
+		next = handle->next;
+
 		if (handle->request != NULL) {
 			active_threads++;
+			continue;
+		}
+
+		/*
+		 *	Handle is NULL, so it's not processing anything.
+		 *
+		 *	Maybe we've asked the thread to exit, and it
+		 *	has agreed.
+		 */
+		if (handle->status == THREAD_EXITED) {
+			delete_thread(handle);
 		}
 	}
 
@@ -677,15 +719,17 @@ int thread_pool_clean(time_t now)
 			 *	structure, without anyone else using it.
 			 */
 			if (handle->request == NULL) {
-				delete_thread(handle);
 				handle->status = THREAD_CANCELLED;
+
+				pthread_mutex_lock(&handle->lock);
 				pthread_cond_signal(&handle->cond);
+				pthread_mutex_unlock(&handle->lock);
 				spare--;
 				break;
 			}
 		}
 	}
-  
+
 	/*
 	 *	If the thread has handled too many requests, then make it
 	 *	exit.
@@ -695,11 +739,10 @@ int thread_pool_clean(time_t now)
 			next = handle->next;
 
 			/*
-			 *	Not handling a request, we can check it.
+			 *	Not handling a request, we can kill it.
 			 */
 			if ((handle->request == NULL) &&
 			    (handle->request_count > thread_pool.max_requests_per_thread)) {
-				delete_thread(handle);
 				handle->status = THREAD_CANCELLED;
 				pthread_cond_signal(&handle->cond);
 			}
