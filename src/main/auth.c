@@ -82,7 +82,7 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, const char **use
 			/*
 			 *	Has this user's password expired
 			 */
-			if (check_item->lvalue < time(NULL)) {
+			if (check_item->lvalue < (unsigned) time(NULL)) {
 				result = -1;
 				*user_msg = "Password Has Expired\r\n";
 				break;
@@ -384,7 +384,6 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*check_item;
 	VALUE_PAIR	*reply_item;
 	VALUE_PAIR	*auth_item;
-	VALUE_PAIR	*user_check;
 	VALUE_PAIR	*user_reply;
 	VALUE_PAIR	*tmp;
 	int		result, r;
@@ -396,9 +395,12 @@ int rad_authenticate(REQUEST *request)
 	int		exec_wait;
 	int		seen_callback_id;
 
-	user_check = NULL;
 	user_reply = NULL;
 	password = "";
+	if (request->config_items) {
+	  pairfree(request->config_items);
+	  request->config_items = NULL;
+	}
 
 	/*
 	 *	If this request got proxied to another server, we need
@@ -409,16 +411,16 @@ int rad_authenticate(REQUEST *request)
 	if (request->proxy) {
 		if (request->proxy->code == PW_AUTHENTICATION_REJECT ||
 		    request->proxy->code == PW_AUTHENTICATION_ACK) {
-			user_check = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
-			if (user_check == NULL) {
+			request->config_items = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
+			if (request->config_items == NULL) {
 				log(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
 		}
 		if (request->proxy->code == PW_AUTHENTICATION_REJECT)
-			user_check->lvalue = PW_AUTHTYPE_REJECT;
+			request->config_items->lvalue = PW_AUTHTYPE_REJECT;
 		if (request->proxy->code == PW_AUTHENTICATION_ACK)
-			user_check->lvalue = PW_AUTHTYPE_ACCEPT;
+			request->config_items->lvalue = PW_AUTHTYPE_ACCEPT;
 
 		if (request->proxy->vps) {
 			user_reply = request->proxy->vps;
@@ -462,7 +464,7 @@ int rad_authenticate(REQUEST *request)
 	 *	Get the user's authorization information from the database
 	 */
 	r = module_authorize(request, namepair->strvalue,
-			     &user_check, &user_reply);
+			     &request->config_items, &user_reply);
 	if (r != RLM_AUTZ_OK) {
 		if (r != RLM_AUTZ_FAIL && r != RLM_AUTZ_HANDLED) {
 			log(L_AUTH, "Invalid user: [%s%s%s] (%s)",
@@ -491,9 +493,9 @@ int rad_authenticate(REQUEST *request)
 	 */
 	user_msg = NULL;
 	do {
-		if ((result = check_expiration(user_check, umsg, &user_msg))<0)
+		if ((result = check_expiration(request->config_items, umsg, &user_msg))<0)
 				break;
-		result = rad_check_password(request, user_check,
+		result = rad_check_password(request, request->config_items,
 			namepair, &user_msg);
 		if (result > 0) {
 			pairfree(user_reply);
@@ -541,7 +543,7 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	if (result >= 0 &&
-	   (check_item = pairfind(user_check, PW_SIMULTANEOUS_USE)) != NULL) {
+	   (check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
 		/*
 		 *	User authenticated O.K. Now we have to check
 		 *	for the Simultaneous-Use parameter.
@@ -571,7 +573,7 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	if (result >= 0 &&
-	   (check_item = pairfind(user_check, PW_LOGIN_TIME)) != NULL) {
+	   (check_item = pairfind(request->config_items, PW_LOGIN_TIME)) != NULL) {
 
 		/*
 		 *	Authentication is OK. Now see if this
@@ -605,7 +607,7 @@ int rad_authenticate(REQUEST *request)
 			 */
 			if ((reply_item = pairfind(user_reply,
 			    PW_SESSION_TIMEOUT)) != NULL) {
-				if (reply_item->lvalue > r)
+				if (reply_item->lvalue > (unsigned) r)
 					reply_item->lvalue = r;
 			} else {
 				if ((reply_item = paircreate(
@@ -624,7 +626,6 @@ int rad_authenticate(REQUEST *request)
 	 *	Result should be >= 0 here - if not, we return.
 	 */
 	if (result < 0) {
-		pairfree(user_check);
 		pairfree(user_reply);
 		request->finished = TRUE;
 		return 0;
@@ -687,7 +688,6 @@ int rad_authenticate(REQUEST *request)
 					namepair->strvalue,
 					auth_name(request, 1));
 			}
-			pairfree(user_check);
 			pairfree(user_reply);
 			request->finished = TRUE;
 			return 0;
@@ -754,7 +754,6 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	if (exec_program) free(exec_program);
-	pairfree(user_check);
 	pairfree(user_reply);
 	request->finished = TRUE;
 	return 0;
