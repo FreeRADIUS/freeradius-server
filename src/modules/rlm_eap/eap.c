@@ -177,6 +177,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
 	eaptype_t	*eaptype;
 	int	    	default_eap_type = inst->default_eap_type;
+	VALUE_PAIR	*vp;
 
 	eaptype = &handler->eap_ds->response->type;
 
@@ -194,63 +195,58 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 */
 	switch(eaptype->type) {
 	case PW_EAP_IDENTITY:
-		{
-			VALUE_PAIR  *vp;
-
-			DEBUG2("  rlm_eap: EAP Identity");
-			
-			/*
-			 *	Allow per-user configuration of EAP types.
-			 */
-			vp = pairfind(handler->request->config_items,
-				      PW_EAP_TYPE);
-			if (vp) default_eap_type = vp->lvalue;
-
-		do_initiate:
-			/*
-			 *	Ensure it's valid.
-			 */
-			if ((default_eap_type < PW_EAP_MD5) ||
-			    (default_eap_type > PW_EAP_MAX_TYPES) ||
-			    (inst->types[default_eap_type] == NULL)) {
-				DEBUG2(" rlm_eap: No such EAP type %d",
-				       default_eap_type);
-				return EAP_INVALID;
-			}
-			
-			handler->stage = INITIATE;
-			handler->eap_type = default_eap_type;
-
-			/*
-			 *	Wild & crazy stuff!  For TTLS & PEAP,
-			 *	we initiate a TLS session, and then pass
-			 *	that session data to TTLS or PEAP for
-			 *	the authenticate stage.
-			 *
-			 *	Handler->eap_type holds the TRUE
-			 *	type.
-			 */
-			if ((default_eap_type == PW_EAP_TTLS) ||
-			    (default_eap_type == PW_EAP_PEAP)) {
-				default_eap_type = PW_EAP_TLS;
-			}
-
-
-			/*
-			 *	We don't do TLS inside of TLS, as it's
-			 *	a bad idea...
-			 */
-			if (((handler->request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) &&
-			    (default_eap_type == PW_EAP_TLS)) {
-				DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
-				return EAP_INVALID;
-			}
-
-			if (eaptype_call(inst->types[default_eap_type],
-					 handler) == 0) {
-				DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", eaptype_type2name(default_eap_type));
-				return EAP_INVALID;
-			}
+		DEBUG2("  rlm_eap: EAP Identity");
+		
+		/*
+		 *	Allow per-user configuration of EAP types.
+		 */
+		vp = pairfind(handler->request->config_items,
+			      PW_EAP_TYPE);
+		if (vp) default_eap_type = vp->lvalue;
+		
+	do_initiate:
+		/*
+		 *	Ensure it's valid.
+		 */
+		if ((default_eap_type < PW_EAP_MD5) ||
+		    (default_eap_type > PW_EAP_MAX_TYPES) ||
+		    (inst->types[default_eap_type] == NULL)) {
+			DEBUG2(" rlm_eap: No such EAP type %d",
+			       default_eap_type);
+			return EAP_INVALID;
+		}
+		
+		handler->stage = INITIATE;
+		handler->eap_type = default_eap_type;
+		
+		/*
+		 *	Wild & crazy stuff!  For TTLS & PEAP, we
+		 *	initiate a TLS session, and then pass that
+		 *	session data to TTLS or PEAP for the
+		 *	authenticate stage.
+		 *
+		 *	Handler->eap_type holds the TRUE type.
+		 */
+		if ((default_eap_type == PW_EAP_TTLS) ||
+		    (default_eap_type == PW_EAP_PEAP)) {
+			default_eap_type = PW_EAP_TLS;
+		}
+		
+		
+		/*
+		 *	We don't do TLS inside of TLS, as it's a bad
+		 *	idea...
+		 */
+		if (((handler->request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) &&
+		    (default_eap_type == PW_EAP_TLS)) {
+			DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
+			return EAP_INVALID;
+		}
+		
+		if (eaptype_call(inst->types[default_eap_type],
+				 handler) == 0) {
+			DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", eaptype_type2name(default_eap_type));
+			return EAP_INVALID;
 		}
 		break;
 
@@ -290,12 +286,27 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		DEBUG2(" rlm_eap: EAP-NAK asked for EAP-Type/%s",
 		       eaptype_type2name(default_eap_type));
 
+		/*
+		 *	Prevent a firestorm if the client is confused.
+		 */
 		if (handler->eap_type == default_eap_type) {
 			DEBUG2(" rlm_eap: ERROR! Our request for %s was NAK'd with a request for %s, what is the client thinking?",
 			       eaptype_type2name(default_eap_type),
 			       eaptype_type2name(default_eap_type));
+			return EAP_INVALID;
 		}
 
+		/*
+		 *	Enforce per-user configuration of EAP types.
+		 */
+		vp = pairfind(handler->request->config_items,
+			      PW_EAP_TYPE);
+		if (vp && (vp->lvalue != default_eap_type)) {
+			DEBUG2("  rlm_eap: Client wants %s, while we require %s, rejecting the user.",
+			       eaptype_type2name(default_eap_type),
+			       eaptype_type2name(vp->lvalue));
+			return EAP_INVALID;
+		}
 		goto do_initiate;
 		break;
 
