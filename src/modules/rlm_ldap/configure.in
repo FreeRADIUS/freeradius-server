@@ -124,7 +124,7 @@ AC_ARG_WITH(edir,
 [  --with-edir           Enable Novell eDirectory integration.  (default=no) ],
 [ case "$withval" in
     yes)
-	SMART_CFLAGS="$SMART_CFLAGS -DNOVELL_UNIVERSAL_PASSWORD "
+	SMART_CFLAGS="$SMART_CFLAGS -DNOVELL_UNIVERSAL_PASSWORD -DNOVELL"
 	edir="edir_ldapext.c"
         ;;
     *)
