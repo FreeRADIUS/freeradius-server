@@ -39,16 +39,15 @@ static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,
  * MOD_ACTION_RETURN, to cause an immediate return.
  * There's also the keyword "reject", represented here by MOD_ACTION_REJECT
  * to cause an immediate reject. */
-#define MOD_ACTION_INVALID (-1)
-#define MOD_ACTION_RETURN  (-2)
-#define MOD_ACTION_REJECT  (-3)
+#define MOD_ACTION_RETURN  (-1)
+#define MOD_ACTION_REJECT  (-2)
 
 /* Here are our basic types: modcallable, modgroup, and modsingle. For an
  * explanation of what they are all about, see ../../doc/README.failover */
 struct modcallable {
 	struct modcallable *next;
-	int actions[RLM_MODULE_NUMCODES];
 	const char *name;
+	int actions[RLM_MODULE_NUMCODES];
 	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE } type;
 };
 
@@ -116,40 +115,46 @@ static LRAD_NAME_NUMBER rcode_table[] = {
 	{ NULL, 0 }
 };
 
-static int str2rcode(const char *s, const char *filename, int lineno)
-{
-	int rcode;
 
-	rcode = lrad_str2int(rcode_table, s, -1);
+/*
+ *	Compile action && rcode for later use.
+ */
+static int compile_action(modcallable *c, const char *attr, const char *value,
+			  const char *filename, int lineno)
+{
+	int rcode, action;
+
+	rcode = lrad_str2int(rcode_table, attr, -1);
 	if (rcode < 0) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d] Unknown module rcode '%s'.\n",
-		       filename, lineno, s);
-		return -1;
+		       filename, lineno, attr);
+		return 0;
 	}
 
-	return rcode;
-}
+	if (!strcasecmp(value, "return"))
+		action = MOD_ACTION_RETURN;
 
-static int str2action(const char *s, const char *filename, int lineno)
-{
-	if(!strcasecmp(s, "return"))
-		return MOD_ACTION_RETURN;
-	else if(!strcasecmp(s, "reject"))
-		return MOD_ACTION_REJECT;
-	else if (strspn(s, "0123456789")==strlen(s)) {
-		int rcode = atoi(s);
+	else if (!strcasecmp(value, "reject"))
+		action = MOD_ACTION_REJECT;
 
+	else if (strspn(value, "0123456789")==strlen(value)) {
+		action = atoi(value);
+		
 		/*
 		 *	Don't allow priority zero, for future use.
 		 */
-		if (rcode > 0) return rcode;
+		if (action == 0) return 0;
+	} else {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d] Unknown action '%s'.\n",
+		       filename, lineno, value);
+		return 0;
 	}
-	
-	radlog(L_ERR|L_CONS,
-	       "%s[%d] Unknown action '%s'.\n",
-	       filename, lineno, s);
-	return MOD_ACTION_INVALID;
+
+	c->actions[rcode] = action;
+
+	return 1;
 }
 
 #if 0
@@ -824,35 +829,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 static int override_actions(modcallable *c, CONF_SECTION *cs,
 		const char *filename)
 {
-	CONF_ITEM *ci;
-	CONF_PAIR *cp;
-	const char *attr, *value;
-	int lineno, rcode, action;
-
-	for(ci=cf_item_find_next(cs, NULL); ci != NULL; ci=cf_item_find_next(cs, ci)) {
-		if(cf_item_is_section(ci)) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d] Subsection of module instance call "
-			       "not allowed\n", filename,
-			       cf_section_lineno(cf_itemtosection(ci)));
-			return 0;
-		}
-		cp = cf_itemtopair(ci);
-		attr = cf_pair_attr(cp);
-		value = cf_pair_value(cp);
-		lineno = cf_pair_lineno(cp);
-		rcode = str2rcode(attr, filename, lineno);
-		if (rcode < 0) {
-			return 0;
-		}
-		action = str2action(value, filename, lineno);
-		if (action == MOD_ACTION_INVALID) {
-			return 0;
-		}
-		c->actions[rcode] = action;
-	}
-
-	return 1;
 }
 
 static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
@@ -873,9 +849,12 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		modrefname = cf_section_name1(cs);
 		if (!name2) name2 = "_UnNamedGroup";
 
-		/* group{}, redundant{}, or append{} may appear where a
-		 * single module instance was expected - in that case, we
-		 * hand it off to compile_modgroup */
+		/*
+		 *	group{}, redundant{}, or append{} may appear
+		 *	where a single module instance was expected.
+		 *	In that case, we hand it off to
+		 *	compile_modgroup
+		 */
 		if (strcmp(modrefname, "group") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(component, cs, filename,
@@ -969,10 +948,34 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	 *	maybe a csingle as a ref?
 	 */
 	if (cf_item_is_section(ci)) {
-		/* override default actions with what's in the CONF_SECTION */
-		if (!override_actions(csingle, cf_itemtosection(ci), filename)) {
-			modcallable_free(&csingle);
-			return NULL;
+		CONF_SECTION *cs = cf_itemtosection(ci);
+		CONF_PAIR *cp;
+		const char *attr, *value;
+		int rcode, action;
+
+		for (ci=cf_item_find_next(cs, NULL);
+		     ci != NULL;
+		     ci=cf_item_find_next(cs, ci)) {
+
+			if (cf_item_is_section(ci)) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] Subsection of module instance call "
+				       "not allowed\n", filename,
+				       cf_section_lineno(cf_itemtosection(ci)));
+				modcallable_free(&csingle);
+				return NULL;
+			}
+
+			cp = cf_itemtopair(ci);
+			attr = cf_pair_attr(cp);
+			value = cf_pair_value(cp);
+			lineno = cf_pair_lineno(cp);
+
+			if (!compile_action(csingle, attr, value, filename,
+					    lineno)) {
+				modcallable_free(&csingle);
+				return NULL;
+			}
 		}
 	}
 
@@ -995,7 +998,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 }
 
 modcallable *compile_modsingle(int component, CONF_ITEM *ci,
-		const char *filename, const char **modname)
+			       const char *filename, const char **modname)
 {
 	modcallable *ret = do_compile_modsingle(component, ci, filename,
 						GROUPTYPE_SIMPLEGROUP,
@@ -1018,15 +1021,22 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 	c->next = NULL;
 	memcpy(c->actions, defaultactions[component][parentgrouptype],
 	       sizeof c->actions);
-	c->name = cf_section_name1(cs);
-	if (cf_section_name2(cs)) c->name = cf_section_name2(cs);
-	rad_assert(c->name != NULL);
+
+	/*
+	 *	Remember the name for printing, etc.
+	 *
+	 *	FIXME: We may also want to put the names into a
+	 *	rbtree, so that groups can reference each other...
+	 */
+	c->name = cf_section_name2(cs);
+	if (!c->name) c->name = "<anonymous>";
 	c->type = MOD_GROUP;
 	g->children = NULL;
 
 	for (ci=cf_item_find_next(cs, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(cs, ci)) {
+
 		if(cf_item_is_section(ci)) {
 			const char *junk = NULL;
 			modcallable *single;
@@ -1046,6 +1056,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 				return NULL;
 			}
 			add_child(g, single);
+
 		} else {
 			const char *attr, *value;
 			CONF_PAIR *cp = cf_itemtopair(ci);
@@ -1055,9 +1066,12 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 			value = cf_pair_value(cp);
 			lineno = cf_pair_lineno(cp);
 
-			/* A CONF_PAIR is either a module instance with no
-			 * actions specified... */
-			if(value[0]==0) {
+			/*
+			 *	A CONF_PAIR is either a module
+			 *	instance with no actions
+			 *	specified ...
+			 */
+			if (value[0] == 0) {
 				modcallable *single;
 				const char *junk = NULL;
 
@@ -1072,23 +1086,15 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 					return NULL;
 				}
 				add_child(g, single);
-			} else {
-				/* ...or an action to be applied to this
-				 * group. */
-				int rcode, action;
-				rcode = str2rcode(attr, filename, lineno);
-				if (rcode < 0) {
-					modcallable_free(&c);
-					return NULL;
-				}
-				
-				action = str2action(value, filename, lineno);
-				if (action == MOD_ACTION_INVALID) {
-					modcallable_free(&c);
-					return NULL;
-				}
-				c->actions[rcode] = action;
-			}
+
+				/*
+				 *	Or a module instance with action.
+				 */
+			} else if (!compile_action(c, attr, value, filename,
+						   lineno)) {
+				modcallable_free(&c);
+				return NULL;
+			} /* else it worked */
 		}
 	}
 	return mod_grouptocallable(g);
