@@ -117,8 +117,8 @@ binary-arch: stamp-build
 	# Dialup-Admin
 	dh_installdocs -p freeradius-dialupadmin dialup_admin/README
 	dh_installchangelogs -p freeradius-dialupadmin dialup_admin/Changelog
-	dh_installdirs -p freeradius-dialupadmin -XCVS dialup_admin/conf/* etc/freeradius-dialupadmin/
-	dh_installdirs -p freeradius-dialupadmin -XCVS -XChangelog -XREADME -Xconf/ dialup_admin/* usr/share/dialupadmin/
+	dh_install -p freeradius-dialupadmin -XCVS dialup_admin/conf/* etc/freeradius-dialupadmin/
+	dh_install -p freeradius-dialupadmin -XCVS -XChangelog -XREADME -Xconf/ dialup_admin/* usr/share/dialupadmin/
 	dh_link -p freeradius-dialupadmin etc/freeradius-dialupadmin/ usr/share/dialupadmin/conf
 
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
