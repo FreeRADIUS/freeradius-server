@@ -99,7 +99,7 @@ static CONF_PARSER server_config[] = {
 	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
 	{ "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &librad_dodns,      "no" },
-#if WITH_SNMP
+#ifdef WITH_SNMP
 	{ "snmp",   		PW_TYPE_BOOLEAN,    0, &mainconfig.do_snmp,      "no" },
 #endif
 	{ "max_request_time", PW_TYPE_INTEGER, 0, &mainconfig.max_request_time, Stringify(MAX_REQUEST_TIME) },
@@ -142,6 +142,9 @@ static int xlat_config(void *instance, REQUEST *request,
 	char buffer[1024];
 	char *p, *value;
 	const char *start = fmt;
+
+	request = request;	/* -Wunused */
+	instance = instance;	/* -Wunused */
 
 	cp = NULL;
 	cs = NULL;
@@ -368,6 +371,16 @@ static int generate_realms(const char *filename)
 			} else {
 				c->ipaddr = ip_getaddr(authhost);
 			}
+
+			/* 
+			 * Double check length, just to be sure!
+			 */
+			if (strlen(authhost) >= sizeof(c->server)) {
+				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
+				       filename, cf_section_lineno(cs),
+				       strlen(authhost), sizeof(c->server) - 1);
+				return -1;
+			}
 		}
 
 		/*
@@ -393,23 +406,15 @@ static int generate_realms(const char *filename)
 			} else {
 				c->acct_ipaddr = ip_getaddr(accthost);
 			}
+
+			if (strlen(accthost) >= sizeof(c->acct_server)) {
+				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
+				       filename, cf_section_lineno(cs),
+				       strlen(accthost), sizeof(c->acct_server) - 1);
+				return -1;
+			}
 		}
 
-		/* 
-		 * Double check length, just to be sure!
-		 */
-		if (strlen(authhost) >= sizeof(c->server)) {
-			radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
-					filename, cf_section_lineno(cs),
-					strlen(authhost), sizeof(c->server) - 1);
-			return -1;
-		}
-                if (accthost && strlen(accthost) >= sizeof(c->acct_server)) {
-                        radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
-                                        filename, cf_section_lineno(cs),
-                                        strlen(accthost), sizeof(c->acct_server) - 1);
-                        return -1;
-                }
 		if (strlen(name2) >= sizeof(c->realm)) {
 			radlog(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
 					filename, cf_section_lineno(cs),
