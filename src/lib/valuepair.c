@@ -588,7 +588,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	Note that ALL integers are unsigned!
 			 */
 			if (isdigit((int) *value)) {
-				vp->lvalue = atoi(value);
+				vp->lvalue = (uint32_t) strtoul(value, NULL, 10);
 				vp->length = 4;
 			}
 			/*
