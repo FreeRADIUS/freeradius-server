@@ -972,7 +972,7 @@ smux_connect ()
   DEBUG2 ("SMUX connect try %d", fail + 1);
 
   /* Make socket.  Try to connect. */
-  smux_fd = smux_sock ();
+  smuxfd = smux_sock ();
   if (smuxfd < 0)
     {
       if (++fail < SMUX_MAX_FAILURE)
