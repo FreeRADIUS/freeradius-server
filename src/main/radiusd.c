@@ -116,7 +116,7 @@ config2int_t config2int[] = {
   { "allow_core_dumps", &allow_core_dumps },
 
   { NULL, NULL}
-}
+};
 #endif
 
 /*
