@@ -3588,7 +3588,7 @@ AC_DEFUN([AC_LIBLTDL_INSTALLABLE],
      ac_configure_args="$ac_configure_args --enable-ltdl-install"
      LIBLTDL='${top_builddir}/'ifelse($#,1,[$1],['libltdl'])/libltdl.la
      INCLTDL='-I${top_srcdir}/'ifelse($#,1,[$1],['libltdl'])
-     AC_CONFIG_SUBDIRS('libtdl')
+     AC_CONFIG_SUBDIRS('libltdl')
      LIBLTDLPATH=libltdl
    fi
    AC_SUBST(LIBLTDLPATH)
