@@ -55,6 +55,8 @@ struct fastuser_instance {
 	char *usersfile;
 	char *acctusersfile;
 	time_t next_reload;
+	time_t lastusersload;
+	time_t lastacctusersload;
 };
 
 /* Function declarations */
@@ -102,6 +104,9 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 	PAIR_LIST **newhash=NULL, **oldhash=NULL;
 	PAIR_LIST *newdefaults=NULL, *newacctusers, *cur=NULL;
 	PAIR_LIST *olddefaults=NULL, *oldacctusers=NULL;
+	struct stat statbuf;
+	int reloadusers = 1;
+	int reloadacctusers = 1;
 
 	/* 
 	 * Allocate space for hash table here
@@ -112,45 +117,73 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 
 	memset((PAIR_LIST *)newhash, 0, memsize);
 
+	/* Check acct_users last modification time */
+	if ((stat(inst->acctusersfile, &statbuf) != -1)
+	 && (statbuf.st_mtime <= inst->lastacctusersload)) {
+		DEBUG2("rlm_fastusers:  File %s was unchanged. Not reloading.",
+			inst->acctusersfile);
+		reloadacctusers = 0;
+		rcode = 0;
+	}
+	else
 	/* Read acct_users */
 	rcode = fastuser_getfile(inst, inst->acctusersfile, NULL, &newacctusers, 1);
+
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "rlm_fastusers:  Errors reading %s", inst->usersfile);
 		return -1;
 	}
 
+	/* Check users last modification time */
+	if ((stat(inst->usersfile, &statbuf) != -1)
+	 && (statbuf.st_mtime <= inst->lastusersload)) {
+		DEBUG2("rlm_fastusers:  File %s was unchanged. Not reloading.",
+			inst->usersfile);
+		reloadusers = 0;
+		rcode = 0;
+		/* This was allocated earlier but will remain unused */
+		free(newhash);
+	}
+	else
 	/* Read users */
 	rcode = fastuser_getfile(inst, inst->usersfile, &newdefaults, newhash, 0);
+
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "rlm_fastusers:  Errors reading %s", inst->usersfile);
 		return -1;
 	}
 
-	/*
-	 * We need to do this now so that users auths
-	 * aren't blocked while we free the old table
-	 * below
-	 */
-	oldacctusers = inst->acctusers;
-	inst->acctusers = newacctusers;
-	oldhash = inst->hashtable;
-	inst->hashtable = newhash;
-	olddefaults = inst->defaults;
-	inst->defaults = newdefaults;
+	if (reloadusers) {
+		/*
+		 * We need to do this now so that users auths
+		 * aren't blocked while we free the old table
+		 * below
+		 */
+		inst->lastusersload = time(NULL);
+		oldhash = inst->hashtable;
+		inst->hashtable = newhash;
+		olddefaults = inst->defaults;
+		inst->defaults = newdefaults;
 
-	/*
-	 * When we get here, we assume the hash built properly.
-	 * So we begin to tear down the old one
-	 */
-	if(oldhash) {
-		for(hashindex=0; hashindex<inst->hashsize; hashindex++) {
-			if(oldhash[hashindex]) {
-				cur = oldhash[hashindex];
-				pairlist_free(&cur);
-			}
-		} 
-		free(oldhash);
+		/*
+		 * When we get here, we assume the hash built properly.
+		 * So we begin to tear down the old one
+		 */
+		if (oldhash) {
+			for(hashindex=0; hashindex<inst->hashsize; hashindex++) {
+				if(oldhash[hashindex]) {
+					cur = oldhash[hashindex];
+					pairlist_free(&cur);
+				}
+			} 
+			free(oldhash);
+		}
 		pairlist_free(&olddefaults);
+	}
+	if (reloadacctusers) {
+		inst->lastacctusersload = time(NULL);
+		oldacctusers = inst->acctusers;
+		inst->acctusers = newacctusers;
 		pairlist_free(&oldacctusers);
 	}
 
@@ -500,6 +533,8 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 
 	inst->next_reload = time(NULL) + inst->hash_reload;
 	inst->hashtable = NULL;
+	inst->lastusersload = 0;
+	inst->lastacctusersload = 0;
 	if(fastuser_buildhash(inst) < 0) {
 		radlog(L_ERR, "rlm_fastusers:  error building user hash.  aborting");
 		return -1;

@@ -32,6 +32,8 @@ static const char rcsid[] = "$Id$";
 #include	<string.h>
 #include	<grp.h>
 #include	<pwd.h>
+#include	<sys/types.h>
+#include	<sys/stat.h>
 
 #include "config.h"
 
@@ -71,6 +73,9 @@ struct unix_instance {
 	const char *radwtmp;
 	int usegroup;
 	struct pwcache *cache;
+	time_t cache_reload;
+	time_t next_reload;
+	time_t last_reload;
 };
 
 static CONF_PARSER module_config[] = {
@@ -89,6 +94,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(struct unix_instance,radwtmp), NULL,   "${logdir}/radwtmp" },
 	{ "usegroup", PW_TYPE_BOOLEAN,
 	  offsetof(struct unix_instance,usegroup), NULL,     "no" },
+	{ "cache_reload", PW_TYPE_INTEGER,
+	  offsetof(struct unix_instance,cache_reload), NULL, "600" },
 	
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -230,6 +237,11 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 			free(inst);
 			return -1;
 		}
+
+		if (inst->cache_reload) {
+			inst->last_reload = 0;
+			inst->next_reload = time(NULL) + inst->cache_reload;
+		}
 	} else {
 		inst->cache = NULL;
 	}
@@ -311,6 +323,56 @@ static int unix_authenticate(void *instance, REQUEST *request)
 #ifdef HAVE_GETUSERSHELL
 	char		*shell;
 #endif
+
+	/* See if we should refresh the cache */
+	if (inst->cache && inst->cache_reload
+	 && (inst->next_reload < request->timestamp)) {
+		/* Time to refresh, maybe ? */
+		int must_reload = 0;
+		struct stat statbuf;
+
+		DEBUG2("rlm_users : Time to refresh cache.");
+		/* Check if any of the files has changed */
+		if (inst->passwd_file
+		 && (stat(inst->passwd_file, &statbuf) != -1)
+		 && (statbuf.st_mtime > inst->last_reload)) {
+			must_reload++;
+		}
+
+		if (inst->shadow_file
+		 && (stat(inst->shadow_file, &statbuf) != -1)
+		 && (statbuf.st_mtime > inst->last_reload)) {
+			must_reload++;
+		}
+
+		if (inst->group_file
+		 && (stat(inst->group_file, &statbuf) != -1)
+		 && (statbuf.st_mtime > inst->last_reload)) {
+			must_reload++;
+		}
+
+		if (must_reload) {
+			/* Build a new cache to replace old one */
+			struct pwcache *oldcache;
+			struct pwcache *newcache = unix_buildpwcache(
+							inst->passwd_file,
+							inst->shadow_file,
+							inst->group_file);
+
+			if (newcache) {
+				oldcache = inst->cache;
+				inst->cache = newcache;
+				unix_freepwcache(oldcache);
+
+				inst->last_reload = time(NULL);
+			}
+		} else {
+			DEBUG2("rlm_users : Files were unchanged. Not reloading.");
+		}
+
+		/* Schedule next refresh */
+		inst->next_reload = time(NULL) + inst->cache_reload;
+	}
 
 	/*
 	 *	We can only authenticate user requests which HAVE

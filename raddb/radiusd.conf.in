@@ -334,6 +334,8 @@ modules {
 		#
 		# allowed values: {no, yes}
 		cache = no
+		# Reload the cache every 600 seconds (10mins). 0 to disable.
+		cache_reload = 600
 
 		#
 		#  Define the locations of the normal passwd, shadow, and
