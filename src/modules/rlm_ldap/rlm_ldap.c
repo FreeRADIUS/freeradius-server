@@ -67,6 +67,10 @@
  *	  be used to deny user access.
  *	- Remember to free inst->atts in ldap_detach()
  *	- Add a forgotten ldap_free_urldesc in ldap_xlat()
+ *	- Add a variable locked in the LDAP_CONN structure. We use this to avoid deadlocks. The mutex
+ *	  we are using is of type fast and can deadlock if the same thread tries to relock it. That
+ *	  could happen in case of calls to xlat.
+ *	- When ldap_search returns NO_SUCH_OBJECT don't return fail but notfound
  */
 static const char rcsid[] = "$Id$";
 
@@ -113,6 +117,7 @@ typedef struct TLDAP_RADIUS TLDAP_RADIUS;
 typedef struct ldap_conn {
 	LDAP		*ld;
 	char		bound;
+	char		locked;
 	pthread_mutex_t	mutex;
 } LDAP_CONN;
 
@@ -207,8 +212,9 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,void *instance)
 	register int i = 0;
 
 	for(;i<inst->num_conns;i++){
-		if (pthread_mutex_trylock(&(conns[i].mutex)) == 0){
+		if (conns[i].locked == 0 && pthread_mutex_trylock(&(conns[i].mutex)) == 0){
 			*ret = &conns[i];
+			conns[i].locked = 1;
 			DEBUG("ldap_get_conn: Got Id: %d",i);
 			return i;
 		}
@@ -220,6 +226,7 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,void *instance)
 static inline void ldap_release_conn(int i, LDAP_CONN *conns)
 {
 	DEBUG("ldap_release_conn: Release Id: %d",i);
+	conns[i].locked = 0;
 	pthread_mutex_unlock(&(conns[i].mutex));
 }
 
@@ -287,6 +294,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	}
 	for(;i<inst->num_conns;i++){
 		inst->conns[i].bound = 0;
+		inst->conns[i].locked = 0;
 		inst->conns[i].ld = NULL;
 		pthread_mutex_init(&inst->conns[i].mutex, NULL);
 	}	
@@ -491,6 +499,7 @@ retry:
 	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn ? search_basedn : "(null)" , filter);
 	switch (ldap_search_st(conn->ld, search_basedn, scope, filter, attrs, 0, &(inst->timeout), result)) {
 	case LDAP_SUCCESS:
+	case LDAP_NO_SUCH_OBJECT:
 		break;
 	case LDAP_SERVER_DOWN:
 		if (search_retry == 0){
