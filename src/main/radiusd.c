@@ -1342,7 +1342,7 @@ int main(int argc, char *argv[])
 			 *	from under them.
 			 */
 		        int max_wait = 0;
-		        for(;;) {
+		        if (!spawn_flag) for(;;) {
 			        /*
 				 * Block until there are '0' threads
 				 * with a REQUEST handle.
