@@ -6,6 +6,14 @@ RLM_CFLAGS	= $(INCLTDL)
 RLM_LIBS	=
 RLM_SUBDIRS	= drivers
 
+#
+#  Not using shared libraries, add in ALL known static modules
+# at build time.
+#
+ifneq ($(USE_SHARED_LIBS),yes)
+RLM_LIBS	+= $(shell for x in drivers/rlm_*/rlm_*.la;do echo -dlpreopen $$x;done)
+endif
+
 $(STATIC_OBJS): $(HEADERS)
 
 $(DYNAMIC_OBJS): $(HEADERS) 
