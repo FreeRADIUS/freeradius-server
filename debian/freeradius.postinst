@@ -38,7 +38,7 @@ case "$1" in
 	find /etc/freeradius -type d -exec chgrp freerad {} \; -exec chmod 2770 {} \;
 	find /var/log/freeradius -exec chown freerad {} \; -exec chgrp freerad {} \;
 
-	if [ $2 = "" ] ; then
+	if [ "$2" = "" ] ; then
 		action="start"
 	else
 		action="restart"
