@@ -212,14 +212,35 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	eap_compose(request, handler->eap_ds->request);
 
 	/*
-	 * Add to the list only if it is EAP-Request
+	 * Add to the list only if it is EAP-Request,
+	 * OR if it's LEAP, and a response.
 	 */
 	if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
-		(handler->eap_ds->request->type.type >= PW_EAP_MD5)) {
-
+	    (handler->eap_ds->request->type.type >= PW_EAP_MD5)) {
 		handler->id = eap_generateid(request, (u_char)handler->eap_ds->request->id);
 		if (handler->id == NULL) {
-			radlog(L_ERR, "rlm_eap: problem in generating ID, Present EAP is no more Valid");
+			radlog(L_ERR, "rlm_eap: problem in generating ID, Present EAP is not valid");
+			eap_handler_free(&handler);
+		} else {
+			eaplist_add(&(eap_stuff->echolist), handler);
+		}
+
+		/*
+		 *	LEAP is a little different.  At Stage 4,
+		 *	it sends an EAP-Success message, but we still
+		 *	need to keep the State attribute & session
+		 *	data structure around for the AP Challenge.
+		 *
+		 *	At stage 6, LEAP sends an EAP-Response, which
+		 *	isn't put into the list.
+		 */
+	} else if ((handler->eap_ds->response->code == PW_EAP_RESPONSE) &&
+		   (handler->eap_ds->response->type.type == PW_EAP_LEAP) &&
+		   (handler->eap_ds->request->code == PW_EAP_SUCCESS) &&
+		   (handler->eap_ds->request->type.type == 0)) {
+		handler->id = eap_regenerateid(request, (u_char)handler->eap_ds->request->id);
+		if (handler->id == NULL) {
+			radlog(L_ERR, "rlm_eap: problem in generating ID, Present EAP is not valid");
 			eap_handler_free(&handler);
 		} else {
 			eaplist_add(&(eap_stuff->echolist), handler);

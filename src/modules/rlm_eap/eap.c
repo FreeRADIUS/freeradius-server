@@ -63,27 +63,31 @@ static const char *eap_types[] = {
   "md5",
   "otp",
   "gtc",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "tls"
+  "7",
+  "8",
+  "9",
+  "10",
+  "11",
+  "12",
+  "tls",			/* 13 */
+  "14",
+  "15",
+  "16",
+  "leap"			/* 17 */
 };
 
 /*
  * Load all the required eap authentication types.
  * Get all the supported EAP-types from config file. 
  */
-int eaptype_load(EAP_TYPES **type_list, const char *type_name, CONF_SECTION *cs)
+int eaptype_load(EAP_TYPES **type_list, const char *type_name,
+		 CONF_SECTION *cs)
 {
 	EAP_TYPES **last, *node;
 	lt_dlhandle handle;
 	char auth_type_name[NAME_LEN];
 	int i;
 
-	memset(auth_type_name, 0, NAME_LEN);
 	snprintf(auth_type_name, sizeof(auth_type_name), "rlm_eap_%s", type_name);
 
 	last = type_list;
@@ -147,7 +151,7 @@ int eaptype_load(EAP_TYPES **type_list, const char *type_name, CONF_SECTION *cs)
 		return -1;
 	}
 
-	radlog(L_INFO, "rlm_eap: Loaded and initialized the type %s", type_name);
+	DEBUG("rlm_eap: Loaded and initialized the type %s", type_name);
 	*last = node;
 	return 0;
 }
@@ -186,12 +190,12 @@ int eaptype_call(int eap_type, operation_t action,
 
 	atype = eaptype_byid(&type_list, eap_type);
 	if (!atype) {
-		radlog(L_INFO, "rlm_eap: Unsupported EAP_TYPE %d",
+		radlog(L_ERR, "rlm_eap: Unsupported EAP_TYPE %d",
 			handler->eap_ds->response->type.type);
 		return 0;
 	}
 
-	radlog(L_INFO, "rlm_eap: processing type %s", atype->typename);
+	DEBUG2("  rlm_eap: processing type %s", atype->typename);
 
 	switch (action) {
 	case INITIATE:
@@ -274,8 +278,9 @@ int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
 		case PW_EAP_OTP:
 		case PW_EAP_GTC:
 		case PW_EAP_TLS:
+		case PW_EAP_LEAP:
 		default:
-			radlog(L_INFO, "rlm_eap: EAP_TYPE - %s",
+			DEBUG2("  rlm_eap: EAP_TYPE - %s",
 				eap_types[eaptype->type]);
 			if (eaptype_call(eaptype->type, AUTHENTICATE,
 				type_list, handler) == 0) {
@@ -338,7 +343,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 		return eap_packet;
 	}
 
-	radlog(L_INFO, "rlm_eap: Multiple EAP_Message attributes found");
+	DEBUG2("  rlm_eap: Multiple EAP-Message attributes found");
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
 	for (vp = vp_list->next; vp; vp = vp->next) {
@@ -470,7 +475,7 @@ int eap_compose(REQUEST *request, EAP_PACKET *reply)
 		 * create a value pair & append it to the request reply list
 		 * This memory gets freed up when request is freed up
 		 */
-		eap_msg = paircreate(PW_EAP_MESSAGE, PW_TYPE_STRING);
+		eap_msg = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
 		memcpy(eap_msg->strvalue, ptr, len);
 		eap_msg->length = len;
 		pairadd(&(request->reply->vps), eap_msg);
@@ -479,25 +484,32 @@ int eap_compose(REQUEST *request, EAP_PACKET *reply)
 	} while (eap_len);
 
 	/*
-	 * EAP-Message is always associated with Message-Authenticator
-	 * but not viceversa.
+	 *	EAP-Message is always associated with
+	 *	Message-Authenticator but not vice-versa.
+	 *
+	 *	Don't add a Message-Authenticator if it's already
+	 *	there.
 	 */
-	vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
-	memset(vp->strvalue, 0, AUTH_VECTOR_LEN);
-	vp->length = AUTH_VECTOR_LEN;
-	pairadd(&(request->reply->vps), vp);
+	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR);
+	if (!vp) {
+		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
+		memset(vp->strvalue, 0, AUTH_VECTOR_LEN);
+		vp->length = AUTH_VECTOR_LEN;
+		pairadd(&(request->reply->vps), vp);
+	}
 
 	/*
 	 * Generate State, only if it not Identity request
 	 */ 
 	if ((eap_packet->code == PW_EAP_REQUEST) &&
-		(eap_packet->data[0] >= PW_EAP_MD5)) {
+	    (eap_packet->data[0] >= PW_EAP_MD5)) {
 		vp = generate_state();
 		pairadd(&(request->reply->vps), vp);
 	}
 		
 	/* Set request reply code */
 	switch(reply->code) {
+	case PW_EAP_RESPONSE:
 	case PW_EAP_SUCCESS:
 		request->reply->code = PW_AUTHENTICATION_ACK;
 		break;
@@ -507,10 +519,9 @@ int eap_compose(REQUEST *request, EAP_PACKET *reply)
 	case PW_EAP_REQUEST:
 		request->reply->code = PW_ACCESS_CHALLENGE;
 		break;
-	case PW_EAP_RESPONSE:
 	default:
 		/* Should never enter here */
-		radlog(L_ERR, "rlm_eap: reply code is unknown, Reject it.");
+		radlog(L_ERR, "rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		break;
 	}
@@ -532,11 +543,38 @@ int eap_start(REQUEST *request)
 		return EAP_NOOP;
 	}
 
+#ifndef NDEBUG	
+	if ((eap_msg->strvalue[0] == 0) ||
+	    (eap_msg->strvalue[0] > PW_EAP_MAX_TYPES)) {
+		DEBUG2("  rlm_eap: Unknown EAP packet");
+	} else {
+		DEBUG2("  rlm_eap: EAP packet type %s id %d length %d",
+		       eap_types[eap_msg->strvalue[0]],
+		       eap_msg->strvalue[1],
+		       (eap_msg->strvalue[2] << 8) | eap_msg->strvalue[3]);
+	}
+#endif
+
+	/*
+	 *	If we've been configured to proxy, do nothing.
+	 *
+	 *	Note that we don't check if the realm is local.
+	 *	We figure that anyone bright enough to add
+	 *	Proxy-To-Realm is bright enough to NOT do so
+	 *	when it's a local realm.
+	 */
+	if (pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL) {
+	  	return EAP_NOOP;
+	}
+
+	/*
+	 *	Not a start message.  Don't start anything.
+	 */
 	if (eap_msg->length != EAP_START) {
 		return EAP_NOTFOUND;
 	}
 
-	radlog(L_INFO, "rlm_eap: Got EAP_START message");
+	DEBUG2("  rlm_eap: Got EAP_START message");
 	if ((eapstart = eap_ds_alloc()) == NULL) {
 		return EAP_FAIL;
 	}
@@ -579,9 +617,10 @@ int eap_validation(eap_packet_t *eap_packet)
 
 	/* High level EAP packet checks */
 	if ((len <= EAP_HEADER_LEN) ||
-		(eap_packet->code != PW_EAP_RESPONSE) ||
-		(eap_packet->data[0] <= 0) ||
-		(eap_packet->data[0] > PW_EAP_MAX_TYPES)) {
+ 	    ((eap_packet->code != PW_EAP_RESPONSE) &&
+ 	     (eap_packet->code != PW_EAP_REQUEST)) ||
+	    (eap_packet->data[0] <= 0) ||
+	    (eap_packet->data[0] > PW_EAP_MAX_TYPES)) {
 
 		radlog(L_AUTH, "rlm_eap: Incorrect EAP Message, "
 				"Ignoring the packet");
@@ -681,7 +720,6 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 	 * EAP_HANDLER MUST be found in the list if it is not EAP-Identity response
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
-
 		unique = eap_regenerateid(request, eap_packet->id);
 		if (unique == NULL) {
 			return NULL;
@@ -697,7 +735,6 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 			return NULL;
 		}
 	} else {
-
 		handler = eap_handler_alloc();
 		if (handler == NULL) {
 			radlog(L_ERR, "rlm_eap: out of memory");
@@ -747,7 +784,7 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 		 */
 		handler->configured = paircopy(request->config_items);
 		if (handler->configured == NULL) {
-			radlog(L_INFO, "rlm_eap: No configured information for this user");
+			DEBUG2("  rlm_eap: No configured information for this user");
 
 			/*
 			 * FIXME: If there is no config info then
@@ -769,6 +806,7 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 
 	handler->timestamp = time(NULL);
 	handler->reply_vps = &(request->reply->vps);
+	handler->request = request; /* LEAP needs this */
 	return handler;
 }
 
@@ -847,7 +885,7 @@ unsigned char *eap_regenerateid(REQUEST *request, unsigned char response_id)
 
 	state = pairfind(request->packet->vps, PW_STATE);
 	if (state == NULL) {
-		radlog(L_INFO, "rlm_eap: NO State Attribute found.");
+		DEBUG2("  rlm_eap: NO State Attribute found.");
 		return NULL;
 	}
 	if (verify_state(state) != 0) {
@@ -897,7 +935,7 @@ unsigned char *eap_generateid(REQUEST *request, unsigned char response_id)
 
 	state = pairfind(request->reply->vps, PW_STATE);
 	if (state == NULL) {
-		radlog(L_INFO, "rlm_eap: NO State Attribute found.");
+		DEBUG2("  rlm_eap: NO State Attribute found.");
 		return NULL;
 	}
 

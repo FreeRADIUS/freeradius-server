@@ -52,7 +52,8 @@
 #define PW_EAP_OTP		5
 #define PW_EAP_GTC		6
 #define PW_EAP_TLS		13
-#define PW_EAP_MAX_TYPES	13
+#define PW_EAP_LEAP		17
+#define PW_EAP_MAX_TYPES	17
 
 #define EAP_HEADER_LEN 		4
 
@@ -122,6 +123,7 @@ typedef struct _eap_handler {
 
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*configured;
+	REQUEST		*request;
         VALUE_PAIR      **reply_vps;
 
 	char	*identity;
