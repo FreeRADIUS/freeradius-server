@@ -32,8 +32,6 @@
  */
 
 /*
- * TODO: support key changing synchronous modes
- * TODO: support time synchronous modes
  * TODO: add a flag to control challenge issuance for unknown usernames?
  * TODO: add required password support? (before challenged, eg "challenge")
  * TODO: support other than ILP32 (for State)
