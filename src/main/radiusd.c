@@ -107,6 +107,7 @@ int acct_port;
 int proxy_port;
 int proxy_retry_delay = RETRY_DELAY;
 int proxy_retry_count = RETRY_COUNT;
+int proxy_dead_time = DEAD_TIME;
 int proxy_synchronous = FALSE;
 int need_reload = FALSE;
 struct main_config_t mainconfig;
@@ -162,6 +163,7 @@ static CONF_PARSER proxy_config[] = {
 	{ "retry_delay",  PW_TYPE_INTEGER, 0, &proxy_retry_delay, Stringify(RETRY_DELAY) },
 	{ "retry_count",  PW_TYPE_INTEGER, 0, &proxy_retry_count, Stringify(RETRY_COUNT) },
 	{ "synchronous",  PW_TYPE_BOOLEAN, 0, &proxy_synchronous, "no" },
+	{ "dead_time",    PW_TYPE_INTEGER, 0, &proxy_dead_time, Stringify(DEAD_TIME) },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -2334,6 +2336,7 @@ static int refresh_request(REQUEST *request, void *data)
 	if (request->proxy_try_count == 0) {
 		request->finished = TRUE;
 		rad_reject(request);
+		realm_disable(request->proxy->dst_ipaddr);
 		goto setup_timeout;
 	}
 

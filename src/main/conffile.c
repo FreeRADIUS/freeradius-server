@@ -931,7 +931,7 @@ static int generate_realms(const char *filename)
 			c->notrealm = 1;
 		if ((cf_section_value_find(cs, "notsuffix")) != NULL)
 			c->notrealm = 1;
-
+		c->active = TRUE;
 
 		c->next = realms;
 		realms = c;

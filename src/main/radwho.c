@@ -81,6 +81,7 @@ int acct_port;
 uint32_t myip = INADDR_ANY;
 int proxy_retry_delay = RETRY_DELAY;
 int proxy_retry_count = RETRY_COUNT;
+int proxy_dead_time;
 int log_stripped_names;
 struct main_config_t mainconfig;
 

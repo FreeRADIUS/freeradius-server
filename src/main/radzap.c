@@ -54,6 +54,7 @@ int auth_port = 0;
 int acct_port;
 int proxy_retry_delay = RETRY_DELAY;
 int proxy_retry_count = RETRY_COUNT;
+int proxy_dead_time;
 int log_stripped_names;
 uint32_t myip = INADDR_ANY;
 struct main_config_t mainconfig;

@@ -99,6 +99,8 @@ typedef struct realm {
 	int			striprealm;
 	int			trusted;
 	int			notrealm;
+	int			active;
+	time_t			wakeup;
 	struct realm		*next;
 } REALM;
 
@@ -132,6 +134,7 @@ typedef struct main_config_t {
 #define MAX_REQUESTS		256
 #define RETRY_DELAY             5
 #define RETRY_COUNT             3
+#define DEAD_TIME               120
 
 #define L_DBG			1
 #define L_AUTH			2
@@ -223,6 +226,7 @@ void		client_walk(void);
 /* files.c */
 REALM		*realm_find(const char *);
 REALM		*realm_findbyaddr(uint32_t ipno);
+void		realm_disable(uint32_t ipno);
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);

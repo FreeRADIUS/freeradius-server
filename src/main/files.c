@@ -41,6 +41,8 @@ static const char rcsid[] = "$Id$";
 
 #include "radiusd.h"
 
+extern int proxy_dead_time;
+
 REALM *realms;
 
 /*
@@ -457,6 +459,7 @@ int read_realms_file(const char *file)
 		strcpy(c->realm, realm);
 		strcpy(c->server, hostnm);
 		c->striprealm = TRUE;
+		c->active = TRUE;
 
 		while (getword(&p, opts, sizeof(opts))) {
 			if (strcmp(opts, "nostrip") == 0)
@@ -481,11 +484,30 @@ int read_realms_file(const char *file)
 #endif /* BUILDDBM */
 
 /*
+ * Mark a host inactive
+ */
+void realm_disable(uint32_t ipaddr)
+{
+	REALM *cl;
+	time_t now;
+
+	now = time(NULL);
+	for(cl = realms; cl; cl = cl->next)
+		if (ipaddr == cl->ipaddr) {
+			cl->active = FALSE;
+			cl->wakeup = now + proxy_dead_time;
+		}
+}
+
+/*
  *	Find a realm in the REALM list.
  */
 REALM *realm_find(const char *realm)
 {
 	REALM *cl;
+	time_t now;
+
+	now = time(NULL);
 
 	/*
 	 *	If we're passed a NULL realm pointer,
@@ -496,8 +518,16 @@ REALM *realm_find(const char *realm)
 	}
 
 	for(cl = realms; cl; cl = cl->next)
-		if (strcmp(cl->realm, realm) == 0)
-			break;
+		if (strcmp(cl->realm, realm) == 0) {
+			if (cl->active) {
+				break;
+			} else {
+				if (cl->wakeup <= now) {
+					cl->active = TRUE;
+					break;
+				}
+			}
+		}
 	if (cl != NULL) 
 		return cl;
 	for(cl = realms; cl; cl = cl->next)
