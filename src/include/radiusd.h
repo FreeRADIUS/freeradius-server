@@ -207,9 +207,12 @@ void		request_free(REQUEST *request);
 RADIUS_PACKET *	build_reply(int code, REQUEST *request,
 			    VALUE_PAIR *vps, const char *user_msg);
 
-/* files.c */
+/* client.c */
+int		read_clients_file(const char *file);
 RADCLIENT	*client_find(uint32_t ipno);
-char		*client_name(uint32_t ipno);
+const char	*client_name(uint32_t ipno);
+
+/* files.c */
 REALM		*realm_find(const char *);
 REALM		*realm_findbyaddr(uint32_t ipno);
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
@@ -219,8 +222,8 @@ int		read_config_files(void);
 /* nas.c */
 int		read_naslist_file(char *);
 NAS		*nas_find(uint32_t ipno);
-char		*nas_name(uint32_t ipno);
-char		*nas_name2(RADIUS_PACKET *r);
+const char	*nas_name(uint32_t ipno);
+const char	*nas_name2(RADIUS_PACKET *r);
 NAS		*nas_findbyname(char *nasname);
 
 /* version.c */

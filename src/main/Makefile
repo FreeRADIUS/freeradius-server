@@ -6,13 +6,15 @@ include ../../Make.inc
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
-		  modules.o radutmp.o xlat.o threads.o smux.o radius_snmp.o
+		  modules.o radutmp.o xlat.o threads.o smux.o radius_snmp.o \
+                  client.o
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h \
 		  ../include/autoconf.h
 
 CFLAGS		+= -I../include
 LDFLAGS		+= -L../lib
-LIBS		+= -lradius
+LIBS		+= -lradius 
+MODULE_LIBS	= 
 
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 
@@ -20,7 +22,7 @@ radiusd: $(SERVER_OBJS) ../lib/libradius.a
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LIBS) $(LDBM) $(SNMPLIB) $(LCRYPT) \
-		$(PTHREADLIB) $(MODULE_LIBS) $(LIBLTDL)
+		$(PTHREADLIB) $(LIBLTDL) $(MODULE_LIBS) 
 
 radiusd.o: radiusd.c $(INCLUDES)
 	$(CC) $(CFLAGS) $(SNMPINC) -c radiusd.c
@@ -110,8 +112,8 @@ raduse: raduse.o
 radzap.o: radzap.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radzap.c
 
-radzap: radzap.o util.o nas.o radutmp.o log.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o $(LIBS)
+radzap: radzap.o util.o nas.o radutmp.o log.o client.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o client.o $(LIBS)
 
 clean:
 	rm -rf *.o *.so *~ modules_static.h radiusd radwho raduse \

@@ -23,7 +23,7 @@ static const char rcsid[] = "$Id$";
 
 #include	"radiusd.h"
 
-NAS		*naslist;
+static NAS	*naslist = NULL;
 
 /*
  *	Free a NAS list.
@@ -51,7 +51,7 @@ int read_naslist_file(char *file)
 	char	nastype[256];
 	int	lineno = 0;
 	char	*p;
-	NAS	*c;
+	NAS	*nas;
 
 	nas_free(naslist);
 	naslist = NULL;
@@ -80,48 +80,48 @@ int read_naslist_file(char *file)
 		/*
 		 *	Double-check lengths to be sure they're sane
 		 */
-		if (strlen(hostnm) >= sizeof(c->longname)) {
+		if (strlen(hostnm) >= sizeof(nas->longname)) {
 			radlog(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
-			    strlen(hostnm), sizeof(c->longname) - 1);
+			    strlen(hostnm), sizeof(nas->longname) - 1);
 			return -1;
 		}
-		if (strlen(shortnm) > sizeof(c->shortname)) {
+		if (strlen(shortnm) > sizeof(nas->shortname)) {
 			radlog(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
-			    strlen(shortnm), sizeof(c->shortname) - 1);
+			    strlen(shortnm), sizeof(nas->shortname) - 1);
 			return -1;
 		}
-		if (strlen(nastype) >= sizeof(c->nastype)) {
+		if (strlen(nastype) >= sizeof(nas->nastype)) {
 			radlog(L_ERR, "%s[%d]: NAS type of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
-			    strlen(nastype), sizeof(c->nastype) - 1);
+			    strlen(nastype), sizeof(nas->nastype) - 1);
 			return -1;
 		}
 		
 		/*
 		 *	It should be OK now, let's create the buffer.
 		 */
-		if ((c = malloc(sizeof(NAS))) == NULL) {
+		if ((nas = malloc(sizeof(NAS))) == NULL) {
 			radlog(L_CONS|L_ERR, "%s[%d]: out of memory",
 				file, lineno);
 			return -1;
 		}
 
-		strcpy(c->nastype, nastype);
-		strcpy(c->shortname, shortnm);
+		strcpy(nas->nastype, nastype);
+		strcpy(nas->shortname, shortnm);
 
 		if (strcmp(hostnm, "DEFAULT") == 0) {
-			c->ipaddr = 0;
-			strcpy(c->longname, hostnm);
+			nas->ipaddr = 0;
+			strcpy(nas->longname, hostnm);
 		} else {
-			c->ipaddr = ip_getaddr(hostnm);
-			ip_hostname(c->longname, sizeof(c->longname),
-				    c->ipaddr);
+			nas->ipaddr = ip_getaddr(hostnm);
+			ip_hostname(nas->longname, sizeof(nas->longname),
+				    nas->ipaddr);
 		}
 
-		c->next = naslist;
-		naslist = c;
+		nas->next = naslist;
+		naslist = nas;
 	}
 	fclose(fp);
 
@@ -177,53 +177,41 @@ NAS *nas_findbyname(char *nasname)
 /*
  *	Find the name of a nas (prefer short name).
  */
-char *nas_name(uint32_t ipaddr)
+const char *nas_name(uint32_t ipaddr)
 {
-	NAS *cl;
-	char buf[256];
+	NAS *nas;
 
-	if ((cl = nas_find(ipaddr)) != NULL) {
-		if (cl->shortname[0])
-			return cl->shortname;
+	if ((nas = nas_find(ipaddr)) != NULL) {
+		if (nas->shortname[0])
+			return nas->shortname;
 		else
-			return cl->longname;
+			return nas->longname;
 	}
 
-	/*
-	 *	FIXME!
-	 *
-	 *	This isn't multi-threaded safe!
-	 */
-	return ip_hostname(buf, sizeof(buf), ipaddr);
+	return client_name(ipaddr);
 }
 
 /*
  *	Find the name of a nas (prefer short name) based on the request.
  */
-char *nas_name2(RADIUS_PACKET *packet)
+const char *nas_name2(RADIUS_PACKET *packet)
 {
 	uint32_t	ipaddr;
-	NAS	        *cl;
+	NAS	        *nas;
 	VALUE_PAIR	*pair;
-	char		buf[256];
 
 	if ((pair = pairfind(packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
 		ipaddr = pair->lvalue;
 	else
 		ipaddr = packet->src_ipaddr;
 
-	if ((cl = nas_find(ipaddr)) != NULL) {
-		if (cl->shortname[0])
-			return cl->shortname;
+	if ((nas = nas_find(ipaddr)) != NULL) {
+		if (nas->shortname[0])
+			return nas->shortname;
 		else
-			return cl->longname;
+			return nas->longname;
 	}
 
-	/*
-	 *	FIXME!!!
-	 *
-	 *	This isn't multi-threaded safe!
-	 */
-	return ip_hostname(buf, sizeof(buf), ipaddr);
+	return client_name(ipaddr);
 }
 
