@@ -160,7 +160,14 @@ CREATE VIEW customerip AS
 
 /*
  * Function 'strip_dot'
- * removes "." from the start of cisco timestamps (NASes that have lost ntp timesync temporarily)
+ * removes "." from the start of cisco timestamps
+ *
+ * From the cisco website:
+ * "A timestamp that is preceded by an asterisk (*) or a dot (.) may not be accurate.
+ *  An asterisk (*) means that after a gateway reboot, the gateway clock was not manually set
+ *  and the gateway has not synchronized with an NTP server yet. A dot (.) means the gateway
+ *  NTP has lost synchronization with an NTP server."
+ *
  *  * Example useage:
  *      insert into mytable values (strip_dot('.16:46:02.356 EET Wed Dec 11 2002'));
  *
