@@ -148,12 +148,24 @@ void unique_add_attr(int dictattr) {
 }
 
 int unique_parse_key(char *key) {
-	char *ptr, *prev;
+	char *ptr, *prev, *keyptr;
 	DICT_ATTR *a;
 
+	keyptr = key;
 	ptr = key;
 	prev = key;
 
+	/* Let's remove spaces in the string */
+	while(ptr && *ptr!='\0') {
+		while(*ptr == ' ') 
+			ptr++;
+		*keyptr = *ptr;
+		keyptr++;
+		ptr++;
+	}
+	*keyptr = '\0';
+
+	ptr = key;
 	while(ptr) {
 		switch(*ptr) {
 			case ',':
@@ -173,6 +185,8 @@ int unique_parse_key(char *key) {
 				}
 				unique_add_attr(a->attr);
 				return 0;
+			case ' ':
+				continue;
 		}	
 		ptr++;	
 	}	
