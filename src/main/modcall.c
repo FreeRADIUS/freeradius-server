@@ -190,14 +190,20 @@ static void safe_unlock(module_instance_t *instance)
 #endif
 
 static int call_modsingle(int component, modsingle *sp, REQUEST *request,
-		int default_result)
+			  int default_result)
 {
 	int myresult = default_result;
 
+	DEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
+	       comp2str[component], sp->modinst->name, 
+	       sp->modinst->entry->name, request->number);
 	safe_lock(sp->modinst);
 	myresult = sp->modinst->entry->module->methods[component](
 			sp->modinst->insthandle, request);
 	safe_unlock(sp->modinst);
+	DEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
+	       comp2str[component], sp->modinst->name, 
+	       sp->modinst->entry->name, request->number);
 
 	return myresult;
 }
@@ -281,31 +287,34 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	}
 
 	if(c == NULL) {
-		DEBUG2("modcall[%s]: NULL object returns %s",
+		DEBUG2("modcall[%s]: NULL object returns %s for request %d",
 		       comp2str[component],
-		       lrad_int2str(rcode_table, myresult, "??"));
+		       lrad_int2str(rcode_table, myresult, "??"),
+		       request->number);
 		return myresult;
 	}
 
 	if(c->type==MOD_GROUP) {
 		modgroup *g = mod_callabletogroup(c);
 
-		DEBUG2("modcall: entering group %s",
-				c->name);
+		DEBUG2("modcall: entering group %s for request %d",
+		       c->name, request->number);
 
 		myresult = call_modgroup(component, g, request, myresult);
 
-		DEBUG2("modcall: group %s returns %s",
-		       c->name,
-		       lrad_int2str(rcode_table, myresult, "??"));
+		DEBUG2("modcall: group %s returns %s for request %d",
+		        c->name,
+		       lrad_int2str(rcode_table, myresult, "??"),
+		       request->number);
 	} else {
 		modsingle *sp = mod_callabletosingle(c);
 
 		myresult = call_modsingle(component, sp, request, myresult);
 
-		DEBUG2("  modcall[%s]: module \"%s\" returns %s",
+		DEBUG2("  modcall[%s]: module \"%s\" returns %s for request %d",
 		       comp2str[component], c->name,
-		       lrad_int2str(rcode_table, myresult, "??"));
+		       lrad_int2str(rcode_table, myresult, "??"),
+		       request->number);
 	}
 
 	return myresult;
