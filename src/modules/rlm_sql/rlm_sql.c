@@ -193,7 +193,13 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	SQLSOCK *sqlsocket;
 	SQL_INST *inst = instance;
 	char    querystr[MAX_QUERY_LEN];
-	char   sqlusername[MAX_STRING_LEN];
+
+	/* sqlusername holds the sql escaped username. The original
+	 * username is at most MAX_STRING_LEN chars long and
+	 * *sql_escape_string doubles its length in the worst case.
+	 * Throw in an extra 10 to account for trailing NULs and to have
+	 * a safety margin. */
+	char   sqlusername[2 * MAX_STRING_LEN + 10];
 
 	/*
 	 *	They MUST have a user name to do SQL authorization.
