@@ -379,10 +379,21 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr)
 
 
 		/*
-		 *	FIXME: Do we want to match *any* VSA if
-		 *	'attr == PW_VENDOR_SPECIFIC' ???
+		 *	If the attribute to move is NOT a VSA, then it
+		 *	ignores any attributes which do not match exactly.
 		 */
-		if (i->attribute != attr) {
+		if ((attr != PW_VENDOR_SPECIFIC) &&
+		    (i->attribute != attr)) {
+			iprev = i;
+			continue;
+		}
+
+		/*
+		 *	If the attribute to move IS a VSA, then it ignores
+		 *	any non-VSA attribute.
+		 */
+		if ((attr == PW_VENDOR_SPECIFIC) &&
+		    (VENDOR(i->attribute) == 0)) {
 			iprev = i;
 			continue;
 		}
