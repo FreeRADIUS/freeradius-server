@@ -1,14 +1,14 @@
-Cistron Password Caching 
+FreeRADIUS Password Caching 
 
 Acknowledgements
 
 Thanks to Alan DeKok for the initial idea, to Dr. Bob Pilgrim for
-implementation strategies, and to Miquel for putting it into cistron.
+implementation strategies, and to Miquel for putting it into FreeRADIUS.
 
 What does this caching do?
 
 It will add the capability to cache several of the system files that
-are used often by cistron radius. These include: /etc/passwd, /etc/shadow
+are used often by FreeRADIUS. These include: /etc/passwd, /etc/shadow
 (if necessary), and /etc/group.
 
 By caching the information in these files and storing it in a VERY efficient
@@ -117,8 +117,8 @@ authentication performance.
 NOTE:  radutmp caching is disabled for now until we can find a better way 
 to do it.  Still, this next paragraph indicates why it needs doing.
 
-Lastly, if you're using the wonderful simultaneous-use check item in cistron
-radius, you have another disk lookup to perform on your /var/log/radutmp
+Lastly, if you're using the wonderful simultaneous-use check item in 
+FreeRADIUS, you have another disk lookup to perform on your /var/log/radutmp
 file (actually, caching of this file just came available in b17. glad
 somebody else noticed it :) What happens is, if the user is authenticated
 properly, the daemon then opens the radutmp file, reads until it hits a line

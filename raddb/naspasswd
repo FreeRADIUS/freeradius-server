@@ -2,7 +2,7 @@
 # naspasswd	This is the file that primarily stores the passwords
 #		for the NASes.  This will be read by checkrad.pl to
 #		supply the password for a certain NAS if needed, in the
-#		event that Cistron Radiusd suspects a multiple login.
+#		event that FreeRADIUS server suspects a multiple login.
 #
 #		Note that at this time you ONLY need to enter passwords
 #		here if you use a non-SNMP method to poll the terminal

@@ -248,10 +248,10 @@ const char *client_name(uint32_t ipaddr)
 	}
 
 	/*
-	 *	FIXME!
-	 *
 	 *	We should NEVER reach this piece of code, as we should
 	 *	NEVER be looking up client names for clients we don't know!
 	 */
+	radlog(L_ERR, "ERROR!  Unreachable code reached, at %s:%d", __FILE__, __LINE__);
+
 	return "UNKNOWN-CLIENT";
 }

@@ -752,12 +752,6 @@ static CONF_PARSER directory_config[] = {
 };
 
 
-/* JLN
- * Read the configuration and library
- * This uses the new kind of configuration file as defined by
- * Miquel at http://www.miquels.cistron.nl/radius/
- */
-
 int read_radius_conf_file(void)
 {
 	char buffer[256];

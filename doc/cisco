@@ -67,8 +67,7 @@ If you want the IP address of the user to show up in the radutmp file
 
 This is because with IOS 11.3, the Cisco first sends a "Start" accounting
 packet without the IP address included. By setting "update newinfo" it
-will send an account "Alive" packet which updates the information. Cistron
-Radius understands the "Alive" packet since 1.5.4.3-beta7.
+will send an account "Alive" packet which updates the information. 
 
 
 Also you might see a lot of "duplicates" in the logfile. That can be

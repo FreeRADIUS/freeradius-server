@@ -1,7 +1,7 @@
 #! /bin/sh
 #
 # radtest	Emulate the user interface of the old
-#		radtest that used to be part of cistron-radius.
+#		radtest that used to be part of FreeRADIUS.
 #
 # Version:	$Id$
 #

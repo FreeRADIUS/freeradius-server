@@ -1,5 +1,5 @@
 
-  debian/	Files to build a radiusd-cistron Debian package
+  debian/	Files to build a radiusd-freeradius Debian package
   doc/		Various snippets of documentation
   raddb/	Sample files for /etc/raddb
   scripts/	Sample scripts for startup and maintenance

@@ -1,5 +1,5 @@
 #
-# Makefile	Makefile for the cistron-radius package.
+# Makefile
 #
 #		NOTE: This top-level Makefile must not
 #		use GNU-make extensions. The lower ones can.

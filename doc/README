@@ -1,16 +1,5 @@
 
-0. WARNING!
-
-  FreeRadius now uses autoconf - some of the default directories
-  have changed! Configuration is now by default in /usr/local/etc/raddb,
-  and logfiles are in /usr/local/var/log/ ....
-  See 2. for more info.
-
 1. INTRO
-
-  This is version 0.1 of the FreeRadius daemon.
-
-	*** THIS IS AN ALPHA VERSION! IT MIGHT NOT WORK ***
 
   All code in this server was written from scratch.
 
@@ -39,7 +28,7 @@
   file if you already stripped them off in the "hints" file.
 
   The documentation of the Livingston server is available on the web at:
-  http://www.livingston.com/Tech/Docs/RADIUS/guide/
+  <URL: http://www.livingston.com/Tech/Docs/RADIUS/guide/>
 
   Extra command line flags:
   o -y: log all login attempts in /var/log/radius.log, include (wrong)
@@ -90,27 +79,20 @@
     "update-rc.d radiusd defaults".
   o Start radiusd (using /etc/init.d/radiusd start if applicable).
 
-3. USAGE
-
-  You can use last -f /var/log/radwtmp to get last info on all users.
-  You can use "radwho" at any time to find out who's logged in.
-  If you want, you can install "radwho" as /usr/sbin/in.fingerd.
-  Also, the "raduse" program can be very useful to monitor your modem pool.
-
-4. CONFIGURATION FILES
+3. CONFIGURATION FILES
 
   For every file there is a fully commented example file included, that
   explains what is does and how to use it. Read those sample files too!
 
-4a. CLIENTS
+3a. CLIENTS
 
   Make sure the clients (portmasters, Linux with portslave etc) are set up to
   use the host radiusd is running on as authentication and accounting host.
   Configure these clients to use a "radius secret password". For every client,
   also enter this "secret password" into the file /etc/raddb/clients.
-  See also the manual page for clients(5rad).
+  See also the manual page for clients(5).
 
-4b. NASLIST
+3b. NASLIST
 
   Every NAS (Network Access Server, also known as terminal server) should have
   an entry in this file with an abbreviated name and the type of NAS it
@@ -134,7 +116,7 @@
   NAS is a client and not every client is a NAS (this will start to make
   sense if you use radius proxy servers).
 
-4c. NASPASSWD
+3c. NASPASSWD
 
   If ``checkrad'' needs to login on your terminal server to check who
   is online on a certain port (i.e. it's not possible to use SNMP or
@@ -143,14 +125,14 @@
   This is normally ONLY needed for USR/3Com Total Control, NetServer and
   Cyclades PathRAS terminal servers!
 
-4c. HINTS
+3d. HINTS
 
   Customize the /etc/raddb/hints file. This file is used to give users a
   different login type based on a prefix/suffix of their loginname. For
   example, logging in as "user" may result in a rlogin session to a Unix
   system, and logging in as "Puser" could start a PPP session.
 
-4d. HUNTGROUPS
+3e. HUNTGROUPS
 
   This is the /etc/raddb/huntgroups file. Here you can define different
   huntgroups. These can be used to:
@@ -161,7 +143,7 @@
       for this is to give a user a static IP address based on the
       huntgroup / Point of Presence  (s)he dials in to.
 
-4e. USERS
+3f. USERS
 
   With the original RADIUS server, every user had to be defined in this
   file. There could be one default entry, where you could for example
@@ -179,7 +161,7 @@
   The FreeRadius server does not trim any spaces from a username received
   from the portmaster (livingston does, in perl notation, $user =~ s/\s+.*//;)
 
-4f. NEW RADIUS ATTRIBUTES (to be used in the USERS file).
+3g. NEW RADIUS ATTRIBUTES (to be used in the USERS file).
 
   Name			Type		Descr.
   ----			----		------
@@ -241,22 +223,22 @@
   Login-Time is "Al0800-1800" and she logs in at 17:30, Session-Timeout
   is set to 1800 seconds so that she is kicked off at 18:00.
 
-5. LOG FILES
+4. LOG FILES
 
-5a. /var/log/radutmp
+4a. /var/log/radutmp
 
   In this file the currently logged in users are held. The program "radwho"
   reads this file and gives you a summary. Rogue sessions can be deleted
   from this file with the "radzap" program.
 
-5b. /var/log/radwtmp
+4b. /var/log/radwtmp
 
   This file is "wtmp" compatible and keeps a history of all radius logins/
   logouts. This file can be read with the "last" program, and other Unix
   accounting programs (such as "ac" and "sac") can be used to produce a
   summary.
 
-5c. /var/log/radius.log
+4c. /var/log/radius.log
 
   All RADIUS informational. diagnostic and error messages are logged in
   this file.  If radiusd has been started with the "-y" flag, all logins
@@ -265,7 +247,7 @@
   logins will be logged as well. That's pretty dangerous though in case
   anyone unpriviliged ever manages to get access to this file!
 
-5d. /var/log/radacct/<terminal_server>/detail
+4d. /var/log/radacct/<terminal_server>/detail
 
   This is the original radius logfile, as written by all the livingston
   radius servers. It's only created if the directory /var/log/radacct exists.
@@ -275,7 +257,7 @@
   For more configuration options on the detail file please see
   README.rlm_detail as it expands upon this greatly.
 
-6.  MORE INFO, SUPPORT
+5.  MORE INFO, SUPPORT
 
   We know that the documentation provided is sparse. However it is not in
   the scope of the radius server to provide a guide as to how terminal
@@ -283,20 +265,20 @@
 
   The latest version of FreeRadius is always available through
   anonymous CVS from cvs.freeradius.org - for more info, see
-  http://www.freeradius.org/
+  <URL: http://www.freeradius.org/>
 
-  There is a majordomo mailing list hosted by Cistron Internet Services.
-  This list is mainly meant for developers of FreeRadius - as soon
-  as we have a BETA version, there will be a freeradius-users list.
-  To subscribe to the developers list, send a message with "help" in the
+  There are two GNU Mailman mailing lists hosted by Cistron Internet Services:
+  one freeradius-devel list and one freeradius-users list.  The devel list
+  is mainly meant for developers of FreeRadius.
+  To subscribe to either list, visit <URL: http://lists.cistron.nl/>
   body to freeradius-devel-request@info.cistron.nl.
   You can browse the archive of this mailing list at
-  http://info.cistron.nl/archives/freeradius-devel/
+  <URL: http://info.cistron.nl/archives/freeradius-devel/>
 
   There are a few other mailing lists that might offer some help:
 
   There is a linux-radius list run by miguel a.l. paraz <map@iphil.net>.
-  See http://www.iphil.net/~map/radius/ for details.
+  See <URL: http://www.iphil.net/~map/radius/> for details.
 
   Then ofcourse for general RADIUS questions, especially if you are using
   Livingston  / Lucent RABU equipment, there is the portmaster-radius mailing
@@ -304,4 +286,5 @@
   out how to subscribe.
 
 
-   README 0.1-alpha  Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999
+$Date$
+Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999

@@ -22,7 +22,7 @@
  */
 
 char sccsid[] =
-"@(#)builddbm.c	2.2 Copyright 1999 Cistron Internet Services";
+"@(#)builddbm.c	2.2 Copyright 2001 FreeRADIUS Project";
 
 #include "autoconf.h"
 

@@ -7,3 +7,5 @@ install:
 
 clean:
 
+doc:
+	( cd docsrc; make $@ )

@@ -252,7 +252,7 @@ ATTRIB_NMC	USR-AT-RTMP-Output-Filter		0x983b	string
 ATTRIB_NMC	USR-AT-Zip-Output-Filter		0x983c	string
 ATTRIB_NMC	USR-AT-Call-Output-Filter		0x983d	string
 ATTRIB_NMC	USR-ET-Bridge-Output-Filter		0x983e	string
-# This item name is too long for Cistron to parse; had to chop the r off.
+# This item name is too long for the server to parse; had to chop the r off.  FIXME?
 ATTRIB_NMC	USR-ET-Bridge-Call-Output-Filte		0x983f	string
 ATTRIB_NMC	USR-IP-Default-Route-Option		0x9840	integer
 ATTRIB_NMC	USR-MP-EDO-HIPER			0x9841	string

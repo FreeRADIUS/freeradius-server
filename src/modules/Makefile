@@ -1,5 +1,5 @@
 #
-# Makefile	Makefile for the cistron-radius package.
+# Makefile	
 #
 # Version:	$Id$
 #

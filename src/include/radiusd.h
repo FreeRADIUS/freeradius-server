@@ -2,7 +2,7 @@
 #define RADIUSD_H
 /*
  * radiusd.h	Structures, prototypes and global variables
- *		for the Cistron Radius server.
+ *		for the FreeRADIUS server.
  *
  * Version:	$Id$
  *

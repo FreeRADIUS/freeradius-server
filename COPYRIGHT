@@ -1,7 +1,11 @@
 
 	Most code in this package was written by Miquel van Smoorenburg
-	<miquels@cistron.nl> for Cistron Internet Services B.V.
+	<miquels@cistron.nl> for Cistron Internet Services B.V.  A 
+	significant fraction of the code was written by others for the 
+	FreeRADIUS project.
 
+
+	Copyright (C) 2000-2001 FreeRADIUS Project
 	Copyright (C) 1997-1999 Cistron Internet Services B.V.
 
 	The license for all source code and documentation except

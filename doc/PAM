@@ -5,8 +5,8 @@
 0. INTRODUCTION
 
    PAM support was done by Jeph Blaize. Miguel a.l. Paraz <map@iphil.net>
-   ported it to Cistron-Radius. Chris Dent <cdent@kiva.net> added the
-   Pam-Auth attribute. It is not complete yet but seems to work
+   ported it to FreeRADIUS' parent, Cistron-Radius. Chris Dent <cdent@kiva.net>
+   added the Pam-Auth attribute. It is not complete yet but seems to work
    (for authentication only).
 
 1. USAGE
