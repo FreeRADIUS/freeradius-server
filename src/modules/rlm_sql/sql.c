@@ -60,14 +60,16 @@
  * issues).  If successful in connecting, set state to sockconnected.   - chad
  */
 static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst) {
-	radlog(L_DBG, "rlm_sql:  Attempting to connect #%d", sqlsocket->id);
+	radlog(L_DBG, "rlm_sql (%s): Attempting to connect #%d",
+	       inst->config->xlat_name, sqlsocket->id);
 	if ((inst->module->sql_init_socket)(sqlsocket, inst->config) < 0) {
-		radlog(L_CONS | L_ERR, "rlm_sql:  Failed to connect DB handle #%d", sqlsocket->id);
+		radlog(L_CONS | L_ERR, "rlm_sql (%s): Failed to connect DB handle #%d", inst->config->xlat_name, sqlsocket->id);
 		inst->connect_after = time(NULL) + inst->config->connect_failure_retry_delay;
 		sqlsocket->state = sockunconnected;
 		return(-1);
 	} else {
-		radlog(L_DBG, "rlm_sql:  Connected new DB handle, #%d", sqlsocket->id);
+		radlog(L_DBG, "rlm_sql (%s): Connected new DB handle, #%d",
+		       inst->config->xlat_name, sqlsocket->id);
 		sqlsocket->state = sockconnected;
 		return(0);
 	}
@@ -92,7 +94,8 @@ int sql_init_socketpool(SQL_INST * inst) {
 	inst->socknr = 0;
 
 	for (i = 0; i < inst->config->num_sql_socks; i++) {
-		radlog(L_DBG, "rlm_sql: starting %d", i);
+		radlog(L_DBG, "rlm_sql (%s): starting %d",
+		       inst->config->xlat_name, i);
 
 		sqlsocket = rad_malloc(sizeof(SQLSOCK));
 		if (sqlsocket == NULL) {
@@ -159,7 +162,8 @@ void sql_poolfree(SQL_INST * inst) {
  *************************************************************************/
 int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket) {
 
-	radlog(L_DBG, "rlm_sql: Closing sqlsocket %d", sqlsocket->id);
+	radlog(L_DBG, "rlm_sql (%s): Closing sqlsocket %d",
+	       inst->config->xlat_name, sqlsocket->id);
 	(inst->module->sql_close)(sqlsocket, inst->config);
 #if HAVE_SEMAPHORE_H
 	sem_destroy(sqlsocket->semaphore);
@@ -181,7 +185,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 	int tried_to_connect = 0;
 
 	while (inst->used == inst->config->num_sql_socks) {
-		radlog(L_ERR, "rlm_sql: All sockets are being used! Please increase the maximum number of sockets!");
+		radlog(L_ERR, "rlm_sql (%s): All sockets are being used! Please increase the maximum number of sockets!", inst->config->xlat_name);
 		return NULL;
 	}
 
@@ -213,13 +217,13 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 		 */
 		if ((cur->state == sockunconnected) && (time(NULL) > inst->connect_after)) {
 			tried_to_connect = 1;
-			radlog(L_INFO, "rlm_sql: Trying to (re)connect an unconnected handle...");
+			radlog(L_INFO, "rlm_sql (%s): Trying to (re)connect an unconnected handle...", inst->config->xlat_name);
 			connect_single_socket(cur, inst);
 		}
 
 		/* if we still aren't connected, ignore this handle */
 		if (cur->state == sockunconnected) {
-			radlog(L_DBG, "rlm_sql: Ignoring unconnected handle");
+			radlog(L_DBG, "rlm_sql (%s): Ignoring unconnected handle", inst->config->xlat_name);
 			continue;
 		}
 
@@ -232,13 +236,14 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 #ifndef HAVE_SEMAPHORE_H
 			cur->in_use = SQLSOCK_LOCKED;
 #endif
-			radlog(L_DBG, "rlm_sql: Reserving sql socket id: %d", cur->id);
+			radlog(L_DBG, "rlm_sql (%s): Reserving sql socket id: %d",
+			       inst->config->xlat_name, cur->id);
 			return cur;
 		}
 	}
 
 	/* We get here if every DB handle is unconnected and unconnectABLE */
-	radlog((tried_to_connect == 0) ? (L_DBG) : (L_CONS | L_ERR), "rlm_sql:  There are no DB handles to use!");
+	radlog((tried_to_connect == 0) ? (L_DBG) : (L_CONS | L_ERR), "rlm_sql (%s): There are no DB handles to use!", inst->config->xlat_name);
 	return NULL;
 }
 
@@ -258,7 +263,8 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
 	sqlsocket->in_use = SQLSOCK_UNLOCKED;
 #endif
 
-	radlog(L_DBG, "rlm_sql: Released sql socket id: %d", sqlsocket->id);
+	radlog(L_DBG, "rlm_sql (%s): Released sql socket id: %d",
+	       inst->config->xlat_name, sqlsocket->id);
 
 	return 0;
 }
@@ -280,7 +286,8 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode) {
 	int pairmode = T_EOL;
 
 	if ((attr = dict_attrbyname(row[2])) == (DICT_ATTR *) NULL) {
-		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s", row[2]);
+		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s",
+		       row[2]);
 		return (-1);
 	}
 
@@ -322,14 +329,15 @@ int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
 
 	if (ret == SQL_DOWN) {
 		if (connect_single_socket(sqlsocket, inst) < 0) {
-			radlog(L_ERR, "rlm_sql: reconnect failed, database down?");
+			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
 			return -1;
 		}
 
 		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
 
 		if (ret) {
-			radlog(L_ERR, "rlm_sql: failed after re-connect");
+			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
+			       inst->config->xlat_name);
 			return -1;
 		}
 	}
@@ -351,14 +359,15 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 
 	if (ret == SQL_DOWN) {
 		if (connect_single_socket(sqlsocket, inst) < 0) {
-			radlog(L_ERR, "rlm_sql: reconnect failed, database down?");
+			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
 			return -1;
 		}
 
 		ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
 
 		if (ret) {
-			radlog(L_ERR, "rlm_sql: failed after re-connect");
+			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
+			       inst->config->xlat_name);
 			return -1;
 		}
 	}
@@ -380,14 +389,15 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 
 	if (ret == SQL_DOWN) {
 		if (connect_single_socket(sqlsocket, inst) < 0) {
-			radlog(L_ERR, "rlm_sql: reconnect failed, database down?");
+			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
 			return -1;
 		}
 
 		ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
 
 		if (ret) {
-			radlog(L_ERR, "rlm_sql: failed after re-connect");
+			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
+			       inst->config->xlat_name);
 			return -1;
 		}
 	}
@@ -417,7 +427,7 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 		if (!row)
 			break;
 		if (sql_userparse(pair, row, mode) != 0) {
-			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
+			radlog(L_ERR | L_CONS, "rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			return -1;
 		}
@@ -428,20 +438,14 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 	return rows;
 }
 
-
-static int got_alrm;
-static void
-alrm_handler(int i) {
-	got_alrm = 1;
-}
-
 void query_log(SQL_INST * inst, char *querystr) {
 	FILE   *sqlfile = NULL;
 
 	if (inst->config->sqltrace) {
 		if ((sqlfile = fopen(inst->config->tracefile, "a")) == (FILE *) NULL) {
-			radlog(L_ERR, "rlm_sql: Couldn't open file %s",
-					inst->config->tracefile);
+			radlog(L_ERR, "rlm_sql (%s): Couldn't open file %s",
+			       inst->config->xlat_name,
+			       inst->config->tracefile);
 		} else {
 			int fd = fileno(sqlfile);
 			
