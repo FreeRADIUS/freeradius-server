@@ -94,10 +94,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *      Purpose: Free socket and private connection data                   
  *                                                                         
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+{
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
     free(unixodbc_sock);
-    free(sqlsocket);
     return 0;
 }
 
