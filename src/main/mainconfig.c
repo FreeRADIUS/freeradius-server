@@ -50,10 +50,15 @@
 #include <pwd.h>
 
 
+#ifdef HAVE_SYSLOG_H
+#	include <syslog.h>
+#endif
+
 struct main_config_t mainconfig;
 
 /*
- *  Local variables for stuff.
+ *	Temporary local variables for parsing the configuration
+ *	file.
  */
 static uid_t server_uid;
 static gid_t server_gid;
@@ -64,6 +69,75 @@ static gid_t server_gid;
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
 static int auth_port = 0;
+static char *syslog_facility = NULL;
+static const LRAD_NAME_NUMBER str2fac[] = {
+#ifdef LOG_KERN
+	{ "kern", LOG_KERN },
+#endif	
+#ifdef LOG_USER
+	{ "user", LOG_USER },
+#endif
+#ifdef LOG_MAIL
+	{ "mail", LOG_MAIL },
+#endif
+#ifdef LOG_DAEMON
+	{ "daemon", LOG_DAEMON },
+#endif
+#ifdef LOG_AUTH
+	{ "auth", LOG_AUTH },
+#endif
+#ifdef LOG_LPR
+	{ "lpr", LOG_LPR },
+#endif
+#ifdef LOG_NEWS
+	{ "news", LOG_NEWS },
+#endif
+#ifdef LOG_UUCP
+	{ "uucp", LOG_UUCP },
+#endif
+#ifdef LOG_CRON
+	{ "cron", LOG_CRON },
+#endif
+#ifdef LOG_AUTHPRIV
+	{ "authpriv", LOG_AUTHPRIV },
+#endif
+#ifdef LOG_FTP
+	{ "ftp", LOG_FTP },
+#endif
+#ifdef LOG_LOCAL0
+	{ "local0", LOG_LOCAL0 },
+#endif
+#ifdef LOG_LOCAL1
+	{ "local1", LOG_LOCAL1 },
+#endif
+#ifdef LOG_LOCAL2
+	{ "local2", LOG_LOCAL2 },
+#endif
+#ifdef LOG_LOCAL3
+	{ "local3", LOG_LOCAL3 },
+#endif
+#ifdef LOG_LOCAL4
+	{ "local4", LOG_LOCAL4 },
+#endif
+#ifdef LOG_LOCAL5
+	{ "local5", LOG_LOCAL5 },
+#endif
+#ifdef LOG_LOCAL6
+	{ "local6", LOG_LOCAL6 },
+#endif
+#ifdef LOG_LOCAL7
+	{ "local7", LOG_LOCAL7 },
+#endif
+	{ NULL, -1 }
+};
+static char *radlog_dest = NULL;
+static const LRAD_NAME_NUMBER str2dest[] = {
+	{ "files", RADLOG_FILES },
+	{ "syslog", RADLOG_SYSLOG },
+	{ "stdout", RADLOG_STDOUT },
+	{ "stderr", RADLOG_STDERR },
+	{ NULL, RADLOG_NULL }
+};
 
 /*
  *  Map the proxy server configuration parameters to variables.
@@ -79,6 +153,7 @@ static CONF_PARSER proxy_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
+
 /*
  *  Security configuration for the server.
  */
@@ -88,6 +163,16 @@ static CONF_PARSER security_config[] = {
 	{ "status_server", PW_TYPE_BOOLEAN, 0, &mainconfig.status_server, "no"},
 	{ NULL, -1, 0, NULL, NULL }
 };
+
+
+/*
+ *  syslog configuration for the server.
+ */
+static CONF_PARSER log_config[] = {
+	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
+	{ NULL, -1, 0, NULL, NULL }
+};
+
 
 /*
  *  A mapping of configuration file names to internal variables
@@ -116,7 +201,9 @@ static CONF_PARSER server_config[] = {
 	{ "port", PW_TYPE_INTEGER, 0, &auth_port, Stringify(PW_AUTH_UDP_PORT) },
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &mainconfig.allow_core_dumps, "no" },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
+
 	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
+	{ "log_destination", PW_TYPE_STRING_PTR, -1, &radlog_dest, "files" },
 	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
 	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
@@ -130,10 +217,13 @@ static CONF_PARSER server_config[] = {
 	{ "nospace_user", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_user, "no" },
 	{ "nospace_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_pass, "no" },
 	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
+
+	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
+
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
+	{ "log", PW_TYPE_SUBSECTION, 0, log_config, NULL },
 	{ "proxy", PW_TYPE_SUBSECTION, 0, proxy_config, NULL },
 	{ "security", PW_TYPE_SUBSECTION, 0, security_config, NULL },
-	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -1133,6 +1223,33 @@ CONF_SECTION *read_radius_conf_file(void)
 	 */
 	cf_section_parse(cs, NULL, server_config);
 
+	/*
+	 *	Parse the log destination & syslog facility,
+	 *	so long as we're not debugging to STDOUT.
+	 *
+	 *	This really is a hack, but it works...
+	 */
+	if ((debug_flag < 2) &&
+	    (mainconfig.radlog_dest != RADLOG_STDOUT)) {
+		mainconfig.radlog_dest = lrad_str2int(str2dest, radlog_dest, RADLOG_NULL);
+		if (mainconfig.radlog_dest == RADLOG_NULL) {
+			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
+				radlog_dest);
+			cf_section_free(&cs);
+			return NULL;
+		}
+		
+		if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
+			mainconfig.syslog_facility = lrad_str2int(str2fac, syslog_facility, -1);
+			if (mainconfig.syslog_facility < 0) {
+				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
+				       syslog_facility);
+				cf_section_free(&cs);
+				return NULL;
+			}
+		}
+	}
+
 	/* Initialize the dictionary */
 	DEBUG2("read_config_files:  reading dictionary");
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
@@ -1217,7 +1334,7 @@ int read_mainconfig(int reload)
 	 *	The new list of clients takes precedence over the old one.
 	 */
 	for (tail = c; tail->next != NULL; tail = tail->next) {
-	  /* do nothing */
+		/* do nothing */
 	}
 	tail->next = mainconfig.clients;
 	mainconfig.clients = c;
@@ -1254,7 +1371,7 @@ int read_mainconfig(int reload)
 	 */
 	if ((mainconfig.debug_level > debug_flag) ||
 	    (mainconfig.debug_level <= old_debug_level)) {
-	  debug_flag = mainconfig.debug_level;
+		debug_flag = mainconfig.debug_level;
 	}
 	librad_debug = debug_flag;
 	old_debug_level = mainconfig.debug_level;

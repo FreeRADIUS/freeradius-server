@@ -57,10 +57,6 @@ static const char rcsid[] =
 #	include <sys/select.h>
 #endif
 
-#ifdef HAVE_SYSLOG_H
-#	include <syslog.h>
-#endif
-
 #ifdef HAVE_SYS_WAIT_H
 #	include <sys/wait.h>
 #endif
@@ -85,9 +81,7 @@ const char *progname = NULL;
 const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlog_dir = NULL;
-radlog_dest_t radlog_dest = RADLOG_FILES;
 const char *radlib_dir = NULL;
-int syslog_facility;
 int log_stripped_names;
 int debug_flag = 0;
 int log_auth_detail = FALSE;
@@ -120,121 +114,6 @@ static void sig_cleanup(int);
 #endif
 
 static int rad_status_server(REQUEST *request);
-
-/*
- *  Parse a string into a syslog facility level.
- */
-static int str2fac(const char *s)
-{
-#ifdef LOG_KERN
-	if(!strcmp(s, "kern"))
-		return LOG_KERN;
-	else
-#endif
-#ifdef LOG_USER
-	if(!strcmp(s, "user"))
-		return LOG_USER;
-	else
-#endif
-#ifdef LOG_MAIL
-	if(!strcmp(s, "mail"))
-		return LOG_MAIL;
-	else
-#endif
-#ifdef LOG_DAEMON
-	if(!strcmp(s, "daemon"))
-		return LOG_DAEMON;
-	else
-#endif
-#ifdef LOG_AUTH
-	if(!strcmp(s, "auth"))
-		return LOG_AUTH;
-	else
-#endif
-#ifdef LOG_SYSLOG
-	if(!strcmp(s, "auth"))
-		return LOG_AUTH;
-	else
-#endif
-#ifdef LOG_LPR
-	if(!strcmp(s, "lpr"))
-		return LOG_LPR;
-	else
-#endif
-#ifdef LOG_NEWS
-	if(!strcmp(s, "news"))
-		return LOG_NEWS;
-	else
-#endif
-#ifdef LOG_UUCP
-	if(!strcmp(s, "uucp"))
-		return LOG_UUCP;
-	else
-#endif
-#ifdef LOG_CRON
-	if(!strcmp(s, "cron"))
-		return LOG_CRON;
-	else
-#endif
-#ifdef LOG_AUTHPRIV
-	if(!strcmp(s, "authpriv"))
-		return LOG_AUTHPRIV;
-	else
-#endif
-#ifdef LOG_FTP
-	if(!strcmp(s, "ftp"))
-		return LOG_FTP;
-	else
-#endif
-#ifdef LOG_LOCAL0
-	if(!strcmp(s, "local0"))
-		return LOG_LOCAL0;
-	else
-#endif
-#ifdef LOG_LOCAL1
-	if(!strcmp(s, "local1"))
-		return LOG_LOCAL1;
-	else
-#endif
-#ifdef LOG_LOCAL2
-	if(!strcmp(s, "local2"))
-		return LOG_LOCAL2;
-	else
-#endif
-#ifdef LOG_LOCAL3
-	if(!strcmp(s, "local3"))
-		return LOG_LOCAL3;
-	else
-#endif
-#ifdef LOG_LOCAL4
-	if(!strcmp(s, "local4"))
-		return LOG_LOCAL4;
-	else
-#endif
-#ifdef LOG_LOCAL5
-	if(!strcmp(s, "local5"))
-		return LOG_LOCAL5;
-	else
-#endif
-#ifdef LOG_LOCAL6
-	if(!strcmp(s, "local6"))
-		return LOG_LOCAL6;
-	else
-#endif
-#ifdef LOG_LOCAL7
-	if(!strcmp(s, "local7"))
-		return LOG_LOCAL7;
-	else
-#endif
-	{
-		fprintf(stderr, "%s: Error: Unknown syslog facility: %s\n",
-			progname, s);
-		exit(1);
-	}
-
-	/* this should never be reached */
-	return LOG_DAEMON;
-}
 
 
 /*
@@ -805,8 +684,6 @@ int main(int argc, char *argv[])
 #endif
 	rad_listen_t *listener;
 
-	syslog_facility = LOG_DAEMON;
-
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
 #endif
@@ -862,23 +739,23 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'i':
-				if ((mainconfig.myip = ip_getaddr(optarg)) == INADDR_NONE) {
-					fprintf(stderr, "radiusd: %s: host unknown\n",
-						optarg);
-					exit(1);
-				}
+				fprintf(stderr, "radiusd: -i <address> is deprecated.  Use a listen{} section in radiusd.conf.\n");
+				exit(1);
 				break;
 
 			case 'l':
+				if ((strcmp(optarg, "stdout") == 0) ||
+				    (strcmp(optarg, "stderr") == 0) ||
+				    (strcmp(optarg, "syslog") == 0)) {
+					fprintf(stderr, "radiusd: -l %s is unsupported.  Use log_destination in radiusd.conf\n", optarg);
+					exit(1);
+				}
 				radlog_dir = strdup(optarg);
 				break;
 
-				/*
-				 *  We should also have this as a configuration
-				 *  file directive.
-				 */
 			case 'g':
-				syslog_facility = str2fac(optarg);
+				fprintf(stderr, "radiusd: -g is unsupported.  Use log_destination in radiusd.conf.\n");
+				exit(1);
 				break;
 
 			case 'S':
@@ -909,7 +786,7 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
-				radlog_dir = strdup("stdout");
+				mainconfig.radlog_dest = RADLOG_STDOUT;
 				break;
 
 			case 'x':
@@ -965,24 +842,6 @@ int main(int argc, char *argv[])
 	if (setup_modules() < 0) {
 		radlog(L_ERR|L_CONS, "Errors setting up modules");
 		exit(1);
-	}
-
-#ifdef HAVE_SYSLOG_H
-	/*
-	 *  If they asked for syslog, then give it to them.
-	 *  Also, initialize the logging facility with the
-	 *  configuration that they asked for.
-	 */
-	if (strcmp(radlog_dir, "syslog") == 0) {
-		openlog(progname, LOG_PID, syslog_facility);
-		radlog_dest = RADLOG_SYSLOG;
-	}
-	/* Do you want a warning if -g is used without a -l to activate it? */
-#endif
-	if (strcmp(radlog_dir, "stdout") == 0) {
-		radlog_dest = RADLOG_STDOUT;
-	} else if (strcmp(radlog_dir, "stderr") == 0) {
-		radlog_dest = RADLOG_STDERR;
 	}
 
 	/*  Initialize the request list.  */
@@ -1974,23 +1833,19 @@ static void usage(int status)
 	FILE *output = status?stderr:stdout;
 
 	fprintf(output,
-			"Usage: %s [-a acct_dir] [-d db_dir] [-l log_dir] [-i address] [-p port] [-AcfnsSvXxyz]\n", progname);
+			"Usage: %s [-a acct_dir] [-d db_dir] [-l log_dir] [-i address] [-AcfnsSvXxyz]\n", progname);
 	fprintf(output, "Options:\n\n");
 	fprintf(output, "  -a acct_dir     use accounting directory 'acct_dir'.\n");
 	fprintf(output, "  -A              Log auth detail.\n");
-	fprintf(output, "  -d db_dir       Use database directory 'db_dir'.\n");
+	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h              Print this help message.\n");
-	fprintf(output, "  -i address      Listen only in the given IP address.\n");
-	fprintf(output, "  -l log_dir      Log messages to 'log_dir'.  Special values are:\n");
-	fprintf(output, "                  stdout == log all messages to standard output.\n");
-	fprintf(output, "                  syslog == log all messages to the system logger.\n");
-	fprintf(output, "  -p port         Bind to 'port', and not to the radius/udp, or 1646/udp.\n");
+	fprintf(output, "  -l log_dir      Log file is \"log_dir/radius.log\" (not used in debug mode)\n");
 	fprintf(output, "  -s              Do not spawn child processes to handle requests.\n");
 	fprintf(output, "  -S              Log stripped names.\n");
 	fprintf(output, "  -v              Print server version information.\n");
-	fprintf(output, "  -X              Turn on full debugging. (Means: -sfxxyz -l stdout)\n");
-	fprintf(output, "  -x              Turn on partial debugging. (-xx gives more debugging).\n");
+	fprintf(output, "  -X              Turn on full debugging.\n");
+	fprintf(output, "  -x              Turn on additional debugging. (-xx gives more debugging).\n");
 	fprintf(output, "  -y              Log authentication failures, with password.\n");
 	fprintf(output, "  -z              Log authentication successes, with password.\n");
 	exit(status);

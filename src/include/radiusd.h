@@ -173,6 +173,14 @@ typedef struct rad_listen_t {
 } rad_listen_t;
 
 
+typedef enum radlog_dest_t {
+  RADLOG_FILES = 0,
+  RADLOG_SYSLOG,
+  RADLOG_STDOUT,
+  RADLOG_STDERR,
+  RADLOG_NULL
+} radlog_dest_t;
+
 typedef struct main_config_t {
 	struct main_config *next;
 	time_t		config_dead_time;
@@ -211,6 +219,8 @@ typedef struct main_config_t {
 	const char	*uid_name;
 	const char	*gid_name;
 	rad_listen_t	*listen;
+	int		syslog_facility;
+	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
 	RADCLIENT	*clients;
 	REALM		*realms;
@@ -250,14 +260,6 @@ typedef struct main_config_t {
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
-typedef enum radlog_dest_t {
-  RADLOG_FILES = 0,
-  RADLOG_SYSLOG,
-  RADLOG_STDOUT,
-  RADLOG_STDERR,
-  RADLOG_NULL
-} radlog_dest_t;
-
 /*
  *	Global variables.
  *
@@ -265,18 +267,14 @@ typedef enum radlog_dest_t {
  */
 extern const char	*progname;
 extern int		debug_flag;
-extern int		syslog_facility;
 extern const char	*radacct_dir;
 extern const char	*radlog_dir;
 extern const char	*radlib_dir;
 extern const char	*radius_dir;
 extern const char	*radius_libdir;
-extern radlog_dest_t	radlog_dest;
 extern uint32_t		expiration_seconds;
 extern int		log_stripped_names;
 extern int		log_auth_detail;
-extern int		auth_port;
-extern int		acct_port;
 extern const char      *radiusd_version;
 
 /*
