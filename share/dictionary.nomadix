@@ -5,3 +5,6 @@ VENDOR  Nomadix  3309
 #
 ATTRIBUTE Nomadix-Bw-Up		1	integer		Nomadix
 ATTRIBUTE Nomadix-Bw-Down	2	integer		Nomadix
+ATTRIBUTE Nomadix-URL-Redirection 3	string		Nomadix
+ATTRIBUTE Nomadix-IP-Upsell	4	integer		Nomadix
+ATTRIBUTE Nomadix-Expiration	5	string		Nomadix

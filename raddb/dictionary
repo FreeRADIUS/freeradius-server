@@ -44,8 +44,10 @@ $INCLUDE dictionary.cisco
 $INCLUDE dictionary.cisco.vpn3000
 $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
+$INCLUDE dictionary.colubris
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.microsoft
+$INCLUDE dictionary.nomadix
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
 $INCLUDE dictionary.shasta
