@@ -20,20 +20,20 @@ enum {
   RLM_AUTH_FAIL = -2,		/* Failed (don't reply) */
   RLM_AUTH_REJECT = -1,		/* authentication failed - reject */
   RLM_AUTH_OK = 0,		/* OK */
-  RLM_AUTH_HANDLED = 1,		/* OK, handled (don't reply) */
+  RLM_AUTH_HANDLED = 1		/* OK, handled (don't reply) */
 };
 enum {
   RLM_AUTZ_REJECT = -3,		/* Reject user */
   RLM_AUTZ_FAIL = -2,		/* Failed (don't reply) */
   RLM_AUTZ_NOTFOUND = -1,	/* User not found - try next autorization */
   RLM_AUTZ_OK = 0,		/* OK */
-  RLM_AUTZ_HANDLED = 1,		/* OK, handled (don't reply) */
+  RLM_AUTZ_HANDLED = 1		/* OK, handled (don't reply) */
 };
 enum {
   RLM_ACCT_FAIL = -2,		/* Failed (don't reply) */
   RLM_ACCT_FAIL_SOFT = -1,	/* Failed, but who cares. Continue */
   RLM_ACCT_OK = 0,		/* OK */
-  RLM_ACCT_HANDLED = 1,		/* OK, handled (don't reply) */
+  RLM_ACCT_HANDLED = 1		/* OK, handled (don't reply) */
 };
 #define RLM_ACCT_FAIL_HARD RLM_ACCT_FAIL
 
