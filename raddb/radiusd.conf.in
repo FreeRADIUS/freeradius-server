@@ -29,7 +29,6 @@ radacctdir = @radacctdir@
 #
 confdir    = ${raddbdir}
 
-log_dir	   = ${logdir}
 run_dir    = ${localstatedir}/run
 
 #
@@ -103,17 +102,6 @@ bind_address            = *
 #  A port given on the command-line via '-p' over-rides this one.
 #
 port = 0
-
-#
-#  Where the utmp and wtmp style log files go.
-#
-utmpfile   = ${log_dir}/radutmp
-wtmpfile   = ${log_dir}/radutmp
-
-#
-#  Each NAS may be given it's own 'detail' directory.
-#
-detailfile = ${radacctdir}/%n/detail
 
 #
 #  Which program to execute check doing concurrency checks.
