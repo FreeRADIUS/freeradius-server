@@ -1,7 +1,7 @@
 /*
  * radutmp.h	Definitions for the Radius UTMP file.
  *
- * Version:	@(#)radutmp  2.01  11-Feb-1998  miquels@cistron.nl
+ * Version:	$Id$
  */
 
 #ifndef _RADUTMP_H
@@ -28,8 +28,6 @@
 #define P_IDLE		0
 #define P_LOGIN		1
 
-#define RUT_NAMESIZE 32
-
 struct radutmp {
   char login[32];		/* Loginname */
 				/* FIXME: extend to 48 or 64 bytes */
@@ -47,5 +45,10 @@ struct radutmp {
   char caller_id[16];		/* Calling-Station-ID */
   char reserved[12];		/* 3 ints reserved */
 };
+
+/*
+ *	Take the size of the structure from the actual structure definition.
+ */
+#define RUT_NAMESIZE sizeof(((struct radutmp *) NULL)->login)
 
 #endif /* _RADUTMP_H */
