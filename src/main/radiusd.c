@@ -744,10 +744,13 @@ static REQUEST *request_ok(RADIUS_PACKET *packet, uint8_t *secret)
 		}
 		request->reply->sockfd = request->packet->sockfd;
 		request->reply->dst_ipaddr = request->packet->src_ipaddr;
+		request->reply->src_ipaddr = request->packet->dst_ipaddr;
 		request->reply->dst_port = request->packet->src_port;
+		request->reply->src_port = request->packet->dst_port;
 		request->reply->id = request->packet->id;
 		request->reply->code = 0; /* UNKNOWN code */
-		memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
+		memcpy(request->reply->vector, request->packet->vector,
+		       sizeof(request->reply->vector));
 		request->reply->vps = NULL;
 		request->reply->data = NULL;
 		request->reply->data_len = 0;
