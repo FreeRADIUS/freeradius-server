@@ -90,20 +90,6 @@
     On ACK:       The initial Auth-Type is set to Accept
     On REJECT:    The initial Auth-Type is set to Reject
 
-    The remote server also replies with a set of attributes. For security,
-    all attributes are stripped except:
-
-    Service-Type
-    Framed-Protocol
-    Filter-Id
-    Framed-MTU
-    Framed-Compression
-    Login-Service
-    Reply-Message
-    Session-Timeout
-    Idle-Timeout
-    Port-Limit
-
     Then the users file is processed as usual. The username used at
     this point is the one after hints file processing (regardless of
     the "hints" option). It also includes the realm (regardless of the
