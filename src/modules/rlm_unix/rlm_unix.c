@@ -674,7 +674,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE))==NULL) {
-		radlog(L_ERR, "Accounting: no Accounting-Status-Type record.");
+		radlog(L_ERR, "rlm_unix: no Accounting-Status-Type attribute in request.");
 		return RLM_MODULE_NOOP;
 	}
 	status = vp->lvalue;
