@@ -105,7 +105,7 @@ clean:
 
 install:
 	install -d -m 755			$(sbindir)
-	install -m 755 -s radiusd		$(sbindir)
+	$(LIBTOOL) install -m 755 -s radiusd	$(sbindir)
 	install -m 755    checkrad.pl		$(sbindir)/checkrad
 	install -d -m 755			$(bindir)
 	install -m 755 -s radwho raduse		$(bindir)
