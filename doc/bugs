@@ -29,7 +29,12 @@ $ ./configure --enable-developer
 $ make
 $ make install
 
-  and then run the program again.  When it core dumps, do:
+  and then run the program again.  You may have to to enable core
+  dumps, via:
+
+$ ulimit -c unlimited
+
+  When it core dumps, do:
 
 $ gdb /path/to/executable /path/to/core/file
 
