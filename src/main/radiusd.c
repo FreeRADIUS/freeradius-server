@@ -162,6 +162,7 @@ static CONF_PARSER server_config[] = {
 #if 0
   { "confdir",            PW_TYPE_STRING_PTR, &radius_dir,        RADIUS_DIR },
 #endif
+  { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns, "0" },
 
   { NULL, -1, NULL, NULL }
 };
@@ -455,7 +456,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:np:sSvxXyz")) != EOF) {
+	while((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:p:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
@@ -509,10 +510,6 @@ int main(int argc, char **argv)
 			 */
 		case 'g':
 			syslog_facility = str2fac(optarg);
-			break;
-
-		case 'n':
-			librad_dodns = FALSE;
 			break;
 
 		case 'S':
@@ -1952,7 +1949,6 @@ static void usage(void)
 	fprintf(stderr, "  -l log_dir      Log messages to 'log_dir'.  Special values are:\n");
 	fprintf(stderr, "                  stdout == log all messages to standard output.\n");
 	fprintf(stderr, "                  syslog == log all messages to the system logger.\n");
-	fprintf(stderr, "  -n              Do not do DNS host name lookups.\n");
 	fprintf(stderr, "  -p port         Bind to 'port', and not to the radius/udp, or 1646/udp.\n");
 	fprintf(stderr, "  -s              Do not spawn child processes to handle requests.\n");
 	fprintf(stderr, "  -S              Log stripped names.\n");
