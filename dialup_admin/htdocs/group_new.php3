@@ -4,6 +4,21 @@ if ($show == 1){
 	exit;
 }
 require('../conf/config.php3');
+
+if ($config[general_lib_type] != 'sql'){
+	echo <<<EOM
+<title>New group creation page</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<center>
+<b>This page is only available if you are using sql as general library type</b>
+</body>
+</html>
+EOM;
+        exit();
+}
+
 require('../lib/attrshow.php3');
 require('../lib/defaults.php3');
 
