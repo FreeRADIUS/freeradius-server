@@ -1,7 +1,7 @@
 /*
  * rlm_perl.c	
  *
- * Version:	$Id$
+ * Version:    $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -36,6 +36,14 @@
 #undef DEBUG
 #endif
 
+#ifdef INADDR_ANY
+#undef INADDR_ANY
+#endif
+
+#ifdef INADDR_NONE
+#undef INADDR_NONE
+#endif
+
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
@@ -54,13 +62,22 @@ static const char rcsid[] = "$Id$";
  *	be used as the instance handle.
  */
 typedef struct perl_inst {
-	char	*cmd;
-	char	*persistent;
+	/* Name of the perl module */
+	char	*module;
+	
+	/* Name of the functions for each module method */
+	char	*func_authorize;
+	char	*func_authenticate;
+	char	*func_accounting;
+	char	*func_preacct;
+	char	*func_checksimul;
+	char	*func_detach;
+	char	*func_xlat;
 	char	*xlat_name;
-
-	PerlInterpreter	 	*perl;
-	HV			*env_hv;
-	HV			*result_hv;
+	
+	HV	*rad_reply_hv;
+	HV	*rad_check_hv;
+	HV	*rad_request_hv;
 } PERL_INST;
 
 /*
@@ -73,15 +90,37 @@ typedef struct perl_inst {
  *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
-  { "cmd",  PW_TYPE_STRING_PTR, offsetof(PERL_INST,cmd), NULL,  NULL},
-  { "persistent", PW_TYPE_STRING_PTR, offsetof(PERL_INST,persistent), NULL, NULL},
-  { NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ "module",  PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,module), NULL,  "module"},
+	{ "func_authorize", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_authorize), NULL, "authorize"},
+	{ "func_authenticate", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_authenticate), NULL, "authenticate"},
+	{ "func_accounting", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_accounting), NULL, "accounting"},
+	{ "func_preacct", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_preacct), NULL, "preacct"},
+	{ "func_checksimul", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_checksimul), NULL, "checksimul"},
+	{ "func_detach", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_detach), NULL, "detach"},
+	{ "func_xlat", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_xlat), NULL, "xlat"},
+	
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 /*
  * man perlembed
  */ 
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
+
+/*
+ *	We share one perl interpreter among all of the instances
+ *	of this module.
+ */
+static PerlInterpreter	*my_perl;
+
 
 /*
  *	Do any per-module initialization.  e.g. set up connections
@@ -93,10 +132,15 @@ EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
  */
 static int perl_init(void)
 {
-	/*	
-	 *	Everything's OK, return without an error.
-	 */
-	return 0;	
+	if ((my_perl = perl_alloc()) == NULL) {
+		radlog(L_INFO, "rlm_perl: No memory for allocating new perl !");
+		return -1;
+	}
+	
+	perl_construct(my_perl);
+	
+	return 0;
+	
 }
 
 
@@ -109,95 +153,96 @@ static void xs_init(pTHX)
 	dXSUB_SYS; 
 
 	/* DynaLoader is a special case */
-	DEBUG("rlm_perl:: xs_init enter \n");
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file); 
-	DEBUG("rlm_perl:: xs_init leave \n");
 	
+}
+/*
+ *
+ * This is wrapper for radlog
+ * Now users can call radiusd::radlog(level,msg) wich is the same 
+ * calling radlog from C code.
+ * Boyan
+ */
+static XS(XS_radiusd_radlog) 
+{
+       dXSARGS;
+       int     level;
+       char    *msg;
+       
+       level = *(int *) SvIV(ST(0));
+       msg   = (char *) SvPV(ST(1), PL_na);
+       
+       /*
+	*	Because 'msg' is a 'char *', we don't want '%s', etc.
+	*	in it to give us printf-style vulnerabilities.
+	*/
+       radlog(level, "rlm_perl: %s", msg);
+
+       XSRETURN_NO;
 }
 
 /*
- * Perl xlat we use already running perl just recompile and store in memory 
- * REMEMBER: each file will only be compiled once. Note that the process 
- * will continue to grow for each file that it uses and is not compiled. 
- * 
- *  e.g.
- *  %{perl:/usr/bin/test.pl %{User-Name}} will run /usr/bin/test.pl,
- * give @ARGV with User-Name in $ARGV[0]
- *  To return something just assign it to $main::ret_val
- *
- * test.pl:
- *
- * use strict;
- * $!=0;
- * my ($ret_val);
- * print "ARGV[1]=$ARGV[1] ARGV[2]=$ARGV[2]\n";
- * $main::ret_val = "B";
- * die;
- */ 
-
-static int perl_xlat(void *instance, REQUEST *request, char *fmt, char *out, int freespace,
-		                        RADIUS_ESCAPE_STRING func)
+ * The xlat function
+ */
+static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
+		     int freespace, RADIUS_ESCAPE_STRING func)
 {
-	PERL_INST	*inst=instance;
-	AV	*array_av;
-	SV	*ret_val;
-	char	*args[] = {"", DO_CLEAN, NULL}; 	
-	char	params[1024], *tmp_ptr, *ptr;
-	int	exitstatus=0,len;
-	I32	key;
-	STRLEN	n_a;
+	PERL_INST	*inst= (PERL_INST *) instance;
+	char		params[1024], *tmp_ptr, *ptr, *tmp;
+	int		count, ret;
+	STRLEN		n_a;
+
+	dSP;
+	ENTER;
+	SAVETMPS;
 	
 	/*
          * Do an xlat on the provided string (nice recursive operation).
         */
-	
-        if (!radius_xlat(params, sizeof(params), fmt, request, func))
-	{
+        if (!radius_xlat(params, sizeof(params), fmt, request, func)) {
 		radlog(L_ERR, "rlm_perl: xlat failed.");
 		return 0;
         }
 	
-	PERL_SET_CONTEXT(inst->perl);
+	PERL_SET_CONTEXT(my_perl);
 	ptr = strtok(params, " ");
 
-	args[0] = ptr;
-	array_av = get_av("ARGV",0);
-	
-	ret_val = get_sv("main::ret_val",1);
-	
-	key = 0;
-  	while ((tmp_ptr=strtok(NULL, " ")) != NULL) {
-		av_store(array_av,key++,newSVpv(tmp_ptr,0));
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(ptr,0)));
+
+  	while ((tmp_ptr = strtok(NULL, " ")) != NULL) {
+		XPUSHs(sv_2mortal(newSVpv(tmp_ptr,0)));
 	} 
+
+	PUTBACK;
+	PERL_SET_CONTEXT(my_perl);
 	
-	PERL_SET_CONTEXT(inst->perl);
-	call_argv("Embed::Persistent::eval_file", G_DISCARD | G_EVAL, args);
+	count = call_pv(inst->func_xlat, G_SCALAR | G_EVAL);
+
+	SPAGAIN;
 	
 	if (SvTRUE(ERRSV)) { 
-		exitstatus = SvIV(perl_get_sv("!",FALSE));
-		radlog(L_INFO, "perl_embed::perl_xlat exit status=%d, %s\n", exitstatus, SvPV(ERRSV,n_a));
+		radlog(L_ERR, "rlm_perl: perl_xlat exit %s\n",
+		       SvPV(ERRSV,n_a));
+		return 0;
 	} 
+
+	if (count > 0) { 
+		tmp = POPp;
+		ret = strlen(tmp);
+		strncpy(out,tmp,ret);
+
+		radlog(L_DBG,"rlm_perl: Len is %d , out is %s freespace is %d",
+		       ret, out,freespace);
 	
-	/*
-	 * Now get the variable we need 
-	 * His name is $ret_val
-	 */
-	
-	out = NULL;	
-        
-	if (SvTRUE(ret_val)) { 
+		PUTBACK ;
+	        FREETMPS ;
+	        LEAVE ;
 		
-		out =  SvPV(ret_val,n_a);
-		len = strlen(out);
-		
-		radlog(L_INFO,"Len is %d , out is %s", len, out);
-		
-		if (len <= freespace)
-			return len;
+		if (ret <= freespace)
+			return ret;
 	}
-	
 	return 0;
-	 
 }
 
 /*
@@ -209,17 +254,21 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
  *	If configuration information is given in the config section
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
+ *
+ *	Boyan: 
+ *	Setup a hashes wich we will use later
+ *	parse a module and give him a chance to live 
+ *	
  */
 static int perl_instantiate(CONF_SECTION *conf, void **instance)
 {
-	PERL_INST	*inst;	
+	PERL_INST       *inst = (PERL_INST *) instance;
 	char *embed[2], *xlat_name;
 	int exitstatus = 0;
 	
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	
 	inst = rad_malloc(sizeof(PERL_INST));
 	memset(inst, 0, sizeof(PERL_INST));
 		
@@ -232,40 +281,29 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	
-	
-	/*
-	 * Boyan
-	 * Prepare perl instance 
-	 * 
-	 */ 
-	if((inst->perl = perl_alloc()) == NULL) {
-                radlog(L_INFO, "no memory!");
-		return -1;
-	}
-	
-	PERL_SET_CONTEXT(inst->perl);
-        perl_construct(inst->perl);
-	
-	PERL_SET_CONTEXT(inst->perl);
+	PERL_SET_CONTEXT(my_perl);
 
 	embed[0] = NULL;
-	embed[1] = inst->persistent;
+	embed[1] = inst->module;
 	
-	exitstatus = perl_parse(inst->perl, xs_init, 2, embed, NULL);
+	exitstatus = perl_parse(my_perl, xs_init, 2, embed, NULL);
 
-	PERL_SET_CONTEXT(inst->perl);
+	PERL_SET_CONTEXT(my_perl);
 	if(!exitstatus) {
-		exitstatus = perl_run(inst->perl);
+		exitstatus = perl_run(my_perl);
 	} else {
-		radlog(L_INFO,"perl_parse failed: %s not found or has syntax errors. \n", inst->persistent);
+		radlog(L_INFO,"rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
 		return (-1);
 	}
 
-	inst->env_hv = perl_get_hv("ENV",0);
-        inst->result_hv = perl_get_hv("main::result",1);
-	
+        newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl.c");
+
+	inst->rad_reply_hv = get_hv("RAD_REPLY",1);
+        inst->rad_check_hv = get_hv("RAD_CHECK",1);
+	inst->rad_request_hv = get_hv("RAD_REQUEST",1);
+		
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) 
+	if (xlat_name == NULL)
 		xlat_name = cf_section_name1(conf);
 	if (xlat_name){ 
 		inst->xlat_name = strdup(xlat_name);
@@ -277,103 +315,118 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 /*
- *  Boyan get the request and put them in perl hash 
- *  which will be given to perl cmd
+ *  	Boyan get the vps and put them in perl hash 
  */
-static void perl_env(VALUE_PAIR *vp, PERL_INST *inst)
+static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 {
         char            buffer[256];
 
-        hv_clear(inst->env_hv);
-        hv_clear(inst->result_hv);
+        hv_clear(rad_hv);
 
 	for ( ; vp != NULL; vp = vp->next) {
 		int len;
 
 		len = vp_prints_value(buffer, sizeof(buffer), vp, FALSE);
 
-		hv_store(inst->env_hv, vp->name, strlen(vp->name),
+		hv_store(rad_hv, vp->name, strlen(vp->name),
 			 newSVpv(buffer, len),0);
 	}
 }
-
 /*
- * return structs and status 0 OK 1 Not
- * Boyan
+ *	Boyan :
+ *	Gets the content from hashes 
+ * 
  */
-static int rlmperl_call(void *instance, REQUEST *request)
+static int get_hv_content(HV *my_hv, VALUE_PAIR **vp) 
 {
-		
-	PERL_INST	*inst = (PERL_INST *) instance;
 	SV		*res_sv;
-	VALUE_PAIR	*vp;
-	char		*key, *val, *ptr, *p;
-	char		*args[] = {NULL, DO_CLEAN, NULL};
-	char		answer[4096];
+	char		*key, *val;
 	I32		key_len,i;
 	int		val_len;
-	int		exitstatus = 0, comma = 0;
-	STRLEN n_a;
-
-	args[0] = inst->cmd;
+	VALUE_PAIR	*vpp;
 	
-	perl_env(request->packet->vps, inst);
-	
-	for (i = hv_iterinit(inst->env_hv); i > 0; i--) {
-	        res_sv = hv_iternextsv(inst->env_hv, &key, &key_len);
-		val = SvPV(res_sv,val_len);
-		radlog(L_DBG, "ENV %s= %s", key, val); 
-	}
-	
-	PERL_SET_CONTEXT(inst->perl);
-	call_argv("Embed::Persistent::eval_file", G_DISCARD | G_EVAL, args);
-	
-	exitstatus = 0;
-
-	if (SvTRUE(ERRSV)) {
-		exitstatus = SvIV(perl_get_sv("!",FALSE));;
-	        radlog(L_INFO, "exit status=%d, %s\n", exitstatus,
-		       SvPV(ERRSV,n_a));
-	}
-
-	ptr = answer;
-	PERL_SET_CONTEXT(inst->perl);
-	
-	for (i = hv_iterinit(inst->result_hv); i > 0; i--) {
-	        res_sv = hv_iternextsv(inst->result_hv,&key,&key_len);
+	for (i = hv_iterinit(my_hv); i > 0; i--) {
+		res_sv = hv_iternextsv(my_hv,&key,&key_len);
 	        val = SvPV(res_sv,val_len);
-	        sprintf(ptr, "%s=\"%s\"\n", key, val); /* FIXME: snprintf */
-	        ptr += key_len + val_len + 4;
+		vpp = pairmake(key, val, T_OP_EQ);
+		if (vpp != NULL) {
+			pairadd(vp, vpp);
+		} else {
+			radlog(L_DBG,"rlm_perl: ERROR: Failed to create pair %s = %s",
+			       key, val);
+		}
 	}
-        /* perl_free(inst->perl); */
 
-	*ptr='\0';
+	return 1;
+}
+
+/*
+ * 	Call the function_name inside the module 
+ * 	Store all vps in hashes %RAD_CHECK %RAD_REPLY %RAD_REQUEST
+ * 	
+ */	
+static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
+{
+	PERL_INST	*inst = instance;
+	VALUE_PAIR	*vp;
+	int		exitstatus, count;
+	STRLEN		n_a;
+	
+	dSP;
+
+	/*
+	 *	Radius has told us to call this function, but none
+	 *	is defined.
+	 */
+	if (!function_name) {
+		return RLM_MODULE_FAIL;
+	}
+
+	ENTER;
+	SAVETMPS;
+
+	perl_store_vps(request->reply->vps, inst->rad_reply_hv);
+	perl_store_vps(request->config_items, inst->rad_check_hv);
+	perl_store_vps(request->packet->vps, inst->rad_request_hv);
+
 	vp = NULL;
 	
-        for (p = answer; *p; p++) { 
-		if (*p == '\n') {
-		       	*p = comma ? ' ' : ',';
-		       	p++; comma = 0;
-	       	} 
-		if (*p == ',') comma++; 
+	PERL_SET_CONTEXT(my_perl);
+	
+	PUSHMARK(SP);	
+	count = call_pv(function_name, G_SCALAR | G_EVAL);
+
+	SPAGAIN;	
+	
+	if (count != 1) { 
+		exitstatus = RLM_MODULE_REJECT;
+	} else {
+		exitstatus = POPi;
 	}
 	
-	/*
-	 * Replace any trailing comma by a NUL.  
-	 */                                
-	if (answer[strlen(answer) - 1] == ',') {
-		answer[strlen(answer) - 1] = '\0';
-	}
-	radlog(L_INFO,"perl_embed :: value-pairs: %s", answer);
+	PUTBACK;
 
-	if (userparse(answer, &vp) < 0) {
-		radlog(L_ERR, "perl_embed :: %s: unparsable reply", args[0]); 
-	} else {
+	if (SvTRUE(ERRSV)) {
+		exitstatus = SvIV(perl_get_sv("!",FALSE));
+	        radlog(L_DBG, "rlm_perl: perl_embed:: module = %s , func = %s exit status=%d, %s\n",
+		       inst->module,
+		       function_name,exitstatus, SvPV(ERRSV,n_a));
+	}
+	
+
+	PERL_SET_CONTEXT(my_perl);
+	if ((get_hv_content(inst->rad_reply_hv, &vp)) == 1) {
 		pairmove(&request->reply->vps, &vp);
 		pairfree(&vp);
 	} 
-	return exitstatus;
 
+	PERL_SET_CONTEXT(my_perl);
+	if ((get_hv_content(inst->rad_check_hv, &vp)) == 1 ) {
+		pairmove(&request->config_items, &vp);
+		pairfree(&vp);
+	} 
+	
+	return exitstatus;
 }
 
 /*
@@ -383,16 +436,9 @@ static int rlmperl_call(void *instance, REQUEST *request)
  *	the password, the rest is done here.
  */
 static int perl_authorize(void *instance, REQUEST *request)
-{
-	int status = 0;
-	
-	radlog(L_INFO,"perl_embed :: Enter Authorize");
-
-	if ((status = rlmperl_call(instance, request)) == 0) {
-		return RLM_MODULE_OK;
-	}
-	
-	return RLM_MODULE_FAIL;
+{	
+	return rlmperl_call(instance, request,
+			    ((PERL_INST *)instance)->func_authorize);
 }
 
 /*
@@ -400,15 +446,8 @@ static int perl_authorize(void *instance, REQUEST *request)
  */
 static int perl_authenticate(void *instance, REQUEST *request)
 {
-	int status = 0;
-
-	radlog(L_INFO,"perl_embed :: Enter Auth");
-
-	if ((status = rlmperl_call(instance, request)) == 0) {
-		return RLM_MODULE_OK;
-	}
-
-	return RLM_MODULE_FAIL;
+	return rlmperl_call(instance, request,
+			    ((PERL_INST *)instance)->func_authenticate);
 }
 
 
@@ -417,15 +456,8 @@ static int perl_authenticate(void *instance, REQUEST *request)
  */
 static int perl_preacct(void *instance, REQUEST *request)
 {
-	int status = 0;
-
-	radlog(L_INFO,"mod_perl ::  Enter PreAccounting");
-	
-	if ((status = rlmperl_call(instance, request)) == 0) {
-		return RLM_MODULE_OK;
-	}
-
-	return RLM_MODULE_FAIL;
+	return rlmperl_call(instance, request,
+			    ((PERL_INST *)instance)->func_preacct);
 }
 
 /*
@@ -434,40 +466,58 @@ static int perl_preacct(void *instance, REQUEST *request)
 
 static int perl_accounting(void *instance, REQUEST *request)
 {
-	int status = 0;
+	return rlmperl_call(instance, request,
+			    ((PERL_INST *)instance)->func_accounting);
+}
+/*
+ *	Check for simultaneouse-use 
+ */
 
-	radlog(L_INFO,"mod_perl ::  Enter Accounting");
-	
-	if ((status = (rlmperl_call(instance, request))) == 0) {
-		return RLM_MODULE_OK;
-	}
-
-	return RLM_MODULE_FAIL;
+static int perl_checksimul(void *instance, REQUEST *request)
+{
+	return rlmperl_call(instance, request,
+			    ((PERL_INST *)instance)->func_checksimul);
 }
 
 /*
- * Detach a instance free all ..
+ * Detach a instance give a chance to a module to make some internal setup ... 
  */
 static int perl_detach(void *instance)
-{
-	PERL_INST *inst=instance;
+{	
+	PERL_INST	*inst = (PERL_INST *) instance;
+	int 		status,count=0;
+		
+	dSP;
+	radlog(L_DBG,"Enter the detach function");
 
-	PERL_SET_CONTEXT(inst->perl);
-	perl_destruct(inst->perl);
-        PERL_SET_CONTEXT(inst->perl);
-	perl_free(inst->perl);
+	
+	PERL_SET_CONTEXT(my_perl);
+	
+	PUSHMARK(SP);	
+	count = call_pv(inst->func_detach, G_SCALAR | G_EVAL);
 
-	hv_clear(inst->env_hv);
-	hv_clear(inst->result_hv);
+	SPAGAIN;
+	
+	if (count != 1) {
+		status = RLM_MODULE_REJECT;
+	} else {
+		status = POPi;
+	}
+	
+	PUTBACK;
 
 	xlat_unregister(inst->xlat_name, perl_xlat);
 	free(inst->xlat_name);
 
-	free(inst->cmd);
-	free(inst->persistent);
+	if (inst->func_authorize) free(inst->func_authorize);
+	if (inst->func_authenticate) free(inst->func_authenticate);
+	if (inst->func_accounting) free(inst->func_accounting);
+	if (inst->func_preacct) free(inst->func_preacct);
+	if (inst->func_checksimul) free(inst->func_checksimul);
+	if (inst->func_detach) free(inst->func_detach);
 
 	free(inst);
-	return 0;
+	return status;
 }
 
 /*
@@ -488,8 +538,8 @@ module_t rlm_perl = {
 		perl_authenticate,
 		perl_authorize,
 		perl_preacct,
-		perl_accounting,
-		NULL,
+		perl_accounting, 
+		NULL,	      		/* check simul */
 		NULL,                   /* pre-proxy */
 		NULL,                   /* post-proxy */
 		NULL                    /* post-auth */
