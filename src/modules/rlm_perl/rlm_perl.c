@@ -38,6 +38,7 @@
 
 #include <EXTERN.h>
 #include <perl.h>
+#include <XSUB.h>
 
 #ifndef DO_CLEAN
 #define DO_CLEAN 0
