@@ -11,8 +11,8 @@
 extern int rl_init(void);
 extern void rl_delete(REQUEST *request);
 extern void rl_add(REQUEST *request);
-extern REQUEST *rl_find(REQUEST *request);
-extern REQUEST *rl_find_proxy(REQUEST *request);
+extern REQUEST *rl_find(RADIUS_PACKET *packet);
+extern REQUEST *rl_find_proxy(RADIUS_PACKET *packet);
 extern REQUEST *rl_next(REQUEST *request);
 extern int rl_num_requests(void);
 

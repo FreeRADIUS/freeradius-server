@@ -263,7 +263,6 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 void		debug_pair(FILE *, VALUE_PAIR *);
 #endif
 int		log_err (char *);
-int		rad_process(REQUEST *, int);
 int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
 
 /* util.c */
@@ -365,6 +364,7 @@ void		xlat_unregister(const char *module, RAD_XLAT_FUNC func);
 /* threads.c */
 extern		int thread_pool_init(void);
 extern		int thread_pool_clean(time_t now);
+extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		void rad_exec_init(void);
 extern		pid_t rad_fork(int exec_wait);
 extern		pid_t rad_waitpid(pid_t pid, int *status, int options);

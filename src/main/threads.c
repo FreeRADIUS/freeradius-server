@@ -49,11 +49,6 @@ static const char rcsid[] =
 #define THREAD_EXITED		(3)
 
 /*
- *	Prototype to shut the compiler up.
- */
-int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun);
-
-/*
  *  A data structure which contains the information about
  *  the current thread.
  *
@@ -495,13 +490,14 @@ int thread_pool_init(void)
 	return 0;
 }
 
+
 /*
  *	Assign a new request to a free thread.
  *
  *	If there isn't a free thread, then try to create a new one,
  *	up to the configured limits.
  */
-int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
+int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	THREAD_HANDLE *handle;
 	THREAD_HANDLE *found;
@@ -570,7 +566,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 			radlog(L_INFO, 
 					"The maximum number of threads (%d) are active, cannot spawn new thread to handle request", 
 					thread_pool.max_threads);
-			return -1;
+			return 0;
 		}
 	}
 
@@ -605,7 +601,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	sem_post(&found->semaphore);
 
-	return 0;
+	return 1;
 }
 
 /*

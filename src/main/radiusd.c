@@ -108,7 +108,6 @@ static int authfd;
 int acctfd;
 int proxyfd;
 static pid_t radius_pid;
-static int request_num_counter = 0; /* per-request unique ID */
 
 /*
  *  Configuration items.
@@ -118,7 +117,6 @@ static int needs_child_cleanup = 0;
 static time_t start_time = 0;
 static int spawn_flag = TRUE;
 static int do_exit = 0;
-
 
 /*
  *	Static functions.
@@ -134,16 +132,7 @@ static void sig_cleanup(int);
 static void rfc_clean(RADIUS_PACKET *packet);
 static void rad_reject(REQUEST *request);
 static struct timeval *rad_clean_list(time_t curtime);
-static REQUEST *rad_check_list(REQUEST *);
-static REQUEST *proxy_check_list(REQUEST *request);
 static int refresh_request(REQUEST *request, void *data);
-#ifdef HAVE_PTHREAD_H
-extern int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
-#else
-#ifdef ALLOW_CHILD_FORKS
-static int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
-#endif
-#endif
 static int rad_status_server(REQUEST *request);
 
 /*
@@ -261,6 +250,548 @@ static int str2fac(const char *s)
 	return LOG_DAEMON;
 }
 
+static REQUEST *last_request = NULL;
+
+/*
+ *	Check if an incoming request is "ok"
+ *
+ *	It takes packets, not requests.  It sees if the packet looks
+ *	OK.  If so, it does a number of sanity checks on it.
+  */
+static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
+{
+	REQUEST		*curreq;
+	RAD_REQUEST_FUNP fun;
+
+	/*
+	 *	Some sanity checks, based on the packet code.
+	 */
+	switch(packet->code) {
+		case PW_AUTHENTICATION_REQUEST:
+			/*
+			 *	Check for requests sent to the wrong
+			 *	port, and ignore them, if so.
+			 */
+			if (packet->sockfd != authfd) {
+				radlog(L_ERR, "Authentication-Request sent to a non-authentication port from "
+					"client %s:%d - ID %d : IGNORED",
+					client_name(packet->src_ipaddr),
+				       packet->src_port, packet->id);
+				return NULL;
+			}
+			fun = rad_authenticate;
+			break;
+
+		case PW_ACCOUNTING_REQUEST:
+			/*
+			 *	Check for requests sent to the wrong
+			 *	port, and ignore them, if so.
+			 */
+			if (packet->sockfd != acctfd) {
+				radlog(L_ERR, "Accounting-Request packet sent to a non-accounting port from "
+				       "client %s:%d - ID %d : IGNORED",
+				       client_name(packet->src_ipaddr),
+				       packet->src_port, packet->id);
+				return NULL;
+			}
+			fun = rad_accounting;
+			break;
+
+		case PW_AUTHENTICATION_ACK:
+		case PW_ACCESS_CHALLENGE:
+		case PW_AUTHENTICATION_REJECT:
+			/*
+			 *	Replies NOT sent to the proxy port get
+			 *	an error message logged, and the
+			 *	packet is dropped.
+			 */
+			if (packet->sockfd != proxyfd) {
+				radlog(L_ERR, "Authentication reply packet code %d sent to a non-proxy reply port from "
+				       "client %s:%d - ID %d : IGNORED",
+				       packet->code,
+				       client_name(packet->src_ipaddr),
+				       packet->src_port, packet->id);
+				return NULL;
+			}
+			fun = rad_authenticate;
+			break;
+
+		case PW_ACCOUNTING_RESPONSE:
+			/*
+			 *	Replies NOT sent to the proxy port get
+			 *	an error message logged, and the
+			 *	packet is dropped.
+			 */
+			if (packet->sockfd != proxyfd) {
+				radlog(L_ERR, "Accounting reply packet code %d sent to a non-proxy reply port from "
+				       "client %s:%d - ID %d : IGNORED",
+				       packet->code,
+				       client_name(packet->src_ipaddr),
+				       packet->src_port, packet->id);
+				return 0;
+			}
+			fun = rad_accounting;
+			break;
+
+		case PW_STATUS_SERVER:
+			if (!mainconfig.status_server) {
+				DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+				return NULL;
+			}
+			fun = rad_status_server;
+			break;
+
+		case PW_PASSWORD_REQUEST:
+			/*
+			 *  We don't support this anymore.
+			 */
+			radlog(L_ERR, "Deprecated password change request from client %s:%d - ID %d : IGNORED",
+					client_name(packet->src_ipaddr),
+			       packet->src_port, packet->id);
+			return NULL;
+			break;
+
+		default:
+			radlog(L_ERR, "Unknown packet code %d from client %s:%d "
+			       "- ID %d : IGNORED", packet->code, 
+			       client_name(packet->src_ipaddr),
+			       packet->src_port, packet->id); 
+			return NULL;
+			break;
+
+	} /* switch over packet types */
+	
+	/*
+	 *	Don't handle proxy replies here.  They need to
+	 *	return the *old* request, so we can re-process it.
+	 */
+	if (packet->sockfd == proxyfd) {
+		return fun;
+	}
+
+	/*
+	 *	If there is no existing request of id, code, etc., then
+	 *	we can return, and let it be processed.
+	 */
+	if ((curreq = rl_find(packet)) == NULL) {
+		return fun;
+	}
+
+	/*
+	 *	If the request (duplicate or now) is currently
+	 *	being processed, then discard the new request.
+	 */
+	if (curreq->child_pid != NO_SUCH_CHILD_PID) {
+		radlog(L_ERR, "Discarding new request from "
+		       "client %s:%d - ID: %d due to live request %d",
+		       client_name(packet->src_ipaddr),
+		       packet->src_port, packet->id,
+		       curreq->number);
+		return NULL;
+	}
+
+	/*
+	 *	The current request isn't finished, which
+	 *	means that the NAS sent us a new packet, while
+	 *	we were waiting for a proxy response.
+	 *
+	 *	In that case, it doesn't matter if the vectors
+	 *	are the same, as deleting the un-finished request
+	 *	would mean that the (eventual) proxy response would
+	 *	be associated with the wrong NAS request.
+	 */
+	if (!curreq->finished) {
+		radlog(L_ERR, "Dropping conflicting packet from "
+		       "client %s:%d - ID: %d due to unfinished request %d",
+		       client_name(packet->src_ipaddr),
+		       packet->src_port, packet->id,
+		       curreq->number);
+		return NULL;
+	}
+
+	/*
+	 *	We now check the authentication vectors.  If the
+	 *	client has sent us a request with identical code &&
+	 *	ID, but different vector, then they MUST have gotten
+	 *	our response, so we can delete the original request,
+	 *	and process the new one.
+	 *
+	 *	If the vectors are the same, then it's a duplicate
+	 *	request, and we can send a duplicate reply.
+	 */
+	if (memcmp(curreq->packet->vector, packet->vector,
+		   sizeof(packet->vector)) == 0) {
+		rad_assert(curreq->reply != NULL);
+		
+		/*
+		 *	If the packet has been delayed, then silently
+		 *	send a response, and clear the delayed flag.
+		 *
+		 *	Note that this means if the NAS kicks us while
+		 *	we're delaying a reject, then the reject may
+		 *	be sent sooner than otherwise.
+		 *
+		 *	This COULD be construed as a bug.  Maybe what
+		 *	we want to do is to ignore the duplicate
+		 *	packet, and send the reject later.
+		 */
+		if (curreq->options & RAD_REQUEST_OPTION_DELAYED_REJECT) {
+			curreq->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
+			rad_send(curreq->reply, curreq->packet, curreq->secret);
+			return NULL;
+		}
+		
+		/*
+		 *	Maybe we've saved a reply packet.  If so,
+		 *	re-send it.  Otherwise, just complain.
+		 */
+		if (curreq->reply->code != 0) {
+			DEBUG2("Sending duplicate reply "
+			       "to client %s:%d - ID: %d",
+			       client_name(packet->src_ipaddr),
+			       packet->src_port, packet->id);
+			rad_send(curreq->reply, curreq->packet, curreq->secret);
+			return NULL;
+		}
+		
+		/*
+		 *	At this point, there isn't a live thread
+		 *	handling the old request.  The old request
+		 *	isn't finished, AND there's no reply for it.
+		 *
+		 *	Therefore, we MUST be waiting for a reply from
+		 *	the proxy.
+		 *
+		 *	If not, then it's an Accounting-Request which
+		 *	we tried to "reject", which means that we
+		 *	silently drop the response.  We want to give
+		 *	the same response for the duplicate request,
+		 *	so we silently drop it, too.
+		 */
+		if (!curreq->proxy) {
+			radlog(L_ERR, "Dropping packet from client "
+			       "%s:%d - ID: %d due to dead request %d",
+			       client_name(packet->src_ipaddr),
+			       packet->src_port, packet->id,
+			       curreq->number);
+			return NULL;
+		}
+
+		/*
+		 *	If there IS a reply from the proxy, then
+		 *	curreq SHOULD be marked alive, OR there should
+		 *	have been a reply sent to the NAS.  If none of
+		 *	these is true, then we don't know what to do,
+		 *	so we drop the request.
+		 */
+		if (curreq->proxy_reply) {
+			radlog(L_ERR, "Dropping packet from client "
+			       "%s:%d - ID: %d due to confused proxied request %d",
+			       client_name(packet->src_ipaddr),
+			       packet->src_port, packet->id,
+			       curreq->number);
+			return NULL;
+		}
+		
+		/*
+		 *	We're taking care of sending duplicate proxied
+		 *	packets, so we ignore any duplicate requests
+		 *	from the NAS.
+		 */
+		if (!mainconfig.proxy_synchronous) {
+			DEBUG2("Ignoring duplicate packet from client "
+			       "%s:%d - ID: %d, due to outstanding proxied request %d.",
+			       client_name(packet->src_ipaddr),
+			       packet->src_port, packet->id,
+			       curreq->number);
+			return NULL;
+		}
+		
+		/*
+		 *	We ARE proxying the request, and we have NOT
+		 *	received a proxy reply yet, and we ARE doing
+		 *	synchronous proxying.
+		 *
+		 *	In that case, go kick the home RADIUS
+		 *	server again.
+		 */
+		{
+			char buffer[64];
+			
+			DEBUG2("Sending duplicate proxied request to home server %s:%d - ID: %d",
+			       ip_ntoa(buffer, curreq->proxy->dst_ipaddr),
+			       curreq->proxy->dst_port,
+			       
+			       curreq->proxy->id);
+		}
+		curreq->proxy_next_try = time(NULL) + mainconfig.proxy_retry_delay;
+		rad_send(curreq->proxy, curreq->packet, curreq->proxysecret);
+		return NULL;
+	} /* else the vectors were different, so we discard the old request. */
+	
+	/*
+	 *	FIXME: Remember WTF the 'last_request' is for.
+	 *
+	 *	It looks like a horrible hack.
+	 */
+	if (last_request == curreq) {
+		last_request = rl_next(last_request);
+	}
+	
+	/*
+	 *	'packet' has the same source IP, source port, code,
+	 *	and Id as 'curreq', but a different authentication
+	 *	vector.  We can therefore delete 'curreq', as we were
+	 *	only keeping it around to send out duplicate replies,
+	 *	if the first reply got lost in the network.
+	 */
+	rl_delete(curreq);
+	
+	/*
+	 *	Count the total number of requests, to see if there
+	 *	are too many.  If so, return with an error.
+	 */
+	if (mainconfig.max_requests) {
+		int request_count = rl_num_requests();
+		
+		/*
+		 *  This is a new request.  Let's see if it
+		 *  makes us go over our configured bounds.
+		 */
+		if (request_count > mainconfig.max_requests) {
+			radlog(L_ERR, "Dropping request (%d is too many): "
+			       "from client %s:%d - ID: %d", request_count, 
+			       client_name(packet->src_ipaddr),
+			       packet->src_port, packet->id);
+			radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n"
+			       "\tThe value for 'max_requests' is probably set too low.\n");
+			return NULL;
+		} /* else there were a small number of requests */
+	} /* else there was no configured limit for requests */
+
+	/*
+	 *	The request is OK.  We can process it...
+	 */
+	return fun;
+}
+
+
+/*
+ *  Do a proxy check of the REQUEST list when using the new proxy code.
+ */
+static REQUEST *proxy_ok(RADIUS_PACKET *packet)
+{
+	REALM *cl;
+	REQUEST *oldreq;
+	char buffer[32];
+	
+	/*
+	 *	Find the original request in the request list
+	 */
+	oldreq = rl_find_proxy(packet);
+
+	/*
+	 *	If we haven't found the original request which was
+	 *	sent, to get this reply.  Complain, and discard this
+	 *	request, as there's no way for us to send it to a NAS.
+	 */
+	if (!oldreq) {
+		radlog(L_PROXY, "No outstanding request was found for proxy reply from home server %s:%d - ID %d",
+		       ip_ntoa(buffer, packet->src_ipaddr),
+		       packet->src_port, packet->id);
+		return NULL;
+	}
+
+	/*
+	 *	If the request (duplicate or now) is currently
+	 *	being processed, then discard the new request.
+	 */
+	if (oldreq->child_pid != NO_SUCH_CHILD_PID) {
+		radlog(L_ERR, "Discarding duplicate reply from home server %s:%d - ID: %d due to live request %d",
+		       ip_ntoa(buffer, packet->src_ipaddr),
+		       packet->src_port, packet->id,
+		       oldreq->number);
+		return NULL;
+	}
+	
+	/*
+	 *	The proxy reply has arrived too late, as the original
+	 *	(old) request has timed out, been rejected, and marked
+	 *	as finished.  The client has already received a
+	 *	response, so there is nothing that can be done. Delete
+	 *	the tardy reply from the home server, and return NULL.
+	 */
+	if ((oldreq->reply->code != 0) ||
+	    (oldreq->finished)) {
+		radlog(L_ERR, "Reply from home server %s:%d  - ID: %d arrived too late for request %d. Try increasing 'retry_delay' or 'max_request_time'",
+		       ip_ntoa(buffer, packet->src_ipaddr),
+		       packet->src_port, packet->id,
+		       oldreq->number);
+		return NULL;
+	}
+	
+	/*
+	 *	If there is already a reply, maybe this one is a
+	 *	duplicate?
+	 */
+	if (oldreq->proxy_reply) {
+		if (memcmp(oldreq->proxy_reply->vector,
+			   packet->vector,
+			   sizeof(oldreq->proxy_reply->vector)) == 0) {
+			DEBUG2("Ignoring duplicate proxy reply");
+		} else {
+			/*
+			 *	? The home server gave us a new *
+			 *	proxy reply, which doesn't match * the
+			 *	old one.  Delete it
+			 !  */
+			DEBUG2("Ignoring conflicting proxy reply");
+		}
+		
+		/*
+		 *	We've already received a reply, so
+		 *	we discard this one, as we don't want
+		 *	to do duplicate work.
+		 */
+		return NULL;
+	} /* else there wasn't a proxy reply yet, so we can process it */
+
+	/*
+	 *	 Refresh the old request, and update it with the proxy
+	 *	 reply.
+	 *
+	 *	? Can we delete the proxy request here?  * Is there
+	 *	any more need for it?
+	 *
+	 *	FIXME: we probably shouldn't be updating the time
+	 *	stamp here.
+	 */
+	oldreq->timestamp = time(NULL);
+	oldreq->proxy_reply = packet;
+
+	/*
+	 *	Now that we've verified the packet IS actually
+	 *	from that realm, and not forged, we can go mark the
+	 *	realms for this home server as active.
+	 *
+	 *	If we had done this check in the 'find realm by IP address'
+	 *	function, then an attacker could force us to use a home
+	 *	server which was inactive, by forging reply packets
+	 *	which didn't match any request.  We would think that
+	 *	the reply meant the home server was active, would
+	 *	re-activate the realms, and THEN bounce the packet
+	 *	as garbage.
+	 */
+	for (cl = mainconfig.realms; cl != NULL; cl = cl->next) {
+		if (oldreq->proxy_reply->src_ipaddr == cl->ipaddr) {
+			if (oldreq->proxy_reply->src_port == cl->auth_port) {
+				cl->active = TRUE;
+				cl->last_reply = oldreq->timestamp;
+			} else if (oldreq->proxy_reply->src_port == cl->acct_port) {
+				cl->acct_active = TRUE;
+				cl->last_reply = oldreq->timestamp;
+			}
+		}
+	}
+
+	return oldreq;
+}
+
+/*
+ *	Do more checks, this time on the REQUEST data structure.
+ *
+ *	The main purpose of this code is to handle proxied requests.
+ */
+static REQUEST *request_ok(RADIUS_PACKET *packet, uint8_t *secret)
+{
+	REQUEST		*request = NULL;
+
+	/*
+	 *	If the request has come in on the proxy FD, then
+	 *	it's a proxy reply, so pass it through the code which
+	 *	tries to find the original request, which we should
+	 *	process, rather than processing the reply as a "new"
+	 *	request.
+	 */
+	if (packet->sockfd == proxyfd) {
+		/*
+		 *	Find the old request, based on the current
+		 *	packet.
+		 */
+		request = proxy_ok(packet);
+		if (!request) {
+			return NULL;
+		}
+		rad_assert(request->magic == REQUEST_MAGIC);
+
+		/*
+		 *	We must have passed through the code below
+		 *	for the original request, which adds the
+		 *	reply packet to it.
+		 */
+		rad_assert(request->reply != NULL);
+		
+	} else {		/* remember the new request */
+		/*
+		 *	A unique per-request counter.
+		 */
+		static int request_num_counter = 0;
+
+		request = request_alloc(); /* never fails */
+		request->packet = packet;
+		request->number = request_num_counter++;
+		strNcpy(request->secret, (char *)secret,
+			sizeof(request->secret));
+
+		/*
+		 *	Remember the request.
+		 */
+		rl_add(request);
+
+		/*
+		 *	The request passes many of our sanity checks.
+		 *	From here on in, if anything goes wrong, we
+		 *	send a reject message, instead of dropping the
+		 *	packet.
+		 *
+		 *	Build the reply template from the request
+		 *	template.
+		 */
+		rad_assert(request->reply == NULL);
+		if ((request->reply = rad_alloc(0)) == NULL) {
+			radlog(L_ERR, "No memory");
+			exit(1);
+		}
+		request->reply->sockfd = request->packet->sockfd;
+		request->reply->dst_ipaddr = request->packet->src_ipaddr;
+		request->reply->dst_port = request->packet->src_port;
+		request->reply->id = request->packet->id;
+		request->reply->code = 0; /* UNKNOWN code */
+		memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
+		request->reply->vps = NULL;
+		request->reply->data = NULL;
+		request->reply->data_len = 0;
+	}
+
+	/*
+	 *	This next assertion catches a race condition in the
+	 *	server.  If it core dumps here, then it means that
+	 *	the code WOULD HAVE core dumped elsewhere, but in
+	 *	some random, unpredictable location.
+	 *
+	 *	Having the assert here means that we can catch the
+	 *	problem in a well-known manner, until such time as
+	 *	we fix it.
+	 */
+	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+
+	return request;
+}
+
+
+/*
+ *	The main guy.
+ */
 int main(int argc, char *argv[])
 {
 	REQUEST *request;
@@ -929,6 +1460,7 @@ int main(int argc, char *argv[])
 		 *  Loop over the open socket FD's, reading any data.
 		 */
 		for (i = 0; i < 3; i++) {
+			RAD_REQUEST_FUNP fun;
 
 			if (i == 0) fd = authfd;
 			if (i == 1) fd = acctfd;
@@ -956,6 +1488,15 @@ int main(int argc, char *argv[])
 #endif
 
 			/*
+			 *	FIXME: Move this next check into
+			 *	the packet_ok() function, and add
+			 *	a 'secret' to the RAIDUS_PACKET
+			 *	data structure.  This involves changing
+			 *	a bunch of code, but it's probably the
+			 *	best thing to do.
+			 */
+
+			/*
 			 *  Check if we know this client for
 			 *  authfd and acctfd.  Check if we know
 			 *  this proxy for proxyfd.
@@ -968,10 +1509,8 @@ int main(int argc, char *argv[])
 					packet->src_port);
 					rad_free(&packet);
 					continue;
-				} else {
-					secret = cl->secret;
 				}
-				
+				secret = cl->secret;
 			} else {    /* It came in on the proxy port */
 				REALM *rl;
 				if ((rl = realm_findbyaddr(packet->src_ipaddr,packet->src_port)) == NULL) {
@@ -980,33 +1519,55 @@ int main(int argc, char *argv[])
 					packet->src_port);
 					rad_free(&packet);
 					continue;
-				} else {
-					secret = rl->secret;
 				}
+
+				/*
+				 *	The secret isn't needed here,
+				 *	as it's already in the old request
+				 */
+				secret = NULL;
 			}
 
 			/*
-			 *  Do yet another check, to see if the
-			 *  packet code is valid.  We only understand
-			 *  a few, so stripping off obviously invalid
-			 *  packets here will make our life easier.
+			 *	Do some simple checks before we process
+			 *	the request.
 			 */
-			if (packet->code > PW_STATUS_SERVER) {
-				radlog(L_ERR, "Ignoring request from client %s:%d with unknown code %d",
-				       ip_ntoa((char *)buffer, packet->src_ipaddr),
-				       packet->src_port, packet->code);
+			if ((fun = packet_ok(packet)) == NULL) {
 				rad_free(&packet);
 				continue;
 			}
 
 			/*
-			 *	Get the new request, and process it.
+			 *	Allocate a new request for packets from
+			 *	our clients, OR find the old request,
+			 *	for packets which are replies from a home
+			 *	server.
 			 */
-			request = request_alloc();
-			request->packet = packet;
-			request->number = request_num_counter++;
-			strNcpy(request->secret, (char *)secret, sizeof(request->secret));
-			rad_process(request, spawn_flag);
+			request = request_ok(packet, secret);
+			if (!request) {
+				rad_free(&packet);
+				continue;
+			}
+
+			/*
+			 *	Drop the request into the thread pool,
+			 *	and let the thread pool take care of
+			 *	doing something with it.
+			 */
+			if (spawn_flag) {
+				if (!thread_pool_addrequest(request, fun)) {
+					/*
+					 *	FIXME: Maybe just drop
+					 *	the packet on the floor?
+					 *
+					 *	rl_delete(request) ?
+					 */
+					rad_reject(request);
+					request->finished = TRUE;
+				}
+			} else {
+				rad_respond(request, fun);
+			}
 		} /* loop over authfd, acctfd, proxyfd */
 
 #ifdef WITH_SNMP
@@ -1046,193 +1607,6 @@ int main(int argc, char *argv[])
 	} /* loop forever */
 }
 
-
-/*
- *  Process supported requests:
- *
- *  	PW_AUTHENTICATION_REQUEST - Authentication request from
- *  	 a client network access server.
- *
- *  	PW_ACCOUNTING_REQUEST - Accounting request from
- *  	 a client network access server.
- *
- *  	PW_AUTHENTICATION_ACK
- *  	PW_ACCESS_CHALLENGE
- *  	PW_AUTHENTICATION_REJECT
- *  	PW_ACCOUNTING_RESPONSE - Reply from a remote Radius server.
- *  	 Relay reply back to original NAS.
- *
- */
-int rad_process(REQUEST *request, int dospawn)
-{
-	RAD_REQUEST_FUNP fun;
-
-	fun = NULL;
-
-	rad_assert(request->magic == REQUEST_MAGIC);
-
-	switch(request->packet->code) {
-		default:
-			radlog(L_ERR, "Unknown packet type %d from client %s:%d "
-					"- ID %d : IGNORED", request->packet->code, 
-					client_name(request->packet->src_ipaddr), request->packet->src_port,
-					request->packet->id); 
-			request_free(&request);
-			return -1;
-			break;
-
-		case PW_AUTHENTICATION_REQUEST:
-			/*
-			 *  Check for requests sent to the wrong port,
-			 *  and ignore them, if so.
-			 */
-			if (request->packet->sockfd != authfd) {
-				radlog(L_ERR, "Authentication-Request sent to a non-authentication port from "
-					"client %s:%d - ID %d : IGNORED",
-					client_name(request->packet->src_ipaddr), request->packet->src_port,
-				request->packet->id);
-				request_free(&request);
-				return -1;
-			}
-			fun = rad_authenticate;
-			break;
-
-		case PW_ACCOUNTING_REQUEST:
-			/*
-			 *  Check for requests sent to the wrong port,
-			 *  and ignore them, if so.
-			 */
-			if (request->packet->sockfd != acctfd) {
-				radlog(L_ERR, "Accounting-Request packet sent to a non-accounting port from "
-					"client %s:%d - ID %d : IGNORED",
-					client_name(request->packet->src_ipaddr), request->packet->src_port,
-					request->packet->id);
-				request_free(&request);
-				return -1;
-			}
-			fun = rad_accounting;
-			break;
-
-		case PW_AUTHENTICATION_ACK:
-		case PW_ACCESS_CHALLENGE:
-		case PW_AUTHENTICATION_REJECT:
-		case PW_ACCOUNTING_RESPONSE:
-			/*
-			 *  Replies NOT sent to the proxy port get an
-			 *  error message logged, and the packet is
-			 *  dropped.
-			 */
-			if (request->packet->sockfd != proxyfd) {
-				radlog(L_ERR, "Reply packet code %d sent to a non-proxy reply port from "
-						"client %s:%d - ID %d : IGNORED", request->packet->code,
-						client_name(request->packet->src_ipaddr), request->packet->src_port,
-						request->packet->id);
-				request_free(&request);
-				return -1;
-			}
-			if (request->packet->code != PW_ACCOUNTING_RESPONSE) {
-				fun = rad_authenticate;
-			} else {
-				fun = rad_accounting;
-			}
-			break;
-
-		case PW_STATUS_SERVER:
-			if (!mainconfig.status_server) {
-				DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
-				request_free(&request);
-				return -1;
-			} else {
-				fun = rad_status_server;
-			}
-			break;
-
-		case PW_PASSWORD_REQUEST:
-			/*
-			 *  We don't support this anymore.
-			 */
-			radlog(L_ERR, "Deprecated password change request from client %s:%d - ID %d : IGNORED",
-					client_name(request->packet->src_ipaddr), request->packet->src_port,
-					request->packet->id);
-			request_free(&request);
-			return -1;
-			break;
-	}
-
-	/*
-	 *  Check for a duplicate, or error.
-	 *  Throw away the the request if so.
-	 */
-	request = rad_check_list(request);
-	if (request == NULL) {
-		return 0;
-	}
-	
-	rad_assert(request->magic == REQUEST_MAGIC);
-
-	/*
-	 *  This next assertion catches a race condition in the
-	 *  server.  If it core dumps here, then it means that
-	 *  the code WOULD HAVE core dumped elsewhere, but in
-	 *  some random, unpredictable location.
-	 *
-	 *  Having the assert here means that we can catch the problem
-	 *  in a well-known manner, until such time as we fix it.
-	 */
-	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-
-	/*
-	 *  The request passes many of our sanity checks.  From
-	 *  here on in, if anything goes wrong, we send a reject
-	 *  message, instead of dropping the packet.
-	 *
-	 *  Build the reply template from the request template.
-	 */
-	if (!request->reply) {
-		if ((request->reply = rad_alloc(0)) == NULL) {
-			radlog(L_ERR, "No memory");
-			exit(1);
-		}
-		request->reply->sockfd = request->packet->sockfd;
-		request->reply->dst_ipaddr = request->packet->src_ipaddr;
-		request->reply->dst_port = request->packet->src_port;
-		request->reply->id = request->packet->id;
-		request->reply->code = 0; /* UNKNOWN code */
-		memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
-		request->reply->vps = NULL;
-		request->reply->data = NULL;
-		request->reply->data_len = 0;
-	}
-
-	/*
-	 *	If we don't have threads, then the child CANNOT save
-	 *	it's state in the memory used by the main server core.
-	 *
-	 *	That is, until someone goes and implements shared
-	 *	memory across processes...
-	 */
-#ifdef HAVE_PTHREAD_H
-	/*
-	 *  If we're spawning a child thread, let it do all of
-	 *  the work of handling a request, and exit.
-	 */
-	if (dospawn == TRUE) {
-		/*
-		 *  Maybe the spawn failed.  If so, then we
-		 *  trivially reject the request (because we can't
-		 *  handle it), and return.
-		 */
-		if (rad_spawn_child(request, fun) < 0) {
-			rad_reject(request);
-			request->finished = TRUE;
-		}
-		return 0;
-	}
-#endif
-
-	rad_respond(request, fun);
-	return 0;
-}
 
 /*
  *  Reject a request, by sending a trivial reply packet.
@@ -1770,7 +2144,6 @@ typedef struct rad_walk_t {
  *  - killing any processes which are NOT finished after a delay
  *  - deleting any marked requests.
  */
-static REQUEST *last_request = NULL;
 static struct timeval *rad_clean_list(time_t now)
 {
 	/*
@@ -1935,373 +2308,12 @@ static struct timeval *rad_clean_list(time_t now)
 	return last_tv_ptr;
 }
 
-/*
- *  Walk through the request list, cleaning up completed child
- *  requests, and verifing that there is only one process
- *  responding to each request (duplicate requests are filtered
- *  out).
- *
- *  Also, check if the request is a reply from a request proxied to
- *  a remote server.  If so, play games with the request, and return
- *  the old one.
- */
-static REQUEST *rad_check_list(REQUEST *request)
-{
-	REQUEST		*curreq;
-	time_t		now;
-
-	/*
-	 *  If the request has come in on the proxy FD, then
-	 *  it's a proxy reply, so pass it through the proxy
-	 *  code for checking the REQUEST list.
-	 */
-	if (request->packet->sockfd == proxyfd) {
-		return proxy_check_list(request);
-
-		/*
-		 *  If the request already has a proxy packet,
-		 *  then it obviously is not a new request, either.
-		 */
-	} else if (request->proxy != NULL) {
-		return request;
-	}
-
-	now = request->timestamp; /* good enough for our purposes */
-
-	/*
-	 *  Look for an existing copy of this request.
-	 */
-	curreq = rl_find(request);
-	if (curreq != NULL) {
-		/*
-		 *	If the request (duplicate or now) is currently
-		 *	being processed, then discard the new request.
-		 */
-		if (curreq->child_pid != NO_SUCH_CHILD_PID) {
-			radlog(L_ERR, "Discarding new request from "
-			       "client %s:%d - ID: %d due to live request %d",
-			       client_name(curreq->packet->src_ipaddr),
-			       curreq->packet->src_port, curreq->packet->id,
-			       curreq->number);
-			request_free(&request);
-			return NULL;
-		}
-
-		/*
-		 *	The current request isn't finished, which
-		 *	means that the NAS sent us a new packet, while
-		 *	we were waiting for a proxy response.
-		 *
-		 *	In that case, it doesn't matter if the vectors
-		 *	are the same, as deleting the un-finished request
-		 *	would mean that the (eventual) proxy response would
-		 *	be associated with the wrong NAS request.
-		 */
-		if (!curreq->finished) {
-			radlog(L_ERR, "Dropping conflicting packet from "
-			       "client %s:%d - ID: %d due to unfinished request %d",
-			       client_name(request->packet->src_ipaddr),
-			       request->packet->src_port,
-			       request->packet->id,
-			       curreq->number);
-			request_free(&request);
-			return NULL;
-		}
-
-		/*
-		 *	We now check the authentication vectors.  If
-		 *	the client has sent us a request with
-		 *	identical code && ID, but different vector,
-		 *	then they MUST have gotten our response, so
-		 *	we can delete the original request, and
-		 *	process the new one.
-		 *
-		 *	If the vectors are the same, then it's a
-		 *	duplicate request, and we can send a
-		 *	duplicate reply.
-		 */
-		if (memcmp(curreq->packet->vector, request->packet->vector,
-				sizeof(request->packet->vector)) == 0) {
-			rad_assert(curreq->reply != NULL);
-
-			/*
-			 *	If the packet has been delayed, then
-			 *	silently send a response, and clear the
-			 *	delayed flag.
-			 *
-			 *	Note that this means if the NAS kicks
-			 *	us while we're delaying a reject, then
-			 *	the reject may be sent sooner than
-			 *	otherwise.
-			 *
-			 *	This COULD be construed as a bug.
-			 *	Maybe what we want to do is to ignore
-			 *	the duplicate packet, and send the
-			 *	reject later.
-			 */
-			if (curreq->options & RAD_REQUEST_OPTION_DELAYED_REJECT) {
-				curreq->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
-				rad_send(curreq->reply, curreq->packet, curreq->secret);
-				request_free(&request);
-				return NULL;
-			}
-
-			/*
-			 *	Maybe we've saved a reply packet.  If
-			 *	so, re-send it.  Otherwise, just
-			 *	complain.
-			 */
-			if (curreq->reply->code != 0) {
-				DEBUG2("Sending duplicate reply "
-				       "to client %s:%d - ID: %d",
-				       client_name(curreq->packet->src_ipaddr),
-				       curreq->packet->src_port, curreq->packet->id);
-				rad_send(curreq->reply, curreq->packet, curreq->secret);
-				request_free(&request);
-				return NULL;
-			}
-
-			/*
-			 *	At this point, there isn't a live
-			 *	thread handling the old request.  The
-			 *	old request isn't finished, AND
-			 *	there's no reply for it.
-			 *
-			 *	Therefore, we MUST be waiting for a reply
-			 *	from the proxy.
-			 *
-			 *	If not, then it's an Accounting-Request
-			 *	which we tried to "reject", which means
-			 *	that we silently drop the response.
-			 *      We want to give the same response for the
-			 *      duplicate request, so we silently drop it,
-			 *	too.
-			 */
-			if (!curreq->proxy) {
-				radlog(L_ERR, "Dropping packet from client "
-				       "%s:%d - ID: %d due to dead request %d",
-				       client_name(request->packet->src_ipaddr),
-				       request->packet->src_port,
-				       request->packet->id,
-				       curreq->number);
-				request_free(&request);
-				return NULL;
-			}
-
-			/*
-			 *	If there IS a reply from the proxy,
-			 *	then curreq SHOULD be marked alive, OR
-			 *	there should have been a reply sent to
-			 *	the NAS.  If none of these is true, then
-			 *	we don't know what to do, so we drop the
-			 *	request.
-			 */
-			if (curreq->proxy_reply) {
-				radlog(L_ERR, "Dropping packet from client "
-				       "%s:%d - ID: %d due to confused proxied request %d",
-				       client_name(request->packet->src_ipaddr),
-				       request->packet->src_port,
-				       request->packet->id,
-				       curreq->number);
-				request_free(&request);
-				return NULL;
-			}
-
-			/*
-			 *	We're taking care of sending duplicate
-			 *	proxied packets, so we ignore any duplicate
-			 *	requests from the NAS.
-			 */
-			if (!mainconfig.proxy_synchronous) {
-				DEBUG2("Ignoring duplicate packet from client "
-				       "%s:%d - ID: %d, due to outstanding proxied request %d.",
-				       client_name(request->packet->src_ipaddr),
-				       request->packet->src_port,
-				       request->packet->id,
-				       curreq->number);
-				
-				request_free(&request);
-				return NULL;
-			}
-
-			/*
-			 *	We ARE proxying the request, and we
-			 *	have NOT received a proxy reply yet,
-			 *	and we ARE doing synchronous proxying.
-			 *
-			 *	In that case, go kick the home RADIUS
-			 *	server again.
-			 */
-			{
-				char buffer[32];
-
-				DEBUG2("Sending duplicate proxied request to home server %s:%d - ID: %d",
-				       ip_ntoa(buffer, curreq->proxy->dst_ipaddr),
-				       curreq->proxy->dst_port,
-									
-				       curreq->proxy->id);
-			}
-			curreq->proxy_next_try = request->timestamp + mainconfig.proxy_retry_delay;
-			rad_send(curreq->proxy, curreq->packet, curreq->proxysecret);
-			request_free(&request);
-			return NULL;
-		} /* else the vectors were different. */
-
-		/*
-		 *	If we're keeping a delayed reject, and we
-		 *	get a new request, then we discard the reject,
-		 *	in order to not confuse the NAS with an old
-		 *	response to a new request.
-		 */
-		
-		/*
-		 *	Fix up stuff.
-		 */
-		if (last_request == curreq) {
-			last_request = rl_next(last_request);
-		}
-
-		rl_delete(curreq);
-	} /* a similar packet already exists. */
-
-	/*
-	 *  Count the total number of requests, to see if there
-	 *  are too many.  If so, return with an error.
-	 */
-	if (mainconfig.max_requests) {
-		int request_count = rl_num_requests();
-		
-		/*
-		 *  This is a new request.  Let's see if it
-		 *  makes us go over our configured bounds.
-		 */
-		if (request_count > mainconfig.max_requests) {
-			radlog(L_ERR, "Dropping request (%d is too many): "
-					"from client %s:%d - ID: %d", request_count, 
-					client_name(request->packet->src_ipaddr),
-					request->packet->src_port,
-					request->packet->id);
-			radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n"
-					"\tThe value for 'max_requests' is probably set too low.\n");
-			request_free(&request);
-			return NULL;
-		}
-	}
-
-	/*
-	 *  Add this request to the list
-	 */
-	rl_add(request);
-
-	/*
-	 *  And return the request to be handled.
-	 */
-	return request;
-}
-
-/*
- *  If we're using the thread pool, then the function in
- *  'threads.c' replaces this one.
- *
- *  This code is NOT well tested, and should NOT be used!
- *
- *  Note that ALLOW_CHILD_FORKS is never defined.  This code
- *  is here for historical purposes, so that if (or when) someone
- *  implements shared memory between processes, that we have a template
- *  of code to work from.
- */
-#ifdef ALLOW_CHILD_FORKS
-/*
- *  Spawns a child process or thread to perform
- *  authentication/accounting and respond to RADIUS clients.
- */
-static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
-{
-	child_pid_t		child_pid;
-	int retval = 0;
-
-	/* spawning and registering a child is a critical section, so
-	 * we refuse to handle SIGCHLDs normally until we're finished. */
-#ifdef HAVE_SIGACTION
-	struct sigaction act;
-
-	memset(&act, 0, sizeof(act));
-	act.sa_flags = 0 ;
-	sigemptyset( &act.sa_mask ) ;
-	act.sa_handler = queue_sig_cleanup;
-	sigaction(SIGCHLD, &act, NULL);
-#else
-	signal(SIGCHLD, queue_sig_cleanup);
-#endif
-
-	/*
-	 *  fork our child
-	 */
-	child_pid = fork();
-	if (child_pid < 0) {
-		radlog(L_ERR, "Fork failed for request from client %s - ID: %d",
-				client_name(request->packet->src_ipaddr),
-				request->packet->id);
-		retval = -1;
-		goto exit_child_critsec;
-	}
-
-	if (child_pid == 0) {
-
-		/*
-		 *  This is the child, it should go ahead and respond
-		 */
-		signal(SIGCHLD, SIG_DFL);
-		rad_respond(request, fun);
-		exit(0);
-	}
-
-	/*
-	 *  Register the Child
-	 */
-	request->child_pid = child_pid;
-
-exit_child_critsec:
-#ifdef HAVE_SIGACTION
-	act.sa_handler = sig_cleanup;
-	sigaction(SIGCHLD, &act, NULL);
-#else
-	signal(SIGCHLD, sig_cleanup);
-#endif
-	if (needs_child_cleanup > 0) {
-		sig_cleanup(0);
-	}
-	return retval;
-}
-
-static int sig_cleanup_walker(REQUEST *req, void *data)
-{
-	int pid = (int)data;
-		if ( req->child_pid != pid ) {
-			return RL_WALK_CONTINUE;
-		}
-	req->child_pid = NO_SUCH_CHILD_PID;
-	req->finished = TRUE;
-	return 0;
-}
-
-/* used in critical section */
-void queue_sig_cleanup(int sig) {
-	sig = sig; /* -Wunused */
-	needs_child_cleanup++;
-	return;
-}
-#endif /* ALLOW_CHILD_FORKS */
-
 
 #ifdef HAVE_PTHREAD_H
 static void sig_cleanup(int sig)
 {
 	int status;
 	child_pid_t pid;
-#ifdef ALLOW_CHILD_FORKS
-	REQUEST *curreq;
-#endif
 
 	sig = sig; /* -Wunused */
  
@@ -2342,16 +2354,6 @@ static void sig_cleanup(int sig)
 		 */
 #ifdef HAVE_PTHREAD_H
 		rad_savepid(pid, status);
-#else
-#ifdef ALLOW_CHILD_FORKS
-		/*
-		 *  Loop over ALL of the active requests, looking
-		 *  for the one which caused the signal.
-		 */
-		if (rl_walk(sig_cleanup_walker, (void*)pid) != 0) {
-			radlog(L_ERR, "Failed to cleanup child %d", pid);
-		}
-#endif
 #endif /* !defined HAVE_PTHREAD_H */
 	}
 }
@@ -2429,130 +2431,6 @@ static void sig_hup(int sig)
 #endif
 }
 
-/*
- *  Do a proxy check of the REQUEST list when using the new proxy code.
- */
-static REQUEST *proxy_check_list(REQUEST *request)
-{
-	REALM *cl;
-	REQUEST *oldreq;
-	char buffer[32];
-	
-	/*
-	 *	Find the original request in the request list
-	 */
-	oldreq = rl_find_proxy(request);
-
-	/*
-	 *	If we haven't found the original request which was
-	 *	sent, to get this reply.  Complain, and discard this
-	 *	request, as there's no way for us to send it to a NAS.
-	 */
-	if (!oldreq) {
-		radlog(L_PROXY, "No outstanding request was found for proxy reply from home server %s:%d - ID %d",
-		       ip_ntoa(buffer, request->packet->src_ipaddr),
-		       request->packet->src_port,
-		       request->packet->id);
-		request_free(&request);
-		return NULL;
-	}
-
-	/*
-	 *	If the request (duplicate or now) is currently
-	 *	being processed, then discard the new request.
-	 */
-	if (oldreq->child_pid != NO_SUCH_CHILD_PID) {
-		radlog(L_ERR, "Discarding duplicate reply from home server %s:%d - ID: %d due to live request %d",
-		       ip_ntoa(buffer, request->packet->src_ipaddr),
-		       request->packet->src_port,
-		       request->packet->id,
-		       oldreq->number);
-		request_free(&request);
-		return NULL;
-	}
-	
-	/*
-	 *	The proxy reply has arrived too late, as the original
-	 *	(old) request has timed out, been rejected, and marked
-	 *	as finished.  The client has already received a
-	 *	response, so there is nothing that can be done. Delete
-	 *	the tardy reply from the home server, and return NULL.
-	 */
-	if ((oldreq->reply->code != 0) ||
-	    (oldreq->finished)) {
-		radlog(L_ERR, "Reply from home server %s:%d arrived too late for request %d. Try increasing 'retry_delay' or 'max_request_time'",
-		       ip_ntoa(buffer, request->packet->src_ipaddr),
-		       request->packet->src_port,
-		       oldreq->number);
-		request_free(&request);
-		return NULL;
-	}
-	
-	/*
-	 *	If there is already a reply, maybe this one is a
-	 *	duplicate?
-	 */
-	if (oldreq->proxy_reply) {
-		if (memcmp(oldreq->proxy_reply->vector,
-			   request->packet->vector,
-			   sizeof(oldreq->proxy_reply->vector)) == 0) {
-			DEBUG2("Ignoring duplicate proxy reply");
-		} else {
-				/*
-				 *  ??? The home server gave us a new
-				 *  proxy reply, which doesn't match
-				 *  the old one.  Delete it!
-				 */
-			DEBUG2("Ignoring conflicting proxy reply");
-		}
-		
-		/*
-		 *	We've already received a reply, so
-		 *	we discard this one, as we don't want
-		 *	to do duplicate work.
-		 */
-		request_free(&request);
-		return NULL;
-	} /* else there wasn't a proxy reply yet, so we can process it */
-
-	/*
-	 *  Refresh the old request, and update it with the proxy reply.
-	 *
-	 *  ??? Can we delete the proxy request here?
-	 *  Is there any more need for it?
-	 */
-	oldreq->timestamp = request->timestamp;
-	oldreq->proxy_reply = request->packet;
-	request->packet = NULL;
-	request_free(&request);
-
-	/*
-	 *	Now that we've verified the packet IS actually
-	 *	from that realm, and not forged, we can go mark the
-	 *	realms for this home server as active.
-	 *
-	 *	If we had done this check in the 'find realm by IP address'
-	 *	function, then an attacker could force us to use a home
-	 *	server which was inactive, by forging reply packets
-	 *	which didn't match any request.  We would think that
-	 *	the reply meant the home server was active, would
-	 *	re-activate the realms, and THEN bounce the packet
-	 *	as garbage.
-	 */
-	for (cl = mainconfig.realms; cl != NULL; cl = cl->next) {
-		if (oldreq->proxy_reply->src_ipaddr == cl->ipaddr) {
-			if (oldreq->proxy_reply->src_port == cl->auth_port) {
-				cl->active = TRUE;
-				cl->last_reply = oldreq->timestamp;
-			} else if (oldreq->proxy_reply->src_port == cl->acct_port) {
-				cl->acct_active = TRUE;
-				cl->last_reply = oldreq->timestamp;
-			}
-		}
-	}
-
-	return oldreq;
-}
 
 /*
  *  Refresh a request, by using proxy_retry_delay, cleanup_delay,
@@ -2666,12 +2544,6 @@ static int refresh_request(REQUEST *request, void *data)
 				radlog(L_ERR, "Killing unresponsive thread for request %d",
 				       request->number);
 				pthread_cancel(child_pid);
-#else
-#ifdef ALLOW_CHILD_FORKS
-				radlog(L_ERR, "Killing unresponsive child %lu for request %d",
-				       child_pid, request->number);
-				kill(child_pid, SIGTERM);
-#endif
 #endif
 			} /* else no proxy reply, quietly fail */
 		

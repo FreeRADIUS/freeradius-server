@@ -149,16 +149,16 @@ void rl_add(REQUEST *request)
  *	We MUST NOT have two requests with identical (id/code/IP/port), and
  *	different vectors.  This is a serious error!
  */
-REQUEST *rl_find(REQUEST *request)
+REQUEST *rl_find(RADIUS_PACKET *packet)
 {
 	REQNODE *curreq;
 
-	for (curreq = request_list[request->packet->id].first_request;
+	for (curreq = request_list[packet->id].first_request;
 			curreq != NULL ;
 			curreq = ((REQNODE *)curreq->req->container)->next) {
-		if ((curreq->req->packet->code == request->packet->code) &&
-				(curreq->req->packet->src_ipaddr == request->packet->src_ipaddr) &&
-				(curreq->req->packet->src_port == request->packet->src_port)) {
+		if ((curreq->req->packet->code == packet->code) &&
+		    (curreq->req->packet->src_ipaddr == packet->src_ipaddr) &&
+		    (curreq->req->packet->src_port == packet->src_port)) {
 			return curreq->req;
 		}
 	}
@@ -169,27 +169,34 @@ REQUEST *rl_find(REQUEST *request)
 /*
  *	Look up a particular request, using:
  *
- *	Request ID, request code, source IP, source port, 
+ *	Request Id, request code, source IP, source port,
  *
  *	Note that we do NOT use the request vector to look up requests.
  *
  *	We MUST NOT have two requests with identical (id/code/IP/port), and
  *	different vectors.  This is a serious error!
  */
-REQUEST *rl_find_proxy(REQUEST *request)
+REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 {
 	REQNODE *curreq = NULL;
 	int id;
 	
+	/*
+	 *	The Proxy RADIUS Id is completely independent
+	 *	of the original request Id.  We've got to root through
+	 *	*all* requests, in order to find it.
+	 *
+	 *	FIXME: Maybe we want to use the original packet Id
+	 *	as the Proxy-State?
+	 */
 	for (id = 0; (id < 256) && (curreq == NULL); id++) {
 		for (curreq = request_list[id].first_request;
-				curreq != NULL ;
-				curreq = curreq->next) {
+		     curreq != NULL ;
+		     curreq = curreq->next) {
 			if (curreq->req->proxy &&
-					(curreq->req->proxy->id == request->packet->id) &&
-					(curreq->req->proxy->dst_ipaddr == request->packet->src_ipaddr) &&
-					(curreq->req->proxy->dst_port == request->packet->src_port)) {
-				
+			    (curreq->req->proxy->id == packet->id) &&
+			    (curreq->req->proxy->dst_ipaddr == packet->src_ipaddr) &&
+			    (curreq->req->proxy->dst_port == packet->src_port)) {
 				return curreq->req;
 			}
 		} /* loop over all requests for this id. */
