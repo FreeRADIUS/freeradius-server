@@ -1,11 +1,11 @@
 /*
  * radutmp.c	Radius session management.
  *
- * Version:	@(#)radutmp.c  1.00  10--Aug-1999  miquels@cistron.nl
+ * Version:	@(#)radutmp.c	1.00  10--Aug-1999  miquels@cistron.nl
  *
  */
 char radutmp_sccsid[] =
-"@(#)radutmp.c	1.00  Copyright 1999 Cistron Internet Services B.V.";
+"@(#)radutmp.c  1.00  Copyright 1999 Cistron Internet Services B.V.";
 
 #include	"autoconf.h"
 
@@ -46,7 +46,7 @@ typedef struct nas_port {
 	UINT4			nasaddr;
 	int			port;
 	off_t			offset;
-	struct nas_port		*next;
+	struct nas_port 	*next;
 } NAS_PORT;
 static NAS_PORT *nas_port_list = NULL;
 
@@ -89,7 +89,7 @@ int radutmp_zap(UINT4 nasaddr, int port, char *user, time_t t)
 #else
 		(void)flock(fd, LOCK_EX);
 #endif
-	 	/*
+		/*
 		 *	Find the entry for this NAS / portno combination.
 		 */
 		r = 0;
@@ -174,7 +174,7 @@ int radutmp_add(REQUEST *request)
 		 *
 		 *	We could also check for NAS-Port, that attribute
 		 *	should NOT be present (but we don't right now).
-	 	 */
+		 */
 		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME))
 		     == NULL || vp->lvalue == 0)
 			check1 = 1;
@@ -321,7 +321,7 @@ int radutmp_add(REQUEST *request)
 #else
 		(void)flock(fd, LOCK_EX);
 #endif
-	 	/*
+		/*
 		 *	Find the entry for this NAS / portno combination.
 		 */
 		if ((cache = nas_port_find(ut.nas_address, ut.nas_port)) != NULL)
@@ -332,11 +332,11 @@ int radutmp_add(REQUEST *request)
 		while (read(fd, &u, sizeof(u)) == sizeof(u)) {
 			off += sizeof(u);
 			if (u.nas_address != ut.nas_address ||
-			    u.nas_port    != ut.nas_port)
+			    u.nas_port	  != ut.nas_port)
 				continue;
 
 			if (status == PW_STATUS_STOP &&
-			    strncmp(ut.session_id, u.session_id, 
+			    strncmp(ut.session_id, u.session_id,
 			     sizeof(u.session_id)) != 0) {
 				/*
 				 *	Don't complain if this is not a
@@ -352,7 +352,7 @@ int radutmp_add(REQUEST *request)
 			}
 
 			if (status == PW_STATUS_START &&
-			    strncmp(ut.session_id, u.session_id, 
+			    strncmp(ut.session_id, u.session_id,
 			     sizeof(u.session_id)) == 0  &&
 			    u.time >= ut.time) {
 				if (u.type == P_LOGIN) {
@@ -375,7 +375,7 @@ int radutmp_add(REQUEST *request)
 			 *	rather rewrite this mess -- miquels.
 			 */
 			if (status == PW_STATUS_ALIVE &&
-			    strncmp(ut.session_id, u.session_id, 
+			    strncmp(ut.session_id, u.session_id,
 			     sizeof(u.session_id)) == 0  &&
 			    u.type == P_LOGIN) {
 				/*
@@ -510,8 +510,16 @@ static int rad_check_ts(struct radutmp *ut)
 	sprintf(port, "%d", ut->nas_port);
 	sprintf(session_id, "%.8s", ut->session_id);
 
-	execl(CHECKRAD, "checkrad", nas->nastype, address, port,
+#ifdef __EMX__
+	/* OS/2 can't directly execute scripts then we call the command
+	   processor to execute checkrad
+	*/
+	execl(getenv("COMSPEC"), "", "/C","checkrad",nas->nastype, address, port,
 		ut->login, session_id, NULL);
+#else
+	execl(CHECKRAD, "checkrad",nas->nastype, address, port,
+		ut->login, session_id, NULL);
+#endif
 	log(L_ERR, "Check-TS: exec %s: %s", CHECKRAD, strerror(errno));
 
 	/*
