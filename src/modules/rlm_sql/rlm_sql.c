@@ -133,7 +133,7 @@ static CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,postauth_query), NULL, ""},
 	{"safe-characters", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,allowed_chars), NULL, 
-	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: =/"},
+	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
 
 	{NULL, -1, 0, NULL, NULL}
 };
