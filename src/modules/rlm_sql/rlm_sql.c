@@ -354,9 +354,10 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	 * Otherwise we should have a plain password in DB
 	 */
 	if ((strncmp(row[1], "Crypt-Password", 14) == 0) &&
-			(strncmp(crypt(request->password->strvalue, row[0]), row[0], request->password->length) == 0)) {
+			(strncmp(crypt(request->password->strvalue, row[0]), row[0], strlen(row[0])+1) == 0)) {
 		return RLM_MODULE_OK;
-	} else if (strncmp(request->password->strvalue, row[0], request->password->length) == 0) {
+	} else if ((request->password->length == strlen(row[0])) && 
+			(strncmp(request->password->strvalue, row[0], strlen(row[0])) == 0)) {
 		return RLM_MODULE_OK;
 	}
 	return RLM_MODULE_REJECT;
