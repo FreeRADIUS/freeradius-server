@@ -43,12 +43,12 @@ struct xlat_cmp {
 	struct xlat_cmp *next;
 };
 
-static struct xlat_cmp *cmp;
+static struct xlat_cmp *cmp = NULL;
 
 /*
  *      Register an xlat function.
  */
-int xlat_register(char *module, RAD_XLAT_FUNC func, void *instance)
+int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 {
 	struct xlat_cmp      *c;
 
@@ -74,7 +74,7 @@ int xlat_register(char *module, RAD_XLAT_FUNC func, void *instance)
 /*
  *      Unregister an xlat function.
  */
-void xlat_unregister(char *module, RAD_XLAT_FUNC func)
+void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
 {
 	struct xlat_cmp      *c, *last;
 
@@ -98,7 +98,7 @@ void xlat_unregister(char *module, RAD_XLAT_FUNC func)
 /*
  * find the appropriate registered xlat function.
  */
-static struct xlat_cmp *find_xlat_func(char *module)
+static struct xlat_cmp *find_xlat_func(const char *module)
 {
 	struct xlat_cmp *c;
 
@@ -215,6 +215,7 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
 		}
+
 	} else if ((c = find_xlat_func(attrname)) != NULL){
 		DEBUG("radius_xlat: Runing registered xlat function of module %s for string \'%s\'",
 				c->module, attrname+(c->length+1));
