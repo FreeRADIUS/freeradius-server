@@ -618,8 +618,13 @@ modules {
 		filter = "(uid=%{Stripped-User-Name:-%{User-Name}})"
 
 		# set this to 'yes' to use TLS encrypted connections
-		# to the LDAP database.
+		# to the LDAP database by using the StartTLS extended
+		# operation.
 		start_tls = no
+		# set this to 'yes' to use TLS encrypted connections to the
+		# LDAP database by passing the LDAP_OPT_X_TLS_TRY option to
+		# the ldap library.
+		tls_mode = no
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
 		# profile_attribute = "radiusProfileDn"
 		access_attr = "dialupAccess"

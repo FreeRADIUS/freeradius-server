@@ -94,6 +94,9 @@
  *	- Fix a crash in ldap_pairget when the attribute value is larger than the buffer size
  *	  Bug report by Stefan Radovanovici <sra@rtsffm.com>
  *	- If we add a check item then use the == operator. Based on an idea by Allister Maguire <amaguire@gnc.net.nz>
+ *	- Only add a failure message for bind as user failed in ldap_authenticate if the result of ldap_connect was
+ *	  RLM_MODULE_REJECT
+ *	- Make tls_mode a configurable option. Patch from John <jhogenmiller@pennswoods.net>
  */
 static const char rcsid[] = "$Id$";
 
@@ -225,6 +228,7 @@ static CONF_PARSER module_config[] = {
 	{"ldap_cache_size", PW_TYPE_INTEGER, offsetof(ldap_instance,cache_size), NULL, "0"},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance,start_tls), NULL, "no"},
+	{"tls_mode", PW_TYPE_BOOLEAN, offsetof(ldap_instance,tls_mode), NULL, "no"},
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, ""},
 	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, NULL},
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
@@ -322,7 +326,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	/* workaround for servers which support LDAPS but not START TLS */
 	if(inst->port == LDAPS_PORT)
 		inst->tls_mode = LDAP_OPT_X_TLS_HARD;
-	 else
+	else if (inst->tls_mode)
   		inst->tls_mode = LDAP_OPT_X_TLS_TRY;
 	inst->reply_item_map = NULL;
 	inst->check_item_map = NULL;
@@ -1283,9 +1287,11 @@ ldap_authenticate(void *instance, REQUEST * request)
 	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
 			       1, &res);
 	if (ld_user == NULL){
-		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Bind as user failed");
-		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_fmsg_vp);
+		if (res == RLM_MODULE_REJECT){
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Bind as user failed");
+			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+			pairadd(&request->packet->vps, module_fmsg_vp);
+		}
 		return (res);
 	}
 
