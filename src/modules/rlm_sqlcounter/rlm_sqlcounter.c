@@ -398,7 +398,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->key_name == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'key' must be set.");
-		exit(0);
+		return -1;
 	}
 	dattr = dict_attrbyname(data->key_name);
 	if (dattr == NULL) {
@@ -414,7 +414,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->counter_name == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'counter-name' must be set.");
-		exit(0);
+		return -1;
 	}
 
 	memset(&flags, 0, sizeof(flags));
@@ -434,7 +434,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->check_name == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'check-name' must be set.");
-		exit(0);
+		return -1;
 	}
 	dict_addattr(data->check_name, 0, PW_TYPE_INTEGER, -1, flags);
 	dattr = dict_attrbyname(data->check_name);
@@ -451,7 +451,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->reset == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'reset' must be set.");
-		exit(0);
+		return -1;
 	}
 	now = time(NULL);
 	data->reset_time = 0;
