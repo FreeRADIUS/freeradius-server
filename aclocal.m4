@@ -3554,9 +3554,12 @@ AC_DEFUN([AC_LIBLTDL_INSTALLABLE],
      ])
 
    save_LDFLAGS="$LDFLAGS"
-   LDFLAGS="$LDFLAGS -L$withval"
+   test -z "$withval" || LDFLAGS="$LDFLAGS -L$withval"
    AC_CHECK_LIB(ltdl, lt_dlinit,
-     [ AC_ARG_WITH(ltdl-include,
+     [ 
+       ltdl_found="yes"
+       LIBLTDL="-lltdl"
+       AC_ARG_WITH(ltdl-include,
          [  --with-ltdl-include=DIR      libltdl include files are in DIR [default=$top_srcdir/libltdl/]],
          [ if test x"withval" = x"yes" || test x"withval" = x"no" ; then
              AC_MSG_WARN([specify location of ltdl.h])
@@ -3566,9 +3569,7 @@ AC_DEFUN([AC_LIBLTDL_INSTALLABLE],
            CPPFLAGS="$CPPFLAGS -I$withval"
            AC_CHECK_HEADER(ltdl.h,
              [ 
-               ltdl_found="yes"
                INCLTDL="-I$withval" 
-               LIBLTDL="-lltdl"
                LIBLTDLPATH=
                ac_configure_args="$ac_configure_args --enable-ltdl-install=no"
              ])
