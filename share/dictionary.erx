@@ -6,6 +6,15 @@
 #
 # Version:	$Id$
 #
+#  As a note on ERX broken-ness, If you don't send a Framed-IP-Address
+#  in the Access-Accept packet, the ERX disconnects the user, and
+#  sends an Accounting-Request packet with Acct-Status-Type = Stop
+#
+#  It does NOT send a 'Start' packet, so this behaviour confuses the
+#  heck out of most admins, who do everything right, but have the ERX
+#  do stupid things.
+#
+#
 
 VENDOR          ERX     4874
 
