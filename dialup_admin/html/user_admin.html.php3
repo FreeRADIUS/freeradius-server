@@ -94,46 +94,19 @@ if ($logged_now){
 	Connection Duration
 	</td><td>	
 	<input type="text" name="status" size=10 value="$lastlog_session_time">
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	User IP Address
-	</td><td>
-	<font color=darkblue><b>$lastlog_client_name</b></font> ($lastlog_client_ip)
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	NAS Server
-	</td><td>	
-	<b>$lastlog_server_name</b> ($lastlog_server_ip)
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	NAS Port
-	</td><td>
-	$lastlog_server_port
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	Caller Id
-	</td><td>
-	$lastlog_callerid
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	Upload
-	</td><td>
-	$lastlog_input
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	Download
-	</td><td>
-	$lastlog_output
-	</td></tr>
 	</form>
+	</td></tr>
 EOM;
+	require('../html/user_admin_userinfo.html.php3');
+
 }else if ($not_known)  print <<<EOM
 	<tr><td align=center bgcolor="#d0ddb0">
 	This user has <b>never</b> connected
 	</td><td>-
 	</td></tr>
 EOM;
-else print <<<EOM
+else{
+	print <<<EOM
 	<tr><td align=center bgcolor="#d0ddb0">
 	User is <b>not online</b> now<br>
 	</td><td>-
@@ -144,41 +117,13 @@ else print <<<EOM
 	$lastlog_time
 	</td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">
-	IP Address
-	</td><td>	
-	<font color=darkblue><b>$lastlog_client_name</b></font> ($lastlog_client_ip)
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
 	Online Time
 	</td><td>
 	$lastlog_session_time
 	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	NAS Server
-	</td><td>
-	<b>$lastlog_server_name</b> ($lastlog_server_ip)
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	NAS Port
-	</td><td>
-	$lastlog_server_port
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	Caller Id
-	</td><td>
-	$lastlog_callerid
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	Upload
-	</td><td>
-	$lastlog_input
-	</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">
-	Download
-	</td><td>
-	$lastlog_output
-	</td></tr>
 EOM;
+	require('../html/user_admin_userinfo.html.php3');
+}
 
 print <<<EOM
 	<tr><td align=center bgcolor="#d0ddb0">

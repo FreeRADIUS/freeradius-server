@@ -201,6 +201,12 @@ if ($link){
 		if ($monthly_limit != 'none' && !$tmp)
 			$monthly_used = "<font color=red>$monthly_used</font>";
 	}
+	if ($session_limit != 'none'){
+		if (!is_numeric($remaining))
+			$remaining = $session_limit;
+		if ($remaining > $session_limit)
+			$remaining = $session_limit;
+	}
 
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_accounting_table]

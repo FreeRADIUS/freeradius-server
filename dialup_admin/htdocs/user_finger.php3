@@ -1,5 +1,6 @@
 <?php
 require('../conf/config.php3');
+require('../lib/attrshow.php3');
 if (!isset($usage_summary)){
 	echo <<<EOM
 <html>
@@ -152,13 +153,18 @@ EOM;
 		echo <<<EOM
 <p>
 	<table width=100% cellpadding=0 height=30><tr>
-	<th align=left>$server_name[$j]<br><font color="green">$server_model[$j]</font></th><th align=right><font color="red">$server_loggedin[$j] users connected</font></th><th><font color="green">$server_rem[$j] free lines</font></th>
+	<th align=left>$server_name[$j]<br><font color="green">$server_model[$j]</font></th><th align=right><font color="red">$server_loggedin[$j] users connected</font></th><th><font color="green">$server_rem[$j] $config[general_caption_finger_free_lines]</font></th>
 	</tr>
 	</table>
 	<div height="$height[$j]" style="height:$height[$j]">
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
 	<tr bgcolor="#d0ddb0">
-	<th>#</th><th>user</th><th>ip address</th><th>caller id</th><th>name</th><th>duration</th>
+	<th>#</th><th>user</th>
+EOM;
+	if ($acct_attrs['uf'][4] != '')	echo "<th>" . $acct_attrs[uf][4] . "</th>\n";
+	if ($acct_attrs['uf'][9] != '') echo "<th>" . $acct_attrs[uf][9] . "</th>\n";
+echo <<<EOM
+	<th>name</th><th>duration</th>
 	</tr>
 EOM;
 	for( $k = 1; $k <= $server_loggedin[$j]; $k++){
@@ -171,7 +177,12 @@ EOM;
 		$inf = $user_info[$user];
 		echo <<<EOM
 	<tr align=center>
-	<td>$k</td><td><a href="user_admin.php3?login=$user" title="Edit User $user">$user</a></td><td>$ip</td><td>$cid</td><td>$inf</td><td>$time</td>
+	<td>$k</td><td><a href="user_admin.php3?login=$user" title="Edit User $user">$user</a></td>
+EOM;
+if ($acct_attrs['uf'][4] != '') echo "<td>$ip</td>\n";
+if ($acct_attrs['uf'][9] != '') echo "<td>$cid</td>\n";
+echo <<<EOM
+<td>$inf</td><td>$time</td>
 	</tr>
 EOM;
 	}

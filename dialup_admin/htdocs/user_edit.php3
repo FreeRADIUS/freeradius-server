@@ -77,7 +77,8 @@ if ($change == 1){
 	if (is_file("../lib/$config[general_lib_type]/change_attrs.php3"))
 		include("../lib/$config[general_lib_type]/change_attrs.php3");
 	if ($user_type != 'group'){
-		if ($passwd != '' && is_file("../lib/$config[general_lib_type]/change_passwd.php3"))
+		if ($config[general_show_user_password] != 'no' && $passwd != '' 
+			&& is_file("../lib/$config[general_lib_type]/change_passwd.php3"))
 			include("../lib/$config[general_lib_type]/change_passwd.php3");
 		if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
 			include("../lib/$config[general_lib_type]/user_info.php3");
@@ -109,7 +110,7 @@ Please take that into consideration when adding attributes in the group<br>
 and selecting operators.
 <br>
 EOM;
-if ($user_type != 'group'){
+if ($user_type != 'group' && $config[general_show_user_password] != 'no'){
 	echo <<<EOM
 <tr>
 <td align=right colspan=$colspan bgcolor="#d0ddb0">
@@ -267,6 +268,7 @@ if ($user_type != 'group'){
 	echo <<<EOM
 <br><br>
 <input type=submit class=button value="Add to Badusers" OnClick="this.form.badusers.value=1">
+<a href="help/badusers_help.html" target=bu_help onclick=window.open("help/badusers_help.html","bu_help","width=600,height=210,toolbar=no,scrollbars=no,resizable=yes") title="BADUSERS Help Page"><font color="blue">&lt;--Help</font></a>
 EOM;
 }
 ?>

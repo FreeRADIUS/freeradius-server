@@ -32,6 +32,8 @@ $no_fields = @da_sql_num_fields($fields,$config);
 for($i=0;$i<$no_fields;$i++){
 	$key = @da_sql_field_name($fields,$i,$config);
 	$val = $sql_attrs[$key][desc];
+	if ($val == '')
+		continue;
 	$show = $sql_attrs[$key][show];
 	$selected[$key] = ($show == 'yes') ? 'selected' : '';
 	$items[$key] = "$val";

@@ -18,5 +18,11 @@ print <<<EOM
 <td align=center bgcolor="black" width=100>
 <a href="user_test.php3?login=$login" title="Test User"><font color="white"><b>TEST</b></font></a></td>
 </tr>
+<tr valign=top>
+<td align=center width=100></td>
+<td align=center bgcolor="black" width=200>
+<a href="clear_opensessions.php3?login=$login" title="Clear Open User Sessions"><font size=-2 color="white"><b>OPEN SESSIONS</b></font></a></td>
+<td align=center width=100></td>
+</tr>
 EOM;
 ?>

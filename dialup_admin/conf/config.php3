@@ -15,6 +15,7 @@ if ($use_session){
 }
 if (!isset($config)){
 	$ARR=file("../conf/admin.conf");
+	$EXTRA_ARR = array();
 	foreach($ARR as $val) {
 		$val=chop($val);
 		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
@@ -24,7 +25,28 @@ if (!isset($config)){
 			$val=$config[$matches[1]];
 			$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
 		}
-		$config["$key"]="$v";
+		if ($key == 'INCLUDE'){
+			if (is_readable($v))
+				array_push($EXTRA_ARR,file($v));
+			else
+				echo "<b>Error: File '$v' does not exist or is not readable</b><br>\n";
+		}
+		else
+			$config["$key"]="$v";
+	}
+	foreach($EXTRA_ARR as $val1) {
+		foreach($val1 as $val){
+			$val=chop($val);
+			if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+				continue;
+			list($key,$v)=split(":[[:space:]]*",$val,2);
+			if (preg_match("/%\{(.+)\}/",$v,$matches)){
+				$val=$config[$matches[1]];
+				$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
+			}
+			else
+				$config["$key"]="$v";
+		}
 	}
 	if ($use_session)
 		session_register('config');

@@ -4,6 +4,7 @@ require('../conf/config.php3');
 <html>
 <?php
 require('../lib/functions.php3');
+require('../lib/attrshow.php3');
 
 if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
@@ -76,8 +77,13 @@ EOM;
 <p>
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
 	<tr bgcolor="#d0ddb0">
-	<th>#</th><th>type</th><th>logged in</th><th>session time</th><th>ip address</th>
-	<th>upload</th><th>download</th><th>server</th><th>terminate cause</th><th>callerid</th>
+	<th>#</th>
+<?php
+for($i=1;$i<=9;$i++){
+	if ($acct_attrs['ua']["$i"] != '')
+		echo "<th>" . $acct_attrs['ua']["$i"] . "</th>\n";
+}
+?>
 	</tr>
 
 <?php
@@ -135,17 +141,17 @@ if ($link){
 			echo <<<EOM
 			<tr align=center bgcolor="$tr_color">
 				<td>$num</td>
-				<td>$acct_type</td>
-				<td>$acct_logedin</td>
-				<td>$acct_sessiontime</td>
-				<td>$acct_ip</td>
-				<td>$acct_upload</td>
-				<td>$acct_download</td>
-				<td>$acct_server</td>
-				<td>$acct_terminate_cause</td>
-				<td>$acct_callerid</td>
-			</tr>
 EOM;
+				if ($acct_attrs[ua][1] != '') echo "<td>$acct_type</td>\n";
+				if ($acct_attrs[ua][2] != '') echo "<td>$acct_logedin</td>\n";
+				if ($acct_attrs[ua][3] != '') echo "<td>$acct_sessiontime</td>\n";
+				if ($acct_attrs[ua][4] != '') echo "<td>$acct_ip</td>\n";
+				if ($acct_attrs[ua][5] != '') echo "<td>$acct_upload</td>\n";
+				if ($acct_attrs[ua][6] != '') echo "<td>$acct_download</td>\n";
+				if ($acct_attrs[ua][7] != '') echo "<td>$acct_server</td>\n";
+				if ($acct_attrs[ua][8] != '') echo "<td>$acct_terminate_cause</td>\n";
+				if ($acct_attrs[ua][9] != '') echo "<td>$acct_callerid</td>\n";
+			echo "</tr>\n";
 		}
 		$acct_sessiontime_sum = time2str($acct_sessiontime_sum);
 		$acct_upload_sum = bytes2str($acct_upload_sum);
@@ -156,16 +162,23 @@ EOM;
 }
 else
 	echo "<b>Could not connect to SQL database</b><br>\n";
+$colspan = 3;
+if ($acct_attrs[ua][1] == '')
+	$colspan--;
+if ($acct_attrs[ua][2] == '')
+	$colspan--;
 echo <<<EOM
 			<tr bgcolor="lightyellow">
-			<td colspan=3 align="right">Page Total</td>
-				<td align="center"><b>$acct_sessiontime_sum</td>
-				<td>&nbsp;</td>
-				<td align="right" nowrap><b>$acct_upload_sum</td>
-				<td align="right" nowrap><b>$acct_download_sum</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
-				<td>&nbsp;</td>
+			<td colspan=$colspan align="right">Page Total</td>
+EOM;
+				if ($acct_attrs[ua][3] != '') echo "<td align=\"center\"><b>$acct_sessiontime_sum</td>\n";
+				if ($acct_attrs[ua][4] != '') echo "<td>&nbsp;</td>\n";
+				if ($acct_attrs[ua][5] != '') echo "<td align=\"right\" nowrap><b>$acct_upload_sum</td>\n";
+				if ($acct_attrs[ua][6] != '') echo "<td align=\"right\" nowrap><b>$acct_download_sum</td>\n";
+				if ($acct_attrs[ua][7] != '') echo "<td>&nbsp;</td>\n";
+				if ($acct_attrs[ua][8] != '') echo "<td>&nbsp;</td>\n";
+				if ($acct_attrs[ua][9] != '') echo "<td>&nbsp;</td>\n";
+?>
 				</tr>
 	</table>
 <tr><td>
@@ -184,6 +197,8 @@ echo <<<EOM
 		<tr valign="bottom">
 			<td><small><b>user</td><td><small><b>from date</td><td><small><b>to date</td><td><small><b>pagesize</td><td><b>order</td>
 	<tr valign="middle"><td>
+<?php
+	echo <<<EOM
 <input type="text" name="login" size="11" value="$login"></td>
 <td><input type="text" name="prev_str" size="11" value="$prev_str"></td>
 <td><input type="text" name="now_str" size="11" value="$now_str"></td>

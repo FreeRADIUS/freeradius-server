@@ -1,3 +1,20 @@
+Ver 1.65:
+* Add a captions.conf file with a few configurable captions for now
+* Move the nas list to a separate file called naslist.conf
+* Add the ability to include configuration files in admin.conf
+* Add a page for clearing open sessions from the database called clear_opensessions.php3. Add it in the
+  user toolbar
+* Move the userinfo page of user_admin to a separate file so that it can be easily changed to
+  fit per installation needs
+* Add a conf/accounting.attrs allowing the customization of the attributes in the user_accounting,
+  user_finger and failed_logins pages
+* Add a directive to determine if the administrator will be able to change the user password from
+  the user edit page
+* Call mysql_escape_string before running the sql query
+* Use the sql_connect_timeout for the mysql driver
+* Add a help page for the badusers table
+* Also take the Session-Timeout in consideration when calcualting the remaining time in user_admin.php3
+* Add regex matching in log_badlogins and don't expect the callerid to always be in numeric format
 Ver 1.63:
 * Do an eval on the attribute description strings in the user_edit page. That will allow the login-time creation
   page to work properly.
