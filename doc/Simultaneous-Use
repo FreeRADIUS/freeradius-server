@@ -1,5 +1,5 @@
 
-	FreeRadius and the Simultaneous-Use parameter.
+	Cistron-Radius and the Simultaneous-Use parameter.
 
 
 0. INTRODUCTION
@@ -10,11 +10,13 @@
   has about the list of logged-in users might be different from the idea
   the terminal server has about it.
 
-  However since ComOS 3.7 there is the possibility to get the list of logged
-  in users through SNMP from a portmaster. So if the radius server thinks
-  that someone is trying to login a second time, it is possible to check
-  on the terminal server itself if the first login is indeed still active.
-  Only then access is denied for the second login.
+  However, most terminal servers have an alternative way to get a list
+  of logged-in users. Most support some way through telnet, some have
+  a finger-daemon builtin and a lot of them support SNMP. So if the
+  radius server thinks that someone is trying to login a second time,
+  it is possible to check on the terminal server itself if the first
+  login is indeed still active.  Only then access is denied for the
+  second login.
 
 
 1. PREREQUISITES
@@ -29,15 +31,14 @@
   version of this is at http://www.gaertner.de/snmp/
 
   The other option is to install the SNMP_Session and BER modules that
-  come with mrtg - http://ee-staff.ethz.ch/~oetiker/webtools/mrtg/mrtg.html
+  for example the well known `mrtg' package uses. This is recommended.
   In that case you need no external snmpget program, checkrad will
-  speak SNMP directly.
+  speak SNMP directly. See http://www.switch.ch/misc/leinen/snmp/perl/
 
-  The checkroutine for USR/3Com Total Control, NetServer racks and
-  Cyclades PathRAS uses the Net::Telnet module from CPAN, at least version
-  3.00. If you need that, obtain it from your local CPAN mirror (or see
-  http://www.perl.com/CPAN/). The checkrad.pl perl script will autodetect if
-  that module is installed.
+  The checkroutine for USR/3Com Total Control racks uses the Net::Telnet
+  module from CPAN, at least version 3.00. If you need that, obtain it from
+  your local CPAN mirror (or see http://www.perl.com/CPAN/). The checkrad.pl
+  perl script will autodetect if that module is installed.
 
 2. USAGE.
 
@@ -62,14 +63,17 @@
 
 3. IMPLEMENTATION
 
-  As soon as the radius server thinks it sees a double login, it executes the
-  perl script /usr/local/sbin/checkrad (or /usr/sbin/checkrad, it checks for
+  The server keeps a list of logged-in users in the /var/log/radutmp file.
+  This is also called "the session database". When you execute "radwho",
+  all that radwho really does is list the entries in this file in a pretty
+  format. Only when someone tries to login who _already_ has an active
+  session according to the radutmp file, the server executes the perl
+  script /usr/local/sbin/checkrad (or /usr/sbin/checkrad, it checks for
   the presence of both and in that order). This script queries the terminal
-  server too see if the user is indeed logged in.
+  server to see if the user indeed already has an active session.
 
-  The script uses SNMP for Livingston Portmasters, Ciscos and Patton,
-  finger for Portslave, Computone and Ascend, and Net::Telnet for USR/3Com
-  TC and Cyclades PathRAS.
+  The script uses SNMP for Livingston Portmasters and Ciscos, finger for
+  Portslave, Computone and Ascend, and Net::Telnet for USR/3Com TC.
 
   Since the script has been witten in perl, it's easy to adjust for
   any type of terminal server. There are implementations in the script for
@@ -84,22 +88,34 @@
 
   type        Vendor      Uses method     needs               Need naspasswd
   ====        ======      ===========     =====               ==============
-  cisco       Cisco       SNMP            SNMP                No
-  computone   Computone   finger          -                   No
-  livingston  Livingston  SNMP            SNMP                No	[1]
-  max40xx     Lucent      finger          -                   No
   ascend      Lucent      SNMP            SNMP                No
-  multitech   Multitech   SNMP            SNMP                No
+  bay         Nortel      finger          finger command      No
+  cisco       Cisco       SNMP            SNMP                Optional  [1]
+  computone   Computone   finger          finger command      No
+  cvx         Nortel      SNMP            SNMP                No
+  digitro     Digitro     rusers          rusers command      No
+  livingston  Livingston  SNMP            SNMP                No	[2]
+  max40xx     Lucent      finger          finger command      No
   netserver   USR/3com    telnet          CPAN Net::Telnet    Yes
   pathras     Cyclades    telnet          CPAN Net::Telnet    Yes
   patton      Patton      SNMP            SNMP                No
-  portslave   ?           finger          -                   No
+  portslave   ?           finger          finger command      No
+  pr3000      Cyclades    SNMP            snmpwalk command    No
+  pr4000      Cyclades    SNMP            snmpwalk command    No
   tc          USR/3com    telnet          CPAN Net::Telnet    Yes
-  usrhiper    USR/3com    SNMP            SNMP                No	[2]
+  usrhyper    USR/3com    SNMP            SNMP                No	[3]
   versanet    VersaNet    SNMP            SNMP                No
 
-  [1] Needs at least ComOS 3.5, SNMP enabled.
-  [2] Set "Reported Port Desity" to 256 (default)
+  other       none        N/A             -                   No
+
+  [1] In naspasswd file: set username to SNMP, password is community.
+  [2] Needs at least ComOS 3.5, SNMP enabled.
+  [3] Set "Reported Port Density" to 256 (default)
+
+  "other" means "don't bother checking, I believe what radutmp says".
+  This really is not recommended, if a user has a "stuck" entry in the
+  session database she will not be able to login again - hence the
+  extra check that "checkrad" does.
 
 4. IF IT DOESN'T WORK
 

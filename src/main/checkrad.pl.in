@@ -13,6 +13,7 @@
 # Version:	$Id$
 #
 #		livingston_snmp  1.1	Author: miquels@cistron.nl
+#		cvx_snmp	 1.0	Author: miquels@cistron.nl
 #		portslave_finger 1.0	Author: miquels@cistron.nl
 #		max40xx_finger	 1.0	Author: costa@mdi.ca
 #		ascend_snmp      1.1    Author: blaz@amis.net
@@ -275,16 +276,54 @@ sub livingston_snmp {
 }
 
 #
+#	See if the user is logged in using the Aptis MIB.
+#	We don't check the username but the session ID.
+#
+# sessionStatusActiveName
+$apm1	 = '.iso.org.dod.internet.private.enterprises.2637.2.2.102.1.12';
+# sessionStatusActiveStopTime
+$apm2	 = '.iso.org.dod.internet.private.enterprises.2637.2.2.102.1.20';
+sub cvx_snmp {
+
+	# Remove unique identifier, then take remainder of the
+	# session-id as a hex number, convert that to decimal.
+	my $sessid = $ARGV[4];
+	$sessid =~ s/^.*://;
+	$sessid =~ s/^0*//;
+	$sessid = "0" if ($sessid eq '');
+
+	#
+	#	Now get the login from the terminal server.
+	#	Blech - the SNMP table is called 'sessionStatusActiveTable,
+	#	but it sometimes lists inactive sessions too.
+	#	However an active session doesn't have a Stop time,
+	#	so we can differentiate that way.
+	#
+	my $login = snmpget($ARGV[1], "public", "$apm1." . hex($sessid));
+	my $stopt = snmpget($ARGV[1], "public", "$apm2." . hex($sessid));
+	$login = "--" if ($stopt > 0);
+
+	print LOG "  login with session-id $ARGV[4]: $login\n" if ($debug);
+
+	(strip_username($login) eq strip_username($ARGV[3])) ? 1 : 0;
+}
+
+#
 #	See if the user is logged in using the Cisco MIB
 #
 $csm	 = '.iso.org.dod.internet.private.enterprises.9';
 sub cisco_snmp {
-        my ($login, $password) = naspasswd($ARGV[1], 1);
-	if($login ne 'SNMP') {
-	  if($debug) {
-	    print LOG "   Error: Need SNMP community string for $ARGV[1]\n";
-	  }
-	  return 2;
+
+	# Look up community string in naspasswd file.
+	my ($login, $password) = naspasswd($ARGV[1], 1);
+	if ($login && $login ne 'SNMP') {
+		if ($debug) {
+			print LOG
+			"   Error: Need SNMP community string for $ARGV[1]\n";
+		}
+		return 2;
+	} else {
+		$password = "public";
 	}
 
 	$login = snmpget($ARGV[1], $password, "$csm.2.9.2.1.18.$ARGV[2]");
@@ -716,7 +755,10 @@ sub cyclades_telnet {
 sub patton_snmp {
    my($oid);
 
-   $oid = '.1.3.6.1.4.1.1768.5.100.1.40.' . hex $ARGV[4];
+   #$oid = '.1.3.6.1.4.1.1768.5.100.1.40.' . hex $ARGV[4];
+   # Reported by "Andria Legon" <andria@patton.com>
+   # The OID below should be the correct one instead of the one above.
+   $oid = '.1.3.6.1.4.1.1768.5.100.1.56.' . hex $ARGV[4];
    #
    # Check if the session still active
    # 
@@ -736,10 +778,13 @@ sub patton_snmp {
 #      Author: Antonio Dias of SST Internet <accdias@sst.com.br>
 #
 sub digitro_rusers {
-   my($ret);
+   my ($ret);
    local $_;
 
    if (-e $rusers && -x $rusers) {
+      #
+      # Get a list of users logged in via rusers
+      #
       $_ = `$rusers $ARGV[1]`;
       $ret = ((/$ARGV[3]/) ? 1 : 0);
    } else {
@@ -770,7 +815,7 @@ sub cyclades_snmp {
       # module. Any help would be great.
       #
       $_ = `$snmpwalk $ARGV[1] public $oid`;
-      $ret = (/$ARGV[3]/ ? 1 : 0);
+      $ret = ((/$ARGV[3]/) ? 1 : 0);
    } else {
       print LOG "   Error: can't execute $snmpwalk\n" if $debug;
       $ret = 2;
@@ -785,16 +830,19 @@ sub cyclades_snmp {
 # 
 $usrm	 = '.iso.org.dod.internet.private.enterprises.429';
 sub usrhiper_snmp {
-	my($login,$password,$oidext);
+	my ($login,$password,$oidext);
 
+	# Look up community string in naspasswd file.
         ($login, $password) = naspasswd($ARGV[1], 1);
-	if($login ne 'SNMP') {
-	  if($debug) {
-	    print LOG "   Error: Need SNMP community string for $ARGV[1]\n";
-	  }
-	  return 2;
+	if ($login && $login ne 'SNMP') {
+		if($debug) {
+			print LOG
+			"   Error: Need SNMP community string for $ARGV[1]\n";
+		}
+		return 2;
+	} else {
+		$password = "public";
 	}
-	$password = "public" if $password eq "";
 
 	$oidext = 1257 + 256*int(($ARGV[2]-1) / $hiper_density) +
 		                (($ARGV[2]-1) % $hiper_density);
@@ -967,13 +1015,15 @@ if ($ARGV[0] eq 'livingston') {
 	$ret = &livingston_snmp;
 } elsif ($ARGV[0] eq 'cisco') {
 	$ret = &cisco_snmp;
+} elsif ($ARGV[0] eq 'cvx') {
+	$ret = &cvx_snmp;
 } elsif ($ARGV[0] eq 'multitech') {
         $ret = &multitech_snmp;
 } elsif ($ARGV[0] eq 'computone') {
 	$ret = &computone_finger;
 } elsif ($ARGV[0] eq 'max40xx') {
 	$ret = &max40xx_finger;
-} elsif ($ARGV[0] eq 'ascend') {
+} elsif ($ARGV[0] eq 'ascend' || $ARGV[0] eq 'max40xx_snmp') {
 	$ret = &ascend_snmp;
 } elsif ($ARGV[0] eq 'portslave') {
 	$ret = &portslave_finger;
@@ -993,7 +1043,7 @@ if ($ARGV[0] eq 'livingston') {
 	$ret = &usrhiper_snmp;
 } elsif ($ARGV[0] eq 'netserver') {
 	$ret = &usrnet_telnet;
-} elsif ($ARGV[0] eq 'versanet'){
+} elsif ($ARGV[0] eq 'versanet') {
         $ret = &versanet_snmp;
 } elsif ($ARGV[0] eq 'bay') {
 	$ret = &bay_finger;
