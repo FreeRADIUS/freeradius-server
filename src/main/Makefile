@@ -99,8 +99,8 @@ builddbm.o: builddbm.c
 radwho.o: radwho.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radwho.c
 
-radwho: radwho.o util.o
-	$(CC) $(LDFLAGS) -o radwho radwho.o util.o $(LIBS)
+radwho: radwho.o util.o nas.o client.o log.o
+	$(CC) $(LDFLAGS) -o radwho radwho.o util.o nas.o client.o log.o $(LIBS)
 
 raduse: raduse.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o raduse raduse.o $(LIBS)

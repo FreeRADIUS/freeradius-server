@@ -50,10 +50,13 @@ static const char *rfmt2 = "%-10.10s %s%-5d  %-6.6s %-13.13s %-10.10s %-.28s%s";
 static const char *rfmt2r = "%s,%s%d,%s,%s,%s,%s%s";
 
 static const char *eol = "\n";
-static NAS *naslist;
 static int showname = -1;
 static int showptype = 0;
 static int showcid = 0;
+int debug_flag = 0;
+const char *progname = "radwho";
+char *radlog_dir = "stdout";
+
 
 /*
  *	Safe popen. Ugh.
@@ -77,52 +80,6 @@ static FILE *safe_popen(const char *cmd, const char *mode)
 
 	return popen(buf, mode);
 }
-
-/*
- *	Read the naslist file.
- */
-static NAS *my_read_naslist_file(char *file)
-{
-	FILE	*fp;
-	char	buffer[256];
-	char	hostnm[128];
-	char	shortnm[32];
-	char	nastype[32];
-	int	lineno = 0;
-	NAS	*cl = NULL;
-	NAS	*c;
-
-	if ((fp = fopen(file, "r")) == NULL) {
-		fprintf(stderr, "cannot open %s\n", file);
-		return NULL;
-	}
-	while(fgets(buffer, 256, fp) != NULL) {
-		lineno++;
-		if (buffer[0] == '#' || buffer[0] == '\n')
-			continue;
-		shortnm[0] = 0;
-		if (sscanf(buffer, "%127s%31s%31s", hostnm, shortnm, nastype) < 2) {
-			fprintf(stderr, "%s[%d]: syntax error\n", file, lineno);
-			continue;
-		}
-		if ((c = malloc(sizeof(NAS))) == NULL) {
-			fprintf(stderr, "%s[%d]: out of memory\n",
-				file, lineno);
-			return NULL;
-		}
-
-		c->ipaddr = ip_getaddr(hostnm);
-		strNcpy(c->nastype, nastype, sizeof(c->nastype));
-		strNcpy(c->shortname, shortnm, sizeof(c->shortname));
-		ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
-		c->next = cl;
-		cl = c;
-	}
-	fclose(fp);
-
-	return cl;
-}
-
 
 /*
  *	Print a file from FINGER_DIR. If the file is executable,
@@ -309,27 +266,6 @@ static const char *ttyshort(char *tty)
 
 
 /*
- *	Find name of NAS
- */
-static const char *nasname(uint32_t ipaddr)
-{
-	NAS *cl;
-
-	for(cl = naslist; cl; cl = cl->next)
-		if (cl->ipaddr == ipaddr)
-			break;
-	if (cl == NULL) {
-		static char buffer[32];
-		ip_ntoa(buffer, ipaddr);
-		return buffer;
-	}
-	if (cl->shortname[0])
-		return cl->shortname;
-	return cl->longname;
-}
-
-
-/*
  *	Print address of NAS.
  */
 static const char *hostname(char *buf, size_t buflen, uint32_t ipaddr)
@@ -420,8 +356,14 @@ int main(int argc, char **argv)
 	 *	Read the "naslist" file.
 	 */
 	sprintf(inbuf, "%s/%s", RADIUS_DIR, RADIUS_NASLIST);
-	if ((naslist = my_read_naslist_file(inbuf)) == NULL)
+	if (read_naslist_file(inbuf) < 0) {
 		exit(1);
+	}
+
+	sprintf(inbuf, "%s/%s", RADIUS_DIR, RADIUS_CLIENTS);
+	if (read_clients_file(inbuf) < 0) {
+		exit(1);
+	}
 
 	/*
 	 *	See if we are "fingerd".
@@ -541,7 +483,7 @@ int main(int argc, char **argv)
 				proto(rt.proto, rt.porttype),
 				portind, portno,
 				dotime(rt.time),
-				nasname(rt.nas_address),
+				nas_name(rt.nas_address),
 				hostname(othername, sizeof(othername), rt.framed_address), eol);
 			else
 			    printf((rawoutput == 0? rfmt2: rfmt2r),
@@ -549,7 +491,7 @@ int main(int argc, char **argv)
 				portind, portno,
 				proto(rt.proto, rt.porttype),
 				dotime(rt.time),
-				nasname(rt.nas_address),
+				nas_name(rt.nas_address),
 				hostname(othername, sizeof(othername), rt.framed_address), eol);
 		}
 	}
