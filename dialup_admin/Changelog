@@ -18,6 +18,7 @@ Ver 1.65:
 * Small html corrections in user_toolbar.html.php3
 * Add a HOWTO from Paris Stamatopoulos
 * create a doc directory and move the documentation files there
+* Add a note about the HOWTO in the README file
 Ver 1.63:
 * Do an eval on the attribute description strings in the user_edit page. That will allow the login-time creation
   page to work properly.
