@@ -1090,3 +1090,9 @@ session {
 	radutmp
 #	sql
 }
+
+
+# Post-Auth. Run the ippool module.
+post-auth {
+#	main_pool
+}
