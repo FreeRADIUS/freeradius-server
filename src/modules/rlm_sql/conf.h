@@ -81,6 +81,9 @@ typedef struct sql_config {
 #define SQL_LOCK_LEN			MAX_QUERY_LEN
 #define	SQLTRACEFILE			RADLOG_DIR "/sqltrace.sql"
 
+/* SQL Errors */
+#define SQL_DOWN			1 /* for re-connect */
+
 #define MAX_COMMUNITY_LEN		50
 #define MAX_SQL_SOCKS			256
 #define MAX_TABLE_LEN			20

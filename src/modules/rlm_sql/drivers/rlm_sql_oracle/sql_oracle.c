@@ -354,13 +354,16 @@ int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query
+ *               with all the data for the query in 'sqlsocket->row'. Returns
+ *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	int	x;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
+
+	sqlsocket->row = NULL;
 
 	x=OCIStmtFetch(oracle_sock->queryHandle,
 			oracle_sock->errHandle,
@@ -371,12 +374,14 @@ SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		return NULL;
 	}
 	else if (x != OCI_SUCCESS) {
+		/* XXX Check if x suggests we should return SQL_DOWN */
 		radlog(L_ERR,"sql_fetch_row: fetch failed: %s",
 				sql_error(sqlsocket, config));
-		return NULL;
+		return -1;
 	}
 
-	return oracle_sock->results;
+	sqlsocket->row = oracle_sock->results;
+	return 0;
 }
 
 

@@ -128,15 +128,22 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
 		return 0;
-	if ((inst->module->sql_select_query)(sqlsocket,inst->config,querystr) <0){
+	if (_sql_select_query(sqlsocket,inst,querystr)){
 		radlog(L_ERR, "rlm_sql: database query error");
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
-	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
+
+	ret = _sql_fetch_row(sqlsocket, inst);
+
 	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 	sql_release_socket(inst,sqlsocket);
-	if (row == NULL){
+	if (ret) {
+		DEBUG("rlm_sql: SQL query did not succeed");
+		return 0;
+	}
+	row = sqlsocket->row;
+	if (row == NULL) {
 		DEBUG("rlm_sql: SQL query did not return any results");
 		return 0;
 	}
@@ -325,6 +332,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	SQL_INST *inst = instance;
 	SQL_ROW row;
 	char    querystr[MAX_QUERY_LEN];
+	int	ret;
 
 	/* sqlusername holds the sql escaped username. The original
 	 * username is at most MAX_STRING_LEN chars long and
@@ -454,16 +462,22 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
-		if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
+		if (_sql_select_query(sqlsocket, inst, querystr)) {
 			radlog(L_ERR, "rlm_sql_authorize: database query error");
 			sql_release_socket(inst, sqlsocket);
 			return RLM_MODULE_FAIL;
 		}
+		ret = _sql_fetch_row(sqlsocket, inst);
 
-		row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst, sqlsocket);
 
+		if (ret) {
+			radlog(L_ERR, "rlm_sql_authorize: query failed");
+			return RLM_MODULE_FAIL;
+		}
+
+		row = sqlsocket->row;
 		if (row == NULL) {
 			radlog(L_ERR, "rlm_sql_authorize: no rows returned from query (no such user)");
 			return RLM_MODULE_OK;
@@ -531,7 +545,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (querystr) {
-				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0)
+				if (_sql_query(sqlsocket, inst, querystr))
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for Acct On/Off packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
@@ -555,7 +569,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (querystr) {
-				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0)
+				if (_sql_query(sqlsocket, inst, querystr))
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for ALIVE packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
@@ -579,7 +593,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (querystr) {
-				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
+				if (_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting" " for START packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 
 					/*
@@ -591,7 +605,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					query_log(inst, querystr);
 
 					if (querystr) {
-						if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
+						if (_sql_query(sqlsocket, inst, querystr)) {
 							radlog(L_ERR, "rlm_sql: Couldn't update SQL" "accounting START record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 						}
 						(inst->module->sql_finish_query)(sqlsocket, inst->config);
@@ -618,7 +632,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (querystr) {
-				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
+				if (_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 				}
 				else {
@@ -652,7 +666,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 						query_log(inst, querystr);
 
 						if (querystr) {
-							if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
+							if (_sql_query(sqlsocket, inst, querystr)) {
 								radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 							}
 							(inst->module->sql_finish_query)(sqlsocket, inst->config);
@@ -689,6 +703,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
         uint32_t        ipno = 0;
         char            *call_num = NULL;
 	VALUE_PAIR      *vp;
+	int		ret;
 
 	/* If simul_count_query is not defined, we don't do any checking */
 	if (inst->config->simul_count_query[0] == 0) {
@@ -709,15 +724,30 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 		return RLM_MODULE_FAIL;
 
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_count_query, request, NULL);
-	if((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
+	if(_sql_select_query(sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "sql_checksimul: Database query failed");
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
 
-	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
-	request->simul_count = atoi(row[0]);
+	ret = _sql_fetch_row(sqlsocket, inst);
+
+	if (ret == 0) {
+		row = sqlsocket->row;
+	}
 	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+
+	if (ret) {
+		sql_release_socket(inst, sqlsocket);
+		return RLM_MODULE_FAIL;
+	}
+
+	if (row == NULL) {
+		sql_release_socket(inst, sqlsocket);
+		return RLM_MODULE_FAIL;
+	}
+
+	request->simul_count = atoi(row[0]);
 
 	if(request->simul_count < request->simul_max) {
 		sql_release_socket(inst, sqlsocket);
@@ -732,7 +762,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	}
 
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_verify_query, request, NULL);
-	if((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
+	if(_sql_select_query(sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "sql_checksimul: Database query error");
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
@@ -749,7 +779,10 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
                 call_num = vp->strvalue;        
 
 
-	while((row=(inst->module->sql_fetch_row)(sqlsocket, inst->config))) {
+	while (_sql_fetch_row(sqlsocket, inst) == 0) {
+		row = sqlsocket->row;
+		if (row == NULL)
+			break;
 		check = rad_check_ts((uint32_t)row[3], (int)row[4], row[2], row[1]);
 
                 /*
@@ -782,7 +815,10 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 								row[1],row[3],row[4]);
 				sqlsocket1 = sql_get_socket(inst);
 				sprintf(querystr, inst->config->simul_zap_query, row[0]);
-				(inst->module->sql_query)(sqlsocket1, inst->config, querystr);
+				if (_sql_query(sqlsocket1, inst, querystr)) {
+					radlog(L_ERR, "rlm_sql: Deletion of stale session [%s] failed",
+								row[1]);
+				}
 				(inst->module->sql_finish_select_query)(sqlsocket1, inst->config);
 				sql_release_socket(inst, sqlsocket1);
 			}

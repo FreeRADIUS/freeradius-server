@@ -97,6 +97,7 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 	/* execute query */
 	retval = SQLExecDirect(sock->stmt, querystr, SQL_NTS);
 	if(retval != SQL_SUCCESS) {
+		/* XXX Check if retval means we should return SQL_DOWN */
 		radlog(L_ERR, "could not execute statement \"%s\"\n", querystr);
 		return -1;
 	}
@@ -156,10 +157,11 @@ int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query
+ *               with all the data for the query in 'sqlsocket->row'. Returns
+ *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
 	int c, i;
 	SQLINTEGER len, slen;
@@ -171,8 +173,10 @@ SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 	c = sql_num_fields(sqlsocket, config);
 	retval = (SQL_ROW)rad_malloc(c*sizeof(char*)+1);
 	/* advance cursor */
-	if(SQLFetch(sock->stmt) == SQL_NO_DATA_FOUND)
-		return NULL;
+	if(SQLFetch(sock->stmt) == SQL_NO_DATA_FOUND) {
+		sqlsocket->row = NULL;
+		return 0;
+	}
 
 	for(i = 0; i < c; i++) {
 		/* get column length */
@@ -187,7 +191,8 @@ SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 			retval[i][0] = '\0';
 	}
 
-	return retval;
+	sqlsocket->row = retval;
+	return 0;
 }
 
 /*************************************************************************

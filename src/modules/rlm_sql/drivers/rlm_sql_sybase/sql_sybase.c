@@ -645,13 +645,16 @@ int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query
+ *               with all the data for the query in 'sqlsocket->row'. Returns
+ *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
 	CS_INT		ret, count;
+
+	sqlsocket->row = NULL;
 
 
 	ret = ct_fetch(sybase_sock->command, CS_UNUSED, CS_UNUSED, CS_UNUSED, &count);
@@ -672,28 +675,29 @@ SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			ct_close(sybase_sock->connection, CS_FORCE_CLOSE);
 			sql_close(sqlsocket, config);
 		}
-		return NULL;
+		return SQL_DOWN;
 		break;
 
 	case CS_END_DATA:
 
-		return NULL;
+		return 0;
 		break;
 
 	case CS_SUCCEED:
 
-		return sybase_sock->results;
+		sqlsocket->row = sybase_sock->results;
+		return 0;
 		break;
 
 	case CS_ROW_FAIL:
 	
 		radlog(L_ERR,"rlm_sql_sybase(sql_fetch_row): Recoverable failure fething row data, try again perhaps?");
-		return NULL;
+		return -1;
 
 	default:
 		
 		radlog(L_ERR,"rlm_sql_sybase(sql_fetch_row): Unexpected returncode from ct_fetch");
-		return NULL;
+		return -1;
 		break;
 	}
 

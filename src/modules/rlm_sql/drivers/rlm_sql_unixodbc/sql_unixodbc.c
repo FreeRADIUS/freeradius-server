@@ -204,16 +204,22 @@ int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query
+ *               with all the data for the query in 'sqlsocket->row'. Returns
+ *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
 
-    if(SQLFetch(unixodbc_sock->stmt_handle) == SQL_NO_DATA_FOUND)
-    	return NULL;
+    sqlsocket->row = NULL;
 
-    return unixodbc_sock->row;
+    if(SQLFetch(unixodbc_sock->stmt_handle) == SQL_NO_DATA_FOUND)
+    	return 0;
+
+    /* XXX Check if return suggests we should return error or SQL_DOWN */
+
+    sqlsocket->row = unixodbc_sock->row;
+    return 0;
 }
 
 

@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <mysql/errmsg.h>
+
 #include 	"radiusd.h"
 #include	"sql_mysql.h"
 
@@ -45,6 +47,9 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	sqlsocket->conn = (rlm_sql_mysql_sock *)rad_malloc(sizeof(rlm_sql_mysql_sock));
 
 	mysql_sock = sqlsocket->conn;
+
+	radlog(L_INFO, "rlm_sql: Starting connect to MySQL server for #%d",
+			sqlsocket->id);
 
 	mysql_init(&(mysql_sock->conn));
 	if (!(mysql_sock->sock = mysql_real_connect(&(mysql_sock->conn), config->sql_server, config->sql_login, config->sql_password,
@@ -93,13 +98,10 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 		radlog(L_DBG,"query:  %s", querystr);
 	if (mysql_sock->sock == NULL) {
 		radlog(L_ERR, "Socket not connected");
-		return -1;
+		return SQL_DOWN;
 	}
-	if (mysql_query(mysql_sock->sock, querystr) == 0) {
-		return 0;
-	} else {
-		return -1;
-	}
+
+	return sql_check_error(mysql_query(mysql_sock->sock, querystr));
 }
 
 
@@ -112,19 +114,23 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
  *************************************************************************/
 int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
-	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
+	int ret;
 
-	if (config->sqltrace)
-		radlog(L_DBG,querystr);
-	if (mysql_sock->sock == NULL) {
-		radlog(L_ERR, "Socket not connected");
-		return -1;
+	ret = sql_query(sqlsocket, config, querystr);
+	if(ret)
+		return ret;
+	ret = sql_store_result(sqlsocket, config);
+	if (ret) {
+		return ret;
 	}
-	mysql_query(mysql_sock->sock, querystr);
-	if (sql_store_result(sqlsocket, config) < 0 || sql_num_fields(sqlsocket, config) < 0)
-		return -1;
-	else
-		return 0;
+
+	/* Why? Per http://www.mysql.com/doc/n/o/node_591.html,
+	 * this cannot return an error.  Perhaps just to complain if no
+	 * fields are found?
+	 */
+	sql_num_fields(sqlsocket, config);
+
+	return ret;
 }
 
 
@@ -142,15 +148,14 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	if (mysql_sock->sock == NULL) {
 		radlog(L_ERR, "Socket not connected");
-		return -1;
+		return SQL_DOWN;
 	}
 	if (!(mysql_sock->result = mysql_store_result(mysql_sock->sock))) {
 		radlog(L_ERR, "MYSQL Error: Cannot get result");
 		radlog(L_ERR, "MYSQL Error: %s", mysql_error(mysql_sock->sock));
-		return -1;
+		return sql_check_error(mysql_errno(mysql_sock->sock));
 	}
 	return 0;
-
 }
 
 
@@ -173,7 +178,7 @@ int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 #else
 	if (!(num = mysql_num_fields(mysql_sock->sock))) {
 #endif
-		radlog(L_ERR, "MYSQL Error: Cannot get result");
+		radlog(L_ERR, "MYSQL Error: No Fields");
 		radlog(L_ERR, "MYSQL error: %s", mysql_error(mysql_sock->sock));
 	}
 	return num;
@@ -192,7 +197,10 @@ int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
-	return mysql_num_rows(mysql_sock->result);
+	if(mysql_sock->result)
+		return mysql_num_rows(mysql_sock->result);
+
+	return 0;
 }
 
 
@@ -201,14 +209,49 @@ int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query
+ *               with all the data for the query in 'sqlsocket->row'. Returns
+ *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
-	return mysql_fetch_row(mysql_sock->result);
+	sqlsocket->row = mysql_fetch_row(mysql_sock->result);
+
+	if (sqlsocket->row == NULL) {
+		return sql_check_error(mysql_errno(mysql_sock->sock));
+	}
+	return 0;
+}
+
+
+/*************************************************************************
+ *
+ *	Function: sql_check_error
+ *
+ *	Purpose: check the error to see if the server is down
+ *
+ *************************************************************************/
+int sql_check_error(int error) {
+	switch(error) {
+	case CR_SERVER_GONE_ERROR:
+	case CR_SERVER_LOST:
+	case -1:
+		radlog(L_DBG, "MYSQL check_error: %d, returning SQL_DOWN", error);
+		return SQL_DOWN;
+		break;
+	case 0:
+		return 0;
+		break;
+	case CR_OUT_OF_MEMORY:
+	case CR_COMMANDS_OUT_OF_SYNC:
+	case CR_UNKNOWN_ERROR:
+	default:
+		radlog(L_DBG, "MYSQL check_error: %d received", error);
+		return -1;
+		break;
+	}
 }
 
 

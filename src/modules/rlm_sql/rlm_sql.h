@@ -44,6 +44,7 @@ typedef struct sql_socket {
 	enum { sockconnected, sockunconnected } state;
 
 	void	*conn;
+	SQL_ROW row;
 } SQLSOCK;
 
 typedef struct rlm_sql_module_t {
@@ -55,7 +56,7 @@ typedef struct rlm_sql_module_t {
 	int (*sql_store_result)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_num_fields)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_num_rows)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-	SQL_ROW (*sql_fetch_row)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+	int (*sql_fetch_row)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_free_result)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	char *(*sql_error)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_close)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
@@ -92,4 +93,7 @@ int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
 void    query_log(SQL_INST * inst, char *querystr);
+int	_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
+int	_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
+int	_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst);
 #endif

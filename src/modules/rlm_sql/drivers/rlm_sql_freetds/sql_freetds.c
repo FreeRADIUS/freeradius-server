@@ -137,6 +137,7 @@ int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     /* Executing query */
     if (tds_submit_query(freetds_sock->tds_socket, querystr) != TDS_SUCCEED)
     {
+	/* XXX determine if return above suggests returning SQL_DOWN or not */
 	radlog(L_ERR, "rlm_sql_freetds: Can't execute the query");
 	radlog(L_ERR, "rlm_sql_freetds: %s", freetds_sock->tds_socket->msg_info->message);
 	return -1;
@@ -264,34 +265,39 @@ int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query
+ *               with all the data for the query in 'sqlsocket->row'. Returns
+ *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     TDSRESULTINFO *result_info;    
     TDSCOLINFO **columns;
     int numfields, column, retcode;
 
+    sqlsocket->row = NULL;
+
     retcode = tds_process_row_tokens(freetds_sock->tds_socket);
+    /* XXX Check if retcode is something we should return SQL_DOWN for */
     if (retcode == TDS_NO_MORE_ROWS)
     {
-	return NULL;
+	return 0;
     } else if (retcode != TDS_SUCCEED) {
 	radlog(L_ERR, "rlm_sql_freetds: A error occured during fetching the row");
-	return NULL;
+	return -1;
     }
     
     /* Getting amount of result fields */
     numfields = sql_num_fields(sqlsocket, config);
-    if (numfields < 0) return NULL;
+    if (numfields < 0)
+	return 0;
 
     /* Get information about the resulting set */
     result_info = freetds_sock->tds_socket->res_info;
     if (result_info == NULL)
     {
 	radlog(L_ERR, "rlm_sql_freetds: Can't get information about the resulting set");
-	return NULL;
+	return -1;
     }
     
     /* Get information about the column set */
@@ -299,11 +305,11 @@ SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     if (columns == NULL)
     {
 	radlog(L_ERR, "rlm_sql_freetds: Can't get information about the column set");
-	return NULL;
+	return -1;
     }
 
     /* Alocating the memory */
-    if (sql_store_result(sqlsocket, config) < 0) return NULL;
+    if (sql_store_result(sqlsocket, config) < 0) return 0;
 
     /* Converting the fields to a CHAR data type */
     for (column = 0; column < numfields; column++)
@@ -319,7 +325,8 @@ SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	    (char *)freetds_sock->row[column],
 	    columns[column]->column_size);
     }
-    return freetds_sock->row;
+    sqlsocket->row = freetds_sock->row;
+    return 0;
 }
 
 

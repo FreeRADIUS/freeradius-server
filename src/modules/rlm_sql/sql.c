@@ -60,6 +60,7 @@
  * issues).  If successful in connecting, set state to sockconnected.   - chad
  */
 static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst) {
+	radlog(L_DBG, "rlm_sql:  Attempting to connect #%d", sqlsocket->id);
 	if ((inst->module->sql_init_socket)(sqlsocket, inst->config) < 0) {
 		radlog(L_CONS | L_ERR, "rlm_sql:  Failed to connect DB handle #%d", sqlsocket->id);
 		inst->connect_after = time(NULL) + inst->config->connect_failure_retry_delay;
@@ -91,6 +92,7 @@ int sql_init_socketpool(SQL_INST * inst) {
 	inst->socknr = 0;
 
 	for (i = 0; i < inst->config->num_sql_socks; i++) {
+		radlog(L_DBG, "rlm_sql: starting %d", i);
 
 		sqlsocket = rad_malloc(sizeof(SQLSOCK));
 		if (sqlsocket == NULL) {
@@ -112,6 +114,7 @@ int sql_init_socketpool(SQL_INST * inst) {
 
 		if (time(NULL) > inst->connect_after) {
 			/* this sets the sqlsocket->state, and possibly sets inst->connect_after */
+			/* FIXME! check return code */
 			connect_single_socket(sqlsocket, inst);
 		}
 
@@ -257,7 +260,7 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
 
 	radlog(L_DBG, "rlm_sql: Released sql socket id: %d", sqlsocket->id);
 
-	return 1;
+	return 0;
 }
 
 
@@ -307,6 +310,94 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode) {
 
 /*************************************************************************
  *
+ *	Function: _sql_fetch_row
+ *
+ *	Purpose: call the module's sql_fetch_row and implement re-connect
+ *
+ *************************************************************************/
+int _sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
+	int ret;
+
+	ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
+
+	if (ret == SQL_DOWN) {
+		if (connect_single_socket(sqlsocket, inst) < 0) {
+			radlog(L_ERR, "rlm_sql: reconnect failed, database down?");
+			return -1;
+		}
+
+		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
+
+		if (ret) {
+			radlog(L_ERR, "rlm_sql: failed after re-connect");
+			return -1;
+		}
+	}
+
+	return ret;
+}
+
+/*************************************************************************
+ *
+ *	Function: _sql_query
+ *
+ *	Purpose: call the module's sql_query and implement re-connect
+ *
+ *************************************************************************/
+int _sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
+	int ret;
+
+	ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
+
+	if (ret == SQL_DOWN) {
+		if (connect_single_socket(sqlsocket, inst) < 0) {
+			radlog(L_ERR, "rlm_sql: reconnect failed, database down?");
+			return -1;
+		}
+
+		ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
+
+		if (ret) {
+			radlog(L_ERR, "rlm_sql: failed after re-connect");
+			return -1;
+		}
+	}
+
+	return ret;
+}
+
+/*************************************************************************
+ *
+ *	Function: _sql_select_query
+ *
+ *	Purpose: call the module's sql_select_query and implement re-connect
+ *
+ *************************************************************************/
+int _sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
+	int ret;
+
+	ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
+
+	if (ret == SQL_DOWN) {
+		if (connect_single_socket(sqlsocket, inst) < 0) {
+			radlog(L_ERR, "rlm_sql: reconnect failed, database down?");
+			return -1;
+		}
+
+		ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
+
+		if (ret) {
+			radlog(L_ERR, "rlm_sql: failed after re-connect");
+			return -1;
+		}
+	}
+
+	return ret;
+}
+
+
+/*************************************************************************
+ *
  *	Function: sql_getvpdata
  *
  *	Purpose: Get any group check or reply pairs
@@ -317,11 +408,14 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 	SQL_ROW row;
 	int     rows = 0;
 
-	if ((inst->module->sql_select_query)(sqlsocket, inst->config, query) < 0) {
+	if (_sql_select_query(sqlsocket, inst, query)) {
 		radlog(L_ERR, "rlm_sql_getvpdata: database query error");
 		return -1;
 	}
-	while ((row = (inst->module->sql_fetch_row)(sqlsocket, inst->config))) {
+	while (_sql_fetch_row(sqlsocket, inst)==0) {
+		row = sqlsocket->row;
+		if (!row)
+			break;
 		if (sql_userparse(pair, row, mode) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
@@ -447,13 +541,24 @@ int sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR
 
 	sprintf(authstr, "UserName = '%s'", name);
 	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE %s AND AcctStopTime = 0", inst->config->sql_acct_table, authstr);
-	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
+	
+
+	if (_sql_select_query(sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "sql_check_multi: database query error");
 		return -1;
 	}
 
-	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
-	count = atoi(row[0]);
+	if (_sql_fetch_row(sqlsocket, inst->config)) {
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+		return -1;
+	}
+
+	row = sqlsocket->row;
+	if (row != NULL) {
+		count = atoi(row[0]);
+	} else {
+		count = 0;
+	}
 	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 
 	if (count < maxsimul)
@@ -467,12 +572,18 @@ int sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR
 
 	count = 0;
 	sprintf(querystr, "SELECT * FROM %s WHERE %s AND AcctStopTime = 0", inst->config->sql_acct_table, authstr);
-	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
+
+	if (_sql_select_query(sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "sql_check_multi: database query error");
 		return -1;
 	}
-	while ((row = (inst->module->sql_fetch_row)(sqlsocket, inst->config))) {
-		int     check = sql_check_ts(row);
+	while (_sql_fetch_row(sqlsocket, inst) == 0) {
+		int     check;
+		row = sqlsocket->row;
+		if (row == NULL) {
+			break;
+		}
+		check = sql_check_ts(row);
 
 		if (check == 1) {
 			count++;
@@ -493,9 +604,12 @@ int sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR
 				radlog(L_ERR, "rlm_sql:  Deleteing stale session [%s] (from nas %s/%s)", row[2], row[4], row[5]);
 				sqlsocket1 = sql_get_socket(inst);
 				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'", inst->config->sql_acct_table, row[0]);
-				(inst->module->sql_query)(sqlsocket1, inst->config, querystr);
-				(inst->module->sql_finish_query)(sqlsocket1, inst->config);
-				sql_release_socket(inst, sqlsocket1);
+				if(_sql_query(sqlsocket1, inst, querystr)) {
+					radlog(L_ERR, "rlm_sql: database query error");
+				} else {
+					(inst->module->sql_finish_query)(sqlsocket1, inst->config);
+					sql_release_socket(inst, sqlsocket1);
+				}
 			}
 		}
 	}

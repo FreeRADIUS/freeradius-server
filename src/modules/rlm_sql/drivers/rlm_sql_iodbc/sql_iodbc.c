@@ -207,18 +207,24 @@ int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query
+ *               with all the data for the query in 'sqlsocket->row'. Returns
+ *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	SQLRETURN rc;
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
 
+	sqlsocket->row = NULL;
+
 	if((rc = SQLFetch(iodbc_sock->stmt_handle)) == SQL_NO_DATA_FOUND) {
-		return NULL;
+		return 0;
 	}
-	return iodbc_sock->row;
+	/* XXX Check rc for database down, if so, return SQL_DOWN */
+	
+	sqlsocket->row = iodbc_sock->row;
+	return 0;
 }
 
 

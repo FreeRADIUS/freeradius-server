@@ -238,16 +238,19 @@ int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query
+ *               with all the data for the query in 'sqlsocket->row'. Returns
+ *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	int records, i, len;
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
+	sqlsocket->row = NULL;
+
 	if (pg_sock->cur_row >= PQntuples(pg_sock->result))
-		return NULL;
+		return 0;
 
 	free_result_row(pg_sock);
 
@@ -265,9 +268,10 @@ SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 			strncpy(pg_sock->row[i], PQgetvalue(pg_sock->result, pg_sock->cur_row,i),len);
 		}
 		pg_sock->cur_row++;
-		return pg_sock->row;
+		sqlsocket->row = pg_sock->row;
+		return 0;
 	} else {
-		return NULL;
+		return 0;
 	}
 }
 
