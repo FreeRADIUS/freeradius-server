@@ -474,7 +474,7 @@ static int file_authorize(void *instance, REQUEST *request,
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
-	VALUE_PAIR	*tmp, *tmp2;
+	VALUE_PAIR	*tmp;
 	PAIR_LIST	*pl;
 	int		found = 0;
 #if defined(WITH_DBM) || defined(WITH_NDBM)
@@ -583,14 +583,16 @@ static int file_authorize(void *instance, REQUEST *request,
 #ifdef WITH_USERCOLLIDE
 		if ((paircmp(request_pairs, pl->check, reply_pairs) == 0)) {
 			/* 
-			 * We don't compare pass on default users or they never match.  Oops. 
+			 *	We don't compare pass on default users
+			 *	or they never match.  Oops.
 			 */
 			if(strcmp(pl->name, "DEFAULT")) {
 				/* 
-				 * We check the pass as a config item with user collisions
-				 * Most of this is stolen out of rad_check_password()		 
+				 *	We check the pass as a config
+				 *	item with user collisions Most
+				 *	of this is stolen out of
+				 *	rad_check_password()
 				 */
-	
 				if ((auth_type_pair = pairfind(pl->check, PW_AUTHTYPE)) != NULL) {
 					auth_type = auth_type_pair->lvalue;
 					DEBUG2("  file_auth (Usercollide):  auth_type %d", auth_type);
@@ -608,55 +610,56 @@ static int file_authorize(void *instance, REQUEST *request,
 					auth_type = PW_AUTHTYPE_CRYPT;
 				else
 					password_pair = pairfind(pl->check, PW_PASSWORD);
-	
+				
 				switch(auth_type) {
-					case PW_AUTHTYPE_CRYPT:
-						DEBUG2("  file_auth (Usercollide): Checking Crypt");
-						if (password_pair == NULL) {
-							result = auth_item->strvalue ? 0 : 1;
-							break;
-						}
-						if (strcmp(password_pair->strvalue,
-							crypt(auth_item->strvalue,
-							password_pair->strvalue)) != 0)
+				case PW_AUTHTYPE_CRYPT:
+					DEBUG2("  file_auth (Usercollide): Checking Crypt");
+					if (password_pair == NULL) {
+						result = auth_item->strvalue ? 0 : 1;
+						break;
+					}
+					if (strcmp(password_pair->strvalue,
+						   crypt(auth_item->strvalue,
+							 password_pair->strvalue)) != 0)
+						result = 0;
+					break;
+				case PW_AUTHTYPE_LOCAL:
+					DEBUG2("  file_auth (Usercollide): Checking Local");
+					if (auth_item->attribute != PW_CHAP_PASSWORD) {
+						if (password_pair == NULL ||
+						    strcmp(password_pair->strvalue,
+							   auth_item->strvalue)!=0)
 							result = 0;
-							break;
-					case PW_AUTHTYPE_LOCAL:
-						DEBUG2("  file_auth (Usercollide): Checking Local");
-						if (auth_item->attribute != PW_CHAP_PASSWORD) {
-							if (password_pair == NULL ||
-							strcmp(password_pair->strvalue,
-							auth_item->strvalue)!=0)
-							result = 0;
-							break;
-						}
-					case PW_AUTHTYPE_ACCEPT:
-						break;	
-					default:
-						continue;
-	         } /* switch(auth_type) */
+						break;
+					}
+				case PW_AUTHTYPE_ACCEPT:
+					break;	
+				default:
+					continue;
+				} /* switch(auth_type) */
 			} /* if(!default) */
+
 			if(result) { 
 #endif
-			DEBUG2("  users: Matched %s at %d", pl->name, pl->lineno);
-			found = 1;
-			check_tmp = paircopy(pl->check);
-			reply_tmp = paircopy(pl->reply);
-			pairmove(reply_pairs, &reply_tmp);
-			pairmove(check_pairs, &check_tmp);
-			pairfree(reply_tmp);
-			pairfree(check_tmp); /* should be NULL */
-			/*
-			 *	Fallthrough?
-			 */
-			if (!fallthrough(pl->reply))
-				break;
+				DEBUG2("  users: Matched %s at %d", pl->name, pl->lineno);
+				found = 1;
+				check_tmp = paircopy(pl->check);
+				reply_tmp = paircopy(pl->reply);
+				pairmove(reply_pairs, &reply_tmp);
+				pairmove(check_pairs, &check_tmp);
+				pairfree(reply_tmp);
+				pairfree(check_tmp); /* should be NULL */
+				/*
+				 *	Fallthrough?
+				 */
+				if (!fallthrough(pl->reply))
+					break;
 #ifdef WITH_USERCOLLIDE
-			} 
-#endif
+			}
 		}
+#endif
 	}
-
+	
 	/*
 	 *	See if we succeeded.  If we didn't find the user,
 	 *	then exit from the module.
@@ -673,6 +676,8 @@ static int file_authorize(void *instance, REQUEST *request,
 	 *	after module_authorize in the main code!
 	 */
 	if ((tmp = pairfind(*reply_pairs, PW_FRAMED_IP_ADDRESS)) != NULL) {
+		VALUE_PAIR *tmp2;
+
 		tmp2 = pairfind(*reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
 		if (tmp->addport || (tmp2 && tmp2->lvalue)) {
 			tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
