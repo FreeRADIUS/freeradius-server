@@ -122,7 +122,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 	}
 
 	if (inst->config->num_sql_socks > MAX_SQL_SOCKS) {
-		radlog(L_ERR | L_CONS, "sql_instantiate:  number of sqlsockets cannot exceed %d", MAX_SQL_SOCKS);
+		radlog(L_ERR | L_CONS, "sql_instantiate:  number of sqlsockets cannot exceed MAX_SQL_SOCKS, %d", MAX_SQL_SOCKS);
 		free(inst->config);
 		free(inst);
 		return -1;
@@ -131,6 +131,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 	handle = lt_dlopenext(inst->config->sql_driver);
 	if (handle == NULL) {
 		radlog(L_ERR, "rlm_sql: Could not link driver %s: %s", inst->config->sql_driver, lt_dlerror());
+		radlog(L_ERR, "rlm_sql: Make sure it (and all its dependent libraries!) are in the search path of your system's ld.");
 		return -1;
 	}
 
@@ -190,7 +191,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	/*
 	 *	They MUST have a user name to do SQL authorization.
 	 */
-	if ((!request->username) ||
+	if ((request->username == NULL) ||
 			(request->username->length == 0)) {
 		radlog(L_ERR, "zero length username not permitted\n");
 		return RLM_MODULE_INVALID;
@@ -207,7 +208,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	/*
 	 * Set, escape, and check the user attr here
 	 */
-	if(sql_set_user(inst, request, sqlusername, 0) < 0) {
+	if (sql_set_user(inst, request, sqlusername, 0) < 0) {
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
@@ -238,7 +239,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		 * We didn't find the user, so we try looking
 		 * for a DEFAULT entry
 		 */
-		if(sql_set_user(inst, request, sqlusername, "DEFAULT") < 0) {
+		if (sql_set_user(inst, request, sqlusername, "DEFAULT") < 0) {
 			sql_release_socket(inst, sqlsocket);
 			return RLM_MODULE_FAIL;
 		}
@@ -320,7 +321,7 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	 * 2. Translate vars in the query
 	 * 3. Remove SQL-User-Name local attr
 	 */
-	if(sql_set_user(inst, request, sqlusername, 0) < 0) {
+	if (sql_set_user(inst, request, sqlusername, 0) < 0) {
 		retval = RLM_MODULE_FAIL;
 		goto release_and_return;
 	}
@@ -412,10 +413,6 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	if (sqlsocket == NULL)
 		return(RLM_MODULE_NOOP);
 
-	/*
-	 *  After this point, ALL 'return's MUST release the SQL socket!
-	 */
-
 	memset(querystr, 0, MAX_QUERY_LEN);
 
 	/*
@@ -441,7 +438,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		acctsessiontime = pair->lvalue;
 
 	if ((acctsessiontime <= 0) && (acctstatustype == PW_STATUS_STOP)) {
-		radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session" " length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
+		radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
 		radlog(L_ERR, logstr);
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;

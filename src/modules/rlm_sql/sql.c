@@ -171,7 +171,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 
 	while (inst->used == inst->config->num_sql_socks) {
 		radlog(L_ERR, "rlm_sql: All sockets are being used! Please increase the maximum number of sockets!");
-	  return NULL;
+		return NULL;
 	}
 
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
@@ -377,11 +377,11 @@ static int sql_check_ts(SQL_ROW row) {
 
 	s = CHECKRAD2;
 	execl(CHECKRAD2, "checkrad", nas->nastype, row[4], row[5],
-				row[2], session_id, NULL);
+			row[2], session_id, NULL);
 	if (errno == ENOENT) {
 		s = CHECKRAD1;
 		execl(CHECKRAD1, "checklogin", nas->nastype, row[4], row[5],
-					row[2], session_id, NULL);
+				row[2], session_id, NULL);
 	}
 	radlog(L_ERR, "rlm_sql:  Check-TS: exec %s: %s", s, strerror(errno));
 
@@ -475,7 +475,7 @@ void query_log(SQL_INST * inst, char *querystr) {
 	if (inst->config->sqltrace) {
 		if ((sqlfile = fopen(inst->config->tracefile, "a")) == (FILE *) NULL) {
 			radlog(L_ERR, "rlm_sql: Couldn't open file %s",
-						 inst->config->tracefile);
+					inst->config->tracefile);
 		} else {
 #if defined(F_LOCK) && !defined(BSD)
 			(void) lockf((int) sqlfile, (int) F_LOCK, (off_t) MAX_QUERY_LEN);
@@ -491,7 +491,7 @@ void query_log(SQL_INST * inst, char *querystr) {
 
 int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, char *username) {
 	VALUE_PAIR *vp=NULL;
-	char    tmpuser[MAX_STRING_LEN];
+	char tmpuser[MAX_STRING_LEN];
 
 	tmpuser[0]=0;
 	sqlusername[0]=0;
@@ -499,19 +499,19 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, char *user
 	/* Remove any user attr we added previously */
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
-	if(username) {
+	if (username != NULL) {
 		strNcpy(tmpuser, username, MAX_STRING_LEN);
-	} else if(strlen(inst->config->query_user)) {
+	} else if (strlen(inst->config->query_user)) {
 		radius_xlat(tmpuser, MAX_STRING_LEN, inst->config->query_user, request, NULL);
 	} else {
 		return 0;
 	}
 
-	if(strlen(tmpuser)) {
+	if (strlen(tmpuser)) {
 		sql_escape_string(sqlusername, tmpuser, MAX_STRING_LEN);
 		DEBUG2("sql_set_user:  escaped user --> '%s'", sqlusername);
 		vp = pairmake("SQL-User-Name", sqlusername, 0);
-		if (!vp) {
+		if (vp == NULL) {
 			radlog(L_ERR, "%s", librad_errstr);
 			return -1;
 		}
@@ -530,45 +530,45 @@ int sql_escape_string(char *to, char *from, int length) {
 
 	DEBUG2("sql_escape in:  '%s'", from);
 
-	for(x=0, y=0; (x < length) && (from[x]!='\0'); x++) {
-    switch (from[x]) {
-    case 0:				
-      to[y++]= '\\';
-      to[y++]= '0';
-      break;
-    case '\n':				
-      to[y++]= '\\';
-      to[y++]= 'n';
-      break;
-    case '\r':
-      to[y++]= '\\';
-      to[y++]= 'r';
-      break;
-    case '\\':
-      to[y++]= '\\';
-      to[y++]= '\\';
-      break;
-    case '\'':
-      to[y++]= '\\';
-      to[y++]= '\'';
-      break;
-    case '"':				
-      to[y++]= '\\';
-      to[y++]= '"';
-      break;
-    case ';':				
-      to[y++]= '\\';
-      to[y++]= ';';
-      break;
-		/* Ascii file separator */
-    case '\032':			
-      to[y++]= '\\';
-      to[y++]= 'Z';
-      break;
-    default:
-      to[y++]= from[x];
-    }
-  }
+	for (x = 0, y = 0; (x < length) && (from[x] != '\0'); x++) {
+		switch (from[x]) {
+			case 0:				
+				to[y++]= '\\';
+				to[y++]= '0';
+				break;
+			case '\n':				
+				to[y++]= '\\';
+				to[y++]= 'n';
+				break;
+			case '\r':
+				to[y++]= '\\';
+				to[y++]= 'r';
+				break;
+			case '\\':
+				to[y++]= '\\';
+				to[y++]= '\\';
+				break;
+			case '\'':
+				to[y++]= '\\';
+				to[y++]= '\'';
+				break;
+			case '"':				
+				to[y++]= '\\';
+				to[y++]= '"';
+				break;
+			case ';':				
+				to[y++]= '\\';
+				to[y++]= ';';
+				break;
+				/* Ascii file separator */
+			case '\032':			
+				to[y++]= '\\';
+				to[y++]= 'Z';
+				break;
+			default:
+				to[y++]= from[x];
+		}
+	}
 	to[y]=0;
 
 	DEBUG2("sql_escape out:  '%s'", to);
