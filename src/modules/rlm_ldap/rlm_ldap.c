@@ -459,10 +459,6 @@ perform_search(void *instance, LDAP_CONN *conn, char *search_basedn, int scope, 
 			radlog(L_ERR, "rlm_ldap: (re)connection attempt failed");
 			return (RLM_MODULE_FAIL);
 		}
-		if (inst->cache_timeout >0){
-			ldap_enable_cache(conn->ld,inst->cache_timeout,inst->cache_size);
-			ldap_disable_cache(conn->ld);
-		}
 		conn->bound = 1;
 	}
 	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn ? search_basedn : "(null)" , filter);
