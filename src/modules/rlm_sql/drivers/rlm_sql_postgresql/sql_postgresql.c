@@ -97,6 +97,45 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
 
 /*************************************************************************
  *
+ *      Function: sql_check_error
+ *
+ *      Purpose: check the error to see if the server is down
+ *
+ *	Note: It is possible that something other than a connection error
+ *	could cause PGRES_FATAL_ERROR. If that happens a reconnect will
+ *	occur anyway. Not optimal, but I couldn't find a way to check it.
+ *		 		Peter Nixon <codemonkey@peternixon.net>
+ *
+
+************************************************************************/
+static int sql_check_error(int error) {
+        switch(error) {
+        case PGRES_FATAL_ERROR:
+        case -1:
+                radlog(L_DBG, "rlm_sql_postgresql: Postgresql check_error:
+s, returning SQL_DOWN", PQresStatus(error));
+                return SQL_DOWN;
+                break;
+
+        case PGRES_COMMAND_OK:
+        case PGRES_TUPLES_OK:
+        case 0:
+                return 0;
+                break;
+
+        case PGRES_NONFATAL_ERROR:
+        case PGRES_BAD_RESPONSE:
+        default:
+                radlog(L_DBG, "rlm_sql_postgresql: Postgresql check_error:
+s received", PQresStatus(error));
+                return -1;
+                break;
+        }
+}
+
+
+/*************************************************************************
+ *
  *	Function: sql_create_socket
  *
  *	Purpose: Establish connection to the db
@@ -136,7 +175,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		radlog(L_ERR, "rlm_sql_postgresql: Couldn't connect socket to PostgreSQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
 		radlog(L_ERR, "rlm_sql_postgresql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));
 		PQfinish(pg_sock->conn);
-		return -1;
+		return SQL_DOWN;
 	}
 
 	return 0;
@@ -158,7 +197,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	if (pg_sock->conn == NULL) {
 		radlog(L_ERR, "rlm_sql_postgresql: Socket not connected");
-		return -1;
+		return SQL_DOWN;
 	}
 
 	pg_sock->result = PQexec(pg_sock->conn, querystr);
@@ -176,7 +215,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 				PQcmdTuples(pg_sock->result));
 
 		if (!status_is_ok(status))
-			return -1;
+			return sql_check_error(status);
 
 		if (strncasecmp("select", querystr, 6) != 0) {
 			/* store the number of affected rows because the sql module
