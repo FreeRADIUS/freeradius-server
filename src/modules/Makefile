@@ -31,8 +31,8 @@ clean:
 	@rm -f *~ lib/[0-9a-z]* lib/STATIC_MODULE_LDFLAGS
 
 install:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	install -d -m 755 $(libdir)
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	[ "lib/*.so" != "" ] && install -m 755 lib/*.so $(libdir)
 
 common:
