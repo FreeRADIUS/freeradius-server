@@ -131,6 +131,8 @@ void		(*sun_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST *request);
 RADIUS_PACKET *	build_reply(int code, REQUEST *request,
 			VALUE_PAIR *vps, char *user_msg);
+VALUE_PAIR	*rad_get_username(REQUEST *request);
+int		rad_put_username(REQUEST *request, char *username, int length);
 
 /* files.c */
 CLIENT		*client_find(UINT4 ipno);

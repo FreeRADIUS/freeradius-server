@@ -1,11 +1,10 @@
 /*
  * util.c	Various utility functions.
  *
- * Version:     @(#)util.c  2.20  17-Jul-1999  miquels@cistron.nl
+ * Version:     $Id$
  */
 
-char util_sccsid[] =
-"@(#)util.c	2.20 Copyright 1997-1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -38,11 +37,10 @@ struct passwd *rad_getpwnam(char *name)
 
 	now = time(NULL);
 
-	if ((now <= lasttime + 5 ) && strncmp(name, lastname, 64) == 0)
+	if ((now <= lasttime + 5 ) && strncmp(name, lastname, sizeof(lastname)) == 0)
 		return lastpwd;
 
-	strncpy(lastname, name, 63);
-	lastname[63] = 0;
+	strNcpy(lastname, name, sizeof(lastname));
 	lastpwd = getpwnam(name);
 	lasttime = now;
 
@@ -133,3 +131,55 @@ RADIUS_PACKET *build_reply(int code, REQUEST *request,
 	return rp;
 }
 
+/*
+ *	Get one of User-Name or Stripped-User-Name attributes
+ *	from the request packet, preferably Stripped-User-Name.
+ */
+VALUE_PAIR *rad_get_username(REQUEST *request)
+{
+  VALUE_PAIR *namepair;
+  VALUE_PAIR *pair;
+
+  namepair = NULL;
+
+  for (pair = request->packet->vps; pair; pair = pair->next) {
+  	if (pair->attribute == PW_USER_NAME) {
+		namepair = pair;
+
+	} else if (pair->attribute == PW_STRIPPED_USER_NAME) {
+		return pair;
+	}
+  }
+
+  return namepair;
+}
+
+/*
+ *	Put a user name into the request packet.  This user name
+ *	will go into a Stripped-User-Name attribute, if it exists.
+ *	If not, one will be created.
+ */
+int rad_put_username(REQUEST *request, char *username, int length)
+{
+  VALUE_PAIR **tail;
+  VALUE_PAIR *pair;
+
+  if (length >= sizeof(pair->strvalue)) return -1;
+
+  tail = &request->packet->vps;
+  for (pair = request->packet->vps; pair; pair = pair->next) {
+    if (pair->attribute == PW_STRIPPED_USER_NAME) {
+      break;
+    }
+    tail = &pair->next;
+  }
+
+  if (pair) {
+    strncpy(pair->strvalue, username, length);
+  } else {
+    *tail = pairmake("Stripped-User-Name", username, 0);
+    if (*tail == NULL) return -1;
+  }
+
+  return 0;
+}
