@@ -149,7 +149,7 @@ uint32_t ip_getaddr(const char *host)
 /*
  *	Return an IP address in standard dot notation
  */
-char *ip_ntoa(char *buffer, uint32_t ipaddr)
+const char *ip_ntoa(char *buffer, uint32_t ipaddr)
 {
 	ipaddr = ntohl(ipaddr);
 
@@ -349,7 +349,7 @@ uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
 /*
  *	Return an IPv6 address in standard colon notation
  */
-char *ipv6_ntoa(char *buffer, size_t size, void *ip6addr)
+const char *ipv6_ntoa(char *buffer, size_t size, void *ip6addr)
 {
 #if defined(HAVE_INET_NTOP) && defined(AF_INET6)
 	return inet_ntop(AF_INET6, (struct in6_addr *) ip6addr, buffer, size);
