@@ -632,10 +632,11 @@ void loop(struct relay_misc *r_args)
 		/*
 		 *	See if there's anything to send.
 		 */
+		n=0;
 		for (i = 0; i < NR_SLOTS; i++) {
 			if (slots[i].state == STATE_FULL) {
 				n += do_send(&slots[i], r_args->secret);
-				if (n > 1) ms_sleep(25);
+				if (n > 1) ms_sleep(140);
 				if (n > NR_SLOTS / 2)
 					break;
 			}
