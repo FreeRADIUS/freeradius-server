@@ -10,6 +10,7 @@ Source0: %{name}-%{version}.tar.gz
 Prereq: /sbin/chkconfig
 BuildPreReq: libtool
 # FIXME: snmpwalk, snmpget and rusers POSSIBLY needed by checkrad
+Provides: radiusd
 Conflicts: cistron-radius
 BuildRoot: %{_tmppath}/%{name}-root
 
