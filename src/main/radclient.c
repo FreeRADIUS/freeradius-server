@@ -107,20 +107,20 @@ static VALUE_PAIR *readvp(FILE *fp)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [-c count] [-d raddb] [-f file] [-r retries] [-t timeout]\n"
-			"[-i id] [-qvxS] server[:port] auth|acct|status [<secret>]\n");
+	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
 	
-	fprintf(stderr, " -c count    Send each packet 'count' times.\n");
-	fprintf(stderr, " -d raddb    Set dictionary directory.\n");
-	fprintf(stderr, " -f file     Read packets from file, not stdin.\n");
-	fprintf(stderr, " -r retries  If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stderr, " -t timeout  Wait 'timeout' seconds before retrying.\n");
-	fprintf(stderr, " -i id       Set request id to 'id'.  Values may be 0..255\n");
-	fprintf(stderr, " -S file     read secret from file, not command line.\n");
-	fprintf(stderr, " -q          Do not print anything out.\n");
-	fprintf(stderr, " -s          Print out summary information of auth results.\n");
-	fprintf(stderr, " -v          Show program version information.\n");
-	fprintf(stderr, " -x          Debugging mode.\n");
+	fprintf(stderr, "  <command>    One of auth, acct, status, or disconnect.\n");
+	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
+	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
+	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
+	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
+	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying.\n");
+	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
+	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
+	fprintf(stderr, "  -q          Do not print anything out.\n");
+	fprintf(stderr, "  -s          Print out summary information of auth results.\n");
+	fprintf(stderr, "  -v          Show program version information.\n");
+	fprintf(stderr, "  -x          Debugging mode.\n");
 
 	exit(1);
 }
@@ -171,8 +171,10 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 				char src[64], dst[64];
 
 				ip_ntoa(src, (*rep)->src_ipaddr);
-				ip_ntoa(dst, req->src_ipaddr);
-				fprintf(stderr, "radclient: ERROR: Sent request to host %s, got response from host %s\n!", dst, src);
+				ip_ntoa(dst, req->dst_ipaddr);
+				fprintf(stderr, "radclient: ERROR: Sent request to host %s:%d, got response from host %s:%d\n!",
+					dst, req->dst_port,
+					src, (*rep)->src_port);
 				exit(1);
 			}
 			break;
@@ -338,15 +340,22 @@ int main(int argc, char **argv)
 		if (port == 0) port = getport("radius");
 		if (port == 0) port = PW_AUTH_UDP_PORT;
 		req->code = PW_AUTHENTICATION_REQUEST;
+
 	} else if (strcmp(argv[2], "acct") == 0) {
 		if (port == 0) port = getport("radacct");
 		if (port == 0) port = PW_ACCT_UDP_PORT;
 		req->code = PW_ACCOUNTING_REQUEST;
 		do_summary = 0;
+
 	} else if (strcmp(argv[2], "status") == 0) {
 		if (port == 0) port = getport("radius");
 		if (port == 0) port = PW_AUTH_UDP_PORT;
 		req->code = PW_STATUS_SERVER;
+
+	} else if (strcmp(argv[2], "disconnect") == 0) {
+		if (port == 0) port = PW_POD_UDP_PORT;
+		req->code = PW_DISCONNECT_REQUEST;
+
 	} else if (isdigit((int) argv[2][0])) {
 		if (port == 0) port = getport("radius");
 		if (port == 0) port = PW_AUTH_UDP_PORT;
