@@ -6,10 +6,13 @@ rlm_chap
 rlm_counter
 rlm_dbm
 rlm_detail
+rlm_digest
 rlm_eap
+rlm_exec
 rlm_expr
 rlm_fastusers
 rlm_files
+rlm_ippool
 rlm_krb5
 rlm_ldap
 rlm_mschap
