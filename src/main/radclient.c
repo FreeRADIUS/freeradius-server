@@ -56,12 +56,13 @@ static const char rcsid[] = "$Id$";
 
 static int retries = 10;
 static float timeout = 3;
-static const char *secret = "secret";
+static const char *secret = NULL;
 static int do_output = 1;
 static int do_summary = 0;
 static int filedone = 0;
 static int totalapp = 0;
 static int totaldeny = 0;
+static char filesecret[256];
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
@@ -105,7 +106,7 @@ static VALUE_PAIR *readvp(FILE *fp)
 static void usage(void)
 {
 	fprintf(stderr, "Usage: radclient [-c count] [-d raddb] [-f file] [-r retries] [-t timeout]\n"
-			"[-i id] [-qvx] server acct|auth <secret>\n");
+			"[-i id] [-qvxS] server acct|auth [<secret>]\n");
 	
 	fprintf(stderr, " -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, " -d raddb    Set dictionary directory.\n");
@@ -113,6 +114,7 @@ static void usage(void)
 	fprintf(stderr, " -r retries  If timeout, retry sending the packet 'retires' times.\n");
 	fprintf(stderr, " -t timeout  Wait 'timeout' seconds before retrying.\n");
 	fprintf(stderr, " -i id       Set request id to 'id'.  Values may be 0..255\n");
+	fprintf(stderr, " -S file     read secret from file, not command line.\n");
 	fprintf(stderr, " -q          Do not print anything out.\n");
 	fprintf(stderr, " -s          Print out summary information of auth results.\n");
 	fprintf(stderr, " -v          Show program version information.\n");
@@ -208,7 +210,7 @@ int main(int argc, char **argv)
 
 	id = ((int)getpid() & 0xff);
 
-	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:xv")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xv")) != EOF) switch(c) {
 		case 'c':
 			if (!isdigit(*optarg)) 
 				usage();
@@ -251,6 +253,34 @@ int main(int argc, char **argv)
 			printf("radclient: $Id$ built on " __DATE__ " at " __TIME__ "\n");
 			exit(0);
 			break;
+               case 'S':
+		       fp = fopen(optarg, "r");
+                       if (!fp) {
+                               fprintf(stderr, "radclient: Error opening %s: %s\n",
+                                       optarg, strerror(errno));
+                               exit(1);
+                       }
+                       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
+                               fprintf(stderr, "radclient: Error reading %s: %s\n",
+                                       optarg, strerror(errno));
+                               exit(1);
+                       }
+		       fclose(fp);
+
+                       /* truncate newline */
+		       p = filesecret + strlen(filesecret) - 1;
+		       while ((p >= filesecret) &&
+			      (*p < ' ')) {
+			       *p = '\0';
+			       --p;
+		       }
+
+                       if (strlen(filesecret) < 2) {
+                               fprintf(stderr, "radclient: Secret in %s is too short\n", optarg);
+                               exit(1);
+                       }
+                       secret = filesecret;
+		       break;
 		case 'h':
 		default:
 			usage();
@@ -259,7 +289,8 @@ int main(int argc, char **argv)
 	argc -= (optind - 1);
 	argv += (optind - 1);
 
-	if (argc < 4) {
+	if ((argc < 3)  ||
+	    ((secret == NULL) && (argc < 4))) {
 		usage();
 	}
 
