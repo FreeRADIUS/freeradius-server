@@ -77,19 +77,17 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
-	if (radlog_dest == RADLOG_NULL) {
+	if (mainconfig.radlog_dest == RADLOG_NULL) {
 		return 0;
 	}
 
-	if (debug_flag
-	    || (radlog_dest == RADLOG_STDOUT)
-	    || (radlog_dir == NULL)) {
+	if (mainconfig.radlog_dest == RADLOG_STDOUT) {
 	        msgfd = stdout;
 
-	} else if (radlog_dest == RADLOG_STDERR) {
+	} else if (mainconfig.radlog_dest == RADLOG_STDERR) {
 	        msgfd = stderr;
 
-	} else if (radlog_dest != RADLOG_SYSLOG) {
+	} else if (mainconfig.radlog_dest != RADLOG_SYSLOG) {
 		/*
 		 *	No log file set.  It must go to stdout.
 		 */
@@ -111,7 +109,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	}
 
 #ifdef HAVE_SYSLOG_H
-	if (radlog_dest == RADLOG_SYSLOG) {
+	if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
 		*buffer = '\0';
 		len = 0;
 	} else
@@ -165,7 +163,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	}
 
 #ifdef HAVE_SYSLOG_H
-	if (radlog_dest != RADLOG_SYSLOG)
+	if (mainconfig.radlog_dest != RADLOG_SYSLOG)
 #endif
 	{
 		fputs(p, msgfd);
