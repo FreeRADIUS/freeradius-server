@@ -132,6 +132,8 @@
  *	  retrieved attributes.
  * Aug 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- In case of a bad search filter, print out the corresponding filter
+ * Sep 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Compile even if we don't have pthread's
  */
 static const char rcsid[] = "$Id$";
 
@@ -162,6 +164,18 @@ static const char rcsid[] = "$Id$";
 #include	"conffile.h"
 #include	"modules.h"
 #include	"rad_assert.h"
+
+#ifndef HAVE_PTHREAD_H
+/*
+ *      This is a lot simpler than putting ifdef's around
+ *      every use of the pthread functions.
+ */
+#define pthread_mutex_lock(a)
+#define pthread_mutex_unlock(a)
+#define pthread_mutex_init(a,b)
+#define pthread_mutex_destroy(a)
+#endif
+
 
 #define MAX_FILTER_STR_LEN	1024
 #define TIMELIMIT 5
