@@ -378,19 +378,6 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 	}
 
 	/*
-	 *	If the request (duplicate or now) is currently
-	 *	being processed, then discard the new request.
-	 */
-	if (curreq->child_pid != NO_SUCH_CHILD_PID) {
-		radlog(L_ERR, "Discarding new request from "
-		       "client %s:%d - ID: %d due to live request %d",
-		       client_name(packet->src_ipaddr),
-		       packet->src_port, packet->id,
-		       curreq->number);
-		return NULL;
-	}
-
-	/*
 	 *	The current request isn't finished, which
 	 *	means that the NAS sent us a new packet, while
 	 *	we were waiting for a proxy response.
@@ -603,17 +590,16 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 	}
 
 	/*
-	 *	If the request (duplicate or now) is currently
-	 *	being processed, then discard the new request.
+	 *	We already have a proxy reply.  Don't process it twice.
 	 */
-	if (oldreq->child_pid != NO_SUCH_CHILD_PID) {
-		radlog(L_ERR, "Discarding duplicate reply from home server %s:%d - ID: %d due to live request %d",
+	if (oldreq->proxy_reply) {
+		radlog(L_ERR, "Discarding duplicate reply from home server %s:%d  - ID: %d for request %d",
 		       ip_ntoa(buffer, packet->src_ipaddr),
 		       packet->src_port, packet->id,
 		       oldreq->number);
 		return NULL;
 	}
-	
+
 	/*
 	 *	The proxy reply has arrived too late, as the original
 	 *	(old) request has timed out, been rejected, and marked
@@ -772,18 +758,6 @@ static REQUEST *request_ok(RADIUS_PACKET *packet, uint8_t *secret)
 		request->reply->data = NULL;
 		request->reply->data_len = 0;
 	}
-
-	/*
-	 *	This next assertion catches a race condition in the
-	 *	server.  If it core dumps here, then it means that
-	 *	the code WOULD HAVE core dumped elsewhere, but in
-	 *	some random, unpredictable location.
-	 *
-	 *	Having the assert here means that we can catch the
-	 *	problem in a well-known manner, until such time as
-	 *	we fix it.
-	 */
-	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 
 	return request;
 }

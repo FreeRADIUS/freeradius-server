@@ -172,7 +172,7 @@ static const CONF_PARSER thread_config[] = {
  *	FIXME: implement some kind of "maximum #" for the waiting
  *	requests...
  */
-static void request_queue(REQUEST *request, RAD_REQUEST_FUNP fun)
+static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	int num_entries;
 
@@ -204,6 +204,14 @@ static void request_queue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	it, zero out the second half of the queue,
 		 *	free the old one, and replace thread_pool.queue
 		 *	with the new one.
+		 *
+		 *	Until, of course, we hit the number of
+		 *	requests determined by the product of
+		 *	"cleanup_delay", and the average # of
+		 *	requests/second we process.  At that point,
+		 *	requests are coming in faster than we can
+		 *	process them, so we should probably panic
+		 *	about it...
 		 */
 		radlog(L_ERR, "QUEUE FULL!");
 		exit(1);
@@ -274,24 +282,6 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 */
 
 	/*
-	 *	FIXME: Check request->child_pid and
-	 *	request->proxy_reply If both exist, then we received a
-	 *	reply from the home server BEFORE the proxying thread
-	 *	finished with the request.  i.e. a race condition.
-	 *
-	 *	In that case, unlock the mutex (so new requests can be
-	 *	added), (WITHOUT re-queueing the request), sleep for
-	 *	1/100 of a second, and look at it again.
-	 *
-	 *	This allows other threads to proceed, while one
-	 *	busy-waits.
-	 *
-	 *	It means that in certain rare cases, the server will
-	 *	busy-wait, but it's better than halting the whole
-	 *	server...
-	 */
-
-	/*
 	 *	The thread is currently processing a request.
 	 */
 	thread_pool.active_threads++;
@@ -302,6 +292,80 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	rad_assert(thread_pool.active_threads <= thread_pool.total_threads);
 
 	pthread_mutex_unlock(&thread_pool.mutex);
+
+	/*
+	 *	If the request is currently being processed, then that
+	 *	MAY be OK, if it's a proxy reply.  In that case, the
+	 *	rad_send() of the packet may result in a reply being
+	 *	received before that thread clears the child_pid.
+	 *
+	 *	In that case, we busy-wait for the request to be free.
+	 *
+	 *	We COULD push it onto the queue and try to grab
+	 *	another request, but what if this is the only request?
+	 *	What if there are multiple such packets with race
+	 *	conditions?  We don't want to thrash the queue...
+	 *
+	 *	This busy-wait is less than optimal, but it's simple,
+	 *	fail-safe, and it works.
+	 */
+	if ((*request)->child_pid != NO_SUCH_CHILD_PID) {
+		int count, ok;
+		struct timeval tv;
+#ifdef HAVE_PTHREAD_SIGMASK
+		sigset_t set, old_set;
+		
+		/*
+		 *	Block a large number of signals which could
+		 *	cause the select to return EINTR
+		 */
+		sigemptyset(&set);
+		sigaddset(&set, SIGPIPE);
+		sigaddset(&set, SIGCONT);
+		sigaddset(&set, SIGSTOP);
+		sigaddset(&set, SIGCHLD);
+		pthread_sigmask(SIG_BLOCK, &set, &old_set);
+#endif
+
+		rad_assert((*request)->proxy_reply != NULL);
+
+		ok = FALSE;
+
+		/*
+		 *	Sleep for 100 milliseconds.  If the other thread
+		 *	doesn't get serviced in this time, to clear
+		 *	the "child_pid" entry, then the server is too
+		 *	busy, so we die.
+		 */
+		for (count = 0; count < 10; count++) {
+			tv.tv_sec = 0;
+			tv.tv_usec = 10000; /* sleep for 10 milliseconds */
+			
+			/*
+			 *	Portable sleep that's thread-safe.
+			 *
+			 *	Don't worry about interrupts, as they're
+			 *	blocked above.
+			 */
+			select(0, NULL, NULL, NULL, &tv);
+			if ((*request)->child_pid == NO_SUCH_CHILD_PID) {
+				ok = TRUE;
+				break;
+			}
+		}			
+
+#ifdef HAVE_PTHREAD_SIGMASK
+		/*
+		 *	Restore the original thread signal mask.
+		 */
+		pthread_sigmask(SIG_SETMASK, &old_set, NULL);
+#endif
+
+		if (!ok) {
+			radlog(L_ERR, "FATAL!  Server is too busy to process requests");
+			exit(1);
+		}
+	}
 
 	return;
 }
@@ -695,7 +759,7 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	/*
 	 *	Add the new request to the queue.
 	 */
-	request_queue(request, fun);
+	request_enqueue(request, fun);
 
 	return 1;
 }
