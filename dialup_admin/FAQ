@@ -35,6 +35,11 @@ ${freeradius_install_dir}/etc/raddb/ldap.attrmap and check if the attribute is i
 the attribute mapping. If it is not then add it there also.
 Everything should work ok after that.
 
+>
+> When an attribute contains double (") or single (') quotes something goes wrong.
+>
+
+Make sure that magic quotes in PHP are turned off
 
 --
 kkalev
