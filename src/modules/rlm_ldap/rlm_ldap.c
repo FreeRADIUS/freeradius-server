@@ -642,7 +642,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
                 return 1;
         }
 
-        if ((pairfind(req->packet->vps, LDAP_USERDN)) == NULL){
+        if ((pairfind(req->packet->vps, PW_LDAP_USERDN)) == NULL){
                 char            *user_dn = NULL;
 
                 if (!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->filter, req, NULL)) {
@@ -1175,7 +1175,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"", 
 	       request->username->strvalue, request->password->strvalue);
 
-	while((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL) {
+	while((vp_user_dn = pairfind(request->packet->vps, PW_LDAP_USERDN)) == NULL) {
 		if (!radius_xlat(filter, sizeof(filter), inst->filter,
 				request, NULL)) {
 			radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
