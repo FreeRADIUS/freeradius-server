@@ -551,7 +551,7 @@ int read_config_files()
 		    librad_errstr);
 		return -1;
 	}
-	sprintf(buffer, "%s.200/%.50s", radius_dir, RADIUS_MODULES);
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_MODULES);
 	if (read_modules_file(buffer) < 0) {
 	        log(L_ERR|L_CONS, "Errors reading modules");
 		return -1;
