@@ -743,6 +743,8 @@ int rad_authenticate(REQUEST *request)
 	if (exec_program && exec_wait) {
 		if (radius_exec_program(exec_program, request,
 				exec_wait, &user_msg) != 0) {
+			free(exec_program);
+
 			/*
 			 *	Error. radius_exec_program() returns -1 on
 			 *	fork/exec errors, or >0 if the exec'ed program
