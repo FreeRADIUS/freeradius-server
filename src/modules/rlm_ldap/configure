@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision
+# From configure.in Revision: 1.1 
 
 
 if test x$with_rlm_ldap != xno; then
@@ -576,9 +576,10 @@ if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   ac_save_LIBS="$LIBS"
-LIBS="-lldap_r  $LIBS"
+LIBS="-lldap_r  "-lpthread" 
+	 $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 582 "configure"
+#line 583 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -589,7 +590,7 @@ int main() {
 ldap_initialize()
 ; return 0; }
 EOF
-if { (eval echo configure:593: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:594: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -608,13 +609,11 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
 else
   echo "$ac_t""no" 1>&6
  fail=$fail" libldap_r" 
-		 "-lpthread" 
-	
 fi
 
 
 	echo $ac_n "checking for ber_init in -llber""... $ac_c" 1>&6
-echo "configure:618: checking for ber_init in -llber" >&5
+echo "configure:617: checking for ber_init in -llber" >&5
 ac_lib_var=`echo lber'_'ber_init | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -622,7 +621,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-llber  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 626 "configure"
+#line 625 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -633,7 +632,7 @@ int main() {
 ber_init()
 ; return 0; }
 EOF
-if { (eval echo configure:637: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:636: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -657,7 +656,7 @@ fi
 
 
 	echo $ac_n "checking for sasl_encode in -lsasl""... $ac_c" 1>&6
-echo "configure:661: checking for sasl_encode in -lsasl" >&5
+echo "configure:660: checking for sasl_encode in -lsasl" >&5
 ac_lib_var=`echo sasl'_'sasl_encode | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -665,7 +664,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lsasl  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 669 "configure"
+#line 668 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -676,7 +675,7 @@ int main() {
 sasl_encode()
 ; return 0; }
 EOF
-if { (eval echo configure:680: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:679: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -699,7 +698,7 @@ fi
 
 
 	echo $ac_n "checking for SSL_new in -lssl""... $ac_c" 1>&6
-echo "configure:703: checking for SSL_new in -lssl" >&5
+echo "configure:702: checking for SSL_new in -lssl" >&5
 ac_lib_var=`echo ssl'_'SSL_new | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -707,7 +706,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lssl  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 711 "configure"
+#line 710 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -718,7 +717,7 @@ int main() {
 SSL_new()
 ; return 0; }
 EOF
-if { (eval echo configure:722: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:721: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -741,41 +740,27 @@ else
 fi
 
 
-	echo $ac_n "checking for DH_new
-		 libldap_libs="${libldap_libs} -lcrypto" 
-	 in -lcrypto""... $ac_c" 1>&6
-echo "configure:748: checking for DH_new
-		 libldap_libs="${libldap_libs} -lcrypto" 
-	 in -lcrypto" >&5
-		 libldap_libs="${libldap_libs} -lcrypto" 
-	, not
-		 libldap_libs="${libldap_libs} -lcrypto" 
-	s
-ac_lib_var=`echo crypto'_'DH_new
-		 libldap_libs="${libldap_libs} -lcrypto" 
-	 | sed 'y%./+-%__p_%'`
+	echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
+echo "configure:745: checking for DH_new in -lcrypto" >&5
+ac_lib_var=`echo crypto'_'DH_new | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   ac_save_LIBS="$LIBS"
 LIBS="-lcrypto  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 764 "configure"
+#line 753 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
     builtin and then its argument prototype would still apply.  */
-char DH_new
-		 libldap_libs="${libldap_libs} -lcrypto" 
-	();
+char DH_new();
 
 int main() {
-DH_new
-		 libldap_libs="${libldap_libs} -lcrypto" 
-	()
+DH_new()
 ; return 0; }
 EOF
-if { (eval echo configure:779: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:764: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -790,14 +775,8 @@ LIBS="$ac_save_LIBS"
 fi
 if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
   echo "$ac_t""yes" 1>&6
-    ac_tr_lib=HAVE_LIB`echo crypto | sed -e 's/[^a-zA-Z0-9_]/_/g' \
-    -e 'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/'`
-  cat >> confdefs.h <<EOF
-#define $ac_tr_lib 1
-EOF
-
-  LIBS="-lcrypto $LIBS"
-
+   libldap_libs="${libldap_libs} -lcrypto" 
+	
 else
   echo "$ac_t""no" 1>&6
 fi

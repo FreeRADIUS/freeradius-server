@@ -11,7 +11,7 @@ if test x$with_[]modname != xno; then
 
 	AC_CHECK_LIB(ldap_r, ldap_initialize,
 		[ libldap_libs="${libldap_libs} -lldap_r" ],
-		[ fail=$fail" libldap_r" ]
+		[ fail=$fail" libldap_r" ],
 		[ "-lpthread" ]
 	)
 
@@ -29,7 +29,7 @@ if test x$with_[]modname != xno; then
 		[ fail=$fail" libssl" ]
 	)
 
-	AC_CHECK_LIB(crypto, DH_new
+	AC_CHECK_LIB(crypto, DH_new,
 		[ libldap_libs="${libldap_libs} -lcrypto" ]
 	)
 
