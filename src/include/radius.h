@@ -95,6 +95,7 @@
 #define PW_CURRENT_TIME			1044
 #define PW_REALM			1045
 #define PW_NO_SUCH_ATTRIBUTE		1046
+#define PW_PACKET_TYPE			1047
 
 /*
  *	Integer Translations

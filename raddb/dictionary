@@ -114,6 +114,7 @@ ATTRIBUTE	Stripped-User-Name	1043	string
 ATTRIBUTE	Current-Time		1044	string
 ATTRIBUTE	Realm			1045	string
 ATTRIBUTE	No-Such-Attribute	1046	string
+ATTRIBUTE	Packet-Type		1047	integer
 
 #
 #	Non-Protocol Attributes
@@ -242,6 +243,20 @@ VALUE		Fall-Through		No			0
 VALUE		Fall-Through		Yes			1
 VALUE		Add-Port-To-IP-Address	No			0
 VALUE		Add-Port-To-IP-Address	Yes			1
+
+VALUE		Packet-Type	Access-Request			1
+VALUE		Packet-Type	Access-Accept			2
+VALUE		Packet-Type	Access-Reject			3
+VALUE		Packet-Type	Accounting-Request		4
+VALUE		Packet-Type	Accounting-Response		5
+VALUE		Packet-Type	Accounting-Status		6
+VALUE		Packet-Type	Password-Request		7
+VALUE		Packet-Type	Password-Accept			8
+VALUE		Packet-Type	Password-Reject			9
+VALUE		Packet-Type	Accounting-Message		10
+VALUE		Packet-Type	Access-Challenge		11
+VALUE		Packet-Type	Status-Server			12
+VALUE		Packet-Type	Status-Client			13
 
 #
 #	Configuration Values
