@@ -46,7 +46,7 @@ pidfile = ${run_dir}/radiusd.pid
 #
 #  On systems with shadow passwords, you might have to set 'group = shadow'
 #  for the server to be able to read the shadow password file.  If you can
-#  authenticate users whil in debug mode, but not in normal use, it may be
+#  authenticate users while in debug mode, but not in normal use, it may be
 #  because the debugged server is running as a user that can read the shadow
 #  info, and the below user can not.
 user = nobody
