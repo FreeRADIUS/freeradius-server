@@ -112,6 +112,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	uint32_t	nas;
 	NAS		*cl;
 	int		ret = RLM_MODULE_OK;
+	struct stat	st;
 
 	struct detail_instance *inst = instance;
 
@@ -186,9 +187,13 @@ static int detail_accounting(void *instance, REQUEST *request)
 		 *
 		 *	OR the new directory name is different than the old,
 		 *	so we've got to create a new one.
+		 *
+		 *	OR the cached directory has somehow gotten removed,
+		 *	so we've got to create a new one.
 		 */
 		if ((inst->last_made_directory == NULL) ||
-		    (strcmp(inst->last_made_directory, buffer) != 0)) {
+		    (strcmp(inst->last_made_directory, buffer) != 0) ||
+		    (stat(buffer, &st) == -1)) {
 			
 			/*
 			 *	Free any previously cached name.
