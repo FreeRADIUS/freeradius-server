@@ -94,7 +94,6 @@ typedef struct dict_value {
 typedef struct dict_vendor {
 	char			vendorname[40];
 	int			vendorpec;
-	int			vendorcode;
 	struct dict_vendor	*next;
 } DICT_VENDOR;
 
@@ -156,9 +155,14 @@ DICT_ATTR	*dict_attrbyvalue(int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(int attr, int val);
 DICT_VALUE	*dict_valbyname(int attr, const char *val);
-int		dict_vendorcode(int);
-int		dict_vendorpec(int);
 int		dict_vendorname(const char *name);
+
+/*
+ *  Compatibility
+ */
+#define dict_vendorcode
+#define dict_vendorpec
+
 
 #if 1 /* FIXME: compat */
 #define dict_attrget	dict_attrbyvalue

@@ -24,7 +24,6 @@ static DICT_ATTR	*dictionary_attributes = NULL;
 static DICT_VALUE	*dictionary_values = NULL;
 static DICT_VENDOR	*dictionary_vendors = NULL;
 
-static int		vendorno = 1;
 static const char *dtypes[] = {
 	"string",
 	"integer",
@@ -78,7 +77,6 @@ static void dict_free(void)
 	dictionary_attributes = NULL;
 	dictionary_values = NULL;
 	dictionary_vendors = NULL;
-	vendorno = 1;
 
 	memset(base_attributes, 0, sizeof(base_attributes));
 }
@@ -89,6 +87,11 @@ static void dict_free(void)
 int dict_addvendor(const char *name, int value)
 {
 	DICT_VENDOR *vval;
+
+	if (value >= (1 << 16)) {
+	       	librad_log("dict_addvendor: Cannot handle vendor ID larger than 65535");
+		return -1;
+	}
 
 	if (strlen(name) > (sizeof(vval->vendorname) -1)) {
 		librad_log("dict_addvendor: vendor name too long");
@@ -101,7 +104,6 @@ int dict_addvendor(const char *name, int value)
 	}
 	strcpy(vval->vendorname, name);
 	vval->vendorpec  = value;
-	vval->vendorcode = vendorno++;
 
 	/* Insert at front. */
 	vval->next = dictionary_vendors;
@@ -642,35 +644,7 @@ DICT_VALUE * dict_valbyname(int attr, const char *name)
 }
 
 /*
- *	Get the PEC (Private Enterprise Code) of the vendor
- *	based on its internal number.
- */
-int dict_vendorpec(int code)
-{
-	DICT_VENDOR	*v;
-
-	for (v = dictionary_vendors; v; v = v->next)
-		if (v->vendorcode == code)
-			break;
-
-	return v ? v->vendorpec : 0;
-}
-
-/*
- *	Get the internal code of the vendor based on its PEC.
- */
-int dict_vendorcode(int pec)
-{
-	DICT_VENDOR	*v;
-
-	for (v = dictionary_vendors; v; v = v->next)
-		if (v->vendorpec == pec)
-			break;
-	return v ? v->vendorcode : 0;
-}
-
-/*
- *	Get the vendor code based on the vendor name
+ *	Get the vendor PEC based on the vendor name
  */
 int dict_vendorname(const char *name)
 {
@@ -681,7 +655,7 @@ int dict_vendorname(const char *name)
 	 */
 	for (v = dictionary_vendors; v; v = v->next) {
 		if (DICT_STRCMP(name, v->vendorname) == 0) {
-			return v->vendorcode;
+			return v->vendorpec;
 		}
 	}
 
