@@ -327,6 +327,44 @@ int rl_init(void)
 
 
 /*
+ *	Delete everything in the request list.
+ *
+ *	This should be called only when debugging the server...
+ */
+void rl_deinit(void)
+{
+	int i;
+
+	rbtree_free(proxy_tree);
+	proxy_tree = NULL;
+
+	rbtree_free(proxy_id_tree);
+	proxy_id_tree = NULL;
+
+	/*
+	 *	Loop over the request list, deleting the requests.
+	 */
+	for (i = 0; i < 256; i++) {
+		REQNODE *this, *next;
+
+		for (this = request_list[i].first_request;
+		     this != NULL;
+		     this = next) {
+			next = this->next;
+
+			request_free(&this->req);
+			free(this);
+		}
+	}
+	
+	/*
+	 *	Just to ensure no one is using the memory.
+	 */
+	memset(request_list, 0, sizeof(request_list));
+}
+
+
+/*
  *	Delete a request from the proxy trees.
  */
 static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
