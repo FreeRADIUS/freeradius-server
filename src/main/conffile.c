@@ -511,15 +511,35 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			}
 
 			/*
-			*	Add the included conf to our CONF_SECTION
-			*/
+			 *	Add the included conf to our CONF_SECTION
+			 */
 			if (is != NULL) {
 				if (is->children != NULL) {
-					cf_item_add(cs, is->children);
-				} else {
-					/* the file was empty */
-					cf_section_free(&is);
+					CONF_ITEM *ci;
+			 
+					/*
+					 *	Re-write the parent of the
+					 *	moved children to be the
+					 *	upper-layer section.
+					 */
+					for (ci = is->children; ci; ci = ci->next) {
+						ci->parent = cs;
+					}
+
+					/*
+					 *	If there are children, then
+					 *	move them up a layer.
+					 */
+					if (is->children) {
+						cf_item_add(cs, is->children);
+					}
+					is->children = NULL;
 				}
+				/*
+				 *	Always free the section for the
+				 *	$INCLUDEd file.
+				 */
+				cf_section_free(&is);
 			}
 
 			continue;
@@ -1083,8 +1103,8 @@ CONF_SECTION *cf_section_find(const char *name)
 
 CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
 {
-
 	CONF_ITEM *ci;
+
 	for (ci = section->children; ci; ci = ci->next) {
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
