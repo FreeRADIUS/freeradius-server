@@ -4,10 +4,12 @@ AC_DEFUN(modname,[rlm_example])  # change 'example'
 
 if test x$with_[]modname != xno; then
 
+	AC_PROG_CC
+	AC_PROG_CPP
+
 	dnl put configuration checks here.  
 	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
-
 	AC_CHECK_LIB(c, printf,
 		[ example_ldflags="$example_ldflags -lc" ],
 		[ fail=$fail" printf" ]

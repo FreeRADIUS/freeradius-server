@@ -4,6 +4,9 @@ AC_DEFUN(modname,[rlm_pam])
 
 if test x$with_[]modname != xno; then
 
+	AC_PROG_CC
+	AC_PROG_CPP
+
 	AC_CHECK_LIB(dl, dl_open,
 		[ pam_ldflags="-ldl" ]
 	)

@@ -4,6 +4,9 @@ AC_DEFUN(modname,[rlm_krb5])
 
 if test x$with_[]modname != xno; then
 
+	AC_PROG_CC
+	AC_PROG_CPP
+
 	AC_CHECK_LIB(k5crypto, krb5_encrypt_data,
 		[ krb5libcrypto="-lk5crypto" ],
 	)

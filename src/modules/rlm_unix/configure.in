@@ -4,6 +4,9 @@ AC_DEFUN(modname,[rlm_unix])
 
 if test x$with_[]modname != xno; then
 
+	AC_PROG_CC
+	AC_PROG_CPP
+
 	AC_MSG_CHECKING(for system password file)
 	if test -f /etc/passwd; then
 		AC_MSG_RESULT(/etc/passwd)

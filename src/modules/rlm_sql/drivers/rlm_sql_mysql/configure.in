@@ -2,6 +2,9 @@ AC_INIT(sql_mysql.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_mysql])
 
+AC_PROG_CC
+AC_PROG_CPP
+
 AC_ARG_WITH(mysql-include-dir,
 [  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found ],
 [ mysql_include_dir="$withval" ]

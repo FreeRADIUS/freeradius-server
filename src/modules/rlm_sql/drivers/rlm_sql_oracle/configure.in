@@ -5,6 +5,9 @@ AC_DEFUN(modname,[rlm_sql_oracle])
 
 if test x$with_[]modname != xno; then
 
+	AC_PROG_CC
+	AC_PROG_CPP
+
 	targetname=modname   # we might change this later.
 
 	AC_SUBST(ORACLE_LIBS)
