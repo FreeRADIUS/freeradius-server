@@ -34,6 +34,9 @@ distclean: clean
 		sed 's/\.in$$//' | \
 		while read file; do rm -f $$file; done
 
+Make.inc: Make.inc.in
+	./configure
+
 ######################################################################
 #
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
@@ -56,3 +59,5 @@ src/include/stamp-h: src/include/autoconf.h.in config.status
 
 config.status: configure
 	./config.status --recheck
+
+configure.in:

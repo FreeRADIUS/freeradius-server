@@ -1,8 +1,8 @@
 
 include ../../Make.inc
 
-MODULES		= $(shell ./makemodules.sh modules $(LIBDL))
-MODULE_PATHS	= $(shell ./makemodules.sh paths $(LIBDL))
+MODULES		= $(shell ./makemodules.sh modules $(DYNAMIC_MODULES))
+MODULE_PATHS	= $(shell ./makemodules.sh paths $(DYNAMIC_MODULES))
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o \
@@ -15,9 +15,9 @@ LIBS		+= -lradius
 
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 
-radiusd: $(SERVER_OBJS)
-	$(CC) $(LDFLAGS) -o radiusd $(SERVER_OBJS) $(LIBS) $(LDBM) \
-		$(LCRYPT) $(LIBDL)
+radiusd: $(SERVER_OBJS) ../lib/libradius.a
+	$(CC) $(LDFLAGS) $(DAEMON_LDFLAGS) -o radiusd \
+		$(SERVER_OBJS) $(LIBS) $(LDBM) $(LCRYPT) $(MODULE_LIBS)
 
 radiusd.o: radiusd.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radiusd.c
@@ -61,7 +61,7 @@ version.o: version.c $(INCLUDES)
 xlat.o: xlat.c $(INCLUDES)
 	$(CC) $(CFLAGS) -o xlat.o -c xlat.c
 
-radclient: radclient.o
+radclient: radclient.o ../lib/libradius.a
 	$(CC) $(LDFLAGS) -o radclient radclient.o $(LIBS)
 
 radclient.o: radclient.c $(INCLUDES)

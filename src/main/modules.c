@@ -258,8 +258,8 @@ int read_modules_file(char *filename)
 		handle = dlopen(libraryfile, RTLD_NOW | RTLD_GLOBAL);
 
 		if (handle == NULL) {
-			fprintf(stderr, "[%s:%d] Failed module link: %s\n",
-				filename, lineno, dlerror());
+			fprintf(stderr, "[%s:%d] Failed to link to module %s:"
+				" %s\n", filename, lineno, libraryfile, dlerror());
 			exit(1); /* FIXME */
 		}
 #else /* HAVE_DLOPEN */

@@ -249,33 +249,6 @@ AC_TRY_COMPILE([#include <sys/types.h>
   AC_DEFINE(HAVE_SOCKLEN_T),
 )
 
-dnl Check if the C compiler supports -rdynamic
-AC_MSG_CHECKING(whether $CC accepts -rdynamic...)
-OFLAGS="$CLAGS"
-CFLAGS="$CFLAGS -rdynamic"
-AC_TRY_COMPILE([], [int x = 0],RDYNAMIC=-rdynamic)
-AC_SUBST(RDYNAMIC)
-if test -n "$RDYNAMIC"; then
-  AC_MSG_RESULT(yes)
-else
-  AC_MSG_RESULT(no)
-fi
-CFLAGS="$OFLAGS"
-
-dnl Check for libdl
-dnl We use dlopen(3) which may be in libc (eg FreeBSD), or in libdl (Linux)
-AC_CHECK_LIB(dl, dlopen,
-  LIBDL="-ldl"
-)
-AC_SUBST(LIBDL)
-if test "$LIBDL" != ""; then
-  AC_DEFINE(HAVE_DLOPEN)
-  DYNAMIC_MODULES="yes"
-else
-  AC_CHECK_FUNC(dlopen, AC_DEFINE(HAVE_DLOPEN) DYNAMIC_MODULES="yes")
-fi
-AC_SUBST(DYNAMIC_MODULES)
-
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
 AC_CHECK_LIB(crypt, crypt,
@@ -300,6 +273,138 @@ AC_CHECK_LIB(nsl, yp_all,
   NSLLIB="-lnsl",
 )
 AC_SUBST(NSLLIB)
+
+dnl ***********************
+dnl  This next bit is stolen from glib, and modified to work for FreeRADIUS.
+dnl ***********************
+MODULE_LIBS=
+MODULE_LDFLAGS=
+MODULE_NEED_USCORE=0
+MODULE_HAVE_DLERROR=0
+dnl *** dlopen() and dlsym() in system libraries
+if test -z "$DYNAMIC_MODULES"; then
+	AC_CHECK_FUNC(dlopen,
+		AC_CHECK_FUNC(dlsym,
+			[ DYNAMIC_MODULES=DYNAMIC_MODULES_DL HAVE_DLOPEN=1 ]
+		,)
+	,)
+fi
+
+dnl *** dlopen() and dlsym() in libdl
+if test -z "$DYNAMIC_MODULES"; then
+	AC_CHECK_LIB(dl, dlopen,
+		AC_CHECK_LIB(dl, dlsym,
+			MODULE_LIBS=-ldl
+			[ DYNAMIC_MODULES=DYNAMIC_MODULES_DL HAVE_DLOPEN=1 ]
+		,)
+	,)
+fi
+
+dnl *** shl_load() in libdld (HP-UX)
+if test -z "$DYNAMIC_MODULES"; then
+        AC_MSG_CHECKING(how to export all symbols)
+        SAVED_LDFLAGS=$LDFLAGS
+
+        LDFLAGS="$LDFLAGS -Wl,-E"
+        AC_TRY_LINK(,[ return 0; ],
+                [ MODULE_LDFLAGS="-Wl,-E" ],[
+                LDFLAGS="$SAVED_LDFLAGS -bexpall"
+                AC_TRY_LINK(,[ return 0; ],
+                        MODULE_LDFLAGS="-bexpall",
+                        MODULE_LDFLAGS=""
+                )
+        ])
+
+        LDFLAGS=$SAVED_LDFLAGS
+        AC_MSG_RESULT($MODULE_LDFLAGS)
+
+	AC_CHECK_LIB(dld, shl_load,
+		MODULE_LIBS=-ldld
+		DYNAMIC_MODULES=DYNAMIC_MODULES_DLD
+	,)
+fi
+
+dnl *** how to build a shared object
+if test "$DYNAMIC_MODULES" != ""; then
+        AC_MSG_CHECKING(how to build a shared object)
+        LDFLAGS_orig=$LDFLAGS
+
+        LDFLAGS="$LDFLAGS -Bshareable"
+        AC_TRY_LINK(,[ return 0; ],
+                [ MODULE_LDFLAGS="-Bshareable" ],
+                  MODULE_LDFLAGS=""
+        )
+
+        LDFLAGS=$LDFLAGS_orig
+	AC_MSG_RESULT(ld $MODULE_LDFLAGS)
+fi
+
+dnl *** additional checks for DYNAMIC_MODULES_DL
+if test "$DYNAMIC_MODULES" = "DYNAMIC_MODULES_DL"; then
+	dnl Check if the C compiler supports -rdynamic
+	AC_MSG_CHECKING(whether $CC accepts -rdynamic...)
+	CFLAGS_orig="$CFLAGS"
+	CFLAGS="$CFLAGS -rdynamic"
+	AC_TRY_COMPILE([], [int x = 0], DAEMON_LDFLAGS=-rdynamic)
+
+	if test -n "DAEMON_LDFLAGS"; then
+	  AC_MSG_RESULT(yes)
+	else
+	  AC_MSG_RESULT(no)
+	fi
+	CFLAGS="$CFLAGS_orig"
+
+	LIBS_orig="$LIBS"
+	LDFLAGS_orig="$LDFLAGS"
+	LIBS="$LIBS $MODULE_LIBS"
+	LDFLAGS="$LDFLAGS $MODULE_LDFLAGS"
+
+dnl *** check whether we need preceeding underscores
+	AC_MSG_CHECKING(for preceeding underscore in symbols)
+	AC_CACHE_VAL(rlm_cv_uscore,[
+		AC_TRY_RUN([
+		#include <dlfcn.h>
+                int rlm_underscore_test (void) { return 42; }
+		int main() {
+		  void *f1 = (void*)0, *f2 = (void*)0, *handle;
+		  handle = dlopen ((void*)0, 0);
+		  if (handle) {
+		    f1 = dlsym (handle, "rlm_underscore_test");
+		    f2 = dlsym (handle, "_rlm_underscore_test");
+		  } return (!f2 || f1);
+		}],
+			rlm_cv_uscore=yes,
+			rlm_cv_uscore=no,
+			MODULE_NEED_USCORE=0
+		)
+		rm -f plugin.c plugin.o plugin.lo
+	])
+	AC_MSG_RESULT($rlm_cv_uscore)
+	if test "x$rlm_cv_uscore" = "xyes"; then
+  		MODULE_NEED_USCORE=1
+	else
+  		MODULE_NEED_USCORE=0
+	fi
+
+	LDFLAGS="$LDFLAGS_orig"
+dnl *** check for having dlerror()
+	AC_CHECK_FUNC(dlerror,
+		MODULE_HAVE_DLERROR=1,
+		MODULE_HAVE_DLERROR=0)
+	LIBS="$LIBS_orig"
+fi
+dnl *** done, have e got an implementation?
+if test -z "$DYNAMIC_MODULES"; then
+	DYNAMIC_MODULES=0
+fi
+
+AC_SUBST(DYNAMIC_MODULES)
+AC_DEFINE(HAVE_DLOPEN)
+AC_SUBST(DAEMON_LDFLAGS)
+AC_SUBST(MODULE_LIBS)
+AC_SUBST(MODULE_LDFLAGS)
+AC_SUBST(MODULE_HAVE_DLERROR)
+AC_SUBST(MODULE_NEED_USCORE)
 
 AC_OUTPUT(\
 	

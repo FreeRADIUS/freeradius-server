@@ -60,7 +60,7 @@ $(TARGET).a: $(STATIC_OBJS)
 	$(AR) crv $@ $^
 
 $(TARGET).so: $(DYNAMIC_OBJS)
-	$(CC) $(LIBS) -shared $^ -o $@
+	$(LD) $(MODULE_LDFLAGS) $(LIBS) $^ -o $@
 
 #######################################################################
 #
