@@ -488,14 +488,14 @@ file_write_dynamic_log(REQUEST * request)
 				remove(fn);
 			} else {
 				if (fn[y] == '|') {
-					f = popen(&fn[y],logcfg[x].mode);
+					f = popen(&fn[y+1],logcfg[x].mode);
 				} else {
 					f = fopen(fn,logcfg[x].mode);
 				}
 				if (f) {
 					/* FIXME must get the reply packet */
 					radius_xlat2(buffer,sizeof(buffer),logcfg[x].fmt,request,request->packet->vps);
-					fprintf(f,"%s",buffer);
+					fprintf(f,"%s\n",buffer);
 					if (fn[y] == '|') {
 						pclose(f);
 					} else {
@@ -503,7 +503,7 @@ file_write_dynamic_log(REQUEST * request)
 					}
 				} else {
 					if (fn[y] == '|') {
-						log_debug("Error opening pipe %s",fn[y]);
+						log_debug("Error opening pipe %s",fn[y+1]);
 					} else {
 						log_debug("Error opening log %s",fn);
 					}
