@@ -29,6 +29,7 @@
 #		versanet_snmp    1.0    Author: support@versanetcomm.com
 #		bay_finger	 1.0	Author: chris@shenton.org
 #		cisco_l2tp	 1.14	Author: paul@distributel.net
+#		mikrotik_telnet  1.0    Author: Evren Yurtesen <yurtesen@ispro.net.tr>
 #
 #	Config: $debug is the file you want to put debug messages in
 #		$snmpget is the location of your ``snmpget'' program
@@ -1143,6 +1144,81 @@ sub cisco_l2tp_snmp
   ($login eq "$ARGV[3]\@$realm") ? 1 : 0;
 }
 
+sub mikrotik_telnet {
+  # Localize all variables first.
+  my ($t, $login, $password);
+  my (@fields, @output, $output, $username_seen, $user);
+
+  return 2 unless (check_net_telnet());
+
+  $terminalserver = $ARGV[1];
+  $user = $ARGV[3];
+
+  # Get login name and password for a certain NAS from $naspass.    
+  ($login, $password) = naspasswd($terminalserver, 1);
+  return 2 if ($password eq "");
+
+  # MikroTik routeros doesnt tell us to which port the user is connected
+  # practically this would limit us to a simple only-one user limit for
+  # this script to work properly.
+  $t = new Net::Telnet (Timeout => 10,
+                        Prompt => '//\[.*@.*\] > /');
+
+  $t->open($terminalserver);      
+  $t->login(Name => $login,
+            Password => $password,
+  # We must detect if we are logged in from the login banner.
+  # Because if routeros is with a free license the command
+  # prompt dont come. Instead it waits us to press "Enter".
+            Prompt => '/MikroTik/');
+
+  # Just be sure that routeros isn't waiting for us to press "Enter"
+  $t->print("");
+
+  # Wait for the real prompt
+  $t->waitfor('/\[.*@.*\] > /');
+
+  # It is not possible to get the line numbers etc.
+  # Thus we cant support if simultaneus-use is over 1
+  # At least I was using pppoe so it wasnt possible.
+  $t->print('ppp active print column name detail');
+
+  # Somehow routeros echo'es our commands 2 times. We dont want to mix
+  # this with the real command prompt.
+  $t->waitfor('/\[.*@.*\] > ppp active print column name detail/');
+  
+  # Now lets get the list of online ppp users.
+  ( $output ) = $t->waitfor('/\[.*@.*\] > /');
+  
+  # For debugging we can print the list to stdout     
+  #print $output;
+
+  #Lets logout to make everybody happy.
+  #If we close the connection without logging out then routeros
+  #starts to complain after a while. Saying;
+  #telnetd: All network ports in use. 
+  $t->print("quit");
+  $t->close;
+  
+  #check for # of $user in output
+  #the output includes only one = between name and username so we can
+  #safely use it as a seperator.  
+  @output = $output;
+  foreach $line ( @output ) {
+    if( $line =~ /name=/ ) {
+      @fields = split( /=/, $line );
+      if( $fields[2] == "\"$user\"") {
+        $username_seen++;
+      }
+    }
+  }
+  
+  if ($username_seen > 0) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
 
 ###############################################################################
 
@@ -1212,6 +1288,8 @@ if ($ARGV[0] eq 'livingston') {
 	$ret = &bay_finger;
 } elsif ($ARGV[0] eq 'cisco_l2tp'){
         $ret = &cisco_l2tp_snmp;
+} elsif ($ARGV[0] eq 'mikrotik'){
+        $ret = &mikrotik_telnet;
 } elsif ($ARGV[0] eq 'other') {
 	$ret = 1;
 } else {
