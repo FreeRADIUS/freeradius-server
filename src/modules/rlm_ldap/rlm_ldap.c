@@ -153,6 +153,8 @@
  *	  directive so that we can enable TLS connetions even if port is not set to 636
  *	- Add an error message if ldap_initialize() is not available and we are passed a URL like
  *	  'server' directive.
+ *	- Add a per instance Ldap-Group attribute (of the form <instance>-Ldap-Group) and register
+ *	  a corresponding ldap_groupcmp function
  */
 static const char rcsid[] = "$Id$";
 
@@ -387,6 +389,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	int check_map_num = 0;
 	int att_map[3] = {0,0,0};
 	TLDAP_RADIUS *pair;
+	ATTR_FLAGS flags;
 	char *xlat_name;
 
 	inst = rad_malloc(sizeof *inst);
@@ -429,15 +432,37 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->conns = NULL;
 	inst->failed_conns = 0;
 
+	DEBUG("rlm_ldap: Registering ldap_groupcmp for Ldap-Group");
 	paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, ldap_groupcmp, inst);
-	DEBUG("conns: %p",inst->conns);
 
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) {
+	if (xlat_name != NULL){
+		char *group_name;
+		DICT_ATTR *dattr;
+
+		/*
+		 * Allocate room for <instance>-Ldap-Group
+		 */
+		group_name = malloc((strlen(xlat_name) + 1 + 11) * sizeof(char));
+		rad_assert(group_name != NULL);
+		sprintf(group_name,"%s-Ldap-Group",xlat_name);
+		DEBUG("rlm_ldap: Creating new attribute %s",group_name);
+		dict_addattr(group_name, 0, PW_TYPE_STRING, -1, flags);
+		dattr = dict_attrbyname(group_name);
+		if (dattr == NULL){
+			radlog(L_ERR, "rlm_ldap: Failed to create attribute %s",group_name);
+			free(inst);
+			return -1;
+		}
+		DEBUG("rlm_ldap: Registering ldap_groupcmp for %s",group_name);
+		paircompare_register(dattr->attr, PW_USER_NAME, ldap_groupcmp, inst);
+	}
+	else {
 		xlat_name = cf_section_name1(conf);
 		rad_assert(xlat_name != NULL); /* or all hell breaks loose */
 	}
 	inst->xlat_name = strdup(xlat_name);
+	DEBUG("rlm_ldap: Registering ldap_xlat with xlat_name %s",xlat_name);
 	xlat_register(xlat_name,ldap_xlat,inst);
 
 	if (inst->num_conns <= 0){
