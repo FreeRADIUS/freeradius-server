@@ -52,7 +52,7 @@ vi debian/rules
 
 #
 #  Re-build and commit the configure script
-#
+#  Be sure this is autoconf 2.1x, not 2.5x
 autoconf
 cvs commit configure configure.in redhat/freeradius.spec suse/freeradius.spec debian/changelog debian/rules
 
