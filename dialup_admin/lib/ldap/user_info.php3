@@ -46,4 +46,6 @@ if ($ds) {
 	}
 	@ldap_close($ds);
 }
+else
+	echo "<b>Could not connect to the LDAP server</b><br>\n";
 ?>

@@ -32,7 +32,7 @@ if ($link){
 					$res = @da_sql_query($link,$config,
 					"INSERT INTO $config[sql_user_info_table]
 					(UserName,Name,Mail,Department,HomePhone,WorkPhone,Mobile) VALUES
-					('$login','$cn','$mail','$ou','$telephonenumber','$homephone','$mobile');");
+					('$login','$cn','$mail','$ou','$homephone','$telephonenumber','$mobile');");
 					if (!$res || !@da_sql_affected_rows($link,$res,$config))
 						echo "<b>Could not add user information in user info table</b><br>\n";
 				}

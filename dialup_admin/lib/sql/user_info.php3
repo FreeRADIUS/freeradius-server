@@ -14,6 +14,17 @@ if ($config[sql_use_operators] == 'true'){
 	$use_op = 0;
 }
 $user_exists = 'no';
+
+$cn_lang = '-';
+$homeaddress = '-';
+$homeaddress_lang = '-';
+$fax = '-';
+$url = '-';
+$ou_lang = '-';
+$title = '-';
+$title_lang = '-';
+$mailalt = '-';
+
 unset($item_vals);
 unset($tmp);
 $link = @da_sql_pconnect($config);

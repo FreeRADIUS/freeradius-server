@@ -8,6 +8,11 @@ Ver 1.50:
 * Updated TODO
 * Added a help page for the Session Timeout and Idle Timeout attributes.
 * The new group page should only be available if the general library type is sql.
+* Fix a small bug in lib/sql/create_user.php3 where work and home phone were stored in the wrong fields.
+* Set personal information attributes in lib/sql/user_info.php3 to default values.
+* Add a page to change the user's personal information. Changed the user toolbar and added htdocs/user_info.php3
+  along with lib/{sql,ldap}/change_info.php3
+* Print a message if we can't connect to the ldap server in lib/ldap/user_info.php3
 Ver 1.30:
 * Add limit of results returned in accounting.php3
 * Fix a bug in time2strclock() in lib/functions.php3. Seconds ammount more than 9 would not show.

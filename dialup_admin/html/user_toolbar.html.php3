@@ -5,6 +5,10 @@ print <<<EOM
 <a href="user_admin.php3?login=$login" title="Show User Information"><font color="white"><b>SHOW</b></font></a></td>
 <td align=center bgcolor="black" width=100>
 <a href="user_edit.php3?login=$login" title="Change User Dialup Settings"><font color="white"><b>EDIT</b></font></a></td>
+<td align=center bgcolor="black" width=200 colspan=2>
+<a href="user_info.php3?login=$login" title="Change User Personal Information"><font color="white"><b>USER INFO</b></font></a></td>
+</tr>
+<tr valign=top>
 <td align=center bgcolor="black" width=100>
 <a href="user_accounting.php3?login=$login" title="Show User Accounting Information"><font color="white"><b>ACCOUNTING</b></font></a></td>
 <td align=center bgcolor="black" width=100>
