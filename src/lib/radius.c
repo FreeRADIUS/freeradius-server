@@ -519,7 +519,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 	sa->sin_port = htons(packet->dst_port);
 
 	return sendto(packet->sockfd, packet->data, (int)packet->data_len, 0,
-		      &saremote, sizeof(struct sockaddr_in));
+		      (struct sockaddr *)&saremote, sizeof(struct sockaddr_in));
 }
 
 
