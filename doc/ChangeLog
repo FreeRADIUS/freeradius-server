@@ -1,4 +1,16 @@
-FreeRADIUS 1.0.0 ; $Date$, urgency=low
+FreeRADIUS 1.0.1 ; $Date$, urgency=high
+	Denial-of-Service Security Fix
+	* Fix two remote crashes and a memory leak in RADIUS packet
+	  decoding.
+
+	Bug fixes.
+	* Fix premature "success" during EAP/TLS handshake.
+	* Dictionary handling now complains about identically named
+	  values with different values, and rejects dictionary
+	  entries with bad data
+	* Update dictionaries to deal with the above change.
+
+FreeRADIUS 1.0.0 ; Date: 2004/07/17 06:31:32, urgency=low
 	pre3 -> release
 	* Fix LDAP dictionary map loading.
 	* Check login time allowance to packet timestampe where available.
