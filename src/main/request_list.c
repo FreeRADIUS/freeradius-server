@@ -112,26 +112,28 @@ void rl_delete(REQUEST *request)
 void rl_add(REQUEST *request)
 {
 	int id = request->packet->id;
+	REQNODE *node;
 
 	rad_assert(request->container == NULL);
 
 	request->container = rad_malloc(sizeof(REQNODE));
-	((REQNODE *)request->container)->req = request;
+	node = (REQNODE *) request->container;
+	node->req = request;
 
-	((REQNODE *)request->container)->prev = NULL;
-	((REQNODE *)request->container)->next = NULL;
+	node->prev = NULL;
+	node->next = NULL;
 
 	if (!request_list[id].first_request) {
 		rad_assert(request_list[id].request_count == 0);
 
-		request_list[id].first_request = (REQNODE *)request->container;
-		request_list[id].last_request = (REQNODE *)request->container;
+		request_list[id].first_request = node;
+		request_list[id].last_request = node;
 	} else {
 		rad_assert(request_list[id].request_count != 0);
 
-		((REQNODE *)request->container)->prev = request_list[id].last_request;
-		request_list[id].last_request->next = (REQNODE *)request->container;
-		request_list[id].last_request = (REQNODE *)request->container;
+		node->prev = request_list[id].last_request;
+		request_list[id].last_request->next = node;
+		request_list[id].last_request = node;
 	}
 
 	request_list[id].request_count++;

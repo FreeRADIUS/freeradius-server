@@ -72,7 +72,7 @@ typedef struct auth_req {
 
 	int			finished;
 	int			options; /* miscellanous options */
-	void			**container;
+	void			*container;
 } REQUEST;
 
 #define RAD_REQUEST_OPTION_NONE            (0)
