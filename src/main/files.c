@@ -611,6 +611,13 @@ REALM *realm_find(const char *realm, int accounting)
 		return NULL;
 	}
 
+	/*      If we didn't find the realm 'NULL' don't return the 
+	 *      DEFAULT entry.
+	 */
+	if ((strcmp(realm, "NULL")) == 0) {
+	  return NULL;
+	}
+
 	/*
 	 *	Didn't find anything that matched exactly, return the
 	 *	DEFAULT realm.  We also return the DEFAULT realm if
