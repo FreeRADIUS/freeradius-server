@@ -469,6 +469,7 @@ int main(int argc, char *argv[])
 	struct timeval *tv = NULL;
 
 	syslog_facility = LOG_DAEMON;
+
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
 #endif
@@ -531,11 +532,6 @@ int main(int argc, char *argv[])
 				radacct_dir = strdup(optarg);
 				break;
 			
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-			case 'b':
-				use_dbm++;
-				break;
-#endif
 			case 'c':
 				/* ignore for backwards compatibility with Cistron */
 				break;
@@ -2034,17 +2030,10 @@ void sig_cleanup(int sig)
 static void usage(void)
 {
 	fprintf(stderr,
-			"Usage: %s [-a acct_dir] [-d db_dir] [-l log_dir] [-i address] [-p port] [-"
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-			"b"
-#endif
-			"AcfnsSvXxyz]\n", progname);
+			"Usage: %s [-a acct_dir] [-d db_dir] [-l log_dir] [-i address] [-p port] [-AcfnsSvXxyz]\n", progname);
 	fprintf(stderr, "Options:\n\n");
 	fprintf(stderr, "  -a acct_dir     use accounting directory 'acct_dir'.\n");
 	fprintf(stderr, "  -A              Log auth detail.\n");
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-	fprintf(stderr, "  -b              Use DBM.\n");
-#endif
 	fprintf(stderr, "  -d db_dir       Use database directory 'db_dir'.\n");
 	fprintf(stderr, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(stderr, "  -h              Print this help message.\n");
