@@ -68,19 +68,19 @@ ATTRIBUTE	Callback-Number		19	string
 ATTRIBUTE	Callback-Id		20	string
 ATTRIBUTE	Framed-Route		22	string
 ATTRIBUTE	Framed-IPX-Network	23	ipaddr
-ATTRIBUTE	State			24	string
-ATTRIBUTE	Class			25	string
-ATTRIBUTE	Vendor-Specific		26	string
+ATTRIBUTE	State			24	octets
+ATTRIBUTE	Class			25	octets
+ATTRIBUTE	Vendor-Specific		26	octets
 ATTRIBUTE	Session-Timeout		27	integer
 ATTRIBUTE	Idle-Timeout		28	integer
 ATTRIBUTE	Termination-Action	29	integer
 ATTRIBUTE	Called-Station-Id	30	string
 ATTRIBUTE	Calling-Station-Id	31	string
 ATTRIBUTE	NAS-Identifier		32	string
-ATTRIBUTE	Proxy-State		33	string
+ATTRIBUTE	Proxy-State		33	octets
 ATTRIBUTE	Login-LAT-Service	34	string
 ATTRIBUTE	Login-LAT-Node		35	string
-ATTRIBUTE	Login-LAT-Group		36	string
+ATTRIBUTE	Login-LAT-Group		36	octets
 ATTRIBUTE	Framed-AppleTalk-Link	37	integer
 ATTRIBUTE	Framed-AppleTalk-Network 38	integer
 ATTRIBUTE	Framed-AppleTalk-Zone	39	string
@@ -278,12 +278,3 @@ VALUE		Packet-Type	Accounting-Message		10
 VALUE		Packet-Type	Access-Challenge		11
 VALUE		Packet-Type	Status-Server			12
 VALUE		Packet-Type	Status-Client			13
-
-#
-#	Configuration Values
-#	comment out these two lines to turn account expiration off
-#
-
-VALUE		Server-Config		Password-Expiration	30
-VALUE		Server-Config		Password-Warning	5
-
