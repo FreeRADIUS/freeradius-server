@@ -78,7 +78,6 @@ EOM;
 }
 ?>
 	</table>
-<tr><td>
 </table>
 </tr>
 </table>

@@ -1,3 +1,5 @@
+Ver 1.53:
+* html fixes in show_groups.php3
 Ver 1.52:
 * Add Reply-Message in conf/user_edit.attrs so that it appears in the user/group edit pages
 * Allow the administrator to specify a group in the New User page. Update lib/sql/create_user.php3 to add
