@@ -739,6 +739,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				 */
 				while ((dp = readdir(dir)) != NULL) {
 					if (dp->d_name[0] == '.') continue;
+					if (strchr(dp->d_name, '~') != NULL) continue;
 
 					snprintf(buf2, sizeof(buf2), "%s%s",
 						 value, dp->d_name);
