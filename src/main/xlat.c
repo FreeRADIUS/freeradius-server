@@ -453,7 +453,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'l': /* request timestamp */
-				snprintf(tmpdt, sizeof(tmpdt), "%ld",request->timestamp);
+				snprintf(tmpdt, sizeof(tmpdt), "%lu",request->timestamp);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				p++;
@@ -565,8 +565,10 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			default:
 				DEBUG2("WARNING: Unknown variable '%%%c': See 'doc/variables.txt'", *p);
-				*q++ = '%';
-				*q++ = *p++;
+				if (freespace > 2) {
+					*q++ = '%';
+					*q++ = *p++;
+				}
 				break;
 		}
 	}
