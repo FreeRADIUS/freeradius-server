@@ -40,6 +40,19 @@ run_dir = ${localstatedir}/run/radiusd
 log_file = ${logdir}/radius.log
 
 #
+#  Destination for log messages.  This can be one of:
+#
+#	files - log to ${log_file}, as defined above.
+#	syslog - to syslog (see also the log{} section, below)
+#	stdout - standard output
+#	stderr - standard error.
+#
+#  The command-line option "-X" over-rides this option, and forces
+#  logging to go to stdout.
+#
+log_destination = files
+
+#
 # libdir: Where to find the rlm_* modules.
 #
 #   This should be automatically set at configuration time.
@@ -282,6 +295,20 @@ allow_core_dumps = no
 #
 regular_expressions	= @REGEX@
 extended_expressions	= @REGEX_EXTENDED@
+
+#
+#  Logging section.  The various "log_*" configuration items
+#  will eventually be moved here.
+#
+log {
+	#
+	#  Which syslog facility to use, if ${log_destination} == "syslog"
+	#
+	#  The exact values permitted here are OS-dependent.  You probably
+	#  don't want to change this.
+	#
+	syslog_facility = daemon
+}
 
 #  Log the full User-Name attribute, as it was found in the request.
 #
