@@ -239,6 +239,7 @@ static void reread_config(int reload)
 		return;
 
 	cf_section_parse(cs, server_config);
+
 	/*
 	 *	We prefer (in order) the port from the command-line,
 	 *	then the port from the configuration file, then
@@ -1822,6 +1823,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			    client_name(request->packet->src_ipaddr),
 			    request->packet->src_port,
 			    request->packet->id);
+			radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n\tThe value for 'max_requests' is probably set too low.\n");
 			request_free(request);
 			request_list_busy = FALSE;
 			return NULL;
