@@ -126,6 +126,9 @@ static void usage(void);
 
 static void sig_fatal (int);
 static void sig_hup (int);
+#ifdef HAVE_PTHREAD_H
+static void sig_cleanup(int);
+#endif
 
 static void rfc_clean(RADIUS_PACKET *packet);
 static void rad_reject(REQUEST *request);
@@ -716,10 +719,23 @@ int main(int argc, char *argv[])
 		signal(SIGQUIT, sig_fatal);
 	}
 
-	/* this is right for threads, too, right?  
-	 * (Threads shouldn't get signals (from us) -- just be pthread_cancel()led.)
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	If we have pthreads, then the child threads block
+	 *	SIGCHLD, and the main server thread catches it.
+	 *
+	 *	That way, the SIGCHLD handler can grab the exit status,
+	 *	and save it for the child thread.
+	 *
+	 *	If we don't have pthreads, then each child process
+	 *	will do a waitpid(), and we ignore SIGCHLD.
+	 *
+	 *	Once we have multiple child processes to handle
+	 *	requests, and shared memory, then we've got to
+	 *	re-enable SIGCHLD catching.
 	 */
 	signal(SIGCHLD, sig_cleanup);
+#endif
 
 	radlog(L_INFO, "Ready to process requests.");
 	start_time = time(NULL);
@@ -2125,8 +2141,8 @@ void queue_sig_cleanup(int sig) {
 #endif /* ALLOW_CHILD_FORKS */
 
 
-/*ARGSUSED*/
-void sig_cleanup(int sig)
+#ifdef HAVE_PTHREAD_H
+static void sig_cleanup(int sig)
 {
 	int status;
 	child_pid_t pid;
@@ -2186,6 +2202,7 @@ void sig_cleanup(int sig)
 #endif /* !defined HAVE_PTHREAD_H */
 	}
 }
+#endif /* HAVE_PTHREAD_H */
 
 /*
  *  Display the syntax for starting this program.
