@@ -20,11 +20,6 @@ LIBS		+= -lradius
 STATIC_MODULE_LIBS	= $(wildcard ../modules/lib/*.a)
 STATIC_MODULE_LDFLAGS	= $(shell cat ../modules/lib/STATIC_MODULE_LDFLAGS)
 
-ifeq ($(DYNAMIC_MODULES),)
-LDFLAGS		+= $(STATIC_MODULE_LDFLAGS)
-LIBS		+= $(STATIC_MODULE_LIBS)
-endif
-
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
