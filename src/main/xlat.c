@@ -150,7 +150,6 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			     int *open, REQUEST *request,
 			     RADIUS_ESCAPE_STRING func)
 {
-
 	DICT_ATTR *tmpda;
 	VALUE_PAIR *tmppair;
 	char attrname[256];
@@ -194,6 +193,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			case '}':
 				openbraces--;
 				if (openbraces == *open) {
+					p++;
 					stop=1;
 				} else {
 					*pa++ = *p++;
@@ -262,12 +262,20 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		/*
 		 *	Nothing else, it MUST be a bare attribute name.
 		 */
-	} else if ((tmpda = dict_attrbyname(attrname)) && 
-		   (tmppair = pairfind(request->packet->vps,tmpda->attr))) {
-		q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
-		found = 1;
 	} else {
-		DEBUG2("WARNING: Attempt to use unknown xlat function or attribute in string %%{%s}", attrname);
+		tmpda = dict_attrbyname(attrname);
+		
+		if (tmpda) {
+			if ((tmppair = pairfind(request->packet->vps,tmpda->attr)) != NULL) {
+				q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
+				found = 1;
+			} /* else silently fail */
+		} else {
+			/*
+			 *	No attribute by that name, return an error.
+			 */
+			DEBUG2("WARNING: Attempt to use unknown xlat function or attribute in string %%{%s}", attrname);
+		}
 	}
 
 	/*
@@ -365,12 +373,14 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	}
 
 	q = out;
-	for (p = fmt; *p ; p++) {
-	/* Calculate freespace in output */
-	freespace = outlen - (q - out);
+	p = fmt;
+	while (*p) {
+		/* Calculate freespace in output */
+		freespace = outlen - (q - out);
 		if (freespace <= 1)
 			break;
 		c = *p;
+
 		if ((c != '%') && (c != '$') && (c != '\\')) {
 			/*
 			 * We check if we're inside an open brace.  If we are
@@ -381,11 +391,14 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				openbraces--;
 				continue;
 			}
-			*q++ = *p;
+			*q++ = *p++;
 			continue;
 		}
+
 		if (*++p == '\0') break;
-		if (c == '\\') switch(*p) {
+
+		if (c == '\\') {
+			switch(*p) {
 			case '\\':
 				*q++ = *p;
 				break;
@@ -399,13 +412,15 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				*q++ = c;
 				*q++ = *p;
 				break;
+			}
+			p++;
 		} else if (c == '$') switch(*p) {
 			case '{': /* Attribute by Name */
 				decode_attribute(&p, &q, freespace, &openbraces, request, func);
 				break;
 			default:
 				*q++ = c;
-				*q++ = *p;
+				*q++ = *p++;
 				break;
 
 		} else if (c == '%') switch(*p) {
@@ -414,7 +429,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 
 			case '%':
-				*q++ = *p;
+				*q++ = *p++;
 				break;
 			case 'a': /* Protocol: */
 				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER, func);
@@ -422,41 +437,50 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			case 'c': /* Callback-Number */
 				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER),PW_TYPE_STRING, func);
 				break;
-			case 'd': /* request year */
+			case 'd': /* request day */
 				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%d",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'f': /* Framed IP address */
 				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR, func);
+				p++;
 				break;
 			case 'i': /* Calling station ID */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING, func);
+				p++;
 				break;
 			case 'l': /* request timestamp */
 				snprintf(tmpdt, sizeof(tmpdt), "%ld",request->timestamp);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'm': /* request month */
 				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%m",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'n': /* NAS IP address */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR, func);
+				p++;
 				break;
 			case 'p': /* Port number */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT_ID),PW_TYPE_INTEGER, func);
+				p++;
 				break;
 			case 's': /* Speed */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING, func);
+				p++;
 				break;
 			case 't': /* request timestamp */
 				ctime_r(&request->timestamp, q);
 				q += strlen(q);
+				p++;
 				break;
 			case 'u': /* User name */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING, func);
@@ -464,42 +488,51 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			case 'A': /* radacct_dir */
 				strNcpy(q,radacct_dir,freespace-1);
 				q += strlen(q);
+				p++;
 				break;
 			case 'C': /* ClientName */
 				strNcpy(q,client_name(request->packet->src_ipaddr),freespace-1);
 				q += strlen(q);
+				p++;
 				break;
 			case 'D': /* request date */
 				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%Y%m%d",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'L': /* radlog_dir */
 				strNcpy(q,radlog_dir,freespace-1);
 				q += strlen(q);
+				p++;
 				break;
 			case 'M': /* MTU */
 				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU),PW_TYPE_INTEGER, func);
+				p++;
 				break;
 			case 'R': /* radius_dir */
 				strNcpy(q,radius_dir,freespace-1);
 				q += strlen(q);
+				p++;
 				break;
 			case 'S': /* request timestamp in SQL format*/
 				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d %H:%M:%S",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'T': /* request timestamp */
 				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d-%H.%M.%S.000000",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'U': /* Stripped User name */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME),PW_TYPE_STRING, func);
+				p++;
 				break;
 			case 'V': /* Request-Authenticator */
 				if (request->packet->verified)
@@ -507,12 +540,14 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				else
 					strNcpy(q,"None",freespace-1);
 				q += strlen(q);
+				p++;
 				break;
 			case 'Y': /* request year */
 				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%Y",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'Z': /* Full request pairs except password */
 				tmp = request->packet->vps;
@@ -526,11 +561,12 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 					}
 					tmp = tmp->next;
 				}
+				p++;
 				break;
 			default:
 				DEBUG2("WARNING: Unknown variable '%%%c': See 'doc/variables.txt'", *p);
 				*q++ = '%';
-				*q++ = *p;
+				*q++ = *p++;
 				break;
 		}
 	}
