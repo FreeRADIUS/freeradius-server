@@ -1,11 +1,10 @@
 /*
  * version.c	Print version number and exit.
  *
- * Version:	@(#)version.c  1.30  19-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
-char version_sccsid[] =
-"@(#)version.c	1.30  Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -18,7 +17,7 @@ char version_sccsid[] =
  *	Version number. This should ideally be created by autoconf
  *	or similar, so that this would always be up to date.
  */
-#define		VERSION		"cistron-1.6-alpha2 08-Aug-1999"
+#define		VERSION		"FreeRADIUS ALPHA, built on " __DATE__ 
 
 /*
  *	Display the revision number for this program
@@ -26,7 +25,7 @@ char version_sccsid[] =
 void version(void)
 {
 
-	fprintf(stderr, "%s: RADIUS version %s\n", progname, VERSION);
+	fprintf(stderr, "%s: RADIUS version " VERSION ".\n", progname);
 	fprintf(stderr, "Compilation flags: ");
 
 	/* here are all the conditional feature flags */
