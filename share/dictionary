@@ -143,7 +143,7 @@ ATTRIBUTE	Acct-Input-Gigawords    52      integer
 ATTRIBUTE	Acct-Output-Gigawords   53      integer
 ATTRIBUTE	Event-Timestamp         55      date
 
-ATTRIBUTE	CHAP-Challenge		60	string
+ATTRIBUTE	CHAP-Challenge		60	octets
 ATTRIBUTE	NAS-Port-Type		61	integer
 ATTRIBUTE	Port-Limit		62	integer
 ATTRIBUTE	Login-LAT-Port		63	integer
