@@ -224,8 +224,9 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		if ((default_eap_type < PW_EAP_MD5) ||
 		    (default_eap_type > PW_EAP_MAX_TYPES) ||
 		    (inst->types[default_eap_type] == NULL)) {
-			DEBUG2(" rlm_eap: No such EAP type %d",
-			       default_eap_type);
+			DEBUG2(" rlm_eap: No such EAP type %s",
+			       eaptype_type2name(default_eap_type,
+						 namebuf, sizeof(namebuf)));
 			return EAP_INVALID;
 		}
 		
@@ -565,6 +566,15 @@ int eap_compose(EAP_HANDLER *handler)
 		rcode = RLM_MODULE_HANDLED;
 		break;
 	default:
+		/*
+		 *	When we're pulling MS-CHAPv2 out of EAP-MS-CHAPv2,
+		 *	we do so WITHOUT setting a reply code, as the
+		 *	request is being proxied.
+		 */
+		if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
+			return RLM_MODULE_HANDLED;
+		}
+
 		/* Should never enter here */
 		radlog(L_ERR, "rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
 		request->reply->code = PW_AUTHENTICATION_REJECT;

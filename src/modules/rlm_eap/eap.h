@@ -138,6 +138,7 @@ typedef struct eap_type_t {
 
 #define REQUEST_DATA_EAP_HANDLER	 (1)
 #define REQUEST_DATA_EAP_TUNNEL_CALLBACK PW_EAP_MESSAGE
+#define RAD_REQUEST_OPTION_PROXY_EAP	(1 << 16)
 
 /*
  *	This is for tunneled callbacks
