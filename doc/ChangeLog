@@ -1,6 +1,28 @@
 FreeRADIUS 0.8 ; $Date$, urgency=low
 
-	* Removed all need for the old-style 'naslist' and 'client' files.
+	* SQL fail-over patch, so that the module returns FAIL if
+	  the back-end database is down.  Based on a patch from
+	  Thomas Jalsovsky.
+	* Cleaned up the internal handling of the configuration
+	  information, in preparation for better handling SIGHUP.
+	* Updated rlm_krb5 configuration to better find it's libraries
+	  and include files.
+	* radclient now complains if it receives a reply from a machine
+	  other than the one to which it sent the request.
+	* Updated Postgresql cSQL queries to get the operator, too.
+	* Added Juniper dictionary.
+	* Added Cisco VPN3000, VPN5000, and BBSM dictionaries.
+	* New platform-neutral 'rc.radiusd'
+	* Configuration files with private information get chmod'd
+	  0600 after installation.
+	* Preliminary support for clean shutdowns when a SIGTERM is
+	  received.
+	* SNMP timeouts for checkrad, so there will be fewer situations
+	  where it hangs for 30 seconds...
+	* Added code to clean up modules and memory when asked to exit
+	  via SIGTERM.
+	* Removed all need for the old-style 'naslist' and 'client' files,
+	  and noted that they are deprecated.
 	* Added support for Status-Server packets, stolen shamelessly
 	  from Cistron RADIUSD.  This is despite the RFC's saying such
 	  things are wrong.
