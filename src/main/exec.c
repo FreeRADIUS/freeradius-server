@@ -201,8 +201,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		vp = NULL;
 		n = userparse(answer, &vp);
-		if (vp) pairfree(vp);
-		vp = NULL;
+		if (vp) pairfree(&vp);
 
 		if (n != 0) {
 			radlog(L_DBG, "Exec-Program-Wait: plaintext: %s", answer);
@@ -239,7 +238,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		"Exec-Program-Wait: %s: unparsable reply", cmd);
 			else {
 				pairmove(&request->reply->vps, &vp);
-				pairfree(vp);
+				pairfree(&vp);
 			}
 		}
 	}
