@@ -25,7 +25,6 @@
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,19 +36,25 @@ static const char rcsid[] = "$Id$";
 void version(void)
 {
 
-	fprintf(stderr, "%s: %s\n", progname, radiusd_version);
+	printf("%s: %s\n", progname, radiusd_version);
 #if 0
-	fprintf(stderr, "Compilation flags: ");
+	printf("Compilation flags: ");
 
 	/* here are all the conditional feature flags */
 #if defined(OSFC2)
-	fprintf(stderr," OSFC2");
+	printf(" OSFC2");
 #endif
 #if defined(WITH_SNMP)
-	fprintf(stderr," WITH_SNMP");
+	printf(" WITH_SNMP");
 #endif
-	fprintf(stderr,"\n");
+	printf("\n");
 #endif
+	printf("Copyright (C) 2000-2003 The FreeRADIUS server project.\n");
+	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
+	printf("PARTICULAR PURPOSE.\n");
+	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
+	printf("GNU General Public License.\n");
+	printf("For more information about these matters, see the file named COPYRIGHT.\n");
 	exit (0);
 }
 
