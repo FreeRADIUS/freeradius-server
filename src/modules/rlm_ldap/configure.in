@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_ldap.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_ldap])
@@ -44,27 +45,27 @@ if test x$with_[]modname != xno; then
 	)
 
 	smart_try_dir=$rlm_ldap_include_dir
-	AC_SMART_CHECK_INCLUDE(lber.h)
-	AC_SMART_CHECK_INCLUDE(ldap.h)
+	FR_SMART_CHECK_INCLUDE(lber.h)
+	FR_SMART_CHECK_INCLUDE(ldap.h)
 
-	AC_SMART_CHECK_LIB(sasl, sasl_encode)
-	AC_SMART_CHECK_LIB(crypto, DH_new)
-	AC_SMART_CHECK_LIB(ssl, SSL_new)
+	FR_SMART_CHECK_LIB(sasl, sasl_encode)
+	FR_SMART_CHECK_LIB(crypto, DH_new)
+	FR_SMART_CHECK_LIB(ssl, SSL_new)
 
 	smart_try_dir=$rlm_ldap_lib_dir
-	AC_SMART_CHECK_LIB(lber, ber_init)
+	FR_SMART_CHECK_LIB(lber, ber_init)
         if test "x$ac_cv_lib_lber_ber_init" != "xyes"; then
 	  fail="$fail liblber"
         else
           if test "x$ac_cv_header_pthread_h" = "xyes"; then
-    	    AC_SMART_CHECK_LIB(ldap_r, ldap_init)
+    	    FR_SMART_CHECK_LIB(ldap_r, ldap_init)
             if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
  	      fail="$fail libldap_r"
 	    else
 		libldap=ldap_r
             fi
           else
-  	    AC_SMART_CHECK_LIB(ldap, ldap_init)
+  	    FR_SMART_CHECK_LIB(ldap, ldap_init)
             if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
  	      fail="$fail libldap"
 	    else
@@ -74,19 +75,19 @@ if test x$with_[]modname != xno; then
         fi
 
 	if test x"$libldap" != "x"; then
-	  AC_SMART_CHECK_LIB("$libldap", ldap_start_tls_s)
+	  FR_SMART_CHECK_LIB("$libldap", ldap_start_tls_s)
 
 	  if test "x${ac_cv_lib_ldap_ldap_start_tls_s}${ac_cv_lib_ldap_r_ldap_start_tls_s}" != "x"; then
 	     SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_START_TLS"
 	  fi
       
-	  AC_SMART_CHECK_LIB("$libldap", ldap_initialize)
+	  FR_SMART_CHECK_LIB("$libldap", ldap_initialize)
 
 	  if test "x${ac_cv_lib_ldap_ldap_initialize}${ac_cv_lib_ldap_r_ldap_initialize}" != "x"; then
 	     SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INITIALIZE"
 	  fi
       
-	  AC_SMART_CHECK_LIB("$libldap", ldap_int_tls_config)
+	  FR_SMART_CHECK_LIB("$libldap", ldap_int_tls_config)
 
 	  if test "x${ac_cv_lib_ldap_ldap_int_tls_config}${ac_cv_lib_ldap_r_ldap_int_tls_config}" != "x"; then
 	     SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INT_TLS_CONFIG"

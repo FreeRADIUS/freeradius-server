@@ -1,4 +1,3 @@
-
 include ../../../../Make.inc
 
 SRCS		= fips186prf.c eapcrypto.c eapcommon.c eapsimlib.c
@@ -7,9 +6,11 @@ INCLUDES	=
 
 CFLAGS		+= -DEAPLIB -I../../../include 
 
-all:	static dynamic
-
 TARGET=$(LIBPREFIX)eap
+
+all:	dynamic
+
+dynamic: $(TARGET).la
 
 STATIC_OBJS	= $(SRCS:.c=.o)
 DYNAMIC_OBJS	= $(SRCS:.c=.lo)
@@ -23,34 +24,19 @@ $(DYNAMIC_OBJS): $(INCLUDES)
 #
 #######################################################################
 %.o : %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $< -o $@
 
 %.lo : %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
 
-
-$(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) \
-	-module -static $(CFLAGS) $^ -o $@ 
-
-
-ifneq ($(USE_SHARED_LIBS),yes)
-LINK_MODE=-static
-endif
-
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	-module $(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) $^ 
-
-static: $(TARGET).a
-
-dynamic: $(TARGET).la
-
+	$(CFLAGS) -o $@ -rpath $(libdir) $^ ../../../lib/libradius.la
 clean:
 	rm -f *.o *.lo $(TARGET).a $(TARGET).la
 	rm -rf .libs
 
-install: static dynamic
+install: $(TARGET).la
 	$(LIBTOOL) --mode=install $(INSTALL) -c \
 		$(TARGET).la $(R)$(libdir)/$(TARGET).la;
 	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;

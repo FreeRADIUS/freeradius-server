@@ -68,18 +68,18 @@ if test x$with_[]modname != xno; then
 	)
 
 	smart_try_dir=$rlm_eap_peap_inc_dir
-	AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
+	FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
 	if test "x$ac_cv_header_openssl_ssl_h" != "xyes"; then
 		fail="$fail (openssl/ssl.h)"
 	fi
 
 	smart_try_dir=$rlm_eap_peap_lib_dir
-	AC_SMART_CHECK_LIB(crypto, DH_new)
+	FR_SMART_CHECK_LIB(crypto, DH_new)
     if test "x$ac_cv_lib_crypto_DH_new" != "xyes"; then
  	    fail="$fail libcrypto"
     fi
 
-	AC_SMART_CHECK_LIB(ssl, SSL_new)
+	FR_SMART_CHECK_LIB(ssl, SSL_new)
     if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
  	    fail="$fail libssl"
     fi

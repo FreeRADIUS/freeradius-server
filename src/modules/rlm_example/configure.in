@@ -1,6 +1,7 @@
-AC_INIT(rlm_example.c)  # change 'example'
+AC_PREREQ([2.53])
+AC_INIT(rlm_example.c) # change 'example'
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_example])  # change 'example'
+AC_DEFUN(modname,[rlm_example]) # change 'example'
 
 if test x$with_[]modname != xno; then
 

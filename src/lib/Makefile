@@ -16,9 +16,9 @@ CFLAGS		+= -D_LIBRADIUS -I../include
 # the other end is doing.
 CFLAGS += -DHMAC_SHA1_DATA_PROBLEMS
 
-all:	static dynamic
-
 TARGET=$(LIBPREFIX)radius
+
+all:	$(TARGET).la
 
 STATIC_OBJS	= $(SRCS:.c=.o)
 DYNAMIC_OBJS	= $(SRCS:.c=.lo)
@@ -32,15 +32,10 @@ $(DYNAMIC_OBJS): $(INCLUDES)
 #
 #######################################################################
 %.o : %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $< -o $@
 
 %.lo : %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
-
-
-$(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) \
-	-module -static $(CFLAGS) $^ -o $@ 
 
 
 ifneq ($(USE_SHARED_LIBS),yes)
@@ -49,9 +44,9 @@ endif
 
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	-module $(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) $^ 
+	$(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) $^ $(LCRYPT)
 
-static: $(TARGET).a
+static:
 
 dynamic: $(TARGET).la
 
@@ -59,7 +54,7 @@ clean:
 	rm -f *.o *.lo $(TARGET).a $(TARGET).la
 	rm -rf .libs
 
-install: static dynamic
+install: all
 	$(LIBTOOL) --mode=install $(INSTALL) -c \
 		$(TARGET).la $(R)$(libdir)/$(TARGET).la;
 	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;

@@ -70,6 +70,7 @@ fi
 
 dnl libltdl is installable
 AC_LIBLTDL_INSTALLABLE
+FR_LIBLTDL_PATH
 
 dnl use system-wide libtool, if it exists
 AC_ARG_WITH(system-libtool, 
@@ -527,7 +528,7 @@ fi
 smart_try_dir="$OPENSSL_INCLUDE"
 dnl # stupid RedHat shit
 CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
-AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
+FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
 if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
   AC_DEFINE(HAVE_OPENSSL_SSL_H)
   old_CPPFLAGS="$CPPFLAGS"
@@ -562,9 +563,9 @@ if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
 
              # Look for the OpenSSL libraries.
 	     smart_try_dir=$OPENSSL_LIBS
-	     AC_SMART_CHECK_LIB(crypto, DH_new)
+	     FR_SMART_CHECK_LIB(crypto, DH_new)
 	     if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
-	       AC_SMART_CHECK_LIB(ssl, SSL_new)
+	       FR_SMART_CHECK_LIB(ssl, SSL_new)
 	       if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
 		 OPENSSL_INCLUDE=
 		 OPENSSL_LIBS=
@@ -590,7 +591,7 @@ AC_TYPE_SIZE_T
 AC_TYPE_UID_T
 
 dnl check for socklen_t
-AC_CHECK_TYPE_INCLUDE([
+FR_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -600,7 +601,7 @@ AC_CHECK_TYPE_INCLUDE([
 ],socklen_t, int)
 
 dnl check for uint8_t
-AC_CHECK_TYPE_INCLUDE([
+FR_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
@@ -610,7 +611,7 @@ AC_CHECK_TYPE_INCLUDE([
 ],uint8_t, unsigned char)
 
 dnl check for uint16_t
-AC_CHECK_TYPE_INCLUDE([
+FR_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
@@ -620,7 +621,7 @@ AC_CHECK_TYPE_INCLUDE([
 ],uint16_t, unsigned short)
 
 dnl check for uint32_t
-AC_CHECK_TYPE_INCLUDE([
+FR_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
@@ -677,7 +678,7 @@ dnl # if so, check if struct utmpx has entry ut_xtime
 dnl # if not, set it to define ut_xtime == ut_tv.tv_sec
 if test "x$ac_cv_header_utmpx_h" = "xyes"
 then
- AC_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
+ FR_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
  if test "x$ac_cv_type_struct_utmpx_has_ut_xtime" = "x"
  then
    AC_DEFINE(ut_xtime,ut_tv.tv_sec)
@@ -685,7 +686,7 @@ then
 fi
 
 dnl # struct ip_pktinfo
-AC_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in_pktinfo], ipi_addr)
+FR_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in_pktinfo], ipi_addr)
 if test "x$ac_cv_type_struct_in_pktinfo_has_ipi_addr" = "xyes"
 then
 	AC_DEFINE(HAVE_IP_PKTINFO)

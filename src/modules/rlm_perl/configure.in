@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_perl.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_perl])
@@ -19,7 +20,7 @@ if test x$with_[]modname != xno; then
           CFLAGS="$CFLAGS `perl -MExtUtils::Embed -e ccopts`"
 
 	  smart_try_dir=
-	  AC_SMART_CHECK_INCLUDE(EXTERN.h)
+	  FR_SMART_CHECK_INCLUDE(EXTERN.h)
 	  if test "x$ac_cv_header_EXTERN_h" = "xyes"; then
 		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
 	  else
@@ -27,7 +28,7 @@ if test x$with_[]modname != xno; then
 		targetname=
 	  fi
 
-	  AC_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
+	  FR_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
 	  if test "x$ac_cv_header_perl_h" = "xyes"; then
 		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
 	  else

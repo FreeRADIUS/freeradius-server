@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_attr_rewrite.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_attr_rewrite])

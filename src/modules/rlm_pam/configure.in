@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_pam.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_pam])

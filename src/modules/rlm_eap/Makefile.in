@@ -2,8 +2,8 @@ TARGET      = @targetname@
 SRCS        = rlm_eap.c eap.c mem.c state.c
 HEADERS     = eap.h rlm_eap.h
 RLM_CFLAGS  = $(INCLTDL) -I@srcdir@/libeap
-CLIENTLIBS  = -Llibeap -leap -L../../lib -lradius
-RLM_LIBS    = -Llibeap -leap
+CLIENTLIBS  = libeap/libeap.la -L../../lib -lradius
+RLM_LIBS    = libeap/libeap.la $(LIBLTDL)
 #RLM_LIBS    = $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
 RLM_INSTALL = install-types
 RLM_SUBDIRS = libeap @eaptypes@ 
@@ -20,14 +20,12 @@ STATIC_OBJS	+= $(shell ls -1 types/rlm_eap_gtc/rlm_eap_gtc.a types/rlm_eap_leap/
 
 $(DYNAMIC_OBJS): $(HEADERS)
 
-all: 
-	@$(MAKE) $(MFLAGS) static dynamic
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+all: common
 	@$(MAKE) $(MFLAGS) radeapclient
 
-radeapclient: radeapclient.o ../../lib/libradius.a
+radeapclient: radeapclient.o ../../lib/libradius.la
 	(cd libeap && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit 1
-	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) ${RLM_CFLAGS} $(LDFLAGS) -o radeapclient radeapclient.o $(CLIENTLIBS) $(LIBS) $(LCRYPT)
+	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) ${RLM_CFLAGS} $(LDFLAGS) -o radeapclient radeapclient.o -static $(CLIENTLIBS) -shared $(LIBS) $(LCRYPT)
 
 radeapclient.o: radeapclient.c $(INCLUDES)
 	$(CC) $(CFLAGS) ${RLM_CFLAGS} -c radeapclient.c

@@ -34,7 +34,7 @@ if test x$with_[]modname != xno; then
 	if test "x$ORACLE_INCLUDE" = "x"; then
 		old_CFLAGS="$CFLAGS"
 
-		AC_LOCATE_DIR(oracle_home_dir,oci.h)
+		FR_LOCATE_DIR(oracle_home_dir,oci.h)
 
 		for try in $oracle_home_dir $oracle_include_dir; do
 			CFLAGS="$old_CFLAGS -I${try}/rdbms/demo -I${try}/rdbms/public -I${try}/plsql/public -I${try}/network/public -I${try}/oci/include"
@@ -69,7 +69,7 @@ if test x$with_[]modname != xno; then
 	if test "x$ORACLE_INCLUDE" = "x"; then
 		old_CFLAGS="$CFLAGS"
 
-		AC_LOCATE_DIR(oracle_include_dir,oci.h)
+		FR_LOCATE_DIR(oracle_include_dir,oci.h)
 
 		for try in /usr/local/include/oracle /usr/local/oracle/include $oracle_include_dir; do
 			CFLAGS="$old_CFLAGS -I$try"
@@ -109,8 +109,8 @@ if test x$with_[]modname != xno; then
 			dnl #
 			old_LIBS="$LIBS"
 
-			AC_LOCATE_DIR(oracle_lib_dir,[oracleclient.so])
-			AC_LOCATE_DIR(oracle_lib_dir,[oracleclient.a])
+			FR_LOCATE_DIR(oracle_lib_dir,[oracleclient.so])
+			FR_LOCATE_DIR(oracle_lib_dir,[oracleclient.a])
 
 			for try in /usr/lib/oracle /usr/local/lib/oracle /usr/local/oracle/lib $oracle_lib_dir; do
 				LIBS="$old_LIBS -L$try -loracleclient"

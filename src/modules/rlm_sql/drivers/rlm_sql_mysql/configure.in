@@ -46,7 +46,7 @@ if test x$with_[]modname != xno; then
 		if test "x$MYSQL_INCLUDE" = "x"; then
 			old_CFLAGS="$CFLAGS"
 
-dnl			AC_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
+dnl			FR_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
 
 			for try in $mysql_include_dir /usr/local/include /usr/local/mysql/include ; do
 				CFLAGS="$old_CFLAGS -I$try"
@@ -75,8 +75,8 @@ dnl			AC_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
 
 			old_LIBS="$LIBS"
 
-dnl			AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.so])
-dnl			AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.a])
+dnl			FR_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.so])
+dnl			FR_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.a])
 
 			for try in $mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql; do
 				LIBS="$old_LIBS -L$try -lmysqlclient"

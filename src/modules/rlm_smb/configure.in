@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_smb.c)
 AC_CONFIG_HEADER(config.h)
 AC_REVISION($Revision$)

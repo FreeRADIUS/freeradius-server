@@ -67,7 +67,7 @@ ifneq ($(TARGET),)
 #
 #######################################################################
 $(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) -module -static $(CFLAGS) $(RLM_SQL_CFLAGS) $^ -o $@ 
+	$(LIBTOOL) --mode=link $(CC) -module -static $(CFLAGS) $(RLM_SQL_CFLAGS) $^ -o $@ 
 
 #
 #  If the module is in the list of static modules, then the "dynamic"

@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(x99_rlm.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_x99_token])

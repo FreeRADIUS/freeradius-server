@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_krb5.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_krb5])
@@ -50,16 +51,16 @@ if test x$with_[]modname != xno; then
        )
 
 	smart_try_dir=$rlm_krb5_include_dir
-	AC_SMART_CHECK_INCLUDE(krb5.h)
+	FR_SMART_CHECK_INCLUDE(krb5.h)
 
 	smart_try_dir=$rlm_krb5_lib_dir
 
-	AC_SMART_CHECK_LIB(k5crypto, krb5_encrypt_data)
+	FR_SMART_CHECK_LIB(k5crypto, krb5_encrypt_data)
 	if test "x$ac_cv_lib_k5crypto_krb5_encrypt_data" = "xyes"; then
 		krb5libcrypto="-lk5crypto"
 	fi
 
-	AC_SMART_CHECK_LIB(crypto, DH_new)
+	FR_SMART_CHECK_LIB(crypto, DH_new)
 	if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
 		krb5libcrypto="-lcrypto"
 	fi
@@ -68,12 +69,12 @@ if test x$with_[]modname != xno; then
 		AC_MSG_WARN([neither krb5 'k5crypto' nor 'crypto' libraries are found!])
 	fi
 
-	AC_SMART_CHECK_LIB(com_err, set_com_err_hook)
+	FR_SMART_CHECK_LIB(com_err, set_com_err_hook)
 	if test "x$ac_cv_lib_com_err_set_com_err_hook" != "xyes"; then
 		AC_MSG_WARN([the comm_err library isn't found!]) 
 	fi
 
-	AC_SMART_CHECK_LIB(krb5, krb5_init_context)
+	FR_SMART_CHECK_LIB(krb5, krb5_init_context)
 	if test "x$ac_cv_lib_krb5_krb5_init_context" != "xyes"; then
 		fail="$fail krb5"
 	fi

@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_dbm.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_dbm])
@@ -40,16 +41,16 @@ if test x$with_[]modname != xno; then
 	)
 
 	smart_try_dir=$rlm_dbm_include_dir
-	AC_SMART_CHECK_INCLUDE(ndbm.h)
+	FR_SMART_CHECK_INCLUDE(ndbm.h)
 	if test "x$ac_cv_header_ndbm_h" = "xyes"; then
           SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_NDBM_H"
 	else
-		AC_SMART_CHECK_INCLUDE(gdbm/ndbm.h)
+		FR_SMART_CHECK_INCLUDE(gdbm/ndbm.h)
 		if test "x$ac_cv_header_gdbm_ndbm_h" = "xyes"; then
 			SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBM_NDBM_H"
 		else
 			ac_cv_header_gdbm_ndbm_h="bad autoconf assumption"
-			AC_SMART_CHECK_INCLUDE(gdbm-ndbm.h)
+			FR_SMART_CHECK_INCLUDE(gdbm-ndbm.h)
 			if test "x$ac_cv_header_gdbmmndbm_h" = "xyes"; then
 				SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBMNDBM_H"
 			else
@@ -62,13 +63,13 @@ if test x$with_[]modname != xno; then
 		AC_MSG_RESULT(yes)],[AC_MSG_RESULT(no)])
 	if test "x$ac_cv_lib_default_dbm_open" != "xyes"; then
 		smart_try_dir=$rlm_dbm_lib_dir
-		AC_SMART_CHECK_LIB(ndbm, dbm_open)
+		FR_SMART_CHECK_LIB(ndbm, dbm_open)
 		if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
 			dnl GNU DBM < 1.8.1
-			AC_SMART_CHECK_LIB(gdbm, dbm_open)
+			FR_SMART_CHECK_LIB(gdbm, dbm_open)
 			if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
 				dnl GNU DBM >= 1.8.1
-				AC_SMART_CHECK_LIB(gdbm_compat, dbm_open)
+				FR_SMART_CHECK_LIB(gdbm_compat, dbm_open)
 				if test "x$ac_cv_lib_gdbm_compat_dbm_open" != "xyes"; then
 					fail="$fail (libndbm or libgdbm or libgdbm_compat)"
 				fi

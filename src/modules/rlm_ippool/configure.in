@@ -1,3 +1,4 @@
+AC_PREREQ([2.53])
 AC_INIT(rlm_ippool.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_ippool])
@@ -7,8 +8,8 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_SMART_CHECK_INCLUDE(gdbm.h)
-	AC_SMART_CHECK_LIB(gdbm, gdbm_open)
+	FR_SMART_CHECK_INCLUDE(gdbm.h)
+	FR_SMART_CHECK_LIB(gdbm, gdbm_open)
 	if test "x$ac_cv_lib_gdbm_gdbm_open" != "xyes"; then
 		fail="$fail libgdbm"
 	fi

@@ -3,7 +3,7 @@ SRCS		= rlm_sql.c sql.c
 HEADERS		= rlm_sql.h
 RLM_INSTALL	= install-drivers
 RLM_CFLAGS	= $(INCLTDL)
-RLM_LIBS	=
+RLM_LIBS	= $(LIBLTDL)
 RLM_SUBDIRS	= drivers
 
 #

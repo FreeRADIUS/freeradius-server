@@ -36,7 +36,7 @@ if test x$with_[]modname != xno; then
 	if test "x$IODBC_INCLUDE" = "x"; then
 		old_CFLAGS="$CFLAGS"
 
-dnl		AC_LOCATE_DIR(iodbc_include_dir,[isql.h])
+dnl		FR_LOCATE_DIR(iodbc_include_dir,[isql.h])
 
 		for try in /usr/local/include /usr/local/iodbc/include $iodbc_include_dir; do
 			CFLAGS="$old_CFLAGS -I$try"
@@ -65,8 +65,8 @@ dnl		AC_LOCATE_DIR(iodbc_include_dir,[isql.h])
 
 		old_LIBS="$LIBS"
 
-dnl		AC_LOCATE_DIR(iodbc_lib_dir,[libodbc${libltdl_cv_shlibext}])
-dnl		AC_LOCATE_DIR(iodbc_lib_dir,[libodbc.a])
+dnl		FR_LOCATE_DIR(iodbc_lib_dir,[libodbc${libltdl_cv_shlibext}])
+dnl		FR_LOCATE_DIR(iodbc_lib_dir,[libodbc.a])
 
 		for try in /usr/lib /usr/lib/iodbc /usr/local/lib/iodbc /usr/local/iodbc/lib/iodbc $iodbc_lib_dir; do
 			LIBS="$old_LIBS -L$try -liodbc"

@@ -57,7 +57,7 @@ $(DYNAMIC_OBJS): $(SERVER_HEADERS)
 #
 #######################################################################
 %.o : %.c
-	$(CC) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
 
 %.lo : %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $<
@@ -68,9 +68,6 @@ ifneq ($(TARGET),)
 # Define a number of new targets
 #
 #######################################################################
-$(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) \
-	-module -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
 
 #
 #  If the module is in the list of static modules, then the "dynamic"
@@ -96,7 +93,8 @@ endif
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	-module $(LINK_MODE) $(CFLAGS) $(RLM_CFLAGS) $(RLM_LDFLAGS) \
-	-o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
+	-o $@ -rpath $(libdir) $^ $(RLM_DIR)../../lib/libradius.la \
+	$(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #
@@ -107,9 +105,10 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
-static: $(TARGET).a  $(RLM_UTILS)
-	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=static common
-	@cp $< $(top_builddir)/src/modules/lib
+#static: $(TARGET).a $(RLM_UTILS)
+#	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=static common
+#	@cp $< $(top_builddir)/src/modules/lib
+static:
 
 dynamic: $(TARGET).la $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=dynamic common
