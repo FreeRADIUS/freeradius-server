@@ -13,12 +13,17 @@ if ($config[sql_use_operators] == 'true'){
 $da_abort=0;
 $link = @da_sql_pconnect($config);
 if ($link){
-	$res = @da_sql_query($link,$config,
-	"INSERT INTO $config[sql_usergroup_table] (UserName,GroupName)
-	VALUES ('$member','$login');");
-	if (!$res || !@da_sql_affected_rows($link,$res,$config)){
-		echo "<b>Unable to add group $login. SQL error</b><br>\n";
-		$da_abort=1;
+	$Members = preg_split("/[\n\s]+/",$members,-1,PREG_SPLIT_NO_EMPTY);
+	if (!empty($Members)){
+		foreach ($Members as $member){
+			$res = @da_sql_query($link,$config,
+			"INSERT INTO $config[sql_usergroup_table] (UserName,GroupName)
+			VALUES ('$member','$login');");
+			if (!$res || !@da_sql_affected_rows($link,$res,$config)){
+				echo "<b>Unable to add user $member in group $login. SQL error</b><br>\n";
+				$da_abort=1;
+			}
+		}
 	}
 	if (!$da_abort){
 		foreach($show_attrs as $key => $attr){

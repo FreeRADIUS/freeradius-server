@@ -13,6 +13,8 @@ Ver 1.50:
 * Add a page to change the user's personal information. Changed the user toolbar and added htdocs/user_info.php3
   along with lib/{sql,ldap}/change_info.php3
 * Print a message if we can't connect to the ldap server in lib/ldap/user_info.php3
+* Use a textarea for new members in group_admin.php3 and group_new.php3. Update lib/sql/create_group.php3 and
+  lib/sql/group_admin.php3
 Ver 1.30:
 * Add limit of results returned in accounting.php3
 * Fix a bug in time2strclock() in lib/functions.php3. Seconds ammount more than 9 would not show.

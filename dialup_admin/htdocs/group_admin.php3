@@ -100,10 +100,10 @@ foreach ($group_members as $member){
 </tr>
 <tr>
 <td align=right bgcolor="#d0ddb0">
-New Group Member
+New Group Member(s)<br>Separate group members<br> by whitespace or newline
 </td>
 <td>
-<input type=text name=new_member value="" size=25>
+<textarea name=new_members cols="15" wrap="PHYSICAL" rows=5></textarea>
 </td>
 </tr>
 	</table>

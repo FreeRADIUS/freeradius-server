@@ -92,9 +92,9 @@ EOM;
 	</tr>
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
-		First member
+		First member(s)<br>Separate group members<br> by whitespace or newline
 		</td><td>
-		<input type=text name="member" value="" size=35>
+		<textarea name=members cols="15" wrap="PHYSICAL" rows=5></textarea>
 		</td>
 	</tr>
 		
