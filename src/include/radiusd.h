@@ -211,6 +211,7 @@ RADIUS_PACKET *	build_reply(int code, REQUEST *request,
 int		read_clients_file(const char *file);
 RADCLIENT	*client_find(uint32_t ipno);
 const char	*client_name(uint32_t ipno);
+void		client_walk(void);
 
 /* files.c */
 REALM		*realm_find(const char *);
