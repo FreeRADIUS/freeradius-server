@@ -1,26 +1,26 @@
+Unless otherwise mentioned, this copyright applies to all files in
+this distribution.
 
-	Most code in this package was written by Miquel van Smoorenburg
-	<miquels@cistron.nl> for Cistron Internet Services B.V.  A 
-	significant fraction of the code was written by others for the 
-	FreeRADIUS project.
+The code in this package was originally written by Miquel van Smoorenburg
+<miquels@cistron.nl> for Cistron Internet Services B.V.  A 
+significant fraction of the code was written by others for the 
+FreeRADIUS Server Project.
 
+Copyright (C) 2000-2002 The FreeRADIUS Server Project
+Copyright (C) 1997-1999 Cistron Internet Services B.V.
 
-	Copyright (C) 2000-2001 FreeRADIUS Project
-	Copyright (C) 1997-1999 Cistron Internet Services B.V.
+The license for all source code and documentation except
+the files in src/lib directory is the GNU GPL version 2:
 
-	The license for all source code and documentation except
-	the files in /lib is the GNU GPL version 2:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version
+2 of the License, or (at your option) any later version.
 
-	This program is free software; you can redistribute it and/or
-	modify it under the terms of the GNU General Public License
-	as published by the Free Software Foundation; either version
-	2 of the License, or (at your option) any later version.
+The license for all files in the src/lib directory is the
+GNU LGPL version 2:
 
-	The license for all files in the /lib directory is the
-	GNU LGPL version 2:
-
-	This library is free software; you can redistribute it and/or
-	modify it under the terms of the GNU Library General Public
-	License as published by the Free Software Foundation; either
-	version 2 of the License, or (at your option) any later version.
-
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Library General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
