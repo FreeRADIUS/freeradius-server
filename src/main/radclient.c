@@ -499,34 +499,6 @@ static int send_one_packet(radclient_t *radclient)
 			assert(0 == 1);
 		}
 
-	} else if (radclient->tries == retries) {
-		rbnode_t *node;
-		assert(radclient->request->id >= 0);
-
-		/*
-		 *	Delete the request from the tree of outstanding
-		 *	requests.
-		 */
-		node = rbtree_find(request_tree, radclient);
-		assert(node != NULL);
-
-		fprintf(stderr, "radclient: no response from server for ID %d\n", radclient->request->id);
-		rbtree_delete(request_tree, node);
-
-		/*
-		 *	Normally we mark it "done" when we've received
-		 *	the response, but this is a special case.
-		 */
-		if (radclient->resend == resend_count) {
-			radclient->done = 1;
-		}
-		totallost++;
-		return -1;
-
-		/*
-		 *	FIXME: Do stuff for packet loss.
-		 */
-
 	} else {		/* radclient->request->id >= 0 */
 		time_t now = time(NULL);
 
@@ -553,6 +525,37 @@ static int send_one_packet(radclient_t *radclient)
 			return 0;
 		}
 
+		/*
+		 *	We're not trying later, maybe the packet is done.
+		 */
+		if (radclient->tries == retries) {
+			rbnode_t *node;
+			assert(radclient->request->id >= 0);
+			
+			/*
+			 *	Delete the request from the tree of
+			 *	outstanding requests.
+			 */
+			node = rbtree_find(request_tree, radclient);
+			assert(node != NULL);
+			
+			fprintf(stderr, "radclient: no response from server for ID %d\n", radclient->request->id);
+			rbtree_delete(request_tree, node);
+			
+			/*
+			 *	Normally we mark it "done" when we've received
+			 *	the response, but this is a special case.
+			 */
+			if (radclient->resend == resend_count) {
+				radclient->done = 1;
+			}
+			totallost++;
+			return -1;
+		}
+
+		/*
+		 *	We are trying later.
+		 */
 		radclient->timestamp = now;
 		radclient->tries++;
 	}
@@ -720,6 +723,7 @@ int main(int argc, char **argv)
 			if (!isdigit((int) *optarg))
 				usage();
 			retries = atoi(optarg);
+			if ((retries == 0) || (retries > 1000)) usage();
 			break;
 		case 'i':
 			if (!isdigit((int) *optarg))
