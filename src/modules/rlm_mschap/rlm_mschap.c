@@ -211,8 +211,8 @@ static struct smb_passwd *createsmbpw(struct smb_passwd *pw_buf, const char * us
 	setsmbname(pw_buf,username);
   
 	if (pw_buf->smb_passwd==NULL && pw_buf->smb_nt_passwd==NULL) {
-	ntpwdhash(pw_buf->smb_nt_passwd_value, password);
-	lmpwdhash(pw_buf->smb_nt_passwd_value, password);
+		ntpwdhash(pw_buf->smb_nt_passwd_value, password);
+		lmpwdhash(pw_buf->smb_passwd_value, password);
 		pw_buf->smb_passwd = pw_buf->smb_passwd_value;
 		pw_buf->smb_nt_passwd = pw_buf->smb_nt_passwd_value;
 	}
