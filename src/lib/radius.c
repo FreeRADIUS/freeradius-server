@@ -1502,12 +1502,14 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 				if (!original) {
 					librad_log("ERROR: Tunnel-Password attribute in request: Cannot decrypt it.");
+					free(pair);
 					return -1;
 				}
 				if (rad_tunnel_pwdecode(pair->strvalue,
 							&pair->length,
 							secret,
 							(char *)original->vector) < 0) {
+					free(pair);
 					return -1;
 				}
 				break;
@@ -1519,6 +1521,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case FLAG_ENCRYPT_ASCEND_SECRET:
 				if (!original) {
 					librad_log("ERROR: Ascend-Send-Secret attribute in request: Cannot decrypt it.");
+					free(pair);
 					return -1;
 				} else {
 					uint8_t my_digest[AUTH_VECTOR_LEN];
