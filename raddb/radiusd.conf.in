@@ -1352,6 +1352,16 @@ modules {
 
 	#
 	#  The 'expression' module currently has no configuration.
+	#
+	#  This module is useful only for 'xlat'.  To use it,
+	#  put 'exec' into the 'instantiate' section.  You can then
+	#  do dynamic translation of attributes like:
+	#
+	#  Attribute-Name = `%{expr:2 + 3 + %{exec: uid -u}}`
+	#
+	#  The value of the attribute will be replaced with the output
+	#  of the program which is executed.  Due to RADIUS protocol
+	#  limitations, any output over 253 bytes will be ignored.
 	expr {
 	}
 
@@ -1368,11 +1378,11 @@ modules {
 	#
 	#  Execute external programs
 	#
-	#  The first example is useful only for 'xlat'.  To use it,
+	#  This module is useful only for 'xlat'.  To use it,
 	#  put 'exec' into the 'instantiate' section.  You can then
 	#  do dynamic translation of attributes like:
 	#
-	#  Attribute-Name = `{%exec:/path/to/program args}`
+	#  Attribute-Name = `%{exec:/path/to/program args}`
 	#
 	#  The value of the attribute will be replaced with the output
 	#  of the program which is executed.  Due to RADIUS protocol
@@ -1389,6 +1399,10 @@ modules {
 
 	#
 	#  This is a more general example of the execute module.
+	#
+	#  This one is called "echo".
+	#
+	#  Attribute-Name = `%{echo:/path/to/program args}`
 	#
 	#  If you wish to execute an external program in more than
 	#  one section (e.g. 'authorize', 'pre_proxy', etc), then it
@@ -1475,7 +1489,8 @@ modules {
 	# radiusd.conf: ippool students { [...] }
 	# users file  : DEFAULT Group == students, Pool-Name := "students"
 	#
-	# ********* IF YOU CHANGE THE RANGE PARAMETERS YOU MUST THEN ERASE THE DB FILES *******
+	# ********* IF YOU CHANGE THE RANGE PARAMETERS YOU MUST *********
+	# ********* THEN ERASE THE DB FILES                     *********
 	#
 	ippool main_pool {
 
