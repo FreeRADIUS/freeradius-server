@@ -31,9 +31,16 @@
 
   The realm "NULL" matches any requests WITHOUT a realm.
 
-  Normally the @realm is stripped from the username before sending it on
-  to the remote radius server. If you add the keyword "nostrip" to the
-  options, the @realm suffix will not be stripped.
+  There are two options you can add:
+
+  - nostrip:
+    By default the @realm is stripped from the username before sending it
+    on to the remote radius server. By specifying the "nostrip" option
+    the @realm suffix will not be stripped.
+  - hints
+    By default the original username is sent to the remote radius
+    server. By specifying the "hints" option the username will be
+    sent as it is after the "hints" file was processed.
 
 2. WHAT HAPPENS
 
@@ -48,7 +55,8 @@
   - The realm suffix is stripped from the username unless "nostrip" was
     set, and the request is sent to a remote radius server. Note that
     any stripping done in the hints file doesn't have an effect on the
-    username sent to the remote radius server.
+    username sent to the remote radius server unless you set the
+    "hints" option.
   - The remote server replies with ACK or REJECT
 
     On ACK:       The initial Auth-Type is set to Accept
@@ -68,5 +76,8 @@
     Idle-Timeout
     Port-Limit
 
-    Then the users file is processed as usual.
+    Then the users file is processed as usual. The username used at
+    this point is the one after hints file processing (regardless of
+    the "hints" option). It also includes the realm (regardless of the
+    setting of the "nostrip" option) unless the realm is LOCAL.
 
