@@ -64,6 +64,10 @@ install -m 644 radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
 install -m 644 radiusd-pam       $RPM_BUILD_ROOT/etc/pam.d/radius
 cd ..
 
+# This allows clean 'service radiusd restart'.
+# See killproc in /etc/rc.d/init.d/functions.
+ln -s /var/run/radiusd/radiusd.pid $RPM_BUILD_ROOT/var/run/radiusd.pid
+
 %pre
 /usr/sbin/useradd -c "radiusd user" -r -s /bin/false -u 95 -d / radiusd 2>/dev/null || :
 
@@ -112,6 +116,7 @@ fi
 %attr(0700,radiusd,radiusd) %dir /var/log/radius
 %attr(0700,radiusd,radiusd) %dir /var/log/radius/radacct
 %attr(0700,radiusd,radiusd) %dir /var/run/radiusd
+/var/run/radiusd.pid
 
 %changelog
 * Wed Sep  4 2002 Marko Myllynen
