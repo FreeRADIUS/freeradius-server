@@ -94,6 +94,9 @@ binary-arch: stamp-build
 	dh_installdocs `find src/modules/rlm_sql/drivers -type f -name \*.sql`
 	dh_installchangelogs doc/ChangeLog
 
+	# SNMP mibs
+	install -g root -m 644 mibs/*.txt $(freeradius_dir)/usr/share/snmp/mibs
+
 	# supporting programs
 	install -g root -m 755 $(debiandir)/initscript $(freeradius_dir)/etc/init.d/$(package)
 	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`; \
