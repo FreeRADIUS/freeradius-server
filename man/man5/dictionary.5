@@ -1,0 +1,49 @@
+.TH dictionary 5 "02 May 2000"
+.SH NAME
+dictionary \- RADIUS dictionary file
+.SH DESCRIPTION
+The \fIdictionary\fP file resides in the radius database directory,
+by default \fI/etc/raddb\fP. It contains a list of RADIUS attributes
+and values, which the server uses to map between descriptive names and
+on-the-wire data.
+Every line starting with a hash sign
+.RB (' # ')
+is treated as comment and ignored.
+.PP
+Each line of the file can contain one of the following strings
+.TP 0.5i
+.B ATTRIBUTE name  number  type
+Define a name to RADIUS attribute number mapping.  The \fIname\fP
+field can be any non-space text.  The \fInumber\fP must contain
+an ASCII number for that name, as given in \fIRFC2138\fP. The
+\fItype\fP field can be one of \fIstring\fP, \fIipaddr\fP,
+\fIinteger\fP, or \fIdate\fP.
+
+.TP 0.5i
+.B VALUE attribute-name value-name number
+Define a value name to value number mapping.  The \fIattribute-name\fP
+field must be previously defined by an \fIATTRIBUTE\fP entry.  The
+\fIvalue-name\fP can be any non-space text.  The \fInumber\fP must
+contain an ASCII number for that name, as given in \fIRFC2138\fP.
+
+.TP 0.5i
+.B VENDOR vendor-name number
+Define a Vendor Specific Attribute encapsulation for \fIvendor-name\fP to
+\fInumber\fP.
+
+.TP 0.5i
+.B $INCLUDE filename
+Include dictionary entries from the file \fIfilename\fP.  The
+\fIfilename\fP is taken as relative to the location of the
+\fIdictionary\fP which is doing the inclusion.
+
+.PP
+.SH FILES
+.I /etc/raddb/dictionary
+, 
+.I /etc/raddb/dictionary.*
+.SH "SEE ALSO"
+.BR radiusd (8) ,
+.BR naslist (5rad) ,
+.BR RFC2138 ,
+.BR RFC2139
