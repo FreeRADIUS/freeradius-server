@@ -43,6 +43,12 @@ AC_PROG_RANLIB
 
 PACKAGE=freeradius
 
+dnl #
+dnl # check for AIX, to allow us to use some BSD functions
+dnl # must be before macros that call the compiler.
+dnl #
+AC_AIX
+
 dnl Find GNU Make.
 AC_CHECK_PROG(GMAKE, gmake, yes, no)
 if test $GMAKE = no; then
@@ -291,10 +297,22 @@ dnl #  1. Checks for programs
 dnl #
 dnl #############################################################
 
+CHECKRAD=checkrad.pl
 AC_PATH_PROG(PERL, perl, /usr/local/bin/perl)
 if test ! -x $ac_cv_path_PERL; then
-  AC_MSG_ERROR(perl not found - fatal)
+  AC_MSG_WARN(perl not found - Simultaneous-Use and checkrad.pl may not work)
 fi
+AC_PATH_PROG(SNMPGET, snmpget)
+
+if test ! -x $ac_cv_path_SNMPGET; then
+  AC_MSG_WARN(snmpget not found - Simultaneous-Use and checkrad.pl may not work)
+fi
+
+AC_PATH_PROG(SNMPWALK, snmpwalk)
+if test ! -x $ac_cv_path_SNMPWALK; then
+  AC_MSG_WARN(snmpwalk not found - Simultaneous-Use and checkrad.pl may not work)
+fi
+
 AC_PATH_PROG(RUSERS, rusers, /usr/bin/rusers)
 
 dnl FIXME This is truly gross.
@@ -306,12 +324,6 @@ AM_MISSING_PROG(AUTOHEADER, autoheader, $missing_dir)
 AC_PATH_PROG(LOCATE,locate)
 AC_PATH_PROG(DIRNAME,dirname)
 AC_PATH_PROG(GREP,grep)
-
-dnl #
-dnl # check for AIX, to allow us to use some BSD functions
-dnl # must be before macros that call the compiler.
-dnl #
-AC_AIX
 
 dnl #############################################################
 dnl #
@@ -700,7 +712,9 @@ AC_SUBST(LIBTOOL)
 AC_SUBST(LIBLTDL)
 AC_SUBST(INCLTDL)
 top_builddir=`pwd`
+top_srcdir="$top_builddir"
 AC_SUBST(top_builddir)
+AC_SUBST(top_srcdir)
 
 dnl import libtool stuff
 

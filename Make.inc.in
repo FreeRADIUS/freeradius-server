@@ -17,6 +17,7 @@ logdir		= @logdir@
 raddbdir	= @raddbdir@
 radacctdir	= @radacctdir@
 top_builddir	= @top_builddir@
+top_srcdir	= @top_srcdir@
 
 MAKE		= @MAKE@
 CC		= @CC@
