@@ -14,13 +14,11 @@ if ($config[sql_use_operators] == 'true'){
 	$use_op = 0;
 }
 $group_exists = 'no';
-unset($item_vals);
-unset($tmp);
-unset($group_members);
-unset($existing_groups);
 $link = @da_sql_pconnect($config);
 if ($link){
 	if ($login == ''){
+		unset($existing_groups);
+
 		$res = @da_sql_query($link,$config,
 		"SELECT COUNT(*) as counter,groupname FROM $config[sql_usergroup_table]
 		GROUP BY groupname;");
@@ -36,6 +34,11 @@ if ($link){
 			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	}
 	else{
+		unset($item_vals);
+		unset($tmp);
+		unset($group_members);
+		unset($existing_groups);
+
 		$res = @da_sql_query($link,$config,
 		"SELECT attribute,value $op FROM $config[sql_groupcheck_table] WHERE groupname = '$login';");
 		if ($res){

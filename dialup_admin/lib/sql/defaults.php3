@@ -1,6 +1,6 @@
 <?php
 require('../lib/sql/attrmap.php3');
-if ($login != ''){
+if ($login != '' && $user_type != 'group'){
 	if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 		include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
 	else{
