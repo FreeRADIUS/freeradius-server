@@ -48,7 +48,7 @@ DEF=$2
 #
 #######################################################################
 if [ -r config.mak ];then
-  ALREADY=`grep -w ^$DEF config.mak`
+  ALREADY=`grep "^$DEF=" config.mak`
   if [ "$ALREADY" != "" ];then
     exit 0
   fi
@@ -236,6 +236,7 @@ if [ -f $FILE ];then
   echo $DEF=$FILE >> config.mak
   echo "#define $DEF \"$FILE\"" >> config.h
 else
+  echo "<nothing>"
   echo "# $DEF=" >> config.mak
   echo "/* #define $DEF \"$FILE\" */" >> config.h
 fi
