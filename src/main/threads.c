@@ -74,6 +74,7 @@ typedef struct THREAD_POOL {
 	int		total_threads;
 	int		active_threads;
 
+	int		start_threads;
 	int		max_threads;
 	int		min_spare_threads;
 	int		max_spare_threads;
@@ -86,10 +87,11 @@ static THREAD_POOL thread_pool;
  *	A mapping of configuration file names to internal integers
  */
 static CONF_PARSER thread_config[] = {
-	{ "max_threads",       PW_TYPE_INTEGER, &thread_pool.max_threads}, 
-	{ "min_spare_threads", PW_TYPE_INTEGER, &thread_pool.min_spare_threads}, 
-	{ "max_spare_threads", PW_TYPE_INTEGER, &thread_pool.max_spare_threads}, 
-	{ "max_requests_per_thread", PW_TYPE_INTEGER, &thread_pool.max_requests_per_thread}, 
+	{ "start_servers",       PW_TYPE_INTEGER, &thread_pool.start_threads}, 
+	{ "max_servers",       PW_TYPE_INTEGER, &thread_pool.max_threads}, 
+	{ "min_spare_servers", PW_TYPE_INTEGER, &thread_pool.min_spare_threads}, 
+	{ "max_spare_servers", PW_TYPE_INTEGER, &thread_pool.max_spare_threads}, 
+	{ "max_requests_per_server", PW_TYPE_INTEGER, &thread_pool.max_requests_per_thread}, 
 	
 	{ NULL, -1, NULL}
 };
@@ -313,7 +315,7 @@ static void move2tail(THREAD_HANDLE *handle)
 		return;
 	}
 
-	assert(thread_pool.total_threads > 1);
+	assert(thread_pool.total_threads >= 1);
 	prev = handle->prev;
 	next = handle->next;
   
@@ -479,7 +481,7 @@ int thread_pool_init(void)
 	 *
 	 *	If we fail while creating them, do something intelligent.
 	 */
-	for (i = 0; i < thread_pool.min_spare_threads; i++) {
+	for (i = 0; i < thread_pool.start_threads; i++) {
 		handle = spawn_thread();
 		if (handle == NULL) {
 			return -1;
@@ -624,13 +626,18 @@ int thread_pool_clean(void)
 	}
 
 	/*
-	 *	If there are too many spare threads, delete some.
+	 *	If there are too many spare threads, delete one.
+	 *
+	 *	Note that we only delete ONE at a time, instead of
+	 *	wiping out many.  This allows the excess servers to
+	 *	be slowly reaped, just in case the load spike comes again.
 	 */
 	if (spare > thread_pool.max_spare_threads) {
 
 		spare -= thread_pool.max_spare_threads;
 
-		DEBUG2("Threads: deleting %d spares", spare);
+		DEBUG2("Threads: deleting 1 spare out of %d spares", spare);
+
 		/*
 		 *	Walk through the thread pool, deleting the
 		 *	first N idle threads we come across.
@@ -653,6 +660,7 @@ int thread_pool_clean(void)
 #endif
 				handle->status = THREAD_CANCELLED;
 				spare--;
+				break;
 			}
 		}
 	}
