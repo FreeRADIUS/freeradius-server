@@ -54,6 +54,21 @@ typedef struct config_module_t {
 
 static config_module_t *components[RLM_COMPONENT_COUNT];
 
+/*
+ *	The component names.
+ *
+ *	Hmm... we probably should be getting these from the configuration
+ *	file, too.
+ */
+static const char *component_names[RLM_COMPONENT_COUNT] =
+{
+  "authenticate",
+  "authorize",
+  "preacct",
+  "accounting",
+  "session"
+};
+
 static void config_list_free(config_module_t **cf)
 {
 	config_module_t	*c, *next;
@@ -499,7 +514,6 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
  */
 int setup_modules(void)
 {
-	const char	*control;
 	int		comp;
 	CONF_SECTION	*cs;
         const char *filename="radiusd.conf";
@@ -541,17 +555,12 @@ int setup_modules(void)
 		module_list_free();
 	}
 
+	/*
+	 *	Loop over all of the known components, finding their
+	 *	configuration section, and loading it.
+	 */
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
-		switch(comp) {
-		case RLM_COMPONENT_AUTH: control="authenticate"; break;
-		case RLM_COMPONENT_AUTZ: control="authorize"; break;
-		case RLM_COMPONENT_PREACCT: control="preacct"; break;
-		case RLM_COMPONENT_ACCT: control="accounting"; break;
-		case RLM_COMPONENT_SESS: control="session"; break;
-		default: control="unknown";
-		}
-		
-		cs = cf_section_find(control);
+		cs = cf_section_find(component_names[comp]);
 		if (!cs)
 			continue;
 		
