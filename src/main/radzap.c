@@ -245,13 +245,15 @@ static int getport(const char *name)
 	return ntohs(svp->s_port);
 }
 
-static const char *getlocalhostsecret(void)
+static const char *getsecret(uint32_t server)
 {
 	RADCLIENT *cl;
 
-	cl = client_find(htonl(INADDR_LOOPBACK));
+	cl = client_find(server);
 	if (cl == NULL) {
-		radlog(L_ERR|L_CONS, "No clients entry for localhost");
+		char buf[32];
+		radlog(L_ERR|L_CONS, "No clients entry for %s",
+		       ip_ntoa(buf,server));
 		exit(1);
 	}
 	return (const char *)cl->secret;
@@ -287,7 +289,7 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 	struct timeval tv;
 	RADIUS_PACKET *req, *rep = NULL;
 	VALUE_PAIR *vp;
-	const char *secret=getlocalhostsecret();
+	const char *secret;
 
 	if ((req = rad_alloc(1)) == NULL) {
 		librad_perror("radzap");
@@ -309,6 +311,7 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 	if(!req->dst_ipaddr) 
 		req->dst_ipaddr = 0x7f000001;
 	req->vps = NULL;
+	secret = getsecret(req->dst_ipaddr);
 
 	if(allports != 0) {
 		INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_ACCOUNTING_OFF);
