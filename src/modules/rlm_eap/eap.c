@@ -1056,7 +1056,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			radlog(L_ERR, "rlm_eap: Identity Unknown, authentication failed");
 			free(*eap_packet_p);
 			*eap_packet_p = NULL;
-			eap_handler_free(&handler);
+			eap_handler_free(handler);
 			return NULL;
 		}
 
@@ -1091,7 +1091,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                                radlog(L_ERR, "rlm_eap: Identity does not match User-Name, setting from EAP Identity.");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
-                               eap_handler_free(&handler);
+                               eap_handler_free(handler);
                                return NULL;
                        }
 	       }
@@ -1101,7 +1101,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 	if (handler->eap_ds == NULL) {
 		free(*eap_packet_p);
 		*eap_packet_p = NULL;
-		eap_handler_free(&handler);
+		eap_handler_free(handler);
 		return NULL;
 	}
 

@@ -57,6 +57,8 @@ static int eap_detach(void *instance)
 
 	inst = (rlm_eap_t *)instance;
 
+	rbtree_free(inst->session_tree);
+	inst->session_tree = NULL;
 	eaplist_free(inst);
 
 	for (i = 0; i < PW_EAP_MAX_TYPES; i++) {
@@ -64,15 +66,31 @@ static int eap_detach(void *instance)
 		inst->types[i] = NULL;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&(inst->session_mutex));
 	pthread_mutex_destroy(&(inst->module_mutex));
-#endif
 
 	if (inst->default_eap_type_name) free(inst->default_eap_type_name);
 	free(inst);
 
 	return 0;
+}
+
+
+/*
+ *	Compare two handlers.
+ */
+static int eap_handler_cmp(const void *a, const void *b)
+{
+	const EAP_HANDLER *one = a;
+	const EAP_HANDLER *two = b;
+
+	if (one->src_ipaddr < two->src_ipaddr) return -1;
+	if (one->src_ipaddr > two->src_ipaddr) return +1;
+
+	if (one->eap_id < two->eap_id) return -1;
+	if (one->eap_id > two->eap_id) return +1;
+
+	return memcmp(one->state, two->state, sizeof(one->state));
 }
 
 
@@ -172,24 +190,24 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	/* Generate a state key, specific to eap */
 	generate_key();
 
-#ifdef HAVE_PTHREAD_H
+	/*
+	 *	Lookup sessions in the tree.  We don't free them in
+	 *	the tree, as that's taken care of elsewhere...
+	 */
+	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
+	if (!inst->session_tree) {
+		radlog(L_ERR|L_CONS, "rlm_eap: Cannot initialize tree");
+		eap_detach(inst);
+		return -1;
+	}
+
 	pthread_mutex_init(&(inst->session_mutex), NULL);
 	pthread_mutex_init(&(inst->module_mutex), NULL);
-#endif
 
 	*instance = inst;
 	return 0;
 }
 
-/*
- *	Dumb wrapper.
- *	FIXME: this should be done more intelligently...
- */
-static void my_handler_free(void *data)
-{
-  EAP_HANDLER *handler = (EAP_HANDLER *) data;
-  eap_handler_free(&handler);
-}
 
 /*
  *	For backwards compatibility.
@@ -237,7 +255,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		case PW_EAP_PEAP:
 			DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
 			eap_fail(handler);
-			eap_handler_free(&handler);
+			eap_handler_free(handler);
 			return RLM_MODULE_INVALID;
 			break;
 
@@ -279,7 +297,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 */
 	if (rcode == EAP_INVALID) {
 		eap_fail(handler);
-		eap_handler_free(&handler);
+		eap_handler_free(handler);
 		DEBUG2("  rlm_eap: Failed in EAP select");
 		return RLM_MODULE_INVALID;
 	}
@@ -296,7 +314,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		rcode = request_data_add(request,
 					 inst, REQUEST_DATA_EAP_HANDLER,
-					 handler, my_handler_free);
+					 handler, eap_handler_free);
 		rad_assert(rcode == 0);
 
 		return RLM_MODULE_HANDLED;
@@ -319,7 +337,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		rcode = request_data_add(request,
 					 inst, REQUEST_DATA_EAP_HANDLER,
-					 handler, my_handler_free);
+					 handler, eap_handler_free);
 		rad_assert(rcode == 0);
 
 		/*
@@ -381,7 +399,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	} else {
 		DEBUG2("  rlm_eap: Freeing handler");
 		/* handler is not required any more, free it now */
-		eap_handler_free(&handler);
+		eap_handler_free(handler);
 	}
 
 	/*
@@ -510,7 +528,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
 		if (!data) {
 			radlog(L_ERR, "rlm_eap: Failed to retrieve callback for tunneled session!");
-			eap_handler_free(&handler);
+			eap_handler_free(handler);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -520,7 +538,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		rcode = data->callback(handler, data->tls_session);
 		free(data);
 		if (rcode == 0) {
-			eap_handler_free(&handler);
+			eap_handler_free(handler);
 			return RLM_MODULE_REJECT;
 		}
 
@@ -541,7 +559,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		} else {	/* couldn't have been LEAP, there's no tunnel */
 			DEBUG2("  rlm_eap: Freeing handler");
 			/* handler is not required any more, free it now */
-			eap_handler_free(&handler);
+			eap_handler_free(handler);
 		}
 
 		/*

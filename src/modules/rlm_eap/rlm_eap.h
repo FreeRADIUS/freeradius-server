@@ -40,21 +40,20 @@ typedef struct eap_types_t {
 
 /*
  * This structure contains eap's persistent data.
- * sessions[] = EAP_HANDLERS, keyed by the first octet of the State
- *              attribute, and composed of a linked list, ordered from
- *              oldest to newest.
+ * sessions = remembered sessions, in a tree for speed.
  * types = All supported EAP-Types
  * mutex = ensure only one thread is updating the sessions[] struct
  */
 typedef struct rlm_eap_t {
-	EAP_HANDLER 	*sessions[256];
+	rbtree_t	*session_tree;
+	EAP_HANDLER	*session_head, *session_tail;
 	EAP_TYPES 	*types[PW_EAP_MAX_TYPES + 1];
 
 	/*
 	 *	Configuration items.
 	 */
-	char		*default_eap_type_name;
 	int		timer_limit;
+	char		*default_eap_type_name;
 	int		default_eap_type;
 	int		ignore_unknown_eap_types;
 	int		cisco_accounting_username_bug;
@@ -64,6 +63,19 @@ typedef struct rlm_eap_t {
 	pthread_mutex_t	module_mutex;
 #endif
 } rlm_eap_t;
+
+/*
+ *	For simplicity in the rest of the code.
+ */
+#ifndef HAVE_PTHREAD_H
+/*
+ *	This is easier than ifdef's throughout the code.
+ */
+#define pthread_mutex_init(_x, _y)
+#define pthread_mutex_destroy(_x)
+#define pthread_mutex_lock(_x)
+#define pthread_mutex_unlock(_x)
+#endif
 
 /* function definitions */
 /* EAP-Type */
@@ -84,12 +96,12 @@ EAP_DS      	*eap_ds_alloc(void);
 EAP_HANDLER 	*eap_handler_alloc(void);
 void	    	eap_packet_free(EAP_PACKET **eap_packet);
 void	    	eap_ds_free(EAP_DS **eap_ds);
-void	    	eap_handler_free(EAP_HANDLER **handler);
+void	    	eap_handler_free(EAP_HANDLER *handler);
 
 int 	    	eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler);
-void	    	eaplist_free(rlm_eap_t *inst);
 EAP_HANDLER 	*eaplist_find(rlm_eap_t *inst, REQUEST *request,
 			      eap_packet_t *eap_packet);
+void		eaplist_free(rlm_eap_t *inst);
 
 /* State */
 void	    	generate_key(void);
