@@ -35,6 +35,8 @@ if ($order != 'desc' && $order != 'asc')
 $selected[$order] = 'selected';
 if ($callerid != '')
 	$callerid_str = "AND CallingStationId = '$callerid'";
+if ($server != '' && $server != 'all')
+	$server_str = "AND NASIPAddress = '$server'";
 
 ?>
 
@@ -86,7 +88,7 @@ if ($link){
 	WHERE AcctStopTime <= '$now_str' AND AcctStopTime >= '$prev_str'
 	AND (AcctTerminateCause LIKE 'Login-Incorrect%' OR
 	AcctTerminateCause LIKE 'Invalid-User%' OR
-	AcctTerminateCause LIKE 'Multiple-Logins%') $callerid_str
+	AcctTerminateCause LIKE 'Multiple-Logins%') $callerid_str $server_str
 	ORDER BY AcctStopTime $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
@@ -165,6 +167,29 @@ EOM;
 ?>
 
 <td><input type="submit" class=button value="show"></td></tr>
+<tr><td>
+<b>On Access Server:</b>
+</td></tr><tr><td>
+<select name="server">
+<?php
+while(1){
+	$i++;
+	$name = 'nas' . $i . '_name';
+	if ($config[$name] == ''){
+		$i--;
+		break;
+	}
+	$name_ip = 'nas' . $i . '_ip';
+	if ($server == $config[$name_ip])
+		echo "<option selected value=\"$config[$name_ip]\">$config[$name]\n";
+	else
+		echo "<option value=\"$config[$name_ip]\">$config[$name]\n";
+}
+if ($server == '' || $server == 'all')
+	echo "<option selected value=\"all\">all\n";
+?>
+</select>
+</td></tr>
 </table></td></tr></form>
 </table>
 </tr>

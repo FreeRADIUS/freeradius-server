@@ -88,7 +88,7 @@ if ($link){
 	"SELECT sum(AcctSessionTime),sum(AcctInputOctets),sum(AcctOutputOctets),
 	avg(AcctSessionTime),avg(AcctInputOctets),avg(AcctOutputOctets),COUNT(*) FROM
 	$config[sql_accounting_table] WHERE UserName = '$login'
-	AND AcctStopTime >= '$week_str' AND AcctStopTime <= '$now_str';");
+	AND AcctStartTime >= '$week_str' AND AcctStartTime <= '$now_str';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
 		$tot_time = time2str($row['sum(AcctSessionTime)']);
