@@ -67,18 +67,15 @@ static REALM *realm_proxy(REQUEST *request)
 	 *	Let's strip the Stripped-User-Name attribute.
 	 */
 	realmname = strrchr(vp->strvalue, '@');
-	*realmname = '\0';
-	vp->length = strlen(vp->strvalue);
+	if (realmname != NULL) {
+		*realmname = '\0';
+		vp->length = strlen(vp->strvalue);
+	}
 
 	/*
-	 *  Add a 'realm' attribute to the incoming request.
+	 *	Don't add a 'Realm' attribute, proxy.c does
+	 *	that for us.
 	 */
-	vp = pairmake("Realm", realm->realm, T_OP_EQ);
-	if (!vp) {
-	  log(L_ERR|L_CONS, "no memory");
-	  exit(1);
-	}
-	pairadd(&request->packet->vps, vp);
 
 	/*
 	 *	The special server LOCAL?
