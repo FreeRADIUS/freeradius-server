@@ -155,6 +155,7 @@
  *	  'server' directive.
  *	- Add a per instance Ldap-Group attribute (of the form <instance>-Ldap-Group) and register
  *	  a corresponding ldap_groupcmp function
+ *	- Small change to ldap_get_conn to fix problems on some platforms
  */
 static const char rcsid[] = "$Id$";
 
@@ -352,11 +353,12 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,void *instance)
 	ldap_instance *inst = instance;
 	register int i = 0;
 
-	for(;i<inst->num_conns;i++){
+	for(i=0;i<inst->num_conns;i++){
+		DEBUG("rlm_ldap: ldap_get_conn: Checking Id: %d",i);
 		if (conns[i].locked == 0 && pthread_mutex_trylock(&(conns[i].mutex)) == 0){
 			*ret = &conns[i];
 			conns[i].locked = 1;
-			DEBUG("ldap_get_conn: Got Id: %d",i);
+			DEBUG("rlm_ldap: ldap_get_conn: Got Id: %d",i);
 			return i;
 		}
 	}
@@ -366,7 +368,7 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,void *instance)
 
 static inline void ldap_release_conn(int i, LDAP_CONN *conns)
 {
-	DEBUG("ldap_release_conn: Release Id: %d",i);
+	DEBUG("rlm_ldap: ldap_release_conn: Release Id: %d",i);
 	conns[i].locked = 0;
 	pthread_mutex_unlock(&(conns[i].mutex));
 }
