@@ -3,6 +3,8 @@
 #include <mysql/mysql.h>
 
 #include "radiusd.h"
+#include "modules.h"
+#include "autoconf.h"
 #include "rlm_mysql.h"
 
 
@@ -333,17 +335,219 @@ static int icradius_authorize(AUTH_REQ *authreq, char *name, VALUE_PAIR **check_
 
 static int icradius_authenticate(AUTH_REQ *authreq, char *user, char *password)
 {
+	VALUE_PAIR	*auth_pair;
+	MYSQL_RES	*result;
+	MYSQL_ROW	row
+	char		querystr[256];
 
-  return RLM_DECLINED;
+	if ((aut_pair = pairfind(authreq->request, PW_AUTH_TYPE)) == NULL)
+	   return RLM_AUTH_REJECT;
+
+	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", mysql_authcheck_table, sqlrecord->UserName);
+	if (sqltrace)
+		DEBUG(querystr);
+	mysql_query(MyAcctSock, querystr);
+	if (!(result = mysql_store_result(MyAcctSock)) && mysql_num_fields(MyAcctSock)) {
+		log(L_ERR,"MYSQL Error: Cannot get result");
+		log(L_ERR,"MYSQL error: %s",mysql_error(MyAcctSock));
+		mysql_close(MyAcctSock);
+		MyAcctSock = NULL;
+	} else {
+		row = mysql_fetch_row(result);
+		mysql_free_result(result);
+
+		if (strncmp(strlen(password), password, row[0]) != 0) {
+			return RLM_AUTH_REJECT;
+		} else
+			return RLM_AUTH_OK;
+
+	} 	
+
 
 
 }
 
-static int icradius_accounting(AUTH_REQ *authreq)
-{
-  return RLM_DECLINED;
-}
+static int icradius_accounting(AUTH_REQ *authreq) {
 
+	time_t		nowtime;
+	struct tm	*tim;
+        char		datebuf[20];
+	int		*sqlpid;
+	int		sqlstatus;
+	FILE		*backupfile;
+	struct stat	backup;
+	char		*valbuf;
+	MYSQLREC sqlrecord = {"", "", "", "", 0, "", "", 0, "", 0, "", "", 0, 0, "", "", "", "", "", "", 0};
+	MYSQLREC backuprecord = {"", "", "",  "", 0, "", "", 0, "", 0, "", "", 0, 0, "", "", "", "", "", "", 0};
+	VALUE_PAIR	*pair;
+
+
+	pair = authreq->request;
+	strncpy(sqlrecord.Realm, authreq->realm, SQLBIGREC);
+	while(pair != (VALUE_PAIR *)NULL) {
+
+				
+
+           /* Check the pairs to see if they are anything we are interested in. */
+            switch(pair->attribute) {
+                case PW_ACCT_SESSION_ID:
+                	strncpy(sqlrecord.AcctSessionId, pair->strvalue, SQLBIGREC);
+                	break;
+                	
+                case PW_USER_NAME:
+                	strncpy(sqlrecord.UserName, pair->strvalue, SQLBIGREC);
+                	break;
+                	
+                case PW_NAS_IP_ADDRESS:
+						ipaddr2str(sqlrecord.NASIPAddress, pair->lvalue);
+                	break;
+
+                case PW_NAS_PORT_ID:
+                	sqlrecord.NASPortId = pair->lvalue;
+                	break;
+
+                case PW_NAS_PORT_TYPE:
+						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
+						if(valbuf != (char *)NULL) {
+                		strncpy(sqlrecord.NASPortType, valbuf, SQLBIGREC);
+						}
+						break;
+
+                case PW_ACCT_STATUS_TYPE:
+       						sqlrecord.AcctStatusTypeId = pair->lvalue;
+						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
+						if(valbuf != (char *)NULL) {
+                		strncpy(sqlrecord.AcctStatusType, valbuf, SQLBIGREC);
+						}
+						break;
+
+                case PW_ACCT_SESSION_TIME:
+                	sqlrecord.AcctSessionTime = pair->lvalue;
+                	break;
+
+                case PW_ACCT_AUTHENTIC:
+						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
+						if(valbuf != (char *)NULL) {
+                		strncpy(sqlrecord.AcctAuthentic, valbuf, SQLBIGREC);
+						}
+						break;
+
+                case PW_CONNECT_INFO:
+                	strncpy(sqlrecord.ConnectInfo, pair->strvalue, SQLBIGREC);
+                	break;
+
+                case PW_ACCT_INPUT_OCTETS:
+                	sqlrecord.AcctInputOctets = pair->lvalue;
+                	break;
+
+                case PW_ACCT_OUTPUT_OCTETS:
+                	sqlrecord.AcctOutputOctets = pair->lvalue;
+                	break;
+
+                case PW_CALLED_STATION_ID:
+                	strncpy(sqlrecord.CalledStationId, pair->strvalue, SQLLILREC);
+                	break;
+
+                case PW_CALLING_STATION_ID:
+                	strncpy(sqlrecord.CallingStationId, pair->strvalue, SQLLILREC);
+                	break;
+
+                case PW_ACCT_TERMINATE_CAUSE:
+						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
+						if(valbuf != (char *)NULL) {
+                		strncpy(sqlrecord.AcctTerminateCause, valbuf, SQLBIGREC);
+						}
+						break;
+
+                case PW_SERVICE_TYPE:
+						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
+						if(valbuf != (char *)NULL) {
+                		strncpy(sqlrecord.ServiceType, valbuf, SQLBIGREC);
+						}
+						break;
+
+                case PW_FRAMED_PROTOCOL:
+						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
+						if(valbuf != (char *)NULL) {
+                		strncpy(sqlrecord.FramedProtocol, valbuf, SQLBIGREC);
+						}
+						break;
+
+                case PW_FRAMED_IP_ADDRESS:
+						ipaddr2str(sqlrecord.FramedIPAddress, pair->lvalue);
+                	break;
+
+                case PW_ACCT_DELAY_TIME:
+                	sqlrecord.AcctDelayTime = pair->lvalue;
+                	break;
+
+                default:
+                	break;
+		}
+
+		pair = pair->next;
+	}
+
+
+        nowtime = time(0) - sqlrecord.AcctDelayTime;
+        tim = localtime(&nowtime);
+        strftime(datebuf, sizeof(datebuf), "%Y%m%d%H%M%S", tim);
+
+        strncpy(sqlrecord.AcctTimeStamp, datebuf, 20);
+       
+
+	/* If backup file exists we know the database was down */
+	if(stat(MYSQLBACKUP, &backup) == 0) {
+		if(backup.st_size > 0) {
+
+			/* We'll fork a child to load records in the backup file */
+			(pid_t)sqlpid = fork();
+			if(sqlpid > 0) {
+
+				/* suspend the parent while child reads records */
+				while(waitpid((pid_t)sqlpid, &sqlstatus, 0) != (pid_t)sqlpid);
+			}
+			/* Child Process */
+			if(sqlpid == 0) {
+				if((backupfile = fopen(MYSQLBACKUP, "rwb")) == (FILE *)NULL) {
+					log(L_ERR, "Acct: (Child) Couldn't open file %s", MYSQLBACKUP);
+					exit(1);
+				}
+
+				/* Lock the mysql backup file, prefer lockf() over flock(). */
+#if defined(F_LOCK) && !defined( BSD)
+				(void)lockf((int)backupfile, (int)F_LOCK, (off_t)SQL_LOCK_LEN);
+#else
+				(void)flock(backupfile, SQL_LOCK_EX);
+#endif  
+
+				log(L_INFO, "Acct:  Clearing out sql backup file - %s", MYSQLBACKUP);
+
+				while(!feof(backupfile)) {
+					if(fread(&backuprecord, sizeof(MYSQLREC), 1, backupfile) == 1) {
+
+						/* pass our filled structure to the
+					 	   function that will write to the database */
+						if (mysql_save_acct(&backuprecord) == 0)
+							return RLM_ACCT_FAIL_SOFT;
+
+					}
+
+				}
+				unlink((const char *)MYSQLBACKUP);
+				exit(0);
+			}
+		}
+	}
+	if (mysql_save_acct(&sqlrecord) == 0)
+		return RLM_ACCT_FAIL_SOFT;
+	if (!mysql_keepopen) {
+		mysql_close(MyAcctSock);
+		MyAcctSock = NULL;
+	}
+
+	return RLM_ACCT_OK;
+}
 
 
 /* globally exported name */
@@ -356,6 +560,3 @@ module_t rlm_module = {
   icradius_accounting,		/* accounting */
   icradius_detach,		/* detach */
 };
-
-
-

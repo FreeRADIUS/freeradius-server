@@ -38,13 +38,6 @@ typedef struct mysqlrec {
         unsigned long                   AcctDelayTime;
 } MYSQLREC; 
 
-NAS		*naslist;
-REALM		*realms;
-CLIENT		*clients;
-DICT_ATTR	*dictionary_attributes;
-DICT_VALUE	*dictionary_values;
-DICT_VENDOR	*dictionary_vendors;
-
 #define SQL_LOCK_LEN sizeof(MYSQLREC)
 #define MAX_TABLE_LEN 20
 #define MAX_AUTH_QUERY_LEN 256
@@ -72,9 +65,5 @@ int		mysql_start();
 int		mysql_save_acct(MYSQLREC *sqlrecord);
 int		mysql_userparse(VALUE_PAIR **first_pair, MYSQL_ROW row);
 int		mysql_checksocket(const char *facility);
-int		mysql_read_realms(char *realmtable);
 int		mysql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode);
 int		mysql_check_multi(char *name, VALUE_PAIR *request, int maxsimul);
-int		mysql_read_naslist(char *nastable);
-int		mysql_read_clients(char *nastable);
-int		mysql_dict_init();
