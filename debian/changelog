@@ -1,6 +1,6 @@
-freeradius (0.8.1+0.9pre20030617-1) unstable; urgency=low
+freeradius (0.9.0~pre1-1) unstable; urgency=low
 
-  * New Upstream release.
+  * New Upstream prerelease.
    - Upstream dictionary files are in /usr/share/freeradius.
   * Renamed pacakge to 'freeradius*' from 'radiusd-freeradius*'.
   * Moved file hierarchy around to be neater:
@@ -14,7 +14,7 @@ freeradius (0.8.1+0.9pre20030617-1) unstable; urgency=low
   * Added support for DEB_BUILD_OPTIONS for policy 3.5.9 compliance.
   * Included SNMP mibs for Radius
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 17 Jun 2003 02:35:17 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  9 Jul 2003 01:13:09 +1000
 
 radiusd-freeradius (0.7+cvs20021113-1) unstable; urgency=low
  
