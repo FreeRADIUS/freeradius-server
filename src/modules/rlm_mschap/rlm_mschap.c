@@ -696,55 +696,46 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		smbPasswd.acct_ctrl = password->lvalue;
 		if (smbPasswd.acct_ctrl&ACB_PWNOTREQ) return RLM_MODULE_OK;
 	}
+        password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL_TEXT);
+        if(password) {
+		smbPasswd.acct_ctrl = pdb_decode_acct_ctrl(password->strvalue);
+                if (smbPasswd.acct_ctrl&ACB_PWNOTREQ) return RLM_MODULE_OK;
+        }
 	password = pairfind(request->config_items, PW_LM_PASSWORD);
 	if(password){
-		res++;
-		smbPasswd.smb_passwd = password->strvalue;
+		if(password->length == 16) {
+			smbPasswd.smb_passwd = password->strvalue;
+			res++;
+		}
+		else if(hex2bin(password->strvalue,smbPasswd.smb_passwd_value,16) != 16) {
+			radlog(L_ERR, "rlm_mschap: Invalid LM Password text");
+                } 
+                else {
+			res++;
+			smbPasswd.smb_passwd = smbPasswd.smb_passwd_value;
+		}
+		
 	}
 	password = pairfind(request->config_items, PW_NT_PASSWORD);
 	if(password){
-		res++;
-		smbPasswd.smb_nt_passwd = password->strvalue;
+		if(password->length == 16){
+			smbPasswd.smb_nt_passwd = password->strvalue;
+			res++;
+		}
+		else if(hex2bin(password->strvalue,smbPasswd.smb_nt_passwd_value,16) != 16) {
+			radlog(L_ERR, "rlm_mschap: Invalid NT Password text");
+                }
+                else {
+			smbPasswd.smb_nt_passwd = smbPasswd.smb_nt_passwd_value;
+			res++;
+		}
 	}
 	if (!res) {
-		/*
-                * find for text version attributes
-                * if found, delete attributes from reply
-                */
-
-               password = pairfind(request->reply->vps, PW_SMB_ACCOUNT_CTRL_TEXT);
-               if(password) {
-                       smbPasswd.acct_ctrl = pdb_decode_acct_ctrl(password->strvalue);
-                       pairdelete(&request->reply->vps, PW_SMB_ACCOUNT_CTRL_TEXT);
-                       if (smbPasswd.acct_ctrl&ACB_PWNOTREQ) return RLM_MODULE_OK;
-               }
-               password = pairfind(request->reply->vps, PW_LM_PASSWORD_TEXT);
-               if(password){
-                       if(hex2bin(password->strvalue,smbPasswd.smb_passwd_value,16) != 16) {
-                               radlog(L_ERR, "rlm_mschap: Invalid LM Password text");
-                       } else {
-                               res++;
-                               smbPasswd.smb_passwd = smbPasswd.smb_passwd_value;
-                       }
-                       pairdelete(&request->reply->vps, PW_LM_PASSWORD_TEXT);
-               }
-               password = pairfind(request->reply->vps, PW_NT_PASSWORD_TEXT);
-               if(password){
-                       if(hex2bin(password->strvalue,smbPasswd.smb_nt_passwd_value,16) != 16) {
-                               radlog(L_ERR, "rlm_mschap: Invalid NT Password text");
-                       } else {
-                               res++;
-                               smbPasswd.smb_nt_passwd = smbPasswd.smb_nt_passwd_value;
-                       }
-                       pairdelete(&request->reply->vps, PW_NT_PASSWORD_TEXT);
-               }
-
-               if(!res) {
-                       /*
-                        * We have neither NT nor LM passwords configured
-                        */
-                       return RLM_MODULE_INVALID;
-               }
+	/*
+         * We have neither NT nor LM passwords configured
+         */
+		radlog(L_ERR, "rlm_mschap: No LM/NT password configured. Check authorization.");
+		return RLM_MODULE_INVALID;
 	 }
 	
 	/*
