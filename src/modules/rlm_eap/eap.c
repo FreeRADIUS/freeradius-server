@@ -579,10 +579,9 @@ int process_eap(EAP_TYPES *type_list, EAP_DS *eap_ds, EAP_DS *req)
 int select_eap_type(EAP_LIST **list, EAP_TYPES *type_list, EAP_DS *eap_ds, char *conftype)
 {
 	EAP_LIST *item = NULL;
-	EAP_TYPES *atype;
 	int eaptype, i;
 
-
+	eaptype = 0;
 	for (i = PW_EAP_MAX_TYPES; i > 0; i--) {
 		if (!strcmp(conftype, eap_types[i])) {
 			eaptype = i;
