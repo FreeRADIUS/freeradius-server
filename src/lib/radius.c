@@ -1308,11 +1308,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 					     (char *)packet->vector);
 				pair->lvalue = 1; /* see main/auth.c */
 
-				/*
-				 *  FIXME: Allow NUL's in the password,
-				 *  too??
-				 */
-				pair->length = strlen(pair->strvalue);
+				if (pair->attribute == PW_USER_PASSWORD) {
+					pair->length = strlen(pair->strvalue);
+				}
 				break;
 
 				/*
