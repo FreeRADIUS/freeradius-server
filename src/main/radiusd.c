@@ -172,7 +172,6 @@ static CONF_PARSER server_config[] = {
   { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          RADIUS_PID },
   { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
   { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
-  { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "0" },
   { "user",           PW_TYPE_STRING_PTR, &uid_name,  NULL},
   { "group",          PW_TYPE_STRING_PTR, &gid_name,  NULL},
   { "usercollide",    PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide, "no" },
