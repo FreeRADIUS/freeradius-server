@@ -162,6 +162,7 @@ extern int		proxy_port;
 extern int		proxyfd;
 extern int		proxy_retry_count;
 extern int		proxy_retry_delay;
+extern int		do_usercollide;
 
 /*
  *	Function prototypes.
