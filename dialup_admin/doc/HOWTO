@@ -353,8 +353,84 @@ general_finger_type from above.
 [2.1.8] LDAP Options
 
 
-Due to insufficient experience no information on LDAP configuration 
-is provided. 
+>ldap_server: ldap.%{general_domain}
+
+The ldap server to connect to
+Both ldap_server and ldap_write_server can be a space-separated
+list of ldap hostnames. In that case the library will try to connect
+to the servers in the order that they appear. If the first host is down
+ldap_connect will ask for the second ldap host and so on.
+
+>ldap_write_server: master.%{general_domain}
+
+There are many cases where we have a small write master and
+a lot of fast read only replicas. If that is the case uncomment
+ldap_write_server and point it to the write master. It will be
+used only when writing to the directory, not when reading
+
+>ldap_base: dc=company,dc=com
+
+The LDAP base for the ldap searches
+
+>ldap_binddn: cn=Directory Manager
+>ldap_bindpw: XXXXXXX
+
+The DN and password which will be used to bind to the LDAP server. If we don't use
+http credentials (see below) than these setting will be used for all ldap operations
+(both searches and modifies/adds).
+
+>ldap_default_new_entry_suffix: ou=dialup,ou=guests,%{ldap_base}
+
+The LDAP suffix under which all new user entries created through the new user
+page will be placed
+
+>ldap_default_dn: uid=default-dialup,%{ldap_base}
+
+The DN of an ldap entry containing radius user settings which will be
+applied for all users. Though these settings are applied *before* the
+regular profile and per user settings, so they can be easily overwritten.
+That way we could for example set Session-Timeout to 4 hours for all our users
+and set it to a lower/higher value for specific users or groups of users
+
+>ldap_regular_profile_attr: dialupregularprofile
+
+The ldap attribute which if present in a user entry will contain the DN
+of another ldap entry specifying radius user settings (check and reply items).
+That way we can keep these settings in only one entry and assign them to each
+user that we want through the regular profile attribute.
+ 
+>ldap_use_http_credentials: yes
+
+If set to yes then the HTTP credentials (http authentication)
+will be used to bind to the ldap server instead of ldap_binddn
+and ldap_bindpw directives. That way multiple admins with different rights
+on the ldap database can connect through one dialup_admin interface.
+The ldap_binddn and ldap_bindpw are still needed to find the DN of the user
+to bind with (http authentication will only provide us with a
+username). As a result the ldap_binddn should be able to do a search
+with a filter of (uid=<username>). Normally, the anonymous (empty DN)
+user can do that.
+
+>ldap_directory_manager: cn=Directory Manager
+>ldap_map_to_directory_manager: admin
+
+If we are using http credentials we can map a specific username to the
+directory manager entry (which usually does not correspond to a specific username)
+
+> ldap_debug: true
+
+Set to true to enable ldap debugging
+
+>ldap_filter: (uid=%u)
+
+Allow for defining the ldap filter used when searching for a user
+Variables supported:
+%u: username
+%U: username provided though http authentication
+
+One use of this would be to restrict access to only the user's belonging to
+a specific administrator like this:
+ldap_filter: (&(uid=%u)(manager=uid=%U,ou=admins,o=company,c=com))
 
 
 [2.1.9] SQL Options
@@ -515,7 +591,7 @@ NAS is .1.3.6.1.4.1.529.10.4.1.12 and should also be replaced.
 However the snmpfinger is not actually required if your accounting 
 is working properly
 
-[2.2.2] The log_badlogins scripts
+[2.2.2] The log_badlogins script
 
 The log_badlogins scripts actually does a tail -f to the radius.log and
 intercepts any authentification failure and passes it to the database. 
@@ -525,6 +601,36 @@ you should execute it once like this:
 bin/log_badlogins /var/log/radius/radius.log /usr/local/dialup_admin/conf/admin.conf& 
 
 Of cource the proper file locations must be set
+
+[2.2.3] The clean_radacct script
+
+The clean_radacct script can be used to clear the database of stale open sessions
+(sessions for which an Accounting-Stop has not been received hence they remain open)
+The $back_days variable can be changed to specify how many days we should leave the
+sessions open before removing them. Make sure though that all your user sesions are
+short lived (no DSL users for example) before using the script.
+
+[2.2.4] The truncate_radacct script
+
+The truncate_radacct script can be used to delete all sessions which are older than a
+specified number of days. This number can be changed through the $back_days variable.
+The script will do a lock tables so make sure you run it during the night when the traffic
+is low. It will also only delete *closed* session, so the clean_radacct script should be
+used together to clear the possible open sessions.
+
+[2.2.4] The tot_stats script
+
+This script will log aggregated per user information in the totacct table. It will log a row
+per user, per day. It should be run *once* every day to create the corresponding entries in
+the totacct table. The general_stats_use_totacct configuration directive could then be set to
+yes in order for the statistics page to use the totacct table instead of the radacct table.
+
+[2.2.5] The monthly_tot_stats script
+
+This script can be used to aggregate the information from the totacct table into the mtotacct table
+creating aggregated accounting information for each spaning in one month period. If the current
+month has not ended it will log information up to the current month day. It should be run once
+a day to create the corresponding entries in the mtotacct table.
 
 
 [2.3] User Attributes
@@ -542,7 +648,7 @@ If it is not then add it there also.Everything should work ok after that.
 
 The above sections should propably have brought you to a working dialup admin.
 Note however that if you are interested in logging the failed logins
-(See section 2.3.2) you should execute the the log_badlogins each time 
+(See section 2.3.2) you should execute the log_badlogins each time 
 the system starts.
 
 

@@ -19,6 +19,9 @@ Ver 1.65:
 * Add a HOWTO from Paris Stamatopoulos
 * create a doc directory and move the documentation files there
 * Add a note about the HOWTO in the README file
+* Add a few help pages for the nomadix radius attributes by Ulrich Walcher
+* Update the HOWTO with instructions about the ldap configuration directives and the scripts in the bin folder
+* Update the AUTHORS file
 Ver 1.63:
 * Do an eval on the attribute description strings in the user_edit page. That will allow the login-time creation
   page to work properly.
