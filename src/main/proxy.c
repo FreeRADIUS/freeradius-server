@@ -57,8 +57,6 @@ int proxy_receive(REQUEST *request)
 	VALUE_PAIR *replicatepair;
 	VALUE_PAIR *realmpair;
 	int replicating;
-	REALM *realm;
-	char *realmname;
 
 	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
 	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
