@@ -1,6 +1,8 @@
-<html>
 <?php
 require('../conf/config.php3');
+?>
+<html>
+<?php
 require('../lib/functions.php3');
 
 if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))

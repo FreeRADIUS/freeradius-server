@@ -33,6 +33,7 @@ Ver 1.60:
   to open the file html/buttons/<username>/buttons.html.php3. If we can't we open
   html/buttons/default/buttons.html.php3. That way we can create muiltiple views of say the online users
   page based on which admin requests the page.
+* Call config.php3 before outputing any html.
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files

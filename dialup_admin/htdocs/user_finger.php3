@@ -1,3 +1,6 @@
+<?php
+require('../conf/config.php3');
+?>
 <html>
 <head>
 <META HTTP-EQUIV="Refresh" CONTENT="50">
@@ -8,7 +11,6 @@ User Finger Facility
 </head>
 
 <?php
-require('../conf/config.php3');
 require('../lib/functions.php3');
 require("../lib/$config[general_lib_type]/functions.php3");
 
