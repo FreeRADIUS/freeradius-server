@@ -370,7 +370,6 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		/*
 		 * Perhaps a subsection.
 		 */
-
 		if (t2 == T_LCBRACE || t3 == T_LCBRACE) {
 			css = cf_section_read(cf, lineno, fp, buf1,
 					      t2==T_LCBRACE ? NULL : buf2, cs);
@@ -382,6 +381,11 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 			continue;		
 		}
+
+		/*
+		 *	Ignore semi-colons.
+		 */
+		if (*buf2 == ';') *buf2 = '\0';
 
 		/*
 		 *	Must be a normal attr = value line.
