@@ -451,7 +451,7 @@ echo > confdefs.h
 
 # A filename unique to this package, relative to the directory that
 # configure is in, which we can look for to find out if srcdir is correct.
-ac_unique_file=rlm_eap_md5.c
+ac_unique_file=rlm_eap_mschapv2.c
 
 # Find the source files, if location was not specified.
 if test -z "$srcdir"; then
@@ -521,10 +521,10 @@ else
 fi
 
 
-# From configure.in Revision: 1.0 
+# From configure.in Revision: 1.1 
 
 
-if test x$with_rlm_eap_md5 != xno; then
+if test x$with_rlm_eap_mschapv2 != xno; then
 
 	## We may need more complex checking here.  Assume for now that 
 	## everyone has it.
@@ -649,18 +649,18 @@ fi
 done
 
 
-	targetname=rlm_eap_md5     # keep this!  Don't change!
+	targetname=rlm_eap_mschapv2     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!
-	echo \*\*\* module rlm_eap_md5 is disabled.  # keep this!  Don't change!
+	echo \*\*\* module rlm_eap_mschapv2 is disabled.  # keep this!  Don't change!
 fi
 
 if test x"$fail" != x""; then
 	if test x"${enable_strict_dependencies}" = x"yes"; then
-		{ echo "configure: error: set --without-rlm_eap_md5 to disable it explicitly." 1>&2; exit 1; }
+		{ echo "configure: error: set --without-rlm_eap_mschapv2 to disable it explicitly." 1>&2; exit 1; }
 	else
-		echo "configure: warning: silently not building rlm_eap_md5." 1>&2
-		echo "configure: warning: FAILURE: rlm_eap_md5 requires: $fail." 1>&2; 
+		echo "configure: warning: silently not building rlm_eap_mschapv2." 1>&2
+		echo "configure: warning: FAILURE: rlm_eap_mschapv2 requires: $fail." 1>&2; 
 		targetname=""
 	fi
 fi
@@ -815,8 +815,8 @@ s%@oldincludedir@%$oldincludedir%g
 s%@infodir@%$infodir%g
 s%@mandir@%$mandir%g
 s%@CPP@%$CPP%g
-s%@eap_md5_cflags@%$eap_md5_cflags%g
-s%@eap_md5_ldflags@%$eap_md5_ldflags%g
+s%@eap_mschapv2_cflags@%$eap_mschapv2_cflags%g
+s%@eap_mschapv2_ldflags@%$eap_mschapv2_ldflags%g
 s%@targetname@%$targetname%g
 
 CEOF
