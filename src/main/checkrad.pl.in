@@ -17,16 +17,20 @@
 #		max40xx_finger	 1.0	Author: costa@mdi.ca
 #		computone_finger 1.1	Author: costa@mdi.ca
 #		sub tc_tccheck	 1.1	Author: alexisv@compass.com.ph
-#		pathras_telnet	 1.1	Author: accdias@sst.com.br
+#		cyclades_telnet	 1.1	Author: accdias@sst.com.br
 #		patton_snmp	 1.0	Author: accdias@sst.com.br
-#		digitro_rusers	 1.0	Author: accdias@sst.com.br
+#		digitro_rusers	 1.1	Author: accdias@sst.com.br
+#		cyclades_snmp	 1.0	Author: accdias@sst.com.br
 #		usrhiper_snmp    1.0    Author: igor@ipass.net
 #		multitech_snmp   1.0    Author: ehonzay@willmar.com
 #		netserver_telnet 1.0	Author: mts@interplanet.es
 #		versanet_snmp    1.0    Author: support@versanetcomm.com
+#		bay_finger	 1.0	Author: chris@shenton.org
 #
 #	Config: $debug is the file you want to put debug messages in
 #		$snmpget is the location of your ``snmpget'' program
+#		$snmpwalk is the location of your ``snmpwalk'' program
+#		$rusers is the location of your ``rusers'' program
 #		$naspass is the location of your NAS admin password file
 #
 
@@ -40,8 +44,9 @@ $debug		= "";
 #$debug		= "$logdir/checkrad.log";
 
 $snmpget	= "@SNMPGET@";
-$naspass	= "$raddbdir/naspasswd";
+$snmpwalk	= "@SNMPWALK@";
 $rusers		= "@RUSERS@";
+$naspass	= "$raddbdir/naspasswd";
 
 #
 #	PM3:	$lv_offs is where the last S port is before one or two
@@ -509,7 +514,7 @@ sub tc_tccheck {
 #
 #	Author: Antonio Dias of SST Internet <accdias@sst.com.br>
 #
-sub pathras_telnet {
+sub cyclades_telnet {
    #
    #	Localize all variables first.
    #
@@ -615,7 +620,7 @@ sub pathras_telnet {
 }
 
 #
-#	Check a Patton 2800 via snmp
+#	Check a Patton 2800 via SNMP
 #
 #	Version: 1.0
 #
@@ -639,26 +644,45 @@ sub patton_snmp {
 #
 #      Check a Digitro BXS via rusers
 #
-#      Version: 1.0
+#      Version: 1.1
 #
 #      Author: Antonio Dias of SST Internet <accdias@sst.com.br>
 #
 sub digitro_rusers {
+   my($ret);
+   local $_;
+
    if (-e $rusers && -x $rusers) {
-      open(FD, "$rusers $ARGV[1]|");
+      $_ = `$rusers $ARGV[1]`;
+      $ret = ((/$ARGV[3]/) ? 1 : 0);
    } else {
       print LOG "   Error: can't execute $rusers\n" if $debug;
-      return 2;
+      $ret = 2;
    }
+   $ret;
+}
 
-   while(<FD>) {
-      if (/$ARGV[3]/) {
-	close FD;
-	return 1;
-      }
+#
+#	Check Cyclades PR3000 and PR4000 via SNMP
+#
+#	Version: 1.0
+#
+#	Author: Antonio Dias of SST Internet <accdias@sst.com.br>
+#
+sub cyclades_snmp {
+   my ($oid, $ret);
+   local $_;
+   
+   $oid = ".1.3.6.1.4.1.2925.3.3.6.1.1.2";
+
+   if (-e $snmpwalk && -x $snmpwalk) { 	
+      $_ = `$snmpwalk $ARGV[1] public $oid`;
+      $ret = (/$ARGV[3]/ ? 1 : 0);
+   } else {
+      print LOG "   Error: can't execute $snmpwalk\n" if $debug;
+      $ret = 2;
    }
-   close FD;
-   0;
+   $ret;
 }
 
 #
@@ -851,7 +875,11 @@ if ($ARGV[0] eq 'livingston') {
 } elsif ($ARGV[0] eq 'tc') {
 	$ret = &tc_tccheck;
 } elsif ($ARGV[0] eq 'pathras') {
-	$ret = &pathras_telnet;
+	$ret = &cyclades_telnet;
+} elsif ($ARGV[0] eq 'pr3000') {
+	$ret = &cyclades_snmp;
+} elsif ($ARGV[0] eq 'pr4000') {
+	$ret = &cyclades_snmp;
 } elsif ($ARGV[0] eq 'patton') {
 	$ret = &patton_snmp;
 } elsif ($ARGV[0] eq 'digitro') {
