@@ -6,7 +6,7 @@
 
 include ../Make.inc
 
-SUBDIRS		= lib libltdl modules main
+SUBDIRS		= lib modules main
 WHAT_TO_MAKE	= all
 
 all:
