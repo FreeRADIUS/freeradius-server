@@ -62,38 +62,6 @@
 
 static const char rcsid[] = "$Id$";
 
-static const char *letters = "0123456789ABCDEF";
-
-/*
- *	hex2bin converts hexadecimal strings into binary
- */
-static int hex2bin (const char *szHex, unsigned char* szBin, int len)
-{
-	char * c1, * c2;
-	int i;
-
-   	for (i = 0; i < len; i++) {
-		if( !(c1 = memchr(letters, toupper((int) szHex[i << 1]), 16)) ||
-		    !(c2 = memchr(letters, toupper((int) szHex[(i << 1) + 1]), 16)))
-		     break;
-                 szBin[i] = ((c1-letters)<<4) + (c2-letters);
-        }
-        return i;
-}
-
-/*
- *	bin2hex creates hexadecimal presentation
- *	of binary data
- */
-static void bin2hex (const unsigned char *szBin, char *szHex, int len)
-{
-	int i;
-	for (i = 0; i < len; i++) {
-		szHex[i<<1] = letters[szBin[i] >> 4];
-		szHex[(i<<1) + 1] = letters[szBin[i] & 0x0F];
-	}
-}
-
 
 /* Allowable account control bits */
 #define ACB_DISABLED   0x0001  /* 1 = User account disabled */
@@ -277,7 +245,7 @@ static void auth_response(const char *username,
 	 */
  	response[0] = 'S';
 	response[1] = '=';
-	bin2hex(digest, response + 2, 20);
+	lrad_bin2hex(digest, response + 2, 20);
 }
 
 
@@ -510,7 +478,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		DEBUG("rlm_mschap: NT-Hash: %s",p);
 		ntpwdhash(buffer,p);
 
-		bin2hex(buffer, out, 16);
+		lrad_bin2hex(buffer, out, 16);
 		out[32] = '\0';
 		DEBUG("rlm_mschap: NT-Hash: Result: %s",out);
 		return 32;
@@ -527,7 +495,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			
 		DEBUG("rlm_mschap: LM-Hash: %s",p);
 		smbdes_lmpwdhash(p,buffer);
-		bin2hex(buffer, out, 16);
+		lrad_bin2hex(buffer, out, 16);
 		out[32] = '\0';
 		DEBUG("rlm_mschap: LM-Hash: Result: %s",out);
 		return 32;
@@ -801,7 +769,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (hex2bin(buffer + 8, nthashhash, 16) != 16) {
+		if (lrad_hex2bin(buffer + 8, nthashhash, 16) != 16) {
 			DEBUG2("  rlm_mschap: Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
@@ -1055,8 +1023,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 */
 		if ((lm_password->length == 16) ||
 		    ((lm_password->length == 32) &&
-		     (hex2bin(lm_password->strvalue,
-			      lm_password->strvalue, 16) == 16))) {
+		     (lrad_hex2bin(lm_password->strvalue,
+				   lm_password->strvalue, 16) == 16))) {
 			DEBUG2("  rlm_mschap: Found LM-Password");
 			lm_password->length = 16;
 
@@ -1087,8 +1055,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	if (nt_password) {
 		if ((nt_password->length == 16) ||
 		    ((nt_password->length == 32) &&
-		     (hex2bin(nt_password->strvalue,
-			      nt_password->strvalue, 16) == 16))) {
+		     (lrad_hex2bin(nt_password->strvalue,
+				   nt_password->strvalue, 16) == 16))) {
 			DEBUG2("  rlm_mschap: Found NT-Password");
 			nt_password->length = 16;
 

@@ -372,48 +372,6 @@ static int str2argv(char *str, char **argv, int max_argc)
 
 
 /*
- *	hex2bin converts hexadecimal strings into binary
- *
- *	Hmm... there are a number of such functions in the source.
- *	maybe we want to make a library function?
- */
-static int hex2bin(const char *str, uint8_t *bin, size_t length)
-{
-	unsigned int		len;
-	const		char *letters = "0123456789ABCDEFabcdef";
-
-	/*
-	 *	Must be byte aligned, not nibble aligned.
-	 */
-	len = strlen(str);
-	if ((len & 0x01) != 0) return -1;
-
-	/*
-	 *	Input string is too long to fit.  Don't even bother
-	 *	trying.
-	 */
-	if ((len / 2) > length) return -1;
-
-	/*
-	 *	Input string contains non-hex characters, die.
-	 */
-	if (strspn(str, letters) != len) return -1;
-
-	len = 0;
-	while (*str) {
-		char	*c1, *c2;
-
-		c1 = memchr(letters, toupper((int) *(str++)), 16);
-		c2 = memchr(letters, toupper((int) *(str++)), 16);
-
-		*(bin++) = ((c1-letters)<<4) + (c2-letters);
-		len++;
-	}
-
-        return len;
-}
-
-
 /*
  *	ascend_parse_ipx_net
  *
@@ -455,7 +413,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Node must be 6 octets long.
 	 */
-	token = hex2bin(p, net->node, IPX_NODE_ADDR_LEN);
+	token = lrad_hex2bin(p, net->node, IPX_NODE_ADDR_LEN);
 	if (token != IPX_NODE_ADDR_LEN) return -1;
 
 	/*
@@ -970,11 +928,11 @@ static int ascend_parse_generic(int argc, char **argv,
 	filter->offset = rcode;
 	filter->offset = htons(filter->offset);
 
-	rcode = hex2bin(argv[1], filter->mask, sizeof(filter->mask));
-	if (rcode < 0) return -1;
+	rcode = lrad_hex2bin(argv[1], filter->mask, sizeof(filter->mask));
+	if (rcode != sizeof(filter->mask)) return -1;
 
-	token = hex2bin(argv[2], filter->value, sizeof(filter->value));
-	if (token < 0) return -1;
+	token = lrad_hex2bin(argv[2], filter->value, sizeof(filter->value));
+	if (token != sizeof(filter->value)) return -1;
 
 	/*
 	 *	The mask and value MUST be the same length.
