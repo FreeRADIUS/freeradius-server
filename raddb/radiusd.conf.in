@@ -1559,6 +1559,13 @@ modules {
 #
 instantiate {
 	#
+	#  Allows the execution of external scripts.
+	#  The entire command line (and output) must fit into 253 bytes.
+	#
+	#  e.g. Framed-Pool = `%{exec:/bin/echo foo}`
+	exec
+
+	#
 	#  The expression module doesn't do authorization,
 	#  authentication, or accounting.  It only does dynamic
 	#  translation, of the form:
