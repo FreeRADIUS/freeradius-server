@@ -139,7 +139,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	datum key_datum;
 	datum data_datum;
 	int i,j;
-	char *cli = "0";
+	const char *cli = "0";
 	char *pool_name = NULL;
 	
 	/*
@@ -211,7 +211,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 		int rcode;
 		uint32_t or_result;
 		char str[32];
-		char *nas_init = "NOT_EXIST";
+		const char *nas_init = "NOT_EXIST";
 
 		DEBUG("rlm_ippool: Initializing database");
 		for(i=data->range_start,j=-1;i<=data->range_stop;i++,j--){
@@ -405,6 +405,8 @@ static int ippool_authorize(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL){
 		if (data->name == NULL || strcmp(data->name,vp->strvalue))
 			return RLM_MODULE_NOOP;
+	} else {
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
