@@ -1,3 +1,26 @@
+New features were added:
++ LM support to MS-CHAP
++ support  for  SAMBA passwd files. It introduces new files smbpass.c and
+  smbpass.h
++ support for MS-CHAPv2. SHA1 digest support was added (sha1.c, sha2.c)
+! module is configurable via radiusd.conf and supports instances
+! module supports both authorization and authentication. Authorization
+  sets authentication to MS-CHAP if any NTLM-related things found.
+  During authorization new attributes added to config_items:
+         LM-Password - LM-encoded password
+         NT-Password - NT-encoded password
+         SMB-Account-CTRL - account control flags in SAMBA format
+  During  authentication  these  attributes  are  checked  against  data
+  provided by NAS.
+- RFC 2433 text with MS-CHAPv1 removed. Microsoft attributes are covered
+  by RFC 2458, MS-CHAPv2 - RFC 2759. You can obtain them from
+  www.rfceditor.org
+
+ZARAZA,
+3APA3A@security.nnov.ru
+
+Below is original README by Jay Miller
+
 This is a partial implementation of MS-CHAP for FreeRadius.  The patch
 was designed for Cistron-Radius 1.6.4, but the changes to source are
 pretty minimal and should work with previous versions.  It is based on

@@ -30,6 +30,8 @@ struct smb_passwd
 
 
 int hex2bin(const char *szHex, unsigned char* szBin, int len);
+void bin2hex (const unsigned char *szBin, char *szHex, int len);
 void pdb_init_smb(struct smb_passwd *user);
+struct smb_passwd *getsmbfilepwent(FILE *fp);
 struct smb_passwd *getsmbfilepwname(const char *fname, char *name);
 #endif

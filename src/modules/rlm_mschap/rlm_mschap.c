@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2000,2001  The FreeRADIUS server project
  */
 
 
@@ -30,6 +30,16 @@
  *
  *  http://www.freeradius.org/rfc/rfc2548.txt
  *
+ */
+
+/*
+ *  If you have any questions on NTLM (Samba) passwords
+ *  support, LM authentication and MS-CHAP v2 support
+ *  please contact
+ *
+ *  Vladimir Dubrovin	vlad@sandy.ru
+ *  aka
+ *  ZARAZA		3APA3A@security.nnov.ru
  */
  
 #include	"autoconf.h"
@@ -45,24 +55,46 @@
 
 #include	"des.h"
 #include        "md4.h"
+#include	"sha1.h"
 #include	"smbpass.h"
 
-#define PW_MSCHAP_RESPONSE  ((dict_vendorcode(311) << 16) | 1)
-#define PW_MSCHAP_CHALLENGE ((dict_vendorcode(311) << 16) | 11)
+#define PW_MSCHAP_RESPONSE	((311 << 16) | 1)
+#define PW_MSCHAP_CHALLENGE	((311 << 16) | 11)
+#define PW_MSCHAP2_RESPONSE	((311 << 16) | 25)
+#define PW_LM_PASSWORD		1057
+#define PW_NT_PASSWORD		1058
+#define PW_SMB_ACCOUNT_CTRL	1059
+
+
+typedef enum {
+	NONE,
+	CLEARTEXT,
+	MSCHAP1,
+	MSCHAP2} AUTHTYPE;
 
 static void parity_key(char * szOut, const char * szIn);
 static void des_encrypt(const char *szClear, const char *szKey, char *szOut);
 static void mschap(const char *szChallenge, struct smb_passwd * smbPasswd, char *szResponse, int bUseNT);
-void ntpwdhash (char *szHash, const char *szPassword);
-void lmpwdhash (char *szHash, const char *szPassword);
-struct smb_passwd *createsmbpw(char *password, int encode);
+static void ntpwdhash (char *szHash, const char *szPassword);
+static void lmpwdhash (char *szHash, const char *szPassword);
+static struct smb_passwd *createsmbpw(char* username, char *password);
+static void auth_response(struct smb_passwd * smbPasswd, char *ntresponse,
+		char *peer_challenge, char *auth_challenge,
+		char *response);
+static void challenge_hash( const char* peer_challenge, const char* auth_challenge,
+		     const char* user_name, char * challenge );
+static void mschap2( const char *peer_challenge, const char *auth_challenge,
+		struct smb_passwd * smbPasswd, char *response);
+static void add_reply(VALUE_PAIR** vp, unsigned char ident,
+                const char* name, const char* value, int len);
 
 /* 
  *	parity_key takes a 7-byte string in szIn and returns an
  *	8-byte string in szOut.  It inserts a 1 into every 8th bit.
  *	DES just strips these back out.
  */
-static void parity_key(char * szOut, const char * szIn) {
+static void parity_key(char * szOut, const char * szIn)
+{
 	int i;
 	unsigned char cNext = 0;
 	unsigned char cWorking = 0;
@@ -81,7 +113,8 @@ static void parity_key(char * szOut, const char * szIn) {
  *	des_encrypt takes an 8-byte string and a 7-byte key and
  *	returns an 8-byte DES encrypted string in szOut
  */
-static void des_encrypt(const char *szClear, const char *szKey, char *szOut) {
+static void des_encrypt(const char *szClear, const char *szKey, char *szOut)
+{
 	char szParityKey[9];
 	unsigned long ulK[16][2];
 	
@@ -92,11 +125,13 @@ static void des_encrypt(const char *szClear, const char *szKey, char *szOut) {
 }
 
 
+
 /*
  *	ntpwdhash converts Unicode password to 16-byte NT hash
  *	with MD4
  */
-void ntpwdhash (char *szHash, const char *szPassword){
+static void ntpwdhash (char *szHash, const char *szPassword)
+{
 	char szUnicodePass[513];
 	char nPasswordLen;
 	int i;
@@ -121,13 +156,14 @@ void ntpwdhash (char *szHash, const char *szPassword){
  *	lmpwdhash converts 14-byte null-padded uppercase OEM
  *	password to 16-byte DES hash with predefined salt string
  */
-void lmpwdhash (char *szHash, const char *szPassword){
+static void lmpwdhash (char *szHash, const char *szPassword)
+{
 	char szOEMPass[14];
 	char stdText[] = "KGS!@#$%";
 	int i;
 
 	memset(szOEMPass, 0, 14);
-	for(i = 0; i < 14 && szPassword[i]; i++)
+	for (i = 0; i < 14 && szPassword[i]; i++)
 		szOEMPass[i] = toupper(szPassword[i]);
 
 	/* Obtain DES hash of OEM password */
@@ -135,35 +171,31 @@ void lmpwdhash (char *szHash, const char *szPassword){
 	des_encrypt(stdText, szOEMPass+7, szHash+8);
 }
 
-
-struct smb_passwd *createsmbpw(char *password, int encrypted)
+/*
+ *	createsmbpw() creates smb_passwd structure from given
+ *	user name and cleartext or ntlm-encrypter password
+ *	if encrypted flag is not set only cleartext password
+ *	allowed
+ */
+static struct smb_passwd *createsmbpw(char * username, char *password)
 {
-  char * colon;
-  static struct smb_passwd pw_buf;
-  static unsigned char smbpwd[16];
-  static unsigned char smbntpwd[16];
+	static struct smb_passwd pw_buf;
+	static unsigned char smbpwd[16];
+	static unsigned char smbntpwd[16];
 
 
-  pdb_init_smb(&pw_buf);
-  pw_buf.acct_ctrl = ACB_NORMAL;
-  pw_buf.smb_userid = 0;
+	pdb_init_smb(&pw_buf);
+	pw_buf.acct_ctrl = ACB_NORMAL;
+	pw_buf.smb_userid = 0;
+	pw_buf.smb_name = username;
   
-  if(encrypted){
-	if(hex2bin(password, smbpwd, 16) == 16 && password[32]==':'){
+	if (pw_buf.smb_passwd==NULL && pw_buf.smb_nt_passwd==NULL) {
+		ntpwdhash(smbntpwd, password);
+		lmpwdhash(smbpwd, password);
 		pw_buf.smb_passwd=smbpwd;
-	}
-	colon = strchr(password, ':');
-	if(colon && hex2bin(colon + 1, smbntpwd, 16) == 16){
 		pw_buf.smb_nt_passwd = smbntpwd;
 	}
-  }	
-  if(pw_buf.smb_passwd==NULL && pw_buf.smb_nt_passwd==NULL){
-	ntpwdhash(smbntpwd, password);
-	lmpwdhash(smbpwd, password);
-	pw_buf.smb_passwd=smbpwd;
-	pw_buf.smb_nt_passwd = smbntpwd;
-  }
-  return &pw_buf;
+	return &pw_buf;
 }
 
 
@@ -194,9 +226,98 @@ static void mschap(const char *szChallenge, struct smb_passwd * smbPasswd,
 	des_encrypt(szChallenge, szMD4 + 14, szResponse + 16);
 }   
 
+
+/*
+ *	challenge_hash() is used by mschap2() and auth_response()
+ *	implements RFC2759 ChallengeHash()
+ *	generates 64 bit challenge
+ */
+static void challenge_hash( const char* peer_challenge, const char* auth_challenge,
+		     const char* user_name, char * challenge )
+{
+	SHA1_CTX Context;
+	char hash[20];
+	
+	SHA1Init(&Context);
+	SHA1Update(&Context, peer_challenge, 16);
+	SHA1Update(&Context, auth_challenge, 16);
+	SHA1Update(&Context, user_name, strlen(user_name));
+	SHA1Final(hash, &Context);
+	memcpy(challenge, hash, 8);
+}
+
+static void mschap2( const char *peer_challenge, const char *auth_challenge,
+		struct smb_passwd * smbPasswd, char *response)
+{
+	char challenge[8];
+	
+	challenge_hash(peer_challenge, auth_challenge, smbPasswd->smb_name,
+		challenge);
+	mschap(challenge, smbPasswd, response, 1);
+}
+
+/*
+ *	auth_response() generates MS-CHAP v2 SUCCESS response
+ *	according to RFC 2759 GenerateAuthenticatorResponse()
+ *	returns 42-octet response string
+ */
+static void auth_response(struct smb_passwd * smbPasswd, char *ntresponse,
+		char *peer_challenge, char *auth_challenge,
+		char *response)
+{
+	SHA1_CTX Context;
+	char hashhash[16];
+	char magic1[39] =
+               {0x4D, 0x61, 0x67, 0x69, 0x63, 0x20, 0x73, 0x65, 0x72, 0x76,
+                0x65, 0x72, 0x20, 0x74, 0x6F, 0x20, 0x63, 0x6C, 0x69, 0x65,
+                0x6E, 0x74, 0x20, 0x73, 0x69, 0x67, 0x6E, 0x69, 0x6E, 0x67,
+                0x20, 0x63, 0x6F, 0x6E, 0x73, 0x74, 0x61, 0x6E, 0x74};
+                                             
+	char magic2[41] =
+               {0x50, 0x61, 0x64, 0x20, 0x74, 0x6F, 0x20, 0x6D, 0x61, 0x6B,
+                0x65, 0x20, 0x69, 0x74, 0x20, 0x64, 0x6F, 0x20, 0x6D, 0x6F,
+                0x72, 0x65, 0x20, 0x74, 0x68, 0x61, 0x6E, 0x20, 0x6F, 0x6E,
+                0x65, 0x20, 0x69, 0x74, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6F,
+                0x6E};
+        char challenge[8];
+        char digest[20];
+
+	/*
+	 * Hash password hash into hashhash
+	 */
+
+	md4_calc(hashhash, smbPasswd->smb_nt_passwd, 16);
+
+	SHA1Init(&Context);
+	SHA1Update(&Context, hashhash, 16);
+	SHA1Update(&Context, ntresponse, 24);
+	SHA1Update(&Context, magic1, 39);
+	SHA1Final(digest, &Context);
+	challenge_hash(peer_challenge, auth_challenge, smbPasswd->smb_name,
+		challenge);
+	SHA1Init(&Context);
+	SHA1Update(&Context, digest, 20);
+	SHA1Update(&Context, challenge, 8);
+	SHA1Update(&Context, magic2, 41);
+	SHA1Final(digest, &Context);
+
+	/*
+	 * Encode the value of 'Digest' as "S=" followed by
+	 * 40 ASCII hexadecimal digits and return it in
+	 * AuthenticatorResponse.
+	 * For example,
+	 *   "S=0123456789ABCDEF0123456789ABCDEF01234567"
+	 */
+ 
+	response[0] = 'S';
+	response[1] = '=';
+	bin2hex(digest, response + 2, 20);
+}
+
 struct mschap_instance {
 	int ignore_password;
 	char *passwd_file;
+	char *auth_type;
 };
 
 static CONF_PARSER module_config[] = {
@@ -206,11 +327,17 @@ static CONF_PARSER module_config[] = {
 	{ "ignore_password",    PW_TYPE_BOOLEAN,
 	  offsetof(struct mschap_instance,ignore_password), NULL, "no" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
-	  offsetof(struct mschap_instance,passwd_file), NULL,  NULL },
+	  offsetof(struct mschap_instance, passwd_file), NULL,  NULL },
+	{ "authtype",   PW_TYPE_STRING_PTR,
+	  offsetof(struct mschap_instance, auth_type), NULL,  NULL },
 	
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
+/*
+ *	Create instance for our module. Allocate space for
+ *	instance structure and read configuration parameters
+ */
 static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct mschap_instance *inst;
@@ -223,115 +350,244 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
+/*
+ *	deinstantiate module, free all memory allocated during
+ *	mschap_instantiate()
+ */
 static int mschap_detach(void *instance){
 #define inst ((struct mschap_instance *)instance)
-	if(inst->passwd_file)free(inst->passwd_file);
+	if (inst->passwd_file) free(inst->passwd_file);
+	if (inst->auth_type) free(inst->auth_type);
 	free(instance);
 	return 0;
 #undef inst
 }
+	
+/*
+ *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
+ *	attribute to reply packet
+ */
+static void add_reply(VALUE_PAIR** vp, unsigned char ident,
+		const char* name, const char* value, int len)
+{
+	VALUE_PAIR *reply_attr;
+	reply_attr = pairmake(name, "", T_OP_EQ);
+	*reply_attr->strvalue = ident;
+	memcpy(reply_attr->strvalue + 1, value, len);
+	reply_attr->length = len + 1;
+	pairadd(vp, reply_attr);
+}
 
-/* validate userid/passwd */
-static int mschap_auth(void * instance, REQUEST *request)
+
+
+/*
+ *	mschap_authorize() - authorize user if we can authenticate
+ *	it later. Add Auth-Type attribute if present in module
+ *	configuration (usually Auth-Type must be "MS-CHAP")
+ */
+static int mschap_authorize(void * instance, REQUEST *request)
 {
 #define inst ((struct mschap_instance *)instance)
-	VALUE_PAIR *password = NULL;
 	VALUE_PAIR *challenge = NULL, *response = NULL;
-	uint8_t calculated[32];
-	struct smb_passwd *smbPasswd = NULL, *smbPasswd1 = NULL;
-	int cleartext = 0;
-
-	/*instance = instance;*/	/* -Wunused */
-
-	/*
-	 *	We need an MS-CHAP-Challenge attribute to calculate
-	 *	the response.
-	 */
-	password = pairfind(request->packet->vps, PW_PASSWORD);
-	if (password) {
-		cleartext = 1;
-		smbPasswd1 = createsmbpw(password->strvalue, 0);
-	} else {
-		challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
-		if (!challenge) {
-			radlog(L_AUTH, "rlm_mschap: Attribute \"MS-CHAP-Challenge\" is required for authentication.");
-			return RLM_MODULE_INVALID;
-		}
-
-		/*
-		 *	We need an MS-CHAP-Challenge attribute to calculate
-		 *	the response.
-		 */
+	VALUE_PAIR *reply_attr;
+	VALUE_PAIR *password = NULL;
+	struct smb_passwd *smbPasswd = NULL;
+	
+	
+	password = pairfind(request->config_items, PW_PASSWORD);
+	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
+	if (challenge) {
 		response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE);
-		if (!response) {
-			radlog(L_AUTH, "rlm_mschap: Attribute \"MS-CHAP-Response\" is required for authentication.");
-			return RLM_MODULE_INVALID;
-		}
-		if (response->length < 50) {
-			radlog(L_AUTH, "rlm_mschap: Attribute \"MS-CHAP-Response\" has wrong format.");
-			return RLM_MODULE_INVALID;
-		}
+		if (!response)
+			response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE);
 	}
-
-	/*
-	 *	We can only authenticate user requests which HAVE
-	 *	a Password attribute.
-	 *	Password can be either cleartext or NTLM-encoded
-	 *	password in SAMBA format (hexadecimal string with
-	 *	':' between LM and NT, like
-	 *	aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0
-	 */
-	if (!cleartext) password = pairfind(request->config_items, PW_PASSWORD);
-	if (!cleartext && password && !inst->ignore_password)
-		smbPasswd = createsmbpw(password->strvalue, 1);
-	else if(inst->passwd_file){
+	if (password && (!challenge || !response)) {
+		/*  We have nothing related to MS-CHAP or NTLM */
+		return RLM_MODULE_NOOP;
+	}
+	if (password && !inst->ignore_password)
+		smbPasswd = createsmbpw(request->username->strvalue, password->strvalue);
+	else if (inst->passwd_file) {
 		smbPasswd = getsmbfilepwname (inst->passwd_file, request->username->strvalue);
 	}
-	if(!smbPasswd){
-		radlog(L_AUTH, "rlm_mschap: Configuration item \"Password\" is required for authentication.");
-		return RLM_MODULE_INVALID;
+	if (!smbPasswd) {
+		if(challenge && response){
+			add_reply( &request->reply->vps, *response->strvalue,
+				"MS-CHAP-Error", "E=691 R=1", 9);
+		}
+		return RLM_MODULE_NOTFOUND;
 	}
-	if(smbPasswd->acct_ctrl&ACB_DISABLED || smbPasswd->acct_ctrl&ACB_AUTOLOCK){
-		return RLM_MODULE_REJECT;
+	if (inst->auth_type){
+		pairdelete(&request->config_items, PW_AUTHTYPE);
+		reply_attr = pairmake("Auth-Type", inst->auth_type, T_OP_EQ);
+		pairadd(&request->config_items, reply_attr);
 	}
-	if(smbPasswd->acct_ctrl&ACB_PWNOTREQ)return RLM_MODULE_OK;
+	if (smbPasswd->smb_passwd){
+		reply_attr = pairmake("LM-Password", "", T_OP_EQ);
+		reply_attr->length = 16;
+		memcpy(reply_attr->strvalue, smbPasswd->smb_passwd, 16);
+		pairadd(&request->config_items, reply_attr);
+	}
+	if (smbPasswd->smb_nt_passwd){
+		reply_attr = pairmake("NT-Password", "", T_OP_EQ);
+		reply_attr->length = 16;
+		memcpy(reply_attr->strvalue, smbPasswd->smb_nt_passwd, 16);
+		pairadd(&request->config_items, reply_attr);
+	}
+	if (smbPasswd->acct_ctrl&ACB_DISABLED ||
+		smbPasswd->acct_ctrl&ACB_AUTOLOCK ||
+		!smbPasswd->acct_ctrl&ACB_NORMAL) {
+		if(challenge && response) {
+			add_reply( &request->reply->vps, *response->strvalue,
+				"MS-CHAP-Error", "E=647 R=0", 9);
+		}
+		return RLM_MODULE_USERLOCK;
+	}
+
+	reply_attr = pairmake("SMB-Account-CTRL", "0", T_OP_EQ);
+	reply_attr->lvalue = smbPasswd->acct_ctrl;
+	pairadd(&request->config_items, reply_attr);
+	return RLM_MODULE_OK;
+#undef inst
+}
+
+
+/*
+ *	mschap_authenticate() - authenticate user based on given
+ *	attributes and configuration.
+ *	We will try to find out password in configuration
+ *	or in configured passwd file.
+ *	If one is found we will check paraneters given by NAS.
+ *
+ *	If PW_SMB_ACCOUNT_CTRL is not set to ACB_PWNOTREQ we must have 
+ *	one of:
+ *		PAP:      PW_PASSWORD or
+ *		MS-CHAP:  PW_MSCHAP_CHALLENGE and PW_MSCHAP_RESPONSE or
+ *		MS-CHAP2: PW_MSCHAP_CHALLENGE and PW_MSCHAP2_RESPONSE
+ *	In case of password mismatch or locked account we MAY return
+ *	PW_MSCHAP_ERROR for MS-CHAP or MS-CHAP v2
+ *	If MS-CHAP2 succeeds we MUST return
+ *	PW_MSCHAP2_SUCCESS
+ */
+static int mschap_authenticate(void * instance, REQUEST *request)
+{
+	VALUE_PAIR *challenge = NULL, *response = NULL;
+	VALUE_PAIR *password = NULL;
+	uint8_t calculated[32];
+	uint8_t msch2resp[42];
+	struct smb_passwd smbPasswd, *smbPasswd1 = NULL;
+	AUTHTYPE at = NONE;
+	int res = 0;
+	
+	
+	
+	smbPasswd.smb_name = request->username->strvalue;
+	password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
+	if(password){
+		smbPasswd.acct_ctrl = password->lvalue;
+		if (smbPasswd.acct_ctrl&ACB_PWNOTREQ) return RLM_MODULE_OK;
+	}
+	password = pairfind(request->config_items, PW_LM_PASSWORD);
+	if(password){
+		res++;
+		smbPasswd.smb_passwd = password->strvalue;
+	}
+	password = pairfind(request->config_items, PW_NT_PASSWORD);
+	if(password){
+		res++;
+		smbPasswd.smb_nt_passwd = password->strvalue;
+	}
+	if (!res) {
+		/*
+		 * We have neither NT nor LM passwords configured
+	 	 */
+	 	return RLM_MODULE_INVALID;
+	 }
 	
 	/*
 	 *	If NAS sent cleartext password - encode it and check
 	 *	only against passwd file. If either NT or LM hash match
 	 *	return OK.
 	 */
-	if(cleartext){
-		if ( (smbPasswd->smb_passwd && !memcmp(smbPasswd1->smb_passwd, smbPasswd->smb_passwd, 16)) ||
-			(smbPasswd->smb_nt_passwd && !memcmp(smbPasswd1->smb_nt_passwd, smbPasswd->smb_nt_passwd, 16)) )
+
+	password = pairfind(request->packet->vps, PW_PASSWORD);
+	if (password) {
+		at = CLEARTEXT;
+		smbPasswd1 = createsmbpw(request->username->strvalue, password->strvalue);
+		if ( (smbPasswd.smb_passwd && !memcmp(smbPasswd1->smb_passwd, smbPasswd.smb_passwd, 16)) ||
+			(smbPasswd.smb_nt_passwd && !memcmp(smbPasswd1->smb_nt_passwd, smbPasswd.smb_nt_passwd, 16)) )
 			return RLM_MODULE_OK;
 		else return RLM_MODULE_REJECT;
 	}
+	else if ( (challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE)) ){
 
-	/*
-	 *	We are given with MS-CHAP
-	 *	Calculate the MS-CHAP response
-	 */
-	if((response->strvalue[1] & 0x01) == 0 && smbPasswd->smb_passwd){
-	/*
-	 *	"Use NT response" flag is not set. Use LM response
-	 *	first.
-	 */
-		mschap(challenge->strvalue, smbPasswd, 
-			calculated, 0);
-		if (memcmp(response->strvalue + 2, calculated, 24) == 0) {
-			return RLM_MODULE_OK;
+		/*
+		 *	We need an MS-CHAP-Challenge attribute to calculate
+		 *	the response.
+		 */
+		if ( (response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE)) ){
+			if (response->length < 50 || challenge->length < 8) {
+				radlog(L_AUTH, "rlm_mschap: Attribute \"MS-CHAP-Response\" has wrong format.");
+				return RLM_MODULE_INVALID;
+			}
+			/*
+			 *	We are doing MS-CHAP
+			 *	Calculate the MS-CHAP response
+			 */
+			if (smbPasswd.smb_nt_passwd && (response->strvalue[1] & 0x01)) {
+			/*
+			 * Try NT response first if UseNT flag is set
+			 */
+				mschap(challenge->strvalue, &smbPasswd, calculated, 1);
+				if (memcmp(response->strvalue + 26, calculated, 24) == 0) {
+					return RLM_MODULE_OK;
+				}
+			 }
+
+			if (smbPasswd.smb_passwd) {
+			/*
+			 *	Use LM response.
+			 */
+				mschap(challenge->strvalue, &smbPasswd, 
+					calculated, 0);
+				if (memcmp(response->strvalue + 2, calculated, 24) == 0) {
+					return RLM_MODULE_OK;
+				}
+	    		}
 		}
-	}
-	if(smbPasswd->smb_nt_passwd){
-		mschap(challenge->strvalue, smbPasswd, calculated, 1);
-		if (memcmp(response->strvalue + 26, calculated, 24) == 0) {
-			return RLM_MODULE_OK;
+		else if ( (response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE)) ){
+			if (response->length < 50 || challenge->length < 16) {
+				radlog(L_AUTH, "rlm_mschap: Attribute \"MS-CHAP2-Response\" has wrong format.");
+				return RLM_MODULE_INVALID;
+			}
+			/*
+			 *	We are doing MS-CHAPv2
+			 *	We need NT hash for it to calculate response
+			 */
+			if (smbPasswd.smb_nt_passwd) {
+				mschap2(response->strvalue + 2,  challenge->strvalue,
+					&smbPasswd, calculated);
+				if (memcmp(response->strvalue + 26, calculated, 24) == 0) {
+					auth_response(&smbPasswd, calculated,
+						response->strvalue + 2,
+						challenge->strvalue,
+						msch2resp);
+					add_reply( &request->reply->vps, *response->strvalue,
+						"MS-CHAP2-Success", msch2resp, 42);
+					return RLM_MODULE_OK;
+				}
+			}
+		}
+		else {
+			radlog(L_AUTH, "rlm_mschap: Response attribute not found");
+			return RLM_MODULE_INVALID;
 		}
 	}
 	
+	add_reply( &request->reply->vps, *response->strvalue,
+		"MS-CHAP-Error", "E=691 R=1", 9);
 	return RLM_MODULE_REJECT;
-#undef inst
+
 }
 
 module_t rlm_mschap = {
@@ -340,8 +596,8 @@ module_t rlm_mschap = {
   NULL,				/* initialize */
   mschap_instantiate,		/* instantiation */
   {
-	  mschap_auth,		/* authenticate */
-	  NULL,			/* authorize */
+	  mschap_authenticate,	/* authenticate */
+	  mschap_authorize,	/* authorize */
 	  NULL,			/* pre-accounting */
 	  NULL,			/* accounting */
 	  NULL			/* checksimul */
