@@ -100,8 +100,8 @@ static void radutmp_unlock(int fd)
 #endif
 }
 
-static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr, int port,
-		const char *user)
+static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr,
+		uint32_t port, const char *user)
 {
 	int fd;
 
@@ -116,7 +116,7 @@ static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr, int port,
 		 */
 		while (read(fd, u, sizeof(*u)) == sizeof(*u)) {
 			if ((nasaddr != 0 && nasaddr != u->nas_address) ||
-					(port >= 0  && port    != u->nas_port) ||
+					(port != u->nas_port) ||
 					(user != NULL &&
 					strncmp(u->login, user, sizeof u->login) != 0) ||
 					u->type != P_LOGIN)
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
 	CONF_SECTION *cs;
 	NAS *nas;
 	uint32_t ip = 0;
-	int nas_port = -1;
+	uint32_t nas_port = ~0;
 	char *user = NULL;
 	char *s;
 	char buf[256];
@@ -162,7 +162,7 @@ int main(int argc, char **argv)
 	if (argc > 1) {
 		s = argv[1];
 		if (*s == 's' || *s == 'S') s++;
-		nas_port = atoi(s);
+		nas_port = strtoul(s, NULL, 10);
 	}
 	if (argc > 2) 
 		user = argv[2];
@@ -195,13 +195,13 @@ int main(int argc, char **argv)
 	if (nas != NULL) 
 		ip = nas->ipaddr;
 
-	printf("%s: zapping termserver %s, port %d",
+	printf("%s: zapping termserver %s, port %u",
 		progname, ip_hostname(buf, sizeof(buf), ip), nas_port);
 	if (user != NULL) 
 		printf(", user %s", user);
 	printf("\n");
 
-	if (nas_port < 0) {
+	if (nas_port == ~0) {
 		return do_accton_packet(ip);
 	}
 

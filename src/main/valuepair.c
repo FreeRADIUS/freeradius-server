@@ -361,8 +361,8 @@ static int portcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 {
 	char buf[MAX_STRING_LEN];
 	char *s, *p;
-	int lo, hi;
-	int port = request->lvalue;
+	uint32_t lo, hi;
+	uint32_t port = request->lvalue;
 
 	instance = instance;
 	check_pairs = check_pairs; /* shut the compiler up */
@@ -382,8 +382,8 @@ static int portcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 			p++;
 		else
 			p = s;
-		lo = atoi(s);
-		hi = atoi(p);
+		lo = strtoul(s, NULL, 10);
+		hi = strtoul(p, NULL, 10);
 		if (lo <= port && port <= hi) {
 			return 0;
 		}

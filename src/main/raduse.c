@@ -33,8 +33,8 @@
 #include "libradius.h"
 
 #ifdef HAVE_UTMPX_H
-#	undef ut_time
-#	define ut_time ut_xtime
+#undef ut_time
+#define ut_time ut_xtime
 #endif
 
 #define UTSIZE (sizeof(struct utmp))
@@ -120,7 +120,8 @@ static int fillstruct(int offset, const char *nas)
 	FILE *fp;
 	time_t now, stop;
 	struct utmp ut;
-	int i, n, port;
+	int i, n;
+	uint32_t port;
 	int beg, end;
 	char *p;
 	int first = 1;
@@ -170,7 +171,7 @@ static int fillstruct(int offset, const char *nas)
 		else
 			buf[2] = 0;
 
-		port = atoi(buf);
+		port = strtoul(buf, NULL, 10);
 		if (port == 0 && buf[0] != '0')
 			continue;
 		if (port < offset || port > offset + nrlines)
