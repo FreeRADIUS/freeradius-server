@@ -147,7 +147,7 @@ static int	rad_process (REQUEST *, int);
 static int	rad_clean_list(time_t curtime);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
-static struct timeval *setuptimeout(struct timeval *);
+static struct timeval *setuptimeout();
 static void	proxy_retry(void);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
@@ -415,7 +415,6 @@ int main(int argc, char **argv)
 	struct	sockaddr	salocal;
 	struct	sockaddr_in	*sa;
 	fd_set			readfds;
-	struct timeval		tv;
 	int			result;
 	int			argval;
 	int			t;
@@ -892,7 +891,7 @@ int main(int argc, char **argv)
 #endif
 
 		status = select(32, &readfds, NULL, NULL,
-				setuptimeout(&tv));
+				setuptimeout());
 		now = time(NULL);
 		if (status == -1) {
 			/*
@@ -2376,13 +2375,41 @@ static REQUEST *proxy_check_list(REQUEST *request)
  *	until either a packet comes in, or until there's some work
  *	to be done.
  */
-static struct timeval *setuptimeout(struct timeval *tv)
+static struct timeval *setuptimeout()
 {
 	time_t now = time(NULL);
 	time_t difference, smallest = 0;
 	int foundone = FALSE;
 	int id;
 	REQUEST *curreq;
+
+	/*
+	 *	Static variables, so that we don't do all of this work
+	 *	more than once per second.
+	 */
+	static time_t last_setup = 0;
+	static struct timeval tv, *last_tv_ptr = NULL;
+
+	/*
+	 *	If we've already set up the timeout this second,
+	 *	don't do it again.  We simply return the sleep delay
+	 *	from last time.
+	 *
+	 *	Note that if we returned NULL last time, there was nothing
+	 *	to do.  BUT we've been woken up since then, which can only
+	 *	happen if we received a packet.  And if we've received a
+	 *	packet, then there's some work to do in the future.
+	 *
+	 *	FIXME: We can probably use gettimeofday() for finer clock
+	 *	resolution, as the current method will cause it to sleep
+	 *	too long...
+	 */
+	if ((last_tv_ptr != NULL) &&
+	    (last_setup == now)) {
+		return last_tv_ptr;
+	}
+
+	last_setup = now;	/* remember when we last set up the sleep timer */
 
 	difference = 1;		/* initialize it to a non-zero value */
 
@@ -2450,6 +2477,7 @@ static struct timeval *setuptimeout(struct timeval *tv)
 	 */
 	if (!foundone) {
 		DEBUG2("Nothing to do.  Sleeping until we see a request.");
+		last_tv_ptr = NULL;
 		return NULL;
 	}
 
@@ -2465,10 +2493,15 @@ static struct timeval *setuptimeout(struct timeval *tv)
 	 *	Set the time (in seconds) for how long we're
 	 *	supposed to sleep.
 	 */
-	tv->tv_sec = smallest;
-	tv->tv_usec = 0;
+	tv.tv_sec = smallest;
+	tv.tv_usec = 0;
 	DEBUG2("Waking up in %d seconds...", (int) smallest);
-	return tv;
+
+	/*
+	 *	Remember how long we should sleep for.
+	 */
+	last_tv_ptr = &tv;
+	return last_tv_ptr;
 }
 
 /*
