@@ -368,7 +368,7 @@ static int huntgroup_access(REQUEST *request,
 						PW_TYPE_STRING);
 				if (!vp) {
 					radlog(L_ERR, "No memory");
-					exit(1);
+					r = RLM_MODULE_FAIL;
 				}
 
 				strNcpy(vp->strvalue, i->name,
@@ -389,7 +389,7 @@ static int huntgroup_access(REQUEST *request,
  *	If the NAS wasn't smart enought to add a NAS-IP-Address
  *	to the request, then add it ourselves.
  */
-static void add_nas_attr(REQUEST *request)
+static int add_nas_attr(REQUEST *request)
 {
 	VALUE_PAIR *nas;
 
@@ -398,7 +398,7 @@ static void add_nas_attr(REQUEST *request)
 		nas = paircreate(PW_NAS_IP_ADDRESS, PW_TYPE_IPADDR);
 		if (!nas) {
 			radlog(L_ERR, "No memory");
-			exit(1);
+			return -1;
 		}
 		nas->lvalue = request->packet->src_ipaddr;
 		ip_hostname(nas->strvalue, sizeof(nas->strvalue), nas->lvalue);
@@ -419,11 +419,12 @@ static void add_nas_attr(REQUEST *request)
 	nas = paircreate(PW_CLIENT_IP_ADDRESS, PW_TYPE_IPADDR);
 	if (!nas) {
 	  radlog(L_ERR, "No memory");
-	  exit(1);
+	  return -1;
 	}
 	nas->lvalue = request->packet->src_ipaddr;
 	ip_hostname(nas->strvalue, sizeof(nas->strvalue), nas->lvalue);
 	pairadd(&request->packet->vps, nas);
+	return 0;
 }
 
 
@@ -486,6 +487,7 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 static int preprocess_authorize(void *instance, REQUEST *request)
 {
 	char buf[1024];
+	int r;
 	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
 	/*
@@ -519,7 +521,9 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	 *	the Request-Src-IP-Address to be used for huntgroup
 	 *	comparisons.
 	 */
-	add_nas_attr(request);
+	if (add_nas_attr(request) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	hints_setup(data->hints, request);
 
@@ -534,19 +538,19 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
 		if (!vp) {
 			radlog(L_ERR|L_CONS, "no memory");
-			exit(1);
+			return RLM_MODULE_FAIL;
 		}
 		vp->length = AUTH_VECTOR_LEN;
 		memcpy(vp->strvalue, request->packet->vector, AUTH_VECTOR_LEN);
 		pairadd(&request->packet->vps, vp);
 	}
 
-	if (huntgroup_access(request, data->huntgroups,
-			     request->packet->vps) != RLM_MODULE_OK) {
+	if ((r = huntgroup_access(request, data->huntgroups,
+			     request->packet->vps)) != RLM_MODULE_OK) {
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
-		return RLM_MODULE_REJECT;
+		return r;
 	}
 
 	return RLM_MODULE_OK; /* Meaning: try next authorization module */
@@ -577,7 +581,9 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	/*
 	 *  Ensure that we log the NAS IP Address in the packet.
 	 */
-	add_nas_attr(request);
+	if (add_nas_attr(request) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	r = hints_setup(data->hints, request);
 
