@@ -32,3 +32,56 @@ ATTRIBUTE	ERX-Alternate-Cli-Access-Level    20 string   ERX
 ATTRIBUTE	ERX-Alternate-Cli-Vrouter-Name    21 string   ERX
 ATTRIBUTE	ERX-Sa-Validate                   22 integer  ERX
 ATTRIBUTE	ERX-Igmp-Enable                   23 integer  ERX
+ATTRIBUTE	ERX-Pppoe-Description			24	string	ERX
+ATTRIBUTE	ERX-Redirect-VR-Name			25	string	ERX
+ATTRIBUTE	ERX-Qos-Profile-Name			26	string	ERX
+ATTRIBUTE	ERX-Pppoe-Max-Sessions			27	integer	ERX
+ATTRIBUTE	ERX-Pppoe-Url				28	string	ERX
+ATTRIBUTE	ERX-Qos-Profile-Interface-Type		29	integer	ERX
+ATTRIBUTE	ERX-Tunnel-Nas-Port-Method		30	integer	ERX
+ATTRIBUTE	ERX-Service-Bundle			31	string	ERX
+ATTRIBUTE	ERX-Tunnel-Tos				32	integer	ERX
+ATTRIBUTE	ERX-Tunnel-Maximum-Sessions		33	integer	ERX
+ATTRIBUTE	ERX-Framed-Ip-Route-Tag			34	string	ERX
+ATTRIBUTE	ERX-Input-Gigapkts			42	integer	ERX
+ATTRIBUTE	ERX-Output-Gigapkts			43	integer	ERX
+
+#
+#  Values	Attribute		Name			Number
+#
+VALUE	ERX-Ingress-Statistics	disable			0
+VALUE	ERX-Ingress-Statistics	enable			1
+
+VALUE	ERX-Egress-Statistics	disable			0
+VALUE	ERX-Egress-Statistics	enable			1
+
+VALUE	ERX-Atm-Service-Category	UBR			1
+VALUE	ERX-Atm-Service-Category	UBRPCR			2
+VALUE	ERX-Atm-Service-Category	nrtVBR			3
+VALUE	ERX-Atm-Service-Category	CBR			4
+
+VALUE	ERX-CLI-Allow-All-VR-Access	disable			0
+VALUE	ERX-CLI-Allow-All-VR-Access	enable			1
+
+VALUE	ERX-Sa-Validate			disable			0
+VALUE	ERX-Sa-Validate			enable			1
+
+VALUE	ERX-Igmp-Enable			disable			0
+VALUE	ERX-Igmp-Enable			enable			1
+
+VALUE	ERX-Qos-Profile-Interface-Type	IP			1
+VALUE	ERX-Qos-Profile-Interface-Type	ATM			2
+VALUE	ERX-Qos-Profile-Interface-Type	HDLC			3
+VALUE	ERX-Qos-Profile-Interface-Type	ETHERNET		4
+VALUE	ERX-Qos-Profile-Interface-Type	SERVER-PORT		5
+VALUE	ERX-Qos-Profile-Interface-Type	ATM-1483		6
+VALUE	ERX-Qos-Profile-Interface-Type	FRAME-RELAY		7
+VALUE	ERX-Qos-Profile-Interface-Type	MPLS-MINOR		8
+VALUE	ERX-Qos-Profile-Interface-Type	CBF			9
+VALUE	ERX-Qos-Profile-Interface-Type	IP-TUNNEL		10
+VALUE	ERX-Qos-Profile-Interface-Type	VLAN-SUB		11
+VALUE	ERX-Qos-Profile-Interface-Type	PPPOE-SUB		12
+
+VALUE	ERX-Tunnel-Nas-Port-Method	None			0
+VALUE	ERX-Tunnel-Nas-Port-Method	CISCO-CLID		1
+
