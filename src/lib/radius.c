@@ -42,10 +42,8 @@ static const char rcsid[] = "$Id$";
 
 /*
  *  The RFC says 4096 octets max, and most packets are less than 256.
- *  However, this number is just larger than the maximum MTU of just
- *  most types of networks, except maybe for gigabit ethernet.
  */
-#define PACKET_DATA_LEN 1600
+#define MAX_PACKET_LEN 4096
 
 /*
  *	The maximum number of attributes which we allow in an incoming
@@ -124,7 +122,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		  u_short		total_length;
 		  int			len, allowed;
 		  int			msg_auth_offset = 0;
-		  uint8_t		data[4096];
+		  uint8_t		data[MAX_PACKET_LEN];
 		  
 		  /*
 		   *	Use memory on the stack, until we know how
@@ -631,7 +629,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	radius_packet_t		*hdr;
 	char			host_ipaddr[16];
 	int			seen_eap;
-	uint8_t			data[4096];
+	uint8_t			data[MAX_PACKET_LEN];
 	int			num_attributes;
 	uint32_t                vendorcode;
 	int			vendorlen;
@@ -678,10 +676,28 @@ RADIUS_PACKET *rad_recv(int fd)
 
 	/*
 	 *	Check for packets smaller than the packet header.
+	 *
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	"The minimum length is 20 ..."
 	 */
 	if (packet->data_len < AUTH_HDR_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too short",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (%d < %d)",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   packet->data_len, AUTH_HDR_LEN);
+		free(packet);
+		return NULL;
+	}
+
+	/*
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	" ... and maximum length is 4096."
+	 */
+	if (packet->data_len > MAX_PACKET_LEN) {
+		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (%d > %d)",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   packet->data_len, MAX_PACKET_LEN);
 		free(packet);
 		return NULL;
 	}
@@ -694,12 +710,38 @@ RADIUS_PACKET *rad_recv(int fd)
 	hdr = (radius_packet_t *)data;
 	memcpy(&len, hdr->length, sizeof(u_short));
 	totallen = ntohs(len);
-	if (packet->data_len != totallen) {
+
+	/*
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	"If the packet is shorter than the Length field
+	 *	indicates, it MUST be silently discarded."
+	 *
+	 *	i.e. No response to the NAS.
+	 */
+	if (packet->data_len < totallen) {
 		librad_log("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet size says %d",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 			   packet->data_len, totallen);
 		free(packet);
 		return NULL;
+	}
+
+	/*
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	"Octets outside the range of the Length field MUST be
+	 *	treated as padding and ignored on reception."
+	 */
+	if (packet->data_len > totallen) {
+		/*
+		 *	We're shortening the packet below, but just
+		 *	to be paranoid, zero out the extra data.
+		 */
+		memset(packet->data + totallen, 0,
+		       packet->data_len - totallen);
+
+		packet->data_len = totallen;
 	}
 
 	/*
