@@ -1,3 +1,12 @@
+freeradius (1.0.1-0) unstable; urgency=high
+
+  * New upstream release
+  * Urgency high for some denial-of-service fixes:
+   - Fix two remote crashes and a remote memory leak in
+     radius packet decoding.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu,  2 Sep 2004 17:12:23 +1000
+
 freeradius (1.0.0-0) unstable; urgency=low
 
   * New upstream release
