@@ -22,7 +22,7 @@
 
 include $(RLM_DIR)../../../Make.inc
 
-all: static dynamic $(RLM_UTILS)
+all: static dynamic
 
 #######################################################################
 #
@@ -105,11 +105,11 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
-static: $(TARGET).a
+static: $(TARGET).a  $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=static common
 	@cp $< ../lib
 
-dynamic: $(TARGET).la
+dynamic: $(TARGET).la $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=dynamic common
 	@cp $< ../lib
 
