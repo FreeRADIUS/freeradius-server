@@ -1,6 +1,6 @@
 dnl See whether we need a declaration for a function.
 dnl RADIUSD_NEED_DECLARATION(FUNCTION [, EXTRA-HEADER-FILES])
-AC_DEFUN(RADIUSD_NEED_DECLARATION,
+AC_DEFUN([RADIUSD_NEED_DECLARATION],
 [AC_MSG_CHECKING([whether $1 must be declared])
 AC_CACHE_VAL(radius_cv_decl_needed_$1,
 [AC_TRY_COMPILE([
@@ -65,7 +65,7 @@ fi
 
 dnl Check multiple functions to see whether each needs a declaration.
 dnl RADIUSD_NEED_DECLARATIONS(FUNCTION... [, EXTRA-HEADER-FILES])
-AC_DEFUN(RADIUSD_NEED_DECLARATIONS,
+AC_DEFUN([RADIUSD_NEED_DECLARATIONS],
 [for ac_func in $1
 do
 RADIUSD_NEED_DECLARATION($ac_func, $2)
@@ -75,7 +75,7 @@ done
 dnl Checks to see if this is SUNPro we're building with
 dnl Usage:
 dnl AC_PROG_CC_SUNPRO
-AC_DEFUN(AC_PROG_CC_SUNPRO,
+AC_DEFUN([AC_PROG_CC_SUNPRO],
 [AC_CACHE_CHECK(whether we are using SUNPro C, ac_cv_prog_suncc,
 [dnl The semicolon is to pacify NeXT's syntax-checking cpp.
 cat > conftest.c <<EOF
@@ -95,7 +95,7 @@ dnl #
 dnl # This function is like AC_CHECK_TYPE, but you can give this one
 dnl # a list of include files to check.
 dnl #
-AC_DEFUN(FR_CHECK_TYPE_INCLUDE,
+AC_DEFUN([FR_CHECK_TYPE_INCLUDE],
 [
   AC_CACHE_CHECK(for $2, ac_cv_type_$2,
     [ ac_cv_type_$2=no
@@ -115,7 +115,7 @@ dnl #######################################################################
 dnl #
 dnl #  Look for SNMP in a variety of places.
 dnl #
-AC_DEFUN(SNMP_CHECKS, [
+AC_DEFUN([SNMP_CHECKS], [
 	AC_SUBST(SNMP_LIBS)
 	AC_SUBST(SNMP_INCLUDE)
 
@@ -347,7 +347,7 @@ dnl #    Defines the variable MYSQLLIB_DIR to be the directory(s) in
 dnl #    which the file libmysqlclient.a is to be found.
 dnl #
 dnl #
-AC_DEFUN(FR_LOCATE_DIR,
+AC_DEFUN([FR_LOCATE_DIR],
 [
 dnl # If we have the program 'locate', then the problem of finding a
 dnl # particular file becomes MUCH easier.
@@ -409,7 +409,7 @@ dnl #######################################################################
 dnl #
 dnl #  Look for a library in a number of places.
 dnl #
-AC_DEFUN(FR_SMART_CHECK_LIB, [
+AC_DEFUN([FR_SMART_CHECK_LIB], [
 
 sm_lib_safe=`echo "$1" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "$2" | sed 'y%./+-%__p_%'`
@@ -463,7 +463,7 @@ dnl #  Look for a header file in a number of places.
 dnl #
 dnl #  FR_SMART_CHECK_INCLUDE(foo.h, [ #include <other.h> ])
 dnl #
-AC_DEFUN(FR_SMART_CHECK_INCLUDE, [
+AC_DEFUN([FR_SMART_CHECK_INCLUDE], [
 
 ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
 AC_MSG_CHECKING([for $1])
@@ -521,7 +521,7 @@ dnl #  Usage:  FR_CHECK_STRUCT_HAS_MEMBER([#include <foo.h>], [struct foo], memb
 dnl #  If the member is defined, then the variable
 dnl #     ac_cv_type_struct_foo_has_member is set to 'yes'
 dnl #
-AC_DEFUN(FR_CHECK_STRUCT_HAS_MEMBER, [
+AC_DEFUN([FR_CHECK_STRUCT_HAS_MEMBER], [
   AC_MSG_CHECKING([for $3 in $2])
 
 dnl BASED on 'offsetof':
@@ -548,7 +548,7 @@ $1
  fi
 ])
 
-AC_DEFUN(FR_LIBLTDL_PATH,
+AC_DEFUN([FR_LIBLTDL_PATH],
 [
    LIBLTDLPATH=
    if test x"$enable_ltdl_install" = x"yes"; then
