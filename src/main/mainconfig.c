@@ -57,6 +57,7 @@ static gid_t server_gid;
  */
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
+static const char *data_dir = NULL;
 
 /*
  *  Map the proxy server configuration parameters to variables.
@@ -97,6 +98,7 @@ static CONF_PARSER server_config[] = {
 	{ "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
 	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
 	{ "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
+	{ "datadir",             PW_TYPE_STRING_PTR, 0, &data_dir,          "${prefix}/share/freeradius"},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &librad_dodns,      "no" },
 #if WITH_SNMP
 	{ "snmp",   		PW_TYPE_BOOLEAN,    0, &mainconfig.do_snmp,      "no" },
@@ -695,7 +697,7 @@ CONF_SECTION *read_radius_conf_file(void)
 
 	/* Initialize the dictionary */
 	DEBUG2("read_config_files:  reading dictionary");
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
+	if (dict_init(data_dir, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
 				librad_errstr);
 		cf_section_free(&cs);

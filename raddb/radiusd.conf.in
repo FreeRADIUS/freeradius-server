@@ -28,6 +28,7 @@ sbindir = @sbindir@
 logdir = @logdir@
 raddbdir = @raddbdir@
 radacctdir = @radacctdir@
+datadir = @datadir@
 
 #  Location of config and logfiles.
 confdir = ${raddbdir}
