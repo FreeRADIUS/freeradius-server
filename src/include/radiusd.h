@@ -65,6 +65,7 @@ typedef struct realm {
 	int			acct_port;
 	int			striprealm;
 	int			trusted;
+	int			notsuffix;
 	struct realm		*next;
 } REALM;
 

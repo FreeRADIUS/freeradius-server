@@ -56,6 +56,17 @@ static int radius_authenticate(REQUEST *request)
 }
 
 /*
+ *	Massage the request before recording it or proxying it
+ */
+static int radius_preacct(REQUEST *request)
+{
+  /* quiet the compiler */
+  request = request;
+
+  return RLM_PRAC_OK;
+}
+
+/*
  *	Write accounting information to this modules database.
  */
 static int radius_accounting(REQUEST *request)
@@ -73,6 +84,7 @@ module_t rlm_example = {
   radius_init,			/* initialization */
   radius_authorize,		/* authorization */
   radius_authenticate,		/* authentication */
+  radius_preacct,		/* preaccounting */
   radius_accounting,		/* accounting */
   NULL,				/* detach */
 };

@@ -311,7 +311,7 @@ static int unix_accounting(REQUEST *request)
 	struct utmp	ut;
 	time_t		t;
 	char		buf[64];
-	const char		*s;
+	const char	*s;
 	int		delay = 0;
 	int		status = -1;
 	int		nas_address = 0;
@@ -465,6 +465,7 @@ module_t rlm_unix = {
   unix_init,                    /* initialization */
   NULL,                         /* authorization */
   unix_authenticate,            /* authentication */
+  NULL,                         /* preaccounting */
   unix_accounting,              /* accounting */
   unix_detach,                  /* detach */
 };

@@ -6,6 +6,8 @@
 #include "radiusd.h"
 #include "modules.h"
 
+static const char rcsid[] = "$Id$";
+
 /*
  *  Create a (hopefully) unique Acct-Unique-Session-Id from:
  *
@@ -108,6 +110,7 @@ static int unique_accounting(REQUEST *request)
   return RLM_ACCT_OK;
 }
 
+/* FIXME: unique_accounting should probably be called from preacct */
 /* globally exported name */
 module_t rlm_acct_unique = {
   "Acct-Unique-Session-Id",
@@ -115,6 +118,7 @@ module_t rlm_acct_unique = {
   NULL,				/* initialization */
   NULL,				/* authorization */
   NULL,				/* authentication */
+  NULL,				/* preaccounting */
   unique_accounting,		/* accounting */
   NULL,				/* detach */
 };

@@ -195,6 +195,7 @@ module_t rlm_pam = {
   NULL,				/* initialize */
   NULL,				/* authorize */
   pam_auth,			/* authenticate */
+  NULL,				/* pre-accounting */
   NULL,				/* accounting */
   NULL,				/* detach */
 };

@@ -197,7 +197,7 @@ int read_modules_file(char *filename)
 #ifdef HAVE_DLOPEN
 	char		libraryfile[1024];
 	void		*handle;
-	char		*error;
+	const char	*error;
 #else
 	static_modules_t *sm;
 #endif
@@ -458,6 +458,28 @@ int module_authenticate(int auth_type, REQUEST *request)
 	return (this->entry->module->authenticate)(request);
 }
 
+
+/*
+ *	Do pre-accounting for ALL configured sessions
+ */
+int module_preacct(REQUEST *request)
+{
+#if 0
+	config_module_t	*this;
+	int		rcode;
+
+	this = preacct;
+	rcode = RLM_PRAC_OK;
+
+	while (this && (rcode == RLM_PRAC_OK)) {
+		DEBUG2("  preacct: %s", this->entry->module->name);
+		rcode = (this->entry->module->preaccounting)(request);
+		this = this->next;
+	}
+
+	return rcode;
+#endif
+}
 
 /*
  *	Do accounting for ALL configured sessions

@@ -455,6 +455,7 @@ module_t rlm_ldap = {
   rlm_ldap_init,		/* initialization */
   rlm_ldap_authorize,           /* authorization */
   rlm_ldap_authenticate,        /* authentication */
+  NULL,				/* preaccounting */
   NULL,				/* accounting */
   rlm_ldap_detach,              /* detach */
 };

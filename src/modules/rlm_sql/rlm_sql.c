@@ -569,6 +569,7 @@ module_t rlm_sql = {
   rlm_sql_init,		/* initialization */
   rlm_sql_authorize,	/* authorization */
   rlm_sql_authenticate,	/* authentication */
+  NULL,			/* preaccounting */
   rlm_sql_accounting,	/* accounting */
   rlm_sql_detach,	/* detach */
 };

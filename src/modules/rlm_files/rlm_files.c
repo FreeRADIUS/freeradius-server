@@ -45,6 +45,7 @@ static DBM	*dbmfile;
 #endif
 
 static PAIR_LIST	*users = NULL;
+static PAIR_LIST	*acct_users = NULL;
 
 #if defined(WITH_DBM) || defined(WITH_NDBM)
 /*
@@ -254,6 +255,7 @@ void file_dynamic_log_init(void )
 static int file_init(int argc, char **argv)
 {
 	char		fn[1024];
+	char		acct_fn[1024];
 	char		*ptr;
 
 	file_dynamic_log_init();
@@ -263,6 +265,8 @@ static int file_init(int argc, char **argv)
 	 */
 	ptr = argv[0] ? argv[0] : RADIUS_USERS;
 	sprintf(fn, "%s/%s", radius_dir, ptr);
+	ptr = (argv[0] && argv[1]) ? argv[1] : RADIUS_ACCT_USERS;
+	sprintf(acct_fn, "%s/%s", radius_dir, ptr);
 
 #if defined(WITH_DBM) || defined(WITH_NDBM)
 	if (!use_dbm &&
@@ -273,13 +277,17 @@ static int file_init(int argc, char **argv)
 	}
 #endif
 
-	if (!use_dbm) users = pairlist_read(fn, 1);
+	if (!use_dbm) {
+		users = pairlist_read(fn, 1);
+		acct_users = pairlist_read(acct_fn, 1);
+	}
 
 	/*
 	 *	Walk through the 'users' file list, looking for
 	 *	check-items in the reply-item lists.
 	 */
 	if (debug_flag) {
+	  int acctfile=0;
 	  PAIR_LIST *entry;
 	  VALUE_PAIR *vp;
 
@@ -298,11 +306,16 @@ static int file_init(int argc, char **argv)
 		  (vp->attribute != PW_FALL_THROUGH)) {
 		log_debug("[%s]:%d WARNING! Found possible check item '%s' in "
 			  "the list of reply items for user %s.",
-			  fn, entry->lineno, vp->name, entry->name);
+			  acctfile?acct_fn:fn, entry->lineno, vp->name,
+			  entry->name);
 	      }
 	      vp = vp->next;
 	    }
 	    entry = entry->next;
+	    if(!entry && !acctfile) {
+	      entry=acct_users;
+	      acctfile=1;
+	    }
 	  }
 
 	}
@@ -334,7 +347,7 @@ static int file_authorize(REQUEST *request,
 
 	request_pairs = request->packet->vps;
 
-	/*
+ 	/*
 	 *	Grab the canonical user name.
 	 */
 	name = request->username->strvalue;
@@ -469,6 +482,7 @@ static int file_authorize(REQUEST *request,
  */
 static int file_authenticate(REQUEST *request)
 {
+	request = request;
 	return RLM_AUTH_OK;
 }
 
@@ -525,6 +539,135 @@ void file_write_dynamic_log(REQUEST * request)
 
 
 	}
+}
+
+/*
+ *	Pre-Accounting - read the acct_users file for check_items and
+ *	config_items. Reply items are Not Recommended(TM) in acct_users,
+ *	except for Fallthrough, which should work
+ *
+ *	This function is mostly a copy of file_authorize
+ */
+static int file_preacct(REQUEST *request)
+{
+	VALUE_PAIR	*namepair;
+	const char	*name;
+	VALUE_PAIR	*request_pairs;
+	VALUE_PAIR	**config_pairs;
+	VALUE_PAIR	*reply_pairs=0;
+	VALUE_PAIR	*check_tmp;
+	VALUE_PAIR	*reply_tmp;
+	VALUE_PAIR	*tmp;
+	PAIR_LIST	*pl;
+	int		found = 0;
+#if defined(WITH_DBM) || defined(WITH_NDBM)
+	int		i, r;
+	char		buffer[256];
+#endif
+
+	namepair = pairfind(request->packet->vps, PW_USER_NAME);
+	name = namepair?(char *)namepair->strvalue:"NONE";
+	request_pairs = request->packet->vps;
+	config_pairs = &request->config_items;
+
+	/*
+	 *	Find the entry for the user.
+	 */
+#if defined(WITH_DBM) || defined(WITH_NDBM)
+	/*
+	 *	FIXME: move to rlm_dbm.c
+	 */
+	if (use_dbm) {
+		/*
+		 *	FIXME: No Prefix / Suffix support for DBM.
+		 */
+		sprintf(buffer, "%s/%s", radius_dir, RADIUS_ACCT_USERS);
+#ifdef WITH_DBM
+		if (dbminit(buffer) != 0)
+#endif
+#ifdef WITH_NDBM
+		if ((dbmfile = dbm_open(buffer, O_RDONLY, 0)) == NULL)
+#endif
+		{
+			log(L_ERR|L_CONS, "cannot open dbm file %s",
+				buffer);
+			return RLM_PRAC_FAIL;
+		}
+
+		r = dbm_find(name, request_pairs, config_pairs, &reply_pairs);
+		if (r > 0) found = 1;
+		if (r <= 0 || fallthrough(*reply_pairs)) {
+
+			pairdelete(reply_pairs, PW_FALL_THROUGH);
+
+			sprintf(buffer, "DEFAULT");
+			i = 0;
+			while ((r = dbm_find(buffer, request_pairs,
+			       config_pairs, &reply_pairs)) >= 0 || i < 2) {
+				if (r > 0) {
+					found = 1;
+					if (!fallthrough(*reply_pairs))
+						break;
+					pairdelete(reply_pairs,PW_FALL_THROUGH);
+				}
+				sprintf(buffer, "DEFAULT%d", i++);
+			}
+		}
+#ifdef WITH_DBM
+		dbmclose();
+#endif
+#ifdef WITH_NDBM
+		dbm_close(dbmfile);
+#endif
+	} else
+	/*
+	 *	Note the fallthrough through the #endif.
+	 */
+#endif
+
+	for(pl = acct_users; pl; pl = pl->next) {
+
+		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
+			continue;
+
+		if (paircmp(request_pairs, pl->check, &reply_pairs) == 0) {
+			DEBUG2("  acct_users: Matched %s at %d",
+			       pl->name, pl->lineno);
+			found = 1;
+			check_tmp = paircopy(pl->check);
+			/*
+			 *	Smash the operators to '+=', so that
+			 *	pairmove() will do the right thing...
+			 */
+			for (tmp = check_tmp; tmp; tmp = tmp->next) {
+			  tmp->operator = T_OP_ADD;
+			}
+			reply_tmp = paircopy(pl->reply);
+			pairmove(&reply_pairs, &reply_tmp);
+			pairmove(config_pairs, &check_tmp);
+			pairfree(reply_tmp);
+			pairfree(check_tmp); /* should be NULL */
+			/*
+			 *	Fallthrough?
+			 */
+			if (!fallthrough(pl->reply))
+				break;
+		}
+	}
+
+	/*
+	 *	See if we succeeded.
+	 */
+	if (!found)
+		return RLM_PRAC_OK; /* on to the next module */
+
+	/*
+	 *	FIXME: log a warning if there are any reply items other than
+	 *	Fallthrough
+	 */
+	pairfree(reply_pairs); /* Don't need these */
+
+	return RLM_PRAC_OK;
 }
 
 /*
@@ -631,6 +774,7 @@ static int file_accounting(REQUEST *request)
 static int file_detach(void)
 {
 	pairlist_free(&users);
+	pairlist_free(&acct_users);
 	return 0;
 }
 
@@ -642,6 +786,7 @@ module_t rlm_files = {
 	file_init,			/* initialization */
 	file_authorize, 		/* authorization */
 	file_authenticate,		/* authentication */
+	file_preacct,			/* preaccounting */
 	file_accounting,		/* accounting */
 	file_detach,			/* detach */
 };
