@@ -46,6 +46,10 @@ static const char rcsid[] = "$Id$";
 #ifndef REG_EXTENDED
 #define REG_EXTENDED (0)
 #endif
+
+#ifndef REG_NOSUB
+#define REG_NOSUB (0)
+#endif
 #endif
 
 #include "radiusd.h"
@@ -333,7 +337,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 
 #ifdef HAVE_REGEX_H
 			case T_OP_REG_EQ:
-				regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
+				regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED|REG_NOSUB);
 				compare = regexec(&reg, (char *)auth_item->strvalue,
 						0, NULL, 0);
 				regfree(&reg);
@@ -341,7 +345,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				break;
 
 			case T_OP_REG_NE:
-				regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
+				regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED|REG_NOSUB);
 				compare = regexec(&reg, (char *)auth_item->strvalue,
 						0, NULL, 0);
 				regfree(&reg);

@@ -38,6 +38,9 @@
 #define REG_EXTENDED (0)
 #endif
 
+#ifndef REG_NOSUB 
+#define REG_NOSUB (0)
+#endif
 /*
  *	Define a structure for our module configuration.
  *
@@ -259,7 +262,7 @@ static int checkval_authorize(void *instance, REQUEST *request)
 			char err_msg[MAX_STRING_LEN];
 
 			DEBUG("rlm_checkval: Doing regex");
-			err = regcomp(&reg, (char *)chk_vp->strvalue, REG_EXTENDED);
+			err = regcomp(&reg, (char *)chk_vp->strvalue, REG_EXTENDED|REG_NOSUB);
 			if (err){
 				regerror(err, &reg,err_msg, MAX_STRING_LEN);
 				DEBUG("rlm_checkval: regcomp() returned error: %s", err_msg);
