@@ -190,7 +190,7 @@ static int pdb_decode_acct_ctrl(const char *p)
 static void ntpwdhash (char *szHash, const char *szPassword)
 {
 	char szUnicodePass[513];
-	char nPasswordLen;
+	int nPasswordLen;
 	int i;
 
 	/*
@@ -1068,6 +1068,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		nt_password = pairmake("NT-Password", "", T_OP_EQ);
 		if (!nt_password) {
 			radlog(L_ERR, "No memory");
+			return RLM_MODULE_FAIL;
 		} else {
 			ntpwdhash(nt_password->strvalue, password->strvalue);
 			nt_password->length = 16;
@@ -1265,22 +1266,23 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				memcpy(mppe_sendkey, lm_password->strvalue, 8);
 			}
 
-			if (nt_password) {
-				/*
-				 *	According to RFC 2548 we
-				 *	should send NT hash.  But in
-				 *	practice it doesn't work.
-				 *	Instead, we should send nthashhash
-				 *
-				 *	This is an error on RFC 2548.
-				 */
-				memcpy(mppe_sendkey + 8,
-				       nthashhash, 16);
-				mppe_add_reply(&request->reply->vps,
-					       "MS-CHAP-MPPE-Keys",
-					       mppe_sendkey, 32);
-			}
-
+			/*
+			 *	According to RFC 2548 we
+			 *	should send NT hash.  But in
+			 *	practice it doesn't work.
+			 *	Instead, we should send nthashhash
+			 *
+			 *	This is an error on RFC 2548.
+			 */
+			/*
+			 *	do_mschap cares to zero nthashhash if NT hash
+			 *	is not available.
+			 */
+			memcpy(mppe_sendkey + 8,
+			       nthashhash, 16);
+			mppe_add_reply(&request->reply->vps,
+				       "MS-CHAP-MPPE-Keys",
+				       mppe_sendkey, 32);
 		} else if (chap == 2) {
 			DEBUG2("rlm_mschap: adding MS-CHAPv2 MPPE keys");
 			mppe_chap2_gen_keys128(nthashhash,
