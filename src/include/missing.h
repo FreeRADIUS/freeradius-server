@@ -69,3 +69,14 @@ void endusershell(void);
 #ifndef INADDR_NONE
 #define INADDR_NONE     ((uint32_t) 0xffffffff)
 #endif
+
+#ifdef HAVE_REGEX_H
+/*
+ *  For POSIX Regular expressions.
+ *  (0) Means no extended regular expressions.
+ *  REG_EXTENDED means use extended regular expressions.
+ */
+#ifndef REG_EXTENDED
+#define REG_EXTENDED (0)
+#endif
+#endif

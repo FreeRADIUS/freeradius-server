@@ -274,7 +274,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 
 #ifdef HAVE_REGEX_H
 			case T_OP_REG_EQ:
-				regcomp(&reg, (char *)check_item->strvalue, 0);
+				regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
 				compare = regexec(&reg, (char *)auth_item->strvalue,
 						0, NULL, 0);
 				regfree(&reg);
@@ -282,7 +282,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 				break;
 
 			case T_OP_REG_NE:
-				regcomp(&reg, (char *)check_item->strvalue, 0);
+				regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
 				compare = regexec(&reg, (char *)auth_item->strvalue,
 						0, NULL, 0);
 				regfree(&reg);
