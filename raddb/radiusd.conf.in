@@ -1682,6 +1682,20 @@ instantiate {
 #	daily
 	expiration
 	logintime
+
+	# subsections here can be thought of as "virtual" modules.
+	#
+	# e.g. If you have two redundant SQL servers, and you want to
+	# use them in the authorize and accounting sections, you could
+	# place a "redundant" block in each section, containing the
+	# exact same text.  Or, you could uncomment the following
+	# lines, and list "redundant_sql" in the authorize and
+	# accounting sections.
+	#
+	#redundant redundant_sql {
+	#	sql1
+	#	sql2
+	#}
 }
 
 #  Authorization. First preprocess (hints and huntgroups files),
