@@ -94,6 +94,7 @@ int			proxy_synchronous = TRUE;
 int			need_reload = FALSE;
 int			radius_port = 0;
 struct	servent		*svp;
+int			do_usercollide = FALSE;
 
 static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
@@ -185,6 +186,7 @@ static CONF_PARSER server_config[] = {
   { "smux_password",      PW_TYPE_STRING_PTR, &smux_password,     "" },
   { "snmp_write_access",  PW_TYPE_BOOLEAN,    &snmp_write_access, "no" },
 #endif
+  { "usercollide",  			PW_TYPE_BOOLEAN,    &do_usercollide,		"no" },
   { NULL, -1, NULL, NULL }
 };
 
@@ -212,9 +214,6 @@ static void reread_config(int reload)
 
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
-#ifdef WITH_USERCOLLIDE
-		radlog(L_INFO, "User collision code on ... ");
-#endif
 	} else if (pid == radius_pid) {
 		radlog(L_INFO, "Reloading configuration files.");
 	}
@@ -259,7 +258,6 @@ static void reread_config(int reload)
 		else
 			auth_port = PW_AUTH_UDP_PORT;
 	}
-		
 
 	/*
 	 *	Go update our behaviour, based on the configuration
@@ -862,6 +860,7 @@ int main(int argc, char **argv)
 		if (need_reload) {
 			reread_config(TRUE);
 			need_reload = FALSE;
+			radlog(L_INFO, "Ready to process requests.");
 		}
 
 		FD_ZERO(&readfds);
