@@ -344,29 +344,22 @@ if test "x$WITH_THREADS" = "xyes"; then
     CFLAGS="$CFLAGS -mt"
   fi
 
-  AC_CHECK_HEADERS(pthread.h)
-
-  if test "X$ac_cv_header_pthread_h" = "X"; then
-    AC_MSG_ERROR("You are trying to use threads without a POSIX <pthread.h>")
-    WITH_THREADS=no
-  fi
+  AC_CHECK_HEADERS(pthread.h, [], [ WITH_THREADS="no" ])
 
 dnl # 
 dnl # pthread stuff is usually in -lpthread
+dnl # or in -lc_r, on *BSD
 dnl # 
-  AC_SEARCH_LIBS(pthread_create, pthread,
+dnl # On Some systems, we need extra pre-processor flags, to get them to
+dnl # to do the threading properly.
+dnl # 
+  AC_CHECK_LIB(pthread, pthread_create,
 		[ CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS" ],
-		[
-		 dnl # 
-		 dnl # Except for *BSD, where it's in -lc_r,
-		 dnl # and where we've got to add extra CFLAGS.
-		 dnl # 
-		 CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE"
-	    	 AC_CHECK_LIB(c_r, pthread_create
-				[CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"]
-				[ WITH_THREADS=no ])
-		]
-	)
+		AC_CHECK_LIB(c_r, pthread_create,
+			    [ CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE" ],
+			    [ WITH_THREADS="no" ]
+			    )
+		)
 fi
 
 dnl # 
