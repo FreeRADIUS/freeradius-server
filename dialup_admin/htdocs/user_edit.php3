@@ -66,10 +66,10 @@ print <<<EOM
 <br>
 <table border=0 width=540 cellpadding=1 cellspacing=1>
 <tr valign=top>
-<td width=340></td>
-<td bgcolor="black" width=200>
-	<table border=0 width=100% cellpadding=2 cellspacing=0>
-	<tr bgcolor="#907030" align=right valign=top><th>
+<td width=75%>&nbsp;</td>
+<td bgcolor="black" width=25% align=right>
+	<table border=0 width="200" cellpadding=2 cellspacing=0>
+	<tr bgcolor="#907030" align=center valign=top><th>
 	<font color="white">User Preferences for $login ($cn)</font>&nbsp;
 	</th></tr>
 	</table>
