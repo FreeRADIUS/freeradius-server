@@ -1064,8 +1064,10 @@ RADIUS_PACKET *rad_alloc(int newvector)
 {
 	RADIUS_PACKET	*rp;
 
-	if ((rp = malloc(sizeof(RADIUS_PACKET))) == NULL)
+	if ((rp = malloc(sizeof(RADIUS_PACKET))) == NULL) {
+		librad_log("out of memory");
 		return NULL;
+	}
 	memset(rp, 0, sizeof(RADIUS_PACKET));
 	if (newvector)
 		random_vector(rp->vector);

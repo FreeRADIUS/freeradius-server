@@ -40,8 +40,10 @@ VALUE_PAIR *paircreate(int attr, int type)
 	VALUE_PAIR	*vp;
 	DICT_ATTR	*da;
 
-	if ((vp = malloc(sizeof(VALUE_PAIR))) == NULL)
+	if ((vp = malloc(sizeof(VALUE_PAIR))) == NULL) {
+		librad_log("out of memory");
 		return NULL;
+	}
 	memset(vp, 0, sizeof(VALUE_PAIR));
 	vp->attribute = attr;
 	vp->operator = T_OP_EQ;
@@ -146,8 +148,10 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 			vp = vp->next;
 			continue;
 		}
-		if ((n = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL)
+		if ((n = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL) {
+			librad_log("out of memory");
 			return first;
+		}
 		memcpy(n, vp, sizeof(VALUE_PAIR));
 		n->next = NULL;
 		*last = n;
