@@ -316,7 +316,7 @@ int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName,
 
 { struct RFCNB_Pkt *pkt;
   int param_len, i, pkt_len, pass_len,a;
-  char *p, pword[128];
+  char *p, pword[256];
 
   /* First we need a packet etc ... but we need to know what protocol has  */
   /* been negotiated to figure out if we can do it and what SMB format to  */
