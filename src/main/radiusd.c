@@ -1572,14 +1572,11 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 	
 	/*
-	 *  If we don't already have a proxy packet for this request,
-	 *  we MIGHT have to go proxy it.
-	 *
 	 *  Status-Server requests NEVER get proxied.
 	 */
 	if (mainconfig.proxy_requests) {
-		if ((request->proxy == NULL) &&
-		    (request->packet->code != PW_STATUS_SERVER)) {
+		if ((request->packet->code != PW_STATUS_SERVER) &&
+		    ((request->options & RAD_REQUEST_OPTION_PROXIED) == 0)) {
 			int rcode;
 
 			/*

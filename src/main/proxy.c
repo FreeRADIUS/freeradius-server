@@ -53,25 +53,7 @@ static uint32_t proxy_id = 1;
  */
 int proxy_receive(REQUEST *request)
 {
-	VALUE_PAIR *proxypair;
-	VALUE_PAIR *replicatepair;
         int rcode;
-
-	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
-	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
-        if (proxypair) {
-            /* Don't do anything*/
-
-        } else if (replicatepair) {
-            /*
-             *  The request was replicated, so we don't process the response.
-             */
-            return RLM_MODULE_HANDLED;
-
-        } else {
-		radlog(L_PROXY, "Proxy reply to packet with no Realm");
-		return RLM_MODULE_FAIL;
-	}
 
         /*
          *	Delete any reply we had accumulated until now.
@@ -476,6 +458,7 @@ int proxy_send(REQUEST *request)
 	if ((rcode == RLM_MODULE_OK) ||
 	    (rcode == RLM_MODULE_NOOP) ||
 	    (rcode == RLM_MODULE_UPDATED)) {
+		request->options |= RAD_REQUEST_OPTION_PROXIED;
 		rad_send(request->proxy, NULL, (char *)request->proxysecret);
 		rcode = RLM_MODULE_HANDLED; /* caller doesn't reply */
 	} else {
