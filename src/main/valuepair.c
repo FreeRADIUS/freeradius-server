@@ -603,3 +603,157 @@ void pair_builtincompare_init(void)
 	paircompare_register(PW_NO_SUCH_ATTRIBUTE, 0, attrcmp, NULL);
 	paircompare_register(PW_EXPIRATION, 0, expirecmp, NULL);
 }
+
+/*
+ *	Move pairs, replacing/over-writing them, and doing xlat.
+ */
+/*
+ *	Move attributes from one list to the other
+ *	if not already present.
+ */
+void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
+{
+	VALUE_PAIR **tailto, *i, *j, *next;
+	VALUE_PAIR *tailfrom = NULL;
+	VALUE_PAIR *found, *prev;
+
+	/*
+	 *	Point "tailto" to the end of the "to" list.
+	 */
+	tailto = to;
+	for(i = *to; i; i = i->next) {
+		tailto = &i->next;
+	}
+
+	/*
+	 *	Loop over the "from" list.
+	 */
+	for(i = *from; i; i = next) {
+		next = i->next;
+
+		/*
+		 *	Don't move 'fallthrough' over.
+		 */
+		if (i->attribute == PW_FALL_THROUGH) {
+			continue;
+		}
+
+		/*
+		 *	We've got to xlat the string before moving
+		 *	it over.
+		 */
+		if (i->flags.do_xlat) {
+			int rcode;
+			char buffer[sizeof(i->strvalue)];
+
+			i->flags.do_xlat = 0;
+			rcode = radius_xlat(buffer, sizeof(buffer),
+					    i->strvalue,
+					    req, NULL);
+			
+			/*
+			 *	Parse the string into a new value.
+			 */
+			pairparsevalue(i, buffer);
+		}
+
+		found = pairfind(*to, i->attribute);
+		switch (i->operator) {
+			
+			/*
+			 *  If a similar attribute is found,
+			 *  delete it.
+			 */
+		case T_OP_SUB:		/* -= */
+			if (found) {
+				if (!i->strvalue[0] ||
+				    (strcmp((char *)found->strvalue,
+					    (char *)i->strvalue) == 0)){
+					pairdelete(to, found->attribute);
+					
+					/*
+					 *	'tailto' may have been
+					 *	deleted...
+					 */
+					tailto = to;
+					for(j = *to; j; j = j->next) {
+						tailto = &j->next;
+					}
+				}
+			}
+			tailfrom = i;
+			continue;
+			break;
+			
+			/*
+			 *  Add it, if it's not already there.
+			 */
+		case T_OP_EQ:		/* = */
+			if (found) {
+				tailfrom = i;
+				continue; /* with the loop */
+			}
+			break;
+			
+			/*
+			 *  If a similar attribute is found,
+			 *  replace it with the new one.  Otherwise,
+			 *  add the new one to the list.
+			 */
+		case T_OP_SET:		/* := */
+			if (found) {
+
+
+				/*
+				 *  FIXME: REPLACE the attribute,
+				 *  instead of moving it somewhere
+				 *  else!
+				 */
+				pairdelete(to, found->attribute);
+				/*
+				 *	'tailto' may have been
+				 *	deleted...
+				 */
+				tailto = to;
+				for(j = *to; j; j = j->next) {
+					tailto = &j->next;
+				}
+			}
+			break;
+			
+			/*
+			 *  FIXME: Add support for <=, >=, <, >
+			 *
+			 *  which will mean (for integers)
+			 *  'make the attribute the smaller, etc'
+			 */
+			
+			/*
+			 *  Add the new element to the list, even
+			 *  if similar ones already exist.
+			 */
+		default:
+		case T_OP_ADD:		/* += */
+			break;
+		}
+		
+		if (tailfrom)
+			tailfrom->next = next;
+		else
+			*from = next;
+		
+		/*
+		 *	If ALL of the 'to' attributes have been deleted,
+		 *	then ensure that the 'tail' is updated to point
+		 *	to the head.
+		 */
+		if (!*to) {
+			tailto = to;
+		}
+		*tailto = i;
+		if (i) {
+			i->next = NULL;
+			tailto = &i->next;
+		}
+	} /* loop over the 'from' list */
+}

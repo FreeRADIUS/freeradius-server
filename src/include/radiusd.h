@@ -302,6 +302,7 @@ int		paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			VALUE_PAIR **reply);
 int		simplepaircmp(REQUEST *, VALUE_PAIR *, VALUE_PAIR *);
 void		pair_builtincompare_init(void);
+void		pairxlatmove(REQUEST *, VALUE_PAIR **to, VALUE_PAIR **from);
 
 /* xlat.c */
 typedef int (*RADIUS_ESCAPE_STRING)(char *out, int outlen, const char *in);

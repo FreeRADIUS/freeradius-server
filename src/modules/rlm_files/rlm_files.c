@@ -1,6 +1,5 @@
 /*
  * rlm_files.c	authorization: Find a user in the "users" file.
- *		accounting:    Write the "detail" files.
  *
  * Version:	$Id$
  *
@@ -18,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2002  The FreeRADIUS server project
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
  */
 
@@ -49,6 +48,10 @@ struct file_instance {
 	/* preacct */
 	char *acctusersfile;
 	PAIR_LIST *acctusers;
+
+	/* pre-proxy */
+	char *preproxy_usersfile;
+	PAIR_LIST *preproxy_users;
 };
 
 /*
@@ -57,7 +60,6 @@ struct file_instance {
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-
 	tmp = pairfind(vp, PW_FALL_THROUGH);
 
 	return tmp ? tmp->lvalue : 0;
@@ -68,6 +70,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(struct file_instance,usersfile), NULL, "${raddbdir}/users" },
 	{ "acctusersfile", PW_TYPE_STRING_PTR,
 	  offsetof(struct file_instance,acctusersfile), NULL, "${raddbdir}/acct_users" },
+	{ "preproxy_usersfile", PW_TYPE_STRING_PTR,
+	  offsetof(struct file_instance,preproxy_usersfile), NULL, "${raddbdir}/preproxy_users" },
 	{ "compat",	   PW_TYPE_STRING_PTR,
 	  offsetof(struct file_instance,compat_mode), NULL, "cistron" },
 	{ NULL, -1, 0, NULL, NULL }
@@ -88,7 +92,7 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 	 *	or if we're in compat_mode.
 	 */
 	if ((debug_flag) ||
-			(strcmp(compat_mode_str, "cistron") == 0)) {
+	    (strcmp(compat_mode_str, "cistron") == 0)) {
 		PAIR_LIST *entry;
 		VALUE_PAIR *vp;
 		int compat_mode = FALSE;
@@ -243,6 +247,21 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
+	/*
+	 *  Get the pre-proxy stuff
+	 */
+	rcode = getusersfile(inst->preproxy_usersfile, &inst->preproxy_users, inst->compat_mode);
+	if (rcode != 0) {
+		radlog(L_ERR|L_CONS, "Errors reading %s", inst->preproxy_usersfile);
+		pairlist_free(&inst->users);
+		pairlist_free(&inst->acctusers);
+		free(inst->usersfile);
+		free(inst->acctusersfile);
+		free(inst->preproxy_usersfile);
+		free(inst);
+		return -1;
+	}
+
 	*instance = inst;
 	return 0;
 }
@@ -327,7 +346,7 @@ static int file_authorize(void *instance, REQUEST *request)
 					 * just copy reply here
 					 */
 					reply_tmp = paircopy(pl->reply);
-					pairmove(reply_pairs, &reply_tmp);
+					pairxlatmove(request, reply_pairs, &reply_tmp);
 					pairfree(&reply_tmp);
 
 				/* We didn't match here */
@@ -346,7 +365,7 @@ static int file_authorize(void *instance, REQUEST *request)
 				found = 1;
 				check_tmp = paircopy(pl->check);
 				reply_tmp = paircopy(pl->reply);
-				pairmove(reply_pairs, &reply_tmp);
+				pairxlatmove(request, reply_pairs, &reply_tmp);
 				pairmove(check_pairs, &check_tmp);
 				pairfree(&reply_tmp);
 				pairfree(&check_tmp); /* should be NULL */
@@ -414,7 +433,95 @@ static int file_preacct(void *instance, REQUEST *request)
 			found = 1;
 			check_tmp = paircopy(pl->check);
 			reply_tmp = paircopy(pl->reply);
-			pairmove(reply_pairs, &reply_tmp);
+			pairxlatmove(request, reply_pairs, &reply_tmp);
+			pairmove(config_pairs, &check_tmp);
+			pairfree(&reply_tmp);
+			pairfree(&check_tmp); /* should be NULL */
+			/*
+			 *	Fallthrough?
+			 */
+			if (!fallthrough(pl->reply))
+				break;
+		}
+	}
+
+	/*
+	 *	See if we succeeded.
+	 */
+	if (!found)
+		return RLM_MODULE_NOOP; /* on to the next module */
+
+	return RLM_MODULE_OK;
+}
+
+/*
+ *	Pre-proxy - read the preproxy_users file for check_items and
+ *	config_items.
+ *
+ *	This function is mostly a copy of file_authorize
+ */
+static int file_preproxy(void *instance, REQUEST *request)
+{
+	VALUE_PAIR	*namepair;
+	const char	*name;
+	VALUE_PAIR	*request_pairs;
+	VALUE_PAIR	**config_pairs;
+	VALUE_PAIR	**reply_pairs;
+	VALUE_PAIR	*check_tmp;
+	VALUE_PAIR	*reply_tmp;
+	PAIR_LIST	*pl;
+	int		found = 0;
+	struct file_instance *inst = instance;
+
+	namepair = request->username;
+	name = namepair ? (char *) namepair->strvalue : "NONE";
+	request_pairs = request->packet->vps;
+	config_pairs = &request->config_items;
+	reply_pairs = &request->proxy->vps;
+
+	/*
+	 *	Find the entry for the user.
+	 */
+	for (pl = inst->preproxy_users; pl; pl = pl->next) {
+
+		/*
+		 *  No match: skip it.
+		 */
+		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
+			continue;
+
+		if (paircmp(request, request_pairs, pl->check, reply_pairs) == 0) {
+			VALUE_PAIR *vp;
+
+			DEBUG2("    preproxy_users: Matched %s at %d",
+			       pl->name, pl->lineno);
+			found = 1;
+			check_tmp = paircopy(pl->check);
+			reply_tmp = paircopy(pl->reply);
+
+			for (vp = reply_tmp; vp != NULL; vp = vp->next) {
+				/*
+				 *	We've got to xlat the string
+				 *	before moving it over.
+				 */
+				if (vp->flags.do_xlat) {
+					int rcode;
+					char buffer[sizeof(vp->strvalue)];
+					
+					vp->flags.do_xlat = 0;
+					rcode = radius_xlat(buffer, sizeof(buffer),
+							    vp->strvalue,
+							    request, NULL);
+					
+					/*
+					 *	Parse the string into
+					 *	a new value.
+					 */
+					pairparsevalue(vp, buffer);
+				}
+			} /* loop over the things to add to the reply */
+
+			pairxlatmove(request, reply_pairs, &reply_tmp);
 			pairmove(config_pairs, &check_tmp);
 			pairfree(&reply_tmp);
 			pairfree(&check_tmp); /* should be NULL */
@@ -443,8 +550,10 @@ static int file_detach(void *instance)
 	struct file_instance *inst = instance;
 	pairlist_free(&inst->users);
 	pairlist_free(&inst->acctusers);
+	pairlist_free(&inst->preproxy_users);
 	free(inst->usersfile);
 	free(inst->acctusersfile);
+	free(inst->preproxy_usersfile);
 	free(inst->compat_mode);
 	free(inst);
 	return 0;
@@ -462,7 +571,10 @@ module_t rlm_files = {
 		file_authorize, 	/* authorization */
 		file_preacct,		/* preaccounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		file_preproxy,		/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	file_detach,			/* detach */
 	NULL				/* destroy */
