@@ -98,7 +98,7 @@ release.  They also do NOT permit the use of conditional syntax
      %l       request timestamp
      %m       request month (MM)
      %n       NAS IP address		  %{NAS-IP-Address}
-     %p       Port number		  %{NAS-Port-Id}
+     %p       Port number		  %{NAS-Port}
      %s       Speed (PW_CONNECT_INFO)	  %{Connect-Info}
      %t       request in ctime format
      %u       User name			  %{User-Name}
