@@ -52,54 +52,29 @@ struct attr_filter_instance {
 };
 
 /*
- *	Move only the first instance of an attribute from
- *      one list to another.
+ *	Copy the specified attribute to the specified list
  */
-static void mypairmove(VALUE_PAIR **to, VALUE_PAIR **from, int attr)
+static void mypairappend(VALUE_PAIR *item, VALUE_PAIR **to)
 {
-	VALUE_PAIR *to_tail, *i, *next;
-	VALUE_PAIR *iprev = NULL;
-	int     moved = 0;
+  VALUE_PAIR *tmp;
 
-	/* DEBUG2("    attr_filter: moving attr: %d", attr); */
-
-	/*
-	 *	Find the last pair in the "to" list and put it in "to_tail".
-	 */
-	if (*to != NULL) {
-		to_tail = *to;
-		for(i = *to; i; i = i->next)
-			to_tail = i;
-	} else
-		to_tail = NULL;
-
-	for(i = *from; i && !moved; i = next) {
-		next = i->next;
-
-		if (i->attribute != attr) {
-			iprev = i;
-			continue;
-		}
-
-		/*
-		 *	Remove the attribute from the "from" list.
-		 */
-		if (iprev)
-			iprev->next = next;
-		else
-			*from = next;
-
-		/*
-		 *	Add the attribute to the "to" list.
-		 */
-		if (to_tail)
-			to_tail->next = i;
-		else
-			*to = i;
-		to_tail = i;
-		i->next = NULL;
-		moved = 1;
-	}
+  tmp = paircreate(item->attribute, item->type);
+  if( tmp == NULL ) {
+    radlog(L_ERR|L_CONS, "no memory");
+    exit(1);
+  }
+  switch (tmp->type) {
+      case PW_TYPE_INTEGER:
+      case PW_TYPE_IPADDR:
+      case PW_TYPE_DATE:
+	tmp->lvalue = item->lvalue;
+	break;
+      default:
+	memcpy((char *)tmp->strvalue, (char *)item->strvalue, item->length);
+	tmp->length = item->length;
+	break;
+  }
+  pairadd(to, tmp);
 }
 
 /*
@@ -113,8 +88,6 @@ static int fallthrough(VALUE_PAIR *vp)
 
 	return tmp ? tmp->lvalue : 0;
 }
-
-
 
 static CONF_PARSER module_config[] = {
         { "attrsfile",     PW_TYPE_STRING_PTR,
@@ -209,12 +182,11 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR      **reply_items;
 	VALUE_PAIR      *reply_item;
 	VALUE_PAIR	*reply_tmp = NULL;
-	VALUE_PAIR      *check_items;
 	VALUE_PAIR      *check_item;
-	VALUE_PAIR      *tmp;
 	PAIR_LIST	*pl;
 	int             found = 0;
 	int             compare;
+	int             pass, fail;
 #ifdef HAVE_REGEX_H
 	regex_t         reg;
 #endif
@@ -265,21 +237,13 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 			continue;
 		}
 
-		/*      THIS SECTION NEEDS LOTS OF WORK TO GET THE ATTRIBUTE 
-		 *      FILTERING LOGIC WORKING PROPERLY.  RIGHT NOW IT DOES
-		 *	THINGS MOSLTY RIGHT.  IT HAS SOME ISSUES WHEN YOU HAVE
-                 *      MULTIPLE A/V PAIRS FROM THE SAME ATTRIBUTE ( IE, VSA'S ).
-		 *      THAT NEEDS A BIT OF WORK STILL....  -cparker@starnetusa.net
-		 */
-		
 		DEBUG2("  attr_filter: Matched entry %s at line %d", pl->name, pl->lineno);
 
 		found = 1;
 		
-		check_items = pl->check;
+		check_item = pl->check;
 
-		for( check_item = check_items; check_item != NULL ; 
-		     check_item = check_item->next ) {
+		while( check_item != NULL ) {
 
 		    /*
 		     *      If it is a SET operator, add the attribute to
@@ -288,39 +252,34 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 		     */
 
 		    if( check_item->operator == T_OP_SET ) {
-		        tmp = paircreate(check_item->attribute, check_item->type);
-			if( tmp == NULL ) {
-			    radlog(L_ERR|L_CONS, "no memory");
-			    exit(1);
-			}
-			switch (tmp->type) {
-			    case PW_TYPE_INTEGER:
-			    case PW_TYPE_IPADDR:
-			    case PW_TYPE_DATE:
-			         tmp->lvalue = check_item->lvalue;
-			         break;
-			    default:
-			         memcpy((char *)tmp->strvalue,
-					(char *)check_item->strvalue,
-					check_item->length);
-				 tmp->length = check_item->length;
-			         break;
-			}
-			/* DEBUG2("    attr_filter: creating vp %s - %d - %d",
-			       tmp->name, tmp->type, tmp->lvalue); */
-			pairadd(&reply_tmp, tmp);
-		        continue;
+		        mypairappend(check_item, &reply_tmp);
 		    }
+		    check_item = check_item->next;
 
-		    reply_item = pairfind(*reply_items, check_item->attribute);
+		}  /* while( check_item != NULL ) */
 
-		    /* DEBUG2("    attr_filter: checking for: %s", check_item->name); */
+		/* 
+		 * Iterate through the reply items, comparing each reply item to every rule,
+		 * then moving it to the reply_tmp list only if it matches all rules for that
+		 * attribute.  IE, Idle-Timeout is moved only if it matches all rules that
+		 * describe an Idle-Timeout.  
+		 */
 
-		    if(reply_item != (VALUE_PAIR *)NULL) {
+		for( reply_item = *reply_items; 
+		     reply_item != NULL; 
+		     reply_item = reply_item->next ) {
+
+		  /* reset the pass,fail vars for each reply item */
+		  pass = fail = 0;
+
+		  /* reset the check_item pointer to the beginning of the list */
+		  check_item = pl->check;
+
+		  while( check_item != NULL ) {
+		      
+		      if(reply_item->attribute == check_item->attribute) {
 
 			compare = simplepaircmp(request, reply_item, check_item);
-
-			/* DEBUG2("    attr_filter: compare = %d", compare); */
 
 			switch(check_item->operator) {
 
@@ -329,45 +288,53 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 			        radlog(L_ERR, "Invalid operator for item %s: "
 				       "reverting to '=='", check_item->name);
 				
+			    case T_OP_CMP_TRUE:       /* compare always == 0 */
+			    case T_OP_CMP_FALSE:      /* compare always == 1 */
 			    case T_OP_CMP_EQ:
 			        if (compare == 0) {
-				    mypairmove( &reply_tmp, reply_items, 
-						check_item->attribute);
+				    pass++;
+				} else {
+				    fail++;
 				}
 				break;
 
 			    case T_OP_NE:
 			        if (compare != 0) {
-				    mypairmove( &reply_tmp, reply_items, 
-						check_item->attribute);
+				    pass++;
+				} else {
+				    fail++;
 				}
 				break;
 
 			    case T_OP_LT:
 			        if (compare < 0) {
-				    mypairmove( &reply_tmp, reply_items, 
-						check_item->attribute);
+				    pass++;
+				} else {
+				    fail++;
 				}
 				break;
 
 			    case T_OP_GT:
 			        if (compare > 0) {
-				    mypairmove( &reply_tmp, reply_items, 
-						check_item->attribute);
+				    pass++;
+				} else {
+				    fail++;
 				}
 				break;
 				
 			    case T_OP_LE:
 			        if (compare <= 0) {
-				    mypairmove( &reply_tmp, reply_items, 
-						check_item->attribute);
+				    pass++;
+				} else {
+				    fail++;
 				}
 				break;
 
 			    case T_OP_GE:
 			        if (compare >= 0) {
-				    mypairmove( &reply_tmp, reply_items, 
-						check_item->attribute);
+				    pass++;
+				} else {
+				    fail++;
 				}
 				break;
 #ifdef HAVE_REGEX_H
@@ -377,8 +344,9 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 						  0, NULL, 0);
 				regfree(&reg);
 				if (compare == 0) {
-				    mypairmove( &reply_tmp, reply_items, 
-						check_item->attribute);
+				    pass++;
+				} else {
+				    fail++;
 				}
 				break;
 
@@ -388,16 +356,27 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 						  0, NULL, 0);
 				regfree(&reg);
 				if (compare != 0) {
-				    mypairmove( &reply_tmp, reply_items, 
-						check_item->attribute);
+				    pass++;
+				} else {
+				    fail++;
 				}
 				break;
 #endif
-			}
+			}  /* switch( check_item->operator ) */
 
+		      }  /* if reply == check */
+
+		      check_item = check_item->next;
+
+		    }  /* while( check ) */
+
+		    /* only move attribute if it passed all rules */
+		    if (fail == 0 && pass > 0) {
+		      mypairappend( reply_item, &reply_tmp);
 		    }
 
-		}
+		}  /* for( reply ) */
+		
 		/* If we shouldn't fall through, break */
 		if(!fallthrough(pl->check))
 		    break;

@@ -6,10 +6,7 @@
 -1. CAVEAT
 
 
-  THIS MODULE IS STILL IN DEVELOPMENT.  IT IS NOT TOTALLY FINALIZED.  
-
-  Please send corrections/input/comments/flames to <cparker@starnetusa.net>
-
+RLM_ATTR_FILTER
 
 0.  INTRODUCTION
 
@@ -78,6 +75,8 @@
 
            :=   -  Set ( used to ensure a specific a/v is present )
            ==   -  Equal  ( exact )
+	   =*   -  Always Equal ( will allow all values for attribute )
+           !*   -  Always Not Equal ( will block all values for attribute )
            !=   -  Not equal
            >=   -  Greater than or equal to
            <=   -  Less than or equal to
@@ -100,21 +99,31 @@
      o  Build a list of a/v pair rules from the 'attrs' file at module
         instantiation.
 
-     o  When a proxy reply packet is received, passed to the module, it
+     o  When a proxy reply packet is received and passed to the module, it
         checks for a Realm attribute in the original request a/v pairs.
-        ( The Realm attribute is added there by the proxy module ).
+        ( The Realm attribute is added there by the proxy code ).
 
      o  The module walks the list of a/v pair rules until it finds a
         match for the Realm value or it reaches the DEFAULT entry.
- 
-     o  For each rule in the list of rules, the proxy reply vps are checked.
-   
-     o  If an a/v in the proxy reply vps passes one of the rules or the
-        rule contains a SET operator the a/v is added to a temporary list.
 
-     o  When all the rules have been checked, the original proxy reply
+     o  If there are any rules with SET operators, those attributes are 
+	added to the top of a temporary reply list.
+ 
+     o  Each a/v pair in the proxy reply is compared to the list of 
+	rules.
+   
+     o  If an a/v pair in the proxy reply passes *ALL* of the rules that
+	relate to the attribute, the a/v is added to a temporary list.  
+        ( Note, if it fails 1 or more rules, or is not matched, then the
+          a/v pair will *NOT* be transferred to the temporary list. )
+
+     o  When all the reply vps have been checked, the original proxy reply
         vps are freed and the temporary list ( containing only those a/v
-        that passed the rules ) is becomes the new proxy reply vps.
+        that passed the rules ) becomes the new proxy reply vps.
 
      o  The module then returns UPDATED and the rest of the authorize block
         is called as usual.
+
+---
+Please send corrections/input/comments/flames to <cparker@starnetusa.net>
+
