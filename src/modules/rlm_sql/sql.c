@@ -44,13 +44,13 @@
 #include	<errno.h>
 #include	<sys/wait.h>
 
-#if HAVE_PTHREAD_H
-#include	<pthread.h>
-#endif
-
 #include	"radiusd.h"
 #include	"conffile.h"
 #include	"rlm_sql.h"
+
+#if HAVE_PTHREAD_H
+#include	<pthread.h>
+#endif
 
 
 /*
