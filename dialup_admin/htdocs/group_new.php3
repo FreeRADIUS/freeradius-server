@@ -8,6 +8,7 @@ require('../conf/config.php3');
 if ($config[general_lib_type] != 'sql'){
 	echo <<<EOM
 <title>New group creation page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
@@ -35,6 +36,7 @@ if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 <html>
 <head>
 <title>New group creation page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

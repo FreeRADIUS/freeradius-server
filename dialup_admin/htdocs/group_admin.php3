@@ -7,6 +7,7 @@ require('../conf/config.php3');
 if ($config[general_lib_type] != 'sql'){
 	echo <<<EOM
 <title>Group Administration Page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
@@ -23,6 +24,7 @@ if (is_file("../lib/$config[general_lib_type]/group_info.php3")){
 	if ($group_exists == 'no'){
 		echo <<<EOM
 <title>Group Administration Page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
@@ -43,6 +45,7 @@ EOM;
 <html>
 <head>
 <title>Group Administration Page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

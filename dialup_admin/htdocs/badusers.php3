@@ -10,6 +10,7 @@ if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 else{
 	echo <<<EOM
 <title>Unauthorized Service Usage History for $login</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
@@ -34,6 +35,7 @@ $usercheck = ($login == 'anyone') ? "LIKE '%'" : "= '$login'";
 echo <<<EOM
 <head>
 <title>Unauthorized Service Usage History for $login</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

@@ -4,9 +4,8 @@ require('../conf/config.php3');
 <html>
 <head>
 <META HTTP-EQUIV="Refresh" CONTENT="50">
-<title>
-User Finger Facility
-</title>
+<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
+<title>User Finger Facility</title>
 <link rel="stylesheet" href="style.css">
 </head>
 

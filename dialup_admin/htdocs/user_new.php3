@@ -20,6 +20,7 @@ if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 <html>
 <head>
 <title>New user creation page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

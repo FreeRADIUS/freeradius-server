@@ -9,7 +9,8 @@ if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
 else{
 	echo <<<EOM
-<title>subscription analysis for $login ($cn)</title>
+<title>subscription analysis for $login</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
@@ -36,7 +37,8 @@ $selected[$order] = 'selected';
 
 echo <<<EOM
 <head>
-<title>subscription analysis for $login ($cn)</title>
+<title>subscription analysis for $login</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

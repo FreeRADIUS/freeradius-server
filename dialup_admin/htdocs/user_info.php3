@@ -4,6 +4,7 @@ require('../conf/config.php3');
 
 <html>
 <head>
+<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
 <title>Personal information page</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -22,6 +23,18 @@ include("../html/user_toolbar.html.php3");
 ?>
 </table>
 
+<?php
+if ($change == 1){
+	if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
+		include("../lib/$config[general_lib_type]/user_info.php3");
+	if (is_file("../lib/$config[general_lib_type]/change_info.php3"))
+		include("../lib/$config[general_lib_type]/change_info.php3");
+}
+
+if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
+	include("../lib/$config[general_lib_type]/user_info.php3");
+?>
+
 <br>
 <table border=0 width=540 cellpadding=1 cellspacing=1>
 <tr valign=top>
@@ -37,17 +50,6 @@ include("../html/user_toolbar.html.php3");
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
    
-<?php
-if ($change == 1){
-	if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-		include("../lib/$config[general_lib_type]/user_info.php3");
-	if (is_file("../lib/$config[general_lib_type]/change_info.php3"))
-		include("../lib/$config[general_lib_type]/change_info.php3");
-}
-
-if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-	include("../lib/$config[general_lib_type]/user_info.php3");
-?>
    <form method=post>
       <input type=hidden name=login value="<?php echo $login?>">
       <input type=hidden name=change value="0">

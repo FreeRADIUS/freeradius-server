@@ -13,6 +13,7 @@ if (is_file("../lib/$config[general_lib_type]/user_info.php3")){
 	if ($user_exists == 'no'){
 		echo <<<EOM
 <title>user information page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
@@ -34,6 +35,7 @@ if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 else{
 	echo <<<EOM
 <title>user information page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

@@ -36,6 +36,7 @@ else
 	echo " <title>subscription configuration for $login</title>\n";
 ?>
 
+<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

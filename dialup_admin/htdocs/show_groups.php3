@@ -9,6 +9,7 @@ if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 else{
 	echo <<<EOM
 <title>User Groups</title>
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
@@ -22,6 +23,7 @@ EOM;
 ?>
 <head>
 <title>User Groups</title>
+<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
