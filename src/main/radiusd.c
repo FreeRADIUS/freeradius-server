@@ -1957,6 +1957,7 @@ static int sig_cleanup_walker(REQUEST *req, void *data)
 			return RL_WALK_CONTINUE;
 		}
 	req->child_pid = NO_SUCH_CHILD_PID;
+	req->finished = TRUE;
 	return 0;
 }
 #endif /* HAVE_PTHREAD_H */
@@ -2082,7 +2083,7 @@ static void sig_fatal(int sig)
 	 *  daemons down, as something absolutely horrible happened.
 	 */
 	if ((debug_flag == 0) && (dont_fork == 0) &&
-			(radius_pid == getpid())) {
+	    (radius_pid == getpid())) {
 		/*
 		 *      Kill all of the processes in the current
 		 *  process group.
