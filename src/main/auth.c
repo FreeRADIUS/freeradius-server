@@ -232,9 +232,12 @@ static int rad_check_password(REQUEST *request,
 			 */
 			result = module_authenticate(auth_type, request);
 			switch (result) {
+				/*
+				 *	An authentication module FAIL
+				 *	return code is the same as
+				 *	an explicit REJECT!
+				 */
 				case RLM_MODULE_FAIL:
-					result = 1;
-					break;
 				case RLM_MODULE_REJECT:
 					result = -1;
 					break;
