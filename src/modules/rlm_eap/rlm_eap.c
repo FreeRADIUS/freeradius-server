@@ -43,7 +43,7 @@ static int eap_init(void)
  */
 static int eap_instantiate(CONF_SECTION *cs, void **instance)
 {
-	char		*auth_name;
+	char		*auth_type;
 	CONF_SECTION 	*scs;
 	EAP_TYPES	*types;
 	EAP_CONF	*conf;
@@ -52,7 +52,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	eap_stuff = (rlm_eap_t **)instance;
 	types	 = NULL;
 	conf	 = NULL;
-	auth_name = NULL;
+	auth_type = NULL;
 
 	conf = (EAP_CONF *)malloc(sizeof(EAP_CONF));
 	if (conf == NULL) {
@@ -69,11 +69,11 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		scs != NULL;
 		scs=cf_subsection_find_next(cs, scs, NULL)) {
 
-		auth_name = cf_section_name1(scs);
+		auth_type = cf_section_name1(scs);
 
-		if (!auth_name)  continue;
+		if (!auth_type)  continue;
 
-		if (eaptype_load(&types, auth_name, scs) < 0) {
+		if (eaptype_load(&types, auth_type, scs) < 0) {
 			free(conf);
 			return -1;
 		}
