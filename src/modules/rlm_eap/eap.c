@@ -651,6 +651,9 @@ int eap_compose(EAP_HANDLER *handler)
 	rcode = RLM_MODULE_OK;
 	if (!request->reply->code) switch(reply->code) {
 	case PW_EAP_RESPONSE:
+		request->reply->code = PW_AUTHENTICATION_ACK;
+		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
+		break;
 	case PW_EAP_SUCCESS:
 		request->reply->code = PW_AUTHENTICATION_ACK;
 		rcode = RLM_MODULE_OK;
