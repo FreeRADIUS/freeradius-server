@@ -16,7 +16,7 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-#    Copyright (C) 2001 The FreeRADIUS Project   http://www.freeradius.org
+#    Copyright (C) 2001-2002 The FreeRADIUS Project http://www.freeradius.org
 
 prefix=@prefix@
 exec_prefix=@exec_prefix@
@@ -26,55 +26,31 @@ logdir=@logdir@
 rundir=${localstatedir}/run/radiusd
 
 RADIUSD=$sbindir/radiusd
-WATCHER=$sbindir/radwatch
-DESC="Freeradius server"
-NAME1=radiusd
-NAME2=radwatch
+RADDBDIR=@raddbdir@
+DESC="FreeRADIUS"
 
-ARGS="-y"
+#
+#  See 'man radiusd' for details on command-line options.
+#
+ARGS=""
 
 test -f $RADIUSD || exit 0
+test -f $RADDBDIR/radiusd.conf || exit 0
 
 case "$1" in
   start)
-	if [ ! -f $logdir/radutmp ]
-	then
-		>$logdir/radutmp
-	fi
 	echo -n "Starting $DESC:"
-	if [ -x $WATCHER ]
-	then
-		echo -n " radwatch"
-		start-stop-daemon --start --quiet --startas $WATCHER \
-			--pidfile $rundir/$NAME2.pid --exec $RADIUSD -- $ARGS
-		# and the watcher starts radiusd.
-		echo -n " radiusd"
-	else
-		echo -n " radiusd"
-		start-stop-daemon --start --quiet \
-			--pidfile $rundir/$NAME1.pid --exec $RADIUSD -- $ARGS
-	fi
-	echo "."
+	$RADIUSD $ARGS
+	echo "radiusd"
 	;;
   stop)
 	[ -z "$2" ] && echo -n "Stopping $DESC: "
-	if [ -x $WATCHER ]
-	then
-		[ -z "$2" ] && echo -n "radwatch "
-		start-stop-daemon --stop --quiet \
-			--pidfile $rundir/$NAME2.pid -- exec $RADWATCH
-		# but we have to stop radiusd manually.
-		killall radiusd 2>/dev/null
-	else
-		start-stop-daemon --stop --quiet \
-			--pidfile $rundir/$NAME1.pid --exec $RADIUSD
-	fi
+        [ -f $rundir/radiusd.pid] && kill -TERM `cat $rundir/radiusd.pid`
 	[ -z "$2" ] && echo "radiusd."
 	;;
   reload|force-reload)
 	echo "Reloading $DESC configuration files."
-	start-stop-daemon --stop --signal 1 --quiet --pidfile \
-		$rundir/$NAME1.pid --exec $RADIUSD
+	kill -HUP `cat $rundir/radiusd.pid`
 	;;
   restart)
 	sh $0 stop quiet
@@ -82,7 +58,7 @@ case "$1" in
 	sh $0 start
 	;;
   *)
-        echo "Usage: /etc/init.d/$NAME1 {start|stop|reload|restart}"
+        echo "Usage: /etc/init.d/$RADIUS {start|stop|reload|restart}"
         exit 1
 esac
 
