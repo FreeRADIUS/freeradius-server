@@ -88,3 +88,6 @@ config.status: configure
 	./config.status --recheck
 
 configure.in:
+
+TAGS:
+	etags `find src -type f -name '*.[ch]' -print`
