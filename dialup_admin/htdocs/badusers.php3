@@ -148,7 +148,7 @@ if ($link){
 	"SELECT " . da_sql_limit($limit,0,$config) . " * FROM $config[sql_badusers_table]
 	WHERE username $usercheck $extra_query AND incidentdate <= '$now_str'
 	AND incidentdate >= '$prev_str' " . da_sql_limit($limit,1,$config) .
-	"ORDER BY incidentdate $order " . da_sql_limit($limit,2,$config) . " ;");
+	" ORDER BY incidentdate $order " . da_sql_limit($limit,2,$config) . " ;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
