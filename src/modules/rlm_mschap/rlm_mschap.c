@@ -436,7 +436,7 @@ static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
 {
 	uint8_t enckey1[16];
 	uint8_t enckey2[16];
-	uint8_t salt[2];
+	/* uint8_t salt[2]; */
 	uint8_t nt_hashhash[16];
 
 	md4_calc(nt_hashhash,nt_hash,16);
