@@ -423,15 +423,18 @@ int main(int argc, char **argv)
 		if(acct_pid > 0) {
 			close(acctfd);
 			acctfd = -1;
-			log(L_INFO, "Ready to process requests.");
+			log(L_INFO, "Ready to process requests: "
+			    "Listening on ports %d/udp and %d/udp.",
+			    auth_port, acct_port);
 		}
 		else {
 			close(sockfd);
 			sockfd = -1;
 		}
 	} else
-		log(L_INFO, "Ready to process requests.");
-
+		log(L_INFO, "Ready to process requests: "
+		    "Listening on ports %d/udp and %d/udp.",
+		    auth_port, acct_port);
 
 	/*
 	 *	Receive user requests
