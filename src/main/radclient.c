@@ -46,7 +46,7 @@ static int		do_output = 1;
 static VALUE_PAIR *readvp(FILE *fp)
 {
 	char		buf[128];
-	int 		eol;
+	int 		last_token;
 	char		*p;
 	VALUE_PAIR	*vp;
 	VALUE_PAIR	*list;
@@ -58,13 +58,13 @@ static VALUE_PAIR *readvp(FILE *fp)
 
 		p = buf;
 		do {
-			if ((vp = pairread(&p, &eol)) == NULL) {
+			if ((vp = pairread(&p, &last_token)) == NULL) {
 				librad_perror("radclient:");
 				error = 1;
 				break;
 			}
 			pairadd(&list, vp);
-		} while (!eol);
+		} while (last_token == T_COMMA);
 	}
 	return error ? NULL: list;
 }
