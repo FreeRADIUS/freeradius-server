@@ -38,13 +38,19 @@
 #	directive to the end of the file if you want to see the old names
 #	in the logfiles too.
 #
-$INCLUDE dictionary.compat
-#$INCLUDE dictionary.livingston
+$INCLUDE dictionary.compat	# compability issues
+$INCLUDE dictionary.acc
+$INCLUDE dictionary.ascend
+$INCLUDE dictionary.bay
+$INCLUDE dictionary.cisco
+$INCLUDE dictionary.livingston
+$INCLUDE dictionary.microsoft
+$INCLUDE dictionary.redback
+$INCLUDE dictionary.shasta
+$INCLUDE dictionary.shiva
 #$INCLUDE dictionary.tunnel
-#$INCLUDE dictionary.acc
-#$INCLUDE dictionary.cisco
-#$INCLUDE dictionary.usr
-#$INCLUDE dictionary.ascend
+$INCLUDE dictionary.usr
+$INCLUDE dictionary.versanet
 
 #
 #	Following are the proper new names. Use these.
