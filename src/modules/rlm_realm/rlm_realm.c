@@ -86,7 +86,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	 */
 	if ((request->proxy != NULL) ||
 	    (request->username == NULL)) {
-		DEBUG2("    rlm_realm: Proxy reply, or no user name.  Ignoring.");
+		DEBUG2("    rlm_realm: Proxy reply, or no User-Name.  Ignoring.");
 		return NULL;
 	}
 
@@ -144,7 +144,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	 *	what's going on.
 	 */
 	if (realmname) {
-		DEBUG2("    rlm_realm: Looking up realm %s for User-Name = \"%s\"",
+		DEBUG2("    rlm_realm: Looking up realm \"%s\" for User-Name = \"%s\"",
 		       realmname, request->username->strvalue);
 	} else {
 		DEBUG2("    rlm_realm: No '%c' in User-Name = \"%s\", looking up realm NULL",
@@ -156,11 +156,11 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	 */
 	realm = realm_find(realmname, (request->packet->code == PW_ACCOUNTING_REQUEST));
 	if (!realm) {
-		DEBUG2("    rlm_realm: No such realm %s",
+		DEBUG2("    rlm_realm: No such realm \"%s\"",
 		       (realmname == NULL) ? "NULL" : realmname);
 		return NULL;
 	}
-	DEBUG2("    rlm_realm: Found realm %s", realm->realm);
+	DEBUG2("    rlm_realm: Found realm \"%s\"", realm->realm);
 	
 	/*
 	 *	If we've been told to strip the realm off, then do so.
@@ -189,7 +189,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		request->username = vp;
 	}
 
-	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
+	DEBUG2("    rlm_realm: Proxying request from user %s to realm %s",
 	       username, realm->realm);
 
 	/*
@@ -204,7 +204,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	 */
 	switch (request->packet->code) {
 	default:
-		DEBUG2("rlm_realm: Unknown packet code %d\n",
+		DEBUG2("    rlm_realm: Unknown packet code %d\n",
 		       request->packet->code);
 		return NULL;		/* don't do anything */
 		
@@ -213,12 +213,12 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		 */
 	case PW_ACCOUNTING_REQUEST:
 		if (realm->acct_ipaddr == htonl(INADDR_NONE)) {
-			DEBUG2("rlm_realm:  Accounting realm is LOCAL.");
+			DEBUG2("    rlm_realm: Accounting realm is LOCAL.");
 			return NULL;
 		}
 
 		if (realm->acct_port == 0) {
-			DEBUG2("rlm_realm:  acct_port is not set.  proxy cancelled");
+			DEBUG2("    rlm_realm: acct_port is not set.  Proxy cancelled.");
 			return NULL;
 		}
 		break;
@@ -228,12 +228,12 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		 */
 	case PW_AUTHENTICATION_REQUEST:
 		if (realm->ipaddr == htonl(INADDR_NONE)) {
-			DEBUG2("rlm_realm:  Authentication realm is LOCAL.");
+			DEBUG2("    rlm_realm: Authentication realm is LOCAL.");
 			return NULL;
 		}
 
 		if (realm->auth_port == 0) {
-			DEBUG2("rlm_realm:  auth_port is not set.  proxy cancelled");
+			DEBUG2("    rlm_realm: auth_port is not set.  Proxy cancelled.");
 			return NULL;
 		}
 		break;
@@ -248,12 +248,12 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		if (vp->attribute == PW_FREERADIUS_PROXIED_TO) {
 			if (request->packet->code == PW_AUTHENTICATION_REQUEST &&
 			    vp->lvalue == realm->ipaddr) {
-				DEBUG2("rlm_realm: Request not proxied due to Freeradius-Proxied-To");
+				DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
 				return NULL;
 			}
 			if (request->packet->code == PW_ACCOUNTING_REQUEST &&
 			    vp->lvalue == realm->acct_ipaddr) {
-				DEBUG2("rlm_realm: Request not proxied due to Freeradius-Proxied-To");
+				DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
 				return NULL;
 			}
 		}
@@ -351,7 +351,7 @@ static int realm_authorize(void *instance, REQUEST *request)
 	/*
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
-	DEBUG2("rlm_realm:  Preparing to proxy authentication request to realm %s\n",
+	DEBUG2("    rlm_realm: Preparing to proxy authentication request to realm \"%s\"\n",
 	       realm->realm);
 	add_proxy_to_realm(&request->config_items, realm);
 
@@ -385,11 +385,11 @@ static int realm_preacct(void *instance, REQUEST *request)
 	/*
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
-	DEBUG2("rlm_realm:  Preparing to proxy accounting request to realm %s\n",
+	DEBUG2("    rlm_realm: Preparing to proxy accounting request to realm \"%s\"\n",
 	       realm->realm);
 	add_proxy_to_realm(&request->config_items, realm);
 
-	return RLM_MODULE_OK; /* try the next module */
+	return RLM_MODULE_UPDATED; /* try the next module */
 }
 
 static int realm_detach(void *instance)
