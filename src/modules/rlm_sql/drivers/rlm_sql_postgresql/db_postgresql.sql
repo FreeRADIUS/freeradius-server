@@ -173,7 +173,7 @@ CREATE TABLE nas (
 
 CREATE TABLE radpostauth (
 	id		BIGSERIAL PRIMARY KEY,
-	user		VARCHAR(64) NOT NULL,
+	username	VARCHAR(64) NOT NULL,
 	pass		VARCHAR(64),
 	reply		VARCHAR(32),
 	authdate	TIMESTAMP with time zone NOT NULL default 'now'
