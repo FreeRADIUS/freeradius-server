@@ -471,10 +471,9 @@ int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
-	/* Nothing to do here for Oracle */
-	sql_free_result(sqlsocket, config);
+int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+{
+	return 0;
 }
 
 
