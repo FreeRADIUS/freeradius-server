@@ -615,7 +615,27 @@ int thread_pool_clean(time_t now)
 				handle->status = THREAD_CANCELLED;
 				sem_post(&handle->semaphore);
 				spare--;
-				return 0;
+				break;
+			}
+		}
+	}
+  
+	/*
+	 *	If the thread has handled too many requests, then make it
+	 *	exit.
+	 */
+	if (thread_pool.max_requests_per_thread > 0) {
+		for (handle = thread_pool.head; handle; handle = next) {
+			next = handle->next;
+
+			/*
+			 *	Not handling a request, we can check it.
+			 */
+			if ((handle->request == NULL) &&
+			    (handle->request_count > thread_pool.max_requests_per_thread)) {
+				delete_thread(handle);
+				handle->status = THREAD_CANCELLED;
+				sem_post(&handle->semaphore);
 			}
 		}
 	}
