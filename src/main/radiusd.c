@@ -950,13 +950,6 @@ int main(int argc, char *argv[])
 #endif
 
 		status = select(32, &readfds, NULL, NULL, tv);
-
-		/*
-		 *	Reap any children
-		 */
-		while (waitpid(-1, &i, WNOHANG) > 0)
-			/* do nothing */;
-
 		if (status == -1) {
 			/*
 			 *  On interrupts, we clean up the
@@ -2070,7 +2063,7 @@ void sig_cleanup(int sig)
 	 */
 	for (;;) {
 		pid = waitpid((pid_t)-1, &status, WNOHANG);
-		if (pid <= 0)
+		if ((int)pid <= 0)
 			return;
 
 		/*
