@@ -2000,7 +2000,7 @@ postpone_request:
 static void sig_cleanup(int sig)
 {
 	int status;
-	child_pid_t pid;
+	pid_t pid;
 
 	sig = sig; /* -Wunused */
  
@@ -2017,8 +2017,8 @@ static void sig_cleanup(int sig)
 	 *	Wait for the child, without hanging.
 	 */
 	for (;;) {
-		pid = (child_pid_t) waitpid((pid_t)-1, &status, WNOHANG);
-		if ((int)pid <= 0)
+		pid = waitpid((pid_t)-1, &status, WNOHANG);
+		if (pid <= 0)
 			return;
 
 		/*
@@ -2029,7 +2029,7 @@ static void sig_cleanup(int sig)
 		if (debug_flag && (WIFSIGNALED(status))) {
 			radlog(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch "
 					"signal %d: killing all active servers.\n",
-					(int)pid, WTERMSIG(status));
+					pid, WTERMSIG(status));
 			kill(-radius_pid, SIGTERM);
 			exit(1);
 		}
