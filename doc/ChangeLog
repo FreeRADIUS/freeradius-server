@@ -1,5 +1,43 @@
 FreeRADIUS 0.9 ; $Date$, urgency=low
 
+	* Many documentation updates
+	* Ignore whitespace-only lines in the 'users' file.
+	* Patch to fix 'rlm_realm' from returning the DEFAULT entry when
+	  we are looking for the NULL entry and it doesn't exist. Bug
+	  noted by Nathan Miller.
+	* Disable child process spawning if we don't have threads.
+	  The code doesn't work, so it's better to force the server
+	  to run in single-process mode.
+	* New rlm_exec module, which allows a more generic way of
+	  executing external programs.
+	* Preliminary large file support in 'configure' and in the server,
+	  to support 2G+ detail files.
+	* Install documentation into /usr/local/share/doc/freeradius
+	* Dictionaries are now in /usr/local/share/freeradius
+	* New/updated dictionaries for RedCreek, Bintec, Alcatel,
+	  ITK, Telebit, and Cabletron.
+	* Updates to allow building on MAC OSX.
+	* Add support for Acct-Type,Session-Type and PostAuth-Type
+	* Removed builddbm.  It hasn't been used for ages.
+	* Added new post_proxy section, based on patch from Chris Brotsos.
+	* rlm_counter shouldn't reset the counters on instantiation,
+	  if the reset is set to 'never'.
+	* Significant updates to the rlm_python and rlm_perl modules
+	* Fix the rlm_pap module to handle password lengths properly.
+	* Do SQL 'close' on bad sockets, to prevent descriptor leaks
+	* Case insensitivity option for rlm_radutmp
+	* New pseudo-round-robin load balancing for realms.
+	* Suppress empty SQL queries.
+	* Include strong PRNG
+	* Create 'snmp' configuration directive, so that we can disable
+	  SNMP at run time, even if it's built into the server.
+	* Refresh realm as 'active' when we see a response from it,
+	   Based on a patch by Angelos Karageorgiou.
+	* Don't core dump if Status-Server is received, but it's disabled.
+	* Support more variants of character fields in Oracle.
+	  Patch from Stocker Gernot.
+	* Better parsing of dictionary files.
+	* Alteon web switch dictionary, from Thomas Linden
 
 FreeRADIUS 0.8 ; Date: 2002/11/18 15:37:24, urgency=low
 
