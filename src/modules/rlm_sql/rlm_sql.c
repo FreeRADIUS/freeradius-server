@@ -4,9 +4,19 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 
+#include <time.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
+
 #include "radiusd.h"
 #include "modules.h"
 #include "rlm_sql.h"
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 /***********************************************************************
@@ -320,7 +330,6 @@ static int rlm_sql_authorize(REQUEST *request, char *name, VALUE_PAIR **check_pa
 static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
 {
 	VALUE_PAIR	*auth_pair;
-	SQL_RES		*result;
 	SQL_ROW		row;
 	char		*querystr;
 	char		*escaped_user;
@@ -351,9 +360,9 @@ static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
 
 	sql_select_query(sql->AcctSock, querystr);
 	row = sql_fetch_row(sql->AcctSock);
-	sql_finsih_select_query(sql->AcctSock);
+	sql_finish_select_query(sql->AcctSock);
 
-	if (strncmp(strlen(password), password, row[0]) != 0)
+	if (strncmp( password, row[0],strlen(password)) != 0)
 		return RLM_AUTH_REJECT;
 	else
 		return RLM_AUTH_OK;
@@ -398,7 +407,8 @@ static int rlm_sql_accounting(REQUEST *request) {
                 	break;
                 	
                 case PW_NAS_IP_ADDRESS:
-						ipaddr2str(sql->sqlrecord->NASIPAddress, pair->lvalue);
+			ip_ntoa(sql->sqlrecord->NASIPAddress, pair->lvalue);
+			//ipaddr2str(sql->sqlrecord->NASIPAddress, pair->lvalue);
                 	break;
 
                 case PW_NAS_PORT_ID:
@@ -475,7 +485,8 @@ static int rlm_sql_accounting(REQUEST *request) {
 						break;
 
                 case PW_FRAMED_IP_ADDRESS:
-						ipaddr2str(sql->sqlrecord->FramedIPAddress, pair->lvalue);
+			ip_ntoa(sql->sqlrecord->FramedIPAddress, pair->lvalue);
+			//ipaddr2str(sql->sqlrecord->FramedIPAddress, pair->lvalue);
                 	break;
 
                 case PW_ACCT_DELAY_TIME:
@@ -552,8 +563,8 @@ static int rlm_sql_accounting(REQUEST *request) {
 
 
 /* globally exported name */
-module_t rlm_module = {
-  "rlm_sql",
+module_t rlm_sql = {
+  "SQL",
   0,			/* type: reserved */
   rlm_sql_init,		/* initialization */
   rlm_sql_authorize,	/* authorization */

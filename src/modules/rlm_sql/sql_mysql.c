@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include 	"radiusd.h"
 #include	"rlm_sql.h"

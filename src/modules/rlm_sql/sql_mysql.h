@@ -29,3 +29,4 @@ void sql_close(SQLSOCK *socket);
 void sql_finish_query(SQLSOCK *socket);
 void sql_finish_select_query(SQLSOCK *socket);
 int sql_affected_rows(SQLSOCK *socket);
+char *sql_escape_string(const char *from);

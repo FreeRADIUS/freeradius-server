@@ -5,6 +5,7 @@
 #include	<sys/file.h>
 #include	<sys/stat.h>
 #include	<netinet/in.h>
+#include        <arpa/inet.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
@@ -16,6 +17,8 @@
 #include	<signal.h>
 #include	<errno.h>
 #include	<sys/wait.h>
+
+#include 	<string.h>
 
 #include	"radiusd.h"
 #include	"rlm_sql.h"
@@ -37,7 +40,6 @@ int sql_save_acct(SQLREC *sqlrecord) {
 	FILE		*sqlfile;
 	FILE		*backupfile;
 	int		num = 0;
-	SQL_RES		*result;
 #ifdef NT_DOMAIN_HACK
 	char		*ptr;
 	char		newname[AUTH_STRING_LEN];
@@ -290,7 +292,6 @@ int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row) {
 int sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode) {
 
 	char		querystr[256];
-	SQL_RES		*result;
 	SQL_ROW		row;
 	int		rows;
 
@@ -341,7 +342,7 @@ static int sql_check_ts(SQL_ROW row) {
 	/*
 	 *      Find NAS type.
 	 */
-	if ((nas = nas_find(ipstr2long(row[3]))) == NULL) {
+	if ((nas = nas_find(ip_addr(row[3]))) == NULL) {
                 log(L_ERR, "Accounting: unknown NAS [%s]", row[3]);
                 return -1;
         }
@@ -420,7 +421,6 @@ int sql_check_multi(char *name, VALUE_PAIR *request, int maxsimul) {
 
 	char		querystr[256];
 	VALUE_PAIR	*fra;
-	SQL_RES		*result;
 	SQL_ROW		row;
 	int		count = 0;
 	UINT4		ipno = 0;
