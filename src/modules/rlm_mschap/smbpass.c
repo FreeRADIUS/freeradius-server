@@ -44,6 +44,11 @@ void pdb_init_smb(struct smb_passwd *user)
         if (user == NULL) return;
         memset((char *)user, '\0', sizeof(*user));
         user->pass_last_set_time    = (time_t)-1;
+        user->smb_passwd = NULL;
+        user->smb_nt_passwd = NULL;
+        memset(user->smb_name_value,0,256);
+        memset(user->smb_passwd_value,0,16);
+        memset(user->smb_nt_passwd_value,0,16);
 }
 
 
@@ -97,8 +102,8 @@ static char letters[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
  */
 int hex2bin (const char *szHex, unsigned char* szBin, int len)
 {
-	register char * c1, * c2;
-	register int i;
+	char * c1, * c2;
+	int i;
    
    	for (i = 0; i < len; i++) {
 		if( !(c1 = memchr(letters, toupper(szHex[i << 1]), 16)) ||
@@ -115,7 +120,7 @@ int hex2bin (const char *szHex, unsigned char* szBin, int len)
  */ 
 void bin2hex (const unsigned char *szBin, char *szHex, int len)
 {
-	register int i;
+	int i;
 	for (i = 0; i < len; i++) {
 		szHex[i<<1] = letters[szBin[i] >> 4];
 		szHex[(i<<1) + 1] = letters[szBin[i] & 0x0F];
@@ -124,26 +129,24 @@ void bin2hex (const unsigned char *szBin, char *szHex, int len)
 
 
 
-struct smb_passwd *getsmbfilepwent(FILE *fp)
+struct smb_passwd *getsmbfilepwent(struct smb_passwd *pw_buf, FILE *fp)
 {
 	/* Static buffers we will return. */
-	static struct smb_passwd pw_buf;
-	static char user_name[256];
-	static unsigned char smbpwd[16];
-	static unsigned char smbntpwd[16];
+	char user_name[256];
 	char            linebuf[256];
 	unsigned char   c;
 	char  *p;
 	long            uidval;
 	size_t            linebuf_len;
 
-	if(fp == NULL) {
+
+	if(fp == NULL || pw_buf == NULL) {
 		return NULL;
 	}
 
-	pdb_init_smb(&pw_buf);
+	pdb_init_smb(pw_buf);
 
-	pw_buf.acct_ctrl = ACB_NORMAL;  
+	pw_buf->acct_ctrl = ACB_NORMAL;  
 
 	/*
 	 * Scan the file, a line at a time and check if the name matches.
@@ -225,8 +228,8 @@ struct smb_passwd *getsmbfilepwent(FILE *fp)
 		  continue;
 		}
 
-		pw_buf.smb_name = user_name;
-		pw_buf.smb_userid = uidval;
+		setsmbname(pw_buf,user_name);
+		pw_buf->smb_userid = uidval;
 
 		/*
 		 * Now get the password value - this should be 32 hex digits
@@ -239,10 +242,10 @@ struct smb_passwd *getsmbfilepwent(FILE *fp)
 
 		if (*p == '*' || *p == 'X') {
 		  /* Password deliberately invalid - end here. */
-		  pw_buf.smb_nt_passwd = NULL;
-		  pw_buf.smb_passwd = NULL;
-		  pw_buf.acct_ctrl |= ACB_DISABLED;
-		  return &pw_buf;
+		  pw_buf->smb_nt_passwd = NULL;
+		  pw_buf->smb_passwd = NULL;
+		  pw_buf->acct_ctrl |= ACB_DISABLED;
+		  return pw_buf;
 		}
 
 		if (linebuf_len < ((p - linebuf) + 33)) {
@@ -254,27 +257,27 @@ struct smb_passwd *getsmbfilepwent(FILE *fp)
 		}
 
 		if (!strncasecmp((char *) p, "NO PASSWORD", 11)) {
-		  pw_buf.smb_passwd = NULL;
-		  pw_buf.acct_ctrl |= ACB_PWNOTREQ;
+		  pw_buf->smb_passwd = NULL;
+		  pw_buf->acct_ctrl |= ACB_PWNOTREQ;
 		} else {
-		  if (hex2bin((char *)p, smbpwd, 16) != 16) {
+		  if (hex2bin((char *)p, pw_buf->smb_passwd_value, 16) != 16) {
 		    continue;
 		  }
-		  pw_buf.smb_passwd = smbpwd;
+		  pw_buf->smb_passwd = pw_buf->smb_passwd_value;
 		}
 
 		/* 
 		 * Now check if the NT compatible password is
 		 * available.
 		 */
-		pw_buf.smb_nt_passwd = NULL;
+		pw_buf->smb_nt_passwd = NULL;
 
 		p += 33; /* Move to the first character of the line after
 		            the lanman password. */
 		if ((linebuf_len >= ((p - linebuf) + 33)) && (p[32] == ':')) {
 		  if (*p != '*' && *p != 'X') {
-		    if(hex2bin((char *)p, smbntpwd, 16)==16)
-		      pw_buf.smb_nt_passwd = smbntpwd;
+		    if(hex2bin((char *)p, pw_buf->smb_nt_passwd_value, 16)==16)
+		      pw_buf->smb_nt_passwd = pw_buf->smb_nt_passwd_value;
 		  }
 		  p += 33; /* Move to the first character of the line after
 		              the NT password. */
@@ -283,10 +286,10 @@ struct smb_passwd *getsmbfilepwent(FILE *fp)
 		if (*p == '[') {
 	
 		  unsigned char *end_p = (unsigned char *)strchr((char *)p, ']');
-		  pw_buf.acct_ctrl = pdb_decode_acct_ctrl((char*)p);
+		  pw_buf->acct_ctrl = pdb_decode_acct_ctrl((char*)p);
 		   /* Must have some account type set. */
-		  if(pw_buf.acct_ctrl == 0)
-		    pw_buf.acct_ctrl = ACB_NORMAL;
+		  if(pw_buf->acct_ctrl == 0)
+		    pw_buf->acct_ctrl = ACB_NORMAL;
 
 		  /* Now try and get the last change time. */
 		  if(end_p)
@@ -306,7 +309,7 @@ struct smb_passwd *getsmbfilepwent(FILE *fp)
 		         * read into a time_t as the seconds since
 		         * 1970 that the password was last changed.
 		         */
-		        pw_buf.pass_last_set_time = (time_t)strtol((char *)p, NULL, 16);
+		        pw_buf->pass_last_set_time = (time_t)strtol((char *)p, NULL, 16);
 		      }
 		    }
 		  }
@@ -317,26 +320,33 @@ struct smb_passwd *getsmbfilepwent(FILE *fp)
 		   * password file as 'normal accounts'. If this changes
 		   * we will have to fix this code. JRA.
 		   */
-		  if(pw_buf.smb_name[strlen(pw_buf.smb_name) - 1] == '$') {
-		    pw_buf.acct_ctrl &= ~ACB_NORMAL;
-		    pw_buf.acct_ctrl |= ACB_WSTRUST;
+		  if(pw_buf->smb_name[strlen(pw_buf->smb_name) - 1] == '$') {
+		    pw_buf->acct_ctrl &= ~ACB_NORMAL;
+		    pw_buf->acct_ctrl |= ACB_WSTRUST;
 		  }
 		}
 
-		return &pw_buf;
+		return pw_buf;
 	}
 	return NULL;
 }
 
-struct smb_passwd *getsmbfilepwname(const char *fname, char *name)
+struct smb_passwd *getsmbfilepwname(struct smb_passwd *pw_buf,const char *fname, const char *name)
 {
-	struct smb_passwd * ret=NULL;
 	FILE *file;
 
+	if(!pw_buf)return NULL;
 	file = fopen(fname, "ro");
 	if (file == NULL) return NULL;
-	while ( (ret = getsmbfilepwent(file)) && strcmp(ret->smb_name, name))
+	while ( getsmbfilepwent(pw_buf, file) && strcmp(pw_buf->smb_name, name))
 		/* skip entries */;
 	fclose(file);
-	return ret;
+	return pw_buf;
+}
+
+void setsmbname(struct smb_passwd *pw_buf,const char *name)
+{
+	strncpy((char*)pw_buf->smb_name_value,name,255);
+	pw_buf->smb_name_value[255] = '\0';
+	pw_buf->smb_name = pw_buf->smb_name_value;
 }

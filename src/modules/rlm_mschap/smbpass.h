@@ -13,6 +13,10 @@ struct smb_passwd
 
 	uint16 acct_ctrl; /* account info (ACB_xxxx bit-mask) */
 	time_t pass_last_set_time;    /* password last set time */
+	
+	char smb_name_value[256];
+	unsigned char smb_passwd_value[16];
+	unsigned char smb_nt_passwd_value[16];
 };
 
 /* Allowable account control bits */
@@ -32,6 +36,7 @@ struct smb_passwd
 int hex2bin(const char *szHex, unsigned char* szBin, int len);
 void bin2hex (const unsigned char *szBin, char *szHex, int len);
 void pdb_init_smb(struct smb_passwd *user);
-struct smb_passwd *getsmbfilepwent(FILE *fp);
-struct smb_passwd *getsmbfilepwname(const char *fname, char *name);
+struct smb_passwd *getsmbfilepwent(struct smb_passwd *pw_buf,FILE *fp);
+struct smb_passwd *getsmbfilepwname(struct smb_passwd *pw_buf,const char *fname, const char *name);
+void setsmbname(struct smb_passwd *pw_buf,const char *name);
 #endif

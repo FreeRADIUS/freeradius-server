@@ -81,7 +81,7 @@ int decrypt;			/* 0 = encrypt, 1 = decrypt */
 {
 	unsigned char pc1m[56];		/* place to modify pc1 into */
 	unsigned char pcr[56];		/* place to rotate pc1 into */
-	register int i,j,l;
+	int i,j,l;
 	int m;
 	unsigned char ks[8];
 

@@ -77,7 +77,7 @@ static void des_encrypt(const char *szClear, const char *szKey, char *szOut);
 static void mschap(const char *szChallenge, struct smb_passwd * smbPasswd, char *szResponse, int bUseNT);
 static void ntpwdhash (char *szHash, const char *szPassword);
 static void lmpwdhash (char *szHash, const char *szPassword);
-static struct smb_passwd *createsmbpw(char* username, char *password);
+static struct smb_passwd *createsmbpw(struct smb_passwd *pw_buf, const char* username, const char *password);
 static void auth_response(struct smb_passwd * smbPasswd, char *ntresponse,
 		char *peer_challenge, char *auth_challenge,
 		char *response);
@@ -200,25 +200,23 @@ static void lmpwdhash (char *szHash, const char *szPassword)
  *	if encrypted flag is not set only cleartext password
  *	allowed
  */
-static struct smb_passwd *createsmbpw(char * username, char *password)
+static struct smb_passwd *createsmbpw(struct smb_passwd *pw_buf, const char * username, const char *password)
 {
-	static struct smb_passwd pw_buf;
-	static unsigned char smbpwd[16];
-	static unsigned char smbntpwd[16];
-
-
-	pdb_init_smb(&pw_buf);
-	pw_buf.acct_ctrl = ACB_NORMAL;
-	pw_buf.smb_userid = 0;
-	pw_buf.smb_name = username;
-  
-	if (pw_buf.smb_passwd==NULL && pw_buf.smb_nt_passwd==NULL) {
-		ntpwdhash(smbntpwd, password);
-		lmpwdhash(smbpwd, password);
-		pw_buf.smb_passwd=smbpwd;
-		pw_buf.smb_nt_passwd = smbntpwd;
+	if(pw_buf == NULL) {
+		return NULL;
 	}
-	return &pw_buf;
+	pdb_init_smb(pw_buf);
+	pw_buf->acct_ctrl = ACB_NORMAL;
+	pw_buf->smb_userid = 0;
+	setsmbname(pw_buf,username);
+  
+	if (pw_buf->smb_passwd==NULL && pw_buf->smb_nt_passwd==NULL) {
+	ntpwdhash(pw_buf->smb_nt_passwd_value, password);
+	lmpwdhash(pw_buf->smb_nt_passwd_value, password);
+		pw_buf->smb_passwd = pw_buf->smb_passwd_value;
+		pw_buf->smb_nt_passwd = pw_buf->smb_nt_passwd_value;
+	}
+	return pw_buf;
 }
 
 
@@ -596,8 +594,8 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 	VALUE_PAIR *reply_attr;
 	VALUE_PAIR *password = NULL;
-	struct smb_passwd *smbPasswd = NULL;
-	
+	struct smb_passwd smbPasswdValue, *smbPasswd = NULL;
+
 	
 	password = pairfind(request->config_items, PW_PASSWORD);
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
@@ -615,9 +613,9 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 	if (password && !inst->ignore_password)
-		smbPasswd = createsmbpw(request->username->strvalue, password->strvalue);
+		smbPasswd = createsmbpw(&smbPasswdValue, request->username->strvalue, password->strvalue);
 	else if (inst->passwd_file) {
-		smbPasswd = getsmbfilepwname (inst->passwd_file, request->username->strvalue);
+		smbPasswd = getsmbfilepwname (&smbPasswdValue, inst->passwd_file, request->username->strvalue);
 	}
 	if (!smbPasswd || !smbPasswd->acct_ctrl&ACB_NORMAL) {
 		if(challenge && response){
@@ -683,7 +681,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	uint8_t msch2resp[42];
         uint8_t mppe_sendkey[34];
         uint8_t mppe_recvkey[34];
-	struct smb_passwd smbPasswd, *smbPasswd1 = NULL;
+	struct smb_passwd smbPasswd, smbPasswd1Value, *smbPasswd1 = NULL;
 	AUTHTYPE at = NONE;
 	int res = 0;
 	int len = 0;
@@ -691,8 +689,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	
 	
 	
-	memset(&smbPasswd, 0, sizeof(smbPasswd));
-	smbPasswd.smb_name = request->username->strvalue;
+	pdb_init_smb(&smbPasswd);
+	setsmbname(&smbPasswd,request->username->strvalue);
 	password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
 	if(password){
 		smbPasswd.acct_ctrl = password->lvalue;
@@ -724,7 +722,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	password = pairfind(request->packet->vps, PW_PASSWORD);
 	if (password && request->username && *request->username->strvalue!= 0) {
 		at = CLEARTEXT;
-		smbPasswd1 = createsmbpw(request->username->strvalue, password->strvalue);
+		smbPasswd1 = createsmbpw(&smbPasswd1Value,request->username->strvalue, password->strvalue);
 		if ( (smbPasswd.smb_passwd && !memcmp(smbPasswd1->smb_passwd, smbPasswd.smb_passwd, 16)) ||
 			(smbPasswd.smb_nt_passwd && !memcmp(smbPasswd1->smb_nt_passwd, smbPasswd.smb_nt_passwd, 16)) )
 			return RLM_MODULE_OK;
@@ -860,7 +858,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 module_t rlm_mschap = {
   "MS-CHAP",
-  0,				/* type */
+  RLM_TYPE_THREAD_SAFE,				/* type */
   NULL,				/* initialize */
   mschap_instantiate,		/* instantiation */
   {
