@@ -1,5 +1,6 @@
 #
 # Ascend dictionary.
+# $Id$
 #
 #		Enable by putting the line "$INCLUDE dictionary.ascend" into
 #		the main dictionary file.
@@ -7,7 +8,113 @@
 # Version:	1.00  21-Jul-1997  Jens Glaser <jens@regio.net>
 #		1.01  22-Jan-1998  Tomas Pospisek <tpo@spin.ch>
 #
-
+#
+#  The Ascend-Data-Filter and Ascend-Call-Filter are case insensitive
+#  strings, with the following format:
+#
+#  IP FILTERS:
+#
+#	ip dir action [ dstip n.n.n.n/nn ] [ srcip n.n.n.n/nn ]
+#	    [ proto [ dstport cmp value ] [ srcport cmd value ] [ est ] ] 
+#
+# Fields in [...] are optional.
+#	where:
+#
+#	ip:		Keyword to designate an IP filter. Actually this
+#			has been determined by parseFilter.
+#
+#	dir:		Filter direction. "IN" or "OUT"
+#
+#	action:		Filter action. "FORWARD" or "DROP"
+#
+#	dstip:		Keyword for destination IP address.
+#			n.n.n.n = IP address. /nn - netmask. 
+#			
+#	srcip:		Keyword for source IP address.
+#			n.n.n.n = IP address. /nn - netmask. 
+#			
+#	proto:		Optional protocol field. Either a name or
+#			number. Known names are in FilterProtoName[].
+#			
+#	dstpost:	Keyword for destination port. Only valid with tcp
+#			or udp. 'cmp' are in FilterPortType[]. 'value' can be
+#			a name or number.
+#
+#	srcpost:	Keyword for source port. Only valid with tcp
+#			or udp. 'cmp' are in FilterPortType[]. 'value' can be
+#			a name or number.
+#			
+#	est:		Keyword for TCP established. Valid only for tcp.
+#
+#  IPX FILTERS
+#
+#  ipx dir action [ srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]]
+#                 [ dstipxnet nnnn dstipxnode mmmmm [dstipxsoc cmd value ]]
+#
+# Fields in [...] are optional.
+#	where:
+#
+#	ipx:		Keyword to designate an IPX filter. Actually this
+#			has been determined by parseFilter.
+#
+#	dir:		Filter direction. "IN" or "OUT"
+#
+#	action:		Filter action. "FORWARD" or "DROP"
+#
+#	srcipxnet:      Keyword for source IPX address.
+#			nnnn = IPX Node address.
+#
+#	srcipxnode:     Keyword for source IPX Node address.
+#                  	mmmmm = IPX Node Address, could be FFFFFF.
+#                  	A vlid ipx node number should accompany ipx net number.
+#
+#	srcipxsoc:      Keyword for source IPX socket address.
+#
+#	cmd:            One of ">" or "<" or "=" or "!=".
+#			(without the quotes)
+#
+# 	value:          Socket value to be compared against, in hex. 
+#			
+#	dstipxnet:	Keyword for destination IPX address.
+#			nnnn = IPX Node address. 
+#			
+#	dstipxnode:	Keyword for destination IPX Node address.
+#  			mmmmm = IPX Node Address, could be FFFFFF.
+#			A vlid ipx node number should accompany ipx net number.
+#			
+#	dstipxsoc:	Keyword for destination IPX socket address.
+#			
+#	cmd:		One of ">" or "<" or "=" or "!=".
+#			(without the quotes)
+#			
+#	value:		Socket value to be compared against, in hex.
+#
+#  GENERIC FILTERS
+#
+#	generic dir action offset mask value [== or != ] [more]
+#
+# Fields in [...] are optional.
+#	where:
+#
+# 	generic:	Keyword to indicate a generic filter. This
+#			has been determined by parseFilter.
+#
+#	dir:		Filter direction. "IN" or "OUT"
+#
+#	action:		Filter action. "FORWARD" or "DROP"
+#
+#	offset:		A Number. Specifies an offset into a frame 
+#			to start comparing.
+#			
+#	mask:		A hexadecimal mask of bits to compare.
+#			
+#	value:		A value to compare with the masked data.
+#
+#	compNeq:	Defines type of comparison. ( "==" or "!=")
+#			Default is "==".
+#			
+#	more:		Optional keyword MORE, to represent the attachment
+#			to the next entry.
 
 #
 #	Ascend specific extensions
