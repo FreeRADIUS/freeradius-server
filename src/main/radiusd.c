@@ -794,7 +794,7 @@ void sig_cleanup(int sig)
 		 *	If so, kill ALL processes in the current
 		 *	process group, to prevent further attacks.
 		 */
-		if (debug_flag && (WIFSIGNALED(status)) {
+		if (debug_flag && (WIFSIGNALED(status))) {
 			log(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch signal %d: killing all active servers.\n",
 			    pid, WTERMSIG(status));
 			kill(0, SIGTERM);
