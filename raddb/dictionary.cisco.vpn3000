@@ -9,24 +9,24 @@
 VENDOR		Cisco		9
 
 BEGIN-VENDOR Cisco
-ATTRIBUTE       CVPN3000-Access-Hours                   1       string
-ATTRIBUTE       CVPN3000-Simultaneous-Logins            2       integer
-ATTRIBUTE       CVPN3000-Primary-DNS                    3       ipaddr
-ATTRIBUTE       CVPN3000-Secondary-DNS                  4       ipaddr
-ATTRIBUTE       CVPN3000-Primary-WINS                   5       ipaddr
-ATTRIBUTE       CVPN3000-Secondary-WINS                 6       ipaddr
-ATTRIBUTE       CVPN3000-SEP-Card-Assignment            7       ipaddr
-ATTRIBUTE       CVPN3000-Tunneling-Protocols            8      interger
-ATTRIBUTE       CVPN3000-IPSec-Sec-Association          9      string
-ATTRIBUTE       CVPN3000-IPSec-Authentication           10      integer
-ATTRIBUTE       CVPN3000-IPSec-Banner1                  11      string
-ATTRIBUTE       CVPN3000-IPSec-Allow-Passwd-Store       12      integer
-ATTRIBUTE       CVPN3000-Use-Client-Address             13      integer
-ATTRIBUTE       CVPN3000-IPSec-Split-Tunnel-List        14      string
-ATTRIBUTE       CVPN3000-IPSec-Default-Domain           15      string
-ATTRIBUTE       CVPN3000-IPSec-Tunnel-Type              16      integer
-ATTRIBUTE       CVPN3000-IPSec-Mode-Config              17      integer
-ATTRIBUTE       CVPN3000-IPSec-User-Group-Lock          18      integer
-ATTRIBUTE       CVPN3000-IPSec-Through-NAT              19      integer
-ATTRIBUTE       CVPN3000-IPSec-Through-NAT-Port         20      integer
-END-VENDOR Cisco
+ATTRIBUTE	CVPN3000-Access-Hours			1	string
+ATTRIBUTE	CVPN3000-Simultaneous-Logins		2	integer
+ATTRIBUTE	CVPN3000-Primary-DNS			3	ipaddr
+ATTRIBUTE	CVPN3000-Secondary-DNS			4	ipaddr
+ATTRIBUTE	CVPN3000-Primary-WINS			5	ipaddr
+ATTRIBUTE	CVPN3000-Secondary-WINS			6	ipaddr
+ATTRIBUTE	CVPN3000-SEP-Card-Assignment		7	ipaddr
+ATTRIBUTE	CVPN3000-Tunneling-Protocols		8	interger
+ATTRIBUTE	CVPN3000-IPSec-Sec-Association		9	string
+ATTRIBUTE	CVPN3000-IPSec-Authentication		10	integer
+ATTRIBUTE	CVPN3000-IPSec-Banner1			11	string
+ATTRIBUTE	CVPN3000-IPSec-Allow-Passwd-Store	12	integer
+ATTRIBUTE	CVPN3000-Use-Client-Address		13	integer
+ATTRIBUTE	CVPN3000-IPSec-Split-Tunnel-List	14	string
+ATTRIBUTE	CVPN3000-IPSec-Default-Domain		15	string
+ATTRIBUTE	CVPN3000-IPSec-Tunnel-Type		16	integer
+ATTRIBUTE	CVPN3000-IPSec-Mode-Config		17	integer
+ATTRIBUTE	CVPN3000-IPSec-User-Group-Lock		18	integer
+ATTRIBUTE	CVPN3000-IPSec-Through-NAT		19	integer
+ATTRIBUTE	CVPN3000-IPSec-Through-NAT-Port		20	integer
+END-VENDOR	Cisco
