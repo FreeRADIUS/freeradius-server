@@ -351,7 +351,7 @@ uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
  */
 char *ipv6_ntoa(char *buffer, size_t size, void *ip6addr)
 {
-#ifdef HAVE_INET_NTO_P
+#ifdef HAVE_INET_NTOP
 	return inet_ntop(AF_INET6, (struct in6_addr *) ip6addr, buffer, size);
 #else
 	/*
