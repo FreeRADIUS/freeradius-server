@@ -486,7 +486,6 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
  */
 static int preprocess_authorize(void *instance, REQUEST *request)
 {
-	char buf[1024];
 	int r;
 	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
@@ -547,6 +546,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 
 	if ((r = huntgroup_access(request, data->huntgroups,
 			     request->packet->vps)) != RLM_MODULE_OK) {
+		char buf[1024];
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
@@ -586,6 +586,15 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	}
 
 	r = hints_setup(data->hints, request);
+
+	if ((r = huntgroup_access(request, data->huntgroups,
+			     request->packet->vps)) != RLM_MODULE_OK) {
+		char buf[1024];
+		radlog(L_INFO, "No huntgroup access: [%s] (%s)",
+		    request->username->strvalue,
+		    auth_name(buf, sizeof(buf), request, 1));
+		return r;
+	}
 
 	return r;
 }
