@@ -406,6 +406,47 @@ static int timecmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	return -1;
 }
 
+/*
+ *	Matches if there is NO SUCH ATTRIBUTE as the one named
+ *	in check->strvalue.  If there IS such an attribute, it
+ *	doesn't match.
+ *
+ *	This is ugly, and definitely non-optimal.  We should be
+ *	doing the lookup only ONCE, and storing the result
+ *	in check->lvalue...
+ */
+static int attrcmp(VALUE_PAIR *request, VALUE_PAIR *check,
+	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+{
+	VALUE_PAIR *pair;
+	DICT_ATTR  *dict;
+	int attr;
+
+	check_pairs = check_pairs; /* shut the compiler up */
+	reply_pairs = reply_pairs;
+
+	if (check->lvalue == 0) {
+		dict = dict_attrbyname(check->strvalue);
+		if (!dict) {
+			return -1;
+		}
+		attr = dict->attr;
+	} else {
+		attr = check->lvalue;
+	}
+
+	/*
+	 *	If there's no such attribute, then return MATCH,
+	 *	else FAILURE.
+	 */
+	pair = pairfind(request, attr);
+	if (!pair) {
+		return 0;
+	}
+
+	return -1;
+}
+
 
 /*
  *	Register server-builtin special attributes.
@@ -417,4 +458,5 @@ void pair_builtincompare_init(void)
 	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp);
 	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp);
 	paircompare_register(PW_CURRENT_TIME, 0, timecmp);
+	paircompare_register(PW_NO_SUCH_ATTRIBUTE, 0, attrcmp);
 }
