@@ -252,7 +252,9 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 			    char proto);
 
 /* radiusd.c */
+#ifndef _LIBRADIUS
 void		debug_pair(FILE *, VALUE_PAIR *);
+#endif
 int		log_err (char *);
 int		rad_process(REQUEST *, int);
 int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
