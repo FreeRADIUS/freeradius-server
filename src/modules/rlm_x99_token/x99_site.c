@@ -34,7 +34,7 @@
  * IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT
  */
 
-#ifdef HAVE_RADIUSD_H
+#ifdef FREERADIUS
 #include "autoconf.h"
 #include "libradius.h"
 #endif

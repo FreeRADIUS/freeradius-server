@@ -1753,7 +1753,7 @@ echo "$as_me: WARNING: FAILURE: rlm_x99_token requires: $fail." >&2;};
 fi
 
 x99_token_cflags="$x99_token_cflags -DX99_MODULE_NAME=\\\"rlm_x99_token\\\""
-x99_token_cflags="$x99_token_cflags -DHAVE_RADIUSD_H"
+x99_token_cflags="$x99_token_cflags -DFREERADIUS"
 
   # keep this!  Don't change!
 ac_config_files="$ac_config_files Makefile"

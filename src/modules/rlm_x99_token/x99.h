@@ -25,15 +25,27 @@
 #include <openssl/des.h> /* des_cblock */
 
 /*
- * Things you might like to change
+ * Things you might like to change (although most are configurables)
  */
 
-/* Default text for presentation of challenge */
-#define CHALLENGE_TEXT "Challenge: %s\n Response: "
+/* Default passwd file */
+#define PWDFILE "/etc/x99passwd"
+
+/* Default sync dir */
+#define SYNCDIR "/etc/x99sync.d"
+
+/* Default prompt in fast_sync mode (PAM only) */
+#define FAST_PROMPT "Password: "
+
+/* Default prompt for presentation of challenge */
+#define CHALLENGE_PROMPT "Challenge: %s\n Response: "
+
 /* Must be a multiple of sizeof(des_cblock) (8); read docs before changing. */
 #define MAX_CHALLENGE_LEN 32
+
 /* Password that means "challenge me" in fast_sync mode */
 #define CHALLENGE_REQ "challenge"
+
 /* Password that means "challenge me and resync" in fast_sync mode */
 #define RESYNC_REQ "resync"
 
@@ -54,13 +66,12 @@
  */
 
 
-/* struct used for instance data */
+/* struct used for instance/option data */
 typedef struct x99_token_t {
     char *pwdfile;	/* file containing user:card_type:key entries      */
     char *syncdir;	/* dir containing sync mode and state info         */
-    char *chal_text;	/* text to present challenge to user, must have %s */
+    char *chal_prompt;	/* text to present challenge to user, must have %s */
     int chal_len;	/* challenge length, min 5 digits                  */
-    int maxdelay;	/* max delay time for response, in seconds         */
     int softfail;	/* number of auth fails before time delay starts   */
     int hardfail;	/* number of auth fails when user is locked out    */
     int allow_sync;	/* useful to override pwdfile card_type settings   */
@@ -69,10 +80,18 @@ typedef struct x99_token_t {
     char *chal_req;	/* keyword requesting challenge for fast_sync mode */
     char *resync_req;	/* keyword requesting resync for fast_sync mode    */
     int ewindow_size;	/* sync mode event window size (right side value)  */
+#ifdef FREERADIUS
+    /* freeradius-specific items */
+    int maxdelay;		/* max delay time for response, in seconds */
     int mschapv2_mppe_policy;	/* whether or not do to mppe for mschapv2  */
     int mschapv2_mppe_types;	/* key type/length for mschapv2/mppe       */
     int mschap_mppe_policy;	/* whether or not do to mppe for mschap    */
     int mschap_mppe_types;	/* key type/length for mschap/mppe         */
+#else
+    /* PAM specific items */
+    int debug;		/* print debug info?                               */
+    char *fast_prompt;	/* fast mode prompt                                */
+#endif
 #if 0
     int twindow_min;	/* sync mode time window left side                 */
     int twindow_max;	/* sync mode time window right side                */
@@ -138,6 +157,7 @@ extern const char x99_cc_dec_conversion[];
 extern const char x99_snk_dec_conversion[];
 extern const char x99_sc_friendly_conversion[];
 
+extern int x99_get_challenge(int fd, char *challenge, int len);
 extern int x99_get_random(int fd, unsigned char *rnd_data, int req_bytes);
 
 extern int x99_string_to_keyblock(const char *s, des_cblock keyblock);
@@ -167,9 +187,9 @@ extern int x99_challenge_transform(const char *username,
 				   char challenge[MAX_CHALLENGE_LEN + 1]);
 
 /* x99_log.c */
-extern void x99_log(int level, const char *modname, const char *format, ...);
+extern void x99_log(int level, const char *format, ...);
 
-#ifdef HAVE_RADIUSD_H
+#ifdef FREERADIUS
 #include "x99_rad.h"
 #endif
 

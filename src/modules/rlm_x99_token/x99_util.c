@@ -19,7 +19,7 @@
  * Copyright 2001,2002  Google, Inc.
  */
 
-#ifdef HAVE_RADIUSD_H
+#ifdef FREERADIUS
 #include "autoconf.h"
 #include "radiusd.h"
 #endif
@@ -64,6 +64,38 @@ static struct {
 
 
 /*
+ * Return a random challenge.
+ * fd must be either -1 or an open fd to the random device.
+ * challenge is filled in on successful return (must be size len+1).
+ * Returns 0 on success, -1 on failure.
+ */
+int
+x99_get_challenge(int fd, char *challenge, int len)
+{
+    unsigned char rawchallenge[MAX_CHALLENGE_LEN];
+    int i;
+
+    if (fd == -1) {
+	if ((fd = open(DEVURANDOM, O_RDONLY)) == -1) {
+	    x99_log(X99_LOG_ERR, "error opening %s: %s", DEVURANDOM,
+		    strerror(errno));
+	    return -1;
+	}
+    }
+
+    if (x99_get_random(fd, rawchallenge, len) == -1) {
+	x99_log(X99_LOG_ERR, "failed to obtain random data");
+	return -1;
+    }
+    /* Convert the raw bytes to a decimal string. */
+    for (i = 0; i < len; ++i)
+	challenge[i] = '0' + rawchallenge[i] % 10;
+    challenge[i] = '\0';
+
+    return 0;
+}
+
+/*
  * Return some number of random bytes.
  * rnd_data must be allocated by the caller.
  * Returns 0 on success, -1 on failure, rnd_data is filled in.
@@ -78,8 +110,7 @@ x99_get_random(int fd, unsigned char *rnd_data, int req_bytes)
 
 	n = read(fd, rnd_data + bytes_read, req_bytes - bytes_read);
 	if (n <= 0) {
-	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		    "x99_get_random: error reading from %s: %s",
+	    x99_log(X99_LOG_ERR, "x99_get_random: error reading from %s: %s",
 		    DEVURANDOM, strerror(errno));
 	    return -1;
 	}
@@ -171,20 +202,18 @@ x99_get_user_info(const char *pwdfile, const char *username,
 
     /* Verify permissions first. */
     if (stat(pwdfile, &st) != 0) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		"x99_get_user_info: pwdfile %s error: %s",
+	x99_log(X99_LOG_ERR, "x99_get_user_info: pwdfile %s error: %s",
 		pwdfile, strerror(errno));
 	return -2;
     }
     if ((st.st_mode & (S_IXUSR|S_IRWXG|S_IRWXO)) != 0) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_user_info: pwdfile %s has loose permissions", pwdfile);
 	return -2;
     }
 
     if ((fp = fopen(pwdfile, "r")) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		"x99_get_user_info: error opening %s: %s",
+	x99_log(X99_LOG_ERR, "x99_get_user_info: error opening %s: %s",
 		pwdfile, strerror(errno));
 	return -2;
     }
@@ -199,7 +228,7 @@ x99_get_user_info(const char *pwdfile, const char *username,
     while (!feof(fp)) {
 	if (fgets(s, sizeof(s), fp) == NULL) {
 	    if (!feof(fp)) {
-		x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		x99_log(X99_LOG_ERR,
 			"x99_get_user_info: error reading from %s: %s",
 			pwdfile, strerror(errno));
 		(void) fclose(fp);
@@ -214,15 +243,14 @@ x99_get_user_info(const char *pwdfile, const char *username,
     (void) fclose(fp);
     free(p);
     if (!found) {
-	x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
-		"x99_get_user_info: [%s] not found in %s",
+	x99_log(X99_LOG_AUTH, "x99_get_user_info: [%s] not found in %s",
 		username, pwdfile);
 	return -1;
     }
 
     /* Found him, skip to next field (card). */
     if ((p = strchr(s, ':')) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_user_info: invalid format for [%s] in %s",
 		username, pwdfile);
 	return -2;
@@ -230,7 +258,7 @@ x99_get_user_info(const char *pwdfile, const char *username,
     p++;
     /* strtok() */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_user_info: invalid format for [%s] in %s",
 		username, pwdfile);
 	return -2;
@@ -248,7 +276,7 @@ x99_get_user_info(const char *pwdfile, const char *username,
 	}
     }
     if (!found) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_user_info: unknown card %s for [%s] in %s",
 		p, username, pwdfile);
 	return -2;
@@ -256,8 +284,7 @@ x99_get_user_info(const char *pwdfile, const char *username,
 
     if (!(strlen(q) == 16 || (strlen(q) == 17 && q[16] == '\n'))) {
 	/* 8 octets + possible trailing newline */
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		"x99_get_user_info: invalid key for [%s] in %s",
+	x99_log(X99_LOG_ERR, "x99_get_user_info: invalid key for [%s] in %s",
 		username, pwdfile);
 	return -2;
     }

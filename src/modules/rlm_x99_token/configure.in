@@ -31,7 +31,7 @@ if test x"$fail" != x""; then
 fi
 
 x99_token_cflags="$x99_token_cflags -DX99_MODULE_NAME=\\\"modname\\\""
-x99_token_cflags="$x99_token_cflags -DHAVE_RADIUSD_H"
+x99_token_cflags="$x99_token_cflags -DFREERADIUS"
 AC_SUBST(x99_token_cflags)
 AC_SUBST(x99_token_ldflags)
 

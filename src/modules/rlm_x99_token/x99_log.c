@@ -19,7 +19,7 @@
  * Copyright 2002  Google, Inc.
  */
 
-#ifdef HAVE_RADIUSD_H
+#ifdef FREERADIUS
 #include "autoconf.h"
 #include "radiusd.h"
 #endif
@@ -28,32 +28,32 @@
 #include <malloc.h>
 #include <stdarg.h>
 #include <string.h>
-#ifndef HAVE_RADIUSD_H
+#ifndef FREERADIUS
 #include <syslog.h>
 #endif
 
 static const char rcsid[] = "$Id$";
 
-#ifdef HAVE_RADIUSD_H
+#ifdef FREERADIUS
 /* log.c */
 int vradlog(int lvl, const char *fmt, va_list ap);
 #endif
 
 void
-x99_log(int level, const char *modname, const char *format, ...)
+x99_log(int level, const char *format, ...)
 {
     va_list ap;
     char *fmt;
 
     va_start(ap, format);
-    fmt = malloc(strlen(modname) + strlen(format) + 3);
+    fmt = malloc(strlen(X99_MODULE_NAME) + strlen(format) + 3);
     if (!fmt) {
 	va_end(ap);
 	return;
     }
-    (void) sprintf(fmt, "%s: %s", modname, format);
+    (void) sprintf(fmt, "%s: %s", X99_MODULE_NAME, format);
 
-#ifdef HAVE_RADIUSD_H
+#ifdef FREERADIUS
     (void) vradlog(level, fmt, ap);
 #else
     vsyslog(level, fmt, ap);

@@ -19,7 +19,7 @@
  * Copyright 2001,2002  Google, Inc.
  */
 
-#ifdef HAVE_RADIUSD_H
+#ifdef FREERADIUS
 #include "autoconf.h"
 #include "libradius.h"
 #include "radiusd.h"
@@ -287,13 +287,12 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 
     /* Verify permissions first. */
     if (stat(syncdir, &st) != 0) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME, "syncdir %s error: %s",
+	x99_log(X99_LOG_ERR, "syncdir %s error: %s",
 		syncdir, strerror(errno));
 	return NULL;
     }
     if (st.st_mode != (S_IFDIR|S_IRUSR|S_IWUSR|S_IXUSR)) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		"syncdir %s has loose permissions", syncdir);
+	x99_log(X99_LOG_ERR, "syncdir %s has loose permissions", syncdir);
 	return NULL;
     }
 
@@ -315,7 +314,7 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 	usleep(500000); /* 0.5 second */
     }
     if (fd  == -1) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_acquire_sd_lock: unable to acquire lock for [%s]",
 		username);
 	free(lockfile);
@@ -359,8 +358,7 @@ x99_get_sd(const char *syncdir, const char *username,
     /* Open sync file. */
     if ((fp = fopen(syncfile, "r")) == NULL) {
 	if (errno != ENOENT) {
-	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		    "x99_get_sd: unable to open sync file %s: %s",
+	    x99_log(X99_LOG_ERR, "x99_get_sd: unable to open sync file %s: %s",
 		    syncfile, strerror(errno));
 	    return -1;
 	}
@@ -375,8 +373,7 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Read sync data. */
     if ((fgets(syncdata, sizeof(syncdata), fp) == NULL) || !strlen(syncdata)) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		"x99_get_sd: unable to read sync data from %s: %s",
+	x99_log(X99_LOG_ERR, "x99_get_sd: unable to read sync data from %s: %s",
 		syncfile, strerror(errno));
 	(void) fclose(fp);
 	return -1;
@@ -387,7 +384,7 @@ x99_get_sd(const char *syncdir, const char *username,
     /* Now, parse the sync data. */
     /* Eat the version. */
     if ((p = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data for user %s", username);
 	return -1;
     }
@@ -395,13 +392,13 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Sanity check the username. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data for user %s", username);
 	return -1;
     }
     *q++ = '\0';
     if (strcmp(p, username)) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: sync data user mismatch for user %s", username);
 	return -1;
     }
@@ -409,14 +406,14 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Get challenge. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data (challenge) for user %s",
 		username);
 	return -1;
     }
     *q++ = '\0';
     if (strlen(p) > MAX_CHALLENGE_LEN) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data (challenge length) for user %s",
 		username);
 	return -1;
@@ -427,7 +424,7 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Eat key. */
     if ((p = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data (key) for user %s", username);
 	return -1;
     }
@@ -435,14 +432,14 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Get failures. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data (failures) for user %s",
 		username);
 	return -1;
     }
     *q++ = '\0';
     if (failures && (sscanf(p, "%d", failures) != 1)) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data (failures) for user %s",
 		username);
 	return -1;
@@ -451,14 +448,14 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Get last_auth. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data (last_auth) for user %s",
 		username);
 	return -1;
     }
     *q++ = '\0';
     if (last_auth && (sscanf(p, "%ld", last_auth) != 1)) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+	x99_log(X99_LOG_ERR,
 		"x99_get_sd: invalid sync data (last_auth) for user %s",
 		username);
 	return -1;
@@ -483,8 +480,7 @@ x99_set_sd(const char *syncdir, const char *username,
     syncfile[PATH_MAX] = '\0';
 
     if ((fp = fopen(syncfile, "w")) == NULL) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		"x99_set_sd: unable to open sync file %s: %s",
+	x99_log(X99_LOG_ERR, "x99_set_sd: unable to open sync file %s: %s",
 		syncfile, strerror(errno));
 	return -1;
     }
@@ -493,8 +489,7 @@ x99_set_sd(const char *syncdir, const char *username,
     (void) fprintf(fp, "1:%s:%s:%s:%d:%ld:\n", username, challenge, "",
 		   failures, last_auth);
     if (fclose(fp) != 0) {
-	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
-		"x99_set_sd: unable to write sync file %s: %s",
+	x99_log(X99_LOG_ERR, "x99_set_sd: unable to write sync file %s: %s",
 		syncfile, strerror(errno));
 	return -1;
     }

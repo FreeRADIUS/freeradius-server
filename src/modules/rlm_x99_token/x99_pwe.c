@@ -26,7 +26,7 @@
  * interface is not sufficient for x9.9 use.
  */
 
-#ifdef HAVE_RADIUSD_H
+#ifdef FREERADIUS
 #include "autoconf.h"
 #include "libradius.h"
 #include "rad_assert.h"
@@ -180,8 +180,7 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    break;
 	}
 	if (resp_vp->length != 17) {
-	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
-		    "pw_valid: CHAP-Password wrong size");
+	    x99_log(X99_LOG_AUTH, "pw_valid: CHAP-Password wrong size");
 	    match = 0;
 	    break;
 	}
@@ -221,27 +220,24 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 
 	DEBUG("rlm_x99_token: pw_valid: handling PW_MS_CHAP_RESPONSE");
 	if (chal_vp->length != 8) {
-	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
-		    "pw_valid: MS-CHAP-Challenge wrong size");
+	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAP-Challenge wrong size");
 	    match = 0;
 	    break;
 	}
 	if (resp_vp->length != 50) {
-	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
-		    "pw_valid: MS-CHAP-Response wrong size");
+	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAP-Response wrong size");
 	    match = 0;
 	    break;
 	}
 	if ((resp_vp->strvalue)[1] != 1) {
-	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+	    x99_log(X99_LOG_AUTH,
 		    "pw_valid: MS-CHAP-Response bad flags (LM not supported)");
 	    match = 0;
 	    break;
 	}
 	/* This is probably overkill. */
 	if (strlen(password) > MAX_STRING_LEN) {
-	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
-		    "pw_valid: MS-CHAP password too long");
+	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAP password too long");
 	    match = 0;
 	    break;
 	}
@@ -366,21 +362,18 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 
 	DEBUG("rlm_x99_token: pw_valid: handling PW_MS_CHAP2_RESPONSE");
 	if (chal_vp->length != 16) {
-	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
-		    "pw_valid: MS-CHAP-Challenge (v2) wrong size");
+	    x99_log(X99_LOG_AUTH,"pw_valid: MS-CHAP-Challenge (v2) wrong size");
 	    match = 0;
 	    break;
 	}
 	if (resp_vp->length != 50) {
-	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
-		    "pw_valid: MS-CHAP2-Response wrong size");
+	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAP2-Response wrong size");
 	    match = 0;
 	    break;
 	}
 	/* This is probably overkill. */
 	if (strlen(password) > MAX_STRING_LEN) {
-	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
-		    "pw_valid: MS-CHAPv2 password too long");
+	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAPv2 password too long");
 	    match = 0;
 	    break;
 	}
