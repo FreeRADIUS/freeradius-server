@@ -510,6 +510,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				}
 				break;
 			default:
+				DEBUG2("WARNING: Unknown variable '%%%c': See 'doc/variables.txt'", *p);
 				*q++ = '%';
 				*q++ = *p;
 				break;
