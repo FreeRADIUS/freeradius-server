@@ -630,18 +630,6 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 */
 			pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE);
 			pairfree(&vp);
-
-			/*
-			 *	If we've been told to use the attributes from
-			 *	the reply, then do so.
-			 *
-			 *	WARNING: This may leak information about the
-			 *	tunneled user!
-			 */
-			if (t->use_tunneled_reply) {
-				pairadd(&request->reply->vps, reply->vps);
-				reply->vps = NULL;
-			}
 		}
 
 		/*
@@ -651,6 +639,18 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		if (vp) {
 			vp2diameter(tls_session, vp);
 			pairfree(&vp);
+		}
+
+		/*
+		 *	If we've been told to use the attributes from
+		 *	the reply, then do so.
+		 *
+		 *	WARNING: This may leak information about the
+		 *	tunneled user!
+		 */
+		if (t->use_tunneled_reply) {
+			pairadd(&request->reply->vps, reply->vps);
+			reply->vps = NULL;
 		}
 		break;
 
