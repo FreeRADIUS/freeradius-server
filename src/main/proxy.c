@@ -33,7 +33,7 @@ static uint32_t	proxy_id = 1;
 
 static REQUEST	*proxy_requests = NULL;
 
-static int allowed [] = {
+static const int allowed[] = {
 	PW_SERVICE_TYPE,
 	PW_FRAMED_PROTOCOL,
 	PW_FILTER_ID,
@@ -47,7 +47,7 @@ static int allowed [] = {
 	0,
 };
 
-static int trusted_allowed [] = {
+static const int trusted_allowed[] = {
 	PW_SERVICE_TYPE,
 	PW_FRAMED_PROTOCOL,
 	PW_FILTER_ID,

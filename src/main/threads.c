@@ -86,7 +86,7 @@ static THREAD_POOL thread_pool;
 /*
  *	A mapping of configuration file names to internal integers
  */
-static CONF_PARSER thread_config[] = {
+static const CONF_PARSER thread_config[] = {
 	{ "start_servers",       PW_TYPE_INTEGER, &thread_pool.start_threads}, 
 	{ "max_servers",       PW_TYPE_INTEGER, &thread_pool.max_threads}, 
 	{ "min_spare_servers", PW_TYPE_INTEGER, &thread_pool.min_spare_threads}, 

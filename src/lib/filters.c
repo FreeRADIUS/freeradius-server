@@ -232,14 +232,15 @@ typedef struct {
     unsigned int 	value;
 } KeywordStruct;
 
-    /*
-     * FilterPortType:
-     *
-     * Ascii names of some well known tcp/udp services.
-     * Used for filtering on a port type.
-     *
-     */
-static KeywordStruct filterPortType[] = {
+/*
+ * FilterPortType:
+ *
+ * Ascii names of some well known tcp/udp services.
+ * Used for filtering on a port type.
+ *
+ * ??? What the heck is wrong with getservbyname?
+ */
+static const KeywordStruct filterPortType[] = {
     { "ftp-data", 20 },
     { "ftp", 21 },
     { "telnet", 23 },
@@ -261,7 +262,7 @@ static KeywordStruct filterPortType[] = {
     {  NULL , NO_TOKEN },
 };
 
-static KeywordStruct filterType[] = {
+static const KeywordStruct filterType[] = {
     { "generic",RAD_FILTER_GENERIC},
     { "ip", 	RAD_FILTER_IP},
     { "ipx", 	RAD_FILTER_IPX},
@@ -297,7 +298,7 @@ typedef enum {
 } FilterTokens;
 
 
-static KeywordStruct filterKeywords[] = {
+static const KeywordStruct filterKeywords[] = {
     { "ip", 	FILTER_IP_TYPE },
     { "generic",FILTER_GENERIC_TYPE },
     { "in", 	FILTER_IN },
@@ -334,13 +335,14 @@ static KeywordStruct filterKeywords[] = {
 					/* FILTER_DISPOSITION, FILTER_GENERIC_OFFSET*/
 					/* FILTER_GENERIC_MASK, FILTER_GENERIC_VALUE*/
 
-    /*
-     * FilterProtoName:
-     *
-     * Ascii name of protocols used for filtering.
-     *
-     */
-static KeywordStruct filterProtoName[] = {
+/*
+ * FilterProtoName:
+ *
+ * Ascii name of protocols used for filtering.
+ *
+ *  ??? What the heck is wrong with getprotobyname?
+ */
+static const KeywordStruct filterProtoName[] = {
     { "tcp",  6 },
     { "udp",  17 },
     { "ospf", 89 },
@@ -348,7 +350,7 @@ static KeywordStruct filterProtoName[] = {
     {  NULL , NO_TOKEN },
 };
 
-static KeywordStruct filterCompare[] = {
+static const KeywordStruct filterCompare[] = {
     { ">", RAD_COMPARE_GREATER },
     { "=", RAD_COMPARE_EQUAL },
     { "<", RAD_COMPARE_LESS },
@@ -356,7 +358,7 @@ static KeywordStruct filterCompare[] = {
     {  NULL , NO_TOKEN },
 };
 
-static int findKey ( const char *string, KeywordStruct *list );
+static int findKey ( const char *string, const KeywordStruct *list );
 static int isAllDigit ( const char *token );
 static short a2octet ( const char *tok, char *retBuf );
 static char defaultNetmask ( uint32_t address );
@@ -380,10 +382,10 @@ static int stringToNode   ( unsigned char* dest,  unsigned char* src );
      *
      *	returns:		Keyword value on a match or NO_TOKEN.
      */
-int findKey(const char *string, KeywordStruct *list)
+int findKey(const char *string, const KeywordStruct *list)
 {
     short 	len;
-    KeywordStruct*  entry;
+    const KeywordStruct*  entry;
     char	buf[80], *ptr;
 
     len = strlen( string );
@@ -1230,9 +1232,9 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
  *  the GPL, and not under the previous Ascend license.
  */
 
-static const char *FindValue(int value, KeywordStruct *list)
+static const char *FindValue(int value, const KeywordStruct *list)
 {
-  KeywordStruct	*entry;
+  const KeywordStruct	*entry;
 
   entry = list;
   while (entry->name) {

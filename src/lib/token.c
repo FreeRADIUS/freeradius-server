@@ -19,7 +19,7 @@ typedef struct {
 	int token;
 } TOKEN;
 
-static TOKEN tokens[] = {
+static const TOKEN tokens[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
 	{ "!~", T_OP_REG_NE,	},
 	{ "{",	T_LCBRACE,	},
@@ -61,7 +61,7 @@ static int getthing(char **ptr, char *buf, int buflen, int tok)
 	int	quote;
 	int	escape;
 	int	x;
-	TOKEN	*t;
+	const TOKEN	*t;
 
 	buf[0] = 0;
 
@@ -110,6 +110,9 @@ static int getthing(char **ptr, char *buf, int buflen, int tok)
 					break;
 				case 't':
 					*s++ = '\t';
+					break;
+				case '"':
+					*s++ = '"';
 					break;
 				default:
 					if (*p >= '0' && *p <= '9' &&
@@ -171,4 +174,3 @@ int gettoken(char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 1);
 }
-
