@@ -617,7 +617,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	else if (inst->passwd_file) {
 		smbPasswd = getsmbfilepwname (&smbPasswdValue, inst->passwd_file, request->username->strvalue);
 	}
-	if (!smbPasswd || !smbPasswd->acct_ctrl&ACB_NORMAL) {
+	if (!smbPasswd || !smbPasswd->acct_ctrl&ACB_NORMAL ||smbPasswd->acct_ctrl&ACB_DISABLED) {
 		if(challenge && response){
 			add_reply( &request->reply->vps, *response->strvalue,
 				"MS-CHAP-Error", "E=691 R=1", 9);
@@ -794,8 +794,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			return RLM_MODULE_INVALID;
 		}
 		if (res == RLM_MODULE_OK){
-			if (smbPasswd.acct_ctrl&ACB_DISABLED ||
-				smbPasswd.acct_ctrl&ACB_AUTOLOCK) {
+			if (smbPasswd.acct_ctrl&ACB_AUTOLOCK) {
 				add_reply( &request->reply->vps, *response->strvalue,
 					"MS-CHAP-Error", "E=647 R=0", 9);
 				return RLM_MODULE_USERLOCK;
