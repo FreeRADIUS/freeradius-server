@@ -8,10 +8,11 @@
  *   (i.e. these below are limited to int4 right now)
  *   numeric(10) doesn't seem to work for sequences...
  *   haven't tried int8 yet as a sequence type yet
- * - datetime DEFAULT '0000-00-00 00:00:00' should be
- *   DEFAULT 'now' in postgres
+ * - datetimeOS DEFAULT '0000-00-00 00:00:00' should be
+ *   DEFAULT now() in postgres
  * - postgres apparently creates an index for each
  *   column specified as UNIQUE 
+ *   Consider implicit creation of <tablename_id_seq> for each SERIAL field!
  */
 
 
@@ -51,13 +52,13 @@ CREATE TABLE nas (
 CREATE TABLE radacct (
   RadAcctId SERIAL,
   AcctSessionId VARCHAR(32) DEFAULT '' UNIQUE NOT NULL,
-  UserName VARCHAR(32) DEFAULT '' UNIQUE NOT NULL,
+  UserName VARCHAR(32) DEFAULT '' NOT NULL,
   Realm VARCHAR(30) DEFAULT '',
-  NASIPAddress VARCHAR(15) DEFAULT '' UNIQUE NOT NULL,
+  NASIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
   NASPortId NUMERIC(12),
   NASPortType VARCHAR(32),
-  AcctStartTime datetime DEFAULT 'now' UNIQUE NOT NULL,
-  AcctStopTime datetime DEFAULT 'now' UNIQUE NOT NULL,
+  AcctStartTime datetime DEFAULT now() NOT NULL,
+  AcctStopTime datetime DEFAULT now() NOT NULL,
   AcctSessionTime NUMERIC(12),
   AcctAuthentic VARCHAR(32),
   ConnectInfo VARCHAR(32),
@@ -68,75 +69,86 @@ CREATE TABLE radacct (
   AcctTerminateCause VARCHAR(32) DEFAULT '' NOT NULL,
   ServiceType VARCHAR(32),
   FramedProtocol VARCHAR(32),
-  FramedIPAddress VARCHAR(15) DEFAULT '' UNIQUE NOT NULL,
+  FramedIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
   AcctStartDelay NUMERIC(12),
   AcctStopDelay NUMERIC(12),
   PRIMARY KEY (RadAcctId)
 );
+create index radacct_UserName on radacct (UserName);
+create index radacct_FramedIPAddress on radacct (FramedIPAddress);
+create index radacct_NASIPAddress on radacct (NASIPAddress);
+create index radacct_AcctStartTime on radacct (AcctStartTime);
+create index radacct_AcctStopTime on radacct (AcctStopTime);
 
 /*
  * Table structure for table 'radcheck'
  */
 CREATE TABLE radcheck (
   id SERIAL,
-  UserName VARCHAR(30) DEFAULT '' UNIQUE NOT NULL,
+  UserName VARCHAR(30) DEFAULT '' NOT NULL,
   Attribute VARCHAR(30),
   Value VARCHAR(40),
   PRIMARY KEY (id)
 );
+create index radcheck_UserName on radcheck (UserName,Attribute);
 
 /*
  * Table structure for table 'radgroupcheck'
  */
 CREATE TABLE radgroupcheck (
   id SERIAL,
-  GroupName VARCHAR(20) DEFAULT '' UNIQUE NOT NULL,
+  GroupName VARCHAR(20) DEFAULT '' NOT NULL,
   Attribute VARCHAR(40),
   Value VARCHAR(40),
   PRIMARY KEY (id)
 );
+create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
 
 /*
  * Table structure for table 'radgroupreply'
  */
 CREATE TABLE radgroupreply (
   id SERIAL,
-  GroupName VARCHAR(20) DEFAULT '' UNIQUE NOT NULL,
+  GroupName VARCHAR(20) DEFAULT '' NOT NULL,
   Attribute VARCHAR(40),
   Value VARCHAR(40),
   PRIMARY KEY (id)
 );
+create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
 
 /*
  * Table structure for table 'radreply'
  */
 CREATE TABLE radreply (
   id SERIAL,
-  UserName VARCHAR(30) DEFAULT '' UNIQUE NOT NULL,
+  UserName VARCHAR(30) DEFAULT '' NOT NULL,
   Attribute VARCHAR(30),
   Value VARCHAR(40),
   PRIMARY KEY (id)
 );
+create index radreply_UserName on radreply (UserName,Attribute);
 
 /*
  * Table structure for table 'usergroup'
  */
 CREATE TABLE usergroup (
   id SERIAL,
-  UserName VARCHAR(30) DEFAULT '' UNIQUE NOT NULL,
+  UserName VARCHAR(30) DEFAULT '' NOT NULL,
   GroupName VARCHAR(30),
   PRIMARY KEY (id)
 );
+create index usergroup_UserName on usergroup (UserName);
 
 /*
  * Table structure for table 'realmgroup'
  */
 CREATE TABLE realmgroup (
   id SERIAL,
-  RealmName VARCHAR(30) DEFAULT '' UNIQUE NOT NULL,
+  RealmName VARCHAR(30) DEFAULT '' NOT NULL,
   GroupName VARCHAR(30),
   PRIMARY KEY (id)
 );
+create index realmgroup_RealmName on realmgroup (RealmName);
 
 CREATE TABLE realms (
   id SERIAL,
