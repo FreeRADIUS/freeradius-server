@@ -96,18 +96,17 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr)
  */
 void pairdelete(VALUE_PAIR **first, int attr)
 {
-	VALUE_PAIR *i, *next, *last = NULL;
+	VALUE_PAIR *i, *next;
+	VALUE_PAIR **last = first;
 
 	for(i = *first; i; i = next) {
 		next = i->next;
 		if (i->attribute == attr) {
-			if (last)
-				last->next = next;
-			else
-				*first = next;
+			*last = next;
 			free(i);
-		} else
-			last = i;
+		} else {
+			last = &i->next;
+		}
 	}
 }
 
@@ -169,7 +168,7 @@ VALUE_PAIR *paircopy(VALUE_PAIR *vp)
  */
 void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 {
-	VALUE_PAIR *tailto, *i, *next;
+	VALUE_PAIR **tailto, *i, *next;
 	VALUE_PAIR *tailfrom = NULL;
 	VALUE_PAIR *found;
 	int has_password = 0;
@@ -184,12 +183,12 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	 *	First, see if there are any passwords here, and
 	 *	point "tailto" to the end of the "to" list.
 	 */
-	tailto = *to;
+	tailto = to;
 	for(i = *to; i; i = i->next) {
 		if (i->attribute == PW_PASSWORD ||
 		    i->attribute == PW_CRYPT_PASSWORD)
 			has_password = 1;
-		tailto = i;
+		tailto = &i->next;
 	}
 
 	/*
@@ -220,17 +219,6 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			found = pairfind(*to, i->attribute);
 			switch (i->operator) {
 
-			  /*
-			   *  If a similar attribute is found,
-			   *  replace it with the new one.  Otherwise,
-			   *  add the new one to the list.
-			   */
-			case T_OP_SET:		/* := */
-				if (found) {
-					pairdelete(to, found->attribute);
-				}
-				break;
-				
 			  /*
 			   *  If a similar attribute is found,
 			   *  delete it.
@@ -298,6 +286,18 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 				}
 				break;
 
+			  /*
+			   *  If a similar attribute is found,
+			   *  replace it with the new one.  Otherwise,
+			   *  add the new one to the list.
+			   */
+			case T_OP_SET:		/* := */
+				if (found) {
+					pairdelete(to, found->attribute);
+				}
+				break;
+				
+
 			   /*
 			    *  Add the new element to the list, even
 			    *  if similar ones already exist.
@@ -312,9 +312,18 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			tailfrom->next = next;
 		else
 			*from = next;
-		tailto->next = i;
+		
+		/*
+		 *	If ALL of the 'to' attributes have been deleted,
+		 *	then ensure that the 'tail' is updated to point
+		 *	to the head.
+		 */
+		if (!*to) {
+			tailto = to;
+		}
+		*tailto = i;
 		i->next = NULL;
-		tailto = i;
+		tailto = &i->next;
 	}
 }
 
