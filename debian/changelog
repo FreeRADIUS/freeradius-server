@@ -1,3 +1,9 @@
+freeradius (0.9.3-0~pre0) unstable; urgency=low
+
+  * Unrelease 0.9.3 update to FreeRADIUS
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 16 Oct 2003 06:15:25 +1000
+
 freeradius (0.9.2-0) unstable; urgency=low
 
   * New upstream release
