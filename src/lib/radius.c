@@ -111,14 +111,14 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		  u_short		total_length;
 		  int			len, allowed;
 		  uint8_t		*msg_auth_ptr = NULL;
+		  uint8_t		data[4096];
 		  
-		  hdr = (radius_packet_t *) malloc(PACKET_DATA_LEN);
-		  if (!hdr) {
-		    librad_log("Out of memory");
-		    return -1;
-		  }
-		  packet->data = (uint8_t *) hdr;
-		  
+		  /*
+		   *	Use memory on the stack, until we know how
+		   *	large the packet will be.
+		   */
+		  hdr = (radius_packet_t *) data;
+
 		  /*
 		   *	Build standard header
 		   */
@@ -330,9 +330,25 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 			   *	attributes.
 			   */
 			  debug_pair(reply);
-		  }
+		  } /* done looping over all attributes */
 
+		  /*
+		   *	Fill in the rest of the fields, and copy
+		   *	the data over from the local stack to
+		   *	the newly allocated memory.
+		   *
+		   *	Yes, all this 'memcpy' is slow, but it means
+		   *	that we only allocate the minimum amount of
+		   *	memory for a request.
+		   */
 		  packet->data_len = total_length;
+		  packet->data = (uint8_t *) malloc(packet->data_len);
+		  if (!packet->data) {
+			  librad_log("Out of memory");
+			  return -1;
+		  }
+		  memcpy(packet->data, data, packet->data_len);
+
 		  total_length = htons(total_length);
 		  memcpy(hdr->length, &total_length, sizeof(u_short));
 
@@ -535,6 +551,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	radius_packet_t		*hdr;
 	char			host_ipaddr[16];
 	int			seen_eap;
+	uint8_t			data[4096];
 
 	/*
 	 *	Allocate the new request data structure
@@ -545,19 +562,13 @@ RADIUS_PACKET *rad_recv(int fd)
 		return NULL;
 	}
 	memset(packet, 0, sizeof(RADIUS_PACKET));
-	if ((packet->data = malloc(PACKET_DATA_LEN)) == NULL) {
-		free(packet);
-		librad_log("out of memory");
-		errno = ENOMEM;
-		return NULL;
-	}
 
 	/*
 	 *	Receive the packet.
 	 */
 	salen = sizeof(saremote);
 	memset(&saremote, 0, sizeof(saremote));
-	packet->data_len = recvfrom(fd, packet->data, PACKET_DATA_LEN,
+	packet->data_len = recvfrom(fd, data, sizeof(data),
 		0, (struct sockaddr *)&saremote, &salen);
 
 	/*
@@ -580,7 +591,6 @@ RADIUS_PACKET *rad_recv(int fd)
 		librad_log("Error receiving packet from host %s: %s",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 			   strerror(errno));
-		free(packet->data);
 		free(packet);
 		return NULL;
 	}
@@ -591,7 +601,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	if (packet->data_len < AUTH_HDR_LEN) {
 		librad_log("Malformed RADIUS packet from host %s: too short",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
-		free(packet->data);
 		free(packet);
 		return NULL;
 	}
@@ -601,14 +610,13 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	i.e. We've received 128 bytes, and the packet header
 	 *	says it's 256 bytes long.
 	 */
-	hdr = (radius_packet_t *)packet->data;
+	hdr = (radius_packet_t *)data;
 	memcpy(&len, hdr->length, sizeof(u_short));
 	totallen = ntohs(len);
 	if (packet->data_len != totallen) {
 		librad_log("Malformed RADIUS packet from host %s: received %d octets, packet size says %d",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 			   packet->data_len, totallen);
-		free(packet->data);
 		free(packet);
 		return NULL;
 	}
@@ -636,7 +644,6 @@ RADIUS_PACKET *rad_recv(int fd)
 		if (attr[0] == 0) {
 			librad_log("Malformed RADIUS packet from host %s: Invalid attribute 0",
 				   ip_ntoa(host_ipaddr, packet->src_ipaddr));
-			free(packet->data);
 			free(packet);
 			return NULL;
 		}
@@ -649,7 +656,6 @@ RADIUS_PACKET *rad_recv(int fd)
 			librad_log("Malformed RADIUS packet from host %s: attribute %d too short",
 				   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 				   attr[0]);
-			free(packet->data);
 			free(packet);
 			return NULL;
 		}
@@ -670,7 +676,6 @@ RADIUS_PACKET *rad_recv(int fd)
 				librad_log("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
 					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 					   attr[1] - 2);
-				free(packet->data);
 				free(packet);
 				return NULL;
 			}
@@ -697,7 +702,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	if (count != 0) {
 		librad_log("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
-		free(packet->data);
 		free(packet);
 		return NULL;
 	}
@@ -710,7 +714,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	    ((seen_eap & PW_MESSAGE_AUTHENTICATOR) != PW_MESSAGE_AUTHENTICATOR)) {
 		librad_log("Malformed RADIUS packet from host %s: Contains EAP-Message, but no Message-Authenticator",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
-		free(packet->data);
 		free(packet);
 		return NULL;
 	}
@@ -734,6 +737,18 @@ RADIUS_PACKET *rad_recv(int fd)
 	packet->code = hdr->code;
 	packet->id = hdr->id;
 	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
+
+	/*
+	 *  Now that we've sanity checked the packet, we can allocate
+	 *  memory for it, and copy the data from the local area to
+	 *  the packet buffer.
+	 */
+	if ((packet->data = malloc(packet->data_len)) == NULL) {
+	  free(packet);
+	  librad_log("out of memory");
+	  return NULL;
+	}
+	memcpy(packet->data, data, packet->data_len);
 
 	return packet;
 }
