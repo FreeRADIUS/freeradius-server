@@ -19,7 +19,7 @@ typedef struct example_config_t {
 	int		boolean;
 	int		value;
 	char		*string;
-	u_int32_t	ipaddr;
+	uint32_t	ipaddr;
 } example_config_t;
 
 /*
