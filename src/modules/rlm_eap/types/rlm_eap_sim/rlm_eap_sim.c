@@ -88,7 +88,7 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 			PW_TYPE_OCTETS);
 	words = (uint16_t *)newvp->strvalue;
 	newvp->length = 3*sizeof(uint16_t);
-	words[0] = htons(1);
+	words[0] = htons(1*sizeof(uint16_t));
 	words[1] = htons(EAP_SIM_VERSION);
 	words[2] = 0;
 	pairadd(vps, newvp);
@@ -259,6 +259,30 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 }
 
 /*
+ * this code sends the success message.
+ *
+ * the only work to be done is the add the appropriate SEND/RECV
+ * radius attributes derived from the MSK.
+ *
+ */
+static int eap_sim_sendchallenge(EAP_HANDLER *handler)
+{
+	struct eap_sim_server_state *ess;
+	VALUE_PAIR **outvps;
+
+	/* outvps is the data to the client. */
+	outvps= &handler->request->reply->vps;
+	ess = (struct eap_sim_server_state *)handler->opaque;
+
+	p = ess->keys.msk;
+	add_reply(outvps, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
+	p += EAPTLS_MPPE_KEY_LEN;
+	add_reply(outvps, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
+	return 1;
+}
+
+
+/*
  * run the server state machine.
  */
 static void eap_sim_stateenter(EAP_HANDLER *handler,
@@ -285,6 +309,7 @@ static void eap_sim_stateenter(EAP_HANDLER *handler,
 		/*
 		 * send the EAP Success message
 		 */
+  	        eap_sim_sendsuccess(handler);
 		handler->eap_ds->request->code = PW_EAP_SUCCESS;
 		break;
 
@@ -536,7 +561,11 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.5  2003-11-21 19:15:51  mcr
+ * Revision 1.6  2003-11-22 00:10:18  mcr
+ * 	the version list attribute's length of versions is in bytes,
+ * 	not entries.
+ *
+ * Revision 1.5  2003/11/21 19:15:51  mcr
  * 	rename "SIM-Chal" to "SIM-Rand" to sync with names in official
  * 	documentation.
  *
