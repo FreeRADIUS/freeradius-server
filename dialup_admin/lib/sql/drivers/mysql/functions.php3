@@ -41,12 +41,13 @@ function da_sql_num_rows($result,$config)
 
 function da_sql_fetch_array($result,$config)
 {
+	$row = @mysql_fetch_array($result);
 	if ($config[sql_debug] == 'true'){
 		print "<b>DEBUG(SQL,MYSQL DRIVER): Query Result: ";
-		print_r(@mysql_fetch_array($result));
+		print_r($row);
 		print "</b><br>\n";
 	}
-	return @mysql_fetch_array($result);
+	return $row;
 }
 
 function da_sql_affected_rows($link,$result,$config)

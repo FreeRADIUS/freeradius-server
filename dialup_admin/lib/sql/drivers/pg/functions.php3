@@ -43,12 +43,12 @@ function da_sql_num_rows($result,$config)
 
 function da_sql_fetch_array($result,$config)
 {
-	if ($config[sql_debug] == 'true'){
+	$row = @pg_fetch_array($result,$config[tmp_pg_array_num][$result]++,PGSQL_ASSOC);
+	if ($row && $config[sql_debug] == 'true'){
 		print "<b>DEBUG(SQL,PG DRIVER): Query Result: ";
-		print_r(@pg_fetch_array($result,$config[tmp_pg_array_num][$result]++,PGSQL_ASSOC));
+		print_r($row);
 		print  "</b><br>\n";
 	}
-	$row = @pg_fetch_array($result,$config[tmp_pg_array_num][$result]++,PGSQL_ASSOC);
 	if (!$row)
 		$config[tmp_pg_array_num][$result] = 0;
 	return $row;
