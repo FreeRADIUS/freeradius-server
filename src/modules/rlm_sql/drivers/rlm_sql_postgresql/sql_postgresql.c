@@ -199,7 +199,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	}
 
 	pg_sock->result = PQexec(pg_sock->conn, querystr);
-		/* Returns a PGresult pointer or possibly a NULL pointer. 
+		/* Returns a result pointer or possibly a NULL pointer. 
 		 * A non-NULL pointer will generally be returned except in
 		 * out-of-memory conditions or serious errors such as inability
 		 * to send the command to the backend. If a NULL is returned,
@@ -277,11 +277,9 @@ static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
+        rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
-        /*
-         *      FIXME: Someone write the Postgres specific disconnect
-         *      and free code!!
-         */
+        free(pg_sock);
         return 0;
 }
 
