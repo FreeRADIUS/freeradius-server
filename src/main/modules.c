@@ -26,32 +26,51 @@ static const char rcsid[] = "$Id$";
  *	Keep track of which modules we've loaded.
  */
 typedef struct module_list_t {
+	struct module_list_t	*next;
 	char			name[MAX_STRING_LEN];
 	module_t		*module;
 	lt_dlhandle		handle;
-	struct module_list_t	*next;
 } module_list_t;
 
+/*
+ *	Internal list of all of the modules we have loaded.
+ */
 static module_list_t *module_list = NULL;
 
+/*
+ *	Per-instance data structure, to correlate the modules
+ *	with the instance names (may NOT be the module names!), 
+ *	and the per-instance data structures.
+ */
 typedef struct module_instance_t {
-	module_list_t		*entry;
-	char			name[MAX_STRING_LEN];
-        void                    *insthandle;
 	struct module_instance_t *next;
+	char			name[MAX_STRING_LEN];
+	module_list_t		*entry;
+        void                    *insthandle;
 } module_instance_t;
 
+/*
+ *	Internal list of each module instance.
+ */
 static module_instance_t *module_instance_list = NULL;
 
+/*
+ *	For each authorize/authenticate/etc, we have an ordered
+ *	list of instances to call.  This data structure keeps track
+ *	of that order.
+ */
 typedef struct config_module_t {
+	struct config_module_t	*next;
 	int index;
 	module_instance_t	*instance;
 #if HAVE_PTHREAD_H
 	pthread_mutex_t		*mutex;
 #endif
-	struct config_module_t	*next;
 } config_module_t;
 
+/*
+ *	For each component, keep an ordered list of ones to call.
+ */
 static config_module_t *components[RLM_COMPONENT_COUNT];
 
 /*
@@ -145,67 +164,63 @@ static void module_list_free(void)
  */
 static int new_authtype_value(const char *name)
 {
-  static int max_value = 32767;
-  DICT_VALUE *old_value, *new_value;
-
-  /*
-   *  Check to see if it's already defined.
-   *  If so, return the old value.
-   */
-  old_value = dict_valbyname(name);
-  if (old_value) return old_value->value;
-
-  /* Look for the predefined Auth-Type value */
-  old_value = dict_valbyattr(PW_AUTHTYPE, 0);
-  if (!old_value) return 0;	/* something WIERD is happening */
-
-  /* allocate a new value */
-  new_value = (DICT_VALUE *) rad_malloc(sizeof(DICT_VALUE));
-
-  /* copy the old to the new */
-  memcpy(new_value, old_value, sizeof(DICT_VALUE));
-  old_value->next = new_value;
-
-  /* set it up */
-  strNcpy(new_value->name, name, sizeof(new_value->name));
-  new_value->value = max_value++;
-
-  return new_value->value;
+	static int max_value = 32767;
+	DICT_VALUE *old_value, *new_value;
+	
+	/*
+	 *  Check to see if it's already defined.
+	 *  If so, return the old value.
+	 */
+	old_value = dict_valbyname(name);
+	if (old_value) return old_value->value;
+	
+	/* Look for the predefined Auth-Type value */
+	old_value = dict_valbyattr(PW_AUTHTYPE, 0);
+	if (!old_value) return 0;	/* something WIERD is happening */
+	
+	/* allocate a new value */
+	new_value = (DICT_VALUE *) rad_malloc(sizeof(DICT_VALUE));
+	
+	/* copy the old to the new */
+	memcpy(new_value, old_value, sizeof(DICT_VALUE));
+	old_value->next = new_value;
+	
+	/* set it up */
+	strNcpy(new_value->name, name, sizeof(new_value->name));
+	new_value->value = max_value++;
+	
+	return new_value->value;
 }
 
 /*
  *	Find a module on disk or in memory, and link to it.
  */
-static module_list_t *linkto_module(module_list_t *head,
-				  const char *module_name,
-				  const char *cffilename, int cflineno)
+static module_list_t *linkto_module(const char *module_name,
+				    const char *cffilename, int cflineno)
 {
 	module_list_t	**last, *node;
-	module_list_t	*new;
-	void		*handle;
-	const char	*error;
+	lt_dlhandle	*handle;
 
-	while (head) {
-		if (strcmp(head->name, module_name) == 0)
-			return head;
-		head = head->next;
-	}
-
+	/*
+	 *	Look through the global module library list for the
+	 *	named module.
+	 */
 	last = &module_list;
-	node = module_list;
-	while (node) {
+	for (node = module_list; node != NULL; node = node->next) {
+		/*
+		 *	Found the named module.  Return it.
+		 */
+		if (strcmp(node->name, module_name) == 0)
+			return node;
+
+		/*
+		 *	Keep a pointer to the last entry to update...
+		 */
 		last = &node->next;
-		node = node->next;
 	}
 
 	/*
-	 * Keep the handle around so we can dlclose() it.
-	 * Also ensure that any further dependencies are exported,
-	 * so that PAM can work.
-	 *
-	 * i.e. rlm_pam.so links to libpam.so, which in turn dlopen()'s
-	 * pam_foo.so.  Without RTLD_GLOBAL, the functions in libpam.so
-	 * won't get exported to pam_foo.so.
+	 *	Keep the handle around so we can dlclose() it.
 	 */
 	handle = lt_dlopenext(module_name);
 	if (handle == NULL) {
@@ -215,65 +230,69 @@ static module_list_t *linkto_module(module_list_t *head,
 	}
 
 	/* make room for the module type */
-	new = (module_list_t *) rad_malloc(sizeof(module_list_t));
+	node = (module_list_t *) rad_malloc(sizeof(module_list_t));
 
 	/* fill in the module structure */
-	new->next = NULL;
-	new->handle = handle;
-	strNcpy(new->name, module_name, sizeof(new->name));
+	node->next = NULL;
+	node->handle = handle;
+	strNcpy(node->name, module_name, sizeof(node->name));
 	
 	/*
 	 *	Link to the module's rlm_FOO{} module structure.
 	 */
-	new->module = (module_t *) lt_dlsym(new->handle, module_name);
-	error = lt_dlerror();
-	if (!new->module) {
+	node->module = (module_t *) lt_dlsym(node->handle, module_name);
+	if (!node->module) {
 		radlog(L_ERR|L_CONS, "%s[%d] Failed linking to "
 		       "%s structure in %s: %s\n",
 		       cffilename, cflineno,
-		       module_name, cffilename, error);
-		lt_dlclose(new->handle);	/* ignore any errors */
-		free(new);
+		       module_name, cffilename, lt_dlerror());
+		lt_dlclose(node->handle);	/* ignore any errors */
+		free(node);
 		return NULL;
 	}
 	
 	/* call the modules initialization */
-	if (new->module->init &&
-	    (new->module->init)() < 0) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d] Module initialization failed.\n",
+	if (node->module->init && (node->module->init)() < 0) {
+		radlog(L_ERR|L_CONS, "%s[%d] Module initialization failed.\n",
 		       cffilename, cflineno);
-		lt_dlclose(new->handle);	/* ignore any errors */
-		free(new);
+		lt_dlclose(node->handle);	/* ignore any errors */
+		free(node);
 		return NULL;
 	}
 
-	DEBUG("Module: Loaded %s ", new->module->name);
+	DEBUG("Module: Loaded %s ", node->module->name);
 
-	*last = new;
+	*last = node;
 
-	return new;
+	return node;
 }
 
 /*
  *	Find a module instance.
  */
-static module_instance_t *find_module_instance(module_instance_t *head,
-					       const char *instname)
+static module_instance_t *find_module_instance(const char *instname)
 {
 	CONF_SECTION *cs, *inst_cs;
 	const char *name1, *name2;
-	module_instance_t *new;
+	module_instance_t *node, **last;
 	char module_name[256];
 
 	/*
-	 *	Look for a pre-existing module instance.
-	 *	If found, return that.
+	 *	Look through the global module instance list for the
+	 *	named module.
 	 */
-	while (head) {
-		if (strcmp(head->name, instname) == 0)
-			return head;
-		head = head->next;
+	last = &module_instance_list;
+	for (node = module_instance_list; node != NULL; node = node->next) {
+		/*
+		 *	Found the named instance.  Return it.
+		 */
+		if (strcmp(node->name, instname) == 0)
+			return node;
+
+		/*
+		 *	Keep a pointer to the last entry to update...
+		 */
+		last = &node->next;
 	}
 
 	/*
@@ -290,9 +309,12 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 		return NULL;
 	}
 
-	/* Module instances are declared in the modules{} block and referenced
-	 * later by their name, which is the name2 from the config section,
-	 * or name1 if there was no name2. */
+	/*
+	 *	Module instances are declared in the modules{} block
+	 *	and referenced later by their name, which is the
+	 *	name2 from the config section, or name1 if there was
+	 *	no name2.
+	 */
 
 	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL)
 	    ; inst_cs ;
@@ -311,35 +333,32 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 	/*
 	 *	Found the configuration entry.
 	 */
-	new = rad_malloc(sizeof(*new));
+	node = rad_malloc(sizeof(*node));
+	node->next = NULL;
+	node->insthandle = NULL;
 	
 	/*
 	 *	Link to the module by name: rlm_FOO
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
-	new->entry = linkto_module(module_list, module_name,
+	node->entry = linkto_module(module_name,
 				   "radiusd.conf", cf_section_lineno(inst_cs));
-	if (!new->entry) {
-		free(new);
+	if (!node->entry) {
+		free(node);
 		/* linkto_module logs any errors */
 		return NULL;
 	}
 	
 	/*
-	 *	No instance handle.
-	 */
-	new->insthandle = NULL;
-
-	/*
 	 *	Call the module's instantiation routine.
 	 */
-	if ((new->entry->module->instantiate) &&
-	    ((new->entry->module->instantiate)(inst_cs,
-					       &new->insthandle) < 0)) {
+	if ((node->entry->module->instantiate) &&
+	    ((node->entry->module->instantiate)(inst_cs,
+					       &node->insthandle) < 0)) {
 		radlog(L_ERR|L_CONS,
 		       "radiusd.conf[%d]: %s: Module instantiation failed.\n",
 		       cf_section_lineno(inst_cs), instname);
-		free(new);
+		free(node);
 		return NULL;
 	}
 	
@@ -347,13 +366,13 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 	 *	We're done.  Fill in the rest of the data structure,
 	 *	and link it to the module instance list.
 	 */
-	strNcpy(new->name, instname, sizeof(new->name));
-	new->next = module_instance_list;
-	module_instance_list = new;
+	strNcpy(node->name, instname, sizeof(node->name));
 
-	DEBUG("Module: Instantiated %s (%s) ", name1, new->name);
+	*last = node;
+
+	DEBUG("Module: Instantiated %s (%s) ", name1, node->name);
 	
-	return new;
+	return node;
 }
 
 /*
@@ -405,8 +424,8 @@ static config_module_t *lookup_by_index(config_module_t *head, int index)
 {
 	config_module_t *p;
 
-	for (p=head; p; p=p->next) {
-		if(p->index == index)
+	for (p = head; p != NULL; p = p->next) {
+		if( p->index == index)
 			return p;
 	}
 	return NULL;
@@ -435,7 +454,13 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 			modrefname = cf_pair_attr(cp);
 		}
 
-		this = find_module_instance(module_instance_list, modrefname);
+		/*
+		 *	Find an instance for this module.
+		 *	This means link to one if it already exists,
+		 *	or instantiate one, or load the library and
+		 *	instantiate/link.
+		 */
+		this = find_module_instance(modrefname);
 		if (this == NULL) {
 			/* find_module_instance logs any errors */
 			exit(1);
@@ -528,6 +553,7 @@ int setup_modules(void)
 			exit(1); /* FIXME */
 			
 		}
+
 		/*
 		 *	Set the default list of preloaded symbols.
 		 *	This is used to initialize libltdl's list of
@@ -547,6 +573,9 @@ int setup_modules(void)
 		DEBUG2("Module: Library search path is %s",
 		       lt_dlgetsearchpath());
 
+		/*
+		 *	Initialize the components.
+		 */
 		for (comp = 0; comp < RLM_COMPONENT_COUNT; comp++) {
 			components[comp] = NULL;
 		}
@@ -561,8 +590,7 @@ int setup_modules(void)
 	 */
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		cs = cf_section_find(component_names[comp]);
-		if (!cs)
-			continue;
+		if (!cs) continue;
 		
 		load_module_section(cs, comp, filename);
 	}
@@ -711,24 +739,20 @@ int module_authenticate(int auth_type, REQUEST *request)
 	config_module_t	*this;
 	int		rcode = RLM_MODULE_FAIL;
 
-	/*
-	 *  We MUST have a password, of SOME type!
-	 */
-	if (request->password == NULL) {
-		return RLM_MODULE_FAIL;
-	}
-
 	this = lookup_by_index(components[RLM_COMPONENT_AUTH], auth_type);
 
-	while (this && rcode == RLM_MODULE_FAIL) {
-		DEBUG2("  authenticate: %s",
-			this->instance->entry->module->name);
-		safe_lock(this);
-		rcode = (this->instance->entry->module->authenticate)(
-			this->instance->insthandle, request);
-		safe_unlock(this);
-		this = this->next;
-	}
+	/*
+	 *	Only check the FIRST component.  If we want multiple
+	 *	Auth-Types, then this function should be called multiple
+	 *	times.
+	 */
+	DEBUG2("  authenticate: %s",
+	       this->instance->entry->module->name);
+	safe_lock(this);
+	rcode = (this->instance->entry->module->authenticate)(
+			    this->instance->insthandle, request);
+	safe_unlock(this);
+
 	return rcode;
 }
 
