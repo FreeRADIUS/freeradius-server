@@ -117,5 +117,5 @@ clean:
 	@rm -f *.a *.o *.lo *.la *~
 	rm -rf .libs _libs
 
-reallyclean: clean
+distclean: clean
 	@rm -f config.h config.mak
