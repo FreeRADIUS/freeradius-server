@@ -125,7 +125,7 @@ ATTRIBUTE	Prompt                  76      integer
 ATTRIBUTE	Connect-Info		77	string
 ATTRIBUTE	Configuration-Token	78	string
 ATTRIBUTE	EAP-Message		79	string
-ATTRIBUTE	Message-Authenticator	80	string	# 18 octets
+ATTRIBUTE	Message-Authenticator	80	octets
 ATTRIBUTE	ARAP-Challenge-Response	84	string	# 10 octets
 ATTRIBUTE	Acct-Interim-Interval   85      integer
 ATTRIBUTE	NAS-Port-Id		87	string
@@ -322,6 +322,7 @@ VALUE		Auth-Type		ActivCard		5
 #	Cistron extensions
 #
 VALUE		Auth-Type		EAP			6
+VALUE		Auth-Type		ARAP			7
 VALUE		Auth-Type		Ldap			252
 VALUE		Auth-Type		Pam			253
 VALUE		Auth-Type		Accept			254
