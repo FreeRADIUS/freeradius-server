@@ -610,7 +610,10 @@ int read_config_files()
 		return -1;
 	}
 
-	read_radius_conf_file();
+	if (read_radius_conf_file() < 0) {
+	        log(L_ERR|L_CONS, "Errors reading radiusd.conf");
+		return -1;
+	}
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
 	if (read_naslist_file(buffer) < 0) {

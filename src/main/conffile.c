@@ -1,5 +1,5 @@
 /*
- * conffile.c	Read the radius.conf file.
+ * conffile.c	Read the radiusd.conf file.
  *
  *		Yep I should learn to use lex & yacc, or at least
  *		write a decent parser. I know how to do that, really :)
@@ -37,7 +37,7 @@ static int generate_realms();
 static int generate_clients();
 
 #ifndef RADIUS_CONFIG
-#define RADIUS_CONFIG "radius.conf"
+#define RADIUS_CONFIG "radiusd.conf"
 #endif
 
 /*
@@ -271,6 +271,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			if (name1 == NULL || buf2[0]) {
 				log(L_ERR, "%s[%d]: Unexpected end of section",
 					cf, *lineno);
+				cf_section_free(cs);
 				return NULL;
 			}
 			return cs;
@@ -282,8 +283,10 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 		if (t2 == T_LCBRACE) {
 			css = cf_section_read(cf, lineno, fp, name2, buf1, NULL);
-			if (css == NULL)
+			if (css == NULL) {
+				cf_section_free(cs);
 				return NULL;
+			}
 			for (csp = cs->sub; csp && csp->next; csp = csp->next)
 				;
 			if (csp == NULL)
@@ -299,8 +302,11 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (t3 == T_LCBRACE) {
 			csn = cf_section_read(cf, lineno, fp, buf1, buf2, NULL);
-			if (csn == NULL)
+			if (csn == NULL) {
+				cf_section_free(cs);
 				return NULL;
+			}
+
 			/*
 			 *	Add this section after all others.
 			 */
@@ -322,6 +328,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			  (t2 < T_EQSTART || t2 > T_EQEND)) {
 			log(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 				cf, *lineno);
+			cf_section_free(cs);
 			return NULL;
 		}
 
@@ -330,16 +337,14 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *	with 'internal' names;
 		 */
 		if (buf1[0] == '_') {
-			log(L_ERR, "%s[%d]: Illegal configuration pair name",
-				cf, *lineno);
+			log(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
+				cf, *lineno, buf1);
+			cf_section_free(cs);
 			return NULL;
 		}
 		
 		/*
 		 *	Handle variable substitution via ${foo}
-		 *
-		 *	This is really ugly... it should copy the results
-		 *	to an intermediate buffer...
 		 */
 		p = buf;
 		ptr = buf3;
@@ -367,8 +372,10 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			buf2[q - ptr - 2] = '\0';
 			cpn = cf_pair_find(cs, buf2);
 			if (!cpn) {
-				*(p++) = *(ptr++);
-				continue;
+				log(L_ERR, "%s[%d]: Unknown variable \"%s\"",
+				    cf, *lineno, buf2);
+				cf_section_free(cs);
+				return NULL;
 			}
 			strcpy(p, cpn->value);
 			p += strlen(p);
@@ -387,13 +394,15 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 *	See if EOF was unexpected ..
 	 */
 	if (name1 != NULL) {
-		log(L_ERR,	
-			"%s[%d]: unexpected end of file", cf, *lineno);
+		log(L_ERR, "%s[%d]: unexpected end of file", cf, *lineno);
+		cf_section_free(cs);
 		return NULL;
 	}
 
 	/*
 	 *	If they passed a CONF_PARSER, go parse the data.
+	 *
+	 *	Hmm... this should really be up to the caller.
 	 */
 	if (variables) {
 		cf_section_parse(cs, variables);
@@ -440,7 +449,6 @@ int read_radius_conf_file(void)
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if (conf_read(buffer, rad_config) == NULL) {
-		log(L_ERR|L_CONS, "Error reading new-style configuration file");
 		return -1;
 	}
 
