@@ -1219,6 +1219,17 @@ int rad_process(REQUEST *request, int dospawn)
 	rad_assert(request->magic == REQUEST_MAGIC);
 
 	/*
+	 *  This next assertion catches a race condition in the
+	 *  server.  If it core dumps here, then it means that
+	 *  the code WOULD HAVE core dumped elsewhere, but in
+	 *  some random, unpredictable location.
+	 *
+	 *  Having the assert here means that we can catch the problem
+	 *  in a well-known manner, until such time as we fix it.
+	 */
+	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+
+	/*
 	 *  The request passes many of our sanity checks.  From
 	 *  here on in, if anything goes wrong, we send a reject
 	 *  message, instead of dropping the packet.
@@ -1853,7 +1864,7 @@ static struct timeval *rad_clean_list(time_t now)
 }
 
 /*
- *  Walk through the request list, cleaning up complete child
+ *  Walk through the request list, cleaning up completed child
  *  requests, and verifing that there is only one process
  *  responding to each request (duplicate requests are filtered
  *  out).
@@ -2356,6 +2367,8 @@ static int refresh_request(REQUEST *request, void *data)
 	 */
 	if (request->finished &&
 	    ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0)) {
+		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+
 		difference = info->now - request->timestamp;
 		if (difference >= (time_t) reject_delay) {
 
@@ -2382,9 +2395,9 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  seriously wrong...
 	 */
 	if (request->finished &&
-	    (request->child_pid == NO_SUCH_CHILD_PID) &&
 	    ((request->timestamp + cleanup_delay <= info->now) ||
 	     (request->packet->code == PW_ACCOUNTING_REQUEST))) {
+		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 		/*
 		 *  Request completed, delete it, and unlink it
 		 *  from the currently 'alive' list of requests.
@@ -2454,6 +2467,15 @@ static int refresh_request(REQUEST *request, void *data)
 		request->finished = TRUE;
 		return RL_WALK_CONTINUE;
 	} /* the request has been in the queue for too long */
+
+	/*
+	 *  If the request is still being processed, then due to the
+	 *  above check, it's still within it's time limit.  In that
+	 *  case, don't do anything.
+	 */
+	if (request->child_pid != NO_SUCH_CHILD_PID) {
+		return RL_WALK_CONTINUE;
+	}
 
 	/*
 	 *  The request is finished.
