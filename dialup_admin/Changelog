@@ -1,3 +1,8 @@
+Ver 1.78:
+* Add a snmp_clearsession which can disconnect a user by using the Cisco AAA Session MIB
+* Add a configuration directive general_sessionclear_bin
+* Add a session disconnect button in the 'clear open sessions' page
+* Also clear sessions from the sql extra servers in the 'clear open sessions' page
 Ver 1.75:
 * A LOT of security related fixes. Now dialupadmin should hopefully be secure enough to
   be accessed by normal users (not administrators).

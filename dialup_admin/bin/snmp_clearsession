@@ -1,0 +1,22 @@
+#!/usr/bin/perl
+
+$SNMPGET="/usr/local/bin/snmpget";
+$SNMPSET="/usr/local/bin/snmpset";
+$host=shift;
+$comm=shift || 'public';
+$sessionid=shift;
+$username=shift;
+
+die "Could not find snmpwalk binary. Please make sure that the \$SNMPGET variable points to the right location\n" if (! -x $SNMPGET);
+die "Could not find snmpset binary. Please make sure that the \$SNMPSET variable points to the right location\n" if (! -x $SNMPSET);
+die "Usage: snmp_clearsession \$host \$community \$sessionid \$username\n" if ($username eq '');
+
+if ($sessionid ne '' && $username ne ''){
+	$walk =`$SNMPGET -v2c -c $comm $host .iso.org.dod.internet.private.enterprises.9.9.150.1.1.3.1.2.$sessionid`;
+	unless ($walk =~ /^$/){
+		if ($walk =~ /$username/){
+			print "FOUND: $username\n";
+	`$SNMPSET -v2c -c $comm $host .iso.org.dod.internet.private.enterprises.9.9.150.1.1.3.1.5.$sessionid i 1`;
+		}
+	}
+}
