@@ -736,6 +736,24 @@ static const LRAD_NAME_NUMBER listen_compare[] = {
 
 
 /*
+ *	Free a linked list of listeners;
+ */
+static void listen_free(rad_listen_t *list)
+{
+	while (list) {
+		rad_listen_t *next = list->next;
+		
+		/*
+		 *	The code below may have eaten the FD.
+		 */
+		if (list->fd >= 0) close(list->fd);
+		free(list);
+		
+		list = next;
+	}
+}
+
+/*
  *	Binds a listener to a socket.
  */
 static int listen_bind(rad_listen_t *this)
@@ -743,7 +761,6 @@ static int listen_bind(rad_listen_t *this)
 	struct sockaddr salocal;
 	struct sockaddr_in *sa;
 
-#if 0
 	rad_listen_t	**last;
 
 	/*
@@ -763,7 +780,6 @@ static int listen_bind(rad_listen_t *this)
 			return 0;
 		}
 	}
-#endif
 
 	/*
 	 *	If the port is zero, then it means the appropriate
@@ -1024,6 +1040,7 @@ int read_mainconfig(int reload)
 	static int old_debug_level = -1;
 	char buffer[1024];
 	CONF_SECTION *cs, *oldcs;
+	rad_listen_t *listener;
 
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
@@ -1181,15 +1198,18 @@ int read_mainconfig(int reload)
 	 *	Read the list of listeners.
 	 */
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
-	mainconfig.listen = listen_init(buffer);
+	listener = listen_init(buffer);
 	if (old_listen_init() < 0) {
 		exit(1);
 	}
 
-	if (!mainconfig.listen) {
+	if (!listener) {
 		radlog(L_ERR|L_CONS, "Server is not configured to listen on any ports.  Exiting.");
 		exit(1);
 	}
+
+	listen_free(mainconfig.listen);
+	mainconfig.listen = listener;
 
 	return 0;
 }
