@@ -1,9 +1,10 @@
-radiusd-freeradius (0.1-2) unstable; urgency=low
+radiusd-freeradius (0.1+20010517-1) unstable; urgency=low
 
   * Moved package to non-US to allow in Kerberos and PostgreSQL.
   * Set Suggests of modules to main package.
+  * Better compile-time support of *BSD.
 
- -- Chad Miller <cmiller@debian.org>  [TBA]
+ -- Chad Miller <cmiller@debian.org>  Thu, 17 May 2001 14:46:51 -0400
 
 radiusd-freeradius (0.1-1) unstable; urgency=low
 

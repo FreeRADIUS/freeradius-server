@@ -2,8 +2,6 @@
 In the radiusd.conf file, broken/useless things are commented-out 
 by '#deb#' :
  - example is a development example
- - krb5 (Kerberos) is retricted from use, so if you need Kerberos, use the
-     PAM Kerberos module.
 
 Chad Miller <cmiller@debian.org>  Sun,  6 May 2001 16:29:11 -0400
 
