@@ -175,6 +175,7 @@ typedef struct main_config_t {
 
 #define DEBUG	if(debug_flag)log_debug
 #define DEBUG2  if (debug_flag > 1)log_debug
+#define DEBUG3  if (debug_flag > 2)log_debug
 
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30
