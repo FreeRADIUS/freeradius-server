@@ -1,8 +1,13 @@
 freeradius (0.9.1~pre0-0) unstable; urgency=low
 
   * Unreleased 0.9.1 update to 0.9.0
+  * Renamed radiusd(8) to freeradius(8) to match binary
+  * Build-Depend on libtool1.4 | libtool (< 1.5) due to
+    new libtool 1.5 package.
+  * Merged multiple sed calls into a single sed call in debian/rules
+  * Installed SQL database examples into /usr/share/doc/freeradius/examples
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 24 Jul 2003 01:07:29 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 26 Aug 2003 03:59:10 +1000
 
 freeradius (0.9.0-1) unstable; urgency=low
 

@@ -92,8 +92,10 @@ binary-arch: stamp-build
 	# man pages & docs
 	install -g root -m 644 CREDITS $(freeradius_dir)/$(pkgdocdir)/credits
 	dh_installdocs -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
-	dh_installdocs `find src/modules/rlm_sql/drivers -type f -name \*.sql`
+	dh_installexamples `find src/modules/rlm_sql/drivers -type f -name \*.sql`
 	dh_installchangelogs doc/ChangeLog
+	#Rename manpage to go with binary
+	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
 
 	# SNMP mibs
 	install -g root -m 644 mibs/*.txt $(freeradius_dir)/usr/share/snmp/mibs
@@ -104,12 +106,12 @@ binary-arch: stamp-build
 	cp $(freeradius_dir)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
 	cat $$TEMPFILE \
 		| sed -e 's/        /	/g' \
-		| sed -e '/^	example {/,/^	}/s/^/#/' \
-		| sed -e 's/#	shadow = /shadow = /' \
-		| sed -e 's/^#\?group = nobody/group = freerad/' \
-		| sed -e 's/^#\?user = nobody/user = freerad/' \
-		| sed -e 's!/run/radiusd!/run/freeradius!' \
-		| sed -e 's!radiusd.pid!freeradius.pid!' \
+			-e '/^	example {/,/^	}/s/^/#/' \
+			-e 's/#	shadow = /shadow = /' \
+			-e 's/^#\?group = nobody/group = freerad/' \
+			-e 's/^#\?user = nobody/user = freerad/' \
+			-e 's!/run/radiusd!/run/freeradius!' \
+			-e 's!radiusd.pid!freeradius.pid!' \
 			> $(freeradius_dir)/$(raddbdir)/radiusd.conf; \
 	rm $$TEMPFILE
 
