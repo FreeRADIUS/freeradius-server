@@ -88,6 +88,11 @@
    won't show up with ps. You should also make sure your secret file is not
    world readable.
 
+   If the server you are relaying to is included in your 'clients.conf' file
+   using the '-n [shortname]' commandline option is probably easiest. This
+   means you won't have to give the remote server address or the shared
+   secret when you start radrelay.
+
    You should never logrotate your detail file, radrelay will take care of
    this for you.
 
