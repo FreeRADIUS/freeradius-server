@@ -120,7 +120,7 @@ int main()
   ctx.randa = ctx.randb = ctx.randc = (uint32_t)0;
   
   for (i=0; i<256; ++i) ctx.randrsl[i]=(uint32_t)0;
-  randinit(&ctx, 1);
+  lrad_randinit(&ctx, 1);
   for (i=0; i<2; ++i) {
     lrad_isaac(&ctx);
     for (j=0; j<256; ++j) {
