@@ -243,16 +243,6 @@ int rad_check_password(REQUEST *request)
 	}
 
 	/*
-	 *	Find the password sent by the user. It SHOULD be there,
-	 *	if it's not authentication fails.
-	 */
-	auth_item = request->password;
-	if (auth_item == NULL) {
-		DEBUG2("auth: No Password or CHAP-Password attribute in the request");
-		return -1;
-	}
-
-	/*
 	 *	Find the password from the users file.
 	 */
 	if ((password_pair = pairfind(request->config_items, PW_CRYPT_PASSWORD)) != NULL)
@@ -290,6 +280,17 @@ int rad_check_password(REQUEST *request)
 
 	switch(auth_type) {
 		case PW_AUTHTYPE_CRYPT:
+			/*
+			 *	Find the password sent by the user. It
+			 *	SHOULD be there, if it's not
+			 *	authentication fails.
+			 */
+			auth_item = request->password;
+			if (auth_item == NULL) {
+				DEBUG2("auth: No Password or CHAP-Password attribute in the request");
+				return -1;
+			}
+
 			DEBUG2("auth: type Crypt");
 			if (password_pair == NULL) {
 				DEBUG2("No Crypt-Password configured for the user");
@@ -304,6 +305,17 @@ int rad_check_password(REQUEST *request)
 			break;
 		case PW_AUTHTYPE_LOCAL:
 			DEBUG2("auth: type Local");
+
+			/*
+			 *	Find the password sent by the user. It
+			 *	SHOULD be there, if it's not
+			 *	authentication fails.
+			 */
+			auth_item = request->password;
+			if (auth_item == NULL) {
+				DEBUG2("auth: No Password or CHAP-Password attribute in the request");
+				return -1;
+			}
 
 			/*
 			 *	Plain text password.
