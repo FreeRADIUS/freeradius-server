@@ -808,7 +808,7 @@ if test x"$fail" != x""; then
 fi
 
 eaptypes=types
-if test x"$eapsubdirs" == x""; then
+if test x"$eapsubdirs" = x""; then
 	eaptypes=""
 fi
 
