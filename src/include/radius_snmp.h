@@ -1,9 +1,9 @@
 #ifndef _RADIUS_SNMP_H
 #define _RADIUS_SNMP_H
-
 /*
  * Version:	$Id$
  */
+#ifdef WITH_SNMP
 
 #ifdef HAVE_ASN1_SNMP_SNMPIMPL_H
 #include	<asn1.h>
@@ -86,5 +86,19 @@ typedef struct rad_snmp_client_entry_t {
 } rad_snmp_client_entry_t;
 
 extern rad_snmp_t	rad_snmp;
+
+#define RAD_SNMP_INC(_x) if (mainconfig.do_snmp) _x++
+#define RAD_SNMP_FD_INC(_fd, _x) if (mainconfig.do_snmp) \
+                                     if (_fd == authfd) \
+                                       rad_snmp.auth._x++; \
+                                     else if (_fd == acctfd) \
+                                       rad_snmp.acct._x++
+
+
+#else
+#define  RAD_SNMP_INC(_x) 
+#define RAD_SNMP_FD_INC(_fd, _x)
+
+#endif /* WITH_SNMP */
 
 #endif /* _RADIUS_SNMP_H */

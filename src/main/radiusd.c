@@ -78,10 +78,7 @@ static const char rcsid[] =
 #include "conffile.h"
 #include "modules.h"
 #include "request_list.h"
-
-#ifdef WITH_SNMP
-#	include "radius_snmp.h"
-#endif
+#include "radius_snmp.h"
 
 /*
  *  Global variables.
@@ -273,11 +270,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	port, and ignore them, if so.
 			 */
 			if (packet->sockfd != authfd) {
-#ifdef WITH_SNMP
-				if (mainconfig.do_snmp)
-					rad_snmp.auth.total_packets_dropped++;
-#endif
-
+				RAD_SNMP_INC(rad_snmp.auth.total_packets_dropped);
 				radlog(L_ERR, "Authentication-Request sent to a non-authentication port from "
 					"client %s:%d - ID %d : IGNORED",
 					client_name(packet->src_ipaddr),
@@ -293,11 +286,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	port, and ignore them, if so.
 			 */
 			if (packet->sockfd != acctfd) {
-#ifdef WITH_SNMP
-				if (mainconfig.do_snmp)
-					rad_snmp.acct.total_packets_dropped++;
-#endif
-
+				RAD_SNMP_INC(rad_snmp.acct.total_packets_dropped);
 				radlog(L_ERR, "Accounting-Request packet sent to a non-accounting port from "
 				       "client %s:%d - ID %d : IGNORED",
 				       client_name(packet->src_ipaddr),
@@ -316,11 +305,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	packet is dropped.
 			 */
 			if (packet->sockfd != proxyfd) {
-#ifdef WITH_SNMP
-				if (mainconfig.do_snmp)
-					rad_snmp.auth.total_packets_dropped++;
-#endif
-
+				RAD_SNMP_INC(rad_snmp.auth.total_packets_dropped);
 				radlog(L_ERR, "Authentication reply packet code %d sent to a non-proxy reply port from "
 				       "client %s:%d - ID %d : IGNORED",
 				       packet->code,
@@ -338,11 +323,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	packet is dropped.
 			 */
 			if (packet->sockfd != proxyfd) {
-#ifdef WITH_SNMP
-				if (mainconfig.do_snmp)
-					rad_snmp.acct.total_packets_dropped++;
-#endif
-
+				RAD_SNMP_INC(rad_snmp.acct.total_packets_dropped);
 				radlog(L_ERR, "Accounting reply packet code %d sent to a non-proxy reply port from "
 				       "client %s:%d - ID %d : IGNORED",
 				       packet->code,
@@ -362,10 +343,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			break;
 
 		case PW_PASSWORD_REQUEST:
-#ifdef WITH_SNMP
-			if (mainconfig.do_snmp)
-				rad_snmp.auth.total_unknown_types++;
-#endif
+			RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
+
 			/*
 			 *  We don't support this anymore.
 			 */
@@ -376,11 +355,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			break;
 
 		default:
-#ifdef WITH_SNMP
-			if (mainconfig.do_snmp) {
-				rad_snmp.auth.total_unknown_types++;
-			}
-#endif
+			RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
+
 			radlog(L_ERR, "Unknown packet code %d from client %s:%d "
 			       "- ID %d : IGNORED", packet->code, 
 			       client_name(packet->src_ipaddr),
@@ -417,14 +393,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 	 *	be associated with the wrong NAS request.
 	 */
 	if (!curreq->finished) {
-#ifdef WITH_SNMP
-		if (mainconfig.do_snmp)
-			if (packet->sockfd == authfd) 
-				rad_snmp.auth.total_packets_dropped++;
-			else if (packet->sockfd == acctfd)
-				rad_snmp.acct.total_packets_dropped++;
+		RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
 
-#endif
 		radlog(L_ERR, "Dropping conflicting packet from "
 		       "client %s:%d - ID: %d due to unfinished request %d",
 		       client_name(packet->src_ipaddr),
@@ -447,10 +417,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		   sizeof(packet->vector)) == 0) {
 		rad_assert(curreq->reply != NULL);
 		
-#ifdef WITH_SNMP
-		if (mainconfig.do_snmp)
-			rad_snmp.auth.total_dup_requests++;
-#endif
+		RAD_SNMP_INC(rad_snmp.auth.total_dup_requests);
 
 		/*
 		 *	If the packet has been delayed, then silently
@@ -498,14 +465,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		 *	so we silently drop it, too.
 		 */
 		if (!curreq->proxy) {
-#ifdef WITH_SNMP
-			if (mainconfig.do_snmp)
-				if (packet->sockfd == authfd) 
-					rad_snmp.auth.total_packets_dropped++;
-				else if (packet->sockfd == acctfd)
-					rad_snmp.acct.total_packets_dropped++;
+			RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
 
-#endif
 			radlog(L_ERR, "Dropping packet from client "
 			       "%s:%d - ID: %d due to dead request %d",
 			       client_name(packet->src_ipaddr),
@@ -522,14 +483,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		 *	so we drop the request.
 		 */
 		if (curreq->proxy_reply) {
-#ifdef WITH_SNMP
-			if (mainconfig.do_snmp)
-				if (packet->sockfd == authfd) 
-					rad_snmp.auth.total_packets_dropped++;
-				else if (packet->sockfd == acctfd)
-					rad_snmp.acct.total_packets_dropped++;
+			RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
 
-#endif
 			radlog(L_ERR, "Dropping packet from client "
 			       "%s:%d - ID: %d due to confused proxied request %d",
 			       client_name(packet->src_ipaddr),
@@ -544,14 +499,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		 *	from the NAS.
 		 */
 		if (!mainconfig.proxy_synchronous) {
-#ifdef WITH_SNMP
-			if (mainconfig.do_snmp)
-				if (packet->sockfd == authfd) 
-					rad_snmp.auth.total_packets_dropped++;
-				else if (packet->sockfd == acctfd)
-					rad_snmp.acct.total_packets_dropped++;
+			RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
 
-#endif
 			DEBUG2("Ignoring duplicate packet from client "
 			       "%s:%d - ID: %d, due to outstanding proxied request %d.",
 			       client_name(packet->src_ipaddr),
@@ -1510,14 +1459,8 @@ int main(int argc, char *argv[])
 				radlog(L_ERR, "%s", librad_errstr);
 				continue;
 			}
-#ifdef WITH_SNMP
-			if (mainconfig.do_snmp) {
-				if (fd == acctfd)
-					rad_snmp.acct.total_requests++;
-				if (fd == authfd)
-					rad_snmp.auth.total_requests++;
-			}
-#endif
+
+			RAD_SNMP_FD_INC(fd, total_requests);
 
 			/*
 			 *	FIXME: Move this next check into
@@ -1536,15 +1479,7 @@ int main(int argc, char *argv[])
 			if (fd != proxyfd) {
 				RADCLIENT *cl;
 				if ((cl = client_find(packet->src_ipaddr)) == NULL) {
-#ifdef WITH_SNMP
-					if (mainconfig.do_snmp) {
-						if (fd == acctfd)
-							rad_snmp.acct.total_invalid_requests++;
-						if (fd == authfd)
-							rad_snmp.auth.total_invalid__requests++;
-					}
-#endif
-
+					RAD_SNMP_FD_INC(fd, total_invalid__requests);
 
 					radlog(L_ERR, "Ignoring request from unknown client %s:%d",
 					ip_ntoa((char *)buffer, packet->src_ipaddr),

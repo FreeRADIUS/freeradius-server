@@ -33,6 +33,8 @@ static const char rcsid[] = "$Id$";
 #include "radiusd.h"
 #include "rad_assert.h"
 #include "request_list.h"
+#include "radius_snmp.h"
+
 
 /*
  *  We keep the incoming requests in an array, indexed by ID.
