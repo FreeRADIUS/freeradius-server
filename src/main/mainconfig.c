@@ -567,23 +567,25 @@ static int generate_realms(const char *filename)
  *	type.  This way we don't have to change too much in the other
  *	source-files.
  */
-static int generate_clients(const char *filename)
+static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 {
 	CONF_SECTION	*cs;
-	RADCLIENT	*c;
+	RADCLIENT	*list, *c;
 	char		*hostnm, *secret, *shortnm, *netmask;
 	char            *nastype, *login, *password;
 	char		*name2;
 
-	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "client");
+	list = NULL;
+	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
-	     cs = cf_subsection_find_next(mainconfig.config, cs, "client")) {
+	     cs = cf_subsection_find_next(section, cs, "client")) {
 
 		name2 = cf_section_name2(cs);
 		if (!name2) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name",
 			       filename, cf_section_lineno(cs));
-			return -1;
+			clients_free(list);
+			return NULL;
 		}
 		/*
 		 * Check the lengths, we don't want any core dumps
@@ -593,13 +595,15 @@ static int generate_clients(const char *filename)
 		if((secret = cf_section_value_find(cs, "secret")) == NULL) {
 			radlog(L_ERR, "%s[%d]: Missing secret for client: %s",
 				filename, cf_section_lineno(cs), name2);
-			return -1;
+			clients_free(list);
+			return NULL;
 		}
 
 		if((shortnm = cf_section_value_find(cs, "shortname")) == NULL) {
 			radlog(L_ERR, "%s[%d]: Missing shortname for client: %s",
 				filename, cf_section_lineno(cs), name2);
-			return -1;
+			clients_free(list);
+			return NULL;
 		}
 
 		netmask = strchr(hostnm, '/');
@@ -608,13 +612,16 @@ static int generate_clients(const char *filename)
 			radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
 				filename, cf_section_lineno(cs),
 				strlen(secret), sizeof(c->secret) - 1);
-			return -1;
+			clients_free(list);
+			return NULL;
 		}
+
 		if (strlen(shortnm) > sizeof(c->shortname)) {
 			radlog(L_ERR, "%s[%d]: Client short name of length %d is greater than the allowed maximum of %d.",
 					filename, cf_section_lineno(cs),
-					strlen(shortnm), sizeof(c->shortname) - 1);
-			return -1;
+			       strlen(shortnm), sizeof(c->shortname) - 1);
+			clients_free(list);
+			return NULL;
 		}
 
 		if((nastype = cf_section_value_find(cs, "nastype")) != NULL) {
@@ -622,7 +629,8 @@ static int generate_clients(const char *filename)
 			       radlog(L_ERR, "%s[%d]: nastype of length %d longer than the allowed maximum of %d",
 				      filename, cf_section_lineno(cs),
 				      strlen(nastype), sizeof(c->nastype) - 1);
-			       return -1;
+			       clients_free(list);
+			       return NULL;
 			}
 		}
 
@@ -631,7 +639,8 @@ static int generate_clients(const char *filename)
 			       radlog(L_ERR, "%s[%d]: login of length %d longer than the allowed maximum of %d",
 				      filename, cf_section_lineno(cs),
 				      strlen(login), sizeof(c->login) - 1);
-			       return -1;
+			       clients_free(list);
+			       return NULL;
 			}
 		}
 
@@ -640,7 +649,8 @@ static int generate_clients(const char *filename)
 			       radlog(L_ERR, "%s[%d]: password of length %d longer than the allowed maximum of %d",
 				      filename, cf_section_lineno(cs),
 				      strlen(password), sizeof(c->password) - 1);
-			       return -1;
+			       clients_free(list);
+			       return NULL;
 			}
 		}
 
@@ -661,7 +671,8 @@ static int generate_clients(const char *filename)
 			if ((mask_length < 0) || (mask_length > 32)) {
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
 						filename, cf_section_lineno(cs), netmask + 1);
-				return -1;
+				clients_free(list);
+				return NULL;
 			}
 
 			c->netmask = (1 << 31);
@@ -677,7 +688,8 @@ static int generate_clients(const char *filename)
 		if (c->ipaddr == INADDR_NONE) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 					filename, cf_section_lineno(cs), hostnm);
-			return -1;
+			clients_free(list);
+			return NULL;
 		}
 
 		/*
@@ -701,11 +713,11 @@ static int generate_clients(const char *filename)
 		if(password != NULL)
 		        strcpy(c->password, password);
 
-		c->next =mainconfig. clients;
-		mainconfig.clients = c;
+		c->next = list;
+		list = c;
 	}
 
-	return 0;
+	return list;
 }
 
 
@@ -903,7 +915,7 @@ static rad_listen_t *listen_init(const char *filename)
 /*
  *	Hack the OLD way of listening on a socket.
  */
-static int old_listen_init(void)
+static int old_listen_init(rad_listen_t **list)
 {
 	CONF_PAIR	*cp;
 	rad_listen_t 	*this;
@@ -930,8 +942,8 @@ static int old_listen_init(void)
 		free(this);
 		return -1;
 	}
-	this->next = mainconfig.listen;
-	mainconfig.listen = this;
+	this->next = *list;
+	*list = this;
 
 	/*
 	 *  Open Accounting Socket.
@@ -949,15 +961,15 @@ static int old_listen_init(void)
 	 */
        	this->ipaddr = mainconfig.myip;
 	this->type = RAD_LISTEN_ACCT;
-	this->port = mainconfig.listen->port + 1;
+	this->port = (*list)->port + 1;
 
 	if (listen_bind(this) < 0) {
 		radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", this->port);
 		free(this);
 		return -1;
 	}
-	this->next = mainconfig.listen;
-	mainconfig.listen = this;
+	this->next = *list;
+	*list = this;
 
 	/*
 	 *	If we're proxying requests, open the proxy FD.
@@ -976,12 +988,12 @@ static int old_listen_init(void)
 		/*
 		 *	Try to find a proxy port (value doesn't matter)
 		 */
-		for (this->port = mainconfig.listen->port + 1;
+		for (this->port = (*list)->port + 1;
 		     this->port < 64000;
 		     this->port++) {
 			if (listen_bind(this) == 0) {
-				this->next = mainconfig.listen;
-				mainconfig.listen = this;
+				this->next = *list;
+				*list = this;
 				return 0;
 			}
 		}
@@ -1041,6 +1053,7 @@ int read_mainconfig(int reload)
 	char buffer[1024];
 	CONF_SECTION *cs, *oldcs;
 	rad_listen_t *listener;
+	RADCLIENT *c, *tail;
 
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
@@ -1090,10 +1103,20 @@ int read_mainconfig(int reload)
 	 *	Add to that, the *new* list of clients.
 	 */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
-	if (generate_clients(buffer) < 0) {
+	c = generate_clients(buffer, mainconfig.config);
+	if (!c) {
 		return -1;
 	}
 
+	/*
+	 *	The new list of clients takes precedence over the old one.
+	 */
+	for (tail = c; tail->next != NULL; tail = tail->next) {
+	  /* do nothing */
+	}
+	tail->next = mainconfig.clients;
+	mainconfig.clients = c;
+	
 	/* old-style realms file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_REALMS);
 	DEBUG2("read_config_files:  reading realms");
@@ -1199,7 +1222,7 @@ int read_mainconfig(int reload)
 	 */
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
 	listener = listen_init(buffer);
-	if (old_listen_init() < 0) {
+	if (old_listen_init(&listener) < 0) {
 		exit(1);
 	}
 
