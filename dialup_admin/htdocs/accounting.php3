@@ -105,7 +105,7 @@ Accounting Report Generator
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
 
-<?
+<?php
 if(!$queryflag) {
 	echo <<<EOM
 <form method=post>
