@@ -32,9 +32,11 @@
 #include "radpaths.h"
 #include "libradius.h"
 
+#ifndef _AIX
 #ifdef HAVE_UTMPX_H
 #undef ut_time
 #define ut_time ut_xtime
+#endif
 #endif
 
 #define UTSIZE (sizeof(struct utmp))
