@@ -74,7 +74,7 @@ static expr_map_t map[] =
 static int get_number(REQUEST *request, const char **string, int *answer)
 {
 	int		i, found;
-	int		result, x;
+	uint32_t       	result, x;
 	const char	*p;
 	expr_token_t	this;
 
@@ -220,6 +220,8 @@ static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 	rlm_expr_t	*inst = instance;
 	const		char *p;
 	char		buffer[256];
+
+	inst = inst;		/* -Wunused */
 
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
