@@ -89,7 +89,7 @@ while(1){
 	$servers[$name] = $config[$ip];
 	$i++;
 }
-if ($server != 'all')
+if ($server != 'all' && $server != '')
 	$s = "AND NASIPAddress = '$server'";
 
 $link = @da_sql_pconnect($config);
