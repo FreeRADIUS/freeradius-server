@@ -88,13 +88,13 @@ static const char *eap_types[] = {
   "22",
   "23",
   "24",
-  "peap"			/* 25 */
+  "peap",			/* 25 */
   "mschapv2",			/* 26 */
   "27",
   "28",
   "cisco_mschapv2"		/* 29 */
 };
-#define MAX_EAP_TYPE_NAME 25
+#define MAX_EAP_TYPE_NAME 29
 
 /*
  *	Return an EAP-Type for a particular name.
