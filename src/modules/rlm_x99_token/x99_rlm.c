@@ -38,8 +38,6 @@
  */
 
 #ifdef FREERADIUS
-#include "autoconf.h"
-#include "libradius.h"
 #include "radiusd.h"
 #include "modules.h"
 #include "conffile.h"

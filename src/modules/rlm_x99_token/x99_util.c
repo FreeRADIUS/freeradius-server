@@ -20,7 +20,6 @@
  */
 
 #ifdef FREERADIUS
-#include "autoconf.h"
 #include "radiusd.h"
 #endif
 #include "x99.h"

@@ -27,7 +27,6 @@
  */
 
 #ifdef FREERADIUS
-#include "autoconf.h"
 #include "libradius.h"
 #include "rad_assert.h"
 #endif
