@@ -833,6 +833,7 @@ static int listen_bind(rad_listen_t *this)
 			break;
 
 		default:
+			radlog(L_ERR|L_CONS, "ERROR: Non-fatal internal sanity check failed in bind.");
 			return -1;
 		}
 	}
@@ -889,6 +890,7 @@ int proxy_new_listener(void)
 	 *	Keep going until we find an unused port.
 	 */
 	for (port = last_proxy_port + 1; port < 64000; port++) {
+		this->port = port;
 		if (listen_bind(this) == 0) {
 			rad_listen_t **last;
 
