@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.8 
+# From configure.in Revision: 1.1 
 
 
 if test x$with_rlm_sqlcounter != xno; then
@@ -927,8 +927,10 @@ fi
 
 	
 
+sm_lib_safe=`echo "gdbm" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "gdbm_open" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for gdbm_open in -lgdbm""... $ac_c" 1>&6
-echo "configure:932: checking for gdbm_open in -lgdbm" >&5
+echo "configure:934: checking for gdbm_open in -lgdbm" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -936,14 +938,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lgdbm"
   cat > conftest.$ac_ext <<EOF
-#line 940 "configure"
+#line 942 "configure"
 #include "confdefs.h"
 extern char gdbm_open();
 int main() {
  gdbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:947: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:949: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lgdbm"
 else
@@ -1012,14 +1014,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lgdbm"
 
       cat > conftest.$ac_ext <<EOF
-#line 1016 "configure"
+#line 1018 "configure"
 #include "confdefs.h"
 extern char gdbm_open();
 int main() {
  gdbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1023: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1025: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lgdbm"
 else
@@ -1036,7 +1038,7 @@ rm -f conftest*
 
         if test "x$smart_lib" != "x"; then
     echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_gdbm_gdbm_open=yes"
+    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
     LIBS="$old_LIBS $smart_lib"
     SMART_LIBS="$SMART_LIBS $smart_lib"
   else
@@ -1049,9 +1051,9 @@ fi
 
 	if test "x$fail" = "x"; then
 		echo $ac_n "checking to see GDBM_SYNC status""... $ac_c" 1>&6
-echo "configure:1053: checking to see GDBM_SYNC status" >&5
+echo "configure:1055: checking to see GDBM_SYNC status" >&5
 		cat > conftest.$ac_ext <<EOF
-#line 1055 "configure"
+#line 1057 "configure"
 #include "confdefs.h"
 
 #include <gdbm.h>
@@ -1086,12 +1088,12 @@ rm -f conftest*
 	old_LIBS=$LIBS
 	LIBS="$LIBS $SMART_LIBS"
 	echo $ac_n "checking for gdbm_fdesc""... $ac_c" 1>&6
-echo "configure:1090: checking for gdbm_fdesc" >&5
+echo "configure:1092: checking for gdbm_fdesc" >&5
 if eval "test \"`echo '$''{'ac_cv_func_gdbm_fdesc'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 1095 "configure"
+#line 1097 "configure"
 #include "confdefs.h"
 /* System header to define __stub macros and hopefully few prototypes,
     which can conflict with char gdbm_fdesc(); below.  */
@@ -1114,7 +1116,7 @@ gdbm_fdesc();
 
 ; return 0; }
 EOF
-if { (eval echo configure:1118: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1120: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_func_gdbm_fdesc=yes"
 else
