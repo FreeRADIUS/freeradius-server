@@ -283,18 +283,28 @@ static int policy_stack_push(policy_state_t *state, const policy_item_t *item)
 	 *	Walk back up the stack, looking for previous ocurrances
 	 *	of this name.  If found, we have infinite recursion,
 	 *	which we stop dead in the water!
+	 *
+	 *	This isn't strictly necessary right now, as we look up
+	 *	policies by name when they're first referenced.  This
+	 *	means that ALL references are backwards (to the start
+	 *	of the file), which means that there are no circular
+	 *	references.
 	 */
 	if (item->type == POLICY_TYPE_NAMED_POLICY) {
 		int i;
 
 		for (i = 0; i < state->depth; i++) {
-			if (state->stack[i]->type != POLICY_TYPE_NAMED_POLICY) {
-				continue;
-			}
-
 			/*
-			 *	FIXME: check for more stuff.
+			 *	Check for circular references, by seeing
+			 *	if the function is already on the stack.
+			 *
+			 *	Hmmm... do we want to do this for any type?
 			 */
+			if (state->stack[i] == item) {
+				debug_evaluate("Circular call to policy %s\n",
+					       ((const policy_named_t *) item)->name);
+				return 0;
+			}
 		}
 	}
 
@@ -867,7 +877,7 @@ static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 {
 	int rcode;
 	const policy_call_t *this;
-	const rlm_policy_name_t *policy;
+	const policy_named_t *policy;
 
 	this = (const policy_call_t *) item;
 
@@ -878,7 +888,7 @@ static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 	
 	rad_assert(policy->policy->type != POLICY_TYPE_BAD);
 	rad_assert(policy->policy->type < POLICY_TYPE_NUM_TYPES);
-	
+
 	/*
 	 *	Push it onto the stack.  Other code will take care of
 	 *	calling it.
@@ -928,16 +938,16 @@ static int policy_evaluate_name(policy_state_t *state, const char *name)
 {
 	int rcode;
 	const policy_item_t *this;
-	rlm_policy_name_t mypolicy, *policy;
+	policy_named_t mypolicy, *policy;
 	
-	strNcpy(mypolicy.name, name, sizeof(mypolicy.name));
+	mypolicy.name = name;
 	policy = rbtree_finddata(state->inst->policies, &mypolicy);
 	if (!policy) return RLM_MODULE_FAIL;
 	
 	DEBUG2("rlm_policy: Evaluating policy %s", name);
 	
-	rad_assert(policy->policy->type != POLICY_TYPE_BAD);
-	rad_assert(policy->policy->type < POLICY_TYPE_NUM_TYPES);
+	rad_assert(policy->item.type != POLICY_TYPE_BAD);
+	rad_assert(policy->item.type < POLICY_TYPE_NUM_TYPES);
 	
 	rcode = policy_stack_push(state, policy->policy);
 	if (!rcode) {

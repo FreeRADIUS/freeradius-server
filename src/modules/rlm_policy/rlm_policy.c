@@ -50,16 +50,8 @@ static CONF_PARSER module_config[] = {
  */
 static int policyname_cmp(const void *a, const void *b)
 {
-	return strcasecmp(((const rlm_policy_name_t *)a)->name,
-			  ((const rlm_policy_name_t *)b)->name);
-}
-
-static void policyname_free(void *item)
-{
-	rlm_policy_name_t *this = (rlm_policy_name_t *) item;
-
-	rlm_policy_free_item(this->policy);
-	free(this);
+	return strcmp(((const policy_named_t *)a)->name,
+		      ((const policy_named_t *)b)->name);
 }
 
 
@@ -108,7 +100,7 @@ static int policy_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	inst->policies = rbtree_create(policyname_cmp, policyname_free, 0);
+	inst->policies = rbtree_create(policyname_cmp, rlm_policy_free_item, 0);
 	if (!inst->policies) {
 		policy_detach(inst);
 		return -1;
@@ -131,19 +123,10 @@ static int policy_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Insert a named policy into a list.
  */
-int rlm_policy_insert(rbtree_t *head, const char *name, policy_item_t *policy)
+int rlm_policy_insert(rbtree_t *head, policy_named_t *policy)
 {
-	rlm_policy_name_t *this;
-
-	/*
-	 *	Get the names from the policy
-	 */
-	this = rad_malloc(sizeof(*this));
-	strNcpy(this->name, name, sizeof(this->name));
-	this->policy = policy;
-
-	if (!rbtree_insert(head, this)) {
-		policyname_free(this);
+	if (!rbtree_insert(head, policy)) {
+		rlm_policy_free_item((policy_item_t *) policy);
 		return 0;
 	}
 
@@ -152,13 +135,14 @@ int rlm_policy_insert(rbtree_t *head, const char *name, policy_item_t *policy)
 
 
 /*
- *	Insert a named policy into a list.
+ *	Find a named policy
  */
-rlm_policy_name_t *rlm_policy_find(rbtree_t *head, const char *name)
+policy_named_t *rlm_policy_find(rbtree_t *head, const char *name)
 {
-	rlm_policy_name_t mypolicy;
+	policy_named_t mypolicy;
 
-	strNcpy(mypolicy.name, name, sizeof(mypolicy.name));
+	mypolicy.name = name;
+
 	return rbtree_finddata(head, &mypolicy);
 }
 
@@ -211,10 +195,9 @@ static int policy_post_proxy(void *instance, REQUEST *request)
  */
 void rlm_policy_free_item(policy_item_t *item)
 {
-
 	while (item) {
 		policy_item_t *next = item->next;
-		
+
 		switch (item->type) {
 		default:
 		case POLICY_TYPE_BAD:
@@ -279,6 +262,8 @@ void rlm_policy_free_item(policy_item_t *item)
 				policy_named_t *this;
 				
 				this = (policy_named_t *) item;
+				rad_assert(this->name != NULL);
+				free(this->name);
 				rlm_policy_free_item(this->policy);
 			}
 			break;

@@ -862,30 +862,29 @@ static int parse_named_policy(policy_lex_file_t *lexer, policy_item_t **tail)
 		return 0;
 	}
 
+	this->name = strdup(mystring);
 	rcode = parse_block(lexer, &(this->policy));
 	if (!rcode) {
 		rlm_policy_free_item((policy_item_t *) this);
 		return rcode;
 	}
-	this->name = strdup(mystring);
 
 	/*
 	 *	And insert it into the tree of policies.
 	 *
 	 *	For now, policy names aren't scoped, they're global.
 	 */
-	if (!rlm_policy_insert(lexer->policies, this->name, this->policy)) {
+	if (!rlm_policy_insert(lexer->policies, this)) {
 		fprintf(stderr, "Failed to insert %s\n", this->name);
 		rlm_policy_free_item((policy_item_t *) this);
 		return 0;
 	}
-	free(this);		/* FIXME: shouldn't have allocated it... */
 
 	/*
-	 *	Do NOT add it into the list here!  The above insertion
-	 *	will take care of freeing it if anything goes wrong...
+	 *	Do NOT add it into the list of parsed expressions!
+	 *	The above insertion will take care of freeing it if
+	 *	anything goes wrong...
 	 */
-
 	return 1;
 }
 
@@ -1045,7 +1044,10 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 			break;
 
 		case POLICY_RESERVED_UNKNOWN: /* wasn't a reserved word */
-			if (rlm_policy_find(lexer->policies, lhs)) {
+			/*
+			 *	Is a named policy, parse the reference to it.
+			 */
+			if (rlm_policy_find(lexer->policies, lhs) != NULL) {
 				if (parse_call(lexer, tail, lhs)) {
 					return 1;
 				}
@@ -1248,7 +1250,7 @@ int rlm_policy_parse(rlm_policy_t *inst, const char *filename)
 
 	if (rcode == 0) {
 		fprintf(stderr, "Failed to parse %s\n", filename);
-		rlm_policy_free_item((policy_item_t *) &list);
+		rlm_policy_free_item((policy_item_t *) list);
 		return 0;
 	}
 

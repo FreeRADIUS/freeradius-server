@@ -154,7 +154,7 @@ typedef struct policy_attributes_t {
  */
 typedef struct policy_named_t {
 	policy_item_t	item;
-	char		*name;
+	const char	*name;
 	policy_item_t	*policy;
 } policy_named_t;
 
@@ -164,7 +164,7 @@ typedef struct policy_named_t {
  */
 typedef struct policy_call_t {
 	policy_item_t	item;
-	char		*name;
+	const char	*name;
 } policy_call_t;
 
 
@@ -222,23 +222,13 @@ typedef struct rlm_policy_t {
 
 
 /*
- *	Policies can be named.
- */
-typedef struct rlm_policy_name_t {
-	char		name[32];
-	policy_item_t	*policy;
-} rlm_policy_name_t;
-
-
-/*
  *	Functions.
  */
 extern const LRAD_NAME_NUMBER rlm_policy_tokens[];
 extern const LRAD_NAME_NUMBER policy_reserved_words[];
 
-extern int rlm_policy_insert(rbtree_t *head, const char *name,
-			     policy_item_t *policy);
-extern rlm_policy_name_t *rlm_policy_find(rbtree_t *head, const char *name);
+extern int rlm_policy_insert(rbtree_t *head, policy_named_t *policy);
+extern policy_named_t *rlm_policy_find(rbtree_t *head, const char *name);
 
 extern int rlm_policy_parse(rlm_policy_t * inst, const char *filename);
 extern void rlm_policy_free_item(policy_item_t *item);
