@@ -643,7 +643,7 @@ autz_redo:
 	}
 
 	if (result >= 0 &&
-			(check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
+	    (check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
 		VALUE_PAIR	*session_type;
 		int		sess_type = 0;
 
@@ -708,12 +708,18 @@ autz_redo:
 		 */
 		r = timestr_match((char *)check_item->strvalue,
 				  request->timestamp);
-		/*
-		 *	Session-Timeout needs to be at least
-		 *	60 seconds, some terminal servers
-		 *	ignore smaller values.
-		 */
-		if (r < 60) {
+
+		if (r == 0) {	/* unlimited */
+			/*
+			 *	Do nothing: login-time is OK.
+			 */
+
+			/*
+			 *	Session-Timeout needs to be at least
+			 *	60 seconds, some terminal servers
+			 *	ignore smaller values.
+			 */
+		} else if (r < 60) {
 			/*
 			 *	User called outside allowed time interval.
 			 */
