@@ -521,8 +521,8 @@ modules {
 		#	private_key_password = password
 		#	private_key_file = /path/filename
 
-		#	Sometimes Private key & Certificate are located
-		#	in the same file, then private_key_file & certificate_file
+		#	If Private key & Certificate are located in the
+		#	same file, then private_key_file & certificate_file
 		#	must contain the same file name.
 		#	certificate_file = /path/filename
 
@@ -726,13 +726,13 @@ modules {
 	## feedback.
 	#
 	# The module can also use the Rewrite-Rule attribute. If it is set and
-	# matches the name of the module instance, then that module instance will
-	# be the only one which runs
+	# matches the name of the module instance, then that module instance
+	# will be the only one which runs.
 	#
-	# Also if new_attribute is set to yes then a new attribute will be created
-	# containing the value replacewith and it will be added to searchin (packet,
-	# reply or config). searchfor,ignore_case and max_matches will be ignored in
-	# that case
+	# Also if new_attribute is set to yes then a new attribute will be
+	# created containing the value replacewith and it will be added to
+	# searchin (packet, reply or config).
+	# searchfor,ignore_case and max_matches will be ignored in that case.
 	#
 	#attr_rewrite sanecallerid {
 	#	attribute = Called-Station-Id
@@ -934,8 +934,8 @@ modules {
 		cache-size = 5000
 	}
 
-	# The "always" module is here for debugging purposes. Each instance simply
-	# returns the same result, always, without doing anything.
+	# The "always" module is here for debugging purposes. Each instance
+	# simply returns the same result, always, without doing anything.
 	always fail {
 		rcode = fail
 	}
@@ -1027,14 +1027,14 @@ authorize {
 # a configuration attribute 'Auth-Type := FOO'.  That authentication type
 # is then used to pick the apropriate module from the list below.
 #
-# The default Auth-Type is Local. That is, whatever is not included inside
-# an authtype section will be called only if Auth-Type is set to Local
+# The default Auth-Type is Local.  That is, whatever is not included inside
+# an authtype section will be called only if Auth-Type is set to Local.
 #
 # So you should do the following:
-# Set Auth-Type to an appropriate value in the authorize section. For example chap
-# will set Auth-Type to CHAP, ldap to LDAP etc
-# After that create corresponding authtype sections in the authenticate section below
-# and call the appropriate modules (chap for CHAP etc)
+# - Set Auth-Type to an appropriate value in the authorize modules above.
+#   For example, the chap module will set Auth-Type to CHAP, ldap to LDAP, etc.
+# - After that create corresponding authtype sections in the
+#   authenticate section below and call the appropriate modules.
 authenticate {
 #	pam
 	unix
