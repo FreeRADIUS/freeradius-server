@@ -350,7 +350,7 @@ int sql_save_acct(SQL_INST *inst, SQLSOCK *sqlsocket, SQLACCTREC *sqlrecord) {
             "acctstartdelay,"
             "acctstopdelay) "
             "VALUES (0,"
-            "'%s', '%s', '%s', '%s', '%s', %ld, '%s', '%s',NULL,"
+            "'%s', '%s', '%s', '%s', '%s', %ld, '%s', '%s',0,"
             "0, '%s', '%s', '', 0, 0,"
             "'%s', '%s', '', '%s', '%s', '%s', %ld, 0)",
             inst->config->sql_acct_table, sqlrecord->AcctSessionId, 
@@ -480,7 +480,7 @@ int sql_save_acct(SQL_INST *inst, SQLSOCK *sqlsocket, SQLACCTREC *sqlrecord) {
               "acctstartdelay,"
               "acctstopdelay) "
               "VALUES ("
-              "0, '%s', '%s', '%s', '%s', '%s', %ld, '%s', NULL,"
+              "0, '%s', '%s', '%s', '%s', '%s', %ld, '%s', 0,"
               "'%s', '%lu', '%s', '', '%s', '%lu', '%lu', '%s',"
               "'%s', '%s', '%s', '%s', '%s', 0, %ld)",
               inst->config->sql_acct_table, sqlrecord->AcctSessionId,
