@@ -271,7 +271,7 @@ void sql_finish_select_query(SQLSOCK *socket) {
  *
  *	Function: sql_affected_rows
  *
- *	Purpose: End the select quh as freeing memory or result
+ *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
 int sql_affected_rows(SQLSOCK *socket) {

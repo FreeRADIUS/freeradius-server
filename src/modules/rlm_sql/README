@@ -1,0 +1,13 @@
+FreeRADIUS SQL Module
+
+ Quick start: Copy the appropriate sql_dbtype.c and sql_dbtype.h to sql_module.c and sql_module.h repectively. Use the 
+	      supplied db_dbtype.sql to create your database tables. 
+
+
+ More documentation to come eventually
+
+
+Mike Machado
+mike@innercite.com
+InnerCite Inc.
+Engineering Manager
