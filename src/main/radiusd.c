@@ -57,6 +57,10 @@ static const char rcsid[] =
 #include	"radiusd.h"
 #include	"conffile.h"
 
+#if WITH_SNMP
+#include	"radius_snmp.h"
+#endif
+
 #include	<sys/resource.h>
 
 /*
@@ -67,6 +71,12 @@ char	        	*radius_dir = NULL;
 char			*radacct_dir = NULL;
 char			*radlog_dir = NULL;
 const char		*radlib_dir = NULL;
+#ifdef WITH_SNMP
+char			*smux_password = NULL;
+int			snmp_acctotalrequests = 0;
+int			snmp_authtotalrequests = 0;
+enum smux_event         smux_event = SMUX_NONE;
+#endif
 int			log_stripped_names;
 int			debug_flag;
 int			use_dbm	= FALSE;
@@ -86,6 +96,9 @@ static int		request_list_busy = FALSE;
 static int		authfd;
 static int		acctfd;
 int	        	proxyfd;
+#ifdef WITH_SNMP
+int			smuxfd;
+#endif
 static int		spawn_flag = TRUE;
 static pid_t		radius_pid;
 static int		need_reload = FALSE;
@@ -164,8 +177,10 @@ static CONF_PARSER server_config[] = {
 #if 0
   { "confdir",            PW_TYPE_STRING_PTR, &radius_dir,        RADIUS_DIR },
 #endif
-  { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns, "0" },
-
+  { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "0" },
+#ifdef WITH_SNMP
+  { "smux_password",      PW_TYPE_STRING_PTR, &smux_password,     "" },
+#endif
   { NULL, -1, NULL, NULL }
 };
 
@@ -426,6 +441,9 @@ int main(int argc, char **argv)
 	signal(SIGHUP, sig_hup);
 	signal(SIGINT, sig_fatal);
 	signal(SIGQUIT, sig_fatal);
+#if WITH_SNMP
+	signal(SIGPIPE, SIG_IGN);
+#endif
 #ifdef SIGTRAP
 	signal(SIGTRAP, sig_fatal);
 #endif
@@ -725,6 +743,10 @@ int main(int argc, char **argv)
 	 */
 	pair_builtincompare_init();
 
+#if WITH_SNMP
+	radius_snmp_init();
+#endif
+
 #if 0
 	/*
 	 *	Connect 0, 1 and 2 to /dev/null.
@@ -841,7 +863,11 @@ int main(int argc, char **argv)
 			FD_SET(acctfd, &readfds);
 		if (proxyfd >= 0)
 			FD_SET(proxyfd, &readfds);
-		
+#ifdef WITH_SNMP
+		if (smuxfd >= 0)
+			FD_SET(smuxfd, &readfds);
+#endif
+
 		status = select(32, &readfds, NULL, NULL,
 				setuptimeout(&tv));
 		now = time(NULL);
@@ -866,6 +892,7 @@ int main(int argc, char **argv)
 		if ((status == 0) && proxy_requests) {
 			proxy_retry();
 		}
+
 		for (i = 0; i < 3; i++) {
 
 			if (i == 0) fd = authfd;
@@ -873,7 +900,6 @@ int main(int argc, char **argv)
 			if (i == 2) fd = proxyfd;
 			if (fd < 0 || !FD_ISSET(fd, &readfds))
 				continue;
-
 			/*
 			 *	Receive the packet.
 			 */
@@ -882,6 +908,12 @@ int main(int argc, char **argv)
 				radlog(L_ERR, "%s", librad_errstr);
 				continue;
 			}
+#if WITH_SNMP
+			if (fd == acctfd)
+				snmp_acctotalrequests++;
+			if (fd == authfd)
+				snmp_authtotalrequests++;
+#endif
 
 			/*
 			 *	Check if we know this client.
@@ -926,7 +958,7 @@ int main(int argc, char **argv)
 			request->next = NULL;
 			strNcpy(request->secret, cl->secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
-		}
+		} /* loop over authfd, acctfd, proxyfd */
 
 		/*
 		 *	After processing all new requests,
@@ -934,7 +966,31 @@ int main(int argc, char **argv)
 		 *	from the request list.
 		 */
 		rad_clean_list(now);
-	}
+#if WITH_SNMP
+		/*
+		 *	After handling all authentication/accounting
+		 *	requests, THEN process any pending SMUX/SNMP
+		 *	queries.
+		 *
+		 *	Note that the handling is done in the main server,
+		 *	which probably isn't a Good Thing.  It really
+		 *	should be wrapped, and handled in a thread pool.
+		 */
+		if ((smuxfd >= 0) &&
+		    FD_ISSET(smuxfd, &readfds) &&
+		    (smux_event == SMUX_READ)) {
+		  smux_read();
+		}
+		
+		/*
+		 *	If we've got to re-connect, then do so now,
+		 *	before calling select again.
+		 */
+ 		if (smux_event == SMUX_CONNECT) {
+		  smux_connect();
+		}
+#endif
+	} /* loop forever */
 }
 
 
