@@ -207,7 +207,7 @@ static int storecontent (const char * username) {
 static int getuname(char **p,char *u,int n) {
 	int	i; 
 	
-	for(i=0 ; ( i < n-1 ) && ( **p ) && (! isspace(**p) ) ; (*p)++ ) 
+	for(i=0 ; ( i < n-1 ) && ( **p ) && (! isspace((int) **p) ) ; (*p)++ ) 
 	    u[i++] = **p;
 	u[i] = '\0';
 	return ( i == 0) ? 1:0;
@@ -235,7 +235,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 		}
 	
 		DOUT2("Parseline: %s",buff);
-		for ( p = buff; isspace(*p); p++);
+		for ( p = buff; isspace((int) *p); p++);
 		 
 		if ( *p == '#' || *p == 0 ) continue;
 
@@ -245,7 +245,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 
 		/* try to decide is this line new user or new pattern */
 		if ( parse_state == SMP_PATTERN_OR_USER ) {
-		     if ( isspace(buff[0]) ) parse_state = SMP_PATTERN;
+		     if ( isspace((int) buff[0]) ) parse_state = SMP_PATTERN;
 		     	else {
 		     		parse_state = SMP_USER;
 		     		storecontent(username);
@@ -271,7 +271,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 		if ( parse_state == SMP_PATTERN || parse_state == SMP_ACTION ) {
 
 		    /* check for empty line */
-		    while( *p && isspace(*p) ) p++;
+		    while( *p && isspace((int) *p) ) p++;
 
 		    if ( *p && ( *p != ';' ) ) tok = userparse(p,&vp);
 		    else tok = T_EOL;  /* ';' - signs empty line */

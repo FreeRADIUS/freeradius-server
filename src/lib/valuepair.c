@@ -458,7 +458,7 @@ static int gettime(const char *valstr, time_t *lvalue)
 
 	strNcpy(buf, valstr, sizeof(buf));
 	for (p = buf; *p; p++)
-		if (isupper(*p)) *p = tolower(*p);
+		if (isupper((int) *p)) *p = tolower((int) *p);
 
 	p = buf;
 	day = mystrtok(&p, " \t");
@@ -631,7 +631,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			 *
 			 *	Note that ALL integers are unsigned!
 			 */
-			if (isdigit(*value)) {
+			if (isdigit((int) *value)) {
 				vp->lvalue = atoi(value);
 				vp->length = 4;
 			}

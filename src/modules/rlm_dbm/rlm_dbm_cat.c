@@ -84,10 +84,10 @@ int main(int n, char **argv) {
 	
 	while ((ch = getopt(n, argv, "i:l:wf:v")) != -1)
 		switch (ch) {
-			case 'i': 	if (!isdigit(*optarg)) usage();
+			case 'i': 	if (!isdigit((int) *optarg)) usage();
 					lotstup = atoi(optarg);
 					break;
-			case 'l':	if (!isdigit(*optarg)) usage();
+			case 'l':	if (!isdigit((int) *optarg)) usage();
 					wraplen = atoi(optarg);
 					break;
 			case 'w':	needwrap = 1; 

@@ -212,7 +212,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			for (p = buffer; *p != '='; p++) {
 				if (*p == '-') {
 					*p = '_';
-				} else if (isalpha(*p)) {
+				} else if (isalpha((int) *p)) {
 					*p = toupper(*p);
 				}
 			}

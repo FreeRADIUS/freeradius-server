@@ -343,7 +343,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			/*
 			 *	Validate all entries
 			 */
-			if (!isdigit(*valstr)) {
+			if (!isdigit((int) *valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
 				return -1;
@@ -469,7 +469,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			/*
 			 *	Validate all entries
 			 */
-			if (!isdigit(*valstr)) {
+			if (!isdigit((int) *valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
 				return -1;
@@ -515,7 +515,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			/*
 			 *	 Validate all entries
 			 */
-			if (!isdigit(*valstr)) {
+			if (!isdigit((int) *valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
 				return -1;

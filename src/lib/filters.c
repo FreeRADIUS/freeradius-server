@@ -390,8 +390,8 @@ int findKey(const char *string, const KeywordStruct *list)
 
     len = strlen( string );
     for( ptr = buf ; len; len--, string++ ) {
-	if( isupper( *string ) ) {
-	    *ptr++ = tolower( *string );
+	if( isupper( (int) *string ) ) {
+	    *ptr++ = tolower( (int) *string );
 	} else {
 	    *ptr++ = *string;
 	}
@@ -425,7 +425,7 @@ isAllDigit(const char *token)
 
     i = strlen( token );
     while( i-- ) {
-	if( isdigit( *token ) ) {
+	if( isdigit( (int) *token ) ) {
 	    token++;
 	} else {
 	    break;
@@ -472,7 +472,7 @@ a2octet(const char *tok, char *retBuf)
 	    if( *tok <= '9' && *tok >= '0' ) {
 		val = '0';
 	        *octet++ = *tok++ - val;
-	    } else if( isxdigit( *tok ) ) {
+	    } else if( isxdigit( (int) *tok ) ) {
 		if( *tok > 'Z' ) {
 		    val = 'a';
 		} else {

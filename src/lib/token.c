@@ -72,7 +72,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 
 	/* Skip whitespace */
 	p = *ptr;
-	while (*p && isspace(*p))
+	while (*p && isspace((int) *p))
 		p++;
 
 	if (*p == 0) {
@@ -87,7 +87,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 		if (TOKEN_MATCH(p, t->str)) {
 			strcpy(buf, t->str);
 			p += strlen(t->str);
-			while (isspace(*p))
+			while (isspace((int) *p))
 				p++;
 			*ptr = p;
 			return t->token;
@@ -141,7 +141,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 			break;
 		}
 		if (!quote) {
-			if (isspace(*p))
+			if (isspace((int) *p))
 				break;
 			if (tok) {
 				for (t = tokenlist; t->str; t++)
@@ -156,7 +156,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 	*s++ = 0;
 
 	/* Skip whitespace again. */
-	while (*p && isspace(*p))
+	while (*p && isspace((int) *p))
 		p++;
 	*ptr = p;
 

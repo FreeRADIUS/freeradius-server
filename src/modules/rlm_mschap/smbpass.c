@@ -104,8 +104,8 @@ int hex2bin (const char *szHex, unsigned char* szBin, int len)
 	int i;
    
    	for (i = 0; i < len; i++) {
-		if( !(c1 = memchr(letters, toupper(szHex[i << 1]), 16)) ||
-		    !(c2 = memchr(letters, toupper(szHex[(i << 1) + 1]), 16)))
+		if( !(c1 = memchr(letters, toupper((int) szHex[i << 1]), 16)) ||
+		    !(c2 = memchr(letters, toupper((int) szHex[(i << 1) + 1]), 16)))
 		     break;
                  szBin[i] = ((c1-letters)<<4) + (c2-letters);
         }
@@ -213,13 +213,13 @@ struct smb_passwd *getsmbfilepwent(struct smb_passwd *pw_buf, FILE *fp)
 		  continue;
 		}
 
-		if (!isdigit(*p)) {
+		if (!isdigit((int) *p)) {
 		  continue;
 		}
 
 		uidval = atoi(p);
 
-		while (*p && isdigit(*p))
+		while (*p && isdigit((int) *p))
 		  p++;
 
 		if (*p != ':') {
@@ -298,7 +298,7 @@ struct smb_passwd *getsmbfilepwent(struct smb_passwd *pw_buf, FILE *fp)
 		      int i;
 		      p += 4;
 		      for(i = 0; i < 8; i++) {
-		        if(p[i] == '\0' || !isxdigit(p[i]))
+		        if(p[i] == '\0' || !isxdigit((int) p[i]))
 		          break;
 		      }
 		      if(i == 8) {

@@ -188,7 +188,7 @@ static void lmpwdhash (char *szHash, const char *szPassword)
 
 	memset(szOEMPass, 0, 14);
 	for (i = 0; i < 14 && szPassword[i]; i++)
-		szOEMPass[i] = toupper(szPassword[i]);
+		szOEMPass[i] = toupper((int) szPassword[i]);
 
 	/* Obtain DES hash of OEM password */
 	des_encrypt(stdText, szOEMPass, szHash); 

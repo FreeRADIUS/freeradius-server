@@ -620,7 +620,7 @@ autz_redo:
 
 			p = auth_item->strvalue;
 			while (*p != '\0') {
-				if (!isprint(*p)) {
+				if (!isprint((int) *p)) {
 					log_debug("  WARNING: Unprintable characters in the password.\n\t  Double-check the shared secret on the server and the NAS!");
 					break;
 				}

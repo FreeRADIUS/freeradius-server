@@ -1021,10 +1021,10 @@ smux_str2oid (char *str, oid *my_oid, size_t *oid_len)
 		return 0;
 
 	while (1) {
-		if (! isdigit (*str))
+		if (! isdigit ((int) *str))
 			return -1;
 
-		while (isdigit (*str)) {
+		while (isdigit ((int) *str)) {
 			val *= 10;
 			val += (*str - '0');
 			str++;

@@ -165,7 +165,7 @@ void rad_lowercase(char *str) {
 	char *s;
 
 	for (s=str; *s; s++)
-		if (isupper(*s)) *s = tolower(*s);
+		if (isupper((int) *s)) *s = tolower((int) *s);
 }
 
 /*
@@ -176,7 +176,7 @@ void rad_rmspace(char *str) {
 	char *ptr = str;
 
   while(ptr && *ptr!='\0') {
-    while(isspace(*ptr))
+    while(isspace((int) *ptr))
       ptr++;
     *s = *ptr;
     ptr++;

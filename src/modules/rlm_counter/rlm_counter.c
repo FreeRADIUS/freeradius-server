@@ -154,14 +154,14 @@ static int find_next_reset(rlm_counter_t *data, time_t timeval)
 
 	if (data->reset == NULL)
 		return -1;
-	if (isdigit(data->reset[0])){
+	if (isdigit((int) data->reset[0])){
 		unsigned int len=0;
 
 		len = strlen(data->reset);
 		if (len == 0)
 			return -1;
 		last = data->reset[len - 1];
-		if (!isalpha(last))
+		if (!isalpha((int) last))
 			last = 'd';
 		num = atoi(data->reset);
 		DEBUG("rlm_counter: num=%d, last=%c",num,last);

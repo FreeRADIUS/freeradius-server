@@ -167,7 +167,7 @@ parse_again:
 			/*
 			 *	Find the entry starting with the users name
 			 */
-			if (isspace(buffer[0]))  {
+			if (isspace((int) buffer[0]))  {
 				if (parsecode != T_EOL) {
 					radlog(L_ERR|L_CONS,
 							"%s[%d]: Unexpected trailing comma for entry %s",
@@ -186,10 +186,10 @@ parse_again:
 			 *	$INCLUDE filename
 			 */
 			if (strcasecmp(entry, "$include") == 0) {
-				while(isspace(*ptr))
+				while(isspace((int) *ptr))
 					ptr++;
 				s = ptr;
-				while (!isspace(*ptr))
+				while (!isspace((int) *ptr))
 					ptr++;
 				*ptr = 0;
 

@@ -112,7 +112,7 @@ static FILE *safe_popen(const char *cmd, const char *mode)
 	strncpy(buf, cmd, sizeof(buf));
 	buf[sizeof(buf) - 1] = 0;
 	for (p = buf; *p; p++) {
-		if (isalnum(*p))
+		if (isalnum((int) *p))
 			continue;
 		if (strchr("@%-_ \t+:,./", *p) == NULL)
 			*p = ' ';

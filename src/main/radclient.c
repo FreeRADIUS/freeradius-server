@@ -213,7 +213,7 @@ int main(int argc, char **argv)
 
 	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xv")) != EOF) switch(c) {
 		case 'c':
-			if (!isdigit(*optarg)) 
+			if (!isdigit((int) *optarg)) 
 				usage();
 			count = atoi(optarg);
 			break;
@@ -230,12 +230,12 @@ int main(int argc, char **argv)
 			librad_debug++;
 			break;
 		case 'r':
-			if (!isdigit(*optarg)) 
+			if (!isdigit((int) *optarg)) 
 				usage();
 			retries = atoi(optarg);
 			break;
 		case 'i':
-			if (!isdigit(*optarg)) 
+			if (!isdigit((int) *optarg)) 
 				usage();
 			id = atoi(optarg);
 			if ((id < 0) || (id > 255)) {
@@ -246,7 +246,7 @@ int main(int argc, char **argv)
 			do_summary = 1;
 			break;
 		case 't':
-			if (!isdigit(*optarg)) 
+			if (!isdigit((int) *optarg)) 
 				usage();
 			timeout = atof(optarg);
 			break;
@@ -327,7 +327,7 @@ int main(int argc, char **argv)
 		if (port == 0) port = PW_ACCT_UDP_PORT;
 		req->code = PW_ACCOUNTING_REQUEST;
 		do_summary = 0;
-	} else if (isdigit(argv[2][0])) {
+	} else if (isdigit((int) argv[2][0])) {
 		if (port == 0) port = getport("radius");
 		if (port == 0) port = PW_AUTH_UDP_PORT;
 		req->code = atoi(argv[2]);

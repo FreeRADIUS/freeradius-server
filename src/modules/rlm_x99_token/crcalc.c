@@ -127,7 +127,7 @@ main(int argc, char *argv[])
 	    fprintf(stderr, "key too long\n");
 	    exit(1);
 	}
-	ascii_key[i++] = tolower(*p++);
+	ascii_key[i++] = tolower((int) *p++);
     }
     if (strlen(ascii_key) < 16) {
 	fprintf(stderr, "key too short\n");
