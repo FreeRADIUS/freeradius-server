@@ -33,16 +33,17 @@
 
 /*
  * TODO: change maxfail to softfail, hardfail.
+ * TODO: add Auth-Type config item if not present.
  * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
 
 #include "autoconf.h"
 #include "libradius.h"
-#include "x99.h"
 #include "radiusd.h"
 #include "modules.h"
 #include "conffile.h"
+#include "x99.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -50,7 +51,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <openssl/des.h>
 #include <netinet/in.h>	/* htonl() */
 
 static const char rcsid[] = "$Id$";
@@ -129,6 +129,9 @@ x99_token_init(void)
 		      "for hmac_key");
 	return -1;
     }
+
+    /* Initialize the password encoding/checking functions. */
+    x99_pwe_init();
 
     return 0;
 }
@@ -225,11 +228,11 @@ x99_token_authorize(void *instance, REQUEST *request)
     unsigned char rawchallenge[MAX_CHALLENGE_LEN];
     char challenge[MAX_CHALLENGE_LEN + 1];	/* +1 for '\0' terminator */
     char *state;
-    int i;
+    int i, rc;
 
     x99_user_info_t user_info;
     int user_found;
-    int rc;
+    int pwattr;
 
     /* The State attribute will be present if this is a response. */
     if (pairfind(request->packet->vps, PW_STATE) != NULL) {
@@ -244,18 +247,9 @@ x99_token_authorize(void *instance, REQUEST *request)
 	return RLM_MODULE_INVALID;
     }
 
-    /* Password attribute required. */
-    if (!request->password) {
-	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"Password\" is "
-		       "required for authentication.");
-	return RLM_MODULE_INVALID;
-    }
-
-    /* Ensure that we're being passed a plain-text password. */
-    if (request->password->attribute != PW_PASSWORD) {
-	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"Password\" is "
-		       "required for authentication.  Cannot use \"%s\".",
-		       request->password->name);
+    if ((pwattr = x99_pw_present(request)) == 0) {
+	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"Password\" or "
+		       "equivalent required for authentication.");
 	return RLM_MODULE_INVALID;
     }
 
@@ -278,7 +272,7 @@ x99_token_authorize(void *instance, REQUEST *request)
     if (inst->fast_sync &&
 	((user_info.card_id & X99_CF_SM) || !user_found)) {
 
-	if (!strcmp(request->password->strvalue, inst->chal_req)) {
+	if (x99_pw_valid(request, pwattr, inst->chal_req, NULL)) {
 	    /*
 	     * Generate a challenge if requested.  We don't test for card
 	     * support [for async] because it's tricky for unknown users.
@@ -348,7 +342,7 @@ gen_challenge:
 	}
     } else {
 	state = rad_malloc(3 + inst->chal_len * 2);
-	sprintf(state, "0x%s%s", challenge, challenge);
+	(void) sprintf(state, "0x%s%s", challenge, challenge);
     }
     pairadd(&request->reply->vps, pairmake("State", state, T_OP_EQ));
     free(state);
@@ -358,7 +352,7 @@ gen_challenge:
 	char *u_challenge;	/* challenge with addt'l presentation text */
 
 	u_challenge = rad_malloc(strlen(inst->chal_text) + MAX_CHALLENGE_LEN+1);
-	sprintf(u_challenge, inst->chal_text, challenge);
+	(void) sprintf(u_challenge, inst->chal_text, challenge);
 	pairadd(&request->reply->vps,
 		pairmake("Reply-Message", u_challenge, T_OP_EQ));
 	free(u_challenge);
@@ -383,11 +377,12 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
     x99_user_info_t user_info;
     char *username;
-    int i, failcount;
+    int i, failcount, pwattr, rc;
     time_t last_async;
 
     char challenge[MAX_CHALLENGE_LEN + 1];
-    char e_response[9], u_response[9];		/* expected, user response */
+    char e_response[9];		/* expected response */
+    VALUE_PAIR *add_vps = NULL;
 
     /* User-Name attribute required. */
     if (!request->username) {
@@ -397,26 +392,11 @@ x99_token_authenticate(void *instance, REQUEST *request)
     }
     username = request->username->strvalue;
 
-    /* Password attribute required. */
-    if (!request->password) {
-	radlog(L_AUTH, "rlm_x99_token: auth: Attribute \"Password\" is "
-		       "required for authentication.");
+    if ((pwattr = x99_pw_present(request)) == 0) {
+	radlog(L_AUTH, "rlm_x99_token: auth: Attribute \"Password\" or "
+		       "equivalent required for authentication.");
 	return RLM_MODULE_INVALID;
     }
-    /* Early exit for response too long. */
-    if (request->password->length > 8)
-	return RLM_MODULE_REJECT;
-
-    /* Setup u_response. */
-    (void) memset(u_response, 0, sizeof(u_response));
-    (void) memcpy(u_response, request->password->strvalue,
-		  request->password->length);
-    /*
-     * One vendor (at least) uses a '-' in 7 digit display mode.
-     * In case the luser actually types it in, we need to s/-//.
-     */
-    if (u_response[3] == '-')
-	(void) memmove(&u_response[3], &u_response[4], 5);
 
     /* Look up the user's info. */
     if (x99_get_user_info(inst->pwdfile, username, &user_info) != 0) {
@@ -529,22 +509,25 @@ good_state:
     DEBUG("rlm_x99_token: auth: [%s], async challenge %s, "
 	  "expecting response %s", username, challenge, e_response);
 
-    if (!strcmp(e_response, u_response)) {
+    if (x99_pw_valid(request, pwattr, e_response, &add_vps)) {
 	/* Password matches.  Is this allowed? */
 	if (!inst->allow_async) {
 	    radlog(L_AUTH, "rlm_x99_token: auth: bad async for [%s]: "
 			   "disallowed by config", username);
-	    return RLM_MODULE_REJECT;
+	    rc = RLM_MODULE_REJECT;
+	    goto return_pw_valid;
 	}
 	if (x99_get_last_async(inst->syncdir, username, &last_async) != 0) {
 	    radlog(L_ERR, "rlm_x99_token: auth: unable to get last async "
 			  "auth time for [%s]", username);
-	    return RLM_MODULE_FAIL;
+	    rc = RLM_MODULE_FAIL;
+	    goto return_pw_valid;
 	}
 	if (last_async + inst->maxdelay > time(NULL)) {
 	    radlog(L_AUTH, "rlm_x99_token: auth: bad async for [%s]: "
 			   "too soon", username);
-	    return RLM_MODULE_REJECT;
+	    rc = RLM_MODULE_REJECT;
+	    goto return_pw_valid;
 	}
 
 	if (user_info.card_id & X99_CF_SM) {
@@ -576,10 +559,12 @@ good_state:
 	     * if we let this one slip by we will be open to replay attacks
 	     * over the lifetime of the State attribute (inst->maxdelay).
 	     */
-	    return RLM_MODULE_FAIL;
+	    rc = RLM_MODULE_FAIL;
+	    goto return_pw_valid;
 	}
 
-	return RLM_MODULE_OK;
+	rc = RLM_MODULE_OK;
+	goto return_pw_valid;
     } /* if (user authenticated async) */
 
 sync_response:
@@ -607,7 +592,7 @@ sync_response:
 		  "expecting response %s", username, i, challenge, e_response);
 
 	    /* Test user-supplied password. */
-	    if (!strcmp(e_response, u_response)) {
+	    if (x99_pw_valid(request, pwattr, e_response, &add_vps)) {
 		/* Yay!  User authenticated via sync mode.  Resync. */
 		if (x99_get_sync_data(inst->syncdir,username,user_info.card_id,
 				      1,0,challenge,user_info.keyblock) != 0) {
@@ -623,7 +608,8 @@ sync_response:
 		    radlog(L_ERR, "rlm_x99_token: auth: unable to reset "
 				  "failure count for [%s]", username);
 		}
-		return RLM_MODULE_OK;
+		rc = RLM_MODULE_OK;
+		goto return_pw_valid;
 	    }
 
 	} /* for (each slot in the window) */
@@ -635,6 +621,17 @@ sync_response:
 		      "count for user [%s]", username);
     }
     return RLM_MODULE_REJECT;
+
+    /* Must exit here after a successful return from x99_pw_valid(). */
+return_pw_valid:
+
+    /* Handle any vps returned from x99_pw_valid(). */
+    if (rc == RLM_MODULE_OK) {
+	pairadd(&request->reply->vps, add_vps);
+    } else {
+	pairfree(&add_vps);
+    }
+    return rc;
 }
 
 

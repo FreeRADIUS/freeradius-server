@@ -22,6 +22,8 @@
 #ifndef X99_H
 #define X99_H
 
+#include "radiusd.h"     /* REQUEST */
+#include "libradius.h"   /* VALUE_PAIR */
 #include <openssl/des.h> /* des_cblock */
 
 /*
@@ -40,16 +42,16 @@
 /* Max time window size for sync modes.  More than 10 may not be usable. */
 #define MAX_TWINDOW_SIZE 10
 
-
-/*
- * You shouldn't change anything past this point
- */
-
 /*
  * PRNG device that does not block;
  * /dev/urandom is "merely" cryptographically strong on Linux. :-)
  */
 #define DEVURANDOM "/dev/urandom"
+
+
+/*
+ * You shouldn't change anything past this point
+ */
 
 /* Bit maps for Card Features.  It is OK to insert values at will. */
 #define X99_CF_NONE		0
@@ -142,6 +144,12 @@ extern int x99_upd_last_async(const char *syncdir, const char *username);
 /* x99_site.c */
 extern int x99_challenge_transform(const char *username,
 				   char challenge[MAX_CHALLENGE_LEN + 1]);
+
+/* x99_pwe.c */
+extern void x99_pwe_init(void);
+extern int x99_pw_present(const REQUEST *request);
+extern int x99_pw_valid(const REQUEST *request, int attr,
+			const char *password,  VALUE_PAIR **vps);
 
 #endif /* X99_H */
 
