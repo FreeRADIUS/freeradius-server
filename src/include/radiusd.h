@@ -134,9 +134,6 @@ typedef struct main_config_t {
 #define L_PROXY			5
 #define L_CONS			128
 
-#define PW_ENCODED	0
-#define PW_DECODED	1
-
 #ifndef FALSE
 #define FALSE 0
 #endif

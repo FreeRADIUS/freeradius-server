@@ -759,6 +759,13 @@ int rad_authenticate(REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
+
+/*
+ *	These definitions are local, and shouldn't be used by anyone else.
+ */
+#define PW_ENCODED	0
+#define PW_DECODED	1
+
 /*
  * Find the password pair, decode pass if
  * needed, and return the value pair.  If
