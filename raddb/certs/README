@@ -1,0 +1,12 @@
+This directory contains a number of sample certificates for
+use by the rlm_eap_tls module.  These certificates should be used
+ONLY for testing purposes.
+
+If you're not using EAP-TLS, EAP-TTLS, or EAP-PEAP, then you may delete
+this entire directory.
+
+If you are using one or more of those authentication protocols, then
+the certificates included here should be replaced with ones signed
+by a real Certificate Authority.
+
+2004-01-25
