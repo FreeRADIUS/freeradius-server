@@ -1,0 +1,172 @@
+	SQL Module
+
+0. Introduction
+
+  The SQL module is composed of two parts: a generic SQL front-end
+  (rlm_sql), and a series of database-dependent back-end drivers,
+  (rlm_sql_mysql, rlm_sql_postgresql, etc.)
+
+  In order to build the drivers, you MUST ALSO install the development
+  versions of the database.  That is, you must have the appropriate
+  header files and client libraries for (say) MySQL.  The
+  rlm_sql_mysql driver is NOT a complete MySQL client implementation.
+  Instead, it is a small 'shim' between the FreeRADIUS rlm_sql module,
+  and the MySQL client libraries.
+
+
+  In general, the SQL schemas mirror the layout of the 'users' file.
+  So for configuring check items and reply items, see 'man 5 users',
+  and the examples in the 'users' file.
+
+
+1. Miscellaneous configuration
+
+  The SQL module has little documentation, sorry.  A helpful (but old)
+  web page is:
+
+	http://www.frontios.com/freeradius.html
+
+  but it hasn't been updated in over 6 months.  If anyone has
+  comments on this (or other) documentation, PLEASE email them to the
+  freeradius-devel list, so that they may be included here.
+
+
+2. What NOT to do.
+
+  One of the fields of the SQL schema is named 'op'  This is for the
+  'operator' used by the attributes.  e.g.:
+
+   Framed-IP-Address  =      1.2.3.4
+   ^ ATTRIBUTE ----^  ^ OP   ^ VALUE
+
+  If you want the server to be completely misconfigured, and to never
+  do what you want, leave the 'op' field blank.  If you want to be
+  rudely told to RTFM, then post questions on the mailing list, asking
+
+  "why doesn't my SQL configuration work when I leave the 'op' field empty?"
+
+
+  The short answer is that with the op field empty, the server does
+  not know what you want it to do with the attribute.  Should it be
+  added to the reply?  Maybe you wanted to compare the operator to one
+  in the request?   The server simply doesn't know.
+
+  So put a value in the field.  The value is the string form of the
+  operator: "=", ">=", etc.  See Section 3, below, for more details.
+
+
+3. Operators
+
+ The list of operators is given below.
+
+ Op	Example and documentation
+ --	-------------------------
+
+ =	"Attribute = Value"
+
+	Not allowed as a check item.
+
+	As a reply item, it means "add the item to the reply list, but
+	only if there is no other item of the same attribute."
+
+
+ :=	"Attribute := Value"
+
+	Always matches as a check item, and replaces in the
+	configuration items any attribute of the same name.  If no
+	attribute of that name appears in the request, then this
+	attribute is added.
+
+	As a reply item, it has an identical meaning, but for the
+	reply items, instead of the request items.
+
+ ==	"Attribute == Value"
+
+	As a check item, it matches if the named attribute is present
+	in the request, AND has the given value.
+
+	Not allowed as a reply item.
+
+
+ +=	"Attribute += Value"
+
+	Always matches as a check item, and adds the current attribute
+	with value to the list of configuration items.
+
+	As a reply item, it has an identical meaning, but the
+	attribute is added to the reply items.
+
+
+ !=	"Attribute != Value"
+
+	As a check item, matches if the given attribute is in the
+	request, AND does not have the given value.
+
+	Not allowed as a reply item.
+
+
+ >	"Attribute > Value"
+
+	As a check item, it matches if the request contains an
+	attribute with a value greater than the one given.
+
+	Not allowed as a reply item.
+
+
+ >=	"Attribute >= Value"
+
+	As a check item, it matches if the request contains an
+	attribute with a value greater than, or equal to the one
+	given.
+
+	Not allowed as a reply item.
+
+ <	"Attribute < Value"
+
+	As a check item, it matches if the request contains an
+	attribute with a value less than the one given.
+
+	Not allowed as a reply item.
+
+
+ <=	"Attribute <= Value"
+
+	As a check item, it matches if the request contains an
+	attribute with a value less than, or equal to the one given.
+
+	Not allowed as a reply item.
+
+
+ =~	"Attribute =~ Expression"
+
+	As a check item, it matches if the request contains an
+	attribute which matches the given regular expression.  This
+	operator may only be applied to string attributes.
+
+	Not allowed as a reply item.
+
+
+ !~	"Attribute !~ Expression"
+
+	As a check item, it matches if the request contains an
+	attribute which does not match the given regular expression.
+	This operator may only be applied to string attributes.
+
+	Not allowed as a reply item.
+
+
+ =*	"Attribute =* Value"
+
+	As a check item, it matches if the request contains the named
+	attribute, no matter what the value is.
+
+	Not allowed as a reply item.
+
+
+ !*	"Attribute !* Value"
+
+	As a check item, it matches if the request does not contain
+	the named attribute, no matter what the value is.
+
+	Not allowed as a reply item.
+
