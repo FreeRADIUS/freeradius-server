@@ -212,10 +212,10 @@ static int hints_setup(VALUE_PAIR *request_pairs)
 	 *	See if we need to adjust the name.
 	 */
 	do_strip = 1;
-	if ((tmp = pairfind(i->reply, PW_STRIP_USERNAME)) != NULL
+	if ((tmp = pairfind(i->reply, PW_STRIP_USER_NAME)) != NULL
 	     && tmp->lvalue == 0)
 		do_strip = 0;
-	if ((tmp = pairfind(i->check, PW_STRIP_USERNAME)) != NULL
+	if ((tmp = pairfind(i->check, PW_STRIP_USER_NAME)) != NULL
 	     && tmp->lvalue == 0)
 		do_strip = 0;
 
@@ -231,7 +231,7 @@ static int hints_setup(VALUE_PAIR *request_pairs)
 	 *	Now add all attributes to the request list,
 	 *	except the PW_STRIP_USERNAME one.
 	 */
-	pairdelete(&add, PW_STRIP_USERNAME);
+	pairdelete(&add, PW_STRIP_USER_NAME);
 	for(last = request_pairs; last && last->next; last = last->next)
 		;
 	if (last) last->next = add;

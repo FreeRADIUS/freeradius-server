@@ -101,9 +101,14 @@
 
 #define	PW_LOGIN_USER			1
 #define	PW_FRAMED_USER			2
-#define	PW_DIALBACK_LOGIN_USER		3
-#define	PW_DIALBACK_FRAMED_USER		4
-
+#define	PW_CALLBACK_LOGIN_USER		3
+#define	PW_CALLBACK_FRAMED_USER		4
+#define PW_OUTBOUND_USER		5
+#define PW_ADMINISTRATIVE_USER		6
+#define PW_NAS_PROMPT_USER		7
+#define PW_AUTHENTICATE_ONLY		8
+#define PW_CALLBACK_NAS_PROMPT		9
+	      
 /*	Framed Protocols	*/
 
 #define	PW_PPP				1

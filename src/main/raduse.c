@@ -14,6 +14,7 @@
 #include <time.h>
 #include "sysutmp.h"
 #include "conf.h"
+#include "radpaths.h"
 
 #ifdef __svr4__
 #  define ut_time ut_xtime
