@@ -60,20 +60,13 @@ const char *progname;
 int debug_flag = 0;
 const char *radlog_dir = NULL;
 radlog_dest_t radlog_dest = RADLOG_FILES;
-const char *radutmp_file = NULL;
 
-int proxy_synchronous = TRUE;
-int proxy_fallback = FALSE;
 const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlib_dir = NULL;
 int auth_port = 0;
 int acct_port;
 uint32_t myip = INADDR_ANY;
-int proxy_retry_delay = RETRY_DELAY;
-int proxy_retry_count = RETRY_COUNT;
-int proxy_dead_time;
-int max_proxies = MAX_PROXIES;
 int log_stripped_names;
 struct main_config_t mainconfig;
 
