@@ -307,83 +307,15 @@ static int presufcmp(VALUE_PAIR *check, char *name, char *rest)
 }
 
 /*
- *	Match a username with a wildcard expression.
- *	Is very limited for now.
- */
-static int matches(char *name, PAIR_LIST *pl, char *matchpart)
-{
-	int len, wlen;
-	int ret = 0;
-	char *wild = pl->name;
-	VALUE_PAIR *tmp;
-
-	/*
-	 *	We now support both:
-	 *
-	 *		DEFAULT	Prefix = "P"
-	 *
-	 *	and
-	 *		P*
-	 */
-	if ((tmp = pairfind(pl->check, PW_PREFIX)) != NULL ||
-	    (tmp = pairfind(pl->check, PW_SUFFIX)) != NULL) {
-
-		if (strncmp(pl->name, "DEFAULT", 7) == 0 ||
-		    strcmp(pl->name, name) == 0)
-			return !presufcmp(tmp, name, matchpart);
-	}
-
-	/*
-	 *	Shortcut if there's no '*' in pl->name.
-	 */
-	if (strchr(pl->name, '*') == NULL &&
-	    (strncmp(pl->name, "DEFAULT", 7) == 0 ||
-	     strcmp(pl->name, name) == 0)) {
-		strcpy(matchpart, name);
-		return 1;
-	}
-
-	/*
-	 *	Normally, we should return 0 here, but we
-	 *	support the old * stuff.
-	 */
-	len = strlen(name);
-	wlen = strlen(wild);
-
-	if (len == 0 || wlen == 0) return 0;
-
-	if (wild[0] == '*') {
-		wild++;
-		wlen--;
-		if (wlen <= len && strcmp(name + (len - wlen), wild) == 0) {
-			strcpy(matchpart, name);
-			matchpart[len - wlen] = 0;
-			ret = 1;
-		}
-	} else if (wild[wlen - 1] == '*') {
-		if (wlen <= len && strncmp(name, wild, wlen - 1) == 0) {
-			strcpy(matchpart, name + wlen - 1);
-			ret = 1;
-		}
-	}
-
-	return ret;
-}
-
-
-/*
  *	Add hints to the info sent by the terminal server
- *	based on the pattern of the username.
+ *	based on the pattern of the username, and other attributes.
  */
 static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 {
-	char		newname[MAX_STRING_LEN];
 	char		*name;
 	VALUE_PAIR	*add;
-	VALUE_PAIR	*last;
 	VALUE_PAIR	*tmp;
 	PAIR_LIST	*i;
-	int		do_strip;
 	VALUE_PAIR *request_pairs;
 
 	request_pairs = request->packet->vps;
@@ -406,7 +338,10 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 		return RLM_MODULE_NOOP;
 
 	for (i = hints; i; i = i->next) {
-		if (matches(name, i, newname)) {
+		/*
+		 *	Use "paircmp", which is a little more general...
+		 */
+		if (paircmp(request, request_pairs, i->check, NULL) == 0) {
 			DEBUG2("  hints: Matched %s at %d",
 			       i->name, i->lineno);
 			break;
@@ -417,50 +352,12 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 
 	add = paircopy(i->reply);
 
-#if 0 /* DEBUG */
-	printf("In hints_setup, newname is %s\n", newname);
-#endif
-
-	/*
-	 *	See if we need to adjust the name.
-	 */
-	do_strip = 1;
-	if ((tmp = pairfind(i->reply, PW_STRIP_USER_NAME)) != NULL
-	     && tmp->lvalue == 0)
-		do_strip = 0;
-	if ((tmp = pairfind(i->check, PW_STRIP_USER_NAME)) != NULL
-	     && tmp->lvalue == 0)
-		do_strip = 0;
-
-	if (do_strip) {
-		tmp = pairfind(request_pairs, PW_STRIPPED_USER_NAME);
-		if (tmp) {
-			strcpy((char *)tmp->strvalue, newname);
-			tmp->length = strlen((char *)tmp->strvalue);
-		} else {
-			/*
-			 *	No Stripped-User-Name exists: add one.
-			 */
-			tmp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
-			if (!tmp) {
-				radlog(L_ERR|L_CONS, "no memory");
-				exit(1);
-			}
-			strcpy((char *)tmp->strvalue, newname);
-			tmp->length = strlen((char *)tmp->strvalue);
-			pairadd(&request_pairs, tmp);
-		}
-		request->username = tmp;
-	}
-
 	/*
 	 *	Now add all attributes to the request list,
 	 *	except the PW_STRIP_USER_NAME one.
 	 */
 	pairdelete(&add, PW_STRIP_USER_NAME);
-	for(last = request_pairs; last && last->next; last = last->next)
-		;
-	if (last) last->next = add;
+	pairadd(&request->packet->vps, add);
 
 	return RLM_MODULE_UPDATED;
 }
