@@ -218,7 +218,6 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 			 *	Attributes we skip during comparison.
 			 *	These are "server" check items.
 			 */
-			case PW_PASSWORD:
 			case PW_CRYPT_PASSWORD:
 				check_item = check_item->next;
 				continue;
