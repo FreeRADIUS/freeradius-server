@@ -132,6 +132,7 @@ typedef struct {
 	LDAP_CONN	*conns;
 	int             ldap_debug; /* Debug flag for LDAP SDK */
 	char		*xlat_name; /* name used to xlat */
+       char            *auth_type;
 }               ldap_instance;
 
 static CONF_PARSER module_config[] = {
@@ -163,6 +164,7 @@ static CONF_PARSER module_config[] = {
 	{"dictionary_mapping", PW_TYPE_STRING_PTR, offsetof(ldap_instance,dictionary_mapping), NULL, "${confdir}/ldap.attrmap"},
 	{"ldap_debug", PW_TYPE_INTEGER, offsetof(ldap_instance,ldap_debug), NULL, "0x0000"},
 	{"ldap_connections_number", PW_TYPE_INTEGER, offsetof(ldap_instance,num_conns), NULL, "5"},
+       {"authtype", PW_TYPE_STRING_PTR, offsetof(ldap_instance,auth_type), NULL, NULL},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -992,11 +994,22 @@ ldap_authorize(void *instance, REQUEST * request)
 
 
 	/*
-	 * Module should default to LDAP authentication if no Auth-Type
-	 * specified
+        * if authtype is present in config, it is used to overrite Auth-Type
 	 */
-	if (pairfind(*check_pairs, PW_AUTHTYPE) == NULL)
-		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
+       if (inst->auth_type){
+               if (pairfind(*check_pairs, PW_AUTHTYPE))
+                       pairdelete(check_pairs, PW_AUTHTYPE);
+               reply_tmp = pairmake("Auth-Type", inst->auth_type, T_OP_EQ);
+               rad_assert(reply_tmp != NULL);
+               pairadd(check_pairs, reply_tmp);
+       } else{
+               /*
+                * Module should default to LDAP authentication if no Auth-Type
+                * specified
+                */
+               if (pairfind(*check_pairs, PW_AUTHTYPE) == NULL)
+                       pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
+       }
 
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
@@ -1299,6 +1312,7 @@ ldap_detach(void *instance)
 #endif
 	xlat_unregister(inst->xlat_name,ldap_xlat);
 	free(inst->xlat_name);
+       free(inst->auth_type);
 
 	free(inst);
 
