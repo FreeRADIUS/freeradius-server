@@ -1,10 +1,12 @@
+#include "autoconf.h"
+
 #include <stdio.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <mysql/mysql.h>
 
 #include "radiusd.h"
 #include "modules.h"
-#include "autoconf.h"
 #include "rlm_mysql.h"
 
 
@@ -249,7 +251,7 @@ static int icradius_detach(void)
 }
 
 
-static int icradius_authorize(AUTH_REQ *authreq, char *name, VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs) {
+static int icradius_authorize(REQUEST *request, char *name, VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs) {
 
 	int		nas_port = 0;
 	VALUE_PAIR	*check_tmp = NULL;
@@ -273,7 +275,7 @@ static int icradius_authorize(AUTH_REQ *authreq, char *name, VALUE_PAIR **check_
 	/*
 	 *	Find the NAS port ID.
 	 */
-	if ((tmp = pairfind(authreq->request, PW_NAS_PORT_ID)) != NULL)
+	if ((tmp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
 		nas_port = tmp->lvalue;
 
 	/*
@@ -333,17 +335,17 @@ static int icradius_authorize(AUTH_REQ *authreq, char *name, VALUE_PAIR **check_
 	return 0;
 }
 
-static int icradius_authenticate(AUTH_REQ *authreq, char *user, char *password)
+static int icradius_authenticate(REQUEST *request, char *user, char *password)
 {
 	VALUE_PAIR	*auth_pair;
 	MYSQL_RES	*result;
-	MYSQL_ROW	row
+	MYSQL_ROW	row;
 	char		querystr[256];
 
-	if ((aut_pair = pairfind(authreq->request, PW_AUTH_TYPE)) == NULL)
+	if ((auth_pair = pairfind(request->packet->vps, PW_AUTHTYPE)) == NULL)
 	   return RLM_AUTH_REJECT;
 
-	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", mysql_authcheck_table, sqlrecord->UserName);
+	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", mysql_authcheck_table, user);
 	if (sqltrace)
 		DEBUG(querystr);
 	mysql_query(MyAcctSock, querystr);
@@ -367,7 +369,7 @@ static int icradius_authenticate(AUTH_REQ *authreq, char *user, char *password)
 
 }
 
-static int icradius_accounting(AUTH_REQ *authreq) {
+static int icradius_accounting(REQUEST *request) {
 
 	time_t		nowtime;
 	struct tm	*tim;
@@ -382,8 +384,8 @@ static int icradius_accounting(AUTH_REQ *authreq) {
 	VALUE_PAIR	*pair;
 
 
-	pair = authreq->request;
-	strncpy(sqlrecord.Realm, authreq->realm, SQLBIGREC);
+	pair = request->packet->vps;
+	strcpy(sqlrecord.Realm, "");
 	while(pair != (VALUE_PAIR *)NULL) {
 
 				
@@ -452,12 +454,13 @@ static int icradius_accounting(AUTH_REQ *authreq) {
                 	strncpy(sqlrecord.CallingStationId, pair->strvalue, SQLLILREC);
                 	break;
 
-                case PW_ACCT_TERMINATE_CAUSE:
+/*                case PW_ACCT_TERMINATE_CAUSE:
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
 						if(valbuf != (char *)NULL) {
                 		strncpy(sqlrecord.AcctTerminateCause, valbuf, SQLBIGREC);
 						}
 						break;
+*/
 
                 case PW_SERVICE_TYPE:
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
@@ -518,7 +521,7 @@ static int icradius_accounting(AUTH_REQ *authreq) {
 #if defined(F_LOCK) && !defined( BSD)
 				(void)lockf((int)backupfile, (int)F_LOCK, (off_t)SQL_LOCK_LEN);
 #else
-				(void)flock(backupfile, SQL_LOCK_EX);
+				(void)flock(backupfile, SQL_LOCK_LEN);
 #endif  
 
 				log(L_INFO, "Acct:  Clearing out sql backup file - %s", MYSQLBACKUP);

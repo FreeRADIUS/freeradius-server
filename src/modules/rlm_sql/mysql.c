@@ -21,8 +21,7 @@
 #include	<errno.h>
 #include	<sys/wait.h>
 
-#include	"conf.h"
-
+#include	"rlm_mysql.h"
 #include	"radiusd.h"
 
 
