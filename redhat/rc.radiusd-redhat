@@ -3,7 +3,7 @@
 # radiusd	Start the radius daemon.
 #
 #		This is a script suitable for the Redhat Linux distribution.
-#		Copy it to /etc/rc.d/init.d/radiusd.init and
+#		Copy it to /etc/rc.d/init.d/radiusd and
 #		use tksysv or your favorite runlevel editor to start it
 #		at runlevel 3
 #
