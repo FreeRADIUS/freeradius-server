@@ -249,11 +249,13 @@ static int sim_file_authorize(void *instance, REQUEST *request)
 		pairadd (config_pairs, reply_tmp);
 	}
 
+#if 0
 	DEBUG("rlm_sim_files: saw config");
 	vp_printlist(stdout, *config_pairs);
 
 	DEBUG("rlm_sim_files: saw reply");
 	vp_printlist(stdout, *reply_pairs);
+#endif
 
 	return RLM_MODULE_OK;
 }
