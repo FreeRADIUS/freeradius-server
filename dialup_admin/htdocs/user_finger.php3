@@ -81,8 +81,16 @@ if ($link){
 				$nas_type = 'cisco';
 
 			$users=exec("$config[general_snmpfinger_bin] $name_data $community_data $nas_type");
-			if (strlen($users))
+			if (strlen($users)){
 				$extra = "AND username IN ($users)";
+				if ($config[general_strip_realms] == 'yes'){
+					if ($config[general_realm_format] == 'prefix')
+						$match = "'[^']+" . $config[general_realm_delimiter];
+					else
+						$match = $config[general_realm_delimiter] . "[^']+'";
+					$extra = preg_replace("/$match/","'",$extra);
+				}
+			}
 		}
 		$search = @da_sql_query($link,$config,
 		"SELECT DISTINCT username,acctstarttime,framedipaddress,callingstationid

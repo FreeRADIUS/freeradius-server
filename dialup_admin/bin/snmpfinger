@@ -34,7 +34,7 @@ elsif ($type eq 'lucent'){
 	$walk =`$snmpwalkcmd .iso.org.dod.internet.private.enterprises.529.10.4.1.12`;
 }
 
-while($walk=~/\"([\w\-]+?)\"/g){
+while($walk=~/\"([\@\.\w\-]+?)\"/g){
  $user=lc($1);
  if($out) {
   $out=$out.",'$user'";
