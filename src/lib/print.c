@@ -199,11 +199,7 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 
 	if( vp->flags.has_tag ) {
 
-#ifdef MERIT_STYLE_TAGS
-	        snprintf(out, outlen, "%s = :%d:", vp->name, vp->flags.tag);
-#else
 		snprintf(out, outlen, "%s:%d = ", vp->name, vp->flags.tag);
-#endif
 		
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
