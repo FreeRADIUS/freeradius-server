@@ -328,13 +328,31 @@ static int attr_rewrite_ismul(void *instance, REQUEST *request)
 	return do_attr_rewrite(instance, request);
 }
 
+static int attr_rewrite_preproxy(void *instance, REQUEST *request)
+{
+	return do_attr_rewrite(instance, request);
+}
+
+static int attr_rewrite_postproxy(void *instance, REQUEST *request)
+{
+	return do_attr_rewrite(instance, request);
+}
+
+static int attr_rewrite_postauth(void *instance, REQUEST *request)
+{
+	return do_attr_rewrite(instance, request);
+}
+
 static int attr_rewrite_detach(void *instance)
 {
 	rlm_attr_rewrite_t *data = (rlm_attr_rewrite_t *) instance;
 
-	free(data->attribute);
-	free(data->search);
-	free(data->replace);
+	if (data->attribute)
+		free(data->attribute);
+	if (data->search)
+		free(data->search);
+	if (data->replace)	
+		free(data->replace);
 	if (data->name)
 		free(data->name);
 
@@ -362,9 +380,9 @@ module_t rlm_attr_rewrite = {
 		attr_rewrite_preacct,		/* preaccounting */
 		attr_rewrite_accounting,	/* accounting */
 		attr_rewrite_ismul,		/* checksimul */
-		NULL,				/* pre-proxy */
-		NULL,				/* post-proxy */
-		NULL				/* post-auth */
+		attr_rewrite_preproxy,		/* pre-proxy */
+		attr_rewrite_postproxy,		/* post-proxy */
+		attr_rewrite_postauth		/* post-auth */
 	},
 	attr_rewrite_detach,			/* detach */
 	NULL,				/* destroy */
