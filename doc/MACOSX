@@ -1,16 +1,19 @@
 	Installing FreeRADIUS on MAC OSX
 	--------------------------------
 
-0) download, unzip and untar freeradius.tar.gz
+1) download, unzip and untar freeradius.tar.gz
 
-1) $ ./configure --disable-shared   (So static libraries are built)
+2) $ ./configure --disable-shared
 
-2) $ cd ./src
+   To build static libraries.  MAC OSX has a strange dynamic library
+   system, which FreeRADIUS doesn't currently support.
 
 3) $ make
 
-4) There may be issues building the rlm_eap module.  The simplest way
-   to work around them is to delete the src/modules/rlm_eap directory.
+4) There may be issues building the rlm_eap and rlm_sql modules.  The
+   simplest way to work around them is to edit '../Make.inc'.
+   The last line should start off with "MODULES".  Delete 'rlm_eap'
+   and 'rlm_sql' from that line, and do 'make' again.
 
 5) $ make install
 
@@ -19,7 +22,7 @@ in the FAQ.
 
 7) Assuming everything works, set up your clients.conf and other config
 files as appropriate to suit your needs and set radiusd to run on boot and
-you're done.
+you're done.  See 'README' in this directory.
 
 That's about it.  FreeRADIUS works for me and I'm happy now.  :-)
 
