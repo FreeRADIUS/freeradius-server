@@ -52,20 +52,14 @@ static const char rcsid[] = "$Id$";
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct perl_config {
+typedef struct perl_inst {
 	char	*cmd;
 	char	*persistent;
 	char	*xlat_name;
-} PERL_CONFIG;
 
-/*
- * Some other things will be added in future 
- */
-typedef struct perl_inst {
 	PerlInterpreter	 	*perl;
 	HV			*env_hv;
 	HV			*result_hv;
-	PERL_CONFIG		*config;
 } PERL_INST;
 
 /*
@@ -78,8 +72,8 @@ typedef struct perl_inst {
  *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
-  { "cmd",  PW_TYPE_STRING_PTR, offsetof(PERL_CONFIG,cmd), NULL,  NULL},
-  { "persistent", PW_TYPE_STRING_PTR, offsetof(PERL_CONFIG,persistent), NULL, NULL},
+  { "cmd",  PW_TYPE_STRING_PTR, offsetof(PERL_INST,cmd), NULL,  NULL},
+  { "persistent", PW_TYPE_STRING_PTR, offsetof(PERL_INST,persistent), NULL, NULL},
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -228,14 +222,12 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	inst = rad_malloc(sizeof(PERL_INST));
 	memset(inst, 0, sizeof(PERL_INST));
 		
-	inst->config = rad_malloc(sizeof(PERL_CONFIG));
-	memset(inst->config, 0, sizeof(PERL_CONFIG));
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
-	if (cf_section_parse(conf, inst->config, module_config) < 0) {
-		free(inst->config);
+	if (cf_section_parse(conf, inst, module_config) < 0) {
+		free(inst);
 		return -1;
 	}
 	
@@ -256,7 +248,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	PERL_SET_CONTEXT(inst->perl);
 
 	embed[0] = NULL;
-	embed[1] = inst->config->persistent;
+	embed[1] = inst->persistent;
 	
 	exitstatus = perl_parse(inst->perl, xs_init, 2, embed, NULL);
 
@@ -264,7 +256,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	if(!exitstatus) {
 		exitstatus = perl_run(inst->perl);
 	} else {
-		radlog(L_INFO,"perl_parse failed: %s not found or has syntax errors. \n", inst->config->persistent);
+		radlog(L_INFO,"perl_parse failed: %s not found or has syntax errors. \n", inst->persistent);
 		return (-1);
 	}
 
@@ -275,7 +267,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	if (xlat_name == NULL) 
 		xlat_name = cf_section_name1(conf);
 	if (xlat_name){ 
-		inst->config->xlat_name = strdup(xlat_name);
+		inst->xlat_name = strdup(xlat_name);
 		xlat_register(xlat_name, perl_xlat, inst); 
 	} 
 	*instance = inst;
@@ -322,7 +314,7 @@ static int rlmperl_call(void *instance, REQUEST *request)
 	int		exitstatus = 0, comma = 0;
 	STRLEN n_a;
 
-	args[0] = inst->config->cmd;
+	args[0] = inst->cmd;
 	
 	perl_env(request->packet->vps, inst);
 	
@@ -458,16 +450,22 @@ static int perl_accounting(void *instance, REQUEST *request)
 static int perl_detach(void *instance)
 {
 	PERL_INST *inst=instance;
+
 	PERL_SET_CONTEXT(inst->perl);
 	perl_destruct(inst->perl);
         PERL_SET_CONTEXT(inst->perl);
 	perl_free(inst->perl);
 
-	free(inst->config);	
 	hv_clear(inst->env_hv);
 	hv_clear(inst->result_hv);
+
+	xlat_unregister(inst->xlat_name, perl_xlat);
+	free(inst->xlat_name);
+
+	free(inst->cmd);
+	free(inst->persistent);
+
 	free(inst);
-	free(instance);
 	return 0;
 }
 
