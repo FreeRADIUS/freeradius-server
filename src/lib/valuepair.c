@@ -291,22 +291,6 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			  continue;
 			  break;
 #endif
-
-			default:
-			  DEBUG("Unknown operator for attribute %s: "
-				"using '='\n", i->name);
-
-			  /*
-			   *  If a similar attribute is found,
-			   *  ignore the new one.  Otherwise,
-			   *  add the new one to the list.
-			   */
-			case T_OP_REG_EQ:	/* =~ */
-			case T_OP_GT:		/* > */
-			case T_OP_GE:		/* >= */
-			case T_OP_LT:		/* < */
-			case T_OP_LE:		/* <= */
-			case T_OP_NE:		/* != */
 			case T_OP_EQ:		/* = */
 				if (found) {
 					tailfrom = i;
@@ -318,6 +302,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			    *  Add the new element to the list, even
 			    *  if similar ones already exist.
 			    */
+			default:
 			case T_OP_ADD:		/* += */
 				break;
 			}
