@@ -1256,8 +1256,8 @@ modules {
 	#
 	ippool main_pool {
 
-	       #  range-start,range-stop: The start and end ip
-	       #  addresses for the ip pool
+		#  range-start,range-stop: The start and end ip
+		#  addresses for the ip pool
 		range-start = 192.168.1.1
 		range-stop = 192.168.3.254
 
@@ -1278,7 +1278,6 @@ modules {
 		# override: Will this ippool override a Framed-IP-Address already set
 		override = no
 	}
- 
 
 	# ANSI X9.9 token support.  Not included by default.
 	# $INCLUDE  ${confdir}/x99.conf
@@ -1506,7 +1505,8 @@ accounting {
 	#  may be incorrect.  There's little we can do about it.
 	radutmp
 #	sradutmp
-	  #  Return an address to the IP Pool when we see a stop record.
+
+	#  Return an address to the IP Pool when we see a stop record.
 #	main_pool
 }
 
@@ -1524,7 +1524,7 @@ session {
 #  Once we KNOW that the user has been authenticated, there are
 #  additional steps we can take.
 post-auth {
-	  #  Get an address from the IP Pool.
+	#  Get an address from the IP Pool.
 #	main_pool
 }
 
