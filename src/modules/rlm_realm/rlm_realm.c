@@ -78,6 +78,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	 */
 	if ((request->proxy != NULL) ||
 	    (request->username == NULL)) {
+		DEBUG2("    rlm_realm: Request was proxied, or no user name.  Ignoring.");
 		return NULL;
 	}
 
@@ -119,13 +120,20 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		break;
 	}
 
+	DEBUG2("    rlm_realm: Looking up realm %s for User-Name = \"%s\"",
+	       (realmname == NULL) ? "NULL" : realmname,
+	       request->username->strvalue);
+
 	/*
 	 *	Allow NULL realms.
 	 */
 	realm = realm_find(realmname);
 	if (!realm) {
+		DEBUG2("    rlm_realm: No such realm %s",
+		       (realmname == NULL) ? "NULL" : realmname);
 		return NULL;
 	}
+	DEBUG2("    rlm_realm: Found realm %s", realm->realm);
 	
 	/*
 	 *	If we've been told to strip the realm off, then do so.
@@ -143,8 +151,10 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 				exit(1);
 			}
 			pairadd(&request->packet->vps, vp);
+			DEBUG2("    rlm_realm: Adding Stripped-User-Name = \"%s\"", username);
 		} else {
 			vp = request->username;
+			DEBUG2("    rlm_realm: Setting Stripped-User-Name = \"%s\"", username);
 		}
 
 		strcpy(vp->strvalue, username);
@@ -161,6 +171,8 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	if ((realm->notrealm) ||
 	    (strcmp(realm->server, "LOCAL") == 0)) {
 		pairadd(&request->packet->vps, pairmake("Realm", realm->realm, T_OP_EQ));
+		DEBUG2("    rlm_realm: Adding Realm = \"%s\"",
+		       realm->realm);
 		return NULL;
 	}
 
@@ -186,7 +198,6 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		DEBUG2("rlm_realm:  auth_port is not set.  proxy cancelled");
 		return NULL;
 	}
-
 
 	return realm;
 }
@@ -284,7 +295,7 @@ static int realm_authorize(void *instance, REQUEST *request)
 	 */
 	realm = check_for_realm(instance, request);
 	if (!realm) {
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
