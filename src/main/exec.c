@@ -43,7 +43,8 @@ char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 		   VALUE_PAIR *request, VALUE_PAIR *reply)
 {
 	int n, i = 0, c;
-	const char *p;
+	const char *p, *q;
+	char buffer[256];
 	VALUE_PAIR *tmp;
 
 	for (p = fmt; *p; p++) {
@@ -142,6 +143,27 @@ char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 				else
 					strcpy(output + i, "unknown");
 				i += strlen(output + i);
+				break;
+			case '{': /* %{Attribute-Name} */
+				q = strchr(p, '}');
+				if (q != NULL) {
+					DICT_ATTR *dict;
+
+					strNcpy(buffer, p + 1,
+						q - p);
+					p = q;
+					dict = dict_attrbyname(buffer);
+					if (!dict) {
+						break;
+					}
+					tmp = pairfind(request, dict->attr);
+					if (!tmp) {
+						break;
+					}
+					i += vp_prints_value(output + i,
+							     outputlen - i,
+							     tmp, TRUE);
+				}
 				break;
 			default:
 				output[i++] = '%';
