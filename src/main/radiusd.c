@@ -768,6 +768,18 @@ void sig_cleanup(int sig)
 		if (pid == acct_pid)
 			sig_fatal(100);
 
+		/*
+		 *	Check to see if the child did a bad thing.
+		 *	If so, kill ALL processes in the current
+		 *	process group, to prevent further attacks.
+		 */
+		if (WIFSIGNALED(status)) {
+			log(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch signal %d: killing all active servers.\n",
+			    pid, WTERMSIG(status));
+			kill(0, SIGTERM);
+			exit(1);
+		}
+
 		curreq = first_request;
 		while (curreq != (REQUEST *)NULL) {
 			if (curreq->child_pid == pid) {
