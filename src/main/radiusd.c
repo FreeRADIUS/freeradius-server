@@ -92,6 +92,8 @@ int			proxy_retry_delay = RETRY_DELAY;
 int			proxy_retry_count = RETRY_COUNT;
 int			proxy_synchronous = TRUE;
 int			need_reload = FALSE;
+int			radius_port = 0;
+struct	servent		*svp;
 
 static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
@@ -237,6 +239,26 @@ static void reread_config(int reload)
 		return;
 
 	cf_section_parse(cs, server_config);
+	/*
+	 *	We prefer (in order) the port from the command-line,
+	 *	then the port from the configuration file, then
+	 *	the port that the system names "radius", then
+	 *	1645.
+	 */
+	svp = getservbyname ("radius", "udp");
+	if (radius_port) {
+		auth_port = radius_port;
+	} else {
+		radius_port = auth_port;
+	}
+
+	if (auth_port == 0) {
+		if (svp != NULL)
+			auth_port = ntohs(svp->s_port);
+		else
+			auth_port = PW_AUTH_UDP_PORT;
+	}
+		
 
 	/*
 	 *	Go update our behaviour, based on the configuration
@@ -408,7 +430,6 @@ int main(int argc, char **argv)
 	unsigned char		buffer[4096];
 	struct	sockaddr	salocal;
 	struct	sockaddr_in	*sa;
-	struct	servent		*svp;
 	fd_set			readfds;
 	struct timeval		tv;
 	int			result;
@@ -419,7 +440,6 @@ int main(int argc, char **argv)
 	int			fd = 0;
 	int			devnull;
 	int			status;
-	int			radius_port = 0;
 	int			syslog_facility = LOG_DAEMON;
  
 #ifdef OSFC2
@@ -599,7 +619,7 @@ int main(int argc, char **argv)
 		    "  %s", strerror(errno));
 		exit(1);
 	}
-		
+
 	/*
 	 *	Read the configuration files, BEFORE doing anything else.
 	 */
@@ -629,25 +649,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Open Authentication socket.
 	 *
-	 *	We prefer (in order) the port from the command-line,
-	 *	then the port from the configuration file, then
-	 *	the port that the system names "radius", then
-	 *	1645.
 	 */
-	svp = getservbyname ("radius", "udp");
-	if (radius_port) {
-		auth_port = radius_port;
-	} else {
-		radius_port = auth_port;
-	}
-
-	if (auth_port == 0) {
-		if (svp != NULL)
-			auth_port = ntohs(svp->s_port);
-		else
-			auth_port = PW_AUTH_UDP_PORT;
-	}
-
 	authfd = socket (AF_INET, SOCK_DGRAM, 0);
 	if (authfd < 0) {
 		perror("auth socket");
