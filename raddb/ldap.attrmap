@@ -68,3 +68,4 @@ replyItem	Framed-AppleTalk-Network	radiusFramedAppleTalkNetwork
 replyItem	Framed-AppleTalk-Zone		radiusFramedAppleTalkZone
 replyItem	Port-Limit			radiusPortLimit
 replyItem	Login-LAT-Port			radiusLoginLATPort
+replyItem	Reply-Message			radiusReplyMessage

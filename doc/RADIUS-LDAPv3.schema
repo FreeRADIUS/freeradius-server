@@ -538,6 +538,13 @@ attributetype
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
+attributetype
+   ( 1.3.6.1.4.1.3317.4.3.1.62
+      NAME 'radiusReplyMessage'
+      DESC ''
+      EQUALITY caseIgnoreIA5Match
+      SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+   )
 
 
 objectclass
@@ -568,5 +575,6 @@ objectclass
             radiusTunnelMediumType $ radiusTunnelPassword $ radiusTunnelPreference $
             radiusTunnelPrivateGroupId $ radiusTunnelServerEndpoint $
             radiusTunnelType $ radiusUserCategory $ radiusVSA $
-            radiusExpiration $ dialupAccess $ radiusNASIpAddress )
+            radiusExpiration $ dialupAccess $ radiusNASIpAddress $
+            radiusReplyMessage )
    )
