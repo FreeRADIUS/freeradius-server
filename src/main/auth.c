@@ -292,30 +292,38 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	/*
-	 *	If this request got proxied to another server, we need
+	 *	If this request got proxied to another server,
+	 *	AND it was an authentication request, then we need
 	 *	to add an initial Auth-Type: Auth-Accept for success,
 	 *	Auth-Reject for fail. We also need to add the reply
 	 *	pairs from the server to the initial reply.
 	 */
-	if (request->proxy_reply) {
-		if (request->proxy_reply->code == PW_AUTHENTICATION_REJECT ||
-		    request->proxy_reply->code == PW_AUTHENTICATION_ACK) {
-			tmp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
-			if (tmp == NULL) {
-				log(L_ERR|L_CONS, "no memory");
-				exit(1);
-			}
+	if ((request->proxy_reply) &&
+	    (request->packet->code == PW_AUTHENTICATION_REQUEST)) {
+		tmp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
+		if (tmp == NULL) {
+			log(L_ERR|L_CONS, "no memory");
+			exit(1);
 		}
+
+		/*
+		 *	Reply of ACCEPT means accept, ALL other
+		 *	replies mean reject.  This is fail-safe.
+		 */
 		if (request->proxy_reply->code == PW_AUTHENTICATION_ACK)
 			tmp->lvalue = PW_AUTHTYPE_ACCEPT;
-		else		/* failsafe: all others mean reject */
+		else
 			tmp->lvalue = PW_AUTHTYPE_REJECT;
+		pairadd(&request->config_items, tmp);
 
+		/*
+		 *	Initialize our reply to the user, by taking
+		 *	the reply attributes from the proxy.
+		 */
 		if (request->proxy_reply->vps) {
 			user_reply = request->proxy_reply->vps;
 			request->proxy_reply->vps = NULL;
 		}
-		pairadd(&request->config_items, tmp);
 	}
 
 	/*
