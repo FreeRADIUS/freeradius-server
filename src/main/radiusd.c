@@ -506,11 +506,9 @@ int main(int argc, char *argv[])
 	fd_set readfds;
 	int result;
 	int argval;
-	int t;
 	int pid;
 	int i;
 	int fd = 0;
-	int devnull;
 	int status;
 	int radius_port = 0;
 	struct servent *svp;
@@ -521,14 +519,6 @@ int main(int argc, char *argv[])
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
 #endif
-
-	/*
-	 *  Open /dev/null, and make sure filedescriptors
-	 *  0, 1 and 2 are connected to something.
-	 */
-	devnull = 0;
-	while (devnull >= 0 && devnull < 3)
-		devnull = open("/dev/null", O_RDWR);
 
 	if ((progname = strrchr(argv[0], '/')) == NULL)
 		progname = argv[0];
@@ -549,11 +539,6 @@ int main(int argc, char *argv[])
 	 * (Threads shouldn't get signals (from us) -- just be pthread_cancel()led.)
 	 */
 	signal(SIGCHLD, sig_cleanup);
-
-	/*  Close unused file descriptors.  */
-	for (t = 32; t >= 3; t--)
-		if(t!=devnull) 
-			close(t);
 
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:p:sSvxXyz")) != EOF) {
@@ -831,22 +816,6 @@ int main(int argc, char *argv[])
 	radius_snmp_init();
 #endif
 
-#if 0
-	/*
-	 *  Connect 0, 1 and 2 to /dev/null.
-	 */
-	if (!debug_flag && devnull >= 0) {
-		dup2(devnull, 0);
-		if (strcmp(radlog_dir, "stdout") != 0) {
-			dup2(devnull, 1);
-		}
-		if (strcmp(radlog_dir, "stderr") != 0) {
-			dup2(devnull, 2);
-		}
-		if (devnull > 2) close(devnull);
-	}
-#endif
-
 	/*
 	 *  Disconnect from session
 	 */
@@ -893,6 +862,25 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/*
+	 *	If we're running as a daemon, close the default file
+	 *	descriptors, AFTER forking.
+	 */
+	if (debug_flag == FALSE) {
+		int devnull;
+		
+		devnull = open("/dev/null", O_RDWR);
+		if (devnull < 0) {
+			radlog(L_ERR|L_CONS, "Failed opening /dev/null: %s\n",
+			       strerror(errno));
+			exit(1);
+		}
+		dup2(devnull, STDIN_FILENO);
+		dup2(devnull, STDOUT_FILENO);
+		dup2(devnull, STDERR_FILENO);
+		close(devnull);
+	}
+
 #if HAVE_PTHREAD_H
 	/*
 	 *  If we're spawning children, set up the thread pool.
@@ -924,14 +912,6 @@ int main(int argc, char *argv[])
 	}
 
 	radlog(L_INFO, "Ready to process requests.");
-
-
-	/* if we're running as a daemon, close other file descriptors. */
-	if (debug_flag == FALSE) {
-		close(STDIN_FILENO);
-		close(STDOUT_FILENO);
-		close(STDERR_FILENO);
-	}
 
 	/*
 	 *  Receive user requests
