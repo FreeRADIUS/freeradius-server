@@ -19,6 +19,7 @@ Ver 1.72:
   if a function is missing. Currently only array_change_key_case() is included
 * Set general_restrict_nasadmin_access to no by default. It causes confusion.
 * Set the general_username_mappings_file variable
+* Fix a small error in lib/sql/find.php3. This closes bug #103
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for

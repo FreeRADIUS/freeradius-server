@@ -11,7 +11,7 @@ if ($link){
 	$search = da_sql_escape_string($search);
 	if (!is_numeric($max_results))
 		$max_results = 10;
-	if (($search_IN == 'name' || $search_IN == 'department' || $search_IN == 'username) && 
+	if (($search_IN == 'name' || $search_IN == 'department' || $search_IN == 'username') && 
 			$config[sql_use_user_info_table] == 'true'){
 		$res = @da_sql_query($link,$config,
 		"SELECT username FROM $config[sql_user_info_table] WHERE
