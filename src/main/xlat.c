@@ -349,20 +349,13 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		/*
 		 *	Nothing else, it MUST be a bare attribute name.
 		 */
+	} else if (decode_attr_packet(&attrname[6], &q, freespace, request->reply, func)) {
+		found = 1;
 	} else {
-		tmpda = dict_attrbyname(attrname);
-		
-		if (tmpda) {
-			if ((tmppair = pairfind(request->packet->vps,tmpda->attr)) != NULL) {
-				q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
-				found = 1;
-			} /* else silently fail */
-		} else {
-			/*
-			 *	No attribute by that name, return an error.
-			 */
-			DEBUG2("WARNING: Attempt to use unknown xlat function or attribute in string %%{%s}", attrname);
-		}
+		/*
+		 *	No attribute by that name, return an error.
+		 */
+		DEBUG2("WARNING: Attempt to use unknown xlat function or attribute in string %%{%s}", attrname);
 	}
 
 	/*
