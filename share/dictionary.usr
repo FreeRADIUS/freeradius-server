@@ -21,9 +21,6 @@ ATTRIBUTE	Char-Noecho		250	integer
 
 VALUE		Termination-Action	Manage-Resources	2
 
-VALUE		Service-Type		Authenticate-User	8
-VALUE		Service-Type		Dialback-NAS-User	9
-
 VALUE		Acct-Status-Type	Modem-Start		4
 VALUE		Acct-Status-Type	Modem-Stop		5
 VALUE		Acct-Status-Type	Cancel			6
@@ -33,16 +30,20 @@ VALUE		Multi-Link-Flag		False			0
 
 #	USR specific Authentication Types
 
-VALUE		Acct-Authentic		None			0
-VALUE		Acct-Authentic		Remote			3
-VALUE		Acct-Authentic		RADIUS			4
-VALUE		Acct-Authentic		MNET			5
-VALUE		Acct-Authentic		KCHAP			6
-VALUE		Acct-Authentic		TACACS			7
-VALUE		Acct-Authentic		Realm			8
-VALUE		Acct-Authentic		Local			9
-VALUE		Acct-Authentic		File			10
-VALUE		Acct-Authentic		Local-VPN		11
+#
+#  These are commented out because the conflict with the standard
+#  definitions.
+#
+#VALUE		Acct-Authentic		None			0
+#VALUE		Acct-Authentic		Remote			3
+#VALUE		Acct-Authentic		RADIUS			4
+#VALUE		Acct-Authentic		MNET			5
+#VALUE		Acct-Authentic		KCHAP			6
+#VALUE		Acct-Authentic		TACACS			7
+#VALUE		Acct-Authentic		Realm			8
+#VALUE		Acct-Authentic		Local			9
+#VALUE		Acct-Authentic		File			10
+#VALUE		Acct-Authentic		Local-VPN		11
 
 #
 #	USR Extensions: USR Vendor-Specific stuff.
@@ -1271,15 +1272,6 @@ VALUE	USR-Request-Type			NAS-Reboot-Request	26
 VALUE	USR-Request-Type			NAS-Reboot-Response	27
 VALUE	USR-Request-Type			Tacacs-Message		253
 VALUE	USR-Request-Type			Reserved		255
-
-VALUE	NAS-Port-Type				Virtual			5
-VALUE	NAS-Port-Type				PIAFS			6
-VALUE	NAS-Port-Type				HDLC-Clear-Channel	7
-VALUE	NAS-Port-Type				X.25			8
-VALUE	NAS-Port-Type				X.75			9
-
-#VALUE	Prompt					No-Echo			0
-#VALUE	Prompt					Echo			1
 
 VALUE	USR-PW_Framed_Routing_V2		Off			0
 VALUE	USR-PW_Framed_Routing_V2		On			1
