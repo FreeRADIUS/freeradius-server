@@ -604,12 +604,17 @@ dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
 AC_CHECK_LIB(crypt, crypt,
   CRYPTLIB="-lcrypt"
 )
-AC_SUBST(CRYPTLIB)
 if test "$CRYPTLIB" != ""; then
   AC_DEFINE(HAVE_CRYPT)
 else
   AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT))
 fi
+
+dnl Check for libcipher
+AC_CHECK_LIB(cipher, setkey,
+   CRYPTLIB="${CRYPTLIB} -lcipher"
+)
+AC_SUBST(CRYPTLIB)
 
 if test "x$WITH_SNMP" = "xyes"; then
   SNMP_CHECKS
