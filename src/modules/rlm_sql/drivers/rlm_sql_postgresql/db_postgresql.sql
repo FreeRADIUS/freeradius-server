@@ -1,13 +1,10 @@
 /*
  * --- David Nicklay [ Wed Nov  3 23:18:46 EST 1999 ]
+ * 
  */
 
 /*
  * - Postgres wants C style comments.
- * - not sure how to do sequences without using SERIAL
- *   (i.e. these below are limited to int4 right now)
- *   numeric(10) doesn't seem to work for sequences...
- *   haven't tried int8 yet as a sequence type yet
  * - datetimeOS DEFAULT '0000-00-00 00:00:00' should be
  *   DEFAULT now() in postgres
  * - postgres apparently creates an index for each
@@ -21,20 +18,19 @@
  * Table structure for table 'dictionary'
  */
 CREATE TABLE dictionary (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   Type VARCHAR(30),
   Attribute VARCHAR(32),
   Value VARCHAR(32),
   Format VARCHAR(20),
-  Vendor VARCHAR(32),
-  PRIMARY KEY (id)
+  Vendor VARCHAR(32)
 );
 
 /*
  * Table structure for table 'nas'
  */
 CREATE TABLE nas (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   nasname VARCHAR(128),
   shortname VARCHAR(32),
   ipaddr VARCHAR(15),
@@ -42,15 +38,14 @@ CREATE TABLE nas (
   ports int4,
   secret VARCHAR(60),
   community VARCHAR(50),
-  snmp VARCHAR(10),
-  PRIMARY KEY (id)
+  snmp VARCHAR(10)
 );
 
 /*
  * Table structure for table 'radacct'
  */
 CREATE TABLE radacct (
-  RadAcctId SERIAL,
+  RadAcctId BIGSERIAL PRIMARY KEY,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
   UserName VARCHAR(32) DEFAULT '' NOT NULL,
@@ -58,8 +53,8 @@ CREATE TABLE radacct (
   NASIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
   NASPortId NUMERIC(12),
   NASPortType VARCHAR(32),
-  AcctStartTime TIMESTAMP(0),
-  AcctStopTime TIMESTAMP(0),
+  AcctStartTime timestamp without time zone NOT NULL,
+  AcctStopTime timestamp without time zone NOT NULL,
   AcctSessionTime NUMERIC(12),
   AcctAuthentic VARCHAR(32),
   ConnectInfo_start VARCHAR(32),
@@ -73,8 +68,7 @@ CREATE TABLE radacct (
   FramedProtocol VARCHAR(32),
   FramedIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
   AcctStartDelay NUMERIC(12),
-  AcctStopDelay NUMERIC(12),
-  PRIMARY KEY (RadAcctId)
+  AcctStopDelay NUMERIC(12)
 );
 create index radacct_UserName on radacct (UserName);
 create index radacct_AcctSessionId on radacct (AcctSessionId);
@@ -85,15 +79,22 @@ create index radacct_AcctStartTime on radacct (AcctStartTime);
 create index radacct_AcctStopTime on radacct (AcctStopTime);
 
 /*
+ * FIXME: IMHO this is WAAAY too many indexes
+ * These should be pared back.
+ * Field lengths and types need fixing to for speed reasons.
+ *  - pnixon 2003-07-11
+ */
+
+
+/*
  * Table structure for table 'radcheck'
  */
 CREATE TABLE radcheck (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   UserName VARCHAR(30) DEFAULT '' NOT NULL,
   Attribute VARCHAR(30),
   op VARCHAR(2) NOT NULL DEFAULT '==',
-  Value VARCHAR(40),
-  PRIMARY KEY (id)
+  Value VARCHAR(40)
 );
 create index radcheck_UserName on radcheck (UserName,Attribute);
 
@@ -101,12 +102,11 @@ create index radcheck_UserName on radcheck (UserName,Attribute);
  * Table structure for table 'radgroupcheck'
  */
 CREATE TABLE radgroupcheck (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   GroupName VARCHAR(20) DEFAULT '' NOT NULL,
   Attribute VARCHAR(40),
   op VARCHAR(2) NOT NULL DEFAULT '==',
-  Value VARCHAR(40),
-  PRIMARY KEY (id)
+  Value VARCHAR(40)
 );
 create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
 
@@ -114,12 +114,11 @@ create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
  * Table structure for table 'radgroupreply'
  */
 CREATE TABLE radgroupreply (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   GroupName VARCHAR(20) DEFAULT '' NOT NULL,
   Attribute VARCHAR(40),
   op VARCHAR(2) NOT NULL DEFAULT '=',
-  Value VARCHAR(40),
-  PRIMARY KEY (id)
+  Value VARCHAR(40)
 );
 create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
 
@@ -127,12 +126,11 @@ create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
  * Table structure for table 'radreply'
  */
 CREATE TABLE radreply (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   UserName VARCHAR(30) DEFAULT '' NOT NULL,
   Attribute VARCHAR(30),
   op VARCHAR(2) NOT NULL DEFAULT '=',
-  Value VARCHAR(40),
-  PRIMARY KEY (id)
+  Value VARCHAR(40)
 );
 create index radreply_UserName on radreply (UserName,Attribute);
 
@@ -140,10 +138,9 @@ create index radreply_UserName on radreply (UserName,Attribute);
  * Table structure for table 'usergroup'
  */
 CREATE TABLE usergroup (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   UserName VARCHAR(30) DEFAULT '' NOT NULL,
-  GroupName VARCHAR(30),
-  PRIMARY KEY (id)
+  GroupName VARCHAR(30)
 );
 create index usergroup_UserName on usergroup (UserName);
 
@@ -151,20 +148,18 @@ create index usergroup_UserName on usergroup (UserName);
  * Table structure for table 'realmgroup'
  */
 CREATE TABLE realmgroup (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   RealmName VARCHAR(30) DEFAULT '' NOT NULL,
-  GroupName VARCHAR(30),
-  PRIMARY KEY (id)
+  GroupName VARCHAR(30)
 );
 create index realmgroup_RealmName on realmgroup (RealmName);
 
 CREATE TABLE realms (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   realmname VARCHAR(64),
   nas VARCHAR(128),
   authport int4,
-  options VARCHAR(128) DEFAULT '',
-  PRIMARY KEY (id)
+  options VARCHAR(128) DEFAULT ''
 );
 
 
