@@ -9,7 +9,6 @@ SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  modules.o radutmp.o xlat.o threads.o smux.o radius_snmp.o \
                   client.o request_list.o
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/autoconf.h 
-INCLTDL = -I../../libltdl
 
 CFLAGS		+= -I../include
 LDFLAGS		+= -L../lib
