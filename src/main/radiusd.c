@@ -118,7 +118,7 @@ static int		proxy_requests = TRUE;
 typedef struct REQUEST_LIST {
 	REQUEST		*first_request;
 	int		request_count;
-	time_t		service_time;
+	time_t		last_cleaned_list;
 } REQUEST_LIST;
 
 static REQUEST_LIST	request_list[256];
@@ -148,7 +148,7 @@ static int	rad_clean_list(time_t curtime);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 static struct timeval *setuptimeout();
-static void	proxy_retry(time_t curtime);
+static void     refresh_request(REQUEST *request, time_t now);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -628,7 +628,7 @@ int main(int argc, char **argv)
 	for (i = 0; i < 256; i++) {
 	  request_list[i].first_request = NULL;
 	  request_list[i].request_count = 0;
-	  request_list[i].service_time = 0;
+	  request_list[i].last_cleaned_list = 0;
 	}
 
 	/*
@@ -1567,44 +1567,35 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
  *	- killing any processes which are NOT finished after a delay
  *	- deleting any marked requests.
  */
-static int rad_clean_list(time_t curtime)
+static int rad_clean_list(time_t now)
 {
-	static time_t	last_cleaned_list = 0;
-	REQUEST		*curreq;
-	REQUEST		**prevptr;
-	child_pid_t    	child_pid;
+	static time_t last_cleaned_list = 0;
 	int		id;
 	int		request_count;
 	int		cleaned = FALSE;
 
 	/*
-	 *	Don't bother checking the list if we've done it
-	 *	within the last second.
+	 *      Don't bother checking the list if we've done it
+	 *      within the last second.
+	 *
+	 *	However, at LEAST once per second, go through the entire
+	 *	request list again, ensuring that ALL of the request ID's
+	 *	have been processed.
 	 */
-	if (curtime == last_cleaned_list) {
+	if (last_cleaned_list == now) {
 		return FALSE;
 	}
-	last_cleaned_list = curtime;
+	last_cleaned_list = now;
 
 #if WITH_THREAD_POOL
 	/*
 	 *	Only clean the thread pool if we've spawned child threads.
 	 */
 	if (spawn_flag) {
-		thread_pool_clean(curtime);
+		thread_pool_clean(now);
 	}
 #endif
 	
-	/*
-	 *	If we're proxying packets, try re-sending any necessary
-	 *	requests.  This is done prior to cleaning the request list,
-	 *	because the proxy retry code will mark old requests for
-	 *	deletion.
-	 */
-	if (proxy_requests) {
-		proxy_retry(curtime);
-	}
-
 	/*
 	 *	When mucking around with the request list, we block
 	 *	asynchronous access (through the SIGCHLD handler) to
@@ -1614,74 +1605,46 @@ static int rad_clean_list(time_t curtime)
 	request_count = 0;
 		
 	for (id = 0; id < 256; id++) {
+		REQUEST		*curreq;
+		REQUEST		**prevptr;
+		
+		/*
+		 *	If we've cleaned this entry in the last
+		 *	second, don't do it now.
+		 */
+		if (request_list[id].last_cleaned_list == now) {
+			request_count += request_list[id].request_count;
+			continue;
+		}
+		request_list[id].last_cleaned_list = now;
+		
+		/*
+		 *	Set up for looping over the requests
+		 *	in this list.
+		 */
 		curreq = request_list[id].first_request;
 		prevptr = &(request_list[id].first_request);
 		
 		while (curreq != NULL) {
 			assert(curreq->magic == REQUEST_MAGIC);
-
+			
 			/*
-			 *	If the request has finished processing,
-			 *	AND it's child has been cleaned up,
-			 *	AND it's time to clean up the request,
-			 *	THEN, go delete it.
+			 *	Handle cleanup_delay, max_request_time,
+			 *	proxy_retry, for this request.
 			 */
-			if (curreq->finished &&
-			    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
-			    (curreq->timestamp + cleanup_delay <= curtime)) {
-				/*
-				 *	Request completed, delete it,
-				 *	and unlink it from the
-				 *	currently 'alive' list of
-				 *	requests.
-				 */
-				DEBUG2("Cleaning up request ID %d with timestamp %08lx",
-				       curreq->packet->id,
-				       (unsigned long)curreq->timestamp);
-
-				/*
-				 *	Mark the request to be deleted.
-				 */
-				curreq->timestamp = 0;
-
-				/*
-				 *	Maybe the child process
-				 *	handling the request has hung:
-				 *	kill it, and continue.
-				 */
-			} else if ((curreq->timestamp + max_request_time) <= curtime) {
-				if (curreq->child_pid != NO_SUCH_CHILD_PID) {
-					/*
-					 *	This request seems to have hung
-					 *	 - kill it
-					 */
-					child_pid = curreq->child_pid;
-					radlog(L_ERR, "Killing unresponsive child %d",
-					    child_pid);
-					child_kill(child_pid, SIGTERM);
-				} /* else no proxy reply, quietly fail */
-
-				/*
-				 *	Mark the request as unsalvagable.
-				 */
-				curreq->child_pid = NO_SUCH_CHILD_PID;
-				curreq->finished = TRUE;
-				curreq->timestamp = 0;
-				
-			}
-
+			refresh_request(curreq, now);
+			
 			/*
 			 *	If the request has been marked as deleted,
 			 *	then remove it from the request list.
 			 */
 			if (curreq->timestamp == 0) {
 				if (request_list[id].request_count == 0) {
-				  DEBUG("HORRIBLE ERROR!!!");
+					DEBUG("HORRIBLE ERROR!!!");
 				} else {
-				  request_list[id].request_count--;
-				  cleaned = TRUE;
+					request_list[id].request_count--;
 				}
-
+				
 				/*
 				 *	Unlink the current request
 				 *	from the request queue.
@@ -1692,7 +1655,7 @@ static int rad_clean_list(time_t curtime)
 				}
 				request_free(curreq);
 				curreq = *prevptr;
-
+				
 				/*
 				 *	Else the request is still being
 				 *	processed.  Skip it.
@@ -1702,7 +1665,7 @@ static int rad_clean_list(time_t curtime)
 				curreq = curreq->next;
 			}
 		} /* end of walking the request list for that ID */
-
+		
 		request_count += request_list[id].request_count;
 	} /* for each entry in the request list array */
 
@@ -1744,7 +1707,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 	int		request_count;
 	REQUEST_LIST	*request_list_entry;
 	int		i;
-	time_t		curtime;
+	time_t		now;
 	int		id;
 
 	/*
@@ -1774,7 +1737,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 	prevreq = NULL;
 	pkt = request->packet;
 	request_count = 0;
-	curtime = request->timestamp; /* good enough for our purposes */
+	now = request->timestamp; /* good enough for our purposes */
 	id = pkt->id;
 
 	/*
@@ -1916,7 +1879,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 */
 		if (curreq->finished &&
 		    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
-		    (curreq->timestamp + cleanup_delay <= curtime)) {
+		    (curreq->timestamp + cleanup_delay <= now)) {
 				/*
 				 *	Request completed, delete it,
 				 *	and unlink it from the
@@ -2539,96 +2502,151 @@ static struct timeval *setuptimeout()
 }
 
 /*
- *	Walk the request list, seeing if we need to re-send
- *	a proxy packet.
+ *	Refresh a request, by using proxy_retry_delay, cleanup_delay,
+ *	max_request_time, etc.
+ *
+ *	When walking over the request list, all of the per-request
+ *	magic is done here.
  */
-static void proxy_retry(time_t now)
+static void refresh_request(REQUEST *request, time_t now)
 {
-	REQUEST *p;
-	int id;
+	child_pid_t    	child_pid;
 
 	/*
-	 *	If we're not re-trying requests, don't bother walking
-	 *	the list.
+	 *	If the request has finished processing,
+	 *	AND it's child has been cleaned up,
+	 *	AND it's time to clean up the request,
+	 *	THEN, go delete it.
 	 */
-	if (proxy_retry_delay == 0) {
+	if (request->finished &&
+	    (request->child_pid == NO_SUCH_CHILD_PID) &&
+	    (request->timestamp + cleanup_delay <= now)) {
+		/*
+		 *	Request completed, delete it, and unlink it
+		 *	from the currently 'alive' list of requests.
+		 */
+		DEBUG2("Cleaning up request ID %d with timestamp %08lx",
+		       request->packet->id,
+		       (unsigned long)request->timestamp);
+		
+		/*
+		 *	Mark the request to be deleted.
+		 */
+		request->timestamp = 0;
+		return;
+		
+	}
+
+	/*
+	 *	Maybe the child process
+	 *	handling the request has hung:
+	 *	kill it, and continue.
+	 */
+	if ((request->timestamp + max_request_time) <= now) {
+		if (request->child_pid != NO_SUCH_CHILD_PID) {
+			/*
+			 *	This request seems to have hung
+			 *	 - kill it
+			 */
+			child_pid = request->child_pid;
+			radlog(L_ERR, "Killing unresponsive child %d",
+			       child_pid);
+			child_kill(child_pid, SIGTERM);
+		} /* else no proxy reply, quietly fail */
+		
+				/*
+				 *	Mark the request as unsalvagable.
+				 */
+		request->child_pid = NO_SUCH_CHILD_PID;
+		request->finished = TRUE;
+		request->timestamp = 0;
+		return;
+	}
+
+	/*
+	 *	Do any proxy request handling.
+	 *
+	 *	If we're not doing proxy requests, OR if the retry delay
+	 *	is zero (only retry synchronously), then don't bother
+	 *	checking the request for proxy retries.
+	 */
+	if ((!proxy_requests) ||
+	    (proxy_retry_delay == 0)) {
+		return;
+	}
+
+	/*
+	 *	The request is finished, (but it hasn't yet
+	 *	been removed from the list.)
+	 *	OR there is no proxy request,
+	 *	OR we already have seen the reply (so we don't
+	 *	need to send another proxy request),
+	 *	OR the next try is to be done later.
+	 *
+	 *	Skip the try.
+	 *
+	 *	FIXME: These retries should be binned by
+	 *	the next try time, so we don't have to do
+	 *	all of this work on every second.
+	 *
+	 *	That will also get rid of these checks, as
+	 *	a packet can get removed from the bin when
+	 *	the proxy reply is received.
+	 */
+	if ((request->finished) ||
+	    (!request->proxy) ||
+	    (request->proxy_reply) ||
+	    (request->proxy_next_try > now)) {
 		return;
 	}
 	
 	/*
-	 *	Walk over all of the Id's.
+	 *	If the proxy retry count is zero, then
+	 *	we've sent the last try, and have NOT received
+	 *	a reply from the end server.  In that case,
+	 *	we don't bother trying again, but just mark
+	 *	the request as finished, and go to the next one.
+	 *
+	 *	Note that we do NOT immediately delete the request,
+	 *	on the off chance that the proxy replies before we've
+	 *	thrown the request away.
 	 */
-	for (id = 0; id < 256; id++) {
-	for (p = request_list[id].first_request; p; p = p->next) {
-		/*
-		 *	The request is finished, (but it hasn't yet
-		 *	been removed from the list.)
-		 *	OR there is no proxy request,
-		 *	OR we already have seen the reply (so we don't
-		 *	need to send another proxy request),
-		 *	OR the next try is to be done later.
-		 *
-		 *	Skip the try.
-		 *
-		 *	FIXME: These retries should be binned by
-		 *	the next try time, so we don't have to do
-		 *	all of this work on every second.
-		 *
-		 *	That will also get rid of these checks, as
-		 *	a packet can get removed from the bin when
-		 *	the proxy reply is received.
-		 */
-		if ((p->finished) ||
-		    (!p->proxy) ||
-		    (p->proxy_reply) ||
-		    (p->proxy_next_try > now)) {
-			continue;
-		}
+	if (request->proxy_try_count == 0) {
+		request->finished = TRUE;
+		rad_reject(request);
+		return;
+	}
 
-		/*
-		 *	If the proxy retry count is zero, then
-		 *	we've sent the last try, and have NOT received
-		 *	a reply from the end server.  In that case,
-		 *	we don't bother trying again, but just mark
-		 *	the request as finished, and go to the next one.
-		 */
-		if (p->proxy_try_count == 0) {
-			p->finished = TRUE;
-			rad_reject(p);
-			continue;
-		}
-
-		/*
-		 *	We're trying one more time, so count down
-		 *	the tries, and set the next try time.
-		 */
-		--p->proxy_try_count;
-		p->proxy_next_try = now + proxy_retry_delay;
+	/*
+	 *	We're trying one more time, so count down
+	 *	the tries, and set the next try time.
+	 */
+	request->proxy_try_count--;
+	request->proxy_next_try = now + proxy_retry_delay;
 		
-		/* Fix up Acct-Delay-Time */
-		if (p->proxy->code == PW_ACCOUNTING_REQUEST) {
-			VALUE_PAIR *delaypair;
-			delaypair = pairfind(p->proxy->vps, PW_ACCT_DELAY_TIME);
-			
+	/* Fix up Acct-Delay-Time */
+	if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
+		VALUE_PAIR *delaypair;
+		delaypair = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
+		
+		if (!delaypair) {
+			delaypair = paircreate(PW_ACCT_DELAY_TIME,
+					       PW_TYPE_INTEGER);
 			if (!delaypair) {
-				delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
-				if (!delaypair) {
-					radlog(L_ERR|L_CONS, "no memory");
-					exit(1);
-				}
-				pairadd(&p->proxy->vps, delaypair);
+				radlog(L_ERR|L_CONS, "no memory");
+				exit(1);
 			}
-			delaypair->lvalue = now - p->proxy->timestamp;
+			pairadd(&request->proxy->vps, delaypair);
+		}
+		delaypair->lvalue = now - request->proxy->timestamp;
 			
-			/* Must recompile the valuepairs to wire format */
-			free(p->proxy->data);
-			p->proxy->data = NULL;
-		} /* proxy accounting request */
-		
-		/*
-		 *	Send the proxy packet.
-		 */
-		rad_send(p->proxy, p->proxysecret);
-	}
-	}
+		/* Must recompile the valuepairs to wire format */
+		free(request->proxy->data);
+		request->proxy->data = NULL;
+	} /* proxy accounting request */
+	
+	/*
+	 *	Send the proxy packet.
+	 */
+	rad_send(request->proxy, request->proxysecret);
 }
