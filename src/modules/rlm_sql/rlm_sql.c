@@ -393,8 +393,9 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 		return -1;
 	}
 
-	radlog(L_INFO, "rlm_sql (%s): Driver %s loaded and linked",
-	       inst->config->xlat_name, inst->config->sql_driver);
+	radlog(L_INFO, "rlm_sql (%s): Driver %s (module %s) loaded and linked",
+	       inst->config->xlat_name, inst->config->sql_driver,
+	       inst->module->name);
 	radlog(L_INFO, "rlm_sql (%s): Attempting to connect to %s@%s:%s/%s",
 	       inst->config->xlat_name, inst->config->sql_login,
 	       inst->config->sql_server, inst->config->sql_port,
