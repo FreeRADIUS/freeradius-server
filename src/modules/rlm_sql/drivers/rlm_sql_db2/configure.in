@@ -1,0 +1,103 @@
+AC_INIT(sql_db2.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_sql_db2])
+
+AC_PROG_CC
+AC_PROG_CPP
+
+AC_ARG_WITH(ibmdb2-include-dir,
+[  --with-ibmdb2-include-dir=DIR       Directory where the IBM-DB2 includes may be found ],
+[ ibmdb2_include_dir="$withval" ]
+)
+
+AC_ARG_WITH(ibmdb2-lib-dir,
+[  --with-ibmdb2-lib-dir=DIR       Directory where the IBM-DB2 libraries may be found ],
+[ ibmdb2_lib_dir="$withval" ]
+)
+
+AC_ARG_WITH(ibmdb2-dir,
+[  --with-ibmdb2-dir=DIR       Base directory where IBM-DB2 is installed ],
+[ ibmdb2_lib_dir="$withval/lib"
+  ibmdb2_include_dir="$withval/include"
+]
+)
+
+if test x$with_[]modname != xno; then
+
+	targetname=modname   # we might change this later.
+
+	AC_MSG_CHECKING([for sqlcli.h])
+
+	AC_TRY_COMPILE([#include <sqlcli.h>], [int a = 1;],
+		IBMDB2_INCLUDE=" ",
+		IBMDB2_INCLUDE=
+	)
+
+	if test "x$IBMDB2_INCLUDE" = "x"; then
+		old_CFLAGS="$CFLAGS"
+
+		for try in /usr/IBMdb2/V7.1/include $ibmdb2_include_dir; do
+			CFLAGS="$old_CFLAGS -I$try"
+			AC_TRY_COMPILE([#include <sqlcli.h>], [int a = 1;],
+				IBMDB2_INCLUDE="-I$try",
+				IBMDB2_INCLUDE=
+			)
+			if test "x$IBMDB2_INCLUDE" != "x"; then
+				break;
+			fi
+		done
+		CFLAGS="$old_CFLAGS"
+	fi
+
+	if test "x$IBMDB2_INCLUDE" = "x"; then
+		AC_MSG_RESULT(no)
+		AC_MSG_WARN([ibm db2 headers not found.  Use --with-ibmdb2-include-dir=<path>.])
+		targetname=   # disabled module
+	else
+		sql_ibmdb2_cflags="${sql_ibmdb2_cflags} ${IBMDB2_INCLUDE}"
+		AC_MSG_RESULT(yes)
+  
+		AC_MSG_CHECKING([for SQLConnect in -ldb2])
+
+		old_LIBS="$LIBS"
+
+		for try in /usr/IBMdb2/V7.1/lib $ibmdb2_lib_dir; do
+			LIBS="$old_LIBS -L$try -ldb2"
+			AC_TRY_LINK([extern char SQLConnect();], [SQLConnect()],
+				IBMDB2_LIBS="-L$try -ldb2",
+				IBMDB2_LIBS=
+			)
+			if test "x$IBMDB2_LIBS" != "x"; then
+				break;
+			fi
+		done
+		LIBS="$old_LIBS"
+
+		dnl #  If one or the other isn't found, disable them both..
+		dnl #  If both are found, enable them both.
+		if test "x$IBMDB2_LIBS" = "x"; then
+			AC_MSG_RESULT(no)
+			IBMDB2_INCLUDE=
+			AC_MSG_WARN([ibmdb2 libraries not found.  Use --with-ibmdb2-lib-dir=<path>.])
+			targetname=   # disabled module
+		else
+			AC_MSG_RESULT(yes) 
+			sql_ibmdb2_ldflags="$sql_ibmdb2_ldflags $IBMDB2_LIBS"
+		fi
+	fi
+
+	sql_ibmdb2_ldflags="$sql_ibmdb2_ldflags $LIBS"
+
+	if test "x$targetname" = "x"; then
+		AC_MSG_WARN([sql submodule 'db2' disabled])
+	fi
+
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+AC_SUBST(sql_ibmdb2_ldflags)
+AC_SUBST(sql_ibmdb2_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)

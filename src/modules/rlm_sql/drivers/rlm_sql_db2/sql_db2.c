@@ -20,11 +20,12 @@
  * Copyright 2000  The FreeRADIUS server project
  * Copyright 2000  Mike Machado <mike@innercite.com>
  * Copyright 2000  Alan DeKok <aland@ox.org>
+ * Copyright 2001  Joerg Wendland <wendland@scan-plus.de>
  */
 
 /* 
  * Modification of rlm_sql_db2 to handle IBM DB2 UDB V7 
- * Copyright (c) 2001 Joerg Wendland <wendland@scan-plus.de>
+ * by Joerg Wendland <wendland@scan-plus.de>
  */
 
 #include <stdio.h>
@@ -45,31 +46,31 @@
  *************************************************************************/
 int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
-  SQLRETURN retval;
-  rlm_sql_db2_sock *sock;
+	SQLRETURN retval;
+	rlm_sql_db2_sock *sock;
 
-  /* allocatE socket */
-  sqlsocket->conn = (rlm_sql_db2_sock*)rad_malloc(sizeof(rlm_sql_db2_sock));
-  sock = sqlsocket->conn;
+	/* allocatE socket */
+	sqlsocket->conn = (rlm_sql_db2_sock*)rad_malloc(sizeof(rlm_sql_db2_sock));
+	sock = sqlsocket->conn;
 
-  /* allocate handles */
-  SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(sock->henv));
-  SQLAllocHandle(SQL_HANDLE_DBC, sock->henv, &(sock->hdbc));
+	/* allocate handles */
+	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(sock->henv));
+	SQLAllocHandle(SQL_HANDLE_DBC, sock->henv, &(sock->hdbc));
 
-  /* connect to database */
-  retval = SQLConnect(sock->hdbc,
-		      config->sql_server, SQL_NTS,
-		      config->sql_login,  SQL_NTS,
-		      config->sql_password, SQL_NTS);
-  if(retval != SQL_SUCCESS) {
-    radlog(L_ERR, "could not connect to DB2 server %s\n", config->sql_server);
-    SQLDisconnect(sock->hdbc);
-    SQLFreeHandle(SQL_HANDLE_DBC, sock->hdbc);
-    SQLFreeHandle(SQL_HANDLE_ENV, sock->henv);
-    return -1;
-  }
+	/* connect to database */
+	retval = SQLConnect(sock->hdbc,
+			config->sql_server, SQL_NTS,
+			config->sql_login,  SQL_NTS,
+			config->sql_password, SQL_NTS);
+	if(retval != SQL_SUCCESS) {
+		radlog(L_ERR, "could not connect to DB2 server %s\n", config->sql_server);
+		SQLDisconnect(sock->hdbc);
+		SQLFreeHandle(SQL_HANDLE_DBC, sock->hdbc);
+		SQLFreeHandle(SQL_HANDLE_ENV, sock->henv);
+		return -1;
+	}
 
-  return 0;
+	return 0;
 }
 
 /*************************************************************************
@@ -81,26 +82,26 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) 
 {
-  SQLRETURN retval;
-  rlm_sql_db2_sock *sock;
+	SQLRETURN retval;
+	rlm_sql_db2_sock *sock;
 
-  sock = sqlsocket->conn;
+	sock = sqlsocket->conn;
 
-  if (config->sqltrace)
-    radlog(L_DBG,"query:\n%s", querystr);
+	if (config->sqltrace)
+		radlog(L_DBG,"query:\n%s", querystr);
 
-  /* allocate handle for statement */
-  SQLAllocHandle(SQL_HANDLE_STMT, sock->hdbc, 
-		 &(sock->stmt));
+	/* allocate handle for statement */
+	SQLAllocHandle(SQL_HANDLE_STMT, sock->hdbc, 
+			&(sock->stmt));
 
-  /* execute query */
-  retval = SQLExecDirect(sock->stmt, querystr, SQL_NTS);
-  if(retval != SQL_SUCCESS) {
-    radlog(L_ERR, "could not execute statement \"%s\"\n", querystr);
-    return -1;
-  }
-  
-  return 0;
+	/* execute query */
+	retval = SQLExecDirect(sock->stmt, querystr, SQL_NTS);
+	if(retval != SQL_SUCCESS) {
+		radlog(L_ERR, "could not execute statement \"%s\"\n", querystr);
+		return -1;
+	}
+
+	return 0;
 }
 
 
@@ -113,7 +114,7 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
  *************************************************************************/
 int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) 
 {
-  return sql_query(sqlsocket, config, querystr);
+	return sql_query(sqlsocket, config, querystr);
 }
 
 
@@ -127,7 +128,7 @@ int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
  *************************************************************************/
 int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  return 0;
+	return 0;
 }
 
 
@@ -141,12 +142,12 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  SQLSMALLINT c;
-  rlm_sql_db2_sock *sock;
+	SQLSMALLINT c;
+	rlm_sql_db2_sock *sock;
 
-  sock = sqlsocket->conn;
-  SQLNumResultCols(sock->stmt, &c);
-  return c;
+	sock = sqlsocket->conn;
+	SQLNumResultCols(sock->stmt, &c);
+	return c;
 }
 
 
@@ -160,33 +161,33 @@ int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  int c, i;
-  SQLINTEGER len, slen;
-  SQL_ROW retval;
-  rlm_sql_db2_sock *sock;
+	int c, i;
+	SQLINTEGER len, slen;
+	SQL_ROW retval;
+	rlm_sql_db2_sock *sock;
 
-  sock = sqlsocket->conn;
+	sock = sqlsocket->conn;
 
-  c = sql_num_fields(sqlsocket, config);
-  retval = (SQL_ROW)rad_malloc(c*sizeof(char*)+1);
-  /* advance cursor */
-  if(SQLFetch(sock->stmt) == SQL_NO_DATA_FOUND)
-    return NULL;
+	c = sql_num_fields(sqlsocket, config);
+	retval = (SQL_ROW)rad_malloc(c*sizeof(char*)+1);
+	/* advance cursor */
+	if(SQLFetch(sock->stmt) == SQL_NO_DATA_FOUND)
+		return NULL;
 
-  for(i = 0; i < c; i++) {
-    /* get column length */
-    SQLColAttribute(sock->stmt,
-		    i+1, SQL_DESC_DISPLAY_SIZE,
-		    NULL, 0, NULL, &len);
-    retval[i] = (char*)rad_malloc(len+1);
-    /* get the actual column */
-    SQLGetData(sock->stmt,
-	       i+1, SQL_C_CHAR, retval[i], len+1, &slen);
-    if(slen == SQL_NULL_DATA)
-      retval[i][0] = '\0';
-  }
+	for(i = 0; i < c; i++) {
+		/* get column length */
+		SQLColAttribute(sock->stmt,
+				i+1, SQL_DESC_DISPLAY_SIZE,
+				NULL, 0, NULL, &len);
+		retval[i] = (char*)rad_malloc(len+1);
+		/* get the actual column */
+		SQLGetData(sock->stmt,
+				i+1, SQL_C_CHAR, retval[i], len+1, &slen);
+		if(slen == SQL_NULL_DATA)
+			retval[i][0] = '\0';
+	}
 
-  return retval;
+	return retval;
 }
 
 /*************************************************************************
@@ -199,10 +200,10 @@ SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  rlm_sql_db2_sock *sock;
-  sock = sqlsocket->conn;
-  SQLFreeHandle(SQL_HANDLE_STMT, sock->stmt);
-  return 0;
+	rlm_sql_db2_sock *sock;
+	sock = sqlsocket->conn;
+	SQLFreeHandle(SQL_HANDLE_STMT, sock->stmt);
+	return 0;
 }
 
 
@@ -217,22 +218,22 @@ int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  /* this should really be enough, if not, you still got the sqlstate */
+	/* this should really be enough, if not, you still got the sqlstate */
 #define MSGLEN 512
-  char sqlstate[6];
-  char msg[MSGLEN];
-  char *retval;
-  SQLINTEGER err;
-  SQLSMALLINT rl;
-  rlm_sql_db2_sock *sock;
+	char sqlstate[6];
+	char msg[MSGLEN];
+	char *retval;
+	SQLINTEGER err;
+	SQLSMALLINT rl;
+	rlm_sql_db2_sock *sock;
 
-  sock = sqlsocket->conn;
+	sock = sqlsocket->conn;
 
-  SQLGetDiagRec(SQL_HANDLE_STMT, sock->stmt,
-		1, sqlstate, &err, msg, MSGLEN, &rl);
-  retval = (char*)rad_malloc(strlen(msg)+20);
-  sprintf(retval, "SQLSTATE %s: %s", sqlstate, msg);
-  return retval;
+	SQLGetDiagRec(SQL_HANDLE_STMT, sock->stmt,
+			1, sqlstate, &err, msg, MSGLEN, &rl);
+	retval = (char*)rad_malloc(strlen(msg)+20);
+	sprintf(retval, "SQLSTATE %s: %s", sqlstate, msg);
+	return retval;
 }
 
 
@@ -246,13 +247,13 @@ char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  rlm_sql_db2_sock *sock;
+	rlm_sql_db2_sock *sock;
 
-  sock = sqlsocket->conn;
+	sock = sqlsocket->conn;
 
-  SQLFreeHandle(SQL_HANDLE_DBC, sock->hdbc);
-  SQLFreeHandle(SQL_HANDLE_ENV, sock->henv);
-  return 0;
+	SQLFreeHandle(SQL_HANDLE_DBC, sock->hdbc);
+	SQLFreeHandle(SQL_HANDLE_ENV, sock->henv);
+	return 0;
 }
 
 
@@ -265,7 +266,7 @@ int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  return 0;
+	return 0;
 }
 
 
@@ -279,7 +280,7 @@ int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  return sql_finish_query(sqlsocket, config);
+	return sql_finish_query(sqlsocket, config);
 }
 
 
@@ -292,17 +293,17 @@ int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
 {
-  SQLINTEGER c;
-  rlm_sql_db2_sock *sock;
+	SQLINTEGER c;
+	rlm_sql_db2_sock *sock;
 
-  sock = sqlsocket->conn;
+	sock = sqlsocket->conn;
 
-  SQLRowCount(sock->stmt, &c);
-  return c;
+	SQLRowCount(sock->stmt, &c);
+	return c;
 }
 
 
-static int
+	static int
 not_implemented(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	radlog(L_ERR, "sql_db2: calling unimplemented function");
