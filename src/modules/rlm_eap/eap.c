@@ -601,7 +601,7 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
  * Radius criteria, EAP-Message is invalid without Message-Authenticator
  * For EAP_START, send Access-Challenge with EAP Identity request.
  */
-int eap_start(REQUEST *request)
+int eap_start(rlm_eap_t *inst, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	VALUE_PAIR *eap_msg;
@@ -672,8 +672,28 @@ int eap_start(REQUEST *request)
 				vp->lvalue = eap_msg->strvalue[4];
 				pairadd(&(request->packet->vps), vp);
 			}
+			
+			/*
+			 *	We've been told to ignore unknown EAP
+			 *	types, AND it's an unknown type.
+			 *	Return "NOOP", which will cause the
+			 *	eap_authorize() to return NOOP.
+			 *
+			 *	FIXME: We should do something similar
+			 *	for NAKs, too, else we will handle them,
+			 *	and then send EAP-Failure.
+			 */
+			if (inst->ignore_unknown_eap_types &&
+			    ((eap_msg->strvalue[4] == 0) ||
+			     (eap_msg->strvalue[4] > PW_EAP_MAX_TYPES) ||
+			     (inst->types[eap_msg->strvalue[4]] == NULL))) {
+				return EAP_NOOP;
+			}
 		}
  
+		/*
+		 *	No EAP-Start found.
+		 */
 		return EAP_NOTFOUND;
 	}
 

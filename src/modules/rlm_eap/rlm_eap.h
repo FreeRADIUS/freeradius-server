@@ -79,6 +79,7 @@ typedef struct rlm_eap_t {
 	char		*default_eap_type;
 	int		timer_limit;
 	int		default_eap_id;
+	int		ignore_unknown_eap_types;
 
 #if HAVE_PTHREAD_H
 	pthread_mutex_t	mutex;
@@ -88,14 +89,12 @@ typedef struct rlm_eap_t {
 /* function definitions */
 /* EAP-Type */
 int		eaptype_name2id(const char *name);
-EAP_TYPES 	*eaptype_byid(EAP_TYPES **list, int type);
-EAP_TYPES 	*eaptype_byname(EAP_TYPES **list, const char *name);
 int      	eaptype_load(EAP_TYPES **type, int id, CONF_SECTION *cs);
 int       	eaptype_select(rlm_eap_t *inst, EAP_HANDLER *h);
 void		eaptype_free(EAP_TYPES *tl);
 
 /* EAP */
-int  		eap_start(REQUEST *request);
+int  		eap_start(rlm_eap_t *inst, REQUEST *request);
 void 		eap_fail(REQUEST *request, EAP_DS *eap_ds);
 void 		eap_success(REQUEST *request, EAP_DS *eap_ds);
 int 		eap_validation(eap_packet_t *eap_msg);

@@ -26,11 +26,14 @@
 #include "modules.h"
 
 static const char rcsid[] = "$Id$";
-static CONF_PARSER module_config[] = {
+
+static const CONF_PARSER module_config[] = {
 	{ "default_eap_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_t, default_eap_type), NULL, "md5" },
 	{ "timer_expire", PW_TYPE_INTEGER,
 	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
+	{ "ignore_unknown_eap_types", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_t, ignore_unknown_eap_types), NULL, "no" },
 	
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -332,7 +335,7 @@ static int eap_authorize(void *instance, REQUEST *request)
 	 *
 	 *	We therefore send an EAP Identity request.
 	 */
-	status = eap_start(request);
+	status = eap_start(inst, request);
 	switch(status) {
 	case EAP_NOOP:
                 return RLM_MODULE_NOOP;
