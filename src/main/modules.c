@@ -431,6 +431,64 @@ static config_module_t *lookup_by_index(config_module_t *head, int index)
 	return NULL;
 }
 
+/* Bail out if the module in question does not supply the wanted component */
+static void sanity_check(int comp, module_t *mod, const char *filename,
+			 int lineno)
+{
+	switch (comp) {
+	case RLM_COMPONENT_AUTH:
+		if (!mod->authenticate) {
+			radlog(L_ERR|L_CONS,
+				"%s[%d] Module %s does not contain "
+				"an 'authenticate' entry\n",
+				filename, lineno, mod->name);
+			exit(1);
+		}
+		break;
+	case RLM_COMPONENT_AUTZ:
+		if (!mod->authorize) {
+			radlog(L_ERR|L_CONS,
+				"%s[%d] Module %s does not contain "
+				"an 'authorize' entry\n",
+				filename, lineno, mod->name);
+			exit(1);
+		}
+		break;
+	case RLM_COMPONENT_PREACCT:
+		if (!mod->preaccounting) {
+			radlog(L_ERR|L_CONS,
+				"%s[%d] Module %s does not contain "
+				"a 'preacct' entry\n",
+				filename, lineno, mod->name);
+			exit(1);
+		}
+		break;
+	case RLM_COMPONENT_ACCT:
+		if (!mod->accounting) {
+			radlog(L_ERR|L_CONS,
+				"%s[%d] Module %s does not contain "
+				"an 'accounting' entry\n",
+				filename, lineno, mod->name);
+			exit(1);
+		}
+		break;
+	case RLM_COMPONENT_SESS:
+		if (!mod->checksimul) {
+			radlog(L_ERR|L_CONS,
+				"%s[%d] Module %s does not contain "
+				"a 'checksimul' entry\n",
+				filename, lineno, mod->name);
+			exit(1);
+		}
+		break;
+	default:
+		radlog(L_ERR|L_CONS, "%s[%d] Unknown component %d.\n",
+			filename, lineno, comp);
+		exit(1);
+	}
+	return NULL;
+}
+
 static void load_module_section(CONF_SECTION *cs, int comp, const char *filename)
 {
 	module_instance_t *this;
@@ -466,61 +524,16 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 			exit(1);
 		}
 
+		sanity_check(comp, this->entry->module, filename, modreflineno);
 		switch (comp) {
 		case RLM_COMPONENT_AUTH:
-			if (!this->entry->module->authenticate) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"an 'authenticate' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-				exit(1);
-			}
 			add_to_list(RLM_COMPONENT_AUTH, this, new_authtype_value(this->name));
 			break;
 		case RLM_COMPONENT_AUTZ:
-			if (!this->entry->module->authorize) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"an 'authorize' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-				exit(1);
-			}
-			add_to_list(RLM_COMPONENT_AUTZ, this, 0);
-			break;
 		case RLM_COMPONENT_PREACCT:
-			if (!this->entry->module->preaccounting) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"a 'preacct' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-				exit(1);
-			}
-			add_to_list(RLM_COMPONENT_PREACCT, this, 0);
-			break;
 		case RLM_COMPONENT_ACCT:
-			if (!this->entry->module->accounting) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"an 'accounting' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-				exit(1);
-			}
-			add_to_list(RLM_COMPONENT_ACCT, this, 0);
-			break;
 		case RLM_COMPONENT_SESS:
-			if (!this->entry->module->checksimul) {
-				radlog(L_ERR|L_CONS,
-					"%s[%d] Module %s does not contain "
-					"a 'checksimul' entry\n",
- 					filename, modreflineno,
- 					this->entry->module->name);
- 				exit(1);
-			}
-			add_to_list(RLM_COMPONENT_SESS, this, 0);
+			add_to_list(comp, this, 0);
 			break;
 		default:
 			radlog(L_ERR|L_CONS, "%s[%d] Unknown component %d.\n",
