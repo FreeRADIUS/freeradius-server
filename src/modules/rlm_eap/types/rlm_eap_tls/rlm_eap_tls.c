@@ -508,6 +508,24 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 		 */
 	case EAPTLS_OK:
 		DEBUG2("  rlm_eap_tls: Received unexpected tunneled data after successful handshake.");
+#ifndef NDEBUG
+		if (debug_flag > 2) {
+			int i;
+			unsigned int data_len;
+			unsigned char buffer[1024];
+			
+			data_len = record_minus(&tls_session->dirty_in,
+						buffer, sizeof(buffer));
+			log_debug("  Tunneled data (%u bytes)\n", data_len);
+			for (i = 0; i < data_len; i++) {
+				if ((i & 0x0f) == 0) printf("  %d: ", i);
+				if ((i & 0x0f) == 0x0f) printf("\n", i);
+				
+				printf("%02x ", buffer[i]);
+			}
+		}
+#endif
+
 		eaptls_fail(handler->eap_ds, 0);
 		return 0;
 		break;
