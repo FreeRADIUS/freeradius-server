@@ -630,6 +630,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 		vp->lvalue = entry.ipaddr;
+		ip_ntoa(vp->strvalue, vp->lvalue);
 		pairadd(&request->reply->vps, vp);
 	}
 	else{
