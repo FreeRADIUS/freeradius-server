@@ -11,22 +11,13 @@
 
 1. USAGE
 
-  To use this module, copy the digest configuration section from
-  raddb/experimental.conf, to the 'modules' section of
-  raddb/radiusd.conf.
+  To use this module, uncomment the lines relating to 'digest' from
+raddb/radiusd.conf.  Once that is done, any RADIUS request containing
+the digest attributes will automatically be authenticated using the
+'digest' module.
 
-  For example:
-	modules {
-		...
-		digest {
-		}
-		...
-	}
-
-  Then add the word 'digest' to both the 'authorize' and
-  'authenticate' configuration sections.  It should probably be listed
-  near the top of both sections, as it does not require information
-  from other modules.
+  Note tha the 'digest' module REQUIRES access to the clear-text
+password for the user, in order to perform digest authentication.
 
 2. TESTING
 
@@ -47,6 +38,6 @@ test	Auth-Type := Digest, User-Password = "test"
 
 User-Name = "test", Digest-Response = "631d6d73147add2f9e437f59bbc3aeb7", Digest-Realm = "testrealm", Digest-Nonce = "1234abcd", Digest-Method = "INVITE", Digest-URI = "sip:5555551212@example.com", Digest-Algorithm = "MD5", Digest-User-Name = "test"
 
-  You should see authentication succeed.
+  You should see the authentication succeed.
 
 $Id$

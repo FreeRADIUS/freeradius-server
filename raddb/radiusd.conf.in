@@ -1129,8 +1129,15 @@ modules {
 	}
 
 	#
-	#  The 'expression' module current has no configuration.
+	#  The 'expression' module currently has no configuration.
 	expr {
+	}
+
+	#
+	#  The 'digest' module currently has no configuration.
+	#
+	#  "Digest" authentication against a Cisco SIP server.
+	digest {
 	}
 
 	# ANSI X9.9 token support.  Not included by default.
@@ -1208,6 +1215,11 @@ authorize {
 	eap
 
 	#
+	#  If you have a Cisco SIP server authenticating against
+	#  FreeRADIUS, uncomment the following line.
+	# digest
+
+	#
 	#  Look for IPASS style 'realm/', and if not found, look for
 	#  '@realm', and decide whether or not to proxy, based on
 	#  that.
@@ -1278,6 +1290,11 @@ authenticate {
 	Auth-Type MS-CHAP {
 		mschap
 	}
+
+	#
+	#  If you have a Cisco SIP server authenticating against
+	#  FreeRADIUS, uncomment the following line.
+	# digest
 
 	#
 	#  Pluggable Authentication Modules.
