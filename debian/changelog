@@ -1,4 +1,4 @@
-freeradius (0.9.0~pre2-1) unstable; urgency=low
+freeradius (0.9.0~pre3-1) unstable; urgency=low
 
   * New Upstream prerelease.
    - Upstream dictionary files are in /usr/share/freeradius.
