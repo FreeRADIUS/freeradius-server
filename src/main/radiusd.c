@@ -2187,8 +2187,20 @@ static REQUEST *proxy_check_list(REQUEST *request)
 				request_free(&request);
 				return NULL;
 			}
-		}
-
+		} else if ((oldreq->reply->code != 0) ||
+			   (oldreq->finished)) {
+			/*
+			 *	The proxy reply has arrived too late,
+			 *	the old request has timed out and is
+			 *	finished.  The client has received a
+			 *	response, so there is nothing that can
+			 *	be done. Delete the reply, and return
+			 *	NULL.
+			 */
+			radlog(L_ERR, "Proxy reply arrived too late. Try increasing retry_delay");
+			request_free(&request);
+			return NULL;
+ 		}
 	} else {
 		/*
 		 *  If we haven't found the old request, complain.
