@@ -157,6 +157,16 @@ static int always_detach(void *instance)
 	return 0;
 }
 
+static int always_destroy(void)
+{
+	/* We reuse this buffer across multiple instances, instead of
+	 * freeing it in instantiate() after converting it to an int.
+	 * That makes it a module-global variable, so it must be freed
+	 * in destroy(). */
+	free(config.rcode_str);
+	return 0;
+}
+
 module_t rlm_always = {
 	"always",	
 	RLM_TYPE_THREAD_SAFE,		/* type */
@@ -168,5 +178,5 @@ module_t rlm_always = {
 	always_return,			/* accounting */
 	always_checksimul,		/* checksimul */
 	always_detach,			/* detach */
-	NULL,				/* destroy */
+	always_destroy,			/* destroy */
 };
