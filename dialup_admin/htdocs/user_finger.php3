@@ -55,6 +55,7 @@ if ($link){
 	if ($config[general_ld_library_path] != '')
 		putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
 	foreach($nas_list as $nas){
+		$j = 0;
 		$num = 0;
 
 		if ($server != ''){
@@ -93,6 +94,13 @@ if ($link){
 			}
 		}
 		$search = @da_sql_query($link,$config,
+		"SELECT COUNT(*) AS onlineusers FROM $config[sql_accounting_table] WHERE
+		acctstoptime IS NULL AND nasipaddress = '$name_data' $extra $sql_extra_query;");
+		if ($search){
+			if (($row = @da_sql_fetch_array($search,$config)))
+				$num = $row[onlineusers];
+		}
+		$search = @da_sql_query($link,$config,
 		"SELECT DISTINCT username,acctstarttime,framedipaddress,callingstationid
 		FROM $config[sql_accounting_table] WHERE
 		acctstoptime IS NULL AND nasipaddress = '$name_data' $extra $sql_extra_query
@@ -101,19 +109,19 @@ if ($link){
 		if ($search){
 			$now = time();
 			while($row = @da_sql_fetch_array($search,$config)){
-				$num++;
+				$j++;
 				$h += 21;
 				$user = $row['username'];
-				$finger_info[$servers_num][$num]['ip'] = $row['framedipaddress'];
-				if ($finger_info[$servers_num][$num]['ip'] == '')
-					$finger_info[$servers_num][$num]['ip'] = '-';
+				$finger_info[$servers_num][$j]['ip'] = $row['framedipaddress'];
+				if ($finger_info[$servers_num][$j]['ip'] == '')
+					$finger_info[$servers_num][$j]['ip'] = '-';
 				$session_time = $row['acctstarttime'];
 				$session_time = date2timediv($session_time,$now);
-				$finger_info[$servers_num][$num]['session_time'] = time2strclock($session_time);
-				$finger_info[$servers_num][$num]['user'] = $user;
-				$finger_info[$servers_num][$num]['callerid'] = $row['callingstationid'];
-				if ($finger_info[$servers_num][$num]['callerid'] == '')
-					$finger_info[$servers_num][$num]['callerid'] = '-';
+				$finger_info[$servers_num][$j]['session_time'] = time2strclock($session_time);
+				$finger_info[$servers_num][$j]['user'] = $user;
+				$finger_info[$servers_num][$j]['callerid'] = $row['callingstationid'];
+				if ($finger_info[$servers_num][$j]['callerid'] == '')
+					$finger_info[$servers_num][$j]['callerid'] = '-';
 				if ($user_info["$user"] == ''){
 					$user_info["$user"] = get_user_info($link2,$user,$config,$decode_normal,$k);
 					if ($user_info["$user"] == '' || $user_info["$user"] == ' ')
@@ -122,6 +130,7 @@ if ($link){
 			}
 			$height[$servers_num] = $h;
 		}
+		$server_counting[$servers_num] = $j;
 		$server_loggedin[$servers_num] = $num;
 		$server_rem[$servers_num] = ($config[$portnum]) ? ($config[$portnum] - $num) : 'unknown';
 		$tot_in += $num;
@@ -180,7 +189,7 @@ echo <<<EOM
 	<th>name</th><th>duration</th>
 	</tr>
 EOM;
-	for( $k = 1; $k <= $server_loggedin[$j]; $k++){
+	for( $k = 1; $k <= $server_counting[$j]; $k++){
 		$user = $finger_info[$j][$k][user];
 		if ($user == '')
 			$user = '&nbsp;';
