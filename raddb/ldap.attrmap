@@ -24,6 +24,9 @@ checkItem	Auth-Type			radiusAuthType
 checkItem	Simultaneous-Use		npSessionsAllowed
 checkItem	Called-Station-Id		radiusCalledStationId
 checkItem	Calling-Station-Id		radiusCallingStationId
+checkItem	LM-Password			lmPassword
+checkItem	NT-Password			ntPassword
+checkItem	SMB-Account-CTRL-TEXT		acctFlags
 
 replyItem	Service-Type			radiusServiceType
 replyItem	Framed-Protocol			radiusFramedProtocol
@@ -52,6 +55,3 @@ replyItem	Framed-AppleTalk-Network	radiusFramedAppleTalkNetwork
 replyItem	Framed-AppleTalk-Zone		radiusFramedAppleTalkZone
 replyItem	Port-Limit			radiusPortLimit
 replyItem	Login-LAT-Port			radiusLoginLATPort
-replyItem	LM-Password			lmPassword
-replyItem	NT-Password			ntPassword
-replyItem	SMB-Account-CTRL-TEXT		acctFlags
