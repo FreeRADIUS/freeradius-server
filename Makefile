@@ -30,7 +30,6 @@ install:
 	$(INSTALL) -d -m 700	$(R)$(logdir)
 	$(INSTALL) -d -m 700	$(R)$(radacctdir)
 	$(INSTALL) -d -m 700	$(R)$(datadir)
-	$(INSTALL) -d -m 700	$(R)$(datadir)/freeradius
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	for i in 1 5 8; do \
 		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
@@ -45,12 +44,12 @@ install:
                 $(INSTALL) -m 644 $$i $(R)$(raddbdir); \
 	done; \
 	chmod 600 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients $(R)$(raddbdir)/clients.conf;
-	@echo "Creating/updating files in $(R)$(datadir)/freeradius"; \
+	@echo "Creating/updating files in $(R)$(datadir)"; \
 	cd share; \
 	for i in dictionary*; do \
-		[ ! -f $(R)$(datadir)/freeradius/$$i ] && $(INSTALL) -m 644 $$i $(R)$(datadir)/freeradius; \
-		if [ "`find $$i -newer $(R)$(datadir)/freeradius/$$i`" ]; then \
-			echo "** $(R)$(datadir)/freeradius/$$i"; \
+		[ ! -f $(R)$(datadir)/$$i ] && $(INSTALL) -m 644 $$i $(R)$(datadir); \
+		if [ "`find $$i -newer $(R)$(datadir)/$$i`" ]; then \
+			echo "** $(R)$(datadir)/$$i"; \
 			nt=1; \
 		fi; \
 	done; \
@@ -60,7 +59,7 @@ install:
 		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 		echo "**";\
 		echo "** The sample configuration files in `pwd`";\
-		echo "** are newer than those in $(R)$(datadir)/freeradius";\
+		echo "** are newer than those in $(R)$(datadir)";\
 		echo "**";\
 		echo "** Please investigate and manually copy (if appropriate) the files listed above.";\
 		echo "**";\
