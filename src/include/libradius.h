@@ -81,6 +81,18 @@
 #  define TAG_ANY               -128   /* minimum signed char */
 #endif
 
+#if defined(__GNUC__)
+# define PRINTF_LIKE(n) __attribute__ ((format(printf, n, n+1)))
+# define NEVER_RETURNS __attribute__ ((noreturn))
+# define UNUSED __attribute__ ((unused))
+# define BLANK_FORMAT " "	/* GCC_LINT whines about empty formats */
+#else
+# define PRINTF_LIKE(n)	/* ignore */
+# define NEVER_RETURNS /* ignore */
+# define UNUSED /* ignore */
+# define BLANK_FORMAT ""
+#endif
+
 typedef struct attr_flags {
 	char			addport;	/* Add port to IP address */
 	char			has_tag;	/* attribute allows tags */
@@ -149,7 +161,7 @@ typedef struct radius_packet {
 	u_short			src_port;
 	u_short			dst_port;
 	int			id;
-	int			code;
+	unsigned int		code;
 	uint8_t			vector[AUTH_VECTOR_LEN];
 	time_t			timestamp;
 	int			verified;
