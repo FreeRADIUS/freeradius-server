@@ -120,7 +120,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 
 	rad_assert(chalno >= 0 && chalno < 3);
 
-	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_CHAL1+chalno);
+	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_RAND1+chalno);
 	if(vp == NULL) {
 		/* bad, we can't find stuff! */
 		DEBUG2("   eap-sim can not find sim-challenge%d",chalno+1);
@@ -167,7 +167,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
  *
  * Challenges will come from one of three places eventually:
  *
- * 1  from attributes like ATTRIBUTE_EAP_SIM_CHALx
+ * 1  from attributes like ATTRIBUTE_EAP_SIM_RANDx
  *            (these might be retrived from a database)
  *
  * 2  from internally implemented SIM authenticators
@@ -312,7 +312,7 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
 
 	type_data = type_data;  /* shut up compiler */
 
-	vp = pairfind(handler->request->reply->vps, ATTRIBUTE_EAP_SIM_CHAL1);
+	vp = pairfind(handler->request->reply->vps, ATTRIBUTE_EAP_SIM_RAND1);
 	if(vp == NULL) {
 		return 0;
 	}
@@ -536,7 +536,11 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.4  2003-11-21 19:02:19  mcr
+ * Revision 1.5  2003-11-21 19:15:51  mcr
+ * 	rename "SIM-Chal" to "SIM-Rand" to sync with names in official
+ * 	documentation.
+ *
+ * Revision 1.4  2003/11/21 19:02:19  mcr
  * 	pack the RAND attribute properly - should have 2 bytes
  * reserved.
  *
