@@ -141,7 +141,7 @@ ATTRIBUTE	USR-PW_USR_OFilter_IPX			0x9004	string
 ATTRIBUTE	USR-PW_USR_OFilter_SAP			0x9005	string
 ATTRIBUTE	USR-PW_VPN_ID				0x9006	string
 ATTRIBUTE	USR-PW_VPN_Name				0x9007	string
-ATTRIBUTE	USR-PW_VPN_Neighbor			0x9008	string
+ATTRIBUTE	USR-PW_VPN_Neighbor			0x9008	ipaddr
 ATTRIBUTE	USR-PW_Framed_Routing_V2		0x9009	string
 ATTRIBUTE	USR-PW_VPN_Gateway			0x900a	string
 ATTRIBUTE	USR-PW_Tunnel_Authentication		0x900b	string
