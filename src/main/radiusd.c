@@ -2017,10 +2017,15 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *	In that case, go kick the home RADIUS
 			 *	server again.
 			 */
-			DEBUG2("Sending duplicate proxied request to client %s:%d - ID: %d",
-			       client_name(curreq->proxy->dst_ipaddr), request->packet->src_port,
-			       curreq->proxy->id);
-			
+			{
+				char buffer[32];
+
+				DEBUG2("Sending duplicate proxied request to home server %s:%d - ID: %d",
+				       ip_ntoa(buffer, curreq->proxy->dst_ipaddr),
+				       curreq->proxy->dst_port,
+									
+				       curreq->proxy->id);
+			}
 			curreq->proxy_next_try = request->timestamp + mainconfig.proxy_retry_delay;
 			rad_send(curreq->proxy, curreq->packet, curreq->proxysecret);
 			request_free(&request);
@@ -2299,6 +2304,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 {
 	REALM *cl;
 	REQUEST *oldreq;
+	char buffer[32];
 	
 	/*
 	 *	Find the original request in the request list
@@ -2311,8 +2317,8 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	 *	request, as there's no way for us to send it to a NAS.
 	 */
 	if (!oldreq) {
-		radlog(L_PROXY, "No matching request was found for proxy reply from server %s:%d - ID %d",
-		       client_name(request->packet->src_ipaddr),
+		radlog(L_PROXY, "No outstanding request was found for proxy reply from home server %s:%d - ID %d",
+		       ip_ntoa(buffer, request->packet->src_ipaddr),
 		       request->packet->src_port,
 		       request->packet->id);
 		request_free(&request);
@@ -2325,7 +2331,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	 */
 	if (oldreq->child_pid != NO_SUCH_CHILD_PID) {
 		radlog(L_ERR, "Discarding duplicate reply from home server %s:%d - ID: %d due to live request %d",
-		       client_name(request->packet->src_ipaddr),
+		       ip_ntoa(buffer, request->packet->src_ipaddr),
 		       request->packet->src_port,
 		       request->packet->id,
 		       oldreq->number);
@@ -2343,7 +2349,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	if ((oldreq->reply->code != 0) ||
 	    (oldreq->finished)) {
 		radlog(L_ERR, "Reply from home server %s:%d arrived too late for request %d. Try increasing 'retry_delay' or 'max_request_time'",
-		       client_name(request->packet->src_ipaddr),
+		       ip_ntoa(buffer, request->packet->src_ipaddr),
 		       request->packet->src_port,
 		       oldreq->number);
 		request_free(&request);
