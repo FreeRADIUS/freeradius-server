@@ -222,7 +222,11 @@ x99_get_user_info(const char *pwdfile, const char *username,
      * Find the requested user.
      * Add a ':' to the username to make sure we don't match shortest prefix.
      */
-    p = rad_malloc(strlen(username) + 2);
+    p = malloc(strlen(username) + 2);
+    if (!p) {
+	x99_log(X99_LOG_ERR, "x99_get_user_info: out of memory");
+	return -2;
+    }
     (void) sprintf(p, "%s:", username);
     found = 0;
     while (!feof(fp)) {
