@@ -62,7 +62,10 @@ operators, and their meaning.
 
 .TP 0.5i
 .B "Attribute = Value"
-Not allowed as a check item.
+Not allowed as a check item for RADIUS protocol attributes.  It is
+allowed for server configuration attributes (Auth-Type, etc), and sets
+the value of on attribute, only if there is no other item of the
+same attribute.
 .br
 As a reply item, it means "add the item
 to the reply list, but only if there is no other item of the same

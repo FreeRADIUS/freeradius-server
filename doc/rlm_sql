@@ -21,14 +21,13 @@
 
 1. Miscellaneous configuration
 
-  The SQL module has little documentation, sorry.  A helpful (but old)
+  The SQL module has little documentation, sorry.  A helpful
   web page is:
 
 	http://www.frontios.com/freeradius.html
 
-  but it hasn't been updated in over 6 months.  If anyone has
-  comments on this (or other) documentation, PLEASE email them to the
-  freeradius-devel list, so that they may be included here.
+  If anyone has comments on this (or other) documentation, PLEASE
+  email them to the freeradius-devel list, so that they may be included here.
 
 
 2. What NOT to do.
@@ -86,7 +85,10 @@
 
  =	"Attribute = Value"
 
-	Not allowed as a check item.
+	Not allowed as a check item for RADIUS protocol attributes.  It is
+	allowed for server configuration attributes (Auth-Type, etc), and sets
+	the value of on attribute, only if there is no other item of the
+	same attribute.
 
 	As a reply item, it means "add the item to the reply list, but
 	only if there is no other item of the same attribute."
