@@ -197,14 +197,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			} 
 		      }
 		      
-		      /*
-		       *	FIXME: this is just to make sure but
-		       *	should NOT be needed. In fact I have no
-		       *	idea if it is needed :)
-		       */
-		      if (reply->length == 0 && reply->strvalue[0] != 0)
-			reply->length = strlen(reply->strvalue);
-		      
 #ifndef ASCEND_BINARY
 		    case PW_TYPE_ABINARY:
 #endif
