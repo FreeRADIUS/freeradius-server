@@ -517,7 +517,7 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 			unsigned int data_len;
 			unsigned char buffer[1024];
 
-			data_len = record_minus(&tls_session->dirty_in,
+			data_len = (tls_session->record_minus)(&tls_session->dirty_in,
 						buffer, sizeof(buffer));
 			log_debug("  Tunneled data (%u bytes)\n", data_len);
 			for (i = 0; i < data_len; i++) {

@@ -194,7 +194,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 		memcpy(reply.data, &nlen, lbit);
 		reply.flags = SET_LENGTH_INCLUDED(reply.flags);
 	}
-	record_minus(&ssn->dirty_out, reply.data + lbit, size);
+	(ssn->record_minus)(&ssn->dirty_out, reply.data + lbit, size);
 
 	eaptls_compose(eap_ds, &reply);
 	free(reply.data);
@@ -745,7 +745,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	 * 	reinitialized only when this M bit is NOT set.
 	 */
 	if (tlspacket->dlen !=
-	    record_plus(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
+	    (tls_session->record_plus)(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
 		eaptls_free(&tlspacket);
 		radlog(L_ERR, "rlm_eap_tls: Exceeded maximum record size");
 		return EAPTLS_FAIL;
