@@ -59,6 +59,7 @@ $INCLUDE dictionary.erx
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.juniper
+$INCLUDE dictionary.alteon
 
 #
 #	Following are the proper new names. Use these.
