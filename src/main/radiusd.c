@@ -78,6 +78,7 @@ static int		spawn_flag = FALSE;
 static int		radius_pid;
 static int		need_reload = FALSE;
 static struct rlimit	core_limits;
+static time_t		last_cleaned_list;
 
 /*
  *  We keep the incoming requests in an array, indexed by ID.
@@ -107,18 +108,20 @@ static const char	*pid_file = NULL;
 extern int	errno;
 #endif
 
-typedef		int (*FUNP)(REQUEST *);
-
 static void	usage(void);
 
 static void	sig_fatal (int);
 static void	sig_hup (int);
 
 static int	rad_process (REQUEST *);
-static int	rad_respond (REQUEST *);
 static void	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
-static void	rad_spawn_child(REQUEST *, FUNP);
+#ifndef WITH_THREAD_POOL
+static int	rad_respond (REQUEST *);
+static void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
+#else
+extern void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
+#endif
 
 #ifdef WITH_NEW_CONFIG
 /*
@@ -260,7 +263,16 @@ int main(int argc, char **argv)
 #ifdef SIGIOT
 	signal(SIGIOT, sig_fatal);
 #endif
+
+	/*
+	 *	Pooled threads and child threads define their own
+	 *	signal handler.
+	 */
+#ifndef WITH_THREAD_POOL
+#ifndef HAVE_PTHREAD_H
 	signal(SIGTERM, sig_fatal);
+#endif
+#endif
 	signal(SIGCHLD, sig_cleanup);
 #if 0
 	signal(SIGFPE, sig_fatal);
@@ -521,6 +533,11 @@ int main(int argc, char **argv)
 	 */
 	pair_builtincompare_init();
 
+	/*
+	 *  Initialize other, miscellaneous variables.
+	 */
+	last_cleaned_list = time(NULL);
+
 #if 0
 	/*
 	 *	Connect 0, 1 and 2 to /dev/null.
@@ -544,6 +561,10 @@ int main(int argc, char **argv)
 			log(L_ERR|L_CONS, "Couldn't fork");
 			exit(1);
 		}
+
+		/*
+		 *  The parent exits, so the child can run in the background.
+		 */
 		if(pid > 0) {
 			exit(0);
 		}
@@ -551,6 +572,14 @@ int main(int argc, char **argv)
 		setsid();
 #endif
 	}
+
+#ifdef WITH_THREAD_POOL
+	/*
+	 *  This really should only be just after the 'setsid()', above.
+	 *  That way, we only create the thread pool for daemon mode.
+	 */
+	thread_pool_init(5);
+#endif
 
 	/*
 	 *	Use linebuffered or unbuffered stdout if
@@ -598,8 +627,10 @@ int main(int argc, char **argv)
 			}
 			sig_fatal(101);
 		}
-		if (status == 0)
+		if (status == 0) {
 			proxy_retry();
+			rad_clean_list();
+		}
 		for (i = 0; i < 3; i++) {
 
 			if (i == 0) fd = sockfd;
@@ -723,7 +754,7 @@ int main(int argc, char **argv)
 int rad_process(REQUEST *request)
 {
 	int dospawn;
-	FUNP fun;
+	RAD_REQUEST_FUNP fun;
 	int replicating = 0;
 
 	dospawn = FALSE;
@@ -822,17 +853,18 @@ int rad_process(REQUEST *request)
 		 */
 		request = rad_check_list(request);
 		if (request == NULL) {
-			request_list_busy = FALSE;
 			return 0;
 		}
 
 		if (dospawn) {
 			rad_spawn_child(request, fun);
-			/* AFTER spawning the child */
-			request_list_busy = FALSE;
 		} else {
-			/* BEFORE doing the request */
-			request_list_busy = FALSE;
+/*
+ *	This define is here only for debugging the thread pool.
+ *	Normally, when in NON-spawning mode, there should be NO
+ *	child threads.
+ */
+#ifndef WITH_THREAD_POOL
 			(*fun)(request);
 
 			/*
@@ -846,15 +878,21 @@ int rad_process(REQUEST *request)
 				if (sent == 0 || sent == 2)
 					rad_respond(request);
 			} else {
-				if (!replicating)
-				  rad_respond(request);
+				if (replicating == 0) {
+					
+					rad_respond(request);
+				}
 			}
+#else
+			rad_spawn_child(request, fun);
+#endif
 		}
 	}
 
 	return 0;
 }
 
+#ifndef WITH_THREAD_POOL
 /*
  *	Respond to a request packet.
  *
@@ -870,34 +908,37 @@ static int rad_respond(REQUEST *request)
   request->finished = TRUE;
   return 0;
 }
+#endif
 
+/*
+ *	Clean up the request list, every so often.
+ *
+ *	This is done by walking through ALL of the list, and
+ *	- joining any child threads which have exited.  (If not pooling)
+ *	- killing any processes which are NOT finished after a delay
+ *	- deleting any requests which are finished, and expired
+ */
 static void rad_clean_list(void)
 {
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
 	time_t		curtime;
 	child_pid_t    	child_pid;
-	REQUEST_LIST	*request_list_entry;
 	int		id;
-	static time_t	last_cleaned_list = 0;
-	time_t		now;
 
-	now = time(NULL);
+	curtime = time(NULL);
 
 	/*
 	 *  Don't bother checking the list if we've done it
 	 *  within the last second.
 	 */
-	if ((now - last_cleaned_list) == 0) {
-	  return;
+	if ((curtime - last_cleaned_list) == 0) {
+		return;
 	}
 
 	DEBUG2("Cleaning up request list after %d seconds",
-	       (int) (now - last_cleaned_list));
+	       (int) (curtime - last_cleaned_list));
 	
-	  
-	curtime = time(NULL);
-
 	/*
 	 *	When mucking around with the request list, we block
 	 *	asynchronous access (through the SIGCHLD handler) to
@@ -906,12 +947,15 @@ static void rad_clean_list(void)
 	request_list_busy = TRUE;
 		
 	for (id = 0; id < 256; id++) {
-		request_list_entry = &request_list[id];
-		curreq = request_list_entry->first_request;
+		curreq = request_list[id].first_request;
 		prevreq = NULL;
 
 		while (curreq &&
 		       (curreq->timestamp < (curtime + max_request_time))) {
+			/*
+			 *	We don't join threads which are in the pool.
+			 */
+#ifndef WITH_THREAD_POOL
 #ifdef HAVE_PTHREAD_H
 			/*
 			 *	If the child request has finished, then
@@ -925,6 +969,7 @@ static void rad_clean_list(void)
 			  pthread_join(curreq->child_pid, NULL);
 			  curreq->child_pid = NO_SUCH_CHILD_PID;
 			}
+#endif
 #endif
 
 			/*
@@ -971,36 +1016,36 @@ static void rad_clean_list(void)
 				DEBUG2("Cleaning up request ID %d with timestamp %08x",
 				       curreq->packet->id, curreq->timestamp);
 				prevreq = curreq->prev;
-				if (request_list_entry->request_count == 0) {
+				if (request_list[id].request_count == 0) {
 				  DEBUG("HORRIBLE ERROR!!!");
 				} else {
-				  request_list_entry->request_count--;
+				  request_list[id].request_count--;
 				}
 
 				if (prevreq == (REQUEST *)NULL) {
-				  request_list_entry->first_request = curreq->next;
+				  request_list[id].first_request = curreq->next;
 				  request_free(curreq);
-				  curreq = request_list_entry->first_request;
+				  curreq = request_list[id].first_request;
 				} else {
 				  prevreq->next = curreq->next;
 				  request_free(curreq);
 				  curreq = prevreq->next;
 				}
 				if (curreq)
-				  curreq->prev = prevreq;
+					curreq->prev = prevreq;
 				
 			} else {	/* the request is still alive */
-			  prevreq = curreq;
-			  curreq = curreq->next;
+				prevreq = curreq;
+				curreq = curreq->next;
 			}
-		}
-	} /* end of walking the request list */
+		} /* end of walking the request list for that ID */
+	} /* for each entry in the request list array */
 
 	/*
 	 *	We're done playing with the request list.
 	 */
 	request_list_busy = FALSE;
-	last_cleaned_list = now;
+	last_cleaned_list = curtime;
 }
 
 /*
@@ -1014,12 +1059,10 @@ static REQUEST *rad_check_list(REQUEST *request)
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
 	RADIUS_PACKET	*pkt;
-	time_t		curtime;
 	int		request_count;
 	REQUEST_LIST	*request_list_entry;
 	int		i;
 
-	curtime = time(NULL);
 	request_list_entry = &request_list[request->packet->id];
 	curreq = request_list_entry->first_request;
 	prevreq = NULL;
@@ -1103,6 +1146,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 *	If we've received a duplicate packet, 'request' is NULL.
 	 */
 	if (request == NULL) {
+		request_list_busy = FALSE;
 		return NULL;
 	}
 
@@ -1126,6 +1170,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			    request->packet->id);
 			sig_cleanup(SIGCHLD);
 			request_free(request);
+			request_list_busy = FALSE;
 			return NULL;
 		}
 	}
@@ -1136,7 +1181,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	request->prev = prevreq;
 	request->next = (REQUEST *)NULL;
 	request->child_pid = NO_SUCH_CHILD_PID;
-	request->timestamp = curtime;
 	request_list_entry->request_count++;
 
 	if (prevreq == (REQUEST *)NULL)
@@ -1147,6 +1191,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 	/*
 	 *	And return the request to be handled.
 	 */
+	request_list_busy = FALSE;
 	return request;
 }
 
@@ -1171,27 +1216,48 @@ void remove_from_request_list(REQUEST *request)
 	}
 }
 
+#ifndef WITH_THREAD_POOL
 #ifdef HAVE_PTHREAD_H
 typedef struct spawn_thread_t {
   REQUEST *request;
-  FUNP fun;
+  RAD_REQUEST_FUNP fun;
 } spawn_thread_t;
 
+/*
+ *	If the child *thread* gets a termination signal,
+ *	then exit from the thread.
+ */
+static void sig_term(int sig)
+{
+	pthread_exit(NULL);
+}
+
+/*
+ *	Spawn a new child thread to handle this request, and ONLY
+ *	this request.
+ */
 static void *rad_spawn_thread(void *arg)
 {
   spawn_thread_t *data = (spawn_thread_t *)arg;
 
+  signal(SIGTERM, sig_term);
   (*data->fun)(data->request);
   rad_respond(data->request);
   return NULL;
 }
 #endif
+#endif
 
+/*
+ *	If we're using the thread pool, then the function in
+ *	'threads.c' replaces this one.
+ */
+#ifndef WITH_THREAD_POOL
 /*
  *	Spawns a child process or thread to perform
  *	authentication/accounting and respond to RADIUS clients.
  */
-static void rad_spawn_child(REQUEST *request, FUNP fun)
+static void rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	child_pid_t		child_pid;
 
@@ -1229,7 +1295,6 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 		/*
 		 *	This is the child, it should go ahead and respond
 		 */
-		request_list_busy = FALSE;
 		signal(SIGCHLD, SIG_DFL);
 		(*fun)(request);
 		rad_respond(request);
@@ -1244,6 +1309,7 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 
 	sig_cleanup(SIGCHLD);
 }
+#endif /* WITH_THREAD_POOL */
 
 /*ARGSUSED*/
 void sig_cleanup(int sig)

@@ -48,6 +48,11 @@ typedef struct auth_req {
 	struct auth_req		*next;
 } REQUEST;
 
+/*
+ *  Function handler for requests.
+ */
+typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
+
 typedef struct radclient {
 	uint32_t		ipaddr;
 	char			longname[256];
@@ -217,3 +222,9 @@ void		pair_builtincompare_init(void);
 /* xlat.c */
 int            radius_xlat2(char * out, int outlen, char *str,
                             REQUEST * request, VALUE_PAIR *reply);
+
+#ifdef WITH_THREAD_POOL
+/* threads.c */
+extern		int thread_pool_init(int num_threads);
+extern		int thread_pool_check(void);
+#endif
