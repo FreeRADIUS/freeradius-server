@@ -310,7 +310,10 @@ module_t rlm_pap = {
 		NULL,		 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	pap_detach,			/* detach */
 	NULL,				/* destroy */

@@ -420,7 +420,10 @@ module_t rlm_realm = {
 	  realm_authorize,	/* authorization */
 	  realm_preacct,	/* preaccounting */
 	  NULL,			/* accounting */
-	  NULL			/* checksimul */
+	  NULL,			/* checksimul */
+	  NULL,			/* pre-proxy */
+	  NULL,			/* post-proxy */
+	  NULL			/* post-auth */
   },
   realm_detach,			/* detach */
   NULL,				/* destroy */

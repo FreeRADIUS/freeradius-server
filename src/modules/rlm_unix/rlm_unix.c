@@ -805,7 +805,10 @@ module_t rlm_unix = {
 	  NULL,                 /* authorization */
 	  NULL,                 /* preaccounting */
 	  unix_accounting,      /* accounting */
-	  NULL                  /* checksimul */
+	  NULL,                  /* checksimul */
+	  NULL,			/* pre-proxy */
+	  NULL,			/* post-proxy */
+	  NULL			/* post-auth */
   },
   unix_detach,                 	/* detach */
   unix_destroy,                  /* destroy */

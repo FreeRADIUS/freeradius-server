@@ -756,7 +756,10 @@ module_t rlm_preprocess = {
 		preprocess_authorize,	/* authorization */
 		preprocess_preaccounting, /* pre-accounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	preprocess_detach,	/* detach */
 	NULL,			/* destroy */

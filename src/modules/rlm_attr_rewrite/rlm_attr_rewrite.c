@@ -361,7 +361,10 @@ module_t rlm_attr_rewrite = {
 		attr_rewrite_authorize, 	/* authorization */
 		attr_rewrite_preacct,		/* preaccounting */
 		attr_rewrite_accounting,	/* accounting */
-		attr_rewrite_ismul		/* checksimul */
+		attr_rewrite_ismul,		/* checksimul */
+		NULL,				/* pre-proxy */
+		NULL,				/* post-proxy */
+		NULL				/* post-auth */
 	},
 	attr_rewrite_detach,			/* detach */
 	NULL,				/* destroy */

@@ -344,7 +344,10 @@ module_t rlm_eap = {
 		eap_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	eap_detach,			/* detach */
 	NULL,				/* destroy */

@@ -938,7 +938,10 @@ module_t rlm_mschap = {
 	  mschap_authorize,	/* authorize */
 	  NULL,			/* pre-accounting */
 	  NULL,			/* accounting */
-	  NULL			/* checksimul */
+	  NULL,			/* checksimul */
+	  NULL,			/* pre-proxy */
+	  NULL,			/* post-proxy */
+	  NULL			/* post-auth */
   },
   mschap_detach,		/* detach */
   NULL,				/* destroy */

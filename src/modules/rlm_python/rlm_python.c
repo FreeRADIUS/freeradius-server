@@ -934,7 +934,10 @@ module_t rlm_python = {
 		python_authorize,	/* authorization */
 		python_preacct,		/* preaccounting */
 		python_accounting,	/* accounting */
-		python_checksimul	/* checksimul */
+		python_checksimul,	/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	python_detach,			/* detach */
 	NULL,				/* destroy */

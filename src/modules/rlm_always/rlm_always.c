@@ -164,7 +164,10 @@ module_t rlm_always = {
 		always_return,		/* authorization */
 		always_return,		/* preaccounting */
 		always_return,		/* accounting */
-		always_checksimul	/* checksimul */
+		always_checksimul,	/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	always_detach,			/* detach */
 	NULL,				/* destroy */

@@ -737,7 +737,10 @@ module_t rlm_x99_token = {
 		x99_token_authorize,	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	x99_token_detach,		/* detach */
 	x99_token_destroy,		/* destroy */

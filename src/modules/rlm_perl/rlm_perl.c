@@ -488,7 +488,11 @@ module_t rlm_perl = {
 		perl_authenticate,
 		perl_authorize,
 		perl_preacct,
-		perl_accounting
+		perl_accounting,
+		NULL,
+		NULL,                   /* pre-proxy */
+		NULL,                   /* post-proxy */
+		NULL                    /* post-auth */
 	},
 	perl_detach,			/* detach */
 	NULL,				/* destroy */

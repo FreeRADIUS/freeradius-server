@@ -170,7 +170,10 @@ module_t rlm_ns_mta_md5 = {
 	  NULL,			/* authorize */
 	  NULL,			/* pre-accounting */
 	  NULL,			/* accounting */
-	  NULL			/* checksimul */
+	  NULL,			/* checksimul */
+	  NULL,			/* pre-proxy */
+	  NULL,			/* post-proxy */
+	  NULL			/* post-auth */
   },
   NULL,				/* detach */
   NULL,				/* destroy */

@@ -191,7 +191,10 @@ module_t rlm_smb = {
 		NULL,			/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	smb_detach,			/* detach */
 	NULL,				/* destroy */

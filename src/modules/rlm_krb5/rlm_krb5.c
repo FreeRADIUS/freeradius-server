@@ -158,7 +158,10 @@ module_t rlm_krb5 = {
 	  NULL,			/* authorize */
 	  NULL,			/* pre-accounting */
 	  NULL,			/* accounting */
-	  NULL			/* checksimul */
+	  NULL,			/* checksimul */
+	  NULL,			/* pre-proxy */
+	  NULL,			/* post-proxy */
+	  NULL			/* post-auth */
   },
   krb5_detach,			/* detach */
   NULL,				/* destroy */

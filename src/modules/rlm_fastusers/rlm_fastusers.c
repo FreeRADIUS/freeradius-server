@@ -823,7 +823,10 @@ module_t rlm_fastusers = {
 		fastuser_authorize,	/* authorization */
 		fastuser_preacct,	/* preaccounting */
 		fastuser_accounting,	/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	fastuser_detach,		/* detach */
 	NULL				/* destroy */

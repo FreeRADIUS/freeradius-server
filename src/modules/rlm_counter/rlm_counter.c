@@ -759,7 +759,10 @@ module_t rlm_counter = {
 		counter_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		counter_accounting,	/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	counter_detach,			/* detach */
 	NULL,				/* destroy */

@@ -663,7 +663,10 @@ module_t rlm_ippool = {
 		ippool_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		ippool_accounting,	/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	ippool_detach,			/* detach */
 	NULL,				/* destroy */

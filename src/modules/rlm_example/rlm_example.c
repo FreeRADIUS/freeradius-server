@@ -238,7 +238,10 @@ module_t rlm_example = {
 		example_authorize,	/* authorization */
 		example_preacct,	/* preaccounting */
 		example_accounting,	/* accounting */
-		example_checksimul	/* checksimul */
+		example_checksimul,	/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	example_detach,			/* detach */
 	NULL,				/* destroy */

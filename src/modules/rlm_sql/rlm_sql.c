@@ -898,7 +898,10 @@ module_t rlm_sql = {
 		rlm_sql_authorize,	/* authorization */
 		NULL,			/* preaccounting */
 		rlm_sql_accounting,	/* accounting */
-		rlm_sql_checksimul	/* checksimul */
+		rlm_sql_checksimul,	/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	rlm_sql_detach,		/* detach */
 	rlm_sql_destroy,	/* destroy */

@@ -282,7 +282,10 @@ module_t rlm_pam = {
 	  NULL,			/* authorize */
 	  NULL,			/* pre-accounting */
 	  NULL,			/* accounting */
-	  NULL			/* checksimul */
+	  NULL,			/* checksimul */
+	  NULL,			/* pre-proxy */
+	  NULL,			/* post-proxy */
+	  NULL			/* post-auth */
   },
   pam_detach,			/* detach */
   NULL,				/* destroy */

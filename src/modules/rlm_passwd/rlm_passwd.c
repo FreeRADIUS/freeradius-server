@@ -472,7 +472,10 @@ module_t rlm_passwd = {
 		passwd_authorize,	/* authorization */
 		NULL,			/* pre-accounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	passwd_detach,			/* detach */
 	NULL				/* destroy */

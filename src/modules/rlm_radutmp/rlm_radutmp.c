@@ -634,7 +634,10 @@ module_t rlm_radutmp = {
 	  NULL,                 /* authorization */
 	  NULL,                 /* preaccounting */
 	  radutmp_accounting,   /* accounting */
-	  radutmp_checksimul	/* checksimul */
+	  radutmp_checksimul,	/* checksimul */
+	  NULL,			/* pre-proxy */
+	  NULL,			/* post-proxy */
+	  NULL			/* post-auth */
   },
   radutmp_detach,               /* detach */
   NULL,         	        /* destroy */

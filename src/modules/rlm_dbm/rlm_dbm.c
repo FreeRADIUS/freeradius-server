@@ -368,8 +368,11 @@ module_t rlm_dbm = {
                 rlm_dbm_authorize,      /* authorization */
                 NULL,           	/* preaccounting */
                 NULL,                   /* accounting */
-                NULL                    /* checksimul */
-        },
+                NULL,                    /* checksimul */
+                NULL,			/* pre-proxy */
+                NULL,			/* post-proxy */
+                NULL			/* post-auth */
+	},
         rlm_dbm_detach,                 /* detach */
-        NULL                            /* destroy */
+	NULL                            /* destroy */
 };

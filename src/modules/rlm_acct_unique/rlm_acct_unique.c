@@ -233,7 +233,10 @@ module_t rlm_acct_unique = {
 	  NULL,			/* authorization */
 	  NULL,			/* preaccounting */
 	  unique_accounting,	/* accounting */
-	  NULL			/* checksimul */
+	  NULL,			/* checksimul */
+	  NULL,			/* pre-proxy */
+	  NULL,			/* post-proxy */
+	  NULL			/* post-auth */
   },
   unique_detach,		/* detach */
   NULL,				/* destroy */

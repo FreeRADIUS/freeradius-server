@@ -143,7 +143,10 @@ module_t rlm_chap = {
 		chap_authorize,	 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	NULL,				/* detach */
 	NULL,				/* destroy */

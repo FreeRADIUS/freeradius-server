@@ -426,7 +426,10 @@ module_t rlm_attr_filter = {
 		attr_filter_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	attr_filter_detach,		/* detach */
 	NULL				/* destroy */

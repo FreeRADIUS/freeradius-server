@@ -656,7 +656,10 @@ module_t rlm_sqlcounter = {
 		sqlcounter_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
-		NULL			/* checksimul */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 	sqlcounter_detach,		/* detach */
 	NULL,				/* destroy */
