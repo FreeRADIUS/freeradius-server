@@ -73,9 +73,6 @@ int proxy_receive(REQUEST *request)
 		return -1;
 	}
 
-	realmname = (char *) realmpair->strvalue;
-	realm = realm_find(realmname);
-
 	/*
 	 *	Don't touch the reply VP's.  Assume that a module
 	 *	takes care of that...
@@ -175,7 +172,7 @@ int proxy_send(REQUEST *request)
 	 *	If there is no such realm, then exit.
 	 *	Maybe we should log an error?
 	 */
-	realm = realm_find(realmname);
+	realm = realm_find(realmname, (request->packet->code == PW_ACCOUNTING_REQUEST));
 	if (realm == NULL) {
 		return -1;
 	}

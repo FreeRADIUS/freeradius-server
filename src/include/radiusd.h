@@ -106,6 +106,8 @@ typedef struct realm {
 	int			notrealm;
 	int			active;
 	time_t			wakeup;
+	int			acct_active;
+	time_t			acct_wakeup;
 	struct realm		*next;
 } REALM;
 
@@ -238,9 +240,9 @@ const char	*client_name(uint32_t ipno);
 void		client_walk(void);
 
 /* files.c */
-REALM		*realm_find(const char *);
-REALM		*realm_findbyaddr(uint32_t ipno);
-void		realm_disable(uint32_t ipno);
+REALM		*realm_find(const char *, int acct);
+REALM		*realm_findbyaddr(uint32_t ipno, int port);
+void		realm_disable(uint32_t ipno, int port);
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);

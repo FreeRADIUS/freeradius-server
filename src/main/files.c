@@ -104,6 +104,7 @@ static void auth_type_fixup(VALUE_PAIR **check)
 	}
 	vp->lvalue = n;
 	vp->operator = T_OP_ADD;
+	strcpy(vp->strvalue, "Local");
 
 	vp->next = *check;
 	*check = vp;
@@ -467,6 +468,7 @@ int read_realms_file(const char *file)
 		strcpy(c->server, hostnm);
 		c->striprealm = TRUE;
 		c->active = TRUE;
+		c->acct_active = TRUE;
 
 		while (getword(&p, opts, sizeof(opts))) {
 			if (strcmp(opts, "nostrip") == 0)
@@ -494,26 +496,30 @@ int read_realms_file(const char *file)
 /*
  * Mark a host inactive
  */
-void realm_disable(uint32_t ipaddr)
+void realm_disable(uint32_t ipaddr, int port)
 {
 	REALM *cl;
 	time_t now;
 
 	now = time(NULL);
 	for(cl = realms; cl; cl = cl->next)
-		if ((ipaddr == cl->ipaddr) ||
-		    (ipaddr == cl->acct_ipaddr)) {
+		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
 			cl->active = FALSE;
 			cl->wakeup = now + proxy_dead_time;
-			radlog(L_PROXY, "marking server %s for realm %s dead",
-				cl->server, cl->realm);
+			radlog(L_PROXY, "marking authentication server %s:%d for realm %s dead",
+				cl->server, port, cl->realm);
+		} else if ((ipaddr == cl->acct_ipaddr) && (port == cl->acct_port)) {
+			cl->acct_active = FALSE;
+			cl->acct_wakeup = now + proxy_dead_time;
+			radlog(L_PROXY, "marking accounting server %s:%d for realm %s dead",
+				cl->server, port, cl->realm);
 		}
 }
 
 /*
  *	Find a realm in the REALM list.
  */
-REALM *realm_find(const char *realm)
+REALM *realm_find(const char *realm, int acct)
 {
 	REALM *cl;
 	REALM *default_realm = NULL;
@@ -537,11 +543,16 @@ REALM *realm_find(const char *realm)
 		if (cl->wakeup <= now) {
 			cl->active = TRUE;
 		}
+		if (cl->acct_wakeup <= now) {
+			cl->acct_active = TRUE;
+		}
 
 		/*
-		 *	It's not alive, skip it.
+		 *	Asked for auth/acct, and the auth/acct server
+		 *	is not active.  Skip it.
 		 */
-		if (!cl->active) {
+		if ((!acct && !cl->active) ||
+		    (acct && !cl->acct_active)) {
 
 			/*
 			 *	We've been asked to NOT fall through
@@ -592,11 +603,10 @@ REALM *realm_find(const char *realm)
 	return default_realm;
 }
 
-
 /*
  *	Find a realm for a proxy reply by proxy's IP
  */
-REALM *realm_findbyaddr(uint32_t ipaddr)
+REALM *realm_findbyaddr(uint32_t ipaddr, int port)
 {
 	REALM *cl;
 
@@ -607,9 +617,11 @@ REALM *realm_findbyaddr(uint32_t ipaddr)
 	 *	as active, and return the realm.
 	 */
 	for(cl = realms; cl != NULL; cl = cl->next)
-		if ((ipaddr == cl->ipaddr) ||
-		    (ipaddr == cl->acct_ipaddr)) {
+		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
 			cl->active = TRUE;
+			return cl;
+		} else if ((ipaddr == cl->acct_ipaddr) && (port == cl->acct_port)) {
+			cl->acct_active = TRUE;
 			return cl;
 		}
 

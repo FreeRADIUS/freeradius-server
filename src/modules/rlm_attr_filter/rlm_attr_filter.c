@@ -220,7 +220,7 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 	}
 
 	realmname = (char *) realmpair->strvalue;
-        realm = realm_find(realmname);
+        realm = realm_find(realmname, FALSE);
 
 	/*
 	 *	Find the attr_filter profile entry for the realm.

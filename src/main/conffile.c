@@ -640,7 +640,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		if (buf1[0] != 0 && buf2[0] == 0 && buf3[0] == 0) {
 			t2 = T_OP_EQ;
 		} else if (buf1[0] == 0 || buf2[0] == 0 || 
-					(t2 < T_EQSTART || t2 > T_EQEND)) {
+			   (t2 < T_EQSTART || t2 > T_EQEND)) {
 			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 					cf, *lineno);
 			cf_section_free(&cs);
@@ -657,7 +657,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			cf_section_free(&cs);
 			return NULL;
 		}
-		
+
 		/*
 		 *	Handle variable substitution via ${foo}
 		 */
@@ -1037,6 +1037,7 @@ static int generate_realms(const char *filename)
 		if ((cf_section_value_find(cs, "notsuffix")) != NULL)
 			c->notrealm = 1;
 		c->active = TRUE;
+		c->acct_active = TRUE;
 
 		c->next = NULL;
 		*tail = c;

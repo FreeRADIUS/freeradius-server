@@ -1026,7 +1026,7 @@ int main(int argc, char *argv[])
 				
 			} else {    /* It came in on the proxy port */
 				REALM *rl;
-				if ((rl = realm_findbyaddr(packet->src_ipaddr)) == NULL) {
+				if ((rl = realm_findbyaddr(packet->src_ipaddr,packet->src_port)) == NULL) {
 					radlog(L_ERR, "Ignoring request from unknown proxy %s:%d",
 					ip_ntoa((char *)buffer, packet->src_ipaddr),
 					packet->src_port);
@@ -2639,7 +2639,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 */
 	if (request->proxy_try_count == 0) {
 		rad_reject(request);
-		realm_disable(request->proxy->dst_ipaddr);
+		realm_disable(request->proxy->dst_ipaddr,request->proxy->dst_port);
 		request->finished = TRUE;
 		goto setup_timeout;
 	}

@@ -146,7 +146,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	/*
 	 *	Allow NULL realms.
 	 */
-	realm = realm_find(realmname);
+	realm = realm_find(realmname, (request->packet->code == PW_ACCOUNTING_REQUEST));
 	if (!realm) {
 		DEBUG2("    rlm_realm: No such realm %s",
 		       (realmname == NULL) ? "NULL" : realmname);
