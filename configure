@@ -7745,11 +7745,11 @@ else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-  SNMP_INCLUDE=
+  ucdsnmp=
 fi
 rm -f conftest*
 
-if test "x$SNMP_INCLUDE" = "x"; then
+if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
   for try in /usr/include /usr/local/include $snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
@@ -7786,17 +7786,17 @@ else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-  SNMP_INCLUDE=
+  ucdsnmp=
 fi
 rm -f conftest*
-    if test "x$SNMP_INCLUDE" != "x"; then
+    if test "x$ucdsnmp" != "x"; then
       break;
     fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
-if test "x$SNMP_INCLUDE" = "x"; then
+if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
   for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
@@ -7828,22 +7828,22 @@ int main() {
 EOF
 if { (eval echo configure:7830: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-  SNMP_INCLUDE=""
+  SNMP_INCLUDE="";ucdsnmp=no
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-  SNMP_INCLUDE=
+  ucdsnmp=
 fi
 rm -f conftest*
-    if test "x$SNMP_INCLUDE" != "x"; then
+    if test "x$ucdsnmp" != "x"; then
       break;
     fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
-if test "x$SNMP_INCLUDE" = "x"; then
+if test "x$ucdsnmp" = "x"; then
   old_CFLAGS="$CFLAGS"
   for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
@@ -7875,22 +7875,22 @@ int main() {
 EOF
 if { (eval echo configure:7877: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-  SNMP_INCLUDE="-I$try"
+  SNMP_INCLUDE="-I$try";ucdsnmp=no
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-  SNMP_INCLUDE=
+  ucdsnmp=
 fi
 rm -f conftest*
-    if test "x$SNMP_INCLUDE" != "x"; then
+    if test "x$ucdsnmp" != "x"; then
       break;
     fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
-if test "x$SNMP_INCLUDE" = "x"; then
+if test "x$ucdsnmp" = "x"; then
   echo "$ac_t""no" 1>&6
 else
   if test "x$ucdsnmp" = "xyes"; then
