@@ -71,6 +71,7 @@ VALUE_PAIR *paircreate(int attr, int type)
 	if ((da = dict_attrbyvalue(attr)) != NULL) {
 		strcpy(vp->name, da->name);
 		vp->type = da->type;
+		vp->flags = da->flags;
 	} else if (VENDOR(attr) == 0) {
 		sprintf(vp->name, "Attr-%u", attr);
 	} else {
