@@ -8160,7 +8160,7 @@ if test "x$EXPERIMENTAL" = "xyes"; then
     mysubdirs="$mysubdirs $bar"
   done
 else
-            for foo in `find \`cat src/modules/stable | sed 's%rlm%src/modules/rlm%g'\` -name configure -print`; do
+            for foo in `find \`cat src/modules/stable | sed 's%rlm%src/modules/rlm%g'\` -maxdepth 1 -name configure -print`; do
     bar=`echo $foo | sed 's%/configure$%%g'`
     mysubdirs="$mysubdirs $bar"
   done
