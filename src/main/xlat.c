@@ -133,8 +133,6 @@ static int xlat_packet(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	if (!vps) return 0;	/* silently fail */
-
 	/*
 	 *	The "format" string is the attribute name.
 	 */
@@ -175,6 +173,8 @@ static int xlat_packet(void *instance, REQUEST *request,
 		 */
 		return 0;
 	}
+
+	if (!vps) return 0;	/* silently fail */
 
 	/*
 	 *	Convert the VP to a string, and return it.
@@ -465,14 +465,16 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		q += retlen;
 
 		/*
-		 *	Regex-style %{1}, %{2}, etc.
+		 *	Look up the name, in order to get the correct
+		 *	debug message.
 		 */
+#ifndef NDEBUG
 	} else if (dict_attrbyname(attrname) == NULL) {
 		/*
 		 *	No attribute by that name, return an error.
 		 */
 		DEBUG2("WARNING: Attempt to use unknown xlat function, or non-existent attribute in string %%{%s}", attrname);
-
+#endif
 	} /* else the attribute is known, but not in the request */
 
 	/*
@@ -482,15 +484,18 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	 */
 	if (found) {
 		while((*p != '\0') && (openbraces > 0)) {
+			/*
+			 *	Handle escapes outside of the loop.
+			 */
+			if (*p == '\\') {
+				p++;
+				if (!*p) break;
+				p++; /* get & ignore next character */
+				continue;
+			}
+
 			switch (*p) {
 			default:
-				break;
-
-				/*
-				 *  Ensure that escaped braces are allowed.
-				 */
-			case '\\':
-				p++; /* skip the escaped character */
 				break;
 
 				/*
@@ -622,7 +627,9 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			p++;
 
 			/*
-			 *	Hmmm... ${User-Name} is a synonym for %{User-Name}
+			 *	Hmmm... ${User-Name} is a synonym for
+			 *	%{User-Name}.
+			 *
 			 *	Why, exactly?
 			 */
 		} else if (c == '$') switch(*p) {
