@@ -205,7 +205,7 @@ VALUE	LAC-Real-Port-Type	NAS-PORT-TYPE-PPPOE		60
 ATTRIBUTE	Client_DNS_Pri			1	ipaddr		Redback
 ATTRIBUTE	Client_DNS_Sec			2	ipaddr		Redback
 ATTRIBUTE	DHCP_Max_Leases			3	integer		Redback
-ATTRIBUTE	Context-Name			4	string		Redback
+ATTRIBUTE	Context_Name			4	string		Redback
 ATTRIBUTE	Bridge_Group			5	string		Redback
 ATTRIBUTE	BG_Aging_Time			6	string		Redback
 ATTRIBUTE	BG_Path_Cost			7	string		Redback

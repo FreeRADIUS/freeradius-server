@@ -88,9 +88,11 @@ ATTRIBUTE	3GPP2-Service-Option-Profile	74	octets
 
 # the following don't contain subtypes
 ATTRIBUTE	3GPP2-DNS-Update-Required	75	integer
-ATTRIBUTE	3GPP2-Always-On			76	integer
+
+# Is this 76 or 78?  Check...
+#ATTRIBUTE	3GPP2-Always-On			76	integer
 # 77 ?
-ATTRIBUTE	3GPP2-Always-On			78	integer
+#ATTRIBUTE	3GPP2-Always-On			78	integer
 ATTRIBUTE	3GPP2-Foreign-Agent-Address	79	ipaddr
 ATTRIBUTE	3GPP2-Last-User-Activity-Time	80	integer
 ATTRIBUTE	3GPP2-MN-AAA-Removal-Indication 81	integer

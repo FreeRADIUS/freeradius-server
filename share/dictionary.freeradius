@@ -12,6 +12,6 @@ VENDOR		FreeRADIUS	11344
 
 BEGIN-VENDOR FreeRADIUS
 
-ATTRIBUTE	Freeradius-Proxied-To		1	ipaddr
+ATTRIBUTE	FreeRADIUS-Proxied-To		1	ipaddr
 
 END-VENDOR FreeRADIUS

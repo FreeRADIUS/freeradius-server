@@ -27,8 +27,6 @@ VALUE		Service-Type		Dialback-Framed-User	4
 #
 #	For compatibility with MERIT users files.
 #
-ATTRIBUTE	NAS-Port		5	integer
-ATTRIBUTE	Login-Host		14	ipaddr
 ATTRIBUTE	Login-Callback-Number	19	string
 ATTRIBUTE	Framed-Callback-Id	20	string
 ATTRIBUTE	Client-Port-DNIS	30	string

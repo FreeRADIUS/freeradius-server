@@ -14,7 +14,7 @@ VENDOR          Alcatel         3041
 ATTRIBUTE       AAT-Client-Primary-DNS          5       ipaddr          Alcatel
 ATTRIBUTE       AAT-Client-Primary-WINS-NBNS    6       ipaddr          Alcatel
 ATTRIBUTE       AAT-Client-Secondary-WINS-NBNS  7       ipaddr          Alcatel
-ATTRIBUTE       AAT-Client-Primary-DNS          8       ipaddr          Alcatel
+#ATTRIBUTE       AAT-Client-Primary-DNS          8       ipaddr          Alcatel
 ATTRIBUTE       AAT-PPP-Address                 9       ipaddr          Alcatel
 ATTRIBUTE       AAT-ATM-Direct                  21      string          Alcatel
 ATTRIBUTE       AAT-IP-TOS                      22      integer         Alcatel
