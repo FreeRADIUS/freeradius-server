@@ -442,7 +442,7 @@ int main(int argc, char **argv)
 
 	cs = cf_section_find(NULL);
 	if(!cs) {
-		fprintf(stderr, "No configuration information in radiusd.conf!\n",
+		fprintf(stderr, "%s: No configuration information in radiusd.conf!\n",
 			argv[0]);
 		exit(1);
 	}
