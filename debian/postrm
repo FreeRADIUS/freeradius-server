@@ -1,8 +1,12 @@
 #! /bin/sh -e
 
+if [ "$1" = "remove" -o  "$1" = "purge" ]
+then
+	update-rc.d -f freeradius remove >/dev/null
+fi
+
 case "$1" in
 	remove)
-		update-rc.d -f freeradius remove
 		;;
 	purge)
 		if [ -d /var/log/freeradius ] 
@@ -16,7 +20,6 @@ case "$1" in
 			cd /var/log
 			rm -rf /var/log/freeradius
 		fi
-		update-rc.d -f freeradius remove
 		rm -rf /etc/raddb
 		;;
 	*)

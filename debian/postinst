@@ -11,13 +11,13 @@ case "$1" in
 	then
 		touch /var/log/freeradius/radius.log
 		chmod 640 /var/log/freeradius/radius.log
-		chown root:adm /var/log/freeradius/radius.log
+		chown nobody:adm /var/log/freeradius/radius.log
 	fi
 	if [ ! -f /var/log/freeradius/radwtmp ]
 	then
 		touch /var/log/freeradius/radwtmp
 		chmod 644 /var/log/freeradius/radwtmp
-		chown root:adm /var/log/freeradius/radius.log
+		chown nobody:adm /var/log/freeradius/radwtmp
 	fi
 	ldconfig
 	/etc/init.d/freeradius start

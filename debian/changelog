@@ -1,5 +1,5 @@
-radiusd-freeradius (0.0-2000122601) unstable; urgency=low
+radiusd-freeradius (0.0.20001227-1) unstable; urgency=low
 
   * Initial revision. (closes: Bug#76476)
 
- -- Chad Miller <cmiller@debian.org>  Tue, 26 Dec 2000 11:41:11 -0500
+ -- Chad Miller <cmiller@debian.org>  Wed, 27 Dec 2000 11:58:56 -0500

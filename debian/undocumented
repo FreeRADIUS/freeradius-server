@@ -1,13 +1,10 @@
-check-radiusd-config.8.gz
-checkrad.8.gz
+check-radiusd-config.1.gz
+checkrad.1.gz
+radclient.1.gz
 radtest.8.gz
 radlast.8.gz
-radwatch.8.gz
 radwho.8.gz
 radzap.8.gz
-radiusd.8.gz
-users.5.gz
-clients.5.gz
 hints.5.gz
 huntgroups.5.gz
 proxy.conf.5.gz
