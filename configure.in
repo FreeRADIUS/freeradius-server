@@ -133,21 +133,6 @@ if test "X$WITH_DICT_NOCASE" = "Xyes"; then
   AC_DEFINE(WITH_DICT_NOCASE)
 fi
 
-dnl extra argument: --with-attrib-nmc
-ATTRIB_NMC=yes
-AC_ARG_WITH(attrib-nmc,
-[  --with-attrib-nmc       Include USR-style vendor specific attributes (default=yes)],
-[ case "$withval" in
-    yes)
-	;;
-    *)
-	ATTRIB_NMC=""
-  esac ]
-)
-if test "X$ATTRIB_NMC" = "Xyes"; then
-  AC_DEFINE(ATTRIB_NMC)
-fi
-
 dnl extra argument: --with-ascend-binary
 ASCEND_BINARY=yes
 AC_ARG_WITH(ascend-binary,
@@ -391,6 +376,7 @@ AC_CHECK_HEADERS( \
 	malloc.h \
 	utmp.h \
 	utmpx.h \
+	signal.h \
 	sys/select.h \
 	regex.h \
 	syslog.h \
