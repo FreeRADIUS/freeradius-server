@@ -370,6 +370,21 @@ modules {
 		# Supported EAP-types
 		md5 {
 		}
+
+		## FIXME: EAP-TLS is highly experimental EAP-Type at the moment.  
+		#	Please give feedback.
+		#tls {
+		#	private_key_password = password
+		#	private_key_file = /path/filename
+		#	certificate_file = /path/filename
+		#	dh_file = /path/filename
+		#	random_file = /path/filename
+		#
+		# 	This can never exceed MAX_RADIUS_LEN (4096)
+		#	preferably half the MAX_RADIUS_LEN, to
+		#	accomodate other attributes in RADIUS packet.
+		#	fragment_size = 2048
+		#}
 	}
 
 	#  This module supports SAMBA passwd file authorization
