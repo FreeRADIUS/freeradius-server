@@ -1,18 +1,18 @@
-.TH ACCT_USERS 5 "05 August 2000"
+.TH ACCT_USERS 5 "05 August 2000" "" "FreeRADIUS user accounting file"
 .SH NAME
-acct_users \- RADIUS users file for accounting requests.
+acct_users \- user accounting file for the FreeRADIUS server
 .SH DESCRIPTION
-The \fIacct_users\fP file resides in the radius database directory,
-by default \fI/etc/raddb\fP.  It contains a series of configuration
-directives which are used by the server to decide how to log
-accounting messages.
+The \fBacct_users\fP file resides in the radius database directory, by
+default \fB/etc/raddb\fP.  It contains a series of configuration
+directives which are used by the \fIfiles\fP module to decide how to
+log accounting messages.
 
-The format of this file is identical to that of the 'users' file,
+The format of this file is identical to that of the \fBusers\fP file,
 except that it controls the response to accounting requests, not
 authentication requests.
 
 .SH FILES
-.I /etc/raddb/acct_users
+/etc/raddb/acct_users
 .SH "SEE ALSO"
 .BR radclient (1),
 .BR radiusd (8),
@@ -20,4 +20,4 @@ authentication requests.
 .BR users (5),
 
 .SH AUTHOR
-The FreeRADIUS team.
+Alan DeKok <aland@ox.org>

@@ -1,24 +1,24 @@
-.TH USERS 5 "05 August 2000"
+.TH USERS 5 "05 August 2000" "" "FreeRADIUS user authorization file"
 .SH NAME
-users \- RADIUS users file
+users \- user authorization file for the FreeRADIUS server
 .SH DESCRIPTION
-The \fIusers\fP file resides in the radius database directory,
-by default \fI/etc/raddb\fP.  It contains a series of configuration
-directives which are used by the server to decide how to authorize and
-authenticate each user request.
+The \fBusers\fP file resides in the RADIUS database directory, by
+default \fB/etc/raddb\fP.  It contains a series of configuration
+directives which are used by the \fIfiles\fP module to decide how to
+authorize and authenticate each user request.
 
 Every line starting with a hash sign
 .RB (' # ')
 is treated as comment and ignored.
 .PP
 Each entry of the file begins with a username, followed by a (possibly
-empty) list of check items.  The next line begins with a tab, and a
-(possibly empty) list of reply items.  Each item in the check or reply
-item list is an attribute of the form \fIname = value\fP.  Multiple
-items may be placed on one line, in which case they must be seperated
-by commas.  The reply items may be specified over multiple lines, in
-which case each line must end with a comma, and the last line of the
-reply items must not end with a comma.
+empty) list of check items, all on one line.  The next line begins
+with a tab, and a (possibly empty) list of reply items.  Each item in
+the check or reply item list is an attribute of the form \fBname =
+value\fP.  Multiple items may be placed on one line, in which case
+they must be seperated by commas.  The reply items may be specified
+over multiple lines, in which case each line must end with a comma,
+and the last line of the reply items must not end with a comma.
 
 The check items are a list of attributes used to match the incoming
 request.  If the username matches, AND all of the check items match
@@ -30,31 +30,33 @@ If the incoming request matches NO entry, then the request is
 rejected.
 
 .SH CAVEATS
-The special username \fIDEFAULT\fP matches any usernames.
+The special username \fBDEFAULT\fP matches any usernames.
 
-The entries are processed in order, from the top of the 'users' file,
-on down.  If an entry contains the special attribute 'Fall-Through =
-No' as a reply attribute, then the processing of the file stops, and
+The entries are processed in order, from the top of the \fBusers\fP file,
+on down.  If an entry contains the special item \fBFall-Through =
+No\fP as a reply attribute, then the processing of the file stops, and
 no more entries are matched.  Any reply item list without any
-Fall-Through attribute is treated as though it included a
-'Fall-Through = No' attribute.
+\fBFall-Through\fP attribute is treated as though it included a
+\fBFall-Through = No\fP attribute.
 
-If an entry contains the special attribute 'Fall-Through = Yes' as a
+If an entry contains the special item \fBFall-Through = Yes\fP as a
 reply attribute, then the processing proceeds to the next entry in
 order.
 
-Care should be taken when using Fall-Through.  The server should be
-tested in debugging mode with a number of test requests, in order to
-verify that the configured entries behave as expected.
+Care should be taken when using \fBFall-Through\fP.  The server should
+be tested in debugging mode with a number of test requests, in order
+to verify that the configured entries behave as expected.
 
-The special attribute Auth-Type is used to identify the authentication
-type to be used for that user.  See the dictionary file for a list of
-permitted Auth-Type values.
+The special attribute \fBAuth-Type\fP is used to identify the
+authentication type to be used for that user.  See the
+\fBdictionary\fP file for a list of permitted values for the
+\fBAuth-Type\fP attribute.
 
-Once the 'users' has been processed, the request is authenticated.
+Once the \fBusers\fB has been processed, the request is authenticated,
+using the method given by \fBAuth-Type\fP.
 
 .SH OPERATORS
-Additional operators other than '=' may be used for the attributes in
+Additional operators other than \fB=\fP may be used for the attributes in
 either the check item, or reply item list.  The following is a list of
 operators, and their meaning.
 
@@ -183,17 +185,18 @@ That is, give the user what they ask for.  This entry also shows how
 to specify multiple reply items.
 .RE
 
-See the 'users' file supplied with the server for more examples and
-comments.
+See the \fBusers\fP file supplied with the server for more examples
+and comments.
 
 .SH HINTS
-Run the server in debugging mode (-X), and use the radclient program
-to send it test packets which you think will match specific entries.
-The server will print out which entries were matched for that request,
-so you can verify your expectations.  This should be the FIRST thing
-you do if you suspect problems with the file.
+Run the server in debugging mode (\fB-X\fP), and use the
+\fBradclient\fP program to send it test packets which you think will
+match specific entries.  The server will print out which entries were
+matched for that request, so you can verify your expectations.  This
+should be the FIRST thing you do if you suspect problems with the
+file.
 
-Care should be taken when writing entries for the 'users' file.  It is
+Care should be taken when writing entries for the \fBusers\fP file.  It is
 easy to misconfigure the server so that requests are accepted when you
 wish to reject them.  The entries should be ordered, and the
 Fall-Through item should be used ONLY where it is required.
@@ -204,7 +207,7 @@ for specific users, who do not have a Fall-Through item, should come
 next.  Any DEFAULT entries should come last.
 
 .SH FILES
-.I /etc/raddb/users
+/etc/raddb/users
 .SH "SEE ALSO"
 .BR radclient (1),
 .BR radiusd (8),
