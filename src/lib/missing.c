@@ -16,6 +16,7 @@ static const char rcsid[] = "$Id$";
 #include	<sys/socket.h>
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
+#include	<ctype.h>
 
 #include	"missing.h"
 
@@ -32,6 +33,7 @@ int strncasecmp(char *s1, char *s2, int n)
 {
 	int		dif;
 	unsigned char	*p1, *p2;
+	int		c1, c2;
 
 	p1 = (unsigned char *)s1;
 	p2 = (unsigned char *)s2;
@@ -40,7 +42,13 @@ int strncasecmp(char *s1, char *s2, int n)
 	while (n != 0) {
 		if (*p1 == 0 && *p2 == 0)
 			break;
-		if ((dif = s1 - s2) != 0)
+		c1 = *p1;
+		c2 = *p2;
+
+		if (islower(c1)) c1 = toupper(c1);
+		if (islower(c2)) c2 = toupper(c2);
+
+		if ((dif = c1 - c2) != 0)
 			break;
 		p1++;
 		p2++;
