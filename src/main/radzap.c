@@ -48,18 +48,11 @@ const char *radlog_dir = NULL;
 const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlib_dir = NULL;
+radlog_dest_t radlog_dest = RADLOG_FILES;
 int debug_flag = 0;
-int proxy_synchronous = TRUE;
-int proxy_fallback = FALSE;
 int auth_port = 0;
 int acct_port;
-int proxy_retry_delay = RETRY_DELAY;
-int proxy_retry_count = RETRY_COUNT;
-int proxy_dead_time;
-int max_proxies = MAX_PROXIES;
 int log_stripped_names;
-radlog_dest_t radlog_dest = RADLOG_FILES;
-const char *radutmp_file = NULL;
 struct main_config_t mainconfig;
 uint32_t radiusip = INADDR_NONE;
 static void usage(void);
@@ -80,7 +73,7 @@ static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr,
 {
 	int fd;
 
-	if ((fd = open(radutmp_file, O_RDONLY|O_CREAT, 0644)) >= 0) {
+	if ((fd = open(radutmpconfig.radutmp_fn, O_RDONLY|O_CREAT, 0644)) >= 0) {
 		/*
 		 *	Lock the utmp file.
 		 */
@@ -132,7 +125,7 @@ static void usage(void)
  */
 int main(int argc, char **argv)
 {
-	CONF_SECTION *maincs, *cs;
+	CONF_SECTION *cs;
 	NAS *nas;
 	uint32_t ip = 0;
 	uint32_t nas_port = ~0;
@@ -207,13 +200,13 @@ int main(int argc, char **argv)
 	memset(&mainconfig, 0, sizeof(mainconfig));
 
         /* Read radiusd.conf */
-	if ((maincs = read_radius_conf_file()) == NULL) {
+	if (read_mainconfig(0) < 0) {
 		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);
 		exit(1);
 	}
 
         /* Read the radutmp section of radiusd.conf */
-        cs = cf_section_sub_find(cf_section_sub_find(maincs, "modules"), "radutmp");
+        cs = cf_section_sub_find(cf_section_find("modules"), "radutmp");
         if(!cs) {
                 fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
                         argv[0]);
@@ -221,9 +214,6 @@ int main(int argc, char **argv)
         }
 
         cf_section_parse(cs, NULL, module_config);
-
-        /* Assign the correct path for the radutmp file */
-        radutmp_file = radutmpconfig.radutmp_fn;
 
 	printf("%s: zapping termserver %s, port %u",
 		progname, ip_hostname(buf, sizeof(buf), ip), nas_port);
