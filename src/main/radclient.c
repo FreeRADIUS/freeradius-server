@@ -159,6 +159,20 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 
 		*rep = rad_recv(req->sockfd);
 		if (*rep != NULL) {
+			/*
+			 *	If we get a response from a machine
+			 *	which we did NOT send a request to,
+			 *	then complain.
+			 */
+			if (((*rep)->src_ipaddr != req->dst_ipaddr) ||
+			    ((*rep)->src_port != req->dst_port)) {
+				char src[64], dst[64];
+
+				ip_ntoa(src, (*rep)->src_ipaddr);
+				ip_ntoa(dst, req->src_ipaddr);
+				fprintf(stderr, "radclient: ERROR: Sent request to host %s, got response from host %s\n!", dst, src);
+				exit(1);
+			}
 			break;
 		} else {	/* NULL: couldn't receive the packet */
 			librad_perror("radclient:");
