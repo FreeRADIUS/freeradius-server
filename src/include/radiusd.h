@@ -53,7 +53,7 @@ typedef struct auth_req {
 } REQUEST;
 
 typedef struct client {
-	uint32_t			ipaddr;
+	uint32_t		ipaddr;
 	char			longname[256];
 	u_char			secret[32];
 	char			shortname[32];
@@ -61,7 +61,7 @@ typedef struct client {
 } CLIENT;
 
 typedef struct nas {
-	uint32_t			ipaddr;
+	uint32_t		ipaddr;
 	char			longname[256];
 	char			shortname[32];
 	char			nastype[32];
@@ -71,7 +71,7 @@ typedef struct nas {
 typedef struct realm {
 	char			realm[64];
 	char			server[64];
-	uint32_t			ipaddr;
+	uint32_t		ipaddr;
 	int			auth_port;
 	int			acct_port;
 	int			striprealm;
@@ -159,10 +159,7 @@ void		remove_from_request_list(REQUEST *);
 
 /* util.c */
 struct passwd	*rad_getpwnam(const char *);
-#if defined (sun) && defined(__svr4__)
-void		(*sun_signal(int signo, void (*func)(int)))(int);
-#define signal sun_signal
-#endif
+void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST *request);
 RADIUS_PACKET *	build_reply(int code, REQUEST *request,
 			VALUE_PAIR *vps, const char *user_msg);

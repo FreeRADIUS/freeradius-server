@@ -397,6 +397,7 @@ AC_CHECK_FUNCS( \
 	getopt_long \
 	lockf \
 	strsignal \
+	sigaction \
 	snprintf \
 	vsnprintf \
 	setsid \

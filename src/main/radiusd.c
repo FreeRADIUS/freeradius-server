@@ -407,9 +407,11 @@ int main(int argc, char **argv)
 
 	/*
 	 *  Pick a pseudo-random initial proxy port,
-	 *  somewhere above 1024
+	 *  somewhere above 1024.
+	 *
+	 *  Hmmm.... this tells everyone in the world what out process ID
+	 *  is, which might not be such a good idea...
 	 */
-
 	for (proxy_port = (getpid() & 0x7fff) + 1024; proxy_port < 64000; proxy_port++) {
 		sin->sin_port = htons(proxy_port);
 	  
@@ -1046,13 +1048,10 @@ void sig_cleanup(int sig)
 	got_child = FALSE;
 
 	/*
-	 *	There are reports that this line on Solaris 2.5.x
-	 *	caused trouble. Should be fixed now that Solaris
-	 *	[defined(sun) && defined(__svr4__)] has it's own
-	 *	sun_signal() function.
+	 *	Reset the signal handler, if required.
 	 */
-	signal(SIGCHLD, sig_cleanup);
-
+	reset_signal(SIGCHLD, sig_cleanup);
+	
         for (;;) {
 		pid = waitpid((pid_t)-1, &status, WNOHANG);
                 if (pid <= 0)
@@ -1163,6 +1162,6 @@ static void sig_fatal(int sig)
 /*ARGSUSED*/
 static void sig_hup(int sig)
 {
-	signal(SIGHUP, sig_hup);
+	reset_signal(SIGHUP, sig_hup);
 	need_reload = TRUE;
 }

@@ -47,15 +47,20 @@ struct passwd *rad_getpwnam(const char *name)
 	return lastpwd;
 }
 
-#if defined (sun) && defined(__svr4__)
 /*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in
  *	sa_flags, which causes grief if signal() is called in the
  *	handler before the cause of the signal has been cleared.
  *	(Infinite recursion).
+ *
+ *	The same problem appears on HPUX, so we avoid it, if we can.
+ *
+ *	Using sigaction() to reset the signal handler fixes the problem,
+ *	so where available, we prefer that solution.
  */
-void (*sun_signal(int signo, void (*func)(int)))(int)
+void (*reset_signal(int signo, void (*func)(int)))(int)
 {
+#ifdef HAVE_SIGACTION
 	struct sigaction act, oact;
 
 	act.sa_handler = func;
@@ -67,8 +72,19 @@ void (*sun_signal(int signo, void (*func)(int)))(int)
 	if (sigaction(signo, &act, &oact) < 0)
 		return SIG_ERR;
 	return oact.sa_handler;
-}
+#else
+	
+	/*
+	 *	re-set by calling the 'signal' function, which
+	 *	may cause infinite recursion and core dumps due to
+	 *	stack growth.
+	 *
+	 *	However, the system is too dumb to implement sigaction(),
+	 *	so we don't have a choice.
+	 */
+	signal(signo, func);
 #endif
+}
 
 
 /*
