@@ -258,11 +258,8 @@ VALUE_PAIR	*rad_getpass(REQUEST *request);
 int		rad_authlog(char *msg, REQUEST *request, int accept);
 
 /* exec.c */
-char		*radius_xlate(char *output, size_t outputlen,
-			      const char *fmt,
-			      VALUE_PAIR *req, VALUE_PAIR *reply);
-int		radius_exec_program(const char *, VALUE_PAIR *, VALUE_PAIR **,
-			int, const char **user_msg);
+int		radius_exec_program(const char *,  REQUEST *,
+				    int, const char **user_msg);
 
 /* timestr.c */
 int		timestr_match(char *, time_t);

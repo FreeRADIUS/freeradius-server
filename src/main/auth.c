@@ -626,9 +626,8 @@ int rad_authenticate(REQUEST *request)
 	seen_callback_id = 0;
 	if ((auth_item = pairfind(request->reply->vps, PW_CALLBACK_ID)) != NULL) {
 		seen_callback_id = 1;
-		radius_xlate(buf, sizeof(auth_item->strvalue),
-			     (char *)auth_item->strvalue,
-			     request->packet->vps, request->reply->vps);
+		radius_xlat2(buf, sizeof(auth_item->strvalue),
+			     (char *)auth_item->strvalue, request);
 		strNcpy((char *)auth_item->strvalue, buf,
 			sizeof(auth_item->strvalue));
 		auth_item->length = strlen((char *)auth_item->strvalue);
@@ -640,8 +639,8 @@ int rad_authenticate(REQUEST *request)
 	 *	do it first before sending the reply.
 	 */
 	if (exec_program && exec_wait) {
-		if (radius_exec_program(exec_program,
-		    request->packet->vps, &request->reply->vps, exec_wait, &user_msg) != 0) {
+		if (radius_exec_program(exec_program, request,
+		    exec_wait, &user_msg) != 0) {
 			/*
 			 *	Error. radius_exec_program() returns -1 on
 			 *	fork/exec errors, or >0 if the exec'ed program
@@ -686,14 +685,13 @@ int rad_authenticate(REQUEST *request)
 
 	/*
 	 *	Filter (possibly multiple) Reply-Message attributes
-	 *	through radius_xlate, modifying them in place.
+	 *	through radius_xlat2, modifying them in place.
 	 */
 	if (user_msg == NULL) {
 	  reply_item = pairfind(request->reply->vps, PW_REPLY_MESSAGE);
 	  while (reply_item) {
-	  	radius_xlate(buf, sizeof(reply_item->strvalue),
-			     (char *)reply_item->strvalue,
-			     request->packet->vps, request->reply->vps);
+	  	radius_xlat2(buf, sizeof(reply_item->strvalue),
+			     (char *)reply_item->strvalue, request);
 		strNcpy((char *)reply_item->strvalue, buf,
 			sizeof(reply_item->strvalue));
 		reply_item->length = strlen((char *)reply_item->strvalue);
@@ -709,8 +707,7 @@ int rad_authenticate(REQUEST *request)
 		/*
 		 *	No need to check the exit status here.
 		 */
-		radius_exec_program(exec_program,
-			request->packet->vps, &request->reply->vps, exec_wait, NULL);
+		radius_exec_program(exec_program, request, exec_wait, NULL);
 	}
 
 	if (exec_program) free(exec_program);

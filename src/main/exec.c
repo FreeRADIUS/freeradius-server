@@ -30,173 +30,13 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 
 /*
- *	Replace %<whatever> in a string.
- *
- *	%p   Port number
- *	%n   NAS IP address
- *	%f   Framed IP address
- *	%u   User name
- *	%c   Callback-Number
- *	%t   MTU
- *	%a   Protocol (SLIP/PPP)
- *	%s   Speed (PW_CONNECT_INFO)
- *	%i   Calling Station ID
- *
- */
-char *radius_xlate(char *output, size_t outputlen, const char *fmt,
-		   VALUE_PAIR *request, VALUE_PAIR *reply)
-{
-	int n, c;
-	size_t i = 0;
-	const char *p, *q;
-	char buffer[256];
-	VALUE_PAIR *tmp;
-
-	for (p = fmt; *p; p++) {
-		if (i >= outputlen)
-			break;
-		c = *p;
-		if (c != '%') {
-			output[i++] = *p;
-			continue;
-		}
-		if (*++p == 0) break;
-		if (c == '%') switch(*p) {
-			case '%':
-				output[i++] = *p;
-				break;
-			case 'f': /* Framed IP address */
-				n = 0;
-				if ((tmp = pairfind(reply,
-				     PW_FRAMED_IP_ADDRESS)) != NULL) {
-					n = tmp->lvalue;
-				}
-				ip_ntoa(output + i, n);
-				i += strlen(output + i);
-				break;
-			case 'n': /* NAS IP address */
-				n = 0;
-				if ((tmp = pairfind(request,
-				     PW_NAS_IP_ADDRESS)) != NULL) {
-					n = tmp->lvalue;
-				}
-				ip_ntoa(output + i, n);
-				i += strlen(output + i);
-				break;
-			case 't': /* MTU */
-				n = 0;
-				if ((tmp = pairfind(reply,
-				     PW_FRAMED_MTU)) != NULL) {
-					n = tmp->lvalue;
-				}
-				sprintf(output + i, "%d", n);
-				i += strlen(output + i);
-				break;
-			case 'p': /* Port number */
-				n = 0;
-				if ((tmp = pairfind(request,
-				     PW_NAS_PORT_ID)) != NULL) {
-					n = tmp->lvalue;
-				}
-				sprintf(output + i, "%d", n);
-				i += strlen(output + i);
-				break;
-			case 'u': /* User name */
-				if ((tmp = pairfind(request,
-				     PW_USER_NAME)) != NULL)
-					strcpy(output + i,
-						(char *)tmp->strvalue);
-				else
-					strcpy(output + i, "unknown");
-				i += strlen(output + i);
-				break;
-			case 'U': /* Stripped User name */
-				if ((tmp = pairfind(request,
-				     PW_STRIPPED_USER_NAME)) != NULL)
-					strcpy(output + i,
-						(char *)tmp->strvalue);
-				else
-					strcpy(output + i, "unknown");
-				i += strlen(output + i);
-				break;
-			case 'i': /* Calling station ID */
-				if ((tmp = pairfind(request,
-				     PW_CALLING_STATION_ID)) != NULL)
-					strcpy(output + i,
-						(char *)tmp->strvalue);
-				else
-					strcpy(output + i, "unknown");
-				i += strlen(output + i);
-				break;
-			case 'c': /* Callback-Number */
-				if ((tmp = pairfind(reply,
-				     PW_CALLBACK_NUMBER)) != NULL)
-					strcpy(output + i,
-						(char *)tmp->strvalue);
-				else
-					strcpy(output + i, "unknown");
-				i += strlen(output + i);
-				break;
-			case 'a': /* Protocol: SLIP/PPP */
-				if ((tmp = pairfind(reply,
-				     PW_FRAMED_PROTOCOL)) != NULL)
-		strcpy(output + i, tmp->lvalue == PW_PPP ? "PPP" : "SLIP");
-				else
-					strcpy(output + i, "unknown");
-				i += strlen(output + i);
-				break;
-			case 's': /* Speed */
-				if ((tmp = pairfind(request,
-				     PW_CONNECT_INFO)) != NULL)
-					strcpy(output + i,
-						(char *)tmp->strvalue);
-				else
-					strcpy(output + i, "unknown");
-				i += strlen(output + i);
-				break;
-			case '{': /* %{Attribute-Name} */
-				q = strchr(p, '}');
-				if (q != NULL) {
-					DICT_ATTR *dict;
-
-					strNcpy(buffer, p + 1,
-						q - p);
-					p = q;
-					dict = dict_attrbyname(buffer);
-					if (!dict) {
-						break;
-					}
-					tmp = pairfind(request, dict->attr);
-					if (!tmp) {
-						break;
-					}
-					i += vp_prints_value(output + i,
-							     outputlen - i,
-							     tmp, TRUE);
-				}
-				break;
-			default:
-				output[i++] = '%';
-				output[i++] = *p;
-				break;
-		}
-	}
-	if (i >= outputlen)
-		i = outputlen - 1;
-	output[i] = 0;
-
-	return output;
-}
-
-/*
  *	Execute a program on successful authentication.
  *	Return 0 if exec_wait == 0.
  *	Return the exit code of the called program if exec_wait != 0.
  *
  */
-int radius_exec_program(const char *cmd, VALUE_PAIR *request,
-			VALUE_PAIR **reply, int exec_wait,
-			const char **user_msg)
+int radius_exec_program(const char *cmd, REQUEST *request,
+			int exec_wait, const char **user_msg)
 {
 	VALUE_PAIR	*vp;
 	static char	message[256];
@@ -240,8 +80,7 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 		/*	
 		 *	Child
 		 */
-		buf = radius_xlate(answer, sizeof(answer), cmd,
-				   request, *reply);
+		buf = radius_xlat2(answer, sizeof(answer), cmd, request);
 
 		/*
 		 *	XXX FIXME: This is debugging info.
@@ -276,7 +115,7 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 		 */
 		envlen = 0;
 
-		for (vp = request; vp->next; vp = vp->next) {
+		for (vp = request->packet->vps; vp->next; vp = vp->next) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment
@@ -398,7 +237,7 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 				radlog(L_ERR,
 		"Exec-Program-Wait: %s: unparsable reply", cmd);
 			else {
-				pairmove(reply, &vp);
+				pairmove(&request->reply->vps, &vp);
 				pairfree(vp);
 			}
 		}
