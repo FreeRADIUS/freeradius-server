@@ -25,8 +25,8 @@ in reply attributes to the NAS!
 				 item in the 'unix' module, in the 'modules'
 				 section of radiusd.conf.
 
-Additionally, you can use syntax similar to ${foo:-bar} as defined in
-'sh'.  For example:
+Additionally, you can use conditional syntax similar to ${foo:-bar} as
+defined in 'sh'.  For example:
 
   1.  %{Foo:-bar}
     When attribute Foo is set:  returns value of Foo
@@ -62,31 +62,40 @@ file for a complete list of variables.
 
 The following one-character variables are also defined.  However, they
 are duplicates of the previous general cases, and are only provided
-for backwards compatibility.  They may be removed in a future
-release.
+for backwards compatibility.  They WILL BE removed in a future
+release.  They also do NOT permit the use of conditional syntax
+(':-'), as described above.
 
-     %a       Protocol (SLIP/PPP)
-     %c       Callback-Number
+
+    Variable  Description		  Proper Equivalent
+    --------  -----------		  ----------------
+     %a       Protocol (SLIP/PPP)	  %{Framed-Protocol}
+     %c       Callback-Number		  %{Callback-Number}
      %d       request day (DD)
-     %f       Framed IP address
-     %i       Calling Station ID
+     %f       Framed IP address		  %{Framed-IP-Address}
+     %i       Calling Station ID	  %{Calling-Station-Id}
      %l       request timestamp
      %m       request month (MM)
-     %n       NAS IP address
-     %p       Port number
-     %s       Speed (PW_CONNECT_INFO)
+     %n       NAS IP address		  %{NAS-IP-Address}
+     %p       Port number		  %{NAS-Port-Id}
+     %s       Speed (PW_CONNECT_INFO)	  %{Connect-Info}
      %t       request in ctime format
-     %u       User name
-     %A       radacct_dir
+     %u       User name			  %{User-Name}
+     %A       radacct_dir		  %{config:radacctdir}
      %C       clientname
      %D       request date (YYYYMMDD)
      %H	      request hour
-     %L       radlog_dir
-     %M       MTU
-     %R       radius_dir
-     %S       request timestamp in SQL format
-     %T       request timestamp in database format
-     %U       Stripped User name
-     %V       Request-Authenticator (Verified/None)
+     %L       radlog_dir		  %{config:logdir}
+     %M       MTU			  %{Framed-MTU}
+     %R       radius_dir		  %{config:raddbdir}
+     %S       request timestamp
+                in SQL format
+     %T       request timestamp
+                in database format
+     %U       Stripped User name	  %{Stripped-User-Name}
+     %V       Request-Authenticator
+                (Verified/None)
      %Y       request year (YYYY)
-     %Z       All request attributes except password (must have big buffer)
+     %Z       All request attributes
+               except password
+               (must have a big buffer)
