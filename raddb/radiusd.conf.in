@@ -875,6 +875,7 @@ modules {
 		timelimit = 3
 		net_timeout = 1
 		# compare_check_items = yes
+		# do_xlat = yes
 		# access_attr_used_for_allow = yes
 	}
 

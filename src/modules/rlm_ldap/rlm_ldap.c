@@ -137,6 +137,11 @@
  * Oct 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Add a new configuration directive, base_filter which is used for base scope searches
  *	  (When searching for the default/regular profiles for example)
+ * Nov 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Add a new configuration directive, do_xlat (default: yes). If set we use pairxlatmove
+ *	  on the radius attributes, else we fall back to the plain old pairadd. That way people
+ *	  can fall back on the 0.8.1 behaviour without making changes to their ldap database or
+ *	  gain a little performance by not using pairxlatmove
  */
 static const char rcsid[] = "$Id$";
 
@@ -239,6 +244,7 @@ typedef struct {
 	int		start_tls;
 	int		num_conns;
 	int		do_comp;
+	int		do_xlat;
 	int		default_allow;
 	int		failed_conns;
 	int		is_url;
@@ -294,6 +300,7 @@ static CONF_PARSER module_config[] = {
 	{"ldap_connections_number", PW_TYPE_INTEGER, offsetof(ldap_instance,num_conns), NULL, "5"},
 	{"compare_check_items", PW_TYPE_BOOLEAN, offsetof(ldap_instance,do_comp), NULL, "no"},
 	{"access_attr_used_for_allow", PW_TYPE_BOOLEAN, offsetof(ldap_instance,default_allow), NULL, "yes"},
+	{"do_xlat", PW_TYPE_BOOLEAN, offsetof(ldap_instance,do_xlat), NULL, "yes"},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -1165,13 +1172,17 @@ ldap_authorize(void *instance, REQUEST * request)
 				filter, inst->atts, &def_result)) == RLM_MODULE_OK){
 				if ((def_msg = ldap_first_entry(conn->ld,def_result))){
 					if ((check_tmp = ldap_pairget(conn->ld,def_msg,inst->check_item_map,check_pairs,1))) {
-						/*pairadd(check_pairs,check_tmp);*/
-						pairxlatmove(request, check_pairs, &check_tmp);
+						if (inst->do_xlat)
+							pairxlatmove(request, check_pairs, &check_tmp);
+						else
+							pairadd(check_pairs,check_tmp);
 						pairfree(&check_tmp);
 					}
 					if ((reply_tmp = ldap_pairget(conn->ld,def_msg,inst->reply_item_map,reply_pairs,0))) {
-						/*pairadd(reply_pairs,reply_tmp);*/
-						pairxlatmove(request, reply_pairs, &reply_tmp);
+						if (inst->do_xlat)
+							pairxlatmove(request, reply_pairs, &reply_tmp);
+						else
+							pairadd(reply_pairs,reply_tmp);
 						pairfree(&reply_tmp);
 					}
 				}
@@ -1198,13 +1209,17 @@ ldap_authorize(void *instance, REQUEST * request)
 					filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
 					if ((def_attr_msg = ldap_first_entry(conn->ld,def_attr_result))){
 						if ((check_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->check_item_map,check_pairs,1))) {
-							/*pairadd(check_pairs,check_tmp);*/
-							pairxlatmove(request, check_pairs, &check_tmp);
+							if (inst->do_xlat)
+								pairxlatmove(request, check_pairs, &check_tmp);
+							else
+								pairadd(check_pairs,check_tmp);
 							pairfree(&check_tmp);
 						}
 						if ((reply_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->reply_item_map,reply_pairs,0))) {
-							/*pairadd(reply_pairs,reply_tmp);*/
-							pairxlatmove(request, reply_pairs, &reply_tmp);
+							if (inst->do_xlat)
+								pairxlatmove(request, reply_pairs, &reply_tmp);
+							else
+								pairadd(reply_pairs,reply_tmp);
 							pairfree(&reply_tmp);
 						}
 					}
@@ -1264,8 +1279,10 @@ ldap_authorize(void *instance, REQUEST * request)
 	DEBUG("rlm_ldap: looking for check items in directory...");
 
 	if ((check_tmp = ldap_pairget(conn->ld, msg, inst->check_item_map,check_pairs,1)) != NULL) {
-		/*pairadd(check_pairs,check_tmp);*/
-		pairxlatmove(request, check_pairs, &check_tmp);
+		if (inst->do_xlat)
+			pairxlatmove(request, check_pairs, &check_tmp);
+		else
+			pairadd(check_pairs,check_tmp);
 		pairfree(&check_tmp);
 	}
 
@@ -1274,8 +1291,10 @@ ldap_authorize(void *instance, REQUEST * request)
 
 
 	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs,0)) != NULL) {
-		/*pairadd(reply_pairs,reply_tmp);*/
-		pairxlatmove(request, reply_pairs, &reply_tmp);
+		if (inst->do_xlat)
+			pairxlatmove(request, reply_pairs, &reply_tmp);
+		else
+			pairadd(reply_pairs,reply_tmp);
 		pairfree(&reply_tmp);
 	}
 

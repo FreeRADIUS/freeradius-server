@@ -158,6 +158,18 @@ the rlm_ldap module:
 #	default: no - don't do any comparisons
 #
 #	compare_check_items = yes
+
+#	do_xlat: Specifies if the module will do an xlat on the radius attributes
+#	extracted from the ldap database. Also the attribute operators will be
+#	honored. If the directive is set to 'no' then we will fall back to the
+#	pairadd() function which will just add the attributes at the end of the
+#	corresponding attribute list (check or reply items). This can be used to
+#	fall back to 0.8.1 behaviour without changing the ldap data or to gain a
+#	little performance if the ldap data is rather simple (no special operators)
+#
+#	default: yes - do an xlat and honor operators
+#
+#	do_xlat = yes
 	
 
 #	groupmembership_filter: The filter to search for group membership of a
