@@ -131,7 +131,7 @@ endif
 #######################################################################
 clean:
 	@rm -f *.a *.o *.lo *.la *~
-	rm -rf .libs _libs
+	@rm -rf .libs _libs
 
 distclean:
 	@rm -f config.h config.mak
