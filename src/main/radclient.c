@@ -4,7 +4,7 @@
  * Version:	$Id$
  *
  */
-static const char rcsid[] = "$Id";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -72,13 +72,14 @@ static VALUE_PAIR *readvp(FILE *fp)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [ -c count] [-d raddb ] [-f file] [-r retries] [-t timeout] [-qvx]\n		server acct|auth <secret>\n");
+	fprintf(stderr, "Usage: radclient [ -c count] [-d raddb ] [-f file] [-r retries] [-t timeout] [-i id] [-qvx]\n		server acct|auth <secret>\n");
 	
 	fprintf(stderr, " -c count    Send 'count' packets.\n");
 	fprintf(stderr, " -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, " -f file     Read packets from file, not stdin.\n");
 	fprintf(stderr, " -r retries  If timeout, retry sending the packet 'retires' times.\n");
 	fprintf(stderr, " -t timeout  Wait 'timeout' seconds before retrying.\n");
+	fprintf(stderr, " -i id       Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, " -q          Do not print anything out.\n");
 	fprintf(stderr, " -v          Show program version information.\n");
 	fprintf(stderr, " -x          Debugging mode.\n");
@@ -164,8 +165,11 @@ int main(int argc, char **argv)
 	int		loop;
 	char		password[256];
 	VALUE_PAIR	*vp;
+	int		id;
 
-	while ((c = getopt(argc, argv, "c:d:f:hqt:r:xv")) != EOF) switch(c) {
+	id = ((int)getpid() & 0xff);
+
+	while ((c = getopt(argc, argv, "c:d:f:hi:qt:r:xv")) != EOF) switch(c) {
 		case 'c':
 			if (!isdigit(*optarg)) usage();
 			count = atoi(optarg);
@@ -185,6 +189,13 @@ int main(int argc, char **argv)
 		case 'r':
 			if (!isdigit(*optarg)) usage();
 			retries = atoi(optarg);
+			break;
+		case 'i':
+			if (!isdigit(*optarg)) usage();
+			id = atoi(optarg);
+			if ((id < 0) || (id > 255)) {
+				usage();
+			}
 			break;
 		case 't':
 			if (!isdigit(*optarg)) usage();
@@ -216,7 +227,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	req->id = getpid() & 0xFF;
+	req->id = id;
 
 	/*
 	 *	Strip port from hostname if needed.
