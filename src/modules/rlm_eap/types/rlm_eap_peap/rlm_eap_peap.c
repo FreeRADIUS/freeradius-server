@@ -42,6 +42,12 @@ typedef struct rlm_eap_peap_t {
 	 *	tunneled session in the tunneled request
 	 */
 	int	copy_request_to_tunnel;
+
+	/*
+	 *	Proxy tunneled session as EAP, or as de-capsulated
+	 *	protocol.
+	 */
+	int	proxy_tunneled_request_as_eap;
 } rlm_eap_peap_t;
 
 
@@ -54,6 +60,9 @@ static CONF_PARSER module_config[] = {
 
 	{ "use_tunneled_reply", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_peap_t, use_tunneled_reply), NULL, "no" },
+
+	{ "proxy_tunneled_request_as_eap", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_peap_t, proxy_tunneled_request_as_eap), NULL, "yes" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -140,6 +149,7 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 	t->default_eap_type = inst->default_eap_type;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
+	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
 
 	return t;
 }
@@ -215,7 +225,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	Session is established, proceed with decoding
 	 *	tunneled data.
 	 */
-	DEBUG2("  rlm_eap_peap: Session established.  Proceeding to decode tunneled attributes.");
+	DEBUG2("  rlm_eap_peap: Session established.  Decoding tunneled attributes.");
 
 	/*
 	 *	We may need PEAP data associated with the session, so

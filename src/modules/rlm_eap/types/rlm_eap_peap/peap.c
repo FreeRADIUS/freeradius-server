@@ -134,7 +134,9 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 		 */
 	case PW_EAP_MSCHAPV2:
 	default:
-		DEBUG2("  rlm_eap_peap: EAP type %d", eap_type);
+		DEBUG2("  rlm_eap_peap: EAP type %s",
+		       eaptype_type2name(eap_type,
+					 identity, sizeof(identity)));
 		return 1;
 		break;
 	}
@@ -341,6 +343,12 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	DEBUG2("  PEAP: Passing reply from proxy back into the tunnel.");
 
 	/*
+	 *	If there was no EAP-Message in the reply packet, then
+	 *	we know that we're supposed to re-run the "authenticate"
+	 *	stage, in order to get the right kind of handling...
+	 */
+
+	/*
 	 *	Process the reply from the home server.
 	 */
 	rcode = process_reply(handler, tls_session, handler->request,
@@ -456,14 +464,16 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	data = tls_session->clean_out.data;
 
 #ifndef NDEBUG
-	if (debug_flag > 2) for (i = 0; i < data_len; i++) {
-		if ((i & 0x0f) == 0) printf("  PEAP tunnel data in %04x: ", i);
-		
-		printf("%02x ", data[i]);
-		
-		if ((i & 0x0f) == 0x0f) printf("\n");
+	if (debug_flag > 2) {
+		for (i = 0; i < data_len; i++) {
+			if ((i & 0x0f) == 0) printf("  PEAP tunnel data in %04x: ", i);
+			
+			printf("%02x ", data[i]);
+			
+			if ((i & 0x0f) == 0x0f) printf("\n");
+		}
+		if ((data_len & 0x0f) != 0) printf("\n");
 	}
-	if ((data_len & 0x0f) != 0) printf("\n");
 #endif
 
 	if (!eapmessage_verify(data, data_len)) {
@@ -520,6 +530,11 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Update other items in the REQUEST data structure.
 	 */
 	if (!t->username) {
+		/*
+		 *	There's no User-Name in the tunneled session,
+		 *	so we add one here, by pulling it out of the
+		 *	EAP-Identity packet.
+		 */
 		if ((data[0] == PW_EAP_IDENTITY) && (data_len > 1)) {
 			t->username = pairmake("User-Name", "", T_OP_EQ);
 			rad_assert(t->username != NULL);
@@ -666,8 +681,66 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM);
+
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
+
+
+			/*
+			 *	The tunneled request was NOT handled,
+			 *	it has to be proxied.  This means that
+			 *	the "authenticate" stage was never
+			 *	performed.
+			 *
+			 *	If we are told to NOT proxy the
+			 *	tunneled request as EAP, then this
+			 *	means that we've got to decode it,
+			 *	which means that we MUST run the
+			 *	"authenticate" portion by hand, here.
+			 *
+			 *	Once the tunneled EAP session is ALMOST
+			 *	done, THEN we proxy it...
+			 */
+			if (!t->proxy_tunneled_request_as_eap) {
+				int rcode;
+				
+				fake->options |= RAD_REQUEST_OPTION_PROXY_EAP;
+				
+				/*
+				 *	Hmm... should we check for
+				 *	Auth-Type & EAP-Message here?
+				 */
+
+				
+				/*
+				 *	Run the EAP authentication.
+				 */
+				DEBUG2("  PEAP: Calling authenticate in order to initiate tunneled EAP session.");
+				rcode = module_authenticate(PW_AUTHTYPE_EAP, fake);
+				if (rcode != RLM_MODULE_HANDLED) {
+					DEBUG2("  PEAP: Can't handle the return code %d", rcode);
+					rcode = RLM_MODULE_REJECT;
+					goto done;
+				}
+				
+				/*
+				 *	The module decided it wasn't
+				 *	done.  Handle it like normal.
+				 */
+				if ((fake->options & RAD_REQUEST_OPTION_PROXY_EAP) == 0) {
+					DEBUG2("    PEAP: Cancelling proxy to realm %s until the tunneled EAP session has been established", vp->strvalue);
+					goto do_process;
+				}
+
+				/*
+				 *	The module has decoded the
+				 *	EAP-Message into another set
+				 *	of attributes.
+				 */
+				pairdelete(&fake->packet->vps,
+					   PW_EAP_MESSAGE);
+			}
+
 			DEBUG2("  PEAP: Tunneled authentication will be proxied to %s", vp->strvalue);
 
 			/*
@@ -717,11 +790,13 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		break;
 
 	default:
+	do_process:
 		rcode = process_reply(handler, tls_session, request,
 				      fake->reply);
 		break;
 	}
 	
+ done:
 	request_free(&fake);
 	
 	return rcode;

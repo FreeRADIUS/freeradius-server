@@ -31,6 +31,7 @@ typedef struct peap_tunnel_t {
 	int		default_eap_type;
 	int		copy_request_to_tunnel;
 	int		use_tunneled_reply;
+	int		proxy_tunneled_request_as_eap;
 } peap_tunnel_t;
 
 #define PEAP_STATUS_START_PART2 0
