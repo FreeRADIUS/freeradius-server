@@ -29,6 +29,7 @@ static const char rcsid[] = "$Id$";
 
 #include	"radiusd.h"
 #include	"modules.h"
+#include	"conffile.h"
 
 #ifndef HAVE_DLOPEN
 #include	"modules_static.h"
@@ -180,6 +181,11 @@ static int new_authtype_value(const char *name)
   return new_value->value;
 }
 
+static CONF_PARSER module_config[] = {
+  { "lib_dir",            PW_TYPE_STRING_PTR, &radlib_dir },
+
+  { NULL, -1, NULL}
+};
 
 /*
  *  Read the modules file, parse the structure into memory,
@@ -205,11 +211,19 @@ int read_modules_file(char *filename)
 #endif
 	int		argc;			/* for calling the modules */
 	char		*argv[32];
-
+	CONF_SECTION	*cs;
 #ifndef HAVE_DLOPEN
 	sm   = NULL;
 #endif
 	this = NULL; /* Shut up stupid gcc */
+
+	/*
+	 *	And parse the modules configuration values.
+	 */
+	cs = cf_section_find("main");
+	if (cs) {
+		cf_section_parse(cs, module_config);
+	}
 
 	if (module_list)
 		module_list_free();
@@ -254,9 +268,10 @@ int read_modules_file(char *filename)
 		 */
 		if (*library != '/')
 			sprintf(libraryfile, "%.500s/%.500s",
-				radius_dir, library);
+				radlib_dir, library);
 		else
 			strNcpy(libraryfile, library, sizeof(libraryfile));
+		DEBUG2("Module: Loading %s ...", libraryfile);
 #ifdef __OpenBSD__
 		/* OpenBSD doesn't pay attention to the second value
 		 * as of the present. It should be set to DL_LAZY for
@@ -590,3 +605,19 @@ int module_accounting(REQUEST *request)
 	return rcode;
 }
 
+/*
+ *	Module malloc() call, which does stuff if the malloc fails.
+ *
+ *	This call ALWAYS succeeds!
+ */
+void *rlm_malloc(size_t size)
+{
+	void *ptr = malloc(size);
+	
+	if (ptr == NULL) {
+                log(L_ERR|L_CONS, "no memory");
+		exit(1);
+	}
+
+	return ptr;
+}
