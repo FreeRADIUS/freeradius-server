@@ -216,48 +216,8 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 {
 	CONF_ITEM *ci;
 	
-	if (debug_flag < 2) {
-		for (ci = cs->children; ci && ci->next; ci = ci->next)
-			;
-	} else {
-		/*
-		 *	Search the list for duplicates as we're walking it
-		 */
-		const char *item_name = NULL;
-		CONF_ITEM *last = NULL;
-
-		switch (ci_new->type) {
-		case CONF_ITEM_PAIR:
-			item_name = cf_itemtopair(ci_new)->attr;
-			break;
-
-		default:
-		case CONF_ITEM_SECTION:
-			return;	/* FIXME: Do something intelligent */
-			break;
-		}
-
-		for (ci = cs->children; ci ; ci = ci->next) {
-			last = ci;
-
-			switch (ci->type) {
-			case CONF_ITEM_SECTION:
-				continue;
-				break;
-
-			case CONF_ITEM_PAIR:
-				if (strcmp(item_name,
-					   cf_itemtopair(ci)->attr) == 0) {
-					DEBUG2("WARNING: Duplicate configuration item \"%s\" found on line %d, original item on line %d.", item_name, ci_new->lineno, ci->lineno);
-				}
-			}
-		}
-
-		/*
-		 *	Remember the last one we looked at.
-		 */
-		ci = last;
-	}
+	for (ci = cs->children; ci && ci->next; ci = ci->next)
+		;
 
 	if (ci == NULL)
 		cs->children = ci_new;
