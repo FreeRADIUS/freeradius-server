@@ -82,7 +82,7 @@ static int check_expiration(REQUEST *request)
 				vp = pairmake("Reply-Message",
 					      "Password Has Expired\r\n",
 					      T_OP_ADD);
-				pairfree(request->reply->vps);
+				pairfree(&request->reply->vps);
 				request->reply->vps = vp;
 				break;
 			}
@@ -126,7 +126,7 @@ int rad_check_password(REQUEST *request)
 		auth_type_count++;
 
 		DEBUG2("  rad_check_password:  Found auth-type %d", auth_type);
-		cur_config_item = cur_config_item->next;
+		cur_config_item = auth_type_pair->next;
 
 		if (auth_type == PW_AUTHTYPE_REJECT) {
 			DEBUG2("  rad_check_password: Auth-Type = Reject, rejecting user");
@@ -303,7 +303,7 @@ int rad_authenticate(REQUEST *request)
 	 *	This should ONLY be happening for proxy replies.
 	 */
 	if ((request->proxy_reply) && (request->config_items)) {
-	  pairfree(request->config_items);
+	  pairfree(&request->config_items);
 	  request->config_items = NULL;
 	}
 
@@ -397,7 +397,7 @@ int rad_authenticate(REQUEST *request)
 			rad_authlog("Invalid user", request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
-		pairfree(request->reply->vps);
+		pairfree(&request->reply->vps);
 		request->reply->vps = NULL;
 		return r;
 	}
@@ -486,7 +486,7 @@ int rad_authenticate(REQUEST *request)
 			 *	They're trying to log in too many times.
 			 *	Remove ALL reply attributes.
 			 */
-			pairfree(request->reply->vps);
+			pairfree(&request->reply->vps);
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 
@@ -522,7 +522,7 @@ int rad_authenticate(REQUEST *request)
 			"You are calling outside your allowed timespan\r\n";
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
-			pairfree(request->reply->vps);
+			pairfree(&request->reply->vps);
 
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
@@ -650,7 +650,7 @@ int rad_authenticate(REQUEST *request)
 		user_msg = "\r\nAccess denied (external check failed).";
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
-			pairfree(request->reply->vps);
+			pairfree(&request->reply->vps);
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 			
