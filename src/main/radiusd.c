@@ -90,7 +90,7 @@ static void	sig_hup (int);
 
 static int	rad_process (REQUEST *);
 static int	rad_respond (REQUEST *);
-static int	rad_check_list(REQUEST *);
+static REQUEST	*rad_check_list(REQUEST *);
 static void	rad_spawn_child(REQUEST *, FUNP);
 
 /*
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 #ifdef RADIUS_PID
 	FILE			*fp;
 #endif
-	char			buffer[4096];
+	unsigned char		buffer[4096];
 	struct	sockaddr	salocal;
 	struct	sockaddr_in	saremote;
 	struct	sockaddr_in	*sin;
@@ -166,6 +166,7 @@ int main(int argc, char **argv)
 	int			salen;
 	int			packet_length;
 	UINT4			packet_srcip;
+	int			packet_code;
 	int			result;
 	int			argval;
 	int			t;
@@ -548,6 +549,7 @@ int main(int argc, char **argv)
 				log(L_ERR, "Failed to received packet on FD %d", fd);
 				continue;
 			}
+			packet_code = buffer[0];
 			packet_srcip = saremote.sin_addr.s_addr;
 			ip_ntoa(buffer, packet_srcip);
 
@@ -560,6 +562,21 @@ int main(int argc, char **argv)
 			if ((cl = client_find(packet_srcip)) == NULL) {
 				log(L_ERR, "Ignoring request from unknown client %s",
 					buffer);
+				/* eat the packet silently, and continue */
+				recvfrom(fd, buffer, sizeof(buffer), 0,
+					 (struct sockaddr *)&saremote,
+					 &salen);
+				continue;
+			}
+
+			/*
+			 *	Do yet another check, to see if the
+			 *	packet code is valid.  We only understand
+			 *	a few, so stripping off obviously invalid
+			 *	packets here will make our life easier.
+			 */
+			if (packet_code > PW_ACCESS_CHALLENGE) {
+				log(L_ERR, "Ignoring request from client %s with unknown code %d", buffer, packet_code);
 				/* eat the packet silently, and continue */
 				recvfrom(fd, buffer, sizeof(buffer), 0,
 					 (struct sockaddr *)&saremote,
@@ -590,6 +607,7 @@ int main(int argc, char **argv)
 			request->password = NULL;
 			request->timestamp = time(NULL);
 			request->child_pid = NO_SUCH_CHILD_PID;
+			request->prev = NULL;
 			request->next = NULL;
 			strcpy(request->secret, cl->secret);
 			rad_process(request);
@@ -729,8 +747,8 @@ int rad_process(REQUEST *request)
 		 *	Check for a duplicate, or error.
 		 *	Throw away the the request if so.
 		 */
-		if (rad_check_list(request) < 0) {
-			request_free(request);
+		request = rad_check_list(request);
+		if (request == NULL) {
 			request_list_busy = FALSE;
 			return 0;
 		}
@@ -773,7 +791,7 @@ static int rad_respond(REQUEST *request)
  *	responding to each request (duplicate requests are filtered
  *	out).
  */
-static int rad_check_list(REQUEST *request)
+static REQUEST *rad_check_list(REQUEST *request)
 {
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
@@ -785,7 +803,7 @@ static int rad_check_list(REQUEST *request)
 	curtime = time(NULL);
 	request_count = 0;
 	curreq = first_request;
-	prevreq = (REQUEST *)NULL;
+	prevreq = NULL;
 	pkt = request->packet;
 
 	/*
@@ -796,11 +814,85 @@ static int rad_check_list(REQUEST *request)
 	request_list_busy = TRUE;
 
 	while (curreq != (REQUEST *)NULL) {
-		if ((curreq->child_pid == NO_SUCH_CHILD_PID) &&
+		/*
+		 *	Let's see if we received a duplicate of
+		 *	a packet we already have in our list.
+		 *
+		 *	We do this be checking the src IP, (NOT port)
+		 *	the packet code, ID, and authentication vectors.
+		 */
+		if (request &&
+		    (curreq->packet->src_ipaddr == pkt->src_ipaddr) &&
+		    (curreq->packet->code == pkt->code) &&
+		    (curreq->packet->id == pkt->id) &&
+		    (memcmp(curreq->packet->vector, pkt->vector,
+			    sizeof(pkt->vector)) == 0)) {
+			/*
+			 *	Maybe we've saved a reply packet.  If so,
+			 *	re-send it.  Otherwise, just complain.
+			 */
+			if (curreq->reply) {
+				log(L_INFO,
+				"Sending duplicate authentication reply"
+				" to client %s - ID: %d",
+				client_name(request->packet->src_ipaddr),
+				request->packet->id);
+				rad_send(curreq->reply, curreq->secret);
+			} else {
+				log(L_ERR,
+				"Dropping duplicate authentication packet"
+				" from client %s - ID: %d",
+				client_name(request->packet->src_ipaddr),
+				request->packet->id);
+
+			}
+
+		      	/*
+			 *	Delete the duplicate request, and
+			 *	continue processing the request list.
+			 */
+			request_free(request);
+			request = NULL;
+		} /* checks for duplicate packets */
+
+		/*
+		 *	Maybe the child process handling the request
+		 *	has hung: kill it, and continue.
+		 */
+		if (curreq->timestamp + MAX_REQUEST_TIME <= curtime &&
+		    curreq->child_pid != NO_SUCH_CHILD_PID) {
+			/*
+			 *	This request seems to have hung - kill it
+			 */
+			child_pid = curreq->child_pid;
+			log(L_ERR, "Killing unresponsive child pid %d",
+			    child_pid);
+			kill(child_pid, SIGTERM);
+
+			/*
+			 *	Mark the request as unsalvagable.
+			 */
+			curreq->child_pid = NO_SUCH_CHILD_PID;
+			curreq->finished = TRUE;
+			curreq->timestamp = 0;
+		}
+		
+		/*
+		 *	Delete the current request, if it's marked as such.
+		 *	That is, the request must be finished, there must
+		 *	be no child associated with that request, and it's
+		 *	timestamp must be marked to be deleted.
+		 */
+		if (curreq->finished &&
+		    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
 		    (curreq->timestamp + CLEANUP_DELAY <= curtime)) {
 			/*
-			 *	Request completed, delete it
+			 *	Request completed, delete it,
+			 *	and unlink it from the currently 'alive'
+			 *	list of requests.
 			 */
+			prevreq = curreq->prev;
+
 			if (prevreq == (REQUEST *)NULL) {
 				first_request = curreq->next;
 				request_free(curreq);
@@ -810,68 +902,10 @@ static int rad_check_list(REQUEST *request)
 				request_free(curreq);
 				curreq = prevreq->next;
 			}
-		} else if (curreq->packet->src_ipaddr == pkt->src_ipaddr &&
-			   curreq->packet->id == pkt->id) {
-			/*
-			 *	Compare the request vectors to see
-			 *	if it really is the same request.
-			 */
-			if (!memcmp(curreq->packet->vector, pkt->vector, 16)) {
-			  if (curreq->reply) {
-				/*
-				 * This is a duplicate request
-				 * Send a duplicate reply.
-				 * we might not want to log this...
-				 */
-				log(L_INFO,
-				"Sending duplicate authentication reply"
-				" to client %s - ID: %d",
-				client_name(request->packet->src_ipaddr),
-				request->packet->id);
-			    rad_send(curreq->reply, curreq->secret);
-			  } else {
-				/*
-				 * This is a duplicate request - just drop it
-				 */
-				log(L_ERR,
-				"Dropping duplicate authentication packet"
-				" from client %s - ID: %d",
-				client_name(request->packet->src_ipaddr),
-				request->packet->id);
-			  }
+			if (curreq)
+				curreq->prev = prevreq;
 
-			  sig_cleanup(SIGCHLD);
-			  return -1;
-			}
-			/*
-			 *	If the old request was completed,
-			 *	delete it right now.
-			 */
-			if (curreq->child_pid == NO_SUCH_CHILD_PID) {
-				curreq->timestamp = curtime - CLEANUP_DELAY;
-				continue;
-			}
-
-			/*
-			 *	Not completed yet, do nothing special.
-			 */
-			prevreq = curreq;
-			curreq = curreq->next;
-			request_count++;
-		} else {
-			if (curreq->timestamp + MAX_REQUEST_TIME <= curtime &&
-			    curreq->child_pid != NO_SUCH_CHILD_PID) {
-				/*
-				 *	This request seems to have hung -
-				 *	kill it
-				 */
-				child_pid = curreq->child_pid;
-				log(L_ERR,
-					"Killing unresponsive child pid %d",
-								child_pid);
-				curreq->child_pid = NO_SUCH_CHILD_PID;
-				kill(child_pid, SIGTERM);
-			}
+		} else {	/* the request is still alive */
 			prevreq = curreq;
 			curreq = curreq->next;
 			request_count++;
@@ -879,7 +913,14 @@ static int rad_check_list(REQUEST *request)
 	} /* end of walking the request list */
 
 	/*
-	 *	This is a new request
+	 *	If we've received a duplicate packet, 'request' is NULL.
+	 */
+	if (request == NULL) {
+		return NULL;
+	}
+
+	/*
+	 *	This is a new request.
 	 */
 	if (request_count > MAX_REQUESTS) {
 		log(L_ERR, "Dropping request (too many): "
@@ -887,12 +928,14 @@ static int rad_check_list(REQUEST *request)
 				client_name(request->packet->src_ipaddr),
 				request->packet->id);
 		sig_cleanup(SIGCHLD);
-		return -1;
+		request_free(request);
+		return NULL;
 	}
 
 	/*
 	 *	Add this request to the list
 	 */
+	request->prev = prevreq;
 	request->next = (REQUEST *)NULL;
 	request->child_pid = NO_SUCH_CHILD_PID;
 	request->timestamp = curtime;
@@ -902,7 +945,10 @@ static int rad_check_list(REQUEST *request)
 	else
 		prevreq->next = request;
 
-	return 0;
+	/*
+	 *	And return the request to be handled.
+	 */
+	return request;
 }
 
 /*

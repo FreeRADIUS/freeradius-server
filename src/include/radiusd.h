@@ -37,6 +37,7 @@ typedef struct auth_req {
 	child_pid_t    		child_pid;
 	time_t			timestamp;
 	int			finished;
+	struct auth_req		*prev;
 	struct auth_req		*next;
 } REQUEST;
 
