@@ -95,11 +95,17 @@ Authenticate{} section:
 Second, you should place passwords or hashes in some place. Yes, you can use
 SAMBA password file format (see rlm_passwd). If you prefer to store hashed
 passwords you can use smbencrypt utility located in the src/modules/rlm_mschap.
-Hint: use `cut` to obtain LM and NT hashes separately.
+Hint: use `cut` to obtain LM and NT hashes separately. Example of rlm_passwd
+configuration for SAMBA passwd file format:
 
-3. Known bugs:
-
-- MPPE doesn't work after upgrading from older FreeRADIUS version.
+passwd etc_smbpasswd {
+       filename = /etc/smbpasswd
+       format = "*User-Name::LM-Password:NT-Password:SMB-Account-CTRL-TEXT::"
+       authtype = MS-CHAP
+       hashsize = 100
+       ignorenislike = no
+       allowmultiplekeys = no
+}
 
   The reason is dictionary incompatibility. Make sure to update
   dictionary.microsoft located in raddb directory.
