@@ -51,13 +51,13 @@ void endusershell(void);
 #endif
 
 #ifndef INADDR_ANY
-#define INADDR_ANY      ((uint32_t) 0x0000000000)
+#define INADDR_ANY      ((uint32_t) 0x00000000)
 #endif
 
 #ifndef INADDR_LOOPBACK
-#define INADDR_LOOPBACK ((uint32_t) 0x7f00000001) /* Inet 127.0.0.1 */
+#define INADDR_LOOPBACK ((uint32_t) 0x7f000001) /* Inet 127.0.0.1 */
 #endif
 
 #ifndef INADDR_NONE
-#define INADDR_NONE     ((uint32_t) 0xffffffffff)
+#define INADDR_NONE     ((uint32_t) 0xffffffff)
 #endif
