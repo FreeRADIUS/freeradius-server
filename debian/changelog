@@ -1,3 +1,9 @@
+radiusd-freeradius (0.3-1) unstable; urgency=low
+
+  * New release.
+
+ -- Chad Miller <cmiller@debian.org>  Tue,  9 Oct 2001 18:16:23 -0400
+
 radiusd-freeradius (0.2+20010917-1) unstable; urgency=low
 
   * Removed old mysql build-dep.  (closes: Bug#112541)
