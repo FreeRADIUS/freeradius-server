@@ -660,33 +660,6 @@ static int recv_one_packet(int wait_time)
 	return 0;
 }
 
-/*
- *	Walk over the tree, sending packets.
- */
-static int radclient_send(radclient_t *radclient)
-{
-	/*
-	 *	Send the current packet.
-	 */
-	send_one_packet(radclient);
-
-	/*
-	 *	Do rad_recv(), and look for the response in the tree,
-	 *	but don't wait for a response.
-	 */
-	recv_one_packet(0);
-
-	/*
-	 *	Still elements to wa
-	 */
-	if (radclient->resend < resend_count) {
-		done = 0;
-		sleep_time = 0;
-	}
-
-	return 0;
-}
-
 static int getport(const char *name)
 {
 	struct	servent		*svp;
@@ -937,17 +910,43 @@ int main(int argc, char **argv)
 			next = this->next;
 
 			/*
+			 *	If there's a packet to receive,
+			 *	receive it, but don't wait for a
+			 *	packet.
+			 */
+			recv_one_packet(0);
+
+			/*
+			 *	This packet is done.  Delete it.
+			 */
+			if (this->done) {
+				radclient_free(this);
+				continue;
+			}
+
+			/*
 			 *	Packets from multiple '-f' are sent
 			 *	in parallel.  Packets from one file
 			 *	are sent in series.
 			 */
 			if (this->filename != filename) {
 				filename = this->filename;
-				radclient_send(this);
-				if (this->done) {
-					radclient_free(this);
+
+				/*
+				 *	Send the current packet.
+				 */
+				send_one_packet(this);
+
+				/*
+				 *	If we haven't sent this packet
+				 *	often enough, we're not done,
+				 *	and we shouldn't sleep.
+				 */
+				if (this->resend < resend_count) {
+					done = 0;
+					sleep_time = 0;
 				}
-			} else {
+			} else { /* haven't sent this packet, we're not done */
 				assert(this->done == 0);
 				assert(this->reply == NULL);
 				done = 0;
