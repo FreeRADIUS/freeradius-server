@@ -1,7 +1,8 @@
-FreeRADIUS 0.5.0 ; $Date$, urgency=low
+FreeRADIUS 0.5.0 ; $Date$, urgency=medium
 
 	* Many bug fixes.  For explicit details, see:
 		http://www.freeradius.org/cvs-log/
+	* Added Foundry dictionary, from Thomas Keitel
 	* Fix a logic bug in the 'walk over request list' code, which
 	  would sometimes result in a request being deleted while it
 	  was still being processed.  Found by Rainer Clasen
@@ -13,7 +14,7 @@ FreeRADIUS 0.5.0 ; $Date$, urgency=low
 	  Thomas Huehn <huehn@eozaen.net>
 	* Added 'Aptis' (Nortel CVX) dictionary.
 	* Added Ipv6 attributes (as 'octets' type for now)
-	* 'xlat' capability for SQL, so other modules can do SQL qeuries.
+	* 'xlat' capability for SQL, so other modules can do SQL queries.
 	* We don't need a shared secret for LOCAL realms.
 	* Added better description of internal variables.
 	* Configurable fail-over to DEFAULT realm.  Sometimes we don't
