@@ -173,6 +173,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 {
 	VALUE_PAIR *tailto, *i, *next;
 	VALUE_PAIR *tailfrom = NULL;
+	VALUE_PAIR *found;
 	int has_password = 0;
 
 	if (*to == NULL) {
@@ -227,10 +228,31 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	times, and we never move "Fall-Through".
 		 */
 		if (i->attribute == PW_FALL_THROUGH ||
-		    (i->attribute != PW_HINT && i->attribute != PW_FRAMED_ROUTE
-		     && pairfind(*to, i->attribute) != 0)) {
-			tailfrom = i;
-			continue;
+		    (i->attribute != PW_HINT && i->attribute != PW_FRAMED_ROUTE)) {
+		  
+			found = pairfind(*to, i->attribute);
+			switch (i->operator) {
+			  /*
+			   *  If an a similar attribute is found,
+			   *  replace it with the new one.  Otherwise,
+			   *  add it to the list.
+			   */
+			default:
+			case T_OP_SET:		/* := */
+			case T_OP_EQ:		/* = */
+				if (found) {
+					tailfrom = i;
+					continue; /* with the loop */
+				}
+				break;
+
+				/*
+				 *  Add the new element to the list
+				 */
+			case T_OP_ADD:		/* += */
+				break;
+			}
+		
 		}
 		if (tailfrom)
 			tailfrom->next = next;
