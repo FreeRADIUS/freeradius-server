@@ -195,6 +195,9 @@ int proxy_send(REQUEST *request)
 	if (realmname != NULL && realm->striprealm)
 			realmname[-1] = 0;
 	namepair->length = strlen(namepair->strvalue);
+	pairadd(&request->packet->vps,
+		pairmake("Realm", realm->realm, T_OP_EQ));
+
 
 	/*
 	 *	Perhaps accounting proxying was turned off.
@@ -398,7 +401,7 @@ int proxy_receive(REQUEST *request)
 	}
 
 	if (oldreq == NULL) {
-		log(L_PROXY, "Unreckognized proxy reply from server %s - ID %d",
+		log(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
 			client_name(request->packet->src_ipaddr),
 			request->packet->id);
 		return -1;

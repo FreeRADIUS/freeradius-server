@@ -93,6 +93,7 @@
 #define PW_LOGIN_TIME			1042
 #define PW_STRIPPED_USER_NAME		1043
 #define PW_CURRENT_TIME			1044
+#define PW_REALM			1045
 
 /*
  *	Integer Translations

@@ -112,6 +112,7 @@ ATTRIBUTE	Pam-Auth		1041	string
 ATTRIBUTE	Login-Time		1042	string
 ATTRIBUTE	Stripped-User-Name	1043	string
 ATTRIBUTE	Current-Time		1044	string
+ATTRIBUTE	Realm			1045	string
 
 #
 #	Non-Protocol Attributes
