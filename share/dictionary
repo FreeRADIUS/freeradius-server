@@ -190,6 +190,12 @@ VALUE		Login-Service		Rlogin			1
 VALUE		Login-Service		TCP-Clear		2
 VALUE		Login-Service		PortMaster		3
 
+#	Login-TCP-Port		(see /etc/services for more examples)
+
+VALUE		Login-TCP-Port		Telnet			23
+VALUE		Login-TCP-Port		Rlogin			513
+VALUE		Login-TCP-Port		Rsh			514
+
 #	Status Types
 
 VALUE		Acct-Status-Type	Start			1
