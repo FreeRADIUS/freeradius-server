@@ -112,6 +112,7 @@ static int		allow_core_dumps = FALSE;
 static int		max_request_time = MAX_REQUEST_TIME;
 static int		cleanup_delay = CLEANUP_DELAY;
 static int		max_requests = MAX_REQUESTS;
+static int		dont_fork = FALSE;
 static const char	*pid_file = NULL;
 
 #if !defined(__linux__) && !defined(__GNU_LIBRARY__)
@@ -395,7 +396,6 @@ int main(int argc, char **argv)
 	int			fd = 0;
 	int			devnull;
 	int			status;
-	int			dont_fork = FALSE;
 	int			radius_port = 0;
 	int			syslog_facility = LOG_DAEMON;
  
@@ -743,7 +743,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Disconnect from session
 	 */
-	if(debug_flag == 0 && dont_fork == 0) {
+	if (debug_flag == 0 && dont_fork == 0) {
 		pid = fork();
 		if(pid < 0) {
 			log(L_ERR|L_CONS, "Couldn't fork");
@@ -1974,8 +1974,13 @@ static void sig_fatal(int sig)
 			break;
 	}
 
-
-	if (radius_pid == getpid()) {
+	/*
+	 *	We're running as a daemon, we're the MASTER daemon,
+	 *	and we got a fatal signal.  Tear the rest of the
+	 *	daemons down, as something absolutely horrible happened.
+	 */
+	if ((debug_flag == 0) && (dont_fork == 0) &&
+	    (radius_pid == getpid())) {
 		/*
 		 *      Kill all of the processes in the current
 		 *	process group.
@@ -2235,6 +2240,7 @@ static void proxy_retry(void)
 		 */
 		if (p->proxy_try_count == 0) {
 			p->finished = TRUE;
+			rad_reject(p);
 			continue;
 		}
 
