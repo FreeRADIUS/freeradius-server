@@ -201,8 +201,6 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	int num_entries;
 
-	reap_children();
-
 	pthread_mutex_lock(&thread_pool.mutex);
 
 	thread_pool.request_count++;
@@ -292,6 +290,8 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
  */
 static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 {
+	reap_children();
+
 	pthread_mutex_lock(&thread_pool.mutex);
 
 	/*
