@@ -48,6 +48,8 @@ typedef struct realm_config_t {
         int        format;
         char       *formatstring;
         char       *delim;
+	int        ignore_default;
+	int        ignore_null;
 } realm_config_t;
 
 static CONF_PARSER module_config[] = {
@@ -55,6 +57,10 @@ static CONF_PARSER module_config[] = {
     offsetof(realm_config_t,formatstring), NULL, "suffix" },
   { "delimiter", PW_TYPE_STRING_PTR,
     offsetof(realm_config_t,delim), NULL, "@" },
+  { "ignore_default", PW_TYPE_BOOLEAN,
+    offsetof(realm_config_t,ignore_default), NULL, "no" },
+  { "ignore_null", PW_TYPE_BOOLEAN,
+    offsetof(realm_config_t,ignore_null), NULL, "no" },
   { NULL, -1, 0, NULL, NULL }    /* end the list */
 };
 
@@ -147,12 +153,17 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		DEBUG2("    rlm_realm: Looking up realm \"%s\" for User-Name = \"%s\"",
 		       realmname, request->username->strvalue);
 	} else {
+		if( inst->ignore_null ) {
+			DEBUG2("    rlm_realm: No '%c' in User-Name = \"%s\", skipping NULL due to config.",
+			inst->delim[0], request->username->strvalue);
+			return NULL;
+		}
 		DEBUG2("    rlm_realm: No '%c' in User-Name = \"%s\", looking up realm NULL",
 		       inst->delim[0], request->username->strvalue);
 	}
 
 	/*
-	 *	Allow NULL realms.
+	 *	Allow DEFAULT realms unless told not to.
 	 */
 	realm = realm_find(realmname, (request->packet->code == PW_ACCOUNTING_REQUEST));
 	if (!realm) {
@@ -160,6 +171,13 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		       (realmname == NULL) ? "NULL" : realmname);
 		return NULL;
 	}
+	if( inst->ignore_default &&
+	    (strcmp(realm->realm, "DEFAULT")) == 0) {
+		DEBUG2("    rlm_realm: Found DEFAULT, but skipping due to config.");
+		return NULL;
+	}
+
+
 	DEBUG2("    rlm_realm: Found realm \"%s\"", realm->realm);
 
 	/*

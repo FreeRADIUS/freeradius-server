@@ -1036,9 +1036,17 @@ modules {
 	#  search order is defined the order in the authorize and
 	#  preacct blocks after the module config block.
 	#
-	#  Two config options:
-	#	format     -  must be 'prefix' or 'suffix'
-	#	delimiter  -  must be a single character
+	#  Four config options:
+	#	format         -  must be 'prefix' or 'suffix'
+	#	delimiter      -  must be a single character
+	#	ignore_default -  set to 'yes' or 'no'
+	#       ignore_null    -  set to 'yes' or 'no'
+	#
+	#  ignore_default and ignore_null can be set to 'yes' to prevent
+	#  the module from matching against DEFAULT or NULL realms.  This
+	#  may be useful if you have have multiple realm module instances.
+	#  They both default to 'no'.
+	#
 
 	#  'realm/username'
 	#
@@ -1046,6 +1054,8 @@ modules {
 	realm IPASS {
 		format = prefix
 		delimiter = "/"
+		ignore_default = no
+		ignore_null = no
 	}
 
 	#  'username@realm'
@@ -1053,6 +1063,8 @@ modules {
 	realm suffix {
 		format = suffix
 		delimiter = "@"
+		ignore_default = no
+		ignore_null = no
 	}
 
 	#  'username%realm'
@@ -1060,6 +1072,8 @@ modules {
 	realm realmpercent {
 		format = suffix
 		delimiter = "%"
+		ignore_default = no
+		ignore_null = no
 	}
 	
 	#  rewrite arbitrary packets.  Useful in accounting and authorization.
