@@ -57,8 +57,6 @@ static gid_t server_gid;
  */
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
-static const char *data_dir = NULL;
-static const char *dict_dir = NULL;
 
 /*
  *  Map the proxy server configuration parameters to variables.
@@ -99,8 +97,6 @@ static CONF_PARSER server_config[] = {
 	{ "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
 	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
 	{ "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
-	{ "datadir",             PW_TYPE_STRING_PTR, 0, &data_dir,          "${prefix}/share"},
-	{ "dictdir",             PW_TYPE_STRING_PTR, 0, &dict_dir,          NULL},
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &librad_dodns,      "no" },
 #if WITH_SNMP
 	{ "snmp",   		PW_TYPE_BOOLEAN,    0, &mainconfig.do_snmp,      "no" },
@@ -697,20 +693,9 @@ CONF_SECTION *read_radius_conf_file(void)
 	 */
 	cf_section_parse(cs, NULL, server_config);
 
-	/*
-	 *	Hack until people learn how to update their
-	 *	configuration files.
-	 */
-	if (!data_dir) {
-		radlog(L_ERR|L_CONS, "ERROR: The dictionary files have moved.\n\tYou MUST define the 'datadir' and 'dictdir' variables in radiusd.conf");
-		cf_section_free(&cs);
-		return NULL;
-	}
-
 	/* Initialize the dictionary */
 	DEBUG2("read_config_files:  reading dictionary");
-
-	if (dict_init(dict_dir, RADIUS_DICTIONARY) != 0) {
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
 				librad_errstr);
 		cf_section_free(&cs);

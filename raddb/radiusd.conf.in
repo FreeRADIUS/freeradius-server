@@ -28,15 +28,10 @@ sbindir = @sbindir@
 logdir = @logdir@
 raddbdir = @raddbdir@
 radacctdir = @radacctdir@
-datadir = @datadir@
-
 
 #  Location of config and logfiles.
 confdir = ${raddbdir}
 run_dir = ${localstatedir}/run/radiusd
-
-#  Location of the dictionary files
-dictdir = ${datadir}/freeradius
 
 #
 #  The logging messages for the server are appended to the
