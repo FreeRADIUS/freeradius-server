@@ -100,6 +100,10 @@ void sql_poolfree(SQL_INST *inst) {
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
 		sql_close_socket(cur);
 	}
+#if HAVE_PTHREAD_H
+	pthread_mutex_destroy(inst->lock);
+	pthread_cond_destroy(inst->notfull);
+#endif
 }
 
 
@@ -114,6 +118,9 @@ int sql_close_socket(SQLSOCK *sqlsocket) {
 
 	radlog(L_DBG,"rlm_sql: Closing sqlsocket %d", sqlsocket->id);
 	sql_close(sqlsocket);
+#if HAVE_PTHREAD_H
+	sem_destroy(sqlsocket->semaphore);
+#endif
 	free(sqlsocket);
 	return 1;
 }
