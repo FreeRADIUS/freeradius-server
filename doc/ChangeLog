@@ -1,7 +1,40 @@
 FreeRADIUS 1.1.0 ; $Date$, urgency=low
+	* The command-line options "-i ipaddr" and "-p port" now work.
+	* rlm_unix no longer reads /etc/passwd (etc.) directly.  See
+	  "man rlm_unix" for details.  Also see the "authorize" section
+	   of "radiusd.conf".
+	* Configuration files now use binary trees, which means that
+	  arbitrary amounts of information can be stored in them.
+	* Fixed xlat's for %{config:...}.  Dynamic expanstion now works
+	  better, so %{config:section.subsection.%{User-Name}.item" works,
+	  even if the User-Name contains periods.
+	* Fix locking issues for radrelay.
+	* Add radsqlrelay, which works like radrelay, but reads data
+	  from an SQL database.
+	* rlm_ldap now auto-discovers password headers.  See the "ldap"
+	  subsection of "modules", in "radiusd.conf" for details.
+	* rlm_pap now auto-discovers password encryption/hash methods.
+	  See "man rlm_pap" and the "authorize" section of "radiusd.conf".
+	* Don't call exit() if module instantiation files.
+	* "virtual" modules can now be used.  See the last bit of the
+	  "modules" section in "radiusd.conf".
+	* Fix problems with Exec-Program-Wait & forking issues.
+	* Configuration files can now "$INCLUDE directory/", to automatically
+	  load all files in that directory.  Use with caution!
+	* Fix for log_dest = stdout/stderr.
+	* Removed (for almost all uses) length restrictions on vendor names
+	  and VALUE names.
+	* Security fixes for EAP-SIM.
+	* rlm_ldap now supports Novell eDirectory. (Patch from Novell.)
+	* New "policy" module, which has none of the limitations of the
+	  "users" file.  See "man rlm_policy" for details.
+	* Added even more dictionaries.
+	* rlm_sql can now behave more like the "users" file.
+	* New rlm_caching module.
 	* Now uses autoconf 2.5x, and the various associated tools.
 	* Include ucd-snmp-config.h, fixing use of net-snmp's
 	  ucd-snmp backwards compatibility mode.
+	* Modules can now be load-balanced.  See "doc/configurable_failover"
 	* Move the Login-Time,Current-Time,Expiration attribute handling
 	  to new modules  rlm_logintime and rlm_expiration.
 	* Added %{mschap:NT-Hash <passwd>} and %{mschap: LM-Hash <passwd>},
