@@ -1,3 +1,28 @@
+FreeRADIUS 0.4.0 ; urgency=low
+
+	* Remove the server requirement that one of User-Password
+	  or CHAP-Password exist when doing authentication.  These
+	  checks should be handled by the modules.  This change
+	  also prepares us for EAP.
+	  Patch from Raghu <raghud@hereuare.com>
+	* Make NAS-Port-ID in radwho, raduse, etc. unsigned,
+	  instead of signed.
+	  Patch from John Morrissey <jwm@horde.net>
+	* Allow \t and \n inside of configuration strings.
+	  Frank Cusack <fcusack@fcusack.com>
+	* X9.9 Challenge-Response token card support.
+	  For now, only CRYPTOCard tokens are supported.
+	  Frank Cusack <fcusack@fcusack.com>
+	* Fix core dump on Solaris in radwho.c
+	  Patch from Eddie Stassen <eddies@saix.net>
+	* Fix leak / core dump in Oracle module.
+	* Fix memory leak in rlm_counter
+	  Kostas Kalevras <kkalev@noc.ntua.gr>
+	* "LOCAL" realms do not need to have an entry in the 'clients'
+	  file.  Philippe Levan <levan@epix.net>
+
+  --  Alan DeKok <aland@ox.org>
+
 FreeRADIUS 0.3.0 ; urgency=low
 
 	* Added ability to send debug messages to the log file, when
