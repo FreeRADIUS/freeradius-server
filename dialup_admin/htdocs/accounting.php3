@@ -55,9 +55,10 @@ class Qi {
 				global $items;
 		$nam = $this->item;
 			echo <<<EOM
-	<tr><td>
+	<tr><td align=left>
 	<i>$items[$nam]</i>
 	<input type=hidden name="item_of_$this->name" value="$this->item">
+	</td><td align=left>
 	<select name=operator_of_$this->name>
 EOM;
 		foreach($operators as $operator){
@@ -69,7 +70,9 @@ EOM;
 		 }
 	echo <<<EOM
 	</select>
+	</td><td align=left>
 	<input name="value_of_$this->name" type=text value="$this->value">
+	</td><td align=left>
 	<input type=hidden name="delete_$this->name" value=0>
 	<input type=submit class=button size=5 value=del onclick="this.form.delete_$this->name.value=1">
 	</td></tr>
@@ -137,12 +140,12 @@ EOM;
 echo <<<EOM
 </select>
 <br><br>
-<b>Max results returned:</b>
+<b>Max results returned:</b><br>
 <input name=maxresults value=$config[sql_row_limit] size=5>
 </td>
 <td valign=top>
 <input type=hidden name=add value=0>
-<table border=0 width=540 cellpadding=1 cellspacing=1>
+<table border=0 width=340 cellpadding=1 cellspacing=1>
 <tr><td>
 <b>Selection criteria:</b>
 </td></tr>
