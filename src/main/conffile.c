@@ -750,7 +750,6 @@ static CONF_PARSER directory_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-
 int read_radius_conf_file(void)
 {
 	char buffer[256];
@@ -929,19 +928,27 @@ static int generate_realms(const char *filename)
 		strcpy(c->realm, cs->name2);
 		strcpy(c->server, authhost);	
 
-		if ((s = cf_section_value_find(cs, "secret")) == NULL ) {
-			radlog(L_ERR, "%s[%d]: No shared secret supplied for realm: %s",
-					filename, cs->item.lineno, cs->name2);
-			return -1;
+		/*
+		 *	If one or the other of authentication/accounting
+		 *	servers is set to LOCALHOST, then don't require
+		 *	a shared secret.
+		 */
+		if ((c->ipaddr != htonl(INADDR_NONE)) ||
+		    (c->acct_ipaddr != htonl(INADDR_NONE))) {
+			if ((s = cf_section_value_find(cs, "secret")) == NULL ) {
+				radlog(L_ERR, "%s[%d]: No shared secret supplied for realm: %s",
+				       filename, cs->item.lineno, cs->name2);
+				return -1;
+			}
+			
+			if (strlen(s) >= sizeof(c->secret)) {
+				radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+				       filename, cs->item.lineno,
+				       strlen(s), sizeof(c->secret) - 1);
+				return -1;
+			}
+			strNcpy((char *)c->secret, s, sizeof(c->secret));
 		}
-
-		if (strlen(s) >= sizeof(c->secret)) {
-			radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
-					filename, cs->item.lineno,
-					strlen(s), sizeof(c->secret) - 1);
-			return -1;
-		}
-		strNcpy((char *)c->secret, s, sizeof(c->secret));
 
 		c->striprealm = 1;
 		
