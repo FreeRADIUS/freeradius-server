@@ -182,7 +182,7 @@ static void *request_handler_thread(void *arg)
 	 */
 	for (;;) {
 		/*
-		 *	Wait for the semaphore to be given to us.
+		 *	Wait to be signalled.
 		 *
 		 *	cond_wait atomically unlocks the mutex, and
 		 *	waits for the condition.  Once it receives
@@ -192,12 +192,10 @@ static void *request_handler_thread(void *arg)
 				self->thread_num);
 		pthread_mutex_lock(&self->lock);
 		if (pthread_cond_wait(&self->cond, &self->lock) != 0) {
-			pthread_mutex_unlock(&self->lock);
 			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
 			       self->thread_num, strerror(errno));
 			break;
 		}
-		pthread_mutex_unlock(&self->lock);
 
 		/*
 		 *	If we've been told to kill ourselves,
@@ -217,16 +215,21 @@ static void *request_handler_thread(void *arg)
 		 *  This responds, and resets request->child_pid
 		 */
 		rad_respond(self->request, self->fun);
+
+		self->fun = NULL;
 		self->request = NULL;
 
 		/*
-		 *	The semaphore's value is zero, because we've
-		 *	locked it.  We now go back to the top of the loop,
-		 *	where we wait for it's value to become non-zero.
+		 *  Now that we're no longer processing the request,
+		 *  AND we've said so by setting 'request' to NULL,
+		 *  unlock the mutex, so that the main thread can
+		 *  play with it.
 		 */
+		pthread_mutex_unlock(&self->lock);
 	}
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
+	pthread_mutex_unlock(&self->lock);
 
 	/*
 	 *  Do this as the LAST thing before exiting.
@@ -593,12 +596,35 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	DEBUG2("Thread %d assigned request %d", found->thread_num, request->number);
 	request->child_pid = found->pthread_id;
+
+	/*
+	 *  Lock the mutex.  If no one else is using it, then we get the
+	 *  lock immediately.  If we're in a race condition with the
+	 *  child thread (see above), then they lock it, forcing us to wait,
+	 *  they then UNLOCK it, and wait for the conditional variable.
+	 */
+	pthread_mutex_lock(&found->lock);
+
+	/*
+	 *  We can guarantee that the child thread is now waiting
+	 *  on the pthread conditional, so it's safe to set these
+	 *  variables.
+	 */
 	found->request = request;
 	found->fun = fun;
 	found->request_count++;
 	thread_pool.request_count++;
 
-	pthread_mutex_lock(&found->lock);
+	/*
+	 *  Once the variables are set, signal the pthread conditional,
+	 *  and it will try to acquire the lock again, and block.
+	 *
+	 *  We then release our hold on the mutex, and allow the child
+	 *  thread to proceed.
+	 *
+	 *  This 'back and forth' stuff is a little stupid.  Posix
+	 *  semaphores would be incomparibly simpler.
+	 */
 	pthread_cond_signal(&found->cond);
 	pthread_mutex_unlock(&found->lock);
 
@@ -745,7 +771,9 @@ int thread_pool_clean(time_t now)
 			if ((handle->request == NULL) &&
 			    (handle->request_count > thread_pool.max_requests_per_thread)) {
 				handle->status = THREAD_CANCELLED;
+				pthread_mutex_lock(&handle->lock);
 				pthread_cond_signal(&handle->cond);
+				pthread_mutex_unlock(&handle->lock);
 			}
 		}
 	}
