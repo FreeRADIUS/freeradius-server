@@ -36,6 +36,21 @@ static const char rcsid[] =
 
 #include <string.h>
 
+#ifdef HAVE_ASN1_SNMP_SNMPIMPL_H
+#include	<asn1.h>
+#include	<snmp.h>
+#include	<snmp_impl.h>
+#else
+#ifdef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
+#include	<ucd-snmp/ucd-snmp-config.h>
+#include	<ucd-snmp/asn1.h>
+#include	<ucd-snmp/snmp.h>
+#include	<ucd-snmp/snmp_impl.h>
+#endif
+#endif
+
+#include        "smux.h"
+
 #include "radius_snmp.h"
 #include "radiusd.h"
 #include "conffile.h"
@@ -47,7 +62,7 @@ extern int need_reload;
  */
 rad_snmp_t		rad_snmp;
 
-
+
 #define RADACCOID 1,3,6,1,2,1,67,2,1,1,1
 #define RADAUTHOID 1,3,6,1,2,1,67,1,1,1,1
 #define RADIUSOID 1,3,6,1,4,1,3317,1,3,1

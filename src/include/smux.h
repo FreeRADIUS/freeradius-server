@@ -120,10 +120,6 @@ struct subtree
     (u_char *) &snmp_in_addr_val \
   )
 
-typedef enum smux_event_t {
-  SMUX_NONE, SMUX_CONNECT, SMUX_READ
-} smux_event_t;
-
 void smux_init(oid [], size_t);
 void smux_start(void);
 void smux_stop(void);
