@@ -6,6 +6,7 @@ Ver 1.56:
 * Add an entry in the FAQ about php magic quotes
 * Escape double quotes in attribute values in the user edit page
 * Fix a bug in lib/sql/change_passwd.php3 when not using operators.
+  Bug report from Sheldon Fougere <sfougere@solutioninc.com>
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
