@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.10 
+# From configure.in Revision: 1.10.2.1 
 
 
 if test x$with_rlm_dbm != xno; then
@@ -1443,7 +1443,129 @@ rm -f conftest*
 fi
 
 			if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
-				fail="$fail (libndbm or libgdm)"
+				
+
+sm_lib_safe=`echo "gdbm_compat" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "dbm_open" | sed 'y%./+-%__p_%'`
+echo $ac_n "checking for dbm_open in -lgdbm_compat""... $ac_c" 1>&6
+echo "configure:1452: checking for dbm_open in -lgdbm_compat" >&5
+
+smart_lib=
+smart_lib_dir=
+
+  old_LIBS="$LIBS"
+  LIBS="$LIBS -lgdbm_compat"
+  cat > conftest.$ac_ext <<EOF
+#line 1460 "configure"
+#include "confdefs.h"
+extern char dbm_open();
+int main() {
+ dbm_open()
+; return 0; }
+EOF
+if { (eval echo configure:1467: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-lgdbm_compat"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+
+  if test "x$smart_lib" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libgdbm_compat${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libgdbm_compat.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+    for try in $smart_try_dir $smart_lib_dir /usr/local/lib/ /opt/lib; do
+      LIBS="$old_LIBS -L$try -lgdbm_compat"
+
+      cat > conftest.$ac_ext <<EOF
+#line 1536 "configure"
+#include "confdefs.h"
+extern char dbm_open();
+int main() {
+ dbm_open()
+; return 0; }
+EOF
+if { (eval echo configure:1543: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-L$try -lgdbm_compat"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+      if test "x$smart_lib" != "x"; then
+        break;
+      fi
+    done
+    LIBS="$old_LIBS"
+  fi
+
+        if test "x$smart_lib" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+    LIBS="$old_LIBS $smart_lib"
+    SMART_LIBS="$SMART_LIBS $smart_lib"
+  else
+    echo "$ac_t""no" 1>&6 
+fi
+
+				if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
+					fail="$fail (libndbm or libgdm)"
+				fi
 			fi
 		fi
 	fi
