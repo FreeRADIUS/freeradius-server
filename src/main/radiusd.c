@@ -114,7 +114,7 @@ static void	sig_fatal (int);
 static void	sig_hup (int);
 
 static int	rad_process (REQUEST *, int);
-static void	rad_clean_list(void);
+static int	rad_clean_list(int);
 static REQUEST	*rad_check_list(REQUEST *);
 #ifndef WITH_OLD_PROXY
 static REQUEST *proxy_check_list(REQUEST *request);
@@ -626,14 +626,14 @@ int main(int argc, char **argv)
 			 *	request list.
 			 */
 			if (errno == EINTR) {
-				rad_clean_list();
+				rad_clean_list(FALSE);
 				continue;
 			}
 			sig_fatal(101);
 		}
 		if (status == 0) {
 			proxy_retry();
-			rad_clean_list();
+			rad_clean_list(FALSE);
 		}
 		for (i = 0; i < 3; i++) {
 
@@ -742,7 +742,7 @@ int main(int argc, char **argv)
 			 *	check if we've got to delete old requests
 			 *	from the request list.
 			 */
-			rad_clean_list();
+			rad_clean_list(FALSE);
 		}
 	}
 }
@@ -976,13 +976,15 @@ int rad_respond(REQUEST *request)
  *	- killing any processes which are NOT finished after a delay
  *	- deleting any requests which are finished, and expired
  */
-static void rad_clean_list(void)
+static int rad_clean_list(int force)
 {
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
 	time_t		curtime;
 	child_pid_t    	child_pid;
 	int		id;
+	int		request_count;
+	int		cleaned = FALSE;
 
 	curtime = time(NULL);
 
@@ -990,8 +992,9 @@ static void rad_clean_list(void)
 	 *  Don't bother checking the list if we've done it
 	 *  within the last second.
 	 */
-	if ((curtime - last_cleaned_list) == 0) {
-		return;
+	if ((force == FALSE) &&
+	    ((curtime - last_cleaned_list) == 0)) {
+		return FALSE;
 	}
 
 	DEBUG2("Cleaning up request list after %d seconds",
@@ -1079,6 +1082,7 @@ static void rad_clean_list(void)
 				  DEBUG("HORRIBLE ERROR!!!");
 				} else {
 				  request_list[id].request_count--;
+				  cleaned = TRUE;
 				}
 
 				if (prevreq == (REQUEST *)NULL) {
@@ -1100,11 +1104,19 @@ static void rad_clean_list(void)
 		} /* end of walking the request list for that ID */
 	} /* for each entry in the request list array */
 
+	request_count = 0;
+	for (id = 0; id < 256; id++) {
+		request_count += request_list[id].request_count;
+	}
+	DEBUG2("%d requests left in the list", request_count);
+
 	/*
 	 *	We're done playing with the request list.
 	 */
 	request_list_busy = FALSE;
 	last_cleaned_list = curtime;
+
+	return cleaned;
 }
 
 /*
@@ -1128,15 +1140,20 @@ static REQUEST *rad_check_list(REQUEST *request)
 
 #ifndef WITH_OLD_PROXY
 	/*
-	 *	If it's a proxy reply, then it can't be a duplicate
-	 *	request from one of our clients.
-	 *
-	 *	If the request already has a proxy packet, then it's
-	 *	obviously not a new one, either.
+	 *	If the request has come in on the proxy FD, then
+	 *	it's a proxy reply, so pass it through the proxy
+	 *	code for checking the REQUEST_LIST.
 	 */
-	if ((request->packet->sockfd == proxyfd) ||
-	    (request->proxy != NULL)) {
+	if (request->packet->sockfd == proxyfd) {
 		return proxy_check_list(request);
+
+
+		/*
+		 *	If the request already has a proxy packet,
+		 *	then it obviously is not a new request, either.
+		 */
+	} else if (request->proxy != NULL) {
+		return request;
 	}
 #endif
 
@@ -1193,8 +1210,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 				 *	There's no reply, but maybe there's
 				 *	an outstanding proxy request.
 				 */
-			} else if (curreq->proxy != NULL) {
+			} else if (curreq->proxy_reply != NULL) {
 				/* FIXME: kick the remote server again ? */
+				DEBUG2("Doing stuff!");
 #endif
 			} else {
 				log(L_ERR,
@@ -1253,6 +1271,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 	}
 #endif	
 
+	max_requests = 255;
+
 	/*
 	 *	Count the total number of requests, to see if there
 	 *	are too many.  If so, stop counting immediately,
@@ -1267,8 +1287,20 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 *	makes us go over our configured bounds.
 		 */
 		if (request_count > max_requests) {
-			log(L_ERR, "Dropping request (too many): "
-			    "from client %s - ID: %d",
+			/*
+			 *	Too many: clean the request list,
+			 *	if we can.  This work is done here,
+			 *	as it's got to be done SOMETIME in the
+			 *	main thread, and now is as good as ever.
+			 *
+			 *	If we can't, then die horribly.
+			 */
+			if (rad_clean_list(TRUE) == TRUE) {
+				return rad_check_list(request);
+			}
+
+			log(L_ERR, "Dropping request (%d is too many): "
+			    "from client %s - ID: %d", request_count, 
 			    client_name(request->packet->src_ipaddr),
 			    request->packet->id);
 			sig_cleanup(SIGCHLD);
