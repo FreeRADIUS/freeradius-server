@@ -298,7 +298,7 @@ int proxy_send(REQUEST *request)
 	 *	use the request authenticator anymore - we changed it.
 	 */
 	} else if (pairfind(vps, PW_CHAP_PASSWORD) &&
-		pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
+		   pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
 		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
 		if (!vp) {
 			radlog(L_ERR|L_CONS, "no memory");
@@ -310,9 +310,8 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
-	 *	Send the request.
+	 *	Set up for sending the request.
 	 */
-	rad_send(request->proxy, NULL, (char *)realm->secret);
 	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
 	request->proxy_is_replicate = replicating;
 	request->proxy_try_count = proxy_retry_count - 1;
@@ -324,5 +323,16 @@ int proxy_send(REQUEST *request)
 	 *	Do NOT free proxy->vps, the pairs are needed for the
 	 *	retries! --Pac.
 	 */
+
+	/*
+	 *	Delay sending the proxy packet until after we've
+	 *	done the work above, playing with the request.
+	 *
+	 *	After this point, it becomes dangerous to play
+	 *	with the request data structure, as the reply MAY
+	 *	come in and get processed before we're done with it here.
+	 */
+	rad_send(request->proxy, NULL, (char *)request->proxysecret);
+
 	return replicating?2:1;
 }
