@@ -272,7 +272,7 @@ ATTRIBUTE	X-Ascend-Xmit-Rate			255	integer
 #
 #  Ascend vendor-specific attributes.
 #
-
+ATTRIBUTE	Ascend-Max-Shared-Users		2	integer		Ascend
 ATTRIBUTE	Ascend-UU-Info			7	string  	Ascend
 ATTRIBUTE	Ascend-CIR-Timer		9	integer  	Ascend
 ATTRIBUTE	Ascend-FR-08-Mode		10	integer  	Ascend
