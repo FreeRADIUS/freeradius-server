@@ -452,6 +452,17 @@ static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user, const char *nam
 	int found=0;
 	VALUE_PAIR	*check_save;
 
+	/* 
+	 * We check for REJECT specially here or a REJECT
+	 * user will never match
+	 */
+	check_save = pairfind(user->check, PW_AUTHTYPE);
+	if(check_save->lvalue == PW_AUTHTYPE_REJECT)  {
+		DEBUG2("  fastusers(uc):  User '%s' line %d is Auth-Type Reject, but usercollide match", 
+					user->name, user->lineno);
+		return 1;
+	}
+
 	/* Save the orginal config items */
 	check_save = request->config_items;
 	request->config_items = NULL;
