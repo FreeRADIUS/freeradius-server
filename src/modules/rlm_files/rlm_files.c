@@ -377,7 +377,6 @@ static int file_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
-	VALUE_PAIR	*tmp;
 	PAIR_LIST	*pl;
 	int		found = 0;
 #if defined(WITH_DBM) || defined(WITH_NDBM)
