@@ -38,6 +38,10 @@ static const char rcsid[] = "$Id$";
 #	include <unistd.h>
 #endif
 
+#if HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
 #include "radiusd.h"
 #include "rad_assert.h"
 
@@ -226,4 +230,84 @@ void rad_assert_fail (const char *file, unsigned int line)
 {
 	radlog(L_ERR|L_CONS, "Assertion failed in %s, line %u", file, line);
 	abort();
+}
+
+
+/*
+ *	Create a new REQUEST data structure.
+ */
+REQUEST *request_alloc(void)
+{
+	REQUEST *request;
+
+	request = rad_malloc(sizeof(REQUEST));
+	memset(request, 0, sizeof(REQUEST));
+#ifndef NDEBUG
+	request->magic = REQUEST_MAGIC;
+#endif
+	request->proxy = NULL;
+	request->reply = NULL;
+	request->proxy_reply = NULL;
+	request->config_items = NULL;
+	request->username = NULL;
+	request->password = NULL;
+	request->timestamp = time(NULL);
+	request->child_pid = NO_SUCH_CHILD_PID;
+	request->container = NULL;
+	request->options = RAD_REQUEST_OPTION_NONE;
+
+	return request;
+}
+
+
+/*
+ *	Create a new REQUEST, based on an old one.
+ *
+ *	This function allows modules to inject fake requests
+ *	into the server, for tunneled protocols like TTLS & PEAP.
+ */
+REQUEST *request_alloc_fake(REQUEST *oldreq)
+{
+  REQUEST *request;
+
+  request = request_alloc();
+
+  request->number = oldreq->number;
+  request->child_pid = NO_SUCH_CHILD_PID;
+  request->options = RAD_REQUEST_OPTION_FAKE_REQUEST;
+
+  request->packet = rad_alloc(0);
+  rad_assert(request->packet != NULL);
+
+  request->reply = rad_alloc(0);
+  rad_assert(request->reply != NULL);
+
+  /*
+   *	Fill in the fake request packet.
+   */
+  request->packet->sockfd = -1;
+  request->packet->src_ipaddr = htonl(INADDR_LOOPBACK);
+  request->packet->dst_ipaddr = htonl(INADDR_LOOPBACK);
+  request->packet->src_port = request->number >> 8;
+  request->packet->dst_port = 0;
+
+  /*
+   *	This isn't STRICTLY required, as the fake request SHOULD NEVER
+   *	be put into the request list.  However, it's still reasonable
+   *	practice.
+   */
+  request->packet->id = request->number & 0xff;
+  request->packet->code = oldreq->packet->code;
+  request->timestamp = oldreq->timestamp;
+
+  /*
+   *	Fill in the fake reply, based on the fake request.
+   */
+  request->reply->sockfd = request->packet->sockfd;
+  request->reply->dst_ipaddr = request->packet->src_ipaddr;
+  request->reply->dst_port = request->packet->src_port;
+  request->reply->id = request->packet->id;
+  request->reply->code = 0; /* UNKNOWN code */
+
+  return request;
 }

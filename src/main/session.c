@@ -40,58 +40,43 @@
 #endif
 
 #include	"radiusd.h"
+#include	"rad_assert.h"
 #include	"modules.h"
 
 /* End a session by faking a Stop packet to all accounting modules */
-int session_zap(int sockfd, uint32_t nasaddr, unsigned int port, const char *user,
-		const char *sessionid, uint32_t cliaddr, char proto, time_t t)
+int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
+		const char *user,
+		const char *sessionid, uint32_t cliaddr, char proto)
 {
-	static unsigned char id = 0;
-
 	REQUEST *stopreq;
-	RADIUS_PACKET *stoppkt;
 	VALUE_PAIR *vp, *userpair;
 	int ret;
 
-	stoppkt = rad_alloc(0);
-
-	stoppkt->sockfd = -1;
-	stoppkt->src_ipaddr = htonl(INADDR_LOOPBACK);
-	stoppkt->dst_ipaddr = htonl(INADDR_LOOPBACK);
-	stoppkt->src_port = 0;
-	stoppkt->dst_port = 0;
-
-	stoppkt->id = id++;
-	stoppkt->code = PW_ACCOUNTING_REQUEST;
-
-	stoppkt->timestamp = t?t:time(0);
-
-	stoppkt->data = NULL;
-	stoppkt->data_len = 0;
-
-	stoppkt->vps = NULL;
+	stopreq = request_alloc_fake(request);
+	stopreq->packet->code = PW_ACCOUNTING_REQUEST; /* just to be safe */
+	rad_assert(stopreq != NULL);
 
 	/* Hold your breath */
 #define PAIR(n,v,t,e) do { \
 		if(!(vp = paircreate(n, t))) { \
 			radlog(L_ERR|L_CONS, "no memory"); \
-			pairfree(&stoppkt->vps); \
+			pairfree(&(stopreq->packet->vps)); \
 			return 0; \
 		} \
 		vp->e = v; \
-		pairadd(&stoppkt->vps, vp); \
+		pairadd(&(stopreq->packet->vps), vp); \
 	} while(0)
 #define INTPAIR(n,v) PAIR(n,v,PW_TYPE_INTEGER,lvalue)
 #define IPPAIR(n,v) PAIR(n,v,PW_TYPE_IPADDR,lvalue)
 #define STRINGPAIR(n,v) do { \
 	if(!(vp = paircreate(n, PW_TYPE_STRING))) { \
 		radlog(L_ERR|L_CONS, "no memory"); \
-		pairfree(&stoppkt->vps); \
+		pairfree(&(stopreq->packet->vps)); \
 		return 0; \
 	} \
 	strNcpy((char *)vp->strvalue, v, sizeof vp->strvalue); \
 	vp->length = strlen(v); \
-	pairadd(&stoppkt->vps, vp); \
+	pairadd(&(stopreq->packet->vps), vp); \
 	} while(0)
 
 	INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_STOP);
@@ -118,42 +103,8 @@ int session_zap(int sockfd, uint32_t nasaddr, unsigned int port, const char *use
 	INTPAIR(PW_ACCT_INPUT_PACKETS, 0);
 	INTPAIR(PW_ACCT_OUTPUT_PACKETS, 0);
 
-	stopreq = rad_malloc(sizeof *stopreq);
-	memset(stopreq, 0, sizeof *stopreq);
-#ifndef NDEBUG
-	stopreq->magic = REQUEST_MAGIC;
-#endif
-	stopreq->packet = stoppkt;
-	stopreq->proxy = NULL;
-
-	/*
-	 *  Leave room for a fake reply
-	 */
-	stopreq->reply = rad_alloc(0);
-
-	stopreq->reply->sockfd = stopreq->packet->sockfd;
-	stopreq->reply->dst_ipaddr = stopreq->packet->src_ipaddr;
-	stopreq->reply->dst_port = stopreq->packet->src_port;
-	stopreq->reply->id = stopreq->packet->id;
-	stopreq->reply->code = 0; /* UNKNOWN code */
-	stopreq->reply->vps = NULL;
-	stopreq->reply->data = NULL;
-	stopreq->reply->data_len = 0;
-	
-	stopreq->proxy_reply = NULL;
-	stopreq->config_items = NULL;
 	stopreq->username = userpair;
 	stopreq->password = NULL;
-	stopreq->timestamp = stoppkt->timestamp;
-
-	/*
-	 *  This request does NOT exist in the request list, as it's
-	 *  not managed by rad_process().  Therefore, there's no number,
-	 *  PID, or other stuff associated with it.
-	 */
-	stopreq->number = 0;
-	stopreq->child_pid = NO_SUCH_CHILD_PID;
-	stopreq->container = NULL;
 
 	ret = rad_accounting(stopreq);
 

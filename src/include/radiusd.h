@@ -50,11 +50,13 @@ typedef struct auth_req {
 	time_t			timestamp;
 	int			number; /* internal server number */
 
-	/* Could almost keep a const char * here instead of a _copy_ of the
-	 * secret... but what if the RADCLIENT structure is freed because it was
-	 * taken out of the config file and SIGHUPed? */
+	/*
+	 *	We could almost keep a const char here instead of a
+	 *	_copy_ of the secret... but what if the RADCLIENT
+	 *	structure is freed because it was taken out of the
+	 *	config file and SIGHUPed?
+	 */
 	char			proxysecret[32];
-	int			proxy_is_replicate;
 	int			proxy_try_count;
 	time_t			proxy_next_try;
 
@@ -71,6 +73,7 @@ typedef struct auth_req {
 #define RAD_REQUEST_OPTION_LOGGED_CHILD    (1 << 0)
 #define RAD_REQUEST_OPTION_DELAYED_REJECT  (1 << 1)
 #define RAD_REQUEST_OPTION_DONT_CACHE      (1 << 2)
+#define RAD_REQUEST_OPTION_FAKE_REQUEST    (1 << 3)
 
 /*
  *  Function handler for requests.
@@ -241,9 +244,10 @@ int		rad_accounting(REQUEST *);
 /* session.c */
 int		rad_check_ts(uint32_t nasaddr, unsigned int port, const char *user,
 			     const char *sessionid);
-int		session_zap(int fd, uint32_t nasaddr, unsigned int port, const char *user,
+int		session_zap(REQUEST *request, uint32_t nasaddr,
+			    unsigned int port, const char *user,
 			    const char *sessionid, uint32_t cliaddr,
-			    char proto, time_t t);
+			    char proto);
 
 /* radiusd.c */
 void		debug_pair(FILE *, VALUE_PAIR *);
@@ -259,6 +263,8 @@ int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		xfree(const char *ptr);
 void		rad_assert_fail (const char *file, unsigned int line);
+REQUEST		*request_alloc(void);
+REQUEST		*request_alloc_fake(REQUEST *oldreq);
 
 /* client.c */
 int		read_clients_file(const char *file);

@@ -991,23 +991,12 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			request = rad_malloc(sizeof(REQUEST));
-			memset(request, 0, sizeof(REQUEST));
-#ifndef NDEBUG
-			request->magic = REQUEST_MAGIC;
-#endif
+			/*
+			 *	Get the new request, and process it.
+			 */
+			request = request_alloc();
 			request->packet = packet;
-			request->proxy = NULL;
-			request->reply = NULL;
-			request->proxy_reply = NULL;
-			request->config_items = NULL;
-			request->username = NULL;
-			request->password = NULL;
-			request->timestamp = time(NULL);
 			request->number = request_num_counter++;
-			request->child_pid = NO_SUCH_CHILD_PID;
-			request->container = NULL;
-			request->options = RAD_REQUEST_OPTION_NONE;
 			strNcpy(request->secret, (char *)secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
 		} /* loop over authfd, acctfd, proxyfd */
