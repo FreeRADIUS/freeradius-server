@@ -110,7 +110,11 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 
 	switch (vp->type) {
 		case PW_TYPE_STRING:
-			if (vp->attribute == PW_NAS_PORT_ID)
+			/*
+			 *  NAS-Port may have multiple integer values?
+			 *  This is an internal server extension...
+			 */
+			if (vp->attribute == PW_NAS_PORT)
 				a = (char *)vp->strvalue;
 			else {
 				if (delimitst && vp->flags.has_tag) {
