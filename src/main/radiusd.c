@@ -227,7 +227,7 @@ static void reread_config(int reload)
 	DEBUG2("reread_config:  reading radiusd.conf");
 	if (read_radius_conf_file() < 0) {
 		radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
-		return -1;
+		return;
 	}
 
 	/*
@@ -947,7 +947,8 @@ int main(int argc, char **argv)
 			        RADCLIENT    *cl;
 			        if ((cl = client_find(packet->src_ipaddr)) == NULL) {
 			              radlog(L_ERR, "Ignoring request from unknown client %s:%d",
-				      buffer, packet->src_port);
+				        ip_ntoa(buffer, packet->src_ipaddr),
+					packet->src_port);
 				      rad_free(packet);
 				      continue;
 				} else {
@@ -958,7 +959,8 @@ int main(int argc, char **argv)
 			        REALM         *rl;
 			        if ((rl = realm_findbyaddr(packet->src_ipaddr)) == NULL) {
 				      radlog(L_ERR, "Ignoring request from unknown proxy %s:%d",
-				      buffer, packet->src_port);
+				 	ip_ntoa(buffer, packet->src_ipaddr),
+					packet->src_port);
 				      rad_free(packet);
 				      continue;
 				} else {
