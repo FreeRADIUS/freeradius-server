@@ -10,6 +10,7 @@ o Prefix/Suffix in users file isn't stripped anymore at the
   accounting stage.
 o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
   Is this a problem ? Need to fix in rlm_unix.c
+o Fix potentially long locks on radutmp file by radcheck thread
 
 MEDIUM PRIORITY:
 o Provide a way to define the locations of all files (/etc/raddb/radiusd.conf?)

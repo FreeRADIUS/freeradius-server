@@ -1,3 +1,10 @@
+1999-08-23  Miquel van Smoorenburg (miquels@cistron.nl)
+
+	* src/main/auth.c: Login-Time check: set Session-Timeout to
+	  at least 60 seconds (some terminal servers ignore smaller values)
+	* src/lib/valuepair.c: fix gettime()
+	* src/main/proxy.c: call proxy_cleanup in both send and recv funcs
+
 1999-08-21  Miquel van Smoorenburg (miquels@cistron.nl)
 
 	* configure.in: check for GNU Make

@@ -572,7 +572,12 @@ int rad_authenticate(REQUEST *request, int activefd)
 		 *	user may login at this time of the day.
 		 */
 		r = timestr_match(check_item->strvalue, time(NULL));
-		if (r < 0) {
+		/*
+		 *	Session-Timeout needs to be at least
+		 *	60 seconds, some terminal servers
+		 *	ignore smaller values.
+		 */
+		if (r < 60) {
 			/*
 			 *	User called outside allowed time interval.
 			 */
@@ -589,6 +594,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 					auth_name(request, 1),
 					check_item->strvalue);
 		} else if (r > 0) {
+
 			/*
 			 *	User is allowed, but set Session-Timeout.
 			 */

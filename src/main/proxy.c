@@ -153,7 +153,12 @@ int proxy_send(REQUEST *request, int activefd)
 	char			*realmname;
 
 	/*
-	 *	First copy the request, then look up
+	 *	First cleanup old outstanding requests.
+	 */
+	proxy_cleanup();
+
+	/*
+	 *	Copy the request, then look up
 	 *	name and (encrypted) password in the copy.
 	 */
 	vps = paircopy(request->packet->vps);

@@ -331,9 +331,9 @@ static time_t gettime(char *valstr)
 		if (isupper(*p)) *p = tolower(*p);
 
 	p = buf;
-	y = mystrtok(&p, " \t");
-	m = mystrtok(&p, " \t");
 	d = mystrtok(&p, " \t");
+	m = mystrtok(&p, " \t");
+	y = mystrtok(&p, " \t");
 	if (!y || !m || !d) return 0;
 
 	for (i = 0; i < 12; i++) {
