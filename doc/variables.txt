@@ -80,6 +80,7 @@ release.
      %A       radacct_dir
      %C       clientname
      %D       request date (YYYYMMDD)
+     %H	      request hour
      %L       radlog_dir
      %M       MTU
      %R       radius_dir

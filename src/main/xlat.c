@@ -505,6 +505,13 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				p++;
 				break;
+			case 'H': /* request hour */
+				TM = localtime_r(&request->timestamp, &s_TM);
+				strftime(tmpdt,sizeof(tmpdt),"%H",TM);
+				strNcpy(q,tmpdt,freespace);
+				q += strlen(q);
+				p++;
+				break;
 			case 'L': /* radlog_dir */
 				strNcpy(q,radlog_dir,freespace-1);
 				q += strlen(q);
