@@ -494,6 +494,7 @@ AC_CHECK_FUNCS( \
 	inet_aton \
 	gethostname \
 	setlinebuf \
+	setvbuf \
 	getusershell
 )
 RADIUSD_NEED_DECLARATIONS( \
