@@ -3,7 +3,7 @@ Build-Depends: debhelper, libltdl3-dev | libltdl0-dev, libpam0g-dev, postgresql-
 Section: admin
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
-Standards-Version: 3.2.1
+Standards-Version: 3.5.7
 
 Package: radiusd-freeradius
 Architecture: any

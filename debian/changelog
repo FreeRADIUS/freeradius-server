@@ -1,3 +1,17 @@
+radiusd-freeradius () unstable; urgency=low
+
+  * Explicitly excluding modules not in the "stable" list.
+  * Updated policy version number.
+  * Moved from non-US/main to main.
+  * Put pidfile in package's own directory.
+  * Package not as buggy and unstable modules are easily identifiable. 
+    (closes: Bug#142217)
+  * Init script handles failure better. (closes: Bug#151264)
+  * New upstream release.  (closes: Bug#140536)
+  * Uses available version of postgresql.  (closes: Bug#139290)
+
+ -- Chad Miller <cmiller@debian.org>  Wed, 25 Sep 2002 11:10:52 -0400
+
 radiusd-freeradius (0.5+cvs20020408-1) unstable; urgency=high
 
   * New build-dep on libssl-dev, which is implied by another dep, but making 

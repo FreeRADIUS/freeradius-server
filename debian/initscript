@@ -5,7 +5,7 @@ set -u
 
 prog="radiusd"
 program="/usr/sbin/radiusd"
-pidfile="/var/run/radiusd/radiusd.pid"
+pidfile="/var/run/radiusd-freeradius/radiusd.pid"
 descr="FreeRADIUS daemon"
 
 test -f $program || exit 0
@@ -13,7 +13,12 @@ test -f $program || exit 0
 case "$1" in
 start)	echo -n "Starting $descr: "
         start-stop-daemon --start --quiet --pidfile $pidfile --exec $program
-        echo "$prog."
+	if [ $? = 0 ]; then
+		echo "$prog."
+	else
+		echo "(failed!  run '$program -x' to find out why.)"
+		exit 1
+	fi
 	;;
 stop)	echo -n "Stopping $descr: "
         start-stop-daemon --stop --quiet --pidfile $pidfile

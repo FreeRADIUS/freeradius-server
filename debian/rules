@@ -23,7 +23,8 @@ build:
 # Builds the binary package.
 	dh_testdir
 	# dh_testroot
-	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies --without-rlm_python --without-rlm_ippool
+	##./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies --without-rlm_python --without-rlm_ippool
+	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies `{ cd src/modules; ls -d rlm_*; } |while read dir; do egrep $$dir src/modules/stable >/dev/null || echo --disable-$$dir; done`
 	make
 	touch build
 
@@ -36,18 +37,18 @@ binary-arch: build
 	dh_installdirs
 	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) libdir=$(libdir) R=$(radiusd_freeradius_dir)
 	# clean up install cruft.  $$&@!%
-	rmdir $(radiusd_freeradius_dir)/$(execprefix)/include
+	test ! -d $(radiusd_freeradius_dir)/$(execprefix)/include || rmdir $(radiusd_freeradius_dir)/$(execprefix)/include
 	rm $(radiusd_freeradius_dir)/$(execprefix)/usr/sbin/rc.radiusd
 	# split out inconvenient/controversal modules to other places
 	for modname in krb5 ldap mysql postgresql; do \
 		mkdir -p $(debiandir)/radiusd-freeradius-$${modname}/$(libdir); \
-		mv $(radiusd_freeradius_dir)/$(libdir)/rlm*_$${modname}.* $(debiandir)/radiusd-freeradius-$${modname}/$(libdir)/; \
+		mv $(radiusd_freeradius_dir)/$(libdir)/rlm*_$${modname}* $(debiandir)/radiusd-freeradius-$${modname}/$(libdir)/; \
 	done
 	# man pages & docs
 	dh_undocumented 
 	install -g root -m 644 CREDITS $(radiusd_freeradius_dir)/$(pkgdocdir)/credits
-	find doc -type f -maxdepth 1 ! -path doc/ChangeLog -exec dh_installdocs {} \;
-	find src/modules/rlm_sql/drivers -type f -name \*.sql -exec dh_installdocs {} \;
+	dh_installdocs `find doc -type f -maxdepth 1 ! -path doc/ChangeLog`
+	dh_installdocs `find src/modules/rlm_sql/drivers -type f -name \*.sql`
 	# dh_installchangelogs doc/ChangeLog
 	dh_compress
 	# supporting programs
@@ -58,9 +59,10 @@ binary-arch: build
 	cat $$TEMPFILE \
 		| sed -e 's/        /	/g' \
 		| sed -e '/^	example {/,/^	}/s/^/#/' \
-		| sed -e 's/^		#	shadow		=/		shadow		=/' \
+		| sed -e 's/#	shadow = /shadow = /' \
 		| sed -e 's/^group = nobody/group = freerad/' \
 		| sed -e 's/^user = nobody/user = freerad/' \
+		| sed -e 's@/run/radiusd@/run/radiusd-freeradius@' \
 			> $(radiusd_freeradius_dir)/$(raddbdir)/radiusd.conf; \
 	rm $$TEMPFILE
 	# 
