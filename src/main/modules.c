@@ -197,7 +197,7 @@ static module_list_t *linkto_module(const char *module_name,
 		const char *cffilename, int cflineno)
 {
 	module_list_t **last, *node;
-	lt_dlhandle *handle;
+	lt_dlhandle handle;
 	char module_struct[256];
 	char *p;
 
