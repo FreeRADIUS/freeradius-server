@@ -1,4 +1,4 @@
-FreeRADIUS 0.7 ; $Date$, urgency=high
+FreeRADIUS 0.7 ; Date: 2002/07/26 18:01:50 , urgency=high
 
 	* Allow attributes of type 'date' to be sent in outgoing packets.
 	  Bug found by Loh John Wu <ljwu@sandvine.com>
