@@ -59,6 +59,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, fragment_size), NULL, "1024" },
 	{ "include_length", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, include_length), NULL, "yes" },
+	{ "check_crl", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, check_crl), NULL, "no"},
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -119,6 +121,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 {
 	SSL_METHOD *meth;
 	SSL_CTX *ctx;
+	X509_STORE *certstore;
 	int verify_mode = 0;
 	int ctx_options = 0;
 	int type;
@@ -214,6 +217,19 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 
 	/* Set Info callback */
 	SSL_CTX_set_info_callback(ctx, cbtls_info);
+
+	/*
+	 *	Check the certificates for revocation.
+	 */
+	if (conf->check_crl) {
+	  certstore = SSL_CTX_get_cert_store(ctx);
+	  if (certstore == NULL) {
+	    ERR_print_errors_fp(stderr);
+	    radlog(L_ERR, "rlm_eap_tls: Error reading Certificate Store");
+	    return NULL;
+	  }
+	  X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
+	}
 
 	/*
 	 *	Set verify modes

@@ -198,6 +198,7 @@ typedef struct eap_tls_conf {
 	 *	Always < 4096 (due to radius limit), 0 by default = 2048
 	 */
 	int		fragment_size;
+	int		check_crl;
 } EAP_TLS_CONF;
 
 
