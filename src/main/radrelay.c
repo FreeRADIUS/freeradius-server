@@ -396,6 +396,19 @@ int do_send(struct relay_request *r, char *secret)
 	now = time(NULL);
 	if (r->retrans > now)
 		return 0;
+	/*
+	 * If we are resending a packet we *need* to
+	 * change the radius packet id since the request
+	 * authenticator is different (due to different
+	 * Acct-Delay-Time value).
+	 * Otherwise the radius server may consider the
+	 * packet a duplicate and we 'll get caught in a
+	 * loop. 
+	 */
+	if (r->retrans > 0){
+		r->req->id = radius_id & 0xff;
+		radius_id++;
+	}
 	r->retrans = now + 3;
 
 	/*
