@@ -2,24 +2,27 @@
  * rlm_ldap.c LDAP authorization and authentication module.
  * 
  * 
- * This module is based on LDAP patch to Cistron radiusd, which in turn was
- * based mostly on a Mysql+Cistron patch from oyarzun@wilmington.net
+ * This module is based on LDAP patch to Cistron radiusd by James Golovich 
+ * <james@wwnet.net>, which in turn was based mostly on a Mysql+Cistron patch 
+ * from <oyarzun@wilmington.net>
  * 
- * 17 Jan 2000: - OpenLDAP SDK porting, basic TLS support, LDAP authorization,
- * fault tolerance with multiple LDAP server support done by Adrian
- * Pavlykevych <pam@polynet.lviv.ua> 24 May 2000: - Converting to new
- * configuration file format, futher improvements in fault tolerance,
- * threaded operation Adrian Pavlykevych <pam@polynet.lviv.ua> 12 Dec 2000: -
- * Added preliminary support for multiple instances - moved all instance
- * configuration into dynamicly allocated structure - Removed connection
- * maintenance thread and all attempts for multihreading the module itself.
- * OpenLDAP SDK is not thread safe when used with shared LDAP connection. -
- * Added configuration option for defining LDAP attribute of user object,
- * which controls remote access.
- *
+ * 17 Jan 2000,	Adrian Pavlykevych <pam@polynet.lviv.ua>
+ *	- OpenLDAP SDK porting, basic TLS support, LDAP authorization,
+ *	  fault tolerance with multiple LDAP server support 
+ * 24 May 2000,	Adrian Pavlykevych <pam@polynet.lviv.ua> 
+ *	- Converting to new configuration file format, futher improvements
+ *	  in fault tolerance, threaded operation
+ * 12 Dec 2000,	Adrian Pavlykevych <pam@polynet.lviv.ua> 
+ *	- Added preliminary support for multiple instances
+ * 	- moved all instance configuration into dynamicly allocated structure
+ *	- Removed connection maintenance thread and all attempts for multihreading
+ *	  the module itself. OpenLDAP SDK is not thread safe when used with shared
+ *	  LDAP connection.
+ *	- Added configuration option for defining LDAP attribute of user object,
+ *	  which controls remote access.
  * 16 Feb 2001, Hannu Laurila <hannu.laurila@japo.fi>
- *  - LDAP<->RADIUS attribute mappings are now read from a file
- *  - Support for generic RADIUS check and reply attribute.
+ * 	- LDAP<->RADIUS attribute mappings are now read from a file
+ *  	- Support for generic RADIUS check and reply attribute.
  */
 static const char rcsid[] = "$Id$";
 
