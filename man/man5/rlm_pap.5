@@ -4,17 +4,23 @@ rlm_pap \- FreeRADIUS Module
 .SH DESCRIPTION
 The \fIrlm_pap\fP module provides PAP functionality.
 .PP
-This module validates a user with PAP authentication.
-If called in Authorize, it will look for User-Password
-attribute in the Acess-Request and adds an Auth-Type
-attribute set to PAP if the Config-Items list unless 
-Auth-Type has already set.
-.PP
 PAP authentication works with passwords stored in clear-text
 format or in an encrypted ( via crypt() ) format.
 .PP
+The configuration item(s):
+.IP encryption_scheme
+The method used to encrypt the password.  Valid values are:
+.DS
+.br	
+	clear
+.br
+	crypt (DEFAULT)
+.br
+	md5
+.br
+	sha1
+.DE
 .SH SECTIONS
-.BR authorization,
 .BR authentication
 .PP
 .SH FILES
