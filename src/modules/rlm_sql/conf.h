@@ -32,14 +32,12 @@
 
 /* SQL defines */
 #define SQL_LOCK_LEN			sizeof(SQLACCTREC)
-#define	SQLQUERYLOG			"/var/log/radacct/radius.sql"
-#define	SQLCONFIGFILE			"rlm_sql.conf"
-#define	SQLBACKUP			"/var/log/radacct/sqlbackup.dat"
+#define	SQLTRACEFILE			RADLOG_DIR "/sqltrace.sql"
 #define SQLBIGREC			32
 #define SQLLILREC			15
 
 #define MAX_COMMUNITY_LEN		50
-#define MAX_SQL_SOCKS			5
+#define MAX_SQL_SOCKS			256
 #define MAX_TABLE_LEN			20
 #define MAX_AUTH_QUERY_LEN		256
 #define AUTH_STRING_LEN			128

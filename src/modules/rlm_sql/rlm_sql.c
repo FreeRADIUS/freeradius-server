@@ -6,7 +6,9 @@
 *                                                                          *
 *                                     Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
-static const char rcsid[] = "$Id$";
+static const char rcsid[] =
+
+	"$Id$";
 
 #include "autoconf.h"
 
@@ -29,351 +31,484 @@ static const char rcsid[] = "$Id$";
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-static SQL_CONFIG config = {
-	NULL,			/* "localhost" */
-	NULL,			/* "root" */
-	NULL,			/* "" */
-	NULL,			/* "radius" */
-	NULL,			/* "radacct" */
-	NULL,			/* "radcheck" */
-	NULL,			/* "radreply" */
-	NULL,			/* "radgroupcheck" */
-	NULL,			/* "radgroupreply" */
-	NULL,			/* "usergroup" */
-	NULL,			/* "realm" */
-	NULL,			/* "realmgroup" */
-	NULL,			/* "nas" */
-	NULL,			/* "dictionary" */
-	0,
-	0,
-	1,
-	5
-};
+static SQL_CONFIG config;
 
 static CONF_PARSER module_config[] = {
-        { "sensitiveusername",		PW_TYPE_BOOLEAN,
-	  &config.sensitiveusername,	"1" },
-        { "deletestalesessions",	PW_TYPE_BOOLEAN,
-	  &config.deletestalesessions,	"0" },
-        { "sqltrace",			PW_TYPE_BOOLEAN,
-	  &config.sqltrace,		"0" },
-        { "max_sql_socks",		PW_TYPE_INTEGER,
-	  &config.max_sql_socks,	Stringify(MAX_SQL_SOCKS) },
-        { "server",			PW_TYPE_STRING_PTR,
-	  &config.sql_server,		"localhost" },
-        { "login",			PW_TYPE_STRING_PTR,
-	  &config.sql_login,		"" },
-        { "password",			PW_TYPE_STRING_PTR,
-	  &config.sql_password,		"" },
-        { "db",				PW_TYPE_STRING_PTR,
-	  &config.sql_db,		"radius" },
-        { "authcheck_table",		PW_TYPE_STRING_PTR,
-	  &config.sql_authcheck_table,	"radcheck" },
-        { "authreply_table",		PW_TYPE_STRING_PTR,
-	  &config.sql_authreply_table,	"radreply" },
-        { "groupcheck_table",		PW_TYPE_STRING_PTR,
-	  &config.sql_groupcheck_table,	"radgroupcheck" },
-        { "groupreply_table",		PW_TYPE_STRING_PTR,
-	  &config.sql_groupreply_table,	"radgroupreply" },
-        { "usergroup_table",		PW_TYPE_STRING_PTR,
-	  &config.sql_usergroup_table,	"usergroup" },
-        { "realmgroup_table",		PW_TYPE_STRING_PTR,
-	  &config.sql_realmgroup_table,	"realmgroup" },
-        { "acct_table",			PW_TYPE_STRING_PTR,
-	  &config.sql_acct_table,	"radacct" },
-        { "nas_table",			PW_TYPE_STRING_PTR,
-	  &config.sql_nas_table,	"nas" },
-        { "realm_table",		PW_TYPE_STRING_PTR,
-	  &config.sql_realm_table,	"realms" },
-        { "dict_table",			PW_TYPE_STRING_PTR,
-	  &config.sql_dict_table,	"dictionary" },
-	{ NULL, -1, NULL, NULL }
+	{"server", PW_TYPE_STRING_PTR,
+			&config.sql_server, "localhost"},
+	{"login", PW_TYPE_STRING_PTR,
+			&config.sql_login, ""},
+	{"password", PW_TYPE_STRING_PTR,
+			&config.sql_password, ""},
+	{"radius_db", PW_TYPE_STRING_PTR,
+			&config.sql_db, "radius"},
+	{"acct_table", PW_TYPE_STRING_PTR,
+			&config.sql_acct_table, "radacct"},
+	{"authcheck_table", PW_TYPE_STRING_PTR,
+			&config.sql_authcheck_table, "radcheck"},
+	{"authreply_table", PW_TYPE_STRING_PTR,
+			&config.sql_authreply_table, "radreply"},
+	{"groupcheck_table", PW_TYPE_STRING_PTR,
+			&config.sql_groupcheck_table, "radgroupcheck"},
+	{"groupreply_table", PW_TYPE_STRING_PTR,
+			&config.sql_groupreply_table, "radgroupreply"},
+	{"usergroup_table", PW_TYPE_STRING_PTR,
+			&config.sql_usergroup_table, "usergroup"},
+	{"realm_table", PW_TYPE_STRING_PTR,
+			&config.sql_realm_table, "realms"},
+	{"realmgroup_table", PW_TYPE_STRING_PTR,
+			&config.sql_realmgroup_table, "realmgroup"},
+	{"nas_table", PW_TYPE_STRING_PTR,
+			&config.sql_nas_table, "nas"},
+	{"dict_table", PW_TYPE_STRING_PTR,
+			&config.sql_dict_table, "dictionary"},
+	{"sensitiveusername", PW_TYPE_BOOLEAN,
+			&config.sensitiveusername, "1"},
+	{"sqltrace", PW_TYPE_BOOLEAN,
+			&config.sqltrace, "0"},
+	{"sqltracefile", PW_TYPE_STRING_PTR,
+			&config.tracefile, SQLTRACEFILE},
+	{"deletestalesessions", PW_TYPE_BOOLEAN,
+			&config.deletestalesessions, "0"},
+	{"num_sql_socks", PW_TYPE_INTEGER,
+			&config.num_sql_socks, "5"},
+	{NULL, -1, NULL, NULL}
 };
-
 
 /***********************************************************************
  * start of main routines
  ***********************************************************************/
 
-static int rlm_sql_init(void) {
+static int
+rlm_sql_init(void)
+{
+	/*
+	 * FIXME:
+	 * We should put the socket array here once
+	 * the module code is reworked to not unload
+	 * modules on HUP.  This way we can have
+	 * persistant connections.  -jcarneal
+	 */
+	return 0;
+}
 
-	/* Where is the flag that tells us about a HUP?*/
-	int	reload = 0;
+static int
+rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
+{
+	SQL_INST *inst;
 
-	if ((sql = malloc(sizeof(SQL))) == NULL) {
-		radlog(L_ERR|L_CONS, "no memory");
-		exit(1);
+	if ((inst = malloc(sizeof(SQL_INST))) == NULL) {
+		radlog(L_ERR | L_CONS, "sql_instantiate:  no memory");
+		return -1;
+	}
+	memset(inst, 0, sizeof(SQL_INST));
+	if ((inst->config = malloc(sizeof(SQL_CONFIG))) == NULL) {
+		radlog(L_ERR | L_CONS, "sql_instantiate:  no memory");
+		free(inst);
+		return -1;
+	}
+	memset(inst->config, 0, sizeof(SQL_CONFIG));
+
+  /*
+   * If the configuration parameters can't be parsed, then
+   * fail.
+   */
+  if (cf_section_parse(conf, module_config) < 0) {
+		free(inst->config);
+		free(inst);
+		return -1;
+  }
+
+	if(config.num_sql_socks > MAX_SQL_SOCKS) {
+		radlog(L_ERR | L_CONS, "sql_instantiate:  number of sockets cannot exceed %d",
+					MAX_SQL_SOCKS);
+		free(inst->config);
+		free(inst);
+		return -1;
 	}
 
-/*
-        if (reload)
-                free(sql->config);
-        if ((sql->config = malloc(sizeof(SQL_CONFIG))) == NULL) {
-                radlog(L_ERR|L_CONS, "no memory");
-                exit(1);
-        }
-*/
+	inst->config->sql_server            = config.sql_server;
+	inst->config->sql_login             =	config.sql_login;
+	inst->config->sql_password          =	config.sql_password;
+	inst->config->sql_db                =	config.sql_db;
+	inst->config->sql_acct_table        =	config.sql_acct_table;	
+	inst->config->sql_authcheck_table   =	config.sql_authcheck_table;
+	inst->config->sql_authreply_table   = config.sql_authreply_table;
+	inst->config->sql_groupcheck_table  = config.sql_groupcheck_table;
+	inst->config->sql_groupreply_table  = config.sql_groupreply_table;
+	inst->config->sql_usergroup_table   =	config.sql_usergroup_table;
+	inst->config->sql_realm_table       =	config.sql_realm_table;
+	inst->config->sql_realmgroup_table  =	config.sql_realmgroup_table;
+	inst->config->sql_nas_table         =	config.sql_nas_table;
+	inst->config->sql_dict_table        =	config.sql_dict_table;
+	inst->config->sensitiveusername     =	config.sensitiveusername;
+	inst->config->sqltrace              =	config.sqltrace;
+	inst->config->tracefile             =	config.tracefile;
+	inst->config->deletestalesessions   = config.deletestalesessions;
+	inst->config->num_sql_socks         = config.num_sql_socks;
 
-	sql_init(module_config, &config, reload);
+	config.sql_server                   = NULL;
+	config.sql_login                    = NULL;
+	config.sql_password                 = NULL;
+	config.sql_db                       = NULL;
+	config.sql_acct_table               = NULL;
+	config.sql_authcheck_table          = NULL;
+	config.sql_authreply_table          = NULL;
+	config.sql_groupcheck_table         = NULL;
+	config.sql_groupreply_table         = NULL;
+	config.sql_usergroup_table          = NULL;
+	config.sql_realm_table              = NULL;
+	config.sql_realmgroup_table         = NULL;
+	config.sql_nas_table                = NULL;
+	config.sql_dict_table               = NULL;
+	config.tracefile										= NULL;
 
-       return 0;
-}
+  radlog(L_INFO, "rlm_sql: Attempting to connect to %s@%s:%s",
+         inst->config->sql_login, inst->config->sql_server,
+         inst->config->sql_db);
 
-static int rlm_sql_destroy(void) {
+#if HAVE_PTHREAD_H
+	pthread_mutex_init(&inst->sqlsock_mutex, NULL);
+#endif
 
-  return 0;
-}
+  if(sql_init_socket(inst) < 0) {
+		free(inst->config);
+		free(inst);
+		return -1;
+	}
 
+	*instance = inst;
 
-static int rlm_sql_authorize(REQUEST *request)
-{
-	int		nas_port = 0;
-	VALUE_PAIR	*check_tmp = NULL;
-	VALUE_PAIR	*reply_tmp = NULL;
-	VALUE_PAIR	*tmp;
-	int		found = 0;
-	char		*name;
-	SQLSOCK		*socket;
-	
-	name = request->username->strvalue;
-
-       /*
-        *      Check for valid input, zero length names not permitted
-        */
-       if (name[0] == 0) {
-               radlog(L_ERR, "zero length username not permitted\n");
-               return -1;
-       }
-
-	socket = sql_get_socket();
-
-       /*
-        *      Find the NAS port ID.
-        */
-       if ((tmp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
-               nas_port = tmp->lvalue;
-
-       /*
-        *      Find the entry for the user.
-        */
-       if ((found = sql_getvpdata(socket, sql->config->sql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) > 0) {
-	       sql_getvpdata(socket, sql->config->sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
-	       sql_getvpdata(socket, sql->config->sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
-	       sql_getvpdata(socket, sql->config->sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
-       } else {
-	       
-	       int gcheck, greply;
-	       gcheck = sql_getvpdata(socket, sql->config->sql_groupcheck_table, &check_tmp, "DEFAULT", PW_VP_GROUPDATA);
-	       greply = sql_getvpdata(socket, sql->config->sql_groupreply_table, &reply_tmp, "DEFAULT", PW_VP_GROUPDATA);
-	       if (gcheck && greply)
-		       found = 1;
-       }
-       sql_release_socket(socket);
-       
-       if (!found) {
-	       DEBUG2("User %s not found and DEFAULT not found", name);
-	       return RLM_MODULE_NOTFOUND;
-       }
-       
-       if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
-	       DEBUG2("Pairs do not match [%s]", name);
-	       return RLM_MODULE_OK;
-       }
-       
-       pairmove(&request->reply->vps, &reply_tmp);
-       pairmove(&request->config_items, &check_tmp);
-       pairfree(reply_tmp);
-       pairfree(check_tmp);
-       
-       
 	return RLM_MODULE_OK;
 }
 
-static int rlm_sql_authenticate(REQUEST *request)
+static int
+rlm_sql_destroy(void)
 {
-	
-	SQL_ROW		row;
-	SQLSOCK		*socket;
-	char		*querystr;
-	char		escaped_user[AUTH_STRING_LEN*3];
-	char		*user;
-	const char	query[] = "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'";
-	
-	user = request->username->strvalue;
-	
+
+	return 0;
+}
+
+static int
+rlm_sql_detach(void *instance)
+{
+	int i;
+	SQL_INST *inst = instance;
+
 	/*
-	 *	Ensure that a password attribute exists.
+	 * Close up all our sql connections
+	 */
+	for (i = 0; i < inst->config->num_sql_socks; i++)
+		if(inst->socks[i])
+			if (!sql_close_socket(inst->socks[i]))
+				radlog(L_CONS | L_ERR, "rlm_sql:  Could not release socket %d", i);
+
+	free(inst->config);
+	free(inst);
+
+#if HAVE_PTHREAD_H
+	pthread_mutex_destroy(&inst->sqlsock_mutex);
+#endif
+
+	return 0;
+}
+
+
+static int
+rlm_sql_authorize(void *instance, REQUEST * request)
+{
+	int     nas_port = 0;
+	VALUE_PAIR *check_tmp = NULL;
+	VALUE_PAIR *reply_tmp = NULL;
+	VALUE_PAIR *tmp;
+	int     found = 0;
+	char   *name;
+	SQLSOCK *socket;
+	SQL_INST *inst = instance;
+
+	name = request->username->strvalue;
+
+	/*
+	 *      Check for valid input, zero length names not permitted
+	 */
+	if (name[0] == 0) {
+		radlog(L_ERR, "zero length username not permitted\n");
+		return -1;
+	}
+
+	socket = sql_get_socket(inst);
+
+	/*
+	 *      Find the NAS port ID.
+	 */
+	if ((tmp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
+		nas_port = tmp->lvalue;
+
+	/*
+	 *      Find the entry for the user.
+	 */
+	if ((found = sql_getvpdata(inst, socket, inst->config->sql_authcheck_table, 
+														&check_tmp, name, PW_VP_USERDATA)) > 0) {
+		sql_getvpdata(inst, socket, inst->config->sql_groupcheck_table, &check_tmp,
+									name, PW_VP_GROUPDATA);
+		sql_getvpdata(inst, socket, inst->config->sql_authreply_table, &reply_tmp,
+									name, PW_VP_USERDATA);
+		sql_getvpdata(inst, socket, inst->config->sql_groupreply_table, &reply_tmp,
+									name, PW_VP_GROUPDATA);
+	} else {
+
+		int     gcheck, greply;
+
+		gcheck = sql_getvpdata(inst, socket, inst->config->sql_groupcheck_table, 
+													&check_tmp, "DEFAULT", PW_VP_GROUPDATA);
+		greply = sql_getvpdata(inst, socket, inst->config->sql_groupreply_table, 
+													&reply_tmp, "DEFAULT", PW_VP_GROUPDATA);
+		if (gcheck && greply)
+			found = 1;
+	}
+	sql_release_socket(inst, socket);
+
+	if (!found) {
+		DEBUG2("rlm_sql: User %s not found and DEFAULT not found", name);
+		return RLM_MODULE_NOTFOUND;
+	}
+
+	if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
+		DEBUG2("rlm_sql: Pairs do not match [%s]", name);
+		return RLM_MODULE_OK;
+	}
+
+	pairmove(&request->reply->vps, &reply_tmp);
+	pairmove(&request->config_items, &check_tmp);
+	pairfree(reply_tmp);
+	pairfree(check_tmp);
+
+	return RLM_MODULE_OK;
+}
+
+static int
+rlm_sql_authenticate(void *instance, REQUEST *request)
+{
+
+	SQL_ROW row;
+	SQLSOCK *socket;
+	char   *querystr;
+	char    escaped_user[AUTH_STRING_LEN * 3];
+	char   *user;
+	const char query[] = "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'";
+	SQL_INST *inst = instance;
+
+	user = request->username->strvalue;
+
+	/*
+	 *      Ensure that a password attribute exists.
 	 */
 	if ((request->password == NULL) ||
-	    (request->password->length == 0) ||
-	    (request->password->attribute != PW_PASSWORD)) {
-		radlog(L_AUTH, "rlm_sql: Attribute \"Password\" is required for authentication.");
+			(request->password->length == 0) ||
+			(request->password->attribute != PW_PASSWORD)) {
+		radlog(L_AUTH,
+					 "rlm_sql: Attribute \"Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
-	
+
 	sql_escape_string(escaped_user, user, strlen(user));
-	
+
 	/*
-	 *	This should really be replaced with a static buffer...
+	 *      This should really be replaced with a static buffer...
 	 */
 	if ((querystr = malloc(strlen(escaped_user) +
-			       strlen(sql->config->sql_authcheck_table) +
-			       sizeof(query))) == NULL) {
-                radlog(L_ERR|L_CONS, "no memory");
-                exit(1);
-        }
-	
-	sprintf(querystr, query, sql->config->sql_authcheck_table, escaped_user);
-	socket = sql_get_socket();
-	sql_select_query(socket, querystr);
+												 strlen(inst->config->sql_authcheck_table) +
+												 sizeof(query))) == NULL) {
+		radlog(L_ERR | L_CONS, "no memory");
+		exit(1);
+	}
+
+	sprintf(querystr, query, inst->config->sql_authcheck_table, escaped_user);
+	socket = sql_get_socket(inst);
+	sql_select_query(inst, socket, querystr);
 	row = sql_fetch_row(socket);
 	sql_finish_select_query(socket);
-        free(querystr);
-	
-	if (strncmp(request->password->strvalue, row[0], request->password->length) != 0)
+	free(querystr);
+
+	if (strncmp(request->password->strvalue, row[0], request->password->length)
+			!= 0)
 		return RLM_MODULE_REJECT;
 	else
 		return RLM_MODULE_OK;
 }
 
 /*
- *	Accounting: does nothing for now.
+ *	Accounting: save the account data to our sql table
  */
-static int rlm_sql_accounting(REQUEST *request) {
+static int
+rlm_sql_accounting(void *instance, REQUEST * request)
+{
 
-	time_t          nowtime;
-        struct tm       *tim;
-        char            datebuf[20];
-        VALUE_PAIR      *pair;
-	SQLACCTREC	*sqlrecord;
-	SQLSOCK		*socket;
-	DICT_VALUE	*dval;
+	time_t  nowtime;
+	struct tm *tim;
+	char    datebuf[20];
+	VALUE_PAIR *pair;
+	SQLACCTREC *sqlrecord;
+	SQLSOCK *socket;
+	DICT_VALUE *dval;
+	SQL_INST *inst = instance;
+	int lentmp = 0;
+
+	/*
+	 * FIXME:  Should we really do this malloc?
+	 * Why not a static structure, because this malloc is 
+	 * relatively expensive considering we do it for every
+	 * accounting packet
+	 */
+	if ((sqlrecord = malloc(sizeof(SQLACCTREC))) == NULL) {
+		radlog(L_ERR | L_CONS, "no memory");
+		exit(1);
+	}
+	memset(sqlrecord, 0, sizeof(SQLACCTREC));
+
+	pair = request->packet->vps;
+	while (pair != (VALUE_PAIR *) NULL) {
+
+		/*
+		 * Check the pairs to see if they are anything we are interested in. 
+		 */
+		switch (pair->attribute) {
+			case PW_ACCT_SESSION_ID:
+				strncpy(sqlrecord->AcctSessionId, pair->strvalue, SQLBIGREC);
+				break;
+
+			case PW_ACCT_UNIQUE_SESSION_ID:
+				strncpy(sqlrecord->AcctUniqueId, pair->strvalue, SQLBIGREC);
+				break;
+
+			case PW_USER_NAME:
+				strncpy(sqlrecord->UserName, pair->strvalue, SQLBIGREC);
+				break;
+
+			case PW_NAS_IP_ADDRESS:
+				ip_ntoa(sqlrecord->NASIPAddress, pair->lvalue);
+				//ipaddr2str(sqlrecord->NASIPAddress, pair->lvalue);
+				break;
+
+			case PW_NAS_PORT_ID:
+				sqlrecord->NASPortId = pair->lvalue;
+				break;
+
+			case PW_NAS_PORT_TYPE:
+				dval = dict_valbyattr(PW_NAS_PORT_TYPE, pair->lvalue);
+				if (dval != NULL) {
+					strncpy(sqlrecord->NASPortType, dval->attrname, SQLBIGREC);
+				}
+				break;
+
+			case PW_ACCT_STATUS_TYPE:
+				sqlrecord->AcctStatusTypeId = pair->lvalue;
+				dval = dict_valbyattr(PW_ACCT_STATUS_TYPE, pair->lvalue);
+				if (dval != NULL) {
+					strncpy(sqlrecord->AcctStatusType, dval->attrname, SQLBIGREC);
+				}
+				break;
+
+			case PW_ACCT_SESSION_TIME:
+				sqlrecord->AcctSessionTime = pair->lvalue;
+				break;
+
+			case PW_ACCT_AUTHENTIC:
+				dval = dict_valbyattr(PW_ACCT_AUTHENTIC, pair->lvalue);
+				if (dval != NULL) {
+					strncpy(sqlrecord->AcctAuthentic, dval->attrname, SQLBIGREC);
+				}
+				break;
+
+			case PW_CONNECT_INFO:
+				strncpy(sqlrecord->ConnectInfo, pair->strvalue, SQLBIGREC);
+				break;
+
+			case PW_ACCT_INPUT_OCTETS:
+				sqlrecord->AcctInputOctets = pair->lvalue;
+				break;
+
+			case PW_ACCT_OUTPUT_OCTETS:
+				sqlrecord->AcctOutputOctets = pair->lvalue;
+				break;
+
+			case PW_CALLED_STATION_ID:
+				strncpy(sqlrecord->CalledStationId, pair->strvalue, SQLLILREC);
+				break;
+
+			case PW_CALLING_STATION_ID:
+      	/* USR 00 workaround */
+				lentmp = strlen(pair->strvalue);
+				if(lentmp > 10) {
+					strncpy(sqlrecord->CallingStationId, pair->strvalue+(lentmp-10), SQLLILREC);
+				} else {
+					strncpy(sqlrecord->CallingStationId, pair->strvalue, SQLLILREC);
+				}
+				break;
+
+			case PW_ACCT_TERMINATE_CAUSE:
+				dval = dict_valbyattr(PW_ACCT_TERMINATE_CAUSE, pair->lvalue);
+				if(dval != NULL) {
+					strncpy(sqlrecord->AcctTerminateCause, dval->attrname, SQLBIGREC);
+				}
+				break;
+
+			case PW_SERVICE_TYPE:
+				dval = dict_valbyattr(PW_SERVICE_TYPE, pair->lvalue);
+				if (dval != NULL) {
+					strncpy(sqlrecord->ServiceType, dval->attrname, SQLBIGREC);
+				}
+				break;
+
+			case PW_FRAMED_PROTOCOL:
+				dval = dict_valbyattr(PW_FRAMED_PROTOCOL, pair->lvalue);
+				if (dval != NULL) {
+					strncpy(sqlrecord->FramedProtocol, dval->attrname, SQLBIGREC);
+				}
+				break;
+
+			case PW_FRAMED_IP_ADDRESS:
+				ip_ntoa(sqlrecord->FramedIPAddress, pair->lvalue);
+				//ipaddr2str(sqlrecord->FramedIPAddress, pair->lvalue);
+				break;
+
+			case PW_ACCT_DELAY_TIME:
+				sqlrecord->AcctDelayTime = pair->lvalue;
+				break;
+
+			/* 
+			 * FIXME:  USR VSA for:  USR-Connect-Speed 
+			 * Ugly hack.  Will go away when conf-based
+			 * tables are implemented
+			 */
+      case 167971:
+				dval = dict_valbyattr(167971, pair->lvalue);
+				if(dval != NULL) 
+					strncpy(sqlrecord->ConnectInfo, dval->attrname, SQLBIGREC);
+				break;
+
+			/* Appears to be LE-Terminate-Detail */
+			case 65538:
+				strncpy(sqlrecord->AcctTerminateCause, pair->strvalue, SQLBIGREC);
+				break;
+
+			default:
+				break;
+		}
+
+		pair = pair->next;
+	}
 
 
-        if ((sqlrecord = malloc(sizeof(SQLACCTREC))) == NULL) {
-                radlog(L_ERR|L_CONS, "no memory");
-                exit(1);        
-        }
-        
-        pair = request->packet->vps;
-        while(pair != (VALUE_PAIR *)NULL) {
+	nowtime = request->timestamp - sqlrecord->AcctDelayTime;
+	tim = localtime(&nowtime);
+	strftime(datebuf, sizeof(datebuf), "%Y%m%d%H%M%S", tim);
 
-           /* Check the pairs to see if they are anything we are interested in. */
-            switch(pair->attribute) {
-                case PW_ACCT_SESSION_ID:
-                        strncpy(sqlrecord->AcctSessionId, pair->strvalue, SQLBIGREC);
-                        break;
-                        
-                case PW_USER_NAME:
-                        strncpy(sqlrecord->UserName, pair->strvalue, SQLBIGREC);
-                        break;
-                        
-                case PW_NAS_IP_ADDRESS:
-                        ip_ntoa(sqlrecord->NASIPAddress, pair->lvalue);
-                        //ipaddr2str(sqlrecord->NASIPAddress, pair->lvalue);
-                        break;
+	strncpy(sqlrecord->AcctTimeStamp, datebuf, 20);
 
-                case PW_NAS_PORT_ID:
-                        sqlrecord->NASPortId = pair->lvalue;
-                        break;
-
-                case PW_NAS_PORT_TYPE:
-                                                dval = dict_valbyattr(PW_NAS_PORT_TYPE, pair->lvalue);
-                                                if(dval != NULL) {
-                                strncpy(sqlrecord->NASPortType, dval->attrname, SQLBIGREC);
-                                                }
-                                                break;
-
-                case PW_ACCT_STATUS_TYPE:
-                                                sqlrecord->AcctStatusTypeId = pair->lvalue;
-                                                dval = dict_valbyattr(PW_ACCT_STATUS_TYPE, pair->lvalue);
-                                                if(dval != NULL) {
-                                strncpy(sqlrecord->AcctStatusType, dval->attrname, SQLBIGREC);
-                                                }
-                                                break;
-
-                case PW_ACCT_SESSION_TIME:
-                        sqlrecord->AcctSessionTime = pair->lvalue;
-                        break;
-
-                case PW_ACCT_AUTHENTIC:
-                                                dval = dict_valbyattr(PW_ACCT_AUTHENTIC, pair->lvalue);
-                                                if(dval != NULL) {
-                                strncpy(sqlrecord->AcctAuthentic, dval->attrname, SQLBIGREC);
-                                                }
-                                                break;
-
-                case PW_CONNECT_INFO:
-                        strncpy(sqlrecord->ConnectInfo, pair->strvalue, SQLBIGREC);
-                        break;
-
-                case PW_ACCT_INPUT_OCTETS:
-                        sqlrecord->AcctInputOctets = pair->lvalue;
-                        break;
-
-                case PW_ACCT_OUTPUT_OCTETS:
-                        sqlrecord->AcctOutputOctets = pair->lvalue;
-                        break;
-
-                case PW_CALLED_STATION_ID:
-                        strncpy(sqlrecord->CalledStationId, pair->strvalue, SQLLILREC);
-                        break;
-
-                case PW_CALLING_STATION_ID:
-                        strncpy(sqlrecord->CallingStationId, pair->strvalue, SQLLILREC);
-                        break;
-
-/*                case PW_ACCT_TERMINATE_CAUSE:
-                                                dval = dict_valbyattr(PW_ACCT_TERMINATE_CAUSE, pair->lvalue);
-                                                if(dval != NULL) {
-                                strncpy(sqlrecord->AcctTerminateCause, dval->attrname, SQLBIGREC);
-                                                }
-                                                break;
-*/
-
-
-                case PW_SERVICE_TYPE:
-                                                dval = dict_valbyattr(PW_SERVICE_TYPE, pair->lvalue);
-                                                if(dval != NULL) {
-                                strncpy(sqlrecord->ServiceType, dval->attrname, SQLBIGREC);
-                                                }
-                                                break;
-
-                case PW_FRAMED_PROTOCOL:
-                                                dval = dict_valbyattr(PW_FRAMED_PROTOCOL, pair->lvalue);
-                                                if(dval != NULL) {
-                                strncpy(sqlrecord->FramedProtocol, dval->attrname, SQLBIGREC);
-                                                }
-                                                break;
-
-                case PW_FRAMED_IP_ADDRESS:
-                        ip_ntoa(sqlrecord->FramedIPAddress, pair->lvalue);
-                        //ipaddr2str(sqlrecord->FramedIPAddress, pair->lvalue);
-                        break;
-
-                case PW_ACCT_DELAY_TIME:
-                        sqlrecord->AcctDelayTime = pair->lvalue;
-                        break;
-
-                default:
-                        break;
-                }
-
-                pair = pair->next;
-        }
-
-
-        nowtime = request->timestamp - sqlrecord->AcctDelayTime;
-        tim = localtime(&nowtime);
-        strftime(datebuf, sizeof(datebuf), "%Y%m%d%H%M%S", tim);
-
-        strncpy(sqlrecord->AcctTimeStamp, datebuf, 20);
-       
-
-	socket = sql_get_socket();
-        if (sql_save_acct(socket, sqlrecord) == 0)
-                return RLM_MODULE_FAIL;
-	sql_release_socket(socket);
+	socket = sql_get_socket(inst);
+	sql_save_acct(inst, socket, sqlrecord);
+	sql_release_socket(inst, socket);
 
 	return RLM_MODULE_OK;
 }
@@ -381,15 +516,15 @@ static int rlm_sql_accounting(REQUEST *request) {
 
 /* globally exported name */
 module_t rlm_sql = {
-  "SQL",
-  0,			/* type: reserved */
-  rlm_sql_init,		/* initialization */
-  NULL,			/* instantiation */
-  rlm_sql_authorize,	/* authorization */
-  rlm_sql_authenticate,	/* authentication */
-  NULL,			/* preaccounting */
-  rlm_sql_accounting,	/* accounting */
-  NULL,			/* checksimul */
-  NULL,			/* detach */
-  rlm_sql_destroy,	/* destroy */
+	"SQL",
+	0,														/* type: reserved */
+	rlm_sql_init,									/* initialization */
+	rlm_sql_instantiate,					/* instantiation */
+	rlm_sql_authorize,						/* authorization */
+	rlm_sql_authenticate,					/* authentication */
+	NULL,													/* preaccounting */
+	rlm_sql_accounting,						/* accounting */
+	NULL,													/* checksimul */
+	rlm_sql_detach,								/* detach */
+	rlm_sql_destroy,							/* destroy */
 };

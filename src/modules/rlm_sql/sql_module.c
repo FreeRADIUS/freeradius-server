@@ -16,12 +16,12 @@
 
 /*************************************************************************
  *
- *	Function: sql_query
+ *	Function: sql_create_socket
  *
- *	Purpose: Issue a query to the database
+ *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-SQLSOCK *sql_create_socket(void) {
+SQLSOCK *sql_create_socket(SQL_INST *inst) {
 	SQLSOCK *socket;
 
 	if ((socket = malloc(sizeof(SQLSOCK))) == NULL) {
@@ -30,8 +30,9 @@ SQLSOCK *sql_create_socket(void) {
 	}
 
 	mysql_init(&(socket->conn));
-	if (!(socket->sock = mysql_real_connect(&(socket->conn), sql->config->sql_server, sql->config->sql_login, sql->config->sql_password, sql->config->sql_db, 0, NULL, 0))) {
-		radlog(L_ERR, "Init: Couldn't connect socket to MySQL server %s@%s:%s", sql->config->sql_login, sql->config->sql_server, sql->config->sql_db);
+	if (!(socket->sock = mysql_real_connect(&(socket->conn), inst->config->sql_server, inst->config->sql_login, inst->config->sql_password, inst->config->sql_db, 0, NULL, CLIENT_FOUND_ROWS))) {
+		radlog(L_ERR, "rlm_sql: Couldn't connect socket to MySQL server %s@%s:%s", inst->config->sql_login, inst->config->sql_server, inst->config->sql_db);
+		radlog(L_ERR, "rlm_sql:  Mysql error '%s'", mysql_error(&socket->conn));
 		socket->sock = NULL;
 		return NULL;
 	}
@@ -45,9 +46,9 @@ SQLSOCK *sql_create_socket(void) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-int sql_query(SQLSOCK *socket, char *querystr) {
+int sql_query(SQL_INST *inst, SQLSOCK *socket, char *querystr) {
 
-	if (sql->config->sqltrace)
+	if (inst->config->sqltrace)
 		DEBUG(querystr);
 	 if (socket->sock == NULL) {
 		radlog(L_ERR, "Socket not connected");
@@ -64,9 +65,9 @@ int sql_query(SQLSOCK *socket, char *querystr) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-int sql_select_query(SQLSOCK *socket, char *querystr) {
+int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr) {
 
-	if (sql->config->sqltrace)
+	if (inst->config->sqltrace)
 		DEBUG(querystr);
 	if (socket->sock == NULL) {
 		radlog(L_ERR, "Socket not connected");

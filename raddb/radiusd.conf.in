@@ -406,6 +406,7 @@ modules {
     usersfile = ${confdir}/users_fast
     hashsize = 1000
     compat = no
+		normal_defaults = yes
   }
 	
 	detail {
@@ -454,6 +455,10 @@ modules {
 	
 		# Print all SQL statements when in debug mode (-x)
 		sqltrace	= no
+		sqltracefile = ${logdir}/sqltrace.sql
+
+		# number of sql connections to make to server
+		num_sql_socks = 5
 	}
 
 #
