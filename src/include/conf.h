@@ -7,18 +7,11 @@
 #define RADIUS_DICTIONARY	"dictionary"
 #define RADIUS_CLIENTS		"clients"
 #define RADIUS_NASLIST		"naslist"
-#define RADIUS_USERS		"users"
-#define RADIUS_ACCT_USERS	"acct_users"
-#define RADIUS_HOLD		"holdusers"
 #define RADIUS_LOG		"radius.log"
-#define RADIUS_HINTS		"hints"
-#define RADIUS_HUNTGROUPS	"huntgroups"
 #define RADIUS_REALMS		"realms"
 
 #define RADUTMP			LOGDIR "/radutmp"
 #define RADWTMP			LOGDIR "/radwtmp"
-
-#define RADIUS_PID		RUNDIR "/radiusd.pid"
 
 #define CHECKRAD		SBINDIR "/checkrad"
 
