@@ -1229,6 +1229,11 @@ static void rad_reject(REQUEST *request)
 			request->reply->code = PW_AUTHENTICATION_REJECT; 
 
 			/*
+			 *  Perform RFC limitations on outgoing replies.
+			 */
+			rfc_clean(request->reply);
+
+			/*
 			 *  Need to copy Proxy-State from request->packet->vps
 			 */
 			vps = paircopy2(request->packet->vps, PW_PROXY_STATE);
@@ -1263,13 +1268,17 @@ static void rfc_clean(RADIUS_PACKET *packet)
 		break;
 
 		/*
-		 *  Authentication REJECT's can have only
-		 *  Reply-Message and Proxy-State.  We delete
-		 *  everything other than Reply-Message, and
-		 *  Proxy-State is added below, just before
-		 *  the reply is sent.
+		 *	Authentication REJECT's can have only
+		 *	EAP-Message, Message-Authenticator
+		 *	Reply-Message and Proxy-State.
+		 *
+		 *	We delete everything other than these.
+		 *	Proxy-State is added below, just before the
+		 *	reply is sent.
 		 */
 	case PW_AUTHENTICATION_REJECT:
+		pairmove2(&vps, &(packet->vps), PW_EAP_MESSAGE);
+		pairmove2(&vps, &(packet->vps), PW_MESSAGE_AUTHENTICATOR);
 		pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
 		pairfree(&packet->vps);
 		packet->vps = vps;
