@@ -48,7 +48,7 @@ CREATE TABLE nas (
 CREATE TABLE radacct (
   RadAcctId bigint(21) DEFAULT '0' NOT NULL auto_increment,
   AcctSessionId varchar(32) DEFAULT '' NOT NULL,
-  AcctUniqueId  varchar(32) DEFAULT '',
+  AcctUniqueId  varchar(32) DEFAULT '' NOT NULL,
   UserName varchar(32) DEFAULT '' NOT NULL,
   Realm varchar(30) DEFAULT '',
   NASIPAddress varchar(15) DEFAULT '' NOT NULL,
