@@ -4,6 +4,11 @@ set -e
 
 case "$1" in
   remove)
+	if [ -x /usr/sbin/invoke-rc.d ] ; then
+		invoke-rc.d freeradius stop
+	else
+		/etc/init.d/freeradius stop
+	fi
 	;;
   upgrade)
 	;;
@@ -13,12 +18,6 @@ case "$1" in
 	;;
 esac
 
-if [ "$1" = "upgrade" -o  "$1" = "remove" ] ; then
-	if [ -x /usr/sbin/invoke-rc.d ] ; then
-		invoke-rc.d freeradius stop
-	else
-		/etc/init.d/freeradius stop
-	fi
-fi
+#DEBHELPER#
 
 exit 0
