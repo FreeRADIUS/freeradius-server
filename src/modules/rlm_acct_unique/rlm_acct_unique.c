@@ -123,6 +123,7 @@ static int unique_instantiate(CONF_SECTION *conf, void **instance) {
 	 *  Set up a storage area for instance data
 	 */
 	if ((inst = malloc(sizeof(*inst))) == NULL) {
+		radlog(L_ERR, "rlm_acct_unique:  out of memory");
 		return -1;
 	}
 	memset(inst, 0, sizeof(*inst));
