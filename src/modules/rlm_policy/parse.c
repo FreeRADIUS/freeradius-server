@@ -22,6 +22,7 @@
 
 #include "rlm_policy.h"
 
+
 /*
  *	Explanations of what the lexical tokens are.
  */
@@ -381,6 +382,9 @@ typedef struct policy_lex_file_t {
 
 #define debug_tokens if (lexer->debug & POLICY_DEBUG_PRINT_TOKENS) printf
 
+static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail,
+		      const char *name);
+
 /*
  *	Function to return a token saying what it read, and possibly
  *	a buffer of the quoted string or bare word.
@@ -660,6 +664,34 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 		break;
 
 	case POLICY_LEX_BARE_WORD:
+		this->lhs_type = token;
+		token = policy_lex_file(lexer, POLICY_LEX_FLAG_PEEK, NULL, 0);
+		if (token == POLICY_LEX_L_BRACKET) {
+			debug_tokens("[IF-CALL %s] ", lhs);
+
+			/*
+			 *	Function call.
+			 */
+			if (rlm_policy_find(lexer->policies, lhs) == NULL) {
+				fprintf(stderr, "%s[%d]: Undefined function \"%s\"\n",
+					lexer->filename, lexer->lineno,
+					lhs);
+				rlm_policy_free_item((policy_item_t *) this);
+				return 0;
+				
+			}
+			
+			this->lhs = strdup(lhs);
+			this->lhs_type = POLICY_LEX_BARE_WORD;
+			this->compare = POLICY_LEX_BARE_WORD;
+			this->child_condition = POLICY_LEX_BARE_WORD;
+
+			if (!parse_call(lexer, &this->child, lhs)) {
+				return 0;
+			}
+			break;
+		} /* else it's a comparison? */
+
 	case POLICY_LEX_DOUBLE_QUOTED_STRING:
 		this->lhs_type = token;
 
@@ -1048,9 +1080,10 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 			 *	Is a named policy, parse the reference to it.
 			 */
 			if (rlm_policy_find(lexer->policies, lhs) != NULL) {
-				if (parse_call(lexer, tail, lhs)) {
-					return 1;
+				if (!parse_call(lexer, tail, lhs)) {
+					return 0;
 				}
+				return 1;
 			}
 
 			/*

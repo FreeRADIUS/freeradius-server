@@ -124,25 +124,30 @@ static void policy_print(const policy_item_t *item, int indent)
 					printf("\"%s\"", condition->lhs);
 				}
 
-				/*
-				 *	We always print this condition.
-				 */
-				printf(" %s ", lrad_int2str(rlm_policy_tokens,
-							    condition->compare,
-							    "?"));
-				if (condition->rhs_type == POLICY_LEX_BARE_WORD) {
-					printf("%s", condition->rhs);
+				if (condition->compare == POLICY_LEX_BARE_WORD) {
+					printf("()");
 				} else {
 					/*
-					 *	FIXME: escape ",
-					 *	and move all of this logic
-					 *	to a function.
+					 *	We always print this condition.
 					 */
-					printf("\"%s\"", condition->rhs);
+					printf(" %s ", lrad_int2str(rlm_policy_tokens,
+								    condition->compare,
+								    "?"));
+					if (condition->rhs_type == POLICY_LEX_BARE_WORD) {
+						printf("%s", condition->rhs);
+					} else {
+						/*
+						 *	FIXME: escape ",
+						 *	and move all of this logic
+						 *	to a function.
+						 */
+						printf("\"%s\"", condition->rhs);
+					}
 				}
 				printf(")");
 				
-				if (condition->child_condition != POLICY_LEX_BAD) {
+				if ((condition->child_condition != POLICY_LEX_BAD) &&
+				    (condition->child_condition != POLICY_LEX_BARE_WORD)) {
 					printf(" %s ", lrad_int2str(rlm_policy_tokens, condition->child_condition, "?"));
 					policy_print(condition->child, indent);
 				}
@@ -238,27 +243,21 @@ void rlm_policy_print(const policy_item_t *item)
 }
 
 /*
- *	Internal stack of things to do.
+ *	Internal stack of things to do.  This lets us have function
+ *	calls...
  *
- *	When a function is about to be pushed onto the stack, we walk
- *	backwards through the stack, and ensure that the function is
- *	not already there.  This prevents infinite recursion.
- *
- *	This means that we NEVER pop functions.  Rather, we push the
- *	function, and then immediately push it's first element.
- *
- *	When we've finished popping all of the elements, we pop the
- *	function, realize it's a function, ignore it, and pop one more
- *	entry.
+ *	Yes, we should learn lex, yacc, etc.
  */
 #define POLICY_MAX_STACK 16
 typedef struct policy_state_t {
 	rlm_policy_t	*inst;
-	int		depth;
 	REQUEST		*request; /* so it's not passed on the C stack */
+	int		depth;
 	const policy_item_t *stack[POLICY_MAX_STACK];
 } policy_state_t;
 
+
+static int policy_evaluate_name(policy_state_t *state, const char *name);
 
 /*
  *	Push an item onto the state.
@@ -325,12 +324,20 @@ static int policy_stack_pop(policy_state_t *state, const policy_item_t **pitem)
 	rad_assert(pitem != NULL);
 	rad_assert(state->depth >= 0);
 
+ redo:
 	if (state->depth == 0) {
 		*pitem = NULL;
 		return 0;
 	}
 
 	*pitem = state->stack[state->depth - 1];
+
+	/*
+	 *	Named policies are on the stack for catching recursion.
+	 */
+	if ((*pitem)->type == POLICY_TYPE_NAMED_POLICY) {
+		goto redo;
+	}
 
 	/*
 	 *	Process the whole item list.
@@ -425,6 +432,8 @@ static VALUE_PAIR *find_vp(REQUEST *request, const char *name)
 
 /*
  *	Evaluate an assignment
+ *
+ *	Not really used much...
  */
 static int evaluate_assignment(policy_state_t *state, const policy_item_t *item)
 {
@@ -486,6 +495,18 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 	case POLICY_LEX_L_NOT:
 		rcode = evaluate_condition(state, this->child);
 		rcode = (rcode == FALSE); /* reverse sense of test */
+		break;
+
+	case POLICY_LEX_BARE_WORD:
+		/*
+		 *	We can't call evaluate_call here, because that just
+		 *	pushes stuff onto the stack, and we want to actually
+		 *	evaluate all of it...
+		 *
+		 *	Hmm.... why are these things different?
+		 */
+		rcode = policy_evaluate_name(state,
+					     ((const policy_named_t *) this->child)->name);
 		break;
 
 	case POLICY_LEX_CMP_TRUE: /* existence */
@@ -889,6 +910,11 @@ static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 	rad_assert(policy->policy->type != POLICY_TYPE_BAD);
 	rad_assert(policy->policy->type < POLICY_TYPE_NUM_TYPES);
 
+	rcode = policy_stack_push(state, (const policy_item_t *) policy);
+	if (!rcode) {
+		return rcode;
+	}
+
 	/*
 	 *	Push it onto the stack.  Other code will take care of
 	 *	calling it.
@@ -898,14 +924,6 @@ static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 		return rcode;
 	}
 
-	/*
-	 *	Function calls always succeed?
-	 *
-	 *	FIXME: Push the function name, etc. onto the stack,
-	 *	so we can check for infinite recursion above, and
-	 *	so we can also check for return codes from functions
-	 *	we call...
-	 */
 	return 1;
 }
 
