@@ -33,9 +33,6 @@ acct.o: acct.c $(INCLUDES)
 files.o: files.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c files.c
 
-files_b.o: files.c $(INCLUDES)
-	$(CC) $(CFLAGS) -DBUILDDBM -o files_b.o -c files.c
-
 util.o: util.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c util.c
 
@@ -99,7 +96,6 @@ builddbm: builddbm.o files_b.o log.o
 builddbm.o: builddbm.c
 	$(CC) $(CFLAGS) -c builddbm.c
 
-
 radwho.o: radwho.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radwho.c
 
@@ -125,7 +121,7 @@ install:
 	$(INSTALL) -m 755    checkrad.pl	$(sbindir)/checkrad
 	$(INSTALL) -d -m 755			$(bindir)
 	$(INSTALL) -m 755 -s radwho raduse	$(bindir)
-	$(INSTALL) -m 755 -s radzap $(BUILDDBM)	$(bindir)
+	$(INSTALL) -m 755 -s radzap		$(bindir)
 	$(INSTALL) -m 755    radlast		$(bindir)
 	$(INSTALL) -m 755    radtest radclient	$(bindir)
 	$(INSTALL) -d -m 755			$(logdir)
