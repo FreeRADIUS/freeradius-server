@@ -195,7 +195,6 @@ static void decode_attribute(const char **from, char **to, int freespace,
 				openbraces--;
 				if (openbraces == *open) {
 					stop=1;
-					p++;
 				} else {
 					*pa++ = *p++;
 				}
@@ -302,8 +301,6 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			}
 			p++;	/* skip the character */
 		}
-	} else {
-		p--;
 	}
 
 	*open = openbraces;
