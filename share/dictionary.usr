@@ -1188,14 +1188,11 @@ VALUE	USR-HARC-Disconnect-Code		NAS-Drop-For-Callback	13
 VALUE	USR-HARC-Disconnect-Code		NAS-Drop-Misc-Non-Error	14
 VALUE	USR-HARC-Disconnect-Code		NAS-Internal-Error	15
 VALUE	USR-HARC-Disconnect-Code		Line-Busy		16
-VALUE	USR-HARC-Disconnect-Code		RESERVED		17
-VALUE	USR-HARC-Disconnect-Code		RESERVED		18
 VALUE	USR-HARC-Disconnect-Code		Tunnel-Term-Unreach	19
 VALUE	USR-HARC-Disconnect-Code		Tunnel-Refused		20
 VALUE	USR-HARC-Disconnect-Code		Tunnel-Auth-Failed	21
 VALUE	USR-HARC-Disconnect-Code		Tunnel-Session-Timeout	22
 VALUE	USR-HARC-Disconnect-Code		Tunnel-Timeout		23
-VALUE	USR-HARC-Disconnect-Code		RESERVED		24
 VALUE	USR-HARC-Disconnect-Code		Radius-Res-Reclaim	25
 VALUE	USR-HARC-Disconnect-Code		DNIS-Auth-Failed	26
 VALUE	USR-HARC-Disconnect-Code		PAP-Auth-Failure	27
