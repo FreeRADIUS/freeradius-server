@@ -12,7 +12,6 @@
 #include	<stdlib.h>
 #include	<unistd.h>
 #include	<string.h>
-#include	<getopt.h>
 #include	<ctype.h>
 #include	<netdb.h>
 #include	<sys/socket.h>
@@ -25,6 +24,10 @@
 
 #if HAVE_ERRNO_H
 #  include      <errno.h>
+#endif
+
+#if HAVE_GETOPT_H
+#  include	<getopt.h>
 #endif
 
 #include	"conf.h"
@@ -95,7 +98,7 @@ int main(int argc, char **argv)
 	char		*filename = NULL;
 	FILE		*fp;
 
-	while ((c = getopt(argc, argv, "d:f:nt:r:x")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:f:nt:r:xv")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -115,6 +118,10 @@ int main(int argc, char **argv)
 		case 't':
 			if (!isdigit(*optarg)) usage();
 			timeout = atof(optarg);
+			break;
+		case 'v':
+			printf("radclient: $Id$ built on " __DATE__ "\n");
+			exit(0);
 			break;
 		default:
 			usage();
@@ -136,7 +143,15 @@ int main(int argc, char **argv)
 		librad_perror("radclient");
 		exit(1);
 	}
+
+#define FAKE
+
+#ifndef FAKE
 	req->id = getpid() & 0xFF;
+#else
+	req->id = 0;
+	memset(req->vector, 0, sizeof(req->vector));
+#endif
 
 	/*
 	 *	Strip port from hostname if needed.
