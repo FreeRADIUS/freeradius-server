@@ -73,12 +73,12 @@ if ($do_delete == 1 && ($row_id != 0 && is_numeric($row_id))){
 $link = @da_sql_connect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT id,Admin FROM $config[sql_badusers_table]
+	"SELECT id,admin FROM $config[sql_badusers_table]
 	WHERE id = '$row_id';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
 		if ($row[id] == $row_id){
-			$admin = "$row[Admin]";
+			$admin = "$row[admin]";
 			if (($admin != '-' && $_SERVER["PHP_AUTH_USER"] == $admin) || $admin == '-'){
 				$sql_servers = array();
 				if ($config[sql_extra_servers] != '')
@@ -140,22 +140,22 @@ EOM;
 $auth_user = $_SERVER["PHP_AUTH_USER"];
 if ($config[general_restrict_badusers_access] == 'yes'){
 	$auth_user = da_sql_escape_string($auth_user);
-	$extra_query = "AND Admin == '$auth_user'";
+	$extra_query = "AND admin == '$auth_user'";
 }
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_badusers_table]
-	WHERE UserName $usercheck $extra_query AND Date <= '$now_str'
-	AND Date >= '$prev_str' ORDER BY Date $order $limit;");
+	WHERE username $usercheck $extra_query AND date <= '$now_str'
+	AND date >= '$prev_str' ORDER BY date $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
 			$id = $row[id];
-			$user = "$row[UserName]";
-			$date = "$row[Date]";
-			$reason = "$row[Reason]";
-			$admin = "$row[Admin]";
+			$user = "$row[username]";
+			$date = "$row[date]";
+			$reason = "$row[reason]";
+			$admin = "$row[admin]";
 			if ($admin == $auth_user || $admin == '-')
 	$action = "<td><input type=submit class=button value=\"Delete\" OnClick=\"this.form.do_delete.value=1;this.form.row_id.value=$id\"></td>";
 			else
