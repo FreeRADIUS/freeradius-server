@@ -414,16 +414,24 @@ int eap_compose(REQUEST *request, EAP_PACKET *reply)
 {
 	uint16_t eap_len, len;
 	VALUE_PAIR *eap_msg;
+	EAP_PACKET *rq;
 	VALUE_PAIR *vp;
 	eap_packet_t *eap_packet;
 	unsigned char 	*ptr;
 
 	/*
-	 * Id is expected to be set by the EAP-Type, if not,
-	 * currently RADIUS request Id is used.
-	 * Ideally, a unique Id should be generated.
+	 * ID serves to suppport request/response
+	 * retransmission in the EAP layer and as
+	 * such must be different for 'adjacent'
+	 * packets.
+	 *
+	 * RFC2716 (EAP_TLS) requires this to be
+	 * incremented, RFC2284 only makes the above-
+	 * mentioned restriction.
 	 */
-	if (reply->id == 0) reply->id = request->packet->id;
+	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
+	rq = (EAP_PACKET *)eap_msg->strvalue;
+	reply->id = rq->id + 1;
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
 		return EAP_INVALID;

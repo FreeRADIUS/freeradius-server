@@ -82,7 +82,6 @@ int eaptls_start(EAP_DS *eap_ds)
 	EAPTLS_PACKET 	reply;
 
 	reply.code = EAPTLS_START;
-	reply.id = eap_ds->response->id + 1/*Incrementor*/;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/;
 
 	reply.flags = 0x00;
@@ -101,7 +100,6 @@ int eaptls_success(EAP_DS *eap_ds)
 	EAPTLS_PACKET	reply;
 
 	reply.code = EAPTLS_SUCCESS;
-	reply.id = eap_ds->response->id + 1;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = 0x00;
 	reply.data = NULL;
@@ -117,7 +115,6 @@ int eaptls_fail(EAP_DS *eap_ds)
 	EAPTLS_PACKET	reply;
 
 	reply.code = EAPTLS_FAIL;
-	reply.id = eap_ds->response->id + 1;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = 0x00;
 	reply.data = NULL;
@@ -170,7 +167,6 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	}
 
 	reply.code = EAPTLS_REQUEST;
-	reply.id = eap_ds->response->id + 1;
 	reply.flags = 0x00;
 
 	/* Send data, NOT more than the FRAGMENT size */
@@ -274,7 +270,6 @@ int eaptls_send_ack(EAP_DS *eap_ds)
 	EAPTLS_PACKET 	reply;
 
 	reply.code = EAPTLS_ACK;
-	reply.id = eap_ds->response->id + 1;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/;
 	reply.flags = 0x00;
 	reply.data = NULL;
@@ -503,8 +498,6 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
    Identifier value in the subsequent fragment contained within an EAP-
    Reponse.
 */
-	eap_ds->request->id = (reply->id)?(reply->id):eap_ds->response->id + 1;
-
 	eap_ds->request->type.data = malloc(reply->length - TLS_HEADER_LEN);
 	if (eap_ds->request->type.data == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: out of memory");
