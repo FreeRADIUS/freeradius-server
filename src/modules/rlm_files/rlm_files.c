@@ -10,30 +10,23 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
+#include	"radiusd.h"
+
 #include	<sys/socket.h>
-#include	<sys/time.h>
 #include	<sys/stat.h>
 #include	<netinet/in.h>
 
-#include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<errno.h>
 #include	<netdb.h>
-#include	<pwd.h>
-#include	<grp.h>
-#include	<time.h>
 #include	<ctype.h>
 #include	<fcntl.h>
-#include	<unistd.h>
 #include        <limits.h>
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>
 #endif
 
-#include	"radiusd.h"
 #include	"modules.h"
 
 #ifdef WITH_DBM
@@ -160,93 +153,10 @@ static int fallthrough(VALUE_PAIR *vp)
 	return tmp ? tmp->lvalue : 0;
 }
 
-/*
- *  USE_DYNAMIC LOGS is set to FALSE, as this code should be rewritten.
- */
-#define USER_DYNAMIC_LOGS 0
-
-#if USE_DYNAMIC_LOGS
-#define DL_FLAG_START	  1
-#define DL_FLAG_STOP	  2
-#define DL_FLAG_ACCT_ON   4
-#define DL_FLAG_ACCT_OFF  8
-#define DL_FLAG_ALIVE	 16
-
-typedef struct dyn_log {
-	char dir[256];
-	char fname[256];
-	char fmt[1024];
-	char mode[5];
-	int flags;
-} DYN_LOG;
-#define MAX_LOGS 20
-static DYN_LOG logcfg[MAX_LOGS];
-static int logcnt;
-
-/*
- * Initialize dynamic logging
- */
-static void file_getline(FILE *f,char * buff,int len)
-{
-	char tmp[2048];
-	int i;
-
-	tmp[0] = '\0';
-	while (!feof(f)) {
-		fgets(tmp,len,f);
-		if (tmp[0] != '#') {
-			break;
-		}
-	}
-	i = 0;
-	while (tmp[i] != '\n') {
-		*buff = tmp[i];
-		buff++;
-		i++;
-	}
-}
-
-static void file_dynamic_log_init(void)
-{
-	FILE * f;
-	char fn[1024];
-
-	sprintf(fn,"%s/%s",radius_dir,"rlm_files_log.cfg");
-	logcnt = 0;
-	f = fopen(fn, "r");
-	if (f != NULL) {
-		log_debug("Loading %s",fn);
-		while (logcnt < MAX_LOGS) {
-			file_getline(f,logcfg[logcnt].dir,sizeof(logcfg[logcnt].dir));
-			file_getline(f,logcfg[logcnt].fname,sizeof(logcfg[logcnt].fname));
-			file_getline(f,logcfg[logcnt].fmt,sizeof(logcfg[logcnt].fmt));
-			file_getline(f,logcfg[logcnt].mode,sizeof(logcfg[logcnt].mode));
-			file_getline(f,fn,sizeof(fn));
-			logcfg[logcnt].flags = atoi(fn);
-			if ((logcfg[logcnt].flags != 0) &&
-			    (strlen(logcfg[logcnt].mode) != 0)) {
-				logcnt++;
-			} else {
-				break;
-			}
-		}
-		log_debug("%d logs configured",logcnt);
-		fclose(f);
-	} else {
-		log_debug("Error loading %s: %s",fn, strerror(errno));
-	}
-
-
-}
-#endif
 
 
 static int file_init(void)
 {
-#if USE_DYNAMIC_LOGS
-	file_dynamic_log_init();
-#endif
-
 	return 0;
 }
 
@@ -700,64 +610,6 @@ static int file_authenticate(void *instance, REQUEST *request)
 	request = request;
 	return RLM_MODULE_OK;
 }
-
-#if USE_DYNAMIC_LOGS
-/*
- * Write the dynamic log files
- */
-static void file_write_dynamic_log(REQUEST * request)
-{
-	char fn[1024];
-	char buffer[4096];
-	int x,y;
-	VALUE_PAIR * pair;
-	FILE * f;
-
-	pair = pairfind(request->packet->vps,PW_ACCT_STATUS_TYPE);
-	for (x = 0; x < logcnt; x++) {
-		if (((pair->lvalue == PW_STATUS_START) && (logcfg[x].flags & DL_FLAG_START)) ||
-		    ((pair->lvalue == PW_STATUS_STOP) && (logcfg[x].flags & DL_FLAG_STOP)) ||
-		    ((pair->lvalue == PW_STATUS_ACCOUNTING_ON) && (logcfg[x].flags & DL_FLAG_ACCT_ON)) ||
-		    ((pair->lvalue == PW_STATUS_ACCOUNTING_OFF) && (logcfg[x].flags & DL_FLAG_ACCT_OFF)) ||
-		    ((pair->lvalue == PW_STATUS_ALIVE) && (logcfg[x].flags & DL_FLAG_ALIVE))) {
-			y = radius_xlat2(fn,sizeof(fn),logcfg[x].dir,request,request->packet->vps);
-			(void) mkdir(fn, 0755);
-			strcat(fn,"/");
-			y++;
-			/* FIXME must get the reply packet */
-			radius_xlat2(&fn[y],sizeof(fn)-y,logcfg[x].fname,request,request->packet->vps);
-			if (strcasecmp(logcfg[x].mode,"d") == 0) {
-				remove(fn);
-			} else {
-				if (fn[y] == '|') {
-					f = popen(&fn[y+1],logcfg[x].mode);
-				} else {
-					/* FIXME: permissions? */
-					f = fopen(fn,logcfg[x].mode);
-				}
-				if (f) {
-					/* FIXME must get the reply packet */
-					radius_xlat2(buffer,sizeof(buffer),logcfg[x].fmt,request,request->packet->vps);
-					fprintf(f,"%s\n",buffer);
-					if (fn[y] == '|') {
-						pclose(f);
-					} else {
-						fclose(f);
-					}
-				} else {
-					if (fn[y] == '|') {
-						log_debug("Error opening pipe %s",fn[y+1]);
-					} else {
-						log_debug("Error opening log %s",fn);
-					}
-				}
-			}
-		}
-
-
-	}
-}
-#endif /* USE_DYNAMIC_LOGS */
 
 /*
  *	Pre-Accounting - read the acct_users file for check_items and
