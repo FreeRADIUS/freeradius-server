@@ -1260,8 +1260,14 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 */
 	ptr = hdr->data;
 	length = packet->data_len - AUTH_HDR_LEN;
-	packet->vps = NULL;
-	tail = &packet->vps;
+
+	/*
+	 *	There may be VP's already in the packet.  Don't
+	 *	destroy them.
+	 */
+	for (tail = &packet->vps; *tail != NULL; tail = &((*tail)->next)) {
+		/* nothing */
+	}
 
 	vendorcode = 0;
 	vendorlen  = 0;
@@ -1422,7 +1428,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				 *	then use it.
 				 */
 				if ((pair->length > 0) &&
-				    TAG_VALID(*ptr)) {
+				    TAG_VALID_ZERO(*ptr)) {
 					pair->flags.tag = *ptr;
 					pair->length--;
 					offset = 1;
