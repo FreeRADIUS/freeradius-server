@@ -3894,10 +3894,10 @@ else
 fi
 rm -f conftest*
 
-
-  for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $snmp_lib_dir; do
-    LIBS="$old_LIBS -L$try -lsnmp"
-    cat > conftest.$ac_ext <<EOF
+  if test "x$SNMP_LIBS" = "x"; then
+    for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $snmp_lib_dir; do
+      LIBS="$old_LIBS -L$try -lsnmp"
+      cat > conftest.$ac_ext <<EOF
 #line 3902 "configure"
 #include "confdefs.h"
 extern char snmp_build_var_op();
@@ -3915,20 +3915,19 @@ else
   SNMP_LIBS=
 fi
 rm -f conftest*
-    if test "x$SNMP_LIBS" != "x"; then
-      break;
-    fi
-
-    LIBS="$old_LIBS -L$try -lsnmp -lcrypto"
-    cat > conftest.$ac_ext <<EOF
-#line 3925 "configure"
+      if test "x$SNMP_LIBS" != "x"; then
+        break;
+      fi
+      LIBS="$old_LIBS -L$try -lsnmp -lcrypto"
+      cat > conftest.$ac_ext <<EOF
+#line 3924 "configure"
 #include "confdefs.h"
 extern char snmp_build_var_op();
 int main() {
  snmp_build_var_op()
 ; return 0; }
 EOF
-if { (eval echo configure:3932: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:3931: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   SNMP_LIBS="-L$try -lsnmp -lcrypto"
 else
@@ -3938,10 +3937,11 @@ else
   SNMP_LIBS=
 fi
 rm -f conftest*
-    if test "x$SNMP_LIBS" != "x"; then
-      break;
-    fi
-  done
+      if test "x$SNMP_LIBS" != "x"; then
+        break;
+      fi
+    done
+  fi
   LIBS="$old_LIBS"
 
           CFLAGS="$old_CFLAGS"

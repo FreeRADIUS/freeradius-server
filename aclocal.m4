@@ -873,30 +873,30 @@ dnl #
               SNMP_LIBS="-lsnmp",
               SNMP_LIBS=)
 
-
-  for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $snmp_lib_dir; do
-    LIBS="$old_LIBS -L$try -lsnmp"
-    AC_TRY_LINK([extern char snmp_build_var_op();],
-                [ snmp_build_var_op()],
-                SNMP_LIBS="-L$try -lsnmp",
-                SNMP_LIBS=)
-    if test "x$SNMP_LIBS" != "x"; then
-      break;
-    fi
-
-dnl #
-dnl #  That didn't work.  Try adding the '-lcrypto' line.
-dnl #  Some SNMP libraries are linked against SSL...
-dnl #
-    LIBS="$old_LIBS -L$try -lsnmp -lcrypto"
-    AC_TRY_LINK([extern char snmp_build_var_op();],
-                [ snmp_build_var_op()],
-                SNMP_LIBS="-L$try -lsnmp -lcrypto",
-                SNMP_LIBS=)
-    if test "x$SNMP_LIBS" != "x"; then
-      break;
-    fi
-  done
+  if test "x$SNMP_LIBS" = "x"; then
+    for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $snmp_lib_dir; do
+      LIBS="$old_LIBS -L$try -lsnmp"
+      AC_TRY_LINK([extern char snmp_build_var_op();],
+                  [ snmp_build_var_op()],
+                  SNMP_LIBS="-L$try -lsnmp",
+                  SNMP_LIBS=)
+      if test "x$SNMP_LIBS" != "x"; then
+        break;
+      fi
+dnl   #
+dnl   #  That didn't work.  Try adding the '-lcrypto' line.
+dnl   #  Some SNMP libraries are linked against SSL...
+dnl   #
+      LIBS="$old_LIBS -L$try -lsnmp -lcrypto"
+      AC_TRY_LINK([extern char snmp_build_var_op();],
+                  [ snmp_build_var_op()],
+                  SNMP_LIBS="-L$try -lsnmp -lcrypto",
+                  SNMP_LIBS=)
+      if test "x$SNMP_LIBS" != "x"; then
+        break;
+      fi
+    done
+  fi
   LIBS="$old_LIBS"
 
   dnl #
