@@ -18,6 +18,10 @@
 #include <netinet/in.h>
 #endif
 
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
 #include "sha1.h"
 
 #define blk0(i) (block->l[i] = htonl(block->l[i]))
