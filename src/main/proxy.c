@@ -118,7 +118,7 @@ int proxy_receive(REQUEST *request)
 	 *	Delete the left-over attributes, and move the
 	 *	allowed ones back.
 	 */
-	pairfree(request->proxy_reply->vps);
+	pairfree(&request->proxy_reply->vps);
 	request->proxy_reply->vps = allowed_pairs;
 
 	return replicating?1:0;
