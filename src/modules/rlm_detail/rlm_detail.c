@@ -134,7 +134,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *	variables.
 	 */
 	strNcpy(filename, inst->detailfile, sizeof(filename));
-	p = strchr(filename,'/');
+	p = strrchr(filename,'/');
 
 	if (p) *p = '\0';
 
