@@ -139,10 +139,36 @@ static int example_instantiate(CONF_SECTION *conf, void **instance)
  */
 static int example_authorize(void *instance, REQUEST *request)
 {
+	VALUE_PAIR *state;
+	VALUE_PAIR *reply;
+
 	/* quiet the compiler */
 	instance = instance;
 	request = request;
-	
+
+	/*
+	 *  Look for the 'state' attribute.
+	 */
+	state =  pairfind(request->packet->vps, PW_STATE);
+	if (state != NULL) {
+		DEBUG("rlm_example: Found reply to access challenge");
+		return RLM_MODULE_OK;
+	}
+
+	/*
+	 *  Create the challenge, and add it to the reply.
+	 */
+       	reply = pairmake("Reply-Message", "This is a challenge", T_OP_EQ);
+	pairadd(&request->reply->vps, reply);
+
+	/*
+	 *  Mark the packet as an Access-Challenge packet.
+	 *
+	 *  The server will take care of sending it to the user.
+	 */
+	request->reply->code = PW_ACCESS_CHALLENGE;
+	DEBUG("rlm_example: Sending Access-Challenge.");
+
 	return RLM_MODULE_HANDLED;
 }
 
