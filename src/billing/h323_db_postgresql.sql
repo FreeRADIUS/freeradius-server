@@ -18,53 +18,37 @@
 
 CREATE TABLE StartVoIP (
   RadAcctId BIGSERIAL PRIMARY KEY,
-  AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
-  AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
   UserName VARCHAR(64) DEFAULT '' NOT NULL,
   Realm VARCHAR(64) DEFAULT '',
   NASIPAddress INET NOT NULL,
-  NASPortType VARCHAR(32),
   AcctStartTime timestamp DEFAULT now() NOT NULL,
-  ConnectInfo_start VARCHAR(32),
   CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
   CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
-  ServiceType VARCHAR(32),
-  AcctStartDelay NUMERIC(12),
-  AcctStatusType VARCHAR(16) DEFAULT '' NOT NULL,
+  AcctDelayTime NUMERIC(3),
   H323GWID VARCHAR(32) DEFAULT '' NOT NULL,
-  h323CallOrigin VARCHAR(64) DEFAULT '' NOT NULL,
+  h323CallOrigin VARCHAR(10) DEFAULT '' NOT NULL,
   h323CallType VARCHAR(64) DEFAULT '' NOT NULL,
   h323SetupTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323ConfID VARCHAR(64) DEFAULT '' NOT NULL,
-  RadiusServerName VARCHAR(32) DEFAULT '' NOT NULL
+  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
 );
-create index startvoip_AcctSessionId on startvoip (AcctSessionId);
 create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
 
 
 CREATE TABLE StartTelephony (
   RadAcctId BIGSERIAL PRIMARY KEY,
-  AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
-  AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
   UserName VARCHAR(64) DEFAULT '' NOT NULL,
   Realm VARCHAR(64) DEFAULT '',
   NASIPAddress INET NOT NULL,
-  NASPortType VARCHAR(32),
   AcctStartTime timestamp DEFAULT now() NOT NULL,
-  ConnectInfo_start VARCHAR(32),
   CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
   CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
-  ServiceType VARCHAR(32),
-  AcctStartDelay NUMERIC(12),
-  AcctStatusType VARCHAR(16) DEFAULT '' NOT NULL,
+  AcctDelayTime NUMERIC(3),
   H323GWID VARCHAR(32) DEFAULT '' NOT NULL,
-  h323CallOrigin VARCHAR(64) DEFAULT '' NOT NULL,
+  h323CallOrigin VARCHAR(10) DEFAULT '' NOT NULL,
   h323CallType VARCHAR(64) DEFAULT '' NOT NULL,
   h323SetupTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323ConfID VARCHAR(64) DEFAULT '' NOT NULL,
-  RadiusServerName VARCHAR(32) DEFAULT '' NOT NULL
+  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
 );
-create index starttelephony_AcctSessionId on starttelephony (AcctSessionId);
 create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress);
 
 
@@ -74,86 +58,48 @@ create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress)
  */
 CREATE TABLE StopVoIP (
   RadAcctId BIGSERIAL PRIMARY KEY,
-  AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
-  AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
-  UserName VARCHAR(64) DEFAULT '' NOT NULL,
-  Realm VARCHAR(64) DEFAULT '',
+  UserName VARCHAR(32) DEFAULT '' NOT NULL,
   NASIPAddress INET NOT NULL,
-  NASPortId NUMERIC(12),
-  NASPortType VARCHAR(32),
-  AcctStartTime timestamp DEFAULT now() NOT NULL,
-  AcctStopTime timestamp DEFAULT now() NOT NULL,
-  AcctSessionTime NUMERIC(12),
-  AcctAuthentic VARCHAR(32),
-  ConnectInfo_start VARCHAR(32),
-  ConnectInfo_stop VARCHAR(32),
-  AcctInputOctets NUMERIC(12),
-  AcctOutputOctets NUMERIC(12),
-  CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
-  CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
-  AcctTerminateCause VARCHAR(32) DEFAULT '' NOT NULL,
-  ServiceType VARCHAR(32),
-  FramedProtocol VARCHAR(32),
-  AcctStartDelay NUMERIC(12),
-  AcctStopDelay NUMERIC(12),
-  AcctStatusType varchar(10) DEFAULT '' NOT NULL,
-  CiscoNASPort varchar(16) DEFAULT '' NOT NULL,
-  H323GWID varchar(32) DEFAULT '' NOT NULL,
-  h323CallOrigin varchar(64) DEFAULT '' NOT NULL,
-  h323CallType varchar(64) DEFAULT '' NOT NULL,
-  h323SetupTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323ConnectTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323DisconnectTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323DisconnectCause varchar(32) DEFAULT '' NOT NULL,
+  AcctSessionTime BIGINT,
+  AcctInputOctets BIGINT,
+  AcctOutputOctets BIGINT,
+  CalledStationId VARCHAR(50) DEFAULT '' NOT NULL,
+  CallingStationId VARCHAR(50) DEFAULT '' NOT NULL,
+  AcctDelayTime SMALLINT,
+  CiscoNASPort BOOLEAN DEFAULT false,
+  h323CallOrigin varchar(10) DEFAULT '' NOT NULL,
+  h323SetupTime timestamp with time zone NOT NULL,
+  h323ConnectTime timestamp with time zone NOT NULL,
+  h323DisconnectTime timestamp with time zone NOT NULL,
+  h323DisconnectCause varchar(2) DEFAULT '' NOT NULL,
   H323RemoteAddress INET NOT NULL,
-  H323VoiceQuality NUMERIC(4),
-  h323ConfID varchar(64) DEFAULT '' NOT NULL,
-  RadiusServerName varchar(32) DEFAULT '' NOT NULL
+  H323VoiceQuality NUMERIC(2),
+  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
 );
-create index stopvoipAcctSessionId on stopvoip (AcctSessionId);
-create index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress);
+create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, h323ConfID);
 
 
 CREATE TABLE StopTelephony (
   RadAcctId BIGSERIAL PRIMARY KEY,
-  AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
-  AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
-  UserName VARCHAR(64) DEFAULT '' NOT NULL,
-  Realm VARCHAR(64) DEFAULT '',
+  UserName VARCHAR(32) DEFAULT '' NOT NULL,
   NASIPAddress INET NOT NULL,
-  NASPortId NUMERIC(12),
-  NASPortType VARCHAR(32),
-  AcctStartTime timestamp DEFAULT now() NOT NULL,
-  AcctStopTime timestamp DEFAULT now() NOT NULL,
-  AcctSessionTime NUMERIC(12),
-  AcctAuthentic VARCHAR(32),
-  ConnectInfo_start VARCHAR(32),
-  ConnectInfo_stop VARCHAR(32),
-  AcctInputOctets NUMERIC(12),
-  AcctOutputOctets NUMERIC(12),
-  CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
-  CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
-  AcctTerminateCause VARCHAR(32) DEFAULT '' NOT NULL,
-  ServiceType VARCHAR(32),
-  FramedProtocol VARCHAR(32),
-  AcctStartDelay NUMERIC(12),
-  AcctStopDelay NUMERIC(12),
-  AcctStatusType varchar(10) DEFAULT '' NOT NULL,
+  AcctSessionTime BIGINT,
+  AcctInputOctets BIGINT,
+  AcctOutputOctets BIGINT,
+  CalledStationId VARCHAR(50) DEFAULT '' NOT NULL,
+  CallingStationId VARCHAR(50) DEFAULT '' NOT NULL,
+  AcctDelayTime SMALLINT,
   CiscoNASPort varchar(16) DEFAULT '' NOT NULL,
-  H323GWID varchar(32) DEFAULT '' NOT NULL,
-  h323CallOrigin varchar(64) DEFAULT '' NOT NULL,
-  h323CallType varchar(64) DEFAULT '' NOT NULL,
-  h323SetupTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323ConnectTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323DisconnectTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323DisconnectCause varchar(32) DEFAULT '' NOT NULL,
-  H323RemoteAddress INET,
-  H323VoiceQuality NUMERIC(4),
-  h323ConfID varchar(64) DEFAULT '' NOT NULL,
-  RadiusServerName varchar(32) DEFAULT '' NOT NULL
+  h323CallOrigin varchar(10) DEFAULT '' NOT NULL,
+  h323SetupTime timestamp with time zone NOT NULL,
+  h323ConnectTime timestamp with time zone NOT NULL,
+  h323DisconnectTime timestamp with time zone NOT NULL,
+  h323DisconnectCause varchar(2) DEFAULT '' NOT NULL,
+  H323RemoteAddress BOOLEAN DEFAULT false,
+  H323VoiceQuality NUMERIC(2),
+  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
 );
-create index StopTelephonyAcctSessionId on stoptelephony (AcctSessionId);
-create index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress);
+create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, h323ConfID);
 
 
 /*
@@ -176,6 +122,7 @@ CREATE OR REPLACE FUNCTION strip_dot (text) returns timestamp AS '
 ' language 'plperl';
 
 
+
 /*
  * Some sample database VIEWs to simplify billing queries.
  */
@@ -183,6 +130,14 @@ CREATE OR REPLACE VIEW call_history AS
 SELECT pots.h323ConnectTime, pots.AcctSessionTime, pots.CalledStationId, ip.H323RemoteAddress, ip.NASIPAddress
 FROM StopTelephony  AS pots, StopVoIP AS ip
 WHERE pots.h323ConfID = ip.h323ConfID;
+
+CREATE OR REPLACE VIEW VoIP AS
+SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, CalledStationId AS Number, EXTRACT(YEAR FROM (h323setuptime AT TIME ZONE 'UTC')) AS Year, EXTRACT(MONTH FROM (h323setuptime AT TIME ZONE 'UTC')) AS Month, EXTRACT(DAY FROM (h323setuptime AT TIME ZONE 'UTC')) AS Day, h323SetupTime::time AT TIME ZONE 'UTC' AS Time, h323DisconnectCause AS error_code, H323RemoteAddress AS Remote_IP, h323ConfID AS ConfID
+FROM StopVoIP;
+
+CREATE OR REPLACE VIEW Telephony AS
+SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, CalledStationId AS Number, EXTRACT(YEAR FROM (h323setuptime AT TIME ZONE 'UTC')) AS Year, EXTRACT(MONTH FROM (h323setuptime AT TIME ZONE 'UTC')) AS Month, EXTRACT(DAY FROM (h323setuptime AT TIME ZONE 'UTC')) AS Day, h323SetupTime::time AT TIME ZONE 'UTC' AS Time, h323DisconnectCause AS error_code, CiscoNASPort AS isdn_port, h323ConfID AS ConfID
+FROM StopTelephony;
 
 CREATE OR REPLACE VIEW calls AS
 SELECT h323ConnectTime, AcctSessionTime, CalledStationId, H323RemoteAddress, NASIPAddress
@@ -275,3 +230,48 @@ INSERT INTO isdn_error_codes VALUES ('66', 'Recovery on timer expires', 'An erro
 INSERT INTO isdn_error_codes VALUES ('6F', 'Protocol error, unspecified', 'An unspecified D-channel error when no other standard cause applies.');
 INSERT INTO isdn_error_codes VALUES ('7', 'Call awarded and being delivered in an established channel', 'The user is assigned an incoming call that is being connected to an already-established call channel.');
 INSERT INTO isdn_error_codes VALUES ('7F', 'Internetworking, unspecified', 'An event occurred, but the network does not provide causes for the action that it takes. The precise problem is unknown.');
+
+
+
+/*
+ * # createlang -U postgres plpgsql radius
+ */
+CREATE OR REPLACE FUNCTION VoIPInsertRecord(StopVoIP.UserName%TYPE, StopVoIP.NASIPAddress%TYPE, StopVoIP.AcctSessionTime%TYPE,
+StopVoIP.AcctInputOctets%TYPE, StopVoIP.AcctOutputOctets%TYPE, StopVoIP.CalledStationId%TYPE, StopVoIP.CallingStationId%TYPE,
+StopVoIP.AcctDelayTime%TYPE, StopVoIP.h323CallOrigin%TYPE, StopVoIP.h323SetupTime%TYPE, StopVoIP.h323ConnectTime%TYPE, StopVoIP.h323DisconnectTime%TYPE,
+StopVoIP.h323DisconnectCause%TYPE, StopVoIP.H323RemoteAddress%TYPE, StopVoIP.H323VoiceQuality%TYPE, StopVoIP.h323ConfID%TYPE) RETURNS BOOLEAN AS '
+DECLARE
+    key1 ALIAS FOR $10;
+    key2 ALIAS FOR $2;
+    key3 ALIAS FOR $16;
+BEGIN
+        PERFORM radacctid FROM StopVoIP WHERE h323SetupTime = $10 AND NASIPAddress = $2 AND h323confid = $16;
+        IF NOT FOUND THEN
+		INSERT into StopVoIP (
+                UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
+                AcctDelayTime, h323callorigin, h323setuptime, h323connecttime, h323disconnecttime, h323disconnectcause,
+		H323RemoteAddress, h323voicequality, h323confid) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);
+	RETURN true;
+        END IF;
+        RETURN false;
+END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION TelephonyInsertRecord(StopTelephony.UserName%TYPE, StopTelephony.NASIPAddress%TYPE, StopTelephony.AcctSessionTime%TYPE,
+    StopTelephony.AcctInputOctets%TYPE, StopTelephony.AcctOutputOctets%TYPE, StopTelephony.CalledStationId%TYPE, StopTelephony.CallingStationId%TYPE,
+    StopTelephony.AcctDelayTime%TYPE, StopTelephony.CiscoNASPort%TYPE, StopTelephony.h323CallOrigin%TYPE, StopTelephony.h323SetupTime%TYPE,
+    StopTelephony.h323ConnectTime%TYPE, StopTelephony.h323DisconnectTime%TYPE, StopTelephony.h323DisconnectCause%TYPE, 
+    StopTelephony.H323VoiceQuality%TYPE, StopTelephony.h323ConfID%TYPE) RETURNS BOOLEAN AS '
+DECLARE
+BEGIN
+        PERFORM radacctid FROM StopTelephony WHERE h323SetupTime = $11 AND NASIPAddress = $2 AND h323confid = $16;
+        IF NOT FOUND THEN
+	 	INSERT into StopTelephony (
+                UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
+                AcctDelayTime, CiscoNASPort, h323callorigin, h323setuptime, h323connecttime, h323disconnecttime, h323disconnectcause,
+		h323voicequality, h323confid) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);
+	RETURN true;
+        END IF;
+        RETURN false;
+END;
+' LANGUAGE 'plpgsql';

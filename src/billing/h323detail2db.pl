@@ -6,7 +6,7 @@
 #		compare/insert/update a Postgresql database.
 # Copy Policy:  GNU Public Licence Version 2 or later
 # URL:          http://www.peternixon.net/code/
-# Supported:    PostgreSQL (tested on version 7.2 and 7.3) and FreeRadius
+# Supported:    PostgreSQL (tested on version 7.2 and 7.3.x) and FreeRadius
 # Copyright:    2002, 2003 Peter Nixon <codemonkey@petenixon.net>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 #
 # $Id$
 #
-
 
 
 # Modules that we use to get things done.
@@ -48,24 +47,12 @@ $password    = "";
 
 #### You should not have to modify anything below here
 $progname = "H323 Detail 2 DB";
-$version = 1.01;
+$version = 2;
 
 # Set up some basic variables
 $passno = 0; $double_match_no = 0;
+$starttime = time();
 
-sub read_record {
-	my $keepreading = 1;
-	@record = ();
-	while ($keepreading) {
-		$_ = <DETAIL>;
-		print "$_" if (&debug_get());
-		if ( /^$/ ) {
-			$keepreading = 0;
-		} else {
-			$record[++$#record] = $_;
-		}
-	}
-}
 
 sub db_connect {
 	my $hostname = shift;
@@ -88,40 +75,49 @@ sub db_disconnect {
 	    or warn "Disconnection failed: $DBI::errstr\n";
 }
 
-sub db_insert {
-	print " Seconds: $AcctSessionTime  ";
+
+sub procedure_insert {
+	$passno++;
+	if (&verbose_get()) { print " Seconds: $AcctSessionTime  " }
 	if ($h323_call_type eq 'VoIP') { 
-        $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (RadiusServerName, AcctSessionId, AcctUniqueId,
-		UserName, Realm, NASIPAddress, NASPortType, AcctSessionTime, AcctAuthentic, ConnectInfo_start,
-		ConnectInfo_stop, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
-		AcctTerminateCause, ServiceType, FramedProtocol, AcctStartDelay, AcctStopDelay,
-		H323RemoteAddress, AcctStatusType, CiscoNASPort, h323calltype, h323callorigin, h323confid,
-		h323connecttime, h323disconnectcause, h323disconnecttime, h323gwid, h323setuptime)
-		values('girne-rad1', '$AcctSessionId', '', '$UserName', '', '$NasIPAddress', '$NasPortType',
-		'$AcctSessionTime', '', '', '$ConnectInfo', '$AcctInputOctets', '$AcctOutputOctets',
-		'$Called_Station_Id', '', '$AcctTerminateCause', '$ServiceType', '$FramedProtocol',
-		'0', '$AcctDelayTime', '$h323_remote_address', 'Stop', '$Cisco_NAS_Port',
-		'$h323_call_type', '', '$h323_conf_id', '$h323_connect_time', '$h323_disconnect_cause',
-		'$h323_disconnect_time', '$h323_gw_id', '$h323_setup_time')");
+        $sth2 = $dbh->prepare("SELECT VoIPInsertRecord('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
+		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$h323_call_origin', '$h323_setup_time',
+		'$h323_connect_time','$h323_disconnect_time', '$h323_disconnect_cause', '$h323_remote_address', '$h323_voice_quality', '$h323_conf_id')");
 	}
 	elsif ($h323_call_type eq 'Telephony') {
-        $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (RadiusServerName, AcctSessionId, AcctUniqueId,
-                UserName, Realm, NASIPAddress, NASPortType, AcctSessionTime, AcctAuthentic, ConnectInfo_start,
-                ConnectInfo_stop, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
-                AcctTerminateCause, ServiceType, FramedProtocol, AcctStartDelay, AcctStopDelay,
-                AcctStatusType, CiscoNASPort, h323calltype, h323callorigin, h323confid,
-                h323connecttime, h323disconnectcause, h323disconnecttime, h323gwid, h323setuptime)
-                values('girne-rad1', '$AcctSessionId', '', '$UserName', '', '$NasIPAddress', '$NasPortType',
-                '$AcctSessionTime', '', '', '$ConnectInfo', '$AcctInputOctets', '$AcctOutputOctets',
-                '$Called_Station_Id', '', '$AcctTerminateCause', '$ServiceType', '$FramedProtocol',
-                '0', '$AcctDelayTime', 'Stop', '$Cisco_NAS_Port',
-                '$h323_call_type', '', '$h323_conf_id', '$h323_connect_time', '$h323_disconnect_cause',
-                '$h323_disconnect_time', '$h323_gw_id', '$h323_setup_time')");
+        $sth2 = $dbh->prepare("SELECT TelephonyInsertRecord('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
+		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$Cisco_NAS_Port', '$h323_call_origin',
+		'$h323_setup_time', '$h323_connect_time','$h323_disconnect_time', '$h323_disconnect_cause', '$h323_voice_quality', '$h323_conf_id')");
+	} else { print "ERROR: Unsupported h323calltype \"$h323_call_type\"\n" }
+	$sth2->execute();
+
+ 	if (&verbose_get()) { print "added to DB\n"; }
+	$sth2->finish();
+}
+
+sub db_insert {
+	if (&verbose_get()) { print " Seconds: $AcctSessionTime  " }
+	if ($h323_call_type eq 'VoIP') { 
+        $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (
+		UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
+		AcctDelayTime, H323RemoteAddress, h323callorigin, h323confid,
+		h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
+		values('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
+		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$h323_remote_address',
+		'$h323_call_origin', '$h323_conf_id', '$h323_connect_time', '$h323_disconnect_cause', '$h323_disconnect_time', '$h323_setup_time', '$h323_voice_quality')");
+	}
+	elsif ($h323_call_type eq 'Telephony') {
+        $sth2 = $dbh->prepare("INSERT into StopTelephony (UserName, NASIPAddress, AcctSessionTime,
+                AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId, AcctDelayTime,
+                CiscoNASPort, h323callorigin, h323confid, h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
+                values('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
+                '$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$Cisco_NAS_Port', '$h323_call_origin', '$h323_conf_id',
+		'$h323_connect_time', '$h323_disconnect_cause', '$h323_disconnect_time', '$h323_setup_time', '$h323_voice_quality')");
 	} else { print "ERROR: Unsupported h323calltype \"$h323_call_type\"\n" }
 
 	$sth2->execute();
 	#my $returned_rows = $sth2->rows;
-	print "added to DB\n";
+ 	if (&verbose_get()) { print "added to DB\n"; }
 	$sth2->finish();
 
 }
@@ -131,20 +127,20 @@ sub db_update {
 	my $sth2= $dbh->prepare("UPDATE radacct SET CalledStationId = '$Called_Station_Id', 
 		AcctTerminateCause = '$AcctTerminateCause', H323RemoteAddress = '$h323_remote_address',
 		AcctStatusType = '$AcctStatusType', h323confid = '$h323_conf_id', h323calltype = '$h323_call_type',
-		CiscoNASPort = '$Cisco_NAS_Port', h323gwid = '$h323_gw_id', h323disconnectcause = '$h323_disconnect_cause',
+		CiscoNASPort = '$Cisco_NAS_Port', h323disconnectcause = '$h323_disconnect_cause',
 		h323connecttime = '$h323_connect_time', h323disconnecttime = '$h323_disconnect_time',
-		h323setuptime = '$h323_setup_time' WHERE AcctSessionId = '$AcctSessionId' AND UserName = '$UserName'
+		h323setuptime = '$h323_setup_time' WHERE AcctSessionId = 'AcctSessionId' AND UserName = '$UserName'
 		AND NASIPAddress = '$NasIPAddress' AND h323confid = '$h323_conf_id'");
         $sth2->execute();
         my $returned_rows = $sth2->rows;
-        print " $returned_rows record(s) updated\n";
+	if (&verbose_get()) { print " $returned_rows record(s) updated\n" }
         $sth2->finish();
 
 }
 
 sub db_read {
 	$passno++;
-        print "Record: $passno) Conf ID: $h323_conf_id   Setup Time: $h323_setup_time  Call Length: $AcctSessionTime   ";
+	if (&verbose_get()) { print "Record: $passno) Conf ID: $h323_conf_id   Setup Time: $h323_setup_time  Call Length: $AcctSessionTime   "; }
 	my $sth = $dbh->prepare("SELECT RadAcctId FROM Stop$h323_call_type
 		WHERE h323SetupTime = '$h323_setup_time'
 		AND NASIPAddress = '$NasIPAddress'
@@ -159,7 +155,7 @@ sub db_read {
           if ($sth->rows == 0) {
 		&db_insert;
           } elsif ($sth->rows == 1) {
-                print "Exists in DB.\n";
+                if (&verbose_get()) { print "Exists in DB.\n"; }
 		# FIXME: Make updates an option!
                 #while (@data = $sth->fetchrow_array()) {
                 #my $dbAcctSessionId = $data[1];
@@ -175,18 +171,33 @@ sub db_read {
 
 }
 
+sub read_record {
+	my $keepreading = 1;
+	@record = ();
+	while ($keepreading) {
+		$_ = <DETAIL>;
+		print "$_" if (&debug_get());
+		if ( /^$/ ) {
+			$keepreading = 0;
+		} else {
+			$record[++$#record] = $_;
+		}
+	}
+}
+
 sub process_record {
 	if (&debug_get()) { print "DEBUG: Processing Record\n"; }
 	# Clear the variable we use.
-	$AcctSessionId = ""; $UserName = ""; $NasPort=""; $NasPortType="";
-	$NasIPAddress = ""; $AcctStatusType=""; $AcctSessionTime="";
+	$UserName = ""; $NasPort=""; $NasPortType="";
+	 $NasIPAddress = ""; $AcctStatusType=""; $AcctSessionTime="";
 	$AcctInputOctets=""; $AcctOutputOctets=""; $AcctTerminateCause="";
 	$ServiceType=""; $FramedProtocol=""; $FramedIPAddress="";
 	$Timestamp=""; $AcctDelayTime=""; $ConnectInfo=""; $Called_Station_Id="";
 	$SQL_User_Name=""; $Cisco_NAS_Port=""; $Client_IP_Address="";
 	$h323_remote_address=""; $h323_disconnect_cause=""; $h323_gw_id="";
 	$h323_conf_id=""; $h323_call_type=""; $h323_disconnect_time="";
-	$h323_connect_time=""; $h323_setup_time="";
+	$h323_connect_time=""; $h323_setup_time=""; $Calling_Station_Id="";
+	$h323_call_origin=""; $h323_voice_quality="";
 
 	foreach (@record) {  		# Collect data
 
@@ -198,29 +209,29 @@ sub process_record {
 	$AcctStatusType = $_ if s/Acct-Status-Type = //;
 
 	# All the data we need is in Stop records.
-	return if ($AcctStatusType eq "Start");
-	return if ($AcctStatusType eq "Alive");
+	if ($AcctStatusType eq "Start") {
+		if (&debug_get()) { print "DEBUG: Skipping \"Start\" record\n"; }
+		return;
+	} elsif ($AcctStatusType eq "Alive"){
+		if (&debug_get()) { print "DEBUG: Skipping \"Alive\" record\n"; }
+		return;
+	};
 
-	$AcctSessionId = $_ if s/Acct-Session-Id = //;
-	$SQL_User_Name = $_ if s/SQL-User-Name = //;
+	if (s/h323-call-type = \"h323-call-type=//) {
+                        $h323_call_type = substr($_, 0, -1);
+                } elsif (s/h323-call-type = //) {
+                        $h323_call_type = $_;
+            };
+
 	$UserName = $_ if s/User-Name = //;
-	$NasPort = $_ if s/NAS-Port = //;
-	$NasPortType = $_ if s/NAS-Port-Type = //;
 	$NasIPAddress = $_ if s/NAS-IP-Address = //;
 	$AcctSessionTime = $_ if s/Acct-Session-Time = //;
 	$AcctInputOctets = $_ if s/Acct-Input-Octets = //;
 	$AcctOutputOctets = $_ if s/Acct-Output-Octets = //;
-	$AcctTerminateCause = $_ if s/Acct-Terminate-Cause = //;
 	$AcctDelayTime = $_ if s/Acct-Delay-Time = //;
-	$ServiceType = $_ if s/Service-Type = //;
-	$FramedProtocol = $_ if s/Framed-Protocol = //;
-	$FramedIPAddress = $_ if s/Framed-IP-Address = //;
-	$FramedIPAddress = $_ if s/Framed-Address = //;
-	$Timestamp = $_ if s/Timestamp = //;
-	$ConnectInfo = $_ if s/Connect-Info = //;
 	$Called_Station_Id = $_ if s/Called-Station-Id = //;
+	$Calling_Station_Id = $_ if s/Calling-Station-Id = //;
 	$Cisco_NAS_Port = $_ if s/Cisco-NAS-Port = //;
-	$Client_IP_Address = $_ if s/Client-IP-Address = //;
 	if (s/h323-remote-address = \"h323-remote-address=//) {
 			$h323_remote_address = $_;
 		} elsif (s/h323-remote-address = //) {
@@ -231,20 +242,10 @@ sub process_record {
                 } elsif (s/h323-disconnect-cause = //) {
                         $h323_disconnect_cause = $_;
             };
-	if (s/h323-gw-id = \"h323-gw-id=//) {
-                        $h323_gw_id = $_;
-                } elsif (s/h323-gw-id = //) {
-                        $h323_gw_id = $_;
-            };
 	if (s/h323-conf-id = \"h323-conf-id=//) {
                         $h323_conf_id = substr($_, 0, -1);
                 } elsif (s/h323-conf-id = //) {
                         $h323_conf_id = $_;
-            };
-	if (s/h323-call-type = \"h323-call-type=//) {
-                        $h323_call_type = substr($_, 0, -1);
-                } elsif (s/h323-call-type = //) {
-                        $h323_call_type = $_;
             };
 	if (s/h323-connect-time = \"h323-connect-time=//) {
                         $h323_connect_time = substr($_, 0, -1);
@@ -261,6 +262,16 @@ sub process_record {
                 } elsif (s/h323-setup-time = //) {
                         $h323_setup_time = $_;
             };
+        if (s/h323-call-origin = \"h323-call-origin=//) {
+                        $h323_call_origin = substr($_, 0, -1);
+                } elsif (s/h323-call-origin = //) {
+                        $h323_call_origin = $_;
+            };
+        if (s/h323-voice-quality = \"h323-voice-quality=//) {
+                        $h323_voice_quality = substr($_, 0, -1);
+                } elsif (s/h323-voice-quality = //) {
+                        $h323_voice_quality = $_;
+            };
                 # FIXME: ugh, definitely look into using backreference.
                 # something like s/(\S+)\s*=\s*\1/\1 = / or so
 	  }
@@ -268,8 +279,6 @@ sub process_record {
 
 	# Remove quotation marks from a bunch of different fields (Stupid Cisco)
 	$UserName =~ s/\"//g;
-	$AcctSessionId =~ s/\"//g;
-	$ConnectInfo =~ s/\"//g;
 	$h323_remote_address =~ s/\"//g;
 	$Called_Station_Id =~ s/\"//g;
 	$h323_disconnect_cause =~ s/\"//g;
@@ -277,9 +286,9 @@ sub process_record {
 	$h323_connect_time =~ s/\"//g;
 	$h323_disconnect_time =~ s/\"//g;
 	$h323_conf_id =~ s/\"//g;
-	$SQL_User_Name =~ s/\"//g;
 	$h323_call_type =~ s/\"//g;
-	$h323_gw_id =~ s/\"//g;
+	$h323_call_origin =~ s/\"//g;
+	$h323_voice_quality =~ s/\"//g;
 
 	# Remove Remove . from the start of time fields (routers that have lost ntp timesync temporarily)
 	$h323_setup_time =~ s/^\.*//;
@@ -288,7 +297,10 @@ sub process_record {
 
 	# If its a valid record continue onto the database functions
 	# FIXME: More checks needed here.
-	if ($h323_call_type) { &db_read };
+	if ($h323_call_type) { 
+		if (&procedure_get()) { &procedure_insert; }
+		else { &db_read; }
+	} else { if (&debug_get()) { print "DEBUG: Skipping non-h323 record\n"; } }
 }
 
 sub read_detailfile {
@@ -304,14 +316,18 @@ sub read_detailfile {
 		open (DETAIL, "<$filename") || warn "read_detailfile(\"$filename\"): $!\n";
 	}
 	$valid_input = (eof(DETAIL) ? 0 : 1);
-	if (&debug_get()) { print "DEBUG: Reading records\n"; }
+	if (&debug_get()) { print "DEBUG: Starting to read records from $filename\n"; }
 	while($valid_input) {
 		$valid_input = 0 if (eof(DETAIL));
-		if (&debug_get()) { print "DEBUG: -Reading Record-\n"; }
+		if (&debug_get()) { print "DEBUG: Reading Record\n"; }
 		&read_record;
-		print "DEBUG: $AcctSessionId" if (&debug_get());
 		&process_record;
 	}
+	my $runtime = (time() - $starttime);
+	if ($runtime > 0) { 
+	} else { $runtime = 1; }
+	my $speed = ($passno / $runtime); 
+        print "\n $passno records from $filename were processed in $runtime seconds ($speed records/sec) \n";
 }
 
 sub print_usage_info {
@@ -324,7 +340,9 @@ sub print_usage_info {
 	print "  Syntax:   h323detail2db.pl [ options ]\n";
 	print "\n";
 	print "    -h --help                        Show this usage information\n";
+	print "    -v --verbose                     Turn on verbose\n";
 	print "    -x --debug                       Turn on debugging\n";
+	print "    -p --procedure                   Use Postgresql stored procedure (faster!)\n";
 	print "    -V --version                     Show version and copyright\n";
 	print "    -H --host                        Database host to connect to (Default: localhost)\n";
 	print "    -f --file <detailfile>           Detail file\n";
@@ -341,6 +359,24 @@ sub debug_set($) {
 	$debug = $_[0];
 }
 
+# Get verbosity state
+sub verbose_get() {
+        return $verbose;
+}
+
+# Set verbosity state
+sub verbose_set($) {
+        $verbose = $_[0];
+}
+
+sub procedure_get() {
+        return $stored_procedure;
+}
+
+sub procedure_set($) {
+        $stored_procedure = $_[0];
+}
+
 
 sub main {
         # Parse the command line for options
@@ -350,7 +386,7 @@ sub main {
 	};
 
 	# See the Getopt::Long man page for details on the syntax of this line
-	@valid_opts = ("h|help", "V|version", "f|file=s", "x|v|debug", "D|date=s", "H|host=s");
+	@valid_opts = ("h|help", "V|version", "f|file=s", "x|debug", "v|verbose", "D|date=s", "H|host=s", "p|procedure");
 	Getopt::Long::Configure("no_getopt_compat", "bundling", "no_ignore_case");
 	Getopt::Long::GetOptions(@valid_opts);
 
@@ -375,7 +411,9 @@ sub main {
 	        exit(SUCCESS);
 	}
 
+	&verbose_set($opt_v);
 	&debug_set($opt_x);
+	&procedure_set($opt_p);
 
 	if ($opt_f) {
 		if ($opt_H) { &db_connect($opt_H);
@@ -385,7 +423,7 @@ sub main {
 
 		&db_disconnect;
 	} else {
-		print "You didn't specify a detail file.\n";
+		print "ERROR: You didn't specify a detail file.\n";
 		exit(FAILURE);
 	}
 
