@@ -16,9 +16,9 @@ cp xpextensions certs/
 cd certs
 
 #
-#  Hmm... we should probably do something more intelligent here.
+# Generate DH stuff...
 #
-touch dh
+$(SSL)/bin/openssl gendh > dh
 
 #
 #  /dev/urandom is not a file, and we can't rely on "test -e" working
