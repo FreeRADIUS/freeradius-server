@@ -182,10 +182,6 @@ static void *request_handler_thread(void *arg)
 	for (;;) {
 		/*
 		 *	Wait to be signalled.
-		 *
-		 *	cond_wait atomically unlocks the mutex, and
-		 *	waits for the condition.  Once it receives
-		 *	the condition, it locks the mutex again.
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       self->thread_num);
