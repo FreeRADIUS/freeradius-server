@@ -404,7 +404,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				}
 				else if (strncmp(s, "encrypt=", 8) == 0) {
 				          /* Encryption method, defaults to 0 (none).
-					     Currently valid is just type 1,
+					     Currently valid is just type 2,
 					     Tunnel-Password style, which can only
 					     be applied to strings. */    
 				          flags.encrypt = strtol(s + 8, &c, 0);
