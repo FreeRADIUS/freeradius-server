@@ -79,12 +79,16 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
 	}
 }
 
-static void decode_attribute(char **from, char **to, int freespace, int *open, REQUEST *request) {
+/*
+ *  Decode an attribute name into a string.
+ */
+static void decode_attribute(const char **from, char **to, int freespace, int *open, REQUEST *request) {
 
 	DICT_ATTR *tmpda;
 	VALUE_PAIR *tmppair;
 	char attrname[256];
-	char *p, *q, *pa;
+	const char *p;
+	char *q, *pa;
 	int stop=0, found=0;
 	int openbraces = *open;
 
@@ -200,7 +204,7 @@ static void decode_attribute(char **from, char **to, int freespace, int *open, R
 int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 {
 	int i, c,freespace;
-	const char *p;
+ 	const char *p;
 	char *q;
 	VALUE_PAIR *tmp;
 	struct tm * TM;
@@ -244,7 +248,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 				break;
 		} else if (c == '$') switch(*p) {
 			case '{': /* Attribute by Name */
-				decode_attribute((char **)&p, &q, freespace, &openbraces, request);
+				decode_attribute(&p, &q, freespace, &openbraces, request);
 			default:
 				*q++ = c;
 				*q++ = *p;
@@ -252,7 +256,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 
 		} else if (c == '%') switch(*p) {
 			case '{':
-				decode_attribute((char **)&p, &q, freespace, &openbraces, request);
+				decode_attribute(&p, &q, freespace, &openbraces, request);
 				break;
 
 			case '%':
