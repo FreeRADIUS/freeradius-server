@@ -8,8 +8,7 @@ SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
 		  modules.o radutmp.o xlat.o threads.o smux.o radius_snmp.o \
                   client.o request_list.o
-INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h \
-		  ../include/autoconf.h
+INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/autoconf.h
 
 CFLAGS		+= -I../include
 LDFLAGS		+= -L../lib
@@ -19,15 +18,15 @@ MODULE_LIBS	=
 all:	radiusd radwho radzap raduse radclient
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
-	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen \
+	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LIBS) $(SNMPLIB) $(LCRYPT) \
 		$(PTHREADLIB) $(LIBLTDL) $(MODULE_LIBS) 
 
-radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h
+radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h 
 	$(CC) $(CFLAGS) $(SNMPINC) -c radiusd.c
 
-acct.o: acct.c $(INCLUDES)
+acct.o: acct.c $(INCLUDES) ../include/modules.h
 	$(CC) $(CFLAGS) -c acct.c
 
 files.o: files.c $(INCLUDES)
@@ -42,7 +41,7 @@ nas.o:  nas.c $(INCLUDES)
 log.o:  log.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c log.c
 
-conffile.o: conffile.c $(INCLUDES)
+conffile.o: conffile.c $(INCLUDES) ../include/modules.h
 	$(CC) $(CFLAGS) -c conffile.c
 
 timestr.o: timestr.c $(INCLUDES)
@@ -54,7 +53,7 @@ modules.o:  modules.c $(INCLUDES)
 radutmp.o:  radutmp.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radutmp.c
 
-session.o:  session.c $(INCLUDES)
+session.o:  session.c $(INCLUDES) ../include/modules.h
 	$(CC) $(CFLAGS) -c session.c
 
 proxy.o:  proxy.c $(INCLUDES)
@@ -63,7 +62,7 @@ proxy.o:  proxy.c $(INCLUDES)
 exec.o:  exec.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c exec.c
 
-auth.o:  auth.c $(INCLUDES)
+auth.o:  auth.c $(INCLUDES) ../include/modules.h
 	$(CC) $(CFLAGS) -c auth.c
 
 valuepair.o:  valuepair.c $(INCLUDES)
