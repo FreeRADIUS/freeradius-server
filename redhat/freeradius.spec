@@ -62,19 +62,19 @@ make install R=$RPM_BUILD_ROOT
 rm -f $RPM_BUILD_ROOT/usr/{man/man8/builddbm.8,sbin/rc.radiusd}
 
 cd redhat
-install -m 555 rc.radiusd-redhat $RPM_BUILD_ROOT/etc/rc.d/init.d/radiusd.init
+install -m 555 rc.radiusd-redhat $RPM_BUILD_ROOT/etc/rc.d/init.d/radiusd
 install -m 644 radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
 install -m 644 radiusd-pam       $RPM_BUILD_ROOT/etc/pam.d/radius
 cd ..
 
 %preun
 if [ "$1" = "0" ]; then
-	/sbin/chkconfig --del radiusd.init
+	/sbin/chkconfig --del radiusd
 fi
 
 %postin
 if [ "$1" = "0" ]; then
-	/sbin/chkconfig --add radiusd.init
+	/sbin/chkconfig --add radiusd
 fi
 # done here to avoid messing up existing installations
 for i in radutmp radwtmp # radius.log radwatch.log checkrad.log
@@ -91,7 +91,7 @@ rm -rf $RPM_BUILD_ROOT
 %doc doc/ChangeLog doc/README* todo/ COPYRIGHT INSTALL
 %config /etc/pam.d/radius
 %config /etc/logrotate.d/radiusd
-%config /etc/rc.d/init.d/radiusd.init
+%config /etc/rc.d/init.d/radiusd
 %config /etc/raddb/*
 /usr/man/*
 /usr/bin/*
