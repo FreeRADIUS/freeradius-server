@@ -1,0 +1,23 @@
+This needs to be updated, but since you probably need to know the format
+of the config file, I just grabbed the old README from the cistron patch
+and stuck it here.
+
+The only configuration that needs to be done is the
+/usr/local/etc/raddb/ldapserver file which should look similar to this:
+
+  server localhost
+  basedn "o=Someorg, c=US"
+  port 389
+  login  "cn=radiusserver, o=Someorg, c=US"
+  password mypassword
+  filter "(uid=%u)"
+  doauth yes
+
+If the login and password lines are not included or are blank then an
+anonymous bind will be made to the ldap server.  The filter line needs to
+be quoted, and a %u will be replaced by the username attempting to
+authenticate.
+ 
+You also need to set Auth-Type = LDAP for the authentication to happen.
+
+Email with problems/suggestions james@wwnet.net
