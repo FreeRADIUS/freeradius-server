@@ -1707,11 +1707,12 @@ int rad_tunnel_pwdecode(char *passwd, int * pwlen, const char *secret, const cha
  *	we use vp->length, and Ascend gear likes
  *	to send an extra '\0' in the string!
  */
-int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *password)
+int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id,
+		    VALUE_PAIR *password)
 {
 	int		i;
 	char		*ptr;
-	char		string[MAX_STRING_LEN * 2];
+	char		string[MAX_STRING_LEN * 2 + 1];
 	VALUE_PAIR	*challenge;
 
 	/*
