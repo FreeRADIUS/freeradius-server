@@ -290,13 +290,16 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
+			DEBUG2("  Saving tunneled attributes for later");
+
 			/*
 			 *	Clean up the tunneled reply.
 			 */
 			pairdelete(&reply->vps, PW_PROXY_STATE);
 			pairdelete(&reply->vps, PW_EAP_MESSAGE);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
 
-			pairadd(&request->reply->vps, reply->vps);
+			t->accept_vps = reply->vps;
 			reply->vps = NULL;
 		}
 		break;
@@ -326,6 +329,26 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 */
 		vp = NULL;
 		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE);
+
+		/*
+		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
+		 *	from the home server may contain MS-CHAP-Success,
+		 *	which the module turns into challenges, so that
+		 *	the client may respond to the challenge with
+		 *	an "ack" packet.
+		 */
+		if (t->home_access_accept && t->use_tunneled_reply) {
+			DEBUG2("  Saving tunneled attributes for later");
+
+			/*
+			 *	Clean up the tunneled reply.
+			 */
+			pairdelete(&reply->vps, PW_PROXY_STATE);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
+			
+			t->accept_vps = reply->vps;
+			reply->vps = NULL;
+		}
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -374,6 +397,9 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
 		VALUE_PAIR *vp;
 		REQUEST *request = handler->request;
+		peap_tunnel_t *t = tls_session->opaque;
+
+		t->home_access_accept = TRUE;
 
 		/*
 		 *	Terrible hacks.

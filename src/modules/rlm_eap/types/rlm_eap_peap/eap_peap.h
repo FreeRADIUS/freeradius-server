@@ -27,7 +27,9 @@
 typedef struct peap_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
+	VALUE_PAIR	*accept_vps;
 	int		status;
+	int		home_access_accept;
 	int		default_eap_type;
 	int		copy_request_to_tunnel;
 	int		use_tunneled_reply;

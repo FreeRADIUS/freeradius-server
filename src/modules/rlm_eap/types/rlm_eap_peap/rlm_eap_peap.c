@@ -131,6 +131,7 @@ static void peap_free(void *p)
 
 	pairfree(&t->username);
 	pairfree(&t->state);
+	pairfree(&t->accept_vps);
 
 	free(t);
 }
@@ -251,9 +252,22 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 
 	case RLM_MODULE_OK:
 		eaptls_success(handler->eap_ds, 0);
+
+		/*
+		 *	Move the saved VP's from the Access-Accept to
+		 *	our Access-Accept.
+		 */
+		if (((peap_tunnel_t *) tls_session->opaque)->accept_vps) {
+			DEBUG2("  Using saved attributes from the original Access-Accept");
+		}
+		pairadd(&handler->request->reply->vps,
+			((peap_tunnel_t *) tls_session->opaque)->accept_vps);
+		((peap_tunnel_t *) tls_session->opaque)->accept_vps = NULL;
+
 		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
 				     "client EAP encryption");
+
 		return 1;
 
 		/*
