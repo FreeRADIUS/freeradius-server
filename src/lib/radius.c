@@ -98,7 +98,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		  int			secretlen;
 		  int			vendorcode, vendorpec;
 		  u_short		total_length;
-		  int			len;
+		  int			len, allowed;
 		  
 		  hdr = (radius_packet_t *) malloc(PACKET_DATA_LEN);
 		  if (!hdr) {
@@ -182,18 +182,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 				  }
 
 				  /*
-				   *	If the VSA string cannot be contained
-				   *	within the attribute, silently drop
-				   *	it from the request.
-				   *
-				   *	FIXME: Don't allow the user to
-				   *	specify illegal values!
-				   */
-				  if ((reply->length + 6) >= MAX_STRING_LEN) {
-					  continue;
-				  }
-				  
-				  /*
 				   *	Build a VSA header.
 				   */
 				  *ptr++ = PW_VENDOR_SPECIFIC;
@@ -245,8 +233,22 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			  case PW_TYPE_OCTETS:
 				  len = reply->length;
 				  
-				  if (len >= MAX_STRING_LEN) {
-					  len = MAX_STRING_LEN - 1;
+				  /*
+				   *	Ensure we don't go too far.
+				   *	The 'length' of the attribute
+				   *	may be 0..255, minus whatever
+				   *	octets are used in the attribute
+				   *	header.
+				   */
+				  allowed = 255;
+				  if (vsa_length_ptr) {
+					  allowed -= *vsa_length_ptr;
+				  } else {
+					  allowed -= *length_ptr;
+				  }
+				  
+				  if (len > allowed) {
+					  len = allowed;
 				  }
 				  
 				  *length_ptr += len;
@@ -258,7 +260,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 				  
 			  case PW_TYPE_INTEGER:
 			  case PW_TYPE_IPADDR:
-
 				  *length_ptr += 4;
 				  if (vsa_length_ptr) *vsa_length_ptr += 4;
 				  if (reply->type != PW_TYPE_IPADDR)
@@ -638,7 +639,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	vendorlen  = 0;
 
 	while(length > 0) {
-
 		if (vendorlen > 0) {
 			attribute = *ptr++ | (vendorcode << 16);
 			attrlen   = *ptr++;
