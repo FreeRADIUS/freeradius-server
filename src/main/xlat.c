@@ -137,7 +137,8 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 				break;
 		} else if (c == '$') switch(*p) {
 			case '{': /* Attribute by Name */
-				pa = &attrname[0];
+		decode_attribute: 
+			pa = &attrname[0];
 				p++;
 				while (*p && (*p != '}')) {
 				  *pa++ = *p++;
@@ -156,6 +157,10 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 				*q++ = *p;
 				break;
 		} else if (c == '%') switch(*p) {
+			case '{':
+				goto decode_attribute;
+				break;
+
 			case '%':
 				*q++ = *p;
 				break;
