@@ -4056,7 +4056,8 @@ dnl #
     for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
       CFLAGS="$old_CFLAGS -I$try"
 
-      AC_TRY_COMPILE([#include <$1>],
+      AC_TRY_COMPILE([$2
+		       #include <$1>],
                      [ int a = 1;],
                      smart_include="-I$try",
                      smart_include=)
