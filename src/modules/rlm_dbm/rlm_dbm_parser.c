@@ -290,7 +290,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 
 
 static void sm_usage(void) {
-	fprintf(stderr, "Usage: %s [-c] [-d raddb] [-f imputfile] [-o outputfile] [-x] [-v] [-q] [username1 [username2] ...]\n\n",progname);
+	fprintf(stderr, "Usage: %s [-c] [-d raddb] [-i inputfile] [-o outputfile] [-x] [-v] [-q] [username1 [username2] ...]\n\n",progname);
 
 	fprintf(stderr, "-c	create new database.\n");
 	fprintf(stderr, "-x	debug mode.\n");
