@@ -25,27 +25,19 @@
  *  By Steve Reid <steve@edmweb.com>
  */
  
-#include "autoconf.h"
-#if HAVE_SYS_TYPES_H == 1
-#include <sys/types.h>
-#endif
 #include <string.h>
+#include <sys/types.h>
 #include "sha1.h"
 
-#ifndef BYTE_ORDER
-#warning Byte order not defined
-#endif
+#define blk0(i) (block->l[i] = htonl(block->l[i]))
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
 /* blk0() and blk() perform the initial expand. */
 /* I got the idea of expanding during the round function from SSLeay */
-#if BYTE_ORDER == LITTLE_ENDIAN
-#define blk0(i) (block->l[i] = (rol(block->l[i],24)&0xFF00FF00) \
-    |(rol(block->l[i],8)&0x00FF00FF))
-#else
-#define blk0(i) block->l[i]
-#endif
+
+#define blk0(i) (block->l[i] = htonl(block->l[i]))
+
 #define blk(i) (block->l[i&15] = rol(block->l[(i+13)&15]^block->l[(i+8)&15] \
     ^block->l[(i+2)&15]^block->l[i&15],1))
 
@@ -66,14 +58,11 @@ typedef union {
     unsigned char c[64];
     unsigned long l[16];
 } CHAR64LONG16;
-CHAR64LONG16* block;
-#ifdef SHA1HANDSOFF
+CHAR64LONG16 *block;
 static unsigned char workspace[64];
+
     block = (CHAR64LONG16*)workspace;
     memcpy(block, buffer, 64);
-#else
-    (unsigned char *)block = buffer;
-#endif
     /* Copy context->state[] to working vars */
     a = state[0];
     b = state[1];
