@@ -2388,10 +2388,7 @@ static void sig_fatal(int sig)
 		 *      Kill all of the processes in the current
 		 *	process group.
 		 */
-		kill(0, SIGKILL);
-#ifdef HAVE_PTHREAD_H
-		pthread_kill(0, SIGKILL);
-#endif
+		kill(-1, SIGTERM);
 	}
 }
 
