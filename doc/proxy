@@ -17,6 +17,13 @@
 
                 username@realm
                 realm/username
+
+  The realm parsing syntax ( and search order ) is userdefinable via the
+  realm module config in the /etc/raddb/radiusd.conf configuration file.
+  You can define multiple instances of the realm module to support multiple
+  realm syntax's at the same time.  Be sure to pay close attention to the
+  search order that you define, as you may inadvertantly get unexpected
+  behaviour ( by having a user use 'realm1/username@realm2' for instance ).
   
   The realms are configured in two places.  The first place is the
   file /etc/raddb/proxy.conf, which is included by radiusd.conf.  The

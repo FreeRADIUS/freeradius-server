@@ -336,9 +336,37 @@ modules {
 #		filter   = "(uid=%u)"
 #	}
 
-	realm {
-		# No config options for this yet
+	#
+	#  You can have multiple instances of the realm module to
+	#  support multiple realm syntaxs at the same time.  The
+	#  search order is defined the order in the authorize and
+	#  preacct blocks after the module config block.
+	#
+	#  Two config options:
+	#       format     -  must be 'prefix' or 'suffix'
+	#       delimiter  -  must be a single character
+	#
+	#  'username@realm'
+	#
+	realm suffix {
+		format = suffix
+		delimiter = "@"
 	}
+
+	#  'realm/username'
+	#
+	#realm prefix {
+	#	format = prefix
+	#	delimiter = "/"
+	#}
+
+	#  'username%realm'
+	#
+	#realm percent {
+	#	format = suffix
+	#	delimiter = "%"
+	#}
+	
 	preprocess {
 		# No config options for this yet
 	}
@@ -509,18 +537,20 @@ authenticate {
 
 # Authorization. First preprocess (hints and huntgroups files),
 # then realms, and finally look in the "users" file.
-# Make *sure* that 'preprocess' comes before 'realm' if you 
+# The order of the realm modules will determine the order that
+# we try to find a matching realm.
+# Make *sure* that 'preprocess' comes before any realm if you 
 # need to setup hints for the remote radius server
 authorize {
 	preprocess
-	realm
+	suffix
 	files
 }
 
-# Pre-accounting. Look for proxy realm, first with the @suffix rule, then the
+# Pre-accounting. Look for proxy realm in order of realms, then 
 # acct_users file, then preprocess (hints file).
 preacct {
-	realm
+	suffix
 	files
 	preprocess
 }

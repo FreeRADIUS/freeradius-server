@@ -10,18 +10,41 @@
 
 static const char rcsid[] = "$Id$";
 
+#define  REALM_FORMAT_PREFIX   0
+#define  REALM_FORMAT_SUFFIX   1
+
+typedef struct realm_config_t {
+        int        format;
+        char       *formatstring;
+        char       *delim;
+} realm_config_t;
+
+static realm_config_t config;
+
+static CONF_PARSER module_config[] = {
+  { "format", PW_TYPE_STRING_PTR, &config.formatstring, "suffix" },
+  { "delimiter", PW_TYPE_STRING_PTR, &config.delim, "@" },
+  { NULL, -1, NULL, NULL }    /* end the list */
+};
 
 /*
  *	Internal function to cut down on duplicated code.
  *
  *	Returns NULL on don't proxy, realm otherwise.
  */
-static REALM *check_for_realm(REQUEST *request)
+static REALM *check_for_realm(void *instance, REQUEST *request)
 {
-	const char *name;
-	char *realmname;
+	char namebuf[MAX_STRING_LEN];
+	char *username;
+	char *realmname = (char *)NULL;
+	char *ptr;
 	VALUE_PAIR *vp;
 	REALM *realm;
+
+        struct realm_config_t *inst = instance;
+
+	namebuf[0] = '\0';
+	username = namebuf;
 
 	/*
 	 *	If the request has a proxy entry, then it's a proxy
@@ -38,11 +61,47 @@ static REALM *check_for_realm(REQUEST *request)
 		return NULL;
 	}
 
-	name = (char *)request->username->strvalue;
-	realmname = strrchr(name, '@');
-	if (realmname != NULL)
-	  realmname++;
-	
+	strncpy(namebuf, request->username->strvalue, MAX_STRING_LEN-1);
+
+	switch(inst->format)
+	{
+
+	case REALM_FORMAT_SUFFIX:
+	  
+	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */
+
+	       if((realmname = strchr((const char *)username, inst->delim[0]))
+		  != (char *)NULL) {
+	            *realmname = '\0';
+	            realmname++;
+	       }
+	       break;
+	    
+	case REALM_FORMAT_PREFIX:
+
+	  /* DEBUG2("  rlm_realm: Checking for prefix before \"%c\"", inst->delim[0]); */
+
+	       if((ptr=strchr((const char *)username, inst->delim[0])) 
+		  != (char *)NULL) {
+		     *ptr = '\0';
+		     ptr++;
+		     realmname = username;
+		     username = ptr;	
+	       }
+	       break;
+
+	default:
+	  
+	       realmname = (char *)NULL;
+	       break;
+
+	}
+
+	if(!realmname) 
+	       return NULL;
+
+	/* DEBUG2("  rlm_realm: username [ %s ] realmname [ %s ]", username, realmname ); */
+
 	realm = realm_find(realmname);
 	if (realm == NULL)
 	  return NULL;
@@ -52,7 +111,7 @@ static REALM *check_for_realm(REQUEST *request)
 	  return NULL;
 
 	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
-	       name, realm->realm);
+	       username, realm->realm);
 
 	/*
 	 *	If we've been told to strip the realm off, then do so.
@@ -62,7 +121,6 @@ static REALM *check_for_realm(REQUEST *request)
 		 *	Create the Stripped-User-Name attribute, if it
 		 *	doesn't exist.
 		 *
-		 *	This code is copied from rlm_preprocess.
 		 */
 		vp = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
 		if (!vp) {
@@ -71,19 +129,10 @@ static REALM *check_for_realm(REQUEST *request)
 				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
-			strcpy((char *)vp->strvalue, name);
+			strcpy(vp->strvalue, username);
 			vp->length = strlen((char *)vp->strvalue);
 			pairadd(&request->packet->vps, vp);
 			request->username = vp;
-		}
-		
-		/*
-		 *	Let's strip the Stripped-User-Name attribute.
-		 */
-		realmname = strrchr((char *)vp->strvalue, '@');
-		if (realmname != NULL) {
-			*realmname = '\0';
-			vp->length = strlen((char *)vp->strvalue);
 		}
 	}
 
@@ -150,7 +199,70 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
 }
 
 /*
- *  Examine a request for a username with an @suffix, and if it
+ *  Perform the realm module initialization.  This is separate for
+ *  each instance.  The main work is done in 'realm_instantiate'.
+ */
+
+static int realm_init(void) 
+{
+        return 0;
+}
+
+/*
+ *  Perform the realm module instantiation.  Configuration info is
+ *  stored in *instance for later use.
+ */
+
+static int realm_instantiate(CONF_SECTION *conf, void **instance)
+{
+        struct realm_config_t *inst;
+
+        /* setup a storage area for instance data */
+        inst = malloc(sizeof(struct realm_config_t));
+        if(!inst) {
+               radlog(L_ERR|L_CONS, "Out of memory\n");
+	       return -1;
+	}
+
+	if(cf_section_parse(conf, module_config) < 0) {
+	       free(inst);
+               return -1;
+	}
+
+        /* copy the configuration info into the instance data */
+
+	if(strcasecmp(config.formatstring, "suffix") == 0) {
+	     inst->format = REALM_FORMAT_SUFFIX;
+	} else if(strcasecmp(config.formatstring, "prefix") == 0) {
+	     inst->format = REALM_FORMAT_PREFIX;
+        } else {
+	     radlog(L_ERR, "Bad value \"%s\" for realm format value", config.formatstring);
+	     free(inst);
+	     return -1;
+	}
+	if(strlen(config.delim) != 1) {
+	     radlog(L_ERR, "Bad value \"%s\" for realm delimiter value", config.delim);
+	     free(inst);
+	     return -1;
+	}
+	inst->delim = config.delim;
+
+	/* set these to NULL to prevent other instances from reusing the data */
+
+	config.formatstring = NULL;
+	config.delim = NULL;
+
+	*instance = inst;
+	return 0;
+
+}
+
+
+
+ 
+
+/*
+ *  Examine a request for a username with an realm, and if it
  *  corresponds to something in the realms file, set that realm as
  *  Proxy-To.
  *
@@ -160,14 +272,12 @@ static int realm_authorize(void *instance, REQUEST *request)
 {
 	REALM *realm;
 
-	instance = instance;
-	
 	/*
 	 *	Check if we've got to proxy the request.
 	 *	If not, return without adding a Proxy-To-Realm
 	 *	attribute.
 	 */
-	realm = check_for_realm(request);
+	realm = check_for_realm(instance, request);
 	if (!realm) {
 		return RLM_MODULE_OK;
 	}
@@ -189,8 +299,6 @@ static int realm_preacct(void *instance, REQUEST *request)
 	const char *name = (char *)request->username->strvalue;
 	REALM *realm;
 
-	instance = instance; /* -Wunused */
-	
 	if (!name)
 	  return RLM_MODULE_OK;
 	
@@ -200,7 +308,7 @@ static int realm_preacct(void *instance, REQUEST *request)
 	 *	If not, return without adding a Proxy-To-Realm
 	 *	attribute.
 	 */
-	realm = check_for_realm(request);
+	realm = check_for_realm(instance, request);
 	if (!realm) {
 		return RLM_MODULE_OK;
 	}
@@ -216,10 +324,10 @@ static int realm_preacct(void *instance, REQUEST *request)
 
 /* globally exported name */
 module_t rlm_realm = {
-  "Realm",
+  "realm",
   0,				/* type: reserved */
-  NULL,				/* initialization */
-  NULL,				/* instantiation */
+  realm_init,				/* initialization */
+  realm_instantiate,	       	/* instantiation */
   realm_authorize,		/* authorization */
   NULL,				/* authentication */
   realm_preacct,		/* preaccounting */
