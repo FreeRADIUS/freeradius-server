@@ -54,41 +54,51 @@ if test x$with_[]modname != xno; then
 		dnl #
 		dnl #  Now do the same thing, looking for the Oracle library directory
 		dnl #
-		AC_MSG_CHECKING([for oracle_init in -loracleclient])
 
-		dnl #
-		dnl #  Look for it in a number of directories.
-		dnl #
-		old_LIBS="$LIBS"
 
-		AC_LOCATE_DIR(oracle_lib_dir,[liboracleclient.so])
-		AC_LOCATE_DIR(oracle_lib_dir,[liboracleclient.a])
+		## Somebody who's actually coded oracle stuff:  please fix this.
+		for oracle_library in oracleclient libclient8 libclntsh; do
 
-		for try in /usr/lib/oracle /usr/local/lib/oracle /usr/local/oracle/lib $oracle_lib_dir; do
-			LIBS="$old_LIBS -L$try -loracleclient"
-			AC_TRY_LINK([extern char oracle_init();],
-				[ oracle_init()],
-				ORACLE_LIBS="-L$try -loracleclient",
-				ORACLE_LIBS=
-			)
-			if test "x$ORACLE_LIBS" != "x"; then
-				break;
+
+			AC_MSG_CHECKING([for oracle_init in -l$oracle_library])
+
+			dnl #
+			dnl #  Look for it in a number of directories.
+			dnl #
+			old_LIBS="$LIBS"
+
+			AC_LOCATE_DIR(oracle_lib_dir,[${oracle_library}.so])
+			AC_LOCATE_DIR(oracle_lib_dir,[${oracle_library}.a])
+
+			for try in /usr/lib/oracle /usr/local/lib/oracle /usr/local/oracle/lib $oracle_lib_dir; do
+				LIBS="$old_LIBS -L$try -l${oracle_library}"
+				AC_TRY_LINK([extern char oracle_init();],
+					[ oracle_init()],
+					ORACLE_LIBS="-L$try -l${oracle_library}",
+					ORACLE_LIBS=
+				)
+				if test "x$ORACLE_LIBS" != "x"; then
+					break;
+				fi
+			done
+			LIBS="$old_LIBS"
+
+			dnl #
+			dnl #  If one or the other isn't found, disable them both..
+			dnl #  If both are found, enable them both.
+			dnl #
+			if test "x$ORACLE_LIBS" = "x"; then
+				AC_MSG_RESULT(no)
+				ORACLE_INCLUDE=
+			else
+				sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
+				AC_MSG_RESULT(yes)
+				break
 			fi
 		done
-		LIBS="$old_LIBS"
-
-		dnl #
-		dnl #  If one or the other isn't found, disable them both..
-		dnl #  If both are found, enable them both.
-		dnl #
-		if test "x$ORACLE_LIBS" = "x"; then
-			AC_MSG_RESULT(no)
-			ORACLE_INCLUDE=
+		if test "x$ORACLE_LIBS" != "x"; then
 			AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path>.])
 			targetname=   # disabled module
-		else
-			sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
-			AC_MSG_RESULT(yes)
 		fi
 	fi
 
