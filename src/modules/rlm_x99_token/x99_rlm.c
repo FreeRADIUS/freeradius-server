@@ -32,6 +32,7 @@
  */
 
 /*
+ * TODO: support setting multiple auth-types in authorize()
  * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
@@ -283,11 +284,11 @@ x99_token_authorize(void *instance, REQUEST *request)
     int32_t sflags = 0; /* flags for state */
     VALUE_PAIR *vp;
 
-    /* Early exit if Auth-Type != x99_token */
+    /* Early exit if Auth-Type !~ /^x99_token/ */
     auth_type_found = 0;
     if ((vp = pairfind(request->config_items, PW_AUTHTYPE)) != NULL) {
 	auth_type_found = 1;
-	if (strcmp(vp->strvalue, "x99_token")) {
+	if (strncmp(vp->strvalue, "x99_token", 9)) {
 	    return RLM_MODULE_NOOP;
 	}
     }
@@ -429,6 +430,7 @@ gen_challenge:
     request->reply->code = PW_ACCESS_CHALLENGE;
     DEBUG("rlm_x99_token: Sending Access-Challenge.");
 
+    /* TODO: support config-specific auth-type */
     if (!auth_type_found)
 	pairadd(&request->config_items,
 		pairmake("Auth-Type", "x99_token", T_OP_EQ));
