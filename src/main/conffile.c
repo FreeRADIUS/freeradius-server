@@ -411,7 +411,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			
 		case PW_TYPE_STRING_PTR:
 			q = (char **) data;
-			if (base == NULL && *q != NULL) {
+			if (*q != NULL) {
 				free(*q);
 			}
 
