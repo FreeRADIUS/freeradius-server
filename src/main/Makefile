@@ -40,6 +40,15 @@ util.o: util.c $(INCLUDES)
 nas.o:  nas.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c nas.c
 
+log.o:  log.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c log.c
+
+conffile.o: conffile.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c conffile.c
+
+timestr.o: timestr.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c timestr.c
+
 modules.o:  modules.c $(INCLUDES)
 	$(CC) $(CFLAGS) $(INCLTDL) -c modules.c
 
