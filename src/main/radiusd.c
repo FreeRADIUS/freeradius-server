@@ -208,6 +208,9 @@ static void reread_config(int reload)
 
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
+#ifdef WITH_USERCOLLIDE
+		radlog(L_INFO, "User collission code on ... ");
+#endif
 	} else if (pid == radius_pid) {
 		radlog(L_INFO, "Reloading configuration files.");
 	}
