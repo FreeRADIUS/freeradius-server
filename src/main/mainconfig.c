@@ -39,6 +39,8 @@
 #include <sys/resource.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <sys/stat.h>
 #include <grp.h>
 #include <pwd.h>
@@ -208,7 +210,8 @@ static int xlat_config(void *instance, REQUEST *request,
 /*
  *	Recursively make directories.
  */
-static int r_mkdir(const char *part) {
+static int r_mkdir(const char *part)
+{
 	char *ptr, parentdir[500];
 	struct stat st;
 
@@ -238,7 +241,8 @@ static int r_mkdir(const char *part) {
 /*
  *	Checks if the log directory is writeable by a particular user.
  */
-static int radlogdir_iswritable(const char *effectiveuser) {
+static int radlogdir_iswritable(const char *effectiveuser)
+{
 	struct passwd *pwent;
 
 	if (radlog_dir[0] != '/')
@@ -272,12 +276,11 @@ static int radlogdir_iswritable(const char *effectiveuser) {
 }
 
 
-static int switch_users(void) {
-
-	/*
-	 *  Switch UID and GID to what is specified in the config file
-	 */
-
+/*
+ *  Switch UID and GID to what is specified in the config file
+ */
+static int switch_users(void)
+{
 	/*  Set GID.  */
 	if (mainconfig.gid_name != NULL) {
 		struct group *gr;
@@ -704,6 +707,277 @@ static int generate_clients(const char *filename)
 	return 0;
 }
 
+
+/*
+ *	Code for handling listening on multiple ports.
+ */
+static rad_listen_t listen_inst;
+static const char *listen_type = NULL;
+
+static const CONF_PARSER listen_config[] = {
+	{ "ipaddr", PW_TYPE_IPADDR,
+	  offsetof(rad_listen_t,ipaddr), NULL, "0.0.0.0" },
+
+	{ "port", PW_TYPE_INTEGER,
+	  offsetof(rad_listen_t,port), NULL, "0" },
+
+	{ "type", PW_TYPE_STRING_PTR,
+	  0, &listen_type, "" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
+static const LRAD_NAME_NUMBER listen_compare[] = {
+	{ "auth",	RAD_LISTEN_AUTH },
+	{ "acct",	RAD_LISTEN_ACCT },
+	{ NULL, 0 },
+};
+
+
+/*
+ *	Binds a listener to a socket.
+ */
+static int listen_bind(rad_listen_t *this)
+{
+	struct sockaddr salocal;
+	struct sockaddr_in *sa;
+
+#if 0
+	rad_listen_t	**last;
+
+	/*
+	 *	Find it in the old list.  If it's there, use that,
+	 *	rather than creating a new socket.  This allows HUP's
+	 *	to re-use the old sockets, which means that packets
+	 *	waiting in the socket queue don't get lost.
+	 */
+	for (last = &mainconfig.listen;
+	     *last != NULL;
+	     last = &((*last)->next)) {
+		if ((this->ipaddr == (*last)->ipaddr) &&
+		    (this->type == (*last)->type) &&
+		    (this->port == (*last)->port)) {
+			this->fd = (*last)->fd;
+			(*last)->fd = -1;
+			return 0;
+		}
+	}
+#endif
+
+	/*
+	 *	If the port is zero, then it means the appropriate
+	 *	thing from /etc/services.
+	 */
+	if (this->port == 0) {
+		struct servent	*svp;
+
+		switch (this->type) {
+		case RAD_LISTEN_AUTH:
+			svp = getservbyname ("radius", "udp");
+			if (svp != NULL) {
+				this->port = ntohs(svp->s_port);
+			} else {
+				this->port = PW_AUTH_UDP_PORT;
+			}
+			break;
+
+		case RAD_LISTEN_ACCT:
+			svp = getservbyname ("radacct", "udp");
+			if (svp != NULL) {
+				this->port = ntohs(svp->s_port);
+			} else {
+				this->port = PW_ACCT_UDP_PORT;
+			}
+			break;
+
+		default:
+			return -1;
+		}
+	}
+
+	/*
+	 *	Create the socket.
+	 */
+	this->fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (this->fd < 0) {
+		return -1;
+	}
+	
+	sa = (struct sockaddr_in *) &salocal;
+	memset ((char *) sa, '\0', sizeof(salocal));
+	sa->sin_family = AF_INET;
+	sa->sin_addr.s_addr = this->ipaddr;
+	sa->sin_port = htons(this->port);
+	
+	if (bind(this->fd, &salocal, sizeof(*sa)) < 0) {
+		close(this->fd);
+		this->fd = -1;
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ *	Generate a list of listeners.  Takes an input list of
+ *	listeners, too, so we don't close sockets with waiting packets.
+ */
+static rad_listen_t *listen_init(const char *filename)
+{
+	CONF_SECTION	*cs;
+	rad_listen_t	*list = NULL;
+	rad_listen_t	**last;
+	char		buffer[32];
+
+	last = &list;
+
+    	/*
+	 *	Find the first one (if any).
+	 */
+	for (cs = cf_subsection_find_next(mainconfig.config,
+					  NULL, "listen");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(mainconfig.config,
+					  cs, "listen")) {
+		rad_listen_t *this;
+
+		memset(&listen_inst, 0, sizeof(listen_inst));
+		
+		/*
+		 *	Fix errors for later.
+		 */
+		if (cf_section_parse(cs, &listen_inst, listen_config) < 0) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing listen section.",
+			       filename, cf_section_lineno(cs));
+			return NULL; /* FIXME: leaks list */
+		}
+
+		if (listen_type) {
+			listen_inst.type = lrad_str2int(listen_compare,
+							listen_type, 0);
+		}
+		if (listen_inst.type == RAD_LISTEN_NONE) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
+			       filename, cf_section_lineno(cs));
+			return NULL; /* FIXME: leaks list */
+		}
+
+		this = rad_malloc(sizeof(*this));
+		memcpy(this, &listen_inst, sizeof(*this));
+		
+		/*
+		 *	And bind it to the port.
+		 */
+		if (listen_bind(this) < 0) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s:%d",
+			       filename, cf_section_lineno(cs),
+			       ip_ntoa(buffer, this->ipaddr), this->port);
+			return NULL; /* FIXME: leaks list */
+		}
+
+		*last = this;
+		last = &(this->next);
+	}
+
+	return list;
+}
+
+
+/*
+ *	Hack the OLD way of listening on a socket.
+ */
+static int old_listen_init(void)
+{
+	CONF_PAIR	*cp;
+	rad_listen_t 	*this;
+
+	/*
+	 *	No "bind_address": all listen directives
+	 *	are in the "listen" clauses.
+	 */
+	cp = cf_pair_find(mainconfig.config, "bind_address");
+	if (!cp) return 0;
+	
+	this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	/*
+	 *	Create the authentication socket.
+	 */
+       	this->ipaddr = mainconfig.myip;
+	this->type = RAD_LISTEN_AUTH;
+	this->port = auth_port;
+
+	if (listen_bind(this) < 0) {
+		radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the authentication port %d", this->port);
+		free(this);
+		return -1;
+	}
+	this->next = mainconfig.listen;
+	mainconfig.listen = this;
+
+	/*
+	 *  Open Accounting Socket.
+	 *
+	 *  If we haven't already gotten acct_port from /etc/services,
+	 *  then make it auth_port + 1.
+	 */
+	this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	/*
+	 *	Create the accounting socket.
+	 *
+	 *	The accounting port is always the authentication port + 1
+	 */
+       	this->ipaddr = mainconfig.myip;
+	this->type = RAD_LISTEN_ACCT;
+	this->port = mainconfig.listen->port + 1;
+
+	if (listen_bind(this) < 0) {
+		radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", this->port);
+		free(this);
+		return -1;
+	}
+	this->next = mainconfig.listen;
+	mainconfig.listen = this;
+
+	/*
+	 *	If we're proxying requests, open the proxy FD.
+	 *	Otherwise, don't do anything.
+	 */
+	if (mainconfig.proxy_requests == TRUE) {
+		this = rad_malloc(sizeof(*this));
+		memset(this, 0, sizeof(*this));
+		
+		/*
+		 *	Create the proxy socket.
+		 */
+		this->ipaddr = mainconfig.myip;
+		this->type = RAD_LISTEN_PROXY;
+
+		/*
+		 *	Try to find a proxy port (value doesn't matter)
+		 */
+		for (this->port = mainconfig.listen->port + 1;
+		     this->port < 64000;
+		     this->port++) {
+			if (listen_bind(this) == 0) {
+				this->next = mainconfig.listen;
+				mainconfig.listen = this;
+				return 0;
+			}
+		}
+
+		radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
+		free(this);
+		return -1;
+	}
+
+	return 0;
+}
+
+
 #ifndef RADIUS_CONFIG
 #define RADIUS_CONFIG "radiusd.conf"
 #endif
@@ -900,6 +1174,20 @@ int read_mainconfig(int reload)
 	 */
 	if (mainconfig.reject_delay > mainconfig.cleanup_delay) {
 		mainconfig.reject_delay = mainconfig.cleanup_delay;
+	}
+
+	/*
+	 *	Read the list of listeners.
+	 */
+	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
+	mainconfig.listen = listen_init(buffer);
+	if (old_listen_init() < 0) {
+		exit(1);
+	}
+
+	if (!mainconfig.listen) {
+		radlog(L_ERR|L_CONS, "Server is not configured to listen on any ports.  Exiting.");
+		exit(1);
 	}
 
 	return 0;

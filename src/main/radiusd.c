@@ -32,7 +32,6 @@ static const char rcsid[] =
 #include "autoconf.h"
 #include "libradius.h"
 
-#include <sys/socket.h>
 #include <sys/file.h>
 
 #ifdef HAVE_NETINET_IN_H
@@ -41,7 +40,6 @@ static const char rcsid[] =
 
 #include <stdlib.h>
 #include <string.h>
-#include <netdb.h>
 #include <fcntl.h>
 #include <ctype.h>
 
@@ -95,16 +93,13 @@ int debug_flag = 0;
 int log_auth_detail = FALSE;
 int auth_port = 0;
 int acct_port;
-int proxy_port;
+int proxyfd;			/* should be deleted */
 int need_reload = FALSE;
 int sig_hup_block = FALSE;
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 static int got_child = FALSE;
-static int authfd;
-static int acctfd;
 static time_t time_now;
-int proxyfd;
 static pid_t radius_pid;
 
 /*
@@ -251,7 +246,8 @@ static int str2fac(const char *s)
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
   */
-static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
+static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
+				  rad_listen_t *listener)
 {
 	REQUEST		*curreq;
 	RAD_REQUEST_FUNP fun;
@@ -265,7 +261,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	Check for requests sent to the wrong
 			 *	port, and ignore them, if so.
 			 */
-			if (packet->sockfd != authfd) {
+			if (listener->type != RAD_LISTEN_AUTH) {
 				RAD_SNMP_INC(rad_snmp.auth.total_packets_dropped);
 				radlog(L_ERR, "Authentication-Request sent to a non-authentication port from "
 					"client %s:%d - ID %d : IGNORED",
@@ -281,7 +277,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	Check for requests sent to the wrong
 			 *	port, and ignore them, if so.
 			 */
-			if (packet->sockfd != acctfd) {
+			if (listener->type != RAD_LISTEN_ACCT) {
 				RAD_SNMP_INC(rad_snmp.acct.total_packets_dropped);
 				radlog(L_ERR, "Accounting-Request packet sent to a non-accounting port from "
 				       "client %s:%d - ID %d : IGNORED",
@@ -300,7 +296,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	an error message logged, and the
 			 *	packet is dropped.
 			 */
-			if (packet->sockfd != proxyfd) {
+			if (listener->type != RAD_LISTEN_PROXY) {
 				RAD_SNMP_INC(rad_snmp.auth.total_packets_dropped);
 				radlog(L_ERR, "Authentication reply packet code %d sent to a non-proxy reply port from "
 				       "client %s:%d - ID %d : IGNORED",
@@ -318,7 +314,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	an error message logged, and the
 			 *	packet is dropped.
 			 */
-			if (packet->sockfd != proxyfd) {
+			if (listener->type != RAD_LISTEN_PROXY) {
 				RAD_SNMP_INC(rad_snmp.acct.total_packets_dropped);
 				radlog(L_ERR, "Accounting reply packet code %d sent to a non-proxy reply port from "
 				       "client %s:%d - ID %d : IGNORED",
@@ -366,7 +362,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 	 *	Don't handle proxy replies here.  They need to
 	 *	return the *old* request, so we can re-process it.
 	 */
-	if (packet->sockfd == proxyfd) {
+	if (listener->type == RAD_LISTEN_PROXY) {
 		return fun;
 	}
 
@@ -699,7 +695,8 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
  *
  *	The main purpose of this code is to handle proxied requests.
  */
-static REQUEST *request_ok(RADIUS_PACKET *packet, uint8_t *secret)
+static REQUEST *request_ok(RADIUS_PACKET *packet, uint8_t *secret,
+			   rad_listen_t *listener)
 {
 	REQUEST		*request = NULL;
 
@@ -710,7 +707,7 @@ static REQUEST *request_ok(RADIUS_PACKET *packet, uint8_t *secret)
 	 *	process, rather than processing the reply as a "new"
 	 *	request.
 	 */
-	if (packet->sockfd == proxyfd) {
+	if (listener->type == RAD_LISTEN_PROXY) {
 		/*
 		 *	Find the old request, based on the current
 		 *	packet.
@@ -786,22 +783,16 @@ int main(int argc, char *argv[])
 	RADIUS_PACKET *packet;
 	u_char *secret;
 	unsigned char buffer[4096];
-	struct sockaddr salocal;
-	struct sockaddr_in *sa;
 	fd_set readfds;
-	int result;
 	int argval;
 	int pid;
-	int i;
-	int fd = 0;
 	int max_fd;
 	int status;
-	int radius_port = 0;
-	struct servent *svp;
 	struct timeval *tv = NULL;
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
 #endif
+	rad_listen_t *listener;
 
 	syslog_facility = LOG_DAEMON;
 
@@ -884,7 +875,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'p':
-				radius_port = atoi(optarg);
+				fprintf(stderr, "Ignoring deprecated command-line option -p");
 				break;
 
 			case 's':	/* Single process mode */
@@ -985,137 +976,6 @@ int main(int argc, char *argv[])
 
 	/*  Initialize the request list.  */
 	rl_init();
-
-	/*
-	 *  We prefer (in order) the port from the command-line,
-	 *  then the port from the configuration file, then
-	 *  the port that the system names "radius", then
-	 *  1645.
-	 */
-	if (radius_port != 0) {
-		auth_port = radius_port;
-	} /* else auth_port is set from the config file */
-
-	/*
-	 *  Maybe auth_port *wasn't* set from the config file,
-	 *  or the config file set it to zero.
-	 */
-	acct_port = 0;
-	if (auth_port == 0) {
-		svp = getservbyname ("radius", "udp");
-		if (svp != NULL) {
-			auth_port = ntohs(svp->s_port);
-
-			/*
-			 *  We're getting auth_port from
-			 *  /etc/services, get acct_port from
-			 *  there, too.
-			 */
-			svp = getservbyname ("radacct", "udp");
-			if (svp != NULL)
-				acct_port = ntohs(svp->s_port);
-		} else {
-			auth_port = PW_AUTH_UDP_PORT;
-		}
-	}
-
-	/*
-	 *  Open Authentication socket.
-	 *
-	 */
-	authfd = socket (AF_INET, SOCK_DGRAM, 0);
-	if (authfd < 0) {
-		perror("auth socket");
-		exit(1);
-	}
-
-	sa = (struct sockaddr_in *) &salocal;
-	memset ((char *) sa, '\0', sizeof(salocal));
-	sa->sin_family = AF_INET;
-	sa->sin_addr.s_addr = mainconfig.myip;
-	sa->sin_port = htons(auth_port);
-
-	result = bind (authfd, &salocal, sizeof(*sa));
-	if (result < 0) {
-		perror ("auth bind");
-		DEBUG("  There appears to be another RADIUS server already running on the authentication port UDP %d.", auth_port);
-		exit(1);
-	}
-
-	/*
-	 *  Open Accounting Socket.
-	 *
-	 *  If we haven't already gotten acct_port from /etc/services,
-	 *  then make it auth_port + 1.
-	 */
-	if (acct_port == 0)
-		acct_port = auth_port + 1;
-
-	acctfd = socket (AF_INET, SOCK_DGRAM, 0);
-	if (acctfd < 0) {
-		perror ("acct socket");
-		exit(1);
-	}
-
-	sa = (struct sockaddr_in *) &salocal;
-	memset ((char *) sa, '\0', sizeof(salocal));
-	sa->sin_family = AF_INET;
-	sa->sin_addr.s_addr = mainconfig.myip;
-	sa->sin_port = htons(acct_port);
-
-	result = bind (acctfd, & salocal, sizeof(*sa));
-	if (result < 0) {
-		perror ("acct bind");
-		DEBUG("  There appears to be another RADIUS server already running on the accounting port UDP %d.", acct_port);
-		exit(1);
-	}
-
-	/*
-	 *  If we're proxying requests, open the proxy FD.
-	 *  Otherwise, don't do anything.
-	 */
-	if (mainconfig.proxy_requests == TRUE) {
-		/*
-		 *  Open Proxy Socket.
-		 */
-		proxyfd = socket (AF_INET, SOCK_DGRAM, 0);
-		if (proxyfd < 0) {
-			perror ("proxy socket");
-			exit(1);
-		}
-
-		sa = (struct sockaddr_in *) &salocal;
-		memset((char *) sa, '\0', sizeof(salocal));
-		sa->sin_family = AF_INET;
-		sa->sin_addr.s_addr = mainconfig.myip;
-
-		/*
-		 *  Set the proxy port to be one more than the
-		 *  accounting port.
-		 */
-		for (proxy_port = acct_port + 1; proxy_port < 64000; proxy_port++) {
-			sa->sin_port = htons(proxy_port);
-			result = bind(proxyfd, & salocal, sizeof(*sa));
-			if (result == 0) {
-				break;
-			}
-		}
-
-		/*
-		 *  Couldn't find a port to which we could bind.
-		 */
-		if (proxy_port == 64000) {
-			perror("proxy bind");
-			exit(1);
-		}
-
-	} else {
-		/*
-		 *  NOT proxying requests, set the FD to a bad value.
-		 */
-		proxyfd = -1;
-		proxy_port = 0;
-	}
 
 	/*
 	 *  Register built-in compare functions.
@@ -1220,18 +1080,38 @@ int main(int argc, char *argv[])
 	if (debug_flag == TRUE)
 		setlinebuf(stdout);
 
-	if (mainconfig.myip == INADDR_ANY) {
-		strcpy((char *)buffer, "*");
-	} else {
-		ip_ntoa((char *)buffer, mainconfig.myip);
-	}
+	/*
+	 *	Print out which ports we're listening on.
+	 */
+	for (listener = mainconfig.listen;
+	     listener != NULL;
+	     listener = listener->next) {
+		if (listener->ipaddr == INADDR_ANY) {
+			strcpy((char *)buffer, "*");
+		} else {
+			ip_ntoa((char *)buffer, listener->ipaddr);
+		}
+		
+		switch (listener->type) {
+		case RAD_LISTEN_AUTH:
+			DEBUG("Listening on authentication %s:%d",
+			      buffer, listener->port);
+			break;
 
-	if (mainconfig.proxy_requests == TRUE) {
-		radlog(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp, with proxy on %d/udp.",
-				buffer, auth_port, acct_port, proxy_port);
-	} else {
-		radlog(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp.",
-				buffer, auth_port, acct_port);
+		case RAD_LISTEN_ACCT:
+			DEBUG("Listening on accounting %s:%d",
+			      buffer, listener->port);
+			break;
+
+		case RAD_LISTEN_PROXY:
+			DEBUG("Listening on proxy %s:%d",
+			      buffer, listener->port);
+			proxyfd = listener->fd;
+			break;
+
+		default:
+			break;
+		}
 	}
 
 	/*
@@ -1395,18 +1275,17 @@ int main(int argc, char *argv[])
 
 		FD_ZERO(&readfds);
 		max_fd = 0;
-		if (authfd >= 0) {
-			FD_SET(authfd, &readfds);
-			if (authfd > max_fd) max_fd = authfd;
+
+		/*
+		 *	Loop over all the listening FD's.
+		 */
+		for (listener = mainconfig.listen;
+		     listener != NULL;
+		     listener = listener->next) {
+			FD_SET(listener->fd, &readfds);
+			if (listener->fd > max_fd) max_fd = listener->fd;
 		}
-		if (acctfd >= 0) {
-			FD_SET(acctfd, &readfds);
-			if (acctfd > max_fd) max_fd = acctfd;
-		}
-		if (proxyfd >= 0) {
-			FD_SET(proxyfd, &readfds);
-			if (proxyfd > max_fd) max_fd = proxyfd;
-		}
+
 #ifdef WITH_SNMP
 		if (mainconfig.do_snmp &&
 		    (rad_snmp.smux_fd >= 0)) {
@@ -1414,7 +1293,6 @@ int main(int argc, char *argv[])
 			if (rad_snmp.smux_fd > max_fd) max_fd = rad_snmp.smux_fd;
 		}
 #endif
-
 		status = select(max_fd + 1, &readfds, NULL, NULL, tv);
 		if (status == -1) {
 			/*
@@ -1447,15 +1325,14 @@ int main(int argc, char *argv[])
 #endif
 
 		/*
-		 *  Loop over the open socket FD's, reading any data.
+		 *	Loop over the open socket FD's, reading any data.
 		 */
-		for (i = 0; i < 3; i++) {
+		for (listener = mainconfig.listen;
+		     listener != NULL;
+		     listener = listener->next) {
 			RAD_REQUEST_FUNP fun;
 
-			if (i == 0) fd = authfd;
-			if (i == 1) fd = acctfd;
-			if (i == 2) fd = proxyfd;
-			if (fd < 0 || !FD_ISSET(fd, &readfds))
+			if (!FD_ISSET(listener->fd, &readfds))
 				continue;
 			/*
 			 *  Receive the packet.
@@ -1463,13 +1340,13 @@ int main(int argc, char *argv[])
 			if (sig_hup_block != FALSE) {
 			  continue;
 			}
-			packet = rad_recv(fd);
+			packet = rad_recv(listener->fd);
 			if (packet == NULL) {
 				radlog(L_ERR, "%s", librad_errstr);
 				continue;
 			}
 
-			RAD_SNMP_FD_INC(fd, total_requests);
+			RAD_SNMP_FD_INC(listener->fd, total_requests);
 
 			/*
 			 *	FIXME: Move this next check into
@@ -1485,7 +1362,7 @@ int main(int argc, char *argv[])
 			 *  authfd and acctfd.  Check if we know
 			 *  this proxy for proxyfd.
 			 */
-			if (fd != proxyfd) {
+			if (listener->type != RAD_LISTEN_PROXY) {
 				RADCLIENT *cl;
 				if ((cl = client_find(packet->src_ipaddr)) == NULL) {
 					RAD_SNMP_FD_INC(fd, total_invalid_requests);
@@ -1518,18 +1395,18 @@ int main(int argc, char *argv[])
 			 *	Do some simple checks before we process
 			 *	the request.
 			 */
-			if ((fun = packet_ok(packet)) == NULL) {
+			if ((fun = packet_ok(packet, listener)) == NULL) {
 				rad_free(&packet);
 				continue;
 			}
-
+			
 			/*
 			 *	Allocate a new request for packets from
 			 *	our clients, OR find the old request,
 			 *	for packets which are replies from a home
 			 *	server.
 			 */
-			request = request_ok(packet, secret);
+			request = request_ok(packet, secret, listener);
 			if (!request) {
 				rad_free(&packet);
 				continue;

@@ -140,6 +140,30 @@ typedef struct pair_list {
 	struct pair_list	*lastdefault;
 } PAIR_LIST;
 
+
+/*
+ *	Types of listeners.
+ */
+typedef enum RAD_LISTEN_TYPE {
+	RAD_LISTEN_NONE = 0,
+	RAD_LISTEN_AUTH,
+	RAD_LISTEN_ACCT,
+	RAD_LISTEN_PROXY
+} RAD_LISTEN_TYPE;
+
+
+/*
+ *	For listening on multiple IP's and ports.
+ */
+typedef struct rad_listen_t {
+	struct rad_listen_t *next; /* could be rbtree stuff */
+	uint32_t	ipaddr;
+	RAD_LISTEN_TYPE	type;
+	int		port;
+	int		fd;
+} rad_listen_t;
+
+
 typedef struct main_config_t {
 	struct main_config *next;
 	time_t		config_dead_time;
@@ -177,6 +201,7 @@ typedef struct main_config_t {
 	const char      *pid_file;
 	const char	*uid_name;
 	const char	*gid_name;
+	rad_listen_t	*listen;
 	CONF_SECTION	*config;
 	RADCLIENT	*clients;
 	REALM		*realms;
