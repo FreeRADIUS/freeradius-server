@@ -6,7 +6,6 @@
 
 #include "modules.h"
 #include "rlm_sql.h"
-#include "sql_module.h"
 
 
 SQL *sql = NULL;

@@ -5,8 +5,8 @@
 */
 
 #include "radiusd.h"
-
 #include "sql_module.h"
+
 
 #define QUERYLOG	"/var/log/radacct/radius.sql"
 #define SQLCONFIGFILE	"radius.conf"

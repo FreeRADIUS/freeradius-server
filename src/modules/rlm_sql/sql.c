@@ -260,13 +260,8 @@ int sql_save_acct(SQLREC *sqlrecord) {
  *************************************************************************/
 int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row) {
 
-	int x;
-	char		*s;
-	DICT_ATTR	*attr = NULL;
-	DICT_VALUE	*dval;
-	VALUE_PAIR	*pair, *pair2, *check;
-	struct tm	*tm;
-	time_t		timeval;
+	DICT_ATTR	*attr;
+	VALUE_PAIR	*pair, *check;
 
 
 	if((attr = dict_attrfind(row[2])) == (DICT_ATTR *)NULL) {
@@ -281,107 +276,7 @@ int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row) {
 	if ((check = pairfind(*first_pair, attr->value)) != NULL)
 		return 0;
 
-	if((pair = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == (VALUE_PAIR *)NULL) {
-		log(L_CONS|L_ERR, "sql_userparse: no memory");
-		exit(1);
-	}
-	strcpy(pair->name, attr->name);
-	pair->attribute = attr->value;
-	pair->type = attr->type;
-	pair->operator = PW_OPERATOR_EQUAL;
-	switch(pair->type) {
-
-		case PW_TYPE_STRING:
-			strcpy(pair->strvalue, row[3]);
-			pair->length = strlen(pair->strvalue);
-			break;
-
-		case PW_TYPE_INTEGER:
-                       /*
-                        *      For PW_NAS_PORT_ID, allow a
-                        *      port range instead of just a port.
-                        */
-                        if (attr->value == PW_NAS_PORT_ID) {
-                              for(s = row[3]; *s; s++)
-                                   if (!isdigit(*s)) break;
-                                   if (*s) {
-                                       pair->type = PW_TYPE_STRING;
-                                       strcpy(pair->strvalue, row[3]);
-                                       pair->length = strlen(pair->strvalue);
-                                       break;
-                                   }
-                        }
-                        if (isdigit(*row[3])) {
-                                   pair->lvalue = atoi(row[3]);
-                                   pair->length = 4;
-                        }
-                        else if((dval = dict_valfind(row[3])) == (DICT_VALUE *)NULL) {
-                                   free(pair);
-                                   log(L_ERR|L_CONS, "unknown value %s", row[3]);
-                                   return(-1);
-                        }
-                        else {
-                                   pair->lvalue = dval->value;
-                                   pair->length = 4;
-                        }
-                        break;
-
-		case PW_TYPE_IPADDR:
-			if (pair->attribute != PW_FRAMED_IP_ADDRESS) {
-                                   pair->lvalue = get_ipaddr(row[3]);
-                                   break;
-                        }
-
-                       /*
-                        *      We allow a "+" at the end to
-                        *      indicate that we should add the
-                        *      portno. to the IP address.
-                        */
-                        x = 0;
-                        if (row[3][0]) {
-                               for(s = row[3]; s[1]; s++) ;
-                                    if (*s == '+') {
-                                        *s = 0;
-                                        x = 1;
-                                    }
-                        }
-                        pair->lvalue = get_ipaddr(row[3]);
-                        pair->length = 4;
-
-                       /*
-                        *      Add an extra (hidden) attribute.
-                        */
-                        if((pair2 = malloc(sizeof(VALUE_PAIR))) == NULL) {
-                               log(L_CONS|L_ERR, "no memory");
-                               exit(1);
-                        }
-                        strcpy(pair2->name, "Add-Port-To-IP-Address");
-                        pair2->attribute = PW_ADD_PORT_TO_IP_ADDRESS;
-                        pair2->type = PW_TYPE_INTEGER;
-                        pair2->lvalue = x;
-                        pair2->length = 4;
-                        pairadd(first_pair, pair2);
-                        break;
-
-		case PW_TYPE_DATE:
-                        timeval = time(0);
-                        tm = localtime(&timeval);
-                        user_gettime(row[3], tm);
-#ifdef TIMELOCAL
-                        pair->lvalue = (UINT4)timelocal(tm);
-#else
-                        pair->lvalue = (UINT4)mktime(tm);
-#endif
-                        pair->length = 4;
-                        break;
-
-		default:
-                        free(pair);
-#if 1 /* Yeah yeah */
-                        log(L_ERR|L_CONS, "unknown attr. type %d", pair->type);
-#endif
-                        return(-1);
-	}
+	pair = makepair(row[2], row[3], PW_OPERATOR_EQUAL);
 	pairadd(first_pair, pair);
 
 	return 0;

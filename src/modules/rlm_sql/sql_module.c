@@ -22,14 +22,14 @@ int sql_connect(void) {
 
         /* Connect to the database server */
         mysql_init(&MyAuthConn);
-        if (!(sql->AuthSock = mysql_real_connect(&MyAuthConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
+        if (!(sql->AuthSock->conn = mysql_real_connect(&MyAuthConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
              log(L_ERR, "Init: Couldn't connect authentication socket to MySQL server on %s as %s", sql->config.sql_server, sql->config.sql_login);
-             sql->AuthSock = NULL;
+             sql->AuthSock->conn = NULL;
         }
         mysql_init(&MyAcctConn);
-        if (!(sql->AcctSock = mysql_real_connect(&MyAcctConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
+        if (!(sql->AcctSock->conn = mysql_real_connect(&MyAcctConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
              log(L_ERR, "Init: Couldn't connect accounting socket to MySQL server on %s as %s", sql->config.sql_server, sql->config.sql_login);
-             sql->AcctSock = NULL;
+             sql->AcctSock->conn = NULL;
         }
            
        return 0;
@@ -47,30 +47,30 @@ int sql_connect(void) {
 int sql_checksocket(const char *facility) {
 
 	if ((strncmp(facility, "Auth", 4) == 0)) {
-		if (sql->AuthSock == NULL) {
+		if (sql->AuthSock->conn == NULL) {
 
 			MYSQL MyAuthConn;
 			if (sql->config.sql_keepopen)
 				log(L_ERR, "%s: Keepopen set but had to reconnect to MySQL", facility);
 			/* Connect to the database server */
 			mysql_init(&MyAuthConn);
-			if (!(sql->AuthSock = mysql_real_connect(&MyAuthConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
+			if (!(sql->AuthSock->conn = mysql_real_connect(&MyAuthConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
 				log(L_ERR, "Auth: Couldn't connect authentication socket to MySQL server on %s as %s", sql->config.sql_server, sql->config.sql_login);
-				sql->AuthSock = NULL;
+				sql->AuthSock->conn = NULL;
 				return 0;
 			}
 		}
 
 	} else {
-		if (MyAcctSock == NULL) {
+		if (sql->AcctSock->conn == NULL) {
 			MYSQL MyAcctConn;
 			if (mysql_keepopen)
 				log(L_ERR, "%s: Keepopen set but had to reconnect to MySQL", facility);
 			/* Connect to the database server */
 			mysql_init(&MyAcctConn);
-			if (!(sql->AcctSock = mysql_real_connect(&MyAcctConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
+			if (!(sql->AcctSock->conn = mysql_real_connect(&MyAcctConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
 				log(L_ERR, "Acct: Couldn't connect accounting socket to MySQL server on %s as %s", sql->config.sql_server, sql->config.sql_login);
-				sql->AcctSock = NULL;
+				sql->AcctSock->conn = NULL;
 				return 0;
 			}
 		}
@@ -93,10 +93,29 @@ void sql_query(SQLSOCK *socket, char *querystr) {
 
  if (sql->config.sqltrace)
 	DEBUG(querystr);
- mysql_query(socket, querystr);
+ mysql_query(socket->conn, querystr);
 
 }
 
+
+/*************************************************************************
+ *
+ *	Function: sql_select_query
+ *
+ *	Purpose: Issue a select query to the database
+ *
+ *************************************************************************/
+int sql_select_query(SQLSOCK *socket, char *querystr) {
+
+ if (sql->config.sqltrace)
+	DEBUG(querystr);
+ mysql_query(socket->conn, querystr);
+ if (sql_store_result(socket) && sql_num_fields(socket)) 
+	return 0;
+ else
+	return 1;
+
+}
 
 
 /*************************************************************************
@@ -107,16 +126,15 @@ void sql_query(SQLSOCK *socket, char *querystr) {
  *               set for the query.
  *
  *************************************************************************/
-SQL_RES *sql_store_result(SQLSOCK *socket) {
+int sql_store_result(SQLSOCK *socket) {
 
-	SQL_RES	*result;
-
-	if (!(result = mysql_store_result(socket)) {
+	if (!(socket->result = mysql_store_result(socket->conn)) {
 		log(L_ERR,"MYSQL Error: Cannot get result");
-		log(L_ERR,"MYSQL error: %s",mysql_error(socket));
-		sql_close(socket);
+		log(L_ERR,"MYSQL error: %s",mysql_error(socket->conn));
+		sql_close(socket->conn);
+		return 0;
 	}
-	return result;
+	return 1;
 
 }
 
@@ -132,10 +150,10 @@ SQL_RES *sql_store_result(SQLSOCK *socket) {
 int sql_num_fields(SQLSOCK *socket) {
 
 	int	num = 0;
-	if (!(num = mysql_num_fields(socket)) {
+	if (!(num = mysql_num_fields(socket->conn)) {
 		log(L_ERR,"MYSQL Error: Cannot get result");
-		log(L_ERR,"MYSQL error: %s",mysql_error(socket));
-		sql_close(socket);
+		log(L_ERR,"MYSQL error: %s",mysql_error(socket->conn));
+		sql_close(socket->conn);
 	}
 	return num;
 }
@@ -149,9 +167,9 @@ int sql_num_fields(SQLSOCK *socket) {
  *               query
  *
  *************************************************************************/
-int sql_num_rows(SQL_RES *result) {
+int sql_num_rows(SQLSOCK *socket) {
 
-    return mysql_num_rows(result);
+    return mysql_num_rows(socket->result);
 
 }
 
@@ -164,9 +182,9 @@ int sql_num_rows(SQL_RES *result) {
  *               with all the data for the query
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQL_RES *result) {
+SQL_ROW sql_fetch_row(SQLSOCK *socket) {
 
-   return mysql_fetch_row(result);
+   return mysql_fetch_row(socket->result);
 
 }
 
@@ -180,9 +198,9 @@ SQL_ROW sql_fetch_row(SQL_RES *result) {
  *               for a result set
  *
  *************************************************************************/
-int sql_free_result(SQL_RES *result) {
+int sql_free_result(SQLSOCK *socket) {
 
-   return mysql_free_result(result);
+   return mysql_free_result(socket->result);
 
 }
 
@@ -198,7 +216,7 @@ int sql_free_result(SQL_RES *result) {
  *************************************************************************/
 char *sql_error(SQLSOCK *socket) {
 
-  return (mysql_error(socket));
+  return (mysql_error(socket->conn));
 
 }
 
@@ -213,7 +231,7 @@ char *sql_error(SQLSOCK *socket) {
  *************************************************************************/
 int sql_close(SQLSOCK *socket) {
 
-   return mysql_close(socket);
+   return mysql_close(socket->conn);
 
 }
 
