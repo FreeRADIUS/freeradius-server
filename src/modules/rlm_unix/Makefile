@@ -12,7 +12,6 @@ endif
 
 include ../rules.mak
 
-CFLAGS	+= -DLOGDIR=\"$(LOGDIR)\"
 LIBS	= $(LIBSHADOW) $(LIBCRYPT)
 
 
