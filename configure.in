@@ -263,7 +263,7 @@ AC_ARG_WITH(thread-pool,
 
 dnl extra argument: --with-snmp
 AC_ARG_WITH(snmp,
-[  --with-snmp             Compile in SNMP support],
+[  --with-snmp             Compile in SNMP support. (default=no)],
 [ case "$withval" in
     no)
 	;;
@@ -276,7 +276,7 @@ AC_ARG_WITH(snmp,
 
 dnl extra argument: --with-usercollide
 AC_ARG_WITH(usercollide,
-[  --with-usercollide       Compile in user collision],
+[  --with-usercollide       Compile in user collision code. (default=no)],
 [ case "$withval" in
     no)
 	;;
