@@ -647,7 +647,7 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 	PERL_INST	*inst= (PERL_INST *) instance;
 	PerlInterpreter *perl;
 	char		params[1024], *tmp_ptr, *ptr, *tmp;
-	int		count, ret;
+	int		count, ret=0;
 	STRLEN		n_a;
 #ifndef USE_ITHREADS
 	perl = inst->perl;
@@ -711,14 +711,12 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 		FREETMPS ;
 		LEAVE ;
 
-		if (ret <= freespace)
-			return ret;
 	}
 	}
 #ifdef USE_ITHREADS
 	pool_release(handle, instance);
 #endif
-	return 0;
+	return ret;
 }
 /*
  *	Do any per-module initialization that is separate to each
