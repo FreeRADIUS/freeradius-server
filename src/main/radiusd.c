@@ -100,6 +100,7 @@ int auth_port = 0;
 int acct_port;
 int proxy_port;
 int need_reload = FALSE;
+int sig_hup_block = FALSE;
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 static int got_child = FALSE;
@@ -804,6 +805,21 @@ int main(int argc, char *argv[])
 		}
 
 		if (need_reload) {
+		        int max_wait = 0;
+		        for(;;) {
+			        /*
+				 * Block until there are '0' threads
+				 * with a REQUEST handle.
+				 */
+			        sig_hup_block = TRUE;
+			        if( (total_active_threads() == 0) ||
+				     (max_wait >= 5) ) {
+				  sig_hup_block = FALSE;
+				  break;
+				}
+				sleep(1);
+				max_wait++;
+			}
 			if (read_mainconfig(TRUE) < 0) {
 				exit(1);
 			}
@@ -885,6 +901,9 @@ int main(int argc, char *argv[])
 			/*
 			 *  Receive the packet.
 			 */
+			if (sig_hup_block != FALSE) {
+			  continue;
+			}
 			packet = rad_recv(fd);
 			if (packet == NULL) {
 				radlog(L_ERR, "%s", librad_errstr);
@@ -1500,7 +1519,11 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 				rad_reject(request);
 				goto finished_request;
 			}
-			
+			if (rcode == RLM_MODULE_REJECT ) {
+			  DEBUG2("Request %d rejected in proxy_send.", request->number);
+			  rad_reject(request);
+			  goto finished_request;
+			}
 			/*
 			 *  If thie proxy code has handled the request,
 			 *  then postpone more processing, until we get

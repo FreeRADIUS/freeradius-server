@@ -345,6 +345,7 @@ extern		void rad_exec_init(void);
 extern		pid_t rad_fork(int exec_wait);
 extern		pid_t rad_waitpid(pid_t pid, int *status, int options);
 extern		int rad_savepid(pid_t pid, int status);
+extern          int total_active_threads(void);
 
 #ifndef HAVE_PTHREAD_H
 #define rad_fork(n) fork()
