@@ -68,8 +68,8 @@ static int chap_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *passwd_item;
 	char pass_str[MAX_STRING_LEN];
-	VALUE_PAIR *module_msg_vp;
-	char module_msg[MAX_STRING_LEN];
+	VALUE_PAIR *module_fmsg_vp;
+	char module_fmsg[MAX_STRING_LEN];
 
 	/* quiet the compiler */
 	instance = instance;
@@ -100,9 +100,9 @@ static int chap_authenticate(void *instance, REQUEST *request)
 
 	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
 		DEBUG("rlm_chap: Could not find clear text password for user %s",request->username->strvalue);
-		snprintf(module_msg,MAX_STRING_LEN - 1,"rlm_chap: Clear text password not available");
-		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_msg_vp);
+		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_chap: Clear text password not available");
+		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_fmsg_vp);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -113,9 +113,9 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	
 	if (memcmp(pass_str+1,request->password->strvalue+1,CHAP_VALUE_LENGTH) != 0){
 		DEBUG("rlm_chap: Pasword check failed");
-		snprintf(module_msg,MAX_STRING_LEN - 1,"rlm_chap: Wrong user password");
-		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_msg_vp);
+		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_chap: Wrong user password");
+		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_fmsg_vp);
 		return RLM_MODULE_REJECT;
 	}
 

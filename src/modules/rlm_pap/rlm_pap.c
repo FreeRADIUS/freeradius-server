@@ -144,8 +144,8 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 static int pap_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *passwd_item;
-	VALUE_PAIR *module_msg_vp;
-	char module_msg[MAX_STRING_LEN];
+	VALUE_PAIR *module_fmsg_vp;
+	char module_fmsg[MAX_STRING_LEN];
 	MD5_CTX context;
 	char digest[16];
 	char buff[16];
@@ -180,9 +180,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
 		DEBUG("rlm_pap: Could not find password for user %s",request->username->strvalue);
-		snprintf(module_msg,MAX_STRING_LEN - 1,"rlm_pap: User password not available");
-		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_msg_vp);
+		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: User password not available");
+		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_fmsg_vp);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -203,9 +203,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			if (strncmp((char *) passwd_item->strvalue,
 					(char *) request->password->strvalue, passwd_item->length) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
-				snprintf(module_msg,MAX_STRING_LEN - 1,"rlm_pap: CLEAR TEXT password check failed");
-				module_msg_vp = pairmake("Module-Message",module_msg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_msg_vp);
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
 			}
 			break;
@@ -215,9 +215,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 				crypt((char *) request->password->strvalue, (char *)passwd_item->strvalue),
 					passwd_item->length) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
-				snprintf(module_msg,MAX_STRING_LEN - 1,"rlm_pap: CRYPT password check failed");
-				module_msg_vp = pairmake("Module-Message",module_msg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_msg_vp);
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CRYPT password check failed");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
 			}
 			break;
@@ -230,9 +230,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			pap_hexify(buff,digest,16);
 			if (strncmp((char *)passwd_item->strvalue, buff, passwd_item->length) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
-				snprintf(module_msg,MAX_STRING_LEN - 1,"rlm_pap: MD5 password check failed");
-				module_msg_vp = pairmake("Module-Message",module_msg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_msg_vp);
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
 			}
 			break;

@@ -779,9 +779,9 @@ ldap_authorize(void *instance, REQUEST * request)
 	int		res;
 	VALUE_PAIR	**check_pairs, **reply_pairs;
 	char		**vals;
-	VALUE_PAIR      *module_msg_vp;
+	VALUE_PAIR      *module_fmsg_vp;
 	VALUE_PAIR	*user_profile;
-	char            module_msg[MAX_STRING_LEN];
+	char            module_fmsg[MAX_STRING_LEN];
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
 
@@ -824,9 +824,9 @@ ldap_authorize(void *instance, REQUEST * request)
 	if ((res = perform_search(instance, conn, basedn, LDAP_SCOPE_SUBTREE, filter, inst->atts, &result)) != RLM_MODULE_OK) {
 		DEBUG("rlm_ldap: search failed");
 		if (res == RLM_MODULE_NOTFOUND){
-			snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: User not found");
-			module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_msg_vp);
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: User not found");
+			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+			pairadd(&request->packet->vps, module_fmsg_vp);
 		}
 		ldap_release_conn(conn_id,inst->conns);
 		return (res);
@@ -857,9 +857,9 @@ ldap_authorize(void *instance, REQUEST * request)
 			DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", request->username->strvalue, inst->access_attr);
 			if (!strncmp(vals[0], "FALSE", 5)) {
 				DEBUG("rlm_ldap: dialup access disabled");
-				snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: Access Attribute denies access");
-				module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_msg_vp);
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
+				module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
 				ldap_msgfree(result);
 				ldap_value_free(vals);
 				ldap_release_conn(conn_id,inst->conns);
@@ -868,9 +868,9 @@ ldap_authorize(void *instance, REQUEST * request)
 			ldap_value_free(vals);
 		} else {
 			DEBUG("rlm_ldap: no %s attribute - access denied by default", inst->access_attr);
-			snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: Access Attribute denies access");
-			module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_msg_vp);
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
+			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+			pairadd(&request->packet->vps, module_fmsg_vp);
 			ldap_msgfree(result);
 			ldap_release_conn(conn_id,inst->conns);
 			return RLM_MODULE_USERLOCK;
@@ -904,9 +904,9 @@ ldap_authorize(void *instance, REQUEST * request)
 			ldap_msgfree(result);
 			ldap_release_conn(conn_id,inst->conns);
 			if (res == RLM_MODULE_NOTFOUND){
-				snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: User is not an access group member");
-				module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_msg_vp);
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: User is not an access group member");
+				module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
 				return (RLM_MODULE_USERLOCK);
 			}
 			else
@@ -1062,8 +1062,8 @@ ldap_authenticate(void *instance, REQUEST * request)
 	char		basedn[1024];
 	int             res;
 	VALUE_PAIR     *vp_user_dn;
-	VALUE_PAIR      *module_msg_vp;
-	char            module_msg[MAX_STRING_LEN];
+	VALUE_PAIR      *module_fmsg_vp;
+	char            module_fmsg[MAX_STRING_LEN];
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
 
@@ -1115,9 +1115,9 @@ ldap_authenticate(void *instance, REQUEST * request)
 		}
 		if ((res = perform_search(instance, conn, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
 			if (res == RLM_MODULE_NOTFOUND){
-				snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: User not found");
-				module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_msg_vp);
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: User not found");
+				module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
 			}
 			ldap_release_conn(conn_id,inst->conns);
 			return (res);
@@ -1146,9 +1146,9 @@ ldap_authenticate(void *instance, REQUEST * request)
 	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
 			       1, &res);
 	if (ld_user == NULL){
-		snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: Bind as user failed");
-		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_msg_vp);
+		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Bind as user failed");
+		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_fmsg_vp);
 		return (res);
 	}
 

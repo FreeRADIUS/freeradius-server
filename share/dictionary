@@ -173,8 +173,7 @@ ATTRIBUTE	Acct-Unique-Session-Id  1051	string
 ATTRIBUTE	Client-IP-Address	1052	ipaddr
 ATTRIBUTE	Ldap-UserDn		1053	string
 ATTRIBUTE	NS-MTA-MD5-Password	1054	string
-ATTRIBUTE	SQL-User-Name	 1055	string
-ATTRIBUTE	Module-Message		1056	string
+ATTRIBUTE	SQL-User-Name	 	1055	string
 ATTRIBUTE	LM-Password		1057	octets
 ATTRIBUTE	NT-Password		1058	octets
 ATTRIBUTE	SMB-Account-CTRL	1059	integer
@@ -192,6 +191,8 @@ ATTRIBUTE	Digest-Nonce-Count	1071	string
 ATTRIBUTE	Digest-User-Name	1072	string
 ATTRIBUTE	Pool-Name		1073	string
 ATTRIBUTE	Ldap-Group		1074	string
+ATTRIBUTE	Module-Success-Message	1075	string
+ATTRIBUTE	Module-Failure-Message	1076	string
 
 #
 #	Non-Protocol Attributes

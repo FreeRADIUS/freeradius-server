@@ -405,6 +405,7 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*check_item;
 	VALUE_PAIR	*reply_item;
 	VALUE_PAIR	*auth_item;
+	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	VALUE_PAIR	*autz_type_item = NULL;
 	int		result, r;
@@ -521,10 +522,8 @@ autz_redo:
 			r != RLM_MODULE_OK &&
 			r != RLM_MODULE_UPDATED) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
-			VALUE_PAIR *module_msg;
-
 			if ((module_msg = pairfind(request->packet->vps,
-					PW_MODULE_MESSAGE)) != NULL){
+					PW_MODULE_FAILURE_MESSAGE)) != NULL){
 				char msg[MAX_STRING_LEN+16];
 				snprintf(msg, sizeof(msg), "Invalid user (%s)",
 					 module_msg->strvalue);
@@ -588,12 +587,10 @@ autz_redo:
 	 *	wants to send back.
 	 */
 	if (result < 0) {
-		VALUE_PAIR *module_msg;
-
 		DEBUG2("auth: Failed to validate the user.");
 		request->reply->code = PW_AUTHENTICATION_REJECT;
-		
-		if ((module_msg = pairfind(request->packet->vps,PW_MODULE_MESSAGE)) != NULL){
+
+		if ((module_msg = pairfind(request->packet->vps,PW_MODULE_FAILURE_MESSAGE)) != NULL){
 			char msg[MAX_STRING_LEN+19];
 
 			snprintf(msg, sizeof(msg), "Login incorrect (%s)",
@@ -869,7 +866,16 @@ autz_redo:
 	if (request->reply->code == 0)
 	  request->reply->code = PW_AUTHENTICATION_ACK;
 
-	rad_authlog("Login OK", request, 1);
+	if ((module_msg = pairfind(request->packet->vps,PW_MODULE_SUCCESS_MESSAGE)) != NULL){
+		char msg[MAX_STRING_LEN+12];
+
+		snprintf(msg, sizeof(msg), "Login OK (%s)",
+			 module_msg->strvalue);
+		rad_authlog(msg, request, 1);
+	} else {
+		rad_authlog("Login OK", request, 1);
+	}
+
 	if (exec_program && !exec_wait) {
 		/*
 		 *	No need to check the exit status here.

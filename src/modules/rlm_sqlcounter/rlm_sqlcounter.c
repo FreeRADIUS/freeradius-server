@@ -577,8 +577,8 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 				key_vp->strvalue,reply_item->lvalue);
 	}
 	else{
-		char module_msg[MAX_STRING_LEN];
-		VALUE_PAIR *module_msg_vp;
+		char module_fmsg[MAX_STRING_LEN];
+		VALUE_PAIR *module_fmsg_vp;
 
 		DEBUG2("rlm_sqlcounter: (Check item - counter) is less than zero");
 
@@ -589,9 +589,9 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		reply_item=pairmake("Reply-Message", msg, T_OP_EQ);
 		pairadd(&request->reply->vps, reply_item);
 
-		snprintf(module_msg, sizeof(module_msg), "rlm_sqlcounter: Maximum %s usage time reached", data->reset);
-		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_msg_vp);	
+		snprintf(module_fmsg, sizeof(module_fmsg), "rlm_sqlcounter: Maximum %s usage time reached", data->reset);
+		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_fmsg_vp);	
 
 		ret=RLM_MODULE_REJECT;
 
