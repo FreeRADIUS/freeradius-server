@@ -14,7 +14,21 @@
 #include <string.h>
 
 #include 	"radiusd.h"
-#include	"sql_sybase.h"
+
+#include <ctpublic.h>
+#include "rlm_sql.h"
+
+
+typedef struct rlm_sql_sybase_sock {
+	CS_CONTEXT	*context;
+	CS_CONNECTION	*connection;
+	CS_COMMAND	*command;
+	char		**results;
+	int		id;
+	int		in_use;
+	struct timeval	tv;
+} rlm_sql_sybase_sock;
+
 
 #define	MAX_DATASTR_LEN	256
 
@@ -23,7 +37,7 @@
 * routine when it receives a message from the server.
 ************************************************************************/
 
-CS_RETCODE CS_PUBLIC
+static CS_RETCODE CS_PUBLIC
 servermsg_callback(cp, chp, msgp)
 CS_CONTEXT         *cp;
 CS_CONNECTION      *chp;
@@ -61,7 +75,7 @@ CS_SERVERMSG       *msgp;
 *  Client-Library error handler.
 ************************************************************************/
 
-CS_RETCODE CS_PUBLIC
+static CS_RETCODE CS_PUBLIC
 clientmsg_callback(context, conn, emsgp)
 CS_CONTEXT         *context;
 CS_CONNECTION      *conn;
@@ -102,7 +116,7 @@ CS_CLIENTMSG       *emsgp;
 *  when CS-Library has detected an error.
 ************************************************************************/
 
-CS_RETCODE CS_PUBLIC
+static CS_RETCODE CS_PUBLIC
 csmsg_callback(context, emsgp)
 CS_CONTEXT         *context;
 CS_CLIENTMSG       *emsgp;
@@ -141,7 +155,7 @@ CS_CLIENTMSG       *emsgp;
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	
 	rlm_sql_sybase_sock *sybase_sock;
 
@@ -269,7 +283,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and private connection data
  *
  *************************************************************************/
-int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	/* Why bother, rlm_sql never calls sql_destroy_socket anyway */
 	
@@ -284,7 +298,7 @@ int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               the database.
  *
  *************************************************************************/
-int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
 
@@ -445,7 +459,7 @@ int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *	      be discarded.
  *
  *************************************************************************/
-int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	
 	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
 
@@ -588,7 +602,7 @@ int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *               set for the query.
  *
  *************************************************************************/
-int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	/* 
 	** Not needed for Sybase, code that may have gone here is
 	** in sql_select_query and sql_fetch_row
@@ -605,7 +619,7 @@ int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               of columns from query
  *
  *************************************************************************/
-int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	
 	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
 	int	num;
@@ -626,7 +640,7 @@ int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
 	int	num;
@@ -713,7 +727,7 @@ int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	/*
 	** Not implemented, never called from rlm_sql anyway
@@ -734,7 +748,7 @@ int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	static char	msg='\0';
 /*
 	static char	msgbuf[2048];
@@ -808,7 +822,7 @@ char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 /*
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
@@ -839,7 +853,7 @@ int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
 	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
 
@@ -862,7 +876,7 @@ int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	
 	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
 	int	i=0;
@@ -893,7 +907,7 @@ int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               or insert)
  *
  *************************************************************************/
-int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	return sql_num_rows(sqlsocket, config);
 

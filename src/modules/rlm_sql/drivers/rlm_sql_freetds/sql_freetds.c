@@ -9,7 +9,18 @@
 
 #include "radiusd.h"
 #include "config.h"
-#include "sql_freetds.h"
+
+#include <tds.h>
+#include "rlm_sql.h"
+
+typedef struct rlm_sql_freetds_sock {
+	TDSSOCKET *tds_socket;
+	TDSLOGIN *tds_login;
+	
+	char **row;
+	void *conn;
+} rlm_sql_freetds_sock;;
+
 #include <tds.h>
 #include <tdsconvert.h>
 
@@ -32,7 +43,7 @@ extern int tds_process_cancel(TDSSOCKET *tds);
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock;
     char *query;
     int marker;
@@ -94,7 +105,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *      Purpose: Free socket and private connection data                   
  *                                                                         
  *************************************************************************/
-int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
 
     if (sqlsocket != NULL)
@@ -127,7 +138,7 @@ int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               the database.
  *
  *************************************************************************/
-int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     int retcode;
     
@@ -162,7 +173,7 @@ int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     if (sql_query(sqlsocket, config, querystr) < 0) return -1;
     return 0;
 }
@@ -176,7 +187,7 @@ int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *	         Reserve memory for the result set of a query.
  *
  *************************************************************************/
-int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     TDSCOLINFO **columns;
     int numfields, column, column_size;
@@ -232,7 +243,7 @@ int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               of columns from query
  *
  *************************************************************************/
-int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     TDSRESULTINFO *result_info;
 
@@ -255,7 +266,7 @@ int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     return sql_affected_rows(sqlsocket, config);
 }
 
@@ -269,7 +280,7 @@ int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'
  *
  *************************************************************************/
-int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     TDSRESULTINFO *result_info;    
     TDSCOLINFO **columns;
@@ -337,7 +348,7 @@ int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
 
     sql_free_result(sqlsocket, config);
@@ -361,7 +372,7 @@ int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
   /* Not used */
     return 0;
 }
@@ -374,7 +385,7 @@ int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     int column, numfileds=sql_num_fields(sqlsocket, config);
 
@@ -400,7 +411,7 @@ int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     tds_free_login(freetds_sock->tds_login);
     return 0;
@@ -414,7 +425,7 @@ int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     return NULL;
 }
 
@@ -426,7 +437,7 @@ char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               or insert)
  *
  *************************************************************************/
-int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     return freetds_sock->tds_socket->rows_affected;
 }

@@ -11,12 +11,23 @@
 #include <string.h>
 
 #include 	"radiusd.h"
-#include	"sql_oracle.h"
+
+#include <oci.h>
+#include "rlm_sql.h"
+
+typedef struct rlm_sql_oracle_sock {
+	OCIEnv		*env;
+	OCIError	*errHandle;
+	OCISvcCtx	*conn;
+	OCIStmt		*queryHandle;
+	char		**results;
+	int		id;
+	int		in_use;
+	struct timeval	tv;
+} rlm_sql_oracle_sock;
 
 #define	MAX_DATASTR_LEN	64
 
-
-sb2 indicators[5];
 
 /*************************************************************************
  *
@@ -25,7 +36,7 @@ sb2 indicators[5];
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	
 	rlm_sql_oracle_sock *oracle_sock;
 
@@ -81,7 +92,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and private connection data
  *
  *************************************************************************/
-int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	/* FIXME: Someone write the oracle specific disconnect and free code!! */
 
@@ -97,7 +108,7 @@ int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               the database.
  *
  *************************************************************************/
-int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	int	x;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
@@ -144,7 +155,7 @@ int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	int		x;
 	int		y;
@@ -203,6 +214,8 @@ int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	memset(rowdata, 0, (sizeof(char *) * (colcount+1) ));
 
 	for (y=1; y <= colcount; y++) {
+		sb2 indicators[5];
+
 		x=OCIParamGet(oracle_sock->queryHandle, OCI_HTYPE_STMT,
 				oracle_sock->errHandle,
 				(dvoid **)&param,
@@ -292,7 +305,7 @@ int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *               set for the query.
  *
  *************************************************************************/
-int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	/* Not needed for Oracle */
 	return 0;
 }
@@ -306,7 +319,7 @@ int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               of columns from query
  *
  *************************************************************************/
-int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	ub4		count;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
@@ -333,7 +346,7 @@ int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	ub4	rows=0;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
@@ -358,7 +371,7 @@ int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	int	x;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
@@ -394,7 +407,7 @@ int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	int i=0;
 	int num_fields;
@@ -422,7 +435,7 @@ int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	static char	msgbuf[512];
 	int		errcode = 0;
@@ -449,7 +462,7 @@ char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
@@ -480,7 +493,7 @@ int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
 	return 0;
 }
@@ -494,7 +507,7 @@ int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	int 	x=0;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
@@ -517,7 +530,7 @@ int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               or insert)
  *
  *************************************************************************/
-int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	return sql_num_rows(sqlsocket, config);
 }

@@ -30,8 +30,16 @@
 #include <mysql/errmsg.h>
 
 #include 	"radiusd.h"
-#include	"sql_mysql.h"
 
+#include	<mysql/mysql.h>
+#include	"rlm_sql.h"
+
+typedef struct rlm_sql_mysql_sock {
+	MYSQL conn;
+	MYSQL *sock;
+	MYSQL_RES *result;
+	SQL_ROW row;
+} rlm_sql_mysql_sock;
 
 /*************************************************************************
  *
@@ -40,7 +48,7 @@
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock;
 
@@ -72,7 +80,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and any private connection data
  *
  *************************************************************************/
-int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -90,7 +98,7 @@ int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -113,7 +121,7 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	int ret;
 
@@ -143,7 +151,7 @@ int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *               set for the query.
  *
  *************************************************************************/
-int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -168,7 +176,7 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               of columns from query
  *
  *************************************************************************/
-int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 
 	int     num = 0;
@@ -194,7 +202,7 @@ int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -214,7 +222,7 @@ int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -234,7 +242,7 @@ int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: check the error to see if the server is down
  *
  *************************************************************************/
-int sql_check_error(int error) {
+static int sql_check_error(int error) {
 	switch(error) {
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
@@ -265,7 +273,7 @@ int sql_check_error(int error) {
  *               for a result set
  *
  *************************************************************************/
-int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -286,7 +294,7 @@ int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -302,7 +310,7 @@ char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -320,7 +328,7 @@ int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	return 0;
 }
@@ -334,7 +342,7 @@ int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	sql_free_result(sqlsocket, config);
 
@@ -349,7 +357,7 @@ int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 

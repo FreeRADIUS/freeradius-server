@@ -45,7 +45,19 @@
 #include <string.h>
 
 #include "radiusd.h"
-#include "sql_postgresql.h"
+
+#include        <libpq-fe.h>
+#include	"rlm_sql.h"
+
+typedef struct rlm_sql_postgres_sock {
+   PGconn          *conn;
+   PGresult        *result;
+   int             cur_row;
+   int             num_fields;
+    int		   affected_rows;
+   char            **row;
+} rlm_sql_postgres_sock;
+
 
 /* Internal function. Return true if the postgresql status value
  * indicates successful completion of the query. Return false otherwise
@@ -90,7 +102,7 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	char connstring[2048];
 	char *port, *host;
 	rlm_sql_postgres_sock *pg_sock;
@@ -137,7 +149,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
@@ -190,7 +202,7 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	return sql_query(sqlsocket, config, querystr);
 }
 
@@ -203,7 +215,7 @@ int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
  *               set for the query.
  *
  *************************************************************************/
-int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
 	pg_sock->cur_row = 0;
@@ -220,7 +232,7 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               of columns from query
  *
  *************************************************************************/
-int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	int num = 0;
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
@@ -242,7 +254,7 @@ int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
-int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	int records, i, len;
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
@@ -285,7 +297,7 @@ int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
@@ -313,7 +325,7 @@ int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
@@ -329,7 +341,7 @@ char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
@@ -347,7 +359,7 @@ int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	return sql_free_result(sqlsocket, config);
 }
@@ -361,7 +373,7 @@ int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	return sql_free_result(sqlsocket, config);
 }
@@ -374,7 +386,7 @@ int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Return the number of rows affected by the last query.
  *
  *************************************************************************/
-int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
+static int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
 	return pg_sock->affected_rows;
