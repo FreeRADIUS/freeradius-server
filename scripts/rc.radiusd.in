@@ -24,6 +24,7 @@ sbindir=@sbindir@
 localstatedir=@localstatedir@
 logdir=@logdir@
 rundir=${localstatedir}/run/radiusd
+sysconfdir=@sysconfdir@
 
 RADIUSD=$sbindir/radiusd
 RADDBDIR=@raddbdir@
