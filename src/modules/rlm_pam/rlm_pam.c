@@ -36,6 +36,9 @@
 #include	<string.h>
 
 #include	<security/pam_appl.h>
+#if HAVE_SYSLOG_H
+#include	<syslog.h>
+#endif
 
 #include	"radiusd.h"
 #include	"modules.h"
