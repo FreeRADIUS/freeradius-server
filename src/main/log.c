@@ -26,7 +26,8 @@ extern char	*radlog_dir;
 static int do_log(int lvl, const char *fmt, va_list ap)
 {
 	FILE	*msgfd;
-	unsigned char	*s = ": ";
+	const unsigned char  *s = ": ";
+	unsigned char *p;
 	char	buffer[2048];
 	time_t	timeval;
 	int	len;
@@ -84,11 +85,11 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	/*
 	 *	Filter out characters not in Latin-1.
 	 */
-	for (s = buffer; *s; s++) {
-		if (*s == '\r' || *s == '\n')
-			*s = ' ';
-		else if (*s < 32 || (*s >= 128 && *s <= 160))
-			*s = '?';
+	for (p = buffer; *p; p++) {
+		if (*p == '\r' || *p == '\n')
+			*p = ' ';
+		else if (*p < 32 || (*p >= 128 && *p <= 160))
+			*p = '?';
 	}
 	strcat(buffer, "\n");
 
