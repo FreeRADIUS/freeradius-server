@@ -82,7 +82,7 @@ if ($link){
 		$search = @da_sql_query($link,$config,
 		"SELECT DISTINCT UserName,AcctStartTime,FramedIPAddress,CallingStationId
 		FROM $config[sql_accounting_table] WHERE
-		AcctStopTime = '0' AND NASIPAddress = '$name_data' $extra
+		AcctStopTime IS NULL AND NASIPAddress = '$name_data' $extra
 		GROUP BY UserName ORDER BY AcctStartTime;");
 		if ($search){
 			$now = time();

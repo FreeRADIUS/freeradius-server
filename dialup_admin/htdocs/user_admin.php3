@@ -166,7 +166,7 @@ if ($link){
 
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_accounting_table]
-	WHERE UserName = '$login' AND AcctStopTime = '0'
+	WHERE UserName = '$login' AND AcctStopTime IS NULL
 	ORDER BY AcctStartTime DESC LIMIT 1;");
 	if ($search){
 		if (@da_sql_num_rows($search,$config)){
