@@ -327,7 +327,7 @@ static const char *nasname(uint32_t ipaddr)
 			break;
 	if (cl == NULL) {
 		static char buffer[32];
-		ip_ntoa(buffer, ntohl(ipaddr));
+		ip_ntoa(buffer, ipaddr);
 		return buffer;
 	}
 	if (cl->shortname[0])
