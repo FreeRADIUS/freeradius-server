@@ -41,6 +41,20 @@
 #include <time.h>
 
 
+/* 	Note: When your counter spans more than 1 period (ie 3 months or 2 weeks), this module
+ *	probably does NOT do what you want!  It calculates the range of dates to count across 
+ *	by first calculating the End of the Current period and then subtracting the number of
+ *	periods you specify from that to determine the beginning of the range.
+ *
+ *	For example, if you specify a 3 month counter and today is June 15th, the end of the current 
+ *	period is June 30. Subtracting 3 months from that gives April 1st.  So, the counter will 
+ *	sum radacct entries from April 1st to June 30. Then, next month, it will sum entries
+ *	from May 1st to July 31st.
+ *
+ *	To fix this behavior, we need to add some way of storing the Next Reset Time 
+ */
+
+
 static const char rcsid[] = "$Id$";
 
 /*
@@ -89,8 +103,10 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 	unsigned int num=1;
 	char last = 0;
 	struct tm *tm, s_tm;
+	char sCurrentTime[40], sNextTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
+	strftime(sCurrentTime, sizeof(sCurrentTime),"%Y-%m-%d %H:%M:%S",tm);
 	tm->tm_sec = tm->tm_min = 0;
 
 	if (data->reset == NULL)
@@ -104,7 +120,7 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 		last = data->reset[len - 1];
 		if (!isalpha((int) last))
 			last = 'd';
-		num = atoi(data->reset);
+/*		num = atoi(data->reset); */
 		DEBUG("rlm_sqlcounter: num=%d, last=%c",num,last);
 	}
 	if (strcmp(data->reset, "hourly") == 0 || last == 'h') {
@@ -139,8 +155,9 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 			data->reset);
 		return -1;
 	}
-	DEBUG2("rlm_sqlcounter: Current Time: %d, Next reset %d", 
-		(int)timeval,(int)data->reset_time);
+	strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
+	DEBUG2("rlm_sqlcounter: Current Time: %d [%s], Next reset %d [%s]", 
+		(int)timeval,sCurrentTime,(int)data->reset_time, sNextTime);
 
 	return ret;
 }
@@ -156,8 +173,10 @@ static int find_prev_reset(rlm_sqlcounter_t *data, time_t timeval)
 	unsigned int num=1;
 	char last = 0;
 	struct tm *tm, s_tm;
+	char sCurrentTime[40], sPrevTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
+	strftime(sCurrentTime, sizeof(sCurrentTime),"%Y-%m-%d %H:%M:%S",tm);
 	tm->tm_sec = tm->tm_min = 0;
 
 	if (data->reset == NULL)
@@ -206,8 +225,9 @@ static int find_prev_reset(rlm_sqlcounter_t *data, time_t timeval)
 			data->reset);
 		return -1;
 	}
-	DEBUG2("rlm_sqlcounter: Current Time: %d, Prev reset %d", 
-		(int)timeval,(int)data->last_reset);
+	strftime(sPrevTime, sizeof(sPrevTime),"%Y-%m-%d %H:%M:%S",tm);
+	DEBUG2("rlm_sqlcounter: Current Time: %d [%s], Prev reset %d [%s]", 
+		(int)timeval,sCurrentTime,(int)data->last_reset, sPrevTime);
 
 	return ret;
 }
