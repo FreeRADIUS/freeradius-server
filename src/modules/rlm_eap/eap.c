@@ -73,16 +73,19 @@ static const char *eap_codes[] = {
 int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 {
 	char		buffer[64];
+	char		namebuf[64];
+	const char	*eaptype_name;
 	lt_dlhandle	handle;
 	EAP_TYPES	*node;
 
-	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eaptype_type2name(eap_type));
+	eaptype_name = eaptype_type2name(eap_type, namebuf, sizeof(namebuf));
+	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eaptype_name);
 
 	/* Link the loaded EAP-Type */
 	handle = lt_dlopenext(buffer);
 	if (handle == NULL) {
 		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s", 
-				eaptype_type2name(eap_type), lt_dlerror());
+		       eaptype_name, lt_dlerror());
 		return -1;
 	}
 
@@ -97,28 +100,36 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	/* fill in the structure */
 	node->handle = handle;
 	node->cs = cs;
-	node->typename = eaptype_type2name(eap_type);
+
+	/*
+	 *	In general, this is a terrible idea.  It works here
+	 *	solely because the eap_type2name function returns a
+	 *	'static const char *' pointer sometimes, and we can
+	 *	ONLY link to module which are named in that static
+	 *	array.
+	 */
+	node->typename = eaptype_name;
 	node->type_data = NULL;
 	
 	node->type = (EAP_TYPE *)lt_dlsym(node->handle, buffer);
 	if (!node->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to %s structure in %s: %s",
-				buffer, eaptype_type2name(eap_type), lt_dlerror());
+				buffer, eaptype_name, lt_dlerror());
 		lt_dlclose(node->handle);	/* ignore any errors */
 		free(node);
 		return -1;
 	}
 	if ((node->type->attach) && 
-		((node->type->attach)(node->cs, &(node->type_data)) < 0)) {
+	    ((node->type->attach)(node->cs, &(node->type_data)) < 0)) {
 
 		radlog(L_ERR, "rlm_eap: Failed to initialize type %s",
-		       eaptype_type2name(eap_type));
+		       eaptype_name);
 		lt_dlclose(node->handle);
 		free(node);
 		return -1;
 	}
 
-	DEBUG("rlm_eap: Loaded and initialized type %s", eaptype_type2name(eap_type));
+	DEBUG("rlm_eap: Loaded and initialized type %s", eaptype_name);
 	*type = node;
 	return 0;
 }
@@ -175,9 +186,11 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
  */
 int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
-	int	    	default_eap_type = inst->default_eap_type;
+	unsigned int	default_eap_type = inst->default_eap_type;
 	eaptype_t	*eaptype;
 	VALUE_PAIR	*vp;
+	char		namebuf[64];
+	const char	*eaptype_name;
 
 	eaptype = &handler->eap_ds->response->type;
 
@@ -245,7 +258,9 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		
 		if (eaptype_call(inst->types[default_eap_type],
 				 handler) == 0) {
-			DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", eaptype_type2name(default_eap_type));
+			DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", 
+			       eaptype_type2name(default_eap_type,
+						 namebuf, sizeof(namebuf)));
 			return EAP_INVALID;
 		}
 		break;
@@ -283,16 +298,17 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		}
 
 		default_eap_type = eaptype->data[0];
+		eaptype_name = eaptype_type2name(default_eap_type,
+						 namebuf, sizeof(namebuf));
 		DEBUG2(" rlm_eap: EAP-NAK asked for EAP-Type/%s",
-		       eaptype_type2name(default_eap_type));
+		       eaptype_name);		       
 
 		/*
 		 *	Prevent a firestorm if the client is confused.
 		 */
 		if (handler->eap_type == default_eap_type) {
 			DEBUG2(" rlm_eap: ERROR! Our request for %s was NAK'd with a request for %s, what is the client thinking?",
-			       eaptype_type2name(default_eap_type),
-			       eaptype_type2name(default_eap_type));
+			       eaptype_name, eaptype_name);
 			return EAP_INVALID;
 		}
 
@@ -302,9 +318,12 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		vp = pairfind(handler->request->config_items,
 			      PW_EAP_TYPE);
 		if (vp && (vp->lvalue != default_eap_type)) {
+			char	mynamebuf[64];
 			DEBUG2("  rlm_eap: Client wants %s, while we require %s, rejecting the user.",
-			       eaptype_type2name(default_eap_type),
-			       eaptype_type2name(vp->lvalue));
+			       eaptype_name,
+			       eaptype_type2name(vp->lvalue,
+						 mynamebuf,
+						 sizeof(mynamebuf)));
 			return EAP_INVALID;
 		}
 		goto do_initiate;
@@ -314,8 +333,10 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *	Key off of the configured sub-modules.
 		 */
 		default:
-			DEBUG2("  rlm_eap: EAP/%s",
-			       eaptype_type2name(eaptype->type));
+			eaptype_name = eaptype_type2name(eaptype->type,
+							 namebuf,
+							 sizeof(namebuf));
+			DEBUG2("  rlm_eap: EAP/%s", eaptype_name);
 			
 			/*
 			 *	We haven't configured it, it doesn't exit.
@@ -331,7 +352,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			if (eaptype_call(inst->types[eaptype->type],
 					 handler) == 0) {
 				DEBUG2(" rlm_eap: Handler failed in EAP/%s",
-				       eaptype_type2name(eaptype->type));
+				       eaptype_name);
 				return EAP_INVALID;
 			}
 		break;
@@ -1030,7 +1051,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 		return NULL;
 	}
 
-	handler->timestamp = time(NULL);
+	handler->timestamp = request->timestamp;
 	handler->request = request; /* LEAP needs this */
 	return handler;
 }

@@ -112,19 +112,40 @@ int eaptype_name2type(const char *name)
 	return -1;
 }
 
-const char *eaptype_type2name(unsigned int type)
+/*
+ *	Returns a text string containing the name of the EAP type.
+ */
+const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
 {
-	static char typebuf[32];
+	DICT_VALUE	*dval;
 
-	if(type > MAX_EAP_TYPE_NAME)
-	{
-		snprintf(typebuf, sizeof(typebuf), "eap_type:%d", type);
-		return typebuf;
-	}
-	else
-	{
-		return eap_types[type];
-	}
+	if (type > MAX_EAP_TYPE_NAME) {
+		/*
+		 *	Prefer the dictionary name over a number,
+		 *	if it exists.
+		 */
+		dval = dict_valbyattr(PW_EAP_TYPE, type);
+		if (dval) {
+			snprintf(buffer, buflen, "%s", dval->name);
+		}
+
+		snprintf(buffer, buflen, "%d", type);
+		return buffer;
+	} else if ((eap_types[type] >= '0') && (eap_types[type] <= '9')) {
+		/*
+		 *	Prefer the dictionary name, if it exists.
+		 */
+		dval = dict_valbyattr(PW_EAP_TYPE, type);
+		if (dval) {
+			snprintf(buffer, buflen, "%s", dval->name);
+			return buffer;
+		} /* else it wasn't in the dictionary */
+	} /* else the name in the array was non-numeric */
+
+	/*
+	 *	Return the name, whatever it is.
+	 */
+	return eap_types[type];
 }
 
 /*
@@ -309,47 +330,37 @@ void map_eap_types(RADIUS_PACKET *req)
 	int eap_type;
 
 	vp = pairfind(req->vps, ATTRIBUTE_EAP_ID);
-	if(vp == NULL)
-	{
+	if(vp == NULL) {
 		id = ((int)getpid() & 0xff);
-	}
-	else
-	{
+	} else {
 		id = vp->lvalue;
 	}
 
 	vp = pairfind(req->vps, ATTRIBUTE_EAP_CODE);
-	if(vp == NULL)
-	{
+	if(vp == NULL) {	
 		eapcode = PW_EAP_REQUEST;
-	}
-	else
-	{
+	} else {
 		eapcode = vp->lvalue;
 	}
 
 	
-	for(vp = req->vps; vp != NULL; vp = vpnext)
-	{
+	for(vp = req->vps; vp != NULL; vp = vpnext) {
 		/* save it in case it changes! */
 		vpnext = vp->next;
 
 		if(vp->attribute >= ATTRIBUTE_EAP_BASE &&
-		   vp->attribute < ATTRIBUTE_EAP_BASE+256)
-		{
+		   vp->attribute < ATTRIBUTE_EAP_BASE+256) {
 			break;
 		}
 	}
 
-	if(vp == NULL)
-	{
+	if(vp == NULL) {
 		return;
 	}
 
 	eap_type = vp->attribute - ATTRIBUTE_EAP_BASE;
 		
-	switch(eap_type)
-	{
+	switch(eap_type) {
 	case PW_EAP_IDENTITY:
 	case PW_EAP_NOTIFICATION:
 	case PW_EAP_NAK:
