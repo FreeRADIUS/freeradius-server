@@ -8,18 +8,18 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
-#include	<sys/socket.h>
-#include	<netinet/in.h>
-#include	<arpa/inet.h>
-
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<netdb.h>
-#include	<pwd.h>
 #include	<ctype.h>
 #include	<signal.h>
+
+#include	<sys/stat.h>
+#include	<fcntl.h>
+
+#if HAVE_UNISTD_H
+#include	<unistd.h>
+#endif
 
 #include	"radiusd.h"
 
@@ -121,3 +121,45 @@ RADIUS_PACKET *build_reply(int code, REQUEST *request,
 	return rp;
 }
 #endif
+
+/*
+ *	Create possibly many directories.
+ */
+int rad_mkdir(char *directory, int mode)
+{
+	int		rcode;
+	char		*p;
+  	struct stat	st;
+
+	/*
+	 *	If the directory exists, don't do anything.
+	 */
+	if (stat(directory, &st) == 0) {
+		return 0;
+	}
+
+	/*
+	 *	Look for the LAST directory name.  Try to create that,
+	 *	failing on any error.
+	 */
+	p = strrchr(directory, '/');
+	if (p) {
+		*p = '\0';
+		rcode = rad_mkdir(directory, mode);
+
+		/*
+		 *	On error, we leave the directory name as the
+		 *	one which caused the error.
+		 */
+		if (rcode < 0) {
+			return rcode;
+		}
+		*p = '/';
+	}
+
+	/*
+	 *	Having done everything successfully, we do the
+	 *	system call to actually go create the directory.
+	 */
+	return mkdir(directory, mode);
+}
