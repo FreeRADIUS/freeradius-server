@@ -2054,16 +2054,23 @@ static void random_vector(uint8_t *vector)
 	int i;
 
 	if (!lrad_pool_initialized) {
+		int fd;
+
 		memset(&lrad_rand_pool, 0, sizeof(lrad_rand_pool));
 
-		/*
-		 *	Initialize the state to something, using
-		 *	numbers which aren't random, but which also
-		 *	aren't static.
-		 */
-		lrad_rand_pool.randrsl[0] = (uint32_t) &lrad_pool_initialized;
-		lrad_rand_pool.randrsl[1] = (uint32_t) &i;
-		lrad_rand_pool.randrsl[2] = (uint32_t) vector;
+		fd = open("/dev/urandom", O_RDONLY);
+		if (fd >= 0) {
+			read(fd, lrad_rand_pool.randrsl,
+			     sizeof(lrad_rand_pool.randrsl));
+		} else {
+			/*
+			 *	Initialize the pool to something?
+			 */
+			lrad_rand_pool.randrsl[0] = (uint32_t) &lrad_pool_initialized;
+			lrad_rand_pool.randrsl[1] = (uint32_t) &i;
+			memcpy(&(lrad_rand_pool.randrsl[2]),
+			       vector, AUTH_VECTOR_LEN);
+		}
 
 		lrad_randinit(&lrad_rand_pool, 1);
 		lrad_pool_initialized = 1;
@@ -2131,6 +2138,7 @@ RADIUS_PACKET *rad_alloc(int newvector)
 	memset(rp, 0, sizeof(RADIUS_PACKET));
 	if (newvector)
 		random_vector(rp->vector);
+	lrad_rand();		/* stir the pool again */
 
 	return rp;
 }
