@@ -15,7 +15,7 @@
 static const char rcsid[] = "$Id$";
 
 typedef struct {
-	char *str;
+	const char *str;
 	int token;
 } TOKEN;
 
