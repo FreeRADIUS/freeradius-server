@@ -1,6 +1,6 @@
 
 Adding new features usually requires adding yet another
-file. We already have a slwe of files in /etc/raddb, it should be
+file. We already have a slew of files in /etc/raddb, it should be
 possible to fold them into one. From radiusd's point of view that
 is, by using $INCLUDE statements it would still be possible for
 the admin to concentrate different things (like huntgroups) in
@@ -43,7 +43,7 @@ Basically the keywords should be:
 
 check:		all items must match
 		Multiple check statements can be present which
-		will be ORed (entry applkies when one matches)
+		will be ORed (entry applies when one matches)
 		If entry doesn't match, the next entry will be tried
 auth:		If check matches, authentication will be done.
 		If authentication fails we don't fall through ever
