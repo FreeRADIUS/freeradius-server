@@ -377,7 +377,7 @@ static int str2argv(char *str, char **argv, int max_argc)
  *	Hmm... there are a number of such functions in the source.
  *	maybe we want to make a library function?
  */
-static int hex2bin(const char *str, uint8_t *bin, int length)
+static int hex2bin(const char *str, uint8_t *bin, size_t length)
 {
 	unsigned int		len;
 	const		char *letters = "0123456789ABCDEFabcdef";
