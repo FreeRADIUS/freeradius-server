@@ -35,6 +35,8 @@
  *	  password header if needed. This will make support for CHAP much easier.
  *	- Added module messages when we reject a user.
  *	- Added ldap_groupcmp to allow searching for user group membership.
+ *	- Added ldap_xlat to allow ldap urls in xlat strings. Something like:
+ *	  %{ldap:ldap:///dc=company,dc=com?cn?sub?uid=user}
  * Nov 2001, Gordon Tetlow <gordont@gnf.org>
  *	- Do an xlat on the access_group attribute.
  */
@@ -149,6 +151,7 @@ static void     fieldcpy(char *, char **);
 #endif
 static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **);
 static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
+static int ldap_xlat(void *,REQUEST *, char *, char *,int, RADIUS_ESCAPE_STRING);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *);
 static int     read_mappings(ldap_instance* inst);
 
@@ -190,6 +193,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 #ifdef PW_GROUP_NAME /* compat */
 	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, ldap_groupcmp, inst);
 #endif
+	xlat_register("ldap",ldap_xlat,inst);
 
 	if (read_mappings(inst) != 0) {
 		radlog(L_ERR, "rlm_ldap: Reading dictionary mappings from file %s failed",
@@ -456,6 +460,95 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
         return 0;
 
 }
+
+/*
+ * ldap_xlat()
+ * Do an xlat on an LDAP URL
+ */
+
+static int ldap_xlat(void *instance, REQUEST *request, char *fmt, char *out, int freespace,
+				RADIUS_ESCAPE_STRING func)
+{
+	char url[MAX_STRING_LEN];
+	int res;
+	int ret = 0;
+	ldap_instance *inst = instance;
+	LDAPURLDesc *ldap_url;
+	LDAPMessage *result = NULL;
+	LDAPMessage *msg = NULL;
+	char **vals;
+
+	DEBUG("rlm_ldap: - ldap_xlat");
+	if (!radius_xlat(url, sizeof(url), fmt, request, func)) {
+		radlog (L_ERR, "rlm_ldap: Unable to create LDAP URL.\n");
+		return 0;
+	}
+	if (!ldap_is_ldap_url(url)){
+		radlog (L_ERR, "rlm_ldap: String passed does not look like an LDAP URL.\n");
+		return 0;
+	}
+	if (ldap_url_parse(url,&ldap_url)){
+		radlog (L_ERR, "rlm_ldap: LDAP URL parse failed.\n");
+		return 0;
+	}
+	if (ldap_url->lud_attrs == NULL || ldap_url->lud_attrs[0] == NULL || \
+		( ldap_url->lud_attrs[1] != NULL || ( ! strlen(ldap_url->lud_attrs[0]) || \
+		! strcmp(ldap_url->lud_attrs[0],"*") ) ) ){
+		radlog (L_ERR, "rlm_ldap: Invalid Attribute(s) request.\n");
+		ldap_free_urldesc(ldap_url);
+		return 0;
+	}
+	if (ldap_url->lud_host){
+		if (strncmp(inst->server,ldap_url->lud_host,strlen(inst->server)) != 0 || \
+				ldap_url->lud_port != inst->port){
+			DEBUG("rlm_ldap: Requested server/port is not known to this module instance.");
+			ldap_free_urldesc(ldap_url);
+			return 0;
+		}
+	}
+	if ((res = perform_search(inst, ldap_url->lud_dn, ldap_url->lud_scope, ldap_url->lud_filter, ldap_url->lud_attrs, &result)) != RLM_MODULE_OK){
+		if (res == RLM_MODULE_NOTFOUND){
+			DEBUG("rlm_ldap: Search returned not found");
+			ldap_free_urldesc(ldap_url);
+			return 0;
+		}
+		DEBUG("rlm_ldap: Search returned error");
+		ldap_free_urldesc(ldap_url);
+		return 0;
+	}
+	if ((msg = ldap_first_entry(inst->ld, result)) == NULL){
+		DEBUG("rlm_ldap: ldap_first_entry() failed");
+		ldap_msgfree(result);
+		ldap_free_urldesc(ldap_url);
+		return 0;
+	}
+	if ((vals = ldap_get_values(inst->ld, msg, ldap_url->lud_attrs[0])) != NULL) {
+		if (ldap_count_values(vals)){
+			ret = strlen(vals[0]);
+			if (ret > freespace){
+				DEBUG("rlm_ldap: Insufficient string space");
+				ldap_free_urldesc(ldap_url);
+				ldap_value_free(vals);
+				ldap_msgfree(result);
+				return 0;
+			}
+			DEBUG("rlm_ldap: Adding attribute %s, value: %s",ldap_url->lud_attrs[0],vals[0]);
+			strncpy(out,vals[0],ret);
+			ldap_free_urldesc(ldap_url);
+			ldap_value_free(vals);
+		}
+	}
+	else{
+		ldap_free_urldesc(ldap_url);
+		ldap_msgfree(result);
+		ret = 0;
+	}
+
+	DEBUG("rlm_ldap: - ldap_xlat end");
+
+	return ret;
+}
+
 
 /******************************************************************************
  *
@@ -983,6 +1076,7 @@ ldap_detach(void *instance)
 #ifdef PW_GROUP_NAME
 	paircompare_unregister(PW_GROUP_NAME, ldap_groupcmp);
 #endif
+	xlat_unregister("ldap",ldap_xlat);
 
 	free(inst);
 

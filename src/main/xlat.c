@@ -35,6 +35,82 @@ static const char rcsid[] =
 
 #include	"radiusd.h"
 
+static struct xlat_cmp {
+	char module[MAX_STRING_LEN];
+	int length;
+	void *instance;
+	RAD_XLAT_FUNC do_xlat;
+	struct xlat_cmp *next;
+};
+
+static struct xlat_cmp *cmp;
+
+/*
+ *      Register an xlat function.
+ */
+int xlat_register(char *module, RAD_XLAT_FUNC func, void *instance)
+{
+	struct xlat_cmp      *c;
+
+	if (module == NULL || strlen(module) == 0){
+		DEBUG("xlat_register: Invalid module name");
+		return -1;
+	}
+
+	xlat_unregister(module, func);
+
+	c = rad_malloc(sizeof(struct xlat_cmp));
+
+	c->do_xlat = func;
+	strncpy(c->module, module, MAX_STRING_LEN);
+	c->length = strlen(c->module);
+	c->instance = instance;
+	c->next = cmp;
+	cmp = c;
+
+	return 0;
+}
+
+/*
+ *      Unregister an xlat function.
+ */
+void xlat_unregister(char *module, RAD_XLAT_FUNC func)
+{
+	struct xlat_cmp      *c, *last;
+
+	last = NULL;
+	for (c = cmp; c; c = c->next) {
+		if (strncmp(c->module,module,c->length) == 0 && c->do_xlat == func)
+			break;
+		last = c;
+	}
+
+	if (c == NULL) return;
+
+	if (last != NULL)
+		last->next = c->next;
+	else
+		cmp = c->next;
+
+	free(c);
+}
+
+/*
+ * find the appropriate registered xlat function.
+ */
+static struct xlat_cmp *find_xlat_func(char *module)
+{
+	struct xlat_cmp *c;
+
+	for (c = cmp; c; c = c->next){
+		if (strncmp(c->module,module,c->length) == 0 && *(module+c->length) == ':')
+			break;
+	}
+
+	return c;
+}
+
+
 /*
    Convert the value on a VALUE_PAIR to string
 */
@@ -84,6 +160,7 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	char *q, *pa;
 	int stop=0, found=0;
 	int openbraces = *open;
+	struct xlat_cmp *c;
 
 	p = *from;
 	q = *to;
@@ -131,6 +208,11 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
 		}
+	} else if ((c = find_xlat_func(attrname)) != NULL){
+		DEBUG("radius_xlat: Runing registered xlat function of module %s for string \'%s\'",
+				c->module, attrname+(c->length+1));
+		q += c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
+		found = 1;
 	} else {
 		if((tmpda = dict_attrbyname(attrname)) && 
 				(tmppair = pairfind(request->packet->vps,tmpda->attr))) {
