@@ -374,6 +374,12 @@ static int generate_realms(const char *filename)
 				c->auth_port = auth_port;
 			} else {
 				c->ipaddr = ip_getaddr(authhost);
+				if (c->ipaddr == htonl(INADDR_NONE)) {
+					radlog(L_ERR, "%s[%d]: Host %s not found",
+					       filename, cf_section_lineno(cs),
+					       authhost);
+					return -1;
+				}
 			}
 
 			/* 
@@ -410,7 +416,13 @@ static int generate_realms(const char *filename)
 				c->acct_port = acct_port;
 			} else {
 				c->acct_ipaddr = ip_getaddr(accthost);
-			}
+				if (c->acct_ipaddr == htonl(INADDR_NONE)) {
+					radlog(L_ERR, "%s[%d]: Host %s not found",
+					       filename, cf_section_lineno(cs),
+					       accthost);
+					return -1;
+				}
+			}				    
 
 			if (strlen(accthost) >= sizeof(c->acct_server)) {
 				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
