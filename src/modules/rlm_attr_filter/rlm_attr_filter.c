@@ -322,7 +322,7 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 
 		    if(reply_item != (VALUE_PAIR *)NULL) {
 
-		        compare = simplepaircmp(reply_item, check_item); 
+			compare = simplepaircmp(request, reply_item, check_item);
 
 			/* DEBUG2("    attr_filter: compare = %d", compare); */
 

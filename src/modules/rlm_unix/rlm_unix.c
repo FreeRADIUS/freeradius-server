@@ -195,7 +195,7 @@ static shadow_pwd_t *fgetspnam(const char *fname, const char *name) {
 /*
  *	The Group = handler.
  */
-static int groupcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	struct passwd	*pwd;

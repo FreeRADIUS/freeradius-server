@@ -228,7 +228,7 @@ static int hunt_paircmp(VALUE_PAIR *request, VALUE_PAIR *check)
 		tmp = check_item->next;
 		check_item->next = NULL;
 
-		result = paircmp(request, check_item, NULL);
+		result = paircmp(NULL, request, check_item, NULL);
 
 		check_item->next = tmp;
 		check_item = check_item->next;
@@ -437,7 +437,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
  *	See if the huntgroup matches. This function is
  *	tied to the "Huntgroup" keyword.
  */
-static int huntgroup_cmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+static int huntgroup_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			 VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	PAIR_LIST	*i;
@@ -452,7 +452,7 @@ static int huntgroup_cmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	for (i = data->huntgroups; i; i = i->next) {
 		if (strcmp(i->name, huntgroup) != 0)
 			continue;
-		if (paircmp(request, i->check, NULL) == 0) {
+		if (paircmp(req, request, i->check, NULL) == 0) {
 			DEBUG2("  huntgroups: Matched %s at %d",
 			       i->name, i->lineno);
 			break;
@@ -489,7 +489,7 @@ static int huntgroup_access(PAIR_LIST *huntgroups, VALUE_PAIR *request_pairs)
 		/*
 		 *	See if this entry matches.
 		 */
-		if (paircmp(request_pairs, i->check, NULL) != 0)
+		if (paircmp(NULL, request_pairs, i->check, NULL) != 0)
 			continue;
 
 		/*

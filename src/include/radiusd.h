@@ -157,7 +157,7 @@ typedef struct main_config_t {
 #endif
 
 /* for paircompare_register */
-typedef int (*RAD_COMPARE_FUNC)(void *instance, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
+typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
 typedef enum radlog_dest_t {
   RADLOG_FILES = 0,
@@ -287,9 +287,9 @@ int		paircompare_register(int attr, int otherattr,
 				     RAD_COMPARE_FUNC func,
 				     void *instance);
 void		paircompare_unregister(int attr, RAD_COMPARE_FUNC func);
-int		paircmp(VALUE_PAIR *request, VALUE_PAIR *check,
+int		paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			VALUE_PAIR **reply);
-int             simplepaircmp(VALUE_PAIR *, VALUE_PAIR *);
+int		simplepaircmp(REQUEST *, VALUE_PAIR *, VALUE_PAIR *);
 void		pair_builtincompare_init(void);
 
 /* xlat.c */

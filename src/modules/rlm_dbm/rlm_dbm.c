@@ -199,7 +199,7 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
    	 				if ( parse_state == SMP_PATTERN ) { /* pattern line found */
    	 					DEBUG2("process pattern");
    	 					/* check pattern against request */
-   	 					if ( paircmp(request, vp, reply ) == 0 ) {
+						if ( paircmp(NULL, request, vp, reply ) == 0 ) {
 							DEBUG2("rlm_dbm: Pattern matched, look for request");
    	 						pairmove(&tmp_config, &vp);
    	 						pairfree(&vp);

@@ -295,7 +295,7 @@ static int file_authorize(void *instance, REQUEST *request)
 		 *	check pairs, then add the reply pairs from the
 		 *	entry to the current list of reply pairs.
 		 */
-		if ((paircmp(request_pairs, pl->check, reply_pairs) == 0)) {
+		if ((paircmp(request, request_pairs, pl->check, reply_pairs) == 0)) {
 
 			if((mainconfig.do_usercollide) && (strcmp(pl->name, "DEFAULT"))) {
 
@@ -408,7 +408,7 @@ static int file_preacct(void *instance, REQUEST *request)
 		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
 			continue;
 
-		if (paircmp(request_pairs, pl->check, reply_pairs) == 0) {
+		if (paircmp(request, request_pairs, pl->check, reply_pairs) == 0) {
 			DEBUG2("    acct_users: Matched %s at %d",
 			       pl->name, pl->lineno);
 			found = 1;

@@ -63,7 +63,7 @@ static struct cmp *cmp;
 /*
  *	Compare 2 attributes. May call the attribute compare function.
  */
-static int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
+static int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	int ret = -2;
@@ -82,7 +82,7 @@ static int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
 	 */
 	for (c = cmp; c; c = c->next)
 		if (c->attribute == check->attribute)
-			return (c->compare)(c->instance, request, check,
+			return (c->compare)(c->instance, req, request, check,
 				check_pairs, reply_pairs);
 
 	switch(check->type) {
@@ -199,7 +199,7 @@ void paircompare_unregister(int attr, RAD_COMPARE_FUNC fun)
  *
  *	Return 0 on match.
  */
-int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
+int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 {
 	VALUE_PAIR *check_item = check;
 	VALUE_PAIR *auth_item;
@@ -267,7 +267,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = paircompare(auth_item, check_item, check, reply);
+		compare = paircompare(req, auth_item, check_item, check, reply);
 
 		switch (check_item->operator) {
 			case T_OP_EQ:
@@ -330,16 +330,16 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
  *      Compare two attributes simply.  Calls paircompare.
  */
 
-int simplepaircmp(VALUE_PAIR *first, VALUE_PAIR *second)
+int simplepaircmp(REQUEST *req, VALUE_PAIR *first, VALUE_PAIR *second)
 {
-	return paircompare( first, second, NULL, NULL );
+	return paircompare( req, first, second, NULL, NULL );
 }
 
 
 /*
  *	Compare a Connect-Info and a Connect-Rate
  */
-static int connectcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+static int connectcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	int rate;
@@ -356,7 +356,7 @@ static int connectcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 /*
  *	Compare a portno with a range.
  */
-static int portcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+static int portcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	char buf[MAX_STRING_LEN];
@@ -402,7 +402,7 @@ static int portcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
  *	- if PW_STRIP_USER_NAME is not present in check_pairs,
  *	  add a PW_STRIPPED_USER_NAME to the request.
  */
-static int presufcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+static int presufcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR *vp;
@@ -472,7 +472,7 @@ static int presufcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
  *	do the comparison against when the packet came in, not now,
  *	and have one less system call to do.
  */
-static int timecmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+static int timecmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	instance = instance;
@@ -495,7 +495,7 @@ static int timecmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
  *	doing the lookup only ONCE, and storing the result
  *	in check->lvalue...
  */
-static int attrcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+static int attrcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR *pair;
@@ -531,7 +531,7 @@ static int attrcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 /*
  *	Compare the expiration date.
  */
-static int expirecmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+static int expirecmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		     VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	time_t now;
