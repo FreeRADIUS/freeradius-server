@@ -20,6 +20,11 @@ $file=shift||'none';
 $conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
 $all_file=shift||'no';
 #
+# Uncomment to force inserts even if there are sql errors. That can
+# help in case there is one sql query which stops the whole failed
+# logins logging system from working
+#$force=1;
+#
 #
 # CHANGE THESE TO MATCH YOUR SETUP
 #
@@ -55,7 +60,9 @@ die "SQL server not defined\n" if ($sql_server eq '');
 die "sql_command directive is not set in admin.conf\n" if ($mysql eq '');
 die "Could not find mysql binary. Please make sure that the \$mysql variable points to the right location\n" if (! -x $mysql);
 
+$opt = "";
 $opt = "-O connect_timeout=$sql_timeout" if ($sql_timeout);
+$opt .= " -f" if ($force);
 @servers = (split /\s+/,$sql_extra) if ($sql_extra ne '');
 unshift @servers, $sql_server;
 
