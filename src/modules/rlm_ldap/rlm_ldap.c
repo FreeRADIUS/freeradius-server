@@ -305,7 +305,11 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
  
 	inst->timeout.tv_usec = 0;
 	inst->net_timeout.tv_usec = 0;
-	inst->tls_mode = LDAP_OPT_X_TLS_TRY;
+	/* workaround for servers which support LDAPS but not START TLS */
+	if(inst->port == LDAPS_PORT)
+		inst->tls_mode = LDAP_OPT_X_TLS_HARD;
+	 else
+  		inst->tls_mode = LDAP_OPT_X_TLS_TRY;
 	inst->reply_item_map = NULL;
 	inst->check_item_map = NULL;
 	inst->conns = NULL;
@@ -1255,15 +1259,18 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	if (inst->ldap_debug && ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &(inst->ldap_debug)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", inst->ldap_debug);
 	}
-#ifdef HAVE_TLS
-	if (inst->tls_mode && ldap_set_option(ld, LDAP_OPT_X_TLS, (void *) &(inst->tls_mode)) != LDAP_OPT_SUCCESS) {
-		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_X_TLS_TRY");
-	}
-#endif
-
 #ifdef HAVE_LDAP_START_TLS
+        if(inst->tls_mode) {
+		DEBUG("rlm_ldap: setting TLS mode to %d", inst->tls_mode);
+        	if(ldap_set_option(ld, LDAP_OPT_X_TLS,
+	  	           (void *) &(inst->tls_mode)) != LDAP_OPT_SUCCESS) {
+			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+ 			radlog(L_ERR, "rlm_ldap: could not set LDAP_OPT_X_TLS option %s", ldap_err2string(ldap_errno));
+		}
+	}
+
 	if (inst->start_tls) {
-		DEBUG("rlm_ldap: try to start TLS");
+		DEBUG("rlm_ldap: starting TLS");
 		ldap_version = LDAP_VERSION3;
 		if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) == LDAP_SUCCESS) {
 			rc = ldap_start_tls_s(ld, NULL, NULL);
@@ -1279,12 +1286,13 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	}
 #endif /* HAVE_LDAP_START_TLS */
 
-	DEBUG("rlm_ldap: bind as %s/%s", dn, password);
-	msgid = ldap_simple_bind(ld, dn, password);
+	DEBUG("rlm_ldap: bind as %s/%s to %s:%d", dn, password, inst->server, inst->port);
+	msgid = ldap_bind(ld, dn, password,LDAP_AUTH_SIMPLE);
 	if (msgid == -1) {
-		DEBUG("rlm_ldap: ldap_simple_bind()");
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "rlm_ldap: %s bind failed: %s", dn, ldap_err2string(ldap_errno));
+		radlog(L_ERR, "rlm_ldap: %s bind to %s:%d failed: %s",
+			 dn, inst->server, inst->port,
+			 ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
 		return (NULL);
@@ -1296,7 +1304,9 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	if(rc < 1) {
 		DEBUG("rlm_ldap: ldap_result()");
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "rlm_ldap: %s bind failed: %s", dn, (rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
+		radlog(L_ERR, "rlm_ldap: %s bind to %s:%d failed: %s",
+			dn, inst->server, inst->port,
+			(rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
 		return (NULL);
@@ -1317,7 +1327,9 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 		break;
 		
 	default:
-		radlog(L_ERR,"rlm_ldap: %s bind failed %s", dn, ldap_err2string(ldap_errno));
+		radlog(L_ERR,"rlm_ldap: %s bind to %s:%d failed %s",
+			dn, inst->server, inst->port,
+			ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 	}
 
