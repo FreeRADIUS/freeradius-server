@@ -197,7 +197,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		 *
 		 *	If it isn't used, then grab it ourselves.
 		 */
-		if (pthread_mutex_trylock(&cur->mutex) < 0) {
+		if (pthread_mutex_trylock(&cur->mutex) != 0) {
 			goto next;
 		} /* else we now have the lock */
 #endif
