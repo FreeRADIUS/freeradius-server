@@ -50,11 +50,17 @@ three challenges found in the file. The first three challenges are used.
   Space and tabs are not permitted.
 
 AUTHORIZATION
-  
+ 
   Note, if the NAS continues to send the User-Name attribute in subsequent
 access-requests (such as continuations of the EAP-sim protocol), then the
-authorization process will be repeated. It is important that the same
-attributes are returned.
+authorization process will be repeated.
+  EAP-sim will capture the first set of attributes, so if they change, that
+is okay.
+
+  A future version of this module may look at the presence of the EAP-Identity
+attribute to determine if attributes must be retrieved.
+  However, in the general case, one might not know one wants to even do the
+EAP-Start to ask for the identity, until one has seen the username.
 
   If this module is successful at retrieving three sets of triplets, then
 the EAP-Type: attribute will be set to SIM. The EAP module itself will set
