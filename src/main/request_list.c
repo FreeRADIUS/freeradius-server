@@ -161,24 +161,16 @@ static int proxy_cmp(const void *one, const void *two)
 	 *	The following code looks unreasonable, but it's
 	 *	the only way to make the comparisons work.
 	 */
+	if (a->proxy->sockfd < b->proxy->sockfd) return -1;
+	if (a->proxy->sockfd > b->proxy->sockfd) return +1;
+
 	if (a->proxy->id < b->proxy->id) return -1;
 	if (a->proxy->id > b->proxy->id) return +1;
 
 	/*
-	 *	Crap... we've got to check packet codes, too.
+	 *	We've got to check packet codes, too.  But
+	 *	this should be done later, by someone else...
 	 */
-
-#if 0
-	/*
-	 *	FIXME: Add later, when we have multiple sockets
-	 *	for proxied requests.
-	 */
-	if (a->proxy->src_ipaddr < b->proxy->src_ipaddr) return -1;
-	if (a->proxy->src_ipaddr > b->proxy->src_ipaddr) return +1;
-
-	if (a->proxy->src_port < b->proxy->src_port) return -1;
-	if (a->proxy->src_port > b->proxy->src_port) return +1;
-#endif
 
 	if (a->proxy->dst_ipaddr < b->proxy->dst_ipaddr) return -1;
 	if (a->proxy->dst_ipaddr > b->proxy->dst_ipaddr) return +1;
@@ -445,8 +437,12 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 	myproxy.id = packet->id;
 
 	/*
-	 *	FIXME: Look for BOTH src/dst stuff.
+	 *	If we use the socket FD as an indicator,
+	 *	then that implicitely contains information
+	 *	as to our src ipaddr/port, so we don't need
+	 *	to use that in the comparisons.
 	 */
+	myproxy.sockfd = packet->sockfd;
 	myproxy.dst_ipaddr = packet->src_ipaddr;
 	myproxy.dst_port = packet->src_port;
 
