@@ -462,7 +462,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	pairfree(&reply_tmp);
 	pairfree(&check_tmp);
 
-	if (inst->config->authenticate_query){
+	if (*inst->config->authenticate_query){
 		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request, sql_escape_func);
 	
 		/* Remove the username we (maybe) added above */
