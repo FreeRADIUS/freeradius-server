@@ -291,6 +291,13 @@ RADIUS_PACKET *rad_recv(int fd)
 	salen = sizeof(saremote);
 	packet->data_len = recvfrom(fd, packet->data, PACKET_DATA_LEN,
 		0, (struct sockaddr *)&saremote, &salen);
+	if (packet->data_len < 0) {
+		free(packet->data);
+		free(packet);
+		librad_log("Error receiving packet: %s", strerror(errno));
+		return NULL;
+	}
+
 	if (packet->data_len < 20) {
 		free(packet->data);
 		free(packet);
