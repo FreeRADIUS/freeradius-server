@@ -483,15 +483,10 @@ int main(int argc, char **argv)
 	signal(SIGIOT, sig_fatal);
 #endif
 
-	/*
-	 *  Pooled threads and child threads define their own
-	 *  signal handler.
+	/* this is right for threads, too, right?  
+	 * (Threads shouldn't get signals (from us) -- just be pthread_cancel()led.)
 	 */
-#ifndef WITH_THREAD_POOL
-#ifndef HAVE_PTHREAD_H
 	signal(SIGTERM, sig_fatal);
-#endif
-#endif
 	signal(SIGCHLD, sig_cleanup);
 #if 0
 	signal(SIGFPE, sig_fatal);
@@ -1444,7 +1439,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			}
 		}
 	} else if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-		(request->reply == NULL)) {
+			(request->reply == NULL)) {
 		/*
 		 *  We're not configured to reply to the packet,
 		 *  and we're not proxying, so the DEFAULT behaviour
@@ -1530,7 +1525,7 @@ next_request:
 	DEBUG2("Going to the next request");
 
 #if WITH_THREAD_POOL
-	request->child_pid = NO_SUCH_CHILD_PID;
+	request->child_pid = NO_SUCH_CHILD_PID; /* finished with child, so initialize for next use */
 #endif
 	request->finished = finished; /* do as the LAST thing before exiting */
 
@@ -1589,8 +1584,8 @@ static struct timeval *rad_clean_list(time_t now)
 	 *  too long...
 	 */
 	if ((last_tv_ptr != NULL) &&
-	(last_cleaned_list == now) &&
-	(tv.tv_sec != 0)) {		
+			(last_cleaned_list == now) &&
+			(tv.tv_sec != 0)) {		
 		int i;
 
 		/*
@@ -1854,16 +1849,6 @@ typedef struct spawn_thread_t {
 } spawn_thread_t;
 
 /*
- *  If the child *thread* gets a termination signal,
- *  then exit from the thread.
- */
-static void sig_term(int sig)
-{
-	sig = sig;  /* -Wunused */
-	pthread_exit(NULL);
-}
-
-/*
  *  Spawn a new child thread to handle this request, and ONLY
  *  this request.
  */
@@ -1872,16 +1857,7 @@ static void *rad_spawn_thread(void *arg)
 	int replicating;
 	spawn_thread_t *data = (spawn_thread_t *)arg;
 	
-	/*
-	 *  Note that this behaviour only works on Linux.
-	 *
-	 *  It's generally NOT the thing to do, and should
-	 *  be fixed somehow.
-	 *
-	 *  Q: How do we signal a hung thread, and tell it to
-	 *  kill itself?
-	 */
-	signal(SIGTERM, sig_term);
+	pthread_setcancelstate(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 	
 	/*
 	 *  Keep only allowed attributes in the request.
@@ -2212,9 +2188,9 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  seriously wrong...
 	 */
 	if (request->finished &&
-	    (request->child_pid == NO_SUCH_CHILD_PID) &&
-	    ((request->timestamp + cleanup_delay <= info->now) ||
-	     (request->packet->code == PW_ACCOUNTING_REQUEST))) {
+			(request->child_pid == NO_SUCH_CHILD_PID) &&
+			((request->timestamp + cleanup_delay <= info->now) ||
+			(request->packet->code == PW_ACCOUNTING_REQUEST))) {
 		/*
 		 *  Request completed, delete it, and unlink it
 		 *  from the currently 'alive' list of requests.
@@ -2247,9 +2223,15 @@ static int refresh_request(REQUEST *request, void *data)
 				 *  This request seems to have hung
 				 *   - kill it
 				 */
+#ifdef WITH_THREAD_POOL || HAVE_PTHREAD_H
+				radlog(L_ERR, "Killing unresponsive thread for request %d",
+				       request->number);
+				pthread_cancel(child_pid);
+#else
 				radlog(L_ERR, "Killing unresponsive child %lu for request %d",
 				       child_pid, request->number);
-				child_kill(child_pid, SIGTERM);
+				kill(child_pid, SIGTERM);
+#endif
 			} /* else no proxy reply, quietly fail */
 		
 			/*
@@ -2263,7 +2245,7 @@ static int refresh_request(REQUEST *request, void *data)
 		 *	a warning.
 		 */
 		} else if (child_pid != NO_SUCH_CHILD_PID) {
-			radlog(L_ERR, "WARNING: Unresponsive child thread (pid %lu) for request %d",
+			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d",
 			       child_pid, number);
 		}
 		return RL_WALK_CONTINUE;
@@ -2328,8 +2310,7 @@ static int refresh_request(REQUEST *request, void *data)
 		delaypair = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
 		
 		if (!delaypair) {
-			delaypair = paircreate(PW_ACCT_DELAY_TIME,
-					PW_TYPE_INTEGER);
+			delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
 			if (!delaypair) {
 				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
