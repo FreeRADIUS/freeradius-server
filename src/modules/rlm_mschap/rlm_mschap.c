@@ -907,7 +907,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				rad_assert(reply_attr != NULL);
 				pairadd(&request->reply->vps, reply_attr);
 				reply_attr = pairmake("MS-MPPE-Encryption-Types",
-					(inst->require_strong)? "0x00000004":"0x0000006",
+					(inst->require_strong)? "0x00000004":"0x00000006",
 					T_OP_EQ);
 				rad_assert(reply_attr != NULL);
 				pairadd(&request->reply->vps, reply_attr);
