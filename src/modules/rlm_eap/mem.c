@@ -265,7 +265,7 @@ EAP_HANDLER *eaplist_isreply(EAP_HANDLER **first, unsigned char id[])
 	}
 
 	if (!ret) {
-		DEBUG2"  rlm_eap: Request not found in the list");
+		DEBUG2("  rlm_eap: Request not found in the list");
 	}
 	return ret;
 }
@@ -280,7 +280,7 @@ EAP_HANDLER *eaplist_findhandler(EAP_HANDLER *list, unsigned char id[])
 		 * Match is identified by the same IDs 
 		 */
 		if (memcmp(node->id, id, id[0]) == 0) {
-			DEBUG2"  rlm_eap: EAP Handler found in the list ");
+			DEBUG2("  rlm_eap: EAP Handler found in the list ");
 			return node;
 		}
 		node = node->next;
