@@ -235,18 +235,6 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
-	 *	The special server LOCAL?
-	 *
-	 *	Do nothing.  Just return.  The rest of the code
-	 *	will take care of stripping off the realm name,
-	 *	through using the Stripped-User-Name attribute
-	 *	for authentication.
-	 */
-	if (strcmp(realm->server, "LOCAL") == 0) {
-		return 0;
-	}
-
-	/*
 	 *	Copy the request, then look up
 	 *	name and plain-text password in the copy.
 	 *

@@ -82,6 +82,26 @@ static int realm_authorize(REQUEST *request,
 	vp->length = strlen(vp->strvalue);
 
 	/*
+	 *	Add a 'realm' attribute to the incoming request.
+	 */
+	vp = pairmake("Realm", realm->realm, T_OP_EQ);
+	if (!vp) {
+		log(L_ERR|L_CONS, "no memory");
+		exit(1);
+	}
+	pairadd(&request->packet->vps, vp);
+	
+	/*
+	 *	The special server LOCAL?
+	 *
+	 *	Do nothing.  Just return, without telling the server
+	 *	to proxy anything.
+	 */
+	if (strcmp(realm->server, "LOCAL") == 0) {
+		return RLM_AUTZ_NOTFOUND;
+	}
+
+	/*
 	 *  'realmname' may be NULL, while realm->realm isn't.
 	 */
 	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
@@ -94,16 +114,6 @@ static int realm_authorize(REQUEST *request,
 	 *  Add it, even if it's already present.
 	 */
 	pairadd(check_pairs, vp);
-	
-	/*
-	 *  Add a 'realm' attribute to the incoming request.
-	 */
-	vp = pairmake("Realm", realm->realm, T_OP_EQ);
-	if (!vp) {
-	  log(L_ERR|L_CONS, "no memory");
-	  exit(1);
-	}
-	pairadd(&request->packet->vps, vp);
 	
 	return RLM_AUTZ_NOTFOUND; /* try the next module */
 }
@@ -170,6 +180,26 @@ static int realm_preacct(REQUEST *request)
 	vp->length = strlen(vp->strvalue);
 
 	/*
+	 *  Add a 'realm' attribute to the incoming request.
+	 */
+	vp = pairmake("Realm", realm->realm, T_OP_EQ);
+	if (!vp) {
+	  log(L_ERR|L_CONS, "no memory");
+	  exit(1);
+	}
+	pairadd(&request->packet->vps, vp);
+
+	/*
+	 *	The special server LOCAL?
+	 *
+	 *	Do nothing.  Just return, without telling the server
+	 *	to proxy anything.
+	 */
+	if (strcmp(realm->server, "LOCAL") == 0) {
+		return RLM_PRAC_OK;
+	}
+
+	/*
 	 *  'realmname' may be NULL, while realm->realm isn't.
 	 */
 	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
@@ -183,15 +213,6 @@ static int realm_preacct(REQUEST *request)
 	 */
 	pairadd(&request->config_items, vp);
 	
-	/*
-	 *  Add a 'realm' attribute to the incoming request.
-	 */
-	vp = pairmake("Realm", realm->realm, T_OP_EQ);
-	if (!vp) {
-	  log(L_ERR|L_CONS, "no memory");
-	  exit(1);
-	}
-	pairadd(&request->packet->vps, vp);
 	return RLM_PRAC_OK; /* try the next module */
 }
 
