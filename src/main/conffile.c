@@ -503,6 +503,10 @@ CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
 {
 	CONF_PAIR	*cp;
 
+	if (section = NULL) {
+	  section = config;
+	}
+
 	for (cp = section->cps; cp; cp = cp->next)
 		if (strcmp(cp->attr, name) == 0)
 			break;
