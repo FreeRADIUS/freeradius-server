@@ -256,7 +256,8 @@ lign=top>
 <br>
 EOM;
 
-if ($user_info) print <<<EOM
+if ($user_info){
+	echo <<<EOM
 <table border=0 width=540 cellpadding=1 cellspacing=1>
 <tr valign=top>
 <td width=340></td>
@@ -279,6 +280,9 @@ if ($user_info) print <<<EOM
 	$cn
 	</td>
 	</tr>
+EOM;
+	if ($config[general_prefered_lang] != 'en'){
+		echo <<<EOM
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
 	<b>name ($config[general_prefered_lang_name])</b>
@@ -287,6 +291,9 @@ if ($user_info) print <<<EOM
 	$cn_lang
 	</td>
 	</tr>
+EOM;
+	}
+	echo <<<EOM
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
 	<b>department</b>
@@ -295,6 +302,9 @@ if ($user_info) print <<<EOM
 	$ou
 	</td>
 	</tr>
+EOM;
+	if ($config[general_prefered_lang] != 'en'){
+		echo <<<EOM
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
 	<b>department ($config[general_prefered_lang_name])</b>
@@ -303,6 +313,9 @@ if ($user_info) print <<<EOM
 	$ou_lang
 	</td>
 	</tr>
+EOM;
+	}
+	echo <<<EOM
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
 	<b>title</b>
@@ -311,6 +324,9 @@ if ($user_info) print <<<EOM
 	$title
 	</td>
 	</tr>
+EOM;
+	if ($config[general_prefered_lang] != 'en'){
+		echo <<<EOM
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
 	<b>title ($config[general_prefered_lang_name])</b>
@@ -319,22 +335,53 @@ if ($user_info) print <<<EOM
 	$title_lang
 	</td>
 	</tr>
+EOM;
+	}
+	echo <<<EOM
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
 	<b>address</b>
 	</td>
 	<td>
-	$homeaddress
+	$address
 	</td>
 	</tr>
+EOM;
+	if ($config[general_prefered_lang] != 'en'){
+		echo <<<EOM
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
 	<b>address ($config[general_prefered_lang_name])</b>
 	</td>
 	<td>
+	$address_lang
+	</td>
+	</tr>
+EOM;
+	}
+	echo <<<EOM
+	<tr>
+	<td align=center bgcolor="#d0ddb0">
+	<b>home address</b>
+	</td>
+	<td>
+	$homeaddress
+	</td>
+	</tr>
+EOM;
+	if ($config[general_prefered_lang] != 'en'){
+		echo <<<EOM
+	<tr>
+	<td align=center bgcolor="#d0ddb0">
+	<b>home address ($config[general_prefered_lang_name])</b>
+	</td>
+	<td>
 	$homeaddress_lang
 	</td>
 	</tr>
+EOM;
+	}
+	echo <<<EOM
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
 	<b>phone</b>
@@ -396,6 +443,7 @@ if ($user_info) print <<<EOM
 </table>
 
 EOM;
+}
 ?>
 	<tr>	<td colspan=3 height=1></td></tr>
 	<tr>	<td colspan=3>

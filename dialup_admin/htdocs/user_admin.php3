@@ -9,7 +9,6 @@ $date = strftime('%A, %e %B %Y, %T %Z');
 
 if (is_file("../lib/$config[general_lib_type]/user_info.php3")){
 	include("../lib/$config[general_lib_type]/user_info.php3");
-	$user_info = 1;
 	if ($user_exists == 'no'){
 		echo <<<EOM
 <title>user information page</title>

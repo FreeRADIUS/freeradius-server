@@ -17,6 +17,8 @@ $user_exists = 'no';
 
 $cn = '-';
 $cn_lang = '-';
+$address = '-';
+$address_lang = '-';
 $homeaddress = '-';
 $homeaddress_lang = '-';
 $fax = '-';
@@ -69,8 +71,10 @@ if ($link){
 				$res = @da_sql_query($link,$config,
 				"SELECT * FROM $config[sql_user_info_table] WHERE UserName = '$login';");
 				if ($res){
-					if (@da_sql_num_rows($res,$config))
+					if (@da_sql_num_rows($res,$config)){
 						$user_exists = 'yes';
+						$user_info = 1;
+					}
 					if (($row = @da_sql_fetch_array($res,$config))){	
 						$cn = ($row[Name] != '') ? $row[Name] : '-';
 						$telephonenumber = ($row[WorkPhone] != '') ? $row[WorkPhone] : '-';

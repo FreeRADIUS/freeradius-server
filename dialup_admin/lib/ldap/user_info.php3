@@ -7,6 +7,8 @@ else
 
 $cn = '-';
 $cn_lang = '-';
+$address = '-';
+$address_lang = '-';
 $homeaddress = '-';
 $homeaddress_lang = '-';
 $fax = '-';
@@ -31,6 +33,7 @@ if ($ds) {
 		$user_exists = 'no';
 	else{
 		$user_exists = 'yes';
+		$user_info = 1;
 		unset($item_vals);
 		$k = init_decoder();
 		$cn = ($info[0]['cn'][0]) ? $info[0]['cn'][0] : '-';
@@ -39,6 +42,10 @@ if ($ds) {
 		$cn_lang = ($cn_lang) ? $cn_lang : '-';
 		$telephonenumber = ($info[0]['telephonenumber'][0]) ? $info[0]['telephonenumber'][0] : '-';
 		$homephone = ($info[0]['homephone'][0]) ? $info[0]['homephone'][0] : '-';
+		$address = ($info[0]['postaladdress'][0]) ? $info[0]['postaladdress'][0] : '-';
+		$address_lang = $info[0]["postaladdress;lang-$config[general_prefered_lang]"][0];
+		$address_lang = decode_string("$address_lang",$k);
+		$address_lang = ($address_lang) ? $address_lang : '-';
 		$homeaddress = ($info[0]['homepostaladdress'][0]) ? $info[0]['homepostaladdress'][0] : '-';
 		$homeaddress_lang = $info[0]["homepostaladdress;lang-$config[general_prefered_lang]"][0];
 		$homeaddress_lang = decode_string("$homeaddress_lang", $k);

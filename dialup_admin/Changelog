@@ -18,6 +18,9 @@ Ver 1.50:
 * Set a few more personal information attributes to defaults in lib/sql/user_info.php3
 * Fix a typo for department
 * Set personal information attributes to defaults in lib/ldap/user_info.php3
+* Have adddress and home address in user personal info
+* Set $user_info in lib/{ldap,sql}/user_info.php3 and only if the user exists and has personal info
+* Show language attributes only if general_prefered_lang is not 'en'
 Ver 1.30:
 * Add limit of results returned in accounting.php3
 * Fix a bug in time2strclock() in lib/functions.php3. Seconds ammount more than 9 would not show.
