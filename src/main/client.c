@@ -238,6 +238,7 @@ void client_walk(void)
  */
 const char *client_name(uint32_t ipaddr)
 {
+	/* We don't call this unless we should know about the client. */
 	RADCLIENT *cl;
 	char host_ipaddr[16];
 
@@ -248,13 +249,14 @@ const char *client_name(uint32_t ipaddr)
 			return cl->longname;
 	}
 	
-	radlog(L_ERR, "Couldn't lookup %s\n", ip_ntoa(host_ipaddr, ipaddr));
-
-	/*
-	 *	We should NEVER reach this piece of code, as we should
-	 *	NEVER be looking up client names for clients we don't know!
+	/* 
+	 * this isn't normally reachable, but if a loggable event happens just 
+	 * after a client list change and a HUP, then we may not know this 
+	 * information any more.
+	 *
+	 * If you see lots of these, then there's something wrong.
 	 */
-	radlog(L_ERR, "ERROR!  Unreachable code reached, at %s:%d", __FILE__, __LINE__);
+	radlog(L_ERR, "Trying to look up name of unknown client %s.\n", ip_ntoa(host_ipaddr, ipaddr));
 
 	return "UNKNOWN-CLIENT";
 }
