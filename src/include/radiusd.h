@@ -268,7 +268,7 @@ int		paircmp(VALUE_PAIR *request, VALUE_PAIR *check,
 void		pair_builtincompare_init(void);
 
 /* xlat.c */
-int            radius_xlat2(char * out, int outlen, char *str,
+int            radius_xlat2(char * out, int outlen, const char *fmt,
                             REQUEST * request, VALUE_PAIR *reply);
 
 #ifdef WITH_THREAD_POOL

@@ -100,19 +100,19 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
  *	${reply:AttributeName}		Corresponding value for AttributeName in reply
  */
 
-int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR *reply)
+int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request, VALUE_PAIR *reply)
 {
 	char attrname[128];
 	char *pa;
 	int i, c,freespace;
-	char *p;
+	const char *p;
 	char *q;
 	VALUE_PAIR *tmp;
 	struct tm * TM;
 	char tmpdt[40]; /* For temporary storing of dates */
 
 	q = out;
-	for (p = str; *p ; p++) {
+	for (p = fmt; *p ; p++) {
 	/* Calculate freespace in output */
 	freespace = outlen - ((int)q-(int)out);
 		if (freespace <= 1)
