@@ -146,7 +146,9 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 /*
  *  Decode an attribute name into a string.
  */
-static void decode_attribute(const char **from, char **to, int freespace, int *open, REQUEST *request, RADIUS_ESCAPE_STRING func)
+static void decode_attribute(const char **from, char **to, int freespace,
+			     int *open, REQUEST *request,
+			     RADIUS_ESCAPE_STRING func)
 {
 
 	DICT_ATTR *tmpda;
@@ -176,6 +178,14 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	 */
 	while ((*p) && (!stop)) {
 		switch(*p) {
+			/*
+			 *  Allow braces inside things, too.
+			 */
+			case '\\':
+				p++; /* skip it */
+				*pa++ = *p++;
+				break;
+
 			case '{':
 				openbraces++;
 				*pa++ = *p++;
@@ -185,15 +195,22 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 				openbraces--;
 				if (openbraces == *open) {
 					stop=1;
+					p++;
 				} else {
 					*pa++ = *p++;
 				}
 				break;
 
+				/*
+				 *  Attr-Name1:-Attr-Name2
+				 *
+				 *  Use Attr-Name1, and if not found,
+				 *  use Attr-Name2.
+				 */
 			case ':':
-				if(*(p+1) && (*(p+1) == '-')) {
-					p+=2;
-					stop=1;
+				if (p[1] == '-') {
+					p += 2;
+					stop = 1;
 					break;
 				}
 				/* else FALL-THROUGH */
@@ -205,18 +222,29 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	}
 	*pa = '\0';
 
+	/*
+	 *	Find an attribute from the reply.
+	 */
 	if (strncasecmp(attrname,"reply:",6) == 0) {
 		if((tmpda = dict_attrbyname(&attrname[6])) && 
 				(tmppair = pairfind(request->reply->vps, tmpda->attr))) {
 			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
 		}
+
+		/*
+		 *	Find an attribute from the request.
+		 */
 	} else if (strncasecmp(attrname,"request:",8) == 0) {
 		if((tmpda = dict_attrbyname(&attrname[8])) && 
 				(tmppair = pairfind(request->packet->vps, tmpda->attr))) {
 			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
 		}
+
+		/*
+		 *	Find an attribute from the proxy reply.
+		 */
 	} else if ((strncasecmp(attrname,"proxy-reply:",12) == 0) &&
 		   (request->proxy_reply != NULL)) {
 		if((tmpda = dict_attrbyname(&attrname[12])) && 
@@ -225,34 +253,54 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 			found = 1;
 		}
 
-	} else if ((c = find_xlat_func(attrname)) != NULL){
+		/*
+		 *	Find a string from a registered function.
+		 */
+	} else if ((c = find_xlat_func(attrname)) != NULL) {
 		DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
-				c->module, attrname+(c->length+1));
+		      c->module, attrname+ c->length + 1);
 		q += c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
+		/*
+		 *	Nothing else, it MUST be a bare attribute name.
+		 */
+	} else if ((tmpda = dict_attrbyname(attrname)) && 
+		   (tmppair = pairfind(request->packet->vps,tmpda->attr))) {
+		q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 		found = 1;
 	} else {
-		if((tmpda = dict_attrbyname(attrname)) && 
-				(tmppair = pairfind(request->packet->vps,tmpda->attr))) {
-			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
-			found = 1;
-		} else {
-		 	DEBUG2("WARNING: Attempt to use unknown xlat function in string %%{%s}", attrname);
-		}
-	} 
+		DEBUG2("WARNING: Attempt to use unknown xlat function or attribute in string %%{%s}", attrname);
+	}
 
 	/*
 	 * Skip to last '}' if attr is found
 	 * The rest of the stuff within the braces is
 	 * useless if we found what we need
 	 */
-	if(found) {
+	if (found) {
 		while((*p != '\0') && (openbraces > 0)) {
-			if(*p == '}')
-				openbraces--;
-			if(*p == '{')
+			switch (*p) {
+			default:
+				break;
+
+				/*
+				 *  Ensure that escaped braces are allowed.
+				 */
+			case '\\':
+				p++; /* skip the escaped character */
+				break;
+
+				/*
+				 *  Bare brace
+				 */
+			case '{':
 				openbraces++;
-			if (openbraces >= 0)
-				p++;
+				break;
+
+			case '}':
+				openbraces--;
+				break;
+			}
+			p++;	/* skip the character */
 		}
 	} else {
 		p--;
@@ -261,7 +309,6 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	*open = openbraces;
 	*from = p;
 	*to = q;
-
 }
 
 /*
@@ -300,33 +347,7 @@ static int xlat_copy(char *out, int outlen, const char *in)
 /*
  *	Replace %<whatever> in a string.
  *
- *	%a	 Protocol (SLIP/PPP)
- *	%c	 Callback-Number
- *	%d	 request day (DD)
- *	%f	 Framed IP address
- *	%i	 Calling Station ID
- *	%l	 request timestamp
- *	%m	 request month (MM)
- *	%n	 NAS IP address
- *	%p	 Port number
- *	%s	 Speed (PW_CONNECT_INFO)
- *	%t	 request in ctime format
- *	%u	 User name
- *	%A	 radacct_dir
- *	%C	 clientname
- *	%D	 request date (YYYYMMDD)
- *	%L	 radlog_dir
- *	%M	 MTU
- *	%R	 radius_dir
- *	%S	 request timestamp in database format (w/ spaces)
- *	%T	 request timestamp in database format
- *	%U	 Stripped User name
- *	%V	 Request-Authenticator (Verified/None)
- *	%Y	 request year (YYYY)
- *	%Z	 All request attributes except password (must have big buffer)
- *	${AttributeName}		Corresponding value for AttributeName in request
- *	${request:AttributeName}	Corresponding value for AttributeName in request
- *	${reply:AttributeName}		Corresponding value for AttributeName in reply
+ *	See 'doc/variables.txt' for more information.
  */
 int radius_xlat(char *out, int outlen, const char *fmt,
 		REQUEST *request, RADIUS_ESCAPE_STRING func)
