@@ -17,7 +17,7 @@ static const char rcsid[] = "$Id$";
  *	Version number. This should ideally be created by autoconf
  *	or similar, so that this would always be up to date.
  */
-#define		VERSION		"FreeRADIUS ALPHA, built on " __DATE__ 
+#define		VERSION		"FreeRADIUS ALPHA, built on " __DATE__ " at " __TIME__
 
 /*
  *	Display the revision number for this program

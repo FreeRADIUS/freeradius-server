@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("radclient: $Id$ built on " __DATE__ "\n");
+			printf("radclient: $Id$ built on " __DATE__ " at " __TIME__ "\n");
 			exit(0);
 			break;
 		case 'h':
