@@ -267,6 +267,28 @@ void rlm_policy_free_item(policy_item_t *item)
 				rlm_policy_free_item(this->policy);
 			}
 			break;
+
+		case POLICY_TYPE_CALL:
+			{
+				policy_call_t *this;
+				
+				this = (policy_call_t *) item;
+				if (this->name) free(this->name);
+			}
+			break;
+			
+		case POLICY_TYPE_RETURN:
+			break;	/* do nothing */
+
+		case POLICY_TYPE_MODULE:
+			{
+				policy_module_t *this;
+				
+				this = (policy_module_t *) item;
+				if (this->cs) cf_section_free(&this->cs);
+				if (this->mc) modcallable_free(&this->mc);
+			}
+			break;
 		} /* switch over type */
 		item->next = NULL; /* for debugging & sanity checks */
 		item->type = POLICY_TYPE_BAD;

@@ -32,6 +32,8 @@
 #include <stdlib.h>
 
 #include "radiusd.h"
+#include "modules.h"
+#include "modcall.h"
 
 #include "rad_assert.h"
 
@@ -91,6 +93,7 @@ typedef enum policy_type_t {
 	POLICY_TYPE_NAMED_POLICY,
 	POLICY_TYPE_CALL,
 	POLICY_TYPE_RETURN,
+	POLICY_TYPE_MODULE,
 	POLICY_TYPE_NUM_TYPES
 } policy_type_t;
 
@@ -112,6 +115,7 @@ typedef enum policy_reserved_word_t {
 	POLICY_RESERVED_POLICY,
 	POLICY_RESERVED_INCLUDE,
 	POLICY_RESERVED_RETURN,
+	POLICY_RESERVED_MODULE,
 	POLICY_RESERVED_NUM_WORDS
 } policy_reserved_word_t;
 
@@ -223,6 +227,17 @@ typedef struct policy_if_t {
 
 
 /*
+ *	Holds a reference to calling other modules... wild.
+ */
+typedef struct policy_module_t {
+	policy_item_t	item;
+	int		component; /* authorize, authenticate, etc. */
+	CONF_SECTION	*cs;
+	modcallable	*mc;
+} policy_module_t;
+
+
+/*
  *	Define a structure for our module configuration.
  *
  *	These variables do not need to be in a structure, but it's
@@ -241,6 +256,7 @@ typedef struct rlm_policy_t {
 extern const LRAD_NAME_NUMBER rlm_policy_tokens[];
 extern const LRAD_NAME_NUMBER policy_reserved_words[];
 extern const LRAD_NAME_NUMBER policy_return_codes[];
+extern const LRAD_NAME_NUMBER policy_component_names[];
 
 extern int rlm_policy_insert(rbtree_t *head, policy_named_t *policy);
 extern policy_named_t *rlm_policy_find(rbtree_t *head, const char *name);

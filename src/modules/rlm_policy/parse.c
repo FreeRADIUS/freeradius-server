@@ -536,8 +536,29 @@ const LRAD_NAME_NUMBER policy_reserved_words[] = {
 	{ "proxy-reply", POLICY_RESERVED_PROXY_REPLY },
 	{ "include", POLICY_RESERVED_INCLUDE },
 	{ "return", POLICY_RESERVED_RETURN },
+	{ "module", POLICY_RESERVED_MODULE },
 	{ NULL, POLICY_RESERVED_UNKNOWN }
 };
+
+
+/*
+ *	Simplifies some later coding
+ */
+static int policy_lex_str2int(policy_lex_file_t *lexer,
+			      const LRAD_NAME_NUMBER *table, int default_value)
+{
+	policy_lex_t token;
+	char buffer[256];
+
+	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
+	if (token != POLICY_LEX_BARE_WORD) {
+		fprintf(stderr, "%s[%d]: Unexpected token\n",
+			lexer->filename, lexer->lineno);
+		return default_value;
+	}
+
+	return lrad_str2int(table, buffer, default_value);
+}
 
 
 /*
@@ -933,21 +954,13 @@ static int parse_return(policy_lex_file_t *lexer, policy_item_t **tail)
 {
 	int rcode;
 	policy_lex_t token;
-	char buffer[32];
 	policy_return_t *this;
 
-	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
-	if (token != POLICY_LEX_BARE_WORD) {
-		fprintf(stderr, "%s[%d]: Unexpected token %s\n",
-			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
-		return 0;
-	}
-
-	rcode = lrad_str2int(policy_return_codes, buffer, RLM_MODULE_NUMCODES);
+	rcode = policy_lex_str2int(lexer, policy_return_codes,
+				   RLM_MODULE_NUMCODES);
 	if (rcode == RLM_MODULE_NUMCODES) {
-		fprintf(stderr, "%s[%d]: Invalid return code %s\n",
-			lexer->filename, lexer->lineno, buffer);
+		fprintf(stderr, "%s[%d]: Invalid return code\n",
+			lexer->filename, lexer->lineno);
 		return 0;
 	}
 
@@ -973,6 +986,113 @@ static int parse_return(policy_lex_file_t *lexer, policy_item_t **tail)
 
 	return 1;
 }
+
+
+const LRAD_NAME_NUMBER policy_component_names[] = {
+	{ "authenticate", RLM_COMPONENT_AUTH },
+	{ "authorize", RLM_COMPONENT_AUTZ },
+	{ "preacct", RLM_COMPONENT_PREACCT },
+	{ "accounting", RLM_COMPONENT_ACCT },
+	{ "session", RLM_COMPONENT_SESS },
+	{ "pre-proxy", RLM_COMPONENT_PRE_PROXY },
+	{ "post-proxy", RLM_COMPONENT_POST_PROXY },
+	{ "post-auth", RLM_COMPONENT_POST_AUTH },
+	{ NULL, RLM_COMPONENT_COUNT }
+};
+
+/*
+ *	Parse a module statement.
+ */
+static int parse_module(policy_lex_file_t *lexer, policy_item_t **tail)
+{
+	int component;
+	policy_lex_t token;
+	policy_module_t *this;
+	char *p;
+	const char *section_name;
+	char filename[1024];
+	char buffer[2048];
+	CONF_SECTION *cs, *subcs;
+	modcallable *mc;
+
+	/*
+	 *	And the filename
+	 */
+	token = policy_lex_file(lexer, 0, filename, sizeof(filename));
+	if (token != POLICY_LEX_DOUBLE_QUOTED_STRING) {
+		fprintf(stderr, "%s[%d]: Expected filename, got \"%s\"\n",
+			lexer->filename, lexer->lineno,
+			lrad_int2str(rlm_policy_tokens, token, "?"));
+		return 0;
+	}
+
+	/*
+	 *	See if we're including all of the files in a subdirectory.
+	 */
+	strNcpy(buffer, lexer->filename, sizeof(buffer));
+	p = strrchr(buffer, '/');
+	if (p) {
+		strNcpy(p + 1, filename, sizeof(buffer) - 1 - (p - buffer));
+	} else {
+		snprintf(buffer, sizeof(buffer), "%s/%s",
+			 radius_dir, filename);
+	}
+	
+	/*
+	 *	Include section calling a module.
+	 */
+	debug_tokens("including module section from file %s\n", buffer);
+	cs = conf_read(lexer->filename, lexer->lineno, buffer, NULL);
+	if (!cs) {
+		return 0;	/* it prints out error messages */
+	}
+
+	/*
+	 *	The outer section is called "main", and can be ignored.
+	 *	It should be a section, so there should be a subsection.
+	 */
+	subcs = cf_subsection_find_next(cs, NULL, NULL);
+	if (!subcs) {
+		fprintf(stderr, "%s[%d]: Expected section containing modules\n",
+			lexer->filename, lexer->lineno);
+		cf_section_free(&cs);
+		return 0;
+	}
+
+	section_name = cf_section_name1(subcs);
+	rad_assert(section_name != NULL);
+	component = lrad_str2int(policy_component_names, section_name,
+				 RLM_COMPONENT_COUNT);
+	if (component == RLM_COMPONENT_COUNT) {
+		fprintf(stderr, "%s[%d]: Invalid section name \"%s\"\n",
+			lexer->filename, lexer->lineno, section_name);
+		cf_section_free(&cs);
+		return 0;
+	}
+
+	/*
+	 *	Compile the module entry.
+	 */
+	mc = compile_modgroup(component, subcs, buffer);
+	if (!mc) {
+		cf_section_free(&cs);
+		return 0;	/* more often results in calling exit... */
+	}
+
+	this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	this->item.type = POLICY_TYPE_MODULE;
+	this->item.lineno = lexer->lineno;
+	this->component = component;
+	this->cs = cs;
+	this->mc = mc;
+
+	*tail = (policy_item_t *) this;
+
+	return 1;
+}
+
 
 /*
  *	Parse one statement.  'foo = bar', or 'if (...) {...}', or '{...}',
@@ -1035,6 +1155,13 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 			return 0;
 			break;
 			
+		case POLICY_RESERVED_MODULE:
+			if (parse_module(lexer, tail)) {
+				return 1;
+			}
+			return 0;
+			break;
+
 		case POLICY_RESERVED_UNKNOWN: /* wasn't a reserved word */
 			/*
 			 *	Is a named policy, parse the reference to it.
@@ -1363,7 +1490,7 @@ static int parse_include(policy_lex_file_t *lexer)
 
 				strNcpy(p, dp->d_name,
 					sizeof(buffer) - (p - buffer));
-				debug_tokens("\nreading file %s\n", buffer);
+				debug_tokens("including file %s\n", buffer);
 				if (!rlm_policy_parse(lexer->policies, buffer)) {
 					closedir(dir);
 					return 0;
@@ -1381,7 +1508,7 @@ static int parse_include(policy_lex_file_t *lexer)
 	/*
 	 *	Handle one include file.
 	 */
-	debug_tokens("\nreading file %s\n", buffer);
+	debug_tokens("\nincluding file %s\n", buffer);
 	if (!rlm_policy_parse(lexer->policies, buffer)) {
 		return 0;
 	}

@@ -22,8 +22,6 @@
 
 #include "rlm_policy.h"
 
-#include "modules.h"
-
 #ifdef HAVE_REGEX_H
 #include <regex.h>
 #endif
@@ -228,6 +226,18 @@ static void policy_print(const policy_item_t *item, int indent)
 				printf("return %s\n",
 				       lrad_int2str(policy_return_codes,
 						    this->rcode, "???"));
+			}
+			break;
+
+		case POLICY_TYPE_MODULE:
+			{
+				const policy_module_t *this;
+
+				this = (const policy_module_t *) item;
+				if (indent) printf("%*s", indent, " ");
+				printf("module %s <stuff>\n",
+				       lrad_int2str(policy_component_names,
+						    this->component, "???"));
 			}
 			break;
 
@@ -963,6 +973,23 @@ static int evaluate_return(policy_state_t *state, const policy_item_t *item)
 
 
 /*
+ *	Evaluate a module statement
+ */
+static int evaluate_module(policy_state_t *state, const policy_item_t *item)
+{
+	const policy_module_t *this;
+
+	this = (const policy_module_t *) item;
+
+	DEBUG2("rlm_policy: begin nested call");
+	state->rcode = modcall(this->component, this->mc, state->request);
+	DEBUG2("rlm_policy: end nested call");
+	
+	return 1;		/* we succeeded */
+}
+
+
+/*
  *	State machine stuff.
  */
 typedef int (*policy_evaluate_type_t)(policy_state_t *, const policy_item_t *);
@@ -980,7 +1007,8 @@ static policy_evaluate_type_t evaluate_functions[POLICY_TYPE_NUM_TYPES] = {
 	evaluate_print,
 	NULL,			/* define a named policy.. */
 	evaluate_call,
-	evaluate_return
+	evaluate_return,
+	evaluate_module
 };
 
 
