@@ -66,6 +66,9 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	if (strcmp(radlog_dir, "stdout") == 0) {
 		msgfd = stdout;
 
+	} else if (strcmp(radlog_dir, "stderr") == 0) {
+		msgfd = stderr;
+
 #if HAVE_SYSLOG_H
 	} else if (strcmp(radlog_dir, "syslog") == 0) {
 		use_syslog = TRUE;
@@ -132,10 +135,14 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	if (!use_syslog) {
 		fputs(buffer, msgfd);
 #endif
-		if (msgfd != stdout)
-			fclose(msgfd);
-		else
+		if (msgfd == stdout) {
 			fflush(stdout);
+		} else if (msgfd == stderr) {
+			fflush(stderr);
+		} else {
+			fclose(msgfd);
+		}
+
 #if HAVE_SYSLOG_H
 	} else {
 		switch(lvl) {

@@ -798,7 +798,9 @@ int main(int argc, char **argv)
 		if (strcmp(radlog_dir, "stdout") != 0) {
 			dup2(devnull, 1);
 		}
-		dup2(devnull, 2);
+		if (strcmp(radlog_dir, "stderr") != 0) {
+			dup2(devnull, 2);
+		}
 		if (devnull > 2) close(devnull);
 	}
 #endif
