@@ -149,6 +149,7 @@ void cbtls_msg(int write_p, int version, int content_type, const void *buf, size
 	state->info.version = version;
 
 	printf("content_type = %d\n", content_type);
+	printf("record_len = %d\n", len);
 	if (content_type == 21) {
 		state->info.alert_level = ((unsigned char*)buf)[0];
 		state->info.alert_description = ((unsigned char*)buf)[1];
@@ -159,6 +160,7 @@ void cbtls_msg(int write_p, int version, int content_type, const void *buf, size
 		state->info.alert_level = 0x00;
 		state->info.alert_description = 0x00;
 	}
+	tls_session_information(state);
 }
 
 /*

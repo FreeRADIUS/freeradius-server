@@ -210,11 +210,13 @@ static void int_ssl_check(SSL *s, int ret)
 	case SSL_ERROR_WANT_WRITE:
 	case SSL_ERROR_WANT_X509_LOOKUP:
 	case SSL_ERROR_ZERO_RETURN:
+		fprintf(stderr, " SSL Error ..... %d\n", e);
 		return;
 		/* These seem to be indications of a genuine error that should
 		 * result in the SSL tunnel being regarded as "dead". */
 	case SSL_ERROR_SYSCALL:
 	case SSL_ERROR_SSL:
+		fprintf(stderr, " Error in SSL ..... %d\n", e);
 		SSL_set_app_data(s, (char *)1);
 		return;
 	default:
@@ -244,25 +246,6 @@ int tls_handshake_recv(tls_session_t *ssn)
 {
 	int err;
 
-/*
- * Some of these might be useful, check them later.
- *
-#define SSL_get_state(a)		SSL_state(a)
-#define SSL_is_init_finished(a)		(SSL_state(a) == SSL_ST_OK)
-#define SSL_in_init(a)			(SSL_state(a)&SSL_ST_INIT)
-#define SSL_in_before(a)		(SSL_state(a)&SSL_ST_BEFORE)
-#define SSL_in_connect_init(a)		(SSL_state(a)&SSL_ST_CONNECT)
-#define SSL_in_accept_init(a)		(SSL_state(a)&SSL_ST_ACCEPT)
-
-*/
-
-	if (SSL_is_init_finished(ssn->ssl)) {
-		printf("SSL Connection Established\n");
-	}
-
-	if (SSL_in_accept_init(ssn->ssl)) {
-	}
-
 	BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 	err = SSL_read(ssn->ssl, ssn->clean_out.data, MAX_RECORD_SIZE);
 	if (err > 0) {
@@ -270,16 +253,34 @@ int tls_handshake_recv(tls_session_t *ssn)
 	} else {
 		int_ssl_check(ssn->ssl, err);
 	}
-	tls_session_information(ssn);
+
+	/* Some Extra STATE information for easy debugging */
+	if (SSL_is_init_finished(ssn->ssl)) {
+		printf("SSL Connection Established\n");
+	}
+   	if (SSL_in_init(ssn->ssl)) {
+		printf("In SSL Handshake Phase\n");
+	}
+   	if (SSL_in_before(ssn->ssl)) {
+		printf("Before SSL Handshake Phase\n");
+	}
+   	if (SSL_in_accept_init(ssn->ssl)) {
+		printf("In SSL Accept mode \n");
+	}
+   	if (SSL_in_connect_init(ssn->ssl)) {
+		printf("In SSL Connect mode \n");
+	}
 
 	if (ssn->info.content_type != application_data) {
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data, MAX_RECORD_SIZE);
 		if (err > 0) {
 			ssn->dirty_out.used = err;
 		} else {
+			radlog(L_ERR, "rlm_eap_tls: BIO_read Error");
 			int_ssl_check(ssn->ssl, err);
 		}
 	} else {
+		radlog(L_INFO, "rlm_eap_tls: Application Data");
 		/* Its application data, do whatever we want */
 		record_init(&ssn->clean_out);
 	}
@@ -317,7 +318,6 @@ int tls_handshake_send(tls_session_t *ssn)
 
 	return 1;
 }
-
 
 void session_init(tls_session_t *ssn)
 {
