@@ -24,21 +24,15 @@ static DICT_ATTR	*dictionary_attributes = NULL;
 static DICT_VALUE	*dictionary_values = NULL;
 static DICT_VENDOR	*dictionary_vendors = NULL;
 
-static const char *dtypes[] = {
-	"string",
-	"integer",
-	"ipaddr",
-	"date",
-	"abinary",
-	"octets",
-	NULL,
+static const LRAD_NAME_NUMBER type_table[] = {
+	{ "string",	PW_TYPE_STRING },
+	{ "integer",	PW_TYPE_INTEGER },
+	{ "ipaddr",	PW_TYPE_IPADDR },
+	{ "date",	PW_TYPE_DATE },
+	{ "abinary",	PW_TYPE_ABINARY },
+	{ "octets",	PW_TYPE_OCTETS },
+	{ NULL, 0 }
 };
-
-#ifdef WITH_DICT_NOCASE
-#define DICT_STRCMP strcasecmp
-#else
-#define DICT_STRCMP strcmp
-#endif
 
 /*
  *	Quick pointers to the base 0..255 attributes.
@@ -308,11 +302,11 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		 *	Perhaps this is an attribute.
 		 */
 		is_attrib = 0;
-		if (DICT_STRCMP(keyword, "ATTRIBUTE") == 0)
+		if (strcasecmp(keyword, "ATTRIBUTE") == 0)
 			is_attrib = 1;
 
 		is_nmc = 0;
-		if (DICT_STRCMP(keyword, "ATTRIB_NMC") == 0)
+		if (strcasecmp(keyword, "ATTRIB_NMC") == 0)
 			is_attrib = is_nmc = 1;
 
 		if (is_attrib) {
@@ -360,15 +354,12 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				sscanf(valstr, "%i", &value);
 
 			/*
-			 *	find the type.
+			 *	find the type of the attribute.
 			 */
-			for (type = 0; dtypes[type]; type++) {
-				if (DICT_STRCMP(typestr, dtypes[type]) == 0)
-					break;
-			}
-			if (dtypes[type] == NULL) {
-				librad_log("dict_init: %s[%d]: invalid type",
-					fn, line);
+			type = lrad_str2int(type_table, typestr, -1);
+			if (type < 0) {
+				librad_log("dict_init: %s[%d]: invalid type \"%s\"",
+					fn, line, typestr);
 				fclose(fp);
 				return -1;
 			}
@@ -465,7 +456,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		/*
 		 *	Process VALUE lines.
 		 */
-		if (DICT_STRCMP(keyword, "VALUE") == 0) {
+		if (strcasecmp(keyword, "VALUE") == 0) {
 			if (sscanf(data, "%s%s%s", attrstr,
 						namestr, valstr) != 3) {
 				librad_log("dict_init: %s[%d]: invalid VALUE line",
@@ -476,7 +467,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			/*
 			 *	For Compatibility, skip "Server-Config"
 			 */
-			if (DICT_STRCMP(attrstr, "Server-Config") == 0)
+			if (strcasecmp(attrstr, "Server-Config") == 0)
 				continue;
 
 			/*
@@ -519,7 +510,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		/*
 		 *	Process VENDOR lines.
 		 */
-		if (DICT_STRCMP(keyword, "VENDOR") == 0) {
+		if (strcasecmp(keyword, "VENDOR") == 0) {
 
 			if (sscanf(data, "%s%s", attrstr, valstr) != 2) {
 				librad_log(
@@ -554,7 +545,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			continue;
 		} /* VENDOR */
 
-		if (DICT_STRCMP(keyword, "BEGIN-VENDOR") == 0) {
+		if (strcasecmp(keyword, "BEGIN-VENDOR") == 0) {
 			optstr[0] = 0;
 			if (sscanf(data, "%s", optstr) != 1) {
 				librad_log(
@@ -576,7 +567,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			continue;
 		} /* BEGIN-VENDOR */
 
-		if (DICT_STRCMP(keyword, "END-VENDOR") == 0) {
+		if (strcasecmp(keyword, "END-VENDOR") == 0) {
 			optstr[0] = 0;
 			if (sscanf(data, "%s", optstr) != 1) {
 				librad_log(
@@ -678,7 +669,7 @@ DICT_ATTR * dict_attrbyname(const char *name)
 	DICT_ATTR	*a;
 
 	for (a = dictionary_attributes; a; a = a->next) {
-		if (DICT_STRCMP(a->name, name) == 0)
+		if (strcasecmp(a->name, name) == 0)
 			return a;
 	}
 
@@ -713,7 +704,7 @@ DICT_VALUE * dict_valbyname(int attr, const char *name)
 
 	for (v = dictionary_values; v; v = v->next) {
 		if ((attr == 0 || v->attr == attr) &&
-		    DICT_STRCMP(v->name, name) == 0)
+		    strcasecmp(v->name, name) == 0)
 		 return v;
                
 	}
@@ -732,7 +723,7 @@ int dict_vendorname(const char *name)
 	 *	Find the vendor, if any.
 	 */
 	for (v = dictionary_vendors; v; v = v->next) {
-		if (DICT_STRCMP(name, v->vendorname) == 0) {
+		if (strcasecmp(name, v->vendorname) == 0) {
 			return v->vendorpec;
 		}
 	}

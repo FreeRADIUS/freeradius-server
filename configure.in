@@ -147,21 +147,6 @@ AC_ARG_WITH(raddbdir,
 AC_SUBST(raddbdir)
 AC_MSG_RESULT($raddbdir)
 
-dnl extra argument: --with-dict-nocase
-WITH_DICT_NOCASE=yes
-AC_ARG_WITH(dict-nocase,
-[  --with-dict-nocase      Make dictionary case-independant (default=yes)],
-[  case "$withval" in
-    yes)
-	;;
-    *)
-	WITH_DICT_NOCASE=""
-  esac ]
-)
-if test "X$WITH_DICT_NOCASE" = "Xyes"; then
-  AC_DEFINE(WITH_DICT_NOCASE)
-fi
-
 dnl extra argument: --with-ascend-binary
 ASCEND_BINARY=yes
 AC_ARG_WITH(ascend-binary,
