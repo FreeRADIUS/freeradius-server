@@ -4,7 +4,9 @@
  * Cisco gateways (I am using 5300 and 5350 series). 
  * It will scale ALOT better than the default radius schema which is designed for
  * simple dialup installations of FreeRadius.
- * It must have custom SQL queries in raddb/postgresql.conf to work.
+ *
+ * For this schema to work properly you MUST replace raddb/postgresql.conf 
+ * with the contents of pgsql-voip.conf
  *
  * If you wish to do RADIUS Authentication using the same database, you must use
  * src/modules/rlm_sql/drivers/rlm_sql_postgresql/db_postgresql.sql as well as
