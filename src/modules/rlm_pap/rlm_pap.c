@@ -250,10 +250,77 @@ static void normify(VALUE_PAIR *vp, int min_length)
 
 
 /*
- *	Find the named user in this modules database.  Create the set
- *	of attribute-value pairs to check and reply with for this user
- *	from the database. The authentication code only needs to check
- *	the password, the rest is done here.
+ *	Authorize the user for PAP authentication.
+ *
+ *	This isn't strictly necessary, but it does make the
+ *	server simpler to configure.
+ */
+static int pap_authorize(void *instance, REQUEST *request)
+{
+	VALUE_PAIR *vp, *pw = NULL;
+
+	instance = instance;	/* -Wunused */
+
+	/*
+	 *	Can't do PAP if there's no password.
+	 */
+	if (!request->password ||
+	    (request->password->attribute != PW_USER_PASSWORD)) {
+		/*
+		 *	Don't print out debugging messages if we know
+		 *	they're useless.
+		 */
+		if (request->packet->code == PW_ACCESS_CHALLENGE) {
+			return RLM_MODULE_NOOP;
+		}
+
+		DEBUG2("rlm_pap: No clear-text password in the request.  Not performing PAP.");
+		return RLM_MODULE_NOOP;
+	}
+
+
+	for (vp = request->config_items; vp != NULL; vp = vp->next) {
+		switch (vp->attribute) {
+		case PW_USER_PASSWORD:
+		case PW_CRYPT_PASSWORD:
+		case PW_MD5_PASSWORD:
+		case PW_SHA_PASSWORD:
+		case PW_NT_PASSWORD:
+		case PW_LM_PASSWORD:
+		case PW_SMD5_PASSWORD:
+		case PW_SSHA_PASSWORD:
+			pw = vp;
+			break;
+
+		case PW_AUTH_TYPE:
+			DEBUG2("rlm_pap: Found existing Auth-Type, not changing it.");
+			return RLM_MODULE_NOOP;
+
+		default:
+			break;	/* ignore it */
+			
+		}
+	}
+
+	/*
+	 *	Print helpful warnings if there was no password.
+	 */
+	if (!pw) {
+		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication will probably fail");
+		return RLM_MODULE_NOOP;
+	}
+
+	vp = pairmake("Auth-Type", "PAP", T_OP_SET);
+	if (!vp) return RLM_MODULE_FAIL;
+
+	pairadd(&request->config_items, vp);
+
+	return RLM_MODULE_UPDATED;
+}
+
+
+/*
+ *	Authenticate the user via one of any well-known password.
  */
 static int pap_authenticate(void *instance, REQUEST *request)
 {
@@ -558,7 +625,7 @@ module_t rlm_pap = {
 	pap_instantiate,		/* instantiation */
 	{
 		pap_authenticate,	/* authentication */
-		NULL,		 	/* authorization */
+		pap_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

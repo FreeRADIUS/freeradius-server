@@ -586,7 +586,7 @@ modules {
 
 	# PAP module to authenticate users based on their stored password
 	#
-	#  Supports multiple encryption schemes
+	#  Supports multiple encryption/hash schemes
 	#
 	#  name   description                   attribute
 	#  ----   -----------                   ---------
@@ -594,14 +594,16 @@ modules {
 	#  clear  Clear text			User-Password
 	#  crypt  Unix crypt			Crypt-Password
 	#    md5  MD5 ecnryption		MD5-Password
-	#   sha1  SHA1 encryption.		SHA-Password
+	#    smd5 SMD5 ecnryption		SMD5-Password
+	#   sha1  SHA1 encryption		SHA-Password
+	#   ssha  SSHA encryption		SSHA-Password
 	#     nt  NT-Password encryption	NT-Password
 	#     lm  LM-Password encryption	LM-Password
 	#   auto  Automatically figure out what to do
 	#
 	#  For "auto" to work, the passwords given to the server by
 	#  a back-end database MUST be placed into the attribute listed
-	#  above.
+	#  above.  We STRONGLY recommend using "auto".
 	#
 	#  DEFAULT: auto
 	pap {
@@ -1706,6 +1708,14 @@ authorize {
 	mschap
 
 	#
+	#  Pull crypt'd passwords from /etc/passwd or /etc/shadow,
+	#  using the system API's to get the password.  If you want
+	#  to read /etc/passwd or /etc/shadow directly, see the
+	#  passwd module, above.
+	#
+	unix
+
+	#
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, uncomment the following line, and the 'digest'
 	#  line in the 'authenticate' section.
@@ -1766,6 +1776,19 @@ authorize {
 
 	expiration
 	logintime
+
+	#
+	#  If no other module has claimed responsibility for
+	#  authentication, then try to use PAP.  This allows the
+	#  other modules listed above to add a "known good" password
+	#  to the request, and to do nothing else.  The PAP module
+	#  will then see that password, and use it to do PAP
+	#  authentication.
+	#
+	#  This module should be listed last, so that the other modules
+	#  get a chance to set Auth-Type for themselves.
+	#
+	pap
 }
 
 
