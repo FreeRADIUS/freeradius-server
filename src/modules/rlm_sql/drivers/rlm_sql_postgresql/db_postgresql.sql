@@ -32,7 +32,7 @@ CREATE TABLE radacct (
 	AcctOutputOctets	BIGINT,
 	CalledStationId		VARCHAR(50),
 	CallingStationId	VARCHAR(50),
-	AcctTerminateCause	INTEGER,
+	AcctTerminateCause	VARCHAR(32),
 	ServiceType		VARCHAR(32),
 	FramedProtocol		VARCHAR(32),
 	FramedIPAddress		INET,
