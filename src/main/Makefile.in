@@ -39,10 +39,10 @@ endif
 #
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
-MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
+MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo -dlpreopen ../modules/*/drivers/$$x/$$x.la;done)
 MODULE_OBJS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done)
 MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo ../modules/*/types/$$x/$$x.la;done)
-MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo ../modules/*/drivers/$$x/$$x.la;done)
+MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo ../modules/*/drivers/$$x/$$x.la;done)
 endif
 
 LIBS		+= -lradius $(SNMP_LIBS)
