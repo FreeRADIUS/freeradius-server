@@ -14,6 +14,7 @@ Ver 1.62:
 * Remember a few things in the user_test page. Also add another configuration file directive
   general_radius_server_auth_proto specifying the default authentication protocol of the radius
   server (pap or chap).
+* Replace single quotes with double quotes in log_badlogins
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future

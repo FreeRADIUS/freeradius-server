@@ -100,7 +100,7 @@ for(;;){
 				$user =~s/[^\w\-\.]//g;
 				$nas =~s/[^\w\.]//g;
 				if ($nas ne 'localhost' && $nas !~ /\.$domain$/){
-					$nas .= '.$domain';
+					$nas .= ".$domain";
 				}
 				$port =~s/[^\d]//g;
 				$caller =~s/[^\d]//g;
