@@ -323,7 +323,7 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 	for (i = 0; i < retries; i++) {
 		fd_set rdfdesc;
 
-		rad_send(req, secret);
+		rad_send(req, NULL, secret);
 
 		/* And wait for reply, timing out as necessary */
 		FD_ZERO(&rdfdesc);

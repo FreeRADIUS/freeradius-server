@@ -1243,7 +1243,7 @@ static void rad_reject(REQUEST *request)
 	 *  If a reply exists, send it.
 	 */
 	if (request->reply->code != 0) 
-		rad_send(request->reply, request->secret);
+		rad_send(request->reply, request->packet, request->secret);
 }
 
 /*
@@ -1254,22 +1254,33 @@ static void rfc_clean(RADIUS_PACKET *packet)
 	VALUE_PAIR *vps = NULL;
 	
 	switch (packet->code) {
-		default:
-			break;
-			
-			/*
-			 *  Authentication REJECT's can have only
-			 *  Reply-Mesaage and Proxy-State.  We delete
-			 *  everything other than Reply-Message, and
-			 *  Proxy-State is added below, just before
-			 *  the reply is sent.
-			 */
-		case PW_AUTHENTICATION_REJECT:
-			pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
-			pairfree(&packet->vps);
-			packet->vps = vps;
-			break;
+	default:
+		break;
+		
+		/*
+		 *	FIXME: Accounting responses can only contain
+		 *	Proxy-State and VSA's.
+		 */
+	case PW_ACCOUNTING_RESPONSE:
+		break;
+
+		/*
+		 *  Authentication REJECT's can have only
+		 *  Reply-Message and Proxy-State.  We delete
+		 *  everything other than Reply-Message, and
+		 *  Proxy-State is added below, just before
+		 *  the reply is sent.
+		 */
+	case PW_AUTHENTICATION_REJECT:
+		pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
+		pairfree(&packet->vps);
+		packet->vps = vps;
+		break;
 	}
+
+	/*
+	 *	FIXME: Perform other, more generic sanity checks.
+	 */
 }
 
 /* 
@@ -1484,7 +1495,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		if (vp != NULL) 
 			pairadd(&(request->reply->vps), vp);
 
-		rad_send(request->reply, request->secret);
+		rad_send(request->reply, request->packet, request->secret);
 	}
 
 	/*
@@ -1775,7 +1786,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 						" to client %s:%d - ID: %d", client_name(curreq->packet->src_ipaddr),
 						curreq->packet->src_port, curreq->packet->id);
 
-				rad_send(curreq->reply, curreq->secret);
+				rad_send(curreq->reply, curreq->packet, curreq->secret);
 
 				/*
 				 *  There's no reply, but maybe there's
@@ -1791,7 +1802,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 						       curreq->proxy->id);
 						
 						curreq->proxy_next_try = request->timestamp + proxy_retry_delay;
-						rad_send(curreq->proxy, curreq->proxysecret);
+						rad_send(curreq->proxy, curreq->packet, curreq->proxysecret);
 					} else {
 						DEBUG2("Ignoring duplicate authentication packet"
 						       " from client %s:%d - ID: %d, as the proxy reply is currently being processed.",
@@ -2362,7 +2373,7 @@ static int refresh_request(REQUEST *request, void *data)
 	/*
 	 *  Send the proxy packet.
 	 */
-	rad_send(request->proxy, request->proxysecret);
+	rad_send(request->proxy, NULL, request->proxysecret);
 
 setup_timeout:
 	/*

@@ -79,7 +79,7 @@ static void make_secret(unsigned char *digest, uint8_t *vector,
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
  */
-int rad_send(RADIUS_PACKET *packet, const char *secret)
+int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *secret)
 {
 	VALUE_PAIR		*reply;
 	struct	sockaddr_in	saremote;
@@ -354,10 +354,24 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		  if (msg_auth_ptr) {
 			  uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
+			  switch (packet->code) {
+			  default:
+			    break;
+			    
+			  case PW_AUTHENTICATION_ACK:
+			  case PW_AUTHENTICATION_REJECT:
+			  case PW_ACCESS_CHALLENGE:
+			    if (original) {
+			      memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
+			    }
+			    break;
+			  }
+
 			  memset(msg_auth_ptr + 2, 0, AUTH_VECTOR_LEN);
 			  lrad_hmac_md5(packet->data, packet->data_len,
 					secret, secretlen, calc_auth_vector);
 			  memcpy(msg_auth_ptr + 2, calc_auth_vector, AUTH_VECTOR_LEN);
+			  memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 		  }
 
 
@@ -713,6 +727,17 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		case PW_MESSAGE_AUTHENTICATOR:
 			memcpy(msg_auth_vector, &ptr[2], sizeof(msg_auth_vector));
 			memset(&ptr[2], 0, AUTH_VECTOR_LEN);
+
+			switch (packet->code) {
+			default:
+			  break;
+
+			case PW_AUTHENTICATION_ACK:
+			case PW_AUTHENTICATION_REJECT:
+			case PW_ACCESS_CHALLENGE:
+			  memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
+			  break;
+			}
 
 			lrad_hmac_md5(packet->data, packet->data_len,
 				      secret, strlen(secret), calc_auth_vector);

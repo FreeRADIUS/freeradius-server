@@ -301,7 +301,7 @@ int proxy_send(REQUEST *request)
 	/*
 	 *	Send the request.
 	 */
-	rad_send(request->proxy, (char *)realm->secret);
+	rad_send(request->proxy, NULL, (char *)realm->secret);
 	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
 	request->proxy_is_replicate = replicating;
 	request->proxy_try_count = proxy_retry_count - 1;

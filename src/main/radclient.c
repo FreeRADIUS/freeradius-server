@@ -143,7 +143,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	for (i = 0; i < retries; i++) {
 		fd_set		rdfdesc;
 
-		rad_send(req, secret);
+		rad_send(req, NULL, secret);
 
 		/* And wait for reply, timing out as necessary */
 		FD_ZERO(&rdfdesc);
@@ -382,24 +382,15 @@ int main(int argc, char **argv)
 	
 
 		/*
-		 *	Encrypt the Password attribute.
+		 *	Keep a copy of the the Password attribute.
 		 */
 		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
 			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
-			vp->length = strlen(password);
-			rad_pwencode((char *)vp->strvalue,
-				     &(vp->length),
-				     secret, (char *)req->vector);
-
 		/*
-		 *	Not there, encrypt the CHAP-Password attribute.
+		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
 		} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
 			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
-			rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
-			vp->length = 17;
-
-
 		} else {
 			*password = '\0';
 		}
@@ -418,28 +409,28 @@ int main(int argc, char **argv)
 			if (req->data) {
 				free(req->data);
 				req->data = NULL;
+			}
 
-				librad_md5_calc(req->vector, req->vector,
-						sizeof(req->vector));
+			librad_md5_calc(req->vector, req->vector,
+					sizeof(req->vector));
 				
-				if (*password != '\0') {
-					vp = pairfind(req->vps, PW_PASSWORD);
-					if (vp) {
-  						strNcpy((char *)vp->strvalue, password, vp->length + 1);
-						vp->length = strlen(password);
-						
-						rad_pwencode((char *)vp->strvalue,
-							     &(vp->length),
-							     secret, (char *)req->vector);
-					} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
-  						strNcpy((char *)vp->strvalue, password, vp->length + 1);
-						vp->length = strlen(password);
-
-						rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
-						vp->length = 17;
-					}
-				} /* there WAS a password */
-			} /* there WAS a packet sent. */
+			if (*password != '\0') {
+				vp = pairfind(req->vps, PW_PASSWORD);
+				if (vp) {
+					strNcpy((char *)vp->strvalue, password, vp->length + 1);
+					vp->length = strlen(password);
+					
+					rad_pwencode((char *)vp->strvalue,
+						     &(vp->length),
+						     secret, (char *)req->vector);
+				} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
+					strNcpy((char *)vp->strvalue, password, vp->length + 1);
+					vp->length = strlen(password);
+					
+					rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
+					vp->length = 17;
+				}
+			} /* there WAS a password */
 			send_packet(req, &rep);
 			rad_free(&rep);
 		}

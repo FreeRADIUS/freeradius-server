@@ -178,7 +178,7 @@ void lrad_hmac_md5(const unsigned char *text, int text_len,
 		   unsigned char *digest);
 
 /* radius.c */
-int		rad_send(RADIUS_PACKET *, const char *secret);
+int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
 RADIUS_PACKET	*rad_recv(int fd);
 int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);
 RADIUS_PACKET	*rad_alloc(int newvector);
