@@ -43,30 +43,30 @@ static const char rcsid[] =
 /*
  *	Header above output and format.
  */
-char *hdr1 = 
+static const char *hdr1 = 
 "Login      Name              What  TTY  When      From      Location";
-char *ufmt1 = "%-10.10s %-17.17s %-5.5s %-4.4s %-9.9s %-9.9s %-.16s%s";
-char *ufmt1r = "%s,%s,%s,%s,%s,%s,%s%s";
-char *rfmt1 = "%-10.10s %-17.17s %-5.5s S%-3d %-9.9s %-9.9s %-.19s%s";
-char *rfmt1r = "%s,%s,%s,S%d,%s,%s,%s%s";
+static const char *ufmt1 = "%-10.10s %-17.17s %-5.5s %-4.4s %-9.9s %-9.9s %-.16s%s";
+static const char *ufmt1r = "%s,%s,%s,%s,%s,%s,%s%s";
+static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s S%-3d %-9.9s %-9.9s %-.19s%s";
+static const char *rfmt1r = "%s,%s,%s,S%d,%s,%s,%s%s";
 
-char *hdr2 = 
+static const char *hdr2 = 
 "Login      Port    What      When          From       Location";
-char *ufmt2 = "%-10.10s %-7.7d %-9.9s %-13.13s %-10.10s %-.16s%s";
-char *ufmt2r = "%s,%d,%s,%s,%s,%s%s";
-char *rfmt2 = "%-10.10s S%-5d  %-9.9s %-13.13s %-10.10s %-.28s%s";
-char *rfmt2r = "%s,S%d,%s,%s,%s,%s%s";
+static const char *ufmt2 = "%-10.10s %-7.7d %-9.9s %-13.13s %-10.10s %-.16s%s";
+static const char *ufmt2r = "%s,%d,%s,%s,%s,%s%s";
+static const char *rfmt2 = "%-10.10s S%-5d  %-9.9s %-13.13s %-10.10s %-.28s%s";
+static const char *rfmt2r = "%s,S%d,%s,%s,%s,%s%s";
 
-char *eol = "\n";
-NAS *naslist;
-int showname = -1;
-int showptype = 0;
-int showcid = 0;
+static const char *eol = "\n";
+static NAS *naslist;
+static int showname = -1;
+static int showptype = 0;
+static int showcid = 0;
 
 /*
  *	Safe popen. Ugh.
  */
-FILE *safe_popen(char *cmd, char *mode)
+static FILE *safe_popen(const char *cmd, const char *mode)
 {
 	char		*p;
 	char		buf[1024];
@@ -138,7 +138,7 @@ static NAS *my_read_naslist_file(char *file)
  *	Print a file from FINGER_DIR. If the file is executable,
  *	execute it instead. Return 0 if succesfull.
  */
-int ffile(char *arg)
+static int ffile(const char *arg)
 {
 	FILE *fp;
 	char fn[1024];
@@ -171,7 +171,7 @@ int ffile(char *arg)
 /*
  *	Execute the system finger and translate LF to CRLF.
  */
-void sys_finger(char *l)
+static void sys_finger(const char *l)
 {
 	FILE *fp;
 	char fn[1024];
@@ -199,7 +199,7 @@ void sys_finger(char *l)
 /*
  *	Get fullname of a user.
  */
-char *fullname(char *login)
+static char *fullname(char *login)
 {
 	struct passwd *pwd;
 	char *s;
@@ -214,7 +214,7 @@ char *fullname(char *login)
 /*
  *	Return protocol type.
  */
-char *proto(int id, int porttype)
+static const char *proto(int id, int porttype)
 {
 	static char buf[8];
 
@@ -237,7 +237,7 @@ char *proto(int id, int porttype)
 /*
  *	Return a time in the form day hh:mm
  */
-char *dotime(time_t t)
+static char *dotime(time_t t)
 {
 	char *s = ctime(&t);
 
@@ -294,7 +294,7 @@ char *idletime(char *line)
 /*
  *	Shorten tty name.
  */
-char *ttyshort(char *tty)
+static const char *ttyshort(char *tty)
 {
 	static char tmp[16];
 
@@ -321,7 +321,7 @@ char *ttyshort(char *tty)
 /*
  *	Find name of NAS
  */
-char *nasname(UINT4 ipaddr)
+static const char *nasname(UINT4 ipaddr)
 {
 	NAS *cl;
 
@@ -339,7 +339,7 @@ char *nasname(UINT4 ipaddr)
 /*
  *	Print address of NAS.
  */
-char *hostname(UINT4 ipaddr)
+static const char *hostname(UINT4 ipaddr)
 {
 	if (ipaddr == 0 || ipaddr == (UINT4)-1 || ipaddr == (UINT4)-2)
 		return "";
@@ -350,7 +350,7 @@ char *hostname(UINT4 ipaddr)
 /*
  *	Print usage message and exit.
  */
-void usage(void)
+static void usage(void)
 {
 	fprintf(stderr, "Usage: radwho [-lhfnsipcr]\n");
 	fprintf(stderr, "       -l: show local (shell) users too\n");
