@@ -1162,6 +1162,7 @@ static const LRAD_NAME_NUMBER header_names[] = {
 	{ "{sha}",	PW_SHA_PASSWORD },
 	{ "{ssha}",	PW_SSHA_PASSWORD },
 	{ "{nt}",	PW_NT_PASSWORD },
+	{ "{ns-mta-md5}", PW_NS_MTA_MD5_PASSWORD },
 	{ NULL, 0 }
 };
 
