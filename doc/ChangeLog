@@ -12,6 +12,8 @@ FreeRADIUS 1.0.2 ; $Date$, urgency=medium
 	* rlm_krb5 includes /usr/include/et for Fedora Core
 	* Fix post-auth REJECT stanza processing for rejections from external
 	  processes or home RADIUS servers
+	* Fix building on gcc-4.0 by not trying to access static auth_port from
+	  other files.
 
 FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03 , urgency=high
 	Denial-of-Service Security Fix
