@@ -2563,9 +2563,9 @@ static int refresh_request(REQUEST *request, void *data)
 			rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 			
 			radlog(L_ERR, "Rejecting request %d due to lack of any response from home server %s:%d",
+			       request->number,
 			       client_name(request->packet->src_ipaddr),
-			       request->packet->src_port,
-			       request->number);
+			       request->packet->src_port);
 			rad_reject(request);
 			request->finished = TRUE;
 			return RL_WALK_CONTINUE;
