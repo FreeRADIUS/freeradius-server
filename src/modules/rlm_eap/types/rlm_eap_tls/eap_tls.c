@@ -237,12 +237,13 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		}
 
 		/*
-		 * For the rest of the conditions,
-		 * switch over to the default section below.
+		 *	For the rest of the conditions, switch over
+		 *	to the default section below.
 		 */
 	default:
 		DEBUG2("  rlm_eap_tls: ack default");
-		radlog(L_ERR, "rlm_eap_tls: Invalid ACK received");
+		radlog(L_ERR, "rlm_eap_tls: Invalid ACK received: %d",
+		       tls_session->info.content_type);
 		return EAPTLS_FAIL;
 	}
 }

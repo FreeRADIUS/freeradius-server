@@ -262,8 +262,6 @@ void session_free(void *ssn)
 
 	if (!ssn) return;
 
-	session_close(sess);
-
 	/*
 	 *	Free any opaque TTLS or PEAP data.
 	 */
@@ -271,6 +269,8 @@ void session_free(void *ssn)
 		sess->free_opaque(sess->opaque);
 		sess->opaque = NULL;
 	}
+
+	session_close(sess);
 
 	free(sess);
 }
@@ -355,33 +355,40 @@ void tls_session_information(tls_session_t *tls_session)
 		str_version = "TLS 1.0 ";
 		break;
 	default:
-		str_version = "???";
+		str_version = "Unknown TLS version";
+		break;
 	}
 
 	if (tls_session->info.version == SSL3_VERSION ||
 	    tls_session->info.version == TLS1_VERSION) {
 		switch (tls_session->info.content_type) {
-		case 20:
+		case SSL3_RT_CHANGE_CIPHER_SPEC:
 			str_content_type = "ChangeCipherSpec";
 			break;
-		case 21:
+		case SSL3_RT_ALERT:
 			str_content_type = "Alert";
 			break;
-		case 22:
+		case SSL3_RT_HANDSHAKE:
 			str_content_type = "Handshake";
+			break;
+		case SSL3_RT_APPLICATION_DATA:
+			str_content_type = "ApplicationData";
+			break;
+		default:
+			str_content_type = "UnknownContentType";
 			break;
 		}
 
-		if (tls_session->info.content_type == 21) { /* Alert */
+		if (tls_session->info.content_type == SSL3_RT_ALERT) {
 			str_details1 = ", ???";
 			
 			if (tls_session->info.record_len == 2) {
 
 				switch (tls_session->info.alert_level) {
-				case 1:
+				case SSL3_AL_WARNING:
 					str_details1 = ", warning";
 					break;
-				case 2:
+				case SSL3_AL_FATAL:
 					str_details1 = ", fatal";
 					break;
 				}
@@ -461,41 +468,40 @@ void tls_session_information(tls_session_t *tls_session)
 			}
 		}
 		
-		if (tls_session->info.content_type == 22) /* Handshake */
-		{
+		if (tls_session->info.content_type == SSL3_RT_HANDSHAKE) {
 			str_details1 = "???";
 
 			if (tls_session->info.record_len > 0)
 			switch (tls_session->info.handshake_type)
 			{
-			case 0:
+			case SSL3_MT_HELLO_REQUEST:
 				str_details1 = ", HelloRequest";
 				break;
-			case 1:
+			case SSL3_MT_CLIENT_HELLO:
 				str_details1 = ", ClientHello";
 				break;
-			case 2:
+			case SSL3_MT_SERVER_HELLO:
 				str_details1 = ", ServerHello";
 				break;
-			case 11:
+			case SSL3_MT_CERTIFICATE:
 				str_details1 = ", Certificate";
 				break;
-			case 12:
+			case SSL3_MT_SERVER_KEY_EXCHANGE:
 				str_details1 = ", ServerKeyExchange";
 				break;
-			case 13:
+			case SSL3_MT_CERTIFICATE_REQUEST:
 				str_details1 = ", CertificateRequest";
 				break;
-			case 14:
+			case SSL3_MT_SERVER_DONE:
 				str_details1 = ", ServerHelloDone";
 				break;
-			case 15:
+			case SSL3_MT_CERTIFICATE_VERIFY:
 				str_details1 = ", CertificateVerify";
 				break;
-			case 16:
+			case SSL3_MT_CLIENT_KEY_EXCHANGE:
 				str_details1 = ", ClientKeyExchange";
 				break;
-			case 20:
+			case SSL3_MT_FINISHED:
 				str_details1 = ", Finished";
 				break;
 			}
