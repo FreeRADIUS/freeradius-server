@@ -64,20 +64,57 @@ print <<<EOM
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
 EOM;
-   
-if ($clear_sessions == 1){
+ 
+if ($drop_conns == 1){
+	if ($config[general_ld_library_path] != '')
+		putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
+	foreach ($nas_list as $nas){
+		if ($nas[ip] != ''){
+			$ip = $nas[ip];
+			$nas_by_ip[$ip] = $nas[community];
+		}
+	}
+
 	$link = @da_sql_pconnect($config);
 	if ($link){
-		$res = @da_sql_query($link,$config,
-		"DELETE FROM $config[sql_accounting_table]
-		WHERE username='$login' AND acctstoptime = 0 $sql_extra_query;");
-		if ($res)
-			echo "<b>Deleted open sessions from accounting table</b><br>\n";
+		$search = @da_sql_query($link,$config,
+		"SELECT nasipaddress,acctsessionid FROM $config[sql_accounting_table]
+		WHERE username = '$login' AND acctstoptime IS NULL;");
+		if ($search){
+			while($row = @da_sql_fetch_array($search,$config)){
+				$sessionid = $row[acctsessionid];
+				$sessionid = hexdec($sessionid);
+				$nas = $row[nasipaddress];
+				$comm = $nas_by_ip[$nas];
+				if ($comm != '')
+					exec("$config[general_sessionclear_bin] $nas $comm $sessionid $login");
+			}
+		}
 		else
-			echo "<b>Error deleting open sessions for user" . da_sql_error($link,$config) . "</b><br>\n";
-        }
+			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
+	}
 	else
 		echo "<b>Could not connect to SQL database</b><br>\n";
+}
+if ($clear_sessions == 1){
+	$sql_servers = array();
+	if ($config[sql_extra_servers] != '')
+		$sql_servers = explode(' ',$config[sql_extra_servers]);
+	$sql_servers[] = $config[sql_server];
+	foreach ($sql_servers as $server){
+		$link = @da_sql_host_connect($server,$config);
+		if ($link){
+			$res = @da_sql_query($link,$config,
+			"DELETE FROM $config[sql_accounting_table]
+			WHERE username='$login' AND acctstoptime = 0 $sql_extra_query;");
+			if ($res)
+				echo "<b>Deleted open sessions from accounting table on server $server</b><br>\n";
+			else
+				echo "<b>Error deleting open sessions for user" . da_sql_error($link,$config) . "</b><br>\n";
+		}
+		else
+			echo "<b>Could not connect to SQL database</b><br>\n";
+	}
 	echo <<<EOM
 </td></tr>
 </table>
@@ -100,7 +137,7 @@ else{
 		}
 		else
 			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
-        }
+	}
 	else
 		echo "<b>Could not connect to SQL database</b><br>\n";
 }
@@ -118,6 +155,8 @@ Are you sure you want to clear all open user sessions?
 	</table>
 <br>
 <input type=submit class=button value="Yes Clear" OnClick="this.form.clear_sessions.value=1">
+<br><br>
+<input type=submit class=button value="Yes Drop Connections" OnClick="this.form.drop_conns.value=1">
 </form>
 </td></tr>
 </table>
