@@ -242,10 +242,10 @@ int proxy_send(REQUEST *request)
 	 */
 	if ((request->packet->code != PW_AUTHENTICATION_REQUEST) &&
 	    (request->packet->code != PW_ACCOUNTING_REQUEST)) {
-	  return RLM_MODULE_FAIL;
+		return RLM_MODULE_FAIL;
 	}
 
-	/* 
+	/*
 	 *	The timestamp is used below to figure the
 	 *	next_try. The request needs to "hang around" until
 	 *	either the other server sends a reply or the retry
