@@ -1317,6 +1317,7 @@ static void *rad_spawn_thread(void *arg)
   signal(SIGTERM, sig_term);
   (*(data->fun))(data->request);
   rad_respond(data->request);
+  free(data);
   return NULL;
 }
 #endif
@@ -1337,15 +1338,17 @@ static void rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 #ifdef HAVE_PTHREAD_H
 	int rcode;
-	spawn_thread_t data;
+	spawn_thread_t *data;
 
-	data.request = request;
-	data.fun = fun;
+	data = (spawn_thread_t *) malloc(sizeof(spawn_thread_t));
+	memset(data, 0, sizeof(data));
+	data->request = request;
+	data->fun = fun;
 
 	/*
 	 *	Create a child thread, complaining on error.
 	 */
-	rcode = pthread_create(&child_pid, NULL, rad_spawn_thread, &data);
+	rcode = pthread_create(&child_pid, NULL, rad_spawn_thread, data);
 	if (rcode != 0) {
 	  log(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
 	      nas_name2(request->packet),
