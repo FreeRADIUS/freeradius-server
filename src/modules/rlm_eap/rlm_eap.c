@@ -64,6 +64,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	/* Load all the configured EAP-Types */
 	for(scs=cf_subsection_find_next(cs, NULL, NULL);
 		scs != NULL;
 		scs=cf_subsection_find_next(cs, scs, NULL)) {
@@ -94,6 +95,10 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	}  else {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		eaptype_freelist(&types);
+		free(conf->default_eap_type);
+		conf->default_eap_type = NULL;
+		free(conf);
+		conf = NULL;
 		return -1;
 	}
 
@@ -117,6 +122,7 @@ static int eap_detach(void *instance)
 	free(t->conf);
 
 	free(t);
+	t = NULL;
 
 	return 0;
 }
@@ -181,30 +187,11 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	/*
 	 * No User-Name, No authentication
 	 */
-	if (request->username == NULL) {
+	if (handler->username == NULL) {
 		radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
-		return RLM_MODULE_REJECT;
-	}
-
-	/*
-	 * Always get the configured values, for each user.
-	 * to pass it to the specific EAP-Type
-	 */
-	handler->configured = paircopy(request->config_items);
-	if (handler->configured == NULL) {
-		radlog(L_INFO, "rlm_eap: No configured information for this user");
-
-		/*
-		 * FIXME: I think at least one item should be configured for any user
-		 * 	If nothing is configured, then atleast 
-		 * 	config_items should provide the same username
-		 * 	if the user is present in the database
-		 */
-		/*
 		eap_fail(request, handler->eap_ds->request);
 		eap_handler_free(&handler);
-		return RLM_MODULE_INVALID;
-		*/
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
@@ -253,7 +240,7 @@ static int eap_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*atype, *vp;
 	rlm_eap_t	*eap_stuff;
-        eap_packet_t    *eap_packet;
+	eap_packet_t    *eap_packet;
 	int		status;
 	unsigned char   *id;
 	

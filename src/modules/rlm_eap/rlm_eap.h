@@ -39,7 +39,7 @@ enum {
 };
 
 /*
- * structure to represent packet format of eap
+ * Structure to represent packet format of eap
  */
 typedef struct eap_packet_t {
 	unsigned char	code;
@@ -49,14 +49,18 @@ typedef struct eap_packet_t {
 } eap_packet_t;
 
 /*
- * currently this is not properly defined as
- * there is not much config stuff that eap depends on.
+ * Config stuff that rlm_eap depends on.
  */
 typedef struct eap_conf {
 	char	*default_eap_type;
 	int		timer_limit;
 } EAP_CONF;
 
+/*
+ * Currently there are only 2 types
+ * of operations defined, 
+ * apart from attach & detach for each EAP-Type.
+ */
 typedef enum operation_t {
 	INITIATE = 0,
 	AUTHENTICATE
@@ -75,6 +79,12 @@ typedef struct eap_types_t {
 	void		*type_stuff;
 } EAP_TYPES;
 
+/*
+ * This structure contains eap's persistent data.
+ * echolist = EAP_HANDLERs 
+ * typelist = All supported EAP-Types
+ * conf     = configured values for rlm_eap only.
+ */
 typedef struct rlm_eap_t {
 	EAP_HANDLER 	*echolist;
 	EAP_TYPES 	*typelist;

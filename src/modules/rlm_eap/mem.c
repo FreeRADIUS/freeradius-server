@@ -24,7 +24,7 @@
 #include "rlm_eap.h"
 
 /*
- *      Allocate a new EAP_PACKET
+ * Allocate a new EAP_PACKET
  */
 EAP_PACKET *eap_packet_alloc(void)
 {
@@ -36,7 +36,7 @@ EAP_PACKET *eap_packet_alloc(void)
 }
 
 /*
- *      Free EAP_PACKET
+ * Free EAP_PACKET
  */
 void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 {
@@ -66,7 +66,7 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 }
 
 /*
- *      Allocate a new EAP_PACKET
+ * Allocate a new EAP_PACKET
  */
 EAP_DS *eap_ds_alloc(void)
 {
@@ -91,8 +91,9 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 	EAP_DS *eap_ds;
 
 	if (!eap_ds_p) return;
-        eap_ds = *eap_ds_p;
-        if (!eap_ds) return;
+
+	eap_ds = *eap_ds_p;
+	if (!eap_ds) return;
 
 	if (eap_ds->response) eap_packet_free(&(eap_ds->response));
 	if (eap_ds->request) eap_packet_free(&(eap_ds->request));
@@ -102,17 +103,14 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 }
 
 /*
- *      Allocate a new EAP_HANDLER
+ * Allocate a new EAP_HANDLER
  */
 EAP_HANDLER *eap_handler_alloc(void)
 {
 	EAP_HANDLER	*handler;
         
-	if ((handler = malloc(sizeof(EAP_HANDLER))) == NULL) {
-		radlog(L_ERR, "out of memory");
-		return NULL;
-	}
 	handler = rad_malloc(sizeof(EAP_HANDLER));
+	memset(handler, 0, sizeof(EAP_HANDLER));
 	return handler;
 }
 
@@ -122,8 +120,8 @@ void eap_handler_free(EAP_HANDLER **handler_p)
 
 	if ((handler_p == NULL) || (*handler_p == NULL))
 		return;
-        handler = *handler_p;
 
+	handler = *handler_p;
 	if (handler->id) {
 		free(handler->id);
 		handler->id = NULL;
@@ -141,7 +139,7 @@ void eap_handler_free(EAP_HANDLER **handler_p)
 	if (handler->eap_ds) eap_ds_free(&(handler->eap_ds));
 
 	if ((handler->opaque) && (handler->free_opaque))
-		handler->free_opaque(&handler->opaque);
+		handler->free_opaque(&(handler->opaque));
 	else if ((handler->opaque) && (handler->free_opaque == NULL))
                 radlog(L_ERR, "Possible memory leak ...");
 
@@ -149,30 +147,32 @@ void eap_handler_free(EAP_HANDLER **handler_p)
 	handler->free_opaque = NULL;
 	handler->next = NULL;
 
+	free(handler);
 	*handler_p = NULL;
 }
 
 void eaptype_freelist(EAP_TYPES **i)
 {
-        EAP_TYPES       *c, *next;
+	EAP_TYPES       *c, *next;
 
-        c = *i;
-        while (c) {
-                next = c->next;
-                if(c->type->detach) (c->type->detach)(&(c->type_stuff));
+	c = *i;
+	while (c) {
+		next = c->next;
+		if(c->type->detach) (c->type->detach)(&(c->type_stuff));
 		if (c->handle) lt_dlclose(c->handle);
-                free(c);
-                c = next;
-        }
-        *i = NULL;
+		free(c);
+		c = next;
+	}
+	*i = NULL;
 }
 
 void eaplist_free(EAP_HANDLER **list)
 {
 	EAP_HANDLER *node, *next;
-	if (!list) return;
-	node = *list;
 
+	if (!list) return;
+
+	node = *list;
 	while (node) {
 		next = node->next;
 		eap_handler_free(&node);
@@ -182,6 +182,10 @@ void eaplist_free(EAP_HANDLER **list)
 	*list = NULL;
 }
 
+/*
+ * TODO: For now this is a plain list.
+ *  It can be hashed on EAP-Type, EAP-Id
+ */
 int eaplist_add(EAP_HANDLER **list, EAP_HANDLER *node)
 {
 	EAP_HANDLER	**last;
@@ -231,8 +235,8 @@ void eaplist_clean(EAP_HANDLER **first, time_t limit)
  */
 EAP_HANDLER *eaplist_isreply(EAP_HANDLER **first, unsigned char id[])
 {
-        EAP_HANDLER *node, *next, *ret = NULL;
-        EAP_HANDLER **last = first;
+	EAP_HANDLER *node, *next, *ret = NULL;
+	EAP_HANDLER **last = first;
 
 	for (node = *first; node; node = next) {
 		next = node->next;
@@ -243,6 +247,12 @@ EAP_HANDLER *eaplist_isreply(EAP_HANDLER **first, unsigned char id[])
 			node->next = NULL;
 
 			/* clean up the unwanted stuff before returning */
+
+			/* Clear the handler Id */
+			free(node->id);
+			node->id = NULL;
+
+			/* Move the current EAP to prev EAP after clearing prev_eap */
 			eap_ds_free(&(node->prev_eapds));
 			node->prev_eapds = node->eap_ds;
 			node->eap_ds = NULL;

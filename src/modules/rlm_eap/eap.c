@@ -87,12 +87,14 @@ int eaptype_load(EAP_TYPES **type_list, const char *type_name, CONF_SECTION *cs)
 	snprintf(auth_type_name, sizeof(auth_type_name), "rlm_eap_%s", type_name);
 
 	last = type_list;
+	/* Go to the end of the EAP-Type list, if it is not already loaded */
 	for (node = *type_list; node != NULL; node = node->next) {
 		if (strcmp(node->typename, auth_type_name) == 0)
 			return 0;
 		last = &node->next;
 	}
 
+	/* Link the loaded EAP-Type */
 	handle = lt_dlopenext(auth_type_name);
 	if (handle == NULL) {
 		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s", 
@@ -100,7 +102,7 @@ int eaptype_load(EAP_TYPES **type_list, const char *type_name, CONF_SECTION *cs)
 		return -1;
 	}
 
-	/* make room for auth type */
+	/* Make room for the EAP-Type */
 	node = (EAP_TYPES *)malloc(sizeof(EAP_TYPES));
 	if (node == NULL) {
 		radlog(L_ERR, "rlm_eap: out of memory");
@@ -213,7 +215,8 @@ int eaptype_call(int eap_type, operation_t action,
 
 /*
  * Based on TYPE, call the appropriate EAP-type handler
- * currently it defaults to MD5-type
+ * Default to the configured EAP-Type 
+ * for all Unsupported EAP-Types 
  */
 int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
 {
@@ -298,6 +301,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 	uint16_t len;
 	int total_len;
 
+	/* Get only EAP-Message attribute list */
 	vp_list = paircopy2(vps, PW_EAP_MESSAGE);
 	if (vp_list == NULL) {
 		radlog(L_ERR, "rlm_eap: EAP_Message not found");
@@ -329,7 +333,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 		return eap_packet;
 	 */
 
-        if (vp_list->next == NULL) {
+	if (vp_list->next == NULL) {
 		pairfree(&vp_list);
 		return eap_packet;
 	}
@@ -564,15 +568,15 @@ int eap_validation(eap_packet_t *eap_packet)
 
 		radlog(L_AUTH, "rlm_eap: Incorrect EAP Message, "
 				"Ignoring the packet");
-                return EAP_INVALID;
-        }
+		return EAP_INVALID;
+	}
 
 	/* we don't expect notification, but we send it */
 	if (eap_packet->data[0] == PW_EAP_NOTIFICATION) {
 
 		radlog(L_AUTH, "rlm_eap: Got NOTIFICATION, "
 				"Ignoring the packet");
-                return EAP_INVALID;
+		return EAP_INVALID;
 	}
 
 	return EAP_VALID;
@@ -667,13 +671,14 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 		}
 
 		handler = eaplist_isreply(list, unique);
+		free(unique);
+		unique = NULL;
 		if (handler == NULL) {
 			/* Either send EAP_Identity or EAP-Fail */
 			radlog(L_ERR, "rlm_eap: Either EAP-request timed out OR"
 				" EAP-response to an unknown EAP-request");
 			return NULL;
 		}
-		free(unique);
 	} else {
 
 		handler = eap_handler_alloc();
@@ -689,12 +694,53 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 		handler->opaque = NULL;
 		handler->free_opaque = NULL;
 		handler->next = NULL;
-		handler->username = paircopy(request->username);
 
 		handler->identity = eap_identity(eap_packet);
 		if (handler->identity == NULL) {
+			radlog(L_ERR, "rlm_eap: Identity Unknown, authentication failed");
 			eap_handler_free(&handler);
 			return NULL;
+		}
+
+		/* Get the User-Name */
+		if (request->username == NULL) {
+			handler->username = pairmake("User-Name", handler->identity, T_OP_EQ);
+		} else {
+			handler->username = paircopy(request->username);
+		}
+
+		/* No User-Name, No authentication */
+		/*
+		if (handler->username == NULL) {
+			radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
+			eap_handler_free(&handler);
+			return NULL;
+		}
+		*/
+
+		/*
+		 * Always get the configured values, for each user.
+		 * to pass it to the specific EAP-Type
+		 *
+		 * No Configured information found for a user, means
+		 * there is no such user in the database.
+		 *
+		 * Every user should have, atleast, one item configured
+		 * This is required for Authentication purpose.
+		 */
+		handler->configured = paircopy(request->config_items);
+		if (handler->configured == NULL) {
+			radlog(L_INFO, "rlm_eap: No configured information for this user");
+
+			/*
+			 * FIXME: If there is no config info then
+			 * config_items should provide the same username
+			 * if the user is present in the database.
+			 */
+			/*
+			eap_handler_free(&handler);
+			return NULL;
+			*/
 		}
 	}
 
