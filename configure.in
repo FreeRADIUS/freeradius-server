@@ -425,9 +425,11 @@ AC_CHECK_HEADERS( \
 	sys/time.h
 )
 
+REGEX=no
 AC_CHECK_HEADER(regex.h, AC_DEFINE(HAVE_REGEX_H))
 if test "x$ac_cv_header_regex_h" = "xyes"; then
   REGEX_EXTENDED=no
+  REGEX=yes
   AC_EGREP_CPP(yes,
     [#include <regex.h>
      #ifdef REG_EXTENDED
@@ -435,6 +437,8 @@ if test "x$ac_cv_header_regex_h" = "xyes"; then
      #endif
      ], [AC_DEFINE(HAVE_REG_EXTENDED) REGEX_EXTENDED=yes])
 fi
+AC_SUBST(REGEX)
+AC_SUBST(REGEX_EXTENDED)
 
 dnl #############################################################
 dnl #
