@@ -22,10 +22,10 @@ ATTRIBUTE	ERX-Ingress-Policy-Name           10 string   ERX
 ATTRIBUTE	ERX-Egress-Policy-Name            11 string   ERX
 ATTRIBUTE	ERX-Ingress-Statistics            12 string   ERX
 ATTRIBUTE	ERX-Egress-Statistics             13 string   ERX
-ATTRIBUTE	ERX-Atm-Service-Category          14 string   ERX
-ATTRIBUTE	ERX-Atm-PCR                       15 string   ERX
-ATTRIBUTE	ERX-Atm-SCR                       16 string   ERX
-ATTRIBUTE	ERX-Atm-MBS                       17 string   ERX
+ATTRIBUTE	ERX-Atm-Service-Category          14 integer  ERX
+ATTRIBUTE	ERX-Atm-PCR                       15 integer  ERX
+ATTRIBUTE	ERX-Atm-SCR                       16 integer  ERX
+ATTRIBUTE	ERX-Atm-MBS                       17 integer  ERX
 ATTRIBUTE	ERX-Cli-Initial-Access-Level      18 string   ERX
 ATTRIBUTE	ERX-Cli-Allow-All-VR-Access       19 integer  ERX
 ATTRIBUTE	ERX-Alternate-Cli-Access-Level    20 string   ERX
