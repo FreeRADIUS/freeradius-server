@@ -209,8 +209,7 @@ int proxy_send(REQUEST *request)
 {
 	int rcode;
 	VALUE_PAIR *realmpair;
-	VALUE_PAIR *namepair;
-	VALUE_PAIR *strippednamepair;
+	VALUE_PAIR *strippedname;
 	VALUE_PAIR *delaypair;
 	VALUE_PAIR *vp;
 	REALM *realm;
@@ -313,8 +312,6 @@ int proxy_send(REQUEST *request)
 	 *	an EAP packet.
 	 */
 	if (!request->proxy) {
-		VALUE_PAIR	*vps;
-
 		/*
 		 *	Now build a new RADIUS_PACKET.
 		 *
@@ -345,10 +342,16 @@ int proxy_send(REQUEST *request)
 		 *	Stripped-User-Name attribute is the one hacked
 		 *	through the 'hints' file.
 		 */
-		vps = paircopy(request->packet->vps);
-		namepair = pairfind(vps, PW_USER_NAME);
-		strippednamepair = pairfind(vps, PW_STRIPPED_USER_NAME);
+		request->proxy->vps =  paircopy(request->packet->vps);
+	}
 
+	/*
+	 *	Strip the name, if told to.
+	 *
+	 *	Doing it here catches the case of proxied tunneled
+	 *	requests.
+	 */
+	if ((strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME)) != NULL) {
 		/*
 		 *	If there's a Stripped-User-Name attribute in
 		 *	the request, then use THAT as the User-Name
@@ -362,45 +365,41 @@ int proxy_send(REQUEST *request)
 		 *	from the vps list, and making the new
 		 *	User-Name the head of the vps list.
 		 */
-		if (strippednamepair) {
+		vp = pairfind(request->proxy->vps, PW_USER_NAME);
+		if (!vp) {
 			vp = paircreate(PW_USER_NAME, PW_TYPE_STRING);
 			if (!vp) {
 				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
-			memcpy(vp->strvalue, strippednamepair->strvalue,
-			       sizeof(vp->strvalue));
-			vp->length = strippednamepair->length;
-			pairdelete(&vps, PW_USER_NAME);
-			pairdelete(&vps, PW_STRIPPED_USER_NAME);
-			vp->next = vps;
-			namepair = vp;
-			vps = vp;
+			vp->next = request->proxy->vps;
+			request->proxy->vps = vp;
 		}
+		memcpy(vp->strvalue, strippedname->strvalue,
+		       sizeof(vp->strvalue));
+		vp->length = strippedname->length;
 
 		/*
-		 *	If there is no PW_CHAP_CHALLENGE attribute but
-		 *	there is a PW_CHAP_PASSWORD we need to add it
-		 *	since we can't use the request authenticator
-		 *	anymore - we changed it.
+		 *	Do NOT delete Stripped-User-Name.
 		 */
-		if (pairfind(vps, PW_CHAP_PASSWORD) &&
-		    pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
-			vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
-			if (!vp) {
-				radlog(L_ERR|L_CONS, "no memory");
-				exit(1);
-			}
-			vp->length = AUTH_VECTOR_LEN;
-			memcpy(vp->strvalue, request->packet->vector, AUTH_VECTOR_LEN);
-			pairadd(&vps, vp);
+	}
+	
+	/*
+	 *	If there is no PW_CHAP_CHALLENGE attribute but
+	 *	there is a PW_CHAP_PASSWORD we need to add it
+	 *	since we can't use the request authenticator
+	 *	anymore - we changed it.
+	 */
+	if (pairfind(request->proxy->vps, PW_CHAP_PASSWORD) &&
+	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE) == NULL) {
+		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
+		if (!vp) {
+			radlog(L_ERR|L_CONS, "no memory");
+			exit(1);
 		}
-
-		/*
-		 *	Drop the massaged VP's into the proxied packet.
-		 */
-		rad_assert(request->proxy->vps == NULL);
-		request->proxy->vps = vps;
+		vp->length = AUTH_VECTOR_LEN;
+		memcpy(vp->strvalue, request->packet->vector, AUTH_VECTOR_LEN);
+		pairadd(&(request->proxy->vps), vp);
 	}
 
 	request->proxy->code = request->packet->code;
@@ -469,7 +468,11 @@ int proxy_send(REQUEST *request)
 			 *	conditions when the responses come
 			 *	back very quickly.
 			 */
-			rl_add_proxy(request);
+			if (!rl_add_proxy(request)) {
+				DEBUG("ERROR: Failed to proxy request %d",
+				      request->number);
+				return RLM_MODULE_FAIL; /* caller doesn't reply */
+			}
 
 			rad_send(request->proxy, NULL,
 				 (char *)request->proxysecret);
