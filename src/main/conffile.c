@@ -860,8 +860,8 @@ static int generate_realms(const char *filename)
 		 */
 		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
 			radlog(L_CONS|L_ERR, 
-				"%s[%d]: No authhost entry in realm", 
-				filename, cs->item.lineno);
+				"%s[%d]: No authhost entry for realm: %s", 
+				filename, cs->item.lineno, cs->name2);
 			return -1;
 		}
 		if ((s = strchr(authhost, ':')) != NULL) {
@@ -870,7 +870,13 @@ static int generate_realms(const char *filename)
 		} else {
 			c->auth_port = auth_port;
 		}
-		accthost = cf_section_value_find(cs, "accthost");
+		if ((accthost = cf_section_value_find(cs, "accthost")) == NULL) {
+			radlog(L_CONS|L_ERR, 
+				"%s[%d]: No accthost entry for realm: %s", 
+				filename, cs->item.lineno, cs->name2);
+			return -1;
+		}
+
 		if ((s =strchr(accthost, ':')) != NULL) {
 			*s++ = 0;
 			c->acct_port = atoi(s);	
@@ -899,10 +905,9 @@ static int generate_realms(const char *filename)
 		strcpy(c->realm, cs->name2);
 		strcpy(c->server, authhost);	
 
-		s = cf_section_value_find(cs, "secret");
-		if (s == NULL) {
-			radlog(L_ERR, "%s[%d]: No shared secret supplied for realm",
-					filename, cs->item.lineno);
+		if ((s = cf_section_value_find(cs, "secret")) == NULL ) {
+			radlog(L_ERR, "%s[%d]: No shared secret supplied for realm: %s",
+					filename, cs->item.lineno, cs->name2);
 			return -1;
 		}
 
@@ -956,8 +961,19 @@ static int generate_clients(const char *filename)
 		 * Check the lengths, we don't want any core dumps
 		 */
 		hostnm = cs->name2;
-		secret = cf_section_value_find(cs, "secret");
-		shortnm = cf_section_value_find(cs, "shortname");
+
+		if((secret = cf_section_value_find(cs, "secret")) == NULL) {
+			radlog(L_ERR, "%s[%d]: Missing secret for client: %s",
+				filename, cs->item.lineno, cs->name2);
+			return -1;
+		}
+
+		if((shortnm = cf_section_value_find(cs, "shortname")) == NULL) {
+			radlog(L_ERR, "%s[%d]: Missing shortname for client: %s",
+				filename, cs->item.lineno, cs->name2);
+			return -1;
+		}
+
 		netmask = strchr(hostnm, '/');
 
 		if (strlen(secret) >= sizeof(c->secret)) {
