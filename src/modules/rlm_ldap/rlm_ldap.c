@@ -32,12 +32,12 @@
 #include        <ldap.h>
 
 #include	"radiusd.h"
+#include	"conffile.h"
 #include	"modules.h"
 
 #define MAX_AUTH_QUERY_LEN      256
 
 static char	*make_filter(char *, char *);
-static void	fieldcpy(char *, char **);
 
 static char ldap_server[40];
 static int  ldap_port;
@@ -47,6 +47,8 @@ static char ldap_filter[256];
 static char ldap_basedn[256];
 static int  use_ldap_auth;
 static LDAP *ld;
+
+CONF_SECTION	*conf_main;
 
 /* Keep LDAP search results for 30 seconds */
 #define LDAP_CACHE_TIMEOUT 30
@@ -99,100 +101,35 @@ VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *);
 
 static int rlm_ldap_init (int argc, char **argv)
 {
-	FILE    *ldapcfd;
-        char    dummystr[64];
-        char    namestr[64];
-        int     line_no;
-        char    buffer[256];
-        char    ldapcfile[256];
-        char    *ptr;
-       
-       strcpy(ldap_server,"");
+	conf_main = module_config_find("ldap");       
+		
+/*       strcpy(ldap_server,"");
        strcpy(ldap_login,"");
        strcpy(ldap_password,"");
        strcpy(ldap_basedn,"");
-       strcpy(ldap_filter,"");
+       strcpy(ldap_filter,""); */
        ldap_port = 389;
        use_ldap_auth = 0;
 
-        sprintf(ldapcfile, "%s/%s", radius_dir, "ldapserver");
-        if((ldapcfd = fopen(ldapcfile, "r")) == (FILE *)NULL) {
-                log(L_ERR,"could not read ldapserver file %s",ldapcfile);
-                return(-1);
-        }
+	if (pair_find("ldapserver", conf_main) != NULL) {
+		strcpy(ldap_server,value_find("ldapserver",conf_main));
+		use_ldap_auth = 1;
+	}
+	
+	if (pair_find("ldapport", conf_main) != NULL)
+		ldap_port = atoi(value_find("ldapport",conf_main)); 
 
-        line_no = 0;
-        while(fgets(buffer, sizeof(buffer), ldapcfd) != (char *)NULL) {
-                line_no++;
+	if (pair_find("ldaplogin", conf_main) != NULL)
+		strcpy(ldap_login,value_find("ldaplogin",conf_main));
 
-                /* Skip empty space */
-                if(*buffer == '#' || *buffer == '\0' || *buffer == '\n') {
-                        continue;
-                }
+	if (pair_find("ldappassword", conf_main) != NULL)
+		strcpy(ldap_password,value_find("ldappassword",conf_main));
 
-                if(strncasecmp(buffer, "server", 6) == 0) {
-                        /* Read the SERVER line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of ldapserver file %s", 
-				line_no,ldapcfile);
-                         use_ldap_auth = 0;
-                       } else {
-                         strcpy(ldap_server,namestr);
-                       }
-               }
-                if(strncasecmp(buffer, "port", 4) == 0) {
-			/* Read the PORT line */
-			if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-			log(L_ERR,"invalid attribute on line %d of ldapserver file %s", 
-					line_no,ldapcfile);
-			} else {
-			ldap_port = atoi(namestr);
-			}
-		}
-		if(strncasecmp(buffer, "login", 5) == 0) {
-                        /* Read the LOGIN line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of ldapserver file %s, using NULL login", 
-					line_no,ldapcfile);
-			 strcpy(ldap_login,"");
-                       } else {
-                         strcpy(ldap_login,namestr);
-                       }
-               }
-                if(strncasecmp(buffer, "password", 8) == 0) {
-                        /* Read the PASSWORD line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of ldapserver file %s, using NULL password", 
-					line_no,ldapcfile);
-			strcpy(ldap_password,"");
-                       } else {
-                         strcpy(ldap_password,namestr);
-                       }
-               }
-                if(strncasecmp(buffer, "basedn", 6) == 0) {
-                        /* Read the BASEDN line */
-			ptr = buffer + 6;
-			fieldcpy(ldap_basedn,&ptr);
-               }
-                if(strncasecmp(buffer, "filter", 6) == 0) {
-			 ptr = buffer + 6;                  
-			 fieldcpy(ldap_filter,&ptr);
-               }
-                if(strncasecmp(buffer, "doauth", 6) == 0) {
-                        /* Read the DOAUTH line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of ldapserver file %s", 
-					line_no,ldapcfile);
-                       } else {
-                         if(strncasecmp(namestr, "yes", 3) == 0) {
-                           use_ldap_auth = 1;
-                         } else {
-                           use_ldap_auth = 0;
-                         }
-                       }
-               }
-       }
-       fclose(ldapcfd);
+	if (pair_find("ldapbasedn", conf_main) != NULL)
+		strcpy(ldap_basedn,value_find("ldapbasedn",conf_main));
+
+	if (pair_find("ldapfilter", conf_main) != NULL)
+		strcpy(ldap_filter,value_find("ldapfilter",conf_main));
 
        if ( (ld = ldap_init(ldap_server,ldap_port)) == NULL)	
 		return RLM_AUTZ_FAIL;           
@@ -237,7 +174,6 @@ static int rlm_ldap_authorize(REQUEST *request, char *name,
         **vals;
     VALUE_PAIR      *check_tmp;
     VALUE_PAIR      *reply_tmp;
-
 
     /*
      *      Check for valid input, zero length names not permitted
@@ -438,36 +374,6 @@ static char *make_filter(char *str, char *name)
 		i = MAX_AUTH_QUERY_LEN - 1;
 	buf[i++] = 0;
 	return buf;
-}
-
-static  void fieldcpy(char *string, char **uptr)
-{
-        char    *ptr;
-
-        ptr = *uptr;
-        while (*ptr == ' ' || *ptr == '\t') {
-              ptr++;
-        }
-        if(*ptr == '"') {
-                ptr++;
-                while(*ptr != '"' && *ptr != '\0' && *ptr != '\n') {
-                        *string++ = *ptr++;
-                }
-                *string = '\0';
-                if(*ptr == '"') {
-                        ptr++;
-                }
-                *uptr = ptr;
-                return;
-        }
-
-        while(*ptr != ' ' && *ptr != '\t' && *ptr != '\0' && *ptr != '\n' &&
-                                                *ptr != '=' && *ptr != ',') {
-                        *string++ = *ptr++;
-        }
-        *string = '\0';
-        *uptr = ptr;
-	return;
 }
 
 /*
