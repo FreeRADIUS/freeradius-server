@@ -53,6 +53,7 @@ require_once('../lib/ldap/functions.php3');
 	                		continue;
 				if ( $$attrmap["$key"] == '')
 					continue;
+				unset($mod);
 				$mod[$attrmap["$key"]] = $$attrmap["$key"];
 
 				if ($config[ldap_debug] == 'true'){

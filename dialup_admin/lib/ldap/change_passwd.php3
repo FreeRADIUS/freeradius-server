@@ -12,7 +12,7 @@ require_once('../lib/ldap/functions.php3');
 				$passwd = da_encrypt($passwd);
 				$passwd = '{' . $config[general_encryption_method] . '}' . $passwd;
 				$mod[$attrmap['User-Password']] = $passwd;
-				if ($config[ldap_debug] == 'true')
+				if ($config[ldap_debug] == 'true'){
 					print "<b>DEBUG(LDAP): ldap_mod_replace(): DN='$dn'</b><br>\n";
 					print "<b>DEBUG(LDAP): ldap_mod_replace(): Data:";
 					print_r($mod);
