@@ -130,6 +130,7 @@ static void mschap(const char *szChallenge, const char *szPassword, char *szResp
 /* validate userid/passwd */
 static int mschap_auth(void *instance, REQUEST *request)
 {
+	VALUE_PAIR *password;
 	VALUE_PAIR *challenge, *response;
 	uint8_t calculated[32];
 
@@ -159,24 +160,16 @@ static int mschap_auth(void *instance, REQUEST *request)
 	 *	We can only authenticate user requests which HAVE
 	 *	a Password attribute.
 	 */
-	if (!request->password) {
-		radlog(L_AUTH, "rlm_mschap: Attribute \"Password\" is required for authentication.");
+	password = pairfind(request->config_items, PW_PASSWORD);
+	if (!password) {
+		radlog(L_AUTH, "rlm_mschap: Configuration item \"Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
 	/*
-	 *  Ensure that we're being passed a plain-text password,
-	 *  and not anything else.
-	 */
-	if (request->password->attribute != PW_PASSWORD) {
-		radlog(L_AUTH, "rlm_mschap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
-		return RLM_MODULE_INVALID;
-	}
-	
-	/*
 	 *	Calculate the MS-CHAP response
 	 */
-	mschap(challenge->strvalue, request->password->strvalue, calculated);
+	mschap(challenge->strvalue, password->strvalue, calculated);
 	if (memcmp(response->strvalue + 26, calculated, 24) == 0) {
 		return RLM_MODULE_OK;
 	}
