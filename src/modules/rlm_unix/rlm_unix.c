@@ -284,10 +284,14 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
                 {
 			radlog(L_ERR, "HASH:  unable to create user "
 				"hash table.  disable caching and run debugs");
-			free((char *) inst->passwd_file);
-			free((char *) inst->shadow_file);
-			free((char *) inst->group_file);
-			if (inst->radwtmp) free((char *) inst->radwtmp);
+			if (inst->passwd_file)
+				free((char *) inst->passwd_file);
+			if (inst->shadow_file)
+				free((char *) inst->shadow_file);
+			if (inst->group_file)
+				free((char *) inst->group_file);
+			if (inst->radwtmp)
+				free((char *) inst->radwtmp);
 			free(inst);
 			return -1;
 		}
@@ -325,10 +329,14 @@ static int unix_detach(void *instance)
 		group_inst = NULL;
 		group_inst_explicit = 0;
 	}
-	free((char *) inst->passwd_file);
-	free((char *) inst->shadow_file);
-	free((char *) inst->group_file);
-	if (inst->radwtmp) free((char *) inst->radwtmp);
+	if (inst->passwd_file)
+		free((char *) inst->passwd_file);
+	if (inst->shadow_file)
+		free((char *) inst->shadow_file);
+	if (inst->group_file)
+		free((char *) inst->group_file);
+	if (inst->radwtmp)
+		free((char *) inst->radwtmp);
 	if (inst->cache) {
 		unix_freepwcache(inst->cache);
 	}
