@@ -616,6 +616,8 @@ LIBTOOL="`pwd`/libtool"
 AC_SUBST(LIBTOOL)
 AC_SUBST(LIBLTDL)
 AC_SUBST(INCLTDL)
+top_builddir=`pwd`
+AC_SUBST(top_builddir)
 
 dnl #############################################################
 dnl #
