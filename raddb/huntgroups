@@ -22,14 +22,14 @@
 # Our POP in Alphen a/d Rijn has 3 terminal servers. Create a Huntgroup-Name
 # called Alphen that matches on all three terminal servers.
 #
-#alphen		NAS-IP-Address = 192.168.2.5
-#alphen		NAS-IP-Address = 192.168.2.6
-#alphen		NAS-IP-Address = 192.168.2.7
+#alphen		NAS-IP-Address == 192.168.2.5
+#alphen		NAS-IP-Address == 192.168.2.6
+#alphen		NAS-IP-Address == 192.168.2.7
 
 #
 # The POP in Delft consists of only one terminal server.
 #
-#delft		NAS-IP-Address = 192.168.3.5
+#delft		NAS-IP-Address == 192.168.3.5
 
 #
 # Ports 0-7 on the first terminal server in Alphen are connected to
@@ -38,7 +38,7 @@
 #
 # Note that this huntgroup is a subset of the "alphen" huntgroup.
 #
-#business	NAS-IP-Address = 192.168.2.5, NAS-Port-Id = 0-7
+#business	NAS-IP-Address == 192.168.2.5, NAS-Port-Id == 0-7
 #		User-Name = rogerl,
 #		User-Name = henks,
 #		Group = business,
