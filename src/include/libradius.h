@@ -201,6 +201,8 @@ RADIUS_PACKET	*rad_alloc(int newvector);
 void		rad_free(RADIUS_PACKET **);
 int		rad_pwencode(char *encpw, int *len, const char *secret, const char *vector);
 int		rad_pwdecode(char *encpw, int len, const char *secret, const char *vector);
+int		rad_tunnel_pwencode(char *encpw, int *len, const char *secret, const char *vector);
+int		rad_tunnel_pwdecode(char *encpw, int len, const char *secret, const char *vector);
 int		rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *password);
 
 /* valuepair.c */
