@@ -48,6 +48,9 @@ if ($HTTP_SERVER_VARS["PHP_AUTH_USER"])
 	<tr align=left><td id="menu7" onmouseover='myin("7");' onmouseout='myout("7");'>
 	<a id="a7" href="badusers.php3?login=anyone" target="content" title="Show Bad Users">Bad Users</a>
 	</td></tr>
+	<tr align=left><td id="menu16" onmouseover='myin("16");' onmouseout='myout("16");'>
+	<a id="a16" href="failed_logins.php3" target="content" title="Show Most Recent Failed Logins">Failed Logins</a>
+	</td></tr>
 	<tr align=left><td id="menu14" onmouseover='myin("14");' onmouseout='myout("14");'>
 	<a id="a14" href="find.php3" target="content" title="Find User">Find User</a>
 	</td></tr>

@@ -55,6 +55,7 @@ Ver 1.59:
 * Fix a bug in the failed logins page
 * Change use of AcctStartTime with AcctStopTime in failed_logins.php3 to match that in user_admin
 * Fix a bug with failed logins in user_admin.
+* Add the failed logins page in the buttons page
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
