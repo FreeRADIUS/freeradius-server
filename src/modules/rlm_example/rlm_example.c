@@ -38,7 +38,6 @@ static int radius_authorize(REQUEST *request,
 {
   /* quiet the compiler */
   request = request;
-  name = name;
   check_pairs = check_pairs;
   reply_pairs = reply_pairs;
 
@@ -52,8 +51,6 @@ static int radius_authenticate(REQUEST *request)
 {
   /* quiet the compiler */
   request = request;
-  username = username;
-  password = password;
 
   return RLM_AUTH_OK;
 }
