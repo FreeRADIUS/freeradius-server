@@ -209,11 +209,11 @@ AC_SUBST(LIBDL)
 
 dnl See if this is OS/2
 AC_MSG_CHECKING(type of OS)
-if test -f c:/config.sys; then
-	AC_MSG_RESULT(DOS or OS/2)
+OS=`uname -s`
+AC_MSG_RESULT($OS)
+if test "$OS" = "OS/2"; then
 	LIBPREFIX=
 else
-	AC_MSG_RESULT(some sort of Unix)
 	LIBPREFIX=lib
 fi
 AC_SUBST(LIBPREFIX)
