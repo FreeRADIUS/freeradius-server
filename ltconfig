@@ -481,7 +481,7 @@ if test "${AR+set}" != "set"; then
 
   echo $ac_n "checking for ar... $ac_c" 1>&6
   IFS="${IFS= 	}"; save_ifs="$IFS"; IFS="${IFS}${PATH_SEPARATOR}"
-  for ac_dir in $PATH /bin /usr/bin /usr/local/bin /usr/ucb /usr/ccs/bin; do
+  for ac_dir in /bin /usr/bin /usr/local/bin /usr/ucb /usr/ccs/bin $PATH ; do
     test -z "$ac_dir" && ac_dir=.
     if test -f $ac_dir/ar || test -f $ac_dir/ar$ac_exeext; then
       AR=$ac_dir/ar
