@@ -38,35 +38,11 @@ install:
 			$(INSTALL) -m 644 $$p $(R)$(mandir)/man$$i; \
 		done \
 	done
-	@echo "Creating/updating files in $(R)$(raddbdir)"; \
-	cd raddb; \
-	for i in [a-c]* [e-z]*; do \
-		[ $$i != radiusd.conf.in -a ! -f $(R)$(raddbdir)/$$i ] && \
-                $(INSTALL) -m 644 $$i $(R)$(raddbdir); \
-	done; \
-	chmod 600 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients $(R)$(raddbdir)/clients.conf;
-	@echo "Creating/updating files in $(R)$(dictdir)"; \
+	@echo "Installing dictionary files in $(R)$(dictdir)"; \
 	cd share; \
 	for i in dictionary*; do \
-		[ ! -f $(R)$(dictdir)/$$i ] && $(INSTALL) -m 644 $$i $(R)$(dictdir); \
-		if [ "`find $$i -newer $(R)$(dictdir)/$$i`" ]; then \
-			echo "** $(R)$(dictdir)/$$i"; \
-			nt=1; \
-		fi; \
+		$(INSTALL) -m 644 $$i $(R)$(dictdir); \
 	done; \
-	if [ "$$nt" ]; then \
-		echo "**";\
-		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
-		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
-		echo "**";\
-		echo "** The sample configuration files in `pwd`";\
-		echo "** are newer than those in $(R)$(dictdir)";\
-		echo "**";\
-		echo "** Please investigate and manually copy (if appropriate) the files listed above.";\
-		echo "**";\
-		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
-		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
-	fi
 
 common:
 	@for dir in $(SUBDIRS); do \
