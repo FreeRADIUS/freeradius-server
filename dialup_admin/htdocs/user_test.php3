@@ -95,7 +95,8 @@ if ($test_user == 1){
 		}
 		$reply = file($tmp_file);
 		unlink($tmp_file);
-		$msg = "<b>" . strftime('%A, %e %B %Y, %T %Z') . "</b><br><br>\n";
+		$msg = "<b>" . strftime('%A, %e %B %Y, %T %Z') . "</b><br>\n";
+		$msg .= "<b>Server: </b><i>$server:$port</i><br><br>\n";
 		if (ereg('code 2', $reply[0]))
 			$msg .= "<b>Authentication was <font color=green>successful</font>";
 		else if (ereg('code 3',$reply[0]))

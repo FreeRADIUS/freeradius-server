@@ -11,6 +11,7 @@ Ver 1.61:
 * When searching a user in ldap through the find page only try to find the users which have a uid attribute (username)
 * Allow selecting a specific access server in the failed logins page
 * In the user admin page use AcctStartTime not AcctStopTime when calculating usage for the last 7 days
+* Also show server:port in the user test page (so that it shows when used for server checks)
 Ver 1.60:
 * Use require_once when including lib/functions.php3 in lib/sql
 * In the buttons toolbar Edit User should not be clickable.
