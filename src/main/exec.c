@@ -209,7 +209,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		envlen = 0;
 
-		for (vp = input_pairs; vp && vp->next; vp = vp->next) {
+		for (vp = input_pairs; vp != NULL; vp = vp->next) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment
