@@ -81,6 +81,7 @@ int sql_save_acct(SQLREC *sqlrecord) {
 
        	 if (sql_query(sql->AcctSock, querystr) < 0)
 	      log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(sql->AcctSock));
+	 sql_finish_query(sql->AcctSock);
 
          if (sqlfile) {
               fputs(querystr, sqlfile);
@@ -94,6 +95,7 @@ int sql_save_acct(SQLREC *sqlrecord) {
 		sprintf(querystr, "UPDATE %s SET Framed-IP-Address = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress= '%s'", sql->config.sql_acct_table, sqlrecord->FramedIPAddress, sqlrecord->AcctSessionId, sqlrecord->UserName, sqlrecord->NASIPAddress);
 		if (sql_query(sql->AcctSock, querystr) < 0)
 			log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(sql->AcctSock));
+	 	sql_finish_query(sql->AcctSock);
 
 		if (sqlfile) {
 			fputs(querystr, sqlfile);
@@ -117,6 +119,7 @@ int sql_save_acct(SQLREC *sqlrecord) {
              );
        	     if (sql_query(sql->AcctSock, querystr) < 0)
 	        log(L_ERR, "Acct: Couldn't update SQL accounting START record - %s", sql_error(sql->AcctSock));
+	     sql_finish_query(sql->AcctSock);
 
              num = sql_affected_rows(sql->AcctSock);
              if (num == 0) {
@@ -143,6 +146,7 @@ int sql_save_acct(SQLREC *sqlrecord) {
 
        	        if (sql_query(sql->AcctSock, querystr) < 0)
 	   	  log(L_ERR, "Acct: Couldn't insert SQL accounting START record - %s", sql_error(sql->AcctSock));
+	        sql_finish_query(sql->AcctSock);
              }
 
            /* Got stop record */
@@ -170,6 +174,7 @@ int sql_save_acct(SQLREC *sqlrecord) {
 
 			if (sql_query(sql->AcctSock, querystr) < 0)
 				log(L_ERR, "Acct: Couldn't update SQL accounting STOP record - %s", sql_error(sql->AcctSock));
+	        	sql_finish_query(sql->AcctSock);
 
 		} else if (num == 0) {
 
@@ -199,6 +204,7 @@ int sql_save_acct(SQLREC *sqlrecord) {
 
 			if (sql_query(sql->AcctSock, querystr) < 0)
 				log(L_ERR, "Acct: Couldn't insert SQL accounting STOP record - %s", sql_error(sql->AcctSock));
+	        	sql_finish_query(sql->AcctSock);
 		}
 
           }
@@ -295,19 +301,16 @@ int sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode) {
 	else if (mode == PW_VP_REALMDATA)
 		sprintf(querystr, "SELECT %s.* FROM %s, %s WHERE %s.RealmName = '%s' AND %s.GroupName = %s.GroupName ORDER BY %s.id", table, table, sql->config.sql_realmgroup_table, sql->config.sql_realmgroup_table, user, sql->config.sql_realmgroup_table, table, table);
         sql_checksocket("Auth");
-	sql_query(sql->AuthSock, querystr);
-	if ((result = sql_store_result(sql->AuthSock)) && sql_num_fields(sql->AuthSock)) {
-		rows = sql_num_rows(result);
-		while ((row = sql_fetch_row(result))) {
-
-			if (sql_userparse(vp, row) != 0) {
-		 		log(L_ERR|L_CONS, "Error getting data from SQL database");
-				sql_free_result(result);
-				return -1;
-			}
+	sql_select_query(sql->AuthSock, querystr);
+	rows = sql_num_rows(sql->AuthSock);
+	while ((row = sql_fetch_row(sql->AuthSock))) {
+		if (sql_userparse(vp, row) != 0) {
+	 		log(L_ERR|L_CONS, "Error getting data from SQL database");
+			sql_finish_select_query(sql->AuthSock);
+			return -1;
 		}
-		sql_free_result(result);
 	}
+	sql_finish_select_query(sql->AuthSock);
 
 	return rows;
 
@@ -315,8 +318,7 @@ int sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode) {
 
 
 static int got_alrm;
-static void alrm_handler()
-{
+static void alrm_handler() {
 	got_alrm = 1;
 }
 
@@ -427,17 +429,10 @@ int sql_check_multi(char *name, VALUE_PAIR *request, int maxsimul) {
 	if (!sql_checksocket("Auth"))
 		return 0;
 	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE UserName = '%s' AND AcctStopTime = 0", sql->config.sql_acct_table, name);
-	sql_query(sql->AuthSock, querystr);
-	if (!(result = sql_store_result(sql->AuthSock)) && sql_num_fields(sql->AuthSock)) {
-   		log(L_ERR,"SQL Error: Cannot get result");
-   		log(L_ERR,"SQL error: %s",sql_error(sql->AuthSock));
-   		sql_close(sql->AuthSock);
-  		sql->AuthSock = NULL;
-	} else {
-		row = sql_fetch_row(result);
-		count = atoi(row[0]);
-		sql_free_result(result);
-	}
+	sql_select_query(sql->AuthSock, querystr);
+	row = sql_fetch_row(sql->AuthSock);
+	count = atoi(row[0]);
+	sql_finish_select_query(sql->AuthSock);
 
 	if (count < maxsimul)
 		return 0;
@@ -450,32 +445,26 @@ int sql_check_multi(char *name, VALUE_PAIR *request, int maxsimul) {
 
 	count = 0;
 	sprintf(querystr, "SELECT * FROM %s WHERE UserName = '%s' AND AcctStopTime = 0", sql->config.sql_acct_table, name);
-	sql_query(sql->AuthSock, querystr);
-	if (!(result = sql_store_result(sql->AuthSock)) && sql_num_fields(sql->AuthSock)) {
-   		log(L_ERR,"SQL Error: Cannot get result");
-   		log(L_ERR,"SQL error: %s",sql_error(sql->AuthSock));
-   		sql_close(sql->AuthSock);
-  		sql->AuthSock = NULL;
-	} else {
-		while ((row = sql_fetch_row(result))) {
-			if (sql_check_ts(row) == 1) {
-				count++;
+	sql_select_query(sql->AuthSock, querystr);
+	while ((row = sql_fetch_row(sql->AuthSock))) {
+		if (sql_check_ts(row) == 1) {
+			count++;
 
-				if (ipno && atoi(row[18]) == ipno)
-					mpp = 2;   
+			if (ipno && atoi(row[18]) == ipno)
+				mpp = 2;   
 
-			} else {
-				/*
-				 *	False record - zap it
-				 */
+		} else {
+			/*
+			 *	False record - zap it
+			 */
 
-				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'", sql->config.sql_acct_table, row[0]);
-				sql_query(sql->AuthSock, querystr);
-				
-			}
+			sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'", sql->config.sql_acct_table, row[0]);
+			sql_query(sql->AuthSock, querystr);
+	        	sql_finish_query(sql->AuthSock);
+			
 		}
-		sql_free_result(result);
 	}
+	sql_finish_select_query(sql->AuthSock);
 
 	return (count < maxsimul) ? 0 : mpp; 
 

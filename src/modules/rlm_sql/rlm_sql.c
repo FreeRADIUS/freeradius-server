@@ -13,7 +13,7 @@
  * start of main routines
  ***********************************************************************/
 
-static int rlm_sql_init(int rehup) {
+static int rlm_sql_init(int argc, char **argv) {
 
 	FILE    *sqlfd;
         char    dummystr[64];
@@ -330,7 +330,7 @@ static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
 	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", sql->config.sql_authcheck_table, user);
 	sql_select_query(sql->AcctSock, querystr);
 	row = sql_fetch_row(sql->AcctSock);
-	sql_finsih_query(sql->AcctSock);
+	sql_finsih_select_query(sql->AcctSock);
 
 	if (strncmp(strlen(password), password, row[0]) != 0)
 		return RLM_AUTH_REJECT;
@@ -437,6 +437,7 @@ static int rlm_sql_accounting(REQUEST *request) {
 						}
 						break;
 */
+
 
                 case PW_SERVICE_TYPE:
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
