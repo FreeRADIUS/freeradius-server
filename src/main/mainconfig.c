@@ -284,16 +284,6 @@ static int xlat_config(void *instance, REQUEST *request,
 			}
 
 			switch (*from) {
-			case '"':
-			case '\'':
-				length = rad_copy_string(to, from);
-				if (length < 0) {
-					return -1;
-				}
-				from += length;
-				to += length;
-				break;
-
 			case '%':
 				if (from[1] == '{') {
 					*(to++) = *(from++);
@@ -395,7 +385,7 @@ static int xlat_config(void *instance, REQUEST *request,
 
 	/*
 	 *	Root through section & subsection references.
-	 *	The last entry of argv is the CONF_PAIR.
+	 *	The last entry of argv MUST be the CONF_PAIR.
 	 */
 	for (i = 0; i < argc - 1; i++) {
 		char *name2 = NULL;
@@ -417,12 +407,16 @@ static int xlat_config(void *instance, REQUEST *request,
 		if (name2) {
 			subcs = cf_section_sub_find_name2(cs, argv[i],
 							  name2);
+			if (!subcs) {
+			  radlog(L_ERR, "config: section \"%s %s {}\" not found while dereferencing \"%s\"", argv[i], name2, fmt);
+			  return 0;
+			}
 		} else {
 			subcs = cf_section_sub_find(cs, argv[i]);
-		}
-		if (!subcs) {
-			radlog(L_ERR, "config: section \"%s {}\" not found while dereferencing \"%s\"", argv[i], fmt);
-			return 0;
+			if (!subcs) {
+			  radlog(L_ERR, "config: section \"%s {}\" not found while dereferencing \"%s\"", argv[i], fmt);
+			  return 0;
+			}
 		}
 		cs = subcs;
 	} /* until argc - 1 */
