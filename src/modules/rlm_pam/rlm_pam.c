@@ -274,7 +274,7 @@ static int pam_auth(void *instance, REQUEST *request)
 
 module_t rlm_pam = {
   "Pam",
-  0,				/* type: reserved */
+  RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
   NULL,				/* initialize */
   pam_instantiate,		/* instantiation */
   {
