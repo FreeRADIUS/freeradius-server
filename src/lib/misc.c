@@ -19,7 +19,8 @@ static const char rcsid[] =
 #include	<string.h>
 #include	<netdb.h>
 #include	<ctype.h>
-#include	<signal.h>
+#include	<sys/file.h>
+#include	<fcntl.h>
 
 #include	"libradius.h"
 #include	"missing.h"
@@ -155,4 +156,31 @@ void rad_rmspace(char *str) {
   *s = '\0';
 }
 
+/*
+ *	Internal wrapper for locking, to minimize the number of ifdef's
+ *
+ *	Lock an fd, prefer lockf() over flock()
+ */
+int rad_lockfd(int fd, int lock_len)
+{
+#if defined(F_LOCK) && !defined(BSD)
+	return lockf(fd, F_LOCK, lock_len);
+#else
+	return flock(fd, LOCK_EX);
+#endif
+}
 
+/*
+ *	Internal wrapper for unlocking, to minimize the number of ifdef's
+ *	in the source.
+ *
+ *	Unlock an fd, prefer lockf() over flock()
+ */
+int rad_unlockff(int fd, int lock_len)
+{
+#if defined(F_LOCK) && !defined(BSD)
+	return lockf(fd, F_ULOCK, lock_len);
+#else
+	return flock(fd, LOCK_UN);
+#endif
+}
