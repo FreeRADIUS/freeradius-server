@@ -590,6 +590,7 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 
 	    SHA_CTX ctx;
 	    unsigned char sha_md[SHA_DIGEST_LENGTH];
+#if 0 /* salting/encoding now handled in lib/radius.c:tunnel_pwencode() */
 	    unsigned char md5_md[MD5_DIGEST_LENGTH];
 
 	    /*   From RFC 2548:           S                 R           A */
@@ -603,6 +604,10 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    unsigned char mppe_key_string[2 + (2 * sizeof(salt)) +
 	    /*				  (   ASCII(mppe_key)  )  \0 */
 					  (2 * sizeof(mppe_key)) + 1];
+#else /* 0 */
+	    /*                           0x   (   ASCII(mppe_key)   )  \0 */
+	    unsigned char mppe_key_string[2 + (2 * sizeof(MasterKey)) + 1];
+#endif /* 0 */
 
 	    /* Generate the master session key. */
 	    SHA1_Init(&ctx);
@@ -632,12 +637,13 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 
 	    /* Now, generate the MS-MPPE-Send-Key attribute. */
 
+#if 0
 	    /* Setup the salt value. */
 	    salt[0] = 0x80;
 	    salt[1] = 0x01;
 
 	    /* Encode the key. */
-	    (void) memset(mppe_key, 0, 32);
+	    (void) memset(mppe_key, 0, sizeof(mppe_key));
 	    mppe_key[0] = 16; /* length */
 	    (void) memcpy(&mppe_key[1], MasterSendKey, 16);
 	    secretlen = strlen(request->secret);
@@ -660,18 +666,26 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    (void) sprintf(&mppe_key_string[4], "%02X", salt[1]);
 	    for (i = 0; i < sizeof(mppe_key); ++i)
 		(void) sprintf(&mppe_key_string[i*2+6], "%02X", mppe_key[i]);
+#else /* 0 */
+	    mppe_key_string[0] = '0';
+	    mppe_key_string[1] = 'x';
+	    for (i = 0; i < sizeof(MasterSendKey); ++i)
+		(void) sprintf(&mppe_key_string[i*2+2], "%02X",
+			       MasterSendKey[i]);
+#endif /* 0 */
 	    vp = pairmake("MS-MPPE-Send-Key", mppe_key_string, T_OP_EQ);
 	    rad_assert(vp != NULL);
 	    pairadd(vps, vp);
 
 	    /* Generate the MS-MPPE-Recv-Key attribute. */
 
+#if 0
 	    /* Setup the salt value. */
 	    salt[0] = 0x80;
 	    salt[1] = 0x02;
 
 	    /* Encode the key. */
-	    (void) memset(mppe_key, 0, 32);
+	    (void) memset(mppe_key, 0, sizeof(mppe_key));
 	    mppe_key[0] = 16; /* length */
 	    (void) memcpy(&mppe_key[1], MasterReceiveKey, 16);
 	    secretlen = strlen(request->secret);
@@ -694,6 +708,13 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    (void) sprintf(&mppe_key_string[4], "%02X", salt[1]);
 	    for (i = 0; i < sizeof(mppe_key); ++i)
 		(void) sprintf(&mppe_key_string[i*2+6], "%02X", mppe_key[i]);
+#else /* 0 */
+	    mppe_key_string[0] = '0';
+	    mppe_key_string[1] = 'x';
+	    for (i = 0; i < sizeof(MasterReceiveKey); ++i)
+		(void) sprintf(&mppe_key_string[i*2+2], "%02X",
+			       MasterReceiveKey[i]);
+#endif /* 0 */
 	    vp = pairmake("MS-MPPE-Recv-Key", mppe_key_string, T_OP_EQ);
 	    rad_assert(vp != NULL);
 	    pairadd(vps, vp);
