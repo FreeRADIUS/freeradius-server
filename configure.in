@@ -655,13 +655,22 @@ dnl 	http://h30097.www3.hp.com/docs/base_doc/DOCUMENTATION/V51B_HTML/MAN/MAN3/17
 dnl We need #stdio.h to define NULL on FreeBSD (at least)
 gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
-AC_TRY_LINK([
+case "$host" in
+*-freebsd*)
+	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
+	gethostbyaddrrstyle=BSD
+	AC_MSG_WARN([FreeBSD overridden to BSD-style])
+	;;
+esac
+if test "x$gethostbyaddrrstyle" = "x"; then
+	AC_TRY_LINK([
 #include <stdio.h>
 #include <netdb.h>
 ], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ], [
 	AC_DEFINE(GETHOSTBYADDRRSTYLE, GNUSTYLE)
 	gethostbyaddrrstyle=GNU
 ])
+fi
 if test "x$gethostbyaddrrstyle" = "x"; then
 	AC_TRY_LINK([
 #include <stdio.h>
