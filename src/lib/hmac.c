@@ -114,3 +114,41 @@ Test Vectors (Trailing '\0' of a character string not included in test):
   data_len =    50 bytes
   digest =      0x56be34521d144c88dbb8c733f0e8b3f6
 */
+
+#ifdef TESTING
+/*
+ *  cc -DTESTING -I ../include/ hmac.c md5.c -o hmac
+ *
+ *  ./hmac Jefe "what do ya want for nothing?"
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char **argv)
+{
+  unsigned char digest[16];
+  char *key;
+  int key_len;
+  char *text;
+  int text_len;
+  int i;
+
+  key = argv[1];
+  key_len = strlen(key);
+
+  text = argv[2];
+  text_len = strlen(text);
+
+  lrad_hmac_md5(text, text_len, key, key_len, digest);
+  
+  for (i = 0; i < 16; i++) {
+    printf("%02x", digest[i]);
+  }
+  printf("\n");
+  
+  exit(0);
+  return 0;
+}
+
+#endif
