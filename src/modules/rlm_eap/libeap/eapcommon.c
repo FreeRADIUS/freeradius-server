@@ -131,7 +131,7 @@ const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
 
 		snprintf(buffer, buflen, "%d", type);
 		return buffer;
-	} else if ((eap_types[type] >= '0') && (eap_types[type] <= '9')) {
+	} else if ((*eap_types[type] >= '0') && (*eap_types[type] <= '9')) {
 		/*
 		 *	Prefer the dictionary name, if it exists.
 		 */

@@ -80,7 +80,7 @@ static unsigned char state_key[AUTH_VECTOR_LEN];
  */
 void generate_key(void)
 {
-	int i;
+	unsigned int i;
 
 	if (key_initialized) return;
 
@@ -115,7 +115,7 @@ void generate_key(void)
  */
 VALUE_PAIR *generate_state(time_t timestamp)
 {
-	int i;
+	unsigned int i;
 	unsigned char challenge[EAP_CHALLENGE_LEN];
 	unsigned char hmac[EAP_HMAC_SIZE];
 	unsigned char value[EAP_CHALLENGE_LEN + sizeof(timestamp)];

@@ -510,7 +510,7 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 		DEBUG2("  rlm_eap_tls: Received unexpected tunneled data after successful handshake.");
 #ifndef NDEBUG
 		if (debug_flag > 2) {
-			int i;
+			unsigned int i;
 			unsigned int data_len;
 			unsigned char buffer[1024];
 
