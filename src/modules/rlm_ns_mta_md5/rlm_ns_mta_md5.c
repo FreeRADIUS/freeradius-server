@@ -98,7 +98,7 @@ static int ns_mta_md5_pass(const char *clear, const char *encrypted)
   char hashed[HASH_LEN];
   char salt[33];
 
-  if (!strlen(encrypted) == 64) {
+  if (!(strlen(encrypted) == 64)) {
     DEBUG2("NS-MTA-MD5 hash not 64 bytes");
     return -1;
   }
