@@ -89,10 +89,10 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
 	if (pg_sock->row != NULL) {
 		for (i = pg_sock->num_fields-1; i >= 0; i--) {
 			if (pg_sock->row[i] != NULL) {
-				xfree(pg_sock->row[i]);
+				free(pg_sock->row[i]);
 			}
 		}
-		xfree((char*)pg_sock->row);
+		free((char*)pg_sock->row);
 		pg_sock->row = NULL;
 		pg_sock->num_fields = 0;
 	}

@@ -717,7 +717,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'a':
-				if (radacct_dir) xfree(radacct_dir);
+				if (radacct_dir) free(radacct_dir);
 				radacct_dir = strdup(optarg);
 				break;
 
@@ -726,7 +726,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'd':
-				if (radius_dir) xfree(radius_dir);
+				if (radius_dir) free(radius_dir);
 				radius_dir = strdup(optarg);
 				break;
 
@@ -1872,6 +1872,7 @@ static void sig_fatal(int sig)
 static void sig_hup(int sig)
 {
 	sig = sig; /* -Wunused */
+
 	reset_signal(SIGHUP, sig_hup);
 
 	/*

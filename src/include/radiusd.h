@@ -308,7 +308,6 @@ void		request_free(REQUEST **request);
 int		rad_mkdir(char *directory, int mode);
 int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
-void		xfree(const char *ptr);
 REQUEST		*request_alloc(void);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
 int		request_data_add(REQUEST *request,
