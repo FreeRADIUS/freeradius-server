@@ -28,6 +28,17 @@
 #include "eap_types.h"
 
 /*
+ * Structure to represent packet format of eap
+ */
+typedef struct eap_packet_t {
+	unsigned char	code;
+	unsigned char	id;
+	unsigned char	length[2];
+	unsigned char	data[1];
+} eap_packet_t;
+
+
+/*
  * Keep track of which sub modules we've loaded.
  */
 typedef struct eap_types_t {
