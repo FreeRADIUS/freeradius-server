@@ -40,10 +40,6 @@ o Enable caching in the ldap module (try it first, the openldap code
 ------------ SQL MODULE --------------
 o Tune the num_sql_socks to be larger than the number of simultaneous
   authentication/accounting requests.
-o Create an index for the radacct table to minimize the penalty of a
-  growing accounting table. The index should be for the UserName attribute
-  with additional attributes:
-    AcctSessionId,AcctStartTime,AcctStopTime,NASIPAddres
 
 ------------ COUNTER MODULE ----------
 o Enable noatime on the counter db files.
