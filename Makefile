@@ -46,8 +46,17 @@ install:
 		fi; \
 	done; \
 	if [ "$$nt" ]; then \
-		echo "** The samples in ../raddb are newer than these files";\
-		echo "** Please investigate and copy manually if appropriate";\
+		echo "**";\
+		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
+		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
+		echo "**";\
+		echo "** The sample configuration files in `pwd`";\
+		echo "** are newer than those in $(R)$(raddbdir)";\
+		echo "**";\
+		echo "** Please investigate and manually copy (if appropriate) the files listed above.";\
+		echo "**";\
+		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
+		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 	fi
 
 common:
