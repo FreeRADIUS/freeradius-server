@@ -35,3 +35,13 @@ Nathan Neulinger <nneul@umr.edu>
 
 Brandon Lee Poyner <bpoyner@thebiz.net>
 	Netscape-MTA-MD5 authentication module.
+
+Chris Parker <cparker@starnetusa.net>
+	Configuration parser enhancments, 'rlm_attr_filter' module, and
+	proxy enhancements.
+
+Kostas Kalevras <kkalev@noc.ntua.gr>
+	Contributed the 'dialup_admin' PHP server administration code.
+
+Chris Brotsos <cbrotsos@starnetusa.net>
+	Memory allocation debugging and proxy enhancements.
