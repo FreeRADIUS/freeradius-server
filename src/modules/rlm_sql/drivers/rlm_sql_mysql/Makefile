@@ -1,3 +1,4 @@
+include ../../../../../Make.inc
 
 TARGET		= rlm_sql_mysql
 SRCS		= sql_mysql.c
@@ -9,9 +10,11 @@ $(DYNAMIC_OBJS): $(HEADERS)
 
 ###
 # over-ride the previous assignment if we're not building anything
-#ifeq ($(SQL_MYSQL_LIBS),)
-#TARGET		=
-#endif
+ifeq ($(SQL_MYSQL_LIBS),)
+TARGET		=
+endif
 
 include ../rules.mak
+
+
 

@@ -1,23 +1,18 @@
-# must be first
-include config.mak
+include ../../../../../Make.inc
 
 TARGET		= rlm_sql_oracle
 SRCS		= sql_oracle.c
 HEADERS		= sql_oracle.h
-RLM_SQL_CFLAGS	=
-RLM_SQL_LIBS	=
+RLM_SQL_CFLAGS	= $(SQL_ORACLE_INCLUDE)
+RLM_SQL_LIBS	= $(SQL_ORACLE_LIBS)
 
 $(DYNAMIC_OBJS): $(HEADERS) 
 
 ###
 # over-ride the previous assignment if we're not building anything
-ifeq ($(LIBORACLE),)
+ifeq ($(SQL_ORACLE_LIBS),)
 TARGET        =
 endif
 
 include ../rules.mak
-
-# must be last
-config.mak:
-	@../checkconfig -l LIBORACLE oracle_init -loracle -L/usr/local/oracle/lib
 
