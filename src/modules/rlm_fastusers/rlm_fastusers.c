@@ -65,7 +65,7 @@ static int fallthrough(VALUE_PAIR *vp);
 static int fastuser_buildhash(struct fastuser_instance *inst);
 static int fastuser_getfile(struct fastuser_instance *inst, const char *filename, 
 														PAIR_LIST **default_list, PAIR_LIST **pair_list, 
-														int acct);
+														int isacctfile);
 static int fastuser_hash(const char *s, long hashtablesize);
 static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *entry, int idx);
 static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
@@ -103,7 +103,8 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 	long memsize=0;
 	int rcode, hashindex;
 	PAIR_LIST **newhash=NULL, **oldhash=NULL;
-	PAIR_LIST *newdefaults=NULL, *olddefaults=NULL, *cur=NULL;
+	PAIR_LIST *newdefaults=NULL, *newacctusers, *cur=NULL;
+	PAIR_LIST *olddefaults=NULL, *oldacctusers=NULL;
 
 	/* 
 	 * Allocate space for hash table here
@@ -116,7 +117,7 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 	memset((PAIR_LIST *)newhash, 0, memsize);
 
 	/* Read acct_users */
-	rcode = fastuser_getfile(inst, inst->acctusersfile, NULL, &inst->acctusers, 1);
+	rcode = fastuser_getfile(inst, inst->acctusersfile, NULL, &newacctusers, 1);
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "rlm_fastusers:  Errors reading %s", inst->usersfile);
 		return -1;
@@ -134,6 +135,8 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 	 * aren't blocked while we free the old table
 	 * below
 	 */
+	oldacctusers = inst->acctusers;
+	inst->acctusers = newacctusers;
 	oldhash = inst->hashtable;
 	inst->hashtable = newhash;
 	olddefaults = inst->defaults;
@@ -152,6 +155,7 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 		} 
 		free(oldhash);
 		pairlist_free(&olddefaults);
+		pairlist_free(&oldacctusers);
 	}
 
 	if(inst->stats) 
@@ -161,7 +165,8 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 }
 
 static int fastuser_getfile(struct fastuser_instance *inst, const char *filename, 
-														PAIR_LIST **default_list, PAIR_LIST **pair_list, int acct) {
+														PAIR_LIST **default_list, PAIR_LIST **pair_list, 
+														int isacctfile) {
 	int rcode;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry=NULL, *next=NULL, *cur=NULL, *defaults=NULL, *lastdefault=NULL;
@@ -290,7 +295,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 		/* Save what was next */
 		next = entry->next;
 
-		if(!acct) {
+		if(!isacctfile) {
 			/* Save the DEFAULT entry specially */
 			if(strcmp(entry->name, "DEFAULT")==0) {
 				
@@ -326,7 +331,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 
 	} /* while(entry) loop */
 
-	if(!acct && (default_list)) {
+	if(!isacctfile && (default_list)) {
 		*default_list = defaults;
 		radlog(L_INFO, "rlm_fastusers:  Loaded %ld users and %ld defaults",
 					numusers, numdefaults);
@@ -762,10 +767,12 @@ static int fastuser_detach(void *instance)
 		}
 	} 
 
+	free(inst->compat_mode);
 	free(inst->hashtable);
 	pairlist_free(&inst->defaults);
+	pairlist_free(&inst->acctusers);
 	free(inst->usersfile);
-	free(inst->compat_mode);
+	free(inst->acctusersfile);
 	free(inst);
   return 0;
 }
