@@ -109,8 +109,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 * and the application specific data stored into the SSL object.
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-	handler = (char *)SSL_get_ex_data(ssl, 0);
-	conf = (char *)SSL_get_ex_data(ssl, 1);
+	handler = (EAP_HANDLER *)SSL_get_ex_data(ssl, 0);
+	conf = (EAP_TLS_CONF *)SSL_get_ex_data(ssl, 1);
 
 	/*
 	 *	Get the Subject & Issuer
@@ -180,7 +180,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		radlog(L_INFO, "--> issuer  = %s", issuer);
 		radlog(L_INFO, "--> verify return:%d", my_ok);
 	}
-	return ok;
+	return my_ok;
 }
 
 
