@@ -625,7 +625,7 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 			pair->length = attrlen;
 			pair->next = NULL;
 
-			switch (attr->type) {
+			switch (pair->type) {
 
 			case PW_TYPE_OCTETS:
 #ifdef ASCEND_BINARY
