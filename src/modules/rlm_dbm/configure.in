@@ -66,7 +66,10 @@ if test x$with_[]modname != xno; then
 		if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
 			AC_SMART_CHECK_LIB(gdbm, dbm_open)
 			if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
-				fail="$fail (libndbm or libgdm)"
+				AC_SMART_CHECK_LIB(gdbm_compat, dbm_open)
+				if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
+					fail="$fail (libndbm or libgdm)"
+				fi
 			fi
 		fi
 	fi
