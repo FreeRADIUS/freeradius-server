@@ -512,7 +512,7 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		if ((total & 0x03) != 0) {
 			unsigned int i;
 
-			length = total & 0x03;
+			length = 4 - total & 0x03;
 			for (i = 0; i < length; i++) {
 				*p = '\0';
 				p++;
