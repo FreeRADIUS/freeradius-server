@@ -284,7 +284,8 @@ static int pap_detach(void *instance)
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
 
 #if HAVE_PTHREAD_H
-	pthread_mutex_destroy(&inst->mutex);
+	if (inst->sch == PAP_ENC_CRYPT)
+		pthread_mutex_destroy(&inst->mutex);
 #endif
 	PAP_INST_FREE(inst);
 	return 0;
