@@ -242,6 +242,34 @@ if test "x$developer" != "xno" -a -d $srcdir/CVS; then
   developer="yes"
 fi
 
+dnl #
+dnl #  These next two arguments don't actually do anything.  They're
+dnl #  place holders so that the top-level configure script can tell
+dnl #  the user how to configure lower-level modules
+dnl #
+
+dnl #
+dnl # extra argument: --with-rlm-FOO-lib-dir
+dnl #
+AC_ARG_WITH(rlm-FOO-lib-dir,
+[  --with-rlm-FOO-lib-dir=DIR       Directory to look for library files used by module FOO],
+[ case "$withval" in
+    *)
+	;;
+  esac ]
+)
+
+dnl #
+dnl # extra argument: --with-rlm-FOO-include-dir
+dnl #
+AC_ARG_WITH(rlm-FOO-include-dir,
+[  --with-rlm-FOO-include-dir=DIR   Directory to look for include files used by module FOO],
+[ case "$withval" in
+    *)
+	;;
+  esac ]
+)
+
 dnl See what include-style is used by the make program.
 dnl AC_MSG_CHECKING(include style for make)
 dnl echo "include /dev/null" > testmake.$$
