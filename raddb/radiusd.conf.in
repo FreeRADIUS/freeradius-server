@@ -450,6 +450,7 @@ modules {
 		#
 		with_specialix_jetstream_hack = no
 	}
+
 	files {
 		usersfile = ${confdir}/users
 		acctusersfile = ${confdir}/acct_users
@@ -511,6 +512,16 @@ modules {
 		filename = ${logdir}/sradutmp
 		perm = 0644
 		callerid = "no"
+	}
+
+	#
+	# attr_filter - filters the attributes received in replies from
+	# proxy servers, to make sure we send back to the upstream
+	# only allowed attributes.
+	#
+  
+	attr_filter {
+		attrsfile = ${confdir}/attrs
 	}
 
 	#
@@ -599,6 +610,7 @@ authenticate {
 # need to setup hints for the remote radius server
 authorize {
 	preprocess
+	#attr_filter
 	suffix
 	files
 }
