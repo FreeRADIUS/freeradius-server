@@ -38,7 +38,8 @@ case "$1" in
 	daemon $RADIUSD -y
 	RETVAL=$?
 	echo
-	[ $RETVAL -eq 0 ] && touch $LOCKF
+	[ $RETVAL -eq 0 ] && touch $LOCKF &&
+	    ln -s /var/run/radiusd/radiusd.pid /var/run/radiusd.pid 2>/dev/null
 	;;
   stop)
 	echo -n $"Stopping RADIUS server: "
