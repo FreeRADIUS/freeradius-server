@@ -267,6 +267,8 @@ int read_one(FILE *fp, struct relay_request *r_req)
 				     vp->attribute > 65535) &&
 				    vp->attribute != PW_VENDOR_SPECIFIC) {
 					pairadd(&(r_req->req->vps), vp);
+				} else {
+				  pairfree(&vp);
 				}
 			}
 		}
