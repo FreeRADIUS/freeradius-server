@@ -116,7 +116,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 	 */
 	if (!packet->data) {
 		  radius_packet_t	*hdr;
-		  int32_t		lvalue;
+		  uint32_t		lvalue;
 		  uint8_t		*ptr, *length_ptr, *vsa_length_ptr;
 		  uint8_t		digest[16];
 		  int			secretlen;
@@ -789,8 +789,7 @@ RADIUS_PACKET *rad_recv(int fd)
 			}
 			if (vendorlen != 0){
 				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor specific attributes do not exactly fill Vendor-Specific",
-				   ip_ntoa(host_ipaddr, packet->src_ipaddr),
-				   vendorattr[1] - 2);
+					   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 				free(packet);
 				return NULL;
 			}
@@ -1326,7 +1325,7 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 	int	i, n, secretlen;
 	int	len;
 
-	if(pwlen < 2) {
+	if (*pwlen < 2) {
 	  return 0;
 	}
 	salt[0] = passwd[0];
