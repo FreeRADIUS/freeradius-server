@@ -465,7 +465,11 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 	if ((fd = open(lockfile, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR)) != -1) {
 	    break;
 	}
-	/* FIXME: does usleep() reset/generate SIGALRM on any systems? */
+	/* break stale locks (older than 60s) */
+	if (stat(lockfile, &st) == 0)
+	    if (st.st_ctime  < time(NULL) - 60)
+		(void) unlink(lockfile);
+
 	usleep(500000); /* 0.5 second */
     }
     if (fd == -1) {
