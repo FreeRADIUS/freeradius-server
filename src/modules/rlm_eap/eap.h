@@ -22,15 +22,17 @@
 #ifndef _EAP_H
 #define _EAP_H
 
-#include "conffile.h"
-#include "libradius.h"
-#include "radiusd.h"
+#include "autoconf.h"
 
 #if HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
 
 #include <string.h>
+
+#include "conffile.h"
+#include "radiusd.h"
+
 
 #define PW_EAP_REQUEST		1
 #define PW_EAP_RESPONSE		2
