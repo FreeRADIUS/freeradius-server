@@ -449,41 +449,83 @@ static int gettime(const char *valstr, time_t *lvalue)
 	struct tm	*tm, s_tm;
 	char		buf[64];
 	char		*p;
-	char		*year, *month, *day;
+	char		*f[3];
 
 	time(&t);
 	tm = localtime_r(&t, &s_tm);
 
 	strNcpy(buf, valstr, sizeof(buf));
-	for (p = buf; *p; p++)
-		if (isupper((int) *p)) *p = tolower((int) *p);
 
 	p = buf;
-	day = mystrtok(&p, " \t");
-	month = mystrtok(&p, " \t");
-	year = mystrtok(&p, " \t");
-	if (!year || !month || !day) return -1;
+	f[0] = mystrtok(&p, " \t");
+	f[1] = mystrtok(&p, " \t");
+	f[2] = mystrtok(&p, " \t");
+	if (!f[0] || !f[1] || !f[2]) return -1;
 
+	/*
+	 *  The month is text, which allows us to find it easily.
+	 */
 	tm->tm_mon = 12;
-	for (i = 0; i < 12; i++) {
-		if (strncasecmp(months[i], month, 3) == 0) {
-			tm->tm_mon = i;
-			break;
+	for (i = 0; i < 3; i++) {
+		if (isalpha( (int) *f[i])) {	
+			/*
+			 *  Bubble the month to the front of the list
+			 */
+			p = f[0];
+			f[0] = f[i];
+			f[i] = p;
+
+			for (i = 0; i < 12; i++) {
+				if (strncasecmp(months[i], f[0], 3) == 0) {
+					tm->tm_mon = i;
+					break;
+				}
+			}
 		}
 	}
 
 	/* month not found? */
 	if (tm->tm_mon == 12) return -1;
 
-	tm->tm_mday = atoi(day);
+	/*
+	 *  The year may be in f[1], or in f[2]
+	 */
+	tm->tm_year = atoi(f[1]);
+	tm->tm_mday = atoi(f[2]);
+
+	if (tm->tm_year >= 1900) {
+		tm->tm_year -= 1900;
+
+	} else {
+		/*
+		 *  We can't use 2-digit years any more, they make it
+		 *  impossible to tell what's the day, and what's the year.
+		 */
+		if (tm->tm_mday < 1900) return -1;
+
+		/*
+		 *  Swap the year and the day.
+		 */
+		i = tm->tm_year;
+		tm->tm_year = tm->tm_mday - 1900;
+		tm->tm_mday = i;
+	}
+
+	/*
+	 *  If the day is out of range, die.
+	 */
 	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
 		return -1;
 	}
 
-	tm->tm_year = atoi(year);
-	if (tm->tm_year >= 1900) tm->tm_year -= 1900;
+	/*
+	 *  Returns -1 on error.
+	 */
+	t = mktime(tm);
+	if (t == (time_t) -1) return -1;
 
-	*lvalue = mktime(tm);
+	*lvalue = t;
+
 	return 0;
 }
 
