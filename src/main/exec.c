@@ -133,7 +133,7 @@ static int copy_var(const char *from, char *to)
 	return -1;
 }
 
-
+#define MAX_ARGV (256)
 /*
  *	Execute a program on successful authentication.
  *	Return 0 if exec_wait == 0.
@@ -151,7 +151,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	char mycmd[1024];
 	char answer[4096];
 	char argv_buf[4096];
-	char *argv[256];
+	char *argv[MAX_ARGV];
 	const char *from;
 	char *p, *to;
 	int pd[2];
@@ -199,6 +199,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 		argv[argc] = to;
 		argc++;
+
+		if (argc >= (MAX_ARGV - 1)) break;
 		
 		/*
 		 *	Copy the argv over to our buffer.
@@ -283,6 +285,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			return -1;
 		}
 	}
+	argv[argc] = NULL;
 
 	/*
 	 *	Open a pipe for child/parent communication, if
