@@ -5,9 +5,9 @@ SET search_path = public, pg_catalog;
 CREATE TABLE badusers (
     id BIGSERIAL PRIMARY KEY,
     username TEXT NOT NULL,
-    date timestamp with time zone DEFAULT 'now' NOT NULL,
+    incidentdate timestamp with time zone DEFAULT 'now' NOT NULL,
     reason TEXT,
     admin TEXT DEFAULT '-'
 );
-CREATE INDEX badusers_actiondate_idx ON badusers USING btree (actiondate);
+CREATE INDEX badusers_incidentdate_idx ON badusers USING btree (incidentdate);
 CREATE INDEX badusers_username_idx ON badusers USING btree (username);

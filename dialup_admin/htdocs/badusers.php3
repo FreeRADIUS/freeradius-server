@@ -146,15 +146,16 @@ $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT da_sql_limit($limit,0,$config) * FROM $config[sql_badusers_table]
-	WHERE username $usercheck $extra_query AND date <= '$now_str'
-	AND date >= '$prev_str' da_sql_limit($limit,1,$config) ORDER BY date $order da_sql_limit($limit,2,$config);");
+	WHERE username $usercheck $extra_query AND incidentdate <= '$now_str'
+	AND incidentdate >= '$prev_str' da_sql_limit($limit,1,$config)
+	ORDER BY incidentdate $order da_sql_limit($limit,2,$config);");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
 			$id = $row[id];
 			$user = "$row[username]";
 			$User = urlencode($user);
-			$date = "$row[date]";
+			$date = "$row[incidentdate]";
 			$reason = "$row[reason]";
 			$admin = "$row[admin]";
 			if ($admin == $auth_user || $admin == '-')
