@@ -29,7 +29,6 @@ typedef struct sql_config {
 	char   *authorize_reply_query;
 	char   *authorize_group_check_query;
 	char   *authorize_group_reply_query;
-	char   *authenticate_query;
 	char   *accounting_onoff_query;
 	char   *accounting_update_query;
 	char   *accounting_start_query;
@@ -39,6 +38,7 @@ typedef struct sql_config {
 	char   *simul_count_query;
 	char   *simul_verify_query;
 	char   *simul_zap_query;
+	char   *groupmemb_query;
 	int     sqltrace;
 	char   *tracefile;
 	char   *xlat_name;

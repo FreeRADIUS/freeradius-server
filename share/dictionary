@@ -195,6 +195,7 @@ ATTRIBUTE	Module-Success-Message	1075	string
 ATTRIBUTE	Module-Failure-Message	1076	string
 #		X99-Fast		1077	integer
 ATTRIBUTE	Rewrite-Rule		1078	string
+ATTRIBUTE	Sql-Group		1079	string
 
 #
 #	Non-Protocol Attributes

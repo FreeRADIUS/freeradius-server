@@ -73,13 +73,13 @@ static CONF_PARSER module_config[] = {
 	{"authorize_reply_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_reply_query), NULL, ""},
 	{"authorize_group_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
 	{"authorize_group_reply_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_reply_query), NULL, ""},
-	{"authenticate_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authenticate_query), NULL, ""},
 	{"accounting_onoff_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_onoff_query), NULL, ""},
 	{"accounting_update_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_update_query), NULL, ""},
 	{"accounting_start_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_start_query), NULL, ""},
 	{"accounting_start_query_alt", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_start_query_alt), NULL, ""},
 	{"accounting_stop_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_stop_query), NULL, ""},
 	{"accounting_stop_query_alt", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_stop_query_alt), NULL, ""},
+	{"group_membership_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,groupmemb_query), NULL, ""},
 	{"connect_failure_retry_delay", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,connect_failure_retry_delay), NULL, "60"},
 	{"simul_count_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
 	{"simul_verify_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
@@ -248,6 +248,85 @@ static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, con
 	return -1;
 }
 
+/*
+ * sql groupcmp function. That way we can do group comparisons (in the users file for example)
+ * with the group memberships reciding in sql
+ * The group membership query should only return one element which is the username. The returned
+ * username will then be checked with the passed check string.
+ */
+
+static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
+			VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+{
+	SQLSOCK *sqlsocket;
+	SQL_ROW row;
+	SQL_INST *inst=instance;
+	char querystr[MAX_QUERY_LEN];
+	char sqlusername[2 * MAX_STRING_LEN + 10];
+
+	check_pairs = check_pairs;
+	reply_pairs = reply_pairs;
+
+	DEBUG("rlm_sql: - sql_groupcmp");
+	if (!check || !check->strvalue || !check->length){
+		DEBUG("rlm_sql::sql_groupcmp: Illegal group name");
+		return 1;
+	}
+	if (req == NULL){
+		DEBUG("rlm_sql::sql_groupcmp: NULL request");
+		return 1;
+	}
+	if (inst->config->groupmemb_query[0] == 0)
+		return 1;
+	/*
+	 * Set, escape, and check the user attr here
+	 */
+	if (sql_set_user(inst, req, sqlusername, 0) < 0)
+		return 1;
+	if (!radius_xlat(querystr, sizeof(querystr), inst->config->groupmemb_query, req, NULL)){
+		radlog(L_ERR, "rlm_sql: xlat failed.");
+		/* Remove the username we (maybe) added above */
+		pairdelete(&req->packet->vps, PW_SQL_USER_NAME);
+		return 1;
+	}
+	/* Remove the username we (maybe) added above */
+	pairdelete(&req->packet->vps, PW_SQL_USER_NAME);
+
+	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL)
+		return 1;
+	if ((inst->module->sql_select_query)(sqlsocket,inst->config,querystr) <0){
+		radlog(L_ERR, "rlm_sql: database query error");
+		sql_release_socket(inst,sqlsocket);
+		return 1;
+	}
+	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+		row = sqlsocket->row;
+		if (row == NULL)
+			break;
+		if (row[0] == NULL){
+			DEBUG("rlm_sql: row[0] returned NULL");
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
+			return 1;
+		}
+		if (strcmp(row[0],check->strvalue) == 0){
+			DEBUG("rlm_sql: - sql_groupcmp finished: User belongs in group %s",(char *)check->strvalue);
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
+			return 0;
+		}
+	}
+
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+	sql_release_socket(inst,sqlsocket);
+
+	DEBUG("rlm_sql: - sql_groupcmp finished: User does not belong in group %s",(char *)check->strvalue);
+
+	return 1;
+}
+
+
 static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 
 	SQL_INST *inst;
@@ -305,6 +384,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 		inst->config->xlat_name = strdup(xlat_name);
 		xlat_register(xlat_name, sql_xlat, inst);
 	}
+	paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
 
 	*instance = inst;
 
@@ -323,6 +403,7 @@ static int rlm_sql_detach(void *instance) {
 	sql_poolfree(inst);
 	if (inst->config->xlat_name)
 		xlat_unregister(inst->config->xlat_name,sql_xlat);
+	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
 	free(inst->config);
 	free(inst);
 
@@ -334,13 +415,10 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
-	VALUE_PAIR *passwd_item = NULL;
 	int     found = 0;
 	SQLSOCK *sqlsocket;
 	SQL_INST *inst = instance;
-	SQL_ROW row;
 	char    querystr[MAX_QUERY_LEN];
-	int	ret;
 
 	/* sqlusername holds the sql escaped username. The original
 	 * username is at most MAX_STRING_LEN chars long and
@@ -440,7 +518,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	 * Recompile, and run 'radiusd -X'
 	 */
 
-	/* 
+	/*
 	DEBUG2("rlm_sql:  check items");
 	vp_listdebug(check_tmp);
 	DEBUG2("rlm_sql:  reply items");
@@ -462,53 +540,10 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	pairfree(&reply_tmp);
 	pairfree(&check_tmp);
 
-	if (*inst->config->authenticate_query){
-		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request, sql_escape_func);
-	
-		/* Remove the username we (maybe) added above */
-		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-
-		if (rlm_sql_select_query(sqlsocket, inst, querystr)) {
-			radlog(L_ERR, "rlm_sql_authorize: database query error");
-			sql_release_socket(inst, sqlsocket);
-			return RLM_MODULE_FAIL;
-		}
-		ret = rlm_sql_fetch_row(sqlsocket, inst);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql_authorize: query failed");
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			sql_release_socket(inst, sqlsocket);
-			return RLM_MODULE_FAIL;
-		}
-
-		row = sqlsocket->row;
-		if (row == NULL) {
-			radlog(L_ERR, "rlm_sql_authorize: no rows returned from query (no such user)");
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			sql_release_socket(inst, sqlsocket);
-			return RLM_MODULE_OK;
-		}
-
-		if (row[0] == NULL) {
-			radlog(L_ERR, "rlm_sql_authorize: row[0] returned NULL.");
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			sql_release_socket(inst, sqlsocket);
-			return RLM_MODULE_OK;
-		}
-		if ((passwd_item = pairmake("User-Password",row[0],T_OP_SET)) != NULL)
-			pairadd(&request->config_items,passwd_item);
-
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst, sqlsocket);
-
-		goto move_on;
-	}
 	/* Remove the username we (maybe) added above */
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 	sql_release_socket(inst, sqlsocket);
 
-move_on:
 	return RLM_MODULE_OK;
 }
 
