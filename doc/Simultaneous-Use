@@ -5,7 +5,7 @@
 0. INTRODUCTION
 
   Lots of people want to limit the number of times one user account can
-  login, usually to one. Thi is hard to do with the radius protocol;
+  login, usually to one. This is hard to do with the radius protocol;
   the nature of the accounting stuff is such that the idea the radius server
   has about the list of logged-in users might be different from the idea
   the terminal server has about it.
