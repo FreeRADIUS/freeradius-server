@@ -7,23 +7,29 @@ SHELL=/bin/bash
 DH_COMPAT=3
 export DH_COMPAT
 
-package = freeradius
-debiandir = $(shell pwd)/debian
+package		= freeradius
+debiandir	= $(shell pwd)/debian
 radiusd_freeradius_dir     = $(debiandir)/radiusd-freeradius
 
-prefix	= /
-exec_prefix	= /usr
-mandir	= $(exec_prefix)/share/man
-libdir	= $(exec_prefix)/lib/freeradius
-logdir	= /var/log/radiusd-freeradius
-pkgdocdir	= $(exec_prefix)/share/doc/radiusd-freeradius
-raddbdir	= $(prefix)/etc/raddb
+mandir		= /usr/share/man
+libdir		= /usr/lib/freeradius
+logdir		= /var/log/radiusd-freeradius
+pkgdocdir	= /usr/share/doc/radiusd-freeradius
+raddbdir	= /etc/raddb
 
 build:
 # Builds the binary package.
 	dh_testdir
 	# dh_testroot
-	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --datadir=$(datadir) --with-thread-pool --with-system-libtool --enable-ltdl-install=no --enable-strict-dependencies
+	./configure \
+		--prefix=/usr \
+		--exec-prefix=/usr \
+		--mandir=$(mandir) \
+		--sysconfdir=/etc \
+		--libdir=$(libdir) \
+		--datadir=/usr/share \
+		--with-logdir=/var/log/radiusd-freeradius \
+		--with-thread-pool --with-system-libtool --enable-ltdl-install=no --enable-strict-dependencies
 	make
 	touch build
 
@@ -34,15 +40,14 @@ binary-indep: build
 binary-arch: build
 	dh_clean
 	dh_installdirs
-	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) libdir=$(libdir) R=$(radiusd_freeradius_dir)
+	make install R=$(radiusd_freeradius_dir)
 
 	# rename radius binary to play nicely with others
 	mv $(radiusd_freeradius_dir)/usr/sbin/radiusd $(radiusd_freeradius_dir)/usr/sbin/freeradiusd 
 	ln -s freeradiusd $(radiusd_freeradius_dir)/usr/sbin/radiusd
 
 	# clean up install cruft.  $$&@!%
-	test ! -d $(radiusd_freeradius_dir)/$(execprefix)/include || rm -rf $(radiusd_freeradius_dir)/$(execprefix)/include
-	rm $(radiusd_freeradius_dir)/$(execprefix)/usr/sbin/rc.radiusd
+	rm $(radiusd_freeradius_dir)/usr/sbin/rc.radiusd
 	test ! -d $(radiusd_freeradius_dir)/var/run/radiusd || rmdir $(radiusd_freeradius_dir)/var/run/radiusd
 
 	# split out inconvenient/controversal modules to other places
@@ -61,7 +66,7 @@ binary-arch: build
 
 	# supporting programs
 	dh_installlogrotate
-	install -g root -m 755 $(debiandir)/initscript $(radiusd_freeradius_dir)/$(prefix)/etc/init.d/freeradius
+	install -g root -m 755 $(debiandir)/initscript $(radiusd_freeradius_dir)/etc/init.d/freeradius
 	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`; \
 	cp $(radiusd_freeradius_dir)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
 	cat $$TEMPFILE \
