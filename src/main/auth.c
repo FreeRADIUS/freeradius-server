@@ -118,11 +118,13 @@ static int check_expiration(REQUEST *request)
 static int rad_check_password(REQUEST *request)
 {
 	VALUE_PAIR	*auth_type_pair;
+	VALUE_PAIR	*cur_config_item;
 	VALUE_PAIR	*password_pair;
 	VALUE_PAIR	*auth_item;
 	char		string[MAX_STRING_LEN];
 	int		auth_type = -1;
 	int		result;
+	int		auth_type_count = 0;
 	result = 0;
 
 	/*
@@ -130,17 +132,34 @@ static int rad_check_password(REQUEST *request)
 	 *	if the authentication type is PW_AUTHTYPE_ACCEPT or
 	 *	PW_AUTHTYPE_REJECT.
 	 */
-	if ((auth_type_pair = pairfind(request->config_items, PW_AUTHTYPE)) != NULL)
+	cur_config_item = request->config_items;
+	while(((auth_type_pair = pairfind(cur_config_item, PW_AUTHTYPE))) != NULL) {
 		auth_type = auth_type_pair->lvalue;
+		auth_type_count++;
 
-	if (auth_type == PW_AUTHTYPE_ACCEPT) {
-		DEBUG2("  auth: Auth-Type = Accept, accepting the user");
-		return 0;
+		DEBUG2("  rad_check_password:  Found auth-type %d", auth_type);
+		cur_config_item = cur_config_item->next;
+
+		if (auth_type == PW_AUTHTYPE_REJECT) {
+			DEBUG2("  rad_check_password: Auth-Type = Reject, rejecting user");
+			return -2;
+		}
 	}
 
-	if (auth_type == PW_AUTHTYPE_REJECT) {
-		DEBUG2("  auth: Auth-Type = Reject, rejecting the user");
-		return -2;
+	if(auth_type_count>1) {
+		radlog(L_ERR, "Warning:  Found %d auth-types on request for user '%s'", 
+			auth_type_count, request->username->strvalue);
+	}
+
+	/*
+	 *	This means we have a proxy reply or an accept  
+	 *  and it wasn't rejected in the above loop.  So 
+   *  that means it is accepted and we do no further 
+	 *  authentication
+   */
+	if ((auth_type == PW_AUTHTYPE_ACCEPT) || (request->proxy)) {
+		DEBUG2("  rad_check_password: Auth-Type = Accept, accepting the user");
+		return 0;
 	}
 
 	/*
