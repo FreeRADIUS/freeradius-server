@@ -90,7 +90,7 @@ for($i=1;$i<=9;$i++){
 }
 $sql_extra_query = '';
 if ($config[sql_accounting_extra_query] != '')
-	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
 ?>
 	</tr>
 

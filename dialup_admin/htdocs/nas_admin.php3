@@ -16,6 +16,23 @@ else{
 EOM;
 	exit();
 }
+if ($config[general_restrict_nasadmin_access == 'yes'){
+	$auth_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+	if ($auth_user == '' || $mappings[$auth_user][nasadmin] != 'yes'){
+		echo <<<EOM
+<title>NAS Administration Page</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+<center>
+<b>Access is not allowed to this username.</b>
+</body>
+</html>
+EOM;
+		exit();
+	}
+}
+
 
 if ($clear_fields == 1)
 	$selected_nas = $readonly = '';
@@ -84,21 +101,21 @@ if ($link){
 	"SELECT * FROM $config[sql_nas_table] ORDER BY nasname;");
 	if ($search){
 		$num = 0;
-		unset($nas_list);
+		unset($my_nas_list);
 		while($row = @da_sql_fetch_array($search,$config)){
 			$my_nas_name = $row['nasname'];
 			if ($my_nas_name != ''){
 				$num++;
 				if ($clear_fields == 0 && $selected_nas == $my_nas_name)
 					$selected[$my_nas_name] = 'selected';
-				$nas_list[$my_nas_name]['name'] = $my_nas_name;
-				$nas_list[$my_nas_name]['shortname'] = $row['shortname'];
-				$nas_list[$my_nas_name]['type'] = $row['type'];
-				$selected[$nas_list[$my_nas_name]['type']] = 'selected';
-				$nas_list[$my_nas_name]['ports'] = $row['ports'];
-				$nas_list[$my_nas_name]['secret'] = $row['secret'];
-				$nas_list[$my_nas_name]['community'] = $row['community'];
-				$nas_list[$my_nas_name]['description'] = $row['description'];
+				$my_nas_list[$my_nas_name]['name'] = $my_nas_name;
+				$my_nas_list[$my_nas_name]['shortname'] = $row['shortname'];
+				$my_nas_list[$my_nas_name]['type'] = $row['type'];
+				$selected[$my_nas_list[$my_nas_name]['type']] = 'selected';
+				$my_nas_list[$my_nas_name]['ports'] = $row['ports'];
+				$my_nas_list[$my_nas_name]['secret'] = $row['secret'];
+				$my_nas_list[$my_nas_name]['community'] = $row['community'];
+				$my_nas_list[$my_nas_name]['description'] = $row['description'];
 			}
 		}
 	}
@@ -152,7 +169,7 @@ NAS List
 <td>
 <select name=selected_nas size=5 OnChange="this.form.select_nas.value=1;this.form.submit()"> 
 <?php
-foreach ($nas_list as $member){
+foreach ($my_nas_list as $member){
 	$name = $member[name];
 	echo "<option $selected[$name] value=\"$name\">$name\n";
 }
@@ -161,7 +178,7 @@ foreach ($nas_list as $member){
 </td>
 </tr>
 <?php
-$array = $nas_list[$selected_nas];
+$array = $my_nas_list[$selected_nas];
 echo <<<EOM
 <tr>
 <td align=right bgcolor="#d0ddb0">

@@ -17,3 +17,4 @@
 * Parse the radius dictionary files so that we can show a pull down menu of possible values
   for various attributes.
 * Check the sql user code for sql injections
+* Also be able to keep username mappings in sql. Create and administration page

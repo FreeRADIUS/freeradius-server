@@ -76,8 +76,9 @@ Search Criteria
 <?php
 echo <<<EOM
 <select name="search_IN" editable onChange="this.form.submit();">
+<option $selected[username] value="username">User Name
 <option $selected[name]  value="name">User Full Name
-<option $selected[ou] value="ou">User Department
+<option $selected[department] value="department">User Department
 <option $selected[radius] value="radius">User Radius Attribute
 EOM;
 ?>

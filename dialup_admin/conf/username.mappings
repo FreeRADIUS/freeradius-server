@@ -2,7 +2,20 @@
 # Format:
 # Username:realm:query
 #
-# where realm is accounting or userdb
+# where realm is:
+# accounting: for the map to be used when querying the accounting db
+# userdb: for the map to be used when querying the user db
+# nasdb: To only map specific NASes to the username (separated by ,)
+# nasadmin: To allow the user to use the nas_admin page (yes or no)
 #
 library-admin:accounting:AND nasipaddress = '123.123.123.123'
 library-admin:userdb:AND Admin = 'library-admin'
+library-admin:nasdb:nas.lib.company.com
+library-admin:nasadmin:no
+#
+lab-admin:accounting:AND nasipaddress =  '123.123.124.123'
+lab-admin:userdb:AND Admin = 'lab-admin'
+lab-admin:nasdb:nas.lab.company.com
+lab-admin:nasadmin:no
+#
+admin:nasadmin:yes

@@ -1,6 +1,7 @@
 <?php
 require('../conf/config.php3');
 require('../lib/attrshow.php3');
+require('../lib/sql/nas_list.php3');
 if (!isset($usage_summary)){
 	echo <<<EOM
 <html>
@@ -41,7 +42,7 @@ $date = strftime('%A, %e %B %Y, %T %Z');
 
 $sql_extra_query = '';
 if ($config[sql_accounting_extra_query] != '')
-	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
 
 $link = @da_sql_pconnect($config);
 $link2 = connect2db($config);
@@ -60,6 +61,8 @@ if ($link){
 		}
 		else
 			$servers_num++;
+		if ($nas[ip] == '')
+			continue;
 		$name_data = $nas[ip];
 		$community_data = $nas[community];
 		$server_name[$servers_num] = $nas[name];

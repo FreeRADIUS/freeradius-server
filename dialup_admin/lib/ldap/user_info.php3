@@ -32,12 +32,12 @@ if ($ds) {
 	$r=@da_ldap_bind($ds,$config);
 	if ($config[ldap_userdn] == ''){
 		if ($config[ldap_filter] != '')
-			$filter = ldap_xlat($config[ldap_filter],$login,$config);
+			$filter = xlat($config[ldap_filter],$login,$config);
 		else
 			$filter = 'uid=' . $login;
 	}
 	else
-		$filter = ldap_xlat($config[ldap_userdn],$login,$config);
+		$filter = xlat($config[ldap_userdn],$login,$config);
 	if ($config[ldap_debug] == 'true'){
 		if ($config[ldap_userdn] == '')
 			print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='$filter'</b><br>\n";

@@ -28,7 +28,7 @@ if ($config[ldap_default_dn] != ''){
 		if ($regular_profile_attr != ''){
 			$get_attrs = array("$regular_profile_attr");
 			if ($config[ldap_filter] != '')
-				$filter = ldap_xlat($config[ldap_filter],$login,$config);
+				$filter = xlat($config[ldap_filter],$login,$config);
 			else
 				$filter = 'uid=' . $login;
 			if ($config[ldap_debug] == 'true')

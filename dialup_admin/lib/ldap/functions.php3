@@ -1,16 +1,5 @@
 <?php
-function ldap_xlat($filter,$login,$config)
-{
-	$string = $filter;
-	if ($filter != ''){
-		$string = preg_replace('/%u/',$login,$string);
-		$string = preg_replace('/%U/',$HTTP_SERVER_VARS["PHP_AUTH_USER"],$string);
-		$string = preg_replace('/%ma/',$mappings[$http_user][accounting],$string);
-		$string = preg_replace('/%mu/',$mappings[$http_user][userdb],$string);
-	}
-
-	return $string;
-}
+require('../lib/xlat.php3');
 
 function da_ldap_bind($ds,$config)
 {
@@ -66,12 +55,12 @@ function get_user_info($ds,$user,$config,$decode_normal,$k)
 		$attrs = array('cn');
 		if ($config[ldap_userdn] == ''){
 			if ($config[ldap_filter] != '')
-				$filter = ldap_xlat($config[ldap_filter],$login,$config);
+				$filter = xlat($config[ldap_filter],$login,$config);
 			else
 				$filter = 'uid=' . $login;
 		}
 		else
-			$filter = ldap_xlat($config[ldap_userdn],$login,$config);
+			$filter = xlat($config[ldap_userdn],$login,$config);
 		if ($config[ldap_debug] == 'true'){
 			if ($config[ldap_userdn] == '')
 	print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='$filter'</b><br>\n";
@@ -98,12 +87,12 @@ function get_user_dn($ds,$user,$config)
 		$attrs = array('dn');
 		if ($config[ldap_userdn] == ''){
 			if ($config[ldap_filter] != '')
-				$filter = ldap_xlat($config[ldap_filter],$login,$config);
+				$filter = xlat($config[ldap_filter],$login,$config);
 			else
 				$filter = 'uid=' . $login;
 		}
 		else
-			$filter = ldap_xlat($config[ldap_userdn],$login,$config);
+			$filter = xlat($config[ldap_userdn],$login,$config);
 		if ($config[ldap_debug] == 'true'){
 			if ($config[ldap_userdn] == '')
 	print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='$filter'</b><br>\n";

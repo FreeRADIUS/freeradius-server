@@ -227,7 +227,7 @@ foreach ($accounting_show_attrs as $val)
 $query_view = ereg_replace(',$','',$query_view);
 $sql_extra_query = '';
 if ($config[sql_accounting_extra_query] != '')
-	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
 $query="SELECT $query_view FROM $config[sql_accounting_table] $where $sql_extra_query ORDER BY $order LIMIT $maxresults;";
 
 echo <<<EOM

@@ -1,3 +1,12 @@
+Ver 1.72:
+* Move the xlat function to a separate file in lib/xlat.php3
+* Add a lib/sql/nas_list.php3 to also get the nas list from sql (naslist.conf still works)
+* add realms nasdb and nasadmin in username.mappings. nasadmin is used to signify if the
+  user is allowed to use the nas_admin page. nasdb is used to shorten the nas list to only
+  a few specific entries. That way administrator responsible for a few access servers will
+  only be able to administer those access servers and not see the rest of the nas list.
+* Add username searching in the find page as suggested by joram agten
+* Don't use nas_list in nas_admin
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for

@@ -5,6 +5,7 @@ else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
 }
+require('../lib/xlat.php3');
 
 function connect2db($config)
 {
@@ -30,17 +31,5 @@ function get_user_info($link,$user,$config)
 function closedb($link,$config)
 {
 	return 1;
-}
-function sql_xlat($filter,$login,$config)
-{
-	$string = $filter;
-	$http_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
-	if ($filter != ''){
-		$string = preg_replace('/%u/',$login,$string);
-		$string = preg_replace('/%U/',$http_user,$string);
-		$string = preg_replace('/%m/',$mappings[$http_user],$string);
-	}
-
-	return $string;
 }
 ?>

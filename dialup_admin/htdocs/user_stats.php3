@@ -1,6 +1,7 @@
 <?php
 require('../conf/config.php3');
 require('../lib/functions.php3');
+require('../lib/sql/nas_list.php3');
 ?>
 <html>
 <?php
@@ -53,7 +54,7 @@ $selected[$sortby] = 'selected';
 
 $sql_extra_query = '';
 if ($config[sql_accounting_extra_query] != '')
-	$sql_extra_query = sql_xlat($config[sql_accounting_extra_query],$login,$config);
+	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
 
 ?>
 
@@ -194,6 +195,8 @@ EOM;
 <?php
 foreach ($nas_list as $nas){
 	$name = $nas[name];
+	if ($nas[ip] == '')
+		continue;
 	$servers[$name] = $nas[ip];
 }
 ksort($servers);

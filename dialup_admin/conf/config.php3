@@ -80,8 +80,18 @@ if (!isset($mappings) && $config[general_username_mappings_file] != ''){
 		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
 			continue;
 		list($key,$realm,$v)=split(":[[:space:]]*",$val,2);
-		if ($realm == 'accounting' || $realm == 'userdb')
+		if ($realm == 'accounting' || $realm == 'userdb' || $realm == 'nasdb' || $realm == 'nasadmin')
 			$mappings["$key"][$realm] = $v;
+		if ($realm == 'nasdb'){
+			$NAS_ARR = array();
+			$NAS_ARR = split(',',$v);
+			foreach ($nas_list as $key => $nas){
+				foreach ($NAS_ARR as $nas_check){
+					if ($nas_check == $nas[name])
+						unset($nas_list[$key]);
+				}
+			}
+		}
 	}
 	if ($config[general_use_session] == 'yes')
 		session_register('mappings');
