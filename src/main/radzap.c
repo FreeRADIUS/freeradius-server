@@ -73,14 +73,6 @@ static CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
-/*
- *      A mapping of configuration file names to internal variables
- */
-static CONF_PARSER server_config[] = {
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-
 #define LOCK_LEN sizeof(struct radutmp)
 
 static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr,
@@ -214,14 +206,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);
 		exit(1);
 	}
-
-	cs = cf_section_find(NULL);
-	if (cs == NULL) {
-		fprintf(stderr, "%s: No configuration information in radiusd.conf.\n",
-			argv[0]);
-		exit(1);
-	}
-	cf_section_parse(cs, NULL, server_config);
 
         /* Read the radutmp section of radiusd.conf */
         cs = cf_section_sub_find(cf_section_find("modules"), "radutmp");

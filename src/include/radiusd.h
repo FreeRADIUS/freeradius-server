@@ -128,10 +128,27 @@ typedef struct pair_list {
 } PAIR_LIST;
 
 typedef struct main_config_t {
+	struct main_config *next;
+	time_t		config_dead_time;
+	uint32_t	myip;
 	int		log_auth;
 	int		log_auth_badpass;
 	int		log_auth_goodpass;
 	int		do_usercollide;
+	int		allow_core_dumps;
+	int		debug_level;
+	int		proxy_requests;
+	int		proxy_synchronous;
+	int		proxy_dead_time;
+	int		proxy_retry_count;
+	int		proxy_retry_delay;
+	int		proxy_fallback;
+	int		max_proxies;
+	int		reject_delay;
+	int		max_request_time;
+	int		cleanup_delay;
+	int		max_requests;
+	int		kill_unresponsive_children;
 	char 		*do_lower_user;
 	char		*do_lower_pass;
 	char		*do_nospace_user;
@@ -139,6 +156,9 @@ typedef struct main_config_t {
 	char		*nospace_time;
 	char		*log_file;
 	char		*checkrad;
+	const char      *pid_file;
+	const char	*uid_name;
+	const char	*gid_name;
 	CONF_SECTION	*config;
 	RADCLIENT	*clients;
 	REALM		*realms;
@@ -199,19 +219,12 @@ extern const char	*radius_libdir;
 extern radlog_dest_t	radlog_dest;
 extern uint32_t		expiration_seconds;
 extern int		log_stripped_names;
-extern uint32_t		myip;
 extern int		log_auth_detail;
 extern int		auth_port;
 extern int		acct_port;
 extern int		proxy_port;
 extern int		proxyfd;
-extern int		proxy_retry_count;
-extern int		proxy_retry_delay;
-extern int		proxy_fallback;
 extern const char      *radiusd_version;
-
-/* Define a global config structure */
-extern struct main_config_t mainconfig;
 
 /*
  *	Function prototypes.
@@ -274,7 +287,6 @@ NAS		*nas_findbyname(char *nasname);
 void		version(void);
 
 /* log.c */
-int 		radlogdir_iswritable(const char *);
 int		vradlog(int, const char *, va_list ap);
 int		radlog(int, const char *, ...)
 #ifdef __GNUC__
@@ -340,4 +352,10 @@ extern		int rad_savepid(pid_t pid, int status);
 #define rad_waitpid waitpid
 #endif
 
+/* mainconfig.h */
+/* Define a global config structure */
+extern struct main_config_t mainconfig;
+
+int read_mainconfig(int reload);
+int read_radius_conf_file(void); /* for radwho and friends. */
 #endif /*RADIUSD_H*/

@@ -32,9 +32,7 @@ static const char rcsid[] = "$Id$";
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include <pwd.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <errno.h>
 
 #include "radiusd.h"
@@ -42,71 +40,6 @@ static const char rcsid[] = "$Id$";
 #if HAVE_SYSLOG_H
 #	include <syslog.h>
 #endif
-
-static int r_mkdir(const char *);
-
-
-static int r_mkdir(const char *part) {
-	char *ptr, parentdir[500];
-	struct stat st;
-
-	if (stat(part, &st) == 0)
-		return(0);
-
-	ptr = strrchr(part, '/');
-
-	if (ptr == part)
-		return(0);
-
-	snprintf(parentdir, (ptr - part)+1, "%s", part);
-
-	if (r_mkdir(parentdir) != 0)
-		return(1);
-
-	if (mkdir(part, 0770) != 0) {
-		fprintf(stderr, "mkdir(%s) error: %s\n", part, strerror(errno));
-		return(1);
-	}
-
-	fprintf(stderr, "Created directory %s\n", part);
-
-	return(0);
-}
-		
-
-int radlogdir_iswritable(const char *effectiveuser) {
-	struct passwd *pwent;
-
-	if (radlog_dir[0] != '/')
-		return(0);
-
-	if (r_mkdir(radlog_dir) != 0)
-		return(1);
-
-	/* FIXME: do we have this function? */
-	if (strstr(radlog_dir, "radius") == NULL)
-		return(0);
-
-	/* we have a logdir that mentions 'radius', so it's probably 
-	 * safe to chown the immediate directory to be owned by the normal 
-	 * process owner. we gotta do it before we give up root.  -chad
-	 */
-	
-	if (!effectiveuser) {
-		return 1;
-	}
-
-	pwent = getpwnam(effectiveuser);
-
-	if (pwent == NULL) /* uh oh! */
-		return(1);
-
-	if (chown(radlog_dir, pwent->pw_uid, -1) != 0)
-		return(1);
-
-	return(0);
-}
-
 
 /*
  *	Log the message to the logfile. Include the severity and

@@ -41,7 +41,6 @@ static const char rcsid[] = "$Id$";
 
 #include "radiusd.h"
 
-extern int proxy_dead_time;
 int maximum_proxies;
 
 /*
@@ -504,12 +503,12 @@ void realm_disable(uint32_t ipaddr, int port)
 	for(cl = mainconfig.realms; cl; cl = cl->next)
 		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
 			cl->active = FALSE;
-			cl->wakeup = now + proxy_dead_time;
+			cl->wakeup = now + mainconfig.proxy_dead_time;
 			radlog(L_PROXY, "marking authentication server %s:%d for realm %s dead",
 				cl->server, port, cl->realm);
 		} else if ((ipaddr == cl->acct_ipaddr) && (port == cl->acct_port)) {
 			cl->acct_active = FALSE;
-			cl->acct_wakeup = now + proxy_dead_time;
+			cl->acct_wakeup = now + mainconfig.proxy_dead_time;
 			radlog(L_PROXY, "marking accounting server %s:%d for realm %s dead",
 				cl->server, port, cl->realm);
 		}
@@ -560,7 +559,7 @@ REALM *realm_find(const char *realm, int acct)
 			 *	exact matches for this realm which are
 			 *	dead.
 			 */
-			if ((!proxy_fallback) &&
+			if ((!mainconfig.proxy_fallback) &&
 			    (strcasecmp(cl->realm, realm) == 0)) {
 				dead_match = 1;
 			}
@@ -688,7 +687,7 @@ REALM *realm_find(const char *realm, int acct)
 	 *	to NOT fall through to the DEFAULT realm.  Therefore,
 	 *	we return NULL, which means "no match found".
 	 */
-	if (!proxy_fallback && dead_match) {
+	if (!mainconfig.proxy_fallback && dead_match) {
 		return NULL;
 	}
 

@@ -7,7 +7,7 @@ include ../../Make.inc
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
 		  modules.o modcall.o session.o xlat.o threads.o smux.o \
-		  radius_snmp.o client.o request_list.o
+		  radius_snmp.o client.o request_list.o mainconfig.o
 INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
 
 CFLAGS		+= -I../include $(SNMP_INCLUDE) 
@@ -56,6 +56,9 @@ log.o:  log.c $(INCLUDES)
 
 conffile.o: conffile.c $(INCLUDES) ../include/modules.h
 	$(CC) $(CFLAGS) -c conffile.c
+
+mainconfig.o: mainconfig.c $(INCLUDES) ../include/modules.h
+	$(CC) $(CFLAGS) -c mainconfig.c
 
 timestr.o: timestr.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c timestr.c
@@ -108,8 +111,8 @@ radclient: radclient.o ../lib/libradius.a
 radclient.o: radclient.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radclient.c
 
-radrelay: radrelay.o util.o nas.o client.o log.o conffile.o files.o xlat.o ../lib/libradius.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o radrelay radrelay.o util.o nas.o client.o log.o conffile.o files.o xlat.o $(LIBS)
+radrelay: radrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o ../lib/libradius.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radrelay radrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o $(LIBS)
 
 radrelay.o: radrelay.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radrelay.c
@@ -123,8 +126,8 @@ builddbm.o: builddbm.c
 radwho.o: radwho.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radwho.c
 
-radwho: radwho.o util.o nas.o client.o log.o conffile.o files.o xlat.o
-	$(CC) $(LDFLAGS) -o radwho radwho.o util.o nas.o client.o log.o conffile.o files.o xlat.o $(LIBS)
+radwho: radwho.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o
+	$(CC) $(LDFLAGS) -o radwho radwho.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o $(LIBS)
 
 raduse: raduse.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o raduse raduse.o $(LIBS)
@@ -132,8 +135,8 @@ raduse: raduse.o
 radzap.o: radzap.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radzap.c
 
-radzap: radzap.o util.o nas.o log.o client.o conffile.o files.o xlat.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o log.o client.o conffile.o files.o xlat.o $(LIBS)
+radzap: radzap.o mainconfig.o util.o nas.o log.o client.o conffile.o files.o xlat.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o mainconfig.o util.o nas.o log.o client.o conffile.o files.o xlat.o $(LIBS)
 
 clean:
 	rm -rf *.o *.so *~ $(BINARIES) .libs

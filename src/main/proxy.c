@@ -300,8 +300,8 @@ int proxy_send(REQUEST *request)
 	 */
 	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
 	request->proxy_is_replicate = replicating;
-	request->proxy_try_count = proxy_retry_count - 1;
-	request->proxy_next_try = request->timestamp + proxy_retry_delay;
+	request->proxy_try_count = mainconfig.proxy_retry_count - 1;
+	request->proxy_next_try = request->timestamp + mainconfig.proxy_retry_delay;
 	delaypair = pairfind(vps, PW_ACCT_DELAY_TIME);
 	request->proxy->timestamp = request->timestamp - (delaypair ? delaypair->lvalue : 0);
 

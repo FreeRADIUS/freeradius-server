@@ -77,20 +77,13 @@ const char *radlog_dir = NULL;
 radlog_dest_t radlog_dest = RADLOG_FILES;
 const char *radutmp_file = NULL;
 
-int proxy_synchronous = TRUE;
-int proxy_fallback = FALSE;
 const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlib_dir = NULL;
 int auth_port = 0;
 int acct_port;
 uint32_t myip = INADDR_ANY;
-int proxy_retry_delay = RETRY_DELAY;
-int proxy_retry_count = RETRY_COUNT;
-int proxy_dead_time;
-int max_proxies = MAX_PROXIES;
 int log_stripped_names;
-struct main_config_t mainconfig;
 
 struct radutmp_config_t {
   char *radutmp_fn;
@@ -99,13 +92,6 @@ struct radutmp_config_t {
 static CONF_PARSER module_config[] = {
   { "filename", PW_TYPE_STRING_PTR, 0, &radutmpconfig.radutmp_fn,  RADUTMP },
   { NULL, -1, 0, NULL, NULL }
-};
-
-/*
- *	A mapping of configuration file names to internal variables
- */
-static CONF_PARSER server_config[] = {
-	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -414,18 +400,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Read radiusd.conf */
-	if(read_radius_conf_file() < 0) {
+	if (read_radius_conf_file() < 0) {
 		fprintf(stderr, "%s: Errors reading radiusd.conf\n", argv[0]);
 		exit(1);
 	}
-
-	cs = cf_section_find(NULL);
-	if(!cs) {
-		fprintf(stderr, "%s: No configuration information in radiusd.conf!\n",
-			argv[0]);
-		exit(1);
-	}
-	cf_section_parse(cs, NULL, server_config);
 
 	/* Read the radutmp section of radiusd.conf */
 	cs = cf_section_sub_find(cf_section_find("modules"), "radutmp");

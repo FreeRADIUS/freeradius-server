@@ -83,11 +83,6 @@ static const char rcsid[] =
 #	include "radius_snmp.h"
 #endif
 
-#include <sys/resource.h>
-
-#include <grp.h>
-#include <pwd.h>
-
 /*
  *  Global variables.
  */
@@ -100,19 +95,11 @@ const char *radlib_dir = NULL;
 int syslog_facility;
 int log_stripped_names;
 int debug_flag = 0;
-uint32_t myip = INADDR_ANY;
 int log_auth_detail = FALSE;
 int auth_port = 0;
 int acct_port;
 int proxy_port;
-int proxy_retry_delay = RETRY_DELAY;
-int proxy_retry_count = RETRY_COUNT;
-int proxy_dead_time = DEAD_TIME;
-int max_proxies = MAX_PROXIES;
-int proxy_synchronous = FALSE;
-int proxy_fallback = FALSE;
 int need_reload = FALSE;
-struct main_config_t mainconfig;
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 static int got_child = FALSE;
@@ -125,19 +112,7 @@ static int request_num_counter = 0; /* per-request unique ID */
 /*
  *  Configuration items.
  */
-static int allow_core_dumps = FALSE;
-static int max_request_time = MAX_REQUEST_TIME;
-static int kill_unresponsive_children = FALSE;
-static int cleanup_delay = CLEANUP_DELAY;
-static int max_requests = MAX_REQUESTS;
-static int reject_delay = 0;
 static int dont_fork = FALSE;
-static const char *pid_file = NULL;
-static uid_t server_uid;
-static gid_t server_gid;
-static const char *uid_name = NULL;
-static const char *gid_name = NULL;
-static int proxy_requests = TRUE;
 static int needs_child_cleanup = 0;
 static time_t start_time = 0;
 static int spawn_flag = TRUE;
@@ -152,251 +127,18 @@ static void usage(void);
 static void sig_fatal (int);
 static void sig_hup (int);
 
-static int switch_users(void);
 static void rfc_clean(RADIUS_PACKET *packet);
 static void rad_reject(REQUEST *request);
 static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST *rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 static int refresh_request(REQUEST *request, void *data);
-static int debug_level;		/* for configuration file stuff */
 #ifndef HAVE_PTHREAD_H
 static int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
 extern int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #endif
 static int rad_status_server(REQUEST *request);
-
-/*
- *  Map the proxy server configuration parameters to variables.
- */
-static CONF_PARSER proxy_config[] = {
-	{ "retry_delay",  PW_TYPE_INTEGER, 0, &proxy_retry_delay, Stringify(RETRY_DELAY) },
-	{ "retry_count",  PW_TYPE_INTEGER, 0, &proxy_retry_count, Stringify(RETRY_COUNT) },
-	{ "synchronous",  PW_TYPE_BOOLEAN, 0, &proxy_synchronous, "no" },
-	{ "default_fallback", PW_TYPE_BOOLEAN, 0, &proxy_fallback, "no" },
-	{ "dead_time",    PW_TYPE_INTEGER, 0, &proxy_dead_time, Stringify(DEAD_TIME) },
-	{ "servers_per_realm",  PW_TYPE_INTEGER, 0, &max_proxies, Stringify(MAX_PROXIES) },
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-/*
- *  Security configuration for the server.
- */
-static CONF_PARSER security_config[] = {
-	{ "max_attributes",  PW_TYPE_INTEGER, 0, &librad_max_attributes, Stringify(0) },
-	{ "reject_delay",  PW_TYPE_INTEGER, 0, &reject_delay, Stringify(0) },
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-/*
- *  A mapping of configuration file names to internal variables
- */
-static CONF_PARSER server_config[] = {
-	{ "max_request_time", PW_TYPE_INTEGER, 0, &max_request_time, Stringify(MAX_REQUEST_TIME) },
-	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &cleanup_delay, Stringify(CLEANUP_DELAY) },
-	{ "max_requests", PW_TYPE_INTEGER, 0, &max_requests, Stringify(MAX_REQUESTS) },
-	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &kill_unresponsive_children, Stringify(FALSE) },
-	{ "port", PW_TYPE_INTEGER, 0, &auth_port, Stringify(PW_AUTH_UDP_PORT) },
-	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
-	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
-	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
-	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
-	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
-	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
-	{ "pidfile", PW_TYPE_STRING_PTR, 0, &pid_file, "${run_dir}/radiusd.pid"},
-	{ "bind_address", PW_TYPE_IPADDR, 0, &myip, "*" },
-	{ "user", PW_TYPE_STRING_PTR, 0, &uid_name, NULL},
-	{ "group", PW_TYPE_STRING_PTR, 0, &gid_name, NULL},
-	{ "usercollide", PW_TYPE_BOOLEAN, 0, &mainconfig.do_usercollide,  "no" },
-	{ "lower_user", PW_TYPE_STRING_PTR, 0, &mainconfig.do_lower_user, "no" },
-	{ "lower_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_lower_pass, "no" },
-	{ "nospace_user", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_user, "no" },
-	{ "nospace_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_pass, "no" },
-	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
-	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &proxy_requests, "yes" },
-	{ "proxy", PW_TYPE_SUBSECTION, 0, proxy_config, NULL },
-	{ "security", PW_TYPE_SUBSECTION, 0, security_config, NULL },
-	{ "debug_level", PW_TYPE_INTEGER, 0, &debug_level, "0"},
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-static int switch_users() {
-	
-	/*
-	 *  Switch UID and GID to what is specified in the config file
-	 */
-
-	/*  Set GID.  */
-	if (gid_name != NULL) {
-		struct group *gr;
-
-		gr = getgrnam(gid_name);
-		if (gr == NULL) {
-			if (errno == ENOMEM) {
-				radlog(L_ERR|L_CONS, "Cannot switch to Group %s: out of memory", gid_name);
-			} else {
-				radlog(L_ERR|L_CONS, "Cannot switch group; %s doesn't exist", gid_name);
-			}
-			exit(1);
-		}
-		server_gid = gr->gr_gid;
-		if (setgid(server_gid) < 0) {
-			radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s", gid_name, strerror(errno));
-			exit(1);
-		}
-	}
-
-	/*  Set UID.  */
-	if (uid_name != NULL) {
-		struct passwd *pw;
-
-		pw = getpwnam(uid_name);
-		if (pw == NULL) {
-			if (errno == ENOMEM) {
-				radlog(L_ERR|L_CONS, "Cannot switch to User %s: out of memory", uid_name);
-			} else {
-				radlog(L_ERR|L_CONS, "Cannot switch user; %s doesn't exist", uid_name);
-			}
-			exit(1);
-		}
-		server_uid = pw->pw_uid;
-		if (setuid(server_uid) < 0) {
-			radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", uid_name, strerror(errno));
-			exit(1);
-		}
-	}
-	return(0);
-}
-
-
-/*
- *  Read config files.
- */
-static int reread_config(int reload)
-{
-	int pid = getpid();
-	CONF_SECTION *cs;
-	struct rlimit core_limits;
-	static int old_debug_level = -1;
-
-	if (!reload) {
-		radlog(L_INFO, "Starting - reading configuration files ...");
-	} else if (pid == radius_pid) {
-		radlog(L_INFO, "Reloading configuration files.");
-	}
-
-	/* First read radiusd.conf */
-	DEBUG2("reread_config:  reading radiusd.conf");
-	if (read_radius_conf_file() < 0) {
-		if (debug_flag) {
-			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
-		} else {
-			radlog(L_ERR|L_CONS, "Errors reading %s/radiusd.conf: For more information, please read the tail end of %s", radlog_dir, mainconfig.log_file);
-		}
-		return -1;
-	}
-
-	/*  And parse the server's configuration values.  */
-	cs = cf_section_find(NULL);
-	if (cs == NULL) {
-		radlog(L_ERR|L_CONS, "No configuration information in radiusd.conf!");
-		return -1;
-	}
-	cf_section_parse(cs, NULL, server_config);
-
-	/*
-	 *	Set the libraries debugging flag to whatever the main
-	 *	flag is.  Note that on a SIGHUP, to turn the debugging
-	 *	off, we do other magic.
-	 *
-	 *	Increase the debug level, if the configuration file
-	 *	says to, OR, if we're decreasing the debug from what it
-	 *	was before, allow that, too.
-	 */
-	if ((debug_level > debug_flag) ||
-	    (debug_level <= old_debug_level)) {
-	  debug_flag = debug_level;
-	}
-	librad_debug = debug_flag;
-	old_debug_level = debug_level;
-	
-	/*
-	 *	If we're NOT debugging, trap fatal signals, so we can
-	 *	easily clean up after ourselves.
-	 *
-	 *	If we ARE debugging, don't trap them, so we can
-	 *	dump core.
-	 */
-	if ((allow_core_dumps == FALSE) && (debug_flag == 0)) {
-#ifdef SIGSEGV
-		signal(SIGSEGV, sig_fatal);
-#endif
-	}
-
-	/*  Reload the modules.  */
-	DEBUG2("read_config_files:  entering modules setup");
-	if (setup_modules() < 0) {
-		radlog(L_ERR|L_CONS, "Errors setting up modules");
-		return -1;
-	}
-
-	/*
-	 *  Go update our behaviour, based on the configuration
-	 *  changes.
-	 */
-
-	/*  Get the current maximum for core files.  */
-	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		radlog(L_ERR|L_CONS, "Failed to get current core limit:  %s", strerror(errno));
-		exit(1);
-	}
-
-	if (allow_core_dumps) {
-		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-			radlog(L_ERR|L_CONS, "Cannot update core dump limit: %s",
-					strerror(errno));
-			exit(1);
-
-			/*
-			 *  If we're running as a daemon, and core
-			 *  dumps are enabled, log that information.
-			 */
-		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
-			radlog(L_INFO|L_CONS, "Core dumps are enabled.");
-
-	} else if (!debug_flag) {
-		/*
-		 *  Not debugging.  Set the core size to zero, to
-		 *  prevent security breaches.  i.e. People
-		 *  reading passwords from the 'core' file.
-		 */
-		struct rlimit limits;
-
-		limits.rlim_cur = 0;
-		limits.rlim_max = core_limits.rlim_max;
-		
-		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
-			radlog(L_ERR|L_CONS, "Cannot disable core dumps: %s",
-					strerror(errno));
-			exit(1);
-		}
-	}
-
-	if (reload) {
-		switch_users();  /* Don't do this yet, if we're just starting up. */
-	}
-
-	/*
-	 *	Sanity check some things...
-	 */
-	if (reject_delay > cleanup_delay) {
-		reject_delay = cleanup_delay;
-	}
-
-	return 0;
-}
-
 
 /*
  *  Parse a string into a syslog facility level.
@@ -585,7 +327,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'i':
-				if ((myip = ip_getaddr(optarg)) == INADDR_NONE) {
+				if ((mainconfig.myip = ip_getaddr(optarg)) == INADDR_NONE) {
 					fprintf(stderr, "radiusd: %s: host unknown\n",
 						optarg);
 					exit(1);
@@ -654,19 +396,22 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/*  Get our PID: the configuration file reader uses it.  */
+	/*
+	 *	Get our PID.
+	 */
 	radius_pid = getpid();
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
-	if (reread_config(0) < 0) {
+	if (read_mainconfig(0) < 0) {
 		exit(1);
 	}
 
-	/*  We need root to do mkdir() and chown(), so we do this before giving up root.  -chad */
-	radlogdir_iswritable(uid_name); 
-
-	/*  Do this as soon as possible!  Make exceptions above here.  */
-	switch_users();
+	/*  Reload the modules.  */
+	DEBUG2("radiusd:  entering modules setup");
+	if (setup_modules() < 0) {
+		radlog(L_ERR|L_CONS, "Errors setting up modules");
+		exit(1);
+	}
 
 #if HAVE_SYSLOG_H
 	/*
@@ -735,7 +480,7 @@ int main(int argc, char *argv[])
 	sa = (struct sockaddr_in *) &salocal;
 	memset ((char *) sa, '\0', sizeof(salocal));
 	sa->sin_family = AF_INET;
-	sa->sin_addr.s_addr = myip;
+	sa->sin_addr.s_addr = mainconfig.myip;
 	sa->sin_port = htons(auth_port);
 
 	result = bind (authfd, &salocal, sizeof(*sa));
@@ -763,7 +508,7 @@ int main(int argc, char *argv[])
 	sa = (struct sockaddr_in *) &salocal;
 	memset ((char *) sa, '\0', sizeof(salocal));
 	sa->sin_family = AF_INET;
-	sa->sin_addr.s_addr = myip;
+	sa->sin_addr.s_addr = mainconfig.myip;
 	sa->sin_port = htons(acct_port);
 
 	result = bind (acctfd, & salocal, sizeof(*sa));
@@ -777,11 +522,11 @@ int main(int argc, char *argv[])
 	 *  If we're proxying requests, open the proxy FD.
 	 *  Otherwise, don't do anything.
 	 */
-	if (proxy_requests == TRUE) {
+	if (mainconfig.proxy_requests == TRUE) {
 		/*
 		 *  Open Proxy Socket.
 		 */
-		check_proxies(max_proxies);
+		check_proxies(mainconfig.max_proxies);
 		proxyfd = socket (AF_INET, SOCK_DGRAM, 0);
 		if (proxyfd < 0) {
 			perror ("proxy socket");
@@ -791,7 +536,7 @@ int main(int argc, char *argv[])
 		sa = (struct sockaddr_in *) &salocal;
 		memset((char *) sa, '\0', sizeof(salocal));
 		sa->sin_family = AF_INET;
-		sa->sin_addr.s_addr = myip;
+		sa->sin_addr.s_addr = mainconfig.myip;
 		
 		/*
 		 *  Set the proxy port to be one more than the
@@ -867,13 +612,13 @@ int main(int argc, char *argv[])
 	if (dont_fork == FALSE) {
 		FILE *fp;
 
-		fp = fopen(pid_file, "w");
+		fp = fopen(mainconfig.pid_file, "w");
 		if (fp != NULL) {
 			fprintf(fp, "%d\n", (int) radius_pid);
 			fclose(fp);
 		} else {
 			radlog(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
-					pid_file, strerror(errno));
+					mainconfig.pid_file, strerror(errno));
 		}
 	}
 
@@ -914,13 +659,13 @@ int main(int argc, char *argv[])
 	if (debug_flag == TRUE) 
 		setlinebuf(stdout);
 
-	if (myip == 0) {
+	if (mainconfig.myip == INADDR_ANY) {
 		strcpy((char *)buffer, "*");
 	} else {
-		ip_ntoa((char *)buffer, myip);
+		ip_ntoa((char *)buffer, mainconfig.myip);
 	}
 
-	if (proxy_requests == TRUE) {
+	if (mainconfig.proxy_requests == TRUE) {
 		radlog(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp, with proxy on %d/udp.",
 				buffer, auth_port, acct_port, proxy_port);
 	} else {
@@ -1013,9 +758,17 @@ int main(int argc, char *argv[])
 		}
 
 		if (need_reload) {
-			if (reread_config(TRUE) < 0) {
+			if (read_mainconfig(TRUE) < 0) {
 				exit(1);
 			}
+
+			/*  Reload the modules.  */
+			DEBUG2("radiusd:  entering modules setup");
+			if (setup_modules() < 0) {
+				radlog(L_ERR|L_CONS, "Errors setting up modules");
+				exit(1);
+			}
+
 			need_reload = FALSE;
 			radlog(L_INFO, "Ready to process requests.");
 		}
@@ -1406,7 +1159,7 @@ static void rad_reject(REQUEST *request)
 		 *	mark the request as delayed, and do NOT send a
 		 *	response.
 		 */
-		if (reject_delay == 0) {
+		if (mainconfig.reject_delay == 0) {
 			rad_send(request->reply, request->packet,
 				 request->secret);
 		} else {
@@ -1642,7 +1395,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *
 	 *  Status-Server requests NEVER get proxied.
 	 */
-	if (proxy_requests) {
+	if (mainconfig.proxy_requests) {
 		if ((request->proxy == NULL) &&
 		    (request->packet->code != PW_STATUS_SERVER)) {
 			int rcode;
@@ -1719,12 +1472,12 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *  up DoS attacks.
 		 */
 		if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
-		    (reject_delay == 0)) {
+		    (mainconfig.reject_delay == 0)) {
 			rad_send(request->reply, request->packet,
 				 request->secret);
 		} else {
 			DEBUG2("Delaying request %d for %d seconds",
-			       request->number, reject_delay);
+			       request->number, mainconfig.reject_delay);
 			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
 		}
 	}
@@ -1879,7 +1632,7 @@ static struct timeval *rad_clean_list(time_t now)
 		 *  to service.
 		 */
 		if (last_request) 
-			for (i = 0; i < cleanup_delay; i++) {
+			for (i = 0; i < mainconfig.cleanup_delay; i++) {
 				REQUEST *next;
 			
 				/*
@@ -1944,8 +1697,8 @@ static struct timeval *rad_clean_list(time_t now)
 		 *  there are no live requests, we can safely sleep
 		 *  forever.
 		 */
-		if ((!proxy_requests) ||
-		    proxy_synchronous ||
+		if ((!mainconfig.proxy_requests) ||
+		    mainconfig.proxy_synchronous ||
 		    (rl_num_requests() == 0)) {
 			DEBUG2("Nothing to do.  Sleeping until we see a request.");
 			last_tv_ptr = NULL;
@@ -1965,7 +1718,7 @@ static struct timeval *rad_clean_list(time_t now)
 		 *  the server to wake up every N seconds, to do a small
 		 *  amount of unnecessary work.
 		 */
-		info.smallest = proxy_retry_delay;
+		info.smallest = mainconfig.proxy_retry_delay;
 	}
 	/*
 	 *  Set the time (in seconds) for how long we're
@@ -2158,7 +1911,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *	proxied packets, so we ignore any duplicate
 			 *	requests from the NAS.
 			 */
-			if (!proxy_synchronous) {
+			if (!mainconfig.proxy_synchronous) {
 				DEBUG2("Ignoring duplicate packet from client "
 				       "%s:%d - ID: %d, due to outstanding proxied request %d.",
 				       client_name(request->packet->src_ipaddr),
@@ -2182,7 +1935,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			       client_name(curreq->proxy->dst_ipaddr), request->packet->src_port,
 			       curreq->proxy->id);
 			
-			curreq->proxy_next_try = request->timestamp + proxy_retry_delay;
+			curreq->proxy_next_try = request->timestamp + mainconfig.proxy_retry_delay;
 			rad_send(curreq->proxy, curreq->packet, curreq->proxysecret);
 			request_free(&request);
 			return NULL;
@@ -2209,14 +1962,14 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 *  Count the total number of requests, to see if there
 	 *  are too many.  If so, return with an error.
 	 */
-	if (max_requests) {
+	if (mainconfig.max_requests) {
 		int request_count = rl_num_requests();
 		
 		/*
 		 *  This is a new request.  Let's see if it
 		 *  makes us go over our configured bounds.
 		 */
-		if (request_count > max_requests) {
+		if (request_count > mainconfig.max_requests) {
 			radlog(L_ERR, "Dropping request (%d is too many): "
 					"from client %s:%d - ID: %d", request_count, 
 					client_name(request->packet->src_ipaddr),
@@ -2564,7 +2317,7 @@ static int refresh_request(REQUEST *request, void *data)
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 
 		difference = info->now - request->timestamp;
-		if (difference >= (time_t) reject_delay) {
+		if (difference >= (time_t) mainconfig.reject_delay) {
 
 			/*
 			 *  Clear the 'delayed reject' bit, so that we
@@ -2587,7 +2340,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  seriously wrong...
 	 */
 	if (request->finished &&
-	    ((request->timestamp + cleanup_delay <= info->now) ||
+	    ((request->timestamp + mainconfig.cleanup_delay <= info->now) ||
 	     (request->packet->code == PW_STATUS_SERVER) ||
 	     (request->packet->code == PW_ACCOUNTING_REQUEST))) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
@@ -2610,7 +2363,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  Maybe the child process handling the request has hung:
 	 *  kill it, and continue.
 	 */
-	if ((request->timestamp + max_request_time) <= info->now) {
+	if ((request->timestamp + mainconfig.max_request_time) <= info->now) {
 		int number;
 
 		child_pid = request->child_pid;
@@ -2644,7 +2397,7 @@ static int refresh_request(REQUEST *request, void *data)
 			return RL_WALK_CONTINUE;
 		}
 
-		if (kill_unresponsive_children) {
+		if (mainconfig.kill_unresponsive_children) {
 			if (child_pid != NO_SUCH_CHILD_PID) {
 				/*
 				 *  This request seems to have hung
@@ -2684,7 +2437,7 @@ static int refresh_request(REQUEST *request, void *data)
 		 */
 		rad_reject(request);
 		request->child_pid = NO_SUCH_CHILD_PID;
-		if (kill_unresponsive_children)
+		if (mainconfig.kill_unresponsive_children)
 			request->finished = TRUE;
 		return RL_WALK_CONTINUE;
 	} /* the request has been in the queue for too long */
@@ -2706,18 +2459,18 @@ static int refresh_request(REQUEST *request, void *data)
 	/*
 	 *  We're not proxying requests at all.
 	 */
-	if (!proxy_requests) goto setup_timeout;
+	if (!mainconfig.proxy_requests) goto setup_timeout;
 
 	/*
 	 *  We're proxying synchronously, so we don't retry it here.
 	 *  Some other code takes care of retrying the proxy requests.
 	 */
-	if (proxy_synchronous) goto setup_timeout;
+	if (mainconfig.proxy_synchronous) goto setup_timeout;
 
 	/*
 	 *  The proxy retry delay is zero, meaning don't retry.
 	 */
-	if (proxy_retry_delay == 0) goto setup_timeout;
+	if (mainconfig.proxy_retry_delay == 0) goto setup_timeout;
 
 	/*
 	 *  There is no proxied request for this packet, so there's
@@ -2755,7 +2508,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  the tries, and set the next try time.
 	 */
 	request->proxy_try_count--;
-	request->proxy_next_try = info->now + proxy_retry_delay;
+	request->proxy_next_try = info->now + mainconfig.proxy_retry_delay;
 		
 	/* Fix up Acct-Delay-Time */
 	if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
@@ -2804,15 +2557,15 @@ setup_timeout:
 	 *  clean it up.
 	 */
 	if (request->finished) {
-		difference = (request->timestamp + cleanup_delay) - info->now;
+		difference = (request->timestamp + mainconfig.cleanup_delay) - info->now;
 
 		/*
 		 *  If the request is marked up to be rejected later,
 		 *  then wake up later.
 		 */
 		if ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0) {
-			if (difference >= (time_t) reject_delay) {
-				difference = (time_t) reject_delay;
+			if (difference >= (time_t) mainconfig.reject_delay) {
+				difference = (time_t) mainconfig.reject_delay;
 			}
 		}
 
@@ -2829,8 +2582,8 @@ setup_timeout:
 		 *  the next retry time as NAS has not resent the request
 		 *  in the given retry window.
 		 */
-		if (proxy_synchronous) {
-			request->proxy_next_try = info->now + proxy_retry_delay;
+		if (mainconfig.proxy_synchronous) {
+			request->proxy_next_try = info->now + mainconfig.proxy_retry_delay;
 		}
 		difference = request->proxy_next_try - info->now;
 	} else {
@@ -2840,7 +2593,7 @@ setup_timeout:
 		 *  Wake up when it's time to kill the errant
 		 *  thread/process.
 		 */
-		difference = (request->timestamp + max_request_time) - info->now;
+		difference = (request->timestamp + mainconfig.max_request_time) - info->now;
 	}
 
 	/*
