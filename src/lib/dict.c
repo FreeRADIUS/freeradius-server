@@ -278,8 +278,8 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			continue;
 
 		/*
-		 *  Comments should NOT be appearing anywhere but
-		 *  as comments;
+		 *  Comment characters should NOT be appearing anywhere but
+		 *  as start of a comment;
 		 */
 		p = strchr(buf, '#');
 		if (p) *p = '\0';
