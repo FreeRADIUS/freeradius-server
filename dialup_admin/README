@@ -88,6 +88,8 @@ htdocs:: user_finger.php3 =>
 	it will only show users for the specific access server.
 	If an argument usage_summary is passed then it will only show a line like:
 	"Online: <num> Free: <num>" which can be used by other pages
+htdocs::failed_logins.php3 =>
+	It will show all the failed logins as logged in the radacct table by the log_badlogins script
 
 html:: Contains the html code for a few pages 
 html::user_admin.html.php3 =>
