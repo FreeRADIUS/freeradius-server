@@ -240,6 +240,8 @@ lign=top>
 	<b><font color="darkblue">$tot_conns</font></b></td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">Online time</td><td>
 	<b><font color="darkblue">$tot_time</td></tr></td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">Failed Logins</td><td>
+	<b><font color="darkblue">$tot_badlogins</td></tr></td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">Upload</td><td>
 	$tot_input</td></tr></td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">Download</td><td>

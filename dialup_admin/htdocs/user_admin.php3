@@ -98,6 +98,16 @@ if ($link){
 		$avg_output = bytes2str($row['avg(AcctOutputOctets)']);
 		$tot_conns = $row['COUNT(*)'];
 	}
+	$search = @da_sql_query($link,$config,
+	"SELECT COUNT(*) FROM $config[sql_accounting_table] WHERE UserName = '$login'
+	AND AcctStopTime >= '$week_str' AND AcctStopTime <= '$now_str'
+	AND AcctTerminateCause LIKE 'Login-Incorrect%' OR
+	AcctTerminateCause LIKE 'Invalid-User%' OR
+	AcctTerminateCause LIKE 'Multiple-Logins%';");
+	if ($search){
+		$row = @da_sql_fetch_array($search,$config);
+		$tot_badlogins = $row['COUNT(*)'];
+	}
 	for($i = 0; $i <=6; $i++){
 		if ($days[$i] == '')
 			continue;
