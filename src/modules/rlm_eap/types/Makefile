@@ -19,7 +19,9 @@ common:
 	@for mod in rlm_eap*; do \
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
-		[ -f $$mod/Makefile ] && echo "Making $$what in $$mod..."; \
-		[ -f $$mod/Makefile ] && (cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit 1;\
+		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
+			echo "Making $$what in $$mod..."; \
+			(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit 1; \
+		fi; \
 	done
 
