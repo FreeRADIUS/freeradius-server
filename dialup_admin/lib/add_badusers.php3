@@ -9,14 +9,17 @@ else{
 $date=date($config[sql_full_date_format]);
 $lockmsg_name = $attrmap['Dialup-Lock-Msg'] . '0';
 $msg = $$lockmsg_name;
+$admin = '-';
+if ($HTTP_SERVER_VARS["PHP_AUTH_USER"] != '')
+	$admin = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
 if ($msg == '')
 	echo "<b>Lock Message should not be empty</b><br>\n";
 else{
 	$link = @da_sql_pconnect($config);
 	if ($link){
 		$r = da_sql_query($link,$config,
-		"INSERT INTO $config[sql_badusers_table] (UserName,Date,Reason)
-		VALUES ('$login','$date','$msg');");
+		"INSERT INTO $config[sql_badusers_table] (UserName,Date,Admin,Reason)
+		VALUES ('$login','$date','$admin','$msg');");
 		if (!$r)
 			echo "<b>SQL Error:" . da_sql_error($link,$config) . "</b><br>\n";
 	}

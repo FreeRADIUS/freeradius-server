@@ -79,7 +79,7 @@ EOM;
 <p>
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
 	<tr bgcolor="#d0ddb0">
-	<th>#</th><th>user</th><th>date</th><th>reason</th>
+	<th>#</th><th>user</th><th>date</th><th>admin</th><th>reason</th>
 	</tr>
 
 <?php
@@ -95,6 +95,9 @@ if ($link){
 			$user = "$row[UserName]";
 			$date = "$row[Date]";
 			$reason = "$row[Reason]";
+			$admin = "$row[Admin]";
+			if ($admin == '')
+				$admin = '-';
 			if ($reason == '')
 				$reason = '-';
 			echo <<<EOM
@@ -102,6 +105,7 @@ if ($link){
 				<td>$num</td>
 				<td><a href="user_admin.php3?login=$user" title="Edit user $user">$user</a></td>
 				<td>$date</td>
+				<td>$admin</td>
 				<td>$reason</td>
 			</tr>
 EOM;
