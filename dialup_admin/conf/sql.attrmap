@@ -1,6 +1,6 @@
 #
 # A mapping between the attributes used by dialup_admin and the attribute
-# names that will be stroed in the SQL database
+# names that will be stored in the SQL database
 #
 # Format:
 # checkItem|replyItem	Attribute-In-Dialup-Admin	Attribute-In-SQL
