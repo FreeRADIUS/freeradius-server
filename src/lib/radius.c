@@ -81,8 +81,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	const char		*what;
 	uint8_t			ip_buffer[16];
 
-	reply = packet->vps;
-	
 	if ((packet->code > 0) && (packet->code < 14)) {
 		what = packet_codes[packet->code];
 	} else {
@@ -95,11 +93,11 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	if (!packet->data) {
 		  radius_packet_t	*hdr;
 		  int32_t		lvalue;
-		  uint8_t		*ptr, *length_ptr;
+		  uint8_t		*ptr, *length_ptr, *vsa_length_ptr;
 		  uint8_t		digest[16];
 		  int			secretlen;
 		  int			vendorcode, vendorpec;
-		  u_short		total_length, tmp;
+		  u_short		total_length;
 		  int			len;
 		  
 		  hdr = (radius_packet_t *) malloc(PACKET_DATA_LEN);
@@ -131,116 +129,163 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		   *	Load up the configuration values for the user
 		   */
 		  ptr = hdr->data;
-		  while (reply != NULL) {
-		    /*
-		     *	This could be a vendor-specific attribute.
-		     */
-		    length_ptr = NULL;
-		    if ((vendorcode = VENDOR(reply->attribute)) > 0 &&
-			(vendorpec  = dict_vendorpec(vendorcode)) > 0) {
-		      *ptr++ = PW_VENDOR_SPECIFIC;
-		      length_ptr = ptr;
-		      *ptr++ = 6;
-		      lvalue = htonl(vendorpec);
-		      memcpy(ptr, &lvalue, 4);
-		      ptr += 4;
-		      total_length += 6;
-		    } else if (reply->attribute > 0xff) {
-		      /*
-		       *	Ignore attributes > 0xff
-		       */
+		  vendorcode = 0;
+		  vendorpec = 0;
+		  vsa_length_ptr = NULL;
 
-		      if (librad_debug) {
-			printf("\t  ");
-			vp_print(stdout, reply);
-			printf("\n");
-		      }
-		      reply = reply->next;
-		      continue;
-		    } else
-		      vendorpec = 0;
-		    
-#ifdef ATTRIB_NMC
-		    if (vendorpec == VENDORPEC_USR) {
-		      lvalue = htonl(reply->attribute & 0xFFFF);
-		      memcpy(ptr, &lvalue, 4);
-		      total_length += 2;
-		      *length_ptr  += 2;
-		      ptr          += 4;
-		    } else
-#endif
-		      *ptr++ = (reply->attribute & 0xFF);
-		    
-		    switch(reply->type) {
-		      
-		    case PW_TYPE_STRING:
-#ifndef ASCEND_BINARY
-		    case PW_TYPE_ABINARY:
-#endif
-		    case PW_TYPE_OCTETS:
-		      len = reply->length;
-		      
-		      if (len >= MAX_STRING_LEN) {
-			len = MAX_STRING_LEN - 1;
-		      }
-#ifdef ATTRIB_NMC
-		      if (vendorpec != VENDORPEC_USR)
-#endif
-			*ptr++ = len + 2;
-		      if (length_ptr) *length_ptr += len + 2;
-		      memcpy(ptr, reply->strvalue,len);
-		      ptr += len;
-		      total_length += len + 2;
-		      break;
-		      
-		    case PW_TYPE_INTEGER:
-		    case PW_TYPE_IPADDR:
-#ifdef ATTRIB_NMC
-		      if (vendorpec != VENDORPEC_USR)
-#endif
-			*ptr++ = sizeof(uint32_t) + 2;
-		      if (length_ptr) *length_ptr += sizeof(uint32_t)+ 2;
-		      if (reply->type != PW_TYPE_IPADDR)
-			lvalue = htonl(reply->lvalue);
-		      else
-			lvalue = reply->lvalue;
-		      memcpy(ptr, &lvalue, sizeof(uint32_t));
-		      ptr += sizeof(uint32_t);
-		      total_length += sizeof(uint32_t) + 2;
-		      break;
-#ifdef ASCEND_BINARY
-		    case PW_TYPE_ABINARY:
-		      len = reply->length;
-		      if (len >= MAX_STRING_LEN) {
-			len = MAX_STRING_LEN - 1;
-		      }
-#ifdef ATTRIB_NMC
-		      if (vendorpec != VENDORPEC_USR)
-#endif
-			*ptr++ = len + 2;
-		      if (length_ptr) *length_ptr += len + 2;
-		      memcpy(ptr, reply->strvalue,len);
-		      ptr += len;
-		      total_length += len + 2;
-		      break;
-#endif
+		  for (reply = packet->vps; reply; reply = reply->next) {
+			  /*
+			   *	Ignore non-wire attributes
+			   */
+			  if ((VENDOR(reply->attribute) == 0) &&
+			      ((reply->attribute & 0xFFFF) > 0xff)) {
+				  continue;
+			  }
 
-		    default:
-		      break;
-		    }
-		    
-		    /*
-		     *	Print out ONLY the attributes which we're
-		     *	sending over the wire.  Also, pick up any hacked
-		     *  password attributes.
-		     */
-		    debug_pair(reply);
-		    reply = reply->next;
+			  /*
+			   *	We have a different vendor.  Re-set
+			   *	the vendor codes.
+			   */
+			  if (vendorcode != VENDOR(reply->attribute)) {
+				  vendorcode = 0;
+				  vendorpec = 0;
+				  vsa_length_ptr = NULL;
+			  }
+
+			  /*
+			   *	If the Vendor-Specific attribute is getting
+			   *	full, then create a new VSA attribute
+			   */
+			  if (vsa_length_ptr &&
+			      (reply->length + *vsa_length_ptr) >= MAX_STRING_LEN) {
+				  vendorcode = 0;
+				  vendorpec = 0;
+				  vsa_length_ptr = NULL;
+			  }
+
+			  /*
+			   *	Maybe we have the start of a set of
+			   *	(possibly many) VSA attributes from
+			   *	one vendor.  Set a global VSA wrapper
+			   */
+			  if ((vendorcode == 0) &&
+			      ((vendorcode = VENDOR(reply->attribute)) != 0)) {
+				  vendorpec  = dict_vendorpec(vendorcode);
+
+				  /*
+				   *	This is a potentially bad error...
+				   *	we can't find the vendor ID!
+				   */
+				  if (vendorpec == 0) {
+					  /* FIXME: log an error */
+					  continue;
+				  }
+
+				  /*
+				   *	If the VSA string cannot be contained
+				   *	within the attribute, silently drop
+				   *	it from the request.
+				   *
+				   *	FIXME: Don't allow the user to
+				   *	specify illegal values!
+				   */
+				  if ((reply->length + 6) >= MAX_STRING_LEN) {
+					  continue;
+				  }
+				  
+				  /*
+				   *	Build a VSA header.
+				   */
+				  *ptr++ = PW_VENDOR_SPECIFIC;
+				  vsa_length_ptr = ptr;
+				  *ptr++ = 6;
+				  lvalue = htonl(vendorpec);
+				  memcpy(ptr, &lvalue, 4);
+				  ptr += 4;
+				  total_length += 6;
+			  }
+
+#ifdef ATTRIB_NMC
+			  if (vendorpec == VENDORPEC_USR) {
+				  lvalue = htonl(reply->attribute & 0xFFFF);
+				  memcpy(ptr, &lvalue, 4);
+
+				  length_ptr = vsa_length_ptr;
+
+				  total_length += 2;
+				  *length_ptr  += 2;
+				  ptr          += 4;
+
+				  /*
+				   *	Each USR attribute gets it's own
+				   *	VSA wrapper, so we re-set the
+				   *	vendor specific information.
+				   */
+				  vendorcode = 0;
+				  vendorpec = 0;
+				  vsa_length_ptr = NULL;
+			  } else
+#endif
+			  {
+				  *ptr++ = (reply->attribute & 0xFF);
+				  length_ptr = ptr;
+				  if (vsa_length_ptr) *vsa_length_ptr += 2;
+				  *ptr++ = 2;
+				  total_length += 2;
+			  }
+			  
+			  switch(reply->type) {
+				  
+				  /*
+				   *	Ascend binary attributes are
+				   *	stored internally in binary form.
+				   */
+			  case PW_TYPE_ABINARY:
+			  case PW_TYPE_STRING:
+			  case PW_TYPE_OCTETS:
+				  len = reply->length;
+				  
+				  if (len >= MAX_STRING_LEN) {
+					  len = MAX_STRING_LEN - 1;
+				  }
+				  
+				  *length_ptr += len;
+				  if (vsa_length_ptr) *vsa_length_ptr += len;
+				  memcpy(ptr, reply->strvalue,len);
+				  ptr += len;
+				  total_length += len;
+				  break;
+				  
+			  case PW_TYPE_INTEGER:
+			  case PW_TYPE_IPADDR:
+
+				  *length_ptr += 4;
+				  if (vsa_length_ptr) *vsa_length_ptr += 4;
+				  if (reply->type != PW_TYPE_IPADDR)
+					  lvalue = htonl(reply->lvalue);
+				  else
+					  lvalue = reply->lvalue;
+				  memcpy(ptr, &lvalue, 4);
+				  ptr += 4;
+				  total_length += 4;
+				  break;
+
+			  default:
+				  break;
+			  }
+			  
+			  /*
+			   *	Print out ONLY the attributes which
+			   *	we're sending over the wire.  Also,
+			   *	pick up any hacked password
+			   *	attributes.
+			   */
+			  debug_pair(reply);
 		  }
-		  
-		  tmp = htons(total_length);
-		  memcpy(hdr->length, &tmp, sizeof(u_short));
+
 		  packet->data_len = total_length;
+		  total_length = htons(total_length);
+		  memcpy(hdr->length, &total_length, sizeof(u_short));
 
 		  /*
 		   *	If this is not an authentication request, we
@@ -249,11 +294,11 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		   */
 		  if (packet->code != PW_AUTHENTICATION_REQUEST) {
 		  	secretlen = strlen(secret);
-			memcpy((char *)hdr + total_length, secret, secretlen);
+			memcpy((char *)hdr + packet->data_len, secret, secretlen);
 			librad_md5_calc(digest, (unsigned char *)hdr,
-					total_length + secretlen);
+					packet->data_len + secretlen);
 			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
-			memset((char *)hdr + total_length, 0, secretlen);
+			memset((char *)hdr + packet->data_len, 0, secretlen);
 		  }
 
 		  /*
@@ -263,13 +308,14 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	} else if (librad_debug) {
 	  	DEBUG("Sending %s of id %d to %s\n", what, packet->id,
 		      ip_ntoa((char *)ip_buffer, packet->dst_ipaddr));
-		while (reply) {
-		  /* FIXME: ignore attributes > 0xff */
-		  debug_pair(reply);
-		  reply = reply->next;
+		
+		for (reply = packet->vps; reply; reply = reply->next) {
+			/* FIXME: ignore attributes > 0xff */
+			debug_pair(reply);
+			reply = reply->next;
 		}
 	}
-
+	
 	/*
 	 *	And send it on it's way.
 	 */
