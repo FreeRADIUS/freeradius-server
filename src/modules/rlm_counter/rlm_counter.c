@@ -124,6 +124,8 @@ static CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
+static int counter_detach(void *instance);
+
 
 /*
  *	See if the counter matches.
@@ -161,6 +163,7 @@ static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_
 
 	return counter.user_counter - check->lvalue;
 }
+
 
 static int add_defaults(rlm_counter_t *data)
 {
@@ -325,6 +328,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	data = rad_malloc(sizeof(*data));
 	if (!data) {
+		radlog(L_ERR, "rlm_counter: rad_malloc() failed.");
 		return -1;
 	}
 	memset(data, 0, sizeof(*data));
@@ -344,12 +348,14 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->key_name == NULL) {
 		radlog(L_ERR, "rlm_counter: 'key' must be set.");
-		exit(0);
+		counter_detach(data);
+		return -1;
 	}
 	dattr = dict_attrbyname(data->key_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: No such attribute %s",
 				data->key_name);
+		counter_detach(data);
 		return -1;
 	}
 	data->key_attr = dattr->attr;
@@ -359,12 +365,14 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->count_attribute == NULL) {
 		radlog(L_ERR, "rlm_counter: 'count-attribute' must be set.");
-		exit(0);
+		counter_detach(data);
+		return -1;
 	}
 	dattr = dict_attrbyname(data->count_attribute);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: No such attribute %s",
 				data->count_attribute);
+		counter_detach(data);
 		return -1;
 	}
 	data->count_attr = dattr->attr;
@@ -374,7 +382,8 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->counter_name == NULL) {
 		radlog(L_ERR, "rlm_counter: 'counter-name' must be set.");
-		exit(0);
+		counter_detach(data);
+		return -1;
 	}
 
 	memset(&flags, 0, sizeof(flags));
@@ -383,6 +392,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to create counter attribute %s",
 				data->counter_name);
+		counter_detach(data);
 		return -1;
 	}
 	data->dict_attr = dattr->attr;
@@ -394,13 +404,15 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->check_name == NULL) {
 		radlog(L_ERR, "rlm_counter: 'check-name' must be set.");
-		exit(0);
+		counter_detach(data);
+		return -1;
 	}
 	dict_addattr(data->check_name, 0, PW_TYPE_INTEGER, -1, flags);
 	dattr = dict_attrbyname(data->check_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to create check attribute %s",
 				data->counter_name);
+		counter_detach(data);
 		return -1;
 	}
 	data->check_attr = dattr->attr;
@@ -412,6 +424,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		if ((dval = dict_valbyname(PW_SERVICE_TYPE, data->service_type)) == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to find attribute number for %s",
 					data->service_type);
+			counter_detach(data);
 			return -1;
 		}
 		data->service_val = dval->value;
@@ -422,24 +435,30 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->reset == NULL) {
 		radlog(L_ERR, "rlm_counter: 'reset' must be set.");
-		exit(0);
+		counter_detach(data);
+		return -1;
 	}
 	now = time(NULL);
 	data->reset_time = 0;
 	data->last_reset = now;
 
-	if (find_next_reset(data,now) == -1)
+	if (find_next_reset(data,now) == -1){
+		radlog(L_ERR, "rlm_counter: find_next_reset() returned -1. Exiting.");
+		counter_detach(data);
 		return -1;
+	}
 
 	if (data->filename == NULL) {
 		radlog(L_ERR, "rlm_counter: 'filename' must be set.");
-		exit(0);
+		counter_detach(data);
+		return -1;
 	}
 	data->gdbm = gdbm_open(data->filename, sizeof(int),
 			GDBM_WRCREAT | GDBM_COUNTER_OPTS, 0600, NULL);
 	if (data->gdbm == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 				data->filename, strerror(errno));
+		counter_detach(data);
 		return -1;
 	}
 	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
@@ -471,8 +490,11 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 
 			data->last_reset = now;
 			ret = reset_db(data);
-			if (ret != RLM_MODULE_OK)
+			if (ret != RLM_MODULE_OK){
+				radlog(L_ERR, "rlm_counter: reset_db() failed");
+				counter_detach(data);
 				return -1;
+			}
 		}
 		else
 			data->reset_time = next_reset;
@@ -487,8 +509,11 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	else{
 		ret = add_defaults(data);
-		if (ret != RLM_MODULE_OK)
+		if (ret != RLM_MODULE_OK){
+			radlog(L_ERR, "rlm_counter: add_defaults() failed");
+			counter_detach(data);
 			return -1;
+		}
 	}
 
 
@@ -829,12 +854,15 @@ static int counter_detach(void *instance)
 	rlm_counter_t *data = (rlm_counter_t *) instance;
 
 	paircompare_unregister(data->dict_attr, counter_cmp);
-	gdbm_close(data->gdbm);
+	if (data->gdbm)
+		gdbm_close(data->gdbm);
 	free(data->filename);
 	free(data->reset);
 	free(data->key_name);
 	free(data->count_attribute);
 	free(data->counter_name);
+	free(data->check_name);
+	free(data->service_type);
 	pthread_mutex_destroy(&data->mutex);
 
 	free(instance);
