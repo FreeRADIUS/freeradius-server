@@ -272,7 +272,7 @@ int rl_init(void)
 	}
 #endif /* PROXY_ID */
 
-#ifndef HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	For now, always create the mutex.
 	 *
