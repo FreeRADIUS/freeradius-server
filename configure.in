@@ -374,10 +374,21 @@ dnl Check if we need -lnsl. Usually if we want to
 dnl link against -lsocket we need to include -lnsl as well.
 AC_CHECK_LIB(nsl, inet_ntoa)
 
+dnl #
+dnl #  Look for the SNMP libraries.
+dnl #  If we can't link to them, try adding -lcrypto to LIBS,
+dnl #  and try linking again.
+dnl #
 if test "x$WITH_SNMP" = "xyes"; then
   AC_CHECK_LIB(snmp, snmp_build_var_op)
   if test "x$ac_cv_lib_snmp_snmp_build_var_op" != "xyes"; then
-    WITH_SNMP=no
+    old_LIBS=$LIBSXXX
+    LIBS="$LIBS -lcrypto"
+    AC_CHECK_LIB(snmp, snmp_build_var_op)
+    if test "x$ac_cv_lib_snmp_snmp_build_var_op" != "xyes"; then
+      WITH_SNMP=no
+      LIBS=$old_LIBS
+    fi
   fi
 fi
 
