@@ -282,6 +282,80 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 	return 0;
 }
 
+/*
+ *	Expand the variables in an input string.
+ */
+static const char *cf_expand_variables(const char *cf, int *lineno,
+				       CONF_SECTION *cs,
+				       char *output, const char *input)
+{
+	char            *p;
+	const char      *end, *ptr;
+	char            name[1024];
+	CONF_PAIR	*cpn;
+	CONF_SECTION    *outercs;
+	
+	p = output;
+	ptr = input;
+	while (*ptr >= ' ') {
+		/*
+		 *	Ignore anything other than "${"
+		 */
+		if ((*ptr != '$') ||
+		    (ptr[1] != '{')) {
+			*(p++) = *(ptr++);
+			continue;
+		}
+		
+		/*
+		 *	Look for trailing '}', and silently
+		 *	ignore anything that doesn't match.
+		 *
+		 *	FIXME!  This is probably wrong...
+		 */
+		end = strchr(ptr, '}');
+		if (end == NULL) {
+			*(p++) = *(ptr++);
+			continue;
+		}
+		
+		ptr += 2;
+
+		memcpy(name, ptr, end - ptr);
+		name[end - ptr] = '\0';
+
+		cpn = cf_pair_find(cs, name);
+
+		/*
+		 *	Also look recursively up the section tree,
+		 *	so things like ${confdir} can be defined
+		 *	there and used inside the module config
+		 *	sections.
+		 */
+		for (outercs=cs->item.parent
+			     ; !cpn && outercs ;
+		     outercs=outercs->item.parent) {
+			cpn = cf_pair_find(outercs, name);
+		}
+		if (!cpn) {
+			radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
+			       cf, *lineno, name);
+			  cf_section_free(cs);
+			  return NULL;
+		}
+
+		/*
+		 *  Substitute the value of the variable.
+		 */
+		strcpy(p, cpn->value);
+		p += strlen(p);
+		ptr = end + 1;
+	} /* loop over all of the input string. */
+
+	*p = '\0';
+
+	return output;
+}
 
 /*
  *	Read a part of the config file.
@@ -290,9 +364,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				     const char *name1, const char *name2,
                                      CONF_SECTION *parent)
 {
-	CONF_SECTION	*cs, *css, *outercs;
+	CONF_SECTION	*cs, *css;
 	CONF_PAIR	*cpn;
-	char		*ptr, *p, *q;
+	char		*ptr;
 	char		buf[8192];
 	char		buf1[1024];
 	char		buf2[1024];
@@ -340,51 +414,8 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		       t1 = getword(&ptr, buf1, sizeof(buf1));
 		       t2 = getword(&ptr, buf2, sizeof(buf2));
 
-		       p = buf;
-		       ptr = buf2;
-		       while (*ptr >= ' ') {
-			 /*
-			  *	Ignore anything other than "${"
-			  */
-			 if ((*ptr != '$') ||
-			     (ptr[1] != '{')) {
-			   *(p++) = *(ptr++);
-			   continue;
-			 }
-			 
-			 /*
-			  *	Look for trailing '}', and silently
-			  *	ignore anything that doesn't match.
-			  */
-			 q = strchr(ptr, '}');
-			if (q == NULL) {
-			  *(p++) = *(ptr++);
-			  continue;
-			}
-			
-			memcpy(buf1, ptr + 2, q - ptr - 2);
-			buf1[q - ptr - 2] = '\0';
-			cpn = cf_pair_find(cs, buf1);
-                        /* Also look recursively up the section tree,
-                         * so things like ${confdir} can be defined
-                         * there and used inside the module config
-                         * sections */
-			for (outercs=cs->item.parent
-			       ; !cpn && outercs ;
-                             outercs=outercs->item.parent) {
-			  cpn = cf_pair_find(outercs, buf1);
-			}
-			if (!cpn) {
-			  radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
-				 cf, *lineno, buf1);
-			  cf_section_free(cs);
-			  return NULL;
-			}
-			strcpy(p, cpn->value);
-			p += strlen(p);
-			ptr = q + 1;
-		       }
-		       *p = '\0';		  
+		       cf_expand_variables(cf, lineno, cs, buf, buf2);
+
 		       DEBUG2( "Config:   including file: %s", buf );
 		       
 		       if ((is = conf_read(cf, *lineno, buf)) == NULL) {
@@ -479,51 +510,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		/*
 		 *	Handle variable substitution via ${foo}
 		 */
-		p = buf;
-		ptr = buf3;
-		while (*ptr >= ' ') {
-			/*
-			 *	Ignore anything other than "${"
-			 */
-			if ((*ptr != '$') ||
-			    (ptr[1] != '{')) {
-				*(p++) = *(ptr++);
-				continue;
-			}
-
-			/*
-			 *	Look for trailing '}', and silently
-			 *	ignore anything that doesn't match.
-			 */
-			q = strchr(ptr, '}');
-			if (q == NULL) {
-				*(p++) = *(ptr++);
-				continue;
-			}
-			
-			memcpy(buf2, ptr + 2, q - ptr - 2);
-			buf2[q - ptr - 2] = '\0';
-			cpn = cf_pair_find(cs, buf2);
-                        /* Also look recursively up the section tree,
-                         * so things like ${confdir} can be defined
-                         * there and used inside the module config
-                         * sections */
-			for (outercs=cs->item.parent
-                             ; !cpn && outercs ;
-                             outercs=outercs->item.parent) {
-				cpn = cf_pair_find(outercs, buf2);
-			}
-			if (!cpn) {
-				radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
-				    cf, *lineno, buf2);
-				cf_section_free(cs);
-				return NULL;
-			}
-			strcpy(p, cpn->value);
-			p += strlen(p);
-			ptr = q + 1;
-		}
-		*p = '\0';
+		cf_expand_variables(cf, lineno, cs, buf, buf3);
 
 		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
@@ -537,7 +524,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 *	See if EOF was unexpected ..
 	 */
 	if (name1 != NULL) {
-		radlog(L_ERR, "%s[%d]: unexpected end of file", cf, *lineno);
+		radlog(L_ERR, "%s[%d]: Unexpected end of file", cf, *lineno);
 		cf_section_free(cs);
 		return NULL;
 	}
