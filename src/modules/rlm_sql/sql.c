@@ -25,6 +25,7 @@
 #include	<sys/wait.h>
 
 #include	"radiusd.h"
+#include	"conffile.h"
 #include	"rlm_sql.h"
 
 /*************************************************************************
@@ -36,19 +37,69 @@
  *************************************************************************/
 
 int sql_init(int reload) {
-	FILE    *sqlfd;
-        char    dummystr[64];
-        char    namestr[64];
-        int     line_no = 0;
-        char    buffer[256];
-        char    sqlfile[256];
 
-	if (reload)
-		free(sql->config);
-	if ((sql->config = malloc(sizeof(SQL_CONFIG))) == NULL) {
-		log(L_ERR|L_CONS, "no memory");
-		exit(1);
-	}
+	CONF_SECTION *sql_cs;
+	static CONF_PARSER module_config[19];
+
+	module_config[0].name = "sensitiveusername";
+	module_config[0].type = PW_TYPE_BOOLEAN;
+	module_config[0].data = &(sql->config->sensitiveusername);
+	module_config[1].name = "deletestalesessions";
+	module_config[1].type = PW_TYPE_BOOLEAN;
+	module_config[1].data =  &(sql->config->deletestalesessions);
+	module_config[2].name = "sqltrace";
+	module_config[2].type = PW_TYPE_BOOLEAN;
+	module_config[2].data = &(sql->config->sqltrace);
+	module_config[3].name = "max_sql_socks";
+	module_config[3].type = PW_TYPE_INTEGER;
+	module_config[3].data = &(sql->config->max_sql_socks);
+	module_config[4].name = "server";
+	module_config[4].type = PW_TYPE_STRING_PTR;
+	module_config[4].data = &(sql->config->sql_server);
+	module_config[5].name = "login";
+	module_config[5].type = PW_TYPE_STRING_PTR;
+	module_config[5].data = &(sql->config->sql_login);
+	module_config[6].name = "password";
+	module_config[6].type = PW_TYPE_STRING_PTR;
+	module_config[6].data = &(sql->config->sql_password);
+	module_config[7].name = "db";
+	module_config[7].type = PW_TYPE_STRING_PTR;
+	module_config[7].data = &(sql->config->sql_db);
+	module_config[8].name = "authcheck_table";
+	module_config[8].type = PW_TYPE_STRING_PTR;
+	module_config[8].data = &(sql->config->sql_authcheck_table);
+	module_config[9].name = "authreply_table";
+	module_config[9].type = PW_TYPE_STRING_PTR;
+	module_config[9].data = &(sql->config->sql_authreply_table);
+	module_config[10].name = "groupcheck_table";
+	module_config[10].type = PW_TYPE_STRING_PTR;
+	module_config[10].data = &(sql->config->sql_groupcheck_table);
+	module_config[11].name = "groupreply_table";
+	module_config[11].type = PW_TYPE_STRING_PTR;
+	module_config[11].data = &(sql->config->sql_groupreply_table);
+	module_config[12].name = "usergroup_table";
+	module_config[12].type = PW_TYPE_STRING_PTR;
+	module_config[12].data = &(sql->config->sql_usergroup_table);
+	module_config[13].name = "realmgroup_table";
+	module_config[13].type = PW_TYPE_STRING_PTR;
+	module_config[13].data = &(sql->config->sql_realmgroup_table);
+	module_config[14].name = "acct_table";
+	module_config[14].type = PW_TYPE_STRING_PTR;
+	module_config[14].data = &(sql->config->sql_acct_table);
+	module_config[15].name = "nas_table";
+	module_config[15].type = PW_TYPE_STRING_PTR;
+	module_config[15].data = &(sql->config->sql_nas_table);
+	module_config[16].name = "realm_table";
+	module_config[16].type = PW_TYPE_STRING_PTR;
+	module_config[16].data = &(sql->config->sql_realm_table);
+	module_config[17].name = "dict_table";
+	module_config[17].type = PW_TYPE_STRING_PTR;
+	module_config[17].data = &(sql->config->sql_dict_table);
+ 
+	module_config[18].name = NULL;
+	module_config[18].type = -1;
+	module_config[18].data = NULL;
+
 	strcpy(sql->config->sql_server,"localhost");
 	strcpy(sql->config->sql_login,"");
 	strcpy(sql->config->sql_password,"");
@@ -69,173 +120,23 @@ int sql_init(int reload) {
 	strcpy(sql->config->sql_dict_table,"dictionary");
 	sql->config->max_sql_socks = MAX_SQL_SOCKS;
 
-        sprintf(sqlfile, "%s/%s", radius_dir, SQLCONFIGFILE);
-        if((sqlfd = fopen(sqlfile, "r")) == (FILE *)NULL) {
-                log(L_ERR,"could not read MySQL configuration file %s",sqlfile);
-                return(-1);
+	/*
+         *      Look for the module's configuration.  If it doesn't
+         *      exists, exit quietly (and use the defaults).
+         */
+        sql_cs = cf_module_config_find("sql");
+        if (!sql_cs) {
+                return 0;
+        }
+ 
+        /*
+         *      If the configuration parameters can't be parsed, then
+         *      fail.
+         */
+        if (cf_section_parse(sql_cs, module_config) < 0) {
+                return -1;
         }
 
-        line_no = 0;
-        while(fgets(buffer, sizeof(buffer), sqlfd) != (char *)NULL) {
-                line_no++;
-
-                /* Skip empty space */
-                if(*buffer == '#' || *buffer == '\0' || *buffer == '\n') {
-                        continue;
-                }
-
-                if(strncasecmp(buffer, "server", 6) == 0) {
-                        /* Read the SERVER line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strcpy(sql->config->sql_server,namestr);
-                       }
-               }
-                if(strncasecmp(buffer, "login", 5) == 0) {
-                        /* Read the LOGIN line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strcpy(sql->config->sql_login,namestr);
-                       }
-               }
-                if(strncasecmp(buffer, "password", 8) == 0) {
-                        /* Read the PASSWORD line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strcpy(sql->config->sql_password,namestr);
-                       }
-               }
-                if(strncasecmp(buffer, "radius_db", 9) == 0) {
-                        /* Read the RADIUS_DB line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strcpy(sql->config->sql_db,namestr);
-                       }
-               }
-                if(strncasecmp(buffer, "authcheck_table", 15) == 0) {
-                        /* Read the AUTHCHECK_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_authcheck_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "authreply_table", 15) == 0) {
-                        /* Read the AUTHREPLY_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_authreply_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "groupcheck_table", 16) == 0) {
-                        /* Read the GROUPCHECK_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_groupcheck_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "groupreply_table", 16) == 0) {
-                        /* Read the GROUP_REPLY_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_groupreply_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "usergroup_table", 15) == 0) {
-                        /* Read the USERGROUP_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_usergroup_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "realmgroup_table", 16) == 0) {
-                        /* Read the REALMGROUP_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_realmgroup_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "acct_table", 10) == 0) {
-                        /* Read the ACCT_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_acct_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "nas_table", 9) == 0) {
-                        /* Read the NAS_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_nas_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "realm_table", 9) == 0) {
-                       /* Read the REALM_TABLE line */
-                       if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                      } else {
-                         strncpy(sql->config->sql_realm_table,namestr, MAX_TABLE_LEN);
-                      }
-               }
-                if(strncasecmp(buffer, "dict_table", 9) == 0) {
-                        /* Read the DICT_TABLE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         strncpy(sql->config->sql_dict_table,namestr, MAX_TABLE_LEN);
-                       }
-               }
-                if(strncasecmp(buffer, "sqltrace", 8) == 0) {
-                        /* Read the SQLTRACE line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                      } else {
-                         if(strncasecmp(namestr, "on", 2) == 0) {
-                           sql->config->sqltrace = 1;
-                         } else {
-                           sql->config->sqltrace = 0;
-                         }
-                       }
-               }
-               if(strncasecmp(buffer, "sensitiveusername", 17) == 0) {
-                        /* Read the SENSITIVEUSERNAME line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         if(strncasecmp(namestr, "on", 2) == 0) {
-                           sql->config->sensitiveusername = 1;
-                        } else {
-                           sql->config->sensitiveusername = 0;
-                        }
-                       }
-               }
-               if(strncasecmp(buffer, "deletestalesessions", 19) == 0) {
-                        /* Read the DELETESTALESESSIONS line */
-                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
-                               log(L_ERR,"invalid attribute on line %d of configuration file %s", line_no,sqlfile);
-                       } else {
-                         if(strncasecmp(namestr, "on", 2) == 0) {
-                           sql->config->deletestalesessions = 1;
-                        } else {
-                           sql->config->deletestalesessions = 0;
-                        }
-                       }
-               }
-
-       }
-       fclose(sqlfd);
-       
        log(L_INFO,"SQL: Attempting to connect to %s@%s:%s", sql->config->sql_login, sql->config->sql_server, sql->config->sql_db);
 
        sql_init_socket(reload);

@@ -11,20 +11,20 @@
 typedef MYSQL_ROW	SQL_ROW;
 
 typedef struct sql_config {
-        char sql_server[40];
-        char sql_login[20];
-        char sql_password[20];
-        char sql_db[20];
-        char sql_acct_table[MAX_TABLE_LEN];
-        char sql_authcheck_table[MAX_TABLE_LEN];
-        char sql_authreply_table[MAX_TABLE_LEN];
-        char sql_groupcheck_table[MAX_TABLE_LEN];
-        char sql_groupreply_table[MAX_TABLE_LEN];
-        char sql_usergroup_table[MAX_TABLE_LEN];
-        char sql_realm_table[MAX_TABLE_LEN];
-        char sql_realmgroup_table[MAX_TABLE_LEN];
-        char sql_nas_table[MAX_TABLE_LEN];
-        char sql_dict_table[MAX_TABLE_LEN];
+        char *sql_server;
+        char *sql_login;
+        char *sql_password;
+        char *sql_db;
+        char *sql_acct_table;
+        char *sql_authcheck_table;
+        char *sql_authreply_table;
+        char *sql_groupcheck_table;
+        char *sql_groupreply_table;
+        char *sql_usergroup_table;
+        char *sql_realm_table;
+        char *sql_realmgroup_table;
+        char *sql_nas_table;
+        char *sql_dict_table;
         int  sensitiveusername;
         int  sqltrace;
 	int  deletestalesessions;

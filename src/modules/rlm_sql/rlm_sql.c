@@ -35,13 +35,23 @@ static const char rcsid[] = "$Id$";
 
 static int rlm_sql_init(int argc, char **argv) {
 
+	/* Where is the flag that tells us about a HUP?*/
+	int	reload = 0;
+
 	if ((sql = malloc(sizeof(SQL))) == NULL) {
 		log(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 
-	sql_init(0);
-           
+        if (reload)
+                free(sql->config);
+        if ((sql->config = malloc(sizeof(SQL_CONFIG))) == NULL) {
+                log(L_ERR|L_CONS, "no memory");
+                exit(1);
+        }
+
+	sql_init(reload);
+
        return 0;
 }
 
@@ -135,7 +145,6 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
 
 static int rlm_sql_authenticate(REQUEST *request) {
 	
-	VALUE_PAIR	*auth_pair;
 	SQL_ROW		row;
 	SQLSOCK		*socket;
 	char		*querystr;
