@@ -767,15 +767,12 @@ RADIUS_PACKET *rad_recv(int fd)
 	socklen_t		salen;
 	u_short			len;
 	uint8_t			*attr;
-	uint8_t			*vendorattr;
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[16];
 	int			seen_eap;
 	uint8_t			data[MAX_PACKET_LEN];
 	int			num_attributes;
-	uint32_t                vendorcode;
-	int			vendorlen;
 	
 	/*
 	 *	Allocate the new request data structure
@@ -1008,37 +1005,12 @@ RADIUS_PACKET *rad_recv(int fd)
 				free(packet);
 				return NULL;
 			}
-			memcpy(&vendorcode, attr + 2, 4);
-			vendorcode = ntohl(vendorcode);
-			if (vendorcode == VENDORPEC_USR) {
-				if (attr[1] < 8){
-					librad_log("WARNING: Malformed RADIUS packet from host %s: USR attribute has invalid length %d",
-					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
-					   attr[1] - 2);
-					free(packet);
-					return NULL;
-				}
-				break;
-			}
-			vendorlen = attr[1] - 6;
-			vendorattr = attr + 6;
-			while (vendorlen >= 2) {
-				if (vendorattr[1] < 2){
-					librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor specific attribute has invalid length %d",
-					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
-					   vendorattr[1] - 2);
-					free(packet);
-					return NULL;
-				}
-				vendorlen -= vendorattr[1];
-				vendorattr += vendorattr[1];
-			}
-			if (vendorlen != 0){
-				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor specific attributes do not exactly fill Vendor-Specific",
-					   ip_ntoa(host_ipaddr, packet->src_ipaddr));
-				free(packet);
-				return NULL;
-			}
+
+			/*
+			 *	Don't look at the contents of VSA's,
+			 *	too many vendors have non-standard
+			 *	formats.
+			 */
 			break;
 		}
 
