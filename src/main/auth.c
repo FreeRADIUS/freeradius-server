@@ -639,7 +639,7 @@ int rad_authenticate(REQUEST *request)
 				tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
 				tmp->addport = 0;
 			}
-			pairdelete(request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS);
+			pairdelete(&request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS);
 		}
 	}
 
