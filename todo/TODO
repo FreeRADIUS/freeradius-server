@@ -1,20 +1,15 @@
-INTEGRATE FROM ALAN:
-
-o operator support in pairmove. Actually should make 2 pairmove's,
-  one for the authorize stuff in src/valuepair.c, and another generic
-  one in lib/valuepair.c that does what the name implies.
-
 URGENT:
 
-o Prefix/Suffix in users file isn't stripped anymore at the
-  accounting stage.
 o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
   Is this a problem ? Need to fix in rlm_unix.c
 o Fix potentially long locks on radutmp file by radcheck thread
 
-MEDIUM PRIORITY:
-o Provide a way to define the locations of all files (/etc/raddb/radiusd.conf?)
-  - this will be the newstyle radius configuration file
+MEDIUM PRIORITY
+o add more support for new configuration files
+o enable server to run in threaded mode
+o enable server to run with child processes
+  (This is a little more difficult than the previous one)
+
 
 LOW PRIORITY:
 o Write better documentation
@@ -29,6 +24,11 @@ o there should be a way that radius itself could
   "login" records for all currently online users.
 
 DONE:
+o rlm_realm module for COMPLETE control of proxying on any attribute
+o re-transmits of proxied packets
+o operator support in pairmove.
+o stripping Prefix/Suffix in accounting
+o new configuration file /etc/raddb/radius.conf
 o Radius proxy support.
 o Max-Simultaneous-Use parameter to avoid double logins.
 o Specify a program to be run on succesful login
@@ -54,4 +54,3 @@ o Limit logins based on time/date
   (for example, Login-Hour = 8-18, Login-Day = 0-5 for business hours)
 o take out host-order IP addresses
 o Support Connect-Rate
-
