@@ -47,6 +47,8 @@ following list is a selection from the available flags:
   --with-experimental-modules      Use experimental and unstable modules. (default=no) 
   --enable-developer      Turns on super-duper-extra-compile-warnings
                               when using gcc.
+  --with-edir             Compile with support for Novell eDirectory
+                              integration.
 
   To get the defaults that Cistron Radius used up to 1.5.4.3-beta18, use:
 
