@@ -31,8 +31,7 @@ typedef struct auth_req {
 	RADIUS_PACKET		*proxy;
 	RADIUS_PACKET		*reply;
 	VALUE_PAIR		*config_items;
-	char			username[MAX_STRING_LEN];
-	VALUE_PAIR		*name;
+	VALUE_PAIR		*username;
 	VALUE_PAIR		*password;
 	char			secret[32];
 	child_pid_t    		child_pid;
@@ -151,8 +150,6 @@ void		(*sun_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST *request);
 RADIUS_PACKET *	build_reply(int code, REQUEST *request,
 			VALUE_PAIR *vps, const char *user_msg);
-VALUE_PAIR	*rad_get_username(REQUEST *request);
-int		rad_put_username(REQUEST *request, const char *username, int length);
 
 /* files.c */
 CLIENT		*client_find(UINT4 ipno);

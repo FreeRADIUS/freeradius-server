@@ -226,8 +226,7 @@ static int rad_check_password(REQUEST *request,
 			 *	status into the values as defined at
 			 *	the top of this function.
 			 */
-			result = module_authenticate(auth_type, request,
-				namepair->strvalue, auth_item->strvalue);
+			result = module_authenticate(auth_type, request);
 			switch (result) {
 				case RLM_AUTH_FAIL:
 					result = 1;
@@ -307,20 +306,12 @@ int rad_authenticate(REQUEST *request)
 	/*
 	 *	Get the username from the request.
 	 */
-	namepair = pairfind(request->packet->vps, PW_USER_NAME);
-	if (namepair == NULL || namepair->strvalue[0] == 0) {
+	namepair = request->username;
+	if ((namepair == NULL) || (namepair->length <= 0)) {
 		log(L_ERR, "zero length username not permitted\n");
 		request->reply = build_reply(PW_AUTHENTICATION_REJECT,
 					     request, NULL, NULL);
 		return RLM_AUTZ_NOTFOUND;
-	}
-
-	/*
-	 *	Prefer Stripped-User-Name to User-Name
-	 */
-	tmp = pairfind(request->packet->vps, PW_USER_NAME);
-	if (tmp) {
-		namepair = tmp;
 	}
 
 	/*
@@ -348,14 +339,17 @@ int rad_authenticate(REQUEST *request)
 	if (auth_item == NULL) {
 		auth_item = pairfind(request->packet->vps, PW_CHAP_PASSWORD);
 	}
+
+	/*
+	 *	Update the password with OUR preference for the
+	 *	password.
+	 */
 	request->password = auth_item;
-	request->name = namepair;
 
 	/*
 	 *	Get the user's authorization information from the database
 	 */
-	r = module_authorize(request, namepair->strvalue,
-			     &request->config_items, &user_reply);
+	r = module_authorize(request, &request->config_items, &user_reply);
 	if (r != RLM_AUTZ_OK) {
 		if (r != RLM_AUTZ_FAIL && r != RLM_AUTZ_HANDLED) {
 			log(L_AUTH, "Invalid user: [%s%s%s] (%s)",

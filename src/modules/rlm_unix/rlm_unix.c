@@ -135,8 +135,9 @@ static int unix_detach(void)
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static int unix_authenticate(REQUEST *request, char *name, char *passwd)
+static int unix_authenticate(REQUEST *request)
 {
+	char *name, *passwd;
 	struct passwd	*pwd;
 	char		*encpw;
 	char		*encrypted_pass;
@@ -155,12 +156,24 @@ static int unix_authenticate(REQUEST *request, char *name, char *passwd)
 	char		*shell;
 #endif
 
+	/*
+	 *  Ensure that we're being passed a plain-text password,
+	 *  and not anything else.
+	 */
+	if (request->password->attribute != PW_PASSWORD) {
+		log(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+		return RLM_AUTH_REJECT;
+	}
+
+	name = request->username->strvalue;
+	passwd = request->password->strvalue;
+
 	if (cache_passwd && (ret = H_unix_pass(name, passwd)) != -2)
 		return (ret == 0) ? RLM_AUTH_OK : RLM_AUTH_REJECT;
 
 #ifdef OSFC2
 	if ((pr_pw = getprpwnam(name)) == NULL)
-		return -1;
+		return RLM_AUTH_REJECT;
 	encrypted_pass = pr_pw->ufld.fd_encrypt;
 #else /* OSFC2 */
 	/*
@@ -298,7 +311,7 @@ static int unix_accounting(REQUEST *request)
 	struct utmp	ut;
 	time_t		t;
 	char		buf[64];
-	char		*s;
+	const char		*s;
 	int		delay = 0;
 	int		status = -1;
 	int		nas_address = 0;

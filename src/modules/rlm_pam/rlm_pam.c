@@ -165,16 +165,27 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
 }
 
 /* translate between function declarations */
-static int pam_auth(REQUEST *request, char *username, char *password)
+static int pam_auth(REQUEST *request)
 {
 	int	r;
 	VALUE_PAIR *pair;
 	const char *pam_auth_string = "radiusd";
 
+	/*
+	 *  Ensure that we're being passed a plain-text password,
+	 *  and not anything else.
+	 */
+	if (request->password->attribute != PW_PASSWORD) {
+		log(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+		return RLM_AUTH_REJECT;
+	}
+
 	pair = pairfind(request->config_items, PAM_AUTH_ATTR);
 	if (pair) pam_auth_string = pair->strvalue;
 
-	r = pam_pass(username, password, pam_auth_string);
+	r = pam_pass(request->username->strvalue,
+		     request->password->strvalue,
+		     pam_auth_string);
 	return (r == 0) ? RLM_AUTH_OK : RLM_AUTH_REJECT;
 }
 

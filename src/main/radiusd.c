@@ -604,6 +604,7 @@ int main(int argc, char **argv)
 			request->proxy = NULL;
 			request->reply = NULL;
 			request->config_items = NULL;
+			request->username = pairfind(request->packet->vps, PW_USER_NAME);
 			request->password = NULL;
 			request->timestamp = time(NULL);
 			request->child_pid = NO_SUCH_CHILD_PID;
@@ -635,8 +636,6 @@ int rad_process(REQUEST *request)
 {
 	int dospawn;
 	FUNP fun;
-	VALUE_PAIR *namepair;
-	int e;
 
 	dospawn = FALSE;
 	fun = NULL;
@@ -666,8 +665,7 @@ int rad_process(REQUEST *request)
 		 *	Assert that the requests have a value User-Name
 		 *	attribute.
 		 */
-		namepair = pairfind(request->packet->vps, PW_USER_NAME);
-		if (namepair == NULL) {
+		if (request->username == NULL) {
 			log(L_ERR, "No username: [] (from nas %s)",
 			    nas_name2(request->packet));
 			request_free(request);

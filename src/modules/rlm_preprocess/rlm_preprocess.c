@@ -320,7 +320,7 @@ static int hints_setup(REQUEST *request)
 			tmp->length = strlen(tmp->strvalue);
 			pairadd(&request_pairs, tmp);
 		}
-		request->name = tmp;
+		request->username = tmp;
 	}
 
 	/*
@@ -432,12 +432,11 @@ static int preprocess_init(int argc, char **argv)
 /*
  *	Preprocess a request.
  */
-static int preprocess_authorize(REQUEST *request, char *name,
+static int preprocess_authorize(REQUEST *request,
 	VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
-	name = name;
 
 	/*
 	 *	Mangle the username, to get rid of stupid implementation
@@ -448,7 +447,7 @@ static int preprocess_authorize(REQUEST *request, char *name,
 	hints_setup(request);
 	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
 		log(L_AUTH, "No huntgroup access: [%s] (%s)",
-			request->username, auth_name(request, 1));
+			request->username->strvalue, auth_name(request, 1));
 		return RLM_AUTZ_REJECT;
 	}
 

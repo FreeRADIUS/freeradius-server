@@ -9,10 +9,9 @@ typedef struct module_t {
 	const char	*name;
 	int	type;			/* reserved */
 	int	(*init)(int argc, char **argv);
-	int	(*authorize)(REQUEST *request, char *username,
+	int	(*authorize)(REQUEST *request, 
 			VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
-	int	(*authenticate)(REQUEST *request, char *username,
-			char *password);
+	int	(*authenticate)(REQUEST *request);
 	int	(*accounting)(REQUEST *request);
 	int	(*detach)(void);
 } module_t;
@@ -39,9 +38,8 @@ enum {
 #define RLM_ACCT_FAIL_HARD RLM_ACCT_FAIL
 
 int read_modules_file(char *filename);
-int module_authorize(REQUEST *request, char *username,
+int module_authorize(REQUEST *request, 
 	VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
-int module_authenticate(int type, REQUEST *request,
-	char *username, char *password);
+int module_authenticate(int type, REQUEST *request);
 int module_accounting(REQUEST *request);
 
