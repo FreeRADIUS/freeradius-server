@@ -169,8 +169,8 @@ int compose(REQUEST *request, EAP_PACKET *reply);
 void list_clean(EAP_LIST **list, time_t limit);
 int list_add(EAP_LIST **list, EAP_DS *auth);
 
-EAP_PACKET *eap_packet_alloc();
-EAP_DS *eap_ds_alloc();
+EAP_PACKET *eap_packet_alloc(void);
+EAP_DS *eap_ds_alloc(void);
 
 void eap_packet_free(EAP_PACKET **eap_packet_ptr);
 void eap_ds_free(EAP_DS **authp);

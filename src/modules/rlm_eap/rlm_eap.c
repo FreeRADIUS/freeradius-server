@@ -47,7 +47,7 @@ static int eap_init(void)
  */
 static int eap_instantiate(CONF_SECTION *cs, void **instance)
 {
-	char		*auth_name;
+	char		*eap_name;
 	CONF_SECTION 	*scs;
 	EAP_TYPES	*types;
 	EAP_CONF	*conf;
@@ -56,7 +56,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	eap_stuff = (rlm_eap_t **)instance;
 	types	 = NULL;
 	conf	 = NULL;
-        auth_name = NULL;
+        eap_name = NULL;
 
 	conf = malloc(sizeof(EAP_CONF));
         if (cf_section_parse(cs, conf, module_config) < 0) {
@@ -67,10 +67,10 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
         for(scs=cf_subsection_find_next(cs, NULL, NULL);
                         scs != NULL;
                         scs=cf_subsection_find_next(cs, scs, NULL)) {
-                auth_name = cf_section_name1(scs);
+                eap_name = cf_section_name1(scs);
 
-                if (!auth_name)  continue;
-		load_type(&types, auth_name, scs);
+                if (!eap_name)  continue;
+		load_type(&types, eap_name, scs);
         }
 
 	if (!types) return -1;
@@ -207,8 +207,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 */
 	eap_ds->password = paircopy2(request->config_items, PW_PASSWORD);
 	if (eap_ds->password == NULL) {
-		radlog(L_ERR, "rlm_eap: Invalid user, authentication failed");
-
+		DEBUG("rlm_eap: Could not find User-Password configuration item, cannot do EAP authentication\n");
 		eap_ds->request->code = PW_EAP_FAILURE;
 		compose(request, eap_ds->request);
 
