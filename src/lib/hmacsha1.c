@@ -8,10 +8,12 @@
 ** Function: hmac_sha1
 */
 
+#include "autoconf.h"
+
 #include <string.h>
 #include <sys/types.h>
-#include "sha1.h"
 #include "libradius.h"
+#include "sha1.h"
 
 /*
 unsigned char*  text;                pointer to data stream
