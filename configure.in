@@ -1,5 +1,3 @@
-dnl This should be processed after a new module is added!
-
 dnl #############################################################
 dnl #
 dnl #  For information about autoconf, see:
@@ -637,11 +635,17 @@ dnl #  Configure in any module directories.
 dnl #
 dnl #############################################################
 
-dnl This 'echo' is a way to get 'find' output on one line.  (Make sure that -n
-dnl    works, or the 'sed's at configure-time will fail!  Presumably, if you have
-dnl    autoconf, you have a decent echo.  :/  Maybe.)
-dnl Someone suggest a nicer way to do this!
-AC_CONFIG_SUBDIRS(esyscmd(echo -n `find src/modules -name configure -print |sed 's%configure$%%'`))
+mysubdirs=
+for foo in `find src/modules -name configure -print`; do
+  bar=`echo $foo | sed 's%/configure$%%g'`
+  mysubdirs="$mysubdirs $bar"
+done
+
+dnl #
+dnl #  Don't change the variable name here.  Autoconf goes bonkers
+dnl #  if you do.
+dnl #
+AC_CONFIG_SUBDIRS($mysubdirs)
 
 dnl #############################################################
 dnl #
