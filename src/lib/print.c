@@ -88,6 +88,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 	char        buf[1024];
 	char        *a;
 	time_t      t;
+	struct tm   s_tm;
 
 	out[0] = 0;
 	if (!vp) return 0;
@@ -141,9 +142,9 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		case PW_TYPE_DATE:
 			t = vp->lvalue;
 			if (delimitst) {
-			  strftime(buf, sizeof(buf), "\"%b %e %Y\"", gmtime(&t));
+			  strftime(buf, sizeof(buf), "\"%b %e %Y\"", gmtime_r(&t, &s_tm));
 			} else {
-			  strftime(buf, sizeof(buf), "%b %e %Y", gmtime(&t));
+			  strftime(buf, sizeof(buf), "%b %e %Y", gmtime_r(&t, &s_tm));
 			}
 			a = buf;
 			break;

@@ -178,3 +178,22 @@ char *ctime_r(const time_t *l_clock, char *l_buf)
   return l_buf;
 }
 #endif
+
+#ifndef HAVE_GMTIME_R
+/*
+ *	We use gmtime_r() by default in the server.
+ *
+ *	For systems which do NOT have gmtime_r(), we make the
+ *	assumption that gmtime() is re-entrant, and returns a
+ *	per-thread data structure.
+ *
+ *	Even if gmtime is NOT re-entrant, this function will
+ *	lower the possibility of race conditions.
+ */
+struct tm *gmtime_r(const time_t *l_clock, struct tm *result)
+{
+  memcpy(result, gmtime(l_clock), sizeof(*result));
+
+  return result;
+}
+#endif 

@@ -518,6 +518,7 @@ AC_CHECK_FUNCS( \
 	strcasecmp \
 	localtime_r \
 	ctime_r \
+	gmtime_r \
 	strsep \
 	inet_aton \
 	gethostname \
