@@ -63,25 +63,18 @@ CONFIGURATION
 	"gw-accounting aaa"
 	"radius-server vsa send"
 
-* In /etc/raddb/radiusd.conf set "with_cisco_vsa_hack = yes"
-
 * Create a Database to hold your billing records. ie:
 	"createdb radius"
-* Add the plperl language to the database. ie:
-	"createlang plpgsql radius"
 
 * Import the SQL schema to your database. ie:
-	"psql radius < h323_db_postgresql.sql"
+	"psql radius < cisco_h323_db_schema-postgres.sql"
 
-* Copy the custom SQL queries to raddb/ ie:
-  	"cp pgsql-voip.conf /etc/raddb/"
+* In /etc/raddb/radiusd.conf set "with_cisco_vsa_hack = yes"
 
 * In /etc/raddb/radiusd.conf add "$INCLUDE  ${confdir}/pgsql-voip.conf"
-  You can find the correct section by searching for "sql.conf"
+  (You can find the correct section by searching for "sql.conf")
 
-
-* In /etc/raddb/radiusd.conf add "pgsql-voip" to the "accounting {" section
-  just after the line "detail"
+* In /etc/raddb/radiusd.conf add "pgsql-voip" to the "accounting { }" section.
 
 * (re)Start radiusd
 
