@@ -365,10 +365,16 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			return 0;
 		}
 
-		newvp = paircreate(eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, PW_TYPE_OCTETS);
 		if(eapsim_len > MAX_STRING_LEN) {
 			eapsim_len = MAX_STRING_LEN;
 		}
+		if (eapsim_len < 2) {
+			radlog(L_ERR, "eap: EAP-Sim attribute %d (no.%d) has length too small",
+			       eapsim_attribute, es_attribute_count);
+			       return 0;
+		}
+
+		newvp = paircreate(eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, PW_TYPE_OCTETS);
 		memcpy(newvp->strvalue, &attr[2], eapsim_len-2);
 		newvp->length = eapsim_len-2;
 		pairadd(&(r->vps), newvp);
