@@ -176,7 +176,7 @@ int rad_lockfd(int fd, int lock_len)
  *
  *	Unlock an fd, prefer lockf() over flock()
  */
-int rad_unlockff(int fd, int lock_len)
+int rad_unlockfd(int fd, int lock_len)
 {
 #if defined(F_LOCK) && !defined(BSD)
 	return lockf(fd, F_ULOCK, lock_len);
