@@ -421,6 +421,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 						      secret, reply->strvalue);
 					  memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
 					  reply->length = AUTH_VECTOR_LEN;
+					  break;
 				  } /* switch over encryption flags */
 
 				  len = reply->length;
@@ -1250,10 +1251,12 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 		/*
 		 *	This could be a Vendor-Specific attribute.
-		 *
 		 */
 		if ((vendorlen <= 0) &&
 		    (attribute == PW_VENDOR_SPECIFIC)) {
+			int	sublen;
+			uint8_t	*subptr;
+
 			/*
 			 *	attrlen was checked to be >= 6, in rad_recv
 			 */
@@ -1265,30 +1268,58 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			 *	vendorcode was checked to be non-zero
 			 *	above, in rad_recv.
 			 */
-			
+
 			/*
-			 *	FIXME: Key off of the information
-			 *	in the dictionaries, not the
-			 *	hard-coded vendor!
+			 *	First, check to see if the
+			 *	sub-attributes fill the VSA, as
+			 *	defined by the RFC.  If not, then it
+			 *	may be a USR-style VSA, or it may be a
+			 *	vendor who packs all of the
+			 *	information into one nonsense
+			 *	attribute
 			 */
-			if (vendorcode == VENDORPEC_USR) {
-				ptr += 4;
-				memcpy(&lvalue, ptr, 4);
-				/*printf("received USR %04x\n", ntohl(lvalue));*/
-				attribute = (ntohl(lvalue) & 0xFFFF) |
-					(vendorcode << 16);
-				ptr += 4;
-				attrlen -= 8;
-				length -= 8;
-				
-			} else {
+			subptr = ptr + 4;
+			sublen = attrlen - 4;
+
+			while (sublen > 0) {
+				if (subptr[1] < 2) { /* too short */
+					break;
+				}
+
+				if (subptr[1] > sublen) { /* too long */
+					break;
+				}
+
+				sublen -= subptr[1]; /* just right */
+				subptr += subptr[1];
+			}
+
+			/*
+			 *	If the attribute is RFC compatible,
+			 *	then allow it as an RFC style VSA.
+			 */
+			if (sublen == 0) {
 				ptr += 4;
 				vendorlen = attrlen - 4;
 				attribute = *ptr++ | (vendorcode << 16);
 				attrlen   = *ptr++;
 				attrlen -= 2;
 				length -= 6;
-			}
+
+				/*
+				 *	FIXME: Key off of the information
+				 *	in the dictionaries, not the
+				 *	hard-coded vendor!
+				 */
+			} else if (vendorcode == VENDORPEC_USR) {
+				ptr += 4;
+				memcpy(&lvalue, ptr, 4);
+				attribute = ((ntohl(lvalue) & 0xFFFF) |
+					     (vendorcode << 16));
+				ptr += 4;
+				attrlen -= 8;
+				length -= 8;
+			} /* else it was a stupid vendor format */
 		} /* else it wasn't a VSA */
 
 		/*
