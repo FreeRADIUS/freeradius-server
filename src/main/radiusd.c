@@ -116,9 +116,9 @@ static int		proxy_requests = TRUE;
  *  request in the list must be serviced.
  */
 typedef struct REQUEST_LIST {
-  REQUEST	*first_request;
-  int		request_count;
-  time_t	service_time;
+	REQUEST		*first_request;
+	int		request_count;
+	time_t		service_time;
 } REQUEST_LIST;
 
 static REQUEST_LIST	request_list[256];
@@ -148,7 +148,7 @@ static int	rad_clean_list(time_t curtime);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 static struct timeval *setuptimeout();
-static void	proxy_retry(void);
+static void	proxy_retry(time_t curtime);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -908,13 +908,8 @@ int main(int argc, char **argv)
 		}
 
 		/*
-		 *	When receiving a packet, or timeout,
-		 *	service the proxy request list.
+		 *	Loop over the open socket FD's, reading any data.
 		 */
-		if ((status == 0) && proxy_requests) {
-			proxy_retry();
-		}
-
 		for (i = 0; i < 3; i++) {
 
 			if (i == 0) fd = authfd;
@@ -1005,6 +1000,12 @@ int main(int argc, char **argv)
 		 *	from the request list.
 		 */
 		rad_clean_list(now);
+
+		/*
+		 *	When receiving a packet, or timeout,
+		 *	service the proxy request list.
+		 */
+
 #if WITH_SNMP
 		/*
 		 *	After handling all authentication/accounting
@@ -1577,10 +1578,10 @@ static int rad_clean_list(time_t curtime)
 	int		cleaned = FALSE;
 
 	/*
-	 *  Don't bother checking the list if we've done it
-	 *  within the last second.
+	 *	Don't bother checking the list if we've done it
+	 *	within the last second.
 	 */
-	if ((curtime - last_cleaned_list) == 0) {
+	if (curtime == last_cleaned_list) {
 		return FALSE;
 	}
 
@@ -1592,6 +1593,16 @@ static int rad_clean_list(time_t curtime)
 		thread_pool_clean(curtime);
 	}
 #endif
+	
+	/*
+	 *	If we're proxying packets, try re-sending any necessary
+	 *	requests.  This is done prior to cleaning the request list,
+	 *	because the proxy retry code will mark old requests for
+	 *	deletion.
+	 */
+	if (proxy_requests) {
+		proxy_retry(curtime);
+	}
 
 	/*
 	 *	When mucking around with the request list, we block
@@ -2508,18 +2519,16 @@ static struct timeval *setuptimeout()
  *	Walk the request list, seeing if we need to re-send
  *	a proxy packet.
  */
-static void proxy_retry(void)
+static void proxy_retry(time_t now)
 {
-	time_t now = time(NULL);
 	REQUEST *p;
 	int id;
 
 	/*
-	 *	If we're not proxying, or if we're not re-trying
-	 *	requests, then don't bother walking through the list.
+	 *	If we're not re-trying requests, don't bother walking
+	 *	the list.
 	 */
-	if (!proxy_requests ||
-	    (proxy_retry_delay == 0)) {
+	if (proxy_retry_delay == 0) {
 		return;
 	}
 	
