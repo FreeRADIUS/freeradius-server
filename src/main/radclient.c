@@ -419,14 +419,7 @@ static int send_one_packet(radclient_t *radclient)
 {
 	int i;
 
-	/*
-	 *	Sent this packet as many times as requested.
-	 *	ignore it.
-	 */
-	if (radclient->resend >= resend_count) {
-		radclient->done = 1;
-		return 0;
-	}
+	assert(radclient->done == 0);
 
 	/*
 	 *	Remember when we have to wake up, to re-send the
@@ -519,6 +512,14 @@ static int send_one_packet(radclient_t *radclient)
 
 		fprintf(stderr, "radclient: no response from server for ID %d\n", radclient->request->id);
 		rbtree_delete(request_tree, node);
+
+		/*
+		 *	Normally we mark it "done" when we've received
+		 *	the response, but this is a special case.
+		 */
+		if (radclient->resend == resend_count) {
+			radclient->done = 1;
+		}
 		totallost++;
 		return -1;
 
@@ -646,6 +647,15 @@ static int recv_one_packet(int wait_time)
 	}
 
 	if (radclient->reply) rad_free(&radclient->reply);
+
+	/*
+	 *	Once we've sent the packet as many times as requested,
+	 *	mark it done.
+	 */
+	if (radclient->resend == resend_count) {
+		assert((node = rbtree_find(request_tree, radclient)) == NULL);
+		radclient->done = 1;
+	}
 
 	return 0;
 }
