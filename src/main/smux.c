@@ -855,11 +855,11 @@ smux_open(void)
 	u_char buf[BUFSIZ];
 	u_char *ptr;
 	int len;
-	u_long version;
-	u_char progname[] = "radiusd";
+	u_long smux_proto_version;
+	u_char rad_progname[] = "radiusd";
 
 	smux_oid_dump ("SMUX open oid", smux_oid, smux_oid_len);
-	DEBUG2 ("SMUX open progname: %s", progname);
+	DEBUG2 ("SMUX open progname: %s", rad_progname);
 	DEBUG2 ("SMUX open password: %s", rad_snmp.smux_password);
 
 	ptr = buf;
@@ -869,10 +869,10 @@ smux_open(void)
 	ptr = asn_build_header (ptr, &len, (u_char) SMUX_OPEN, 0);
 
 	/* SMUX Open. */
-	version = 0;
+	smux_proto_version = 0;
 	ptr = asn_build_int (ptr, &len, 
 			(u_char)(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_INTEGER),
-			&version, sizeof (u_long));
+			&smux_proto_version, sizeof (u_long));
 
 	/* SMUX connection oid. */
 	ptr = asn_build_objid (ptr, &len,
@@ -884,7 +884,7 @@ smux_open(void)
 	ptr = asn_build_string (ptr, &len, 
 			(u_char)
 			(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_OCTET_STR),
-			progname, strlen (progname));
+			rad_progname, strlen (rad_progname));
 
 	/* SMUX connection password. */
 	ptr = asn_build_string (ptr, &len, 
