@@ -297,8 +297,12 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 		 * for char/string type columns).
 		 */
 		switch(dtype) {
+#ifdef SQLT_AFC
 		case SQLT_AFC:	/* ansii fixed char */
+#endif
+#ifdef SQLT_AFV
 		case SQLT_AFV:	/* ansii var char */
+#endif
 		case SQLT_VCS:	/* var char */
 		case SQLT_CHR:	/* char */
 		case SQLT_STR:	/* string */
