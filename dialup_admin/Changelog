@@ -26,6 +26,8 @@ Ver 1.63:
 * Add a usage_summary parameter in user_finger. If it is passed then we only output a text like:
   "Online: <num> Free: <num>" which can be used in outside pages
 * Use $config[sql_usergroup_table] in show_groups.php3
+* Add a config directive general_stats_use_totacct. If set we use the totacct table in the stats page instead of
+  radacct
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime

@@ -57,9 +57,17 @@ $message['sessions'] = 'sessions';
 $message['usage'] = 'total usage time';
 $message['upload'] = 'uploads';
 $message['download'] = 'downloads';
-$sql_val['usage'] = 'AcctSessionTime';
-$sql_val['upload'] = 'AcctInputOctets';
-$sql_val['download'] = 'AcctOutputOctets';
+if ($config[general_stats_use_totacct] == 'yes'){
+	$sql_val['sessions'] = 'ConnNum';
+	$sql_val['usage'] = 'ConnTotDuration';
+	$sql_val['upload'] = 'InputOctets';
+	$sql_val['download'] = 'OutputOctets';
+}
+else{
+	$sql_val['usage'] = 'AcctSessionTime';
+	$sql_val['upload'] = 'AcctInputOctets';
+	$sql_val['download'] = 'AcctOutputOctets';
+}
 $fun['sessions'] = nothing;
 $fun['usage'] = time2strclock;
 $fun['upload'] = bytes2str;
@@ -88,10 +96,15 @@ $link = @da_sql_pconnect($config);
 if ($link){
 	for ($i = $num_days;$i > -1; $i--){
 		$day = "$days[$i]";
-		$search = @da_sql_query($link,$config,
-		"SELECT $res[1],$res[2],$res[3] FROM $config[sql_accounting_table]
-		$sql_val[user] AND AcctStopTime >= '$day 00:00:00' 
-		AND AcctStopTime <= '$day 23:59:59' $s;");
+		if ($config[general_stats_use_totacct] == 'yes')
+			$search = @da_sql_query($link,$config,
+			"SELECT $res[1],$res[2],$res[3] FROM $config[sql_total_accounting_table]
+			$sql_val[user] AND AcctDate = '$day' $s;");
+		else
+			$search = @da_sql_query($link,$config,
+			"SELECT $res[1],$res[2],$res[3] FROM $config[sql_accounting_table]
+			$sql_val[user] AND AcctStopTime >= '$day 00:00:00' 
+			AND AcctStopTime <= '$day 23:59:59' $s;");
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);
 			$data[$day][1] = $row["$res[1]"];
