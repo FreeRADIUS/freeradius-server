@@ -91,7 +91,7 @@ CREATE TABLE radcheck (
   id SERIAL,
   UserName VARCHAR(30) DEFAULT '' NOT NULL,
   Attribute VARCHAR(30),
-  op VARCHAR(2) NOT NULL,
+  op VARCHAR(2) NOT NULL DEFAULT '==',
   Value VARCHAR(40),
   PRIMARY KEY (id)
 );
@@ -104,7 +104,7 @@ CREATE TABLE radgroupcheck (
   id SERIAL,
   GroupName VARCHAR(20) DEFAULT '' NOT NULL,
   Attribute VARCHAR(40),
-  op VARCHAR(2) NOT NULL,
+  op VARCHAR(2) NOT NULL DEFAULT '==',
   Value VARCHAR(40),
   PRIMARY KEY (id)
 );
@@ -117,7 +117,7 @@ CREATE TABLE radgroupreply (
   id SERIAL,
   GroupName VARCHAR(20) DEFAULT '' NOT NULL,
   Attribute VARCHAR(40),
-  op VARCHAR(2) NOT NULL,
+  op VARCHAR(2) NOT NULL DEFAULT '=',
   Value VARCHAR(40),
   PRIMARY KEY (id)
 );
@@ -130,7 +130,7 @@ CREATE TABLE radreply (
   id SERIAL,
   UserName VARCHAR(30) DEFAULT '' NOT NULL,
   Attribute VARCHAR(30),
-  op VARCHAR(2) NOT NULL,
+  op VARCHAR(2) NOT NULL DEFAULT '=',
   Value VARCHAR(40),
   PRIMARY KEY (id)
 );
