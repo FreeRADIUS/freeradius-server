@@ -19,7 +19,7 @@
  *
  * Copyright 2000  The FreeRADIUS server project
  * Copyright 1999,2000  Miquel van Smoorenburg <miquels@cistron.nl>
- * Copyright 2000  Alan DeKok <aland@ox.com>
+ * Copyright 2000  Alan DeKok <aland@ox.org>
  * Copyright 2000  Alan Curry <pacman-radius@cqc.com>
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
  * Copyright 2000  Chad Miller <cmiller@surfsouth.com>

@@ -23,7 +23,7 @@
  *
  * Copyright 2000  The FreeRADIUS server project
  * Copyright 2000  Miquel von Smoorenburg <miquels@cistron.nl>
- * Copyright 2000  Alan DeKok <aland@ox.com>
+ * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
 #include	"autoconf.h"
