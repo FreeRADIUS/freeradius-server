@@ -46,6 +46,9 @@ o Create a multi column index for the (UserName,AcctStopTime) attributes especia
   if you are using sql for double login detection.
 o If you are using mysql and you do a lot of accounting try using InnoDB for the radacct
   table instead of MyISAM
+o Add AcctUniqueId in the accounting_stop query. Especially if you have a lot of access
+  servers or your NAS does not send very random Session-Ids. That way you will always have
+  one candidate row to search for, instead of all the rows that have the same AcctSessionId
 
 ------------ COUNTER MODULE ----------
 o Enable noatime on the counter db files.
