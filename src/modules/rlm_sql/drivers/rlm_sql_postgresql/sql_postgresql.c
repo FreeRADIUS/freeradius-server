@@ -203,7 +203,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	{
 		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL Query failed Error: %s", 
 				PQerrorMessage(pg_sock->conn));
-		return  -1;
+		return  SQL_DOWN;
 	} else {
 		ExecStatusType status = PQresultStatus(pg_sock->result);
 
