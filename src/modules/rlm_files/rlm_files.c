@@ -10,11 +10,11 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
-#include	"radiusd.h"
-
 #include	<sys/socket.h>
 #include	<sys/stat.h>
 #include	<netinet/in.h>
+
+#include	"radiusd.h"
 
 #include	<stdlib.h>
 #include	<string.h>
