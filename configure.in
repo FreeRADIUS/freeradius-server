@@ -449,6 +449,17 @@ dnl #  3. Checks for header files
 dnl #
 dnl #############################################################
 
+dnl #
+dnl # Interix requires us to set -D_ALL_SOURCE, otherwise
+dnl # getopt will be #included, but won't link.  <sigh>
+dnl # 
+dnl # 
+case "$host" in
+*-interix*)
+	CFLAGS="$CFLAGS -D_ALL_SOURCE"
+	;;
+esac
+
 AC_HEADER_DIRENT
 AC_HEADER_STDC
 AC_HEADER_TIME
