@@ -51,7 +51,7 @@ While the brackets are required, no arguments may be passed.
 .SS "if" statements
 are supported.
 .PP
-if (condition) {
+if (expression) {
 .br
 	...
 .br
@@ -60,7 +60,7 @@ if (condition) {
 .PP
 and "else"
 .PP
-if (condition) {
+if (expression) {
 .br
 	...
 .br
@@ -73,35 +73,71 @@ if (condition) {
 .PP
 also, "else if"
 .PP
-if (condition) {
+if (expression) {
 .br
 	...
 .br
-} else if (condition) {
+} else if (expression) {
 .br
 	...
 .br
 }
 .DE
 .PP
-.SS Conditions within "if" statements
+.SS Expressions within "if" statements
 Always have to have brackets around them.  Sorry.
 .PP
- (foo)
+The following kinds of expressions may be used, with their meanings.
+.IP (attribute-reference)
+TRUE if the referenced attribute exists, FALSE otherwise.  See below
+for details on attribute references.
+.IP (!(expression))
+FALSE if the expression returned TRUE, and TRUE if the nested expression
+returned FALSE.
+.IP "(attribute-reference == value)"
+Compares the attribute to the value.  The operators here can be "==",
+"!=", "=~", "!~", "<", "<=", ">", and ">=".
+.IP "(string1 == string2)"
+A special case of the above.  The "string1" is dynamically expanded at
+run time, while "string2" is not.  The operators here can be "==",
+"!=", "=~",and "!~".  Of these, the most useful is "=~', which lets
+you do things like ("%{ldap:query...}" =~ "foo=(.*) ").  The results
+of the regular expression match are put into %{1}, and can be used
+later.  See "doc/variables.txt" for more information.
+.IP "((expression1) || (expression2))"
+Short-circuit "or".  If expression1 is TRUE, expression2 is not
+evaluated.
+.IP "((expression1) && (expression2))"
+Short-circuit "and".  If expression1 is FALSE, expression2 is not
+evaluated.
+.IP Limitations.
+The && and || operators have equal precedence. You can't call a
+function as a expression.
 .PP
- (!(foo))
 .PP
- (foo == bar)
+.SS Attribute references
+Attribute references are:
+.IP Attribute-Name
+Refers to an attribute of that name in the Access-Request or
+Accounting-Request packet.  May also refer to "server-side"
+attributes, which are not documented anywhere.
+.IP request:Attribute-Name
+An alternate way of referencing an attribute in the request packet.
 .PP
- ("string" == "string")
+.IP reply:Attribute-Name
+An attribute in the reply packet
 .PP
- ((condition) || (condition))
+.IP proxy-request:Attribute-Name
+An attribute in the Access-Request or Accounting-Request packet which
+will be proxied to the home server.
 .PP
- ((condition) && (condition))
+.IP proxy-reply:Attribute-Name
+An attribute in the Access-Accept or other packet which was received
+from a home server.
 .PP
- && and || have equal precedence.
-.PP
- you can't call a function as a condition.
+.IP control:Attribute-Name
+An attribute in the per-request configuration and control attributes.
+Also known as "check" attributes (doc/variables.txt).
 .PP
 .PP
 .SS Adding attributes to reply packet (or other location)
@@ -114,6 +150,7 @@ reply .= {
 	attribute-name = value
 }
 .DE
+.PP
 The first name can be "request", "reply", "control", "proxy-request",
 or "proxy-reply".
 .PP
