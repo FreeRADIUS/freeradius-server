@@ -69,40 +69,7 @@ static char filesecret[256];
  */
 static VALUE_PAIR *readvp(FILE *fp)
 {
-	char buf[8192];
-	LRAD_TOKEN last_token;
-	char *p;
-	VALUE_PAIR *vp;
-	VALUE_PAIR *list;
-	int error = 0;
-
-	list = NULL;
-
-	while (!error && fgets(buf, sizeof(buf), fp) != NULL) {
-
-		p = buf;
-
-		/* If we get a '\n' by itself, we assume that's the end of that VP */
-		if((buf[0] == '\n') && (list)) {
-			return error ? NULL: list;
-		} 
-		if((buf[0] == '\n') && (!list))
-			continue;
-		if(buf[0] == '#') {
-			continue;
-		} else {
-			do {
-				if ((vp = pairread(&p, &last_token)) == NULL) {
-					librad_perror("radclient:");
-					error = 1;
-					break;
-				}
-				pairadd(&list, vp);
-			} while (last_token == T_COMMA);
-		}
-	}
-	filedone = 1;
-	return error ? NULL: list;
+	return readvp2(fp, &filedone, "radclient:");
 }
 
 static void usage(void)
