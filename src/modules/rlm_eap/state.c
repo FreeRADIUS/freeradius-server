@@ -28,7 +28,10 @@
 static const char rcsid[] = "$Id$";
 
 /*
- * Global key to generate & verify State 
+ *	Global key to generate & verify State
+ *
+ *	FIXME: this means that we can't have multiple instances
+ *	of the EAP module.
  */
 static unsigned char state_key[AUTH_VECTOR_LEN];
 
@@ -62,97 +65,17 @@ static unsigned char state_key[AUTH_VECTOR_LEN];
  *
  */
 
-/*
- * Create a random vector of AUTH_VECTOR_LEN bytes.
- */
-static void generate_random(uint8_t *vector, int length)
-{
-	int		i;
-	static unsigned char random_vector_pool[AUTH_VECTOR_LEN * 2];
-	static int	did_srand = 0;
-	static int	counter = 0;
-#ifdef __linux__
-	static int	urandom_fd = -1;
-
-	/*
-	 *	Use /dev/urandom if available.
-	 */
-	if (urandom_fd > -2) {
-		/*
-		 *	Open urandom fd if not yet opened.
-		 */
-		if (urandom_fd < 0)
-			urandom_fd = open("/dev/urandom", O_RDONLY);
-		if (urandom_fd < 0) {
-			/*
-			 *	It's not there, don't try
-			 *	it again.
-			 */
-			DEBUG("Cannot open /dev/urandom, using rand()\n");
-			urandom_fd = -2;
-		} else {
-
-			fcntl(urandom_fd, F_SETFD, 1);
-
-			/*
-			 *	Read 16 bytes.
-			 */
-			if (read(urandom_fd, (char *) vector, AUTH_VECTOR_LEN)
-			    == AUTH_VECTOR_LEN)
-				return;
-			/*
-			 *	We didn't get 16 bytes - fall
-			 *	back on rand) and don't try again.
-			 */
-		DEBUG("Read short packet from /dev/urandom, using rand()\n");
-			urandom_fd = -2;
-		}
-	}
-#endif
-
-	if (!did_srand) {
-		srand(time(NULL) + getpid());
-
-		/*
-		 *	Now that we have a bad random seed, let's
-		 *	make it a little better by MD5'ing it.
-		 */
-		for (i = 0; i < (int)sizeof(random_vector_pool); i++) {
-			random_vector_pool[i] += rand() & 0xff;
-		}
-
-		librad_md5_calc((u_char *) random_vector_pool,
-				(u_char *) random_vector_pool,
-				sizeof(random_vector_pool));
-
-		did_srand = 1;
-	}
-
-	/*
-	 *	Modify our random pool, based on the counter,
-	 *	and put the resulting information through MD5,
-	 *	so it's all mashed together.
-	 */
-	counter++;
-	random_vector_pool[AUTH_VECTOR_LEN] += (counter & 0xff);
-	librad_md5_calc((u_char *) random_vector_pool,
-			(u_char *) random_vector_pool,
-			sizeof(random_vector_pool));
-
-	/*
-	 *	And do another MD5 hash of the result, to give
-	 *	the user a random vector.  This ensures that the
-	 *	user has a random vector, without giving them
-	 *	an exact image of what's in the random pool.
-	 */
-	librad_md5_calc((u_char *) vector,
-			(u_char *) random_vector_pool,
-			sizeof(random_vector_pool));
-}
-
 void generate_key(void)
 {
-	generate_random(state_key, AUTH_VECTOR_LEN);
+	int i;
+
+	/*
+	 *	Use a cryptographically strong method to generate
+	 *	pseudo-random numbers.
+	 */
+	for (i = 0; i < sizeof(state_key); i++) {
+		state_key[i] = lrad_rand();
+	}
 }
 
 /*
@@ -160,6 +83,7 @@ void generate_key(void)
  */
 VALUE_PAIR *generate_state(void)
 {
+	int i;
 	unsigned char challenge[AUTH_VECTOR_LEN];
 	unsigned char hmac[AUTH_VECTOR_LEN];
 	unsigned char value[AUTH_VECTOR_LEN+sizeof(time_t)];
@@ -167,8 +91,10 @@ VALUE_PAIR *generate_state(void)
 	time_t now;
 
 	/* Generate challenge (a random value).  */
-	generate_random(challenge, AUTH_VECTOR_LEN);
-	
+	for (i = 0; i < sizeof(challenge); i++) {
+		challenge[i] = lrad_rand();
+	}
+
 	now = time(NULL);
 	memcpy(value, challenge, AUTH_VECTOR_LEN);
 	memcpy(value + AUTH_VECTOR_LEN, &now, sizeof(time_t));
