@@ -29,6 +29,7 @@
 #endif
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "conffile.h"
 #include "radiusd.h"
