@@ -202,6 +202,7 @@ need_locks=yes
 ac_ext=c
 objext=o
 libext=a
+dynlibext=so
 exeext=
 cache_file=
 
@@ -1321,6 +1322,7 @@ else
     allow_undefined_flag=unsupported
     # Tell ltmain to make .lib files, not .a files.
     libext=lib
+    dynlibext=dll
     # FIXME: Setting linknames here is a bad hack.
     archive_cmds='$CC -o $lib $libobjs $linkopts `echo "$deplibs" | sed -e '\''s/ -lc$//'\''` -link -dll~linknames='
     # The linker will automatically build a .lib file if we build a DLL.
@@ -1919,6 +1921,7 @@ hpux9* | hpux10* | hpux11*)
   soname_spec='${libname}${release}.sl$major'
   # HP-UX runs *really* slowly unless shared libraries are mode 555.
   postinstall_cmds='chmod 555 $lib'
+  dynlibext=sl
   ;;
 
 irix5* | irix6*)
@@ -2012,6 +2015,7 @@ os2*)
   library_names_spec='$libname.dll $libname.a'
   dynamic_linker='OS/2 ld.exe'
   shlibpath_var=LIBPATH
+  dynlibext=dll
   ;;
 
 osf3* | osf4* | osf5*)
@@ -2832,6 +2836,9 @@ objext="$objext"
 
 # Old archive suffix (normally "a").
 libext="$libext"
+
+# Dynamic archive suffix (normally "so").
+dynlibext="$dynlibext"
 
 # Executable file suffix (normally "").
 exeext="$exeext"
