@@ -478,7 +478,49 @@ static int generate_realms(const char *filename)
 	 */
 	*tail = mainconfig.realms;
 	mainconfig.realms = my_realms;
-	
+
+	/*
+	 *  Ensure that all of the flags agree for the realms.
+	 *
+	 *	Yeah, it's O(N^2), but it's only once, and the
+	 *	maximum number of realms is small.
+	 */
+	for(c = mainconfig.realms; c != NULL; c = c->next) {
+		REALM *this;
+
+		/*
+		 *	Check that we cannot load balance to LOCAL
+		 *	realms, as that doesn't make any sense.
+		 */
+		if ((c->ldflag == 1) &&
+		    ((c->ipaddr == htonl(INADDR_NONE)) ||
+		     (c->acct_ipaddr == htonl(INADDR_NONE)))) {
+			radlog(L_ERR | L_CONS, "ERROR: Realm %s cannot be load balanced to LOCAL",
+			       c->realm);
+			exit(1);
+		}
+
+		/*
+		 *	Compare this realm to all others, to ensure
+		 *	that the configuration is consistent.
+		 */
+		for (this = c->next; this != NULL; this = this->next) {
+			if (strcasecmp(c->realm, this->realm) != 0) {
+				continue;
+			}
+
+			/*
+			 *	Same realm: Different load balancing
+			 *	flag: die.
+			 */
+			if (c->ldflag != this->ldflag) {
+				radlog(L_ERR | L_CONS, "ERROR: Inconsistent value in realm %s for load balancing 'ldflag' attribute",
+				       c->realm);
+				exit(1);
+			}
+		}
+	}
+
 	return 0;
 }
 
