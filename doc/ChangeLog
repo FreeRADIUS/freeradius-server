@@ -1,5 +1,18 @@
 FreeRADIUS 0.3.0 ; urgency=low
 
+	* Initialize variables properly in rlm_attr_filter.
+	  Patch from Andriy I Pilipenko <bamby@marka.net.ua>
+	* Renamed RedHat init script from 'radiusd.init' to 'radiusd'.
+	  This allows it to work properly with the RedHat rc system.
+	  Patch from Christian Vogel <chris@amor.iksys.de>
+	* Fix the configure script checks for PostgreSQL, so that
+	  they use the 'test' command properly.
+	  Bug found by Robert Haskins <rhaskins@ziplink.net>
+	* Change instances of 'assert' to 'rad_assert', so that it
+	  can log the error to the standard radius log files.
+	  Patch from Vesselin Atanasov <vesselin@bgnet.bg>
+	* Patch to prevent segv when freeing results, from
+	  Tomas Heredia <tomas@intermediasp.com>
 	* Added support for Exec-Program to acct.  Bug found by
 	  <magmike@mail.ru>
 	* Corrected rlm_files so that raddb/acct_users works
