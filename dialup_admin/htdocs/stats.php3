@@ -26,6 +26,7 @@ EOM;
 	exit();
 }
 
+$stats_num = array();
 
 $date = strftime('%A, %e %B %Y, %T %Z');
 $now = time();
@@ -114,13 +115,13 @@ if ($link){
 			$row = @da_sql_fetch_array($search,$config);
 			$data[$day][1] = $row[res_1];
 			$data[sum][1] += $row[res_1];
-			$num[1] = ($data[$day][1]) ? $num[1] + 1 : $num[1];
+			$stats_num[1] = ($data[$day][1]) ? $stats_num[1] + 1 : $stats_num[1];
 			$data[$day][2] = $row[res_2];
 			$data[sum][2] += $row[res_2];
-			$num[2] = ($data[$day][2]) ? $num[2] + 1 : $num[2];
+			$stats_num[2] = ($data[$day][2]) ? $stats_num[2] + 1 : $stats_num[2];
 			$data[$day][3] = $row[res_3];
 			$data[sum][3] += $row[res_3];
-			$num[3] = ($data[$day][3]) ? $num[3] + 1 : $num[3];
+			$stats_num[3] = ($data[$day][3]) ? $stats_num[3] + 1 : $stats_num[3];
 		}
 		else
 			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
@@ -129,13 +130,13 @@ if ($link){
 else
 	echo "<b>Could not connect to SQL database</b><br>\n";
 
-$num[1] = ($num[1]) ? $num[1] : 1;
-$num[2] = ($num[2]) ? $num[2] : 1;
-$num[3] = ($num[3]) ? $num[3] : 1;
+$stats_num[1] = ($stats_num[1]) ? $stats_num[1] : 1;
+$stats_num[2] = ($stats_num[2]) ? $stats_num[2] : 1;
+$stats_num[3] = ($stats_num[3]) ? $stats_num[3] : 1;
 
-$data['avg'][1] = ceil($data['sum'][1] / $num[1]);
-$data['avg'][2] = ceil($data['sum'][2] / $num[2]);
-$data['avg'][3] = ceil($data['sum'][3] / $num[3]);
+$data['avg'][1] = ceil($data['sum'][1] / $stats_num[1]);
+$data['avg'][2] = ceil($data['sum'][2] / $stats_num[2]);
+$data['avg'][3] = ceil($data['sum'][3] / $stats_num[3]);
 
 $data['avg'][1] = $fun[$column[1]]($data['avg'][1]);
 $data['avg'][2] = $fun[$column[2]]($data['avg'][2]);
