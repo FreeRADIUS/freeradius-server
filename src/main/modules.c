@@ -20,16 +20,6 @@ static const char rcsid[] = "$Id$";
 #include	"conffile.h"
 #include	"ltdl.h"
 
-/*
- *  Temporary hack!
- */
-#undef HAVE_DLOPEN
-#define HAVE_DLOPEN 1
-
-#ifndef HAVE_DLOPEN
-#include	"modules_static.h"
-#endif
-
 #define	RLM_AUTHORIZE		1
 #define	RLM_AUTHENTICATE	2
 #define RLM_ACCOUNTING		4
@@ -41,9 +31,7 @@ typedef struct module_list_t {
 	char			filename[MAX_STRING_LEN];
 	int			auth_type;
 	module_t		*module;
-#ifdef HAVE_DLOPEN
 	lt_dlhandle		handle;
-#endif
 	struct module_list_t	*next;
 } module_list_t;
 
@@ -81,9 +69,7 @@ static void module_list_free(void)
 		next = ml->next;
 		if (ml->module->detach)
 			(ml->module->detach)();
-#ifdef HAVE_DLOPEN
 		lt_dlclose(ml->handle);	/* ignore any errors */
-#endif
 		free(ml);
 		ml = next;
 	}
@@ -197,19 +183,12 @@ int read_modules_file(char *filename)
 	char		library[256];
 	char		module_name[256];
 	int		lineno = 0;
-#ifdef HAVE_DLOPEN
 	char		libraryfile[1024];
 	void		*handle;
 	const char	*error;
-#else
-	static_modules_t *sm;
-#endif
 	int		argc;			/* for calling the modules */
 	char		*argv[32];
 	CONF_SECTION	*cs;
-#ifndef HAVE_DLOPEN
-	sm   = NULL;
-#endif
 	this = NULL; /* Shut up stupid gcc */
 
 	/*
@@ -219,6 +198,20 @@ int read_modules_file(char *filename)
 	if (cs) {
 		cf_section_parse(cs, module_config);
 	}
+
+	/*
+	 *	Set the search path to ONLY our library directory.
+	 *	This prevents the modules fromn being found from
+	 *	any location on the disk.
+	 */
+	lt_dlsetsearchpath(radlib_dir);
+
+	/*
+	 *	Add 'raddb' directory, so that testing the server
+	 *	in the source directory can work.
+	 */
+	lt_dladdsearchdir(radius_dir);
+
 
 	if (module_list)
 		module_list_free();
@@ -251,7 +244,6 @@ int read_modules_file(char *filename)
 
 	this = find_module(module_list, library);
 	if (this == NULL) {
-#ifdef HAVE_DLOPEN
 		/*
 		 * Keep the handle around so we can dlclose() it.
 		 * Also ensure that any further dependencies are exported,
@@ -261,38 +253,12 @@ int read_modules_file(char *filename)
 		 * pam_foo.so.  Without RTLD_GLOBAL, the functions in libpam.so
 		 * won't get exported to pam_foo.so.
 		 */
-		if (*library != '/')
-			sprintf(libraryfile, "%.500s/%.500s",
-#if 1
-				radlib_dir,
-#else
-				radius_dir,
-#endif
-				library);
-		else
-			strNcpy(libraryfile, library, sizeof(libraryfile));
-		DEBUG2("Module: Loading %s ...", libraryfile);
-		handle = lt_dlopen(libraryfile);
-
+		handle = lt_dlopen(library);
 		if (handle == NULL) {
 			fprintf(stderr, "[%s:%d] Failed to link to module %s:"
 				" %s\n", filename, lineno, libraryfile, lt_dlerror());
 			exit(1); /* FIXME */
 		}
-#else /* HAVE_DLOPEN */
-		/*
-		 *	Find the module in the static module list.
-		 */
-		for (sm = static_modules; sm->keyword; sm++) {
-			if (strcmp(sm->keyword, library) == 0)
-	  			break;
-		}
-		if (sm == NULL || sm->keyword == NULL) {
-		fprintf(stderr, "[%s:%d] Failed module link: no such module\n",
-			filename, lineno);
-			exit(1); /* FIXME */
-		}
-#endif /* HAVE_DLOPEN */
 
 		/* make room for the module type */
 		this = (module_list_t *) malloc(sizeof(module_list_t));
@@ -304,25 +270,19 @@ int read_modules_file(char *filename)
 
 		/* fill in the module structure */
 		this->next = NULL;
-#ifdef HAVE_DLOPEN
 		this->handle = handle;
-#endif
 		strNcpy(this->filename, library, sizeof(this->filename));
 
 		/* find the structure name from the library name */
 		p = strrchr(library, '/');
 		q = module_name;
-#ifdef MODULE_NEED_USCORE
-		*(q++) = '_';
-#endif
 		if (p)
 			strNcpy(q, p + 1, sizeof(module_name) - 1);
 		else
 			strNcpy(q, library, sizeof(module_name) - 1);
 		p = strchr(module_name, '.');
-		*p = '\0';
+		if (p) *p = '\0';
 
-#ifdef HAVE_DLOPEN
 		this->module = (module_t *) lt_dlsym(this->handle, module_name);
 		error = lt_dlerror();
 		if (!this->module) {
@@ -332,9 +292,6 @@ int read_modules_file(char *filename)
 					library, error);
 			exit(1);
 		}
-#else
-		this->module = sm->module;
-#endif
 
 		/* If there's an authentication method, add a new Auth-Type */
 		if (this->module->authenticate)
