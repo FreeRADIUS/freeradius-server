@@ -606,9 +606,6 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    /*				  (   ASCII(mppe_key)  )  \0 */
 					  (2 * sizeof(mppe_key)) + 1];
 
-	    (void) memset(mppe_key, 0, 32);
-	    mppe_key[0] = 16; /* length (s/rant//) */
-
 	    /* Generate the master session key. */
 	    SHA1_Init(&ctx);
 	    SHA1_Update(&ctx, password_md_md, MD4_DIGEST_LENGTH);
@@ -642,6 +639,8 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    salt[1] = 0x01;
 
 	    /* Encode the key. */
+	    (void) memset(mppe_key, 0, 32);
+	    mppe_key[0] = 16; /* length */
 	    (void) memcpy(&mppe_key[1], MasterSendKey, 16);
 	    secretlen = strlen(request->secret);
 	    (void) memcpy(encode_buf, request->secret, secretlen);
@@ -674,6 +673,8 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    salt[1] = 0x02;
 
 	    /* Encode the key. */
+	    (void) memset(mppe_key, 0, 32);
+	    mppe_key[0] = 16; /* length */
 	    (void) memcpy(&mppe_key[1], MasterReceiveKey, 16);
 	    secretlen = strlen(request->secret);
 	    (void) memcpy(encode_buf, request->secret, secretlen);
