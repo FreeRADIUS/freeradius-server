@@ -62,6 +62,8 @@ libdir = @libdir@
 #  The server may be signalled while it's running by using this
 #  file.
 #
+#  This file is written when ONLY running in daemon mode.
+#
 #  e.g.:  kill -HUP `cat /var/run/radiusd.pid`
 #
 pidfile = ${run_dir}/radiusd.pid
