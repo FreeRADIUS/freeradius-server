@@ -170,19 +170,23 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 #endif
 
 	while (result == 0 && check_item != NULL) {
+		/*
+		 *	If the user is setting a configuration value,
+		 *	then don't bother comparing it to any attributes
+		 *	sent to us by the user.
+		 */
+		if (check_item->operator == T_OP_SET) {
+			check_item = check_item->next;
+			continue;
+		}
+
 		switch (check_item->attribute) {
 			/*
 			 *	Attributes we skip during comparison.
 			 *	These are "server" check items.
 			 */
-			case PW_EXPIRATION:
-			case PW_LOGIN_TIME:
 			case PW_PASSWORD:
 			case PW_CRYPT_PASSWORD:
-			case PW_AUTHTYPE:
-                        case PAM_AUTH_ATTR:
-			case PW_SIMULTANEOUS_USE:
-			case PW_STRIP_USER_NAME:
 				check_item = check_item->next;
 				continue;
 		}
@@ -204,16 +208,16 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 		/*
 		 *	OK it is present now compare them.
 		 */
-		
 		compare = paircompare(auth_item, check_item, check, reply);
 
 		switch (check_item->operator)
 		  {
+		  case T_OP_EQ:
 		  default:
 		    log(L_ERR,  "Invalid operator for item %s: "
-				"reverting to '='", check_item->name);
+				"reverting to '=='", check_item->name);
 		    /*FALLTHRU*/
-		  case T_OP_EQ:
+		  case T_OP_CMP_EQ:
 		    if (compare != 0) return -1;
 		    break;
 
@@ -257,6 +261,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 
 		  }
 
+		check_item->operator = T_OP_EQ;
 		if (result == 0)
 			check_item = check_item->next;
 	}
@@ -446,7 +451,6 @@ static int attrcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 
 	return -1;
 }
-
 
 /*
  *	Register server-builtin special attributes.
