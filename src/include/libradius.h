@@ -186,7 +186,7 @@ char		*strNcpy(char *dest, const char *src, int n);
 
 #ifdef ASCEND_BINARY
 /* filters.c */
-int		filterBinary(VALUE_PAIR *pair, char *valstr);
+int		filterBinary(VALUE_PAIR *pair, const char *valstr);
 void		print_abinary(VALUE_PAIR *vp, u_char *buffer, int len);
 #endif ASCEND_BINARY
 
