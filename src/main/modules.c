@@ -710,11 +710,12 @@ int setup_modules(void)
 						      section_type_value[comp].typename);
 
 			/*
-			 *	Allow old names, too.
+			 *	Allow some old names, too.
 			 */
-			if (!next) {
+			if (!next && (comp <= 4)) {
+				
 				next = cf_subsection_find_next(cs, sub,
-							      old_section_type_value[comp].typename);
+							       old_section_type_value[comp].typename);
 			}
 			sub = next;
 
