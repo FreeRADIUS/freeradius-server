@@ -4,6 +4,8 @@ Ver 1.68:
 * Small fix in user_finger.php3
 * Add the ability to erase rows from the badusers table
 * In log_badlogins for multiple logins if it is a mppp attempt, log it
+* Add a message when adding a user in the badusers table
+* Close sql connections in add_badusers.php3
 Ver 1.65:
 * Add a captions.conf file with a few configurable captions for now
 * Move the nas list to a separate file called naslist.conf

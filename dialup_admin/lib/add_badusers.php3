@@ -27,6 +27,9 @@ else{
 			VALUES ('$login','$date','$admin','$msg');");
 			if (!$r)
 				echo "<b>SQL Error:" . da_sql_error($link,$config) . "</b><br>\n";
+			else
+				echo "<b>User added to badusers table</b><br>\n";
+			da_sql_close($link,$config);
 		}
 		else
 			echo "<b>SQL Error: Could not connect to SQL database: $server</b><br>\n";
