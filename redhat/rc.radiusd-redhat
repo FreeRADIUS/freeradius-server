@@ -1,11 +1,7 @@
 #!/bin/sh
-# radiusd
-# radiusd	Start the radius daemon.
 #
-#		This is a script suitable for the Redhat Linux distribution.
-#		Copy it to /etc/rc.d/init.d/radiusd and
-#		use tksysv or your favorite runlevel editor to start it
-#		at runlevel 3
+# chkconfig: 345 88 10
+# description: Start/Stop the RADIUS server daemon
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -23,56 +19,55 @@
 #
 #    Copyright (C) 2001 The FreeRADIUS Project   http://www.freeradius.org
 #
-# chkconfig: 345 88 10
-# description: Start/Stop the RADIUS server daemon
-
-
 
 # Source function library.
 . /etc/rc.d/init.d/functions
 
 RADIUSD=/usr/sbin/radiusd
-WATCHER=/usr/sbin/radwatch
 LOCKF=/var/lock/subsys/radiusd
+CONFIG=/etc/raddb/radiusd.conf
 
-test -f $RADIUSD || exit 0
-test -f /etc/raddb/radiusd.conf || exit 0
+[ -f $RADIUSD ] || exit 0
+[ -f $CONFIG ] || exit 0
+
+RETVAL=0
 
 case "$1" in
   start)
-	[ -f /var/log/radutmp ] || touch /var/log/radutmp
-	echo -n 'Starting RADIUSD server: '
-	if [ -x $WATCHER ]
-	then
-		daemon $WATCHER $RADIUSD -y
-	else
-		daemon $RADIUSD -y
-	fi
-	touch $LOCKF
+	echo -n $"Starting RADIUS server: "
+	daemon $RADIUSD -y
+	RETVAL=$?
 	echo
+	[ $RETVAL -eq 0 ] && touch $LOCKF
 	;;
   stop)
-	echo -n 'Stopping RADIUSD server: '
-	if [ -x $WATCHER ]
-	then
-		killproc $WATCHER 2> /dev/null
-	fi
-	killproc $RADIUSD 2> /dev/null
+	echo -n $"Stopping RADIUS server: "
+	killproc $RADIUSD
+	RETVAL=$?
 	echo
-	rm -f $LOCKF
+	[ $RETVAL -eq 0 ] && rm -f $LOCKF
 	;;
   status)
-	[ -x $WATCHER ] && status radwatch
 	status radiusd
+	RETVAL=$?
         ;;
   reload|restart)
 	$0 stop
 	sleep 3
 	$0 start
+	RETVAL=$?
+	;;
+  condrestart)
+	if [ -f $LOCKF ]; then
+		$0 stop
+		sleep 3
+		$0 start
+		RETVAL=$?
+	fi
 	;;
   *)
-        echo "Usage: $0 {start|stop|status|reload}"
-        exit 1
+	echo $"Usage: $0 {start|stop|status|restart|reload|condrestart}"
+	exit 1
 esac
 
-exit 0
+exit $RETVAL
