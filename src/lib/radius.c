@@ -291,12 +291,22 @@ RADIUS_PACKET *rad_recv(int fd)
 	salen = sizeof(saremote);
 	packet->data_len = recvfrom(fd, packet->data, PACKET_DATA_LEN,
 		0, (struct sockaddr *)&saremote, &salen);
-	if (packet->data_len < 20) return NULL;
+	if (packet->data_len < 20) {
+		free(packet->data);
+		free(packet);
+		librad_log("Malformed RADIUS packet: too small");
+		return NULL;
+	}
 
 	hdr = (u_char *)packet->data;
 	memcpy(&len, hdr + 2, sizeof(u_short));
 	totallen = ntohs(len);
-	if (packet->data_len > totallen) packet->data_len = totallen;
+	if (packet->data_len != totallen) {
+		librad_log("Malformed RADIUS packet: received %d octets, packet says %d", packet->data_len, totallen);
+		free(packet->data);
+		free(packet);
+		return NULL;
+	}
 
 	DEBUG("rad_recv: Packet from host %s code=%d, id=%d, length=%d\n",
 			inet_ntoa(saremote.sin_addr),
@@ -700,4 +710,3 @@ void rad_free(RADIUS_PACKET *rp)
 	if (rp->vps) pairfree(rp->vps);
 	free(rp);
 }
-
