@@ -29,6 +29,11 @@
  *	  object, which contains default values for RADIUS users
  *	- Added "profile_attribute" directive, which specifies user object 
  *	  attribute pointing to radiusProfile object.
+ * Nov 2001, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Added support for adding the user password to the check. Based on
+ *	  the password_header directive rlm_ldap will strip the
+ *	  password header if needed. This will make support for CHAP much easier.
+ *	- Added module messages when we reject a user.
  */
 static const char rcsid[] = "$Id$";
 
@@ -90,6 +95,8 @@ typedef struct {
 	char           *profile_attr;
 	char           *access_group;
 	char           *access_attr;
+	char           *passwd_hdr;
+	char           *passwd_attr;
 	char           *dictionary_mapping;
 	TLDAP_RADIUS   *check_item_map;
 	TLDAP_RADIUS   *reply_item_map;
@@ -115,6 +122,8 @@ static CONF_PARSER module_config[] = {
 	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,default_profile), NULL, NULL},
 	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,profile_attr), NULL, NULL},
 	{"access_group", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_group), NULL, NULL},
+	{"password_header", PW_TYPE_STRING_PTR, offsetof(ldap_instance,passwd_hdr), NULL, NULL},
+	{"password_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,passwd_attr), NULL, "userPassword"},
 	/* LDAP attribute name that controls remote access */
 	{"access_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_attr), NULL, NULL},
 	/* file with mapping between LDAP and RADIUS attributes */
@@ -347,6 +356,9 @@ ldap_authorize(void *instance, REQUEST * request)
 	int		res;
 	VALUE_PAIR	**check_pairs, **reply_pairs;
 	char		**vals;
+	VALUE_PAIR      *module_msg_vp;
+	char            module_msg[MAX_STRING_LEN];
+
 
 	DEBUG("rlm_ldap: - authorize");
 
@@ -382,6 +394,11 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	if ((res = perform_search(instance, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
 		DEBUG("rlm_ldap: search failed");
+		if (res == RLM_MODULE_NOTFOUND){
+			snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: User not found");
+			module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+			pairadd(&request->packet->vps, module_msg_vp);
+		}
 		return (res);
 	}
 	if ((msg = ldap_first_entry(inst->ld, result)) == NULL) {
@@ -408,6 +425,9 @@ ldap_authorize(void *instance, REQUEST * request)
 			DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", request->username->strvalue, inst->access_attr);
 			if (!strncmp(vals[0], "FALSE", 5)) {
 				DEBUG("rlm_ldap: dialup access disabled");
+				snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: Access Attribute denies access");
+				module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_msg_vp);
 				ldap_msgfree(result);
 				ldap_value_free(vals);
 				return RLM_MODULE_USERLOCK;
@@ -415,6 +435,9 @@ ldap_authorize(void *instance, REQUEST * request)
 			ldap_value_free(vals);
 		} else {
 			DEBUG("rlm_ldap: no %s attribute - access denied by default", inst->access_attr);
+			snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: Access Attribute denies access");
+			module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+			pairadd(&request->packet->vps, module_msg_vp);
 			ldap_msgfree(result);
 			return RLM_MODULE_USERLOCK;
 		}
@@ -433,8 +456,12 @@ ldap_authorize(void *instance, REQUEST * request)
 
 		if ((res = perform_search(instance, inst->access_group, LDAP_SCOPE_BASE, filter, NULL, &gr_result)) != RLM_MODULE_OK) {
 			ldap_msgfree(result);
-			if (res == RLM_MODULE_NOTFOUND)
+			if (res == RLM_MODULE_NOTFOUND){
+				snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: User is not an access group member");
+				module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_msg_vp);
 				return (RLM_MODULE_USERLOCK);
+			}
 			else
 				return (res);
 		} else 
@@ -494,6 +521,44 @@ ldap_authorize(void *instance, REQUEST * request)
 			ldap_value_free(vals);
 		}
 	}
+	if (inst->passwd_attr && strlen(inst->passwd_attr)){
+		VALUE_PAIR *passwd_item;
+
+		if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
+			char **passwd_vals;
+			char *passwd_val = NULL;
+			int passwd_len;
+
+			if ((passwd_vals = ldap_get_values(inst->ld,msg,inst->passwd_attr)) != NULL){
+				if (ldap_count_values(passwd_vals) && strlen(passwd_vals[0])){
+					passwd_val = passwd_vals[0];
+
+					if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
+						passwd_val = strstr(passwd_val,inst->passwd_hdr);
+						if (passwd_val != NULL)
+							passwd_val += strlen(inst->passwd_hdr);
+						else
+							DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0],request->username->strvalue);
+					}
+					if (passwd_val){
+						if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
+							radlog(L_ERR|L_CONS, "no memory");
+							ldap_value_free(passwd_vals);
+							ldap_msgfree(result);
+							return RLM_MODULE_FAIL;
+						}
+						passwd_len = strlen(passwd_val);
+						strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
+						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
+						pairadd(&request->config_items,passwd_item);
+						DEBUG("rlm_ldap: Added password %s in check items",passwd_item->strvalue);
+					}
+				}
+				ldap_value_free(passwd_vals);
+			}
+		}
+	}
+
 
 
 	DEBUG("rlm_ldap: looking for check items in directory...");
@@ -541,6 +606,8 @@ ldap_authenticate(void *instance, REQUEST * request)
 	char		basedn[1024];
 	int             res;
 	VALUE_PAIR     *vp_user_dn;
+	VALUE_PAIR      *module_msg_vp;
+	char            module_msg[MAX_STRING_LEN];
 
 	DEBUG("rlm_ldap: - authenticate");
 	/*
@@ -585,6 +652,11 @@ ldap_authenticate(void *instance, REQUEST * request)
 
 	while((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL) {
 		if ((res = perform_search(instance, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
+			if (res == RLM_MODULE_NOTFOUND){
+				snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: User not found");
+				module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_msg_vp);
+			}
 			return (res);
 		}
 		if ((msg = ldap_first_entry(inst->ld, result)) == NULL) {
@@ -607,8 +679,12 @@ ldap_authenticate(void *instance, REQUEST * request)
 
 	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
 			       1, &res);
-	if (ld_user == NULL)
+	if (ld_user == NULL){
+		snprintf(module_msg,MAX_STRING_LEN-1,"rlm_ldap: Bind as user failed");
+		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_msg_vp);
 		return (res);
+	}
 
 	DEBUG("rlm_ldap: user %s authenticated succesfully",
 	      request->username->strvalue);
@@ -738,6 +814,10 @@ ldap_detach(void *instance)
 		free(inst->dictionary_mapping);
 	if (inst->filter)
 		free((char *) inst->filter);
+	if (inst->passwd_hdr)
+		free((char *) inst->passwd_hdr);
+	if (inst->passwd_attr)
+		free((char *) inst->passwd_attr);
 	if (inst->ld)
 		ldap_unbind_s(inst->ld);
 

@@ -372,6 +372,8 @@ modules {
 		access_group = "cn=clients,ou=dialup,o=My Org,c=UA"
 		access_attr = "dialupAccess"
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
+		# password_header = "{clear}"
+		# password_attribute = userPassword
 		timeout = 4
 		timelimit = 3
 		net_timeout = 1

@@ -85,6 +85,18 @@ the rlm_ldap module:
 #	remote access.
 #	default: NULL - don't check for the attribute
 		access_attr = "dialupAccess"
+
+#	password_header: If the user password is available we add it to the check items
+#	(to assist in CHAP ie) striping any headers first.
+#	default: NULL
+#
+#	password_header = "{clear}"
+
+#	password_attribute: Define the attribute which contains the user password.
+#	default: userPassword
+#
+#	password_attribute = "userPassword"
+
 	}
 }
 
@@ -93,6 +105,17 @@ As LDAP is case insensitive, you should probably also set "lower_user = yes"
 and "lower_time = before" in main section of radiusd.conf, to get limits on 
 simultaneous logins working correctly. Otherwise, users will be able get large 
 number of sessions, capitalizing parts of their login names.
+
+MODULE MESSAGES:
+On user rejection rlm_ldap will return the following module messages:
+
+"rlm_ldap: User not found"
+"rlm_ldap: Access Attribute denies access"
+"rlm_ldap: User is not an access group member"
+"rlm_ldap: Bind as user failed"
+
+These messages will be visible in radius.log as aditional information in
+"Login incorrect" and "Invalid user" log messages.
 
 DIRECTORY COMPATIBILITY NOTE:
 If you use LDAP only for authorization and authentication (e.g. you can not
