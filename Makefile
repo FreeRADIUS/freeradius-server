@@ -9,6 +9,8 @@
 
 include Make.inc
 
+.PHONY: all clean install
+
 SUBDIRS		= ${LIBLTDLPATH} src raddb scripts
 WHAT_TO_MAKE	= all
 
