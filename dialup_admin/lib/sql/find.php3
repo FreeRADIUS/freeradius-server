@@ -12,7 +12,7 @@ if ($link){
 		$attr = ($search_IN == 'name') ? 'Name' : 'Department';
 		$res = @da_sql_query($link,$config,
 		"SELECT UserName FROM $config[sql_user_info_table] WHERE
-		$attr LIKE '%$search%';");
+		$attr LIKE '%$search%' LIMIT $max_results;");
 		if ($res){
 			while(($row = @da_sql_fetch_array($res,$config)))
 				$found_users[] = $row[UserName];
@@ -25,7 +25,7 @@ if ($link){
 		$table = ($attr_type[$radius_attr] == 'checkItem') ? $config[sql_check_table] : $config[sql_reply_table];
 		$attr = $attrmap[$radius_attr];
 		$res = @da_sql_query($link,$config,
-		"SELECT UserName FROM $table WHERE Attribute = '$attr' AND Value LIKE '%$search%';");
+		"SELECT UserName FROM $table WHERE Attribute = '$attr' AND Value LIKE '%$search%' LIMIT $max_results;");
 		if ($res){
 			while(($row = @da_sql_fetch_array($res,$config)))
 				$found_users[] = $row[UserName];

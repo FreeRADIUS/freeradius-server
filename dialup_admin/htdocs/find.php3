@@ -47,6 +47,8 @@ if ($find_user == 1){
         </tr>
 EOM;
 		foreach ($found_users as $user){
+			if ($user == '')
+				$user = '-';
 			$num++;
 			$msg .= <<<EOM
 			<tr align=center>
@@ -57,7 +59,8 @@ EOM;
 		}
 		$msg .= "</table>\n";
 	}
-
+	else
+		$msg = "<b>No users found</b><br>\n";
 }
 ?>
    <form method=post>
