@@ -107,12 +107,6 @@ static struct xlat_cmp *find_xlat_func(const char *module)
 			break;
 	}
 
-	if (c == NULL) {
-
-		DEBUG2("WARNING: Attempt to use unknown xlat function in string %%{%s}",
-		       module);
-	}
-
 	return c;
 }
 
@@ -241,6 +235,8 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 				(tmppair = pairfind(request->packet->vps,tmpda->attr))) {
 			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
+		} else {
+		 	DEBUG2("WARNING: Attempt to use unknown xlat function in string %%{%s}", attrname);
 		}
 	} 
 
