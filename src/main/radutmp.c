@@ -449,20 +449,20 @@ static void alrm_handler(int sig)
 /*
  *	Check one terminal server to see if a user is logged in.
  */
-static int rad_check_ts(struct radutmp *ut)
+static int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
+                        const char *session_id)
 {
 	int	pid, st, e;
 	int	n;
 	NAS	*nas;
 	char	address[16];
 	char	port[8];
-	char	session_id[12];
 	void	(*handler)(int);
 
 	/*
 	 *	Find NAS type.
 	 */
-	if ((nas = nas_find(ut->nas_address)) == NULL) {
+	if ((nas = nas_find(nasaddr)) == NULL) {
 		radlog(L_ERR, "Accounting: unknown NAS");
 		return -1;
 	}
@@ -510,19 +510,18 @@ static int rad_check_ts(struct radutmp *ut)
 	for (n = 32; n >= 3; n--)
 		close(n);
 
-	ip_ntoa(address, ut->nas_address);
-	sprintf(port, "%d", ut->nas_port);
-	sprintf(session_id, "%.8s", ut->session_id);
+	ip_ntoa(address, nasaddr);
+	sprintf(port, "%d", portnum);
 
 #ifdef __EMX__
 	/* OS/2 can't directly execute scripts then we call the command
 	   processor to execute checkrad
 	*/
 	execl(getenv("COMSPEC"), "", "/C","checkrad",nas->nastype, address, port,
-		ut->login, session_id, NULL);
+		user, session_id, NULL);
 #else
 	execl(CHECKRAD, "checkrad",nas->nastype, address, port,
-		ut->login, session_id, NULL);
+		user, session_id, NULL);
 #endif
 	radlog(L_ERR, "Check-TS: exec %s: %s", CHECKRAD, strerror(errno));
 
@@ -587,13 +586,16 @@ int radutmp_checksimul(char *name, VALUE_PAIR *request, int maxsimul)
 	 *	Allright, there are too many concurrent logins.
 	 *	Check all registered logins by querying the
 	 *	terminal server directly.
-	 *	FIXME: rad_check_ts() runs with locked radwtmp file!
+	 *	FIXME: rad_check_ts() runs with locked radutmp file!
 	 */
 	count = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
 		if (strncmp(name, u.login, RUT_NAMESIZE) == 0
 		    && u.type == P_LOGIN) {
-			if (rad_check_ts(&u) == 1) {
+			char session_id[sizeof u.session_id+1];
+			strNcpy(session_id, u.session_id, sizeof session_id);
+			if (rad_check_ts(u.nas_address, u.nas_port,
+					 u.login, session_id) == 1) {
 				count++;
 				/*
 				 *	Does it look like a MPP attempt?
