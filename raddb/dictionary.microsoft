@@ -25,8 +25,8 @@ ATTRIBUTE	MS-CHAP-MPPE-Keys	12	octets
 ATTRIBUTE	MS-BAP-Usage		13	integer
 ATTRIBUTE	MS-Link-Utilization-Threshold 14 integer # values are 1-100
 ATTRIBUTE	MS-Link-Drop-Time-Limit	15	integer
-ATTRIBUTE	MS-MPPE-Send-Key	16	octets
-ATTRIBUTE	MS-MPPE-Recv-Key	17	octets
+ATTRIBUTE	MS-MPPE-Send-Key	16	octets	encrypt=2
+ATTRIBUTE	MS-MPPE-Recv-Key	17	octets	encrypt=2
 ATTRIBUTE	MS-RAS-Version		18	string
 ATTRIBUTE	MS-Old-ARAP-Password	19	octets
 ATTRIBUTE	MS-New-ARAP-Password	20	octets
