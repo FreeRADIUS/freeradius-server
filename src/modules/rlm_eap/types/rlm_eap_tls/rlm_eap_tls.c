@@ -27,13 +27,20 @@
 #include "eap_tls.h"
 
 static CONF_PARSER module_config[] = {
-	{ "private_key_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, private_key_file), NULL, "priv_key.pem" },
-	{ "certificate_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, certificate_file), NULL, "certificate.pem" },
-	{ "CA_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, ca_file), NULL, "ca_list.pem" },
-	{ "private_key_password", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, private_key_password), NULL, "pass" },
-	{ "dh_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, dh_file), NULL, "dh.pem" },
-	{ "random_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, random_file), NULL, "random.pem" },
-	{ "fragment_size", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, fragment_size), NULL, 0 },
+	{ "rsa_key_exchange", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, rsa_key), NULL, "no" },
+	{ "dh_key_exchange", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, dh_key), NULL, "yes" },
+	{ "rsa_key_length", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, rsa_key_length), NULL, "512" },
+	{ "dh_key_length", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, dh_key_length), NULL, "512" },
+	{ "verify_depth", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, verify_depth), NULL, "0" },
+	{ "CA_path", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, ca_path), NULL, NULL },
+	{ "pem_file_type", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, file_type), NULL, "yes" },
+	{ "private_key_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, private_key_file), NULL, NULL },
+	{ "certificate_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, certificate_file), NULL, NULL },
+	{ "CA_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, ca_file), NULL, NULL },
+	{ "private_key_password", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, private_key_password), NULL, NULL },
+	{ "dh_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, dh_file), NULL, NULL },
+	{ "random_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, random_file), NULL, NULL },
+	{ "fragment_size", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, fragment_size), NULL, "1024" },
 	{ "include_length", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, include_length), NULL, "yes" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
@@ -51,32 +58,34 @@ static int eaptls_attach(CONF_SECTION *cs, void **arg)
 	/* Parse the config file & get all the configured values */
 	conf = (EAP_TLS_CONF *)malloc(sizeof(EAP_TLS_CONF));
 	if (conf == NULL) {
-                radlog(L_ERR, "rlm_eap_tls: out of memory");
-                return -1;
-        }
-        if (cf_section_parse(cs, conf, module_config) < 0) {
-                free(conf);
-                return -1;
-        }
+		radlog(L_ERR, "rlm_eap_tls: out of memory");
+		return -1;
+	}
+	if (cf_section_parse(cs, conf, module_config) < 0) {
+		free(conf);
+		return -1;
+	}
 
 
 	/* Initialize TLS */
 	ctx = init_tls_ctx(conf);
-	load_dh_params(ctx, conf->dh_file);
-	generate_eph_rsa_key(ctx);
+	if (ctx == NULL) return -1;
+
+	if (load_dh_params(ctx, conf->dh_file) < 0) return -1;
+	if (generate_eph_rsa_key(ctx) < 0) return -1;
 
 	/* Store all these values in the data structure for later references */
-        *eaptls = (eap_tls_t *)malloc(sizeof(eap_tls_t));
-        if (*eaptls == NULL) {
-                radlog(L_ERR, "rlm_eap_tls: out of memory");
+	*eaptls = (eap_tls_t *)malloc(sizeof(eap_tls_t));
+	if (*eaptls == NULL) {
+		radlog(L_ERR, "rlm_eap_tls: out of memory");
 
-                free(conf->dh_file);
-                free(conf->certificate_file);
-                free(conf->private_key_file);
-                free(conf->private_key_password);
-                free(conf);
-                return -1;
-        }
+		free(conf->dh_file);
+		free(conf->certificate_file);
+		free(conf->private_key_file);
+		free(conf->private_key_password);
+		free(conf);
+		return -1;
+	}
 
 	radlog(L_ERR, "rlm_eap_tls: conf N ctx stored ");
 	(*eaptls)->conf = conf;
@@ -105,6 +114,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	int status;
 	tls_session_t *ssn;
 	eap_tls_t    *eaptls;
+	int index;
 
 	eaptls = (eap_tls_t *)type_arg;
 
@@ -115,6 +125,17 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 * So that we can use these data structures when we get the response
 	 */
 	ssn = new_tls_session(eaptls);
+
+	/*
+	 * Create a structure for all the items required to 
+	 * be verified for each client and set that
+	 * as opaque data structure.
+	 *
+	 * NOTE: If we want to set each item sepearately then
+	 * this index should be global.
+	 */
+	index = SSL_get_ex_new_index(0, "index", NULL, NULL, NULL);
+	SSL_set_ex_data(ssn->ssl, index, (void *)handler->identity);
 
 	ssn->offset = eaptls->conf->fragment_size;
 	ssn->length_flag = eaptls->conf->include_length;

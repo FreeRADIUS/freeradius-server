@@ -253,8 +253,6 @@ typedef struct _tls_session_t {
 
 	BIO 		*into_ssl;
 	BIO 		*from_ssl;
-	BIO 		*bio_type; /* TODO: This is just for debugging purpose, 
-			  Later it should be removed */
 	record_t 	clean_in;
 	record_t 	clean_out;
 	record_t 	dirty_in;
@@ -275,9 +273,17 @@ typedef struct eap_tls_conf {
 	char	*private_key_password;
 	char	*private_key_file;
 	char	*certificate_file;
+	char	*random_file;
+	char	*ca_path;
 	char	*ca_file;
 	char	*dh_file;
-	char	*random_file;
+	char	*rsa_file;
+	int		rsa_key;
+	int		dh_key;
+	int		rsa_key_length;
+	int		dh_key_length;
+	int		verify_depth;
+	int		file_type;
 	int		include_length;
 	int		fragment_size; /* always < 4096 (due to radius limit), 0 by default = 2048 */
 } EAP_TLS_CONF;
@@ -305,16 +311,17 @@ void 		eaptls_operation(EAPTLS_PACKET *eaptls_packet,
 			eaptls_status_t status, EAP_HANDLER *handler);
 
 /* Callbacks */
+int 		cbtls_password(char *buf, int num, int rwflag, void *userdata);
 void 		cbtls_info(const SSL *s, int where, int ret);
 int 		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 void 		cbtls_msg(int write_p, int version, int content_type,
 	       		const void *buf, size_t len, SSL *ssl, void *arg);
 
 /* TLS */
-void 		load_dh_params(SSL_CTX *ctx, char *file);
-void 		generate_eph_rsa_key(SSL_CTX *ctx);
 SSL_CTX 	*init_tls_ctx(EAP_TLS_CONF *keyfile);
 tls_session_t 	*new_tls_session(eap_tls_t *eaptls);
+int 		load_dh_params(SSL_CTX *ctx, char *file);
+int 		generate_eph_rsa_key(SSL_CTX *ctx);
 int 		tls_handshake_recv(tls_session_t *ssn);
 int 		tls_handshake_send(tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *tls_session);

@@ -22,98 +22,139 @@
 #include "eap_tls.h"
 
 /*
- * SSL stuff
+ * TODO: Check for the type of key exchange
+ *  like conf->dh_key
  */
-static char private_key_password[256];
-
-/* A simple error and exit routine*/
-int err_exit(char *string)
+int load_dh_params(SSL_CTX *ctx, char *file)
 {
-	fprintf(stderr, "%s\n", string);
-	exit(0);
-}
-
-/*The password code is not thread safe*/
-static int password_cb(char *buf, int num, int rwflag, void *userdata)
-{
-	strcpy(buf, private_key_password);
-	return(strlen(private_key_password));
-}
-
-      
-/*
- * This dh file should be configurable
- */
-void load_dh_params(SSL_CTX *ctx, char *file)
-{
-	DH *ret = 0;
+	DH *dh = NULL;
 	BIO *bio;
 
-	if ((bio = BIO_new_file(file, "r"))  ==  NULL)
-		err_exit("Couldn't open DH file");
+	if ((bio = BIO_new_file(file, "r")) == NULL) {
+		radlog(L_ERR, "rlm_eap_tls: Unable to open DH file - %s", file);
+		return -1;
+	}
 
-	ret = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
+	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
 	BIO_free(bio);
-	if(SSL_CTX_set_tmp_dh(ctx, ret)<0)
-		err_exit("Couldn't set DH parameters");
+	if (SSL_CTX_set_tmp_dh(ctx, dh) < 0) {
+		radlog(L_ERR, "rlm_eap_tls: Unable to set DH parameters");
+		DH_free(dh);
+		return -1;
+	}
+
+	DH_free(dh);
+	return 0;
 }
 
-void generate_eph_rsa_key(SSL_CTX *ctx)
+int generate_eph_rsa_key(SSL_CTX *ctx)
 {
 	RSA *rsa;
 
 	rsa = RSA_generate_key(512, RSA_F4, NULL, NULL);
 
-	if (!SSL_CTX_set_tmp_rsa(ctx, rsa))
-		err_exit("Couldn't set RSA key");
+	if (!SSL_CTX_set_tmp_rsa(ctx, rsa)) {
+		radlog(L_ERR, "rlm_eap_tls: Couldn't set RSA key");
+		return -1;
+	}
 
 	RSA_free(rsa);
+	return 0;
 }
 
 /*
- * This private key file & password should be configurable
- * For password callback should be used by default.
+ * Create Global context SSL and use it in every new session
+ * # Load the trusted CAs
+ * # Load the Private key & the certificate
+ * # Set the Context options & Verify options
  */
 SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 {
 	SSL_METHOD *meth;
 	SSL_CTX *ctx;
 	int verify_mode = 0;
+	int ctx_options = 0;
+	int type;
 
 	/*
-	 * Global system initialization
 	 * Add all the default ciphers and message digests
+	 * Create our context
 	 */
 	SSL_library_init();
 	SSL_load_error_strings();
 
-	/* Create our context*/
 	meth = TLSv1_method();
 	ctx = SSL_CTX_new(meth);
 
-	/* Load our keys and certificates*/
-	if(!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, SSL_FILETYPE_PEM)))
-		err_exit("Couldn't read certificate file");
+	/*
+	 * Identify the type of certificates that needs to be loaded
+	 */
+	if (conf->file_type) {
+		type = SSL_FILETYPE_PEM;
+	} else {
+		type = SSL_FILETYPE_ASN1;
+	}
+
+	/* Load the CAs we trust */
+	if (!(SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) ||
+			(!SSL_CTX_set_default_verify_paths(ctx))) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list");
+		return NULL;
+	}
+	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
 	/* 
-	 * The default Callback(which prompts the user via the terminal)
-	 * is replaced with one that simply returns hardwired password
+	 * Set the password to load private key
 	 */
-	memset(private_key_password, 0, 256);
-	strcpy(private_key_password, conf->private_key_password);
-	SSL_CTX_set_default_passwd_cb(ctx, password_cb);
+	if (conf->private_key_password) {
+		SSL_CTX_set_default_passwd_cb_userdata(ctx, conf->private_key_password);
+		SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
+	}
 
-	if(!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, SSL_FILETYPE_PEM)))
-		err_exit("Couldn't read private key file");
+	/* Load our keys and certificates*/
+	if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
+		return NULL;
+	}
+
+	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error reading private key file");
+		return NULL;
+	}
 
 	/*
-	 * ctx_options
+	 * Check if the loaded private key is the right one
+	 */
+	if (!SSL_CTX_check_private_key(ctx)) {
+		radlog(L_ERR, "rlm_eap_tls: Private key does not match the certificate public key");
+		return NULL;
+	}
+
+	/*
+	 * Set ctx_options
+	 */
+	ctx_options |= SSL_OP_NO_SSLv2;
+   	ctx_options |= SSL_OP_NO_SSLv3;
+	/* 
+       SSL_OP_SINGLE_DH_USE must be used in order to prevent 
+	   small subgroup attacks and forward secrecy. Always using
+       SSL_OP_SINGLE_DH_USE has an impact on the computer time
+       needed during negotiation, but it is not very large.
+	 */
+   	ctx_options |= SSL_OP_SINGLE_DH_USE;
 	SSL_CTX_set_options(ctx, ctx_options);
-	 */
-
 
 	/*
-	 * set the message callback to identify the type of message
+	 * TODO: Set the RSA & DH
+	SSL_CTX_set_tmp_rsa_callback(ctx, cbtls_rsa);
+	SSL_CTX_set_tmp_dh_callback(ctx, cbtls_dh);
+	 */
+
+	/*
+	 * set the message callback to identify the type of message.
 	 * For every new session, there can be a different callback argument
 	 */
 	SSL_CTX_set_msg_callback(ctx, cbtls_msg);
@@ -122,24 +163,24 @@ SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	SSL_CTX_set_info_callback(ctx, cbtls_info);
 
 	/*
+	 * Set verify modes
 	 * Always verify the peer certificate
-	 * TODO: Set certificate verify callback
 	 */
-	//SSL_CTX_set_verify(ctx, verify_mode, cb_ssl_verify);
 	verify_mode |= SSL_VERIFY_PEER;
-	//verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	//verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	SSL_CTX_set_verify(ctx, verify_mode, NULL);
+	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	SSL_CTX_set_verify(ctx, verify_mode, cbtls_verify);
 
-	/* Load the CAs we trust */
-	if(!(SSL_CTX_load_verify_locations(ctx, conf->ca_file, 0)))
-		err_exit("Couldn't read Trusted root CA list");
-
-	SSL_CTX_set_verify_depth(ctx, 1);
+	if (conf->verify_depth) {
+		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
+	}
 
 	/* Load randomness */
-	if(!(RAND_load_file(conf->random_file, 1024*1024)))
-		err_exit("Couldn't load randomness");
+	if (!(RAND_load_file(conf->random_file, 1024*1024))) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
+		return NULL;
+	}
 
 	return ctx;
 }
@@ -150,7 +191,7 @@ tls_session_t *new_tls_session(eap_tls_t *eaptls)
 	SSL *new_tls = NULL;
 	int verify_mode = 0;
 
-	if((new_tls = SSL_new(eaptls->ctx)) == NULL) {
+	if ((new_tls = SSL_new(eaptls->ctx)) == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: Error creating new SSL");
 		ERR_print_errors_fp(stderr);
 		return NULL;
@@ -176,17 +217,15 @@ tls_session_t *new_tls_session(eap_tls_t *eaptls)
 	 * Add the message callback to identify
 	 * what type of message/handshake is passed
 	 */
-	state->bio_type = BIO_new_fp(stdout, BIO_NOCLOSE);
 	SSL_set_msg_callback(new_tls, cbtls_msg);
 	SSL_set_msg_callback_arg(new_tls, state);
 	SSL_set_info_callback(new_tls, cbtls_info);
 
 	/* Always verify the peer certificate */
 	verify_mode |= SSL_VERIFY_PEER;
-	//verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	//verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	SSL_set_verify(state->ssl, verify_mode, NULL);
-	//SSL_set_verify_depth(state->ssl, verify_depth);
+	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	SSL_set_verify(state->ssl, verify_mode, cbtls_verify);
 	
 	/* In Server mode we only accept.  */
 	SSL_set_accept_state(state->ssl);
@@ -196,7 +235,12 @@ tls_session_t *new_tls_session(eap_tls_t *eaptls)
 
 static void int_ssl_check(SSL *s, int ret)
 {
-	int e = SSL_get_error(s, ret);
+	int e;
+
+	ERR_print_errors_fp(stderr);
+	e = SSL_get_error(s, ret);
+
+	radlog(L_ERR, " Error code is ..... %d\n", e);
 
 	switch(e) {
 		/* These seem to be harmless and already "dealt with" by our
@@ -210,19 +254,19 @@ static void int_ssl_check(SSL *s, int ret)
 	case SSL_ERROR_WANT_WRITE:
 	case SSL_ERROR_WANT_X509_LOOKUP:
 	case SSL_ERROR_ZERO_RETURN:
-		fprintf(stderr, " SSL Error ..... %d\n", e);
+		radlog(L_ERR, " SSL Error ..... %d\n", e);
 		return;
 		/* These seem to be indications of a genuine error that should
 		 * result in the SSL tunnel being regarded as "dead". */
 	case SSL_ERROR_SYSCALL:
 	case SSL_ERROR_SSL:
-		fprintf(stderr, " Error in SSL ..... %d\n", e);
+		radlog(L_ERR, " Error in SSL ..... %d\n", e);
 		SSL_set_app_data(s, (char *)1);
 		return;
 	default:
 		break;
 	}
-	fprintf(stderr, "Unknown Error ..... %d\n", e);
+	radlog(L_ERR, "Unknown Error ..... %d\n", e);
 	/* For any other errors that (a) exist, and (b) crop up - we need to
 	 * interpret what to do with them - so "politely inform" the caller that
 	 * the code needs updating here. */
@@ -251,6 +295,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 	if (err > 0) {
 		ssn->clean_out.used = err;
 	} else {
+		radlog(L_INFO, "rlm_eap_tls: SSL_read Error");
 		int_ssl_check(ssn->ssl, err);
 	}
 

@@ -23,47 +23,38 @@
 
 #ifndef NO_OPENSSL
 
-/* Output level:
- *     0 = nothing,
- *     1 = minimal, just errors,
- *     2 = minimal, all steps,
- *     3 = detail, all steps */
-static unsigned int cb_ssl_verify_level = 3;
-/*
-static int int_verify_depth = 10;
-*/
-
 void cbtls_info(const SSL *s, int where, int ret)
 {
-	char *str1, *str2;
+	char *str, *state;
 	int w;
 
-	if (where & SSL_CB_HANDSHAKE_START)
-		fprintf(stdout, "Callback has been called because a new handshake is started.\n");
-	if (where & SSL_CB_HANDSHAKE_DONE)
-		fprintf(stdout, "Callback has been called because handshake is finished.\n");
-
 	w = where & ~SSL_ST_MASK;
-	str1 = (w & SSL_ST_CONNECT ? "SSL_connect" : (w & SSL_ST_ACCEPT ?
-				"SSL_accept" : "undefined")),
-	str2 = SSL_state_string_long(s);
-	str2 = str2 ? str2 : "NULL";
+	if (w & SSL_ST_CONNECT) str="TLS_connect";
+	else if (w & SSL_ST_ACCEPT) str="TLS_accept";
+	else str="undefined";
 
-	if (where & SSL_CB_LOOP)
-		fprintf(stdout, "(%s) %s\n", str1, str2);
-	else if (where & SSL_CB_EXIT) {
+	state = (char *)SSL_state_string_long(s);
+	state = state ? state : "NULL";
+
+	if (where & SSL_CB_LOOP) {
+		radlog(L_INFO, "%s:%s\n", str, state);
+	} else if (where & SSL_CB_HANDSHAKE_START) {
+		radlog(L_INFO, "%s:%s\n", str, state);
+	} else if (where & SSL_CB_HANDSHAKE_DONE) {
+		radlog(L_INFO, "%s:%s\n", str, state);
+	} else if (where & SSL_CB_ALERT) {
+		str=(where & SSL_CB_READ)?"read":"write";
+		radlog(L_ERR,"TLS Alert %s:%s:%s\n", str,
+			SSL_alert_type_string_long(ret),
+			SSL_alert_desc_string_long(ret));
+	} else if (where & SSL_CB_EXIT) {
 		if (ret == 0)
-			fprintf(stdout, "(%s) failed in %s\n", str1, str2);
+			radlog(L_ERR, "%s:failed in %s\n", str, state);
 		else if (ret < 0)
-			fprintf(stdout, "%s:error in %s\n", str1, str2);
+			radlog(L_ERR, "%s:error in %s\n", str, state);
 	}
 }
 
-static const char *int_reason_no_issuer = "X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT";
-static const char *int_reason_not_yet = "X509_V_ERR_CERT_NOT_YET_VALID";
-static const char *int_reason_before = "X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD";
-static const char *int_reason_expired = "X509_V_ERR_CERT_HAS_EXPIRED";
-static const char *int_reason_after = "X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD";
 /*
  * Before trusting a certificate, you must make sure that the certificate is
    'valid'. There are several steps that your application can take in 
@@ -86,56 +77,65 @@ static const char *int_reason_after = "X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD"
  */
 int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 {
-	char buf1[256]; /* Used for the subject name */
-	char buf2[256]; /* Used for the issuer name */
-	const char *reason = NULL; /* Error reason (if any) */
-	X509 *err_cert;
+	char subject[256]; /* Used for the subject name */
+	char issuer[256]; /* Used for the issuer name */
+	char *user_name = NULL; /* User-Name */
+	X509 *client_cert;
+	SSL *ssl;
 	int err, depth;
+	int index = 0;
 
-	if(cb_ssl_verify_level == 0)
-		return ok;
-	err_cert = X509_STORE_CTX_get_current_cert(ctx);
+	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
 	depth = X509_STORE_CTX_get_error_depth(ctx);
 
-	buf1[0] = buf2[0] = '\0';
-	/* Fill buf1 */
-	X509_NAME_oneline(X509_get_subject_name(err_cert), buf1, 256);
-	/* Fill buf2 */
-	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), buf2, 256);
+	if(!ok)
+		radlog(L_ERR,"--> verify error:num=%d:%s\n",err,
+			X509_verify_cert_error_string(err));
+	/*
+	Catch too long Certificate chains
+	*/
+
+	/*
+	 * Retrieve the pointer to the SSL of the connection currently treated
+	 * and the application specific data stored into the SSL object.
+	 */
+	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+	user_name = SSL_get_ex_data(ssl, index);
+
+	/*
+	 * Get the Subject & Issuer
+	 */
+	subject[0] = issuer[0] = '\0';
+	X509_NAME_oneline(X509_get_subject_name(client_cert), subject, 256);
+	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer, 256);
+
 	switch (ctx->error) {
+
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
-		reason = int_reason_no_issuer;
+		radlog(L_ERR, "issuer= %s\n", issuer);
 		break;
 	case X509_V_ERR_CERT_NOT_YET_VALID:
-		reason = int_reason_not_yet;
-		break;
 	case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-		reason = int_reason_before;
+		radlog(L_ERR, "notBefore=");
+		//ASN1_TIME_print(bio_err, X509_get_notBefore(ctx->current_cert));
+		radlog(L_ERR,"\n");
 		break;
 	case X509_V_ERR_CERT_HAS_EXPIRED:
-		reason = int_reason_expired;
-		break;
 	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-		reason = int_reason_after;
+		radlog(L_ERR, "notAfter=");
+		//ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
+		radlog(L_ERR, "\n");
 		break;
 	}
 
-	if((cb_ssl_verify_level == 1) && ok)
-		return ok;
-	fprintf(stdout, "chain-depth=%d, ", depth);
-	if(reason)
-		fprintf(stdout, "error=%s\n", reason);
-	else
-		fprintf(stdout, "error=%d\n", err);
-	if(cb_ssl_verify_level < 3)
-		return ok;
-	fprintf(stdout, "--> subject = %s\n", buf1);
-	fprintf(stdout, "--> issuer  = %s\n", buf2);
-	if(!ok)
-		fprintf(stdout,"--> verify error:num=%d:%s\n",err,
-			X509_verify_cert_error_string(err));
-	fprintf(stdout, "--> verify return:%d\n",ok);
+	radlog(L_INFO, "chain-depth=%d, ", depth);
+	radlog(L_INFO, "error=%d\n", err);
+
+	radlog(L_INFO, "--> User-Name = %s\n", user_name);
+	radlog(L_INFO, "--> subject = %s\n", subject);
+	radlog(L_INFO, "--> issuer  = %s\n", issuer);
+	radlog(L_INFO, "--> verify return:%d\n", ok);
 	return ok;
 }
 
@@ -148,8 +148,6 @@ void cbtls_msg(int write_p, int version, int content_type, const void *buf, size
 	state->info.record_len = len;
 	state->info.version = version;
 
-	printf("content_type = %d\n", content_type);
-	printf("record_len = %d\n", len);
 	if (content_type == 21) {
 		state->info.alert_level = ((unsigned char*)buf)[0];
 		state->info.alert_description = ((unsigned char*)buf)[1];
@@ -163,31 +161,22 @@ void cbtls_msg(int write_p, int version, int content_type, const void *buf, size
 	tls_session_information(state);
 }
 
-/*
- * Got to figure out how to register & call this callback 
- */
-long cb_bio_dump(BIO *bio, int cmd, const char *argp, int argi,
-	     long argl, long ret)
+int cbtls_password(char *buf, int num, int rwflag, void *userdata)
 {
-	BIO *out;
+	strcpy(buf, (char *)userdata);
+	return(strlen((char *)userdata));
+}
 
-	out=(BIO *)BIO_get_callback_arg(bio);
-	if (out == NULL) return(ret);
+RSA *cbtls_rsa(SSL *s, int is_export, int keylength)
+{
+	static RSA *rsa_tmp=NULL;
 
-	if (cmd == (BIO_CB_READ|BIO_CB_RETURN))
+	if (rsa_tmp == NULL)
 	{
-		BIO_printf(out,"read from %08X [%08lX] (%d bytes => %ld (0x%X))\n",
-			bio,argp,argi,ret,ret);
-		BIO_dump(out,argp,(int)ret);
-		return(ret);
+		radlog(L_INFO, "Generating temp (%d bit) RSA key...", keylength);
+		rsa_tmp=RSA_generate_key(keylength, RSA_F4, NULL, NULL);
 	}
-	else if (cmd == (BIO_CB_WRITE|BIO_CB_RETURN))
-	{
-		BIO_printf(out,"write to %08X [%08lX] (%d bytes => %ld (0x%X))\n",
-			bio,argp,argi,ret,ret);
-		BIO_dump(out,argp,(int)ret);
-	}
-	return(ret);
+	return(rsa_tmp);
 }
 
 #endif /* !defined(NO_OPENSSL) */
