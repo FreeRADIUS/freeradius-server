@@ -39,32 +39,39 @@ ATTRIBUTE Altiga-IPSec-Over-NAT-Port-Num-G        35	integer
 #  Altiga value
 VALUE Altiga-Allow-Alpha-Only-Passwords-G    Allow           1
 VALUE Altiga-Allow-Alpha-Only-Passwords-G    Disallow        0
+
 VALUE Altiga-SEP-Card-Assignment-G/U         SEP1            1
 VALUE Altiga-SEP-Card-Assignment-G/U         SEP2            2
 VALUE Altiga-SEP-Card-Assignment-G/U         SEP3            4
 VALUE Altiga-SEP-Card-Assignment-G/U         SEP4            8
 VALUE Altiga-SEP-Card-Assignment-G/U         Any-SEP         15
+
 VALUE Altiga-Priority-on-SEP-G/U             High            1
 VALUE Altiga-Priority-on-SEP-G/U             Med-High        2
 VALUE Altiga-Priority-on-SEP-G/U             Medium          3
 VALUE Altiga-Priority-on-SEP-G/U             Med-Low         4
 VALUE Altiga-Priority-on-SEP-G/U             Low             5
+
 VALUE Altiga-Tunneling-Protocols-G/U         PPTP            1
 VALUE Altiga-Tunneling-Protocols-G/U         L2TP            2
 VALUE Altiga-Tunneling-Protocols-G/U         IPSec           4
 VALUE Altiga-Tunneling-Protocols-G/U         L2TP/IPSec      8
 VALUE Altiga-Tunneling-Protocols-G/U         PPTP-and-IPSec  5
 VALUE Altiga-Tunneling-Protocols-G/U         All             15
+
 VALUE Altiga-IPSec-Authentication-G          None            0
 VALUE Altiga-IPSec-Authentication-G          RADIUS          1
 VALUE Altiga-IPSec-Authentication-G          LDAP            2
 VALUE Altiga-IPSec-Authentication-G          NTDomain        3
 VALUE Altiga-IPSec-Authentication-G          SDI             4
 VALUE Altiga-IPSec-Authentication-G          Internal        5
+
 VALUE Altiga-IPSec-Allow-Passwd-Store-G/U    Allow           1
 VALUE Altiga-IPSec-Allow-Passwd-Store-G/U    Disallow        0
+
 VALUE Altiga-Use-Client-Address-G/U          Allow           1
 VALUE Altiga-Use-Client-Address-G/U          Disallow        0
+
 VALUE Altiga-PPTP-Min-Authentication-G/U     PAP             1
 VALUE Altiga-PPTP-Min-Authentication-G/U     CHAP            2
 VALUE Altiga-PPTP-Min-Authentication-G/U     EAP-MD5         4
@@ -73,6 +80,7 @@ VALUE Altiga-PPTP-Min-Authentication-G/U     EAP-TLS         16
 VALUE Altiga-PPTP-Min-Authentication-G/U     MSCHAPv1        32
 VALUE Altiga-PPTP-Min-Authentication-G/U     MSCHAPv2        64
 VALUE Altiga-PPTP-Min-Authentication-G/U     Default         102
+
 VALUE Altiga-L2TP-Min-Authentication-G/U     PAP             1
 VALUE Altiga-L2TP-Min-Authentication-G/U     CHAP            2
 VALUE Altiga-L2TP-Min-Authentication-G/U     EAP-MD5         4     
@@ -81,6 +89,7 @@ VALUE Altiga-L2TP-Min-Authentication-G/U     EAP-TLS         16
 VALUE Altiga-L2TP-Min-Authentication-G/U     MSCHAPv1        32
 VALUE Altiga-L2TP-Min-Authentication-G/U     MSCHAPv2        64
 VALUE Altiga-L2TP-Min-Authentication-G/U     Default         102
+
 VALUE Altiga-PPTP-Encryption-G               40bit                   2
 VALUE Altiga-PPTP-Encryption-G               40-Encryption-Req       3
 VALUE Altiga-PPTP-Encryption-G               128                     4
@@ -93,6 +102,7 @@ VALUE Altiga-PPTP-Encryption-G               128-Stateless-Req       12
 VALUE Altiga-PPTP-Encryption-G               128-Enc/Stateless-Req   13
 VALUE Altiga-PPTP-Encryption-G               40/128-Stateless-Req    14
 VALUE Altiga-PPTP-Encryption-G               40/128-Enc/Statls-Req   15
+
 VALUE Altiga-L2TP-Encryption-G               40bit                   2
 VALUE Altiga-L2TP-Encryption-G               40-Encryption-Req       3
 VALUE Altiga-L2TP-Encryption-G               128                     4
@@ -105,14 +115,19 @@ VALUE Altiga-L2TP-Encryption-G               128-Stateless-Req       12
 VALUE Altiga-L2TP-Encryption-G               128-Enc/Stateless-Req   13
 VALUE Altiga-L2TP-Encryption-G               40/128-Stateless-Req    14
 VALUE Altiga-L2TP-Encryption-G               40/128-Enc/Statls-Req   15
+
 VALUE Altiga-IPSec-L2L-Keepalives-G          ON                      1
 VALUE Altiga-IPSec-L2L-Keepalives-G          OFF                     0
+
 VALUE Altiga-IPSec-Tunnel-Type-G             LAN-to-LAN              1
 VALUE Altiga-IPSec-Tunnel-Type-G             Remote-Access           2
+
 VALUE Altiga-IPSec-Mode-Config-G             ON                      1
 VALUE Altiga-IPSec-Mode-Config-G             OFF                     0
+
 VALUE Altiga-IPSec-User-Group-Lock-G         ON                      1
 VALUE Altiga-IPSec-User-Group-Lock-G         OFF                     0
+
 VALUE Altiga-IPSec-Over-NAT-G                ON                      1
 VALUE Altiga-IPSec-Over-NAT-G                OFF                     0
 
