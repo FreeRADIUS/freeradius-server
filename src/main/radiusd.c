@@ -68,12 +68,12 @@ int			log_auth_pass  = FALSE;
 int			auth_port;
 int			acct_port;
 int			proxy_port;
-int			proxyfd;
 
 static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
-static int		sockfd;
+static int		authfd;
 static int		acctfd;
+int	        proxyfd;
 static int		spawn_flag = FALSE;
 static int		radius_pid;
 static int		need_reload = FALSE;
@@ -417,8 +417,8 @@ int main(int argc, char **argv)
 	else
 		auth_port = PW_AUTH_UDP_PORT;
 
-	sockfd = socket (AF_INET, SOCK_DGRAM, 0);
-	if (sockfd < 0) {
+	authfd = socket (AF_INET, SOCK_DGRAM, 0);
+	if (authfd < 0) {
 		perror("auth socket");
 		exit(1);
 	}
@@ -429,7 +429,7 @@ int main(int argc, char **argv)
 	sin->sin_addr.s_addr = myip;
 	sin->sin_port = htons(auth_port);
 
-	result = bind (sockfd, & salocal, sizeof (*sin));
+	result = bind (authfd, & salocal, sizeof (*sin));
 	if (result < 0) {
 		perror ("auth bind");
 		exit(1);
@@ -607,8 +607,8 @@ int main(int argc, char **argv)
 		}
 
 		FD_ZERO(&readfds);
-		if (sockfd >= 0)
-			FD_SET(sockfd, &readfds);
+		if (authfd >= 0)
+			FD_SET(authfd, &readfds);
 		if (acctfd >= 0)
 			FD_SET(acctfd, &readfds);
 		if (proxyfd >= 0)
@@ -633,7 +633,7 @@ int main(int argc, char **argv)
 		}
 		for (i = 0; i < 3; i++) {
 
-			if (i == 0) fd = sockfd;
+			if (i == 0) fd = authfd;
 			if (i == 1) fd = acctfd;
 			if (i == 2) fd = proxyfd;
 			if (fd < 0 || !FD_ISSET(fd, &readfds))
@@ -844,50 +844,64 @@ int rad_process(REQUEST *request)
 	}
 
 	/*
-	 *	If we did select a function, execute it
+	 *	If we did NOT select a function, then exit immediately.
 	 */
-	if (fun) {
-		/*
-		 *	Check for a duplicate, or error.
-		 *	Throw away the the request if so.
-		 */
-		request = rad_check_list(request);
-		if (request == NULL) {
-			return 0;
-		}
+	if (!fun) {
+		return 0;
+	}
 
-		if (dospawn) {
-			rad_spawn_child(request, fun);
-		} else {
+	/*
+	 *	Check for a duplicate, or error.
+	 *	Throw away the the request if so.
+	 */
+	request = rad_check_list(request);
+	if (request == NULL) {
+		return 0;
+	}
+	
+	/*
+	 *	If we're spawning a child thread, let it do all of
+	 *	the work of handling a request, and exit.
+	 */
+	if (dospawn) {
+		rad_spawn_child(request, fun);
+		return 0;
+	}
+
 /*
  *	This define is here only for debugging the thread pool.
  *	Normally, when in NON-spawning mode, there should be NO
  *	child threads.
  */
 #ifndef WITH_THREAD_POOL
-			(*fun)(request);
-
-			/*
-			 *	If we don't already have a proxy
-			 *	packet for this request, we MIGHT have
-			 *	to go proxy it.
-			 */
-			if (!request->proxy) {
-				int sent;
-				sent = proxy_send(request);
-				if (sent == 0 || sent == 2)
-					rad_respond(request);
-			} else {
-				if (replicating == 0) {
+	/*
+	 *	We're the one who's supposed to handle the request,
+	 *	as everyone else gave up on it.  Let's do so.
+	 */
+	(*fun)(request);
+	
+	/*
+	 *	If we don't already have a proxy
+	 *	packet for this request, we MIGHT have
+	 *	to go proxy it.
+	 */
+	if (!request->proxy) {
+		int sent;
+		sent = proxy_send(request);
+		if (sent == 0 || sent == 2)
+			rad_respond(request);
+	} else {
+		if (replicating == 0) {
 					
-					rad_respond(request);
-				}
-			}
-#else
-			rad_spawn_child(request, fun);
-#endif
+			rad_respond(request);
 		}
 	}
+#else
+	/*
+	 *	Temporary thread pools: always spawn, even if debugging.
+	 */
+	rad_spawn_child(request, fun);
+#endif
 
 	return 0;
 }
