@@ -421,7 +421,7 @@ static void *request_handler_thread(void *arg)
 	/*
 	 *	Loop forever, until told to exit.
 	 */
-	for (;;) {
+	do {
 		/*
 		 *	Wait to be signalled.
 		 */
@@ -440,16 +440,6 @@ static void *request_handler_thread(void *arg)
 			}
 			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
 			       self->thread_num, strerror(errno));
-			break;
-		}
-
-		/*
-		 *	If we've been told to kill ourselves,
-		 *	then exit politely.
-		 */
-		if (self->status == THREAD_CANCELLED) {
-			DEBUG2("Thread %d exiting on request from parent.",
-					self->thread_num);
 			break;
 		}
 
@@ -484,7 +474,7 @@ static void *request_handler_thread(void *arg)
 		rad_assert(thread_pool.active_threads > 0);
 		thread_pool.active_threads--;
 		pthread_mutex_unlock(&thread_pool.mutex);
-	}
+	} while (self->status != THREAD_CANCELLED);
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
 
@@ -884,12 +874,14 @@ int thread_pool_clean(time_t now)
 
 			/*
 			 *	If the thread is not handling a
-			 *	request, then tell it to exit.
+			 *	request, but still live, then tell
+			 *	it to exit.
 			 *
 			 *	It will eventually wake up, and realize
 			 *	it's been told to commit suicide.
 			 */
-			if (handle->request == NULL) {
+			if ((handle->request == NULL) &&
+			    (handle->status == THREAD_RUNNING)) {
 				handle->status = THREAD_CANCELLED;
 
 				/*
@@ -912,9 +904,11 @@ int thread_pool_clean(time_t now)
 			next = handle->next;
 
 			/*
-			 *	Not handling a request, we can kill it.
+			 *	Not handling a request, but otherwise
+			 *	live, we can kill it.
 			 */
 			if ((handle->request == NULL) &&
+			    (handle->status == THREAD_RUNNING) &&
 			    (handle->request_count > thread_pool.max_requests_per_thread)) {
 				handle->status = THREAD_CANCELLED;
 				sem_post(&thread_pool.semaphore);
