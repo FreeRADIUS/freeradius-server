@@ -43,7 +43,7 @@ static const char rcsid[] = "$Id$";
 
 extern int proxy_dead_time;
 
-REALM *realms;
+REALM *realms = NULL;
 
 /*
  *	Free a PAIR_LIST
@@ -373,11 +373,12 @@ int read_realms_file(const char *file)
 	char opts[256];
 	char *s, *p;
 	int lineno = 0;
-	REALM *c;
+	REALM *c, **tail;
 	RADCLIENT *client;
 
 	realm_free(realms);
 	realms = NULL;
+	tail = &realms;
 
 	if ((fp = fopen(file, "r")) == NULL) {
 		/* The realms file is not mandatory.  If it exists it will
@@ -474,8 +475,9 @@ int read_realms_file(const char *file)
 				c->notrealm = 1;
 		}
 
-		c->next = realms;
-		realms = c;
+		c->next = NULL;
+		*tail = c;
+		tail = &c->next;
 	}
 	fclose(fp);
 
@@ -517,23 +519,30 @@ REALM *realm_find(const char *realm)
 		realm = "NULL";
 	}
 
-	for(cl = realms; cl; cl = cl->next)
+	for(cl = realms; cl; cl = cl->next) {
 		if (strcmp(cl->realm, realm) == 0) {
 			if (cl->active) {
-				break;
+				return cl;
 			} else {
 				if (cl->wakeup <= now) {
 					cl->active = TRUE;
-					break;
+					return cl;
 				}
 			}
 		}
-	if (cl != NULL) 
-		return cl;
-	for(cl = realms; cl; cl = cl->next)
+	}
+
+	/*
+	 *	Loop over them again, looking for the default
+	 */
+	for (cl = realms; cl; cl = cl->next)
 		if (strcmp(cl->realm, "DEFAULT") == 0)
-			break;
-	return cl;
+			return cl;
+
+	/*
+	 *	Didn't find anything that matched.
+	 */
+	return NULL;
 }
 
 
@@ -546,7 +555,7 @@ REALM *realm_findbyaddr(uint32_t ipaddr)
 
 	for(cl = realms; cl != NULL; cl = cl->next)
 		if (ipaddr == cl->ipaddr)
-			break;
+			return cl;
 
-	return cl;
+	return NULL;
 }

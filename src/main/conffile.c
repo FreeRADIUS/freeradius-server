@@ -841,9 +841,11 @@ int read_radius_conf_file(void)
 static int generate_realms(const char *filename)
 {
 	CONF_SECTION *cs;
-	REALM *c;
+	REALM *my_realms = NULL;
+	REALM *c, **tail;
 	char *s, *authhost, *accthost;
 
+	tail = &my_realms;
 	for (cs = cf_subsection_find_next(config, NULL, "realm"); cs != NULL;
 			cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!cs->name2) {
@@ -933,10 +935,17 @@ static int generate_realms(const char *filename)
 			c->notrealm = 1;
 		c->active = TRUE;
 
-		c->next = realms;
-		realms = c;
-
+		c->next = NULL;
+		*tail = c;
+		tail = &c->next;
 	}
+
+	/*
+	 *	And make these realms preferred over the ones
+	 *	in the 'realms' file.
+	 */
+	*tail = realms;
+	realms = my_realms;
 
 	return 0;
 }
