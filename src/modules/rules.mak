@@ -73,6 +73,10 @@ $(TARGET).so: $(DYNAMIC_OBJS)
 #######################################################################
 static: $(TARGET).a
 	@cp $< ../lib
+	@[ "$LIBS" != "" ] && \
+		echo -n $(LIBS) " " >> ../lib/STATIC_MODULE_LDFLAGS
+	@[ "$LDFLAGS" != "" ] && \
+		echo -n $(LDFLAGS) " " >> ../lib/STATIC_MODULE_LDFLAGS
 
 dynamic: $(TARGET).so
 	@cp $< ../lib

@@ -9,7 +9,7 @@ include ../../Make.inc
 WHAT_TO_MAKE	= all
 
 #
-#  Build static libraries by default.  If 'LIBDL' is defined
+#  Build static libraries by default.  If 'DYNAMIC_MODULES' is defined
 #  to be something, then build dynamic libraries, too.
 #
 TARGET_LIBS = static
@@ -20,9 +20,16 @@ endif
 all:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
+static:
+	@rm -f lib/STATIC_MODULE_LDFLAGS
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
+dynamic:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f *~ lib/[0-9a-z]*
+	@rm -f *~ lib/[0-9a-z]* lib/STATIC_MODULE_LDFLAGS
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
