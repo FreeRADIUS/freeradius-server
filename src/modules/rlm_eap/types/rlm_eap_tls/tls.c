@@ -253,6 +253,8 @@ void session_init(tls_session_t *ssn)
 	ssn->fragment = 0;
 	ssn->tls_msg_len = 0;
 	ssn->length_flag = 0;
+	ssn->opaque = NULL;
+	ssn->free_opaque = NULL;
 }
 
 void session_close(tls_session_t *ssn)
