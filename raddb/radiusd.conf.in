@@ -4,14 +4,12 @@
 ##	http://www.freeradius.org/
 ##
 
-#
 #  	The location of other config files and
 #  	logfiles are declared in this file
 #
 #  	Also general configuration for modules can be done
 #  	in this file, it is exported through the API to
 #  	modules that ask for it.
-#
 
 # Stuff from autoconf
 prefix = @prefix@
@@ -24,24 +22,19 @@ libdir = @libdir@
 raddbdir = @raddbdir@
 radacctdir = @radacctdir@
 
-#
 #  Location of config and logfiles.
-#
 confdir = ${raddbdir}
-
 run_dir = ${localstatedir}/run
 
-#
 #  pidfile: Where to place the PID of the RADIUS server.
 #
 #  The server may be signalled while it's running by using this
 #  file.
 #
 #  e.g.:  kill -HUP `cat /var/run/radiusd.pid`
-#
 pidfile = ${run_dir}/radiusd.pid
 
-#
+
 # user/group: The name (or #number) of the user/group to run httpd as.
 #    On SCO (ODT 3) use "user = nouser" and "group = nogroup".
 #    On HPUX you may not be able to use shared memory as nobody, and the
@@ -52,12 +45,13 @@ pidfile = ${run_dir}/radiusd.pid
 #  don't use group nobody on these systems!
 #
 #  On systems with shadow passwords, you might have to set 'group = shadow'
-#  for the server to be able to read the shadow password file.
-#
+#  for the server to be able to read the shadow password file.  If you can
+#  authenticate users whil in debug mode, but not in normal use, it may be
+#  because the debugged server is running as a user that can read the shadow
+#  info, and the below user can not.
 user = nobody
 group = nobody
 
-#
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
 #  Requests which take more time than this to process may be killed, and
@@ -68,10 +62,8 @@ group = nobody
 #  used to handle a request.
 #
 #  Useful range of values: 5 to 120
-#
 max_request_time = 30
 
-#
 #  delete_blocked_requests: If the request takes MORE THAN 'max_request_time'
 #  to be handled, then maybe the server should delete it.
 #
@@ -81,7 +73,6 @@ max_request_time = 30
 #
 delete_blocked_requests = no
 
-#
 #  cleanup_delay: The time to wait (in seconds) before cleaning up
 #  a reply which was sent to the NAS.
 #
@@ -98,10 +89,8 @@ delete_blocked_requests = no
 #  requests, and some new requests may get blocked.  (See 'max_requests'.)
 #
 #  Useful range of values: 2 to 10
-#
 cleanup_delay = 5
 
-#
 #  max_requests: The maximum number of requests which the server keeps
 #  track of.  This should be 256 multiplied by the number of clients.
 #  e.g. With 4 clients, this number should be 1024.
@@ -118,20 +107,16 @@ cleanup_delay = 5
 #  the highest it should be.
 #
 #  Useful range of values: 256 to infinity
-#
 max_requests = 1024
 
-#
 #  bind_address:  Make the server listen on a particular IP address, and
 #  send replies out from that address.  This directive is most useful
 #  for machines with multiple IP addresses on one interface.
 #
 #  It can either contain "*", or an IP address, or a fully qualified
 #  Internet domain name.  The default is "*"
-#
 bind_address = *
 
-#
 #  port: Allows you to bind FreeRADIUS to a specific port.
 #
 #  The default port that most NAS boxes use is 1645, which is historical.
@@ -146,15 +131,11 @@ bind_address = *
 #  (usually through 'grep radius /etc/services') set this to 0 (zero).
 #
 #  A port given on the command-line via '-p' over-rides this one.
-#
 port = 0
 
-#
 #  Which program to execute check doing concurrency checks.
-#
 checkrad = ${sbindir}/checkrad
 
-#
 #  hostname_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
 #  The default is off because it'd be overall better for the net if people
@@ -166,19 +147,15 @@ checkrad = ${sbindir}/checkrad
 #  for 30 seconds, if it sees an IP address which has no name associated
 #  with it.
 #
-# allowed values: {no, yes}
-#
+#  allowed values: {no, yes}
 hostname_lookups = no
 
-#
 #  Core dumps are a bad thing.  This should only be set to 'yes'
 #  if you're debugging a problem with the server.
 #
-# allowed values: {no, yes}
-#
+#  allowed values: {no, yes}
 allow_core_dumps = no
 
-#
 #  Regular expressions
 #
 #  These items are set at configure time.  If they're set to "yes",
@@ -186,44 +163,35 @@ allow_core_dumps = no
 #
 #  If they're set to "no" at configure time, then setting them to "yes"
 #  WILL NOT WORK.  It will give you an error.
-#
 regular_expressions	= @REGEX@
 extended_expressions	= @REGEX_EXTENDED@
 
-#
 #  Log the full User-Name attribute, as it was found in the request.
 #
 # allowed values: {no, yes}
-#
 log_stripped_names = no
 
-#
 #  Log authentication requests to the log file.
 #
-# allowed values: {no, yes}
-#
+#  allowed values: {no, yes}
 log_auth = no
 
-#
 #  Log passwords with the authentication requests.
 #  log_auth_badpass  - logs password if it's rejected
 #  log_auth_goodpass - logs password if it's correct
 #
-# allowed values: {no, yes}
-#
+#  allowed values: {no, yes}
 log_auth_badpass = no
 log_auth_goodpass = no
 
-# 
-# usercollide:  Turn user collision code on and off.
-#		See doc/duplicate-users
-#
+# usercollide:  Turn "username collision" code on and off.  See the
+# "duplicate-users" documentation
 usercollide = no
 
 # lower_user / lower_pass:  
 # Lowercase the username/password "before" or "after"
 # attempting to authenticate.  
-
+#
 # If "before", the server will first modify the request
 # and then try to auth the user.  If "after", the server
 # will first auth using the values provided by the
@@ -236,7 +204,6 @@ usercollide = no
 #
 # Default is 'no' (don't lowercase values)
 # Valid values = "before" / "after" / "no"
-#
 lower_user = no
 lower_pass = no
 
@@ -247,13 +214,8 @@ lower_pass = no
 #
 # Default is 'no' (don't remove spaces)
 # Valid values = "before" / "after" / "no" (explanation above)
-#
 nospace_user = no
 nospace_pass = no
-
-#######################################################################
-#
-#  Include optional/module specific configurations.
 
 
 # PROXY CONFIGURATION
@@ -267,12 +229,13 @@ nospace_pass = no
 #  If you have proxying turned off, and your configuration files say
 #  to proxy a request, then an error message will be logged.
 #
-# allowed values: {no, yes}
-#
 #  To disable proxying, change the "yes" to "no", and comment the
 #  $INCLUDE line.
+#
+#  allowed values: {no, yes}
 proxy_requests  = yes
 $INCLUDE  ${confdir}/proxy.conf
+
 
 # CLIENTS CONFIGURATION
 #
@@ -283,6 +246,7 @@ $INCLUDE  ${confdir}/proxy.conf
 #
 $INCLUDE  ${confdir}/clients.conf
 
+
 # SNMP CONFIGURATION
 #
 #  Snmp configuration is only valid if you enabled SNMP support when
@@ -291,9 +255,7 @@ $INCLUDE  ${confdir}/clients.conf
 $INCLUDE  ${confdir}/snmp.conf
 
 
-#######################################################################
-#
-#  Thread pool configuration.
+# THREAD POOL CONFIGURATION
 #
 #  The thread pool is a long-lived group of threads which
 #  take turns (round-robin) handling any incoming requests.
@@ -309,55 +271,47 @@ $INCLUDE  ${confdir}/snmp.conf
 #  not doing anything productive.
 #
 #  The numbers given below should be adequate for most situations.
-#
-#
 thread pool {
-#
-#  Number of servers to start initially --- should be a reasonable ballpark
-#  figure.
-#
+	#  Number of servers to start initially --- should be a reasonable
+	#  ballpark figure.
 	start_servers = 5
 
-#
-#  Limit on the total number of servers running.
-#
-#  If this limit is ever reached, clients will be LOCKED OUT, so it
-#  should NOT BE SET TOO LOW.  It is intended mainly as a brake to
-#  keep a runaway server from taking the system with it as it spirals
-#  down...
-#
+	#  Limit on the total number of servers running.
+	#
+	#  If this limit is ever reached, clients will be LOCKED OUT, so it
+	#  should NOT BE SET TOO LOW.  It is intended mainly as a brake to
+	#  keep a runaway server from taking the system with it as it spirals
+	#  down...
 	max_servers = 32
 
-#
-#  Server-pool size regulation.  Rather than making you guess how many
-#  servers you need, FreeRADIUS dynamically adapts to the load it
-#  sees --- that is, it tries to maintain enough servers to
-#  handle the current load, plus a few spare servers to handle transient
-#  load spikes.
-#
-#  It does this by periodically checking how many servers are waiting
-#  for a request.  If there are fewer than min_spare_servers, it creates
-#  a new spare.  If there are more than max_spare_servers, some of the
-#  spares die off.  The default values are probably OK for most sites.
-#
+	#  Server-pool size regulation.  Rather than making you guess how many
+	#  servers you need, FreeRADIUS dynamically adapts to the load it sees
+	#  --- that is, it tries to maintain enough servers to handle the
+	#  current load, plus a few spare servers to handle transient load
+	#  spikes.
+	#
+	#  It does this by periodically checking how many servers are waiting
+	#  for a request.  If there are fewer than min_spare_servers, it
+	#  creates a new spare.  If there are more than max_spare_servers, some
+	#  of the spares die off.  The default values are probably OK for most
+	#  sites.
 	min_spare_servers = 3
 	max_spare_servers = 10
 
-#
-#  There may be memory leaks or resource allocation problems with
-#  the server.  If so, set this value to 300 or so, so that the
-#  resources will be cleaned up periodically.
-#
-#  This should only be necessary if there are serious bugs in the
-#  server which have not yet been fixed.
-#
-#  '0' is a special value meaning 'infinity', or 'the servers never exit'
-#
+	#  There may be memory leaks or resource allocation problems with
+	#  the server.  If so, set this value to 300 or so, so that the
+	#  resources will be cleaned up periodically.
+	#
+	#  This should only be necessary if there are serious bugs in the
+	#  server which have not yet been fixed.
+	#
+	#  '0' is a special value meaning 'infinity', or 'the servers never
+	#  exit'
 	max_requests_per_server = 0
 }
 
 modules {
-##	pam {
+	pam {
 		#
 		#  The name to use for PAM authentication.
 		#  PAM looks in /etc/pam.d/${pam_auth_name}
@@ -366,8 +320,8 @@ modules {
 		#  Note that any Pam-Auth attribute set in the 'users'
 		#  file over-rides this one.
 		#
-##		pam_auth = radiusd
-##	}
+		pam_auth = radiusd
+	}
 	unix {
 		#
 		#  Cache /etc/passwd, /etc/shadow, and /etc/group
@@ -397,10 +351,10 @@ modules {
 		radwtmp = ${logdir}/radwtmp
 	}
 
-	# This module definition allows you to use LDAP for
-	# authorization and authentication (Auth-Type = LDAP)
-	# See doc/rlm_ldap for description of configuration options 
-	# and sample authorize{} and authenticate{} blocks 
+	#  This module definition allows you to use LDAP for
+	#  authorization and authentication (Auth-Type = LDAP)
+	#  See doc/rlm_ldap for description of configuration options 
+	#  and sample authorize{} and authenticate{} blocks 
 	ldap {
 		server = "ldap.your.domain"
 		# identity = "cn=admin,o=My Org,c=UA"
@@ -417,7 +371,6 @@ modules {
 		net_timeout = 1
 	}
 
-	#
 	#  You can have multiple instances of the realm module to
 	#  support multiple realm syntaxs at the same time.  The
 	#  search order is defined the order in the authorize and
@@ -434,47 +387,50 @@ modules {
 		delimiter = "@"
 	}
 
-	#
 	#  'realm/username'
 	#
 	#  Using this entry, IPASS users have their realm set to "IPASS".
-	#
-	#realm prefix {
-	#	format = prefix
-	#	delimiter = "/"
-	#}
+	realm realmslash {
+		format = prefix
+		delimiter = "/"
+	}
 
-	#
 	#  'username%realm'
-	#
-	#realm percent {
-	#	format = suffix
-	#	delimiter = "%"
-	#}
+	realm realmpercent {
+		format = suffix
+		delimiter = "%"
+	}
 	
+	#  rewrite arbitrary packets.  Useful in accounting and authorization.
+	## FIXME:  This is highly experimental at the moment.  Please give 
+	## feedback.
+	attr_rewrite sanecallerid {
+		attribute = Called-Station-Id
+		# may be "packet", "reply", or "config"
+		searchin = packet
+		searchfor = "[+ ]"
+		replacewith = ""
+		ignore_case = no
+		max_matches = 10
+	}
 
 	preprocess {
 		huntgroups = ${confdir}/huntgroups
 		hints = ${confdir}/hints
 
-		#
 		# This hack changes Ascend's wierd port numberings
 		# to standard 0-??? port numbers so that the "+" works
 		# for IP address assignments.
-		#
 		with_ascend_hack = no
 		ascend_channels_per_line = 23
 
-		#
 		# Windows NT machines often authenticate themselves as
 		# NT_DOMAIN\username
 		#
 		# If this is set to 'yes', then the NT_DOMAIN portion
 		# of the user-name is silently discarded.
-		#
 		with_ntdomain_hack = no
 
-		#
 		# Specialix Jetstream 8500 24 port access server.
 		#
 		# If the user name is 10 characters or longer, a "/"
@@ -483,10 +439,8 @@ modules {
 		#
 		# If you're not running that NAS, you don't need
 		# this hack.
-		#
 		with_specialix_jetstream_hack = no
 
-		#
 		# Cisco sends it's VSA attributes with the attribute
 		# name *again* in the string, like:
 		#
@@ -500,7 +454,6 @@ modules {
 		#
 		# If you're not running a Cisco NAS, you don't need
 		# this hack.
-		#
 		with_cisco_vsa_hack = no
 	}
 
@@ -508,12 +461,10 @@ modules {
 		usersfile = ${confdir}/users
 		acctusersfile = ${confdir}/acct_users
 
-		#
 		#  If you want to use the old Cistron 'users' file
 		#  with FreeRADIUS, you should change the next line
 		#  to 'compat = cistron'.  You can the copy your 'users'
 		#  file from Cistron.
-		#
 		compat = no
 	}
 
@@ -528,7 +479,6 @@ modules {
 	}
 	
 	detail {
-		#
 		#  Note that we do NOT use NAS-IP-Address here, as that
 		#  attribute MAY BE from the originating NAS, and NOT
 		#  from the proxy which actually sent us the request.
@@ -546,7 +496,11 @@ modules {
 		key = "User-Name, Acct-Session-Id, NAS-IP-Address, Client-IP-Address, NAS-Port-Id"
 	}
 
+
+	# Include another file that has SQL-related stuff in it.  
+	# This is another file solely because it tends to be big.
 	$INCLUDE  ${confdir}/sql.conf
+
 
 	radutmp {
 		filename = ${logdir}/radutmp
@@ -567,20 +521,13 @@ modules {
 		callerid = "no"
 	}
 
-	#
 	# attr_filter - filters the attributes received in replies from
 	# proxy servers, to make sure we send back to the upstream
 	# only allowed attributes.
-	#
-  
 	attr_filter {
 		attrsfile = ${confdir}/attrs
 	}
 
-	#######################################################################
-	#
-	#  Configuration for the counter module
-	#
 	#  This module takes an attribute (count-attribute), which MUST
 	#  be an 'integer' or 'time' attribute.  It also takes a key,
 	#  and creates a counter for each unique key.  The count is
@@ -596,7 +543,6 @@ modules {
 	#
 	#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
 	#      Reply-Message = "You've used up more than one hour today"
-	#
 	counter {
 		filename = ${raddbdir}/db.counter
 		key = User-Name
@@ -610,67 +556,67 @@ modules {
 
 	# The "always" module is here for debugging purposes. Each instance simply
 	# returns the same result, always, without doing anything.
-	#
-	#always fail {
-	#	rcode = fail
-	#}
-	#always reject {
-	#	rcode = reject
-	#}
-	#always ok {
-	#	rcode = ok
-	#	simulcount = 0
-	#	mpp = no
-	#}
+	always fail {
+		rcode = fail
+	}
+	always reject {
+		rcode = reject
+	}
+	always ok {
+		rcode = ok
+		simulcount = 0
+		mpp = no
+	}
 
-	#######################################################################
-	#
-	#	Configuration for the example module.  Uncommenting it will cause it
-	#	to get loaded and initialized, but should have no real effect as long
-	#	it is not referencened in one of the autz/auth/preacct/acct sections
-	#
+	# Configuration for the example module.  Uncommenting it will cause it
+	# to get loaded and initialized, but should have no real effect as long
+	# it is not referencened in one of the autz/auth/preacct/acct sections
 	example {
-	#
-	#  Boolean variable.
-	#
-	# allowed values: {no, yes}
-	#
+		#  Boolean variable.
+		# allowed values: {no, yes}
 		boolean = yes
 
-	#
-	#  An integer, of any value.
-	#
+		#  An integer, of any value.
 		integer = 16
 
-	#
-	#  A string.
-	#
+		#  A string.
 		string = "This is an example configuration string"
 
-	#
-	# An IP address, either in dotted quad (1.2.3.4) or hostname
-	# (example.com)
-	#
+		# An IP address, either in dotted quad (1.2.3.4) or hostname
+		# (example.com)
 		ipaddr = 127.0.0.1
 
-	#
-	# A subsection
-	#
+		# A subsection
 		mysubsection {
 			anotherinteger = 1000
-	#
-	# They nest
-	#
+			# They nest
 			deeply nested {
 				string = "This is a different string"
 			}
 		}
 	}
+
 }
 
-# Authentication types, Auth-Type = System for now.
+
+
+# Authorization. First preprocess (hints and huntgroups files),
+# then realms, and finally look in the "users" file.
+# The order of the realm modules will determine the order that
+# we try to find a matching realm.
+# Make *sure* that 'preprocess' comes before any realm if you 
+# need to setup hints for the remote radius server
+authorize {
+	preprocess
+#	counter
+#	attr_filter
+	suffix
+	files
+}
+
+
+# Decide whether the supplied auth info is sufficient for access.
 authenticate {
-# Uncomment this if you want to use PAM (Auth-Type = PAM)
 #	pam
 	unix
 # By grouping modules together in an authtype block, that authtype will be
@@ -681,23 +627,9 @@ authenticate {
 #		sql
 #		sql2
 #	}
-# Uncomment this if you want to use ldap (Auth-Type = LDAP)
 #	ldap
 }
 
-# Authorization. First preprocess (hints and huntgroups files),
-# then realms, and finally look in the "users" file.
-# The order of the realm modules will determine the order that
-# we try to find a matching realm.
-# Make *sure* that 'preprocess' comes before any realm if you 
-# need to setup hints for the remote radius server
-authorize {
-	preprocess
-	#counter
-	#attr_filter
-	suffix
-	files
-}
 
 # Pre-accounting. Look for proxy realm in order of realms, then 
 # acct_users file, then preprocess (hints file).
@@ -707,16 +639,18 @@ preacct {
 	preprocess
 }
 
+
 # Accounting. Log to detail file, and to the radwtmp file, and maintain
 # radutmp.
 accounting {
-	#acct_unique
+#	acct_unique
 	detail
-	#counter
+#	counter
 	unix
 	radutmp
-	#sradutmp
+#	sradutmp
 }
+
 
 # Session database, used for checking Simultaneous-Use. The radutmp module
 # handles this

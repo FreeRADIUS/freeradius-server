@@ -1,0 +1,12 @@
+TARGET      = @targetname@
+SRCS        = rlm_attr_rewrite.c
+HEADERS     = 
+RLM_CFLAGS  = @attr_rewrite_cflags@
+RLM_LIBS    = @attr_rewrite_ldflags@
+RLM_INSTALL = 
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)
