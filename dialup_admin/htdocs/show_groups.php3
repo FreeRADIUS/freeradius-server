@@ -58,7 +58,7 @@ EOM;
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT COUNT(*),GroupName FROM usergroup GROUP BY GroupName;");
+	"SELECT COUNT(*),GroupName FROM $config[sql_usergroup_table] GROUP BY GroupName;");
 	if ($search){
 		if (@da_sql_num_rows($search,$config)){
 			while( $row = @da_sql_fetch_array($search,$config) ){
