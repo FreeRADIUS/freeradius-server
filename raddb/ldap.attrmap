@@ -21,12 +21,13 @@ checkItem	$GENERIC$			radiusCheckItem
 replyItem	$GENERIC$			radiusReplyItem
 
 checkItem	Auth-Type			radiusAuthType
-checkItem	Simultaneous-Use		npSessionsAllowed
+checkItem	Simultaneous-Use		radiusSimultaneousUse
 checkItem	Called-Station-Id		radiusCalledStationId
 checkItem	Calling-Station-Id		radiusCallingStationId
 checkItem	LM-Password			lmPassword
 checkItem	NT-Password			ntPassword
 checkItem	SMB-Account-CTRL-TEXT		acctFlags
+checkItem	Expiration			radiusExpiration
 
 replyItem	Service-Type			radiusServiceType
 replyItem	Framed-Protocol			radiusFramedProtocol
