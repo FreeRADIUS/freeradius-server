@@ -46,6 +46,10 @@ int rad_accounting(REQUEST *request)
 	int		reply = RLM_MODULE_OK;
 
 	if (!request->proxy) { /* Only need to do this once, before proxying */
+		char		*exec_program;
+		int		exec_wait;
+		VALUE_PAIR	*vp;
+
 		reply = module_preacct(request);
 		if (reply != RLM_MODULE_NOOP &&
 		    reply != RLM_MODULE_OK &&
@@ -59,6 +63,38 @@ int rad_accounting(REQUEST *request)
 		 */
 		reply = module_accounting(request);
 		
+		/*
+		 *	See if we need to execute a program.
+		 *	FIXME: somehow cache this info, and only execute the
+		 *	program when we receive an Accounting-START packet.
+		 *	Only at that time we know dynamic IP etc.
+		 */
+		exec_program = NULL;
+		exec_wait = 0;
+		if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM)) != NULL) {
+			exec_wait = 0;
+			exec_program = strdup((char *)vp->strvalue);
+			pairdelete(&request->reply->vps, PW_EXEC_PROGRAM);
+		}
+
+		if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
+			exec_wait = 1;
+			exec_program = strdup((char *)vp->strvalue);
+			pairdelete(&request->reply->vps, PW_EXEC_PROGRAM_WAIT);
+		}
+		
+		/*
+		 *	If we want to exec a program, but wait for it,
+		 *	do it first before sending the reply.
+		 */
+		if (exec_program && exec_wait) {
+			if (radius_exec_program(exec_program, request,
+						exec_wait, NULL) != 0) {
+				
+				return reply;
+			}
+		}
+
 		/*
 		 *	Maybe one of the preacct modules has decided
 		 *	that a proxy should be used. If so, get out of
@@ -78,6 +114,7 @@ int rad_accounting(REQUEST *request)
 	if (reply == RLM_MODULE_NOOP ||
 	    reply == RLM_MODULE_OK ||
 	    reply == RLM_MODULE_UPDATED) {
+
 		/*
 		 *	Now send back an ACK to the NAS.
 		 */
