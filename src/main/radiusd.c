@@ -98,7 +98,7 @@ static void	sig_hup (int);
 static int	rad_process (REQUEST *);
 static int	rad_respond (REQUEST *);
 static REQUEST	*rad_check_list(REQUEST *);
-static void	rad_spawn_child(REQUEST *, FUNP, int, int);
+static void	rad_spawn_child(REQUEST *, FUNP, int);
 
 #ifdef WITH_NEW_CONFIG
 typedef struct config2int_t {
@@ -689,8 +689,7 @@ int rad_process(REQUEST *request)
 {
 	int dospawn;
 	FUNP fun;
-	int already_proxied=0;
-	int replicating=0;
+	int replicating = 0;
 
 	dospawn = FALSE;
 	fun = NULL;
@@ -723,12 +722,11 @@ int rad_process(REQUEST *request)
 		 *	an error message logged, and the packet is dropped.
 		 */
 		if (request->packet->sockfd == proxyfd) {
-			int recvd=proxy_receive(request);
+			int recvd = proxy_receive(request);
 			if (recvd < 0) {
 				return -1;
 			}
-			already_proxied=1;
-			replicating=recvd;
+			replicating = recvd;
 			break;
 		}
 		/* NOT proxyfd: fall through to error message */
@@ -794,22 +792,27 @@ int rad_process(REQUEST *request)
 		}
 
 		if (dospawn) {
-			rad_spawn_child(request, fun,
-					already_proxied, replicating);
+			rad_spawn_child(request, fun, replicating);
 			/* AFTER spawning the child */
 			request_list_busy = FALSE;
 		} else {
 			/* BEFORE doing the request */
 			request_list_busy = FALSE;
 			(*fun)(request);
-			if(!already_proxied) {
+
+			/*
+			 *	If we don't already have a proxy
+			 *	packet for this request, we MIGHT have
+			 *	to go proxy it.
+			 */
+			if (!request->proxy) {
 				int sent;
-				sent=proxy_send(request);
-				if(sent==0 || sent==2)
+				sent = proxy_send(request);
+				if (sent == 0 || sent == 2)
 					rad_respond(request);
 			} else {
-				if(!replicating)
-					rad_respond(request);
+				if (!replicating)
+				  rad_respond(request);
 			}
 		}
 	}
@@ -1041,18 +1044,20 @@ static REQUEST *rad_check_list(REQUEST *request)
  * it. Called from proxy code when it wants to take over */
 void remove_from_request_list(REQUEST *request)
 {
-  REQUEST *prevreq;
-  REQUEST *curreq;
-
-  for(prevreq=0,curreq=first_request;curreq;curreq=curreq->next) {
-    if(curreq==request) {
-      if(prevreq)
-	prevreq->next=request->next;
-      else
-	first_request=request->next;
-      break;
-    }
-  }
+	REQUEST *prevreq;
+	REQUEST *curreq;
+	
+	prevreq = NULL;
+	for (curreq = first_request; curreq; curreq = curreq->next) {
+	  if (curreq == request) {
+	    if (prevreq) {
+	      prevreq->next = request->next;
+	    } else {
+	      first_request = request->next;
+	    }
+	    break;
+	  }
+	}
 }
 
 #ifdef HAVE_PTHREAD_H
@@ -1075,8 +1080,7 @@ static void *rad_spawn_thread(void *arg)
  *	Spawns a child process or thread to perform
  *	authentication/accounting and respond to RADIUS clients.
  */
-static void rad_spawn_child(REQUEST *request, FUNP fun,
-			    int already_proxied, int replicating)
+static void rad_spawn_child(REQUEST *request, FUNP fun, int replicating)
 {
 	child_pid_t		child_pid;
 
