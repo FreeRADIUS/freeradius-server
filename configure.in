@@ -701,7 +701,6 @@ if test "x$gethostbyaddrrstyle" = "x"; then
 ], [ gethostbyaddr(NULL, 0, 0)  ], [
 		AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
 		gethostbyaddrrstyle=BSD
-		AC_MSG_WARN([ ****** BSD Style gethostbyaddr might NOT be thread-safe! ****** ])
 	])
 fi
 
@@ -710,6 +709,11 @@ if test "x$gethostbyaddrrstyle" = "x"; then
 else
 	AC_MSG_RESULT([${gethostbyaddrrstyle}-style])
 fi
+
+if test "x$gethostbyaddrrstyle" = "xBSD"; then
+	AC_MSG_WARN([ ****** BSD-style gethostbyaddr might NOT be thread-safe! ****** ])
+fi
+
 
 dnl Check the style of gethostbyname, in order of preference
 dnl GNU (_r seven args)
@@ -743,7 +747,6 @@ if test "x$gethostbynamerstyle" = "x"; then
 ], [ gethostbyname(NULL)  ], [
 		AC_DEFINE(GETHOSTBYNAMERSTYLE, BSDSTYLE)
 		gethostbynamerstyle=BSD
-		AC_MSG_WARN([ ****** BSD Style gethostbyname might NOT be thread-safe! ****** ])
 	])
 fi
 
@@ -751,6 +754,10 @@ if test "x$gethostbynamerstyle" = "x"; then
 	AC_MSG_RESULT([none!  It must not exist, here.])
 else
 	AC_MSG_RESULT([${gethostbynamerstyle}-style])
+fi
+
+if test "x$gethostbynamerstyle" = "xBSD"; then
+	AC_MSG_WARN([ ****** BSD-style gethostbyname might NOT be thread-safe! ****** ])
 fi
 
 dnl If configuring with large file support, determine the right flags to
