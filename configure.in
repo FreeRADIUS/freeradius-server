@@ -20,6 +20,7 @@ dnl #  AC_OUTPUT([file...])
 dnl #
 dnl #############################################################
 
+AC_PREREQ([2.50])
 AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
