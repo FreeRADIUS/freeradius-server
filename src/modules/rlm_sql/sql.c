@@ -363,12 +363,15 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 			querymode == PW_VP_GROUPDATA)
 		return 0;
 
-	if (row[3][0] != row[3][strlen(row[3])-1]) {
-		/*
-		 * String starts and ends differently. Take it literally
-		 * */
-		pair = pairmake(row[2], row[3], pairmode);
-	} else {
+	/*
+	 *	If we have a new-style quoted string, where the
+	 *	*entire* string is quoted, do xlat's.
+	 */
+	if (((row[3][0] == '\'') ||
+	     (row[3][0] == '`') ||
+	     (row[3][0] == '"')) &&
+	    (row[3][0] == row[3][strlen(row[3])-1])) {
+
 		ptr = row[3];
 		xlat = gettoken(&ptr, value, sizeof(value));
 		switch (xlat) {
@@ -395,6 +398,11 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 				pair->length = 0;
 			}
 		}
+	} else {
+		/*
+		 * String starts and ends differently. Take it literally
+		 * */
+		pair = pairmake(row[2], row[3], pairmode);
 	}
 	pairadd(first_pair, pair);
 
