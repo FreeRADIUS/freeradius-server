@@ -69,13 +69,9 @@ static DICT_ATTR *base_attributes[256];
  */
 static void dict_free(void)
 {
-	int i;
 	DICT_VALUE	*dval, *vnext;
 	DICT_VENDOR	*dvend, *enext;
 
-	for (i = 0; i < 256; i++) {
-		if (base_attributes[i]) free(base_attributes[i]);
-	}
 	memset(base_attributes, 0, sizeof(base_attributes));
 
 	for (dval = dictionary_values; dval; dval = vnext) {
@@ -91,7 +87,7 @@ static void dict_free(void)
 	dictionary_vendors = NULL;
 
 	/*
-	 *	Free the tree of attributes by name.
+	 *	Free the tree of attributes by name and value.
 	 */
 	rbtree_free(attributes_byname);
 	rbtree_free(attributes_byvalue);
