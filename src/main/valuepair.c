@@ -91,11 +91,15 @@ static int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 
 	/*
 	 *	See if there is a special compare function.
+	 *
+	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next)
 		if (c->attribute == check->attribute)
 			return (c->compare)(c->instance, req, request, check,
 				check_pairs, reply_pairs);
+
+	if (!request) return -1; /* doesn't exist, don't compare it */
 
 	switch(check->type) {
 #ifdef ASCEND_BINARY
@@ -362,7 +366,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			case T_OP_REG_EQ:
 			{
 				int i;
-				regmatch_t rxmatch[9];
+				regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
 				/*
 				 *	Include substring matches.
