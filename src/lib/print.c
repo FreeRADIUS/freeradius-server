@@ -155,9 +155,8 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			a = 0;
 			break;
 	}
-	strncpy(out, a?a:"UNKNOWN-TYPE", outlen);
-	out[outlen - 1] = 0;
-
+	strNcpy(out, a?a:"UNKNOWN-TYPE", outlen);
+	
 	return strlen(out);
 }
 
