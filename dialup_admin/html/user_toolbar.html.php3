@@ -20,8 +20,8 @@ print <<<EOM
 </tr>
 <tr valign=top>
 <td align=center width=100></td>
-<td align=center bgcolor="black" width=200>
-<a href="clear_opensessions.php3?login=$login" title="Clear Open User Sessions"><font size=-2 color="white"><b>OPEN SESSIONS</b></font></a></td>
+<td align=center bgcolor="black" width=200 colspan=2>
+<a href="clear_opensessions.php3?login=$login" title="Clear Open User Sessions"><font color="white"><b>OPEN SESSIONS</b></font></a></td>
 <td align=center width=100></td>
 </tr>
 EOM;
