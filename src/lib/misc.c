@@ -29,6 +29,7 @@ static const char rcsid[] =
 int		librad_dodns = 0;
 int		librad_debug = 0;
 
+
 /*
  *	Return a printable host name (or IP address in dot notation)
  *	for the supplied IP address.
@@ -194,8 +195,16 @@ int rad_lockfd(int fd, int lock_len)
 {
 #if defined(F_LOCK) && !defined(BSD)
 	return lockf(fd, F_LOCK, lock_len);
-#else
+#elif defined(LOCK_EX)
 	return flock(fd, LOCK_EX);
+#else
+	struct flock fl;
+	fl.l_start = 0;
+	fl.l_len = lock_len;
+	fl.l_pid = getpid();
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_CUR;
+	return fcntl(fd, F_SETLKW, (void *)&fl);
 #endif
 }
 
@@ -209,8 +218,16 @@ int rad_lockfd_nonblock(int fd, int lock_len)
 {
 #if defined(F_LOCK) && !defined(BSD)
 	return lockf(fd, F_TLOCK, lock_len);
-#else
+#elif defined(LOCK_EX)
 	return flock(fd, LOCK_EX | LOCK_NB);
+#else
+	struct flock fl;
+	fl.l_start = 0;
+	fl.l_len = lock_len;
+	fl.l_pid = getpid();
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_CUR;
+	return fcntl(fd, F_SETLK, (void *)&fl);
 #endif
 }
 
@@ -224,7 +241,15 @@ int rad_unlockfd(int fd, int lock_len)
 {
 #if defined(F_LOCK) && !defined(BSD)
 	return lockf(fd, F_ULOCK, lock_len);
-#else
+#elif defined(LOCK_EX)
 	return flock(fd, LOCK_UN);
+#else
+	struct flock fl;
+	fl.l_start = 0;
+	fl.l_len = lock_len;
+	fl.l_pid = getpid();
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_CUR;
+	return fcntl(fd, F_UNLCK, (void *)&fl);
 #endif
 }
