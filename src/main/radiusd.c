@@ -482,8 +482,6 @@ int main(int argc, char **argv)
 		else {
 			close(sockfd);
 			sockfd = -1;
-			close(proxyfd);
-			proxyfd = -1;
 		}
 	} else
 		log(L_INFO, "Ready to process requests.");
@@ -500,12 +498,17 @@ int main(int argc, char **argv)
 		}
 
 		FD_ZERO(&readfds);
-		if (sockfd >= 0)
+		if (sockfd >= 0) {
 			FD_SET(sockfd, &readfds);
+			/*
+			 *	ONLY listen for proxy replies in the
+			 *	main server, NOT the accounting server!
+			 */
+			if (proxyfd >= 0)
+				FD_SET(proxyfd, &readfds);
+		}
 		if (acctfd >= 0)
 			FD_SET(acctfd, &readfds);
-		if (proxyfd >= 0)
-			FD_SET(proxyfd, &readfds);
 
 		status = select(32, &readfds, NULL, NULL, NULL);
 		if (status == -1) {
