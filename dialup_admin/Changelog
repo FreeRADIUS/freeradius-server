@@ -7,8 +7,9 @@ Ver 1.70:
 * Add general_restrict_badusers_access directive. If set to yes we only allow each administrator
   access to their own entries in the badusers table
 * Add a username.mappings table. We are able to map each administrator username to additional queries
-  on te accounting and user settings tables.
-* Add an sql_extra_query directive. If set this query is included in all queries to the accounting tables.
+  on the accounting and user settings tables.
+* Add an sql_accounting_extra_query directive. If set this query is included in all
+  queries to the accounting tables.
   Combined with admin username mappings we are able to easily restrict access on specific accounting data
   to each administrator.
 * Escape bad characters in the $login variable
