@@ -357,17 +357,30 @@ VALUE		Auth-Type		SecurID			2
 VALUE		Auth-Type		Crypt-Local		3
 VALUE		Auth-Type		Reject			4
 VALUE		Auth-Type		ActivCard		5
-
-VALUE		Autz-Type		Local			0
+VALUE		Auth-Type		EAP			6
+VALUE		Auth-Type		ARAP			7
 
 #
 #	Cistron extensions
 #
-VALUE		Auth-Type		EAP			6
-VALUE		Auth-Type		ARAP			7
 VALUE		Auth-Type		Ldap			252
 VALUE		Auth-Type		Pam			253
 VALUE		Auth-Type		Accept			254
+
+VALUE		Auth-Type		PAP			1024
+VALUE		Auth-Type		CHAP			1025
+VALUE		Auth-Type		LDAP			1026
+VALUE		Auth-Type		PAM			1027
+VALUE		Auth-Type		MS-CHAP			1028
+VALUE		Auth-Type		Kerberos		1029
+VALUE		Auth-Type		CRAM			1030
+VALUE		Auth-Type		NS-MTA-MD5		1031
+VALUE		Auth-Type		CRAM			1030
+
+#
+#	Authorization type, too.
+#
+VALUE		Autz-Type		Local			0
 
 #
 #	Experimental Non-Protocol Integer Translations for Cistron-Radiusd
