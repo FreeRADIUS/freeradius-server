@@ -493,7 +493,7 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
 
 
 static void mppe_chap2_get_keys128(uint8_t *nt_hashhash,uint8_t *nt_response,
-                               uint8_t *sendkey,uint8_t *recvkey)
+				   uint8_t *sendkey,uint8_t *recvkey)
 {
        uint8_t masterkey[16];
 
@@ -506,9 +506,8 @@ static void mppe_chap2_get_keys128(uint8_t *nt_hashhash,uint8_t *nt_response,
 /*
  *	Generate MPPE keys.
  */
-static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
-                               uint8_t *nt_hash,uint8_t *response,
-                               uint8_t *sendkey,uint8_t *recvkey)
+static void mppe_chap2_gen_keys128(uint8_t *nt_hash,uint8_t *response,
+				   uint8_t *sendkey,uint8_t *recvkey)
 {
 	uint8_t enckey1[16];
 	uint8_t enckey2[16];
@@ -950,9 +949,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			}
 		} else if (chap == 2) {
 			DEBUG2("rlm_mschap: adding MS-CHAPv2 MPPE keys");
-			mppe_chap2_gen_keys128(request->secret,
-					       request->packet->vector,
-					       nt_password->strvalue,
+			mppe_chap2_gen_keys128(nt_password->strvalue,
 					       response->strvalue + 26,
 					       mppe_sendkey, mppe_recvkey);
 
