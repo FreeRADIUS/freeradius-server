@@ -38,7 +38,10 @@ dnl		AC_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
 		AC_MSG_WARN([mysql headers not found.  Use --with-mysql-include-dir=<path>.])
 		targetname=   # disabled module
 	else
+		sql_mysql_cflags="${sql_mysql_cflags} ${MYSQL_INCLUDE}"
 		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_MYSQL_H)
+
   
 		AC_MSG_CHECKING([for mysql_init in -lmysqlclient])
 
@@ -68,7 +71,7 @@ dnl		AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.a])
 			targetname=   # disabled module
 		else
 			AC_MSG_RESULT(yes) 
-			AC_DEFINE(HAVE_MYSQL_H)
+			sql_mysql_ldflags="$sql_mysql_ldflags $MYSQL_LIBS"
 		fi
 	fi
 

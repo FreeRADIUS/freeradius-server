@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision
+# From configure.in Revision: 1.1 
 
 
 if test x$with_rlm_sql_mysql != xno; then
@@ -629,10 +629,16 @@ rm -f conftest*
 		echo "configure: warning: mysql headers not found.  Use --with-mysql-include-dir=<path>." 1>&2
 		targetname=   # disabled module
 	else
+		sql_mysql_cflags="${sql_mysql_cflags} ${MYSQL_INCLUDE}"
 		echo "$ac_t""yes" 1>&6
+		cat >> confdefs.h <<\EOF
+#define HAVE_MYSQL_H 1
+EOF
+
+
   
 		echo $ac_n "checking for mysql_init in -lmysqlclient""... $ac_c" 1>&6
-echo "configure:636: checking for mysql_init in -lmysqlclient" >&5
+echo "configure:642: checking for mysql_init in -lmysqlclient" >&5
 
 		old_LIBS="$LIBS"
 
@@ -640,14 +646,14 @@ echo "configure:636: checking for mysql_init in -lmysqlclient" >&5
 		for try in /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql $mysql_lib_dir; do
 			LIBS="$old_LIBS -L$try -lmysqlclient"
 			cat > conftest.$ac_ext <<EOF
-#line 644 "configure"
+#line 650 "configure"
 #include "confdefs.h"
 extern char mysql_init();
 int main() {
 mysql_init()
 ; return 0; }
 EOF
-if { (eval echo configure:651: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:657: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   MYSQL_LIBS="-L$try -lmysqlclient"
 else
@@ -671,10 +677,7 @@ rm -f conftest*
 			targetname=   # disabled module
 		else
 			echo "$ac_t""yes" 1>&6 
-			cat >> confdefs.h <<\EOF
-#define HAVE_MYSQL_H 1
-EOF
-
+			sql_mysql_ldflags="$sql_mysql_ldflags $MYSQL_LIBS"
 		fi
 	fi
 
