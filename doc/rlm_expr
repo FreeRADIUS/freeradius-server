@@ -45,11 +45,11 @@ is due to the '%' character being used as a special character for
 dynamic translation.
 
   Note also that these operators do NOT have precedence.  The parsing
-of the input string, and the calculation of the asnwer, is done
+of the input string, and the calculation of the answer, is done
 strictly left to right.  If you wish to order the expressions, you
 MUST group them into sub-expression, as shown in the previous
 example.
 
-  All of the calculations are performed as signed 32-bit integers.
+  All of the calculations are performed as unsigned 32-bit integers.
 
 $Id$
