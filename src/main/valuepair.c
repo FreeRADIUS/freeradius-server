@@ -618,7 +618,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 {
 	VALUE_PAIR **tailto, *i, *j, *next;
 	VALUE_PAIR *tailfrom = NULL;
-	VALUE_PAIR *found, *prev;
+	VALUE_PAIR *found;
 
 	/*
 	 *	Point "tailto" to the end of the "to" list.
