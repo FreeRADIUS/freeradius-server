@@ -40,6 +40,10 @@ static const char rcsid[] =
 #include	<syslog.h>
 #endif
 
+#if HAVE_PTHREAD_H
+#include	<pthread.h>
+#endif
+
 #include	"radiusd.h"
 
 /*
@@ -62,8 +66,8 @@ int			acct_port;
 int			proxy_port;
 int			proxyfd;
 
-static int		got_chld = 0;
-static int		request_list_busy = 0;
+static int		got_child = FALSE;
+static int		request_list_busy = FALSE;
 static int		sockfd;
 static int		acctfd;
 static int		spawn_flag;
@@ -139,8 +143,8 @@ static void reread_config(int reload)
 	  if (pid == radius_pid) {
 			log(L_ERR|L_CONS,
 				"Errors reading config file - EXITING");
+		}
 		exit(1);
-	  }
 	}
 }
 
@@ -537,6 +541,8 @@ int main(int argc, char **argv)
 			request->config_items = NULL;
 			request->password = NULL;
 			request->timestamp = time(NULL);
+			request->child_pid = NO_SUCH_CHILD_PID;
+			request->next = NULL;
 			strcpy(request->secret, cl->secret);
 			rad_process(request);
 		}
@@ -677,15 +683,17 @@ int rad_process(REQUEST *request)
 		 */
 		if (rad_check_list(request) < 0) {
 			request_free(request);
-			request_list_busy = 0;
+			request_list_busy = FALSE;
 			return 0;
 		}
 
 		if (dospawn) {
 			rad_spawn_child(request, fun);
-			request_list_busy = 0; /* AFTER spawning the child */
+			/* AFTER spawning the child */
+			request_list_busy = FALSE;
 		} else {
-			request_list_busy = 0; /* BEFORE doing the request */
+			/* BEFORE doing the request */
+			request_list_busy = FALSE;
 			(*fun)(request);
 			rad_respond(request);
 		}
@@ -724,7 +732,7 @@ static int rad_check_list(REQUEST *request)
 	RADIUS_PACKET	*pkt;
 	time_t		curtime;
 	int		request_count;
-	int		child_pid;
+	child_pid_t    	child_pid;
 
 	curtime = time(NULL);
 	request_count = 0;
@@ -737,10 +745,10 @@ static int rad_check_list(REQUEST *request)
 	 *	asynchronous access (through the SIGCHLD handler) to
 	 *	the list - equivalent to sigblock(SIGCHLD).
 	 */
-	request_list_busy = 1;
+	request_list_busy = TRUE;
 
 	while (curreq != (REQUEST *)NULL) {
-		if ((curreq->child_pid == -1) &&
+		if ((curreq->child_pid == NO_SUCH_CHILD_PID) &&
 		    (curreq->timestamp + CLEANUP_DELAY <= curtime)) {
 			/*
 			 *	Request completed, delete it
@@ -791,7 +799,7 @@ static int rad_check_list(REQUEST *request)
 			 *	If the old request was completed,
 			 *	delete it right now.
 			 */
-			if (curreq->child_pid == -1) {
+			if (curreq->child_pid == NO_SUCH_CHILD_PID) {
 				curreq->timestamp = curtime - CLEANUP_DELAY;
 				continue;
 			}
@@ -804,7 +812,7 @@ static int rad_check_list(REQUEST *request)
 			request_count++;
 		} else {
 			if (curreq->timestamp + MAX_REQUEST_TIME <= curtime &&
-			    curreq->child_pid != -1) {
+			    curreq->child_pid != NO_SUCH_CHILD_PID) {
 				/*
 				 *	This request seems to have hung -
 				 *	kill it
@@ -813,7 +821,7 @@ static int rad_check_list(REQUEST *request)
 				log(L_ERR,
 					"Killing unresponsive child pid %d",
 								child_pid);
-				curreq->child_pid = -1;
+				curreq->child_pid = NO_SUCH_CHILD_PID;
 				kill(child_pid, SIGTERM);
 			}
 			prevreq = curreq;
@@ -838,7 +846,7 @@ static int rad_check_list(REQUEST *request)
 	 *	Add this request to the list
 	 */
 	request->next = (REQUEST *)NULL;
-	request->child_pid = -1;
+	request->child_pid = NO_SUCH_CHILD_PID;
 	request->timestamp = curtime;
 
 	if (prevreq == (REQUEST *)NULL)
@@ -855,12 +863,34 @@ static int rad_check_list(REQUEST *request)
  */
 static void rad_spawn_child(REQUEST *request, FUNP fun)
 {
-	int		child_pid;
+	child_pid_t		child_pid;
 
+#if 0
+	/*
+	 *	FIXME!!!
+	 *
+	 *	When threading is done, wrap with
+	 * #ifdef HAVE_PTHREAD_H, etc.
+	 **/
+	int rcode;
+
+	/*
+	 *	Create a child thread, complaining on error.
+	 */
+	rcode = pthread_create(&child_pid, NULL, fun, request);
+	if (rcode != 0) {
+		log(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
+				nas_name2(request->packet),
+				request->packet->id,
+		                strerror(errno));
+	}
+	/* respond to the request ??? */
+#endif
 	/*
 	 *	fork our child
 	 */
-	if ((child_pid = fork()) < 0) {
+	child_pid = fork();
+	if (child_pid < 0) {
 		log(L_ERR, "Fork failed for request from nas %s - ID: %d",
 				nas_name2(request->packet),
 				request->packet->id);
@@ -869,7 +899,7 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 		/*
 		 *	This is the child, it should go ahead and respond
 		 */
-		request_list_busy = 0;
+		request_list_busy = FALSE;
 		signal(SIGCHLD, SIG_DFL);
 		(*fun)(request);
 		rad_respond(request);
@@ -889,16 +919,16 @@ void sig_cleanup(int sig)
 {
 	int		status;
         pid_t		pid;
-	REQUEST	*curreq;
+	REQUEST		*curreq;
  
 	/*
 	 *	request_list_busy is a lock on the request list
 	 */
 	if (request_list_busy) {
-		got_chld = 1;
+		got_child = TRUE;
 		return;
 	}
-	got_chld = 0;
+	got_child = FALSE;
 
 	/*
 	 *	There are reports that this line on Solaris 2.5.x
@@ -928,7 +958,7 @@ void sig_cleanup(int sig)
 		curreq = first_request;
 		while (curreq != (REQUEST *)NULL) {
 			if (curreq->child_pid == pid) {
-				curreq->child_pid = -1;
+				curreq->child_pid = NO_SUCH_CHILD_PID;
 				/*
 				 *	FIXME: UINT4 ?
 				 */

@@ -266,7 +266,8 @@ AC_CHECK_HEADERS( \
 	sys/select.h \
 	dlfcn.h \
 	regex.h \
-	syslog.h
+	syslog.h \
+        pthread.h
 )
 
 AC_CHECK_FUNCS( \
@@ -290,6 +291,13 @@ AC_TRY_COMPILE([#include <sys/types.h>
   [socklen_t foo],
   AC_DEFINE(HAVE_SOCKLEN_T),
 )
+
+dnl Check for libpthread
+dnl If using pthreads...
+AC_CHECK_LIB(pthread, pthread_create,
+  PTHREADLIB="-lpthread"
+)
+AC_SUBST(PTHREADLIB)
 
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)

@@ -11,6 +11,21 @@
 #include "conf.h"
 #include "missing.h"
 
+#if 0
+#if HAVE_PTHREAD_H
+#include	<pthread.h>
+typedef pthread_t child_pid_t ;
+#else
+typedef pid_t child_pid_t;
+#endif
+
+#else
+/* FIX when threading is done! */
+typedef pid_t child_pid_t;
+#endif
+
+#define NO_SUCH_CHILD_PID (0)
+
 typedef struct auth_req {
 	RADIUS_PACKET		*packet;
 	RADIUS_PACKET		*proxy;
@@ -19,7 +34,7 @@ typedef struct auth_req {
 	char			username[MAX_STRING_LEN];
 	VALUE_PAIR		*password;
 	char			secret[32];
-	int			child_pid;
+	child_pid_t    		child_pid;
 	time_t			timestamp;
 	int			finished;
 	struct auth_req		*next;

@@ -1,23 +1,32 @@
 
 include ../../Make.inc
 
-MODULES		= $(shell ./makemodules.sh modules $(DYNAMIC_MODULES))
-MODULE_PATHS	= $(shell ./makemodules.sh paths $(DYNAMIC_MODULES))
-
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o \
-		  modules.o radutmp.o xlat.o $(MODULE_PATHS)
+		  modules.o radutmp.o xlat.o
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h
 
 CFLAGS		+= -I../include
-LDFLAGS		+= -L../lib $(RDYNAMIC)
+LDFLAGS		+= -L../lib
 LIBS		+= -lradius
+
+#
+# Pick up the static module libraries and linker flags.
+#
+STATIC_MODULE_LIBS	= $(wildcard ../modules/lib/*.a)
+STATIC_MODULE_LDFLAGS	= $(shell cat ../modules/lib/STATIC_MODULE_LDFLAGS)
+
+ifeq ($(DYNAMIC_MODULES),)
+LDFLAGS		+= $(STATIC_MODULE_LDFLAGS)
+LIBS		+= $(STATIC_MODULE_LIBS)
+endif
 
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
-	$(CC) $(LDFLAGS) $(DAEMON_LDFLAGS) -o radiusd \
-		$(SERVER_OBJS) $(LIBS) $(LDBM) $(LCRYPT) $(MODULE_LIBS)
+	$(CC) $(LDFLAGS) $(DAEMON_LDFLAGS) -o $@ \
+		$(SERVER_OBJS) $(LIBS) $(LDBM) $(LCRYPT) $(PTHREADLIB) \
+		$(MODULE_LIBS)
 
 radiusd.o: radiusd.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radiusd.c
@@ -88,7 +97,7 @@ radzap: radzap.o util.o nas.o radutmp.o log.o
 	$(CC) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o $(LIBS)
 
 clean:
-	rm -f *.o *.so modules_static.h radiusd radwho raduse \
+	rm -f *.o *.so *~ modules_static.h radiusd radwho raduse \
 		radclient radzap builddbm
 
 install:
