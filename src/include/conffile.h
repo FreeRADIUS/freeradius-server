@@ -55,6 +55,7 @@ CONF_PAIR	*cf_pair_find(CONF_SECTION *section, const char *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *name);
 CONF_SECTION	*cf_section_find(const char *name);
 CONF_SECTION	*cf_section_sub_find(CONF_SECTION *section, const char *name);
+CONF_SECTION	*cf_section_sub_find_name2(CONF_SECTION *section, const char *name1, const char *name2);
 char 		*cf_section_value_find(CONF_SECTION *section, const char *attr);
 
 char *cf_pair_attr(CONF_PAIR *pair);
