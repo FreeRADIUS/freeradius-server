@@ -6,17 +6,39 @@
 # Version:	$Id$
 #
 
+if [ "$1" = static ]
+then
+	shift
+	mods=`echo $* | sed -e 's/\.[coa]//g' -e 's/\.so//g'`
+	for i in $mods
+	do
+		echo "extern module_t $i;"
+	done
+	echo
+	echo "static_modules_t static_modules[] = {"
+	for i in $mods
+	do
+		echo "  {  \"$i.c\", &$i  },"
+	done
+	echo "  {  NULL, NULL  }"
+	echo "};"
+	exit 0
+fi
+
 if [ "$2" != "" ]
 then
 	# $(LIBDL) is set, so no static modules.
 	exit 0
 fi
 
-for i in ../modules/rlm_*/rlm_*.a
+for i in ../modules/rlm_*
 do
 	module=`basename $i`
-	module=`echo $module | sed 's/\.a$//'`
-	MODULE_PATHS="$MODULE_PATHS$i "
+	if [ ! -f $i/$module.a ]
+	then
+		continue
+	fi
+	MODULE_PATHS="$MODULE_PATHS$i/$module.a "
 	MODULES="$MODULES$module "
 done
 

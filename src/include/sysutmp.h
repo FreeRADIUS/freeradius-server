@@ -37,12 +37,15 @@
 /*
  *	No <utmp.h> file - define stuff ourselves (minimally).
  */
-#define UT_LINESIZE	       16
-#define UT_NAMESIZE	       16
-#define UT_HOSTSIZE	       16
+#define UT_LINESIZE	16
+#define UT_NAMESIZE	16
+#define UT_HOSTSIZE	16
 
 #define USER_PROCESS	7
 #define DEAD_PROCESS	8
+
+#define UTMP_FILE	"/var/run/utmp"
+#define ut_name		ut_user
 
 struct utmp {
 	short	ut_type;

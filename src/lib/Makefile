@@ -1,5 +1,5 @@
 
-@INCLUDE@ @IQUOTE@../../Make.inc@IQUOTE@
+include ../../Make.inc
 
 OBJS		= dict.o md5.o print.o radius.o valuepair.o token.o misc.o \
 		log.o filters.o missing.o

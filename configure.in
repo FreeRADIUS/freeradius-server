@@ -177,22 +177,22 @@ AC_ARG_WITH(dynamic-modules,
 )
 
 dnl See what include-style is used by the make program.
-AC_MSG_CHECKING(include style for make)
-echo "include /dev/null" > testmake.$$
-echo "all:" >> testmake.$$
-make -f testmake.$$ >/dev/null 2>&1
-if test $? = 0
-then
-	INCLUDE=include
-	IQUOTE=
-else
-	INCLUDE=.include
-	IQUOTE='"'
-fi
-rm -f testmake.$$
-AC_MSG_RESULT(" $INCLUDE")
-AC_SUBST(INCLUDE)
-AC_SUBST(IQUOTE)
+dnl AC_MSG_CHECKING(include style for make)
+dnl echo "include /dev/null" > testmake.$$
+dnl echo "all:" >> testmake.$$
+dnl make -f testmake.$$ >/dev/null 2>&1
+dnl if test $? = 0
+dnl then
+dnl 	INCLUDE=include
+dnl 	IQUOTE=
+dnl else
+dnl 	INCLUDE=.include
+dnl 	IQUOTE='"'
+dnl fi
+dnl rm -f testmake.$$
+dnl AC_MSG_RESULT(" $INCLUDE")
+dnl AC_SUBST(INCLUDE)
+dnl AC_SUBST(IQUOTE)
 
 dnl Check if we have a dynamic linker.
 AC_MSG_CHECKING(for runtime dynamic linker)
@@ -274,13 +274,9 @@ AC_OUTPUT(\
 	
 	./Make.inc \
 	./src/include/build-radpaths-h \
-	./src/lib/Makefile \
 	./src/main/checkrad.pl \
 	./src/main/radlast \
 	./src/main/radtest \
-	./raddb/Makefile \
-	./doc/Makefile \
-	./scripts/Makefile \
 	./scripts/rc.radiusd \
 	./scripts/radwatch \
 )

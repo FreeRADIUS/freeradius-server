@@ -1,12 +1,13 @@
 /*
  * radclient	General radius packet debug tool.
  *
- * Version:	@(#)radclient  1.10  25-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
 #include	"autoconf.h"
 
+#include	<sys/types.h>
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<unistd.h>
@@ -14,7 +15,6 @@
 #include	<getopt.h>
 #include	<ctype.h>
 #include	<netdb.h>
-#include	<sys/types.h>
 #include	<sys/socket.h>
 #include	<sys/time.h>
 #include	<netinet/in.h>

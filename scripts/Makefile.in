@@ -1,9 +1,0 @@
-
-@INCLUDE@ @IQUOTE@../Make.inc@IQUOTE@
-
-all:
-
-install:
-
-clean:
-

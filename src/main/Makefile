@@ -79,7 +79,7 @@ raduse: raduse.o
 modules_static.h: modules_static.h.in
 	rm -f modules_static.h
 	cp modules_static.h.in modules_static.h
-	./makelist.sh $(MODULES) >> modules_static.h
+	./makemodules.sh static $(MODULES) >> modules_static.h
 
 radzap: radzap.o util.o nas.o radutmp.o log.o
 	$(CC) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o $(LIBS)
