@@ -86,7 +86,7 @@ ATTRIBUTE	Cisco-PW-Lifetime               208     integer		Cisco
 ATTRIBUTE	Cisco-IP-Direct                 209     integer		Cisco
 ATTRIBUTE	Cisco-PPP-VJ-Slot-Comp          210     integer		Cisco
 ATTRIBUTE	Cisco-PPP-Async-Map             212     integer		Cisco
-ATTRIBUTE	Cisco-IP-Pool-Definition        217     integer		Cisco
+ATTRIBUTE	Cisco-IP-Pool-Definition        217     string		Cisco
 ATTRIBUTE	Cisco-Assign-IP-Pool		218     integer		Cisco
 ATTRIBUTE	Cisco-Route-IP                  228     integer		Cisco
 ATTRIBUTE	Cisco-Link-Compression          233     integer		Cisco
