@@ -199,6 +199,13 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	}
 
 	pg_sock->result = PQexec(pg_sock->conn, querystr);
+		/* Returns a PGresult pointer or possibly a NULL pointer. 
+		 * A non-NULL pointer will generally be returned except in
+		 * out-of-memory conditions or serious errors such as inability
+		 * to send the command to the backend. If a NULL is returned,
+		 *  it should be treated like a PGRES_FATAL_ERROR result.
+		 * Use PQerrorMessage to get more information about the error.
+		 */
 	if (!pg_sock->result)
 	{
 		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL Query failed Error: %s", 
