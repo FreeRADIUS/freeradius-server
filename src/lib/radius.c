@@ -1115,10 +1115,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			if(pair->flags.encrypt == 2) {
 
 			        rad_tunnel_pwdecode((char *)pair->strvalue,
-						     pair->length, 
+						     &pair->length, 
 						     secret,
 						     (char *)original->vector);
-				pair->length = strlen(pair->strvalue);
 
 			}
 
@@ -1320,12 +1319,14 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
-	char	digest[AUTH_VECTOR_LEN];
+	unsigned char	digest[AUTH_VECTOR_LEN];
 	char    salt[2];
 	int	i, n, secretlen;
 	int	len;
+	
+	len = *pwlen;
 
-	if (*pwlen < 2) {
+	if (len < 3) {
 	  return 0;
 	}
 	salt[0] = passwd[0];
@@ -1333,46 +1334,43 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 
 	/* Advance pointer past the salt, which is first two chars of passwd */
 	passwd = passwd + 2;
+	len -= 2;
+	*passwd = len;
 	
 	/*
 	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
 	 */
-	len = strlen(passwd);
 	if (len > 128) len = 128;
-	*pwlen = len;
-	if (len % AUTH_PASS_LEN != 0) {
-		n = AUTH_PASS_LEN - (len % AUTH_PASS_LEN);
+	n = len % AUTH_PASS_LEN;
+	if (n) {
+		n = AUTH_PASS_LEN - n;
 		for (i = len; n > 0; n--, i++)
 			passwd[i] = 0;
-		len = *pwlen = i;
+		len = i;
 	}
+	
+	*pwlen = len+2;
+	
 
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
 	memcpy(buffer, secret, secretlen);
-	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-	memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
-	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
-
-	/*
-	 *	Now we can encode the password *in place*
-	 */
-	for (i = 0; i < AUTH_PASS_LEN; i++)
-		passwd[i] ^= digest[i];
-
-	if (len <= AUTH_PASS_LEN) return 0;
-
-	/*
-	 *	Length > AUTH_PASS_LEN, so we need to use the extended
-	 *	algorithm.
-	 */
-	for (n = 0; n < 128 && n <= (len - AUTH_PASS_LEN); n += AUTH_PASS_LEN) { 
-		memcpy(buffer + secretlen, passwd + n, AUTH_PASS_LEN);
-		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
+	
+	for (n = 0; n < len; n+=AUTH_PASS_LEN) {
+		if (!n) {
+			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
+			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
+			librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
+		}
+		else {
+			memcpy(buffer + secretlen, passwd + n - AUTH_PASS_LEN, AUTH_PASS_LEN);
+			librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
+		}
+		
 		for (i = 0; i < AUTH_PASS_LEN; i++)
-			passwd[i + n + AUTH_PASS_LEN] ^= digest[i];
+			passwd[i + n] ^= digest[i];
 	}
 
 	return 0;
@@ -1385,62 +1383,54 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
  *      value, to differentiate it from the above.
  */
 
-int rad_tunnel_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector)
+int rad_tunnel_pwdecode(char *passwd, int * pwlen, const char *secret, const char *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
-	char	digest[AUTH_VECTOR_LEN];
-	char	r[AUTH_VECTOR_LEN];
+	unsigned char	digest[AUTH_VECTOR_LEN];
 	char    salt[2];
-	char	*s;
-	int	i, n, secretlen;
-	int	rlen;
+	int	i, n, ntimes, secretlen;
+	int 	len;
+	
+	len = *pwlen;
 
-	if(pwlen < 2) {
-	  return 0;
+	if(len < 3) {
+	  return len;
 	}
 	salt[0] = passwd[0];
 	salt[1] = passwd[1];
 
-	passwd = passwd + 2;
-        pwlen = pwlen - 2;
-
+	passwd += 2;
+	len -= 2;
+	
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
 	memcpy(buffer, secret, secretlen);
-	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-	memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
-	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
 
-	/*
-	 *	Now we can decode the password *in place*
-	 */
-	memcpy(r, passwd, AUTH_PASS_LEN);
-	for (i = 0; i < AUTH_PASS_LEN && i < pwlen; i++)
-		passwd[i] ^= digest[i];
-
-	if (pwlen <= AUTH_PASS_LEN) {
-		passwd[pwlen+1] = '\0';
-		return pwlen;
-	}
-
-	/*
-	 *	Length > AUTH_PASS_LEN, so we need to use the extended
-	 *	algorithm.
-	 */
-	rlen = ((pwlen - 1) / AUTH_PASS_LEN) * AUTH_PASS_LEN;
-
-	for (n = rlen; n > 0; n -= AUTH_PASS_LEN ) { 
-		s = (n == AUTH_PASS_LEN) ? r : (passwd + n - AUTH_PASS_LEN);
-		memcpy(buffer + secretlen, s, AUTH_PASS_LEN);
-		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
-		for (i = 0; i < AUTH_PASS_LEN && (i + n) < pwlen; i++)
+	ntimes = (len-1)/AUTH_PASS_LEN;
+	do {
+		if(!ntimes){
+			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
+			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
+			librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
+		}
+		else {
+			memcpy(buffer + secretlen, passwd - AUTH_PASS_LEN, AUTH_PASS_LEN);
+			librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
+		}
+		for ( i = 0, n = ntimes * AUTH_PASS_LEN; i < AUTH_PASS_LEN && (i + n) < len; i++)
 			passwd[i + n] ^= digest[i];
-	}
-	passwd[pwlen] = '\0';
+	} while(ntimes--);
+	passwd[len] = '\0';
 
-	return pwlen;
+	if (*(unsigned char*)passwd > len) {
+		/* Pasword is broken, original password should be longer */
+		*pwlen = 2;
+		passwd[0]=passwd[1]=0;
+		return 0;
+	}
+	return *pwlen = *passwd + 2; /* restore original length */
 }
 
 /*
