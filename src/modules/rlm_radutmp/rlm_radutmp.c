@@ -725,10 +725,10 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 				/*
 				 *	False record - zap it.
 				 */
-				session_zap(request->packet->sockfd,
+				session_zap(request,
 					    u.nas_address, u.nas_port, login,
 					    session_id, u.framed_address,
-					    u.proto, 0);
+					    u.proto);
 			}
 		}
 	}
