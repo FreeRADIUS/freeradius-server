@@ -12,6 +12,8 @@ Ver 1.61:
 * Allow selecting a specific access server in the failed logins page
 * In the user admin page use AcctStartTime not AcctStopTime when calculating usage for the last 7 days
 * Also show server:port in the user test page (so that it shows when used for server checks)
+* Now the create user page should work with sql
+* Make the default general_lib_type sql instead of ldap
 Ver 1.60:
 * Use require_once when including lib/functions.php3 in lib/sql
 * In the buttons toolbar Edit User should not be clickable.

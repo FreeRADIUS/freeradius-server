@@ -1,6 +1,6 @@
 <?php
+require('../lib/sql/attrmap.php3');
 if ($login != ''){
-	require('../lib/sql/attrmap.php3');
 	if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 		include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
 	else{
