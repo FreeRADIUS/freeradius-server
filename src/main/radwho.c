@@ -477,6 +477,7 @@ int main(int argc, char **argv)
 #else
 			if (ut.ut_user[0] && ut.ut_line[0]) {
 #endif
+#ifdef UT_HOSTSIZE
 			   if (showname)
 				printf((rawoutput == 0? ufmt1: ufmt1r),
 					ut.ut_name,
@@ -502,6 +503,7 @@ int main(int argc, char **argv)
 #endif
 					ut.ut_host,
 					myname, eol);
+#endif
 			}
 		}
 		fclose(fp);
