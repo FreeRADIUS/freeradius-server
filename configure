@@ -727,7 +727,7 @@ fi
 
 
 
-# From configure.in Revision: 1.178 
+# From configure.in Revision: 1.180 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=9-pre
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -2002,7 +2002,7 @@ else
   if { (eval echo configure:2003: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; }; then
     for file in conftest.*; do
       case $file in
-      *.c | *.o | *.obj) ;;
+      *.$ac_ext | *.c | *.o | *.obj) ;;
       *) ac_cv_exeext=`echo $file | sed -e s/conftest//` ;;
       esac
     done
@@ -7983,7 +7983,7 @@ int main() {
  gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) 
 ; return 0; }
 EOF
-if { (eval echo configure:7987: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:7987: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
@@ -8006,7 +8006,7 @@ int main() {
  gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL)  
 ; return 0; }
 EOF
-if { (eval echo configure:8010: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8010: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 		cat >> confdefs.h <<\EOF
@@ -8030,7 +8030,7 @@ int main() {
  gethostbyaddr(NULL, 0, 0)  
 ; return 0; }
 EOF
-if { (eval echo configure:8034: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8034: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 		cat >> confdefs.h <<\EOF
@@ -8064,7 +8064,7 @@ int main() {
  gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) 
 ; return 0; }
 EOF
-if { (eval echo configure:8068: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8068: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
@@ -8087,7 +8087,7 @@ int main() {
  gethostbyname_r(NULL, NULL, NULL, 0, NULL)  
 ; return 0; }
 EOF
-if { (eval echo configure:8091: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8091: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 		cat >> confdefs.h <<\EOF
@@ -8111,7 +8111,7 @@ int main() {
  gethostbyname(NULL)  
 ; return 0; }
 EOF
-if { (eval echo configure:8115: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8115: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 		cat >> confdefs.h <<\EOF
