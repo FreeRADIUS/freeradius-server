@@ -172,7 +172,7 @@ CREATE VIEW customerip AS
     SELECT gw.cust_gw AS ipaddr, cust.company, cust.customer, gw."location" FROM customers cust, cust_gw gw WHERE (cust.cust_id = gw.cust_id);
 
 
--- create plpgsql language
+-- create plpgsql language (You need to be a database superuser to be able to do this)
 CREATE FUNCTION "plpgsql_call_handler" () RETURNS LANGUAGE_HANDLER AS '$libdir/plpgsql' LANGUAGE C;
 CREATE TRUSTED LANGUAGE "plpgsql" HANDLER "plpgsql_call_handler";
 
