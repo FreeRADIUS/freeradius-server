@@ -36,9 +36,8 @@ SUB_MODULES += rlm_eap_md5 rlm_eap_leap rlm_eap_tls rlm_eap_ttls rlm_eap_sim
 SUB_MODULES += rlm_eap_peap rlm_eap_mschapv2 rlm_eap_gtc
 SUB_MODULES += rlm_sql_db2 rlm_sql_freetds rlm_sql_iodbc rlm_sql_mysql
 SUB_MODULES += rlm_sql_oracle rlm_sql_postgresql rlm_sql_sybase rlm_sql_unixodbc
-ifneq ($(OPENSSL_LIBS),)
-LIBS += -L$(OPENSSL_LIBS) -L../modules/rlm_eap/libeap -leap -lcrypto -lssl -lcrypto -lssl 
-endif
+LIBS        += $(shell -f ../modules/rlm_eap/libeap/libeap.a && echo -L../modules/rlm_eap/libeap -leap)
+
 #
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
@@ -57,7 +56,7 @@ radiusd: $(SERVER_OBJS) ../lib/libradius.la $(MODULE_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(LT_BIN_FLAGS) $(CFLAGS) $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LCRYPT) $(MODULE_LIBS) $(LIBS) \
-		$(PTHREADLIB) $(LIBLTDL) $(LCRYPT)
+		$(PTHREADLIB) $(LIBLTDL) $(LCRYPT) $(OPENSSL_LIBS)
 
 radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radiusd.c
