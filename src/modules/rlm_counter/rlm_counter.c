@@ -1,0 +1,245 @@
+/*
+ * rlm_counter.c
+ *
+ * Version:	$Id$
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2000  your name <your address>
+ */
+
+#include "autoconf.h"
+#include "libradius.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "radiusd.h"
+#include "modules.h"
+#include "conffile.h"
+
+#include <gdbm.h>
+
+static const char rcsid[] = "$Id$";
+
+/*
+ *	Define a structure for our module configuration.
+ *
+ *	These variables do not need to be in a structure, but it's
+ *	a lot cleaner to do so, and a pointer to the structure can
+ *	be used as the instance handle.
+ */
+typedef struct rlm_counter_t {
+	char	*filename;	/* name of the database file */
+	char    *reset_time;	/* daily, weekly, monthly */
+	char	*key_name;	/* User-Name */
+	char	*count_name;    /* Acct-Session-Time */
+	int     key_attr;
+	int     count_attr;
+	GDBM_FILE gdbm;
+} rlm_counter_t;
+
+/*
+ *	A mapping of configuration file names to internal variables.
+ *
+ *	Note that the string is dynamically allocated, so it MUST
+ *	be freed.  When the configuration file parse re-reads the string,
+ *	it free's the old one, and strdup's the new one, placing the pointer
+ *	to the strdup'd string into 'config.string'.  This gets around
+ *	buffer over-flows.
+ */
+static CONF_PARSER module_config[] = {
+  { "filename",  PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,filename), NULL,  NULL},
+  { "key",       PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,key_name), NULL,  NULL},
+  { "reset",     PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,reset_time), NULL,  NULL},
+  { "count-attribute",  PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,count_name), NULL,  NULL},
+  { NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
+/*
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int counter_instantiate(CONF_SECTION *conf, void **instance)
+{
+	rlm_counter_t *data;
+	DICT_ATTR *dattr;
+	
+	/*
+	 *	Set up a storage area for instance data
+	 */
+	data = rad_malloc(sizeof(*data));
+
+	/*
+	 *	If the configuration parameters can't be parsed, then
+	 *	fail.
+	 */
+	if (cf_section_parse(conf, data, module_config) < 0) {
+		free(data);
+		return -1;
+	}
+
+	/*
+	 *	Discover the attribute number of the key. 
+	 */
+	dattr = dict_attrbyname(data->key_name);
+	if (!dattr) {
+		radlog(L_ERR, "rlm_counter: No such attribute %s",
+		       data->key_name);
+		return -1;
+	}
+	data->key_attr = dattr->attr;
+	
+	/*
+	 *	Discover the attribute number of the counter. 
+	 */
+	dattr = dict_attrbyname(data->count_name);
+	if (!dattr) {
+		radlog(L_ERR, "rlm_counter: No such attribute %s",
+		       data->count_name);
+		return -1;
+	}
+	data->count_attr = dattr->attr;
+	
+	data->gdbm = gdbm_open(data->filename, sizeof(int),
+				   GDBM_WRCREAT | GDBM_SYNC, 0600, NULL);
+	if (data->gdbm == NULL) {
+		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
+		       data->filename, strerror(errno));
+		return -1;
+	}
+	
+	*instance = data;
+	
+	return 0;
+}
+
+/*
+ *	Find the named user in this modules database.  Create the set
+ *	of attribute-value pairs to check and reply with for this user
+ *	from the database. The authentication code only needs to check
+ *	the password, the rest is done here.
+ */
+static int counter_authorize(void *instance, REQUEST *request)
+{
+	/* quiet the compiler */
+	instance = instance;
+	request = request;
+
+	return RLM_MODULE_HANDLED;
+}
+
+/*
+ *	Write accounting information to this modules database.
+ */
+static int counter_accounting(void *instance, REQUEST *request)
+{
+	rlm_counter_t *data = (rlm_counter_t *) instance;
+	datum key_datum;
+	datum count_datum;
+	VALUE_PAIR *key_vp, *count_vp;
+	int counter;
+	int rcode;
+
+	/*
+	 *	Look for the key.
+	 */
+	key_vp = pairfind(request->packet->vps, data->key_attr);
+	if (!key_vp) {
+		return RLM_MODULE_NOOP;
+	}
+
+	/*
+	 *	Look for the attribute to use as a counter.
+	 */
+	count_vp = pairfind(request->packet->vps, data->count_attr);
+	if (!count_vp) {
+		return RLM_MODULE_NOOP;
+	}
+
+	key_datum.dptr = key_vp->strvalue;
+	key_datum.dsize = key_vp->length;
+
+	count_datum = gdbm_fetch(data->gdbm, key_datum);
+	if (count_datum.dptr == NULL) {
+		counter = 0;
+	} else {
+		memcpy(&counter, count_datum.dptr, sizeof(int));
+	}
+
+	counter += count_vp->lvalue;
+	count_datum.dptr = (char *) &counter;
+	count_datum.dsize = sizeof(int);
+
+	rcode = gdbm_store(data->gdbm, key_datum, count_datum, GDBM_REPLACE);
+	if (rcode < 0) {
+		radlog(L_ERR, "rlm_counter: Failed storing data to %s: %s",
+		       data->filename, gdbm_strerror(gdbm_errno));
+		return RLM_MODULE_FAIL;
+	}
+
+	DEBUG2("Added %d, New value for %s = %d\n",
+	       count_vp->lvalue, key_vp->name, counter);
+	       
+	
+	return RLM_MODULE_OK;
+}
+
+static int counter_detach(void *instance)
+{
+	rlm_counter_t *data = (rlm_counter_t *) instance;
+
+	gdbm_close(data->gdbm);
+	free(data->filename);
+	free(data->reset_time);
+	free(data->key_name);
+	free(data->count_name);
+
+	free(instance);
+	return 0;
+}
+
+/*
+ *	The module name should be the only globally exported symbol.
+ *	That is, everything else should be 'static'.
+ *
+ *	If the module needs to temporarily modify it's instantiation
+ *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	The server will then take care of ensuring that the module
+ *	is single-threaded.
+ */
+module_t rlm_counter = {
+	"Count",	
+	RLM_TYPE_THREAD_UNSAFE,		/* type */
+	NULL,				/* initialization */
+	counter_instantiate,		/* instantiation */
+	{
+		NULL,			/* authentication */
+		counter_authorize,	/* authorization */
+		NULL,			/* preaccounting */
+		counter_accounting,	/* accounting */
+		NULL			/* checksimul */
+	},
+	counter_detach,			/* detach */
+	NULL,				/* destroy */
+};
