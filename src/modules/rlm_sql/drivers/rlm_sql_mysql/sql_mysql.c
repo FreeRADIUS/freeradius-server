@@ -101,7 +101,8 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 		return SQL_DOWN;
 	}
 
-	return sql_check_error(mysql_query(mysql_sock->sock, querystr));
+	mysql_query(mysql_sock->sock, querystr);
+	return sql_check_error(mysql_errno(mysql_sock->sock));
 }
 
 
