@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while((argval = getopt(argc, argv, "Aa:bcd:fi:l:np:sSvxXyz")) != EOF) {
+	while((argval = getopt(argc, argv, "Aa:bcd:fhi:l:np:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
@@ -248,6 +248,10 @@ int main(int argc, char **argv)
 		
 		case 'f':
 			dont_fork = TRUE;
+			break;
+
+		case 'h':
+			usage();
 			break;
 
 		case 'i':
