@@ -325,7 +325,7 @@ static int xlat_config(void *instance, REQUEST *request,
 			
 			if (*fmt == '.') fmt++;	/* skip the period */
 
-			if (cs == NULL) {
+			if (!cs && !name2) {
 				next = cf_section_find(buffer);
 			} else if (name2) {
 				next = cf_section_sub_find_name2(cs, buffer,
