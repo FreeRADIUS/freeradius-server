@@ -69,7 +69,7 @@ ifneq ($(TARGET),)
 # Define a number of new targets
 #
 #######################################################################
-lib$(TARGET).a: $(STATIC_OBJS)
+$(TARGET).a: $(STATIC_OBJS)
 	$(LIBTOOL) --mode=link $(LD) -module -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
 
 $(TARGET).la: $(DYNAMIC_OBJS)
@@ -85,7 +85,7 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
-static: lib$(TARGET).a
+static: $(TARGET).a
 	@cp $< ../lib
 
 dynamic: $(TARGET).la
@@ -123,4 +123,4 @@ distclean:
 #  Otherwise, install the libraries into $(libdir)
 #
 install:
-	[ "x$(TARGET)" = "x" ] || $(LIBTOOL) install -c $(TARGET).la $(libdir)/$(TARGET).la
+	[ "x$(TARGET)" = "x" ] || $(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la $(libdir)/$(TARGET).la
