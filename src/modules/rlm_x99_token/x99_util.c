@@ -122,6 +122,7 @@ x99_string_to_keyblock(const char *s, des_cblock keyblock)
 const char x99_hex_conversion[]   = "0123456789abcdef";
 const char x99_cc_dec_conversion[]  = "0123456789012345";
 const char x99_snk_dec_conversion[] = "0123456789222333";
+const char x99_sc_friendly_conversion[] = "0123456789ahcpef";
 
 /*
  * Convert a DES keyblock to an ASCII string.

@@ -105,6 +105,7 @@ extern int x99_gen_state(char **ascii_state, unsigned char **raw_state,
 extern const char x99_hex_conversion[];
 extern const char x99_cc_dec_conversion[];
 extern const char x99_snk_dec_conversion[];
+extern const char x99_sc_friendly_conversion[];
 
 extern int x99_get_random(int fd, unsigned char *rnd_data, int req_bytes);
 
