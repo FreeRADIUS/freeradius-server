@@ -24,10 +24,6 @@ static const char rcsid[] = "$Id$";
 #  include <malloc.h>
 #endif
 
-#if HAVE_SHADOW_H
-#  include	<shadow.h>
-#endif
-
 #if HAVE_CRYPT_H
 #  include <crypt.h>
 #endif
@@ -526,9 +522,10 @@ int rad_authenticate(REQUEST *request)
 					 auth_item->length,
 					 clean_buffer, sizeof(clean_buffer));
 			log(L_AUTH,
-				"Login incorrect: [%s/%s] (%s)",
+				"Login incorrect: [%s/%s] (%s)%s",
 				namepair->strvalue, clean_buffer,
-				auth_name(request, 1));
+				auth_name(request, 1),
+				((result == -2) ? " reject" : ""));
 			/* double check: maybe the secret is wrong? */
 			if (debug_flag > 1) {
 			  p = auth_item->strvalue;
