@@ -283,7 +283,7 @@ int main(void){
  }
 }
 
-#else
+#else  /* TEST */
 struct passwd_instance {
 	struct hashtable *ht;
 	struct mypasswd *pwdfmt;
@@ -385,13 +385,13 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	radlog(L_INFO, "rlm_passwd: nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield, inst->pwdfmt->field[keyfield], listable?"yes":"no");
 	return 0;
 	
-#undef inst;
+#undef inst
 }
 
 static int passwd_detach (void *instance) {
 #define inst ((struct passwd_instance *)instance)
 	if(inst->ht) release_hash_table(inst->ht);
-	rad_free(instance);
+	free(instance);
 	return 0;
 #undef inst
 }
@@ -469,4 +469,4 @@ module_t rlm_passwd = {
 	passwd_detach,			/* detach */
 	NULL				/* destroy */
 };
-#endif
+#endif /* TEST */
