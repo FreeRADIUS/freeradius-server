@@ -207,11 +207,11 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 {
 	CONF_SECTION	*cs, *csn, *csp, *css;
 	CONF_PAIR	*cpn;
-	char		*ptr;
-	char		buf[1024];
-	char		buf1[256];
-	char		buf2[256];
-	char		buf3[256];
+	char		*ptr, *p, *q;
+	char		buf[8192];
+	char		buf1[1024];
+	char		buf2[1024];
+	char		buf3[1024];
 	int		t1, t2, t3;
 	
 	/*
@@ -236,9 +236,21 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		(*lineno)++;
 		ptr = buf;
 
-		t1 = gettoken(&ptr, buf1, sizeof(buf1));
-		t2 = gettoken(&ptr, buf2, sizeof(buf2));
-		t3 = gettoken(&ptr, buf3, sizeof(buf3));
+		if (*ptr == '#')
+			continue;
+
+		/*
+		 *	No '=': must be a section or sub-section.
+		 */
+		if (strchr(ptr, '=') == NULL) {
+			t1 = gettoken(&ptr, buf1, sizeof(buf1));
+			t2 = gettoken(&ptr, buf2, sizeof(buf2));
+			t3 = gettoken(&ptr, buf3, sizeof(buf3));
+		} else {
+			t1 = gettoken(&ptr, buf1, sizeof(buf1));
+			t2 = gettoken(&ptr, buf2, sizeof(buf2));
+			t3 = getword(&ptr, buf3, sizeof(buf3));
+		}
 
 		if (buf1[0] == 0 || buf1[0] == '#')
 			continue;
@@ -313,11 +325,52 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				cf, *lineno);
 			return NULL;
 		}
+		
+		/*
+		 *	Handle variable substitution via ${foo}
+		 *
+		 *	This is really ugly... it should copy the results
+		 *	to an intermediate buffer...
+		 */
+		p = buf;
+		ptr = buf3;
+		while (*ptr > ' ') {
+			/*
+			 *	Ignore anything other than "${"
+			 */
+			if ((*ptr != '$') ||
+			    (ptr[1] != '{')) {
+				*(p++) = *(ptr++);
+				continue;
+			}
+
+			/*
+			 *	Look for trailing '}', and silently
+			 *	ignore anything that doesn't match.
+			 */
+			q = strchr(ptr, '}');
+			if (q == NULL) {
+				*(p++) = *(ptr++);
+				continue;
+			}
+			
+			memcpy(buf2, ptr + 2, q - ptr - 2);
+			buf2[q - ptr - 2] = '\0';
+			cpn = cf_pair_find(cs, buf2);
+			if (!cpn) {
+				*(p++) = *(ptr++);
+				continue;
+			}
+			strcpy(p, cpn->value);
+			p += strlen(p);
+			ptr = q + 1;
+		}
+		*p = '\0';
 
 		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
-		cpn = cf_pair_alloc(buf1, buf3, t2);
+		cpn = cf_pair_alloc(buf1, buf, t2);
 		cf_pair_add(cs, cpn);
 	}
 
