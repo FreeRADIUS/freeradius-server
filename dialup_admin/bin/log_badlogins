@@ -13,6 +13,7 @@
 # all:        no. Go to the end of the file. Don't read it all.
 
 use Date::Manip qw(ParseDate UnixDate);
+use Digest::MD5;
 $|=1;
 
 $file=shift||'none';
@@ -124,7 +125,14 @@ for(;;){
 					unlink "$tmpfile.$server" if ($delete{$server});
 					open TMP, ">>$tmpfile.$server"
 						or die "Could not open temporary file\n";
-					print TMP "INSERT INTO $sql_accounting_table (UserName,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$addr','$port','$time','$time','0','0','0','$caller','$cause');";
+					$ctx = Digest::MD5->new;
+					$ctx->add($user);
+					$ctx->add($addr);
+					$ctx->add($port);
+					$ctx->add($time);
+					$ctx->add('badlogin');
+					$uniqueid = $ctx->hexdigest;
+					print TMP "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');";
 					close TMP;
 					`$mysql -h$server $opt -u$sql_username $pass $sql_database <$tmpfile.$server`;
 					$exit = $? >> 8;
