@@ -35,6 +35,8 @@
  */
 
 #include "autoconf.h"
+
+#ifdef WITH_UDPFROMTO
 static const char rcsid[] = "$Id$";
 
 #include <sys/types.h>
@@ -352,3 +354,4 @@ client:
 }
 
 #endif /* TESTING */
+#endif /* WITH_UDPFROMTO */
