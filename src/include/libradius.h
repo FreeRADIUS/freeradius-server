@@ -16,6 +16,8 @@
 #include <stdint.h>
 #endif
 
+#include <stdio.h>
+
 #include "radius.h"
 #include "token.h"
 
