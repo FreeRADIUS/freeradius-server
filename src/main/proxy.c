@@ -170,6 +170,7 @@ int proxy_send(REQUEST *request)
 	VALUE_PAIR		*realmpair;
 	VALUE_PAIR		*namepair;
 	VALUE_PAIR		*passpair;
+	VALUE_PAIR		*strippednamepair;
 	VALUE_PAIR		*delaypair;
 	VALUE_PAIR		*vp, *vps;
 	RADCLIENT		*client;
@@ -204,6 +205,7 @@ int proxy_send(REQUEST *request)
 	}
 
 	realmname = realmpair->strvalue;
+
 	/*
 	 *	Look for the realm, letting realm_find take care
 	 *	of the "NULL" realm.
@@ -217,69 +219,89 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
-	 *	Copy the request, then look up
-	 *	name and (encrypted) password in the copy.
-	 *
-	 *	Note that the User-Name VP is the *original*
-	 *	VP as sent over by the client.  The Stripped-User-Name
-	 *	attribute is the one hacked through the 'hints' file.
-	 */
-	vps = paircopy(request->packet->vps);
-	namepair = pairfind(vps, PW_USER_NAME);
-	passpair = pairfind(vps, PW_PASSWORD);
-
-	if (namepair) {
-		/* If the username happens to end in @realm, strip it off,
-		 * unless the realm definition says not to. This should
-		 * probably be done in the authorize module instead of here */
-		char *urealmname;
-		if (realm->striprealm &&
-		    (urealmname = strrchr(namepair->strvalue, '@')) &&
-		    !strcmp(urealmname+1, realmname))
-			*urealmname = 0;
-		namepair->length = strlen(namepair->strvalue);
-	}
-	pairadd(&request->packet->vps,
-		pairmake("Realm", realm->realm, T_OP_EQ));
-
-	/*
 	 *	Perhaps accounting proxying was turned off.
 	 */
-	if (request->packet->code == PW_ACCOUNTING_REQUEST &&
-	    realm->acct_port == 0) {
-		pairfree(vps);
+	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+	    (realm->acct_port == 0)) {
+		/* log a warning that the packet isn't getting proxied ??? */
 		return 0;
 	}
 
 	/*
-	 *	The special server LOCAL ?
+	 *	Perhaps authentication proxying was turned off.
+	 */
+	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	    (realm->auth_port == 0)) {
+		/* log a warning that the packet isn't getting proxied ??? */
+		return 0;
+	}
+
+	/*
+	 *	The special server LOCAL?
+	 *
+	 *	Do nothing.  Just return.  The rest of the code
+	 *	will take care of stripping off the realm name,
+	 *	through using the Stripped-User-Name attribute
+	 *	for authentication.
 	 */
 	if (strcmp(realm->server, "LOCAL") == 0) {
-		pairfree(vps);
-		namepair = pairfind(request->packet->vps, PW_USER_NAME);
-		/* Here's another place where that "@suffix" logic is stuck
-		 * in the generic proxy code. If this breaks, I promise not
-		 * to care! --Pac. */
-		if (realm->striprealm &&
-		    ((realmname = strrchr(namepair->strvalue, '@')) != NULL)) {
-			*realmname = 0;
-			namepair->length = strlen(namepair->strvalue);
-		}
 		return 0;
 	}
 
 	/*
 	 *	Find the remote server in the "client" list-
 	 *	we need the secret.
+	 *
+	 *	FIXME: This client_find lookup SHOULD be cached in
+	 *	the realm struct! They are both read at start and
+	 *	SIGHUP!  (but what about sigHUP's and reloads?)
 	 */
-	/* FIXME: couldn't this client_find lookup be cached in the realm
-	 * struct? They are both read at start and SIGHUP, right? */
 	if ((client = client_find(realm->ipaddr)) == NULL) {
 		log(L_PROXY, "cannot find secret for server %s in clients file",
 			realm->server);
-		pairfree(vps);
 		return 0;
 	}
+
+	/*
+	 *	Copy the request, then look up
+	 *	name and (encrypted) password in the copy.
+	 *
+	 *	Note that the User-Name attribute is the *original*
+	 *	as sent over by the client.  The Stripped-User-Name
+	 *	attribute is the one hacked through the 'hints' file.
+	 */
+	vps = paircopy(request->packet->vps);
+	namepair = pairfind(vps, PW_USER_NAME);
+	passpair = pairfind(vps, PW_PASSWORD);
+	strippednamepair = pairfind(vps, PW_STRIPPED_USER_NAME);
+
+	/*
+	 *	If there's a Stripped-User-Name attribute in the
+	 *	request, then use THAT as the User-Name for the
+	 *	proxied request, instead of the original name.
+	 *
+	 *	This is done by making a copy of the Stripped-User-Name
+	 *	attribute, turning it into a User-Name attribute,
+	 *	deleting the Stripped-User-Name and User-Name attributes
+	 *	from the vps list, and making the new User-Name
+	 *	the head of the vps list.
+	 */
+	if (strippednamepair) {
+		vp = paircopy(strippednamepair);
+		vp->attribute = namepair->attribute;
+		memcpy(vp->name, namepair->name, sizeof(vp->name));
+		pairdelete(&vps, PW_USER_NAME);
+		pairdelete(&vps, PW_STRIPPED_USER_NAME);
+		vp->next = vps;
+		namepair = vp;
+		vps = vp;
+	}
+
+	/*
+	 *	Remember that we sent the request to a Realm.
+	 */
+	pairadd(&request->packet->vps,
+		pairmake("Realm", realm->realm, T_OP_EQ));
 
 	/*
 	 *	Now build a new RADIUS_PACKET and send it.
