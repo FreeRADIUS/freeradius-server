@@ -572,7 +572,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	 * specified
 	 */
 	if (pairfind(*check_pairs, PW_AUTHTYPE) == NULL)
-		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_CMP_EQ));
+		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
 
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
