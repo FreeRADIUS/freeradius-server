@@ -24,23 +24,7 @@ if test x$with_[]modname != xno; then
 		AC_MSG_RESULT(no /etc/shadow file.)
 	fi
 
-	AC_CHECK_FUNC(crypt, 
-		[ cryptlocation=libc ],
-		[
-			#crypt not in libc
-			AC_CHECK_LIB(crypt, crypt, 
-				[ 
-					cryptlocation=libcrypt 
-					unix_ldflags="${unix_ldflags} -lcrypt"
-				]
-			)
-		]
-	)
-	if test x$cryptlocation = x; then
-		[ fail=$fail" crypt()" ],
-	fi
-
-	AC_CHECK_HEADERS(crypt.h shadow.h)
+	AC_CHECK_HEADERS(shadow.h)
 	AC_CHECK_FUNCS(getspnam getusershell)
 
 	AC_CHECK_LIB(shadow, getspnam, 
@@ -49,8 +33,6 @@ if test x$with_[]modname != xno; then
 			AC_DEFINE(HAVE_GETSPNAM) 
 		]
 	)
-
-	AC_CHECK_FUNCS(fgetpwent fgetspent fgetgrent)
 
 	targetname=modname
 else

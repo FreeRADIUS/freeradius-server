@@ -54,139 +54,22 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 #include	"modules.h"
 #include	"sysutmp.h"
-#include	"cache.h"
-#include	"conffile.h"
-#include	"compat.h"
 
 static char trans[64] =
    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define ENC(c) trans[c]
 
 struct unix_instance {
-	int cache_passwd;
-	const char *passwd_file;
-	const char *shadow_file;
-	const char *group_file;
 	const char *radwtmp;
-	int usegroup;
-	struct pwcache *cache;
-	time_t cache_reload;
-	time_t next_reload;
-	time_t last_reload;
 };
 
 static CONF_PARSER module_config[] = {
-	/*
-	 *	Cache the password by default.
-	 */
-	{ "cache",    PW_TYPE_BOOLEAN,
-	  offsetof(struct unix_instance,cache_passwd), NULL, "no" },
-	{ "passwd",   PW_TYPE_STRING_PTR,
-	  offsetof(struct unix_instance,passwd_file), NULL,  NULL },
-	{ "shadow",   PW_TYPE_STRING_PTR,
-	  offsetof(struct unix_instance,shadow_file), NULL,  NULL },
-	{ "group",    PW_TYPE_STRING_PTR,
-	  offsetof(struct unix_instance,group_file), NULL,   NULL },
 	{ "radwtmp",  PW_TYPE_STRING_PTR,
 	  offsetof(struct unix_instance,radwtmp), NULL,   "NULL" },
-	{ "usegroup", PW_TYPE_BOOLEAN,
-	  offsetof(struct unix_instance,usegroup), NULL,     "no" },
-	{ "cache_reload", PW_TYPE_INTEGER,
-	  offsetof(struct unix_instance,cache_reload), NULL, "600" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-/*
- * groupcmp is part of autz. But it uses the data from an auth instance. So
- * here is where it gets it. By default this will be the first configured
- * auth instance. That can be changed by putting "usegroup = yes" inside an
- * auth instance to explicitly bind all Group checks to it.
- */
-
-/* binds "Group=" to an instance (a particular passwd file) */
-static struct unix_instance *group_inst;
-
-/* Tells if the above binding was explicit (usegroup=yes specified in config
- * file) or not ("Group=" was bound to the first instance of rlm_unix */
-static int group_inst_explicit;
-
-#ifdef HAVE_GETSPNAM
-#if defined(M_UNIX)
-static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
-	if (spwd == NULL) return NULL;
-	return (spwd->pw_name);
-}
-
-static inline const char *get_shadow_encrypted_pwd(shadow_pwd_t *spwd) {
-	if (spwd == NULL) return NULL;
-	return (spwd->pw_passwd);
-}
-#else /* M_UNIX */
-	static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
-		if (spwd == NULL) return NULL;
-		return (spwd->sp_namp);
-	}
-	static inline const char *get_shadow_encrypted_pwd(shadow_pwd_t *spwd) {
-		if (spwd == NULL) return NULL;
-		return (spwd->sp_pwdp);
-	}
-#endif	/* M_UNIX */
-#endif	/* HAVE_GETSPNAM */
-
-static struct passwd *fgetpwnam(const char *fname, const char *name) {
-	FILE		*file = fopen(fname, "ro");
-	struct passwd	*pwd = NULL;
-
-	if(file == NULL) return NULL;
-	do {
-		pwd = fgetpwent(file);
-		if(pwd == NULL) {
-			fclose(file);
-			return NULL;
-		}
-	} while (strcmp(name, pwd->pw_name) != 0);
-
-	fclose(file);
-	return pwd;
-}
-
-static struct group *fgetgrnam(const char *fname, const char *name) {
-	FILE		*file = fopen(fname, "ro");
-	struct group	*grp = NULL;
-
-	if(file == NULL) return NULL;
-
-	do {
-		grp = fgetgrent(file);
-		if(grp == NULL) {
-			fclose(file);
-			return NULL;
-		}
-	} while(strcmp(name, grp->gr_name) != 0);
-	fclose(file);
-	return grp;
-}
-
-#ifdef HAVE_GETSPNAM
-
-static shadow_pwd_t *fgetspnam(const char *fname, const char *name) {
-	FILE		*file = fopen(fname, "ro");
-	shadow_pwd_t	*spwd = NULL;
-
-	if(file == NULL) return NULL;
-	do {
-		spwd = fgetspent(file);
-		if(spwd == NULL) {
-			fclose(file);
-			return NULL;
-		}
-	} while(strcmp(name, get_shadow_name(spwd)) != 0);
-	fclose(file);
-	return spwd;
-}
-
-#endif
 
 /*
  *	The Group = handler.
@@ -206,11 +89,6 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 	check_pairs = check_pairs;
 	reply_pairs = reply_pairs;
 
-	if (!group_inst) {
-		radlog(L_ERR, "groupcmp: no group list known.");
-		return 1;
-	}
-
 	/*
 	 *	No user name, doesn't compare.
 	 */
@@ -223,21 +101,11 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 	}
 	username = (char *)vp->strvalue;
 
-	if (group_inst->cache_passwd &&
-	    (retval = H_groupcmp(group_inst->cache, check, username)) != -2)
-		return retval;
-
-	if (group_inst->passwd_file)
-		pwd = fgetpwnam(group_inst->passwd_file, username);
-	else
-		pwd = getpwnam(username);
+	pwd = getpwnam(username);
 	if (pwd == NULL)
 		return -1;
 
-	if (group_inst->group_file)
-		grp = fgetgrnam(group_inst->group_file, (char *)check->strvalue);
-	else
-		grp = getgrnam((char *)check->strvalue);
+	grp = getgrnam((char *)check->strvalue);
 	if (grp == NULL)
 		return -1;
 
@@ -253,8 +121,8 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 
 
 /*
- *	FIXME:	We really should have an 'init' which makes
- *	System auth == Unix
+ *	Done once when the module is loaded, and NOT on a per-instance
+ *	basis.
  */
 static int unix_init(void)
 {
@@ -267,6 +135,23 @@ static int unix_init(void)
 	return 0;
 }
 
+
+/*
+ *	Detach.
+ */
+static int unix_detach(void *instance)
+{
+#define inst ((struct unix_instance *)instance)
+	if (inst->radwtmp)
+		free(inst->radwtmp);
+#undef inst
+	free(instance);
+	return 0;
+}
+
+/*
+ *	Read the config
+ */
 static int unix_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct unix_instance *inst;
@@ -284,79 +169,16 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Parse the configuration, failing if we can't do so.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
+		unix_detach(inst);
 		return -1;
 	}
 
-	if (inst->cache_passwd) {
-		radlog(L_INFO, "HASH:  Reinitializing hash structures "
-			"and lists for caching...");
-		if ((inst->cache = unix_buildpwcache(inst->passwd_file,
-						     inst->shadow_file,
-						     inst->group_file))==NULL)
-                {
-			radlog(L_ERR, "HASH:  unable to create user "
-				"hash table.  disable caching and run debugs");
-			if (inst->passwd_file)
-				free((char *) inst->passwd_file);
-			if (inst->shadow_file)
-				free((char *) inst->shadow_file);
-			if (inst->group_file)
-				free((char *) inst->group_file);
-			if (inst->radwtmp)
-				free((char *) inst->radwtmp);
-			free(inst);
-			return -1;
-		}
-
-		if (inst->cache_reload) {
-			inst->last_reload = 0;
-			inst->next_reload = time(NULL) + inst->cache_reload;
-		}
-	} else {
-		inst->cache = NULL;
-	}
-
-	if (inst->usegroup) {
-		if (group_inst_explicit) {
-			radlog(L_ERR, "Only one group list may be active");
-		} else {
-			group_inst = inst;
-			group_inst_explicit = 1;
-		}
-	} else if (!group_inst) {
-		group_inst = inst;
-	}
 #undef inst
 
 	return 0;
 }
 
-/*
- *	Detach.
- */
-static int unix_detach(void *instance)
-{
-#define inst ((struct unix_instance *)instance)
-	if (group_inst == inst) {
-		group_inst = NULL;
-		group_inst_explicit = 0;
-	}
-	if (inst->passwd_file)
-		free((char *) inst->passwd_file);
-	if (inst->shadow_file)
-		free((char *) inst->shadow_file);
-	if (inst->group_file)
-		free((char *) inst->group_file);
-	if (inst->radwtmp)
-		free((char *) inst->radwtmp);
-	if (inst->cache) {
-		unix_freepwcache(inst->cache);
-	}
-#undef inst
-	free(instance);
-	return 0;
-}
+
 
 static int unix_destroy(void)
 {
@@ -369,149 +191,51 @@ static int unix_destroy(void)
 
 
 /*
- *	Check the users password against the standard UNIX
- *	password table.
+ *	Pull the users password from where-ever, and add it to
+ *	the given vp list.
  */
-static int unix_authenticate(void *instance, REQUEST *request)
+static int unix_getpw(void *instance, REQUEST *request, VALUE_PAIR **vp_list)
 {
-#define inst ((struct unix_instance *)instance)
-	char *name, *passwd;
-	struct passwd	*pwd;
+	const char	*name;
 	const char	*encrypted_pass;
-	int		ret;
 #ifdef HAVE_GETSPNAM
-	shadow_pwd_t	*spwd = NULL;
+	struct spwd	*spwd = NULL;
 #endif
 #ifdef OSFC2
 	struct pr_passwd *pr_pw;
-#endif
-#ifdef OSFSIA
-	char		*info[2];
-	char		*progname = "radius";
-	SIAENTITY	*ent = NULL;
+#else
+	struct passwd	*pwd;
 #endif
 #ifdef HAVE_GETUSERSHELL
 	char		*shell;
 #endif
-
-	/* See if we should refresh the cache */
-	if (inst->cache && inst->cache_reload
-	 && (inst->next_reload < request->timestamp)) {
-		/* Time to refresh, maybe ? */
-		int must_reload = 0;
-		struct stat statbuf;
-
-		DEBUG2("rlm_users : Time to refresh cache.");
-		/* Check if any of the files has changed */
-		if (inst->passwd_file
-		 && (stat(inst->passwd_file, &statbuf) != -1)
-		 && (statbuf.st_mtime > inst->last_reload)) {
-			must_reload++;
-		}
-
-		if (inst->shadow_file
-		 && (stat(inst->shadow_file, &statbuf) != -1)
-		 && (statbuf.st_mtime > inst->last_reload)) {
-			must_reload++;
-		}
-
-		if (inst->group_file
-		 && (stat(inst->group_file, &statbuf) != -1)
-		 && (statbuf.st_mtime > inst->last_reload)) {
-			must_reload++;
-		}
-
-		if (must_reload) {
-			/* Build a new cache to replace old one */
-			struct pwcache *oldcache;
-			struct pwcache *newcache = unix_buildpwcache(
-							inst->passwd_file,
-							inst->shadow_file,
-							inst->group_file);
-
-			if (newcache) {
-				oldcache = inst->cache;
-				inst->cache = newcache;
-				unix_freepwcache(oldcache);
-
-				inst->last_reload = time(NULL);
-			}
-		} else {
-			DEBUG2("rlm_users : Files were unchanged. Not reloading.");
-		}
-
-		/* Schedule next refresh */
-		inst->next_reload = time(NULL) + inst->cache_reload;
-	}
+	VALUE_PAIR	*vp;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		radlog(L_AUTH, "rlm_unix: Attribute \"User-Name\" is required for authentication.");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	We can only authenticate user requests which HAVE
-	 *	a User-Password attribute.
-	 */
-	if (!request->password) {
-		radlog(L_AUTH, "rlm_unix: Attribute \"User-Password\" is required for authentication.");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *  Ensure that we're being passed a plain-text password,
-	 *  and not anything else.
-	 */
-	if (request->password->attribute != PW_PASSWORD) {
-		radlog(L_AUTH, "rlm_unix: Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
-		return RLM_MODULE_INVALID;
+		return RLM_MODULE_NOOP;
 	}
 
 	name = (char *)request->username->strvalue;
-	passwd = (char *)request->password->strvalue;
+	encrypted_pass = NULL;
 
-	if (inst->cache_passwd &&
-	    (ret = H_unix_pass(inst->cache, name, passwd, &request->reply->vps)) != -2)
-		return (ret == 0) ? RLM_MODULE_OK : RLM_MODULE_REJECT;
-
-#ifdef OSFSIA
-	info[0] = progname;
-	info[1] = NULL;
-	if (sia_ses_init (&ent, 1, info, NULL, name, NULL, 0, NULL) !=
-	    SIASUCCESS)
-		return RLM_MODULE_NOTFOUND;
-	if ((ret = sia_ses_authent (NULL, passwd, ent)) != SIASUCCESS) {
-		if (ret & SIASTOP)
-			sia_ses_release (&ent);
-		return RLM_MODULE_NOTFOUND;
-	}
-	if (sia_ses_estab (NULL, ent) == SIASUCCESS) {
-		sia_ses_release (&ent);
-		return RLM_MODULE_OK;
-	}
-
-	return RLM_MODULE_NOTFOUND;
-#else /* OSFSIA */
 #ifdef OSFC2
 	if ((pr_pw = getprpwnam(name)) == NULL)
 		return RLM_MODULE_NOTFOUND;
 	encrypted_pass = pr_pw->ufld.fd_encrypt;
-#else /* OSFC2 */
+
 	/*
-	 *	Get encrypted password from password file
-	 *
-	 *	If a password file was explicitly specified, use it,
-	 *	otherwise, use the system routines to read the
-	 *	system password file
+	 *	Check if account is locked.
 	 */
-	if (inst->passwd_file != NULL) {
-		if ((pwd = fgetpwnam(inst->passwd_file, name)) == NULL)
-			return RLM_MODULE_NOTFOUND;
-	} else if ((pwd = getpwnam(name)) == NULL) {
+	if (pr_pw->uflg.fg_lock!=1) {
+		radlog(L_AUTH, "rlm_unix: [%s]: account locked", name);
+		return RLM_MODULE_USERLOCK;
+	}
+#else /* OSFC2 */
+	if ((pwd = getpwnam(name)) == NULL) {
 		return RLM_MODULE_NOTFOUND;
 	}
 	encrypted_pass = pwd->pw_passwd;
@@ -521,30 +245,27 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	/*
 	 *      See if there is a shadow password.
 	 *
-	 *	If a shadow file was explicitly specified, use it,
-	 *	otherwise, use the system routines to read the
-	 *	system shadow file.
-	 *
-	 *	Also, if we explicitly specify the password file,
-	 *	only query the _system_ shadow file if the encrypted
+	 *	Only query the _system_ shadow file if the encrypted
 	 *	password from the passwd file is < 10 characters (i.e.
 	 *	a valid password would never crypt() to it).  This will
 	 *	prevents users from using NULL password fields as things
 	 *	stand right now.
 	 */
-	if (inst->shadow_file != NULL) {
-		if ((spwd = fgetspnam(inst->shadow_file, name)) != NULL)
-			encrypted_pass = get_shadow_encrypted_pwd(spwd);
-	} else if ((encrypted_pass == NULL) || (strlen(encrypted_pass) < 10)) {
-		if ((spwd = getspnam(name)) != NULL)
-			encrypted_pass = get_shadow_encrypted_pwd(spwd);
+	if ((encrypted_pass == NULL) || (strlen(encrypted_pass) < 10)) {
+		if ((spwd = getspnam(name)) == NULL) {
+			return RLM_MODULE_NOTFOUND;
+		}
+		encrypted_pass = spwd->sp_pwdp;
 	}
 #endif	/* HAVE_GETSPNAM */
 
+/*
+ *	These require 'pwd != NULL', which isn't true on OSFC2
+ */
+#ifndef OSFC2
 #ifdef DENY_SHELL
 	/*
-	 *	Undocumented temporary compatibility for iphil.NET
-	 *	Users with a certain shell are always denied access.
+	 *	Users with a particular shell are denied access
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
 		radlog(L_AUTH, "rlm_unix: [%s]: invalid shell", name);
@@ -566,10 +287,11 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	endusershell();
 	if (shell == NULL) {
 		radlog(L_AUTH, "rlm_unix: [%s]: invalid shell [%s]",
-			name, pwd->pw_shell);
+		       name, pwd->pw_shell);
 		return RLM_MODULE_REJECT;
 	}
 #endif
+#endif /* OSFC2 */
 
 #if defined(HAVE_GETSPNAM) && !defined(M_UNIX)
 	/*
@@ -593,33 +315,64 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	}
 #endif
 
-#ifdef OSFC2
-	/*
-	 *	Check if account is locked.
-	 */
-	if (pr_pw->uflg.fg_lock!=1) {
-		radlog(L_AUTH, "rlm_unix: [%s]: account locked", name);
-		return RLM_MODULE_USERLOCK;
-	}
-#endif /* OSFC2 */
-
 	/*
 	 *	We might have a passwordless account.
+	 *
+	 *	FIXME: Maybe add Auth-Type := Accept?
 	 */
 	if (encrypted_pass[0] == 0)
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
+
+	vp = pairmake("Crypt-Password", encrypted_pass, T_OP_SET);
+	if (!vp) return RLM_MODULE_FAIL;
+
+	pairmove(vp_list, &vp);
+	pairfree(&vp);		/* might not be NULL; */
+
+	return RLM_MODULE_UPDATED;
+}
+
+
+/*
+ *	Pull the users password from where-ever, and add it to
+ *	the given vp list.
+ */
+static int unix_authorize(void *instance, REQUEST *request)
+{
+	return unix_getpw(instance, request, &request->config_items);
+}
+
+/*
+ *	Pull the users password from where-ever, and add it to
+ *	the given vp list.
+ */
+static int unix_authenticate(void *instance, REQUEST *request)
+{
+	int rcode;
+	VALUE_PAIR *vp = NULL;
+
+	if (!request->password ||
+	    (request->password->attribute != PW_USER_PASSWORD)) {
+		radlog(L_AUTH, "rlm_unix: Attribute \"User-Password\" is required for authentication.");
+		return RLM_MODULE_INVALID;
+	}
+
+	rcode = unix_getpw(instance, request, &vp);
+	if (rcode != RLM_MODULE_UPDATED) return rcode;
 
 	/*
-	 *	Check encrypted password.
+	 *	0 means "ok"
 	 */
-	if (lrad_crypt_check(passwd, encrypted_pass)) {
-		radlog(L_AUTH, "rlm_unix: [%s]: invalid password", name);
+	if (lrad_crypt_check((char *) request->password->strvalue,
+			     (char *) vp->strvalue) != 0) {
+		radlog(L_AUTH, "rlm_unix: [%s]: invalid password",
+		       request->username->strvalue);
 		return RLM_MODULE_REJECT;
 	}
+
 	return RLM_MODULE_OK;
-#endif /* OSFSIA */
-#undef inst
 }
+
 
 /*
  *	UUencode 4 bits base64. We use this to turn a 4 byte field
@@ -824,12 +577,12 @@ static int unix_accounting(void *instance, REQUEST *request)
 /* globally exported name */
 module_t rlm_unix = {
   "System",
-  RLM_TYPE_THREAD_UNSAFE,        /* type: reserved */
+  RLM_TYPE_THREAD_UNSAFE,        /* type */
   unix_init,                    /* initialization */
   unix_instantiate,		/* instantiation */
   {
 	  unix_authenticate,    /* authentication */
-	  NULL,                 /* authorization */
+	  unix_authorize,       /* authorization */
 	  NULL,                 /* preaccounting */
 	  unix_accounting,      /* accounting */
 	  NULL,                  /* checksimul */
@@ -840,4 +593,3 @@ module_t rlm_unix = {
   unix_detach,                 	/* detach */
   unix_destroy,                  /* destroy */
 };
-

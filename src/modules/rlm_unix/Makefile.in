@@ -1,5 +1,5 @@
 TARGET     = @targetname@
-SRCS       = rlm_unix.c cache.c compat.c
+SRCS       = rlm_unix.c
 HEADERS    =
 RLM_LIBS   = @unix_ldflags@
 RLM_CFLAGS = @unix_cflags@
