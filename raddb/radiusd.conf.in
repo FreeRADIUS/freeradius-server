@@ -724,6 +724,16 @@ modules {
 	#  rewrite arbitrary packets.  Useful in accounting and authorization.
 	## FIXME:  This is highly experimental at the moment.  Please give 
 	## feedback.
+	#
+	# The module can also use the Rewrite-Rule attribute. If it is set and
+	# matches the name of the module instance, then that module instance will
+	# be the only one which runs
+	#
+	# Also if new_attribute is set to yes then a new attribute will be created
+	# containing the value replacewith and it will be added to searchin (packet,
+	# reply or config). searchfor,ignore_case and max_matches will be ignored in
+	# that case
+	#
 	#attr_rewrite sanecallerid {
 	#	attribute = Called-Station-Id
 		# may be "packet", "reply", or "config"
@@ -731,6 +741,7 @@ modules {
 	#	searchfor = "[+ ]"
 	#	replacewith = ""
 	#	ignore_case = no
+	#	new_attribute = no
 	#	max_matches = 10
 	#}
 
