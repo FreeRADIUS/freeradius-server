@@ -94,7 +94,6 @@ static: $(TARGET).a
 
 dynamic: $(TARGET).la
 	@cp $< ../lib
-	@[ -f .libs/$(TARGET).so ] && cp .libs/$(TARGET).so ../../../raddb
 
 #######################################################################
 #
