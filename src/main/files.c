@@ -35,8 +35,8 @@ void pairlist_free(PAIR_LIST **pl)
 
 	for (p = *pl; p; p = next) {
 		if (p->name) free(p->name);
-		if (p->check) pairfree(p->check);
-		if (p->reply) pairfree(p->reply);
+		if (p->check) pairfree(&p->check);
+		if (p->reply) pairfree(&p->reply);
 		next = p->next;
 		free(p);
 	}
