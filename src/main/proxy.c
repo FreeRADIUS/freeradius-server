@@ -55,28 +55,48 @@ int proxy_receive(REQUEST *request)
 {
 	VALUE_PAIR *proxypair;
 	VALUE_PAIR *replicatepair;
-	VALUE_PAIR *realmpair;
-	int replicating;
+        int rcode;
 
 	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
 	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
-	if(proxypair) {
-		realmpair = proxypair;
-		replicating = 0;
-	} else if(replicatepair) {
-		realmpair = replicatepair;
-		replicating = 1;
-	} else {
+        if (proxypair) {
+            /* Don't do anything*/
+
+        } else if (replicatepair) {
+            /*
+             *  The request was replicated, so we don't process the response.
+             */
+            return RLM_MODULE_HANDLED;
+
+        } else {
 		radlog(L_PROXY, "Proxy reply to packet with no Realm");
-		return -1;
+		return RLM_MODULE_FAIL;
 	}
 
-	/*
-	 *	Don't touch the reply VP's.  Assume that a module
-	 *	takes care of that...
-	 */
+        /*
+         *  Delete the Proxy-State Attributes from the reply.
+         *  These include Proxy-State attributes from us and remote server.
+         */
+        pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
 
-	return replicating?1:0;
+        /*
+         *  Create our initial reply pairs from the proxy-reply pairs
+         */
+        pairfree(&request->reply->vps);
+        request->reply->vps = request->proxy_reply->vps;
+        request->proxy_reply->vps = NULL;
+
+        /*
+         *  Free any other configuration items and proxy pairs
+         */
+        pairfree(&request->config_items);
+        pairfree(&request->proxy->vps);
+
+	/*
+	 *  Run the packet through the post-proxy stage.
+	 */
+        rcode = module_post_proxy(request);
+        return rcode;
 }
 
 /*

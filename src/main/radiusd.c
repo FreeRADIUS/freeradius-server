@@ -1348,18 +1348,20 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *  attributes from the list of VP's.
 	 */
 	if (request->proxy) {
-		int replicating;
-		replicating = proxy_receive(request);
-              switch (replicating) {
-                      case -1:
-                              /* on error just continue with next request */
-                              goto next_request;
-                      case 1:
-                              /* if this was a replicated request, mark it as
-                               * finished first, because it was postponed
-                               */
-                              goto finished_request;
-		}
+            int rcode;
+            rcode = proxy_receive(request);
+            switch (rcode) {
+                default:  /* Don't Do Anything */
+                    break;
+                case RLM_MODULE_FAIL:
+                    /* on error just continue with next request */
+                    goto next_request;
+                case RLM_MODULE_HANDLED:
+                    /* if this was a replicated request, mark it as
+                     * finished first, because it was postponed
+                     */
+                    goto finished_request;
+            }
 	}
 	
 	/*

@@ -465,22 +465,6 @@ int rad_authenticate(REQUEST *request)
 		pairadd(&request->config_items, tmp);
 
 		/*
-		 *	Initialize our reply to the user, by taking
-		 *	the reply attributes from the proxy.
-		 *
-		 *	Note that we DELETE the Proxy-State attributes
-		 *	from the proxy reply, as they include the one
-		 *	we added, which MUST NOT go back to the NAS.
-		 */
-		if (request->proxy_reply->vps) {
-			pairfree(&request->reply->vps);
-			request->reply->vps = request->proxy_reply->vps;
-			pairdelete(&request->reply->vps, PW_PROXY_STATE);
-			request->reply->code = request->proxy_reply->code;
-			request->proxy_reply->vps = NULL;
-		}
-
-		/*
 		 *	If it's an Access-Reject, then do NOT do any
 		 *	authorization or authentication.  They're being
 		 *	rejected, so we minimize the amount of work
@@ -637,7 +621,7 @@ autz_redo:
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (namepair &&
-				(r = module_checksimul(request, check_item->lvalue)) != 0) {
+		    (r = module_checksimul(request, check_item->lvalue)) != 0) {
 			char mpp_ok = 0;
 
 			if (r == 2){
