@@ -931,9 +931,9 @@ int main(int argc, char **argv)
 			}
 #if WITH_SNMP
 			if (fd == acctfd)
-				rad_snmp.acct_total_requests++;
+				rad_snmp.acct.total_requests++;
 			if (fd == authfd)
-				rad_snmp.auth_total_requests++;
+				rad_snmp.auth.total_requests++;
 #endif
 
 			/*
