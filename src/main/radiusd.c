@@ -1512,8 +1512,13 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		  reprocess = 1;
 	  }
 	  
+	  /*
+	   *	If we're re-processing the request, re-set it.
+	   */
 	  if (reprocess) {
 		  pairfree(&request->config_items);
+		  pairfree(&request->reply->vps);
+		  request->reply->code = 0;
 		  (*fun)(request);
 	  }
 	}
@@ -2691,6 +2696,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  the request as finished, and go to the next one.
 	 */
 	if (request->proxy_try_count == 0) {
+		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 		rad_reject(request);
 		realm_disable(request->proxy->dst_ipaddr,request->proxy->dst_port);
 		request->finished = TRUE;
