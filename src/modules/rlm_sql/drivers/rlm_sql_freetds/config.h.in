@@ -1,7 +1,0 @@
-/* config.h.in.  Generated automatically from configure.in by autoheader.  */
-
-/* Define if you have the tds_get_locale function. */
-#undef HAVE_TDS_GET_LOCALE
-
-/* Define if you have the sprintf function.  */
-#undef HAVE_SPRINTF
