@@ -260,11 +260,11 @@ static int process_eap_start(RADIUS_PACKET *req,
 		return 0;
 	}
 
-	versioncount = ntohs(versions[0]);
+	versioncount = ntohs(versions[0])/2;
 	/* verify that the attribute length is big enough for the given number
 	 * of versions present.
 	 */
-	if((unsigned)vp->length <= (versioncount * sizeof(uint16_t) + 2))
+	if((unsigned)vp->length <= (versioncount*2 + 2))
 	{
 		fprintf(stderr, "start message is too short. Claimed %d versions does not fit in %d bytes\n", versioncount, vp->length);
 		return 0;

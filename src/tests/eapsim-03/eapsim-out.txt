@@ -123,7 +123,7 @@ rad_recv: Access-Challenge packet from host 127.0.0.1:1812, id=999, length=189
 	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
 	EAP-Id = YY
 	EAP-Code = Request
-	EAP-Type-SIM = 0x0b0000010d0000abcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab0b050000c6ff4953a7571ae11f84b0ee08b4a4b1
+	EAP-Type-SIM = 0x0b0000010d0000abcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab0b050000087dfd639e56ac1040295c8bb107b1c3
 <+++ EAP-sim decoded packet:
 	Service-Type = Framed-User
 	Framed-Protocol = PPP
@@ -138,10 +138,10 @@ rad_recv: Access-Challenge packet from host 127.0.0.1:1812, id=999, length=189
 	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
 	EAP-Id = YY
 	EAP-Code = Request
-	EAP-Type-SIM = 0x0b0000010d0000abcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab0b050000c6ff4953a7571ae11f84b0ee08b4a4b1
+	EAP-Type-SIM = 0x0b0000010d0000abcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab0b050000087dfd639e56ac1040295c8bb107b1c3
 	EAP-Sim-Subtype = Challenge
 	EAP-Sim-RAND = 0x0000abcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab
-	EAP-Sim-MAC = 0x0000c6ff4953a7571ae11f84b0ee08b4a4b1
+	EAP-Sim-MAC = 0x0000087dfd639e56ac1040295c8bb107b1c3
 Input was: 
    identity: (len=6)65617073696d
    nonce_mt: b1ff1961cf02c57fbcb37b1441b68c35
