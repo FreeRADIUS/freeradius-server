@@ -209,7 +209,7 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAI
 		return 1;
 	}
 
-	username = (char *)request->strvalue;
+	username = (char *)eq->username->strvalue;
 
 	if (group_inst->cache_passwd &&
 	    (retval = H_groupcmp(group_inst->cache, check, username)) != -2)
