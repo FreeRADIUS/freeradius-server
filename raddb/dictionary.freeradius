@@ -1,0 +1,11 @@
+#
+#	The FreeRADIUS Vendor-Specific dictionary.
+#
+# Version:	$Id$
+#
+#	For a complete list of Private Enterprise Codes, see:
+#
+#	http://www.isi.edu/in-notes/iana/assignments/enterprise-numbers
+#
+
+VENDOR		FreeRADIUS	11344
