@@ -32,6 +32,7 @@ typedef struct sql_config {
 	char   *authorize_group_reply_query;
 	char   *accounting_onoff_query;
 	char   *accounting_update_query;
+	char   *accounting_update_query_alt;
 	char   *accounting_start_query;
 	char   *accounting_start_query_alt;
 	char   *accounting_stop_query;

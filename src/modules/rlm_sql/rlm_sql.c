@@ -105,6 +105,8 @@ static CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,accounting_onoff_query), NULL, ""},
 	{"accounting_update_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,accounting_update_query), NULL, ""},
+	{"accounting_update_query_alt", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,accounting_update_query_alt), NULL, ""},
 	{"accounting_start_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,accounting_start_query), NULL, ""},
 	{"accounting_start_query_alt", PW_TYPE_STRING_PTR,
@@ -776,10 +778,26 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting for ALIVE packet - %s",
+					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting ALIVE record - %s",
 					       inst->config->xlat_name,
 					       (char *)(inst->module->sql_error)(sqlsocket, inst->config));
-					ret = RLM_MODULE_FAIL;
+
+					/*
+					 * We failed the update above.  It's probably because
+					 * the start record hasn't come in.  We try
+					 * our alternate query now (typically an INSERT)
+					 */
+					radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query_alt, request, sql_escape_func);
+					query_log(request, inst, querystr);
+					if (*querystr) { /* non-empty query */
+						if (rlm_sql_query(sqlsocket, inst, querystr)) {
+							radlog(L_ERR, "rlm_sql (%s): Couldn't insert SQL accounting ALIVE record - %s",
+								   inst->config->xlat_name,
+								   (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+							ret = RLM_MODULE_FAIL;
+						}
+						(inst->module->sql_finish_query)(sqlsocket, inst->config);
+					}
 				}
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
@@ -804,13 +822,13 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting" " for START packet - %s",
+					radlog(L_ERR, "rlm_sql (%s): Couldn't insert SQL accounting START record - %s",
 					       inst->config->xlat_name,
 					       (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 
 					/*
 					 * We failed the insert above.  It's probably because
-					 * the stop record came before the start.  We try an
+					 * the stop record came before the start.  We try
 					 * our alternate query now (typically an UPDATE)
 					 */
 					radius_xlat(querystr, sizeof(querystr), inst->config->accounting_start_query_alt, request, sql_escape_func);
@@ -818,7 +836,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 					if (*querystr) { /* non-empty query */
 						if (rlm_sql_query(sqlsocket, inst, querystr)) {
-							radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL" "accounting START record - %s",
+							radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting START record - %s",
 							       inst->config->xlat_name,
 							       (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 							ret = RLM_MODULE_FAIL;
@@ -885,7 +903,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 						if (*querystr) { /* non-empty query */
 							if (rlm_sql_query(sqlsocket, inst, querystr)) {
-								radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+								radlog(L_ERR, "rlm_sql (%s): Couldn't insert SQL accounting STOP record - %s",
+										inst->config->xlat_name,
+										(char *)(inst->module->sql_error)(sqlsocket, inst->config));
 								ret = RLM_MODULE_FAIL;
 							}
 							(inst->module->sql_finish_query)(sqlsocket, inst->config);

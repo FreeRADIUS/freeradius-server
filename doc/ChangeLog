@@ -73,6 +73,7 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	* Added support for %{check:Attribute-Name} to go with
 	  %{request:Attribute-Name} and the like.
 	* Add support to rlm_sql for post-authentication query execution.
+	* Add support to rlm_sql for accounting_update_query_alt
 	
 FreeRADIUS 0.9.3 ; Date: 2003/11/20 20:15:48, urgency=high
 

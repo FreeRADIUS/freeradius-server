@@ -95,7 +95,9 @@ ${groupreply_table}.
 The query to be run when receiving an Accounting On or Accounting Off
 packet.
 .IP accounting_update_query
-The query to be run when receiving an Accounting update packet.
+.IP accounting_update_query_alt
+The query to be run when receiving an Accounting Update packet.  If the
+primary query fails, the alt query is run.
 .IP accounting_start_query
 .IP accounting_start_query_alt
 The query to be run when receiving an Accounting Start packet.  If the
