@@ -1405,7 +1405,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 
 				if (is_generic_attribute) {
 					/* this is a generic attribute */
-					int dummy; /* makes pairread happy */
+					LRAD_TOKEN dummy; /* makes pairread happy */
 					
 					/* not sure if using pairread here is ok ... */
 					if ( (newpair = pairread(&ptr, &dummy)) != NULL) {
