@@ -23,6 +23,8 @@ char sccsid[] =
 #include "autoconf.h"
 #include <fcntl.h>
 
+#include <stdlib.h>
+
 #ifdef HAVE_NDBM_H
 #include <ndbm.h>
 #endif

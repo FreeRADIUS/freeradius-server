@@ -16,6 +16,8 @@
  *  Copyright 2001 Koulik Andrei, Sandy Service
  */
 
+#include "autoconf.h"
+#include <stdlib.h>
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -29,6 +31,7 @@
 #endif
 
 #include <unistd.h>
+#include <ctype.h>
 
 #define LOTSTUP	20
 #define WRAPLEN 40
