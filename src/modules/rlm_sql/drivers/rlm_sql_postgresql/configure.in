@@ -43,7 +43,7 @@ if test x$with_[]modname != xno; then
 
 	smart_try_dir="$rlm_sql_postgresql_include_dir /usr/include/postgresql /usr/local/pgsql/include /usr/include/pgsql"
 	AC_SMART_CHECK_INCLUDE(libpq-fe.h)
-	if test "x$ac_cv_header_libpq_fe_h" != "xyes"; then
+	if test "x$ac_cv_header_libpqmfe_h" != "xyes"; then
 	  fail="$fail libpq-fe.h"
 	fi
 

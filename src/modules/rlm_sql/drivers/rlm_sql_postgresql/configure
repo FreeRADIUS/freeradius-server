@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.4 
+# From configure.in Revision: 1.5 
 
 
 fail=
@@ -891,7 +891,7 @@ rm -f conftest*
     echo "$ac_t""no" 1>&6 
 fi
 
-	if test "x$ac_cv_header_libpq_fe_h" != "xyes"; then
+	if test "x$ac_cv_header_libpqmfe_h" != "xyes"; then
 	  fail="$fail libpq-fe.h"
 	fi
 
