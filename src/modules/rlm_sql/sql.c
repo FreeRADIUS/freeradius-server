@@ -477,21 +477,19 @@ int sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR
 }
 
 void query_log(SQL_INST * inst, char *querystr) {
-	FILE   *sqlfile = 0;
+	FILE   *sqlfile = NULL;
 
 	if (inst->config->sqltrace) {
 		if ((sqlfile = fopen(inst->config->tracefile, "a")) == (FILE *) NULL) {
 			radlog(L_ERR, "rlm_sql: Couldn't open file %s",
 					inst->config->tracefile);
 		} else {
-#if defined(F_LOCK) && !defined(BSD)
-			(void) lockf((int) sqlfile, (int) F_LOCK, (off_t) MAX_QUERY_LEN);
-#else
-			(void) flock(sqlfile, LOCK_EX);
-#endif
+			int fd = fileno(sqlfile);
+			
+			rad_lockfd(fd, MAX_QUERY_LEN);
 			fputs(querystr, sqlfile);
 			fputs(";\n", sqlfile);
-			fclose(sqlfile);
+			fclose(sqlfile); /* and release the lock */
 		}
 	}
 }
