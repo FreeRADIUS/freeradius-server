@@ -259,6 +259,14 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	output_pairs = decode_string(request, inst->output);
 
 	/*
+	 *	It points to the attribute list, but the attribute
+	 *	list is empty.
+	 */
+	if (input_pairs && !*input_pairs) {
+		DEBUG2("rlm_exec (%s): WARNING! Input pairs are empty.  No attributes will be passed to the script", inst->xlat_name);
+	}
+
+	/*
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 *
