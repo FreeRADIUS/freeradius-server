@@ -35,6 +35,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
 	{ "ignore_unknown_eap_types", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_t, ignore_unknown_eap_types), NULL, "no" },
+	{ "cisco_accounting_username_bug", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_t, cisco_accounting_username_bug), NULL, "no" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -381,6 +383,16 @@ static int eap_authenticate(void *instance, REQUEST *request)
 				      T_OP_EQ);
 			rad_assert(vp != NULL);
 			pairadd(&(request->reply->vps), vp);
+		}
+
+		/*
+		 *	Cisco AP1230 has a bug and needs a zero
+		 *	terminated string in Access-Accept.
+		 */
+		if ((inst->cisco_accounting_username_bug) &&
+		    (vp->length < (int) sizeof(vp->strvalue))) {
+			vp->strvalue[vp->length] = '\0';
+			vp->length++;
 		}
 	}
 
