@@ -1,14 +1,13 @@
 URGENT:
 
-o Integrate Alan Curry's module failover patch.  This can be done within
-  a few days if it's agreed that it's a good thing.  I certainly think
-  it is.
 o Stop unloading modules on HUP so that we can have persistant
   handles/socketc/etc from module_init().  Alan D. and Alan C. had a good
   plan for when to load/reload modules on the list recently...I say
   run with that.
 o modular radutmp and radwtmp, as per Alan Curry's old patches.
 o merge OSF/OSFIA patches from Cistron.
+o double-check Cistron 'compat' mode, so that all current users of
+  Cistron can upgrade "out of the box" to FreeRADIUS
 
 
 MEDIUM PRIORITY
@@ -20,8 +19,9 @@ o go through *.c and *.h, adding comments at the top with a copyright,
   and a GPL license.
 o fix the proxy receive code, so that we don't have to look through ALL
   of the requests to find the matching proxy.  This might be hard to do..
+  It would also involve thread locking issues.
 o rad_malloc() fixes:  child processes/threads ALWAYS kill themselves
-  if malloc() failes.  The main server process does a 'sleep' for N
+  if malloc() fails.  The main server process does a 'sleep' for N
   seconds, and tries again.  After T tries, it gives up, and calls exit().
 
 LOW PRIORITY:
@@ -75,6 +75,7 @@ o there should be a way that radius itself could
 	--- This work is for an external process to do ---
 
 DONE:
+o Integrated Alan Curry's module failover patch.
 o add more support for new configuration files
 o Fixed potentially long locks on radutmp file by radcheck thread
   This means unlocking the file, forking checkrad, and then locking
