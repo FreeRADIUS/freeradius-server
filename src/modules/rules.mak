@@ -106,9 +106,11 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 #
 #######################################################################
 static: $(TARGET).a
+	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=static common
 	@cp $< ../lib
 
 dynamic: $(TARGET).la
+	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=dynamic common
 	@cp $< ../lib
 
 #######################################################################
@@ -132,6 +134,7 @@ endif
 clean:
 	@rm -f *.a *.o *.lo *.la *~
 	@rm -rf .libs _libs
+	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
 
 distclean:
 	@rm -f config.h config.mak

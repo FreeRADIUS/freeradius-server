@@ -1,7 +1,10 @@
-
-
-
 all:
+	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
+static:
+	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
+dynamic:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 clean:

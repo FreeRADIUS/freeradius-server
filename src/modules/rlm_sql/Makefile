@@ -4,8 +4,7 @@ HEADERS		= rlm_sql.h
 RLM_INSTALL	= install-drivers
 RLM_CFLAGS	= $(INCLTDL)
 RLM_LIBS	=
-
-SUBDIRS		= drivers
+RLM_SUBDIRS	= drivers
 
 $(STATIC_OBJS): $(HEADERS)
 
@@ -23,7 +22,7 @@ install-drivers:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 
 common: 
-	@for dir in $(SUBDIRS); do \
+	@for dir in $(RLM_SUBDIRS); do \
 		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
 		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit 1;\
 	done
