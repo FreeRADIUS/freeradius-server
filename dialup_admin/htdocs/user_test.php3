@@ -58,11 +58,15 @@ EOM;
 	<tr><td>
 
 <?php
+if ($server == '')
+	$server = $config[general_radius_server];
+if ($port == 0)
+	$port = $config[general_radius_server_port];
+if ($auth_proto == '')
+	$auth_proto = $config[general_radius_server_auth_proto];
+$selected[$auth_proto] = 'selected';
+
 if ($test_user == 1){
-	if ($server == '')
-		$server = $config[general_radius_server];
-	if ($port == 0)
-		$port = $config[general_radius_server_port];
 	$tmp_file = tempnam("$config[general_tmp_dir]",'DA');
 	$req=file($config[general_auth_request_file]);
 	if ($config[general_ld_library_path] != '')
@@ -142,7 +146,7 @@ EOM;
 User Password
 </td>
 <td>
-<input type=password name=passwd value="" size=25>
+<input type=password name=passwd value="<?php print $passwd ?>" size=25>
 </td>
 </tr>
 <tr>
@@ -150,7 +154,7 @@ User Password
 Radius Server
 </td>
 <td>
-<input type=text name=server value="<?php print $config[general_radius_server] ?>" size=25>
+<input type=text name=server value="<?php print $server ?>" size=25>
 </td>
 </tr>
 <tr>
@@ -158,7 +162,7 @@ Radius Server
 Radius Server Port
 </td>
 <td>
-<input type=text name=port value="<?php print $config[general_radius_server_port] ?>" size=25>
+<input type=text name=port value="<?php print $port ?>" size=25>
 </td>
 </tr>
 <tr>
@@ -166,7 +170,7 @@ Radius Server Port
 Extra Attributes
 </td>
 <td>
-<textarea name="extra" cols="35" wrap="PHYSICAL" rows="4"></textarea>
+<textarea name="extra" cols="35" wrap="PHYSICAL" rows="4"><?php print $extra ?></textarea>
 </td>
 </tr>
 <tr>
@@ -174,9 +178,13 @@ Extra Attributes
 Authentication Protocol
 </td>
 <td>
+<?php
+echo <<<EOM
 <select name="auth_proto" editable>
-<option selected value="pap">PAP
-<option value="chap">CHAP
+<option $selected[pap] value="pap">PAP
+<option $selected[chap] value="chap">CHAP
+EOM
+?>
 </select>
 </td>
 </tr>
