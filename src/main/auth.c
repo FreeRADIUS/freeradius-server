@@ -208,42 +208,18 @@ static int rad_check_password(REQUEST *request,
 			 *	CHAP - calculate MD5 sum over CHAP-ID,
 			 *	plain-text password and the Chap-Challenge.
 			 *	Compare to Chap-Response (strvalue + 1).
-			 *
-			 *	FIXME: might not work with Ascend because
-			 *	we use vp->length, and Ascend gear likes
-			 *	to send an extra '\0' in the string!
 			 */
 			if (password_pair == NULL) {
 				result= -1;
 				break;
 			}
-			i = 0;
-			ptr = string;
-			*ptr++ = *auth_item->strvalue;
-			i++;
-			memcpy(ptr, password_pair->strvalue,
-				password_pair->length);
-			ptr += password_pair->length;
-			i += password_pair->length;
-			/*
-			 *	Use Chap-Challenge pair if present,
-			 *	Request-Authenticator otherwise.
-			 */
-			if ((tmp = pairfind(request->packet->vps,
-			    PW_CHAP_CHALLENGE)) != NULL) {
-				memcpy(ptr, tmp->strvalue, tmp->length);
-				i += tmp->length;
-			} else {
-				memcpy(ptr, request->packet->vector,
-					AUTH_VECTOR_LEN);
-				i += AUTH_VECTOR_LEN;
-			}
-			librad_md5_calc(chap_digest, string, i);
+			rad_chap_encode(request->packet, string,
+					*auth_item->strvalue, password_pair);
 
 			/*
 			 *	Compare them
 			 */
-			if (memcmp(chap_digest, auth_item->strvalue + 1,
+			if (memcmp(string + 1, auth_item->strvalue + 1,
 					CHAP_VALUE_LENGTH) != 0)
 				result = -1;
 			break;

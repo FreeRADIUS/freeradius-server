@@ -191,7 +191,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			} else if (reply->attribute == PW_CHAP_PASSWORD) {
 			  rad_chap_encode(packet, reply->strvalue, packet->id,
 					  reply);
-			  reply->length = 1 + AUTH_VECTOR_LEN;
+			  reply->length = 1 + CHAP_VALUE_LENGTH;
 			} 
 		      }
 		      
@@ -814,6 +814,10 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 
 /*
  *	Encode a CHAP password
+ *
+ *	FIXME: might not work with Ascend because
+ *	we use vp->length, and Ascend gear likes
+ *	to send an extra '\0' in the string!
  */
 int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *password)
 {
@@ -828,6 +832,13 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *pas
 	if ((packet == NULL) || (password == NULL)) {
 		return -1;
 	}
+
+	/*
+	 *	Note that the password VP can be EITHER
+	 *	a Password attribute (from a check-item list),
+	 *	or a CHAP-Password attribute (the client asking
+	 *	the library to encode it).
+	 */
 
 	i = 0;
 	ptr = string;

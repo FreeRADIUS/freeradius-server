@@ -11,8 +11,6 @@
 #include "conf.h"
 #include "missing.h"
 
-#define CHAP_VALUE_LENGTH               16
-
 typedef struct auth_req {
 	RADIUS_PACKET		*packet;
 	RADIUS_PACKET		*proxy;
