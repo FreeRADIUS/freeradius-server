@@ -48,7 +48,7 @@ struct fastuser_instance {
 /* Function declarations */
 static int fastuser_buildhash(struct fastuser_instance *inst);
 static int fastuser_getfile(struct fastuser_instance *inst, const char *filename, 
-														PAIR_LIST **hashtable, PAIR_LIST *default_list);
+														PAIR_LIST **default_list, PAIR_LIST **hashtable);
 static int fastuser_hash(const char *s, long hashtablesize);
 static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *entry, int idx);
 static PAIR_LIST *fastuser_find(PAIR_LIST **hashtable, const char *user,
@@ -85,7 +85,7 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 	}
 	memset((PAIR_LIST *)newhash, 0, memsize);
 
-	rcode = fastuser_getfile(inst, inst->usersfile, newhash, newdefaults);
+	rcode = fastuser_getfile(inst, inst->usersfile, &newdefaults, newhash);
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "rlm_fastusers:  Errors reading %s", inst->usersfile);
 		return -1;
@@ -119,13 +119,12 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 }
 
 static int fastuser_getfile(struct fastuser_instance *inst, const char *filename, 
-														PAIR_LIST **hashtable, PAIR_LIST *default_list)
-{
+														PAIR_LIST **default_list, PAIR_LIST **hashtable) {
 	int rcode;
 	PAIR_LIST *users = NULL;
 	int compat_mode = FALSE;
-	PAIR_LIST *entry, *next, *cur;
-	VALUE_PAIR *vp;
+	PAIR_LIST *entry=NULL, *next=NULL, *cur=NULL, *defaults=NULL;
+	VALUE_PAIR *vp=NULL;
 	int hashindex = 0;
 	long numdefaults = 0, numusers=0;
 
@@ -252,13 +251,13 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 		if(strcmp(entry->name, "DEFAULT")==0) {
 				numdefaults++;
 				/* put it at the end of the list */
-				if(default_list) {
-					for(cur=default_list; cur->next; cur=cur->next);
+				if(defaults) {
+					for(cur=defaults; cur->next; cur=cur->next);
 					cur->next = entry;
 					entry->next = NULL;
 				} else {
-					default_list = entry;
-					default_list->next = NULL; 
+					defaults = entry;
+					defaults->next = NULL; 
 				}
 
 		} else {
@@ -280,8 +279,10 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 		radlog(L_INFO, "Warning:  fastusers found multiple DEFAULT entries.  Using the first.");
 	}
 
+	*default_list = defaults;
 	radlog(L_INFO, "rlm_fastusers:  Loaded %ld users and %ld defaults",
 				numusers, numdefaults);
+
 	return 0;
 }
 
