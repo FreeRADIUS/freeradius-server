@@ -696,13 +696,13 @@ LRAD_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
 	 *	We allow an empty line.
 	 */
 	if (buffer[0] == 0)
-		return 0;
+		return T_EOL;
 
 	p = buffer;
 	do {
 		previous_token = last_token;
 		if ((vp = pairread(&p, &last_token)) == NULL) {
-			return -1;
+			return T_INVALID;
 		}
 		pairadd(first_pair, vp);
 	} while (*p && (last_token == T_COMMA));
