@@ -204,7 +204,8 @@ Fall-Through item should be used ONLY where it is required.
 Entries rejecting certain requests should go at the top of the file,
 and should not have a Fall-Through item in their reply items.  Entries
 for specific users, who do not have a Fall-Through item, should come
-next.  Any DEFAULT entries should come last.
+next.  Any DEFAULT entries should usually come last, except as fall-through
+entries that set reply attributes.
 
 .SH FILES
 /etc/raddb/users

@@ -13,6 +13,9 @@ you have more then 500 entries in the \fIusers\fP file. Normally,
 \fBradiusd\fP reads the \fIusers\fP file into memory at startup. With
 very large files this may cost too many resources and it may then
 be wiser to use a DBM file to save memory.
+
+Be aware that with the fastusers module, one can get very good results
+with no DBM file, so use of this program may be depreciated.
 .SH SEE ALSO
 radiusd(8), users(5rad).
 .SH AUTHOR
