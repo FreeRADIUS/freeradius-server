@@ -6,7 +6,7 @@ cd $parentdir
 parentdir=`pwd`
 
 libtoolize -f -c
-aclocal
+#aclocal
 autoheader
 autoconf
 
