@@ -531,7 +531,8 @@ int rad_authenticate(REQUEST *request)
 		rad_authlog("Login incorrect", request, 0);
 
 		/* double check: maybe the secret is wrong? */
-		if (debug_flag > 1) {
+		if ((debug_flag > 1) &&
+		    (auth_item->attribute == PW_PASSWORD)) {
 			u_char *p;
 
 		  p = auth_item->strvalue;
