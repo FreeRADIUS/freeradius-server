@@ -37,6 +37,7 @@ static const char rcsid[] = "$Id$";
 #include "modcall.h"
 #include "conffile.h"
 #include "ltdl.h"
+#include "rad_assert.h"
 
 /*
  *	Internal list of all of the modules we have loaded.
@@ -159,46 +160,6 @@ int detach_modules(void)
 	module_list = NULL;
 
 	return 0;
-}
-
-/*
- *  New Auth-Type's start at a large number, and go up from there.
- *
- *  We could do something more intelligent, but this should work almost
- *  all of the time.
- *
- * FIXME: move this to dict.c as dict_valadd() and dict_valdel()
- *        also clear value in module_list free (necessary?)
- */
-static int new_sectiontype_value(const char *name,int type)
-{
-	static int max_value = 32767;
-	DICT_VALUE *old_value, *new_value;
-	
-	/*
-	 *  Check to see if it's already defined.
-	 *  If so, return the old value.
-	 */
-	old_value = dict_valbyname(type, name);
-	if (old_value) 
-		return old_value->value; 
-	/* Look for the predefined Type value */
-	old_value = dict_valbyattr(type, 0);
-	if (!old_value) 
-		return 0;	/* something WIERD is happening */
-	
-	/* allocate a new value */
-	new_value = (DICT_VALUE *) rad_malloc(sizeof(DICT_VALUE));
-	
-	/* copy the old to the new */
-	memcpy(new_value, old_value, sizeof(DICT_VALUE));
-	old_value->next = new_value;
-	
-	/* set it up */
-	strNcpy(new_value->name, name, sizeof(new_value->name));
-	new_value->value = max_value++;
-	
-	return new_value->value;
 }
 
 /*
@@ -494,6 +455,7 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 	int idx;
 	indexed_modcallable *subcomp;
 	modcallable *ml;
+	DICT_VALUE *dval;
 
 	static int meaningless_counter = 1;
 
@@ -506,13 +468,21 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 	 * nor checked for uniqueness, but all that could be fixed in a few
 	 * minutes, if anyone finds a real use for indexed config of
 	 * components other than auth. */
-	if (comp==RLM_COMPONENT_AUTH)
-		idx = new_sectiontype_value(cf_section_name2(cs),PW_AUTHTYPE);
-	else if (comp == RLM_COMPONENT_AUTZ)
-		idx = new_sectiontype_value(cf_section_name2(cs),PW_AUTZTYPE);
-	else
+	dval = NULL;
+	if (comp==RLM_COMPONENT_AUTH) {
+		dval = dict_valbyname(PW_AUTHTYPE, cf_section_name2(cs));
+	} else if (comp == RLM_COMPONENT_AUTZ) {
+		dval = dict_valbyname(PW_AUTZTYPE, cf_section_name2(cs));
+	} else if (comp == RLM_COMPONENT_ACCT) {
+		dval = dict_valbyname(PW_ACCTTYPE, cf_section_name2(cs));
+	}
+
+	if (dval) {
+		idx = dval->value;
+	} else {
 		idx = meaningless_counter++;
-	
+	}
+
 	subcomp = new_sublist(comp, idx);
 	if (!subcomp) {
 		radlog(L_ERR|L_CONS,
@@ -560,7 +530,11 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 		this = compile_modsingle(comp, modref, filename, &modname);
 
 		if (comp == RLM_COMPONENT_AUTH) {
-			idx = new_sectiontype_value(modname, PW_AUTHTYPE);
+			DICT_VALUE *dval;
+
+			dval = dict_valbyname(PW_AUTHTYPE, modname);
+			rad_assert(dval != NULL);
+			idx = dval->value;
 		} else {
 			/* See the comment in new_sublist() for explanation
 			 * of the special index 0 */
@@ -586,6 +560,19 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 				comp, visiblename);
 	}
 }
+
+typedef struct section_type_value_t {
+	const char	*section;
+	const char	*typename;
+	int		attr;
+} section_type_value_t;
+
+static const section_type_value_t section_type_value[] = {
+	{ "authorize",    "autztype", PW_AUTZTYPE },
+	{ "authenticate", "authtype", PW_AUTHTYPE },
+	{ "accounting",   "accttype", PW_ACCTTYPE },
+	{ NULL, NULL, 0 }
+};
 
 /*
  *	Parse the module config sections, and load
@@ -644,6 +631,68 @@ int setup_modules(void)
 	} else {
 		detach_modules();
 	}
+
+	/*
+	 *	Create any DICT_VALUE's for the types.  See
+	 *	'doc/configurable_failover' for examples of 'authtype'
+	 *	used to create new Auth-Type values.  In order to
+	 *	let the user create new names, we've got to look for
+	 *	those names, and create DICT_VALUE's for them.
+	 */
+	for (comp = 0; section_type_value[comp].section != NULL; comp++) {
+		const char	*name2;
+		DICT_ATTR	*dattr;
+		DICT_VALUE	*dval;
+		CONF_SECTION	*sub;
+
+		/*
+		 *  Big-time YUCK
+		 */
+		static int my_value = 32767;
+
+		cs = cf_section_find(section_type_value[comp].section);
+		if (!cs) continue;
+
+		sub = NULL;
+		do {
+			/*
+			 *	See if there's a sub-section by that
+			 *	name.
+			 */
+			sub = cf_subsection_find_next(cs, sub,
+						      section_type_value[comp].typename);
+			if (!sub) continue;
+
+			/*
+			 *	If so, look for it to define a new
+			 *	value.
+			 */
+			name2 = cf_section_name2(sub);
+			if (!name2) continue;
+
+			/*
+			 *	If the value already exists, don't
+			 *	create it again.
+			 */
+			dval = dict_valbyname(section_type_value[comp].attr,
+					      name2);
+			if (dval) continue;
+
+			/*
+       			 *	Find the attribute for the value.
+			 */
+			dattr = dict_attrbyvalue(section_type_value[comp].attr);
+			if (!dattr) continue;
+
+			/*
+			 *	Finally, create the new attribute.
+			 */
+			if (dict_addvalue(name2, dattr->name, my_value++) < 0) {
+				radlog(L_ERR, "%s", librad_errstr);
+				exit(1);
+			}
+		} while (sub != NULL);
+	} /* over the sections which can have redundent sub-sections */
 
 	/*
 	 *  Look for the 'instantiate' section, which tells us
