@@ -1,10 +1,10 @@
 /*
  * acct.c	Accounting routines.
  *
- * Version:	@(#)acct.c  2.12  07-Aug-1999  miquels@cistron.nl
+ * Version:	$Id$
  */
-char acct_sccsid[] =
-"@(#)acct.c	2.12 Copyright 1999 Cistron Internet Services B.V.";
+
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
