@@ -36,10 +36,16 @@ include config.mak
 TARGET		= rlm_example
 SRCS		= rlm_example.c other.c
 HEADERS		= config.h other.h
-RLM_CFLAGS	= -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align \
-		  -Wwrite-strings -Wconversion -Wstrict-prototypes \
-		  -Wmissing-prototypes -Wmissing-declarations \
-		  -Wnested-externs
+
+#
+#  Use the following flags if the compiler is GCC, and you're
+#  extremely paranoid.
+#
+#RLM_CFLAGS	= -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align \
+#		  -Wwrite-strings -Wconversion -Wstrict-prototypes \
+#		  -Wmissing-prototypes -Wmissing-declarations \
+#		  -Wnested-externs
+RLM_CFLAGS	=
 LIBS		= $(LIBC_STRCPY)
 
 #######################################################################
