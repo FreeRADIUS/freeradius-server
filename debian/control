@@ -1,9 +1,9 @@
 Source: freeradius
-Build-Depends: debhelper (>= 3.4.4), libltdl3-dev, libpam0g-dev, postgresql-dev, libmysqlclient10-dev | libmysqlclient-dev, libgdbmg1-dev, libldap2-dev, libsasl2-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, libssl-dev, libtool, snmp, autoconf2.13
+Build-Depends: debhelper (>= 3.4.4), libltdl3-dev, libpam0g-dev, postgresql-dev, libmysqlclient10-dev | libmysqlclient-dev, libgdbmg1-dev, libldap2-dev, libsasl2-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, libssl-dev, libtool, snmp, autoconf2.13, autotools-dev
 Section: net
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
-Standards-Version: 3.5.7
+Standards-Version: 3.5.9
 
 Package: freeradius
 Architecture: any

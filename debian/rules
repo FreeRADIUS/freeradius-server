@@ -15,11 +15,29 @@ logdir		= /var/log/$(package)
 pkgdocdir	= /usr/share/doc/$(package)
 raddbdir	= /etc/$(package)
 
-build:
-# Builds the binary package.
+export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+export CFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+
+# Autoconf 2.13 arch support
+ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
+	confflags += $(DEB_HOST_GNU_TYPE)
+else
+	confflags += --host $(DEB_BUILD_GNU_TYPE) --build $(DEB_HOST_GNU_TYPE)
+endif
+
+build-simple:
 	dh_testdir
 	# dh_testroot
 	./configure \
+		$(confflags) \
 		--prefix=/usr \
 		--exec-prefix=/usr \
 		--mandir=$(mandir) \
@@ -39,17 +57,16 @@ build:
 		| sed -e 's!${localstatedir}/run/radiusd!${localstatedir}/run/freeradius!' \
 			> Make.inc; \
 	rm $$TEMPFILE
-#		This is currently a NOP
-#		| sed -e 's!$(datadir)/freeradius!$(datadir)/freeradius!' \
 
 	make
 	touch build
 
-# Architecture independant files.
+build: autotools build-simple
+
 binary-indep: build
 
-# Make a binary package (.deb file)
 binary-arch: build
+	dh_testroot
 	dh_clean
 	dh_installdirs
 	make install R=$(freeradius_dir)
@@ -92,7 +109,9 @@ binary-arch: build
 			> $(freeradius_dir)/$(raddbdir)/radiusd.conf; \
 	rm $$TEMPFILE
 
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	dh_strip
+endif
 	# We don't need ldconfig. None of our libraries go in it's paths
 	dh_makeshlibs -n
 	dh_shlibdeps
@@ -104,12 +123,21 @@ binary-arch: build
 	dh_builddeb
 
 clean:	
+	dh_testdir
 	rm -f build debian/{files,substvars} debian/*.debhelper
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
 	rm -rf $(freeradius_dir) $(debiandir)/$(package)-{ldap,postgresql,mysql,krb5}{,.substvars}
 
 binary: binary-indep binary-arch
+
+# The autotools target adds forced build-time dependencies on
+# autotools-dev (for /usr/share/misc/config.*)
+# It's also a .PHONY make target.
+autotools:
+	-rm -f config.sub config.guess
+	ln -s /usr/share/misc/config.sub config.sub
+	ln -s /usr/share/misc/config.guess config.guess
 
 # for the maintainer only
 sanitycheck:
@@ -122,4 +150,4 @@ sanitycheck:
 	@test -n $$filename
 	@echo good.
 
-.PHONY: binary binary-arch binary-indep clean sanitycheck
+.PHONY: binary binary-arch binary-indep clean sanitycheck autotools
