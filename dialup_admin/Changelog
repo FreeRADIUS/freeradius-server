@@ -37,6 +37,7 @@ Ver 1.60:
 * Add sessions in order to cache the various mappings. Add a corresponding configuration directive
   general_use_session. Also add a session cache destroy page.
 * Also cache the admin.conf if use_session is set to 1 in config.php3
+* Fix a few bugs
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files

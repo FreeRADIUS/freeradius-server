@@ -77,7 +77,7 @@ if ($login != ''){
 								$attr_type["$key"] = 'replyItem';
 								$rev_attrmap["$val"] = $key;
 							}
-							if (isset($default_vals["$key"]) && $overwrite_defaults){
+							if (!isset($default_vals["$key"]) || $overwrite_defaults){
 								if ($use_op)
 									$default_vals["$key"][operator] = $tmp["$val"][operator];
 								if ($tmp[$val][0] != '')

@@ -1,4 +1,5 @@
 <?php
+require('../lib/functions.php3');
 if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
 	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
 else{
@@ -33,7 +34,7 @@ if ($link){
 				$attrmap["$key"] = $key;
 				$attr_type["$key"] = 'replyItem';
 				$rev_attrmap["$key"] = $key;
-			}	
+			}
 			if ($attr_type["$key"] == 'checkItem'){
 				$table = "$config[sql_groupcheck_table]";
 				$type = 1;
@@ -56,7 +57,7 @@ if ($link){
 				continue;
 			$res = @da_sql_query($link,$config,
 			"INSERT INTO $table (Attribute,Value,GroupName $text)
-			VALUES ('$attrmap[$key]','$val','$login' $op_val2;");
+			VALUES ('$attrmap[$key]','$val','$login' $op_val2);");
 			if (!$res || !@da_sql_affected_rows($link,$res,$config))
 				echo "<b>Query failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
