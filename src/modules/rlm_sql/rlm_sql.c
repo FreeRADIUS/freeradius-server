@@ -502,134 +502,6 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	int     acctsessiontime = 0;
 #endif
 
-/*
- *        See if a user is already logged in. Sets request->simul_count to the
- *        current session count for this user.
- * 
- *        Check twice. If on the first pass the user exceeds his
- *        max. number of logins, do a second pass and validate all
- *        logins by querying the terminal server (using eg. SNMP).
- */
-
-static int rlm_sql_checksimul(void *instance, REQUEST * request) {
-	SQLSOCK 	*sqlsocket;
-	SQL_INST	*inst = instance;
-	SQL_ROW		row;
-	char		querystr[MAX_QUERY_LEN];
-	char		sqlusername[2*MAX_STRING_LEN+10];
-	int		check = 0;
-        uint32_t        ipno = 0;
-        char            *call_num = NULL;
-	VALUE_PAIR      *vp;
-
-	/* If simul_count_query is not defined, we don't do any checking */
-	if (inst->config->simul_count_query[0] == 0) {
-		return RLM_MODULE_NOOP;
-	}
-
-	if((request->username == NULL) || (request->username->length == 0)) {
-		radlog(L_ERR, "Zero Length username not permitted\n");
-		return RLM_MODULE_INVALID;
-	}
-
-	/* initialize the sql socket */
-	sqlsocket = sql_get_socket(inst);
-	if(sqlsocket == NULL)
-		return RLM_MODULE_FAIL;
-
-	if(sql_set_user(inst, request, sqlusername, 0) <0)
-		return RLM_MODULE_FAIL;
-
-	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_count_query, request, NULL);
-	if((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
-		radlog(L_ERR, "sql_checksimul: Database query failed");
-		sql_release_socket(inst, sqlsocket);
-		return RLM_MODULE_FAIL;
-	}
-
-	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
-	request->simul_count = atoi(row[0]);
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-
-	if(request->simul_count < request->simul_max) {
-		sql_release_socket(inst, sqlsocket);
-		return RLM_MODULE_OK;
-	}
-
-	/* Looks like to many sessions, so lets start verifying them */
-
-	if (inst->config->simul_verify_query[0] == 0) {
-		/* No verify query defined, so skip verify step and rely on count query only */
-		return RLM_MODULE_OK;
-	}
-
-	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_verify_query, request, NULL);
-	if((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
-		radlog(L_ERR, "sql_checksimul: Database query error");
-		sql_release_socket(inst, sqlsocket);
-		return RLM_MODULE_FAIL;
-	}
-
-        /*
-         *      Setup some stuff, like for MPP detection.
-         */
-	request->simul_count = 0;
-
-        if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
-                ipno = vp->lvalue;
-        if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
-                call_num = vp->strvalue;        
-
-
-	while((row=(inst->module->sql_fetch_row)(sqlsocket, inst->config))) {
-		check = rad_check_ts((uint32_t)row[3], (int)row[4], row[2], row[1]);
-
-                /*
-                 *      Failed to check the terminal server for
-                 *      duplicate logins: Return an error.
-                 */
-		if (check < 0) {
-			return RLM_MODULE_FAIL;
-		}
-
-		if(check == 1) {
-			++request->simul_count;
-
-                        /*
-                         *      Does it look like a MPP attempt?
-                         */
-                        if (row[5] && ipno && inet_addr(row[5]) == ipno)
-                                request->simul_mpp = 2;
-                        else if (row[6] && call_num &&
-                                !strncmp(row[6],call_num,16))
-                                request->simul_mpp = 2;
-		}
-		else {
-                        /*
-                         *      Stale record - zap it.
-                         */
-			if(inst->config->simul_zap_query[0] != 0) {
-				SQLSOCK *sqlsocket1;
-				radlog(L_ERR, "rlm_sql: Deleting stale session [%s] (from %s/%s)", 
-								row[1],row[3],row[4]);
-				sqlsocket1 = sql_get_socket(inst);
-				sprintf(querystr, inst->config->simul_zap_query, row[0]);
-				(inst->module->sql_query)(sqlsocket1, inst->config, querystr);
-				(inst->module->sql_finish_select_query)(sqlsocket1, inst->config);
-				sql_release_socket(inst, sqlsocket1);
-			}
-		}
-	}
-
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-	sql_release_socket(inst, sqlsocket);
-
-	/* The Auth module apparently looks at request->simul_count, not the return value
-	   of this module when deciding to deny a call for too many sessions */
-	return RLM_MODULE_OK;
-
-}
-
 	memset(querystr, 0, MAX_QUERY_LEN);
 
 	/*
@@ -794,6 +666,135 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	sql_release_socket(inst, sqlsocket);
 
 	return RLM_MODULE_OK;
+}
+
+
+/*
+ *        See if a user is already logged in. Sets request->simul_count to the
+ *        current session count for this user.
+ * 
+ *        Check twice. If on the first pass the user exceeds his
+ *        max. number of logins, do a second pass and validate all
+ *        logins by querying the terminal server (using eg. SNMP).
+ */
+
+static int rlm_sql_checksimul(void *instance, REQUEST * request) {
+	SQLSOCK 	*sqlsocket;
+	SQL_INST	*inst = instance;
+	SQL_ROW		row;
+	char		querystr[MAX_QUERY_LEN];
+	char		sqlusername[2*MAX_STRING_LEN+10];
+	int		check = 0;
+        uint32_t        ipno = 0;
+        char            *call_num = NULL;
+	VALUE_PAIR      *vp;
+
+	/* If simul_count_query is not defined, we don't do any checking */
+	if (inst->config->simul_count_query[0] == 0) {
+		return RLM_MODULE_NOOP;
+	}
+
+	if((request->username == NULL) || (request->username->length == 0)) {
+		radlog(L_ERR, "Zero Length username not permitted\n");
+		return RLM_MODULE_INVALID;
+	}
+
+	/* initialize the sql socket */
+	sqlsocket = sql_get_socket(inst);
+	if(sqlsocket == NULL)
+		return RLM_MODULE_FAIL;
+
+	if(sql_set_user(inst, request, sqlusername, 0) <0)
+		return RLM_MODULE_FAIL;
+
+	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_count_query, request, NULL);
+	if((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
+		radlog(L_ERR, "sql_checksimul: Database query failed");
+		sql_release_socket(inst, sqlsocket);
+		return RLM_MODULE_FAIL;
+	}
+
+	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
+	request->simul_count = atoi(row[0]);
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+
+	if(request->simul_count < request->simul_max) {
+		sql_release_socket(inst, sqlsocket);
+		return RLM_MODULE_OK;
+	}
+
+	/* Looks like too many sessions, so lets start verifying them */
+
+	if (inst->config->simul_verify_query[0] == 0) {
+		/* No verify query defined, so skip verify step and rely on count query only */
+		return RLM_MODULE_OK;
+	}
+
+	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_verify_query, request, NULL);
+	if((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
+		radlog(L_ERR, "sql_checksimul: Database query error");
+		sql_release_socket(inst, sqlsocket);
+		return RLM_MODULE_FAIL;
+	}
+
+        /*
+         *      Setup some stuff, like for MPP detection.
+         */
+	request->simul_count = 0;
+
+        if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
+                ipno = vp->lvalue;
+        if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
+                call_num = vp->strvalue;        
+
+
+	while((row=(inst->module->sql_fetch_row)(sqlsocket, inst->config))) {
+		check = rad_check_ts((uint32_t)row[3], (int)row[4], row[2], row[1]);
+
+                /*
+                 *      Failed to check the terminal server for
+                 *      duplicate logins: Return an error.
+                 */
+		if (check < 0) {
+			return RLM_MODULE_FAIL;
+		}
+
+		if(check == 1) {
+			++request->simul_count;
+
+                        /*
+                         *      Does it look like a MPP attempt?
+                         */
+                        if (row[5] && ipno && inet_addr(row[5]) == ipno)
+                                request->simul_mpp = 2;
+                        else if (row[6] && call_num &&
+                                !strncmp(row[6],call_num,16))
+                                request->simul_mpp = 2;
+		}
+		else {
+                        /*
+                         *      Stale record - zap it.
+                         */
+			if(inst->config->simul_zap_query[0] != 0) {
+				SQLSOCK *sqlsocket1;
+				radlog(L_ERR, "rlm_sql: Deleting stale session [%s] (from %s/%s)", 
+								row[1],row[3],row[4]);
+				sqlsocket1 = sql_get_socket(inst);
+				sprintf(querystr, inst->config->simul_zap_query, row[0]);
+				(inst->module->sql_query)(sqlsocket1, inst->config, querystr);
+				(inst->module->sql_finish_select_query)(sqlsocket1, inst->config);
+				sql_release_socket(inst, sqlsocket1);
+			}
+		}
+	}
+
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+	sql_release_socket(inst, sqlsocket);
+
+	/* The Auth module apparently looks at request->simul_count, not the return value
+	   of this module when deciding to deny a call for too many sessions */
+	return RLM_MODULE_OK;
+
 }
 
 /* globally exported name */
