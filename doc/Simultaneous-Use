@@ -61,6 +61,13 @@
   NOTE!!! The "Simultaneous-Use" parameter is in the "check" A/V pairs,
           and not in the Reply A/V pairs (it _is_ a check).
 
+  For SQL, after creating and populating your schema, you should
+  execute the following statement (for MySQL, others may vary):
+
+  INSERT INTO radgroupcheck (GroupName, Attribute, op, Value) values("dialup", "Simultaneous-Use", ":=", "1");
+
+  Once that is done, your users should be limited to only one login at a time.
+
 3. IMPLEMENTATION
 
   The server keeps a list of logged-in users in the /var/log/radutmp file.
@@ -120,7 +127,7 @@
 4. IF IT DOESN'T WORK
 
   Note that you need to add the Simultaneous-Use parameter to the
-  check item (first line), not the reply item, using the '==' operator.
+  check item (first line), not the reply item, using the ':=' operator.
 
   You can edit the `checkrad' perl script and turn on debugging. Then
   watch the debug file. The `radius.log' file also gives some hints.
@@ -132,7 +139,7 @@
 
   This solution checks the radutmp file. This file is kept up-to-date from
   the Accounting records the NAS sends. Since some NASes delay these records
-  for quite some time, it is possible to get a double login by loggin in
+  for quite some time, it is possible to get a double login by logging in
   twice at _exactly_ the same time (plus or minus the mentioned delay time),
   since neither of the logins are registered yet.
 
