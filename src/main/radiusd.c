@@ -1141,7 +1141,7 @@ int rad_process(REQUEST *request, int dospawn)
 			request_free(&request);
 			return -1;
 		}
-		if (request->packet->code == PW_AUTHENTICATION_ACK) {
+		if (request->packet->code != PW_ACCOUNTING_RESPONSE) {
 			fun = rad_authenticate;
 		} else {
 			fun = rad_accounting;
