@@ -1,5 +1,4 @@
 URGENT:
-
 o Stop unloading modules on HUP so that we can have persistant
   handles/socketc/etc from module_init().  Alan D. and Alan C. had a good
   plan for when to load/reload modules on the list recently...I say
@@ -7,7 +6,6 @@ o Stop unloading modules on HUP so that we can have persistant
 o merge OSF/OSFIA patches from Cistron.
 o double-check Cistron 'compat' mode, so that all current users of
   Cistron can upgrade "out of the box" to FreeRADIUS
-
 
 MEDIUM PRIORITY
 o go through all of the code and reformat it, for project standards
@@ -26,15 +24,11 @@ o Write better documentation
 o Manual pages for the daemon, utilities and conffiles (some done)
 o Fix all FIXME's in the source.
 o Fix DBM support:
+  - Put DBM into its own module
   - Multiple defaults (done)
   - Fallthrough (hard for not DEFAULT entries)
-o split rlm_files into rlm_users, rlm_fastusers (in-memory hash),
-  rlm_detail, rlm_dbm... they all should share as much code as
-  possible though, not be big cut-and-paste jobs
 o better SNMP statistics support, for the auth/acct servers, and for
   each client.
-o fix the request list walking code, to scan each element no more than
-  once per second.
 
 WAIT UNTIL NEXT RELEASE:
 o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
@@ -45,9 +39,6 @@ o New module: rlm_fastradwtmp. with a radutmp-style active session
 o New module: rlm_attrmap. assigns a single attribute based on a
   username, with ed-friendly/awk-friendly config file. Because the
   users file is too complicated.
-o have a config file (or section in radiusd.conf) that tells rlm_sql
-  what the names of the tables and columns are instead of hardcoding
-  them
 o replace the module_t method table with a set of register_* functions
   (so different instances of the same module can offer different
   methods)
@@ -60,7 +51,7 @@ o New module: rlm_nsupdate (dyndns). Because dynamic addresses are
   cruel.
 o New module: rlm_perl.
 
-WILL NOT TO:
+WILL NOT DO:
 o module initialization AFTER forking, not before.
 	--- The modules should NOT be setting up any process-dependent
 	--- information.
@@ -115,3 +106,11 @@ o Limit logins based on time/date
   (for example, Login-Hour = 8-18, Login-Day = 0-5 for business hours)
 o take out host-order IP addresses
 o Support Connect-Rate
+o have a config file (or section in radiusd.conf) that tells rlm_sql
+  what the names of the tables and columns are instead of hardcoding
+  them
+o split rlm_files into rlm_users, rlm_fastusers (in-memory hash),
+  rlm_detail, they all should share as much code as
+  possible though, not be big cut-and-paste jobs
+o fix the request list walking code, to scan each element no more than
+  once per second.
