@@ -26,7 +26,7 @@ Package: freeradius-krb5
 Architecture: any
 Conflicts: radiusd-freeradius-krb5
 Replaces: radiusd-freeradius-krb5
-Depends: freeradius, ${shlibs:Depends}
+Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
 Description: kerberos module for FreeRADIUS server
  The FreeRADIUS server can use Kerberos to authenticate users, and this module
  is necessary for that.
@@ -35,7 +35,7 @@ Package: freeradius-ldap
 Architecture: any
 Conflicts: radiusd-freeradius-ldap
 Replaces: radiusd-freeradius-ldap
-Depends: freeradius, ${shlibs:Depends}
+Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
 Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.
@@ -44,7 +44,7 @@ Package: freeradius-postgresql
 Architecture: any
 Conflicts: radiusd-freeradius-postgresql
 Replaces: radiusd-freeradius-postgresql
-Depends: freeradius, ${shlibs:Depends}
+Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
 Description: PostgreSQL module for FreeRADIUS server
  The FreeRADIUS server can use PostgreSQL to authenticate users and do
  accounting, and this module is necessary for that.
@@ -53,14 +53,14 @@ Package: freeradius-mysql
 Architecture: any
 Conflicts: radiusd-freeradius-mysql
 Replaces: radiusd-freeradius-mysql
-Depends: freeradius, ${shlibs:Depends}
+Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
 Description: MySQL module for FreeRADIUS server
  The FreeRADIUS server can use MySQL to authenticate users and do accounting,
  and this module is necessary for that.
 
 Package: freeradius-iodbc
 Architecture: any
-Depends: freeradius, ${shlibs:Depends}
+Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
 Description: iODBC module for FreeRADIUS server
  The FreeRADIUS server can use iODBC to access databases to authenticate users
  and do accounting, and this module is necessary for that.

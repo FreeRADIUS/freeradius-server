@@ -1,14 +1,21 @@
-freeradius (1.0.cvs20041118-0) unstable; urgency=low
+freeradius (1.0.cvs20041218-0) unstable; urgency=low
 
   * Current CVS version
   * FreeRADIUS 1.1.0 is now able to use net-snmp in ucd-snmp
     compatibility mode.
+  * FreeRADIUS 1.1.0 uses autoconf 2.5 and libtool 1.5
+     Closes: #279391
   * Update for Debian Policy 3.6.1.1
    - Change test if invoke-rc.d as per Policy 9.3.3.2
   * freeradius-dialupadmin Suggests php4-mysql | php4-pgsql
      Closes: #279419
+  * Added a two-second pause to restart in init.d script
+     Closes: #262635
+  * FreeRADIUS module packages now depend on the same source
+    version of the main FreeRADIUS package.
+     Closes: #284353
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  7 Jul 2004 09:31:07 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sat, 18 Dec 2004 15:27:32 +1100
 
 freeradius (0.9.3-cvs20040421-0) unstable; urgency=low
 

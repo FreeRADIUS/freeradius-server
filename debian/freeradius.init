@@ -26,6 +26,7 @@ stop)	echo -n "Stopping $descr: "
         ;;
 restart) echo -n "Restarting $descr: "
 		$0 stop
+		sleep 2
 		$0 start
         ;;
 reload|force-reload) 
