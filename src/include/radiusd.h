@@ -73,6 +73,7 @@ typedef struct realm {
 	char			realm[64];
 	char			server[64];
 	uint32_t		ipaddr;
+	u_char			secret[32];
 	int			auth_port;
 	int			acct_port;
 	int			striprealm;

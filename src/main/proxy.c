@@ -169,11 +169,9 @@ int proxy_send(REQUEST *request)
 	VALUE_PAIR		*replicatepair;
 	VALUE_PAIR		*realmpair;
 	VALUE_PAIR		*namepair;
-	VALUE_PAIR		*passpair;
 	VALUE_PAIR		*strippednamepair;
 	VALUE_PAIR		*delaypair;
 	VALUE_PAIR		*vp, *vps;
-	RADCLIENT		*client;
 	REALM			*realm;
 	char			*realmname;
 	int			replicating;
@@ -249,22 +247,8 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
-	 *	Find the remote server in the "client" list-
-	 *	we need the secret.
-	 *
-	 *	FIXME: This client_find lookup SHOULD be cached in
-	 *	the realm struct! They are both read at start and
-	 *	SIGHUP!  (but what about sigHUP's and reloads?)
-	 */
-	if ((client = client_find(realm->ipaddr)) == NULL) {
-		log(L_PROXY, "cannot find secret for server %s in clients file",
-			realm->server);
-		return 0;
-	}
-
-	/*
 	 *	Copy the request, then look up
-	 *	name and (encrypted) password in the copy.
+	 *	name and plain-text password in the copy.
 	 *
 	 *	Note that the User-Name attribute is the *original*
 	 *	as sent over by the client.  The Stripped-User-Name
@@ -272,7 +256,6 @@ int proxy_send(REQUEST *request)
 	 */
 	vps = paircopy(request->packet->vps);
 	namepair = pairfind(vps, PW_USER_NAME);
-	passpair = pairfind(vps, PW_PASSWORD);
 	strippednamepair = pairfind(vps, PW_STRIPPED_USER_NAME);
 
 	/*
@@ -374,8 +357,8 @@ int proxy_send(REQUEST *request)
 	/*
 	 *	Send the request.
 	 */
-	rad_send(request->proxy, client->secret);
-	memcpy(request->proxysecret, client->secret, 32);
+	rad_send(request->proxy, realm->secret);
+	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
 	request->proxy_is_replicate = replicating;
 	request->proxy_try_count = RETRY_COUNT - 1;
 	request->proxy_next_try = request->timestamp + RETRY_DELAY;

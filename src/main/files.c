@@ -451,6 +451,7 @@ static int read_realms_file(const char *file)
 	char	*s, *p;
 	int	lineno = 0;
 	REALM	*c;
+	RADCLIENT *client;
 
 	realm_free(realms);
 	realms = NULL;
@@ -493,13 +494,30 @@ static int read_realms_file(const char *file)
 			c->auth_port = auth_port;
 			c->acct_port = acct_port;
 		}
-		if (strcmp(hostnm, "LOCAL") != 0)
+
+		if (strcmp(hostnm, "LOCAL") == 0) {
+			c->ipaddr = htons(0x7f000001);
+		} else {
 			c->ipaddr = ip_getaddr(hostnm);
+		}
+
 		if (c->ipaddr == 0) {
 			log(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 			    file, lineno, hostnm);
 			return -1;
 		}
+
+		/*
+		 *	Find the remote server in the "clients" list.
+		 *	If we can't find it, there's a big problem...
+		 */
+		client = client_find(c->ipaddr);
+		if (client == NULL) {
+			log(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server for realm \"%s\"",
+			    file, lineno, realm);
+			return -1;
+		}
+		memcpy(c->secret, client->secret, sizeof(c->secret));
 
 		/*
 		 *	Double-check lengths to be sure they're sane
