@@ -569,7 +569,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 't': /* request timestamp */
-				ctime_r(&request->timestamp, q);
+				CTIME_R(&request->timestamp, q, freespace);
 				q += strlen(q);
 				p++;
 				break;

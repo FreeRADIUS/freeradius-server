@@ -121,7 +121,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		time_t timeval;
 
 		timeval = time(NULL);
-		ctime_r(&timeval, buffer);
+		CTIME_R(&timeval, buffer, 8192);
 
 		s = lrad_int2str(levels, (lvl & ~L_CONS), ": ");
 

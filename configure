@@ -733,7 +733,7 @@ fi
 
 
 
-# From configure.in Revision: 1.189 
+# From configure.in Revision: 1.190 
 RADIUSD_MAJOR_VERSION=1
 RADIUSD_MINOR_VERSION=0.0-pre0
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -8272,9 +8272,70 @@ if test "x$gethostbynamerstyle" = "xBSD"; then
 	echo "configure: warning:  ****** BSD-style gethostbyname might NOT be thread-safe! ****** " 1>&2
 fi
 
+ctimerstyle=""
+echo $ac_n "checking ctime_r() syntax""... $ac_c" 1>&6
+echo "configure:8278: checking ctime_r() syntax" >&5
+cat > conftest.$ac_ext <<EOF
+#line 8280 "configure"
+#include "confdefs.h"
+
+#include <time.h>
+
+int main() {
+ ctime_r(NULL, NULL, 0) 
+; return 0; }
+EOF
+if { (eval echo configure:8289: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  
+	cat >> confdefs.h <<\EOF
+#define CTIMERSTYLE SOLARISSTYLE
+EOF
+
+	ctimerstyle="SOLARIS"
+
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+if test "x$ctimerstyle" = "x"; then
+	cat > conftest.$ac_ext <<EOF
+#line 8305 "configure"
+#include "confdefs.h"
+
+#include <time.h>
+
+int main() {
+ ctime_r(NULL, NULL) 
+; return 0; }
+EOF
+if { (eval echo configure:8314: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  
+		cat >> confdefs.h <<\EOF
+#define CTIMERSTYLE POSIXSTYLE
+EOF
+
+		ctimerstyle="POSIX"
+	
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+fi
+
+if test "x$ctimerstyle" = "x"; then
+	echo "$ac_t""none!  It must not exist, here." 1>&6
+else
+        echo "$ac_t""${ctimerstyle}-style" 1>&6
+fi
+
+
 if test x"$rad_enable_largefiles" = xyes ; then
     echo $ac_n "checking for largefile linkage""... $ac_c" 1>&6
-echo "configure:8278: checking for largefile linkage" >&5
+echo "configure:8339: checking for largefile linkage" >&5
     case "$host" in
     *-aix4.01*)
         echo "$ac_t""no" 1>&6
@@ -8311,7 +8372,7 @@ EOF
         # Extract the first word of "getconf", so it can be a program name with args.
 set dummy getconf; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:8315: checking for $ac_word" >&5
+echo "configure:8376: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_path_GETCONF'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else

@@ -269,7 +269,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	Post a timestamp
 	 */
 	fseek(outfp, 0L, SEEK_END);
-	fputs(ctime_r(&request->timestamp, buffer), outfp);
+	fputs(CTIME_R(&request->timestamp, buffer, DIRLEN), outfp);
 	
 	/* Write each attribute/value to the log file */
 	while (pair) {

@@ -797,6 +797,31 @@ if test "x$gethostbynamerstyle" = "xBSD"; then
 	AC_MSG_WARN([ ****** BSD-style gethostbyname might NOT be thread-safe! ****** ])
 fi
 
+dnl check for non-posix solaris ctime_r (extra buflen int arg)
+ctimerstyle=""
+AC_MSG_CHECKING([ctime_r() syntax])
+AC_TRY_LINK([
+#include <time.h>
+], [ ctime_r(NULL, NULL, 0) ], [
+	AC_DEFINE(CTIMERSTYLE, SOLARISSTYLE)
+	ctimerstyle="SOLARIS"
+])
+if test "x$ctimerstyle" = "x"; then
+	AC_TRY_LINK([
+#include <time.h>
+], [ ctime_r(NULL, NULL) ], [
+		AC_DEFINE(CTIMERSTYLE, POSIXSTYLE)
+		ctimerstyle="POSIX"
+	])
+fi
+
+if test "x$ctimerstyle" = "x"; then
+	AC_MSG_RESULT([none!  It must not exist, here.])
+else
+        AC_MSG_RESULT([${ctimerstyle}-style])
+fi
+
+
 dnl If configuring with large file support, determine the right flags to
 dnl use based on the platform.  This is the wrong approach; autoconf 2.50
 dnl comes with a macro that takes the right approach.  But this works well

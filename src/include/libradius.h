@@ -207,6 +207,17 @@ int		dict_vendorname(const char *name);
 /*#define dict_valget	dict_valbyattr almost but not quite*/
 #endif
 
+/* get around diffrent ctime_r styles */
+#ifdef CTIMERSTYLE
+#if CTIMERSTYLE == SOLARISSTYLE
+#define CTIME_R(a,b,c) ctime_r(a,b,c)
+#else
+#define CTIME_R(a,b,c) ctime_r(a,b)
+#endif
+#else
+#define CTIME_R(a,b,c) ctime_r(a,b)
+#endif
+
 /* md5.c */
 
 void		librad_md5_calc(u_char *, u_char *, u_int);
