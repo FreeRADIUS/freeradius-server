@@ -350,6 +350,7 @@ struct passwd_instance {
 	int listable;
 	int keyattr;
 	int keyattrtype;
+	int ignoreempty;
 };
 
 static CONF_PARSER module_config[] = {
@@ -363,6 +364,8 @@ static CONF_PARSER module_config[] = {
 	   offsetof(struct passwd_instance, delimiter), NULL,  ":" },
 	{ "ignorenislike",   PW_TYPE_BOOLEAN,
 	   offsetof(struct passwd_instance, ignorenislike), NULL,  "yes" },
+	{ "ignoreempty",   PW_TYPE_BOOLEAN,
+	   offsetof(struct passwd_instance, ignoreempty), NULL,  "yes" },
 	{ "allowmultiplekeys",   PW_TYPE_BOOLEAN,
 	   offsetof(struct passwd_instance, allowmultiple), NULL,  "no" },
 	{ "hashsize",   PW_TYPE_INTEGER,
@@ -492,12 +495,15 @@ static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct m
 
 	for (i=0; i<inst->nfields; i++) {
 		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
-			if (! (newpair = pairmake (inst->pwdfmt->field[i], pw->field[i], T_OP_EQ))) {
-				radlog(L_AUTH, "rlm_passwd: Unable to create %s: %s", inst->pwdfmt->field[i], pw->field[i]);
-				return;
-			}
-			radlog(L_DBG, "rlm_passwd: Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
-			pairadd (vp, newpair);
+			if ( !inst->ignoreempty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
+				if (! (newpair = pairmake (inst->pwdfmt->field[i], pw->field[i], T_OP_EQ))) {
+					radlog(L_AUTH, "rlm_passwd: Unable to create %s: %s", inst->pwdfmt->field[i], pw->field[i]);
+					return;
+				}
+				radlog(L_DBG, "rlm_passwd: Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
+				pairadd (vp, newpair);
+			} else
+				radlog(L_DBG, "rlm_passwd: NOOP %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 		}
 	}
 }
