@@ -751,6 +751,8 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
         char            *call_num = NULL;
 	VALUE_PAIR      *vp;
 	int		ret;
+	uint32_t	nas_addr = 0;
+	int		nas_port = 0;
 
 	/* If simul_count_query is not defined, we don't do any checking */
 	if (inst->config->simul_count_query[0] == 0) {
@@ -833,7 +835,24 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 		row = sqlsocket->row;
 		if (row == NULL)
 			break;
-		check = rad_check_ts((uint32_t)row[3], (int)row[4], row[2], row[1]);
+		if (!row[2]){
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
+			DEBUG("rlm_sql: Cannot zap stale entry. No username present in entry.");
+			return RLM_MODULE_FAIL;
+		}
+		if (!row[1]){
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
+			DEBUG("rlm_sql: Cannot zap stale entry. No session id in entry.");
+			return RLM_MODULE_FAIL;
+		}
+		if (row[3])
+			nas_addr = inet_addr(row[3]);
+		if (row[4])
+			nas_port = atoi(row[4]);
+
+		check = rad_check_ts(nas_addr, nas_port, row[2], row[1]);
 
                 /*
                  *      Failed to check the terminal server for
@@ -842,6 +861,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 		if (check < 0) {
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			sql_release_socket(inst, sqlsocket);
+			DEBUG("rlm_sql: rad_check_ts() failed.");
 			return RLM_MODULE_FAIL;
 		}
 
@@ -861,32 +881,14 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
                         /*
                          *      Stale record - zap it.
                          */
-			uint32_t nas_addr = 0;
 			uint32_t framed_addr = 0;
-			int nas_port = 0;
 			char proto = 'P';
 
-			if (row[3])
-				nas_addr = inet_addr(row[3]);
-			if (row[4])
-				nas_port = atoi(row[4]);
 			if (row[5])
 				framed_addr = inet_addr(row[5]);
 			if (row[7])
 				if (strcmp(row[7],"SLIP") == 0)
 					proto = 'S';
-			if (!row[2]){
-				(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-				sql_release_socket(inst, sqlsocket);
-				DEBUG("rlm_sql: Cannot zap stale entry. No username present in entry.");
-				return RLM_MODULE_FAIL;
-			}
-			if (!row[1]){
-				(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-				sql_release_socket(inst, sqlsocket);
-				DEBUG("rlm_sql: Cannot zap stale entry. No session id in entry.");
-				return RLM_MODULE_FAIL;
-			}
 
 			session_zap(request->packet->sockfd,
 			nas_addr,nas_port,row[2],row[1],
