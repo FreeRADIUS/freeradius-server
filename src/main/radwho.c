@@ -322,7 +322,9 @@ static const char *hostname(char *buf, size_t buflen, uint32_t ipaddr)
  */
 static void usage(void)
 {
-	fprintf(stderr, "Usage: radwho [-lhfnsipcr]\n");
+	fprintf(stderr, "Usage: radwho [-d raddb] [-lhfnsipcr]\n");
+	fprintf(stderr, "       -d: set the raddb directory (default is %s)\n",
+		RADIUS_DIR);
 	fprintf(stderr, "       -l: show local (shell) users too\n");
 	fprintf(stderr, "       -h: hide shell users from radius\n");
 	fprintf(stderr, "       -f: give fingerd output\n");
@@ -363,7 +365,11 @@ int main(int argc, char **argv)
 	radius_dir = strdup(RADIUS_DIR);
 	radutmp_file = strdup(RADUTMP);
 
-	while((c = getopt(argc, argv, "flhnsipcr")) != EOF) switch(c) {
+	while((c = getopt(argc, argv, "d:flhnsipcr")) != EOF) switch(c) {
+		case 'd':
+			if (radius_dir) free(radius_dir);
+			radius_dir = strdup(optarg);
+			break;
 		case 'f':
 			fingerd++;
 			showname = 0;
