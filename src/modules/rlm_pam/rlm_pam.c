@@ -71,6 +71,10 @@ static int pam_instantiate(CONF_SECTION *conf, void **instance)
 	rlm_pam_t *data;
 
 	data = rad_malloc(sizeof(*data));
+	if (!data) {
+		return -1;
+	}
+	memset(data, 0, sizeof(*data));
 
 	if (cf_section_parse(conf, data, module_config) < 0) {
 		free(data);
