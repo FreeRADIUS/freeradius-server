@@ -44,6 +44,11 @@
  *   entry in the accounting phase. This is only true in case we are doing MPPP
  *   Various other code changes. Code comments should explain things
  *   Highly experimental at this phase.
+ * Mar 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - Add a timestamp and a timeout attribute in ippool_info. When we assign an ip we set timestamp
+ *   to request->timestamp and timeout to %{Session-Timeout:-0}. When we search for a free entry
+ *   we check if timeout has expired. If it has then we free the entry. We also add a maximum
+ *   timeout configuration directive. If it is non zero then we also use that one to free entries.
  */
 
 #include "config.h"
@@ -107,6 +112,7 @@ typedef struct rlm_ippool_t {
 	uint32_t range_start;
 	uint32_t range_stop;
 	uint32_t netmask;
+	time_t max_timeout;
 	int cache_size;
 	int override;
 	GDBM_FILE gdbm;
@@ -131,6 +137,8 @@ typedef struct ippool_info {
 	char		active;
 	char		cli[32];
 	char		extra;
+	time_t		timestamp;
+	time_t		timeout;
 } ippool_info;
 
 typedef struct ippool_key {
@@ -155,6 +163,7 @@ static CONF_PARSER module_config[] = {
   { "netmask", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,netmask), NULL, "0" },
   { "cache-size", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,cache_size), NULL, "1000" },
   { "override", PW_TYPE_BOOLEAN, offsetof(rlm_ippool_t,override), NULL, "no" },
+  { "maximum-timeout", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,max_timeout), NULL, "0" },
   { NULL, -1, 0, NULL, NULL }
 };
 
@@ -275,6 +284,8 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 			entry.ipaddr = ntohl(i);
 			entry.active = 0;
 			entry.extra = 0;
+			entry.timestamp = 0;
+			entry.timeout = 0;
 			strcpy(entry.cli,cli);
 
 			data_datum.dptr = (char *) &entry;
@@ -378,6 +389,8 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		free(data_datum.dptr);
 		DEBUG("rlm_ippool: Deallocated entry for ip/port: %s/%u",ip_ntoa(str,entry.ipaddr),port);
 		entry.active = 0;
+		entry.timestamp = 0;
+		entry.timeout = 0;
 
 		/*
 		 * Save the reference to the entry
@@ -526,6 +539,8 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		if (entry.active){
 			DEBUG("rlm_ippool: Found a stale entry for ip/port: %s/%u",ip_ntoa(str,entry.ipaddr),port);
 			entry.active = 0;
+			entry.timestamp = 0;
+			entry.timeout = 0;
 
 			/*
 			 * Save the reference to the entry
@@ -639,8 +654,11 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 				/*
 				 * Find an entry with active == 0
+				 * or an entry that has expired
 				 */
-				if (entry.active == 0){
+				if (entry.active == 0 || (entry.timestamp && ((entry.timeout && 
+				request->timestamp >= (entry.timestamp + entry.timeout)) ||
+				(data->max_timeout && request->timestamp >= (entry.timestamp + data->max_timeout))))){
 					datum tmp;
 
 					tmp.dptr = (char *) &entry.ipaddr;
@@ -749,6 +767,11 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		}
 		free(key_datum.dptr);
 		entry.active = 1;
+		entry.timestamp = request->timestamp;
+		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL)	
+			entry.timeout = (time_t) vp->lvalue;
+		else
+			entry.timeout = 0;
 		if (extra)
 			entry.extra = 1;
 		data_datum.dptr = (char *) &entry;
