@@ -10,6 +10,9 @@ Ver 1.72:
 * Add postgresql specific sql schema by apellido jr., wilfredo p. Move each sql schema to a
   separate directory (mysql and postgresql)
 * Change is_int to is_numeric. This closes Bug #90
+* Escape special characters in the sql password. This closes bug #96
+* Do an xlat for general_accounting_attrs_file and general_user_edit_attrs_file. That way we can
+  have different mappings for each administrator.
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for

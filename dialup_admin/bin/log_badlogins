@@ -94,6 +94,7 @@ close CLIENTS;
 $realm_del = '@' if ($realm_del eq '');
 $realm_for = 'suffix' if ($realm_for eq '');
 $pass = ($sql_password ne '') ? "-p$sql_password" : '';
+$pass =~ s/(\W)/\\$1/g;
 die "SQL server not defined\n" if ($sql_server eq '');
 
 die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
