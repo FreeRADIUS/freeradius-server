@@ -89,7 +89,7 @@ function bytes2str($bytes)
 	$bytes=floor($bytes);
 	if ($bytes > 536870912)
 		$str = sprintf("%5.2f GBs", $bytes/1073741824);
-	if ($bytes > 524288)
+	else if ($bytes > 524288)
 		$str = sprintf("%5.2f MBs", $bytes/1048576);
 	else
 		$str = sprintf("%5.2f KBs", $bytes/1024);
