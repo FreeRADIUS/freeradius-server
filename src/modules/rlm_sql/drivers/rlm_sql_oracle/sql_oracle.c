@@ -322,10 +322,6 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	 * of the data we deal with is already in string format.
 	 */
 	colcount = sql_num_fields(sqlsocket, config);
-	if (colcount != 5) {
-		radlog(L_ERR,"rlm_sql_oracle: Failed to obtain results from expected schema");
-		return SQL_DOWN;
-	}
 
 	/* DEBUG2("sql_select_query(): colcount=%d",colcount); */
 
