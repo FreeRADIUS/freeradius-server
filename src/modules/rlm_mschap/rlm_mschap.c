@@ -1111,11 +1111,11 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	response
 		 */
 		if (response->strvalue[1] & 0x01) {
-			DEBUG2("  rlm_mschap: doing MS-CHAPv1 with NT-Password");
+			DEBUG2("  rlm_mschap: Told to do MS-CHAPv1 with NT-Password");
 			password = nt_password;
 			offset = 26;
 		} else {
-			DEBUG2("  rlm_mschap: doing MS-CHAPv1 with LM-Password");
+			DEBUG2("  rlm_mschap: Told to do MS-CHAPv1 with LM-Password");
 			password = lm_password;
 			offset = 2;
 		}
@@ -1188,7 +1188,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			       username_string,	/* user name */
 			       mschapv1_challenge); /* resulting challenge */
 		
-		DEBUG2("  rlm_mschap: doing MS-CHAPv2 for %s with NT-Password",
+		DEBUG2("  rlm_mschap: Told to do MS-CHAPv2 for %s with NT-Password",
 		       username_string);
 
 		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
