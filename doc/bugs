@@ -21,6 +21,29 @@ If the behavior is correct but confusing, we think that's a bug too, and
 you should file a bug against our documentation.
 
 
+= Looking at core dumps
+
+If the server, or one of the accompyaning programs core dumps, then
+you should rebuild the server as follows:
+
+$ ./configure --enable-developer
+$ make
+$ make install
+
+  and then run the program again.  When it core dumps, do:
+
+$ gdb /path/to/executable /path/to/core/file
+
+  And then in 'gdb', do:
+
+$ bt
+
+  Copy the output, and mail it to the list, along with the name of the
+program you were running, and the name of the operating system.
+Without this information, it's impossible for anyone to know why the
+program core dumped.
+
+
 = Filing a bug report
 
 If you see something that's obviously a bug, and the developers agree,
