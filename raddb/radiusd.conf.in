@@ -560,12 +560,12 @@ modules {
 		#
 		#  The default is to NOT cache them.
 		#
-		#  For FreeBSD, you do NOT want to enable the cache,
-		#  as it's password lookups are done via a database, so
-		#  set this value to 'no'.
+		#  For FreeBSD and NetBSD, you do NOT want to enable
+		#  the cache, as it's password lookups are done via a
+		#  database, so set this value to 'no'.
 		#
 		#  Some systems (e.g. RedHat Linux with pam_pwbd) can
-		#  take *seconds* to check a password, from a passwd
+		#  take *seconds* to check a password, when th passwd
 		#  file containing 1000's of entries.  For those systems,
 		#  you should set the cache value to 'yes', and set
 		#  the locations of the 'passwd', 'shadow', and 'group'
@@ -595,9 +595,8 @@ modules {
 		#	shadow = /etc/shadow
 		#	group = /etc/group
 
-
 		#
-		#  Where the 'wtmp' file is located.
+		#  The location of the "wtmp" file.
 		#  This should be moved to it's own module soon.
 		#
 		#  The only use for 'radlast'.  If you don't use
@@ -624,11 +623,17 @@ modules {
 		#
 		#  For now, only one default EAP type may be used at a time.
 		#
+`		#  If the EAP-Type attribute is set by another module,
+		#  then that EAP type takes precedence over the
+		#  default type configured here.
+		#
 		default_eap_type = md5
 
-		#  Default expiry time to clean the EAP list, It is
-		#  maintained to correlate the EAP-Response for each
-		#  EAP-request sent.
+		#  A list is maintained to correlate EAP-Response
+		#  packets with EAP-Request packets.  After a
+		#  configurable length of time, entries in the list
+		#  expire, and are deleted.
+		#
 		timer_expire     = 60
 
 		#  There are many EAP types, but the server has support
@@ -669,26 +674,28 @@ modules {
 
 		## EAP-TLS
 		#
-		#  To generate certificates, see: ../scripts/CA.all
+		#  To generate ctest certificates, run the script
+		#
+		#	../scripts/certs.sh
 		#
 		#  The documents on http://www.freeradius.org/doc
-		#  are old, but are helpful.
+		#  are old, but may be helpful.
 		#
 		#tls {
-		#	private_key_password = password
-		#	private_key_file = /path/filename
+		#	private_key_password = whatever
+		#	private_key_file = ${raddbdir}/certs/cert-srv.pem
 
 			#  If Private key & Certificate are located in
 			#  the same file, then private_key_file &
 			#  certificate_file must contain the same file
 			#  name.
-		#	certificate_file = /path/filename
+		#	certificate_file = ${raddbdir}/certs/cert-srv.pem
 
 			#  Trusted Root CA list
-		#	CA_file = /path/filename
+		#	CA_file = ${raddbdir}/certs/demoCA/cacert.pem
 
-		#	dh_file = /path/filename
-		#	random_file = /path/filename
+		#	dh_file = ${raddbdir}/certs/dh
+		#	random_file = ${raddbdir}/certs/random
 
 			#
 			#  This can never exceed the size of a RADIUS
@@ -1629,6 +1636,9 @@ authorize {
 	#
 	#  This module takes care of EAP-MD5, EAP-TLS, and EAP-LEAP
 	#  authentication.
+	#
+	#  It also sets the EAP-Type attribute in the request
+	#  attribute list to the EAP type from the packet.
 	eap
 
 	#
@@ -1648,13 +1658,18 @@ authorize {
 	#  configure the 'etc_smbpasswd' module, above.
 #	etc_smbpasswd
 
-# The ldap module will set Auth-Type to LDAP if it has not already been set
+	#
+	#  The ldap module will set Auth-Type to LDAP if it has not
+	#  already been set
 #	ldap
+
+	#
+	#  Enforce daily limits on time spent logged in.
 #	daily
 }
 
 
-# Authentication.
+#  Authentication.
 #
 #
 #  This section lists which modules are available for authentication.
@@ -1767,13 +1782,16 @@ accounting {
 	detail
 #	daily
 
-	unix		# wtmp file
+	#  Update the wtmp file
+	#
+	#  If you don't use "radlast", you can delete this line.
+	unix
 
 	#
 	#  For Simultaneous-Use tracking.
 	#
 	#  Due to packet losses in the network, the data here
-	#  may be incorrect.  There's little we can do about it.
+	#  may be incorrect.  There is little we can do about it.
 	radutmp
 #	sradutmp
 
