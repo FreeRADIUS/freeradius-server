@@ -215,7 +215,7 @@ static int do_checkval(void *instance, REQUEST *request)
 	
 	if (!(item_vp = pairfind(request->packet->vps, data->item_attr))){
 		DEBUG2("rlm_checkval: Could not find item named %s in request", data->item_name);
-		return ret;
+		return RLM_MODULE_NOTFOUND;
 	}
 	DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->strvalue);
 	tmp = request->config_items;
