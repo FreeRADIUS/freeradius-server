@@ -623,32 +623,45 @@ int rad_authenticate(REQUEST *request)
 		 */
 		if (namepair &&
 				(r = module_checksimul(request, check_item->lvalue)) != 0) {
+			char mpp_ok = 0;
 
-			if (check_item->lvalue > 1) {
-			  snprintf(umsg, sizeof(umsg), 
-						"\r\nYou are already logged in %d times  - access denied\r\n\n",
-						(int)check_item->lvalue);
-				user_msg = umsg;
-			} else {
-				user_msg = "\r\nYou are already logged in - access denied\r\n\n";
+			if (r == 2){
+				/* Multilink attempt. Check if port-limit > simultaneous-use */
+				VALUE_PAIR *port_limit;
+
+				if ((port_limit = pairfind(request->reply->vps, PW_PORT_LIMIT)) != NULL &&
+					port_limit->lvalue > check_item->lvalue){
+					DEBUG2("main auth: MPP is OK");
+					mpp_ok = 1;
+				}
 			}
+			if (!mpp_ok){
+				if (check_item->lvalue > 1) {
+		  		snprintf(umsg, sizeof(umsg), 
+							"\r\nYou are already logged in %d times  - access denied\r\n\n",
+							(int)check_item->lvalue);
+					user_msg = umsg;
+				} else {
+					user_msg = "\r\nYou are already logged in - access denied\r\n\n";
+				}
 
-			request->reply->code = PW_AUTHENTICATION_REJECT;
+				request->reply->code = PW_AUTHENTICATION_REJECT;
 
-			/*
-			 *	They're trying to log in too many times.
-			 *	Remove ALL reply attributes.
-			 */
-			pairfree(&request->reply->vps);
-			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
-			request->reply->vps = tmp;
+				/*
+		 		*	They're trying to log in too many times.
+		 		*	Remove ALL reply attributes.
+		 		*/
+				pairfree(&request->reply->vps);
+				tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
+				request->reply->vps = tmp;
 
-			snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
-				check_item->lvalue,
-				r == 2 ? "[MPP attempt]" : "");
-			rad_authlog(logstr, request, 1);
+				snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
+					check_item->lvalue,
+					r == 2 ? "[MPP attempt]" : "");
+				rad_authlog(logstr, request, 1);
 
-			result = -1;
+				result = -1;
+			}
 		}
 	}
 
