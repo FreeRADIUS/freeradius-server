@@ -80,10 +80,10 @@ ATTRIBUTE	Tunnel_Rate_Limit_Burst		66	integer		Redback
 ATTRIBUTE	Tunnel_Police_Rate		67	integer		Redback
 ATTRIBUTE	Tunnel_Police_Burst		68	integer		Redback
 ATTRIBUTE	Tunnel_L2F_Second_Password	69	string		Redback
-ATTRIBUTE	Acct_Input_Octets_64		128	integer		Redback
-ATTRIBUTE	Acct_Output_Octets_64		129	integer		Redback
-ATTRIBUTE	Acct_Input_Packets_64		130	integer		Redback
-ATTRIBUTE	Acct_Output_Packets_64		131	integer		Redback
+ATTRIBUTE	Acct_Input_Octets_64		128	octets		Redback
+ATTRIBUTE	Acct_Output_Octets_64		129	octets		Redback
+ATTRIBUTE	Acct_Input_Packets_64		130	octets		Redback
+ATTRIBUTE	Acct_Output_Packets_64		131	octets		Redback
 ATTRIBUTE	Assigned_IP_Address		132	ipaddr		Redback
 ATTRIBUTE	Acct_Mcast_In_Octets		133	integer		Redback
 ATTRIBUTE	Acct_Mcast_Out_Octets		134	integer		Redback
