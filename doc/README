@@ -257,6 +257,9 @@
   src/include	header files
   src/modules	dynamic plug-in modules  
 
+  src/billing	Some scripts and configuration files to assist in billing,
+		Currently mostly VoIP related.
+
   suse/		Aditional files for a SuSE (UnitedLinux) system.
 
   todo/		TODO list and assorted files.
