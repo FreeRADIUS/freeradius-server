@@ -47,6 +47,34 @@ ATTRIBUTE	Annex-Unauthenticated-Time	60	integer
 ATTRIBUTE	Annex-Re-CHAP-Timeout		61	integer
 ATTRIBUTE	Annex-MRRU			62	integer
 ATTRIBUTE	Annex-EDO			63	string
+# Annex R18.0 software
+ATTRIBUTE	Annex-PPP-Trace-Level		64	integer
+ATTRIBUTE	Annex-Pre-Input-Octets		65	integer
+ATTRIBUTE	Annex-Pre-Output-Octets		66	integer
+ATTRIBUTE	Annex-Pre-Input-Packets		67	integer
+ATTRIBUTE	Annex-Pre-Output-Packets	68	integer
+ATTRIBUTE	Annex-Connect-Progress		69	integer
+ATTRIBUTE	Annex-Multicast-Rate-Limit	73	integer
+ATTRIBUTE	Annex-Maximum-Call-Duration	74	integer
+ATTRIBUTE	Annex-Multilink-Id		75	integer
+ATTRIBUTE	Annex-Num-In-Multilink		76	integer
+ATTRIBUTE	Annex-Logical-Channel-Number	81	integer
+ATTRIBUTE	Annex-Wan-Number		82	integer
+ATTRIBUTE	Annex-Port			83	integer
+ATTRIBUTE	Annex-Pool-Id			85	integer
+ATTRIBUTE	Annex-Compression-Protocol	86	string
+ATTRIBUTE	Annex-Transmitted-Packets	87	integer
+ATTRIBUTE	Annex-Retransmitted-Packets	88	integer
+ATTRIBUTE	Annex-Signal-to-Noise-Ratio	89	integer
+ATTRIBUTE	Annex-Retrain-Requests-Sent	90	integer
+ATTRIBUTE	Annex-Retrain-Requests-Rcvd	91	integer
+ATTRIBUTE	Annex-Rate-Reneg-Req-Sent	92	integer
+ATTRIBUTE	Annex-Rate-Reneg-Req-Rcvd	93	integer
+ATTRIBUTE	Annex-Begin-Receive-Line-Level	94	integer
+ATTRIBUTE	Annex-End-Receive-Line-Level	95	integer
+ATTRIBUTE	Annex-Begin-Modulation		96	string
+ATTRIBUTE	Annex-Error-Correction-Prot	97	string
+ATTRIBUTE	Annex-End-Modulation		98	string
 
 # Bay Router Specific Attributes
 #
