@@ -39,21 +39,23 @@
  *
  *************************************************************************/
 SQLSOCK *sql_create_socket(SQL_INST *inst) {
-	SQLSOCK *socket;
 
-	if ((socket = malloc(sizeof(SQLSOCK))) == NULL) {
+	SQLSOCK *sqlsocket;
+
+	if ((sqlsocket = malloc(sizeof(SQLSOCK))) == NULL) {
 		radlog(L_CONS|L_ERR, "sql_create_socket: no memory");
 		exit(1);
 	}
 
-	mysql_init(&(socket->conn));
-	if (!(socket->sock = mysql_real_connect(&(socket->conn), inst->config->sql_server, inst->config->sql_login, inst->config->sql_password, inst->config->sql_db, 0, NULL, CLIENT_FOUND_ROWS))) {
+	mysql_init(&(sqlsocket->conn));
+	if (!(sqlsocket->sock = mysql_real_connect(&(sqlsocket->conn), inst->config->sql_server, inst->config->sql_login, inst->config->sql_password, inst->config->sql_db, 0, NULL, CLIENT_FOUND_ROWS))) {
 		radlog(L_ERR, "rlm_sql: Couldn't connect socket to MySQL server %s@%s:%s", inst->config->sql_login, inst->config->sql_server, inst->config->sql_db);
-		radlog(L_ERR, "rlm_sql:  Mysql error '%s'", mysql_error(&socket->conn));
-		socket->sock = NULL;
+		radlog(L_ERR, "rlm_sql:  Mysql error '%s'", mysql_error(&sqlsocket->conn));
+		sqlsocket->sock = NULL;
 		return NULL;
 	}
-	return socket;
+
+	return sqlsocket;
 }
 
 /*************************************************************************
@@ -63,15 +65,15 @@ SQLSOCK *sql_create_socket(SQL_INST *inst) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-int sql_query(SQL_INST *inst, SQLSOCK *socket, char *querystr) {
+int sql_query(SQL_INST *inst, SQLSOCK *sqlsocket, char *querystr) {
 
 	if (inst->config->sqltrace)
 		DEBUG(querystr);
-	 if (socket->sock == NULL) {
+	 if (sqlsocket->sock == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return 0;
 	}
-	return mysql_query(socket->sock, querystr);
+	return mysql_query(sqlsocket->sock, querystr);
 }
 
 
@@ -82,16 +84,16 @@ int sql_query(SQL_INST *inst, SQLSOCK *socket, char *querystr) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr) {
+int sql_select_query(SQL_INST *inst, SQLSOCK *sqlsocket, char *querystr) {
 
 	if (inst->config->sqltrace)
 		DEBUG(querystr);
-	if (socket->sock == NULL) {
+	if (sqlsocket->sock == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return 0;
 	}
-	mysql_query(socket->sock, querystr);
-	if (sql_store_result(socket) && sql_num_fields(socket)) 
+	mysql_query(sqlsocket->sock, querystr);
+	if (sql_store_result(sqlsocket) && sql_num_fields(sqlsocket)) 
 		return 1;
 	else
 		return 0;
@@ -106,15 +108,15 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr) {
  *               set for the query.
  *
  *************************************************************************/
-int sql_store_result(SQLSOCK *socket) {
+int sql_store_result(SQLSOCK *sqlsocket) {
 
-	if (socket->sock == NULL) {
+	if (sqlsocket->sock == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return 0;
 	}
-	if (!(socket->result = mysql_store_result(socket->sock))) {
+	if (!(sqlsocket->result = mysql_store_result(sqlsocket->sock))) {
 		radlog(L_ERR,"MYSQL Error: Cannot get result");
-		radlog(L_ERR,"MYSQL Error: %s",mysql_error(socket->sock));
+		radlog(L_ERR,"MYSQL Error: %s",mysql_error(sqlsocket->sock));
 		return 0;
 	}
 	return 1;
@@ -130,16 +132,16 @@ int sql_store_result(SQLSOCK *socket) {
  *               of columns from query
  *
  *************************************************************************/
-int sql_num_fields(SQLSOCK *socket) {
+int sql_num_fields(SQLSOCK *sqlsocket) {
 
 	int	num = 0;
 #if MYSQL_VERSION_ID >= 32224
-	if (!(num = mysql_field_count(socket->sock))) {
+	if (!(num = mysql_field_count(sqlsocket->sock))) {
 #else
-	if (!(num = mysql_num_fields(socket->sock))) {
+	if (!(num = mysql_num_fields(sqlsocket->sock))) {
 #endif
 		radlog(L_ERR,"MYSQL Error: Cannot get result");
-		radlog(L_ERR,"MYSQL error: %s",mysql_error(socket->sock));
+		radlog(L_ERR,"MYSQL error: %s",mysql_error(sqlsocket->sock));
 	}
 	return num;
 }
@@ -153,9 +155,9 @@ int sql_num_fields(SQLSOCK *socket) {
  *               query
  *
  *************************************************************************/
-int sql_num_rows(SQLSOCK *socket) {
+int sql_num_rows(SQLSOCK *sqlsocket) {
 
-	return mysql_num_rows(socket->result);
+	return mysql_num_rows(sqlsocket->result);
 }
 
 
@@ -167,9 +169,9 @@ int sql_num_rows(SQLSOCK *socket) {
  *               with all the data for the query
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK *socket) {
+SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket) {
 
-	return mysql_fetch_row(socket->result);
+	return mysql_fetch_row(sqlsocket->result);
 }
 
 
@@ -182,9 +184,9 @@ SQL_ROW sql_fetch_row(SQLSOCK *socket) {
  *               for a result set
  *
  *************************************************************************/
-void sql_free_result(SQLSOCK *socket) {
+void sql_free_result(SQLSOCK *sqlsocket) {
 
-	mysql_free_result(socket->result);
+	mysql_free_result(sqlsocket->result);
 }
 
 
@@ -197,9 +199,9 @@ void sql_free_result(SQLSOCK *socket) {
  *               connection
  *
  *************************************************************************/
-char *sql_error(SQLSOCK *socket) {
+char *sql_error(SQLSOCK *sqlsocket) {
 
-	return mysql_error(socket->sock);
+	return mysql_error(sqlsocket->sock);
 }
 
 
@@ -211,10 +213,10 @@ char *sql_error(SQLSOCK *socket) {
  *               connection
  *
  *************************************************************************/
-void sql_close(SQLSOCK *socket) {
+void sql_close(SQLSOCK *sqlsocket) {
 
-	mysql_close(socket->sock);
-	socket->sock = NULL;
+	mysql_close(sqlsocket->sock);
+	sqlsocket->sock = NULL;
 }
 
 
@@ -225,7 +227,7 @@ void sql_close(SQLSOCK *socket) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-void sql_finish_query(SQLSOCK *socket) {
+void sql_finish_query(SQLSOCK *sqlsocket) {
 
 }
 
@@ -238,9 +240,9 @@ void sql_finish_query(SQLSOCK *socket) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-void sql_finish_select_query(SQLSOCK *socket) {
+void sql_finish_select_query(SQLSOCK *sqlsocket) {
 
-	sql_free_result(socket);
+	sql_free_result(sqlsocket);
 }
 
 
@@ -251,9 +253,9 @@ void sql_finish_select_query(SQLSOCK *socket) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-int sql_affected_rows(SQLSOCK *socket) {
+int sql_affected_rows(SQLSOCK *sqlsocket) {
 
-	return mysql_affected_rows(socket->sock);
+	return mysql_affected_rows(sqlsocket->sock);
 }
 
 

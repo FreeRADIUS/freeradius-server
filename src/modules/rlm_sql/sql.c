@@ -43,6 +43,10 @@
 #include	<errno.h>
 #include	<sys/wait.h>
 
+#if HAVE_PTHREAD_H
+#include	<pthread.h>
+#endif
+
 #include	"radiusd.h"
 #include	"conffile.h"
 #include	"rlm_sql.h"
@@ -54,27 +58,48 @@
  *	Purpose: Connect to the sql server
  *
  *************************************************************************/
-int
-sql_init_socket(SQL_INST *inst)
-{
+int sql_init_socketpool(SQL_INST *inst) {
 
-	int     i;
+	SQLSOCK	*sqlsocket;
+	int	i;
 
-	/*
-	 * Initalize our connection pool 
-	 */
+	inst->used = 0;
+	inst->sqlpool = NULL;
+
 	for (i = 0; i < inst->config->num_sql_socks; i++) {
-		if ((inst->socks[i] = sql_create_socket(inst)) == NULL) {
-			radlog(L_CONS | L_ERR, "rlm_sql:  Failed to connect socket %d", i);
+		if ((sqlsocket = sql_create_socket(inst)) == NULL) {
+			radlog(L_CONS | L_ERR, "rlm_sql:  Failed to connect sqlsocket %d", i);
 			return -1;
 		} else {
-			inst->socks[i]->id = i;
-			inst->socks[i]->in_use = 0;
-			DEBUG2("rlm_sql: Connected socket %d", i);
+			sqlsocket->id = i;
+#if HAVE_PTHREAD_H
+			sqlsocket->semaphore = (sem_t *)malloc(sizeof(sem_t));
+			sem_init(sqlsocket->semaphore, 0, SQLSOCK_UNLOCKED);
+#else
+			sqlsocket->in_use = 0;
+#endif
+			sqlsocket->next = inst->sqlpool;
+			inst->sqlpool = sqlsocket;
 		}
 	}
 
 	return 1;
+}
+
+/*************************************************************************
+ *
+ *     Function: sql_poolfree
+ *
+ *     Purpose: Clean up and free sql pool
+ *
+ *************************************************************************/
+int sql_poolfree(SQL_INST *inst) {
+
+	SQLSOCK *cur;
+
+	for (cur = inst->sqlpool; cur; cur = cur->next) {
+		sql_close_socket(cur);
+	}
 }
 
 
@@ -82,16 +107,14 @@ sql_init_socket(SQL_INST *inst)
  *
  *	Function: sql_close_socket
  *
- *	Purpose: Close and free a sql socket
+ *	Purpose: Close and free a sql sqlsocket
  *
  *************************************************************************/
-int
-sql_close_socket(SQLSOCK * socket)
-{
+int sql_close_socket(SQLSOCK *sqlsocket) {
 
-	DEBUG2("rlm_sql: Closing socket %d", socket->id);
-	sql_close(socket);
-	free(socket);
+	DEBUG2("rlm_sql: Closing sqlsocket %d", sqlsocket->id);
+	sql_close(sqlsocket);
+	free(sqlsocket);
 	return 1;
 }
 
@@ -100,46 +123,60 @@ sql_close_socket(SQLSOCK * socket)
  *
  *	Function: sql_get_socket
  *
- *	Purpose: Return a SQL socket from the connection pool           
+ *	Purpose: Return a SQL sqlsocket from the connection pool           
  *
  *************************************************************************/
-SQLSOCK *
-sql_get_socket(SQL_INST *inst)
-{
+SQLSOCK *sql_get_socket(SQL_INST *inst) {
 
-	int     i = 0;
 
-	DEBUG2("rlm_sql: Attempting to reserve socket");
+	SQLSOCK *cur;
+
 #if HAVE_PTHREAD_H
-	pthread_mutex_lock(&inst->sqlsock_mutex);
+	pthread_mutex_lock(inst->lock);
 #endif
-	while (1) {
-		if (i == inst->config->num_sql_socks)
-			i = 0;
-		if (inst->socks[i]->in_use == 0) {
-			inst->socks[i]->in_use = 1;
-			gettimeofday(&(inst->socks[i]->tv), NULL);
-			DEBUG2("rlm_sql: Reserved socket %d", i);
-			break;
-		}
-		i++;
+	while (inst->used == inst->config->num_sql_socks) {
+		printf("Waiting queue to not be full\n");
+#if HAVE_PTHREAD_H
+		pthread_cond_wait(inst->notfull, inst->lock);
+#else
+		/* FIXME: Subsecond sleep needed here */
+		sleep(1);
+#endif
 	}
+
+	for (cur = inst->sqlpool; cur; cur = cur->next) {
 #if HAVE_PTHREAD_H
-	pthread_mutex_unlock(&inst->sqlsock_mutex);
+		if (sem_trywait(cur->semaphore) == 0) {
+#else
+		if (cur->in_use == SQLSOCK_UNLOCKED) {
 #endif
-	return inst->socks[i];
+			(inst->used)++;
+#if HAVE_PTHREAD_H
+			pthread_mutex_unlock(inst->lock);
+#else
+			cur->in_use = SQLSOCK_LOCKED;
+#endif
+			printf("Reserved id %d\n", cur->id);
+			return cur;
+		}
+	}
+
+#if HAVE_PTHREAD_H
+	pthread_mutex_unlock(inst->lock);
+#endif
+
+	/* Should never get here, but what the hey */
+	return NULL;
 }
 
 /*************************************************************************
  *
  *	Function: sql_release_socket
  *
- *	Purpose: Frees a SQL socket back to the connection pool           
+ *	Purpose: Frees a SQL sqlsocket back to the connection pool           
  *
  *************************************************************************/
-int
-sql_release_socket(SQL_INST *inst, SQLSOCK * socket)
-{
+int sql_release_socket(SQL_INST *inst, SQLSOCK *sqlsocket) {
 
 	struct timeval tv;
 	double  start, end;
@@ -148,14 +185,30 @@ sql_release_socket(SQL_INST *inst, SQLSOCK * socket)
 	gettimeofday(&tv, NULL);
 	sprintf(buff, "%ld.%2ld", tv.tv_sec, tv.tv_usec);
 	end = strtod(buff, NULL);
-	sprintf(buff, "%ld %2.0ld", socket->tv.tv_sec, socket->tv.tv_usec);
+	sprintf(buff, "%ld %2.0ld", sqlsocket->tv.tv_sec, sqlsocket->tv.tv_usec);
 	start = strtod(buff, NULL);
-	DEBUG2("rlm_sql: Socket %d used for %.2f seconds", socket->id, end - start);
+	DEBUG2("rlm_sql: Socket %d used for %.2f seconds", sqlsocket->id, end - start);
 
-	socket->tv.tv_sec = tv.tv_sec;
-	socket->tv.tv_usec = tv.tv_usec;
-	inst->socks[socket->id]->in_use = 0;
-	DEBUG2("rlm_sql: Released socket %d", socket->id);
+	sqlsocket->tv.tv_sec = tv.tv_sec;
+	sqlsocket->tv.tv_usec = tv.tv_usec;
+
+#if HAVE_PTHREAD_H
+	pthread_mutex_lock(inst->lock);
+#endif
+	(inst->used)--;
+#if HAVE_PTHREAD_H
+	sem_post(sqlsocket->semaphore);
+#else
+	sqlsocket->in_use = 0;
+#endif
+
+	DEBUG2("rlm_sql: Released sqlsocket %d", sqlsocket->id);
+
+#if HAVE_PTHREAD_H
+	pthread_mutex_unlock(inst->lock);
+	pthread_cond_signal(inst->notfull);
+#endif
+
 	return 1;
 }
 
@@ -168,9 +221,7 @@ sql_release_socket(SQL_INST *inst, SQLSOCK * socket)
  *
  *************************************************************************/
 
-int
-sql_save_acct(SQL_INST *inst, SQLSOCK * socket, SQLACCTREC * sqlrecord)
-{
+int sql_save_acct(SQL_INST *inst, SQLSOCK *sqlsocket, SQLACCTREC *sqlrecord) {
 
 	char    querystr[2048];
 	FILE   *sqlfile=0;
@@ -229,10 +280,10 @@ sql_save_acct(SQL_INST *inst, SQLSOCK * socket, SQLACCTREC * sqlrecord)
 						sqlrecord->AcctDelayTime, sqlrecord->NASIPAddress,
 						sqlrecord->AcctTimeStamp);
 
-		if (sql_query(inst, socket, querystr) < 0)
+		if (sql_query(inst, sqlsocket, querystr) < 0)
 			radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting after NAS reboot - %s",
-						 sql_error(socket));
-		sql_finish_query(socket);
+						 sql_error(sqlsocket));
+		sql_finish_query(sqlsocket);
 
 		if (sqlfile) {
 			fputs(querystr, sqlfile);
@@ -258,10 +309,10 @@ sql_save_acct(SQL_INST *inst, SQLSOCK * socket, SQLACCTREC * sqlrecord)
 							sqlrecord->NASIPAddress);
 		}
 
-		if (sql_query(inst, socket, querystr) < 0)
+		if (sql_query(inst, sqlsocket, querystr) < 0)
 			radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for ALIVE packet - %s",
-						 sql_error(socket));
-		sql_finish_query(socket);
+						 sql_error(sqlsocket));
+		sql_finish_query(sqlsocket);
 
 		if (sqlfile) {
 			fputs(querystr, sqlfile);
@@ -291,9 +342,9 @@ sql_save_acct(SQL_INST *inst, SQLSOCK * socket, SQLACCTREC * sqlrecord)
 						 sqlrecord->FramedProtocol, sqlrecord->FramedIPAddress,
 						 sqlrecord->AcctDelayTime);
 
-		if (sql_query(inst, socket, querystr) < 0) {
+		if (sql_query(inst, sqlsocket, querystr) < 0) {
 			radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting START record - %s",
-							 sql_error(socket));
+							 sql_error(sqlsocket));
 
 			/*
 			 * We failed the insert above.  It's probably because 
@@ -312,12 +363,12 @@ sql_save_acct(SQL_INST *inst, SQLSOCK * socket, SQLACCTREC * sqlrecord)
 								 sqlrecord->AcctSessionId, sqlrecord->UserName, 
 								 sqlrecord->NASIPAddress);
 			}
-			if (sql_query(inst, socket, querystr) < 0)
+			if (sql_query(inst, sqlsocket, querystr) < 0)
 				radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting START record - %s",
-							 sql_error(socket));
+							 sql_error(sqlsocket));
 
 		} 
-		sql_finish_query(socket);
+		sql_finish_query(sqlsocket);
 
 		/*
 		 * Got stop record 
@@ -348,10 +399,10 @@ sql_save_acct(SQL_INST *inst, SQLSOCK * socket, SQLACCTREC * sqlrecord)
 		}
 
 
-		if (sql_query(inst, socket, querystr) < 0)
+		if (sql_query(inst, sqlsocket, querystr) < 0)
 			radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting STOP record - %s",
-						 sql_error(socket));
-		sql_finish_query(socket);
+						 sql_error(sqlsocket));
+		sql_finish_query(sqlsocket);
 
 
 		/* 
@@ -360,7 +411,7 @@ sql_save_acct(SQL_INST *inst, SQLSOCK * socket, SQLACCTREC * sqlrecord)
 		 * matching Start record.  So we have to
 		 * insert this stop rather than do an update
 		 */
-		num = sql_affected_rows(socket);
+		num = sql_affected_rows(sqlsocket);
 		if(num < 1) {
 
 #ifdef CISCO_ACCOUNTING_HACK
@@ -394,10 +445,10 @@ sql_save_acct(SQL_INST *inst, SQLSOCK * socket, SQLACCTREC * sqlrecord)
 							 sqlrecord->FramedProtocol, sqlrecord->FramedIPAddress,
 							 sqlrecord->AcctDelayTime);
 
-			if (sql_query(inst, socket, querystr) < 0)
+			if (sql_query(inst, sqlsocket, querystr) < 0)
 				radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s",
-							 sql_error(socket));
-			sql_finish_query(socket);
+							 sql_error(sqlsocket));
+			sql_finish_query(sqlsocket);
 		}
 
 	}
@@ -458,7 +509,7 @@ sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode)
  *
  *************************************************************************/
 int
-sql_getvpdata(SQL_INST *inst, SQLSOCK * socket, char *table, VALUE_PAIR ** vp, char *user,
+sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR ** vp, char *user,
 							int mode)
 {
 
@@ -503,17 +554,17 @@ sql_getvpdata(SQL_INST *inst, SQLSOCK * socket, char *table, VALUE_PAIR ** vp, c
 						table, table, inst->config->sql_realmgroup_table,
 						inst->config->sql_realmgroup_table, username,
 						inst->config->sql_realmgroup_table, table, table);
-	sql_select_query(inst, socket, querystr);
-	rows = sql_num_rows(socket);
-	while ((row = sql_fetch_row(socket))) {
+	sql_select_query(inst, sqlsocket, querystr);
+	rows = sql_num_rows(sqlsocket);
+	while ((row = sql_fetch_row(sqlsocket))) {
 
 		if (sql_userparse(vp, row, mode) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
-			sql_finish_select_query(socket);
+			sql_finish_select_query(sqlsocket);
 			return -1;
 		}
 	}
-	sql_finish_select_query(socket);
+	sql_finish_select_query(sqlsocket);
 
 	return rows;
 
@@ -534,9 +585,7 @@ alrm_handler()
  *	Purpose: Checks the terminal server for a spacific login entry
  *
  *************************************************************************/
-static int
-sql_check_ts(SQL_ROW row)
-{
+static int sql_check_ts(SQL_ROW row) {
 
 	int     pid, st, e;
 	int     n;
@@ -623,10 +672,7 @@ sql_check_ts(SQL_ROW row)
  *	Purpose: Check radius accounting for duplicate logins
  *
  *************************************************************************/
-int
-sql_check_multi(SQL_INST *inst, SQLSOCK * socket, char *name, VALUE_PAIR * request,
-								int maxsimul)
-{
+int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR * request, int maxsimul) {
 
 	char    querystr[256];
 	char    authstr[256];
@@ -642,10 +688,10 @@ sql_check_multi(SQL_INST *inst, SQLSOCK * socket, char *name, VALUE_PAIR * reque
 		sprintf(authstr, "UserName = '%s'", name);
 	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE %s AND AcctStopTime = 0",
 					inst->config->sql_acct_table, authstr);
-	sql_select_query(inst, socket, querystr);
-	row = sql_fetch_row(socket);
+	sql_select_query(inst, sqlsocket, querystr);
+	row = sql_fetch_row(sqlsocket);
 	count = atoi(row[0]);
-	sql_finish_select_query(socket);
+	sql_finish_select_query(sqlsocket);
 
 	if (count < maxsimul)
 		return 0;
@@ -659,8 +705,8 @@ sql_check_multi(SQL_INST *inst, SQLSOCK * socket, char *name, VALUE_PAIR * reque
 	count = 0;
 	sprintf(querystr, "SELECT * FROM %s WHERE %s AND AcctStopTime = 0",
 					inst->config->sql_acct_table, authstr);
-	sql_select_query(inst, socket, querystr);
-	while ((row = sql_fetch_row(socket))) {
+	sql_select_query(inst, sqlsocket, querystr);
+	while ((row = sql_fetch_row(sqlsocket))) {
 		int     check = sql_check_ts(row);
 
 		if (check == 1) {
@@ -677,20 +723,20 @@ sql_check_multi(SQL_INST *inst, SQLSOCK * socket, char *name, VALUE_PAIR * reque
 			 */
 
 			if (inst->config->deletestalesessions) {
-				SQLSOCK *socket;
+				SQLSOCK *sqlsocket;
 
 				radlog(L_ERR, "rlm_sql:  Deleteing stale session [%s] (from nas %s/%s)", row[2],
 							 row[4], row[5]);
-				socket = sql_get_socket(inst);
+				sqlsocket = sql_get_socket(inst);
 				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'",
 								inst->config->sql_acct_table, row[0]);
-				sql_query(inst, socket, querystr);
-				sql_finish_query(socket);
-				sql_close_socket(socket);
+				sql_query(inst, sqlsocket, querystr);
+				sql_finish_query(sqlsocket);
+				sql_close_socket(sqlsocket);
 			}
 		}
 	}
-	sql_finish_select_query(socket);
+	sql_finish_select_query(sqlsocket);
 
 	return (count < maxsimul) ? 0 : mpp;
 

@@ -50,57 +50,37 @@ static const char rcsid[] =
 static SQL_CONFIG config;
 
 static CONF_PARSER module_config[] = {
-	{"server", PW_TYPE_STRING_PTR,
-			&config.sql_server, "localhost"},
-	{"login", PW_TYPE_STRING_PTR,
-			&config.sql_login, ""},
-	{"password", PW_TYPE_STRING_PTR,
-			&config.sql_password, ""},
-	{"radius_db", PW_TYPE_STRING_PTR,
-			&config.sql_db, "radius"},
-	{"acct_table", PW_TYPE_STRING_PTR,
-			&config.sql_acct_table, "radacct"},
-	{"authcheck_table", PW_TYPE_STRING_PTR,
-			&config.sql_authcheck_table, "radcheck"},
-	{"authreply_table", PW_TYPE_STRING_PTR,
-			&config.sql_authreply_table, "radreply"},
-	{"groupcheck_table", PW_TYPE_STRING_PTR,
-			&config.sql_groupcheck_table, "radgroupcheck"},
-	{"groupreply_table", PW_TYPE_STRING_PTR,
-			&config.sql_groupreply_table, "radgroupreply"},
-	{"usergroup_table", PW_TYPE_STRING_PTR,
-			&config.sql_usergroup_table, "usergroup"},
-	{"realm_table", PW_TYPE_STRING_PTR,
-			&config.sql_realm_table, "realms"},
-	{"realmgroup_table", PW_TYPE_STRING_PTR,
-			&config.sql_realmgroup_table, "realmgroup"},
-	{"nas_table", PW_TYPE_STRING_PTR,
-			&config.sql_nas_table, "nas"},
-	{"dict_table", PW_TYPE_STRING_PTR,
-			&config.sql_dict_table, "dictionary"},
-	{"sensitiveusername", PW_TYPE_BOOLEAN,
-			&config.sensitiveusername, "1"},
-	{"sqltrace", PW_TYPE_BOOLEAN,
-			&config.sqltrace, "0"},
-	{"sqltracefile", PW_TYPE_STRING_PTR,
-			&config.tracefile, SQLTRACEFILE},
-	{"deletestalesessions", PW_TYPE_BOOLEAN,
-			&config.deletestalesessions, "0"},
-	{"num_sql_socks", PW_TYPE_INTEGER,
-			&config.num_sql_socks, "5"},
+	{"server", PW_TYPE_STRING_PTR, &config.sql_server, "localhost"},
+	{"login", PW_TYPE_STRING_PTR, &config.sql_login, ""},
+	{"password", PW_TYPE_STRING_PTR, &config.sql_password, ""},
+	{"radius_db", PW_TYPE_STRING_PTR, &config.sql_db, "radius"},
+	{"acct_table", PW_TYPE_STRING_PTR, &config.sql_acct_table, "radacct"},
+	{"authcheck_table", PW_TYPE_STRING_PTR, &config.sql_authcheck_table, "radcheck"},
+	{"authreply_table", PW_TYPE_STRING_PTR, &config.sql_authreply_table, "radreply"},
+	{"groupcheck_table", PW_TYPE_STRING_PTR, &config.sql_groupcheck_table, "radgroupcheck"},
+	{"groupreply_table", PW_TYPE_STRING_PTR, &config.sql_groupreply_table, "radgroupreply"},
+	{"usergroup_table", PW_TYPE_STRING_PTR, &config.sql_usergroup_table, "usergroup"},
+	{"realm_table", PW_TYPE_STRING_PTR, &config.sql_realm_table, "realms"},
+	{"realmgroup_table", PW_TYPE_STRING_PTR, &config.sql_realmgroup_table, "realmgroup"},
+	{"nas_table", PW_TYPE_STRING_PTR, &config.sql_nas_table, "nas"},
+	{"dict_table", PW_TYPE_STRING_PTR, &config.sql_dict_table, "dictionary"},
+	{"sensitiveusername", PW_TYPE_BOOLEAN, &config.sensitiveusername, "1"},
+	{"sqltrace", PW_TYPE_BOOLEAN, &config.sqltrace, "0"},
+	{"sqltracefile", PW_TYPE_STRING_PTR, &config.tracefile, SQLTRACEFILE},
+	{"deletestalesessions", PW_TYPE_BOOLEAN, &config.deletestalesessions, "0"},
+	{"num_sql_socks", PW_TYPE_INTEGER, &config.num_sql_socks, "5"},
+
 	{NULL, -1, NULL, NULL}
 };
 
 /***********************************************************************
  * start of main routines
  ***********************************************************************/
+static int rlm_sql_init(void) {
 
-static int
-rlm_sql_init(void)
-{
 	/*
 	 * FIXME:
-	 * We should put the socket array here once
+	 * We should put the sqlsocket array here once
 	 * the module code is reworked to not unload
 	 * modules on HUP.  This way we can have
 	 * persistant connections.  -jcarneal
@@ -108,9 +88,8 @@ rlm_sql_init(void)
 	return 0;
 }
 
-static int
-rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
-{
+static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance) {
+
 	SQL_INST *inst;
 
 	if ((inst = malloc(sizeof(SQL_INST))) == NULL) {
@@ -125,69 +104,65 @@ rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	memset(inst->config, 0, sizeof(SQL_CONFIG));
 
-  /*
-   * If the configuration parameters can't be parsed, then
-   * fail.
-   */
-  if (cf_section_parse(conf, module_config) < 0) {
-		free(inst->config);
-		free(inst);
-		return -1;
-  }
-
-	if(config.num_sql_socks > MAX_SQL_SOCKS) {
-		radlog(L_ERR | L_CONS, "sql_instantiate:  number of sockets cannot exceed %d",
-					MAX_SQL_SOCKS);
+	/*
+	 * If the configuration parameters can't be parsed, then
+	 * fail.
+	*/
+	if (cf_section_parse(conf, module_config) < 0) {
 		free(inst->config);
 		free(inst);
 		return -1;
 	}
 
-	inst->config->sql_server            = config.sql_server;
-	inst->config->sql_login             =	config.sql_login;
-	inst->config->sql_password          =	config.sql_password;
-	inst->config->sql_db                =	config.sql_db;
-	inst->config->sql_acct_table        =	config.sql_acct_table;	
-	inst->config->sql_authcheck_table   =	config.sql_authcheck_table;
-	inst->config->sql_authreply_table   = config.sql_authreply_table;
-	inst->config->sql_groupcheck_table  = config.sql_groupcheck_table;
-	inst->config->sql_groupreply_table  = config.sql_groupreply_table;
-	inst->config->sql_usergroup_table   =	config.sql_usergroup_table;
-	inst->config->sql_realm_table       =	config.sql_realm_table;
-	inst->config->sql_realmgroup_table  =	config.sql_realmgroup_table;
-	inst->config->sql_nas_table         =	config.sql_nas_table;
-	inst->config->sql_dict_table        =	config.sql_dict_table;
-	inst->config->sensitiveusername     =	config.sensitiveusername;
-	inst->config->sqltrace              =	config.sqltrace;
-	inst->config->tracefile             =	config.tracefile;
-	inst->config->deletestalesessions   = config.deletestalesessions;
-	inst->config->num_sql_socks         = config.num_sql_socks;
+	if(config.num_sql_socks > MAX_SQL_SOCKS) {
+		radlog(L_ERR | L_CONS, "sql_instantiate:  number of sqlsockets cannot exceed %d",
+		 MAX_SQL_SOCKS);
+		free(inst->config);
+		free(inst);
+		return -1;
+	}
 
-	config.sql_server                   = NULL;
-	config.sql_login                    = NULL;
-	config.sql_password                 = NULL;
-	config.sql_db                       = NULL;
-	config.sql_acct_table               = NULL;
-	config.sql_authcheck_table          = NULL;
-	config.sql_authreply_table          = NULL;
-	config.sql_groupcheck_table         = NULL;
-	config.sql_groupreply_table         = NULL;
-	config.sql_usergroup_table          = NULL;
-	config.sql_realm_table              = NULL;
-	config.sql_realmgroup_table         = NULL;
-	config.sql_nas_table                = NULL;
-	config.sql_dict_table               = NULL;
-	config.tracefile										= NULL;
+	inst->config->sql_server		= config.sql_server;
+	inst->config->sql_login			= config.sql_login;
+	inst->config->sql_password		= config.sql_password;
+	inst->config->sql_db			= config.sql_db;
+	inst->config->sql_acct_table		= config.sql_acct_table;	
+	inst->config->sql_authcheck_table	= config.sql_authcheck_table;
+	inst->config->sql_authreply_table	= config.sql_authreply_table;
+	inst->config->sql_groupcheck_table	= config.sql_groupcheck_table;
+	inst->config->sql_groupreply_table	= config.sql_groupreply_table;
+	inst->config->sql_usergroup_table	= config.sql_usergroup_table;
+	inst->config->sql_realm_table		= config.sql_realm_table;
+	inst->config->sql_realmgroup_table	= config.sql_realmgroup_table;
+	inst->config->sql_nas_table		= config.sql_nas_table;
+	inst->config->sql_dict_table		= config.sql_dict_table;
+	inst->config->sensitiveusername		= config.sensitiveusername;
+	inst->config->sqltrace			= config.sqltrace;
+	inst->config->tracefile			= config.tracefile;
+	inst->config->deletestalesessions	= config.deletestalesessions;
+	inst->config->num_sql_socks		= config.num_sql_socks;
 
-  radlog(L_INFO, "rlm_sql: Attempting to connect to %s@%s:%s",
-         inst->config->sql_login, inst->config->sql_server,
-         inst->config->sql_db);
+	config.sql_server		= NULL;
+	config.sql_login		= NULL;
+	config.sql_password		= NULL;
+	config.sql_db			= NULL;
+	config.sql_acct_table		= NULL;
+	config.sql_authcheck_table	= NULL;
+	config.sql_authreply_table	= NULL;
+	config.sql_groupcheck_table	= NULL;
+	config.sql_groupreply_table	= NULL;
+	config.sql_usergroup_table	= NULL;
+	config.sql_realm_table		= NULL;
+	config.sql_realmgroup_table	= NULL;
+	config.sql_nas_table		= NULL;
+	config.sql_dict_table		= NULL;
+	config.tracefile		= NULL;
 
-#if HAVE_PTHREAD_H
-	pthread_mutex_init(&inst->sqlsock_mutex, NULL);
-#endif
+	radlog(L_INFO, "rlm_sql: Attempting to connect to %s@%s:%s",
+		inst->config->sql_login, inst->config->sql_server,
+		inst->config->sql_db);
 
-  if(sql_init_socket(inst) < 0) {
+	if(sql_init_socketpool(inst) < 0) {
 		free(inst->config);
 		free(inst);
 		return -1;
@@ -198,48 +173,32 @@ rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	return RLM_MODULE_OK;
 }
 
-static int
-rlm_sql_destroy(void)
-{
+static int rlm_sql_destroy(void) {
 
 	return 0;
 }
 
-static int
-rlm_sql_detach(void *instance)
-{
-	int i;
+static int rlm_sql_detach(void *instance) {
+
 	SQL_INST *inst = instance;
 
-	/*
-	 * Close up all our sql connections
-	 */
-	for (i = 0; i < inst->config->num_sql_socks; i++)
-		if(inst->socks[i])
-			if (!sql_close_socket(inst->socks[i]))
-				radlog(L_CONS | L_ERR, "rlm_sql:  Could not release socket %d", i);
-
+	sql_poolfree(inst);
 	free(inst->config);
 	free(inst);
 
-#if HAVE_PTHREAD_H
-	pthread_mutex_destroy(&inst->sqlsock_mutex);
-#endif
-
 	return 0;
 }
 
 
-static int
-rlm_sql_authorize(void *instance, REQUEST * request)
-{
+static int rlm_sql_authorize(void *instance, REQUEST * request) {
+
 	int     nas_port = 0;
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
 	VALUE_PAIR *tmp;
 	int     found = 0;
 	char   *name;
-	SQLSOCK *socket;
+	SQLSOCK *sqlsocket;
 	SQL_INST *inst = instance;
 
 	name = request->username->strvalue;
@@ -252,7 +211,7 @@ rlm_sql_authorize(void *instance, REQUEST * request)
 		return -1;
 	}
 
-	socket = sql_get_socket(inst);
+	sqlsocket = sql_get_socket(inst);
 
 	/*
 	 *      Find the NAS port ID.
@@ -263,26 +222,21 @@ rlm_sql_authorize(void *instance, REQUEST * request)
 	/*
 	 *      Find the entry for the user.
 	 */
-	if ((found = sql_getvpdata(inst, socket, inst->config->sql_authcheck_table, 
-														&check_tmp, name, PW_VP_USERDATA)) > 0) {
-		sql_getvpdata(inst, socket, inst->config->sql_groupcheck_table, &check_tmp,
-									name, PW_VP_GROUPDATA);
-		sql_getvpdata(inst, socket, inst->config->sql_authreply_table, &reply_tmp,
-									name, PW_VP_USERDATA);
-		sql_getvpdata(inst, socket, inst->config->sql_groupreply_table, &reply_tmp,
-									name, PW_VP_GROUPDATA);
+	if ((found = sql_getvpdata(inst, sqlsocket, inst->config->sql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) > 0) {
+		sql_getvpdata(inst, sqlsocket, inst->config->sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
+		sql_getvpdata(inst, sqlsocket, inst->config->sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
+		sql_getvpdata(inst, sqlsocket, inst->config->sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
 	} else {
 
 		int     gcheck, greply;
 
-		gcheck = sql_getvpdata(inst, socket, inst->config->sql_groupcheck_table, 
-													&check_tmp, "DEFAULT", PW_VP_GROUPDATA);
-		greply = sql_getvpdata(inst, socket, inst->config->sql_groupreply_table, 
-													&reply_tmp, "DEFAULT", PW_VP_GROUPDATA);
+		gcheck = sql_getvpdata(inst, sqlsocket, inst->config->sql_groupcheck_table, &check_tmp, "DEFAULT", PW_VP_GROUPDATA);
+		greply = sql_getvpdata(inst, sqlsocket, inst->config->sql_groupreply_table, &reply_tmp, "DEFAULT", PW_VP_GROUPDATA);
 		if (gcheck && greply)
 			found = 1;
 	}
-	sql_release_socket(inst, socket);
+
+	sql_release_socket(inst, sqlsocket);
 
 	if (!found) {
 		DEBUG2("rlm_sql: User %s not found and DEFAULT not found", name);
@@ -307,7 +261,7 @@ rlm_sql_authenticate(void *instance, REQUEST *request)
 {
 
 	SQL_ROW row;
-	SQLSOCK *socket;
+	SQLSOCK *sqlsocket;
 	char   *querystr;
 	char    escaped_user[AUTH_STRING_LEN * 3];
 	char   *user;
@@ -340,10 +294,10 @@ rlm_sql_authenticate(void *instance, REQUEST *request)
 	}
 
 	sprintf(querystr, query, inst->config->sql_authcheck_table, escaped_user);
-	socket = sql_get_socket(inst);
-	sql_select_query(inst, socket, querystr);
-	row = sql_fetch_row(socket);
-	sql_finish_select_query(socket);
+	sqlsocket = sql_get_socket(inst);
+	sql_select_query(inst, sqlsocket, querystr);
+	row = sql_fetch_row(sqlsocket);
+	sql_finish_select_query(sqlsocket);
 	free(querystr);
 
 	if (strncmp(request->password->strvalue, row[0], request->password->length)
@@ -356,16 +310,14 @@ rlm_sql_authenticate(void *instance, REQUEST *request)
 /*
  *	Accounting: save the account data to our sql table
  */
-static int
-rlm_sql_accounting(void *instance, REQUEST * request)
-{
+static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 	time_t  nowtime;
 	struct tm *tim;
 	char    datebuf[20];
 	VALUE_PAIR *pair;
 	SQLACCTREC *sqlrecord;
-	SQLSOCK *socket;
+	SQLSOCK *sqlsocket;
 	DICT_VALUE *dval;
 	SQL_INST *inst = instance;
 	int lentmp = 0;
@@ -523,9 +475,9 @@ rlm_sql_accounting(void *instance, REQUEST * request)
 
 	strncpy(sqlrecord->AcctTimeStamp, datebuf, 20);
 
-	socket = sql_get_socket(inst);
-	sql_save_acct(inst, socket, sqlrecord);
-	sql_release_socket(inst, socket);
+	sqlsocket = sql_get_socket(inst);
+	sql_save_acct(inst, sqlsocket, sqlrecord);
+	sql_release_socket(inst, sqlsocket);
 
 	return RLM_MODULE_OK;
 }
@@ -534,14 +486,14 @@ rlm_sql_accounting(void *instance, REQUEST * request)
 /* globally exported name */
 module_t rlm_sql = {
 	"SQL",
-	0,														/* type: reserved */
-	rlm_sql_init,									/* initialization */
-	rlm_sql_instantiate,					/* instantiation */
-	rlm_sql_authorize,						/* authorization */
-	rlm_sql_authenticate,					/* authentication */
-	NULL,													/* preaccounting */
-	rlm_sql_accounting,						/* accounting */
-	NULL,													/* checksimul */
-	rlm_sql_detach,								/* detach */
-	rlm_sql_destroy,							/* destroy */
+	0,			/* type: reserved */
+	rlm_sql_init,		/* initialization */
+	rlm_sql_instantiate,	/* instantiation */
+	rlm_sql_authorize,	/* authorization */
+	rlm_sql_authenticate,	/* authentication */
+	NULL,			/* preaccounting */
+	rlm_sql_accounting,	/* accounting */
+	NULL,			/* checksimul */
+	rlm_sql_detach,		/* detach */
+	rlm_sql_destroy,	/* destroy */
 };
