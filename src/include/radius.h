@@ -104,6 +104,7 @@
 #define PW_ACCT_SESSION_START_TIME	1050
 #define PW_ACCT_UNIQUE_SESSION_ID	1051
 #define PW_REQUEST_SRC_IP_ADDRESS	1052
+#define LDAP_USERDN			1053
 
 /*
  *	Integer Translations
