@@ -514,9 +514,16 @@ modules {
 	#  This module supports SAMBA passwd file authorization
 	#  and MS-CHAP, MS-CHAPv2 authentication
 	mschap {
-		# if given passwd shows location of
+		# if given, passwd shows location of
 		# SAMBA passwd file
 		#	passwd = /etc/smbpasswd
+		# please note that smbpasswd authorization in
+		# mschap is for compatibility only. It works
+		# slow and shouldn't be used.
+		# use rlm_passwd module instead in authorize section
+		# you can find configuration example for
+		# passwd etc_smbpasswd
+		# below
 
 		# authtype value, if present, will be used
 		# to overwrite (or add) Auth-Type during
@@ -581,6 +588,42 @@ modules {
 		timelimit = 3
 		net_timeout = 1
 	}
+
+	# passwd module allows to do authorization via any passwd-like
+	# file and to extract any attributes from these modules
+	# parameters are:
+	#   filename - path to filename
+	#   format - format for filename record. This parameters
+	#            correlates record in the passwd file and RADIUS
+	#            attributes.
+	#            Field marked as '*' is key field. That is paramter
+	#            with this name from request is used to search
+	#            record from passwd file
+	#            Field marked as ',' may contain a comma separated list
+	#            of attributes.
+	#   authtype - if record found this Auth-Type is used to authenticate
+	#            user
+	#   hashsize - hashtable size. If 0 or not specified records are not
+	#            stored in memory and file is red on every request.
+	#   allowmultiplekeys - if few records for every key are allowed
+	#   ignorenislike - ignore NIS-related records
+	#passwd etc_smbpasswd {
+	#	filename = /etc/smbpasswd
+	#	format = "*User-Name::LM-Password:NT-Password:SMB-Account-CTRL-TEXT::"
+	#	authtype = MS-CHAP
+	#	hashsize = 100
+	#	ignorenislike = no
+	#	allowmultiplekeys = no
+	#}
+	#passwd etc_group {
+	#	filename = /etc/group
+	#	format = "Group-Name:::*,User-Name"
+	#	hashsize = 50
+	#	ignorenislike = yes
+	#	allowmultiplekeys = no
+	#}
+
+
 
 	# Do server side ip pool management. Should be added in authorize and
 	# accounting sections
@@ -890,6 +933,7 @@ authorize {
 #	eap
 	suffix
 	files
+#	etc_smbpasswd
 #	mschap
 
 # The ldap module will set Auth-Type to LDAP if it has not already been set
