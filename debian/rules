@@ -17,7 +17,7 @@ libdir	= $(exec_prefix)/lib/freeradius
 logdir	= /var/log/freeradius
 pkgdocdir	= $(exec_prefix)/share/doc/radiusd-freeradius
 
-build: clean
+build: sanitycheck clean
 # Builds the binary package.
 	dh_testdir
 	# dh_testroot
@@ -39,7 +39,7 @@ binary-arch:	build
 	# man pages & docs
 	dh_undocumented 
 	install -g root -m 644 CREDITS $(tmp)$(pkgdocdir)/credits
-	dh_installdocs doc/README*
+	find doc -type f -maxdepth 1 ! -path doc/ChangeLog -exec dh_installdocs {} \;
 	dh_installchangelogs doc/ChangeLog
 	dh_compress
 	# supporting programs
@@ -77,4 +77,22 @@ clean:
 
 binary: binary-indep binary-arch
 
-.PHONY: binary binary-arch binary-indep clean
+sanitycheck:
+	@echo -n "sanity: checking for overzealous undocumented file... "
+	@find man/ -type f |grep \. |sed -e 's%man/man./%%' | { \
+		while read manpage; do \
+			grep $$manpage debian/undocumented | read filename && echo -n $$filename; \
+		done; \
+	} || true
+	@test -n $$filename
+	@echo good.
+
+	@echo -n "sanity: making sure conffiles lists all raddb files... "
+	@{ \
+		tree=`find raddb/ -type f |egrep -v '\.in$$' |grep -v CVS |grep -v /Makefile |sort`; \
+		debconf=`grep raddb debian/conffiles |sed -e 's%/etc/%%' |sort`; \
+		test "$$tree" = "$$debconf"; \
+	}
+	@echo good.
+
+.PHONY: binary binary-arch binary-indep clean sanitycheck
