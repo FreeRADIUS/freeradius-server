@@ -163,7 +163,7 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
  */
 static int pap_authenticate(void *instance, REQUEST *request)
 {
-	VALUE_PAIR *passwd_item;
+	VALUE_PAIR *passwd_item = NULL;
 	VALUE_PAIR *module_fmsg_vp;
 	char module_fmsg[MAX_STRING_LEN];
 	MD5_CTX md5_context;
@@ -172,7 +172,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	char buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
-	int abort = 0;
+	int do_abort = 0;
 
 	/* quiet the compiler */
 	instance = instance;
@@ -206,14 +206,14 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	if (inst->norm_passwd){
 		if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL &&
 			(passwd_item = pairfind(request->config_items, PW_CRYPT_PASSWORD)) == NULL)
-			abort = 1;
+			do_abort = 1;
 	}
 	else {
 		if ((inst->sch == PAP_ENC_NT && (passwd_item = pairfind(request->config_items, PW_NT_PASSWORD)) == NULL) ||
 		(inst->sch == PAP_ENC_LM && (passwd_item = pairfind(request->config_items, PW_LM_PASSWORD)) == NULL))
-		abort = 1;
+		do_abort = 1;
 	}
-	if (abort || passwd_item == NULL || passwd_item->length == 0 || passwd_item->strvalue[0] == 0){
+	if (do_abort || passwd_item == NULL || passwd_item->length == 0 || passwd_item->strvalue[0] == 0){
 		DEBUG("rlm_pap: No password (or empty password) to check against for for user %s",request->username->strvalue);
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: User password not available");
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
@@ -317,7 +317,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 			if (passwd_item->length != 32){
 				DEBUG("rlm_pap: Configured NT-Password has incorrect length");
-				sprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NT-Password has incorrect length");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NT-Password has incorrect length");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
@@ -325,7 +325,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			sprintf(buff2,"%%{mschap:NT-Hash %s}",request->password->strvalue);
 			if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
 				DEBUG("rlm_pap: mschap xlat failed");
-				sprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
@@ -347,7 +347,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 			if (passwd_item->length != 32){
 				DEBUG("rlm_pap: Configured LM-Password has incorrect length");
-				sprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured LM-Password has incorrect length");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured LM-Password has incorrect length");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
@@ -355,7 +355,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			sprintf(buff2,"%%{mschap:LM-Hash %s}",request->password->strvalue);
 			if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
 				DEBUG("rlm_pap: mschap xlat failed");
-				sprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
