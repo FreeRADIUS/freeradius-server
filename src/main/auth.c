@@ -774,16 +774,39 @@ int rad_authenticate(REQUEST *request)
 VALUE_PAIR *rad_getpass(REQUEST *request) {
 	VALUE_PAIR *auth_item;
 
-	auth_item = pairfind(request->packet->vps, PW_PASSWORD);
-	if (auth_item == NULL) {
-		return NULL;
+	/*
+	 *	First, look up the password in the request header.
+	 */
+	auth_item = request->password;
+	if (auth_item) {
+		/*
+		 *	It's there, but it's not a clear-text password.
+		 *	Give up.
+		 */
+		if (auth_item->attribute != PW_PASSWORD) {
+			return NULL;
+		}
+	} else {
+		/*
+		 *	Go find the request password.
+		 */
+		auth_item = pairfind(request->packet->vps, PW_PASSWORD);
+		if (!auth_item) {
+			return NULL;
+		}
+
+		/*
+		 *	Save the found password for later.
+		 */
+		request->password = auth_item;
 	}
+
 
 	/*
 	 *	If we proxied already, it's been decoded
 	 *	Or if the decoded flag is set...just return
 	 */
-	if ((request->proxy != NULL) || 
+	if ((request->proxy != NULL) ||
 	    (auth_item->lvalue == PW_DECODED)) {
 		return auth_item;
 	}
