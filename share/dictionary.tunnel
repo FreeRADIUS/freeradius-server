@@ -16,7 +16,7 @@ ATTRIBUTE	Tunnel-Client-Endpoint		66	string	has_tag
 ATTRIBUTE	Tunnel-Server-Endpoint		67	string	has_tag
 ATTRIBUTE	Tunnel-Connection-Id		68	string	has_tag
 ATTRIBUTE	Tunnel-Password			69	string	has_tag,encrypt=2
-ATTRIBUTE	Tunnel-Private-Group-Id		81	integer	has_tag
+ATTRIBUTE	Tunnel-Private-Group-Id		81	string	has_tag
 ATTRIBUTE	Tunnel-Assignment-Id		82	string	has_tag
 ATTRIBUTE	Tunnel-Preference		83	integer	has_tag
 ATTRIBUTE       Acct-Tunnel-Packets-Lost	86	integer
