@@ -1154,7 +1154,6 @@ authorize {
 	#  the mschap module for authentication.
 	mschap
 
-#	counter
 #	attr_filter
 #	eap
 	suffix
@@ -1164,6 +1163,7 @@ authorize {
 
 # The ldap module will set Auth-Type to LDAP if it has not already been set
 #	ldap
+#	counter
 }
 
 
