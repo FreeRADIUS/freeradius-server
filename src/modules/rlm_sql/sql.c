@@ -162,6 +162,7 @@ void sql_poolfree(SQL_INST * inst)
 		next = cur->next;
 		sql_close_socket(inst, cur);
 	}
+	inst->sqlpool = NULL;
 }
 
 
