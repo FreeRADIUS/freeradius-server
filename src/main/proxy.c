@@ -44,6 +44,24 @@ static int allowed [] = {
 	0,
 };
 
+static int trusted_allowed [] = {
+	PW_SERVICE_TYPE,
+	PW_FRAMED_PROTOCOL,
+	PW_FILTER_ID,
+	PW_FRAMED_MTU,
+	PW_FRAMED_COMPRESSION,
+	PW_FRAMED_IP_ADDRESS,
+	PW_FRAMED_IP_NETMASK,
+	PW_FRAMED_ROUTING,
+	PW_FRAMED_ROUTE,
+	PW_LOGIN_SERVICE,
+	PW_REPLY_MESSAGE,
+	PW_SESSION_TIMEOUT,
+	PW_IDLE_TIMEOUT,
+	PW_PORT_LIMIT,
+	0,
+};
+
 
 /*
  *	Cleanup old outstanding requests.
@@ -340,6 +358,9 @@ int proxy_receive(REQUEST *request)
 	char		*s;
 	int		pp = -1;
 	int		i;
+	VALUE_PAIR	*namepair;
+        REALM                   *realm;
+        char                    *realmname;
 
 	/*
 	 *	First cleanup old outstanding requests.
@@ -424,6 +445,20 @@ int proxy_receive(REQUEST *request)
 			request->packet->vps = last->next;
 	}
 
+        namepair = pairfind(oldreq->packet->vps, PW_USER_NAME);
+        if ((realmname = strrchr(namepair->strvalue, '@')) != NULL)
+                realmname++;
+        realm = realm_find(realmname ? realmname : "NULL");
+printf("user=%s\n",namepair->strvalue);
+	if (realm->trusted) {
+	/*
+	 *	Only allow some attributes to be propagated from
+	 *	the remote server back to the NAS, for security.
+	 */
+	allowed_pairs = NULL;
+	for(i = 0; trusted_allowed[i]; i++)
+		pairmove2(&allowed_pairs, &(request->packet->vps), trusted_allowed[i]);
+	} else {
 	/*
 	 *	Only allow some attributes to be propagated from
 	 *	the remote server back to the NAS, for security.
@@ -431,6 +466,7 @@ int proxy_receive(REQUEST *request)
 	allowed_pairs = NULL;
 	for(i = 0; allowed[i]; i++)
 		pairmove2(&allowed_pairs, &(request->packet->vps), allowed[i]);
+	}
 
 	/*
 	 *	Now rebuild the AUTHREQ struct, so that the
