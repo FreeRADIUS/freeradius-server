@@ -646,12 +646,22 @@ int main(int argc, char **argv)
 	 *	Maybe auth_port *wasn't* set from the config file,
 	 *	or the config file set it to zero.
 	 */
+	acct_port = 0;
 	if (auth_port == 0) {
 		svp = getservbyname ("radius", "udp");
-		if (svp != NULL)
+		if (svp != NULL) {
 			auth_port = ntohs(svp->s_port);
-		else
+
+			/*
+			 *	We're getting auth_port from
+			 *	/etc/services, get acct_port from
+			 *	there, too.
+			 */
+			svp = getservbyname ("radacct", "udp");
+			if (svp) acct_port = ntohs(svp->s_port);
+		} else {
 			auth_port = PW_AUTH_UDP_PORT;
+		}
 	}
 
 	/*
@@ -679,14 +689,11 @@ int main(int argc, char **argv)
 	/*
 	 *	Open Accounting Socket.
 	 *
-	 *	We prefer (in order) the authentication port + 1,
-	 *	then the port that the system names "radacct".
+	 *	If we haven't already gotten acct_port from /etc/services,
+	 *	then make it auth_port + 1.
 	 */
-	svp = getservbyname ("radacct", "udp");
-	if (radius_port || svp == NULL)
+	if (!acct_port) 
 		acct_port = auth_port + 1;
-	else
-		acct_port = ntohs(svp->s_port);
 	
 	acctfd = socket (AF_INET, SOCK_DGRAM, 0);
 	if (acctfd < 0) {
@@ -1287,8 +1294,7 @@ static void rfc_clean(RADIUS_PACKET *packet)
  */
 
 /*
- * Lowercase the username of a request
- * return 0 on success
+ *	Lowercase the string value of a pair.
  */
 static int rad_lowerpair(REQUEST *request, VALUE_PAIR *vp) {
 	if (!vp) {
@@ -1296,13 +1302,12 @@ static int rad_lowerpair(REQUEST *request, VALUE_PAIR *vp) {
 	}
 
 	rad_lowercase(vp->strvalue);
-	DEBUG2("rad_loweruser:  %s now '%s'", vp->name, vp->strvalue);
+	DEBUG2("rad_lowerpair:  %s now '%s'", vp->name, vp->strvalue);
 	return 0;
 }
 
 /*
- * Remove spaces in user
- * return 0 on success
+ *	Remove spaces in a pair.
  */
 static int rad_rmspace_pair(REQUEST *request, VALUE_PAIR *vp) {
 	if (!vp) {
@@ -1311,7 +1316,7 @@ static int rad_rmspace_pair(REQUEST *request, VALUE_PAIR *vp) {
 	
 	rad_rmspace(vp->strvalue);
 	vp->length = strlen(vp->strvalue);
-	DEBUG2("rad_rmspace_user:  %s now '%s'", vp->name, vp->strvalue);
+	DEBUG2("rad_rmspace_pair:  %s now '%s'", vp->name, vp->strvalue);
 	
 	return 0;
 }
@@ -1387,10 +1392,11 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	assert(request->magic == REQUEST_MAGIC);
 
 	/* 
-	 * FIXME:  All this lowercase/nospace junk will be moved
-	 * into a module after module failover is fully in place
+	 *	FIXME:  All this lowercase/nospace junk will be moved
+	 *	into a module after module failover is fully in place
+	 *
+	 *	See if we have to lower user/pass before processing
 	 */
-	/* See if we have to lower user/pass before processing */
 	if(strcmp(mainconfig.lower_time, "before") == 0) {
 		if(mainconfig.do_lower_user)
 			rad_lowerpair(request, request->username);
