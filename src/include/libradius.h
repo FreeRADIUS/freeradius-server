@@ -19,6 +19,10 @@
 #include <stdint.h>
 #endif
 
+#if HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+
 #if HAVE_ERRNO_H
 #include <errno.h>
 #endif
@@ -226,5 +230,10 @@ void		rad_rmspace(char *str);
 int		filterBinary(VALUE_PAIR *pair, const char *valstr);
 void		print_abinary(VALUE_PAIR *vp, u_char *buffer, int len);
 #endif /*ASCEND_BINARY*/
+
+#ifdef HAVE_LOCAL_SNPRINTF
+int snprintf(char *str, size_t count, const char *fmt, ...);
+int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
+#endif
 
 #endif /*LIBRADIUS_H*/
