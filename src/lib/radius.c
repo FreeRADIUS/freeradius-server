@@ -177,7 +177,13 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		  u_short		total_length;
 		  int			len, allowed;
 		  int			msg_auth_offset = 0;
-		  uint8_t		data[MAX_PACKET_LEN];
+
+		  /*
+		   *	For simplicity in the following logic, we allow
+		   *	the attributes to "overflow" the 4k maximum
+		   *	RADIUS packet size, by one attribute.
+		   */
+		  uint8_t		data[MAX_PACKET_LEN + 256];
 		  
 		  /*
 		   *	Use memory on the stack, until we know how
@@ -219,6 +225,19 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			  if ((VENDOR(reply->attribute) == 0) &&
 			      ((reply->attribute & 0xFFFF) > 0xff)) {
 				  continue;
+			  }
+
+			  /*
+			   *	Check that the packet is no more than
+			   *	4k in size, AFTER over-flowing the 4k
+			   *	boundary.  Note that the 'data'
+			   *	buffer, above, is one attribute longer
+			   *	than necessary, in order to permit
+			   *	this overflow.
+			   */
+			  if (total_length > MAX_PACKET_LEN) {
+				  librad_log("ERROR: Too many attributes for packet, result is larger than RFC maximum of 4k");
+				  return -1;
 			  }
 
 			  /*
@@ -570,7 +589,8 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			  case PW_AUTHENTICATION_REJECT:
 			  case PW_ACCESS_CHALLENGE:
 			    if (original) {
-			      memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
+				    memcpy(hdr->vector, original->vector,
+					   AUTH_VECTOR_LEN);
 			    }
 			    break;
 			  }
