@@ -65,6 +65,7 @@
 #define PW_MSCHAP_RESPONSE	((311 << 16) | 1)
 #define PW_MSCHAP_CHALLENGE	((311 << 16) | 11)
 #define PW_MSCHAP2_RESPONSE	((311 << 16) | 25)
+#define PW_SMB_ACCOUNT_CTRL	1059
 
 
 typedef enum {
@@ -603,10 +604,12 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 	VALUE_PAIR *reply_attr;
 	VALUE_PAIR *password = NULL;
+	VALUE_PAIR *accctrl;
 	struct smb_passwd smbPasswdValue, *smbPasswd = NULL;
 
 	
 	password = pairfind(request->config_items, PW_PASSWORD);
+	accctrl = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
 	if (challenge) {
 		response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE);
@@ -621,8 +624,12 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		/* Usernam must present */
 		return RLM_MODULE_NOOP;
 	}
-	if (password && !inst->ignore_password)
+	if (password && !inst->ignore_password) {
 		smbPasswd = createsmbpw(&smbPasswdValue, request->username->strvalue, password->strvalue);
+		if(accctrl) {
+			smbPasswd->acct_ctrl = accctrl->lvalue;
+		}
+	}
 	else if (inst->passwd_file) {
 		smbPasswd = getsmbfilepwname (&smbPasswdValue, inst->passwd_file, request->username->strvalue);
 	}
@@ -653,11 +660,12 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		memcpy(reply_attr->strvalue, smbPasswd->smb_nt_passwd, 16);
 		pairadd(&request->config_items, reply_attr);
 	}
-
-	reply_attr = pairmake("SMB-Account-CTRL", "0", T_OP_EQ);
-	rad_assert(reply_attr != NULL);
-	reply_attr->lvalue = smbPasswd->acct_ctrl;
-	pairadd(&request->config_items, reply_attr);
+	if(!accctrl){
+		reply_attr = pairmake("SMB-Account-CTRL", "0", T_OP_EQ);
+		rad_assert(reply_attr != NULL);
+		reply_attr->lvalue = smbPasswd->acct_ctrl;
+		pairadd(&request->config_items, reply_attr);
+	}
 	return RLM_MODULE_OK;
 #undef inst
 }
@@ -693,9 +701,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	struct smb_passwd smbPasswd, smbPasswd1Value, *smbPasswd1 = NULL;
 	AUTHTYPE at = NONE;
 	int res = 0;
-/*
-	int len = 0;
-*/
 	int chap = 0;
 	
 	pdb_init_smb(&smbPasswd);
@@ -780,7 +785,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	}
 
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
-	if (challenge) {
+	if (challenge && (smbPasswd.acct_ctrl & ACB_NORMAL) && !(smbPasswd.acct_ctrl & ACB_DISABLED)) {
 		/*
 		 *	We need an MS-CHAP-Challenge attribute to calculate
 		 *	the response.
@@ -890,12 +895,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					mppe_add_reply( &request->reply->vps,
 						"MS-MPPE-Send-Key",mppe_sendkey,16);
 
-/*
-					mppe_add_reply( &request->reply->vps,
-						"MS-MPPE-Recv-Key",mppe_recvkey,34);
-					mppe_add_reply( &request->reply->vps,
-						"MS-MPPE-Send-Key",mppe_sendkey,34);
-*/
 				}
 				reply_attr = pairmake("MS-MPPE-Encryption-Policy",
 					(inst->require_encryption)? "0x00000002":"0x00000001",
@@ -915,7 +914,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		        DEBUG2("rlm_mschap: Authentication failed");
 		}
 	}
-	else{
+	else if(!challenge){
 		DEBUG2("No MS-CHAP related attributes in request");
 		return RLM_MODULE_REJECT;
 	}
