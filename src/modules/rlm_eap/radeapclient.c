@@ -419,9 +419,62 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	}
 
 	/*
-	 * XXX compare RAND with randX, to verify this is the right response
+	 * compare RAND with randX, to verify this is the right response
 	 * to this challenge.
 	 */
+	{
+	  VALUE_PAIR *randcfgvp[3];
+	  unsigned char *randcfg[3];
+
+	  randcfg[0] = &randvp->strvalue[2];
+	  randcfg[1] = &randvp->strvalue[2+EAPSIM_RAND_SIZE];
+	  randcfg[2] = &randvp->strvalue[2+EAPSIM_RAND_SIZE*2];
+	  
+	  randcfgvp[0] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND1);
+	  randcfgvp[1] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND2);
+	  randcfgvp[2] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND3);
+
+	  if(randcfgvp[0] == NULL ||
+	     randcfgvp[1] == NULL ||
+	     randcfgvp[2] == NULL) {
+	    fprintf(stderr, "radeapclient: needs to have rand1, 2 and 3 set.\n");
+	    return 0;
+	  }
+
+	  if(memcmp(randcfg[0], randcfgvp[0]->strvalue, EAPSIM_RAND_SIZE)!=0 ||
+	     memcmp(randcfg[1], randcfgvp[1]->strvalue, EAPSIM_RAND_SIZE)!=0 ||
+	     memcmp(randcfg[2], randcfgvp[2]->strvalue, EAPSIM_RAND_SIZE)!=0) {
+	    int rnum,i,j;
+
+	    fprintf(stderr, "radeapclient: one of rand 1,2,3 didn't match\n");
+	    for(rnum = 0; rnum < 3; rnum++) {
+	      fprintf(stderr, "received   rand %d: ", rnum);
+	      j=0;
+	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+		if(j==4) {
+		  printf("_");
+		  j=0;
+		}
+		j++;
+			
+		fprintf(stderr, "%02x", randcfg[rnum][i]);
+	      }
+	      fprintf(stderr, "\nconfigured rand %d: ", rnum);
+	      j=0;
+	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+		if(j==4) {
+		  printf("_");
+		  j=0;
+		}
+		j++;
+			
+		fprintf(stderr, "%02x", randcfgvp[rnum]->strvalue[i]);
+	      }
+	      fprintf(stderr, "\n");
+	    }
+	    return 0;
+	  }
+	}
 
 	/*
 	 * now dig up the sres values from the response packet,
