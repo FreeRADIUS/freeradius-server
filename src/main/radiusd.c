@@ -2212,9 +2212,9 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  seriously wrong...
 	 */
 	if (request->finished &&
-			(request->child_pid == NO_SUCH_CHILD_PID) &&
-			((request->timestamp + cleanup_delay <= info->now) ||
-			(request->packet->code == PW_ACCOUNTING_REQUEST))) {
+	    (request->child_pid == NO_SUCH_CHILD_PID) &&
+	    ((request->timestamp + cleanup_delay <= info->now) ||
+	     (request->packet->code == PW_ACCOUNTING_REQUEST))) {
 		/*
 		 *  Request completed, delete it, and unlink it
 		 *  from the currently 'alive' list of requests.
@@ -2236,14 +2236,16 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  kill it, and continue.
 	 */
 	if ((request->timestamp + max_request_time) <= info->now) {
+		int number;
+
 		child_pid = request->child_pid;
+		number = request->number;
 #ifndef HAVE_PTHREAD_H
-		if (request->child_pid != NO_SUCH_CHILD_PID) {
+		if (child_pid != NO_SUCH_CHILD_PID) {
 			/*
 			 *  This request seems to have hung
 			 *   - kill it
 			 */
-			child_pid = request->child_pid;
 			radlog(L_ERR, "Killing unresponsive child %lu for request %d",
 					child_pid, request->number);
 			child_kill(child_pid, SIGTERM);
@@ -2253,10 +2255,12 @@ static int refresh_request(REQUEST *request, void *data)
 		 *  Delete the request.
 		 */
 		rl_delete(request);
-#else
-		radlog(L_ERR, "WARNING: Unresponsive child thread (pid %lu) for request %d",
-		       child_pid, request->number);
+		child_pid = NO_SUCH_CHILD_PID; /* mark it as deleted. */
 #endif
+		if (child_pid != NO_SUCH_CHILD_PID) {
+			radlog(L_ERR, "WARNING: Unresponsive child thread (pid %lu) for request %d",
+			       child_pid, number);
+		}
 		return RL_WALK_CONTINUE;
 	}
 
