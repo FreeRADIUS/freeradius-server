@@ -216,7 +216,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	int atts_num = 0;
 	int reply_map_num = 0;
 	int check_map_num = 0;
-	int tmp = 0;
+	int att_map[3] = {0,0,0};
 	TLDAP_RADIUS *pair;
 
 	inst = rad_malloc(sizeof *inst);
@@ -281,7 +281,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		pair = pair->next;
 	}
 	reply_map_num = (atts_num - 1);
-	if (inst->default_profile)
+	if (inst->profile_attr)
 		atts_num++;
 	if (inst->passwd_attr)
 		atts_num++;
@@ -307,20 +307,17 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 			pair = pair->next;
 		}
 		else{
-			if (!tmp){
-				if (inst->profile_attr)
-					inst->atts[i] = inst->profile_attr;
-				tmp++;
+			if (inst->profile_attr && !att_map[0]){
+				inst->atts[i] = inst->profile_attr;
+				att_map[0] = 1;
 			}
-			else if (tmp == 1){
-				if (inst->passwd_attr)
-					inst->atts[i] = inst->passwd_attr;
-				tmp++;
+			else if (inst->passwd_attr && !att_map[1]){
+				inst->atts[i] = inst->passwd_attr;
+				att_map[1] = 1;
 			}
-			else if (tmp == 2){
-				if (inst->access_attr)
-					inst->atts[i] = inst->access_attr;
-				tmp++;
+			else if (inst->access_attr && !att_map[2]){
+				inst->atts[i] = inst->access_attr;
+				att_map[2] = 1;
 			}
 		}
 	}
@@ -891,7 +888,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	 */
 
 	if (inst->default_profile){
-		strncpy(filter,"(objectclass=*)",MAX_AUTH_QUERY_LEN);
+		strncpy(filter,"(objectclass=radiusprofile)",MAX_AUTH_QUERY_LEN);
 		if ((res = perform_search(instance, conn,
 			inst->default_profile, LDAP_SCOPE_BASE, 
 			filter, inst->atts, &def_result)) == RLM_MODULE_OK){
@@ -915,7 +912,7 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	if (inst->profile_attr){
 		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL && strlen(vals[0])) {
-			strncpy(filter,"(objectclass=*)",MAX_AUTH_QUERY_LEN);
+			strncpy(filter,"(objectclass=radiusprofile)",MAX_AUTH_QUERY_LEN);
 			if ((res = perform_search(instance, conn,
 				vals[0], LDAP_SCOPE_BASE, 
 				filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
