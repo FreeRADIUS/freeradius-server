@@ -364,7 +364,8 @@ ldap_authorize(void *instance, REQUEST * request)
 	 * given username
 	 */
 	pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
-	free(user_dn);
+	ldap_memfree(user_dn);
+
 	/* Remote access is controled by attribute of the user object */
 	if (inst->access_attr) {
 		if ((vals = ldap_get_values(inst->ld, msg, inst->access_attr)) != NULL) {
@@ -476,7 +477,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 			request, NULL)) 
 		radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
 
-	if ((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL) {
+	while((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL) {
 		if ((res = perform_search(instance, inst->basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
 			return (res);
 		}
@@ -490,17 +491,16 @@ ldap_authenticate(void *instance, REQUEST * request)
 			return RLM_MODULE_FAIL;
 		}
 		pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+		ldap_memfree(user_dn);
 		ldap_msgfree(result);
-	} else {
-		user_dn = vp_user_dn->strvalue;
 	}
+
+	user_dn = vp_user_dn->strvalue;
 
 	DEBUG("rlm_ldap: user DN: %s", user_dn);
 
 	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
 			       1, &res);
-	free(user_dn);
-
 	if (ld_user == NULL)
 		return (res);
 
