@@ -2016,8 +2016,6 @@ static void sig_hup(int sig)
 	sig = sig; /* -Wunused */
 	reset_signal(SIGHUP, sig_hup);
 
-	exit(0);
-
 	/*
 	 *  Only do the reload if we're the main server, both
 	 *  for processes, and for threads.
