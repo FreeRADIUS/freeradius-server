@@ -330,6 +330,17 @@ int rad_authenticate(REQUEST *request)
 			request->reply->vps = request->proxy_reply->vps;
 			request->proxy_reply->vps = NULL;
 		}
+
+		/*
+		 *	If it's an Access-Reject, then do NOT do any
+		 *	authorization or authentication.  They're being
+		 *	rejected, so we minimize the amount of work
+		 *	done by the server, by rejecting them here.
+		 */
+		if (request->proxy_reply->code != PW_AUTHENTICATION_ACK) {
+			request->reply->code = PW_AUTHENTICATION_REJECT;
+			return RLM_MODULE_REJECT;
+		}
 	}
 
 	/*
