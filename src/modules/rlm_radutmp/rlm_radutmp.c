@@ -44,36 +44,6 @@
 static const char porttypes[] = "ASITX";
 
 /*
- *	Internal wrapper for locking, to minimize the number of ifdef's
- *	in the source.
- *
- *	Lock the utmp file, prefer lockf() over flock()
- */
-static void radutmp_lock(int fd)
-{
-#if defined(F_LOCK) && !defined(BSD)
-	(void)lockf(fd, F_LOCK, LOCK_LEN);
-#else
-	(void)flock(fd, LOCK_EX);
-#endif
-}
-
-/*
- *	Internal wrapper for unlocking, to minimize the number of ifdef's
- *	in the source.
- *
- *	Unlock the utmp file, prefer lockf() over flock()
- */
-static void radutmp_unlock(int fd)
-{
-#if defined(F_LOCK) && !defined(BSD)
-	(void)lockf(fd, F_ULOCK, LOCK_LEN);
-#else
-	(void)flock(fd, LOCK_UN);
-#endif
-}
-
-/*
  *	used for caching radutmp lookups in the accounting component. The
  *	session (checksimul) component doesn't use it, but probably should.
  */
@@ -150,7 +120,7 @@ static int radutmp_zap(struct radutmp_instance *inst, uint32_t nasaddr, time_t t
 		/*
 		 *	Lock the utmp file, prefer lockf() over flock().
 		 */
-		radutmp_lock(fd);
+		rad_lockfd(fd, LOCK_LEN);
 
 		/*
 		 *	Find the entry for this NAS / portno combination.
@@ -171,7 +141,7 @@ static int radutmp_zap(struct radutmp_instance *inst, uint32_t nasaddr, time_t t
 			u.time = t;
 			write(fd, &u, sizeof(u));
 		}
-		close(fd);
+		close(fd);	/* and implicitely release the locks */
 	} else {
 		radlog(L_ERR, "Accounting: %s: %m", inst->radutmp_fn);
 	}
@@ -401,7 +371,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		/*
 		 *	Lock the utmp file, prefer lockf() over flock().
 		 */
-		radutmp_lock(fd);
+		rad_lockfd(fd, LOCK_LEN);
 
 		/*
 		 *	Find the entry for this NAS / portno combination.
@@ -505,7 +475,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				r = -1;
 			}
 		}
-		close(fd);
+		close(fd);	/* and implicitely release the locks */
 	} else {
 		radlog(L_ERR, "Accounting: %s: %m", inst->radutmp_fn);
 		return RLM_MODULE_FAIL;
@@ -569,9 +539,9 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 		call_num = vp->strvalue;	
 
 	/*
-	 *	lockf() the file while reading/writing.
+	 *	lock the file while reading/writing.
 	 */
-		radutmp_lock(fd);
+	rad_lockfd(fd, LOCK_LEN);
 
 	request->simul_count = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
@@ -585,10 +555,10 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 			 *	and we don't want to block everyone else
 			 *	while that's happening.
 			 */
-			radutmp_unlock(fd);
+			rad_unlockfd(fd, LOCK_LEN);
 			rcode = rad_check_ts(u.nas_address, u.nas_port, login, 
 					     session_id);
-			radutmp_lock(fd);
+			rad_lockfd(fd, LOCK_LEN);
 
 			if (rcode == 1) {
 				++request->simul_count;
@@ -613,7 +583,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 			}
 		}
 	}
-	close(fd);
+	close(fd);		/* and implicitely release the locks */
 
 	return RLM_MODULE_OK;
 }
