@@ -129,6 +129,7 @@ static int max_request_time = MAX_REQUEST_TIME;
 static int kill_unresponsive_children = FALSE;
 static int cleanup_delay = CLEANUP_DELAY;
 static int max_requests = MAX_REQUESTS;
+static int reject_delay = 0;
 static int dont_fork = FALSE;
 static const char *pid_file = NULL;
 static uid_t server_uid;
@@ -170,6 +171,15 @@ static CONF_PARSER proxy_config[] = {
 };
 
 /*
+ *  Security configuration for the server.
+ */
+static CONF_PARSER security_config[] = {
+	{ "max_attributes",  PW_TYPE_INTEGER, 0, &librad_max_attributes, Stringify(0) },
+	{ "reject_delay",  PW_TYPE_INTEGER, 0, &reject_delay, Stringify(0) },
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+/*
  *  A mapping of configuration file names to internal variables
  */
 static CONF_PARSER server_config[] = {
@@ -194,10 +204,10 @@ static CONF_PARSER server_config[] = {
 	{ "nospace_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_pass, "no" },
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &proxy_requests, "yes" },
 	{ "proxy", PW_TYPE_SUBSECTION, 0, proxy_config, NULL },
+	{ "security", PW_TYPE_SUBSECTION, 0, security_config, NULL },
 	{ "debug_level", PW_TYPE_INTEGER, 0, &debug_level, "0"},
 	{ NULL, -1, 0, NULL, NULL }
 };
-
 
 static int switch_users() {
 	
@@ -1274,8 +1284,20 @@ static void rad_reject(REQUEST *request)
 	/*
 	 *  If a reply exists, send it.
 	 */
-	if (request->reply->code != 0) 
-		rad_send(request->reply, request->packet, request->secret);
+	if (request->reply->code != 0) {
+		/*
+		 *	If we're not delaying authentication rejects,
+		 *	then send the response immediately.  Otherwise,
+		 *	mark the request as delayed, and do NOT send a
+		 *	response.
+		 */
+		if (reject_delay == 0) {
+			rad_send(request->reply, request->packet,
+				 request->secret);
+		} else {
+			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
+		}
+	}
 }
 
 /*
@@ -1549,7 +1571,21 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		if (vp != NULL) 
 			pairadd(&(request->reply->vps), vp);
 
-		rad_send(request->reply, request->packet, request->secret);
+		/*
+		 *	If we're not delaying authentication rejects,
+		 *	then send the response immediately.  Otherwise,
+		 *	mark the request as delayed, and do NOT send a
+		 *	response.
+		 */
+		if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
+		    (reject_delay == 0)) {
+			rad_send(request->reply, request->packet,
+				 request->secret);
+		} else {
+			DEBUG2("Delaying request %d for %d seconds",
+			       request->number, reject_delay);
+			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
+		}
 	}
 
 	/*
@@ -2267,6 +2303,25 @@ static int refresh_request(REQUEST *request, void *data)
 	rad_assert(request->magic == REQUEST_MAGIC);
 
 	/*
+	 *  If the request is marked as a delayed reject, AND it's
+	 *  time to send the reject, then do so now.
+	 */
+	if (request->finished &&
+	    ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0)) {
+		difference = info->now - request->timestamp;
+		if (difference >= (time_t) reject_delay) {
+
+			/*
+			 *  Clear the 'delayed reject' bit, so that we
+			 *  don't do this again.
+			 */
+			request->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
+			rad_send(request->reply, request->packet,
+				 request->secret);
+		}
+	}
+
+	/*
 	 *  If the request has finished processing,
 	 *  AND it's child has been cleaned up,
 	 *  AND it's time to clean up the request,
@@ -2459,7 +2514,17 @@ setup_timeout:
 	 */
 	if (request->finished) {
 		difference = (request->timestamp + cleanup_delay) - info->now;
-		
+
+		/*
+		 *  If the request is marked up to be rejected later,
+		 *  then wake up later.
+		 */
+		if ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0) {
+			if (difference >= (time_t) reject_delay) {
+				difference = (time_t) reject_delay;
+			}
+		}
+
 	} else if (request->proxy && !request->proxy_reply) {
 		/*
 		 *  The request is NOT finished, but there is an

@@ -64,8 +64,9 @@ typedef struct auth_req {
 	void			**container;
 } REQUEST;
 
-#define RAD_REQUEST_OPTION_NONE         (0)
-#define RAD_REQUEST_OPTION_LOGGED_CHILD (1 << 0)
+#define RAD_REQUEST_OPTION_NONE            (0)
+#define RAD_REQUEST_OPTION_LOGGED_CHILD    (1 << 0)
+#define RAD_REQUEST_OPTION_DELAYED_REJECT  (1 << 1)
 
 /*
  *  Function handler for requests.
