@@ -184,8 +184,9 @@ int proxy_send(REQUEST *request)
 	 *	Accounting-Request: look for LOCAL realm.
 	 */
 	if (((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-	    (realm->ipaddr == htonl(INADDR_NONE))) ||
-	    (realm->acct_ipaddr == htonl(INADDR_NONE))) {
+	     (realm->ipaddr == htonl(INADDR_NONE))) ||
+	    ((request->packet->code == PW_ACCOUNTING_REQUEST) &&	    
+	     (realm->acct_ipaddr == htonl(INADDR_NONE)))) {
 		return 0;
 	}
 	
