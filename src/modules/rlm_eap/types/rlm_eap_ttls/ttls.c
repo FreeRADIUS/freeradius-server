@@ -1118,18 +1118,39 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	Didn't authenticate the packet, but
 			 *	we're proxying it.
 			 */
-			rcode = RLM_MODULE_UPDATED;
+			rcode = PW_STATUS_CLIENT;
 
 		} else {
 			DEBUG2("  TTLS: No tunneled reply was found for request %d , and the request was not proxied: rejecting the user.",
 			       request->number);
-			rcode = RLM_MODULE_REJECT;
+			rcode = PW_AUTHENTICATION_REJECT;
 		}
 		break;
 
 	default:
+		/*
+		 *	Returns RLM_MODULE_FOO, and we want to return
+		 *	PW_FOO
+		 */
 		rcode = process_reply(handler, tls_session, request,
 				      fake->reply);
+		switch (rcode) {
+		case RLM_MODULE_REJECT:
+			rcode = PW_AUTHENTICATION_REJECT;
+			break;
+			
+		case RLM_MODULE_HANDLED:
+			rcode = PW_ACCESS_CHALLENGE;
+			break;
+			
+		case RLM_MODULE_OK:
+			rcode = PW_AUTHENTICATION_ACK;
+			break;
+			
+		default:
+			rcode = PW_AUTHENTICATION_REJECT;
+			break;
+		}
 		break;
 	}
 
@@ -1137,4 +1158,3 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	return rcode;
 }
-

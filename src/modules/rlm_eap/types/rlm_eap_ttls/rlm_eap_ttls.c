@@ -261,7 +261,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	that the request now has a "proxy" packet, and
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
-	case RLM_MODULE_UPDATED:
+	case PW_STATUS_CLIENT:
 		rad_assert(handler->request->proxy != NULL);
 		return 1;
 		break;
