@@ -22,8 +22,8 @@
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
  */
 
-#include	"autoconf.h"
-#include "libradius.h"
+#include        "autoconf.h"
+#include        "libradius.h"
 
 #include	<sys/socket.h>
 #include	<sys/time.h>
@@ -579,7 +579,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 		if(!fallthrough(user->reply)) {
 			pairdelete(&request->reply->vps, PW_FALL_THROUGH);
-			return RLM_MODULE_UPDATED;
+			return(rad_check_return(user->check));
 		} else {
 			user=user->next;
 			user=fastuser_find(request, user, name);
@@ -643,7 +643,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 			if(!fallthrough(user->reply)) {
 				pairdelete(&request->reply->vps, PW_FALL_THROUGH);
-				return RLM_MODULE_UPDATED;
+				return(rad_check_return(user->check));
 			}
 
 			/* 
@@ -659,7 +659,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 	if(userfound || defaultfound) {
 		pairdelete(&request->reply->vps, PW_FALL_THROUGH);
-		return RLM_MODULE_UPDATED;
+		return(rad_check_return(request->config_items));
 	} else {
 		DEBUG2("rlm_fastusers:  user not found");
 		return RLM_MODULE_NOTFOUND;
