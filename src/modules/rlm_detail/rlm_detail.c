@@ -87,7 +87,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	int		outfd;
 	FILE		*outfp;
 	char		buffer[DIRLEN];
-	char		*p, *lastdir;
+	char		*p;
 	VALUE_PAIR	*pair;
 	int		ret = RLM_MODULE_OK;
 	struct stat	st;
@@ -102,8 +102,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *	feed it through radius_xlat2() to expand the
 	 *	variables.
 	 */
-	radius_xlat2(buffer, sizeof(buffer), inst->detailfile, request,
-		     request->reply->vps);
+	radius_xlat2(buffer, sizeof(buffer), inst->detailfile, request);
 
 	/*
 	 *	Grab the last directory delimiter.

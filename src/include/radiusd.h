@@ -1,3 +1,5 @@
+#ifndef RADIUSD_H
+#define RADIUSD_H
 /*
  * radiusd.h	Structures, prototypes and global variables
  *		for the Cistron Radius server.
@@ -5,9 +7,6 @@
  * Version:	$Id$
  *
  */
-
-#ifndef RADIUSD_H
-#define RADIUSD_H
 #include "libradius.h"
 #include "radpaths.h"
 #include "conf.h"
@@ -114,10 +113,10 @@ typedef struct main_config_t {
 	int		do_usercollide;
 	int		do_lower_user;
 	int		do_lower_pass;
-	char	*lower_time;
+	char		*lower_time;
 	int		do_nospace_user;
 	int		do_nospace_pass;
-	char	*nospace_time;
+	char		*nospace_time;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug
@@ -127,7 +126,6 @@ typedef struct main_config_t {
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
 #define MAX_REQUESTS		256
-/* FIXME: these two should be command-line options */
 #define RETRY_DELAY             5
 #define RETRY_COUNT             3
 
@@ -280,7 +278,7 @@ void		pair_builtincompare_init(void);
 
 /* xlat.c */
 int            radius_xlat2(char * out, int outlen, const char *fmt,
-                            REQUEST * request, VALUE_PAIR *reply);
+                            REQUEST * request);
 
 #ifdef WITH_THREAD_POOL
 /* threads.c */

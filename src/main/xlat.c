@@ -98,7 +98,7 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
  *	${reply:AttributeName}		Corresponding value for AttributeName in reply
  */
 
-int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request, VALUE_PAIR *reply)
+int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 {
 	char attrname[128];
 	char *pa;
@@ -144,7 +144,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request, VALU
 				}
 				*pa = '\0';
 				if (strncasecmp(attrname,"reply:",6) == 0) {
-				  q += valuebyname(q,freespace,reply,&attrname[6]);
+				  q += valuebyname(q,freespace,request->reply->vps,&attrname[6]);
 				} else if (strncasecmp(attrname,"request:",8) == 0) {
 				  q += valuebyname(q,freespace,request->packet->vps,&attrname[8]);
 				} else {
@@ -160,10 +160,10 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request, VALU
 				*q++ = *p;
 				break;
 			case 'a': /* Protocol: */
-				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER);
 				break;
 			case 'c': /* Callback-Number */
-				q += valuepair2str(q,freespace,pairfind(reply,PW_CALLBACK_NUMBER),PW_TYPE_STRING);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER),PW_TYPE_STRING);
 				break;
 			case 'd': /* request year */
 				TM = localtime(&request->timestamp);
@@ -172,7 +172,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request, VALU
 				q += strlen(q);
 				break;
 			case 'f': /* Framed IP address */
-				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR);
 				break;
 			case 'i': /* Calling station ID */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING);
@@ -198,7 +198,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request, VALU
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING);
 				break;
 			case 't': /* MTU */
-				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_MTU),PW_TYPE_INTEGER);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU),PW_TYPE_INTEGER);
 				break;
 			case 'u': /* User name */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING);
