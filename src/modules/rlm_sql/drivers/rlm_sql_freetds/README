@@ -8,5 +8,9 @@ About FreeTDS
 
 FreeTDS home page - http://www.freetds.org/
 
+The FreeTDS API is currently in development, so this module MAY NOT build.
+If you want to use it, then you will have to edit the module source yourself,
+and create the 'Makefile' yourself.
+
 Dmitri Ageev,
 d_ageev@ortcc.ru
