@@ -248,6 +248,9 @@ static int huntgroup_cmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	PAIR_LIST	*i;
 	char		*huntgroup;
 
+	check_pairs = check_pairs; /* shut the compiler up */
+	reply_pairs = reply_pairs;
+
 	huntgroup = check->strvalue;
 
 	for (i = huntgroups; i; i = i->next) {
@@ -277,10 +280,14 @@ static int huntgroup_cmp(VALUE_PAIR *request, VALUE_PAIR *check,
 static int huntgroup_access(VALUE_PAIR *request_pairs)
 {
 	PAIR_LIST	*i;
-	int		r = 1;
+	int		r = RLM_AUTZ_OK;
 
+	/*
+	 *	We're not controlling access by huntgroups:
+	 *	Allow them in.
+	 */
 	if (huntgroups == NULL)
-		return RLM_AUTZ_REJECT;
+		return RLM_AUTZ_OK;
 
 	for(i = huntgroups; i; i = i->next) {
 		/*
@@ -309,6 +316,9 @@ static int preprocess_init(int argc, char **argv)
 {
 	char	buffer[256];
 
+	argc = argc;		/* shut the compiler up */
+	argv = argv;
+
 	pairlist_free(&huntgroups);
 	pairlist_free(&hints);
 
@@ -328,6 +338,10 @@ static int preprocess_init(int argc, char **argv)
 static int preprocess_authorize(REQUEST *request, char *name,
 	VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
+	check_pairs = check_pairs; /* shut the compiler up */
+	reply_pairs = reply_pairs;
+	name = name;
+
 	hints_setup(request->packet->vps);
 	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
 		log(L_AUTH, "No huntgroup access: [%s] (%s)",
