@@ -396,6 +396,34 @@ int main(int argc, char **argv)
 		}
 	
 		/*
+		 *  Fix up Digest-Attributes issues
+		 */
+		for (vp = req->vps; vp != NULL; vp = vp->next) {
+		  switch (vp->attribute) {
+		  default:
+		    break;
+
+		  case PW_DIGEST_REALM:
+		  case PW_DIGEST_NONCE:
+		  case PW_DIGEST_METHOD:
+		  case PW_DIGEST_URI:
+		  case PW_DIGEST_QOP:
+		  case PW_DIGEST_ALGORITHM:
+		  case PW_DIGEST_BODY_DIGEST:
+		  case PW_DIGEST_CNONCE:
+		  case PW_DIGEST_NONCE_COUNT:
+		  case PW_DIGEST_USER_NAME:
+		    /* overlapping! */
+		    memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
+		    vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
+		    vp->length += 2;
+		    vp->strvalue[1] = vp->length;
+		    vp->attribute = PW_DIGEST_ATTRIBUTES;
+		    break;
+		  }
+		}
+
+		/*
 		 *	Loop, sending the packet N times.
 		 */
 		for (loop = 0; loop < count; loop++) {
