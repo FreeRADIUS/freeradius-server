@@ -68,10 +68,47 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	unsigned int      id, eapcode;
 	unsigned char    *macspace, *append;
 	int               appendlen;
+	unsigned char     subtype;
 
 	macspace = NULL;
 	append = NULL;
 	appendlen = 0;
+
+	/*
+	 * encodedmsg is now an EAP-SIM message.
+	 * it might be too big for putting into an EAP-Type-SIM
+	 *
+	 */
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE);
+	if(vp == NULL)
+	{
+		subtype = eapsim_start;
+	}
+	else
+	{
+		subtype = vp->lvalue;
+	}
+
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_ID);
+	if(vp == NULL)
+	{
+		id = ((int)getpid() & 0xff);
+	}
+	else
+	{
+		id = vp->lvalue;
+	}
+
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE);
+	if(vp == NULL)
+	{
+		eapcode = PW_EAP_REQUEST;
+	}
+	else
+	{
+		eapcode = vp->lvalue;
+	}
+
 
 	/*
 	 * take a walk through the attribute list to see how much space
@@ -110,11 +147,23 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	}
 
 	/*
-	 * if no attributes were found, do nothing.
+	 * if no attributes were found, do very little.
 	 *
 	 */
 	if(encoded_size == 0)
 	{
+	        encodedmsg = malloc(3);
+
+		encodedmsg[0]=subtype;
+		encodedmsg[1]=0;
+		encodedmsg[2]=0;
+
+ 	        ep->code = eapcode;
+		ep->id   = (id & 0xff);
+		ep->type.type = PW_EAP_SIM;
+		ep->type.length = 3;
+		ep->type.data = encodedmsg;
+
 		return 0;
 	}
 
@@ -187,45 +236,8 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		attr += roundedlen;
 	}
 
-	/*
-	 * encodedmsg is now an EAP-SIM message.
-	 * it might be too big for putting into an EAP-Type-SIM
-	 *
-	 */
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE);
-	if(vp == NULL)
-	{
-		encodedmsg[0] = eapsim_start;
-	}
-	else
-	{
-		encodedmsg[0] = vp->lvalue;
-	}
+	encodedmsg[0] = subtype;
 
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_ID);
-	if(vp == NULL)
-	{
-		id = ((int)getpid() & 0xff);
-	}
-	else
-	{
-		id = vp->lvalue;
-	}
-
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE);
-	if(vp == NULL)
-	{
-		eapcode = PW_EAP_REQUEST;
-	}
-	else
-	{
-		eapcode = vp->lvalue;
-	}
-
-
-	ep->code = eapcode;
-	ep->id   = (id & 0xff);
-	ep->type.type = PW_EAP_SIM;
 	ep->type.length = encoded_size;
 	ep->type.data = encodedmsg;
 
