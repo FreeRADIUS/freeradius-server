@@ -57,7 +57,7 @@ fi
 #
 #######################################################################
 compile() {
-gcc $CFLAGS $LIBS tmp$$.c -o tmp$$ 2>/dev/null 1>/dev/null
+gcc $CFLAGS tmp$$.c $LIBS -o tmp$$ 2>/dev/null 1>/dev/null
 if [ "$?" = "0" ];then
   echo yes
   echo $DEF=$LIBS >>config.mak
