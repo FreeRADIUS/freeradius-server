@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.1.1.1 
+# From configure.in Revision: 1.1 
 
 
 if test x$with_rlm_perl != xno; then
@@ -869,7 +869,7 @@ fi
 	  smart_try_dir=
 	  
 
-ac_safe=`echo "EXTERN.h" | sed 'y%./+-%__p_%'`
+ac_safe=`echo "EXTERN.h" | sed 'y%./+-%__pm%'`
 echo $ac_n "checking for EXTERN.h""... $ac_c" 1>&6
 echo "configure:875: checking for EXTERN.h" >&5
 
@@ -974,7 +974,7 @@ fi
 
 	  
 
-ac_safe=`echo "perl.h" | sed 'y%./+-%__p_%'`
+ac_safe=`echo "perl.h" | sed 'y%./+-%__pm%'`
 echo $ac_n "checking for perl.h""... $ac_c" 1>&6
 echo "configure:980: checking for perl.h" >&5
 

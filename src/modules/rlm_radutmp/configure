@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision
+# From configure.in Revision: 1.1 
 
 
 if test x$with_rlm_radutmp != xno; then
