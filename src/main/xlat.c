@@ -169,16 +169,29 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	*q = '\0';
 
 	/* 
-	 * Skip the '}' at the front of 'p' 
+	 * Skip the '{' at the front of 'p' 
 	 * Increment open braces 
 	 */ 
 	p++;
 	openbraces++;
 
+	/*
+	 *  Copy over the rest of the string.
+	 */
 	while ((*p) && (!stop)) {
 		switch(*p) {
+			case '{':
+				openbraces++;
+				*pa++ = *p++;
+				break;
+				
 			case '}':
-				stop=1;
+				openbraces--;
+				if (openbraces == *open) {
+					stop=1;
+				} else {
+					*pa++ = *p++;
+				}
 				break;
 
 			case ':':
@@ -217,7 +230,7 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 		}
 
 	} else if ((c = find_xlat_func(attrname)) != NULL){
-		DEBUG("radius_xlat: Runing registered xlat function of module %s for string \'%s\'",
+		DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
 				c->module, attrname+(c->length+1));
 		q += c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
 		found = 1;
@@ -228,24 +241,6 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 			found = 1;
 		}
 	} 
-
-	/*
-	 * Skip to last '}' if attr is found
-	 * The rest of the stuff within the braces is
-	 * useless if we found what we need
-	 */
-	if(found) {
-		while((*p != '\0') && (openbraces > 0)) {
-			if(*p == '}') 
-				openbraces--;
-			if(*p == '{') 
-				openbraces++;
-			if (openbraces > 0)
-				p++;
-		}
-	} else {
-		p--;
-	}
 
 	*open = openbraces;
 	*from = p;
