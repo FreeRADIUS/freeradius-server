@@ -966,7 +966,7 @@ int main(int argc, char *argv[])
 		}
 #endif
 
-		status = select(max_fd, &readfds, NULL, NULL, tv);
+		status = select(max_fd + 1, &readfds, NULL, NULL, tv);
 		if (status == -1) {
 			/*
 			 *  On interrupts, we clean up the
