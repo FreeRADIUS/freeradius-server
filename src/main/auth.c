@@ -260,7 +260,7 @@ int rad_check_password(REQUEST *request)
 	else
 		password_pair = pairfind(request->config_items, PW_PASSWORD);
 
-	if (auth_type < 0)
+	if (auth_type < 0) {
 		if (password_pair) {
 			auth_type = PW_AUTHTYPE_LOCAL;
 		} else {
