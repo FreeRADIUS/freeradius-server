@@ -35,6 +35,7 @@ typedef struct sql_socket {
 	int     in_use;
 #endif
 	struct sql_socket *next;
+	enum { sockconnected, sockunconnected } state;
 
 	void	*conn;
 } SQLSOCK;
@@ -64,6 +65,7 @@ typedef struct rlm_sql_module_t {
 
 typedef struct sql_inst {
 	int		used;
+	time_t connect_after;
 	SQLSOCK		*sqlpool;
 	SQL_CONFIG	*config;
 #if HAVE_PTHREAD_H

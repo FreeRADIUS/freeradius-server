@@ -40,6 +40,7 @@ typedef struct sql_config {
 	char   *tracefile;
 	int     deletestalesessions;
 	int     num_sql_socks;
+	int     connect_failure_retry_delay;
 
 	/* individual driver config */
 	void	*localcfg;

@@ -18,9 +18,10 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2001  The FreeRADIUS server project
  * Copyright 2000  Mike Machado <mike@innercite.com>
  * Copyright 2000  Alan DeKok <aland@ox.org>
+ * Copyright 2001  Chad Miller <cmiller@surfsouth.com>
  */
 
 
@@ -51,11 +52,32 @@
 #include	"conffile.h"
 #include	"rlm_sql.h"
 
+
+/*
+ * Connect to a server.  If error, set this socket's state to be "sockunconnected"
+ * and set a grace period, during which we won't try connecting again (to prevent unduly
+ * lagging the server and being impolite to a DB server that may be having other 
+ * issues).  If successful in connecting, set state to sockconnected.   - chad
+ */
+static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst) {
+	if ((inst->module->sql_init_socket)(sqlsocket, inst->config) < 0) {
+		radlog(L_CONS | L_ERR, "rlm_sql:  Failed to connect DB handle #%d", sqlsocket->id);
+		inst->connect_after = time(NULL) + inst->config->connect_failure_retry_delay;
+		sqlsocket->state = sockunconnected;
+		return(-1);
+	} else {
+		radlog(L_DBG, "rlm_sql:  Connected new DB handle, #%d", sqlsocket->id);
+		sqlsocket->state = sockconnected;
+		return(0);
+	}
+}
+
+
 /*************************************************************************
  *
- *	Function: sql_init_socket
+ *	Function: sql_init_socketpool
  *
- *	Purpose: Connect to the sql server
+ *	Purpose: Connect to the sql server, if possible
  *
  *************************************************************************/
 int sql_init_socketpool(SQL_INST * inst) {
@@ -63,6 +85,7 @@ int sql_init_socketpool(SQL_INST * inst) {
 	SQLSOCK *sqlsocket;
 	int     i;
 
+	inst->connect_after = 0;
 	inst->used = 0;
 	inst->sqlpool = NULL;
 
@@ -74,6 +97,7 @@ int sql_init_socketpool(SQL_INST * inst) {
 		}
 		sqlsocket->conn = NULL;
 		sqlsocket->id = i;
+		sqlsocket->state = sockunconnected;
 
 #if HAVE_PTHREAD_H
 		sqlsocket->semaphore = (sem_t *) rad_malloc(sizeof(sem_t));
@@ -82,9 +106,9 @@ int sql_init_socketpool(SQL_INST * inst) {
 		sqlsocket->in_use = 0;
 #endif
 
-		if ((inst->module->sql_init_socket)(sqlsocket, inst->config) < 0) {
-			radlog(L_CONS | L_ERR, "rlm_sql:  Failed to connect sqlsocket %d", i);
-			return -1;
+		if (time(NULL) > inst->connect_after) {
+			/* this sets the sqlsocket->state, and possibly sets inst->connect_after */
+			connect_single_socket(sqlsocket, inst);
 		}
 
 		/* Add this socket to the list of sockets */
@@ -143,9 +167,9 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket) {
  *
  *************************************************************************/
 SQLSOCK * sql_get_socket(SQL_INST * inst) {
-
-
 	SQLSOCK *cur;
+	struct timeval timeout;
+	int tried_to_connect = 0;
 
 #if HAVE_PTHREAD_H
 	pthread_mutex_lock(inst->lock);
@@ -155,14 +179,31 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 #if HAVE_PTHREAD_H
 		pthread_cond_wait(inst->notfull, inst->lock);
 #else
-		/*
-		 * FIXME: Subsecond sleep needed here 
-		 */
-		sleep(1);
+		/* this should be portable... */
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 200;
+		select(0, NULL, NULL, NULL, &timeout)
 #endif
 	}
 
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
+
+		/* if we happen upon an unconnected socket, and this instance's grace 
+		 * period on (re)connecting has expired, then try to connect it.  This 
+		 * should be really rare.  - chad
+		 */
+		if ((cur->state == sockunconnected) && (time(NULL) > inst->connect_after)) {
+			tried_to_connect = 1;
+			radlog(L_INFO, "rlm_sql: Trying to (re)connect an unconnected handle...");
+			connect_single_socket(cur, inst);
+		}
+
+		/* if we still aren't connected, ignore this handle */
+		if (cur->state == sockunconnected) {
+			radlog(L_DBG, "rlm_sql: Ignoring unconnected handle");
+			continue;
+		}
+
 #if HAVE_PTHREAD_H
 		if (sem_trywait(cur->semaphore) == 0) {
 #else
@@ -174,7 +215,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 #else
 			cur->in_use = SQLSOCK_LOCKED;
 #endif
-			radlog(L_DBG, "rlm_sql: Reserved sql socket id: %d", cur->id);
+			radlog(L_DBG, "rlm_sql: Reserving sql socket id: %d", cur->id);
 			return cur;
 		}
 	}
@@ -183,9 +224,8 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 	pthread_mutex_unlock(inst->lock);
 #endif
 
-	/*
-	 * Should never get here, but what the hey 
-	 */
+	/* We get here if every DB handle is unconnected and unconnectABLE */
+	radlog((tried_to_connect = 0) ? (L_DBG) : (L_CONS | L_ERR), "rlm_sql:  There are no DB handles to use!");
 	return NULL;
 }
 

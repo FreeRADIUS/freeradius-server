@@ -21,14 +21,14 @@
  * Copyright 2000  The FreeRADIUS server project
  * Copyright 2000  Mike Machado <mike@innercite.com>
  * Copyright 2000  Alan DeKok <aland@ox.org>
- *
+ */
+
+/*
  * If you want this code to look right, set your tabstop to 2 or 3 
- * for vi users -  :set ts=3
- *
+ * for vi users -  :set ts=3   :set sw=3
  */
 
 static const char rcsid[] =
-
 	"$Id$";
 
 #include "autoconf.h"
@@ -84,6 +84,7 @@ static CONF_PARSER module_config[] = {
 	{"accounting_start_query_alt", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_start_query_alt), NULL, ""},
 	{"accounting_stop_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_stop_query), NULL, ""},
 	{"accounting_stop_query_alt", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_stop_query_alt), NULL, ""},
+	{"connect_failure_retry_delay", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,connect_failure_retry_delay), NULL, "60"},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -163,8 +164,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 
 	*instance = inst;
 
-	radlog(L_INFO, "rlm_sql: Connection to sql server established");
-
 	return RLM_MODULE_OK;
 }
 
@@ -205,12 +204,14 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	 *	They MUST have a user name to do SQL authorization.
 	 */
 	if ((!request->username) ||
-	    (request->username->length == 0)) {
+			(request->username->length == 0)) {
 		radlog(L_ERR, "zero length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
 
 	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL)
+		return(RLM_MODULE_NOOP);
 
 	/*
 	 *  After this point, ALL 'return's MUST release the SQL socket!
@@ -319,6 +320,8 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	}
 
 	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL)
+		return(RLM_MODULE_NOOP);
 
 	/*
 	 *  After this point, ALL 'return's MUST release the SQL socket!
@@ -387,6 +390,8 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 #endif
 
 	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL)
+		return(RLM_MODULE_NOOP);
 
 	/*
 	 *  After this point, ALL 'return's MUST release the SQL socket!
