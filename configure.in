@@ -758,7 +758,7 @@ dnl #############################################################
 
 mysubdirs=
 if test "x$EXPERIMENTAL" = "xyes"; then
-  for foo in `find src/modules -name configure -print`; do
+  for foo in `find src/modules -maxdepth 1 -name configure -print`; do
     bar=`echo $foo | sed 's%/configure$%%g'`
     mysubdirs="$mysubdirs $bar"
   done
