@@ -1312,13 +1312,13 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		switch (pair->type) {
 			
 		case PW_TYPE_OCTETS:
-		case PW_TYPE_ABINARY:
 		case PW_TYPE_STRING:
 			if (pair->flags.has_tag &&
 			    pair->type == PW_TYPE_STRING) {
 				int offset = 0;
 
-				if(TAG_VALID(*ptr)) {
+				if ((pair->length > 0) &&
+				    TAG_VALID(*ptr)) {
 					pair->flags.tag = *ptr;
 					pair->length--;
 					offset = 1;
@@ -1332,14 +1332,23 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					 * otherwise, the Tag field SHOULD be ignored.
 					 */
 					pair->flags.tag = 0x00;
-					pair->length--;
+					if (pair->length > 0) pair->length--;
 					offset = 1;
 				} else {
 				       pair->flags.tag = 0x00;
 				}
+
+				/*
+				 *	pair->length MAY be zero here.
+				 */
 				memcpy(pair->strvalue, ptr + offset,
 				       pair->length);
 			} else {
+			  /*
+			   *	Ascend binary attributes never have a
+			   *	tag
+			   */
+			case PW_TYPE_ABINARY:
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
 			        pair->flags.tag = 0;
