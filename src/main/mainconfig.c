@@ -448,23 +448,22 @@ static int generate_realms(const char *filename)
 		if ((cf_section_value_find(cs, "notsuffix")) != NULL)
 			c->notrealm = 1;
 		if ((t = cf_section_value_find(cs,"ldflag")) != NULL) {
-			if ((strcmp(t,"1") == 0) ||
-			    (strcasecmp(t,"round_robin") == 0)) {
-				c->ldflag = 1;
+			static const LRAD_NAME_NUMBER ldflags[] = {
+				{ "fail_over",   0 },
+				{ "round_robin", 1 },
+				{ NULL, 0 }
+			};
+
+			c->ldflag = lrad_str2int(ldflags, t, -1);
+			if (c->ldflag == -1) {
+				radlog(L_ERR, "%s[%d]: Unknown value \"%s\" for ldflag",
+				       filename, cf_section_lineno(cs),
+				       t);
+				return -1;
 			}
-			else if ((strcmp(t,"0") == 0) ||
-                                 (strcasecmp(t,"fail_over") == 0)) {
-				c->ldflag = 0;
-			}
-			else {
-				/*  set to invalid value 
-                                 *  to be caught later
-                                 */
-				c->ldflag = -1;
-			}
-		}
-		else {
-			c->ldflag = 0;
+
+		} else {
+			c->ldflag = 0; /* non, make it fail-over */
 		}
 		c->active = TRUE;
 		c->acct_active = TRUE;
