@@ -1,6 +1,7 @@
 AC_INIT(sql_mysql.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_mysql])
+AC_CONFIG_HEADER(config.h)
 
 AC_PROG_CC
 AC_PROG_CPP
@@ -31,6 +32,7 @@ if test x$with_[]modname != xno; then
 	then
 		sql_mysql_ldflags=`mysql_config --libs`
 		sql_mysql_cflags=`mysql_config --cflags`
+		AC_DEFINE(HAVE_MYSQL_H)
 	else
 		AC_CHECK_LIB(z, compress, LIBS="$LIBS -lz")
 
@@ -53,6 +55,7 @@ dnl			AC_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
 					MYSQL_INCLUDE=
 				)
 				if test "x$MYSQL_INCLUDE" != "x"; then
+					AC_DEFINE(HAVE_MYSQL_MYSQL_H)
 					break;
 				fi
 			done

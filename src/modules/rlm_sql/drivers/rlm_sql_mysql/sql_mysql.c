@@ -27,11 +27,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <mysql/errmsg.h>
-
 #include 	"radiusd.h"
 
-#include	<mysql/mysql.h>
+#include "config.h"
+
+#ifdef HAVE_MYSQL_MYSQL_H
+#include <mysql/errmsg.h>
+#include <mysql/mysql.h>
+#else
+#ifdef HAVE_MYSQL_H
+#include <errmsg.h>
+#include <mysql.h>
+#endif
+#endif
+
 #include	"rlm_sql.h"
 
 typedef struct rlm_sql_mysql_sock {
