@@ -270,11 +270,11 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 
 #if 0 /* FIXME: this is the *real* authorizing */
 	vp_printlist(stderr, check_tmp);
+#endif
 	if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
 		radlog(L_INFO, "rlm_sql: Pairs do not match [%s]", sqlusername);
 		return RLM_MODULE_NOTFOUND;
 	}
-#endif
 
 	pairmove(&request->reply->vps, &reply_tmp);
 	pairmove(&request->config_items, &check_tmp);
