@@ -266,6 +266,74 @@ ATTRIBUTE	Pre-Acct-Type		1017	integer
 #
 ATTRIBUTE	EAP-Type		1018	integer
 ATTRIBUTE	EAP-TLS-Require-Client-Cert	1019	integer
+ATTRIBUTE       EAP-Id                  1020    integer
+ATTRIBUTE	EAP-Code 		1021	integer
+ATTRIBUTE	EAP-MD5-Password	1022	string
+
+# these are PW_EAP_X  + 1280
+ATTRIBUTE	EAP-Type-Identity	1281	string
+ATTRIBUTE	EAP-Type-Notification	1282	string
+ATTRIBUTE	EAP-Type-NAK		1283	string
+ATTRIBUTE	EAP-Type-MD5		1284	octets
+ATTRIBUTE	EAP-Type-OTP		1285	string
+ATTRIBUTE	EAP-Type-GTC		1286	string
+ATTRIBUTE	EAP-Type-TLS		1297	octets
+ATTRIBUTE       EAP-Type-SIM            1298	octets
+ATTRIBUTE	EAP-Type-LEAP		1301	octets
+ATTRIBUTE	EAP-Type-SIM		1302	octets
+ATTRIBUTE	EAP-Type-TTLS		1305	octets
+ATTRIBUTE	EAP-Type-PEAP		1309	octets
+
+# these are PW_EAP_SIM_X + 1536
+ATTRIBUTE       EAP-Sim-RAND            1537    octets
+ATTRIBUTE       EAP-Sim-PADDING         1542    octets
+ATTRIBUTE       EAP-Sim-NONCE_MT        1543    octets
+ATTRIBUTE       EAP-Sim-PERMANENT_ID_REQ 1546    octets
+ATTRIBUTE       EAP-Sim-MAC             1547    octets
+ATTRIBUTE       EAP-Sim-NOTIFICATION    1548    octets
+ATTRIBUTE       EAP-Sim-ANY_ID_REQ      1549    octets
+ATTRIBUTE       EAP-Sim-IDENTITY        1550    octets
+ATTRIBUTE       EAP-Sim-VERSION_LIST    1551    octets
+ATTRIBUTE       EAP-Sim-SELECTED_VERSION 1552   octets
+ATTRIBUTE       EAP-Sim-FULLAUTH_ID_REQ 1553    octets
+ATTRIBUTE       EAP-Sim-COUNTER         1555    octets
+ATTRIBUTE       EAP-Sim-COUNTER_TOO_SMALL 1556  octets
+ATTRIBUTE       EAP-Sim-NONCE_S         1557    octets
+ATTRIBUTE       EAP-Sim-IV              1665    octets
+ATTRIBUTE       EAP-Sim-ENCR_DATA       1666    octets
+ATTRIBUTE       EAP-Sim-NEXT_PSEUDONUM  1668    octets
+ATTRIBUTE       EAP-Sim-NEXT_REAUTH_ID  1669    octets
+ATTRIBUTE       EAP-Sim-CHECKCODE       1670    octets
+
+#
+# For EAP-SIM, some attribute definitions for database interface
+#
+ATTRIBUTE	EAP-Sim-Chal1           1024	octets
+ATTRIBUTE	EAP-Sim-Chal2           1025	octets
+ATTRIBUTE	EAP-Sim-Chal3           1026	octets
+
+ATTRIBUTE	EAP-Sim-SRES1           1027	octets
+ATTRIBUTE	EAP-Sim-SRES2           1028	octets
+ATTRIBUTE	EAP-Sim-SRES3           1029	octets
+
+ATTRIBUTE	EAP-Sim-Subtype         1023    integer
+
+VALUE           EAP-Sim-Subtype         Start             10
+VALUE           EAP-Sim-Subtype         Challenge         11
+VALUE           EAP-Sim-Subtype         Notification      12
+VALUE           EAP-Sim-Subtype         Re-authentication 13
+
+# this attribute is used internally by the client code.
+ATTRIBUTE 	EAP-Sim-State	        1030	integer
+
+ATTRIBUTE       EAP-Sim-IMSI            1031	string
+ATTRIBUTE       EAP-Sim-HMAC            1032	string
+ATTRIBUTE	EAP-Sim-KEY             1033    octets
+ATTRIBUTE	EAP-Sim-EXTRA           1034    octets
+
+ATTRIBUTE	EAP-Sim-KC1             1035	octets
+ATTRIBUTE	EAP-Sim-KC2             1036	octets
+ATTRIBUTE	EAP-Sim-KC3             1037	octets
 
 #
 #	Integer Translations
@@ -559,6 +627,7 @@ VALUE		EAP-Type	RSA-SecurID-EAP		15
 VALUE		EAP-Type	Arcot-Systems-EAP	16
 VALUE		EAP-Type	Cisco-LEAP		17
 VALUE		EAP-Type	Nokia-IP-Smart-Card	18
+VALUE		EAP-Type	SIM             	18
 VALUE		EAP-Type	SRP-SHA1-Part-1		19
 VALUE		EAP-Type	SRP-SHA1-Part-2		20
 VALUE		EAP-Type	EAP-TTLS		21
