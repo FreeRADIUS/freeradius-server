@@ -85,7 +85,7 @@ static DICT_ATTR *base_attributes[256];
 /*
  *	Free the dictionary_attributes and dictionary_values lists.
  */
-static void dict_free(void)
+void dict_free(void)
 {
 	DICT_VENDOR	*dvend, *enext;
 
@@ -180,6 +180,10 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		}
 	}
 
+	if (value >= 65536) {
+		librad_log("dict_addattr: ATTRIBUTE has invalid number.");
+		return -1;
+	}
 
 	/*
 	 *	Create a new attribute for the list
@@ -297,6 +301,21 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 	 *	Add the value into the dictionary.
 	 */
 	if (rbtree_insert(values_byname, dval) == 0) {
+		if (dattr) {
+			DICT_VALUE *dup;
+			
+			/*
+			 *	Suppress duplicates with the same
+			 *	name and value.  There are lots in
+			 *	dictionary.ascend.
+			 */
+			dup = dict_valbyname(dattr->attr, namestr);
+			if (dup && (dup->value == dval->value)) {
+				free(dval);
+				return 0;
+			}
+		}
+
 		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
 		return -1;
 	}
@@ -727,7 +746,7 @@ static int valuename_cmp(const void *a, const void *b)
 		 ((const DICT_VALUE *)b)->attr);
 	if (rcode != 0) return rcode;
 
-	return strcasecmp(((const DICT_VALUE *)a)->name,
+return strcasecmp(((const DICT_VALUE *)a)->name,
 			  ((const DICT_VALUE *)b)->name);
 }
 
@@ -775,7 +794,7 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 	}
 
-	values_byname = rbtree_create(valuename_cmp, NULL, 1);
+	values_byname = rbtree_create(valuename_cmp, free, 0);
 	if (!values_byname) {
 		return -1;
 	}
