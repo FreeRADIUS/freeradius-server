@@ -418,7 +418,7 @@ int read_realms_file(const char *file)
 			 *	Local realms don't have an IP address,
 			 *	secret, or port.
 			 */
-			c->ipaddr = htonl(INADDR_NONE);
+			c->acct_ipaddr = c->ipaddr = htonl(INADDR_NONE);
 			c->secret[0] = '\0';
 			c->auth_port = auth_port;
 			c->acct_port = acct_port;
@@ -426,6 +426,7 @@ int read_realms_file(const char *file)
 		} else {
 			RADCLIENT *client;
 			c->ipaddr = ip_getaddr(hostnm);
+			c->acct_ipaddr = c->ipaddr;
 
 			if (c->ipaddr == htonl(INADDR_NONE)) {
 				radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
@@ -503,7 +504,8 @@ void realm_disable(uint32_t ipaddr)
 
 	now = time(NULL);
 	for(cl = realms; cl; cl = cl->next)
-		if (ipaddr == cl->ipaddr) {
+		if ((ipaddr == cl->ipaddr) ||
+		    (ipaddr == cl->acct_ipaddr)) {
 			cl->active = FALSE;
 			cl->wakeup = now + proxy_dead_time;
 		}
@@ -581,7 +583,8 @@ REALM *realm_findbyaddr(uint32_t ipaddr)
 	 *	as active, and return the realm.
 	 */
 	for(cl = realms; cl != NULL; cl = cl->next)
-		if (ipaddr == cl->ipaddr) {
+		if ((ipaddr == cl->ipaddr) ||
+		    (ipaddr == cl->acct_ipaddr)) {
 			cl->active = TRUE;
 			return cl;
 		}

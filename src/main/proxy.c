@@ -180,12 +180,12 @@ int proxy_send(REQUEST *request)
 	
 
 	/*
-	 *	Maybe they're proxying it to a LOCAL realm, in which
-	 *	case do nothing.
+	 *	Access-Request: look for LOCAL realm.
+	 *	Accounting-Request: look for LOCAL realm.
 	 */
-	if ((realm->ipaddr == htonl(INADDR_NONE)) &&
-	    (realm->auth_port == auth_port) &&
-	    (realm->acct_port == acct_port)) {
+	if (((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	    (realm->ipaddr == htonl(INADDR_NONE))) ||
+	    (realm->acct_ipaddr == htonl(INADDR_NONE))) {
 		return 0;
 	}
 	
@@ -249,11 +249,13 @@ int proxy_send(REQUEST *request)
 	request->proxy->sockfd = proxyfd;
 
 	request->proxy->code = request->packet->code;
-	request->proxy->dst_ipaddr = realm->ipaddr;
-	if (request->packet->code == PW_AUTHENTICATION_REQUEST)
+	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->proxy->dst_port = realm->auth_port;
-	else
+		request->proxy->dst_ipaddr = realm->ipaddr;
+	} else {
 		request->proxy->dst_port = realm->acct_port;
+		request->proxy->dst_ipaddr = realm->acct_ipaddr;
+	}
 	rad_assert(request->proxy->vps == NULL);
 	request->proxy->vps = vps;
 

@@ -857,8 +857,9 @@ static int generate_realms(const char *filename)
 		 */
 		c = rad_malloc(sizeof(REALM));
 		memset(c, 0, sizeof(REALM));
+
 		/*
-		 * An authhost must exist in the configuration
+		 *	An authhost must exist in the configuration
 		 */
 		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
 			radlog(L_CONS|L_ERR, 
@@ -872,19 +873,6 @@ static int generate_realms(const char *filename)
 		} else {
 			c->auth_port = auth_port;
 		}
-		if ((accthost = cf_section_value_find(cs, "accthost")) == NULL) {
-			radlog(L_CONS|L_ERR, 
-				"%s[%d]: No accthost entry for realm: %s", 
-				filename, cs->item.lineno, cs->name2);
-			return -1;
-		}
-
-		if ((s =strchr(accthost, ':')) != NULL) {
-			*s++ = 0;
-			c->acct_port = atoi(s);	
-		} else {
-			c->acct_port = acct_port;
-		}
 		if (strcmp(authhost, "LOCAL") == 0) {
 			/*
 			 *	Local realms don't have an IP address,
@@ -893,10 +881,37 @@ static int generate_realms(const char *filename)
 			c->ipaddr = htonl(INADDR_NONE);
 			c->secret[0] = '\0';
 			c->auth_port = auth_port;
-			c->acct_port = acct_port;
 		} else {
 			c->ipaddr = ip_getaddr(authhost);
 		}
+
+		/*
+		 *	An accthost must exist in the configuration
+		 */
+		if ((accthost = cf_section_value_find(cs, "accthost")) == NULL) {
+			radlog(L_CONS|L_ERR, 
+				"%s[%d]: No accthost entry for realm: %s", 
+				filename, cs->item.lineno, cs->name2);
+			return -1;
+		}
+
+		if ((s = strchr(accthost, ':')) != NULL) {
+			*s++ = 0;
+			c->acct_port = atoi(s);	
+		} else {
+			c->acct_port = acct_port;
+		}
+		if (strcmp(accthost, "LOCAL") == 0) {
+			/*
+			 *	Local realms don't have an IP address,
+			 *	secret, or port.
+			 */
+			c->acct_ipaddr = htonl(INADDR_NONE);
+			c->acct_port = auth_port;
+		} else {
+			c->acct_ipaddr = ip_getaddr(authhost);
+		}
+
 
 		/* 
 		 * Double check length, just to be sure!
