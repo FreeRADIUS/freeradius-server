@@ -456,6 +456,19 @@ module example {
 # An IP address, either in dotted quad (1.2.3.4) or hostname (example.com)
 #
 	ipaddr		= 127.0.0.1
+
+#
+# A subsection
+#
+	mysubsection {
+		anotherinteger = 1000
+#
+# They nest
+#
+		deeply nested {
+			string = "This is a different string"
+		}
+	}
 }
 
 

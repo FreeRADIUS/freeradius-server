@@ -100,8 +100,8 @@ radzap: radzap.o util.o nas.o radutmp.o log.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o $(LIBS)
 
 clean:
-	rm -f *.o *.so *~ modules_static.h radiusd radwho raduse \
-		radclient radzap builddbm
+	rm -rf *.o *.so *~ modules_static.h radiusd radwho raduse \
+		radclient radzap builddbm .libs
 
 install:
 	install -d -m 755			$(sbindir)

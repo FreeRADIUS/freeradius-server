@@ -59,4 +59,9 @@ char 		*cf_section_value_find(CONF_SECTION *section, const char *attr);
 
 int		read_radius_conf_file(void);
 
+char *cf_pair_value(CONF_PAIR *pair);
+int dump_config(void);
+CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
+				      CONF_SECTION *subsection,
+				      const char *name1);
 #endif /* _CONFFILE_H */

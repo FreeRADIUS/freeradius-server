@@ -35,12 +35,11 @@ static const char rcsid[] = "$Id$";
 #define RLM_ACCOUNTING		4
 
 /*
- *	Keep track of which modules we've loaded
+ *	Keep track of which modules we've loaded.
  */
 typedef struct module_list_t {
 	char			filename[MAX_STRING_LEN];
 	int			auth_type;
-	int			flags;		/* doing what, exactly? */
 	module_t		*module;
 #ifdef HAVE_DLOPEN
 	lt_dlhandle		handle;
@@ -215,7 +214,7 @@ int read_modules_file(char *filename)
 	/*
 	 *	And parse the modules configuration values.
 	 */
-	cs = cf_section_find("main");
+	cs = cf_section_find(NULL);
 	if (cs) {
 		cf_section_parse(cs, module_config);
 	}
@@ -263,7 +262,7 @@ int read_modules_file(char *filename)
 		 */
 		if (*library != '/')
 			sprintf(libraryfile, "%.500s/%.500s",
-#if 0
+#if 1
 				radlib_dir,
 #else
 				radius_dir,

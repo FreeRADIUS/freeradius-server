@@ -91,13 +91,12 @@ CONF_SECTION *cf_section_alloc(const char *name1, const char *name2)
 {
 	CONF_SECTION	*cs;
 
-	if (name1 == NULL) name1 = "main";
-	if (name2 == NULL) name2 = "main";
+	if (name1 == NULL || !name1[0]) name1 = "main";
 
 	cs = (CONF_SECTION *)xalloc(sizeof(CONF_SECTION));
 	memset(cs, 0, sizeof(CONF_SECTION));
 	cs->name1 = xstrdup(name1);
-	cs->name2 = xstrdup(name2);
+	cs->name2 = (name2 && *name2) ? xstrdup(name2) : NULL;
 
 	return cs;
 }
@@ -132,14 +131,6 @@ void cf_section_free(CONF_SECTION *cs)
 	 * And free the section
 	 */
 	free(cs);
-}
-
-/*
- * Free _all_ in a CONF_SECTION and below
- */
-void cf_section_free_all(CONF_SECTION *cs)
-{
-
 }
 
 /*
@@ -242,7 +233,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				      const char *name1, const char *name2)
 {
-	CONF_SECTION	*cs, *csn, *csp, *css;
+	CONF_SECTION	*cs, *csp, *css;
 	CONF_PAIR	*cpn;
 	char		*ptr, *p, *q;
 	char		buf[8192];
@@ -263,6 +254,10 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 	/*
 	 *	Allow for $INCLUDE files???
+	 *
+	 *	This sure looks wrong. But it looked wrong before I touched
+	 *	the file, so don't blame me. Please, just pass the config
+	 *	file through cpp or m4 and cut out the bloat. --Pac.
 	 */
 	if (name1 && strcasecmp(name1, "$INCLUDE") == 0) {
 	  return conf_read(name2);
@@ -316,8 +311,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 * Perhaps a subsection.
 		 */
 
-		if (t2 == T_LCBRACE) {
-			css = cf_section_read(cf, lineno, fp, name2, buf1);
+		if (t2 == T_LCBRACE || t3 == T_LCBRACE) {
+			css = cf_section_read(cf, lineno, fp, buf1,
+						t2==T_LCBRACE ? NULL : buf2);
 			if (css == NULL) {
 				cf_section_free(cs);
 				return NULL;
@@ -330,28 +326,6 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				csp->next = css;
 
 			continue;		
-		}
-
-		/*
-		 *	Or, the beginning of a new section.
-		 */
-		if (t3 == T_LCBRACE) {
-			csn = cf_section_read(cf, lineno, fp, buf1, buf2);
-			if (csn == NULL) {
-				cf_section_free(cs);
-				return NULL;
-			}
-
-			/*
-			 *	Add this section after all others.
-			 */
-			for (csp = cs; csp && csp->next; csp = csp->next)
-				;
-			if (csp == NULL)
-				cs = csn;
-			else
-				csp->next = csn;
-			continue;
 		}
 
 		/*
@@ -515,8 +489,14 @@ static int generate_realms(void)
 	REALM		*c;
 	char		*s, *authhost, *accthost;
 
-	for (cs = config; cs; cs = cs->next) {
+	for (cs = config->sub; cs; cs = cs->next) {
 		if (strcmp(cs->name1, "realm") == 0) {
+			if (!cs->name2) {
+				/* FIXME: would be nice to have the line
+				 * number here */
+				log(L_CONS|L_ERR, "Missing realm name");
+				return -1;
+			}
 			/*
 			 * We've found a realm, allocate space for it
 			 */
@@ -612,8 +592,14 @@ static int generate_clients(void)
 	RADCLIENT	*c;
 	char		*hostnm, *secret, *shortnm;
 
-	for (cs = config; cs; cs = cs->next) {
+	for (cs = config->sub; cs; cs = cs->next) {
 		if (strcmp(cs->name1, "client") == 0) {
+			if (!cs->name2) {
+				/* FIXME: would be nice to have the line
+				 * number here */
+				log(L_CONS|L_ERR, "Missing client name");
+				return -1;
+			}
 			/*
 			 * Check the lengths, we don't want any core dumps
 			 */
@@ -725,33 +711,60 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char 
 }
 
 /*
- * Find a CONF_SECTION
+ * Find a CONF_SECTION, or return the root if name is NULL
  */
 
 CONF_SECTION *cf_section_find(const char *name)
 {
-	CONF_SECTION *cs;
-	
-	for (cs = config; cs; cs = cs->next)
-		if (strcmp(cs->name1, name) == 0)
-			break;
-
-	return cs;
+	if (name)
+		return cf_section_sub_find(config, name);
+	else
+		return config;
 }
 
 /*
  * Find a sub-section in a section
  */
 
-CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name) {
+CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
+{
 
 	CONF_SECTION *cs;
 	for (cs = section->sub; cs; cs = cs->next)
-		if (strcmp(cs->name2, name) == 0)
+		if (strcmp(cs->name1, name) == 0)
 			break;
 	
 	return cs;
 
+}
+
+/*
+ * Return the next subsection after a CONF_SECTION
+ * with a certain name1 (char *name1)
+ */
+
+CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
+				      CONF_SECTION *subsection,
+				      const char *name1)
+{
+	CONF_SECTION	*cp;
+
+	/*
+	 * If subsection is NULL this must be a first time run
+	 * Find the subsection with correct name
+	 */
+
+	if (subsection == NULL){
+		cp = section->sub;
+	} else {
+		cp = subsection->next;
+	}
+
+	for (; cp; cp = cp->next)
+		if (strcmp(cp->name1, name1) == 0)
+			break;
+
+	return cp;
 }
 
 /*
@@ -762,7 +775,7 @@ CONF_SECTION *cf_module_config_find(const char *modulename)
 {
 	CONF_SECTION *cs;
 
-	for (cs = config; cs; cs = cs->next)
+	for (cs = config->sub; cs; cs = cs->next)
 		if ((strcmp(cs->name1, "module") == 0)
 			&& (strcmp(cs->name2, modulename) == 0))
 			break;
@@ -775,27 +788,35 @@ CONF_SECTION *cf_module_config_find(const char *modulename)
  * 
 */
 
-int dump_config(void)
+static int dump_config_section(CONF_SECTION *cs, int indent)
 {
-	CONF_SECTION	*cs, *scs;
+	CONF_SECTION	*scs;
 
 	CONF_PAIR	*cp;
 
-	for (cs = config; cs; cs = cs->next) {
-		DEBUG("%s %s {", cs->name1, cs->name2);
+	/* The DEBUG macro doesn't let me
+	 *   for(i=0;i<indent;++i) debugputchar('\t');
+	 * so I had to get creative. --Pac. */
 
 	for (cp = cs->cps; cp; cp = cp->next) 
-		DEBUG("\t%s = %s", cp->attr, cp->value);
+		DEBUG("%.*s%s = %s",
+			indent, "\t\t\t\t\t\t\t\t\t\t\t", cp->attr, cp->value);
 
 	for (scs = cs->sub; scs; scs = scs->next) {
-		DEBUG("\t\t%s {", scs->name2);
-		for (cp = scs->cps; cp; cp = cp->next)
-			DEBUG("\t\t\t%s = %s", cp->attr, cp->value);
-			DEBUG("\t\t\t}");
-	}
-	DEBUG("}");
-
+		DEBUG("%.*s%s %s%s{",
+			indent, "\t\t\t\t\t\t\t\t\t\t\t",
+			scs->name1,
+			scs->name2 ? scs->name2 : "",
+			scs->name2 ?  " " : "");
+		dump_config_section(scs, indent+1);
+		DEBUG("%.*s}",
+			indent, "\t\t\t\t\t\t\t\t\t\t\t");
 	}
 
 	return 0;
+}
+
+int dump_config(void)
+{
+	return dump_config_section(config, 0);
 }
