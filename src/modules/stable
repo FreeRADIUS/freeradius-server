@@ -8,6 +8,7 @@ rlm_dbm
 rlm_detail
 rlm_eap
 rlm_eap_md5  
+rlm_expr
 rlm_fastusers
 rlm_files
 rlm_krb5
