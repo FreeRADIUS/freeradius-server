@@ -407,3 +407,92 @@ REQUEST *request_alloc_fake(REQUEST *oldreq)
 }
 
 
+/*
+ *	Copy a quoted string.
+ */
+int rad_copy_string(char *to, const char *from)
+{
+	int length = 0;
+	char quote = *from;
+
+	do {
+		if (*from == '\\') {
+			*(to++) = *(from++);
+			length++;
+		}
+		*(to++) = *(from++);
+		length++;
+	} while (*from && (*from != quote));
+
+	if (*from != quote) return -1; /* not properly quoted */
+
+	*(to++) = quote;
+	length++;
+	*to = '\0';
+
+	return length;
+}
+
+
+/*
+ *	Copy a %{} string.
+ */
+int rad_copy_variable(char *to, const char *from)
+{
+	int length = 0;
+	int sublen;
+
+	*(to++) = *(from++);
+	length++;
+
+	while (*from) {
+		switch (*from) {
+		case '"':
+		case '\'':
+			sublen = rad_copy_string(to, from);
+			if (sublen < 0) return sublen;
+			from += sublen;
+			to += sublen;
+			break;
+
+		case '}':	/* end of variable expansion */
+			*(to++) = *(from++);
+			*to = '\0';
+			length++;
+			return length; /* proper end of variable */
+
+		case '\\':
+			*(to++) = *(from++);
+			*(to++) = *(from++);
+			length += 2;
+			break;
+
+		case '%':	/* start of variable expansion */
+			if (from[1] == '{') {
+				*(to++) = *(from++);
+				length++;
+				
+				sublen = rad_copy_variable(to, from);
+				if (sublen < 0) return sublen;
+				from += sublen;
+				to += sublen;
+				length += sublen;
+			} /* else FIXME: catch %%{ ?*/
+
+			/* FALL-THROUGH */
+			break;
+
+		default:
+			*(to++) = *(from++);
+			length++;
+			break;
+		}
+	} /* loop over the input string */
+
+	/*
+	 *	We ended the string before a trailing '}'
+	 */
+
+	return -1;
+}
+

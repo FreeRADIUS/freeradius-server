@@ -233,6 +233,8 @@ static CONF_PARSER server_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
+
+#define MAX_ARGV (256)
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
@@ -243,10 +245,13 @@ static int xlat_config(void *instance, REQUEST *request,
 {
 	CONF_SECTION *cs;
 	CONF_PAIR *cp;
-	char buffer[1024];
+	int i, argc, left;
+	const char *from, *value;
+	char *to;
 	char xlat_buffer[1024];
-	char *p, *value;
-	const char *start = fmt;
+	char myfmt[1024];
+	char argv_buf[1024];
+	char *argv[MAX_ARGV];
 
 	request = request;	/* -Wunused */
 	instance = instance;	/* -Wunused */
@@ -255,120 +260,181 @@ static int xlat_config(void *instance, REQUEST *request,
 	cs = NULL;
 
 	/*
-	 *	Weird hacks...
+	 *	Split the string into argv's BEFORE doing radius_xlat...
+	 *	Copied from exec.c
 	 */
-	p = strchr(fmt, '%');
-	if (p) {
-		radius_xlat(xlat_buffer, sizeof(xlat_buffer), fmt, request, NULL);
-		start = fmt = xlat_buffer;
-	}
-
-	while (cp == NULL) {
-		int flag = 0;
-		char *name2;
-
+	from = fmt;
+	to = myfmt; 
+	argc = 0;
+	while (*from) {
+		int flag, length;
+		
+		flag = 0;
+		argv[argc] = to;
+		argc++;
+		
+		if (argc >= (MAX_ARGV - 1)) break;
+		
 		/*
-		 *	Find the next section.
+		 *	Copy the argv over to our buffer.
 		 */
-		name2 = NULL;
-		for (p = buffer; (*fmt != 0); p++, fmt++) {
-			if ((p - buffer) >= (sizeof(buffer) - 1)) break;
+		while (*from) {
+			if (to >= myfmt + sizeof(myfmt) - 1) {
+				return 0; /* no error msg */
+			}
 
-			/*
-			 *	Allow '.' in names, by skipping over them
-			 *	in array references.  Geez, what a hack..
-			 */
-			*p = *fmt;
-			if (*p == '[') {
-				if (flag > 0) {
-					radlog(L_ERR, "config: Nested '[' in \"%s\"", start);
+			switch (*from) {
+			case '"':
+			case '\'':
+				length = rad_copy_string(to, from);
+				if (length < 0) {
+					return -1;
+				}
+				from += length;
+				to += length;
+				break;
+
+			case '%':
+				if (from[1] == '{') {
+					*(to++) = *(from++);
+					
+					length = rad_copy_variable(to, from);
+					if (length < 0) {
+						return -1;
+					}
+					from += length;
+					to += length;
+				} else { /* FIXME: catch %%{ ? */
+					*(to++) = *(from++);
+				}
+				break;
+
+			case '[':
+				if (flag != 0) {
+					radlog(L_ERR, "config: Unexpected nested '[' in \"%s\"", fmt);
 					return 0;
 				}
 				flag++;
-				if (!name2) name2 = p;
-			}
-			if (*p == ']') {
+				*(to++) = *(from++);
+				break;
+
+			case ']':
 				if (flag == 0) {
-					radlog(L_ERR, "config: Unbalanced ']'");
+					radlog(L_ERR, "config: Unbalanced ']' in \"%s\"", fmt);
 					return 0;
 				}
-				flag--;
-			}
+				if (from[1] != '.') {
+					radlog(L_ERR, "config: Unexpected text after ']' in \"%s\"", fmt);
+					return 0;
+				}
 
-			if (*p == '.') {
-				if (flag > 0) continue;
+				flag--;
+				*(to++) = *(from++);
+				break;
+
+			case '.':
+				if (flag == 0) break;
+				/* FALL-THROUGH */
+
+			default:
+				*(to++) = *(from++);
 				break;
 			}
+
+			if ((*from == '.') && (flag == 0)) {
+				from++;
+				break;
+			}
+		} /* end of string, or found a period */
+
+		if (flag != 0) {
+			radlog(L_ERR, "config: Unbalanced '[' in \"%s\"", fmt);
+			return 0;
 		}
-		*p = '\0';
+
+		*(to++) = '\0';	/* terminate the string. */
+	}
+
+	/*
+	 *	Expand each string, as appropriate
+	 */
+	to = argv_buf;
+	left = sizeof(argv_buf);
+	for (i = 0; i < argc; i++) {
+		int sublen;
 
 		/*
-		 *	Rip out name2, if applicable.
+		 *	Don't touch argv's which won't be translated.
 		 */
-		p = NULL;
-		if (name2) {
-			*name2 = '\0';
-			name2++;
+		if (strchr(argv[i], '%') == NULL) continue;
 
-			p = strchr(name2, ']');
-			*p = '\0';
-			p++;
-			if (!*p) p = NULL;
+		sublen = radius_xlat(to, left - 1, argv[i], request, NULL);
+		if (sublen <= 0) {
+			/*
+			 *	Fail to be backwards compatible.
+			 *
+			 *	It's yucky, but it won't break anything,
+			 *	and it won't cause security problems.
+			 */
+			sublen = 0;
 		}
 		
-		/*
-		 *  The character is a '.', find a section (as the user
-		 *  has given us a subsection to find)
-		 */
-		if ((name2 != NULL) || (*fmt == '.')) {
-			CONF_SECTION *next;
-			
-			if (*fmt == '.') fmt++;	/* skip the period */
+		argv[i] = to;
+		to += sublen;
+		*(to++) = '\0';
+		left -= sublen;
+		left--;
 
-			if (!cs && !name2) {
-				next = cf_section_find(buffer);
-			} else if (name2) {
-				next = cf_section_sub_find_name2(cs, buffer,
-								 name2);
-			} else {
-				next = cf_subsection_find_next(cs, NULL,
-							       buffer);
-			}
-			if (!next) {
-				if (name2) {
-					radlog(L_ERR, "config: section \"%s %s{}\" not found while dereferencing \"%s\"", buffer, name2, start);
-				} else {
-					radlog(L_ERR, "config: section \"%s {}\" not found while dereferencing \"%s\"", buffer, start);
-				}
-				return 0;
-			}
-			cs = next;
-
-			if (p) {
-				char *q;
-
-				*p = '\0';
-				p++;
-				q = strchr(p, ']');
-				if (q) *q = '\0';
-				
-				cp = cf_pair_find(cs, p);
-				
-				if (!cp) {
-					radlog(L_ERR, "config: item \"%s\" not found in section \"%s %s{}\"while dereferencing \"%s\"", p, buffer, name2, start);
-					return 0;
-				}
-			}
-
-		} else {	/* no period or name2, must be a conf-part */
-			cp = cf_pair_find(cs, buffer);
-
-			if (!cp) {
-				radlog(L_ERR, "config: item \"%s\" not found while dereferencing \"%s\"", buffer, start);
-				return 0;
-			}
+		if (left <= 0) {
+			return 0;
 		}
-	} /* until cp is non-NULL */
+	}
+	argv[argc] = NULL;
+
+	cs = cf_section_find(NULL); /* get top-level section */
+
+	/*
+	 *	Root through section & subsection references.
+	 *	The last entry of argv is the CONF_PAIR.
+	 */
+	for (i = 0; i < argc - 1; i++) {
+		char *name2 = NULL;
+		CONF_SECTION *subcs;
+
+		/*
+		 *	FIXME: What about RADIUS attributes containing '['?
+		 */
+		name2 = strchr(argv[i], '[');
+		if (name2) {
+			char *p = strchr(name2, ']');
+			rad_assert(p != NULL);
+			rad_assert(p[1] =='\0');
+			*p = '\0';
+			*name2 = '\0';
+			name2++;
+		}
+
+		if (name2) {
+			subcs = cf_section_sub_find_name2(cs, argv[i],
+							  name2);
+		} else {
+			subcs = cf_section_sub_find(cs, argv[i]);
+		}
+		if (!subcs) {
+			radlog(L_ERR, "config: section \"%s {}\" not found while dereferencing \"%s\"", argv[i], fmt);
+			return 0;
+		}
+		cs = subcs;
+	} /* until argc - 1 */
+
+	/*
+	 *	This can now have embedded periods in it.
+	 */
+	cp = cf_pair_find(cs, argv[argc]);
+	if (!cp) {
+		radlog(L_ERR, "config: item \"%s\" not found while dereferencing \"%s\"", argv[argc], fmt);
+		return 0;
+	}
 
 	/*
 	 *  Ensure that we only copy what's necessary.

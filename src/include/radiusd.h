@@ -333,6 +333,8 @@ int		request_data_add(REQUEST *request,
 				 void *opaque, void (*free_opaque)(void *));
 void		*request_data_get(REQUEST *request,
 				  void *unique_ptr, int unique_int);
+int		rad_copy_string(char *dst, const char *src);
+int		rad_copy_variable(char *dst, const char *from);
 
 /* request_process.c */
 int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun);

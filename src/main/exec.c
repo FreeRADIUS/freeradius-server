@@ -44,95 +44,6 @@ static const char rcsid[] = "$Id$";
 #include "radiusd.h"
 #include "rad_assert.h"
 
-/*
- *	Copy a quoted string.
- */
-static int copy_string(const char *from, char *to)
-{
-	int length = 0;
-	char quote = *from;
-
-	do {
-		if (*from == '\\') {
-			*(to++) = *(from++);
-			length++;
-		}
-		*(to++) = *(from++);
-		length++;
-	} while (*from && (*from != quote));
-
-	if (*from != quote) return -1; /* not properly quoted */
-
-	*(to++) = quote;
-	length++;
-	*to = '\0';
-
-	return length;
-}
-
-
-/*
- *	Copy a %{} string.
- */
-static int copy_var(const char *from, char *to)
-{
-	int length = 0;
-	int sublen;
-
-	*(to++) = *(from++);
-	length++;
-
-	while (*from) {
-		switch (*from) {
-		case '"':
-		case '\'':
-			sublen = copy_string(from, to);
-			if (sublen < 0) return sublen;
-			from += sublen;
-			to += sublen;
-			break;
-
-		case '}':	/* end of variable expansion */
-			*(to++) = *(from++);
-			*to = '\0';
-			length++;
-			return length; /* proper end of variable */
-
-		case '\\':
-			*(to++) = *(from++);
-			*(to++) = *(from++);
-			length += 2;
-			break;
-
-		case '%':	/* start of variable expansion */
-			if (from[1] == '{') {
-				*(to++) = *(from++);
-				length++;
-				
-				sublen = copy_var(from, to);
-				if (sublen < 0) return sublen;
-				from += sublen;
-				to += sublen;
-				length += sublen;
-			} /* else FIXME: catch %%{ ?*/
-
-			/* FALL-THROUGH */
-			break;
-
-		default:
-			*(to++) = *(from++);
-			length++;
-			break;
-		}
-	} /* loop over the input string */
-
-	/*
-	 *	We ended the string before a trailing '}'
-	 */
-
-	return -1;
-}
-
 #define MAX_ARGV (256)
 /*
  *	Execute a program on successful authentication.
@@ -206,10 +117,14 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 *	Copy the argv over to our buffer.
 		 */
 		while (*from && (*from != ' ') && (*from != '\t')) {
+			if (to >= mycmd + sizeof(mycmd) - 1) {
+				return -1; /* ran out of space */
+			}
+
 			switch (*from) {
 			case '"':
 			case '\'':
-				length = copy_string(from, to);
+				length = rad_copy_string(to, from);
 				if (length < 0) {
 					radlog(L_ERR|L_CONS, "Invalid string passed as argument for external program");
 					return -1;
@@ -222,7 +137,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				if (from[1] == '{') {
 					*(to++) = *(from++);
 					
-					length = copy_var(from, to);
+					length = rad_copy_variable(to, from);
 					if (length < 0) {
 						radlog(L_ERR|L_CONS, "Invalid variable expansion passed as argument for external program");
 						return -1;
