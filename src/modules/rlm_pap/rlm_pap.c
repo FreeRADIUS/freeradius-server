@@ -45,8 +45,9 @@
 #define PAP_ENC_LM		5
 #define PAP_ENC_SMD5		6
 #define PAP_ENC_SSHA		7
-#define PAP_ENC_AUTO		8
-#define PAP_MAX_ENC		8
+#define PAP_ENC_NS_MTA_MD5	8
+#define PAP_ENC_AUTO		9
+#define PAP_MAX_ENC		9
 
 
 static const char rcsid[] = "$Id$";
@@ -269,6 +270,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD:
 		case PW_CRYPT_PASSWORD:
+		case PW_NS_MTA_MD5_PASSWORD:
 			found_pw = TRUE;
 			break;	/* don't touch these */
 
@@ -415,6 +417,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 			case PW_SSHA_PASSWORD:
 				goto do_ssha;
+
+			case PW_NS_MTA_MD5_PASSWORD:
+				goto do_ns_mta_md5;
 
 			default:
 				break;	/* ignore it */
@@ -619,6 +624,61 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		goto done;
 		break;
+
+	case PAP_ENC_NS_MTA_MD5:
+	do_ns_mta_md5:
+		DEBUG("rlm_pap: Using NT-MTA-MD5 password");
+
+		if (vp->length != 64) {
+			DEBUG("rlm_pap: Configured NS-MTA-MD5-Password has incorrect length");
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NS-MTA-MD5-Password has incorrect length");
+			goto make_msg;
+		}
+
+		/*
+		 *	Sanity check the value of NS-MTA-MD5-Password
+		 */
+		if (lrad_hex2bin(vp->strvalue, buff, 32) != 16) {
+			DEBUG("rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
+			goto make_msg;
+		}
+
+		/*
+		 *	Ensure we don't have buffer overflows.
+		 *
+		 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
+		 */
+		if (strlen(request->password->strvalue) >= (sizeof(buff2) - 2 - 2 * 32)) {
+			DEBUG("rlm_pap: Configured password is too long");
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: password is too long");
+			goto make_msg;
+		}
+
+		/*
+		 *	Set up the algorithm.
+		 */
+		{
+			char *p = buff2;
+
+			memcpy(p, &vp->strvalue[32], 32);
+			p += 32;
+			*(p++) = 89;
+			strcpy(p, request->password->strvalue);
+			p += strlen(p);
+			*(p++) = 247;
+			memcpy(p, &vp->strvalue[32], 32);
+			p += 32;
+
+			MD5Init(&md5_context);
+			MD5Update(&md5_context, buff2, p - buff2);
+			MD5Final(digest, &md5_context);
+		}
+		if (memcmp(digest, buff, 16) != 0) {
+			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NS-MTA-MD5 password check failed");
+			goto make_msg;
+		}
+		goto done;
 
 	default:
 		break;
