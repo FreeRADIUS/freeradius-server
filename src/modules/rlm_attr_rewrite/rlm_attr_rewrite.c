@@ -242,7 +242,7 @@ do_again:
 		ptr2 = attr_vp->strvalue;
 		counter = 0;
 
-		for ( i = 0 ;i < data->num_matches; i++) {
+		for ( i = 0 ;i < (unsigned)data->num_matches; i++) {
 			err = regexec(&preg, ptr2, 1, &pmatch, 0);
 			if (err == REG_NOMATCH) {
 				if (i == 0) {
