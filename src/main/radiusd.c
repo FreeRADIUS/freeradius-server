@@ -81,8 +81,6 @@ int			debug_flag;
 int			use_dbm	= FALSE;
 uint32_t		myip = INADDR_ANY;
 int			log_auth_detail	= FALSE;
-int			log_auth = FALSE;
-int			log_auth_pass  = FALSE;
 int			auth_port = 0;
 int			acct_port;
 int			proxy_port;
@@ -167,8 +165,9 @@ static CONF_PARSER server_config[] = {
     &auth_port,		  Stringify(PW_AUTH_UDP_PORT) },
   { "allow_core_dumps",   PW_TYPE_BOOLEAN,    &allow_core_dumps,  "no" },
   { "log_stripped_names", PW_TYPE_BOOLEAN,    &log_stripped_names,"no" },
-  { "log_auth",           PW_TYPE_BOOLEAN,    &log_auth,          "no" },
-  { "log_auth_pass",      PW_TYPE_BOOLEAN,    &log_auth_pass,     "no" },
+  { "log_auth",           PW_TYPE_BOOLEAN,    &mainconfig.log_auth,   "no" },
+  { "log_auth_badpass",   PW_TYPE_BOOLEAN,    &mainconfig.log_auth_badpass,  "no" },
+  { "log_auth_goodpass",  PW_TYPE_BOOLEAN,    &mainconfig.log_auth_goodpass, "no" },
   { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          RADIUS_PID },
   { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
   { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
@@ -602,8 +601,9 @@ int main(int argc, char **argv)
 			dont_fork = TRUE;
 			debug_flag = 2;
 			librad_debug = 2;
-			log_auth = TRUE;
-			log_auth_pass = TRUE;
+			mainconfig.log_auth = TRUE;
+			mainconfig.log_auth_badpass = TRUE;
+			mainconfig.log_auth_goodpass = TRUE;
 			radlog_dir = strdup("stdout");
 			break;
 
@@ -613,11 +613,13 @@ int main(int argc, char **argv)
 			break;
 		
 		case 'y':
-			log_auth = TRUE;
+			mainconfig.log_auth = TRUE;
+			mainconfig.log_auth_badpass = TRUE;
 			break;
 
 		case 'z':
-			log_auth_pass = TRUE;
+			mainconfig.log_auth_badpass = TRUE;
+			mainconfig.log_auth_goodpass = TRUE;
 			break;
 
 		default:

@@ -108,6 +108,9 @@ typedef struct pair_list {
 } PAIR_LIST;
 
 typedef struct main_config_t {
+	int		log_auth;
+	int		log_auth_badpass;
+	int		log_auth_goodpass;
 	int		do_usercollide;
 	int		do_lower_user;
 	int		do_lower_pass;
@@ -165,8 +168,6 @@ extern int		use_dbm;
 extern int		log_stripped_names;
 extern uint32_t		myip;
 extern int		log_auth_detail;
-extern int		log_auth;
-extern int		log_auth_pass;
 extern int		auth_port;
 extern int		acct_port;
 extern int		proxy_port;
@@ -256,6 +257,7 @@ int proxy_send(REQUEST *request);
 char		*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 VALUE_PAIR	*rad_getpass(REQUEST *request);
+int		rad_authlog(char *msg, REQUEST *request, int accept);
 
 /* exec.c */
 char		*radius_xlate(char *output, size_t outputlen,

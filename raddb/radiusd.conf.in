@@ -180,10 +180,13 @@ log_auth	= no
 
 #
 #  Log passwords with the authentication requests.
+#  log_auth_badpass  - logs password if it's rejected
+#  log_auth_goodpass - logs password if it's correct
 #
 # allowed values: {no, yes}
 #
-log_auth_pass	= no
+log_auth_badpass	= no
+log_auth_goodpass	= no
 
 # 
 # usercollide:  Turn user collision code on and off.

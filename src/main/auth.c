@@ -35,14 +35,6 @@ static const char rcsid[] = "$Id$";
 #endif
 
 
-static const char *auth_username(VALUE_PAIR *namepair)
-{
-	if (namepair) {
-		return (char *)namepair->strvalue;
-	}
-	return "<NONE>";
-}
-
 /*
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
@@ -306,7 +298,7 @@ int rad_authenticate(REQUEST *request)
 	int		exec_wait;
 	int		seen_callback_id;
 	int 		nas_port = 0;
-	char		buf[1024];
+	char		buf[1024], logstr[1024];
 
 	password = "";
 
@@ -407,11 +399,7 @@ int rad_authenticate(REQUEST *request)
 	    r != RLM_MODULE_OK &&
 	    r != RLM_MODULE_UPDATED) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
-			radlog(L_AUTH, "Invalid user: [%s%s%s] (%s)",
-			    auth_username(namepair),
-			    log_auth_pass ? "/" : "",
-			    log_auth_pass ? password : "",
-			    auth_name(buf, sizeof(buf), request, 1));
+			rad_authlog("Invalid user", request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
 		pairfree(request->reply->vps);
@@ -456,38 +444,24 @@ int rad_authenticate(REQUEST *request)
 	 *	wants to send back.
 	 */
 	if (result < 0) {
+
 		DEBUG2("  auth: Failed to validate the user.");
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		
-		if (auth_item != NULL && log_auth) {
-			char clean_buffer[1024];
+		rad_authlog("Login incorrect", request, 0);
+
+		/* double check: maybe the secret is wrong? */
+		if (debug_flag > 1) {
 			u_char *p;
 
-			if (auth_item->attribute == PW_CHAP_PASSWORD) {
-			  strcpy(clean_buffer, "CHAP-Password");
-			} else {
-			  librad_safeprint((char *)auth_item->strvalue,
-					   auth_item->length,
-					   clean_buffer, sizeof(clean_buffer));
-			}
-			radlog(L_AUTH,
-				"Login incorrect: [%s%s%s] (%s)%s",
-				auth_username(namepair),
-				log_auth_pass?"/":"",
-				log_auth_pass?clean_buffer:"",
-				auth_name(buf, sizeof(buf), request, 1),
-				((result == -2) ? " reject" : ""));
-			/* double check: maybe the secret is wrong? */
-			if (debug_flag > 1) {
-			  p = auth_item->strvalue;
-			  while (*p) {
-			    if (!isprint(*p)) {
-			      log_debug("  WARNING: Unprintable characters in the password.\n           Double-check the shared secret on the server and the NAS!");
-			      break;
-			    }
-			    p++;
-			  }
-			}
+		  p = auth_item->strvalue;
+		  while (*p) {
+		    if (!isprint(*p)) {
+		      log_debug("  WARNING: Unprintable characters in the password.\n           Double-check the shared secret on the server and the NAS!");
+		      break;
+		    }
+		    p++;
+		  }
 		}
 	}
 
@@ -521,11 +495,11 @@ int rad_authenticate(REQUEST *request)
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 
-			radlog(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
-			       namepair->strvalue,
-			       auth_name(buf, sizeof(buf), request, 1),
-			       check_item->lvalue,
-			       r == 2 ? " [MPP attempt]" : "");
+			strcpy(logstr, "Multiple logins");
+			sprintf(logstr, "%s (max %d) %s", logstr, check_item->lvalue,
+								r == 2 ? "[MPP attempt]" : "");
+			rad_authlog(logstr, request, 1);
+
 			result = -1;
 		}
 	}
@@ -558,11 +532,11 @@ int rad_authenticate(REQUEST *request)
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 
-			radlog(L_ERR, "Outside allowed timespan: [%s]"
-				   " (%s) time allowed: %s",
-					auth_username(namepair),
-					auth_name(buf, sizeof(buf), request, 1),
-					check_item->strvalue);
+			strcpy(logstr, "Outside allowed timespan");
+			sprintf(logstr, "%s (time allowed %s)", logstr, 
+											check_item->strvalue);
+			rad_authlog(logstr, request, 1);
+
 		} else if (r > 0) {
 
 			/*
@@ -686,13 +660,9 @@ int rad_authenticate(REQUEST *request)
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 			
-			if (log_auth) {
-				radlog(L_AUTH,
-				       "Login incorrect: [%s] (%s) "
-				       "(external check failed)",
-				       auth_username(namepair),
-				       auth_name(buf, sizeof(buf), request, 1));
-			}
+			rad_authlog("Login incorrect (external check failed)", 
+									request, 0);
+
 			return RLM_MODULE_OK;
 		}
 	}
@@ -739,14 +709,7 @@ int rad_authenticate(REQUEST *request)
 
 	request->reply->code = PW_AUTHENTICATION_ACK;
 
-	if (log_auth) {
-		radlog(L_AUTH,
-			"Login OK: [%s%s%s] (%s)",
-			auth_username(namepair),
-			log_auth_pass ? "/" : "",
-			log_auth_pass ? password : "",
-			auth_name(buf, sizeof(buf), request, 0));
-	}
+	rad_authlog("Login OK", request, 1);
 	if (exec_program && !exec_wait) {
 		/*
 		 *	No need to check the exit status here.
@@ -828,4 +791,73 @@ VALUE_PAIR *rad_getpass(REQUEST *request) {
 	auth_item->length = strlen(auth_item->strvalue);
 
 	return auth_item;
+}
+
+/*
+ * Make sure user/pass are clean
+ * and then log them
+ */
+int rad_authlog(char *msg, REQUEST *request, int goodpass) {
+
+	char clean_password[1024];
+	char clean_username[1024];
+	char buf[1024];
+
+	if(!mainconfig.log_auth)
+		return 0;
+
+	/* 
+	 * Clean up the username
+	 */
+	if(!request->username) {
+		DEBUG2("rad_authlog:  no username found");
+		return -1;
+	}
+	if(request->username->strvalue) {
+		librad_safeprint((char *)request->username->strvalue,
+									   request->username->length,
+									   clean_username, sizeof(clean_username));
+	} else {
+		strcpy(clean_username, "<No Username>");
+	}
+
+	/* 
+	 * Clean up the password
+	 */
+	if(mainconfig.log_auth_badpass || mainconfig.log_auth_goodpass) {
+		if(!request->password) {
+			DEBUG2("rad_authlog:  no password found");
+			return -1;
+		}
+
+		if (request->password->attribute == PW_CHAP_PASSWORD) {
+		  strcpy(clean_password, "<CHAP-Password>");
+		} else {
+			if(request->username->strvalue) {
+		  	librad_safeprint((char *)request->password->strvalue,
+											   request->password->length,
+											   clean_password, sizeof(clean_password));
+			} else {
+		  	strcpy(clean_password, "<No Password>");
+			}
+		}
+	}
+
+	if(goodpass) {
+		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
+					msg,	
+		 	    clean_username,
+			    mainconfig.log_auth_goodpass ? "/" : "",
+			    mainconfig.log_auth_goodpass ? clean_password : "",
+			    auth_name(buf, sizeof(buf), request, 1));
+	} else {
+		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
+					msg,	
+		 	    clean_username,
+			    mainconfig.log_auth_badpass ? "/" : "",
+			    mainconfig.log_auth_badpass ? clean_password : "",
+			    auth_name(buf, sizeof(buf), request, 1));
+	}
+
+	return 0;
 }
