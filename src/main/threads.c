@@ -32,12 +32,6 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun);
 
 
 /*
- *	Proxy file descriptor.  Yes, global variables are ugly.
- */
-extern int proxyfd;
-
-
-/*
  *  A data structure which contains the information about
  *  the current thread.
  *
@@ -102,9 +96,25 @@ static const CONF_PARSER thread_config[] = {
  */
 static void *request_handler_thread(void *arg)
 {
-	THREAD_HANDLE	*self;
+	THREAD_HANDLE	*self = (THREAD_HANDLE *) arg;
+#if HAVE_SIGPROCMASK
+	sigset_t set;
 
-	self = (THREAD_HANDLE *) arg;
+	/*
+	 *	Block SIGHUP handling for the child threads.
+	 *
+	 *	This ensures that only the main server thread will
+	 *	process HUP signals.
+	 *
+	 *	If we don't have sigprocmask, then it shouldn't be
+	 *	a problem, either, as the sig_hup handler should check
+	 *	for this condition.
+	 */
+	sigemptyset(&set);
+	sigaddset(&set, SIGHUP);
+	sigaddset(&set, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &set, NULL);
+#endif
 	
 	/*
 	 *	Loop forever, until told to exit.
