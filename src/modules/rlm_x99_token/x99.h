@@ -30,7 +30,7 @@
 
 /* Default text for presentation of challenge */
 #define CHALLENGE_TEXT "Challenge: %s\n Response: "
-/* Must be a multiple of 8, read docs before changing. */
+/* Must be a multiple of sizeof(des_cblock) (8); read docs before changing. */
 #define MAX_CHALLENGE_LEN 32
 
 /* Max event window size for sync modes */
@@ -102,8 +102,8 @@ extern int x99_mac(const char *input, des_cblock output, des_cblock keyblock);
 
 /* x99_state.c */
 extern int x99_gen_state(char **ascii_state, unsigned char **raw_state,
-			 const char challenge[9], int32_t when,
-			 const unsigned char key[16]);
+			 const char challenge[MAX_CHALLENGE_LEN + 1],
+			 int32_t when, const unsigned char key[16]);
 
 /* x99_util.c */
 /* Character maps for generic hex and vendor specific decimal modes */

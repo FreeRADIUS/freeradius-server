@@ -77,12 +77,13 @@ static const char rcsid[] = "$Id$";
  */
 int
 x99_gen_state(char **ascii_state, unsigned char **raw_state,
-	      const char challenge[9], int32_t when,
+	      const char challenge[MAX_CHALLENGE_LEN + 1], int32_t when,
 	      const unsigned char key[16])
 {
     HMAC_CTX hmac_ctx;
     unsigned char hmac[16];
     char *p;
+    int i;
 
     /*
      * Generate the hmac.  We already have a dependency on openssl for
@@ -120,14 +121,27 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
 	(void) sprintf(*ascii_state, "0x");
 	p = *ascii_state + 2;
 
-	x99_keyblock_to_string(p, challenge, x99_hex_conversion);
-	p += 2 * strlen(challenge);
+	/* Add the challenge. */
+	for (i = 0; i < MAX_CHALLENGE_LEN / sizeof(des_cblock); ++i) {
+	    x99_keyblock_to_string(p, challenge, x99_hex_conversion);
+	    if (strlen(challenge) > sizeof(des_cblock)) {
+		challenge += sizeof(des_cblock);
+		p += 2 * sizeof(des_cblock);
+	    } else {
+		p += 2 * strlen(challenge);
+		break;
+	    }
+	}
+
+	/* Add the time. */
 	{
 	    des_cblock cblock;
 	    (void) memcpy(cblock, &when, 4);
 	    x99_keyblock_to_string(p, cblock, x99_hex_conversion);
 	}
 	p += 8; /* discard lower 8 bytes, which are junk */
+
+	/* Add the hmac. */
 	x99_keyblock_to_string(p, hmac, x99_hex_conversion);
 	p += 16;
 	x99_keyblock_to_string(p, &hmac[8], x99_hex_conversion);
