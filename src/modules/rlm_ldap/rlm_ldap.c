@@ -1,16 +1,16 @@
 /*
- * ldap.c	Functions to access the LDAP database. 
+ * rlm_ldap.c LDAP authorization and authentication module. 
  * 
- * This is mostly from a Mysql+Cistron patch from oyarzun@wilmington.net
  *
- * Much of the Mysql connection and accounting code was taken from 
- * Wim Bonis's (bonis@kiss.de) accounting patch to livingston radius
- * 2.01. His patch can be found at:
+ * This module is based on LDAP patch to Cistron radiusd, which in turn was
+ * based mostly on a Mysql+Cistron patch from oyarzun@wilmington.net
  *
- *       ftp://ftp.kiss.de/pub/unix/livingston/mysql-patches.tgz
- *
- * Version:	$Id$
- *
+ * 17 Jan 2000: OpenLDAP SDK porting, basic TLS support, LDAP authorization,
+ *            fault tolerance with multiple LDAP server support done by Adrian
+ *            Pavlykevych <pam@polynet.lviv.ua>
+ * 24 May 2000: converting to new configuration file format, futher improvements
+ * 		in fault tolerance, threaded operation
+ * 		Adrian Pavlykevych <pam@polynet.lviv.ua>
  */
 static const char rcsid[] = "$Id$";
 
@@ -32,46 +32,95 @@ static const char rcsid[] = "$Id$";
 #include	<lber.h>
 #include        <ldap.h>
 
+#include	<errno.h>
+#include	<unistd.h>
+#include	<pthread.h>
+
 #include	"radiusd.h"
 #include	"conffile.h"
 #include	"modules.h"
 
+
 #define MAX_AUTH_QUERY_LEN      256
+#define TIMELIMIT 5
+
+#undef DEBUG
+#define DEBUG if(debug_flag) printf
+#define NDEBUG
+
+typedef struct {
+  char* attr;
+  char* radius_attr;
+} TLDAP_RADIUS;
 
 static char	*make_filter(char *, char *);
+#ifdef FIELDCPY 
+static void	fieldcpy(char *, char **);
+#endif
+static char		*dn_base(char *);
+static VALUE_PAIR	*ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *);
+static LDAP		*rlm_ldap_connect(const char *, const char *, int, int *);
+void			*conn_maint(void *);
 
+#define MAX_SERVER_LINE 1024
 /*
  *	These should really be in a module-specific data structure,
  *	which is passed to the module with every request.
  */
-static char *ldap_server = NULL;
-static int  ldap_port = 389;
-static char *ldap_login = NULL;
-static char *ldap_password = NULL;
-static char *ldap_filter = NULL;
-static char *ldap_basedn = NULL;
-static int  use_ldap_auth = 0;
-static int ldap_cache_timeout = 30;
-static int ldap_cache_size = 0;
-static LDAP *ld;
+static char	*ldap_server = NULL;
+static int	ldap_port = 389;
+static int	ldap_timelimit = TIMELIMIT;
+/* wait forever on network activity */
+static struct timeval ldap_net_timeout = { -1, 0 };
+/* wait forever for search results */
+static struct timeval ldap_timeout = { -1, 0 };
+static struct timeval *timeout = NULL;
+static int	ldap_cache_size = 0; /* cache size limited only by TTL */
+static int	ldap_cache_ttl = 30 ;/* cache objects TTL 30 secs */	
+static int	ldap_debug = 0; /* 0x0005; */
+static int	ldap_tls_mode = LDAP_OPT_X_TLS_TRY;
+static char	*ldap_login    = NULL;
+static char	*ldap_password = NULL;
+static char	*ldap_filter   = NULL;
+static char	*ldap_basedn   = NULL;
+static char	*group_basedn  = NULL;
+static char	*ldap_radius_group = NULL;
 
-/*
- *	A mapping of configuration file names to internal variables
- */
+static LDAP	*ld = NULL;
+static pthread_t conn_thread = 0; /*ID of thread, which performs LDAP connect*/
+/* signal from module thread to conn_maint thread to perform LDAP
+ * connection operation (bind/unbind) */
+static pthread_cond_t conn_cv = PTHREAD_COND_INITIALIZER; 
+/* signal from conn_maint to module threads to proceed afer (re)connect */
+static pthread_cond_t go_ahead_cv = PTHREAD_COND_INITIALIZER;
+/* signal from rlm_detach() to conn_maint thread to close connection */
+static pthread_mutex_t sig_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t conn_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int bound;
+static int cleanup;
+static int readers; /* number of threads performing LDAP lookups */ 
+
 static CONF_PARSER ldap_config[] = {
-	{ "server",        PW_TYPE_STRING_PTR, &ldap_server },
-	{ "port",          PW_TYPE_INTEGER,    &ldap_port },
-	{ "login",         PW_TYPE_STRING_PTR, &ldap_login },
-	{ "password",      PW_TYPE_STRING_PTR, &ldap_password },
-	{ "basedn",        PW_TYPE_STRING_PTR, &ldap_basedn },
-	{ "filter",        PW_TYPE_STRING_PTR, &ldap_filter },
-	{ "cache_timeout", PW_TYPE_INTEGER,    &ldap_cache_timeout },
-	{ "cache_size",    PW_TYPE_INTEGER,    &ldap_cache_size },
-	{ NULL, -1, NULL}
+  { "server",		PW_TYPE_STRING_PTR,	&ldap_server },
+  { "port",		PW_TYPE_INTEGER,	&ldap_port },
+  { "net_timeout",	PW_TYPE_INTEGER,	&ldap_net_timeout.tv_sec},
+  { "timeout",		PW_TYPE_INTEGER,	&ldap_timeout.tv_sec},
+
+  { "identity",		PW_TYPE_STRING_PTR,	&ldap_login },
+  { "password",		PW_TYPE_STRING_PTR,	&ldap_password },
+  { "basedn",		PW_TYPE_STRING_PTR,	&ldap_basedn },
+  { "filter",		PW_TYPE_STRING_PTR,	&ldap_filter },
+  { "access_group",	PW_TYPE_STRING_PTR,	&ldap_radius_group },
+
+  { "cache_size",	PW_TYPE_INTEGER,	&ldap_cache_size },
+  { "cache_ttl",	PW_TYPE_INTEGER,	&ldap_cache_ttl },
+  
+  { NULL, -1, NULL}
 };
 
 /* LDAP attribute name that controls remote access */
-#define LDAP_RADIUSACCESS "radiusAccess"
+#define LDAP_RADIUSACCESS "dialupAccess"
 
 /* Fallback to default settings if no basic attributes defined in object
  * (An ugly hack to be replaced by profiles and policies)
@@ -87,10 +136,9 @@ static CONF_PARSER ldap_config[] = {
 #define DEFAULT_SIMULTANEOUS_USE "1"
 #endif
 
-typedef struct {
-	const char *attr;
-	const char *radius_attr;
-} TLDAP_RADIUS;
+#define ld_valid                ld_options.ldo_valid
+#define LDAP_VALID_SESSION      0x2
+#define LDAP_VALID(ld)  ( (ld)->ld_valid == LDAP_VALID_SESSION )
 
 /*
  *      Mappings of LDAP radius* attributes to RADIUS attributes
@@ -98,7 +146,8 @@ typedef struct {
  *	Hmm... these should really be read in from the configuration file
  */
 static TLDAP_RADIUS check_item_map[] = {
-        { "radiusAuthType", "Auth-Type" } ,
+        { "radiusAuthType", "Auth-Type" },
+        { "npSessionsAllowed", "Simultaneous-Use" },
         {NULL, NULL}
 };
 static TLDAP_RADIUS reply_item_map[] = {
@@ -135,266 +184,508 @@ static TLDAP_RADIUS reply_item_map[] = {
         {NULL, NULL}
 };
 
-static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *);
-
 /*************************************************************************
  *
  *	Function: rlm_ldap_init
  *
- *	Purpose: Reads in radldap Config File 
+ *	Purpose: Reads in 'module ldap' section of radiusd config file 
+ *		 and performs initialization of the modue.
  *
  *************************************************************************/
 static int rlm_ldap_init (int argc, char **argv)
 {
-	CONF_SECTION  *ldap_cf;
+  CONF_SECTION *conf_ldap;
+  int i;
+  if((conf_ldap = cf_module_config_find("ldap")) == NULL) {
+    log(L_ERR,"rlm_ldap: reading module configuration failed");
+    return(-1);       
+  }
+  cf_section_parse(conf_ldap, ldap_config);
 
-	/*
-	 *	Find the LDAP configuration.  If it isn't there,
-	 *	then exit quietly.
-	 */
-	ldap_cf = cf_module_config_find("ldap");
-	if (!ldap_cf) {
-		return 0;
-	}
+  if(ldap_radius_group != NULL)
+    group_basedn = dn_base(ldap_radius_group);
+  if(ldap_net_timeout.tv_sec != -1)
+    timeout = &ldap_net_timeout;
+  if(ldap_timeout.tv_sec != -1 )
+	 timeout = &ldap_timeout;
 
-	/*
-	 *	Parse all of the configuration parameters.
-	 */
-	cf_section_parse(ldap_cf, ldap_config);
+  pthread_create(&conn_thread,NULL,conn_maint,NULL);
+  
+  bound = 0;
+  cleanup = 0;
+  
+  log(L_INFO,"LDAP_init() using:");
+  for(i = 0; ldap_config[i].name != NULL; i++) {
+    switch(ldap_config[i].type){
+      case PW_TYPE_STRING_PTR:
+	log(L_INFO, "%s = %s",ldap_config[i].name, (char *)*(int *)(ldap_config[i].data));
+	break;
+      case PW_TYPE_INTEGER:
+	log(L_INFO, "%s = %d",ldap_config[i].name, *((int *)ldap_config[i].data));
+	break;
+      default:
+	DEBUG("ERROR!!!\n");
+    }
+  }
+  if(timeout != NULL)
+    DEBUG("timeout: %ld.%ld\n", timeout->tv_sec,timeout->tv_usec);
 
-	/*
-	 *	???
-	 */
-	if (ldap_server) {
-		use_ldap_auth = 1;
-	}
-	
-	if ( (ld = ldap_init(ldap_server,ldap_port)) == NULL)	
-		return RLM_MODULE_FAIL;
-	if ( ldap_bind_s(ld,ldap_login,ldap_password, LDAP_AUTH_SIMPLE) != LDAP_SUCCESS) {
-		log(L_ERR,"LDAP ldap_simple_bind_s failed");
-		ldap_unbind_s(ld);
-		return (-1);
-	}
-
-/* I don't know yet why, but this code doesn't work. */
-#if 0
-	if ( ldap_enable_cache(ld,ldap_cache_timeout,ldap_cache_size) != LDAP_SUCCESS) {
-		log(L_ERR,"LDAP ldap_enable_cache failed");
-		ldap_unbind_s(ld);
-		return (-1);
-	}
-#endif
-       
-       log(L_INFO,"LDAP_init: using: %s:%d,%s,%s,%s,%d",
-	   ldap_server,
-	   ldap_port,
-	   ldap_login,
-	   ldap_filter,
-	   ldap_basedn,
-	   use_ldap_auth); 
-       
-       return 0;
+  
+  return 0;
 }
 
-/*************************************************************************
+void *conn_maint(void *arg)
+{
+  int res;
+  int conn_state = 0;
+   
+  while(1){
+    DEBUG("rlm_ldap: connection maintainer woke up, obtaining lock ...\n");
+    pthread_mutex_lock(&sig_mutex);
+    DEBUG("rlm_ldap: maintainer got lock.\n");
+    while((bound && !cleanup) || readers) {
+      DEBUG("rlm_ldap: maintainer waits for %d readers to exit\n", readers);
+      pthread_cond_wait(&conn_cv,&sig_mutex);
+    }
+    pthread_mutex_unlock(&sig_mutex);
+    if(cleanup){
+      DEBUG("rlm_ldap: maintainer #%p closing connection", pthread_self());
+      ldap_unbind_s(ld);
+      pthread_exit(0);
+    }
+    if((ld = rlm_ldap_connect(ldap_login, ldap_password, 0, &res)) == NULL) {
+      conn_state = 0;
+      sleep(1);
+    } else {
+      conn_state = 1;
+    }
+    pthread_mutex_lock(&sig_mutex);
+    bound = conn_state;
+    DEBUG("rlm_ldap: maintainer reconnecton attempt succeeded? (%d)\n", bound);
+    if(bound) { 
+      DEBUG("rlm_ldap: maintainer waking workers\n");
+      pthread_cond_broadcast(&go_ahead_cv);
+      DEBUG("rlm_ldap: worker wakeup done.\n");
+    }
+    pthread_mutex_unlock(&sig_mutex);
+  }
+}
+
+static int perform_search(char *ldap_basedn, char *filter, char **attrs, LDAPMessage **result)
+{
+  int msgid;
+  int res = RLM_MODULE_OK;
+  int rc;
+
+  pthread_mutex_lock(&sig_mutex);
+/*
+ * Wake up connection maintenance thread, if there is no established LDAP
+ * connection 
+ */
+  if(!bound){
+    DEBUG("rlm_ldap: worker thread #%p signaling for LDAP reconnection", pthread_self());
+    pthread_cond_signal(&conn_cv);
+    DEBUG("rlm_ldap: worker thread #%p waiting for LDAP connection", pthread_self());
+  }
+  while(!bound)
+    pthread_cond_wait(&go_ahead_cv, &sig_mutex);
+  readers++;
+  pthread_mutex_unlock(&sig_mutex);
+
+  DEBUG("rlm_ldap: thread %p performing search\n", pthread_self());
+  pthread_mutex_lock(&conn_mutex);
+  msgid = ldap_search(ld,ldap_basedn,LDAP_SCOPE_SUBTREE,filter,attrs,0);
+  pthread_mutex_unlock(&conn_mutex);
+  if(msgid == -1) {
+    log(L_ERR,"rlm_ldap: thread %p ldap_search() API failed", pthread_self());
+    goto fail;
+  }
+  
+  pthread_mutex_lock(&conn_mutex);
+  rc = ldap_result(ld, msgid, 1, timeout, result);
+  pthread_mutex_unlock(&conn_mutex);
+  
+  if(rc < 1) {
+    ldap_perror( ld, "rlm_ldap: ldap_result()" );
+    log(L_ERR,"rlm_ldap: thread %p ldap_result() failed - %s", pthread_self(), strerror(errno));
+    goto fail;
+  }
+  
+  switch(ldap_result2error(ld, *result, 0)) {
+    case LDAP_SUCCESS:
+      break;
+
+    case LDAP_TIMELIMIT_EXCEEDED:
+      log(L_ERR, "rlm_ldap: thread %p Warning timelimit exceeded, using partial results", pthread_self());
+      break;
+
+    default:
+      DEBUG("rlm_ldap: thread %p ldap_search() failed\n", pthread_self());
+       ldap_msgfree(*result);
+      goto fail;
+  }
+
+  if ((ldap_count_entries(ld, *result)) != 1) {
+    DEBUG("rlm_ldap: thread %p user object not found or got ambiguous search result\n", pthread_self());
+     ldap_msgfree(*result);
+    res = RLM_MODULE_REJECT;
+  }
+  
+  DEBUG("rlm_ldap: thread %p locking connection flag ...\n", pthread_self());
+  pthread_mutex_lock(&sig_mutex);
+  DEBUG("rlm_ldap: done. thread %p Clearing flag, active workers: %d\n", pthread_self(), readers-1);
+  readers--;
+  pthread_mutex_unlock(&sig_mutex);
+  return res;
+
+fail:  
+  DEBUG("rlm_ldap: thread %p locking connection flag ...\n", pthread_self());
+  pthread_mutex_lock(&sig_mutex);
+  DEBUG("rlm_ldap: thread %p done. Clearing flag, active workers: %d\n", pthread_self(), readers-1);
+  bound = 0; readers--;
+  DEBUG("rlm_ldap: thread %p sending signal to maintainer...\n", pthread_self());
+  pthread_cond_signal(&conn_cv);
+  DEBUG("rlm_ldap: thread %p done\n", pthread_self());
+  pthread_mutex_unlock(&sig_mutex);
+  return RLM_MODULE_FAIL;
+}
+
+/******************************************************************************
  *
  *      Function: rlm_ldap_authorize
  *
  *      Purpose: Check if user is authorized for remote access 
  *
- *************************************************************************/
+ *****************************************************************************/
 static int rlm_ldap_authorize(REQUEST *request,
 			      VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
-	LDAPMessage *result, *msg;
-	char *filter, **vals;
-	VALUE_PAIR      *check_tmp;
-	VALUE_PAIR      *reply_tmp;
-	char *name;
-	char *attrs[] = { "*", NULL }; /* REALLY 'const' */
-	
-	name = request->username->strvalue;
-	
-	/*
-	 *      Check for valid input, zero length names not permitted
-	 */
-	if ((request->username->length == 0) ||
-	    (*name == '\0')) {
-		log(L_ERR, "zero length username not permitted\n");
-		return -1;
-	}
-	
-	DEBUG("LDAP Performing user authorization for %s", name);
-	
-	filter = make_filter(ldap_filter, name);
-	if (ldap_search_s(ld, ldap_basedn, LDAP_SCOPE_SUBTREE, filter, attrs, 0, &result) != LDAP_SUCCESS) {
-		DEBUG("LDAP search failed");
-		return RLM_MODULE_FAIL;
-	}
-	
-	if ((ldap_count_entries(ld, result)) != 1) {
-		DEBUG("LDAP user object not found or got ambiguous search result");
-		return RLM_MODULE_OK;
-	}
-	
-	if ((msg = ldap_first_entry(ld, result)) == NULL) {
-		return RLM_MODULE_FAIL;
-	}
-	
-	/*
-	 *	Remote access is controled by LDAP_RADIUSACCESS attribute of
-	 *	user object
-	 */
-	if ((vals = ldap_get_values(ld, msg, LDAP_RADIUSACCESS)) != NULL ) {
-		if (!strncmp(vals[0], "FALSE", 5)) {
-			DEBUG("LDAP dialup access disabled");
-			return RLM_MODULE_REJECT;
-		}
-	} else {
-		DEBUG("LDAP no %s attribute - access denied by default", LDAP_RADIUSACCESS);
-		return RLM_MODULE_REJECT;
-	}
-	
-	DEBUG("LDAP looking for check items in directory..."); 
-	if ((check_tmp = ldap_pairget(ld, msg, check_item_map)) != (VALUE_PAIR *)0) {
-		pairadd(check_pairs, check_tmp);
-	}
-	
-	/*
-	 *	Module should default to LDAP authentication if no
-	 *	Auth-Type specified (???)
-	 */
-	if (!pairfind(*check_pairs, PW_AUTHTYPE)) {
-		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
-	}
-	
-	DEBUG("LDAP looking for reply items in directory..."); 
-	if ((reply_tmp = ldap_pairget(ld,msg, reply_item_map)) != NULL) {
-		pairadd(reply_pairs, reply_tmp);
-	}
-	
-#ifdef DEFAULT_CONF
-	if (!pairfind(*reply_pairs, PW_SERVICE_TYPE)) {
-		pairadd(reply_pairs, pairmake("Service-Type", DEFAULT_SERVICE_TYPE, T_OP_EQ));
-	}
-	if (!pairfind(*reply_pairs, PW_FRAMED_PROTOCOL)) {
-		pairadd(reply_pairs, pairmake("Framed-Protocol", DEFAULT_FRAMED_PROTOCOL, T_OP_EQ));
-	}
-	if (!pairfind(*reply_pairs, PW_FRAMED_MTU)) {
-		pairadd(reply_pairs, pairmake("Framed-MTU", DEFAULT_FRAMED_MTU, T_OP_EQ));
-	}
-	if (!pairfind(*reply_pairs, PW_FRAMED_COMPRESSION)) {
-		pairadd(reply_pairs, pairmake("Framed-Compression", DEFAULT_FRAMED_COMPRESSION, T_OP_EQ));
-	}
-	if (!pairfind(*reply_pairs, PW_IDLE_TIMEOUT)) {
-		pairadd(reply_pairs, pairmake("Idle-Timeout", DEFAULT_IDLE_TIMEOUT, T_OP_EQ));       
-	}
-	if (!pairfind(*check_pairs, PW_SIMULTANEOUS_USE)) {
-		pairadd(reply_pairs, pairmake("Simultaneous-Use", DEFAULT_SIMULTANEOUS_USE, T_OP_EQ));       
-	}
+    LDAPMessage *result, *msg, *gr_result, *gr_msg;
+    char *filter, *name, *user_dn,
+        *attrs[] 	= { "*", NULL },
+	*group_attrs[]	= { "member", NULL	},
+        **vals;
+    VALUE_PAIR      *check_tmp;
+    VALUE_PAIR      *reply_tmp;
+    int  i;
+    int	 res;
+
+    DEBUG("rlm_ldap: thread %p - authorize\n", pthread_self());
+    name = request->username->strvalue;
+
+    /*
+     *      Check for valid input, zero length names not permitted
+     */
+    if (name[0] == 0) {
+          log(L_ERR, "rlm_ldap: zero length username not permitted\n");
+          return RLM_MODULE_FAIL;
+    }
+
+/*  Unfortunately LDAP queries are case insensitive, so in order to provide
+    unique names for simultaneous logins verification, we need to lowercase
+    USERNAME attribute value
+*/
+    for(i=0; name[i] != 0; i++) 
+        name[i] = tolower(name[i]);
+
+    DEBUG("LDAP Performing user authorization for %s\n", name);
+
+    filter = make_filter(ldap_filter, name);
+
+    if((res = perform_search(ldap_basedn, filter, attrs, &result)) != 0)
+	return(res);
+
+    if((msg = ldap_first_entry(ld,result)) == NULL) {
+      DEBUG("rlm_ldap: thread %p ldap_first_entry() failed\n", pthread_self());
+       ldap_msgfree(result);
+      return RLM_MODULE_FAIL;
+    }
+    if ((user_dn = ldap_get_dn(ld,msg)) == NULL) {
+      DEBUG("rlm_ldap: thread %p ldap_get_dn() failed\n", pthread_self());
+       ldap_msgfree(result);
+      return RLM_MODULE_FAIL;
+    }
+    
+/* Remote access is controled by LDAP_RADIUSACCESS attribute of user object */ 
+    if((vals = ldap_get_values(ld, msg, LDAP_RADIUSACCESS)) != NULL ) {
+      if(!strncmp(vals[0],"FALSE",5)) {
+	DEBUG("rlm_ldap: thread %p dialup access disabled\n", pthread_self());
+	 ldap_msgfree(result);
+	return RLM_MODULE_REJECT;
+      }
+    } else {
+#ifdef DIALUP_ACCESS
+      DEBUG("rlm_ldap: thread %p no %s attribute - access denied by default\n", pthread_self(), LDAP_RADIUSACCESS);
+       ldap_msgfree(result);
+      return RLM_MODULE_REJECT;
 #endif
-	
-	DEBUG("LDAP user %s authorized to use remote access", name);
-	return RLM_MODULE_OK;
+    }
+
+/* Remote access controled by group membership attribute of user object */ 
+    if(ldap_radius_group != NULL) {
+      int found = 0;
+      
+      DEBUG("rlm_ldap: thread %p checking user membership in dialup-enabling group %s\n", pthread_self(), ldap_radius_group);
+      if((res = perform_search(group_basedn, ldap_radius_group, group_attrs, &gr_result)))
+  	return(res);
+      
+      if((gr_msg = ldap_first_entry(ld, gr_result)) == NULL) {
+	DEBUG("rlm_ldap: thread %p ldap_first_entry() failed\n", pthread_self);
+  	 ldap_msgfree(result);
+   	return RLM_MODULE_FAIL;
+      }
+
+      if((vals = ldap_get_values(ld, gr_msg, "member")) != NULL ) {
+	int valno;
+	for(valno = 0;
+	    (vals[valno] != NULL) 
+	    && !(found = !strncmp(vals[valno],user_dn,strlen(user_dn)));
+	    valno++) {
+	}
+	ldap_value_free(vals);
+      }
+      ldap_msgfree(gr_result);
+      if(!found){
+	DEBUG("rlm_ldap: thread %p user does not belong to dialup-enabling group\n", pthread_self());
+	ldap_msgfree(result);
+	return RLM_MODULE_REJECT;
+      }
+    }
+
+
+    DEBUG("rlm_ldap: thread %p looking for check items in directory...\n", pthread_self()); 
+    if((check_tmp = ldap_pairget(ld, msg, check_item_map)) != (VALUE_PAIR *)0) {
+	pairadd(check_pairs, check_tmp);
+    }
+
+/* Module should default to LDAP authentication if no Auth-Type specified */
+    if(pairfind(*check_pairs, PW_AUTHTYPE) == NULL){
+	pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_CMP_EQ));
+    }
+/* 
+ * Adding new attribute containing DN for LDAP object associated with given
+ * username 
+ */
+    pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+
+    DEBUG("rlm_ldap: thread %p looking for reply items in directory...\n", pthread_self()); 
+    if((reply_tmp = ldap_pairget(ld,msg, reply_item_map)) != (VALUE_PAIR *)0) {
+        pairadd(reply_pairs, reply_tmp);
+    }
+
+#ifdef DEFAULT_CONF
+    if(pairfind(*reply_pairs, PW_SERVICE_TYPE) == NULL){
+        pairadd(reply_pairs, pairmake("Service-Type", DEFAULT_SERVICE_TYPE, T_OP_EQ));
+    }
+    if(pairfind(*reply_pairs, PW_FRAMED_PROTOCOL) == NULL){
+        pairadd(reply_pairs, pairmake("Framed-Protocol", DEFAULT_FRAMED_PROTOCOL, T_OP_EQ));
+    }
+    if(pairfind(*reply_pairs, PW_FRAMED_MTU) == NULL){
+        pairadd(reply_pairs, pairmake("Framed-MTU", DEFAULT_FRAMED_MTU, T_OP_EQ));
+    }
+    if(pairfind(*reply_pairs, PW_FRAMED_COMPRESSION) == NULL){
+        pairadd(reply_pairs, pairmake("Framed-Compression", DEFAULT_FRAMED_COMPRESSION, T_OP_EQ));
+    }
+    if(pairfind(*reply_pairs, PW_IDLE_TIMEOUT) == NULL){
+        pairadd(reply_pairs, pairmake("Idle-Timeout", DEFAULT_IDLE_TIMEOUT, T_OP_EQ));       
+    }
+    if(pairfind(*check_pairs, PW_SIMULTANEOUS_USE) == NULL){
+        pairadd(check_pairs, pairmake("Simultaneous-Use", DEFAULT_SIMULTANEOUS_USE, T_OP_EQ));       
+    }
+
+#endif
+
+    DEBUG("rlm_ldap: thread %p user %s authorized to use remote access\n", pthread_self(), name);
+     ldap_msgfree(result);
+    return RLM_MODULE_OK;
 }
 
-/*************************************************************************
+/******************************************************************************
  *
  *	Function: rlm_ldap_authenticate
  *
  *	Purpose: Check the user's password against ldap database 
  *
- *************************************************************************/
+ *****************************************************************************/
 static int rlm_ldap_authenticate(REQUEST *request)
 {
-	static LDAP *ld_user;
-	LDAPMessage *result, *msg;
-	char *filter, *dn;
-	char *attrs[] = { "uid", NULL }; /* REALLY 'const' */
-	char *name, *passwd;
+    LDAP *ld_user;
+    LDAPMessage *result, *msg;
+    char *filter, *passwd, *user_dn, *name,
+	 *attrs[] = { "uid", NULL };
+    int  res;
+    VALUE_PAIR *vp_user_dn;
 
-	/*
-	 *	Ensure that we're being passed a plain-text password,
-	 *	and not anything else.
-	 */
-	if (!request->password) {
-		log(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.");
-	}
+    DEBUG("rlm_ldap: thread %p - authenticate\n", pthread_self());
+    /*
+     * Ensure that we're being passed a plain-text password,
+     *  and not anything else. 
+     */
+    if(request->password->attribute != PW_PASSWORD) {
+      log(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+      return RLM_MODULE_REJECT;
+    }
 
-	if (request->password->attribute != PW_PASSWORD) {
-		log(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
-		return RLM_MODULE_REJECT;
-	}
+    name = request->username->strvalue;
+    passwd = request->password->strvalue;
 
-	if (request->password->length == 0) {
-		log(L_AUTH, "rlm_ldap: Cannot use zero length password");
-		return RLM_MODULE_REJECT;
-	}
-	
-	name = request->username->strvalue;
-	passwd = request->password->strvalue;
-	
-	/*
-	 *	???
-	 */
-	if (use_ldap_auth == 0) {
-		log(L_ERR,"LDAP Auth specified in users file, but not in ldapserver file");
-		return RLM_MODULE_FAIL;
-	}
-	
-	DEBUG("LDAP login attempt by '%s' with password '%s'", name, passwd);
-	
-	filter = make_filter(ldap_filter, name);
-	
-	if (ldap_search_s(ld, ldap_basedn, LDAP_SCOPE_SUBTREE, filter, attrs, 1, &result) != LDAP_SUCCESS) {
-		return RLM_MODULE_FAIL;
-	}
-	
-	if ((ldap_count_entries(ld, result)) != 1) {
-		return RLM_MODULE_FAIL;
-	}
-	
-	if ((msg = ldap_first_entry(ld,result)) == NULL) {
-		return RLM_MODULE_FAIL;
-	}
-	
-	if ((dn = ldap_get_dn(ld, msg)) == NULL) {
-		return RLM_MODULE_FAIL;
-	}
-	
-	DEBUG("LDAP user DN: %s", dn);
-	
-	if ( (ld_user = ldap_init(ldap_server, ldap_port)) == NULL)
-		return RLM_MODULE_FAIL;
-	
-	if (ldap_simple_bind_s(ld_user, dn, passwd) != LDAP_SUCCESS) {
-		ldap_unbind_s(ld_user);
-		return RLM_MODULE_REJECT;
-	}
-	
-	free(dn);
-	ldap_unbind_s(ld_user);
-	
-	DEBUG("LDAP User %s authenticated succesfully", name);
-	return RLM_MODULE_OK;
+    if(strlen(passwd) == 0) {
+        log(L_ERR, "rlm_ldap: empty password supplied");
+	return RLM_MODULE_REJECT;
+    }
+
+    DEBUG("rlm_ldap: thread %p login attempt by \"%s\" with password \"%s\"\n", pthread_self(), name, passwd);
+    filter = make_filter(ldap_filter, name);
+
+    if((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL){
+      if((res = perform_search(ldap_basedn, filter, attrs, &result)))
+	return(res);
+
+      if ((msg = ldap_first_entry(ld,result)) == NULL) {
+  	 ldap_msgfree(result);
+
+	return RLM_MODULE_FAIL;
+      }
+
+      if ((user_dn = ldap_get_dn(ld,msg)) == NULL) {
+	DEBUG("rlm_ldap: thread %p ldap_get_dn() failed\n", pthread_self());
+	 ldap_msgfree(result);
+
+	return RLM_MODULE_FAIL;
+      }
+      pairadd(&request->packet->vps,pairmake("Ldap-UserDn",user_dn,T_OP_EQ));
+      ldap_msgfree(result);
+
+    }	
+
+    user_dn = vp_user_dn->strvalue;
+
+    DEBUG("rlm_ldap: thread %p user DN: %s\n", pthread_self(), user_dn);
+
+    if((ld_user = rlm_ldap_connect(user_dn, passwd, 1, &res)) == NULL)
+        return (res);
+
+    DEBUG("rlm_ldap: thread %p user %s authenticated succesfully\n", pthread_self(), name);
+    ldap_unbind_s(ld_user);
+    return RLM_MODULE_OK;
 }
 
-/*
- *	Detach from the ldap.
- */
+static LDAP *rlm_ldap_connect(const char *dn, const char *password, int auth, int *result)
+{
+    LDAP *ld;
+    int msgid, rc;
+    LDAPMessage  *res;
+
+    DEBUG("rlm_ldap: thread #%p (re)connect, authentication %d\n", pthread_self(), auth);
+    if ((ld = ldap_init(ldap_server,ldap_port)) == NULL){
+      log(L_ERR, "rlm_ldap: ldap_init() failed");	    
+      *result = RLM_MODULE_FAIL;
+      return(NULL);
+    }
+    
+    if (timeout != NULL && ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, (void *)timeout) != LDAP_OPT_SUCCESS) {
+      log(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %d.%d", timeout->tv_sec, timeout->tv_usec);
+    }
+   
+    if (ldap_timelimit != -1 && ldap_set_option(ld, LDAP_OPT_TIMELIMIT, (void *) &ldap_timelimit) != LDAP_OPT_SUCCESS ){
+	log(L_ERR, "rlm_ldap: Could not set LDAP_OPT_TIMELIMIT %d", ldap_timelimit );
+    }
+    
+    if(ldap_debug && ldap_set_option( NULL, LDAP_OPT_DEBUG_LEVEL, &ldap_debug ) != LDAP_OPT_SUCCESS ) {
+        log(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", ldap_debug);
+    }
+#ifdef HAVE_TLS
+    if (ldap_tls_mode && ldap_set_option(ld, LDAP_OPT_X_TLS,(void *) &ldap_tls_mode) != LDAP_OPT_SUCCESS ){
+	log(L_ERR, "rlm_ldap: Could not set LDAP_OPT_X_TLS_TRY");
+    }
+#endif
+
+    if (!auth)
+      if (ldap_enable_cache(ld, ldap_cache_ttl, ldap_cache_size) != LDAP_SUCCESS)
+	log(L_ERR,"rlm_ldap: ldap_enable_cache failed");
+
+    msgid = ldap_bind(ld, dn, password, LDAP_AUTH_SIMPLE);
+    if(msgid == -1) {
+	ldap_perror(ld, "rlm_ldap: rlm_ldap_connect()" );
+        *result = RLM_MODULE_FAIL;
+        ldap_unbind_s(ld);
+        return(NULL);
+    }
+
+    DEBUG("rlm_ldap: thread #%p rlm_ldap_connect() waiting for bind result ...\n", pthread_self());
+
+    rc = ldap_result(ld, msgid, 1, timeout, &res);
+    if(rc < 1){
+	ldap_perror( ld, "rlm_ldap: ldap_result()" );
+        *result = RLM_MODULE_FAIL;
+        ldap_unbind_s(ld);
+        return(NULL);
+    }
+    DEBUG("rlm_ldap: thread #%p rlm_ldap_connect() bind finished\n", pthread_self());
+    switch(ldap_result2error(ld, res, 1)) {
+	case LDAP_SUCCESS:
+		*result = RLM_MODULE_OK;
+		break;
+
+	case LDAP_INVALID_CREDENTIALS:
+		if(auth){
+			*result = RLM_MODULE_REJECT;
+			break;
+		}
+	default:
+		DEBUG("rlm_ldap: thread %p LDAP FAILURE\n", pthread_self());
+		*result = RLM_MODULE_FAIL;
+    } 
+    if(*result != RLM_MODULE_OK) {
+	ldap_unbind_s(ld);
+	ld = NULL;
+    }
+    return ld;
+}
+
+/*****************************************************************************
+ * 
+ *	Detach from the LDAP server and cleanup internal state.
+ *	
+ *****************************************************************************/
 static int rlm_ldap_detach(void)
 {
-  ldap_unbind_s(ld);
+  pthread_mutex_lock(&sig_mutex);
+  cleanup = 1;
+  pthread_cond_signal(&conn_cv);
+  pthread_mutex_unlock(&sig_mutex);
+  pthread_join(conn_thread, NULL);
   return 0;
 }
 
-/*
+/*****************************************************************************
+ * 
+ * This function takes DN as parameter and returns RDN and BASEDN for search.
+ * Has anyone better idea about getting object attributes based on its DN?
+ *
+ *****************************************************************************/
+char *dn_base(char *dn)
+{
+  char *ptr;
+
+  if((ptr = (char *)strchr(dn, ',')) == NULL) {
+    DEBUG("Invalid DN syntax: no ',' in the string %s, maibe it's a CN? Returning default base\n", dn);  
+    return(ldap_basedn);
+  }
+  ptr[0]='\0';
+  if(++ptr == NULL) {
+    DEBUG("Invalid DN syntax: ',' is the last symbol in the string\n");  
+    return(NULL);
+  }
+  return(ptr);
+}
+
+/*****************************************************************************
  *	Replace %<whatever> in a string.
  *
  *	%u   User name
  *
- */
+ *****************************************************************************/
 static char *make_filter(char *str, char *name)
 {
 	static char buf[MAX_AUTH_QUERY_LEN];
@@ -446,60 +737,89 @@ static char *make_filter(char *str, char *name)
 	return buf;
 }
 
-/*
+#ifdef FIELDCPY 
+static  void fieldcpy(char *string, char **uptr)
+{
+        char    *ptr;
+
+        ptr = *uptr;
+        while (*ptr == ' ' || *ptr == '\t') {
+              ptr++;
+        }
+        if(*ptr == '"') {
+                ptr++;
+                while(*ptr != '"' && *ptr != '\0' && *ptr != '\n') {
+                        *string++ = *ptr++;
+                }
+                *string = '\0';
+                if(*ptr == '"') {
+                        ptr++;
+                }
+                *uptr = ptr;
+                return;
+        }
+
+        while(*ptr != ' ' && *ptr != '\t' && *ptr != '\0' && *ptr != '\n' &&
+                                                *ptr != '=' && *ptr != ',') {
+                        *string++ = *ptr++;
+        }
+        *string = '\0';
+        *uptr = ptr;
+	return;
+}
+#endif
+/*****************************************************************************
  *	Get RADIUS attributes from LDAP object
  *	( according to draft-adoba-radius-05.txt 
  *	  <http://www.ietf.org/internet-drafts/draft-adoba-radius-05.txt> )
  *
- */
+ *****************************************************************************/
 
 static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				TLDAP_RADIUS *item_map)
 {
-	BerElement *berptr;
-	char *attr;
-	char **vals;
-	char *ptr;
-	TLDAP_RADIUS *element;
-	int token;
-	char value[64];
-	VALUE_PAIR *pairlist;
-	VALUE_PAIR *newpair = NULL;
-	pairlist = NULL;
-
-	if ((attr = ldap_first_attribute(ld, entry, &berptr)) == NULL) {
-		DEBUG("Object has no attributes");
-		return NULL;
+  BerElement *berptr;
+  char *attr;
+  char **vals;
+  char *ptr;
+  TLDAP_RADIUS *element;
+  int token;
+  char value[64];
+  VALUE_PAIR *pairlist;
+  VALUE_PAIR *newpair = NULL;
+  pairlist = NULL;
+  if((attr = ldap_first_attribute(ld, entry, &berptr)) == (char *)0) {
+	DEBUG("rlm_ldap: thread %p Object has no attributes\n", pthread_self());
+	return NULL;
+  }
+  
+  do {
+    for(element=item_map; element->attr != NULL; element++) {
+      if(!strncasecmp(attr,element->attr,strlen(element->attr))) {
+	if(((vals = ldap_get_values(ld, entry, attr)) == NULL) ||
+	    (ldap_count_values(vals) > 1)) {
+	  DEBUG("rlm_ldap: thread %p Attribute %s has multiple values\n", pthread_self(), attr);
+	  break;
 	}
-	
-	do {
-		for (element=item_map; element->attr != NULL; element++) {
-			DEBUG2("Comparing %s with %s", attr, element->attr);
-			if (!strcasecmp(attr,element->attr)) {
-				if (((vals = ldap_get_values(ld, entry, attr)) == NULL) ||
-				    (ldap_count_values(vals) > 1)) {
-					DEBUG("Attribute %s has multiple values", attr);
-					break;
-				}
-				ptr = vals[0];
-				token = gettoken(&ptr, value, sizeof(value));
-				if (token < T_EQSTART || token > T_EQEND) {
-					token = T_OP_EQ;	
-				} else {
-					gettoken(&ptr, value, sizeof(value));
-				}
-				if (value[0] == 0) {
-					DEBUG("Attribute %s has no value", attr);
-					break;
-				}
-				DEBUG("LDAP Adding %s as %s, value %s & op=%d", attr, element->radius_attr, value, token);
-				if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
-					continue;
-				pairadd(&pairlist, newpair);
-				ldap_value_free(vals);
-			}
-		}
-	} while ((attr = ldap_next_attribute(ld, entry, berptr)) != NULL);
+	ptr = vals[0];
+	token = gettoken(&ptr, value, sizeof(value));
+	if (token < T_EQSTART || token > T_EQEND) {
+	  token = T_OP_EQ;	
+	} else {
+	  gettoken(&ptr, value, sizeof(value));
+	}
+	if (value[0] == 0) {
+	  DEBUG("rlm_ldap: thread %p Attribute %s has no value\n", pthread_self(), attr);
+  	  break;
+  	}
+	DEBUG("rlm_ldap: thread %p Adding %s as %s, value %s & op=%d\n", pthread_self(), attr, element->radius_attr, value, token);
+	if((newpair = pairmake(element->radius_attr, value, token)) == NULL)
+	  continue;
+	pairadd(&pairlist, newpair);
+  	ldap_value_free(vals);
+      }
+    }
+  } while ((attr = ldap_next_attribute(ld, entry, berptr)) != NULL);
 
 	ber_free(berptr, 0);
 	return(pairlist);

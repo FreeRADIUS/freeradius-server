@@ -8,16 +8,19 @@ TARGET		= rlm_ldap
 SRCS		= rlm_ldap.c
 HEADERS		= config.h
 RLM_CFLAGS	= $(LIBLDAP_CFLAGS)
-RLM_LIBS	= $(LIBLDAP) $(LIBLBER)
+RLM_LIBS	= $(LIBLDAP)
 
 # check for LDAP
 #
-# This should be where your LDAP LIBS are installed
+# This should be where your LDAP dependancies are installed
 #
 # This is the default location for OpenLDAP libs
 LDAP_LOCATION=/usr/local
-# This is the default location for mozilla libs (at least on my system)
-#LDAP_LOCATION=/usr
+# This is the default location for OpenSSL libs 
+#OpenSSL_LOCATION=/usr/local
+OpenSSL_LOCATION=/usr
+# This is the default location for Cyrus-SASL libs
+SASL_LOCATION=/usr/local
 
 ifeq ($(LIBLDAP),)
 TARGET=
@@ -31,9 +34,4 @@ $(STATIC_OBJS): $(HEADERS)
 $(DYNAMIC_OBJS): $(HEADERS)
 
 config.mak config.h:
-	@../checkconfig -l LIBLDAP ldap_init -lldap "-L$(LDAP_LOCATION)/lib -I$(LDAP_LOCATION)/include"
-	@../checkconfig -l LIBLDAP ldap_init "-lldap -llber -L$(LDAP_LOCATION)/lib" "-I$(LDAP_LOCATION)/include"
-# This should check for the mozilla sdk.  I have only used the procompiled
-# binary, I still need to try to compile it from source and see if it will
-# work with this
-	@../checkconfig -l LIBLDAP ldap_init "-lpthread -lldapssl30"
+	@../checkconfig -l LIBLDAP ldap_init "-pthread -lldap_r -llber -L$(LDAP_LOCATION)/lib -lsasl -L$(SASL_LOCATION)/lib -lssl -lcrypto -L$(OpenSSL_LOCATION)/lib" "-I$(LDAP_LOCATION)/include -pthread -DHAVE_TLS -I$(OpenSSL_LOCATON)/include -I$(SASL_LOCATION)/include"
