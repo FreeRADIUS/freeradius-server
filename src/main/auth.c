@@ -26,6 +26,10 @@ static const char rcsid[] = "$Id$";
 #  include	<prot.h>
 #endif
 
+#if HAVE_NETINET_IN_H
+#  include	<netinet/in.h>
+#endif
+
 #include	"radiusd.h"
 #include	"modules.h"
 
