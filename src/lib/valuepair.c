@@ -638,10 +638,11 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Special case to convert filter to binary
 			 */
-		  	if ( filterBinary( vp, value ) < 0 ) {
-			  librad_log("failed to parse Ascend binary attribute: %s",
-				     librad_errstr);
-			  return NULL;
+			strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
+		  	if (ascend_parse_filter(vp) < 0 ) {
+				librad_log("failed to parse Ascend binary attribute: %s",
+					   librad_errstr);
+				return NULL;
 			}
 			break;
 			/*

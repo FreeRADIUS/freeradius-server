@@ -272,7 +272,7 @@ int		rad_unlockfd(int fd, int lock_len);
 
 #ifdef ASCEND_BINARY
 /* filters.c */
-int		filterBinary(VALUE_PAIR *pair, const char *valstr);
+int		ascend_parse_filter(VALUE_PAIR *pair);
 void		print_abinary(VALUE_PAIR *vp, u_char *buffer, int len);
 #endif /*ASCEND_BINARY*/
 

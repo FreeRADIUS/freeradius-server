@@ -641,12 +641,18 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 				str++;
 				netmask = atoi(str);
 				if ((netmask < 0) || (netmask > 32)) return -1;
+				goto finalize;
 				break;
+
+			default:
+				librad_log("Invalid character in IP address");
+				return -1;
 			}
 		} /* loop over one character */
 	} /* loop until the count hits 4 */
 
 	if (count == 3) {
+	finalize:
 		/*
 		 *	Do the last one, too.
 		 */
@@ -799,7 +805,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			} else {
 				token = lrad_str2int(filterProtoName, argv[0], -1);
 				if (token == -1) {
-					librad_log("Unknown IP protocol \"%s\" in Ip data filter",
+					librad_log("Unknown IP protocol \"%s\" in IP data filter",
 						   argv[0]);
 					return -1;
 				}
@@ -867,7 +873,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			 *	Unknown thingy.
 			 */
 		default:
-			librad_log("Unknown string \"%s\" in Ip data filter",
+			librad_log("Unknown string \"%s\" in IP data filter",
 				   argv[0]);
 			return -1;
 			break;
@@ -878,7 +884,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 	 *	We should have parsed everything by now.
 	 */
 	if (argc != 0) {
-			librad_log("Unknown extra string \"%s\" in Ip data filter",
+			librad_log("Unknown extra string \"%s\" in IP data filter",
 				   argv[0]);
 			return -1;
 	}
@@ -1055,11 +1061,10 @@ static int ascend_parse_generic(int argc, char **argv,
  *	return:			-1 for error or 0.
  */
 int 
-filterBinary(VALUE_PAIR *pair, const char *valstr)
+ascend_parse_filter(VALUE_PAIR *pair)
 {
 	int		token, type;
 	int	        rcode;
-	char		*copied_valstr;
 	int		argc;
 	char		*argv[32];
 	ascend_filter_t filter;
@@ -1067,15 +1072,12 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 	rcode = -1;
 	
 	/*
-	 *	Copy the valstr, so we don't smash it in place via strtok!
+	 *	Tokenize the input string in the VP.
+	 *
+	 *	Once the filter is *completelty* parsed, then we will
+	 *	over-write it with the final binary filter.
 	 */
-	copied_valstr = strdup(valstr);
-	if (!copied_valstr) return -1;
-	
-	/*
-	 *	Tokenize the input string.
-	 */
-	argc = str2argv(copied_valstr, argv, 32);
+	argc = str2argv(pair->strvalue, argv, 32);
 	if (argc < 3) return -1;
 	
 	/*
@@ -1096,7 +1098,6 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 		
 	default:
 		librad_log("Unknown Ascend filter type \"%s\"", argv[0]);
-		free(copied_valstr);
 		return -1;
 		break;
 	}
@@ -1116,7 +1117,6 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 
 	default:
 		librad_log("Unknown Ascend filter direction \"%s\"", argv[1]);
-		free(copied_valstr);
 		return -1;
 		break;
 	}
@@ -1136,7 +1136,6 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 
 	default:
 		librad_log("Unknown Ascend filter action \"%s\"", argv[2]);
-		free(copied_valstr);
 		return -1;
 		break;
 	}
@@ -1158,8 +1157,6 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 	default:		/* should never reach here. */
 		break;
 	}
-	free(copied_valstr);
-	copied_valstr = NULL;
 	
 	/*
 	 *	Touch the VP only if everything was OK.
