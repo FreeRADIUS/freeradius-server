@@ -1,0 +1,34 @@
+AC_INIT(rlm_eap_md5.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_eap_md5])
+
+if test x$with_[]modname != xno; then
+
+	## We may need more complex checking here.  Assume for now that 
+	## everyone has it.
+	AC_CHECK_HEADERS(malloc.h)
+
+	targetname=modname     # keep this!  Don't change!
+else
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+AC_SUBST(eap_md5_cflags)
+AC_SUBST(eap_md5_ldflags)
+
+dnl AC_CONFIG_HEADER(config.h)
+
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(Makefile)  # keep this!  Don't change!
