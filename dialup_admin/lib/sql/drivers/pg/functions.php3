@@ -1,9 +1,18 @@
 <?php
 function da_sql_connect($config)
 {
+	if ($config[sql_use_http_credentials] == 'yes'){
+		global $HTTP_SERVER_VARS;
+		$SQL_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+		$SQL_passwd = $HTTP_SERVER_VARS["PHP_AUTH_PW"];
+	}
+	else{
+		$SQL_user = $config[sql_username];
+		$SQL_passwd = $config[sql_password];
+	}
 	return @pg_connect("host=$config[sql_server] port=$config[sql_port]
-			dbname=$config[sql_database] user=$config[sql_username]
-			password=$config[sql_password]");
+			dbname=$config[sql_database] user=$SQL_user
+			password=$SQL_passwd");
 }
 
 function da_sql_pconnect($config)
