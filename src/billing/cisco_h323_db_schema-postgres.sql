@@ -155,6 +155,25 @@ CREATE VIEW customerip AS
     SELECT gw.cust_gw AS ipaddr, cust.company, cust.customer, gw."location" FROM customers cust, cust_gw gw WHERE (cust.cust_id = gw.cust_id);
 
 
+/*
+ * Function 'strip_dot'
+ * removes "." from the start of cisco timestamps (NASes that have lost ntp timesync temporarily)
+ *  * Example useage:
+ *      insert into mytable values (strip_dot('.16:46:02.356 EET Wed Dec 11 2002'));
+ *
+ */
+
+CREATE OR REPLACE FUNCTION strip_dot (VARCHAR) RETURNS TIMESTAMPTZ AS '
+ DECLARE
+	original_timestamp ALIAS FOR $1;
+ BEGIN
+	IF substring(original_timestamp from 1 for 1) = ''.'' THEN
+		RETURN substring(original_timestamp from 2);
+	ELSE
+		RETURN original_timestamp;
+	END IF;
+ END;
+' LANGUAGE 'plpgsql';
 
 /*
  * Table structure for 'isdn_error_codes' table
