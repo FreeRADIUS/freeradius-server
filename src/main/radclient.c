@@ -72,7 +72,7 @@ static int done = 1;
 
 static int sockfd;
 static int radius_id[256];
-static int last_used_id = 0;
+static int last_used_id = -1;
 
 static rbtree_t *filename_tree = NULL;
 static rbtree_t *request_tree = NULL;
@@ -684,10 +684,8 @@ int main(int argc, char **argv)
 	char filesecret[256];
 	FILE *fp;
 	int do_summary = 0;
-	int id;
 	radclient_t	*this;
 
-	id = ((int)getpid() & 0xff);
 	librad_debug = 0;
 
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);
@@ -729,8 +727,8 @@ int main(int argc, char **argv)
 		case 'i':
 			if (!isdigit((int) *optarg))
 				usage();
-			id = atoi(optarg);
-			if ((id < 0) || (id > 255)) {
+			last_used_id = atoi(optarg);
+			if ((last_used_id < 0) || (last_used_id > 255)) {
 				usage();
 			}
 			break;
@@ -889,7 +887,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	last_used_id = getpid() & 0xff;
+	if (last_used_id < 0) last_used_id = getpid() & 0xff;
 
 	/*
 	 *	Walk over the packets to send, until
