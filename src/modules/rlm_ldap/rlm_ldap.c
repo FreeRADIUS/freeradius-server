@@ -66,10 +66,6 @@ struct TLDAP_RADIUS {
 typedef struct TLDAP_RADIUS TLDAP_RADIUS;
 
 #define MAX_SERVER_LINE 1024
-/*
- * These should really be in a module-specific data structure, which is
- * passed to the module with every request.
- */
 
 typedef struct {
 	char           *server;
@@ -97,11 +93,11 @@ static CONF_PARSER module_config[] = {
 	{"server", PW_TYPE_STRING_PTR, offsetof(ldap_instance,server), NULL, NULL},
 	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance,port), NULL, "389"},
 	/* wait forever on network activity */
-	{"net_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,net_timeout.tv_sec), NULL, "-1"},
+	{"net_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,net_timeout.tv_sec), NULL, "10"},
 	/* wait forever for search results */
-	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,timeout.tv_sec), NULL, "-1"},
+	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,timeout.tv_sec), NULL, "20"},
 	/* allow server unlimited time for search (server-side limit) */
-	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "-1"},
+	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "20"},
 
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, NULL},
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, NULL},
@@ -281,7 +277,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 		inst->bound = 1;
 	}
 	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn, filter);
-	switch (ldap_search_st(inst->ld, search_basedn, scope, filter, attrs, 0, instance->timeout, result)) {
+	switch (ldap_search_st(inst->ld, search_basedn, scope, filter, attrs, 0, &(inst->timeout), result)) {
 	case LDAP_SUCCESS:
 		break;
 
@@ -368,6 +364,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	 * given username
 	 */
 	pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+	free(user_dn);
 	/* Remote access is controled by attribute of the user object */
 	if (inst->access_attr) {
 		if ((vals = ldap_get_values(inst->ld, msg, inst->access_attr)) != NULL) {
@@ -502,6 +499,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 
 	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
 			       1, &res);
+	free(user_dn);
 
 	if (ld_user == NULL)
 		return (res);
@@ -527,10 +525,10 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 		*result = RLM_MODULE_FAIL;
 		return (NULL);
 	}
-	if (inst->net_timeout.tv_sec != -1 && ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, (void *) &(inst->net_timeout)) != LDAP_OPT_SUCCESS) {
+	if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, (void *) &(inst->net_timeout)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %ld.%ld", inst->net_timeout.tv_sec, inst->net_timeout.tv_usec);
 	}
-	if (inst->timelimit != -1 && ldap_set_option(ld, LDAP_OPT_TIMELIMIT, (void *) &(inst->timelimit)) != LDAP_OPT_SUCCESS) {
+	if (ldap_set_option(ld, LDAP_OPT_TIMELIMIT, (void *) &(inst->timelimit)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_TIMELIMIT %d", inst->timelimit);
 	}
 	if (inst->ldap_debug && ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &(inst->ldap_debug)) != LDAP_OPT_SUCCESS) {
@@ -554,10 +552,7 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	}
 	DEBUG("rlm_ldap: waiting for bind result ...");
 
-	if (inst->timeout.tv_sec < 0)
-		rc = ldap_result(ld, msgid, 1, NULL, &res);
-	else
-		rc = ldap_result(ld, msgid, 1, &(inst->timeout), &res);
+	rc = ldap_result(ld, msgid, 1, &(inst->timeout), &res);
 
 	ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 	if(rc < 1) {
