@@ -58,6 +58,14 @@
 
 static const char rcsid[] = "$Id$";
 
+static const char *eap_codes[] = {
+  "",				/* 0 is invalid */
+  "request",
+  "response",
+  "success",
+  "failure"
+};
+
 static const char *eap_types[] = {
   "",   
   "identity",
@@ -273,6 +281,17 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 				default_eap_type = PW_EAP_TLS;
 			}
 
+
+			/*
+			 *	We don't do TLS inside of TLS, as it's
+			 *	a bad idea...
+			 */
+			if (((handler->request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) &&
+			    (default_eap_type == PW_EAP_TLS)) {
+				DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
+				return EAP_INVALID;
+			}
+
 			if (eaptype_call(inst->types[default_eap_type],
 					 handler) == 0) {
 				DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", eap_types[default_eap_type]);
@@ -301,10 +320,15 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *	It is invalid to request identity,
 		 *	notification & nak in nak
 		 */
-		if ((eaptype->data == NULL) ||
-		    (eaptype->data[0] < PW_EAP_MD5) ||
+		if (eaptype->data == NULL) {
+			DEBUG2(" rlm_eap: Empty NAK packet, cannot decide what EAP type the client wants.");
+			return EAP_INVALID;
+		}
+
+		if ((eaptype->data[0] < PW_EAP_MD5) ||
 		    (eaptype->data[0] > PW_EAP_MAX_TYPES)) {
-			DEBUG2(" rlm_eap: NAK asked for bad type");
+			DEBUG2(" rlm_eap: NAK asked for bad type %d",
+			       eaptype->data[0]);
 			return EAP_INVALID;
 		}
 
@@ -677,7 +701,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		DEBUG2("  rlm_eap: Unknown EAP packet");
 	} else {
 		DEBUG2("  rlm_eap: EAP packet type %s id %d length %d",
-		       eap_types[eap_msg->strvalue[0]],
+		       eap_codes[eap_msg->strvalue[0]],
 		       eap_msg->strvalue[1],
 		       eap_msg->length);
 	}
@@ -899,7 +923,7 @@ static char *eap_identity(eap_packet_t *eap_packet)
 
 
 /*
- * Create our Request-Response data structure with the eap packet
+ *	Create our Request-Response data structure with the eap packet
  */
 static EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
 {
