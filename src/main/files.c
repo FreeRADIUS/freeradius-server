@@ -332,6 +332,7 @@ int read_realms_file(const char *file)
 	char *s, *p;
 	int lineno = 0;
 	REALM *c, **tail;
+	int got_realm = FALSE;
 
 	realm_free(mainconfig.realms);
 	mainconfig.realms = NULL;
@@ -344,7 +345,7 @@ int read_realms_file(const char *file)
 		   So this is a non-fatal error.  */
 		return 0;
 	}
-	radlog(L_INFO, "Using deprecated realms file.  Support for this will go away soon.");
+
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
 		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
@@ -360,6 +361,7 @@ int read_realms_file(const char *file)
 			continue;
 		}
 
+		got_realm = TRUE;
 		c = rad_malloc(sizeof(REALM));
 		memset(c, 0, sizeof(REALM));
 
@@ -379,8 +381,8 @@ int read_realms_file(const char *file)
 			 */
 			c->acct_ipaddr = c->ipaddr = htonl(INADDR_NONE);
 			c->secret[0] = '\0';
-			c->auth_port = auth_port;
-			c->acct_port = acct_port;
+			c->auth_port = 0;
+			c->acct_port = 0;
 
 		} else {
 			RADCLIENT *client;
@@ -451,6 +453,13 @@ int read_realms_file(const char *file)
 		tail = &c->next;
 	}
 	fclose(fp);
+
+	/*
+	 *	Complain only if the realms file has content.
+	 */
+	if (got_realm) {
+		radlog(L_INFO, "Using deprecated realms file.  Support for this will go away soon.");
+	}
 
 	return 0;
 }

@@ -71,6 +71,7 @@ int read_clients_file(const char *file)
 	uint32_t mask;
 	int lineno = 0;
 	char *p;
+	int got_clients = FALSE;
 
 	clients_free(mainconfig.clients);
 	mainconfig.clients = NULL;
@@ -82,7 +83,6 @@ int read_clients_file(const char *file)
 		   done. */
 		return 0;
 	}
-	radlog(L_INFO, "Using deprecated clients file.  Support for this will go away soon.");
 
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
@@ -167,6 +167,7 @@ int read_clients_file(const char *file)
 		/*
 		 *	It should be OK now, let's create the buffer.
 		 */
+		got_clients = TRUE;
 		c = rad_malloc(sizeof(RADCLIENT));
 		memset(c, 0, sizeof(*c));
 
@@ -218,6 +219,10 @@ int read_clients_file(const char *file)
 		mainconfig.clients = c;
 	}
 	fclose(fp);
+
+	if (got_clients) {
+		radlog(L_INFO, "Using deprecated clients file.  Support for this will go away soon.");
+	}
 
 	return 0;
 }
