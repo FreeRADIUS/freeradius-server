@@ -46,6 +46,7 @@ ulimit -c unlimited
 	do
 		# Use `wait', otherwise the trap doesn't work.
 		$RADIUSD -f $* &
+		echo "$!" > $rundir/radiusd.pid
 		wait
 		exec >> $logdir/radwatch.log 2>&1
 		echo "`date`: Radius died, restarting.."
