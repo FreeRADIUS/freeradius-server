@@ -26,28 +26,20 @@ int rad_accounting(REQUEST *request)
 {
 	int		reply;
 
-	/*
-	 *	FIXME: Prefix= and Suffix= support needs to be added!
-	 *
-	 *	We need to get the Prefix= and Suffix= things from
-	 *	the users file to apply.
-	 *	In 1.5.4.3, we used presuf_setup() but that is
-	 *	not possible anymore. Perhaps we need an extra
-	 *	module entry point for this ?
-	 */
-	/* Like preacct? */
-
 	if(!request->proxy) { /* Only need to do this once, before proxying */
-	  reply = module_preacct(request);
-	  if (reply != RLM_MODULE_NOOP &&
-	      reply != RLM_MODULE_OK &&
-	      reply != RLM_MODULE_UPDATED)
-		  return reply;
-
-	  /* Maybe one of the preacct modules has decided that a proxy should
-	   * be used. If so, get out of here and send the packet. */
-	  if(pairfind(request->config_items, PW_PROXY_TO_REALM))
-		  return reply;
+		reply = module_preacct(request);
+		if (reply != RLM_MODULE_NOOP &&
+		    reply != RLM_MODULE_OK &&
+		    reply != RLM_MODULE_UPDATED)
+			return reply;
+		
+		/*
+		 *	Maybe one of the preacct modules has decided
+		 *	that a proxy should be used. If so, get out of
+		 *	here and send the packet.
+		 */
+		if(pairfind(request->config_items, PW_PROXY_TO_REALM))
+			return reply;
 	}
 
 	reply = RLM_MODULE_OK;
