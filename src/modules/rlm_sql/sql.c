@@ -40,27 +40,30 @@ int sql_init(CONF_PARSER *module_config, SQL_CONFIG *config, int reload) {
 
 	CONF_SECTION *sql_cs;
 
-/*
-	strcpy(sql->config->sql_server,"localhost");
-	strcpy(sql->config->sql_login,"");
-	strcpy(sql->config->sql_password,"");
-	strcpy(sql->config->sql_db,"radius");
-	strcpy(sql->config->sql_authcheck_table,"radcheck");
-	strcpy(sql->config->sql_authreply_table,"radreply");
-	strcpy(sql->config->sql_groupcheck_table,"radgroupcheck");
-	strcpy(sql->config->sql_groupreply_table,"radgroupreply");
-	strcpy(sql->config->sql_usergroup_table,"usergroup");
-	strcpy(sql->config->sql_realmgroup_table,"realmgroup");
-	strcpy(sql->config->sql_acct_table,"radacct");
+	/*
+	 *	Initialize the data structure with dynamically allocated
+	 *	memory.
+	 */
+	sql->config->sql_server = strdup("localhost");
+	sql->config->sql_login = strdup("");
+	sql->config->sql_password = strdup("");
+	sql->config->sql_db = strdup("radius");
+	sql->config->sql_authcheck_table = strdup("radcheck");
+	sql->config->sql_authreply_table = strdup("radreply");
+	sql->config->sql_groupcheck_table = strdup("radgroupcheck");
+	sql->config->sql_groupreply_table = strdup("radgroupreply");
+	sql->config->sql_usergroup_table = strdup("usergroup");
+	sql->config->sql_realmgroup_table = strdup("realmgroup");
+	sql->config->sql_acct_table = strdup("radacct");
 	sql->config->sqltrace = 0;
 	sql->config->sensitiveusername = 1;
 	sql->config->deletestalesessions = 0;
 
-	strcpy(sql->config->sql_nas_table,"nas");
-	strcpy(sql->config->sql_realm_table, "realms");
-	strcpy(sql->config->sql_dict_table,"dictionary");
+	sql->config->sql_nas_table = strdup("nas");
+	sql->config->sql_realm_table = strdup( "realms");
+	sql->config->sql_dict_table = strdup("dictionary");
 	sql->config->max_sql_socks = MAX_SQL_SOCKS;
-*/
+
 
 	/*
          *      Look for the module's configuration.  If it doesn't

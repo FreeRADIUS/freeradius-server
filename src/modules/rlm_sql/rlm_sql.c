@@ -30,20 +30,20 @@ static const char rcsid[] = "$Id$";
 #include <arpa/inet.h>
 
 static SQL_CONFIG config = {
-	"localhost",
-	"root",
-	"",
-	"radius",
-	"radacct",
-	"radcheck",
-	"radreply",
-	"radgroupcheck",
-	"radgroupreply",
-	"usergroup",
-	"realm",
-	"realmgroup",
-	"nas",
-	"dictionary",
+	NULL,			/* "localhost" */
+	NULL,			/* "root" */
+	NULL,			/* "" */
+	NULL,			/* "radius" */
+	NULL,			/* "radacct" */
+	NULL,			/* "radcheck" */
+	NULL,			/* "radreply" */
+	NULL,			/* "radgroupcheck" */
+	NULL,			/* "radgroupreply" */
+	NULL,			/* "usergroup" */
+	NULL,			/* "realm" */
+	NULL,			/* "realmgroup" */
+	NULL,			/* "nas" */
+	NULL,			/* "dictionary" */
 	0,
 	0,
 	1,
