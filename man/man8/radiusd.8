@@ -1,0 +1,160 @@
+.TH RADIUSD 8 "21 March 1999" "" "Cistron Radius Daemon"
+.SH NAME
+radiusd -- Authentication, Authorization and Accounting server
+.SH SYNOPSIS
+.B radiusd
+.RB [ \-A ]
+.RB [ \-S ]
+.RB [ \-a
+.IR accounting_directory ]
+.RB [ \-b ]
+.RB [ \-c ]
+.RB [ \-d
+.IR config_directory ]
+.RB [ \-f ]
+.RB [ \-i
+.IR ip-address ]
+.RB [ \-l
+.IR log_directory ]
+.RB [ \-p
+.IR port ]
+.RB [ \-s ]
+.RB [ \-v ]
+.RB [ \-x ]
+.RB [ \-y ]
+.RB [ \-z ]
+.SH DESCRIPTION
+This is the Cistron implementation of the well known
+.B radius
+server program. It is based on \fILivingston's\fP radius version 1.16.
+Even though this program is largely compatible with \fILivingston's\fP
+radius version 2.0, it's \fBnot\fP based on any part of that code.
+.PP
+\fBRADIUS\fP is a protocol spoken between an access server, typically
+a device connected to several modems or ISDN lines, and a \fBradius\fP
+server. When a user connects to the access server, (s)he is asked for
+a loginname and a password. This information is then sent to the \fBradius\fP
+server. The server replies with "access denied", or "access OK". In the
+latter case login information is sent along, such as the IP address in
+the case of a PPP connection.
+.PP
+The access server also sends login and logout records to the \fBradius\fP
+server so accounting can be done. These records are kept for each terminal
+server seperately in a file called \fBdetail\fP, and in the \fIwtmp\fP
+compatible logfile \fB/var/log/radwtmp\fP.
+.SH OPTIONS
+
+.IP \-A
+Write a file \fIdetail.auth\fP in addition to the standard \fBdetail\fP file
+in the same directory. This file will contain all the authentication-request
+records. This can be useful for debugging, but not for normal operation.
+
+.IP \-S
+Write the stripped usernames (without prefix or suffix) in the \fIdetail\fP
+file instead of the raw record as received from the terminal server.
+
+.IP "\-a \fIaccounting directory\fP"
+This defaults to \fI/var/log/radacct\fP. If that directory exists,
+\fBradiusd\fP will write an ascii accounting record into a detail file for
+every login/logout recorded. The location of the detail file is
+\fIacct_dir/\fP\fBterminal_server\fP\fI/detail\fP.
+
+.IP "\-l \fIlogging directory\fP"
+This defaults to \fI/var/log\fP. \fBRadiusd\fP writes a logfile here called
+\fIradius.log\fP. It contains informational and error messages, and optionally
+a record of every login attempt (for aiding an ISP's helpdesk). The
+special argument \fIstdout\fP causes the information to get written
+to the standard output instead.
+
+.IP "\-d \fIconfig directory\fP"
+Defaults to \fI/etc/raddb\fP. \fBRadiusd\fP looks here for its configuration
+files such as the \fIdictionary\fP and the \fIusers\fP files.
+
+.IP "\-i \fIip-address\fP"
+Defines which IP addres to bind to for sending and receiving packets-
+useful for multi-homed hosts.
+
+.IP \-b
+If the \fBradius\fP server binary was compiled with \fIdbm\fP support,
+this flag tells it to actually \fIuse\fP the database files instead of the
+flat \fIusers\fP file.
+
+.IP \-c
+This is still an \fIexperimental\fP feature.
+Cache the password, group and shadow files in a hash-table in memory.
+This makes the radius process use a bit more memory, but username
+lookups in the password file are \fImuch\fP faster.
+.IP
+After every change in the real password file (user added, password changed)
+you need to send a \fBSIGHUP\fP to the radius server to let it re-read
+its configuration and the password/group/shadow files !
+
+.IP \-f
+Do not fork, stay running as a foreground process.
+
+.IP "\-p \fIport\fP"
+Normally radiusd listens on the ports specified in \fI/etc/services\fP
+(radius and radacct). With this option radiusd listens on the specified
+port for authentication requests and on the specified port +1 for
+accounting requests.
+
+.IP \-s
+Normally, the server forks a seperate process for accounting, and a seperate
+process for every authentication request. With this flag the server will not
+do that. It won't even "daemonize" (auto-background) itself.
+
+.IP \-x
+Debug mode. In this mode the server will print details of every request
+on it's \fBstderr\fP output. Most useful in combination with \fB-s\fP.
+You can specify this option 2 times (-x -x or -xx) to get a bit more
+debugging output.
+
+.IP \-y
+Write details about every authentication request in the
+\fIradius.log\fP file.
+
+.IP \-z
+Include the password in the \fIradius.log\fP file \fBeven\fP for successful
+logins. \fIThis is very insecure!\fP.
+
+.SH CONFIGURATION
+\fBRadiusd\fP uses 6 configuration files. Each file has it's own manpage
+describing the format of the file. These files are:
+.IP dictionary
+This file is usually static. It defines all the possible RADIUS attributes
+used in the other configuration files. You don't have to modify it.
+.IP clients
+Contains the IP address and a secret key for every client that wants
+to connect to the server.
+.IP naslist
+Contains an entry for every NAS (Network Access Server) in the network. This
+is not the same as a client, especially if you have \fBradius\fP proxy server
+in your network. In that case, the proxy server is the client and it sends
+requests for different NASes.
+.IP
+It also contains a abbreviated name for each
+terminal server, used to create the directory name where the \fBdetail\fP
+file is written, and used for the \fB/var/log/radwtmp\fP file. Finally
+it also defines what type of NAS (Cisco, Livingston, Portslave) the NAS is.
+.IP hints
+Defines certain hints to the radius server based on the users's loginname
+or other attributes sent by the access server. It also provides for
+mapping user names (such as Pusername -> username). This provides the
+functionality that the \fILivingston 2.0\fP server has as "Prefix" and
+"Suffix" support in the \fIusers\fP file, but is more general. Ofcourse
+the Livingston way of doing things is also supported, and you can even use
+both at the same time (within certain limits).
+.IP huntgroups
+Defines the huntgroups that you have, and makes it possible to restrict
+access to certain huntgroups to certain (groups of) users.
+.IP users
+Here the users are defined. On a typical setup, this file mainly contains
+DEFAULT entries to process the different types of logins, based on hints
+from the hints file. Authentication is then based on the contents of
+the UNIX \fI/etc/passwd\fP file. However it is also possible to define all
+users, and their passwords, in this file.
+.SH SEE ALSO
+builddbm(8rad), users(5rad), huntgroups(5rad), hints(5rad),
+clients(5rad), dictionary(5rad).
+.SH AUTHOR
+Miquel van Smoorenburg, miquels@cistron.nl.
