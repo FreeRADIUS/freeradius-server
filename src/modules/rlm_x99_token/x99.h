@@ -84,6 +84,7 @@ typedef struct x99_token_t {
     int ewindow2_delay;	/* softfail override max time delay                */
 #if defined(FREERADIUS)
     /* freeradius-specific items */
+    char *name;			/* instance name for x99_token_authorize() */
     int mschapv2_mppe_policy;	/* whether or not do to mppe for mschapv2  */
     int mschapv2_mppe_types;	/* key type/length for mschapv2/mppe       */
     int mschap_mppe_policy;	/* whether or not do to mppe for mschap    */

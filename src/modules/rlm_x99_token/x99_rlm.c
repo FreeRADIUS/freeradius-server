@@ -263,6 +263,16 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 	return -1;
     }
 
+    /* Set the instance name (for use with authorize()) */
+    data->name = cf_section_name2(conf);
+    if (!data->name)
+	data->name = cf_section_name1(conf);
+    if (!data->name) {
+	x99_log(X99_LOG_ERR, "no instance name (this can't happen)");
+	free(data);
+	return -1;
+    }
+
     *instance = data;
     return 0;
 }
@@ -284,11 +294,11 @@ x99_token_authorize(void *instance, REQUEST *request)
     int32_t sflags = 0; /* flags for state */
     VALUE_PAIR *vp;
 
-    /* Early exit if Auth-Type !~ /^x99_token/ */
+    /* Early exit if Auth-Type != inst->name */
     auth_type_found = 0;
     if ((vp = pairfind(request->config_items, PW_AUTHTYPE)) != NULL) {
 	auth_type_found = 1;
-	if (strncmp(vp->strvalue, "x99_token", 9)) {
+	if (strcmp(vp->strvalue, inst->name)) {
 	    return RLM_MODULE_NOOP;
 	}
     }
