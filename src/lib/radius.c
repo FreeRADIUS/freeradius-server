@@ -553,6 +553,30 @@ RADIUS_PACKET *rad_recv(int fd)
 			free(packet);
 			return NULL;
 		}
+
+		/*
+		 *	Sanity check the attributes for length.
+		 */
+		switch (attr[0]) {
+		case PW_MESSAGE_AUTHENTICATOR:
+			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
+				librad_log("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
+					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+					   attr[1] - 2);
+				free(packet->data);
+				free(packet);
+				return NULL;
+			}
+			break;
+		}
+
+		/*
+		 *	FIXME: Look up the base 255 attributes in the
+		 *	dictionary, and switch over their type.  For
+		 *	integer/date/ip, the attribute length SHOULD
+		 *	be 6.
+		 */
+
 		count -= attr[1];	/* grab the attribute length */
 		attr += attr[1];
 	}
