@@ -952,6 +952,64 @@ int thread_pool_clean(time_t now)
 
 static int exec_initialized = FALSE;
 
+/*
+ *	We use the PID number as a base for the array index, so that
+ *	we can quickly turn the PID into a free array entry, instead
+ *	of rooting blindly through the entire array.
+ */
+#define PID_2_ARRAY(pid) (((int) pid ) & (NUM_FORKERS - 1))
+
+
+/*
+ *	Called by the main signal handler, to save the status of the child
+ */
+static int rad_savepid(pid_t pid, int status)
+{
+	int i;
+
+	if (!exec_initialized) return 0;
+
+	/*
+	 *	Find the PID to wait for, starting at an index within
+	 *	the array.  This makes the lookups O(1) on average,
+	 *	instead of O(n), when the array is filling up.
+	 */
+	i = PID_2_ARRAY(pid);
+
+	/*
+	 *	Do NOT lock the array, as nothing else sets the
+	 *	status and posts the semaphore.
+	 */
+	do {
+		/*
+		 *	Any thread can get the sigchild...
+		 */
+		if ((forkers[i].thread_id != NO_SUCH_CHILD_PID) &&
+		    (forkers[i].child_pid == pid)) {
+			/*
+			 *	Save the status, THEN post the
+			 *	semaphore.
+			 */
+			forkers[i].status = status;
+			sem_post(&forkers[i].child_done);
+
+			/*
+			 *	FIXME: If the child is more than 60
+			 *	seconds out of date, then delete it.
+			 *
+			 *	That is, we've forked, and the forker
+			 *	is waiting nearly forever
+			 */
+			return 0;
+		}
+
+		i++;
+		i &= (NUM_FORKERS - 1);
+	} while (i != PID_2_ARRAY(pid));
+
+	return -1;
+}
+
 
 /*
  *	Handle child signals.
@@ -1034,13 +1092,6 @@ static void rad_exec_init(void)
 
 	exec_initialized = TRUE;
 }
-
-/*
- *	We use the PID number as a base for the array index, so that
- *	we can quickly turn the PID into a free array entry, instead
- *	of rooting blindly through the entire array.
- */
-#define PID_2_ARRAY(pid) (((int) pid ) & (NUM_FORKERS - 1))
 
 /*
  *	Thread wrapper for fork().
@@ -1259,55 +1310,6 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 	return pid;
 }
 
-/*
- *	Called by the main signal handler, to save the status of the child
- */
-int rad_savepid(pid_t pid, int status)
-{
-	int i;
-
-	if (!exec_initialized) return 0;
-
-	/*
-	 *	Find the PID to wait for, starting at an index within
-	 *	the array.  This makes the lookups O(1) on average,
-	 *	instead of O(n), when the array is filling up.
-	 */
-	i = PID_2_ARRAY(pid);
-
-	/*
-	 *	Do NOT lock the array, as nothing else sets the
-	 *	status and posts the semaphore.
-	 */
-	do {
-		/*
-		 *	Any thread can get the sigchild...
-		 */
-		if ((forkers[i].thread_id != NO_SUCH_CHILD_PID) &&
-		    (forkers[i].child_pid == pid)) {
-			/*
-			 *	Save the status, THEN post the
-			 *	semaphore.
-			 */
-			forkers[i].status = status;
-			sem_post(&forkers[i].child_done);
-
-			/*
-			 *	FIXME: If the child is more than 60
-			 *	seconds out of date, then delete it.
-			 *
-			 *	That is, we've forked, and the forker
-			 *	is waiting nearly forever
-			 */
-			return 0;
-		}
-
-		i++;
-		i &= (NUM_FORKERS - 1);
-	} while (i != PID_2_ARRAY(pid));
-
-	return -1;
-}
 #else /* HAVE_PTHREAD_H */
 /*
  *	"thread" code when we don't have threads.
