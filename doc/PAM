@@ -19,7 +19,7 @@
 
 2. NOTES
 
-   Use ./configure --iwth-pam to enable building of the PAM module
+   Use ./configure --with-pam to enable building of the PAM module
    (for now)
 
    Miguel has made PAM changes to the Cistron radiusd, since he now uses
