@@ -49,6 +49,7 @@ typedef pid_t child_pid_t;
 typedef struct request_data_t request_data_t;
 
 #define REQUEST_DATA_REGEX (0xadbeef00)
+#define REQUEST_MAX_REGEX (8)
 
 typedef struct auth_req {
 #ifndef NDEBUG

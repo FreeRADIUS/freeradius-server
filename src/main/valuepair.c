@@ -366,13 +366,14 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 					REG_EXTENDED);
 				compare = regexec(&reg,
 						  (char *)auth_item->strvalue,
-						  16, rxmatch, 0);
+						  REQUEST_MAX_REGEX + 1,
+						  rxmatch, 0);
 				regfree(&reg);
 
 				/*
 				 *	Add %{0}, %{1}, etc.
 				 */
-				for (i = 0; i <= 8; i++) {
+				for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
 					char *p;
 					char buffer[sizeof(check_item->strvalue)];
 

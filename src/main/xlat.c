@@ -56,6 +56,10 @@ static const char *internal_xlat[] = {"check",
 				      "proxy-request",
 				      "proxy-reply",
 				      NULL};
+
+#if REQUEST_MAX_REGEX > 8
+#error Please fix the following line
+#endif
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
 
@@ -297,7 +301,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		 *	Register xlat's for regexes.
 		 */
 		buffer[1] = '\0';
-		for (i = 0; i <= 8; i++) {
+		for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
 			buffer[0] = '0' + i;
 			xlat_register(buffer, xlat_regex, &xlat_inst[i]);
 			c = xlat_find(buffer);
