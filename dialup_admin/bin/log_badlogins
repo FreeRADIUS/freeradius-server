@@ -19,8 +19,13 @@ while(<CONF>){
 	$sql_password = $val if ($key eq 'sql_password');
 	$sql_database = $val if ($key eq 'sql_database');
 	$sql_accounting_table = $val if ($key eq 'sql_accounting_table');
+	$realm_strip = $val if ($key eq 'general_strip_realms');
+	$realm_del = $val if ($key eq 'general_realm_delimiter');
+	$realm_for = $val if ($key eq 'general_realm_format');
 }
 close CONF;
+$realm_del = '@' if ($realm_del eq '');
+$realm_for = 'suffix' if ($realm_for eq '');
 $pass = ($sql_password ne '') ? "-p$sql_password" : '';
 
 open LOG, "<$file"
@@ -78,6 +83,12 @@ for(;;){
 				$addr = gethostbyname $nas;
 				($a,$b,$c,$d)=unpack('C4',$addr);
 				$addr = "$a.$b.$c.$d";
+				if ($user ne '' && $realm_strip eq 'yes'){
+					($one,$two) = (split /$realm_del/, $user)[0,1];
+					if ($two ne ''){
+						$user = ($realm_for eq 'suffix') ? $one : $two;
+					}
+				}
 				open TMP, ">$tmpfile"
 					or die "Could not open temporary file\n";
 				print TMP "INSERT INTO $sql_accounting_table (UserName,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$addr','$port','$time','$time','0','0','0','$caller','$cause');";

@@ -26,4 +26,11 @@ if ($use_session == 0 && $config[general_use_session] == 'yes'){
 	// Start session
 	@session_start();
 }
+if ($login != '' && $config[general_strip_realms] == 'yes'){
+	$realm_del = ($config[general_realm_delimiter] != '') ? $config[general_realm_delimiter] : '@';
+	$realm_for = ($config[general_realm_format] != '') ? $config[general_realm_format] : 'suffix';
+	$new = explode($realm_del,$login,2);
+	if (count($new) == 2)
+		$login = ($realm_for == 'suffix') ? $new[0] : $new[1];
+}
 ?>
