@@ -101,7 +101,17 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	 */
 	if (mainconfig.log_auth_badpass || mainconfig.log_auth_goodpass) {
 		if (!request->password) {
-			strcpy(clean_password, "<no User-Password attribute>");
+			VALUE_PAIR *auth_type;
+
+			auth_type = pairfind(request->config_items,
+					     PW_AUTH_TYPE);
+			if (auth_type && (auth_type->strvalue[0] != '\0')) {
+				snprintf(clean_password, sizeof(clean_password),
+					 "<via Auth-Type = %s>",
+					 auth_type->strvalue);
+			} else {
+				strcpy(clean_password, "<no User-Password attribute>");
+			}
 		} else if (request->password->attribute == PW_CHAP_PASSWORD) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
@@ -398,7 +408,6 @@ int rad_authenticate(REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*check_item;
-	VALUE_PAIR	*reply_item;
 	VALUE_PAIR	*auth_item;
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
@@ -801,6 +810,10 @@ autz_redo:
 
 			return RLM_MODULE_REJECT;
 		}
+
+		/*
+		 *	FIXME: Add Reply-Message with the text?
+		 */
 	}
 
 	/*
