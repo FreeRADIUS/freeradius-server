@@ -68,7 +68,7 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 	char buffer[MAX_STRING_LEN * 4];
 
 	if (pair != NULL) {
-		vp_prints_value(buffer, sizeof(buffer), pair, 0);
+		vp_prints_value(buffer, sizeof(buffer), pair, -1);
 		return func(out, outlen, buffer);
 	}
 

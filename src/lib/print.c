@@ -110,32 +110,29 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 
 	switch (vp->type) {
 		case PW_TYPE_STRING:
-			/*
-			 *  NAS-Port may have multiple integer values?
-			 *  This is an internal server extension...
-			 */
-			if (vp->attribute == PW_NAS_PORT)
-				a = (char *)vp->strvalue;
-			else {
-				if (delimitst && vp->flags.has_tag) {
-				        /* Tagged attribute: print delimter and ignore tag */
-				        buf[0] = '"';
-					librad_safeprint((char *)(vp->strvalue),
-							 vp->length, buf + 1, sizeof(buf) - 2);
-					strcat(buf, "\"");
-				} else if (delimitst) {
-				        /* Non-tagged attribute: print delimter */
-				        buf[0] = '"';
-					librad_safeprint((char *)vp->strvalue,
-							 vp->length, buf + 1, sizeof(buf) - 2);
-					strcat(buf, "\"");
-				} else {
-				        /* Non-tagged attribute: no delimiter */
-				        librad_safeprint((char *)vp->strvalue,
-							 vp->length, buf, sizeof(buf));
-				}
-				a = buf;
+			if ((delimitst == 1) && vp->flags.has_tag) {
+				/* Tagged attribute: print delimter and ignore tag */
+				buf[0] = '"';
+				librad_safeprint((char *)(vp->strvalue),
+						 vp->length, buf + 1, sizeof(buf) - 2);
+				strcat(buf, "\"");
+			} else if (delimitst == 1) {
+				/* Non-tagged attribute: print delimter */
+				buf[0] = '"';
+				librad_safeprint((char *)vp->strvalue,
+						 vp->length, buf + 1, sizeof(buf) - 2);
+				strcat(buf, "\"");
+
+			} else if (delimitst < 0) {
+				strNcpy(out, vp->strvalue, outlen);
+				return strlen(out);
+
+			} else {
+				/* Non-tagged attribute: no delimiter */
+				librad_safeprint((char *)vp->strvalue,
+						 vp->length, buf, sizeof(buf));
 			}
+			a = buf;
 			break;
 		case PW_TYPE_INTEGER:
 		        if ( vp->flags.has_tag ) {
