@@ -335,8 +335,8 @@ ATTRIB_NMC	USR-Auth-Mode				0xf003	integer
 #VALUE		USR-Character-Echo	Echo-On			0
 #VALUE		USR-Character-Echo	Echo-Off		1
 
-VALUE		USR-RIPV2		Off			0
-VALUE		USR-RIPV2		On			1
+VALUE		USR-PW_Framed_Routing_V2	Off			0
+VALUE		USR-PW_Framed_Routing_V2	On			1
 
 VALUE		USR-Syslog-Tap		Off			0
 VALUE		USR-Syslog-Tap		On-Raw			1
