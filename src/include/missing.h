@@ -10,17 +10,24 @@
 char *crypt(char *key, char *salt);
 #endif
 
-#ifdef __EMX__
-#define OS2
-/* EMX does not have SIGIOT */
-#define SIGIOT SIGTERM
+#ifndef HAVE_STRNCASECMP
+int strncasecmp(char *s1, char *s2, int n);
+#endif
 
-/* EMX does not have this functions and must be implemented */
-#define strncasecmp    strncmp
-#define strcasecmp    strcmp
-#define inet_aton(x,y)     0
+#ifndef HAVE_STRCASECMP
+int strcasecmp(char *s1, char *s2);
+#endif
+
+#ifndef HAVE_INET_ATON
+struct in_addr;
+int inet_aton(char *cp, struct in_addr *inp);
+#endif
+
+#ifndef HAVE_GETHOSTNAME
+int gethostname(char *name, int len);
+#endif
+
+#ifndef HAVE_SETLINEBUF
 #define setlinebuf(x)     0
-#define gethostname(x,y)  strncpy(x,getenv("HOSTNAME"),y)
-
 #endif
 

@@ -1,21 +1,21 @@
 /*
  * misc.c	Various miscellaneous functions.
  *
- * Version:     @(#)misc.c  1.00  19-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  */
 
-char misc_sccsid[] =
-"@(#)misc.c	1.00 Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] =
+"$Id$";
 
 #include	"autoconf.h"
 
+#include	<stdio.h>
 #include	<sys/types.h>
 #include	<sys/socket.h>
 #include	<sys/time.h>
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
 
-#include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
 #include	<netdb.h>
@@ -25,7 +25,7 @@ char misc_sccsid[] =
 #include	<signal.h>
 
 #include	"libradius.h"
-#include    "missing.h"
+#include	"missing.h"
 
 int		librad_dodns = 1;
 int		librad_debug = 0;

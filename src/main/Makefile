@@ -10,7 +10,7 @@ SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h
 
 CFLAGS		+= -I../include
-LDFLAGS		+= -L../lib -rdynamic
+LDFLAGS		+= -L../lib $(RDYNAMIC)
 LIBS		+= -lradius
 
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)

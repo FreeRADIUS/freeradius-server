@@ -160,8 +160,12 @@ int main(int argc, char **argv)
 	signal(SIGHUP, sig_hup);
 	signal(SIGINT, sig_fatal);
 	signal(SIGQUIT, sig_fatal);
+#ifdef SIGTRAP
 	signal(SIGTRAP, sig_fatal);
+#endif
+#ifdef SIGIOT
 	signal(SIGIOT, sig_fatal);
+#endif
 	signal(SIGTERM, sig_fatal);
 	signal(SIGCHLD, sig_cleanup);
 #if 0

@@ -236,6 +236,11 @@ AC_CHECK_FUNCS( \
 	snprintf \
 	vsnprintf \
 	setsid \
+	strncasecmp \
+	strcasecmp \
+	inet_aton \
+	gethostname \
+	setlinebuf \
 )
 
 dnl Check for socklen_t
@@ -244,6 +249,19 @@ AC_TRY_COMPILE([#include <sys/types.h>
   [socklen_t foo],
   AC_DEFINE(HAVE_SOCKLEN_T),
 )
+
+dnl Check if the C compiler supports -rdynamic
+AC_MSG_CHECKING(whether $CC accepts -rdynamic...)
+OFLAGS="$CLAGS"
+CFLAGS="$CFLAGS -rdynamic"
+AC_TRY_COMPILE([], [int x = 0],RDYNAMIC=-rdynamic)
+AC_SUBST(RDYNAMIC)
+if test -n "$RDYNAMIC"; then
+  AC_MSG_RESULT(yes)
+else
+  AC_MSG_RESULT(no)
+fi
+CFLAGS="$OFLAGS"
 
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)

@@ -19,7 +19,7 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 
 #include	"libradius.h"
-#include    "missing.h"
+#include	"missing.h"
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>

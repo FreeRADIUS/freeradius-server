@@ -21,7 +21,7 @@ static const char rcsid[] = "$Id$";
 #endif
 
 #include	"libradius.h"
-#include    "missing.h"
+#include	"missing.h"
 
 static DICT_ATTR	*dictionary_attributes;
 static DICT_VALUE	*dictionary_values;
