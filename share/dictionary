@@ -1,6 +1,4 @@
 #
-# Updated 07-Nov-1998 to RFC 2138 and RFC 2139
-#
 # Version $Id$
 #
 #	This file contains dictionary translations for parsing
@@ -15,7 +13,7 @@
 #					00:00:00 GMT,  Jan.  1,  1970
 #
 #	FreeRADIUS includes extended data types which are not defined
-#	in RFC 2138 or RFC 2139.  These data types are:
+#	in RFC 2865 or RFC 2866.  These data types are:
 #
 #	abinary - Ascend's binary filter format.
 #	octets  - raw octets, printed and input as hex strings.
@@ -54,6 +52,7 @@ $INCLUDE dictionary.usr
 $INCLUDE dictionary.versanet
 $INCLUDE dictionary.erx
 $INCLUDE dictionary.freeradius
+$INCLUDE dictionary.alcatel
 
 #
 #	Following are the proper new names. Use these.
