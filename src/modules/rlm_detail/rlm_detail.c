@@ -85,16 +85,12 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
-/*
- *	Accounting - write the detail files.
- */
-static int detail_accounting(void *instance, REQUEST *request)
+static int do_detail(void *instance, REQUEST *request, VALUE_PAIR *pair)
 {
 	int		outfd;
 	FILE		*outfp;
 	char		buffer[DIRLEN];
 	char		*p;
-	VALUE_PAIR	*pair;
 	int		ret = RLM_MODULE_OK;
 	struct stat	st;
 	int		locked;
@@ -224,7 +220,6 @@ static int detail_accounting(void *instance, REQUEST *request)
 		fputs(ctime_r(&request->timestamp, buffer), outfp);
 
 		/* Write each attribute/value to the log file */
-		pair = request->packet->vps;
 		while (pair) {
 			if (pair->attribute != PW_PASSWORD) {
 				fputs("\t", outfp);
@@ -271,6 +266,31 @@ static int detail_accounting(void *instance, REQUEST *request)
 	return ret;
 }
 
+/*
+ *	Accounting - write the detail files.
+ */
+static int detail_accounting(void *instance, REQUEST *request)
+{
+
+	return do_detail(instance,request,request->packet->vps);
+}
+
+/*
+ *	Incoming Access Request - write the detail files.
+ */
+static int detail_authorize(void *instance, REQUEST *request)
+{
+	return do_detail(instance,request,request->packet->vps);
+}
+
+/*
+ *	Outgoing Access-Request Reply - write the detail files.
+ */
+static int detail_postauth(void *instance, REQUEST *request)
+{
+	return do_detail(instance,request,request->reply->vps);
+}
+
 
 /*
  *	Clean up.
@@ -295,13 +315,13 @@ module_t rlm_detail = {
 	detail_instantiate,		/* instantiation */
 	{
 		NULL,			/* authentication */
-		NULL,		 	/* authorization */
+		detail_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		detail_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		detail_postauth		/* post-auth */
 	},
 	detail_detach,			/* detach */
 	NULL				/* destroy */
