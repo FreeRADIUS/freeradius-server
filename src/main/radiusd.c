@@ -58,6 +58,7 @@ static const char rcsid[] =
 #include	"radiusd.h"
 #include	"conffile.h"
 #include	"modules.h"
+#include	"request_list.h"
 
 #if WITH_SNMP
 #include	"radius_snmp.h"
@@ -101,21 +102,6 @@ static struct rlimit	core_limits;
 static int		proxy_requests = TRUE;
 
 /*
- *  We keep the incoming requests in an array, indexed by ID.
- *
- *  Each array element contains a linked list of active requests,
- *  a count of the number of requests, and a time at which the first
- *  request in the list must be serviced.
- */
-typedef struct REQUEST_LIST {
-	REQUEST		*first_request;
-	int		request_count;
-	time_t		last_cleaned_list;
-} REQUEST_LIST;
-
-static REQUEST_LIST	request_list[256];
-
-/*
  *  Configuration items.
  */
 static int		allow_core_dumps = FALSE;
@@ -140,10 +126,9 @@ static void	sig_hup (int);
 
 static void	rad_reject(REQUEST *request);
 static int	rad_process (REQUEST *, int);
-static int	rad_clean_list(time_t curtime);
+static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
-static struct timeval *setuptimeout();
 static void     refresh_request(REQUEST *request, time_t now);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
@@ -454,6 +439,7 @@ int main(int argc, char **argv)
 	int			syslog_facility = LOG_DAEMON;
 	int			radius_port = 0;
 	struct servent		*svp;
+	struct timeval		*tv = NULL;
  
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
@@ -656,13 +642,9 @@ int main(int argc, char **argv)
 #endif
 
 	/*
-	 *	Initialize the request_list[] array.
+	 *	Initialize the request list.
 	 */
-	for (i = 0; i < 256; i++) {
-	  request_list[i].first_request = NULL;
-	  request_list[i].request_count = 0;
-	  request_list[i].last_cleaned_list = 0;
-	}
+	rl_init();
 
 	/*
 	 *	We prefer (in order) the port from the command-line,
@@ -901,8 +883,6 @@ int main(int argc, char **argv)
 	 *	Receive user requests
 	 */
 	for(;;) {
-		time_t now;
-
 		if (need_reload) {
 			if (reread_config(TRUE) < 0) {
 				exit(1);
@@ -923,16 +903,14 @@ int main(int argc, char **argv)
 			FD_SET(rad_snmp.smux_fd, &readfds);
 #endif
 
-		status = select(32, &readfds, NULL, NULL,
-				setuptimeout());
-		now = time(NULL);
+		status = select(32, &readfds, NULL, NULL, tv);
 		if (status == -1) {
 			/*
 			 *	On interrupts, we clean up the
 			 *	request list.
 			 */
 			if (errno == EINTR) {
-				rad_clean_list(now);
+				tv = rad_clean_list(time(NULL));
 				continue;
 			}
 			radlog(L_ERR, "Unexpected error in select(): %s",
@@ -1022,25 +1000,13 @@ int main(int argc, char **argv)
 			request->config_items = NULL;
 			request->username = NULL;
 			request->password = NULL;
-			request->timestamp = now;
+			request->timestamp = time(NULL);
 			request->child_pid = NO_SUCH_CHILD_PID;
 			request->prev = NULL;
 			request->next = NULL;
 			strNcpy(request->secret, (char *)secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
 		} /* loop over authfd, acctfd, proxyfd */
-
-		/*
-		 *	After processing all new requests,
-		 *	check if we've got to delete old requests
-		 *	from the request list.
-		 */
-		rad_clean_list(now);
-
-		/*
-		 *	When receiving a packet, or timeout,
-		 *	service the proxy request list.
-		 */
 
 #if WITH_SNMP
 		/*
@@ -1066,6 +1032,14 @@ int main(int argc, char **argv)
 		  smux_connect();
 		}
 #endif
+
+		/*
+		 *	After processing all new requests,
+		 *	check if we've got to delete old requests
+		 *	from the request list.
+		 */
+		tv = rad_clean_list(time(NULL));
+
 	} /* loop forever */
 }
 
@@ -1595,6 +1569,90 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	return 0;
 }
 
+typedef struct rad_walk_t {
+	time_t	now;
+	time_t	smallest;
+} rad_walk_t;
+
+/*
+ *	The rl_walk callback function for refreshing/cleaning the request.
+ */
+static int rad_walk(REQUEST *request, void *data)
+{
+	rad_walk_t *info = (rad_walk_t *) data;
+	time_t difference;
+
+	/*
+	 *	Handle cleanup_delay, max_request_time,
+	 *	proxy_retry, for this request.
+	 */
+	refresh_request(request, info->now);
+	
+	/*
+	 *	If the request has been marked for deletion, kill it.
+	 */
+	if (request->timestamp == 0) {
+		rl_delete(request);
+		return RL_WALK_CONTINUE;
+	}
+	
+	/*
+	 *	Don't do more long-term checks, if we've got to wake
+	 *	up now.
+	 */
+	if (info->smallest == 0) {
+		return RL_WALK_CONTINUE;
+	}
+
+	/*
+	 *	The request is finished.  Wake up when it's time to
+	 *	clean it up.
+	 */
+	if (request->finished) {
+		difference = (request->timestamp + cleanup_delay) - info->now;
+		
+	} else if (request->proxy && !request->proxy_reply) {
+		/*
+		 *	The request is NOT finished, but there is an
+		 *	outstanding proxy request, with no matching
+		 *	proxy reply.
+		 *
+		 *	Wake up when it's time to re-send
+		 *	the proxy request.
+		 */
+		difference = request->proxy_next_try - info->now;
+		
+	} else {
+		/*
+		 *	The request is NOT finished.
+		 *
+		 *	Wake up when it's time to kill the errant
+		 *	thread/process.
+		 */
+		difference = (request->timestamp + max_request_time) - info->now;
+	}
+
+	/*
+	 *	If the server is CPU starved, then we CAN miss a time
+	 *	for servicing requests.  In which case the 'difference'
+	 *	value will be negative.  select() doesn't like that,
+	 *	so we fix it.
+	 */
+	if (difference < 0) {
+		difference = 0;
+	}
+
+	/*
+	 *	Update the 'smallest' time.
+	 */
+	if ((info->smallest < 0) ||
+	    (difference < info->smallest)) {
+		info->smallest = difference;
+	}
+
+	return RL_WALK_CONTINUE;
+}
+
 /*
  *	Clean up the request list, every so often.
  *
@@ -1603,23 +1661,47 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
  *	- killing any processes which are NOT finished after a delay
  *	- deleting any marked requests.
  */
-static int rad_clean_list(time_t now)
+static struct timeval *rad_clean_list(time_t now)
 {
+	/*
+	 *	Static variables, so that we don't do all of this work
+	 *	more than once per second.
+	 *
+	 *	Note that we have 'tv' and 'last_tv'.  'last_tv' is
+	 *	pointed to by 'last_tv_ptr', and depending on the
+	 *	system implementation of select(), it MAY be modified.
+	 *
+	 *	In that was, we want to use the ORIGINAL value, from
+	 *	'tv', and wipe out the (possibly modified) last_tv.
+	 */
 	static time_t last_cleaned_list = 0;
-	int		id;
-	int		request_count;
-	int		cleaned = FALSE;
+	static struct timeval tv, *last_tv_ptr = NULL;
+	static struct timeval last_tv;
+
+	rad_walk_t info;
+
 
 	/*
-	 *      Don't bother checking the list if we've done it
-	 *      within the last second.
+	 *	If we've already set up the timeout or cleaned the
+	 *	request list this second, then don't do it again.  We
+	 *	simply return the sleep delay from last time.
 	 *
-	 *	However, at LEAST once per second, go through the entire
-	 *	request list again, ensuring that ALL of the request ID's
-	 *	have been processed.
+	 *	Note that if we returned NULL last time, there was nothing
+	 *	to do.  BUT we've been woken up since then, which can only
+	 *	happen if we received a packet.  And if we've received a
+	 *	packet, then there's some work to do in the future.
+	 *
+	 *	FIXME: We can probably use gettimeofday() for finer clock
+	 *	resolution, as the current method will cause it to sleep
+	 *	too long...
 	 */
-	if (last_cleaned_list == now) {
-		return FALSE;
+	if ((last_tv_ptr != NULL) &&
+	    (last_cleaned_list == now) &&
+	    (tv.tv_sec != 0)) {		
+		last_tv = tv;
+		DEBUG2("X Waking up in %d seconds...",
+		       (int) last_tv_ptr->tv_sec);
+		return last_tv_ptr;
 	}
 	last_cleaned_list = now;
 
@@ -1638,91 +1720,40 @@ static int rad_clean_list(time_t now)
 	 *	the list - equivalent to sigblock(SIGCHLD).
 	 */
 	request_list_busy = TRUE;
-	request_count = 0;
-		
-	for (id = 0; id < 256; id++) {
-		REQUEST		*curreq;
-		REQUEST		**prevptr;
-		
-		/*
-		 *	If we've cleaned this entry in the last
-		 *	second, don't do it now.
-		 */
-		if (request_list[id].last_cleaned_list == now) {
-			request_count += request_list[id].request_count;
-			continue;
-		}
-		request_list[id].last_cleaned_list = now;
-		
-		/*
-		 *	Set up for looping over the requests
-		 *	in this list.
-		 */
-		curreq = request_list[id].first_request;
-		prevptr = &(request_list[id].first_request);
-		
-		while (curreq != NULL) {
-			assert(curreq->magic == REQUEST_MAGIC);
-			
-			/*
-			 *	Handle cleanup_delay, max_request_time,
-			 *	proxy_retry, for this request.
-			 */
-			refresh_request(curreq, now);
-			
-			/*
-			 *	If the request has been marked as deleted,
-			 *	then remove it from the request list.
-			 */
-			if (curreq->timestamp == 0) {
-				if (request_list[id].request_count == 0) {
-					DEBUG("HORRIBLE ERROR!!!");
-				} else {
-					request_list[id].request_count--;
-				}
-				
-				/*
-				 *	Unlink the current request
-				 *	from the request queue.
-				 */
-				*prevptr = curreq->next;
-				if (curreq->next) {
-					curreq->next->prev = curreq->prev;
-				}
-				request_free(curreq);
-				curreq = *prevptr;
-				
-				/*
-				 *	Else the request is still being
-				 *	processed.  Skip it.
-				 */
-			} else {
-				prevptr = &(curreq->next);
-				curreq = curreq->next;
-			}
-		} /* end of walking the request list for that ID */
-		
-		request_count += request_list[id].request_count;
-	} /* for each entry in the request list array */
 
-	/*
-	 *	Only print debugging information if anything's changed.
-	 */
-	if (debug_flag) {
-		static int old_request_count = -1;
-		
-		if (request_count != old_request_count) {
-			DEBUG2("%d requests left in the list", request_count);
-			old_request_count = request_count;
-		}
-	}
+	info.now = now;
+	info.smallest = -1;
+
+	rl_walk(rad_walk, &info);
 
 	/*
 	 *	We're done playing with the request list.
 	 */
 	request_list_busy = FALSE;
 
-	return cleaned;
+	/*
+	 *	We haven't found a time at which we need to wake up.
+	 *	Return NULL, so that the select() call will sleep forever.
+	 */
+	if (info.smallest < 0) {
+		DEBUG2("Nothing to do.  Sleeping until we see a request.");
+		last_tv_ptr = NULL;
+		return NULL;
+	}
+	/*
+	 *	Set the time (in seconds) for how long we're
+	 *	supposed to sleep.
+	 */
+	tv.tv_sec = info.smallest;
+	tv.tv_usec = 0;
+	DEBUG2("Waking up in %d seconds...", (int) info.smallest);
+
+	/*
+	 *	Remember how long we should sleep for.
+	 */
+	last_tv = tv;
+	last_tv_ptr = &last_tv;
+	return last_tv_ptr;
 }
 
 /*
@@ -1738,18 +1769,14 @@ static int rad_clean_list(time_t now)
 static REQUEST *rad_check_list(REQUEST *request)
 {
 	REQUEST		*curreq;
-	REQUEST		*prevreq;
-	RADIUS_PACKET	*pkt;
 	int		request_count;
-	REQUEST_LIST	*request_list_entry;
 	int		i;
 	time_t		now;
-	int		id;
 
 	/*
 	 *	If the request has come in on the proxy FD, then
 	 *	it's a proxy reply, so pass it through the proxy
-	 *	code for checking the REQUEST_LIST.
+	 *	code for checking the REQUEST list.
 	 */
 	if (request->packet->sockfd == proxyfd) {
 		return proxy_check_list(request);
@@ -1762,19 +1789,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 		return request;
 	}
 
-	request_list_entry = &request_list[request->packet->id];
-
-	assert((request_list_entry->first_request == NULL) ||
-	       (request_list_entry->request_count != 0));
-	assert((request_list_entry->first_request != NULL) ||
-	       (request_list_entry->request_count == 0));
-
-	curreq = request_list_entry->first_request;
-	prevreq = NULL;
-	pkt = request->packet;
 	request_count = 0;
 	now = request->timestamp; /* good enough for our purposes */
-	id = pkt->id;
 
 	/*
 	 *	When mucking around with the request list, we block
@@ -1783,23 +1799,11 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 */
 	request_list_busy = TRUE;
 
-	while (curreq != NULL) {
-		/*
-		 *	The packet ID's MUST be the same, as we're in
-		 *	request_list[request->packet->id]
-		 */
-		assert(curreq->packet->id == pkt->id);
-
-		/*
-		 *	Let's see if we received a duplicate of
-		 *	a packet we already have in our list.
-		 *
-		 *	We do this by checking the src IP, src port,
-		 *	the packet code, and ID.
-		 */
-		if ((curreq->packet->src_ipaddr == pkt->src_ipaddr) &&
-		    (curreq->packet->src_port == pkt->src_port) &&
-		    (curreq->packet->code == pkt->code)) {
+	/*
+	 *	Look for an existing copy of this request.
+	 */
+	curreq = rl_find(request);
+	if (curreq != NULL) {
 		  /*
 		   *	We now check the authentication vectors.
 		   *	If the client has sent us a request with
@@ -1811,8 +1815,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 		   *	If the vectors are the same, then it's a duplicate
 		   *	request, and we can send a duplicate reply.
 		   */
-		  if (memcmp(curreq->packet->vector, pkt->vector,
-			    sizeof(pkt->vector)) == 0) {
+		  if (memcmp(curreq->packet->vector, request->packet->vector,
+			    sizeof(request->packet->vector)) == 0) {
 			/*
 			 *	Maybe we've saved a reply packet.  If so,
 			 *	re-send it.  Otherwise, just complain.
@@ -1825,11 +1829,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 				request->packet->src_port,
 				request->packet->id);
 
-				/*
-				 *	Use the SOURCE port as the DESTINATION
-				 *	port of the duplicate reply.
-				 */
-				curreq->reply->dst_port = request->packet->src_port;
 				rad_send(curreq->reply, curreq->secret);
 				
 				/*
@@ -1869,8 +1868,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 */
 			request_free(request);
 			request = NULL;
-			break;
-		  } else {
+
+		  } else {	/* packet vectors are different */
 			  /*
 			   *	The packet vectors are different, so
 			   *	we can mark the old request to be
@@ -1880,7 +1879,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			   *	Maybe we should?
 			   */
 			  if (curreq->finished) {
-				  curreq->timestamp = 0;
+				  rl_delete(curreq);
 			  } else {
 				  /*
 				   *	??? the client sent us a new request
@@ -1896,60 +1895,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 				request->packet->id);
 				request_free(request);
 				request = NULL;
-				break;
 			  }
-		  }
-		}
-
-		/*
-		 *	Ugh... duplicated code is bad...
-		 */
-
-		/*
-		 *	Delete the current request, if it's
-		 *	marked as such.  That is, the request
-		 *	must be finished, there must be no
-		 *	child associated with that request,
-		 *	and it's timestamp must be marked to
-		 *	be deleted.
-		 */
-		if (curreq->finished &&
-		    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
-		    (curreq->timestamp + cleanup_delay <= now)) {
-				/*
-				 *	Request completed, delete it,
-				 *	and unlink it from the
-				 *	currently 'alive' list of
-				 *	requests.
-				 */
-			DEBUG2("Cleaning up request ID %d with timestamp %08lx",
-			       curreq->packet->id,
-			       (unsigned long)curreq->timestamp);
-			prevreq = curreq->prev;
-			if (request_list[id].request_count == 0) {
-				DEBUG("HORRIBLE ERROR!!!");
-			} else {
-				request_list[id].request_count--;
-			}
-			
-			if (prevreq == NULL) {
-				request_list[id].first_request = curreq->next;
-				request_free(curreq);
-				curreq = request_list[id].first_request;
-			} else {
-				prevreq->next = curreq->next;
-				request_free(curreq);
-				curreq = prevreq->next;
-			}
-			if (curreq)
-				curreq->prev = prevreq;
-			
-		} else {	/* the request is still alive */
-			prevreq = curreq;
-			curreq = curreq->next;
-			request_count++;
-		}
-	} /* end of walking the request list */
+		  } /* packet vectors are different */
+	} /* a similar packet already exists. */
 	
 	/*
 	 *	If we've received a duplicate packet, 'request' is NULL.
@@ -1958,8 +1906,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 		request_list_busy = FALSE;
 		return NULL;
 	}
-
-	assert(request_list_entry->request_count == request_count);
 
 	/*
 	 *	Count the total number of requests, to see if there
@@ -1992,19 +1938,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 	/*
 	 *	Add this request to the list
 	 */
-	request->prev = prevreq;
-	request->next = NULL;
+	rl_add(request);
 	request->child_pid = NO_SUCH_CHILD_PID;
-	request_list_entry->request_count++;
-
-	if (prevreq == NULL) {
-		assert(request_list_entry->first_request == NULL);
-		assert(request_list_entry->request_count == 1);
-		request_list_entry->first_request = request;
-	} else {
-		assert(request_list_entry->first_request != NULL);
-		prevreq->next = request;
-	}
 
 	/*
 	 *	And return the request to be handled.
@@ -2386,157 +2321,6 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	request->packet = NULL;
 	request_free(request);
 	return oldreq;
-}
-
-/*
- *	Walk through all of the requests, checking cleanup times,
- *	proxy retry times, and maximum request times.  We then set the
- *	time delay until the server has to service the request queue.
- *
- *	This time delay is used by the main select() loop, to sleep
- *	until either a packet comes in, or until there's some work
- *	to be done.
- */
-static struct timeval *setuptimeout()
-{
-	time_t now = time(NULL);
-	time_t difference, smallest = 0;
-	int foundone = FALSE;
-	int id;
-	REQUEST *curreq;
-
-	/*
-	 *	Static variables, so that we don't do all of this work
-	 *	more than once per second.
-	 *
-	 *	Note that we have 'tv' and 'last_tv'.  'last_tv' is
-	 *	pointed to by 'last_tv_ptr', and depending on the
-	 *	system implementation of select(), it MAY be modified.
-	 *
-	 *	In that was, we want to use the ORIGINAL value, from
-	 *	'tv', and wipe out the (possibly modified) last_tv.
-	 */
-	static time_t last_setup = 0;
-	static struct timeval tv, *last_tv_ptr = NULL;
-	static struct timeval last_tv;
-
-	/*
-	 *	If we've already set up the timeout this second,
-	 *	don't do it again.  We simply return the sleep delay
-	 *	from last time.
-	 *
-	 *	Note that if we returned NULL last time, there was nothing
-	 *	to do.  BUT we've been woken up since then, which can only
-	 *	happen if we received a packet.  And if we've received a
-	 *	packet, then there's some work to do in the future.
-	 *
-	 *	FIXME: We can probably use gettimeofday() for finer clock
-	 *	resolution, as the current method will cause it to sleep
-	 *	too long...
-	 */
-	if ((last_tv_ptr != NULL) &&
-	    (last_setup == now) &&
-	    (tv.tv_sec != 0)) {		
-		last_tv = tv;
-		DEBUG2("Waking up in %d seconds...",
-		       (int) last_tv_ptr->tv_sec);
-		return last_tv_ptr;
-	}
-
-	last_setup = now;	/* remember when we last set up the sleep timer */
-
-	difference = 1;		/* initialize it to a non-zero value */
-
-	/*
-	 *	Loop over all of the outstanding requests.
-	 */
-	for (id = 0; id < 256; id++) {
-		for (curreq = request_list[id].first_request; curreq; curreq = curreq->next) {
-			/*
-			 *	The request is marked to be
-			 *	cleaned up: ignore it.
-			 */
-			if (curreq->timestamp == 0) {
-				continue;
-			} else if (curreq->finished) {
-				/*
-				 *	The request is finished.
-				 *	Wake up when it's time to clean
-				 *	it up.
-				 */
-				difference = (curreq->timestamp + cleanup_delay) - now;
-
-			} else if (curreq->proxy && !curreq->proxy_reply) {
-				/*
-				 *	The request is NOT finished, but there
-				 *	is an outstanding proxy request,
-				 *	with no matching proxy reply.
-				 *
-				 *	Wake up when it's time to re-send
-				 *	the proxy request.
-				 */
-				difference = curreq->proxy_next_try - now;
-
-			} else {
-				/*
-				 *	The request is NOT finished.
-				 *
-				 *	Wake up when it's time to kill
-				 *	the errant thread/process.
-				 */
-				difference = (curreq->timestamp + max_request_time) - now;
-			}
-
-			/*
-			 *	Found a valid request, with a time at which
-			 *	we're going to to wake up.
-			 */
-			if (!foundone) {
-				foundone = TRUE;
-				smallest = difference;
-			} else {
-				if (difference < smallest)
-					smallest = difference;
-			}
-
-			if (difference <= 0) break; /* short-circuit */
-		} /* loop over linked list for that ID */
-
-		if (difference <= 0) break; /* short-circuit */
-	} /* loop over 256 ID's */
-
-	/*
-	 *	We haven't found a time at which we need to wake up.
-	 *	Return NULL, so that the select() call will sleep forever.
-	 */
-	if (!foundone) {
-		DEBUG2("Nothing to do.  Sleeping until we see a request.");
-		last_tv_ptr = NULL;
-		return NULL;
-	}
-
-	/*
-	 *	If the server is CPU starved, then we CAN miss a time
-	 *	for servicing requests.  In which case the 'smallest'
-	 *	value will be negative.  select() doesn't like that,
-	 *	so we fix it.
-	 */
-	if (smallest < 0) smallest = 0;
-
-	/*
-	 *	Set the time (in seconds) for how long we're
-	 *	supposed to sleep.
-	 */
-	tv.tv_sec = smallest;
-	tv.tv_usec = 0;
-	DEBUG2("Waking up in %d seconds...", (int) smallest);
-
-	/*
-	 *	Remember how long we should sleep for.
-	 */
-	last_tv = tv;
-	last_tv_ptr = &last_tv;
-	return last_tv_ptr;
 }
 
 /*
