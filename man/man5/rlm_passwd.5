@@ -57,6 +57,11 @@ prefix the attribute name in the "format" string with the '~' character.
 .PP
 To add an attribute to the reply (to be sent back to the NAS) prefix
 the attribute name in the "format" string with the '=' character.
+.IP ignoreempty
+This configuration item defaults to "yes".  If there is no value for
+the attribute, then the attribute is not added.  By setting this value
+to "no", you can force the attribute to be added, even if there is no
+value.
 
 .SH EXAMPLES
 .DS
