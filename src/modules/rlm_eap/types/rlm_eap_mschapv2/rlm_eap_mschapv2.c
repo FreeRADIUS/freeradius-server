@@ -201,6 +201,12 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 	pairfree(&challenge);
 
 	/*
+	 *	The EAP session doesn't have enough information to
+	 *	proxy the "inside EAP" protocol.  Disable EAP proxying.
+	 */
+	handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+
+	/*
 	 *	We don't need to authorize the user at this point.
 	 *
 	 *	We also don't need to keep the challenge, as it's
@@ -254,6 +260,11 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		}
 
 		/*
+		 *	It's a success.  Don't proxy it.
+		 */
+		handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+
+		/*
 		 *	And upon receiving the clients ACK, we do nothing
 		 *	other than return EAP-Success, with no EAP-MS-CHAPv2
 		 *	data.
@@ -282,13 +293,19 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		break;
 
 	case PW_EAP_MSCHAPV2_SUCCESS:
+		/*
+		 *	It's a success.  Don't proxy it.
+		 */
+		handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+
 		eap_ds->request->code = PW_EAP_SUCCESS;
 		return 1;
 		break;
+
 		/*
 		 *	Something else, we don't know what it is.
 		 */
-		default:
+	default:
 		radlog(L_ERR, "rlm_eap_mschapv2: Invalid response type %d",
 		       eap_ds->response->type.data[0]);
 		return 0;
@@ -326,6 +343,25 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	 */
 	pairadd(&handler->request->packet->vps, challenge);
 	pairadd(&handler->request->packet->vps, response);
+
+	/*
+	 *	If this options is set, then we do NOT authenticate the
+	 *	user here.  Instead, now that we've added the MS-CHAP
+	 *	attributes to the request, we STOP, and let the outer
+	 *	tunnel code handle it.
+	 *
+	 *	This means that the outer tunnel code will DELETE the
+	 *	EAP attributes, and proxy the MS-CHAP attributes to a
+	 *	home server.
+	 */
+	if (handler->request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
+		/*
+		 *	Remember that in the post-proxy stage, we've got
+		 *	to do the work below, AFTER the call to MS-CHAP
+		 *	authentication...
+		 */
+		return 1;
+	}
 
 	/*
 	 *	This is a wild & crazy hack.
