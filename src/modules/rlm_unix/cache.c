@@ -46,10 +46,6 @@ static const char rcsid[] = "$Id$";
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#if HAVE_MALLOC_H
-#  include <malloc.h>
-#endif
-
 #if HAVE_SHADOW_H
 #  include <shadow.h>
 #endif
@@ -93,10 +89,19 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 
         struct pwcache *cache;
 
-	if((cache = malloc(sizeof *cache)) == NULL) {
-		radlog(L_ERR, "HASH:  Out of memory!");
+	if (!passwd_file) {
+		radlog(L_ERR, "rlm_unix:  You MUST specify a password file!");
 		return NULL;
 	}
+
+#if HAVE_SHADOW_H
+	if (!shadow_file) {
+		radlog(L_ERR, "rlm_unix:  You MUST specify a shadow password file!");
+		return NULL;
+	}
+#endif
+
+	cache = rad_malloc(sizeof(*cache));
 
 	memset(username, 0, MAXUSERNAME);
 
@@ -104,150 +109,109 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 	memset(cache->hashtable, 0, sizeof cache->hashtable);
 	cache->grphead = NULL;
 
-	/*
-	 *	If not set, use pre-defined defaults.
-	 */
-	if (!passwd_file) {
-		passwd_file = PASSWDFILE;
-	}
-
 	if ((passwd = fopen(passwd_file, "r")) == NULL) {
-		radlog(L_ERR, "HASH:  Can't open file %s: %s",
+		radlog(L_ERR, "rlm_unix:  Can't open file password file %s: %s",
 		    passwd_file, strerror(errno));
 		unix_freepwcache(cache);
 		return NULL;
-	} else {
-		while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) {
-			numread++;
+	}
 
-			bufptr = buffer;
-			/* Get usernames from password file */
-			for(ptr = bufptr; *ptr!=':'; ptr++);
-			len = ptr - bufptr;
-			if((len+1) > MAXUSERNAME) {
-				radlog(L_ERR, "HASH:  Username too long in line: %s", buffer);
-			}
-			strncpy(username, buffer, len);
-			username[len] = '\0';
-
-			/* Hash the username */
-			hashindex = hashUserName(username);	
-			/*printf("%s:%d\n", username, hashindex);*/
-	
-			/* Allocate space for structure to go in hashtable */
-			if((new = (struct mypasswd *)malloc(sizeof(struct mypasswd))) == NULL) {
-				radlog(L_ERR, "HASH:  Out of memory!");
-				fclose(passwd);
-				unix_freepwcache(cache);
-				return NULL;
-			}
-			memset((struct mypasswd *)new, 0, sizeof(struct mypasswd));
-
-			/* Put username into new structure */
-			if((new->pw_name = (char *)malloc(strlen(username)+1)) == NULL) {
-				radlog(L_ERR, "HASH:  Out of memory!");
-				free(new);
-				fclose(passwd);
-				unix_freepwcache(cache);
-				return NULL;
-			}
-			strncpy(new->pw_name, username, strlen(username)+1);
-
-			/* Put passwords into array, if not shadowed */
-			/* Get passwords from password file (shadow comes later) */
+	while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) {
+		numread++;
+		
+		bufptr = buffer;
+		/* Get usernames from password file */
+		for(ptr = bufptr; *ptr!=':'; ptr++);
+		len = ptr - bufptr;
+		if((len+1) > MAXUSERNAME) {
+			radlog(L_ERR, "rlm_unix:  Username too long in line: %s", buffer);
+		}
+		strncpy(username, buffer, len);
+		username[len] = '\0';
+		
+		/* Hash the username */
+		hashindex = hashUserName(username);	
+		/*printf("%s:%d\n", username, hashindex);*/
+		
+		/* Allocate space for structure to go in hashtable */
+		new = (struct mypasswd *)rad_malloc(sizeof(struct mypasswd));
+		memset(new, 0, sizeof(struct mypasswd));
+		
+		/* Put username into new structure */
+		new->pw_name = (char *)rad_malloc(strlen(username)+1);
+		strncpy(new->pw_name, username, strlen(username)+1);
+		
+		/* Put passwords into array, if not shadowed */
+		/* Get passwords from password file (shadow comes later) */
+		ptr++;
+		bufptr = ptr;
+		while(*ptr!=':')
 			ptr++;
-			bufptr = ptr;
-			while(*ptr!=':')
-				ptr++;
-
+		
 #if !HAVE_SHADOW_H
-			/* Put passwords into new structure (*/
-			len = ptr - bufptr;
-
-			if (len > 0) {
-				new->pw_passwd = (char *)malloc(len+1);
-				if(new->pw_passwd == NULL) {
-					radlog(L_ERR, "HASH:  Out of memory!");
-					free(new->pw_name);
-					free(new);
-					fclose(passwd);
-					unix_freepwcache(cache);
-					return NULL;
-				}
-				strncpy(new->pw_passwd, bufptr, len);
-				new->pw_passwd[len] = '\0';
-			} else {
-				new->pw_passwd = NULL;
-			}
-
+		/* Put passwords into new structure (*/
+		len = ptr - bufptr;
+		
+		if (len > 0) {
+			new->pw_passwd = (char *)rad_malloc(len+1);
+			strncpy(new->pw_passwd, bufptr, len);
+			new->pw_passwd[len] = '\0';
+		} else {
+			new->pw_passwd = NULL;
+		}
+		
 #endif /* !HAVE_SHADOW_H */  
-
-			/* 
-		    	 * Put uid into structure.  Not sure why, but 
-			 * at least we'll have it later if we need it
-			 */
+		
+		/* 
+		 * Put uid into structure.  Not sure why, but 
+		 * at least we'll have it later if we need it
+		 */
+		ptr++;
+		bufptr = ptr;
+		while(*ptr!=':')
 			ptr++;
-			bufptr = ptr;
-			while(*ptr!=':')
-				ptr++;
-			len = ptr - bufptr;
-			strncpy(idtmp, bufptr, len);
-			idtmp[len] = '\0';
-			new->pw_uid = (uid_t)atoi(idtmp);	
-
-			/* 
-		    	 * Put gid into structure.  
-			 */
+		len = ptr - bufptr;
+		strncpy(idtmp, bufptr, len);
+		idtmp[len] = '\0';
+		new->pw_uid = (uid_t)atoi(idtmp);	
+		
+		/* 
+		 * Put gid into structure.  
+		 */
+		ptr++;
+		bufptr = ptr;
+		while(*ptr!=':')
 			ptr++;
-			bufptr = ptr;
-			while(*ptr!=':')
-				ptr++;
-			len = ptr - bufptr;
-			strncpy(idtmp, bufptr, len);
-			idtmp[len] = '\0';
-			new->pw_gid = (gid_t)atoi(idtmp);	
-
-			/* 
-		    	 * Put name into structure.  
-			 */
+		len = ptr - bufptr;
+		strncpy(idtmp, bufptr, len);
+		idtmp[len] = '\0';
+		new->pw_gid = (gid_t)atoi(idtmp);	
+		
+		/* 
+		 * Put name into structure.  
+		 */
+		ptr++;
+		bufptr = ptr;
+		while(*ptr!=':')
 			ptr++;
-			bufptr = ptr;
-			while(*ptr!=':')
-				ptr++;
-
-			len = ptr - bufptr;
-			if((new->pw_gecos = (char *)malloc(len+1)) == NULL) {
-				radlog(L_ERR, "HASH:  Out of memory!");
-				if (new->pw_passwd) free(new->pw_passwd);
-				free(new->pw_name);
-				free(new);
-				fclose(passwd);
-				unix_freepwcache(cache);
-				return NULL;
-			}
-			strncpy(new->pw_gecos, bufptr, len);
-			new->pw_gecos[len] = '\0';
-				
-			/* 
-			 * We'll skip home dir and shell
-			 * as I can't think of any use for storing them
-			 */
-
-			/*printf("User:  %s, UID:  %d, GID:  %d\n", new->pw_name, new->pw_uid, new->pw_gid);*/
-			/* Store user in the hash */
-			storeHashUser(cache, new, hashindex);
-		}	/* End while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) */
-	} /* End if */
+		
+		len = ptr - bufptr;
+		new->pw_gecos = (char *)rad_malloc(len+1);
+		strncpy(new->pw_gecos, bufptr, len);
+		new->pw_gecos[len] = '\0';
+		
+		/* 
+		 * We'll skip home dir and shell
+		 * as I can't think of any use for storing them
+		 */
+		
+		/*printf("User:  %s, UID:  %d, GID:  %d\n", new->pw_name, new->pw_uid, new->pw_gid);*/
+		/* Store user in the hash */
+		storeHashUser(cache, new, hashindex);
+	}	/* End while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) */
 	fclose(passwd);
 
 #if HAVE_SHADOW_H
-	/*
-	 *	No shadow file, use pre-compiled default.
-	 */
-	if (!shadow_file) {
-		shadow_file = SHADOWFILE;
-	}
-
 	/*
 	 *	FIXME: Check for password expiry!
 	 */
@@ -300,13 +264,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 			len = ptr - bufptr;
 
 			if (len > 0) {
-				new->pw_passwd = (char *)malloc(len+1);
-				if (new->pw_passwd == NULL) {
-					radlog(L_ERR, "HASH:  Out of memory!");
-					fclose(shadow);
-					unix_freepwcache(cache);
-					return NULL;
-				}
+				new->pw_passwd = (char *)rad_malloc(len+1);
 				strncpy(new->pw_passwd, bufptr, len);
 				new->pw_passwd[len] = '\0';
 			} else {
@@ -338,32 +296,17 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 	while((grp = getgrent()) != NULL) {
 
 		/* Make new mygroup structure in mem */
-		if((g_new = (struct mygroup *)malloc(sizeof(struct mygroup))) == NULL) {
-			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-			unix_freepwcache(cache);
-			return NULL;
-		}
-		memset((struct mygroup*)g_new, 0, sizeof(struct mygroup));
+		g_new = (struct mygroup *)rad_malloc(sizeof(struct mygroup));
+		memset(g_new, 0, sizeof(struct mygroup));
 	
 		/* copy grp entries to my structure */
 		len = strlen(grp->gr_name);
-		if((g_new->gr_name = (char *)malloc(len+1)) == NULL) {
-			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-			free(g_new);
-			unix_freepwcache(cache);
-			return NULL;
-		}
+		g_new->gr_name = (char *)rad_malloc(len+1);
 		strncpy(g_new->gr_name, grp->gr_name, len);
 		g_new->gr_name[len] = '\0';
 		
 		len = strlen(grp->gr_passwd);
-		if((g_new->gr_passwd= (char *)malloc(len+1)) == NULL) {
-			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-			free(g_new->gr_name);
-			free(g_new);
-			unix_freepwcache(cache);
-			return NULL;
-		}
+		g_new->gr_passwd= (char *)rad_malloc(len+1);
 		strncpy(g_new->gr_passwd, grp->gr_passwd, len);
 		g_new->gr_passwd[len] = '\0';
 
@@ -374,29 +317,13 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 		 */
 		for(member = grp->gr_mem; *member!=NULL; member++);
 		len = member - grp->gr_mem;
-		if((g_new->gr_mem = (char **)malloc((len+1)*sizeof(char **))) == NULL) {
-			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-			free(g_new->gr_passwd);
-			free(g_new->gr_name);
-			free(g_new);
-			unix_freepwcache(cache);
-			return NULL;
-		}
+		g_new->gr_mem = (char **)rad_malloc((len+1)*sizeof(char **));
+
 		/* Now go back and copy individual users into it */
 		for(member = grp->gr_mem; *member; member++) {
 			len2 = strlen(*member);
 			idx = member - grp->gr_mem;
-			if((g_new->gr_mem[idx] = (char *)malloc(len2+1)) == NULL) {
-				radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
-				for(--idx;idx>=0;--idx) {
-					free(g_new->gr_mem[idx]);
-				}
-				free(g_new->gr_passwd);
-				free(g_new->gr_name);
-				free(g_new);
-				unix_freepwcache(cache);
-				return NULL;
-			}
+			g_new->gr_mem[idx] = (char *)rad_malloc(len2+1);
 			strncpy(g_new->gr_mem[idx], *member, len2);
 			g_new->gr_mem[idx][len2] = '\0';
 		}
