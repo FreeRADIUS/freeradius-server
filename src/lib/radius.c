@@ -1382,7 +1382,7 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
  *      value MD5 hash.
  */
 
-int saltoffset = 0;
+static int saltoffset = 0; /* used to make all salts in a packet unique */
 
 int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
 {
