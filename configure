@@ -562,7 +562,7 @@ fi
 
 
 
-# From configure.in Revision: 1.128 
+# From configure.in Revision: 1.129 
 RADIUSD_VERSION=0.4
 
 
@@ -4024,233 +4024,19 @@ fi
 
 	
 	
-	
-
-echo "checking for PostgreSQL includes" 1>&6
-echo "configure:4031: checking for PostgreSQL includes" >&5
-
-if test "x$PGROOT" != "x" ; then
-	IS_LOCAL=1
-else
-		if test -d /usr/local/pgsql ; then 
-		PGROOT="/usr/local/pgsql"
-		ISLOCAL=1
-	elif test -d /usr/local/postgresql ; then
-		PGROOT="/usr/local/postgresql"
-		ISLOCAL=1
-	elif test -d /opt/pgsql ; then
-		PGROOT="/opt/pgsql"
-		ISLOCAL=1
-	elif test -d /opt/postgresql ; then
-		PGROOT="/opt/postgresql"
-		ISLOCAL=1
-	fi
-fi
-if test "x$PGROOT" != "x" && test "x$IS_LOCAL" != "x" ; then
-	if test -e $PGROOT/lib/libpq${libltdl_cv_shlibext} ; then
-		if test -e $PGROOT/lib/libpq.a ; then
-			PQ_LIBS="-L$PGROOT/lib -lpq"
-		fi
-	fi
-	for ac_hdr in $PGROOT/include/libpq-fe.h $PGROOT/include/postgres.h
-do
-ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
-echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-echo "configure:4060: checking for $ac_hdr" >&5
-if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  cat > conftest.$ac_ext <<EOF
-#line 4065 "configure"
-#include "confdefs.h"
-#include <$ac_hdr>
-EOF
-ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:4070: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
-if test -z "$ac_err"; then
-  rm -rf conftest*
-  eval "ac_cv_header_$ac_safe=yes"
-else
-  echo "$ac_err" >&5
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_header_$ac_safe=no"
-fi
-rm -f conftest*
-fi
-if eval "test \"`echo '$ac_cv_header_'$ac_safe`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-    ac_tr_hdr=HAVE_`echo $ac_hdr | sed 'y%abcdefghijklmnopqrstuvwxyz./-%ABCDEFGHIJKLMNOPQRSTUVWXYZ___%'`
-  cat >> confdefs.h <<EOF
-#define $ac_tr_hdr 1
-EOF
- FOUND_PG_HEADERS=1
-else
-  echo "$ac_t""no" 1>&6
-fi
-done
-
-	if test "x$FOUND_PG_HEADERS" != "x" ; then
-		PG_INCLUDE_DIR="$PGROOT/include"
-	fi
-fi
-
-if test "x$PGROOT" = "x" ; then
-	echo $ac_n "checking for PQconnectdb in -lpq""... $ac_c" 1>&6
-echo "configure:4103: checking for PQconnectdb in -lpq" >&5
-ac_lib_var=`echo pq'_'PQconnectdb | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lpq  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 4111 "configure"
-#include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char PQconnectdb();
-
-int main() {
-PQconnectdb()
-; return 0; }
-EOF
-if { (eval echo configure:4122: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
-fi
-rm -f conftest*
-LIBS="$ac_save_LIBS"
-
-fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-  FOUND_PQLIB=1
-else
-  echo "$ac_t""no" 1>&6
-fi
-
-	if test "x$FOUND_PQLIB" != "x" ; then
-		PQ_LIBS="-lpq"
-	fi
-	if test -d /usr/include/pgsql ; then
-		PG_INCLUDE_DIR="/usr/include/pgsql"
-		PG_INCLUDED_DIR="$PG_INCLUDE_DIR/"
-	elif test -d /usr/include/postgresql ; then
-		PG_INCLUDE_DIR="/usr/include/postgresql"
-		PG_INCLUDED_DIR="$PG_INCLUDE_DIR/"
-	fi
-	ac_safe=`echo ""${PG_INCLUDED_DIR}libpq-fe.h"" | sed 'y%./+-%__p_%'`
-echo $ac_n "checking for "${PG_INCLUDED_DIR}libpq-fe.h"""... $ac_c" 1>&6
-echo "configure:4154: checking for "${PG_INCLUDED_DIR}libpq-fe.h"" >&5
-if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  cat > conftest.$ac_ext <<EOF
-#line 4159 "configure"
-#include "confdefs.h"
-#include <"${PG_INCLUDED_DIR}libpq-fe.h">
-EOF
-ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:4164: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
-if test -z "$ac_err"; then
-  rm -rf conftest*
-  eval "ac_cv_header_$ac_safe=yes"
-else
-  echo "$ac_err" >&5
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_header_$ac_safe=no"
-fi
-rm -f conftest*
-fi
-if eval "test \"`echo '$ac_cv_header_'$ac_safe`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-  cat >> confdefs.h <<\EOF
-#define HAVE_LIBPQ_FE_H 1
-EOF
-
-else
-  echo "$ac_t""no" 1>&6
-fi
-
-	ac_safe=`echo ""${PG_INCLUDED_DIR}postgres.h"" | sed 'y%./+-%__p_%'`
-echo $ac_n "checking for "${PG_INCLUDED_DIR}postgres.h"""... $ac_c" 1>&6
-echo "configure:4190: checking for "${PG_INCLUDED_DIR}postgres.h"" >&5
-if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  cat > conftest.$ac_ext <<EOF
-#line 4195 "configure"
-#include "confdefs.h"
-#include <"${PG_INCLUDED_DIR}postgres.h">
-EOF
-ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:4200: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
-if test -z "$ac_err"; then
-  rm -rf conftest*
-  eval "ac_cv_header_$ac_safe=yes"
-else
-  echo "$ac_err" >&5
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_header_$ac_safe=no"
-fi
-rm -f conftest*
-fi
-if eval "test \"`echo '$ac_cv_header_'$ac_safe`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-  cat >> confdefs.h <<\EOF
-#define HAVE_POSTGRES_H 1
-EOF
-
-else
-  echo "$ac_t""no" 1>&6
-fi
-
-	if test "x$HAVE_HEADER-LIBPQ-FE.H" != "x" ; then
-		PG_INCLUDE_DIR="$PG_INCLUDE_DIR"
-	fi
-	if test -d /usr/lib/pgsql ; then
-		PGROOT="/usr/lib/pgsql"
-	elif test -d /usr/lib/postgresql ; then
-		PGROOT="/usr/lib/postgresql"
-	fi
-fi
-
-if test "x$PGROOT" != "x" && test "x$PQ_LIBS" != "x" && test "x$PG_INCLUDE_DIR" != "x"; then
-	echo Postgresql found in $PGROOT.
-fi
-
-
-
-	
-	
 
 echo $ac_n "checking for isql.h""... $ac_c" 1>&6
-echo "configure:4244: checking for isql.h" >&5
+echo "configure:4030: checking for isql.h" >&5
 
 cat > conftest.$ac_ext <<EOF
-#line 4247 "configure"
+#line 4033 "configure"
 #include "confdefs.h"
 #include <isql.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:4254: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:4040: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   ODBC_INCLUDE=" "
 else
@@ -4295,14 +4081,14 @@ eval "odbc_include_dir=\"\$odbc_include_dir $DIRS\""
   for try in /usr/include /usr/local/include/odbc /usr/local/odbc/include $odbc_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
     cat > conftest.$ac_ext <<EOF
-#line 4299 "configure"
+#line 4085 "configure"
 #include "confdefs.h"
 #include <isql.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:4306: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:4092: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   ODBC_INCLUDE="-I$try"
 else
@@ -4325,7 +4111,7 @@ else
   echo "$ac_t""yes" 1>&6
   
   echo $ac_n "checking for odbc_init in -lodbcclient""... $ac_c" 1>&6
-echo "configure:4329: checking for odbc_init in -lodbcclient" >&5
+echo "configure:4115: checking for odbc_init in -lodbcclient" >&5
 
   old_LIBS="$LIBS"
 
@@ -4387,14 +4173,14 @@ eval "odbc_lib_dir=\"\$odbc_lib_dir $DIRS\""
   for try in /usr/lib /usr/lib/odbc /usr/local/lib/odbc /usr/local/odbc/lib $odbc_lib_dir; do
     LIBS="$old_LIBS -L$try -lodbcclient"
     cat > conftest.$ac_ext <<EOF
-#line 4391 "configure"
+#line 4177 "configure"
 #include "confdefs.h"
 extern char odbc_init();
 int main() {
  odbc_init()
 ; return 0; }
 EOF
-if { (eval echo configure:4398: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:4184: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   ODBC_LIBS="-L$try -lodbcclient"
 else
@@ -4653,9 +4439,6 @@ s%@LIBPREFIX@%$LIBPREFIX%g
 s%@CRYPTLIB@%$CRYPTLIB%g
 s%@SNMP_LIBS@%$SNMP_LIBS%g
 s%@SNMP_INCLUDE@%$SNMP_INCLUDE%g
-s%@PGROOT@%$PGROOT%g
-s%@PQ_LIBS@%$PQ_LIBS%g
-s%@PG_INCLUDE_DIR@%$PG_INCLUDE_DIR%g
 s%@ODBC_LIBS@%$ODBC_LIBS%g
 s%@ODBC_INCLUDE@%$ODBC_INCLUDE%g
 s%@LIBLTDL@%$LIBLTDL%g

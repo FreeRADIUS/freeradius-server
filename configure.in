@@ -630,7 +630,6 @@ dnl #
   fi
 fi
 
-POSTGRESQL_CHECKS
 ODBC_CHECKS
 
 dnl #############################################################
