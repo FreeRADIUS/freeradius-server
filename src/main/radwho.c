@@ -358,7 +358,7 @@ int main(int argc, char **argv)
 	int c, portno;
 
 	radius_dir = strdup(RADIUS_DIR);
-	radutmp_file = strdup(UTMP_FILE);
+	radutmp_file = strdup(RADUTMP);
 
 	while((c = getopt(argc, argv, "flhnsipcr")) != EOF) switch(c) {
 		case 'f':
