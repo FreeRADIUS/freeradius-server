@@ -573,7 +573,7 @@ static int generate_realms(const char *filename)
 			if ((cf_section_value_find(cs, "noacct")) != NULL)
 				c->acct_port = 0;
 			if ((cf_section_value_find(cs, "trusted")) != NULL)
-				c->trusted = 0;
+				c->trusted = 1;
 
 			c->next = realms;
 			realms = c;
