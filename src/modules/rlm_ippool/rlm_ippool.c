@@ -49,6 +49,8 @@
  *   to request->timestamp and timeout to %{Session-Timeout:-0}. When we search for a free entry
  *   we check if timeout has expired. If it has then we free the entry. We also add a maximum
  *   timeout configuration directive. If it is non zero then we also use that one to free entries.
+ * Jul 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - If Pool-Name is set to DEFAULT then always run.
  */
 
 #include "config.h"
@@ -480,7 +482,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * run only if they match
 	 */
 	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL){
-		if (data->name == NULL || strcmp(data->name,vp->strvalue) || strcmp(vp->strvalue,"DEFAULT"))
+		if (data->name == NULL || (strcmp(data->name,vp->strvalue) && strcmp(vp->strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
 		DEBUG("rlm_ippool: Could not find Pool-Name attribute.");
