@@ -36,6 +36,7 @@ struct smb_passwd
 int hex2bin(const char *szHex, unsigned char* szBin, int len);
 void bin2hex (const unsigned char *szBin, char *szHex, int len);
 void pdb_init_smb(struct smb_passwd *user);
+uint16 pdb_decode_acct_ctrl(const char *p);
 struct smb_passwd *getsmbfilepwent(struct smb_passwd *pw_buf,FILE *fp);
 struct smb_passwd *getsmbfilepwname(struct smb_passwd *pw_buf,const char *fname, const char *name);
 void setsmbname(struct smb_passwd *pw_buf,const char *name);

@@ -37,8 +37,6 @@
 #include <ctype.h>
 #include "smbpass.h"
 
-static uint16 pdb_decode_acct_ctrl(const char *p);
-
 void pdb_init_smb(struct smb_passwd *user)
 {
         if (user == NULL) return;
@@ -53,7 +51,7 @@ void pdb_init_smb(struct smb_passwd *user)
 
 
 
-static uint16 pdb_decode_acct_ctrl(const char *p)
+uint16 pdb_decode_acct_ctrl(const char *p)
 {
 	uint16 acct_ctrl = 0;
 	int finished = 0;

@@ -708,9 +708,43 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	}
 	if (!res) {
 		/*
-		 * We have neither NT nor LM passwords configured
-	 	 */
-	 	return RLM_MODULE_INVALID;
+                * find for text version attributes
+                * if found, delete attributes from reply
+                */
+
+               password = pairfind(request->reply->vps, PW_SMB_ACCOUNT_CTRL_TEXT);
+               if(password) {
+                       smbPasswd.acct_ctrl = pdb_decode_acct_ctrl(password->strvalue);
+                       pairdelete(&request->reply->vps, PW_SMB_ACCOUNT_CTRL_TEXT);
+                       if (smbPasswd.acct_ctrl&ACB_PWNOTREQ) return RLM_MODULE_OK;
+               }
+               password = pairfind(request->reply->vps, PW_LM_PASSWORD_TEXT);
+               if(password){
+                       if(hex2bin(password->strvalue,smbPasswd.smb_passwd_value,16) != 16) {
+                               radlog(L_ERR, "rlm_mschap: Invalid LM Password text");
+                       } else {
+                               res++;
+                               smbPasswd.smb_passwd = smbPasswd.smb_passwd_value;
+                       }
+                       pairdelete(&request->reply->vps, PW_LM_PASSWORD_TEXT);
+               }
+               password = pairfind(request->reply->vps, PW_NT_PASSWORD_TEXT);
+               if(password){
+                       if(hex2bin(password->strvalue,smbPasswd.smb_nt_passwd_value,16) != 16) {
+                               radlog(L_ERR, "rlm_mschap: Invalid NT Password text");
+                       } else {
+                               res++;
+                               smbPasswd.smb_nt_passwd = smbPasswd.smb_nt_passwd_value;
+                       }
+                       pairdelete(&request->reply->vps, PW_NT_PASSWORD_TEXT);
+               }
+
+               if(!res) {
+                       /*
+                        * We have neither NT nor LM passwords configured
+                        */
+                       return RLM_MODULE_INVALID;
+               }
 	 }
 	
 	/*
