@@ -480,7 +480,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * run only if they match
 	 */
 	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL){
-		if (data->name == NULL || strcmp(data->name,vp->strvalue))
+		if (data->name == NULL || strcmp(data->name,vp->strvalue) || strcmp(vp->strvalue,"DEFAULT"))
 			return RLM_MODULE_NOOP;
 	} else {
 		DEBUG("rlm_ippool: Could not find Pool-Name attribute.");
