@@ -24,8 +24,8 @@ AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
-dnl # The version of the software, first beta, is 0.1
-RADIUSD_VERSION=0.1
+dnl # The version of the software, second beta, is 0.2
+RADIUSD_VERSION=0.2
 
 dnl #############################################################
 dnl #
