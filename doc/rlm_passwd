@@ -1,104 +1,6 @@
 RADIUS rlm_passwd (passwd-like files authorization module)
 
-0. Introduction
-
-rlm_passwd allows you to retrieve any account information from any
-files with passwd-like format (/etc/passwd, /etc/group, smbpasswd,
-.htpasswd, etc)
-
-
-1. What does it do
-
-rlm_passwd reads configuration from raddb/radiusd.conf which contains
-a description of the passwd file format.  Every field of the passwd
-file may be mapped to some RADIUS attribute.  One of fields is a key
-field.  If the attribute mapped to the key field is found in the
-request, all other mapped attributes are added to configuration items
-(if record corresponding to key field is found in passwd file and
-fields mapped to attributes are not empty).
-
-rlm_passwd can cache information from the passwd file and use a
-hashtable for fast search, so it may be very effective for storing up
-to a few thousands of users accounts if these accounts are rarely
-changed.
-
-It's also helpfull if you need to store only few accounts, in this case
-you should probably disable caching.
-
-
-2. How you should build and configure it
-
-First, rlm_passwd is experimental and is not built by default. To compile
-it you should add rlm_passwd to src/modules/stable before running
-./configure script or add rlm_passwd to MODULES variable in Make.inc.
-
-Second, you should configure this module (you can have multiple instances
-for different and even for the same file).
-
-Config section parameters:
-
-   filename = "string" (required)
-
- The path to the passwd file
-
-
-   delimiter = "x" (default ":")
- The symbol to use as a delimiter of passwd file fields
-
-
-   format = "string" (required)
-
- Describes the format of the passwd file fields. Fields are separated
- by the ':' sign.  Each field may be empty, or may contain the name of
- a RADIUS attribute (in this case it's mapped to named attrbiute).
- Attribute name may be precided by '*' or '*,'.  The '*' signifies a
- key attribute (usually key attribute for passwd file is User-Name).
- The '*,' shows that field may contain a comma-separated list of
- values for key attribute (like /etc/group does).  For example, the
- description of /etc/group file format is: "Group-Name:::*,User-Name"
- in this example we ignore gid and group's password. If the request
- contains a User-Name attribute with value 'vlad', and the passwd file
- (/etc/group) contains following record: wheel:*:0:root,vlad,test
- Group-Name attribute will be added to configuration items list with value
- of "wheel".
- '=' mark can be used to add items for this field into reply-items instead
- of default configure-items. For example 
-	"*User-Name,Password,=Callback-Number"
- will add third field as a Callback-Number attribute to reply.
- You can also add attribute to request-items by adding '~' modificator.
-
-   
-  hashsize = n (default 0)
-
- The size of the hashtable.  If 0, then the passwords are not cached
- and the passwd file is parsed for every request.  A larger hashsize
- means less probability of collision and faster search in
- hashtable. Having hashsize in the range of 30-100% of the number of passwd
- file records is probably OK.
-
-
-  authtype = "string"
-
- If key field is found in passwd file Auth-Type parameter will be replaced
- with one specified in in authtype.
-
-
-  allowmultiplekeys = no (default)
-  allowmultiplekeys = yes
-
- If allowmultiplekeys is set to yes, and few records in passwd file
- match the request, then the attributes from all records will be
- added. If allowmultiplekeys = no, then rlm_passwd will warn about
- duplicated records.
-
-
-  ignorenislike = no (default)
-  ignorenislike = yes
-
- If ignorenislike = yes all records from passwd file beginning with '+' sign
- will be ignored.
-
-4. FAQ
+FAQ
 
 Q: Can I use rlm_passwd to authenticate user against Linux shadow password
    file or BSD-style master.passwd?
@@ -140,4 +42,4 @@ A: In case you configured realm to strip username, User-Password attribute
 5. Acknowlegements:
 
    ZARAZA, <3APA3A@security.nnov.ru>
-   Michael Chernyakhovsky <mike@mgn.ru> - reply-itmes support
+   Michael Chernyakhovsky <mike@mgn.ru> - reply-items support
