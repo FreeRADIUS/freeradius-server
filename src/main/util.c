@@ -164,6 +164,8 @@ int rad_mkdir(char *directory, int mode)
 		 *	the system to make the directory.
 		 */
 		*p = '/';
+	} else {
+		return 0;
 	}
 
 	/*
