@@ -924,7 +924,7 @@ int main(int argc, char *argv[])
 			mainconfig.radlog_fd = dup(STDOUT_FILENO);
 		}
 		dup2(devnull, STDOUT_FILENO);
-		if (mainconfig.radlog_dest != RADLOG_STDERR) {
+		if (mainconfig.radlog_dest == RADLOG_STDERR) {
 			mainconfig.radlog_fd = dup(STDERR_FILENO);
 		}
 		dup2(devnull, STDERR_FILENO);
