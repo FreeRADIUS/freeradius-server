@@ -11,7 +11,6 @@ struct mypasswd {
 	struct mypasswd *next;
 	char *listflag;
 	char *field[0];
-	char data[1];
 };
 
 struct hashtable {
@@ -22,6 +21,7 @@ struct hashtable {
 	int ignorenis;
 	char * filename;
 	struct mypasswd **table;
+	struct mypasswd *last_found;
 	char buffer[1024];
 	FILE *fp;
 	char *delimiter;
@@ -29,6 +29,9 @@ struct hashtable {
 
 
 #ifdef TEST
+
+#define rad_malloc(s) malloc(s)
+
 void printpw(struct mypasswd *pw, int nfields){
   int i;
   if (pw) {
@@ -43,11 +46,14 @@ void printpw(struct mypasswd *pw, int nfields){
 
 static struct mypasswd * mypasswd_malloc(const char* buffer, int nfields, int* len)
 {
+	struct mypasswd *t;
 	/* reserve memory for (struct mypasswd) + listflag (nfields * sizeof (char*)) +
 	** fields (nfields * sizeof (char)) + strlen (inst->format) + 1 */
 
   	*len=sizeof (struct mypasswd) + nfields * sizeof (char*) + nfields * sizeof (char ) + strlen(buffer) + 1;
-  	return ((struct mypasswd *) rad_malloc(*len));
+	t = (struct mypasswd *) rad_malloc(*len);
+	if (t) memset(t, 0, *len);
+  	return (t);
 }
 
 static int string_to_entry(const char* string, int nfields, char delimiter,
@@ -55,6 +61,7 @@ static int string_to_entry(const char* string, int nfields, char delimiter,
 {
 	char *str;
 	int len, i, fn=0;
+	char *data_beg;
 
 
 	len = strlen(string);
@@ -64,12 +71,13 @@ static int string_to_entry(const char* string, int nfields, char delimiter,
 	if (string[len-1] == '\r') len--;
 	if(!len) return 0;
 	if (!len || !passwd || bufferlen < (len + nfields * sizeof (char*) + nfields * sizeof (char) + sizeof (struct mypasswd) + 1) ) return 0;
-	passwd->next = 0;
-	str = passwd->data + nfields * sizeof (char) + nfields * sizeof (char*);
+	passwd->next = NULL;
+	data_beg=(char *)passwd + sizeof(struct mypasswd);
+	str = data_beg + nfields * sizeof (char) + nfields * sizeof (char*);
 	memcpy (str, string, len);
 	str[len] = 0;
 	passwd->field[fn++] = str;
-	passwd->listflag = passwd->data + nfields * sizeof (char *);
+	passwd->listflag = data_beg + nfields * sizeof (char *);
 	for(i=0; i < len; i++){
 		if (str[i] == delimiter) {
 			str[i] = 0;
@@ -78,18 +86,17 @@ static int string_to_entry(const char* string, int nfields, char delimiter,
 		}
 	}
 	for (; fn < nfields; fn++) passwd->field[fn] = NULL;
-/*
-printpw(passwd, 7);
-*/
 	return len + nfields * sizeof (char) + nfields * sizeof (char*) + sizeof (struct mypasswd) + 1;
 }
 
 
 static void destroy_password (struct mypasswd * pass)
 {
-	if(!pass) return;
-	if(pass->next)destroy_password(pass->next);
-	free(pass);
+	struct mypasswd *p;
+	while ((p=pass)!=NULL) {
+		pass = pass->next;
+		free(p);
+	}
 }
 
 
@@ -110,8 +117,13 @@ static void release_hash_table(struct hashtable * ht){
  		if (ht->table[i])
  			destroy_password(ht->table[i]);
 	if (ht->table) free(ht->table);
-	if (ht->filename) free(ht->filename);
 	if (ht->fp) fclose(ht->fp);
+}
+
+static void release_ht(struct hashtable * ht){
+	if (!ht) return;
+	release_hash_table(ht);
+	if (ht->filename) free(ht->filename);
 	free(ht);
 }
 
@@ -122,16 +134,17 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	char buffer[1024];
 	struct hashtable* ht;
 	int len;
-	int h;
+	unsigned int h;
 	struct mypasswd *hashentry, *hashentry1;
 	char *list;
 	char *nextlist=0;
 	int i;
 	
-	ht = (struct hashtable *) malloc(sizeof(struct hashtable));
+	ht = (struct hashtable *) rad_malloc(sizeof(struct hashtable));
 	if(!ht) {
 		return NULL;
 	}
+	memset(ht, 0, sizeof(struct hashtable));
 	ht->filename = strdup(file);
 	if(!ht->filename) {
 		free(ht);
@@ -147,7 +160,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	if(!tablesize) return ht;
 	if(!(ht->fp = fopen(file,"r"))) return NULL;
 	memset(ht->buffer, 0, 1024);
-	ht->table = (struct mypasswd **) malloc (tablesize * sizeof(struct mypasswd *));
+	ht->table = (struct mypasswd **) rad_malloc (tablesize * sizeof(struct mypasswd *));
 	if (!ht->table) {
 		/*
 		 * Unable allocate memory for hash table
@@ -156,6 +169,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 		ht->tablesize = 0;
 		return ht;
 	}
+	memset(ht->table, 0, tablesize * sizeof(struct mypasswd *));
 	while (fgets(buffer, 1024, ht->fp)) {
 		if(*buffer && *buffer!='\n' && (!ignorenis || (*buffer != '+' && *buffer != '-')) ){
 			if(!(hashentry = mypasswd_malloc(buffer, nfields, &len))){
@@ -183,7 +197,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 					for (nextlist = list; *nextlist && *nextlist!=','; nextlist++);
 					if (*nextlist) *nextlist++ = 0;
 					else nextlist = 0;
-					if(!(hashentry1 = (struct mypasswd *) malloc(sizeof(struct mypasswd) + nfields * sizeof(char *)))){
+					if(!(hashentry1 = mypasswd_malloc("", nfields, &len))){
 						release_hash_table(ht);
 						ht->tablesize = 0;
 						return ht;
@@ -213,20 +227,20 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 	
 	if (ht->tablesize > 0) {
 		/* get saved address of next item to check from buffer */
-		memcpy(&hashentry, ht->buffer, sizeof(hashentry));
+		hashentry = ht->last_found;
 		for (; hashentry; hashentry = hashentry->next) {
 			if (!strcmp(hashentry->field[ht->keyfield], name)) {
 				/* save new address */
-				memcpy(ht->buffer, &hashentry->next, sizeof(hashentry));
+				ht->last_found = hashentry->next;
 				return hashentry;
 			}
 		}
-		memset(ht->buffer, 0, sizeof(hashentry));
 		return NULL;
 	}
+	printf("try to find in file\n");
 	if (!ht->fp) return NULL;
 	while (fgets(buffer, 1024,ht->fp)) {
-		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, *ht->delimiter, passwd, 1024)) &&
+		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, *ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
 			(!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
 			if(!ht->islist) {
 				if(!strcmp(passwd->field[ht->keyfield], name))
@@ -255,15 +269,15 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
 	struct mypasswd * hashentry;
 	
 	if (!ht || !name || *name == '\0') return NULL;
+	ht->last_found = NULL;
 	if (ht->tablesize > 0) {
 		h = hash (name, ht->tablesize);
 		for (hashentry = ht->table[h]; hashentry; hashentry = hashentry->next)
 			if (!strcmp(hashentry->field[ht->keyfield], name)){
 				/* save address of next item to check into buffer */
-				memcpy(ht->buffer, &hashentry->next, sizeof(hashentry));
+				ht->last_found=hashentry->next;
 				return hashentry;
 			}
-		memset(ht->buffer, 0, sizeof(hashentry));
 		return NULL;
 	}
 	if (ht->fp) fclose(ht->fp);
@@ -273,28 +287,31 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
 
 #ifdef TEST
 
+#define MALLOC_CHECK_ 1
+
 int main(void){
  struct hashtable *ht;
  char *buffer;
  struct mypasswd* pw;
  int i;
  
- ht = build_hash_table("/etc/group", 4, 3, 1, 100, 0);
+ ht = build_hash_table("/etc/group", 4, 3, 1, 100, 0, ":");
  if(!ht) {
  	printf("Hash table not built\n");
  	return -1;
  }
- 
  for (i=0; i<ht->tablesize; i++) if (ht->table[i]) {
   printf("%d:\n", i);
   for(pw=ht->table[i]; pw; pw=pw->next) printpw(pw, 4);
  }
+
  while(fgets(buffer, 1024, stdin)){
   buffer[strlen(buffer)-1] = 0;
   pw = get_pw_nam(buffer, ht);
   printpw(pw,4);
-  while (pw = get_next(buffer, ht))printpw(pw,4);
+  while (pw = get_next(buffer, ht)) printpw(pw,4);
  }
+ release_ht(ht);
 }
 
 #else  /* TEST */
@@ -327,7 +344,7 @@ static CONF_PARSER module_config[] = {
 	{ "ignorenislike",   PW_TYPE_BOOLEAN,
 	   offsetof(struct passwd_instance, ignorenislike), NULL,  "yes" },
 	{ "allowmultiplekeys",   PW_TYPE_BOOLEAN,
-	   offsetof(struct passwd_instance, ignorenislike), NULL,  "no" },
+	   offsetof(struct passwd_instance, allowmultiple), NULL,  "no" },
 	{ "hashsize",   PW_TYPE_INTEGER,
 	   offsetof(struct passwd_instance, hashsize), NULL,  "100" },
 };
@@ -343,6 +360,11 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	DICT_ATTR * da;
 	
 	*instance = rad_malloc(sizeof(struct passwd_instance));
+	if ( !*instance) {
+		radlog(L_ERR, "rlm_passwd: cann't alloc instance");
+		return -1;
+	}
+	memset(*instance, 0, sizeof(struct passwd_instance));
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
 		radlog(L_ERR, "rlm_passwd: cann't parse configuration");
@@ -387,12 +409,12 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
 		radlog(L_ERR, "rlm_passwd: memory allocation failed");
-		release_hash_table(inst->ht);
+		release_ht(inst->ht);
 		return -1;
 	}
 	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
 		radlog(L_ERR, "rlm_passwd: unable to convert format entry");
-		release_hash_table(inst->ht);
+		release_ht(inst->ht);
 		return -1;
 	}
 	
@@ -406,12 +428,12 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	if (!*inst->pwdfmt->field[keyfield]) {
 		radlog(L_ERR, "rlm_passwd: key field is empty");
-		release_hash_table(inst->ht);
+		release_ht(inst->ht);
 		return -1;
 	}
 	if (! (da = dict_attrbyname (inst->pwdfmt->field[keyfield])) ) {
 		radlog(L_ERR, "rlm_passwd: unable to resolve attribute: %s", inst->pwdfmt->field[keyfield]);
-		release_hash_table(inst->ht);
+		release_ht(inst->ht);
 		return -1;
 	}
 	inst->keyattr = da->attr;
@@ -427,7 +449,11 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 
 static int passwd_detach (void *instance) {
 #define inst ((struct passwd_instance *)instance)
-	if(inst->ht) release_hash_table(inst->ht);
+	if(inst->ht) release_ht(inst->ht);
+        if (inst->filename != NULL) 	free(inst->filename);
+        if (inst->format != NULL) 	free(inst->format);
+        if (inst->authtype != NULL ) 	free(inst->authtype);
+        if (inst->delimiter != NULL)	free(inst->delimiter);
 	free(instance);
 	return 0;
 #undef inst
