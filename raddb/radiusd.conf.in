@@ -357,6 +357,13 @@ modules {
 		passwd		= /etc/passwd
 		#	shadow		= /etc/shadow
 		group		= /etc/group
+
+
+		#
+		#  Where the 'wtmp' file is located.
+		#  This will be moved to it's own module soon..
+		#
+		radwtmp = ${logdir}/radwtmp
 	}
 
 # Uncomment this if you want to use ldap (Auth-Type = LDAP)

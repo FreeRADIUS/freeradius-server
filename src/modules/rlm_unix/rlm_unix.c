@@ -46,9 +46,10 @@ static char trans[64] =
 
 struct unix_instance {
 	int cache_passwd;
-	char *passwd_file;
-	char *shadow_file;
-	char *group_file;
+	const char *passwd_file;
+	const char *shadow_file;
+	const char *group_file;
+	const char *radwtmp;
 	int usegroup;
 	struct pwcache *cache;
 };
@@ -63,6 +64,7 @@ static CONF_PARSER module_config[] = {
 	{ "passwd",   PW_TYPE_STRING_PTR, &config.passwd_file,  NULL },
 	{ "shadow",   PW_TYPE_STRING_PTR, &config.shadow_file,  NULL },
 	{ "group",    PW_TYPE_STRING_PTR, &config.group_file,   NULL },
+	{ "radwtmp",  PW_TYPE_STRING_PTR, &config.radwtmp,      "${logdir}/radwtmp" },
 	{ "usegroup", PW_TYPE_BOOLEAN,    &config.usegroup,     "no" },
 	
 	{ NULL, -1, NULL, NULL }		/* end the list */
@@ -143,15 +145,21 @@ static int unix_init(void)
 
 static int unix_instantiate(CONF_SECTION *conf, void **instance)
 {
-	*instance = malloc(sizeof(struct unix_instance));
-	if(!*instance) {
-	      return -1;
+	struct unix_instance *inst;
+
+	/*
+	 *	Parse the configuration, failing if we can't do so.
+	 */
+	if (cf_section_parse(conf, module_config) < 0) {
+		return -1;
 	}
 
-#define inst ((struct unix_instance *)*instance)
-	if (cf_section_parse(conf, module_config) < 0) {
-		free(*instance);
-		return -1;
+	/*
+	 *	Allocate room for the instance.
+	 */
+	inst = *instance = malloc(sizeof(struct unix_instance));
+	if(!inst) {
+	      return -1;
 	}
 
 	/*
@@ -161,10 +169,12 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 	inst->passwd_file = config.passwd_file;
 	inst->shadow_file = config.shadow_file;
 	inst->group_file = config.group_file;
+	inst->radwtmp = config.radwtmp;
 	inst->usegroup = config.usegroup;
 	config.passwd_file = NULL;
 	config.shadow_file = NULL;
 	config.group_file = NULL;
+	config.radwtmp = NULL;
 
 	if (inst->cache_passwd) {
 		radlog(L_INFO, "HASH:  Reinitializing hash structures "
@@ -204,9 +214,10 @@ static int unix_detach(void *instance)
 		group_inst = NULL;
 		group_inst_explicit = 0;
 	}
-	free(inst->passwd_file);
-	free(inst->shadow_file);
-	free(inst->group_file);
+	free((char *) inst->passwd_file);
+	free((char *) inst->shadow_file);
+	free((char *) inst->group_file);
+	free((char *) inst->radwtmp);
 	if (inst->cache) {
 		unix_freepwcache(inst->cache);
 	}
@@ -437,8 +448,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	int		nas_port = 0;
 	int		port_seen = 0;
 	int		nas_port_type = 0;
-
-	instance = instance;
+	struct unix_instance *inst = (struct unix_instance *) instance;
 
 	/*
 	 *	Which type is this.
@@ -565,7 +575,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	wtmp file. If it is, we try to write. If we fail,
 	 *	return RLM_MODULE_FAIL ..
 	 */
-	if ((fp = fopen(RADWTMP, "a")) != NULL) {
+	if ((fp = fopen(inst->radwtmp, "a")) != NULL) {
 		fwrite(&ut, sizeof(ut), 1, fp);
 		fclose(fp);
 	}
