@@ -1,7 +1,7 @@
 
 0. WARNING!
 
-  ReeRadius now uses autoconf - some of the default directories
+  FreeRadius now uses autoconf - some of the default directories
   have changed! Configuration is now by default in /usr/local/etc/raddb,
   and logfiles are in /usr/local/var/log/ ....
   See 2. for more info.
@@ -55,17 +55,16 @@
 
   --prefix=		Prefix to install (default: /usr/local)
   --localstatedir=	Base prefix for the logfiles. Defaults
-			to PREFIX/var
+			to ${prefix}/var
   --with-logdir=DIR	Directory for radutmp, radwtmp and radius.log.
-			Defaults to LOCALSTATEDIR/log
+			Defaults to ${localstatedir}/log
   --with-radacctdir=DIR	Directory for the detail files. Defaults to
-			LOGDIR/radacct
+			${logdir}/radacct
   --sysconfdir		Base prefix for the raddb directory. Defaults to
-			PREFIX/etc
-  --with-raddbdir=DIR	Configuration files. Defaults to SYSCONFDIR/raddb
+			${prefix}/etc
+  --with-raddbdir=DIR	Configuration files. Defaults to ${sysconfdir}/raddb
   --with-dbm		Include DBM support (Old-style DBM)
   --with-ndbm		Include NDBM support
-  --with-pam		Include PAM support
   --with-ascend-hack	Include Ascend hacks
   --with-ascend-cpl=N	Set Ascend Channels Per Line to N
   --with-ntdomain-hack	Include NT Domain hack (strip first part of
@@ -294,7 +293,7 @@
   To subscribe to the developers list, send a message with "help" in the
   body to freeradius-devel-request@info.cistron.nl.
   You can browse the archive of this mailing list at
-  http://info.cistron.nl/archives/cistron-radius/
+  http://info.cistron.nl/archives/freeradius-devel/
 
   There are a few other mailing lists that might offer some help:
 
