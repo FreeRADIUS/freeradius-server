@@ -1,1 +1,34 @@
-.so man7/undocumented.7
+.TH RADZAP 1 "22 February 2001" "" "FreeRadius Daemon"
+.SH NAME
+radzap -- remove rogue entries from the active sessions database
+.SH SYNOPSIS
+.B radzap
+.RB [ \-v ]
+.I nas
+.RB [ port ]
+.RB [ username ]
+.SH DESCRIPTION
+The FreeRadius server can be configured to maintain an active session
+database in a file called \fIradutmp\fP. Commands like \fBradwho\fP(1)
+use this database. Sometimes that database can get out of sync, and
+then it might contain rogue entries. \fBRadzap\fP can clean up this
+database.
+.SH OPTIONS
+.IP \-v
+Verbose. Shows you what it is doing.
+.IP nas
+Hostname or IP address of the NAS (Network Access Server, sometimes
+called "terminal server") of the session you want to remove.
+.IP port
+Port of the session you want to remove. This is the NAS-Port
+radius attribute, it doesn't have anything to do with UDP port
+numbers. Must be an integer. \fB-1\fP means "any", and is the
+default if this option is not specified.
+.IP username
+Optional: the username of the session you want to remove.
+.SH SEE ALSO
+radwho(1),
+radiusd(8),
+radiusd.conf(5).
+.SH AUTHOR
+Miquel van Smoorenburg, miquels@cistron.nl.
