@@ -9,7 +9,7 @@
 #include <string.h>
 
 #include 	"radiusd.h"
-#include	"rlm_sql.h"
+#include	"sql_iodbc.h"
 
 /*************************************************************************
  *
