@@ -319,7 +319,11 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	 * all data to strings for ease of use.  Fortunately, most
 	 * of the data we deal with is already in string format.
 	 */
-	colcount=sql_num_fields(sqlsocket, config);
+	colcount = sql_num_fields(sqlsocket, config);
+	if (colcount != 5) {
+		radlog(L_ERR,"rlm_sql_oracle: Failed to obtain results from expected schema");
+		return SQL_DOWN;
+	}
 
 	/* DEBUG2("sql_select_query(): colcount=%d",colcount); */
 
@@ -408,8 +412,6 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 			return -1;
 		}
 	}
-
-	rowdata[y-1]=NULL; /* Terminate the array */
 
 	oracle_sock->results=rowdata;
 
