@@ -283,6 +283,8 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 
 			switch(check_item->operator) {
 
+			    case T_OP_SET:            /* nothing to do for set */
+			        break;
 			    case T_OP_EQ:
 			    default:
 			        radlog(L_ERR, "Invalid operator for item %s: "
