@@ -475,26 +475,33 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		}
 		ret = rlm_sql_fetch_row(sqlsocket, inst);
 
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst, sqlsocket);
-
 		if (ret) {
 			radlog(L_ERR, "rlm_sql_authorize: query failed");
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
 			return RLM_MODULE_FAIL;
 		}
 
 		row = sqlsocket->row;
 		if (row == NULL) {
 			radlog(L_ERR, "rlm_sql_authorize: no rows returned from query (no such user)");
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
 			return RLM_MODULE_OK;
 		}
 
 		if (row[0] == NULL) {
 			radlog(L_ERR, "rlm_sql_authorize: row[0] returned NULL.");
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
 			return RLM_MODULE_OK;
 		}
 		if ((passwd_item = pairmake("User-Password",row[0],T_OP_SET)) != NULL)
 			pairadd(&request->config_items,passwd_item);
+
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+		sql_release_socket(inst, sqlsocket);
+
 		goto move_on;
 	}
 	/* Remove the username we (maybe) added above */
