@@ -747,7 +747,38 @@ modules {
 			   
 		#}
 
+		#
+		#  The tunneled EAP session needs a default EAP type
+		#  which is separate from the one for the non-tunneled
+		#  EAP module.  Inside of the TLS/PEAP tunnel, we
+		#  recommend using EAP-MS-CHAPv2.
+		#
+		# peap {
+			#  The tunneled EAP session needs a default
+			#  EAP type which is separate from the one for
+			#  the non-tunneled EAP module.  Inside of the
+			#  PEAP tunnel, we recommend using MS-CHAPv2,
+			#  as that is the default type supported by
+			#  Windows clients.
+		#	default_eap_type = mschapv2
+		#}
 
+		#
+		#  This takes no configuration.
+		#
+		#  Note that it is the EAP MS-CHAPv2 sub-module, not
+		#  the main 'mschap' module.
+		#
+		#  Note also that in order for this sub-module to work,
+		#  the main 'mschap' module MUST ALSO be configured.
+		#
+		#  This module is the *Microsoft* implementation of MS-CHAPv2
+		#  in EAP.  There is another (incompatible) implementation
+		#  of MS-CHAPv2 in EAP by Cisco, which FreeRADIUS does not
+		#  currently support.
+		#
+		mschapv2 {
+		}
 	}
 
 	# Microsoft CHAP authentication
