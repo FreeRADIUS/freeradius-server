@@ -3,7 +3,7 @@
  *		accounting:     Functions to write radwtmp file.
  *		Also contains handler for "Group".
  *
- * Version:	@(#)rlm_unix.c  1.00  08-Aug-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 static const char rcsid[] = "$Id$";
@@ -11,12 +11,9 @@ static const char rcsid[] = "$Id$";
 #include	"autoconf.h"
 
 #include	<sys/types.h>
-#include	<sys/time.h>
-
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<time.h>
 #include	<unistd.h>
 #include	<grp.h>
 #include	<pwd.h>
@@ -128,12 +125,12 @@ static int unix_init(int argc, char **argv)
 	if (cache_passwd) {
 		log(L_INFO, "HASH:  Reinitializing hash structures "
 			"and lists for caching...");
-		if (buildHashTable(passwd_file, shadow_file) < 0) {
+		if (unix_buildHashTable(passwd_file, shadow_file) < 0) {
 			log(L_ERR, "HASH:  unable to create user "
 				"hash table.  disable caching and run debugs");
 			return -1;
 		}
-		if (buildGrpList() < 0) {
+		if (unix_buildGrpList() < 0) {
 			log(L_ERR, "HASH:  unable to cache groups file.  "
 				"disable caching and run debugs");
 			return -1;

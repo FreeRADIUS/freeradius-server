@@ -13,9 +13,10 @@
  *
  *	(c) 1999 Author - Jeff Carneal, Apex Internet Services, Inc.
  *
- * Version: cache.c  0.99  04-13-1999  jeff@apex.net
+ * Version: $Id$
  *
  */    
+static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
 
@@ -61,7 +62,7 @@ static struct mygroup *grphead = NULL;
 /* Builds the hash table up by storing passwd/shadow fields
  * in memory.  Returns -1 on failure, 0 on success.
  */
-int buildHashTable(const char *passwd_file, const char *shadow_file) {
+int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	FILE *passwd;
 #if HAVE_SHADOW_H
 	FILE *shadow;
@@ -241,8 +242,8 @@ int buildHashTable(const char *passwd_file, const char *shadow_file) {
 #endif
 
 	/* Finally, let's look at radutmp and make a record of everyone
-    * that's logged in currently */
-	hashradutmp();
+	 * that's logged in currently */
+	unix_hashradutmp();
 
 	/* log how many entries we stored from the passwd file */
 	log(L_INFO, "HASH:  Stored %d entries from %s", numread, passwd_file);
@@ -258,7 +259,7 @@ int buildHashTable(const char *passwd_file, const char *shadow_file) {
  * out there needs and appreciates it.
  * Returns -1 on failure, and 0 on success
  */
-int buildGrpList(void) {
+int unix_buildGrpList(void) {
 
 	int len, len2, index, numread=0;
 	struct group *grp;
@@ -423,7 +424,7 @@ static int hashUserName(const char *s) {
  * for every login a user has...assuming we can find the user
  * in the hashtable
  */
-int hashradutmp(void) {
+int unix_hashradutmp(void) {
 
 	int fd;
 	struct radutmp u;
