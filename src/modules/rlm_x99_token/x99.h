@@ -32,6 +32,8 @@
 #define CHALLENGE_TEXT "Challenge: %s\n Response: "
 /* Must be a multiple of sizeof(des_cblock) (8); read docs before changing. */
 #define MAX_CHALLENGE_LEN 32
+/* Password that means "challenge me" in sync mode */
+#define CHALLENGE_REQ "challenge"
 
 /* Max event window size for sync modes */
 #define MAX_EWINDOW_SIZE 10
@@ -50,6 +52,7 @@
 #define DEVURANDOM "/dev/urandom"
 
 /* Bit maps for Card Features.  It is OK to insert values at will. */
+#define X99_CF_NONE		0
 /* Vendors */
 #define X99_CF_CRYPTOCARD	0x01 << 0  /* CRYPTOCard             */
 #define X99_CF_SNK		0x01 << 1  /* Symantec ne Axent ne   */

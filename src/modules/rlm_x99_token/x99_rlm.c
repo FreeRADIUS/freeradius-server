@@ -32,8 +32,8 @@
  */
 
 /*
- * TODO: add a flag to control challenge issuance for unknown usernames?
- * TODO: add required password support? (before challenged, eg "challenge")
+ * TODO: change maxfail to softfail, hardfail.
+ * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
 
@@ -68,7 +68,9 @@ typedef struct x99_token_t {
     int maxdelay;	/* max delay time for response, in seconds         */
     int maxfail;	/* max number of auth fails before disabling user  */
     int allow_sync;	/* useful to override pwdfile card_type settings   */
-    int allow_async;	/* C/R mode allowed? (to resync card)              */
+    int fast_sync;	/* response-before-challenge mode                  */
+    int allow_async;	/* C/R mode allowed?                               */
+    char *chal_req;	/* keyword requesting challenge for fast_sync mode */
     int ewindow_size;	/* sync mode event window size (right side value)  */
 #if 0
     int twindow_min;	/* sync mode time window left side                 */
@@ -92,8 +94,12 @@ static CONF_PARSER module_config[] = {
       NULL, "5" },
     { "allow_sync", PW_TYPE_BOOLEAN, offsetof(x99_token_t, allow_sync),
       NULL, "yes" },
-    { "allow_async", PW_TYPE_BOOLEAN, offsetof(x99_token_t, allow_async),
-      NULL, "no" },
+    { "fast_sync", PW_TYPE_BOOLEAN, offsetof(x99_token_t, fast_sync),
+      NULL, "yes" },
+    { "allow_async", PW_TYPE_INTEGER, offsetof(x99_token_t, allow_async),
+      NULL, "0" },
+    { "challenge_req", PW_TYPE_STRING_PTR, offsetof(x99_token_t, chal_req),
+      NULL, CHALLENGE_REQ },
     { "ewindow_size", PW_TYPE_INTEGER, offsetof(x99_token_t, ewindow_size),
       NULL, "0" },
 #if 0
@@ -168,6 +174,12 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 		      "using default of 5");
     }
 
+    if (data->fast_sync && !data->allow_sync) {
+	data->fast_sync = 0;
+	radlog(L_INFO, "rlm_x99_token: fast_sync is yes, but allow_sync is no; "
+		       "disabling fast_sync");
+    }
+
     if (data->ewindow_size > MAX_EWINDOW_SIZE || data->ewindow_size < 0) {
 	data->ewindow_size = 0;
 	radlog(L_ERR, "rlm_x99_token: max event window size is %d, "
@@ -216,6 +228,7 @@ x99_token_authorize(void *instance, REQUEST *request)
     int i;
 
     x99_user_info_t user_info;
+    int user_found;
     int rc;
 
     /* The State attribute will be present if this is a response. */
@@ -224,21 +237,14 @@ x99_token_authorize(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
     }
 
-    /* User-Name attribute required (but we don't use it). */
+    /* User-Name attribute required. */
     if (!request->username) {
 	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"User-Name\" is "
 		       "required for authentication.");
 	return RLM_MODULE_INVALID;
     }
 
-#if 0
-    /*
-     * Unlike TACACS+, RADIUS has the NAS ask for the password before
-     * sending any data to the server.  So the password here is junk
-     * (we haven't presented the challenge yet).  We might want to
-     * use it later so a user can multiplex on different card types.
-     * Or for other reasons?
-     */
+    /* Password attribute required. */
     if (!request->password) {
 	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"Password\" is "
 		       "required for authentication.");
@@ -249,12 +255,12 @@ x99_token_authorize(void *instance, REQUEST *request)
     if (request->password->attribute != PW_PASSWORD) {
 	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"Password\" is "
 		       "required for authentication.  Cannot use \"%s\".",
-	       request->password->name);
+		       request->password->name);
 	return RLM_MODULE_INVALID;
     }
-#endif /* 0 */
 
     /* Look up the user's info. */
+    user_found = 1;
     if ((rc = x99_get_user_info(inst->pwdfile, request->username->strvalue,
 				&user_info)) == -2) {
 	radlog(L_ERR, "rlm_x99_token: autz: error reading user info");
@@ -262,10 +268,50 @@ x99_token_authorize(void *instance, REQUEST *request)
     }
     if (rc == -1) {
 	/* x99_get_user_info() also logs, but we want to record the autz bit */
-	radlog(L_AUTH, "rlm_x99_token: autz: user not found");
-	/* if (!always_challenge) { return RLM_MODULE_INVALID; } */
+	radlog(L_AUTH, "rlm_x99_token: autz: user [%s] not found",
+	       request->username->strvalue);
+	memset(&user_info, 0, sizeof(user_info)); /* X99_CF_NONE */
+	user_found = 0;
     }
 
+    /* fast_sync mode (challenge only if requested) */
+    if (inst->fast_sync &&
+	((user_info.card_id & X99_CF_SM) || !user_found)) {
+
+	if (!strcmp(request->password->strvalue, inst->chal_req)) {
+	    /*
+	     * Generate a challenge if requested.  We don't test for card
+	     * support [for async] because it's tricky for unknown users.
+	     * Some configurations would have a problem where known users
+	     * cannot request a challenge, but unknown users can.  This
+	     * reveals information.  The easiest fix seems to be to always
+	     * hand out a challenge on request.
+	     * We also don't test if the server allows async mode, this
+	     * would also reveal information.
+	     */
+	    DEBUG("rlm_x99_token: autz: fast_sync challenge requested");
+	    goto gen_challenge;
+
+	} else {
+	    /*
+	     * Otherwise, this is the token sync response.  Signal
+	     * the authenticate code to ignore State.  We don't need
+	     * to set a value, /existence/ of the vp is the signal.
+	     */
+	    VALUE_PAIR *vp;
+
+	    if ((vp = paircreate(PW_X99_FAST, PW_TYPE_INTEGER)) == NULL) {
+		radlog(L_ERR|L_CONS, "rlm_x99_token: autz: no memory");
+		return RLM_MODULE_FAIL;
+	    }
+	    pairadd(&request->config_items, vp);
+	    DEBUG("rlm_x99_token: autz: using fast_sync");
+	    return RLM_MODULE_OK;
+
+	}
+    } /* if (fast_sync && card supports sync mode) */
+
+gen_challenge:
     /* Generate a random challenge. */
     if (x99_get_random(rnd_fd, rawchallenge, inst->chal_len) == -1) {
 	radlog(L_ERR, "rlm_x99_token: autz: failed to obtain random data");
@@ -283,6 +329,7 @@ x99_token_authorize(void *instance, REQUEST *request)
      * the response.  We will need this to verify the response.  Create
      * a strong state if the user will be able use this with their token.
      * Otherwise, we discard it anyway, so don't "waste" time with hmac.
+     * We also don't do the hmac if the user wasn't found (mask won't match).
      * We always create at least a trivial state, so x99_token_authorize()
      * can easily pass on to x99_token_authenticate().
      */
@@ -334,7 +381,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 {
     x99_token_t *inst = (x99_token_t *) instance;
 
-    x99_user_info_t  user_info;
+    x99_user_info_t user_info;
     char *username;
     int i, failcount;
     time_t last_async;
@@ -378,8 +425,8 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	return RLM_MODULE_REJECT;
     }
 
-    /* Retrieve the challenge (from State attribute). */
-    {
+    /* Retrieve the challenge (from State attribute), unless (fast_sync). */
+    if (pairfind(request->config_items, PW_X99_FAST) == NULL) {
 	VALUE_PAIR	*vp;
 	unsigned char	*state;
 	time_t		then;
@@ -433,7 +480,7 @@ good_state:
 			  "missing", username);
 	    return RLM_MODULE_FAIL;
 	}
-    }
+    } /* if (!fast_sync) */
 
     /*
      * Check failure count.  We try to "fail secure", but it's not perfect
@@ -454,9 +501,15 @@ good_state:
 	return RLM_MODULE_USERLOCK;
     }
 
-    /* Don't bother to check async response if the card doesn't support it. */
-    if (!(user_info.card_id & X99_CF_AM))
+    /*
+     * Don't bother to check async response if either
+     * - the card doesn't support it, or
+     * - we're doing fast_sync.
+     */
+    if (!(user_info.card_id & X99_CF_AM) ||
+	pairfind(request->config_items, PW_X99_FAST)) {
 	goto sync_response;
+    }
 
     /* Perform any site-specific transforms of the challenge. */
     if (x99_challenge_transform(username, challenge) != 0) {
