@@ -30,6 +30,8 @@
  *   That should allow us to also use the NAS-Identifier attribute
  * Sep 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  * - Move from authorize to post-auth
+ * - Use mutex locks when accessing the gdbm files
+ * - Fail if we don't find nas port information
  */
 
 #include "config.h"
@@ -61,10 +63,6 @@
 #define GDBM_IPPOOL_OPTS (GDBM_SYNCOPT)
 #endif
 
-#ifndef HAVE_GDBM_FDESC
-#define gdbm_fdesc(foo) (-1)
-#endif
-
 #define ALL_ONES 4294967295
 #define MAX_NAS_NAME_SIZE 64
 
@@ -87,8 +85,8 @@ typedef struct rlm_ippool_t {
 	int cache_size;
 	GDBM_FILE gdbm;
 	GDBM_FILE ip;
-	int fd;
-	int ip_fd;
+	pthread_mutex_t session_mutex;
+	pthread_mutex_t ip_mutex;
 } rlm_ippool_t;
 
 typedef struct ippool_info {
@@ -178,6 +176,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 		free(data);
 		return -1;
 	}
+	
 	data->gdbm = gdbm_open(data->session_db, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (data->gdbm == NULL) {
@@ -185,8 +184,6 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 				data->session_db, strerror(errno));
 		return -1;
 	}
-	if (data->fd >= 0) data->fd = gdbm_fdesc(data->gdbm);
-
 	data->ip = gdbm_open(data->ip_index, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (data->ip == NULL) {
@@ -194,16 +191,12 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 				data->ip_index, strerror(errno));
 		return -1;
 	}
-	if (data->ip_fd >= 0) data->ip_fd = gdbm_fdesc(data->ip);
-
 	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 		radlog(L_ERR, "rlm_ippool: Failed to set cache size");
 	if (gdbm_setopt(data->ip, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 		radlog(L_ERR, "rlm_ippool: Failed to set cache size");
 
-	if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
 	key_datum = gdbm_firstkey(data->gdbm);
-	if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
 	if (key_datum.dptr == NULL){
 			/*
 			 * If the database does not exist initialize it.
@@ -239,9 +232,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 			data_datum.dptr = (ippool_info *) &entry;
 			data_datum.dsize = sizeof(ippool_info);
 
-			if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
 			rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
-			if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
 			if (rcode < 0) {
 				radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 						data->session_db, gdbm_strerror(gdbm_errno));
@@ -260,6 +251,8 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL)
 		data->name = strdup(pool_name);
+	pthread_mutex_init(&data->session_mutex, NULL);
+	pthread_mutex_init(&data->ip_mutex, NULL);
 
 	*instance = data;
 	
@@ -323,9 +316,9 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	key_datum.dptr = (ippool_key *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
-	if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
+	pthread_mutex_lock(&data->session_mutex);
 	data_datum = gdbm_fetch(data->gdbm, key_datum);
-	if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
+	pthread_mutex_unlock(&data->session_mutex);
 	if (data_datum.dptr != NULL){
 
 		/*
@@ -339,9 +332,9 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		data_datum.dptr = (ippool_info *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
 
-		if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
+		pthread_mutex_lock(&data->session_mutex);
 		rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
-		if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
+		pthread_mutex_unlock(&data->session_mutex);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 					data->session_db, gdbm_strerror(gdbm_errno));
@@ -353,9 +346,9 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		 */
 		key_datum.dptr = (uint32_t *) &entry.ipaddr;
 		key_datum.dsize = sizeof(uint32_t);
-		if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
+		pthread_mutex_lock(&data->ip_mutex);
 		data_datum = gdbm_fetch(data->ip, key_datum);
-		if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
+		pthread_mutex_unlock(&data->ip_mutex);
 		if (data_datum.dptr != NULL){
 			memcpy(&num, data_datum.dptr, sizeof(int));
 			free(data_datum.dptr);
@@ -364,9 +357,9 @@ static int ippool_accounting(void *instance, REQUEST *request)
 				DEBUG("rlm_ippool: num: %d",num);
 				data_datum.dptr = (int *) &num;
 				data_datum.dsize = sizeof(int);
-				if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
+				pthread_mutex_lock(&data->ip_mutex);
 				rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
-				if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
+				pthread_mutex_unlock(&data->ip_mutex);
 				if (rcode < 0) {
 					radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 							data->ip_index, gdbm_strerror(gdbm_errno));
@@ -414,6 +407,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 	/*
 	 * Get the nas ip address
+	 * If not fail
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
 		strncpy(nas, vp->strvalue, MAX_NAS_NAME_SIZE - 1);
@@ -434,64 +428,68 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 	/*
 	 * Find the port
+	 * If not fail
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL){
+	if ((vp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
 		port = vp->lvalue;
+	else{
+		DEBUG("rlm_ippool: Could not find port information.");
+		return RLM_MODULE_NOOP;
+	}
 
-		strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
-		key.port = port;	
-		DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",nas,port);
-		key_datum.dptr = (ippool_key *) &key;
-		key_datum.dsize = sizeof(ippool_key);
+	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
+	key.port = port;	
+	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",nas,port);
+	key_datum.dptr = (ippool_key *) &key;
+	key_datum.dsize = sizeof(ippool_key);
 
-		if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
-		data_datum = gdbm_fetch(data->gdbm, key_datum);
-		if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
-		if (data_datum.dptr != NULL){
-			/*
-			 * If there is a corresponding entry in the database with active=1 it is stale.
-			 * Set active to zero
-			 */
-			memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
-			free(data_datum.dptr);
-			if (entry.active){
-				DEBUG("rlm_ippool: Found a stale entry for ip/port: %s/%d",ip_ntoa(str,entry.ipaddr),port);
-				entry.active = 0;
+	pthread_mutex_lock(&data->session_mutex);
+	data_datum = gdbm_fetch(data->gdbm, key_datum);
+	pthread_mutex_unlock(&data->session_mutex);
+	if (data_datum.dptr != NULL){
+		/*
+		 * If there is a corresponding entry in the database with active=1 it is stale.
+		 * Set active to zero
+		 */
+		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
+		free(data_datum.dptr);
+		if (entry.active){
+			DEBUG("rlm_ippool: Found a stale entry for ip/port: %s/%d",ip_ntoa(str,entry.ipaddr),port);
+			entry.active = 0;
 
-				data_datum.dptr = (ippool_info *) &entry;
-				data_datum.dsize = sizeof(ippool_info);
+			data_datum.dptr = (ippool_info *) &entry;
+			data_datum.dsize = sizeof(ippool_info);
 
-				if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
-				rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
-				if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
-				if (rcode < 0) {
-					radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
-						data->session_db, gdbm_strerror(gdbm_errno));
-					return RLM_MODULE_FAIL;
-				}
-				/* Decrease allocated count from the ip index */
+			pthread_mutex_lock(&data->session_mutex);
+			rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
+			pthread_mutex_unlock(&data->session_mutex);
+			if (rcode < 0) {
+				radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
+					data->session_db, gdbm_strerror(gdbm_errno));
+				return RLM_MODULE_FAIL;
+			}
+			/* Decrease allocated count from the ip index */
 
-				key_datum.dptr = (uint32_t *) &entry.ipaddr;
-				key_datum.dsize = sizeof(uint32_t);
-				if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
-				data_datum = gdbm_fetch(data->ip, key_datum);
-				if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
-				if (data_datum.dptr != NULL){
-					memcpy(&num, data_datum.dptr, sizeof(int));
-					free(data_datum.dptr);
-					if (num >0){
-						num--;
-						DEBUG("rlm_ippool: num: %d",num);
-						data_datum.dptr = (int *) &num;
-						data_datum.dsize = sizeof(int);
-						if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
-						rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
-						if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
-						if (rcode < 0) {
-							radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
-									data->ip_index, gdbm_strerror(gdbm_errno));
-							return RLM_MODULE_FAIL;
-						}
+			key_datum.dptr = (uint32_t *) &entry.ipaddr;
+			key_datum.dsize = sizeof(uint32_t);
+			pthread_mutex_lock(&data->ip_mutex);
+			data_datum = gdbm_fetch(data->ip, key_datum);
+			pthread_mutex_unlock(&data->ip_mutex);
+			if (data_datum.dptr != NULL){
+				memcpy(&num, data_datum.dptr, sizeof(int));
+				free(data_datum.dptr);
+				if (num >0){
+					num--;
+					DEBUG("rlm_ippool: num: %d",num);
+					data_datum.dptr = (int *) &num;
+					data_datum.dsize = sizeof(int);
+					pthread_mutex_lock(&data->ip_mutex);
+					rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
+					pthread_mutex_unlock(&data->ip_mutex);
+					if (rcode < 0) {
+						radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
+								data->ip_index, gdbm_strerror(gdbm_errno));
+						return RLM_MODULE_FAIL;
 					}
 				}
 			}
@@ -507,7 +505,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * Walk through the database searching for an active=0 entry.
 	 */
 
-	if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
+	pthread_mutex_lock(&data->session_mutex);
 	key_datum = gdbm_firstkey(data->gdbm);
 	while(key_datum.dptr){
 		data_datum = gdbm_fetch(data->gdbm, key_datum);
@@ -528,9 +526,9 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 				tmp.dptr = (uint32_t *) &entry.ipaddr;
 				tmp.dsize = sizeof(uint32_t);
-				if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
+				pthread_mutex_lock(&data->ip_mutex);
 				data_datum = gdbm_fetch(data->ip, tmp);
-				if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
+				pthread_mutex_unlock(&data->ip_mutex);
 
 				/*
 				 * If we find an entry in the ip index and the number is zero (meaning
@@ -559,7 +557,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		free(key_datum.dptr);
 		key_datum = nextkey;
 	}
-	if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
+	pthread_mutex_unlock(&data->session_mutex);
 	/*
 	 * If we have found a free entry set active to 1 then add a Framed-IP-Address attribute to
 	 * the reply
@@ -573,9 +571,9 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			/*
 		 	 * Delete the entry so that we can change the key
 		 	 */
-			if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
+			pthread_mutex_lock(&data->session_mutex);
 			gdbm_delete(data->gdbm, key_datum);
-			if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
+			pthread_mutex_unlock(&data->session_mutex);
 		}
 		free(key_datum.dptr);
 		strncpy(key.nas,nas,MAX_NAS_NAME_SIZE - 1);
@@ -583,9 +581,9 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		key_datum.dptr = (ippool_key *) &key;
 		key_datum.dsize = sizeof(ippool_key);
 		
-		if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
+		pthread_mutex_lock(&data->session_mutex);
 		rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
-		if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
+		pthread_mutex_unlock(&data->session_mutex);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 				data->session_db, gdbm_strerror(gdbm_errno));
@@ -595,9 +593,9 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		/* Increase the ip index count */
 		key_datum.dptr = (uint32_t *) &entry.ipaddr;
 		key_datum.dsize = sizeof(uint32_t);	
-		if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
+		pthread_mutex_lock(&data->ip_mutex);
 		data_datum = gdbm_fetch(data->ip, key_datum);
-		if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
+		pthread_mutex_unlock(&data->ip_mutex);
 		if (data_datum.dptr){
 			memcpy(&num,data_datum.dptr,sizeof(int));
 			free(data_datum.dptr);
@@ -606,9 +604,9 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		DEBUG("rlm_ippool: num: %d",num);
 		data_datum.dptr = (int *) &num;
 		data_datum.dsize = sizeof(int);
-		if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
+		pthread_mutex_lock(&data->ip_mutex);
 		rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
-		if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
+		pthread_mutex_unlock(&data->ip_mutex);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 				data->ip_index, gdbm_strerror(gdbm_errno));
@@ -641,6 +639,8 @@ static int ippool_detach(void *instance)
 	gdbm_close(data->ip);
 	free(data->session_db);
 	free(data->ip_index);
+	pthread_mutex_destroy(&data->session_mutex);
+	pthread_mutex_destroy(&data->ip_mutex);
 
 	free(instance);
 	return 0;
