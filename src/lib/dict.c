@@ -180,6 +180,10 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		}
 	}
 
+	if (value >= 65536) {
+		librad_log("dict_addattr: ATTRIBUTE has invalid number.");
+		return -1;
+	}
 
 	/*
 	 *	Create a new attribute for the list
