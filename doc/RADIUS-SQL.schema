@@ -1,7 +1,10 @@
 #
-#  There isn't a generic SQL schema, but there is one for MySQL:
+#  There isn't a generic SQL schema, but there is one for some databases:
 #
-# src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
+#  src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
+#  src/modules/rlm_sql/drivers/rlm_sql_postgresql/db_postgresql.sql
+#  src/modules/rlm_sql/drivers/rlm_sql_freetds/db_mssql.sql
+#  src/modules/rlm_sql/drivers/rlm_sql_oracle/db_oracle.sql
 #
 #
 #  For further information, this web page seems to be good:
@@ -20,3 +23,8 @@
 # http://www.mysql.com/doc/T/i/Tips.html
 #
 # http://www.mysql.com/doc/M/e/Memory_use.html
+#
+#
+# A good page for MySQL best practices is:
+#
+# http://www.onlamp.com/pub/a/onlamp/2002/07/11/MySQLtips.html
