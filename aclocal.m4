@@ -920,6 +920,7 @@ AC_MSG_CHECKING([for $2 in -l$1])
 
 smart_lib=
 smart_lib_dir=
+ac_safe=`echo "$1" | sed 'y%./+-%__p_%'`
 
 dnl #
 dnl #  Try to link it first, using the default libs && library paths
@@ -952,7 +953,7 @@ dnl #
   dnl #
   if test "x$smart_lib" != "x"; then
     AC_MSG_RESULT(yes)
-    eval "ac_cv_lib_$1_$2=yes"
+    eval "ac_cv_lib_$ac_safe_$2=yes"
     LIBS="$old_LIBS $smart_lib"
     SMART_LIBS="$SMART_LIBS $smart_lib"
   else
