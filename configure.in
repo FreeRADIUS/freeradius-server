@@ -518,6 +518,7 @@ dnl # stupid RedHat shit
 CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
 AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
 if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
+  AC_DEFINE(HAVE_OPENSSL_SSL_H)
   AC_CHECK_HEADERS( \
 	  openssl/err.h \
 	  openssl/crypto.h \
