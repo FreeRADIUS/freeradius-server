@@ -142,7 +142,7 @@ static void *request_handler_thread(void *arg)
 			break;
 		}
 		
-		DEBUG2("Thread %d handling request %08x, number %d",
+		DEBUG2("Thread %d handling request %p, number %d",
 		       self->thread_num, self->request, self->request_count);
 		
 		rad_respond(self->request, self->fun);
@@ -478,7 +478,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	return.  The thread eventually wakes up, and handles
 	 *	the request.
 	 */
-	DEBUG2("Thread %d assigned request %08x", found->thread_num, request);
+	DEBUG2("Thread %d assigned request %p", found->thread_num, request);
 	move2tail(found);
 	found->request = request;
 	found->fun = fun;
