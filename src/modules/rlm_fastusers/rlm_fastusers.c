@@ -532,6 +532,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		return RLM_MODULE_UPDATED;
 	}
 
+	return RLM_MODULE_NOOP;
 }
 
 /*
