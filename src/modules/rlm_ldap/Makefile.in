@@ -1,0 +1,12 @@
+TARGET     = @targetname@
+SRCS       = rlm_ldap.c
+HEADERS    =
+RLM_CFLAGS = @libldap_cflags@
+RLM_LIBS   = @libldap_libs@
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)
+

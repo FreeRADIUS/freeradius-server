@@ -1,0 +1,56 @@
+AC_INIT(rlm_ldap.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_ldap])
+
+if test x$with_[]modname != xno; then
+
+	AC_CHECK_LIB(pthread, pthread_create,
+		[ libldap_libs="${libldap_libs} -lpthread" ],
+		[ fail=$fail" libpthread" ]
+	)
+
+	AC_CHECK_LIB(ldap_r, ldap_initialize,
+		[ libldap_libs="${libldap_libs} -lldap_r" ],
+		[ fail=$fail" libldap_r" ]
+		[ "-lpthread" ]
+	)
+
+	AC_CHECK_LIB(lber, ber_init,
+		[ libldap_libs="${libldap_libs} -llber" ],
+		[ fail=$fail" liblber" ]
+	)
+
+	AC_CHECK_LIB(sasl, sasl_encode,
+		[ libldap_libs="${libldap_libs} -lsasl" ]
+	)
+
+	AC_CHECK_LIB(ssl, SSL_new,
+		[ libldap_libs="${libldap_libs} -lssl" ],
+		[ fail=$fail" libssl" ]
+	)
+
+	AC_CHECK_LIB(crypto, DH_new
+		[ libldap_libs="${libldap_libs} -lcrypto" ]
+	)
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+
+AC_SUBST(libldap_libs)
+AC_SUBST(libldap_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
