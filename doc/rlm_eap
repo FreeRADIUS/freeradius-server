@@ -2,3 +2,44 @@
 notes may be found at:
 
   http://www.eax.com/802/
+
+----------------------------------------------------------------------
+  A summary of how EAP works, as posted to the list by
+John Lindsay <jlindsay@internode.com.au>
+
+To make it clear for everyone, the supplicant is the software on the client 
+(machine with the wireless card).
+
+The EAP process doesn't start until the client has associated with the 
+Access Point using Open authentication.  If this process isn't crystal 
+clear you need to go away and gain understanding.
+
+Once the association is made the AP blocks all traffic that is not 802.1x 
+so although associated the connection only has value for EAP.  Any EAP 
+traffic is passed to the radius server and any radius traffic is passed 
+back to the client.
+
+So, after the client has associated to the Access Point, the supplicant 
+starts the process for using EAP over LAN by asking the user for their 
+logon and password.
+
+Using 802.1x and EAP the supplicant sends the username and a one-way hash 
+of the password to the AP.
+
+The AP encapsulates the request and sends it to the RADIUS server.
+
+The radius server needs a plaintext password so that it can perform the 
+same one-way hash to determine that the password is correct.  If it is, the 
+radius server issues an access challenge which goes back via to the AP to 
+the client. (my study guide says client but my brain says 'supplicant')
+
+The client sends the EAP response to the challenge via the AP to the RADIUS 
+server.
+
+If the response is valid the RADIUS server sends a success message and the 
+session WEP key (EAP over wireless) to the client via the AP.  The same 
+session WEP key is also sent to the AP in the success packet.
+
+The client and the AP then begin using session WEP keys. The WEP key used 
+for multicasts is then sent from the AP to the client.  It is encrypted 
+using the session WEP key.
