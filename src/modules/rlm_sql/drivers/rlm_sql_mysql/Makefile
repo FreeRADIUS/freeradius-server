@@ -3,7 +3,7 @@ include ../../../../../Make.inc
 TARGET		= rlm_sql_mysql
 SRCS		= sql_mysql.c
 HEADERS		= sql_mysql.h
-RLM_SQL_CFLAGS	= $(SQL_MYSQL_INCLUDE)
+RLM_SQL_CFLAGS	= $(SQL_MYSQL_INCLUDE) $(INCLTDL)
 RLM_SQL_LIBS	= $(SQL_MYSQL_LIBS)
 
 $(DYNAMIC_OBJS): $(HEADERS) 

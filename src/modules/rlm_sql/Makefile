@@ -2,7 +2,7 @@ TARGET		= rlm_sql
 SRCS		= rlm_sql.c sql.c
 HEADERS		= rlm_sql.h
 RLM_INSTALL	= install-drivers
-RLM_CFLAGS	= -I../../../libltdl
+RLM_CFLAGS	= $(INCLTDL)
 RLM_LIBS	=
 
 SUBDIRS		= drivers
