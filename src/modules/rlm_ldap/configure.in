@@ -5,32 +5,86 @@ AC_DEFUN(modname,[rlm_ldap])
 if test x$with_[]modname != xno; then
 
 	AC_CHECK_LIB(pthread, pthread_create,
-		[ libldap_libs="${libldap_libs} -lpthread" ],
+		[ ldap_libs="${ldap_ldflags} -lpthread" ],
 		[ fail=$fail" libpthread" ]
 	)
 
+	for headertofind in lber.h ldap.h; do
+		AC_MSG_CHECKING([for ${headertofind}])
+
+		# try no additional header first
+		AC_TRY_COMPILE( [#include <${headertofind}>], [ int a = 1; ],
+			[ LDAP_INCLUDE=" " ],
+			[ LDAP_INCLUDE= ]
+		)
+
+		if test x${LDAP_INCLUDE} != x; then
+			old_CFLAGS=${CFLAGS}
+			for try in /usr/local/include $ldap_include_dir; do
+				CFLAGS="${old_CFLAGS} -I$try"
+				AC_TRY_COMPILE( [#include <${headertofind}>], [ int a = 1; ],
+					[ LDAP_INCLUDE="-I$try" ],
+					[ LDAP_INCLUDE= ]
+				)
+				if test x${LDAP_INCLUDE} != x; then
+					break
+				fi
+			done
+			CFLAGS=${old_CFLAGS}
+		fi
+
+		if test x${LDAP_INCLUDE} = x; then
+			fail="$fail ${headertofind}"
+			headersuggestion="Use --with-ldap-include-dir=<dir> to specify header path."
+			AC_MSG_RESULT(no)
+		else
+			AC_MSG_RESULT(yes)
+			ldap_cflags="${ldap_cflags} ${LDAP_INCLUDE}"
+		fi
+	done
+
+	if test x$ldap_lib_dir != x; then
+		ldap_ldflags="${add_ldap_ldflag} ${ldap_ldflags}"
+		add_ldap_ldflag="-L${ldap_lib_dir}"
+	fi
+
 	AC_CHECK_LIB(ldap_r, ldap_initialize,
-		[ libldap_libs="${libldap_libs} -lldap_r" ],
-		[ fail=$fail" libldap_r" ],
-		[ "-lpthread" ]
+		[ ldap_ldflags="${ldap_ldflags} -lldap_r" ],
+		[ 
+			fail="$fail libldap_r" 
+			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
+		],
+		[ ${add_ldap_ldflag} -lpthread ],
 	)
 
 	AC_CHECK_LIB(lber, ber_init,
-		[ libldap_libs="${libldap_libs} -llber" ],
-		[ fail=$fail" liblber" ]
+		[ ldap_ldflags="${ldap_ldflags} -llber" ],
+		[ 
+			fail="$fail liblber"
+			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
+		],
+		[ ${add_ldap_ldflag} ],
 	)
 
 	AC_CHECK_LIB(sasl, sasl_encode,
-		[ libldap_libs="${libldap_libs} -lsasl" ]
+		[ ldap_ldflags="${ldap_ldflags} -lsasl" ],
+		[ ],
+		[ ${add_ldap_ldflag} ],
 	)
 
 	AC_CHECK_LIB(ssl, SSL_new,
-		[ libldap_libs="${libldap_libs} -lssl" ],
-		[ fail=$fail" libssl" ]
+		[ ldap_ldflags="${ldap_ldflags} -lssl" ],
+		[ 
+			fail="$fail libssl" 
+			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
+		],
+		[ ${add_ldap_ldflag} ],
 	)
 
 	AC_CHECK_LIB(crypto, DH_new,
-		[ libldap_libs="${libldap_libs} -lcrypto" ]
+		[ ldap_ldflags="${ldap_ldflags} -lcrypto" ],
+		[ ],
+		[ ${add_ldap_ldflag} ],
 	)
 
 	targetname=modname
@@ -44,13 +98,19 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.])
+		if test x"$headersuggestion" != x; then
+			AC_MSG_WARN([$headersuggestion]) 
+		fi
+		if test x"$libsuggestion" != x; then
+			AC_MSG_WARN([$libsuggestion]) 
+		fi
 		targetname=""
 	fi
 fi
 
 
-AC_SUBST(libldap_libs)
-AC_SUBST(libldap_cflags)
+AC_SUBST(ldap_ldflags)
+AC_SUBST(ldap_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)

@@ -451,7 +451,7 @@ echo > confdefs.h
 
 # A filename unique to this package, relative to the directory that
 # configure is in, which we can look for to find out if srcdir is correct.
-ac_unique_file=rlm_ldap.c
+ac_unique_file=sql_mysql.c
 
 # Find the source files, if location was not specified.
 if test -z "$srcdir"; then
@@ -521,32 +521,34 @@ else
 fi
 
 
-# From configure.in Revision: 1.2 
+# From configure.in Revision
 
 
-if test x$with_rlm_ldap != xno; then
+if test x$with_rlm_sql_mysql != xno; then
 
-	echo $ac_n "checking for pthread_create in -lpthread""... $ac_c" 1>&6
-echo "configure:531: checking for pthread_create in -lpthread" >&5
-ac_lib_var=`echo pthread'_'pthread_create | sed 'y%./+-%__p_%'`
+	targetname=rlm_sql_mysql   # we might change this later.
+
+	echo $ac_n "checking for compress in -lz""... $ac_c" 1>&6
+echo "configure:533: checking for compress in -lz" >&5
+ac_lib_var=`echo z'_'compress | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   ac_save_LIBS="$LIBS"
-LIBS="-lpthread  $LIBS"
+LIBS="-lz  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 539 "configure"
+#line 541 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
     builtin and then its argument prototype would still apply.  */
-char pthread_create();
+char compress();
 
 int main() {
-pthread_create()
+compress()
 ; return 0; }
 EOF
-if { (eval echo configure:550: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:552: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -561,325 +563,131 @@ LIBS="$ac_save_LIBS"
 fi
 if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
   echo "$ac_t""yes" 1>&6
-   ldap_libs="${ldap_ldflags} -lpthread" 
+  LIBS="$LIBS -lz"
 else
   echo "$ac_t""no" 1>&6
- fail=$fail" libpthread" 
-	
 fi
 
 
-	for headertofind in lber.h ldap.h; do
-		echo $ac_n "checking for ${headertofind}""... $ac_c" 1>&6
-echo "configure:575: checking for ${headertofind}" >&5
+	echo $ac_n "checking for mysql/mysql.h""... $ac_c" 1>&6
+echo "configure:574: checking for mysql/mysql.h" >&5
 
-		# try no additional header first
-		cat > conftest.$ac_ext <<EOF
-#line 579 "configure"
+	cat > conftest.$ac_ext <<EOF
+#line 577 "configure"
 #include "confdefs.h"
-#include <${headertofind}>
+#include <mysql/mysql.h>
 int main() {
- int a = 1; 
+int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:586: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:584: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-   LDAP_INCLUDE=" " 
+  MYSQL_INCLUDE=" "
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-   LDAP_INCLUDE= 
-		
+  MYSQL_INCLUDE=
+	
 fi
 rm -f conftest*
 
-		if test x${LDAP_INCLUDE} != x; then
-			old_CFLAGS=${CFLAGS}
-			for try in /usr/local/include $ldap_include_dir; do
-				CFLAGS="${old_CFLAGS} -I$try"
-				cat > conftest.$ac_ext <<EOF
+	if test "x$MYSQL_INCLUDE" = "x"; then
+		old_CFLAGS="$CFLAGS"
+
+
+		for try in /usr/local/include /usr/local/mysql/include $mysql_include_dir; do
+			CFLAGS="$old_CFLAGS -I$try"
+			cat > conftest.$ac_ext <<EOF
 #line 603 "configure"
 #include "confdefs.h"
-#include <${headertofind}>
+#include <mysql/mysql.h>
 int main() {
- int a = 1; 
+int a = 1;
 ; return 0; }
 EOF
 if { (eval echo configure:610: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-   LDAP_INCLUDE="-I$try" 
+  MYSQL_INCLUDE="-I$try"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-   LDAP_INCLUDE= 
-				
+  MYSQL_INCLUDE=
+			
 fi
 rm -f conftest*
-				if test x${LDAP_INCLUDE} != x; then
-					break
-				fi
-			done
-			CFLAGS=${old_CFLAGS}
-		fi
-
-		if test x${LDAP_INCLUDE} = x; then
-			fail="$fail ${headertofind}"
-			headersuggestion="Use --with-ldap-include-dir=<dir> to specify header path."
-			echo "$ac_t""no" 1>&6
-		else
-			echo "$ac_t""yes" 1>&6
-			ldap_cflags="${ldap_cflags} ${LDAP_INCLUDE}"
-		fi
-	done
-
-	if test x$ldap_lib_dir != x; then
-		ldap_ldflags="${add_ldap_ldflag} ${ldap_ldflags}"
-		add_ldap_ldflag="-L${ldap_lib_dir}"
+			if test "x$MYSQL_INCLUDE" != "x"; then
+				break;
+			fi
+		done
+		CFLAGS="$old_CFLAGS"
 	fi
 
-	echo $ac_n "checking for ldap_initialize in -lldap_r""... $ac_c" 1>&6
-echo "configure:644: checking for ldap_initialize in -lldap_r" >&5
-ac_lib_var=`echo ldap_r'_'ldap_initialize | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lldap_r  ${add_ldap_ldflag} -lpthread  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 652 "configure"
-#include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char ldap_initialize();
+	if test "x$MYSQL_INCLUDE" = "x"; then
+		echo "$ac_t""no" 1>&6
+		echo "configure: warning: mysql headers not found.  Use --with-mysql-include-dir=<path>." 1>&2
+		targetname=   # disabled module
+	else
+		echo "$ac_t""yes" 1>&6
+  
+		echo $ac_n "checking for mysql_init in -lmysqlclient""... $ac_c" 1>&6
+echo "configure:636: checking for mysql_init in -lmysqlclient" >&5
 
+		old_LIBS="$LIBS"
+
+
+		for try in /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql $mysql_lib_dir; do
+			LIBS="$old_LIBS -L$try -lmysqlclient"
+			cat > conftest.$ac_ext <<EOF
+#line 644 "configure"
+#include "confdefs.h"
+extern char mysql_init();
 int main() {
-ldap_initialize()
+mysql_init()
 ; return 0; }
 EOF
-if { (eval echo configure:663: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:651: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
+  MYSQL_LIBS="-L$try -lmysqlclient"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
   rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
+  MYSQL_LIBS=
+			
 fi
 rm -f conftest*
-LIBS="$ac_save_LIBS"
+			if test "x$MYSQL_LIBS" != "x"; then
+				break;
+			fi
+		done
+		LIBS="$old_LIBS"
 
-fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -lldap_r" 
-else
-  echo "$ac_t""no" 1>&6
- 
-			fail="$fail libldap_r" 
-			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
-		
-fi
-
-
-	echo $ac_n "checking for ber_init in -llber""... $ac_c" 1>&6
-echo "configure:689: checking for ber_init in -llber" >&5
-ac_lib_var=`echo lber'_'ber_init | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-llber  ${add_ldap_ldflag}  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 697 "configure"
-#include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char ber_init();
-
-int main() {
-ber_init()
-; return 0; }
+						if test "x$MYSQL_LIBS" = "x"; then
+			echo "$ac_t""no" 1>&6
+			MYSQL_INCLUDE=
+			echo "configure: warning: mysql headers not found.  Use --with-mysql-include-dir=<path>." 1>&2
+			targetname=   # disabled module
+		else
+			echo "$ac_t""yes" 1>&6 
+			cat >> confdefs.h <<\EOF
+#define HAVE_MYSQL_H 1
 EOF
-if { (eval echo configure:708: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
-fi
-rm -f conftest*
-LIBS="$ac_save_LIBS"
 
-fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -llber" 
-else
-  echo "$ac_t""no" 1>&6
- 
-			fail="$fail liblber"
-			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
-		
-fi
+		fi
+	fi
 
+	sql_mysql_ldflags="$sql_mysql_ldflags $LIBS"
 
-	echo $ac_n "checking for sasl_encode in -lsasl""... $ac_c" 1>&6
-echo "configure:734: checking for sasl_encode in -lsasl" >&5
-ac_lib_var=`echo sasl'_'sasl_encode | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lsasl  ${add_ldap_ldflag}  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 742 "configure"
-#include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char sasl_encode();
+	if test "x$targetname" = "x"; then
+		echo "configure: warning: sql submodule 'mysql' disabled" 1>&2
+	fi
 
-int main() {
-sasl_encode()
-; return 0; }
-EOF
-if { (eval echo configure:753: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
-fi
-rm -f conftest*
-LIBS="$ac_save_LIBS"
-
-fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -lsasl" 
-else
-  echo "$ac_t""no" 1>&6
- 
-fi
-
-
-	echo $ac_n "checking for SSL_new in -lssl""... $ac_c" 1>&6
-echo "configure:776: checking for SSL_new in -lssl" >&5
-ac_lib_var=`echo ssl'_'SSL_new | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lssl  ${add_ldap_ldflag}  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 784 "configure"
-#include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char SSL_new();
-
-int main() {
-SSL_new()
-; return 0; }
-EOF
-if { (eval echo configure:795: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
-fi
-rm -f conftest*
-LIBS="$ac_save_LIBS"
-
-fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -lssl" 
-else
-  echo "$ac_t""no" 1>&6
- 
-			fail="$fail libssl" 
-			libsuggestion="Use --with-ldap-lib-dir=<dir> to specify lib path."
-		
-fi
-
-
-	echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
-echo "configure:821: checking for DH_new in -lcrypto" >&5
-ac_lib_var=`echo crypto'_'DH_new | sed 'y%./+-%__p_%'`
-if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  ac_save_LIBS="$LIBS"
-LIBS="-lcrypto  ${add_ldap_ldflag}  $LIBS"
-cat > conftest.$ac_ext <<EOF
-#line 829 "configure"
-#include "confdefs.h"
-/* Override any gcc2 internal prototype to avoid an error.  */
-/* We use char because int might match the return type of a gcc2
-    builtin and then its argument prototype would still apply.  */
-char DH_new();
-
-int main() {
-DH_new()
-; return 0; }
-EOF
-if { (eval echo configure:840: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=yes"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_lib_$ac_lib_var=no"
-fi
-rm -f conftest*
-LIBS="$ac_save_LIBS"
-
-fi
-if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-   ldap_ldflags="${ldap_ldflags} -lcrypto" 
-else
-  echo "$ac_t""no" 1>&6
- 
-fi
-
-
-	targetname=rlm_ldap
 else
 	targetname=
-	echo \*\*\* module rlm_ldap is disabled.
+	echo \*\*\* module rlm_sql_mysql is disabled.
 fi
-
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		{ echo "configure: error: set --without-rlm_ldap to disable it explicitly." 1>&2; exit 1; }
-	else
-		echo "configure: warning: silently not building rlm_ldap." 1>&2
-		echo "configure: warning: FAILURE: rlm_ldap requires: $fail." 1>&2
-		if test x"$headersuggestion" != x; then
-			echo "configure: warning: $headersuggestion" 1>&2 
-		fi
-		if test x"$libsuggestion" != x; then
-			echo "configure: warning: $libsuggestion" 1>&2 
-		fi
-		targetname=""
-	fi
-fi
-
 
 
 
@@ -1028,8 +836,8 @@ s%@includedir@%$includedir%g
 s%@oldincludedir@%$oldincludedir%g
 s%@infodir@%$infodir%g
 s%@mandir@%$mandir%g
-s%@ldap_ldflags@%$ldap_ldflags%g
-s%@ldap_cflags@%$ldap_cflags%g
+s%@sql_mysql_ldflags@%$sql_mysql_ldflags%g
+s%@sql_mysql_cflags@%$sql_mysql_cflags%g
 s%@targetname@%$targetname%g
 
 CEOF
