@@ -2,7 +2,7 @@ TARGET		= rlm_mschap
 SRCS		= rlm_mschap.c
 HEADERS		= 
 RLM_CFLAGS	=
-RLM_LDFLAGS	= -L../../lib -lradius
+RLM_LDFLAGS	= 
 RLM_UTILS   	= smbencrypt
 RLM_INSTALL 	= smbencrypt-install
 
