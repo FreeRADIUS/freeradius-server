@@ -102,9 +102,9 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
-    free(unixodbc_sock);
-    return 0;
+	free(sqlsocket->conn);
+	sqlsocket->conn = NULL;
+	return 0;
 }
 
       

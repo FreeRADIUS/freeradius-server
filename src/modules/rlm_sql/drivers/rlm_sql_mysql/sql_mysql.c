@@ -89,9 +89,9 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *************************************************************************/
 static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
-	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
+	free(sqlsocket->conn);
+	sqlsocket->conn = NULL;
 
-	free(mysql_sock);
 	return 0;
 }
 

@@ -283,10 +283,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
-	/* Why bother, rlm_sql never calls sql_destroy_socket anyway */
-	
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+{
+	free(sqlsocket->conn);
+	sqlsocket->conn = NULL;
 	return 0;
 }
 

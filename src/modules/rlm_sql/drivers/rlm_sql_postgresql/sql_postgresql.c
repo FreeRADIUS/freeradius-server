@@ -280,9 +280,8 @@ static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
-        rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
-
-        free(pg_sock);
+        free(sqlsocket->conn);
+	sqlsocket->conn = NULL;
         return 0;
 }
 

@@ -80,6 +80,21 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 	return 0;
 }
 
+
+/************************************************************************* 
+ *                                                                         
+ *      Function: sql_destroy_socket                                       
+ *                                                                         
+ *      Purpose: Free socket and private connection data                   
+ *                                                                         
+ *************************************************************************/
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+{
+	free(sqlsocket->conn);
+	sqlsocket->conn = NULL;
+	return 0;
+}
+
 /*************************************************************************
  *
  *	Function: sql_query
@@ -327,7 +342,7 @@ not_implemented(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 rlm_sql_module_t rlm_sql_db2 = {
 	"rlm_sql_db2",
 	sql_init_socket,
-	not_implemented, /* sql_destroy_socket*/
+	sql_destroy_socket, /* sql_destroy_socket*/
 	sql_query,
 	sql_select_query,
 	not_implemented, /* sql_store_result */

@@ -157,11 +157,8 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
-  
-	/*
-	 * 	FIXME: Someone write the oracle specific disconnect
-	 * 	and free code!!
-	 */
+	free(sqlsocket->conn);
+	sqlsocket->conn = NULL;
 	return 0;
 }
 
