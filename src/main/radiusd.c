@@ -1840,9 +1840,42 @@ static struct timeval *rad_clean_list(time_t now)
 	 *  Return NULL, so that the select() call will sleep forever.
 	 */
 	if (info.smallest < 0) {
-		DEBUG2("Nothing to do.  Sleeping until we see a request.");
-		last_tv_ptr = NULL;
-		return NULL;
+		/*
+		 *  If we're not proxying, then there really isn't anything
+		 *  to do.
+		 *
+		 *  If we ARE proxying, then we can safely sleep
+		 *  forever if we're told to NEVER send proxy retries
+		 *  ourselves, until the NAS kicks us again.
+		 * 
+		 *  Otherwise, there are no outstanding requests, then
+		 *  we can sleep forever.  This happens when we get
+		 *  woken up with a bad packet.  It's discarded, so if
+		 *  there are no live requests, we can safely sleep
+		 *  forever.
+		 */
+		if ((!proxy_requests) ||
+		    proxy_synchronous ||
+		    (rl_num_requests() == 0)) {
+			DEBUG2("Nothing to do.  Sleeping until we see a request.");
+			last_tv_ptr = NULL;
+			return NULL;
+		}
+
+		/*
+		 *  We ARE proxying.  In that case, we avoid a race condition
+		 *  where a child thread handling a request proxies the
+		 *  packet, and sets the retry delay.  In that case, we're
+		 *  supposed to wake up in N seconds, but we can't, as
+		 *  we're sleeping forever.
+		 *
+		 *  Instead, we prevent the problem by waking up anyhow
+		 *  at the 'proxy_retry_delay' time, even if there's
+		 *  nothing to do.  In the worst case, this will cause
+		 *  the server to wake up every N seconds, to do a small
+		 *  amount of unnecessary work.
+		 */
+		info.smallest = proxy_retry_delay;
 	}
 	/*
 	 *  Set the time (in seconds) for how long we're
