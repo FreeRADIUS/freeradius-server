@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.4 
+# From configure.in Revision: 1.5 
 
 
 if test x$with_rlm_pam != xno; then

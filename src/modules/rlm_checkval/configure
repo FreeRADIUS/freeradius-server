@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.1 
+# From configure.in Revision: 1.2 
 
 
 if test x$with_rlm_checkval != xno; then
