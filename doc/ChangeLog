@@ -1,4 +1,5 @@
 FreeRADIUS 0.9.1 ; $Date$, urgency=low
+
 	* Replicate-To-Realm is deprecated, and hence no longer documented
 	* Document rlm_detail support for authorize and post-auth sections
 	* Improve slightly MySQL accounting record SQL query
@@ -11,11 +12,14 @@ FreeRADIUS 0.9.1 ; $Date$, urgency=low
 	* Fix compilation of radiusd.c when threads are disabled
 	* Recover from inability to relay
 	* Stop complaining in error log when a system call is interrupted.
-	* Don't print binary CHAP-Passwords into the logs.
+	* Don't print binary CHAP-Passwords into the logs
 	* Successfully detect GNU dbm >= 1.8.1's dbm compatibility library
 	* Fix rlm_unix to deal with requests without a username
 	* Fix "uninmplemented function" crash in postgresql driver on -HUP
 	* Revert INTERVAL types to BIGINT in postgresql example schema
+	* Fix radrelay to notice when it's out of IDs
+	* Fix radrelay to correctly skip bad attributes
+	* Fix radrelay to not leak IDs when discarding packets
 
 FreeRADIUS 0.9.0 ; Date: 2003/07/04 21:01:29, urgency=low
 

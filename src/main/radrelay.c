@@ -118,7 +118,6 @@ char *c_shortname = NULL;
 struct relay_request slots[NR_SLOTS];
 char id_map[256];
 int request_head;
-unsigned int radius_id;
 int got_sigterm = 0;
 int debug = 0;
 
@@ -144,15 +143,18 @@ void usage(void);
  */
 int get_radius_id()
 {
-	unsigned int id;
+	unsigned int id = 0;
 
-	id = radius_id & 0xff;
-
-	while(id_map[id] != 0){
-		id = radius_id & 0xff;
-		radius_id++;
+	for(id = 0; id < 256; id++){
+		if (id_map[id] == 0)
+			break;
+	}
+	if (id == 256 || id_map[id] != 0){
+		fprintf(stdout, "get_radius_id(): No IDs available. Something is very wrong\n");
+		return -1;
 	}
 	id_map[id] = 1;
+	fprintf(stdout, "get_radius_id(): Assign RADIUS ID = %d\n",id);
 
 	return id;
 }
@@ -246,7 +248,8 @@ int read_one(FILE *fp, struct relay_request *r_req)
 		 * around.
 		 */
 		if (buf[strlen(buf) - 1] != '\n') {
-			fseek(fp, fpos, SEEK_SET);
+			fprintf(stdout, "read_one: BROKEN ATTRIBUTE\n");
+			fseek(fp, fpos + strlen(buf), SEEK_SET);
 			break;
 		}
 		if (r_req->state == STATE_BUSY1) {
@@ -369,6 +372,7 @@ int do_recv(struct relay_misc *r_args)
 			 *	FIXME: check reponse digest ?
 			 */
 			id_map[r->req->id] = 0;
+			fprintf(stdout, "do_recv: Free RADIUS ID = %d\n",r->req->id);
 			if (r->req->vps != NULL) {
 				pairfree(&r->req->vps);
 				r->req->vps = NULL;
@@ -402,6 +406,9 @@ int do_send(struct relay_request *r, char *secret)
 	 *	Prevent loops.
 	 */
 	if (r->client_ip == r->req->dst_ipaddr) {
+		fprintf(stdout, "do_send: Client-IP == Dest-IP. Droping packet.\n");
+		fprintf(stdout, "do_send: Free RADIUS ID = %d\n",r->req->id);
+		id_map[r->req->id] = 0;
 		if (r->req->vps != NULL) {
 			pairfree(&r->req->vps);
 			r->req->vps = NULL;
