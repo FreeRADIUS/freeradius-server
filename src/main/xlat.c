@@ -138,7 +138,7 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	/*
 	 * Skip to last '}' if attr is found
 	 * The rest of the stuff within the braces is
-	 * useless if we found we we need
+	 * useless if we found what we need
 	 */
 	if(found) {
 		while((*p != '\0') && (openbraces > 0)) {
@@ -148,7 +148,8 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 				p++;
 		}
 	} else {
-		p--;
+		openbraces--;
+		/* p--; */
 	}
 
 	*open = openbraces;
