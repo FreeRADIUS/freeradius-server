@@ -67,11 +67,8 @@ case "$1" in
 	sleep 3
 	/etc/init.d/radiusd start
 	;;
-  hup)
-        kill -HUP `cat $rundir/$NAME1.pid`
-	;;
   *)
-        echo "Usage: /etc/init.d/$NAME1 {start|stop|reload|restart|hup}"
+        echo "Usage: /etc/init.d/$NAME1 {start|stop|reload|restart}"
         exit 1
 esac
 
