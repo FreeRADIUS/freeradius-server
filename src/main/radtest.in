@@ -50,5 +50,5 @@ fi
 	then
 		echo "Framed-Protocol = PPP"
 	fi
-) | $radclient $DICTIONARY -xn $3 auth $5
+) | $radclient $DICTIONARY -x $3 auth $5
 
