@@ -145,6 +145,11 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
       return -1;
     }
 
+    /*
+     * FreeBSD 3.x doesn't have account and session management
+     * functions in PAM, while 4.0 does.
+     */
+#if !defined(__FreeBSD_version) || (__FreeBSD_version >= 400000)
     retval = pam_acct_mgmt(pamh, 0);
     if (retval != PAM_SUCCESS) {
       DEBUG("pam_pass: function pam_acct_mgmt FAILED for <%s>. Reason: %s",
@@ -152,6 +157,7 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
       pam_end(pamh, 0);
       return -1;
     }
+#endif
 
     DEBUG("pam_pass: authentication succeeded for <%s>", name);
     pam_end(pamh, 0);
