@@ -183,6 +183,12 @@ log_auth_pass	= no
 #
 proxy_requests	= yes
 
+# 
+# usercollide:  Turn user collision code on and off.
+#               See README.usercollide
+#
+usercollide = no
+
 #######################################################################
 #
 #  SNMP configuration
