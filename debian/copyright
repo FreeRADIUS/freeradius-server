@@ -44,5 +44,5 @@ rlm_x99_token
 Also, the FreeRADIUS core's SNMP support and the rlm_sql_postgresql
 module transitively depend on OpenSSL via libsnmp{4.2,5} and libpq3
 so they cannot be enabled currently, but this is subject to changes
-in the relevant packages within Debian, or having useable alternate
+in the relevant packages within Debian, or having usable alternate
 libraries in Debian.
