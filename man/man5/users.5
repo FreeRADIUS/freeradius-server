@@ -16,7 +16,9 @@ empty) list of check items.  The next line begins with a tab, and a
 (possibly empty) list of reply items.  Each item in the check or reply
 item list is an attribute of the form \fIname = value\fP.  Multiple
 items may be placed on one line, in which case they must be seperated
-by commas.
+by commas.  The reply items may be specified over multiple lines, in
+which case each line must end with a comma, and the last line of the
+reply items must not end with a comma.
 
 The check items are a list of attributes used to match the incoming
 request.  If the username matches, AND all of the check items match
@@ -158,8 +160,27 @@ DEFAULT	Auth-Type := System
 
 .DE
 .RS
-For all other users, perform authentication against the system.  Also,
-process any following entries which may match.
+For all users reaching this entry, perform authentication against the
+system.  Also, process any following entries which may match.
+.RE
+
+.DS
+DEFAULT Service-Type==Framed-User, Framed-Protocol==PPP
+.br
+	Service-Type = Framed-User,
+.br
+	Framed-Protocol = PPP,
+.br
+	Fall-Through = Yes
+
+.DE
+.RS
+If the request packet contains the attributes Service-Type and
+Framed-Protocol, with the given values, then include those attributes
+in the reply.
+
+That is, give the user what they ask for.  This entry also shows how
+to specify multiple reply items.
 .RE
 
 See the 'users' file supplied with the server for more examples and
