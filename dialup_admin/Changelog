@@ -7,6 +7,8 @@ Ver 1.72:
   only be able to administer those access servers and not see the rest of the nas list.
 * Add username searching in the find page as suggested by joram agten
 * Don't use nas_list in nas_admin
+* Add postgresql specific sql schema by apellido jr., wilfredo p. Move each sql schema to a
+  separate directory (mysql and postgresql)
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for
