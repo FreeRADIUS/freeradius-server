@@ -636,7 +636,7 @@ static void override_actions(modcallable *c, CONF_SECTION *cs,
 
 static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 					 const char *filename, int grouptype,
-					 char **modname)
+					 const char **modname)
 {
 	int lineno;
 	const char *modrefname;
@@ -676,12 +676,12 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	sanity_check(component, this, csingle->lineno, filename);
 
 	single->modinst = this;
-	*modname = this->entry->name;
+	*modname = this->entry->module->name;
 	return csingle;
 }
 
 modcallable *compile_modsingle(int component, CONF_ITEM *ci,
-			       const char *filename, char **modname)
+			       const char *filename, const char **modname)
 {
 	return do_compile_modsingle(component, ci, filename,
 				    GROUPTYPE_SIMPLEGROUP, modname);
@@ -734,7 +734,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 				/* ...or a module instance with some actions
 				 * specified. */
 				modcallable *single;
-				char *junk;
+				const char *junk;
 
 				single = do_compile_modsingle(component,
 						cf_sectiontoitem(scs), filename,
@@ -754,7 +754,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 			 * actions specified... */
 			if(value[0]==0) {
 				modcallable *single;
-				char *junk;
+				const char *junk;
 
 				single = do_compile_modsingle(component,
 					cf_pairtoitem(cp), filename,

@@ -494,7 +494,7 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
         int		modreflineno;
 	int		idx;
 	indexed_modcallable *subcomp;
-	char		*modname;
+	const char	*modname;
 
 	for(modref=cf_item_find_next(cs, NULL)
 	    ; modref ;

@@ -24,7 +24,7 @@ modcallable *compile_modgroup(int component, CONF_SECTION *cs,
  * may be a CONF_SECTION containing action specifiers like "notfound = return"
  * or a simple CONF_PAIR, in which case the default actions are used. */
 modcallable *compile_modsingle(int component, CONF_ITEM *ci,
-			       const char *filename, char **modname);
+			       const char *filename, const char **modname);
 
 /* Add an entry to the end of a modgroup, creating it first if necessary */
 void add_to_modcallable(modcallable **parent, modcallable *this,
