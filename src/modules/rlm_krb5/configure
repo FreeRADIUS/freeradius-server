@@ -521,14 +521,14 @@ else
 fi
 
 
-# From configure.in Revision: 1.1 
+# From configure.in Revision: 1.2 
 
 
 if test x$with_rlm_krb5 != xno; then
 
-	echo $ac_n "checking for FIXME in -lk5crypto""... $ac_c" 1>&6
-echo "configure:531: checking for FIXME in -lk5crypto" >&5
-ac_lib_var=`echo k5crypto'_'FIXME | sed 'y%./+-%__p_%'`
+	echo $ac_n "checking for krb5_encrypt_data in -lk5crypto""... $ac_c" 1>&6
+echo "configure:531: checking for krb5_encrypt_data in -lk5crypto" >&5
+ac_lib_var=`echo k5crypto'_'krb5_encrypt_data | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -540,10 +540,10 @@ cat > conftest.$ac_ext <<EOF
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
     builtin and then its argument prototype would still apply.  */
-char FIXME();
+char krb5_encrypt_data();
 
 int main() {
-FIXME()
+krb5_encrypt_data()
 ; return 0; }
 EOF
 if { (eval echo configure:550: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
@@ -564,13 +564,11 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
    krb5libcrypto="-lk5crypto" 
 else
   echo "$ac_t""no" 1>&6
- echo \* FIX this test. \* 
-	
 fi
 
 
 	echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
-echo "configure:574: checking for DH_new in -lcrypto" >&5
+echo "configure:572: checking for DH_new in -lcrypto" >&5
 ac_lib_var=`echo crypto'_'DH_new | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -578,7 +576,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lcrypto  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 582 "configure"
+#line 580 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -589,7 +587,7 @@ int main() {
 DH_new()
 ; return 0; }
 EOF
-if { (eval echo configure:593: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:591: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -616,7 +614,7 @@ fi
 	fi
 
 	echo $ac_n "checking for set_com_err_hook in -lcom_err""... $ac_c" 1>&6
-echo "configure:620: checking for set_com_err_hook in -lcom_err" >&5
+echo "configure:618: checking for set_com_err_hook in -lcom_err" >&5
 ac_lib_var=`echo com_err'_'set_com_err_hook | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -624,7 +622,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lcom_err  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 628 "configure"
+#line 626 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -635,7 +633,7 @@ int main() {
 set_com_err_hook()
 ; return 0; }
 EOF
-if { (eval echo configure:639: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:637: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -659,7 +657,7 @@ fi
 
 
 	echo $ac_n "checking for krb5_init_context in -lkrb5""... $ac_c" 1>&6
-echo "configure:663: checking for krb5_init_context in -lkrb5" >&5
+echo "configure:661: checking for krb5_init_context in -lkrb5" >&5
 ac_lib_var=`echo krb5'_'krb5_init_context | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -668,7 +666,7 @@ else
 LIBS="-lkrb5  ${krblibcrypto} ${krb5libcomerr} 
 	 $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 672 "configure"
+#line 670 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -679,7 +677,7 @@ int main() {
 krb5_init_context()
 ; return 0; }
 EOF
-if { (eval echo configure:683: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:681: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
