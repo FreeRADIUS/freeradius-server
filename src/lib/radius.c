@@ -1,18 +1,18 @@
 /*
  * radius.c	Functions to send/receive radius packets.
  *
- * Version:	@(#)radius.c  2.35  19-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
-char radius_sccsid[] =
-"@(#)radius.c 	2.35 Copyright 1998-1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
 #include	<sys/types.h>
 #include	<sys/time.h>
 #include	<netinet/in.h>
+#include	<sys/socket.h>
 #include	<arpa/inet.h>
 
 #include	<stdio.h>
@@ -31,8 +31,9 @@ char radius_sccsid[] =
 #endif
 
 /*
- *  ??? Why this number?  The RFC says 4096 octets max,
- *  and most packets are less than 256.
+ *  The RFC says 4096 octets max, and most packets are less than 256.
+ *  However, this number is just larger than the maximum MTU of just
+ *  most types of networks, except maybe for gigabit ethernet.
  */
 #define PACKET_DATA_LEN 1600
 
@@ -188,6 +189,22 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 			ptr += sizeof(UINT4);
 			total_length += sizeof(UINT4) + 2;
 			break;
+#ifdef ASCEND_BINARY
+		case PW_TYPE_ABINARY:
+			len = reply->length;
+			if (len >= MAX_STRING_LEN) {
+				len = MAX_STRING_LEN - 1;
+			}
+#ifdef ATTRIB_NMC
+			if (vendorpec != VENDORPEC_USR)
+#endif
+				*ptr++ = len + 2;
+			if (length_ptr) *length_ptr += len + 2;
+			memcpy(ptr, reply->strvalue,len);
+			ptr += len;
+			total_length += len + 2;
+			break;
+#endif
 
 		default:
 			break;
@@ -527,6 +544,9 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 
 			switch (attr->type) {
 
+#ifdef ASCEND_BINARY
+			case PW_TYPE_ABINARY:
+#endif			 
 			case PW_TYPE_STRING:
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
@@ -666,8 +686,8 @@ int rad_pwdecode(char *passwd, int pwlen, char *secret, char *vector)
 		passwd[i] ^= digest[i];
 
 	if (pwlen <= 16) {
-		passwd[i] = 0;
-		return 0;
+		passwd[pwlen+1] = 0;
+		return pwlen;
 	}
 
 	/*
@@ -685,7 +705,7 @@ int rad_pwdecode(char *passwd, int pwlen, char *secret, char *vector)
 	}
 	passwd[pwlen] = 0;
 
-	return 0;
+	return pwlen;
 }
 
 /*

@@ -1,9 +1,11 @@
 /*
  * print.c	Routines to print stuff.
  *
- * Version:	@(#)print.c  1.00  26-Oct-1998  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
+
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -132,8 +134,14 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 			else
 				a = ip_ntoa(NULL, vp->lvalue);
 			break;
+#ifdef ASCEND_BINARY
+		case PW_TYPE_ABINARY:
+		  a = buf;
+		  print_abinary(vp, buf, sizeof(buf));
+		  break;
+#endif
 		default:
-			a = "UNKNOWN";
+			a = "UNKNOWN-TYPE";
 			break;
 	}
 	strncpy(out, a, outlen);

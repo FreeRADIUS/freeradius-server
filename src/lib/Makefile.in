@@ -1,7 +1,8 @@
 
 @INCLUDE@ @IQUOTE@../../Make.inc@IQUOTE@
 
-OBJS		= dict.o md5.o print.o radius.o valuepair.o token.o misc.o log.o
+OBJS		= dict.o md5.o print.o radius.o valuepair.o token.o misc.o \
+		log.o filters.o
 
 INCLUDES	= ../include/radius.h ../include/libradius.h
 BUILDDBM	= @BUILDDBM@
@@ -13,6 +14,9 @@ all:	libradius.a
 libradius.a: $(OBJS)
 	$(AR) rv libradius.a $(OBJS)
 	$(RANLIB) libradius.a
+
+filters.o: filters.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c filters.c
 
 print.o: print.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c print.c

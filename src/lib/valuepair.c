@@ -1,12 +1,11 @@
 /*
  * valuepair.c	Functions to handle VALUE_PAIRs
  *
- * Version:	@(#)valuepair.c  1.00  19-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
-char valuepair_sccsid[] =
-"@(#)radius.c 	1.00 Copyright 1998-1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -438,6 +437,20 @@ VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
 			}
 			vp->length = 4;
 			break;
+#ifdef ASCEND_BINARY
+		case PW_TYPE_ABINARY:
+			/*
+			 * special case to convert filter to binary
+			 */
+		  	if ( filterBinary( vp, value ) < 0 ) {
+			  librad_log("failed to parse Ascend binary attribute: %s",
+				     librad_errstr);
+			  free(vp);
+			  return NULL;
+			}
+			break;
+
+#endif
 		default:
 			free(vp);
 			librad_log("unknown attribute type");

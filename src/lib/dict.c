@@ -1,11 +1,13 @@
 /*
  * dict.c	Routines to read the dictionary file.
  *
- * Version:	@(#)dict.c  2.30  25-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
-#include	<autoconf.h>
+static const char rcsid[] = "$Id$";
+
+#include	"autoconf.h"
 
 #include	<stdio.h>
 #include	<stdlib.h>
@@ -30,6 +32,9 @@ static char *dtypes[] = {
 	"integer",
 	"ipaddr",
 	"date",
+#ifdef ASCEND_BINARY
+	"abinary",
+#endif
 	NULL,
 };
 
