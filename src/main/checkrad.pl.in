@@ -61,7 +61,7 @@ $lv_hole = 2;
 #	USR-Hiper: $hiper_density is the reported port density (default 256
 #	but 24 makes more sense)
 #
-$hiper_density = 24;
+$hiper_density = 256;
 
 #
 #	Try to load Net::Telnet, SNMP_Session etc.
