@@ -60,8 +60,12 @@ typedef struct auth_req {
 	int                     simul_mpp; /* WEIRD: 1 is false, 2 is true */
 
 	int			finished;
+	int			options; /* miscellanous options */
 	void			**container;
 } REQUEST;
+
+#define RAD_REQUEST_OPTION_NONE         (0)
+#define RAD_REQUEST_OPTION_LOGGED_CHILD (1 << 0)
 
 /*
  *  Function handler for requests.

@@ -1010,6 +1010,7 @@ int main(int argc, char *argv[])
 			request->number = request_num_counter++;
 			request->child_pid = NO_SUCH_CHILD_PID;
 			request->container = NULL;
+			request->options = RAD_REQUEST_OPTION_NONE;
 			strNcpy(request->secret, (char *)secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
 		} /* loop over authfd, acctfd, proxyfd */
@@ -2006,6 +2007,7 @@ exit_child_critsec:
 #endif /* WITH_THREAD_POOL */
 
 
+#ifndef HAVE_PTHREAD_H
 static int sig_cleanup_walker(REQUEST *req, void *data)
 {
 	int pid = (int)data;
@@ -2015,7 +2017,7 @@ static int sig_cleanup_walker(REQUEST *req, void *data)
 	req->child_pid = NO_SUCH_CHILD_PID;
 	return 0;
 }
-
+#endif
 
 /* used in critical section */
 void queue_sig_cleanup(int sig) {
@@ -2267,9 +2269,9 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  seriously wrong...
 	 */
 	if (request->finished &&
-			(request->child_pid == NO_SUCH_CHILD_PID) &&
-			((request->timestamp + cleanup_delay <= info->now) ||
-			(request->packet->code == PW_ACCOUNTING_REQUEST))) {
+	    (request->child_pid == NO_SUCH_CHILD_PID) &&
+	    ((request->timestamp + cleanup_delay <= info->now) ||
+	     (request->packet->code == PW_ACCOUNTING_REQUEST))) {
 		/*
 		 *  Request completed, delete it, and unlink it
 		 *  from the currently 'alive' list of requests.
@@ -2323,9 +2325,17 @@ static int refresh_request(REQUEST *request, void *data)
 		 *	Maybe we haven't killed it.  In that case, print
 		 *	a warning.
 		 */
-		} else if (child_pid != NO_SUCH_CHILD_PID) {
+		} else if ((child_pid != NO_SUCH_CHILD_PID) &&
+			   ((request->options & RAD_REQUEST_OPTION_LOGGED_CHILD) == 0)) {
 			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d",
 			       child_pid, number);
+
+			/*
+			 *  Set the option that we've sent a log message,
+			 *  so that we don't send more than one message
+			 *  per request.
+			 */
+			request->options |= RAD_REQUEST_OPTION_LOGGED_CHILD;
 		}
 		return RL_WALK_CONTINUE;
 	}
