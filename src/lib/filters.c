@@ -362,7 +362,7 @@ static int findKey ( const char *string, KeywordStruct *list );
 static int isAllDigit ( const char *token );
 static short a2octet ( const char *tok, char *retBuf );
 static char defaultNetmask ( UINT4 address );
-static int ipAddressStringToValue ( const char *string, UINT4 *ipAddress,
+static int ipAddressStringToValue ( char *string, UINT4 *ipAddress,
 					 char *netmask);
 static int parseIpFilter ( RadFilter *curEntry );
 static int parseGenericFilter ( RadFilter *curEntry );
@@ -560,11 +560,11 @@ static char ipAddressDigits[] = "1234567890./";
      */
 
 static int
-ipAddressStringToValue(const char *string, UINT4 *ipAddress,
+ipAddressStringToValue(char *string, UINT4 *ipAddress,
 	char *netmask)
 {
     u_char*	dst;
-    const char*	cp;
+    char*	cp;
     int		numDots;
     int		i;
     long	value;
@@ -744,7 +744,7 @@ RadFilter	*curEntry;
     char*		token;
     RadIpxFilter*	ipx;
 
-    token = (char *) strtok( NULL, " " ); 
+    token = strtok( NULL, " " ); 
 
     memset( curEntry, '\0', sizeof( RadFilter ) );
     curEntry->type = RAD_FILTER_IPX; 
@@ -771,7 +771,7 @@ RadFilter	*curEntry;
 
 	    case FILTER_IPX_DST_IPXNET:
 	    case FILTER_IPX_SRC_IPXNET:
-		token = (char *) strtok( NULL, " " );
+		token = strtok( NULL, " " );
 
 		if ( token ) {
 		    if( tok == FILTER_IPX_DST_IPXNET ) {
@@ -785,7 +785,7 @@ RadFilter	*curEntry;
 
             case FILTER_IPX_DST_IPXNODE:
             case FILTER_IPX_SRC_IPXNODE:
-		token = (char *) strtok( NULL, " " );
+		token = strtok( NULL, " " );
 
 		if ( token ) {
 		    if ( tok == FILTER_IPX_DST_IPXNODE) {
@@ -802,12 +802,12 @@ RadFilter	*curEntry;
 	    {
 		RadFilterComparison cmp;
 
-                token = (char *) strtok( NULL, " " );
+                token = strtok( NULL, " " );
 
 		if ( token ) {
 		    cmp = findKey( token, filterCompare );
 		    if( cmp != NO_TOKEN ) {
-		    token = (char *) strtok( NULL, " " );
+		    token = strtok( NULL, " " );
 			if ( token ) {
 			    if ( tok == FILTER_IPX_DST_IPXSOCK ) {
 				ipx->dstSocComp = cmp;
@@ -829,7 +829,7 @@ RadFilter	*curEntry;
 		/* no keyword match */
 		goto doneErr;
 	}
-        token = (char *) strtok( NULL, " " ); 
+        token = strtok( NULL, " " ); 
     } 
 
     if( elements == IPX_FILTER_COMPLETE ) {
@@ -898,7 +898,7 @@ RadFilter	*curEntry;
     char*		token;
     RadIpFilter*	ip;
 
-    token = (char *) strtok( NULL, " " ); 
+    token = strtok( NULL, " " ); 
 
     memset( curEntry, '\0', sizeof( RadFilter ) );
     curEntry->type = RAD_FILTER_IP; 
@@ -924,16 +924,16 @@ RadFilter	*curEntry;
 		break;
 	    case FILTER_IP_DST:
 	    case FILTER_IP_SRC:
-		token = (char *) strtok( NULL, " " );
+		token = strtok( NULL, " " );
 		if ( token ) {
 		    if( tok == FILTER_IP_DST ) {
 			
-		        if( ipAddressStringToValue( (char*)token, 
+		        if( ipAddressStringToValue( token, 
 				 &ip->dstip, (char *)&ip->dstmask ) ) {
 			    break;
 			}
 		    } else {
-		        if( ipAddressStringToValue( (char *)token, 
+		        if( ipAddressStringToValue( token, 
 				&ip->srcip, (char *)&ip->srcmask ) ) {
 			    break;
 			}
@@ -950,11 +950,11 @@ RadFilter	*curEntry;
 		RadFilterComparison cmp;
 		short		 port;
 
-		token = (char *) strtok( NULL, " " );
+		token = strtok( NULL, " " );
 		if ( token ) {
   		    cmp = findKey( token, filterCompare );
 		    if( cmp != NO_TOKEN ) {
-			token = (char *) strtok( NULL, " " );
+			token = strtok( NULL, " " );
 			if ( token ) {
 			    if( isAllDigit( token ) ) {
 				port = atoi( (char *) token );
@@ -997,7 +997,7 @@ RadFilter	*curEntry;
 		}
 		ip->proto = tok;
 	}
-        token = (char *) strtok( NULL, " " ); 
+        token = strtok( NULL, " " ); 
     } 
 
     if( elements == IP_FILTER_COMPLETE ) {
@@ -1058,7 +1058,7 @@ RadFilter	*curEntry;
     short		valLen, maskLen;
     RadGenericFilter*	gen;
 
-    token = (char *) strtok( NULL, " " ); 
+    token = strtok( NULL, " " ); 
 
     maskLen = 0;
     memset( (char *)curEntry, '\0', sizeof( RadFilter ) );
@@ -1124,7 +1124,7 @@ RadFilter	*curEntry;
 			goto doneErr;    
 		}
 	}
-        token = (char *) strtok( NULL, " " ); 
+        token = strtok( NULL, " " ); 
     }
 
     if( elements == GENERIC_FILTER_COMPLETE ) {
@@ -1157,10 +1157,18 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
     RadFilter		radFil, *filt;
     RadGenericFilter*	gen;
     static VALUE_PAIR	*prevRadPair = NULL;
+    char		*copied_valstr;
+
     rc = -1;
     strcpy( curString, valstr );
 
-    token = (char *) strtok( (char *)valstr, " " );
+    /*
+     *  Copy the valstr, so we don't smash it in place via strtok!
+     */
+    copied_valstr = strdup(valstr);
+    if (!copied_valstr) return -1;
+
+    token = strtok(copied_valstr, " " );
     tok = findKey( token, filterType );
     pair->length = SIZEOF_RADFILTER;
     switch( tok ) {
@@ -1175,9 +1183,12 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
         break;
       default:
 	librad_log("filterBinary: unknown filter type \"%s\"", token);
+	free(copied_valstr);
 	return -1;
 	break;
     }
+    free(copied_valstr);
+    copied_valstr = NULL;
 
     /*
      * if 'more' is set then this new entry must exist, be a 
