@@ -4,14 +4,11 @@ Radius FastUsers Module
 0.  INTRODUCTION
 
     The 'fastusers' module provides an interface for authentication
-    very similar to the standard RADIUS 'users' file.  However, because
-    the users are stored in a different way, there are three main
-    differences to be aware of:
-
-    a.  It's much faster than standard 'users' authentication
-    b.  Order of the entries in the file does *not* matter
-    c.  DEFAULT entries *can* behave differently than in 'users'
-        (though they behave the same as in 'users' by default)
+    exactly like the standard RADIUS 'users' file.  It's function is
+    is exactly like that of rlm_files in FreeRadius, but it is consid-
+    ably faster.  So why keep rlm_files around?  Because it's good,
+    working code, and rlm_fastusers may still have bugs causing it
+    to behave differently from rlm_files in very exotic cases. 
 
 1.  WHAT DOES IT DO
 
@@ -30,7 +27,6 @@ Radius FastUsers Module
        usersfile = ${confdir}/users_fast
        hashsize = 1000
        compat = no
-       normal_defaults = yes
        hash_reload = 600
     }
 
@@ -51,33 +47,7 @@ Radius FastUsers Module
 
         The 'usersfile' is the path and filename of the file you want
         fastusers to read and use to authenticate users.  The format
-        is similar to that of the standard 'users' file, but you must
-        keep the following differences in mind:
-
-        1.  Order does not matter
- 
-            Order of the standard 'users' file is important, where in
-            fastusers it is not.  Don't be surprised when things
-            don't work exactly as they would in 'users'.  
-
-            For example, if you have the following entries in the
-            fastusers file:
-
-            foo Auth-Type:=Local, Password=='bar', NAS-Port-Id==10
-                Reply-Message = "foo1"
-
-            foo Auth-Type:=Local, Password=='bar'
-                Reply-Message = "foo1"
-
-            Don't expect that the first one will match or not match
-            before the second one.  It doesn't work that way.  Either
-            of them could match first, because *order is not important!*
-
-        2.  DEFAULT entries
-
-            See below for the 'normal_defaults' option documentation.
-            DEFAULT entries and how they work are explained in 
-            detail there.
+        is exactly like that used by rlm_files.
 
     B.  hashsize
 
@@ -118,103 +88,7 @@ Radius FastUsers Module
         It allows you to declare cistron compatibility mode when reading
         in the 'users' file.
 
-    D.  normal_defaults = yes
-
-				This option is very powerful.  The default is 'yes' which
-        means that DEFAULT entries will match or not match like they
-        do in the standard 'users' file.  The only difference is that,
-        because of the lack of ordering, the DEFAULT entries will only
-        be checked *after* it is determined that the user we're looking
-        for is not listed explicitly in the file.  After it is deter-
-        mined that the user is not found, the DEFAULT entries will
-        be checked in order until a match is found.  For example:
-
-        ---------------------------------------------------
-        foo Auth-Type:=Local, Password=='bar'
-            Reply-Message = 'user foo'
-
-        DEFAULT Auth-Type:=Unix 
-            Reply-Message = 'default 1'
-
-        foo2 Auth-Type:=Local, Password=='bar'
-            Reply-Message = 'user foo2'
-        ---------------------------------------------------
-
-        If username 'foo2' tries to authenticate, regardless of the
-        fact that his entry comes after the DEFAULT, we check for
-        his explicit user listing first.  ALWAYS.  If that doesn't
-        match for some reason, then we'll look at the DEFAULT
-        entries.
-
-        If username 'bar' tries to authenticate, first we look to
-        see if 'bar' is listed anywhere in the file.  In this case,
-        it is not, so we *then* check the DEFAULT entry.  Or, if
-        'bar' were listed, but the check items did not match, again,
-        after that we would check the DEFAULT entry.
-
-        Got that?  DEFAULT entries are only checked after we are
-        sure the user has no listing in the file or that the
-        request does not match the check items for the listing.
-        Other than that, DEFAULT entries work just like they do
-        in 'users' when this option is set to 'yes'.
-
-    E.  normal_defaults = no
-
-        With this option set to 'no', DEFAULT entries take on an
-        entirely new meaning.  With normal_defatuls turned off, if 
-        you add a DEFAULT entry, what you are telling the server is:  
-        Add the check items and reply items I list for this DEFAULT 
-        entry to *every* request that matches a user in this file.  
-
-        This means you should *NOT* have multiple DEFAULT entries 
-        with "normal_defaults=no".  If you do have multiple DEFAULTS 
-        and "normal_defaults=no", radiusd will log a warning, and only
-        the first DEFAULT entry will be used.
-
-        Here's an example of what happens:
-
-        ---------------------------------------------------
-        test Auth-Type:=Local, Password=="test"
-            Reply-Message = "User test"
-
-        test2 Auth-Type:=Local, Password=="test2"
-            Reply-Message = "User test2"
-
-        DEFAULT Simultaneous-Use == 1
-            Service-Type = Framed-User 
-        ---------------------------------------------------
-
-        NOTE:  No users other than ones listed explicitly in the file
-               can authenticate via fastusers when normal_defaults=no
-               because DEFAULT entries do not work like they do in 
-               the 'users' file.
-
-        Now, if either test or test2 logs in with their respec-
-        tive password, when the request is passed back to the main
-        server (and to the NAS), the check item Simultaneous-Use==1
-        and the reply item Service-Type=Framed-User will be added.
-        
-        Why does it behave this way?  The reason is because if it
-        does not do this, the administrator will have to duplicate
-        the check items and reply items for every user in the file
-        unnecessarily.  This will cause the fastusers file to be
-        substantially larger than necessary, which in turn takes
-        the server long to read on startup or when it receives
-        a -HUP signal.  
-
-        This way, you need only put the necessary check and reply 
-        items on the DEFAULT entry, and then the individual users
-        will need only have the items that are *unique* to them
-        listed explicitly (ie, password, static ip address, etc).
-
-        NOTE:  Because the attributes from DEFAULT are added to the
-               user authenticating, it is best to *AVOID* listing an
-               Auth-Type in the DEFAULT entry.  If you set one in
-               the DEFAULT entry, it will override the one you set
-               for the user in the file.  Just don't do it, it's not
-               worth the confusion.
-
-    F.  hash_reload = 600
+    D.  hash_reload = 600
 
         Number of seconds between automatic reloading of the users
         cache.  Using this option means the module will double memory
@@ -226,7 +100,9 @@ Radius FastUsers Module
 
 4.  CAVEATS
 
-    It probably still has bugs.  
+    It probably still has bugs.  Most notably, there is a small memory
+    leak somewhere in the reloading code.  I suspect it's in pairlist_read
+    from files.c, but I have no proof yet.  
 
 5.  ACKNOWLEDGEMENTS
 
