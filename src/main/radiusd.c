@@ -157,10 +157,15 @@ int main(int argc, char **argv)
 #ifdef RADIUS_PID
 	FILE			*fp;
 #endif
+	char			buffer[4096];
 	struct	sockaddr	salocal;
+	struct	sockaddr_in	saremote;
 	struct	sockaddr_in	*sin;
 	struct	servent		*svp;
 	fd_set			readfds;
+	int			salen;
+	int			packet_length;
+	UINT4			packet_srcip;
 	int			result;
 	int			argval;
 	int			t;
@@ -502,17 +507,12 @@ int main(int argc, char **argv)
 		}
 
 		FD_ZERO(&readfds);
-		if (sockfd >= 0) {
+		if (sockfd >= 0)
 			FD_SET(sockfd, &readfds);
-			/*
-			 *	ONLY listen for proxy replies in the
-			 *	main server, NOT the accounting server!
-			 */
-			if (proxyfd >= 0)
-				FD_SET(proxyfd, &readfds);
-		}
 		if (acctfd >= 0)
 			FD_SET(acctfd, &readfds);
+		if (proxyfd >= 0)
+			FD_SET(proxyfd, &readfds);
 
 		status = select(32, &readfds, NULL, NULL, NULL);
 		if (status == -1) {
@@ -528,21 +528,46 @@ int main(int argc, char **argv)
 			if (fd < 0 || !FD_ISSET(fd, &readfds))
 				continue;
 
+			/*
+			 *	Quickly see if we can actually receive
+			 *	the packet.
+			 *	If so, steal the source IP, and see if
+			 *	they're allowed to talk to us.
+			 */
+			salen = sizeof(saremote);
+			memset(&saremote, 0, sizeof(saremote));
+			packet_length = recvfrom(fd, NULL, 0, MSG_PEEK,
+						 (struct sockaddr *)&saremote,
+						 &salen);
+			if (packet_length < 0) {
+				log(L_ERR, "Failed to received packet on FD %d", fd);
+				continue;
+			}
+			packet_srcip = saremote.sin_addr.s_addr;
+			ip_ntoa(buffer, packet_srcip);
+
+			/*
+			 *	See if we know this client.
+			 *	This check is performed HERE, instead of
+			 *	after rad_recv(), so unknown clients CANNOT
+			 *	force us to do ANY work.
+			 */
+			if ((cl = client_find(packet_srcip)) == NULL) {
+				log(L_ERR, "Ignoring request from unknown client %s",
+					buffer);
+				/* eat the packet silently, and continue */
+				recvfrom(fd, buffer, sizeof(buffer), 0,
+					 (struct sockaddr *)&saremote,
+					 &salen);
+				continue;
+			}
+
 			packet = rad_recv(fd);
 			if (packet == NULL) {
 				log(L_ERR, "%s", librad_errstr);
 				continue;
 			}
 
-			/*
-			 *	See if we know this client.
-			 */
-			if ((cl = client_find(packet->src_ipaddr)) == NULL) {
-				log(L_ERR, "request from unknown client: %s",
-					ip_hostname(packet->src_ipaddr));
-					rad_free(packet);
-					continue;
-			}
 			if (rad_decode(packet, cl->secret) != 0) {
 				log(L_ERR, "%s", librad_errstr);
 				rad_free(packet);
