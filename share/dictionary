@@ -236,7 +236,10 @@ ATTRIBUTE	Expiration		1010	date
 ATTRIBUTE	Autz-Type		1011	integer
 ATTRIBUTE	Acct-Type		1012	integer
 ATTRIBUTE	Session-Type		1013	integer
-ATTRIBUTE	PostAuth-Type		1014	integer
+ATTRIBUTE	Post-Auth-Type		1014	integer
+ATTRIBUTE	Pre-Proxy-Type		1015	integer
+ATTRIBUTE	Post-Proxy-Type		1016	integer
+ATTRIBUTE	Pre-Acct-Type		1017	integer
 
 #
 #	Integer Translations
@@ -439,7 +442,7 @@ VALUE		Session-Type		Local			0
 
 #
 #	And Post-Auth
-VALUE		PostAuth-Type		Local			0
+VALUE		Post-Auth-Type		Local			0
 
 #
 #	Experimental Non-Protocol Integer Translations for Cistron-Radiusd

@@ -111,7 +111,7 @@
 #define PW_EXEC_PROGRAM			502
 #define PW_EXEC_PROGRAM_WAIT		503
 
-#define PW_AUTHTYPE			1000
+#define PW_AUTH_TYPE			1000
 #define PW_PREFIX			1003
 #define PW_SUFFIX			1004
 #define PW_GROUP			1005
@@ -120,10 +120,14 @@
 #define PW_ADD_PREFIX			1008
 #define PW_ADD_SUFFIX			1009
 #define PW_EXPIRATION			1010
-#define PW_AUTZTYPE			1011
-#define PW_ACCTTYPE			1012
-#define PW_SESSTYPE			1013
-#define PW_POSTAUTHTYPE			1014
+#define PW_AUTZ_TYPE			1011
+#define PW_ACCT_TYPE			1012
+#define PW_SESSION_TYPE			1013
+#define PW_POST_AUTH_TYPE		1014
+#define PW_PRE_PROXY_TYPE		1015
+#define PW_POST_PROXY_TYPE		1016
+#define PW_PRE_ACCT_TYPE		1017
+
 #define PW_USER_CATEGORY		1029
 #define PW_GROUP_NAME			1030
 #define PW_HUNTGROUP_NAME		1031
@@ -245,3 +249,12 @@
  * Vendor specific attributes
  */
 #define PW_FREERADIUS_PROXIED_TO	((VENDORPEC_FREERADIUS<<16)|1)
+
+/*
+ *  Old nonsense.  Will be deleted ASAP
+ */
+#define PW_AUTHTYPE			1000
+#define PW_AUTZTYPE			1011
+#define PW_ACCTTYPE			1012
+#define PW_SESSTYPE			1013
+#define PW_POSTAUTHTYPE			1014

@@ -202,7 +202,7 @@ int rad_check_password(REQUEST *request)
 	 *	PW_AUTHTYPE_REJECT.
 	 */
 	cur_config_item = request->config_items;
-	while(((auth_type_pair = pairfind(cur_config_item, PW_AUTHTYPE))) != NULL) {
+	while(((auth_type_pair = pairfind(cur_config_item, PW_AUTH_TYPE))) != NULL) {
 		auth_type = auth_type_pair->lvalue;
 		auth_type_count++;
 
@@ -346,7 +346,7 @@ int rad_check_password(REQUEST *request)
 			break;
 		default:
 			DEBUG2("auth: type \"%s\"",
-					dict_valbyattr(PW_AUTHTYPE, auth_type)->name);
+					dict_valbyattr(PW_AUTH_TYPE, auth_type)->name);
 			/*
 			 *	See if there is a module that handles
 			 *	this type, and turn the RLM_ return
@@ -422,7 +422,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if ((request->proxy_reply) &&
 	    (request->packet->code == PW_AUTHENTICATION_REQUEST)) {
-		tmp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
+		tmp = paircreate(PW_AUTH_TYPE, PW_TYPE_INTEGER);
 		if (tmp == NULL) {
 			radlog(L_ERR|L_CONS, "no memory");
 			exit(1);
@@ -530,7 +530,7 @@ autz_redo:
 		return r;
 	}
 	if (!autz_retry){
-		autz_type_item = pairfind(request->config_items, PW_AUTZTYPE);
+		autz_type_item = pairfind(request->config_items, PW_AUTZ_TYPE);
 		if (autz_type_item){
 			autz_type = autz_type_item->lvalue;
 			autz_retry = 1;
@@ -610,7 +610,7 @@ autz_redo:
 		VALUE_PAIR	*session_type;
 		int		sess_type = 0;
 
-		session_type = pairfind(request->config_items, PW_SESSTYPE);
+		session_type = pairfind(request->config_items, PW_SESSION_TYPE);
 		if (session_type)
 			sess_type = session_type->lvalue;
 
@@ -900,7 +900,7 @@ autz_redo:
 	 *	Do post-authentication calls. ignoring the return code.
 	 *	If the post-authentication
 	 */
-	postauth_type_item = pairfind(request->config_items, PW_POSTAUTHTYPE);
+	postauth_type_item = pairfind(request->config_items, PW_POST_AUTH_TYPE);
 	if (postauth_type_item)
 		postauth_type = postauth_type_item->lvalue;
 	result = module_post_auth(postauth_type, request);

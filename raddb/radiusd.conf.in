@@ -1248,7 +1248,7 @@ authenticate {
 	#  PAP authentication, when a back-end database listed
 	#  in the 'authorize' section supplies a password.  The
 	#  password can be clear-text, or encrypted.
-	authtype PAP {
+	Auth-Type PAP {
 		pap
 	}
 
@@ -1257,13 +1257,13 @@ authenticate {
 	#  A back-end database listed in the 'authorize' section
 	#  MUST supply a CLEAR TEXT password.  Encrypted passwords
 	#  won't work.
-	authtype CHAP {
+	Auth-Type CHAP {
 		chap
 	}
 
 	#
 	#  MSCHAP authentication.
-	authtype MS-CHAP {
+	Auth-Type MS-CHAP {
 		mschap
 	}
 
@@ -1280,7 +1280,7 @@ authenticate {
 	unix
 
 	# Uncomment it if you want to use ldap for authentication
-#	authtype LDAP {
+#	Auth-Type LDAP {
 #		ldap
 #	}
 

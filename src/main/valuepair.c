@@ -239,8 +239,8 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			 *	These are "server" check items.
 			 */
 			case PW_CRYPT_PASSWORD:
-			case PW_AUTHTYPE:
-			case PW_AUTZTYPE:
+			case PW_AUTH_TYPE:
+			case PW_AUTZ_TYPE:
 				continue;
 				break;
 

@@ -63,7 +63,7 @@ int rad_accounting(REQUEST *request)
 		 *	This is to ensure that we log the packet
 		 *	immediately, even if the proxy never does.
 		 */
-		vp = pairfind(request->config_items, PW_ACCTTYPE);
+		vp = pairfind(request->config_items, PW_ACCT_TYPE);
 		if (vp)
 			acct_type = vp->lvalue;
 		reply = module_accounting(acct_type,request);

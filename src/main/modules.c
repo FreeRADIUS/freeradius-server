@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2003  The FreeRADIUS server project
  * Copyright 2000  Alan DeKok <aland@ox.org>
  * Copyright 2000  Alan Curry <pacman@world.std.com>
  */
@@ -78,7 +78,10 @@ const char *component_names[RLM_COMPONENT_COUNT] =
 	"post-auth"
 };
 
-static const char *subcomponent_names[RLM_COMPONENT_COUNT] =
+/*
+ *	Delete ASAP.
+ */
+static const char *old_subcomponent_names[RLM_COMPONENT_COUNT] =
 {
 	"authtype",
 	"autztype",
@@ -88,6 +91,18 @@ static const char *subcomponent_names[RLM_COMPONENT_COUNT] =
 	"pre-proxytype",
 	"post-proxytype",
 	"post-authtype"
+};
+
+static const char *subcomponent_names[RLM_COMPONENT_COUNT] =
+{
+	"Auth-Type",
+	"Autz-Type",
+	"Pre-Acct-Type",
+	"Acct-Type",
+	"Session-Type",
+	"Pre-Proxy-Type",
+	"Post-Proxy-Type",
+	"Post-Auth-Type"
 };
 
 static void indexed_modcallable_free(indexed_modcallable **cf)
@@ -450,7 +465,8 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 }
 
 /* Load a flat module list, as found inside an authtype{} block */
-static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *filename)
+static void load_subcomponent_section(CONF_SECTION *cs, int comp,
+				      const char *filename)
 {
 	int idx;
 	indexed_modcallable *subcomp;
@@ -470,15 +486,15 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 	 * components other than auth. */
 	dval = NULL;
 	if (comp==RLM_COMPONENT_AUTH) {
-		dval = dict_valbyname(PW_AUTHTYPE, cf_section_name2(cs));
+		dval = dict_valbyname(PW_AUTH_TYPE, cf_section_name2(cs));
 	} else if (comp == RLM_COMPONENT_AUTZ) {
-		dval = dict_valbyname(PW_AUTZTYPE, cf_section_name2(cs));
+		dval = dict_valbyname(PW_AUTZ_TYPE, cf_section_name2(cs));
 	} else if (comp == RLM_COMPONENT_ACCT) {
-		dval = dict_valbyname(PW_ACCTTYPE, cf_section_name2(cs));
+		dval = dict_valbyname(PW_ACCT_TYPE, cf_section_name2(cs));
 	} else if (comp == RLM_COMPONENT_SESS) {
-		dval = dict_valbyname(PW_SESSTYPE, cf_section_name2(cs));
+		dval = dict_valbyname(PW_SESSION_TYPE, cf_section_name2(cs));
 	} else if (comp == RLM_COMPONENT_POST_AUTH) {
-		dval = dict_valbyname(PW_POSTAUTHTYPE, cf_section_name2(cs));
+		dval = dict_valbyname(PW_POST_AUTH_TYPE, cf_section_name2(cs));
 	}
 
 	if (dval) {
@@ -524,6 +540,14 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 				continue;
 			}
 
+			/*
+			 *	Allow old names, too.
+			 */
+			if (strcmp(cf_section_name1(scs),
+				   old_subcomponent_names[comp]) == 0) {
+				load_subcomponent_section(scs, comp, filename);
+				continue;
+			}
 			modreflineno = cf_section_lineno(scs);
 		} else {
 			CONF_PAIR *cp;
@@ -536,7 +560,7 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 		if (comp == RLM_COMPONENT_AUTH) {
 			DICT_VALUE *dval;
 
-			dval = dict_valbyname(PW_AUTHTYPE, modname);
+			dval = dict_valbyname(PW_AUTH_TYPE, modname);
 			rad_assert(dval != NULL);
 			idx = dval->value;
 		} else {
@@ -572,11 +596,26 @@ typedef struct section_type_value_t {
 } section_type_value_t;
 
 static const section_type_value_t section_type_value[] = {
-	{ "authorize",    "autztype", PW_AUTZTYPE },
-	{ "authenticate", "authtype", PW_AUTHTYPE },
-	{ "accounting",   "acctype", PW_ACCTTYPE },
-	{ "session",     "sesstype", PW_SESSTYPE },
-	{ "post-auth",	"post-authtype", PW_POSTAUTHTYPE },
+	{ "authorize",    "Autz-Type",       PW_AUTZ_TYPE },
+	{ "authenticate", "Auth-Type",       PW_AUTH_TYPE },
+	{ "accounting",   "Acct-Type",       PW_ACCT_TYPE },
+	{ "session",      "Session-Type",    PW_SESSION_TYPE },
+	{ "post-auth",    "Post-Auth-Type",  PW_POST_AUTH_TYPE },
+	{ "preacct",      "Pre-Acct-Type",   PW_PRE_ACCT_TYPE },
+	{ "post-proxy",   "Post-Proxy-Type", PW_POST_PROXY_TYPE },
+	{ "pre-proxy",    "Pre-Proxy-Type",  PW_PRE_PROXY_TYPE },
+	{ NULL, NULL, 0 }
+};
+
+/*
+ *	Delete ASAP.
+ */
+static const section_type_value_t old_section_type_value[] = {
+	{ "authorize",    "autztype", PW_AUTZ_TYPE },
+	{ "authenticate", "authtype", PW_AUTH_TYPE },
+	{ "accounting",   "acctype", PW_ACCT_TYPE },
+	{ "session",      "sesstype", PW_SESSION_TYPE },
+	{ "post-auth",	  "post-authtype", PW_POST_AUTH_TYPE },
 	{ NULL, NULL, 0 }
 };
 
@@ -649,7 +688,7 @@ int setup_modules(void)
 		const char	*name2;
 		DICT_ATTR	*dattr;
 		DICT_VALUE	*dval;
-		CONF_SECTION	*sub;
+		CONF_SECTION	*sub, *next;
 
 		/*
 		 *  Big-time YUCK
@@ -657,6 +696,7 @@ int setup_modules(void)
 		static int my_value = 32767;
 
 		cs = cf_section_find(section_type_value[comp].section);
+
 		if (!cs) continue;
 
 		sub = NULL;
@@ -665,9 +705,18 @@ int setup_modules(void)
 			 *	See if there's a sub-section by that
 			 *	name.
 			 */
-			sub = cf_subsection_find_next(cs, sub,
+			next = cf_subsection_find_next(cs, sub,
 						      section_type_value[comp].typename);
-			if (!sub) continue;
+
+			/*
+			 *	Allow old names, too.
+			 */
+			if (!next) {
+				next = cf_subsection_find_next(cs, sub,
+							      old_section_type_value[comp].typename);
+			}
+			if (!next) break;
+			sub = next;
 
 			/*
 			 *	If so, look for it to define a new
@@ -675,6 +724,7 @@ int setup_modules(void)
 			 */
 			name2 = cf_section_name2(sub);
 			if (!name2) continue;
+
 
 			/*
 			 *	If the value already exists, don't
