@@ -1438,8 +1438,10 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	/* Reprocess if we rejected last time */
 	if ((fun == rad_authenticate) &&
 	    (request->reply->code == PW_AUTHENTICATION_REJECT) &&
-	    (reprocess)) 
+	    (reprocess))  {
+		pairlist_free(&request->config_items);
 		(*fun)(request);
+	}
 	
 	/*
 	 *	If we don't already have a proxy
