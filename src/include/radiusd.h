@@ -97,7 +97,7 @@ typedef struct pair_list {
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
-#define MAX_REQUESTS		255
+#define MAX_REQUESTS		256
 /* FIXME: these two should be command-line options */
 #define RETRY_DELAY             5
 #define RETRY_COUNT             3
@@ -230,5 +230,5 @@ int            radius_xlat2(char * out, int outlen, char *str,
 #ifdef WITH_THREAD_POOL
 /* threads.c */
 extern		int thread_pool_init(int num_threads);
-extern		int thread_pool_check(void);
+extern		int thread_pool_clean(void);
 #endif

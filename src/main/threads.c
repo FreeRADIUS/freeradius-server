@@ -1,5 +1,7 @@
 #include "autoconf.h"
 
+#ifdef WITH_THREAD_POOL
+
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -12,7 +14,6 @@
 #  include	<malloc.h>
 #endif
 
-#ifdef WITH_THREAD_POOL
 #include	"radiusd.h"
 
 #ifdef WITH_NEW_CONFIG
@@ -533,7 +534,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
  *	If there are too many or too few threads waiting, then we
  *	either create some more, or delete some.
  */
-int thread_pool_check(void)
+int thread_pool_clean(void)
 {
 	int spare;
 	int i, total;

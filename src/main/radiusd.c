@@ -1000,6 +1000,10 @@ static int rad_clean_list(int force)
 	DEBUG2("Cleaning up request list after %d seconds",
 	       (int) (curtime - last_cleaned_list));
 	
+#ifdef WITH_THREAD_POOL
+	thread_pool_clean();
+#endif
+
 	/*
 	 *	When mucking around with the request list, we block
 	 *	asynchronous access (through the SIGCHLD handler) to
@@ -1270,8 +1274,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 		return NULL;
 	}
 #endif	
-
-	max_requests = 255;
 
 	/*
 	 *	Count the total number of requests, to see if there
