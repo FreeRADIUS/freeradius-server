@@ -26,11 +26,11 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+#include "libradius.h"
+
 #if HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
-
-#include "libradius.h"
 
 #define NO_TOKEN -1
 
