@@ -40,6 +40,8 @@
 #define RLM_REGEX_INPACKET 0
 #define RLM_REGEX_INCONFIG 1
 #define RLM_REGEX_INREPLY  2
+#define RLM_REGEX_INPROXY 3
+#define RLM_REGEX_INPROXYREPLY 4
 
 static const char rcsid[] = "$Id$";
 
@@ -48,7 +50,7 @@ typedef struct rlm_attr_rewrite_t {
 	int  attr_num;		/* The attribute number */
 	char *search;		/* The pattern to search for */
 	int search_len;		/* The length of the search pattern */
-	char *searchin_str;	/* The VALUE_PAIR list to search in. Can be either packet,reply or config */
+	char *searchin_str;	/* The VALUE_PAIR list to search in. Can be either packet,reply,proxy,proxy_reply or config */
 	char searchin;		/* The same as above just coded as a number for speed */
 	char *replace;		/* The replacement */
 	int replace_len;	/* The length of the replacement string */
@@ -131,6 +133,10 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 			data->searchin = RLM_REGEX_INCONFIG;
 		else if (strcmp(data->searchin_str, "reply") == 0)
 			data->searchin = RLM_REGEX_INREPLY;
+		else if (strcmp(data->searchin_str, "proxy") == 0)
+			data->searchin = RLM_REGEX_INPROXY;
+		else if (strcmp(data->searchin_str, "proxy_reply") == 0)
+			data->searchin = RLM_REGEX_INPROXYREPLY;
 		else {
 			radlog(L_ERR, "rlm_attr_rewrite: Illegal searchin directive given. Assuming packet.");
 			data->searchin = RLM_REGEX_INPACKET;
@@ -197,6 +203,12 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 				break;
 			case RLM_REGEX_INREPLY:
 				tmp = request->reply->vps;
+				break;
+			case RLM_REGEX_INPROXY:
+				tmp = request->proxy_reply->vps;
+				break;
+			case RLM_REGEX_INPROXYREPLY:
+				tmp = request->proxy->vps;
 				break;
 			default:
 				radlog(L_ERR, "rlm_attr_rewrite: Illegal value for searchin. Changing to packet.");

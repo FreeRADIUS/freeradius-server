@@ -987,13 +987,13 @@ modules {
 	#
 	#  Also if new_attribute is set to yes then a new attribute
 	#  will be created containing the value replacewith and it
-	#  will be added to searchin (packet, reply or config).
+	#  will be added to searchin (packet, reply, proxy, proxy_reply or config).
 	# searchfor,ignore_case and max_matches will be ignored in that case.
 
 	#
 	#attr_rewrite sanecallerid {
 	#	attribute = Called-Station-Id
-		# may be "packet", "reply", or "config"
+		# may be "packet", "reply", "proxy", "proxy_reply" or "config"
 	#	searchin = packet
 	#	searchfor = "[+ ]"
 	#	replacewith = ""
