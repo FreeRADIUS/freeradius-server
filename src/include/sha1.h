@@ -22,4 +22,16 @@ void SHA1Init(SHA1_CTX* context);
 void SHA1Update(SHA1_CTX* context, const unsigned char* data, unsigned int len);
 void SHA1Final(unsigned char digest[20], SHA1_CTX* context);
 
+/*
+ * this version implements a raw SHA1 transform, no length is appended,
+ * nor any 128s out to the block size.
+ */
+void SHA1FinalNoLen(unsigned char digest[20], SHA1_CTX* context);
+
+/*
+ * FIPS 186-2 PRF based upon SHA1.
+ */
+extern void fips186_2prf(u_int8_t mk[20], u_int8_t finalkey[160]);
+
+
 #endif /* _LRAD_SHA1_H */
