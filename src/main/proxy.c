@@ -449,7 +449,6 @@ int proxy_receive(REQUEST *request)
         if ((realmname = strrchr(namepair->strvalue, '@')) != NULL)
                 realmname++;
         realm = realm_find(realmname ? realmname : "NULL");
-printf("user=%s\n",namepair->strvalue);
 	if (realm->trusted) {
 	/*
 	 *	Only allow some attributes to be propagated from
