@@ -443,14 +443,16 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			 *	cannot be resolved, or resolve later!
 			 */
 			if ((p = strrchr(value, '+')) != NULL && !p[1]) {
+				s = strdup(value);
+				p = strrchr(s, '+')
 				*p = 0;
 				vp->addport = 1;
 			} else
 				p = NULL;
-			vp->lvalue = librad_dodns ? ip_getaddr(value) :
-						    ip_addr(value);
+			vp->lvalue = librad_dodns ? ip_getaddr(s) :
+						    ip_addr(s);
 			vp->length = 4;
-			if (p) *p = '+';
+			if (p) free(s);	/* yes, this is correct */
 			break;
 		case PW_TYPE_INTEGER:
 			/*
