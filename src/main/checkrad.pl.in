@@ -138,6 +138,7 @@ sub snmpget_prog {
 	my ($ret);
 	local $_;
 
+	print LOG "snmpget: $snmpget $host $community $oid\n";
 	$_ = `$snmpget $host $community $oid`;
 	if (/^.*(\s|\")([0-9A-Za-z]{8})(\s|\"|$).*$/) {
 		# Session ID format.
@@ -849,6 +850,11 @@ sub cyclades_snmp {
 #	This works with HiPer Arc 4.0.30
 #	(this routine by Igor Brezac <igor@ipass.net>)
 # 
+
+#       This routine modified by Dan Halverson <danh@tbc.net>
+#       to suport additional versions of Hiper Arc
+#
+
 $usrm	 = '.iso.org.dod.internet.private.enterprises.429';
 sub usrhiper_snmp {
 	my ($login,$password,$oidext);
@@ -862,11 +868,13 @@ sub usrhiper_snmp {
 		}
 		return 2;
 	} else {
-		$password = "public";
+# If password is defined in naspasswd file, use it as community, otherwise use public
+		if ($password eq '') {
+		    $password = "public";
+		}	
 	}
-
-	$oidext = 1257 + 256*int(($ARGV[2]-1) / $hiper_density) +
-		                (($ARGV[2]-1) % $hiper_density);
+	my ($ver) = get_hiper_ver(usrm=>$usrm, target=>$ARGV[1], community=>$password);
+	$oidext = get_oidext(ver=>$ver, tty=>$ARGV[2]);
 	my ($login);
 
 	$login = snmpget($ARGV[1], $password, "$usrm.4.10.1.1.18.$oidext");
@@ -880,6 +888,34 @@ sub usrhiper_snmp {
 	($login eq $ARGV[3]) ? 1 : 0;
 }
 
+#
+#     get_hiper_ver and get_oidext by Dan Halverson <danh@tbc.net>
+#
+sub get_hiper_ver {
+    my (%args) = @_;
+    my ($ver
+	);
+    $ver = snmpget ($args{'target'}, $args{'community'}, $args{'usrm'}.".4.1.14.0");
+    return($ver);
+}
+
+#     
+#   Add additional OID checks below before the else.
+#   Else is for 4.0.30
+#
+sub get_oidext {
+    my (%args) = @_;
+    my ($oid
+	);
+    if ($args{'ver'} =~ /V5.1.99/) {
+	$oid = $args{'tty'}+1257-1;
+    }
+    else {
+	$oid = 1257 + 256*int(($args{'ttq'}-1) / $hiper_density) +
+	                     (($args{'ttq'}-1) % $hiper_density);
+    }
+    return($oid);
+}
 
 #
 #	Check USR Netserver with Telnet - based on tc_tccheck.
