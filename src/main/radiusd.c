@@ -1535,7 +1535,24 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	if (proxy_requests) {
 		if (request->proxy == NULL) {
+			/*
+			 *  Try to proxy this request.  Returns:
+			 *  -1: error, drop the request
+			 *   0: OK, but don't proxy it.
+			 *   1: OK, it's been proxied, don't do any more here.
+			 *   2: OK, it's been proxied to one or more servers.
+			 */
 			proxy_sent = proxy_send(request);
+
+			/*
+			 *  There was an error trying to proxy the request.
+			 *  Drop it on the floor.
+			 */
+			if (proxy_sent < 0) {
+				DEBUG2("Error trying to proxy request %d: Rejecting it", request->number);
+				rad_reject(request);
+				goto finished_request;
+			}
 			
 			/*
 			 *  sent==1 means it's been proxied.  The child
@@ -1543,7 +1560,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			 *  is NOT finished!
 			 */
 			if (proxy_sent == 1) {
-				finished = request->finished;
 				goto postpone_request;
 			}
 		}
@@ -1630,7 +1646,6 @@ finished_request:
 	 *  by a thread.
 	 */
 	if (proxy_sent) {
-		finished = request->finished;
 		goto postpone_request;
 	}
 
@@ -2476,9 +2491,9 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  the request as finished, and go to the next one.
 	 */
 	if (request->proxy_try_count == 0) {
-		request->finished = TRUE;
 		rad_reject(request);
 		realm_disable(request->proxy->dst_ipaddr);
+		request->finished = TRUE;
 		goto setup_timeout;
 	}
 

@@ -122,6 +122,14 @@ int proxy_send(REQUEST *request)
 	char *realmname;
 	int replicating;
 
+	/*
+	 *	Not authentication or accounting.  Stop it.
+	 */
+	if ((request->packet->code != PW_AUTHENTICATION_REQUEST) &&
+	    (request->packet->code != PW_ACCOUNTING_REQUEST)) {
+	  return -1;
+	}
+
 	/* 
 	 *	The timestamp is used below to figure the
 	 *	next_try. The request needs to "hang around" until
@@ -169,7 +177,7 @@ int proxy_send(REQUEST *request)
 	 */
 	realm = realm_find(realmname);
 	if (realm == NULL) {
-		return 0;
+		return -1;
 	}
 
 	/*
@@ -253,7 +261,7 @@ int proxy_send(REQUEST *request)
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->proxy->dst_port = realm->auth_port;
 		request->proxy->dst_ipaddr = realm->ipaddr;
-	} else {
+	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
 		request->proxy->dst_port = realm->acct_port;
 		request->proxy->dst_ipaddr = realm->acct_ipaddr;
 	}
