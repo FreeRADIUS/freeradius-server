@@ -26,7 +26,7 @@
 #define T_OP_REG_NE    	17
 #define T_OP_CMP_EQ     18
 #define T_EQEND		19
+#define T_HASH		20
 
 int	getword (char **ptr, char *buf, int buflen);
 int	gettoken(char **ptr, char *buf, int buflen);
-

@@ -37,6 +37,7 @@ static const TOKEN tokens[] = {
 	{ ">",	T_OP_GT,	},
 	{ "<=",	T_OP_LE,	},
 	{ "<",	T_OP_LT,	},
+	{ "#",	T_HASH,		},
 	{ NULL, 0,		},
 };
 

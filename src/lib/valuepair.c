@@ -584,7 +584,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 
 /*
  *	Read a valuepair from a buffer, and advance pointer.
- *	Sets *eol to 1 if end of line was encountered.
+ *	Sets *eol to T_EOL if end of line was encountered.
  */
 VALUE_PAIR *pairread(char **ptr, int *eol)
 {
@@ -597,7 +597,15 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
 	*eol = 0;
 
 	/* Get attribute. */
-	gettoken(ptr, attr, sizeof(attr));
+	token = gettoken(ptr, attr, sizeof(attr));
+
+	/*  If it's a comment, then exit, as we haven't read a pair */
+	if (token == T_HASH) {
+		*eol = token;
+		return NULL;
+	}
+
+	/*  It's not a comment, so it MUST be an attribute */
 	if (attr[0] == 0) {
 		librad_log("No token read");
 		return NULL;
@@ -618,11 +626,11 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
 	}
 
 	/*
-	 *	Peek at the next token. Must be T_EOL or T_COMMA.
+	 *	Peek at the next token. Must be T_EOL, T_COMMA, or T_HASH
 	 */
 	p = *ptr;
 	t = gettoken(&p, buf, sizeof(buf));
-	if (t != T_EOL && t != T_COMMA) {
+	if (t != T_EOL && t != T_COMMA && t != T_HASH) {
 		librad_log("Expected end of line or comma");
 		return NULL;
 	}
@@ -644,6 +652,7 @@ int userparse(char *buffer, VALUE_PAIR **first_pair)
 	VALUE_PAIR	*vp;
 	char		*p;
 	int		last_token = 0;
+	int		previous_token;
 
 	/*
 	 *	We allow an empty line.
@@ -653,10 +662,19 @@ int userparse(char *buffer, VALUE_PAIR **first_pair)
 
 	p = buffer;
 	do {
-		if ((vp = pairread(&p, &last_token)) == NULL)
+		previous_token = last_token;
+		if ((vp = pairread(&p, &last_token)) == NULL) {
 			return -1;
+		}
 		pairadd(first_pair, vp);
 	} while (*p && (last_token == T_COMMA));
+
+	/*
+	 *	Don't tell the caller that there was a comment.
+	 */
+	if (last_token == T_HASH) {
+		return previous_token;
+	}
 
 	/*
 	 *	And return the last token which we read.
