@@ -1,7 +1,5 @@
 <?php
 require('../conf/config.php3');
-if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-	include("../lib/$config[general_lib_type]/user_info.php3");
 
 if ($login == 'da_server_test'){
 	$login = $config[general_test_account_login];
@@ -11,7 +9,7 @@ if ($login == 'da_server_test'){
 echo <<<EOM
 <html>
 <head>
-<title>test user $login ($cn)</title>
+<title>test user $login</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
