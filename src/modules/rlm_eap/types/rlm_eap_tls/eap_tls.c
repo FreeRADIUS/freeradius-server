@@ -142,27 +142,37 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	EAPTLS_PACKET	reply;
 	unsigned int	size;
 	unsigned int 	nlen;
+	unsigned int	lbit = 0;
 
 	reply.code = EAPTLS_REQUEST;
 	reply.id = eap_ds->response->id + 1;
 	reply.flags = 0x00;
-	reply.flags = SET_LENGTH_INCLUDED(reply.flags);
 
 	/* Send data, NOT more than the FRAGMENT size */
 	if (ssn->dirty_out.used > ssn->offset) {
 		size = ssn->offset;
 		reply.flags = SET_MORE_FRAGMENTS(reply.flags);
+		if (ssn->fragment == 0) {
+			reply.flags = SET_LENGTH_INCLUDED(reply.flags);
+			lbit = 4;
+		}
+		ssn->fragment++;
 	} else {
 		size = ssn->dirty_out.used;
+		if (ssn->fragment) {
+			ssn->fragment = 0;
+		}
 	}
 
-	reply.dlen = 4/*TLS-Length*/ + size;
+	reply.dlen = lbit + size;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/ + reply.dlen;
 
-	nlen = htonl(size);
 	reply.data = malloc(reply.dlen);
-	memcpy(reply.data, &nlen, 4/*TLS-Length*/);
-	record_minus(&ssn->dirty_out, reply.data+4/*TLS-Length*/, size);
+	if (lbit) {
+		nlen = htonl(ssn->dirty_out.used);
+		memcpy(reply.data, &nlen, lbit);
+	}
+	record_minus(&ssn->dirty_out, reply.data+lbit, size);
 
 	eaptls_compose(eap_ds, &reply);
 	free(reply.data);
@@ -192,16 +202,12 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 	case alert:
 		eaptls_fail(handler->eap_ds);
 		session_free(&handler->opaque);
-		if(handler->opaque) printf("OPAQUE IS NOT NULL\n");
-		//handler->free_opaque = NULL;
 		return EAPTLS_FAIL;
 
 	case handshake:
 		if (tls_session->info.handshake_type == finished) {
 			eaptls_success(handler->eap_ds);
 			session_free(&handler->opaque);
-			if(handler->opaque) printf("OPAQUE IS NOT NULL\n");
-			//handler->free_opaque = NULL;
 			return EAPTLS_SUCCESS;
 		} else {
 			/* Fragmentation handler, send next fragment */
@@ -255,21 +261,21 @@ int eaptls_send_ack(EAP_DS *eap_ds)
  */
 eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 {
-	eaptls_packet_t	*eaptls_packet, *eaptls_prev;
+	eaptls_packet_t	*eaptls_packet, *eaptls_prev = NULL;
 
 	if ((eap_ds == NULL) 					|| 
 		(eap_ds->response == NULL)			|| 
 		(eap_ds->response->code != PW_EAP_RESPONSE)	||
-		(eap_ds->response->length <= EAP_HEADER_LEN + 1)	||
+		(eap_ds->response->length <= EAP_HEADER_LEN + 1/*EAP-Type*/)	||
 		(eap_ds->response->type.type != PW_EAP_TLS)) {
 
 		radlog(L_ERR, "rlm_eap_tls: corrupted data");
 		return EAPTLS_INVALID;
 	}
 
-	/* FIXME: check for nulls before assigning */
 	eaptls_packet = (eaptls_packet_t *)eap_ds->response->type.data;
-	eaptls_prev = (eaptls_packet_t *)prev_eap_ds->response->type.data;
+	if (prev_eap_ds && prev_eap_ds->response)
+		eaptls_prev = (eaptls_packet_t *)prev_eap_ds->response->type.data;
 
 	/*
 	 * check for ACK
@@ -295,7 +301,7 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 		return EAPTLS_INVALID;
 	}
 
-/*
+	/*
       The L bit (length included) is set to indicate the presence of the
       four octet TLS Message Length field, and MUST be set for the first
       fragment of a fragmented TLS message or set of messages. The M bit
@@ -303,7 +309,7 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
       (EAP-TLS start) is set in an EAP-TLS Start message. This
       differentiates the EAP-TLS Start message from a fragment
       acknowledgement.
-*/
+	*/
 	if (TLS_LENGTH_INCLUDED(eaptls_packet->flags)) {
 		if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
 			/*
@@ -361,14 +367,12 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 {
 	EAPTLS_PACKET	*tlspacket;
 	uint32_t	data_len = 0;
+	uint32_t	len = 0;
 	uint8_t		*data = NULL;
 
 	if (status  == EAPTLS_INVALID)
 		return NULL;
 
-	/* In case of EAPTLS_ACK, we need to send the next fragment
-	 * or send success or failure
-	 */
 	tlspacket = eaptls_alloc();
 	if (tlspacket == NULL) return NULL;
 
@@ -382,13 +386,7 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	tlspacket->code = eap_ds->response->code;
 	tlspacket->id = eap_ds->response->id;
 	tlspacket->length = eap_ds->response->length - 1/*EAPtype*/;
-
-	/* flags should be considered only if it is not ACK */
-	if (status == EAPTLS_ACK) {
-		tlspacket->flags = 0x00;
-	} else {
-		tlspacket->flags = eap_ds->response->type.data[0];
-	}
+	tlspacket->flags = eap_ds->response->type.data[0];
 
 	switch (status) {
 	/*
@@ -396,15 +394,16 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	   four octets, and provides the total length of the TLS message or set
 	   of messages that is being fragmented; this simplifies buffer
 	   allocation.
-
-	 * Dynamic allocation of buffers as & when we know the length
-	 * should solve the problem posed below..
+	 * For now we ignore TLS-Length field and hence the Total Length.
 	 */
 	/*
 	 * Start storing this fragment 
 	 * ???: How to interpret the Length ?
 	 *	1. Is it is the total length of all the TLS records ?
 	 *	2. Is it is the total length of one TLS record/current EAP data ?
+
+	 * Dynamic allocation of buffers as & when we know the length
+	 * should solve the problem.
 	 */
 	case EAPTLS_FIRST_FRAGMENT:
 	case EAPTLS_LENGTH_INCLUDED:
@@ -416,19 +415,22 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 		memcpy(&data_len, &eap_ds->response->type.data[1], sizeof(uint32_t));
 		data_len = ntohl(data_len);
 		data = (eap_ds->response->type.data + 5/*flags+TLS-Length*/);
+		len = eap_ds->response->type.length - 5/*flags+TLS-Length*/;
+		if(data_len > len) {
+			radlog(L_INFO, "Total Length Included");
+			data_len = len;
+		}
 		break;
 
 	case EAPTLS_MORE_FRAGMENTS:
 	case EAPTLS_OK:
-		data_len = eap_ds->response->length - 5/*code+id+length+EAPtype*/;
-		//data_len = eap_ds->response->type.length - 1/*EAPtype*/;
+		data_len = eap_ds->response->type.length - 1/*flags*/;
 		data = eap_ds->response->type.data + 1/*flags*/;
 		break;
 
 	default:
 		radlog(L_ERR, "rlm_eap_tls: Should never enter here\n");
 		break;
-
 	}
 
 	tlspacket->dlen = data_len;
@@ -468,14 +470,14 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 */
 	eap_ds->request->id = (reply->id)?(reply->id):eap_ds->response->id + 1;
 
-	eap_ds->request->type.data = malloc(reply->length - 4/*EAPTLS_Header*/);
+	eap_ds->request->type.data = malloc(reply->length - TLS_HEADER_LEN);
 	if (eap_ds->request->type.data == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: out of memory");
 		return 0;
 	}
 
 	/* EAPTLS Header length is excluded while computing EAP typelen */
-	eap_ds->request->type.length = reply->length - 4/*EAPTLS_Header*/;
+	eap_ds->request->type.length = reply->length - TLS_HEADER_LEN;
 
 	ptr = eap_ds->request->type.data;
 	*ptr++ = (uint8_t)(reply->flags & 0xFF);
@@ -504,9 +506,6 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 	return 1;
 }
 
-/*
- * FIXME: Incomplete function
- */
 /*
  * To process the TLS,
  *  INCOMING DATA:
@@ -542,21 +541,11 @@ void eaptls_operation(EAPTLS_PACKET *eaptls_packet, eaptls_status_t status, EAP_
 			return;
 	}
 
-	/* send the next fragment */
-	/*
-	if (status == EAPTLS_ACK) {
-		eaptls_request(handler->eap_ds, tls_session);
-		record_init(&tls_session->dirty_in);
-		return;
-	}
-	*/
-
 	if ((status == EAPTLS_MORE_FRAGMENTS) || 
 		(status == EAPTLS_MORE_FRAGMENTS_WITH_LENGTH) || 
 		(status == EAPTLS_FIRST_FRAGMENT)) {
 		/*
 		 * Send the ACK.
-		 * We are building the session object here
 		 */
 		eaptls_send_ack(handler->eap_ds);
 	} else {
