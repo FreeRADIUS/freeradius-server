@@ -82,7 +82,8 @@ rm -rf $RPM_BUILD_ROOT
 %config /etc/pam.d/radius
 %config /etc/logrotate.d/radiusd
 %config /etc/rc.d/init.d/radiusd
-%config /etc/raddb/*
+%config (noreplace) /etc/raddb/[a-ce-z]*
+%config /etc/raddb/d*
 %{_mandir}/*/*
 /usr/bin/*
 /usr/sbin/*
@@ -92,6 +93,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0700,root,root) %dir /var/run/radiusd
 
 %changelog
+* Thu Jun  6 2002 Marko Myllynen <marko.myllynem@micsom.com>
+- set noreplace for non-dictionary files in /etc/raddb
+
 * Sun May 26 2002 Frank Cusack <frank@google.com>
 - move /var dirs from %%post to %%files
 
@@ -101,8 +105,8 @@ rm -rf $RPM_BUILD_ROOT
 - misc clean ups
 
 * Wed Feb 13 2002 Marko Myllynen
-- use %{_mandir} instead of /usr/man
-- rename %postin as %post
+- use %%{_mandir} instead of /usr/man
+- rename %%postin as %%post
 - clean up name/version
 
 * Fri Jan 18 2002 Frank Cusack <frank@google.com>
