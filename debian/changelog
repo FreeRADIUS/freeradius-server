@@ -12,8 +12,10 @@ radiusd-freeradius (0.1-1) unstable; urgency=low
   * Removed bogus build-dep.  (closes: Bug#87277)
   * Better permissions on /etc/raddb
   * Use correct LDAP library.
+  * Fork ldap, postgresql, and mysql modules into different packages.
+  * Remove Kerberos, as it's restricted from export.
 
- -- Chad Miller <cmiller@debian.org>  Sat,  5 May 2001 22:04:13 -0400
+ -- Chad Miller <cmiller@debian.org>  [TBA]
 
 radiusd-freeradius (0.0.20010109-1) unstable; urgency=low
 
