@@ -273,8 +273,8 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/*
 	 * record the versionlist for the MK calculation.
 	 */
-	eapsim_mk.versionlistlen = (versioncount+1)*2;
-	memcpy(eapsim_mk.versionlist, (unsigned char *)versions,
+	eapsim_mk.versionlistlen = versioncount*2;
+	memcpy(eapsim_mk.versionlist, (unsigned char *)(versions+1),
 	       eapsim_mk.versionlistlen);
 
 	/* walk the version list, and pick the one we support, which
