@@ -239,6 +239,12 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			   */
 			default:
 			case T_OP_SET:		/* := */
+			  if (found) {
+			    pairdelete(to, found->attribute);
+			    break;
+			  }
+			  /* FALL THROUGH */
+
 			case T_OP_EQ:		/* = */
 				if (found) {
 					tailfrom = i;
