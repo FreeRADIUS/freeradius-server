@@ -1159,6 +1159,7 @@ int rad_process(REQUEST *request, int dospawn)
 	}
 	
 	assert(request->magic == REQUEST_MAGIC);
+	assert(request->reply == NULL);
 
 	/*
 	 *  The request passes many of our sanity checks.  From
@@ -2136,7 +2137,16 @@ static REQUEST *proxy_check_list(REQUEST *request)
 				request_free(&request);
 				return NULL;
 			}
-		} /* else there's no reply yet. */
+		} else if (oldreq->reply) {
+		  /*
+		   *  Maybe we've already sent a reply to the NAS, in
+		   *  which case the new 'request' is really a
+		   *  duplicate, that should just be dropped.
+		   */
+			DEBUG2("Ignoring proxy reply, after we've sent a reply to the NAS");
+			request_free(&request);
+			return NULL;
+		}
 
 	} else {
 		/*
