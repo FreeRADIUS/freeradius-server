@@ -1,0 +1,12 @@
+#
+# dictionary.bristol
+#
+# Version:      $Id$
+#
+
+VENDOR          Bristol          4363
+
+#
+#       Standard attribute
+#
+ATTRIBUTE       Bristol-RNET		5	string	Bristol
