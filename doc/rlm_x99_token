@@ -197,11 +197,6 @@
     Most of the configuration is documented fairly well in the sample
     file supplied.  I will only discuss a few options here.
 
-    chal_text:  You will need to apply a patch to freeradius to support
-    having '\n' in the challenge text.  In conffile.c, in
-    cf_expand_variables(), change "while (*ptr >= ' ')" to
-    "while (*ptr)".
-
     ewindow_size:  This is how far out of [event] sync the server can
     get with the token.  The value is how far the user can be ahead of
     the server -- essentially how many times the user can play with the
