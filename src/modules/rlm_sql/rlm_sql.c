@@ -491,6 +491,16 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		return -1;
 	}
 
+	/*
+	 *	Sanity check for crazy people.
+	 */
+	if (strncmp(inst->config->sql_driver, "rlm_sql_", 8) != 0) {
+		radlog(L_ERR, "rlm_sql (%s): \"%s\" is NOT an SQL driver!",
+		       inst->config->xlat_name, inst->config->sql_driver);
+		rlm_sql_detach(inst);
+		return -1;
+	}
+
 	inst->handle = lt_dlopenext(inst->config->sql_driver);
 	if (inst->handle == NULL) {
 		radlog(L_ERR, "rlm_sql (%s): Could not link driver %s: %s",
