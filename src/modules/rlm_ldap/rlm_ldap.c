@@ -1314,7 +1314,7 @@ ldap_authorize(void *instance, REQUEST * request)
 							strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
 							passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
 							pairadd(&request->config_items,passwd_item);
-							DEBUG("rlm_ldap: Added password %s in check items",passwd_item->strvalue);
+							DEBUG("rlm_ldap: Added password %s in check items as %s",passwd_item->strvalue,passwd_item->name);
 						}
 					}
 					i++;
@@ -1428,7 +1428,7 @@ ldap_authorize(void *instance, REQUEST * request)
 						}
 #endif
 
-						DEBUG("rlm_ldap: Added the eDirectory password in check items");
+						DEBUG("rlm_ldap: Added the eDirectory password %s in check items as %s",passwd_item->strvalue,passwd_item->name);
 					}
 				}
 				else {
