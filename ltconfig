@@ -475,8 +475,24 @@ old_archive_cmds='$AR cru $oldlib$oldobjs'
 old_postinstall_cmds='chmod 644 $oldlib'
 old_postuninstall_cmds=
 
-# Set a sane default for `AR'.
-test -z "$AR" && AR=ar
+# If AR is not set, then run the test.
+if test "${AR+set}" != "set"; then
+  result=no
+
+  echo $ac_n "checking for ar... $ac_c" 1>&6
+  IFS="${IFS= 	}"; save_ifs="$IFS"; IFS="${IFS}${PATH_SEPARATOR}"
+  for ac_dir in $PATH /bin /usr/bin /usr/local/bin /usr/ucb /usr/ccs/bin; do
+    test -z "$ac_dir" && ac_dir=.
+    if test -f $ac_dir/ar || test -f $ac_dir/ar$ac_exeext; then
+      AR=$ac_dir/ar
+      result="ar"
+      break
+    fi
+  done
+  IFS="$save_ifs"
+
+  echo "$ac_t$result" 1>&6
+fi
 
 # Set a sane default for `OBJDUMP'.
 test -z "$OBJDUMP" && OBJDUMP=objdump
