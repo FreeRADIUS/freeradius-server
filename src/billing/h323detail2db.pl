@@ -34,6 +34,7 @@ require Getopt::Long;
 $GZCAT = "/usr/bin/zcat";
 # zcat - 'cat for .Z / compressed files'
 $ZCAT = "/usr/bin/zcat";
+$BZCAT = "/usr/bin/bzcat";
 
 
 # Default Variables
@@ -250,6 +251,7 @@ sub process_record {
 	$h323_remote_address =~ s/\"//g;
 	$Called_Station_Id =~ s/\"//g;
 	$h323_disconnect_cause =~ s/\"//g;
+	$h323_setup_time =~ s/\"//g;
 	$h323_connect_time =~ s/\"//g;
 	$h323_disconnect_time =~ s/\"//g;
 	$h323_conf_id =~ s/\"//g;
@@ -272,12 +274,12 @@ sub read_detailfile {
 	if (&debug_get()) { print "DEBUG: Reading detail file: $filename\n" }
 	if ( $filename =~ /.gz$/ ) {
 		open (DETAIL, "$GZCAT $filename |") || warn "read_detailfile(\"$filename\"): $!\n";
-	} else {
-	if ( $filename =~ /.Z$/ ) {
+	} elsif ( $filename =~ /.Z$/ ) {
 		open (DETAIL, "$ZCAT $filename |") || warn "read_detailfile(\"$filename\"): $!\n";
+	} elsif ( $filename =~ /.bz2$/ ) {
+		open (DETAIL, "$BZCAT $filename |") || warn "read_detailfile(\"$filename\"): $!\n";
 	} else {
 		open (DETAIL, "<$filename") || warn "read_detailfile(\"$filename\"): $!\n";
-		}
 	}
 	$valid_input = (eof(DETAIL) ? 0 : 1);
 	if (&debug_get()) { print "DEBUG: Reading records\n"; }
