@@ -8,13 +8,8 @@ char acct_sccsid[] =
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
-
-#include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<unistd.h>
-#include	<errno.h>
 
 #include	"radiusd.h"
 #include	"modules.h"

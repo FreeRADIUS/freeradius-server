@@ -8,17 +8,13 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
 #include	<sys/file.h>
 
-#include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
 #include	<fcntl.h>
 #include	<ctype.h>
-#include	<unistd.h>
 #include	<signal.h>
-#include	<errno.h>
 
 #if HAVE_SYS_WAIT_H
 # include <sys/wait.h>

@@ -7,16 +7,11 @@
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
 #include	<sys/file.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<fcntl.h>
-#include	<unistd.h>
-#include	<errno.h>
-#include	<stdarg.h>
-#include	<netinet/in.h>
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>

@@ -11,16 +11,12 @@ static const char rcsid[] =
 
 #include "autoconf.h"
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <pwd.h>
-#include <errno.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <ctype.h>
-#include <netinet/in.h>
 
 #if HAVE_MALLOC_H
 #  include <malloc.h>

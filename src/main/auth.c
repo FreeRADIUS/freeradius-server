@@ -9,13 +9,8 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
-
-#include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<unistd.h>
-#include	<errno.h>
 #include	<ctype.h>
 
 #if HAVE_MALLOC_H
