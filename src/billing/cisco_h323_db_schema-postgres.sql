@@ -106,6 +106,8 @@ create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipadd
  *
  * This table should list the IP addresses, names and locations of all your gateways
  * This can be used to make more useful reports.
+ *
+ * Note: This table should be removed in favour of using the "nas" table.
  */
 
 CREATE TABLE gateways (
