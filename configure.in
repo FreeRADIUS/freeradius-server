@@ -350,8 +350,6 @@ dnl #
     fi
   fi
 
-  AC_CHECK_FUNCS(pthread_cancel)
-
 dnl #
 dnl #  Finally, after all of the checks above, we see if
 dnl #  we can REALLY use the thread pools.
