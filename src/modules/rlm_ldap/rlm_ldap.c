@@ -92,6 +92,7 @@
  *	  have operators we don't need to try to be cleaver.
  * Sep 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Fix a crash in ldap_pairget when the attribute value is larger than the buffer size
+ *	  Bug report by Stefan Radovanovici <sra@rtsffm.com>
  */
 static const char rcsid[] = "$Id$";
 
