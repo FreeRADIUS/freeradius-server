@@ -1,5 +1,5 @@
 TARGET		= rlm_mschap
-SRCS		= rlm_mschap.c
+SRCS		= rlm_mschap.c smbdes.c
 HEADERS		= 
 RLM_CFLAGS	=
 RLM_LDFLAGS	= 
@@ -13,8 +13,8 @@ $(STATIC_OBJS): $(HEADERS)
 
 $(DYNAMIC_OBJS): $(HEADERS)
 
-smbencrypt: smbencrypt.o $(HEADERS)
-	$(CC) -I../../include $(LDFLAGS) -o smbencrypt smbencrypt.o ../../lib/libradius.a
+smbencrypt: smbencrypt.o smbdes.o $(HEADERS)
+	$(CC) -I../../include $(LDFLAGS) -o smbencrypt smbencrypt.o smbdes.o ../../lib/libradius.a
 
 smbencrypt-install:
 	$(INSTALL) -d -m 755 $(R)$(bindir)

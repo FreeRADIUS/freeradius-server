@@ -20,13 +20,14 @@
  */
 
 #include	"autoconf.h"
-#include	"libradius.h"
 #include        <stdio.h>
 #include        <stdlib.h>
 #include        <string.h>
 #include        <ctype.h>
 
 #include        "md4.h"
+
+#include	"smbdes.h"
 
 static const char * hex = "0123456789ABCDEF";
 
@@ -76,7 +77,7 @@ int main (int argc, char *argv[])
 	for (i = 1; i < argc; i++ ) {
 		l = strlen(password);
 		if (l && password[l-1] == '\n') password [l-1] = 0;
-		lrad_lmpwdhash(argv[i], hash);
+		smbdes_lmpwdhash(argv[i], hash);
 		tohex (hash, 16, lmpass);
 		ntpwdhash (hash, argv[i]);
 		tohex (hash, 16, ntpass);

@@ -250,7 +250,7 @@ int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password,
 	/*
 	 *	Calculate and verify the CHAP challenge.
 	 */
-	lrad_mschap(ntpwdhash, session->peer_challenge, response);
+	eapleap_mschap(ntpwdhash, session->peer_challenge, response);
 	if (memcmp(response, packet->challenge, 24) == 0) {
 		DEBUG2("  rlm_eap_leap: NtChallengeResponse from AP is valid");
 		memcpy(session->peer_response, response, sizeof(response));
@@ -323,7 +323,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	 *	Calculate our response, to authenticate ourselves
 	 *	to the AP.
 	 */
-	lrad_mschap(ntpwdhashhash, packet->challenge, reply->challenge);
+	eapleap_mschap(ntpwdhashhash, packet->challenge, reply->challenge);
 
 	/*
 	 *  Calculate the leap:session-key attribute

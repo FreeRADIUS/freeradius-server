@@ -327,11 +327,6 @@ void lrad_isaac(lrad_randctx *ctx);
 void lrad_randinit(lrad_randctx *ctx, int flag);
 uint32_t lrad_rand(void);	/* like rand(), but better. */
 
-void lrad_lmpwdhash(const unsigned char *password,unsigned char *lmhash);
-void lrad_mschap(const unsigned char *win_password,
-		 const unsigned char *challenge, unsigned char *response);
-
-
 /* crypt wrapper from crypt.c */
 int lrad_crypt_check(const char *key, const char *salt);
 

@@ -70,4 +70,9 @@ LEAP_PACKET	*eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 				VALUE_PAIR *user_name, VALUE_PAIR* password,
 				leap_session_t *session,
 				VALUE_PAIR **reply_vps);
+
+void eapleap_lmpwdhash(const unsigned char *password,unsigned char *lmhash);
+void eapleap_mschap(const unsigned char *win_password,
+		 const unsigned char *challenge, unsigned char *response);
+
 #endif /*_EAP_LEAP_H*/

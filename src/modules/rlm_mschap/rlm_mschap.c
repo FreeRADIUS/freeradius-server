@@ -58,6 +58,8 @@
 #include	"sha1.h"
 #include	"rad_assert.h"
 
+#include	"smbdes.h"
+
 static const char rcsid[] = "$Id$";
 
 static const char *letters = "0123456789ABCDEF";
@@ -708,7 +710,7 @@ static int do_mschap(rlm_mschap_t *inst,
 			return -1;
 		}
 		
-		lrad_mschap(password->strvalue, challenge, calculated);
+		smbdes_mschap(password->strvalue, challenge, calculated);
 		if (memcmp(response, calculated, 24) != 0) {
 			return -1;
 		}
@@ -1036,7 +1038,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if (!lm_password) {
 			radlog(L_ERR, "No memory");
 		} else {
-			lrad_lmpwdhash(password->strvalue,
+			smbdes_lmpwdhash(password->strvalue,
 				       lm_password->strvalue);
 			lm_password->length = 16;
 			pairadd(&request->config_items, lm_password);
