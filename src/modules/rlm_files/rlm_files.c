@@ -19,6 +19,7 @@ static const char rcsid[] = "$Id$";
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
+#include	<errno.h>
 #include	<netdb.h>
 #include	<pwd.h>
 #include	<grp.h>
@@ -219,7 +220,7 @@ void file_dynamic_log_init(void )
 		log_debug("%d logs configured",logcnt);
 		fclose(f);
 	} else {
-		log_debug("Error loading %s",fn);
+		log_debug("Error loading %s: %s",fn, strerror(errno));
 	}
 
 
