@@ -87,6 +87,5 @@ int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
 void    query_log(SQL_INST * inst, char *querystr);
-int     sql_escape_string(char *to, char *from, int length);
 int     sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, char *username);
 #endif
