@@ -100,6 +100,7 @@ typedef struct nas {
 typedef struct _realm {
 	char			realm[64];
 	char			server[64];
+	char			acct_server[64];
 	uint32_t		ipaddr;	/* authentication */
 	uint32_t		acct_ipaddr;
 	u_char			secret[32];

@@ -399,11 +399,17 @@ static int generate_realms(const char *filename)
 		 * Double check length, just to be sure!
 		 */
 		if (strlen(authhost) >= sizeof(c->server)) {
-			radlog(L_ERR, "%s[%d]: Server name of length %d is greater that allowed: %d",
+			radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
 					filename, cf_section_lineno(cs),
 					strlen(authhost), sizeof(c->server) - 1);
 			return -1;
 		}
+                if (strlen(accthost) >= sizeof(c->acct_server)) {
+                        radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
+                                        filename, cf_section_lineno(cs),
+                                        strlen(accthost), sizeof(c->acct_server) - 1);
+                        return -1;
+                }
 		if (strlen(name2) >= sizeof(c->realm)) {
 			radlog(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
 					filename, cf_section_lineno(cs),
@@ -412,7 +418,8 @@ static int generate_realms(const char *filename)
 		}
 		
 		strcpy(c->realm, name2);
-		strcpy(c->server, authhost);	
+                strcpy(c->server, authhost);
+		strcpy(c->acct_server, accthost);	
 
 		/*
 		 *	If one or the other of authentication/accounting

@@ -484,7 +484,7 @@ void realm_disable(uint32_t ipaddr, int port)
 			cl->acct_active = FALSE;
 			cl->acct_wakeup = now + mainconfig.proxy_dead_time;
 			radlog(L_PROXY, "marking accounting server %s:%d for realm %s dead",
-				cl->server, port, cl->realm);
+				cl->acct_server, port, cl->realm);
 		}
 	}
 }
