@@ -298,6 +298,9 @@ static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
+	if (mysql_sock == NULL || mysql_sock->sock == NULL) {
+		return "rlm_sql_mysql: no connection to db";
+	}
 	return mysql_error(mysql_sock->sock);
 }
 
