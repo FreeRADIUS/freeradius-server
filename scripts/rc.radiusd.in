@@ -28,19 +28,22 @@ case "$1" in
   start)
 	if [ ! -f $logdir/radutmp ]
 	then
-		:>$logdir/radutmp
+		>$logdir/radutmp
 	fi
-	echo -n "Starting $DESC: "
+	echo -n "Starting $DESC:"
 	if [ -x $WATCHER ]
 	then
-		echo -n "radwatch "
+		echo -n " radwatch"
 		start-stop-daemon --start --quiet --startas $WATCHER \
 			--pidfile $rundir/$NAME2.pid --exec $RADIUSD -- $ARGS
+		# and the watcher starts radiusd.
+		echo -n " radiusd"
 	else
+		echo -n " radiusd"
 		start-stop-daemon --start --quiet \
 			--pidfile $rundir/$NAME1.pid --exec $RADIUSD -- $ARGS
 	fi
-	echo "radiusd."
+	echo "."
 	;;
   stop)
 	[ -z "$2" ] && echo -n "Stopping $DESC: "
@@ -49,12 +52,12 @@ case "$1" in
 		[ -z "$2" ] && echo -n "radwatch "
 		start-stop-daemon --stop --quiet \
 			--pidfile $rundir/$NAME2.pid -- exec $RADWATCH
-		#killall -9 radwatch 2>/dev/null
+		# but we have to stop radiusd manually.
+		killall radiusd 2>/dev/null
 	else
 		start-stop-daemon --stop --quiet \
 			--pidfile $rundir/$NAME1.pid --exec $RADIUSD
 	fi
-	#killall radiusd 2>/dev/null
 	[ -z "$2" ] && echo "radiusd."
 	;;
   reload|force-reload)
