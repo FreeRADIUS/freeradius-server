@@ -658,17 +658,23 @@ int rad_process(REQUEST *request)
 		      request->packet->code,
 		      client_name(request->packet->src_ipaddr),
 		      request->packet->id);
+		  request_free(request);
 		  return -1;
 		}
 		
 		/*
-		 *	Setup username and stuff.
+		 *	Assert that the requests have a value User-Name
+		 *	attribute.
 		 */
-		if ((e = rad_mangle(request)) < 0)
-			return e;
 		namepair = pairfind(request->packet->vps, PW_USER_NAME);
-		if (namepair == NULL)
+		if (namepair == NULL) {
+			log(L_ERR, "No username: [] (from nas %s)",
+			    nas_name2(request->packet));
+			request_free(request);
+			return -1;
 			break;
+		}
+
 		/*
 		 *	We always call proxy_send, it returns non-zero
 		 *	if it did actually proxy the request.
@@ -1148,4 +1154,3 @@ static void sig_hup(int sig)
 	signal(SIGHUP, sig_hup);
 	need_reload = TRUE;
 }
-

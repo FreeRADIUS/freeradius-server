@@ -189,7 +189,6 @@ int proxy_receive(REQUEST *request);
 
 /* auth.c */
 char		*auth_name(REQUEST *request, int do_cli);
-int		rad_mangle(REQUEST *request);
 int		rad_authenticate (REQUEST *);
 
 /* exec.c */

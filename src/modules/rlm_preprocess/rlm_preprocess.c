@@ -33,6 +33,87 @@ static PAIR_LIST	*huntgroups;
 static PAIR_LIST	*hints;
 
 /*
+ *	Mangle username if needed, IN PLACE.
+ */
+static void rad_mangle(REQUEST *request)
+{
+	VALUE_PAIR	*namepair;
+	VALUE_PAIR	*request_pairs;
+	VALUE_PAIR	*tmp;
+#ifdef WITH_NTDOMAIN_HACK
+	char		newname[MAX_STRING_LEN];
+#endif
+#if defined(WITH_NTDOMAIN_HACK) || defined(WITH_SPECIALIX_JETSTREAM_HACK)
+	char		*ptr;
+#endif
+
+	/*
+	 *	Get the username from the request
+	 *	If it isn't there, then we can't mangle the request.
+	 */
+	request_pairs = request->packet->vps;
+	namepair = pairfind(request_pairs, PW_USER_NAME);
+	if ((namepair == NULL) || 
+	    (namepair->length <= 0)) {
+	  return;
+	}
+
+#ifdef WITH_NTDOMAIN_HACK
+	/*
+	 *	Windows NT machines often authenticate themselves as
+	 *	NT_DOMAIN\username. Try to be smart about this.
+	 *
+	 *	FIXME: should we handle this as a REALM ?
+	 */
+	if ((ptr = strchr(namepair->strvalue, '\\')) != NULL) {
+		strNcpy(newname, ptr + 1, sizeof(newname));
+		/* Same size */
+		strcpy(namepair->strvalue, newname);
+		namepair->length = strlen(newname);
+	}
+#endif /* WITH_NTDOMAIN_HACK */
+
+#ifdef WITH_SPECIALIX_JETSTREAM_HACK
+	/*
+	 *	Specialix Jetstream 8500 24 port access server.
+	 *	If the user name is 10 characters or longer, a "/"
+	 *	and the excess characters after the 10th are
+	 *	appended to the user name.
+	 *
+	 *	Reported by Lucas Heise <root@laonet.net>
+	 */
+	if (strlen(namepair->strvalue) > 10 && namepair->strvalue[10] == '/') {
+		for (ptr = namepair->strvalue + 11; *ptr; ptr++)
+			*(ptr - 1) = *ptr;
+		*(ptr - 1) = 0;
+		namepair->length = strlen(namepair->strvalue);
+	}
+#endif
+
+	/*
+	 *	Small check: if Framed-Protocol present but Service-Type
+	 *	is missing, add Service-Type = Framed-User.
+	 */
+	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL) != NULL &&
+	    pairfind(request_pairs, PW_SERVICE_TYPE) == NULL) {
+		tmp = paircreate(PW_SERVICE_TYPE, PW_TYPE_INTEGER);
+		if (tmp) {
+			tmp->lvalue = PW_FRAMED_USER;
+			pairmove(&request_pairs, &tmp);
+		}
+	}
+
+#if 0
+	/*
+	 *	FIXME: find some substitute for this, or
+	 *	drop the log_auth_detail option all together.
+	 */
+	if (log_auth_detail)
+		rad_accounting_orig(request, -1, "detail.auth");
+#endif
+}
+
+/*
  *	Compare the request with the "reply" part in the
  *	huntgroup, which normally only contains username or group.
  *	At least one of the "reply" items has to match.
@@ -358,6 +439,12 @@ static int preprocess_authorize(REQUEST *request, char *name,
 	reply_pairs = reply_pairs;
 	name = name;
 
+	/*
+	 *	Mangle the username, to get rid of stupid implementation
+	 *	bugs.
+	 */
+	rad_mangle(request);
+
 	hints_setup(request);
 	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
 		log(L_AUTH, "No huntgroup access: [%s] (%s)",
@@ -373,7 +460,12 @@ static int preprocess_authorize(REQUEST *request, char *name,
  */
 static int preprocess_accounting(REQUEST *request)
 {
-	hints_setup(request->packet->vps);
+	/*
+	 *  Ensure that we have the SAME user name for both
+	 *  authentication && accounting.
+	 */
+	rad_mangle(request);
+	hints_setup(request);
 
 	return RLM_ACCT_OK;
 }
