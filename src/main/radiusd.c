@@ -432,7 +432,7 @@ int main(int argc, char **argv)
 	RADIUS_PACKET *packet;
 	u_char *secret;
 	unsigned char buffer[4096];
-	struct sockaddr_in salocal;
+	struct sockaddr salocal;
 	struct sockaddr_in *sa;
 	fd_set readfds;
 	int result;
