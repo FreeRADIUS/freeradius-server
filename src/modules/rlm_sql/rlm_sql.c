@@ -786,19 +786,21 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	if (ret == 0) {
 		row = sqlsocket->row;
 	}
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 
 	if (ret) {
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
 
 	if (row == NULL) {
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
 
 	request->simul_count = atoi(row[0]);
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 
 	if(request->simul_count < request->simul_max) {
 		sql_release_socket(inst, sqlsocket);
