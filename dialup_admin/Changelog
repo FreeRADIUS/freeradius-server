@@ -1,3 +1,5 @@
+Ver 1.60:
+* Use require_once when including lib/functions.php3 in lib/sql
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
