@@ -67,24 +67,18 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
 /*
  *	Free a REQUEST struct.
  */
-void request_free(REQUEST *request)
+void request_free(REQUEST **request_ptr)
 {
-	if (request->packet) {
-		rad_free(request->packet);
-		request->packet = NULL;
-	}
-	if (request->proxy) {
-		rad_free(request->proxy);
-		request->proxy = NULL;
-	}
-	if (request->reply) {
-		rad_free(request->reply);
-		request->reply = NULL;
-	}
-	if (request->proxy_reply) {
-		rad_free(request->proxy_reply);
-		request->proxy_reply = NULL;
-	}
+	REQUEST *request = *request_ptr;
+
+	if (request->packet) rad_free(&request->packet);
+
+	if (request->proxy) rad_free(&request->proxy);
+
+	if (request->reply) rad_free(&request->reply);
+
+	if (request->proxy_reply) rad_free(&request->proxy_reply);
+
 	if (request->config_items) {
 		pairfree(request->config_items);
 		request->config_items = NULL;
@@ -93,6 +87,8 @@ void request_free(REQUEST *request)
 	request->magic = 0x01020304;	/* set the request to be nonsense */
 #endif
 	free(request);
+
+	*request_ptr = NULL;
 }
 
 /*

@@ -947,7 +947,7 @@ int main(int argc, char **argv)
 			              radlog(L_ERR, "Ignoring request from unknown client %s:%d",
 				        ip_ntoa(buffer, packet->src_ipaddr),
 					packet->src_port);
-				      rad_free(packet);
+				      rad_free(&packet);
 				      continue;
 				} else {
 				      secret = cl->secret;
@@ -959,7 +959,7 @@ int main(int argc, char **argv)
 				      radlog(L_ERR, "Ignoring request from unknown proxy %s:%d",
 				 	ip_ntoa(buffer, packet->src_ipaddr),
 					packet->src_port);
-				      rad_free(packet);
+				      rad_free(&packet);
 				      continue;
 				} else {
 				      secret = rl->secret;
@@ -974,7 +974,7 @@ int main(int argc, char **argv)
 			 */
 			if (packet->code > PW_ACCESS_CHALLENGE) {
 				radlog(L_ERR, "Ignoring request from client %s:%d with unknown code %d", buffer, packet->src_port, packet->code);
-				rad_free(packet);
+				rad_free(&packet);
 				continue;
 			}
 
@@ -1065,7 +1065,7 @@ int rad_process(REQUEST *request, int dospawn)
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->src_port,
 		    request->packet->id);
-		request_free(request);
+		request_free(&request);
 		return -1;
 		break;
 
@@ -1081,7 +1081,7 @@ int rad_process(REQUEST *request, int dospawn)
 		      client_name(request->packet->src_ipaddr),
 		      request->packet->src_port,
 		      request->packet->id);
-		  request_free(request);
+		  request_free(&request);
 		  return -1;
 		}
 		fun = rad_authenticate;
@@ -1099,7 +1099,7 @@ int rad_process(REQUEST *request, int dospawn)
 		      client_name(request->packet->src_ipaddr),
 		      request->packet->src_port,
 		      request->packet->id);
-		  request_free(request);
+		  request_free(&request);
 		  return -1;
 		}
 		fun = rad_accounting;
@@ -1120,7 +1120,7 @@ int rad_process(REQUEST *request, int dospawn)
 			    client_name(request->packet->src_ipaddr),
 			    request->packet->src_port,
 			    request->packet->id);
-			request_free(request);
+			request_free(&request);
 			return -1;
 		}
 		if (request->packet->code == PW_AUTHENTICATION_ACK) {
@@ -1138,7 +1138,7 @@ int rad_process(REQUEST *request, int dospawn)
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->src_port,
 		    request->packet->id);
-		request_free(request);
+		request_free(&request);
 		return -1;
 		break;
 	}
@@ -1793,8 +1793,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *	Delete the duplicate request, and
 			 *	stop processing the request list.
 			 */
-			request_free(request);
-			request = NULL;
+			request_free(&request);
 			
 			/*
 			 *	The packet vectors are different, so
@@ -1822,8 +1821,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 				 client_name(request->packet->src_ipaddr),
 				 request->packet->src_port,
 				 request->packet->id);
-			  request_free(request);
-			  request = NULL;
+			  request_free(&request);
 		  }
 	} /* a similar packet already exists. */
 
@@ -1838,8 +1836,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 
 	/*
 	 *	Count the total number of requests, to see if there
-	 *	are too many.  If so, stop counting immediately,
-	 *	and return with an error.
+	 *	are too many.  If so, return with an error.
 	 */
 	if (max_requests) {
 		int request_count = rl_num_requests();
@@ -1855,7 +1852,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			       request->packet->src_port,
 			       request->packet->id);
 			radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n\tThe value for 'max_requests' is probably set too low.\n");
-			request_free(request);
+			request_free(&request);
 			request_list_busy = FALSE;
 			return NULL;
 		}
@@ -2185,7 +2182,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 				   request->packet->vector,
 				   sizeof(oldreq->proxy_reply->vector)) == 0) {
 				DEBUG2("Ignoring duplicate proxy reply");
-				request_free(request);
+				request_free(&request);
 				return NULL;
 			} else {
 				/*
@@ -2194,7 +2191,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 				 *	the old one.  Delete it!
 				 */
 				DEBUG2("Ignoring conflicting proxy reply");
-				request_free(request);
+				request_free(&request);
 				return NULL;
 			}
 		} /* else there's no reply yet. */
@@ -2206,7 +2203,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 		radlog(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
 		       client_name(request->packet->src_ipaddr),
 		       request->packet->id);
-		request_free(request);
+		request_free(&request);
 		return NULL;
 	}
 
@@ -2219,7 +2216,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	oldreq->timestamp = request->timestamp;
 	oldreq->proxy_reply = request->packet;
 	request->packet = NULL;
-	request_free(request);
+	request_free(&request);
 	return oldreq;
 }
 

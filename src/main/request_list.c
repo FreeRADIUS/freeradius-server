@@ -65,7 +65,7 @@ void rl_delete(REQUEST *request)
 		next->prev = prev;
 	}
 	
-	request_free(request);
+	request_free(&request);
 	request_list[id].request_count--;
 }
 

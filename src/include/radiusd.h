@@ -202,7 +202,7 @@ int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
 
 /* util.c */
 void (*reset_signal(int signo, void (*func)(int)))(int);
-void		request_free(REQUEST *request);
+void		request_free(REQUEST **request);
 int rad_mkdir(char *directory, int mode);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 

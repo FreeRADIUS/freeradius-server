@@ -84,9 +84,9 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	reply = packet->vps;
 	
 	if ((packet->code > 0) && (packet->code < 14)) {
-	  what = packet_codes[packet->code];
+		what = packet_codes[packet->code];
 	} else {
-	  what = "Reply";
+		what = "Reply";
 	}
 
 	/*
@@ -114,11 +114,12 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		   */
 		  hdr->code = packet->code;
 		  hdr->id = packet->id;
-		  if (packet->code == PW_ACCOUNTING_REQUEST)
-		    memset(hdr->vector, 0, AUTH_VECTOR_LEN);
-		  else
-		    memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
-		  
+		  if (packet->code == PW_ACCOUNTING_REQUEST) {
+			  memset(hdr->vector, 0, AUTH_VECTOR_LEN);
+		  } else {
+			  memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
+		  }
+
 		  DEBUG("Sending %s of id %d to %s:%d\n",
 			what, packet->id,
 			ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
@@ -409,7 +410,8 @@ RADIUS_PACKET *rad_recv(int fd)
 		0, (struct sockaddr *)&saremote, &salen);
 
 	/*
-	 *	Fill IP header fields
+	 *	Fill IP header fields.  We need these for the error
+	 *	messages which may come later.
 	 */
 	packet->sockfd = fd;
 	packet->src_ipaddr = saremote.sin_addr.s_addr;
@@ -516,16 +518,16 @@ RADIUS_PACKET *rad_recv(int fd)
 	}
 
 	if (librad_debug) {
-	  if ((hdr->code > 0) && (hdr->code < 14)) {
-	    printf("rad_recv: %s packet from host %s:%d",
-		   packet_codes[hdr->code],
-		   ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port);
-	  } else {
-	    printf("rad_recv: Packet from host %s:%d code=%d",	
-		   ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port,
-		   hdr->code);
-	  }
-	  printf(", id=%d, length=%d\n", hdr->id, totallen);
+		if ((hdr->code > 0) && (hdr->code < 14)) {
+			printf("rad_recv: %s packet from host %s:%d",
+			       packet_codes[hdr->code],
+			       ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port);
+		} else {
+			printf("rad_recv: Packet from host %s:%d code=%d",	
+			       ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port,
+			       hdr->code);
+		}
+		printf(", id=%d, length=%d\n", hdr->id, totallen);
 	}
 
 	/*
@@ -565,6 +567,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	 */
 	switch(packet->code) {
 		case PW_AUTHENTICATION_REQUEST:
+			/*
+			 *	The authentication vector is random
+			 *	nonsense, invented by the client.
+			 */
 			break;
 		case PW_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret,
@@ -592,7 +598,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		  break;
 
 		case PW_ACCOUNTING_RESPONSE:
-			break;	/* ??? */
+			/*
+			 *	FIXME!  Calculate the response digest!
+			 */
+			break;
 	}
 
 	/*
@@ -626,12 +635,12 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		 *	This could be a Vendor-Specific attribute.
 		 *
 		 */
-		if (vendorlen <= 0 &&
-		    attribute == PW_VENDOR_SPECIFIC && attrlen > 6) {
+		if ((vendorlen <= 0) &&
+		    (attribute == PW_VENDOR_SPECIFIC) && 
+		    (attrlen > 6)) {
 			memcpy(&lvalue, ptr, 4);
 			vendorpec = ntohl(lvalue);
-			if ((vendorcode = dict_vendorcode(vendorpec))
-			    != 0) {
+			if ((vendorcode = dict_vendorcode(vendorpec)) != 0) {
 #ifdef ATTRIB_NMC
 				if (vendorpec == VENDORPEC_USR) {
 					ptr += 4;
@@ -653,6 +662,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 					length -= 6;
 				}
 			}
+			/*
+			 *  Else the vendor wasn't found...
+			 */
 		}
 
 		if ( attrlen >= MAX_STRING_LEN ) {
@@ -746,31 +758,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 
 	/*
 	 *	Merge information from the outside world into our
-	 *	random vector pool.  The MD5 is expensive, but it's
-	 *	amortized over *legal* packets from *known* clients,
-	 *	so the problem isn't too bad.
-	 *
-	 *	The MD5 helps to make sure that the random pool uses
-	 *	information from outside to increase entropy, without
-	 *	being contaminated by that information.
-	 *
-	 *	Both AUTH_VECTOR_LEN and the MD5 output are 16 octets
-	 *	long, so we copy the user's vector to the end of our
-	 *	pool, and make the pool out of the hash of the two.
-	 *
-	 *	However, doing this for *every* packet can be time
-	 *	consuming.  Instead, we do it (on average) once every
-	 *	32 packets, and do less work the rest of the time.
+	 *	random vector pool.
 	 */
-	if ((random_vector_pool[0] & 0x1f) == 0x00) {
-		memcpy((char *) random_vector_pool + AUTH_VECTOR_LEN,
-		       (char *) packet->vector, AUTH_VECTOR_LEN);
-		librad_md5_calc((u_char *)random_vector_pool,
-				(u_char *)random_vector_pool,
-				sizeof(random_vector_pool));
-
-	} else for (length = 0; length < AUTH_VECTOR_LEN; length++) {
-		random_vector_pool[length] += packet->vector[length];
+	for (length = 0; length < AUTH_VECTOR_LEN; length++) {
+		random_vector_pool[length] ^= packet->vector[length];
 	}
 
 	return 0;
@@ -788,6 +779,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
  *	int *pwlen is updated to the new length of the encrypted
  *	password - a multiple of 16 bytes.
  */
+#define AUTH_PASS_LEN (16)
 int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
@@ -796,13 +788,13 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vecto
 	int	len;
 
 	/*
-	 *	Padd password to multiple of 16 bytes.
+	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
 	 */
 	len = strlen(passwd);
 	if (len > 128) len = 128;
 	*pwlen = len;
-	if (len % 16 != 0) {
-		n = 16 - (len % 16);
+	if (len % AUTH_PASS_LEN != 0) {
+		n = AUTH_PASS_LEN - (len % AUTH_PASS_LEN);
 		for (i = len; n > 0; n--, i++)
 			passwd[i] = 0;
 		len = *pwlen = i;
@@ -819,20 +811,20 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vecto
 	/*
 	 *	Now we can encode the password *in place*
 	 */
-	for (i = 0; i < 16; i++)
+	for (i = 0; i < AUTH_PASS_LEN; i++)
 		passwd[i] ^= digest[i];
 
-	if (len <= 16) return 0;
+	if (len <= AUTH_PASS_LEN) return 0;
 
 	/*
-	 *	Length > 16, so we need to use the extended
+	 *	Length > AUTH_PASS_LEN, so we need to use the extended
 	 *	algorithm.
 	 */
-	for (n = 0; n < 128 && n <= (len - 16); n += 16) { 
-		memcpy(buffer + secretlen, passwd + n, 16);
-		librad_md5_calc((u_char *)digest, buffer, secretlen + 16);
-		for (i = 0; i < 16; i++)
-			passwd[i + n + 16] ^= digest[i];
+	for (n = 0; n < 128 && n <= (len - AUTH_PASS_LEN); n += AUTH_PASS_LEN) { 
+		memcpy(buffer + secretlen, passwd + n, AUTH_PASS_LEN);
+		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
+		for (i = 0; i < AUTH_PASS_LEN; i++)
+			passwd[i + n + AUTH_PASS_LEN] ^= digest[i];
 	}
 
 	return 0;
@@ -861,26 +853,26 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 	/*
 	 *	Now we can decode the password *in place*
 	 */
-	memcpy(r, passwd, 16);
-	for (i = 0; i < 16 && i < pwlen; i++)
+	memcpy(r, passwd, AUTH_PASS_LEN);
+	for (i = 0; i < AUTH_PASS_LEN && i < pwlen; i++)
 		passwd[i] ^= digest[i];
 
-	if (pwlen <= 16) {
+	if (pwlen <= AUTH_PASS_LEN) {
 		passwd[pwlen+1] = 0;
 		return pwlen;
 	}
 
 	/*
-	 *	Length > 16, so we need to use the extended
+	 *	Length > AUTH_PASS_LEN, so we need to use the extended
 	 *	algorithm.
 	 */
-	rlen = ((pwlen - 1) / 16) * 16;
+	rlen = ((pwlen - 1) / AUTH_PASS_LEN) * AUTH_PASS_LEN;
 
-	for (n = rlen; n > 0; n -= 16 ) { 
-		s = (n == 16) ? r : (passwd + n - 16);
-		memcpy(buffer + secretlen, s, 16);
-		librad_md5_calc((u_char *)digest, buffer, secretlen + 16);
-		for (i = 0; i < 16 && (i + n) < pwlen; i++)
+	for (n = rlen; n > 0; n -= AUTH_PASS_LEN ) { 
+		s = (n == AUTH_PASS_LEN) ? r : (passwd + n - AUTH_PASS_LEN);
+		memcpy(buffer + secretlen, s, AUTH_PASS_LEN);
+		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
+		for (i = 0; i < AUTH_PASS_LEN && (i + n) < pwlen; i++)
 			passwd[i + n] ^= digest[i];
 	}
 	passwd[pwlen] = 0;
@@ -1051,9 +1043,14 @@ RADIUS_PACKET *rad_alloc(int newvector)
 /*
  *	Free a RADIUS_PACKET
  */
-void rad_free(RADIUS_PACKET *rp)
+void rad_free(RADIUS_PACKET **radius_packet_ptr)
 {
-	if (rp->data) free(rp->data);
-	if (rp->vps) pairfree(rp->vps);
-	free(rp);
+	RADIUS_PACKET *radius_packet = *radius_packet_ptr;
+
+	if (radius_packet->data) free(radius_packet->data);
+	if (radius_packet->vps) pairfree(radius_packet->vps);
+
+	free(radius_packet);
+
+	*radius_packet_ptr = NULL;
 }
