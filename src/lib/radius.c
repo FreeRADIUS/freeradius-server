@@ -1263,6 +1263,15 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			vendorcode = ntohl(lvalue);
 
 			/*
+			 *	This is an implementation issue.
+			 *	We currently pack vendor into the upper
+			 *	16 bits of a 32-bit attribute number,
+			 *	so we can't handle vendor numbers larger
+			 *	than 16 bits.
+			 */
+			if (vendorcode > 65535) goto create_pair;
+
+			/*
 			 *	vendorcode was checked to be non-zero
 			 *	above, in rad_recv.
 			 */
@@ -1320,10 +1329,13 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			} /* else it was a stupid vendor format */
 		} /* else it wasn't a VSA */
 
-		pair = paircreate(attribute, PW_TYPE_OCTETS);
 		/*
-		 *	FIXME: should we use paircreate() ?
+		 *	Create the attribute, setting the default type
+		 *	to 'octects'.  If the type in the dictionary
+		 *	is different, then the dictionary type will
+		 *	over-ride this one.
 		 */
+	create_pair:
 		if ((pair = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
 			pairfree(&packet->vps);
 			librad_log("out of memory");
