@@ -51,6 +51,7 @@ Authors:
     Alan Curry
     various other people
 
+%if %_oracle_support == 1
 %package oracle
 BuildRequires: oracle-instantclient-basic oracle-instantclient-devel
 Group:        Productivity/Networking/Radius/Servers
@@ -66,6 +67,7 @@ of the server, and let you decide if they satisfy your needs.
 
 Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
+%endif
 
 %package dialupadmin
 Group:        Productivity/Networking/Radius/Servers
