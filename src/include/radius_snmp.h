@@ -5,21 +5,13 @@
  * Version:	$Id$
  */
 
-#if HAVE_ASN1_H
+#if HAVE_ASN1_SNMP_SNMPIMPL_H
 #include	<asn1.h>
-#elif HAVE_UCD_SNMP_ASN1_H
-#include	<ucd-snmp/asn1.h>
-#endif
-
-#if HAVE_SNMP_H
 #include	<snmp.h>
-#elif HAVE_UCD_SNMP_SNMP_H
-#include	<ucd-snmp/snmp.h>
-#endif
-
-#if HAVE_SNMP_IMPL_H
 #include	<snmp_impl.h>
-#elif HAVE_UCD_SNMP_SNMP_IMPL_H
+#elif HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
+#include	<ucd-snmp/asn1.h>
+#include	<ucd-snmp/snmp.h>
 #include	<ucd-snmp/snmp_impl.h>
 #endif
 
@@ -64,6 +56,32 @@ typedef struct rad_snmp_t {
 	int		  smux_failures;
 	int		  smux_max_failures;
 } rad_snmp_t;
+
+/*
+ *  Taken from RFC 2619 and RFC 2621
+ */
+typedef struct rad_snmp_client_entry_t {
+	int		index;
+	/* IP address */
+	/* Client ID (string ) */
+	int		access_requests;
+	int		dup_access_requests;
+	int		access_accepts;
+	int		access_rejects;
+	int		access_challenges;
+	int		auth_malformed_requests;
+	int		auth_bad_authenticators;
+	int		auth_packets_dropped;
+	int		auth_unknown_types;
+	int		acct_packets_dropped;
+	int		acct_requests;
+	int		acct_dup_requests;
+	int		acct_responses;
+	int		acct_bad_authenticators;
+	int		acct_malformed_requests;
+	int		acct_no_records;
+	int		acct_unknown_types;
+} rad_snmp_client_entry_t;
 
 extern rad_snmp_t	rad_snmp;
 

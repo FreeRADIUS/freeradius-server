@@ -3748,10 +3748,10 @@ AC_DEFUN(SNMP_CHECKS, [
 	AC_SUBST(SNMP_LIBS)
 	AC_SUBST(SNMP_INCLUDE)
 
-AC_MSG_CHECKING([for asn1.h])
+AC_MSG_CHECKING([for asn1.h,snmp.h,snmp_impl.h])
 
 dnl #
-dnl #  First, see if we can build it WITHOUT using any special includes
+dnl #  First, see if we can build it WITHOUT using any special includes and in ucd-snmp
 dnl #
 AC_TRY_COMPILE([
 #ifdef HAVE_SYS_TYPES_H
@@ -3769,13 +3769,87 @@ AC_TRY_COMPILE([
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <asn1.h>],
+#include <ucd-snmp/asn1.h>
+#include <ucd-snmp/snmp.h>
+#include <ucd-snmp/snmp_impl.h>],
                [ int a = 1;],
-               SNMP_INCLUDE="",
+               SNMP_INCLUDE="";ucdsnmp=yes,
                SNMP_INCLUDE=)
 
 dnl #
-dnl #  If not, look for it in a number of directories.
+dnl #  If not, look for it in a number of directories and in ucd-snmp.
+dnl #
+if test "x$SNMP_INCLUDE" = "x"; then
+  old_CFLAGS="$CFLAGS"
+  for try in /usr/include /usr/local/include $snmp_include_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+    AC_TRY_COMPILE([
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <ucd-snmp/asn1.h>
+#include <ucd-snmp/snmp.h>
+#include <ucd-snmp/snmp_impl.h>],
+                   [ int a = 1;],
+                   SNMP_INCLUDE="-I$try";ucdsnmp=yes,
+                   SNMP_INCLUDE=)
+    if test "x$SNMP_INCLUDE" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$SNMP_INCLUDE" = "x"; then
+  old_CFLAGS="$CFLAGS"
+  for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+dnl #
+dnl #  First, see if we can build it WITHOUT using any special includes and without ucd-snmp
+dnl #
+AC_TRY_COMPILE([
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <asn1.h>
+#include <snmp.h>
+#include <snmp_impl.h>],
+               [ int a = 1;],
+               SNMP_INCLUDE="",
+               SNMP_INCLUDE=)
+    if test "x$SNMP_INCLUDE" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+dnl #
+dnl #  If not, look for it in a number of directories and without ucd-snmp
 dnl #
 if test "x$SNMP_INCLUDE" = "x"; then
   old_CFLAGS="$CFLAGS"
@@ -3797,7 +3871,9 @@ if test "x$SNMP_INCLUDE" = "x"; then
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <asn1.h>],
+#include <asn1.h>
+#include <snmp.h>
+#include <snmp_impl.h>],
                    [ int a = 1;],
                    SNMP_INCLUDE="-I$try",
                    SNMP_INCLUDE=)
@@ -3811,76 +3887,13 @@ fi
 if test "x$SNMP_INCLUDE" = "x"; then
   AC_MSG_RESULT(no)
 else
-  AC_MSG_RESULT(yes)
-  AC_DEFINE(HAVE_ASN1_H)
-  
-dnl #
-dnl #  Check for the rest of the SNMP headers.
-dnl #
-  old_CFLAGS="$CFLAGS"
-  CFLAGS="$CFLAGS $SNMP_INCLUDE"
-
-  AC_MSG_CHECKING(for snmp.h)
-    AC_TRY_COMPILE([
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-#ifdef HAVE_STDIO_H
-#include <stdio.h>
-#endif
-#ifdef HAVE_NETDB_H
-#include <netdb.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#ifdef HAVE_ASN1_H
-#include <asn1.h>
-#endif
-#include <snmp.h>],
-                   [ int a = 1;],
-                   [AC_DEFINE(HAVE_SNMP_H) ac_cv_header_snmp_h=yes])
-    if test "x$ac_cv_header_snmp_h" = "xyes"; then
-      AC_MSG_RESULT(yes)
-    else
-      AC_MSG_RESULT(no)
-    fi
-
-    AC_MSG_CHECKING(for snmp_impl.h)
-    AC_TRY_COMPILE([
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-#ifdef HAVE_STDIO_H
-#include <stdio.h>
-#endif
-#ifdef HAVE_NETDB_H
-#include <netdb.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#ifdef HAVE_ASN1_H
-#include <asn1.h>
-#endif
-#ifdef HAVE_SNMP_H
-#include <snmp.h>
-#endif
-#include <snmp_impl.h>],
-                   [ int a = 1;],
-                   [AC_DEFINE(HAVE_SNMP_IMPL_H) ac_cv_header_snmp_impl_h=yes])
-    if test "x$ac_cv_header_snmp_h" = "xyes"; then
-      AC_MSG_RESULT(yes)
-    else
-      AC_MSG_RESULT(no)
-    fi
-
+  if test "x$ucdsnmp" = "xyes"; then
+    AC_MSG_RESULT((ucd-snmp)yes)
+    AC_DEFINE(HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H)
+  else
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_ASN1_SNMP_SNMPIMPL_H)
+  fi
 dnl #
 dnl #  Now do the same thing, looking for the SNMP library directory
 dnl #

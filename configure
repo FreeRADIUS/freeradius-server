@@ -727,7 +727,7 @@ fi
 
 
 
-# From configure.in Revision: 1.165 
+# From configure.in Revision: 1.166 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=8-pre
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -7683,8 +7683,8 @@ if test "x$WITH_SNMP" = "xyes"; then
 	
 	
 
-echo $ac_n "checking for asn1.h""... $ac_c" 1>&6
-echo "configure:7688: checking for asn1.h" >&5
+echo $ac_n "checking for asn1.h,snmp.h,snmp_impl.h""... $ac_c" 1>&6
+echo "configure:7688: checking for asn1.h,snmp.h,snmp_impl.h" >&5
 
 cat > conftest.$ac_ext <<EOF
 #line 7691 "configure"
@@ -7705,14 +7705,16 @@ cat > conftest.$ac_ext <<EOF
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <asn1.h>
+#include <ucd-snmp/asn1.h>
+#include <ucd-snmp/snmp.h>
+#include <ucd-snmp/snmp_impl.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:7714: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:7716: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-  SNMP_INCLUDE=""
+  SNMP_INCLUDE="";ucdsnmp=yes
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
@@ -7723,10 +7725,57 @@ rm -f conftest*
 
 if test "x$SNMP_INCLUDE" = "x"; then
   old_CFLAGS="$CFLAGS"
-  for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
+  for try in /usr/include /usr/local/include $snmp_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
     cat > conftest.$ac_ext <<EOF
-#line 7730 "configure"
+#line 7732 "configure"
+#include "confdefs.h"
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <ucd-snmp/asn1.h>
+#include <ucd-snmp/snmp.h>
+#include <ucd-snmp/snmp_impl.h>
+int main() {
+ int a = 1;
+; return 0; }
+EOF
+if { (eval echo configure:7757: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  SNMP_INCLUDE="-I$try";ucdsnmp=yes
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  rm -rf conftest*
+  SNMP_INCLUDE=
+fi
+rm -f conftest*
+    if test "x$SNMP_INCLUDE" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$SNMP_INCLUDE" = "x"; then
+  old_CFLAGS="$CFLAGS"
+  for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+cat > conftest.$ac_ext <<EOF
+#line 7779 "configure"
 #include "confdefs.h"
 
 #ifdef HAVE_SYS_TYPES_H
@@ -7745,11 +7794,60 @@ if test "x$SNMP_INCLUDE" = "x"; then
 #include <unistd.h>
 #endif
 #include <asn1.h>
+#include <snmp.h>
+#include <snmp_impl.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:7753: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:7804: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  SNMP_INCLUDE=""
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  rm -rf conftest*
+  SNMP_INCLUDE=
+fi
+rm -f conftest*
+    if test "x$SNMP_INCLUDE" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$SNMP_INCLUDE" = "x"; then
+  old_CFLAGS="$CFLAGS"
+  for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $snmp_include_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat > conftest.$ac_ext <<EOF
+#line 7826 "configure"
+#include "confdefs.h"
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <asn1.h>
+#include <snmp.h>
+#include <snmp_impl.h>
+int main() {
+ int a = 1;
+; return 0; }
+EOF
+if { (eval echo configure:7851: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   SNMP_INCLUDE="-I$try"
 else
@@ -7769,124 +7867,33 @@ fi
 if test "x$SNMP_INCLUDE" = "x"; then
   echo "$ac_t""no" 1>&6
 else
-  echo "$ac_t""yes" 1>&6
-  cat >> confdefs.h <<\EOF
-#define HAVE_ASN1_H 1
+  if test "x$ucdsnmp" = "xyes"; then
+    echo "$ac_t""(ucd-snmp)yes" 1>&6
+    cat >> confdefs.h <<\EOF
+#define HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H 1
 EOF
 
-  
-  old_CFLAGS="$CFLAGS"
-  CFLAGS="$CFLAGS $SNMP_INCLUDE"
-
-  echo $ac_n "checking for snmp.h""... $ac_c" 1>&6
-echo "configure:7783: checking for snmp.h" >&5
-    cat > conftest.$ac_ext <<EOF
-#line 7785 "configure"
-#include "confdefs.h"
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-#ifdef HAVE_STDIO_H
-#include <stdio.h>
-#endif
-#ifdef HAVE_NETDB_H
-#include <netdb.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#ifdef HAVE_ASN1_H
-#include <asn1.h>
-#endif
-#include <snmp.h>
-int main() {
- int a = 1;
-; return 0; }
+  else
+    echo "$ac_t""yes" 1>&6
+    cat >> confdefs.h <<\EOF
+#define HAVE_ASN1_SNMP_SNMPIMPL_H 1
 EOF
-if { (eval echo configure:7811: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
-  rm -rf conftest*
-  cat >> confdefs.h <<\EOF
-#define HAVE_SNMP_H 1
-EOF
- ac_cv_header_snmp_h=yes
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-fi
-rm -f conftest*
-    if test "x$ac_cv_header_snmp_h" = "xyes"; then
-      echo "$ac_t""yes" 1>&6
-    else
-      echo "$ac_t""no" 1>&6
-    fi
 
-    echo $ac_n "checking for snmp_impl.h""... $ac_c" 1>&6
-echo "configure:7829: checking for snmp_impl.h" >&5
-    cat > conftest.$ac_ext <<EOF
-#line 7831 "configure"
-#include "confdefs.h"
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-#ifdef HAVE_STDIO_H
-#include <stdio.h>
-#endif
-#ifdef HAVE_NETDB_H
-#include <netdb.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#ifdef HAVE_ASN1_H
-#include <asn1.h>
-#endif
-#ifdef HAVE_SNMP_H
-#include <snmp.h>
-#endif
-#include <snmp_impl.h>
-int main() {
- int a = 1;
-; return 0; }
-EOF
-if { (eval echo configure:7860: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
-  rm -rf conftest*
-  cat >> confdefs.h <<\EOF
-#define HAVE_SNMP_IMPL_H 1
-EOF
- ac_cv_header_snmp_impl_h=yes
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-fi
-rm -f conftest*
-    if test "x$ac_cv_header_snmp_h" = "xyes"; then
-      echo "$ac_t""yes" 1>&6
-    else
-      echo "$ac_t""no" 1>&6
-    fi
-
+  fi
   echo $ac_n "checking for snmp_build_var_op in -lsnmp""... $ac_c" 1>&6
-echo "configure:7878: checking for snmp_build_var_op in -lsnmp" >&5
+echo "configure:7885: checking for snmp_build_var_op in -lsnmp" >&5
 
   old_LIBS="$LIBS"
   LIBS="$old_LIBS -lsnmp"
   cat > conftest.$ac_ext <<EOF
-#line 7883 "configure"
+#line 7890 "configure"
 #include "confdefs.h"
 extern char snmp_build_var_op();
 int main() {
  snmp_build_var_op()
 ; return 0; }
 EOF
-if { (eval echo configure:7890: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:7897: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   SNMP_LIBS="-lsnmp"
 else
@@ -7901,14 +7908,14 @@ rm -f conftest*
     for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $snmp_lib_dir; do
       LIBS="$old_LIBS -L$try -lsnmp"
       cat > conftest.$ac_ext <<EOF
-#line 7905 "configure"
+#line 7912 "configure"
 #include "confdefs.h"
 extern char snmp_build_var_op();
 int main() {
  snmp_build_var_op()
 ; return 0; }
 EOF
-if { (eval echo configure:7912: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:7919: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   SNMP_LIBS="-L$try -lsnmp"
 else
@@ -7923,14 +7930,14 @@ rm -f conftest*
       fi
       LIBS="$old_LIBS -L$try -lsnmp -lcrypto"
       cat > conftest.$ac_ext <<EOF
-#line 7927 "configure"
+#line 7934 "configure"
 #include "confdefs.h"
 extern char snmp_build_var_op();
 int main() {
  snmp_build_var_op()
 ; return 0; }
 EOF
-if { (eval echo configure:7934: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:7941: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   SNMP_LIBS="-L$try -lsnmp -lcrypto"
 else
@@ -7968,16 +7975,16 @@ fi
 
 gethostbyaddrrstyle=""
 echo $ac_n "checking gethostbyaddr_r() syntax""... $ac_c" 1>&6
-echo "configure:7972: checking gethostbyaddr_r() syntax" >&5
+echo "configure:7979: checking gethostbyaddr_r() syntax" >&5
 cat > conftest.$ac_ext <<EOF
-#line 7974 "configure"
+#line 7981 "configure"
 #include "confdefs.h"
 #include <netdb.h>
 int main() {
  gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL)  
 ; return 0; }
 EOF
-if { (eval echo configure:7981: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:7988: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
@@ -7992,14 +7999,14 @@ else
 fi
 rm -f conftest*
 cat > conftest.$ac_ext <<EOF
-#line 7996 "configure"
+#line 8003 "configure"
 #include "confdefs.h"
 #include <netdb.h>
 int main() {
  gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) 
 ; return 0; }
 EOF
-if { (eval echo configure:8003: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8010: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
@@ -8015,14 +8022,14 @@ fi
 rm -f conftest*
 
 cat > conftest.$ac_ext <<EOF
-#line 8019 "configure"
+#line 8026 "configure"
 #include "confdefs.h"
 #include <netdb.h>
 int main() {
  gethostbyaddr(NULL, 0, 0)  
 ; return 0; }
 EOF
-if { (eval echo configure:8026: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8033: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
