@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.6 
+# From configure.in Revision: 1.7 
 
 
 fail=
@@ -1466,8 +1466,8 @@ fi
           if test "x$ac_cv_header_pthread_h" = "xyes"; then
     	    
 
-echo $ac_n "checking for ldap_initialize in -lldap_r""... $ac_c" 1>&6
-echo "configure:1471: checking for ldap_initialize in -lldap_r" >&5
+echo $ac_n "checking for ldap_init in -lldap_r""... $ac_c" 1>&6
+echo "configure:1471: checking for ldap_init in -lldap_r" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -1477,9 +1477,9 @@ smart_lib_dir=
   cat > conftest.$ac_ext <<EOF
 #line 1479 "configure"
 #include "confdefs.h"
-extern char ldap_initialize();
+extern char ldap_init();
 int main() {
- ldap_initialize()
+ ldap_init()
 ; return 0; }
 EOF
 if { (eval echo configure:1486: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
@@ -1553,9 +1553,9 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       cat > conftest.$ac_ext <<EOF
 #line 1555 "configure"
 #include "confdefs.h"
-extern char ldap_initialize();
+extern char ldap_init();
 int main() {
- ldap_initialize()
+ ldap_init()
 ; return 0; }
 EOF
 if { (eval echo configure:1562: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
@@ -1575,21 +1575,21 @@ rm -f conftest*
 
         if test "x$smart_lib" != "x"; then
     echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_ldap_r_ldap_initialize=yes"
+    eval "ac_cv_lib_ldap_r_ldap_init=yes"
     LIBS="$old_LIBS $smart_lib"
     SMART_LIBS="$SMART_LIBS $smart_lib"
   else
     echo "$ac_t""no" 1>&6 
 fi
 
-            if test "x$ac_cv_lib_ldap_r_ldap_initialize" != "xyes"; then
+            if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
  	      fail="$fail libldap_r"
             fi
           else
   	    
 
-echo $ac_n "checking for ldap_initialize in -lldap""... $ac_c" 1>&6
-echo "configure:1593: checking for ldap_initialize in -lldap" >&5
+echo $ac_n "checking for ldap_init in -lldap""... $ac_c" 1>&6
+echo "configure:1593: checking for ldap_init in -lldap" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -1599,9 +1599,9 @@ smart_lib_dir=
   cat > conftest.$ac_ext <<EOF
 #line 1601 "configure"
 #include "confdefs.h"
-extern char ldap_initialize();
+extern char ldap_init();
 int main() {
- ldap_initialize()
+ ldap_init()
 ; return 0; }
 EOF
 if { (eval echo configure:1608: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
@@ -1675,9 +1675,9 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       cat > conftest.$ac_ext <<EOF
 #line 1677 "configure"
 #include "confdefs.h"
-extern char ldap_initialize();
+extern char ldap_init();
 int main() {
- ldap_initialize()
+ ldap_init()
 ; return 0; }
 EOF
 if { (eval echo configure:1684: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
@@ -1697,15 +1697,15 @@ rm -f conftest*
 
         if test "x$smart_lib" != "x"; then
     echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_ldap_ldap_initialize=yes"
+    eval "ac_cv_lib_ldap_ldap_init=yes"
     LIBS="$old_LIBS $smart_lib"
     SMART_LIBS="$SMART_LIBS $smart_lib"
   else
     echo "$ac_t""no" 1>&6 
 fi
 
-            if test "x$ac_cv_lib_ldap_r_ldap_initialize" != "xyes"; then
- 	      fail="$fail libldap_r"
+            if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
+ 	      fail="$fail libldap"
             fi
           fi
         fi

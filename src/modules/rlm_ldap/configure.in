@@ -55,14 +55,14 @@ if test x$with_[]modname != xno; then
 	  fail="$fail liblber"
         else
           if test "x$ac_cv_header_pthread_h" = "xyes"; then
-    	    AC_SMART_CHECK_LIB(ldap_r, ldap_initialize)
-            if test "x$ac_cv_lib_ldap_r_ldap_initialize" != "xyes"; then
+    	    AC_SMART_CHECK_LIB(ldap_r, ldap_init)
+            if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
  	      fail="$fail libldap_r"
             fi
           else
-  	    AC_SMART_CHECK_LIB(ldap, ldap_initialize)
-            if test "x$ac_cv_lib_ldap_r_ldap_initialize" != "xyes"; then
- 	      fail="$fail libldap_r"
+  	    AC_SMART_CHECK_LIB(ldap, ldap_init)
+            if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
+ 	      fail="$fail libldap"
             fi
           fi
         fi
