@@ -167,7 +167,8 @@ static int unix_destroy(void)
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static int unix_authenticate(void *instance, REQUEST *request)
+static int unix_authenticate(void *instance, REQUEST *request, 
+	VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
 {
 	char *name, *passwd;
 	struct passwd	*pwd;
@@ -219,7 +220,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	name = (char *)request->username->strvalue;
 	passwd = (char *)request->password->strvalue;
 
-	if (cache_passwd && (ret = H_unix_pass(name, passwd)) != -2)
+	if (cache_passwd && (ret = H_unix_pass(name, passwd, reply_items)) != -2)
 		return (ret == 0) ? RLM_MODULE_OK : RLM_MODULE_REJECT;
 
 #ifdef OSFC2
