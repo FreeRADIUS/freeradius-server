@@ -45,12 +45,12 @@ case "$1" in
 	;;
   stop)
 	[ -z "$2" ] && echo -n "Stopping $DESC: "
-        [ -f $rundir/radiusd.pid] && kill -TERM `cat $rundir/radiusd.pid`
+        [ -f $rundir/radiusd.pid ] && kill -TERM `cat $rundir/radiusd.pid`
 	[ -z "$2" ] && echo "radiusd."
 	;;
   reload|force-reload)
 	echo "Reloading $DESC configuration files."
-	kill -HUP `cat $rundir/radiusd.pid`
+	[ -f $rundir/radiusd.pid ] && kill -HUP `cat $rundir/radiusd.pid`
 	;;
   restart)
 	sh $0 stop quiet
