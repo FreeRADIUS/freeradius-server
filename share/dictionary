@@ -115,6 +115,8 @@ ATTRIBUTE	NAS-Port-Type		61	integer
 ATTRIBUTE	Port-Limit		62	integer
 ATTRIBUTE	Login-LAT-Port		63	integer
 
+ATTRIBUTE	Acct-Tunnel-Connection	68	string
+
 ATTRIBUTE	ARAP-Password           70      string
 ATTRIBUTE	ARAP-Features           71      string
 ATTRIBUTE	ARAP-Zone-Access        72      integer
@@ -247,6 +249,13 @@ VALUE		Acct-Status-Type	Interim-Update		3
 VALUE		Acct-Status-Type	Alive			3
 VALUE		Acct-Status-Type	Accounting-On		7
 VALUE		Acct-Status-Type	Accounting-Off		8
+#	RFC 2867 Additional Status-Type Values
+VALUE		Acct-Status-Type	Tunnel-Start		9
+VALUE		Acct-Status-Type	Tunnel-Stop		10
+VALUE		Acct-Status-Type	Tunnel-Reject		11
+VALUE		Acct-Status-Type	Tunnel-Link-Start	12
+VALUE		Acct-Status-Type	Tunnel-Link-Stop	13
+VALUE		Acct-Status-Type	Tunnel-Link-Reject	14
 
 #	Authentication Types
 

@@ -4,7 +4,7 @@
 #		Experimental tunneling attributes.
 #
 #
-# Version:	@(#)dictionary.tunnel  1.10  11-Nov-1998  miquels@cistron.nl
+# Version:	 $Id$
 #
 
 #
@@ -19,6 +19,7 @@ ATTRIBUTE	Tunnel-Password			69	string	has_tag,encrypt=2
 ATTRIBUTE	Tunnel-Private-Group-Id		81	integer	has_tag
 ATTRIBUTE	Tunnel-Assignment-Id		82	string	has_tag
 ATTRIBUTE	Tunnel-Preference		83	integer	has_tag
+ATTRIBUTE       Acct-Tunnel-Packets-Lost	86	integer
 ATTRIBUTE	Tunnel-Client-Auth-Id		90	string	has_tag
 ATTRIBUTE	Tunnel-Server-Auth-Id		91	string	has_tag
 
