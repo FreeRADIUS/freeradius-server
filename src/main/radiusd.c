@@ -129,7 +129,7 @@ static int	rad_process (REQUEST *, int);
 static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
-static void     refresh_request(REQUEST *request, time_t now);
+static int     refresh_request(REQUEST *request, void *data);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -1575,85 +1575,6 @@ typedef struct rad_walk_t {
 } rad_walk_t;
 
 /*
- *	The rl_walk callback function for refreshing/cleaning the request.
- */
-static int rad_walk(REQUEST *request, void *data)
-{
-	rad_walk_t *info = (rad_walk_t *) data;
-	time_t difference;
-
-	/*
-	 *	Handle cleanup_delay, max_request_time,
-	 *	proxy_retry, for this request.
-	 */
-	refresh_request(request, info->now);
-	
-	/*
-	 *	If the request has been marked for deletion, kill it.
-	 */
-	if (request->timestamp == 0) {
-		rl_delete(request);
-		return RL_WALK_CONTINUE;
-	}
-	
-	/*
-	 *	Don't do more long-term checks, if we've got to wake
-	 *	up now.
-	 */
-	if (info->smallest == 0) {
-		return RL_WALK_CONTINUE;
-	}
-
-	/*
-	 *	The request is finished.  Wake up when it's time to
-	 *	clean it up.
-	 */
-	if (request->finished) {
-		difference = (request->timestamp + cleanup_delay) - info->now;
-		
-	} else if (request->proxy && !request->proxy_reply) {
-		/*
-		 *	The request is NOT finished, but there is an
-		 *	outstanding proxy request, with no matching
-		 *	proxy reply.
-		 *
-		 *	Wake up when it's time to re-send
-		 *	the proxy request.
-		 */
-		difference = request->proxy_next_try - info->now;
-		
-	} else {
-		/*
-		 *	The request is NOT finished.
-		 *
-		 *	Wake up when it's time to kill the errant
-		 *	thread/process.
-		 */
-		difference = (request->timestamp + max_request_time) - info->now;
-	}
-
-	/*
-	 *	If the server is CPU starved, then we CAN miss a time
-	 *	for servicing requests.  In which case the 'difference'
-	 *	value will be negative.  select() doesn't like that,
-	 *	so we fix it.
-	 */
-	if (difference < 0) {
-		difference = 0;
-	}
-
-	/*
-	 *	Update the 'smallest' time.
-	 */
-	if ((info->smallest < 0) ||
-	    (difference < info->smallest)) {
-		info->smallest = difference;
-	}
-
-	return RL_WALK_CONTINUE;
-}
-
-/*
  *	Clean up the request list, every so often.
  *
  *	This is done by walking through ALL of the list, and
@@ -1724,7 +1645,7 @@ static struct timeval *rad_clean_list(time_t now)
 	info.now = now;
 	info.smallest = -1;
 
-	rl_walk(rad_walk, &info);
+	rl_walk(refresh_request, &info);
 
 	/*
 	 *	We're done playing with the request list.
@@ -2330,8 +2251,10 @@ static REQUEST *proxy_check_list(REQUEST *request)
  *	When walking over the request list, all of the per-request
  *	magic is done here.
  */
-static void refresh_request(REQUEST *request, time_t now)
+static int refresh_request(REQUEST *request, void *data)
 {
+	rad_walk_t *info = (rad_walk_t *) data;
+	time_t		difference;
 	child_pid_t    	child_pid;
 
 	/*
@@ -2342,7 +2265,7 @@ static void refresh_request(REQUEST *request, time_t now)
 	 */
 	if (request->finished &&
 	    (request->child_pid == NO_SUCH_CHILD_PID) &&
-	    (request->timestamp + cleanup_delay <= now)) {
+	    (request->timestamp + cleanup_delay <= info->now)) {
 		/*
 		 *	Request completed, delete it, and unlink it
 		 *	from the currently 'alive' list of requests.
@@ -2352,11 +2275,10 @@ static void refresh_request(REQUEST *request, time_t now)
 		       (unsigned long)request->timestamp);
 		
 		/*
-		 *	Mark the request to be deleted.
+		 *	Delete the request.
 		 */
-		request->timestamp = 0;
-		return;
-		
+		rl_delete(request);
+		return RL_WALK_CONTINUE;
 	}
 
 	/*
@@ -2364,7 +2286,7 @@ static void refresh_request(REQUEST *request, time_t now)
 	 *	handling the request has hung:
 	 *	kill it, and continue.
 	 */
-	if ((request->timestamp + max_request_time) <= now) {
+	if ((request->timestamp + max_request_time) <= info->now) {
 		if (request->child_pid != NO_SUCH_CHILD_PID) {
 			/*
 			 *	This request seems to have hung
@@ -2376,51 +2298,46 @@ static void refresh_request(REQUEST *request, time_t now)
 			child_kill(child_pid, SIGTERM);
 		} /* else no proxy reply, quietly fail */
 		
-				/*
-				 *	Mark the request as unsalvagable.
-				 */
-		request->child_pid = NO_SUCH_CHILD_PID;
-		request->finished = TRUE;
-		request->timestamp = 0;
-		return;
+		
+		/*
+		 *	Delete the request.
+		 */
+		rl_delete(request);
+		return RL_WALK_CONTINUE;
 	}
 
 	/*
-	 *	Do any proxy request handling.
-	 *
-	 *	If we're not doing proxy requests, OR if the retry delay
-	 *	is zero (only retry synchronously), then don't bother
-	 *	checking the request for proxy retries.
+	 *	The request is finished.
 	 */
-	if ((!proxy_requests) ||
-	    (proxy_retry_delay == 0)) {
-		return;
-	}
+	if (request->finished) goto setup_timeout;
 
 	/*
-	 *	The request is finished, (but it hasn't yet
-	 *	been removed from the list.)
-	 *	OR there is no proxy request,
-	 *	OR we already have seen the reply (so we don't
-	 *	need to send another proxy request),
-	 *	OR the next try is to be done later.
-	 *
-	 *	Skip the try.
-	 *
-	 *	FIXME: These retries should be binned by
-	 *	the next try time, so we don't have to do
-	 *	all of this work on every second.
-	 *
-	 *	That will also get rid of these checks, as
-	 *	a packet can get removed from the bin when
-	 *	the proxy reply is received.
+	 *	We're not proxying requests at all.
 	 */
-	if ((request->finished) ||
-	    (!request->proxy) ||
-	    (request->proxy_reply) ||
-	    (request->proxy_next_try > now)) {
-		return;
-	}
+	if (!proxy_requests) goto setup_timeout;
+
+	/*
+	 *	We're proxying synchronously, so the retry_delay is zero.
+	 *	Some other code takes care of retrying the proxy requests.
+	 */
+	if (proxy_retry_delay == 0) goto setup_timeout;
+
+	/*
+	 *	There is no proxied request for this packet, so there's
+	 *	no proxy retries.
+	 */
+	if (!request->proxy) goto setup_timeout;
+
+	/*
+	 *	We've already seen the proxy reply, so we don't need
+	 *	to send another proxy request.
+	 */
+	if (request->proxy_reply) goto setup_timeout;
+
+	/*
+	 *	It's not yet time to re-send this proxied request.
+	 */
+	if (request->proxy_next_try > info->now) goto setup_timeout;
 	
 	/*
 	 *	If the proxy retry count is zero, then
@@ -2428,15 +2345,11 @@ static void refresh_request(REQUEST *request, time_t now)
 	 *	a reply from the end server.  In that case,
 	 *	we don't bother trying again, but just mark
 	 *	the request as finished, and go to the next one.
-	 *
-	 *	Note that we do NOT immediately delete the request,
-	 *	on the off chance that the proxy replies before we've
-	 *	thrown the request away.
 	 */
 	if (request->proxy_try_count == 0) {
 		request->finished = TRUE;
 		rad_reject(request);
-		return;
+		goto setup_timeout;
 	}
 
 	/*
@@ -2444,7 +2357,7 @@ static void refresh_request(REQUEST *request, time_t now)
 	 *	the tries, and set the next try time.
 	 */
 	request->proxy_try_count--;
-	request->proxy_next_try = now + proxy_retry_delay;
+	request->proxy_next_try = info->now + proxy_retry_delay;
 		
 	/* Fix up Acct-Delay-Time */
 	if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
@@ -2460,7 +2373,7 @@ static void refresh_request(REQUEST *request, time_t now)
 			}
 			pairadd(&request->proxy->vps, delaypair);
 		}
-		delaypair->lvalue = now - request->proxy->timestamp;
+		delaypair->lvalue = info->now - request->proxy->timestamp;
 			
 		/* Must recompile the valuepairs to wire format */
 		free(request->proxy->data);
@@ -2471,4 +2384,61 @@ static void refresh_request(REQUEST *request, time_t now)
 	 *	Send the proxy packet.
 	 */
 	rad_send(request->proxy, request->proxysecret);
+
+ setup_timeout:
+	/*
+	 *	Don't do more long-term checks, if we've got to wake
+	 *	up now.
+	 */
+	if (info->smallest == 0) {
+		return RL_WALK_CONTINUE;
+	}
+
+	/*
+	 *	The request is finished.  Wake up when it's time to
+	 *	clean it up.
+	 */
+	if (request->finished) {
+		difference = (request->timestamp + cleanup_delay) - info->now;
+		
+	} else if (request->proxy && !request->proxy_reply) {
+		/*
+		 *	The request is NOT finished, but there is an
+		 *	outstanding proxy request, with no matching
+		 *	proxy reply.
+		 *
+		 *	Wake up when it's time to re-send
+		 *	the proxy request.
+		 */
+		difference = request->proxy_next_try - info->now;
+		
+	} else {
+		/*
+		 *	The request is NOT finished.
+		 *
+		 *	Wake up when it's time to kill the errant
+		 *	thread/process.
+		 */
+		difference = (request->timestamp + max_request_time) - info->now;
+	}
+
+	/*
+	 *	If the server is CPU starved, then we CAN miss a time
+	 *	for servicing requests.  In which case the 'difference'
+	 *	value will be negative.  select() doesn't like that,
+	 *	so we fix it.
+	 */
+	if (difference < 0) {
+		difference = 0;
+	}
+
+	/*
+	 *	Update the 'smallest' time.
+	 */
+	if ((info->smallest < 0) ||
+	    (difference < info->smallest)) {
+		info->smallest = difference;
+	}
+
+	return RL_WALK_CONTINUE;
 }
