@@ -44,25 +44,25 @@ int sql_init(CONF_PARSER *module_config, SQL_CONFIG *config, int reload) {
 	 *	Initialize the data structure with dynamically allocated
 	 *	memory.
 	 */
-	sql->config->sql_server = strdup("localhost");
-	sql->config->sql_login = strdup("");
-	sql->config->sql_password = strdup("");
-	sql->config->sql_db = strdup("radius");
-	sql->config->sql_authcheck_table = strdup("radcheck");
-	sql->config->sql_authreply_table = strdup("radreply");
-	sql->config->sql_groupcheck_table = strdup("radgroupcheck");
-	sql->config->sql_groupreply_table = strdup("radgroupreply");
-	sql->config->sql_usergroup_table = strdup("usergroup");
-	sql->config->sql_realmgroup_table = strdup("realmgroup");
-	sql->config->sql_acct_table = strdup("radacct");
-	sql->config->sqltrace = 0;
-	sql->config->sensitiveusername = 1;
-	sql->config->deletestalesessions = 0;
-
-	sql->config->sql_nas_table = strdup("nas");
-	sql->config->sql_realm_table = strdup( "realms");
-	sql->config->sql_dict_table = strdup("dictionary");
-	sql->config->max_sql_socks = MAX_SQL_SOCKS;
+	config->sql_server = strdup("localhost");
+	config->sql_login = strdup("");
+	config->sql_password = strdup("");
+	config->sql_db = strdup("radius");
+	config->sql_authcheck_table = strdup("radcheck");
+	config->sql_authreply_table = strdup("radreply");
+	config->sql_groupcheck_table = strdup("radgroupcheck");
+	config->sql_groupreply_table = strdup("radgroupreply");
+	config->sql_usergroup_table = strdup("usergroup");
+	config->sql_realmgroup_table = strdup("realmgroup");
+	config->sql_acct_table = strdup("radacct");
+	config->sqltrace = 0;
+	config->sensitiveusername = 1;
+	config->deletestalesessions = 0;
+	
+	config->sql_nas_table = strdup("nas");
+	config->sql_realm_table = strdup( "realms");
+	config->sql_dict_table = strdup("dictionary");
+	config->max_sql_socks = MAX_SQL_SOCKS;
 
 
 	/*
