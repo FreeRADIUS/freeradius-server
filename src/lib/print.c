@@ -88,6 +88,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 	char        buf[1024];
 	char        *a;
 	time_t      t;
+	int         offset;
 
 	out[0] = 0;
 	if (!vp) return 0;
@@ -154,6 +155,43 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		  a = buf;
 		  break;
 
+	        case PW_TYPE_T_STRING:
+		        if (delimitst) {
+				 offset = snprintf(buf, sizeof(buf), 
+						   "\"%u:", vp->strvalue[0]);
+				 librad_safeprint((char *)(vp->strvalue + 1),
+						  vp->length - 1, 
+						  buf + offset, 
+						  sizeof(buf) - offset);
+				 strcat(buf, "\"");
+		        } else {
+				 offset = snprintf(buf, sizeof(buf), 
+						   "%u:", vp->strvalue[0]);
+			         librad_safeprint((char *)(vp->strvalue + 1),
+						  vp->length - 1, 
+						  buf + offset, 
+						  sizeof(buf) - offset);
+		        }
+
+			a = buf;
+
+			break;
+
+		case PW_TYPE_T_INTEGER:
+		        offset = snprintf(buf,  sizeof(buf), "%u:", (vp->lvalue >> 24));
+			if ((v = dict_valbyattr(vp->attribute, (vp->lvalue)))
+				!= NULL)
+				snprintf(buf + offset, sizeof(buf) - offset, 
+					 "%s", v->name);
+			else {
+				snprintf(buf + offset, sizeof(buf) - offset, 
+					 "%u", vp->lvalue);
+			       
+			}
+
+			a = buf;
+
+			break;
 		default:
 			a = 0;
 			break;

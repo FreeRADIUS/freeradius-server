@@ -32,6 +32,8 @@ static const char *dtypes[] = {
 	"date",
 	"abinary",
 	"octets",
+	"t_string",
+	"t_integer",
 	NULL,
 };
 

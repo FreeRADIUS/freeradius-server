@@ -987,6 +987,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_ABINARY:
 		case PW_TYPE_STRING:
+		case PW_TYPE_T_STRING:
 			/*
 			 *	Hmm... this is based on names right
 			 *	now.  We really shouldn't do this.
@@ -1009,6 +1010,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 		case PW_TYPE_IPADDR:
+		case PW_TYPE_T_INTEGER:
 			/*
 			 *	Check for RFC compliance.  If the
 			 *	attribute isn't compliant, turn it
