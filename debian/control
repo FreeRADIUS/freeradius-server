@@ -1,6 +1,6 @@
 Source: radiusd-freeradius
 Build-Depends: debhelper, libltdl3-dev | libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient10-dev, libgdbmg1-dev, libldap2-dev, libsasl-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, libssl-dev
-Section: non-US/main
+Section: admin
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
 Standards-Version: 3.2.1
