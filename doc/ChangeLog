@@ -32,7 +32,7 @@ FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03, urgency=high
 	  entries with bad data
 	* Update dictionaries to deal with the above change.
 
-FreeRADIUS 1.0.0 ; Date: 2004/09/04 07:07:46, urgency=low
+FreeRADIUS 1.0.0 ; Date: 2004/07/17 06:31:32, urgency=low
 	pre3 -> release
 	* Fix LDAP dictionary map loading.
 	* Check login time allowance to packet timestamp where available.
