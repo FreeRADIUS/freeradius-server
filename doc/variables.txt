@@ -25,6 +25,14 @@ in reply attributes to the NAS!
 				 item in the 'unix' module, in the 'modules'
 				 section of radiusd.conf.
 
+Variables are used in dynamically translated strings.  Most of the
+configuration entries in radiusd.conf (and related files) will do
+dynamic string translation.  To do the same dynamic translation in
+RADIUS attributes, you must put the string into an back-quoted string:
+
+       Session-Timeout = `%{expr: 2 + 3}`
+
+
 Additionally, you can use conditional syntax similar to ${foo:-bar} as
 defined in 'sh'.  For example:
 
