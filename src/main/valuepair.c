@@ -371,6 +371,25 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	return ret;
 }
 
+
+/*
+ *	Compare the current time to a range.
+ *	Hmm... it would save work, and probably be better,
+ *	if we were passed the REQUEST data structure, so we
+ *	could use it's 'timestamp' element.  That way, we could
+ *	do the comparison against when the packet came in, not now,
+ *	and have one less system call to do.
+ */
+static int timecmp(VALUE_PAIR *request, VALUE_PAIR *check,
+	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+{
+	if (timestr_match(check->strvalue, time(NULL)) >= 0) {
+		return 0;
+	}
+	return -1;
+}
+
+
 /*
  *	Register server-builtin special attributes.
  */
@@ -380,5 +399,5 @@ void pair_builtincompare_init(void)
 	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp);
 	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp);
 	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp);
+	paircompare_register(PW_CURRENT_TIME, 0, timecmp);
 }
-

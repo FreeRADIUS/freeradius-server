@@ -92,6 +92,7 @@
 #define PAM_AUTH_ATTR			1041
 #define PW_LOGIN_TIME			1042
 #define PW_STRIPPED_USER_NAME		1043
+#define PW_CURRENT_TIME			1044
 
 /*
  *	Integer Translations
