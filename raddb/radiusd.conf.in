@@ -202,7 +202,7 @@ log_auth_goodpass = no
 
 # 
 # usercollide:  Turn user collision code on and off.
-#		See README.usercollide
+#		See doc/duplicate-users
 #
 usercollide = no
 
