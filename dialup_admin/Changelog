@@ -1,3 +1,6 @@
+Ver 1.55:
+* Update the FAQ about missing attributes from the user/group edit pages and add a few comments
+  in the configuration files
 Ver 1.54:
 * Add attributes for the sql group tables in admin.conf. Now SQL group support should really work!
 Ver 1.53:

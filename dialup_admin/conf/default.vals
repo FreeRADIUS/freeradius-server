@@ -1,5 +1,6 @@
 #
-# Uncomment these lines if you add default values in the users file
+# Uncomment and edit these lines if you add corresponding default
+# values in the users file
 #
 #Simultaneous-Use: 1
 #Framed-IP-Address: 255.255.255.254

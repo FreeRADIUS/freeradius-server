@@ -1,4 +1,10 @@
 <?php
+#
+# IMPORTANT IMPORTANT IMPORTANT
+#
+# Remember to change the included file to the location of your admin.conf
+#
+#
 $ARR=file("/usr/local/dialup_admin/conf/admin.conf");
 foreach($ARR as $val) {
 	$val=chop($val);

@@ -1,3 +1,11 @@
+#
+# A mapping between the attributes used by dialup_admin and the attribute
+# names that will be stroed in the SQL database
+#
+# Format:
+# checkItem|replyItem	Attribute-In-Dialup-Admin	Attribute-In-SQL
+#
+#
 checkItem	Auth-Type			Auth-Type
 checkItem	Simultaneous-Use		Simultaneous-Use
 checkItem	Called-Station-Id		Called-Station-Id

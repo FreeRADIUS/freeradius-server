@@ -1,3 +1,6 @@
+#
+# An extra file for radius -> ldap attribute mapping
+#
 checkItem       Dialup-Lock-Msg		radiuslockmsg
 checkItem	User-Password		userpassword
 replyItem	Reply-Item		radiusReplyItem

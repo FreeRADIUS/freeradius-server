@@ -24,5 +24,17 @@ You could also create the badusers table if you want the functionality it provid
 sql scripts to create the badusers and userinfo tables can be found in the
 directory sql (of dialup_admin distribution).
 
+>
+> Some attributes are missing from the user/group edit pages
+>
+
+First of all check conf/user_edit.atts and see if the attribute you are interested in is
+commented out. If it is just enable it by uncommenting it. If the attribute is not
+included in the file add it. If you use SQL check conf/sql.attrmap. If you use LDAP check
+${freeradius_install_dir}/etc/raddb/ldap.attrmap and check if the attribute is included in
+the attribute mapping. If it is not then add it there also.
+Everything should work ok after that.
+
+
 --
 kkalev

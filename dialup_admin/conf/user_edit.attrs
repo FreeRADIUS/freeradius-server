@@ -1,3 +1,9 @@
+#
+#	Attributes which will be visible in the user/group edit pages
+#
+#	Format: Attribute	Comment
+#
+#
 #Auth-Type			Auth Type
 #Simultaneous-Use		<a href="help/simultaneous_use_help.html" target=su_help onclick=window.open("help/simultaneous_use_help.html","su_help","width=560,height=170,toolbar=no,scrollbars=no,resizable=yes") title="Simultaneous Use Help Page"><font color="blue">Simultaneous Use</font></a>
 Framed-Protocol			Protocol
