@@ -29,6 +29,7 @@
 
 #include	"conf.h"
 #include	"libradius.h"
+#include	"radpaths.h"
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.

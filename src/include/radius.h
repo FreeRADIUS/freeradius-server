@@ -10,6 +10,8 @@
 #define PW_TYPE_INTEGER			1
 #define PW_TYPE_IPADDR			2
 #define PW_TYPE_DATE			3
+#define PW_TYPE_ABINARY			4
+#define PW_TYPE_OCTETS			5
 
 #define	PW_AUTHENTICATION_REQUEST	1
 #define	PW_AUTHENTICATION_ACK		2
