@@ -130,8 +130,8 @@ parse_again:
 			if (isspace((int) buffer[0]))  {
 				if (parsecode != T_EOL) {
 					radlog(L_ERR|L_CONS,
-							"%s[%d]: Unexpected trailing comma for entry %s",
-							file, lineno, entry);
+					       "%s[%d]: Unexpected trailing comma for entry %s",
+					       file, lineno, entry);
 					fclose(fp);
 					return -1;
 				}
@@ -173,8 +173,8 @@ parse_again:
 				if (pairlist_read(s, &t, 0) != 0) {
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
-							"%s[%d]: Could not open included file %s: %s",
-							file, lineno, s, strerror(errno));
+					       "%s[%d]: Could not open included file %s: %s",
+					       file, lineno, s, strerror(errno));
 					fclose(fp);
 				return -1;
 				}
@@ -207,8 +207,8 @@ parse_again:
 				return -1;
 			} else if (parsecode == T_COMMA) {
 				radlog(L_ERR|L_CONS,
-						"%s[%d]: Unexpected trailing comma in check item list for entry %s",
-						file, lineno, entry);
+				       "%s[%d]: Unexpected trailing comma in check item list for entry %s",
+				       file, lineno, entry);
 				fclose(fp);
 				return -1;
 			}
@@ -219,8 +219,8 @@ parse_again:
 			if(*buffer == ' ' || *buffer == '\t') {
 				if (parsecode != T_COMMA) {
 					radlog(L_ERR|L_CONS,
-							"%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
-							file, lineno, entry);
+					       "%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
+					       file, lineno, entry);
 					fclose(fp);
 					return -1;
 				}
@@ -233,8 +233,8 @@ parse_again:
 				if (parsecode < 1) {
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
-							"%s[%d]: Parse error (reply) for entry %s: %s",
-							file, lineno, entry, librad_errstr);
+					       "%s[%d]: Parse error (reply) for entry %s: %s",
+					       file, lineno, entry, librad_errstr);
 					fclose(fp);
 					return -1;
 				}
@@ -411,14 +411,16 @@ int read_realms_file(const char *file)
 		 */
 		if (strlen(hostnm) >= sizeof(c->server)) {
 			radlog(L_ERR, "%s[%d]: server name of length %d is greater than the allowed maximum of %d.",
-					file, lineno,
-					strlen(hostnm), sizeof(c->server) - 1);
+			       file, lineno,
+			       (int) strlen(hostnm),
+			       (int) sizeof(c->server) - 1);
 			return -1;
 		}
 		if (strlen(realm) > sizeof(c->realm)) {
 			radlog(L_ERR, "%s[%d]: realm of length %d is greater than the allowed maximum of %d.",
-					file, lineno,
-					strlen(realm), sizeof(c->realm) - 1);
+			       file, lineno,
+			       (int) strlen(realm),
+			       (int) sizeof(c->realm) - 1);
 			return -1;
 		}
 

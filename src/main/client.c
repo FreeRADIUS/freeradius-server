@@ -129,7 +129,7 @@ int read_clients_file(const char *file)
 			mask_length = atoi(p);
 			if ((mask_length < 0) || (mask_length > 32)) {
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
-						file, lineno, p);
+				       file, lineno, p);
 				return -1;
 			}
 
@@ -144,20 +144,23 @@ int read_clients_file(const char *file)
 		 */
 		if (strlen(hostnm) >= sizeof(c->longname)) {
 			radlog(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
-					file, lineno,
-					strlen(hostnm), sizeof(c->longname) - 1);
+			       file, lineno,
+			       (int) strlen(hostnm),
+			       (int) sizeof(c->longname) - 1);
 			return -1;
 		}
 		if (strlen(secret) >= sizeof(c->secret)) {
 			radlog(L_ERR, "%s[%d]: secret of length %d is greater than the allowed maximum of %d.",
-					file, lineno,
-					strlen(secret), sizeof(c->secret) - 1);
+			       file, lineno,
+			       (int) strlen(secret),
+			       (int) sizeof(c->secret) - 1);
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(c->shortname)) {
 			radlog(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
-					file, lineno,
-					strlen(shortnm), sizeof(c->shortname) - 1);
+			       file, lineno,
+			       (int) strlen(shortnm),
+			       (int) sizeof(c->shortname) - 1);
 			return -1;
 		}
 		
@@ -277,7 +280,8 @@ const char *client_name(uint32_t ipaddr)
 	 *
 	 * If you see lots of these, then there's something wrong.
 	 */
-	radlog(L_ERR, "Trying to look up name of unknown client %s.\n", ip_ntoa(host_ipaddr, ipaddr));
+	radlog(L_ERR, "Trying to look up name of unknown client %s.\n",
+	       ip_ntoa(host_ipaddr, ipaddr));
 
 	return "UNKNOWN-CLIENT";
 }

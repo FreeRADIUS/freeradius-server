@@ -89,7 +89,8 @@ int read_naslist_file(char *file)
 		p = buffer;
 		if (!getword(&p, hostnm, sizeof(hostnm)) ||
 		    !getword(&p, shortnm, sizeof(shortnm))) {
-			radlog(L_ERR, "%s[%d]: unexpected end of line", file, lineno);
+			radlog(L_ERR, "%s[%d]: unexpected end of line",
+			       file, lineno);
 			continue;
 		}
 		(void)getword(&p, nastype, sizeof(nastype));
@@ -99,20 +100,23 @@ int read_naslist_file(char *file)
 		 */
 		if (strlen(hostnm) >= sizeof(nas->longname)) {
 			radlog(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
-					file, lineno,
-					strlen(hostnm), sizeof(nas->longname) - 1);
+			       file, lineno,
+			       (int) strlen(hostnm),
+			       (int) sizeof(nas->longname) - 1);
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(nas->shortname)) {
 			radlog(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
-					file, lineno,
-					strlen(shortnm), sizeof(nas->shortname) - 1);
+			       file, lineno,
+			       (int) strlen(shortnm),
+			       (int) sizeof(nas->shortname) - 1);
 			return -1;
 		}
 		if (strlen(nastype) >= sizeof(nas->nastype)) {
 			radlog(L_ERR, "%s[%d]: NAS type of length %d is greater than the allowed maximum of %d.",
-					file, lineno,
-					strlen(nastype), sizeof(nas->nastype) - 1);
+			       file, lineno,
+			       (int) strlen(nastype),
+			       (int) sizeof(nas->nastype) - 1);
 			return -1;
 		}
 		

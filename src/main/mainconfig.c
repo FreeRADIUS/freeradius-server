@@ -293,7 +293,8 @@ static int switch_users(void) {
 		}
 		server_gid = gr->gr_gid;
 		if (setgid(server_gid) < 0) {
-			radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s", mainconfig.gid_name, strerror(errno));
+			radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s",
+			       mainconfig.gid_name, strerror(errno));
 			exit(1);
 		}
 	}
@@ -334,11 +335,13 @@ static int generate_realms(const char *filename)
 	char *name2;
 
 	tail = &my_realms;
-	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "realm"); cs != NULL;
-			cs = cf_subsection_find_next(mainconfig.config, cs, "realm")) {
+	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "realm");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(mainconfig.config, cs, "realm")) {
 		name2 = cf_section_name2(cs);
 		if (!name2) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Missing realm name", filename, cf_section_lineno(cs));
+			radlog(L_CONS|L_ERR, "%s[%d]: Missing realm name",
+			       filename, cf_section_lineno(cs));
 			return -1;
 		}
 		/*
@@ -379,7 +382,8 @@ static int generate_realms(const char *filename)
 			if (strlen(authhost) >= sizeof(c->server)) {
 				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
 				       filename, cf_section_lineno(cs),
-				       strlen(authhost), sizeof(c->server) - 1);
+				       (int) strlen(authhost),
+				       (int) sizeof(c->server) - 1);
 				return -1;
 			}
 		}
@@ -411,15 +415,17 @@ static int generate_realms(const char *filename)
 			if (strlen(accthost) >= sizeof(c->acct_server)) {
 				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
 				       filename, cf_section_lineno(cs),
-				       strlen(accthost), sizeof(c->acct_server) - 1);
+				       (int) strlen(accthost),
+				       (int) sizeof(c->acct_server) - 1);
 				return -1;
 			}
 		}
 
 		if (strlen(name2) >= sizeof(c->realm)) {
 			radlog(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
-					filename, cf_section_lineno(cs),
-					strlen(name2), sizeof(c->server) - 1);
+			       filename, cf_section_lineno(cs),
+			       (int) strlen(name2),
+			       (int) sizeof(c->server) - 1);
 			return -1;
 		}
 		
