@@ -93,7 +93,7 @@ static void proxy_addinfo(RADIUS_PACKET *rp)
 /*
  *	Add the request to the list.
  */
-int proxy_addrequest(REQUEST *request, int *proxy_id)
+static int proxy_addrequest(REQUEST *request, int *proxied_packet_id)
 {
 	REQUEST		*a, *last = NULL;
 	int		id = -1;
@@ -122,8 +122,8 @@ int proxy_addrequest(REQUEST *request, int *proxy_id)
 		free(a);
 	}
 	if (id < 0) {
-		id = (*proxy_id)++;
-		*proxy_id &= 0xFFFF;
+		id = (*proxied_packet_id)++;
+		*proxied_packet_id &= 0xFFFF;
 	}
 
 	request->next = NULL;
