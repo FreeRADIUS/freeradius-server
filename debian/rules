@@ -59,8 +59,8 @@ binary-arch: build
 		| sed -e 's/        /	/g' \
 		| sed -e '/^	example {/,/^	}/s/^/#/' \
 		| sed -e 's/#	shadow = /shadow = /' \
-		| sed -e 's/^group = nobody/group = freerad/' \
-		| sed -e 's/^user = nobody/user = freerad/' \
+		| sed -e 's/^#?group = nobody/group = freerad/' \
+		| sed -e 's/^#?user = nobody/user = freerad/' \
 		| sed -e 's@/run/radiusd@/run/radiusd-freeradius@' \
 			> $(radiusd_freeradius_dir)/$(raddbdir)/radiusd.conf; \
 	rm $$TEMPFILE
