@@ -49,8 +49,13 @@ VALUE_PAIR *paircreate(int attr, int type)
 	vp->attribute = attr;
 	vp->operator = T_OP_EQ;
 	vp->type = type;
+
+	/*
+	 *	Dictionary type over-rides what the caller says.
+	 */
 	if ((da = dict_attrbyvalue(attr)) != NULL) {
 		strcpy(vp->name, da->name);
+		vp->type = da->type;
 	} else if (VENDOR(attr) == 0) {
 		sprintf(vp->name, "Attr-%u", attr);
 	} else {
