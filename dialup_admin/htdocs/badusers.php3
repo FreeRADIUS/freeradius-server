@@ -145,10 +145,10 @@ if ($config[general_restrict_badusers_access] == 'yes'){
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT da_sql_limit($limit,0,$config) * FROM $config[sql_badusers_table]
+	"SELECT " . da_sql_limit($limit,0,$config) . " * FROM $config[sql_badusers_table]
 	WHERE username $usercheck $extra_query AND incidentdate <= '$now_str'
-	AND incidentdate >= '$prev_str' da_sql_limit($limit,1,$config)
-	ORDER BY incidentdate $order da_sql_limit($limit,2,$config);");
+	AND incidentdate >= '$prev_str' " . da_sql_limit($limit,1,$config) .
+	"ORDER BY incidentdate $order " . da_sql_limit($limit,2,$config) . " ;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;

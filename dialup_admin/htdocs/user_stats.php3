@@ -110,9 +110,9 @@ EOM;
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT da_sql_limit($limit,0,$config) * FROM $config[sql_total_accounting_table]
-	WHERE acctdate >= '$start' AND acctdate <= '$stop' $server_str $login_str $sql_extra_query da_sql_limit($limit,1,$config)
-	ORDER BY $order_attr $order da_sql_limit($limit,2,$config);");
+	"SELECT " . da_sql_limit($limit,0,$config) . " * FROM $config[sql_total_accounting_table]
+	WHERE acctdate >= '$start' AND acctdate <= '$stop' $server_str $login_str $sql_extra_query " . da_sql_limit($limit,1,$config)
+	. " ORDER BY $order_attr $order " . da_sql_limit($limit,2,$config) . " ;");
 
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){

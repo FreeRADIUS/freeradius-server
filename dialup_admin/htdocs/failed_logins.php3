@@ -115,13 +115,13 @@ if ($config[sql_accounting_extra_query] != ''){
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT da_sql_limit($limit,0,$config) acctstoptime,username,nasipaddress,nasportid,acctterminatecause,callingstationid
+	"SELECT " . da_sql_limit($limit,0,$config) . " acctstoptime,username,nasipaddress,nasportid,acctterminatecause,callingstationid
 	FROM $config[sql_accounting_table]
 	WHERE acctstoptime <= '$now_str' AND acctstoptime >= '$prev_str'
 	AND (acctterminatecause LIKE 'Login-Incorrect%' OR
 	acctterminatecause LIKE 'Invalid-User%' OR
-	acctterminatecause LIKE 'Multiple-Logins%') $callerid_str $server_str $sql_extra_query da_sql_limit($limit,1,$config)
-	ORDER BY acctstoptime $order da_sql_limit($limit,2,$config);");
+	acctterminatecause LIKE 'Multiple-Logins%') $callerid_str $server_str $sql_extra_query " . da_sql_limit($limit,1,$config) .
+	" ORDER BY acctstoptime $order " . da_sql_limit($limit,2,$config) . " ;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
