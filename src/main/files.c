@@ -30,9 +30,6 @@ static const char rcsid[] = "$Id$";
 #include	"modules.h"
 
 RADCLIENT			*clients;
-#ifndef WITH_NEW_CONFIG
-static
-#endif
 REALM			*realms;
 
 #ifdef WITH_NEW_CONFIG
@@ -283,7 +280,7 @@ static void debug_pair_list(PAIR_LIST *pl)
 /*
  *	Free a RADCLIENT list.
  */
-static void clients_free(RADCLIENT *cl)
+void clients_free(RADCLIENT *cl)
 {
 	RADCLIENT *next;
 
@@ -422,9 +419,6 @@ char *client_name(uint32_t ipaddr)
 /*
  *	Free a REALM list.
  */
-#ifndef WITH_NEW_CONFIG
-static
-#endif
 void realm_free(REALM *cl)
 {
 	REALM *next;
