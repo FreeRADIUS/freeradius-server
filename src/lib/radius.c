@@ -475,6 +475,21 @@ RADIUS_PACKET *rad_recv(int fd)
 	attr = hdr->data;
 	count = totallen - AUTH_HDR_LEN;
 	while (count > 0) {
+		/*
+		 *	Attribute number zero is NOT defined.
+		 */
+		if (attr[0] == 0) {
+			librad_log("Malformed RADIUS packet from host %s: Invalid attribute 0",
+				   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+			free(packet->data);
+			free(packet);
+			return NULL;
+		}
+		
+		/*
+		 *	Attributes are at LEAST as long as the ID & length
+		 *	fields.  Anything shorter is an invalid attribute.
+		 */
        		if (attr[1] < 2) {
 			librad_log("Malformed RADIUS packet from host %s: attribute %d too short",
 				   ip_ntoa(host_ipaddr, packet->src_ipaddr),
