@@ -217,7 +217,7 @@ void eaplist_clean(EAP_HANDLER **first, time_t limit)
 	for (node = *first; node; node = next) {
 		next = node->next;
 		if ((now - node->timestamp) > limit) {
-			radlog(L_INFO, "rlm_eap:  list_clean deleted one item");
+			DEBUG2("  rlm_eap:  list_clean deleted one item");
 			*last = next;
 			eap_handler_free(&node);
 		} else  {
@@ -241,7 +241,7 @@ EAP_HANDLER *eaplist_isreply(EAP_HANDLER **first, unsigned char id[])
 	for (node = *first; node; node = next) {
 		next = node->next;
 		if (memcmp(node->id, id, id[0]) == 0) {
-			radlog(L_INFO, "rlm_eap: Request found, released from the list");
+			DEBUG2("  rlm_eap: Request found, released from the list");
 			/* detach the node from the list */
 			*last = next;
 			node->next = NULL;
@@ -265,7 +265,7 @@ EAP_HANDLER *eaplist_isreply(EAP_HANDLER **first, unsigned char id[])
 	}
 
 	if (!ret) {
-		radlog(L_INFO, "rlm_eap: Request not found in the list");
+		DEBUG2"  rlm_eap: Request not found in the list");
 	}
 	return ret;
 }
@@ -280,7 +280,7 @@ EAP_HANDLER *eaplist_findhandler(EAP_HANDLER *list, unsigned char id[])
 		 * Match is identified by the same IDs 
 		 */
 		if (memcmp(node->id, id, id[0]) == 0) {
-			radlog(L_INFO, "rlm_eap: EAP Handler found in the list ");
+			DEBUG2"  rlm_eap: EAP Handler found in the list ");
 			return node;
 		}
 		node = node->next;
