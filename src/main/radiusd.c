@@ -1672,16 +1672,21 @@ static REQUEST *rad_check_list(REQUEST *request)
 	request_list_busy = TRUE;
 
 	while (curreq != NULL) {
+		/*
+		 *	The packet ID's MUST be the same, as we're in
+		 *	request_list[request->packet->id]
+		 */
 		assert(curreq->packet->id == pkt->id);
 
 		/*
 		 *	Let's see if we received a duplicate of
 		 *	a packet we already have in our list.
 		 *
-		 *	We do this be checking the src IP, (NOT port)
+		 *	We do this by checking the src IP, src port,
 		 *	the packet code, and ID.
 		 */
 		if ((curreq->packet->src_ipaddr == pkt->src_ipaddr) &&
+		    (curreq->packet->src_port == pkt->src_port) &&
 		    (curreq->packet->code == pkt->code)) {
 		  /*
 		   *	We now check the authentication vectors.
