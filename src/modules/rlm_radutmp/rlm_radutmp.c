@@ -184,6 +184,8 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	int		off;
 	struct radutmp_instance *inst = instance;
 	char		buffer[256];
+	char		ip_name[32]; /* 255.255.255.255 */
+	const char	*nas;
 
 	/*
 	 *	Which type is this.
@@ -313,6 +315,30 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	if (nas_address == 0) {
 		nas_address = request->packet->src_ipaddr;
 		ut.nas_address = nas_address;
+		nas = client_name(nas_address);	/* MUST be a valid client */
+
+	} else {		/* might be a client, might not be. */
+		RADCLIENT *cl;
+
+		/*
+		 *	Hack like 'client_name()', but with sane
+		 *	fall-back.
+		 */
+		cl = client_find(nas_address);
+		if (cl) {
+			if (cl->shortname[0]) {
+				nas = cl->shortname;
+			} else {
+				nas = cl->longname;
+			}
+		} else {
+			/*
+			 *	The NAS isn't a client, it's behind
+			 *	a proxy server.  In that case, just
+			 *	get the IP address.
+			 */
+			nas = ip_ntoa(ip_name, nas_address);
+		}
 	}
 
 	if (protocol == PW_PPP)
@@ -328,13 +354,13 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 */
 	if (status == PW_STATUS_ACCOUNTING_ON && nas_address) {
 		radlog(L_INFO, "NAS %s restarted (Accounting-On packet seen)",
-			nas_name(nas_address));
+		       nas);
 		radutmp_zap(inst, nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
 	if (status == PW_STATUS_ACCOUNTING_OFF && nas_address) {
 		radlog(L_INFO, "NAS %s rebooted (Accounting-Off packet seen)",
-			nas_name(nas_address));
+		       nas);
 		radutmp_zap(inst, nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
@@ -346,7 +372,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	    status != PW_STATUS_STOP &&
 	    status != PW_STATUS_ALIVE) {
 		radlog(L_ERR, "NAS %s port %d unknown packet type %d)",
-			nas_name(nas_address), ut.nas_port, status);
+		       nas, ut.nas_port, status);
 		return RLM_MODULE_NOOP;
 	}
 
@@ -399,7 +425,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				if (u.type == P_LOGIN)
 					radlog(L_ERR,
 		"Accounting: logout: entry for NAS %s port %d has wrong ID",
-					nas_name(nas_address), u.nas_port);
+					       nas, u.nas_port);
 				r = -1;
 				break;
 			}
@@ -411,13 +437,13 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				if (u.type == P_LOGIN) {
 					radlog(L_INFO,
 		"Accounting: login: entry for NAS %s port %d duplicate",
-					nas_name(nas_address), u.nas_port);
+					nas, u.nas_port);
 					r = -1;
 					break;
 				}
 				radlog(L_ERR,
 		"Accounting: login: entry for NAS %s port %d wrong order",
-				nas_name(nas_address), u.nas_port);
+				nas, u.nas_port);
 				r = -1;
 				break;
 			}
@@ -471,7 +497,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			} else if (r == 0) {
 				radlog(L_ERR,
 		"Accounting: logout: login entry for NAS %s port %d not found",
-				nas_name(nas_address), ut.nas_port);
+				nas, ut.nas_port);
 				r = -1;
 			}
 		}
