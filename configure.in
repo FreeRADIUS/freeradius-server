@@ -279,7 +279,6 @@ dnl  This next bit is stolen from glib, and modified to work for FreeRADIUS.
 dnl ***********************
 MODULE_LIBS=
 MODULE_LDFLAGS=
-MODULE_NEED_USCORE=0
 MODULE_HAVE_DLERROR=0
 dnl *** dlopen() and dlsym() in system libraries
 if test -z "$DYNAMIC_MODULES"; then
@@ -375,15 +374,13 @@ dnl *** check whether we need preceeding underscores
 		}],
 			rlm_cv_uscore=yes,
 			rlm_cv_uscore=no,
-			MODULE_NEED_USCORE=0
+			rlm_cv_uscore=no
 		)
 		rm -f plugin.c plugin.o plugin.lo
 	])
 	AC_MSG_RESULT($rlm_cv_uscore)
 	if test "x$rlm_cv_uscore" = "xyes"; then
-  		MODULE_NEED_USCORE=1
-	else
-  		MODULE_NEED_USCORE=0
+		AC_DEFINE(MODULE_NEED_USCORE)
 	fi
 
 	LDFLAGS="$LDFLAGS_orig"
@@ -404,7 +401,6 @@ AC_SUBST(DAEMON_LDFLAGS)
 AC_SUBST(MODULE_LIBS)
 AC_SUBST(MODULE_LDFLAGS)
 AC_SUBST(MODULE_HAVE_DLERROR)
-AC_DEFINE(MODULE_NEED_USCORE)
 
 AC_OUTPUT(\
 	
