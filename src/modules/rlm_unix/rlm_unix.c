@@ -489,7 +489,11 @@ static int unix_accounting(void *instance, REQUEST *request)
 	for (vp = request->packet->vps; vp; vp = vp->next) {
 		switch (vp->attribute) {
 			case PW_USER_NAME:
-				strNcpy(ut.ut_name, (char *)vp->strvalue, sizeof(ut.ut_name));
+				if (vp->length >= sizeof(ut.ut_name)) {
+					memcpy(ut.ut_name, (char *)vp->strvalue, sizeof(ut.ut_name));
+				} else {
+					strNcpy(ut.ut_name, (char *)vp->strvalue, sizeof(ut.ut_name));
+				}
 				break;
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:
