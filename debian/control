@@ -1,5 +1,5 @@
 Source: freeradius
-Build-Depends: debhelper, libltdl3-dev | libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient10-dev, libgdbmg1-dev, libldap2-dev, libsasl-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, libssl-dev, libtool, snmp, autoconf
+Build-Depends: debhelper (>= 3.4.4), libltdl3-dev, libpam0g-dev, postgresql-dev, libmysqlclient10-dev | libmysqlclient-dev, libgdbmg1-dev, libldap2-dev, libsasl2-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, libssl-dev, libtool, snmp, autoconf2.13
 Section: net
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
@@ -8,10 +8,11 @@ Standards-Version: 3.5.7
 Package: freeradius
 Architecture: any
 Depends: ${shlibs:Depends}
-Recommends: logrotate
 Provides: radius-server
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
-Description: A high-performance and highly configurable RADIUS server
+Conflicts: radiusd-freeradius, radiusd-freeradius-krb5, radiusd-freeradius-ldap, radiusd-freeradius-postgresql, radiusd-freeradius-mysql
+Replaces: radiusd-freeradius
+Description: a high-performance and highly configurable RADIUS server
  A high-performance RADIUS server derived from Cistron's server, and
  generally similar to Livingston's 2.0 server, with support for...
   - many vendor-specific attributes
@@ -23,28 +24,36 @@ Description: A high-performance and highly configurable RADIUS server
 
 Package: freeradius-krb5
 Architecture: any
+Conflicts: radiusd-freeradius-krb5
+Replaces: radiusd-freeradius-krb5
 Depends: freeradius, ${shlibs:Depends}
-Description: Kerberos module for FreeRADIUS server.
+Description: kerberos module for FreeRADIUS server
  The FreeRADIUS server can use Kerberos to authenticate users, and this module
  is necessary for that.
 
 Package: freeradius-ldap
 Architecture: any
+Conflicts: radiusd-freeradius-ldap
+Replaces: radiusd-freeradius-ldap
 Depends: freeradius, ${shlibs:Depends}
-Description: LDAP module for FreeRADIUS server.
+Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.
 
 Package: freeradius-postgresql
 Architecture: any
+Conflicts: radiusd-freeradius-postgresql
+Replaces: radiusd-freeradius-postgresql
 Depends: freeradius, ${shlibs:Depends}
-Description: PostgreSQL module for FreeRADIUS server.
+Description: PostgreSQL module for FreeRADIUS server
  The FreeRADIUS server can use PostgreSQL to authenticate users and do
  accounting, and this module is necessary for that.
 
 Package: freeradius-mysql
 Architecture: any
+Conflicts: radiusd-freeradius-mysql
+Replaces: radiusd-freeradius-mysql
 Depends: freeradius, ${shlibs:Depends}
-Description: MySQL module for FreeRADIUS server.
+Description: MySQL module for FreeRADIUS server
  The FreeRADIUS server can use MySQL to authenticate users and do accounting,
  and this module is necessary for that.
