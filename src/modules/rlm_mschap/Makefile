@@ -1,5 +1,5 @@
 TARGET		= rlm_mschap
-SRCS		= rlm_mschap.c deskey.c desport.c md4c.c
+SRCS		= rlm_mschap.c deskey.c desport.c md4c.c smbpass.c
 HEADERS		= md4.h des.h
 RLM_CFLAGS	=
 
