@@ -99,7 +99,7 @@ typedef struct radius_packet {
 	u_short			dst_port;
 	int			id;
 	int			code;
-	char			vector[16];
+	uint8_t			vector[AUTH_VECTOR_LEN];
 	time_t			timestamp;
 	int			verified;
 	uint8_t			*data;
@@ -146,7 +146,7 @@ void		librad_md5_calc(u_char *, u_char *, u_int);
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, const char *secret);
 RADIUS_PACKET	*rad_recv(int fd);
-int		rad_decode(RADIUS_PACKET *packet, const char *secret);
+int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);
 RADIUS_PACKET	*rad_alloc(int newvector);
 void		rad_free(RADIUS_PACKET *);
 int		rad_pwencode(char *encpw, int *len, const char *secret, const char *vector);

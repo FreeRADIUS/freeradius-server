@@ -68,6 +68,7 @@ int			auth_port;
 int			acct_port;
 int			proxy_port;
 
+static int		radius_port = 0;
 static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
 static int		authfd;
@@ -130,6 +131,7 @@ CONF_PARSER rad_config[] = {
   { "max_request_time",   PW_TYPE_INTEGER,    &max_request_time },
   { "cleanup_delay",      PW_TYPE_INTEGER,    &cleanup_delay    },
   { "max_requests",       PW_TYPE_INTEGER,    &max_requests     },
+  { "port",               PW_TYPE_INTEGER,    &radius_port },
   { "allow_core_dumps",   PW_TYPE_BOOLEAN,    &allow_core_dumps },
   { "log_stripped_names", PW_TYPE_BOOLEAN,    &log_stripped_names },
   { "log_auth",           PW_TYPE_BOOLEAN,    &log_auth },
@@ -210,15 +212,10 @@ int main(int argc, char **argv)
 #endif
 	unsigned char		buffer[4096];
 	struct	sockaddr	salocal;
-	struct	sockaddr_in	saremote;
 	struct	sockaddr_in	*sin;
 	struct	servent		*svp;
 	fd_set			readfds;
 	struct timeval		tv, *tvp;
-	int			salen;
-	int			packet_length;
-	uint32_t		packet_srcip;
-	int			packet_code;
 	int			result;
 	int			argval;
 	int			t;
@@ -228,7 +225,6 @@ int main(int argc, char **argv)
 	int			devnull;
 	int			status;
 	int			dont_fork = FALSE;
-	int			radius_port = 0;
 
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
@@ -410,6 +406,10 @@ int main(int argc, char **argv)
 
 	/*
 	 *	Open Authentication socket.
+	 *
+	 *	We prefer (in order) the configured port,
+	 *	then the port that the system names "radius",
+	 *	then 1645.
 	 */
 	svp = getservbyname ("radius", "udp");
 	if (radius_port)
@@ -418,7 +418,7 @@ int main(int argc, char **argv)
 		auth_port = ntohs(svp->s_port);
 	else
 		auth_port = PW_AUTH_UDP_PORT;
-
+	
 	authfd = socket (AF_INET, SOCK_DGRAM, 0);
 	if (authfd < 0) {
 		perror("auth socket");
@@ -439,9 +439,12 @@ int main(int argc, char **argv)
 
 	/*
 	 *	Open Accounting Socket.
+	 *
+	 *	We prefer (in order) the authentication port + 1,
+	 *	then the port that the system names "radacct".
 	 */
 	svp = getservbyname ("radacct", "udp");
-	if (radius_port || svp == (struct servent *) 0)
+	if (radius_port || svp == NULL)
 		acct_port = auth_port + 1;
 	else
 		acct_port = ntohs(svp->s_port);
@@ -643,44 +646,21 @@ int main(int argc, char **argv)
 				continue;
 
 			/*
-			 *	Quickly see if we can actually receive
-			 *	the packet.
-			 *	If so, steal the source IP, and see if
-			 *	they're allowed to talk to us.
-			 *
-			 *	Aarrg.. we really don't care to see the data,
-			 *	but certain broken kernels don't fill in
-			 *	the sockaddr function if we get 0 bytes.
+			 *	Receive the packet.
 			 */
-			salen = sizeof(saremote);
-			memset(&saremote, 0, sizeof(saremote));
-			packet_length = recvfrom(fd, buffer, sizeof(buffer),
-						 MSG_PEEK,
-						 (struct sockaddr *)&saremote,
-						 &salen);
-			if (packet_length < 0) {
-				log(L_ERR,
-				    "Failed to received packet on FD %d: %s",
-				    fd, strerror(errno));
+			packet = rad_recv(fd);
+			if (packet == NULL) {
+				log(L_ERR, "%s", librad_errstr);
 				continue;
 			}
-			packet_code = buffer[0];
-			packet_srcip = saremote.sin_addr.s_addr;
-			ip_ntoa(buffer, packet_srcip);
 
 			/*
 			 *	Check if we know this client.
-			 *	The check is performed HERE, instead of
-			 *	after rad_recv(), so unknown clients CANNOT
-			 *	force us to do ANY work.
 			 */
-			if ((cl = client_find(packet_srcip)) == NULL) {
+			if ((cl = client_find(packet->src_ipaddr)) == NULL) {
 				log(L_ERR, "Ignoring request from unknown client %s",
 					buffer);
-				/* eat the packet silently, and continue */
-				recvfrom(fd, buffer, sizeof(buffer), 0,
-					 (struct sockaddr *)&saremote,
-					 &salen);
+				rad_free(packet);
 				continue;
 			}
 
@@ -690,18 +670,9 @@ int main(int argc, char **argv)
 			 *	a few, so stripping off obviously invalid
 			 *	packets here will make our life easier.
 			 */
-			if (packet_code > PW_ACCESS_CHALLENGE) {
-				log(L_ERR, "Ignoring request from client %s with unknown code %d", buffer, packet_code);
-				/* eat the packet silently, and continue */
-				recvfrom(fd, buffer, sizeof(buffer), 0,
-					 (struct sockaddr *)&saremote,
-					 &salen);
-				continue;
-			}
-
-			packet = rad_recv(fd);
-			if (packet == NULL) {
-				log(L_ERR, "%s", librad_errstr);
+			if (packet->code > PW_ACCESS_CHALLENGE) {
+				log(L_ERR, "Ignoring request from client %s with unknown code %d", buffer, packet->code);
+				rad_free(packet);
 				continue;
 			}
 
@@ -893,7 +864,7 @@ int rad_process(REQUEST *request, int dospawn)
  */
 static void rad_reject(REQUEST *request)
 {
-	DEBUG2("Rejecting request because server has too few resources to handle it.");
+	DEBUG2("Server rejecting request.");
 	switch (request->packet->code) {
 		/*
 		 *	Accounting requests, etc. get dropped on the floor.
@@ -930,7 +901,7 @@ static void rad_reject(REQUEST *request)
  */
 int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	RADIUS_PACKET	*packet;
+	RADIUS_PACKET	*packet, *original;
 	const char	*secret;
 	int		replicating;
 	int		finished = FALSE;
@@ -941,9 +912,11 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (request->proxy_reply != NULL) {
 		packet = request->proxy_reply;
 		secret = request->proxysecret;
+		original = request->proxy;
 	} else {
 		packet = request->packet;
 		secret = request->secret;
+		original = NULL;
 	}
 	
 	/*
@@ -954,7 +927,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	a child thread, not the master.  This helps to
 	 *	spread the load a little bit.
 	 */
-	if (rad_decode(packet, secret) != 0) {
+	if (rad_decode(packet, original, secret) != 0) {
 		log(L_ERR, "%s", librad_errstr);
 		rad_reject(request);
 		goto finished_request;

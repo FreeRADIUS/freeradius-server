@@ -349,6 +349,28 @@ int calc_acctdigest(RADIUS_PACKET *packet, const char *secret, char *recvbuf, in
 }
 
 /*
+ *	Validates the requesting client NAS.  Calculates the
+ *	signature based on the clients private key.
+ */
+static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret, char *recvbuf, int len)
+{
+	int		secretlen;
+	uint8_t		calc_digest[AUTH_VECTOR_LEN];
+
+	memcpy(recvbuf + 4, original->vector, sizeof(original->vector));
+	secretlen = strlen(secret);
+	memcpy(recvbuf + len, secret, secretlen);
+	librad_md5_calc(calc_digest, recvbuf, len + secretlen);
+
+	/*
+	 *	Return 0 if OK, 2 if not OK.
+	 */
+	packet->verified =
+		memcmp(packet->vector, calc_digest, sizeof(packet->vector)) ? 2 : 0;
+	return packet->verified;
+}
+
+/*
  *	Receive UDP client requests, and fill in
  *	the basics of a RADIUS_PACKET structure.
  */
@@ -497,7 +519,7 @@ RADIUS_PACKET *rad_recv(int fd)
 /*
  *	Calculate/check digest, and decode radius attributes.
  */
-int rad_decode(RADIUS_PACKET *packet, const char *secret)
+int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret)
 {
 	DICT_ATTR		*attr;
 	uint32_t		lvalue;
@@ -532,15 +554,22 @@ int rad_decode(RADIUS_PACKET *packet, const char *secret)
 				return 1;
 			}
 			break;
+
+			/* Verify the reply digest */
 		case PW_AUTHENTICATION_ACK:
 		case PW_AUTHENTICATION_REJECT:
+			if (calc_replydigest(packet, original, secret,
+					     packet->data, length) > 1) {
+				char buffer[32];
+				librad_log("Received authentication reply packet "
+					   "from %s with invalid signature!",
+					   ip_ntoa(buffer, packet->src_ipaddr));
+				return 1;
+			}
+		  break;
+
 		case PW_ACCOUNTING_RESPONSE:
-			/*
-			 *	Answers from remote radius servers.
-			 *	Need to verify the answer.
-			 *	FIXME: actually do that here !!!
-			 */
-			break;
+			break;	/* ??? */
 	}
 
 	/*
