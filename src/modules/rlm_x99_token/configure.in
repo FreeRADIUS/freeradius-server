@@ -34,19 +34,6 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
-	dnl openssl
-	x99_save_LIBS="$LIBS"
-	LIBS="$LIBS $x99_token_ldflags"
-	dnl openssl 0.9.7 renamed the functions
-	AC_CHECK_LIB(crypto, DES_cbc_encrypt,
-		[ x99_token_ldflags="$x99_token_ldflags -lcrypto" ],
-		AC_CHECK_LIB(crypto, des_cbc_encrypt,
-			[ x99_token_ldflags="$x99_token_ldflags -lcrypto" ],
-			[ fail="$fail des_cbc_encrypt" ]
-		)
-	)
-	LIBS="$x99_save_LIBS"
-
 	targetname=modname     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!
