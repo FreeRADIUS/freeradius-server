@@ -12,7 +12,7 @@ $(STATIC_OBJS): $(HEADERS)
 #
 #  Statically link MD5 and LEAP.  They don't require any extra magic.
 #
-#STATIC_OBJS	+= $(shell ls -1 types/rlm_eap_leap/rlm_eap_md5.a types/rlm_eap_md5/rlm_eap_leap.a 2>/dev/null)
+#STATIC_OBJS	+= $(shell ls -1 types/rlm_eap_leap/rlm_eap_md5.a types/rlm_eap_leap/rlm_eap_leap.a 2>/dev/null)
 
 $(DYNAMIC_OBJS): $(HEADERS)
 
