@@ -21,7 +21,7 @@ ATTRIBUTE	MS-MPPE-Encryption-Types  8	octets
 ATTRIBUTE	MS-RAS-Vendor		9	integer	# content is Vendor-ID
 ATTRIBUTE	MS-CHAP-Domain		10	string
 ATTRIBUTE	MS-CHAP-Challenge	11	octets
-ATTRIBUTE	MS-CHAP-MPPE-Keys	12	octets
+ATTRIBUTE	MS-CHAP-MPPE-Keys	12	octets  encrypt=1
 ATTRIBUTE	MS-BAP-Usage		13	integer
 ATTRIBUTE	MS-Link-Utilization-Threshold 14 integer # values are 1-100
 ATTRIBUTE	MS-Link-Drop-Time-Limit	15	integer
