@@ -1,6 +1,10 @@
 #
-#  This is an experimental file, which the 'files' module uses to
-#  re-write requests which are about to be sent to a home server.
+#  This file is similar to the "users" file.  The check items
+#  are compared against the request, but the "reply" items are
+#  used to update the proxied packet, not the reply to the NAS>
+#
+#  You can use this file to re-write requests which are about to be
+#  sent to a home server.
 #
 
 #
