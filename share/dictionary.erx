@@ -3,10 +3,17 @@
 #
 #	Unisphere's broadband RAS
 #	From Terje Krogdahl <tekr@nextra.com>  
+#	Last touched by Paul Hampson <Paul.Hampson@Pobox.Com>
 #
 # Version:	$Id$
 #
+# Juniper ERX dictionaries are available at:
+#	http://www.juniper.net/techpubs/software/erx/erx50x/swconfig-broadband/html/radius-attributes.html
+# (The below are from when it was the Unisphere ERX)
+#	http://www.juniper.net/techpubs/software/erx/erx410/unisphere4-1.dct
 #	http://www.juniper.net/techpubs/software/erx/erx403/unisphere4-0.dct
+#	http://www.juniper.net/techpubs/software/erx/erx3xx/unisphere3-2.dct
+#	http://www.juniper.net/techpubs/software/erx/erx3xx/unisphere3-0.dct
 #
 #  As a note on ERX broken-ness, If you don't send a Framed-IP-Address
 #  in the Access-Accept packet, the ERX disconnects the user, and
@@ -24,8 +31,8 @@ ATTRIBUTE	ERX-Virtual-Router-Name			1 string	ERX
 ATTRIBUTE	ERX-Address-Pool-Name			2 string	ERX
 ATTRIBUTE	ERX-Local-Loopback-Interface		3 string	ERX
 ATTRIBUTE	ERX-Primary-Dns				4 ipaddr	ERX
-ATTRIBUTE	ERX-Primary-Wins			5 ipaddr	ERX
-ATTRIBUTE	ERX-Secondary-Dns			6 ipaddr	ERX
+ATTRIBUTE	ERX-Secondary-Dns			5 ipaddr	ERX
+ATTRIBUTE	ERX-Primary-Wins			6 ipaddr	ERX
 ATTRIBUTE	ERX-Secondary-Wins			7 ipaddr	ERX
 ATTRIBUTE	ERX-Tunnel-Virtual-Router		8 string	ERX
 ATTRIBUTE	ERX-Tunnel-Password			9 string	ERX
@@ -54,8 +61,16 @@ ATTRIBUTE	ERX-Service-Bundle			31	string	ERX
 ATTRIBUTE	ERX-Tunnel-Tos				32	integer	ERX
 ATTRIBUTE	ERX-Tunnel-Maximum-Sessions		33	integer	ERX
 ATTRIBUTE	ERX-Framed-Ip-Route-Tag			34	string	ERX
+ATTRIBUTE	ERX-Dial-Out-Number			35	string	ERX
+ATTRIBUTE	ERX-PPP-Username			36	string	ERX
+ATTRIBUTE	ERX-PPP-Password			37	string	ERX
+ATTRIBUTE	ERX-PPP-Auth-Protocol		38	integer	ERX
+ATTRIBUTE	ERX-Minimum-BPS				39	integer	ERX
+ATTRIBUTE	ERX-Maximum-BPS				40	integer	ERX
+ATTRIBUTE	ERX-Bearer-Type				41	integer	ERX
 ATTRIBUTE	ERX-Input-Gigapkts			42	integer	ERX
 ATTRIBUTE	ERX-Output-Gigapkts			43	integer	ERX
+ATTRIBUTE	ERX-Tunnel-Interface-Id		44	string	ERX
 
 #
 #  Values	Attribute		Name			Number
@@ -96,3 +111,12 @@ VALUE	ERX-Qos-Profile-Interface-Type	PPPOE-SUB		12
 VALUE	ERX-Tunnel-Nas-Port-Method	None			0
 VALUE	ERX-Tunnel-Nas-Port-Method	CISCO-CLID		1
 
+VALUE	ERX-PPP-Auth-Protocol	None		0
+VALUE	ERX-PPP-Auth-Protocol	PAP			1
+VALUE	ERX-PPP-Auth-Protocol	CHAP		2
+VALUE	ERX-PPP-Auth-Protocol	PAP-CHAP	3
+VALUE	ERX-PPP-Auth-Protocol	CHAP-PAP	4
+
+VALUE	ERX-Bearer-Type	None	0
+VALUE	ERX-Bearer-Type	Analog	1
+VALUE	ERX-Bearer-Type	Digital	2
