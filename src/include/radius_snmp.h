@@ -88,16 +88,16 @@ typedef struct rad_snmp_client_entry_t {
 extern rad_snmp_t	rad_snmp;
 
 #define RAD_SNMP_INC(_x) if (mainconfig.do_snmp) _x++
-#define RAD_SNMP_FD_INC(_fd, _x) if (mainconfig.do_snmp) { \
-                                     if (_fd == authfd) { \
+#define RAD_SNMP_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
+                                     if (_listener->type == RAD_LISTEN_AUTH) { \
                                        rad_snmp.auth._x++; \
-				     } else { if (_fd == acctfd) \
+				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
                                        rad_snmp.acct._x++; } } \
 
 
 #else
 #define  RAD_SNMP_INC(_x)
-#define RAD_SNMP_FD_INC(_fd, _x)
+#define RAD_SNMP_TYPE_INC(_listener, _x)
 
 #endif /* WITH_SNMP */
 

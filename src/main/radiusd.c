@@ -438,7 +438,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 				 *	FIXME: Make it ALWAYS synchronous!
 				 */
 				if (!mainconfig.proxy_synchronous) {
-					RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
+					RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 
 					DEBUG2("Ignoring duplicate packet from client "
 					       "%s:%d - ID: %d, due to outstanding proxied request %d.",
@@ -490,7 +490,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 		 *	long to process the request.  This is a
 		 *	SERIOUS problem!
 		 */
-		RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
+		RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 
 		radlog(L_ERR, "Dropping conflicting packet from "
 		       "client %s:%d - ID: %d due to unfinished request %d",
@@ -1346,7 +1346,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			RAD_SNMP_FD_INC(listener->fd, total_requests);
+			RAD_SNMP_TYPE_INC(listener, total_requests);
 
 			/*
 			 *	FIXME: Move this next check into
@@ -1365,7 +1365,7 @@ int main(int argc, char *argv[])
 			if (listener->type != RAD_LISTEN_PROXY) {
 				RADCLIENT *cl;
 				if ((cl = client_find(packet->src_ipaddr)) == NULL) {
-					RAD_SNMP_FD_INC(fd, total_invalid_requests);
+					RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 
 					radlog(L_ERR, "Ignoring request from unknown client %s:%d",
 					ip_ntoa((char *)buffer, packet->src_ipaddr),
