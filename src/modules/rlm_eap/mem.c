@@ -25,16 +25,13 @@
 #include "eap.h"
 
 /*
- *      Allocate a new EAP_PACKET
+ *      Allocate a new EAP_PACKET.  Guaranteed to succeed.
  */
-EAP_PACKET *eap_packet_alloc()
+EAP_PACKET *eap_packet_alloc(void)
 {
         EAP_PACKET   *rp;
 
-        if ((rp = malloc(sizeof(EAP_PACKET))) == NULL) {
-                radlog(L_ERR, "out of memory");
-                return NULL;
-        }
+        rp = rad_malloc(sizeof(EAP_PACKET));
         memset(rp, 0, sizeof(EAP_PACKET));
         return rp;
 }
@@ -61,23 +58,14 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 /*
  *      Allocate a new EAP_PACKET
  */
-EAP_DS *eap_ds_alloc()
+EAP_DS *eap_ds_alloc(void)
 {
         EAP_DS	*eap_ds;
-        
-        if ((eap_ds = malloc(sizeof(EAP_DS))) == NULL) {
-                radlog(L_ERR, "out of memory");
-                return NULL;
-        }
+
+	eap_ds = rad_malloc(sizeof(EAP_DS));
         memset(eap_ds, 0, sizeof(EAP_DS));
-	if ((eap_ds->response = eap_packet_alloc(sizeof(EAP_PACKET))) == NULL) {
-		eap_ds_free(&eap_ds);
-		return NULL;
-	}
-	if ((eap_ds->request = eap_packet_alloc(sizeof(EAP_PACKET))) == NULL) {
-		eap_ds_free(&eap_ds);
-		return NULL;
-	}
+	eap_ds->response = eap_packet_alloc();
+	eap_ds->request = eap_packet_alloc();
 
 	return eap_ds;
 }
