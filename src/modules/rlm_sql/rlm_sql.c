@@ -721,17 +721,17 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 		return RLM_MODULE_INVALID;
 	}
 
+
+	if(sql_set_user(inst, request, sqlusername, 0) <0)
+		return RLM_MODULE_FAIL;
+
+	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_count_query, request, NULL);
+
 	/* initialize the sql socket */
 	sqlsocket = sql_get_socket(inst);
 	if(sqlsocket == NULL)
 		return RLM_MODULE_FAIL;
 
-	if(sql_set_user(inst, request, sqlusername, 0) <0){
-		sql_release_socket(inst, sqlsocket);
-		return RLM_MODULE_FAIL;
-	}
-
-	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_count_query, request, NULL);
 	if(rlm_sql_select_query(sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "sql_checksimul: Database query failed");
 		sql_release_socket(inst, sqlsocket);
