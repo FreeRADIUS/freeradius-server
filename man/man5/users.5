@@ -63,6 +63,12 @@ the request, then this attribute is added.
 As a reply item, it has an identical meaning, but for the reply items,
 instead of the request items.
 
+.IP "Attribute == Value"
+As a check item, it matches if the named attribute is present in the
+request, AND has the given value.
+.br
+Not allowed as a reply item.
+
 .IP "Attribute += Value"
 Always matches as a check item, and adds the current attribute with
 value to the incoming request.
@@ -73,6 +79,8 @@ added to the reply items.
 .IP "Attribute != Value"
 As a check item, matches if the given attribute is in the request, AND
 does not have the given value.
+.br
+Not allowed as a reply item.
 
 .IP "Attribute > Value"
 As a check item, it matches if the request contains an attribute with
