@@ -283,7 +283,7 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
          *      and free code!!
          */
         return 0;
-
+}
 
 /*************************************************************************
  *
