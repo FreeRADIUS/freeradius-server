@@ -8,8 +8,6 @@ o modular radutmp and radwtmp, as per Alan Curry's old patches.
 o merge OSF/OSFIA patches from Cistron.
 o double-check Cistron 'compat' mode, so that all current users of
   Cistron can upgrade "out of the box" to FreeRADIUS
-o Fix multiple/conflicting VALUE names as pointed out on the list.
-   e.g. 'Rlogin' has different values when used with different ATTRIBUTEs,
 
 
 MEDIUM PRIORITY
@@ -17,8 +15,6 @@ o go through all of the code and reformat it, for project standards
 o go through all of the code, removing unnecessary #include's, and
   generating a standard include file order which will work across all
   platforms.
-o go through *.c and *.h, adding comments at the top with a copyright,
-  and a GPL license.
 o fix the proxy receive code, so that we don't have to look through ALL
   of the requests to find the matching proxy.  This might be hard to do..
   It would also involve thread locking issues.
@@ -77,6 +73,10 @@ o there should be a way that radius itself could
 	--- This work is for an external process to do ---
 
 DONE:
+o Fix multiple/conflicting VALUE names as pointed out on the list.
+   e.g. 'Rlogin' has different values when used with different ATTRIBUTEs,
+o go through *.c and *.h, adding comments at the top with a copyright,
+  and a GPL license.
 o Integrated Alan Curry's module failover patch.
 o add more support for new configuration files
 o Fixed potentially long locks on radutmp file by radcheck thread
