@@ -2,7 +2,7 @@
 #
 # $Id$
 #
-#  Sample script to run when a 'user' file entry is like:
+#  Sample script to run when a 'user' file entry is similar to:
 #
 #bob	Password == "bob"
 #	Exec-Program-Wait = "/path/to/program/exec-program-wait"
@@ -16,8 +16,16 @@
 #	Exec-Program = "/path/to/exec/acct/stop"
 #
 #
+#  Each of the attributes in the request will be available in an
+#  environment variable.  The name of the variable depends on the
+#  name of the attribute.  All letters are converted to upper case,
+#  and all hyphens '-' to underlines.
 #
-#  The 
+#  For example, the User-Name attribute will be in the $USER_NAME
+#  environment variable.  If you want to see the list of all of
+#  the variables, try adding a line 'printenv > /tmp/exec-program-wait'
+#  to the script.  Then look in the file for a complete list of
+#  variables.
 #
 echo "Reply-Message += \"Hello, %u\","
 echo "Reply-Message += \"PATH=$PATH\","
