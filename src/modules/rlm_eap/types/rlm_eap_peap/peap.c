@@ -416,6 +416,77 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
 
+	/*
+	 *	If this is set, we copy SOME of the request attributes
+	 *	from outside of the tunnel to inside of the tunnel.
+	 *
+	 *	We copy ONLY those attributes which do NOT already
+	 *	exist in the tunneled request.
+	 *
+	 *	This code is copied from ../rlm_eap_ttls/ttls.c
+	 */
+	if (t->copy_request_to_tunnel) {
+		VALUE_PAIR *copy;
+
+		for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
+			/*
+			 *	The attribute is a server-side thingy,
+			 *	don't copy it.
+			 */
+			if ((vp->attribute > 255) &&
+			    (((vp->attribute >> 16) & 0xffff) == 0)) {
+				continue;
+			}
+
+			/*
+			 *	The outside attribute is already in the
+			 *	tunnel, don't copy it.
+			 *
+			 *	This works for BOTH attributes which
+			 *	are originally in the tunneled request,
+			 *	AND attributes which are copied there
+			 *	from below.
+			 */
+			if (pairfind(fake->packet->vps, vp->attribute)) {
+				continue;
+			}
+
+			/*
+			 *	Some attributes are handled specially.
+			 */
+			switch (vp->attribute) {
+				/*
+				 *	NEVER copy Message-Authenticator,
+				 *	EAP-Message, or State.  They're
+				 *	only for outside of the tunnel.
+				 */
+			case PW_USER_NAME:
+			case PW_USER_PASSWORD:
+			case PW_CHAP_PASSWORD:
+			case PW_CHAP_CHALLENGE:
+			case PW_PROXY_STATE:
+			case PW_MESSAGE_AUTHENTICATOR:
+			case PW_EAP_MESSAGE:
+			case PW_STATE:
+				continue;
+				break;
+
+				/*
+				 *	By default, copy it over.
+				 */
+			default:
+				break;
+			}
+
+			/*
+			 *	Don't copy from the head, we've already
+			 *	checked it.
+			 */
+			copy = paircopy2(vp, vp->attribute);
+			pairadd(&fake->packet->vps, copy);
+		}
+	}
+
 #ifndef NDEBUG
 	if (debug_flag > 0) {
 		printf("  PEAP: Sending tunneled request\n");
@@ -453,6 +524,18 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eappeap_success(handler, tls_session);
 		rcode = RLM_MODULE_HANDLED;
+		
+		/*
+		 *	If we've been told to use the attributes from
+		 *	the reply, then do so.
+		 *
+		 *	WARNING: This may leak information about the
+		 *	tunneled user!
+		 */
+		if (t->use_tunneled_reply) {
+			pairadd(&request->reply->vps, fake->reply->vps);
+			fake->reply->vps = NULL;
+		}
 		break;
 
 	case PW_AUTHENTICATION_REJECT:

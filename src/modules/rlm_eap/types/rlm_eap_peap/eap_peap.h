@@ -30,6 +30,8 @@ typedef struct peap_tunnel_t {
 	VALUE_PAIR	*state;
 	int		status;
 	int		default_eap_type;
+	int		copy_request_to_tunnel;
+	int		use_tunneled_reply;
 } peap_tunnel_t;
 
 #define PEAP_STATUS_START_PART2 0

@@ -30,12 +30,30 @@ typedef struct rlm_eap_peap_t {
 	 */
 	char	*default_eap_type_name;
 	int	default_eap_type;
+
+	/*
+	 *	Use the reply attributes from the tunneled session in
+	 *	the non-tunneled reply to the client.
+	 */
+	int	use_tunneled_reply;
+
+	/*
+	 *	Use SOME of the request attributes from outside of the
+	 *	tunneled session in the tunneled request
+	 */
+	int	copy_request_to_tunnel;
 } rlm_eap_peap_t;
 
 
 static CONF_PARSER module_config[] = {
 	{ "default_eap_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_peap_t, default_eap_type_name), NULL, "mschapv2" },
+
+	{ "copy_request_to_tunnel", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_peap_t, copy_request_to_tunnel), NULL, "no" },
+
+	{ "use_tunneled_reply", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_peap_t, use_tunneled_reply), NULL, "no" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -120,6 +138,8 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 	memset(t, 0, sizeof(*t));
 
 	t->default_eap_type = inst->default_eap_type;
+	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
+	t->use_tunneled_reply = inst->use_tunneled_reply;
 
 	return t;
 }
