@@ -19,7 +19,7 @@
  *
  * Copyright 2001  The FreeRADIUS server project
  * Copyright 2001  Alan DeKok <aland@ox.org>
- * Copyright 2001,2002  Kostas Kalevras <kkalev@noc.ntua.gr>
+ * Copyright 2001-3  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 
 #include "config.h"
@@ -242,8 +242,10 @@ static int find_next_reset(rlm_counter_t *data, time_t timeval)
 	unsigned int num=1;
 	char last = 0;
 	struct tm *tm, s_tm;
+	char sCurrentTime[40], sNextTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
+	strftime(sCurrentTime, sizeof(sCurrentTime),"%Y-%m-%d %H:%M:%S",tm);
 	tm->tm_sec = tm->tm_min = 0;
 
 	if (data->reset == NULL)
@@ -292,8 +294,9 @@ static int find_next_reset(rlm_counter_t *data, time_t timeval)
 			data->reset);
 		return -1;
 	}
-	DEBUG2("rlm_counter: Current Time: %d, Next reset %d", 
-		(int)timeval,(int)data->reset_time);
+	strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
+	DEBUG2("rlm_counter: Current Time: %d [%s], Next reset %d [%s]", 
+		(int)timeval,sCurrentTime,(int)data->reset_time,sNextTime);
 
 	return ret;
 }
