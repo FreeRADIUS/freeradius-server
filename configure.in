@@ -531,7 +531,9 @@ AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
 if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
   AC_DEFINE(HAVE_OPENSSL_SSL_H)
   old_CPPFLAGS="$CPPFLAGS"
-  CPPFLAGS="-I$OPENSSL_INCLUDE $CPPFLAGS"
+  if test "x$OPENSSL_INCLUDE" != "x"; then
+      CPPFLAGS="-I$OPENSSL_INCLUDE $CPPFLAGS"
+  fi
   AC_CHECK_HEADERS( \
 	  openssl/err.h \
 	  openssl/crypto.h \
@@ -542,7 +544,9 @@ if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
 
   AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
        old_CPPFLAGS=$CPPFLAGS
-       CPPFLAGS="-I$OPENSSL_INCLUDE"
+       if test "x$OPENSSL_INCLUDE" != "x"; then
+           CPPFLAGS="-I$OPENSSL_INCLUDE"
+	   fi
        AC_EGREP_CPP(yes,
        [#include <openssl/crypto.h>
        #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
