@@ -27,6 +27,7 @@ Ver 1.78:
 * Show the correct nas type in nas_admin. Bug noted by Nick Bright
 * Correctly calculate the nas ip in lib/sql/nas_list.php3. Add a check_ip() function in lib/functions.php3
   Bug noted by Nick Bright
+* Correctly check nas validity in nas_admin.php3. Bug noted by Nick Bright
 Ver 1.75:
 * A LOT of security related fixes. Now dialupadmin should hopefully be secure enough to
   be accessed by normal users (not administrators).

@@ -45,7 +45,7 @@ if ($link){
 		$selected_nas = da_sql_escape_string($selected_nas);
 		switch ($action) {
 			case 'check_nas':
-				if ($selected_nas == gethostbyname($selected_nas))
+				if (!check_ip($selected_nas) && $selected_nas == gethostbyname($selected_nas))
 					$msg = "<b>The NAS name <font color=red>is not</font> valid</b><br>\n";
 				else
 					$msg = "<b>The NAS name <font color=green>is</font> valid</b><br>\n";
