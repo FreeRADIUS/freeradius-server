@@ -188,7 +188,7 @@ int read_modules_file(char *filename)
 	FILE		*fp;
 	module_list_t	*this;
 	module_list_t	**last;
-	char		*p;
+	char		*p, *q;
 	char		buffer[1024];
 	char		control[256];
 	char		library[256];
@@ -294,21 +294,25 @@ int read_modules_file(char *filename)
 
 		/* find the structure name from the library name */
 		p = strrchr(library, '/');
+		q = module_name;
+#ifdef MODULE_NEED_USCORE
+		*(q++) = '_';
+#endif
 		if (p)
-			strNcpy(module_name, p + 1, sizeof(module_name));
+			strNcpy(q, p + 1, sizeof(module_name) - 1);
 		else
-			strNcpy(module_name, library, sizeof(module_name));
+			strNcpy(q, library, sizeof(module_name) - 1);
 		p = strchr(module_name, '.');
 		*p = '\0';
 
 #ifdef HAVE_DLOPEN
 		this->module = dlsym(this->handle, module_name);
 		error = dlerror();
-		if (!this->module || error) {
+		if (!this->module) {
 			fprintf(stderr, "[%s:%d] Failed linking to "
 					"%s structure in %s: %s\n",
-					filename, lineno, module_name,
-					library, dlerror());
+					filename, lineno, q,
+					library, error);
 			exit(1);
 		}
 #else
