@@ -76,8 +76,11 @@ fi
 if [ "$1" = "0" ]; then
 	/sbin/chkconfig --add radiusd
 fi
+if [ ! -d /var/log/radius ]; then
+    mkdir -p /var/log/radius
+fi
 # done here to avoid messing up existing installations
-for i in radutmp radwtmp # radius.log radwatch.log checkrad.log
+for i in radius radius/radutmp radius/radwtmp # radius/radius.log radius/radwatch.log radius/checkrad.log
 do
   touch /var/log/$i
   chown root.root /var/log/$i
@@ -92,19 +95,25 @@ rm -rf $RPM_BUILD_ROOT
 %config /etc/pam.d/radius
 %config /etc/logrotate.d/radiusd
 %config /etc/rc.d/init.d/radiusd
-%config /etc/raddb/*
+%config(noreplace) /etc/raddb/*
 /usr/man/*
 /usr/bin/*
 /usr/sbin/*
 /usr/lib/*
-#%dir(missingok) /var/log/radacct/
-#/var/log/checkrad.log
-#/var/log/radwatch.log
-#/var/log/radius.log
-#/var/log/radwtmp
-#/var/log/radutmp
+#%dir(missingok) /var/log/radius/radacct/
+#/var/log/radius/checkrad.log
+#/var/log/radius/radwatch.log
+#/var/log/radius/radius.log
+#/var/log/radius/radwtmp
+#/var/log/radius/radutmp
 
 %changelog
+* Fri Sep 07 2001 Ivan F. Martinez <ivanfm@ecodigit.com.br>
+- changes to make compatible with default config file shipped
+- adjusts log files are on /var/log/radius instead of /var/log
+- /etc/raddb changed to config(noreplace) to don't override
+-   user configs
+
 * Fri Sep 22 2000 Bruno Lopes F. Cabral <bruno@openline.com.br>
 - spec file clear accordling to the libltdl fix and minor updates
 
