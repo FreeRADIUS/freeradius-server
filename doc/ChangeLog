@@ -1,36 +1,8 @@
-FreeRADIUS 0.8 ; $Date$, urgency=high
+FreeRADIUS 0.7.1 ; Date: 2002/09/10 14:02:30 , urgency=high
 
-	* Preliminary 'expression' module, to allow you to do cool things
-	  like:    Session-Timeout = `%{expr:3600 - %{sql:SELECT ...}}`
-	* Added ability to do xlat on check items, and reply items,
-	  so that the value of the reply attributes can be dynamically
-	  generated.
-	* Added MIBs, taken from the RFC's.  This makes SNMP queries to
-	  the server a little easier to set up.
-	* Don't SEGV when we receive a packet which is larger than the
-	  size claimed in the RADIUS portion.  Patch from Vaughn Skinner.
-	* SNMP patches from Harrie Hazewinkel.
-	* Added Altiga dictionary, from Calum <calum.aug02@umtstrial.co.uk>
-	* New Rewrite-Rule for rlm_attr_rewrite, to selectively choose
-	  which rewrite rule is performed, and when.
-	* Minor bug fixes for radrelay.
-	* Bug fixes in SQL and sub-modules.
-	* Major updates to dialup_admin.
-	* Fixed handling of tagged string attributes, so that the server
-	  doesn't go off into never-never land.
-	* Cleaned up experimental rlm_smb, so that it builds on more
-	  platforms.
-	* Don't over-write request->reply->vps with the Reply-Message,
-	  when doing authentication rejects with Exec-Program-Wait.
-	* Added 'instantiate' section, so that modules like 'expr',
-	  with only an 'xlat' function can be registered.
-	* Allow '{' and '}' in xlat'd strings.
-	* C++ compatibility patch from Andrey Kotrekhov, for libradius.
-	* Automatically decrypt/encrypt User-Password, so that debugging
-	  mode will print out the text password, and not the random
-	  garbage it previously showed.
-	* Cleaned up header files and function prototypes for the SQL
-	  sub-modules.
+	* Fix a security hole in the kerberos module
+	* Updated 'configure' to allow it to discover pthread libraries on
+	  Solaris.
 	
 FreeRADIUS 0.7 ; Date: 2002/07/26 18:01:50 , urgency=high
 
