@@ -17,10 +17,10 @@
  */
 
 #include "autoconf.h"
-#include <stdlib.h>
-
-#include <stdio.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef HAVE_NDBM_H
 #include <ndbm.h>
