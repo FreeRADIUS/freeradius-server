@@ -170,7 +170,10 @@ static const char *comp2str[] = {
 	"authorize",
 	"preacct",
 	"accounting",
-	"session"
+	"session",
+	"pre-proxy",
+	"post-proxy",
+	"post-auth"
 };
 
 #if HAVE_PTHREAD_H
@@ -261,12 +264,33 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 	/* Choose a default return value appropriate for the component */
 	switch(component) {
-		case RLM_COMPONENT_AUTZ:    myresult = RLM_MODULE_NOTFOUND;break;
-		case RLM_COMPONENT_AUTH:    myresult = RLM_MODULE_REJECT;  break;
-		case RLM_COMPONENT_PREACCT: myresult = RLM_MODULE_NOOP;    break;
-		case RLM_COMPONENT_ACCT:    myresult = RLM_MODULE_NOOP;    break;
-		case RLM_COMPONENT_SESS:    myresult = RLM_MODULE_FAIL;    break;
-		default: myresult = RLM_MODULE_FAIL;
+	case RLM_COMPONENT_AUTZ:
+		myresult = RLM_MODULE_NOTFOUND;
+		break;
+	case RLM_COMPONENT_AUTH:
+		myresult = RLM_MODULE_REJECT;
+		break;
+	case RLM_COMPONENT_PREACCT:
+		myresult = RLM_MODULE_NOOP;
+		break;
+	case RLM_COMPONENT_ACCT:
+		myresult = RLM_MODULE_NOOP;
+		break;
+	case RLM_COMPONENT_SESS:
+		myresult = RLM_MODULE_FAIL;
+		break;
+	case RLM_COMPONENT_PRE_PROXY:
+		myresult = RLM_MODULE_NOOP;
+		break;
+	case RLM_COMPONENT_POST_PROXY:
+		myresult = RLM_MODULE_NOOP;
+		break;
+	case RLM_COMPONENT_POST_AUTH:
+		myresult = RLM_MODULE_NOOP;
+		break;
+	default:
+		myresult = RLM_MODULE_FAIL;
+		break;
 	}
 
 	if(c == NULL) {
@@ -539,6 +563,123 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* invalid  */
 			MOD_ACTION_RETURN,	/* userlock */
 			MOD_ACTION_RETURN,	/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		}
+	},
+	/* pre-proxy */
+	{
+		/* group */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
+		},
+		/* redundant */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		},
+		/* append */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			2,			/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		}
+	},
+	/* post-proxy */
+	{
+		/* group */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
+		},
+		/* redundant */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		},
+		/* append */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			2,			/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		}
+	},
+	/* post-auth */
+	{
+		/* group */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
+		},
+		/* redundant */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		},
+		/* append */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			2,			/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
 		}

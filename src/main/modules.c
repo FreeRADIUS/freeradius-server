@@ -71,7 +71,10 @@ const char *component_names[RLM_COMPONENT_COUNT] =
 	"authorize",
 	"preacct",
 	"accounting",
-	"session"
+	"session",
+	"pre-proxy",
+	"post-proxy",
+	"post-auth"
 };
 
 static const char *subcomponent_names[RLM_COMPONENT_COUNT] =
@@ -80,7 +83,10 @@ static const char *subcomponent_names[RLM_COMPONENT_COUNT] =
 	"autztype",
 	"preacctype",
 	"acctype",
-	"sesstype"
+	"sesstype",
+	"pre-proxytype",
+	"post-proxytype",
+	"post-authtype"
 };
 
 static void indexed_modcallable_free(indexed_modcallable **cf)
@@ -345,14 +351,22 @@ module_instance_t *find_module_instance(const char *instname)
 	/*
 	 *	Link to the module by name: rlm_FOO-major.minor
 	 */
-	if (strncmp(name1, "rlm_", 4))
+	if (strncmp(name1, "rlm_", 4)) {
+#if 0
 		snprintf(module_name, sizeof(module_name), "rlm_%s-%d.%d",
-			name1, RADIUSD_MAJOR_VERSION, RADIUSD_MINOR_VERSION);
-	else
+			 name1, RADIUSD_MAJOR_VERSION, RADIUSD_MINOR_VERSION);
+#else
+		snprintf(module_name, sizeof(module_name), "rlm_%s",
+			 name1);
+#endif
+	} else {
 		strNcpy(module_name, name1, sizeof(module_name));
+
+	}
+
 	/* XXX "radiusd.conf" is wrong here; must find cf filename */
-	node->entry = linkto_module(module_name,
-			"radiusd.conf", cf_section_lineno(inst_cs));
+	node->entry = linkto_module(module_name, "radiusd.conf",
+				    cf_section_lineno(inst_cs));
 	if (!node->entry) {
 		free(node);
 		/* linkto_module logs any errors */
@@ -462,6 +476,9 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 			case RLM_COMPONENT_PREACCT: return RLM_MODULE_NOOP;
 			case RLM_COMPONENT_ACCT:    return RLM_MODULE_NOOP;
 			case RLM_COMPONENT_SESS:    return RLM_MODULE_FAIL;
+			case RLM_COMPONENT_PRE_PROXY:  return RLM_MODULE_NOOP;
+			case RLM_COMPONENT_POST_PROXY: return RLM_MODULE_NOOP;
+			case RLM_COMPONENT_POST_AUTH:  return RLM_MODULE_NOOP;
 			default:                    return RLM_MODULE_FAIL;
 		}
 	}
@@ -697,3 +714,28 @@ int module_checksimul(REQUEST *request, int maxsimul)
 
 	return (request->simul_count < maxsimul) ? 0 : request->simul_mpp;
 }
+
+/*
+ *	Do pre-proxying for ALL configured sessions
+ */
+int module_pre_proxy(REQUEST *request)
+{
+	return indexed_modcall(RLM_COMPONENT_PRE_PROXY, 0, request);
+}
+
+/*
+ *	Do post-proxying for ALL configured sessions
+ */
+int module_post_proxy(REQUEST *request)
+{
+	return indexed_modcall(RLM_COMPONENT_POST_PROXY, 0, request);
+}
+
+/*
+ *	Do post-authentication for ALL configured sessions
+ */
+int module_post_auth(REQUEST *request)
+{
+	return indexed_modcall(RLM_COMPONENT_POST_AUTH, 0, request);
+}
+

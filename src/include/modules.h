@@ -11,12 +11,17 @@
 
 typedef int (*packetmethod)(void *instance, REQUEST *request);
 
-#define RLM_COMPONENT_AUTH 0
-#define RLM_COMPONENT_AUTZ 1
-#define RLM_COMPONENT_PREACCT 2
-#define RLM_COMPONENT_ACCT 3
-#define RLM_COMPONENT_SESS 4
-#define RLM_COMPONENT_COUNT 5 /* How many components are there */
+enum {
+  RLM_COMPONENT_AUTH = 0,
+  RLM_COMPONENT_AUTZ,		/* 1 */
+  RLM_COMPONENT_PREACCT,	/* 2 */
+  RLM_COMPONENT_ACCT,		/* 3 */
+  RLM_COMPONENT_SESS,		/* 4 */
+  RLM_COMPONENT_PRE_PROXY,	/* 5 */
+  RLM_COMPONENT_POST_PROXY,	/* 6 */
+  RLM_COMPONENT_POST_AUTH,	/* 7 */
+  RLM_COMPONENT_COUNT		/* 8: How many components are there */
+};
 
 #define RLM_TYPE_THREAD_SAFE	(0 << 0)
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0)
@@ -52,5 +57,8 @@ int module_authenticate(int type, REQUEST *request);
 int module_preacct(REQUEST *request);
 int module_accounting(REQUEST *request);
 int module_checksimul(REQUEST *request, int maxsimul);
+int module_pre_proxy(REQUEST *request);
+int module_post_proxy(REQUEST *request);
+int module_post_auth(REQUEST *request);
 
 #endif /* RADIUS_MODULES_H */
