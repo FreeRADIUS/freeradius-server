@@ -51,6 +51,22 @@ CONF_PAIR *cf_pair_alloc(const char *attr, const char *value, int operator)
 }
 
 /*
+ *	Add a pair to a configuration section.
+ */
+void cf_pair_add(CONF_SECTION *cs, CONF_PAIR *cp_new)
+{
+	CONF_PAIR *cp;
+	
+	for (cp = cs->cps; cp && cp->next; cp = cp->next)
+		;
+
+	if (cp == NULL)
+		cs->cps = cp_new;
+	else
+		cp->next = cp_new;
+}
+
+/*
  *	Free a CONF_PAIR
  */
 void cf_pair_free(CONF_PAIR *cp)
@@ -136,6 +152,16 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 	int		t1, t2, t3;
 
 	/*
+	 *	Ensure that the user can't add CONF_SECTIONs
+	 *	with 'internal' names;
+	 */
+	if ((name1 != NULL) && (name1[0] == '_')) {
+		log(L_ERR, "%s[%d]: Illegal configuration section name",
+		    cf, *lineno);
+		return NULL;
+	}
+
+	/*
 	 *	Allocate new section.
 	 */
 	cs = cf_section_alloc(name1, name2);
@@ -171,7 +197,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 		 */
 
 		if (t2 == T_LCBRACE) {
-			css = conf_readsection(cf, lineno, fp, name2, buf1);	
+			css = conf_readsection(cf, lineno, fp, name2, buf1);
 			if (css == NULL)
 				return NULL;
 			for (csp = cs->sub; csp && csp->next; csp = csp->next)
@@ -216,15 +242,20 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 		}
 
 		/*
+		 *	Ensure that the user can't add CONF_PAIRs
+		 *	with 'internal' names;
+		 */
+		if (buf1[0] == '_') {
+			log(L_ERR, "%s[%d]: Illegal configuration pair name",
+				cf, *lineno);
+			return NULL;
+		}
+
+		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
 		cpn = cf_pair_alloc(buf1, buf3, t2);
-		for (cp = cs->cps; cp && cp->next; cp = cp->next)
-			;
-		if (cp == NULL)
-			cs->cps = cpn;
-		else
-			cp->next = cpn;
+		cf_pair_add(cs, cpn);
 	}
 
 	/*
