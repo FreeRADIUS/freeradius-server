@@ -2150,17 +2150,25 @@ static void proxy_retry(void)
 	for (id = 0; id < 256; id++) {
 	for (p = request_list[id].first_request; p; p = p->next) {
 		/*
-		 *	No proxy request, OR we already have seen the
-		 *	reply (so we don't need to send another proxy
-		 *	request), OR the next try is to be done later.
+		 *	The request is finished, (but it hasn't yet
+		 *	been removed from the list.)
+		 *	OR there is no proxy request,
+		 *	OR we already have seen the reply (so we don't
+		 *	need to send another proxy request),
+		 *	OR the next try is to be done later.
 		 *
 		 *	Skip the try.
 		 *
 		 *	FIXME: These retries should be binned by
 		 *	the next try time, so we don't have to do
 		 *	all of this work on every second.
+		 *
+		 *	That will also get rid of these checks, as
+		 *	a packet can get removed from the bin when
+		 *	the proxy reply is received.
 		 */
-		if ((!p->proxy) ||
+		if ((p->finished) ||
+		    (!p->proxy) ||
 		    (p->proxy_reply) ||
 		    (p->proxy_next_try > now)) {
 			continue;
