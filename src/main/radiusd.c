@@ -1735,7 +1735,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *  Maybe we've saved a reply packet.  If so,
 			 *  re-send it.  Otherwise, just complain.
 			 */
-			if (curreq->reply) {
+			if ((curreq->reply) && (curreq->reply->code != 0)) {
 				radlog(L_INFO, "Sending duplicate authentication reply"
 						" to client %s:%d - ID: %d", client_name(curreq->packet->src_ipaddr),
 						curreq->packet->src_port, curreq->packet->id);
