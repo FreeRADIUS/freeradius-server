@@ -25,7 +25,6 @@ static const char rcsid[] =
 #include	<unistd.h>
 #include	<signal.h>
 #include	<errno.h>
-#include	<sys/wait.h>
 #include	<sys/resource.h>
 #if HAVE_GETOPT_H
 #  include	<getopt.h>
@@ -40,6 +39,16 @@ static const char rcsid[] =
 
 #if HAVE_PTHREAD_H
 #include	<pthread.h>
+#endif
+
+#if HAVE_SYS_WAIT_H
+# include <sys/wait.h>
+#endif
+#ifndef WEXITSTATUS
+# define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
+#endif
+#ifndef WIFEXITED
+# define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
 #include <assert.h>
@@ -1268,7 +1277,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 	prevreq = NULL;
 	pkt = request->packet;
 	request_count = 0;
-	curtime = time(NULL);
+	curtime = request->timestamp; /* good enough for our purposes */
 	id = pkt->id;
 
 	/*
@@ -1650,7 +1659,6 @@ void sig_cleanup(int sig)
 			while (curreq != (REQUEST *)NULL) {
 				if (curreq->child_pid == pid) {
 					curreq->child_pid = NO_SUCH_CHILD_PID;
-					curreq->timestamp = time(NULL);
 					break;
 				}
 				curreq = curreq->next;
