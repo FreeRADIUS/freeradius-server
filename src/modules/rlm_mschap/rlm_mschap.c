@@ -287,6 +287,7 @@ typedef struct rlm_mschap_t {
 	char *passwd_file;
 	char *xlat_name;
 	char *auth_type;	/* I don't think this is needed... */
+	char *ntlm_auth;
 } rlm_mschap_t;
 
 
@@ -546,6 +547,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
 	{ "authtype",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, auth_type), NULL,  NULL },
+	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
+	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -558,6 +561,7 @@ static int mschap_detach(void *instance){
 #define inst ((rlm_mschap_t *)instance)
 	if (inst->passwd_file) free(inst->passwd_file);
 	if (inst->auth_type) free(inst->auth_type);
+	if (inst->ntlm_auth) free(inst->ntlm_auth);
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, mschap_xlat);
 		free(inst->xlat_name);
@@ -636,7 +640,7 @@ static void add_reply(VALUE_PAIR** vp, unsigned char ident,
 /*
  *	Add MPPE attributes to the reply.
  */
-static void mppe_add_reply(VALUE_PAIR** vp,
+static void mppe_add_reply(VALUE_PAIR **vp,
 			   const char* name, const char* value, int len)
 {
        VALUE_PAIR *reply_attr;
@@ -659,37 +663,86 @@ static void mppe_add_reply(VALUE_PAIR** vp,
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int do_mschap(rlm_mschap_t *inst, VALUE_PAIR *password,
+static int do_mschap(rlm_mschap_t *inst,
+		     REQUEST *request, VALUE_PAIR *password,
 		     uint8_t *challenge, uint8_t *response,
 		     uint8_t *nthashhash)
 {
-	uint8_t		calculated[32];
-
-	inst = inst;		/* -Wunused (for later) */
+	uint8_t		calculated[24];
 
 	/*
-	 *	No password: can't do authentication.
+	 *	Do normal authentication.
 	 */
-	if (!password) {
-		DEBUG2("  rlm_mschap: FAILED: No NT/LM-Password.  Cannot perform authentication.");
-		return -1;
-	}
+	if (!inst->ntlm_auth) {
+		/*
+		 *	No password: can't do authentication.
+		 */
+		if (!password) {
+			DEBUG2("  rlm_mschap: FAILED: No NT/LM-Password.  Cannot perform authentication.");
+			return -1;
+		}
+		
+		lrad_mschap(password->strvalue, challenge, calculated);
+		if (memcmp(response, calculated, 24) != 0) {
+			return -1;
+		}
+		
+		/*
+		 *	If the password exists, and is an NT-Password,
+		 *	then calculate the hash of the NT hash.  Doing this
+		 *	here minimizes work for later.
+		 */
+		if (password && (password->attribute == PW_NT_PASSWORD)) {
+			md4_calc(nthashhash, password->strvalue, 16);
+		} else {
+			memset(nthashhash, 0, 16);
+		}
+	} else {		/* run ntlm_auth */
+		int	result;
+		char	buffer[256];
 
-	lrad_mschap(password->strvalue, challenge, calculated);
-	if (memcmp(response, calculated, 24) != 0) {
-		return -1;
-	}
-
-	/*
-	 *	If the password exists, and is an NT-Password,
-	 *	then calculate the hash of the NT hash.  Doing this
-	 *	here minimizes work for later.
-	 */
-	if (password && (password->attribute == PW_NT_PASSWORD)) {
-		md4_calc(nthashhash, password->strvalue, 16);
-	} else {
 		memset(nthashhash, 0, 16);
+
+		/*
+		 *	Run the program, and expect that we get 16 
+		 */
+		result = radius_exec_program(inst->ntlm_auth, request,
+					     TRUE, /* wait */
+					     buffer, sizeof(buffer),
+					     NULL, NULL);
+		if (result != 0) {
+			DEBUG2("  rlm_mschap: External script failed.");
+			return -1;
+		}
+
+		/*
+		 *	Parse the answer as an nthashhash.
+		 *
+		 *	ntlm_auth currently returns:
+		 *	NT_KEY: 000102030405060708090a0b0c0d0e0f
+		 */
+		if (memcmp(buffer, "NT_KEY: ", 8) != 0) {
+			DEBUG2("  rlm_mschap: Invalid output from ntlm_auth: expecting NT_KEY");
+			return -1;
+		}
+
+		/*
+		 *	Check the length.
+		 */
+		if (strlen(buffer + 8) != 32) {
+			DEBUG2("  rlm_mschap: Invalid output from ntlm_auth: NT_KEY has unexpected length");
+			return -1;
+		}
+
+		/*
+		 *	Update the NT hash hash, from the NT key.
+		 */
+		if (hex2bin(buffer + 8, nthashhash, 16) != 16) {
+			DEBUG2("  rlm_mschap: Invalid output from ntlm_auth: NT_KEY has non-hex values");
+			return -1;
+		}
 	}
+
 	return 0;
 }
 
@@ -1043,7 +1096,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	Do the MS-CHAP authentication.
 		 */
-		if (do_mschap(inst, password, challenge->strvalue,
+		if (do_mschap(inst, request, password, challenge->strvalue,
 			      response->strvalue + offset, nthashhash) < 0) {
 			DEBUG2("  rlm_mschap: MS-CHAP-Response is incorrect.");
 			add_reply(&request->reply->vps, *response->strvalue,
@@ -1110,7 +1163,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		
 		DEBUG2("  rlm_mschap: doing MS-CHAPv2 with NT-Password");
 
-		if (do_mschap(inst, nt_password, mschapv1_challenge,
+		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
 			      response->strvalue + 26, nthashhash) < 0) {
 			DEBUG2("  rlm_mschap: FAILED: MS-CHAP2-Response is incorrect");
 			add_reply(&request->reply->vps, *response->strvalue,
