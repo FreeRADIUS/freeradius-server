@@ -48,7 +48,7 @@ The hostname or IP address of the remote server. Optionally a UDP port
 can be specified. If no UDP port is specified, it is looked up in
 \fI/etc/services\fP. The service name looked for is \fBradacct\fP for
 accounting packets, and \fBradius\fP for all other requests. If a
-service is not found in \fI/etc/services\fP, 1646 and 1645 are used
+service is not found in \fI/etc/services\fP, 1813 and 1812 are used
 respectively.
 
 .IP acct\ |\ auth
@@ -72,7 +72,7 @@ A sample session that queries the remote server for \fIStatus-Server\fP
 .ne 3
 
 $ echo "User-Name = fnord" | radclient 192.168.1.42 12 s3cr3t
-Sending request to server 192.168.1.42, port 1645.
+Sending request to server 192.168.1.42, port 1812.
 radrecv: Packet from host 192.168.1.42 code=2, id=140, length=54
     Reply-Message = "Cistron Radius up 21 days, 02:05"
 
