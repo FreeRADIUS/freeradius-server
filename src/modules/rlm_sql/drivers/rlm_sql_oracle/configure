@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.5 
+# From configure.in Revision: 1.6 
 
 
 
@@ -1115,16 +1115,15 @@ rm -f conftest*
 																		if test "x$ORACLE_LIBS" = "x"; then
 				echo "$ac_t""no" 1>&6
 				ORACLE_INCLUDE=
-			else
-				sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
-				echo "$ac_t""yes" 1>&6
-				break
 			fi
 		fi
 
-		if test "x$ORACLE_LIBS" != "x"; then
+		if test "x$ORACLE_LIBS" = "x"; then
 			echo "configure: warning: oracle libraries not found.  Use --with-oracle-lib-dir=<path>." 1>&2
 			targetname=   # disabled module
+		else
+			sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
+			echo "$ac_t""yes" 1>&6
 		fi
 	fi
 

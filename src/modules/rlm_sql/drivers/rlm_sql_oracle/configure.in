@@ -133,16 +133,15 @@ if test x$with_[]modname != xno; then
 			if test "x$ORACLE_LIBS" = "x"; then
 				AC_MSG_RESULT(no)
 				ORACLE_INCLUDE=
-			else
-				sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
-				AC_MSG_RESULT(yes)
-				break
 			fi
 		fi
 
-		if test "x$ORACLE_LIBS" != "x"; then
+		if test "x$ORACLE_LIBS" = "x"; then
 			AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path>.])
 			targetname=   # disabled module
+		else
+			sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
+			AC_MSG_RESULT(yes)
 		fi
 	fi
 
