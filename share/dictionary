@@ -308,6 +308,7 @@ ATTRIBUTE	Packet-Src-Port		1086	integer
 ATTRIBUTE	Packet-Dst-Port		1087	integer
 ATTRIBUTE	Packet-Authentication-Vector 1088 octets
 ATTRIBUTE	Time-Of-Day		1089	string
+ATTRIBUTE	Request-Processing-Stage 1090	string
 
 #
 #	Range:	1084-1199

@@ -269,12 +269,24 @@ static int xlat_packet(void *instance, REQUEST *request,
 				localvp.attribute = da->attr;
 				localvp.lvalue = packet->dst_port;
 				break;
+
 			case PW_PACKET_AUTHENTICATION_VECTOR:
 				localvp.attribute = da->attr;
 				memcpy(localvp.strvalue, packet->vector,
 				       sizeof(packet->vector));
 				localvp.length = sizeof(packet->vector);
 				break;
+
+				/*
+				 *	Authorization, accounting, etc.
+				 */
+			case PW_REQUEST_PROCESSING_STAGE:
+				if (request->component) {
+					strNcpy(out, request->component, outlen);
+				} else {
+					strNcpy(out, "server_core", outlen);
+				}
+				return strlen(out);
 			
 			default:
 				return 0; /* not found */
