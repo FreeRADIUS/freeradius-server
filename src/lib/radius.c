@@ -49,6 +49,23 @@ typedef struct radius_packet_t {
 
 static uint8_t random_vector_pool[AUTH_VECTOR_LEN*2];
 
+static const char *packet_codes[] = {
+  "",
+  "Access-Request",
+  "Access-Accept",
+  "Access-Reject",
+  "Accounting-Request",
+  "Accounting-Response",
+  "Accounting-Status",
+  "Password-Request",
+  "Password-Accept",
+  "Password-Reject",
+  "Accounting-Message",
+  "Access-Challenge",
+  "Status-Server",
+  "Status-Client"
+};
+
 /*
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
@@ -62,30 +79,11 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	uint8_t			ip_buffer[16];
 
 	reply = packet->vps;
-
-	switch (packet->code) {
-		case PW_PASSWORD_REJECT:
-		case PW_AUTHENTICATION_REJECT:
-			what = "Reject";
-			break;
-		case PW_ACCESS_CHALLENGE:
-			what = "Challenge";
-			break;
-		case PW_AUTHENTICATION_ACK:
-			what = "Ack";
-			break;
-		case PW_ACCOUNTING_RESPONSE:
-			what = "Accounting Ack";
-			break;
-		case PW_AUTHENTICATION_REQUEST:
-			what = "Authentication request";
-			break;
-		case PW_ACCOUNTING_REQUEST:
-			what = "Accounting request";
-			break;
-		default:
-			what = "Reply";
-			break;
+	
+	if ((packet->code > 0) && (packet->code < 14)) {
+	  what = packet_codes[packet->code];
+	} else {
+	  what = "Reply";
 	}
 
 	/*
@@ -500,9 +498,18 @@ RADIUS_PACKET *rad_recv(int fd)
 		return NULL;
 	}
 
-	DEBUG("rad_recv: Packet from host %s:%d code=%d, id=%d, length=%d\n",
-	      ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port,
-	      hdr->code, hdr->id, totallen);
+	if (librad_debug) {
+	  if ((hdr->code > 0) && (hdr->code < 14)) {
+	    printf("rad_recv: %s packet from host %s:%d",
+		   packet_codes[hdr->code],
+		   ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port);
+	  } else {
+	    printf("rad_recv: Packet from host %s:%d code=%d",	
+		   ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port,
+		   hdr->code);
+	  }
+	  printf(", id=%d, length=%d\n", hdr->id, totallen);
+	}
 
 	/*
 	 *	Fill RADIUS header fields
