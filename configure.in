@@ -123,7 +123,7 @@ AC_ARG_WITH(ascend-hack,
 	AC_DEFINE(WITH_ASCEND_HACK)
 	dnl if they haven't said to use it, do so.
 	if test "${with_ascend_cpl+set}" != "set"; then
-		with_ascend_cpl=1
+		with_ascend_cpl=23
 	fi
     esac ]
 )
