@@ -5,7 +5,8 @@ use Date::Manip qw(ParseDate UnixDate);
 $|=1;
 
 $file=shift||'none';
-$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
+$conf=shift||'/src/cvs/radiusd/dialup_admin/conf/admin.conf';
+$domain='company.com';
 
 open CONF, "<$conf"
 	or die "Could not open configuration file\n";
@@ -69,8 +70,8 @@ for(;;){
 				$caller='' if (!defined($caller));
 				$user =~s/[^\w]//g;
 				$nas =~s/[^\w]//g;
-				if ($nas !~ /\.noc\.ntua\.gr$/){
-					$nas .= '.noc.ntua.gr';
+				if ($nas !~ /\.$domain$/){
+					$nas .= '.$domain';
 				}
 				$port =~s/[^\d]//g;
 				$caller =~s/[^\d]//g;
