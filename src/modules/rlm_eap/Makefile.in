@@ -7,7 +7,9 @@ RLM_LIBS    = -Llibeap -leap
 #RLM_LIBS    = $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
 RLM_INSTALL = install-types
 RLM_SUBDIRS = libeap @eaptypes@ 
+RLM_UTILS   = radeapclient
 
+.PHONY: all install-types common
 
 $(STATIC_OBJS): $(HEADERS)
 
@@ -24,15 +26,13 @@ all:
 	@$(MAKE) $(MFLAGS) radeapclient
 
 radeapclient: radeapclient.o ../../lib/libradius.a
+	(cd libeap && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit 1
 	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) ${RLM_CFLAGS} $(LDFLAGS) -o radeapclient radeapclient.o $(CLIENTLIBS) $(LIBS) $(LCRYPT)
 
 radeapclient.o: radeapclient.c $(INCLUDES)
 	$(CC) $(CFLAGS) ${RLM_CFLAGS} -c radeapclient.c
 
-allclean:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
-
-install-types: radeapclient
+install-types: 
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 	$(INSTALL) -m 755 radeapclient	$(R)$(bindir)
 
