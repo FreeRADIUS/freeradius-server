@@ -4,6 +4,27 @@ RLM Module Interface (for developers)
 
 Section 1 - overview
 
+Section 1.1 Intent of the modules.
+
+The intent of modules is to do small, simple, well-defined things
+when RADIUS packets are received.  If the module is intended to do
+things when RADIUS packets are NOT received, then it has no business
+being in the server.  Similarly, the model infrastructure is NOT
+intended to allow other servers, applications, or anything else to
+execute inside of a module.
+
+Allowing modules to do many things means that the server becomes
+more unreliable, more difficult to maintain, and much more likely to
+be vulnerable to security problems.
+
+So the modules do something when RADIUS packets are received.  Modules
+which do more (creating threads, forking programs) will NOT be added
+to the server, and the server core will NOT be modified to enable
+these kinds of modules.  Those functions more properly belong in a
+seperate application.
+
+Section 1.2 Module outline
+
 The fundamental concepts of the rlm interface are module, instance, and
 component.
 
