@@ -2297,7 +2297,7 @@ void sig_cleanup(int sig)
 			radlog(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch "
 					"signal %d: killing all active servers.\n",
 					(int)pid, WTERMSIG(status));
-			kill(0, SIGTERM);
+			kill(-radius_pid, SIGTERM);
 			exit(1);
 		}
 
@@ -2388,7 +2388,7 @@ static void sig_fatal(int sig)
 		 *      Kill all of the processes in the current
 		 *	process group.
 		 */
-		kill(-1, SIGTERM);
+		kill(-radius_pid, SIGTERM);
 	}
 }
 
