@@ -393,7 +393,9 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 	 */
 	first = pairfind(vps, PW_EAP_MESSAGE);
 	if (first == NULL) {
-		radlog(L_ERR, "rlm_eap: EAP-Message not found");
+		radlog(L_ERR, "rlm_eap: EAP-Message not found.  You have misconfigured the server.");
+		DEBUG2("  You have 'Auth-Type := EAP' in another module or configuration file.");
+		DEBUG2("  DO NOT set 'Auth-Type' to 'EAP'.  The EAP module will do it, if necessary.");
 		return NULL;
 	}
 
