@@ -13,8 +13,8 @@ tmp     = $(shell pwd)/debian/tmp
 prefix	= /
 exec_prefix	= /usr
 mandir	= $(exec_prefix)/share/man
-libdir	= $(exec_prefix)/lib/radiusd-freeradius
-logdir	= /var/log/radiusd-freeradius
+libdir	= $(exec_prefix)/lib/freeradius
+logdir	= /var/log/freeradius
 pkgdocdir	= $(exec_prefix)/share/doc/radiusd-freeradius
 
 build: clean
