@@ -50,6 +50,19 @@ uses the correct snmpwalk command and that it returns the correct results (snmfi
 servers). Try commenting out general_finger_type so that the Online Users page will just query the radacct
 table and not try to do a finger on the NAS.
 
+> Even though I have uncommented Dialup-Access in user_edits.attrs, when
+> editing a user, that field is not available.  Is this because in sql.attrmap
+> I have:
+>
+> checkItem     Dialup-Access                   none
+>
+> What should the attribute be?
+
+Dialup-Access is an attribute used by the ldap module. It is not implemented in
+the sql module, that's why the mapping is set to none.
+You could set Auth-Type to Reject instead.
+
+
 >
 > After I make a few changes in one of the configuration files things only work like they worked before
 >

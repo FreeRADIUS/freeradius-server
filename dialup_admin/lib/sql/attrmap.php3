@@ -1,5 +1,5 @@
 <?php
-#Read ldap attribute map
+#Read sql attribute map
 $ARR = file("$config[general_sql_attrmap]");
 foreach($ARR as $val){
 	$val=chop($val);
