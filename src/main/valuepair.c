@@ -276,8 +276,23 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 		 *	Not found, it's not a match.
 		 */
 		if (auth_item == NULL) {
-			return -1;
+			/*
+			 *	Didn't find it.  If we were *trying*
+			 *	to not find it, then we succeeded.
+			 */
+			if (check_item->operator == T_OP_CMP_FALSE)
+				return 0;
+			else
+				return -1;
 		}
+
+		/*
+		 *	Else we found it, but we were trying to not
+		 *	find it, so we failed.
+		 */
+		if (check_item->operator == T_OP_CMP_FALSE)
+			return -1;
+
 
 		/*
 		 *	We've got to xlat the string before doing
@@ -484,8 +499,7 @@ static int presufcmp(void *instance,
 			ret = strcmp(name + namelen - len,
 					(char *)check->strvalue);
 			if (ret == 0 && rest) {
-				strncpy(rest, name, namelen - len);
-				rest[namelen - len] = 0;
+				strNcpy(rest, name, namelen - len);
 			}
 			break;
 	}
