@@ -797,19 +797,19 @@ modules {
 	#	format     -  must be 'prefix' or 'suffix'
 	#	delimiter  -  must be a single character
 
-	#  'username@realm'
-	#
-	realm suffix {
-		format = suffix
-		delimiter = "@"
-	}
-
 	#  'realm/username'
 	#
 	#  Using this entry, IPASS users have their realm set to "IPASS".
 	realm realmslash {
 		format = prefix
 		delimiter = "/"
+	}
+
+	#  'username@realm'
+	#
+	realm suffix {
+		format = suffix
+		delimiter = "@"
 	}
 
 	#  'username%realm'
@@ -1198,8 +1198,10 @@ authorize {
 	eap
 
 	#
-	#  Look for '@realm', and decide whether or not to proxy,
-	#  based on that.
+	#  Look for IPASS style 'realm/', and if not found, look for
+	#  '@realm', and decide whether or not to proxy, based on
+	#  that.
+	realmslash
 	suffix
 
 	#
@@ -1298,11 +1300,13 @@ preacct {
 	preprocess
 
 	#
-	#  Look for '@realm', and decide whether or not to proxy,
-	#  based on that.
+	#  Look for IPASS-style 'realm/', and if not found, look for
+	#  '@realm', and decide whether or not to proxy, based on
+	#  that.
 	#
 	#  Accounting requests are generally proxied to the same
 	#  home server as authentication requests.
+	realmslash
 	suffix
 
 	#
