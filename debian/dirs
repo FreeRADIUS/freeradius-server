@@ -16,3 +16,5 @@ usr/bin
 usr/lib
 var/
 var/log
+var/log/radacct
+var/run
