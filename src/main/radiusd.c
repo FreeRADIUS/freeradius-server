@@ -223,6 +223,22 @@ static void reread_config(int reload)
 		radlog(L_INFO, "Reloading configuration files.");
 	}
 
+	/* First read radiusd.conf */
+	DEBUG2("reread_config:  reading radiusd.conf");
+	if (read_radius_conf_file() < 0) {
+		radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
+		return -1;
+	}
+
+	/*
+	 *	And parse the server's configuration values.
+	 */
+	cs = cf_section_find(NULL);
+	if (!cs)
+		return;
+
+	cf_section_parse(cs, server_config);
+
 	/* Read users file etc. */
 	if (res == 0 && read_config_files() != 0)
 		res = -1;
@@ -234,15 +250,6 @@ static void reread_config(int reload)
 		}
 		exit(1);
 	}
-
-	/*
-	 *	And parse the server's configuration values.
-	 */
-	cs = cf_section_find(NULL);
-	if (!cs)
-		return;
-
-	cf_section_parse(cs, server_config);
 
 	/*
 	 *	Go update our behaviour, based on the configuration

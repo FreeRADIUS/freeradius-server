@@ -540,12 +540,6 @@ int read_config_files()
 		return -1;
 	}
 
-	DEBUG2("read_config_files:  reading radiusd.conf");
-	if (read_radius_conf_file() < 0) {
-	        radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
-		return -1;
-	}
-
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
 	DEBUG2("read_config_files:  reading naslist");
 	if (read_naslist_file(buffer) < 0) {
