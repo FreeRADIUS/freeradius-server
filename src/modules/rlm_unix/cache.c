@@ -146,16 +146,23 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 #if !HAVE_SHADOW_H
 			/* Put passwords into new structure (*/
 			len = ptr - bufptr;
-			if((new->pw_passwd = (char *)malloc(len+1)) == NULL) {
-				radlog(L_ERR, "HASH:  Out of memory!");
-				free(new->pw_name);
-				free(new);
-				fclose(passwd);
-				unix_freepwcache(cache);
-				return NULL;
+
+			if (len > 0) {
+				new->pw_passwd = (char *)malloc(len+1);
+				if(new->pw_passwd == NULL) {
+					radlog(L_ERR, "HASH:  Out of memory!");
+					free(new->pw_name);
+					free(new);
+					fclose(passwd);
+					unix_freepwcache(cache);
+					return NULL;
+				}
+				strncpy(new->pw_passwd, bufptr, len);
+				new->pw_passwd[len] = '\0';
+			} else {
+				new->pw_passwd = NULL;
 			}
-			strncpy(new->pw_passwd, bufptr, len);
-			new->pw_passwd[len] = '\0';
+
 #endif /* !HAVE_SHADOW_H */  
 
 			/* 
@@ -194,7 +201,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 			len = ptr - bufptr;
 			if((new->pw_gecos = (char *)malloc(len+1)) == NULL) {
 				radlog(L_ERR, "HASH:  Out of memory!");
-				free(new->pw_passwd);
+				if (new->pw_passwd) free(new->pw_passwd);
 				free(new->pw_name);
 				free(new);
 				fclose(passwd);
@@ -274,14 +281,19 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 				ptr++;
 			len = ptr - bufptr;
 
-			if((new->pw_passwd = (char *)malloc(len+1)) == NULL) {
-				radlog(L_ERR, "HASH:  Out of memory!");
-				fclose(shadow);
-				unix_freepwcache(cache);
-				return NULL;
+			if (len > 0) {
+				new->pw_passwd = (char *)malloc(len+1);
+				if (new->pw_passwd == NULL) {
+					radlog(L_ERR, "HASH:  Out of memory!");
+					fclose(shadow);
+					unix_freepwcache(cache);
+					return NULL;
+				}
+				strncpy(new->pw_passwd, bufptr, len);
+				new->pw_passwd[len] = '\0';
+			} else {
+				new->pw_passwd = NULL;
 			}
-			strncpy(new->pw_passwd, bufptr, len);
-			new->pw_passwd[len] = '\0';
 		}
 	}
 	fclose(shadow);
@@ -401,10 +413,10 @@ void unix_freepwcache(struct pwcache *cache)
 			cur = cache->hashtable[hashindex];
 			while(cur) {
 				next = cur->next;
-				free(cur->pw_name);	
-				free(cur->pw_passwd);	
-				free(cur->pw_gecos);	
-				free(cur);	
+				free(cur->pw_name);
+				if (cur->pw_passwd) free(cur->pw_passwd);
+				free(cur->pw_gecos);
+				free(cur);
 				cur = next;
 			}
 		}
@@ -505,7 +517,7 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 	/*
 	 *	We might have a passwordless account.
 	 */
-	if (encrypted_pass[0] == 0) return 0;
+	if (encrypted_pass == NULL) return 0;
 
 	if(mainconfig.do_usercollide) {
 		while(pwd) {
@@ -519,7 +531,7 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 		 	 * Could still be null passwd
 			 */
 			encrypted_pass = pwd->pw_passwd;
-			if (encrypted_pass[0] == NULL) {
+			if (encrypted_pass == NULL) {
 				return 0;
 			}
 	
