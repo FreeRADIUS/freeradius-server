@@ -1,4 +1,32 @@
-FreeRADIUS 0.9 ; $Date$, urgency=low
+FreeRADIUS 1.0.0 ; Date: $Date$, urgency=low
+       * EAP-TTLS support in rlm_eap
+
+FreeRADIUS 0.9.1 ; Date: 2003/09/04 14:56:34, urgency=low
+
+	* Replicate-To-Realm is deprecated, and hence no longer documented
+	* Document rlm_detail support for authorize and post-auth sections
+	* Improve slightly MySQL accounting record SQL query
+	* Opaquefied CHAP-Challenge
+	* Add attributes to Nomadix dictionary
+	* Fix rlm_exec's parsing of non-attribute return values
+	* Fix for a segfault while reading config files
+	* Fix for a segfault regarding hostname lengths
+	* Fix for a segfault while reading deprecated config files
+	* Fix compilation of radiusd.c when threads are disabled
+	* Recover from inability to relay
+	* Stop complaining in error log when a system call is interrupted.
+	* Don't print binary CHAP-Passwords into the logs
+	* Successfully detect GNU dbm >= 1.8.1's dbm compatibility library
+	* Fix rlm_unix to deal with requests without a username
+	* Fix "uninmplemented function" crash in postgresql driver on -HUP
+	* Revert INTERVAL types to BIGINT in postgresql example schema
+	* Fix radrelay to notice when it's out of IDs
+	* Fix radrelay to correctly skip bad attributes
+	* Fix radrelay to not leak IDs when discarding packets
+	* Fix configure to correctly identify systems without SYSV or GNU-style
+	  gethostby{addr,name}_r.
+
+FreeRADIUS 0.9.0 ; Date: 2003/07/04 21:01:29, urgency=low
 
 	* Many, many, bug fixes and feature enhancements.
 	* radrelay now updates packet 'id' on retransmissions.
@@ -39,7 +67,6 @@ FreeRADIUS 0.9 ; $Date$, urgency=low
 	* Preliminary large file support in 'configure' and in the server,
 	  to support 2G+ detail files.
 	* Install documentation into /usr/local/share/doc/freeradius
-	* Dictionaries are now in /usr/local/share/freeradius
 	* New/updated dictionaries for RedCreek, Bintec, Alcatel,
 	  ITK, Telebit, and Cabletron.
 	* Updates to allow building on MAC OSX.
