@@ -91,6 +91,15 @@ int proxy_dead_time;
 int log_stripped_names;
 struct main_config_t mainconfig;
 
+struct radutmp_config_t {
+  char *radutmp_fn;
+} radutmpconfig;
+
+static CONF_PARSER module_config[] = {
+  { "filename", PW_TYPE_STRING_PTR, 0, &radutmpconfig.radutmp_fn,  RADUTMP },
+  { NULL, -1, 0, NULL, NULL }
+};
+
 /*
  *	A mapping of configuration file names to internal variables
  */
@@ -363,7 +372,6 @@ int main(int argc, char **argv)
 	int c, portno;
 
 	radius_dir = strdup(RADIUS_DIR);
-	radutmp_file = strdup(RADUTMP);
 
 	while((c = getopt(argc, argv, "d:flhnsipcr")) != EOF) switch(c) {
 		case 'd':
@@ -417,6 +425,19 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	cf_section_parse(cs, NULL, server_config);
+
+	/* Read the radutmp section of radiusd.conf */
+	cs = cf_section_sub_find(cf_section_find("modules"), "radutmp");
+	if(!cs) {
+		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
+			argv[0]);
+		exit(1);
+	}
+
+	cf_section_parse(cs, NULL, module_config);
+
+	/* Assign the correct path for the radutmp file */
+	radutmp_file = radutmpconfig.radutmp_fn;
 
 	/*
 	 *	See if we are "fingerd".
@@ -500,7 +521,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Show the users logged in on the terminal server(s).
 	 */
-	if ((fp = fopen(RADUTMP, "r")) == NULL)
+	if ((fp = fopen(radutmp_file, "r")) == NULL)
 		return 0;
 
 	if (!hdrdone) {

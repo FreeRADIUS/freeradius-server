@@ -3,6 +3,8 @@
 radzap - remove rogue entries from the active sessions database
 .SH SYNOPSIS
 .B radzap
+.RB [ \-d
+.IR raddb_directory ]
 .RB [ \-r
 .IR radius_server ]
 .RB [ \-p
@@ -18,6 +20,8 @@ use this database. Sometimes that database can get out of sync, and
 then it might contain rogue entries. \fBradzap\fP can clean up this
 database.
 .SH OPTIONS
+.IP \-d\ \fIraddb_directory\fP
+The directory that contains the RADIUS configuration files.
 .IP \-r\ \fIradius_server\fP
 Host name or IP address of the RADIUS server.
 .IP \-p\ \fIaccounting_port\fP

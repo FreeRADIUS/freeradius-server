@@ -58,9 +58,19 @@ int proxy_retry_count = RETRY_COUNT;
 int proxy_dead_time;
 int log_stripped_names;
 radlog_dest_t radlog_dest = RADLOG_FILES;
+const char *radutmp_file = NULL;
 struct main_config_t mainconfig;
 uint32_t radiusip = INADDR_NONE;
 static void usage(void);
+
+struct radutmp_config_t {
+  char *radutmp_fn;
+} radutmpconfig;
+
+static CONF_PARSER module_config[] = {
+  { "filename", PW_TYPE_STRING_PTR, 0, &radutmpconfig.radutmp_fn,  RADUTMP },
+  { NULL, -1, 0, NULL, NULL }
+};
 
 /*
  *      A mapping of configuration file names to internal variables
@@ -77,7 +87,7 @@ static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr,
 {
 	int fd;
 
-	if ((fd = open(RADUTMP, O_RDONLY|O_CREAT, 0644)) >= 0) {
+	if ((fd = open(radutmp_file, O_RDONLY|O_CREAT, 0644)) >= 0) {
 		/*
 		 *	Lock the utmp file.
 		 */
@@ -112,8 +122,9 @@ static int do_stop_packet(const struct radutmp *u);
 static void usage(void)
 {
         fprintf(stderr,
-                        "Usage: %s [-p acct_port] [-r servername|serverip] termserver [port] [user]\n", progname);
+                        "Usage: %s [-d raddb] [-p acct_port] [-r servername|serverip] termserver [port] [user]\n", progname);
         fprintf(stderr, "Options:\n\n");
+	fprintf(stderr, "  -d raddb        Set the raddb directory (default is %s)\n", RADIUS_DIR);
         fprintf(stderr, "  -p acct_port    Accounting port on radius server\n");
         fprintf(stderr, "  -r radserver    Radius server name or IP address\n");
         fprintf(stderr, "  termserver      Terminal Server (NAS) name or IP address to match, can be '' for any\n");
@@ -140,11 +151,17 @@ int main(int argc, char **argv)
 
 	progname = argv[0];
 
+	radius_dir = strdup(RADIUS_DIR);
+
         /*  Process the options.  */
-        while ((argval = getopt(argc, argv, "p:r:")) != EOF) {
+        while ((argval = getopt(argc, argv, "d:p:r:")) != EOF) {
                                 
                 switch(argval) {
                         
+			case 'd':
+				if (radius_dir) free(radius_dir);
+				radius_dir = strdup(optarg);
+				break;
                         case 'p':
 				acct_port = atoi(optarg);
                                 break;
@@ -191,8 +208,7 @@ int main(int argc, char **argv)
 	if (nas != NULL) 
 		ip = nas->ipaddr;
 
-	radius_dir = strdup(RADIUS_DIR);
-
+        /* Read radiusd.conf */
 	if(read_radius_conf_file() < 0) {
 		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);
 		exit(1);
@@ -206,6 +222,18 @@ int main(int argc, char **argv)
 	}
 	cf_section_parse(cs, NULL, server_config);
 
+        /* Read the radutmp section of radiusd.conf */
+        cs = cf_section_sub_find(cf_section_find("modules"), "radutmp");
+        if(!cs) {
+                fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
+                        argv[0]);
+                exit(1);
+        }
+
+        cf_section_parse(cs, NULL, module_config);
+
+        /* Assign the correct path for the radutmp file */
+        radutmp_file = radutmpconfig.radutmp_fn;
 
 	printf("%s: zapping termserver %s, port %u",
 		progname, ip_hostname(buf, sizeof(buf), ip), nas_port);
