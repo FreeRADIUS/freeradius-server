@@ -56,14 +56,14 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	mysql_sock = sqlsocket->conn;
 
-	radlog(L_INFO, "rlm_sql: Starting connect to MySQL server for #%d",
+	radlog(L_INFO, "rlm_sql_mysql: Starting connect to MySQL server for #%d",
 			sqlsocket->id);
 
 	mysql_init(&(mysql_sock->conn));
 	if (!(mysql_sock->sock = mysql_real_connect(&(mysql_sock->conn), config->sql_server, config->sql_login, config->sql_password,
 													config->sql_db, 0, NULL, CLIENT_FOUND_ROWS))) {
-		radlog(L_ERR, "rlm_sql: Couldn't connect socket to MySQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
-		radlog(L_ERR, "rlm_sql:  Mysql error '%s'", mysql_error(&mysql_sock->conn));
+		radlog(L_ERR, "rlm_sql_mysql: Couldn't connect socket to MySQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
+		radlog(L_ERR, "rlm_sql_mysql: Mysql error '%s'", mysql_error(&mysql_sock->conn));
 		mysql_sock->sock = NULL;
 		return -1;
 	}
@@ -103,9 +103,9 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	if (config->sqltrace)
-		radlog(L_DBG,"query:  %s", querystr);
+		radlog(L_DBG,"rlm_sql_mysql: query:  %s", querystr);
 	if (mysql_sock->sock == NULL) {
-		radlog(L_ERR, "Socket not connected");
+		radlog(L_ERR, "rlm_sql_mysql: Socket not connected");
 		return SQL_DOWN;
 	}
 
@@ -156,12 +156,12 @@ static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
 	if (mysql_sock->sock == NULL) {
-		radlog(L_ERR, "Socket not connected");
+		radlog(L_ERR, "rlm_sql_mysql: Socket not connected");
 		return SQL_DOWN;
 	}
 	if (!(mysql_sock->result = mysql_store_result(mysql_sock->sock))) {
-		radlog(L_ERR, "MYSQL Error: Cannot get result");
-		radlog(L_ERR, "MYSQL Error: %s", mysql_error(mysql_sock->sock));
+		radlog(L_ERR, "rlm_sql_mysql: MYSQL Error: Cannot get result");
+		radlog(L_ERR, "rlm_sql_mysql: MYSQL Error: %s", mysql_error(mysql_sock->sock));
 		return sql_check_error(mysql_errno(mysql_sock->sock));
 	}
 	return 0;
@@ -187,8 +187,8 @@ static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 #else
 	if (!(num = mysql_num_fields(mysql_sock->sock))) {
 #endif
-		radlog(L_ERR, "MYSQL Error: No Fields");
-		radlog(L_ERR, "MYSQL error: %s", mysql_error(mysql_sock->sock));
+		radlog(L_ERR, "rlm_sql_mysql: MYSQL Error: No Fields");
+		radlog(L_ERR, "rlm_sql_mysql: MYSQL error: %s", mysql_error(mysql_sock->sock));
 	}
 	return num;
 }
@@ -247,7 +247,7 @@ static int sql_check_error(int error) {
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
 	case -1:
-		radlog(L_DBG, "MYSQL check_error: %d, returning SQL_DOWN", error);
+		radlog(L_DBG, "rlm_sql_mysql: MYSQL check_error: %d, returning SQL_DOWN", error);
 		return SQL_DOWN;
 		break;
 	case 0:
@@ -257,7 +257,7 @@ static int sql_check_error(int error) {
 	case CR_COMMANDS_OUT_OF_SYNC:
 	case CR_UNKNOWN_ERROR:
 	default:
-		radlog(L_DBG, "MYSQL check_error: %d received", error);
+		radlog(L_DBG, "rlm_sql_mysql: MYSQL check_error: %d received", error);
 		return -1;
 		break;
 	}

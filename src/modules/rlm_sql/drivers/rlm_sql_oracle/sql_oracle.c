@@ -76,14 +76,14 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		(dvoid * (*)(dvoid *, dvoid *, size_t))0, 
 		(void (*)(dvoid *, dvoid *)) 0,
 		0, (dvoid **)0 )) {
-		radlog(L_ERR,"Init: Couldn't init Oracle OCI environment (OCIEnvCreate())");
+		radlog(L_ERR,"rlm_sql_oracle: Couldn't init Oracle OCI environment (OCIEnvCreate())");
 		return -1;
 	}
 
 	if (OCIHandleAlloc((dvoid *) oracle_sock->env, (dvoid **) &oracle_sock->errHandle,
 		(ub4) OCI_HTYPE_ERROR, (size_t) 0, (dvoid **) 0))
 	{
-		radlog(L_ERR,"Init: Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
+		radlog(L_ERR,"rlm_sql_oracle: Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
 		return -1;
 	}
 
@@ -93,7 +93,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	    ||  OCIHandleAlloc((dvoid *)oracle_sock->env, (dvoid **) &oracle_sock->queryHandle,
 				(ub4)OCI_HTYPE_STMT, (CONST size_t) 0, (dvoid **) 0))
 	{
-		radlog(L_ERR,"Init: Couldn't init Oracle query handles: %s",
+		radlog(L_ERR,"rlm_sql_oracle: Couldn't init Oracle query handles: %s",
 			sql_error(sqlsocket, config));
 		return -1;
 	}
@@ -104,7 +104,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			config->sql_password,  strlen(config->sql_password),
 			config->sql_db, strlen(config->sql_db)))
 	{
-		radlog(L_ERR,"Init: Oracle logon failed: '%s'", sql_error(sqlsocket, config));
+		radlog(L_ERR,"rlm_sql_oracle: Oracle logon failed: '%s'", sql_error(sqlsocket, config));
 		return -1;
 	}
 
@@ -147,7 +147,7 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			(ub4 *) 0,
 			(ub4)OCI_ATTR_PARAM_COUNT,
 			oracle_sock->errHandle)) {
-		radlog(L_ERR,"sql_num_fields: error retrieving colun count: %s",
+		radlog(L_ERR,"rlm_sql_oracle: Error retrieving column count in sql_num_fields: %s",
 			sql_error(sqlsocket, config));
 		return -1;
 	}
@@ -177,7 +177,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	if (OCIStmtPrepare (oracle_sock->queryHandle, oracle_sock->errHandle,
 				querystr, strlen(querystr),
 				OCI_NTV_SYNTAX, OCI_DEFAULT))  {
-		radlog(L_ERR,"sql_query: prepare failed: %s",sql_error(sqlsocket, config));
+		radlog(L_ERR,"rlm_sql_oracle: prepare failed in sql_query: %s",sql_error(sqlsocket, config));
 		return -1;
 	}
 
@@ -224,14 +224,14 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	if (config->sqltrace)
 		DEBUG(querystr);
 	if (oracle_sock->conn == NULL) {
-		radlog(L_ERR, "Socket not connected");
+		radlog(L_ERR, "rlm_sql_oracle: Socket not connected");
 		return SQL_DOWN;
 	}
 
 	if (OCIStmtPrepare (oracle_sock->queryHandle, oracle_sock->errHandle,
 				querystr, strlen(querystr),
 				OCI_NTV_SYNTAX, OCI_DEFAULT))  {
-		radlog(L_ERR,"sql_select_query: prepare failed: %s",sql_error(sqlsocket, config));
+		radlog(L_ERR,"rlm_sql_oracle: prepare failed in sql_select_query: %s",sql_error(sqlsocket, config));
 		return -1;
 	}
 
@@ -275,7 +275,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 				(dvoid **)&param,
 				(ub4) y);
 		if (x != OCI_SUCCESS) {
-			radlog(L_ERR,"sql_select_query: OCIParamGet() failed: %s",
+			radlog(L_ERR,"rlm_sql_oracle: OCIParamGet() failed in sql_select_query: %s",
 				sql_error(sqlsocket, config));
 			return -1;
 		}
@@ -284,7 +284,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 			   (dvoid*)&dtype, (ub4*)0, OCI_ATTR_DATA_TYPE,
 			   oracle_sock->errHandle);
 		if (x != OCI_SUCCESS) {
-			radlog(L_ERR,"sql_select_query: OCIAttrGet() failed: %s",
+			radlog(L_ERR,"rlm_sql_oracle: OCIAttrGet() failed in sql_select_query: %s",
 				sql_error(sqlsocket, config));
 			return -1;
 		}
@@ -303,7 +303,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 				   (dvoid*) &dsize, (ub4 *)0, (ub4) OCI_ATTR_DATA_SIZE,
 				   oracle_sock->errHandle);
 			if (x != OCI_SUCCESS) {
-				radlog(L_ERR,"sql_select_query: OCIAttrGet() failed: %s",
+				radlog(L_ERR,"rlm_sql_oracle: OCIAttrGet() failed in sql_select_query: %s",
 					sql_error(sqlsocket, config));
 				return -1;
 			}
@@ -337,7 +337,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 				(dvoid *) 0,
 				OCI_DEFAULT);
 		if (x != OCI_SUCCESS) {
-			radlog(L_ERR,"sql_select_query: OCIDefineByPos() failed: %s",
+			radlog(L_ERR,"rlm_sql_oracle: OCIDefineByPos() failed in sql_select_query: %s",
 				sql_error(sqlsocket, config));
 			return -1;
 		}
@@ -404,7 +404,7 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
 	if (oracle_sock->conn == NULL) {
-		radlog(L_ERR, "Socket not connected");
+		radlog(L_ERR, "rlm_sql_oracle: Socket not connected");
 		return SQL_DOWN;
 	}
 
@@ -420,7 +420,7 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	}
 	else if (x != OCI_SUCCESS) {
 		/* XXX Check if x suggests we should return SQL_DOWN */
-		radlog(L_ERR,"sql_fetch_row: fetch failed: %s",
+		radlog(L_ERR,"rlm_sql_oracle: fetch failed in sql_fetch_row: %s",
 				sql_error(sqlsocket, config));
 		return SQL_DOWN;
 	}

@@ -133,8 +133,8 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	pg_sock->conn=PQconnectdb(connstring);
 
 	if (PQstatus(sqlsocket->conn) == CONNECTION_BAD) {
-		radlog(L_ERR, "sql_postgresql: Couldn't connect socket to PostgreSQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
-		radlog(L_ERR, "sql_postgresql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));
+		radlog(L_ERR, "rlm_sql_postgresql: Couldn't connect socket to PostgreSQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
+		radlog(L_ERR, "rlm_sql_postgresql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));
 		PQfinish(pg_sock->conn);
 		return -1;
 	}
@@ -154,25 +154,25 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
 	if (config->sqltrace)
-		radlog(L_DBG,"query:\n%s", querystr);
+		radlog(L_DBG,"rlm_sql_postgresql: query:\n%s", querystr);
 
 	if (pg_sock->conn == NULL) {
-		radlog(L_ERR, "Socket not connected");
+		radlog(L_ERR, "rlm_sql_postgresql: Socket not connected");
 		return -1;
 	}
 
 	pg_sock->result = PQexec(pg_sock->conn, querystr);
 	if (!pg_sock->result)
 	{
-		radlog(L_ERR, "PostgreSQL Query failed Error: %s", 
+		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL Query failed Error: %s", 
 				PQerrorMessage(pg_sock->conn));
 		return  -1;
 	} else {
 		ExecStatusType status = PQresultStatus(pg_sock->result);
 
-		radlog(L_DBG, "rlm_postgresql Status: %s", PQresStatus(status));
+		radlog(L_DBG, "rlm_sql_postgresql: Status: %s", PQresStatus(status));
 
-		radlog(L_DBG, "sql_postgresql: affected rows = %s",
+		radlog(L_DBG, "rlm_sql_postgresql: affected rows = %s",
 				PQcmdTuples(pg_sock->result));
 
 		if (!status_is_ok(status))
@@ -238,8 +238,8 @@ static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
 	if (!(num = PQnfields(pg_sock->result))) {
-		radlog(L_ERR, "PostgreSQL Error: Cannot get result");
-		radlog(L_ERR, "PostgreSQL error: %s", PQerrorMessage(pg_sock->conn));
+		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL Error: Cannot get result");
+		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL error: %s", PQerrorMessage(pg_sock->conn));
 	}
 	return num;
 }
@@ -344,6 +344,8 @@ static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+	if (!pg_sock->conn) return 0;
 
 	PQfinish(pg_sock->conn);
 	pg_sock->conn = NULL;
