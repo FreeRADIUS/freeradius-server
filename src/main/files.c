@@ -92,7 +92,7 @@ static void auth_type_fixup(VALUE_PAIR *check)
 		exit(1);
 	}
 	vp->lvalue = n;
-	vp->operator = T_OP_SET;
+	vp->operator = T_OP_ADD;
 
 	vp->next = c->next;
 	c->next = vp;
