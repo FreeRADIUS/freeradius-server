@@ -848,9 +848,9 @@ static void override_actions(modcallable *c, CONF_SECTION *cs,
 	for(ci=cf_item_find_next(cs, NULL); ci != NULL; ci=cf_item_find_next(cs, ci)) {
 		if(cf_item_is_section(ci)) {
 			radlog(L_ERR|L_CONS,
-					"%s[%d] Subsection of module instance call "
-					"not allowed\n", filename,
-					cf_section_lineno(cf_itemtosection(ci)));
+			       "%s[%d] Subsection of module instance call "
+			       "not allowed\n", filename,
+			       cf_section_lineno(cf_itemtosection(ci)));
 			exit(1);
 		}
 		cp = cf_itemtopair(ci);
@@ -864,8 +864,8 @@ static void override_actions(modcallable *c, CONF_SECTION *cs,
 }
 
 static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
-		const char *filename, int grouptype,
-		const char **modname)
+					 const char *filename, int grouptype,
+					 const char **modname)
 {
 	int lineno;
 	const char *modrefname;
@@ -924,6 +924,9 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 
 	this = find_module_instance(modrefname);
 	if (this == NULL) {
+		radlog(L_ERR|L_CONS, "%s[%d] Unknown module \"%s\".", filename,
+		       cf_section_lineno(cf_itemtosection(ci)),
+		       modrefname);
 		exit(1); /* FIXME */
 	}
 
@@ -938,8 +941,8 @@ modcallable *compile_modsingle(int component, CONF_ITEM *ci,
 		const char *filename, const char **modname)
 {
 	modcallable *ret = do_compile_modsingle(component, ci, filename,
-		GROUPTYPE_SIMPLEGROUP,
-		modname);
+						GROUPTYPE_SIMPLEGROUP,
+						modname);
 	dump_tree(component, ret);
 	return ret;
 }
@@ -968,7 +971,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 			const char *junk;
 			modcallable *single;
 			single = do_compile_modsingle(component, ci, filename,
-					grouptype, &junk);
+						      grouptype, &junk);
 			add_child(g, single);
 		} else {
 			const char *attr, *value;
