@@ -1,0 +1,27 @@
+# This is a sample "passwd" file used for ANSI X9.9 token authentication.
+# Actually, it's not a sample file, but it does document the format and
+# legal values.
+#
+# This file must be mode 0400 or 0600 and owned by the user the radius
+# server runs as.
+#
+# The format is username:card_type:key, eg
+
+bob:cryptocard-d8-es:0101010101010101
+
+The username is limited in that the ':' character may not appear.
+The key must be 8 octets (sixteen hex digits) and must be a valid DES key.
+The valid card types are:
+
+x9.9		A generic x9.9 card.  random challenge, 8 digit hex response.
+generic		synonym for x9.9
+
+cryptocard-h8-rc	random challenge, 8 digit hex response.
+cryptocard-d8-rc	random challenge, 8 digit decimal response.
+cryptocard-h7-rc	random challenge, 7 digit hex response.
+cryptocard-d7-rc	random challenge, 7 digit dec response.
+cryptocard-h8-es	event synchronous, 8 digit hex response.
+cryptocard-d8-es	event synchronous, 8 digit decimal response.
+cryptocard-h7-es	event synchronous, 7 digit hex response.
+cryptocard-d7-es	event synchronous, 7 digit decimal response.
+

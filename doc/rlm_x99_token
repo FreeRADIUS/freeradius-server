@@ -1,0 +1,230 @@
+
+
+    X9.9 Token Module
+
+
+0.  INTRODUCTION
+
+    This module allows the RADIUS server to authenticate users that hold
+    ANSI X9.9 challenge/response tokens.  These tokens are basically
+    handheld DES calculators and are sold by various vendors.  Currently
+    known vendors are:
+
+	CRYPTOCard (RB-1, KT-1)
+	<http://www.cryptocard.com/>
+	Full support
+
+	ActivCard (ActivCard One)
+	<http://www.activcard.com/>
+	Not supported (patented sync mode)
+
+	Symantec (Defender aka SNK)
+     <http://enterprisesecurity.symantec.com/products/products.cfm?ProductID=51>
+	Not supported
+	This product has a history of acquisition:
+	Symantec, Axent, AssureNet Pathways, Digital Pathways (name change).
+
+	Secure Computing (SafeWord)
+	<http://www.securecomputing.com/index.cfm?sKey=688>
+	Not supported
+	Formerly Enigma Logic.
+
+	VASCO (DigiPass)
+	<http://www.vasco.com/R3DEngine.asp?reference=03-01.01-01&lang=en>
+	Not supported
+
+    If you know of other vendors, please email me (frank@google.com) and
+    I'll add them to the list above.  If you own any of the above tokens
+    and would like support added (except ActivCard), and can send me
+    the docs and some sample tokens, I will be happy to add support.
+
+    Although ActivCard has full specs, I cannot add support because their
+    synchronous algorithm is patented.  Oh, well, their loss.  If you are
+    an employee of ActivCard, please contact me.
+
+    I believe that most of the above tokens should work in "generic" mode,
+    however, this is highly discouraged due to the weakness of DES.
+
+    No support is available for programming tokens.  You will need to
+    write this yourself, or use the vendor's programming tools and extract
+    the key information in order to use this module.  CRYPTOCard provides
+    full documentation on this, if you know of other vendors that give
+    access to this information, please let me know.
+
+    I *strongly* discourage the use of "soft tokens" or Palm tokens.  These
+    are easily compromisable, since the key is insufficiently protected.
+
+    In addition to this freeradius module, I will make a PAM module available
+    that will support the same file format.  These docs will be updated
+    when the module is available (ETA before Dec 2001).
+
+
+1.  STRONG WARNING SECTION
+
+    ANSI X9.9 has been withdrawn as a standard, due to the weakness of DES.
+    An attacker can learn the token's secret by observing two
+    challenge/response pairs.  See ANSI document X9 TG-24-1999,
+    <http://www.x9.org/TG24_1999.pdf>.
+
+    The obvious fix is to not display the challenge; the attacker will
+    not have access to the plaintext.  This is possible since most
+    (all?) vendors of X9.9 tokens support a synchronous mode.  So, in
+    synchronous modes, the challenge presented to the user is NOT the
+    challenge used for response calculation.  Read on for more info.
+
+    The default configuration of this module effectively disables pure
+    challenge/response (hereafter: async) mode.
+
+
+2.  INSTALLATION
+
+    You'll need to have openssl, <http://www.openssl.org/>, installed.
+    I am using 0.9.6b, but I suspect this module will work with all versions.
+
+    You will also need /dev/urandom available.  AFAIK, this is available on
+    Linux and *BSD.  For Solaris, you'll need to install the SUNWski
+    package (look on SunSolve).  Information for other OS's are welcome.
+
+    This module will only work on ILP32 machines, so if you build it
+    as 64-bit under Solaris, you'll find that it fails at runtime.
+    Solaris supports 32-bit and 64-bit binaries, so just build as 32-bit.
+    If you are running UltraLinux (?) or NetBSD/sparc64, you are probably
+    out of luck.  I'm willing to add the support needed if anyone actually
+    has a need to run on those platforms.
+
+    You'll also need to write a site-specific challenge transform in order
+    to use async mode.  You will almost certainly need async mode, to sync
+    the user's token with the server initially.  More on this below.
+
+
+3.  END-USER OPERATION
+
+    This section is a bit wedged in, but it makes a little more sense to
+    talk about how to use this module first before going on about server
+    configuration.  This section isn't strictly end-user, some internals
+    are described.
+
+    "Normally", upon login, users would enter enter the challenge into
+    their token and give the server the response.  However, this is unsafe
+    given that DES is so weak.  Luckily, these tokens support a synchronous
+    mode which lets the user skip the part where they enter the challenge.
+    
+    For CRYPTOCard, the token displays the synchronous challenge, which
+    typically the user would verify is the same as the challenge presented
+    by the server.  Then they can safely just press "ENT" and enter the
+    response.  This is very easy to use, but we're still stuck with the
+    problem that an attacker has observed a plaintext/ciphertext pair.
+
+    So instead of presenting the synchronous challenge, the server ALWAYS
+    displays a random challenge.  Instead of verifying that the challenge
+    matches the token display, the user should just press "ENT" and enter
+    the response.
+
+    [For ActivCard, this is pretty transparent to the user, in sync mode
+    the user doesn't go through the verification step.  For CRYPTOCard,
+    the user may be confused as to which number they should enter as
+    the response.  User training is essential.  I don't have experience
+    with other tokens.]
+
+    So that takes care of sync mode -- an attacker does not see the
+    plaintext, so we avoid the vulnerability.  But we need async mode
+    for two reasons; 1) in case the token gets out of sync with the server,
+    and 2) to initially sync the token (CRYPTOCard, others?).  Strictly
+    speaking, for CRYPTOCard you don't need to do the initial sync, you
+    can determine what this is when you program the card and write a
+    state file yourself; but I don't recommend this for most sites.
+    For ActivCard, you will need to create the state file yourself,
+    but I'm not supporting ActivCard, so that solves that problem.
+
+    Even if you avoid the initial sync step (ie, do it automatically),
+    and you train your users to not play with the token, you will still
+    need to handle the possibility of the state files on the server
+    getting corrupted, etc.  So you pretty much must enable pure
+    challenge/response mode.
+
+    Since this is unsafe, I came up with the concept of the "site-specific
+    challenge transform".  For the user, this means that instead of
+    entering the challenge as presented to them, they enter something
+    based on the challenge.  For example, a simple transform would be
+    to enter the challenge backwards; if the server presents "123456"
+    the user enters "654321".  This has the effect that an observer
+    does not have access to the plaintext.
+
+    This is security through obscurity, and is not really "safe", but
+    for an outsider it may present at least some barrier.  Even though
+    it presents no advantage in the face of a determined attacker, I
+    recommend using it.
+
+    The server logs each time a user authenticates via async mode, so
+    I recommend a log scanner which alerts you to this.  You should
+    reprogram tokens when the user authenticates via async mode.
+
+    Instead of, or in addition to, implementing a site-specific challenge
+    transform, you might wish to restrict async mode to specific NAS's.
+    You can probably do this via hints configuration and separate
+    x99_token instances.  If someone can supply a working config
+    example, I will include it here.
+
+
+4.  SITE-SPECIFIC CHALLENGE TRANSFORM
+
+    x99_site.c implements the site-specific challenge transform.  The
+    default transform is to replace the challenge with the text "DISABLED".
+    This effectively disables async mode (the user will not be able to
+    enter this into their token).
+
+    If you do not believe applying a transform gives any advantage,
+    you can just comment out the single line of code there.  This actually
+    may have some benefit, since your users don't need to be trained.
+    I can guarantee your most annoying user will complain when they can't
+    remember what they really are supposed to enter into the token.
+
+    DO NOT use the suggestion above, reversing the challenge.  That is
+    now exceptionally weak.  An example of a possibly strong transform is
+    to have the user enter the square of the challenge.  The VASCO
+    DigiPass 500 is also a [regular] calculator, so this could be a
+    good one if you use that token.  Well, it is now another exceptionally
+    weak transform, but you get the idea.
+
+    Note that CRYPTOCard supports arbitrarily long challenge strings.
+    [Info on other vendors is welcomed here.]  You should take advantage
+    of this when implementing your transform.  You will still have to
+    stay under MAX_CHALLENGE_LEN digits.
+
+
+5.  CONFIGURATION
+
+    Most of the configuration is documented fairly well in the sample
+    file supplied.  I will only discuss a few options here.
+
+    chal_text:  You will need to apply a patch to freeradius to support
+    having '\n' in the challenge text.  In conffile.c, in
+    cf_expand_variables(), change "while (*ptr >= ' ')" to
+    "while (*ptr)".
+
+    ewindow_size:  This is how far out of [event] sync the server can
+    get with the token.  The value is how far the user can be ahead of
+    the server -- essentially how many times the user can play with the
+    token.  You'll want to set this to at least 1 or 2, in case the user
+    mistypes the response and the token turns off before he is able to
+    try again.  It's 'e'window because I am reserving twindow for
+    time synchronous modes.
+
+
+6.  FILES
+
+    See the sample x99passwd file.  State files are stored in
+    /etc/x99sync.d by default.  There is one state file per user.
+    The state file contains the information needed for synchronous
+    mode; also the number of consecutive failed logins and the last
+    time the user authenticated via async mode is stored here.  Look
+    at the code if you want further documentation (eg, to initialize
+    the state automatically).
+
+
+7.  ACKNOWLEDGEMENTS
+
+    Author: Frank Cusack <frank@google.com>
+    I would like to thank Google for allowing (encouraging) me to release
+    this code.
+
