@@ -772,7 +772,7 @@ parseIpxFilter(const char *curString, RadFilter *curEntry)
     }
 
 doneErr:
-    librad_log("ipx filter error: do not recognize %s in %s \n",
+    librad_log("ipx filter error: do not recognize \"%s\" in \"%s\"\n",
 	      token, curString );
     return( -1 );
 }
@@ -874,7 +874,7 @@ parseIpFilter(const char *curString, RadFilter *curEntry)
 		    }
 		} 
 
-		librad_log("ip filter error: do not recognize %s in %s \n",
+		librad_log("ip filter error: do not recognize \"%s\" in \"%s\"\n",
 			  token, curString );
 		goto doneErr ;
 
@@ -908,7 +908,7 @@ parseIpFilter(const char *curString, RadFilter *curEntry)
 			}
 		    }
 		}
-		librad_log( "ip filter error: do not recognize %s in %s \n",
+		librad_log( "ip filter error: do not recognize \"%s\" in \"%s\"n",
 			  token, curString );
 		goto doneErr;
 		break;
@@ -923,7 +923,7 @@ parseIpFilter(const char *curString, RadFilter *curEntry)
 		} else {
 		    tok = lrad_str2int(filterProtoName, token, -1);
 		    if (tok == -1) {
-			librad_log("ip filter error: do not recognize %s in %s \n",
+			librad_log("ip filter error: do not recognize \"%s\" in \"%s\"\n",
 			     token, curString );
 			goto doneErr;
 		    }
