@@ -1,10 +1,11 @@
 FreeRADIUS 0.9 ; $Date$, urgency=low
 
 	* Many, many, bug fixes and feature enhancements.
+	* radrelay now updates packet 'id' on retransmissions.
 	* More checks for thread-safe functions.
 	* Fix CHAP related buffer overflow (ouch!), thanks to Masao NISHIKU.
 	* Issue warnings if deprecated configuration files are used.
-	* rlm_passwd can now add items to the reply.
+	* rlm_passwd can now add items to the reply, request, or config items.
 	* The rlm_digest, rlm_exec, and rlm_ippool modules are now marked
 	  as 'stable', and included in the default build.
 	* Removed 'raduse'.  No one has used it for years.
