@@ -20,24 +20,26 @@
  * Copyright 2000,2001  The FreeRADIUS server project
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  */
-
 #include <stdio.h>
 #include "eap.h"
 
 /*
- *      Allocate a new EAP_PACKET.  Guaranteed to succeed.
+ *      Allocate a new EAP_PACKET
  */
-EAP_PACKET *eap_packet_alloc(void)
+EAP_PACKET *eap_packet_alloc()
 {
         EAP_PACKET   *rp;
 
-        rp = rad_malloc(sizeof(EAP_PACKET));
+        if ((rp = malloc(sizeof(EAP_PACKET))) == NULL) {
+                radlog(L_ERR, "out of memory");
+                return NULL;
+        }
         memset(rp, 0, sizeof(EAP_PACKET));
         return rp;
 }
 
 /*
- *      Free a EAP_PACKET
+ *      Free EAP_PACKET
  */
 void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 {
@@ -47,8 +49,19 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
         eap_packet = *eap_packet_ptr;
 	if (!eap_packet) return;
 
-        if (eap_packet->typedata) free(eap_packet->typedata);
-        if (eap_packet->rad_vps) pairfree(&(eap_packet->rad_vps));
+        if (eap_packet->type.data) {
+		/*
+		 * This is just a pointer in the packet
+		 * so we do not free it but we NULL it
+		free(eap_packet->type.data);
+		*/
+		eap_packet->type.data = NULL;
+	}
+
+	if (eap_packet->packet) {
+		free(eap_packet->packet);
+		eap_packet->packet = NULL;
+	}
 
         free(eap_packet);
 
@@ -58,14 +71,23 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 /*
  *      Allocate a new EAP_PACKET
  */
-EAP_DS *eap_ds_alloc(void)
+EAP_DS *eap_ds_alloc()
 {
         EAP_DS	*eap_ds;
-
-	eap_ds = rad_malloc(sizeof(EAP_DS));
+        
+        if ((eap_ds = malloc(sizeof(EAP_DS))) == NULL) {
+                radlog(L_ERR, "out of memory");
+                return NULL;
+        }
         memset(eap_ds, 0, sizeof(EAP_DS));
-	eap_ds->response = eap_packet_alloc();
-	eap_ds->request = eap_packet_alloc();
+	if ((eap_ds->response = eap_packet_alloc(sizeof(EAP_PACKET))) == NULL) {
+		eap_ds_free(&eap_ds);
+		return NULL;
+	}
+	if ((eap_ds->request = eap_packet_alloc(sizeof(EAP_PACKET))) == NULL) {
+		eap_ds_free(&eap_ds);
+		return NULL;
+	}
 
 	return eap_ds;
 }
@@ -81,14 +103,63 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 	if (eap_ds->response) eap_packet_free(&(eap_ds->response));
 	if (eap_ds->request) eap_packet_free(&(eap_ds->request));
 
-	if (eap_ds->username) pairfree(&(eap_ds->username));
-	if (eap_ds->password) pairfree(&(eap_ds->password));
-
 	free(eap_ds);
 	*eap_ds_p = NULL;
 }
 
-void free_type_list(EAP_TYPES **i)
+/*
+ *      Allocate a new EAP_HANDLER
+ */
+EAP_HANDLER *eap_handler_alloc()
+{
+        EAP_HANDLER	*handler;
+        
+        if ((handler = malloc(sizeof(EAP_HANDLER))) == NULL) {
+                radlog(L_ERR, "out of memory");
+                return NULL;
+        }
+        /*memset(handler, 0, sizeof(EAP_HANDLER));
+	 */
+	return handler;
+}
+
+void eap_handler_free(EAP_HANDLER **handler_p)
+{
+        EAP_HANDLER *handler;
+
+	if ((handler_p == NULL) || (*handler_p == NULL))
+		return;
+        handler = *handler_p;
+
+	if (handler->id) {
+		free(handler->id);
+		handler->id = NULL;
+	}
+
+	if (handler->identity) {
+		free(handler->identity);
+		handler->identity = NULL;
+	}
+
+	if (handler->username) pairfree(&(handler->username));
+	if (handler->configured) pairfree(&(handler->configured));
+
+	if (handler->prev_eapds) eap_ds_free(&(handler->prev_eapds));
+	if (handler->eap_ds) eap_ds_free(&(handler->eap_ds));
+
+	if ((handler->opaque) && (handler->free_opaque))
+		handler->free_opaque(&handler->opaque);
+	else if ((handler->opaque) && (handler->free_opaque == NULL))
+                radlog(L_ERR, "Possible memory leak ...");
+
+	handler->opaque = NULL;
+	handler->free_opaque = NULL;
+	handler->next = NULL;
+
+	*handler_p = NULL;
+}
+
+void eaptype_freelist(EAP_TYPES **i)
 {
         EAP_TYPES       *c, *next;
 
@@ -103,97 +174,113 @@ void free_type_list(EAP_TYPES **i)
         *i = NULL;
 }
 
-void node_free(EAP_LIST **node)
+void eaplist_free(EAP_HANDLER **list)
 {
-	if (node == NULL) return;
-	if (*node == NULL) return;
-	if ((*node)->eap_ds) eap_ds_free(&((*node)->eap_ds));
-
-	(*node)->next = NULL;
-	free(*node);
-	*node = NULL;
-}
-
-void list_free(EAP_LIST **list)
-{
-	EAP_LIST *node, *next;
-
+	EAP_HANDLER *node, *next;
 	if (!list) return;
 	node = *list;
 
 	while (node) {
 		next = node->next;
-		node_free(&node);
+		eap_handler_free(&node);
 		node = next;
 	}
 
 	*list = NULL;
 }
 
-int list_add(EAP_LIST **list, EAP_DS *eap_ds)
+int eaplist_add(EAP_HANDLER **list, EAP_HANDLER *node)
 {
-	EAP_LIST	*node, **last;
+	EAP_HANDLER	**last;
 
-	if (!eap_ds) return 0;
+	if (node == NULL) return 0;
 	
 	last = list;
-	while (*last) *last = (*last)->next;
+	while (*last) last = &((*last)->next);
 	
-	eap_ds->timestamp = time(NULL);
-	eap_ds->finished = 1;
-
-	node = malloc(sizeof(EAP_LIST));
-	if (!node) {
-                radlog(L_ERR, "rlm_eap: out of memory");
-		return 0;
-	}
-
+	node->timestamp = time(NULL);
+	node->status = 1;
 	node->next = NULL;
-	node->eap_ds = eap_ds;
 
 	*last = node;
 	return 1;
 }
 
 /*
- * List should contain only recent packets with life < X seconds.
+ * List should contain only recent packets with life < x seconds.
  */
-void list_clean(EAP_LIST **first, time_t limit)
+void eaplist_clean(EAP_HANDLER **first, time_t limit)
 {
 	time_t  now;
-        EAP_LIST *node, *next;
-        EAP_LIST **last = first;
+        EAP_HANDLER *node, *next;
+        EAP_HANDLER **last = first;
 
 	now = time(NULL);
 
 	for (node = *first; node; node = next) {
 		next = node->next;
-		if ((now - node->eap_ds->timestamp) > limit) {
+		if ((now - node->timestamp) > limit) {
 			radlog(L_INFO, "rlm_eap:  list_clean deleted one item");
 			*last = next;
-			node_free(&node);
+			eap_handler_free(&node);
 		} else  {
 			last = &(node->next);
 		}
 	}
 }
 
-void remove_item(EAP_LIST **first, EAP_LIST *item)
+/*
+ * If the present EAP-Response is a reply to the previous
+ * EAP-Request sent by us, then return the EAP_HANDLER
+ * only after releasing from the eaplist
+ * Also since we fill the eap_ds with the present EAP-Response
+ * we got to free the prev_eapds & move the eap_ds to prev_eapds
+ */
+EAP_HANDLER *eaplist_isreply(EAP_HANDLER **first, unsigned char id[])
 {
-	time_t  now;
-        EAP_LIST *node, *next;
-        EAP_LIST **last = first;
-
-	now = time(NULL);
+        EAP_HANDLER *node, *next, *ret = NULL;
+        EAP_HANDLER **last = first;
 
 	for (node = *first; node; node = next) {
 		next = node->next;
-		if (node == item) {
-			radlog(L_INFO, "rlm_eap:  remove_item deleted one item");
+		if (memcmp(node->id, id, id[0]) == 0) {
+			radlog(L_INFO, "rlm_eap: Request found, released from the list");
+			/* detach the node from the list */
 			*last = next;
-			node_free(&node);
+			node->next = NULL;
+
+			/* clean up the unwanted stuff before returning */
+			eap_ds_free(&(node->prev_eapds));
+			node->prev_eapds = node->eap_ds;
+			node->eap_ds = NULL;
+
+			ret = node;
+			break;
 		} else  {
 			last = &(node->next);
 		}
 	}
+
+	if (!ret) {
+		radlog(L_INFO, "rlm_eap: Request not found in the list");
+	}
+	return ret;
+}
+
+EAP_HANDLER *eaplist_findhandler(EAP_HANDLER *list, unsigned char id[])
+{
+	EAP_HANDLER *node;
+	node = list;
+	
+        while (node) {
+                /*
+                 * Match is identified by the same IDs 
+                 */
+		if (memcmp(node->id, id, id[0]) == 0) {
+			radlog(L_INFO, "rlm_eap: EAP Handler found in the list ");
+			return node;
+		}
+                node = node->next;
+	}
+	return NULL;
 }

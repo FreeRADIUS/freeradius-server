@@ -1,33 +1,10 @@
 /*
- * rlm_eap.c  contains handles that are called from modules.
- *
- * Version:     $Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * Copyright 2000,2001  The FreeRADIUS server project
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * rlm_eap.c
+ * contains handles that are called from modules.
  */
 
 #include "autoconf.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "eap.h"
-
 
 static CONF_PARSER module_config[] = {
 	{ "default_eap_type", PW_TYPE_STRING_PTR, offsetof(EAP_CONF, default_eap_type), NULL, "md5" },
@@ -47,7 +24,7 @@ static int eap_init(void)
  */
 static int eap_instantiate(CONF_SECTION *cs, void **instance)
 {
-	char		*eap_name;
+	char		*auth_name;
 	CONF_SECTION 	*scs;
 	EAP_TYPES	*types;
 	EAP_CONF	*conf;
@@ -56,9 +33,13 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	eap_stuff = (rlm_eap_t **)instance;
 	types	 = NULL;
 	conf	 = NULL;
-        eap_name = NULL;
+        auth_name = NULL;
 
-	conf = malloc(sizeof(EAP_CONF));
+	conf = (EAP_CONF *)malloc(sizeof(EAP_CONF));
+	if (conf == NULL) {
+		radlog(L_ERR, "rlm_eap: out of memory");
+		return -1;
+	}
         if (cf_section_parse(cs, conf, module_config) < 0) {
                 free(conf);
                 return -1;
@@ -67,27 +48,33 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
         for(scs=cf_subsection_find_next(cs, NULL, NULL);
                         scs != NULL;
                         scs=cf_subsection_find_next(cs, scs, NULL)) {
-                eap_name = cf_section_name1(scs);
+                auth_name = cf_section_name1(scs);
 
-                if (!eap_name)  continue;
-		load_type(&types, eap_name, scs);
+                if (!auth_name)  continue;
+		eaptype_load(&types, auth_name, scs);
         }
 
-	if (!types) return -1;
-
-	*eap_stuff = malloc(sizeof(rlm_eap_t));
-	if (*eap_stuff) {
-		(*eap_stuff)->typelist = types;
-		(*eap_stuff)->unique_id = (getpid() & 0xff);
-		(*eap_stuff)->echolist = NULL;
-		(*eap_stuff)->conf = conf;
-		(*eap_stuff)->eap_data = NULL;
-	}  else {
-		radlog(L_ERR, "rlm_eap: out of memory");
-		free_type_list(&types);
+	if (!types) {
+		free(conf->default_eap_type);
+		conf->default_eap_type = NULL;
+		free(conf);
+		conf = NULL;
 		return -1;
 	}
 
+	*eap_stuff = (rlm_eap_t *)malloc(sizeof(rlm_eap_t));
+	if (*eap_stuff) {
+		(*eap_stuff)->typelist = types;
+		(*eap_stuff)->echolist = NULL;
+		(*eap_stuff)->conf = conf;
+	}  else {
+		radlog(L_ERR, "rlm_eap: out of memory");
+		eaptype_freelist(&types);
+		return -1;
+	}
+
+	/* Generate a state key, specific to eap */
+	generate_key();
 	return 0;
 }
 
@@ -97,12 +84,10 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 static int eap_detach(void *instance)
 {
 	rlm_eap_t *t;
-
 	t = (rlm_eap_t *)instance;
 
-	free_type_list(&(t->typelist));
-
-	list_free(&(t->echolist));
+	eaplist_free(&(t->echolist));
+	eaptype_freelist(&(t->typelist));
 
 	free(t->conf->default_eap_type);
 	free(t->conf);
@@ -113,29 +98,20 @@ static int eap_detach(void *instance)
 }
 
 /*
- *	Assumption: Any one of the Authorization module should
- *		get the configured password for any valid user.
- * 		If not, Authentication fails to validate.
+ * Assumption: Any one of the Authorization module should
+ * 	get the configured password for any valid user.
+ *  	If not, Authentication fails to validate.
  *
- *	Authenticate the user with the given password.
- *	Extract the EAP data into EAP packet if Authtype is EAP.
- *	EAP packet contains the list of EAP attributes.
- *	Check for eap Authentication type.
- *	All EAP authentication types will be handled in the sub modules.
+ * All EAP types will be handled in their respective sub modules.
  *
- *	Based on EAP type, corresponding EAP-type module must be called.
- *	currently only MD5 EAP-type is supported, so all are defaulted.
- *	Later on this should call relevant EAP-type
- *
- *	To Handle nak, we need to keep track of id, to find out
- * 	the type we sent earlier.
- *	When Success or Failure is sent we can delete the id.
+ * To Handle EAP-response, we keep track of the EAP-request we send.
+ * When Success or Failure or when timed out, we delete them.
  */
 static int eap_authenticate(void *instance, REQUEST *request)
 {
-	EAP_DS		*eap_ds;
-	eap_packet_t	*eap_msg;
+	EAP_HANDLER	*handler;
 	rlm_eap_t	*eap_stuff;
+	eap_packet_t	*eap_packet;
 	int		status;
 
 	eap_stuff = (rlm_eap_t *)instance;
@@ -143,127 +119,130 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	/* 
 	 * Always, clean the list first as it is not timer based
 	 * FIXME: Appropriate cleaning mechanism.
-	 *	Probably, each sub module should handle this list.
 	 */
-	list_clean(&(eap_stuff->echolist), (time_t)eap_stuff->conf->timer_limit);
-
-	if (eap_stuff->eap_data == NULL) {
-		/*
-		 * Incase if EAP is not configured in autz block
-		 */
-		status = eap_start(request);
-		switch(status) {
-		case EAP_NOOP:
-			return RLM_MODULE_NOOP;
-		case EAP_FAIL:
-			return RLM_MODULE_FAIL;
-		case EAP_FOUND:
-			return RLM_MODULE_OK;
-		case EAP_NOTFOUND:
-		default:
-			break;
-		}
-
-		/*
-		 * Authenticate only proper EAP_Messages
-		 */
-		eap_msg = get_eapmsg_attr(request->packet->vps);
-
-		/*
-		 * No User-Name, No authentication
-		 */
-		if (request->username == NULL) {
-			radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
-			return RLM_MODULE_REJECT;
-			/* FIXME: This should be only in authorization
-			request->username = get_username(eap_msg);
-			if (request->username == NULL) {
-				radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
-				return RLM_MODULE_REJECT;
-			}
-			*/
-		}
-	} else {
-		eap_msg = eap_stuff->eap_data;
-	}
-
-	eap_ds = extract(eap_msg);
-
-	if (eap_msg) {
-		free(eap_msg);
-		eap_msg= NULL;
-		eap_stuff->eap_data = NULL;
-	}
-	if (eap_ds == NULL) {
-		return RLM_MODULE_INVALID;
-	}
-
-	eap_ds->username = paircopy(request->username);
+	eaplist_clean(&(eap_stuff->echolist), (time_t)eap_stuff->conf->timer_limit);
 
 	/*
-	 * Password is never sent over the wire.
-	 * So never rely on the password attribute in the request.
-	 * Always get the configured password, for each user.
+	 * Incase if EAP is not configured in autz block
+	 * or eap_authorize is not invoked
 	 */
-	eap_ds->password = paircopy2(request->config_items, PW_PASSWORD);
-	if (eap_ds->password == NULL) {
-		DEBUG("rlm_eap: Could not find User-Password configuration item, cannot do EAP authentication\n");
-		eap_ds->request->code = PW_EAP_FAILURE;
-		compose(request, eap_ds->request);
+	status = eap_start(request);
+	switch(status) {
+	case EAP_NOOP:
+		return RLM_MODULE_NOOP;
+	case EAP_FAIL:
+		return RLM_MODULE_FAIL;
+	case EAP_FOUND:
+		return RLM_MODULE_OK;
+	case EAP_NOTFOUND:
+	default:
+		break;
+	}
 
-		eap_ds_free(&eap_ds);
+	/* get the eap packet  to start with */
+	eap_packet = eap_attribute(request->packet->vps);
+	if (eap_packet == NULL) {
+		radlog(L_ERR, "rlm_eap: Malformed EAP Message");
+		return RLM_MODULE_FAIL;
+	}
 
+	/*
+	 * create the eap handler 
+	 */
+	handler = eap_handler(&(eap_stuff->echolist), &eap_packet, request);
+	if (handler == NULL) {
 		return RLM_MODULE_INVALID;
 	}
+
+	/*
+	 * No User-Name, No authentication
+	 */
+	if (request->username == NULL) {
+		radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
+	 * Always get the configured values, for each user.
+	 * to pass it to the specific EAP-Type
+	 */
+	handler->configured = paircopy(request->config_items);
+	if (handler->configured == NULL) {
+		radlog(L_INFO, "rlm_eap: No configured information for this user");
+
+		/*
+		 * FIXME: I think at least one item should be configured for any user
+		 * 	If nothing is configured, then atleast 
+		 * 	config_items should provide the same username
+		 * 	if the user is present in the database
+		 */
+		/*
+		eap_fail(request, handler->eap_ds->request);
+		eap_handler_free(&handler);
+		return RLM_MODULE_INVALID;
+		*/
+	}
+
 
 	/*
 	 * Select the appropriate eap_type or default to the configured one
 	 */
-	if (select_eap_type(&(eap_stuff->echolist), eap_stuff->typelist,
-		eap_ds, eap_stuff->conf->default_eap_type) == EAP_INVALID) {
+	if (eaptype_select(eap_stuff->typelist, handler,
+		eap_stuff->conf->default_eap_type) == EAP_INVALID) {
 
-		eap_ds_free(&eap_ds);
-
+		eap_fail(request, handler->eap_ds->request);
+		eap_handler_free(&handler);
 		return RLM_MODULE_INVALID;
 	}
-	compose(request, eap_ds->request);
+
+	/*
+	 * We are done, wrap the EAP-request in RADIUS to send
+	 * with all other required radius attributes
+	 */
+	eap_compose(request, handler->eap_ds->request);
 
 	/*
 	 * Add to the list only if it is EAP-Request
 	 */
-	if ((eap_ds->request->code == PW_EAP_REQUEST) &&
-		(eap_ds->request->type != PW_EAP_IDENTITY)) {
-		list_add(&(eap_stuff->echolist), eap_ds);
-	} else {
-		eap_ds_free(&eap_ds);
-	}
+	if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
+		(handler->eap_ds->request->type.type >= PW_EAP_MD5)) {
 
+		handler->id = eap_generateid(request, (u_char)handler->eap_ds->request->id);
+		if (handler->id == NULL) {
+			radlog(L_ERR, "rlm_eap: problem in generating ID, Present EAP is no more Valid");
+			eap_handler_free(&handler);
+		} else {
+			eaplist_add(&(eap_stuff->echolist), handler);
+		}
+	} else {
+		/* handler is no more required, free it now */
+		eap_handler_free(&handler);
+	}
 	return RLM_MODULE_OK;
 }
 
 /*
- * EAP authorization works in conjunction with other rlm authorizations but not alone.
- * It Handles EAP-START Messages and tries to fill username if present in EAP, but
- * as such it doesnot know if the user exists or how to get the configured values for each user. 
-
- * Ideal way is to have EAP as one of the first authorize module in radiusd.conf
- * probably after preprocess
+ * EAP authorization DEPENDS on other rlm authorizations,
+ * to check for user existance & get their configured values.
+ * It Handles EAP-START Messages, User-Name initilization.
  */
 static int eap_authorize(void *instance, REQUEST *request)
 {
-	VALUE_PAIR	*vp;
-	VALUE_PAIR	*atype;
+	VALUE_PAIR	*atype, *vp;
+	rlm_eap_t	*eap_stuff;
+        eap_packet_t    *eap_packet;
 	int		status;
-	eap_packet_t	*eap_msg;
+	unsigned char   *id;
 	
-	/*
-	 * Authorization not valid for proxies
-	 */
+	eap_stuff = (rlm_eap_t *)instance;
+
+	/* Authorization not valid for proxies */
 	if (request->proxy != NULL)
                 return RLM_MODULE_NOOP;
 
 	/*
 	 * For EAP_START, send Access-Challenge with EAP Identity request.
+	 * even when we have to proxy this request
 	 */
 	status = eap_start(request);
 	switch(status) {
@@ -278,62 +257,64 @@ static int eap_authorize(void *instance, REQUEST *request)
 		break;
 	}
 	
-	eap_msg = get_eapmsg_attr(request->packet->vps);
-	if (eap_msg == NULL) {
-		radlog(L_ERR, "rlm_eap: Malformed EAP Message");
-		return RLM_MODULE_FAIL;
-	}
-	((rlm_eap_t *)instance)->eap_data = eap_msg;
-
 	/*
-	 * If we came here, we should have the username to proceed further
+	 * We should have User-Name to proceed further
 	 */
 	if (request->username == NULL) {
-		request->username = get_username(((rlm_eap_t *)instance)->eap_data);
+
+		/* get the eap packet */
+		eap_packet = eap_attribute(request->packet->vps);
+		if (eap_packet == NULL) {
+			radlog(L_ERR, "rlm_eap: Malformed EAP Message");
+			return RLM_MODULE_FAIL;
+		}
+
+		id = eap_regenerateid(request, eap_packet->id);
+		if (id == NULL) {
+			radlog(L_ERR, "rlm_eap: User-Name cannot be obtained");
+			free(eap_packet);
+			return RLM_MODULE_FAIL;
+		}
+
+		request->username = eap_useridentity(eap_stuff->echolist, eap_packet, id);
 		if (request->username == NULL) {
 			radlog(L_ERR, "rlm_eap: Unknown User, authorization failed");
+			free(eap_packet);
+			free(id);
 			return RLM_MODULE_FAIL;
 		}
-	} else {
-		/*
-		 * For Identity responses, compare EAP username with the request username
-		 */
-		vp = get_username(((rlm_eap_t *)instance)->eap_data);
-		if ((vp != NULL) && 
-			(memcmp(request->username->strvalue, vp->strvalue, vp->length) != 0)) {
-
-			radlog(L_ERR, "rlm_eap: Mismatched User, authorization failed");
-			return RLM_MODULE_FAIL;
-		}
+		free(eap_packet);
+		free(id);
 	}
 
 	/*
-	 * ??? Is this user, a valid existing user in our db ???
-	 * Other authorize modules will handle this,
-	 * as username is now not empty from this point
+	 * Enforce EAP authentication
+
+	 * Auth-type(s) already set?  overide it with EAP
+	 * If EAP-Message is present in RADIUS, then EAP authentication is MUST.
+
+	 * TODO: When Multiple authentications are supported in RADIUS, 
+	 *     then prioritize EAP by prepending it before all Auth-Types
 	 */
 
-	/*
-	 * Enforce EAP authentication if it is not proxy reply.
-	 * and set the return type to try the next module to get the user details
-
-	 * ???: If Auth-type is already set then what ???
-	 * I guess, overide it instead of prepending it before all Auth-Types
-	 * If multiple Auth-types are set then it is invalid, remove them & set EAP
-
-		pairdelete(&request->config_items, PW_AUTHTYPE);
-		vp = pairmake("Auth-Type", "EAP", T_OP_EQ);
-		pairadd(&request->config_items, vp);
-	 */
 	atype = pairfind(request->config_items, PW_AUTHTYPE);
-	if ((atype == NULL) || ((atype->lvalue != PW_AUTHTYPE_EAP) &&
-		(atype->lvalue != PW_AUTHTYPE_ACCEPT))) {
+	if ((atype == NULL) || 
+		((atype->lvalue != PW_AUTHTYPE_EAP) &&
+		(atype->lvalue != PW_AUTHTYPE_ACCEPT) &&
+		(atype->lvalue != PW_AUTHTYPE_REJECT))) {
+
 		vp = pairmake("Auth-Type", "EAP", T_OP_EQ);
 		if (vp == NULL) {
 			return RLM_MODULE_FAIL;
 		}
+		/* to overide */
+		pairdelete(&request->config_items, PW_AUTHTYPE);
+		pairadd(&request->config_items, vp);
+
+		/* To prioritize
 		vp->next = request->config_items;
 		request->config_items = vp;
+		*/
 	}
 
 	return RLM_MODULE_UPDATED;

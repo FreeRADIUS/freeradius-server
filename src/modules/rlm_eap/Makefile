@@ -1,8 +1,8 @@
 TARGET      = rlm_eap
-SRCS        = rlm_eap.c eap.c mem.c
+SRCS        = rlm_eap.c eap.c mem.c state.c
 HEADERS     = eap.h
-RLM_CFLAGS  =  $(INCLTDL)
-RLM_LIBS    =  
+RLM_CFLAGS  = $(INCLTDL)
+RLM_LIBS    = 
 RLM_INSTALL = install-types
 
 RLM_SUBDIRS = types
