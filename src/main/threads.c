@@ -1115,7 +1115,9 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 {
 	int i, rcode;
 	int found;
-	pthread_t self = pthread_self();
+	pthread_t self;
+
+	if (!exec_initialized) return waitpid(pid, status, options);
 
 	/*
 	 *	We're only allowed to wait for a SPECIFIC pid.
@@ -1123,6 +1125,8 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 	if (pid <= 0) {
 		return -1;
 	}
+
+	self = pthread_self();
 
 	/*
 	 *	Find the PID to wait for, starting at an index within
@@ -1200,6 +1204,8 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 int rad_savepid(pid_t pid, int status)
 {
 	int i;
+
+	if (!exec_initialized) return 0;
 
 	/*
 	 *	Find the PID to wait for, starting at an index within
