@@ -41,6 +41,7 @@ static const char rcsid[] = "$Id$";
 #include "radiusd.h"
 #include "rad_assert.h"
 #include "modules.h"
+#include "request_list.h"
 
 static uint32_t proxy_id = 1;
 
@@ -473,6 +474,16 @@ int proxy_send(REQUEST *request)
 		 *	care of doing that.
 		 */
 		if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0) {
+			/*
+			 *	Add the proxied request to the
+			 *	list of outstanding proxied
+			 *	requests, BEFORE we send it, so
+			 *	we have fewer problems with race
+			 *	conditions when the responses come
+			 *	back very quickly.
+			 */
+			rl_add_proxy(request);
+
 			rad_send(request->proxy, NULL,
 				 (char *)request->proxysecret);
 		}

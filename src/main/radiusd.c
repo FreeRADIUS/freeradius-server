@@ -1752,13 +1752,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			 *  the reply packet from the home server.
 			 */
 			case RLM_MODULE_HANDLED:
-				/*
-				 *	Add the proxied request to the
-				 *	list of outstanding proxied
-				 *	requests.
-				 */
-				rl_add_proxy(request);
-
 				goto postpone_request;
 				break;
 			}
