@@ -622,7 +622,7 @@ static int generate_clients(const char *filename)
 			int i, mask_length;
 
 			mask_length = atoi(netmask + 1);
-			if ((mask_length <= 0) || (mask_length > 32)) {
+			if ((mask_length < 0) || (mask_length > 32)) {
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
 						filename, cf_section_lineno(cs), netmask + 1);
 				return -1;
