@@ -271,7 +271,7 @@ int rad_check_password(REQUEST *request)
 		 	*
 		 	*	This is fail-safe.
 		 	*/
-			DEBUG2("auth: No Auth-Type configuration for the request, rejecting the user");
+			DEBUG2("auth: No authenticate method (Auth-Type) configuration found for the request: Rejecting the user");
 			return -2;
 		}
 	}
