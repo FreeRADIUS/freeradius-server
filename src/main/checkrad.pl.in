@@ -786,6 +786,37 @@ sub versanet_snmp {
 }
 
 
+# 1999/08/24 Chris Shenton <chris@shenton.org>
+# Check Bay8000 NAS (aka: Annex) using finger. 
+# Returns from "finger @bay" like:
+#   Port  What User         Location         When          Idle  Address
+#   asy2  PPP  bill         ---              9:33am         :08  192.168.1.194
+#   asy4  PPP  hillary      ---              9:36am         :04  192.168.1.195
+#   [...]
+# But also returns partial-match users if you say like "finger g@bay":
+#   Port  What User         Location         When          Idle  Address
+#   asy2  PPP  gore         ---              9:33am         :09  192.168.1.194
+#   asy22 PPP  gwbush       ---              Mon  9:19am    :07  192.168.1.80
+# So check exact match of username!
+
+sub bay_finger {		# ARGV: 1=nas_ip, 2=nas_port, 3=login, 4=sessid
+    open(FINGER, "finger $ARGV[3]\@$ARGV[1]|") || return 2; # error
+    while(<FINGER>) {
+	my ($Asy, $PPP, $User) = split;
+	if( $User =~ /^$ARGV[3]$/ ){
+	    close FINGER;
+	    print LOG "checkrad:bay_finger: ONLINE $ARGV[3]\@$ARGV[1]"
+		if ($debug);
+	    return 1; # online
+	}
+    }
+    close FINGER;
+    print LOG "checkrad:bay_finger: offline $ARGV[3]\@$ARGV[1]" if ($debug);
+    return 0; # offline
+}
+
+###############################################################################
+
 if ($debug) {
 	open(LOG, ">>$debug");
 	$now = localtime;
@@ -827,6 +858,8 @@ if ($ARGV[0] eq 'livingston') {
 	$ret = &usrnet_telnet;
 } elsif ($ARGV[0] eq 'versanet'){
         $ret = &versanet_snmp;
+} elsif ($ARGV[0] eq 'bay') {
+	$ret = &bay_finger;
 } elsif ($ARGV[0] eq 'other') {
 	$ret = 1;
 } else {
