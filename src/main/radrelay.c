@@ -792,6 +792,14 @@ int main(int argc, char **argv)
 			usage();
 			break;
 	}
+
+	/*
+	 *	No detail file: die.
+	 */
+	if (argc == optind) {
+		usage();
+	}
+
 	argc -= (optind - 1);
 	argv += (optind - 1);
 	if (shortname && server_name)

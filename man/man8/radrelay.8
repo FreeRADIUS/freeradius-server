@@ -13,7 +13,7 @@ radrelay -- replicate accounting data to another RADIUS server
 .RB [ \-n
 .IR shortname ]
 .RB [ \-r
-.IR remote-server ]
+.IR remote-server[:port] ]
 .RB [ \-s
 .IR secret ]
 .RB [ \-S
@@ -49,8 +49,11 @@ Both the server secret and the remote-server address are obtained in
 this way. Do not use the -r, -s or -S parameters in combination with -n.
 
 .IP "\-r \fIremote-server\fP"
-The remote server that will be recieving the accounting packets.
-The -r parameter can't be used in combination with -n.
+The hostname or IP address of the remote server. Optionally a UDP port
+can be specified. If no UDP port is specified, it is looked up in
+\fI/etc/services\fP. The service name looked for is \fBradacct\fP for
+accounting packets. If a service is not found in \fI/etc/services\fP,
+1813 is used. The -r parameter can't be used in combination with -n.
 
 .IP "\-s \fIsecret\fP"
 Remote server secret.
@@ -62,13 +65,6 @@ nothing other then the plain-text secret.
 .IP \-x
 Enable debug mode, -x will activate radrelay internal debugging, -xx will
 also activate librad debugging.
-
-.IP "server[:port]"
-The hostname or IP address of the remote server. Optionally a UDP port
-can be specified. If no UDP port is specified, it is looked up in
-\fI/etc/services\fP. The service name looked for is \fBradacct\fP for
-accounting packets. If a service is not found in \fI/etc/services\fP,
-1813 is used.
 
 .IP "detailfile"
 The detail file to use, this will be appended to the base accounting
