@@ -74,7 +74,8 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 /*
  *  Decode an attribute name into a string.
  */
-static void decode_attribute(const char **from, char **to, int freespace, int *open, REQUEST *request, RADIUS_ESCAPE_STRING func) {
+static void decode_attribute(const char **from, char **to, int freespace, int *open, REQUEST *request, RADIUS_ESCAPE_STRING func)
+{
 
 	DICT_ATTR *tmpda;
 	VALUE_PAIR *tmppair;
@@ -151,7 +152,10 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 		}
 	} else {
 		openbraces--;
-		/* p--; */
+		if (*p != '\0') {
+			p--;
+			decode_attribute(&p, &q, freespace, &openbraces, request, func);
+		}
 	}
 
 	*open = openbraces;
