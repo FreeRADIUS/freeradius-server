@@ -113,7 +113,8 @@ static int radutmp_detach(void *instance)
 		next = p->next;
 		free(p);
 	}
-	free(inst->filename);
+	if (inst->filename) free(inst->filename);
+	if (inst->username) free(inst->username);
 	free(inst);
 	return 0;
 }
