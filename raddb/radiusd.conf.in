@@ -444,6 +444,26 @@ thread pool {
 #
 modules {
 
+	# PAP module to authenticate users based on their stored password
+	#
+	#  Supports multiple encryption schemes
+	#  clear: Clear text
+	#  crypt: Unix crypt
+	#    md5: MD5 ecnryption
+	#   sha1: SHA1 encryption.
+	#  DEFAULT: crypt
+	pap {
+		encryption_scheme = crypt
+	}
+
+	# CHAP module
+	#
+	#  To authenticate requests containing a CHAP-Password
+	#
+	chap {
+		authtype = CHAP
+	}
+
 	# Pluggable Authentication Modules
 	#
 	#  For Linux, see:
@@ -604,18 +624,6 @@ modules {
 		# encryption
 		#	require_strong = yes
 	}
-
-	# PAP module to authenticate users based on their stored password
-	#
-	#  Supports multiple encryption schemes
-	#  clear: Clear text
-	#  crypt: Unix crypt
-	#    md5: MD5 ecnryption
-	#   sha1: SHA1 encryption.
-	#  DEFAULT: crypt
-	#pap {
-	#	encryption_scheme = crypt
-	#}
 
 	# Lightweight Directory Access Protocol (LDAP)
 	#
@@ -1058,7 +1066,7 @@ authorize {
 	# The chap module will set 'Auth-Type := CHAP' if we are
 	# handling a CHAP request and Auth-Type has not already been set
 	#
-#	chap
+	chap
 
 #	counter
 #	attr_filter
@@ -1108,19 +1116,20 @@ authenticate {
 #	mschap
 #	eap
 
-	# Uncomment it if you want to support CHAP
-#	authtype CHAP {
-#		chap
-#	}
+	# Most people want CHAP authentication
+	# A back-end database listed in the 'authorize' section
+	# MUST supply a CLEAR TEXT password.  Encrypted passwords
+	# won't work.
+	authtype CHAP {
+		chap
+	}
 
-	# Uncomment the following if you want to support PAP and you
-	# extract user passwords from the user database (LDAP,SQL, etc).
-	# You should use the 'files'module to set 'Auth-Type = PAP' for
-	# this to work.
-#	authtype PAP {
-#		pap
-#	}
-#
+	# PAP authentication, when a back-end database listed
+	# in the 'authorize' section supplies a password.  The
+	# password can be clear-text, or encrypted.
+	authtype PAP {
+		pap
+	}
 }
 
 
