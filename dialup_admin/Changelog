@@ -50,6 +50,7 @@ Ver 1.63:
 * Add more comments in the admin.conf file
 * Show correct calculation of the montlhy usage time.
 * Don't show an account as locked if Dialup-Access does not exist and the mapping corresponds to 'none' attribute
+* Make clean_radacct and truncate_radacct work correctly
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime

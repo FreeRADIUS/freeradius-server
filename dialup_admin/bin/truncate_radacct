@@ -22,7 +22,7 @@ while(<CONF>){
 }
 close CONF;
 
-$sql_password = ($sql_password == '') ? '' : "-p $sql_password";
+$sql_password = ($sql_password eq '') ? '' : "-p$sql_password";
 
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
 $date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,$year,$wday,$yday,$isdst);
@@ -36,4 +36,4 @@ open TMP, ">/tmp/truncate_radacct.query"
         or die "Could not open tmp file\n";
 print TMP $query;
 close TMP;
-`$mysql -h $sql_server -u $sql_username $sql_password $sql_database </tmp/truncate_radacct.query`;
+`$mysql -h$sql_server -u$sql_username $sql_password $sql_database </tmp/truncate_radacct.query`;
