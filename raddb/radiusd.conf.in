@@ -404,15 +404,15 @@ modules {
 	#  rewrite arbitrary packets.  Useful in accounting and authorization.
 	## FIXME:  This is highly experimental at the moment.  Please give 
 	## feedback.
-	attr_rewrite sanecallerid {
-		attribute = Called-Station-Id
+	#attr_rewrite sanecallerid {
+	#	attribute = Called-Station-Id
 		# may be "packet", "reply", or "config"
-		searchin = packet
-		searchfor = "[+ ]"
-		replacewith = ""
-		ignore_case = no
-		max_matches = 10
-	}
+	#	searchin = packet
+	#	searchfor = "[+ ]"
+	#	replacewith = ""
+	#	ignore_case = no
+	#	max_matches = 10
+	#}
 
 	preprocess {
 		huntgroups = ${confdir}/huntgroups
