@@ -22,22 +22,15 @@
 
 static const char rcsid[] = "$Id$";
 
-#include <stdint.h>
+#include "autoconf.h"
+
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
-/*
- *	Some of these things should later go into a header file...
- */
-typedef struct rbtree_t rbtree_t;
-typedef struct rbnode_t rbnode_t;
+#include "libradius.h"
 
 /* red-black tree description */
 typedef enum { Black, Red } NodeColor;
-
-/* callback order for walking  */
-typedef enum { PreOrder, InOrder, PostOrder } NodeCallback;
 
 struct rbnode_t {
     rbnode_t	*Left;		/* left child */
@@ -412,7 +405,7 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 /*
  *	Find an element in the tree, returning the data, not the node.
  */
-void *rbtree_find(rbtree_t *tree, void *Data)
+rbnode_t *rbtree_find(rbtree_t *tree, void *Data)
 {
 	/*******************************
 	 *  find node containing Data  *
@@ -424,13 +417,26 @@ void *rbtree_find(rbtree_t *tree, void *Data)
 		int result = tree->Compare(Data, Current->Data);
 
 		if (result == 0) {
-			return Current->Data;
+			return Current;
 		} else {
 			Current = (result < 0) ?
 				Current->Left : Current->Right;
 		}
 	}
 	return NULL;
+}
+
+/*
+ *	Find the user data.
+ */
+void *rbtree_finddata(rbtree_t *tree, void *Data)
+{
+	rbnode_t *X;
+
+	X = rbtree_find(tree, Data);
+	if (!X) return NULL;
+
+	return X->Data;
 }
 
 /*
@@ -513,7 +519,7 @@ static int WalkNodePostOrder(rbnode_t *X, int (*callback)(void *))
  *	The callback function should return 0 to continue walking.
  *	Any other value stops the walk, and is returned.
  */
-int rbtree_walk(rbtree_t *tree, int (*callback)(void *), NodeCallback order)
+int rbtree_walk(rbtree_t *tree, int (*callback)(void *), RBTREE_ORDER order)
 {
 	switch (order) {
 	case PreOrder:		

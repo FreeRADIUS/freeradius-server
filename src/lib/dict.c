@@ -35,18 +35,11 @@ static const char rcsid[] = "$Id$";
 #include	"libradius.h"
 #include	"missing.h"
 
-static DICT_ATTR	*dictionary_attributes = NULL;
 static DICT_VALUE	*dictionary_values = NULL;
 static DICT_VENDOR	*dictionary_vendors = NULL;
 
-#undef  WITH_RBTREE
-
-#ifdef WITH_RBTREE
-#include "./rbtree.c"
-
-static rbtree_t *attr_byname = NULL;
-static rbtree_t *attr_byvalue = NULL;
-#endif /* WITH_RBTREE */
+static rbtree_t *attributes_byname = NULL;
+static rbtree_t *attributes_byvalue = NULL;
 
 static const LRAD_NAME_NUMBER type_table[] = {
 	{ "string",	PW_TYPE_STRING },
@@ -67,7 +60,7 @@ static const LRAD_NAME_NUMBER type_table[] = {
  *	These attributes are referenced a LOT, especially during
  *	decoding of the on-the-wire packets.  It's useful to keep a
  *	cache of their dictionary entries, so looking them up is
- *	O(1), instead of O(N).  (N==number of dictionary entries...)
+ *	O(1), instead of O(log(N)).  (N==number of dictionary entries...)
  */
 static DICT_ATTR *base_attributes[256];
 
@@ -76,14 +69,15 @@ static DICT_ATTR *base_attributes[256];
  */
 static void dict_free(void)
 {
-	DICT_ATTR	*dattr, *anext;
+	int i;
 	DICT_VALUE	*dval, *vnext;
 	DICT_VENDOR	*dvend, *enext;
 
-	for (dattr = dictionary_attributes; dattr; dattr = anext) {
-		anext = dattr->next;
-		free(dattr);
+	for (i = 0; i < 256; i++) {
+		if (base_attributes[i]) free(base_attributes[i]);
 	}
+	memset(base_attributes, 0, sizeof(base_attributes));
+
 	for (dval = dictionary_values; dval; dval = vnext) {
 		vnext = dval->next;
 		free(dval);
@@ -93,16 +87,14 @@ static void dict_free(void)
 		free(dvend);
 	}
 
-	dictionary_attributes = NULL;
 	dictionary_values = NULL;
 	dictionary_vendors = NULL;
 
-#ifdef WITH_RBTREE
-	rbtree_free(attr_byname);
-	rbtree_free(attr_byvalue);
-#endif
-
-	memset(base_attributes, 0, sizeof(base_attributes));
+	/*
+	 *	Free the tree of attributes by name.
+	 */
+	rbtree_free(attributes_byname);
+	rbtree_free(attributes_byvalue);
 }
 
 /*
@@ -194,28 +186,28 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	}
 
 	/*
-	 *	Add to the front of the list, so that
-	 *	values at the end of the file override
-	 *	those in the beginning.
+	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	attr->next = dictionary_attributes;
-	dictionary_attributes = attr;
-
-#ifdef WITH_RBTREE
-	/*
-	 *	Did NOT insert!
-	 */
-	if (rbtree_insert(attr_byname, attr) == 0) {
-		fprintf(stderr, "DUPLICATE ATTRIBUTE BY NAME: %s\n", attr->name);
+	if (rbtree_insert(attributes_byname, attr) == 0) {
+		librad_log("dict_addattr: Duplicate attribute %s", name);
+		return -1;
 	}
 
 	/*
-	 *	We DO want to allow duplicates here?
+	 *	Insert the SAME pointer (not free'd when this tree is
+	 *	deleted), into another tree.
+	 *
+	 *	If the newly inserted entry is a duplicate of an existing
+	 *	entry, then the old entry is tossed, and the new one
+	 *	replaces it.  This behaviour is configured in the
+	 *	rbtree_create() function.
+	 *
+	 *	We want this behaviour because we want OLD names for
+	 *	the attributes to be read from the configuration
+	 *	files, but when we're printing them, (and looking up
+	 *	by value) we want to use the NEW name.
 	 */
-	if (rbtree_insert(attr_byvalue, attr) == 0) {
-		fprintf(stderr, "DUPLICATE ATTRIBUTE BY VALUE: %s\n", attr->name);
-	}
-#endif	
+	rbtree_insert(attributes_byvalue, attr);
 
 	return 0;
 }
@@ -649,7 +641,6 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	return 0;
 }
 
-#ifdef WITH_RBTREE
 /*
  *	Callbacks for red-black trees.
  */
@@ -668,7 +659,6 @@ static int attrvalue_cmp(const void *a, const void *b)
 	return (((const DICT_ATTR *)a)->attr - 
 		((const DICT_ATTR *)b)->attr);
 }
-#endif
 
 /*
  *	Initialize the directory, then fix the attr member of
@@ -681,17 +671,26 @@ int dict_init(const char *dir, const char *fn)
 
 	dict_free();
 
-#ifdef WITH_RBTREE
-	attr_byname = rbtree_create(attrname_cmp, NULL, 0);
-	if (!attr_byname) {
+	/*
+	 *	Create the tree of attributes by name.   There MAY NOT
+	 *	be multiple attributes of the same name.
+	 *
+	 *	Each attribute is malloc'd, so the free function is free.
+	 */
+	attributes_byname = rbtree_create(attrname_cmp, free, 0);
+	if (!attributes_byname) {
 		return -1;
 	}
 
-	attr_byvalue = rbtree_create(attrvalue_cmp, NULL, 1);
-	if (!attr_byvalue) {
+	/*
+	 *	Create the tree of attributes by value.  There MAY
+	 *	be attributes of the same value.  If there are, we
+	 *	pick the latest one.
+	 */
+	attributes_byvalue = rbtree_create(attrvalue_cmp, NULL, 1);
+	if (!attributes_byvalue) {
 		return -1;
 	}
-#endif
 
 	if (my_dict_init(dir, fn, NULL, 0) < 0)
 		return -1;
@@ -715,34 +714,21 @@ int dict_init(const char *dir, const char *fn)
  */
 DICT_ATTR * dict_attrbyvalue(int val)
 {
-	DICT_ATTR	*a;
-
 	/*
 	 *	If it's an on-the-wire base attribute, return
 	 *	the cached value for it.
 	 */
 	if ((val >= 0) && (val < 256)) {
 		return base_attributes[val];
+
+	} else {
+		DICT_ATTR myattr;
+		
+		myattr.attr = val;
+		return rbtree_finddata(attributes_byvalue, &myattr); 
 	}
 
-	for (a = dictionary_attributes; a; a = a->next) {
-		if (a->attr == val) {
-#ifdef WITH_RBTREE
-			DICT_ATTR *b;
-			DICT_ATTR myattr;
-			
-			myattr.attr = val;
-			b = rbtree_find(attr_byvalue, &myattr); 
-			if (a != b) {
-				fprintf(stderr, "SHIT! %p %p %s\n",
-					a, b, a->name);
-			}
-#endif
-			return a;
-		}
-	}
-
-	return NULL;
+	return NULL;		/* never reached, but useful */
 }
 
 /*
@@ -750,27 +736,11 @@ DICT_ATTR * dict_attrbyvalue(int val)
  */
 DICT_ATTR * dict_attrbyname(const char *name)
 {
-	DICT_ATTR	*a;
-
-	for (a = dictionary_attributes; a; a = a->next) {
-		if (strcasecmp(a->name, name) == 0) {
-#ifdef WITH_RBTREE
-			DICT_ATTR *b;
-			DICT_ATTR myattr;
-			
-			strNcpy(myattr.name, name, sizeof(myattr.name));
-
-			b = rbtree_find(attr_byname, &myattr); 
-			if (a != b) {
-				fprintf(stderr, "SHIT! %p %p %s\n",
-					a, b, name);
-			}
-#endif
-			return a;
-		}
-	}
-
-	return NULL;
+	DICT_ATTR myattr;
+	
+	strNcpy(myattr.name, name, sizeof(myattr.name));
+	
+	return rbtree_finddata(attributes_byname, &myattr); 
 }
 
 /*

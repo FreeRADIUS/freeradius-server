@@ -116,7 +116,6 @@ typedef struct dict_attr {
 	int			type;
 	int			vendor;
         ATTR_FLAGS              flags;
-	struct dict_attr	*next;
 } DICT_ATTR;
 
 typedef struct dict_value {
@@ -336,5 +335,22 @@ void lrad_mschap(const unsigned char *win_password,
 
 /* crypt wrapper from crypt.c */
 int lrad_crypt_check(const char *key, const char *salt);
+
+/* rbtree.c */
+typedef struct rbtree_t rbtree_t;
+typedef struct rbnode_t rbnode_t;
+
+void rbtree_free(rbtree_t *tree);
+rbtree_t *rbtree_create(int (*Compare)(const void *, const void *),
+			void (*freeNode)(void *),
+			int replace_flag);
+int rbtree_insert(rbtree_t *tree, void *Data);
+void rbtree_delete(rbtree_t *tree, rbnode_t *Z);
+rbnode_t *rbtree_find(rbtree_t *tree, void *Data);
+void *rbtree_finddata(rbtree_t *tree, void *Data);
+
+/* callback order for walking  */
+typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;
+int rbtree_walk(rbtree_t *tree, int (*callback)(void *), RBTREE_ORDER order);
 
 #endif /*LIBRADIUS_H*/
