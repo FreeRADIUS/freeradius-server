@@ -126,7 +126,7 @@ int read_clients_file(const char *file)
 			p++;
 
 			mask_length = atoi(p);
-			if ((mask_length <= 0) || (mask_length > 32)) {
+			if ((mask_length < 0) || (mask_length > 32)) {
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
 						file, lineno, p);
 				return -1;
