@@ -57,6 +57,7 @@ extern REALM	 *realms;
 
 static int generate_realms(const char *filename);
 static int generate_clients(const char *filename);
+static CONF_SECTION *conf_read(const char *fromfile, int fromline, const char *conffile);
 
 #ifndef RADIUS_CONFIG
 #define RADIUS_CONFIG "radiusd.conf"
@@ -386,11 +387,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		       *p = '\0';		  
 		       DEBUG2( "Config:   including file: %s", buf );
 		       
-		       if ((is = conf_read(buf)) == NULL) {
-			 radlog(L_ERR, "%s[%d]: Unable to include file \"%s\"",
-				cf, *lineno, buf);
-			 cf_section_free(cs);
-			 return NULL;
+		       if ((is = conf_read(cf, *lineno, buf)) == NULL) {
+			       cf_section_free(cs);
+			       return NULL;
 		       }
 		       
 		       /*
@@ -549,15 +548,20 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 /*
  *	Read the config file.
  */
-CONF_SECTION *conf_read(const char *conffile)
+static CONF_SECTION *conf_read(const char *fromfile, int fromline, const char *conffile)
 {
 	FILE		*fp;
 	int		lineno = 0;
 	CONF_SECTION	*cs;
 	
 	if ((fp = fopen(conffile, "r")) == NULL) {
-		radlog(L_ERR, "cannot open %s: %s",
-			conffile, strerror(errno));
+		if (fromfile) {
+			radlog(L_ERR|L_CONS, "%s[%d]: Unable to open file \"%s\": %s",
+			       fromfile, fromline, conffile, strerror(errno));
+		} else {
+			radlog(L_ERR|L_CONS, "Unable to open file \"%s\": %s",
+			       conffile, strerror(errno));
+		}
 		return NULL;
 	}
 
@@ -581,7 +585,7 @@ int read_radius_conf_file(void)
 	/* Lets go for the new configuration files */
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
-	if ((cs = conf_read(buffer)) == NULL) {
+	if ((cs = conf_read(NULL, 0, buffer)) == NULL) {
 		return -1;
 	}
 
