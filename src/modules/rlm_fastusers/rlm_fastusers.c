@@ -510,8 +510,9 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		/* Save the orginal config items */
 		check_save = paircopy(request->config_items);
 
-		while((user) && (!userfound) && (strcmp(user->name, name)==0)) {
-			if(paircmp(request_pairs, user->check, reply_pairs) != 0) {
+		while((user) && (!userfound)) {
+			if((strcmp(user->name, name)!=0) ||
+					(paircmp(request_pairs, user->check, reply_pairs) != 0)) {
 				user = user->next;
 				continue;
 			}
@@ -524,7 +525,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 			/* Check the req to see if we matched */
 			if(rad_check_password(request)==0) {
-				DEBUG2("  fastusers: Matched %s at %d", user->name, user->lineno);
+				DEBUG2("  fastusers(uc): Matched %s at %d", user->name, user->lineno);
 				userfound = 1;
 
 			/* We didn't match here */
