@@ -23,6 +23,7 @@
 CREATE TABLE StartVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	h323SetupTime		TIMESTAMP with time zone NOT NULL,
+	H323ConnectTime		TIMESTAMP with time zone,
 	UserName		VARCHAR(64),
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
@@ -32,7 +33,8 @@ CREATE TABLE StartVoIP (
 	AcctDelayTime		INTEGER,
 	H323GWID		VARCHAR(32),
 	h323CallOrigin		VARCHAR(10),
-	h323ConfID		VARCHAR(35) NOT NULL
+	CallID			VARCHAR(50) NOT NULL,
+	processed		BOOLEAN DEFAULT false
 );
 create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
 
@@ -40,6 +42,7 @@ create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
 CREATE TABLE StartTelephony (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	h323SetupTime		TIMESTAMP with time zone NOT NULL,
+	H323ConnectTime		TIMESTAMP with time zone,
 	UserName		VARCHAR(64),
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
@@ -49,7 +52,8 @@ CREATE TABLE StartTelephony (
 	AcctDelayTime		INTEGER,
 	H323GWID		VARCHAR(32),
 	h323CallOrigin		VARCHAR(10),
-	h323ConfID		VARCHAR(35) NOT NULL
+	CallID			VARCHAR(35) NOT NULL,
+	processed		BOOLEAN DEFAULT false
 );
 create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress);
 
@@ -79,14 +83,15 @@ CREATE TABLE StopVoIP (
 	H323DisconnectCause	VARCHAR(20),
 	H323RemoteAddress	INET,
 	H323VoiceQuality	INTEGER,
-	H323ConfID		VARCHAR(35) NOT NULL
+	CallID			VARCHAR(50) NOT NULL,
+	processed		BOOLEAN DEFAULT false
 );
-create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, h323ConfID);
+create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, CallID);
 /*
  * Some Cisco CSPS do not have complete VSA details. If you have one of these you will want
  * to use the following index, as the one above will drop records.
  * 
- *  create UNIQUE index stopvoipcombo on stopvoip (h323DisconnectTime, nasipaddress, CalledStationId);
+ *  create UNIQUE index stopvoipcombo on stopvoip (h323DisconnectTime, nasipaddress, CallID);
  *
  */
 
@@ -112,11 +117,12 @@ CREATE TABLE StopTelephony (
 	H323DisconnectCause	VARCHAR(20),
 	H323RemoteAddress	INET,
 	H323VoiceQuality	INTEGER,
-	H323ConfID		VARCHAR(35) NOT NULL
+	CallID			VARCHAR(35) NOT NULL,
+	processed		BOOLEAN DEFAULT false
 );
 -- You can have more than one record that is identical except for CiscoNASPort if you have a VoIP dial peer
 -- configured for multiple PRIs.
-create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, h323ConfID, CiscoNASPort);
+create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, CallID, CiscoNASPort);
 
 /*
  * Table structure for 'gateways'
@@ -195,6 +201,25 @@ CREATE OR REPLACE FUNCTION strip_dot (VARCHAR) RETURNS TIMESTAMPTZ AS '
         END IF;
  END;
 ' LANGUAGE 'plpgsql';
+
+
+CREATE OR REPLACE FUNCTION pick_id (VARCHAR, VARCHAR) RETURNS VARCHAR AS '
+ DECLARE
+        h323confid ALIAS FOR $1;
+        callid ALIAS FOR $2;
+ BEGIN
+        IF h323confid <> '''' THEN
+                RETURN h323confid;
+        END IF;
+        IF callid <> '''' THEN
+                RETURN callid;
+        END IF;
+	RETURN NULL;
+ END;
+' LANGUAGE 'plpgsql';
+
+
+
 /*
  * Table structure for 'isdn_error_codes' table
  *
