@@ -527,7 +527,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.5 
+# From configure.in Revision: 1.6 
 
 
 # Extract the first word of "gcc", so it can be a program name with args.
@@ -931,7 +931,7 @@ rm -f conftest*
 		old_CFLAGS="$CFLAGS"
 
 
-		for try in /usr/local/include /usr/local/mysql/include $mysql_include_dir; do
+		for try in $mysql_include_dir /usr/local/include /usr/local/mysql/include ; do
 			CFLAGS="$old_CFLAGS -I$try"
 			cat > conftest.$ac_ext <<EOF
 #line 938 "configure"
@@ -978,7 +978,7 @@ echo "configure:977: checking for mysql_init in -lmysqlclient" >&5
 		old_LIBS="$LIBS"
 
 
-		for try in /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql $mysql_lib_dir; do
+		for try in $mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql; do
 			LIBS="$old_LIBS -L$try -lmysqlclient"
 			cat > conftest.$ac_ext <<EOF
 #line 985 "configure"
@@ -990,7 +990,7 @@ mysql_init()
 EOF
 if { (eval echo configure:992: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
-  MYSQL_LIBS="-L$try -lmysqlclient"
+  MYSQL_LIBS="-L$try -lmysqlclient $old_LIBS"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5

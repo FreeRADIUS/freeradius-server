@@ -40,7 +40,7 @@ if test x$with_[]modname != xno; then
 
 dnl		AC_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
 
-		for try in /usr/local/include /usr/local/mysql/include $mysql_include_dir; do
+		for try in $mysql_include_dir /usr/local/include /usr/local/mysql/include ; do
 			CFLAGS="$old_CFLAGS -I$try"
 			AC_TRY_COMPILE([#include <mysql/mysql.h>], [int a = 1;],
 				MYSQL_INCLUDE="-I$try",
@@ -70,10 +70,10 @@ dnl		AC_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
 dnl		AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.so])
 dnl		AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.a])
 
-		for try in /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql $mysql_lib_dir; do
+		for try in $mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql; do
 			LIBS="$old_LIBS -L$try -lmysqlclient"
 			AC_TRY_LINK([extern char mysql_init();], [mysql_init()],
-				MYSQL_LIBS="-L$try -lmysqlclient",
+				MYSQL_LIBS="-L$try -lmysqlclient $old_LIBS",
 				MYSQL_LIBS=
 			)
 			if test "x$MYSQL_LIBS" != "x"; then
