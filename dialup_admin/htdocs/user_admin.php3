@@ -93,7 +93,6 @@ if ($link){
 	AND AcctStartTime >= '$week_str' AND AcctStartTime <= '$now_str';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
-		$weekly_used = $row['sum(AcctSessionTime)'];
 		$tot_time = time2str($row['sum(AcctSessionTime)']);
 		$tot_input = bytes2str($row['sum(AcctInputOctets)']);
 		$tot_output = bytes2str($row['sum(AcctOutputOctets)']);
@@ -101,6 +100,15 @@ if ($link){
 		$avg_input = bytes2str($row['avg(AcctInputOctets)']);
 		$avg_output = bytes2str($row['avg(AcctOutputOctets)']);
 		$tot_conns = $row['COUNT(*)'];
+	}
+	else
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
+	$search = @da_sql_query($link,$config,
+	"SELECT sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE UserName = '$login'
+	AND AcctStartTime >= '$week_start' AND AcctStartTime <= '$now_str';");
+	if ($search){
+		$row = @da_sql_fetch_array($search,$config);
+		$weekly_used = $row['sum(AcctSessionTime)'];
 	}
 	else
 		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
