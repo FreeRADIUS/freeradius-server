@@ -50,6 +50,25 @@ the rlm_ldap module:
 #	identity = "cn=admin,o=My Org,c=UA"
 #	password = mypass
 
+#	ldap_cache_timeout: The timeout for the ldap cache in secs
+#	If it is set to zero then ldap caching will be disabled
+#	default: 120
+
+	ldap_cache_timeout = 120
+
+#	ldap_cache_size: The maximum ldap cache size. If it is set to zero
+#	then the ldap cache size will be unlimited
+#	default: 0
+
+	ldap_cache_size = 0
+
+#	ldap_connections_number: The number of ldap connections that the module
+#	will keep open to use in requests. Usually it will not need to be larger
+#	than 5-10 connections
+#	default: 5
+
+	ldap_connections_number = 5
+
 #	basedn = <Base of LDAP searches>
 #
 		basedn   = "o=My Org,c=UA"
