@@ -141,7 +141,6 @@ static TLDAP_RADIUS reply_item_map[] = {
 	{"radiusLoginTCPPort", "Login-TCP-Port"},
 	{"radiusCallbackNumber", "Callback-Number"},
 	{"radiusCallbackId", "Callback-Id"},
-	{"radiusFramedRoute", "Framed-Route"},
 	{"radiusFramedIPXNetwork", "Framed-IPX-Network"},
 	{"radiusClass", "Class"},
 	{"radiusSessionTimeout", "Session-Timeout"},
@@ -198,6 +197,14 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->access_group = config.access_group;
 	inst->access_attr = config.access_attr;
 	inst->bound = 0;
+	
+	config.server = NULL;
+	config.login = NULL;
+	config.password = NULL;
+	config.filter = NULL;
+	config.basedn = NULL;
+	config.access_group = NULL;
+	config.access_attr = NULL;
 
 	*instance = inst;
 
@@ -232,7 +239,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	if (rc < 1) {
 		ldap_perror(inst->ld, "rlm_ldap: ldap_result()");
 		radlog(L_ERR, "rlm_ldap: ldap_result() failed - %s\n", strerror(errno));
-		ldap_msgfree(result);
+		ldap_msgfree(*result);
 		return (RLM_MODULE_FAIL);
 	}
 	switch (ldap_result2error(inst->ld, *result, 0)) {
@@ -246,7 +253,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	default:
 		DEBUG("rlm_ldap: ldap_search() failed");
 		inst->bound = 0;
-		ldap_msgfree(result);
+		ldap_msgfree(*result);
 		return (RLM_MODULE_FAIL);
 	}
 
@@ -409,7 +416,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 
 	if ((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL) {
 		if ((res = perform_search(instance, inst->basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
-			DEBUG("rlm_ldap: search did not return ok value", name);
+			DEBUG("rlm_ldap: search did not return ok value");
 			return (res);
 		}
 		if ((msg = ldap_first_entry(inst->ld, result)) == NULL) {
@@ -473,7 +480,7 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	if (msgid == -1) {
 		ldap_perror(ld, "rlm_ldap: ldap_connect()");
 		*result = RLM_MODULE_FAIL;
-		ldap_unbind_s(inst->ld);
+		ldap_unbind_s(ld);
 		return (NULL);
 	}
 	DEBUG("rlm_ldap: ldap_connect() waiting for bind result ...");
@@ -647,6 +654,8 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	BerElement     *berptr;
 	char           *attr;
 	char          **vals;
+	int             vals_count;
+	int             vals_idx;
 	char           *ptr;
 	TLDAP_RADIUS   *element;
 	int             token;
@@ -661,28 +670,36 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	do {
 		for (element = item_map; element->attr != NULL; element++) {
 			if (!strncasecmp(attr, element->attr, strlen(element->attr))) {
-				if (((vals = ldap_get_values(ld, entry, attr)) == NULL) ||
-				    (ldap_count_values(vals) > 1)) {
-					DEBUG("rlm_ldap: Attribute %s has multiple values", attr);
-					break;
-				}
-				ptr = vals[0];
-				token = gettoken(&ptr, value, sizeof(value));
-				if (token < T_EQSTART || token > T_EQEND) {
-					token = T_OP_EQ;
-				} else {
-					gettoken(&ptr, value, sizeof(value));
-				}
-				if (value[0] == 0) {
-					DEBUG("rlm_ldap: Attribute %s has no value", attr);
-					break;
-				}
-				DEBUG("rlm_ldap: Adding %s as %s, value %s & op=%d", attr, element->radius_attr, value, token);
-				if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
-					continue;
-				pairadd(&pairlist, newpair);
-				ldap_value_free(vals);
-			}
+                                /* mapping found, get the values */
+				if (((vals = ldap_get_values(ld, entry, attr)) == NULL)) {
+                                        DEBUG("rlm_ldap: ldap_get_values returned NULL for attribute %s", attr);
+                                        break;
+                                }
+
+                                /* find out how many values there are for the attribute and extract all of them */
+
+                                vals_count = ldap_count_values(vals);
+
+                                for (vals_idx = 0; vals_idx < vals_count; vals_idx++) {
+                                        ptr = vals[vals_idx];
+
+                                        token = gettoken(&ptr, value, sizeof(value));
+                                        if (token < T_EQSTART || token > T_EQEND) {
+                                                token = T_OP_EQ;
+                                        } else {
+                                                gettoken(&ptr, value, sizeof(value));
+                                        }
+                                        if (value[0] == 0) {
+                                                DEBUG("rlm_ldap: Attribute %s has no value", attr);
+                                                break;
+                                        }
+                                        DEBUG("rlm_ldap: Adding %s as %s, value %s & op=%d", attr, element->radius_attr, value, token);
+                                        if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
+                                                continue;
+                                        pairadd(&pairlist, newpair);
+                                }
+                                ldap_value_free(vals);
+                        }
 		}
 	} while ((attr = ldap_next_attribute(ld, entry, berptr)) != NULL);
 
