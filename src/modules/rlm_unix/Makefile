@@ -29,3 +29,4 @@ config.mak config.h:
 	@../checkconfig -I HAVE_SHADOW_H shadow.h
 	@../checkconfig -c HAVE_GETUSERSHELL getusershell
 	@../checkconfig -f ETC_PASSWD /etc/passwd
+	@../checkconfig -c HAVE_GETUSERSHELL getusershell
