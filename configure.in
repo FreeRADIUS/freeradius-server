@@ -787,17 +787,17 @@ dnl #############################################################
 
 mysubdirs=
 if test "x$EXPERIMENTAL" = "xyes"; then
-  for foo in `find src/modules/rlm_* -maxdepth 1 -name configure -print`; do
-    bar=`echo $foo | sed 's%/configure$%%g'`
-    mysubdirs="$mysubdirs $bar"
-  done
+  bar=`ls -1 src/modules/rlm_*/configure | sed 's%/configure%%'`
+  dnl # get rid of LF's.
+  mysubdirs=`echo $bar`
 else
-   dnl # 
-   dnl # Find 'configure' in ONLY the stable modules
-   dnl # 
-   for foo in `find \`cat src/modules/stable | sed 's%rlm%src/modules/rlm%g'\` -maxdepth 1 -name configure -print`; do
-    bar=`echo $foo | sed 's%/configure$%%g'`
-    mysubdirs="$mysubdirs $bar"
+  dnl # 
+  dnl # Find 'configure' in ONLY the stable modules
+  dnl # 
+  for bar in `cat src/modules/stable`; do
+    if test -f src/modules/$bar/configure; then
+      mysubdirs="$mysubdirs src/modules/$bar"
+    fi
   done
 fi
 
