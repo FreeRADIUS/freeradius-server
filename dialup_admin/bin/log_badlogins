@@ -198,6 +198,7 @@ for(;;){
 					close TMP;
 					$command = "$sqlcmd -h$server $opt -u$sql_username $pass $sql_database <$tmpfile.$server" if ($sql_type eq 'mysql');
 					$command = "$sqlcmd  -U $sql_username -f $tmpfile.$server $sql_database" if ($sql_type eq 'pg');
+					$command = "$sqlcmd  $sql_username/$pass" . "@" . "$sql_database <$tmpfile.$server" if ($sql_type eq 'oracle');
 					$command = "$sqlcmd '$server' '$sql_port' '' '$sql_username' '$sql_pass' <$tmpfile.$server" if ($sql_type eq 'sqlrelay');
 					`$command`;
 
