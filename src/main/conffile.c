@@ -713,6 +713,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				return NULL;
 			}
 
+#ifdef HAVE_DIRENT_H
 			/*
 			 *	$INCLUDE foo/
 			 *
@@ -742,6 +743,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 					snprintf(buf2, sizeof(buf2), "%s%s",
 						 value, dp->d_name);
 					if ((is = conf_read(cf, *lineno, buf2, parent)) == NULL) {
+						closedir(dir);
 						cf_section_free(&cs);
 						return NULL;
 					}
@@ -749,7 +751,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 					cf_fixup_children(cs, is);
 				}
 				closedir(dir);
-			}  else { /* it was a normal file */
+			}  else
+#endif
+			{ /* it was a normal file */
 				DEBUG2( "Config:   including file: %s", value );
 				if ((is = conf_read(cf, *lineno, value, parent)) == NULL) {
 					cf_section_free(&cs);
