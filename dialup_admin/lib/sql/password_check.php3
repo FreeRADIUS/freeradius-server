@@ -18,8 +18,7 @@ if ($action == 'checkpass'){
 			if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
 				include("../lib/crypt/$config[general_encryption_method].php3");
 				$enc_passwd = $row[Value];
-				$salt=substr($enc_passwd,0,2);
-				$passwd = da_encrypt($passwd,$salt);
+				$passwd = da_encrypt($passwd,$enc_passwd);
 				if ($passwd == $enc_passwd)
 					$msg = '<font color=blue><b>YES It is that</b></font>';
 				else

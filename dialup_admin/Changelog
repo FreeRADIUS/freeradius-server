@@ -11,6 +11,7 @@ Ver 1.30:
 * Make lib/ldap/password_check.php3 behave properly when it is passed a null password
 * Allow for daily/weekly/monthly limits to be set to none and show correct results in the show user page
 * Fix a small bug in user_admin.php3.
+* Pass the whole password as salt in da_encrypt() in password_check.php3
 Ver 1.29:
 * Add general_ld_library_path directive and set LD_LIBRARY_PATH accordingly (used in snmpfinger and
   radaclient).
