@@ -47,9 +47,11 @@ typedef struct rlm_attr_rewrite_t {
 	char *attribute;	/* The attribute to search for */
 	int  attr_num;		/* The attribute number */
 	char *search;		/* The pattern to search for */
+	int search_len;		/* The length of the search pattern */
 	char *searchin_str;	/* The VALUE_PAIR list to search in. Can be either packet,reply or config */
 	char searchin;		/* The same as above just coded as a number for speed */
 	char *replace;		/* The replacement */
+	int replace_len;	/* The length of the replacement string */
 	int  nocase;		/* Ignore case */
 	int  new_attr;		/* Boolean. Do we create a new attribute or not? */
 	int  num_matches;	/* Maximum number of matches */
@@ -100,6 +102,8 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_attr_rewrite: search/replace strings must be set.");
 		return -1;
 	}
+	data->search_len = strlen(data->search);
+	data->replace_len = strlen(data->replace);
 
 	if (data->num_matches < 1 || data->num_matches > MAX_STRING_LEN) {
 		radlog(L_ERR, "rlm_attr_rewrite: Illegal range for match number.");
@@ -146,6 +150,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	rlm_attr_rewrite_t *data = (rlm_attr_rewrite_t *) instance;
 	int ret = RLM_MODULE_NOOP;
 	VALUE_PAIR *attr_vp = NULL;
+	VALUE_PAIR *tmp = NULL;
 	regex_t preg;
 	regmatch_t pmatch;
 	int cflags = 0;
@@ -173,13 +178,13 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 				else if (data->attr_num == PW_PASSWORD)
 					attr_vp = request->password;
 				else
-					attr_vp = pairfind(request->packet->vps, data->attr_num);
+					tmp = request->packet->vps;
 				break;
 			case RLM_REGEX_INCONFIG:
-				attr_vp = pairfind(request->config_items, data->attr_num);
+				tmp = request->config_items;
 				break;
 			case RLM_REGEX_INREPLY:
-				attr_vp = pairfind(request->reply->vps, data->attr_num);
+				tmp = request->reply->vps;
 				break;
 			default:
 				radlog(L_ERR, "rlm_attr_rewrite: Illegal value for searchin. Changing to packet.");
@@ -187,6 +192,9 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 				attr_vp = pairfind(request->packet->vps, data->attr_num);
 				break;
 		}
+do_again:
+		if (tmp != NULL)
+			attr_vp = pairfind(tmp, data->attr_num);
 		if (attr_vp == NULL) {
 			DEBUG2("rlm_attr_rewrite: Could not find value pair for attribute %s",data->attribute);
 			return ret;
@@ -199,12 +207,12 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 		if (data->nocase)
 			cflags |= REG_ICASE;
 
-		if (!radius_xlat(search_STR, sizeof(search_STR), data->search, request, NULL)) {
+		if (!radius_xlat(search_STR, sizeof(search_STR), data->search, request, NULL) && data->search_len != 0) {
 			DEBUG2("rlm_attr_rewrite: xlat on search string failed.");
 			return ret;
 		}
 	}
-	if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL)) {
+	if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL) && data->replace_len != 0) {
 		DEBUG2("rlm_attr_rewrite: xlat on replace string failed.");
 		return ret;
 	}
@@ -220,7 +228,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 		ptr2 = attr_vp->strvalue;
 		counter = 0;
 
-		for ( /**/ ;i < data->num_matches; i++) {
+		for ( i = 0 ;i < data->num_matches; i++) {
 			err = regexec(&preg, ptr2, 1, &pmatch, 0);
 			if (err == REG_NOMATCH) {
 				if (i == 0) {
@@ -278,6 +286,12 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 		strncpy(attr_vp->strvalue, new_str, (attr_vp->length + 1));
 
 		ret = RLM_MODULE_OK;
+
+		if (tmp != NULL){
+			tmp = attr_vp->next;
+			if (tmp != NULL)
+				goto do_again;
+		}
 	}
 	else{
 		attr_vp = pairmake(data->attribute,replace_STR,0);
