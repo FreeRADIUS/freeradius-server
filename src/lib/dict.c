@@ -288,6 +288,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		if (data == NULL || data[0] == 0) {
 			librad_log("dict_init: %s[%d]: invalid entry",
 				fn, line);
+			fclose(fp);
 			return -1;
 		}
 
@@ -296,10 +297,12 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		 */
 		if (strcasecmp(keyword, "$INCLUDE") == 0) {
 			p = strtok(data, " \t");
-			if (my_dict_init(dir, data, fn, line) < 0)
+			if (my_dict_init(dir, data, fn, line) < 0) {
+				fclose(fp);
 				return -1;
+			}
 			continue;
-		}
+		} /* $INCLUDE */
 
 		/*
 		 *	Perhaps this is an attribute.
@@ -321,6 +324,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				librad_log(
 					"dict_init: %s[%d]: invalid ATTRIBUTE line",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 
@@ -333,6 +337,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				if (!vendor_usr_seen) {
 					if (dict_addvendor("USR", VENDORPEC_USR) < 0) {
 						librad_log("dict_init: %s[%d]: %s", fn, line, librad_errstr);
+						fclose(fp);
 						return -1;
 					}
 					vendor_usr_seen = 1;
@@ -346,6 +351,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			if (!isdigit((int) *valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 			if (valstr[0] != '0')
@@ -363,6 +369,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			if (dtypes[type] == NULL) {
 				librad_log("dict_init: %s[%d]: invalid type",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 
@@ -396,6 +403,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 					        librad_log(
 							   "dict_init: %s[%d] invalid option %s",
 							   fn, line, s);
+						fclose(fp);
 						return -1;
 					  }
 					  if (s[3] == '-') {
@@ -412,6 +420,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 					        librad_log(
 							   "dict_init: %s[%d] invalid option %s",
 							   fn, line, s);
+						fclose(fp);
 						return -1;
 					  }
 				}
@@ -427,6 +436,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 					        librad_log(
 							   "dict_init: %s[%d]: unknown vendor %s",
 							   fn, line, optstr);
+						fclose(fp);
 						return -1;
 					  }
 					  if (block_vendor && optstr[0] &&
@@ -434,6 +444,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 					        librad_log(
 							   "dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
 							   fn, line, optstr);
+						fclose(fp);
 						return -1;
 					  }
 				}
@@ -445,10 +456,11 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			if (dict_addattr(namestr, vendor, type, value, flags) < 0) {
 				librad_log("dict_init: %s[%d]: %s",
 					   fn, line, librad_errstr);
+				fclose(fp);
 				return -1;
 			}
 			continue;
-		}
+		} /* ATTRIBUTE, or ATTRIB_NMC */
 
 		/*
 		 *	Process VALUE lines.
@@ -458,6 +470,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 						namestr, valstr) != 3) {
 				librad_log("dict_init: %s[%d]: invalid VALUE line",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 			/*
@@ -472,6 +485,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			if (!isdigit((int) *valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 			if (valstr[0] != '0')
@@ -488,6 +502,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			if (dict_attrbyname(attrstr) == NULL) {
 				librad_log("dict_init: %s[%d]: No previously defined ATTRIBUTE %s for VALUE", 
 					   fn, line, attrstr);
+				fclose(fp);
 				return -1;
 			}
 #endif
@@ -495,10 +510,11 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			if (dict_addvalue(namestr, attrstr, value) < 0) {
 				librad_log("dict_init: %s[%d]: %s", 
 					   fn, line, librad_errstr);
+				fclose(fp);
 				return -1;
 			}
 			continue;
-		}
+		} /* VALUE */
 
 		/*
 		 *	Process VENDOR lines.
@@ -509,6 +525,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				librad_log(
 				"dict_init: %s[%d] invalid VENDOR entry",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 
@@ -518,6 +535,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			if (!isdigit((int) *valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 			value = atoi(valstr);
@@ -526,6 +544,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			if (dict_addvendor(attrstr, value) < 0) {
 				librad_log("dict_init: %s[%d]: %s",
 					   fn, line, librad_errstr);
+				fclose(fp);
 				return -1;
 			}
 
@@ -533,7 +552,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				vendor_usr_seen = 1;
 
 			continue;
-		}
+		} /* VENDOR */
 
 		if (DICT_STRCMP(keyword, "BEGIN-VENDOR") == 0) {
 			optstr[0] = 0;
@@ -541,6 +560,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				librad_log(
 				"dict_init: %s[%d] invalid BEGIN-VENDOR entry",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 
@@ -549,11 +569,12 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
 					fn, line, optstr);
+				fclose(fp);
 				return -1;
 			}
 			block_vendor = vendor;
 			continue;
-		}
+		} /* BEGIN-VENDOR */
 
 		if (DICT_STRCMP(keyword, "END-VENDOR") == 0) {
 			optstr[0] = 0;
@@ -561,6 +582,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				librad_log(
 				"dict_init: %s[%d] invalid END-VENDOR entry",
 					fn, line);
+				fclose(fp);
 				return -1;
 			}
 
@@ -569,6 +591,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
 					fn, line, optstr);
+				fclose(fp);
 				return -1;
 			}
 
@@ -576,12 +599,21 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				librad_log(
 					"dict_init: %s[%d]: END-VENDOR %s does not match any previous BEGIN-VENDOR",
 					fn, line, optstr);
+				fclose(fp);
 				return -1;
 			}
 			block_vendor = 0;
 			continue;
-		}
+		} /* END-VENDOR */
 
+		/*
+		 *	Any other string: We don't recognize it.
+		 */
+		librad_log(
+			"dict_init: %s[%d] invalid keyword \"%s\"",
+			fn, line, keyword);
+		fclose(fp);
+		return -1;
 	}
 	fclose(fp);
 	return 0;
