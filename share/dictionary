@@ -45,6 +45,7 @@ $INCLUDE dictionary.bay
 $INCLUDE dictionary.cisco
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.microsoft
+$INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
