@@ -82,6 +82,7 @@ int read_clients_file(const char *file)
 		   done. */
 		return 0;
 	}
+	radlog(L_INFO, "Using deprecated clients file.  Support for this will go away soon.");
 
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;

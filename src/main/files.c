@@ -342,6 +342,7 @@ int read_realms_file(const char *file)
 		   So this is a non-fatal error.  */
 		return 0;
 	}
+	radlog(L_INFO, "Using deprecated realms file.  Support for this will go away soon.");
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
 		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
