@@ -70,7 +70,7 @@ if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
 	</tr>
 	<tr>
 		<td align=right bgcolor="#d0ddb0">
-		Departement
+		Department
 		</td><td>
 		<input type=text name="Fou" value="$ou" size=35>
 		</td>

@@ -289,7 +289,7 @@ if ($user_info) print <<<EOM
 	</tr>
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
-	<b>departement</b>
+	<b>department</b>
 	</td>
 	<td>
 	$ou
@@ -297,7 +297,7 @@ if ($user_info) print <<<EOM
 	</tr>
 	<tr>
 	<td align=center bgcolor="#d0ddb0">
-	<b>departement ($config[general_prefered_lang_name])</b>
+	<b>department ($config[general_prefered_lang_name])</b>
 	</td>
 	<td>
 	$ou_lang

@@ -101,7 +101,7 @@ EOM;
 	</tr>
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
-		Departement
+		Department
 		</td><td>
 		<input type=text name="ou" value="$ou" size=35>
 		</td>
