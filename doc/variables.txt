@@ -115,6 +115,13 @@ defined in 'sh'.  For example:
 	     Cisco-AVPair attribute (if it exists) in the request
 	     packet,
 
+     %{Attribute-Name[#]}
+	Returns the total number of attributes of that name in
+	the relevant attribute list.  The number will usually
+	be between 0 and 200.
+
+	e.g. For most requests, %{request:User-Name[#]} == 1
+
   Attributes as environment variables in executed programs
   --------------------------------------------------------
 

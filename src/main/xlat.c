@@ -147,12 +147,29 @@ static int xlat_packet(void *instance, REQUEST *request,
 
 		strNcpy(buffer, fmt, p - fmt + 1);
 
+		da = dict_attrbyname(buffer);
+		if (!da) return 0;
+
+		/*
+		 *	%{Attribute-Name[#]} returns the count of
+		 *	attributes of that name in the list.
+		 */
+		if ((p[1] == '#') && (p[2] == ']')) {
+			index = 0;
+
+			for (vp = pairfind(vps, da->attr);
+			     vp != NULL;
+			     vp = pairfind(vp->next, da->attr)) {
+				index++;
+			}
+			snprintf(out, outlen, "%d", index);
+			return strlen(out);
+		}
+		
 		index = atoi(p + 1);
 
 		/*
-		 *	Check the format of the index before looking
-		 *	the attribute up in the dictionary, because
-		 *	it's a cheap check.
+		 *	Skip the numbers.
 		 */
 		p += 1 + strspn(p + 1, "0123456789");
 		if (*p != ']') {
@@ -160,10 +177,6 @@ static int xlat_packet(void *instance, REQUEST *request,
 			       fmt, p);
 			return 0;
 		}
-
-		da = dict_attrbyname(buffer);
-		if (!da) return 0;
-
 
 		/*
 		 *	Find the N'th value.
