@@ -16,7 +16,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2001  Google, Inc.
+ * Copyright 2001,2002  Google, Inc.
  */
 
 #ifndef X99_SYNC_H
