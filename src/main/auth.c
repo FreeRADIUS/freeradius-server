@@ -764,7 +764,7 @@ autz_redo:
 		dval = dict_valbyname(PW_POST_AUTH_TYPE, "REJECT");
 		if (dval) {
 			pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
-			tmp = paircreate(POW_POST_AUTH_TYPE, PW_TYPE_INTEGER);
+			tmp = paircreate(PW_POST_AUTH_TYPE, PW_TYPE_INTEGER);
 			tmp->lvalue = dval->value;
 			pairadd(&request->config_items, tmp);
 			rad_postauth(request);
