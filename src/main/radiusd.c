@@ -823,14 +823,26 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 *	a packet we already have in our list.
 		 *
 		 *	We do this be checking the src IP, (NOT port)
-		 *	the packet code, ID, and authentication vectors.
+		 *	the packet code, and ID.
 		 */
 		if (request &&
 		    (curreq->packet->src_ipaddr == pkt->src_ipaddr) &&
 		    (curreq->packet->code == pkt->code) &&
-		    (curreq->packet->id == pkt->id) &&
-		    (memcmp(curreq->packet->vector, pkt->vector,
-			    sizeof(pkt->vector)) == 0)) {
+		    (curreq->packet->id == pkt->id)) {
+
+		  /*
+		   *	We now check the authentication vectors.
+		   *	If the client has sent us a request with
+		   *	identical code && ID, but different vector,
+		   *	then they MUST have gotten our response, so
+		   *	we can delete the original request, and process
+		   *	the new one.
+		   *
+		   *	If the vectors are the same, then it's a duplicate
+		   *	request, and we can send a duplicate reply.
+		   */
+		  if (memcmp(curreq->packet->vector, pkt->vector,
+			    sizeof(pkt->vector)) == 0) {
 			/*
 			 *	Maybe we've saved a reply packet.  If so,
 			 *	re-send it.  Otherwise, just complain.
@@ -857,21 +869,46 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 */
 			request_free(request);
 			request = NULL;
+		  } else {
+		  	/*
+			 *	The packet vectors are different, so
+			 *	we can make the old request to be
+			 *	deleted from the list.
+			 */
+		    if (curreq->finished) {
+				curreq->timestamp = 0;
+		    }
+		  }
 		} /* checks for duplicate packets */
+
+#ifdef HAVE_PTHREAD_H
+		/*
+		 *	If the child request has finished, then
+		 *	join it (to delete it's stack, etc), and
+		 *	mark it as really done.
+		 */
+		if (curreq->finished &&
+		    curreq->child_pid != NO_SUCH_CHILD_PID) {
+
+		  pthread_join(curreq->child_pid, NULL);
+		  curreq->child_pid = NO_SUCH_CHILD_PID;
+		}
+#endif
 
 		/*
 		 *	Maybe the child process handling the request
 		 *	has hung: kill it, and continue.
 		 */
-		if (curreq->timestamp + MAX_REQUEST_TIME <= curtime &&
+		if (!curreq->finished && 
+		    (curreq->timestamp + MAX_REQUEST_TIME) <= curtime &&
 		    curreq->child_pid != NO_SUCH_CHILD_PID) {
 			/*
 			 *	This request seems to have hung - kill it
 			 */
 			child_pid = curreq->child_pid;
-			log(L_ERR, "Killing unresponsive child pid %d",
+			log(L_ERR, "Killing unresponsive child %d",
 			    child_pid);
-			kill(child_pid, SIGTERM);
+			child_kill(child_pid, SIGTERM);
 
 			/*
 			 *	Mark the request as unsalvagable.
@@ -881,21 +918,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 			curreq->timestamp = 0;
 		}
 		
-#ifdef HAVE_PTHREAD_H
-		/*
-		 *  Join the child thread
-		 */
-		if (curreq->finished &&
-		    curreq->child_pid != NO_SUCH_CHILD_PID) {
-
-		  DEBUG("joining child %d", curreq->child_pid);
-		  pthread_join(curreq->child_pid, NULL);
-
-		  DEBUG("successfully joined child %d", curreq->child_pid);
-		  curreq->child_pid = NO_SUCH_CHILD_PID;
-		}
-#endif
-
 		/*
 		 *	Delete the current request, if it's marked as such.
 		 *	That is, the request must be finished, there must
@@ -998,12 +1020,8 @@ static void *rad_spawn_thread(void *arg)
 {
   spawn_thread_t *data = (spawn_thread_t *)arg;
 
-  DEBUG("child %d handling request", pthread_self());
-
   (*data->fun)(data->request);
   rad_respond(data->request);
-  DEBUG("child %d request is done", pthread_self());
-
   return NULL;
 }
 #endif
@@ -1033,8 +1051,6 @@ static void rad_spawn_child(REQUEST *request, FUNP fun,
 	      nas_name2(request->packet),
 	      request->packet->id,
 	      strerror(errno));
-	} else {
-	  DEBUG("spawned child %d to handle request", child_pid);
 	}
 
 #else

@@ -16,8 +16,10 @@
 #if HAVE_PTHREAD_H
 #include	<pthread.h>
 typedef pthread_t child_pid_t ;
+#define child_kill pthread_kill
 #else
 typedef pid_t child_pid_t;
+#define child_kill kill
 #endif
 
 #define NO_SUCH_CHILD_PID (0)
