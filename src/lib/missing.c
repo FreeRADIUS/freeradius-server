@@ -18,6 +18,7 @@ static const char rcsid[] = "$Id$";
 #include	<arpa/inet.h>
 #include	<ctype.h>
 
+#include	"libradius.h"
 #include	"missing.h"
 
 #ifndef HAVE_CRYPT
@@ -153,7 +154,7 @@ strsep(char **stringp, const char *delim)
  */
 struct tm *localtime_r(const time_t *l_clock, struct tm *result)
 {
-  *result = localtime(l_clock);
+  memcpy(result, localtime(l_clock), sizeof(*result));
 
   return result;
 }
