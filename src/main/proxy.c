@@ -24,6 +24,8 @@ static const char rcsid[] = "$Id$";
 #  include	<malloc.h>
 #endif
 
+#include	<assert.h>
+
 #include	"radiusd.h"
 
 
@@ -196,9 +198,14 @@ int proxy_send(REQUEST *request)
 	 *	the head of the vps list.
 	 */
 	if (strippednamepair) {
-		vp = paircopy(strippednamepair);
-		vp->attribute = namepair->attribute;
-		memcpy(vp->name, namepair->name, sizeof(vp->name));
+		vp = paircreate(PW_USER_NAME, PW_TYPE_STRING);
+		if (!vp) {
+			log(L_ERR|L_CONS, "no memory");
+			exit(1);
+		}
+		memcpy(vp->strvalue, strippednamepair->strvalue,
+		       sizeof(vp->strvalue));
+		vp->length = strippednamepair->length;
 		pairdelete(&vps, PW_USER_NAME);
 		pairdelete(&vps, PW_STRIPPED_USER_NAME);
 		vp->next = vps;
@@ -238,6 +245,7 @@ int proxy_send(REQUEST *request)
 		request->proxy->dst_port = realm->auth_port;
 	else
 		request->proxy->dst_port = realm->acct_port;
+	assert(request->proxy->vps == NULL);
 	request->proxy->vps = vps;
 
 	/*
@@ -261,7 +269,8 @@ int proxy_send(REQUEST *request)
 	 */
 	if (pairfind(vps, PW_CHAP_PASSWORD) &&
 	    pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
-		if (!(vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING))) {
+		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
+		if (!vp) {
 			log(L_ERR|L_CONS, "no memory");
 			exit(1);
 		}
