@@ -127,6 +127,7 @@ the rlm_ldap module:
 
 #	password_header: If the user password is available we add it to the
 #	check items (to assist in CHAP ie) striping any headers first.
+#	NOTE: The password_header directive is NOT case insensitive
 #	default: NULL
 #
 #	password_header = "{clear}"

@@ -812,6 +812,9 @@ modules {
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
 
 		ldap_connections_number = 5
+		#
+		# NOTICE: The password_header directive is NOT case insensitive
+		#
 		# password_header = "{clear}"
 		# password_attribute = userPassword
 		# groupname_attribute = cn
