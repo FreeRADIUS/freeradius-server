@@ -1,0 +1,8 @@
+TARGET      = @targetname@
+SRCS        = rlm_dbm.c
+HEADERS     =
+RLM_CFLAGS  = @dbm_cflags@
+RLM_LIBS    = @dbm_ldflags@
+RLM_INSTALL =
+
+include ../rules.mak

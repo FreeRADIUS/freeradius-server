@@ -1,0 +1,46 @@
+AC_INIT(rlm_dbm.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_dbm])
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	AC_SMART_CHECK_INCLUDE(ndbm.h)
+	if test "x$ac_cv_header_ndbm_h" = "xyes"; then
+          SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_NDBM_H"
+	else
+		AC_SMART_CHECK_INCLUDE(gdbm/ndbm.h)
+		if test "x$ac_cv_header_gdbm_ndbm_h" = "xyes"; then
+        	  SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBM_NDBM_H"
+        	fi
+	fi
+
+	AC_SMART_CHECK_LIB(ndbm, dbm_open)
+	if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
+		fail="$fail libdbm"
+	fi
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+dbm_ldflags=$SMART_LIBS
+dbm_cflags=$SMART_CFLAGS
+AC_SUBST(dbm_ldflags)
+AC_SUBST(dbm_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
