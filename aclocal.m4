@@ -589,7 +589,7 @@ else
 fi
 dnl If we have a local install path, check for some files
 if test $PGROOT && test IS_LOCAL ; then
-	if test -e $PGROOT/lib/libpq.so ; then
+	if test -e $PGROOT/lib/libpq${libltdl_cv_shlibext} ; then
 		if test -e $PGROOT/lib/libpq.a ; then
 			PQ_LIBS="-L$PGROOT/lib -lpq"
 		fi
@@ -686,7 +686,7 @@ dnl #  Look for it in a number of directories.
 dnl #
   old_LIBS="$LIBS"
 
-  AC_LOCATE_DIR(odbc_lib_dir, [libodbcclient.so])
+  AC_LOCATE_DIR(odbc_lib_dir, [libodbcclient${libltdl_cv_shlibext}])
   AC_LOCATE_DIR(odbc_lib_dir, [libodbcclient.a])
 
   for try in /usr/lib /usr/lib/odbc /usr/local/lib/odbc /usr/local/odbc/lib $odbc_lib_dir; do
@@ -1002,7 +1002,7 @@ dnl #
 	      smart_lib="-l$1")
 
   if test "x$smart_lib" = "x"; then
-    AC_LOCATE_DIR(smart_lib_dir,[lib$1.so])
+    AC_LOCATE_DIR(smart_lib_dir,[lib$1${libltdl_cv_shlibext}])
     AC_LOCATE_DIR(smart_lib_dir,[lib$1.a])
 
     for try in $smart_lib_dir /usr/local/lib/ /opt/lib; do

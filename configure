@@ -560,7 +560,7 @@ fi
 
 
 
-# From configure.in Revision: 1.118 
+# From configure.in Revision: 1.119 
 RADIUSD_VERSION=0.1
 
 
@@ -3962,7 +3962,7 @@ else
 	fi
 fi
 if test $PGROOT && test IS_LOCAL ; then
-	if test -e $PGROOT/lib/libpq.so ; then
+	if test -e $PGROOT/lib/libpq${libltdl_cv_shlibext} ; then
 		if test -e $PGROOT/lib/libpq.a ; then
 			PQ_LIBS="-L$PGROOT/lib -lpq"
 		fi
@@ -4248,7 +4248,7 @@ echo "configure:4244: checking for odbc_init in -lodbcclient" >&5
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libodbcclient.so
+  file=libodbcclient${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -4344,6 +4344,7 @@ LIBTOOL="`pwd`/libtool"
 
 
 top_builddir=`pwd`
+
 
 
 if test "$WITH_THREAD_POOL" = "yes"; then

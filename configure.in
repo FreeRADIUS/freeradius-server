@@ -598,6 +598,8 @@ AC_SUBST(INCLTDL)
 top_builddir=`pwd`
 AC_SUBST(top_builddir)
 
+dnl import libtool stuff
+
 dnl #
 dnl #  Checks to ensure that the thread pool code can build.
 dnl #
