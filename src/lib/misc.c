@@ -79,7 +79,7 @@ uint32_t ip_getaddr(const char *host)
 		return (uint32_t) INADDR_NONE;
 	}
 
-	memcpy(a, hp->h_addr, sizeof(uint32_t));
+	memcpy(&a, hp->h_addr, sizeof(uint32_t));
 	return a;
 }
 
