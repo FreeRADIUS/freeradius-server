@@ -1698,6 +1698,10 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret,
 		for (i = len; n > 0; n--, i++)
 			passwd[i] = 0;
 		len = *pwlen = i;
+
+	} else if (len == 0) {
+		memset(passwd, 0, AUTH_PASS_LEN);
+		*pwlen = len = AUTH_PASS_LEN;
 	}
 
 	/*
