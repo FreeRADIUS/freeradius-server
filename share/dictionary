@@ -53,6 +53,7 @@
 $INCLUDE dictionary.compat	# compability issues
 $INCLUDE dictionary.3com
 $INCLUDE dictionary.3gpp
+$INCLUDE dictionary.3gpp2
 $INCLUDE dictionary.acc
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alteon
