@@ -39,6 +39,7 @@ static const char rcsid[] = "$Id$";
 #endif
 
 #include "radiusd.h"
+#include "rad_assert.h"
 
 /*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in
@@ -86,11 +87,18 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
 void request_free(REQUEST **request_ptr)
 {
 	REQUEST *request;
-	
-	if (request_ptr == NULL) 
+
+	if (request_ptr == NULL)
 		return;
+
 	request = *request_ptr;
 
+	/*
+	 *	If there's a thread currently active on this request,
+	 *	blow up!
+	 */
+	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+	
 	if (request->packet) 
 		rad_free(&request->packet);
 
