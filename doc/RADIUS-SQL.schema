@@ -1,9 +1,9 @@
-There is a file which describes this and is actually a SQL script
-file. It can be found in:
-
-src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
-
-This is the bit that isn't really documented anywhere (like in the
-FAQ) and is the thing most people seem to be asking.
-
-http://www.frontios.com/freeradius.html
+#
+#  There isn't a generic SQL schema, but there is one for MySQL:
+#
+# src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
+#
+#
+#  For further information, this web page seems to be good:
+#
+# http://www.frontios.com/freeradius.html
