@@ -636,6 +636,7 @@ modules {
 		# password_attribute = userPassword
 		# groupname_attribute = cn
 		# groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"
+		# groupmembership_attribute = memberof
 		timeout = 4
 		timelimit = 3
 		net_timeout = 1

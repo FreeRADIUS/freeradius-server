@@ -161,6 +161,15 @@ the rlm_ldap module:
 #
 #	groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"	
 
+
+#	groupmembership_attribute: The attribute in the user entry that states the group the user belongs to.
+#	The attribute can either contain the group name or the group DN. If it contains the group DN 
+#	groupname_attribute will also be used to find the group's name. The attribute will be used after a search
+#	based on the groupname_attribute and groupmembership_filter has failed.
+#	default: NULL - don't search for a group based on attributes in the user entry.
+#
+#	groupmembership_attribute = "memberof"
+
 	}
 }
 
