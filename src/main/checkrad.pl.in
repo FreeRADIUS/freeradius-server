@@ -322,14 +322,14 @@ sub cisco_snmp {
 
 	# Look up community string in naspasswd file.
 	my ($login, $pass) = naspasswd($ARGV[1], 1);
-	if ($login && $login ne 'SNMP') {
+	if ($login eq '') {
+		$pass = 'public';
+	} elsif ($login ne 'SNMP') {
 		if ($debug) {
 			print LOG
 			"   Error: Need SNMP community string for $ARGV[1]\n";
 		}
 		return 2;
-	} elsif ( $login ne 'SNMP') {
-		$pass = "public";
 	}
 
 	my $port = $ARGV[2];
