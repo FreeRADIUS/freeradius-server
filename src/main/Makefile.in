@@ -30,7 +30,7 @@ endif
 
 all:	$(BINARIES)
 
-radiusd: $(SERVER_OBJS) ../lib/libradius.a $(LIBLTDL) $(MODULE_OBJS)
+radiusd: $(SERVER_OBJS) ../lib/libradius.a $(MODULE_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LIBS) $(LCRYPT) \
