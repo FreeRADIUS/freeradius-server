@@ -7,6 +7,12 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
+	AC_CHECK_PROGS(PYTHONBIN, [ python2.3 python2.2 python2.1 python1.5 python ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+
+	if test x$PYTHONBIN = xnot-found; then
+		fail="python-binary"
+	fi
+
 	dnl extra argument: --with-rlm-python-lib-dir
 	PY_LIB_DIR=
 	AC_ARG_WITH(rlm-python-lib-dir,
@@ -39,47 +45,52 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
-        PY_PREFIX=`python -c 'import sys ; print sys.prefix'`
-        PY_EXEC_PREFIX=`python -c 'import sys ; print sys.exec_prefix'`
-        changequote(<<, >>)dnl
-        PY_VERSION=`python -c 'import sys ; print sys.version[0:3]'`
-        changequote([, ])dnl
-        PY_LIBS="-lpython$PY_VERSION"
-        PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
-        PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
-	PY_INC_DIR="$PY_PREFIX/include/python$PY_VERSION"
-        PY_CFLAGS="-I$PY_PREFIX/include/python$PY_VERSION"
-        PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config/Makefile"
-        PY_LOCALMODLIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-        PY_BASEMODLIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-        PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-        PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASEMODLIBS $PY_OTHER_LIBS"
+	if test x$fail = x; then
 
-	old_CFLAGS=$CFLAGS
-	CFLAGS="$CFLAGS $PY_CFLAGS"
-	smart_try_dir=$PY_INC_DIR
-	AC_SMART_CHECK_INCLUDE(Python.h)
-	CFLAGS=$old_CFLAGS
+		PY_PREFIX=`${PYTHONBIN} -c 'import sys ; print sys.prefix'`
+		PY_EXEC_PREFIX=`${PYTHONBIN} -c 'import sys ; print sys.exec_prefix'`
+		changequote(<<, >>)dnl
+		PY_VERSION=`${PYTHONBIN} -c 'import sys ; print sys.version[0:3]'`
+		changequote([, ])dnl
+		PY_LIBS="-lpython$PY_VERSION"
+		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
+		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
+		PY_INC_DIR="$PY_PREFIX/include/python$PY_VERSION"
+		PY_CFLAGS="-I$PY_PREFIX/include/python$PY_VERSION"
+		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config/Makefile"
+		if test -f ${PY_MAKEFILE}; then
+			PY_LOCALMODLIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
+			PY_BASEMODLIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
+			PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE`
+		fi
+		PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASEMODLIBS $PY_OTHER_LIBS"
 
-	if test "x$ac_cv_header_Python_h" = "xyes"; then
-		python_cflags=$PY_CFLAGS
-	else
-		fail="$fail Python.h"
-		targetname=
-	fi
+		old_CFLAGS=$CFLAGS
+		CFLAGS="$CFLAGS $PY_CFLAGS"
+		smart_try_dir=$PY_INC_DIR
+		AC_SMART_CHECK_INCLUDE(Python.h)
+		CFLAGS=$old_CFLAGS
 
-	old_LIBS=$LIBS
-	LIBS="$LIBS $PY_LIB_LOC $PY_EXTRA_LIBS -lm"
-	smart_try_dir=$PY_LIB_DIR
-	AC_SMART_CHECK_LIB(python$PY_VERSION, Py_Initialize)
-	LIBS=$old_LIBS
+		if test "x$ac_cv_header_Python_h" = "xyes"; then
+			python_cflags=$PY_CFLAGS
+		else
+			fail="$fail Python.h"
+			targetname=
+		fi
 
-	if test "x$ac_cv_lib_python" = "xyes"; then
-		python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lm"
+		old_LIBS=$LIBS
+		LIBS="$LIBS $PY_LIB_LOC $PY_EXTRA_LIBS -lm"
+		smart_try_dir=$PY_LIB_DIR
+		AC_SMART_CHECK_LIB(python${PY_VERSION}, Py_Initialize)
+		LIBS=$old_LIBS
+
+		if test "x$ac_cv_lib_${ac_safe_Py_Initialize}" = "xyes"; then
+		python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lm"  # libm ?  FIXME?
 		targetname=modname
-	else
-		targetname=
-		fail="$fail libpython$PY_VERSION"
+		else
+			targetname=
+			fail="$fail libpython$PY_VERSION"
+		fi
 	fi
 
 else
