@@ -33,7 +33,7 @@ static unsigned int cb_ssl_verify_level = 3;
 static int int_verify_depth = 10;
 */
 
-void cbtls_info(SSL *s, int where, int ret)
+void cbtls_info(const SSL *s, int where, int ret)
 {
 	char *str1, *str2;
 	int w;
@@ -64,6 +64,26 @@ static const char *int_reason_not_yet = "X509_V_ERR_CERT_NOT_YET_VALID";
 static const char *int_reason_before = "X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD";
 static const char *int_reason_expired = "X509_V_ERR_CERT_HAS_EXPIRED";
 static const char *int_reason_after = "X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD";
+/*
+ * Before trusting a certificate, you must make sure that the certificate is
+   'valid'. There are several steps that your application can take in 
+   determining if a certificate is valid. Commonly used steps are: 
+
+  1.Verifying the certificate's signature, and verifying that the certificate
+    has been issued by a trusted Certificate Authority. 
+
+  2.Verifying that the certificate is valid for the present date (i.e. it is
+    being presented within its validity dates). 
+
+  3.Verifying that the certificate has not been revoked by its issuing
+    Certificate Authority, by checking with respect to a Certificate
+    Revocation List (CRL). 
+
+  4.Verifying that the credentials presented by the certificate fulfill
+    additional requirements specific to the application, such as with respect
+    to access control lists or with respect to OCSP (Online Certificate Status
+    Processing). 
+ */
 int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 {
 	char buf1[256]; /* Used for the subject name */
