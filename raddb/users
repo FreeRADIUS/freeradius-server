@@ -25,7 +25,7 @@
 #	file, the DEFAULT entries _have_ to be at the end of this file and
 #	you can't have multiple entries for one username.
 #
-#	You don't need to specify a password if you set Auth-Type := System
+#	You don't need to specify a password if you set Auth-Type += System
 #	on the list of authentication requirements. The RADIUS server
 #	will then check the system password file.
 #
@@ -36,6 +36,8 @@
 #	or the host to log the user onto.
 #
 #	You can include another `users' file with `$INCLUDE users.other'
+#
+
 #
 
 #
@@ -64,7 +66,7 @@
 # entry so that no DEFAULT entry will be used, and the user will NOT
 # get any attributes in addition to the ones listed here.
 #
-#steve	Auth-Type := Local, Password == "testing"
+#steve	Auth-Type += Local, Password == "testing"
 #	Service-Type = Framed-User,
 #	Framed-Protocol = PPP,
 #	Framed-IP-Address = 172.16.3.33,
@@ -78,13 +80,13 @@
 # This is an entry for a user with a space in their name.
 # Note the double quotes surrounding the name.
 #
-#"John Doe"	Auth-Type := Local, Password == "hello"
+#"John Doe"	Auth-Type += Local, Password == "hello"
 #		Reply-Message = "Hello, %u"
 
 #
 # Dial user back and telnet to the default host for that port
 #
-#Deg	Auth-Type := Local, Password == "ge55ged"
+#Deg	Auth-Type += Local, Password == "ge55ged"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = 0.0.0.0,
 #	Callback-Number = "9,5551212",
@@ -96,7 +98,7 @@
 # connection will be broken and the user will be dialed back after which
 # he will get a connection to the host "timeshare1".
 #
-#dialbk	Auth-Type := Local, Password == "callme"
+#dialbk	Auth-Type += Local, Password == "callme"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = timeshare1,
 #	Login-Service = PortMaster,
@@ -118,7 +120,7 @@
 # against the system database, give them shell access, and stop processing
 # the rest of the file.
 #
-#DEFAULT	Suffix == ".shell", Auth-Type := System
+#DEFAULT	Suffix == ".shell", Auth-Type += System
 #		Service-Type = Login-User,
 #		Login-Service = Telnet,
 #		Login-IP-Host = your.shell.machine
@@ -136,7 +138,7 @@
 # First setup all accounts to be checked against the UNIX /etc/passwd.
 # (Unless a password was already given earlier in this file).
 #
-DEFAULT	Auth-Type := System
+DEFAULT	Auth-Type += System
 	Fall-Through = 1
 
 #
