@@ -71,6 +71,8 @@
  *	  we are using is of type fast and can deadlock if the same thread tries to relock it. That
  *	  could happen in case of calls to xlat.
  *	- When ldap_search returns NO_SUCH_OBJECT don't return fail but notfound
+ * July 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Fix the logic when we get an LDAP_SERVER_DOWN or we have conn->ld == NULL in perform_search
  */
 static const char rcsid[] = "$Id$";
 
@@ -482,7 +484,7 @@ perform_search(void *instance, LDAP_CONN *conn, char *search_basedn, int scope, 
 		return RLM_MODULE_FAIL;
 	}
 retry:
-	if (!conn->bound) {
+	if (!conn->bound || conn->ld == NULL) {
 		DEBUG2("rlm_ldap: attempting LDAP reconnection");
 		if (conn->ld){
 			DEBUG2("rlm_ldap: closing existing LDAP connection");
@@ -502,13 +504,16 @@ retry:
 	case LDAP_NO_SUCH_OBJECT:
 		break;
 	case LDAP_SERVER_DOWN:
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed: LDAP connection lost.");
 		if (search_retry == 0){
-			DEBUG("rlm_ldap: LDAP connection lost. Attempting reconnect");
+			radlog(L_INFO, "rlm_ldap: Attempting reconnect");
 			search_retry = 1;
 			conn->bound = 0;
 			ldap_msgfree(*result);	
 			goto retry;
 		}
+		ldap_msgfree(*result);
+		return RLM_MODULE_FAIL;
 	default:
 		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s", ldap_err2string(ldap_errno));
