@@ -570,18 +570,24 @@ modules {
 		radwtmp = ${logdir}/radwtmp
 	}
 
-	# Extensible Authentication Protocol
+	#  Extensible Authentication Protocol
 	#
 	#  For all EAP related authentications 
 	eap {
-		# Invoke the default supported EAP type when
-		# EAP-Identity response is received
-		#	default_eap_type = md5
+		#  Invoke the default supported EAP type when
+		#  EAP-Identity response is received.
+		#
+		#  The incoming EAP messages MAY NOT specify which EAP
+		#  type they will be using, so it MUST be set here.
+		#
+		#  For now, only one default EAP type may be used at a time.
+		#
+		default_eap_type = md5
 
 		# Default expiry time to clean the EAP list,
-		# It is maintained to co-relate the
+		# It is maintained to correlate the
 		# EAP-response for each EAP-request sent.
-		#	timer_expire     = 60
+		timer_expire     = 60
 
 		# Supported EAP-types
 		md5 {
@@ -629,24 +635,22 @@ modules {
 
 	# Microsoft CHAP authentication
 	#
-	#  This module supports SAMBA passwd file authorization
-	#  and MS-CHAP, MS-CHAPv2 authentication.  However, we recommend
-	#  using the 'passwd' module, below, as it's more general.
+	#  This module supports MS-CHAP and MS-CHAPv2 authentication.
+	#  It also enforces the SMB-Account-Ctrl attribute.
 	#
 	mschap {
-		# Location of the SAMBA passwd file
-		#	passwd = /etc/smbpasswd
+		#
+		#  As of 0.9, the mschap module does NOT support
+		#  reading from /etc/smbpasswd.
+		#
+		#  If you are using /etc/smbpasswd, see the 'passwd'
+		#  module for an example of how to use /etc/smbpasswd
 
 		# authtype value, if present, will be used
 		# to overwrite (or add) Auth-Type during
 		# authorization. Normally should be MS-CHAP
 		authtype = MS-CHAP
 		
-		# If ignore_password is set to yes mschap will
-		# ignore the password set by any other module during
-		# authorization and will always use the SAMBA password file
-		#	ignore_password = yes  
-
 		# if use_mppe is not set to no mschap will
 		# add MS-CHAP-MPPE-Keys for MS-CHAPv1 and
 		# MS-MPPE-Recv-Key/MS-MPPE-Send-Key for MS-CHAPv2
@@ -729,6 +733,9 @@ modules {
 	#   delimiter - symbol to use as a field separator in passwd file,
 	#            for format ':' symbol is always used. '\0', '\n' are
         #	     not allowed 
+	#
+
+	#  An example configuration for using /etc/smbpasswd.
 	#
 	#passwd etc_smbpasswd {
 	#	filename = /etc/smbpasswd
@@ -1121,6 +1128,7 @@ instantiate {
 	#  more information.
 	#
 	expr
+
 	#
 	# We add the counter module here so that it registers
 	# the check-name attribute before any module which sets
@@ -1154,9 +1162,25 @@ authorize {
 	chap
 
 #	attr_filter
-#	eap
+
+	#
+	#  This module takes care of EAP-MD5, EAP-TLS, and EAP-LEAP
+	#  authentication.
+	eap
+
+	#
+	#  Look for '@realm', and decide whether or not to proxy,
+	#  based on that.
 	suffix
+
+	#
+	#  Read the 'users' file
 	files
+
+	#
+	#  If you are using /etc/smbpasswd, and are also doing
+	#  mschap authentication, the un-comment this line, and
+	#  configure the 'etc_smbpasswd' module, above.
 #	etc_smbpasswd
 
 	#
@@ -1214,6 +1238,8 @@ authenticate {
 		mschap
 	}
 
+	#
+	#  Pluggable Authentication Modules.
 #	pam
 
 	#
@@ -1230,26 +1256,54 @@ authenticate {
 #	}
 
 
-#	eap
+	#
+	#  Allow EAP authentication.
+	eap
 }
 
 
-#  Pre-accounting. Look for proxy realm in order of realms, then 
-#  acct_users file, then preprocess (hints file).
+#
+#  Pre-accounting.  Decide which accounting type to use.
+#
 preacct {
 	preprocess
+
+	#
+	#  Look for '@realm', and decide whether or not to proxy,
+	#  based on that.
+	#
+	#  Accounting requests are generally proxied to the same
+	#  home server as authentication requests.
 	suffix
+
+	#
+	#  Read the 'acct_users' file
 	files
 }
 
-
-#  Accounting. Log to detail file, and to the radwtmp file, and maintain
-#  radutmp.
+#
+#  Accounting.  Log the accounting data.
+#
 accounting {
+	#
+	#  Ensure that we have a semi-unique identifier for every
+	#  request, and many NAS boxes are broken.
 	acct_unique
+
+	#
+	#  Create a 'detail'ed log of the packets.
+	#  Note that accounting requests which are proxied
+	#  are also logged in the detail file.
 	detail
 #	daily
+
 	unix		# wtmp file
+
+	#
+	#  For Simultaneous-Use tracking.
+	#
+	#  Due to packet losses in the network, the data here
+	#  may be incorrect.  There's little we can do about it.
 	radutmp
 #	sradutmp
 }
