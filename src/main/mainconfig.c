@@ -59,6 +59,7 @@ static gid_t server_gid;
  */
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
+static int auth_port = 0;
 
 /*
  *  Map the proxy server configuration parameters to variables.
@@ -402,13 +403,13 @@ static int generate_realms(const char *filename)
 		 */
 		if ((accthost = cf_section_value_find(cs, "accthost")) == NULL) {
 			c->acct_ipaddr = htonl(INADDR_NONE);
-			c->acct_port = acct_port;
+			c->acct_port = 0;
 		} else {
 			if ((s = strchr(accthost, ':')) != NULL) {
 				*s++ = 0;
 				c->acct_port = atoi(s);
 			} else {
-				c->acct_port = acct_port;
+				c->acct_port = auth_port + 1;
 			}
 			if (strcmp(accthost, "LOCAL") == 0) {
 				/*
@@ -416,7 +417,7 @@ static int generate_realms(const char *filename)
 				 *	secret, or port.
 				 */
 				c->acct_ipaddr = htonl(INADDR_NONE);
-				c->acct_port = acct_port;
+				c->acct_port = 0;
 			} else {
 				c->acct_ipaddr = ip_getaddr(accthost);
 				if (c->acct_ipaddr == htonl(INADDR_NONE)) {

@@ -91,8 +91,6 @@ int syslog_facility;
 int log_stripped_names;
 int debug_flag = 0;
 int log_auth_detail = FALSE;
-int auth_port = 0;
-int acct_port;
 int proxyfd;			/* should be deleted */
 int need_reload = FALSE;
 int sig_hup_block = FALSE;
