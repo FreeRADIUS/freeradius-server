@@ -1,14 +1,22 @@
+This is the combined README for pam_x99_auth, a PAM module, and
+rlm_x99_token, a FreeRADIUS module.  This module supports ANSI X9.9
+token authentication.  If you have questions not answered in this doc,
+contact Frank Cusack, <frank@google.com>.  Please send bug reports
+to the same address.
 
+This software is Copyright (c) 2002 Google, Inc.
+All Rights Reserved.
 
-    X9.9 Token Module
+See the COPYRIGHT file, included with this distribution, for copyright
+and redistribution information.
 
 
 0.  INTRODUCTION
 
-    This module allows the RADIUS server to authenticate users that hold
-    ANSI X9.9 challenge/response tokens.  These tokens are basically
-    handheld DES calculators and are sold by various vendors.  Currently
-    known vendors are:
+    This module allows authentication of users who hold ANSI X9.9
+    challenge/response tokens.  These tokens are basically handheld
+    DES calculators and are sold by various vendors.  Currently known
+    vendors are:
 
 	CRYPTOCard (RB-1, KT-1)
 	<http://www.cryptocard.com/>
@@ -33,8 +41,8 @@
 	This product has a history of acquisition:
 	PassGo, Symantec, AXENT, AssureNet Pathways (name change only),
 	Digital Pathways.  Also, to add to the fun, PassGo was acquired
-	by AXENT, whom Symantec then acquired.  The original product
-	seems to have been called "SecureNet Key" aka SNK or SNK/4.
+	by AXENT, whom Symantec then acquired, and later forked off.  The
+	product was originally named "SecureNet Key" aka SNK or SNK/4.
 
     If you know of other vendors, please email me (frank@google.com)
     and I'll add them to the list above.
@@ -58,9 +66,9 @@
     are easily compromisable, since the key is likely to be insufficiently
     protected.
 
-    In addition to this freeradius module, I will make a PAM module available
-    that will support the same file format.  These docs will be updated
-    when the module is available (ETA before Dec 31, 2001).
+    This module is available for FreeRADIUS and PAM.  FreeRADIUS is
+    available at <http://www.freeradius.org/>, the PAM module is available
+    at <http://www.fcusack.com/>.
 
 
 1.  STRONG WARNING SECTION
@@ -83,33 +91,17 @@
 
 2.  INSTALLATION
 
-    You'll need to have openssl, <http://www.openssl.org/>, installed.
-    I am using 0.9.6b, but I suspect this module will work with all
-    versions.
+    You'll need to have a DES library in order to build and use this module.
+    Currently, only openssl is supported.
 
-    You will also need /dev/urandom available.  AFAIK, this is available
-    on all Linux and *BSD.  For Solaris < 9, you'll need to install the
-    SUNWski or ANDIrand package (look at SunSolve doc 27606).  The easiest
-    way to get SUNWski is to download one of these patches:
-	- 105710-01 (sparc, intl, free),
-	- 106754-01 (sparc, us, free),
-	- 106755-01 (x86, intl, free), or
-	- 106756-01 (x86, us, contract only).
-    After installing SUNWski, you need to create a symlink
-    /dev/urandom -> /dev/random.  Note that SUNWski only works with the
-    32-bit kernel.  Information for other OS's is welcome.
-
-    This module will only work on ILP32 machines, so if you build it
-    as 64-bit under Solaris, you'll find that it fails at runtime.
-    Solaris supports 32-bit and 64-bit binaries, so just build as 32-bit.
-    If you are running UltraLinux (?) or NetBSD/sparc64, you are probably
-    out of luck.  I'm willing to add the support needed if anyone actually
-    has a need to run on those platforms.
+    You will also need /dev/urandom available.  This is available on all
+    Linux, *BSD and Solaris 9.  For Solaris 8, you'll need to install
+    patch 112438-01 (sparc) or 112439-01 (x86).  Information for other OS's
+    is welcome.
 
     You'll also need to write a site-specific challenge transform in order
     to use async mode.  You might need async mode to sync the user's token
     with the server initially.  More on this below.
-
 
 3.  END-USER OPERATION
 
@@ -131,19 +123,12 @@
     Even with training, they will forget.  Be warned!
 
     For other tokens, the token does not display the synchronous
-    challenge, only the response is displayed.  This is a bit easier on
+    challenge--only the response is displayed.  This is a bit easier on
     the user, they won't be confused as to which number to enter for the
     response.  Since the token's challenge display really just serves
     to verify the sync state, and we don't present that information,
     I recommend operating tokens in the no-challenge-display mode if
-    possible.  The disadvantage is that the user cannot resync the token.
-
-    I will go out on a limb here and say that as long as the user doesn't
-    play with the token, the token will almost never get out of sync.
-    The only way I can see this really happening (besides state file
-    corruption) is if a future response, within ewindow_size, differs
-    from the "current" response by only a digit or a transposition, and
-    the user typos the response entry -- a near impossible turn of events.
+    possible.
 
     In addition to the shielding of the plaintext, and ease of use,
     another advantage of sync mode is to support authentication methods
@@ -157,7 +142,7 @@
     we want async mode support for (at least) two reasons:
 
         1) to sync/resync the token, and
-        2) because state is not shared across multiple RADIUS servers.
+        2) because state is not shared across multiple RADIUS/PAM servers.
 
     Note that only some tokens support "user" sync/resync.  For others,
     an admin must create the initial state and manual intervention is
@@ -180,16 +165,24 @@
     I recommend a log scanner which alerts you to this.  You should
     reprogram tokens when the user authenticates via async mode.
 
-    Instead of, or in addition to, implementing a site-specific challenge
-    transform, you might wish to restrict async mode to specific NAS's.
-    You can probably do this via hints configuration and separate
-    x99_token instances.  If someone can supply a working config
-    example, I will include it here.
-
     x99_site.c implements the site-specific challenge transform.  The
     default transform is to replace the challenge with the text "DISABLED".
     This effectively disables async mode (the user will not be able to
     enter this into their token).
+
+    DO NOT use the transform suggested above, reversing the challenge.
+    That is now exceptionally weak.  An example of a possibly strong
+    transform is to have the user enter the square of the challenge.
+    The VASCO DigiPass 500 is also a [regular] calculator, so this
+    could be a good one if you use that token.  Well, there's no support
+    for that token, and now that I've mentioned it, it is another
+    exceptionally weak transform, but you get the idea.
+
+    Note that older CRYPTOCard RB-1 tokens support arbitrarily long
+    challenge strings.  You should take advantage of this when implementing
+    your transform.  You will still have to stay under MAX_CHALLENGE_LEN
+    digits.  (This is why MAX_CHALLENGE_LEN is set to 32 even though
+    the displayed challenge would generally be much smaller.)
 
     If you do not believe applying a transform gives any advantage,
     you can just comment out the single line of code there.  This actually
@@ -200,33 +193,21 @@
     mode has been used.  You might automatically disable a token after two
     async authentications.
 
-    DO NOT use the transform suggested above, reversing the challenge.
-    That is now exceptionally weak.  An example of a possibly strong
-    transform is to have the user enter the square of the challenge.
-    The VASCO DigiPass 500 is also a [regular] calculator, so this
-    could be a good one if you use that token.  Well, there's no support
-    for that token yet, and now that I've mentioned it, it is another
-    exceptionally weak transform, but you get the idea.
-
-    Note that older CRYPTOCard RB-1 tokens support arbitrarily long
-    challenge strings.  You should take advantage of this when implementing
-    your transform.  You will still have to stay under MAX_CHALLENGE_LEN
-    digits.  (This is why MAX_CHALLENGE_LEN is set to 32 even though
-    the displayed challenge would generally be much smaller.)
-
 
 5.  CONFIGURATION
 
     Most of the configuration is documented fairly well in the sample
-    x99.conf file.  I will only discuss a few options here.
+    x99.conf file (FreeRADIUS) or man page (PAM).  I will only discuss
+    a few options here.
 
-    softfail/hardfail:  See x99.conf for how these work.  It is
-    critically important to have these since the password (response)
-    space is so small.  Without a delay/lockout, it would be trivially
-    easy for an attacker to just try every possible password.  With the
-    default softfail setting of 5, an attacker could try, at most, ~50
-    passwords/day.  No indication is given to the user that they are
-    in "delay mode" (except that a valid password doesn't work).
+    softfail/hardfail:  See x99.conf (FreeRADIUS) or the man page (PAM)
+    for how these work.  It is critically important to have these since
+    the password (response) space is so small.  Without a delay/lockout,
+    it would be trivially easy for an attacker to just try every
+    possible password.  With the default softfail setting of 5, an
+    attacker could try, at most, ~50 passwords/day.  No indication is
+    given to the user that they are in "delay mode" (except that a valid
+    password doesn't work).
 
     ewindow_size:  This is how far out of [event] sync the server can
     get with the token.  The value is how far the user can be ahead of
@@ -242,7 +223,7 @@
     isn't already present.  You can use this to selectively authenticate
     users via a token.  Any examples I could give here would be poor,
     and subject to other modules' [changing] operations, so it's probably
-    best to direct any questions to freeradius-users@lists.cistron.nl.
+    best to direct any questions to <freeradius-users@lists.cistron.nl>.
 
 6.  FILES
 
@@ -255,12 +236,14 @@
 
 7.  LOG MESSAGES
 
-    All errors begin with "rlm_x99_token" (only errors are logged,
-    there are no "success" log messages).  You will want to scan for
-    these automatically or periodically.  "bad state" messages indicate
-    a problem with the State attribute, which the server uses to track
-    challenges (for async mode).  They are all of the form
-    "bad state for [%s]: <problem>", where <problem> is one of:
+    All errors begin with "rlm_x99_token" (FreeRADIUS) or "pam_x99_auth"
+    (PAM).  Only errors are logged, there are no "success" log messages.
+    You will want to scan for these automatically or periodically.
+
+    "bad state" messages (FreeRADIUS) indicate a problem with the State
+    attribute, which the server uses to track challenges (for async mode).
+    They are all of the form "bad state for [%s]: <problem>",
+    where <problem> is one of:
 
     length:  The length is not as expected.  Could be an attempted attack,
              but more likely a network blip.
@@ -273,10 +256,16 @@
 
     Another message you'll want to lookout for is
     "%d/%d failed/max authentications" which indicates a user that is
-    locked out due to exceeding maxfail failures.  You can reset this
-    user by editing the state file (see x99passwd.sample).
+    locked out due to exceeding hardfail/softfail failures.  You can reset
+    this user by editing the state file (see x99passwd.sample).
 
     Also, look for "[%s] authenticated in async mode" which indicates
     a user with a sync mode card that used async authentication.  You
     may wish to reprogram these users' cards.
+
+
+8.  BUGS
+
+    Send bug reports or any other questions to Frank Cusack,
+    <frank@google.com>.
 
