@@ -99,7 +99,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 
 	struct detail_instance *inst = instance;
 
-	curtime = time(0);
+	curtime = time(NULL);
 
 	/*
 	 *	Find out the name of this terminal server. We try
@@ -133,16 +133,19 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *	feed it through radius_xlat2() to expand the
 	 *	variables.
 	 */
-	strNcpy(filename,inst->detailfile,512);
-	p = rindex(filename,'/');
-	if(p) *p = '\0';
-	radius_xlat2(buffer,512,filename,request,request->reply->vps);
-	if((mkdir(buffer, 0755) == -1) && errno != EEXIST) {
+	strNcpy(filename, inst->detailfile, sizeof(filename));
+	p = strchr(filename,'/');
+
+	if (p) *p = '\0';
+
+	radius_xlat2(buffer, sizeof(buffer), filename, request,
+		     request->reply->vps);
+	if ((mkdir(buffer, 0755) == -1) && errno != EEXIST) {
 		radlog(L_ERR, "Detail: Couldn't create %s: %s",
-		   buffer, strerror(errno));
+		       buffer, strerror(errno));
 		return RLM_MODULE_FAIL;
 	}
-
+	
 	/*
 	 *	Write Detail file.
 	 *
@@ -150,15 +153,21 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *	radius_xlat2() function to allow for variable detail
 	 *	filenames.
 	 */
-	radius_xlat2(buffer,512,inst->detailfile,request,request->reply->vps);
+	radius_xlat2(buffer, sizeof(buffer), inst->detailfile,
+		     request, request->reply->vps);
+
+	/*
+	 *	Open & create the file, with the given permissions.
+	 */
 	if ((outfd = open(buffer, O_WRONLY|O_APPEND|O_CREAT,
 			  inst->detailperm)) < 0) {
 		radlog(L_ERR, "Detail: Couldn't open file %s: %s",
-		    buffer, strerror(errno));
+		       buffer, strerror(errno));
 		ret = RLM_MODULE_FAIL;
+
 	} else if ((outfp = fdopen(outfd, "a")) == NULL) {
 		radlog(L_ERR, "Detail: Couldn't open file %s: %s",
-		    buffer, strerror(errno));
+		       buffer, strerror(errno));
 		ret = RLM_MODULE_FAIL;
 		close(outfd);
 	} else {
@@ -170,7 +179,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 		while (pair) {
 			if (pair->attribute != PW_PASSWORD) {
 				fputs("\t", outfp);
-				fprint_attr_val(outfp, pair);
+				vp_print(outfp, pair);
 				fputs("\n", outfp);
 			}
 			pair = pair->next;
