@@ -517,7 +517,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'i':
-			if ((myip = ip_getaddr(optarg)) == INADDR_ANY) {
+			if ((myip = ip_getaddr(optarg)) == INADDR_NONE) {
 				fprintf(stderr, "radiusd: %s: host unknown\n",
 					optarg);
 				exit(1);

@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 	 *	Find the IP address of the terminal server.
 	 */
 	if ((nas = nas_findbyname(argv[1])) == NULL && argv[1][0] != 0) {
-		if ((ip = ip_getaddr(argv[1])) == 0) {
+		if ((ip = ip_getaddr(argv[1])) == INADDR_NONE) {
 			fprintf(stderr, "%s: host not found.\n", argv[1]);
 			exit(1);
 		}

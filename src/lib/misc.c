@@ -68,7 +68,16 @@ uint32_t ip_getaddr(const char *host)
 		return a;
 
 	if ((hp = gethostbyname(host)) == NULL)
-		return (uint32_t)0;
+		return (uint32_t) INADDR_NONE;
+
+	/*
+	 *	Paranoia from a Bind vulnerability.  An attacker
+	 *	can manipulate DNS entries to change the length of the
+	 *	address.  If the length isn't 4, something's wrong.
+	 */
+	if (hp->h_length != sizeof(uint32_t)) {
+		return (uint32_t) INADDR_NONE;
+	}
 
 	return (*(uint32_t *)hp->h_addr);
 }
@@ -99,7 +108,7 @@ uint32_t ip_addr(const char *ip_str)
 	struct in_addr	in;
 
 	if (inet_aton(ip_str, &in) == 0)
-		return 0;
+		return INADDR_NONE;
 	return in.s_addr;
 }
 
