@@ -1,3 +1,11 @@
+radiusd-freeradius (0.4-1) unstable; urgency=high
+
+  * New release.
+  * upstream: New EAP support.
+  * upstream: Fixed security bug in string translation.
+
+ -- Chad Miller <cmiller@debian.org>  Thu, 13 Dec 2001 09:26:45 -0500
+
 radiusd-freeradius (0.3-2) unstable; urgency=low
 
   * Moved to using logrotate instead of cron for files.

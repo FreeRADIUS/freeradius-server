@@ -9,7 +9,7 @@ export DH_COMPAT
 
 package = freeradius
 debiandir = $(shell pwd)/debian
-tmp     = $(debiandir)/tmp
+radiusd_freeradius_dir     = $(debiandir)/radiusd-freeradius
 
 prefix	= /
 exec_prefix	= /usr
@@ -34,27 +34,27 @@ binary-indep: build
 binary-arch: build
 	dh_clean
 	dh_installdirs
-	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) libdir=$(libdir) R=$(tmp)
+	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) libdir=$(libdir) R=$(radiusd_freeradius_dir)
 	# clean up install cruft.  $$&@!%
-	rmdir $(tmp)/$(execprefix)/include
-	rm $(tmp)/$(execprefix)/usr/sbin/rc.radiusd
+	rmdir $(radiusd_freeradius_dir)/$(execprefix)/include
+	rm $(radiusd_freeradius_dir)/$(execprefix)/usr/sbin/rc.radiusd
 	# split out inconvenient/controversal modules to other places
 	for modname in krb5 ldap mysql postgresql; do \
 		mkdir -p $(debiandir)/radiusd-freeradius-$${modname}/$(libdir); \
-		mv $(tmp)/$(libdir)/rlm*_$${modname}.* $(debiandir)/radiusd-freeradius-$${modname}/$(libdir)/; \
+		mv $(radiusd_freeradius_dir)/$(libdir)/rlm*_$${modname}.* $(debiandir)/radiusd-freeradius-$${modname}/$(libdir)/; \
 	done
 	# man pages & docs
 	dh_undocumented 
-	install -g root -m 644 CREDITS $(tmp)/$(pkgdocdir)/credits
+	install -g root -m 644 CREDITS $(radiusd_freeradius_dir)/$(pkgdocdir)/credits
 	find doc -type f -maxdepth 1 ! -path doc/ChangeLog -exec dh_installdocs {} \;
 	find src/modules/rlm_sql/drivers -type f -name \*.sql -exec dh_installdocs {} \;
 	# dh_installchangelogs doc/ChangeLog
 	dh_compress
 	# supporting programs
 	dh_installlogrotate
-	install -g root -m 755 $(debiandir)/initscript $(tmp)/$(prefix)/etc/init.d/freeradius
+	install -g root -m 755 $(debiandir)/initscript $(radiusd_freeradius_dir)/$(prefix)/etc/init.d/freeradius
 	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`; \
-	cp $(tmp)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
+	cp $(radiusd_freeradius_dir)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
 	cat $$TEMPFILE \
 		| sed -e 's/        /	/g' \
 		| sed -e '/^	example {/,/^	}/s/^/#/' \
@@ -62,7 +62,7 @@ binary-arch: build
 		| sed -e 's#^\(run_dir = .{localstatedir}/run\)#\1/radiusd#' \
 		| sed -e 's/^group = nobody/group = freerad/' \
 		| sed -e 's/^user = nobody/user = freerad/' \
-			> $(tmp)/$(raddbdir)/radiusd.conf; \
+			> $(radiusd_freeradius_dir)/$(raddbdir)/radiusd.conf; \
 	rm $$TEMPFILE
 	# 
 	dh_strip
@@ -80,7 +80,7 @@ clean:
 	rm -f build debian/{files,substvars} debian/*.debhelper
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
-	rm -rf $(tmp) radiusd-freeradius-{ldap,postgresql,mysql,krb5}{,.substvars}
+	rm -rf $(radiusd_freeradius_dir) radiusd-freeradius-{ldap,postgresql,mysql,krb5}{,.substvars}
 
 binary: binary-indep binary-arch
 
