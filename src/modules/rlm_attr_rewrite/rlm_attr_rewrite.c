@@ -50,7 +50,6 @@ typedef struct rlm_attr_rewrite_t {
 	char *searchin_str;	/* The VALUE_PAIR list to search in. Can be either packet,reply or config */
 	char searchin;		/* The same as above just coded as a number for speed */
 	char *replace;		/* The replacement */
-	int  replace_len;	/* The replacement length */
 	int  nocase;		/* Ignore case */
 	int  num_matches;	/* Maximum number of matches */
 } rlm_attr_rewrite_t;
@@ -97,7 +96,6 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_attr_rewrite: search/replace strings must be set.");
 		return -1;
 	}
-	data->replace_len = strlen(data->replace);
 
 	if (data->num_matches < 1 || data->num_matches > MAX_STRING_LEN) {
 		radlog(L_ERR, "rlm_attr_rewrite: Illegal range for match number.");
@@ -148,6 +146,9 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	unsigned int counter = 0;
 	char new_str[MAX_STRING_LEN];
 	char *ptr, *ptr2;
+	char search_STR[MAX_STRING_LEN];
+	char replace_STR[MAX_STRING_LEN];
+	int replace_len = 0;
 
 	switch (data->searchin) {
 		case RLM_REGEX_INPACKET:
@@ -182,7 +183,17 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	if (data->nocase)
 		cflags |= REG_ICASE;
 
-	if ((err = regcomp(&preg,data->search,cflags))) {
+	if (!radius_xlat(search_STR, sizeof(search_STR), data->search, request, NULL)) {
+		DEBUG2("rlm_attr_rewrite: xlat on search string failed.");
+		return ret;
+	}
+	if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL)) {
+		DEBUG2("rlm_attr_rewrite: xlat on replace string failed.");
+		return ret;
+	}
+	replace_len = strlen(replace_STR);
+
+	if ((err = regcomp(&preg,search_STR,cflags))) {
 		regerror(err, &preg, err_msg, MAX_STRING_LEN);
 		DEBUG2("rlm_attr_rewrite: regcomp() returned error: %s",err_msg);
 		return ret;
@@ -223,15 +234,15 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 		ptr += len;
 		ptr2 += pmatch.rm_eo;
 
-		counter += data->replace_len;
+		counter += replace_len;
 		if (counter >= MAX_STRING_LEN) {
 			regfree(&preg);
 			DEBUG2("rlm_attr_rewrite: Replacement out of limits for attribute %s with value %s",
 					data->attribute, attr_vp->strvalue);	
 			return ret;
 		}
-		strncpy(ptr, data->replace, data->replace_len);
-		ptr += data->replace_len;	
+		strncpy(ptr, replace_STR, replace_len);
+		ptr += replace_len;	
 	}
 	regfree(&preg);
 	len = strlen(ptr2) + 1;		/* We add the ending NULL */
