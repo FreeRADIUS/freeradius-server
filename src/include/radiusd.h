@@ -97,6 +97,7 @@ typedef struct auth_req {
 #define RAD_REQUEST_OPTION_FAKE_REQUEST    (1 << 3)
 #define RAD_REQUEST_OPTION_REJECTED        (1 << 4)
 #define RAD_REQUEST_OPTION_PROXIED         (1 << 5)
+#define RAD_REQUEST_OPTION_STOP_NOW        (1 << 6)
 
 /*
  *  Function handler for requests.

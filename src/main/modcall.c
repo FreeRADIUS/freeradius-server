@@ -257,6 +257,14 @@ static int call_modgroup(int component, modgroup *g, REQUEST *request,
 	for(p = g->children; p; p = p->next) {
 		int r = RLM_MODULE_FAIL;
 
+		/*
+		 *	A module has taken too long to process the request,
+		 *	and we've been told to stop processing it.
+		 */
+		if (request->options & RAD_REQUEST_OPTION_STOP_NOW) {
+			return RLM_MODULE_FAIL;
+		}
+
 		/* Call this child by recursing into modcall */
 		r = modcall(component, p, request);
 
@@ -295,6 +303,14 @@ static int call_modgroup(int component, modgroup *g, REQUEST *request,
 int modcall(int component, modcallable *c, REQUEST *request)
 {
 	int myresult;
+
+	/*
+	 *	A module has taken too long to process the request,
+	 *	and we've been told to stop processing it.
+	 */
+	if (request->options & RAD_REQUEST_OPTION_STOP_NOW) {
+		return RLM_MODULE_FAIL;
+	}
 
 	/* Choose a default return value appropriate for the component */
 	switch(component) {
