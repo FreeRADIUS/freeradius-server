@@ -202,7 +202,7 @@ static int new_sectiontype_value(const char *name,int type)
 static module_list_t *linkto_module(const char *module_name,
 		const char *cffilename, int cflineno)
 {
-	module_list_t **last, *node;
+	module_list_t *node;
 	lt_dlhandle handle;
 	char module_struct[256];
 	char *p;
@@ -211,7 +211,6 @@ static module_list_t *linkto_module(const char *module_name,
 	 *	Look through the global module library list for the
 	 *	named module.
 	 */
-	last = &module_list;
 	for (node = module_list; node != NULL; node = node->next) {
 		/*
 		 *	Found the named module.  Return it.
@@ -219,10 +218,6 @@ static module_list_t *linkto_module(const char *module_name,
 		if (strcmp(node->name, module_name) == 0)
 			return node;
 
-		/*
-		 *	Keep a pointer to the last entry to update...
-		 */
-		last = &node->next;
 	}
 
 	/*
@@ -273,7 +268,7 @@ static module_list_t *linkto_module(const char *module_name,
 
 	DEBUG("Module: Loaded %s ", node->module->name);
 
-	*last = node;
+	node->next = module_list;
 
 	return node;
 }
