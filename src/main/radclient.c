@@ -62,6 +62,7 @@ static int do_summary = 0;
 static int filedone = 0;
 static int totalapp = 0;
 static int totaldeny = 0;
+static int totallost = 0;
 static char filesecret[256];
 
 /*
@@ -142,24 +143,28 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 				fprintf(stderr, "radclient: ERROR: Sent request to host %s:%d, got response from host %s:%d\n!",
 					dst, req->dst_port,
 					src, (*rep)->src_port);
-				exit(1);
+				totallost++;
+				return -1;
 			}
 			break;
 		} else {	/* NULL: couldn't receive the packet */
 			librad_perror("radclient:");
-			exit(1);
+			totallost++;
+			return -1;
 		}
 	}
 
 	/* No response or no data read (?) */
 	if (i == retries) {
 		fprintf(stderr, "radclient: no response from server\n");
-		exit(1);
+		totallost++;
+		return -1;
 	}
 
 	if (rad_decode(*rep, req, secret) != 0) {
 		librad_perror("rad_decode");
-		exit(1);
+		totallost++;
+		return -1;
 	}
 
 	/* libradius debug already prints out the value pairs for us */
@@ -370,7 +375,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while(!filedone) {
+	if (req->code != PW_STATUS_SERVER) while(!filedone) {
 		if(req->vps) pairfree(&req->vps);
 
 		if ((req->vps = readvp(fp)) == NULL) {
@@ -454,12 +459,13 @@ int main(int argc, char **argv)
 			} /* there WAS a password */
 
 			send_packet(req, &rep);
-			rad_free(&rep);
+			if (rep != NULL) rad_free(&rep);
 		}
 	}
 	if(do_summary) {
 		printf("\n\t   Total approved auths:  %d\n", totalapp);
 		printf("\t     Total denied auths:  %d\n", totaldeny);
+		printf("\t       Total lost auths:  %d\n", totallost);
 	}
 	return 0;
 }
