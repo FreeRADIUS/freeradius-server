@@ -1201,7 +1201,7 @@ authorize {
 	#  Look for IPASS style 'realm/', and if not found, look for
 	#  '@realm', and decide whether or not to proxy, based on
 	#  that.
-	realmslash
+#	realmslash
 	suffix
 
 	#
@@ -1306,7 +1306,7 @@ preacct {
 	#
 	#  Accounting requests are generally proxied to the same
 	#  home server as authentication requests.
-	realmslash
+#	realmslash
 	suffix
 
 	#
