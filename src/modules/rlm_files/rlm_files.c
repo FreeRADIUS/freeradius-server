@@ -2,12 +2,11 @@
  * rlm_files.c	authorization: Find a user in the "users" file.
  *		accounting:    Write the "detail" files.
  *
- * Version:	@(#)rlm_files.c  1.00  07-Aug-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
-char rlm_files_sccsid[] =
-"@(#)rlm_files.c        1.00 Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -197,7 +196,7 @@ static int logcnt;
 /*
  * Initialize dynamic logging
  */
-file_getline(FILE *f,char * buff,int len)
+void file_getline(FILE *f,char * buff,int len)
 {
 	char tmp[2048];
 	int i;
@@ -217,14 +216,15 @@ file_getline(FILE *f,char * buff,int len)
 	}
 }
 
-file_dynamic_log_init()
+void file_dynamic_log_init(void )
 {
 	FILE * f;
 	char fn[1024];
 
 	sprintf(fn,"%s/%s",radius_dir,"rlm_files_log.cfg");
 	logcnt = 0;
-	if (f = fopen(fn,"r")) {
+	f = fopen(fn, "r");
+	if (f != NULL) {
 		log_debug("Loading %s",fn);
 		while (logcnt < MAX_LOGS) {
 			file_getline(f,logcfg[logcnt].dir,sizeof(logcfg[logcnt].dir));
@@ -297,7 +297,7 @@ static int file_init(int argc, char **argv)
 		  (vp->attribute > 0xff) &&
 		  (vp->attribute != PW_FALL_THROUGH)) {
 		log_debug("[%s]:%d WARNING! Found possible check item '%s' in "
-			  "the reply list for user %s",
+			  "the list of reply items for user %s.",
 			  fn, entry->lineno, vp->name, entry->name);
 	      }
 	      vp = vp->next;
@@ -463,7 +463,7 @@ static int file_authenticate(REQUEST *request, char *username, char *password)
 /*
  * Write the dynamic log files
  */
-file_write_dynamic_log(REQUEST * request)
+void file_write_dynamic_log(REQUEST * request)
 {
 	char fn[1024];
 	char buffer[4096];
