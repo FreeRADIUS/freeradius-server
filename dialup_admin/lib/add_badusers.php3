@@ -18,7 +18,7 @@ else{
 		"INSERT INTO $config[sql_badusers_table] (UserName,Date,Reason)
 		VALUES ('$login','$date','$msg');");
 		if (!$r)
-			echo "<b>SQL Error:" . da_sql_error($link) . "</b><br>\n";
+			echo "<b>SQL Error:" . da_sql_error($link,$config) . "</b><br>\n";
 	}
 	else
 		echo "<b>SQL Error: Could not connect to SQL database</b><br>\n";
