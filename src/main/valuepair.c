@@ -39,7 +39,7 @@ static struct cmp *cmp;
 /*
  *	Compare 2 attributes. May call the attribute compare function.
  */
-int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
+static int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	int		ret = -2;
