@@ -22,13 +22,17 @@
 #  include      <sys/select.h>
 #endif
 
+#if HAVE_ERRNO_H
+#  include      <errno.h>
+#endif
+
 #include	"conf.h"
 #include	"libradius.h"
 
 /*
- *	Read valuepairs from stdin up to End-Of-File.
+ *	Read valuepairs from the fp up to End-Of-File.
  */
-VALUE_PAIR *readvp(void)
+VALUE_PAIR *readvp(FILE *fp)
 {
 	char		buf[128];
 	int 		eol;
@@ -39,7 +43,7 @@ VALUE_PAIR *readvp(void)
 
 	list = NULL;
 
-	while (!error && fgets(buf, 128, stdin) != NULL) {
+	while (!error && fgets(buf, 128, fp) != NULL) {
 
 		p = buf;
 		do {
@@ -56,7 +60,7 @@ VALUE_PAIR *readvp(void)
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [-d raddb ] [-t timeout] [-nx] server acct|auth <secret>\n");
+	fprintf(stderr, "Usage: radclient [-d raddb ] [-f file] [-t timeout] [-nx] server acct|auth <secret>\n");
 	exit(1);
 }
 
@@ -75,10 +79,15 @@ int main(int argc, char **argv)
 	int		timeout = 3;
 	int		i;
 	char		*radius_dir = RADDBDIR;
+	char		*filename = NULL;
+	FILE		*fp;
 
-	while ((c = getopt(argc, argv, "d:nxt:")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:f:nxt:")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
+			break;
+       		case 'f':
+			filename = optarg;
 			break;
 		case 'n':
 			do_output = 0;
@@ -152,8 +161,21 @@ int main(int argc, char **argv)
 
 	/*
 	 *	Read valuepairs.
+	 *	Maybe read them, from stdin, if there's no
+	 *	filename, or if the filename is '-'.
 	 */
-	if ((req->vps = readvp()) == NULL) {
+	if (filename && (strcmp(filename, "-") != 0)) {
+		fp = fopen(filename, "r");
+		if (!fp) {
+			fprintf(stderr, "radclient: Error opening %s: %s\n",
+				filename, strerror(errno));
+			exit(1);
+		}
+	} else {
+		fp = stdin;
+	}
+
+	if ((req->vps = readvp(fp)) == NULL) {
 		exit(1);
 	}
 
@@ -208,7 +230,8 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (do_output)
+	/* libradius debug already prints out the value pairs for us */
+	if (!librad_debug && do_output)
 		vp_printlist(stdout, rep->vps);
 
 	return 0;
