@@ -92,7 +92,7 @@ else if ($badusers == 1){
 }
 	
 ?>
-   <form method=post>
+   <form name="edituser" method=post>
       <input type=hidden name=login value=<?php print $login ?>>
       <input type=hidden name=user_type value=<?php print $user_type ?>>
       <input type=hidden name=change value="0">
@@ -177,6 +177,9 @@ EOM;
 <tr>
 <td align=right bgcolor="#d0ddb0">
 EOM;
+			$desc = addslashes($desc);
+			eval("\$desc = \"$desc\";");
+			$desc = stripslashes($desc);
 			if ($i == 1)
 				echo "$desc\n";
 			else

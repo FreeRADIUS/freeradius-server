@@ -1,3 +1,8 @@
+Ver 1.63:
+* Do an eval on the attribute description strings in the user_edit page. That will allow the login-time creation
+  page to work properly.
+* Add a login-time creation page which will allow the administrator to create the login-time string through a gui
+  instead of writing it directly in UUCP format.
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
