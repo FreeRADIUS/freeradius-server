@@ -374,11 +374,17 @@ int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst)
 {
 	int ret;
 
-	ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
+	if (sqlsocket->conn) {
+		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
+	} else {
+		ret = SQL_DOWN;
+	}
 
 	if (ret == SQL_DOWN) {
-	        /* close the socket that failed */
-	        (inst->module->sql_close)(sqlsocket, inst->config);
+	        /* close the socket that failed, but only if it was open */
+		if (sqlsocket->conn) {
+			(inst->module->sql_close)(sqlsocket, inst->config);
+		}
 
 		/* reconnect the socket */
 		if (connect_single_socket(sqlsocket, inst) < 0) {
