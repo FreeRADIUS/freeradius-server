@@ -17,19 +17,18 @@
  */
 
 CREATE TABLE StartVoIP (
-  RadAcctId SERIAL,
+  RadAcctId BIGSERIAL PRIMARY KEY,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
   UserName VARCHAR(64) DEFAULT '' NOT NULL,
   Realm VARCHAR(64) DEFAULT '',
-  NASIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
+  NASIPAddress INET NOT NULL,
   NASPortType VARCHAR(32),
   AcctStartTime timestamp DEFAULT now() NOT NULL,
   ConnectInfo_start VARCHAR(32),
   CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
   CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
   ServiceType VARCHAR(32),
-  FramedIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
   AcctStartDelay NUMERIC(12),
   AcctStatusType VARCHAR(16) DEFAULT '' NOT NULL,
   H323GWID VARCHAR(32) DEFAULT '' NOT NULL,
@@ -37,31 +36,26 @@ CREATE TABLE StartVoIP (
   h323CallType VARCHAR(64) DEFAULT '' NOT NULL,
   h323SetupTime timestamp with time zone DEFAULT now() NOT NULL,
   h323ConfID VARCHAR(64) DEFAULT '' NOT NULL,
-  RadiusServerName VARCHAR(32) DEFAULT '' NOT NULL,
-  PRIMARY KEY (RadAcctId)
+  RadiusServerName VARCHAR(32) DEFAULT '' NOT NULL
 );
-create index startvoip_UserName on startvoip (UserName);
 create index startvoip_AcctSessionId on startvoip (AcctSessionId);
-create index startvoip_AcctUniqueId on startvoip (AcctUniqueId);
-create index startvoip_FramedIPAddress on startvoip (FramedIPAddress);
 create index startvoip_NASIPAddress on startvoip (NASIPAddress);
 create index startvoip_h323SetupTime on startvoip (h323SetupTime);
 
 
 CREATE TABLE StartTelephony (
-  RadAcctId SERIAL,
+  RadAcctId BIGSERIAL PRIMARY KEY,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
   UserName VARCHAR(64) DEFAULT '' NOT NULL,
   Realm VARCHAR(64) DEFAULT '',
-  NASIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
+  NASIPAddress INET NOT NULL,
   NASPortType VARCHAR(32),
   AcctStartTime timestamp DEFAULT now() NOT NULL,
   ConnectInfo_start VARCHAR(32),
   CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
   CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
   ServiceType VARCHAR(32),
-  FramedIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
   AcctStartDelay NUMERIC(12),
   AcctStatusType VARCHAR(16) DEFAULT '' NOT NULL,
   H323GWID VARCHAR(32) DEFAULT '' NOT NULL,
@@ -69,13 +63,9 @@ CREATE TABLE StartTelephony (
   h323CallType VARCHAR(64) DEFAULT '' NOT NULL,
   h323SetupTime timestamp with time zone DEFAULT now() NOT NULL,
   h323ConfID VARCHAR(64) DEFAULT '' NOT NULL,
-  RadiusServerName VARCHAR(32) DEFAULT '' NOT NULL,
-  PRIMARY KEY (RadAcctId)
+  RadiusServerName VARCHAR(32) DEFAULT '' NOT NULL
 );
-create index starttelephony_UserName on starttelephony (UserName);
 create index starttelephony_AcctSessionId on starttelephony (AcctSessionId);
-create index starttelephony_AcctUniqueId on starttelephony (AcctUniqueId);
-create index starttelephony_FramedIPAddress on starttelephony (FramedIPAddress);
 create index starttelephony_NASIPAddress on starttelephony (NASIPAddress);
 create index starttelephony_h323SetupTime on starttelephony (h323SetupTime);
 
@@ -85,12 +75,12 @@ create index starttelephony_h323SetupTime on starttelephony (h323SetupTime);
  * Table structure for 'Stop' tables
  */
 CREATE TABLE StopVoIP (
-  RadAcctId SERIAL,
+  RadAcctId BIGSERIAL PRIMARY KEY,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
   UserName VARCHAR(64) DEFAULT '' NOT NULL,
   Realm VARCHAR(64) DEFAULT '',
-  NASIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
+  NASIPAddress INET NOT NULL,
   NASPortId NUMERIC(12),
   NASPortType VARCHAR(32),
   AcctStartTime timestamp DEFAULT now() NOT NULL,
@@ -106,10 +96,9 @@ CREATE TABLE StopVoIP (
   AcctTerminateCause VARCHAR(32) DEFAULT '' NOT NULL,
   ServiceType VARCHAR(32),
   FramedProtocol VARCHAR(32),
-  FramedIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
   AcctStartDelay NUMERIC(12),
   AcctStopDelay NUMERIC(12),
-  AcctStatusType varchar(16) DEFAULT '' NOT NULL,
+  AcctStatusType varchar(10) DEFAULT '' NOT NULL,
   CiscoNASPort varchar(16) DEFAULT '' NOT NULL,
   H323GWID varchar(32) DEFAULT '' NOT NULL,
   h323CallOrigin varchar(64) DEFAULT '' NOT NULL,
@@ -118,31 +107,27 @@ CREATE TABLE StopVoIP (
   h323ConnectTime timestamp with time zone DEFAULT now() NOT NULL,
   h323DisconnectTime timestamp with time zone DEFAULT now() NOT NULL,
   h323DisconnectCause varchar(32) DEFAULT '' NOT NULL,
-  H323RemoteAddress varchar(64)  DEFAULT '' NOT NULL,
+  H323RemoteAddress INET NOT NULL,
   H323VoiceQuality NUMERIC(4),
   h323ConfID varchar(64) DEFAULT '' NOT NULL,
-  RadiusServerName varchar(32) DEFAULT '' NOT NULL,
-  PRIMARY KEY (RadAcctId)
+  RadiusServerName varchar(32) DEFAULT '' NOT NULL
 );
-create index stopvoipUserName on stopvoip (UserName);
 create index stopvoipAcctSessionId on stopvoip (AcctSessionId);
-create index stopvoipAcctUniqueId on stopvoip (AcctUniqueId);
-create index stopvoipFramedIPAddress on stopvoip (FramedIPAddress);
 create index stopvoipNASIPAddress on stopvoip (NASIPAddress);
-create index stopvoiph323ConnectTime on stopvoip (h323ConnectTime);
-create index stopvoiph323DisconnectTime on stopvoip (h323DisconnectTime);
+create index stopvoiph323SetupTime on stopvoip (h323SetupTime);
 create index stopvoipAcctSessionTime on stopvoip (AcctSessionTime);
 create index stopvoiph323remoteaddress on stopvoip (h323remoteaddress);
 create index stopvoiph323ConfID on stopvoip (h323ConfID);
+create index stopvoipcombo on stopvoip (h323SetupTime, h323confid);
 
 
 CREATE TABLE StopTelephony (
-  RadAcctId SERIAL,
+  RadAcctId BIGSERIAL PRIMARY KEY,
   AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
   AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
   UserName VARCHAR(64) DEFAULT '' NOT NULL,
   Realm VARCHAR(64) DEFAULT '',
-  NASIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
+  NASIPAddress INET NOT NULL,
   NASPortId NUMERIC(12),
   NASPortType VARCHAR(32),
   AcctStartTime timestamp DEFAULT now() NOT NULL,
@@ -158,10 +143,9 @@ CREATE TABLE StopTelephony (
   AcctTerminateCause VARCHAR(32) DEFAULT '' NOT NULL,
   ServiceType VARCHAR(32),
   FramedProtocol VARCHAR(32),
-  FramedIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
   AcctStartDelay NUMERIC(12),
   AcctStopDelay NUMERIC(12),
-  AcctStatusType varchar(16) DEFAULT '' NOT NULL,
+  AcctStatusType varchar(10) DEFAULT '' NOT NULL,
   CiscoNASPort varchar(16) DEFAULT '' NOT NULL,
   H323GWID varchar(32) DEFAULT '' NOT NULL,
   h323CallOrigin varchar(64) DEFAULT '' NOT NULL,
@@ -170,21 +154,16 @@ CREATE TABLE StopTelephony (
   h323ConnectTime timestamp with time zone DEFAULT now() NOT NULL,
   h323DisconnectTime timestamp with time zone DEFAULT now() NOT NULL,
   h323DisconnectCause varchar(32) DEFAULT '' NOT NULL,
-  H323RemoteAddress varchar(64)  DEFAULT '' NOT NULL,
+  H323RemoteAddress INET,
   H323VoiceQuality NUMERIC(4),
   h323ConfID varchar(64) DEFAULT '' NOT NULL,
-  RadiusServerName varchar(32) DEFAULT '' NOT NULL,
-  PRIMARY KEY (RadAcctId)
+  RadiusServerName varchar(32) DEFAULT '' NOT NULL
 );
-create index StopTelephonyUserName on stoptelephony (UserName);
 create index StopTelephonyAcctSessionId on stoptelephony (AcctSessionId);
-create index StopTelephonyAcctUniqueId on stoptelephony (AcctUniqueId);
-create index StopTelephonyFramedIPAddress on stoptelephony (FramedIPAddress);
 create index StopTelephonyNASIPAddress on stoptelephony (NASIPAddress);
-create index StopTelephonyh323ConnectTime on stoptelephony (h323ConnectTime);
-create index StopTelephonyh323DisconnectTime on stoptelephony (h323DisconnectTime);
+create index StopTelephonyh323ConnectTime on stoptelephony (h323SetupTime);
 create index StopTelephonyAcctSessionTime on stoptelephony (AcctSessionTime);
-create index StopTelephonyh323remoteaddress on stoptelephony (h323remoteaddress);
+create index StopTelephonyh323ConfID on stoptelephony (h323ConfID);
 
 
 /*
