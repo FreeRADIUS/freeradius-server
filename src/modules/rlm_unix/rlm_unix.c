@@ -348,6 +348,26 @@ static int unix_authorize(void *instance, REQUEST *request)
  */
 static int unix_authenticate(void *instance, REQUEST *request)
 {
+#ifdef OSFSIA
+	char		*info[2];
+	char		*progname = "radius";
+	SIAENTITY	*ent = NULL;
+
+	info[0] = progname;
+	info[1] = NULL;
+	if (sia_ses_init (&ent, 1, info, NULL, name, NULL, 0, NULL) !=
+	    SIASUCCESS)
+		return RLM_MODULE_NOTFOUND;
+	if ((ret = sia_ses_authent (NULL, passwd, ent)) != SIASUCCESS) {
+		if (ret & SIASTOP)
+			sia_ses_release (&ent);
+		return RLM_MODULE_NOTFOUND;
+	}
+	if (sia_ses_estab (NULL, ent) != SIASUCCESS) {
+		sia_ses_release (&ent);
+		return RLM_MODULE_NOTFOUND;
+	}
+#else  /* OSFSIA */
 	int rcode;
 	VALUE_PAIR *vp = NULL;
 
@@ -369,6 +389,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 		       request->username->strvalue);
 		return RLM_MODULE_REJECT;
 	}
+#endif /* OSFFIA */
 
 	return RLM_MODULE_OK;
 }
