@@ -1,0 +1,6 @@
+/var/log/freeradius/*.log {
+	weekly
+	rotate 52
+	compress
+	notifempty
+}

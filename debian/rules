@@ -118,6 +118,7 @@ binary-arch: stamp-build
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	dh_strip
 endif
+	dh_installlogrotate
 	# We don't need ldconfig. None of our libraries go in it's paths
 	dh_makeshlibs -n
 	dh_shlibdeps
@@ -134,6 +135,9 @@ clean:
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
 	rm -rf $(freeradius_dir) $(debiandir)/$(package)-{ldap,postgresql,mysql,krb5}{,.substvars}
+	[ -f config.sub.dist ] && rm config.sub && mv config.sub.dist config.sub || true
+	[ -f config.guess.dist ] && rm config.guess && mv config.guess.dist config.guess || true
+
 
 binary: binary-indep binary-arch
 
@@ -141,7 +145,8 @@ binary: binary-indep binary-arch
 # autotools-dev (for /usr/share/misc/config.*)
 # It's also a .PHONY make target.
 autotools:
-	-rm -f config.sub config.guess
+	if [ -e config.sub.dist ]; then rm config.sub; else mv config.sub config.sub.dist; fi
+	if [ -e config.guess.dist ]; then rm config.guess; else mv config.guess config.guess.dist; fi
 	ln -s /usr/share/misc/config.sub config.sub
 	ln -s /usr/share/misc/config.guess config.guess
 
