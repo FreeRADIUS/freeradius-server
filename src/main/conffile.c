@@ -88,13 +88,13 @@ CONF_SECTION *cf_itemtosection(CONF_ITEM *ci)
 	assert(ci->type == CONF_ITEM_SECTION);
 	return (CONF_SECTION *)ci;
 }
-static CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp)
+CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp)
 {
 	if (cp == NULL)
 		return NULL;
 	return (CONF_ITEM *)cp;
 }
-static CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
+CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
 {
 	if (cs == NULL)
 		return NULL;

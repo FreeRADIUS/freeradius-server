@@ -65,4 +65,6 @@ CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item);
 int cf_item_is_section(CONF_ITEM *item);
 CONF_PAIR *cf_itemtopair(CONF_ITEM *item);
 CONF_SECTION *cf_itemtosection(CONF_ITEM *item);
+CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp);
+CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs);
 #endif /* _CONFFILE_H */
