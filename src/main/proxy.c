@@ -1,11 +1,10 @@
 /*
  * proxy.c	Proxy stuff.
  *
- * Version:	@(#)proxy.c  1.52  22-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  */
 
-char proxy_sccsid[] =
-"@(#)proxy.c 	1.52 Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
