@@ -117,6 +117,7 @@ typedef struct rad_fork_t {
 	pid_t		child_pid;
 	sem_t	 	child_done;
 	int		status;	/* exit status of the child */
+	time_t		time_forked;
 } rad_fork_t;
 
 /*
@@ -832,6 +833,7 @@ pid_t rad_fork(int exec_wait)
 	if (child_pid > 0) { /* parent */
 		int i;
 		int found;
+		time_t now = time(NULL);
 
 		/*
 		 *	We store the information in the array
@@ -850,6 +852,26 @@ pid_t rad_fork(int exec_wait)
 		pthread_mutex_lock(&fork_mutex);
 		do {
 			if (forkers[i].thread_id == NO_SUCH_CHILD_PID) {
+				found = i;
+				break;
+			}
+
+			/*
+			 *	Clean up any stale forked sessions.
+			 *
+			 *	This sometimes happens, for crazy reasons.
+			 */
+			if ((now - forkers[i].time_forked) > 30) {
+				forkers[i].thread_id == NO_SUCH_CHILD_PID;
+
+				/*
+				 *	Grab the child's exit condition,
+				 *	just in case...
+				 */
+				waitpid(forkers[i].child_pid,
+					&forkers[i].status,
+					WNOHANG);
+				sem_destroy(&forkers[i].child_done);
 				found = i;
 				break;
 			}
@@ -877,6 +899,7 @@ pid_t rad_fork(int exec_wait)
 		forkers[found].status = -1;
 		forkers[found].child_pid = child_pid;
 		forkers[i].thread_id = pthread_self();
+		forkers[i].time_forked = now;
 		sem_init(&forkers[found].child_done, 0, SEMAPHORE_LOCKED);
 	}
 
