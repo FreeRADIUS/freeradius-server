@@ -414,15 +414,6 @@ int rad_authenticate(REQUEST *request)
 	password = "";
 
 	/*
-	 *	Free any pre-existing configuration items.
-	 *
-	 *	This should ONLY be happening for proxy replies.
-	 */
-	if ((request->proxy_reply) && (request->config_items)) {
-		pairfree(&request->config_items);
-	}
-
-	/*
 	 *	If this request got proxied to another server,
 	 *	AND it was an authentication request, then we need
 	 *	to add an initial Auth-Type: Auth-Accept for success,
@@ -471,16 +462,24 @@ int rad_authenticate(REQUEST *request)
 	namepair = request->username;
 
 	/*
+	 *	Look for, and cache, passwords.
+	 */
+	if (!request->password) {
+		request->password = pairfind(request->packet->vps,
+					     PW_PASSWORD);
+	}
+	  
+	/*
 	 *	Discover which password we want to use.
 	 */
-	if ((auth_item = rad_getpass(request)) != NULL) {
+	auth_item = request->password;
+	if (auth_item) {
 		password = (const char *)auth_item->strvalue;
-	}
 
-	/*
-	 *	Maybe there's a CHAP-Password?
-	 */
-	if (auth_item == NULL) {
+	} else {
+		/*
+		 *	Maybe there's a CHAP-Password?
+		 */
 		if ((auth_item = pairfind(request->packet->vps, 
 				PW_CHAP_PASSWORD)) != NULL) {
 			password = "<CHAP-PASSWORD>";
@@ -926,43 +925,3 @@ autz_redo:
 
 	return result;
 }
-
-
-/*
- * Find the password pair, decode pass if
- * needed, and return the value pair.  If
- * not found, return NULL
- */
-VALUE_PAIR *rad_getpass(REQUEST *request) {
-	VALUE_PAIR *auth_item;
-
-	/*
-	 *	First, look up the password in the request header.
-	 */
-	auth_item = request->password;
-	if (auth_item) {
-		/*
-		 *	It's there, but it's not a clear-text password.
-		 *	Give up.
-		 */
-		if (auth_item->attribute != PW_PASSWORD) {
-			return NULL;
-		}
-	} else {
-		/*
-		 *	Go find the request password.
-		 */
-		auth_item = pairfind(request->packet->vps, PW_PASSWORD);
-		if (!auth_item) {
-			return NULL;
-		}
-
-		/*
-		 *	Save the found password for later.
-		 */
-		request->password = auth_item;
-	}
-
-	return auth_item;
-}
-

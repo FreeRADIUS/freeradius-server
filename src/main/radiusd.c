@@ -1419,12 +1419,14 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if(strcmp(mainconfig.do_lower_user, "before") == 0)
 		rad_lowerpair(request, request->username);
 	if(strcmp(mainconfig.do_lower_pass, "before") == 0)
-		rad_lowerpair(request, rad_getpass(request));
+		rad_lowerpair(request,
+			      pairfind(request->packet->vps, PW_PASSWORD));
 
 	if(strcmp(mainconfig.do_nospace_user, "before") == 0)
 		rad_rmspace_pair(request, request->username);
 	if(strcmp(mainconfig.do_nospace_pass, "before") == 0)
-		rad_rmspace_pair(request, rad_getpass(request));
+		rad_rmspace_pair(request,
+				 pairfind(request->packet->vps, PW_PASSWORD));
 
 	(*fun)(request);
 
@@ -1439,7 +1441,8 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		  reprocess = 1;
 	  }
 	  if (strcmp(mainconfig.do_lower_pass, "after") == 0) {
-		rad_lowerpair(request, rad_getpass(request));
+		rad_lowerpair(request,
+			      pairfind(request->packet->vps, PW_PASSWORD));
 		reprocess = 1;
 	  }
 	  if (strcmp(mainconfig.do_nospace_user, "after") == 0) {
@@ -1447,7 +1450,9 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		  reprocess = 1;
 	  }
 	  if (strcmp(mainconfig.do_nospace_pass, "after") == 0) {
-		  rad_rmspace_pair(request, rad_getpass(request));
+		  rad_rmspace_pair(request,
+				   pairfind(request->packet->vps, PW_PASSWORD));
+
 		  reprocess = 1;
 	  }
 	  
