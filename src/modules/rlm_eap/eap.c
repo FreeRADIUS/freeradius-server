@@ -300,62 +300,85 @@ int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
  */
 eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 {
-	VALUE_PAIR *vp_list, *vp;
+	VALUE_PAIR *first, *vp;
 	eap_packet_t *eap_packet;
 	unsigned char *ptr;
 	uint16_t len;
 	int total_len;
 
-	/* Get only EAP-Message attribute list */
-	vp_list = paircopy2(vps, PW_EAP_MESSAGE);
-	if (vp_list == NULL) {
-		radlog(L_ERR, "rlm_eap: EAP_Message not found");
+	/*
+	 *	Get only EAP-Message attribute list
+	 */
+	first = pairfind(vps, PW_EAP_MESSAGE);
+	if (first == NULL) {
+		radlog(L_ERR, "rlm_eap: EAP-Message not found");
 		return NULL;
 	}
 
 	/*
-	 * Get the Actual length from the EAP packet
-	 * First EAP-Message contains the EAP packet header
+	 *	Sanity check the length before doing anything.
 	 */
-	memcpy(&len, vp_list->strvalue+2, sizeof(uint16_t));
+	if (first->length < 4) {
+		radlog(L_ERR, "rlm_eap: EAP packet is too short.");
+		return NULL;
+	}
+
+	/*
+	 *	Get the Actual length from the EAP packet
+	 *	First EAP-Message contains the EAP packet header
+	 */
+	memcpy(&len, first->strvalue + 2, sizeof(len));
 	len = ntohs(len);
 
-	eap_packet = (eap_packet_t *)malloc(len);
-	if (eap_packet == NULL) {
-		radlog(L_ERR, "rlm_eap: out of memory");
-		pairfree(&vp_list);
+	/*
+	 *	Take out even more weird things.
+	 */
+	if (len < 4) {
+		radlog(L_ERR, "rlm_eap: EAP packet has invalid length.");
 		return NULL;
 	}
-	ptr = (unsigned char *)eap_packet;
-	memcpy(ptr, vp_list->strvalue, vp_list->length);
-	ptr += vp_list->length;
-
-	total_len = vp_list->length;
 
 	/*
-	 * TODO: This check can also be based on Framed-MTU
-	if (len < MAX_STRING_LEN)
-		return eap_packet;
+	 *	Sanity check the length, BEFORE malloc'ing memory.
 	 */
-
-	if (vp_list->next == NULL) {
-		pairfree(&vp_list);
-		return eap_packet;
+	total_len = 0;
+	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE)) {
+		total_len += vp->length;
+		
+		if (total_len > len) {
+			radlog(L_ERR, "rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
+			return NULL;
+		}
 	}
 
-	DEBUG2("  rlm_eap: Multiple EAP-Message attributes found");
+	/*
+	 *	If the length is SMALLER, die, too.
+	 */
+	if (total_len < len) {
+		radlog(L_ERR, "rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
+		return NULL;
+	}
+
+	/*
+	 *	Now that we know the lengths are OK, allocate memory.
+	 */
+	eap_packet = (eap_packet_t *) malloc(len);
+	if (eap_packet == NULL) {
+		radlog(L_ERR, "rlm_eap: out of memory");
+		return NULL;
+	}
+
+	/*
+	 *	Copy the data from EAP-Message's over to out EAP packet.
+	 */
+	ptr = (unsigned char *)eap_packet;
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
-	for (vp = vp_list->next; vp; vp = vp->next) {
-		if (total_len + vp->length > len) {
-			radlog(L_ERR, "rlm_eap: Malformed EAP, lengths mismatch");
-		}
-		total_len += vp->length;
+	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE)) {
 		memcpy(ptr, vp->strvalue, vp->length);
 		ptr += vp->length;
 	}
 
-	pairfree(&vp_list);
 	return eap_packet;
 }
 
@@ -582,6 +605,11 @@ int eap_start(REQUEST *request)
 
 	/*
 	 *	Not a start message.  Don't start anything.
+	 *
+	 *	Later EAP messages are longer than the 'start' message,
+	 *	so this function returns 'no start found', so that
+	 *	the rest of the EAP code can use the State attribute
+	 *	to match this EAP-Message to an ongoing conversation.
 	 */
 	if (eap_msg->length != EAP_START) {
 		return EAP_NOTFOUND;
@@ -591,6 +619,10 @@ int eap_start(REQUEST *request)
 	if ((eapstart = eap_ds_alloc()) == NULL) {
 		return EAP_FAIL;
 	}
+
+	/*
+	 *	Hmm... why isn't this taken from the eap_msg?
+	 */
 	eapstart->request->code = PW_EAP_REQUEST;
 	eapstart->request->type.type = PW_EAP_IDENTITY;
 
