@@ -166,6 +166,41 @@ AC_ARG_WITH(dict-nocase,
   esac ]
 )
 
+dnl extra argument: --with-attrib-nmc
+ATTRIB_NMC=
+AC_ARG_WITH(attrib-nmc,
+[  --with-attrib-nmc        Include USR-style vendor specific attributes (default=yes)],
+[ ATTRIB_NMC=$withval
+ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(ATTRIB_NMC)
+  esac ]
+)
+dnl if they haven't said to use it, do so.
+if test "$ATTRIB_NMC" = "";then
+  AC_DEFINE(ATTRIB_NMC)
+fi
+
+dnl extra argument: --with-ascend-binary
+ASCEND_BINARY=
+AC_ARG_WITH(ascend-binary,
+[  --with-ascend-binary        Include support for Ascend binary filter attributes (default=yes)],
+[ ASCEND_BINARY=$withval
+ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(ASCEND_BINARY)
+  esac ]
+)
+dnl if they haven't said to use it, do so.
+if test "$ASCEND_BINARY" = "";then
+  AC_DEFINE(ASCEND_BINARY)
+fi
+
+
 dnl extra argument: --with-dynamic_modules
 WITH_DYNAMIC_MODULES=yes
 AC_ARG_WITH(dynamic-modules,

@@ -12,7 +12,7 @@ include Make.inc
 SUBDIRS		= src raddb doc scripts
 WHAT_TO_MAKE	= all
 
-all: config.status
+all:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 clean:
@@ -34,9 +34,6 @@ distclean: clean
 		sed 's/\.in$$//' | \
 		while read file; do rm -f $$file; done
 
-Make.inc: Make.inc.in
-	./configure
-
 ######################################################################
 #
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
@@ -48,7 +45,7 @@ configure: configure.in
 	autoconf
 
 # autoheader might not change autoconf.h.in, so touch a stamp file
-src/include/autoconf.h.in: src/include/stamp-h.in
+src/include/autoconf.h.in: src/include/stamp-h.in acconfig.h
 src/include/stamp-h.in: configure.in acconfig.h
 	autoheader
 	echo timestamp > src/include/stamp-h.in

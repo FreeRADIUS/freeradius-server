@@ -44,10 +44,3 @@
 #    define ASCEND_CHANNELS_PER_LINE        23
 #  endif
 #endif
-
-/*
- *	Hack for USR gear - uses a different Vendor-Specific attribute
- *	packet layout, argh.
- */
-#define ATTRIB_NMC
-
