@@ -61,7 +61,8 @@
  * successful in connecting, set state to sockconnected.
  * - chad
  */
-static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst) {
+static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
+{
 	radlog(L_DBG, "rlm_sql (%s): Attempting to connect %s #%d",
 	       inst->config->xlat_name, inst->module->name, sqlsocket->id);
 
@@ -86,8 +87,8 @@ static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst) {
  *	Purpose: Connect to the sql server, if possible
  *
  *************************************************************************/
-int sql_init_socketpool(SQL_INST * inst) {
-
+int sql_init_socketpool(SQL_INST * inst)
+{
 	SQLSOCK *sqlsocket;
 	int     i;
 
@@ -143,8 +144,8 @@ int sql_init_socketpool(SQL_INST * inst) {
  *     Purpose: Clean up and free sql pool
  *
  *************************************************************************/
-void sql_poolfree(SQL_INST * inst) {
-
+void sql_poolfree(SQL_INST * inst)
+{
 	SQLSOCK *cur;
 
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
@@ -163,8 +164,8 @@ void sql_poolfree(SQL_INST * inst) {
  *	Purpose: Close and free a sql sqlsocket
  *
  *************************************************************************/
-int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket) {
-
+int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
+{
 	radlog(L_DBG, "rlm_sql (%s): Closing sqlsocket %d",
 	       inst->config->xlat_name, sqlsocket->id);
 	(inst->module->sql_close)(sqlsocket, inst->config);
@@ -183,7 +184,8 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket) {
  *	Purpose: Return a SQL sqlsocket from the connection pool           
  *
  *************************************************************************/
-SQLSOCK * sql_get_socket(SQL_INST * inst) {
+SQLSOCK * sql_get_socket(SQL_INST * inst)
+{
 	SQLSOCK *cur, *cur2;
 	int tried_to_connect = 0;
 
@@ -257,8 +259,8 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
  *	Purpose: Frees a SQL sqlsocket back to the connection pool           
  *
  *************************************************************************/
-int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
-
+int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
+{
 	(inst->used)--;
 #if HAVE_SEMAPHORE_H
 	sem_post(sqlsocket->semaphore);
@@ -280,8 +282,8 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode) {
-
+int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
+{
 	DICT_ATTR *attr;
 	VALUE_PAIR *pair, *check;
 	char *ptr;
@@ -332,7 +334,8 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode) {
  *	Purpose: call the module's sql_fetch_row and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
+int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst)
+{
 	int ret;
 
 	ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
@@ -367,7 +370,8 @@ int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
  *	Purpose: call the module's sql_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
+int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
+{
 	int ret;
 
 	/*
@@ -409,7 +413,8 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
  *	Purpose: call the module's sql_select_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
+int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
+{
 	int ret;
 
 	/*
@@ -452,8 +457,8 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query, int mode) {
-
+int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query, int mode)
+{
 	SQL_ROW row;
 	int     rows = 0;
 
@@ -484,14 +489,24 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 	return rows;
 }
 
-void query_log(SQL_INST * inst, char *querystr) {
+void query_log(REQUEST *request, SQL_INST *inst, char *querystr)
+{
 	FILE   *sqlfile = NULL;
 
 	if (inst->config->sqltrace) {
-		if ((sqlfile = fopen(inst->config->tracefile, "a")) == (FILE *) NULL) {
+		char buffer[8192];
+
+		if (!radius_xlat(buffer, sizeof(buffer),
+				 inst->config->tracefile, request, NULL)) {
+		  radlog(L_ERR, "rlm_sql (%s): xlat failed.",
+			 inst->config->xlat_name);
+		  return;
+		}
+
+		if ((sqlfile = fopen(buffer, "a")) == (FILE *) NULL) {
 			radlog(L_ERR, "rlm_sql (%s): Couldn't open file %s",
 			       inst->config->xlat_name,
-			       inst->config->tracefile);
+			       buffer);
 		} else {
 			int fd = fileno(sqlfile);
 			

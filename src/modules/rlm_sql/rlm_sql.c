@@ -128,7 +128,7 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 		return 0;
 	}
 
-	query_log(inst,querystr);
+	query_log(request, inst,querystr);
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
 		return 0;
@@ -638,7 +638,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		case PW_STATUS_ACCOUNTING_OFF:
 			radlog(L_INFO, "rlm_sql (%s): received Acct On/Off packet", inst->config->xlat_name);
 			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_onoff_query, request, sql_escape_func);
-			query_log(inst, querystr);
+			query_log(request, inst, querystr);
 
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
@@ -666,7 +666,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			sql_set_user(inst, request, sqlusername, NULL);
 
 			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query, request, sql_escape_func);
-			query_log(inst, querystr);
+			query_log(request, inst, querystr);
 
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
@@ -694,7 +694,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			sql_set_user(inst, request, sqlusername, NULL);
 
 			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_start_query, request, sql_escape_func);
-			query_log(inst, querystr);
+			query_log(request, inst, querystr);
 
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
@@ -711,7 +711,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					 * our alternate query now (typically an UPDATE)
 					 */
 					radius_xlat(querystr, sizeof(querystr), inst->config->accounting_start_query_alt, request, sql_escape_func);
-					query_log(inst, querystr);
+					query_log(request, inst, querystr);
 
 					if (*querystr) { /* non-empty query */
 						if (rlm_sql_query(sqlsocket, inst, querystr)) {
@@ -738,7 +738,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			sql_set_user(inst, request, sqlusername, NULL);
 
 			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_stop_query, request, sql_escape_func);
-			query_log(inst, querystr);
+			query_log(request, inst, querystr);
 
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
@@ -778,7 +778,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 #endif
 
 						radius_xlat(querystr, sizeof(querystr), inst->config->accounting_stop_query_alt, request, sql_escape_func);
-						query_log(inst, querystr);
+						query_log(request, inst, querystr);
 
 						if (*querystr) { /* non-empty query */
 							if (rlm_sql_query(sqlsocket, inst, querystr)) {
