@@ -145,6 +145,7 @@
  * Dec 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Add a patch from Jon Miner <miner@doit.wisc.edu> to add the ability to configure
  *	  various LDAP TLS options
+ *	- Only call pairfree if we are using pairxlatmove not for pairadd
  */
 static const char rcsid[] = "$Id$";
 
@@ -1190,18 +1191,20 @@ ldap_authorize(void *instance, REQUEST * request)
 				filter, inst->atts, &def_result)) == RLM_MODULE_OK){
 				if ((def_msg = ldap_first_entry(conn->ld,def_result))){
 					if ((check_tmp = ldap_pairget(conn->ld,def_msg,inst->check_item_map,check_pairs,1))) {
-						if (inst->do_xlat)
+						if (inst->do_xlat){
 							pairxlatmove(request, check_pairs, &check_tmp);
+							pairfree(&check_tmp);
+						}
 						else
 							pairadd(check_pairs,check_tmp);
-						pairfree(&check_tmp);
 					}
 					if ((reply_tmp = ldap_pairget(conn->ld,def_msg,inst->reply_item_map,reply_pairs,0))) {
-						if (inst->do_xlat)
+						if (inst->do_xlat){
 							pairxlatmove(request, reply_pairs, &reply_tmp);
+							pairfree(&reply_tmp);
+						}
 						else
 							pairadd(reply_pairs,reply_tmp);
-						pairfree(&reply_tmp);
 					}
 				}
 				ldap_msgfree(def_result);
@@ -1227,18 +1230,20 @@ ldap_authorize(void *instance, REQUEST * request)
 					filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
 					if ((def_attr_msg = ldap_first_entry(conn->ld,def_attr_result))){
 						if ((check_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->check_item_map,check_pairs,1))) {
-							if (inst->do_xlat)
+							if (inst->do_xlat){
 								pairxlatmove(request, check_pairs, &check_tmp);
+								pairfree(&check_tmp);
+							}
 							else
 								pairadd(check_pairs,check_tmp);
-							pairfree(&check_tmp);
 						}
 						if ((reply_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->reply_item_map,reply_pairs,0))) {
-							if (inst->do_xlat)
+							if (inst->do_xlat){
 								pairxlatmove(request, reply_pairs, &reply_tmp);
+								pairfree(&reply_tmp);
+							}
 							else
 								pairadd(reply_pairs,reply_tmp);
-							pairfree(&reply_tmp);
 						}
 					}
 					ldap_msgfree(def_attr_result);
@@ -1297,11 +1302,12 @@ ldap_authorize(void *instance, REQUEST * request)
 	DEBUG("rlm_ldap: looking for check items in directory...");
 
 	if ((check_tmp = ldap_pairget(conn->ld, msg, inst->check_item_map,check_pairs,1)) != NULL) {
-		if (inst->do_xlat)
+		if (inst->do_xlat){
 			pairxlatmove(request, check_pairs, &check_tmp);
+			pairfree(&check_tmp);
+		}
 		else
 			pairadd(check_pairs,check_tmp);
-		pairfree(&check_tmp);
 	}
 
 
@@ -1309,11 +1315,12 @@ ldap_authorize(void *instance, REQUEST * request)
 
 
 	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs,0)) != NULL) {
-		if (inst->do_xlat)
+		if (inst->do_xlat){
 			pairxlatmove(request, reply_pairs, &reply_tmp);
+			pairfree(&reply_tmp);
+		}
 		else
 			pairadd(reply_pairs,reply_tmp);
-		pairfree(&reply_tmp);
 	}
 
        if (inst->do_comp && paircmp(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
