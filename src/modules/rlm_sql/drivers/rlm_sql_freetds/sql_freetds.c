@@ -37,16 +37,16 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     char *query;
     int marker;
 
-    // Allocating memory for the new socket
+    /* Allocating memory for the new socket */
     sqlsocket->conn = (rlm_sql_freetds_sock *)rad_malloc(sizeof(rlm_sql_freetds_sock));
     freetds_sock = sqlsocket->conn;
 
-    // Setting connection parameters
+    /* Setting connection parameters */
     freetds_sock->tds_login = tds_alloc_login();
     tds_set_server (freetds_sock->tds_login, config->sql_server);
     tds_set_user   (freetds_sock->tds_login, config->sql_login);
     tds_set_passwd (freetds_sock->tds_login, config->sql_password);
-    // Do connection
+    /* Do connection */
 
     freetds_sock->tds_socket = (void *) tds_connect(
 	freetds_sock->tds_login,
@@ -62,7 +62,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return -1;
     }
     
-    // Selecting the database
+    /* Selecting the database */
     query = (char *) malloc(strlen(config->sql_db)+5);
     sprintf(query,"use %s", config->sql_db);
     if (tds_submit_query(freetds_sock->tds_socket, query) != TDS_SUCCEED)
@@ -79,10 +79,10 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	tds_process_default_tokens(freetds_sock->tds_socket, marker);
     } while (marker != TDS_DONE_TOKEN);
 
-    // Setting up row initial value
+    /* Setting up row initial value */
     freetds_sock->row = NULL;
         
-    // All fine - exiting	
+    /* All fine - exiting */
     return 0;
 }
 	
@@ -131,10 +131,10 @@ int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     int retcode;
     
-    // Print query string (if needed)	
+    /* Print query string (if needed) */
     if (config->sqltrace) radlog(L_DBG, "query:  %s", querystr);
 	
-    // Executing query
+    /* Executing query */
     if (tds_submit_query(freetds_sock->tds_socket, querystr) != TDS_SUCCEED)
     {
 	radlog(L_ERR, "rlm_sql_freetds: Can't execute the query");
@@ -180,15 +180,15 @@ int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     TDSCOLINFO **columns;
     int numfields, column, column_size;
 
-    // Check if memory were allocated
+    /* Check if memory were allocated */
     if (freetds_sock->row != NULL)
-	return 0; // All fine - memory already allocated
+      return 0; /* All fine - memory already allocated */
 	
-    // Getting amount of result fields
+    /* Getting amount of result fields */
     numfields = sql_num_fields(sqlsocket, config);
     if (numfields < 0) return -1;
 
-    // Get information about the column set
+    /* Get information about the column set */
     columns = freetds_sock->tds_socket->res_info->columns;
     if (columns == NULL)
     {
@@ -196,7 +196,7 @@ int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return -1;
     }
 
-    // Reserving memory for a result set
+    /* Reserving memory for a result set */
     freetds_sock->row = (char **) rad_malloc((numfields+1)*sizeof(char *));
     if (freetds_sock->row == NULL)
     {
@@ -210,11 +210,11 @@ int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     {
 	column_size = columns[column]->column_size;
 	freetds_sock->row[column] = (char*)rad_malloc(column_size);
-	// Some additional check
+	/* Some additional check */
 	if (freetds_sock->row[column] == NULL)
 	{
 	    radlog(L_ERR, "rlm_sql_freetds: Can't allocate the memory");
-	    // Freeing memory what we already allocated
+	    /* Freeing memory what we already allocated */
 	    sql_free_result(sqlsocket, config);
 	    return -1;
 	}
@@ -235,7 +235,7 @@ int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     TDSRESULTINFO *result_info;
 
-    // Get information about the resulting set
+    /* Get information about the resulting set */
     result_info = freetds_sock->tds_socket->res_info;
     if (result_info == NULL)
     {
@@ -282,11 +282,11 @@ SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return NULL;
     }
     
-    // Getting amount of result fields
+    /* Getting amount of result fields */
     numfields = sql_num_fields(sqlsocket, config);
     if (numfields < 0) return NULL;
 
-    // Get information about the resulting set
+    /* Get information about the resulting set */
     result_info = freetds_sock->tds_socket->res_info;
     if (result_info == NULL)
     {
@@ -294,7 +294,7 @@ SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return NULL;
     }
     
-    // Get information about the column set
+    /* Get information about the column set */
     columns = result_info->columns;
     if (columns == NULL)
     {
@@ -302,10 +302,10 @@ SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return NULL;
     }
 
-    // Alocating the memory
+    /* Alocating the memory */
     if (sql_store_result(sqlsocket, config) < 0) return NULL;
 
-    // Converting the fields to a CHAR data type
+    /* Converting the fields to a CHAR data type */
     for (column = 0; column < numfields; column++)
     {
 	tds_convert(
@@ -335,12 +335,12 @@ int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
     sql_free_result(sqlsocket, config);
 
-    // Make sure the current statement is complete
+    /* Make sure the current statement is complete */
     if (freetds_sock->tds_socket->state == TDS_PENDING)
     {
-	// Send 'cancel' packet
+      /* Send 'cancel' packet */
 	tds_send_cancel(freetds_sock->tds_socket);
-	// Process 'cancel' packet
+	/* Process 'cancel' packet */
 	tds_process_cancel(freetds_sock->tds_socket);
     }
     
@@ -355,7 +355,7 @@ int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    // Not used
+  /* Not used */
     return 0;
 }
 
@@ -371,7 +371,7 @@ int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
     int column, numfileds=sql_num_fields(sqlsocket, config);
 
-    // Freeing reserved memory
+    /* Freeing reserved memory */
     if (freetds_sock->row != NULL) {
 	for(column=0; column<numfileds; column++) {
 	    if (freetds_sock->row[column] != NULL) {
