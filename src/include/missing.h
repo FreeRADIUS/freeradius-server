@@ -31,3 +31,10 @@ int gethostname(char *name, int len);
 #define setlinebuf(x)     0
 #endif
 
+/*
+ *	FreeBSD has libdl in it's Linux compatibility directory,
+ *	but it doesn't define RTLD_GLOBAL.  Grr..
+ */
+#ifdef __FreeBSD__
+#define RTLD_GLOBAL 0
+#endif
