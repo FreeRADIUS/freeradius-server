@@ -344,6 +344,84 @@ static CONF_PARSER module_config[] = {
   { NULL, -1, NULL, NULL }
 };
 
+static void load_module_section(CONF_SECTION *cs, int comp, const char *filename)
+{
+	module_instance_t *this;
+	CONF_ITEM	*modref;
+        int		modreflineno;
+        const char	*modrefname;
+
+	for(modref=cf_item_find_next(cs, NULL)
+	    ; modref ;
+	    modref=cf_item_find_next(cs, modref)) {
+
+		if(cf_item_is_section(modref)) {
+			modreflineno =
+				cf_section_lineno(cf_itemtosection(modref));
+			modrefname = cf_section_name1(cf_itemtosection(modref));
+		} else  {
+			modreflineno = cf_pair_lineno(cf_itemtopair(modref));
+			modrefname = cf_pair_attr(cf_itemtopair(modref));
+		}
+
+		this = find_module_instance(module_instance_list, modrefname);
+		if (this == NULL) {
+			exit(1); /* FIXME */
+		}
+
+		switch (comp) {
+		case RLM_COMPONENT_AUTZ:
+			if (!this->entry->module->authorize) {
+				radlog(L_ERR|L_CONS,
+					"%s[%d] Module %s does not contain "
+					"an 'authorize' entry\n",
+					filename, modreflineno,
+					this->entry->module->name);
+				exit(1);
+			}
+			add_to_list(&authorize, this);
+			break;
+		case RLM_COMPONENT_AUTH:
+			if (!this->entry->module->authenticate) {
+				radlog(L_ERR|L_CONS,
+					"%s[%d] Module %s does not contain "
+					"an 'authenticate' entry\n",
+					filename, modreflineno,
+					this->entry->module->name);
+				exit(1);
+			}
+			add_to_list(&authenticate, this);
+			break;
+		case RLM_COMPONENT_PREACCT:
+			if (!this->entry->module->preaccounting) {
+				radlog(L_ERR|L_CONS,
+					"%s[%d] Module %s does not contain "
+					"a 'preacct' entry\n",
+					filename, modreflineno,
+					this->entry->module->name);
+				exit(1);
+			}
+			add_to_list(&preacct, this);
+			break;
+		case RLM_COMPONENT_ACCT:
+			if (!this->entry->module->accounting) {
+				radlog(L_ERR|L_CONS,
+					"%s[%d] Module %s does not contain "
+					"an 'accounting' entry\n",
+					filename, modreflineno,
+					this->entry->module->name);
+				exit(1);
+			}
+			add_to_list(&accounting, this);
+			break;
+		default:
+			radlog(L_ERR|L_CONS, "%s[%d] Unknown component %d.\n",
+				filename, modreflineno, comp);
+			exit(1);
+		}
+  	}
+}
+
 /*
  *	Parse the module config sections, and load
  *	and call each module's init() function.
@@ -353,16 +431,10 @@ static CONF_PARSER module_config[] = {
  */
 int setup_modules(void)
 {
-	module_instance_t *this;
 	const char	*control;
 	int		comp;
 	CONF_SECTION	*cs;
-	CONF_ITEM	*modref;
-        int		modreflineno;
-        const char	*modrefname;
         const char *filename="radiusd.conf";
-
-	this = NULL; /* Shut up stupid gcc */
 
 	/*
 	 *	And parse the modules configuration values.
@@ -406,95 +478,20 @@ int setup_modules(void)
 	}
 
 	for (comp=0; comp<RLM_COMPONENT_COUNT; ++comp) {
-	switch(comp) {
+		switch(comp) {
 		case RLM_COMPONENT_AUTZ: control="authorize"; break;
 		case RLM_COMPONENT_AUTH: control="authenticate"; break;
 		case RLM_COMPONENT_PREACCT: control="preacct"; break;
 		case RLM_COMPONENT_ACCT: control="accounting"; break;
 		default: control="unknown";
-	}
-
-	cs = cf_section_find(control);
-	if (!cs)
-		continue;
-
-	for(modref=cf_item_find_next(cs, NULL)
-	    ; modref ;
-	    modref=cf_item_find_next(cs, modref)) {
-
-	/*
-	 *	Yes, we're missing two indents here.
-	 *	It's yucky but otherwise it doesn't fit. That
-	 *	ofcourse means that this function should
-	 *	be split up....
-	 */
-
-	if(cf_item_is_section(modref)) {
-		modreflineno = cf_section_lineno(cf_itemtosection(modref));
-		modrefname = cf_section_name1(cf_itemtosection(modref));
-	} else  {
-		modreflineno = cf_pair_lineno(cf_itemtopair(modref));
-		modrefname = cf_pair_attr(cf_itemtopair(modref));
-	}
-
-	this = find_module_instance(module_instance_list, modrefname);
-	if (this == NULL) {
-		fprintf(stderr, "%s[%d] Unknown module '%s' in block '%s'\n",
-			filename, modreflineno, modrefname, control);
-		exit(1);
-	}
-
-	if (strcmp(control, "authorize") == 0) {
-		if (!this->entry->module->authorize) {
-			fprintf(stderr, "%s[%d] Module '%s' does not contain "
-					"an 'authorize' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-			exit(1);
 		}
-
-		add_to_list(&authorize, this);
-		DEBUG("Module: Added '%s' to AUTHORIZE list", this->entry->module->name);
-	} else if (strcmp(control, "authenticate") == 0) {
-		if (!this->entry->module->authenticate) {
-			fprintf(stderr, "%s[%d] Module '%s' does not contain "
-					"an 'authenticate' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-			exit(1);
-		}
-
-		add_to_list(&authenticate, this);
-		DEBUG("Module: Added '%s' to AUTHENTICATE list", this->entry->module->name);
-	} else if (strcmp(control, "preacct") == 0) {
-		if (!this->entry->module->preaccounting) {
-			fprintf(stderr, "%s[%d] Module '%s' does not contain "
-					"a 'preacct' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-			exit(1);
-		}
-		add_to_list(&preacct, this);
-		DEBUG("Module: Added '%s' to PREACCT list", this->entry->module->name);
-	} else if (strcmp(control, "accounting") == 0) {
-		if (!this->entry->module->accounting) {
-			fprintf(stderr, "%s[%d] Module '%s' does not contain "
-					"an 'accounting' entry\n",
-					filename, modreflineno,
-					this->entry->module->name);
-			exit(1);
-		}
-
-		add_to_list(&accounting, this);
-		DEBUG("Module: Added '%s' to ACCOUNTING list", this->entry->module->name);
-	} else {
-		fprintf(stderr, "%s[%d] Unknown control \"%s\".\n",
-			filename, modreflineno, control);
-		exit(1);
+		
+		cs = cf_section_find(control);
+		if (!cs)
+			continue;
+		
+		load_module_section(cs, comp, filename);
 	}
-
-  	}
-	} /* YUCK */
 
 	return 0;
 }
