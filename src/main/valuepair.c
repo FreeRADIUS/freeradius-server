@@ -272,6 +272,24 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			return -1;
 		}
 
+#if 0
+		if ((check_item->strvalue[0] == '%') &&
+		    (check_item->strvalue[1] == '{')) {
+			int rcode;
+			char buffer[sizeof(check_item->strvalue)];
+
+			rcode = radius_xlat(buffer, sizeof(buffer),
+					    check_item->strvalue,
+					    req, NULL);
+			strNcpy(check_item->strvalue, buffer,
+				sizeof(check_item->strvalue));
+
+			/*
+			 *  Parse it into an ipaddr, integer, or date.
+			 */
+		}
+#endif
+
 		/*
 		 *	OK it is present now compare them.
 		 */
