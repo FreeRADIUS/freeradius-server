@@ -55,15 +55,11 @@ static const char rcsid[] =
  */
 static const char *hdr1 =
 "Login      Name              What  TTY  When      From      Location";
-static const char *ufmt1 = "%-10.10s %-17.17s %-5.5s %-4.4s %-9.9s %-9.9s %-.16s%s";
-static const char *ufmt1r = "%s,%s,%s,%s,%s,%s,%s%s";
 static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3d %-9.9s %-9.9s %-.19s%s";
 static const char *rfmt1r = "%s,%s,%s,%s%d,%s,%s,%s%s";
 
 static const char *hdr2 =
 "Login      Port    What      When          From       Location";
-static const char *ufmt2 = "%-10.10s %-6.6d %-7.7s %-13.13s %-10.10s %-.16s%s";
-static const char *ufmt2r = "%s,%d,%s,%s,%s,%s%s";
 static const char *rfmt2 = "%-10.10s %s%-5d  %-6.6s %-13.13s %-10.10s %-.28s%s";
 static const char *rfmt2r = "%s,%s%d,%s,%s,%s,%s%s";
 
@@ -292,8 +288,11 @@ static void usage(int status)
 	fprintf(output, "       -n: no full name\n");
 	fprintf(output, "       -p: show port type\n");
 	fprintf(output, "       -r: output as raw data\n");
+	fprintf(output, "       -R: output as RADIUS attributes and values\n");
 	fprintf(output, "       -s: show full name\n");
 	fprintf(output, "       -S: hide shell users from radius\n");
+	fprintf(output, "       -u <user>: print information only for that user\n");
+	fprintf(output, "       -U <user>: like -u, but case-sensitive\n");
 	exit(status);
 }
 
@@ -315,15 +314,18 @@ int main(int argc, char **argv)
 	int hideshell = 0;
 	int showsid = 0;
 	int rawoutput = 0;
-	int radiusoutput = 1;	/* Radius attributes */
+	int radiusoutput = 0;	/* Radius attributes */
 	char *p, *q;
 	const char *portind;
 	int c, portno;
 	char buffer[2048];
+	const char *user = NULL;
+	int user_cmp = 0;
+	time_t now = 0;
 
 	radius_dir = RADIUS_DIR;
 
-	while((c = getopt(argc, argv, "d:flnsSipcr")) != EOF) switch(c) {
+	while((c = getopt(argc, argv, "d:flnsSipcrRu:U:")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -358,6 +360,15 @@ int main(int argc, char **argv)
 			break;
 		case 'R':
 			radiusoutput = 1;
+			now = time(NULL);
+			break;
+		case 'u':
+			user = optarg;
+			user_cmp = 0;
+			break;
+		case 'U':
+			user = optarg;
+			user_cmp = 1;
 			break;
 		default:
 			usage(1);
@@ -442,6 +453,8 @@ int main(int argc, char **argv)
 	 *	Read the file, printing out active entries.
 	 */
 	while (fread(&rt, sizeof(rt), 1, fp) == 1) {
+		int did_user = 0;
+
 		if (rt.type != P_LOGIN) continue; /* hide logout sessions */
 
 		/*
@@ -450,6 +463,16 @@ int main(int argc, char **argv)
 		 */
 		if (hideshell && !strchr("PCS", rt.proto))
 			continue;
+
+		if (user) {	/* only for a particular user */
+			if (((user_cmp == 0) &&
+			     (strncasecmp(rt.login, user, strlen(user)) != 0)) ||
+			    ((user_cmp == 1) &&
+			     (strncmp(rt.login, user, strlen(user)) != 0))) {
+				continue;
+			}
+			did_user++;
+		}
 		
 		memcpy(session_id, rt.session_id, sizeof(rt.session_id));
 		session_id[sizeof(rt.session_id)] = 0;
@@ -460,6 +483,49 @@ int main(int argc, char **argv)
 		} else {
 			portind = "S";
 			portno = rt.nas_port;
+		}
+
+#define CPY(foo) memcpy(buffer, foo, sizeof(foo));buffer[sizeof(foo)] = 0
+		if (radiusoutput) {
+			CPY(rt.login);
+			printf("User-Name = \"%s\"\n", buffer);
+			printf("Acct-Session-Id = \"%s\"\n", session_id);
+			printf("NAS-IP-Address = %s\n",
+			       ip_hostname(buffer, sizeof(buffer),
+					   rt.nas_address));
+			printf("NAS-Port = %d\n", rt.nas_port);
+
+			switch (rt.proto) {
+				case 'S':
+					printf("Service-Type = SLIP\n");
+					break;
+				case 'P':
+					printf("Service-Type = PPP\n");
+					break;
+				default:
+					printf("Service-type = Login-User\n");
+					break;
+			}
+			if (rt.framed_address != INADDR_NONE) {
+				printf("Framed-IP-Address = %s\n",
+				       ip_hostname(buffer, sizeof(buffer),
+						   rt.framed_address));
+			}
+			
+			/*
+			 *	Some sanity checks on the time
+			 */
+			if ((rt.time <= now) &&
+			    (now - rt.time) <= (86400 * 30)) {
+				printf("Acct-Session-Time = %ld\n",
+				       now - rt.time);
+			}
+
+			if (did_user) break; /* only print out first one */
+
+			printf("\n"); /* separate entries with a blank line */
+
+			continue;
 		}
 
 		/*
