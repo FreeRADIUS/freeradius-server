@@ -26,6 +26,10 @@
  *
  *  Jay Miller  jaymiller@socket.net
  *
+ *  This implements MS-CHAP, as described in RFC 2548
+ *
+ *  http://www.freeradius.org/rfc/rfc2548.txt
+ *
  */
 
 #include	"autoconf.h"
