@@ -146,7 +146,13 @@ CREATE OR REPLACE FUNCTION chop_number_country(VARCHAR) RETURNS VARCHAR AS '
          clean_number := original_number;
         ELSE clean_number := new_number;
         END IF;
-        RETURN substring(clean_number from 1 for 2);
+        IF substring(clean_number from 1 for 2) = ''00'' THEN
+          RETURN substring(clean_number from 3 for 2);
+        ELSIF substring(clean_number from 1 for 1) = ''0'' THEN
+          RETURN '''';
+        ELSE
+          RETURN substring(clean_number from 1 for 2);
+        END IF;
  END;
 ' LANGUAGE 'plpgsql';
 
@@ -161,7 +167,13 @@ CREATE OR REPLACE FUNCTION chop_number_city(VARCHAR) RETURNS VARCHAR AS '
          clean_number := original_number;
         ELSE clean_number := new_number;
         END IF;
-        RETURN substring(clean_number from 3 for 3);
+        IF substring(clean_number from 1 for 2) = ''00'' THEN
+          RETURN substring(clean_number from 5 for 3);
+        ELSIF substring(clean_number from 1 for 1) = ''0'' THEN
+          RETURN substring(clean_number from 2 for 3);
+        ELSE
+          RETURN substring(clean_number from 3 for 3);
+        END IF;
  END;
 ' LANGUAGE 'plpgsql';
 
@@ -176,24 +188,41 @@ CREATE OR REPLACE FUNCTION chop_number_number(VARCHAR) RETURNS VARCHAR AS '
          clean_number := original_number;
         ELSE clean_number := new_number;
         END IF;
-        RETURN substring(clean_number from 6 for 20);
+        IF substring(clean_number from 1 for 2) = ''00'' THEN
+          RETURN substring(clean_number from 8 for 11);
+        ELSIF substring(clean_number from 1 for 1) = ''0'' THEN
+          RETURN substring(clean_number from 5 for 11);
+        ELSE
+          RETURN substring(clean_number from 6 for 11);
+        END IF
  END;
 ' LANGUAGE 'plpgsql';
 
 /*
  * Some sample database VIEWs to simplify billing queries.
  */
+
 CREATE OR REPLACE VIEW call_history AS
-SELECT pots.h323ConnectTime, pots.AcctSessionTime, pots.CalledStationId, ip.H323RemoteAddress, ip.NASIPAddress
-FROM StopTelephony  AS pots, StopVoIP AS ip
-WHERE pots.h323ConfID = ip.h323ConfID;
+SELECT CAST ((pots.h323SetupTime::date AT TIME ZONE 'UTC') AS date) AS Date, CAST ((pots.h323SetupTime AT TIME ZONE 'UTC') AS time without time zone) AS Time, pots.AcctSessionTime AS Length, pots.CalledStationId AS Number, ip.H323RemoteAddress AS cust_ip, ip.NASIPAddress AS gw_ip
+FROM StopTelephony AS pots LEFT OUTER JOIN StopVoIP AS ip
+ON (pots.h323ConfID = ip.h323ConfID);
+
+CREATE OR REPLACE VIEW call_history_customer AS
+SELECT Date, Time, Length, Number, cust_ip, gw_ip, CustomerIP.Company AS Company
+FROM call_history LEFT OUTER JOIN customerip
+ON (call_history.cust_ip = CustomerIP.IpAddr);
+
+CREATE OR REPLACE VIEW customerip AS
+SELECT gw.cust_gw AS IpAddr, cust.company AS Company, cust.customer AS Customer, gw.location AS Location
+FROM customers  AS cust, cust_gw AS gw
+WHERE cust.cust_id = gw.cust_id;
 
 CREATE OR REPLACE VIEW VoIP AS
-SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, chop_number_country(CalledStationId) AS Country, chop_number_city(CalledStationId) AS City,chop_number_number(CalledStationId) AS Number, chop_number(CalledStationId) AS Original_Number, EXTRACT(YEAR FROM (h323setuptime AT TIME ZONE 'UTC')) AS Year, EXTRACT(MONTH FROM (h323setuptime AT TIME ZONE 'UTC')) AS Month, EXTRACT(DAY FROM (h323setuptime AT TIME ZONE 'UTC')) AS Day, h323SetupTime::time AT TIME ZONE 'UTC' AS Time, h323DisconnectCause AS error_code, H323RemoteAddress AS Remote_IP, h323ConfID AS ConfID
+SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, chop_number_country(CalledStationId) AS Country, chop_number_city(CalledStationId) AS City,chop_number_number(CalledStationId) AS Number, chop_number(CalledStationId) AS Original_Number, EXTRACT(YEAR FROM (h323setuptime AT TIME ZONE 'UTC')) AS Year, EXTRACT(MONTH FROM (h323setuptime AT TIME ZONE 'UTC')) AS Month, EXTRACT(DAY FROM (h323setuptime AT TIME ZONE 'UTC')) AS Day, CAST ((h323SetupTime AT TIME ZONE 'UTC') AS time without time zone) AS Time, h323DisconnectCause AS error_code, H323RemoteAddress AS Remote_IP, h323ConfID AS ConfID
 FROM StopVoIP;
 
 CREATE OR REPLACE VIEW Telephony AS
-SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, chop_number_country(CalledStationId) AS Country, chop_number_city(CalledStationId) AS City,chop_number_number(CalledStationId) AS Number, chop_number(CalledStationId) AS Original_Number, EXTRACT(YEAR FROM (h323setuptime AT TIME ZONE 'UTC')) AS Year, EXTRACT(MONTH FROM (h323setuptime AT TIME ZONE 'UTC')) AS Month, EXTRACT(DAY FROM (h323setuptime AT TIME ZONE 'UTC')) AS Day, h323SetupTime::time without time zone AT TIME ZONE 'UTC' AS Time, h323DisconnectCause AS error_code, split_part(split_part(CiscoNASPort,':',1),' ',2) AS PRI, split_part(CiscoNASPort,':',3) AS PRI_channel, CiscoNASPort AS isdn_port, h323ConfID AS ConfID
+SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, chop_number_country(CalledStationId) AS Country, chop_number_city(CalledStationId) AS City,chop_number_number(CalledStationId) AS Number, chop_number(CalledStationId) AS Original_Number, EXTRACT(YEAR FROM (h323setuptime AT TIME ZONE 'UTC')) AS Year, EXTRACT(MONTH FROM (h323setuptime AT TIME ZONE 'UTC')) AS Month, EXTRACT(DAY FROM (h323setuptime AT TIME ZONE 'UTC')) AS Day, CAST ((h323SetupTime AT TIME ZONE 'UTC') AS time without time zone) AS Time, h323DisconnectCause AS error_code, split_part(split_part(CiscoNASPort,':',1),' ',2) AS PRI, split_part(CiscoNASPort,':',3) AS PRI_channel, CiscoNASPort AS isdn_port, h323ConfID AS ConfID
 FROM StopTelephony;
 
 CREATE OR REPLACE VIEW calls AS
