@@ -560,7 +560,7 @@ fi
 
 
 
-# From configure.in Revision: 1.115 
+# From configure.in Revision: 1.116 
 RADIUSD_VERSION=0.1
 
 
@@ -3542,7 +3542,7 @@ cat > conftest.$ac_ext <<EOF
 #include <stdint.h>
 #endif
 #ifdef HAVE_STDIO_H
-#include <stdint.h>
+#include <stdio.h>
 #endif
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
@@ -3581,7 +3581,7 @@ if test "x$SNMP_INCLUDE" = "x"; then
 #include <stdint.h>
 #endif
 #ifdef HAVE_STDIO_H
-#include <stdint.h>
+#include <stdio.h>
 #endif
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
@@ -3636,7 +3636,7 @@ echo "configure:3628: checking for snmp.h" >&5
 #include <stdint.h>
 #endif
 #ifdef HAVE_STDIO_H
-#include <stdint.h>
+#include <stdio.h>
 #endif
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
@@ -3682,7 +3682,7 @@ echo "configure:3674: checking for snmp_impl.h" >&5
 #include <stdint.h>
 #endif
 #ifdef HAVE_STDIO_H
-#include <stdint.h>
+#include <stdio.h>
 #endif
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
