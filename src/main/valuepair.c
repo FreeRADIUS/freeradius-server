@@ -355,10 +355,55 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 
 #ifdef HAVE_REGEX_H
 			case T_OP_REG_EQ:
-				regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED|REG_NOSUB);
-				compare = regexec(&reg, (char *)auth_item->strvalue,
-						0, NULL, 0);
+			{
+				int i;
+				regmatch_t rxmatch[16];
+
+				/*
+				 *	Include substring matches.
+				 */
+				regcomp(&reg, (char *)check_item->strvalue,
+					REG_EXTENDED);
+				compare = regexec(&reg,
+						  (char *)auth_item->strvalue,
+						  16, rxmatch, 0);
 				regfree(&reg);
+
+				/*
+				 *	Add %{0}, %{1}, etc.
+				 */
+				for (i = 0; i < 16; i++) {
+					char *p;
+					char buffer[sizeof(check_item->strvalue)];
+
+					/*
+					 *	-1 is end of matching.
+					 */
+					if (rxmatch[i].rm_so == -1) break;
+					
+					/*
+					 *	Copy substring into buffer.
+					 */
+					memcpy(buffer,
+					       auth_item->strvalue + rxmatch[i].rm_so,
+					       rxmatch[i].rm_eo);
+					buffer[rxmatch[i].rm_eo] = '\0';
+
+					/*
+					 *	Copy substring, and add it to
+					 *	the request.
+					 *
+					 *	Note that we don't check
+					 *	for out of memory, which is
+					 *	the only error we can get...
+					 */
+					p = strdup(buffer);
+					request_data_add(request,
+							 request,
+							 REQUEST_DATA_REGEX | i,
+							 p, free);
+				}
+			}				
 				if (compare != 0) result = -1;
 				break;
 
