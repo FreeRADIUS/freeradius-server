@@ -1492,7 +1492,7 @@ int rad_tunnel_pwdecode(char *passwd, int * pwlen, const char *secret, const cha
 			librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
 		}
 		else {
-			memcpy(buffer + secretlen, passwd - AUTH_PASS_LEN, AUTH_PASS_LEN);
+			memcpy(buffer + secretlen, passwd + AUTH_PASS_LEN * (ntimes - 1), AUTH_PASS_LEN);
 			librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
 		}
 		for ( i = 0, n = ntimes * AUTH_PASS_LEN; i < AUTH_PASS_LEN && (i + n) < len; i++)
