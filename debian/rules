@@ -122,12 +122,40 @@ binary-arch: stamp-build
 	dh_install -p freeradius-dialupadmin -XCVS -XChangelog -XREADME -Xconf/ -Xdoc/ -Xdialup_admin.cron dialup_admin/* usr/share/freeradius-dialupadmin/
 	dh_link -p freeradius-dialupadmin etc/freeradius-dialupadmin/ usr/share/freeradius-dialupadmin/conf
 	dh_perl -p freeradius-dialupadmin dialup_admin/bin/*
-# Fix the crontab example to point to the right directory, and 
+# Fix the crontab example to point to the right directory
 	cat $(freeradius_dir)-dialupadmin/usr/share/doc/freeradius-dialupadmin/examples/dialup_admin.cron \
 		| sed -e 's#/usr/local/dialup_admin#/usr/share/freeradius-dialupadmin#' \
 		> $(freeradius_dir)-dialupadmin/usr/share/doc/freeradius-dialupadmin/examples/freeradius-dialupadmin.cron
 	rm $(freeradius_dir)-dialupadmin/usr/share/doc/freeradius-dialupadmin/examples/dialup_admin.cron
-
+	TEMPFILE=`mktemp /tmp/dialupconf-XXXXXX`; \
+	cp $(freeradius_dir)-dialupadmin/etc/freeradius-dialupadmin/admin.conf $$TEMPFILE; \
+	cat $$TEMPFILE \
+		| sed -e 's#/usr/local/dialup_admin#/usr/share/freeradius-dialupadmin#' \
+			-e 's#/usr/local/radiusd#/usr#' \
+			-e 's#general_raddb_dir: %{general_radiusd_base_dir}/etc/raddb#general_raddb_dir: /etc/freeradius#' \
+			-e 's#general_clients_conf: /usr/local/etc/raddb/clients.conf#general_clients_conf: /etc/freeradius/clients.conf#' \
+			-e 's#%{general_base_dir}/conf#%/etc/freeradius-dialupadmin#' \
+			-e 's#/usr/local/bin#/usr/bin#' \
+		> $(freeradius_dir)-dialupadmin/etc/freeradius-dialupadmin/admin.conf; \
+	rm $$TEMPFILE;
+	TEMPFILE=`mktemp /tmp/dialuphelp-XXXXXX`; \
+	cp $(freeradius_dir)-dialupadmin/usr/share/freeradius-dialupadmin/htdocs/help/help.php3 $$TEMPFILE; \
+	cat $$TEMPFILE \
+		| sed -e 's#readfile#readgzfile#' \
+			-e 's#../../README#/usr/share/doc/freeradius-dialupadmin/README.gz#' \
+			-e 's#../../doc/HOWTO#/usr/share/doc/freeradius-dialupadmin/HOWTO.gz#' \
+			-e 's#../../doc/FAQ#/usr/share/doc/freeradius-dialupadmin/FAQ#' \
+		> $(freeradius_dir)-dialupadmin/usr/share/freeradius-dialupadmin/htdocs/help/help.php3; \
+	rm $$TEMPFILE;
+	for binfile in $(freeradius_dir)-dialupadmin/usr/share/freeradius-dialupadmin/bin/*; do \
+		TEMPFILE=`mktemp /tmp/dialupbin-XXXXXX`; \
+		cp $$binfile $$TEMPFILE; \
+		cat $$TEMPFILE \
+			| sed -e 's#/usr/local/bin/#/usr/bin/#' \
+				-e 's#/usr/local/dialup_admin/conf/#/etc/freeradius-dialupadmin/#' \
+			> $$binfile; \
+		rm $$TEMPFILE; \
+	done
 
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	dh_strip

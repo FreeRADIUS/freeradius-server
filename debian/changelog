@@ -1,8 +1,22 @@
 freeradius (1.0.2-0) unstable; urgency=low
 
   * New upstream release
+  * Update for Debian Policy 3.6.1.1
+   - Change test if invoke-rc.d as per Policy 9.3.3.2
+  * freeradius-dialupadmin Suggests php4-mysql | php4-pgsql
+     Closes: #279419
+  * Added a two-second pause to restart in init.d script
+     Closes: #262635
+  * FreeRADIUS module packages now depend on the same source
+    version of the main FreeRADIUS package.
+     Closes: #284353
+  * FreeRADIUS-dialupadmin's default paths in admin.conf are
+    now correct.
+     Closes: #280942
+  * FreeRADIUS-dialupadmin's help.php3 can now find README.
+     Closes: #280941
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 19 Dec 2004 14:28:22 +1100
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 29 Dec 2004 20:12:52 +1100
 
 freeradius (1.0.1-0) unstable; urgency=high
 

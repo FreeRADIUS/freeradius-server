@@ -30,3 +30,19 @@ version 2 of the License, or (at your option) any later version.
 
 On Debian systems, the complete text of the GNU Lesser General Public
 License can be found in /usr/share/common-licenses/LGPL.
+
+--
+Some GPL parts of this software depend on OpenSSL, the combination of
+which cannot be distributed in compiled binary form. The following
+modules cannot be enabled as they directly depend on OpenSSL:
+
+rlm_eap_peap
+rlm_eap_tls
+rlm_eap_ttls
+rlm_x99_token
+
+Also, the FreeRADIUS core's SNMP support and the rlm_sql_postgresql
+module transitively depend on OpenSSL via libsnmp{4.2,5} and libpq3
+so they cannot be enabled currently, but this is subject to changes
+in the relevant packages within Debian, or having useable alternate
+libraries in Debian.

@@ -46,7 +46,7 @@ case "$1" in
 		action="restart"
 	fi
 
-	if [ -x /usr/sbin/invoke-rc.d ] ; then
+	if command -v invoke-rc.d >/dev/null 2>&1; then
 		invoke-rc.d freeradius $action || true
 	else
 		/etc/init.d/freeradius $action
@@ -56,7 +56,7 @@ case "$1" in
   abort-upgrade)
 	;;
   abort-remove)
-	if [ -x /usr/sbin/invoke-rc.d ] ; then
+	if command -v invoke-rc.d >/dev/null 2>&1; then
 		invoke-rc.d freeradius start || true
 	else
 		/etc/init.d/freeradius start
