@@ -48,12 +48,15 @@
 
 #include "config.h"
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
 
 #include "radiusd.h"
 #include "modules.h"
@@ -61,7 +64,6 @@
 
 #include <gdbm.h>
 #include <time.h>
-#include <netinet/in.h>
 
 #ifdef NEEDS_GDBM_SYNC
 #	define GDBM_SYNCOPT GDBM_SYNC
@@ -97,8 +99,20 @@ typedef struct rlm_ippool_t {
 	int override;
 	GDBM_FILE gdbm;
 	GDBM_FILE ip;
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t op_mutex;
+#endif
 } rlm_ippool_t;
+
+#ifndef HAVE_PTHREAD_H
+/*
+ *	This is easier than ifdef's throughout the code.
+ */
+#define pthread_mutex_init(_x, _y)
+#define pthread_mutex_destroy(_x)
+#define pthread_mutex_lock(_x)
+#define pthread_mutex_unlock(_x)
+#endif
 
 typedef struct ippool_info {
 	uint32_t	ipaddr;
@@ -273,8 +287,8 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL)
 		data->name = strdup(pool_name);
-	pthread_mutex_init(&data->op_mutex, NULL);
 
+	pthread_mutex_init(&data->op_mutex, NULL);
 	*instance = data;
 	
 	return 0;
