@@ -25,7 +25,7 @@
 
 void cbtls_info(const SSL *s, int where, int ret)
 {
-	char *str, *state;
+	const char *str, *state;
 	int w;
 
 	w = where & ~SSL_ST_MASK;
@@ -33,7 +33,7 @@ void cbtls_info(const SSL *s, int where, int ret)
 	else if (w & SSL_ST_ACCEPT) str="TLS_accept";
 	else str="undefined";
 
-	state = (char *)SSL_state_string_long(s);
+	state = SSL_state_string_long(s);
 	state = state ? state : "NULL";
 
 	if (where & SSL_CB_LOOP) {
@@ -88,7 +88,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509 *client_cert;
 	SSL *ssl;
 	int err, depth;
-	int index = 0;
+	int data_index = 0;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
@@ -106,7 +106,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 * and the application specific data stored into the SSL object.
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-	user_name = (char *)SSL_get_ex_data(ssl, index);
+	user_name = (char *)SSL_get_ex_data(ssl, data_index);
 
 	/*
 	 * Get the Subject & Issuer
@@ -162,12 +162,12 @@ void cbtls_msg(int write_p, int msg_version, int content_type, const void *buf, 
 	state->info.version = msg_version;
 
 	if (content_type == 21) {
-		state->info.alert_level = ((unsigned char*)buf)[0];
-		state->info.alert_description = ((unsigned char*)buf)[1];
+		state->info.alert_level = ((const unsigned char*)buf)[0];
+		state->info.alert_description = ((const unsigned char*)buf)[1];
 		state->info.handshake_type = 0x00;
 	
 	} else if (content_type == 22) {
-		state->info.handshake_type = ((unsigned char*)buf)[0];
+		state->info.handshake_type = ((const unsigned char*)buf)[0];
 		state->info.alert_level = 0x00;
 		state->info.alert_description = 0x00;
 	}
