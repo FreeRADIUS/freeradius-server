@@ -394,12 +394,14 @@ int rad_authenticate(REQUEST *request)
 	char		umsg[MAX_STRING_LEN + 1];
 	char		*user_msg;
 	char		*ptr;
+	char		*password;
 	char		*exec_program;
 	int		exec_wait;
 	int		seen_callback_id;
 
 	user_check = NULL;
 	user_reply = NULL;
+	password = "";
 
 	/*
 	 *	If this request got proxied to another server, we need
@@ -456,6 +458,7 @@ int rad_authenticate(REQUEST *request)
 		    auth_item->length = i;
 		  }
 		}
+		password = auth_item->strvalue;
 	}
 
 	/*
@@ -465,8 +468,10 @@ int rad_authenticate(REQUEST *request)
 			     &user_check, &user_reply);
 	if (r != RLM_AUTZ_OK) {
 		if (r != RLM_AUTZ_FAIL && r != RLM_AUTZ_HANDLED) {
-			log(L_AUTH, "Invalid user: [%s] (%s)",
+			log(L_AUTH, "Invalid user: [%s%s%s] (%s)",
 				namepair->strvalue,
+				log_auth_pass ? "/" : "",
+				log_auth_pass ? password : "",
 				auth_name(request, 1));
 			rp = build_reply(PW_AUTHENTICATION_REJECT,
 					request, NULL, NULL);
@@ -738,7 +743,7 @@ int rad_authenticate(REQUEST *request)
 			"Login OK: [%s%s%s] (%s)",
 			namepair->strvalue,
 			log_auth_pass ? "/" : "",
-			log_auth_pass ? "password" : "",
+			log_auth_pass ? password : "",
 			auth_name(request, 0));
 	}
 	if (exec_program && !exec_wait) {
