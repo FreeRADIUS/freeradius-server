@@ -331,7 +331,7 @@ thread pool {
 }
 
 modules {
-	pam {
+##	pam {
 		#
 		#  The name to use for PAM authentication.
 		#  PAM looks in /etc/pam.d/${pam_auth_name}
@@ -340,8 +340,8 @@ modules {
 		#  Note that any Pam-Auth attribute set in the 'users'
 		#  file over-rides this one.
 		#
-		pam_auth = radiusd
-	}
+##		pam_auth = radiusd
+##	}
 	unix {
 		#
 		#  Cache /etc/passwd, /etc/shadow, and /etc/group
@@ -574,9 +574,10 @@ modules {
 	}
 }
 
-# Authentication types, Auth-Type = System and PAM for now.
+# Authentication types, Auth-Type = System for now.
 authenticate {
-	pam
+# Uncomment this if you want to use PAM (Auth-Type = PAM)
+#	pam
 	unix
 # By grouping modules together in an authtype block, that authtype will be
 # tried on each module in sequence until one returns REJECT or OK. This
