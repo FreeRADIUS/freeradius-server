@@ -8,6 +8,8 @@ o modular radutmp and radwtmp, as per Alan Curry's old patches.
 o merge OSF/OSFIA patches from Cistron.
 o double-check Cistron 'compat' mode, so that all current users of
   Cistron can upgrade "out of the box" to FreeRADIUS
+o Fix multiple/conflicting VALUE names as pointed out on the list.
+   e.g. 'Rlogin' has different values when used with different ATTRIBUTEs,
 
 
 MEDIUM PRIORITY
