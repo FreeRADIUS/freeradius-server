@@ -25,8 +25,6 @@
 
 #include "libradius.h"
 
-static VALUE_PAIR	*prevRadPair = NULL;
-
 #define PRINTF( x ) if (librad_debug) librad_log x
 
 #define NO_TOKEN -1
@@ -1215,6 +1213,8 @@ filterBinary(VALUE_PAIR *pair, char *valstr)
     int			rc;
     RadFilter		radFil, *filt;
     RadGenericFilter*	gen;
+    static VALUE_PAIR	*prevRadPair = NULL;
+
 
     rc = -1;
     strcpy( curString, valstr );
@@ -1235,10 +1235,10 @@ filterBinary(VALUE_PAIR *pair, char *valstr)
     }
 
     /*
-     * if more is set then this new entry must exist, be a 
+     * if 'more' is set then this new entry must exist, be a 
      * FILTER_GENERIC_TYPE, direction and disposition must match for 
-     * the previous more to be valid. If any should fail then TURN OFF 
-     * previos more
+     * the previous 'more' to be valid. If any should fail then TURN OFF 
+     * previous 'more'
      */
     if( prevRadPair ) {
 	filt = ( RadFilter * )prevRadPair->strvalue;
@@ -1285,86 +1285,68 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
    */
   if (vp->length != SIZEOF_RADFILTER) {
     for (i = 0; i < vp->length; i++) {
-      sprintf(p, "%02x", vp->strvalue[i]);
-      p += 2;
+      sprintf(p, " %02x", vp->strvalue[i]);
+      p += 3;
     }
     strcpy(p, "\"");
     return;
   }
 
   memcpy(&filter, vp->strvalue, SIZEOF_RADFILTER);
-
+  len -= 2;
 
   if (filter.type == RAD_FILTER_IP) {
-    i = snprintf(p, len - 2, "%s %s srcip %d.%d.%d.%d/%d dstip %d.%d.%d.%d/%d %s %d dstport %s %d srcport %s %d",
+    i = snprintf(p, len, "%s %s",
 		 filter_type[filter.type],
-		 direction[filter.indirection & 0x01],
-
-		 ((u_char *) &filter.u.ip.srcip)[0],
-		 ((u_char *) &filter.u.ip.srcip)[1],
-		 ((u_char *) &filter.u.ip.srcip)[2],
-		 ((u_char *) &filter.u.ip.srcip)[3],
-		 filter.u.ip.srcmask,
-
-		 ((u_char *) &filter.u.ip.dstip)[0],
-		 ((u_char *) &filter.u.ip.dstip)[1],
-		 ((u_char *) &filter.u.ip.dstip)[2],
-		 ((u_char *) &filter.u.ip.dstip)[3],
-		 filter.u.ip.dstmask,
-
-		 action[filter.forward & 0x01],
-
-		 filter.u.ip.proto,
-
-		 compare[filter.u.ip.dstPortComp], ntohs(filter.u.ip.dstport),
-
-		 compare[filter.u.ip.srcPortComp], ntohs(filter.u.ip.srcport));
+		 direction[filter.indirection & 0x01]);
     p += i;
+    len -= i;
+    
+    //   %s %d dstport %s %d srcport %s %d
+    if (filter.u.ip.srcip) {
+      i = snprintf(p, len, " srcip %d.%d.%d.%d/%d",
+		   ((u_char *) &filter.u.ip.srcip)[0],
+		   ((u_char *) &filter.u.ip.srcip)[1],
+		   ((u_char *) &filter.u.ip.srcip)[2],
+		   ((u_char *) &filter.u.ip.srcip)[3],
+		   filter.u.ip.srcmask);
+      p += i;
+      len -= i;
+    }
+		   
+    if (filter.u.ip.dstip) {
+      i = snprintf(p, len, " dstip %d.%d.%d.%d/%d",
+		   ((u_char *) &filter.u.ip.dstip)[0],
+		   ((u_char *) &filter.u.ip.dstip)[1],
+		   ((u_char *) &filter.u.ip.dstip)[2],
+		   ((u_char *) &filter.u.ip.dstip)[3],
+		   filter.u.ip.dstmask);
+      p += i;
+      len -= i;
+    }
+
+    i =  snprintf(p, len, " %s %d", action[filter.forward & 0x01],
+		  filter.u.ip.proto);
+    p += i;
+    len -= i;
+
+    if (filter.u.ip.dstPortComp) {
+      i = snprintf(p, len, " dstport %s %d",
+		  compare[filter.u.ip.dstPortComp],
+		  ntohs(filter.u.ip.dstport));
+      p += i;
+      len -= i;
+    }
+
+    if (filter.u.ip.srcPortComp) {
+      i = snprintf(p, len, " srcport %s %d",
+		  compare[filter.u.ip.srcPortComp],
+		  ntohs(filter.u.ip.srcport));
+      p += i;
+      len -= i;
+    }
   }
 
   *(p++) = '"';
   *p = '\0';
 }
-
-/*
-  Test case"
-
-"ip out srcip 10.1.1.0/24 forward 6 dstport = 80 srcport < 1023"
-
- This filter would translate to the binary format listed below.
- The map below defines what each field stands for:
-
- 01 01 00 00 0a010100 00000000 18 00 06 00 03FF 0050 01 02 0000
- AA BB CC DD EEEEEEEE FFFFFFFF GG HH II JJ KKKK LLLL MM NN OOOO
-
- AA          Filter type
-                 00 = generic
-                 01 = IP
-                 02 = IPX
- BB          Action
-                 00 = drop (block) packet
-                 01 = forward packet
- CC          Direction
-                 00 = output filter
-                 01 = input filter
- DD          Blank
- EEEEEEEE    Source IP address
- FFFFFFFF    Destination IP address
- GG          Source netmask in bits
- HH          Destination netmask in bits
- II          Protocol number
- JJ          Blank
- KKKK        Source port number
- LLLL        Destination port number
- MM          Source compare
- NN          Destination compare
-                 00 = none
-                 01 = greater than
-                 02 = equal
-                 03 = less than
-                 04 = not equal
- OOOO        Padding
-
-
-
-*/
