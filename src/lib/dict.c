@@ -35,11 +35,18 @@ static const char rcsid[] = "$Id$";
 #include	"libradius.h"
 #include	"missing.h"
 
-static DICT_VALUE	*dictionary_values = NULL;
 static DICT_VENDOR	*dictionary_vendors = NULL;
 
 static rbtree_t *attributes_byname = NULL;
 static rbtree_t *attributes_byvalue = NULL;
+
+static rbtree_t *values_byvalue = NULL;
+static rbtree_t *values_byname = NULL;
+
+/*
+ *	So VALUEs in the dictionary can have forward references.
+ */
+static rbtree_t *values_fixup = NULL;
 
 static const LRAD_NAME_NUMBER type_table[] = {
 	{ "string",	PW_TYPE_STRING },
@@ -69,21 +76,15 @@ static DICT_ATTR *base_attributes[256];
  */
 static void dict_free(void)
 {
-	DICT_VALUE	*dval, *vnext;
 	DICT_VENDOR	*dvend, *enext;
 
 	memset(base_attributes, 0, sizeof(base_attributes));
 
-	for (dval = dictionary_values; dval; dval = vnext) {
-		vnext = dval->next;
-		free(dval);
-	}
 	for (dvend = dictionary_vendors; dvend; dvend = enext) {
 		enext = dvend->next;
 		free(dvend);
 	}
 
-	dictionary_values = NULL;
 	dictionary_vendors = NULL;
 
 	/*
@@ -91,6 +92,13 @@ static void dict_free(void)
 	 */
 	rbtree_free(attributes_byname);
 	rbtree_free(attributes_byvalue);
+	attributes_byname = NULL;
+	attributes_byvalue = NULL;
+
+	rbtree_free(values_byname);
+	rbtree_free(values_byvalue);
+	values_byname = NULL;
+	values_byvalue = NULL;
 }
 
 /*
@@ -124,6 +132,9 @@ int dict_addvendor(const char *name, int value)
 	return 0;
 }
 
+/*
+ *	Add an attribute to the dictionary.
+ */
 int dict_addattr(const char *name, int vendor, int type, int value,
 		 ATTR_FLAGS flags)
 {
@@ -185,6 +196,18 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
 	if (rbtree_insert(attributes_byname, attr) == 0) {
+		DICT_ATTR	*a;
+
+		/*
+		 *	If the attribute has identical number, then
+		 *	ignore the duplicate.
+		 */
+		a = rbtree_finddata(attributes_byname, attr);
+		if (a->attr == attr->attr) {
+			free(attr);
+			return 0;
+		}
+
 		librad_log("dict_addattr: Duplicate attribute %s", name);
 		return -1;
 	}
@@ -208,6 +231,9 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	return 0;
 }
 
+/*
+ *	Add a value for an attribute to the dictionary.
+ */
 int dict_addvalue(const char *namestr, char *attrstr, int value)
 {
 	DICT_ATTR	*dattr;
@@ -218,18 +244,13 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 		return -1;
 	}
 
-	if (strlen(attrstr) > (sizeof(dval->attrname) -1)) {
-		librad_log("dict_addvalue: attribute name too long");
-		return -1;
-	}
-
 	if ((dval = (DICT_VALUE *)malloc(sizeof(DICT_VALUE))) == NULL) {
 		librad_log("dict_addvalue: out of memory");
 		return -1;
 	}
 
 	strcpy(dval->name, namestr);
-	strcpy(dval->attrname, attrstr);
+	dval->value = value;
 
 	/*
 	 *	Remember which attribute is associated with this
@@ -239,13 +260,19 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 	if (dattr) {
 		dval->attr = dattr->attr;
 	} else {
-		dval->attr = 0;
+		dval->attr = (int) strdup(attrstr);
+		rbtree_insert(values_fixup, dval);
+		return 0;
 	}
-	dval->value = value;
 	
-	/* Insert at front. */
-	dval->next = dictionary_values;
-	dictionary_values = dval;
+	/*
+	 *	Add the value into the dictionary.
+	 */
+	if (rbtree_insert(values_byname, dval) == 0) {
+		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
+		return -1;
+	}
+	rbtree_insert(values_byvalue, dval);
 
 	return 0;
 }
@@ -657,14 +684,92 @@ static int attrvalue_cmp(const void *a, const void *b)
 }
 
 /*
+ *	Compare values by name, keying off of the attribute number,
+ *	and then the value name.
+ */
+static int valuename_cmp(const void *a, const void *b)
+{
+	int rcode;
+	rcode = (((const DICT_VALUE *)a)->attr - 
+		 ((const DICT_VALUE *)b)->attr);
+	if (rcode != 0) return rcode;
+
+	return strcasecmp(((const DICT_VALUE *)a)->name,
+			  ((const DICT_VALUE *)b)->name);
+}
+
+/*
+ *	Compare values by value, keying off of the attribute number,
+ *	and then the value number.
+ */
+static int valuevalue_cmp(const void *a, const void *b)
+{
+	int rcode;
+	rcode = (((const DICT_VALUE *)a)->attr - 
+		 ((const DICT_VALUE *)b)->attr);
+	if (rcode != 0) return rcode;
+
+	return (((const DICT_VALUE *)a)->value - 
+		 ((const DICT_VALUE *)b)->value);
+}
+
+/*
+ *	Compare values by name, keying off of the value number,
+ *	and then the value number.
+ */
+static int valuefixup_cmp(const void *a, const void *b)
+{
+	int rcode;
+	rcode = strcasecmp((const char *) ((const DICT_VALUE *)a)->attr,
+			   (const char *) ((const DICT_VALUE *)b)->attr);
+	if (rcode != 0) return rcode;
+
+	return (((const DICT_VALUE *)a)->value - 
+		((const DICT_VALUE *)b)->value);
+}
+
+static int values_fixup_func(void *data)
+{
+	DICT_ATTR  *a;
+	DICT_VALUE *v;
+	DICT_VALUE *dval = data;
+
+	a = dict_attrbyname((const char *) dval->attr);
+	if (!a) {
+		librad_log("dict_addvalue: No attribute named %s for value %s", (const char *) dval->attr, dval->name);
+		return -1;
+	}
+
+	free ((const char *) dval->attr);
+	dval->attr = a->attr;
+
+	/*
+	 *	Add the value into the dictionary.
+	 */
+
+	if (rbtree_insert(values_byname, dval) == 0) {
+		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", dval->name, a->name);
+		return -1;
+	}
+
+	/*
+	 *	Allow them to use the old name, but prefer the new name
+	 *	when printing values.
+	 */
+	v = rbtree_find(values_byvalue, dval);
+	if (!v) {
+		rbtree_insert(values_byvalue, dval);
+	}
+
+	return 0;
+}
+
+/*
  *	Initialize the directory, then fix the attr member of
  *	all attributes.
  */
 int dict_init(const char *dir, const char *fn)
 {
-	DICT_ATTR	*attr;
-	DICT_VALUE	*dval;
-
 	dict_free();
 
 	/*
@@ -688,19 +793,37 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 	}
 
+	values_byname = rbtree_create(valuename_cmp, NULL, 1);
+	if (!values_byname) {
+		return -1;
+	}
+
+	values_byvalue = rbtree_create(valuevalue_cmp, NULL, 1);
+	if (!values_byvalue) {
+		return -1;
+	}
+
+	/*
+	 *	ONLY used in this function!
+	 */
+	values_fixup = rbtree_create(valuefixup_cmp, NULL, 1);
+	if (!values_fixup) {
+		return -1;
+	}
+
 	if (my_dict_init(dir, fn, NULL, 0) < 0)
 		return -1;
 
-	for (dval = dictionary_values; dval; dval = dval->next) {
-		if (dval->attr != 0)
-			continue;
-		if ((attr = dict_attrbyname(dval->attrname)) == NULL) {
-		librad_log("dict_init: VALUE %s for unknown ATTRIBUTE %s",
-			dval->name, dval->attrname);
-			return -1;
-		}
-		dval->attr = attr->attr;
+	/*
+	 *	Fix up the dictionary, based on values with an attribute
+	 *	of zero.
+	 */
+	if (rbtree_walk(values_fixup, values_fixup_func, InOrder) != 0) {
+		return -1;
 	}
+
+	rbtree_free(values_fixup);
+	values_fixup = NULL;
 
 	return 0;
 }
@@ -708,7 +831,7 @@ int dict_init(const char *dir, const char *fn)
 /*
  *	Get an attribute by its numerical value.
  */
-DICT_ATTR * dict_attrbyvalue(int val)
+DICT_ATTR *dict_attrbyvalue(int val)
 {
 	/*
 	 *	If it's an on-the-wire base attribute, return
@@ -730,7 +853,7 @@ DICT_ATTR * dict_attrbyvalue(int val)
 /*
  *	Get an attribute by its name.
  */
-DICT_ATTR * dict_attrbyname(const char *name)
+DICT_ATTR *dict_attrbyname(const char *name)
 {
 	DICT_ATTR myattr;
 	
@@ -742,16 +865,14 @@ DICT_ATTR * dict_attrbyname(const char *name)
 /*
  *	Associate a value with an attribute and return it.
  */
-DICT_VALUE * dict_valbyattr(int attr, int val)
+DICT_VALUE *dict_valbyattr(int attr, int val)
 {
-	DICT_VALUE	*v;
+	DICT_VALUE	myval;
 
-	for (v = dictionary_values; v; v = v->next) {
-		if (v->attr == attr && v->value == val)
-			return v;
-	}
+	myval.attr = attr;
+	myval.value = val;
 
-	return NULL;
+	return rbtree_finddata(values_byvalue, &myval);
 }
 
 /*
@@ -761,18 +882,14 @@ DICT_VALUE * dict_valbyattr(int attr, int val)
  *      send it 0 as the attr. I hope this works the way it
  *      seems to. :) --kph
  */
-DICT_VALUE * dict_valbyname(int attr, const char *name)
+DICT_VALUE *dict_valbyname(int attr, const char *name)
 {
-	DICT_VALUE	*v;
+	DICT_VALUE	myval;
 
-	for (v = dictionary_values; v; v = v->next) {
-		if ((attr == 0 || v->attr == attr) &&
-		    strcasecmp(v->name, name) == 0)
-		 return v;
-               
-	}
+	myval.attr = attr;
+	strNcpy(myval.name, name, sizeof(myval.name));
 
-	return NULL;
+	return rbtree_finddata(values_byname, &myval);
 }
 
 /*

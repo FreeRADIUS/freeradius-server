@@ -120,10 +120,8 @@ typedef struct dict_attr {
 
 typedef struct dict_value {
 	char			name[40];
-	char			attrname[40];
 	int			attr;
 	int			value;
-	struct dict_value	*next;
 } DICT_VALUE;
 
 typedef struct dict_vendor {
