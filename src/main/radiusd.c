@@ -129,6 +129,7 @@ int main(int argc, char **argv)
 	int			pid;
 	int			i;
 	int			fd = 0;
+	int			devnull;
 	int			status;
 	int			dontfork = 0;
 	int			radius_port = 0;
@@ -136,6 +137,14 @@ int main(int argc, char **argv)
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
 #endif
+
+	/*
+	 *	Open /dev/null, and make sure filedescriptors
+	 *	0, 1 and 2 are connected to something.
+	 */
+	devnull = 0;
+	while (devnull >= 0 && devnull < 3)
+		devnull = open("/dev/null", O_RDWR);
 
 	if ((progname = strrchr(argv[0], '/')) == NULL)
 		progname = argv[0];
@@ -320,6 +329,16 @@ int main(int argc, char **argv)
 	pair_builtincompare_init();
 
 	/*
+	 *	Connect 0, 1 and 2 to /dev/null.
+	 */
+	if (!debug_flag && devnull >= 0) {
+		dup2(devnull, 0);
+		dup2(devnull, 1);
+		dup2(devnull, 2);
+		if (devnull > 2) close(devnull);
+	}
+
+	/*
 	 *	Disconnect from session
 	 */
 	if(debug_flag == 0 && dontfork == 0) {
@@ -341,18 +360,6 @@ int main(int argc, char **argv)
 	 */
 	if (debug_flag) setlinebuf(stdout);
 
-#if !defined(M_UNIX) && !defined(__linux__)
-	/*
-	 *	Open system console as stderr
-	 */
-	if (!debug_flag) {
-		t = open("/dev/console", O_WRONLY | O_NOCTTY);
-		if (t != 2) {
-			dup2(t, 2);
-			close(t);
-		}
-	}
-#endif
 	/*
 	 *	If we are in forking mode, we will start a child
 	 *	to listen for Accounting requests.  If not, we will 

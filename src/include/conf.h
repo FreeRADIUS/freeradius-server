@@ -20,7 +20,7 @@
 
 #define RADIUS_PID		RUNDIR "/radiusd.pid"
 
-#define CHECKRAD		SBDIRDIR "/checkrad"
+#define CHECKRAD		SBINDIR "/checkrad"
 
 /* Hack for funky ascend ports on MAX 4048 (and probably others)
    The "NAS-Port-Id" value is "xyyzz" where "x" = 1 for digital, 2 for analog;

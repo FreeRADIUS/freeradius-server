@@ -7,6 +7,7 @@
  */
 
 #include "libradius.h"
+#include "radpaths.h"
 #include "conf.h"
 
 #define CHAP_VALUE_LENGTH               16

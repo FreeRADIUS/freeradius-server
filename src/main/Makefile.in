@@ -5,15 +5,10 @@ SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o \
 		  modules.o radutmp.o $(MODULE_PATHS)
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h
-BUILDDBM	= @BUILDDBM@
 
 CFLAGS		+= -I../include
 LDFLAGS		+= -L../lib -rdynamic
 LIBS		+= -lradius
-
-CFLAGS		+= -DLOGDIR=\"@logdir@\" -DRADDBDIR=\"@raddbdir@\" \
-		   -DRUNDIR=\"@localstatedir@/run\" -DSBDIRDIR=\"@sbindir@\" \
-		   -DRADIR=\"@radacctdir@\"
 
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 

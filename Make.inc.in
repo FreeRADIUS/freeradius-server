@@ -36,6 +36,8 @@ RUNDIR		= @localstatedir@/run
 SBINDIR		= @sbindir@
 RADIR		= @radacctdir@
 
+BUILDDBM	= @BUILDDBM@
+
 MODULES		= @MODULES@
 MODULE_PATHS	= @MODULE_PATHS@
 
