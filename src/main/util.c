@@ -72,7 +72,7 @@ void (*sun_signal(int signo, void (*func)(int)))(int)
 
 
 /*
- *	Free an AUTHREQ struct.
+ *	Free a REQUEST struct.
  */
 void request_free(REQUEST *request)
 {
@@ -82,6 +82,9 @@ void request_free(REQUEST *request)
 		rad_free(request->proxy);
 	if (request->reply) {
 		rad_free(request->reply);
+	}
+	if (request->config_items) {
+		pairfree(request->config_items);
 	}
 	free(request);
 }
