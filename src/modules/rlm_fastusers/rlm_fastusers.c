@@ -454,7 +454,7 @@ static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user, const char *nam
 	 * user will never match
 	 */
 	check_save = pairfind(user->check, PW_AUTHTYPE);
-	if(check_save->lvalue == PW_AUTHTYPE_REJECT)  {
+	if((check_save) && check_save->lvalue == PW_AUTHTYPE_REJECT)  {
 		DEBUG2("  fastusers(uc):  User '%s' line %d is Auth-Type Reject, but usercollide match", 
 					user->name, user->lineno);
 		return 1;
