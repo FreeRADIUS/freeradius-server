@@ -24,7 +24,7 @@ static const char rcsid[] =
 #include	"libradius.h"
 #include	"missing.h"
 
-int		librad_dodns = 1;
+int		librad_dodns = 0;
 int		librad_debug = 0;
 
 /*
