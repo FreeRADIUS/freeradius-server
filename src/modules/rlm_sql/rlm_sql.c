@@ -128,12 +128,14 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 		return 0;
 	}
 
+	query_log(inst,querystr);
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
 		return 0;
 	if (rlm_sql_select_query(sqlsocket,inst,querystr)){
-		radlog(L_ERR, "rlm_sql (%s): database query error",
-		       inst->config->xlat_name);
+		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
+		       inst->config->xlat_name,querystr,
+		       (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
@@ -313,8 +315,9 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 	if (sqlsocket == NULL)
 		return 1;
 	if ((inst->module->sql_select_query)(sqlsocket,inst->config,querystr) <0){
-		radlog(L_ERR, "rlm_sql (%s): database query error",
-		       inst->config->xlat_name);
+		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
+		       inst->config->xlat_name,querystr,
+		       (char *)(inst->module->sql_error)(sqlsocket,inst->config));
 		sql_release_socket(inst,sqlsocket);
 		return 1;
 	}
@@ -333,8 +336,7 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 			DEBUG("rlm_sql (%s): - sql_groupcmp finished: User belongs in group %s",
 			      inst->config->xlat_name,
 			      (char *)check->strvalue);
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			sql_release_socket(inst, sqlsocket);
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);			sql_release_socket(inst, sqlsocket);
 			return 0;
 		}
 	}
@@ -349,8 +351,8 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 }
 
 
-static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
-
+static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
+{
 	SQL_INST *inst;
 	lt_dlhandle handle;
 	char *xlat_name;
@@ -425,13 +427,13 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 	return RLM_MODULE_OK;
 }
 
-static int rlm_sql_destroy(void) {
-
+static int rlm_sql_destroy(void)
+{
 	return 0;
 }
 
-static int rlm_sql_detach(void *instance) {
-
+static int rlm_sql_detach(void *instance)
+{
 	SQL_INST *inst = instance;
 
 	sql_poolfree(inst);
@@ -445,8 +447,8 @@ static int rlm_sql_detach(void *instance) {
 }
 
 
-static int rlm_sql_authorize(void *instance, REQUEST * request) {
-
+static int rlm_sql_authorize(void *instance, REQUEST * request)
+{
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
 	VALUE_PAIR *user_profile = NULL;
@@ -771,7 +773,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				        	        radius_xlat(logstr, sizeof(logstr), "rlm_sql: Stop packet with zero session length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, sql_escape_func);
 					                radlog(L_ERR, logstr);
 				        	        sql_release_socket(inst, sqlsocket);
-				                	return RLM_MODULE_NOOP;
+				                	ret = RLM_MODULE_NOOP;
 					        }
 #endif
 
