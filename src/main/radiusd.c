@@ -1028,7 +1028,7 @@ int rad_process(REQUEST *request, int dospawn)
 
 	case PW_AUTHENTICATION_REQUEST:
 		/*
-		 *	Check for requests sent to the wrongport,
+		 *	Check for requests sent to the wrong port,
 		 *	and ignore them, if so.
 		 */
 		if (request->packet->sockfd != authfd) {
@@ -1709,8 +1709,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 			  } else {
 				  /*
 				   *	??? the client sent us a new request
-				   *	with the same ID, while we were processing
-				   *	the old one!  What should we do?
+				   *	with the same ID, while we were
+				   *	processing the old one!  What should
+				   *	we do?
 				   */
 				radlog(L_ERR,
 				"Dropping conflicting authentication packet"

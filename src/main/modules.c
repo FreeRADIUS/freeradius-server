@@ -136,7 +136,7 @@ static void module_list_free(void)
  *  all of the time.
  *
  * FIXME: move this to dict.c as dict_valadd() and dict_valdel()
- *        also clear value in module_list free (nessecary?)
+ *        also clear value in module_list free (necessary?)
  */
 static int new_authtype_value(const char *name)
 {
@@ -634,7 +634,7 @@ int setup_modules(void)
 
 		/*
 		 *	Set the search path to ONLY our library directory.
-		 *	This prevents the modules fromn being found from
+		 *	This prevents the modules from being found from
 		 *	any location on the disk.
 		 */
 		lt_dlsetsearchpath(radlib_dir);
