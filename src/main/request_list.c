@@ -21,6 +21,12 @@
  * Copyright 2003  The FreeRADIUS server project
  */
 
+/*
+ *	The functions in this file must be called ONLY from radiusd.c,
+ *	in the main server processing thread.  These functions are NOT
+ *	thread-safe!
+ */
+
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
@@ -57,6 +63,58 @@ typedef struct REQUESTINFO {
 
 static REQUESTINFO	request_list[256];
 
+#ifdef WITH_RBTREE
+
+/*
+ *	It MAY make more sense here to key off of the packet ID, just
+ *	like the request_list.  Then again, saving another 8 lookups
+ *	(on average) isn't much of a problem.
+ *
+ *	The "request_cmp" function keys off of the packet ID first,
+ *	so the first 8 layers of the tree will be the fanned-out
+ *	tree for packet ID's.
+ */
+static rbtree_t		*request_tree;
+
+/*
+ *	Compare two REQUEST data structures, based on a number
+ *	of criteria.
+ */
+static int request_cmp(const void *one, const void *two)
+{
+	const REQUEST *a = one;
+	const REQUEST *b = two;
+
+	/*
+	 *	The following code looks unreasonable, but it's
+	 *	the only way to make the comparisons work.
+	 */
+	if (a->packet->id < b->packet->id) return -1;
+	if (a->packet->id > b->packet->id) return +1;
+
+	if (a->packet->code < b->packet->code) return -1;
+	if (a->packet->code > b->packet->code) return +1;
+
+	if (a->packet->src_ipaddr < b->packet->src_ipaddr) return -1;
+	if (a->packet->src_ipaddr > b->packet->src_ipaddr) return +1;
+
+	if (a->packet->src_port < b->packet->src_port) return -1;
+	if (a->packet->src_port > b->packet->src_port) return +1;
+
+	if (a->packet->dst_ipaddr < b->packet->dst_ipaddr) return -1;
+	if (a->packet->dst_ipaddr > b->packet->dst_ipaddr) return +1;
+
+	if (a->packet->dst_port < b->packet->dst_port) return -1;
+	if (a->packet->dst_port > b->packet->dst_port) return +1;
+
+	/*
+	 *	Everything's equal.  Say so.
+	 */
+	return 0;
+}
+
+#endif
+
 /*
  *	Remember the next request at which we start walking
  *	the list.
@@ -81,6 +139,13 @@ int rl_init(void)
 		request_list[i].last_cleaned_list = 0;
 	}
 	
+#ifdef WITH_RBTREE
+	request_tree = rbtree_create(request_cmp, NULL, 0);
+	if (!request_tree) {
+		rad_assert("FAIL" == NULL);
+	}
+#endif
+
 	return 0;
 }
 
@@ -161,8 +226,22 @@ void rl_delete(REQUEST *request)
 	}
 #endif
 
+#ifdef WITH_RBTREE
+	/*
+	 *	Delete the request from the tree.
+	 */
+	{
+		rbnode_t *node;
+
+		node = rbtree_find(request_tree, request);
+		rad_assert(node != NULL);
+		rbtree_delete(request_tree, node);
+	}
+#endif
+
 	request_free(&request);
 	request_list[id].request_count--;
+
 }
 
 /*
@@ -195,6 +274,15 @@ void rl_add(REQUEST *request)
 		request_list[id].last_request = node;
 	}
 
+#ifdef WITH_RBTREE
+	/*
+	 *	Insert the request into the tree.
+	 */
+	if (rbtree_insert(request_tree, request) == 0) {
+		rad_assert("FAIL" == NULL);
+	}
+#endif
+
 	request_list[id].request_count++;
 }
 
@@ -210,11 +298,29 @@ void rl_add(REQUEST *request)
  */
 REQUEST *rl_find(RADIUS_PACKET *packet)
 {
+#ifdef WITH_RBTREE
+	REQUEST myrequest;
+	
+	myrequest.packet = packet;
+	
+	return rbtree_finddata(request_tree, &myrequest);
+#else
 	REQNODE *curreq;
 
 	for (curreq = request_list[packet->id].first_request;
 			curreq != NULL ;
 			curreq = ((REQNODE *)curreq->req->container)->next) {
+		/*
+		 *	FIXME: Check destination IP and port, too?
+		 *
+		 *	Can the same client send different packets
+		 *	from the same source IP/port to two different
+		 *	sockets on the server?
+		 *
+		 *	YES: If the server has multiple IP's, and the
+		 *	NAS thinks it's doing load balancing to two
+		 *	different servers..
+		 */
 		if ((curreq->req->packet->code == packet->code) &&
 		    (curreq->req->packet->src_ipaddr == packet->src_ipaddr) &&
 		    (curreq->req->packet->src_port == packet->src_port)) {
@@ -223,6 +329,7 @@ REQUEST *rl_find(RADIUS_PACKET *packet)
 	}
 
 	return NULL;
+#endif
 }
 
 /*
@@ -435,7 +542,7 @@ static int refresh_request(REQUEST *request, void *data)
 		 */
 		DEBUG2("Cleaning up request %d ID %d with timestamp %08lx",
 				request->number, request->packet->id,
-				(unsigned long)request->timestamp);
+				(unsigned long) request->timestamp);
 
 		/*
 		 *  Delete the request.
