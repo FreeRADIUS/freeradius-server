@@ -219,11 +219,11 @@ typedef struct filter {
 	RadGenericFilter generic;
     } u;
 } RadFilter;
-#define SIZEOF_RADFILTER 26
+#define SIZEOF_RADFILTER 32
 
 typedef struct {
     const char*	name;
-    int 	value;
+    unsigned int 	value;
 } KeywordStruct;
 
     /*
@@ -1378,6 +1378,14 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 		  filter.u.ipx.srcIpxNode[4], filter.u.ipx.srcIpxNode[5]);
       p += i;
       len -= i;
+
+      if (filter.u.ipx.srcSocComp) {
+	i = snprintf(p, len, " srcipxsock %s 0x%04x",
+		     FindValue(filter.u.ipx.srcSocComp, filterCompare),
+		     ntohs(filter.u.ipx.srcIpxSoc));
+	p += i;
+	len -= i;
+      }
     }
 
     /* same for destination */
@@ -1389,6 +1397,14 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 		  filter.u.ipx.dstIpxNode[4], filter.u.ipx.dstIpxNode[5]);
       p += i;
       len -= i;
+
+      if (filter.u.ipx.dstSocComp) {
+	i = snprintf(p, len, " dstipxsock %s 0x%04x",
+		     FindValue(filter.u.ipx.dstSocComp, filterCompare),
+		     ntohs(filter.u.ipx.dstIpxSoc));
+	p += i;
+	len -= i;
+      }
     }
 
 
