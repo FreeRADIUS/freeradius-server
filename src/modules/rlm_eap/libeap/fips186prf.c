@@ -47,6 +47,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
 
 #include <rad_assert.h>
 
@@ -59,12 +72,12 @@
  * make it a structure so that we can do structure assignments.
  */
 typedef struct onesixty {
-	u_int8_t p[20];
+	uint8_t p[20];
 } onesixty;
 
 static void onesixty_add_mod(onesixty *sum, onesixty *a, onesixty *b)
 {
-	u_int32_t s;
+	uint32_t s;
 	int i, carry;
 
 	carry = 0;
@@ -85,12 +98,12 @@ static void onesixty_add_mod(onesixty *sum, onesixty *a, onesixty *b)
  * like an awful lot of "randomness" to pull out.. (MCR)
  *
  */
-void fips186_2prf(u_int8_t mk[20], u_int8_t finalkey[160])
+void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 {
 	SHA1_CTX context;
 	int j;
 	onesixty xval, xkey, w_0, w_1, sum, one;
-	u_int8_t *f;
+	uint8_t *f;
 	char zeros[64];
 	
 	/*
@@ -205,13 +218,13 @@ void fips186_2prf(u_int8_t mk[20], u_int8_t finalkey[160])
 
 #include <assert.h>
 
-u_int8_t mk[20]={ 0xbd, 0x02, 0x9b, 0xbe, 0x7f, 0x51, 0x96, 0x0b,
+uint8_t mk[20]={ 0xbd, 0x02, 0x9b, 0xbe, 0x7f, 0x51, 0x96, 0x0b,
 		  0xcf, 0x9e, 0xdb, 0x2b, 0x61, 0xf0, 0x6f, 0x0f,
 		  0xeb, 0x5a, 0x38, 0xb6 };
 
 main(int argc, char *argv[])
 {
-	u_int8_t finalkey[160];
+	uint8_t finalkey[160];
 	int i, j, k;
 
 	fips186_2prf(mk, finalkey);
@@ -253,7 +266,10 @@ main(int argc, char *argv[])
 	
 /*
  * $Log$
- * Revision 1.1  2003-10-29 02:49:19  mcr
+ * Revision 1.2  2003-11-06 15:37:24  aland
+ * 	Update includes to work a little better
+ *
+ * Revision 1.1  2003/10/29 02:49:19  mcr
  * 	initial commit of eap-sim
  *
  *
