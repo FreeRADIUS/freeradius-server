@@ -587,7 +587,16 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 			DICT_VALUE *dval;
 
 			dval = dict_valbyname(PW_AUTH_TYPE, modname);
-			rad_assert(dval != NULL);
+			if (!dval) {
+				/*
+				 *	It's a section, but nothing we
+				 *	recognize.  Die!
+				 */
+				radlog(L_ERR|L_CONS, "%s[%d] Unknown Auth-Type \"%s\" in %s section.",
+				       filename, cf_section_lineno(cs),
+				       modname, component_names[comp]);
+				return -1;
+			}
 			idx = dval->value;
 		} else {
 			/* See the comment in new_sublist() for explanation
