@@ -1,5 +1,5 @@
 Source: radiusd-freeradius
-Build-Depends: debhelper, libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbmg1-dev, libldap2-dev, libsasl-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev
+Build-Depends: debhelper, libltdl3-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbmg1-dev, libldap2-dev, libsasl-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev
 Section: non-US/main
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>

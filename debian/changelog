@@ -1,6 +1,8 @@
-radiusd-freeradius (?) unstable; urgency=low
+radiusd-freeradius (0.1+20010527-1) unstable; urgency=low
 
   * Updated config.{guess,sub} to recent versions.  (closes: Bug#98183)
+  * Updated build-dep to reflect supercession of libltdl0-dev by libltdl3-dev
+    (closes: Bug#98914)
 
  -- Chad Miller <cmiller@debian.org>  [TBA]
 
