@@ -115,9 +115,9 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	if (config->sqltrace)
 		DEBUG(querystr);
-	 if (oracle_sock->conn == NULL) {
+	if (oracle_sock->conn == NULL) {
 		radlog(L_ERR, "Socket not connected");
-		return 0;
+		return SQL_DOWN;
 	}
 
 	if (OCIStmtPrepare (oracle_sock->queryHandle, oracle_sock->errHandle,
@@ -137,12 +137,12 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 				(ub4) OCI_DEFAULT);
 
 	if ((x != OCI_NO_DATA) && (x != OCI_SUCCESS)) {
-		return -1;
+		return SQL_DOWN;
 	}
 
 	x = OCITransCommit(oracle_sock->conn, oracle_sock->errHandle, (ub4) 0);
 	if (x != OCI_SUCCESS)
-		return -1;
+		return SQL_DOWN;
 
 	return 0;
 }
@@ -169,9 +169,9 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 
 	if (config->sqltrace)
 		DEBUG(querystr);
-	 if (oracle_sock->conn == NULL) {
+	if (oracle_sock->conn == NULL) {
 		radlog(L_ERR, "Socket not connected");
-		return -1;
+		return SQL_DOWN;
 	}
 
 	if (OCIStmtPrepare (oracle_sock->queryHandle, oracle_sock->errHandle,
@@ -196,7 +196,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 		return 0;
 	}
 	else if (x != OCI_SUCCESS) {
-		return -1;
+		return SQL_DOWN;
 	}
 
 	/*
@@ -376,6 +376,11 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	int	x;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
+	if (oracle_sock->conn == NULL) {
+		radlog(L_ERR, "Socket not connected");
+		return SQL_DOWN;
+	}
+
 	sqlsocket->row = NULL;
 
 	x=OCIStmtFetch(oracle_sock->queryHandle,
@@ -390,7 +395,7 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		/* XXX Check if x suggests we should return SQL_DOWN */
 		radlog(L_ERR,"sql_fetch_row: fetch failed: %s",
 				sql_error(sqlsocket, config));
-		return -1;
+		return SQL_DOWN;
 	}
 
 	sqlsocket->row = oracle_sock->results;
