@@ -519,12 +519,15 @@ CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
 AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
 if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
   AC_DEFINE(HAVE_OPENSSL_SSL_H)
+  old_CPPFLAGS="$CPPFLAGS"
+  CPPFLAGS="-I$OPENSSL_INCLUDE $CPPFLAGS"
   AC_CHECK_HEADERS( \
 	  openssl/err.h \
 	  openssl/crypto.h \
 	  openssl/rand.h \
 	  openssl/engine.h
   )
+  CPPFLAGS="$old_CPPFLAGS"
 
   AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
        old_CPPFLAGS=$CPPFLAGS
