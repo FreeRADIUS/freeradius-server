@@ -17,7 +17,7 @@ MODULE_LIBS	= $(STATIC_MODULES)
 MODULE_OBJS	=
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
-BINARIES	= radiusd radwho radzap raduse radclient radrelay
+BINARIES	= radiusd radwho radzap radclient radrelay
 
 #
 #  Not using shared libraries, add in ALL known static modules
@@ -120,9 +120,6 @@ radwho.o: radwho.c $(INCLUDES)
 radwho: radwho.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o
 	$(CC) $(LDFLAGS) -o radwho radwho.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o $(LIBS)
 
-raduse: raduse.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o raduse raduse.o $(LIBS)
-
 radzap.o: radzap.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radzap.c
 
@@ -135,7 +132,6 @@ clean:
 install:
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd	$(R)$(sbindir)
 	$(INSTALL) -m 755 $(INSTALLSTRIP) radwho		$(R)$(bindir)
-	$(INSTALL) -m 755 $(INSTALLSTRIP) raduse		$(R)$(bindir)
 	$(INSTALL) -m 755 $(INSTALLSTRIP) radzap		$(R)$(bindir)
 	$(INSTALL) -m 755    radlast		$(R)$(bindir)
 	$(INSTALL) -m 755    radclient		$(R)$(bindir)
