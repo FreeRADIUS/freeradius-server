@@ -630,7 +630,6 @@ int main(int argc, char **argv)
 		}
 		if (status == 0) {
 			proxy_retry();
-			rad_clean_list();
 		}
 		for (i = 0; i < 3; i++) {
 
@@ -733,14 +732,14 @@ int main(int argc, char **argv)
 			request->next = NULL;
 			strcpy(request->secret, cl->secret);
 			rad_process(request, spawn_flag);
-
-			/*
-			 *	After processing the current request,
-			 *	check if we've got to delete old requests
-			 *	from the request list.
-			 */
-			rad_clean_list();
 		}
+
+		/*
+		 *	After processing all new requests,
+		 *	check if we've got to delete old requests
+		 *	from the request list.
+		 */
+		rad_clean_list();
 	}
 }
 
