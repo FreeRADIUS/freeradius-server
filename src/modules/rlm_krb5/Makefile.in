@@ -2,7 +2,7 @@ TARGET     = @targetname@
 SRCS       = rlm_krb5.c
 HEADERS    =
 RLM_LIBS   = @krb5_ldflags@
-RLM_CFLAGS = @krb5_cflags@
+RLM_CFLAGS = @krb5_cflags@ -I/usr/include/et
 
 include ../rules.mak
 
