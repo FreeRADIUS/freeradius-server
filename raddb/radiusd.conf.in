@@ -366,6 +366,7 @@ modules {
 		# password = mypass
 		basedn = "o=My Org,c=UA"
 		filter = "(uid=%u)"
+		start_tls = no
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
 		# profile_attribute = "radiusProfileDn"
 		access_group = "cn=clients,ou=dialup,o=My Org,c=UA"

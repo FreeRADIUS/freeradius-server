@@ -81,6 +81,7 @@ typedef struct {
 	struct timeval  timeout;
 	int             debug;
 	int             tls_mode;
+	int		start_tls;
 	char           *login;
 	char           *password;
 	char           *filter;
@@ -107,6 +108,7 @@ static CONF_PARSER module_config[] = {
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "20"},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
+	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance,start_tls), NULL, "no"},
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, ""},
 	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, NULL},
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
@@ -155,6 +157,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 
 	if (inst->server == NULL) {
 		radlog(L_ERR, "rlm_ldap: missing 'server' directive.");
+		free(inst);
 		return -1;
 	}
  
@@ -243,6 +246,9 @@ read_mappings(ldap_instance* inst)
 
 		if ( (pair->attr == NULL) || (pair->radius_attr == NULL) ) {
 			radlog(L_ERR, "rlm_ldap: Out of memory");
+			if (pair->attr) free(pair->attr);
+			if (pair->radius_attr) free(pair->radius_attr);
+			free(pair);
 			fclose(mapfile);
 			return -1;
 		}
@@ -615,7 +621,7 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 {
 	ldap_instance  *inst = instance;
 	LDAP           *ld;
-	int             msgid, rc;
+	int             msgid, rc, version;
 	int		ldap_errno = 0;
 	LDAPMessage    *res;
 
@@ -640,10 +646,28 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	}
 #endif
 
+#ifdef HAVE_LDAP_START_TLS
+	if (inst->start_tls) {
+		DEBUG("rlm_ldap: try to start TLS");
+		version = LDAP_VERSION3;
+		if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &version) == LDAP_SUCCESS) {
+			rc = ldap_start_tls_s(ld, NULL, NULL);
+			if (rc != LDAP_SUCCESS) {
+				DEBUG("rlm_ldap: ldap_start_tls_s()");
+				ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+				radlog(L_ERR, "rlm_ldap: could not start TLS %s", ldap_err2string(ldap_errno));
+				*result = RLM_MODULE_FAIL;
+				ldap_unbind_s(ld);
+				return (NULL);
+			}
+		}
+	}
+#endif /* HAVE_LDAP_START_TLS */
+
 	DEBUG("rlm_ldap: bind as %s/%s", dn, password);
-	msgid = ldap_bind(ld, dn, password, LDAP_AUTH_SIMPLE);
+	msgid = ldap_simple_bind(ld, dn, password);
 	if (msgid == -1) {
-		DEBUG("rlm_ldap: ldap_bind()");
+		DEBUG("rlm_ldap: ldap_simple_bind()");
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "rlm_ldap: %s bind failed: %s", dn, ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;

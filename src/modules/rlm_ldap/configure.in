@@ -9,6 +9,8 @@ if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
 
+	AC_CHECK_LIB(resolv, inet_aton)
+
 	dnl extra argument: --with-rlm-ldap-lib-dir
 	rlm_ldap_lib_dir=
 	AC_ARG_WITH(rlm-ldap-lib-dir,
@@ -58,14 +60,27 @@ if test x$with_[]modname != xno; then
     	    AC_SMART_CHECK_LIB(ldap_r, ldap_init)
             if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
  	      fail="$fail libldap_r"
+	    else
+		libldap=ldap_r
             fi
           else
   	    AC_SMART_CHECK_LIB(ldap, ldap_init)
             if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
  	      fail="$fail libldap"
-            fi
+	    else
+		libldap=ldap
+           fi
           fi
         fi
+
+	if test x"$libldap" != "x"; then
+	  AC_SMART_CHECK_LIB("$libldap", ldap_start_tls_s)
+
+	  if test "x${ac_cv_lib_ldap_ldap_start_tls_s}${ac_cv_lib_ldap_r_ldap_start_tls_s}" != "x"; then
+	     SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_START_TLS"
+	  fi
+	fi
+
 
 	targetname=modname
 else
