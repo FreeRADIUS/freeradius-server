@@ -328,7 +328,8 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 /*
  *	Parse a configuration section into user-supplied variables.
  */
-int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
+int cf_section_parse(CONF_SECTION *cs, void *base,
+		     const CONF_PARSER *variables)
 {
 	int i;
 	int rcode;
@@ -420,7 +421,9 @@ int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
 			 *	been expanded.
 			 */
 			if (value && (value == variables[i].dflt)) {
-				value = cf_expand_variables(NULL, 0, cs, buffer,value);
+				value = cf_expand_variables("?",
+							    &cs->item.lineno,
+							    cs, buffer, value);
 				if (!value) {
 					return -1;
 				}
