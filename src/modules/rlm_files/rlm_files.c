@@ -319,8 +319,8 @@ static int file_authorize(void *instance, REQUEST *request)
 		 *	entry to the current list of reply pairs.
 		 */
 		if ((paircmp(request, request_pairs, pl->check, reply_pairs) == 0)) {
-
-			if((mainconfig.do_usercollide) && (strcmp(pl->name, "DEFAULT"))) {
+			if ((mainconfig.do_usercollide) &&
+			    (strcmp(pl->name, "DEFAULT"))) {
 
 				/*
 				 * We have to make sure the password
