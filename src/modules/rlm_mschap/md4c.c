@@ -22,7 +22,7 @@
    documentation and/or software.
  */
 
-//#include "global.h"
+/*#include "global.h"*/
 #include "md4.h"
 
 /* Constants for MD4Transform routine.
