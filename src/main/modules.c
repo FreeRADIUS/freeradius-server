@@ -147,11 +147,7 @@ static int new_authtype_value(const char *name)
   if (!old_value) return 0;	/* something WIERD is happening */
 
   /* allocate a new value */
-  new_value = (DICT_VALUE *) malloc(sizeof(DICT_VALUE));
-  if (!new_value) {
-    radlog(L_ERR|L_CONS, "Out of memory\n");
-    exit(1);
-  }
+  new_value = (DICT_VALUE *) rad_malloc(sizeof(DICT_VALUE));
 
   /* copy the old to the new */
   memcpy(new_value, old_value, sizeof(DICT_VALUE));
@@ -206,13 +202,7 @@ static module_list_t *linkto_module(module_list_t *head,
 	}
 
 	/* make room for the module type */
-	new = (module_list_t *) malloc(sizeof(module_list_t));
-	if (new == NULL) {
-		radlog(L_ERR|L_CONS, "%s[%d] Failed to allocate memory.\n",
-		       cffilename, cflineno);
-		lt_dlclose(handle);	/* ignore any errors */
-		return NULL;
-	}
+	new = (module_list_t *) rad_malloc(sizeof(module_list_t));
 
 	/* fill in the module structure */
 	new->next = NULL;
@@ -308,11 +298,7 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 	/*
 	 *	Found the configuration entry.
 	 */
-	new = malloc(sizeof(*new));
-	if (!new) {
-		radlog(L_ERR|L_CONS, "Out of memory\n");
-		exit(1);
-	}
+	new = rad_malloc(sizeof(*new));
 	
 	/*
 	 *	Link to the module by name: rlm_FOO
@@ -370,12 +356,7 @@ static void add_to_list(config_module_t **head, module_instance_t *instance, int
 		node = node->next;
 	}
 
-	node = (config_module_t *) malloc(sizeof(config_module_t));
-	if (!node) {
-		radlog(L_ERR|L_CONS, "Out of memory\n");
-		exit(1);
-	}
-
+	node = (config_module_t *) rad_malloc(sizeof(config_module_t));
 	node->next = NULL;
 	node->instance = instance;
 	node->index = index;
@@ -387,12 +368,7 @@ static void add_to_list(config_module_t **head, module_instance_t *instance, int
 	 *	If it isn't, we create a mutex.
 	 */
 	if ((instance->entry->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
-		node->mutex = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
-		if (!node->mutex) {
-			radlog(L_ERR|L_CONS, "Out of memory\n");
-			exit(1);
-		}
-		
+		node->mutex = (pthread_mutex_t *) rad_malloc(sizeof(pthread_mutex_t));
 		/*
 		 *	Initialize the mutex.
 		 */
@@ -827,21 +803,4 @@ int module_checksimul(REQUEST *request, int maxsimul)
 	}
 
 	return (request->simul_count < maxsimul) ? 0 : request->simul_mpp;
-}
-
-/*
- *	Module malloc() call, which does stuff if the malloc fails.
- *
- *	This call ALWAYS succeeds!
- */
-void *rlm_malloc(size_t size)
-{
-	void *ptr = malloc(size);
-	
-	if (ptr == NULL) {
-                radlog(L_ERR|L_CONS, "no memory");
-		exit(1);
-	}
-
-	return ptr;
 }

@@ -159,3 +159,21 @@ int rad_mkdir(char *directory, int mode)
 	 */
 	return mkdir(directory, mode);
 }
+
+
+/*
+ *	Module malloc() call, which does stuff if the malloc fails.
+ *
+ *	This call ALWAYS succeeds!
+ */
+void *rad_malloc(size_t size)
+{
+	void *ptr = malloc(size);
+	
+	if (ptr == NULL) {
+                radlog(L_ERR|L_CONS, "no memory");
+		exit(1);
+	}
+
+	return ptr;
+}
