@@ -511,8 +511,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		   *	the VP list again only for debugging.
 		   */
 	} else if (librad_debug) {
-	  	DEBUG("Sending %s of id %d to %s\n", what, packet->id,
-		      ip_ntoa((char *)ip_buffer, packet->dst_ipaddr));
+	  	DEBUG("Re-sending %s of id %d to %s:%d\n", what, packet->id,
+		      ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
+		      packet->dst_port);
 		
 		for (reply = packet->vps; reply; reply = reply->next) {
 			/* FIXME: ignore attributes > 0xff */
