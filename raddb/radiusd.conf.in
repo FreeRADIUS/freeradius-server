@@ -2,6 +2,7 @@
 ## radiusd.conf	-- FreeRADIUS server configuration file.
 ##
 ##	http://www.freeradius.org/
+##	$Id$
 ##
 
 #  	The location of other config files and
@@ -18,7 +19,6 @@ sysconfdir = @sysconfdir@
 localstatedir = @localstatedir@
 sbindir = @sbindir@
 logdir = @logdir@
-libdir = @libdir@
 raddbdir = @raddbdir@
 radacctdir = @radacctdir@
 
@@ -26,12 +26,36 @@ radacctdir = @radacctdir@
 confdir = ${raddbdir}
 run_dir = ${localstatedir}/run
 
+#
+# libdir: Where to find the rlm_* modules.
+#
+#   This should be automatically set at configuration time.
+#
+#   If the server builds and installs, but fails at execution time
+#   with an 'undefined symbol' error, then you can use the libdir
+#   directive to work around the problem.
+#
+#   The cause is that a library has been installed on your system
+#   in a place where the dynamic linker CANNOT find it.  When executing
+#   as root (or another user), your personal environment MAY be set up
+#   to allow the dynamic linker to find the library.  When executing
+#   as a daemon, FreeRADIUS MAY NOT have the same personalized configuration.
+#
+#   To work around the problem, find out which library contains that symbol,
+#   and add the directory containing that library to the end of 'libdir',
+#   with a colon separating the directory names.  NO spaces are allowed.
+#
+#   e.g. libdir = /usr/local/lib:/opt/package/lib
+#
+libdir = @libdir@
+
 #  pidfile: Where to place the PID of the RADIUS server.
 #
 #  The server may be signalled while it's running by using this
 #  file.
 #
 #  e.g.:  kill -HUP `cat /var/run/radiusd.pid`
+#
 pidfile = ${run_dir}/radiusd.pid
 
 
@@ -52,6 +76,7 @@ pidfile = ${run_dir}/radiusd.pid
 #  authenticate users while in debug mode, but not in normal use, it may be
 #  because the debugged server is running as a user that can read the shadow
 #  info, and the user listed below can not.
+#
 user = root
 group = root
 
@@ -61,10 +86,11 @@ group = root
 #  a REJECT message is returned.
 #
 #  WARNING: If you notice that requests take a long time to be handled,
-#  then this MAY INDICATE a bug in the server, or in one of the modules
-#  used to handle a request.
+#  then this MAY INDICATE a bug in the server, in one of the modules
+#  used to handle a request, OR in your local configuration.
 #
 #  Useful range of values: 5 to 120
+#
 max_request_time = 30
 
 #  delete_blocked_requests: If the request takes MORE THAN 'max_request_time'
@@ -92,6 +118,7 @@ delete_blocked_requests = no
 #  requests, and some new requests may get blocked.  (See 'max_requests'.)
 #
 #  Useful range of values: 2 to 10
+#
 cleanup_delay = 5
 
 #  max_requests: The maximum number of requests which the server keeps
@@ -110,6 +137,7 @@ cleanup_delay = 5
 #  the highest it should be.
 #
 #  Useful range of values: 256 to infinity
+#
 max_requests = 1024
 
 #  bind_address:  Make the server listen on a particular IP address, and
@@ -118,6 +146,7 @@ max_requests = 1024
 #
 #  It can either contain "*", or an IP address, or a fully qualified
 #  Internet domain name.  The default is "*"
+#
 bind_address = *
 
 #  port: Allows you to bind FreeRADIUS to a specific port.
@@ -134,6 +163,7 @@ bind_address = *
 #  (usually through 'grep radius /etc/services') set this to 0 (zero).
 #
 #  A port given on the command-line via '-p' over-rides this one.
+#
 port = 0
 
 #  Which program to execute check doing concurrency checks.
@@ -151,12 +181,14 @@ checkrad = ${sbindir}/checkrad
 #  with it.
 #
 #  allowed values: {no, yes}
+#
 hostname_lookups = no
 
 #  Core dumps are a bad thing.  This should only be set to 'yes'
 #  if you're debugging a problem with the server.
 #
 #  allowed values: {no, yes}
+#
 allow_core_dumps = no
 
 #  Regular expressions
@@ -166,17 +198,20 @@ allow_core_dumps = no
 #
 #  If they're set to "no" at configure time, then setting them to "yes"
 #  WILL NOT WORK.  It will give you an error.
+#
 regular_expressions	= @REGEX@
 extended_expressions	= @REGEX_EXTENDED@
 
 #  Log the full User-Name attribute, as it was found in the request.
 #
 # allowed values: {no, yes}
+#
 log_stripped_names = no
 
 #  Log authentication requests to the log file.
 #
 #  allowed values: {no, yes}
+#
 log_auth = no
 
 #  Log passwords with the authentication requests.
@@ -184,11 +219,13 @@ log_auth = no
 #  log_auth_goodpass - logs password if it's correct
 #
 #  allowed values: {no, yes}
+#
 log_auth_badpass = no
 log_auth_goodpass = no
 
 # usercollide:  Turn "username collision" code on and off.  See the
-# "duplicate-users" documentation
+# "doc/duplicate-users" file
+#
 usercollide = no
 
 # lower_user / lower_pass:  
@@ -207,6 +244,7 @@ usercollide = no
 #
 # Default is 'no' (don't lowercase values)
 # Valid values = "before" / "after" / "no"
+#
 lower_user = no
 lower_pass = no
 
@@ -217,6 +255,7 @@ lower_pass = no
 #
 # Default is 'no' (don't remove spaces)
 # Valid values = "before" / "after" / "no" (explanation above)
+#
 nospace_user = no
 nospace_pass = no
 
@@ -236,6 +275,7 @@ nospace_pass = no
 #  $INCLUDE line.
 #
 #  allowed values: {no, yes}
+#
 proxy_requests  = yes
 $INCLUDE  ${confdir}/proxy.conf
 
@@ -253,8 +293,8 @@ $INCLUDE  ${confdir}/clients.conf
 # SNMP CONFIGURATION
 #
 #  Snmp configuration is only valid if you enabled SNMP support when
-#  you compiled radius.  To enable SNMP configuration, uncomment the
-#  following line.
+#  you compiled radiusd.
+#
 $INCLUDE  ${confdir}/snmp.conf
 
 
@@ -274,6 +314,7 @@ $INCLUDE  ${confdir}/snmp.conf
 #  not doing anything productive.
 #
 #  The numbers given below should be adequate for most situations.
+#
 thread pool {
 	#  Number of servers to start initially --- should be a reasonable
 	#  ballpark figure.
@@ -285,19 +326,21 @@ thread pool {
 	#  should NOT BE SET TOO LOW.  It is intended mainly as a brake to
 	#  keep a runaway server from taking the system with it as it spirals
 	#  down...
+	#
 	max_servers = 32
 
-	#  Server-pool size regulation.  Rather than making you guess how many
-	#  servers you need, FreeRADIUS dynamically adapts to the load it sees
-	#  --- that is, it tries to maintain enough servers to handle the
-	#  current load, plus a few spare servers to handle transient load
-	#  spikes.
+	#  Server-pool size regulation.  Rather than making you guess
+	#  how many servers you need, FreeRADIUS dynamically adapts to
+	#  the load it sees, that is, it tries to maintain enough
+	#  servers to handle the current load, plus a few spare
+	#  servers to handle transient load spikes.
 	#
-	#  It does this by periodically checking how many servers are waiting
-	#  for a request.  If there are fewer than min_spare_servers, it
-	#  creates a new spare.  If there are more than max_spare_servers, some
-	#  of the spares die off.  The default values are probably OK for most
-	#  sites.
+	#  It does this by periodically checking how many servers are
+	#  waiting for a request.  If there are fewer than
+	#  min_spare_servers, it creates a new spare.  If there are
+	#  more than max_spare_servers, some of the spares die off.
+	#  The default values are probably OK for most sites.
+	#
 	min_spare_servers = 3
 	max_spare_servers = 10
 
@@ -318,7 +361,8 @@ modules {
 		#
 		#  The name to use for PAM authentication.
 		#  PAM looks in /etc/pam.d/${pam_auth_name}
-		#  for it's configuration.
+		#  for it's configuration.  See 'redhat/radiusd-pam'
+		#  for a sample PAM configuration file.
 		#
 		#  Note that any Pam-Auth attribute set in the 'users'
 		#  file over-rides this one.
@@ -671,6 +715,36 @@ modules {
 
 	# ANSI X9.9 token support.  Not included by default.
 	# $INCLUDE  ${confdir}/x99.conf
+
+
+	# Configuration for the Python module.  EXPERIMENTAL!
+	#
+	# Where radiusd is a Python module, radiusd.py, and the
+	# function 'authorize' is called.  Here is a dummy piece
+	# of code:
+	# 
+	#	def authorize(params):
+	#	    print params
+	#	    return (5, ('Reply-Message', 'banned'))
+	#
+	# The RADIUS value-pairs are passed as a tuple of tuple
+	# pairs as the first argument, e.g. (('attribute1',
+	# 'value1'), ('attribute2', 'value2'))
+	#
+	# The function return is a tuple with the first element
+	# being the return value of the function.
+	# The 5 corresponds to RLM_MODULE_USERLOCK. I plan to
+	# write the return values as Python symbols to avoid
+	# confusion.
+	#
+	# The remaining tuple members are the string form of
+	# value-pairs which are passed on to pairmake().
+	#
+	python {
+		mod_authorize = radiusd
+		func_authorize = authorize
+	}
+
 	
 	# Configuration for the example module.  Uncommenting it will cause it
 	# to get loaded and initialized, but should have no real effect as long
