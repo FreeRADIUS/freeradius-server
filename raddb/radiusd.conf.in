@@ -189,7 +189,7 @@ checkrad = ${sbindir}/checkrad
 
 #  hostname_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
-#  The default is off because it'd be overall better for the net if people
+#  The default is 'off' because it'd be overall better for the net if people
 #  had to knowingly turn this feature on, since enabling it means that
 #  each client request will result in AT LEAST one lookup request to the
 #  nameserver.
@@ -427,9 +427,10 @@ modules {
 		#
 		#  Cache /etc/passwd, /etc/shadow, and /etc/group
 		#
-		#  The default is to cache them.  There have been
-		#  reports that NOT caching doesn't work.  This is a bug
-		#  which needs to be tracked down.
+		#  The default is to cache them.
+		#
+		#  For FreeBSD, you do NOT want to enable the cache,
+		#  as it's password lookups are done via a database.
 		#
 		# allowed values: {no, yes}
 		cache = yes
@@ -443,6 +444,11 @@ modules {
 		#
 		#  'shadow' is commented out by default, because not all
 		#  systems have shadow passwords.
+		#
+		#  To force the module to use the system password functions,
+		#  instead of reading the files, comment out the 'passwd'
+		#  and 'shadow' configuration entries.  This is required
+		#  for some systems, like FreeBSD.
 		#
 		passwd = /etc/passwd
 		#	shadow = /etc/shadow
