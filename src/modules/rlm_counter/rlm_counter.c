@@ -562,7 +562,19 @@ static int counter_accounting(void *instance, REQUEST *request)
 			DEBUG("rlm_counter: This Service-Type is not allowed. Returning NOOP.");
 			return RLM_MODULE_NOOP;
 		}
-	}	
+	}
+	/*
+	 * Check if request->timestamp - {Acct-Delay-Time} < last_reset
+	 * If yes reject the packet since it is very old
+	 */
+	key_vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME);
+	if (key_vp != NULL){
+		if (key_vp->lvalue != 0 && (request->timestamp - key_vp->lvalue) < data->last_reset){
+			DEBUG("rlm_counter: This packet is too old. Returning NOOP.");
+			return RLM_MODULE_NOOP;
+		}
+	}
+
 	
 
 	/*
