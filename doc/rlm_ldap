@@ -34,6 +34,11 @@ the rlm_ldap module:
 #	redundancy/resiliency is better acheived configuring multiple rlm_ldap
 #	module instances and invocing them in	redundand/failover
 #	configuration in authorize/authenticate sections
+#
+#	You can also pass an ldap url like ldap://localhost
+#	That way you can also specify alternative ldap schemas like
+#	ldaps:// or ldapi://
+#	The port directive will be ignored in that case
 #		
 #	default: settings for your system, as set in etc/openldap/ldap.conf
 #

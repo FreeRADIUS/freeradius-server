@@ -105,6 +105,9 @@
  *	- Set LDAP version to V3 before binding. Now freeradius should work with openldap21
  * Dec 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Set default values for the server and basedn parameters
+ * Feb 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Add support for ldap_initialize. That way we can specify the server as an ldap url.
+ *	  Based on ideas from Derrik Pates <dpates@dsdk12.net>
  */
 static const char rcsid[] = "$Id$";
 
@@ -199,6 +202,7 @@ typedef struct {
 	int		do_comp;
 	int		default_allow;
 	int		failed_conns;
+	int		is_url;
 	char           *login;
 	char           *password;
 	char           *filter;
@@ -325,6 +329,13 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		free(inst);
 		return -1;
 	}
+	inst->is_url = 0;
+#ifdef HAVE_LDAP_INITIALIZE
+	if (ldap_is_ldap_url(inst->server)){
+		inst->is_url = 1;
+		inst->port = 0;
+	}
+#endif
  
 	inst->timeout.tv_usec = 0;
 	inst->net_timeout.tv_usec = 0;
@@ -1347,16 +1358,28 @@ static LDAP    *
 ldap_connect(void *instance, const char *dn, const char *password, int auth, int *result)
 {
 	ldap_instance  *inst = instance;
-	LDAP           *ld;
+	LDAP           *ld = NULL;
 	int             msgid, rc, ldap_version;
 	int		ldap_errno = 0;
 	LDAPMessage    *res;
 
-	DEBUG("rlm_ldap: (re)connect to %s:%d, authentication %d", inst->server, inst->port, auth);
-	if ((ld = ldap_init(inst->server, inst->port)) == NULL) {
-		radlog(L_ERR, "rlm_ldap: ldap_init() failed");
-		*result = RLM_MODULE_FAIL;
-		return (NULL);
+	if (inst->is_url){
+#ifdef HAVE_LDAP_INITIALIZE
+		DEBUG("rlm_ldap: (re)connect to %s, authentication %d", inst->server, auth);
+		if (ldap_initialize(&ld, inst->server) != LDAP_SUCCESS) {
+			radlog(L_ERR, "rlm_ldap: ldap_initialize() failed");
+			*result = RLM_MODULE_FAIL;
+			return (NULL);
+		}
+#endif
+	}
+	else{
+		DEBUG("rlm_ldap: (re)connect to %s:%d, authentication %d", inst->server, inst->port, auth);
+		if ((ld = ldap_init(inst->server, inst->port)) == NULL) {
+			radlog(L_ERR, "rlm_ldap: ldap_init() failed");
+			*result = RLM_MODULE_FAIL;
+			return (NULL);
+		}
 	}
 	if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, (void *) &(inst->net_timeout)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %ld.%ld", inst->net_timeout.tv_sec, inst->net_timeout.tv_usec);
@@ -1395,13 +1418,22 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	}
 #endif /* HAVE_LDAP_START_TLS */
 
-	DEBUG("rlm_ldap: bind as %s/%s to %s:%d", dn, password, inst->server, inst->port);
+	if (inst->is_url){
+		DEBUG("rlm_ldap: bind as %s/%s to %s", dn, password, inst->server);
+	}
+	else{
+		DEBUG("rlm_ldap: bind as %s/%s to %s:%d", dn, password, inst->server, inst->port);
+	}
 	msgid = ldap_bind(ld, dn, password,LDAP_AUTH_SIMPLE);
 	if (msgid == -1) {
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "rlm_ldap: %s bind to %s:%d failed: %s",
-			 dn, inst->server, inst->port,
-			 ldap_err2string(ldap_errno));
+		if (inst->is_url)
+			radlog(L_ERR, "rlm_ldap: %s bind to %s failed: %s",
+			 	dn, inst->server, ldap_err2string(ldap_errno));
+		else
+			radlog(L_ERR, "rlm_ldap: %s bind to %s:%d failed: %s",
+			 	dn, inst->server, inst->port,
+			 	ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
 		return (NULL);
@@ -1413,9 +1445,13 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	if(rc < 1) {
 		DEBUG("rlm_ldap: ldap_result()");
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "rlm_ldap: %s bind to %s:%d failed: %s",
-			dn, inst->server, inst->port,
-			(rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
+		if (inst->is_url)
+			radlog(L_ERR, "rlm_ldap: %s bind to %s failed: %s",
+				dn, inst->server, (rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
+		else
+			radlog(L_ERR, "rlm_ldap: %s bind to %s:%d failed: %s",
+				dn, inst->server, inst->port,
+				(rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
 		return (NULL);
@@ -1436,9 +1472,13 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 		break;
 		
 	default:
-		radlog(L_ERR,"rlm_ldap: %s bind to %s:%d failed %s",
-			dn, inst->server, inst->port,
-			ldap_err2string(ldap_errno));
+		if (inst->is_url)
+			radlog(L_ERR,"rlm_ldap: %s bind to %s failed %s",
+				dn, inst->server, ldap_err2string(ldap_errno));
+		else
+			radlog(L_ERR,"rlm_ldap: %s bind to %s:%d failed %s",
+				dn, inst->server, inst->port,
+				ldap_err2string(ldap_errno));
 		*result = RLM_MODULE_FAIL;
 	}
 
