@@ -230,29 +230,21 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		if (unconnected != 0 || tried_to_connect != 0) {
 			radlog(L_INFO, "rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
 		}
-
-			/*
-			 *	The socket is returned in the locked
-			 *	state.
-			 *
-			 *	We also remember where we left off,
-			 *	so that the next search can start from
-			 *	here.
-			 *
-			 *	Note that multiple threads MAY over-write
-			 *	the 'inst->last_used' variable.  This is OK,
-			 *	as it's a pointer only used for reading.
-			 */
+		
+		/*
+		 *	The socket is returned in the locked
+		 *	state.
+		 *
+		 *	We also remember where we left off,
+		 *	so that the next search can start from
+		 *	here.
+		 *
+		 *	Note that multiple threads MAY over-write
+		 *	the 'inst->last_used' variable.  This is OK,
+		 *	as it's a pointer only used for reading.
+		 */
 		inst->last_used = cur->next;
 		return cur;
-
-#if HAVE_PTHREAD_H
-		/*
-		 *	This was locked above, in 'trylock', so
-		 *	we've got to release it here.
-		 */
-		pthread_mutex_unlock(&cur->mutex);
-#endif
 
 		/* move along the list */
 	next:
