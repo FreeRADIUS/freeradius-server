@@ -1,0 +1,56 @@
+.TH RADEAPCLIENT 1 "08 September 2003" "" "FreeRADIUS Daemon"
+.SH NAME
+radeapclient - send EAP packets to a RADIUS server, calculate responses
+.SH SYNOPSIS
+.B radeapclient
+.RB [ \-d
+.IR raddb_directory ]
+.RB [ \-f
+.IR file ]
+.RB [ \-i
+.IR source_ip ]
+.RB [ \-xy ]
+\fIserver {acct|auth} secret\fP
+.SH DESCRIPTION
+\fBradeapclient\fP is a radius client program. It can send arbitrary radius
+packets to a radius server, then shows the reply. Radeapclient differs from
+radclient in that if there is an EAP-MD5 challenge, then it will be responded
+to. 
+.PP
+\fBradeapclient\fP is otherwise identical to \fBradclient\fP.
+.PP
+The \fIEAP-Identity\fP attribute, if present is used to construct an
+EAP Identity message.
+.PP
+.PP
+The \fIEAP-MD5-Password\fP attribute, if present is used to respond to an
+MD5 challenge. 
+.PP
+No other EAP types are currently supposed.
+
+.SH EXAMPLE
+
+A sample session that queries the remote server with an EAP-MD5
+challenge.
+.RS
+.sp
+.nf
+.ne 3
+( echo 'User-Name = "eapsim"';
+  echo 'EAP-MD5-Password = "simsim"';
+  echo 'NAS-IP-Address = marajade.sandelman.ottawa.on.ca';
+  echo 'EAP-Code = Response';
+  echo 'EAP-Id = 210';
+  echo 'EAP-Type-Identify = "eapsim';
+  echo 'Message-Authenticator = 0';
+  echo 'NAS-Port = 0' ) >req.txt
+  
+radeapclient -x localhost auth testing123 <req.txt
+.fi
+.sp
+.RE
+
+.SH SEE ALSO
+radclient(1)
+.SH AUTHOR
+Michael Richardson, <mcr@sandelman.ottawa.on.ca>
