@@ -54,8 +54,8 @@ common:
 distclean: clean
 	rm -f config.cache config.log config.status libtool \
 		src/include/radpaths.h src/include/stamp-h \
-		src/libltdl/config.log src/libltdl/config.status \
-		src/libltdl/libtool
+		libltdl/config.log libltdl/config.status \
+		libltdl/libtool
 	-find . ! -name configure.in -name \*.in -print | \
 		sed 's/\.in$$//' | \
 		while read file; do rm -f $$file; done
