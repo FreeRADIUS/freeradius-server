@@ -884,7 +884,12 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 't': /* request timestamp */
 				CTIME_R(&request->timestamp, q, freespace);
-				q += strlen(q);
+				q = strchr(q, '\n');
+				if (q) {
+					*q = '\0';
+				} else {
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'u': /* User name */
