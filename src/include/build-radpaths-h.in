@@ -20,7 +20,6 @@ sbindir=@sbindir@
 mandir=@mandir@
 logdir=@logdir@
 raddbdir=@raddbdir@
-datadir=@datadir@
 radacctdir=@radacctdir@
 
 cat <<EOF > radpaths.h
@@ -28,7 +27,6 @@ cat <<EOF > radpaths.h
 #define LOGDIR		"@logdir@"
 #define LIBDIR		"@libdir@"
 #define RADDBDIR	"@raddbdir@"
-#define DICTDIR		"@datadir@/freeradius"
 #define RUNDIR		"@localstatedir@/run"
 #define SBINDIR		"@sbindir@"
 #define RADIR		"@radacctdir@"

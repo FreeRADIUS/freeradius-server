@@ -213,7 +213,7 @@ int main(int argc, char **argv)
 	char *p;
 	int c;
 	int port = 0;
-	const char *dict_dir = DICTDIR;
+	const char *radius_dir = RADDBDIR;
 	char *filename = NULL;
 	FILE *fp;
 	int count = 1;
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
 			count = atoi(optarg);
 			break;
 		case 'd':
-			dict_dir = optarg;
+			radius_dir = optarg;
 			break;
 		case 'f':
 			filename = optarg;
@@ -309,7 +309,7 @@ int main(int argc, char **argv)
 		usage();
 	}
 
-	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		librad_perror("radclient");
 		return 1;
 	}
