@@ -112,7 +112,7 @@ int radlogdir_iswritable(const char *effectiveuser) {
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
  */
-static int do_log(int lvl, const char *fmt, va_list ap)
+int vradlog(int lvl, const char *fmt, va_list ap)
 {
 	FILE *msgfd = NULL;
 	const char *s = ": ";
@@ -264,7 +264,7 @@ int log_debug(const char *msg, ...)
 	int r;
 
 	va_start(ap, msg);
-	r = do_log(L_DBG, msg, ap);
+	r = vradlog(L_DBG, msg, ap);
 	va_end(ap);
 
 	return r;
@@ -276,7 +276,7 @@ int radlog(int lvl, const char *msg, ...)
 	int r;
 
 	va_start(ap, msg);
-	r = do_log(lvl, msg, ap);
+	r = vradlog(lvl, msg, ap);
 	va_end(ap);
 
 	return r;
