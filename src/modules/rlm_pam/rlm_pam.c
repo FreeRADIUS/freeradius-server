@@ -204,7 +204,7 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
     if (retval != PAM_SUCCESS) {
       DEBUG("pam_pass: function pam_authenticate FAILED for <%s>. Reason: %s",
 	    name, pam_strerror(pamh, retval));
-      pam_end(pamh, 0);
+      pam_end(pamh, retval);
       return -1;
     }
 
@@ -217,13 +217,13 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
     if (retval != PAM_SUCCESS) {
       DEBUG("pam_pass: function pam_acct_mgmt FAILED for <%s>. Reason: %s",
 	    name, pam_strerror(pamh, retval));
-      pam_end(pamh, 0);
+      pam_end(pamh, retval);
       return -1;
     }
 #endif
 
     DEBUG("pam_pass: authentication succeeded for <%s>", name);
-    pam_end(pamh, 0);
+    pam_end(pamh, retval);
     return 0;
 }
 
