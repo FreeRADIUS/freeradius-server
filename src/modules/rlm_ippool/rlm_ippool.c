@@ -494,6 +494,10 @@ static int ippool_authorize(void *instance, REQUEST *request)
 		data_datum = gdbm_fetch(data->gdbm, key_datum);
 		memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);	
+		/*
+		 * If we find an entry for the same caller-id and nas with active=0
+		 * then we use that for multilink (MPPP) to work properly.
+		 */
 		if (cli != NULL && strcmp(entry.cli,cli) == 0 && entry.active){
 			memcpy(&key,key_datum.dptr,sizeof(ippool_key));
 			if (key.nas == nas)	

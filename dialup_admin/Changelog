@@ -2,8 +2,10 @@ Ver 1.30:
 * Add limit of results returned in accounting.php3
 * Fix a bug in time2strclock() in lib/functions.php3. Seconds ammount more than 9 would not show.
   Bug noted by Timophey <bcloud@mail.ru>
-* Reaarange a few things in user_admin. Put Subscription Analysis and 'Account Status' second. Make a
+* Reaarange a few things in user_admin. Put Subscription Analysis first and 'Account Status' second. Make a
   few things bold.
+* Change log_badlogins to use the mysql binary instead of the DBI module. That way we don't have any dependencies
+  and we don't need to bother with connection maintainance (dead mysql connections etc).
 Ver 1.29:
 * Add general_ld_library_path directive and set LD_LIBRARY_PATH accordingly (used in snmpfinger and
   radaclient).

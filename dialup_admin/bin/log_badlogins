@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-use DBI;
 
 use Date::Manip qw(ParseDate UnixDate);
 $|=1;
@@ -7,6 +6,8 @@ $|=1;
 $file=shift||'none';
 $conf=shift||'/src/cvs/radiusd/dialup_admin/conf/admin.conf';
 $domain='company.com';
+$mysql='/usr/local/mysql/bin/mysql';
+$tmpfile='/tmp/mysql.input';
 
 open CONF, "<$conf"
 	or die "Could not open configuration file\n";
@@ -20,9 +21,8 @@ while(<CONF>){
 	$sql_accounting_table = $val if ($key eq 'sql_accounting_table');
 }
 close CONF;
+$pass = ($sql_password ne '') ? "-p$sql_password" : '';
 
-$dbh = DBI->connect("DBI:mysql:$sql_database:$sql_server","$sql_username","$sql_password") 
-	or die "Could not connect to SQL database: $DBI::errtstr\n";
 open LOG, "<$file"
 	or die "Could not open file $file\n";
 seek LOG, 0, 2;
@@ -78,11 +78,14 @@ for(;;){
 				$addr = gethostbyname $nas;
 				($a,$b,$c,$d)=unpack('C4',$addr);
 				$addr = "$a.$b.$c.$d";
-$dbh->do("INSERT INTO $sql_accounting_table (UserName,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$addr','$port','$time','$time','0','0','0','$caller','$cause');");
+				open TMP, ">$tmpfile"
+					or die "Could not open temporary file\n";
+				print TMP "INSERT INTO $sql_accounting_table (UserName,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$addr','$port','$time','$time','0','0','0','$caller','$cause');";
+				close TMP;
+				`$mysql -h$sql_server -u$sql_username $pass $sql_database <$tmpfile`;
 			}
 		}
 	}
 	sleep 2;
 	seek LOG,0,1;
 }
-$dbh->disconnect();

@@ -13,6 +13,8 @@ There are also a few more things included:
   invalid-user, outside of allowed login time  and multiple-login cases to the radacct table with
   acctstarttime=acctstoptime, acctsessiontime=0 and acctterminatecause containing the reason.
   If the failing module sent back a module message then it will also appear in the terminate cause.
+  You will need to setup the $mysql and $tmpfile variables to suite your mysql installation and needs.
+  Perl module Date::Manip is needed by the script.
 * bin/clean_radacct: It will delete all entries in the radacct table with a starttime > 1 day and
   stoptime = 0. It will not do an harm even if it deletes valid entries since radiusd will fall
   back to insert if update fails.
