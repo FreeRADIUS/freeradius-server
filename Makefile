@@ -67,12 +67,6 @@ distclean: clean
 	-find src/modules -name config.h | \
 		while read file; do rm -f $$file; done
 
-ifndef prefix  # catch runs without configuring, and give helpful advice.
-Make.inc:
-	@echo "   Sorry!  You must run 'configure', before 'make'.";
-	@false
-endif
-
 ######################################################################
 #
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
