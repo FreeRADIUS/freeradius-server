@@ -366,7 +366,13 @@ SQL_ROW sql_fetch_row(SQLSOCK *socket)
  *
  *************************************************************************/
 void sql_free_result(SQLSOCK *socket) {
-	/* Nothing to do here for Oracle */
+	int i=0;
+
+	for(i=0; i<sql_num_fields(socket); i++) {
+		free(socket->results[i]);
+	}
+	free(socket->results);
+	socket->results=NULL;
 }
 
 
@@ -436,6 +442,7 @@ void sql_close(SQLSOCK *socket)
 void sql_finish_query(SQLSOCK *socket)
 {
 	/* Nothing to do here for Oracle */
+	sql_free_result(socket);
 }
 
 

@@ -5,6 +5,36 @@
 *                                                                          *
 *                                     Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
+
+typedef struct sql_config {
+	char   *sql_server;
+	char   *sql_login;
+	char   *sql_password;
+	char   *sql_db;
+	char   *sql_acct_table;
+	char   *sql_acct_table2;
+	char   *sql_authcheck_table;
+	char   *sql_authreply_table;
+	char   *sql_groupcheck_table;
+	char   *sql_groupreply_table;
+	char   *sql_usergroup_table;
+	char   *sql_nas_table;
+	char   *sql_dict_table;
+	char   *authorize_query;
+	char   *authorize_group_query;
+	char   *authenticate_query;
+	char   *accounting_onoff_query;
+	char   *accounting_update_query;
+	char   *accounting_start_query;
+	char   *accounting_start_query_alt;
+	char   *accounting_stop_query;
+	char   *accounting_stop_query_alt;
+	int     sqltrace;
+	char   *tracefile;
+	int     deletestalesessions;
+	int     num_sql_socks;
+} SQL_CONFIG;
+
 #define CHECKRAD1		"/usr/sbin/checkrad"
 #define CHECKRAD2		"/usr/local/sbin/checkrad"
 
@@ -27,14 +57,12 @@
 
 #define ASCEND_PORT_HACK
 #define ASCEND_CHANNELS_PER_LINE        23
-
 #define CISCO_ACCOUNTING_HACK
 
 /* SQL defines */
-#define SQL_LOCK_LEN			sizeof(SQLACCTREC)
+#define MAX_QUERY_LEN			4096
+#define SQL_LOCK_LEN			MAX_QUERY_LEN
 #define	SQLTRACEFILE			RADLOG_DIR "/sqltrace.sql"
-#define SQLBIGREC			32
-#define SQLLILREC			15
 
 #define MAX_COMMUNITY_LEN		50
 #define MAX_SQL_SOCKS			256

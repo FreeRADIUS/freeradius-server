@@ -58,10 +58,12 @@
  *	Purpose: Connect to the sql server
  *
  *************************************************************************/
-int sql_init_socketpool(SQL_INST *inst) {
+int
+sql_init_socketpool(SQL_INST * inst)
+{
 
-	SQLSOCK	*sqlsocket;
-	int	i;
+	SQLSOCK *sqlsocket;
+	int     i;
 
 	inst->used = 0;
 	inst->sqlpool = NULL;
@@ -73,7 +75,7 @@ int sql_init_socketpool(SQL_INST *inst) {
 		} else {
 			sqlsocket->id = i;
 #if HAVE_PTHREAD_H
-			sqlsocket->semaphore = (sem_t *)malloc(sizeof(sem_t));
+			sqlsocket->semaphore = (sem_t *) malloc(sizeof(sem_t));
 			sem_init(sqlsocket->semaphore, 0, SQLSOCK_UNLOCKED);
 #else
 			sqlsocket->in_use = 0;
@@ -93,7 +95,9 @@ int sql_init_socketpool(SQL_INST *inst) {
  *     Purpose: Clean up and free sql pool
  *
  *************************************************************************/
-void sql_poolfree(SQL_INST *inst) {
+void
+sql_poolfree(SQL_INST * inst)
+{
 
 	SQLSOCK *cur;
 
@@ -114,9 +118,11 @@ void sql_poolfree(SQL_INST *inst) {
  *	Purpose: Close and free a sql sqlsocket
  *
  *************************************************************************/
-int sql_close_socket(SQLSOCK *sqlsocket) {
+int
+sql_close_socket(SQLSOCK * sqlsocket)
+{
 
-	radlog(L_DBG,"rlm_sql: Closing sqlsocket %d", sqlsocket->id);
+	radlog(L_DBG, "rlm_sql: Closing sqlsocket %d", sqlsocket->id);
 	sql_close(sqlsocket);
 #if HAVE_PTHREAD_H
 	sem_destroy(sqlsocket->semaphore);
@@ -133,7 +139,9 @@ int sql_close_socket(SQLSOCK *sqlsocket) {
  *	Purpose: Return a SQL sqlsocket from the connection pool           
  *
  *************************************************************************/
-SQLSOCK *sql_get_socket(SQL_INST *inst) {
+SQLSOCK *
+sql_get_socket(SQL_INST * inst)
+{
 
 
 	SQLSOCK *cur;
@@ -146,7 +154,9 @@ SQLSOCK *sql_get_socket(SQL_INST *inst) {
 #if HAVE_PTHREAD_H
 		pthread_cond_wait(inst->notfull, inst->lock);
 #else
-		/* FIXME: Subsecond sleep needed here */
+		/*
+		 * FIXME: Subsecond sleep needed here 
+		 */
 		sleep(1);
 #endif
 	}
@@ -163,7 +173,7 @@ SQLSOCK *sql_get_socket(SQL_INST *inst) {
 #else
 			cur->in_use = SQLSOCK_LOCKED;
 #endif
-			radlog(L_DBG,"rlm_sql: Reserved sql socket id: %d", cur->id);
+			radlog(L_DBG, "rlm_sql: Reserved sql socket id: %d", cur->id);
 			return cur;
 		}
 	}
@@ -172,7 +182,9 @@ SQLSOCK *sql_get_socket(SQL_INST *inst) {
 	pthread_mutex_unlock(inst->lock);
 #endif
 
-	/* Should never get here, but what the hey */
+	/*
+	 * Should never get here, but what the hey 
+	 */
 	return NULL;
 }
 
@@ -183,7 +195,9 @@ SQLSOCK *sql_get_socket(SQL_INST *inst) {
  *	Purpose: Frees a SQL sqlsocket back to the connection pool           
  *
  *************************************************************************/
-int sql_release_socket(SQL_INST *inst, SQLSOCK *sqlsocket) {
+int
+sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
+{
 
 #if HAVE_PTHREAD_H
 	pthread_mutex_lock(inst->lock);
@@ -195,7 +209,7 @@ int sql_release_socket(SQL_INST *inst, SQLSOCK *sqlsocket) {
 	sqlsocket->in_use = 0;
 #endif
 
-	radlog(L_DBG,"rlm_sql: Released sql socket id: %d", sqlsocket->id);
+	radlog(L_DBG, "rlm_sql: Released sql socket id: %d", sqlsocket->id);
 
 #if HAVE_PTHREAD_H
 	pthread_mutex_unlock(inst->lock);
@@ -208,328 +222,25 @@ int sql_release_socket(SQL_INST *inst, SQLSOCK *sqlsocket) {
 
 /*************************************************************************
  *
- *	Function: sql_save_acct
- *
- *	Purpose: Write data from the sqlrecord structure to the database
- *
- *************************************************************************/
-
-int sql_save_acct(SQL_INST *inst, SQLSOCK *sqlsocket, SQLACCTREC *sqlrecord) {
-
-	char    querystr[2048];
-	FILE   *sqlfile=0;
-	int     num = 0;
-	int			acctunique = 0;
-
-#ifdef NT_DOMAIN_HACK
-	char   *ptr;
-	char    newname[AUTH_STRING_LEN];
-#endif
-
-	acctunique = strlen(sqlrecord->AcctUniqueId);
-
-	if(inst->config->sqltrace) {
-		if ((sqlfile = fopen(inst->config->tracefile, "a")) == (FILE *) NULL) {
-			radlog(L_ERR, "rlm_sql: Couldn't open file %s", inst->config->tracefile);
-		} else {
-#if defined(F_LOCK) && !defined(BSD)
-			(void) lockf((int) sqlfile, (int) F_LOCK, (off_t) SQL_LOCK_LEN);
-#else
-			(void) flock(sqlfile, SQL_LOCK_EX);
-#endif
-		}
-	}
-
-#ifdef NT_DOMAIN_HACK
-	/*
-	 *      Windows NT machines often authenticate themselves as
-	 *      NT_DOMAIN\username. Try to be smart about this.
-	 *
-	 *      FIXME: should we handle this as a REALM ?
-	 */
-	if ((ptr = strchr(sqlrecord->UserName, '\\')) != NULL) {
-		strncpy(newname, ptr + 1, sizeof(newname));
-		newname[sizeof(newname) - 1] = 0;
-		strcpy(sqlrecord->UserName, newname);
-	}
-#endif /*
-			  * NT_DOMAIN_HACK 
-			  */
-
-	if (sqlrecord->AcctStatusTypeId == PW_STATUS_ACCOUNTING_ON ||
-			sqlrecord->AcctStatusTypeId == PW_STATUS_ACCOUNTING_OFF) {
-		radlog(L_INFO, "rlm_sql:  Portmaster %s rebooted at %s", sqlrecord->NASIPAddress,
-					 sqlrecord->AcctTimeStamp);
-
-		/*
-		 * The Terminal server informed us that it was rebooted
-		 * * STOP all records from this NAS 
-		 */
-
-		sprintf(querystr,
-						"UPDATE %s SET AcctStopTime='%s', AcctSessionTime=unix_timestamp('%s') - unix_timestamp(AcctStartTime), AcctTerminateCause='%s', AcctStopDelay = %ld WHERE AcctSessionTime=0 AND AcctStopTime=0 AND NASIPAddress= '%s' AND AcctStartTime <= '%s'",
-						inst->config->sql_acct_table, sqlrecord->AcctTimeStamp,
-						sqlrecord->AcctTimeStamp, sqlrecord->AcctTerminateCause,
-						sqlrecord->AcctDelayTime, sqlrecord->NASIPAddress,
-						sqlrecord->AcctTimeStamp);
-
-		if (sql_query(inst, sqlsocket, querystr) < 0)
-			radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting after NAS reboot - %s",
-						 sql_error(sqlsocket));
-		sql_finish_query(sqlsocket);
-
-		if (sqlfile) {
-			fputs(querystr, sqlfile);
-			fputs(";\n", sqlfile);
-			fclose(sqlfile);
-		}
-		return 0;
-	}
-
-	if (sqlrecord->AcctStatusTypeId == PW_STATUS_ALIVE) {
-		/* 
-		 * Use acct unique session identifier if present
-		 */
-		if(acctunique) { 
-			sprintf(querystr, "UPDATE %s SET FramedIPAddress = '%s' WHERE AcctUniqueId = '%s'",
-							inst->config->sql_acct_table, sqlrecord->FramedIPAddress,
-							sqlrecord->AcctUniqueId);
-
-		} else {
-			sprintf(querystr, "UPDATE %s SET FramedIPAddress = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress= '%s'",
-							inst->config->sql_acct_table, sqlrecord->FramedIPAddress,
-							sqlrecord->AcctSessionId, sqlrecord->UserName,
-							sqlrecord->NASIPAddress);
-		}
-
-		if (sql_query(inst, sqlsocket, querystr) < 0)
-			radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for ALIVE packet - %s",
-						 sql_error(sqlsocket));
-		sql_finish_query(sqlsocket);
-
-		if (sqlfile) {
-			fputs(querystr, sqlfile);
-			fputs(";\n", sqlfile);
-			fclose(sqlfile);
-		}
-		return 0;
-	}
-
-	/*
-	 * Got start record 
-	 */
-	if (sqlrecord->AcctStatusTypeId == PW_STATUS_START) {
-
-		/*
-		 * Insert new record with blank stop time until stop record is got 
-		 */
-		snprintf(querystr, 2048,
-            "INSERT INTO %s ("
-            "radacctid,"
-            "acctsessionid,"
-            "acctuniqueid,"
-            "username,"
-            "realm,"
-            "nasipaddress,"
-            "nasportid,"
-            "nasporttype,"
-            "acctstarttime,"
-            "acctstoptime,"
-            "acctsessiontime,"
-            "acctauthentic,"
-            "connectinfo_start,"
-            "connectinfo_stop,"
-            "acctinputoctets,"
-            "acctoutputoctets,"
-            "calledstationid,"
-            "callingstationid,"
-            "acctterminatecause,"
-            "servicetype,"
-            "framedprotocol,"
-            "framedipaddress,"
-            "acctstartdelay,"
-            "acctstopdelay) "
-            "VALUES (0,"
-            "'%s', '%s', '%s', '%s', '%s', %ld, '%s', '%s',0,"
-            "0, '%s', '%s', '', 0, 0,"
-            "'%s', '%s', '', '%s', '%s', '%s', %ld, 0)",
-            inst->config->sql_acct_table, sqlrecord->AcctSessionId, 
-            sqlrecord->AcctUniqueId, sqlrecord->UserName, 
-            sqlrecord->Realm, sqlrecord->NASIPAddress,
-            sqlrecord->NASPortId, sqlrecord->NASPortType,
-            sqlrecord->AcctTimeStamp, sqlrecord->AcctAuthentic,
-            sqlrecord->ConnectInfo, sqlrecord->CalledStationId,
-            sqlrecord->CallingStationId, sqlrecord->ServiceType,
-            sqlrecord->FramedProtocol, sqlrecord->FramedIPAddress,
-            sqlrecord->AcctDelayTime);
-
-
-		if (sql_query(inst, sqlsocket, querystr) < 0) {
-			radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting START record - %s",
-							 sql_error(sqlsocket));
-
-			/*
-			 * We failed the insert above.  It's probably because 
-			 * the stop record came before the start.  We try an
-			 * update here to be sure
-			 */
-			if(acctunique) {
-				snprintf(querystr, 2048, "UPDATE %s SET AcctStartTime = '%s', AcctStartDelay = %ld, ConnectInfo_start = '%s' WHERE AcctUniqueId = '%s'",
-								 inst->config->sql_acct_table, sqlrecord->AcctTimeStamp,
-								 sqlrecord->AcctDelayTime, sqlrecord->ConnectInfo,
-								 sqlrecord->AcctUniqueId);
-			} else {
-				snprintf(querystr, 2048, "UPDATE %s SET AcctStartTime = '%s', AcctStartDelay = %ld, ConnectInfo_start = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress = '%s'",
-								 inst->config->sql_acct_table, sqlrecord->AcctTimeStamp,
-								 sqlrecord->AcctDelayTime, sqlrecord->ConnectInfo,
-								 sqlrecord->AcctSessionId, sqlrecord->UserName, 
-								 sqlrecord->NASIPAddress);
-			}
-			if (sql_query(inst, sqlsocket, querystr) < 0)
-				radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting START record - %s",
-							 sql_error(sqlsocket));
-
-		} 
-		sql_finish_query(sqlsocket);
-
-		/*
-		 * Got stop record 
-		 */
-	} else {
-
-		/*
-		 * Set stop time on matching record with start time 
-		 */
-		if(acctunique) {
-			snprintf(querystr, 2048,
-							 "UPDATE %s SET AcctStopTime = '%s', AcctSessionTime = '%lu', AcctInputOctets = '%lu', AcctOutputOctets = '%lu', AcctTerminateCause = '%s', AcctStopDelay = %ld, ConnectInfo_stop = '%s' WHERE AcctUniqueId = '%s'",
-							 inst->config->sql_acct_table, sqlrecord->AcctTimeStamp,
-							 sqlrecord->AcctSessionTime, sqlrecord->AcctInputOctets,
-							 sqlrecord->AcctOutputOctets, sqlrecord->AcctTerminateCause,
-							 sqlrecord->AcctDelayTime, sqlrecord->ConnectInfo,
-							 sqlrecord->AcctUniqueId);
-
-		} else {
-			snprintf(querystr, 2048,
-							 "UPDATE %s SET AcctStopTime = '%s', AcctSessionTime = '%lu', AcctInputOctets = '%lu', AcctOutputOctets = '%lu', AcctTerminateCause = '%s', AcctStopDelay = %ld, ConnectInfo_stop = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress = '%s'",
-							 inst->config->sql_acct_table, sqlrecord->AcctTimeStamp,
-							 sqlrecord->AcctSessionTime, sqlrecord->AcctInputOctets,
-							 sqlrecord->AcctOutputOctets, sqlrecord->AcctTerminateCause,
-							 sqlrecord->AcctDelayTime, sqlrecord->ConnectInfo,
-							 sqlrecord->AcctSessionId, sqlrecord->UserName, 
-							 sqlrecord->NASIPAddress);
-		}
-
-
-		if (sql_query(inst, sqlsocket, querystr) < 0)
-			radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting STOP record - %s",
-						 sql_error(sqlsocket));
-		sql_finish_query(sqlsocket);
-
-
-		/* 
-		 * If our update above didn't match anything
-		 * we assume it's because we haven't seen a 
-		 * matching Start record.  So we have to
-		 * insert this stop rather than do an update
-		 */
-		num = sql_affected_rows(sqlsocket);
-		if(num < 1) {
-
-#ifdef CISCO_ACCOUNTING_HACK
-			/*
-			 * If stop but zero session length AND no previous 
-			 * session found, drop it as in invalid packet 
-			 * This is to fix CISCO's aaa from filling our 
-			 * table with bogus crap 
-			 */
-			if (sqlrecord->AcctSessionTime <= 0) {
-				radlog(L_ERR, "rlm_sql: Invalid STOP record. [%s] STOP record but zero session length? (nas %s)",
-							 sqlrecord->UserName, sqlrecord->NASIPAddress);
-				return 0;
-			}
-#endif
-
-			/*
-			 * Insert record with no start time until matching start record comes 
-			 */
-			snprintf(querystr, 2048,
-              "INSERT INTO %s ("
-              "radacctid,"
-              "acctsessionid,"
-              "acctuniqueid,"
-              "username,"
-              "realm,"
-              "nasipaddress,"
-              "nasportid,"
-              "nasporttype,"
-              "acctstarttime,"
-              "acctstoptime,"
-              "acctsessiontime,"
-              "acctauthentic,"
-              "connectinfo_start,"
-              "connectinfo_stop,"
-              "acctinputoctets,"
-              "acctoutputoctets,"
-              "calledstationid,"
-              "callingstationid,"
-              "acctterminatecause,"
-              "servicetype,"
-              "framedprotocol,"
-              "framedipaddress,"
-              "acctstartdelay,"
-              "acctstopdelay) "
-              "VALUES ("
-              "0, '%s', '%s', '%s', '%s', '%s', %ld, '%s', 0,"
-              "'%s', '%lu', '%s', '', '%s', '%lu', '%lu', '%s',"
-              "'%s', '%s', '%s', '%s', '%s', 0, %ld)",
-              inst->config->sql_acct_table, sqlrecord->AcctSessionId,
-              sqlrecord->AcctUniqueId, sqlrecord->UserName, 
-              sqlrecord->Realm, sqlrecord->NASIPAddress,
-              sqlrecord->NASPortId, sqlrecord->NASPortType,
-              sqlrecord->AcctTimeStamp, sqlrecord->AcctSessionTime,
-              sqlrecord->AcctAuthentic, sqlrecord->ConnectInfo,
-              sqlrecord->AcctInputOctets, sqlrecord->AcctOutputOctets,
-              sqlrecord->CalledStationId, sqlrecord->CallingStationId,
-              sqlrecord->AcctTerminateCause, sqlrecord->ServiceType,
-              sqlrecord->FramedProtocol, sqlrecord->FramedIPAddress,
-              sqlrecord->AcctDelayTime);
-
-
-			if (sql_query(inst, sqlsocket, querystr) < 0)
-				radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s",
-							 sql_error(sqlsocket));
-			sql_finish_query(sqlsocket);
-		}
-
-	}
-	if (sqlfile) {
-		fputs(querystr, sqlfile);
-		fputs(";\n", sqlfile);
-		fflush(sqlfile);
-		fclose(sqlfile);
-	}
-
-	return 0;
-
-}
-
-
-/*************************************************************************
- *
  *	Function: sql_userparse
  *
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
+int
+sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode, int itemtype)
+{
 
 	DICT_ATTR *attr;
 	VALUE_PAIR *pair, *check;
+	int     i = 0;
 
 
-	if ((attr = dict_attrbyname(row[2])) == (DICT_ATTR *) NULL) {
-		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s", row[2]);
+	if (itemtype == PW_ITEM_REPLY)
+		i = 2;
+
+	if ((attr = dict_attrbyname(row[i])) == (DICT_ATTR *) NULL) {
+		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s", row[i]);
 		return (-1);
 	}
 
@@ -541,10 +252,13 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
 #if defined( BINARY_FILTERS )
 			attr->type != PW_TYPE_ABINARY &&
 #endif
-			mode == PW_VP_GROUPDATA) return 0;
+			mode == PW_VP_GROUPDATA)
+		return 0;
 
-	pair = pairmake(row[2], row[3], T_OP_CMP_EQ);
+	pair = pairmake(row[i], row[i + 1], T_OP_CMP_EQ);
 	pairadd(first_pair, pair);
+
+	vp_printlist(stderr, *first_pair);
 
 	return 0;
 }
@@ -557,58 +271,25 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR ** vp, char *user, int mode)
+int
+sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR ** check,
+							VALUE_PAIR ** reply, char *query, int mode)
 {
 
-	char    querystr[256];
-	char    authstr[256];
-	char    username[AUTH_STRING_LEN * 2 + 1];
 	SQL_ROW row;
-	int     rows=0;
-	int     length;
+	int     rows = 0;
 
-	if (strlen(user) > AUTH_STRING_LEN)
-		length = AUTH_STRING_LEN;
-	else
-		length = strlen(user);
-
-	/*
-	 * FIXME CHECK user for weird charactors!! 
-	 */
-	sql_escape_string(username, user, length);
-
-	if (mode == PW_VP_USERDATA) {
-		if (inst->config->sensitiveusername)
-			sprintf(authstr, "STRCMP(Username, '%s') = 0", username);
-		else
-			sprintf(authstr, "UserName = '%s'", username);
-		sprintf(querystr, "SELECT * FROM %s WHERE %s ORDER BY id", table,
-						authstr);
-	} else if (mode == PW_VP_GROUPDATA) {
-		if (inst->config->sensitiveusername)
-			sprintf(authstr, "STRCMP(%s.Username, '%s') = 0",
-							inst->config->sql_usergroup_table, username);
-		else
-			sprintf(authstr, "%s.UserName = '%s'", inst->config->sql_usergroup_table,
-							username);
-		sprintf(querystr,
-						"SELECT %s.* FROM %s, %s WHERE %s AND %s.GroupName = %s.GroupName ORDER BY %s.id",
-						table, table, inst->config->sql_usergroup_table, authstr,
-						inst->config->sql_usergroup_table, table, table);
-	} else if (mode == PW_VP_REALMDATA)
-		sprintf(querystr,
-						"SELECT %s.* FROM %s, %s WHERE %s.RealmName = '%s' AND %s.GroupName = %s.GroupName ORDER BY %s.id",
-						table, table, inst->config->sql_realmgroup_table,
-						inst->config->sql_realmgroup_table, username,
-						inst->config->sql_realmgroup_table, table, table);
-	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
-		radlog(L_ERR,"get_vpdata: database query error");
+	if (sql_select_query(inst, sqlsocket, query) < 0) {
+		radlog(L_ERR, "rlm_sql_getvpdata: database query error");
 		return -1;
 	}
-
-
 	while ((row = sql_fetch_row(sqlsocket))) {
-		if (sql_userparse(vp, row, mode) != 0) {
+		if (sql_userparse(check, row, mode, PW_ITEM_CHECK) != 0) {
+			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
+			sql_finish_select_query(sqlsocket);
+			return -1;
+		}
+		if (sql_userparse(reply, row, mode, PW_ITEM_REPLY) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
 			sql_finish_select_query(sqlsocket);
 			return -1;
@@ -616,10 +297,8 @@ int sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR **
 		rows++;
 	}
 	sql_finish_select_query(sqlsocket);
-	sql_free_result(sqlsocket);
 
 	return rows;
-
 }
 
 
@@ -637,7 +316,9 @@ alrm_handler()
  *	Purpose: Checks the terminal server for a spacific login entry
  *
  *************************************************************************/
-static int sql_check_ts(SQL_ROW row) {
+static int
+sql_check_ts(SQL_ROW row)
+{
 
 	int     pid, st, e;
 	int     n;
@@ -724,9 +405,12 @@ static int sql_check_ts(SQL_ROW row) {
  *	Purpose: Check radius accounting for duplicate logins
  *
  *************************************************************************/
-int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR * request, int maxsimul) {
+int
+sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name,
+								VALUE_PAIR * request, int maxsimul)
+{
 
-	char    querystr[256];
+	char    querystr[MAX_QUERY_LEN];
 	char    authstr[256];
 	VALUE_PAIR *fra;
 	SQL_ROW row;
@@ -734,21 +418,17 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 	uint32_t ipno = 0;
 	int     mpp = 1;
 
-	if (inst->config->sensitiveusername)
-		sprintf(authstr, "STRCMP(UserName, '%s') = 0", name);
-	else
-		sprintf(authstr, "UserName = '%s'", name);
+	sprintf(authstr, "UserName = '%s'", name);
 	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE %s AND AcctStopTime = 0",
 					inst->config->sql_acct_table, authstr);
 	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
-		radlog(L_ERR,"sql_check_multi: database query error");
+		radlog(L_ERR, "sql_check_multi: database query error");
 		return -1;
 	}
 
 	row = sql_fetch_row(sqlsocket);
 	count = atoi(row[0]);
 	sql_finish_select_query(sqlsocket);
-	sql_free_result(sqlsocket);
 
 	if (count < maxsimul)
 		return 0;
@@ -763,7 +443,7 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 	sprintf(querystr, "SELECT * FROM %s WHERE %s AND AcctStopTime = 0",
 					inst->config->sql_acct_table, authstr);
 	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
-		radlog(L_ERR,"sql_check_multi: database query error");
+		radlog(L_ERR, "sql_check_multi: database query error");
 		return -1;
 	}
 	while ((row = sql_fetch_row(sqlsocket))) {
@@ -776,7 +456,8 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 				mpp = 2;
 
 		} else if (check == 2)
-			radlog(L_ERR, "rlm_sql:  Problem with checkrad [%s] (from nas %s)", name, row[4]);
+			radlog(L_ERR, "rlm_sql:  Problem with checkrad [%s] (from nas %s)",
+						 name, row[4]);
 		else {
 			/*
 			 *      False record - zap it
@@ -785,8 +466,9 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 			if (inst->config->deletestalesessions) {
 				SQLSOCK *sqlsocket1;
 
-				radlog(L_ERR, "rlm_sql:  Deleteing stale session [%s] (from nas %s/%s)", row[2],
-							 row[4], row[5]);
+				radlog(L_ERR,
+							 "rlm_sql:  Deleteing stale session [%s] (from nas %s/%s)",
+							 row[2], row[4], row[5]);
 				sqlsocket1 = sql_get_socket(inst);
 				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'",
 								inst->config->sql_acct_table, row[0]);
@@ -797,8 +479,60 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 		}
 	}
 	sql_finish_select_query(sqlsocket);
-	sql_free_result(sqlsocket);
 
 	return (count < maxsimul) ? 0 : mpp;
+}
 
+void
+query_log(SQL_INST * inst, char *querystr)
+{
+	FILE   *sqlfile = 0;
+
+	if (inst->config->sqltrace) {
+		if ((sqlfile = fopen(inst->config->tracefile, "a")) == (FILE *) NULL) {
+			radlog(L_ERR, "rlm_sql: Couldn't open file %s",
+						 inst->config->tracefile);
+		} else {
+#if defined(F_LOCK) && !defined(BSD)
+			(void) lockf((int) sqlfile, (int) F_LOCK, (off_t) MAX_QUERY_LEN);
+#else
+			(void) flock(sqlfile, SQL_LOCK_EX);
+#endif
+			fputs(querystr, sqlfile);
+			fputs(";\n", sqlfile);
+			fclose(sqlfile);
+		}
+	}
+}
+
+VALUE_PAIR *
+set_userattr(VALUE_PAIR * first, char *username, char *saveuser, int *savelen)
+{
+
+	VALUE_PAIR *uservp = NULL;
+	uint8_t escaped_user[MAX_STRING_LEN];
+
+	if ((uservp = pairfind(first, PW_USER_NAME)) != NULL) {
+		if (saveuser)
+			strNcpy(saveuser, uservp->strvalue, MAX_STRING_LEN);
+		if (savelen)
+			*savelen = uservp->length;
+		if (username) {
+			sql_escape_string(escaped_user, username, strlen(username));
+		} else {
+			sql_escape_string(escaped_user, uservp->strvalue, uservp->length);
+		}
+		strNcpy(uservp->strvalue, escaped_user, MAX_STRING_LEN);
+		uservp->length = strlen(escaped_user);
+	}
+
+	return uservp;
+}
+
+void
+restore_userattr(VALUE_PAIR * uservp, char *saveuser, int savelen)
+{
+
+	strNcpy(uservp->strvalue, saveuser, MAX_STRING_LEN);
+	uservp->length = savelen;
 }

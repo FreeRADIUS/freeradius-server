@@ -274,6 +274,7 @@ void sql_close(SQLSOCK *socket)
  *
  *************************************************************************/
 void sql_finish_query(SQLSOCK *socket) {
+	sql_free_result(socket);
 }
 
 

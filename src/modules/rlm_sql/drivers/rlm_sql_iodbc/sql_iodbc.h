@@ -28,28 +28,6 @@ typedef struct sql_socket {
 	struct sql_socket *next;
 } SQLSOCK;
 
-typedef struct sql_config {
-	char	*sql_server;
-	char	*sql_login;
-	char	*sql_password;
-	char	*sql_db;
-	char	*sql_acct_table;
-	char	*sql_authcheck_table;
-	char	*sql_authreply_table;
-	char	*sql_groupcheck_table;
-	char	*sql_groupreply_table;
-	char	*sql_usergroup_table;
-	char	*sql_realm_table;
-	char	*sql_realmgroup_table;
-	char	*sql_nas_table;
-	char	*sql_dict_table;
-	int	sensitiveusername;
-	int	sqltrace;
-	char	*tracefile;
-	int	deletestalesessions;
-	int	num_sql_socks;
-} SQL_CONFIG;
-
 typedef struct sql_inst {
 	int used;
 	SQLSOCK *sqlpool;
