@@ -54,7 +54,9 @@
 #define PW_EAP_GTC		6
 #define PW_EAP_TLS		13
 #define PW_EAP_LEAP		17
-#define PW_EAP_MAX_TYPES	17
+#define PW_EAP_TTLS		21
+#define PW_EAP_PEAP		25
+#define PW_EAP_MAX_TYPES	25
 
 #define EAP_HEADER_LEN 		4
 
