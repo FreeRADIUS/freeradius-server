@@ -10,6 +10,11 @@ if ($config[sql_use_operator] == 'true'){
 	$text2  = ",':='";
 	$text3 = "AND op = ':='";
 }
+else{
+	$text1 = '';
+	$text2 = '';
+	$text3 = '';
+}
 $link = @da_sql_pconnect($config);
 if ($link){
 	if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
