@@ -1,0 +1,71 @@
+#
+#	Sample of a policy language.
+#	There's no documentation other than this file.
+#	The syntax is odd, but it works.
+#	It's not intended for production use.
+#	Use it if you want obscure error messages and possibly server crashes.
+#
+#	$Id$
+#
+#  Debugging statements
+#
+#debug print_tokens	# as we're parsing this file
+debug print_policy	# once the file has been parsed
+debug evaluate		# print limited information during evaluation
+
+#
+#  A named policy.
+#
+policy 3pm {
+if (Time-Of-Day < "15:00") {
+   reply .= {
+      # Use ARAP-Password for testing because it's an attribute
+      # no one cares about.
+      ARAP-Password = "< 15:00"
+   }
+}
+
+}
+
+#
+#  A named policy, executed during the "authorize" phase,
+#  because it's named "authorize". 
+#
+policy authorize {
+  if (CHAP-Password) {
+     if (!(CHAP-Challenge)) {
+        print "Adding CHAP-Challenge = %{request:Packet-Authentication-Vector}\n"
+
+        #
+        #  Append all attributes to the specified list.
+        #  The per-attribute operators MUST be '='
+        #
+        request .= {
+           CHAP-Challenge = "%{request:Packet-Authentication-Vector}"
+        }
+     }
+
+     #
+     #  Use per-attribute operators to do override, replace, etc.
+     #  It's "control", not "check items", because "check items"
+     #  is a hold-over from the "users" file, and we no longer like that.
+     #
+     control = {
+     	  Auth-Type := CHAP
+     }
+  }
+
+#
+#  This could just as well be "%{ldap: query...}" =~ ...
+#
+#  if ("%{User-Name}" =~ "^(b)") {
+#     reply .= {
+#	   Arap-Password = "Hello, %{1}"
+#     }
+#  }
+
+  #
+  #  Execute "3pm", as if it was in-line here.
+  #
+#  call 3pm
+}
