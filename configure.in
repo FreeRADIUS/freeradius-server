@@ -432,6 +432,8 @@ AC_CHECK_HEADERS( \
 	inttypes.h \
 	stdint.h \
 	arpa/inet.h \
+	netinet/in.h \
+	sys/types.h \
 	sys/time.h
 )
 
