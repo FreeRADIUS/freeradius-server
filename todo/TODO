@@ -1,10 +1,13 @@
 URGENT:
 
-o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
-  Is this a problem ? Need to fix in rlm_unix.c
-o Fix potentially long locks on radutmp file by radcheck thread
+o Integrate Alan Curry's module failover patch.  This can be done within
+  a few days if it's agreed that it's a good thing.  I certainly think
+  it is.
+o Stop unloading modules on HUP so that we can have persistant
+  handles/socketc/etc from module_init().  Alan D. and Alan C. had a good
+  plan for when to load/reload modules on the list recently...I say
+  run with that.
 o modular radutmp and radwtmp, as per Alan Curry's old patches.
-o module initialization AFTER forking, not before.
 o merge OSF/OSFIA patches from Cistron.
 
 
@@ -15,15 +18,11 @@ o go through all of the code, removing unnecessary #include's, and
   platforms.
 o go through *.c and *.h, adding comments at the top with a copyright,
   and a GPL license.
-o add more support for new configuration files
-o replace the module_t method table with a set of register_* functions
-  (so different instances of the same module can offer different
-  methods)
-o get rlm_sql to work with multiple instances
-o have a config file (or section in radiusd.conf) that tells rlm_sql
-  what the names of the tables and columns are instead of hardcoding
-  them
-
+o fix the proxy receive code, so that we don't have to look through ALL
+  of the requests to find the matching proxy.  This might be hard to do..
+o rad_malloc() fixes:  child processes/threads ALWAYS kill themselves
+  if malloc() failes.  The main server process does a 'sleep' for N
+  seconds, and tries again.  After T tries, it gives up, and calls exit().
 
 LOW PRIORITY:
 o Write better documentation
@@ -32,23 +31,29 @@ o Fix all FIXME's in the source.
 o Fix DBM support:
   - Multiple defaults (done)
   - Fallthrough (hard for not DEFAULT entries)
-o there should be a way that radius itself could
-  rotate the wtmp file properly. It should write "logout" records for
-  all users, move the file to wtmp.0, and create a new wtmp file with
-  "login" records for all currently online users.
 o split rlm_files into rlm_users, rlm_fastusers (in-memory hash),
   rlm_detail, rlm_dbm... they all should share as much code as
   possible though, not be big cut-and-paste jobs
-o New module: rlm_attrmap. assigns a single attribute based on a
-  username, with ed-friendly/awk-friendly config file. Because the
-  users file is too complicated.
+o better SNMP statistics support, for the auth/acct servers, and for
+  each client.
+o fix the request list walking code, to scan each element no more than
+  once per second.
+
+WAIT UNTIL NEXT RELEASE:
+o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
+  Is this a problem ? Need to fix in rlm_unix.c
 o New module: rlm_fastradwtmp. with a radutmp-style active session
   database to guarantee wtmp records are always written in matching
   pairs. Because radlast is slow.
-o better SNMP statistics support, for the auth/acct servers, and for
-  each client.
-
-WAIT UNTIL NEXT RELEASE
+o New module: rlm_attrmap. assigns a single attribute based on a
+  username, with ed-friendly/awk-friendly config file. Because the
+  users file is too complicated.
+o have a config file (or section in radiusd.conf) that tells rlm_sql
+  what the names of the tables and columns are instead of hardcoding
+  them
+o replace the module_t method table with a set of register_* functions
+  (so different instances of the same module can offer different
+  methods)
 o enable server to run with child processes
   (This is a little more difficult than the threading changes)
 o switch all timers from time() to gettimeofday() so processing is
@@ -58,7 +63,22 @@ o New module: rlm_nsupdate (dyndns). Because dynamic addresses are
   cruel.
 o New module: rlm_perl.
 
+WILL NOT TO:
+o module initialization AFTER forking, not before.
+	--- The modules should NOT be setting up any process-dependent
+	--- information.
+
+o there should be a way that radius itself could
+  rotate the wtmp file properly. It should write "logout" records for
+  all users, move the file to wtmp.0, and create a new wtmp file with
+  "login" records for all currently online users.
+	--- This work is for an external process to do ---
+
 DONE:
+o add more support for new configuration files
+o Fixed potentially long locks on radutmp file by radcheck thread
+  This means unlocking the file, forking checkrad, and then locking
+  the file again.
 o get rlm_unix to work with multiple instances
 o partial split of rlm_files into rlm_fastusers and rlm_detail
 o enable server to run in threaded mode
