@@ -28,7 +28,7 @@ static const char rcsid[] =
 #define xalloc malloc
 #define xstrdup strdup
 
-CONF_SECTION	*config;
+CONF_SECTION	*config = NULL;
 
 extern RADCLIENT *clients;
 extern REALM	 *realms;
@@ -147,12 +147,12 @@ void cf_section_free_all(CONF_SECTION *cs)
  */
 int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 {
-	int i;
+	int		i;
 	char      	**q;
-	CONF_PAIR *cp;
+	CONF_PAIR	*cp;
 	uint32_t	ipaddr;
 	char		buffer[1024];
-	
+
 	/*
 	 *	Handle the user-supplied variables.
 	 */
@@ -165,13 +165,19 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 		switch (variables[i].type)
 		{
 		case PW_TYPE_BOOLEAN:
-			if (strcasecmp(cp->value, "yes") == 0) {
+			/*
+			 *	Allow yes/no and on/off
+			 */
+			if ((strcasecmp(cp->value, "yes") == 0) ||
+			    (strcasecmp(cp->value, "on") == 0)) {
 				*(int *)variables[i].data = 1;
-			} else if (strcasecmp(cp->value, "no") == 0) {
+			} else if ((strcasecmp(cp->value, "no") == 0) ||
+				   (strcasecmp(cp->value, "off") == 0)) {
 				*(int *)variables[i].data = 0;
 			} else {
 				*(int *)variables[i].data = 0;
 				log(L_ERR, "Bad value \"%s\" for boolean variable %s", cp->value, cp->attr);
+				return -1;
 			}
 			DEBUG2("Config: %s.%s = %s",
 			       cs->name1,
@@ -210,7 +216,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			ipaddr = ip_getaddr(cp->value);
 			if (ipaddr == 0) {
 				log(L_ERR, "Can't find IP address for host %s", cp->value);
-				break;
+				return -1;
 			}
 			DEBUG2("Config: %s.%s = %s IP address [%s]",
 			       cs->name1,
@@ -221,6 +227,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			
 		default:
 			log(L_ERR, "type %d not supported yet", variables[i].type);
+			return -1;
 			break;
 		} /* switch over variable type */
 	} /* for all variables in the configuration section */
@@ -257,7 +264,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	/*
 	 *	Allow for $INCLUDE files???
 	 */
-
+	if (name1 && strcasecmp(name1, "$INCLUDE") == 0) {
+	  return conf_read(name2);
+	}
 
 	/*
 	 *	Allocate new section.
@@ -435,20 +444,18 @@ CONF_SECTION *conf_read(const char *conffile)
 {
 	FILE		*fp;
 	int		lineno = 0;
-
-	cf_section_free(config);
-	config = NULL;	
-
+	CONF_SECTION	*cs;
+	
 	if ((fp = fopen(conffile, "r")) == NULL) {
 		log(L_ERR, "cannot open %s: %s",
 			conffile, strerror(errno));
 		return NULL;
 	}
 
-	config = cf_section_read(conffile, &lineno, fp, NULL, NULL);
+	cs = cf_section_read(conffile, &lineno, fp, NULL, NULL);
 	fclose(fp);
 
-	return config;
+	return cs;
 }
 
 /* JLN
@@ -460,18 +467,25 @@ CONF_SECTION *conf_read(const char *conffile)
 int read_radius_conf_file(void)
 {
 	char buffer[256];
+	CONF_SECTION *cs;
 
 	/* Lets go for the new configuration files */
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
-	if (conf_read(buffer) == NULL) {
+	if ((cs = conf_read(buffer)) == NULL) {
 		return -1;
 	}
 
-	/* JLN
-	 * After this we should run
-	 * generate_realms() and generate_clients()
-	 *
+	/*
+	 *	Free the old configuration data, and replace it
+	 *	with the new one.
+	 */
+	cf_section_free(config);
+	config = cs;
+	
+
+
+	/*
 	 * Fail if we can't generate list of clients
 	 */
 
@@ -486,7 +500,6 @@ int read_radius_conf_file(void)
 	if (generate_realms() < 0) {
 		log(L_ERR|L_CONS, "Error generation realms list");
 	}
-
 
 	return 0;	
 }
