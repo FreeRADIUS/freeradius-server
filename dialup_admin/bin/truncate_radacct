@@ -27,5 +27,5 @@ $date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,
 print "$date\n";
 
 $dbh = DBI->connect("DBI:mysql:$sql_database:$sql_server","$sql_username","$sql_password");
-$dbh->do("DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date';");
+$dbh->do("LOCK TABLES $sql_accounting_table WRITE;DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date';UNLOCK TABLES;");
 $dbh->disconnect();

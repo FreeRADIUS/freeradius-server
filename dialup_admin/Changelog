@@ -32,6 +32,7 @@ Ver 1.62:
 * Make things a little bit more simple in lib/ldap/change_attrs.php3
 * Fix a small bug in lib/ldap/create_user.php3. Unset the mod array before adding any values to it.
 * Fix a small problem with debugging
+* Do a write lock in radacct before truncating it in truncate_radacct
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
