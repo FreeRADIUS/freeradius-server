@@ -459,7 +459,6 @@ modules {
 	files {
 		usersfile = ${confdir}/users
 		acctusersfile = ${confdir}/acct_users
-		detailperm = 0600
 
 		#
 		#  If you want to use the old Cistron 'users' file
@@ -468,6 +467,10 @@ modules {
 		#  file from Cistron.
 		#
 		compat = no
+	}
+	detail {
+		detailfile = %A/%n/detail
+		detailperms = 0600
 	}
 
 	# This module will add a (probably) unique session id 
@@ -630,6 +633,6 @@ preacct {
 # Accounting. Log to detail file, and to the radwtmp file.
 accounting {
 	#acct_unique
-	files
+	detail
 	unix
 }
