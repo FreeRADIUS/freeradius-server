@@ -98,7 +98,10 @@ uint32_t ip_getaddr(const char *host)
 #if GETHOSTBYNAMERSTYLE == SYSVSTYLE
 	hp = gethostbyname_r(host, &result, buffer, sizeof(buffer), &error);
 #elif GETHOSTBYNAMERSTYLE == GNUSTYLE
-	hp = gethostbyname_r(host, &result, buffer, sizeof(buffer), &hp, &error);
+	if (gethostbyname_r(host, &result, buffer, sizeof(buffer),
+			    &hp, &error) != 0) {
+		return htonl(INADDR_NONE);
+	}
 #else
 	hp = gethostbyname(host);
 #endif
@@ -106,16 +109,16 @@ uint32_t ip_getaddr(const char *host)
 	hp = gethostbyname(host);
 #endif
 	if (hp == NULL) {
-		return htonl((uint32_t) INADDR_NONE);
+		return htonl(INADDR_NONE);
 	}
-
+	
 	/*
 	 *	Paranoia from a Bind vulnerability.  An attacker
 	 *	can manipulate DNS entries to change the length of the
 	 *	address.  If the length isn't 4, something's wrong.
 	 */
-	if (hp->h_length != sizeof(uint32_t)) {
-		return htonl((uint32_t) INADDR_NONE);
+	if (hp->h_length != 4) {
+		return htonl(INADDR_NONE);
 	}
 
 	memcpy(&a, hp->h_addr, sizeof(uint32_t));
