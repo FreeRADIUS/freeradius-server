@@ -543,7 +543,6 @@ int eap_start(REQUEST *request)
 		return EAP_NOOP;
 	}
 
-#ifndef NDEBUG	
 	if ((eap_msg->strvalue[0] == 0) ||
 	    (eap_msg->strvalue[0] > PW_EAP_MAX_TYPES)) {
 		DEBUG2("  rlm_eap: Unknown EAP packet");
@@ -553,7 +552,6 @@ int eap_start(REQUEST *request)
 		       eap_msg->strvalue[1],
 		       (eap_msg->strvalue[2] << 8) | eap_msg->strvalue[3]);
 	}
-#endif
 
 	/*
 	 *	If we've been configured to proxy, do nothing.
