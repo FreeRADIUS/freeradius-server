@@ -53,6 +53,7 @@ static const char rcsid[] = "$Id$";
  *      every use of the pthread functions.
  */
 #define pthread_mutex_lock(a)
+#define pthread_mutex_trylock(a) (0)
 #define pthread_mutex_unlock(a)
 #define pthread_mutex_init(a,b)
 #define pthread_mutex_destroy(a)
@@ -331,7 +332,7 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,void *instance)
 	for(i=0;i<inst->num_conns;i++){
 		DEBUG("rlm_ldap: ldap_get_conn: Checking Id: %d",i);
 		if ((conns[i].locked == 0) &&
-		    (pthread_mutex_trylock(&(conns[i].mutex)) == 0)) {
+		    (pthread_mutex_trylock(&conns[i].mutex) == 0)) {
 			*ret = &conns[i];
 			conns[i].locked = 1;
 			DEBUG("rlm_ldap: ldap_get_conn: Got Id: %d",i);
