@@ -641,13 +641,19 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
         LDAPMessage     *msg = NULL;
         char            basedn[MAX_FILTER_STR_LEN];
 	char		*attrs[] = {"dn",NULL};
+	char		**vals;
         ldap_instance   *inst = instance;
+	char		*group_attrs[] = {inst->groupmemb_attr,NULL};
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
+	VALUE_PAIR	*vp_user_dn;
+	VALUE_PAIR      **request_pairs;
+
+	request_pairs = &req->packet->vps;
 
 	DEBUG("rlm_ldap: Entering ldap_groupcmp()");
 
-        if (check->strvalue == NULL || check->length == 0){
+	if (check->strvalue == NULL || check->length == 0){
                 DEBUG("rlm_ldap::ldap_groupcmp: Illegal group name");
                 return 1;
         }
@@ -662,7 +668,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
                 return 1;
         }
 
-        if ((pairfind(req->packet->vps, PW_LDAP_USERDN)) == NULL){
+        while((vp_user_dn = pairfind(*request_pairs, PW_LDAP_USERDN)) == NULL){
                 char            *user_dn = NULL;
 
                 if (!radius_xlat(filter, sizeof(filter), inst->filter,
@@ -674,7 +680,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 			radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
 			return 1;
 		}
-                if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
+                if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE,
+					filter, attrs, &result)) != RLM_MODULE_OK){
                         DEBUG("rlm_ldap::ldap_groupcmp: search failed");
 			ldap_release_conn(conn_id,inst->conns);
                         return 1;
@@ -696,7 +703,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
                 * Adding new attribute containing DN for LDAP object associated with
                 * given username
                 */
-                pairadd(&req->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+                pairadd(request_pairs, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
                 ldap_memfree(user_dn);
                 ldap_msgfree(result);
         }
@@ -717,98 +724,98 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 		radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
 		return 1;
 	}
-
-        if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK){
-                if (res != RLM_MODULE_NOTFOUND){
-                	DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
-			ldap_release_conn(conn_id,inst->conns);
-                	return 1;
-                }
-        }
-	if (res != RLM_MODULE_NOTFOUND)
+	
+	if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE,
+				filter, attrs, &result)) == RLM_MODULE_OK){
+		DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",
+				(char *)check->strvalue);
 		ldap_msgfree(result);
+		ldap_release_conn(conn_id,inst->conns);
+        	return 0;
+	}
+	
 	ldap_release_conn(conn_id,inst->conns);
 
-	if (res == RLM_MODULE_NOTFOUND){
-		if (inst->groupmemb_attr == NULL){
-			DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found or user is not a member.",(char *)check->strvalue);
-			return 1;
-		}
-		else{
-			VALUE_PAIR *user_dn;
-			char *group_attrs[] = {inst->groupmemb_attr,NULL};
+	if (res != RLM_MODULE_NOTFOUND ) {
+		DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
+		return 1;
+	}
 
-			user_dn = pairfind(req->packet->vps, PW_LDAP_USERDN);
-			if (user_dn != NULL){
-				char **vals;
+	if (inst->groupmemb_attr == NULL){
+		/* search returned NOTFOUND and searching for membership 
+		 * using user object attributes is not specified in config
+		 * file
+		 */
+		DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found or user is not a member.",(char *)check->strvalue);
+		return 1;
+	}
 
-				snprintf(filter,MAX_GROUP_STR_LEN - 1, "(objectclass=*)");
-				if ((conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1){
-					radlog(L_ERR, "rlm_ldap: Add ldap connections are in use");
-					return 1;
-				}
-				if ((res = perform_search(inst, conn, user_dn->strvalue, LDAP_SCOPE_BASE, filter, group_attrs, &result)) != RLM_MODULE_OK){
-					DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
-					ldap_release_conn(conn_id, inst->conns);
-					return 1;
-				}		
+	snprintf(filter,sizeof(filter), "(objectclass=*)");
+	if ((conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1){
+		radlog(L_ERR, "rlm_ldap: Add ldap connections are in use");
+		return 1;
+	}
+	if ((res = perform_search(inst, conn, vp_user_dn->strvalue, LDAP_SCOPE_BASE,
+					filter, group_attrs,&result)) != RLM_MODULE_OK){
+		DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
+		ldap_release_conn(conn_id, inst->conns);
+		return 1;
+	}		
 
-				if ((msg = ldap_first_entry(conn->ld, result)) == NULL) {
-					DEBUG("rlm_ldap::ldap_groupcmp: ldap_first_entry() failed");
-					ldap_release_conn(conn_id,inst->conns);
-					ldap_msgfree(result);
-					return 1;
-				}
-				if ((vals = ldap_get_values(conn->ld, msg, inst->groupmemb_attr)) != NULL) {
-					unsigned int i = 0;
-					char found = 0;
-
-					for (;i < ldap_count_values(vals);i++){
-						if (strchr(vals[i],',') != NULL){ /* This looks like a DN */
-							LDAPMessage *gr_result = NULL;
-
-							snprintf(filter,MAX_GROUP_STR_LEN - 1, "(%s=%s)",inst->groupname_attr,(char *)check->strvalue);
-							if ((res = perform_search(inst, conn, vals[i], LDAP_SCOPE_BASE, filter, attrs, &gr_result)) != RLM_MODULE_OK){
-								if (res != RLM_MODULE_NOTFOUND){
-									DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
-									ldap_msgfree(result);
-									ldap_value_free(vals);
-									ldap_release_conn(conn_id, inst->conns);
-									return 1;
-								}
-							}
-							else{
-								ldap_msgfree(gr_result);
-								found = 1;
-								break;
-							}
-						}
-						else{
-							if (strcmp(vals[i],(char *)check->strvalue) == 0){
-								found = 1;
-								break;
-							}
-						}
-					}
-					ldap_value_free(vals);
-        				ldap_msgfree(result);
-					if (found == 0){
-						DEBUG("rlm_ldap::groupcmp: Group %s not found or user not a member",
-							(char *)check->strvalue);
+	if ((msg = ldap_first_entry(conn->ld, result)) == NULL) {
+		DEBUG("rlm_ldap::ldap_groupcmp: ldap_first_entry() failed");
+		ldap_release_conn(conn_id,inst->conns);
+		ldap_msgfree(result);
+		return 1;
+	}
+	if ((vals = ldap_get_values(conn->ld, msg, inst->groupmemb_attr)) != NULL) {
+		unsigned int i = 0;
+		char found = 0;
+		for (;i < ldap_count_values(vals);i++){
+			if (strchr(vals[i],',') != NULL){ 
+				/* This looks like a DN */
+				LDAPMessage *gr_result = NULL;
+				snprintf(filter,sizeof(filter), "(%s=%s)",
+					inst->groupname_attr,
+					(char *)check->strvalue);
+				if ((res = perform_search(inst, conn, vals[i],
+						LDAP_SCOPE_BASE, filter,
+						attrs, &gr_result)) != RLM_MODULE_OK){
+					if (res != RLM_MODULE_NOTFOUND){
+						DEBUG("rlm_ldap::ldap_groupcmp: \
+							Search returned error");
+						ldap_value_free(vals);
+						ldap_msgfree(result);
 						ldap_release_conn(conn_id,inst->conns);
 						return 1;
 					}
+				} else {
+					ldap_msgfree(gr_result);
+					found = 1;
+					break;
 				}
-				else{
-					DEBUG("rlm_ldap::ldap_groupcmp: ldap_get_values() failed");
-					ldap_release_conn(conn_id,inst->conns);
-					ldap_msgfree(result);
-					return 1;
+			} else {
+				if (strcmp(vals[i],(char *)check->strvalue) == 0){
+					found = 1;
+					break;
 				}
 			}
 		}
+		ldap_value_free(vals);
+		ldap_msgfree(result);
+		if (found == 0){
+			DEBUG("rlm_ldap::groupcmp: Group %s not found \
+				or user not a member",
+				(char *)check->strvalue);
+			ldap_release_conn(conn_id,inst->conns);
+			return 1;
+		}
+	} else {
+			DEBUG("rlm_ldap::ldap_groupcmp: ldap_get_values() failed");
+			ldap_msgfree(result);
+			ldap_release_conn(conn_id,inst->conns);
+			return 1;
 	}
-
 
 	DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",(char *)check->strvalue);
 	ldap_release_conn(conn_id,inst->conns);
@@ -1093,7 +1100,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	if (inst->profile_attr){
 		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL) {
 			unsigned int i=0;
-			strncpy(filter,"(objectclass=radiusprofile)",MAX_AUTH_QUERY_LEN);
+			strNcpy(filter,"(objectclass=radiusprofile)",sizeof(filter));
 			if (inst->cache_timeout >0)
 				ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
 			while(vals[i] != NULL && strlen(vals[i])){
