@@ -1303,9 +1303,15 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				 *  User-Password
 				 */
 			case FLAG_ENCRYPT_USER_PASSWORD:
-				rad_pwdecode((char *)pair->strvalue,
-					     pair->length, secret,
-					     (char *)original->vector);
+				if (original) {
+					rad_pwdecode((char *)pair->strvalue,
+						     pair->length, secret,
+						     (char *)original->vector);
+				} else {
+					rad_pwdecode((char *)pair->strvalue,
+						     pair->length, secret,
+						     (char *)packet->vector);
+				}
 				if (pair->attribute == PW_USER_PASSWORD) {
 					pair->length = strlen(pair->strvalue);
 				}
