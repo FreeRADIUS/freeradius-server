@@ -162,7 +162,7 @@ MD5Final(unsigned char digest[MD5_DIGEST_LENGTH], MD5_CTX *ctx)
 		for (i = 0; i < 4; i++)
 			PUT_32BIT_LE(digest + i * 4, ctx->state[i]);
 	}
-	bzero(ctx, sizeof(*ctx));	/* in case it's sensitive */
+	memset(ctx, 0, sizeof(*ctx));	/* in case it's sensitive */
 }
 
 
