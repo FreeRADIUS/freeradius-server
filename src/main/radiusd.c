@@ -54,13 +54,13 @@ const char	        *radius_dir;
 const char		*radacct_dir;
 const char		*radlog_dir;
 int			log_stripped_names;
-int 			cache_passwd = 0;
+int 			cache_passwd = FALSE;
 int			debug_flag;
-int			use_dbm = 0;
-UINT4			myip = 0;
-int			log_auth_detail = 0;
-int			log_auth = 0;
-int			log_auth_pass  = 0;
+int			use_dbm	= FALSE;
+UINT4			myip = INADDR_ANY;
+int			log_auth_detail	= FALSE;
+int			log_auth = FALSE;
+int			log_auth_pass  = FALSE;
 int			auth_port;
 int			acct_port;
 int			proxy_port;
@@ -70,11 +70,11 @@ static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
 static int		sockfd;
 static int		acctfd;
-static int		spawn_flag;
+static int		spawn_flag = FALSE;
 static int		radius_pid;
-static int		need_reload = 0;
-static REQUEST		*first_request;
-static int		allow_core_dumps = 0;
+static int		need_reload = FALSE;
+static REQUEST		*first_request = NULL;
+static int		allow_core_dumps = FALSE;
 static struct rlimit	core_limits;
 
 #if !defined(__linux__) && !defined(__GNU_LIBRARY__)
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
 	int			fd = 0;
 	int			devnull;
 	int			status;
-	int			dontfork = 0;
+	int			dont_fork = FALSE;
 	int			radius_port = 0;
 
 #ifdef OSFC2
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 		progname++;
 
 	debug_flag = 0;
-	spawn_flag = 1;
+	spawn_flag = TRUE;
 	radacct_dir = RADACCT_DIR;
 	radius_dir = RADIUS_DIR;
 	radlog_dir = RADLOG_DIR;
@@ -221,12 +221,12 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while((argval = getopt(argc, argv, "ASa:ci:l:d:bfnp:svxyz")) != EOF) {
+	while((argval = getopt(argc, argv, "Aa:bcd:fi:l:np:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
 		case 'A':
-			log_auth_detail++;
+			log_auth_detail = TRUE;
 			break;
 
 		case 'a':
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
 			break;
 #endif
 		case 'c':
-			cache_passwd = 1;
+			cache_passwd = TRUE;
 			break;
 
 		case 'd':
@@ -247,11 +247,11 @@ int main(int argc, char **argv)
 			break;
 		
 		case 'f':
-			dontfork = 1;
+			dont_fork = TRUE;
 			break;
 
 		case 'i':
-			if ((myip = ip_getaddr(optarg)) == 0) {
+			if ((myip = ip_getaddr(optarg)) == INADDR_ANY) {
 				fprintf(stderr, "radiusd: %s: host unknown\n",
 					optarg);
 				exit(1);
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'n':
-			librad_dodns = 0;
+			librad_dodns = FALSE;
 			break;
 
 		case 'S':
@@ -275,11 +275,25 @@ int main(int argc, char **argv)
 			break;
 
 		case 's':	/* Single process mode */
-			spawn_flag = 0;
+			spawn_flag = FALSE;
 			break;
 
 		case 'v':
 			version();
+			break;
+
+			/*
+			 *  BIG debugging mode for users who are
+			 *  TOO LAZY to type '-sfxxyz -l stdout' themselves.
+			 */
+		case 'X':
+			spawn_flag = FALSE;
+			dont_fork = TRUE;
+			debug_flag = 2;
+			librad_debug = 2;
+			log_auth = TRUE;
+			log_auth_pass = TRUE;
+			radlog_dir = "stdout";
 			break;
 
 		case 'x':
@@ -288,11 +302,11 @@ int main(int argc, char **argv)
 			break;
 		
 		case 'y':
-			log_auth = 1;
+			log_auth = TRUE;
 			break;
 
 		case 'z':
-			log_auth_pass = 1;
+			log_auth_pass = TRUE;
 			break;
 
 		default:
@@ -330,7 +344,7 @@ int main(int argc, char **argv)
 	sin = (struct sockaddr_in *) & salocal;
         memset ((char *) sin, '\0', sizeof (salocal));
 	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = myip ? myip : INADDR_ANY;
+	sin->sin_addr.s_addr = myip;
 	sin->sin_port = htons(auth_port);
 
 	result = bind (sockfd, & salocal, sizeof (*sin));
@@ -357,7 +371,7 @@ int main(int argc, char **argv)
 	sin = (struct sockaddr_in *) & salocal;
         memset ((char *) sin, '\0', sizeof (salocal));
 	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = myip ? myip : INADDR_ANY;
+	sin->sin_addr.s_addr = myip;
 	sin->sin_port = htons(acct_port);
 
 	result = bind (acctfd, & salocal, sizeof (*sin));
@@ -378,7 +392,7 @@ int main(int argc, char **argv)
 	sin = (struct sockaddr_in *) & salocal;
         memset ((char *) sin, '\0', sizeof (salocal));
 	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = myip ? myip : INADDR_ANY;
+	sin->sin_addr.s_addr = myip;
 
 	/*
 	 *  Pick a pseudo-random initial proxy port,
@@ -445,7 +459,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Disconnect from session
 	 */
-	if(debug_flag == 0 && dontfork == 0) {
+	if(debug_flag == 0 && dont_fork == 0) {
 		pid = fork();
 		if(pid < 0) {
 			log(L_ERR|L_CONS, "Couldn't fork");
@@ -480,7 +494,7 @@ int main(int argc, char **argv)
 	for(;;) {
 		if (need_reload) {
 			reread_config(1);
-			need_reload = 0;
+			need_reload = FALSE;
 		}
 
 		FD_ZERO(&readfds);
@@ -572,7 +586,7 @@ int rad_process(REQUEST *request)
 	VALUE_PAIR *namepair;
 	int e;
 
-	dospawn = 0;
+	dospawn = FALSE;
 	fun = NULL;
 
 	/*
@@ -976,12 +990,34 @@ void sig_cleanup(int sig)
 static void usage(void)
 {
 	fprintf(stderr,
+		"Usage: %s [-a acct_dir] [-d db_dir] [-l log_dir] [-i address] [-p port] [-"
 #if defined(WITH_DBM) || defined(WITH_NDBM)
-		"Usage: %s [-a acct_dir] [-d db_dir] [-l logdir] [-bcsxyz]\n",
-#else
-		"Usage: %s [-a acct_dir] [-d db_dir] [-l logdir] [-csxyz]\n",
+		"b"
 #endif
-		progname);
+		"AcfnsSvXxyz\n", progname);
+	fprintf(stderr, "Options:\n\n");
+	fprintf(stderr, "  -a acct_dir     use accounting directory 'acct_dir'.\n");
+	fprintf(stderr, "  -A              Log auth detail.\n");
+#if defined(WITH_DBM) || defined(WITH_NDBM)
+	fprintf(stderr, "  -b              Use DBM.\n");
+#endif
+	fprintf(stderr, "  -c              Cache /etc/passwd, /etc/shadow, and /etc/group.\n");
+	fprintf(stderr, "  -d db_dir       Use database directory 'db_dir'.\n");
+	fprintf(stderr, "  -f              Run as a foreground process, not a daemon.\n");
+	fprintf(stderr, "  -h              Print this help message.\n");
+	fprintf(stderr, "  -i address      Listen only in the given IP address.\n");
+	fprintf(stderr, "  -l log_dir      Log messages to 'log_dir'.  Special values are:\n");
+	fprintf(stderr, "                  stdout == log all messages to standard output.\n");
+	fprintf(stderr, "                  syslog == log all messages to the system logger.\n");
+	fprintf(stderr, "  -n              Do not do DNS host name lookups.\n");
+	fprintf(stderr, "  -p port         Bind to 'port', and not to the radius/udp, or 1646/udp.\n");
+	fprintf(stderr, "  -s              Do not spawn child processes to handle requests.\n");
+	fprintf(stderr, "  -S              Log stripped names.\n");
+	fprintf(stderr, "  -v              Print server version information.\n");
+	fprintf(stderr, "  -X              Turn on full debugging. (Means: -sfxxyz -l stdout)\n");
+	fprintf(stderr, "  -x              Turn on partial debugging. (-xx gives more debugging).\n");
+	fprintf(stderr, "  -y              Log authentication failures, with password.\n");
+	fprintf(stderr, "  -x              Log authentication successes, with password.\n");
 	exit(1);
 }
 
@@ -1030,6 +1066,6 @@ static void sig_fatal(int sig)
 static void sig_hup(int sig)
 {
 	signal(SIGHUP, sig_hup);
-	need_reload = 1;
+	need_reload = TRUE;
 }
 
