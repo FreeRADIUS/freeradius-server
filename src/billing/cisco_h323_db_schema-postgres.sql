@@ -73,7 +73,7 @@ CREATE TABLE StopVoIP (
 	CalledStationId		VARCHAR(50),
 	CallingStationId	VARCHAR(50),
 	AcctDelayTime		SMALLINT,
-	CiscoNASPort		BOOLEAN DEFAULT false,
+	CiscoNASPort		VARCHAR(1),
 	H323GWID		VARCHAR(32),
 	H323CallOrigin		VARCHAR(10),
 	H323DisconnectCause	VARCHAR(2),
