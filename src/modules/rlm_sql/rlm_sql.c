@@ -105,20 +105,32 @@ static int rlm_sql_init(void) {
 }
 
 /*
+ *	Yucky prototype.
+ */
+static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
+
+/*
  *	sql xlat function. Right now only SELECTs are supported. Only
  *	the first element of the SELECT result will be used.
  */
-static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int freespace,
-			RADIUS_ESCAPE_STRING func)
+static int sql_xlat(void *instance, REQUEST *request,
+		    char *fmt, char *out, int freespace,
+		    RADIUS_ESCAPE_STRING func)
 {
 	SQLSOCK *sqlsocket;
 	SQL_ROW row;
 	SQL_INST *inst = instance;
 	char querystr[MAX_QUERY_LEN];
+	char sqlusername[2 * MAX_STRING_LEN + 10];
 	int ret = 0;
 
 	DEBUG("rlm_sql (%s): - sql_xlat", inst->config->xlat_name);
-
+	/*
+         * Add SQL-User-Name attribute just in case it is needed
+         *  We could search the string fmt for SQL-User-Name to see if this is
+         *  needed or not
+         */
+	sql_set_user(inst, request, sqlusername, NULL);
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
@@ -230,7 +242,8 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 /*
  *	Set the SQl user name.
  */
-static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username) {
+static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username)
+{
 	VALUE_PAIR *vp=NULL;
 	char tmpuser[MAX_STRING_LEN];
 
