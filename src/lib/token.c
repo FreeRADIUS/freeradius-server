@@ -30,6 +30,7 @@ static TOKEN tokens[] = {
 	{ "+=",	T_OP_ADD,	},
 	{ "-=",	T_OP_SUB,	},
 	{ ":=",	T_OP_SET,	},
+	{ "==",	T_OP_CMP_EQ,	},
 	{ "=",	T_OP_EQ,	},
 	{ "!=",	T_OP_NE,	},
 	{ ">=",	T_OP_GE,	},
