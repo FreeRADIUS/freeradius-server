@@ -132,7 +132,6 @@ typedef struct {
 	LDAP_CONN	*conns;
 	int             ldap_debug; /* Debug flag for LDAP SDK */
 	char		*xlat_name; /* name used to xlat */
-       char            *auth_type;
 }               ldap_instance;
 
 static CONF_PARSER module_config[] = {
@@ -144,7 +143,7 @@ static CONF_PARSER module_config[] = {
 	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,timeout.tv_sec), NULL, "20"},
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "20"},
-	{"ldap_cache_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,cache_timeout), NULL, "120"},
+	{"ldap_cache_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,cache_timeout), NULL, "0"},
 	{"ldap_cache_size", PW_TYPE_INTEGER, offsetof(ldap_instance,cache_size), NULL, "0"},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance,start_tls), NULL, "no"},
@@ -164,7 +163,6 @@ static CONF_PARSER module_config[] = {
 	{"dictionary_mapping", PW_TYPE_STRING_PTR, offsetof(ldap_instance,dictionary_mapping), NULL, "${confdir}/ldap.attrmap"},
 	{"ldap_debug", PW_TYPE_INTEGER, offsetof(ldap_instance,ldap_debug), NULL, "0x0000"},
 	{"ldap_connections_number", PW_TYPE_INTEGER, offsetof(ldap_instance,num_conns), NULL, "5"},
-       {"authtype", PW_TYPE_STRING_PTR, offsetof(ldap_instance,auth_type), NULL, NULL},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -574,11 +572,12 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 		return 1;
 	}
 
-	if (inst->cache_timeout)
+	if (inst->cache_timeout >0)
 		ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
 
         if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK){
-		ldap_disable_cache(conn->ld);
+		if (inst->cache_timeout >0)
+			ldap_disable_cache(conn->ld);
                 if (res == RLM_MODULE_NOTFOUND){
                         DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found", (char *)check->strvalue);
 			ldap_release_conn(conn_id,inst->conns);
@@ -590,14 +589,16 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
         }
         if ((msg = ldap_first_entry(conn->ld, result)) == NULL){
                 DEBUG("rlm_ldap::ldap_groupcmp: ldap_first_entry() failed");
-		ldap_disable_cache(conn->ld);
+		if (inst->cache_timeout >0)
+			ldap_disable_cache(conn->ld);
 		ldap_release_conn(conn_id,inst->conns);
                 ldap_msgfree(result);
                 return 1;
         }
         if ((group_dn = ldap_get_dn(conn->ld, msg)) == NULL){
                 DEBUG("rlm_ldap:ldap_groupcmp:: ldap_get_dn() failed");
-		ldap_disable_cache(conn->ld);
+		if (inst->cache_timeout >0)
+			ldap_disable_cache(conn->ld);
 		ldap_release_conn(conn_id,inst->conns);
                 ldap_msgfree(result);
                 return 1;
@@ -607,14 +608,16 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 
         if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->groupmemb_filt, req, NULL)){
                 DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter.");
-		ldap_disable_cache(conn->ld);
+		if (inst->cache_timeout >0)
+			ldap_disable_cache(conn->ld);
 		ldap_release_conn(conn_id,inst->conns);
 		ldap_memfree(group_dn);
                 return 1;
         }
 
         if ((res = perform_search(inst, conn, group_dn, LDAP_SCOPE_BASE, filter, attrs, &result)) != RLM_MODULE_OK){
-		ldap_disable_cache(conn->ld);
+		if (inst->cache_timeout >0)
+			ldap_disable_cache(conn->ld);
 		ldap_release_conn(conn_id,inst->conns);
                 if (res == RLM_MODULE_NOTFOUND){
 			DEBUG("rlm_ldap::ldap_groupcmp: User not found in group %s",group_dn);
@@ -627,7 +630,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
         }
         else{
                 DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",group_dn);
-		ldap_disable_cache(conn->ld);
+		if (inst->cache_timeout >0)
+			ldap_disable_cache(conn->ld);
 		ldap_memfree(group_dn);
                 ldap_msgfree(result);
         }
@@ -880,7 +884,8 @@ ldap_authorize(void *instance, REQUEST * request)
 			radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
 
 		if ((res = perform_search(instance, conn, group, LDAP_SCOPE_BASE, filter, attrs, &gr_result)) != RLM_MODULE_OK) {
-			ldap_disable_cache(conn->ld);
+			if (inst->cache_timeout >0)
+				ldap_disable_cache(conn->ld);
 			ldap_msgfree(result);
 			ldap_release_conn(conn_id,inst->conns);
 			if (res == RLM_MODULE_NOTFOUND){
@@ -1002,22 +1007,11 @@ ldap_authorize(void *instance, REQUEST * request)
 
 
 	/*
-        * if authtype is present in config, it is used to overrite Auth-Type
+ 	 * Module should default to LDAP authentication if no Auth-Type
+	 * specified
 	 */
-       if (inst->auth_type){
-               if (pairfind(*check_pairs, PW_AUTHTYPE))
-                       pairdelete(check_pairs, PW_AUTHTYPE);
-               reply_tmp = pairmake("Auth-Type", inst->auth_type, T_OP_EQ);
-               rad_assert(reply_tmp != NULL);
-               pairadd(check_pairs, reply_tmp);
-       } else{
-               /*
-                * Module should default to LDAP authentication if no Auth-Type
-                * specified
-                */
-               if (pairfind(*check_pairs, PW_AUTHTYPE) == NULL)
-                       pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
-       }
+	if (pairfind(*check_pairs, PW_AUTHTYPE) == NULL)
+		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
 
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
@@ -1320,7 +1314,6 @@ ldap_detach(void *instance)
 #endif
 	xlat_unregister(inst->xlat_name,ldap_xlat);
 	free(inst->xlat_name);
-       free(inst->auth_type);
 
 	free(inst);
 
