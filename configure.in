@@ -426,6 +426,7 @@ AC_CHECK_HEADERS( \
 	sys/types.h \
 	sys/socket.h \
 	sys/time.h \
+	sys/wait.h \
 	sys/security.h \
 	prot.h \
 	sia.h \
