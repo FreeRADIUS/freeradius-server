@@ -55,6 +55,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 	sqlsocket->conn = (rlm_sql_mysql_sock *)rad_malloc(sizeof(rlm_sql_mysql_sock));
 
 	mysql_sock = sqlsocket->conn;
+	memset(mysql_sock, 0, sizeof(*mysql_sock));
 
 	radlog(L_INFO, "rlm_sql_mysql: Starting connect to MySQL server for #%d",
 			sqlsocket->id);
