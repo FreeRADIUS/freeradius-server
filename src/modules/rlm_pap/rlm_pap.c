@@ -187,15 +187,16 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	DEBUG("rlm_pap: login attempt by \"%s\" with password %s", 
 		request->username->strvalue, request->password->strvalue);
 
-	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
-		DEBUG("rlm_pap: Could not find password for user %s",request->username->strvalue);
+	if (((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL) ||
+	    (passwd_item->length == 0) || (passwd_item->strvalue[0] == 0)) {
+		DEBUG("rlm_pap: No password (or empty password) to check against for for user %s",request->username->strvalue);
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: User password not available");
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
 		return RLM_MODULE_INVALID;
 	}
 
-	DEBUG("rlm_pap: Using password %s for user %s authentication.",
+	DEBUG("rlm_pap: Using password \"%s\" for user %s authentication.",
 	      passwd_item->strvalue, request->username->strvalue);
 	
 	if (inst->sch == PAP_ENC_INVALID || inst->sch > PAP_MAX_ENC){
@@ -210,7 +211,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		case PAP_ENC_CLEAR:
 			DEBUG("rlm_pap: Using clear text password.");
 			if (strncmp((char *) passwd_item->strvalue,
-					(char *) request->password->strvalue, passwd_item->length) != 0){
+				    (char *) request->password->strvalue, passwd_item->length) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
@@ -241,8 +242,16 @@ static int pap_authenticate(void *instance, REQUEST *request)
 #endif
 			break;
 		case PAP_ENC_MD5:
-
 			DEBUG("rlm_pap: Using MD5 encryption.");
+
+			if (passwd_item->length != 32) {
+				DEBUG("rlm_pap: Configured MD5 password has incorrect length");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured MD5 password has incorrect length");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+
 			MD5Init(&md5_context);
 			MD5Update(&md5_context, request->password->strvalue, request->password->length);
 			MD5Final(digest, &md5_context);
@@ -259,6 +268,15 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		case PAP_ENC_SHA1:
 
 			DEBUG("rlm_pap: Using SHA1 encryption.");
+
+			if (passwd_item->length != 40) {
+				DEBUG("rlm_pap: Configured SHA1 password has incorrect length");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SHA1 password has incorrect length");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+
 			SHA1Init(&sha1_context);
 			SHA1Update(&sha1_context, request->password->strvalue, request->password->length);
 			SHA1Final(digest,&sha1_context);
