@@ -2,11 +2,10 @@
  * valuepair.c	Valuepair functions that are radiusd-specific
  *		and as such do not belong in the library.
  *
- * Version:	@(#)valuepair.c	 1.00  08-Aug-1999  miquels@cistron.nl
+ * Version:	$Id$
  */
 
-char valuepair2_sccsid[] =
-"@(#)valuepair.c	1.00 Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 

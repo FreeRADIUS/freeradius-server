@@ -12,7 +12,7 @@
 #include <ctype.h>
 #include "token.h"
 
-static const char rcsid[] = "$Id";
+static const char rcsid[] = "$Id$";
 
 typedef struct {
 	char *str;
