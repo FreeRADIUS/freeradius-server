@@ -28,18 +28,6 @@
 #include "eap_leap.h"
 
 
-static void leap_session_free(void **opaque)
-{
-	leap_session_t *session;
-
-	if (!opaque) return;
-
-	session = *(leap_session_t **) opaque;
-
-	free(session);
-	*opaque = NULL;
-}
-
 /*
  * send an initial eap-leap request
  * ie access challenge to the user/peer.
@@ -74,12 +62,17 @@ static int leap_initiate(void *instance, EAP_HANDLER *handler)
 	 *	of filling in the peer response.
 	 */
 	session = (leap_session_t *) handler->opaque;
-	handler->free_opaque = leap_session_free;
+	handler->free_opaque = free; /* just malloc'd memory */
 
 	session->stage = 4;	/* the next stage we're in */
 	memcpy(session->peer_challenge, reply->challenge, reply->count);
 
 	DEBUG2("  rlm_eap_leap: Successfully initiated");
+
+	/*
+	 *	The next stage to process the packet.
+	 */
+	handler->stage = AUTHENTICATE;
 
 	eapleap_free(&reply);
 	return 1;
@@ -113,8 +106,8 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = pairfind(handler->configured, PW_PASSWORD);
-	if (!password) password = pairfind(handler->configured, PW_NT_PASSWORD);
+	password = pairfind(handler->request->config_items, PW_PASSWORD);
+	if (!password) password = pairfind(handler->request->config_items, PW_NT_PASSWORD);
 	if (!password) {
 		radlog(L_INFO, "rlm_eap_leap: No User-Password or NT-Password configured for this user");
 		eapleap_free(&packet);
@@ -163,7 +156,7 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 		DEBUG2("  rlm_eap_leap: Stage 6");
 		reply = eapleap_stage6(packet, handler->request,
 				       handler->username, password,
-				       session, handler->reply_vps);
+				       session, &handler->request->reply->vps);
 		break;
 
 		/*
@@ -199,6 +192,7 @@ EAP_TYPE rlm_eap_leap = {
 	"eap_leap",
 	NULL,			/* attach */
 	leap_initiate,		/* Start the initial request, after Identity */
+	NULL,			/* authorization */
 	leap_authenticate,	/* authentication */
 	NULL,			/* detach */
 };

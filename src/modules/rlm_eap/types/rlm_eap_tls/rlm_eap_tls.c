@@ -27,33 +27,86 @@
 #include "eap_tls.h"
 
 static CONF_PARSER module_config[] = {
-	{ "rsa_key_exchange", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, rsa_key), NULL, "no" },
-	{ "dh_key_exchange", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, dh_key), NULL, "yes" },
-	{ "rsa_key_length", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, rsa_key_length), NULL, "512" },
-	{ "dh_key_length", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, dh_key_length), NULL, "512" },
-	{ "verify_depth", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, verify_depth), NULL, "0" },
-	{ "CA_path", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, ca_path), NULL, NULL },
-	{ "pem_file_type", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, file_type), NULL, "yes" },
-	{ "private_key_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, private_key_file), NULL, NULL },
-	{ "certificate_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, certificate_file), NULL, NULL },
-	{ "CA_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, ca_file), NULL, NULL },
-	{ "private_key_password", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, private_key_password), NULL, NULL },
-	{ "dh_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, dh_file), NULL, NULL },
-	{ "random_file", PW_TYPE_STRING_PTR, offsetof(EAP_TLS_CONF, random_file), NULL, NULL },
-	{ "fragment_size", PW_TYPE_INTEGER, offsetof(EAP_TLS_CONF, fragment_size), NULL, "1024" },
-	{ "include_length", PW_TYPE_BOOLEAN, offsetof(EAP_TLS_CONF, include_length), NULL, "yes" },
+	{ "rsa_key_exchange", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, rsa_key), NULL, "no" },
+	{ "dh_key_exchange", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, dh_key), NULL, "yes" },
+	{ "rsa_key_length", PW_TYPE_INTEGER,
+	  offsetof(EAP_TLS_CONF, rsa_key_length), NULL, "512" },
+	{ "dh_key_length", PW_TYPE_INTEGER,
+	  offsetof(EAP_TLS_CONF, dh_key_length), NULL, "512" },
+	{ "verify_depth", PW_TYPE_INTEGER,
+	  offsetof(EAP_TLS_CONF, verify_depth), NULL, "0" },
+	{ "CA_path", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, ca_path), NULL, NULL },
+	{ "pem_file_type", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, file_type), NULL, "yes" },
+	{ "private_key_file", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, private_key_file), NULL, NULL },
+	{ "certificate_file", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, certificate_file), NULL, NULL },
+	{ "CA_file", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, ca_file), NULL, NULL },
+	{ "private_key_password", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, private_key_password), NULL, NULL },
+	{ "dh_file", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, dh_file), NULL, NULL },
+	{ "random_file", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, random_file), NULL, NULL },
+	{ "fragment_size", PW_TYPE_INTEGER,
+	  offsetof(EAP_TLS_CONF, fragment_size), NULL, "1024" },
+	{ "include_length", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, include_length), NULL, "yes" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
 
-static int eaptls_attach(CONF_SECTION *cs, void **arg)
+static int eaptls_detach(void *arg)
+{
+	EAP_TLS_CONF	 *conf;
+	eap_tls_t 	 *inst;
+
+	inst = (eap_tls_t *) arg;
+	conf = inst->conf;
+
+	if (conf) {
+		if (conf->dh_file) free(conf->dh_file);
+		conf->dh_file = NULL;
+		if (conf->certificate_file) free(conf->certificate_file);
+		conf->certificate_file = NULL;
+		if (conf->private_key_file) free(conf->private_key_file);
+		conf->private_key_file = NULL;
+		if (conf->private_key_password) free(conf->private_key_password);
+		conf->private_key_password = NULL;
+		if (conf->random_file) free(conf->random_file);
+		conf->random_file = NULL;
+		
+		free(inst->conf);
+		inst->conf = NULL;
+	}
+
+	if (inst->ctx) SSL_CTX_free(inst->ctx);
+	inst->ctx = NULL;
+
+	free(inst);
+
+	return 0;
+}
+
+static int eaptls_attach(CONF_SECTION *cs, void **instance)
 {
 	SSL_CTX		 *ctx;
 	EAP_TLS_CONF	 *conf;
-	eap_tls_t 	 **eaptls;
+	eap_tls_t 	 *inst;
 
-	eaptls = (eap_tls_t **)arg;
+	/* Store all these values in the data structure for later references */
+	inst = (eap_tls_t *)malloc(sizeof(*inst));
+	if (!inst) {
+		radlog(L_ERR, "rlm_eap_tls: out of memory");
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
 
 	/* Parse the config file & get all the configured values */
 	conf = (EAP_TLS_CONF *)malloc(sizeof(*conf));
@@ -62,35 +115,32 @@ static int eaptls_attach(CONF_SECTION *cs, void **arg)
 		return -1;
 	}
 	memset(conf, 0, sizeof(*conf));
+
+	inst->conf = conf;
 	if (cf_section_parse(cs, conf, module_config) < 0) {
-		free(conf);
+		eaptls_detach(inst);
 		return -1;
 	}
 
 
 	/* Initialize TLS */
 	ctx = init_tls_ctx(conf);
-	if (ctx == NULL) return -1;
+	if (ctx == NULL) {
+		eaptls_detach(inst);
+		return -1;
+	}
+	inst->ctx = ctx;
 
-	if (load_dh_params(ctx, conf->dh_file) < 0) return -1;
-	if (generate_eph_rsa_key(ctx) < 0) return -1;
-
-	/* Store all these values in the data structure for later references */
-	*eaptls = (eap_tls_t *)malloc(sizeof(eap_tls_t));
-	if (*eaptls == NULL) {
-		radlog(L_ERR, "rlm_eap_tls: out of memory");
-
-		free(conf->dh_file);
-		free(conf->certificate_file);
-		free(conf->private_key_file);
-		free(conf->private_key_password);
-		free(conf);
+	if (load_dh_params(ctx, conf->dh_file) < 0) {
+		eaptls_detach(inst);
+		return -1;
+	}
+	if (generate_eph_rsa_key(ctx) < 0) {
+		eaptls_detach(inst);
 		return -1;
 	}
 
-	radlog(L_ERR, "rlm_eap_tls: conf N ctx stored ");
-	(*eaptls)->conf = conf;
-	(*eaptls)->ctx = ctx;
+	*instance = inst;
 
 	return 0;
 }
@@ -153,6 +203,11 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	if (status == 0)
 		return 0;
 
+	/*
+	 *	The next stage to process the packet.
+	 */
+	handler->stage = AUTHENTICATE;
+
 	return 1;
 }
 
@@ -210,37 +265,6 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 	return 1;
 }
 
-static int eaptls_detach(void **arg)
-{
-	EAP_TLS_CONF	 *conf;
-	eap_tls_t 	 **eaptls;
-
-	eaptls = (eap_tls_t **)arg;
-	conf = (*eaptls)->conf;
-
-	free(conf->dh_file);
-       	conf->dh_file = NULL;
-	free(conf->certificate_file);
-       	conf->certificate_file = NULL;
-	free(conf->private_key_file);
-       	conf->private_key_file = NULL;
-	free(conf->private_key_password);
-       	conf->private_key_password = NULL;
-	free(conf->random_file);
-       	conf->random_file = NULL;
-
-	free((*eaptls)->conf);
-	(*eaptls)->conf = NULL;
-
-	SSL_CTX_free((*eaptls)->ctx);
-	(*eaptls)->ctx = NULL;
-
-	free(*eaptls);
-	*eaptls = NULL;
-
-	return 0;
-}
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -248,7 +272,8 @@ static int eaptls_detach(void **arg)
 EAP_TYPE rlm_eap_tls = {
 	"eap_tls",
 	eaptls_attach,			/* attach */
-	eaptls_initiate,			/* Start the initial request, after Identity */
+	eaptls_initiate,		/* Start the initial request */
+	NULL,				/* authorization */
 	eaptls_authenticate,		/* authentication */
 	eaptls_detach			/* detach */
 };

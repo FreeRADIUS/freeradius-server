@@ -48,57 +48,47 @@ typedef struct eap_packet_t {
 	unsigned char	data[1];
 } eap_packet_t;
 
-/*
- * Config stuff that rlm_eap depends on.
- */
-typedef struct eap_conf {
-	char	*default_eap_type;
-	int		timer_limit;
-} EAP_CONF;
-
-/*
- * Currently there are only 2 types
- * of operations defined, 
- * apart from attach & detach for each EAP-Type.
- */
-typedef enum operation_t {
-	INITIATE = 0,
-	AUTHENTICATE
-} operation_t;
 
 /*
  * Keep track of which sub modules we've loaded.
  */
 typedef struct eap_types_t {
-	struct eap_types_t  	*next;
+	const char	*typename;
 	int		typeid;
-	char	typename[NAME_LEN];
 	EAP_TYPE       	*type;
 	lt_dlhandle     handle;
 	CONF_SECTION	*cs;
-	void		*type_stuff;
+	void		*type_data;
 } EAP_TYPES;
 
 /*
  * This structure contains eap's persistent data.
- * echolist = EAP_HANDLERs 
+ * sessions[] = EAP_HANDLERS, keyed by the first octet of the State
+ *              attribute, and composed of a linked list, ordered from
+ *              oldest to newest.
  * typelist = All supported EAP-Types
  * conf     = configured values for rlm_eap only.
  */
 typedef struct rlm_eap_t {
-	EAP_HANDLER 	*echolist;
-	EAP_TYPES 	*typelist;
-	EAP_CONF	*conf;
+	EAP_HANDLER 	*sessions[256];
+	EAP_TYPES 	*types[PW_EAP_MAX_TYPES + 1];
+
+	/*
+	 *	Configuration items.
+	 */
+	char		*default_eap_type;
+	int		timer_limit;
+	int		default_eap_id;
 } rlm_eap_t;
 
 /* function definitions */
 /* EAP-Type */
+int		eaptype_name2id(const char *name);
 EAP_TYPES 	*eaptype_byid(EAP_TYPES **list, int type);
 EAP_TYPES 	*eaptype_byname(EAP_TYPES **list, const char *name);
-int      	eaptype_load(EAP_TYPES **tl, const char *tname, CONF_SECTION *cs);
-int       	eaptype_select(EAP_TYPES *tl, EAP_HANDLER *h, char *eaptype);
-int       	eaptype_call(int type, operation_t act, EAP_TYPES *tl, EAP_HANDLER *h);
-void		eaptype_freelist(EAP_TYPES **tl);
+int      	eaptype_load(EAP_TYPES **type, int id, CONF_SECTION *cs);
+int       	eaptype_select(rlm_eap_t *inst, EAP_HANDLER *h);
+void		eaptype_free(EAP_TYPES *tl);
 
 /* EAP */
 int  		eap_start(REQUEST *request);
@@ -108,11 +98,8 @@ int 		eap_validation(eap_packet_t *eap_msg);
 int 		eap_wireformat(EAP_PACKET *packet);
 int 		eap_compose(REQUEST *request, EAP_DS *eap_ds);
 eap_packet_t 	*eap_attribute(VALUE_PAIR *vps);
-EAP_HANDLER 	*eap_handler(EAP_HANDLER **list, eap_packet_t **eap_msg, REQUEST *request);
+EAP_HANDLER 	*eap_handler(rlm_eap_t *inst, eap_packet_t **eap_msg, REQUEST *request);
 char 		*eap_identity(eap_packet_t *eap_packet);
-VALUE_PAIR 	*eap_useridentity(EAP_HANDLER *list, eap_packet_t *eap_packet, unsigned char id[]);
-unsigned char 	*eap_generateid(REQUEST *request, unsigned char response_id);
-unsigned char 	*eap_regenerateid(REQUEST *request, unsigned char response_id);
 
 /* Memory Management */
 EAP_PACKET  	*eap_packet_alloc(void);
@@ -122,15 +109,13 @@ void	    	eap_packet_free(EAP_PACKET **eap_packet);
 void	    	eap_ds_free(EAP_DS **eap_ds);
 void	    	eap_handler_free(EAP_HANDLER **handler);
 
-int 	    	eaplist_add(EAP_HANDLER **list, EAP_HANDLER *handler);
-void	    	eaplist_clean(EAP_HANDLER **list, time_t limit);
-void	    	eaplist_free(EAP_HANDLER **list);
-EAP_HANDLER 	*eaplist_isreply(EAP_HANDLER **list, unsigned char id[]);
-EAP_HANDLER 	*eaplist_findhandler(EAP_HANDLER *list, unsigned char id[]);
+int 	    	eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler);
+void	    	eaplist_free(rlm_eap_t *inst);
+EAP_HANDLER 	*eaplist_find(rlm_eap_t *inst, REQUEST *request, int id);
 
 /* State */
 void	    	generate_key(void);
-VALUE_PAIR  	*generate_state(void);
-int	    	verify_state(VALUE_PAIR *state);
+VALUE_PAIR  	*generate_state(time_t timestamp);
+int	    	verify_state(VALUE_PAIR *state, time_t timestamp);
 
 #endif /*_RLM_EAP_H*/

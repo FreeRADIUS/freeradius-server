@@ -334,7 +334,7 @@ int 		tls_handshake_send(tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *tls_session);
 
 /* Session */
-void 		session_free(void **ssn);
+void 		session_free(void *ssn);
 void 		session_close(tls_session_t *ssn);
 void 		session_init(tls_session_t *ssn);
 

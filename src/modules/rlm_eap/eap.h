@@ -38,6 +38,7 @@
 #include "radiusd.h"
 #include "modules.h"
 
+#include "rad_assert.h"
 
 #define PW_EAP_REQUEST		1
 #define PW_EAP_RESPONSE		2
@@ -97,15 +98,34 @@ typedef struct eap_ds {
 } EAP_DS;
 
 /*
+ * Currently there are only 2 types
+ * of operations defined, 
+ * apart from attach & detach for each EAP-Type.
+ */
+typedef enum operation_t {
+	INITIATE = 0,
+	AUTHORIZE,
+	AUTHENTICATE
+} operation_t;
+
+
+/*
  * EAP_HANDLER is the interface for any EAP-Type.
  * Each handler contains information for one specific EAP-Type.
  * This way we don't need to change any interfaces in future.
  * It is also a list of EAP-request handlers waiting for EAP-response
+ * eap_id = copy of the eap packet we sent to the 
  *
- * id = Length + Request-ID + State + (NAS-IP-Address|NAS-Identifier)
+ * next = pointer to next
+ * state = state attribute from the reply we sent
+ * state_len = length of data in the state attribute.
+ * src_ipaddr = client which sent us the RADIUS request containing
+ *              this EAP conversation.
+ * eap_id = copy of EAP id we sent to the client.
+ * timestamp  = timestamp when this handler was last used.
  * identity = Identity, as obtained, from EAP-Identity response.
  * username = as obtained in Radius request, It might differ from identity.
- * configured = List of configured values for this user.
+ * request = RADIUS request data structure
  * prev_eapds = Previous EAP request, for which eap_ds contains the response.
  * eap_ds   = Current EAP response.
  * opaque   = EAP-Type holds some data that corresponds to the current
@@ -116,29 +136,32 @@ typedef struct eap_ds {
  * 		to avoid any memory leaks in opaque
  *		Hence this pointer should be provided by the EAP-Type
  *		if opaque is not NULL
- * timestamp  = timestamp when this handler is created.
  * status   = finished/onhold/..
  */
+#define EAP_STATE_LEN (AUTH_VECTOR_LEN)
 typedef struct _eap_handler {
-	unsigned char	*id;
-
-	VALUE_PAIR	*username;
-	VALUE_PAIR	*configured;
-	REQUEST		*request;
-        VALUE_PAIR      **reply_vps;
-
-	char	*identity;
-
-	EAP_DS 	*prev_eapds;
-	EAP_DS 	*eap_ds;
-
-	void 	*opaque;
-	void 	(*free_opaque)(void **opaque);
-
-	time_t	timestamp;
-	int	status;
-
 	struct _eap_handler *next;
+
+	uint8_t		state[EAP_STATE_LEN];
+	uint32_t	src_ipaddr;
+	int		eap_id;
+
+	time_t		timestamp;
+
+	VALUE_PAIR	*username; /* SHOULD get rid of this! */
+	REQUEST		*request;
+
+	char		*identity; /* user identity? Huh? */
+
+	EAP_DS 		*prev_eapds;
+	EAP_DS 		*eap_ds;
+
+	void 		*opaque;
+	void 		(*free_opaque)(void *opaque);
+
+	int		status;
+
+	int		stage;
 } EAP_HANDLER;
 
 /* 
@@ -146,10 +169,11 @@ typedef struct _eap_handler {
  */
 typedef struct eap_type_t {
 	const 	char *name;
-	int	(*attach)(CONF_SECTION *conf, void **type_arg);
-	int	(*initiate)(void *type_arg, EAP_HANDLER *handler);
-	int	(*authenticate)(void *type_arg, EAP_HANDLER *handler);
-	int	(*detach)(void **type_arg);
+	int	(*attach)(CONF_SECTION *conf, void **type_data);
+	int	(*initiate)(void *type_data, EAP_HANDLER *handler);
+	int	(*authorize)(void *type_data, EAP_HANDLER *handler);
+	int	(*authenticate)(void *type_data, EAP_HANDLER *handler);
+	int	(*detach)(void *type_data);
 } EAP_TYPE;
 
 #endif /*_EAP_H*/

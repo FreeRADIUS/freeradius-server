@@ -122,24 +122,20 @@ void eap_handler_free(EAP_HANDLER **handler_p)
 		return;
 
 	handler = *handler_p;
-	if (handler->id) {
-		free(handler->id);
-		handler->id = NULL;
-	}
-
 	if (handler->identity) {
 		free(handler->identity);
 		handler->identity = NULL;
 	}
 
 	if (handler->username) pairfree(&(handler->username));
-	if (handler->configured) pairfree(&(handler->configured));
 
 	if (handler->prev_eapds) eap_ds_free(&(handler->prev_eapds));
 	if (handler->eap_ds) eap_ds_free(&(handler->eap_ds));
 
-	if ((handler->opaque) && (handler->free_opaque))
-		handler->free_opaque(&(handler->opaque));
+	if ((handler->opaque) && (handler->free_opaque)) {
+		handler->free_opaque(handler->opaque);
+		handler->opaque = NULL;
+	}
 	else if ((handler->opaque) && (handler->free_opaque == NULL))
                 radlog(L_ERR, "Possible memory leak ...");
 
@@ -151,114 +147,185 @@ void eap_handler_free(EAP_HANDLER **handler_p)
 	*handler_p = NULL;
 }
 
-void eaptype_freelist(EAP_TYPES **i)
+void eaptype_free(EAP_TYPES *i)
 {
-	EAP_TYPES       *c, *next;
-
-	c = *i;
-	while (c) {
-		next = c->next;
-		if(c->type->detach) (c->type->detach)(&(c->type_stuff));
-		if (c->handle) lt_dlclose(c->handle);
-		free(c);
-		c = next;
-	}
-	*i = NULL;
+	if (i->type->detach) (i->type->detach)(i->type_data);
+	i->type_data = NULL;
+	if (i->handle) lt_dlclose(i->handle);
 }
 
-void eaplist_free(EAP_HANDLER **list)
+void eaplist_free(rlm_eap_t *inst)
 {
-	EAP_HANDLER *node, *next;
+	int i;
 
-	if (!list) return;
+	/*
+	 *	The sessions are split out into an array, which makes
+	 *	looking them up a bit faster.
+	 */
+	for (i = 0; i < 256; i++) {
+		EAP_HANDLER *node, *next;
 
-	node = *list;
-	while (node) {
-		next = node->next;
-		eap_handler_free(&node);
-		node = next;
+		if (inst->sessions[i]) continue;
+
+		node = inst->sessions[i];
+		while (node) {
+			next = node->next;
+			eap_handler_free(&node);
+			node = next;
+		}
+		
+		inst->sessions[i] = NULL;
 	}
-
-	*list = NULL;
 }
 
 /*
- * TODO: For now this is a plain list.
- *  It can be hashed on EAP-Type, EAP-Id
+ *	Add a handler to the set of active sessions.
+ *
+ *	Since we're adding it to the list, we guess that this means
+ *	the packet needs a State attribute.  So add one.
  */
-int eaplist_add(EAP_HANDLER **list, EAP_HANDLER *node)
+int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
 	EAP_HANDLER	**last;
+	VALUE_PAIR	*state;
 
-	if (node == NULL) return 0;
-	
-	last = list;
+	rad_assert(handler != NULL);
+	rad_assert(handler->request != NULL);
+
+	/*
+	 *	Generate State, since we've been asked to add it to
+	 *	the list.
+	 */
+	state = generate_state(handler->request->timestamp);
+	pairadd(&(handler->request->reply->vps), state);
+		
+	/*
+	 *	Create a unique 'key' for the handler, based
+	 *	on State, Client-IP-Address, and EAP ID.
+	 */
+	rad_assert(state->length == EAP_STATE_LEN);
+
+	memcpy(handler->state, state->strvalue, sizeof(handler->state));
+	handler->src_ipaddr = handler->request->packet->src_ipaddr;
+	handler->eap_id = handler->eap_ds->request->id;
+
+	/*
+	 *	We key the array based on the challenge, which is
+	 *	a random number.  This "fans out" the sessions, and
+	 *	helps to minimize the amount of work we've got to do
+	 *	under heavy load.
+	 */
+	last = &(inst->sessions[state->strvalue[0]]);
 	while (*last) last = &((*last)->next);
 	
-	node->timestamp = time(NULL);
-	node->status = 1;
-	node->next = NULL;
+	/*
+	 *	The time at which this request was made was the time
+	 *	at which it was received by the RADIUS server.
+	 */
+	handler->timestamp = handler->request->timestamp;
+	handler->status = 1;
+	handler->next = NULL;
 
-	*last = node;
+	/*
+	 *	We don't need this any more.
+	 */
+	handler->request = NULL;
+
+	*last = handler;
 	return 1;
 }
 
 /*
- * List should contain only recent packets with life < x seconds.
+ *	Find a a previous EAP-Request sent by us, which matches
+ *	the current EAP-Response.
+ *
+ *	Then, release the handle from the list, and return it to
+ *	the caller.
+ *
+ *	Also since we fill the eap_ds with the present EAP-Response we
+ *	got to free the prev_eapds & move the eap_ds to prev_eapds
  */
-void eaplist_clean(EAP_HANDLER **first, time_t limit)
+EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request, int eap_id)
 {
-	time_t  now;
-        EAP_HANDLER *node, *next;
-        EAP_HANDLER **last = first;
+	EAP_HANDLER	*node, *next, *ret = NULL;
+	VALUE_PAIR	*state;
+	EAP_HANDLER	**first,  **last;
 
-	now = time(NULL);
+	/*
+	 *	We key the sessions off of the 'state' attribute, so it
+	 *	must exist.
+	 */
+	state = pairfind(request->packet->vps, PW_STATE);
+	if (!state ||
+	    (state->length != EAP_STATE_LEN)) {
+		return NULL;
+	}
+
+	last = first = &(inst->sessions[state->strvalue[0]]);
 
 	for (node = *first; node; node = next) {
 		next = node->next;
-		if ((now - node->timestamp) > limit) {
-			DEBUG2("  rlm_eap:  list_clean deleted one item");
+
+		/*
+		 *	If the time on this entry has expired, 
+		 *	delete it.  We do this while walking the list,
+		 *	in order to spread out the work of deleting old
+		 *	sessions.
+		 */
+		if ((request->timestamp - node->timestamp) > inst->timer_limit) {
 			*last = next;
 			eap_handler_free(&node);
-		} else  {
-			last = &(node->next);
+			continue;
 		}
-	}
-}
 
-/*
- * If the present EAP-Response is a reply to the previous
- * EAP-Request sent by us, then return the EAP_HANDLER
- * only after releasing from the eaplist
- * Also since we fill the eap_ds with the present EAP-Response
- * we got to free the prev_eapds & move the eap_ds to prev_eapds
- */
-EAP_HANDLER *eaplist_isreply(EAP_HANDLER **first, unsigned char id[])
-{
-	EAP_HANDLER *node, *next, *ret = NULL;
-	EAP_HANDLER **last = first;
-
-	for (node = *first; node; node = next) {
-		next = node->next;
-		if (memcmp(node->id, id, id[0]) == 0) {
+		/*
+		 *	Find the previous part of the same conversation,
+		 *	keying off of the EAP ID, the client IP, and
+		 *	the State attribute.
+		 *
+		 *	If we've found a conversation, then we don't
+		 *	have to check entries later in the list for
+		 *	timeout, as they're guaranteed to be newer than
+		 *	the one we found.
+		 */
+		if ((node->eap_id == eap_id) &&
+		    (node->src_ipaddr == request->packet->src_ipaddr) &&
+		    (memcmp(node->state, state->strvalue, state->length) == 0)) {
+			/*
+			 *	Check against replays.  The client can
+			 *	re-play a State attribute verbatim, so
+			 *	we wish to ensure that the attribute falls
+			 *	within the valid time window, which is
+			 *	the second at which it was sent out.
+			 */
+			if (verify_state(state, node->timestamp) != 0) {
+				radlog(L_ERR, "rlm_eap: State verification failed.");
+				return NULL;
+			}
+			
 			DEBUG2("  rlm_eap: Request found, released from the list");
-			/* detach the node from the list */
+			/*
+			 *	detach the node from the list
+			 */
 			*last = next;
 			node->next = NULL;
 
-			/* clean up the unwanted stuff before returning */
+			/*
+			 *	Don't bother updating handler->request, etc.
+			 *	eap_handler() will do that for us.
+			 */
 
-			/* Clear the handler Id */
-			free(node->id);
-			node->id = NULL;
-
-			/* Move the current EAP to prev EAP after clearing prev_eap */
+			/*
+			 *	Remember what the previous request was.
+			 */
 			eap_ds_free(&(node->prev_eapds));
 			node->prev_eapds = node->eap_ds;
 			node->eap_ds = NULL;
 
-			ret = node;
-			break;
+			/*
+			 *	And return it to the caller.
+			 */
+			return node;
 		} else  {
 			last = &(node->next);
 		}
@@ -268,22 +335,4 @@ EAP_HANDLER *eaplist_isreply(EAP_HANDLER **first, unsigned char id[])
 		DEBUG2("  rlm_eap: Request not found in the list");
 	}
 	return ret;
-}
-
-EAP_HANDLER *eaplist_findhandler(EAP_HANDLER *list, unsigned char id[])
-{
-	EAP_HANDLER *node;
-	node = list;
-	
-	while (node) {
-		/*
-		 * Match is identified by the same IDs 
-		 */
-		if (memcmp(node->id, id, id[0]) == 0) {
-			DEBUG2("  rlm_eap: EAP Handler found in the list ");
-			return node;
-		}
-		node = node->next;
-	}
-	return NULL;
 }

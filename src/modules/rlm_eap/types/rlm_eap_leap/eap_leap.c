@@ -170,8 +170,12 @@ LEAP_PACKET *eapleap_extract(EAP_DS *eap_ds)
 
 	/*
 	 *	The User-Name comes after the challenge.
+	 *
+	 *	Length of the EAP-LEAP portion of the packet, minus
+	 *	3 octets for data, minus the challenge size, is the
+	 *	length of the user name.
 	 */
-	name_len = eap_ds->response->length - 3 - packet->count;
+	name_len = packet->length - 3 - packet->count;
 	if (name_len > 0) {
 		packet->name = malloc(name_len + 1);
 		if (!packet->name) {

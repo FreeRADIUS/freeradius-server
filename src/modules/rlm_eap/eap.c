@@ -85,32 +85,38 @@ static const char *eap_types[] = {
 };
 
 /*
+ *	Return an EAP-Type for a particular name.
+ */
+int eaptype_name2id(const char *name)
+{
+	int i;
+
+	for (i = 0; i <= PW_EAP_MAX_TYPES; i++) {
+		if (strcmp(name, eap_types[i]) == 0) {
+			return i;
+		}
+	}
+	
+	return -1;
+}
+
+/*
  * Load all the required eap authentication types.
  * Get all the supported EAP-types from config file. 
  */
-int eaptype_load(EAP_TYPES **type_list, const char *type_name,
-		 CONF_SECTION *cs)
+int eaptype_load(EAP_TYPES **type, int id, CONF_SECTION *cs)
 {
-	EAP_TYPES **last, *node;
-	lt_dlhandle handle;
-	char auth_type_name[NAME_LEN];
-	int i;
+	char		buffer[64];
+	lt_dlhandle	handle;
+	EAP_TYPES	*node;
 
-	snprintf(auth_type_name, sizeof(auth_type_name), "rlm_eap_%s", type_name);
-
-	last = type_list;
-	/* Go to the end of the EAP-Type list, if it is not already loaded */
-	for (node = *type_list; node != NULL; node = node->next) {
-		if (strcmp(node->typename, auth_type_name) == 0)
-			return 0;
-		last = &node->next;
-	}
+	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eap_types[id]);
 
 	/* Link the loaded EAP-Type */
-	handle = lt_dlopenext(auth_type_name);
+	handle = lt_dlopenext(buffer);
 	if (handle == NULL) {
 		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s", 
-				type_name, lt_dlerror());
+				eap_types[id], lt_dlerror());
 		return -1;
 	}
 
@@ -120,103 +126,70 @@ int eaptype_load(EAP_TYPES **type_list, const char *type_name,
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return -1;
 	}
+	memset(node, 0, sizeof(*node));
 
 	/* fill in the structure */
-	node->next = NULL;
 	node->handle = handle;
 	node->cs = cs;
-	node->typeid = 0;
-	memset(node->typename, 0, NAME_LEN);
-	node->type_stuff = NULL;
-	strNcpy(node->typename, type_name, sizeof(node->typename));
-	for (i = PW_EAP_MAX_TYPES; i > 0; i--) {
-		if (!strcmp(type_name, eap_types[i])) {
-			node->typeid = i;
-			break;
-		}
-	}
-
-	if (node->typeid == 0) {
-		radlog(L_ERR, "rlm_eap: Invalid type name %s cannot be linked", type_name);
-		free(node);
-		return -1;
-	}
+	node->typeid = id;
+	node->typename = eap_types[id];
+	node->type_data = NULL;
 	
-	node->type = (EAP_TYPE *)lt_dlsym(node->handle, auth_type_name);
+	node->type = (EAP_TYPE *)lt_dlsym(node->handle, buffer);
 	if (!node->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to %s structure in %s: %s",
-				auth_type_name, type_name, lt_dlerror());
+				buffer, eap_types[id], lt_dlerror());
 		lt_dlclose(node->handle);	/* ignore any errors */
 		free(node);
 		return -1;
 	}
 	if ((node->type->attach) && 
-		((node->type->attach)(node->cs, &(node->type_stuff)) < 0)) {
+		((node->type->attach)(node->cs, &(node->type_data)) < 0)) {
 
-		radlog(L_ERR, "rlm_eap: Failed to initialize the type %s", type_name);
+		radlog(L_ERR, "rlm_eap: Failed to initialize the type %s",
+		       eap_types[id]);
 		lt_dlclose(node->handle);
 		free(node);
 		return -1;
 	}
 
-	DEBUG("rlm_eap: Loaded and initialized the type %s", type_name);
-	*last = node;
+	DEBUG("rlm_eap: Loaded and initialized the type %s", eap_types[id]);
+	*type = node;
 	return 0;
 }
 
-/*
- * Get the handle for the requested authentication type, 
- * if supported.
- */
-EAP_TYPES *eaptype_byid(EAP_TYPES **list, int type)
-{
-	EAP_TYPES *node;
-	for(node = *list; node != NULL; node = node->next) {
-		if (node->typeid == type)
-			return node;
-	}
-	return NULL;
-}
-
-EAP_TYPES *eaptype_byname(EAP_TYPES **list, const char *name)
-{
-	EAP_TYPES *node;
-	for(node = *list; node != NULL; node = node->next) {
-		if (strcmp(node->typename, name) == 0)
-			return node;
-	}
-	return NULL;
-}
 
 /*
  * Call the appropriate handle with the right eap_type.
  */
-int eaptype_call(int eap_type, operation_t action, 
-	EAP_TYPES *type_list, EAP_HANDLER *handler)
+static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 {
-	EAP_TYPES *atype;
-
-	atype = eaptype_byid(&type_list, eap_type);
-	if (!atype) {
-		radlog(L_ERR, "rlm_eap: Unsupported EAP_TYPE %d",
-			handler->eap_ds->response->type.type);
-		return 0;
-	}
-
 	DEBUG2("  rlm_eap: processing type %s", atype->typename);
 
-	switch (action) {
+	switch (handler->stage) {
 	case INITIATE:
-		if (!atype->type->initiate(atype->type_stuff, handler))
+		if (!atype->type->initiate(atype->type_data, handler))
 			return 0;
 		break;
+
+	case AUTHORIZE:
+		/*
+		 *   The called function updates the EAP reply packet.
+		 */
+		if (!atype->type->authorize ||
+		    !atype->type->authorize(atype->type_data, handler))
+			return 0;
+		break;
+
 	case AUTHENTICATE:
 		/*
-		 * when it returns, eap_ds->reply is expected to have complete info
+		 *   The called function updates the EAP reply packet.
 		 */
-		if (!atype->type->authenticate(atype->type_stuff, handler))
+		if (!atype->type->authenticate ||
+		    !atype->type->authenticate(atype->type_data, handler))
 			return 0;
 		break;
+
 	default:
 		/* Should never enter here */
 		radlog(L_DBG, "rlm_eap: Invalid operation  on eap_type");
@@ -230,27 +203,27 @@ int eaptype_call(int eap_type, operation_t action,
  * Default to the configured EAP-Type 
  * for all Unsupported EAP-Types 
  */
-int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
+int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
-	int type = 0, i;
 	eaptype_t *eaptype;
 
-	for (i = PW_EAP_MAX_TYPES; i > 0; i--) {
-		if (strcmp(conftype, eap_types[i]) == 0) {
-			type = i;
-			break;
-		}
-	}
-
-	if (type == 0) {
-		radlog(L_ERR, "rlm_eap: Configured  EAP_TYPE is not supported");
-	}
-
 	eaptype = &handler->eap_ds->response->type;
+
+	/*
+	 *	Don't trust anyone.
+	 */
+	if ((eaptype->type == 0) ||
+	    (eaptype->type > PW_EAP_MAX_TYPES)) {
+		return EAP_INVALID;
+	}
+
 	switch(eaptype->type) {
 	case PW_EAP_IDENTITY:
 		DEBUG2("  rlm_eap: EAP Identity");
-		if (eaptype_call(type, INITIATE, type_list, handler) == 0)
+	do_default_type:
+		handler->stage = INITIATE;
+		if (eaptype_call(inst->types[inst->default_eap_id],
+				 handler) == 0)
 			return EAP_INVALID;
 			break;
 
@@ -260,9 +233,19 @@ int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
 		 * It is invalid to request identity, notification & nak in nak
 		 */
 		if ((eaptype->data != NULL) &&
-			(eaptype->data[0] < PW_EAP_MD5)) {
+		    (eaptype->data[0] < PW_EAP_MD5)) {
 			return EAP_INVALID;
 		}
+
+		/*
+		 *	Delete old data, if necessary.
+		 */
+		if (handler->opaque && handler->free_opaque) {
+			handler->free_opaque(handler->opaque);
+			handler->free_opaque = NULL;
+			handler->opaque = NULL;
+		}
+		handler->stage = INITIATE;
 
 		/*
 		 *	The one byte of NAK data is the preferred EAP type
@@ -272,23 +255,27 @@ int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
 		case PW_EAP_MD5:
 		case PW_EAP_TLS:
 		case PW_EAP_LEAP:
+			DEBUG2("  rlm_eap: EAP_TYPE - %s",
+				eap_types[eaptype->data[0]]);
+
 			/*
-			 * eap-type specified in typdata is supported
+			 *	Call the type.
 			 */
-			if (eaptype_call(eaptype->data[0],
-				INITIATE, type_list, handler) == 0)
+			if (eaptype_call(inst->types[eaptype->data[0]],
+					 handler) == 0)
 				return EAP_INVALID;
+		  
 			break;
 		default :
-			DEBUG2("  rlm_eap: Unknown EAP type %d, reverting to default_eap_type",
-			       eaptype->data[0]);
+			DEBUG2("  rlm_eap: Unknown EAP type %d, reverting to default_eap_type %s",
+			       eaptype->data[0], inst->default_eap_type);
+
 			/*
 			 * Unsupported type, default to configured one.
 			 * or rather reject it
 			 */
 			/* handler->eap_ds->request->code = PW_EAP_FAILURE; */
-			if (eaptype_call(type, INITIATE, type_list, handler) == 0)
-				return EAP_INVALID;
+			goto do_default_type;
 			break;
 		}
 		break;
@@ -300,10 +287,11 @@ int eaptype_select(EAP_TYPES *type_list, EAP_HANDLER *handler, char *conftype)
 		default:
 			DEBUG2("  rlm_eap: EAP_TYPE - %s",
 				eap_types[eaptype->type]);
-			if (eaptype_call(eaptype->type, AUTHENTICATE,
-				type_list, handler) == 0) {
+
+			rad_assert(handler->stage == AUTHENTICATE);
+			if (eaptype_call(inst->types[eaptype->type],
+					 handler) == 0)
 				return EAP_INVALID;
-		}
 		break;
 	}
 	return EAP_OK;
@@ -401,9 +389,10 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 }
 
 /*
- * EAP packet format to be sent over the wire
- * ie code+id+length+data where data = null/type+typedata
- * based on code.
+ *	EAP packet format to be sent over the wire
+ *
+ *	i.e. code+id+length+data where data = null/type+typedata
+ *	based on code.
  */
 int eap_wireformat(EAP_PACKET *reply)
 {
@@ -437,8 +426,11 @@ int eap_wireformat(EAP_PACKET *reply)
 
 		/*
 		 * Here since we cannot know the typedata format and length
+		 *
 		 * Type_data is expected to be wired by each EAP-Type
-		 * Zero length/No typedata is supported as long as type is defined
+		 *
+		 * Zero length/No typedata is supported as long as
+		 * type is defined
 		 */
 		if (reply->type.data && reply->type.length > 0) {
 			memcpy(&hdr->data[1], reply->type.data, reply->type.length);
@@ -451,10 +443,11 @@ int eap_wireformat(EAP_PACKET *reply)
 }
 
 /*
- * compose EAP reply packet in EAP-Message attr of RADIUS.
- * If EAP exceeds 253, frame it in multiple EAP-Message attrs.
- * Set the RADIUS reply codes based on EAP request codes
- * Append any additonal VPs to RADIUS reply
+ *	compose EAP reply packet in EAP-Message attr of RADIUS.  If
+ *	EAP exceeds 253, frame it in multiple EAP-Message attrs.
+ *
+ *	Set the RADIUS reply codes based on EAP request codes.  Append
+ *	any additonal VPs to RADIUS reply
  */
 int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 {
@@ -465,16 +458,16 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 	eap_packet_t *eap_packet;
 	unsigned char 	*ptr;
 	EAP_PACKET *reply = eap_ds->request;
+	int rcode;
 
 	/*
-	 * ID serves to suppport request/response
-	 * retransmission in the EAP layer and as
-	 * such must be different for 'adjacent'
-	 * packets except in case of success/failure-replies.
+	 *	ID serves to suppport request/response
+	 *	retransmission in the EAP layer and as such must be
+	 *	different for 'adjacent' packets except in case of
+	 *	success/failure-replies.
 	 *
-	 * RFC2716 (EAP_TLS) requires this to be
-	 * incremented, RFC2284 only makes the above-
-	 * mentioned restriction.
+	 *	RFC2716 (EAP_TLS) requires this to be incremented,
+	 *	RFC2284 only makes the above- mentioned restriction.
 	 */
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	rq = (EAP_PACKET *)eap_msg->strvalue;
@@ -500,7 +493,7 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 	}
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
-		return EAP_INVALID;
+		return RLM_MODULE_INVALID;
 	}
 	eap_packet = (eap_packet_t *)reply->packet;
 
@@ -544,26 +537,21 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 		pairadd(&(request->reply->vps), vp);
 	}
 
-	/*
-	 * Generate State, only if it not Identity request
-	 */ 
-	if ((eap_packet->code == PW_EAP_REQUEST) &&
-	    (eap_packet->data[0] >= PW_EAP_MD5)) {
-		vp = generate_state();
-		pairadd(&(request->reply->vps), vp);
-	}
-		
 	/* Set request reply code, but only if it's not already set. */
+	rcode = RLM_MODULE_OK;
 	if (!request->reply->code) switch(reply->code) {
 	case PW_EAP_RESPONSE:
 	case PW_EAP_SUCCESS:
 		request->reply->code = PW_AUTHENTICATION_ACK;
+		rcode = RLM_MODULE_HANDLED;
 		break;
 	case PW_EAP_FAILURE:
 		request->reply->code = PW_AUTHENTICATION_REJECT;
+		rcode = RLM_MODULE_REJECT;
 		break;
 	case PW_EAP_REQUEST:
 		request->reply->code = PW_ACCESS_CHALLENGE;
+		rcode = RLM_MODULE_HANDLED;
 		break;
 	default:
 		/* Should never enter here */
@@ -571,7 +559,8 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		break;
 	}
-	return 0;
+
+	return rcode;
 }
 
 /*
@@ -705,29 +694,6 @@ int eap_validation(eap_packet_t *eap_packet)
 
 
 /*
- *  Get the user Identity if at all it is available with us.
- */
-VALUE_PAIR *eap_useridentity(EAP_HANDLER *list, eap_packet_t *eap_packet, unsigned char id[])
-{
-	char *un;
-	VALUE_PAIR *username;
-	EAP_HANDLER *handler;
-
-	if ((un = eap_identity(eap_packet)) != NULL) {
-		username = pairmake("User-Name", un, T_OP_EQ);
-		free(un);
-		return username;
-	}
-
-	/* Get the handler from the list, if present */
-	handler = eaplist_findhandler(list, id);
-	if (handler)
-		return pairmake("User-Name", handler->identity, T_OP_EQ);
-	return NULL;
-}
-
-
-/*
  *  Get the user Identity only from EAP-Identity packets
  */
 char *eap_identity(eap_packet_t *eap_packet)
@@ -737,8 +703,8 @@ char *eap_identity(eap_packet_t *eap_packet)
 	char *identity;
 
 	if ((eap_packet == NULL) ||
-		(eap_packet->code != PW_EAP_RESPONSE) ||
-		(eap_packet->data[0] != PW_EAP_IDENTITY)) {
+	    (eap_packet->code != PW_EAP_RESPONSE) ||
+	    (eap_packet->data[0] != PW_EAP_IDENTITY)) {
 		return NULL;
 	}
 
@@ -822,10 +788,10 @@ static EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
  * username contains REQUEST->username which might have been stripped.
  * identity contains the one sent in EAP-Identity response
  */
-EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUEST *request)
+EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
+			 REQUEST *request)
 {
 	EAP_HANDLER	*handler = NULL;
-	unsigned char	*unique;
 	eap_packet_t	*eap_packet = NULL;
 
 	eap_packet = *eap_packet_p;
@@ -837,14 +803,7 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 	 * EAP_HANDLER MUST be found in the list if it is not EAP-Identity response
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
-		unique = eap_regenerateid(request, eap_packet->id);
-		if (unique == NULL) {
-			return NULL;
-		}
-
-		handler = eaplist_isreply(list, unique);
-		free(unique);
-		unique = NULL;
+		handler = eaplist_find(inst, request, eap_packet->id);
 		if (handler == NULL) {
 			/* Either send EAP_Identity or EAP-Fail */
 			radlog(L_ERR, "rlm_eap: Either EAP-request timed out OR"
@@ -858,13 +817,9 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 			return NULL;
 		}
 
-		handler->id = NULL;
-		handler->prev_eapds = NULL;
-		handler->eap_ds = NULL;
-		handler->configured = NULL;
-		handler->opaque = NULL;
-		handler->free_opaque = NULL;
-		handler->next = NULL;
+		/*
+		 *	all fields are set to zero.
+		 */
 
 		handler->identity = eap_identity(eap_packet);
 		if (handler->identity == NULL) {
@@ -889,30 +844,6 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 		}
 		*/
 
-		/*
-		 * Always get the configured values, for each user.
-		 * to pass it to the specific EAP-Type
-		 *
-		 * No Configured information found for a user, means
-		 * there is no such user in the database.
-		 *
-		 * Every user should have, atleast, one item configured
-		 * This is required for Authentication purpose.
-		 */
-		handler->configured = paircopy(request->config_items);
-		if (handler->configured == NULL) {
-			DEBUG2("  rlm_eap: No configured information for this user");
-
-			/*
-			 * FIXME: If there is no config info then
-			 * config_items should provide the same username
-			 * if the user is present in the database.
-			 */
-			/*
-			eap_handler_free(&handler);
-			return NULL;
-			*/
-		}
 	}
 
 	handler->eap_ds = eap_buildds(eap_packet_p);
@@ -922,86 +853,6 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 	}
 
 	handler->timestamp = time(NULL);
-	handler->reply_vps = &(request->reply->vps);
 	handler->request = request; /* LEAP needs this */
 	return handler;
-}
-
-
-/*
- * Regenerate the ID to match the ID stored in the list.
- * This ID is created based on the NAS, State & EAP-Response
- */
-unsigned char *eap_regenerateid(REQUEST *request, unsigned char response_id)
-{
-	VALUE_PAIR 	*state = NULL;
-	unsigned char	*id = NULL;
-
-	state = pairfind(request->packet->vps, PW_STATE);
-	if (state == NULL) {
-		DEBUG2("  rlm_eap: NO State Attribute found: Cannot match EAP packet to any existing conversation.");
-		return NULL;
-	}
-	if (verify_state(state) != 0) {
-		radlog(L_ERR, "rlm_eap: State verification failed.");
-		return NULL;
-	}
-
-	id = (unsigned char *)malloc(1/*Length*/ + 1/*Id*/ + state->length + sizeof(request->packet->src_ipaddr));
-	if (id == NULL) {
-		radlog(L_ERR, "rlm_eap: out of memory");
-		return NULL;
-	}
-
-	/*
-	 * Generate unique-id to check for the reply 
-	 * id = Length + ID + State + Client IP Address
-	 *
-	 *  Note that we do NOT use NAS-IP-Address, or NAS-Identifier,
-	 *  as they may lie to us!
-	 */
-	id[0] = (1 + 1 + state->length + sizeof(request->packet->src_ipaddr)) & 0xFF;
-	memcpy(id+1, &response_id, sizeof(unsigned char));
-	memcpy(id+2, state->strvalue, state->length);
-	memcpy(id+2+state->length, &request->packet->src_ipaddr,
-	       sizeof(request->packet->src_ipaddr));
-
-	return id;
-}
-
-/*
- * Generate the ID that is used as the search criteria in the list.
- * This ID is created based on the NAS, State & EAP-Request
- */
-unsigned char *eap_generateid(REQUEST *request, unsigned char response_id)
-{
-	VALUE_PAIR 	*state = NULL;
-	unsigned char	*id = NULL;
-
-	state = pairfind(request->reply->vps, PW_STATE);
-	if (state == NULL) {
-		DEBUG2("  rlm_eap: NO State Attribute found.  Cannot match the EAP packet to any existing conversation.");
-		return NULL;
-	}
-
-	id = (unsigned char *)malloc(1/*Length*/ + 1/*Id*/ + state->length + sizeof(request->packet->src_ipaddr));
-	if (id == NULL) {
-		radlog(L_ERR, "rlm_eap: out of memory");
-		return NULL;
-	}
-
-	/*
-	 * Generate unique-id to check for the reply 
-	 * id = Length + ID + State + Client IP Address
-	 *
-	 *  Note that we do NOT use NAS-IP-Address, or NAS-Identifier,
-	 *  as they may lie to us!
-	 */
-	id[0] = (1 + 1 + state->length + sizeof(request->packet->src_ipaddr)) & 0xFF;
-	memcpy(id+1, &response_id, sizeof(unsigned char));
-	memcpy(id+2, state->strvalue, state->length);
-	memcpy(id+2+state->length, &request->packet->src_ipaddr,
-               sizeof(request->packet->src_ipaddr));
-
-	return id;
 }

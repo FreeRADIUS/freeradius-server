@@ -406,15 +406,14 @@ void session_close(tls_session_t *ssn)
 	session_init(ssn);
 }
 
-void session_free(void **ssn)
+void session_free(void *ssn)
 {
-	tls_session_t **sess = (tls_session_t **)ssn;
-	if ((sess == NULL) || (*sess == NULL))
-		return;
+	tls_session_t *sess = (tls_session_t *)ssn;
 
-	session_close(*sess);
-	free(*sess);
-	*sess = NULL;
+	if (!ssn) return;
+
+	session_close(sess);
+	free(sess);
 }
 
 void record_init(record_t *rec)

@@ -10,7 +10,7 @@
 #define PW_MD5_MAX_CODES	4
 
 #define MD5_HEADER_LEN 		4
-#define MD5_LEN 		16
+#define MD5_CHALLENGE_LEN 	16
 
 /*
  ****
@@ -18,6 +18,8 @@
  *	for generalization purpose, complete header should be sent
  *	and not just value_size, value and name.
  *	future implementation.
+ *
+ *	Huh? What does that mean?
  */
 
 /* eap packet structure */
@@ -38,16 +40,7 @@ typedef struct md5_packet {
 	unsigned char	value_size;
 	unsigned char	*value;
 	char		*name;
-/*	char		*message; */
 } MD5_PACKET;
-
-typedef struct md5_list {
-	struct md5_list *next;
-	MD5_PACKET 	*packet;
-	char		username[MAX_STRING_LEN];
-	int		processed;
-	time_t		time;
-} MD5_LIST;
 
 /* function declarations here */
 
@@ -56,10 +49,5 @@ void 		eapmd5_free(MD5_PACKET **md5_packet_ptr);
 
 int 		eapmd5_compose(EAP_DS *auth, MD5_PACKET *reply);
 MD5_PACKET 	*eapmd5_extract(EAP_DS *auth);
-MD5_PACKET 	*eapmd5_initiate(EAP_DS *eap_ds);
-MD5_PACKET 	*eapmd5_process(MD5_PACKET *packet, int id, 
-				VALUE_PAIR *username, VALUE_PAIR* password,
-	       		md5_packet_t *req);
-int 		eapmd5_challenge(unsigned char *value, int len);
-int 		eapmd5_verify(MD5_PACKET *pkt, VALUE_PAIR* pwd, md5_packet_t *ch);
+int 		eapmd5_verify(MD5_PACKET *pkt, VALUE_PAIR* pwd, uint8_t *ch);
 #endif /*_EAP_MD5_H*/

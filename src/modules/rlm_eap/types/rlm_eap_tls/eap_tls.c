@@ -224,15 +224,17 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 
 	case alert:
 		eaptls_fail(handler->eap_ds);
-		session_free(&handler->opaque);
+		session_free(handler->opaque);
+		handler->opaque = NULL;
 		return EAPTLS_FAIL;
 
 	case handshake:
 		if (tls_session->info.handshake_type == finished) {
 			eaptls_success(handler->eap_ds);
-			eaptls_gen_mppe_keys(handler->reply_vps, 
+			eaptls_gen_mppe_keys(&handler->request->reply->vps, 
 					     tls_session->ssl);
-			session_free(&handler->opaque);
+			session_free(handler->opaque);
+			handler->opaque = NULL;
 			return EAPTLS_SUCCESS;
 		} else if (tls_session->fragment > 0) {
 			/* Fragmentation handler, send next fragment */
@@ -246,7 +248,8 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 
 	default:
 		radlog(L_ERR, "rlm_eap_tls: Invalid ACK received");
-		session_free(&handler->opaque);
+		session_free(handler->opaque);
+		handler->opaque = NULL;
 		return EAPTLS_NOOP;
 	}
 }
@@ -326,7 +329,6 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
 	/* We donot receive a TLS_START but we send it.  */
 	if (TLS_START(eaptls_packet->flags) == 1) {
 		radlog(L_ERR, "rlm_eap_tls:  Received EAP-TLS Start message");
-		//return EAPTLS_START;
 		return EAPTLS_INVALID;
 	}
 
@@ -637,7 +639,6 @@ void eaptls_operation(EAPTLS_PACKET *eaptls_packet, eaptls_status_t status, EAP_
 		} else {
 			eaptls_fail(handler->eap_ds);
 		}
-		//record_init(&tls_session->dirty_in);
 	}
 	return;
 }
