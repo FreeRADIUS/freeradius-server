@@ -58,6 +58,16 @@ typedef enum lrad_token_t {
 #define T_EQSTART	T_OP_ADD
 #define	T_EQEND		(T_OP_CMP_EQ + 1)
 
+typedef struct LRAD_NAME_NUMBER {
+	const char	*name;
+	int		number;
+} LRAD_NAME_NUMBER;
+
+int lrad_str2int(const LRAD_NAME_NUMBER *table, const char *name, int def);
+const char *lrad_int2str(const LRAD_NAME_NUMBER *table, int number,
+			 const char *def);
+
+
 int		getword (char **ptr, char *buf, int buflen);
 int		getbareword (char **ptr, char *buf, int buflen);
 LRAD_TOKEN	gettoken(char **ptr, char *buf, int buflen);

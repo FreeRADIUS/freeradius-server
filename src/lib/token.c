@@ -14,12 +14,7 @@
 
 static const char rcsid[] = "$Id$";
 
-typedef struct {
-	const char *str;
-	int token;
-} TOKEN;
-
-static const TOKEN tokens[] = {
+static const LRAD_NAME_NUMBER tokens[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
 	{ "!~", T_OP_REG_NE,	},
 	{ "{",	T_LCBRACE,	},
@@ -60,13 +55,13 @@ static const TOKEN tokens[] = {
  *	Returns 0 or special token value.
  */
 static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
-			   const TOKEN *tokenlist)
+			   const LRAD_NAME_NUMBER *tokenlist)
 {
 	char	*s, *p;
 	int	quote;
 	int	escape;
 	int	x;
-	const TOKEN	*t;
+	const LRAD_NAME_NUMBER*t;
 	LRAD_TOKEN rcode;
 
 	buf[0] = 0;
@@ -84,14 +79,14 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 	/*
 	 *	Might be a 1 or 2 character token.
 	 */
-	if (tok) for (t = tokenlist; t->str; t++) {
-		if (TOKEN_MATCH(p, t->str)) {
-			strcpy(buf, t->str);
-			p += strlen(t->str);
+	if (tok) for (t = tokenlist; t->name; t++) {
+		if (TOKEN_MATCH(p, t->name)) {
+			strcpy(buf, t->name);
+			p += strlen(t->name);
 			while (isspace((int) *p))
 				p++;
 			*ptr = p;
-			return t->token;
+			return (LRAD_TOKEN) t->number;
 		}
 	}
 
@@ -153,10 +148,10 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 			if (isspace((int) *p))
 				break;
 			if (tok) {
-				for (t = tokenlist; t->str; t++)
-					if (TOKEN_MATCH(p, t->str))
+				for (t = tokenlist; t->name; t++)
+					if (TOKEN_MATCH(p, t->name))
 						break;
-				if (t->str != NULL)
+				if (t->name != NULL)
 					break;
 			}
 		}
@@ -222,4 +217,37 @@ int getbareword(char **ptr, char *buf, int buflen)
 LRAD_TOKEN gettoken(char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 1, tokens);
+}
+
+/*
+ *	Convert a string to an integer
+ */
+int lrad_str2int(const LRAD_NAME_NUMBER *table, const char *name, int def)
+{
+	const LRAD_NAME_NUMBER *this;
+
+	for (this = table; this->name != NULL; this++) {
+		if (strcasecmp(this->name, name) == 0) {
+			return this->number;
+		}
+	}
+
+	return def;
+}
+
+/*
+ *	Convert an integer to a string.
+ */
+const char *lrad_int2str(const LRAD_NAME_NUMBER *table, int number,
+			 const char *def)
+{
+	const LRAD_NAME_NUMBER *this;
+
+	for (this = table; this->name != NULL; this++) {
+		if (this->number == number) {
+			return this->name;
+		}
+	}
+
+	return def;
 }
