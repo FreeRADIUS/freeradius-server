@@ -453,17 +453,19 @@ int main(int argc, char **argv)
 			if (ut.ut_user[0] && ut.ut_line[0]) {
 #endif
 #ifdef UT_HOSTSIZE
+
+#ifdef HAVE_UTMPX_H
+#	define UT_TIME ut_xtime
+#else
+#	define UT_TIME ut_time
+#endif
 			if (showname)
 				printf((rawoutput == 0? ufmt1: ufmt1r),
 						ut.ut_name,
 						fullname(ut.ut_name),
 						"shell",
 						ttyshort(ut.ut_line),
-#ifdef HAVE_UTMPX_H
-						dotime(ut.ut_xtime),
-#else
-						dotime(ut.ut_time),
-#endif
+						dotime(ut.UT_TIME),
 						ut.ut_host,
 						myname, eol);
 			else
@@ -471,11 +473,7 @@ int main(int argc, char **argv)
 						ut.ut_name,
 						ttyshort(ut.ut_line),
 						"shell",
-#ifdef HAVE_UTMPX_H
-						dotime(ut.ut_xtime),
-#else
-						dotime(ut.ut_time),
-#endif
+						dotime(ut.UT_TIME),
 						ut.ut_host,
 						myname, eol);
 #endif
