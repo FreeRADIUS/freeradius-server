@@ -267,7 +267,7 @@ if test x"${enable_ltdl_install+set}" != xset; then
   enable_ltdl_install=yes
   ac_configure_args="$ac_configure_args --enable-ltdl-install"
 fi
-AC_CONFIG_SUBDIRS(src/libltdl)
+AC_CONFIG_SUBDIRS(libltdl)
 
 dnl See what include-style is used by the make program.
 dnl AC_MSG_CHECKING(include style for make)
