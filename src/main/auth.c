@@ -143,8 +143,7 @@ static int rad_check_password(REQUEST *request,
 	 *
 	 *	FIXME: add MS-CHAP support ?
 	 */
-	if (!(auth_item = pairfind(request->packet->vps, PW_CHAP_PASSWORD)))
-		auth_item = pairfind(request->packet->vps, PW_PASSWORD);
+	auth_item = request->password;
 	if (auth_item == NULL)
 		return -1;
 
@@ -461,6 +460,14 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	/*
+	 *	Maybe there's a CHAP-Password?
+	 */
+	if (auth_item == NULL) {
+		auth_item = pairfind(request->packet->vps, PW_CHAP_PASSWORD);
+	}
+	request->password = auth_item;
+
+	/*
 	 *	Get the user's authorization information from the database
 	 */
 	r = module_authorize(request, namepair->strvalue,
@@ -520,9 +527,13 @@ int rad_authenticate(REQUEST *request)
 			u_char clean_buffer[1024];
 			u_char *p;
 
-			librad_safeprint(auth_item->strvalue,
-					 auth_item->length,
-					 clean_buffer, sizeof(clean_buffer));
+			if (auth_item->attribute == PW_CHAP_PASSWORD) {
+			  strcpy(clean_buffer, "CHAP-Password");
+			} else {
+			  librad_safeprint(auth_item->strvalue,
+					   auth_item->length,
+					   clean_buffer, sizeof(clean_buffer));
+			}
 			log(L_AUTH,
 				"Login incorrect: [%s/%s] (%s)%s",
 				namepair->strvalue, clean_buffer,

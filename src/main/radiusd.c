@@ -494,6 +494,7 @@ int main(int argc, char **argv)
 			request->proxy = NULL;
 			request->reply = NULL;
 			request->config_items = NULL;
+			request->password = NULL;
 			request->timestamp = time(NULL);
 			strcpy(request->secret, cl->secret);
 			radrespond(request);
