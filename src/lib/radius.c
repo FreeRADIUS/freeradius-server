@@ -173,7 +173,12 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 			if (reply->length == 0 && reply->strvalue[0] != 0)
 				reply->length = strlen(reply->strvalue);
 
+#ifndef ASCEND_BINARY
+		case PW_TYPE_ABINARY:
+#endif
+		case PW_TYPE_OCTETS:
 			len = reply->length;
+
 			if (len >= MAX_STRING_LEN) {
 				len = MAX_STRING_LEN - 1;
 			}

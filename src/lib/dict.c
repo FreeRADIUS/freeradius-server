@@ -32,9 +32,8 @@ static char *dtypes[] = {
 	"integer",
 	"ipaddr",
 	"date",
-#ifdef ASCEND_BINARY
 	"abinary",
-#endif
+	"octets",
 	NULL,
 };
 

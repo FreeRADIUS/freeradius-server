@@ -356,7 +356,7 @@ VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
 	DICT_ATTR	*da;
 	DICT_VALUE	*dval;
 	VALUE_PAIR	*vp;
-	char		*p, *s;
+	u_char		*p, *s;
 
 	if ((da = dict_attrbyname(attribute)) == NULL) {
 		librad_log("unknown attribute %s", attribute);
@@ -384,6 +384,9 @@ VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
 	switch(da->type) {
 		case PW_TYPE_STRING:
 			vp->length = strlen(value);
+			if (vp->length >= MAX_STRING_LEN) {
+			  vp->length = MAX_STRING_LEN - 1;
+			}
 			break;
 		case PW_TYPE_IPADDR:
 			/*
@@ -437,8 +440,8 @@ VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
 			}
 			vp->length = 4;
 			break;
-#ifdef ASCEND_BINARY
 		case PW_TYPE_ABINARY:
+#ifdef ASCEND_BINARY
 			/*
 			 * special case to convert filter to binary
 			 */
@@ -451,9 +454,27 @@ VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
 			break;
 
 #endif
+			/* raw octets: 0x01020304... */
+		case PW_TYPE_OCTETS:
+		  vp->length = 0;
+		  if (strncasecmp(value, "0x", 2) == 0) {
+		    p = value + 2;
+		    s = vp->strvalue;
+		    while (*p && vp->length < MAX_STRING_LEN) {
+		      unsigned int tmp;
+
+		      if (sscanf(p, "%02x", &tmp) != 1) break;
+		      p += 2;
+		      *(s++) = tmp;
+		      vp->length++;
+		    }
+		    *s = '\0';
+		  }
+		  break;
+
 		default:
 			free(vp);
-			librad_log("unknown attribute type");
+			librad_log("unknown attribute type %d", da->type);
 			return NULL;
 	}
 	return vp;

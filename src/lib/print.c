@@ -134,12 +134,22 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 			else
 				a = ip_ntoa(NULL, vp->lvalue);
 			break;
-#ifdef ASCEND_BINARY
 		case PW_TYPE_ABINARY:
+#ifdef ASCEND_BINARY
 		  a = buf;
 		  print_abinary(vp, buf, sizeof(buf));
 		  break;
 #endif
+		case PW_TYPE_OCTETS:
+		  strcpy(buf, "0x");
+		  a = buf + 2;
+		  for (t = 0; t < vp->length; t++) {
+		    sprintf(a, "%02x", vp->strvalue[t]);
+		    a += 2;
+		  }
+		  a = buf;
+		  break;
+
 		default:
 			a = "UNKNOWN-TYPE";
 			break;

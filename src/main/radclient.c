@@ -109,6 +109,7 @@ int main(int argc, char **argv)
 			librad_debug = 1;
 			break;
 		case 't':
+			if (!isdigit(*optarg)) usage();
 			timeout = atoi(optarg);
 			break;
 		default:
