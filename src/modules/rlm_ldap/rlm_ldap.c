@@ -146,6 +146,8 @@
  *	- Add a patch from Jon Miner <miner@doit.wisc.edu> to add the ability to configure
  *	  various LDAP TLS options
  *	- Only call pairfree if we are using pairxlatmove not for pairadd
+ * Mar 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- If we are passed an empty password log a module failure message not an error message
  */
 static const char rcsid[] = "$Id$";
 
@@ -1396,7 +1398,9 @@ ldap_authenticate(void *instance, REQUEST * request)
 	}
 
 	if (request->password->length == 0) {
-		radlog(L_ERR, "rlm_ldap: empty password supplied");
+		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: empty password supplied");
+		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_fmsg_vp);
 		return RLM_MODULE_INVALID;
 	}
 
