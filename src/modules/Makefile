@@ -33,6 +33,8 @@ clean:
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	install -d -m 755 $(libdir)
+	[ "lib/*.so" != "" ] && install -m 755 lib/*.so $(libdir)
 
 common:
 	@for mod in rlm_*; do \
