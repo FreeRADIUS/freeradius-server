@@ -70,6 +70,14 @@ static const char *packet_codes[] = {
 };
 
 /*
+ *  Internal prototypes
+ */
+#ifdef ASCEND_SECRET
+static void make_secret(unsigned char *digest, u_int8_t *vector,
+			const char *secret, char *value);
+#endif
+
+/*
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
  */
@@ -242,6 +250,24 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			  case PW_TYPE_ABINARY:
 			  case PW_TYPE_STRING:
 			  case PW_TYPE_OCTETS:
+#ifdef ASCEND_SECRET
+				  /*
+				   *  Hmm... this is based on names
+				   *  right now.  We really shouldn't do
+				   *  this.  It should be based on the value
+				   *  of the attribute (VSA or not).
+				   *
+				   *  We should also NOT re-encrypt the secret
+				   *  if it's coming back from a proxy.
+				   */
+				  if ((strcmp(reply->name, "Ascend-Send-Secret") == 0) ||
+				      (strcmp(reply->name, "Ascend-Receive-Secret") == 0)) {
+					  make_secret( digest, packet->vector,
+						       secret, reply->strvalue );
+					  memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
+					  reply->length = AUTH_VECTOR_LEN;
+				  }
+#endif
 				  len = reply->length;
 				  
 				  /*
@@ -1092,3 +1118,37 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 
 	*radius_packet_ptr = NULL;
 }
+
+
+
+#ifdef ASCEND_SECRET
+/*************************************************************************
+ *
+ *      Function: make_secret
+ *
+ *      Purpose: Build an encrypted secret value to return in a reply
+ *               packet.  The secret is hidden by xoring with a MD5 digest
+ *               created from the shared secret and the authentication
+ *               vector.  We put them into MD5 in the reverse order from
+ *               that used when encrypting passwords to RADIUS.
+ *
+ *************************************************************************/
+
+static void make_secret(unsigned char *digest, u_int8_t *vector,
+			const char *secret, char *value)
+{
+        u_char  buffer[256 + AUTH_VECTOR_LEN];
+        int             secretLen = strlen(secret);
+        int             i;
+
+        memcpy(buffer, vector, AUTH_VECTOR_LEN );
+        memcpy(buffer + AUTH_VECTOR_LEN, secret, secretLen );
+
+        librad_md5_calc(digest, buffer, AUTH_VECTOR_LEN + secretLen );
+        memset(buffer, 0, sizeof(buffer));
+
+        for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
+		digest[i] ^= value[i];
+        }
+}
+#endif /* ASCEND_SECRET */
