@@ -852,6 +852,8 @@ int main(int argc, char **argv)
 				rad_clean_list(now);
 				continue;
 			}
+			log(L_ERR, "Unexpected error in select(): %s",
+			    strerror(errno));
 			sig_fatal(101);
 		}
 
