@@ -463,6 +463,9 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 			default:                    return RLM_MODULE_FAIL;
 		}
 	}
+
+	DEBUG2("  Processing the %s section of radiusd.conf",
+	       component_names[comp]);
 	return modcall(comp, this->modulelist, request);
 }
 
