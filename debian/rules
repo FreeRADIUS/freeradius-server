@@ -92,7 +92,7 @@ binary-arch: stamp-build
 	# man pages & docs
 	install -g root -m 644 CREDITS $(freeradius_dir)/$(pkgdocdir)/credits
 	dh_installdocs -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
-	dh_installdocs `find src/modules/rlm_sql/drivers -type f -name \*.sql`
+	dh_installexamples `find src/modules/rlm_sql/drivers -type f -name \*.sql`
 	dh_installchangelogs doc/ChangeLog
 
 	# SNMP mibs
