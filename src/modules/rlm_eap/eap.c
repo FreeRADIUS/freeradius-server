@@ -883,7 +883,7 @@ unsigned char *eap_regenerateid(REQUEST *request, unsigned char response_id)
 
 	state = pairfind(request->packet->vps, PW_STATE);
 	if (state == NULL) {
-		DEBUG2("  rlm_eap: NO State Attribute found.");
+		DEBUG2("  rlm_eap: NO State Attribute found: Cannot match EAP packet to any existing conversation.");
 		return NULL;
 	}
 	if (verify_state(state) != 0) {
@@ -933,7 +933,7 @@ unsigned char *eap_generateid(REQUEST *request, unsigned char response_id)
 
 	state = pairfind(request->reply->vps, PW_STATE);
 	if (state == NULL) {
-		DEBUG2("  rlm_eap: NO State Attribute found.");
+		DEBUG2("  rlm_eap: NO State Attribute found.  Cannot match the EAP packet to any existing conversation.");
 		return NULL;
 	}
 
