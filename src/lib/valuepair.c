@@ -693,7 +693,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		         /* Wildcard tag for check items */
 		         tag = TAG_ANY;
 			 *ts = 0;
-		 } else if ((ts[1] >= 0) && (ts[1] <= '9')) {
+		 } else if ((ts[1] >= '0') && (ts[1] <= '9')) {
 		         /* It's not a wild card tag */
 		         tag = strtol(ts + 1, &tc, 0);
 			 if (tc && !*tc && TAG_VALID_ZERO(tag))
@@ -790,7 +790,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		 *	expression is wrong.
 		 */
 		if (!value) {
-			pairfree(vp);
+			pairfree(&vp);
 			return NULL;
 		}
 
