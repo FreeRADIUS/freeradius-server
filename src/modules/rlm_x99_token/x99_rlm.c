@@ -647,6 +647,7 @@ x99_token_detach(void *instance)
     free(inst->pwdfile);
     free(inst->syncdir);
     free(inst->chal_text);
+    free(inst->chal_req);
     free(instance);
     return 0;
 }
