@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 # Log failed logins in the sql database
-# Works with mysql and postgresql
+# Works with mysql, postgresql and Oracle
 # It will read the sql parameters from the admin.conf file
 #
 # Usage:
@@ -31,6 +31,7 @@ $all_file=shift||'no';
 #$regexp = 'from client localhost port 135|from client blabla ';
 $tmpfile='/var/tmp/sql.input';
 #
+$verbose = 0;
 #
 
 open CONF, "<$conf"
@@ -113,10 +114,12 @@ unshift @servers, $sql_server;
 
 open LOG, "<$file"
 	or die "Could not open file $file\n";
+if ($verbose > 1) { print STDOUT "DEBUG: Opened $file\n" }
 
 seek LOG, 0, 2 if ($all_file eq 'no');
 for(;;){
 	while(<LOG>){
+		if ($verbose > 1) { print STDOUT "DEBUG: Reading $file\n" }
 		$do=0;	
 		chomp;
 		next if ($regexp ne '' && !/$regexp/);
@@ -125,8 +128,10 @@ for(;;){
 			if (/Login incorrect/){
 				if (/Login incorrect \((.+?)\):/){
 					$cause = "Login-Incorrect ($1)";
+					if ($verbose > 1) { print STDOUT "DEBUG: Login-Incorrect ($1)\n" }
 				}else{
 					$cause='Login-Incorrect';
+					if ($verbose > 1) { print STDOUT "DEBUG: Login-Incorrect\n" }
 				}
 				$do=1;
 			}
@@ -201,11 +206,13 @@ for(;;){
 					$command = "$sqlcmd  -U $sql_username -f $tmpfile.$server $sql_database" if ($sql_type eq 'pg');
 					$command = "$sqlcmd  $sql_username/$pass" . "@" . "$sql_database <$tmpfile.$server" if ($sql_type eq 'oracle');
 					$command = "$sqlcmd '$server' '$sql_port' '' '$sql_username' '$sql_pass' <$tmpfile.$server" if ($sql_type eq 'sqlrelay');
+					if ($verbose > 1) { print STDOUT "DEBUG: Sending datafile $tmpfile.$server to \"$sql_type\" database\n" }
 					`$command`;
+					if ($verbose > 1) { print STDOUT "DEBUG: Sent data to \"$sql_type\" database\n" }
 
 					$exit = $? >> 8;
 					$delete{$server} = ($exit == 0) ? 1 : 0;
-					print "ERROR: SQL query failed for host $server\n" if ($exit != 0);
+					print STDERR "ERROR: SQL query failed for host $server\n" if ($exit != 0);
 				}
 			}
 		}
