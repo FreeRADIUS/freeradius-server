@@ -99,7 +99,7 @@ static const char rcsid[] = "$Id$";
 int nmasldap_get_password(
 	LDAP	 *ld,
 	char     *objectDN,
-	size_t   *pwdSize,	// in bytes
+	size_t   *pwdSize,	/* in bytes */
 	char     *pwd );
 
 #endif
