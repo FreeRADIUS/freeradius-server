@@ -39,7 +39,7 @@ static int ascend_port_number(int nas_port)
  * start of main routines
  ***********************************************************************/
 
-static int icradius_init(int rehup) {
+static int rlm_sql_init(int rehup) {
 
 	FILE    *sqlfd;
         char    dummystr[64];
@@ -47,28 +47,34 @@ static int icradius_init(int rehup) {
         int     line_no;
         char    buffer[256];
         char    sqlfile[256];
-       
-       strcpy(sql_server,"localhost");
-       strcpy(sql_login,"");
-       strcpy(sql_password,"");
-       strcpy(sql_db,"radius");
-       strcpy(sql_authcheck_table,"radcheck");
-       strcpy(sql_authreply_table,"radreply");
-       strcpy(sql_groupcheck_table,"radgroupcheck");
-       strcpy(sql_groupreply_table,"radgroupreply");
-       strcpy(sql_usergroup_table,"usergroup");
-       strcpy(sql_realmgroup_table,"realmgroup");
-       strcpy(sql_acct_table,"radacct");
-       strcpy(sql_nas_table,"nas");
-       strcpy(sql_realm_table, "realms");
-       strcpy(sql_dict_table,"dictionary");
-       sqltrace = 0;
-       sql_keepopen = 0;
+	SQL	*sql;
 
-       sprintf(sqlfile, "%s/%s", radius_dir, MYSQLCONFIG);
+	if ((sql = malloc(sizeof(SQL))) == NULL) {
+		log(L_ERR|L_CONS, "no memory");
+		exit(1);	
+	}
+       
+       strcpy(sql->config.sql_server,"localhost");
+       strcpy(sql->config.sql_login,"");
+       strcpy(sql->config.sql_password,"");
+       strcpy(sql->config.sql_db,"radius");
+       strcpy(sql->config.sql_authcheck_table,"radcheck");
+       strcpy(sql->config.sql_authreply_table,"radreply");
+       strcpy(sql->config.sql_groupcheck_table,"radgroupcheck");
+       strcpy(sql->config.sql_groupreply_table,"radgroupreply");
+       strcpy(sql->config.sql_usergroup_table,"usergroup");
+       strcpy(sql->config.sql_realmgroup_table,"realmgroup");
+       strcpy(sql->config.sql_acct_table,"radacct");
+       strcpy(sql->config.sql_nas_table,"nas");
+       strcpy(sql->config.sql_realm_table, "realms");
+       strcpy(sql->config.sql_dict_table,"dictionary");
+       sql->config.sqltrace = 0;
+       sql->config.sql_keepopen = 0;
+
+       sprintf(sqlfile, "%s/%s", radius_dir, SQLCONFIGFILE);
 
         if((sqlfd = fopen(sqlfile, "r")) == (FILE *)NULL) {
-                log(L_ERR,"could not read mysql configuration file %s",sqlfile);
+                log(L_ERR,"could not read sql configuration file %s",sqlfile);
                 return(-1);
         }
 
@@ -81,12 +87,28 @@ static int icradius_init(int rehup) {
                         continue;
                 }
 
+                if(strncasecmp(buffer, "type", 4) == 0) {
+                        /* Read the SERVER line */
+                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
+                               log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
+                       } else {
+                         strcpy(sql->config.sql_type,namestr);
+                       }
+               }
                 if(strncasecmp(buffer, "server", 6) == 0) {
                         /* Read the SERVER line */
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strcpy(sql_server,namestr);
+                         strcpy(sql->config.sql_server,namestr);
+                       }
+               }
+                if(strncasecmp(buffer, "port", 4) == 0) {
+                        /* Read the SERVER line */
+                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
+                               log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
+                       } else {
+                         sql->config.sql_port = strtol(namestr, (char **)NULL, 10);
                        }
                }
                 if(strncasecmp(buffer, "login", 5) == 0) {
@@ -94,7 +116,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strcpy(sql_login,namestr);
+                         strcpy(sql->config.sql_login,namestr);
                        }
                }
                 if(strncasecmp(buffer, "password", 8) == 0) {
@@ -102,7 +124,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strcpy(sql_password,namestr);
+                         strcpy(sql->config.sql_password,namestr);
                        }
                }
                 if(strncasecmp(buffer, "radius_db", 9) == 0) {
@@ -110,7 +132,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strcpy(sql_db,namestr);
+                         strcpy(sql->config.sql_db,namestr);
                        }
                }
                 if(strncasecmp(buffer, "authcheck_table", 15) == 0) {
@@ -118,7 +140,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_authcheck_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_authcheck_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "authreply_table", 15) == 0) {
@@ -126,7 +148,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_authreply_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_authreply_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "groupcheck_table", 16) == 0) {
@@ -134,7 +156,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_groupcheck_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_groupcheck_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "groupreply_table", 16) == 0) {
@@ -142,7 +164,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_groupreply_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_groupreply_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "usergroup_table", 15) == 0) {
@@ -150,7 +172,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_usergroup_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_usergroup_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "realmgroup_table", 16) == 0) {
@@ -158,7 +180,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_realmgroup_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_realmgroup_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "acct_table", 10) == 0) {
@@ -166,7 +188,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_acct_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_acct_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "nas_table", 9) == 0) {
@@ -174,7 +196,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_nas_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_nas_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "realm_table", 9) == 0) {
@@ -182,7 +204,7 @@ static int icradius_init(int rehup) {
                        if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                       } else {
-                         strncpy(sql_realm_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_realm_table,namestr, MAX_TABLE_LEN);
                       }
                }
                 if(strncasecmp(buffer, "dict_table", 9) == 0) {
@@ -190,7 +212,7 @@ static int icradius_init(int rehup) {
                         if(sscanf(buffer, "%s%s", dummystr, namestr) != 2) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
-                         strncpy(sql_dict_table,namestr, MAX_TABLE_LEN);
+                         strncpy(sql->config.sql_dict_table,namestr, MAX_TABLE_LEN);
                        }
                }
                 if(strncasecmp(buffer, "sqltrace", 8) == 0) {
@@ -199,9 +221,9 @@ static int icradius_init(int rehup) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                       } else {
                          if(strncasecmp(namestr, "on", 2) == 0) {
-                           sqltrace = 1;
+                           sql->config.sqltrace = 1;
                          } else {
-                           sqltrace = 0;
+                           sql->config.sqltrace = 0;
                          }
                        }
                }
@@ -211,9 +233,9 @@ static int icradius_init(int rehup) {
                                log(L_ERR,"invalid attribute on line %d of sqlserver file %s", line_no,sqlfile);
                        } else {
                          if(strncasecmp(namestr, "yes", 3) == 0) {
-                           sql_keepopen = 1;
+                           sql->config.sql_keepopen = 1;
                         } else {
-                           sql_keepopen = 0;
+                           sql->config.sql_keepopen = 0;
                         }
                        }
                }
@@ -222,24 +244,13 @@ static int icradius_init(int rehup) {
        fclose(sqlfd);
        
        log(L_INFO,"SQL: Attempting to connect to %s@%s:%s",
-       sql_login,
-       sql_server,
-       sql_db);
+       sql->config.sql_login,
+       sql->config.sql_server,
+       sql->config.sql_db);
 
        if (sql_keepopen) {
 
-           /* Connect to the database server */
-           mysql_init(&MyAuthConn);
-           if (!(MyAuthSock = mysql_real_connect(&MyAuthConn, mysql_server, mysql_login, mysql_password, mysql_db, 0, NULL, 0))) {
-                log(L_ERR, "Init: Couldn't connect authentication socket to MySQL server on %s as %s", mysql_server, mysql_login);
-                MyAuthSock = NULL;
-           }
-           mysql_init(&MyAcctConn);
-           if (!(MyAcctSock = mysql_real_connect(&MyAcctConn, mysql_server, mysql_login, mysql_password, mysql_db, 0, NULL, 0))) {
-                log(L_ERR, "Init: Couldn't connect accounting socket to MySQL server on %s as %s", mysql_server, mysql_login);
-                MyAcctSock = NULL;
-           }
-       }
+	   sql_connect(sql);
            
        return 0;
 }
@@ -554,11 +565,11 @@ static int icradius_accounting(REQUEST *request) {
 
 /* globally exported name */
 module_t rlm_module = {
-  "icradius",
-  0,				/* type: reserved */
-  icradius_init,		/* initialization */
-  icradius_authorize,		/* authorization */
-  icradius_authenticate,	/* authentication */
-  icradius_accounting,		/* accounting */
-  icradius_detach,		/* detach */
+  "rlm_sql",
+  0,			/* type: reserved */
+  rlm_sql_init,		/* initialization */
+  rlm_sql_authorize,	/* authorization */
+  rlm_sql_authenticate,	/* authentication */
+  rlm_sql_accounting,	/* accounting */
+  rlm_sql_detach,	/* detach */
 };

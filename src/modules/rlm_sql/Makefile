@@ -1,9 +1,9 @@
 # must be first
 include config.mak
 
-TARGET		= rlm_mysql
-SRCS		= rlm_mysql.c mysql.c
-HEADERS		= rlm_mysql.h
+TARGET		= rlm_sql
+SRCS		= rlm_sql.c sql.c
+HEADERS		= rlm_sql.h
 RLM_CFLAGS	=
 LIBS		= -lmysqlclient
 

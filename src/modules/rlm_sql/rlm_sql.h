@@ -1,20 +1,22 @@
-/* cistron mysql module
+/* freeradius sql module
 *          Mike Machado
 *          InnerCite
 *          mike@innercite.com
 */
 
-
-#define	SQLBIGREC	32
-#define	SQLLILREC	16
 #define QUERYLOG	"/var/log/radacct/radius.sql"
 #define SQLCONFIGFILE	"radius.conf"
 #define SQLBACKUP	"/var/log/radacct/sqlbackup.dat"
 
+#define	SQLBIGREC	32
+#define	SQLLILREC	16
 #define PW_VP_USERDATA	1
 #define PW_VP_GROUPDATA	2
 
-typedef struct mysqlrec {
+#define MAX_TABLE_LEN 20
+#define MAX_AUTH_QUERY_LEN 256
+
+typedef struct sqlrec {
 	char            AcctSessionId[SQLBIGREC];
         char            UserName[SQLBIGREC];
         char            Realm[SQLBIGREC];
@@ -36,14 +38,12 @@ typedef struct mysqlrec {
         char            FramedProtocol[SQLBIGREC];
         char            FramedIPAddress[SQLLILREC];
         unsigned long	AcctDelayTime;
-} MYSQLREC; 
-
-#define SQL_LOCK_LEN sizeof(MYSQLREC)
-#define MAX_TABLE_LEN 20
-#define MAX_AUTH_QUERY_LEN 256
+} SQLREC; 
 
 typedef struct sqlconfig {
+	char		sql_type[40];
 	char		sql_server[40];
+	int		sql_port;
 	char		sql_login[20];
 	char		sql_password[20];
 	char		sql_db[20];
@@ -61,10 +61,14 @@ typedef struct sqlconfig {
 	int  		sqltrace;
 } SQLCONFIG;
 
-MYSQL *MyAuthSock;
-MYSQL *MyAcctSock;
-MYSQL MyAuthConn;
-MYSQL MyAcctConn;
+typedef struct sql {
+	SQLSOCK		*AuthSock;
+	SQLSOCK		*AcctSock;
+	SQLREC		sqlrecord;
+	SQLCONFIG	config;
+} SQL;
+	
+#define SQL_LOCK_LEN sizeof(SQLREC)
 
 int		sql_start();
 int		sql_save_acct(MYSQLREC *sqlrecord);
