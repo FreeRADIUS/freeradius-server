@@ -49,7 +49,7 @@ int lrad_crypt_check(const char *key, const char *crypted)
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
 	 */
-	if (!lrad_crypt_init == 0) {
+	if (lrad_crypt_init == 0) {
 		pthread_mutex_init(&lrad_crypt_mutex, NULL);
 		lrad_crypt_init = 1;
 	}
