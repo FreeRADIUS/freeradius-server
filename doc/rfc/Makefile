@@ -3,14 +3,17 @@ include ../../Make.inc
 RFC	= rfc2548.txt rfc2865.txt rfc2866.txt rfc2867.txt rfc2868.txt \
 	  rfc2869.txt rfc3162.txt 
 
-all: refs
+all:
+
+html: refs
 	./rewrite.pl $(RFC)
+	@touch .rewrite
 
 refs: $(RFC)
 	./genref.pl $(RFC) > refs
 
 clean:
-	rm -f refs *.html *~
+	rm -f refs *.html *~ .rewrite
 
 install:
 	$(INSTALL) -d -m 755	$(R)$(datadir)/doc/freeradius-$(RADIUSD_VERSION)/rfc
