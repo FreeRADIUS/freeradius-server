@@ -59,8 +59,6 @@
        %s       Speed (PW_CONNECT_INFO)
        %t       MTU
        %u       User name
-       %y       request year (YY)      Not Y2K compliant, but included
-			               for completeness
        %A       radacct_dir
        %C       clientname
        %D       request date (YYYYMMDD)
@@ -79,10 +77,8 @@
        ${reply:AttributeName}          Corresponding value for AttributeName
                                        in reply
 
-  Some of these are more useful then others, but all are available.  The %y
-  option display only the last two digits of the year so really isn't
-  recommended, but it is available.  You can even have one detail file per
-  Username.
+  Some of these are more useful then others, but all are available.  You
+  can even have one detail file per Username.
 
 2. IMPLEMENTATION
 
