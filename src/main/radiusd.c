@@ -842,6 +842,19 @@ int main(int argc, char *argv[])
 #endif
 
 		status = select(max_fd + 1, &readfds, NULL, NULL, tv);
+#ifndef HAVE_PTHREAD_H
+		/*
+		 *	If there are no child threads, then there may
+		 *	be child processes.  In that case, wait for
+		 *	their exit status, and throw that exit status
+		 *	away.  This helps get rid of zxombie children.
+		 */
+		while (waitpid(-1, &argval, WNOHANG) > 0) {
+			/* do nothing */
+		}
+#endif
+
+
 		if (status == -1) {
 			/*
 			 *	On interrupts, we clean up the request
