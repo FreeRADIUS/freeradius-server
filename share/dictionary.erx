@@ -39,7 +39,7 @@ ATTRIBUTE	ERX-Atm-SCR				16 integer	ERX
 ATTRIBUTE	ERX-Atm-MBS				17 integer	ERX
 ATTRIBUTE	ERX-Cli-Initial-Access-Level		18 string	ERX
 ATTRIBUTE	ERX-Cli-Allow-All-VR-Access		19 integer	ERX
-ATTRIBUTE	ERX-Alternate-Cli-Access-Level	2	0 string	ERX
+ATTRIBUTE	ERX-Alternate-Cli-Access-Level		20 string	ERX
 ATTRIBUTE	ERX-Alternate-Cli-Vrouter-Name		21 string	ERX
 ATTRIBUTE	ERX-Sa-Validate				22 integer	ERX
 ATTRIBUTE	ERX-Igmp-Enable				23 integer	ERX
