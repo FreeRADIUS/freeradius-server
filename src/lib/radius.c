@@ -314,15 +314,16 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				  len = reply->length;
 
 				  /*
-				   *    Set the TAG at the beginning of the string if tagged.
-				   *    If tag value is not valid for tagged attribute, make 
-				   *    it 0x00 per RFC 2868.  -cparker
+				   *    Set the TAG at the beginning
+				   *    of the string if tagged.  If
+				   *    tag value is not valid for
+				   *    tagged attribute, make it 0x00
+				   *    per RFC 2868.  -cparker
 				   */
-				  if(reply->flags.has_tag) {
-				          len++;
-					  if(TAG_VALID(reply->flags.tag)) {
-					          *ptr++ = reply->flags.tag;
-					  }
+				  if ((reply->flags.has_tag) &&
+				      TAG_VALID(reply->flags.tag)) {
+					  len++;
+					  *ptr++ = reply->flags.tag;
 				  }
 				 
 				  /*
