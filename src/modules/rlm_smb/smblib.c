@@ -334,14 +334,12 @@ int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName,
   }
 
   strcpy(pword, PassWord);
-#ifdef PAM_SMB_ENC_PASS
   if (Con_Handle -> encrypt_passwords)
   {
     pass_len=24;
     SMBencrypt((uchar *) PassWord, (uchar *)Con_Handle -> Encrypt_Key,(uchar *)pword); 
   } 
   else 
-#endif
 	pass_len=strlen(pword);
 
 
