@@ -209,6 +209,9 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAI
 		return 1;
 	}
 
+	/*
+	 *	No user name, doesn't compare.
+	 */
 	if (!req->username) {
 		return -1;
 	}
