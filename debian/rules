@@ -33,7 +33,7 @@ else
 	confflags += --host $(DEB_BUILD_GNU_TYPE) --build $(DEB_HOST_GNU_TYPE)
 endif
 
-build-simple:
+build-simple stamp-build:
 	dh_testdir
 	# dh_testroot
 	./configure \
@@ -59,13 +59,13 @@ build-simple:
 	rm $$TEMPFILE
 
 	make
-	touch build
+	touch stamp-build
 
 build: autotools build-simple
 
-binary-indep: build
+binary-indep: stamp-build
 
-binary-arch: build
+binary-arch: stamp-build
 	dh_testroot
 	dh_clean
 	dh_installdirs
@@ -124,7 +124,7 @@ endif
 
 clean:	
 	dh_testdir
-	rm -f build debian/{files,substvars} debian/*.debhelper
+	rm -f stamp-build debian/{files,substvars} debian/*.debhelper
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
 	rm -rf $(freeradius_dir) $(debiandir)/$(package)-{ldap,postgresql,mysql,krb5}{,.substvars}
