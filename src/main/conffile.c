@@ -857,6 +857,14 @@ int read_radius_conf_file(void)
 		return -1;
 	}
 
+	/* old-style naslist file */
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
+	DEBUG2("read_config_files:  reading naslist");
+	if (read_naslist_file(buffer) < 0) {
+		radlog(L_ERR|L_CONS, "Errors reading naslist");
+		return -1;
+	}
+
 	/* old-style clients file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
 	DEBUG2("read_config_files:  reading clients");
@@ -886,14 +894,6 @@ int read_radius_conf_file(void)
 	 */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if (generate_realms(buffer) < 0) {
-		return -1;
-	}
-
-	/* old-style naslist file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
-	DEBUG2("read_config_files:  reading naslist");
-	if (read_naslist_file(buffer) < 0) {
-		radlog(L_ERR|L_CONS, "Errors reading naslist");
 		return -1;
 	}
 
@@ -1187,7 +1187,6 @@ static int generate_clients(const char *filename)
 		 */
 		c = rad_malloc(sizeof(RADCLIENT));
 		memset(c, 0, sizeof(RADCLIENT));
-
 
 		/*
 		 *	Look for netmasks.
