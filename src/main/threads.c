@@ -370,11 +370,14 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	/*
 	 *	Create the thread detached, so that it cleans up it's
 	 *	own memory when it exits.
+	 *
+	 *	Note that the function returns non-zero on error, NOT
+	 *	-1.  The return code is the error, and errno isn't set.
 	 */
 	rcode = pthread_create(&handle->pthread_id, &attr,
 			request_handler_thread, handle);
 	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "Thread create failed: %s", strerror(errno));
+		radlog(L_ERR|L_CONS, "Thread create failed: %s", strerror(rcode));
 		exit(1);
 	}
 	pthread_attr_destroy(&attr);
