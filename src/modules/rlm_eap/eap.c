@@ -294,7 +294,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 	VALUE_PAIR *vp_list, *vp;
 	eap_packet_t *eap_packet;
 	unsigned char *ptr;
-	int len;
+	uint16_t len;
 	int total_len;
 
         vp_list = paircopy2(vps, PW_EAP_MESSAGE);
@@ -307,7 +307,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 	 * Get the Actual length from the EAP packet
 	 * First EAP-Message contains the EAP packet header
 	 */
-        memcpy(&len, vp_list->strvalue+2, sizeof(u_short));
+        memcpy(&len, vp_list->strvalue+2, sizeof(uint16_t));
         len = ntohs(len);
 
 	eap_packet = (eap_packet_t *)malloc(len);
@@ -357,7 +357,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 int eap_wireformat(EAP_PACKET *reply)
 {
 	eap_packet_t	*hdr;
-	int		total_length = 0;
+	uint16_t	total_length = 0;
 
 	if (reply == NULL) return EAP_INVALID;
 
@@ -379,7 +379,7 @@ int eap_wireformat(EAP_PACKET *reply)
 	hdr->code = (reply->code & 0xFF);
 	hdr->id = (reply->id & 0xFF);
 	total_length = htons(total_length);
-	memcpy(hdr->length, &total_length, sizeof(u_short));
+	memcpy(hdr->length, &total_length, sizeof(uint16_t));
 
 	if (reply->code < 3) {
 		hdr->data[0] = (reply->type.type & 0xFF);
@@ -408,7 +408,8 @@ int eap_wireformat(EAP_PACKET *reply)
  */
 int eap_compose(REQUEST *request, EAP_PACKET *reply)
 {
-	int eap_len, len;
+	int len;
+	uint16_t eap_len;
 	VALUE_PAIR *eap_msg;
 	VALUE_PAIR *vp;
 	eap_packet_t *eap_packet;
@@ -425,7 +426,7 @@ int eap_compose(REQUEST *request, EAP_PACKET *reply)
 	}
 	eap_packet = (eap_packet_t *)reply->packet;
 
-	memcpy(&eap_len, &(eap_packet->length), sizeof(u_short));
+	memcpy(&eap_len, &(eap_packet->length), sizeof(uint16_t));
 	len = eap_len = ntohs(eap_len);
 	ptr = (unsigned char *)eap_packet;
 
@@ -550,9 +551,9 @@ void eap_success(REQUEST *request, EAP_PACKET *reply)
  */
 int eap_validation(eap_packet_t *eap_packet)
 {
-	int len;
+	uint16_t len;
 
-        memcpy(&len, eap_packet->length, sizeof(u_short));
+        memcpy(&len, eap_packet->length, sizeof(uint16_t));
         len = ntohs(len);
 
 	/* High level EAP packet checks */
@@ -606,7 +607,8 @@ VALUE_PAIR *eap_useridentity(EAP_HANDLER *list, eap_packet_t *eap_packet, unsign
  */
 char *eap_identity(eap_packet_t *eap_packet)
 {
-	int len, size;
+	int size;
+	uint16_t len;
 	char *identity;
 
 	if ((eap_packet == NULL) ||
@@ -615,7 +617,7 @@ char *eap_identity(eap_packet_t *eap_packet)
 		return NULL;
 	}
 
-	memcpy(&len, eap_packet->length, sizeof(u_short));
+	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
 
 	if ((len <= 5) || (eap_packet->data[1] == 0x00)) {
@@ -713,7 +715,8 @@ EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
 {
 	EAP_DS *eap_ds = NULL;
 	eap_packet_t	*eap_packet = NULL;
-	int len, typelen;
+	int typelen;
+	uint16_t len;
 
 	eap_packet = *eap_packet_p;
 	if (eap_packet == NULL) {
@@ -728,7 +731,7 @@ EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
         eap_ds->response->id = eap_packet->id;
         eap_ds->response->type.type = eap_packet->data[0];
 
-	memcpy(&len, eap_packet->length, sizeof(u_short));
+	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
         eap_ds->response->length = len;
 
