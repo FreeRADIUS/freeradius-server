@@ -30,13 +30,24 @@ if ($config[general_decode_normal_attributes] == 'yes')
 $ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 if ($ds) {
 	$r=@da_ldap_bind($ds,$config);
-	if ($config[ldap_filter] != '')
-		$filter = ldap_xlat($config[ldap_filter],$login,$config);
+	if ($config[ldap_userdn] == ''){
+		if ($config[ldap_filter] != '')
+			$filter = ldap_xlat($config[ldap_filter],$login,$config);
+		else
+			$filter = 'uid=' . $login;
+	}
 	else
-		$filter = 'uid=' . $login;
-	if ($config[ldap_debug] == 'true')
-		print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='$filter'</b><br>\n";
-	$sr=@ldap_search($ds,"$config[ldap_base]", $filter);
+		$filter = ldap_xlat($config[ldap_userdn],$login,$config);
+	if ($config[ldap_debug] == 'true'){
+		if ($config[ldap_userdn] == '')
+			print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='$filter'</b><br>\n";
+		else
+			print "<b>DEBUG(LDAP): Search Query: BASE='$filter',FILTER='(objectclass=radiusprofile)'</b><br>\n";
+	}
+	if ($config[ldap_userdn] == '')
+		$sr=@ldap_search($ds,"$config[ldap_base]", $filter);
+	else
+		$sr=@ldap_read($ds,$filter, '(objectclass=radiusprofile)');
 	$info = @ldap_get_entries($ds, $sr);
 	$dn = $info[0]['dn'];
 	if ($dn == '')
