@@ -12,7 +12,7 @@ $(STATIC_OBJS): $(HEADERS)
 
 $(DYNAMIC_OBJS): $(HEADERS)
 
-smbencrypt: smbencrypt.o smbpass.o $(HEADERS)
+smbencrypt: smbencrypt.o $(HEADERS)
 	$(CC) -I../../include $(LDFLAGS) -o smbencrypt smbencrypt.o ../../lib/libradius.a
 
 smbencrypt-install:
