@@ -89,6 +89,8 @@ if ($test_user == 1){
 				fwrite($fp, "Password = \"$passwd\"\n");
 			else if ($auth_proto == 'chap')
 				fwrite($fp, "CHAP-Password = \"$passwd\"\n");
+			if (strlen($extra))
+				fwrite($fp,$extra);
 			pclose($fp);
 		}
 		$reply = file($tmp_file);
@@ -156,6 +158,14 @@ Radius Server Port
 </td>
 <td>
 <input type=text name=port value="<?php print $config[general_radius_server_port] ?>" size=25>
+</td>
+</tr>
+<tr>
+<td align=right bgcolor="#d0ddb0">
+Extra Attributes
+</td>
+<td>
+<textarea name="extra" cols="35" wrap="PHYSICAL" rows="4"></textarea>
 </td>
 </tr>
 <tr>
