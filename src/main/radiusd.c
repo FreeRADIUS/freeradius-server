@@ -1563,15 +1563,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
  *	Clean up the request list, every so often.
  *
  *	This is done by walking through ALL of the list, and
- *	- joining any child threads which have exited.  (If not pooling)
+ *	- marking any requests which are finished, and expired
  *	- killing any processes which are NOT finished after a delay
- *	- deleting any requests which are finished, and expired
+ *	- deleting any marked requests.
  */
 static int rad_clean_list(time_t curtime)
 {
 	static time_t	last_cleaned_list = 0;
 	REQUEST		*curreq;
-	REQUEST		**prevreq;
+	REQUEST		**prevptr;
 	child_pid_t    	child_pid;
 	int		id;
 	int		request_count;
@@ -1584,6 +1584,7 @@ static int rad_clean_list(time_t curtime)
 	if (curtime == last_cleaned_list) {
 		return FALSE;
 	}
+	last_cleaned_list = curtime;
 
 #if WITH_THREAD_POOL
 	/*
@@ -1610,10 +1611,11 @@ static int rad_clean_list(time_t curtime)
 	 *	the list - equivalent to sigblock(SIGCHLD).
 	 */
 	request_list_busy = TRUE;
+	request_count = 0;
 		
 	for (id = 0; id < 256; id++) {
 		curreq = request_list[id].first_request;
-		prevreq = &(request_list[id].first_request);
+		prevptr = &(request_list[id].first_request);
 		
 		while (curreq != NULL) {
 			assert(curreq->magic == REQUEST_MAGIC);
@@ -1636,13 +1638,6 @@ static int rad_clean_list(time_t curtime)
 				DEBUG2("Cleaning up request ID %d with timestamp %08lx",
 				       curreq->packet->id,
 				       (unsigned long)curreq->timestamp);
-
-				if (request_list[id].request_count == 0) {
-				  DEBUG("HORRIBLE ERROR!!!");
-				} else {
-				  request_list[id].request_count--;
-				  cleaned = TRUE;
-				}
 
 				/*
 				 *	Mark the request to be deleted.
@@ -1680,39 +1675,43 @@ static int rad_clean_list(time_t curtime)
 			 *	then remove it from the request list.
 			 */
 			if (curreq->timestamp == 0) {
+				if (request_list[id].request_count == 0) {
+				  DEBUG("HORRIBLE ERROR!!!");
+				} else {
+				  request_list[id].request_count--;
+				  cleaned = TRUE;
+				}
+
 				/*
 				 *	Unlink the current request
 				 *	from the request queue.
 				 */
-				*prevreq = curreq->next;
+				*prevptr = curreq->next;
 				if (curreq->next) {
 					curreq->next->prev = curreq->prev;
 				}
 				request_free(curreq);
-				curreq = *prevreq;
+				curreq = *prevptr;
 
 				/*
 				 *	Else the request is still being
 				 *	processed.  Skip it.
 				 */
 			} else {
-				prevreq = &(curreq->next);
+				prevptr = &(curreq->next);
 				curreq = curreq->next;
 			}
 		} /* end of walking the request list for that ID */
+
+		request_count += request_list[id].request_count;
 	} /* for each entry in the request list array */
 
-	request_count = 0;
-	for (id = 0; id < 256; id++) {
-		request_count += request_list[id].request_count;
-	}
-
 	/*
-	 *	Only print this if anything's changed.
+	 *	Only print debugging information if anything's changed.
 	 */
-	{
+	if (debug_flag) {
 		static int old_request_count = -1;
-
+		
 		if (request_count != old_request_count) {
 			DEBUG2("%d requests left in the list", request_count);
 			old_request_count = request_count;
@@ -1723,7 +1722,6 @@ static int rad_clean_list(time_t curtime)
 	 *	We're done playing with the request list.
 	 */
 	request_list_busy = FALSE;
-	last_cleaned_list = curtime;
 
 	return cleaned;
 }
@@ -2409,9 +2407,17 @@ static struct timeval *setuptimeout()
 	/*
 	 *	Static variables, so that we don't do all of this work
 	 *	more than once per second.
+	 *
+	 *	Note that we have 'tv' and 'last_tv'.  'last_tv' is
+	 *	pointed to by 'last_tv_ptr', and depending on the
+	 *	system implementation of select(), it MAY be modified.
+	 *
+	 *	In that was, we want to use the ORIGINAL value, from
+	 *	'tv', and wipe out the (possibly modified) last_tv.
 	 */
 	static time_t last_setup = 0;
 	static struct timeval tv, *last_tv_ptr = NULL;
+	static struct timeval last_tv;
 
 	/*
 	 *	If we've already set up the timeout this second,
@@ -2429,6 +2435,7 @@ static struct timeval *setuptimeout()
 	 */
 	if ((last_tv_ptr != NULL) &&
 	    (last_setup == now)) {
+		last_tv = tv;
 		DEBUG2("Waking up in %d seconds...",
 		       (int) last_tv_ptr->tv_sec);
 		return last_tv_ptr;
@@ -2525,7 +2532,8 @@ static struct timeval *setuptimeout()
 	/*
 	 *	Remember how long we should sleep for.
 	 */
-	last_tv_ptr = &tv;
+	last_tv = tv;
+	last_tv_ptr = &last_tv;
 	return last_tv_ptr;
 }
 
