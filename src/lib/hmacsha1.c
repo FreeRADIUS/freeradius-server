@@ -23,6 +23,10 @@ int             key_len;             length of authentication key
 unsigned char*  digest;              caller digest to be filled in
 */
 
+#ifdef HMAC_SHA1_DATA_PROBLEMS
+unsigned int sha1_data_problems = 0;
+#endif
+
 void
 lrad_hmac_sha1(const unsigned char *text, int text_len,
 	       const unsigned char *key, int key_len,
@@ -51,6 +55,7 @@ lrad_hmac_sha1(const unsigned char *text, int text_len,
         }
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
+	if(sha1_data_problems)
 	{
 		int j,k;
 
