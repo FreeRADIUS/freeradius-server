@@ -341,50 +341,6 @@ dnl #
   fi
 fi
 
-dnl #
-dnl #  Checks to ensure that the thread pool code can build.
-dnl #
-if test "$WITH_THREAD_POOL" = "yes"; then
-  dnl #
-  dnl # If using thread pools, check that threading is enabled
-  dnl #
-  if test "$WITH_THREADS" != "yes"; then
-    AC_MSG_ERROR(You must have threads enabled for thread pools to work.)
-  fi
-
-  dnl #
-  dnl # If using thread pools, check that we have thread libraries
-  dnl #
-  if test "X$PTHREADLIB" = "X"; then
-    AC_MSG_ERROR(You must have threading libraries for thread pools to work.)
-  fi
-
-dnl #
-dnl #  Check for sem_init all by itself
-dnl #
-  AC_CHECK_FUNC(sem_init)
-  if test "X$ac_cv_func_sem_init" = "Xno"; then
-
-dnl #
-dnl #  If not found, sem_init is in -lposix4 on Solaris
-dnl #
-    AC_CHECK_LIB(posix4, sem_init)
-
-    if test "X$ac_cv_lib_posix4_sem_init" = "X"; then
-      AC_MSG_WARN(You do not have posix semaphores.  Disabling thread pools)
-      WITH_THREAD_POOL=no
-    fi
-  fi
-
-dnl #
-dnl #  Finally, after all of the checks above, we see if
-dnl #  we can REALLY use the thread pools.
-dnl #
-  if test "$WITH_THREAD_POOL" = "yes"; then
-    AC_DEFINE(WITH_THREAD_POOL,1)
-  fi
-fi
-
 dnl Check if we need -lsocket
 AC_CHECK_LIB(socket, getsockname)
 
@@ -423,6 +379,7 @@ AC_CHECK_HEADERS( \
 	stdint.h \
 	stdio.h \
 	netdb.h \
+	semaphore.h \
 	arpa/inet.h \
 	netinet/in.h \
 	sys/types.h \
@@ -511,6 +468,7 @@ AC_CHECK_FUNCS( \
 	gethostname \
 	setlinebuf \
 	setvbuf \
+	sem_init \
 	getusershell
 )
 RADIUSD_NEED_DECLARATIONS( \
@@ -590,6 +548,24 @@ if test "x$WITH_SNMP" = "xyes"; then
   SNMP_CHECKS
 fi
 
+dnl #
+dnl #  Check for sem_init all by itself
+dnl #
+if test "X$ac_cv_func_sem_init" = "Xno"; then
+
+dnl #
+dnl #  If not found, sem_init is in -lposix4 on Solaris
+dnl #
+ AC_CHECK_LIB(posix4, sem_init)
+
+  if test "X$ac_cv_lib_posix4_sem_init" = "X"; then
+    if test "$WITH_THREAD_POOL" = "yes"; then
+      AC_MSG_WARN(You do not have posix semaphores.  Disabling thread pools)
+    fi
+    WITH_THREAD_POOL=no
+  fi
+fi
+
 POSTGRESQL_CHECKS
 ORACLE_CHECKS
 ODBC_CHECKS
@@ -609,6 +585,33 @@ AC_SUBST(LIBLTDL)
 AC_SUBST(INCLTDL)
 top_builddir=`pwd`
 AC_SUBST(top_builddir)
+
+dnl #
+dnl #  Checks to ensure that the thread pool code can build.
+dnl #
+if test "$WITH_THREAD_POOL" = "yes"; then
+  dnl #
+  dnl # If using thread pools, check that threading is enabled
+  dnl #
+  if test "$WITH_THREADS" != "yes"; then
+    AC_MSG_ERROR(You must have threads enabled for thread pools to work.)
+  fi
+
+  dnl #
+  dnl # If using thread pools, check that we have thread libraries
+  dnl #
+  if test "X$PTHREADLIB" = "X"; then
+    AC_MSG_ERROR(You must have threading libraries for thread pools to work.)
+  fi
+
+dnl #
+dnl #  Finally, after all of the checks above, we see if
+dnl #  we can REALLY use the thread pools.
+dnl #
+  if test "$WITH_THREAD_POOL" = "yes"; then
+    AC_DEFINE(WITH_THREAD_POOL,1)
+  fi
+fi
 
 dnl #############################################################
 dnl #
