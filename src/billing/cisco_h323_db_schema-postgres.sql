@@ -87,7 +87,7 @@ CREATE TABLE StopVoIP (
 	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
-create UNIQUE index stopvoipcombo on stopvoip (AcctStopTime, nasipaddress, CallID);
+create UNIQUE index stopvoipcombo on stopvoip (AcctTime, nasipaddress, CallID);
 
 
 CREATE TABLE StopTelephony (
