@@ -426,3 +426,45 @@ int ipv6_addr(const char *ip6_str, void *ip6addr)
 #endif
 	return 0;
 }
+
+
+static const char *hextab = "0123456789abcdef";
+
+/*
+ *	hex2bin
+ */
+int lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len)
+{
+	int i;
+	char *c1, *c2;
+
+	for (i = 0; i < len; i++) {
+		if (!hex[1]) break; /* not aligned to 2 hex digits */
+		
+		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), 16)) ||
+		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), 16)))
+			break;
+                 bin[i] = ((c1-hextab)<<4) + (c2-hextab);
+	}
+
+	return i;
+}
+
+
+/*
+ *	bin2hex
+ *	If the output buffer isn't long enough, we have a buffer overflow.
+ */
+void lrad_bin2hex(const unsigned char *bin, unsigned char *hex, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++) {
+		hex[0] = hextab[((*bin) >> 4) & 0x0f];
+		hex[1] = hextab[*bin & 0x0f];
+		hex += 2;
+		bin++;
+	}
+	*hex = '\0';
+	return;
+}

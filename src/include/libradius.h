@@ -299,6 +299,8 @@ void		rad_rmspace(char *str);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
+void		lrad_bin2hex(const unsigned char *bin, unsigned char *hex, int len);
+int		lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len);
 
 #ifdef ASCEND_BINARY
 /* filters.c */
