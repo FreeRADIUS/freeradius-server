@@ -1581,12 +1581,14 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			pairadd(&(request->reply->vps), vp);
 
 		/*
-		 *	If we're not delaying authentication rejects,
-		 *	then send the response immediately.  Otherwise,
-		 *	mark the request as delayed, and do NOT send a
-		 *	response.
+		 *  If the request isn't an authentication reject, OR
+		 *  it's a reject, but the reject_delay is zero, then
+		 *  send it immediately.
+		 *
+		 *  Otherwise, delay the authentication reject to shut
+		 *  up DoS attacks.
 		 */
-		if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
+		if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
 		    (reject_delay == 0)) {
 			rad_send(request->reply, request->packet,
 				 request->secret);
