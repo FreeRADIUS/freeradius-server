@@ -167,7 +167,7 @@ REQUEST *rl_find_proxy(REQUEST *request)
 	int id;
 	
 	for (id = 0; (id < 256) && (curreq == NULL); id++) {
-		for (curreq = request_list[request->packet->id].first_request;
+		for (curreq = request_list[id].first_request;
 		     curreq != NULL ;
 		     curreq = curreq->next) {
 			if (curreq->req->proxy &&

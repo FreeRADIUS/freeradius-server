@@ -2154,7 +2154,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 		/*
 		 *	If we haven't found the old request, complain.
 		 */
-		radlog(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
+		radlog(L_PROXY, "No request found for proxy reply from server %s - ID %d",
 		       client_name(request->packet->src_ipaddr),
 		       request->packet->id);
 		request_free(&request);
