@@ -330,7 +330,8 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 	VALUE_PAIR *pair, *check;
 	char *ptr;
 	char buf[128];
-	int pairmode = T_EOL;
+	char value[256];
+	LRAD_TOKEN xlat, pairmode = T_EOL;
 
 	if ((attr = dict_attrbyname(row[2])) == (DICT_ATTR *) NULL) {
 		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s",
@@ -362,7 +363,27 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 			querymode == PW_VP_GROUPDATA)
 		return 0;
 
-	pair = pairmake(row[2], row[3], pairmode);
+	ptr = row[3];
+	xlat = gettoken(&ptr, value, sizeof(value));
+	switch (xlat) {
+		/*
+		 *	Make the full pair now.
+		 */
+	default:
+		pair = pairmake(row[2], value, pairmode);
+		break;
+
+		/*
+		 *	Mark the pair to be allocated later.
+		 */
+	case T_BACK_QUOTED_STRING:
+		pair = pairmake(row[2], NULL, pairmode);
+		if (pair) {
+			pair->flags.do_xlat = 1;
+			strNcpy(pair->strvalue, value, sizeof(pair->strvalue));
+			pair->length = 0;
+		}
+	}
 	pairadd(first_pair, pair);
 
 	return 0;

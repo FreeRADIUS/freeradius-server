@@ -864,7 +864,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		return RLM_MODULE_NOTFOUND;
 	}
 
-	pairmove(&request->reply->vps, &reply_tmp);
+	pairxlatmove(request, &request->reply->vps, &reply_tmp);
 	pairmove(&request->config_items, &check_tmp);
 	pairfree(&reply_tmp);
 	pairfree(&check_tmp);

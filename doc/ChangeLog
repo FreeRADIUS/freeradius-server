@@ -99,8 +99,9 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	  %{request:Attribute-Name} and the like.
 	* Add support to rlm_sql for post-authentication query execution.
 	* Add support to rlm_sql for accounting_update_query_alt
-	* Add support to checkrad.pl for microtek-brand NASs over SNMP
+	* Add support to checkrad.pl for mikrotik-brand NASs over SNMP
 	* Add support for supplementary groups of switched-to user
+	* Add support for xlat-ing backquoted reply values from SQL queries.
 
 FreeRADIUS 0.9.3 ; Date: 2003/11/20 20:15:48, urgency=high
 
