@@ -24,6 +24,8 @@
 #include <stdint.h>
 #endif
 
+#include <string.h>
+
 /* GLOBAL.H - RSAREF types and constants
  */
 

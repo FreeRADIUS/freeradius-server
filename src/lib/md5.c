@@ -57,8 +57,9 @@ static void Encode PROTO_LIST
   ((unsigned char *, const uint32_t *, unsigned int));
 static void Decode PROTO_LIST
   ((uint32_t *, const unsigned char *, unsigned int));
-static void MD5_memcpy PROTO_LIST ((POINTER, CONSTPOINTER, unsigned int));
-static void MD5_memset PROTO_LIST ((POINTER, int, unsigned int));
+
+#define MD5_memcpy memcpy
+#define MD5_memset memset
 
 static const unsigned char PADDING[64] = {
   0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -323,29 +324,3 @@ unsigned int len;
    (((uint32_t)input[j+2]) << 16) | (((uint32_t)input[j+3]) << 24);
 }
 
-/* Note: Replace "for loop" with standard memcpy if possible.
- */
-
-static void MD5_memcpy (output, input, len)
-POINTER output;
-CONSTPOINTER input;
-unsigned int len;
-{
-  unsigned int i;
-
-  for (i = 0; i < len; i++)
- output[i] = input[i];
-}
-
-/* Note: Replace "for loop" with standard memset if possible.
- */
-static void MD5_memset (output, value, len)
-POINTER output;
-int value;
-unsigned int len;
-{
-  unsigned int i;
-
-  for (i = 0; i < len; i++)
- ((char *)output)[i] = (char)value;
-}
