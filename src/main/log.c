@@ -120,6 +120,15 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	int use_syslog = FALSE;
 #endif
 
+	/*
+	 *	NOT debugging, and trying to log debug messages.
+	 *
+	 *	Throw the message away.
+	 */
+	if (!debug_flag && (lvl == L_DBG)) {
+		return 0;
+	}
+
 	if (radlog_dir != NULL) {
 		if (debug_flag || (strcmp(radlog_dir, "stdout") == 0)) {
 			msgfd = stdout;
