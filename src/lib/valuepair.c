@@ -1278,6 +1278,17 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 
 	while (!error && fgets(buf, sizeof(buf), fp) != NULL) {
 		/*
+		 *      If we get a '\n' by itself, we assume that's
+		 *      the end of that VP
+		 */
+		if ((buf[0] == '\n') && (list)) {
+			return list;
+		}
+		if ((buf[0] == '\n') && (!list)) {
+			continue;
+		}
+
+		/*
 		 *	Comments get ignored
 		 */
 		if (buf[0] == '#') continue;
