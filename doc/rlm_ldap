@@ -22,14 +22,20 @@ the rlm_ldap module:
 
 #	net_timeout: # of seconds to wait for response of the server 
 #			(network failures)
-#	default: forever
+#	default: 10
 #
 		net_timeout = 1
 
 #	timeout: # seconds to wait for LDAP query to finish
-#	default: forever
+#	default: 20
 #
 		timeout = 2
+
+#	timelimit: # of seconds server has to process the query 
+#			(server-side time limit)
+#	default: 20
+#
+		timelimit = 5
 
 #	ldap_debug: debug flag for LDAP SDK (see OpenLDAP documentation)
 #	default: 0x0000 (no debugging messages)
