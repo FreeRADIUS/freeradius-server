@@ -212,7 +212,6 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		if (inst->locking) {
 			lseek(outfd, 0L, SEEK_SET);
 			if (rad_lockfd_nonblock(outfd, 0) < 0) {
-				close(outfd);
 				tv.tv_sec = 0;
 				tv.tv_usec = 25000;
 				select(0, NULL, NULL, NULL, &tv);
@@ -226,6 +225,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	} while (!locked && inst->locking && lock_count < 80);
 
 	if (!locked && inst->locking && lock_count >= 80) {
+		close(outfd);
 		radlog(L_ERR, "rlm_detail: Failed to aquire filelock for %s, giving up",
 		       buffer);
 		return RLM_MODULE_FAIL;
@@ -243,7 +243,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			rad_unlockfd(outfd, 0);
 			DEBUG("rlm_detail: Released filelock");
 		}
-		close(outfd);
+		close(outfd);	/* automatically releases the lock */
 
 		return RLM_MODULE_FAIL;
 	}
