@@ -136,7 +136,9 @@ EOM;
 
 echo <<<EOM
 </select>
-<br>
+<br><br>
+<b>Max results returned:</b>
+<input name=maxresults value=$config[sql_row_limit] size=5>
 </td>
 <td valign=top>
 <input type=hidden name=add value=0>
@@ -203,7 +205,7 @@ $order = ($order_by != '') ? "$order_by" : 'UserName';
 foreach ($show_attrs as $val)
 	$query_view .= $val . ',';
 $query_view = ereg_replace(',$','',$query_view);
-$query="SELECT $query_view FROM $config[sql_accounting_table] $where ORDER BY $order LIMIT $config[sql_row_limit]";
+$query="SELECT $query_view FROM $config[sql_accounting_table] $where ORDER BY $order LIMIT $maxresults";
 
 echo <<<EOM
 <html>
