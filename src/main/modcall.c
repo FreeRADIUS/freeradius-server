@@ -129,9 +129,20 @@ static int str2action(const char *s, const char *filename, int lineno)
 {
 	if(!strcasecmp(s, "return"))
 		return MOD_ACTION_RETURN;
-	else if(strspn(s, "0123456789")==strlen(s))
-		return atoi(s);
-	else {
+	else if (strspn(s, "0123456789")==strlen(s)) {
+		int rcode = atoi(s);
+
+		/*
+		 *	Don't allow priority zero, for future use.
+		 */
+		if (rcode == 0) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d] Invalid action '%s'.\n",
+			       filename, lineno, s);
+			exit(1);
+		}
+		return rcode;
+	} else {
 		radlog(L_ERR|L_CONS,
 				"%s[%d] Unknown action '%s'.\n",
 				filename, lineno, s);
