@@ -890,6 +890,18 @@ int rad_process(REQUEST *request, int dospawn)
 		return 0;
 	}
 
+#ifndef WITH_THREAD_POOL
+	/*
+	 *	Keep only allowed attributes in the request.
+	 */
+	if (request->proxy) {
+		replicating = proxy_receive(request);
+		if (replicating != 0) {
+			request->finished = TRUE;
+			return 0;
+		}
+	}
+#endif
 	/*
 	 *	We're the one who's supposed to handle the request,
 	 *	as everyone else gave up on it.  Let's do so.
@@ -1295,7 +1307,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 		}
 	}
 
- add_to_list:
 	/*
 	 *	Add this request to the list
 	 */
@@ -1342,13 +1353,27 @@ static void sig_term(int sig)
  */
 static void *rad_spawn_thread(void *arg)
 {
-  spawn_thread_t *data = (spawn_thread_t *)arg;
-
-  signal(SIGTERM, sig_term);
-  (*(data->fun))(data->request);
-  rad_respond(data->request);
-  free(data);
-  return NULL;
+	int replicating;
+	spawn_thread_t *data = (spawn_thread_t *)arg;
+	
+	signal(SIGTERM, sig_term);
+	
+	/*
+	 *	Keep only allowed attributes in the request.
+	 */
+	if (request->proxy) {
+		replicating = proxy_receive(request);
+		if (replicating != 0) {
+			request->finished = TRUE;
+			free(data);
+			return NULL;
+		}
+	}
+	
+	(*(data->fun))(data->request);
+	rad_respond(data->request);
+	free(data);
+	return NULL;
 }
 #endif
 #endif
@@ -1623,6 +1648,10 @@ static REQUEST *proxy_check_list(REQUEST *request)
 			request->packet->id);
 		return NULL;
 	}
+
+	/*
+	 *	FIXME: IF replicating, then ignore the request!
+	 */
 
 	/*
 	 *	Refresh the old request,. and update it.
