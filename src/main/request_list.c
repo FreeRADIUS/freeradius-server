@@ -105,9 +105,18 @@ static int request_cmp(const void *one, const void *two)
 	const REQUEST *b = two;
 
 	/*
-	 *	The following code looks unreasonable, but it's
+	 *	The following comparisons look weird, but it's
 	 *	the only way to make the comparisons work.
 	 */
+
+	/*
+	 *	If the packets didn't arrive on the same socket,
+	 *	they're not identical, no matter what their src/dst
+	 *	ip/ports say.
+	 */
+	if (a->packet->sockfd < b->packet->sockfd) return -1;
+	if (a->packet->sockfd > b->packet->sockfd) return +1;
+
 	if (a->packet->id < b->packet->id) return -1;
 	if (a->packet->id > b->packet->id) return +1;
 
@@ -120,6 +129,10 @@ static int request_cmp(const void *one, const void *two)
 	if (a->packet->src_port < b->packet->src_port) return -1;
 	if (a->packet->src_port > b->packet->src_port) return +1;
 
+	/*
+	 *	Hmm... we may be listening on IPADDR_ANY, in which case
+	 *	the destination IP is important, too.
+	 */
 	if (a->packet->dst_ipaddr < b->packet->dst_ipaddr) return -1;
 	if (a->packet->dst_ipaddr > b->packet->dst_ipaddr) return +1;
 
