@@ -37,11 +37,11 @@ INSTALL_SCRIPT	= ${INSTALL_PROGRAM}
 LCRYPT		= @CRYPTLIB@
 LIBS		= @LIBS@
 
-LOGDIR		= @logdir@
-RADDBDIR	= @raddbdir@
-RUNDIR		= @localstatedir@/run
-SBINDIR		= @sbindir@
-RADIR		= @radacctdir@
+LOGDIR		= ${logdir}
+RADDBDIR	= ${raddbdir}
+RUNDIR		= ${localstatedir}/run
+SBINDIR		= ${sbindir}
+RADIR		= ${radacctdir}
 
 LIBLTDL		= @LIBLTDL@
 INCLTDL		= @INCLTDL@
