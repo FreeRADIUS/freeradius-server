@@ -106,13 +106,14 @@ static void usage(void)
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
-	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
-	fprintf(stderr, "  -p num      Send 'num' packets from a file in parallel.");
-	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
+	fprintf(stderr, "  -n num      Send N requests/s\n");
+	fprintf(stderr, "  -p num      Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -q          Do not print anything out.\n");
+	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -s          Print out summary information of auth results.\n");
+	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
+	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stderr, "  -v          Show program version information.\n");
 	fprintf(stderr, "  -x          Debugging mode.\n");
 
@@ -685,6 +686,7 @@ int main(int argc, char **argv)
 	char filesecret[256];
 	FILE *fp;
 	int do_summary = 0;
+	int persec = 0;
 	int parallel = 1;
 	radclient_t	*this;
 
@@ -702,7 +704,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xv")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "c:d:f:hi:n:p:qr:sS:t:vx")) != EOF) switch(c) {
 		case 'c':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -714,18 +716,6 @@ int main(int argc, char **argv)
 		case 'f':
 			rbtree_insert(filename_tree, optarg);
 			break;
-		case 'q':
-			do_output = 0;
-			break;
-		case 'x':
-			librad_debug++;
-			break;
-		case 'r':
-			if (!isdigit((int) *optarg))
-				usage();
-			retries = atoi(optarg);
-			if ((retries == 0) || (retries > 1000)) usage();
-			break;
 		case 'i':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -734,21 +724,28 @@ int main(int argc, char **argv)
 				usage();
 			}
 			break;
+
+		case 'n':
+			persec = atoi(optarg);
+			if (persec <= 0) usage();
+			break;
+
 		case 'p':
 			parallel = atoi(optarg);
-			if (parallel < 0) usage();
-
-		case 's':
-			do_summary = 1;
+			if (parallel <= 0) usage();
 			break;
-		case 't':
+
+		case 'q':
+			do_output = 0;
+			break;
+		case 'r':
 			if (!isdigit((int) *optarg))
 				usage();
-			timeout = atof(optarg);
+			retries = atoi(optarg);
+			if ((retries == 0) || (retries > 1000)) usage();
 			break;
-		case 'v':
-			printf("radclient: $Id$ built on " __DATE__ " at " __TIME__ "\n");
-			exit(0);
+		case 's':
+			do_summary = 1;
 			break;
                case 'S':
 		       fp = fopen(optarg, "r");
@@ -778,6 +775,18 @@ int main(int argc, char **argv)
                        }
                        secret = filesecret;
 		       break;
+		case 't':
+			if (!isdigit((int) *optarg))
+				usage();
+			timeout = atof(optarg);
+			break;
+		case 'v':
+			printf("radclient: $Id$ built on " __DATE__ " at " __TIME__ "\n");
+			exit(0);
+			break;
+		case 'x':
+			librad_debug++;
+			break;
 		case 'h':
 		default:
 			usage();
@@ -955,6 +964,37 @@ int main(int argc, char **argv)
 				 *	Send the current packet.
 				 */
 				send_one_packet(this);
+
+				/*
+				 *	Wait a little before sending
+				 *	the next packet, if told to.
+				 */
+				if (persec) {
+					struct timeval tv;
+
+					/*
+					 *	Don't sleep elsewhere.
+					 */
+					sleep_time = 0;
+
+					if (persec == 1) {
+						tv.tv_sec = 1;
+						tv.tv_usec = 0;
+					} else {
+						tv.tv_sec = 0;
+						tv.tv_usec = 1000000/persec;
+					}
+					
+					/*
+					 *	Sleep for milliseconds,
+					 *	portably.
+					 *
+					 *	If we get an error or
+					 *	a signal, treat it like
+					 *	a normal timeout.
+					 */
+					select(0, NULL, NULL, NULL, &tv);
+				}
 
 				/*
 				 *	If we haven't sent this packet
