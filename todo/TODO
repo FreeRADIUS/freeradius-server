@@ -1,5 +1,9 @@
 URGENT:
-o Add 'initialize' list in modules, so explicitely give initialization order.
+o scan ALL modules, so that they use consistent names for structures
+  and variables in their instantiation (rlm_foo_t *inst), and that they
+  call rlm_foo_detach() if anything goes wrong, instead of just free()'ing
+  'inst'.  The cf_parse_section().. code may have malloc'd memory, and
+  that needs to be free'd, too.
 o Add a 'listen' directive, ala Apache, so that we can listen
   on multiple ports. Hmm... if we do that, we should allow multiple
   virtual servers, too.
@@ -11,7 +15,6 @@ o double-check Cistron 'compat' mode, so that all current users of
   Cistron can upgrade "out of the box" to FreeRADIUS
 
 MEDIUM PRIORITY
-o fix radwho to read modules{radutmp{filename = }}
 o go through all of the code and reformat it, for project standards
 o go through all of the code, removing unnecessary #include's, and
   generating a standard include file order which will work across all
@@ -63,6 +66,8 @@ o there should be a way that radius itself could
 	--- This work is for an external process to do ---
 
 DONE:
+o fix radwho to read modules{radutmp{filename = }}
+o Add 'initialize' list in modules, so explicitely give initialization order.
 o merge OSF/OSFIA patches from Cistron.
 o Fix DBM support:
   - Put DBM into its own module
