@@ -27,6 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
 #include "libradius.h"
 #include "radiusd.h"
 #include "modules.h"
@@ -57,6 +61,7 @@ static CONF_PARSER module_config[] = {
  */
 static REALM *check_for_realm(void *instance, REQUEST *request)
 {
+	int is_local;
 	char namebuf[MAX_STRING_LEN];
 	char *username;
 	char *realmname = NULL;
@@ -172,40 +177,61 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		request->username = vp;
 	}
 
-	/*
-	 *	Don't add a 'Realm' attribute, proxy.c does
-	 *	that for us.
-	 */
-
-	/* make sure it's proxyable realm */
-	if ((realm->notrealm) ||
-	    (strcmp(realm->server, "LOCAL") == 0)) {
-		pairadd(&request->packet->vps, pairmake("Realm", realm->realm, T_OP_EQ));
-		DEBUG2("    rlm_realm: Adding Realm = \"%s\"",
-		       realm->realm);
-		return NULL;
-	}
-
 	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
 	       username, realm->realm);
 
 	/*
-	 *	Perhaps accounting proxying was turned off.
+	 *	Figure out what to do with the request.
 	 */
-	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-	    (realm->acct_port == 0)) {
-		/* log a warning that the packet isn't getting proxied ??? */
-		DEBUG2("rlm_realm:  acct_port is not set.  proxy cancelled");
-		return NULL;
+	is_local = FALSE;
+	switch (request->packet->code) {
+	default:
+		DEBUG2("rlm_realm: Unknown packet code %d\n",
+		       request->packet->code);
+		return NULL;		/* don't do anything */
+		
+		/*
+		 *	Perhaps accounting proxying was turned off.
+		 */
+	case PW_ACCOUNTING_REQUEST:
+		if (realm->acct_ipaddr == htonl(INADDR_NONE)) {
+			DEBUG2("rlm_realm:  Accounting realm is LOCAL.");
+			is_local = TRUE;
+		}
+
+		if (realm->acct_port == 0) {
+			DEBUG2("rlm_realm:  acct_port is not set.  proxy cancelled");
+			return NULL;
+		}
+		break;
+
+		/*
+		 *	Perhaps authentication proxying was turned off.
+		 */
+	case PW_AUTHENTICATION_REQUEST:
+		if (realm->ipaddr == htonl(INADDR_NONE)) {
+			DEBUG2("rlm_realm:  Authentication realm is LOCAL.");
+			is_local = TRUE;
+		}
+
+		if (realm->auth_port == 0) {
+			DEBUG2("rlm_realm:  auth_port is not set.  proxy cancelled");
+			return NULL;
+		}
+		break;
 	}
 
 	/*
-	 *	Perhaps authentication proxying was turned off.
+	 *	Add the realm name to the request.
 	 */
-	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-	    (realm->auth_port == 0)) {
-		/* log a warning that the packet isn't getting proxied ??? */
-		DEBUG2("rlm_realm:  auth_port is not set.  proxy cancelled");
+	pairadd(&request->packet->vps, pairmake("Realm", realm->realm,
+						T_OP_EQ));
+	DEBUG2("    rlm_realm: Adding Realm = \"%s\"", realm->realm);
+
+	/*
+	 *	Local realm, don't proxy it.
+	 */
+	if (is_local) {
 		return NULL;
 	}
 
@@ -213,21 +239,11 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 }
 
 /*
- *	Maybe add a "Proxy-To-Realm" attribute to the request.
- *
- *	If it's a LOCAL realm, then don't bother.
+ *	Add a "Proxy-To-Realm" attribute to the request.
  */
 static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
 {
 	VALUE_PAIR *vp;
-
-	/*
-	 *	If it's the LOCAL realm, we do NOT proxy it, but
-	 *	we DO strip the User-Name, if told to do so.
-	 */
-	if (strcmp(realm->server, "LOCAL") == 0) {
-		return;
-	}
 
 	/*
 	 *	Tell the server to proxy this request to another
@@ -311,6 +327,8 @@ static int realm_authorize(void *instance, REQUEST *request)
 	/*
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
+	DEBUG2("rlm_realm:  Preparing to proxy authentication request to realm %s\n",
+	       realm->realm);
 	add_proxy_to_realm(&request->config_items, realm);
 
 	return RLM_MODULE_UPDATED; /* try the next module */
@@ -336,13 +354,15 @@ static int realm_preacct(void *instance, REQUEST *request)
 	 */
 	realm = check_for_realm(instance, request);
 	if (!realm) {
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 	}
 
 
 	/*
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
+	DEBUG2("rlm_realm:  Preparing to proxy accounting request to realm %s\n",
+	       realm->realm);
 	add_proxy_to_realm(&request->config_items, realm);
 
 	return RLM_MODULE_OK; /* try the next module */
