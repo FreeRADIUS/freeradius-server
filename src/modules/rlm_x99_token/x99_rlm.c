@@ -32,7 +32,6 @@
  */
 
 /*
- * TODO: change maxfail to softfail, hardfail.
  * TODO: add Auth-Type config item if not present.
  * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
@@ -66,7 +65,8 @@ typedef struct x99_token_t {
     char *chal_text;	/* text to present challenge to user, must have %s */
     int chal_len;	/* challenge length, min 5 digits                  */
     int maxdelay;	/* max delay time for response, in seconds         */
-    int maxfail;	/* max number of auth fails before disabling user  */
+    int softfail;	/* number of auth fails before time delay starts   */
+    int hardfail;	/* number of auth fails when user is locked out    */
     int allow_sync;	/* useful to override pwdfile card_type settings   */
     int fast_sync;	/* response-before-challenge mode                  */
     int allow_async;	/* C/R mode allowed?                               */
@@ -90,8 +90,10 @@ static CONF_PARSER module_config[] = {
       NULL, "6" },
     { "maxdelay", PW_TYPE_INTEGER, offsetof(x99_token_t, maxdelay),
       NULL, "30" },
-    { "maxfail", PW_TYPE_INTEGER, offsetof(x99_token_t, maxfail),
+    { "softfail", PW_TYPE_INTEGER, offsetof(x99_token_t, softfail),
       NULL, "5" },
+    { "hardfail", PW_TYPE_INTEGER, offsetof(x99_token_t, hardfail),
+      NULL, "0" },
     { "allow_sync", PW_TYPE_BOOLEAN, offsetof(x99_token_t, allow_sync),
       NULL, "yes" },
     { "fast_sync", PW_TYPE_BOOLEAN, offsetof(x99_token_t, fast_sync),
@@ -171,10 +173,16 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 		      "using default of \"%s\"", CHALLENGE_TEXT);
     }
 
-    if (data->maxfail < 1 ) {
-	data->maxfail = 5;
-	radlog(L_ERR, "rlm_x99_token: maxfail must be at least 1, "
+    if (data->softfail < 1 ) {
+	data->softfail = 5;
+	radlog(L_ERR, "rlm_x99_token: softfail must be at least 1, "
 		      "using default of 5");
+    }
+
+    if (data->hardfail < 0 ) {
+	data->hardfail = 0;
+	radlog(L_ERR, "rlm_x99_token: hardfail must be at least 1 "
+		      "(or 0 == infinite), using default of 0");
     }
 
     if (data->fast_sync && !data->allow_sync) {
@@ -389,7 +397,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
     x99_user_info_t user_info;
     char *username;
     int i, failcount, pwattr, rc;
-    time_t last_async;
+    time_t last_auth;
 
     char challenge[MAX_CHALLENGE_LEN + 1];
     char e_response[9];		/* expected response */
@@ -474,22 +482,59 @@ good_state:
     } /* if (!fast_sync) */
 
     /*
-     * Check failure count.  We try to "fail secure", but it's not perfect
-     * as we may be able to read the value but not set it.
+     * Check failure count.  We "fail secure".  Note that for "internal"
+     * failures, we don't increment the failcount or last_auth time.
      */
-    if (x99_get_failcount(inst->syncdir, username, &failcount) < 0) {
+    if (x99_get_failcount(inst->syncdir, username, &failcount) != 0) {
 	radlog(L_ERR, "rlm_x99_token: auth: unable to get failure count "
 		      "for [%s]", username);
 	return RLM_MODULE_FAIL;
     }
-    if (failcount >= inst->maxfail) {
+    if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
+	radlog(L_ERR, "rlm_x99_token: auth: unable to get last auth time "
+		      "for [%s]", username);
+	return RLM_MODULE_FAIL;
+    }
+    if (inst->hardfail && failcount >= inst->hardfail) {
 	radlog(L_AUTH, "rlm_x99_token: auth: %d/%d failed/max authentications "
-		       "for [%s]", failcount, inst->maxfail, username);
+		       "for [%s]", failcount, inst->hardfail, username);
 	if (x99_incr_failcount(inst->syncdir, username) != 0) {
 	    radlog(L_ERR, "rlm_x99_token: auth: unable to increment failure "
 			  "count for locked out user [%s]", username);
 	}
 	return RLM_MODULE_USERLOCK;
+    }
+    if (failcount >= inst->softfail) {
+	time_t when;
+	int fcount;
+
+	/*
+	 * Determine the next time this user can authenticate.
+	 *
+	 * Once we hit softfail, we introduce a 1m delay before the user
+	 * can authenticate.  For each successive failed authentication,
+	 * we double the delay time, up to a max of 32 minutes.  While in
+	 * the "delay mode" of operation, all authentication ATTEMPTS are
+	 * considered failures (we don't test if the password is correct).
+	 * Also, each attempt during the delay period restarts the clock.
+	 *
+	 * The advantage of a delay instead of a simple lockout is that an
+	 * attacker can't lock out a user as easily; the user need only wait
+	 * a bit before he can authenticate.
+	 */
+	fcount = failcount - inst->softfail;
+	when = last_auth + fcount > 5 ? 32 * 60 : (1 << fcount) * 60;
+	if (time(NULL) < when) {
+	    radlog(L_AUTH, "rlm_x99_token: auth: user [%s] auth too soon "
+			   "while delayed, "
+			   "%d/%d failed/softfail authentications",
+			   username, failcount, inst->softfail);
+	    if (x99_incr_failcount(inst->syncdir, username) != 0) {
+		radlog(L_ERR, "rlm_x99_token: auth: unable to increment "
+			      "failure count for delayed user [%s]", username);
+	    }
+	    return RLM_MODULE_USERLOCK;
+	}
     }
 
     /*
@@ -507,6 +552,7 @@ good_state:
 	radlog(L_ERR, "rlm_x99_token: auth: challenge transform failed "
 		      "for [%s]", username);
 	return RLM_MODULE_FAIL;
+	/* NB: last_auth, failcount not updated. */
     }
 
     /* Calculate and test the async response. */
@@ -516,6 +562,7 @@ good_state:
 		      "response for [%s], to challenge %s",
 		      username, challenge);
 	return RLM_MODULE_FAIL;
+	/* NB: last_auth, failcount not updated. */
     }
     DEBUG("rlm_x99_token: auth: [%s], async challenge %s, "
 	  "expecting response %s", username, challenge, e_response);
@@ -527,54 +574,42 @@ good_state:
 			   "disallowed by config", username);
 	    rc = RLM_MODULE_REJECT;
 	    goto return_pw_valid;
+	    /* NB: last_auth, failcount not updated. */
 	}
-	if (x99_get_last_async(inst->syncdir, username, &last_async) != 0) {
-	    radlog(L_ERR, "rlm_x99_token: auth: unable to get last async "
-			  "auth time for [%s]", username);
-	    rc = RLM_MODULE_FAIL;
-	    goto return_pw_valid;
-	}
-	if (last_async + inst->maxdelay > time(NULL)) {
+	if (last_auth + inst->maxdelay > time(NULL)) {
 	    radlog(L_AUTH, "rlm_x99_token: auth: bad async for [%s]: "
 			   "too soon", username);
 	    rc = RLM_MODULE_REJECT;
 	    goto return_pw_valid;
+	    /* NB: last_auth, failcount not updated. */
 	}
 
 	if (user_info.card_id & X99_CF_SM) {
 	    radlog(L_INFO, "rlm_x99_token: auth: [%s] authenticated "
 			   "in async mode", username);
-	    /* Resync the card. */
-	    if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
-				  1, 0, challenge, user_info.keyblock) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to get "
-			      "sync data e:%d t:%d for [%s] (for resync)",
-			      1, 0, username);
-	    } else if (x99_set_sync_data(inst->syncdir, username, challenge,
-					 user_info.keyblock) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to set sync "
-			      "data for [%s] (for resync)", username);
-	    }
 	}
 
-	/* Reset counters. */
-	if (x99_reset_failcount(inst->syncdir, username) != 0) {
-	    radlog(L_ERR, "rlm_x99_token: auth: unable to reset "
-			  "failure count for [%s]", username);
-	}
-	if (x99_upd_last_async(inst->syncdir, username) != 0) {
-	    radlog(L_ERR, "rlm_x99_token: auth: unable to update "
-			  "last async time for [%s]", username);
-	    /*
-	     * Up to here, we allowed resync failures to fall through, but
-	     * if we let this one slip by we will be open to replay attacks
-	     * over the lifetime of the State attribute (inst->maxdelay).
-	     */
-	    rc = RLM_MODULE_FAIL;
-	    goto return_pw_valid;
-	}
-
+	/*
+	 * Resync the card.  The sync data doesn't mean anything for
+	 * async-only cards, but we want the side effects of resetting
+	 * the failcount and the last auth time.  We "fail-out" if we
+	 * can't do this, because if we can't update the last auth time,
+	 * we will be open to replay attacks over the lifetime of the
+	 * State attribute (inst->maxdelay).
+	 */
 	rc = RLM_MODULE_OK;
+	if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
+			      1, 0, challenge, user_info.keyblock) != 0) {
+	    radlog(L_ERR, "rlm_x99_token: auth: unable to get "
+			  "sync data e:%d t:%d for [%s] (for resync)",
+			  1, 0, username);
+	    rc = RLM_MODULE_FAIL;
+	} else if (x99_set_sync_data(inst->syncdir, username, challenge,
+				     user_info.keyblock) != 0) {
+	    radlog(L_ERR, "rlm_x99_token: auth: unable to set sync "
+			  "data for [%s] (for resync)", username);
+	    rc = RLM_MODULE_FAIL;
+	}
 	goto return_pw_valid;
     } /* if (user authenticated async) */
 
@@ -589,6 +624,7 @@ sync_response:
 			      "sync data e:%d t:%d for [%s]",
 			      i, 0, username);
 		return RLM_MODULE_FAIL;
+		/* NB: last_auth, failcount not updated. */
 	    }
 
 	    /* Calculate sync response. */
@@ -598,28 +634,34 @@ sync_response:
 			      "sync response e:%d t:%d for [%s], to "
 			      "challenge %s", i, 0, username, challenge);
 		return RLM_MODULE_FAIL;
+		/* NB: last_auth, failcount not updated. */
 	    }
 	    DEBUG("rlm_x99_token: auth: [%s], sync challenge %d %s, "
 		  "expecting response %s", username, i, challenge, e_response);
 
 	    /* Test user-supplied password. */
 	    if (x99_pw_valid(request, pwattr, e_response, &add_vps)) {
-		/* Yay!  User authenticated via sync mode.  Resync. */
+		/*
+		 * Yay!  User authenticated via sync mode.  Resync.
+		 *
+		 * The same failure/replay issue applies here as in the
+		 * identical code block in the async section, above, with
+		 * the additional problem that a response can be reused
+		 * indefinitely!  (until the sync data is updated)
+		 */
+		rc = RLM_MODULE_OK;
 		if (x99_get_sync_data(inst->syncdir,username,user_info.card_id,
 				      1,0,challenge,user_info.keyblock) != 0) {
 		    radlog(L_ERR, "rlm_x99_token: auth: unable to get "
 				  "sync data e:%d t:%d for [%s] (for resync)",
 				  1, 0, username);
+		    rc = RLM_MODULE_FAIL;
 		} else if (x99_set_sync_data(inst->syncdir, username, challenge,
 					     user_info.keyblock) != 0) {
 		    radlog(L_ERR, "rlm_x99_token: auth: unable to set sync "
 				  "data for [%s] (for resync)", username);
+		    rc = RLM_MODULE_FAIL;
 		}
-		if (x99_reset_failcount(inst->syncdir, username) != 0) {
-		    radlog(L_ERR, "rlm_x99_token: auth: unable to reset "
-				  "failure count for [%s]", username);
-		}
-		rc = RLM_MODULE_OK;
 		goto return_pw_valid;
 	    }
 

@@ -50,17 +50,18 @@ STATE:
 Along with the passwd file is a "state file" which contains state
 needed to authenticate synchronously, along with other persistent data.
 There is one state file per user, with the same name as the user.
-The default location for state files is in /etc/x99sync.d.
+The default location for state files is in /etc/x99sync.d.  For most
+filesystems, this doesn't scale well beyond a few thousand users.
 
-The format is "version:user:challenge:key:failures:last_async:".
+The format is "version:user:challenge:key:failures:last_auth:".
 Note that the trailing colon is required.
 
-version: 1
-user: this is a sanity check field
+  version: 1
+     user: this is a sanity check field
 challenge: the next synchronous challenge
-key: the key used for the next challenge (currently unused)
-failures: number of consecutive failures
-last_async: the last time the user authenticated asynchronously.
+      key: the key used for the next challenge (currently unused)
+ failures: number of consecutive failures
+last_auth: the last time the user authenticated (success or failure)
 
 If this file does not exist, the user must authenticate asynchronously.
 Once that happens, the server will create this file.  For tokens/modes
@@ -73,7 +74,7 @@ what the token will also do upon programming.  crcalc will display the
 next challenge, which you can then use to initialize the state file.
 For example:
 
-1:bob:12345678::0:0:
+1:bob:12345678:deadbeefdeadbeef:0:0:
 
 When creating this file, make sure it is owned by the user the server
 runs as.

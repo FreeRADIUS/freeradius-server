@@ -137,9 +137,9 @@ extern int x99_get_failcount(const char *syncdir, const char *username,
 			     int *failcount);
 extern int x99_incr_failcount(const char *syncdir, const char *username);
 extern int x99_reset_failcount(const char *syncdir, const char *username);
-extern int x99_get_last_async(const char *syncdir, const char *username,
-			      time_t *last_async);
-extern int x99_upd_last_async(const char *syncdir, const char *username);
+extern int x99_get_last_auth(const char *syncdir, const char *username,
+			      time_t *last_auth);
+extern int x99_upd_last_auth(const char *syncdir, const char *username);
 
 /* x99_site.c */
 extern int x99_challenge_transform(const char *username,

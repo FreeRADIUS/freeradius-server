@@ -108,10 +108,9 @@ x99_get_sync_data(const char *syncdir, const char *username,
  * Returns 0 on success, non-zero otherwise.
  * Side effects:
  * - Resets failure count to 0 on successful return.
- * - Sets last async time to "now" on successful return.  This is a bit
- *   pessimistic, but we are pushing the sync mode agenda.  (See docs.)
- * The caller should not be concerned about the side effects.  They may
- * change.
+ * - Sets last auth time to "now" on successful return.
+ * Because of the failure count reset, this should only be called for/after
+ * successful authentications.
  *
  * username:  duh
  * challenge: The challenge to be stored.
@@ -136,31 +135,29 @@ x99_set_sync_data(const char *syncdir, const char *username,
 
 
 /*
- * Return the last time the user did an async auth.
+ * Return the last time the user authenticated.
  * Returns 0 on success, non-zero otherwise.
  */
 int
-x99_get_last_async(const char *syncdir, const char *username,time_t *last_async)
+x99_get_last_auth(const char *syncdir, const char *username, time_t *last_auth)
 {
     int rc;
     char *lock;
 
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
-    rc = x99_get_sd(syncdir, username, NULL, NULL, last_async);
+    rc = x99_get_sd(syncdir, username, NULL, NULL, last_auth);
     x99_release_sd_lock(lock);
     return rc;
 }
 
 /*
- * Set the last async time for a user to "now".
+ * Set the last auth time for a user to "now".
  * Returns 0 on success, non-zero otherwise.
- * x99_set_sync_data() resets the async time also, but that's because
- * we keep the async time and other sync data together; we don't want
- * to necessarily make that visible to our callers (x99_rlm.c).
+ * Note that x99_set_sync_data() also resets the auth time.
  */
 int
-x99_upd_last_async(const char *syncdir, const char *username)
+x99_upd_last_auth(const char *syncdir, const char *username)
 {
     int failcount, rc;
     char *lock;
@@ -179,7 +176,7 @@ x99_upd_last_async(const char *syncdir, const char *username)
 
 
 /*
- * Return the failed login count for a user.
+ * Return the failed login count and last auth time for a user.
  * Returns 0 on success, non-zero otherwise.
  */
 int
@@ -200,7 +197,7 @@ int
 x99_incr_failcount(const char *syncdir, const char *username)
 {
     int failcount, rc;
-    time_t last_async;
+    time_t last_auth;
     char *lock;
     char challenge[MAX_CHALLENGE_LEN + 1];
 
@@ -208,12 +205,12 @@ x99_incr_failcount(const char *syncdir, const char *username)
 	return -1;
 
     /* Get current value. */
-    rc = x99_get_sd(syncdir, username, challenge, &failcount, &last_async);
+    rc = x99_get_sd(syncdir, username, challenge, &failcount, &last_auth);
     if (rc == 0) {
 	/* Increment. */
 	if (++failcount == INT_MAX)
 	    failcount--;
-	rc = x99_set_sd(syncdir, username, challenge, failcount, last_async);
+	rc = x99_set_sd(syncdir, username, challenge, failcount, last_auth);
     }
 
     x99_release_sd_lock(lock);
@@ -232,16 +229,16 @@ int
 x99_reset_failcount(const char *syncdir, const char *username)
 {
     int rc;
-    time_t last_async;
+    time_t last_auth;
     char *lock;
     char challenge[MAX_CHALLENGE_LEN + 1];
 
     if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_get_sd(syncdir, username, challenge, NULL, &last_async);
+    rc = x99_get_sd(syncdir, username, challenge, NULL, &last_auth);
     if (rc == 0)
-	rc = x99_set_sd(syncdir, username, challenge, 0, last_async);
+	rc = x99_set_sd(syncdir, username, challenge, 0, last_auth);
 
     x99_release_sd_lock(lock);
     return rc;
@@ -261,7 +258,7 @@ x99_reset_failcount(const char *syncdir, const char *username)
  * each -- unless it's an attack), so this should give us maximal
  * concurrency.
  *
- * The file format is 'version:user:challenge:key:failures:last_async:'.
+ * The file format is 'version:user:challenge:key:failures:last_auth:'.
  * Version is there to provide easy forward compatibility.  The trailing
  * colon is there for the same reason.  Future versions must add data to
  * the end.  The current version is 1.
@@ -301,9 +298,9 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 
     /*
      * Try to obtain exclusive access.  10 should be *plenty* of
-     * iterations, we don't expect concurrent accesses to the same file.
-     * This is broken over NFS, but you shouldn't have this data on
-     * NFS anyway.
+     * iterations, we don't expect concurrent accesses to the same file,
+     * and any accesses should be very quick.  This is broken over NFS,
+     * but you shouldn't have this data on NFS anyway.
      */
     for (i = 0; i < 10; ++i) {
 	if ((fd = open(lockfile, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR)) != -1) {
@@ -333,16 +330,16 @@ x99_release_sd_lock(char *lockfile)
 
 /*
  * x99_get_sd() returns 0 on success, non-zero otherwise.
- * On successful returns, challenge, failures and last_async are filled in,
+ * On successful returns, challenge, failures and last_auth are filled in,
  * if non-NULL.
- * On unsuccessful returns, challenge, failures and last_async may be garbage.
+ * On unsuccessful returns, challenge, failures and last_auth may be garbage.
  * challenge should be sized as indicated (if non-NULL).
  * The caller must have obtained an exclusive lock on the sync file.
  */
 static int
 x99_get_sd(const char *syncdir, const char *username,
 	   char challenge[MAX_CHALLENGE_LEN + 1], int *failures,
-	   time_t *last_async)
+	   time_t *last_auth)
 {
     char syncfile[PATH_MAX + 1];
     FILE *fp;
@@ -443,16 +440,16 @@ x99_get_sd(const char *syncdir, const char *username,
     }
     p = q;
 
-    /* Get last_async. */
+    /* Get last_auth. */
     if ((q = strchr(p, ':')) == NULL) {
 	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (last_async) for user %s", username);
+		      "invalid sync data (last_auth) for user %s", username);
 	return -1;
     }
     *q++ = '\0';
-    if (last_async && (sscanf(p, "%ld", last_async) != 1)) {
+    if (last_auth && (sscanf(p, "%ld", last_auth) != 1)) {
 	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (last_async) for user %s", username);
+		      "invalid sync data (last_auth) for user %s", username);
 	return -1;
     }
 
@@ -466,7 +463,7 @@ x99_get_sd(const char *syncdir, const char *username,
  */
 static int
 x99_set_sd(const char *syncdir, const char *username,
-	   const char *challenge, int failures, time_t last_async)
+	   const char *challenge, int failures, time_t last_auth)
 {
     char syncfile[PATH_MAX + 1];
     FILE *fp;
@@ -483,7 +480,7 @@ x99_set_sd(const char *syncdir, const char *username,
 
     /* Write our (version 1) sync data. */
     (void) fprintf(fp, "1:%s:%s:%s:%d:%ld:\n", username, challenge, "",
-		   failures, last_async);
+		   failures, last_auth);
     if (fclose(fp) != 0) {
 	radlog(L_ERR, "rlm_x99_token: x99_set_sd: "
 		      "unable to write sync file %s: %s",

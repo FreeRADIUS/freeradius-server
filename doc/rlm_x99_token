@@ -221,6 +221,14 @@
     Most of the configuration is documented fairly well in the sample
     x99.conf file.  I will only discuss a few options here.
 
+    softfail/hardfail:  See x99.conf for how these work.  It is
+    critically important to have these since the password (response)
+    space is so small.  Without a delay/lockout, it would be trivially
+    easy for an attacker to just try every possible password.  With the
+    default softfail setting of 5, an attacker could try, at most, ~50
+    passwords/day.  No indication is given to the user that they are
+    in "delay mode" (except that a valid password doesn't work).
+
     ewindow_size:  This is how far out of [event] sync the server can
     get with the token.  The value is how far the user can be ahead of
     the server -- essentially how many times the user can play with the
