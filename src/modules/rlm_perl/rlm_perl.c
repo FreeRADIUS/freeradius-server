@@ -739,6 +739,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	HV		*rad_reply_hv;
 	HV		*rad_check_hv;
 	HV		*rad_request_hv;
+	HV		*rad_request_proxy_hv;
+	HV		*rad_request_proxy_reply_hv;
 	AV		*end_AV;
 
 	char *embed[4], *xlat_name;
@@ -810,10 +812,14 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	rad_reply_hv = newHV();
 	rad_check_hv = newHV();
 	rad_request_hv = newHV();
+	rad_request_proxy_hv = newHV();
+	rad_request_proxy_reply_hv = newHV();
 
 	rad_reply_hv = get_hv("RAD_REPLY",1);
         rad_check_hv = get_hv("RAD_CHECK",1);
         rad_request_hv = get_hv("RAD_REQUEST",1);
+	rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
+	rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
 
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL)
@@ -951,6 +957,8 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	HV		*rad_reply_hv;
 	HV		*rad_check_hv;
 	HV		*rad_request_hv;
+	HV		*rad_request_proxy_hv;
+	HV		*rad_request_proxy_reply_hv;
 
 #ifdef USE_ITHREADS
 	POOL_HANDLE	*handle;
@@ -986,12 +994,26 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	rad_reply_hv = get_hv("RAD_REPLY",1);
 	rad_check_hv = get_hv("RAD_CHECK",1);
 	rad_request_hv = get_hv("RAD_REQUEST",1);
-
+	rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
+	rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
 
 
 	perl_store_vps(request->reply->vps, rad_reply_hv);
 	perl_store_vps(request->config_items, rad_check_hv);
 	perl_store_vps(request->packet->vps, rad_request_hv);
+	
+	if (request->proxy != NULL) {
+		perl_store_vps(request->proxy->vps, rad_request_proxy_hv);
+	} else {
+		hv_undef(rad_request_proxy_hv);
+	}
+
+	if (request->proxy_reply !=NULL) {
+		perl_store_vps(request->proxy_reply->vps, rad_request_proxy_reply_hv);
+	} else {
+		hv_undef(rad_request_proxy_reply_hv);
+	}	
+	
 	vp = NULL;
 
 
@@ -1032,6 +1054,12 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 
 	if ((get_hv_content(rad_check_hv, &vp)) > 0 ) {
 		pairmove(&request->config_items, &vp);
+		pairfree(&vp);
+	}
+	
+	if ((get_hv_content(rad_request_proxy_reply_hv, &vp)) > 0 && request->proxy_reply != NULL) {
+		pairfree(&request->proxy_reply->vps);
+		pairmove(&request->proxy_reply->vps, &vp);
 		pairfree(&vp);
 	}
 	}
