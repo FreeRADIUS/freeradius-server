@@ -749,6 +749,7 @@ autz_redo:
 					 PW_NAS_PORT_ID)) != NULL) {
 		  tmp->lvalue = htonl(ntohl(tmp->lvalue) + vpPortId->lvalue);
 		  tmp->flags.addport = 0;
+		  ip_ntoa(tmp->strvalue, tmp->lvalue);
 		} else {
 			DEBUG2("WARNING: No NAS-Port attribute in request.  CANNOT return a Framed-IP-Address + NAS-Port.\n");
 			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
