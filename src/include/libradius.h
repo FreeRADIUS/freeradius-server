@@ -53,6 +53,8 @@
 #endif
 #endif
 
+#define EAP_START               2
+
 #define AUTH_VECTOR_LEN		16
 #define CHAP_VALUE_LENGTH       16
 #define MAX_STRING_LEN		254	/* RFC2138: string 0-253 octets */
@@ -168,6 +170,12 @@ int		dict_vendorname(const char *name);
 /* md5.c */
 
 void		librad_md5_calc(u_char *, u_char *, u_int);
+
+/* hmac.c */
+
+void lrad_hmac_md5(unsigned char *text, int text_len,
+		   unsigned char *key, int key_len,
+		   unsigned char *digest);
 
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, const char *secret);

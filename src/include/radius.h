@@ -76,6 +76,9 @@
 #define PW_PORT_LIMIT			62
 #define PW_CONNECT_INFO			77
 
+#define PW_EAP_MESSAGE                  79
+#define PW_MESSAGE_AUTHENTICATOR        80
+
 #define PW_FALL_THROUGH			500
 #define PW_ADD_PORT_TO_IP_ADDRESS	501
 #define PW_EXEC_PROGRAM			502
@@ -157,6 +160,7 @@
 #define PW_AUTHTYPE_SECURID		2
 #define PW_AUTHTYPE_CRYPT		3
 #define PW_AUTHTYPE_REJECT		4
+#define PW_AUTHTYPE_EAP                 252
 #define PW_AUTHTYPE_PAM			253
 #define PW_AUTHTYPE_ACCEPT		254
 
