@@ -89,6 +89,8 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	q = *to;
 	pa = &attrname[0];
 
+	*q = '\0';
+
 	/* 
 	 * Skip the '}' at the front of 'p' 
 	 * Increment open braces 
@@ -99,9 +101,7 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	while ((*p) && (!stop)) {
 		switch(*p) {
 			case '}':
-				openbraces--;
 				stop=1;
-				p++;
 				break;
 
 			case ':':
@@ -148,15 +148,13 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 		while((*p != '\0') && (openbraces > 0)) {
 			if(*p == '}') 
 				openbraces--;
+			if(*p == '{') 
+				openbraces++;
 			if (openbraces > 0)
 				p++;
 		}
 	} else {
-		openbraces--;
-		if (*p != '\0') {
-			p--;
-			decode_attribute(&p, &q, freespace, &openbraces, request, func);
-		}
+		p--;
 	}
 
 	*open = openbraces;
