@@ -423,6 +423,7 @@ modules {
 		# identity = "cn=admin,o=My Org,c=UA"
 		# password = mypass
 		basedn = "o=My Org,c=UA"
+		# authtype = "MS-CHAP"
 		filter = "(uid=%u)"
 		start_tls = no
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
