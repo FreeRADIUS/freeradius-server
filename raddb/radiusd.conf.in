@@ -490,6 +490,15 @@ modules {
 		#
 		compat = no
 	}
+
+	# See README.rlm_fastusers before using this
+	# module or changing these values
+  fastusers {
+    usersfile = ${confdir}/users_fast
+    hashsize = 1000
+    compat = no
+  }
+	
 	detail {
 		detailfile = %A/%n/detail
 		detailperm = 0600
