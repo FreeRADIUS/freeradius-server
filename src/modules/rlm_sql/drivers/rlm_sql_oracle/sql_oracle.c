@@ -293,7 +293,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 
 	oracle_sock->results=rowdata;
 
-	return 1;
+	return 0;
 }
 
 
