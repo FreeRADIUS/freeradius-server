@@ -68,12 +68,12 @@ distclean: clean
 reconfig: configure src/include/autoconf.h.in
 
 configure: configure.in aclocal.m4
-	autoconf
+	$(AUTOCONF)
 
 # autoheader might not change autoconf.h.in, so touch a stamp file
 src/include/autoconf.h.in: src/include/stamp-h.in acconfig.h
 src/include/stamp-h.in: configure.in acconfig.h
-	autoheader
+	$(AUTOHEADER)
 	echo timestamp > src/include/stamp-h.in
 
 src/include/autoconf.h: src/include/stamp-h

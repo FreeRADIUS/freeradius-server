@@ -288,6 +288,12 @@ AC_PATH_PROG(SNMPGET, snmpget, /usr/local/bin/snmpget)
 AC_PATH_PROG(SNMPWALK, snmpwalk, /usr/local/bin/snmpwalk)
 AC_PATH_PROG(RUSERS, rusers, /usr/bin/rusers)
 
+dnl FIXME This is truly gross.
+missing_dir=`cd $ac_aux_dir && pwd`
+AM_MISSING_PROG(ACLOCAL, aclocal, $missing_dir)
+AM_MISSING_PROG(AUTOCONF, autoconf, $missing_dir)
+AM_MISSING_PROG(AUTOHEADER, autoheader, $missing_dir)
+
 dnl #
 dnl # check for AIX, to allow us to use some BSD functions
 dnl # must be before macros that call the compiler.
