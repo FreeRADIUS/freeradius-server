@@ -498,23 +498,27 @@ int main(int argc, char *argv[])
 	signal(SIGINT, sig_fatal);
 	signal(SIGQUIT, sig_fatal);
 	signal(SIGPIPE, SIG_IGN);
+	signal(SIGTERM, sig_fatal);
 #ifdef SIGTRAP
 	signal(SIGTRAP, sig_fatal);
 #endif
 #ifdef SIGIOT
 	signal(SIGIOT, sig_fatal);
 #endif
+#ifdef SIGFPE
+	signal(SIGFPE, sig_fatal);
+#endif
+#ifdef SIGSEGV
+	signal(SIGSEGV, sig_fatal);
+#endif
+#ifdef SIGILL
+	signal(SIGILL, sig_fatal);
+#endif
 
 	/* this is right for threads, too, right?  
 	 * (Threads shouldn't get signals (from us) -- just be pthread_cancel()led.)
 	 */
-	signal(SIGTERM, sig_fatal);
 	signal(SIGCHLD, sig_cleanup);
-#if 0
-	signal(SIGFPE, sig_fatal);
-	signal(SIGSEGV, sig_fatal);
-	signal(SIGILL, sig_fatal);
-#endif
 
 	/*  Close unused file descriptors.  */
 	for (t = 32; t >= 3; t--)
@@ -923,7 +927,7 @@ int main(int argc, char *argv[])
 			}
 			radlog(L_ERR, "Unexpected error in select(): %s",
 					strerror(errno));
-			sig_fatal(101);
+			exit(1);
 		}
 
 		/*
@@ -2071,6 +2075,7 @@ static void usage(void)
  */
 static void sig_fatal(int sig)
 {
+	int child_sig;
 	const char *me = "MASTER: ";
 
 	if (radius_pid != getpid()) {
@@ -2078,17 +2083,18 @@ static void sig_fatal(int sig)
 	}
 
 	switch(sig) {
-		case 101:
-			radlog(L_ERR, "%sfailed in select() - exit.", me);
-			break;
 		case SIGTERM:
 			radlog(L_INFO, "%sexit.", me);
+			child_sig = SIGTERM;
 			break;
 		default:
 			radlog(L_ERR, "%sexit on signal (%d)", me, sig);
+			child_sig = SIGKILL;
 			break;
 	}
 
+
+#ifndef HAVE_PTHREAD_H
 	/*
 	 *  We're running as a daemon, we're the MASTER daemon,
 	 *  and we got a fatal signal.  Tear the rest of the
@@ -2100,8 +2106,9 @@ static void sig_fatal(int sig)
 		 *      Kill all of the processes in the current
 		 *  process group.
 		 */
-		kill(0, SIGKILL);
+		kill(0, child_sig);
 	}
+#endif
 
 	exit(sig == SIGTERM ? 0 : 1);
 }
