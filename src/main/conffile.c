@@ -309,17 +309,6 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	}
 
 	/*
-	 *	Allow for $INCLUDE files???
-	 *
-	 *	This sure looks wrong. But it looked wrong before I touched
-	 *	the file, so don't blame me. Please, just pass the config
-	 *	file through cpp or m4 and cut out the bloat. --Pac.
-	 */
-	if (name1 && strcasecmp(name1, "$INCLUDE") == 0) {
-	  return conf_read(name2);
-	}
-
-	/*
 	 *	Allocate new section.
 	 */
 	cs = cf_section_alloc(name1, name2, parent);
@@ -334,6 +323,86 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 		if (*ptr == '#')
 			continue;
+
+		/*
+		 *	Allow for $INCLUDE files
+		 *
+		 *      Currently this allows for includes only at the top 
+		 *      level of config.  IE you cannot have an $INCLUDE nested
+		 *      inside section.  -cparker
+		 */
+		
+		if ((ptr[0] == '$') && (name1 == NULL) && (name2 == NULL)) {
+
+		       CONF_SECTION      *is;
+
+		       t1 = getword(&ptr, buf1, sizeof(buf1));
+		       t2 = getword(&ptr, buf2, sizeof(buf2));
+
+		       p = buf;
+		       ptr = buf2;
+		       while (*ptr >= ' ') {
+			 /*
+			  *	Ignore anything other than "${"
+			  */
+			 if ((*ptr != '$') ||
+			     (ptr[1] != '{')) {
+			   *(p++) = *(ptr++);
+			   continue;
+			 }
+			 
+			 /*
+			  *	Look for trailing '}', and silently
+			  *	ignore anything that doesn't match.
+			  */
+			 q = strchr(ptr, '}');
+			if (q == NULL) {
+			  *(p++) = *(ptr++);
+			  continue;
+			}
+			
+			memcpy(buf1, ptr + 2, q - ptr - 2);
+			buf1[q - ptr - 2] = '\0';
+			cpn = cf_pair_find(cs, buf1);
+                        /* Also look recursively up the section tree,
+                         * so things like ${confdir} can be defined
+                         * there and used inside the module config
+                         * sections */
+			for (outercs=cs->item.parent
+			       ; !cpn && outercs ;
+                             outercs=outercs->item.parent) {
+			  cpn = cf_pair_find(outercs, buf1);
+			}
+			if (!cpn) {
+			  radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
+				 cf, *lineno, buf1);
+			  cf_section_free(cs);
+			  return NULL;
+			}
+			strcpy(p, cpn->value);
+			p += strlen(p);
+			ptr = q + 1;
+		       }
+		       *p = '\0';		  
+		       DEBUG2( "Config:   including file: %s", buf );
+		       
+		       if ((is = conf_read(buf)) == NULL) {
+			 radlog(L_ERR, "%s[%d]: Unable to include file \"%s\"",
+				cf, *lineno, buf);
+			 cf_section_free(cs);
+			 return NULL;
+		       }
+		       
+		       /*
+			*	Add the included conf to our CONF_SECTION
+			*/
+		       if( is && is->children ) cf_item_add(cs, is->children);
+		
+		       continue;
+
+		}
+
+
 
 		/*
 		 *	No '=': must be a section or sub-section.
