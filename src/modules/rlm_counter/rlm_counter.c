@@ -34,6 +34,8 @@
 
 #include <gdbm.h>
 
+#include "missing.h"
+
 static const char rcsid[] = "$Id$";
 
 /*

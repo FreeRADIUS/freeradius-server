@@ -80,3 +80,7 @@ void endusershell(void);
 #define REG_EXTENDED (0)
 #endif
 #endif
+
+#ifndef GDBM_SYNC
+#define GDBM_SYNC (0)
+#endif
