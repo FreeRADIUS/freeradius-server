@@ -391,6 +391,22 @@ eaptls_status_t eaptls_verify(EAP_DS *eap_ds, EAP_DS *prev_eap_ds)
  * Points to consider during EAP-TLS data extraction
  * 1. In the received packet, No data will be present incase of ACK-NAK
  * 2. Incase if more fragments need to be received then ACK after retreiving this fragment.
+ *
+ *  RFC 2716 Section 4.2.  PPP EAP TLS Request Packet
+ *
+ *  0                   1                   2                   3
+ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |     Code      |   Identifier  |            Length             |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |     Type      |     Flags     |      TLS Message Length
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |     TLS Message Length        |       TLS Data...
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ *  The Length field is two octets and indicates the length of the EAP
+ *  packet including the Code, Identifir, Length, Type, and TLS data
+ *  fields.
  */
 EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 {
@@ -402,6 +418,16 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	if (status  == EAPTLS_INVALID)
 		return NULL;
 
+	/*
+	 *	We have a 'type' after the EAP header, but no more data.
+	 *
+	 *	For TLS, we always have 'flags'
+	 */
+	if (eap_ds->response->length <= 2) {
+		radlog(L_ERR, "rlm_eap_tls: Invalid EAP-TLS packet received.  (No data.)");
+		return NULL;
+	}
+
 	tlspacket = eaptls_alloc();
 	if (tlspacket == NULL) return NULL;
 
@@ -409,13 +435,24 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	 * Code & id for EAPTLS & EAP are same
 	 * but eaptls_length = eap_length - 1(EAP-Type = 1 octet)
 	 *
-	 * length = code + id + length + flags + tlsdata
+	 * length = code + id + length + type + tlsdata
 	 *        =  1   +  1 +   2    +  1    +  X
 	 */
 	tlspacket->code = eap_ds->response->code;
 	tlspacket->id = eap_ds->response->id;
-	tlspacket->length = eap_ds->response->length - 1/*EAPtype*/;
+	tlspacket->length = eap_ds->response->length - 1; /* EAP type */
 	tlspacket->flags = eap_ds->response->type.data[0];
+
+	/*
+	 *	A quick sanity check of the flags.  If we've been told
+	 *	that there's a length, and there isn't one, then stop.
+	 */
+	if ((tlspacket->flags & 0x80) &&
+	    (tlspacket->length < 5)) { /* flags + TLS message length */
+		radlog(L_ERR, "rlm_eap_tls: Invalid EAP-TLS packet received.  (Length bit is set, but no length was found.)");
+		eaptls_free(&tlspacket);
+		return NULL;
+	}
 
 	switch (status) {
 	/*
@@ -437,6 +474,12 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	case EAPTLS_FIRST_FRAGMENT:
 	case EAPTLS_LENGTH_INCLUDED:
 	case EAPTLS_MORE_FRAGMENTS_WITH_LENGTH:
+		if (tlspacket->length < 5) { /* flags + TLS message length */
+			radlog(L_ERR, "rlm_eap_tls: Invalid EAP-TLS packet received.  (Excepted length, got none.)");
+			eaptls_free(&tlspacket);
+			return NULL;
+		}
+
 		/*
 		 * Extract all the TLS fragments from the previous eap_ds
 		 * Start appending this fragment to the above ds
@@ -445,12 +488,19 @@ EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 		data_len = ntohl(data_len);
 		data = (eap_ds->response->type.data + 5/*flags+TLS-Length*/);
 		len = eap_ds->response->type.length - 5/*flags+TLS-Length*/;
-		if(data_len > len) {
+
+		/*
+		 *	Hmm... this should be an error, too.
+		 */
+		if (data_len > len) {
 			radlog(L_INFO, "Total Length Included");
 			data_len = len;
 		}
 		break;
 
+		/*
+		 *	Data length is implicit, from the EAP header.
+		 */
 	case EAPTLS_MORE_FRAGMENTS:
 	case EAPTLS_OK:
 		data_len = eap_ds->response->type.length - 1/*flags*/;
