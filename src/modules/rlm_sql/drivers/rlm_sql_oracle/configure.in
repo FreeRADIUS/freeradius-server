@@ -21,9 +21,31 @@ if test x$with_[]modname != xno; then
 		ORACLE_INCLUDE=
 	)
 
-	dnl #
-	dnl #  If not, look for it in a number of directories.
-	dnl #
+	# Look for Oracle8i.
+	if test "x$ORACLE_INCLUDE" = "x"; then
+		old_CFLAGS="$CFLAGS"
+
+		AC_LOCATE_DIR(oracle_home_dir,oci.h)
+
+		for try in /usr/local/include/oracle /usr/local/oracle/include $oracle_include_dir; do
+			CFLAGS="$old_CFLAGS -I${try}/rdbms/demo ${try}/rdbms/public -I${try}/plsql/public -I${try}/network/public -I${try}/oci/include"
+			AC_TRY_COMPILE([#include <oci.h>],
+				[ int a = 1; ],
+				ORACLE_HOME=$try,
+				ORACLE_HOME=
+			)
+			if test "x$ORACLE_HOME" != "x"; then
+				break;
+			fi
+		done
+		CFLAGS="$old_CFLAGS"
+
+		if test "x$ORACLE_HOME" != "x"; then
+			ORACLE_INCLUDE="-I${ORACLE_HOME}/rdbms/demo ${ORACLE_HOME}/rdbms/public -I${ORACLE_HOME}/plsql/public -I${ORACLE_HOME}/network/public -I${ORACLE_HOME}/oci/include"
+		fi
+	fi     ##  this section sets $ORACLE_HOME, if found.
+
+	# not Oracle8i, try older.
 	if test "x$ORACLE_INCLUDE" = "x"; then
 		old_CFLAGS="$CFLAGS"
 
@@ -45,36 +67,36 @@ if test x$with_[]modname != xno; then
 
 	if test "x$ORACLE_INCLUDE" = "x"; then
 		AC_MSG_RESULT(no)
-		AC_MSG_WARN([oracle headers not found.  Use --with-oracle-include-dir=<path>.])
+		AC_MSG_WARN([oracle headers not found.  Use --with-oracle-home-dir=<path>.])
 		targetname=   # disabled module
 	else
 		sql_oracle_cflags="${sql_oracle_cflags} ${ORACLE_INCLUDE}"
 		AC_MSG_RESULT(yes)
 
-		dnl #
-		dnl #  Now do the same thing, looking for the Oracle library directory
-		dnl #
 
+		## is this set, from above?
+		if test "x$ORACLE_HOME" != "x"; then
+			## we must have an Oracle8i tree
 
-		## Somebody who's actually coded oracle stuff:  please fix this.
-		for oracle_library in oracleclient libclient8 libclntsh; do
+			# FIXME: we might do some checking, just to be nice
+			ORACLE_LIBS="-L$ORACLE_HOME/lib -lclntsh -lwtc8 -lm"
 
-
-			AC_MSG_CHECKING([for oracle_init in -l$oracle_library])
+		else
+			AC_MSG_CHECKING([for oracle_init in -loracleclient])
 
 			dnl #
 			dnl #  Look for it in a number of directories.
 			dnl #
 			old_LIBS="$LIBS"
 
-			AC_LOCATE_DIR(oracle_lib_dir,[${oracle_library}.so])
-			AC_LOCATE_DIR(oracle_lib_dir,[${oracle_library}.a])
+			AC_LOCATE_DIR(oracle_lib_dir,[oracleclient.so])
+			AC_LOCATE_DIR(oracle_lib_dir,[oracleclient.a])
 
 			for try in /usr/lib/oracle /usr/local/lib/oracle /usr/local/oracle/lib $oracle_lib_dir; do
-				LIBS="$old_LIBS -L$try -l${oracle_library}"
+				LIBS="$old_LIBS -L$try -loracleclient"
 				AC_TRY_LINK([extern char oracle_init();],
 					[ oracle_init()],
-					ORACLE_LIBS="-L$try -l${oracle_library}",
+					ORACLE_LIBS="-L$try -loracleclient",
 					ORACLE_LIBS=
 				)
 				if test "x$ORACLE_LIBS" != "x"; then
@@ -95,7 +117,8 @@ if test x$with_[]modname != xno; then
 				AC_MSG_RESULT(yes)
 				break
 			fi
-		done
+		fi
+
 		if test "x$ORACLE_LIBS" != "x"; then
 			AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path>.])
 			targetname=   # disabled module
