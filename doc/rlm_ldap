@@ -106,6 +106,13 @@ the rlm_ldap module:
 #	start TLS transport encryption.
 		start_tls = no
 
+#	tls_mode: When set to "yes" OR the server port is 636 we try to connect with TLS
+#	Start TLS should be prefered, tls_mode is provided only for ldap servers
+#	like Active Directory which do not support it.
+#	default: no
+
+		tls_mode = no
+
 #	tls_cacertfile: A PEM-encoded file that contains the CA Certificates that
 #	you trust
 		tls_cacertfile = /path/to/cacert.pem
