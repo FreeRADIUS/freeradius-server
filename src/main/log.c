@@ -125,26 +125,27 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 		return 0;
 	}
 
-	if (radlog_dir != NULL) {
-		if (debug_flag || (radlog_dest == RADLOG_STDOUT)) {
-			msgfd = stdout;
+	if (debug_flag 
+	    || (radlog_dest == RADLOG_STDOUT)
+	    || (radlog_dir == NULL)) {
+	        msgfd = stdout;
 
-		} else if (radlog_dest == RADLOG_STDERR) {
-			msgfd = stderr;
+	} else if (radlog_dest == RADLOG_STDERR) {
+	        msgfd = stderr;
 
-		} else if (radlog_dest != RADLOG_SYSLOG) {
+	} else if (radlog_dest != RADLOG_SYSLOG) {
 
-			sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
-			if ((msgfd = fopen(buffer, "a")) == NULL) {
-				fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-						progname, buffer, strerror(errno));
-
-				fprintf(stderr, "  (");
-				vfprintf(stderr, fmt, ap);  /* the message that caused the log */
-				fprintf(stderr, ")\n");
-				return -1;
-			}
+	        sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
+		if ((msgfd = fopen(buffer, "a")) == NULL) {
+		         fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
+				 progname, buffer, strerror(errno));
+				
+			 fprintf(stderr, "  (");
+			 vfprintf(stderr, fmt, ap);  /* the message that caused the log */
+			 fprintf(stderr, ")\n");
+			 return -1;
 		}
+	
 	}
 
 #if HAVE_SYSLOG_H
@@ -202,7 +203,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	/*
 	 *  Small debug levels: no timestamp
 	 */
-	if ((debug_flag == 1) || (debug_flag == 2)) {
+	if (debug_flag < 3) {
 		p = buffer + len;
 	} else {
 		p = buffer;
