@@ -6,9 +6,9 @@
  *  Version:	$Id$
  */
  
-#include <netinet/in.h>
 #include <string.h>
 #include <sys/types.h>
+#include <netinet/in.h>
 #include "sha1.h"
 
 #define blk0(i) (block->l[i] = htonl(block->l[i]))
