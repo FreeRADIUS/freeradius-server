@@ -83,6 +83,8 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 			servername++;
 		}
 	}
+
+	memset(&packet, 0, sizeof packet);
 	if ((r = krb5_sname_to_principal(context, servername, service,
 	                                    KRB5_NT_SRV_HST, &princ)))
 	{
