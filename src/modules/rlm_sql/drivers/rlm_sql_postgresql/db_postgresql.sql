@@ -1,4 +1,11 @@
 /*
+ * $Id$
+ *
+ * Postgresql schema for FreeRADIUS
+ *
+ */
+
+/*
  * Table structure for table 'nas'
  * This is not currently used but FreeRADIUS but is usefull for reporting
  * anyway.
@@ -18,6 +25,9 @@ CREATE TABLE nas (
 
 /*
  * Table structure for table 'radacct'
+ *
+ * Note: Column type BIGSERIAL does not exist prior to Postgres 7.2
+ *       If you run an older version you need to change this to SERIAL
  */
 CREATE TABLE radacct (
   RadAcctId BIGSERIAL PRIMARY KEY,
@@ -29,7 +39,7 @@ CREATE TABLE radacct (
   NASPortId NUMERIC(12),
   NASPortType VARCHAR(32),
   AcctStartTime timestamp without time zone NOT NULL,
-  AcctStopTime timestamp without time zone NOT NULL,
+  AcctStopTime timestamp without time zone,
   AcctSessionTime NUMERIC(12),
   AcctAuthentic VARCHAR(32),
   ConnectInfo_start VARCHAR(32),

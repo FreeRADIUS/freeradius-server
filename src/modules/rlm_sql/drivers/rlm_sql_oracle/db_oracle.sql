@@ -9,7 +9,10 @@
 
 /*
  * Table structure for table 'nas'
+ * This is not currently used but FreeRADIUS but is usefull for reporting
+ * anyway.
  */
+
 CREATE TABLE nas (
 	id 		INT PRIMARY KEY,
 	nasname		VARCHAR(128),
