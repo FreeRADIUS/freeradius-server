@@ -218,10 +218,18 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAI
 	    (retval = H_groupcmp(group_inst->cache, check, username)) != -2)
 		return retval;
 
-	if ((pwd = fgetpwnam(group_inst->passwd_file, username)) == NULL)
+	if (group_inst->passwd_file)
+		pwd = fgetpwnam(group_inst->passwd_file, username);
+	else
+		pwd = getpwnam(username);
+	if (pwd == NULL)
 		return -1;
 
-	if ((grp = fgetgrnam(group_inst->group_file, (char *)check->strvalue)) == NULL)
+	if (group_inst->group_file)
+		grp = fgetgrnam(group_inst->passwd_file, (char *)check->strvalue);
+	else
+		grp = getgrnam((char *)check->strvalue);
+	if (grp == NULL)
 		return -1;
 
 	retval = (pwd->pw_gid == grp->gr_gid) ? 0 : -1;
