@@ -347,6 +347,7 @@ int rbtree_insert(rbtree_t *tree, void *Data);
 void rbtree_delete(rbtree_t *tree, rbnode_t *Z);
 rbnode_t *rbtree_find(rbtree_t *tree, void *Data);
 void *rbtree_finddata(rbtree_t *tree, void *Data);
+int rbtree_num_elements(rbtree_t *tree);
 
 /* callback order for walking  */
 typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;

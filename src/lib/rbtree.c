@@ -48,6 +48,7 @@ struct rbtree_t {
 	uint32_t magic;
 #endif
 	rbnode_t *Root;
+	int	num_elements;
 	int (*Compare)(const void *, const void *);
 	int replace_flag;
 	void (*freeNode)(void *);
@@ -291,6 +292,8 @@ int rbtree_insert(rbtree_t *tree, void *Data)
 	
 	InsertFixup(tree, X);
 
+	tree->num_elements++;
+
 	return 1;
 }
 
@@ -400,6 +403,8 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 
 	if (tree->freeNode) tree->freeNode(Y->Data);
 	free(Y);
+
+	tree->num_elements--;
 }
 
 /*
@@ -534,4 +539,11 @@ int rbtree_walk(rbtree_t *tree, int (*callback)(void *), RBTREE_ORDER order)
 	}
 
 	return -1;
+}
+
+int rbtree_num_elements(rbtree_t *tree)
+{
+	if (!tree) return 0;
+
+	return tree->num_elements;
 }
