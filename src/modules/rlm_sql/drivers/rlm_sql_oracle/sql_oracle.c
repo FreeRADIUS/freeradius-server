@@ -389,7 +389,7 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			OCI_FETCH_NEXT,
 			OCI_DEFAULT);
 	if (x == OCI_NO_DATA) {
-		return NULL;
+		return -1;
 	}
 	else if (x != OCI_SUCCESS) {
 		/* XXX Check if x suggests we should return SQL_DOWN */
@@ -443,7 +443,7 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	static char	msgbuf[512];
-	int		errcode = 0;
+	sb4		errcode = 0;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
  
 	memset((void *) msgbuf, (int)'\0', sizeof(msgbuf));
