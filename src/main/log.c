@@ -92,6 +92,10 @@ int radlogdir_iswritable(const char *effectiveuser) {
 	 * process owner. we gotta do it before we give up root.  -chad
 	 */
 	
+	if (!effectiveuser) {
+		return 1;
+	}
+
 	pwent = getpwnam(effectiveuser);
 
 	if (pwent == NULL) /* uh oh! */
