@@ -30,6 +30,10 @@ CFLAGS="$RPM_OPT_FLAGS" \
 	--mandir=%{_mandir} \
 	--with-threads \
 	--with-thread-pool \
+	--with-system-libtool \
+	--disable-ltdl-install \
+	--with-ltdl-lib=/usr/lib \
+	--with-ltdl-include=/usr/include \
 	--with-gnu-ld \
 	--with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
 	--with-rlm-krb5-include-dir=/usr/kerberos/include \
@@ -110,6 +114,9 @@ fi
 %attr(0700,radiusd,radiusd) %dir /var/run/radiusd
 
 %changelog
+* Wed Sep  4 2002 Marko Myllynen
+- fix libtool issues for good
+
 * Thu Aug 22 2002 Marko Myllynen
 - update for 0.7/0.8
 
