@@ -11,6 +11,10 @@ $(STATIC_OBJS): $(HEADERS)
 
 $(DYNAMIC_OBJS): $(HEADERS) 
 
+# over-ride the previous assignment if we're not building anything
+ifeq ($(LIBMYSQL),)
+TARGET        =
+endif
 
 include ../rules.mak
 
