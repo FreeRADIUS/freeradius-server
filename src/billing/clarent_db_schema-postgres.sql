@@ -21,6 +21,7 @@ CREATE TABLE billing_record (
   disconnect_reason CHAR(2),
   extended_reason_code CHAR(2),
   dialed_number VARCHAR(30),
+  port_number INTEGER,
   codec VARCHAR(20),
   h323ConfID VARCHAR(64)
 );
