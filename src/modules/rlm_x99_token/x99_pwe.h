@@ -23,17 +23,9 @@
 #define X99_PWE_H
 
 /* Some hardcoding here ... because not all types have #defines */
-#if 0
-/* 0.3 */
-#define PW_MS_CHAP_CHALLENGE  ((6 << 16) | 11)
-#define PW_MS_CHAP_RESPONSE   ((6 << 16) | 1)
-#define PW_MS_CHAP2_RESPONSE  ((6 << 16) | 25)
-#else
-/* 0.4+ */
 #define PW_MS_CHAP_CHALLENGE  ((311 << 16) | 11)
 #define PW_MS_CHAP_RESPONSE   ((311 << 16) | 1)
 #define PW_MS_CHAP2_RESPONSE  ((311 << 16) | 25)
-#endif
 
 /* MPPE encryption policy */
 #define MPPE_ENC_POL_ENCRYPTION_FORBIDDEN "0x00000000"
