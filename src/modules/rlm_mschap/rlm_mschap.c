@@ -835,7 +835,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	We also require a User-Name
 		 */
 		username = pairfind(request->packet->vps, PW_USER_NAME);
-		if (username) {
+		if (!username) {
 			radlog(L_AUTH, "rlm_mschap: We require a User-Name for MS-CHAPv2");
 			return RLM_MODULE_INVALID;
 		}
