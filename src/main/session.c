@@ -217,10 +217,6 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 		for (n = 0; n < 10; n++) {
 			sleep(1);
 			child_pid = rad_waitpid(pid, &status, WNOHANG);
-			if (child_pid == 0) { /* not yet available */
-				continue;
-			}
-
 			if ((child_pid < 0) || (child_pid == pid)) {
 				found = 1;
 				break;
