@@ -458,7 +458,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (auth_item == NULL) {
 		if ((auth_item = pairfind(request->packet->vps, 
-					  PW_CHAP_PASSWORD)) != NULL) {
+				PW_CHAP_PASSWORD)) != NULL) {
 			password = "<CHAP-PASSWORD>";
 		
 		} else {
@@ -475,9 +475,9 @@ int rad_authenticate(REQUEST *request)
 	 */
 	r = module_authorize(request);
 	if (r != RLM_MODULE_NOTFOUND &&
-	    r != RLM_MODULE_NOOP &&
-	    r != RLM_MODULE_OK &&
-	    r != RLM_MODULE_UPDATED) {
+			r != RLM_MODULE_NOOP &&
+			r != RLM_MODULE_OK &&
+			r != RLM_MODULE_UPDATED) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
 			rad_authlog("Invalid user", request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
@@ -533,7 +533,7 @@ int rad_authenticate(REQUEST *request)
 		rad_authlog("Login incorrect", request, 0);
 
 		/* double check: maybe the secret is wrong? */
-		if ((debug_flag > 1) &&
+		if ((debug_flag > 1) && (auth_item != NULL) &&
 				(auth_item->attribute == PW_PASSWORD)) {
 			u_char *p;
 
@@ -577,8 +577,8 @@ int rad_authenticate(REQUEST *request)
 			request->reply->vps = tmp;
 
 			snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
-				 check_item->lvalue,
-				 r == 2 ? "[MPP attempt]" : "");
+				check_item->lvalue,
+				r == 2 ? "[MPP attempt]" : "");
 			rad_authlog(logstr, request, 1);
 
 			result = -1;
@@ -650,7 +650,7 @@ int rad_authenticate(REQUEST *request)
 	 *	is NOT used anywhere below here, except for logging,
 	 *	so it should be safe...
 	 */
-	if (auth_item->attribute == PW_CHAP_PASSWORD) {
+	if ((auth_item != NULL) && (auth_item->attribute == PW_CHAP_PASSWORD)) {
 		password = "CHAP-Password";
 	}
 
