@@ -547,7 +547,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	attribute.
 			 */
 			else if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
-               			free(vp);
 				librad_log("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;
@@ -559,7 +558,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 		case PW_TYPE_DATE:
 			if (gettime(value, (time_t *)&vp->lvalue) < 0) {
-				free(vp);
 				librad_log("failed to parse time string "
 					   "\"%s\"", value);
 				return NULL;
@@ -574,7 +572,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		  	if ( filterBinary( vp, value ) < 0 ) {
 			  librad_log("failed to parse Ascend binary attribute: %s",
 				     librad_errstr);
-			  free(vp);
 			  return NULL;
 			}
 			break;
@@ -609,7 +606,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *  Anything else.
 			 */
 		default:
-			free(vp);
 			librad_log("unknown attribute type %d", vp->type);
 			return NULL;
 	}
