@@ -20,7 +20,7 @@
 #
 #######################################################################
 
-include $(R)../../../Make.inc
+include $(RLM_DIR)../../../Make.inc
 
 all: static dynamic
 
@@ -39,7 +39,7 @@ all: static dynamic
 #######################################################################
 STATIC_OBJS	= $(SRCS:.c=.o)
 DYNAMIC_OBJS	= $(SRCS:.c=.lo)
-CFLAGS		+= -I$(R)../../include
+CFLAGS		+= -I$(RLM_DIR)../../include
 
 #######################################################################
 #
@@ -47,7 +47,7 @@ CFLAGS		+= -I$(R)../../include
 # change.
 #
 #######################################################################
-SERVER_HEADERS	= $(R)../../include/radiusd.h $(R)../../include/radius.h $(R)../../include/modules.h
+SERVER_HEADERS	= $(RLM_DIR)../../include/radiusd.h $(RLM_DIR)../../include/radius.h $(RLM_DIR)../../include/modules.h
 $(STATIC_OBJS):  $(SERVER_HEADERS)
 $(DYNAMIC_OBJS): $(SERVER_HEADERS)
 
@@ -142,7 +142,7 @@ distclean: clean
 	@test -f Makefile.in && rm -f Makefile
 
 reconfig:
-	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -l $(R)../../..
+	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -l $(RLM_DIR)../../..
 
 #
 #  Do any module-specific installation.
