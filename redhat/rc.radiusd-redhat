@@ -7,8 +7,8 @@
 #		use tksysv or your favorite runlevel editor to start it
 #		at runlevel 3
 #
-# chkconfig: 345 98 10
-# description: Ativa/Desativa servidor Radius
+# chkconfig: 345 88 10
+# description: Start/Stop the RADIUS server daemon
 
 
 
@@ -33,7 +33,7 @@ case "$1" in
 		daemon $RADIUSD -y
 	fi
 	touch $LOCKF
-	echo "done."
+	echo
 	;;
   stop)
 	echo -n 'Stopping RADIUSD server: '
@@ -42,16 +42,20 @@ case "$1" in
 		killproc $WATCHER 2> /dev/null
 	fi
 	killproc $RADIUSD 2> /dev/null
-	echo "done."
+	echo
 	rm -f $LOCKF
 	;;
+  status)
+	[ -x $WATCHER ] && status radwatch
+	status radiusd
+        ;;
   reload|restart)
 	$0 stop
 	sleep 3
 	$0 start
 	;;
   *)
-        echo "Usage: $0 {start|stop|reload}"
+        echo "Usage: $0 {start|stop|status|eload}"
         exit 1
 esac
 
