@@ -778,6 +778,7 @@ int thread_pool_clean(time_t now)
 	int i, total;
 	THREAD_HANDLE *handle, *next;
 	int active_threads;
+	static time_t last_cleaned = 0;
 
 	/*
 	 *	Loop over the thread pool deleting exited threads.
@@ -839,6 +840,15 @@ int thread_pool_clean(time_t now)
 	}
 
 	/*
+	 *	Only delete spare threads if we haven't already done
+	 *	so this second.
+	 */
+	if (now == last_cleaned) {
+		return 0;
+	}
+	last_cleaned = now;
+
+	/*
 	 *	Only delete the spare threads if sufficient time has
 	 *	passed since we last created one.  This helps to minimize
 	 *	the amount of create/delete cycles.
@@ -862,15 +872,15 @@ int thread_pool_clean(time_t now)
 
 		/*
 		 *	Walk through the thread pool, deleting the
-		 *	first N idle threads we come across.
+		 *	first idle thread we come across.
 		 */
 		for (handle = thread_pool.head; (handle != NULL) && (spare > 0) ; handle = next) {
 			next = handle->next;
 
 			/*
 			 *	If the thread is not handling a
-			 *	request, but still live, then tell
-			 *	it to exit.
+			 *	request, but still live, then tell it
+			 *	to exit.
 			 *
 			 *	It will eventually wake up, and realize
 			 *	it's been told to commit suicide.
