@@ -26,7 +26,7 @@ else
 	CFLAGS += -O2
 endif
 
-# Autoconf 2.13 arch support
+# Autoconf 2.52+ arch support
 ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
 	confflags += --build $(DEB_HOST_GNU_TYPE)
 else
