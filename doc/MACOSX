@@ -15,6 +15,9 @@
    The last line should start off with "MODULES".  Delete 'rlm_eap'
    and 'rlm_sql' from that line, and do 'make' again.
 
+   If you've deleted the 'eap' and 'sql' modules, double-check
+   'radiusd.conf' to delete any reference it has to 'eap' or 'sql'.
+
 5) $ make install
 
 6) Now run radiusd -X and test things out with radtest, as specified
