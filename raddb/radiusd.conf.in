@@ -689,15 +689,51 @@ modules {
 		#		include_length = yes
 		#}
 
-		#  The tunneled EAP session needs a default EAP type
-		#  which is separate from the one for the non-tunneled
-		#  EAP module.  Inside of the TTLS tunnel, we
-		#  recommend using EAP-MD5.  If the request does not
-		#  contain an EAP conversation, then this configuration
-		#  entry is ignored.
+		#  The TTLS module implements the EAP-TTLS protocol,
+		#  which can be described as EAP inside of Diameter,
+		#  inside of TLS, inside of EAP, inside of RADIUS...
+		#
+		#  Surprisingly, it works quite well.
 		#
 		#ttls {
+			#  The tunneled EAP session needs a default
+			#  EAP type which is separate from the one for
+			#  the non-tunneled EAP module.  Inside of the
+			#  TTLS tunnel, we recommend using EAP-MD5.
+			#  If the request does not contain an EAP
+			#  conversation, then this configuration entry
+			#  is ignored.
 		#	default_eap_type = md5
+
+			#  The tunneled authentication request does
+			#  not usually contain useful attributes
+			#  like 'Calling-Station-Id', etc.  These
+			#  attributes are outside of the tunnel,
+			#  and normally unavailable to the tunneled
+			#  authentication request.
+			#
+			#  By setting this configuration entry to
+			#  'yes', any attribute which NOT in the
+			#  tunneled authentication request, but
+			#  which IS available outside of the tunnel,
+			#  is copied to the tunneled request.
+			#
+			# allowed values: {no, yes}
+		#	copy_request_to_tunnel = no
+
+			#  The reply attributes sent to the NAS are
+                        #  usually based on the name of the user
+			#  'outside' of the tunnel (usually
+			#  'anonymous').  If you want to send the
+			#  reply attributes based on the user name
+			#  inside of the tunnel, then set this
+			#  configuration entry to 'yes', and the reply
+			#  to the NAS will be taken from the reply to
+			#  the tunneled request.
+			#
+			# allowed values: {no, yes}
+		#	use_tunneled_reply = no			
+			   
 		#}
 
 
