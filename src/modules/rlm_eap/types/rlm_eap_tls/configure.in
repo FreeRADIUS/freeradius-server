@@ -88,4 +88,5 @@ eap_tls_cflags=$SMART_CFLAGS
 AC_SUBST(eap_tls_ldflags)
 AC_SUBST(eap_tls_cflags)
 AC_SUBST(targetname)
+AC_CONFIG_HEADER([config.h])
 AC_OUTPUT(Makefile)
