@@ -10,5 +10,5 @@ TODO list for the Debian package:
   (http://lists.debian.org/debian-devel-announce/2003/debian-devel-announce-200303/msg00002.html)
 * Check licensing on RFCs.... Will have to remove from src package if they're
   bad. (Not that hard, thankfully.)
-* See if it builds cleanly on Debian/stable: libsasl2-dev has to become libsasl-dev, at least.
+* See if it builds cleanly on Debian/stable.
 * Investigate use of logrotate.
