@@ -12,12 +12,12 @@ include Make.inc
 SUBDIRS		= src raddb doc scripts
 WHAT_TO_MAKE	= all
 
-all:
+all: config.status
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f *~ stamp*
+	@rm -f *~
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
@@ -46,7 +46,7 @@ configure: configure.in
 
 # autoheader might not change autoconf.h.in, so touch a stamp file
 src/include/autoconf.h.in: src/include/stamp-h.in
-src/include/stamp-h.in: configure.in
+src/include/stamp-h.in: configure.in acconfig.h
 	autoheader
 	echo timestamp > src/include/stamp-h.in
 

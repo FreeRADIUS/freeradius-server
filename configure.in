@@ -194,18 +194,6 @@ dnl AC_MSG_RESULT(" $INCLUDE")
 dnl AC_SUBST(INCLUDE)
 dnl AC_SUBST(IQUOTE)
 
-dnl Check for libdl
-dnl We use dlopen(3) which may be in libc (eg FreeBSD), or in libdl (Linux)
-AC_CHECK_LIB(dl, dlopen,
-  LIBDL="-ldl"
-)
-AC_SUBST(LIBDL)
-if test "$LIBDL" != ""; then
-  AC_DEFINE(HAVE_LIBDL)
-else
-  AC_CHECK_FUNC(dlopen)
-fi
-
 dnl See if this is OS/2
 AC_MSG_CHECKING(type of OS)
 OS=`uname -s`
@@ -273,6 +261,18 @@ else
   AC_MSG_RESULT(no)
 fi
 CFLAGS="$OFLAGS"
+
+dnl Check for libdl
+dnl We use dlopen(3) which may be in libc (eg FreeBSD), or in libdl (Linux)
+AC_CHECK_LIB(dl, dlopen,
+  LIBDL="-ldl"
+)
+AC_SUBST(LIBDL)
+if test "$LIBDL" != ""; then
+  AC_DEFINE(HAVE_DLOPEN)
+else
+  AC_CHECK_FUNC(dlopen)
+fi
 
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)

@@ -22,7 +22,7 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 #include	"modules.h"
 
-#ifndef HAVE_LIBDL
+#ifndef HAVE_DLOPEN
 #include	"modules_static.h"
 #endif
 
@@ -38,7 +38,7 @@ typedef struct module_list_t {
 	int			auth_type;
 	int			flags;		/* doing what, exactly? */
 	module_t		*module;
-#ifdef HAVE_LIBDL
+#ifdef HAVE_DLOPEN
 	void			*handle;
 #endif
 	struct module_list_t	*next;
@@ -75,7 +75,7 @@ static void module_list_free(void)
 	ml = module_list;
 	while (ml) {
 		next = ml->next;
-#ifdef HAVE_LIBDL
+#ifdef HAVE_DLOPEN
 		dlclose(ml->handle);	/* ignore any errors */
 #endif
 		if (ml->module->detach)
@@ -186,7 +186,7 @@ int read_modules_file(char *filename)
 	char		library[256];
 	char		module_name[256];
 	int		lineno = 0;
-#ifdef HAVE_LIBDL
+#ifdef HAVE_DLOPEN
 	char		libraryfile[1024];
 	void		*handle;
 	char		*error;
@@ -196,7 +196,7 @@ int read_modules_file(char *filename)
 	int		argc;			/* for calling the modules */
 	char		*argv[32];
 
-#ifndef HAVE_LIBDL
+#ifndef HAVE_DLOPEN
 	sm   = NULL;
 #endif
 	this = NULL; /* Shut up stupid gcc */
@@ -232,7 +232,7 @@ int read_modules_file(char *filename)
 
 	this = find_module(module_list, library);
 	if (this == NULL) {
-#ifdef HAVE_LIBDL
+#ifdef HAVE_DLOPEN
 		/*
 		 * Keep the handle around so we can dlclose() it.
 		 * Also ensure that any further dependencies are exported,
@@ -254,7 +254,7 @@ int read_modules_file(char *filename)
 				filename, lineno, dlerror());
 			exit(1); /* FIXME */
 		}
-#else /* HAVE_LIBDL */
+#else /* HAVE_DLOPEN */
 		/*
 		 *	Find the module in the static module list.
 		 */
@@ -267,7 +267,7 @@ int read_modules_file(char *filename)
 			filename, lineno);
 			exit(1); /* FIXME */
 		}
-#endif /* HAVE_LIBDL */
+#endif /* HAVE_DLOPEN */
 
 		/* make room for the module type */
 		this = (module_list_t *) malloc(sizeof(module_list_t));
@@ -279,7 +279,7 @@ int read_modules_file(char *filename)
 
 		/* fill in the module structure */
 		this->next = NULL;
-#ifdef HAVE_LIBDL
+#ifdef HAVE_DLOPEN
 		this->handle = handle;
 #endif
 		strNcpy(this->filename, library, sizeof(this->filename));
@@ -293,7 +293,7 @@ int read_modules_file(char *filename)
 		p = strchr(module_name, '.');
 		*p = '\0';
 
-#ifdef HAVE_LIBDL
+#ifdef HAVE_DLOPEN
 		this->module = dlsym(this->handle, module_name);
 		error = dlerror();
 		if (!this->module || error) {
