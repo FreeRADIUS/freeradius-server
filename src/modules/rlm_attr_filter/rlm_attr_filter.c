@@ -148,21 +148,16 @@ static void mypairappend(VALUE_PAIR *item, VALUE_PAIR **to)
 {
   VALUE_PAIR *tmp;
   tmp = paircreate(item->attribute, item->type);
-  if( tmp == NULL ) {
-    radlog(L_ERR|L_CONS, "no memory");
-    exit(1);
+  if (!tmp) {
+	  radlog(L_ERR|L_CONS, "no memory");
+	  exit(1);
   }
-  switch (tmp->type) {
-      case PW_TYPE_INTEGER:
-      case PW_TYPE_IPADDR:
-      case PW_TYPE_DATE:
-	tmp->lvalue = item->lvalue;
-	break;
-      default:
-	memcpy((char *)tmp->strvalue, (char *)item->strvalue, item->length);
-	tmp->length = item->length;
-	break;
-  }
+
+  /*
+   *	Copy EVERYTHING.
+   */
+  memcpy(tmp, item, sizeof(*tmp));
+  tmp->next = NULL;
   pairadd(to, tmp);
 }
 
