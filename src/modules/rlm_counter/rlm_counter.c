@@ -541,11 +541,14 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 * Check if we need to watch out for a specific service-type. If yes then check it
 	 */
 	if (data->service_type != NULL) {
-		if ((proto_vp = pairfind(request->packet->vps, PW_SERVICE_TYPE)) == NULL)
+		if ((proto_vp = pairfind(request->packet->vps, PW_SERVICE_TYPE)) == NULL){
+			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP.");
 			return RLM_MODULE_NOOP;
-		if (proto_vp->lvalue != data->service_val)
+		}
+		if (proto_vp->lvalue != data->service_val){
+			DEBUG("rlm_counter: This Service-Type is not allowed. Returning NOOP.");
 			return RLM_MODULE_NOOP;
-
+		}
 	}	
 	
 
@@ -555,7 +558,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 */
 	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr);
 	if (key_vp == NULL){
-		DEBUG("rlm_counter: Could not find the key-attribute in the request.");
+		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP.");
 		return RLM_MODULE_NOOP;
 	}
 
