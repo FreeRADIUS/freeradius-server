@@ -18,7 +18,7 @@ all:
 allclean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
 
-allinstall:
+install-drivers:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 
 common: 
