@@ -533,10 +533,15 @@ int main(int argc, char **argv)
 			 *	the packet.
 			 *	If so, steal the source IP, and see if
 			 *	they're allowed to talk to us.
+			 *
+			 *	Aarrg.. we really don't care to see the data,
+			 *	but certain broken kernels don't fill in
+			 *	the sockaddr function if we get 0 bytes.
 			 */
 			salen = sizeof(saremote);
 			memset(&saremote, 0, sizeof(saremote));
-			packet_length = recvfrom(fd, NULL, 0, MSG_PEEK,
+			packet_length = recvfrom(fd, buffer, sizeof(buffer),
+						 MSG_PEEK,
 						 (struct sockaddr *)&saremote,
 						 &salen);
 			if (packet_length < 0) {
@@ -547,8 +552,8 @@ int main(int argc, char **argv)
 			ip_ntoa(buffer, packet_srcip);
 
 			/*
-			 *	See if we know this client.
-			 *	This check is performed HERE, instead of
+			 *	Check if we know this client.
+			 *	The check is performed HERE, instead of
 			 *	after rad_recv(), so unknown clients CANNOT
 			 *	force us to do ANY work.
 			 */
