@@ -493,9 +493,7 @@ int main(int argc, char *argv[])
 	signal(SIGHUP, sig_hup);
 	signal(SIGINT, sig_fatal);
 	signal(SIGQUIT, sig_fatal);
-#if WITH_SNMP
 	signal(SIGPIPE, SIG_IGN);
-#endif
 #ifdef SIGTRAP
 	signal(SIGTRAP, sig_fatal);
 #endif
