@@ -8,6 +8,7 @@
  *
  */
 
+#include <stddef.h>
 #include "token.h"
 
 /*
@@ -29,17 +30,22 @@ typedef struct conf_part CONF_SECTION;
 typedef struct CONF_PARSER {
   const char *name;
   int type;			/* PW_TYPE_STRING, etc. */
-  void *data;			/* pointer to where to put it */
+  size_t offset;		/* relative pointer within "base" */
+  void *data;			/* absolute pointer if base is NULL */
   const char *dflt;		/* default as it would appear in radiusd.conf */
 } CONF_PARSER;
 
 /* This preprocessor trick will be useful in initializing CONF_PARSER struct */
 #define XStringify(x) #x
 #define Stringify(x) XStringify(x)
+/* And this pointer trick too */
+#ifndef offsetof
+# define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
 
 void		cf_pair_free(CONF_PAIR **cp);
 void		cf_section_free(CONF_SECTION **cp);
-int		cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables);
+int		cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables);
 
 /* JLN -- Newly added */
 		

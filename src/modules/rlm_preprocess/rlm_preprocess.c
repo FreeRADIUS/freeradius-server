@@ -49,24 +49,25 @@ typedef struct rlm_preprocess_t {
 	int		with_specialix_jetstream_hack;
 } rlm_preprocess_t;
 
-static rlm_preprocess_t config;
-
 static CONF_PARSER module_config[] = {
 	{ "huntgroups",			PW_TYPE_STRING_PTR,
-	  &config.huntgroup_file, 	"${raddbdir}/huntgroups" },
+	  offsetof(rlm_preprocess_t,huntgroup_file), NULL,
+	  "${raddbdir}/huntgroups" },
 	{ "hints",			PW_TYPE_STRING_PTR,
-	  &config.hints_file, 		"${raddbdir}/hints" },
+	  offsetof(rlm_preprocess_t,hints_file), NULL,
+	  "${raddbdir}/hints" },
 	{ "with_ascend_hack",		PW_TYPE_BOOLEAN,
-	  &config.with_ascend_hack,  	"no" },
+	  offsetof(rlm_preprocess_t,with_ascend_hack), NULL, "no" },
 	{ "ascend_channels_per_line",   PW_TYPE_INTEGER,
-	  &config.ascend_channels_per_line,    "23" },
+	  offsetof(rlm_preprocess_t,ascend_channels_per_line), NULL, "23" },
 
 	{ "with_ntdomain_hack",		PW_TYPE_BOOLEAN,
-	  &config.with_ntdomain_hack,  	"no" },
+	  offsetof(rlm_preprocess_t,with_ntdomain_hack), NULL, "no" },
 	{ "with_specialix_jetstream_hack",  PW_TYPE_BOOLEAN,
-	  &config.with_specialix_jetstream_hack,  	"no" },
+	  offsetof(rlm_preprocess_t,with_specialix_jetstream_hack), NULL,
+	  "no" },
 
-	{ NULL, -1, NULL, NULL }
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 
@@ -511,25 +512,20 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	rlm_preprocess_t *data;
 
 	/*
-	 *	Read this modules configuration data.
-	 */
-        if (cf_section_parse(conf, module_config) < 0) {
-                return -1;
-        }
-
-	/*
 	 *	Allocate room to put the module's instantiation data.
 	 */
 	data = (rlm_preprocess_t *) rad_malloc(sizeof(*data));
 
 	/*
-	 *	Copy the configuration over to the instantiation.
+	 *	Read this modules configuration data.
 	 */
-	memcpy(data, &config, sizeof(*data));
+        if (cf_section_parse(conf, data, module_config) < 0) {
+		free(data);
+                return -1;
+        }
+
 	data->huntgroups = NULL;
 	data->hints = NULL;
-	config.huntgroup_file = NULL;
-	config.hints_file = NULL;
 
 	/*
 	 *	Read the huntgroups file.

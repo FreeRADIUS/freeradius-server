@@ -42,12 +42,6 @@ typedef struct rlm_always_t {
 } rlm_always_t;
 
 /*
- *	A temporary holding area for config values to be extracted
- *	into, before they are copied into the instance data
- */
-static rlm_always_t config;
-
-/*
  *	A mapping of configuration file names to internal variables.
  *
  *	Note that the string is dynamically allocated, so it MUST
@@ -57,11 +51,14 @@ static rlm_always_t config;
  *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
-  { "rcode",      PW_TYPE_STRING_PTR, &config.rcode_str,  "fail" },
-  { "simulcount", PW_TYPE_INTEGER,    &config.simulcount, "0" },
-  { "mpp",        PW_TYPE_BOOLEAN,    &config.mpp,        "no" },
+  { "rcode",      PW_TYPE_STRING_PTR, offsetof(rlm_always_t,rcode_str),
+    NULL, "fail" },
+  { "simulcount", PW_TYPE_INTEGER,    offsetof(rlm_always_t,simulcount),
+    NULL, "0" },
+  { "mpp",        PW_TYPE_BOOLEAN,    offsetof(rlm_always_t,mpp),
+    NULL, "no" },
 
-  { NULL, -1, NULL, NULL }		/* end the list */
+  { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 static int str2rcode(const char *s)
@@ -94,26 +91,26 @@ static int str2rcode(const char *s)
 static int always_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_always_t *data;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, module_config) < 0) {
-		return -1;
-	}
 	
 	/*
 	 *	Set up a storage area for instance data
 	 */
 	data = rad_malloc(sizeof(*data));
+
+	/*
+	 *	If the configuration parameters can't be parsed, then
+	 *	fail.
+	 */
+	if (cf_section_parse(conf, data, module_config) < 0) {
+		free(data);
+		return -1;
+	}
 	
 	/*
-	 *	Copy the configuration into the instance data
+	 *	Convert the rcode string to an int, and get rid of it
 	 */
-	data->simulcount = config.simulcount;
-	data->mpp = config.mpp;
-	data->rcode = str2rcode(config.rcode_str);
+	data->rcode = str2rcode(data->rcode_str);
+	free(data->rcode_str);
 	if (data->rcode == -1) {
 		free(data);
 		return -1;
@@ -157,16 +154,6 @@ static int always_detach(void *instance)
 	return 0;
 }
 
-static int always_destroy(void)
-{
-	/* We reuse this buffer across multiple instances, instead of
-	 * freeing it in instantiate() after converting it to an int.
-	 * That makes it a module-global variable, so it must be freed
-	 * in destroy(). */
-	free(config.rcode_str);
-	return 0;
-}
-
 module_t rlm_always = {
 	"always",	
 	RLM_TYPE_THREAD_SAFE,		/* type */
@@ -178,5 +165,5 @@ module_t rlm_always = {
 	always_return,			/* accounting */
 	always_checksimul,		/* checksimul */
 	always_detach,			/* detach */
-	always_destroy,			/* destroy */
+	NULL,				/* destroy */
 };

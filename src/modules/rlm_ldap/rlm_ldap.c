@@ -87,29 +87,27 @@ typedef struct {
 	int             bound;
 }               ldap_instance;
 
-static ldap_instance config;
-
 static CONF_PARSER module_config[] = {
-	{"server", PW_TYPE_STRING_PTR, &config.server, NULL},
-	{"port", PW_TYPE_INTEGER, &config.port, "389"},
+	{"server", PW_TYPE_STRING_PTR, offsetof(ldap_instance,server), NULL, NULL},
+	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance,port), NULL, "389"},
 	/* wait forever on network activity */
-	{"net_timeout", PW_TYPE_INTEGER, &config.net_timeout.tv_sec, "-1"},
+	{"net_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,net_timeout.tv_sec), NULL, "-1"},
 	/* wait forever for search results */
-	{"timeout", PW_TYPE_INTEGER, &config.timeout.tv_sec, "-1"},
+	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,timeout.tv_sec), NULL, "-1"},
 	/* allow server unlimited time for search (server-side limit) */
-	{"timelimit", PW_TYPE_INTEGER, &config.timelimit, "-1"},
+	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "-1"},
 
-	{"identity", PW_TYPE_STRING_PTR, &config.login, NULL},
-	{"password", PW_TYPE_STRING_PTR, &config.password, NULL},
-	{"basedn", PW_TYPE_STRING_PTR, &config.basedn, NULL},
-	{"filter", PW_TYPE_STRING_PTR, &config.filter, NULL},
-	{"access_group", PW_TYPE_STRING_PTR, &config.access_group, NULL},
+	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, NULL},
+	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, NULL},
+	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, NULL},
+	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, NULL},
+	{"access_group", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_group), NULL, NULL},
 	/* LDAP attribute name that controls remote access */
-	{"access_attr", PW_TYPE_STRING_PTR, &config.access_attr, NULL},
+	{"access_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_attr), NULL, NULL},
 	/* cache size limited only by TTL */
 	/* cache objects TTL 30 secs */
 
-	{NULL, -1, NULL, NULL}
+	{NULL, -1, 0, NULL, NULL}
 };
 
 #define ld_valid                ld_options.ldo_valid
@@ -174,35 +172,15 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 
 	inst = rad_malloc(sizeof *inst);
 
-	if (cf_section_parse(conf, module_config) < 0) {
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
 		return -1;
 	}
-	inst->server = config.server;
-	inst->port = config.port;
-	inst->timeout.tv_sec = config.timeout.tv_sec;
 	inst->timeout.tv_usec = 0;
-	inst->net_timeout.tv_sec = config.net_timeout.tv_sec;
 	inst->net_timeout.tv_usec = 0;
-	inst->timelimit = config.timelimit;
-	inst->debug = config.debug;
 	inst->tls_mode = LDAP_OPT_X_TLS_TRY;
-	inst->login = config.login;
-	inst->password = config.password;
-	inst->filter = config.filter;
-	inst->basedn = config.basedn;
-	inst->access_group = config.access_group;
-	inst->access_attr = config.access_attr;
 	inst->bound = 0;
 	
-	config.server = NULL;
-	config.login = NULL;
-	config.password = NULL;
-	config.filter = NULL;
-	config.basedn = NULL;
-	config.access_group = NULL;
-	config.access_attr = NULL;
-
 	*instance = inst;
 
 	return 0;

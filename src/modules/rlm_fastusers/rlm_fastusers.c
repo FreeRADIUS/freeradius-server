@@ -70,20 +70,20 @@ static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 static void fastuser_tablestats(PAIR_LIST **hashtable, long size);
 static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user, const char *name);
 
-/*
- *	A temporary holding area for config values to be extracted
- *	into, before they are copied into the instance data
- */
-static struct fastuser_instance config;
-
 static CONF_PARSER module_config[] = {
-	{ "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, "${raddbdir}/users_fast" },
-	{ "acctusersfile",     PW_TYPE_STRING_PTR, &config.acctusersfile, "${raddbdir}/acct_users" },
-	{ "hashsize",     PW_TYPE_INTEGER, &config.hashsize, "100000" },
-	{ "stats",     PW_TYPE_BOOLEAN, &config.stats, "no" },
-	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
-	{ "hash_reload",     PW_TYPE_INTEGER, &config.hash_reload, "600" },
-	{ NULL, -1, NULL, NULL }
+	{ "usersfile",     PW_TYPE_STRING_PTR,
+	  offsetof(struct fastuser_instance,usersfile), NULL, "${raddbdir}/users_fast" },
+	{ "acctusersfile",     PW_TYPE_STRING_PTR,
+	  offsetof(struct fastuser_instance,acctusersfile), NULL, "${raddbdir}/acct_users" },
+	{ "hashsize",     PW_TYPE_INTEGER,
+	  offsetof(struct fastuser_instance,hashsize), NULL, "100000" },
+	{ "stats",     PW_TYPE_BOOLEAN,
+	  offsetof(struct fastuser_instance,stats), NULL, "no" },
+	{ "compat",        PW_TYPE_STRING_PTR,
+	  offsetof(struct fastuser_instance,compat_mode), NULL, "cistron" },
+	{ "hash_reload",     PW_TYPE_INTEGER,
+	  offsetof(struct fastuser_instance,hash_reload), NULL, "600" },
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -491,20 +491,13 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 
 	inst = rad_malloc(sizeof *inst);
 
-	memset(inst, 0, sizeof(inst));
+	memset(inst, 0, sizeof(*inst));
 
-	if (cf_section_parse(conf, module_config) < 0) {
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
 		return -1;
 	}
 
-	inst->usersfile = config.usersfile;
-	inst->acctusersfile = config.acctusersfile;
-	inst->hashsize = config.hashsize;
-	inst->defaults = config.defaults;
-	inst->stats =	config.stats;
-	inst->compat_mode = config.compat_mode;
-	inst->hash_reload = config.hash_reload;
 	inst->next_reload = time(NULL) + inst->hash_reload;
 	inst->hashtable = NULL;
 	if(fastuser_buildhash(inst) < 0) {
@@ -515,12 +508,6 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Need code here to read acct_users file
 	 */
-
-	config.usersfile = NULL;
-	config.acctusersfile = NULL;
-	config.hashtable = NULL;
-	config.defaults = NULL;
-	config.compat_mode = NULL;
 
 	*instance = inst;
 	return 0;

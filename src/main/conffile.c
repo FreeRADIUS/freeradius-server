@@ -305,7 +305,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 /*
  *	Parse a configuration section into user-supplied variables.
  */
-int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
+int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
 {
 	int		i;
 	int		rcode;
@@ -315,12 +315,18 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 	uint32_t	ipaddr;
 	char		buffer[1024];
 	const char	*value;
+	void		*data;
 
 	/*
 	 *	Handle the user-supplied variables.
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
 		value = variables[i].dflt;
+		if (base) {
+			data = ((char *)base) + variables[i].offset;
+		} else {
+			data = variables[i].data;
+		}
 
 		cp = cf_pair_find(cs, variables[i].name);
 		if (cp) {
@@ -343,8 +349,8 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 				break;
 			}
 
-			rcode = cf_section_parse(subsection,
-						 (CONF_PARSER *) variables[i].data);
+			rcode = cf_section_parse(subsection, base,
+						 (CONF_PARSER *) data);
 			if (rcode < 0) {
 				return -1;
 			}
@@ -356,12 +362,12 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			 */
 			if ((strcasecmp(value, "yes") == 0) ||
 					(strcasecmp(value, "on") == 0)) {
-				*(int *)variables[i].data = 1;
+				*(int *)data = 1;
 			} else if ((strcasecmp(value, "no") == 0) ||
 						(strcasecmp(value, "off") == 0)) {
-				*(int *)variables[i].data = 0;
+				*(int *)data = 0;
 			} else {
-				*(int *)variables[i].data = 0;
+				*(int *)data = 0;
 				radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
 				return -1;
 			}
@@ -372,16 +378,16 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			break;
 
 		case PW_TYPE_INTEGER:
-			*(int *)variables[i].data = strtol(value, 0, 0);
+			*(int *)data = strtol(value, 0, 0);
 			DEBUG2(" %s: %s = %d",
 				cs->name1,
 				variables[i].name,
-				*(int *)variables[i].data);
+				*(int *)data);
 			break;
 			
 		case PW_TYPE_STRING_PTR:
-			q = (char **) variables[i].data;
-			if (*q != NULL) {
+			q = (char **) data;
+			if (base == NULL && *q != NULL) {
 				free(*q);
 			}
 
@@ -409,7 +415,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			 *	Allow '*' as any address
 			 */
 			if (strcmp(value, "*") == 0) {
-				*(uint32_t *) variables[i].data = 0;
+				*(uint32_t *) data = 0;
 				break;
 			}
 			ipaddr = ip_getaddr(value);
@@ -421,7 +427,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 				cs->name1,
 				variables[i].name,
 				value, ip_ntoa(buffer, ipaddr));
-			*(uint32_t *) variables[i].data = ipaddr;
+			*(uint32_t *) data = ipaddr;
 			break;
 			
 		default:
@@ -682,21 +688,21 @@ static CONF_PARSER directory_config[] = {
    *	up once we clean up the hard-coded defines for the locations of
    *	the various files.
    */
-  {  "prefix",            PW_TYPE_STRING_PTR, &prefix,            "/usr/local"},
-  { "localstatedir",      PW_TYPE_STRING_PTR, &localstatedir,     "${prefix}/var"}, 
-  { "logdir",             PW_TYPE_STRING_PTR, &radlog_dir,        "${localstatedir}/log"},
-  { "libdir",             PW_TYPE_STRING_PTR, &radlib_dir,        "${prefix}/lib"},
-  { "radacctdir",         PW_TYPE_STRING_PTR, &radacct_dir,       "${logdir}/radacct" },
-  { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "no" },
+  {  "prefix",            PW_TYPE_STRING_PTR, 0, &prefix,            "/usr/local"},
+  { "localstatedir",      PW_TYPE_STRING_PTR, 0, &localstatedir,     "${prefix}/var"}, 
+  { "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
+  { "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
+  { "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
+  { "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &librad_dodns,      "no" },
 
   /*
    *	We don't allow re-defining this, as doing so will cause
    *	all sorts of confusion.
    */
 #if 0
-  { "confdir",            PW_TYPE_STRING_PTR, &radius_dir,        RADIUS_DIR },
+  { "confdir",            PW_TYPE_STRING_PTR, 0, &radius_dir,        RADIUS_DIR },
 #endif
-  { NULL, -1, NULL, NULL }
+  { NULL, -1, 0, NULL, NULL }
 };
 
 
@@ -735,7 +741,7 @@ int read_radius_conf_file(void)
 	 *	This allows us to figure out where, relative to
 	 *	radiusd.conf, the other configuration files exist.
 	 */
-	cf_section_parse(cs, directory_config);
+	cf_section_parse(cs, NULL, directory_config);
 
 	/* Initialize the dictionary */
 	DEBUG2("read_config_files:  reading dictionary");

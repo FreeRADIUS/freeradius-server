@@ -43,8 +43,8 @@ typedef struct unique_config_t {
 static unique_config_t config;
 
 static CONF_PARSER module_config[] = {
-  { "key",  PW_TYPE_STRING_PTR, &config.key,  NULL },
-  { NULL, -1, NULL, NULL }    /* end the list */
+  { "key",  PW_TYPE_STRING_PTR, offsetof(unique_config_t,key), NULL,  NULL },
+  { NULL, -1, 0, NULL, NULL }    /* end the list */
 };
 
 /*
@@ -123,16 +123,10 @@ static int unique_instantiate(CONF_SECTION *conf, void **instance) {
 	inst = rad_malloc(sizeof(*inst));
 	memset(inst, 0, sizeof(*inst));
 	
-	if (cf_section_parse(conf, module_config) < 0) {
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
 		return -1;
 	}
-
-	/*
-	 *	Grab the key.
-	 */
-	inst->key = config.key;
-	config.key = NULL;
 
 	/* 
 	 *	Check to see if 'key' has something in it 

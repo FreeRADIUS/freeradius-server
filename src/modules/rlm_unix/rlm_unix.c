@@ -68,20 +68,24 @@ struct unix_instance {
 	struct pwcache *cache;
 };
 
-static struct unix_instance config;
-
 static CONF_PARSER module_config[] = {
 	/*
 	 *	Cache the password by default.
 	 */
-	{ "cache",    PW_TYPE_BOOLEAN,    &config.cache_passwd, "yes" },
-	{ "passwd",   PW_TYPE_STRING_PTR, &config.passwd_file,  NULL },
-	{ "shadow",   PW_TYPE_STRING_PTR, &config.shadow_file,  NULL },
-	{ "group",    PW_TYPE_STRING_PTR, &config.group_file,   NULL },
-	{ "radwtmp",  PW_TYPE_STRING_PTR, &config.radwtmp,      "${logdir}/radwtmp" },
-	{ "usegroup", PW_TYPE_BOOLEAN,    &config.usegroup,     "no" },
+	{ "cache",    PW_TYPE_BOOLEAN,
+	  offsetof(struct unix_instance,cache_passwd), NULL, "yes" },
+	{ "passwd",   PW_TYPE_STRING_PTR,
+	  offsetof(struct unix_instance,passwd_file), NULL,  NULL },
+	{ "shadow",   PW_TYPE_STRING_PTR,
+	  offsetof(struct unix_instance,shadow_file), NULL,  NULL },
+	{ "group",    PW_TYPE_STRING_PTR,
+	  offsetof(struct unix_instance,group_file), NULL,   NULL },
+	{ "radwtmp",  PW_TYPE_STRING_PTR,
+	  offsetof(struct unix_instance,radwtmp), NULL,   "${logdir}/radwtmp" },
+	{ "usegroup", PW_TYPE_BOOLEAN,
+	  offsetof(struct unix_instance,usegroup), NULL,     "no" },
 	
-	{ NULL, -1, NULL, NULL }		/* end the list */
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 /*
@@ -162,30 +166,17 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 	struct unix_instance *inst;
 
 	/*
-	 *	Parse the configuration, failing if we can't do so.
-	 */
-	if (cf_section_parse(conf, module_config) < 0) {
-		return -1;
-	}
-
-	/*
 	 *	Allocate room for the instance.
 	 */
 	inst = *instance = rad_malloc(sizeof(struct unix_instance));
 
 	/*
-	 *	Copy the configuration into the instance data
+	 *	Parse the configuration, failing if we can't do so.
 	 */
-	inst->cache_passwd = config.cache_passwd;
-	inst->passwd_file = config.passwd_file;
-	inst->shadow_file = config.shadow_file;
-	inst->group_file = config.group_file;
-	inst->radwtmp = config.radwtmp;
-	inst->usegroup = config.usegroup;
-	config.passwd_file = NULL;
-	config.shadow_file = NULL;
-	config.group_file = NULL;
-	config.radwtmp = NULL;
+	if (cf_section_parse(conf, inst, module_config) < 0) {
+		free(inst);
+		return -1;
+	}
 
 	if (inst->cache_passwd) {
 		radlog(L_INFO, "HASH:  Reinitializing hash structures "

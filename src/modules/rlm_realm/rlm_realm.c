@@ -42,12 +42,12 @@ typedef struct realm_config_t {
         char       *delim;
 } realm_config_t;
 
-static realm_config_t config;
-
 static CONF_PARSER module_config[] = {
-  { "format", PW_TYPE_STRING_PTR, &config.formatstring, "suffix" },
-  { "delimiter", PW_TYPE_STRING_PTR, &config.delim, "@" },
-  { NULL, -1, NULL, NULL }    /* end the list */
+  { "format", PW_TYPE_STRING_PTR,
+    offsetof(realm_config_t,formatstring), NULL, "suffix" },
+  { "delimiter", PW_TYPE_STRING_PTR,
+    offsetof(realm_config_t,delim), NULL, "@" },
+  { NULL, -1, 0, NULL, NULL }    /* end the list */
 };
 
 /*
@@ -231,32 +231,26 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
         /* setup a storage area for instance data */
         inst = rad_malloc(sizeof(struct realm_config_t));
 
-	if(cf_section_parse(conf, module_config) < 0) {
+	if(cf_section_parse(conf, inst, module_config) < 0) {
 	       free(inst);
                return -1;
 	}
 
-        /* copy the configuration info into the instance data */
-
-	if(strcasecmp(config.formatstring, "suffix") == 0) {
+	if(strcasecmp(inst->formatstring, "suffix") == 0) {
 	     inst->format = REALM_FORMAT_SUFFIX;
-	} else if(strcasecmp(config.formatstring, "prefix") == 0) {
+	} else if(strcasecmp(inst->formatstring, "prefix") == 0) {
 	     inst->format = REALM_FORMAT_PREFIX;
         } else {
-	     radlog(L_ERR, "Bad value \"%s\" for realm format value", config.formatstring);
+	     radlog(L_ERR, "Bad value \"%s\" for realm format value", inst->formatstring);
 	     free(inst);
 	     return -1;
 	}
-	if(strlen(config.delim) != 1) {
-	     radlog(L_ERR, "Bad value \"%s\" for realm delimiter value", config.delim);
+	free(inst->formatstring);
+	if(strlen(inst->delim) != 1) {
+	     radlog(L_ERR, "Bad value \"%s\" for realm delimiter value", inst->delim);
 	     free(inst);
 	     return -1;
 	}
-	inst->delim = config.delim;
-
-	/* set these to NULL to prevent other instances from reusing the data */
-
-	config.delim = NULL;
 
 	*instance = inst;
 	return 0;
@@ -336,16 +330,6 @@ static int realm_detach(void *instance)
 	return 0;
 }
 
-static int realm_destroy(void)
-{
-	/* We reuse this buffer across multiple instances, instead of
-	 * freeing it in instantiate() after converting it to an int.
-	 * That makes it a module-global variable, so it must be freed
-	 * in destroy(). */
-	free(config.formatstring);
-	return 0;
-}
-
 /* globally exported name */
 module_t rlm_realm = {
   "realm",
@@ -358,5 +342,5 @@ module_t rlm_realm = {
   NULL,				/* accounting */
   NULL,				/* checksimul */
   realm_detach,			/* detach */
-  realm_destroy,		/* destroy */
+  NULL,				/* destroy */
 };

@@ -52,38 +52,36 @@ static const char rcsid[] =
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-static SQL_CONFIG config;
-
 static CONF_PARSER module_config[] = {
-	{"driver",PW_TYPE_STRING_PTR, &config.sql_driver, "mysql"},
-	{"server",PW_TYPE_STRING_PTR, &config.sql_server, "localhost"},
-	{"login", PW_TYPE_STRING_PTR, &config.sql_login, ""},
-	{"password", PW_TYPE_STRING_PTR, &config.sql_password, ""},
-	{"radius_db", PW_TYPE_STRING_PTR, &config.sql_db, "radius"},
-	{"acct_table", PW_TYPE_STRING_PTR, &config.sql_acct_table, "radacct"},
-	{"acct_table2", PW_TYPE_STRING_PTR, &config.sql_acct_table2, "radacct"},
-	{"authcheck_table", PW_TYPE_STRING_PTR, &config.sql_authcheck_table, "radcheck"},
-	{"authreply_table", PW_TYPE_STRING_PTR, &config.sql_authreply_table, "radreply"},
-	{"groupcheck_table", PW_TYPE_STRING_PTR, &config.sql_groupcheck_table, "radgroupcheck"},
-	{"groupreply_table", PW_TYPE_STRING_PTR, &config.sql_groupreply_table, "radgroupreply"},
-	{"usergroup_table", PW_TYPE_STRING_PTR, &config.sql_usergroup_table, "usergroup"},
-	{"nas_table", PW_TYPE_STRING_PTR, &config.sql_nas_table, "nas"},
-	{"dict_table", PW_TYPE_STRING_PTR, &config.sql_dict_table, "dictionary"},
-	{"sqltrace", PW_TYPE_BOOLEAN, &config.sqltrace, "0"},
-	{"sqltracefile", PW_TYPE_STRING_PTR, &config.tracefile, SQLTRACEFILE},
-	{"deletestalesessions", PW_TYPE_BOOLEAN, &config.deletestalesessions, "0"},
-	{"num_sql_socks", PW_TYPE_INTEGER, &config.num_sql_socks, "5"},
-	{"authorize_query", PW_TYPE_STRING_PTR, &config.authorize_query, ""},
-	{"authorize_group_query", PW_TYPE_STRING_PTR, &config.authorize_group_query, ""},
-	{"authenticate_query", PW_TYPE_STRING_PTR, &config.authenticate_query, ""},
-	{"accounting_onoff_query", PW_TYPE_STRING_PTR, &config.accounting_onoff_query, ""},
-	{"accounting_update_query", PW_TYPE_STRING_PTR, &config.accounting_update_query, ""},
-	{"accounting_start_query", PW_TYPE_STRING_PTR, &config.accounting_start_query, ""},
-	{"accounting_start_query_alt", PW_TYPE_STRING_PTR, &config.accounting_start_query_alt, ""},
-	{"accounting_stop_query", PW_TYPE_STRING_PTR, &config.accounting_stop_query, ""},
-	{"accounting_stop_query_alt", PW_TYPE_STRING_PTR, &config.accounting_stop_query_alt, ""},
+	{"driver",PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_driver), NULL, "mysql"},
+	{"server",PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_server), NULL, "localhost"},
+	{"login", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_login), NULL, ""},
+	{"password", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_password), NULL, ""},
+	{"radius_db", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_db), NULL, "radius"},
+	{"acct_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_acct_table), NULL, "radacct"},
+	{"acct_table2", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_acct_table2), NULL, "radacct"},
+	{"authcheck_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_authcheck_table), NULL, "radcheck"},
+	{"authreply_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_authreply_table), NULL, "radreply"},
+	{"groupcheck_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_groupcheck_table), NULL, "radgroupcheck"},
+	{"groupreply_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_groupreply_table), NULL, "radgroupreply"},
+	{"usergroup_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_usergroup_table), NULL, "usergroup"},
+	{"nas_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_nas_table), NULL, "nas"},
+	{"dict_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_dict_table), NULL, "dictionary"},
+	{"sqltrace", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,sqltrace), NULL, "0"},
+	{"sqltracefile", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,tracefile), NULL, SQLTRACEFILE},
+	{"deletestalesessions", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,deletestalesessions), NULL, "0"},
+	{"num_sql_socks", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
+	{"authorize_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_query), NULL, ""},
+	{"authorize_group_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_query), NULL, ""},
+	{"authenticate_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authenticate_query), NULL, ""},
+	{"accounting_onoff_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_onoff_query), NULL, ""},
+	{"accounting_update_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_update_query), NULL, ""},
+	{"accounting_start_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_start_query), NULL, ""},
+	{"accounting_start_query_alt", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_start_query_alt), NULL, ""},
+	{"accounting_stop_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_stop_query), NULL, ""},
+	{"accounting_stop_query_alt", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_stop_query_alt), NULL, ""},
 
-	{NULL, -1, NULL, NULL}
+	{NULL, -1, 0, NULL, NULL}
 };
 
 /***********************************************************************
@@ -125,72 +123,18 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 	 * If the configuration parameters can't be parsed, then
 	 * fail.
 	 */
-	if (cf_section_parse(conf, module_config) < 0) {
+	if (cf_section_parse(conf, inst->config, module_config) < 0) {
 		free(inst->config);
 		free(inst);
 		return -1;
 	}
 
-	if (config.num_sql_socks > MAX_SQL_SOCKS) {
+	if (inst->config->num_sql_socks > MAX_SQL_SOCKS) {
 		radlog(L_ERR | L_CONS, "sql_instantiate:  number of sqlsockets cannot exceed %d", MAX_SQL_SOCKS);
 		free(inst->config);
 		free(inst);
 		return -1;
 	}
-
-	inst->config->sql_driver = config.sql_driver;
-	inst->config->sql_server = config.sql_server;
-	inst->config->sql_login = config.sql_login;
-	inst->config->sql_password = config.sql_password;
-	inst->config->sql_db = config.sql_db;
-	inst->config->sql_acct_table = config.sql_acct_table;
-	inst->config->sql_acct_table2 = config.sql_acct_table2;
-	inst->config->sql_authcheck_table = config.sql_authcheck_table;
-	inst->config->sql_authreply_table = config.sql_authreply_table;
-	inst->config->sql_groupcheck_table = config.sql_groupcheck_table;
-	inst->config->sql_groupreply_table = config.sql_groupreply_table;
-	inst->config->sql_usergroup_table = config.sql_usergroup_table;
-	inst->config->sql_nas_table = config.sql_nas_table;
-	inst->config->sql_dict_table = config.sql_dict_table;
-	inst->config->sqltrace = config.sqltrace;
-	inst->config->tracefile = config.tracefile;
-	inst->config->deletestalesessions = config.deletestalesessions;
-	inst->config->num_sql_socks = config.num_sql_socks;
-	inst->config->authorize_query = config.authorize_query;
-	inst->config->authorize_group_query = config.authorize_group_query;
-	inst->config->authenticate_query = config.authenticate_query;
-	inst->config->accounting_onoff_query = config.accounting_onoff_query;
-	inst->config->accounting_update_query = config.accounting_update_query;
-	inst->config->accounting_start_query = config.accounting_start_query;
-	inst->config->accounting_start_query_alt = config.accounting_start_query_alt;
-	inst->config->accounting_stop_query = config.accounting_stop_query;
-	inst->config->accounting_stop_query_alt = config.accounting_stop_query_alt;
-
-	config.sql_driver = NULL;
-	config.sql_server = NULL;
-	config.sql_login = NULL;
-	config.sql_password = NULL;
-	config.sql_db = NULL;
-	config.sql_acct_table = NULL;
-	config.sql_acct_table2 = NULL;
-	config.sql_authcheck_table = NULL;
-	config.sql_authreply_table = NULL;
-	config.sql_groupcheck_table = NULL;
-	config.sql_groupreply_table = NULL;
-	config.sql_usergroup_table = NULL;
-	config.sql_nas_table = NULL;
-	config.sql_dict_table = NULL;
-	config.tracefile = NULL;
-	config.authorize_query = NULL;
-	config.authorize_group_query = NULL;
-	config.authenticate_query = NULL;
-	config.accounting_onoff_query = NULL;
-	config.accounting_update_query = NULL;
-	config.accounting_start_query = NULL;
-	config.accounting_start_query_alt = NULL;
-	config.accounting_stop_query = NULL;
-	config.accounting_stop_query_alt = NULL;
-
 
 	handle = lt_dlopenext(inst->config->sql_driver);
 	if (handle == NULL) {

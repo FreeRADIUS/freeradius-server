@@ -156,12 +156,12 @@ extern int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
  */
 static CONF_PARSER proxy_config[] = {
   { "retry_delay",  PW_TYPE_INTEGER,
-    &proxy_retry_delay, Stringify(RETRY_DELAY) },
+    0, &proxy_retry_delay, Stringify(RETRY_DELAY) },
   { "retry_count",  PW_TYPE_INTEGER,
-    &proxy_retry_count, Stringify(RETRY_COUNT) },
-  { "synchronous",  PW_TYPE_BOOLEAN, &proxy_synchronous, "yes" },
+    0, &proxy_retry_count, Stringify(RETRY_COUNT) },
+  { "synchronous",  PW_TYPE_BOOLEAN, 0, &proxy_synchronous, "yes" },
 
-  { NULL, -1, NULL, NULL }
+  { NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -169,31 +169,31 @@ static CONF_PARSER proxy_config[] = {
  */
 static CONF_PARSER server_config[] = {
   { "max_request_time",   PW_TYPE_INTEGER,
-    &max_request_time,    Stringify(MAX_REQUEST_TIME) },
+    0, &max_request_time,    Stringify(MAX_REQUEST_TIME) },
   { "cleanup_delay",      PW_TYPE_INTEGER,
-    &cleanup_delay,       Stringify(CLEANUP_DELAY) },
+    0, &cleanup_delay,       Stringify(CLEANUP_DELAY) },
   { "max_requests",       PW_TYPE_INTEGER,
-    &max_requests,	  Stringify(MAX_REQUESTS) },
+    0, &max_requests,	  Stringify(MAX_REQUESTS) },
   { "port",               PW_TYPE_INTEGER,
-    &auth_port,		  Stringify(PW_AUTH_UDP_PORT) },
-  { "allow_core_dumps",   PW_TYPE_BOOLEAN,    &allow_core_dumps,  "no" },
-  { "log_stripped_names", PW_TYPE_BOOLEAN,    &log_stripped_names,"no" },
-  { "log_auth",           PW_TYPE_BOOLEAN,    &mainconfig.log_auth,   "no" },
-  { "log_auth_badpass",   PW_TYPE_BOOLEAN,    &mainconfig.log_auth_badpass,  "no" },
-  { "log_auth_goodpass",  PW_TYPE_BOOLEAN,    &mainconfig.log_auth_goodpass, "no" },
-  { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          "${run_dir}/radiusd.pid"},
-  { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
-  { "user",           PW_TYPE_STRING_PTR, &uid_name,  "nobody"},
-  { "group",          PW_TYPE_STRING_PTR, &gid_name,  "nobody"},
-  { "usercollide",   PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide,  "no" },
-  { "lower_user",     PW_TYPE_STRING_PTR,    &mainconfig.do_lower_user, "no" },
-  { "lower_pass",     PW_TYPE_STRING_PTR,    &mainconfig.do_lower_pass, "no" },
-  { "nospace_user",   PW_TYPE_STRING_PTR,    &mainconfig.do_nospace_user, "no" },
-  { "nospace_pass",   PW_TYPE_STRING_PTR,    &mainconfig.do_nospace_pass, "no" },
+    0, &auth_port,	  Stringify(PW_AUTH_UDP_PORT) },
+  { "allow_core_dumps",   PW_TYPE_BOOLEAN,    0, &allow_core_dumps,  "no" },
+  { "log_stripped_names", PW_TYPE_BOOLEAN,    0, &log_stripped_names,"no" },
+  { "log_auth",           PW_TYPE_BOOLEAN,    0, &mainconfig.log_auth,   "no" },
+  { "log_auth_badpass",   PW_TYPE_BOOLEAN,    0, &mainconfig.log_auth_badpass,  "no" },
+  { "log_auth_goodpass",  PW_TYPE_BOOLEAN,    0, &mainconfig.log_auth_goodpass, "no" },
+  { "pidfile",            PW_TYPE_STRING_PTR, 0, &pid_file,          "${run_dir}/radiusd.pid"},
+  { "bind_address",       PW_TYPE_IPADDR,     0, &myip,              "*" },
+  { "user",           PW_TYPE_STRING_PTR, 0, &uid_name,  "nobody"},
+  { "group",          PW_TYPE_STRING_PTR, 0, &gid_name,  "nobody"},
+  { "usercollide",   PW_TYPE_BOOLEAN,    0, &mainconfig.do_usercollide,  "no" },
+  { "lower_user",     PW_TYPE_STRING_PTR,    0, &mainconfig.do_lower_user, "no" },
+  { "lower_pass",     PW_TYPE_STRING_PTR,    0, &mainconfig.do_lower_pass, "no" },
+  { "nospace_user",   PW_TYPE_STRING_PTR,    0, &mainconfig.do_nospace_user, "no" },
+  { "nospace_pass",   PW_TYPE_STRING_PTR,    0, &mainconfig.do_nospace_pass, "no" },
 
-  { "proxy_requests", PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
-  { "proxy",          PW_TYPE_SUBSECTION, proxy_config,       NULL },
-  { NULL, -1, NULL, NULL }
+  { "proxy_requests", PW_TYPE_BOOLEAN,    0, &proxy_requests,    "yes" },
+  { "proxy",          PW_TYPE_SUBSECTION, 0, proxy_config,       NULL },
+  { NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -225,7 +225,7 @@ static int reread_config(int reload)
 		radlog(L_ERR|L_CONS, "No configuration information in radiusd.conf!");
 		return -1;
 	}
-	cf_section_parse(cs, server_config);
+	cf_section_parse(cs, NULL, server_config);
 
 	/*
 	 *	Reload the modules.

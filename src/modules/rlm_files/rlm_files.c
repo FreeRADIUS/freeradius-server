@@ -63,20 +63,17 @@ static int fallthrough(VALUE_PAIR *vp)
 	return tmp ? tmp->lvalue : 0;
 }
 
-/*
- *	A temporary holding area for config values to be extracted
- *	into, before they are copied into the instance data
- */
-static struct file_instance config;
-
 static CONF_PARSER module_config[] = {
-	{ "usersfile",	PW_TYPE_STRING_PTR, &config.usersfile, "${raddbdir}/users" },
-	{ "acctusersfile",	PW_TYPE_STRING_PTR, &config.acctusersfile, "${raddbdir}/acct_users" },
-	{ "compat",	PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
-	{ NULL, -1, NULL, NULL }
+	{ "usersfile",	   PW_TYPE_STRING_PTR,
+	  offsetof(struct file_instance,usersfile), NULL, "${raddbdir}/users" },
+	{ "acctusersfile", PW_TYPE_STRING_PTR,
+	  offsetof(struct file_instance,acctusersfile), NULL, "${raddbdir}/acct_users" },
+	{ "compat",	   PW_TYPE_STRING_PTR,
+	  offsetof(struct file_instance,compat_mode), NULL, "cistron" },
+	{ NULL, -1, 0, NULL, NULL }
 };
 
-static int getusersfile(const char *filename, PAIR_LIST **pair_list)
+static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compat_mode_str)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;
@@ -91,12 +88,12 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list)
 	 *	or if we're in compat_mode.
 	 */
 	if ((debug_flag) ||
-			(strcmp(config.compat_mode, "cistron") == 0)) {
+			(strcmp(compat_mode_str, "cistron") == 0)) {
 		PAIR_LIST *entry;
 		VALUE_PAIR *vp;
 		int compat_mode = FALSE;
 
-		if (strcmp(config.compat_mode, "cistron") == 0) {
+		if (strcmp(compat_mode_str, "cistron") == 0) {
 			compat_mode = TRUE;
 		}
 	
@@ -222,18 +219,12 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 
 	inst = rad_malloc(sizeof *inst);
 
-	if (cf_section_parse(conf, module_config) < 0) {
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
 		return -1;
 	}
 
-	inst->usersfile = config.usersfile;
-	inst->acctusersfile = config.acctusersfile;
-	inst->compat_mode = config.compat_mode;
-	config.usersfile = NULL;
-	config.acctusersfile = NULL;
-
-	rcode = getusersfile(inst->usersfile, &inst->users);
+	rcode = getusersfile(inst->usersfile, &inst->users, inst->compat_mode);
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
 		free(inst->usersfile);
@@ -242,7 +233,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	rcode = getusersfile(inst->acctusersfile, &inst->acctusers);
+	rcode = getusersfile(inst->acctusersfile, &inst->acctusers, inst->compat_mode);
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "Errors reading %s", inst->acctusersfile);
 		pairlist_free(&inst->users);
@@ -251,8 +242,6 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 		free(inst);
 		return -1;
 	}
-
-	config.compat_mode = NULL;
 
 	*instance = inst;
 	return 0;

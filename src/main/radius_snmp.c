@@ -572,9 +572,9 @@ radAuthEntry(struct variable *vp,
 }
 
 static CONF_PARSER snmp_config[] = {
-  { "smux_password",      PW_TYPE_STRING_PTR, &rad_snmp.smux_password,     "" },
-  { "snmp_write_access",  PW_TYPE_BOOLEAN,    &rad_snmp.snmp_write_access, "no" },
-  { NULL, -1, NULL, NULL }
+  { "smux_password",      PW_TYPE_STRING_PTR, 0, &rad_snmp.smux_password,     "" },
+  { "snmp_write_access",  PW_TYPE_BOOLEAN,    0, &rad_snmp.snmp_write_access, "no" },
+  { NULL, -1, 0, NULL, NULL }
 };
 
 
@@ -612,7 +612,7 @@ radius_snmp_init (void)
    *	Parse the SNMP configuration information.
    */
   cs = cf_section_find(NULL);
-  if (cs) cf_section_parse(cs, snmp_config);
+  if (cs) cf_section_parse(cs, NULL, snmp_config);
 
   /*
    *	Do SMUX initialization.

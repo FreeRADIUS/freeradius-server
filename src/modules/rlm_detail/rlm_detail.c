@@ -49,17 +49,14 @@ struct detail_instance {
 	char *last_made_directory;
 };
 
-/*
- *	A temporary holding area for config values to be extracted
- *	into, before they are copied into the instance data
- */
-static struct detail_instance config;
-
 static CONF_PARSER module_config[] = {
-	{ "detailfile",    PW_TYPE_STRING_PTR, &config.detailfile, "%A/%{Client-IP-Address}/detail" },
-	{ "detailperm",    PW_TYPE_INTEGER,    &config.detailperm, "0600" },
-	{ "dirperm",       PW_TYPE_INTEGER,    &config.dirperm,    "0755" },
-	{ NULL, -1, NULL, NULL }
+	{ "detailfile",    PW_TYPE_STRING_PTR,
+	  offsetof(struct detail_instance,detailfile), NULL, "%A/%{Client-IP-Address}/detail" },
+	{ "detailperm",    PW_TYPE_INTEGER,
+	  offsetof(struct detail_instance,detailperm), NULL, "0600" },
+	{ "dirperm",       PW_TYPE_INTEGER,
+	  offsetof(struct detail_instance,dirperm),    NULL, "0755" },
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -71,16 +68,12 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 
 	inst = rad_malloc(sizeof *inst);
 
-	if (cf_section_parse(conf, module_config) < 0) {
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
 		return -1;
 	}
 
-	inst->detailfile = config.detailfile;
-	inst->detailperm = config.detailperm;
-	inst->dirperm = config.dirperm;
 	inst->last_made_directory = NULL;
-	config.detailfile = NULL;
 
 	*instance = inst;
 	return 0;

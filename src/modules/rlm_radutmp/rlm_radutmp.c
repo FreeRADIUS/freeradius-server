@@ -26,6 +26,7 @@
 #include	<sys/types.h>
 #include	<stdio.h>
 #include	<string.h>
+#include	<stdlib.h>
 #include	<unistd.h>
 #include	<fcntl.h>
 #include	<time.h>
@@ -90,33 +91,26 @@ struct radutmp_instance {
   int callerid_ok;
 };
 
-/*
- *	A temporary holding area for config values to be extracted
- *	into, before they are copied into the instance data
- */
-static struct radutmp_instance config;
-
 static CONF_PARSER module_config[] = {
-  { "filename", PW_TYPE_STRING_PTR, &config.radutmp_fn,  RADUTMP },
-  { "perm",     PW_TYPE_INTEGER,    &config.permission,  "0644" },
-  { "callerid", PW_TYPE_BOOLEAN,    &config.callerid_ok, "no" },
-  { NULL, -1, NULL, NULL }		/* end the list */
+  { "filename", PW_TYPE_STRING_PTR,
+    offsetof(struct radutmp_instance,radutmp_fn), NULL,  RADUTMP },
+  { "perm",     PW_TYPE_INTEGER,
+    offsetof(struct radutmp_instance,permission), NULL,  "0644" },
+  { "callerid", PW_TYPE_BOOLEAN,
+    offsetof(struct radutmp_instance,callerid_ok), NULL, "no" },
+  { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 {
-	*instance = rad_malloc(sizeof(struct radutmp_instance));
-	if (cf_section_parse(conf, module_config)) {
-		free(*instance);
+	struct radutmp_instance *inst;
+	inst = rad_malloc(sizeof(*inst));
+	if (cf_section_parse(conf, inst, module_config)) {
+		free(inst);
 		return -1;
 	}
-#define ru_instance ((struct radutmp_instance *)(*instance))
-	ru_instance->nas_port_list = NULL;
-	ru_instance->radutmp_fn = config.radutmp_fn;
-	ru_instance->permission = config.permission;
-	ru_instance->callerid_ok = config.callerid_ok;
-	config.radutmp_fn = NULL;
-#undef ru_instance
+	inst->nas_port_list = NULL;
+	*instance = inst;
 	return 0;
 }
 

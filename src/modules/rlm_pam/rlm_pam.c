@@ -44,11 +44,10 @@ typedef struct rlm_pam_t {
 	const char *pam_auth_name;
 } rlm_pam_t;
 
-static rlm_pam_t config;
-
 static CONF_PARSER module_config[] = {
-	{ "pam_auth",    PW_TYPE_STRING_PTR, &config.pam_auth_name, "radiusd" },
-	{ NULL, -1, NULL, NULL }
+	{ "pam_auth",    PW_TYPE_STRING_PTR, offsetof(rlm_pam_t,pam_auth_name),
+	  NULL, "radiusd" },
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -58,14 +57,12 @@ static int pam_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_pam_t *data;
 
-	if (cf_section_parse(conf, module_config) < 0) {
-		return -1;
-	}
-
 	data = rad_malloc(sizeof(*data));
 
-	data->pam_auth_name = config.pam_auth_name;
-	config.pam_auth_name = NULL;
+	if (cf_section_parse(conf, data, module_config) < 0) {
+		free(data);
+		return -1;
+	}
 
 	*instance = data;
 	return 0;

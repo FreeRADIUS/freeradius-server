@@ -48,12 +48,6 @@ typedef struct rlm_example_t {
 } rlm_example_t;
 
 /*
- *	A temporary holding area for config values to be extracted
- *	into, before they are copied into the instance data
- */
-static rlm_example_t config;
-
-/*
  *	A mapping of configuration file names to internal variables.
  *
  *	Note that the string is dynamically allocated, so it MUST
@@ -63,12 +57,12 @@ static rlm_example_t config;
  *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
-  { "integer", PW_TYPE_INTEGER,    &config.value,   "1" },
-  { "boolean", PW_TYPE_BOOLEAN,    &config.boolean, "no" },
-  { "string",  PW_TYPE_STRING_PTR, &config.string,  NULL },
-  { "ipaddr",  PW_TYPE_IPADDR,     &config.ipaddr,  "*" },
+  { "integer", PW_TYPE_INTEGER,    offsetof(rlm_example_t,value), NULL,   "1" },
+  { "boolean", PW_TYPE_BOOLEAN,    offsetof(rlm_example_t,boolean), NULL, "no"},
+  { "string",  PW_TYPE_STRING_PTR, offsetof(rlm_example_t,string), NULL,  NULL},
+  { "ipaddr",  PW_TYPE_IPADDR,     offsetof(rlm_example_t,ipaddr), NULL,  "*" },
 
-  { NULL, -1, NULL, NULL }		/* end the list */
+  { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 /*
@@ -100,29 +94,21 @@ static int example_init(void)
 static int example_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_example_t *data;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, module_config) < 0) {
-		return -1;
-	}
 	
 	/*
 	 *	Set up a storage area for instance data
 	 */
 	data = rad_malloc(sizeof(*data));
-	
+
 	/*
-	 *	Copy the configuration into the instance data
+	 *	If the configuration parameters can't be parsed, then
+	 *	fail.
 	 */
-	data->boolean = config.boolean;
-	data->value = config.value;
-	data->string = config.string;
-	config.string = NULL; /* So cf_section_parse won't free it next time */
+	if (cf_section_parse(conf, data, module_config) < 0) {
+		free(data);
+		return -1;
+	}
 	
-	data->ipaddr = config.ipaddr;
 	*instance = data;
 	
 	return 0;

@@ -103,19 +103,19 @@ static THREAD_POOL thread_pool;
  */
 static const CONF_PARSER thread_config[] = {
 	{ "start_servers",                      PW_TYPE_INTEGER,
-	  &thread_pool.start_threads,           "5" }, 
+	  0, &thread_pool.start_threads,           "5" }, 
 	{ "max_servers",                        PW_TYPE_INTEGER,
-	  &thread_pool.max_threads,             "32" }, 
+	  0, &thread_pool.max_threads,             "32" }, 
 	{ "min_spare_servers",                  PW_TYPE_INTEGER,
-	  &thread_pool.min_spare_threads,       "3" }, 
+	  0, &thread_pool.min_spare_threads,       "3" }, 
 	{ "max_spare_servers",                  PW_TYPE_INTEGER,
-	  &thread_pool.max_spare_threads,       "10" }, 
+	  0, &thread_pool.max_spare_threads,       "10" }, 
 	{ "max_requests_per_server",            PW_TYPE_INTEGER,
-	  &thread_pool.max_requests_per_thread, "0"}, 
+	  0, &thread_pool.max_requests_per_thread, "0"}, 
 	{ "cleanup_delay",			PW_TYPE_INTEGER,
-	  &thread_pool.cleanup_delay,		"5"}, 
+	  0, &thread_pool.cleanup_delay,		"5"}, 
 	
-	{ NULL, -1, NULL, NULL }
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -423,7 +423,7 @@ int thread_pool_init(void)
 
 	pool_cf = cf_section_find("thread");
 	if (pool_cf) {
-		cf_section_parse(pool_cf, thread_config);
+		cf_section_parse(pool_cf, NULL, thread_config);
 	}
 
 	/*

@@ -118,15 +118,10 @@ static int fallthrough(VALUE_PAIR *vp)
 
 
 
-/*
- *	A temporary holding area for config values to be extracted
- *	into, before they are copied into the instance data
- */
-static struct attr_filter_instance config;
-
 static CONF_PARSER module_config[] = {
-        { "attrsfile",     PW_TYPE_STRING_PTR, &config.attrsfile, "${raddbdir}/attrs" },
-	{ NULL, -1, NULL, NULL }
+        { "attrsfile",     PW_TYPE_STRING_PTR,
+	  offsetof(struct attr_filter_instance,attrsfile), NULL, "${raddbdir}/attrs" },
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 static int getattrsfile(const char *filename, PAIR_LIST **pair_list)
@@ -187,13 +182,10 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 
         inst = rad_malloc(sizeof *inst);
 
-        if (cf_section_parse(conf, module_config) < 0) {
+        if (cf_section_parse(conf, inst, module_config) < 0) {
                 free(inst);
                 return -1;
         }
-
-        inst->attrsfile = config.attrsfile;
-        config.attrsfile = NULL;
 
 	rcode = getattrsfile(inst->attrsfile, &inst->attrs);
         if (rcode != 0) {
