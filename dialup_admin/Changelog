@@ -21,6 +21,7 @@ Ver 1.60:
   user_finger somewhat faster.
 * Fix a small issue with the general_accounting_info_order
 * Fix a problem in failed_logins when NASIPAddress is not set.
+* Allow for multiple regular profile attributes in a user entry.
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
