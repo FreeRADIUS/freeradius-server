@@ -6,7 +6,7 @@
   The server is mostly compatible with livingston radiusd-2.01
   (no menus or s/key support though) but with more feautures, such as:
 
-    o Can limit max. number of simultaneous logins on a per-user basis!
+    o Can limit the maximum number of simultaneous logins on a per-user basis!
     o Multiple DEFAULT entries, that can optionally fall-through.
     o In fact, every entry can fall-through
     o Deny/permit access based on huntgroup users dials into
@@ -18,6 +18,8 @@
     o Can use `$INCLUDE filename' in radiusd.conf, users, and dictionary files
     o Can act as a proxy server, relaying requests to a remote server
     o Supports Vendor-Specific attributes
+    o Supports many different plug-in modules for authentication,
+      authorization, and accounting.
     o No good documentation at all, just like the original radiusd 1.16!
 
   Work on real manual pages is progressing slowly. For a large part you
@@ -26,11 +28,6 @@
   specific) "hints" file will give unpredictable results. Well actually
   it will result in Prefix and Suffix probably not working in the "users"
   file if you already stripped them off in the "hints" file.
-
-  Extra command line flags:
-  o -y: log all login attempts in /var/log/radius.log, include (wrong)
-        password for failed logins.
-  o -z: log the password of successful logins, too (STRONGLY discouraged).
 
 2. COMPILE
 
@@ -50,13 +47,10 @@
   --with-dict-nocase      Make dictionary case-independant (default=yes)
   --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)
   --with-threads          Use threads, if available.  (default=yes) 
-  --with-thread-pool      Use a pool of threads for high-load systems.  (default=no) 
   --with-snmp             Compile in SNMP support. (default=yes)
-  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found 
-  --with-mysql-lib-dir=DIR       Directory where the MySQL libraries may be found 
-  --with-mysql-dir=DIR    Base directory where MySQL is installed 
   --disable-ltdl-install  Do not install libltdl
   --with-static-modules=QUOTED-MODULE-LIST
+  --with-experimental-modules      Use experimental and unstable modules. (default=no) 
   --enable-developer      Turns on super-duper-extra-compile-warnings
                               when using gcc.
 
@@ -80,10 +74,35 @@
   o Copy the examples in raddb to /etc/raddb and edit+rename the sample files.
   o Start radiusd (using /etc/init.d/radiusd start if applicable).
 
+  If the server builds and installs, but doesn't run correctly, then
+  use debugging mode to figure out the problem.  (radiusd -X).  This
+  is your BEST HOPE for understanding the problem.  Read ALL of the
+  messages which are printed to the screen, the answer to your problem
+  will often be in a warning or error message.
+
+  We really can't emphasize that enough.  Configuring a RADIUS server
+  for complex local installations isn't a trivial task.  Your ONLY
+  method for debugging it is to read the debug messages, where the
+  server tells you exactly what it's doing, and why.  You should then
+  compare its behaviour to what you intended, and then edit the
+  configuration files as appropriate.
+
+  If you don't use debugging mode, then you will look like an idiot
+  when you ask questions on the 'freeradius-users' list, and the final
+  answer turns out to have been sitting in front of you all along.
+  Since the main developers of FreeRADIUS use debugging mode to track
+  down their configuration problems with the server, it's probably a
+  good idea for you to use it, too.
+
 3. CONFIGURATION FILES
 
   For every file there is a fully commented example file included, that
-  explains what is does and how to use it. Read those sample files too!
+  explains what is does, and how to use it. Read those sample files too!
+
+  Again, many of the configuration files are ONLY documented in the
+  comments included in the files.  Reading the configuration files is
+  REQUIRED to fully understand how to create complex configurations of
+  the server.
 
 3a. CLIENTS
 
@@ -172,21 +191,12 @@
   Exec-Program-Wait	string		ditto, but wait for program to finish
   					before sending back auth. reply
   Login-Time		string		Defines when user may login.
+  Current-Time		string		Allows you to perform time-based
+					checks when a request is received.
 
-  Exec-Program can take arguments. You can use macros in the arguments:
-
-  Taken from the original request:
-    %p   Port number
-    %n   NAS IP address
-    %u   User name
-    %a   Protocol (SLIP/PPP)
-    %s   Speed (connect string - eg "28800/V42.BIS")
-    %i   Calling Station ID
-
-  Taken from the reply as defined thusfar:
-    %f   Framed IP address
-    %c   Callback-Number
-    %t   MTU
+  Exec-Program can take arguments. You can use variables in the
+  arguments, which are automatically expanded by the server.  See
+  'doc/variables.txt' for more information.
 
   For example, use the following entry for someone who has BSMTP (queued
   SMTP) service. "brunq" is the program that runs the SMTP queue.
@@ -269,23 +279,13 @@
   <URL: http://www.freeradius.org/>
 
   There are two GNU Mailman mailing lists hosted by Cistron Internet Services:
-  one freeradius-devel list and one freeradius-users list.  The devel list
-  is mainly meant for developers of FreeRadius.
-  To subscribe to either list, visit <URL: http://lists.cistron.nl/>
-  body to freeradius-devel-request@info.cistron.nl.
-  You can browse the archive of this mailing list at
-  <URL: http://info.cistron.nl/archives/freeradius-devel/>
+  a 'users' list, at:
 
-  There are a few other mailing lists that might offer some help:
+	http://lists.cistron.nl/archives/freeradius-users/
 
-  There is a linux-radius list run by miguel a.l. paraz <map@iphil.net>.
-  See <URL: http://www.iphil.net/~map/radius/> for details.
+  and a 'developers only' list, at
 
-  Then of course for general RADIUS questions, especially if you are using
-  Livingston  / Lucent RABU equipment, there is the portmaster-radius mailing
-  list. Send mail to portmaster-radius-request@livingston.com to find
-  out how to subscribe.
-
+	http://lists.cistron.nl/archives/freeradius-devel/
 
 $Date$
-orig, Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999
+originally by Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999
