@@ -804,6 +804,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		radlog(L_DBG, "rlm_sql (%s): User %s not found in radgroupcheck",
 		       inst->config->xlat_name, sqlusername);
 	if (found || (!found && inst->config->query_on_not_found)){
+		int def_found = 0;
+
 		/*
 	 	* Check for a default_profile or for a User-Profile.
 		*/
@@ -821,7 +823,9 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 				}
 				radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_check_query,
 									request, sql_escape_func);
-				found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
+				def_found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
+				if (def_found)
+					found = 1;
 				radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query,
 									request, sql_escape_func);
 				sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
