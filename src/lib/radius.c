@@ -143,6 +143,13 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	const char		*what;
 	uint8_t			ip_buffer[16];
 
+	/*
+	 *	Maybe it's a fake packet.  Don't send it.
+	 */
+	if (packet->sockfd < 0) {
+		return 0;
+	}
+
 	if ((packet->code > 0) && (packet->code < 52)) {
 		what = packet_codes[packet->code];
 	} else {
