@@ -1,6 +1,10 @@
-FreeRADIUS 0.6.1 ; $Date$, urgency=high
+FreeRADIUS 0.7 ; $Date$, urgency=high
 
-	* Added experimental SMB authentication module.
+	* Add 'Realm' attribute, even if it's a LOCAL realm.
+	  Bug noted by Chris Brotsos.
+	* Added experimental SMB authentication module, which uses
+	  PAP passwords to authenticate against an NT-Domain.
+	  NT/LM-passwords are not currently supported.
 	* More documentation for rlm_passwd, rlm_mschap, and rlm_digest.
 	* 'configure' changes to better find sem_init and friends.
 	* Allow the use of previously installed libtool, and libltdl.
@@ -39,7 +43,7 @@ FreeRADIUS 0.6.1 ; $Date$, urgency=high
 	* Fix issues with MD4, MD5, SHA1, and use of OpenSSL
 	* Update rlm_x99_token module to compile.
 
-FreeRADIUS 0.6.0 ; $Date$, urgency=high
+FreeRADIUS 0.6.0 ; Date: Date: 2002/07/03 14:16:33 , urgency=high
 
 	* Many bug fixes.  For explicit details, see:
 		http://www.freeradius.org/cvs-log/
