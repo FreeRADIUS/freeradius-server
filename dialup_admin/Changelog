@@ -34,6 +34,8 @@ Ver 1.60:
   html/buttons/default/buttons.html.php3. That way we can create muiltiple views of say the online users
   page based on which admin requests the page.
 * Call config.php3 before outputing any html.
+* Add sessions in order to cache the various mappings. Add a corresponding configuration directive
+  general_use_session. Also add a session cache destroy page.
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
