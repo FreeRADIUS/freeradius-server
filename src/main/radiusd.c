@@ -1435,7 +1435,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if ((fun == rad_authenticate) &&
 	    (request->reply->code == PW_AUTHENTICATION_REJECT) &&
 	    (reprocess))  {
-		pairlist_free(&request->config_items);
+		pairfree(request->config_items);
 		(*fun)(request);
 	}
 	
