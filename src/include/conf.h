@@ -14,8 +14,6 @@
 #define RADWTMP			LOGDIR "/radwtmp"
 #define SRADWTMP		LOGDIR "/sradwtmp"
 
-#define CHECKRAD		SBINDIR "/checkrad"
-
 /* Hack for funky ascend ports on MAX 4048 (and probably others)
    The "NAS-Port-Id" value is "xyyzz" where "x" = 1 for digital, 2 for analog;
    "yy" = line number (1 for first PRI/T1/E1, 2 for second, so on);
