@@ -1,0 +1,178 @@
+#!/bin/sh
+
+#
+#  This is a NON-INTERACTIVE script to help generate certificates for
+#  use with the EAP-TLS module.
+#
+#	$Id$
+
+#
+#  This environment variable should point to the SSL installation
+#
+[ "$SSL" = "" ] && SSL=/usr/local/ssl
+export SSL
+
+#
+#  Edit the following variables for your organization.
+#
+COUNTRY="CA"
+PROVINCE="Province"
+CITY="Some City"
+ORGANIZATION="Organization"
+ORG_UNIT=`hostname`
+PASSWORD="whatever"
+
+COMMON_NAME_CLIENT="Client certificate"
+EMAIL_CLIENT="client@example.com"
+PASSWORD_CLIENT=$PASSWORD
+
+COMMON_NAME_SERVER="Server certificate"
+EMAIL_SERVER="server@example.com"
+PASSWORD_SERVER=$PASSWORD
+
+COMMON_NAME_ROOT="Root certificate"
+EMAIL_ROOT="root@example.com"
+PASSWORD_ROOT=$PASSWORD
+
+#
+#  lifetime, in days, of the certs
+#
+LIFETIME=730
+
+######################################################################
+#
+#  Don't change anything below this line...
+#
+######################################################################
+
+#
+#  Prefer the SSL configured above, over any previous installation.
+#
+PATH=${SSL}/bin/:${SSL}/misc:${PATH}
+LD_LIBRARY_PATH=${SSL}/lib
+export PATH LD_LIBRARY_PATH
+
+rm -rf demoCA roo* cert* *.pem *.der
+
+echo -e ""
+echo -e "\t\t##################"
+echo -e "\t\tcreate private key"
+echo -e "\t\tname : name-root"
+echo -e "\t\tCA.pl -newcert"
+echo -e "\t\t##################\n"
+
+(echo $COUNTRY
+echo $PROVINCE
+echo $CITY
+echo $ORGANIZATION
+echo $ORG_UNIT
+echo $COMMON_NAME_CLIENT
+echo $EMAIL_CLIENT
+) | openssl req -new -x509 -keyout newreq.pem -out newreq.pem -days $LIFETIME -passin pass:$PASSWORD_CLIENT -passout pass:$PASSWORD_CLIENT
+if [ "$?" != "0" ]
+then
+    echo "Failed to create client certificate"
+    exit 1
+fi
+
+echo -e ""
+echo -e "\t\t##################"
+echo -e "\t\tcreate CA"
+echo -e "\t\tuse just created 'newreq.pem' private key as filename"
+echo -e "\t\tCA.pl -newca"
+echo -e "\t\t##################\n"
+
+echo "newreq.pem" | CA.pl -newca || exit 2
+
+#ls -lg demoCA/private/cakey.pem
+
+echo -e ""
+echo -e "\t\t##################"
+echo -e "\t\texporting ROOT CA"
+echo -e "\t\tCA.pl -newreq"
+echo -e "\t\tCA.pl -signreq"
+echo -e "\t\topenssl pkcs12 -export -in demoCA/cacert.pem -inkey newreq.pem -out root.pem"
+echo -e "\t\topenssl pkcs12 -in root.cer -out root.pem"
+echo -e "\t\t##################\n"
+
+openssl pkcs12 -export -in demoCA/cacert.pem -inkey newreq.pem -out root.p12 -cacerts -passin pass:$PASSWORD_ROOT -passout pass:$PASSWORD_ROOT
+openssl pkcs12 -in root.p12 -out root.pem -passin pass:$PASSWORD_ROOT -passout pass:$PASSWORD_ROOT
+openssl x509 -inform PEM -outform DER -in root.pem -out root.der 
+
+echo -e ""
+echo -e "\t\t##################"
+echo -e "\t\tcreating client certificate"
+echo -e "\t\tname : name-clt"
+echo -e "\t\tclient certificate stored as cert-clt.pem"
+echo -e "\t\tCA.pl -newreq"
+echo -e "\t\tCA.pl -signreq"
+echo -e "\t\t##################\n"
+
+(echo $COUNTRY
+echo $PROVINCE
+echo $CITY
+echo $ORGANIZATION
+echo $ORG_UNIT
+echo $COMMON_NAME_SERVER
+echo $EMAIL_SERVER
+echo $PASSWORD_SERVER
+echo "testing"
+) | openssl req -new -keyout newreq.pem -out newreq.pem -days $LIFETIME -passin pass:$PASSWORD_SERVER -passout pass:$PASSWORD_SERVER
+if [ "$?" != "0" ]
+then
+    echo "Failed to create server certificate"
+    exit 1
+fi
+
+(echo y
+echo y) | openssl ca  -policy policy_anything -out newcert.pem -passin pass:$PASSWORD_SEREVER -key $PASSWORD_SERVER -extensions xpclient_ext -extfile xpextensions -infiles newreq.pem
+if [ "$?" != "0" ]
+then
+    echo "Failed to do sign certificate"
+    exit 1
+fi
+
+openssl pkcs12 -export -in newcert.pem -inkey newreq.pem -out cert-clt.p12 -clcerts -passin pass:$PASSWORD_CLIENT -passout pass:$PASSWORD_CLIENT || exit 8
+openssl pkcs12 -in cert-clt.p12 -out cert-clt.pem -passin pass:$PASSWORD_CLIENT -passout pass:$PASSWORD_CLIENT || exit 9
+openssl x509 -inform PEM -outform DER -in cert-clt.pem -out cert-clt.der || exit 10
+
+echo -e ""
+echo -e "\t\t##################"
+echo -e "\t\tcreating server certificate"
+echo -e "\t\tname : name-srv"
+echo -e "\t\tserver certificate stored as cert-srv.pem"
+echo -e "\t\tCA.pl -newreq"
+echo -e "\t\tCA.pl -signreq"
+echo -e "\t\t##################\n"
+
+(echo $COUNTRY
+echo $PROVINCE
+echo $CITY
+echo $ORGANIZATION
+echo $ORG_UNIT
+echo $COMMON_NAME_ROOT
+echo $EMAIL_ROOT
+echo $PASSWORD_ROOT
+echo $ORG_UNIT
+) | openssl req -new  -keyout newreq.pem -out newreq.pem -days $LIFETIME -passin pass:$PASSWORD_ROOT -passout pass:$PASSWORD_ROOT
+if [ "$?" != "0" ]
+then
+    echo "Failed to create root certificate"
+    exit 1
+fi
+
+(echo y
+echo y) | openssl ca  -policy policy_anything  -out newcert.pem -passin pass:$PASSWORD_ROOT -key $PASSWORD_ROOT -extensions xpserver_ext -extfile xpextensions -infiles newreq.pem 
+if [ "$?" != "0" ]
+then
+    echo "Failed to sign root certificate"
+    exit 1
+fi
+
+openssl pkcs12 -export -in newcert.pem -inkey newreq.pem -out cert-srv.p12 -clcerts -passin pass:$PASSWORD_SERVER -passout pass:$PASSWORD_SERVER || exit 5
+openssl pkcs12 -in cert-srv.p12 -out cert-srv.pem -passin pass:$PASSWORD_SERVER -passout pass:$PASSWORD_SERVER || exit 6
+openssl x509 -inform PEM -outform DER -in cert-srv.pem -out cert-srv.der || exit 7
+
+echo -e "\n\t\t#################################"
+echo -e "\t\tDONE.  Thank you for your patience."
+echo -e "\t\t###################################\n"
