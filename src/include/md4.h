@@ -1,3 +1,11 @@
+/*
+ * md4.h        Structures and prototypes for md4.
+ *
+ * Version:     $Id$
+ *
+ */
+
+
 #ifndef _LRAD_MD4_H
 #define _LRAD_MD4_H
 
