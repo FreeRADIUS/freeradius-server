@@ -19,6 +19,8 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	* Silently drop packets with bad Message-Authenticators, as per RFC3579
 	* Add Message-Authenticator to rlm_digest sample.
 	* Fix MD4 calculation on big-endian machines.
+	* Correct handling of post-auth REJECT stanza to include externally and
+	  proxy-received rejections. (Bugzilla bug #149)
 
 FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03, urgency=high
 	Denial-of-Service Security Fix
