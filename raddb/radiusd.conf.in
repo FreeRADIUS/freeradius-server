@@ -20,7 +20,6 @@
 #	are taken from the values of the attribute in the incoming
 #	request.  See 'doc/variables.txt' for more information.
 
-# Stuff from autoconf
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 sysconfdir = @sysconfdir@
@@ -88,15 +87,14 @@ pidfile = ${run_dir}/radiusd.pid
 #
 #    On SCO (ODT 3) use "user = nouser" and "group = nogroup".
 #
-#  NOTE that some kernels refuse to setgid(group)
-#  when the value of (unsigned)group is above 60000;
-#  don't use group nobody on these systems!
+#  NOTE that some kernels refuse to setgid(group) when the value of
+#  (unsigned)group is above 60000; don't use group nobody on these systems!
 #
 #  On systems with shadow passwords, you might have to set 'group = shadow'
 #  for the server to be able to read the shadow password file.  If you can
-#  authenticate users while in debug mode, but not in normal use, it may be
-#  because the debugged server is running as a user that can read the shadow
-#  info, and the user listed below can not.
+#  authenticate users while in debug mode, but not in daemon mode, it may be
+#  that the debugging mode server is running as a user that can read the
+#  shadow info, and the user listed below can not.
 #
 user = root
 group = root
@@ -109,6 +107,11 @@ group = root
 #  WARNING: If you notice that requests take a long time to be handled,
 #  then this MAY INDICATE a bug in the server, in one of the modules
 #  used to handle a request, OR in your local configuration.
+#
+#  This problem is most often seen when using an SQL database.  If it takes
+#  more than a second or two to receive an answer from the SQL database,
+#  then it probably means that you haven't indexed the database.  See your
+#  SQL server documentation for more information.
 #
 #  Useful range of values: 5 to 120
 #
@@ -186,9 +189,6 @@ bind_address = *
 #  A port given on the command-line via '-p' over-rides this one.
 #
 port = 0
-
-#  Which program to execute check doing concurrency checks.
-checkrad = ${sbindir}/checkrad
 
 #  hostname_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
@@ -280,6 +280,9 @@ lower_pass = no
 nospace_user = no
 nospace_pass = no
 
+#  Which program to execute check doing concurrency checks.
+checkrad = ${sbindir}/checkrad
+
 # SECURITY CONFIGURATION
 #
 #  There may be multiple methods of attacking on the server.  This
@@ -292,12 +295,12 @@ security {
 	#  permitted in a RADIUS packet.  Packets which have MORE
 	#  than this number of attributes in them will be dropped.
 	#
-	#  If this number is set too low, then no radius packets
+	#  If this number is set too low, then no RADIUS packets
 	#  will be accepted.
 	#
 	#  If this number is set too high, then an attacker may be
 	#  able to send a small number of packets which will cause
-	#  the RADIUS server to use all available memory.
+	#  the server to use all available memory on the machine.
 	#
 	#  Setting this number to 0 means "allow any number of attributes"
 	max_attributes = 200
@@ -310,8 +313,9 @@ security {
 	#
 	#  Setting this number to 0 means "send rejects immediately"
 	#
-	#  If this number is set higher than "cleanup_delay", then the
-	#  rejects will be sent after 'cleanup_delay".
+	#  If this number is set higher than 'cleanup_delay', then the
+	#  rejects will be sent at 'cleanup_delay' time, when the request
+	#  is deleted from the internal cache of requests.
 	#
 	#  Useful ranges: 1 to 5
 	reject_delay = 1
@@ -384,6 +388,14 @@ thread pool {
 	#  keep a runaway server from taking the system with it as it spirals
 	#  down...
 	#
+	#  You may find that the server is regularly reaching the
+	#  'max_servers' number of threads, and that increasing
+	#  'max_servers' doesn't seem to make much difference.
+	#   If this is the case, then the problem is MOST LIKELY that
+	#   your back-end databases are taking too long to respond, and
+	#   are preventing the server from responding in a timely manner.
+	#   For more information, see 'max_request_time', above.
+	#
 	max_servers = 32
 
 	#  Server-pool size regulation.  Rather than making you guess
@@ -413,7 +425,20 @@ thread pool {
 	max_requests_per_server = 0
 }
 
+# MODULE CONFIGURATION
+#
+#  The names and configuration of each module is located in this section.
+#
+#  After the modules are defined here, they may be referred to by name,
+#  in other sections of this configuration file.
+#
 modules {
+
+	# Pluggable Authentication Modules
+	#
+	#  For Linux, see:
+	#	http://www.kernel.org/pub/linux/libs/pam/index.html
+	#
 	pam {
 		#
 		#  The name to use for PAM authentication.
@@ -426,6 +451,10 @@ modules {
 		#
 		pam_auth = radiusd
 	}
+
+	# Unix /etc/passwd style authentication
+	#
+	#
 	unix {
 		#
 		#  Cache /etc/passwd, /etc/shadow, and /etc/group
@@ -465,7 +494,9 @@ modules {
 		radwtmp = ${logdir}/radwtmp
 	}
 
-	# EAP module for all EAP related authentications 
+	# Extensible Authentication Protocol
+	#
+	#  For all EAP related authentications 
 	eap {
 		# Invoke the default supported EAP type when
 		# EAP-Identity response is received
@@ -514,8 +545,12 @@ modules {
 		#}
 	}
 
+	# Microsoft CHAP authentication
+	#
 	#  This module supports SAMBA passwd file authorization
-	#  and MS-CHAP, MS-CHAPv2 authentication
+	#  and MS-CHAP, MS-CHAPv2 authentication.  However, we recommend
+	#  using the 'passwd' module, below, as it's more general.
+	#
 	mschap {
 		# if given, passwd shows location of
 		# SAMBA passwd file
@@ -553,18 +588,22 @@ modules {
 	}
 
 	# PAP module to authenticate users based on their stored password
-	# Supports multiple encryption schemes
-	# clear: Clear text
-	# crypt: Unix crypt
-	#   md5: MD5 ecnryption
-	#  sha1: SHA1 encryption. Not yet implemented
-	# DEFAULT: crypt
+	#
+	#  Supports multiple encryption schemes
+	#  clear: Clear text
+	#  crypt: Unix crypt
+	#    md5: MD5 ecnryption
+	#   sha1: SHA1 encryption. Not yet implemented
+	#  DEFAULT: crypt
 	#pap {
 	#	encryption_scheme = crypt
 	#}
 
+	# Lightweight Directory Access Protocol (LDAP)
+	#
 	#  This module definition allows you to use LDAP for
-	#  authorization and authentication (Auth-Type = LDAP)
+	#  authorization and authentication (Auth-Type := LDAP)
+	#
 	#  See doc/rlm_ldap for description of configuration options 
 	#  and sample authorize{} and authenticate{} blocks 
 	ldap {
@@ -574,12 +613,19 @@ modules {
 		basedn = "o=My Org,c=UA"
 		# authtype = "MS-CHAP"
 		filter = "(uid=%u)"
+
+		# set this to 'yes' to use TLS encrypted connections
+		# to the LDAP database.
 		start_tls = no
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
 		# profile_attribute = "radiusProfileDn"
 		access_group = "cn=clients,ou=dialup,o=My Org,c=UA"
 		access_attr = "dialupAccess"
+
+		# Mapping of RADIUS dictionary attributes to LDAP
+		# directory attributes.
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
+
 		# ldap_cache_timeout = 120
 		# ldap_cache_size = 0
 		ldap_connections_number = 5
@@ -594,14 +640,17 @@ modules {
 
 	# passwd module allows to do authorization via any passwd-like
 	# file and to extract any attributes from these modules
+	#
 	# parameters are:
 	#   filename - path to filename
 	#   format - format for filename record. This parameters
 	#            correlates record in the passwd file and RADIUS
 	#            attributes.
-	#            Field marked as '*' is key field. That is paramter
-	#            with this name from request is used to search
-	#            record from passwd file
+	#
+	#            Field marked as '*' is key field. That is, the parameter
+	#            with this name from the request is used to search for
+	#            the record from passwd file
+	#
 	#            Field marked as ',' may contain a comma separated list
 	#            of attributes.
 	#   authtype - if record found this Auth-Type is used to authenticate
@@ -610,6 +659,7 @@ modules {
 	#            stored in memory and file is red on every request.
 	#   allowmultiplekeys - if few records for every key are allowed
 	#   ignorenislike - ignore NIS-related records
+	#
 	#passwd etc_smbpasswd {
 	#	filename = /etc/smbpasswd
 	#	format = "*User-Name::LM-Password:NT-Password:SMB-Account-CTRL-TEXT::"
@@ -618,6 +668,8 @@ modules {
 	#	ignorenislike = no
 	#	allowmultiplekeys = no
 	#}
+
+	#  Similar configuration, for the /etc/group file.
 	#passwd etc_group {
 	#	filename = /etc/group
 	#	format = "Group-Name:::*,User-Name"
@@ -626,38 +678,8 @@ modules {
 	#	allowmultiplekeys = no
 	#}
 
-
-
-	# Do server side ip pool management. Should be added in authorize and
-	# accounting sections
-	# FIXME: This is highly experimental at the moment. Please give feedback
+	# Realm module, for proxying.
 	#
-	# Parameters:
-	#
-	# range-start,range-stop: The start and end ip addresses for the ip pool
-	# netmask: The network mask used for the ip's
-	# cache-size: The gdbm cache size for the db files. Should be equal to
-	#	     the number of ip's available in the ip pool
-	# session-db: The main db file used to allocate ip's to clients
-	# ip-index: Helper db index file used in multilink
-	#
-	# The module will also check for the existance of the Pool-Name attribute.
-	# That way the administrator can add the Pool-Name attribute in the user profiles
-	# and use different pools for different users
-	# Example:
-	# radiusd.conf: ippool students { [...] }
-	# users file  : DEFAULT Group == students, Pool-Name := "students"
-	#
-	#ippool {
-	#       range-start = 192.168.1.1
-	#       range-stop = 192.168.3.254
-	#       netmask = 255.255.255.0
-	#       cache-size = 800
-	#       session-db = ${raddbdir}/db.ippool
-	#       ip-index = ${raddbdir}/db.ipindex
-	#}
-
-
 	#  You can have multiple instances of the realm module to
 	#  support multiple realm syntaxs at the same time.  The
 	#  search order is defined the order in the authorize and
@@ -666,7 +688,7 @@ modules {
 	#  Two config options:
 	#	format     -  must be 'prefix' or 'suffix'
 	#	delimiter  -  must be a single character
-	#
+
 	#  'username@realm'
 	#
 	realm suffix {
@@ -683,6 +705,7 @@ modules {
 	}
 
 	#  'username%realm'
+	#
 	realm realmpercent {
 		format = suffix
 		delimiter = "%"
@@ -701,6 +724,14 @@ modules {
 	#	max_matches = 10
 	#}
 
+	# Preprocess the incoming RADIUS request, before handing it off
+	# to other modules.
+	#
+	#  This module processes the 'huntgroups' and 'hints' files.
+	#  In addition, it re-writes some weird attributes created
+	#  by some NASes, and converts the attributes into a form which
+	#  is a little more standard.
+	#
 	preprocess {
 		huntgroups = ${confdir}/huntgroups
 		hints = ${confdir}/hints
@@ -744,6 +775,8 @@ modules {
 		with_cisco_vsa_hack = no
 	}
 
+	# Livingston-style 'users' file
+	#
 	files {
 		usersfile = ${confdir}/users
 		acctusersfile = ${confdir}/acct_users
@@ -755,8 +788,9 @@ modules {
 		compat = no
 	}
 
-	# See README.rlm_fastusers before using this
+	# See doc/rlm_fastusers before using this
 	# module or changing these values.
+	#
 	fastusers {
 		usersfile = ${confdir}/users_fast
 		hashsize = 1000
@@ -765,6 +799,8 @@ modules {
 		hash_reload = 600
 	}
 	
+	# Write a detailed log of all accounting records received.
+	#
 	detail {
 		#  Note that we do NOT use NAS-IP-Address here, as that
 		#  attribute MAY BE from the originating NAS, and NOT
@@ -776,9 +812,13 @@ modules {
 		detailperm = 0600
 	}
 
-	# This module will add a (probably) unique session id 
-	# to an accounting packet based on the attributes listed
-	# below found in the packet.  see doc/README.rlm_acct_unique
+	# Create a unique accounting session Id, as many NASes re-use
+	# or repeat values for Acct-Session-Id, causing no end of confusion.
+	#
+	#  This module will add a (probably) unique session id 
+	#  to an accounting packet based on the attributes listed
+	#  below found in the packet.  see doc/rlm_acct_unique
+	#
 	acct_unique {
 		key = "User-Name, Acct-Session-Id, NAS-IP-Address, Client-IP-Address, NAS-Port-Id"
 	}
@@ -788,9 +828,14 @@ modules {
 	# This is another file solely because it tends to be big.
 	$INCLUDE  ${confdir}/sql.conf
 
-
+	# Write a 'utmp' style log file, of which users are currently
+	# logged in, and where they've logged in from.
+	#
 	radutmp {
 		filename = ${logdir}/radutmp
+
+		# Set the file permissions, as the contents of this file
+		# are usually private.
 		perm = 0600
 		callerid = "yes"
 	}
@@ -875,17 +920,38 @@ modules {
 # Make *sure* that 'preprocess' comes before any realm if you 
 # need to setup hints for the remote radius server
 authorize {
+	#
+	# The preprocess module takes care of sanitizing some bizarre
+	# attributes in the request, and turning them into attributes
+	# which are more standard.
+	#
+	# It takes care of processing the 'raddb/hints' and the
+	# 'raddb/huntgroups' files.
+	#
+	# It also adds a Client-IP-Address attribute to the request.
+	#
 	preprocess
-
-# The chap module will set Auth-Type to CHAP if we are handling a CHAP request
-# and Auth-Type has not already been set
+	
+	#
+	# The chap module will set 'Auth-Type := CHAP' if we are
+	# handling a CHAP request and Auth-Type has not already been set
+	#
 #	chap
+
 #	counter
 #	attr_filter
 #	eap
 	suffix
 	files
 #	etc_smbpasswd
+
+	#
+	#  Uncomment 'mschap' if the users are logging in with an
+	#  MS-CHAP-Challenge attribute for authentication.  The mschap
+	#  module will find the MS-CHAP-Challenge attribute, and add
+	#  'Auth-Type := MS-CHAP' to the request, which makes it use
+	#  the mschap module for authentication.
+	#
 #	mschap
 
 # The ldap module will set Auth-Type to LDAP if it has not already been set
@@ -913,19 +979,22 @@ authenticate {
 #	pam
 	unix
 
-# Uncomment it if you want to use ldap for authentication
+	# Uncomment it if you want to use ldap for authentication
 #	authtype LDAP {
 #		ldap
 #	}
 #	mschap
 #	eap
-# Uncomment it if you want to support CHAP
+
+	# Uncomment it if you want to support CHAP
 #	authtype CHAP {
 #		chap
 #	}
-# Uncomment the following if you want to support PAP and you extract user
-# passwords from the user database (LDAP,SQL etc). You should use the files
-# module to set Auth-Type to PAP for this to work.
+
+	# Uncomment the following if you want to support PAP and you
+	# extract user passwords from the user database (LDAP,SQL, etc).
+	# You should use the 'files'module to set 'Auth-Type := PAP' for
+	# this to work.
 #	authtype PAP {
 #		pap
 #	}
@@ -936,9 +1005,9 @@ authenticate {
 # Pre-accounting. Look for proxy realm in order of realms, then 
 # acct_users file, then preprocess (hints file).
 preacct {
+	preprocess
 	suffix
 	files
-	preprocess
 }
 
 
