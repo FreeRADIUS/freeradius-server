@@ -48,6 +48,35 @@ typedef struct nas_port {
 } NAS_PORT;
 static NAS_PORT *nas_port_list = NULL;
 
+/*
+ *	Internal wrapper for locking, to minimize the number of ifdef's
+ *	in the source.
+ *
+ *	Lock the utmp file, prefer lockf() over flock()
+ */
+static void radutmp_lock(int fd)
+{
+#if defined(F_LOCK) && !defined(BSD)
+	(void)lockf(fd, F_LOCK, LOCK_LEN);
+#else
+	(void)flock(fd, LOCK_EX);
+#endif
+}
+
+/*
+ *	Internal wrapper for unlocking, to minimize the number of ifdef's
+ *	in the source.
+ *
+ *	Unlock the utmp file, prefer lockf() over flock()
+ */
+static void radutmp_unlock(int fd)
+{
+#if defined(F_LOCK) && !defined(BSD)
+	(void)lockf(fd, F_ULOCK, LOCK_LEN);
+#else
+	(void)flock(fd, LOCK_UN);
+#endif
+}
 
 /*
  *	Lookup a NAS_PORT in the nas_port_list
@@ -79,14 +108,8 @@ int radutmp_zap(uint32_t nasaddr, int port, char *user, time_t t)
 	if ((fd = open(RADUTMP, O_RDWR|O_CREAT, 0644)) >= 0) {
 		int r;
 
-		/*
-		 *	Lock the utmp file, prefer lockf() over flock().
-		 */
-#if defined(F_LOCK) && !defined(BSD)
-		(void)lockf(fd, F_LOCK, LOCK_LEN);
-#else
-		(void)flock(fd, LOCK_EX);
-#endif
+		radutmp_lock(fd);
+		
 		/*
 		 *	Find the entry for this NAS / portno combination.
 		 */
@@ -313,14 +336,8 @@ int radutmp_add(REQUEST *request)
 		NAS_PORT *cache;
 		int r;
 
-		/*
-		 *	Lock the utmp file, prefer lockf() over flock().
-		 */
-#if defined(F_LOCK) && !defined(BSD)
-		(void)lockf(fd, F_LOCK, LOCK_LEN);
-#else
-		(void)flock(fd, LOCK_EX);
-#endif
+		radutmp_lock(fd);
+
 		/*
 		 *	Find the entry for this NAS / portno combination.
 		 */
@@ -544,6 +561,7 @@ int radutmp_checksimul(char *name, VALUE_PAIR *request, int maxsimul)
 	int		fd;
 	int		count;
 	int		mpp = 1;
+	int		rcode;
 
 	if ((fd = open(RADUTMP, O_CREAT|O_RDWR, 0644)) < 0)
 		return 0;
@@ -569,14 +587,7 @@ int radutmp_checksimul(char *name, VALUE_PAIR *request, int maxsimul)
 	if ((fra = pairfind(request, PW_FRAMED_IP_ADDRESS)) != NULL)
 		ipno = fra->lvalue;
 
-	/*
-	 *	lockf() the file while reading/writing.
-	 */
-#if defined(F_LOCK) && !defined(BSD)
-		(void)lockf(fd, F_LOCK, LOCK_LEN);
-#else
-		(void)flock(fd, LOCK_EX);
-#endif
+	radutmp_lock(fd);
 
 	/*
 	 *	Allright, there are too many concurrent logins.
@@ -590,8 +601,18 @@ int radutmp_checksimul(char *name, VALUE_PAIR *request, int maxsimul)
 		    && u.type == P_LOGIN) {
 			char session_id[sizeof u.session_id+1];
 			strNcpy(session_id, u.session_id, sizeof session_id);
-			if (rad_check_ts(u.nas_address, u.nas_port,
-					 u.login, session_id) == 1) {
+
+			/*
+			 *	rad_check_ts may take seconds to return,
+			 *	and we don't want to block everyone else
+			 *	while that's happening.
+			 */
+			radutmp_unlock(fd);
+			rcode = rad_check_ts(u.nas_address, u.nas_port,
+					     u.login, session_id);
+			radutmp_lock(fd);
+
+			if (rcode == 1) {
 				count++;
 				/*
 				 *	Does it look like a MPP attempt?
