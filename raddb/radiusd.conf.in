@@ -999,8 +999,8 @@ $INCLUDE ${confdir}/eap.conf
 		# this hack.
 		with_specialix_jetstream_hack = no
 
-		# Cisco sends it's VSA attributes with the attribute
-		# name *again* in the string, like:
+		# Cisco (and Quintum in Cisco mode) sends it's VSA attributes
+		# with the attribute name *again* in the string, like:
 		#
 		#   H323-Attribute = "h323-attribute=value".
 		#
@@ -1010,8 +1010,8 @@ $INCLUDE ${confdir}/eap.conf
 		#
 		#  H323-Attribute = "value"
 		#
-		# If you're not running a Cisco NAS, you don't need
-		# this hack.
+		# If you're not running a Cisco or Quintum NAS, you don't
+		# need this hack.
 		with_cisco_vsa_hack = no
 	}
 

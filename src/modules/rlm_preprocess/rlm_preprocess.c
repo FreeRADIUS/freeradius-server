@@ -116,7 +116,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 
 	for ( ; vp != NULL; vp = vp->next) {
 		vendorcode = (vp->attribute >> 16); /* HACK! */
-		if (vendorcode != 9) continue; /* not a Cisco VSA, continue */
+		if (!((vendorcode == 9) || (vendorcode == 6618))) continue; /* not a Cisco or Quintum VSA, continue */
 
 		if (vp->type != PW_TYPE_STRING) continue;
 
