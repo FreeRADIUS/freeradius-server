@@ -1,8 +1,12 @@
-.TH RADZAP 1 "22 February 2001" "" "FreeRadius Daemon"
+.TH RADZAP 1 "16 May 2002" "" "FreeRadius Daemon"
 .SH NAME
 radzap - remove rogue entries from the active sessions database
 .SH SYNOPSIS
 .B radzap
+.RB [ \-r
+.IR radius_server ]
+.RB [ \-p
+.IR accounting_port ]
 .RB [ \-v ]
 .I nas
 .RB [ port ]
@@ -14,6 +18,11 @@ use this database. Sometimes that database can get out of sync, and
 then it might contain rogue entries. \fBradzap\fP can clean up this
 database.
 .SH OPTIONS
+.IP \-r\ \fIradius_server\fP
+Host name or IP address of the RADIUS server.
+.IP \-p\ \fIaccounting_port\fP
+The port to which accounting packets are sent.  See "/etc/services",
+port "radacct" for the default on your system (usually 1646 or 1813).
 .IP \-v
 Verbose. Shows you what it is doing.
 .IP nas
@@ -31,4 +40,4 @@ radwho(1),
 radiusd(8),
 radiusd.conf(5).
 .SH AUTHOR
-Miquel van Smoorenburg, miquels@cistron.nl.
+Miquel van Smoorenburg, miquels@cistron.nl., and others.
