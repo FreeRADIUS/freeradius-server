@@ -36,9 +36,12 @@ pidfile = ${run_dir}/radiusd.pid
 
 
 # user/group: The name (or #number) of the user/group to run radiusd as.
+#
+#   We STRONGLY recommend that you run the server with as few permissions
+#   as possible.  That is, if you're not using shadow passwords, the
+#   user and group items below should be set to 'nobody'.
+#
 #    On SCO (ODT 3) use "user = nouser" and "group = nogroup".
-#    On HPUX you may not be able to use shared memory as nobody, and the
-#    suggested workaround is to create a user www and use that user.
 #
 #  NOTE that some kernels refuse to setgid(group)
 #  when the value of (unsigned)group is above 60000;
@@ -48,9 +51,9 @@ pidfile = ${run_dir}/radiusd.pid
 #  for the server to be able to read the shadow password file.  If you can
 #  authenticate users while in debug mode, but not in normal use, it may be
 #  because the debugged server is running as a user that can read the shadow
-#  info, and the below user can not.
-user = nobody
-group = nobody
+#  info, and the user listed below can not.
+user = root
+group = root
 
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
@@ -615,7 +618,13 @@ authorize {
 }
 
 
-# Decide whether the supplied auth info is sufficient for access.
+# Authentication.
+#
+# This section lists which modules are available for authentication.
+# Note that it does NOT mean 'try each module in order'.  It means
+# that you have to have a module from the 'authorize' section add
+# a configuration attribute 'Auth-Type := FOO'.  That authentication type
+# is then used to pick the apropriate module from the list below.
 authenticate {
 #	pam
 	unix
