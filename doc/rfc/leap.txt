@@ -15,9 +15,14 @@ date:
 generated from
 	http://lists.cistron.nl/pipermail/cistron-radius/2001-September/002042.html
 
-me:
+Adam Sulmicki <adam@cfar.umd.edu>
 	since I could not find any ASCII version I took above html version
-	and formated it as it is below. Adam Sulmicki <adam@cfar.umd.edu>
+	and formated it as it is below.
+
+Alan DeKok <aland@freeradius.org>
+       The information in the original posting wasn't entirely
+       correct, but it was close.  This updated version is correct,
+       and contains additional specifics not found in the original post.
 
      _________________________________________________________________
    
