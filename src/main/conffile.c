@@ -283,8 +283,25 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 						cs = cs->item.parent;
 					ptr++;
 				}
-			} else { /* pick from this section. */
+
+			} else {
+				/*
+				 *	${foo} is local, with
+				 *	main as lower priority
+				 */
 				cs = outercs;
+
+				/*
+				 *	${foo.bar.baz} is always rooted
+				 *	from the top.
+				 */
+				for (q = ptr; *q && q != end; q++) {
+					if (*q == '.') {
+						cs = parentcs;
+						up = 1;
+						break;
+					}
+				}
 			}
 
 			while (cp == NULL) {
