@@ -1,0 +1,101 @@
+.TH rlm_attr_filter 5 "3 February 2004" "" "FreeRADIUS Module"
+.SH NAME
+rlm_attr_filter \- FreeRADIUS Module
+.SH DESCRIPTION
+The \fIrlm_attr_filter\fP module exists for filtering certain
+attributes and values in received ( or transmitted ) radius packets
+from ( or to ) remote proxy servers.  It gives the proxier ( us ) a
+flexible framework to filter the attributes we send to or receive
+from these remote proxies.  This makes sense, for example, in an
+out-sourced dialup situation to various policy decisions, such as
+restricting a client to certain ranges of Idle-Timeout or
+Session-Timeout.
+.PP
+Filter rules are defined and applied on a per-realm basis, where the
+realm is anything that is defined and matched based on the
+configuration of the \fIrlm_realm\fP module.
+.PP
+The file that defines the attribute filtering rules follows a similar
+syntax to the \fIusers\fP file.  There are a few differences however:
+.PP
+.DS
+    There are no check-items allowed other than the realm.
+.PP
+    There can only be a single DEFAULT entry.
+.PP
+The rules for each entry are parsed to top to bottom, and an
+attribute must pass *all* the rules which affect it in order to
+make it past the filter.  Order of the rules is important.
+The operators and their purpose in defining the rules are as
+follows:
+.TP
+.B =   
+THIS OPERATOR IS NOT ALLOWED.  If used, and warning message is
+printed and it is treated as ==
+.TP
+.B :=  
+Set, this attribute and value will always be placed in the
+output A/V Pairs.  If the attribute exists, it is overwritten.
+.TP
+.B  ==  
+Equal, value must match exactly.
+.TP
+.B  =*  
+Always Equal, allow all values for the specified attribute.
+.TP
+.B    !*  
+Never Equal, disallow all values for the specified attribute.
+( This is redundant, as any A/V Pair not explicitly permitted
+will be dropped ).
+.TP
+.B    !=  
+Not Equal, value must not match.
+.TP
+.B    >=  
+Greater Than or Equal
+.TP
+.B    <=  
+Less Than or Equal
+.TP
+.B    >   
+Greather Than
+.TP
+.B    <   
+Less Than
+.PP
+If regular expressions are enabled the following operators are
+also possible.  ( Regular Expressions are included by default
+unless your system doesn't support them, which should be rare ).
+The value field uses standard regular expression syntax.
+.PP
+.TP
+.B    =~  
+Regular Expression Equal
+.TP
+.B    !~  
+Regular Expression Not Equal
+.PP
+See the default \fI/etc/raddb/attrs\fP for working examples of
+sample rule ordering and how to use the different operators.
+.DE
+.PP
+The main configuration item is:
+.IP attrsfile
+This specifies the location of the file used to load the filter rules.
+.PP
+.SH SECTIONS
+.BR authorization,
+.BR accounting,
+.BR preproxy,
+.BR postproxy
+.PP
+.SH FILES
+.I /etc/raddb/radiusd.conf
+.I /etc/raddb/attrs
+.PP
+.SH "SEE ALSO"
+.BR radiusd (8),
+.BR radiusd.conf (5)
+.SH AUTHOR
+Chris Parker, cparker@segv.org
+

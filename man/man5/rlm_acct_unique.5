@@ -1,0 +1,58 @@
+.TH rlm_acct_unique 5 "3 February 2004" "" "FreeRADIUS Module"
+.SH NAME
+rlm_acct_unique \- FreeRADIUS Module
+.SH DESCRIPTION
+The \fIrlm_acct_unique\fP module creates a unique accounting session
+Id.
+.PP
+The main configuration items to be aware of are:
+.IP key
+List of the attributes to be used in calculating the md5 hash to be
+used as the value for the unique session id.
+.PP
+.DS
+modules {
+  ... stuff here ...
+.br
+  acct_unique {
+.br
+	key = "User-Name, Acct-Session-Id, NAS-IP-Address, NAS-Port-Id"
+.br
+  }
+.br
+  ... stuff here ...
+.br
+}
+.DE
+.PP
+After generating the md5 digest value, it adds it to the accounting
+request packet received from the client.  It will look something like
+this in your detail file:
+.PP
+.DS
+	Acct-Unique-Session-Id = "c66ef57e480b9d26"
+.DE
+.PP
+NOTE:  Any attribute you specify that is not found in the 'dictionary' 
+file will cause the server to fail and exit with an error.
+.PP
+NOTE:  If you want the Acct-Unique-Session-Id of the Start and the
+Stop packet of a particular session to match, you must use values for
+the key that will stay the same for the Start and Stop.  The above 
+example is a good start.  Adding 'Acct-Session-Time', for example, would 
+cause a mismatch because that value is not the same on the Start and 
+Stop accounting packets.
+.PP
+.SH SECTIONS
+.BR authorization,
+.BR pre-accounting,
+.BR accounting
+.PP
+.SH FILES
+.I /etc/raddb/radiusd.conf
+.PP
+.SH "SEE ALSO"
+.BR radiusd (8),
+.BR radiusd.conf (5)
+.SH AUTHORS
+Chris Parker, cparker@segv.org
