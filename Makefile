@@ -24,7 +24,9 @@ install:
 	$(INSTALL) -d -m 755	$(R)$(mandir);
 	for i in 1 5 8; do \
 		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
-		$(INSTALL) -m 644 man/man$$i/*.$$i $(R)$(mandir)/man$$i; \
+		for p in man/man$$i/*.$$i; do \
+			$(INSTALL) -m 644 $$p $(R)$(mandir)/man$$i; \
+		done \
 	done
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
 	$(INSTALL) -d -m 755	$(R)$(raddbdir); \
