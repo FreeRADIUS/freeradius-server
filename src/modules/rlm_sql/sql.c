@@ -167,7 +167,6 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket) {
  *************************************************************************/
 SQLSOCK * sql_get_socket(SQL_INST * inst) {
 	SQLSOCK *cur;
-	struct timeval timeout;
 	int tried_to_connect = 0;
 
 	while (inst->used == inst->config->num_sql_socks) {
@@ -303,7 +302,7 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 
 static int got_alrm;
 static void
-alrm_handler() {
+alrm_handler(void) {
 	got_alrm = 1;
 }
 
@@ -481,7 +480,7 @@ void query_log(SQL_INST * inst, char *querystr) {
 #if defined(F_LOCK) && !defined(BSD)
 			(void) lockf((int) sqlfile, (int) F_LOCK, (off_t) MAX_QUERY_LEN);
 #else
-			(void) flock(sqlfile, SQL_LOCK_EX);
+			(void) flock(sqlfile, LOCK_EX);
 #endif
 			fputs(querystr, sqlfile);
 			fputs(";\n", sqlfile);
