@@ -32,6 +32,7 @@ Ver 1.75:
 * Add a new directive sql_show_all_groups. If set to true then in user edit page we show all available
   groups with the ones the user is a member of highlighted. The administrator can then directly
   change user group membership by changing membership in this group list.
+* On group creation, if member list is empty report that, not that the group was created.
 Ver 1.72:
 * Move the xlat function to a separate file in lib/xlat.php3
 * Add a lib/sql/nas_list.php3 to also get the nas list from sql (naslist.conf still works)

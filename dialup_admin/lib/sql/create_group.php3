@@ -28,6 +28,8 @@ if ($link){
 			}
 		}
 	}
+	else
+		echo "<b>Members list is empty!!</b><br>\n";
 	if (!$da_abort){
 		foreach($show_attrs as $key => $attr){
 			if ($attrmap["$key"] == 'none')
@@ -65,8 +67,8 @@ if ($link){
 			if (!$res || !@da_sql_affected_rows($link,$res,$config))
 				echo "<b>Query failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
+		echo "<b>Group created successfully</b><br>\n";
 	}
-	echo "<b>Group created successfully</b><br>\n";
 }
 else
 	echo "<b>Could not connect to SQL database</b><br>\n";
