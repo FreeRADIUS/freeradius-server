@@ -136,9 +136,7 @@ static const char rcsid[] = "$Id$";
 #include	"modules.h"
 #include	"rad_assert.h"
 
-
-#define MAX_AUTH_QUERY_LEN      256
-#define MAX_GROUP_STR_LEN	1024
+#define MAX_FILTER_STR_LEN	1024
 #define TIMELIMIT 5
 
 /*
@@ -185,8 +183,6 @@ typedef struct ldap_conn {
 	int		failed_conns;
 	pthread_mutex_t	mutex;
 } LDAP_CONN;
-
-#define MAX_SERVER_LINE 1024
 
 typedef struct {
 	char           *server;
@@ -638,12 +634,12 @@ retry:
 static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
                 VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
-        char            filter[MAX_GROUP_STR_LEN];
-        char            gr_filter[MAX_AUTH_QUERY_LEN];
+        char            filter[MAX_FILTER_STR_LEN];
+        char            gr_filter[MAX_FILTER_STR_LEN];
         int             res;
         LDAPMessage     *result = NULL;
         LDAPMessage     *msg = NULL;
-        char            basedn[MAX_GROUP_STR_LEN];
+        char            basedn[MAX_FILTER_STR_LEN];
 	char		*attrs[] = {"dn",NULL};
         ldap_instance   *inst = instance;
 	LDAP_CONN	*conn;
@@ -669,7 +665,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
         if ((pairfind(req->packet->vps, PW_LDAP_USERDN)) == NULL){
                 char            *user_dn = NULL;
 
-                if (!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->filter, req, NULL)) {
+                if (!radius_xlat(filter, sizeof(filter), inst->filter,
+					req, NULL)){
                         DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter");
                         return 1;
                 }
@@ -704,18 +701,17 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
                 ldap_msgfree(result);
         }
 
-        if(!radius_xlat(gr_filter, MAX_GROUP_STR_LEN, inst->groupmemb_filt, req, NULL)){
+        if(!radius_xlat(gr_filter, sizeof(gr_filter), inst->groupmemb_filt, req, NULL)){
                 DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter.");
                 return 1;
         }
 
 	if (strchr((char *)check->strvalue,',') != NULL) {
 		/* This looks like a DN */
-		snprintf(filter,MAX_GROUP_STR_LEN - 1, "%s",gr_filter);
-		snprintf(basedn,MAX_GROUP_STR_LEN - 1, "%s",(char *)check->strvalue);
+		snprintf(filter,sizeof(filter), "%s",gr_filter);
+		snprintf(basedn,sizeof(basedn), "%s",(char *)check->strvalue);
 	} else 
-		snprintf(filter,MAX_GROUP_STR_LEN - 1, "(&(%s=%s)%s)",inst->groupname_attr,(char *)check->strvalue,gr_filter);
-
+		snprintf(filter,sizeof(filter), "(&(%s=%s)%s)",inst->groupname_attr,(char *)check->strvalue,gr_filter);
 
 	if ((conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1){
 		radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
@@ -828,7 +824,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 static int ldap_xlat(void *instance, REQUEST *request, char *fmt, char *out, int freespace,
 				RADIUS_ESCAPE_STRING func)
 {
-	char url[MAX_STRING_LEN];
+	char url[MAX_FILTER_STR_LEN];
 	int res;
 	int ret = 0;
 	ldap_instance *inst = instance;
@@ -936,8 +932,8 @@ ldap_authorize(void *instance, REQUEST * request)
 	LDAPMessage	*def_attr_result = NULL;
 	ldap_instance	*inst = instance;
 	char		*user_dn = NULL;
-	char		filter[MAX_AUTH_QUERY_LEN];
-	char		basedn[1024];
+	char		filter[MAX_FILTER_STR_LEN];
+	char		basedn[MAX_FILTER_STR_LEN];
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	int		res;
@@ -1066,7 +1062,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	if (inst->default_profile || user_profile){
 		char *profile = inst->default_profile;
 
-		strncpy(filter,"(objectclass=radiusprofile)",MAX_AUTH_QUERY_LEN);
+		strNcpy(filter,"(objectclass=radiusprofile)",sizeof(filter));
 		if (user_profile)
 			profile = user_profile->strvalue;
 		if (profile && strlen(profile)){
@@ -1218,8 +1214,8 @@ ldap_authenticate(void *instance, REQUEST * request)
 	LDAPMessage    *result, *msg;
 	ldap_instance  *inst = instance;
 	char           *user_dn, *attrs[] = {"uid", NULL};
-        char		filter[MAX_AUTH_QUERY_LEN];
-	char		basedn[1024];
+	char		filter[MAX_FILTER_STR_LEN];
+	char		basedn[MAX_FILTER_STR_LEN];
 	int             res;
 	VALUE_PAIR     *vp_user_dn;
 	VALUE_PAIR      *module_fmsg_vp;
