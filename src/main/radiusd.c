@@ -2038,6 +2038,8 @@ void sig_cleanup(int sig)
  
 	got_child = FALSE;
 
+	needs_child_cleanup = 0;  /* reset the queued cleanup number */
+
 	/*
 	 *  Reset the signal handler, if required.
 	 */
@@ -2073,11 +2075,9 @@ void sig_cleanup(int sig)
 		if (rl_walk(sig_cleanup_walker, (void*)pid) != 0) {
 			radlog(L_ERR, "Failed to cleanup child %d", pid);
 		}
-		return;
 
 	}
 #endif /* !defined HAVE_PTHREAD_H */
-	needs_child_cleanup = 0;  /* reset the queued cleanup number */
 }
 
 /*
