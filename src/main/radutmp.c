@@ -248,7 +248,7 @@ int radutmp_add(REQUEST *request)
 			case PW_CALLING_STATION_ID:
 				strncpy(ut.caller_id, vp->strvalue,
 					sizeof(ut.caller_id));
-				ut.caller_id[sizeof(ut.caller_id)] = 0;
+				ut.caller_id[sizeof(ut.caller_id) - 1] = 0;
 				break;
 		}
 	}
