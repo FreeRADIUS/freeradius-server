@@ -470,7 +470,7 @@ modules {
 	}
 	detail {
 		detailfile = %A/%n/detail
-		detailperms = 0600
+		detailperm = 0600
 	}
 
 	# This module will add a (probably) unique session id 
