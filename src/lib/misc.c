@@ -127,3 +127,31 @@ char *strNcpy(char *dest, const char *src, int n)
 	return dest;
 }
 
+/*
+ * Lowercase a string
+ */
+void rad_lowercase(char *str) {
+	char *s;
+
+	for (s=str; *s; s++)
+		if (isupper(*s)) *s = tolower(*s);
+}
+
+/*
+ * Remove spaces from a string
+ */
+void rad_nospace(char *str) {
+	char *s = str;	
+	char *ptr = str;
+
+  while(ptr && *ptr!='\0') {
+    while(isspace(*ptr))
+      ptr++;
+    *s = *ptr;
+    ptr++;
+    s++;
+  }
+  *s = '\0';
+}
+
+

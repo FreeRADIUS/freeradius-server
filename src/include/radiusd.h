@@ -106,6 +106,14 @@ typedef struct pair_list {
 	struct pair_list	*next;
 } PAIR_LIST;
 
+typedef struct main_config_t {
+	int		do_usercollide;
+	int		do_lower_user;
+	int		do_lower_pass;
+	int		do_nospace_user;
+	int		do_nospace_pass;
+} MAIN_CONFIG_T;
+
 #define DEBUG	if(debug_flag)log_debug
 #define DEBUG2  if (debug_flag > 1)log_debug
 
@@ -162,7 +170,9 @@ extern int		proxy_port;
 extern int		proxyfd;
 extern int		proxy_retry_count;
 extern int		proxy_retry_delay;
-extern int		do_usercollide;
+
+/* Define a global config structure */
+extern struct main_config_t mainconfig;
 
 /*
  *	Function prototypes.

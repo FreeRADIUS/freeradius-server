@@ -94,7 +94,7 @@ int			proxy_synchronous = TRUE;
 int			need_reload = FALSE;
 int			radius_port = 0;
 struct	servent		*svp;
-int			do_usercollide = FALSE;
+struct	main_config_t 	mainconfig;
 
 static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
@@ -186,7 +186,11 @@ static CONF_PARSER server_config[] = {
   { "smux_password",      PW_TYPE_STRING_PTR, &smux_password,     "" },
   { "snmp_write_access",  PW_TYPE_BOOLEAN,    &snmp_write_access, "no" },
 #endif
-  { "usercollide",  			PW_TYPE_BOOLEAN,    &do_usercollide,		"no" },
+  { "usercollide",  			PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide,		"no" },
+  { "lower_user",  			PW_TYPE_BOOLEAN,    &mainconfig.do_lower_user,		"no" },
+  { "lower_pass",  			PW_TYPE_BOOLEAN,    &mainconfig.do_lower_pass,		"no" },
+  { "nospace_user", 			PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_user,	"no" },
+  { "nospace_pass", 			PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_pass,	"no" },
   { NULL, -1, NULL, NULL }
 };
 

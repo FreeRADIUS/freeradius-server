@@ -378,6 +378,22 @@ int rad_authenticate(REQUEST *request)
 	 */
 	namepair = request->username;
 
+	/* 
+	 * Lowercase the username if we are configured
+	 * to do so
+	 */
+	if(mainconfig.do_lower_user) {
+		rad_lowercase(request->username->strvalue);
+		DEBUG2("rad_lowercase:  Username now '%s'", 
+			request->username->strvalue);
+	}
+
+	if(mainconfig.do_nospace_user) {
+		rad_nospace(request->username->strvalue);
+		DEBUG2("rad_nospace:  Username now '%s'", 
+			request->username->strvalue);
+	}
+
 	/*
 	 *	Decrypt the password, and remove trailing NULL's.
 	 */
@@ -413,6 +429,18 @@ int rad_authenticate(REQUEST *request)
 	 *	password.
 	 */
 	request->password = auth_item;
+
+	if(mainconfig.do_lower_pass) {
+		rad_lowercase(request->password->strvalue);
+		DEBUG2("rad_lowercase:  Password now '%s'", 
+			request->password->strvalue);
+	}
+
+	if(mainconfig.do_nospace_pass) {
+		rad_nospace(request->password->strvalue);
+		DEBUG2("rad_nospace:  Password now '%s'", 
+			request->password->strvalue);
+	}
 
 	/*
 	 *	Get the user's authorization information from the database

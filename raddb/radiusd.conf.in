@@ -189,6 +189,26 @@ proxy_requests	= yes
 #
 usercollide = no
 
+#
+# lower_user / lower_pass:  
+# Lowercase the username/passwprd before processing it
+# This is as close as we can get to case insensitivity.  It is
+# the admin's job to ensure that the username on the auth
+# db side is *also* lowercase to make this work
+# Default is 'no' (don't lowercase values)
+#
+lower_user = no
+lower_pass = no
+
+# nospace_user / nospace_pass:
+# Some users like to enter spaces in their username or
+# password incorrectly.  To save yourself the tech support
+# call, you can eliminate those spaces here:
+# Default is 'no' (don't remove spaces)
+nospace_user = no
+nospace_pass = no
+
+
 #######################################################################
 #
 #  SNMP configuration
