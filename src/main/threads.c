@@ -201,6 +201,14 @@ static void *request_handler_thread(void *arg)
 			break;
 		}
 
+		/*
+		 *	Stupid implementations of sem_wait return on
+		 *	signals, but don't return -1.
+		 */
+		if (!self->request) {
+			continue;
+		}
+
 		DEBUG2("Thread %d handling request %d, (%d handled so far)",
 				self->thread_num, self->request->number,
 				self->request_count);
