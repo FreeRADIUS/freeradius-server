@@ -89,7 +89,6 @@ static int policy_detach(void *instance)
 static int policy_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_policy_t *inst;
-	policy_item_t *policy;
 
 	/*
 	 *	Set up a storage area for instance data
@@ -118,13 +117,7 @@ static int policy_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Parse the policy from the file.
 	 */
-	if ((policy = rlm_policy_parse(inst, inst->filename)) == NULL) {
-		rlm_policy_free_item(policy);
-		policy_detach(inst);
-		return -1;
-	}
-
-	if (!rlm_policy_insert(inst->policies, "DEFAULT", policy)) {
+	if (!rlm_policy_parse(inst, inst->filename)) {
 		policy_detach(inst);
 		return -1;
 	}

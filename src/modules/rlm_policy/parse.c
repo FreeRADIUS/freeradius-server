@@ -630,7 +630,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 	switch (token) {
 	case POLICY_LEX_L_BRACKET:
 		if (!policy_lex_push_token(lexer, token)) {
-			rlm_policy_free_item((policy_item_t *) (policy_item_t *) this);
+			rlm_policy_free_item((policy_item_t *) this);
 			return 0;
 		}
 		
@@ -645,7 +645,6 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 
 	case POLICY_LEX_L_NOT:
 		this->compare = POLICY_LEX_L_NOT;
-		this->child_condition = POLICY_LEX_L_NOT;
 		debug_tokens("[NOT] ");
 
 		/*
@@ -1197,7 +1196,7 @@ static int parse_block(policy_lex_file_t *lexer, policy_item_t **tail)
 /*
  *	Parse data from a file into a policy language.
  */
-policy_item_t *rlm_policy_parse(rlm_policy_t *inst, const char *filename)
+int rlm_policy_parse(rlm_policy_t *inst, const char *filename)
 {
 	int rcode;
 	FILE *fp;
@@ -1206,9 +1205,9 @@ policy_item_t *rlm_policy_parse(rlm_policy_t *inst, const char *filename)
 	
 	fp = fopen(filename, "r");
 	if (!fp) {
-		fprintf(stderr, "WTF? %s: %s\n",
+		fprintf(stderr, "Failed to open %s: %s\n",
 			filename, strerror(errno));
-		return NULL;
+		return 0;
 	}
 
 	lexer = &mylexer;
@@ -1230,17 +1229,25 @@ policy_item_t *rlm_policy_parse(rlm_policy_t *inst, const char *filename)
 	if (rcode == 2) {
 		fprintf(stderr, "%s[%d]: Unexpected '}'\n",
 			lexer->filename, lexer->lineno);
-		return NULL;
+		return 0;
 	}
 
 	if (rcode == 0) {
 		fprintf(stderr, "Failed to parse %s\n", filename);
 		rlm_policy_free_item((policy_item_t *) &list);
-		return NULL;
+		return 0;
 	}
 
 	debug_tokens("--------------------------------------------------\n");
 	if (lexer->debug & POLICY_DEBUG_PRINT_POLICY) rlm_policy_print(list);
 
-	return list;
+	
+	/*
+	 *	Throw away the policy outside of functions.
+	 *
+	 *	FIXME: Do more syntax checks...
+	 */
+	rlm_policy_free_item((policy_item_t *) list);
+
+	return 1;
 }
