@@ -103,6 +103,9 @@ static int pool_initialized = FALSE;
  *	Data structure to keep track of which child forked which
  *	request.  If we cared, we'd keep a list of "free" and "active"
  *	entries.
+ *
+ *	FIXME: Have a time out, so we clean up entries which haven't
+ *	been picked up!
  */
 typedef struct rad_fork_t {
 	pthread_t	thread_id;
@@ -112,7 +115,7 @@ typedef struct rad_fork_t {
 } rad_fork_t;
 
 #define NUM_FORKERS (1024)
-static rad_fork_t forkers[256];
+static rad_fork_t forkers[NUM_FORKERS];
 
 /*
  *	This mutex ensures that only one thread is doing certain
@@ -475,6 +478,7 @@ int thread_pool_init(void)
 		thread_pool.max_threads = NUM_FORKERS;
 	}
 
+
 	/*
 	 *	The pool has already been initialized.  Don't spawn
 	 *	new threads, and don't forget about forked children,
@@ -802,10 +806,11 @@ pid_t rad_fork(int exec_wait)
 	 */
 	if (forkers[found].child_pid < 0) {
 		forkers[found].thread_id = NO_SUCH_CHILD_PID;
-
-	} else {
+		
+	} else if (forkers[found].child_pid > 0) {
 		/*
-		 *	Set the status, and create the semaphore.
+		 *	In the parent, set the status, and create the
+		 *	semaphore.
 		 */
 		forkers[found].status = -1;
 		sem_init(&forkers[found].child_done, 0, SEMAPHORE_LOCKED);
