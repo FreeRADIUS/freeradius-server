@@ -87,9 +87,10 @@ typedef struct THREAD_HANDLE {
 typedef struct THREAD_POOL {
 	THREAD_HANDLE *head;
 	THREAD_HANDLE *tail;
+
+	THREAD_HANDLE *next_pick;
 	
 	int total_threads;
-	int active_threads;
 	int max_thread_num;
 	int start_threads;
 	int max_threads;
@@ -259,92 +260,15 @@ static void delete_thread(THREAD_HANDLE *handle)
 	} else {
 		next->prev = prev;
 	}
+
+	/*
+	 *	Ensure that deleted threads aren't picked.
+	 */
+	if (thread_pool.next_pick == handle) {
+		thread_pool.next_pick = next;
+	}
 }
 
-/*
- *	Take a THREAD_HANDLE, and move it to the end of the thread pool.
- *
- *	This function is called ONLY from the main server thread.
- *	It's function is to keep the incoming requests rotating among
- *	the threads in the pool.
- */
-static void move2tail(THREAD_HANDLE *handle)
-{
-	THREAD_HANDLE *prev;
-	THREAD_HANDLE *next;
-
-	/*
-	 *	Empty list: add it to the head.
-	 */
-	if (thread_pool.head == NULL) {
-		rad_assert(thread_pool.tail == NULL);
-		rad_assert(thread_pool.total_threads == 1);
-
-		handle->prev = NULL;
-		handle->next = NULL;
-		thread_pool.head = handle;
-		thread_pool.tail = handle;
-		return;
-	}
-
-	/*
-	 *	It's already at the tail.  Stop.
-	 */
-	if (thread_pool.tail == handle) {
-		return;
-	}
-
-	rad_assert(thread_pool.total_threads >= 1);
-	prev = handle->prev;
-	next = handle->next;
-  
-	/*
-	 *	If the element is in the list, then delete it from where
-	 *	it is.
-	 */
-	if ((next != NULL) ||
-			(prev != NULL)) {
-		/*
-		 *	If it's already at the tail, exit immediately,
-		 *	there's no more work to do.
-		 */
-		if (next == NULL) {
-			rad_assert(thread_pool.tail == handle);
-			return;
-		}
-
-		/*
-		 *	Maybe it's at the head of the list?
-		 */
-		if (prev == NULL) {
-			rad_assert(thread_pool.head == handle);
-			thread_pool.head = next;
-			next->prev = NULL;
-
-			/*
-			 *	Nope, it's really in the middle.
-			 *	Unlink it, then.
-			 */
-		} else {
-			rad_assert(prev != NULL); /* be explicit about it. */
-			rad_assert(next != NULL); /* be explicit about it. */
-
-			prev->next = next;
-			next->prev = prev;
-		}
-	}
-
-	/*
-	 *	Finally, add it to the tail, and update the pointers.
-	 */
-	handle->next = NULL;
-	prev = thread_pool.tail;
-	rad_assert(prev->next == NULL);
-
-	thread_pool.tail = handle;
-	handle->prev = prev;
-	prev->next = handle;
-}
 
 /*
  *	Spawn a new thread, and place it in the thread pool.
@@ -437,9 +361,15 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 			handle->thread_num, thread_pool.total_threads);
 
 	/*
-	 *	Move the thread handle to the tail of the thread pool list.
+	 *	Add the thread handle to the tail of the thread pool list.
 	 */
-	move2tail(handle);
+	if (thread_pool.tail) {
+		thread_pool.tail->next = handle;
+		thread_pool.tail = handle;
+	} else {
+		rad_assert(thread_pool.head == NULL);
+		thread_pool.head = thread_pool.tail = handle;
+	}
 
 	/*
 	 *	Update the time we last spawned a thread.
@@ -496,6 +426,7 @@ int thread_pool_init(void)
 		memset(&thread_pool, 0, sizeof(THREAD_POOL));
 		thread_pool.head = NULL;
 		thread_pool.tail = NULL;
+		thread_pool.next_pick = NULL;
 		thread_pool.total_threads = 0;
 		thread_pool.max_thread_num = 1;
 		thread_pool.cleanup_delay = 5;
@@ -549,25 +480,31 @@ int thread_pool_init(void)
  */
 int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	int active_threads;
 	THREAD_HANDLE *handle;
 	THREAD_HANDLE *found;
-	THREAD_HANDLE *next;
+	THREAD_HANDLE *start;
 
 	/*
 	 *	Loop over the active thread pool, looking for a
 	 *	waiting thread.
 	 */
 	found = NULL;
-	active_threads = 0;
-	for (handle = thread_pool.head; handle; handle = next) {
-		next = handle->next;
 
+	/*
+	 *	Minimize the time spent searching for an empty thread,
+	 *	by starting off from the last one we found.  This also
+	 *	helps to span requests across multiple threads.
+	 */
+	start = thread_pool.next_pick;
+	if (!start) start = thread_pool.head;
+	
+	handle = start;
+	while (handle) {
 		/*
 		 *	Ignore threads which aren't running.
 		 */
 		if (handle->status != THREAD_RUNNING) {
-			continue;
+			goto next_handle;
 		}
 
 		/*
@@ -577,12 +514,26 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	one locking it, waiting for us to unlock it.
 		 */
 		if (handle->request == NULL) {
-			if (found == NULL) {
-				found = handle;
-			}
-		} else {
-			active_threads++;
+			found = handle;
+			break;
 		}
+
+	next_handle:
+		/*
+		 *	There is a 'next', use it.
+		 *
+		 *	Otherwise, go back to the head of the list.
+		 */
+		if (handle->next) {
+			handle = handle->next;
+		} else {
+			handle = thread_pool.head;
+		}
+
+		/*
+		 *	Stop if we've looped back to the beginning.
+		 */
+		if (handle == start) break;
 	} /* loop over all of the threads */
 
 	/*
@@ -590,7 +541,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *
 	 *	If we can't spawn a new one, complain, and exit.
 	 */
-	if (found == NULL) {
+	if (!found) {
 		found = spawn_thread(request->timestamp);
 		if (found == NULL) {
 			radlog(L_INFO, 
@@ -599,6 +550,12 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 			return -1;
 		}
 	}
+
+	/*
+	 *	Remember where we left off, so that we can start the
+	 *	search from here the next time.
+	 */
+	thread_pool.next_pick = found->next;
 
 	/*
 	 *	OK, now 'handle' points to a waiting thread.  We move
@@ -610,14 +567,12 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	the request.
 	 */
 	DEBUG2("Thread %d assigned request %d", found->thread_num, request->number);
-	move2tail(found);
 	request->child_pid = found->pthread_id;
 	found->request = request;
 	found->fun = fun;
 	found->request_count++;
 	thread_pool.request_count++;
 	pthread_cond_signal(&found->cond);
-	thread_pool.active_threads = active_threads;
 
 	return 0;
 }
@@ -636,7 +591,8 @@ int thread_pool_clean(time_t now)
 	int active_threads;
 
 	/*
-	 *	Loop over the thread pool, doing stuff.
+	 *	Loop over the thread pool, incrementing the 'active'
+	 *	counter if the thread is currently processing a request.
 	 */
 	active_threads = 0;
 	for (handle = thread_pool.head; handle; handle = handle->next) {
