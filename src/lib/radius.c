@@ -116,9 +116,10 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		  else
 		    memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 		  
-		  DEBUG("Sending %s of id %d to %s\n",
+		  DEBUG("Sending %s of id %d to %s:%d\n",
 			what, packet->id,
-			ip_ntoa((char *)ip_buffer, packet->dst_ipaddr));
+			ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
+			packet->dst_port);
 		  
 		  total_length = AUTH_HDR_LEN;
 		  
