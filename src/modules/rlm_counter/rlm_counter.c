@@ -44,6 +44,15 @@
 #	define GDBM_SYNCOPT 0
 #endif
 
+#ifdef GDBM_NOLOCK
+#define GDBM_COUNTER_OPTS (GDBM_SYNCOPT | GDBM_NOLOCK)
+#else
+#define GDBM_COUNTER_OPTS (GDBM_SYNCOPT)
+#endif
+
+#ifndef HAVE_GDBM_FDESC
+#define gdbm_fdesc(foo) (-1)
+#endif
 
 static const char rcsid[] = "$Id$";
 
@@ -121,9 +130,9 @@ static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 
-	rad_lockfd(data->fd, sizeof(int));
+	if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
-	rad_unlockfd(data->fd, sizeof(int));
+	if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
 
 	if (count_datum.dptr == NULL) {
 		return -1;
@@ -327,13 +336,13 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		exit(0);
 	}
 	data->gdbm = gdbm_open(data->filename, sizeof(int),
-			GDBM_WRCREAT | GDBM_SYNCOPT | GDBM_NOLOCK, 0600, NULL);
+			GDBM_WRCREAT | GDBM_COUNTER_OPTS, 0600, NULL);
 	if (data->gdbm == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 				data->filename, strerror(errno));
 		return -1;
 	}
-	data->fd = gdbm_fdesc(data->gdbm);
+	if (data->fd >= 0) data->fd = gdbm_fdesc(data->gdbm);
 
 	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 		radlog(L_ERR, "rlm_counter: Failed to set cache size");
@@ -381,13 +390,13 @@ static int counter_accounting(void *instance, REQUEST *request)
 		 *	Open a completely new database.
 		 */
 		data->gdbm = gdbm_open(data->filename, sizeof(int),
-				GDBM_NEWDB | GDBM_SYNCOPT | GDBM_NOLOCK, 0600, NULL);
+				GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
 		if (data->gdbm == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 					data->filename, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
-		data->fd = gdbm_fdesc(data->gdbm);
+		if (data->fd >= 0) data->fd = gdbm_fdesc(data->gdbm);
 		if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 			radlog(L_ERR, "rlm_counter: Failed to set cache size");
 	}
@@ -421,7 +430,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 
-	rad_lockfd(data->fd, sizeof(int));
+	if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	if (count_datum.dptr == NULL)
 		counter = 0;
@@ -462,7 +471,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	count_datum.dsize = sizeof(int);
 
 	rcode = gdbm_store(data->gdbm, key_datum, count_datum, GDBM_REPLACE);
-	rad_unlockfd(data->fd, sizeof(int));
+	if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
 	if (rcode < 0) {
 		radlog(L_ERR, "rlm_counter: Failed storing data to %s: %s",
 				data->filename, gdbm_strerror(gdbm_errno));
@@ -514,7 +523,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 		 *	Open a completely new database.
 		 */
 		data->gdbm = gdbm_open(data->filename, sizeof(int),
-				GDBM_NEWDB | GDBM_SYNCOPT | GDBM_NOLOCK, 0600, NULL);
+				GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
 		if (data->gdbm == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 					data->filename, strerror(errno));
@@ -551,9 +560,9 @@ static int counter_authorize(void *instance, REQUEST *request)
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 	
-	rad_lockfd(data->fd, sizeof(int));
+	if (data->fd >= 0) rad_lockfd(data->fd, sizeof(int));
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
-	rad_unlockfd(data->fd, sizeof(int));
+	if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
 	if (count_datum.dptr != NULL){
 		memcpy(&counter, count_datum.dptr, sizeof(int));
 		free(count_datum.dptr);
