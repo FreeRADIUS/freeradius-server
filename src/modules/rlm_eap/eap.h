@@ -57,7 +57,8 @@
 #define PW_EAP_LEAP		17
 #define PW_EAP_TTLS		21
 #define PW_EAP_PEAP		25
-#define PW_EAP_MSCHAPV2		29
+#define PW_EAP_MSCHAPV2		26
+#define PW_EAP_CISCO_MSCHAPV2	29
 #define PW_EAP_MAX_TYPES	29
 
 #define EAP_HEADER_LEN 		4

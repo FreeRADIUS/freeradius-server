@@ -70,10 +70,10 @@ static const char *eap_types[] = {
   "",   
   "identity",
   "notification",
-  "nak",			/* NAK */
+  "nak",			/* 3 */
   "md5",
   "otp",
-  "gtc",
+  "gtc",			/* ascii data back & forth */
   "7",
   "8",
   "9",
@@ -93,10 +93,10 @@ static const char *eap_types[] = {
   "23",
   "24",
   "peap",			/* 25 */
-  "26",
+  "mschapv2",			/* 26 */
   "27",
   "28",
-  "mschapv2"
+  "cisco_mschapv2"		/* 29 */
 };
 
 /*
@@ -339,6 +339,12 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		default_eap_type = eaptype->data[0];
 		DEBUG2(" rlm_eap: EAP-NAK asked for EAP-Type/%s",
 		       eap_types[default_eap_type]);
+
+		if (handler->eap_type == default_eap_type) {
+			DEBUG2(" rlm_eap: ERROR! Our request for %s was NAK'd with a request for %s, what is the client thinking?",
+			       eap_types[default_eap_type],
+			       eap_types[default_eap_type]);
+		}
 
 		goto do_initiate;
 		break;

@@ -90,7 +90,7 @@ $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
 
 #
-#	Following are the proper new names. Use these.
+#	The following are the proper new names. Use these.
 #
 #	http://www.iana.org/assignments/radius-types
 #
@@ -581,6 +581,19 @@ VALUE		EAP-Type	SecuriSuite-EAP		39
 VALUE		EAP-Type	DeviceConnect-EAP	40
 VALUE		EAP-Type	EAP-SPEKE		41
 VALUE		EAP-Type	EAP-MOBAC		42
+
+#
+#	These are duplicate values, to get around the problem of
+#	having two MS-CHAPv2 EAP types.
+#
+VALUE		EAP-Type	Microsoft-MS-CHAPv2	26
+VALUE		EAP-Type	Cisco-MS-CHAPv2		29
+
+#
+#	And this is what most people mean by MS-CHAPv2
+#
+VALUE		EAP-Type	MS-CHAP-V2		26
+
 
 #
 #	This says TLS, but it's only valid for TTLS & PEAP.
