@@ -297,6 +297,31 @@ static int reread_config(int reload)
 	}
 	librad_debug = debug_flag;
 	old_debug_level = debug_level;
+	
+	/*
+	 *	If we're NOT debugging, trap fatal signals, so we can
+	 *	easily clean up after ourselves.
+	 *
+	 *	If we ARE debugging, don't trap them, so we can
+	 *	dump core.
+	 */
+	if (debug_flag == 0) {
+#ifdef SIGTRAP
+		signal(SIGTRAP, sig_fatal);
+#endif
+#ifdef SIGIOT
+		signal(SIGIOT, sig_fatal);
+#endif
+#ifdef SIGFPE
+		signal(SIGFPE, sig_fatal);
+#endif
+#ifdef SIGSEGV
+		signal(SIGSEGV, sig_fatal);
+#endif
+#ifdef SIGILL
+		signal(SIGILL, sig_fatal);
+#endif
+	}
 
 	/*  Reload the modules.  */
 	DEBUG2("read_config_files:  entering modules setup");
@@ -519,21 +544,6 @@ int main(int argc, char *argv[])
 	signal(SIGQUIT, sig_fatal);
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGTERM, sig_fatal);
-#ifdef SIGTRAP
-	signal(SIGTRAP, sig_fatal);
-#endif
-#ifdef SIGIOT
-	signal(SIGIOT, sig_fatal);
-#endif
-#ifdef SIGFPE
-	signal(SIGFPE, sig_fatal);
-#endif
-#ifdef SIGSEGV
-	signal(SIGSEGV, sig_fatal);
-#endif
-#ifdef SIGILL
-	signal(SIGILL, sig_fatal);
-#endif
 
 	/* this is right for threads, too, right?  
 	 * (Threads shouldn't get signals (from us) -- just be pthread_cancel()led.)
