@@ -198,17 +198,9 @@ EOM;
 </td></tr><tr><td>
 <select name="server">
 <?php
-while(1){
-	$i++;
-	$name = 'nas' . $i . '_name';
-	if ($config[$name] == ''){
-		$i--;
-		break;
-	}
-	$name_ip = 'nas' . $i . '_ip';
-	$ip = $config[$name_ip];
-	$name = $config[$name];
-	$servers[$name] = $ip;
+foreach ($nas_list as $nas){
+	$name = $nas[name];
+	$servers[$name] = $nas[ip];
 }
 ksort($servers);
 foreach ($servers as $name => $ip){

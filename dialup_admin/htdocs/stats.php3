@@ -79,14 +79,9 @@ for ($j = 1; $j <= 3; $j++){
 }
 $i = 1;
 $servers[all] = 'all';
-while(1){
-	$nas = 'nas' . $i;
-	$ip = $nas . '_ip';
-	$name = $nas . '_name';
-	if ($config[$ip] == '')
-		break;
-	$name = $config[$name];
-	$servers[$name] = $config[$ip];
+foreach ($nas_list as $nas){
+	$name = $nas[name];
+	$servers[$name] = $nas[ip];
 	$i++;
 }
 ksort($servers);

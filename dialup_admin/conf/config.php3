@@ -14,6 +14,7 @@ if ($use_session){
 	@session_start();
 }
 if (!isset($config)){
+	unset($nas_list);
 	$ARR=file("../conf/admin.conf");
 	$EXTRA_ARR = array();
 	foreach($ARR as $val) {
@@ -25,6 +26,8 @@ if (!isset($config)){
 			$val=$config[$matches[1]];
 			$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
 		}
+		if (preg_match("/^general_nas(\d+)_(\w+)$/",$key,$matches))
+			$nas_list[$matches[2]][$matches[1]] = $key;
 		if ($key == 'INCLUDE'){
 			if (is_readable($v))
 				array_push($EXTRA_ARR,file($v));
@@ -44,11 +47,16 @@ if (!isset($config)){
 				$val=$config[$matches[1]];
 				$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
 			}
+			if (preg_match("/^general_nas(\d+)_(\w+)$/",$key,$matches))
+				$nas_list[$matches[2]][$matches[1]] = $key;
 			$config["$key"]="$v";
 		}
 	}
-	if ($use_session)
+	if ($use_session){
 		session_register('config');
+		session_register('nas_list');
+	}
+
 }
 if ($use_session == 0 && $config[general_use_session] == 'yes'){
 	// Start session
