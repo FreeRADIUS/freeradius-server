@@ -1,45 +1,46 @@
 /*
- * rlm_ns_mta_md5 Functions to authenticate using NS-MTA-MD5 passwords.
+ * rlm_ns_mta_md5.c	Functions to authenticate using NS-MTA-MD5 passwords.
  *		Taken from the hacks for qmail located at nrg4u.com
  *		by Andre Oppermann.
  *
- *   NS-MTA-MD5 passwords are 64 byte strings, the first  
- *   32 bytes being the password hash and the last 32 bytes 
- *   the salt.  The clear text password and the salt are MD5 
- *   hashed[1].  If the resulting hash concatenated with the salt
- *   are equivalent to the original NS-MTA-MD5 password the 
- *   password is correct. 
+ * 		NS-MTA-MD5 passwords are 64 byte strings, the first  
+ * 		32 bytes being the password hash and the last 32 bytes 
+ * 		the salt.  The clear text password and the salt are MD5 
+ * 		hashed[1].  If the resulting hash concatenated with the salt
+ * 		are equivalent to the original NS-MTA-MD5 password the 
+ * 		password is correct. 
  *
- *   [1] Read the source for details.
+ *   		[1] Read the source for details.
+ *
+ * 		bob Auth-Type := NS-MTA-MD5, NS-MTA-MD5-Password := "f8b4eac9f051a61eebe266f9c29a193626d8eb25c2598c55c8874260b24eb435"
+ * 		    Reply-Message = "NS-MTA-MD5 is working!"
+ * 		password = "testpass".
  *
  *  Version:	$Id$
  *
- * bob Auth-Type := NS-MTA-MD5, NS-MTA-MD5-Password := "f8b4eac9f051a61eebe266f9c29a193626d8eb25c2598c55c8874260b24eb435"
- *     Reply-Message = "NS-MTA-MD5 is working!"
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
  *
- * password = "testpass".
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2000  Andre Oppermann
  */
+
+
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
 #include "libradius.h"
-
-/***********************************************************************
- * Copyright (C) 2000 The FreeRADIUS server project.
- *
- * This program is is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License, version 2 if the
- *  License as published by the Free Software Foundation.
- * 
- * This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *  
- *  You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- ***********************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>

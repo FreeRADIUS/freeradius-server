@@ -1,12 +1,29 @@
 /*
- * rlm_ldap.c LDAP authorization and authentication module. 
- * 
+ * rlm_ldap.c	LDAP authorization and authentication module.  
+ * 		This module is based on LDAP patch to Cistron radiusd, which in 
+ * 		turn was based mostly on a Mysql+Cistron patch from oyarzun@wilmington.net
  *
- * This module is based on LDAP patch to Cistron radiusd, which in turn was
- * based mostly on a Mysql+Cistron patch from oyarzun@wilmington.net
+ * Version:	$Id$
  *
- * 	Written by Adrian Pavlykevych <pam@polynet.lviv.ua>
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2000  Adrian Pavlykevych <pam@polynet.lviv.ua>
+ * Copyright 2000  Alan DeKok <aland@ox.org>
  */
+
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"

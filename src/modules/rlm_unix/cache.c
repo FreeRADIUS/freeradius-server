@@ -1,41 +1,40 @@
 /*
- * cache.c:  Offers ability to cache /etc/group, /etc/passwd, /etc/shadow,
+ * cache.c		Offers ability to cache /etc/group, /etc/passwd, 
+ * 		/etc/shadow,
  *
- * All users in the passwd/shadow files are stored in a hash table.
- * the hash lookup is VERY fast,  generally 1.0673 comparisons per
- * lookup.  For the unitiated, that's blazing.  You can't have less
- * than one comparison, for example.
+ * 		All users in the passwd/shadow files are stored in a hash table.
+ * 		the hash lookup is VERY fast,  generally 1.0673 comparisons per
+ * 		lookup.  For the unitiated, that's blazing.  You can't have less
+ * 		than one comparison, for example.
  *
- * The /etc/group file is stored in a singly linked list, as that appears
- * to be fast enough.  It's generally a small enough file that hashing is
- * unnecessary.
- *
- *	(c) 1999 Author - Jeff Carneal, Apex Internet Services, Inc.
+ * 		The /etc/group file is stored in a singly linked list, as that 
+ * 		appears to be fast enough.  It's generally a small enough file 
+ * 		that hashing is	unnecessary.
  *
  * Version: $Id$
  *
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
+ * 
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *  
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
+ * Copyright 2000  The FreeRADIUS server project.
+ * Copyright 1999  Jeff Carneal <jeff@apex.com>, Apex Internet Services, Inc.
+ * Copyright 2000  Alan DeKok <aland@ox.org>
  */    
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
 #include	"libradius.h"
 
-/***********************************************************************
- * Copyright (C) 2000 The FreeRADIUS server project.
- *
- * This program is is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License, version 2 if the
- *  License as published by the Free Software Foundation.
- * 
- * This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *  
- *  You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- ***********************************************************************/
 
 #include <stdio.h>
 #include <string.h>
