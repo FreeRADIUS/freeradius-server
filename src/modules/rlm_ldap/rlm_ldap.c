@@ -109,7 +109,7 @@ static CONF_PARSER module_config[] = {
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, ""},
 	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, NULL},
-	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, NULL},
+	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
 	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,default_profile), NULL, NULL},
 	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,profile_attr), NULL, NULL},
 	{"access_group", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_group), NULL, NULL},
@@ -152,6 +152,12 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		free(inst);
 		return -1;
 	}
+
+	if (inst->server == NULL) {
+		radlog(L_ERR, "rlm_ldap: missing 'server' directive.");
+		return -1;
+	}
+ 
 	inst->timeout.tv_usec = 0;
 	inst->net_timeout.tv_usec = 0;
 	inst->tls_mode = LDAP_OPT_X_TLS_TRY;
@@ -286,7 +292,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 		}
 		inst->bound = 1;
 	}
-	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn, filter);
+	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn ? search_basedn : "(null)" , filter);
 	switch (ldap_search_st(inst->ld, search_basedn, scope, filter, attrs, 0, &(inst->timeout), result)) {
 	case LDAP_SUCCESS:
 		break;
