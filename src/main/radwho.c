@@ -74,7 +74,6 @@ static int showcid = 0;
 int debug_flag = 0;
 const char *progname = "radwho";
 const char *radlog_dir = NULL;
-radlog_dest_t radlog_dest = RADLOG_FILES;
 const char *radutmp_file = NULL;
 
 const char *radius_dir = NULL;

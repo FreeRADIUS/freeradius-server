@@ -59,7 +59,6 @@ const char *progname;
 
 int debug_flag = 0;
 const char *radlog_dir = NULL;
-radlog_dest_t radlog_dest = RADLOG_FILES;
 
 const char *radius_dir = NULL;
 const char *radacct_dir = NULL;

@@ -48,7 +48,6 @@ const char *radlog_dir = NULL;
 const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlib_dir = NULL;
-radlog_dest_t radlog_dest = RADLOG_FILES;
 int debug_flag = 0;
 int acct_port;
 int log_stripped_names;
