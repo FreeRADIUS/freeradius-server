@@ -24,7 +24,7 @@ accounting {
 or vice-versa:
 
 accounting {
-	load-balance {
+	load-balance {		# between two redundant sections below
 		redundant {
 			sql1
 			sql2
@@ -57,18 +57,18 @@ used is down, then log to detail".
   And finally,
 
 accounting {
-	redundant {
-		load-balance {		# if this block fails, call detail
-			redundant {		# load balance
-				sql1			# if fail, use sql2
+	redundant {			# between load-balance & detail
+		load-balance {		# between two redundant sections
+			redundant {
+				sql1
 				sql2
 			}
-			redundant {		# load balance
-				sql2			# if fail, use sql1
+			redundant {
+				sql2
 				sql1
 			}
 		}
-		detail			# only if "load-balance" returns fails
+		detail
 	}
 }
 
