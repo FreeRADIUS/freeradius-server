@@ -37,7 +37,7 @@ if ($link){
 						$cn = ($row[Name]) ? $row[Name] : '-';
 						$telephonenumber = ($row[WorkPhone]) ? $row[WorkPhone] : '-';
 						$homephone = ($row[HomePhone]) ? $row[HomePhone] : '-';
-						$ou = ($row[Depatment]) ? $row[Department] : '-';
+						$ou = ($row[Department]) ? $row[Department] : '-';
 						$mail = ($row[Mail]) ? $row[Mail] : '-';
 						$mobile = ($row[Mobile]) ? $row[Mobile] : '-';
 					}
