@@ -1,18 +1,23 @@
-The variables defined by the server are:
+  Run-time variables
+  ------------------
 
-     %{Attribute-Name}               Corresponding value for Attribute-Name
+  The run-time variables defined by the server are:
+
+     %{Attribute-Name}               The value of the given Attribute-Name
                                      in the request packet
-     %{request:Attribute-Name}       Corresponding value for Attribute-Name
-                                     in the request packet
-     %{reply:Attribute-Name}         Corresponding value for Attribute-Name
+
+     %{request:Attribute-Name}       The value of value the given
+                                     Attribute-Name in the request packet
+     %{reply:Attribute-Name}         The value of the given Attribute-Name
                                      in the reply packet
-     %{proxy-request:Attribute-Name} Corresponding value for Attribute-Name
+     %{proxy-request:Attribute-Name} The value of the given Attribute-Name
                                      in the proxy request packet (if it exists)
-     %{proxy-reply:Attribute-Name}   Corresponding value for Attribute-Name
+     %{proxy-reply:Attribute-Name}   The value of the given Attribute-Name
                                      in the proxy reply packet (if it exists)
 
-  The above support the meta-Attribute Packet-Type as well. See the RADIUS
-dictionary for details.
+  The above variable expansions also support the meta-Attribute
+Packet-Type as well. See the RADIUS dictionary for details on its
+values.
 	 
      %{check:Attribute-Name}         Corresponding value for Attribute-Name
                                      in check items for request
@@ -34,36 +39,43 @@ in reply attributes to the NAS!
 				 item in the 'unix' module, in the 'modules'
 				 section of radiusd.conf.
 
-Variables are used in dynamically translated strings.  Most of the
-configuration entries in radiusd.conf (and related files) will do
-dynamic string translation.  To do the same dynamic translation in
-RADIUS attributes, you must put the string into an back-quoted string:
+  The variables are used in dynamically translated strings.  Most of
+the configuration entries in radiusd.conf (and related files) will do
+dynamic string translation.  To do the same dynamic translation in a
+RADIUS attribute (when pulling it from a database, or "users" file),
+you must put the string into an back-quoted string:
 
        Session-Timeout = `%{expr: 2 + 3}`
 
-To do the dynamic translation in the 'radiusd.conf' (or some other
+  To do the dynamic translation in the 'radiusd.conf' (or some other
 configuration files), just use the variable as-is.  See 'radiusd.conf'
 for examples.
 
 
-Additionally, you can use conditional syntax similar to ${foo:-bar} as
+  Conditional syntax
+  --------------------
+
+  Additionally, you can use conditional syntax similar to ${foo:-bar} as
 defined in 'sh'.  For example:
 
   1.  %{Foo:-bar}
-    When attribute Foo is set:  returns value of Foo
-    When attribute Foo unset:   returns literal string 'bar'
+    When attribute Foo is set:    returns value of Foo
+    When attribute Foo is unset:  returns literal string 'bar'
 
   2.  %{Foo:-%{Bar}}
-    When attribute Foo is set:  returns value of attribute Foo
-    When attribute Foo unset:   returns value of attribute Bar (if any)
+    When attribute Foo is set:    returns value of attribute Foo
+    When attribute Foo is unset:  returns value of attribute Bar (if any)
 
-  3.  %{Foo:-%{bar:-baz}}
-    When attribute Foo is set:  returns value of attribute Foo
-    When attribute Foo unset:   returns value of attribute Bar (if any)
-    When attribute Bar unset:   returns literal string 'baz'
+  3.  %{Foo:-%{Bar:-baz}}
+    When attribute Foo is set:    returns value of attribute Foo
+    When attribute Foo is unset:  returns value of attribute Bar (if any)
+    When attribute Bar is unset:  returns literal string 'baz'
 
 
-When calling an external program (e.g. from Exec-Program-Wait), these
+  Attributes as environment variables in executed programs
+  --------------------------------------------------------
+
+  When calling an external program (e.g. from Exec-Program-Wait), these
 variables can be passed on the command line to the program.  In
 addition, the server places all of the attributes in the RADIUS
 request into environment variables for the external program.  The
@@ -77,11 +89,15 @@ so the attribute User-Name can be passed on the command line to the
 program as %{User-Name}, or used inside the program as the environment
 variable USER_NAME (or $USER_NAME for shell scripts).
 
-If you want to see the list of all of the variables, try adding a line
-'printenv > /tmp/exec-program-wait' to the script.  Then look in the
-file for a complete list of variables.
+  If you want to see the list of all of the variables, try adding a
+line 'printenv > /tmp/exec-program-wait' to the script.  Then look in
+the file for a complete list of variables.
 
-The following one-character variables are also defined.  However, they
+
+  One-character variables
+  -----------------------
+
+  The following one-character variables are also defined.  However, they
 are duplicates of the previous general cases, and are only provided
 for backwards compatibility.  They WILL BE removed in a future
 release.  They also do NOT permit the use of conditional syntax
@@ -120,3 +136,5 @@ release.  They also do NOT permit the use of conditional syntax
      %Z       All request attributes
                except password
                (must have a big buffer)
+
+ $Id$
