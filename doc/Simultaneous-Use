@@ -135,6 +135,13 @@
   You can also run the "checkrad" script manually, use the "-d"
   switch to get debug output on standard output instead of in the log.
 
+  See also:
+
+	http://wrath.geoweb.ge/simult.html
+
+  which has a good discussion of the use of Simultaneous-Use.
+
+
 5. CAVEATS
 
   This solution checks the radutmp file. This file is kept up-to-date from
