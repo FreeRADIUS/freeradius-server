@@ -27,21 +27,32 @@ function da_sql_close($link,$config)
 
 function da_sql_query($link,$config,$query)
 {
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Query: $query</b><br>\n";
 	return @mysql_db_query($config[sql_database],$query,$link);
 }
 
 function da_sql_num_rows($result,$config)
 {
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Query Result: Num rows:: " . @mysql_num_rows($result) . "</b><br>\n";
 	return @mysql_num_rows($result);
 }
 
 function da_sql_fetch_array($result,$config)
 {
+	if ($config[sql_debug] == 'true'){
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Query Result: ";
+		print_r(@mysql_fetch_array($result));
+		print "</b><br>\n";
+	}
 	return @mysql_fetch_array($result);
 }
 
 function da_sql_affected_rows($link,$result,$config)
 {
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Query Result: Affected rows:: " . @mysql_affected_rows($result) . "</b><br>\n";
 	return @mysql_affected_rows($link);
 }
 
