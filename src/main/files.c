@@ -605,18 +605,6 @@ int read_config_files()
 		return -1;
 	}
 
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_MODULES);
-	if (read_modules_file(buffer) < 0) {
-	        log(L_ERR|L_CONS, "Errors reading modules");
-		return -1;
-	}
-
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
-	if (read_naslist_file(buffer) < 0) {
-	        log(L_ERR|L_CONS, "Errors reading naslist");
-		return -1;
-	}
-
 #ifndef WITH_NEW_CONFIG
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
 	if (read_clients_file(buffer) < 0) {
@@ -632,6 +620,19 @@ int read_config_files()
 #else
 	read_new_config_files();
 #endif
+
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
+	if (read_naslist_file(buffer) < 0) {
+	        log(L_ERR|L_CONS, "Errors reading naslist");
+		return -1;
+	}
+
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_MODULES);
+	if (read_modules_file(buffer) < 0) {
+	        log(L_ERR|L_CONS, "Errors reading modules");
+		return -1;
+	}
+
 	return 0;
 }
 
