@@ -9,6 +9,7 @@ $link = @da_sql_pconnect($config);
 if ($link){
 	if (isset($del_members)){
 		foreach ($del_members as $del){
+			$del = da_sql_escape_string($del);
 			$res = @da_sql_query($link,$config,
 			"DELETE FROM $config[sql_usergroup_table] WHERE username = '$del' AND groupname = '$login';");
 			if (!$res)
@@ -19,6 +20,7 @@ if ($link){
 		$Members = preg_split("/[\n\s]+/",$new_members,-1,PREG_SPLIT_NO_EMPTY);
 		if (!empty($Members)){
 			foreach ($Members as $new_member){
+				$new_member = da_sql_escape_string($new_member);
 				$res = @da_sql_query($link,$config,
 				"SELECT username FROM $config[sql_usergroup_table] WHERE
 				username = '$new_member' AND groupname = '$login';");

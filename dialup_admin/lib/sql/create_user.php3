@@ -30,6 +30,12 @@ if ($link){
 			username = '$login';");
 			if ($res){
 				if (!@da_sql_num_rows($res,$config)){
+					$Fcn = da_sql_escape_string($Fcn);
+					$Fmail = da_sql_escape_string($Fmail);
+					$Fou = da_sql_escape_string($Fou);
+					$Fhomephone = da_sql_escape_string($Fhomephone);
+					$Fworkphone = da_sql_escape_string($Fworkphone);
+					$Fmobile = da_sql_escape_string($Fmobile);	
 					$res = @da_sql_query($link,$config,
 					"INSERT INTO $config[sql_user_info_table]
 					(username,name,mail,department,homephone,workphone,mobile) VALUES
@@ -44,6 +50,7 @@ if ($link){
 				echo "<b>Could not add user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
 		if ($Fgroup != ''){
+			$Fgroup = da_sql_escape_string($Fgroup);
 			$res = @da_sql_query($link,$config,
 			"SELECT username FROM $config[sql_usergroup_table]
 			WHERE username = '$login' AND groupname = '$Fgroup';");
@@ -81,6 +88,7 @@ if ($link){
 					$type = 2;
 				}
 				$val = $$attrmap["$key"];
+				$val = da_sql_escape_string($val);
 				$op_name = $attrmap["$key"] . '_op';
 				$op_val = $$op_name;
 				if ($op_val != ''){

@@ -27,6 +27,7 @@ if ($link){
 
 		while(isset($$name)){
 			$val=$$name;
+			$val = da_sql_escape_string($val);
 			$op_name = $name . '_op';
 			$i++;
 			$j++;

@@ -17,6 +17,7 @@ if ($link){
 	$Members = preg_split("/[\n\s]+/",$members,-1,PREG_SPLIT_NO_EMPTY);
 	if (!empty($Members)){
 		foreach ($Members as $member){
+			$member = da_sql_escape_string($member);
 			$res = @da_sql_query($link,$config,
 			"INSERT INTO $config[sql_usergroup_table] (username,groupname)
 			VALUES ('$member','$login');");
@@ -44,6 +45,7 @@ if ($link){
 				$type = 2;
 			}
 			$val = $$attrmap["$key"];
+			$val = da_sql_escape_string($val);
 			$op_name = $attrmap["$key"] . '_op';
 			$op_val = $$op_name;
 			if ($op_val != ''){

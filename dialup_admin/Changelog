@@ -19,8 +19,7 @@ Ver 1.70:
 * Add an sql_xlat function
 * Add a nas administration page for sql based clients
 * Fix small bugs in accounting.php3 and user_stats.php3. Add nas_admin.php3 to the buttons page
-
-TODO: Check out the sql queries in lin/sql for sql injection.
+* Add da_sql_escape_string for all relevant variables in lib/sql files
 
 Ver 1.68:
 * Huge PostgreSQL compatibility patch by Guy Fraser <guy@incentre.net>

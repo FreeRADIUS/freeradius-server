@@ -13,6 +13,13 @@ if ($link){
 		"SELECT username FROM $config[sql_user_info_table] WHERE
 		username = '$login';");
 		if ($res){
+			$Fcn = da_sql_escape_string($Fcn);
+			$Fmail = da_sql_escape_string($Fmail);
+			$Fou = da_sql_escape_string($Fou);
+			$Ftelephonenumber = da_sql_escape_string($Ftelephonenumber);
+			$Fhomephone = da_sql_escape_string($Fhomephone);
+			$Fmobile = da_sql_escape_string($Fmobile);
+
 			if (!@da_sql_num_rows($res,$config)){
 				$res = @da_sql_query($link,$config,
 				"INSERT INTO $config[sql_user_info_table]

@@ -16,6 +16,7 @@ function connect2db($config)
 function get_user_info($link,$user,$config)
 {
 	if ($link && $config[sql_use_user_info_table] == 'true'){
+		$user = da_sql_escape_string($user);
 		$res=@da_sql_query($link,$config,
 		"SELECT name FROM $config[sql_user_info_table] WHERE username = '$user';");
 		if ($res){
