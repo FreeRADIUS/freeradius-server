@@ -397,6 +397,15 @@ client 10.10.10.10 {
 #	secret		= testing123
 #}
 
+#realm myfakerealm {
+#      type            = radius
+#      authhost        = radius.company.com:1600
+#      accthost        = radius.company.com:1601
+#      secret          = testing123
+#      notsuffix
+#}
+
+
 modules {
 	pam {
 		# No config options for this yet
