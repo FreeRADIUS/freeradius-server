@@ -1,14 +1,17 @@
 #
 #	Please read the documentation file ../doc/processing_users_file,
-#	or 'man users' (after installing the server) for more information.
+#	or 'man 5 users' (after installing the server) for more information.
 #
-#	This file contains security and configuration information
-#	for each user.  The first field is the user's name and
-#	can be up to 253 characters in length.  This is followed (on
-#	the same line) with the list of authentication requirements
-#	for that user.  This can include password, comm server name,
-#	comm server port number, protocol type (perhaps set by the "hints"
-#	file), and huntgroup name (set by the "huntgroups" file).
+#	This file contains authentication security and configuration
+#	information for each user.  Accounting requests are NOT processed
+#	through this file.  Instead, see 'acct_users', in this directory.
+#
+#	The first field is the user's name and can be up to
+#	253 characters in length.  This is followed (on the same line) with
+#	the list of authentication requirements for that user.  This can
+#	include password, comm server name, comm server port number, protocol
+#	type (perhaps set by the "hints" file), and huntgroup name (set by
+#	the "huntgroups" file).
 #
 #	If you are not sure why a particular reply is being sent by the
 #	server, then run the server in debugging mode (radiusd -X), and
@@ -41,6 +44,11 @@
 #	You can include another `users' file with `$INCLUDE users.other'
 #
 
+#
+#	For a list of RADIUS attributes, and links to their definitions,
+#	see:
+#
+#	http://www.freeradius.org/rfc/attributes.html
 #
 
 #
