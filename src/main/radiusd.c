@@ -590,17 +590,6 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 	}
 
 	/*
-	 *	We already have a proxy reply.  Don't process it twice.
-	 */
-	if (oldreq->proxy_reply) {
-		radlog(L_ERR, "Discarding duplicate reply from home server %s:%d  - ID: %d for request %d",
-		       ip_ntoa(buffer, packet->src_ipaddr),
-		       packet->src_port, packet->id,
-		       oldreq->number);
-		return NULL;
-	}
-
-	/*
 	 *	The proxy reply has arrived too late, as the original
 	 *	(old) request has timed out, been rejected, and marked
 	 *	as finished.  The client has already received a
@@ -624,7 +613,10 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 		if (memcmp(oldreq->proxy_reply->vector,
 			   packet->vector,
 			   sizeof(oldreq->proxy_reply->vector)) == 0) {
-			DEBUG2("Ignoring duplicate proxy reply");
+			radlog(L_ERR, "Discarding duplicate reply from home server %s:%d  - ID: %d for request %d",
+			       ip_ntoa(buffer, packet->src_ipaddr),
+			       packet->src_port, packet->id,
+			       oldreq->number);
 		} else {
 			/*
 			 *	? The home server gave us a new *
