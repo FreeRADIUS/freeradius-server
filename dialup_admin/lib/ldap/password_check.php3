@@ -1,7 +1,8 @@
 <?php
 
 if ($action == 'checkpass'){
-	$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
+	if (!isset($ds))
+		$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 	if ($ds){
 		if ($dn != ''){
 			if ($passwd == '')

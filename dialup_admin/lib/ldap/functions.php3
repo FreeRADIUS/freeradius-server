@@ -29,9 +29,11 @@ function da_ldap_bind($ds,$config)
 
 function connect2db($config)
 {
-	$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
+	if (!isset($ds))
+		$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 	if ($ds)
-		$r=@da_ldap_bind($ds,$config);
+		if (!isset($r))
+			$r=@da_ldap_bind($ds,$config);
 	return $ds;
 }
 
