@@ -372,7 +372,7 @@ static int eap_authorize(void *instance, REQUEST *request)
  */
 static int eap_post_proxy(void *instance, REQUEST *request)
 {
-	int i, len, offset;
+	int i, len;
 	VALUE_PAIR *vp = request->proxy_reply->vps;
 
 	/*
