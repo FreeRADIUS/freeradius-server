@@ -419,6 +419,9 @@ sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode)
 	 * and we want user settings to over ride group settings 
 	 */
 	if ((check = pairfind(*first_pair, attr->attr)) != NULL &&
+#if defined( BINARY_FILTERS )
+			attr->type != PW_TYPE_ABINARY &&
+#endif
 			mode == PW_VP_GROUPDATA) return 0;
 
 	pair = pairmake(row[2], row[3], T_OP_CMP_EQ);
