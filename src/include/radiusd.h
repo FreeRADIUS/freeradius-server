@@ -60,8 +60,7 @@ typedef struct auth_req {
 	int                     simul_mpp; /* WEIRD: 1 is false, 2 is true */
 
 	int			finished;
-	struct auth_req		*prev;
-	struct auth_req		*next;
+	void			**container;
 } REQUEST;
 
 /*
@@ -248,7 +247,7 @@ int proxy_receive(REQUEST *request);
 int proxy_send(REQUEST *request);
 
 /* auth.c */
-char		*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
+char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 VALUE_PAIR	*rad_getpass(REQUEST *request);
 

@@ -21,18 +21,24 @@ static const char rcsid[] = "$Id$";
 /*
  *  We keep the incoming requests in an array, indexed by ID.
  *
- *  Each array element contains a linked list of active requests,
- *  a count of the number of requests, and a time at which the first
- *  request in the list must be serviced.
+ *  Each array element contains a linked list of containers of 
+ *  active requests, a count of the number of requests, and a time 
+ *  at which the first request in the list must be serviced.
  */
-typedef struct REQUEST_LIST {
-	REQUEST		*first_request;
-	REQUEST		*last_request;
+
+typedef struct REQNODE {
+	struct REQNODE *prev, *next;
+	REQUEST *req;
+} REQNODE;
+
+typedef struct REQUESTINFO {
+	REQNODE		*first_request;
+	REQNODE		*last_request;
 	int		request_count;
 	time_t		last_cleaned_list;
-} REQUEST_LIST;
+} REQUESTINFO;
 
-static REQUEST_LIST	request_list[256];
+static REQUESTINFO	request_list[256];
 
 /*
  *	Initialize the request list.
@@ -60,10 +66,10 @@ int rl_init(void)
 void rl_delete(REQUEST *request)
 {
 	int id;
-	REQUEST *prev, *next;
+	REQNODE *prev, *next;
 
-	prev = request->prev;
-	next = request->next;
+	prev = ((REQNODE *) request->container)->prev;
+	next = ((REQNODE *) request->container)->next;
 	
 	id = request->packet->id;
 
@@ -79,6 +85,7 @@ void rl_delete(REQUEST *request)
 		next->prev = prev;
 	}
 	
+	free(request->container);
 	request_free(&request);
 	request_list[id].request_count--;
 }
@@ -90,20 +97,25 @@ void rl_add(REQUEST *request)
 {
 	int id = request->packet->id;
 
-	request->prev = NULL;
-	request->next = NULL;
+	assert(request->container == NULL);
+
+	request->container = malloc(sizeof(REQNODE));
+	((REQNODE *)request->container)->req = request;
+
+	((REQNODE *)request->container)->prev = NULL;
+	((REQNODE *)request->container)->next = NULL;
 
 	if (!request_list[id].first_request) {
 		assert(request_list[id].request_count == 0);
 
-		request_list[id].first_request = request;
-		request_list[id].last_request = request;
+		request_list[id].first_request = (REQNODE *)request->container;
+		request_list[id].last_request = (REQNODE *)request->container;
 	} else {
 		assert(request_list[id].request_count != 0);
 
-		request->prev = request_list[id].last_request;
-		request_list[id].last_request->next = request;
-		request_list[id].last_request = request;
+		((REQNODE *)request->container)->prev = request_list[id].last_request;
+		request_list[id].last_request->next = (REQNODE *)request->container;
+		request_list[id].last_request = (REQNODE *)request->container;
 	}
 
 	request_list[id].request_count++;
@@ -121,19 +133,19 @@ void rl_add(REQUEST *request)
  */
 REQUEST *rl_find(REQUEST *request)
 {
-	REQUEST *curreq;
+	REQNODE *curreq;
 
 	for (curreq = request_list[request->packet->id].first_request;
 	     curreq != NULL ;
-	     curreq = curreq->next) {
-		if ((curreq->packet->code == request->packet->code) &&
-		    (curreq->packet->src_ipaddr == request->packet->src_ipaddr) &&
-		    (curreq->packet->src_port == request->packet->src_port)) {
+	     curreq = ((REQNODE *)curreq->req->container)->next) {
+		if ((curreq->req->packet->code == request->packet->code) &&
+		    (curreq->req->packet->src_ipaddr == request->packet->src_ipaddr) &&
+		    (curreq->req->packet->src_port == request->packet->src_port)) {
 			break;
 		}
 	}
 
-	return curreq;
+	return curreq->req;
 }
 
 /*
@@ -148,24 +160,24 @@ REQUEST *rl_find(REQUEST *request)
  */
 REQUEST *rl_find_proxy(REQUEST *request)
 {
-	REQUEST *curreq = NULL;
+	REQNODE *curreq = NULL;
 	int id;
 	
 	for (id = 0; (id < 256) && (curreq == NULL); id++) {
 		for (curreq = request_list[request->packet->id].first_request;
 		     curreq != NULL ;
 		     curreq = curreq->next) {
-			if (curreq->proxy &&
-			    (curreq->proxy->id == request->packet->id) &&
-			    (curreq->proxy->dst_ipaddr == request->packet->src_ipaddr) &&
-			    (curreq->proxy->dst_port == request->packet->src_port)) {
+			if (curreq->req->proxy &&
+			    (curreq->req->proxy->id == request->packet->id) &&
+			    (curreq->req->proxy->dst_ipaddr == request->packet->src_ipaddr) &&
+			    (curreq->req->proxy->dst_port == request->packet->src_port)) {
 				
 				break;
 			}
 		} /* loop over all requests for this id. */
 	} /* loop over all id's... this is horribly inefficient */
 
-	return curreq;
+	return curreq->req;
 }
 /*
  *	Walk over all requests, performing a callback for each request.
@@ -173,7 +185,7 @@ REQUEST *rl_find_proxy(REQUEST *request)
 int rl_walk(RL_WALK_FUNC walker, void *data)
 {
 	int id, rcode;
-	REQUEST *curreq, *next;;
+	REQNODE *curreq, *next;
 
 	/*
 	 *	Walk over all 256 ID's.
@@ -194,7 +206,7 @@ int rl_walk(RL_WALK_FUNC walker, void *data)
 			 */
 			next = curreq->next;
 
-			rcode = walker(curreq, data);
+			rcode = walker(curreq->req, data);
 			if (rcode != RL_WALK_CONTINUE) {
 				return rcode;
 			}
@@ -221,8 +233,8 @@ REQUEST *rl_next(REQUEST *request)
 		/*
 		 *	It has a "next", return it.
 		 */
-		if (request->next) {
-			return request->next;
+		if (((REQNODE *)request->container)->next != NULL) {
+			return ((REQNODE *)request->container)->next->req;
 		} else {
 			/*
 			 *	No "next", increment the ID, and look
@@ -248,10 +260,10 @@ REQUEST *rl_next(REQUEST *request)
 		/*
 		 *	This ID has a request, return it.
 		 */
-		if (request_list[id & 0xff].first_request) {
-			assert(request_list[id&0xff].first_request != request);
+		if (request_list[id & 0xff].first_request != NULL) {
+			assert(request_list[id&0xff].first_request->req != request);
 
-			return request_list[id & 0xff].first_request;
+			return request_list[id & 0xff].first_request->req;
 		}
 	}
 
