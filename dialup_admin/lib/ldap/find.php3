@@ -9,7 +9,7 @@ if ($ds) {
 		require('../lib/ldap/attrmap.php3');
 		$attr = $attrmap[$radius_attr];
 	}
-	$sr=@ldap_search($ds,"$config[ldap_base]", "$attr=*$search*",array('uid'),0,$max_results);
+	$sr=@ldap_search($ds,"$config[ldap_base]", "(&($attr=*$search*)(uid=*))",array('uid'),0,$max_results);
 	if (($info = @ldap_get_entries($ds, $sr))){
 		for ($i = 0; $i < $info["count"]; $i++)
 			$found_users[] = $info[$i]['uid'][0];
