@@ -436,11 +436,27 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	PEAP-specific breakage.
 	 */
 	if (handler->eap_type == PW_EAP_PEAP) {
-		ssn->peap_flag = 0x02;
+		/*
+		 *	As it is a poorly designed protocol, PEAP uses
+		 *	bits in the TLS header to indicate PEAP
+		 *	version numbers.  For now, we only support
+		 *	PEAP version 0, so it doesn't matter too much.
+		 *	However, if we support later versions of PEAP,
+		 *	we will need this flag to indicate which
+		 *	version we're currently dealing with.
+		 */
+		ssn->peap_flag = 0x00;
+
+		/*
+		 *	PEAP version 0 requires 'include_length = no',
+		 *	so rather than hoping the user figures it out,
+		 *	we force it here.
+		 */
+		ssn->length_flag = 0;
 	}
 
 	/*
-	 *	TLS session initialization is over.  *Now handle TLS
+	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
 	status = eaptls_start(handler->eap_ds, ssn->peap_flag);
