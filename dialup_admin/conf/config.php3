@@ -11,4 +11,8 @@ foreach($ARR as $val) {
 	}
 	$config["$key"]="$v";
 }
+if ($config[general_use_session] == 'yes'){
+	// Start session
+	@session_start();
+}
 ?>

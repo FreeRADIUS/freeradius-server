@@ -77,6 +77,16 @@ if ($HTTP_SERVER_VARS["PHP_AUTH_USER"])
 	<tr align=left><td id="menu10" onmouseover='myin("10");' onmouseout='myout("10");'>
 	<a id="a10" href="user_test.php3?login=da_server_test&test_user=1" target="content" title="Check Server Response">Check Server</a>
 	</td></tr>
+<?php
+include('../conf/config.php3');
+if ($config[general_use_session] == 'yes')
+	echo <<<EOM
+	<tr align=left><td><img src="images/black.gif" vspace=2 hspace=0 width=80 height=1></td></tr>
+	<tr align=left><td id="menu15" onmouseover='myin("15");' onmouseout='myout("15");'>
+	<a id="a15" href="session_destroy.php3" target="content" title="Clear Session Cache">Clear Cache</a>
+	</td></tr>
+EOM;
+?>
 	<tr align=left><td><img src="images/black.gif" vspace=2 hspace=0 width=80 height=1></td></tr>
 	<tr align=left><td id="menu5" onmouseover='myin("5");' onmouseout='myout("5");' nowrap>
 	<a id="a5" href="help/help.php3" target="content" title="Show Help">Help</a>
