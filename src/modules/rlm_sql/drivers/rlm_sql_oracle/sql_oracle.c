@@ -7,6 +7,7 @@
 ***************************************************************************/
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,6 +59,40 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 /*************************************************************************
  *
+ *	Function: sql_close
+ *
+ *	Purpose: database specific close. Closes an open database
+ *               connection and cleans up any open handles.
+ *
+ *************************************************************************/
+static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
+
+	if (oracle_sock->conn) {
+		OCILogoff (oracle_sock->conn, oracle_sock->errHandle);
+	}
+
+	if (oracle_sock->queryHandle) {
+		OCIHandleFree((dvoid *)oracle_sock->queryHandle, (ub4) OCI_HTYPE_STMT);
+	}
+	if (oracle_sock->errHandle) {
+		OCIHandleFree((dvoid *)oracle_sock->errHandle, (ub4) OCI_HTYPE_ERROR);
+	}
+	if (oracle_sock->env) {
+		OCIHandleFree((dvoid *)oracle_sock->env, (ub4) OCI_HTYPE_ENV);
+	}
+
+	oracle_sock->conn = NULL;
+	free(oracle_sock);
+	sqlsocket->conn = NULL;
+
+	return 0;
+}
+
+
+/*************************************************************************
+ *
  *	Function: sql_init_socket
  *
  *	Purpose: Establish connection to the db
@@ -68,6 +103,8 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	rlm_sql_oracle_sock *oracle_sock;
 
 	sqlsocket->conn = (rlm_sql_oracle_sock *)rad_malloc(sizeof(rlm_sql_oracle_sock));
+
+	memset(sqlsocket->conn,0,sizeof(rlm_sql_oracle_sock));
 
 	oracle_sock = sqlsocket->conn;
 
@@ -89,8 +126,6 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	/* Allocate handles for select and update queries */
 	if (OCIHandleAlloc((dvoid *)oracle_sock->env, (dvoid **) &oracle_sock->queryHandle,
-				(ub4)OCI_HTYPE_STMT, (CONST size_t) 0, (dvoid **) 0)
-	    ||  OCIHandleAlloc((dvoid *)oracle_sock->env, (dvoid **) &oracle_sock->queryHandle,
 				(ub4)OCI_HTYPE_STMT, (CONST size_t) 0, (dvoid **) 0))
 	{
 		radlog(L_ERR,"rlm_sql_oracle: Couldn't init Oracle query handles: %s",
@@ -105,6 +140,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			config->sql_db, strlen(config->sql_db)))
 	{
 		radlog(L_ERR,"rlm_sql_oracle: Oracle logon failed: '%s'", sql_error(sqlsocket, config));
+		sql_close(sqlsocket,config);
 		return -1;
 	}
 
@@ -191,12 +227,17 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 				(ub4) OCI_DEFAULT);
 
 	if ((x != OCI_NO_DATA) && (x != OCI_SUCCESS)) {
+		radlog(L_ERR,"rlm_sql_oracle: execute query failed in sql_query: %s",
+				sql_error(sqlsocket, config));
 		return SQL_DOWN;
 	}
 
 	x = OCITransCommit(oracle_sock->conn, oracle_sock->errHandle, (ub4) 0);
-	if (x != OCI_SUCCESS)
+	if (x != OCI_SUCCESS) {
+		radlog(L_ERR,"rlm_sql_oracle: commit failed in sql_query: %s",
+				sql_error(sqlsocket, config));
 		return SQL_DOWN;
+	}
 
 	return 0;
 }
@@ -250,6 +291,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 		return 0;
 	}
 	else if (x != OCI_SUCCESS) {
+		radlog(L_ERR,"rlm_sql_oracle: query failed in sql_select_query: %s",sql_error(sqlsocket, config));
 		return SQL_DOWN;
 	}
 
@@ -448,15 +490,22 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
-	int i=0;
+	int x;
 	int num_fields;
 
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
+	/* Cancel the cursor first */
+	x=OCIStmtFetch(oracle_sock->queryHandle,
+			oracle_sock->errHandle,
+			0,
+			OCI_FETCH_NEXT,
+			OCI_DEFAULT);
+	
 	num_fields = sql_num_fields(sqlsocket, config);
 	if (num_fields >= 0) {
-		for(i=0; i < num_fields; i++) {
-			free(oracle_sock->results[i]);
+		for(x=0; x < num_fields; x++) {
+			free(oracle_sock->results[x]);
 		}
 		free(oracle_sock->results);
 	}
@@ -464,38 +513,6 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return 0;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_close
- *
- *	Purpose: database specific close. Closes an open database
- *               connection and cleans up any open handles.
- *
- *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
-	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
-
-	if (oracle_sock->conn) {
-		OCILogoff (oracle_sock->conn, oracle_sock->errHandle);
-	}
-
-	if (oracle_sock->queryHandle) {
-		OCIHandleFree((dvoid *)oracle_sock->queryHandle, (ub4) OCI_HTYPE_STMT);
-	}
-	if (oracle_sock->errHandle) {
-		OCIHandleFree((dvoid *)oracle_sock->errHandle, (ub4) OCI_HTYPE_ERROR);
-	}
-	if (oracle_sock->env) {
-		OCIHandleFree((dvoid *)oracle_sock->env, (ub4) OCI_HTYPE_ENV);
-	}
-
-	oracle_sock->conn = NULL;
-
-	return 0;
-}
 
 
 /*************************************************************************
