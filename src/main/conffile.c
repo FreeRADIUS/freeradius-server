@@ -786,7 +786,7 @@ static int xlat_config(void *instance, REQUEST *request,
 	
 	strNcpy(out, cp->value, outlen);
     
-	return outlen;
+	return outlen - 1;
 }
 
 /*
