@@ -44,6 +44,8 @@
    should confirm it for yourself (and maybe let me know if you come
    up with a different answer to the one above)
 */
+#include "libradius.h"
+#include <string.h>
 #include <ctype.h>
 
 
@@ -275,7 +277,7 @@ static void str_to_key(unsigned char *str,unsigned char *key)
 }
 
 
-static void smbhash(unsigned char *out, unsigned char *in, unsigned char *key)
+static void smbhash(unsigned char *out, const unsigned char *in, unsigned char *key)
 {
 	int i;
 	char outb[64];
