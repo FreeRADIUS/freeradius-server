@@ -304,7 +304,7 @@ AC_TRY_COMPILE([#include <sys/types.h>
 
 dnl Check for libpthread
 dnl If using pthreads...
-if [ "$WITH_THREADS" = "yes" ]; then 
+if test "$WITH_THREADS" = "yes"; then 
   AC_CHECK_HEADERS(pthread.h)
   AC_CHECK_LIB(pthread, pthread_create,
     PTHREADLIB="-lpthread"
