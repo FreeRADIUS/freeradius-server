@@ -294,9 +294,23 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				  }
 
 				  /* 
-				   *    TODO: This should encrypt attributes like Tunnel-Password
+				   *    Encrypt Tunnel-Password
 				   *    here -- cparker@starnetusa.net
 				   */
+
+				  /*
+				   *	Encrypt with Tunnel-Password style if needed.
+				   */
+				  if (reply->flags.encrypt == 2) {
+
+				    rad_tunnel_pwencode(reply->strvalue,
+							&(reply->length),
+							secret,
+							packet->vector);
+				    
+				  }
+			  
+
 				  len = reply->length;
 
 				  /*
@@ -1055,6 +1069,15 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			}
 
 			/* FIXME: Decrypt attributes like Tunnel-Password here -cparker */
+			if(pair->flags.encrypt == 2) {
+
+			        rad_tunnel_pwdecode((char *)pair->strvalue,
+						     pair->length, 
+						     secret,
+						     (char *)original->vector);
+				pair->length = strlen(pair->strvalue);
+
+			}
 
 			break;
 			
@@ -1237,6 +1260,142 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 			passwd[i + n] ^= digest[i];
 	}
 	passwd[pwlen] = 0;
+
+	return pwlen;
+}
+
+/*
+ *	Encode Tunnel-Password attributes when sending them out on the wire.
+ *
+ *	int *pwlen is updated to the new length of the encrypted
+ *	password - a multiple of 16 bytes.
+ *
+ *      This is per RFC-2868 which adds a two char SALT to the initial intermediate
+ *      value MD5 hash.
+ */
+
+int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
+{
+	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
+	char	digest[AUTH_VECTOR_LEN];
+	char    salt[2];
+	int	i, n, secretlen;
+	int	len;
+
+	if(pwlen < 2) {
+	  return 0;
+	}
+	salt[0] = passwd[0];
+	salt[1] = passwd[1];
+
+	/* Advance pointer past the salt, which is first two chars of passwd */
+	passwd = passwd + 2;
+	
+	/*
+	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
+	 */
+	len = strlen(passwd);
+	if (len > 128) len = 128;
+	*pwlen = len;
+	if (len % AUTH_PASS_LEN != 0) {
+		n = AUTH_PASS_LEN - (len % AUTH_PASS_LEN);
+		for (i = len; n > 0; n--, i++)
+			passwd[i] = 0;
+		len = *pwlen = i;
+	}
+
+	/*
+	 *	Use the secret to setup the decryption digest
+	 */
+	secretlen = strlen(secret);
+	memcpy(buffer, secret, secretlen);
+	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
+	memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
+	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
+
+	/*
+	 *	Now we can encode the password *in place*
+	 */
+	for (i = 0; i < AUTH_PASS_LEN; i++)
+		passwd[i] ^= digest[i];
+
+	if (len <= AUTH_PASS_LEN) return 0;
+
+	/*
+	 *	Length > AUTH_PASS_LEN, so we need to use the extended
+	 *	algorithm.
+	 */
+	for (n = 0; n < 128 && n <= (len - AUTH_PASS_LEN); n += AUTH_PASS_LEN) { 
+		memcpy(buffer + secretlen, passwd + n, AUTH_PASS_LEN);
+		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
+		for (i = 0; i < AUTH_PASS_LEN; i++)
+			passwd[i + n + AUTH_PASS_LEN] ^= digest[i];
+	}
+
+	return 0;
+}
+
+/*
+ *	Decode Tunnel-Password encrypted attributes.
+ *
+ *      Defined in RFC-2868, this adds a two char SALT to the initial intermediate
+ *      value, to differentiate it from the above.
+ */
+
+int rad_tunnel_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector)
+{
+	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
+	char	digest[AUTH_VECTOR_LEN];
+	char	r[AUTH_VECTOR_LEN];
+	char    salt[2];
+	char	*s;
+	int	i, n, secretlen;
+	int	rlen;
+
+	if(pwlen < 2) {
+	  return 0;
+	}
+	salt[0] = passwd[0];
+	salt[1] = passwd[1];
+
+	passwd = passwd + 2;
+        pwlen = pwlen - 2;
+
+	/*
+	 *	Use the secret to setup the decryption digest
+	 */
+	secretlen = strlen(secret);
+	memcpy(buffer, secret, secretlen);
+	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
+	memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
+	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
+
+	/*
+	 *	Now we can decode the password *in place*
+	 */
+	memcpy(r, passwd, AUTH_PASS_LEN);
+	for (i = 0; i < AUTH_PASS_LEN && i < pwlen; i++)
+		passwd[i] ^= digest[i];
+
+	if (pwlen <= AUTH_PASS_LEN) {
+		passwd[pwlen+1] = '\0';
+		return pwlen;
+	}
+
+	/*
+	 *	Length > AUTH_PASS_LEN, so we need to use the extended
+	 *	algorithm.
+	 */
+	rlen = ((pwlen - 1) / AUTH_PASS_LEN) * AUTH_PASS_LEN;
+
+	for (n = rlen; n > 0; n -= AUTH_PASS_LEN ) { 
+		s = (n == AUTH_PASS_LEN) ? r : (passwd + n - AUTH_PASS_LEN);
+		memcpy(buffer + secretlen, s, AUTH_PASS_LEN);
+		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
+		for (i = 0; i < AUTH_PASS_LEN && (i + n) < pwlen; i++)
+			passwd[i + n] ^= digest[i];
+	}
+	passwd[pwlen] = '\0';
 
 	return pwlen;
 }
