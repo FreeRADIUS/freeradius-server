@@ -93,6 +93,7 @@ typedef struct eap_packet {
 typedef struct eap_ds {
 	EAP_PACKET	*response;
 	EAP_PACKET	*request;
+	int		set_request_id;
 } EAP_DS;
 
 /*
