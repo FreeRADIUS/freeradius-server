@@ -19,7 +19,9 @@ long answer.
 
 How do I use it?
 
-Compile radiusd as you normally would, and then run it with the "-c" option.
+Compile radiusd as you normally would, and then set 'cache=yes' in your
+radius.conf file.
+
 Then, if you want to monitor how the caching is doing (errors and such),
 'grep HASH /var/log/radius.log'.
 
@@ -242,8 +244,8 @@ Is it stable?
 As far as I can tell, yes. We've run it on both linux and solaris maches for
 about two weeks now, and had zero problems. If you notice a bug, by all
 means, let me know and I'll see if I can get a fix out. However, if you
-notice system degrading problems with it, you can always turn it off by
-running radiusd without the "-c" argument.
+notice system degrading problems with it, you can always turn it off in
+your radius.conf file.
 
 Ok, that's it. If you made it this far, I'm impressed. Let me know what you
 think...
