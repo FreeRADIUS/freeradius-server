@@ -6,6 +6,8 @@
 #include "radiusd.h"
 #include "modules.h"
 
+static const char rcsid[] = "$Id$";
+
 /*
  *	Do any per-module initialization.  e.g. set up connections
  *	to external databases, read configuration files, set up
@@ -31,7 +33,7 @@ static int radius_init(int argc, char **argv)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int radius_authorize(REQUEST *request, char *name,
+static int radius_authorize(REQUEST *request,
 			    VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
   /* quiet the compiler */
@@ -46,7 +48,7 @@ static int radius_authorize(REQUEST *request, char *name,
 /*
  *	Authenticate the user with the given password.
  */
-static int radius_authenticate(REQUEST *request, char *username, char *password)
+static int radius_authenticate(REQUEST *request)
 {
   /* quiet the compiler */
   request = request;
