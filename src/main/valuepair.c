@@ -114,8 +114,13 @@ static int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 					request->length);
 			break;
 		case PW_TYPE_STRING:
-			ret = strcmp((char *)request->strvalue,
-					(char *)check->strvalue);
+			if (check->flags.caseless) {
+				ret = strcasecmp((char *)request->strvalue,
+						 (char *)check->strvalue);
+			} else {
+				ret = strcmp((char *)request->strvalue,
+					     (char *)check->strvalue);
+			}
 			break;
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:

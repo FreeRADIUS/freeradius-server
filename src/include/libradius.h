@@ -94,12 +94,12 @@
 #endif
 
 typedef struct attr_flags {
-	char			addport;	/* Add port to IP address */
-	char			has_tag;	/* attribute allows tags */
-	signed char		tag;
-	uint8_t		        encrypt;	/* encryption method */
-	signed char		len_disp;	/* length displacement */
-	char			do_xlat;
+	unsigned int		addport : 1;  /* add NAS-Port to IP address */
+	unsigned int		has_tag : 1;  /* tagged attribute */
+	unsigned int		do_xlat : 1;  /* strvalue is dynamic */
+	unsigned int		caseless : 1; /* case insensitive compares */
+	int8_t			tag;	      /* tag for tunneled attributes */
+	uint8_t		        encrypt;      /* encryption method */
 } ATTR_FLAGS;
 
 /*

@@ -370,20 +370,6 @@ static int process_attribute(const char* fn, const int line,
 			    tagged attribute */
 			 flags.has_tag = 1;
 		}
-		else if (strncmp(s, "len+=", 5) == 0 ||
-			 strncmp(s, "len-=", 5) == 0) {
-			  /* Length difference, to accomodate
-			     braindead NASes & their vendors */
-			  flags.len_disp = strtol(s + 5, &c, 0);
-			  if (*c) {
-				librad_log("dict_init: %s[%d] invalid option %s",
-					   fn, line, s);
-				return -1;
-			  }
-			  if (s[3] == '-') {
-				flags.len_disp = -flags.len_disp;
-			  }
-		}
 		else if (strncmp(s, "encrypt=", 8) == 0) {
 			  /* Encryption method, defaults to 0 (none).
 			     Currently valid is just type 2,
