@@ -527,7 +527,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.1 
+# From configure.in Revision: 1.2 
 
 
 # Extract the first word of "gcc", so it can be a program name with args.

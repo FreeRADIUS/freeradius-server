@@ -521,7 +521,7 @@ else
 fi
 
   # change 'example'
-# From configure.in Revision: 1.4 
+# From configure.in Revision: 1.5 
   # change 'example'
 
 if test x$with_rlm_example != xno; then
