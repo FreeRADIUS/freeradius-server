@@ -59,7 +59,6 @@ x99_pwe_init(void)
      * Setup known password types.  These are pairs.
      * NB: Increase pwattr array size when adding a type.
      *     It should be sized as (number of password types * 2)
-     * This is temporary until this code becomes modular.
      */
     (void) memset(pwattr, 0, sizeof(pwattr));
 
@@ -313,6 +312,7 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    /* The NT-Key sub-field is MD4(MD4(unicode(password))). */
 	    (void) MD4(nt_keys, 16, &mppe_keys[8]);
 
+#if 0 /* encoding now handled in lib/radius.c:rad_pwencode() */
 	    /* Now we must encode the key as User-Password is encoded. */
 	    secretlen = strlen(request->secret);
 	    (void) memcpy(encode_buf, request->secret, secretlen);
@@ -325,6 +325,7 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    (void) MD5(encode_buf, secretlen + MD5_DIGEST_LENGTH, md5_md);
 	    for (i = 0; i < 16; ++i)
 		mppe_keys[i + 16] ^= md5_md[i];
+#endif /* 0 */
 
 	    /* Whew.  Now stringify it for pairmake(). */
 	    mppe_keys_string[0] = '0';
