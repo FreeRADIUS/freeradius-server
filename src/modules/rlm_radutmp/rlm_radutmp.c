@@ -560,6 +560,15 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 					     session_id);
 			rad_lockfd(fd, LOCK_LEN);
 
+			/*
+			 *	Failed to check the terminal server for
+			 *	duplicate logins: Return an error.
+			 */
+			if (rcode < 0) {
+				close(fd);
+				return RLM_MODULE_FAIL;
+			}
+
 			if (rcode == 1) {
 				++request->simul_count;
 				/*
