@@ -213,6 +213,7 @@ x99_pw_valid(const REQUEST *request, int attr,
 	unsigned char input[MAX_STRING_LEN * 2]; /* doubled for unicode */
 	unsigned char output[24];
 	int password_len, i;
+	VALUE_PAIR *vp;
 
 	DEBUG("rlm_x99_token: pw_valid: handling PW_MS_CHAP_RESPONSE");
 	if (chal_vp->length != 8) {
@@ -276,31 +277,20 @@ x99_pw_valid(const REQUEST *request, int attr,
 	    break;
 
 	/*
-	 * Generate the MPPE initial session key if needed, per RFC 3079.
+	 * Generate the MS-CHAP-MPPE-Keys attribute if needed.  This is not
+	 * specified anywhere -- RFC 2548, par. 2.4.1 is the authority but
+	 * it has typos and omissions that make this unimplementable.  The
+	 * code here is based on experimental results provided by
+	 * Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp>.
 	 * We only support 128-bit keys derived from the NT hash; 40-bit
 	 * and 56-bit keys are derived from the LM hash, which besides
 	 * being deprecated, has severe security problems.
-	 * The 128-bit initial session key is
-	 * MSB16(SHA(NTPasswordHashHash|NTPasswordHashHash|Challenge)),
-	 * where NTPasswordHashHash is MD4(MD4(unicode(password))), and
-	 * Challenge is available as the MS-CHAP-Challenge attribute.
-	 * Note that this is NOT ACTUALLY IMPLEMENTABLE in RADIUS;
-	 * RFC 2548, par. 2.4.1 is underspecified/incorrect.  Not to
-	 * mention that one of the test values supplied is incorrect.
-	 * My best guess as to how this should work, does not (even though
-	 * I can generate the correct (modulo typos in RFC 3079) test values).
-	 * At least, it does not work with a MS Win2k RRAS server.  I have
-	 * not tested it against other NASes.
 	 */
 	if (1) {
-	    VALUE_PAIR *vp;
 	    unsigned char mppe_keys[32];
 	    /*                    0x    ASCII(mppe_keys)      '\0' */
 	    char mppe_keys_string[2 + (2 * sizeof(mppe_keys)) + 1];
-	    unsigned char password_md_md[MD4_DIGEST_LENGTH];
 
-	    SHA_CTX sha_ctx;
-	    unsigned char sha_md[SHA_DIGEST_LENGTH];
 	    unsigned char md5_md[MD5_DIGEST_LENGTH];
 	    unsigned char encode_buf[AUTH_VECTOR_LEN + MAX_STRING_LEN];
 	    int secretlen;
@@ -319,44 +309,10 @@ x99_pw_valid(const REQUEST *request, int attr,
 	    else
 		; /* choke and die */
 
-	    /* Zero the LM-Key portion since we don't support it. */
+	    /* Zero the LM-Key sub-field (and padding). */
 	    (void) memset(mppe_keys, 0, sizeof(mppe_keys));
-
-	    (void) MD4(nt_keys, 16, password_md_md);
-#if 0
-	    /* Test value from RFC 3079, par. 2.5.3, step 2. */
-	    password_md_md[0]  = 0x41; password_md_md[1]  = 0xc0;
-	    password_md_md[2]  = 0x0c; password_md_md[3]  = 0x58;
-	    password_md_md[4]  = 0x4b; password_md_md[5]  = 0xd2;
-	    password_md_md[6]  = 0xd9; password_md_md[7]  = 0x1c;
-	    password_md_md[8]  = 0x40; password_md_md[9]  = 0x17;
-	    password_md_md[10] = 0xa2; password_md_md[11] = 0xa1;
-	    password_md_md[12] = 0x2f; password_md_md[13] = 0xa5;
-	    password_md_md[13] = 0x9f; password_md_md[14] = 0x3f;
-	    /* Test value from RFC 3079, par. 2.5.3. */
-	    (chal_vp->strvalue)[0] = 0x10; (chal_vp->strvalue)[1] = 0x2d;
-	    (chal_vp->strvalue)[2] = 0xb5; (chal_vp->strvalue)[3] = 0xdf;
-	    (chal_vp->strvalue)[4] = 0x08; (chal_vp->strvalue)[5] = 0x5d;
-	    (chal_vp->strvalue)[6] = 0x30; (chal_vp->strvalue)[7] = 0x41;
-#endif /* 0 */
-
-	    SHA1_Init(&sha_ctx);
-	    SHA1_Update(&sha_ctx, password_md_md, 16);
-	    SHA1_Update(&sha_ctx, password_md_md, 16);
-	    SHA1_Update(&sha_ctx, chal_vp->strvalue, 8);
-	    SHA1_Final(sha_md, &sha_ctx);
-	    (void) memcpy(&mppe_keys[8], sha_md, 16);
-
-#if 0
-	    /* NB: RFC 3079, 2.5.3, step 3, has a typo. sigh. */
-	    DEBUG("test startkey %02X %02X %02X %02X %02X %02X %02X %02X "
-		                "%02X %02X %02X %02X %02X %02X %02X %02X, "
-		  "compare against RFC 3079, 2.5.3, step 4",
-		  mppe_keys[8],  mppe_keys[9],  mppe_keys[10], mppe_keys[11],
-		  mppe_keys[12], mppe_keys[13], mppe_keys[14], mppe_keys[15],
-		  mppe_keys[16], mppe_keys[17], mppe_keys[18], mppe_keys[19],
-		  mppe_keys[20], mppe_keys[21], mppe_keys[22], mppe_keys[23]);
-#endif /* 0 */
+	    /* The NT-Key sub-field is MD4(MD4(unicode(password))). */
+	    (void) MD4(nt_keys, 16, &mppe_keys[8]);
 
 	    /* Now we must encode the key as User-Password is encoded. */
 	    secretlen = strlen(request->secret);
@@ -573,6 +529,7 @@ x99_pw_valid(const REQUEST *request, int attr,
 
 	/*
 	 * Generate the MPPE initial session key if needed, per RFC 3079.
+	 * (Although, RFC 2548 leaves us guessing at how to generate this.)
 	 * For MS-CHAPv2 we support all key lengths (40-, 56- and 128-bit),
 	 * although MPPE via RADIUS supports only 40- and 128-bit keys.
 	 * This is a bit more complicated than MS-CHAP.  Start by generating
