@@ -7,6 +7,39 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
+	dnl extra argument: --with-rlm-dbm-lib-dir
+	rlm_dbm_lib_dir=
+	AC_ARG_WITH(rlm-dbm-lib-dir,
+	[  --with-rlm-dbm-lib-dir=DIR       Directory for DBM library files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-dbm-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_dbm_lib_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	dnl extra argument: --with-rlm-dbm-include-dir
+	rlm_dbm_inc_dir=
+	AC_ARG_WITH(rlm-dbm-include-dir,
+	[  --with-rlm-dbm-include-dir=DIR   Directory for DBM include files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-dbm-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_dbm_include_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	smart_try_dir=$rlm_dbm_include_dir
 	AC_SMART_CHECK_INCLUDE(ndbm.h)
 	if test "x$ac_cv_header_ndbm_h" = "xyes"; then
           SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_NDBM_H"
@@ -25,6 +58,7 @@ if test x$with_[]modname != xno; then
 		fi
 	fi
 
+	smart_try_dir=$rlm_dbm_lib_dir
 	AC_SMART_CHECK_LIB(ndbm, dbm_open)
 	if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
 		AC_SMART_CHECK_LIB(gdbm, dbm_open)
