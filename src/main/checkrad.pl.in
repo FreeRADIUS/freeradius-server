@@ -328,7 +328,7 @@ sub cisco_snmp {
 			"   Error: Need SNMP community string for $ARGV[1]\n";
 		}
 		return 2;
-	} else {
+	} elsif ( $login ne 'SNMP') {
 		$pass = "public";
 	}
 
