@@ -1388,6 +1388,9 @@ static void usage(int status)
 static void sig_fatal(int sig)
 {
 	switch(sig) {
+		case SIGSEGV:
+			/* We can't really do anything intelligent here so just die */
+			exit(1);
 		case SIGTERM:
 			do_exit = 1;
 			break;
