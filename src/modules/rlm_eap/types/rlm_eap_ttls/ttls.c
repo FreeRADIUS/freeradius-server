@@ -546,6 +546,7 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		 *	FIXME: Check the return code.
 		 */
 		tls_handshake_send(tls_session);
+		record_init(&tls_session->clean_in);
 	}
 
 	/*
