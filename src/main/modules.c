@@ -19,6 +19,14 @@ static const char rcsid[] = "$Id$";
 #  include	<dlfcn.h>
 #endif
 
+#ifndef RTLD_GLOBAL
+/*
+ *	FreeBSD has libdl in it's Linux compatibility directory,
+ *	but it doesn't define RTLD_GLOBAL.  Grr..
+ */
+#define RTLD_GLOBAL 0
+#endif
+
 #include	"radiusd.h"
 #include	"modules.h"
 
