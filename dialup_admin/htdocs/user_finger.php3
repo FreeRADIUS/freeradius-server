@@ -48,11 +48,14 @@ if ($link){
 		$community_data = $config[$community];
 		$server_name[$i] = $config[$name];
 		$server_model[$i] = $config[$model];
-		$users=exec("$config[general_snmpfinger_bin] $name_data $community_data");
-		if (strlen($users))
-			$extra = "AND UserName IN ($users)";
-		else
-			$extra = "";
+		if ($config[general_ld_library_path] != '')
+			putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
+		$extra = "";
+		if ($config[general_finger_type] == 'snmp'){
+			$users=exec("$config[general_snmpfinger_bin] $name_data $community_data");
+			if (strlen($users))
+				$extra = "AND UserName IN ($users)";
+		}
 		$search = @da_sql_query($link,$config,
 		"SELECT DISTINCT UserName,AcctStartTime,FramedIPAddress,CallingStationId
 		FROM $config[sql_accounting_table] WHERE

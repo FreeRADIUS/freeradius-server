@@ -10,12 +10,14 @@ if ($link){
 	foreach($show_attrs as $key => $desc){
 		if ($attrmap["$key"] == 'none')
 			continue;
-		$i = $j = 0;
+		$i = 0;
+		$j = -1;
 		$name = $attrmap["$key"] . $i;
 
 		while(isset($$name)){
 			$val=$$name;
 			$i++;
+			$j++;
 			$name = $attrmap["$key"] . $i;
 
 			$sql_attr=$attrmap["$key"];
@@ -49,7 +51,6 @@ if ($link){
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Change failed for attribute $key</b><br>\n";	
 			}
-			$j++;
 		}
 	}
 }

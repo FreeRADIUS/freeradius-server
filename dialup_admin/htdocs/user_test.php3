@@ -65,6 +65,8 @@ if ($test_user == 1){
 		$port = $config[general_radius_server_port];
 	$tmp_file = tempnam("$config[general_tmp_dir]",'DA');
 	$req=file($config[general_auth_request_file]);
+	if ($config[general_ld_library_path] != '')
+		putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
 	$comm = $config[general_radclient_bin] . " $server:$port" . ' auth ' . $config[general_radius_server_secret] 
 		. ' >' . $tmp_file;
 	$fp = popen("$comm","w");

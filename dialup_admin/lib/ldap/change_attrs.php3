@@ -7,12 +7,14 @@
 			foreach($show_attrs as $key => $attr){
 				if ($attrmap["$key"] == 'none')
 					continue;
-				$i = $j = 0;
+				$i = 0;
+				$j = -1;
 				$name = $attrmap["$key"] . $i;
 		
 				while (isset($$name)){
 					$val = $$name;
 					$i++;
+					$j++;
 					$name = $attrmap["$key"] . $i;
 //
 //	if value is the same as the default and the corresponding attribute in ldap does not exist or
@@ -32,20 +34,19 @@
 //
 					if (($val == $default_vals["$key"] || $val == '') && 
 						isset($item_vals["$key"][$j]))
-						$del[$attrmap["$key"]] = $item_vals["$key"][$j];
+						$del[$attrmap["$key"]][] = $item_vals["$key"][$j];
 //
 //	else modify the ldap attribute
 //
 					else{
 						if (isset($item_vals["$key"][$j])){
-							$mod[$attrmap["$key"]] = $item_vals["$key"][$j];
-							$add_r[$attrmap["$key"]] = $val;
+							$mod[$attrmap["$key"]][] = $item_vals["$key"][$j];
+							$add_r[$attrmap["$key"]][] = $val;
 						}
 						else{
-							$add_r[$attrmap["$key"]] = $val;
+							$add_r[$attrmap["$key"]][] = $val;
 						}
 					}
-					$j++;
 				}
 			}
 			if (isset($mod)){

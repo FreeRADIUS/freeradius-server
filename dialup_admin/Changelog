@@ -1,3 +1,10 @@
+Ver 1.29:
+* Add general_ld_library_path directive and set LD_LIBRARY_PATH accordingly (used in snmpfinger and
+  radaclient).
+* Add general_finger_type directive to determine if we will use snmpfinger in user_finger.php3
+* Fix a bug in config.php3 when we have a directive containing ':'
+* Fix a bug in lib/ldap/change_attrs.php3 that did not allow changing more than one value of a 
+  multivalued attribute simultaneously.
 Ver 1.28:
 * Make user_delete.php3 print something when a user is deleted
 * Cache nas hostname lookups in user_accounting
