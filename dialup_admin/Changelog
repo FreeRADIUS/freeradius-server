@@ -8,6 +8,7 @@ Ver 1.78:
   user_finger.php3
 * Add a header with the page encoding before sending any page (header added in config.php3)
   This closes Bug #153
+* Fix a problem when reading username.mappings
 Ver 1.75:
 * A LOT of security related fixes. Now dialupadmin should hopefully be secure enough to
   be accessed by normal users (not administrators).

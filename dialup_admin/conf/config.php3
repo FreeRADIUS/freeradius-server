@@ -89,7 +89,7 @@ if (!isset($mappings) && $config[general_username_mappings_file] != ''){
 		$val=chop($val);
 		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
 			continue;
-		list($key,$realm,$v)=split(":[[:space:]]*",$val,2);
+		list($key,$realm,$v)=split(":[[:space:]]*",$val,3);
 		if ($realm == 'accounting' || $realm == 'userdb' || $realm == 'nasdb' || $realm == 'nasadmin')
 			$mappings["$key"][$realm] = $v;
 		if ($realm == 'nasdb'){
