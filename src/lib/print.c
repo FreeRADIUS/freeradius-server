@@ -183,6 +183,39 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 	return strlen(out);
 }
 
+/*
+ *  This is a hack, and has to be kept in sync with tokens.h
+ */
+static const char *vp_tokens[] = {
+  "?",				/* T_INVALID */
+  "EOL",			/* T_EOL */
+  "{",
+  "}",
+  "(",
+  ")",
+  ",",
+  ";",
+  "+=",
+  "-=",
+  ":=",
+  "=",
+  "!=",
+  ">=",
+  ">",
+  "<=",
+  "<",
+  "=~",
+  "!~",
+  "=*",
+  "~*",
+  "==",
+  "#",
+  "<BARE-WORD>",
+  "<\"STRING\">",
+  "<'STRING'>",
+  "<`STRING`>"
+};
+
 
 /*
  *	Print one attribute and value into a string.
@@ -190,6 +223,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 {
 	int		len;
+	const char	*token = NULL;
 
 	out[0] = 0;
 	if (!vp) return 0;
@@ -198,16 +232,24 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 		return 0;
 	}
 
+	if ((vp->operator > T_INVALID) &&
+	    (vp->operator < T_TOKEN_LAST)) {
+		token = vp_tokens[vp->operator];
+	} else {
+		token = "<INVALID-TOKEN>";
+	}
+
 	if( vp->flags.has_tag ) {
 
-		snprintf(out, outlen, "%s:%d = ", vp->name, vp->flags.tag);
+		snprintf(out, outlen, "%s:%d %s ", vp->name, vp->flags.tag,
+			 token);
 		
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
 	} else {
 
-	        snprintf(out, outlen, "%s = ", vp->name);
+	        snprintf(out, outlen, "%s %s ", vp->name, token);
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 

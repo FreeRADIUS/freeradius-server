@@ -1183,6 +1183,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		}
 		pair->attribute = attribute;
 		pair->length = attrlen;
+		pair->operator = T_OP_EQ;
 		pair->next = NULL;
 		
 		switch (pair->type) {

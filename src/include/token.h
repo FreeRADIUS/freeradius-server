@@ -52,6 +52,7 @@ typedef enum lrad_token_t {
   T_DOUBLE_QUOTED_STRING,	/* "foo" */
   T_SINGLE_QUOTED_STRING,	/* 'foo' */
   T_BACK_QUOTED_STRING,		/* `foo` */
+  T_TOKEN_LAST
 } LRAD_TOKEN;
 
 #define T_EQSTART	T_OP_ADD
