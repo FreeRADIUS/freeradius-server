@@ -255,6 +255,11 @@ VALUE		Service-Type		Authenticate-Only	8
 VALUE		Service-Type		Callback-NAS-Prompt	9
 VALUE		Service-Type		Call-Check		10
 VALUE		Service-Type		Callback-Administrative	11
+VALUE		Service-Type		Voice			12
+VALUE		Service-Type		Fax			13
+VALUE		Service-Type		Modem-Relay		14
+VALUE		Service-Type		IAPP-Register		15
+VALUE		Service-Type		IAPP-AP-Check		16
 
 #	Framed Protocols
 
@@ -264,6 +269,7 @@ VALUE		Framed-Protocol		ARAP			3
 VALUE		Framed-Protocol		Gandalf-SLML		4
 VALUE		Framed-Protocol		Xylogics-IPX-SLIP	5
 VALUE		Framed-Protocol		X.75-Synchronous	6
+VALUE		Framed-Protocol		GPRS-PDP-Context	7
 
 #	Framed Routing Values
 
@@ -311,11 +317,14 @@ VALUE		Acct-Status-Type	Tunnel-Reject		11
 VALUE		Acct-Status-Type	Tunnel-Link-Start	12
 VALUE		Acct-Status-Type	Tunnel-Link-Stop	13
 VALUE		Acct-Status-Type	Tunnel-Link-Reject	14
+VALUE		Acct-Status-Type	Failed			15
 
 #	Authentication Types
 
 VALUE		Acct-Authentic		RADIUS			1
 VALUE		Acct-Authentic		Local			2
+VALUE		Acct-Authentic		Remote			3
+VALUE		Acct-Authentic		Diameter		4
 
 #	Termination Options
 
@@ -344,6 +353,12 @@ VALUE		NAS-Port-Type		xDSL			16
 VALUE		NAS-Port-Type		Cable			17
 VALUE		NAS-Port-Type		Wireless-Other		18
 VALUE		NAS-Port-Type		Wireless-802.11		19
+VALUE		NAS-Port-Type		Token-Ring		20
+VALUE		NAS-Port-Type		FDDI			21
+VALUE		NAS-Port-Type		Wireless-CDMA2000	22
+VALUE		NAS-Port-Type		Wireless-UMTS		23
+VALUE		NAS-Port-Type		Wireless-1X-EV		24
+VALUE		NAS-Port-Type		IAPP			25
 
 #	Acct Terminate Causes, available in 3.3.2 and later
 
@@ -365,6 +380,10 @@ VALUE           Acct-Terminate-Cause    Service-Unavailable     15
 VALUE           Acct-Terminate-Cause    Callback                16
 VALUE           Acct-Terminate-Cause    User-Error              17
 VALUE           Acct-Terminate-Cause    Host-Request            18
+VALUE		Acct-Terminate-Cause	Supplicant-Restart	19
+VALUE		Acct-Terminate-Cause	Reauthentication-Failure 20
+VALUE		Acct-Terminate-Cause	Port-Reinit		21
+VALUE		Acct-Terminate-Cause	Port-Disabled		22
 
 #VALUE		Tunnel-Type		L2TP			3
 #VALUE		Tunnel-Medium-Type	IP			1

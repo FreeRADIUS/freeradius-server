@@ -38,6 +38,8 @@ VALUE		Tunnel-Type	MIN-IP	8
 VALUE		Tunnel-Type	ESP	9
 VALUE		Tunnel-Type	GRE	10
 VALUE		Tunnel-Type	DVS	11
+VALUE		Tunnel-Type	IP-in-IP 12
+VALUE		Tunnel-Type	VLAN	13
 #
 
 #	Tunnel Medium Type
