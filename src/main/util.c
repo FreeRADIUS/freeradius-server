@@ -410,3 +410,134 @@ REQUEST *request_alloc_fake(REQUEST *oldreq)
 
   return request;
 }
+
+
+/*
+ *  Perform any RFC specified cleaning of outgoing replies
+ */
+void rfc_clean(RADIUS_PACKET *packet)
+{
+	VALUE_PAIR *vps = NULL;
+
+	switch (packet->code) {
+		/*
+		 *	In the default case, we just move all of the
+		 *	attributes over.
+		 */
+	default:
+		vps = packet->vps;
+		packet->vps = NULL;
+		break;
+		
+		/*
+		 *	Accounting responses can only contain
+		 *	Proxy-State and VSA's.  Note that we do NOT
+		 *	move the Proxy-State attributes over, as the
+		 *	Proxy-State attributes in this packet are NOT
+		 *	the right ones to use.  The reply function
+		 *	takes care of copying those attributes from
+		 *	the original request, which ARE the right ones
+		 *	to use.
+		 */
+	case PW_ACCOUNTING_RESPONSE:
+		pairmove2(&vps, &(packet->vps), PW_VENDOR_SPECIFIC);
+		break;
+
+		/*
+		 *	Authentication REJECT's can have only
+		 *	EAP-Message, Message-Authenticator
+		 *	Reply-Message and Proxy-State.
+		 *
+		 *	We delete everything other than these.
+		 *	Proxy-State is added below, just before the
+		 *	reply is sent.
+		 */
+	case PW_AUTHENTICATION_REJECT:
+		pairmove2(&vps, &(packet->vps), PW_EAP_MESSAGE);
+		pairmove2(&vps, &(packet->vps), PW_MESSAGE_AUTHENTICATOR);
+		pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
+		pairmove2(&vps, &(packet->vps), PW_VENDOR_SPECIFIC);
+		break;
+	}
+
+	/*
+	 *	Move the newly cleaned attributes over.
+	 */
+	pairfree(&packet->vps);
+	packet->vps = vps;
+
+	/*
+	 *	FIXME: Perform other, more generic sanity checks.
+	 */
+}
+
+
+/*
+ *  Reject a request, by sending a trivial reply packet.
+ */
+ void request_reject(REQUEST *request)
+{
+	VALUE_PAIR *vps;
+
+	/*
+	 *	Already rejected.  Don't do anything.
+	 */
+	if (request->options & RAD_REQUEST_OPTION_REJECTED) {
+		return;
+	}
+	
+	DEBUG2("Server rejecting request %d.", request->number);
+	switch (request->packet->code) {
+		/*
+		 *  Accounting requests, etc. get dropped on the floor.
+		 */
+		default:
+		case PW_ACCOUNTING_REQUEST:
+		case PW_STATUS_SERVER:
+			break;
+
+		/*
+		 *  Authentication requests get their Proxy-State
+		 *  attributes copied over, and an otherwise blank
+		 *  reject message sent.
+		 */
+		case PW_AUTHENTICATION_REQUEST:
+			request->reply->code = PW_AUTHENTICATION_REJECT; 
+
+			/*
+			 *  Perform RFC limitations on outgoing replies.
+			 */
+			rfc_clean(request->reply);
+
+			/*
+			 *  Need to copy Proxy-State from request->packet->vps
+			 */
+			vps = paircopy2(request->packet->vps, PW_PROXY_STATE);
+			if (vps != NULL)
+				pairadd(&(request->reply->vps), vps);
+			break;
+	}
+	
+	/*
+	 *  If a reply exists, send it.
+	 */
+	if (request->reply->code != 0) {
+		/*
+		 *	If we're not delaying authentication rejects,
+		 *	then send the response immediately.  Otherwise,
+		 *	mark the request as delayed, and do NOT send a
+		 *	response.
+		 */
+		if (mainconfig.reject_delay == 0) {
+			rad_send(request->reply, request->packet,
+				 request->secret);
+		} else {
+			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
+		}
+	}
+
+	/*
+	 *	Remember that it was rejected.
+	 */
+	request->options |= RAD_REQUEST_OPTION_REJECTED;
+}

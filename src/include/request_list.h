@@ -22,5 +22,6 @@ extern int rl_num_requests(void);
 typedef int (*RL_WALK_FUNC)(REQUEST *, void *);
 
 extern int rl_walk(RL_WALK_FUNC walker, void *data);
+extern struct timeval *rl_clean_list(time_t now);
 
 #endif /* _REQUEST_LIST_H */

@@ -279,6 +279,8 @@ int		request_data_add(REQUEST *request,
 				 void *opaque, void (*free_opaque)(void *));
 void		*request_data_get(REQUEST *request,
 				  void *unique_ptr, int unique_int);
+void		request_reject(REQUEST *request);
+void		rfc_clean(RADIUS_PACKET *packet);
 
 /* client.c */
 int		read_clients_file(const char *file);
