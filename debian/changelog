@@ -1,6 +1,11 @@
-freeradius (0.9.3-cvs20040421-0) unstable; urgency=low
+freeradius (1.0.0+cvs20040609-0) unstable; urgency=low
 
   * Current CVS version
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  9 Jun 2004 00:16:06 +1000
+
+freeradius (0.9.3-cvs20040421-0) unstable; urgency=low
+
   * Added H323 billing stuff to the examples
   * Created Dialup-Admin package for the PHP-based web
     FreeRADIUS database (SQL/LDAP) frontend.
