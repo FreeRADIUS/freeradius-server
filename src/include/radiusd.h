@@ -135,7 +135,7 @@ typedef struct main_config_t {
 	int		log_auth_badpass;
 	int		log_auth_goodpass;
 	int		do_usercollide;
-#if WITH_SNMP
+#ifdef WITH_SNMP
 	int		do_snmp;
 #endif
 	int		allow_core_dumps;
