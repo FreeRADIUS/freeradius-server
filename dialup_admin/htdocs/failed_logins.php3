@@ -97,16 +97,23 @@ if ($link){
 			else
 				$acct_login = "<a href=\"user_admin.php3?login=$acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
 			$acct_time = $row[AcctStopTime];
-			$acct_server = $da_name_cache[$row[NASIPAddress]];
-			if (!isset($acct_server)){
-				$acct_server = gethostbyaddr($row[NASIPAddress]);
-				if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
-					$da_name_cache[$row[NASIPAddress]] = $acct_server;
-					session_register('da_name_cache');
+			$acct_server = $row[NASIPAddress];
+			if ($acct_server != ''){
+				$acct_server = $da_name_cache[$acct_server];
+				if (!isset($acct_server)){
+					$acct_server = $row[NASIPAddress];
+					$acct_server = gethostbyaddr($acct_server);
+					if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
+						$da_name_cache[$row[NASIPAddress]] = $acct_server;
+						session_register('da_name_cache');
+					}
+					else
+						$da_name_cache[$row[NASIPAddress]] = $acct_server;
+					}
 				}
-				else
-					$da_name_cache[$row[NASIPAddress]] = $acct_server;
 			}
+			else
+				$acct_server = '-';
 			$acct_server = "$acct_server:$row[NASPortId]";
 			$acct_terminate_cause = "$row[AcctTerminateCause]";
 			if ($acct_terminate_cause == '')

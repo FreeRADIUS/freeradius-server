@@ -20,6 +20,7 @@ Ver 1.60:
   function for each online user so we now don't need to do a lot of calls to time() but only one. That should make
   user_finger somewhat faster.
 * Fix a small issue with the general_accounting_info_order
+* Fix a problem in failed_logins when NASIPAddress is not set.
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
