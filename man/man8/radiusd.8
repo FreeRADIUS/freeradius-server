@@ -1,4 +1,4 @@
-.TH RADIUSD 8 "21 March 1999" "" "FreeRADIUS Daemon"
+.TH RADIUSD 8 "15 January 2001" "" "FreeRADIUS Daemon"
 .SH NAME
 radiusd - Authentication, Authorization and Accounting server
 .SH SYNOPSIS
@@ -28,9 +28,9 @@ radiusd - Authentication, Authorization and Accounting server
 .SH DESCRIPTION
 This is the FreeRADIUS implementation of the well known
 .B radius
-server program. It is based on \fILivingston's\fP radius version 1.16.
-Even though this program is largely compatible with \fILivingston's\fP
-radius version 2.0, it's \fBnot\fP based on any part of that code.
+server program.  Even though this program is largely compatible with
+\fILivingston's\fP radius version 2.0, it's \fBnot\fP based on any
+part of that code.
 .PP
 \fBRADIUS\fP is a protocol spoken between an access server, typically
 a device connected to several modems or ISDN lines, and a \fBradius\fP
@@ -55,11 +55,17 @@ records. This can be useful for debugging, but not for normal operation.
 Write the stripped usernames (without prefix or suffix) in the \fBdetail\fP
 file instead of the raw record as received from the terminal server.
 
+This command line option is deprecated.  See the \fIlog_stripped_names\fP
+configuration item in the \fIradiusd.conf\fP file.
+
 .IP "\-a \fIaccounting directory\fP"
 This defaults to \fI/var/log/radacct\fP. If that directory exists,
 \fBradiusd\fP will write an ascii accounting record into a detail file for
 every login/logout recorded. The location of the detail file is
 \fIacct_dir/\fP\fBterminal_server\fP\fI/detail\fP.
+
+This command line option is deprecated.  See the \fIradacctdir\fP
+configuration item in the \fIradiusd.conf\fP file.
 
 .IP "\-l \fIlogging directory\fP"
 This defaults to \fI/var/log\fP. \fBRadiusd\fP writes a logfile here
@@ -69,6 +75,9 @@ helpdesk). The special arguments \fIstdout\fP and \fIstderr\fP cause
 the information to get written to the standard output, or standard
 error instead. The special argument \fIsyslog\fP sends the information
 with \fBsyslog\fP(3).
+
+This command line option is deprecated.  See the \fIlog_dir\fP
+configuration item in the \fIradiusd.conf\fP file.
 
 .IP "\-g \fIfacility\fP"
 Specifies the syslog facility to be used with \fB-l syslog\fP. Default is
@@ -82,10 +91,15 @@ files such as the \fIdictionary\fP and the \fIusers\fP files.
 Defines which IP addres to bind to for sending and receiving packets-
 useful for multi-homed hosts.
 
+This command line option is deprecated.  See the \fIbind_address\fP
+configuration item in the \fIradiusd.conf\fP file.
+
 .IP \-b
 If the \fBradius\fP server binary was compiled with \fIdbm\fP support,
 this flag tells it to actually \fIuse\fP the database files instead of the
 flat \fIusers\fP file.
+
+This command line option is deprecated, and does not do anything.
 
 .IP \-c
 This is still an \fIexperimental\fP feature.
@@ -97,6 +111,10 @@ After every change in the real password file (user added, password changed)
 you need to send a \fBSIGHUP\fP to the radius server to let it re-read
 its configuration and the password/group/shadow files !
 
+This command line option is deprecated.  See the \fIcache\fP
+configuration item for the \fIunix\fP module in the \fIradiusd.conf\fP
+file.
+
 .IP \-f
 Do not fork, stay running as a foreground process.
 
@@ -105,6 +123,9 @@ Normally radiusd listens on the ports specified in \fI/etc/services\fP
 (radius and radacct). With this option radiusd listens on the specified
 port for authentication requests and on the specified port +1 for
 accounting requests.
+
+This command line option is deprecated.  See the \fIport\fP
+configuration item in the \fIradiusd.conf\fP file.
 
 .IP \-s
 Normally, the server forks a seperate process for accounting, and a seperate
@@ -121,19 +142,30 @@ debugging output.
 Write details about every authentication request in the
 \fIradius.log\fP file.
 
+This command line option is deprecated.  See the \fIlog_auth\fP
+configuration item in the \fIradiusd.conf\fP file.
+
 .IP \-z
 Include the password in the \fIradius.log\fP file \fBeven\fP for successful
 logins. \fIThis is very insecure!\fP.
 
+This command line option is deprecated.  See the
+\fIlog_auth_badpass\fP and the \fIlog_auth_goodpass\fP configuration
+items in the \fIradiusd.conf\fP file.
+
 .SH CONFIGURATION
-\fBRadiusd\fP uses 6 configuration files. Each file has it's own manpage
-describing the format of the file. These files are:
+\fBRadiusd\fP uses a number of configuration files. Each file has it's
+own manpage describing the format of the file. These files are:
+.IP radiusd.conf
+The main configuration file, which sets the administrator-controlled
+items.
 .IP dictionary
 This file is usually static. It defines all the possible RADIUS attributes
-used in the other configuration files. You don't have to modify it.
+used in the other configuration files.  You don't have to modify it.
+It includes other dictionary files in the same directory.
 .IP clients
-Contains the IP address and a secret key for every client that wants
-to connect to the server.
+[ Deprecated ] Contains the IP address and a secret key for every
+client that wants to connect to the server.
 .IP naslist
 Contains an entry for every NAS (Network Access Server) in the network. This
 is not the same as a client, especially if you have \fBradius\fP proxy server
@@ -165,4 +197,4 @@ users, and their passwords, in this file.
 radiusd.conf(5), users(5), huntgroups(5), hints(5),
 clients(5), dictionary(5).
 .SH AUTHOR
-Miquel van Smoorenburg, miquels@cistron.nl.
+Miquel van Smoorenburg, miquels@cistron.nl, and others.
