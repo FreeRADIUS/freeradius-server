@@ -72,6 +72,7 @@ int debug_flag = 0;
 const char *progname = "radwho";
 const char *radlog_dir = NULL;
 radlog_dest_t radlog_dest = RADLOG_FILES;
+const char *radutmp_file = NULL;
 
 int proxy_synchronous = TRUE;
 const char *radius_dir = NULL;
@@ -344,7 +345,7 @@ int main(int argc, char **argv)
 	char inbuf[128];
 	char myname[128];
 	char othername[256];
-	char session_id[16];
+	char session_id[sizeof(rt.session_id)+1];
 	int fingerd = 0;
 	int showlocal = 0;
 	int hideshell = 0;
@@ -355,6 +356,7 @@ int main(int argc, char **argv)
 	int c, portno;
 
 	radius_dir = strdup(RADIUS_DIR);
+	radutmp_file = strdup(UTMP_FILE);
 
 	while((c = getopt(argc, argv, "flhnsipcr")) != EOF) switch(c) {
 		case 'f':
@@ -435,7 +437,7 @@ int main(int argc, char **argv)
 		if (*p) sys_finger(p);
 	}
 
-	if (showlocal && (fp = fopen(UTMP_FILE, "r"))) {
+	if (showlocal && (fp = fopen(radutmp_file, "r"))) {
 		if (rawoutput == 0)
 		{	
 			fputs(showname ? hdr1 : hdr2, stdout);
@@ -504,7 +506,8 @@ int main(int argc, char **argv)
 			if (hideshell && !strchr("PCS", rt.proto))
 				continue;
 
-			snprintf(session_id, sizeof(session_id), "%.8s", rt.session_id);
+			memcpy(session_id, rt.session_id, sizeof(rt.session_id));
+			session_id[sizeof(rt.session_id)] = 0;
 
 			if (!rawoutput && rt.nas_port > (showname ? 999 : 99999)) {
 				portind = ">";
@@ -530,7 +533,8 @@ int main(int argc, char **argv)
 						proto(rt.proto, rt.porttype),
 						dotime(rt.time),
 						nas_name(rt.nas_address),
-						hostname(othername, sizeof(othername), rt.framed_address), eol);
+						hostname(othername, sizeof(othername), rt.framed_address), 	
+						eol);
 		}
 	}
 	fflush(stdout);
