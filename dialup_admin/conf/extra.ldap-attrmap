@@ -5,4 +5,8 @@ checkItem       Dialup-Lock-Msg		radiuslockmsg
 checkItem	User-Password		userpassword
 checkItem	Regular-Profile		radiusProfileDn
 checkItem	Check-Item		radiusCheckItem		generic
+checkItem	Max-Daily-Session	radiusMaxDailySession
+checkItem	Max-Weekly-Session	radiusMaxWeeklySession
+checkItem	Max-Monthly-Session	radiusMaxMonthlySession
+
 replyItem	Reply-Item		radiusReplyItem		generic

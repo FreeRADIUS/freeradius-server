@@ -14,6 +14,8 @@ Ver 1.78:
 * Add an sqlrelay functions file. The user_admin page does not currently work. Looking into it.
 * Add sqlrelay support in the scripts. Add a sqlrelay_query script to run sqlrelay commands
 * Update password_check to work with all password attributes and use the configuration directives
+* Add more documentation for per user counter limit attributes (daily/weekly/monthly limits)
+* Make all counter limits default to none so that people don't get confused
 Ver 1.75:
 * A LOT of security related fixes. Now dialupadmin should hopefully be secure enough to
   be accessed by normal users (not administrators).

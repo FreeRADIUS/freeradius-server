@@ -16,6 +16,7 @@ checkItem	Calling-Station-Id		Calling-Station-Id
 checkItem	Dialup-Access			none
 checkItem	Max-Daily-Session		Max-Daily-Session
 checkItem	Max-Weekly-Session		Max-Weekly-Session
+checkItem	Max-Monthly-Session		Max-Monthly-Session
 checkItem	Login-Time			Login-Time
 checkItem	Expiration			Expiration
 
