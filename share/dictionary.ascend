@@ -226,8 +226,8 @@ ATTRIBUTE	X-Ascend-PPP-VJ-Slot-Comp		210	integer
 ATTRIBUTE	X-Ascend-PPP-VJ-1172			211	integer
 ATTRIBUTE	X-Ascend-PPP-Async-Map			212	integer
 ATTRIBUTE	X-Ascend-Third-Prompt			213	string
-ATTRIBUTE	X-Ascend-Send-Secret			214	string
-ATTRIBUTE	X-Ascend-Receive-Secret			215	string
+ATTRIBUTE	X-Ascend-Send-Secret			214	string encrypt=3
+ATTRIBUTE	X-Ascend-Receive-Secret			215	string encrypt=3
 ATTRIBUTE	X-Ascend-IPX-Peer-Mode			216	integer
 ATTRIBUTE	X-Ascend-IP-Pool-Definition		217	string
 ATTRIBUTE	X-Ascend-Assign-IP-Pool			218	integer
@@ -479,8 +479,8 @@ ATTRIBUTE	Ascend-PPP-VJ-Slot-Comp		210	integer		Ascend
 ATTRIBUTE	Ascend-PPP-VJ-1172		211	integer		Ascend
 ATTRIBUTE	Ascend-PPP-Async-Map		212	integer		Ascend
 ATTRIBUTE	Ascend-Third-Prompt		213	string		Ascend
-ATTRIBUTE	Ascend-Send-Secret		214	string		Ascend
-ATTRIBUTE	Ascend-Receive-Secret		215	string		Ascend
+ATTRIBUTE	Ascend-Send-Secret		214	string		Ascend encrypt=3
+ATTRIBUTE	Ascend-Receive-Secret		215	string		Ascend encrypt=3
 ATTRIBUTE	Ascend-IPX-Peer-Mode		216	integer		Ascend
 ATTRIBUTE	Ascend-IP-Pool-Definition	217	string		Ascend
 ATTRIBUTE	Ascend-Assign-IP-Pool		218	integer		Ascend

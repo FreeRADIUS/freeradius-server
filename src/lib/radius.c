@@ -391,18 +391,6 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			  case PW_TYPE_STRING:
 			  case PW_TYPE_OCTETS:
 				  /*
-				   *  FIXME: HACK for non-updated dictionaries.
-				   *  REMOVE in a future release.
-				   */
-				  if ((strcmp(reply->name, "Ascend-Send-Secret") == 0) ||
-				      (strcmp(reply->name, "Ascend-Receive-Secret") == 0)) {
-					  reply->flags.encrypt = FLAG_ENCRYPT_ASCEND_SECRET;
-				  }
-				  if (reply->attribute == PW_USER_PASSWORD) {
-					  reply->flags.encrypt = FLAG_ENCRYPT_USER_PASSWORD;
-				  }
-
-				  /*
 				   *  Encrypt the various password styles
 				   */
 				  switch (reply->flags.encrypt) {
@@ -1385,18 +1373,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
 			        pair->flags.tag = 0;
-			}
-
-			/*
-			 *  FIXME: HACK for non-updated dictionaries.
-			 *  REMOVE in a future release.
-			 */
-			if ((strcmp(pair->name, "Ascend-Send-Secret") == 0) ||
-			    (strcmp(pair->name, "Ascend-Receive-Secret") == 0)) {
-				pair->flags.encrypt = FLAG_ENCRYPT_ASCEND_SECRET;
-			}
-			if (pair->attribute == PW_USER_PASSWORD) {
-				pair->flags.encrypt = FLAG_ENCRYPT_USER_PASSWORD;
 			}
 
 			/*
