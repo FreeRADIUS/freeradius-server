@@ -181,6 +181,9 @@ max_requests = 1024
 #  It can either contain "*", or an IP address, or a fully qualified
 #  Internet domain name.  The default is "*"
 #
+#  As of 1.0, you can also use the "listen" directive.  See below for
+#  more information.
+#
 bind_address = *
 
 #  port: Allows you to bind FreeRADIUS to a specific port.
@@ -198,7 +201,51 @@ bind_address = *
 #
 #  A port given on the command-line via '-p' over-rides this one.
 #
+#  As of 1.0, you can also use the "listen" directive.  See below for
+#  more information.
+#
 port = 0
+
+#
+#  By default, the server uses "bind_address" to listen to all IP's
+#  on a machine, or just one IP.  The "port" configuration is used
+#  to select the authentication port used when listening on those
+#  addresses.
+#
+#  If you want the server to listen on additional addresses, you can
+#  use the "listen" section.  A sample section (commented out) is included
+#  below.  This "listen" section duplicates the functionality of the
+#  "bind_address" and "port" configuration entries, but it only listens
+#  for authentication packets.
+#
+#  If you comment out the "bind_address" and "port" configuration entries,
+#  then it becomes possible to make the server accept only accounting,
+#  or authentication packets.  Previously, it always listened for both
+#  types of packets, and it was impossible to make it listen for only
+#  one type of packet.
+#
+#listen {
+	#  IP address on which to listen.
+	#  Allowed values are:
+	#	dotted quad (1.2.3.4)
+	#       hostname    (radius.example.com)
+	#       wildcard    (*)
+#	ipaddr = *
+
+	#  Port on which to listen.
+	#  Allowed values are:
+	#	integer port number (1812)
+	#	0 means "use /etc/services for the proper port"
+#	port = 0
+
+	#  Type of packets to listen for.
+	#  Allowed values are:
+	#	auth	listen for authentication packets
+	#	acct	listen for accounting packets
+	#
+#	type = auth
+#}
+
 
 #  hostname_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
