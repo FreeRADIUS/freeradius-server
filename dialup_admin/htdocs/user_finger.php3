@@ -86,7 +86,8 @@ if ($link){
 		"SELECT DISTINCT username,acctstarttime,framedipaddress,callingstationid
 		FROM $config[sql_accounting_table] WHERE
 		acctstoptime IS NULL AND nasipaddress = '$name_data' $extra $sql_extra_query
-		GROUP BY username ORDER BY acctstarttime;");
+		GROUP BY username,acctstarttime,framedipaddress,callingstationid
+		ORDER BY acctstarttime;");
 		if ($search){
 			$now = time();
 			while($row = @da_sql_fetch_array($search,$config)){

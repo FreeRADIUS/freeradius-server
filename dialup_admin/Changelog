@@ -13,6 +13,8 @@ Ver 1.72:
 * Escape special characters in the sql password. This closes bug #96
 * Do an xlat for general_accounting_attrs_file and general_user_edit_attrs_file. That way we can
   have different mappings for each administrator.
+* Use require_once instead of require when including xlat.php3
+* Add debug statements in sql connect functions
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for

@@ -10,6 +10,8 @@ function da_sql_host_connect($server,$config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Connect: User=$SQL_user,Password=$SQL_passwd </b><br>\n";
 	return @pg_connect("host=$server port=$config[sql_port]
 			dbname=$config[sql_database] user=$SQL_user
 			password=$SQL_passwd");
@@ -26,6 +28,8 @@ function da_sql_connect($config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Connect: User=$SQL_user,Password=$SQL_passwd </b><br>\n";
 	return @pg_connect("host=$config[sql_server] port=$config[sql_port]
 			dbname=$config[sql_database] user=$SQL_user
 			password=$SQL_passwd");
@@ -42,6 +46,8 @@ function da_sql_pconnect($config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
+	if ($config[sql_debug] == 'true')
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Connect: User=$SQL_user,Password=$SQL_passwd </b><br>\n";
 	return @pg_pconnect("host=$config[sql_server] port=$config[sql_port]
 			dbname=$config[sql_database] user=$SQL_user
 			password=$SQL_passwd");

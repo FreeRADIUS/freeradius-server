@@ -5,7 +5,7 @@ else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
 }
-require('../lib/xlat.php3');
+require_once('../lib/xlat.php3');
 
 function connect2db($config)
 {
