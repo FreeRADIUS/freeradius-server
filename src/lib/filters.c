@@ -269,8 +269,8 @@ static const KeywordStruct filterType[] = {
 };
 
 typedef enum {
-    FILTER_IP_TYPE,
     FILTER_GENERIC_TYPE,
+    FILTER_IP_TYPE,
     FILTER_IN,
     FILTER_OUT,
     FILTER_FORWARD,
