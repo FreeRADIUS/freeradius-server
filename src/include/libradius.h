@@ -53,6 +53,12 @@
 #endif
 #endif
 
+/*
+ *  Include for modules.
+ */
+#include <sha1.h>
+#include <md4.h>
+
 #define EAP_START               2
 
 #define AUTH_VECTOR_LEN		16
