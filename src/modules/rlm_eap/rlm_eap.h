@@ -57,6 +57,7 @@ typedef struct rlm_eap_t {
 	int		timer_limit;
 	int		default_eap_type;
 	int		ignore_unknown_eap_types;
+	int		cisco_accounting_username_bug;
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
