@@ -733,7 +733,7 @@ fi
 
 
 
-# From configure.in Revision: 1.191 
+# From configure.in Revision: 1.192 
 RADIUSD_MAJOR_VERSION=1
 RADIUSD_MINOR_VERSION=0.0-pre0
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -7013,22 +7013,23 @@ if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
   for ac_hdr in \
 	  openssl/err.h \
 	  openssl/crypto.h \
+	  openssl/rand.h \
 	  openssl/engine.h
   
 do
 ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-echo "configure:7022: checking for $ac_hdr" >&5
+echo "configure:7023: checking for $ac_hdr" >&5
 if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 7027 "configure"
+#line 7028 "configure"
 #include "confdefs.h"
 #include <$ac_hdr>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:7032: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:7033: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*
@@ -7056,11 +7057,11 @@ done
 
 
   echo $ac_n "checking for OpenSSL version >= 0.9.7""... $ac_c" 1>&6
-echo "configure:7060: checking for OpenSSL version >= 0.9.7" >&5
+echo "configure:7061: checking for OpenSSL version >= 0.9.7" >&5
        old_CPPFLAGS=$CPPFLAGS
        CPPFLAGS="-I$OPENSSL_INCLUDE"
        cat > conftest.$ac_ext <<EOF
-#line 7064 "configure"
+#line 7065 "configure"
 #include "confdefs.h"
 #include <openssl/crypto.h>
        #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
@@ -7089,7 +7090,7 @@ rm -f conftest*
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
-echo "configure:7093: checking for DH_new in -lcrypto" >&5
+echo "configure:7094: checking for DH_new in -lcrypto" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -7097,14 +7098,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lcrypto"
   cat > conftest.$ac_ext <<EOF
-#line 7101 "configure"
+#line 7102 "configure"
 #include "confdefs.h"
 extern char DH_new();
 int main() {
  DH_new()
 ; return 0; }
 EOF
-if { (eval echo configure:7108: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:7109: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lcrypto"
 else
@@ -7173,14 +7174,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lcrypto"
 
       cat > conftest.$ac_ext <<EOF
-#line 7177 "configure"
+#line 7178 "configure"
 #include "confdefs.h"
 extern char DH_new();
 int main() {
  DH_new()
 ; return 0; }
 EOF
-if { (eval echo configure:7184: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:7185: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lcrypto"
 else
@@ -7210,7 +7211,7 @@ fi
 sm_lib_safe=`echo "ssl" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "SSL_new" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for SSL_new in -lssl""... $ac_c" 1>&6
-echo "configure:7214: checking for SSL_new in -lssl" >&5
+echo "configure:7215: checking for SSL_new in -lssl" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -7218,14 +7219,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lssl"
   cat > conftest.$ac_ext <<EOF
-#line 7222 "configure"
+#line 7223 "configure"
 #include "confdefs.h"
 extern char SSL_new();
 int main() {
  SSL_new()
 ; return 0; }
 EOF
-if { (eval echo configure:7229: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:7230: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lssl"
 else
@@ -7294,14 +7295,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lssl"
 
       cat > conftest.$ac_ext <<EOF
-#line 7298 "configure"
+#line 7299 "configure"
 #include "confdefs.h"
 extern char SSL_new();
 int main() {
  SSL_new()
 ; return 0; }
 EOF
-if { (eval echo configure:7305: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:7306: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lssl"
 else
@@ -7325,12 +7326,11 @@ rm -f conftest*
     echo "$ac_t""no" 1>&6 
 fi
 
-	       if test "x$ac_cv_lib_ssl_SSL_new" = "xyes"; then
-		 export	OPENSSL_INCLUDE OPENSSL_LIBS
-	       else
+	       if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
 		 OPENSSL_INCLUDE=
 		 OPENSSL_LIBS=
 	       fi
+	       export OPENSSL_INCLUDE OPENSSL_LIBS
 	     fi
            fi
        CPPFLAGS=$old_CPPFLAGS
