@@ -1570,39 +1570,12 @@ authorize {
 	#  section, above.
 #	auth_log
 	
+#	attr_filter
+
 	#
 	#  The chap module will set 'Auth-Type := CHAP' if we are
 	#  handling a CHAP request and Auth-Type has not already been set
 	chap
-
-#	attr_filter
-
-	#
-	#  This module takes care of EAP-MD5, EAP-TLS, and EAP-LEAP
-	#  authentication.
-	eap
-
-	#
-	#  If you have a Cisco SIP server authenticating against
-	#  FreeRADIUS, uncomment the following line.
-	# digest
-
-	#
-	#  Look for IPASS style 'realm/', and if not found, look for
-	#  '@realm', and decide whether or not to proxy, based on
-	#  that.
-#	IPASS
-	suffix
-
-	#
-	#  Read the 'users' file
-	files
-
-	#
-	#  If you are using /etc/smbpasswd, and are also doing
-	#  mschap authentication, the un-comment this line, and
-	#  configure the 'etc_smbpasswd' module, above.
-#	etc_smbpasswd
 
 	#
 	#  If the users are logging in with an MS-CHAP-Challenge
@@ -1612,6 +1585,41 @@ authorize {
 	#  the mschap module for authentication.
 	mschap
 
+	#
+	#  If you have a Cisco SIP server authenticating against
+	#  FreeRADIUS, uncomment the following line, and the 'digest'
+	#  line in the 'authenticate' section.
+#	digest
+
+	#
+	#  Look for IPASS style 'realm/', and if not found, look for
+	#  '@realm', and decide whether or not to proxy, based on
+	#  that.
+#	IPASS
+
+	suffix
+
+	#
+	#  This module takes care of EAP-MD5, EAP-TLS, and EAP-LEAP
+	#  authentication.
+	eap
+
+	#
+	#  Read the 'users' file
+	files
+
+	#
+	#  Look in an SQL database.  The schema of the database
+	#  is meant to mirror the "users" file.
+	#
+	#  See "Authorization Queries" in sql.conf
+#	sql
+
+	#
+	#  If you are using /etc/smbpasswd, and are also doing
+	#  mschap authentication, the un-comment this line, and
+	#  configure the 'etc_smbpasswd' module, above.
+#	etc_smbpasswd
 
 # The ldap module will set Auth-Type to LDAP if it has not already been set
 #	ldap
@@ -1661,8 +1669,9 @@ authenticate {
 
 	#
 	#  If you have a Cisco SIP server authenticating against
-	#  FreeRADIUS, uncomment the following line.
-	# digest
+	#  FreeRADIUS, uncomment the following line, and the 'digest'
+	#  line in the 'authorize' section.
+#	digest
 
 	#
 	#  Pluggable Authentication Modules.
@@ -1737,6 +1746,12 @@ accounting {
 
 	#  Return an address to the IP Pool when we see a stop record.
 #	main_pool
+
+	#
+	#  Log traffic to an SQL database.
+	#
+	#  See "Accounting queries" in sql.conf
+#	sql
 }
 
 
@@ -1745,6 +1760,9 @@ accounting {
 #  The rlm_sql module is *much* faster
 session {
 	radutmp
+
+	#
+	#  See "Simultaneous Use Checking Querie" in sql.conf
 #	sql
 }
 
@@ -1761,6 +1779,12 @@ post-auth {
 	#  un-comment the following line, and the 'detail reply_log'
 	#  section, above.
 #	reply_log
+
+	#
+	#  After authenticating the user, do another SQL qeury.
+	#
+	#  See "Authentication Logging Queries" in sql.conf
+#	sql
 }
 
 #
