@@ -9,6 +9,7 @@
  *
  */
 
+#include "autoconf.h"
 #include <sys/types.h>
 
 #include "radius.h"
@@ -66,7 +67,7 @@ typedef struct value_pair {
 	UINT4			lvalue;
 	int			operator;
 	int			addport;
-	char			strvalue[MAX_STRING_LEN];
+	u_char			strvalue[MAX_STRING_LEN];
 	struct value_pair	*next;
 } VALUE_PAIR;
 
@@ -173,5 +174,11 @@ char *		ip_hostname (UINT4);
 UINT4		ip_getaddr (char *);
 char *		ip_ntoa(char *, UINT4);
 UINT4		ip_addr(char *);
+
+#ifdef ASCEND_BINARY
+/* filters.c */
+int		filterBinary(VALUE_PAIR *pair, char *valstr);
+void		print_abinary(VALUE_PAIR *vp, u_char *buffer, int len);
+#endif ASCEND_BINARY
 
 #endif LIBRADIUS_H

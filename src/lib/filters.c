@@ -47,6 +47,21 @@ static VALUE_PAIR	*prevRadPair = NULL;
 #define RAD_MAX_FILTER_LEN	6
 
 /*
+ * ASCEND extensions for ABINARY filters
+ */
+
+#define IPX_NODE_ADDR_LEN		6
+
+typedef UINT4			IpxNet;
+typedef char			IpxNode[ IPX_NODE_ADDR_LEN ];
+typedef unsigned short	IpxSocket;
+
+#if ! defined( FALSE )
+# define FALSE		0
+# define TRUE		(! FALSE)
+#endif
+
+/*
  * RadFilterComparison:
  *
  * An enumerated values for the IP filter port comparisons.
