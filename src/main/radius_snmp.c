@@ -31,8 +31,6 @@ static const char rcsid[] =
 #include "smux.h"
 #include "radiusd.h"
 
-extern int snmp_acctotalrequests;
-extern int snmp_authtotalrequests;
 extern RADCLIENT *clients;
 extern int need_reload;
 
@@ -274,14 +272,16 @@ radAccServ(struct variable *vp,
     switch (vp->magic) {
 
     case RADIUSACCSERVIDENT:
-        *var_len = strlen("0.1.0");
-        return (unsigned char *) "0.1.0";
+	    *var_len = rad_snmp.acct.ident;
+        return (unsigned char *) rad_snmp.acct.ident;
 
     case RADIUSACCSERVUPTIME:
-        return (unsigned char *) NULL;
+	rad_snmp.acct.uptime = (time(NULL) - rad_snmp.acct.start_time) * 100;
+        return (unsigned char *) &rad_snmp.acct.uptime;
 
     case RADIUSACCSERVRESETTIME:
-        return (unsigned char *) NULL;
+	rad_snmp.acct.reset_time = (time(NULL) - rad_snmp.acct.last_reset_time) * 100;
+        return (unsigned char *) &rad_snmp.acct.reset_time;
 
     case RADIUSACCSERVCONFIGRESET:
 	*write_method = radServReset;
@@ -289,31 +289,31 @@ radAccServ(struct variable *vp,
         return (unsigned char *) &result;
 
     case RADIUSACCSERVTOTALREQUESTS:
-        return (unsigned char *) &snmp_acctotalrequests;
+        return (unsigned char *) &rad_snmp.acct.total_requests;
 
     case RADIUSACCSERVTOTALINVALIDREQUESTS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.acct.total_invalid_requests;
 
     case RADIUSACCSERVTOTALDUPREQUESTS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.acct.total_dup_requests;
 
     case RADIUSACCSERVTOTALRESPONSES:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.acct.total_responses;
 
     case RADIUSACCSERVTOTALMALFORMEDREQUESTS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.acct.total_malformed_requests;
 
     case RADIUSACCSERVTOTALBADAUTHENTICATORS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.acct.total_bad_authenticators;
 
     case RADIUSACCSERVTOTALPACKETSDROPPED:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.acct.total_packets_dropped;
 
     case RADIUSACCSERVTOTALNORECORDS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.acct.total_no_records;
 
     case RADIUSACCSERVTOTALUNKNOWNTYPES:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.acct.total_unknown_types;
 
     }
 
@@ -400,14 +400,16 @@ radAuthServ(struct variable *vp,
     switch (vp->magic) {
 
     case RADIUSAUTHSERVIDENT:
-        *var_len = strlen("0.1.0");
-        return (unsigned char *) "0.1.0";
+	*var_len = rad_snmp.auth.ident;
+        return (unsigned char *) rad_snmp.auth.ident;
 
     case RADIUSAUTHSERVUPTIME:
-        return (unsigned char *) NULL;
+	rad_snmp.auth.uptime = (time(NULL) - rad_snmp.auth.start_time) * 100;
+        return (unsigned char *) &rad_snmp.auth.uptime;
 
     case RADIUSAUTHSERVRESETTIME:
-        return (unsigned char *) NULL;
+	rad_snmp.auth.reset_time = (time(NULL) - rad_snmp.auth.last_reset_time) * 100;
+        return (unsigned char *) &rad_snmp.auth.reset_time;
 
     case RADIUSAUTHSERVCONFIGRESET:
 	*write_method = radServReset;
@@ -415,34 +417,34 @@ radAuthServ(struct variable *vp,
         return (unsigned char *) &result;
 
     case RADIUSAUTHSERVTOTALACCESSREQUESTS:
-        return (unsigned char *) &snmp_authtotalrequests;
+        return (unsigned char *) &rad_snmp.auth.total_requests;
 
     case RADIUSAUTHSERVTOTALINVALIDREQUESTS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_invalid_requests;
 
     case RADIUSAUTHSERVTOTALDUPACCESSREQUESTS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_dup_requests;
 
     case RADIUSAUTHSERVTOTALACCESSACCEPTS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_access_accepts;
 
     case RADIUSAUTHSERVTOTALACCESSREJECTS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_access_rejects;
 
     case RADIUSAUTHSERVTOTALACCESSCHALLENGES:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_access_challenges;
 
     case RADIUSAUTHSERVTOTALMALFORMEDACCESSREQUESTS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_malformed_requests;
 
     case RADIUSAUTHSERVTOTALBADAUTHENTICATORS:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_bad_authenticators;
 
     case RADIUSAUTHSERVTOTALPACKETSDROPPED:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_packets_dropped;
 
     case RADIUSAUTHSERVTOTALUNKNOWNTYPES:
-        return (unsigned char *) NULL;
+        return (unsigned char *) &rad_snmp.auth.total_unknown_types;
 
     }
 
@@ -516,6 +518,20 @@ radAuthEntry(struct variable *vp,
 void
 radius_snmp_init (void)
 {
+  memset(&rad_snmp, 0, sizeof(rad_snmp));
+
+  rad_snmp.auth.ident = "FreeRADIUS v0.1.0";
+  rad_snmp.acct.ident = "FreeRADIUS v0.1.0";
+
+  /*
+   *  We really should get better clock resolution..
+   */
+  rad_snmp.auth.start_time = time(NULL);
+  rad_snmp.auth.last_reset_time = rad_snmp.auth.start_time;
+
+  rad_snmp.acct.start_time = rad_snmp.auth.start_time;
+  rad_snmp.acct.last_reset_time = rad_snmp.auth.start_time;
+
   smux_init (radius_oid, sizeof (radius_oid) / sizeof (oid));
   REGISTER_MIB("mibII/radius-acc-server", radiusacc_variables, variable, radacc_oid);
   REGISTER_MIB("mibII/radius-auth-server", radiusauth_variables, variable, radauth_oid);

@@ -135,4 +135,36 @@ void oid2in_addr (oid [], int, struct in_addr *);
 void *oid_copy (void *, void *, size_t);
 void oid_copy_addr (oid [], struct in_addr *, int);
 
+/*
+ *	The RADIUS server snmp data structures.
+ */
+typedef struct rad_snmp_server_t {
+	const char 	*ident;
+	time_t		start_time;
+	int		uptime;	/* in hundredths of a second */
+
+	time_t		last_reset_time;
+	int		reset_time;
+	int		config_reset;
+	int		total_requests;
+	int		total_invalid_requests;
+	int		total_dup_requests;
+	int		total_responses;
+	int		total_access_accepts;
+	int		total_access_rejects;
+	int		total_access_challenges;
+	int		total_malformed_requests;
+	int		total_bad_authenticators;
+	int		total_packets_dropped;
+	int		total_no_records;
+	int		total_unknown_types;
+} rad_snmp_server_t;
+
+typedef struct rad_snmp_t {
+	rad_snmp_server_t auth;
+	rad_snmp_server_t acct;
+} rad_snmp_t;
+
+extern rad_snmp_t rad_snmp;
+
 #endif /* _SMUX_H */

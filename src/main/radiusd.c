@@ -76,9 +76,8 @@ const char		*radlib_dir = NULL;
 #ifdef WITH_SNMP
 char			*smux_password = NULL;
 int			snmp_write_access = FALSE;
-int			snmp_acctotalrequests = 0;
-int			snmp_authtotalrequests = 0;
 enum smux_event         smux_event = SMUX_NONE;
+rad_snmp_t		rad_snmp;
 #endif
 int			log_stripped_names;
 int			debug_flag;
@@ -928,9 +927,9 @@ int main(int argc, char **argv)
 			}
 #if WITH_SNMP
 			if (fd == acctfd)
-				snmp_acctotalrequests++;
+				rad_snmp.acct_total_requests++;
 			if (fd == authfd)
-				snmp_authtotalrequests++;
+				rad_snmp.auth_total_requests++;
 #endif
 
 			/*
