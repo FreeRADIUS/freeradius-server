@@ -1,5 +1,15 @@
 FreeRADIUS 0.3.0 ; urgency=low
 
+	* Added ability to send debug messages to the log file, when
+	  running in daemon mode.
+	* Miscellaneous fixes to get Debian packaging working.
+	* When trapping a signal, don't SIGKILL children on a SIGTERM,
+	  SIGTERM them, instead.  This allows Exec-Program scripts to
+	  catch the signal, and finish processing, instead of dying.
+	  Bug noted by Michael Chernyakhovsky <magmike@mail.ru>
+	* Increased limit on length of user name read from /etc/passwd,
+	  to match the maximum allowed by RADIUS.
+	  Bug noted by "Gonzalez B., Fernando" <fgonzalez@manquehue.cl>
 	* Configurable fail-over when proxying packets.  If the
 	  home server doesn't respond to a repeated proxied request,
 	  it's marked as 'dead', and the next one in the list is used.
