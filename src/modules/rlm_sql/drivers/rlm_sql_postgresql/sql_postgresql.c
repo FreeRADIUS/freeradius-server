@@ -63,6 +63,23 @@ affected_rows(PGresult * result)
     return atoi(PQcmdTuples(result));
 }
 
+/* Internal function. Free the row of the current result that's stored
+ * in the pg_sock struct. */
+static void
+free_result_row(rlm_sql_postgres_sock * pg_sock)
+{
+	int i;
+	if (pg_sock->row != NULL) {
+		for (i = pg_sock->num_fields-1; i >= 0; i--) {
+			if (pg_sock->row[i] != NULL) {
+				xfree(pg_sock->row[i]);
+			}
+		}
+		xfree((char*)pg_sock->row);
+		pg_sock->row = NULL;
+		pg_sock->num_fields = 0;
+	}
+}
 
 /*************************************************************************
  *
@@ -238,18 +255,7 @@ SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	if (pg_sock->cur_row >= PQntuples(pg_sock->result))
 		return NULL;
 
-	if (pg_sock->row != NULL) {
-		for (i = pg_sock->num_fields-1; i >= 0; i--) {
-			if (pg_sock->row[i] != NULL) {
-				xfree(pg_sock->row[i]);
-			}
-		}
-		if (pg_sock->row != NULL) {
-			xfree((char*)pg_sock->row);
-			pg_sock->row = NULL;
-		}
-		pg_sock->num_fields = 0;
-	}
+	free_result_row(pg_sock);
 
 	records = PQnfields(pg_sock->result);
 	pg_sock->num_fields = records;
@@ -289,6 +295,7 @@ int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 		PQclear(pg_sock->result);
 		pg_sock->result = NULL;
 	}
+	free_result_row(pg_sock);
 
 	return 0;
 }
