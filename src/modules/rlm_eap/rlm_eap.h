@@ -60,7 +60,6 @@ typedef struct rlm_eap_t {
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
-	pthread_mutex_t	module_mutex;
 #endif
 } rlm_eap_t;
 

@@ -67,7 +67,6 @@ static int eap_detach(void *instance)
 	}
 
 	pthread_mutex_destroy(&(inst->session_mutex));
-	pthread_mutex_destroy(&(inst->module_mutex));
 
 	if (inst->default_eap_type_name) free(inst->default_eap_type_name);
 	free(inst);
@@ -202,7 +201,6 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	pthread_mutex_init(&(inst->session_mutex), NULL);
-	pthread_mutex_init(&(inst->module_mutex), NULL);
 
 	*instance = inst;
 	return 0;
@@ -218,9 +216,6 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	EAP_HANDLER	*handler;
 	eap_packet_t	*eap_packet;
 	int		rcode;
-#ifdef HAVE_PTHREAD_H
-	int		locked = FALSE;
-#endif
 
 	inst = (rlm_eap_t *) instance;
 
@@ -265,32 +260,11 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		}
 	}
 
-#ifdef HAVE_PTHREAD_H
-	else {			/* it's a normal request from a NAS */
-		/*
-		 *	The OpenSSL code isn't strictly thread-safe,
-		 *	as we've got to provide callback functions.
-		 *
-		 *	Rather than doing that, we just ensure that the
-		 *	sub-modules are locked via a mutex.
-		 *
-		 *	Don't lock it if we're calling ourselves recursively,
-		 *	we've already got the lock.
-		 */
-		pthread_mutex_lock(&(inst->module_mutex));
-		locked = TRUE;	/* for recursive calls to the module */
-	}
-#endif
-
 	/*
 	 *	Select the appropriate eap_type or default to the
 	 *	configured one
 	 */
 	rcode = eaptype_select(inst, handler);
-
-#ifdef HAVE_PTHREAD_H
-	if (locked) pthread_mutex_unlock(&(inst->module_mutex));
-#endif
 
 	/*
 	 *	If it failed, die.
