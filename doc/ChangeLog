@@ -1,4 +1,4 @@
-FreeRADIUS 0.6.0 ; $Date$, urgency=medium
+FreeRADIUS 0.6.0 ; $Date$, urgency=high
 
 	* Many bug fixes.  For explicit details, see:
 		http://www.freeradius.org/cvs-log/
@@ -7,6 +7,16 @@ FreeRADIUS 0.6.0 ; $Date$, urgency=medium
 	* SQL sockets are rotated so that all are used, to prevent the
 	  SQL server timing out and closing unused sockets.  Patch from
 	  Todd T. Fries
+	* Sybase driver from mattias@nogui.se.
+	* Modules are now versioned.
+	* Delete garbage Proxy-Reply attributes sent by the home server
+	  before performing our own reply.
+	* Fix race conditions when duplicate packets resulted in a request
+	  being processed by two threads, at the same time.
+	* Add '-d' command-line option to radwho
+	  Bug noted by Matthew Schumacher
+	* Corrected issue that when a home server never replied to a
+	  proxied request, the server may die.
 	* In SQL, look in radcheck, if not found there, try radgroupcheck.
 	  Patch from Thomas Jalsovsky.
 	* Set sql user name for ALIVE accounting packets, too.
