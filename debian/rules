@@ -92,7 +92,7 @@ binary-arch: stamp-build
 	# man pages & docs
 	install -g root -m 644 CREDITS $(freeradius_dir)/$(pkgdocdir)/credits
 	dh_installdocs -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
-	dh_installexamples `find src/modules/rlm_sql/drivers -type f -name \*.sql`
+	dh_installexamples -XCVS `find src/modules/rlm_sql/drivers -type f -name \*.sql`
 	dh_installchangelogs doc/ChangeLog
 	#Rename manpage to go with binary
 	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
@@ -113,6 +113,13 @@ binary-arch: stamp-build
 			-e 's!radiusd.pid!freeradius.pid!' \
 			> $(freeradius_dir)/$(raddbdir)/radiusd.conf; \
 	rm $$TEMPFILE
+
+	# Dialup-Admin
+	dh_installdocs -p freeradius-dialupadmin dialup_admin/README
+	dh_installchangelogs -p freeradius-dialupadmin dialup_admin/Changelog
+	dh_installdirs -p freeradius-dialupadmin -XCVS dialup_admin/conf/* etc/freeradius-dialupadmin/
+	dh_installdirs -p freeradius-dialupadmin -XCVS -XChangelog -XREADME -Xconf/ dialup_admin/* usr/share/dialupadmin/
+	dh_link -p freeradius-dialupadmin etc/freeradius-dialupadmin/ usr/share/dialupadmin/conf
 
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	dh_strip
