@@ -14,7 +14,7 @@ if ($link){
 			"DELETE FROM $config[sql_check_table] WHERE UserName = '$login';");
 		if ($res){
 			if ($config[sql_use_user_info_table] == 'true'){
-				$res = @da_sql_query($config[sql_database],
+				$res = @da_sql_query($link,$config,
 				"DELETE FROM $config[sql_user_info_table] WHERE UserName = '$login';");
 				if ($res)
 					echo "<b>User $login deleted successfully</b><br>\n";
