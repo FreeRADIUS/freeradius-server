@@ -273,6 +273,21 @@ static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 /*************************************************************************
  *
+ *      Function: sql_destroy_socket
+ *
+ *      Purpose: Free socket and private connection data
+ *
+ *************************************************************************/
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+{
+        rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+
+        free(pg_sock);
+        return 0;
+}
+
+/*************************************************************************
+ *
  *	Function: sql_num_fields
  *
  *	Purpose: database specific num_fields function. Returns number
@@ -454,7 +469,7 @@ not_implemented(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 rlm_sql_module_t rlm_sql_postgresql = {
 	"rlm_sql_postgresql",
 	sql_init_socket,
-	not_implemented, /* sql_destroy_socket*/
+	sql_destroy_socket,
 	sql_query,
 	sql_select_query,
 	not_implemented, /* sql_store_result */
