@@ -42,6 +42,13 @@ static const char rcsid[] =
 
 #ifdef HAVE_PTHREAD_H
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+#include <openssl/crypto.h>
+#endif
+#ifdef HAVE_OPENSSL_ERR_H
+#include <openssl/err.h>
+#endif
+
 #define SEMAPHORE_LOCKED	(0)
 #define SEMAPHORE_UNLOCKED	(1)
 
@@ -141,6 +148,57 @@ static const CONF_PARSER thread_config[] = {
 	{ "cleanup_delay",           PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,           "5" },
 	{ NULL, -1, 0, NULL, NULL }
 };
+
+
+#ifdef HAVE_OPENSSL_CRYPTO_H
+
+/*
+ *	If we're linking against OpenSSL, then it is the
+ *	duty of the application, if it is multithreaded,
+ *	to provide OpenSSL with appropriate thread id
+ *	and mutex locking functions
+ *
+ *	Note: this only implements static callbacks.
+ *	OpenSSL does not use dynamic locking callbacks
+ *	right now, but may in the futiure, so we will have
+ *	to add them at some point.
+ */
+
+static  pthread_mutex_t *ssl_mutexes = NULL;
+
+
+static unsigned long ssl_id_function (void) {
+	return (unsigned long)pthread_self();
+}
+
+static void ssl_locking_function (int mode, int n, const char *file, int line) {
+	if (mode & CRYPTO_LOCK) {
+		pthread_mutex_lock(&(ssl_mutexes[n]));
+	} else {
+		pthread_mutex_unlock(&(ssl_mutexes[n]));
+	}
+}
+
+static int setup_ssl_mutexes (void) {
+	int i;
+
+	ssl_mutexes = (pthread_mutex_t *)rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
+	if(!ssl_mutexes) {
+		radlog(L_ERR, "Error allocating memory for SSL mutexes!");
+		return 0;
+	}
+
+	for(i = 0; i < CRYPTO_num_locks(); i++) {
+		pthread_mutex_init(&(ssl_mutexes[i]), NULL);
+	}
+
+	CRYPTO_set_id_callback(ssl_id_function);
+	CRYPTO_set_locking_callback(ssl_locking_function);
+
+	return 1;
+}
+
+#endif
 
 
 /*
@@ -499,6 +557,15 @@ static void *request_handler_thread(void *arg)
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
 
+#ifdef HAVE_OPENSSL_ERR_H
+	/*
+	 *	If we linked with OpenSSL, the application
+	 *	must remove the thread's error queue before
+	 *	exiting to prevent memory leaks.
+	 */
+	ERR_remove_state(0);
+#endif
+
 	/*
 	 *  Do this as the LAST thing before exiting.
 	 */
@@ -749,6 +816,18 @@ int thread_pool_init(int spawn_flag)
 				       thread_pool.queue_size);
 	memset(thread_pool.queue, 0, (sizeof(*thread_pool.queue) *
 				      thread_pool.queue_size));
+
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	/*
+	 *	If we're linking with OpenSSL too, then we need
+	 *	to set up the mutexes and enable the thread callbacks.
+	 */
+	if(!setup_ssl_mutexes()) {
+		radlog(L_ERR, "FATAL: Failed to set up SSL mutexes");
+		exit(1);
+	}
+#endif
+
 
 	/*
 	 *	Create a number of waiting threads.
