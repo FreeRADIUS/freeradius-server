@@ -562,8 +562,8 @@ fi
 
 
 
-# From configure.in Revision: 1.127 
-RADIUSD_VERSION=0.2
+# From configure.in Revision: 1.128 
+RADIUSD_VERSION=0.4
 
 
 # Extract the first word of "gcc", so it can be a program name with args.
@@ -3562,7 +3562,7 @@ fi
 echo $ac_n "checking for developer gcc flags""... $ac_c" 1>&6
 echo "configure:3564: checking for developer gcc flags" >&5
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
-  devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs"
+  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs"
   CFLAGS="$CFLAGS $devflags"
   INSTALLSTRIP=""
   echo "$ac_t""yes.  Using $devflags" 1>&6

@@ -24,8 +24,8 @@ AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
-dnl # The version of the software, second beta, is 0.2
-RADIUSD_VERSION=0.2
+dnl # The version of the software, 0.4
+RADIUSD_VERSION=0.4
 
 dnl #############################################################
 dnl #
@@ -579,7 +579,7 @@ fi
 
 AC_MSG_CHECKING(for developer gcc flags)
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
-  devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs"
+  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs"
   CFLAGS="$CFLAGS $devflags"
   INSTALLSTRIP=""
   AC_MSG_RESULT(yes.  Using $devflags)
