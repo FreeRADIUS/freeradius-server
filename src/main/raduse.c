@@ -37,7 +37,7 @@ int nrlines = 35;
 /*
  *	List the terminal servers in the logfile.
  */
-void listnas(void)
+static void listnas(void)
 {
   FILE *fp;
   FILE *pp;
@@ -95,7 +95,7 @@ void listnas(void)
  * Find out the usage of the ttys defined in
  * struct line lines[] for the last 21 hours.
  */
-int fillstruct(int offset, char *nas)
+static int fillstruct(int offset, const char *nas)
 {
   FILE *fp;
   time_t now, stop;
@@ -189,7 +189,7 @@ int fillstruct(int offset, char *nas)
  * Draw something that vaguely resembles a graph showing the
  * usage of the tty lines over the last 21 hours.
  */
-void drawit(int wide, int offset)
+static void drawit(int wide, int offset)
 {
   time_t now;
   int i, n, hour;
@@ -261,7 +261,7 @@ void drawit(int wide, int offset)
   printf("\n");
 }
 
-void usage()
+static void usage(void)
 {
   fprintf(stderr, "Usage: raduse [-w] [-o offset] terminal-server\n");
   fprintf(stderr, "       use raduse -l to find out a list of terminal servers\n");
