@@ -12,10 +12,6 @@
 #include        <pthread.h>
 #endif
 
-#if HAVE_SEMAPHORE_H
-#include        <semaphore.h>
-#endif
-
 #include	<ltdl.h>
 
 #include "conf.h"
@@ -35,8 +31,9 @@ typedef char** SQL_ROW;
 
 typedef struct sql_socket {
 	int     id;
-#if HAVE_SEMAPHORE_H
-	sem_t  *semaphore;
+#if HAVE_PTHREAD_H
+	pthread_mutex_t lock;
+	pthread_cond_t	cond;
 #else
 	int     in_use;
 #endif

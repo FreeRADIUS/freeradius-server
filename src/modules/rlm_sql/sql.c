@@ -89,8 +89,8 @@ static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
  *************************************************************************/
 int sql_init_socketpool(SQL_INST * inst)
 {
+	int i, rcode;
 	SQLSOCK *sqlsocket;
-	int     i;
 
 	inst->connect_after = 0;
 	inst->used = 0;
@@ -109,12 +109,20 @@ int sql_init_socketpool(SQL_INST * inst)
 		sqlsocket->id = i;
 		sqlsocket->state = sockunconnected;
 
-#if HAVE_SEMAPHORE_H
-		/*
-		 *  FIXME! Check return codes!
-		 */
-		sqlsocket->semaphore = (sem_t *) rad_malloc(sizeof(sem_t));
-		sem_init(sqlsocket->semaphore, 0, SQLSOCK_UNLOCKED);
+#if HAVE_PTHREAD_H
+		rcode = pthread_cond_init(&sqlsocket->cond,NULL);
+		if (rcode != 0) {
+			radlog(L_ERR, "rlm_sql: Failed to init cond: %s",
+			       strerror(errno));
+			return 0;
+		}
+		
+		rcode = pthread_mutex_init(&sqlsocket->lock,NULL);
+		if (rcode != 0) {
+			radlog(L_ERR, "rlm_sql: Failed to init lock: %s",
+			       strerror(errno));
+			return 0;
+		}
 #else
 		sqlsocket->in_use = SQLSOCK_UNLOCKED;
 #endif
@@ -169,8 +177,9 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
 	radlog(L_DBG, "rlm_sql (%s): Closing sqlsocket %d",
 	       inst->config->xlat_name, sqlsocket->id);
 	(inst->module->sql_close)(sqlsocket, inst->config);
-#if HAVE_SEMAPHORE_H
-	sem_destroy(sqlsocket->semaphore);
+#if HAVE_PTHREAD_H
+	pthread_mutex_destroy(&sqlsocket->lock);
+	pthread_cond_destroy(&sqlsocket->cond);
 #endif
 	free(sqlsocket);
 	return 1;
@@ -230,13 +239,17 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		        unconnected++;
 		} else {
 			/* should be connected, grab it */
-#if HAVE_SEMAPHORE_H
-			if (sem_trywait(cur->semaphore) == 0) {
+#if HAVE_PTHREAD_H
+		pthread_mutex_lock(&cur->lock);
+		if (pthread_cond_wait(&cur->cond,&cur->lock) != 0) {
+			pthread_mutex_unlock(&cur->lock);
+		} else {
+			pthread_mutex_unlock(&cur->lock);
 #else
 			if (cur->in_use == SQLSOCK_UNLOCKED) {
 #endif
 				(inst->used)++;
-#ifndef HAVE_SEMAPHORE_H
+#ifndef HAVE_PTHREAD_H
 				cur->in_use = SQLSOCK_LOCKED;
 #endif
 				radlog(L_DBG, "rlm_sql (%s): Reserving sql socket id: %d", inst->config->xlat_name, cur->id);
@@ -285,8 +298,8 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
 {
 	(inst->used)--;
-#if HAVE_SEMAPHORE_H
-	sem_post(sqlsocket->semaphore);
+#if HAVE_PTHREAD_H
+	pthread_cond_signal(&sqlsocket->cond);
 #else
 	sqlsocket->in_use = SQLSOCK_UNLOCKED;
 #endif
