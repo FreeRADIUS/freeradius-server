@@ -24,6 +24,10 @@
 
 #ifdef HAVE_DIRENT_H
 #include <dirent.h>
+
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 #endif
 
 #include <modules.h>
@@ -1485,12 +1489,18 @@ static int parse_include(policy_lex_file_t *lexer)
 			 *	Read the directory, ignoring "." files.
 			 */
 			while ((dp = readdir(dir)) != NULL) {
+				struct stat buf;
+
 				if (dp->d_name[0] == '.') continue;
 				if (strchr(dp->d_name, '~') != NULL) continue;
 
 				strNcpy(p, dp->d_name,
 					sizeof(buffer) - (p - buffer));
-				debug_tokens("including file %s\n", buffer);
+
+				if ((stat(buffer, &buf) != 0) ||
+				    S_ISDIR(buf.st_mode)) continue;
+
+				debug_tokens("\nincluding file %s\n", buffer);
 				if (!rlm_policy_parse(lexer->policies, buffer)) {
 					closedir(dir);
 					return 0;
