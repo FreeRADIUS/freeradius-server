@@ -719,7 +719,7 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 			 *	don't copy it.
 			 */
 			if ((vp->attribute > 255) &&
-			    (VENDOR(vp->attribute) == 0)) {
+			    (((vp->attribute >> 16) & 0xffff) == 0)) {
 				continue;
 			}
 
