@@ -294,6 +294,6 @@ typedef struct lrad_randctx {
 
 void lrad_isaac(lrad_randctx *ctx);
 void lrad_randinit(lrad_randctx *ctx, int flag);
-
+uint32_t lrad_rand(void);	/* like rand(), but better. */
 
 #endif /*LIBRADIUS_H*/

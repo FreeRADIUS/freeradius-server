@@ -1734,6 +1734,43 @@ static void random_vector(uint8_t *vector)
 	}
 }
 
+/*
+ *	Return a 32-bit random number.
+ */
+uint32_t lrad_rand(void)
+{
+	uint32_t answer;
+	static int rand_index = 0;
+
+	/*
+	 *	Ensure that the pool is initialized.
+	 */
+	if (!lrad_pool_initialized) {
+		uint8_t vector[AUTH_VECTOR_LEN];
+
+		random_vector(vector);
+	}
+
+	/*
+	 *	Grab an entry from the pool.
+	 */
+	answer = lrad_rand_pool.randrsl[rand_index];
+
+	/*
+	 *	Go to the next entry (wrapping around to zero).
+	 */
+	rand_index++;
+	rand_index &= 0xff;
+
+	/*
+	 *	Every 256 numbers, churn the pool again.
+	 */
+	if (rand_index == 0) {
+		lrad_isaac(&lrad_rand_pool);
+	}
+
+	return answer;
+}
 
 /*
  *	Allocate a new RADIUS_PACKET
