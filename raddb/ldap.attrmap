@@ -52,6 +52,6 @@ replyItem	Framed-AppleTalk-Network	radiusFramedAppleTalkNetwork
 replyItem	Framed-AppleTalk-Zone		radiusFramedAppleTalkZone
 replyItem	Port-Limit			radiusPortLimit
 replyItem	Login-LAT-Port			radiusLoginLATPort
-replyItem	LM-Password-TEXT		lmPassword
-replyItem	NT-Password-TEXT		ntPassword
+replyItem	LM-Password			lmPassword
+replyItem	NT-Password			ntPassword
 replyItem	SMB-Account-CTRL-TEXT		acctFlags

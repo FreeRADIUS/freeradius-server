@@ -170,9 +170,7 @@ ATTRIBUTE	Module-Message		1056	string
 ATTRIBUTE	LM-Password		1057	octets
 ATTRIBUTE	NT-Password		1058	octets
 ATTRIBUTE	SMB-Account-CTRL	1059	integer
-ATTRIBUTE	LM-Password-TEXT        1061    string
-ATTRIBUTE	NT-Password-TEXT	1062	string
-ATTRIBUTE	SMB-Account-CTRL-TEXT	1063	string
+ATTRIBUTE	SMB-Account-CTRL-TEXT	1061	string
 
 
 #
