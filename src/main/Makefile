@@ -11,7 +11,7 @@ INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h
 
 CFLAGS		+= -I../include
 LDFLAGS		+= -L../lib
-LIBS		+= -lradius $(NSLLIB) $(SOCKETLIB)
+LIBS		+= -lradius
 
 #
 # Pick up the static module libraries and linker flags.
