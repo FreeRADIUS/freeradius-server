@@ -464,6 +464,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[16];
+	int			seen_eap;
 
 	/*
 	 *	Allocate the new request data structure
@@ -556,6 +557,8 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	attr = hdr->data;
 	count = totallen - AUTH_HDR_LEN;
+	seen_eap = 0;
+
 	while (count > 0) {
 		/*
 		 *	Attribute number zero is NOT defined.
@@ -587,6 +590,11 @@ RADIUS_PACKET *rad_recv(int fd)
 		switch (attr[0]) {
 		default:	/* don't do anything by default */
 			break;
+
+		case PW_EAP_MESSAGE:
+			seen_eap |= PW_EAP_MESSAGE;
+			break;
+
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
 				librad_log("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
@@ -596,6 +604,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				free(packet);
 				return NULL;
 			}
+			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
 			break;
 		}
 
@@ -617,6 +626,19 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (count != 0) {
 		librad_log("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+		free(packet->data);
+		free(packet);
+		return NULL;
+	}
+
+	/*
+	 *	If we've seen an EAP-Message attribute without a
+	 *	Message-Authenticator attribute, it's invalid.
+	 */
+	if (((seen_eap & PW_EAP_MESSAGE) == PW_EAP_MESSAGE) &&
+	    ((seen_eap & PW_MESSAGE_AUTHENTICATOR) != PW_MESSAGE_AUTHENTICATOR)) {
+		librad_log("Malformed RADIUS packet from host %s: Contains EAP-Message, but no Message-Authenticator",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 		free(packet->data);
 		free(packet);
@@ -727,6 +749,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		default:	/* don't do anything. */
 			break;
 
+			/*
+			 *	Note that more than one Message-Authenticator
+			 *	attribute is invalid.
+			 */
 		case PW_MESSAGE_AUTHENTICATOR:
 			memcpy(msg_auth_vector, &ptr[2], sizeof(msg_auth_vector));
 			memset(&ptr[2], 0, AUTH_VECTOR_LEN);
