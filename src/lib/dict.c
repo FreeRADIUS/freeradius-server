@@ -276,9 +276,10 @@ static int my_dict_init(char *dir, char *fn, char *src_file, int src_line)
 			 */
 			if (is_nmc && vendorstr[0] == 0) {
 				if (!vendor_usr_seen) {
-					if (dict_addvendor("USR", VENDORPEC_USR) < 0)
+					if (dict_addvendor("USR", VENDORPEC_USR) < 0) {
 						librad_log("dict_init: %s[%d]: %s", fn, line, librad_errstr);
 						return -1;
+					}
 					vendor_usr_seen = 1;
 				}
 				strcpy(vendorstr, "USR");
