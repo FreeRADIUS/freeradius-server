@@ -122,6 +122,7 @@ static int str2rcode(const char *s, const char *filename, int lineno)
 			filename, lineno, s);
 		exit(1);
 	}
+	return -1;
 }
 
 static const char *rcode2str[] = {
@@ -148,6 +149,7 @@ static int str2action(const char *s, const char *filename, int lineno)
 				filename, lineno, s);
 		exit(1);
 	}
+	return -1;
 }
 
 static const char *action2str(int action)

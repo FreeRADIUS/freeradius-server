@@ -216,4 +216,5 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	 *	Exit - 2 means "some error occured".
 	 */
 	exit(2);
+	return -1;
 }

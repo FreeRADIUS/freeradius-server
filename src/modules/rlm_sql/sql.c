@@ -389,7 +389,7 @@ static int sql_check_ts(SQL_ROW row) {
 	 *      Exit - 2 means "some error occured".
 	 */
 	exit(2);
-
+	return -1;
 }
 
 
