@@ -282,6 +282,8 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	msgid = ldap_search(inst->ld, search_basedn, scope, filter, attrs, 0);
 	if (msgid == -1) {
 		radlog(L_ERR, "rlm_ldap: ldap_search() API failed\n");
+		if(inst->ld)
+			ldap_unbind(inst->ld);
 		inst->bound = 0;
 		return (RLM_MODULE_FAIL);
 	}
@@ -291,6 +293,9 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 		ldap_perror(inst->ld, "rlm_ldap: ldap_result()");
 		radlog(L_ERR, "rlm_ldap: ldap_result() failed - %s\n", strerror(errno));
 		ldap_msgfree(*result);
+		if(inst->ld)
+			ldap_unbind(inst->ld);
+		inst->bound = 0;
 		return (RLM_MODULE_FAIL);
 	}
 	switch (ldap_result2error(inst->ld, *result, 0)) {
@@ -303,8 +308,10 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 
 	default:
 		DEBUG("rlm_ldap: ldap_search() failed");
-		inst->bound = 0;
 		ldap_msgfree(*result);
+		if(inst->ld)
+			ldap_unbind(inst->ld);
+		inst->bound = 0;
 		return (RLM_MODULE_FAIL);
 	}
 
@@ -595,7 +602,7 @@ ldap_detach(void *instance)
 	if (inst->filter)
 		free((char *) inst->filter);
 	if (inst->ld)
-		ldap_memfree(inst->ld);
+		ldap_unbind_s(inst->ld);
 
 	pair = inst->check_item_map;
 	
