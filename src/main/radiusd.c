@@ -123,7 +123,7 @@ static int do_exit = 0;
 /*
  *	Static functions.
  */
-static void usage(void);
+static void usage(int);
 
 static void sig_fatal (int);
 static void sig_hup (int);
@@ -337,7 +337,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'h':
-				usage();
+				usage(0);
 				break;
 
 			case 'i':
@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
 				break;
 
 			default:
-				usage();
+				usage(1);
 				break;
 		}
 	}
@@ -2363,29 +2363,31 @@ static void sig_cleanup(int sig)
 /*
  *  Display the syntax for starting this program.
  */
-static void usage(void)
+static void usage(int status)
 {
-	fprintf(stderr,
+	FILE *output = status?stderr:stdout;
+
+	fprintf(output,
 			"Usage: %s [-a acct_dir] [-d db_dir] [-l log_dir] [-i address] [-p port] [-AcfnsSvXxyz]\n", progname);
-	fprintf(stderr, "Options:\n\n");
-	fprintf(stderr, "  -a acct_dir     use accounting directory 'acct_dir'.\n");
-	fprintf(stderr, "  -A              Log auth detail.\n");
-	fprintf(stderr, "  -d db_dir       Use database directory 'db_dir'.\n");
-	fprintf(stderr, "  -f              Run as a foreground process, not a daemon.\n");
-	fprintf(stderr, "  -h              Print this help message.\n");
-	fprintf(stderr, "  -i address      Listen only in the given IP address.\n");
-	fprintf(stderr, "  -l log_dir      Log messages to 'log_dir'.  Special values are:\n");
-	fprintf(stderr, "                  stdout == log all messages to standard output.\n");
-	fprintf(stderr, "                  syslog == log all messages to the system logger.\n");
-	fprintf(stderr, "  -p port         Bind to 'port', and not to the radius/udp, or 1646/udp.\n");
-	fprintf(stderr, "  -s              Do not spawn child processes to handle requests.\n");
-	fprintf(stderr, "  -S              Log stripped names.\n");
-	fprintf(stderr, "  -v              Print server version information.\n");
-	fprintf(stderr, "  -X              Turn on full debugging. (Means: -sfxxyz -l stdout)\n");
-	fprintf(stderr, "  -x              Turn on partial debugging. (-xx gives more debugging).\n");
-	fprintf(stderr, "  -y              Log authentication failures, with password.\n");
-	fprintf(stderr, "  -z              Log authentication successes, with password.\n");
-	exit(1);
+	fprintf(output, "Options:\n\n");
+	fprintf(output, "  -a acct_dir     use accounting directory 'acct_dir'.\n");
+	fprintf(output, "  -A              Log auth detail.\n");
+	fprintf(output, "  -d db_dir       Use database directory 'db_dir'.\n");
+	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
+	fprintf(output, "  -h              Print this help message.\n");
+	fprintf(output, "  -i address      Listen only in the given IP address.\n");
+	fprintf(output, "  -l log_dir      Log messages to 'log_dir'.  Special values are:\n");
+	fprintf(output, "                  stdout == log all messages to standard output.\n");
+	fprintf(output, "                  syslog == log all messages to the system logger.\n");
+	fprintf(output, "  -p port         Bind to 'port', and not to the radius/udp, or 1646/udp.\n");
+	fprintf(output, "  -s              Do not spawn child processes to handle requests.\n");
+	fprintf(output, "  -S              Log stripped names.\n");
+	fprintf(output, "  -v              Print server version information.\n");
+	fprintf(output, "  -X              Turn on full debugging. (Means: -sfxxyz -l stdout)\n");
+	fprintf(output, "  -x              Turn on partial debugging. (-xx gives more debugging).\n");
+	fprintf(output, "  -y              Log authentication failures, with password.\n");
+	fprintf(output, "  -z              Log authentication successes, with password.\n");
+	exit(status);
 }
 
 
