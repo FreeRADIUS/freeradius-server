@@ -129,8 +129,8 @@ static int	rad_process (REQUEST *, int);
 static int	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
-struct timeval *proxy_setuptimeout(struct timeval *);
-void		proxy_retry(void);
+static struct timeval *proxy_setuptimeout(struct timeval *);
+static void		proxy_retry(void);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -920,7 +920,7 @@ int main(int argc, char **argv)
 			request->child_pid = NO_SUCH_CHILD_PID;
 			request->prev = NULL;
 			request->next = NULL;
-			strcpy(request->secret, cl->secret);
+			strNcpy(request->secret, cl->secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
 		}
 
@@ -1558,7 +1558,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 					DEBUG2("Sending duplicate proxy request to client %s - ID: %d",
 					       client_name(curreq->proxy->dst_ipaddr),
 					       curreq->proxy->id);
-					curreq->proxy_next_try = request->timestamp + RETRY_DELAY;
+
+					curreq->proxy_next_try = request->timestamp + proxy_retry_delay;
 					rad_send(curreq->proxy, curreq->proxysecret);
 				} else {
 					DEBUG2("Ignoring duplicate authentication packet"
@@ -2070,9 +2071,12 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	}
 
 	/*
-	 *	Refresh the old request,. and update it.
+	 *	Refresh the old request, and update it with the proxy reply.
+	 *
+	 *	??? Can we delete the proxy request here?
+	 *	Is there any more need for it?
 	 */
-	oldreq->timestamp += 5;
+	oldreq->timestamp = request->timestamp;
 	oldreq->proxy_reply = request->packet;
 	request->packet = NULL;
 	request_free(request);
@@ -2083,7 +2087,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
  *	Set up the proxy timeouts, so that we know
  *	when to wake up and re-send a request.
  */
-struct timeval *proxy_setuptimeout(struct timeval *tv)
+static struct timeval *proxy_setuptimeout(struct timeval *tv)
 {
 	time_t now = time(NULL);
 	time_t difference, smallest = 0;
@@ -2134,7 +2138,7 @@ struct timeval *proxy_setuptimeout(struct timeval *tv)
  *	Walk the request list, seeing if we need to re-send
  *	a proxy packet.
  */
-void proxy_retry(void)
+static void proxy_retry(void)
 {
 	time_t now = time(NULL);
 	REQUEST *p;
@@ -2146,8 +2150,9 @@ void proxy_retry(void)
 	for (id = 0; id < 256; id++) {
 	for (p = request_list[id].first_request; p; p = p->next) {
 		/*
-		 *	No proxy request, or the next try is
-		 *	some time in the future.
+		 *	No proxy request, OR we already have seen the
+		 *	reply (so we don't need to send another proxy
+		 *	request), OR the next try is to be done later.
 		 *
 		 *	Skip the try.
 		 *
@@ -2156,6 +2161,7 @@ void proxy_retry(void)
 		 *	all of this work on every second.
 		 */
 		if ((!p->proxy) ||
+		    (p->proxy_reply) ||
 		    (p->proxy_next_try > now)) {
 			continue;
 		}
