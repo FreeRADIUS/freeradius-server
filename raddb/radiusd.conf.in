@@ -1179,7 +1179,7 @@ modules {
 	#  more information.
 	#
 	acct_unique {
-		key = "User-Name, Acct-Session-Id, NAS-IP-Address, Client-IP-Address, NAS-Port-Id"
+		key = "User-Name, Acct-Session-Id, NAS-IP-Address, Client-IP-Address, NAS-Port"
 	}
 
 
@@ -1689,7 +1689,6 @@ authenticate {
 #	Auth-Type LDAP {
 #		ldap
 #	}
-
 
 	#
 	#  Allow EAP authentication.
