@@ -305,7 +305,7 @@ int rad_authenticate(REQUEST *request)
 	char		*exec_program;
 	int		exec_wait;
 	int		seen_callback_id;
-	int 	nas_port=0;
+	int 		nas_port = 0;
 	char		buf[1024];
 
 	password = "";
@@ -377,22 +377,22 @@ int rad_authenticate(REQUEST *request)
 	/*
 	 *	Discover which password we want to use.
 	 */
-	if((auth_item = rad_getpass(request)) != NULL) {
-		password = (char *)auth_item->strvalue;
+	if ((auth_item = rad_getpass(request)) != NULL) {
+		password = (const char *)auth_item->strvalue;
 	}
 
 	/*
 	 *	Maybe there's a CHAP-Password?
 	 */
-	if (auth_item==NULL) {
-		if((auth_item = pairfind(request->packet->vps, 
-				PW_CHAP_PASSWORD)) != NULL) {
+	if (auth_item == NULL) {
+		if ((auth_item = pairfind(request->packet->vps, 
+					  PW_CHAP_PASSWORD)) != NULL) {
 			password = "<CHAP-PASSWORD>";
 		
-		/*
-		 *	No password we recognize.
-		 */
 		} else {
+			/*
+			 *	No password we recognize.
+			 */
 			password = "<NO-PASSWORD>";
 		}
 	}
@@ -616,15 +616,18 @@ int rad_authenticate(REQUEST *request)
 		/*
 		 *  Find the NAS port ID.
 		 */
-		if ((tmp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
+		if ((tmp = pairfind(request->packet->vps,
+				    PW_NAS_PORT_ID)) != NULL)
 			nas_port = tmp->lvalue;
 
-		if((tmp2 = pairfind(request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS)) != NULL) {
+		if((tmp2 = pairfind(request->reply->vps,
+				    PW_ADD_PORT_TO_IP_ADDRESS)) != NULL) {
 			if (tmp->addport || (tmp2 && tmp2->lvalue)) {
 				tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
 				tmp->addport = 0;
 			}
-			pairdelete(&request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS);
+			pairdelete(&request->reply->vps,
+				   PW_ADD_PORT_TO_IP_ADDRESS);
 		}
 	}
 
@@ -765,29 +768,29 @@ VALUE_PAIR *rad_getpass(REQUEST *request) {
 	VALUE_PAIR *auth_item;
 
 	auth_item = pairfind(request->packet->vps, PW_PASSWORD);
-	if(auth_item == NULL) {
+	if (auth_item == NULL) {
 		return NULL;
 	}
 
 	/*
-	 * If we proxied already, it's been decoded
-	 * Or if the decoded flag is set...just return
+	 *	If we proxied already, it's been decoded
+	 *	Or if the decoded flag is set...just return
 	 */
 	if ((request->proxy != NULL) || 
-			(auth_item->lvalue == PW_DECODED)) {
+	    (auth_item->lvalue == PW_DECODED)) {
 		return auth_item;
 	}
 
 	/* 
-	 * If we get here, we have to decode pass
+	 *	If we get here, we have to decode the password.
 	 */
 	rad_pwdecode((char *)auth_item->strvalue,
-								auth_item->length, request->secret,
-								(char *)request->packet->vector);
+		     auth_item->length, request->secret,
+		     (char *)request->packet->vector);
 
 	/* 
-	 * Set lvalue to PW_DECODED so we know not to
-	 * decode next time we get here
+	 *	Set lvalue to PW_DECODED so we know not to
+	 *	decode next time we get here
 	 */
 	auth_item->lvalue = PW_DECODED;
 
@@ -795,87 +798,4 @@ VALUE_PAIR *rad_getpass(REQUEST *request) {
 	auth_item->length = strlen(auth_item->strvalue);
 
 	return auth_item;
-}
-
-/* 
- * FIXME:  The next four functions should all
- * be in a module.  But not until we have
- * more control over module execution.
- * -jcarneal
- */
-
-/*
- * Lowercase the username of a request
- * return 0 on success
- */
-int rad_loweruser(REQUEST *request) {
-	VALUE_PAIR *user;
-
-	user = pairfind(request->packet->vps, PW_USER_NAME);
-
-	if(user == NULL) {
-		return -1;
-	}
-
-	rad_lowercase(user->strvalue);
-	DEBUG2("rad_loweruser:  Username now '%s'", user->strvalue);
-	return 0;
-}
-
-/*
- * Lowercase the password of a request
- * return 0 on success
- */
-int rad_lowerpass(REQUEST *request) {
-	VALUE_PAIR *pass;
-
-	pass = rad_getpass(request);
-
-	if(pass == NULL) {
-		return -1;
-	}
-
-	rad_lowercase(pass->strvalue);
-	DEBUG2("rad_lowerpass:  Password now '%s'", pass->strvalue);
-	return 0;
-}
-
-
-/*
- * Remove spaces in user
- * return 0 on success
- */
-int rad_rmspace_user(REQUEST *request) {
-	VALUE_PAIR *user;
-
-	user = pairfind(request->packet->vps, PW_USER_NAME);
-
-	if(user == NULL) {
-		return -1;
-	}
-
-	rad_rmspace(user->strvalue);
-	user->length = strlen(user->strvalue);
-	DEBUG2("rad_rmspace_user:  Username now '%s'", user->strvalue);
-	
-	return 0;
-}
-
-/*
- * Remove spaces in user
- * return 0 on success
- */
-int rad_rmspace_pass(REQUEST *request) {
-	VALUE_PAIR *pass;
-
-	pass = rad_getpass(request);
-
-	if(pass == NULL) {
-		return -1;
-	}
-
-	rad_rmspace(pass->strvalue);
-	pass->length = strlen(pass->strvalue);
-	DEBUG2("rad_rmspace_pass:  Password now '%s'", pass->strvalue);
-	return 0;
 }

@@ -1279,6 +1279,42 @@ static void rfc_clean(RADIUS_PACKET *packet)
 	}
 }
 
+/* 
+ * FIXME:  The next two functions should all
+ * be in a module.  But not until we have
+ * more control over module execution.
+ * -jcarneal
+ */
+
+/*
+ * Lowercase the username of a request
+ * return 0 on success
+ */
+static int rad_lowerpair(REQUEST *request, VALUE_PAIR *vp) {
+	if (!vp) {
+		return -1;
+	}
+
+	rad_lowercase(vp->strvalue);
+	DEBUG2("rad_loweruser:  %s now '%s'", vp->name, vp->strvalue);
+	return 0;
+}
+
+/*
+ * Remove spaces in user
+ * return 0 on success
+ */
+static int rad_rmspace_pair(REQUEST *request, VALUE_PAIR *vp) {
+	if (!vp) {
+		return -1;
+	}
+	
+	rad_rmspace(vp->strvalue);
+	vp->length = strlen(vp->strvalue);
+	DEBUG2("rad_rmspace_user:  %s now '%s'", vp->name, vp->strvalue);
+	
+	return 0;
+}
 
 /*
  *	Respond to a request packet.
@@ -1357,37 +1393,39 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	/* See if we have to lower user/pass before processing */
 	if(strcmp(mainconfig.lower_time, "before") == 0) {
 		if(mainconfig.do_lower_user)
-			rad_loweruser(request);
+			rad_lowerpair(request, request->username);
 		if(mainconfig.do_lower_pass)
-			rad_lowerpass(request);
+			rad_lowerpair(request, rad_getpass(request));
 	}
 	if(strcmp(mainconfig.nospace_time, "before") == 0) {
 		if(mainconfig.do_nospace_user)
-			rad_rmspace_user(request);
+			rad_rmspace_pair(request, request->username);
 		if(mainconfig.do_nospace_pass)
-			rad_rmspace_pass(request);
+			rad_rmspace_pair(request, rad_getpass(request));
 	}
 	(*fun)(request);
 
 	/* See if we have to lower user/pass after processing */
 	if(strcmp(mainconfig.lower_time, "after") == 0) {
 		if(mainconfig.do_lower_user)
-			rad_loweruser(request);
+			rad_lowerpair(request, request->username);
 		if(mainconfig.do_lower_pass)
-			rad_lowerpass(request);
+			rad_lowerpair(request, rad_getpass(request));
 		reprocess = 1;
 	}
+
 	if(strcmp(mainconfig.nospace_time, "after") == 0) {
 		if(mainconfig.do_nospace_user)
-			rad_rmspace_user(request);
+			rad_rmspace_pair(request, request->username);
 		if(mainconfig.do_nospace_pass)
-			rad_rmspace_pass(request);
-		reprocess = 1;
-	}
+			rad_rmspace_pair(request, rad_getpass(request));
+		 reprocess = 1;
+	 }
+
 	/* Reprocess if we rejected last time */
-	if((fun == rad_authenticate) &&
-			(request->reply->code == PW_AUTHENTICATION_REJECT) &&
-			(reprocess)) 
+	if ((fun == rad_authenticate) &&
+	    (request->reply->code == PW_AUTHENTICATION_REJECT) &&
+	    (reprocess)) 
 		(*fun)(request);
 	
 	/*

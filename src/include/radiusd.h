@@ -254,11 +254,7 @@ int proxy_send(REQUEST *request);
 /* auth.c */
 char		*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
-VALUE_PAIR *rad_getpass(REQUEST *request);
-int rad_loweruser(REQUEST *request);
-int rad_lowerpass(REQUEST *request);
-int rad_rmspace_user(REQUEST *request);
-int rad_rmspace_pass(REQUEST *request);
+VALUE_PAIR	*rad_getpass(REQUEST *request);
 
 /* exec.c */
 char		*radius_xlate(char *output, size_t outputlen,
