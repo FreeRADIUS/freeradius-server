@@ -22,7 +22,10 @@ CREATE SEQUENCE dictionary_seq START WITH 1 INCREMENT BY 1;
 
 /*
  * Table structure for table 'nas'
+ * This is not currently used but FreeRADIUS but is usefull for reporting
+ * anyway.
  */
+
 CREATE TABLE nas (
 	id 		INT PRIMARY KEY,
 	nasname		VARCHAR(128),
@@ -32,7 +35,8 @@ CREATE TABLE nas (
 	ports		INT,
 	secret		VARCHAR(60),
 	community	VARCHAR(50),
-	snmp		VARCHAR(10)
+	snmp		VARCHAR(10),
+	naslocation	VARCHAR(10)
 );
 CREATE SEQUENCE nas_seq START WITH 1 INCREMENT BY 1;
 
@@ -56,8 +60,8 @@ CREATE TABLE radacct (
 	connectinfo_stop	VARCHAR(32),
 	acctinputoctets		NUMERIC(12),
 	acctoutputoctets	NUMERIC(12),
-	calledstationid		VARCHAR(30),
-	callingstationid	VARCHAR(30),
+	calledstationid		VARCHAR(50),
+	callingstationid	VARCHAR(50),
 	acctterminatecause	VARCHAR(32),
 	servicetype		VARCHAR(32),
 	framedprotocol		VARCHAR(32),
