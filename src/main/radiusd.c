@@ -100,7 +100,6 @@ const char *radlib_dir = NULL;
 int syslog_facility;
 int log_stripped_names;
 int debug_flag = 0;
-int use_dbm = FALSE;
 uint32_t myip = INADDR_ANY;
 int log_auth_detail = FALSE;
 int auth_port = 0;

@@ -187,7 +187,6 @@ extern const char	*radius_dir;
 extern const char	*radius_libdir;
 extern radlog_dest_t	radlog_dest;
 extern uint32_t		expiration_seconds;
-extern int		use_dbm;
 extern int		log_stripped_names;
 extern uint32_t		myip;
 extern int		log_auth_detail;
