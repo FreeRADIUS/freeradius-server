@@ -3,7 +3,7 @@ Build-Depends: debhelper (>= 4.1.68), libltdl3-dev, libpam0g-dev, postgresql-dev
 Section: net
 Priority: optional
 Maintainer: Paul Hampson <Paul.Hampson@anu.edu.au>
-Standards-Version: 3.6.1.0
+Standards-Version: 3.6.1.1
 
 Package: freeradius
 Architecture: any
