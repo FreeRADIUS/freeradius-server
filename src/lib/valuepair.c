@@ -833,7 +833,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
 	 */
-	if (strncasecmp(value, "0x", 2) != 0) {
+	if (value && (strncasecmp(value, "0x", 2) != 0)) {
 		goto error;
 	}
 
@@ -902,7 +902,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 
 	} else {		/* very much unknown: die */
 	error:
-		librad_log("Unknown attribute %s", attribute);
+		librad_log("Unknown attribute \"%s\"", attribute);
 		return NULL;
 	}
 
@@ -1161,7 +1161,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	LRAD_TOKEN	token, t, xlat;
 	VALUE_PAIR	*vp;
 
-	*eol = 0;
+	*eol = T_INVALID;
 
 	/* Get attribute. */
 	token = gettoken(ptr, attr, sizeof(attr));
@@ -1218,11 +1218,35 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		break;
 
 		/*
+		 *	Perhaps do xlat's
+		 */
+	case T_DOUBLE_QUOTED_STRING:
+		p = strchr(value, '%');
+		if (p) {
+			vp = pairmake(attr, NULL, token);
+			if (!vp) {
+				*eol = T_INVALID;
+				return NULL;
+			}
+
+			strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
+			vp->flags.do_xlat = 1;
+			vp->length = 0;
+		} else {
+			vp = pairmake(attr, value, token);
+		}
+		break;
+
+
+		/*
 		 *	Mark the pair to be allocated later.
 		 */
 	case T_BACK_QUOTED_STRING:
 		vp = pairmake(attr, NULL, token);
-		if (!vp) return vp;
+		if (!vp) {
+			*eol = T_INVALID;
+			return NULL;
+		}
 
 		vp->flags.do_xlat = 1;
 		strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
