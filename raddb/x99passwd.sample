@@ -1,11 +1,11 @@
-# This is a sample "passwd" file used for ANSI X9.9 token authentication.
-# Actually, it's not a sample file, but it does document the format and
-# legal values.
-#
-# This file must be mode 0400 or 0600 and owned by the user the radius
-# server runs as.
-#
-# The format is username:card_type:key, eg
+This is a sample "passwd" file used for ANSI X9.9 token authentication.
+Actually, it's not a sample file, but it does document the format and
+legal values.  The default location is /etc/x99passwd.
+
+This file must be mode 0400 or 0600 and owned by the user the radius
+server runs as.
+
+The format is username:card_type:key, eg
 
 bob:cryptocard-d8-es:0101010101010101
 
@@ -24,4 +24,42 @@ cryptocard-h8-es	event synchronous, 8 digit hex response.
 cryptocard-d8-es	event synchronous, 8 digit decimal response.
 cryptocard-h7-es	event synchronous, 7 digit hex response.
 cryptocard-d7-es	event synchronous, 7 digit decimal response.
+
+
+STATE:
+
+Along with the passwd file is a "state file" which contains state
+needed to authenticate synchronously, along with other persistent data.
+There is one state file per user, with the same name as the user.
+The default location for state files is in /etc/x99sync.d.
+
+The format is "version:user:challenge:key:failures:last_async:".
+Note that the trailing colon is required.
+
+version: 1
+user: this is a sanity check field
+challenge: the next synchronous challenge
+key: the key used for the next challenge (currently unused)
+failures: number of consecutive failures
+last_async: the last time the user authenticated asynchronously.
+
+If this file does not exist, the user must authenticate asynchronously.
+Once that happens, the server will create this file.  For tokens/modes
+that don't support async auth at all (or if you disallow it anyway),
+you will need to create this file at the time you add the user to
+/etc/x99passwd.  For CRYPTOCard, you can obtain the first sync challenge
+by compiling crcalc.c, included with the module.  When prompted for the
+challenge, just hit return.  This will encrypt a zero block, which is
+what the token will also do upon programming.  crcalc will display the
+next challenge, which you can then use to initialize the state file.
+For example:
+
+1:bob:12345678::0:0:
+
+When creating this file, make sure it is owned by the user the server
+runs as.
+
+To reset locked-out users, you can set the failures field to 0.  You
+may also need to reset the challenge field if they are too far out of
+sync.  (Determine the next challenge from the token's display.)
 
