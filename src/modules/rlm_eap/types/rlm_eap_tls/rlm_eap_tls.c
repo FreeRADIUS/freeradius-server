@@ -518,11 +518,12 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 						buffer, sizeof(buffer));
 			log_debug("  Tunneled data (%u bytes)\n", data_len);
 			for (i = 0; i < data_len; i++) {
-				if ((i & 0x0f) == 0) printf("  %d: ", i);
+				if ((i & 0x0f) == 0x00) printf("  %x: ", i);
 				if ((i & 0x0f) == 0x0f) printf("\n");
 
 				printf("%02x ", buffer[i]);
 			}
+			printf("\n");
 		}
 #endif
 
