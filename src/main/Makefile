@@ -25,7 +25,7 @@ ifneq ($(USE_SHARED_LIBS),yes)
 MODULE_LIBS	+= $(shell for x in ../modules/rlm_*/rlm_*.la;do echo -dlpreopen $$x;done)
 endif
 
-all:	radiusd radwho radzap raduse radclient
+all:	radiusd radwho radzap raduse radclient radrelay
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
@@ -105,6 +105,12 @@ radclient: radclient.o ../lib/libradius.a
 radclient.o: radclient.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radclient.c
 
+radrelay: radrelay.o ../lib/libradius.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radrelay radrelay.o $(LIBS)
+
+radrelay.o: radrelay.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c radrelay.c
+
 builddbm: builddbm.o files_b.o log.o
 	$(CC) $(LDFLAGS) -o builddbm builddbm.o files_b.o log.o $(LDBM) $(LIBS)
 
@@ -128,18 +134,19 @@ radzap: radzap.o util.o nas.o log.o client.o conffile.o files.o xlat.o
 
 clean:
 	rm -rf *.o *.so *~ modules_static.h radiusd radwho raduse \
-		radclient radzap builddbm .libs
+		radclient radrelay radzap builddbm .libs
 
 install:
 	$(INSTALL) -d -m 755			$(R)$(sbindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd	$(R)$(sbindir)
-	$(INSTALL) -m 755    checkrad.pl	$(R)$(sbindir)/checkrad
 	$(INSTALL) -d -m 755			$(R)$(bindir)
 	$(INSTALL) -m 755 $(INSTALLSTRIP) radwho		$(R)$(bindir)
 	$(INSTALL) -m 755 $(INSTALLSTRIP) raduse		$(R)$(bindir)
 	$(INSTALL) -m 755 $(INSTALLSTRIP) radzap		$(R)$(bindir)
 	$(INSTALL) -m 755    radlast		$(R)$(bindir)
 	$(INSTALL) -m 755    radclient		$(R)$(bindir)
+	$(INSTALL) -m 755    radrelay		$(R)$(bindir)
 	$(INSTALL) -m 755    radtest 		$(R)$(bindir)
 	$(INSTALL) -d -m 755			$(R)$(logdir)
 	$(INSTALL) -d -m 755			$(R)$(radacctdir)
+	$(INSTALL) -m 755    checkrad.pl	$(R)$(sbindir)/checkrad

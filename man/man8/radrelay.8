@@ -1,0 +1,61 @@
+.TH RADRELAY 1 "09 June 2002" "" "FreeRADIUS Daemon"
+.SH NAME
+radrelay -- replicate accounting data to another RADIUS server
+.SH SYNOPSIS
+.B radrelay
+.RB [ \-a
+.IR accounting_dir ]
+.RB [ \-f ]
+.RB [ \-i
+.IR source_ip ]
+.RB [ \-s
+.IR secret ]
+.RB [ \-S
+.IR secret_file ]
+.RB [ \-x ]
+\fIserver detailfile\fP
+.SH DESCRIPTION
+\fBRadrelay\fP reads a file in the \fIdetail\fP file format,
+reconstructs radius packets from it and sends them to a remote
+radius server. When end-of-file is reached, the file is truncated.
+\fBRadrelay\fP then waits for additional data to be written to
+the file, and starts over again.
+.PP
+
+.SH OPTIONS
+
+.IP "\-a \fIaccounting_directory\fP"
+The base directory to use to read the detail file from.
+
+.IP \-f
+Do \fInot\fP fork and run in the background as a daemon.
+
+.IP "\-i \fIsource_ip\fP"
+The source IP address to use for sending radius packets.
+
+.IP "\-s \fIsecret\fP"
+Remote server secret.
+
+.IP "\-S \fIsecret_file\fP"
+Read remote server secret from file, the file should contain
+nothing other then the plain-text secret.
+
+.IP \-x
+Enable debug mode.
+
+.IP "server[:port]"
+The hostname or IP address of the remote server. Optionally a UDP port
+can be specified. If no UDP port is specified, it is looked up in
+\fI/etc/services\fP. The service name looked for is \fBradacct\fP for
+accounting packets. If a service is not found in \fI/etc/services\fP,
+1813 is used.
+
+.IP "detailfile"
+The detail file to use, this will be appended to the base accounting
+directory.
+
+.SH SEE ALSO
+radiusd(8),
+doc/radrelay.
+.SH AUTHOR
+Miquel van Smoorenburg, miquels@cistron.nl.
