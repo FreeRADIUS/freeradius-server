@@ -296,7 +296,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
 		acctstatustype = vp->lvalue;
 	else {
-		DEBUG("rlm_ippool: Could not find account status type in packet.");
+		DEBUG("rlm_ippool: Could not find account status type in packet. Return NOOP.");
 		return RLM_MODULE_NOOP;
 	}
 	switch(acctstatustype){
@@ -304,7 +304,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			if ((vp = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
 				port = vp->lvalue;
 			else {
-				DEBUG("rlm_ippool: Could not find port number in packet.");
+				DEBUG("rlm_ippool: Could not find port number in packet. Return NOOP.");
 				return RLM_MODULE_NOOP;
 			}
 			if ((vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
@@ -313,7 +313,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 				if ((vp = pairfind(request->packet->vps, PW_NAS_IDENTIFIER)) != NULL)
 					strncpy(nas, vp->strvalue, MAX_NAS_NAME_SIZE - 1);
 				else {
-					DEBUG("rlm_ippool: Could not find nas information in packet.");
+					DEBUG("rlm_ippool: Could not find nas information in packet. Return NOOP.");
 					return RLM_MODULE_NOOP;
 				}
 			}
@@ -378,11 +378,12 @@ static int ippool_accounting(void *instance, REQUEST *request)
 				}
 			}
 		}
+		pthread_mutex_unlock(&data->op_mutex);
 	}
-	else
+	else{
+		pthread_mutex_unlock(&data->op_mutex);
 		DEBUG("rlm_ippool: Entry not found");
-
-	pthread_mutex_unlock(&data->op_mutex);
+	}
 
 	return RLM_MODULE_OK;
 }
@@ -601,17 +602,16 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			key_datum = nextkey;
 		}
 	}
-	pthread_mutex_unlock(&data->op_mutex);
 	/*
 	 * If we have found a free entry set active to 1 then add a Framed-IP-Address attribute to
 	 * the reply
+	 * We keep the operation mutex locked until after we have set the corresponding entry active
 	 */
 	if (key_datum.dptr){
 		entry.active = 1;
 		data_datum.dptr = (char *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
 
-		pthread_mutex_lock(&data->op_mutex);
 		if (delete){
 			/*
 		 	 * Delete the entry so that we can change the key
@@ -682,6 +682,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 	}
 	else{
+		pthread_mutex_unlock(&data->op_mutex);
 		DEBUG("rlm_ippool: No available ip addresses in pool.");
 		return RLM_MODULE_NOOP;
 	}
