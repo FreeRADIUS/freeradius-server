@@ -3,6 +3,10 @@ It is written in PHP4 (although the files have an extension of php3 for historic
 It is modular and right now it assumes that user information is stored in an ldap server
 or an sql database and accounting in an sql server.
 
+Extra documentation from Stadler Karel (<Karel.Stadler@psi.ch>):
+http://kstadler.ch/index.php?topgroupid=1&subgroupid=14&groupid=11
+
+
 INSTALLATION:
 
 Put dialup_admin in /usr/local/dialupadmin
