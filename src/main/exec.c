@@ -369,14 +369,13 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 *	or single-server systems).
 	 */
 	child_pid = rad_waitpid(pid, &status, 0);
-	rad_assert(child_pid == pid);
-	
-	if (WIFEXITED(status)) {
-		status = WEXITSTATUS(status);
-		radlog(L_DBG, "Exec-Program: returned: %d", status);
-		return status;
+	if (child_pid == pid) {
+		if (WIFEXITED(status)) {
+			status = WEXITSTATUS(status);
+			radlog(L_DBG, "Exec-Program: returned: %d", status);
+		}
 	}
-	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit (killed or coredump)");
 
+	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit");
 	return 1;
 }
