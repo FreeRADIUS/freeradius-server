@@ -23,3 +23,16 @@ these messages.
   http://www.freeradius.org/faq/
 
   and ./doc/bugs
+
+
+For more general RADIUS information, the Livington internet site had a
+lot of information on radius online.  Unfortunately Livingston, and
+the site, don't exist anymore but there's a copy of the site still at:
+
+	http://portmasters.com/www.livingston.com/
+
+Especially worth a read is the "RADIUS for Unix administrators guide"
+
+HTML:  http://portmasters.com/tech/docs/radius/1185title.html
+PDF:   http://portmasters.com/tech/docs/pdf/radius.pdf
+
