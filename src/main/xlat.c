@@ -507,16 +507,17 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			     RADIUS_ESCAPE_STRING func)
 {
 	int	do_length = 0;
-	char attrname[256];
+	char	xlat_name[128];
+	char	*xlat_string = NULL; /* can be large */
 	const char *p;
 	char *q, *pa;
-	int stop=0, found=0, retlen=0;
+	int found=0, retlen=0;
 	int openbraces = *open;
 	xlat_t *c;
 
 	p = *from;
 	q = *to;
-	pa = &attrname[0];
+	pa = &xlat_name[0];
 
 	*q = '\0';
 
@@ -533,18 +534,74 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	}
 
 	/*
-	 *  Copy over the rest of the string.
+	 *	First, copy the xlat key name to one buffer
 	 */
-	while ((*p) && (!stop)) {
-		switch(*p) {
+	while (*p && (*p != '}') && (*p != ':')) {
+		*pa++ = *p++;
+
+		if (pa >= (xlat_name + sizeof(xlat_name) - 1)) {
 			/*
-			 *  Allow braces inside things, too.
+			 *	Skip to the end of the input
 			 */
+			p += strlen(p);
+			DEBUG("xlat: Module name is too long in string %%%s",
+			      *from);
+			goto done;
+		}
+	}
+	*pa = '\0';
+
+	if (!*p) {
+		DEBUG("xlat: Invalid syntax in %s", *from);
+
+		/*
+		 *	%{name} is a simple attribute reference, use it.
+		 */
+	} else if (*p == '}') {
+		openbraces--;
+		p++;
+		rad_assert(openbraces == *open);
+
+		if ((retlen = xlat_packet(&xlat_inst[1], request, xlat_name,
+					  q, freespace, func)) > 0) {
+			found = 1;
+		}
+	} else if (p[1] == '-') { /* handle ':- */
+		p += 2;
+		if ((retlen = xlat_packet(&xlat_inst[1], request, xlat_name,
+					  q, freespace, func)) > 0) {
+			found = 1;
+		}
+		
+	} else {      /* module name, followed by per-module string */
+		int stop = 0;
+
+		rad_assert(*p == ':');
+		p++;			/* skip the ':' */
+		
+		xlat_string = rad_malloc(strlen(p) + 1); /* always returns */
+		pa = xlat_string;
+		
+		/*
+		 *  Copy over the rest of the string, which is per-module
+		 *  data.
+		 */
+		while (*p && !stop) {
+			switch(*p) {
+				/*
+				 *	What the heck is this supposed
+				 *	to be doing?
+				 */
 			case '\\':
 				p++; /* skip it */
 				*pa++ = *p++;
 				break;
 
+				/*
+				 *	This is pretty hokey...  we
+				 *	should use the functions in
+				 *	util.c
+				 */
 			case '{':
 				openbraces++;
 				*pa++ = *p++;
@@ -559,59 +616,35 @@ static void decode_attribute(const char **from, char **to, int freespace,
 					*pa++ = *p++;
 				}
 				break;
-
-				/*
-				 *  Attr-Name1:-Attr-Name2
-				 *
-				 *  Use Attr-Name1, and if not found,
-				 *  use Attr-Name2.
-				 */
-			case ':':
-				if (p[1] == '-') {
-					p += 2;
-					stop = 1;
-					break;
-				}
-				/* else FALL-THROUGH */
-
+				
 			default:
 				*pa++ = *p++;
 				break;
+			}
+		}
+
+		*pa = '\0';
+		
+		/*
+		 *	Look up almost everything in the new tree of xlat
+		 *	functions.  This makes it a little quicker...
+		 */
+		if ((c = xlat_find(xlat_name)) != NULL) {
+			if (!c->internal) DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
+						c->module, xlat_string);
+			retlen = c->do_xlat(c->instance, request, xlat_string,
+					    q, freespace, func);
+			/* If retlen is 0, treat it as not found */
+			if (retlen > 0) found = 1;
+#ifndef NDEBUG
+		} else {
+			/*
+			 *	No attribute by that name, return an error.
+			 */
+			DEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", xlat_name, *from);
+#endif
 		}
 	}
-	*pa = '\0';
-
-	/*
-	 *	Look up almost everything in the new tree of xlat
-	 *	functions.  this makes it a little quicker...
-	 */
-	if ((c = xlat_find(attrname)) != NULL) {
-		if (!c->internal) DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
-					c->module, attrname+ c->length + 1);
-		retlen = c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
-		/* If retlen is 0, treat it as not found */
-		if (retlen > 0) found = 1;
-
-		/*
-		 *	Not in the default xlat database.  Must be
-		 *	a bare attribute number.
-		 */
-	} else if ((retlen = xlat_packet(&xlat_inst[1], request, attrname,
-					 q, freespace, func)) > 0) {
-		found = 1;
-
-		/*
-		 *	Look up the name, in order to get the correct
-		 *	debug message.
-		 */
-#ifndef NDEBUG
-	} else if (dict_attrbyname(attrname) == NULL) {
-		/*
-		 *	No attribute by that name, return an error.
-		 */
-		DEBUG2("WARNING: Attempt to use unknown xlat function, or non-existent attribute in string %%{%s}", attrname);
-#endif
-	} /* else the attribute is known, but not in the request */
 
 	/*
 	 * Skip to last '}' if attr is found
@@ -655,6 +688,9 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			p++;	/* skip the character */
 		}
 	}
+	
+	done:
+	if (xlat_string) free(xlat_string);
 
 	*open = openbraces;
 	*from = p;
