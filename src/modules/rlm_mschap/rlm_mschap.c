@@ -668,12 +668,33 @@ static int do_mschap(rlm_mschap_t *inst,
 		     uint8_t *challenge, uint8_t *response,
 		     uint8_t *nthashhash)
 {
+	int		do_ntlm_auth = 0;
 	uint8_t		calculated[24];
+	VALUE_PAIR	*ntlm_auth = NULL;
+
+	/*
+	 *	If we have an ntlm_auth configuration, then we may
+	 *	want to use it.
+	 */
+	ntlm_auth = pairfind(request->config_items,
+			     PW_MS_CHAP_USE_NTLM_AUTH);
+	if (ntlm_auth) do_ntlm_auth = ntlm_auth->lvalue;
+
+	/*
+	 *	No ntlm_auth configured, attribute to tell us to
+	 *	use it exists, and we're told to use it.  We don't
+	 *	know what to do...
+	 */
+	if (!inst->ntlm_auth && ntlm_auth &&
+	    (ntlm_auth->lvalue != 0)) {
+		DEBUG2("  rlm_mschap: Asked to use ntlm_auth, but it was not configured in the mschap{} section.");
+		return -1;
+	}
 
 	/*
 	 *	Do normal authentication.
 	 */
-	if (!inst->ntlm_auth) {
+	if (!do_ntlm_auth) {
 		/*
 		 *	No password: can't do authentication.
 		 */
@@ -727,9 +748,10 @@ static int do_mschap(rlm_mschap_t *inst,
 		}
 
 		/*
-		 *	Check the length.
+		 *	Check the length.  It should be at least 32,
+		 *	with an LF at the end.
 		 */
-		if (strlen(buffer + 8) != 32) {
+		if (strlen(buffer + 8) < 32) {
 			DEBUG2("  rlm_mschap: Invalid output from ntlm_auth: NT_KEY has unexpected length");
 			return -1;
 		}
