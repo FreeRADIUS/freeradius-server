@@ -273,7 +273,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		radlog(L_ERR, "rlm_sql (%s): sql_nas_table is NULL.",inst->config->xlat_name);
 		return -1;
 	}
-	snprintf(querystr,MAX_QUERY_LEN - 1,"SELECT * FROM %s",inst->config->sql_nas_table);
+	snprintf(querystr,MAX_QUERY_LEN - 1,"SELECT id,nasname,shortname,type,secret FROM %s",inst->config->sql_nas_table);
 
 	DEBUG("rlm_sql (%s): Query: %s",inst->config->xlat_name,querystr);
 	sqlsocket = sql_get_socket(inst);
@@ -328,18 +328,18 @@ static int generate_sql_clients(SQL_INST *inst)
 				inst->config->xlat_name,strlen(row[3]),sizeof(c->nastype) - 1);
 			continue;
 		}
-		if (!row[5]){
+		if (!row[4]){
 			radlog(L_ERR, "rlm_sql (%s): No secret found for row %s",inst->config->xlat_name,row[0]);
 			continue;
 		}
-		if (strlen(row[5]) >= sizeof(c->secret)){
+		if (strlen(row[4]) >= sizeof(c->secret)){
 			radlog(L_ERR, "rlm_sql (%s): secret of length %d is greater than the allowed maximum of %d",
-				inst->config->xlat_name,strlen(row[5]),sizeof(c->secret) - 1);
+				inst->config->xlat_name,strlen(row[4]),sizeof(c->secret) - 1);
 			continue;
 		}
 
 		DEBUG("rlm_sql (%s): Read entry nasname=%s,shortname=%s,secret=%s",inst->config->xlat_name,
-			row[1],row[2],row[5]);
+			row[1],row[2],row[4]);
 
 		c = rad_malloc(sizeof(RADCLIENT));
 		memset(c, 0, sizeof(RADCLIENT));
@@ -392,7 +392,7 @@ static int generate_sql_clients(SQL_INST *inst)
 					c->ipaddr);
 		}
 
-		strcpy((char *)c->secret, row[5]);
+		strcpy((char *)c->secret, row[4]);
 		strcpy(c->shortname, row[2]);
 		if(row[3] != NULL)
 			strcpy(c->nastype, row[3]);
