@@ -1,0 +1,98 @@
+#  This is NOT a shell script!
+
+#
+#  For version 0.8 (or any others), this file documents the methods
+#  used by the developers to perform a release of the software.
+#
+#  If you're not a developer, then you can ignore this file.
+#
+#
+VERSION=0
+REVISION=8
+
+# cvs -d :pserver:USER@cvs.freeradius.org:/source checkout -P -d freeradius-$(VERSION).$(REVISION) radiusd
+cvs -d :pserver:USER@cvs.freeradius.org:/source checkout -P -d freeradius-0.8 radiusd
+
+#
+#  Do NOT type 'configure', 'make', or anything else.
+#  We presume that 
+#
+# cd freeradius-$(VERSION).$(REVISION)
+cd freeradius-0.8
+
+#
+#  remove $$ surrounding the $Date ... $
+#  add any last-minute notes
+#
+vi doc/ChangeLog
+
+#
+#  Commit it.
+#
+cvs commit doc/ChangeLog
+
+#
+#  Change version/revision numbers
+#
+vi configure.in
+
+#
+#  Re-build and commit the configure script
+#
+autoconf
+cvs commit configure configure.in
+
+#
+#  tag the files for the release
+#
+# cvs tag release_$(VERSION)_$(REVISION)_0
+cvs tag release_0.8
+
+#
+#  Delete the CVS directories.
+#
+rm -rf `find . -name CVS -print`
+
+#
+#  Delete any temporary files.
+#
+rm -f `find . -name "*~" -print`
+
+#
+#  Visually inspect the source, to be sure it's clean.
+#
+
+cd ..
+
+# tar -zcf freeradius-$(VERSION).$(REVISION).tar.gz freeradius-$(VERSION).$(REVISION)
+tar -zcf freeradius-0.7.tar.gz freeradius-0.7
+
+#
+#  These next steps presume you have an account on the main
+#  FreeRADIUS web server.
+#
+scp freeradius-0.7.tar.gz ...freeradius.org
+
+# move the archive to ftp 'pub/radius' directory
+
+# move the previous version to the 'old' directory
+mv freeradius-0.6.tar.gz old
+
+#
+#  delete the old soft link.
+#
+rm freeradius.tar.gz
+
+#
+#  link the new version to it's simple name
+#
+ln -s freeradius-0.7.tar.gz freeradius.tar.gz     
+
+# go to the www directory
+
+#
+#  Ensure that the source archive on the web is updated.
+# cvs update -APd radiusd
+
+# edit index.html, and add in the release notes under 'news'
+# edit getting.html, and update notes about current/old releases.
