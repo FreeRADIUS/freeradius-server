@@ -1,7 +1,35 @@
+dnl #############################################################
+dnl #
+dnl #  For information about autoconf, see:
+dnl #
+dnl #  http://www.primate.wisc.edu/software/autoconf/
+dnl #  
+dnl #  The recommended order is:
+dnl #
+dnl #  AC_INIT(file)
+dnl #  0. checks for compiler, libtool, and command line options
+dnl #  1. checks for programs
+dnl #  2. checks for libraries
+dnl #  3. checks for header files
+dnl #  4. checks for typedefs
+dnl #  5. checks for structures and functions
+dnl #  6. checks for compiler characteristics
+dnl #  7. checks for library functions
+dnl #  8. checks for system services
+dnl #  AC_OUTPUT([file...])
+dnl #
+dnl #############################################################
+
 AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 dnl AC_PREFIX_DEFAULT(/usr/local)
+
+dnl #############################################################
+dnl #
+dnl #  0. Checks for compiler, libtool, and command line options.
+dnl #
+dnl #############################################################
 
 dnl Check for GNU cc
 AC_PROG_CC
@@ -18,11 +46,6 @@ makever=`$ac_cv_path_MAKE --version 2>&1 | grep "GNU Make"`
 if test -z "$makever"; then
   AC_MSG_ERROR(GNU Make is not installed.  Please download and install it
 		from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing.)
-fi
-
-dnl Set Default CFLAGS
-if test "$GCC" = "yes"; then
-    CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
 fi
 
 dnl ensure that we're looking for dlopen
@@ -238,18 +261,12 @@ dnl AC_MSG_RESULT(" $INCLUDE")
 dnl AC_SUBST(INCLUDE)
 dnl AC_SUBST(IQUOTE)
 
-dnl See if this is OS/2
-AC_MSG_CHECKING(type of OS)
-OS=`uname -s`
-AC_MSG_RESULT($OS)
-if test "$OS" = "OS/2"; then
-	LIBPREFIX=
-else
-	LIBPREFIX=lib
-fi
-AC_SUBST(LIBPREFIX)
+dnl #############################################################
+dnl #
+dnl #  1. Checks for programs
+dnl #
+dnl #############################################################
 
-dnl Check for programs
 AC_PATH_PROG(PERL, perl, /usr/local/bin/perl)
 if test ! -x $ac_cv_path_PERL; then
   AC_MSG_ERROR(perl not found - fatal)
@@ -258,7 +275,47 @@ AC_PATH_PROG(SNMPGET, snmpget, /usr/local/bin/snmpget)
 AC_PATH_PROG(SNMPWALK, snmpwalk, /usr/local/bin/snmpwalk)
 AC_PATH_PROG(RUSERS, rusers, /usr/bin/rusers)
 
-dnl Check for headers
+dnl #
+dnl # check for AIX, to allow us to use some BSD functions
+dnl # must be before macros that call the compiler.
+dnl #
+AC_AIX
+
+dnl #############################################################
+dnl #
+dnl #  2. Checks for libraries
+dnl #
+dnl #############################################################
+
+dnl Check for libpthread
+dnl If using pthreads...
+if test "$WITH_THREADS" = "yes"; then 
+  AC_CHECK_HEADERS(pthread.h)
+  AC_CHECK_LIB(pthread, pthread_create,
+    PTHREADLIB="-lpthread"
+  )
+  AC_SUBST(PTHREADLIB)
+fi
+
+dnl Check for -lsocket
+AC_CHECK_LIB(socket, getsockname,
+  SOCKETLIB="-lsocket"
+)
+AC_SUBST(SOCKETLIB)
+
+dnl Check for -lnsl. We don't need yp_all, but usually if we want to
+dnl link against -lsocket we need to include -lnsl as well.
+AC_CHECK_LIB(nsl, yp_all,
+  NSLLIB="-lnsl",
+)
+AC_SUBST(NSLLIB)
+
+dnl #############################################################
+dnl #
+dnl #  3. Checks for header files
+dnl #
+dnl #############################################################
+
 AC_HEADER_DIRENT
 AC_HEADER_STDC
 
@@ -275,6 +332,34 @@ AC_CHECK_HEADERS( \
 	syslog.h
 )
 
+dnl #############################################################
+dnl #
+dnl #  4. Checks for typedefs
+dnl #
+dnl #############################################################
+
+dnl #
+dnl # Ensure that these are defined
+dnl #
+AC_TYPE_OFF_T 
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_UID_T
+AC_TYPE_SIGNAL
+
+dnl Check for socklen_t
+AC_TRY_COMPILE([#include <sys/types.h>
+#include <sys/socket.h>],
+  [socklen_t foo],
+  AC_DEFINE(HAVE_SOCKLEN_T),
+)
+
+dnl #############################################################
+dnl #
+dnl #  5. Checks for structures and functions
+dnl #
+dnl #############################################################
+
 AC_CHECK_FUNCS( \
 	getopt_long \
 	lockf \
@@ -290,22 +375,42 @@ AC_CHECK_FUNCS( \
 	getusershell \
 )
 
-dnl Check for socklen_t
-AC_TRY_COMPILE([#include <sys/types.h>
-#include <sys/socket.h>],
-  [socklen_t foo],
-  AC_DEFINE(HAVE_SOCKLEN_T),
-)
+dnl #############################################################
+dnl #
+dnl #  6. Checks for compiler characteristics
+dnl #
+dnl #############################################################
 
-dnl Check for libpthread
-dnl If using pthreads...
-if test "$WITH_THREADS" = "yes"; then 
-  AC_CHECK_HEADERS(pthread.h)
-  AC_CHECK_LIB(pthread, pthread_create,
-    PTHREADLIB="-lpthread"
-  )
-  AC_SUBST(PTHREADLIB)
+dnl #
+dnl # Ensure that these are defined
+dnl #
+AC_C_CONST 
+
+dnl #
+dnl # See if this is OS/2
+dnl #
+AC_MSG_CHECKING(type of OS)
+OS=`uname -s`
+AC_MSG_RESULT($OS)
+if test "$OS" = "OS/2"; then
+	LIBPREFIX=
+else
+	LIBPREFIX=lib
 fi
+AC_SUBST(LIBPREFIX)
+
+dnl #
+dnl # Set Default CFLAGS
+dnl #
+if test "$GCC" = "yes"; then
+    CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
+fi
+
+dnl #############################################################
+dnl #
+dnl #  7. Checks for library functions
+dnl #
+dnl #############################################################
 
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
@@ -318,19 +423,6 @@ if test "$CRYPTLIB" != ""; then
 else
   AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT))
 fi
-
-dnl Check for -lsocket
-AC_CHECK_LIB(socket, getsockname,
-  SOCKETLIB="-lsocket"
-)
-AC_SUBST(SOCKETLIB)
-
-dnl Check for -lnsl. We don't need yp_all, but usually if we want to
-dnl link against -lsocket we need to include -lnsl as well.
-AC_CHECK_LIB(nsl, yp_all,
-  NSLLIB="-lnsl",
-)
-AC_SUBST(NSLLIB)
 
 dnl ***********************
 dnl  This next bit is stolen from glib, and modified to work for FreeRADIUS.
@@ -430,14 +522,25 @@ AC_SUBST(MODULE_CFLAGS)
 AC_SUBST(MODULE_LDFLAGS)
 AC_SUBST(MODULE_HAVE_DLERROR)
 
+dnl #############################################################
+dnl #
+dnl #  8. Checks for system services
+dnl #
+dnl #############################################################
+
 dnl #
 dnl # Figure out where libtool is located,
 dnl #
 LIBTOOL="`pwd`/libtool"
 AC_SUBST(LIBTOOL)
 
+dnl #############################################################
+dnl #
+dnl #  And finally, output the results.
+dnl #
+dnl #############################################################
+
 AC_OUTPUT(\
-	
 	./Make.inc \
 	./src/include/build-radpaths-h \
 	./src/main/checkrad.pl \
