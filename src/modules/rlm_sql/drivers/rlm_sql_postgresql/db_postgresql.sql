@@ -171,6 +171,8 @@ CREATE TABLE nas (
  * Common utility function for date calculations. This is used in our
  * alternative account stop query to calculate the start of a session.
  *
+ * This function is Copyright 2001 by Mark Steele (msteele@inet-interactif.com)
+ *
  * Please note that this requires the plpgsql to be available in your
  * radius database. If it is not available you can register it with
  * postgres by running this command:
