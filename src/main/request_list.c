@@ -13,6 +13,7 @@ static const char rcsid[] = "$Id$";
 
 #include	<stdlib.h>
 #include	<string.h>
+#include	<assert.h>
 
 #include	"radiusd.h"
 #include	"request_list.h"
@@ -31,6 +32,7 @@ int rl_init(void)
 	 */
 	for (i = 0; i < 256; i++) {
 		request_list[i].first_request = NULL;
+		request_list[i].last_request = NULL;
 		request_list[i].request_count = 0;
 		request_list[i].last_cleaned_list = 0;
 	}
@@ -44,21 +46,23 @@ int rl_init(void)
 void rl_delete(REQUEST *request)
 {
 	int id;
+	REQUEST *prev, *next;
 
+	prev = request->prev;
+	next = request->next;
+	
 	id = request->packet->id;
 
-	if (!request->prev) {
-		request_list[id].first_request = request->next;
+	if (!prev) {
+		request_list[id].first_request = next;
 	} else {
-		request->prev->next = request->next;
+		prev->next = next;
 	}
 
-	if (!request->next) {
-		/*
-		 *	Update tail pointer.
-		 */
+	if (!next) {
+		request_list[id].last_request = prev;
 	} else {
-		request->next->prev = request->prev;
+		next->prev = prev;
 	}
 	
 	request_free(request);
@@ -74,19 +78,21 @@ void rl_add(REQUEST *request)
 	REQUEST *curreq;
 
 	id = request->packet->id;
+
 	request->prev = NULL;
 	request->next = NULL;
 
 	if (!request_list[id].first_request) {
+		assert(request_list[id].request_count == 0);
+
 		request_list[id].first_request = request;
+		request_list[id].last_request = request;
 	} else {
-		for (curreq = request_list[id].first_request ;
-		     curreq->next != NULL ;
-		     curreq = curreq->next)
-			/* do nothing */ ;
-		
-		curreq->next = request;
-		request->prev = curreq;
+		assert(request_list[id].request_count != 0);
+
+		request->prev = request_list[id].last_request;
+		request_list[id].last_request->next = request;
+		request_list[id].last_request = request;
 	}
 
 	request_list[id].request_count++;
@@ -119,6 +125,37 @@ REQUEST *rl_find(REQUEST *request)
 	return curreq;
 }
 
+/*
+ *	Look up a particular request, using:
+ *
+ *	Request ID, request code, source IP, source port, 
+ *
+ *	Note that we do NOT use the request vector to look up requests.
+ *
+ *	We MUST NOT have two requests with identical (id/code/IP/port), and
+ *	different vectors.  This is a serious error!
+ */
+REQUEST *rl_find_proxy(REQUEST *request)
+{
+	REQUEST *curreq = NULL;
+	int id;
+	
+	for (id = 0; (id < 256) && (curreq == NULL); id++) {
+		for (curreq = request_list[request->packet->id].first_request;
+		     curreq != NULL ;
+		     curreq = curreq->next) {
+			if (curreq->proxy &&
+			    (curreq->proxy->id == request->packet->id) &&
+			    (curreq->proxy->dst_ipaddr == request->packet->src_ipaddr) &&
+			    (curreq->proxy->dst_port == request->packet->src_port)) {
+				
+				break;
+			}
+		} /* loop over all requests for this id. */
+	} /* loop over all id's... this is horribly inefficient */
+
+	return curreq;
+}
 /*
  *	Walk over all requests, performing a callback for each request.
  */

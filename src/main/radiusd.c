@@ -1601,7 +1601,6 @@ static struct timeval *rad_clean_list(time_t now)
 
 	rad_walk_t info;
 
-
 	/*
 	 *	If we've already set up the timeout or cleaned the
 	 *	request list this second, then don't do it again.  We
@@ -1620,7 +1619,7 @@ static struct timeval *rad_clean_list(time_t now)
 	    (last_cleaned_list == now) &&
 	    (tv.tv_sec != 0)) {		
 		last_tv = tv;
-		DEBUG2("X Waking up in %d seconds...",
+		DEBUG2("Waking up in %d seconds...",
 		       (int) last_tv_ptr->tv_sec);
 		return last_tv_ptr;
 	}
@@ -1690,7 +1689,6 @@ static struct timeval *rad_clean_list(time_t now)
 static REQUEST *rad_check_list(REQUEST *request)
 {
 	REQUEST		*curreq;
-	int		request_count;
 	int		i;
 	time_t		now;
 
@@ -1710,7 +1708,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 		return request;
 	}
 
-	request_count = 0;
 	now = request->timestamp; /* good enough for our purposes */
 
 	/*
@@ -1746,12 +1743,12 @@ static REQUEST *rad_check_list(REQUEST *request)
 				radlog(L_INFO,
 				"Sending duplicate authentication reply"
 				" to client %s:%d - ID: %d",
-				client_name(request->packet->src_ipaddr),
-				request->packet->src_port,
-				request->packet->id);
+				client_name(curreq->packet->src_ipaddr),
+				curreq->packet->src_port,
+				curreq->packet->id);
 
 				rad_send(curreq->reply, curreq->secret);
-				
+
 				/*
 				 *	There's no reply, but maybe there's
 				 *	an outstanding proxy request.
@@ -1775,6 +1772,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 					       request->packet->id);
 				}
 			} else {
+				/*
+				 *	This request wasn't proxied.
+				 */
 				radlog(L_ERR,
 				"Dropping duplicate authentication packet"
 				" from client %s:%d - ID: %d",
@@ -1789,39 +1789,38 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 */
 			request_free(request);
 			request = NULL;
+			
+			/*
+			 *	The packet vectors are different, so
+			 *	we can delete the old request from
+			 *	the list.
+			 */
+		  } else if (curreq->finished) {
+			  rl_delete(curreq);
 
-		  } else {	/* packet vectors are different */
 			  /*
-			   *	The packet vectors are different, so
-			   *	we can mark the old request to be
-			   *	deleted from the list.
+			   *	??? the client sent us a new request
+			   *	with the same ID, while we were
+			   *	processing the old one!  What should
+			   *	we do?
 			   *
-			   *	Note that we don't actually delete it...
-			   *	Maybe we should?
+			   *	Right now, we just drop the new packet..
 			   */
-			  if (curreq->finished) {
-				  rl_delete(curreq);
-			  } else {
-				  /*
-				   *	??? the client sent us a new request
-				   *	with the same ID, while we were
-				   *	processing the old one!  What should
-				   *	we do?
-				   */
-				radlog(L_ERR,
-				"Dropping conflicting authentication packet"
-				" from client %s:%d - ID: %d",
-				client_name(request->packet->src_ipaddr),
-				request->packet->src_port,
-				request->packet->id);
-				request_free(request);
-				request = NULL;
-			  }
-		  } /* packet vectors are different */
+		  } else {
+			  radlog(L_ERR,
+				 "Dropping conflicting authentication packet"
+				 " from client %s:%d - ID: %d",
+				 client_name(request->packet->src_ipaddr),
+				 request->packet->src_port,
+				 request->packet->id);
+			  request_free(request);
+			  request = NULL;
+		  }
 	} /* a similar packet already exists. */
-	
+
 	/*
-	 *	If we've received a duplicate packet, 'request' is NULL.
+	 *	If we've received a duplicate packet, 'request' is NULL,
+	 *	and we have nothing more to do.
 	 */
 	if (request == NULL) {
 		request_list_busy = FALSE;
@@ -1833,8 +1832,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 *	are too many.  If so, stop counting immediately,
 	 *	and return with an error.
 	 */
-	if(max_requests) {
-		request_count = 0;
+	if (max_requests) {
+		int request_count = 0;
+
 		for (i = 0; i < 256; i++) {
 			request_count += request_list[i].request_count;
 
@@ -1860,7 +1860,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 *	Add this request to the list
 	 */
 	rl_add(request);
-	request->child_pid = NO_SUCH_CHILD_PID;
 
 	/*
 	 *	And return the request to be handled.
@@ -2161,72 +2160,47 @@ static void sig_hup(int sig)
 }
 
 /*
- *	Do a proxy check of the REQUEST_LIST when using the new proxy code.
- *
- *	This function and the next two are here because they have to access
- *	the REQUEST_LIST structure, which is 'static' to this C file.
+ *	Do a proxy check of the REQUEST list when using the new proxy code.
  */
 static REQUEST *proxy_check_list(REQUEST *request)
 {
-	int id;
 	REQUEST *oldreq;
-	RADIUS_PACKET *pkt;
 	
 	/*
 	 *	Find the original request in the request list
 	 */
-	oldreq = NULL;
-	pkt = request->packet;
-	
-	for (id = 0; (id < 256) && (oldreq == NULL); id++) {
-		for (oldreq = request_list[id].first_request ;
-		     oldreq != NULL ;
-		     oldreq = oldreq->next) {
-			
-			/*
-			 *	See if this reply packet matches a proxy
-			 *	packet which we sent.
-			 */
-			if (oldreq->proxy &&
-			    (oldreq->proxy->dst_ipaddr == pkt->src_ipaddr) &&
-			    (oldreq->proxy->dst_port == pkt->src_port) &&
-			    (oldreq->proxy->id == pkt->id)) {
+	oldreq = rl_find_proxy(request);
+	if (oldreq) {
+		/*
+		 *	If there is already a reply,
+		 *	maybe the new one is a duplicate?
+		 */
+		if (oldreq->proxy_reply) {
+			if (memcmp(oldreq->proxy_reply->vector,
+				   request->packet->vector,
+				   sizeof(oldreq->proxy_reply->vector)) == 0) {
+				DEBUG2("Ignoring duplicate proxy reply");
+				request_free(request);
+				return NULL;
+			} else {
 				/*
-				 *	If there is already a reply,
-				 *	maybe the new one is a duplicate?
+				 *	??? The home server gave us a new
+				 *	proxy reply, which doesn't match
+				 *	the old one.  Delete it!
 				 */
-				if (oldreq->proxy_reply) {
-					if (memcmp(oldreq->proxy_reply->vector,
-						   request->packet->vector,
-						   sizeof(oldreq->proxy_reply->vector)) == 0) {
-						DEBUG2("Ignoring duplicate proxy reply");
-						request_free(request);
-						return NULL;
-					} else {
-						/*
-						 *	??? New reply ???
-						 */
-						continue;
-					}
-				} /* else no reply, this one must match */
+				DEBUG2("Ignoring conflicting proxy reply");
+				request_free(request);
+				return NULL;
+			}
+		} /* else there's no reply yet. */
 
-				/*
-				 *	Exit from request list loop
-				 *	while oldreq != NULL, which will
-				 *	cause the outer loop to stop, too.
-				 */
-				break;
-			} /* the reply matches a proxied request */
-		} /* for all requests in the id request list */
-	} /* for all 256 id's*/
-	
-	/*
-	 *	If we haven't found the old request, complain.
-	 */
-	if (oldreq == NULL) {
+	} else {
+		/*
+		 *	If we haven't found the old request, complain.
+		 */
 		radlog(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
-		    client_name(request->packet->src_ipaddr),
-		    request->packet->id);
+		       client_name(request->packet->src_ipaddr),
+		       request->packet->id);
 		request_free(request);
 		return NULL;
 	}
@@ -2297,7 +2271,6 @@ static int refresh_request(REQUEST *request, void *data)
 			       child_pid);
 			child_kill(child_pid, SIGTERM);
 		} /* else no proxy reply, quietly fail */
-		
 		
 		/*
 		 *	Delete the request.

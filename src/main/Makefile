@@ -24,7 +24,7 @@ radiusd: $(SERVER_OBJS) ../lib/libradius.a
 		$(SERVER_OBJS) $(LIBS) $(SNMPLIB) $(LCRYPT) \
 		$(PTHREADLIB) $(LIBLTDL) $(MODULE_LIBS) 
 
-radiusd.o: radiusd.c $(INCLUDES)
+radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h
 	$(CC) $(CFLAGS) $(SNMPINC) -c radiusd.c
 
 acct.o: acct.c $(INCLUDES)

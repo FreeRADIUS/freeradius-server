@@ -17,6 +17,7 @@
  */
 typedef struct REQUEST_LIST {
 	REQUEST		*first_request;
+	REQUEST		*last_request;
 	int		request_count;
 	time_t		last_cleaned_list;
 } REQUEST_LIST;
@@ -26,7 +27,8 @@ extern REQUEST_LIST	request_list[256];
 extern int rl_init(void);
 extern void rl_delete(REQUEST *request);
 extern void rl_add(REQUEST *request);
-REQUEST *rl_find(REQUEST *request);
+extern REQUEST *rl_find(REQUEST *request);
+extern REQUEST *rl_find_proxy(REQUEST *request);
 
 #define RL_WALK_CONTINUE (0)
 #define RL_WALK_STOP     (-1)
