@@ -582,6 +582,8 @@ radius_snmp_init (void)
   rad_snmp.smux_password = NULL;
   rad_snmp.snmp_write_access = FALSE;
   rad_snmp.smux_fd = -1;
+  rad_snmp.smux_max_failures = 3; /* FIXME! get from config */
+  rad_snmp.smux_failures = 0;
 
   /*
    *  We really should get better clock resolution..

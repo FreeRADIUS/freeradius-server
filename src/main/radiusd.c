@@ -2109,6 +2109,10 @@ static void sig_hup(int sig)
 	if (getpid() == radius_pid) {
 		need_reload = TRUE;
 	}
+#ifdef WITH_SNMP
+	rad_snmp.smux_failures = 0;
+	rad_snmp.smux_event = SMUX_CONNECT;
+#endif
 }
 
 /*

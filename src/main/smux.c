@@ -49,8 +49,6 @@ static struct list *treelist = NULL;
 static oid *smux_oid;
 static size_t smux_oid_len;
 
-/* SMUX failure count. */
-static int fail = 0;
 
 static void *
 oid_copy (void *dest, void *src, size_t size)
@@ -986,27 +984,25 @@ smux_connect ()
   int ret;
 
   rad_snmp.smux_event=SMUX_NONE;
-  DEBUG2 ("SMUX connect try %d", fail + 1);
+  DEBUG2 ("SMUX connect try %d", rad_snmp.smux_failures + 1);
 
   /* Make socket.  Try to connect. */
   rad_snmp.smux_fd = smux_sock ();
-  if (rad_snmp.smux_fd < 0)
-    {
-      if (++fail < SMUX_MAX_FAILURE)
-	rad_snmp.smux_event=SMUX_CONNECT;
-      return 0;
-    }
+  if (rad_snmp.smux_fd < 0) {
+	  if (++rad_snmp.smux_failures < rad_snmp.smux_max_failures)
+		  rad_snmp.smux_event=SMUX_CONNECT;
+	  return 0;
+  }
 
   /* Send OPEN PDU. */
   ret = smux_open ();
-  if (ret < 0)
-    {
-      DEBUG ("SMUX open message send failed: %s", strerror (errno));
-      close (rad_snmp.smux_fd);
-      rad_snmp.smux_fd = -1;
-      rad_snmp.smux_event=SMUX_CONNECT;
-      return -1;
-    }
+  if (ret < 0) {
+	  DEBUG ("SMUX open message send failed: %s", strerror (errno));
+	  close (rad_snmp.smux_fd);
+	  rad_snmp.smux_fd = -1;
+	  rad_snmp.smux_event=SMUX_CONNECT;
+	  return -1;
+  }
 
   /* Send any outstanding register PDUs. */
   ret = smux_register ();

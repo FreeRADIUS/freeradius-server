@@ -27,8 +27,6 @@
 #define SMUX_GETRSP     (ASN_CONTEXT | ASN_CONSTRUCTOR | 2)
 #define SMUX_SET	(ASN_CONTEXT | ASN_CONSTRUCTOR | 3)
 
-#define SMUX_MAX_FAILURE 3
-
 /* Structures here are mostly compatible with UCD SNMP 4.1.1 */
 
 #define MATCH_FAILED     (-1)

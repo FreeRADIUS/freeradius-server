@@ -61,6 +61,8 @@ typedef struct rad_snmp_t {
 	const char	  *smux_password;
 	int		  snmp_write_access;
 	int		  smux_fd;
+	int		  smux_failures;
+	int		  smux_max_failures;
 } rad_snmp_t;
 
 extern rad_snmp_t	rad_snmp;
