@@ -105,7 +105,7 @@ fi
 %config /etc/rc.d/init.d/radiusd
 %config (noreplace) /etc/raddb/*
 %{_bindir}/*
-%{_datadir}/%{name}/*
+%{_datadir}/%{name}
 %{_libdir}/*
 %{_mandir}/*/*
 %{_sbindir}/*
