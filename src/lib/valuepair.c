@@ -1239,7 +1239,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		 */
 	case T_DOUBLE_QUOTED_STRING:
 		p = strchr(value, '%');
-		if (p) {
+		if (p && (p[1] == '{')) {
 			vp = pairmake(attr, NULL, token);
 			if (!vp) {
 				*eol = T_OP_INVALID;
