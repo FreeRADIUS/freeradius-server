@@ -570,6 +570,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	if (data->reset_time && (data->reset_time <= request->timestamp)) {
 		int ret;
 
+		DEBUG("rlm_counter: Time to reset the database.");
 		data->last_reset = data->reset_time;
 		find_next_reset(data,request->timestamp);
 		pthread_mutex_lock(&data->mutex);
@@ -627,10 +628,12 @@ static int counter_accounting(void *instance, REQUEST *request)
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 
+	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->strvalue);
 	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	pthread_mutex_unlock(&data->mutex);
 	if (count_datum.dptr == NULL){
+		DEBUG("rlm_counter: Could not find the requested key in the database.");
 		counter.user_counter = 0;
 		if (uniqueid_vp != NULL)
 			strncpy(uniqueid_vp->strvalue,counter.uniqueid,UNIQUEID_MAX_LEN - 1);
@@ -638,6 +641,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 			memset((char *)counter.uniqueid,0,UNIQUEID_MAX_LEN);
 	}
 	else{
+		DEBUG("rlm_counter: Key found.");
 		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 		free(count_datum.dptr);
 		if (counter.uniqueid)
@@ -686,6 +690,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	count_datum.dptr = (rad_counter *) &counter;
 	count_datum.dsize = sizeof(rad_counter);
 
+	DEBUG("rlm_counter: Storing new value in database.");
 	pthread_mutex_lock(&data->mutex);
 	rcode = gdbm_store(data->gdbm, key_datum, count_datum, GDBM_REPLACE);
 	pthread_mutex_unlock(&data->mutex);
@@ -694,6 +699,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 				data->filename, gdbm_strerror(gdbm_errno));
 		return RLM_MODULE_FAIL;
 	}
+	DEBUG("rlm_counter: New value stored successfully.");
 
 	return RLM_MODULE_OK;
 }
@@ -766,13 +772,17 @@ static int counter_authorize(void *instance, REQUEST *request)
 
 	counter.user_counter = 0;
 	
+	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->strvalue);
 	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	pthread_mutex_unlock(&data->mutex);
 	if (count_datum.dptr != NULL){
+		DEBUG("rlm_counter: Key Found.");
 		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 		free(count_datum.dptr);
 	}
+	else
+		DEBUG("rlm_counter: Could not find the requested key in the database.");
 
 	/*
 	 * Check if check item > counter
