@@ -1,4 +1,5 @@
 dialup_admin is a web based administration interface for the freeradius radius server.
+It is written in PHP4 (although the files have an extension of php3 for historical reasons).
 It is modular and right now it assumes that user information is stored in an ldap server
 or an sql database and accounting in an sql server.
 
@@ -27,8 +28,7 @@ conf::admin.conf=>
 	The main configuration file. The directives used should be easily
 	understood
 conf::config.php3=>
-	Just a helper php4 for reading the admin.conf file. Just make sure that it
-	opens the correct admin.conf file
+	Just a helper php4 for reading the admin.conf file.
 conf::default.vals=>
 	Contains the default values for check and reply items. If you also use the users
 	file except for the ldap/sql databases fill in the default values you have inserted
@@ -54,8 +54,8 @@ htdocs::index.html=>
 	The main index file. Just contains the frames tags
 htdocs::content.html=>
 	Change this file to include the greeting of your choise
-htdocs::buttons.html=>
-	The buttons html page
+htdocs::buttons.php3=>
+	This will open the corresponding buttons html file in the html/buttons folder
 htdocs::style.css=>
 	CSS style file. Change it to match your preferences
 htdocs:: user_state.php3 =>
@@ -65,7 +65,7 @@ htdocs:: user_state.php3 =>
 	account_status(active or inactive),lock message,weekly limit,daily limit,
 	weekly used,weekly connections,daily used,daily connections
 htdocs:: user_finger.php3 =>
-	It will inger the nas(es) and show the logged in users. If an argument server is passed then
+	It will finger the nas(es) and show the logged in users. If an argument server is passed then
 	it will only show users for the specific access server.
 
 html:: Contains the html code for a few pages 
@@ -75,6 +75,13 @@ html::stats.html.php3 =>
 	html code for the stats page
 html::user_toolbar.html.php3 =>
 	the user toolbar (show,edit,accounting...) which appears in almost all pages
+html::group_toolbar.html.php3 =>
+	the toolbar shown in the group manipulation pages
+html::/buttons
+	contains a folder default which contains a buttons.html.php3 file. When a user is connecting
+	with http authentication we first try to open the file in the folder <username>. If that fails
+	we open the file in the default folder. That way each admin can have a different view of the buttons
+	bar (for example see different finger pages).
 
 lib::	Contains the library items
 lib::ldap=>
