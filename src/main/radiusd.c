@@ -2387,7 +2387,14 @@ setup_timeout:
 		 *
 		 *  Wake up when it's time to re-send
 		 *  the proxy request.
+		 *
+		 *  But in synchronous proxy, we don't retry but we update
+		 *  the next retry time as NAS has not resent the request
+		 *  in the given retry window.
 		 */
+		if (proxy_synchronous) {
+			request->proxy_next_try = info->now + proxy_retry_delay;
+		}
 		difference = request->proxy_next_try - info->now;
 		
 	} else {
