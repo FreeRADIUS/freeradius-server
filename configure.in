@@ -271,7 +271,7 @@ AC_SUBST(LIBDL)
 if test "$LIBDL" != ""; then
   AC_DEFINE(HAVE_DLOPEN)
 else
-  AC_CHECK_FUNC(dlopen)
+  AC_CHECK_FUNC(dlopen, AC_DEFINE(HAVE_DLOPEN))
 fi
 
 dnl Check for libcrypt
@@ -283,7 +283,7 @@ AC_SUBST(CRYPTLIB)
 if test "$CRYPTLIB" != ""; then
   AC_DEFINE(HAVE_CRYPT)
 else
-  AC_CHECK_FUNC(crypt)
+  AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT))
 fi
 
 dnl Check for -lsocket
