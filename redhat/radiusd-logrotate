@@ -1,8 +1,6 @@
 # You can use this to rotate the /var/log/radius/* files, simply copy
 # it to /etc/logrotate.d/radiusd
 
-# Last part should reload the server
-
 /var/log/radius/radacct/*/detail {
 	monthly
 	rotate 4
@@ -27,14 +25,6 @@
 	compress
 }
 
-/var/log/radius/radwatch.log {
-	monthly
-	rotate 4
-	create
-	missingok
-	compress
-}
-
 /var/log/radius/radutmp {
 	monthly
 	rotate 4
@@ -49,7 +39,4 @@
 	create
 	compress
 	missingok
-	postrotate
-		/etc/rc.d/init.d/radiusd condrestart
-	endscript
 }
