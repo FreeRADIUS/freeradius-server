@@ -34,7 +34,7 @@ radeapclient.o: radeapclient.c $(INCLUDES)
 
 install-types: 
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
-	$(INSTALL) -m 755 radeapclient	$(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radeapclient$(EXEEXT)	$(R)$(bindir)
 
 common:
 	@for dir in $(RLM_SUBDIRS); do  \
