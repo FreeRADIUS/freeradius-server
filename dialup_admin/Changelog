@@ -8,6 +8,7 @@ Ver 1.68:
 * Close sql connections in add_badusers.php3
 * Add a patch from Neil McCalden to not put spaces in the -p argument to the mysql binary.
 * Fix a bug in conf/config.php3. Patch from Neil McCalden
+* In log_badlogins add a newline after every sql query so that the resulting file can be editable
 Ver 1.65:
 * Add a captions.conf file with a few configurable captions for now
 * Move the nas list to a separate file called naslist.conf

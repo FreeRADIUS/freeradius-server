@@ -146,7 +146,7 @@ for(;;){
 					$ctx->add($time);
 					$ctx->add('badlogin');
 					$uniqueid = $ctx->hexdigest;
-					print TMP "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');";
+					print TMP "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');\n";
 					close TMP;
 					`$mysql -h$server $opt -u$sql_username $pass $sql_database <$tmpfile.$server`;
 					$exit = $? >> 8;
