@@ -875,10 +875,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						memcpy (mppe_sendkey+8,smbPasswd.smb_nt_passwd,16);   
 					*/
 						md4_calc(mppe_sendkey+8, smbPasswd.smb_nt_passwd,16);
-/*
-					rad_pwencode(mppe_sendkey, &len, 
-						 request->secret, request->packet->vector);
-*/
 					mppe_add_reply( &request->reply->vps,
 						"MS-CHAP-MPPE-Keys",mppe_sendkey,32);
 				}
