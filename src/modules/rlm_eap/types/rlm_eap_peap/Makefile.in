@@ -1,0 +1,13 @@
+TARGET      = @targetname@
+SRCS        = rlm_eap_peap.c peap.c
+RLM_CFLAGS  = $(INCLTDL) -I../.. @eap_peap_cflags@ -I../rlm_eap_tls -DOPENSSL_NO_KRB5
+HEADERS     = ../rlm_eap_tls/rlm_eap_tls.h eap_peap.h ../../eap.h ../../rlm_eap.h
+RLM_INSTALL = 
+RLM_LIBS    += @eap_peap_ldflags@
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)
+
+RLM_DIR=../../
+include ${RLM_DIR}../rules.mak

@@ -1,0 +1,120 @@
+AC_INIT(rlm_eap_peap.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_eap_peap])
+
+fail=
+SMART_LIBS=
+SMART_CLFAGS=
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+
+	dnl extra argument: --with-rlm-eap-peap-lib-dir
+	rlm_eap_peap_lib_dir=
+	AC_ARG_WITH(rlm-eap-peap-lib-dir,
+	[  --with-rlm-eap-peap-lib-dir=DIR   Directory for EAPPEAP library files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-eap-peap-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_eap_peap_lib_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	dnl extra argument: --with-rlm-eap-peap-include-dir
+	rlm_eap_peap_inc_dir=
+	AC_ARG_WITH(rlm-eap-peap-include-dir,
+	[ --with-rlm-eap-peap-include-dir=DIR Directory for EAPPEAP include files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-eap-peap-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_eap_peap_inc_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	dnl #
+	dnl # extra argument: --openssl-includes=dir
+	dnl #
+	AC_ARG_WITH(openssl-includes,
+	[  --with-openssl-includes=DIR       Directory to look for OpenSSL include files],
+	[ case "$withval" in
+	    *)
+		rlm_eap_peap_inc_dir="$rlm_eap_peap_inc_dir $withval"
+		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
+		;;
+	  esac ]
+	)
+
+	dnl #
+	dnl # extra argument: --openssl-libraries=dir
+	dnl #
+	AC_ARG_WITH(openssl-libraries,
+	[  --with-openssl-libraries=DIR      Directory to look for OpenSSL library files],
+	[ case "$withval" in
+	    *)
+		rlm_eap_peap_lib_dir="$rlm_eap_peap_lib_dir $withval"
+		SMART_LIBS="$SMART_LIBS -L$withval"
+		;;
+	  esac ]
+	)
+
+	smart_try_dir=$rlm_eap_peap_inc_dir
+	AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
+	if test "x$ac_cv_header_openssl_ssl_h" != "xyes"; then
+		fail="$fail (openssl/ssl.h)"
+	fi
+
+	smart_try_dir=$rlm_eap_peap_lib_dir
+	AC_SMART_CHECK_LIB(crypto, DH_new)
+    if test "x$ac_cv_lib_crypto_DH_new" != "xyes"; then
+ 	    fail="$fail libcrypto"
+    fi
+
+	AC_SMART_CHECK_LIB(ssl, SSL_new)
+    if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
+ 	    fail="$fail libssl"
+    fi
+
+AC_CHECK_HEADERS( \
+	openssl/err.h \
+	openssl/engine.h
+	)
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.])
+		if test x"$headersuggestion" != x; then
+			AC_MSG_WARN([$headersuggestion]) 
+		fi
+		if test x"$libsuggestion" != x; then
+			AC_MSG_WARN([$libsuggestion]) 
+		fi
+		targetname=""
+	fi
+fi
+
+eap_peap_ldflags=$SMART_LIBS
+eap_peap_cflags=$SMART_CFLAGS
+AC_SUBST(eap_peap_ldflags)
+AC_SUBST(eap_peap_cflags)
+AC_SUBST(targetname)
+AC_CONFIG_HEADER([config.h])
+AC_OUTPUT(Makefile)
