@@ -508,6 +508,8 @@ void realm_disable(uint32_t ipaddr)
 		    (ipaddr == cl->acct_ipaddr)) {
 			cl->active = FALSE;
 			cl->wakeup = now + proxy_dead_time;
+			radlog(L_PROXY, "marking server %s for realm %s dead",
+				cl->server, cl->realm);
 		}
 }
 
