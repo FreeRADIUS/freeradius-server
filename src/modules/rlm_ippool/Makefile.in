@@ -1,0 +1,12 @@
+TARGET      = @targetname@
+SRCS        = rlm_ippool.c
+HEADERS     =
+RLM_CFLAGS  = @counter_cflags@
+RLM_LIBS    = @counter_ldflags@
+RLM_INSTALL =
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)

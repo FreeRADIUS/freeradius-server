@@ -582,6 +582,29 @@ modules {
 		net_timeout = 1
 	}
 
+	# Do server side ip pool management. Should be added in authorize and
+	# accounting sections
+	# FIXME: This is highly experimental at the moment. Please give feedback
+	#
+	# Parameters:
+	#
+	# range-start,range-stop: The start and end ip addresses for the ip pool
+	# netmask: The network mask used for the ip's
+	# cache-size: The gdbm cache size for the db files. Should be equal to
+	#	     the number of ip's available in the ip pool
+	# session-db: The main db file used to allocate ip's to clients
+	# ip-index: Helper db index file used in multilink
+	#
+	#ippool {
+	#       range-start = 192.168.1.1
+	#       range-stop = 192.168.3.254
+	#       netmask = 255.255.255.0
+	#       cache-size = 800
+	#       session-db = ${raddbdir}/db.ippool
+	#       ip-index = ${raddbdir}/db.ipindex
+	#}
+
+
 	#  You can have multiple instances of the realm module to
 	#  support multiple realm syntaxs at the same time.  The
 	#  search order is defined the order in the authorize and
