@@ -12,6 +12,9 @@
 /etc/raddb/dictionary.cisco
 /etc/raddb/dictionary.compat
 /etc/raddb/dictionary.livingston
+/etc/raddb/dictionary.microsoft
+/etc/raddb/dictionary.redback
+/etc/raddb/dictionary.shasta
 /etc/raddb/dictionary.shiva
 /etc/raddb/dictionary.tunnel
 /etc/raddb/dictionary.usr

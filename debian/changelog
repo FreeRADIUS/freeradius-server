@@ -1,8 +1,10 @@
 radiusd-freeradius (0.1+beta1-1) unstable; urgency=low
 
-  * Fixed cron log rotation.  (Sergey I. Golod)
-  * Put module libraries in own directory.  (Sergey I. Golod)
+  * Fixed cron log rotation.
+  * Put module libraries in own directory.
   * Added generalized SQL support for ODBC, Oracle, and Postgres.
+  * Removed bogus build-dep.  (closes: Bug#87277)
+  * Added shasta, microsoft, and redback dictionaries.
 
  -- Chad Miller <cmiller@debian.org>  [TBA]
 

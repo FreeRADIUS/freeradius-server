@@ -1,5 +1,5 @@
 Source: radiusd-freeradius
-Build-Depends: libltdl-dev | libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbm1-dev, libopenldap1, libsnmp4.1-dev, libiodbc2-dev
+Build-Depends: libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbm1-dev, libopenldap1, libsnmp4.1-dev, libiodbc2-dev
 Section: net
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
@@ -7,7 +7,7 @@ Standards-Version: 3.2.1
 
 Package: radiusd-freeradius
 Architecture: any
-Depends: ${shlibs:Depends}, libltdl | libltdl0
+Depends: ${shlibs:Depends}, libltdl0
 Provides: radiusd
 Conflicts: radiusd, radiusd-livingston, radiusd-cistron
 Description: A high-performance and highly configurable RADIUS server
