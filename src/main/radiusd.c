@@ -707,6 +707,7 @@ int main(int argc, char **argv)
 	result = bind (authfd, & salocal, sizeof(*sa));
 	if (result < 0) {
 		perror ("auth bind");
+		DEBUG("  There appears to be another RADIUS server already running on the authentication port UDP %d.", auth_port);
 		exit(1);
 	}
 
@@ -734,6 +735,7 @@ int main(int argc, char **argv)
 	result = bind (acctfd, & salocal, sizeof(*sa));
 	if (result < 0) {
 		perror ("acct bind");
+		DEBUG("  There appears to be another RADIUS server already running on the accounting port UDP %d.", acct_port);
 		exit(1);
 	}
 
