@@ -4,3 +4,13 @@ the directory for configuration has moved to /etc/freeradius from
 is configured this package does not automatically copy your old
 configuration; please do that manually.
 
+Also, the upstream supplied dictionaries are now in /usr/share/freeradius/.
+/etc/freeradius/dictionary is still the place for local dictionary
+additions. See /etc/freeradius/dictionary for details.
+
+If FreeRADIUS fails to start, without any error message, be sure that the
+directory specified for the pidfile in the configuration is correct. If
+it is incorrect, or not writeable by user freerad or group freerad, then
+FreeRADIUS will fail to start. The initscript supplied expects this to
+be /var/run/freeradius/freeradius.pid, and /var/run/freeradius/ is
+created by the maintainer scripts.
