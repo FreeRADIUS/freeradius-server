@@ -27,13 +27,6 @@ static const char rcsid[] = "$Id$";
 
 #include	"modules.h"
 
-#ifdef WITH_DBM
-#  include	<dbm.h>
-#endif
-#ifdef WITH_NDBM
-#  include	<ndbm.h>
-#endif
-
 struct file_instance {
 	char *compat_mode;
 
@@ -46,99 +39,6 @@ struct file_instance {
         PAIR_LIST *acctusers;
 };
 
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-/*
- *	See if a potential DBM file is present.
- */
-static int checkdbm(char *users, char *ext)
-{
-	char buffer[256];
-	struct stat st;
-
-	strcpy(buffer, users);
-	strcat(buffer, ext);
-
-	return stat(buffer, &st);
-}
-
-/*
- *	Find the named user in the DBM user database.
- *	Returns: -1 not found
- *		  0 found but doesn't match.
- *		  1 found and matches.
- */
-static int dbm_find(DBM *dbmfile, char *name, VALUE_PAIR *request_pairs,
-		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
-{
-	datum		named;
-	datum		contentd;
-	char		*ptr;
-	VALUE_PAIR	*check_tmp;
-	VALUE_PAIR	*reply_tmp;
-	int		ret = 0;
-
-	named.dptr = name;
-	named.dsize = strlen(name);
-#ifdef WITH_DBM
-	contentd = fetch(named);
-#endif
-#ifdef WITH_NDBM
-	contentd = dbm_fetch(dbmfile, named);
-#endif
-	if(contentd.dptr == NULL)
-		return -1;
-
-	check_tmp = NULL;
-	reply_tmp = NULL;
-
-	/*
-	 *	Parse the check values
-	 */
-	ptr = contentd.dptr;
-	contentd.dptr[contentd.dsize] = '\0';
-
-	if (*ptr != '\n' && userparse(ptr, &check_tmp) != 0) {
-		radlog(L_ERR|L_CONS, "Parse error (check) for user %s", name);
-		pairfree(check_tmp);
-		return -1;
-	}
-	while(*ptr != '\n' && *ptr != '\0') {
-		ptr++;
-	}
-	if(*ptr != '\n') {
-		radlog(L_ERR|L_CONS, "Parse error (no reply pairs) for user %s",
-			name);
-		pairfree(check_tmp);
-		return -1;
-	}
-	ptr++;
-
-	/*
-	 *	Parse the reply values
-	 */
-	if (userparse(ptr, &reply_tmp) != 0) {
-		radlog(L_ERR|L_CONS, "Parse error (reply) for user %s", name);
-		pairfree(check_tmp);
-		pairfree(reply_tmp);
-		return -1;
-	}
-
-	/*
-	 *	See if the check_pairs match.
-	 */
-	if (paircmp(request_pairs, check_tmp, reply_pairs) == 0) {
-		ret = 1;
-		pairmove(reply_pairs, &reply_tmp);
-		pairmove2(reply_pairs, &reply_tmp, PW_FALL_THROUGH);
-		pairmove(check_pairs, &check_tmp);
-	}
-	pairfree(reply_tmp);
-	pairfree(check_tmp);
-
-	return ret;
-}
-#endif /* DBM */
-
 /*
  *     See if a VALUE_PAIR list contains Fall-Through = Yes
  */
@@ -149,13 +49,6 @@ static int fallthrough(VALUE_PAIR *vp)
 	tmp = pairfind(vp, PW_FALL_THROUGH);
 
 	return tmp ? tmp->lvalue : 0;
-}
-
-
-
-static int file_init(void)
-{
-	return 0;
 }
 
 /*
@@ -175,19 +68,10 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list)
 {
 	int rcode;
         PAIR_LIST *users = NULL;
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-        if (!use_dbm &&
-            (checkdbm(filename, ".dir") == 0 ||
-             checkdbm(filename, ".db") == 0)) {
-                radlog(L_INFO|L_CONS, "DBM files found but no -b flag " "given - NOT using DBM");
-        }
-#endif
 
-        if (!use_dbm) {
-		rcode = pairlist_read(filename, &users, 1);
-		if (rcode < 0) {
-			return -1;
-		}
+	rcode = pairlist_read(filename, &users, 1);
+	if (rcode < 0) {
+		return -1;
 	}
 
         /*
@@ -377,15 +261,10 @@ static int file_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR	*reply_tmp;
 	PAIR_LIST	*pl;
 	int		found = 0;
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-	int		i, r;
-	char		buffer[256];
-#endif
 	const char	*name;
 	struct file_instance *inst = instance;
 	VALUE_PAIR **check_pairs, **reply_pairs;
 	VALUE_PAIR *check_save;
-
 
 	request_pairs = request->packet->vps;
 	check_pairs = &request->config_items;
@@ -400,58 +279,6 @@ static int file_authorize(void *instance, REQUEST *request)
 	/*
 	 *	Find the entry for the user.
 	 */
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-	/*
-	 *	FIXME: move to rlm_dbm.c
-	 */
-	if (use_dbm) {
-		/*
-		 *	FIXME: No Prefix / Suffix support for DBM.
-		 */
-#ifdef WITH_DBM
-		if (dbminit(inst->usersfile) != 0)
-#endif
-#ifdef WITH_NDBM
-		if ((dbmfile = dbm_open(inst->usersfile, O_RDONLY, 0)) == NULL)
-#endif
-		{
-			radlog(L_ERR|L_CONS, "cannot open dbm file %s",
-				buffer);
-			return RLM_MODULE_FAIL;
-		}
-
-		r = dbm_find(dbmfile, name, request_pairs, check_pairs,
-			     reply_pairs);
-		if (r > 0) found = 1;
-		if (r <= 0 || fallthrough(*reply_pairs)) {
-
-			pairdelete(reply_pairs, PW_FALL_THROUGH);
-
-			sprintf(buffer, "DEFAULT");
-			i = 0;
-			while ((r = dbm_find(dbmfile, buffer, request_pairs,
-			       check_pairs, reply_pairs)) >= 0 || i < 2) {
-				if (r > 0) {
-					found = 1;
-					if (!fallthrough(*reply_pairs))
-						break;
-					pairdelete(reply_pairs,PW_FALL_THROUGH);
-				}
-				sprintf(buffer, "DEFAULT%d", i++);
-			}
-		}
-#ifdef WITH_DBM
-		dbmclose();
-#endif
-#ifdef WITH_NDBM
-		dbm_close(dbmfile);
-#endif
-	} else
-	/*
-	 *	Note the fallthrough through the #endif.
-	 */
-#endif
-
 	for(pl = inst->users; pl; pl = pl->next) {
 		/*
 		 *	If the current entry is NOT a default,
@@ -487,7 +314,7 @@ static int file_authorize(void *instance, REQUEST *request)
 	
 				DEBUG2("  users: Checking %s at %d", pl->name, pl->lineno);
 				/* Check the req to see if we matched */
-				if(rad_check_password(request)==0) {
+				if (rad_check_password(request)==0) {
 					DEBUG2("  users: Matched %s at %d", pl->name, pl->lineno);
 
 					found = 1;
@@ -548,16 +375,6 @@ static int file_authorize(void *instance, REQUEST *request)
 }
 
 /*
- *	Authentication - unused.
- */
-static int file_authenticate(void *instance, REQUEST *request)
-{
-	instance = instance;
-	request = request;
-	return RLM_MODULE_OK;
-}
-
-/*
  *	Pre-Accounting - read the acct_users file for check_items and
  *	config_items. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
@@ -575,10 +392,6 @@ static int file_preacct(void *instance, REQUEST *request)
 	VALUE_PAIR	*reply_tmp;
 	PAIR_LIST	*pl;
 	int		found = 0;
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-	int		i, r;
-	char		buffer[256];
-#endif
 	struct file_instance *inst = instance;
 
 	namepair = request->username;
@@ -589,59 +402,7 @@ static int file_preacct(void *instance, REQUEST *request)
 	/*
 	 *	Find the entry for the user.
 	 */
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-	/*
-	 *	FIXME: move to rlm_dbm.c
-	 */
-	if (use_dbm) {
-		/*
-		 *	FIXME: No Prefix / Suffix support for DBM.
-		 */
-#ifdef WITH_DBM
-		if (dbminit(inst->acctusersfile) != 0)
-#endif
-#ifdef WITH_NDBM
-		if ((dbmfile = dbm_open(inst->acctusersfile, O_RDONLY, 0)) == NULL)
-#endif
-		{
-			radlog(L_ERR|L_CONS, "cannot open dbm file %s",
-				buffer);
-			return RLM_MODULE_FAIL;
-		}
-
-		r = dbm_find(dbmfile, name, request_pairs, config_pairs,
-			     &reply_pairs);
-		if (r > 0) found = 1;
-		if (r <= 0 || fallthrough(*reply_pairs)) {
-
-		  pairdelete(reply_pairs, PW_FALL_THROUGH);
-
-			sprintf(buffer, "DEFAULT");
-			i = 0;
-			while ((r = dbm_find(dbmfile, buffer, request_pairs,
-			       config_pairs, &reply_pairs)) >= 0 || i < 2) {
-				if (r > 0) {
-					found = 1;
-					if (!fallthrough(*reply_pairs))
-						break;
-					pairdelete(reply_pairs,PW_FALL_THROUGH);
-				}
-				sprintf(buffer, "DEFAULT%d", i++);
-			}
-		}
-#ifdef WITH_DBM
-		dbmclose();
-#endif
-#ifdef WITH_NDBM
-		dbm_close(dbmfile);
-#endif
-	} else
-	/*
-	 *	Note the fallthrough through the #endif.
-	 */
-#endif
-
-	for(pl = inst->acctusers; pl; pl = pl->next) {
+	for (pl = inst->acctusers; pl; pl = pl->next) {
 
 		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
 			continue;
@@ -698,10 +459,10 @@ static int file_detach(void *instance)
 module_t rlm_files = {
 	"files",
 	0,				/* type: reserved */
-	file_init,			/* initialization */
+	NULL,				/* initialization */
 	file_instantiate,		/* instantiation */
 	file_authorize, 		/* authorization */
-	file_authenticate,		/* authentication */
+	NULL,				/* authentication */
 	file_preacct,			/* preaccounting */
 	NULL,				/* accounting */
 	NULL,				/* checksimul */
