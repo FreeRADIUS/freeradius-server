@@ -658,6 +658,12 @@ AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0
 	AC_DEFINE(GETHOSTBYADDRRSTYLE, GNUSTYLE)
 	gethostbyaddrrstyle=GNU
 ])
+
+AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr(NULL, 0, 0)  ], [
+	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
+	gethostbyaddrrstyle=BSD
+])
+
 if test "x$gethostbyaddrrstyle" = "x"; then
 	AC_MSG_RESULT([none!  It must not exist, here.])
 else
