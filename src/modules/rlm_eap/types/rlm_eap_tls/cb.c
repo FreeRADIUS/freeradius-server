@@ -85,17 +85,19 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char subject[256]; /* Used for the subject name */
 	char issuer[256]; /* Used for the issuer name */
 	char buf[256];
-	char *user_name = NULL; /* User-Name */
+	char cn_str[256];
+	EAP_HANDLER *handler = NULL;
 	X509 *client_cert;
 	SSL *ssl;
 	int err, depth;
-	int data_index = 0;
+	EAP_TLS_CONF *conf;
+	int my_ok = ok;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
 	depth = X509_STORE_CTX_get_error_depth(ctx);
 
-	if(!ok)
+	if(!my_ok)
 		radlog(L_ERR,"--> verify error:num=%d:%s\n",err,
 			X509_verify_cert_error_string(err));
 	/*
@@ -107,7 +109,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 * and the application specific data stored into the SSL object.
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-	user_name = (char *)SSL_get_ex_data(ssl, data_index);
+	handler = (char *)SSL_get_ex_data(ssl, 0);
+	conf = (char *)SSL_get_ex_data(ssl, 1);
 
 	/*
 	 *	Get the Subject & Issuer
@@ -143,6 +146,25 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		break;
 	}
 
+	/*
+	 *	If we're at the actual client cert and the conf tells
+	 *	us to, check the CN in the cert against the xlat'ed
+	 *	value
+	 */
+	if (depth == 0 && conf->check_cert_cn != NULL) {
+		if (!radius_xlat(cn_str, sizeof(cn_str), conf->check_cert_cn, handler->request, NULL)) {
+			radlog(L_ERR, "rlm_eap_tls (%s): xlat failed.",
+                               conf->check_cert_cn);
+			/* if this fails, fail the verification */
+			my_ok = 0;
+		}
+		DEBUG2("    rlm_eap_tls: checking certificate CN (%s) with xlat'ed value (%s)", buf, cn_str);
+		if (strncmp(cn_str, buf, sizeof(buf)) != 0) {
+			my_ok = 0;
+			radlog(L_AUTH, "rlm_eap_tls: Certificate CN (%s) does not match specified value (%s)!", buf, cn_str);
+		}
+	}
+
 	if (debug_flag > 0) {
 		radlog(L_INFO, "chain-depth=%d, ", depth);
 		/*
@@ -152,11 +174,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		*/
 		radlog(L_INFO, "error=%d", err);
 
-		radlog(L_INFO, "--> User-Name = %s", user_name);
+		radlog(L_INFO, "--> User-Name = %s", handler->identity);
 		radlog(L_INFO, "--> BUF-Name = %s", buf);
 		radlog(L_INFO, "--> subject = %s", subject);
 		radlog(L_INFO, "--> issuer  = %s", issuer);
-		radlog(L_INFO, "--> verify return:%d", ok);
+		radlog(L_INFO, "--> verify return:%d", my_ok);
 	}
 	return ok;
 }

@@ -61,6 +61,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, include_length), NULL, "yes" },
 	{ "check_crl", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, check_crl), NULL, "no"},
+	{ "check_cert_cn", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, check_cert_cn), NULL, NULL},
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -415,7 +417,8 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	NOTE: If we want to set each item sepearately then
 	 *	this index should be global.
 	 */
-	SSL_set_ex_data(ssn->ssl, 0, (void *)handler->identity);
+	SSL_set_ex_data(ssn->ssl, 0, (void *)handler);
+	SSL_set_ex_data(ssn->ssl, 1, (void *)inst->conf);
 
 	ssn->length_flag = inst->conf->include_length;
 

@@ -199,6 +199,7 @@ typedef struct eap_tls_conf {
 	 */
 	int		fragment_size;
 	int		check_crl;
+	char		*check_cert_cn;
 } EAP_TLS_CONF;
 
 
