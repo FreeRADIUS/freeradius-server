@@ -290,6 +290,19 @@ DEFAULT	Ldap-Group == "cn=disabled,dc=company,dc=com", Auth-Type := Reject
 	Reply-Message = "Sorry, you are not allowed to have dialup access"
 
 
+
+Also if you are using multiple ldap module instances a per instance Ldap-Group attribute is
+registered and can be used. It is of the form <instance_name>-Ldap-Group. In other words if
+in radiusd.conf we configure an ldap module instance like:
+
+ldap myname { [...] }
+
+we can then use the myname-Ldap-Group attribute to match user groups. Make sure though that the
+ldap module is instantiated *before* the files module so that it will have time to register
+the corresponding attribute. One solution would be to add the ldap module in the instantiate{}
+block in radiusd.conf
+
+
 USERDN Attribute:
 When rlm_ldap has found the DN corresponding to the username provided in the access-request
 (all this happens in the authorize section) it will add an Ldap-UserDN attribute in the check
