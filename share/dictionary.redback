@@ -88,6 +88,8 @@ ATTRIBUTE	Tunnel_Rate_Limit_Burst		66	integer		Redback
 ATTRIBUTE	Tunnel_Police_Rate		67	integer		Redback
 ATTRIBUTE	Tunnel_Police_Burst		68	integer		Redback
 ATTRIBUTE	Tunnel_L2F_Second_Password	69	string		Redback
+ATTRIBUTE	TTY-Level-Max			72	integer		Redback 
+ATTRIBUTE	TTY-Level-Start			73	integer		Redback
 ATTRIBUTE	Acct_Input_Octets_64		128	octets		Redback
 ATTRIBUTE	Acct_Output_Octets_64		129	octets		Redback
 ATTRIBUTE	Acct_Input_Packets_64		130	octets		Redback
