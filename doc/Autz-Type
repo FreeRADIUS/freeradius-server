@@ -11,7 +11,6 @@ should look like this:
 authorize{
 	suffix
 	preprocess
-	files
 	# whatever other authorize modules here
 	autztype Ldap{
 		ldap
@@ -19,6 +18,7 @@ authorize{
 	autztype SQL{
 		sql
 	}
+	files
 }
 
 What happens is that the first time the authorize section is examined the
@@ -52,13 +52,13 @@ authenticate{
 authorize{
 	preprocess
 	suffix
-	files
 	autztype customer1{
 		ldap1
 	}
 	autztype customer2{
 		ldap2
 	}
+	files
 }
 
 -----------------------------
