@@ -53,31 +53,31 @@ typedef enum conf_type {
 } CONF_ITEM_TYPE;
 
 struct conf_item {
-	struct conf_item	*next;
-	struct conf_part	*parent;
-	int			lineno;
-	CONF_ITEM_TYPE		type;
+	struct conf_item *next;
+	struct conf_part *parent;
+	int lineno;
+	CONF_ITEM_TYPE type;
 };
 struct conf_pair {
-	CONF_ITEM	item;
-	char		*attr;
-	char		*value;
-	int		operator;
+	CONF_ITEM item;
+	char *attr;
+	char *value;
+	int operator;
 };
 struct conf_part {
-	CONF_ITEM		item;
-	char			*name1;
-	char			*name2;
-	struct conf_item	*children;
+	CONF_ITEM item;
+	char *name1;
+	char *name2;
+	struct conf_item *children;
 };
 
-CONF_SECTION	*config = NULL;
+CONF_SECTION *config = NULL;
 
 /*
  *	Yucky hacks.
  */
 extern RADCLIENT *clients;
-extern REALM	 *realms;
+extern REALM *realms;
 extern int read_realms_file(const char *file);
 
 static int generate_realms(const char *filename);
@@ -125,7 +125,7 @@ CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
 static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 		int operator, CONF_SECTION *parent)
 {
-	CONF_PAIR	*cp;
+	CONF_PAIR *cp;
 
 	cp = (CONF_PAIR *)rad_malloc(sizeof(CONF_PAIR));
 	memset(cp, 0, sizeof(CONF_PAIR));
@@ -199,8 +199,10 @@ void cf_section_free(CONF_SECTION **cs)
 		}
 	}
 
-	if ((*cs)->name1) free((*cs)->name1);
-	if ((*cs)->name2) free((*cs)->name2);
+	if ((*cs)->name1) 
+		free((*cs)->name1);
+	if ((*cs)->name2) 
+		free((*cs)->name2);
 
 	/*
 	 * And free the section
@@ -233,14 +235,14 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
  *	Expand the variables in an input string.
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
-					CONF_SECTION *cs,
-					char *output, const char *input)
+		CONF_SECTION *cs,
+		char *output, const char *input)
 {
-	char            *p;
-	const char      *end, *ptr;
-	char            name[1024];
-	CONF_PAIR	*cpn;
-	CONF_SECTION    *outercs;
+	char *p;
+	const char *end, *ptr;
+	char name[1024];
+	CONF_PAIR *cpn;
+	CONF_SECTION *outercs;
 
 	p = output;
 	ptr = input;
@@ -346,15 +348,15 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
  */
 int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
 {
-	int		i;
-	int		rcode;
-	char      	**q;
-	CONF_PAIR	*cp;
-	CONF_SECTION	*subsection;
-	uint32_t	ipaddr;
-	char		buffer[1024];
-	const char	*value;
-	void		*data;
+	int i;
+	int rcode;
+	char **q;
+	CONF_PAIR *cp;
+	CONF_SECTION *subsection;
+	uint32_t ipaddr;
+	char buffer[1024];
+	const char *value;
+	void *data;
 
 	/*
 	 *	Handle the user-supplied variables.
@@ -384,12 +386,12 @@ int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
 			 *	FIXME! This is probably wrong... we should
 			 *	probably set the items to their default values.
 			 */
-			if (!subsection) {
+			if (subsection == NULL) {
 				break;
 			}
 
 			rcode = cf_section_parse(subsection, base,
-						 (CONF_PARSER *) data);
+					(CONF_PARSER *) data);
 			if (rcode < 0) {
 				return -1;
 			}
@@ -411,17 +413,17 @@ int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
 				return -1;
 			}
 			DEBUG2(" %s: %s = %s",
-				cs->name1,
-				variables[i].name,
-				value);
+					cs->name1,
+					variables[i].name,
+					value);
 			break;
 
 		case PW_TYPE_INTEGER:
 			*(int *)data = strtol(value, 0, 0);
 			DEBUG2(" %s: %s = %d",
-				cs->name1,
-				variables[i].name,
-				*(int *)data);
+					cs->name1,
+					variables[i].name,
+					*(int *)data);
 			break;
 			
 		case PW_TYPE_STRING_PTR:
@@ -443,9 +445,9 @@ int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
 			}
 
 			DEBUG2(" %s: %s = \"%s\"",
-				cs->name1,
-				variables[i].name,
-				value ? value : "(null)");
+					cs->name1,
+					variables[i].name,
+					value ? value : "(null)");
 			*q = value ? strdup(value) : NULL;
 			break;
 
@@ -463,9 +465,9 @@ int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
 				return -1;
 			}
 			DEBUG2(" %s: %s = %s IP address [%s]",
-				cs->name1,
-				variables[i].name,
-				value, ip_ntoa(buffer, ipaddr));
+					cs->name1,
+					variables[i].name,
+					value, ip_ntoa(buffer, ipaddr));
 			*(uint32_t *) data = ipaddr;
 			break;
 			
@@ -483,18 +485,18 @@ int cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables)
  *	Read a part of the config file.
  */
 static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
-					const char *name1, const char *name2,
-					CONF_SECTION *parent)
+		const char *name1, const char *name2,
+		CONF_SECTION *parent)
 {
-	CONF_SECTION	*cs, *css;
-	CONF_PAIR	*cpn;
-	char		*ptr;
-	const char      *value;
-	char		buf[8192];
-	char		buf1[1024];
-	char		buf2[1024];
-	char		buf3[1024];
-	int		t1, t2, t3;
+	CONF_SECTION *cs, *css;
+	CONF_PAIR *cpn;
+	char *ptr;
+	const char *value;
+	char buf[8192];
+	char buf1[1024];
+	char buf2[1024];
+	char buf3[1024];
+	int t1, t2, t3;
 	
 	/*
 	 *	Ensure that the user can't add CONF_SECTIONs
@@ -541,7 +543,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			t2 = getword(&ptr, buf2, sizeof(buf2));
 
 			value = cf_expand_variables(cf, lineno, cs, buf, buf2);
-			if (!value) {
+			if (value == NULL) {
 				cf_section_free(&cs);
 				return NULL;
 			}
@@ -559,7 +561,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			if (is != NULL) {
 				if (is->children != NULL) {
 					CONF_ITEM *ci;
-			 
+			
 					/*
 					 *	Re-write the parent of the
 					 *	moved children to be the
@@ -624,13 +626,14 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			}
 			cf_item_add(cs, cf_sectiontoitem(css));
 
-			continue;		
+			continue;
 		}
 
 		/*
 		 *	Ignore semi-colons.
 		 */
-		if (*buf2 == ';') *buf2 = '\0';
+		if (*buf2 == ';') 
+			*buf2 = '\0';
 
 		/*
 		 *	Must be a normal attr = value line.
@@ -638,9 +641,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		if (buf1[0] != 0 && buf2[0] == 0 && buf3[0] == 0) {
 			t2 = T_OP_EQ;
 		} else if (buf1[0] == 0 || buf2[0] == 0 || buf3[0] == 0 ||
-				(t2 < T_EQSTART || t2 > T_EQEND)) {
+					(t2 < T_EQSTART || t2 > T_EQEND)) {
 			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
-				cf, *lineno);
+					cf, *lineno);
 			cf_section_free(&cs);
 			return NULL;
 		}
@@ -651,7 +654,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (buf1[0] == '_') {
 			radlog(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
-				cf, *lineno, buf1);
+					cf, *lineno, buf1);
 			cf_section_free(&cs);
 			return NULL;
 		}
@@ -699,10 +702,10 @@ static CONF_SECTION *conf_read(const char *fromfile, int fromline,
 	if ((fp = fopen(conffile, "r")) == NULL) {
 		if (fromfile) {
 			radlog(L_ERR|L_CONS, "%s[%d]: Unable to open file \"%s\": %s",
-				fromfile, fromline, conffile, strerror(errno));
+					fromfile, fromline, conffile, strerror(errno));
 		} else {
 			radlog(L_ERR|L_CONS, "Unable to open file \"%s\": %s",
-				conffile, strerror(errno));
+					conffile, strerror(errno));
 		}
 		return NULL;
 	}
@@ -731,21 +734,21 @@ static CONF_PARSER directory_config[] = {
    *	up once we clean up the hard-coded defines for the locations of
    *	the various files.
    */
-  {  "prefix",            PW_TYPE_STRING_PTR, 0, &prefix,            "/usr/local"},
-  { "localstatedir",      PW_TYPE_STRING_PTR, 0, &localstatedir,     "${prefix}/var"}, 
-  { "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
-  { "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
-  { "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
-  { "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &librad_dodns,      "no" },
+	{ "prefix",             PW_TYPE_STRING_PTR, 0, &prefix,            "/usr/local"},
+	{ "localstatedir",      PW_TYPE_STRING_PTR, 0, &localstatedir,     "${prefix}/var"}, 
+	{ "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
+	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
+	{ "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
+	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &librad_dodns,      "no" },
 
   /*
    *	We don't allow re-defining this, as doing so will cause
    *	all sorts of confusion.
    */
 #if 0
-  { "confdir",            PW_TYPE_STRING_PTR, 0, &radius_dir,        RADIUS_DIR },
+	{ "confdir",            PW_TYPE_STRING_PTR, 0, &radius_dir,        RADIUS_DIR },
 #endif
-  { NULL, -1, 0, NULL, NULL }
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 
@@ -777,7 +780,7 @@ int read_radius_conf_file(void)
 	 *	And parse the directory configuration values.
 	 */
 	cs = cf_section_find(NULL);
-	if (!cs)
+	if (cs == NULL)
 		return -1;
 
 	/*
@@ -790,7 +793,7 @@ int read_radius_conf_file(void)
 	DEBUG2("read_config_files:  reading dictionary");
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
-			librad_errstr);
+				librad_errstr);
 		return -1;
 	}
 
@@ -844,9 +847,9 @@ int read_radius_conf_file(void)
 
 static int generate_realms(const char *filename)
 {
-	CONF_SECTION	*cs;
-	REALM		*c;
-	char		*s, *authhost, *accthost;
+	CONF_SECTION *cs;
+	REALM *c;
+	char *s, *authhost, *accthost;
 
 	for (cs = cf_subsection_find_next(config, NULL, "realm"); cs != NULL;
 			cs = cf_subsection_find_next(config, cs, "realm")) {
@@ -1042,7 +1045,7 @@ CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
 	CONF_ITEM	*ci;
 
 	if (section == NULL) {
-	  section = config;
+		section = config;
 	}
 
 	for (ci = section->children; ci; ci = ci->next) {

@@ -24,25 +24,25 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<sys/socket.h>
+#include <sys/socket.h>
 
 #if HAVE_NETINET_IN_H
-#include	<netinet/in.h>
+#	include <netinet/in.h>
 #endif
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<ctype.h>
-#include	<string.h>
-#include	<assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+#include <assert.h>
 
-#include	"radiusd.h"
+#include "radiusd.h"
 
 
-static uint32_t	proxy_id = 1;
+static uint32_t proxy_id = 1;
 
 /*
  *	We received a response from a remote radius server.
@@ -53,12 +53,12 @@ static uint32_t	proxy_id = 1;
  */
 int proxy_receive(REQUEST *request)
 {
-	VALUE_PAIR	*proxypair;
-	VALUE_PAIR	*replicatepair;
-	VALUE_PAIR	*realmpair;
-	int		replicating;
-        REALM           *realm;
-        char            *realmname;
+	VALUE_PAIR *proxypair;
+	VALUE_PAIR *replicatepair;
+	VALUE_PAIR *realmpair;
+	int replicating;
+	REALM *realm;
+	char *realmname;
 
 	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
 	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
@@ -74,7 +74,7 @@ int proxy_receive(REQUEST *request)
 	}
 
 	realmname = (char *) realmpair->strvalue;
-        realm = realm_find(realmname);
+	realm = realm_find(realmname);
 
 	/*
 	 *	Don't touch the reply VP's.  Assume that a module
@@ -89,10 +89,10 @@ int proxy_receive(REQUEST *request)
  */
 static void proxy_addinfo(REQUEST *request)
 {
-	VALUE_PAIR		*proxy_pair;
+	VALUE_PAIR *proxy_pair;
 
 	proxy_pair = paircreate(PW_PROXY_STATE, PW_TYPE_STRING);
-	if  (proxy_pair == NULL) {
+	if (proxy_pair == NULL) {
 		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
@@ -111,16 +111,16 @@ static void proxy_addinfo(REQUEST *request)
  */
 int proxy_send(REQUEST *request)
 {
-	VALUE_PAIR		*proxypair;
-	VALUE_PAIR		*replicatepair;
-	VALUE_PAIR		*realmpair;
-	VALUE_PAIR		*namepair;
-	VALUE_PAIR		*strippednamepair;
-	VALUE_PAIR		*delaypair;
-	VALUE_PAIR		*vp, *vps;
-	REALM			*realm;
-	char			*realmname;
-	int			replicating;
+	VALUE_PAIR *proxypair;
+	VALUE_PAIR *replicatepair;
+	VALUE_PAIR *realmpair;
+	VALUE_PAIR *namepair;
+	VALUE_PAIR *strippednamepair;
+	VALUE_PAIR *delaypair;
+	VALUE_PAIR *vp, *vps;
+	REALM *realm;
+	char *realmname;
+	int replicating;
 
 	/* 
 	 *	The timestamp is used below to figure the
@@ -184,8 +184,8 @@ int proxy_send(REQUEST *request)
 	 *	case do nothing.
 	 */
 	if ((realm->ipaddr == htonl(INADDR_LOOPBACK)) &&
-	    (realm->auth_port == auth_port) &&
-	    (realm->acct_port == acct_port)) {
+			(realm->auth_port == auth_port) &&
+			(realm->acct_port == acct_port)) {
 		return 0;
 	}
 	
@@ -219,7 +219,7 @@ int proxy_send(REQUEST *request)
 			exit(1);
 		}
 		memcpy(vp->strvalue, strippednamepair->strvalue,
-		       sizeof(vp->strvalue));
+				sizeof(vp->strvalue));
 		vp->length = strippednamepair->length;
 		pairdelete(&vps, PW_USER_NAME);
 		pairdelete(&vps, PW_STRIPPED_USER_NAME);
@@ -271,14 +271,14 @@ int proxy_send(REQUEST *request)
 	 */
 	proxy_addinfo(request);
 
-        /*
-	 *      Encrypt the Password with the proxy server's secret.
+	/*
+	 *	Encrypt the Password with the proxy server's secret.
 	 */
 	if ((vp = pairfind(vps, PW_PASSWORD)) != NULL) {
-	  
-	  rad_pwencode((char *)vp->strvalue,
-                      &(vp->length),
-                      realm->secret, (char *)request->proxy->vector);
+
+		rad_pwencode((char *)vp->strvalue,
+				&(vp->length),
+				realm->secret, (char *)request->proxy->vector);
  
 	/*
 	 *	If there is no PW_CHAP_CHALLENGE attribute but there
@@ -286,7 +286,7 @@ int proxy_send(REQUEST *request)
 	 *	use the request authenticator anymore - we changed it.
 	 */
 	} else if (pairfind(vps, PW_CHAP_PASSWORD) &&
-	    pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
+		pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
 		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
 		if (!vp) {
 			radlog(L_ERR|L_CONS, "no memory");

@@ -24,18 +24,18 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	"radiusd.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "radiusd.h"
 
 /*
  *	Version number. This should ideally be created by autoconf
  *	or similar, so that this would always be up to date.
  */
-#define		VERSION		"FreeRADIUS ALPHA, built on " __DATE__ " at " __TIME__
+#define VERSION "FreeRADIUS ALPHA, built on " __DATE__ " at " __TIME__
 
 /*
  *	Display the revision number for this program

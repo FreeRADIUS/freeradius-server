@@ -24,24 +24,24 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<sys/stat.h>
+#include <sys/stat.h>
 
 #if HAVE_NETINET_IN_H
-#include	<netinet/in.h>
+#	include <netinet/in.h>
 #endif
 
-#include	<stdlib.h>
-#include	<string.h>
-#include	<netdb.h>
-#include	<ctype.h>
-#include	<fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <netdb.h>
+#include <ctype.h>
+#include <fcntl.h>
 
-#include	"radiusd.h"
+#include "radiusd.h"
 
-REALM			*realms;
+REALM *realms;
 
 /*
  *	Free a PAIR_LIST
@@ -68,9 +68,9 @@ void pairlist_free(PAIR_LIST **pl)
  */
 static void auth_type_fixup(VALUE_PAIR *check)
 {
-	VALUE_PAIR	*vp;
-	VALUE_PAIR	*c = NULL;
-	int		n = 0;
+	VALUE_PAIR *vp;
+	VALUE_PAIR *c = NULL;
+	int n = 0;
 
 	/*
 	 *	See if a password is present. Return right away
@@ -117,8 +117,8 @@ static void auth_type_fixup(VALUE_PAIR *check)
 }
 
 
-#define FIND_MODE_NAME	0
-#define FIND_MODE_REPLY	1
+#define FIND_MODE_NAME  0
+#define FIND_MODE_REPLY 1
 
 /*
  *	Read the users, huntgroups or hints file.
@@ -126,27 +126,28 @@ static void auth_type_fixup(VALUE_PAIR *check)
  */
 int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 {
-	FILE		*fp;
-	int		mode = FIND_MODE_NAME;
-	char		entry[256];
-	char		buffer[256];
-	char		*ptr, *s;
-	VALUE_PAIR	*check_tmp;
-	VALUE_PAIR	*reply_tmp;
-	PAIR_LIST	*pl = NULL, *last = NULL, *t;
-	int		lineno = 0;
-	int		old_lineno = 0;
-	int		parsecode;
-	char		newfile[8192];
+	FILE *fp;
+	int mode = FIND_MODE_NAME;
+	char entry[256];
+	char buffer[256];
+	char *ptr, *s;
+	VALUE_PAIR *check_tmp;
+	VALUE_PAIR *reply_tmp;
+	PAIR_LIST *pl = NULL, *last = NULL, *t;
+	int lineno = 0;
+	int old_lineno = 0;
+	int parsecode;
+	char newfile[8192];
 
 	/*
 	 *	Open the file.  The error message should be a little
 	 *	more useful...
 	 */
 	if ((fp = fopen(file, "r")) == NULL) {
-		if (!complain) return -1;
+		if (!complain) 
+			return -1;
 		radlog(L_CONS|L_ERR, "Couldn't open %s for reading: %s",
-		    file, strerror(errno));
+				file, strerror(errno));
 		return -1;
 	}
 
@@ -170,8 +171,8 @@ parse_again:
 			if (isspace(buffer[0]))  {
 				if (parsecode != T_EOL) {
 					radlog(L_ERR|L_CONS,
-					    "%s[%d]: Unexpected trailing comma for entry %s",
-					    file, lineno, entry);
+							"%s[%d]: Unexpected trailing comma for entry %s",
+							file, lineno, entry);
 					fclose(fp);
 					return -1;
 				}
@@ -213,8 +214,8 @@ parse_again:
 				if (pairlist_read(s, &t, 0) != 0) {
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
-					    "%s[%d]: Could not open included file %s: %s",
-					    file, lineno, s, strerror(errno));
+							"%s[%d]: Could not open included file %s: %s",
+							file, lineno, s, strerror(errno));
 					fclose(fp);
 				return -1;
 				}
@@ -244,8 +245,8 @@ parse_again:
 				return -1;
 			} else if (parsecode == T_COMMA) {
 				radlog(L_ERR|L_CONS,
-				    "%s[%d]: Unexpected trailing comma in check item list for entry %s",
-				    file, lineno, entry);
+						"%s[%d]: Unexpected trailing comma in check item list for entry %s",
+						file, lineno, entry);
 				fclose(fp);
 				return -1;
 			}
@@ -256,8 +257,8 @@ parse_again:
 			if(*buffer == ' ' || *buffer == '\t') {
 				if (parsecode != T_COMMA) {
 					radlog(L_ERR|L_CONS,
-				"%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
-						file, lineno, entry);
+							"%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
+							file, lineno, entry);
 					fclose(fp);
 					return -1;
 				}
@@ -269,8 +270,8 @@ parse_again:
 				if (parsecode < 0) {
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
-				"%s[%d]: Parse error (reply) for entry %s: %s",
-					    file, lineno, entry, librad_errstr);
+							"%s[%d]: Parse error (reply) for entry %s: %s",
+							file, lineno, entry, librad_errstr);
 					fclose(fp);
 					return -1;
 				}
@@ -363,14 +364,14 @@ static void realm_free(REALM *cl)
  */
 int read_realms_file(const char *file)
 {
-	FILE	*fp;
-	char	buffer[256];
-	char	realm[256];
-	char	hostnm[256];
-	char	opts[256];
-	char	*s, *p;
-	int	lineno = 0;
-	REALM	*c;
+	FILE *fp;
+	char buffer[256];
+	char realm[256];
+	char hostnm[256];
+	char opts[256];
+	char *s, *p;
+	int lineno = 0;
+	REALM *c;
 	RADCLIENT *client;
 
 	realm_free(realms);
@@ -393,7 +394,7 @@ int read_realms_file(const char *file)
 			continue;
 		p = buffer;
 		if (!getword(&p, realm, sizeof(realm)) ||
-		    !getword(&p, hostnm, sizeof(hostnm))) {
+				!getword(&p, hostnm, sizeof(hostnm))) {
 			radlog(L_ERR, "%s[%d]: syntax error", file, lineno);
 			continue;
 		}
@@ -418,7 +419,7 @@ int read_realms_file(const char *file)
 
 		if (c->ipaddr == 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
-			    file, lineno, hostnm);
+					file, lineno, hostnm);
 			return -1;
 		}
 
@@ -429,7 +430,7 @@ int read_realms_file(const char *file)
 		client = client_find(c->ipaddr);
 		if (client == NULL) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server %s for realm \"%s\"",
-			    file, lineno, hostnm, realm);
+					file, lineno, hostnm, realm);
 			return -1;
 		}
 		memcpy(c->secret, client->secret, sizeof(c->secret));
@@ -439,14 +440,14 @@ int read_realms_file(const char *file)
 		 */
 		if (strlen(hostnm) >= sizeof(c->server)) {
 			radlog(L_ERR, "%s[%d]: server name of length %d is greater than the allowed maximum of %d.",
-			    file, lineno,
-			    strlen(hostnm), sizeof(c->server) - 1);
+					file, lineno,
+					strlen(hostnm), sizeof(c->server) - 1);
 			return -1;
 		}
 		if (strlen(realm) > sizeof(c->realm)) {
 			radlog(L_ERR, "%s[%d]: realm of length %d is greater than the allowed maximum of %d.",
-			    file, lineno,
-			    strlen(realm), sizeof(c->realm) - 1);
+					file, lineno,
+					strlen(realm), sizeof(c->realm) - 1);
 			return -1;
 		}
 
@@ -497,7 +498,8 @@ REALM *realm_find(const char *realm)
 	for(cl = realms; cl; cl = cl->next)
 		if (strcmp(cl->realm, realm) == 0)
 			break;
-	if (cl) return cl;
+	if (cl != NULL) 
+		return cl;
 	for(cl = realms; cl; cl = cl->next)
 		if (strcmp(cl->realm, "DEFAULT") == 0)
 			break;
@@ -512,7 +514,7 @@ REALM *realm_findbyaddr(uint32_t ipaddr)
 {
 	REALM *cl;
 
-	for(cl = realms; cl; cl = cl->next)
+	for(cl = realms; cl != NULL; cl = cl->next)
 		if (ipaddr == cl->ipaddr)
 			break;
 

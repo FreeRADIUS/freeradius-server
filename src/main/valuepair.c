@@ -24,29 +24,29 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #if HAVE_NETINET_IN_H
-#include	<netinet/in.h>
+#	include <netinet/in.h>
 #endif
 
 #ifdef HAVE_REGEX_H
-#  include	<regex.h>
+#	include <regex.h>
 #endif
 
-#include	"radiusd.h"
+#include "radiusd.h"
 
 struct cmp {
-	int		attribute;
-	int		otherattr;
-	void		*instance; /* module instance */
+	int attribute;
+	int otherattr;
+	void *instance; /* module instance */
 	RAD_COMPARE_FUNC compare;
-	struct cmp	*next;
+	struct cmp *next;
 };
 static struct cmp *cmp;
 
@@ -57,8 +57,8 @@ static struct cmp *cmp;
 static int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
-	int		ret = -2;
-	struct cmp	*c;
+	int ret = -2;
+	struct cmp *c;
 
 	/*
 	 *	Sanity check.
@@ -90,19 +90,18 @@ static int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
 				break;
 			}
 			ret = memcmp(request->strvalue, check->strvalue,
-				     request->length);
+					request->length);
 			break;
 		case PW_TYPE_STRING:
 			ret = strcmp((char *)request->strvalue,
-				     (char *)check->strvalue);
+					(char *)check->strvalue);
 			break;
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 			ret = request->lvalue - check->lvalue;
 			break;
 		case PW_TYPE_IPADDR:
-			 ret = ntohl(request->lvalue) -
-			       ntohl(check->lvalue);
+			ret = ntohl(request->lvalue) - ntohl(check->lvalue);
 			break;
 		default:
 			break;
@@ -148,7 +147,8 @@ int paircompare_register(int attr, int compare_attr, RAD_COMPARE_FUNC fun, void 
 
 	c = rad_malloc(sizeof(struct cmp));
 
-	if (compare_attr < 0) compare_attr = attr;
+	if (compare_attr < 0) 
+		compare_attr = attr;
 	c->compare = fun;
 	c->attribute = attr;
 	c->otherattr = compare_attr;
@@ -175,7 +175,7 @@ void paircompare_unregister(int attr, RAD_COMPARE_FUNC fun)
 
 	if (c == NULL) return;
 
-	if (last)
+	if (last != NULL)
 		last->next = c->next;
 	else
 		cmp = c->next;
@@ -192,13 +192,13 @@ void paircompare_unregister(int attr, RAD_COMPARE_FUNC fun)
  */
 int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 {
-	VALUE_PAIR	*check_item = check;
-	VALUE_PAIR	*auth_item;
-	int		result = 0;
-	int		compare;
-	int		other;
+	VALUE_PAIR *check_item = check;
+	VALUE_PAIR *auth_item;
+	int result = 0;
+	int compare;
+	int other;
 #ifdef HAVE_REGEX_H
-	regex_t		reg;
+	regex_t reg;
 #endif
 
 	while (result == 0 && check_item != NULL) {
@@ -208,7 +208,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 		 *	sent to us by the user.  It ALWAYS matches.
 		 */
 		if ((check_item->operator == T_OP_SET) ||
-		    (check_item->operator == T_OP_ADD)) {
+				(check_item->operator == T_OP_ADD)) {
 			check_item = check_item->next;
 			continue;
 		}
@@ -242,56 +242,55 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 		 */
 		compare = paircompare(auth_item, check_item, check, reply);
 
-		switch (check_item->operator)
-		  {
-		  case T_OP_EQ:
-		  default:
-		    radlog(L_ERR,  "Invalid operator for item %s: "
-				"reverting to '=='", check_item->name);
-		    /*FALLTHRU*/
-		  case T_OP_CMP_EQ:
-		    if (compare != 0) return -1;
-		    break;
+		switch (check_item->operator) {
+			case T_OP_EQ:
+			default:
+				radlog(L_ERR,  "Invalid operator for item %s: "
+						"reverting to '=='", check_item->name);
+				/*FALLTHRU*/
+			case T_OP_CMP_EQ:
+				if (compare != 0) return -1;
+				break;
 
-		  case T_OP_NE:
-		    if (compare == 0) return -1;
-		    break;
+			case T_OP_NE:
+				if (compare == 0) return -1;
+				break;
 
-		  case T_OP_LT:
-		    if (compare >= 0) return -1;
-		    break;
+			case T_OP_LT:
+				if (compare >= 0) return -1;
+				break;
 
-		  case T_OP_GT:
-		    if (compare <= 0) return -1;
-		    break;
+			case T_OP_GT:
+				if (compare <= 0) return -1;
+				break;
 		    
-		  case T_OP_LE:
-		    if (compare > 0) return -1;
-		    break;
+			case T_OP_LE:
+				if (compare > 0) return -1;
+				break;
 
-		  case T_OP_GE:
-		    if (compare < 0) return -1;
-		    break;
+			case T_OP_GE:
+				if (compare < 0) return -1;
+				break;
 
 #ifdef HAVE_REGEX_H
-		  case T_OP_REG_EQ:
-		    regcomp(&reg, (char *)check_item->strvalue, 0);
-		    compare = regexec(&reg, (char *)auth_item->strvalue,
-				      0, NULL, 0);
-		    regfree(&reg);
-		    if (compare != 0) return -1;
-		    break;
+			case T_OP_REG_EQ:
+				regcomp(&reg, (char *)check_item->strvalue, 0);
+				compare = regexec(&reg, (char *)auth_item->strvalue,
+						0, NULL, 0);
+				regfree(&reg);
+				if (compare != 0) return -1;
+				break;
 
-		  case T_OP_REG_NE:
-		    regcomp(&reg, (char *)check_item->strvalue, 0);
-		    compare = regexec(&reg, (char *)auth_item->strvalue,
-				      0, NULL, 0);
-		    regfree(&reg);
-		    if (compare == 0) return -1;
-		    break;
+			case T_OP_REG_NE:
+				regcomp(&reg, (char *)check_item->strvalue, 0);
+				compare = regexec(&reg, (char *)auth_item->strvalue,
+						0, NULL, 0);
+				regfree(&reg);
+				if (compare == 0) return -1;
+				break;
 #endif
 
-		  }
+		}
 
 		if (result == 0)
 			check_item = check_item->next;
@@ -306,9 +305,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 
 int simplepaircmp(VALUE_PAIR *first, VALUE_PAIR *second)
 {
-
-    return paircompare( first, second, NULL, NULL );
-
+	return paircompare( first, second, NULL, NULL );
 }
 
 
@@ -316,9 +313,9 @@ int simplepaircmp(VALUE_PAIR *first, VALUE_PAIR *second)
  *	Compare a Connect-Info and a Connect-Rate
  */
 static int connectcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
-	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+		VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
-	int	rate;
+	int rate;
 
 	instance = instance;
 	check_pairs = check_pairs; /* shut the compiler up */
@@ -335,17 +332,17 @@ static int connectcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 static int portcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
-	char		buf[MAX_STRING_LEN];
-	char		*s, *p;
-	int		lo, hi;
-	int		port = request->lvalue;
+	char buf[MAX_STRING_LEN];
+	char *s, *p;
+	int lo, hi;
+	int port = request->lvalue;
 
 	instance = instance;
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
 	if ((strchr((char *)check->strvalue, ',') == NULL) &&
-	    (strchr((char *)check->strvalue, '-') == NULL)) {
+			(strchr((char *)check->strvalue, '-') == NULL)) {
 		return (request->lvalue - check->lvalue);
 	}
 
@@ -353,7 +350,7 @@ static int portcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	strcpy(buf, (char *)check->strvalue);
 	s = strtok(buf, ",");
 
-	while (s) {
+	while (s != NULL) {
 		if ((p = strchr(s, '-')) != NULL)
 			p++;
 		else
@@ -381,11 +378,11 @@ static int portcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 static int presufcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
-	VALUE_PAIR	*vp;
-	char		*name = (char *)request->strvalue;
-	char		rest[MAX_STRING_LEN];
-	int		len, namelen;
-	int		ret = -1;
+	VALUE_PAIR *vp;
+	char *name = (char *)request->strvalue;
+	char rest[MAX_STRING_LEN];
+	int len, namelen;
+	int ret = -1;
 	
 	instance = instance;
 	reply_pairs = reply_pairs; /* shut the compiler up */
@@ -407,7 +404,7 @@ static int presufcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 			if (namelen < len)
 				break;
 			ret = strcmp(name + namelen - len,
-				     (char *)check->strvalue);
+					(char *)check->strvalue);
 			if (ret == 0 && rest) {
 				strncpy(rest, name, namelen - len);
 				rest[namelen - len] = 0;
@@ -429,7 +426,7 @@ static int presufcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 			strcpy((char *)vp->strvalue, rest);
 			vp->length = strlen(rest);
 		} else if ((vp = paircreate(PW_STRIPPED_USER_NAME,
-			    PW_TYPE_STRING)) != NULL) {
+				PW_TYPE_STRING)) != NULL) {
 			strcpy((char *)vp->strvalue, rest);
 			vp->length = strlen(rest);
 			pairadd(&request, vp);
@@ -484,7 +481,7 @@ static int attrcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 
 	if (check->lvalue == 0) {
 		dict = dict_attrbyname((char *)check->strvalue);
-		if (!dict) {
+		if (dict == NULL) {
 			return -1;
 		}
 		attr = dict->attr;
@@ -497,7 +494,7 @@ static int attrcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	 *	else FAILURE.
 	 */
 	pair = pairfind(request, attr);
-	if (!pair) {
+	if (pair == NULL) {
 		return 0;
 	}
 

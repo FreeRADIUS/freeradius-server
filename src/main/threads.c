@@ -21,8 +21,8 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
 #ifdef WITH_THREAD_POOL
 
@@ -32,8 +32,8 @@
 #include <assert.h>
 #include <signal.h>
 
-#include	"radiusd.h"
-#include	"conffile.h"
+#include "radiusd.h"
+#include "conffile.h"
 
 static const char rcsid[] =
 "$Id$";
@@ -63,16 +63,16 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun);
  *  fun           the function which is handling the request.
  */
 typedef struct THREAD_HANDLE {
-	struct	THREAD_HANDLE	*prev;
-	struct	THREAD_HANDLE	*next;
-	pthread_t		pthread_id;
-	int			thread_num;
-	sem_t			semaphore;
-	int			status;
-	int			request_count;
-	time_t			timestamp;
-	REQUEST			*request;
-	RAD_REQUEST_FUNP	fun;
+	struct THREAD_HANDLE *prev;
+	struct THREAD_HANDLE *next;
+	pthread_t pthread_id;
+	int thread_num;
+	sem_t semaphore;
+	int status;
+	int request_count;
+	time_t timestamp;
+	REQUEST *request;
+	RAD_REQUEST_FUNP fun;
 } THREAD_HANDLE;
 
 /*
@@ -84,16 +84,16 @@ typedef struct THREAD_POOL {
 	THREAD_HANDLE *head;
 	THREAD_HANDLE *tail;
 	
-	int		total_threads;
-	int		active_threads;
-	int		max_thread_num;
-	int		start_threads;
-	int		max_threads;
-	int		min_spare_threads;
-	int		max_spare_threads;
-	int		max_requests_per_thread;
-	time_t		time_last_spawned;
-	int		cleanup_delay;
+	int total_threads;
+	int active_threads;
+	int max_thread_num;
+	int start_threads;
+	int max_threads;
+	int min_spare_threads;
+	int max_spare_threads;
+	int max_requests_per_thread;
+	time_t time_last_spawned;
+	int cleanup_delay;
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
@@ -102,19 +102,12 @@ static THREAD_POOL thread_pool;
  *	A mapping of configuration file names to internal integers
  */
 static const CONF_PARSER thread_config[] = {
-	{ "start_servers",                      PW_TYPE_INTEGER,
-	  0, &thread_pool.start_threads,           "5" }, 
-	{ "max_servers",                        PW_TYPE_INTEGER,
-	  0, &thread_pool.max_threads,             "32" }, 
-	{ "min_spare_servers",                  PW_TYPE_INTEGER,
-	  0, &thread_pool.min_spare_threads,       "3" }, 
-	{ "max_spare_servers",                  PW_TYPE_INTEGER,
-	  0, &thread_pool.max_spare_threads,       "10" }, 
-	{ "max_requests_per_server",            PW_TYPE_INTEGER,
-	  0, &thread_pool.max_requests_per_thread, "0"}, 
-	{ "cleanup_delay",			PW_TYPE_INTEGER,
-	  0, &thread_pool.cleanup_delay,		"5"}, 
-	
+	{ "start_servers",           PW_TYPE_INTEGER, 0, &thread_pool.start_threads,           "5" }, 
+	{ "max_servers",             PW_TYPE_INTEGER, 0, &thread_pool.max_threads,             "32" }, 
+	{ "min_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.min_spare_threads,       "3" }, 
+	{ "max_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.max_spare_threads,       "10" }, 
+	{ "max_requests_per_server", PW_TYPE_INTEGER, 0, &thread_pool.max_requests_per_thread, "0" }, 
+	{ "cleanup_delay",           PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,           "5" }, 
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -153,7 +146,7 @@ static void *request_handler_thread(void *arg)
 		 *	Wait for the semaphore to be given to us.
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
-		       self->thread_num);
+				self->thread_num);
 		sem_wait(&self->semaphore);
 
 		/*
@@ -162,13 +155,13 @@ static void *request_handler_thread(void *arg)
 		 */
 		if (self->status == THREAD_CANCELLED) {
 			DEBUG2("Thread %d exiting on request from parent.",
-			       self->thread_num);
+					self->thread_num);
 			break;
 		}
 		
 		DEBUG2("Thread %d handling request %d, (%d handled so far)",
-		       self->thread_num, self->request->number,
-		       self->request_count);
+				self->thread_num, self->request->number,
+				self->request_count);
 		
 		rad_respond(self->request, self->fun);
 		self->request = NULL;
@@ -257,7 +250,7 @@ static void move2tail(THREAD_HANDLE *handle)
 	 *	it is.
 	 */
 	if ((next != NULL) ||
-	    (prev != NULL)) {
+			(prev != NULL)) {
 		/*
 		 *	If it's already at the tail, exit immediately,
 		 *	there's no more work to do.
@@ -266,16 +259,15 @@ static void move2tail(THREAD_HANDLE *handle)
 			assert(thread_pool.tail == handle);
 			return;
 		}
-    
+
 		/*
 		 *	Maybe it's at the head of the list?
 		 */
 		if (prev == NULL) {
 			assert(thread_pool.head == handle);
-      
 			thread_pool.head = next;
 			next->prev = NULL;
-      
+
 			/*
 			 *	Nope, it's really in the middle.
 			 *	Unlink it, then.
@@ -283,7 +275,7 @@ static void move2tail(THREAD_HANDLE *handle)
 		} else {
 			assert(prev != NULL); /* be explicit about it. */
 			assert(next != NULL); /* be explicit about it. */
-      
+
 			prev->next = next;
 			next->prev = prev;
 		}
@@ -342,7 +334,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	rcode = sem_init(&handle->semaphore, 0, SEMAPHORE_LOCKED);
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "Failed to allocate semaphore: %s",
-		    strerror(errno));
+				strerror(errno));
 		exit(1);
 	}
 
@@ -367,7 +359,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	 *	own memory when it exits.
 	 */
 	rcode = pthread_create(&handle->pthread_id, &attr,
-			       request_handler_thread, handle);
+			request_handler_thread, handle);
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "Thread create failed: %s", strerror(errno));
 		exit(1);
@@ -379,7 +371,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	 */
 	thread_pool.total_threads++;
 	DEBUG2("Thread spawned new child %d. Total threads in pool: %d",
-	       handle->thread_num, thread_pool.total_threads);
+			handle->thread_num, thread_pool.total_threads);
 
 	/*
 	 *	Move the thread handle to the tail of the thread pool list.
@@ -422,7 +414,7 @@ int thread_pool_init(void)
 	thread_pool.cleanup_delay = 5;
 
 	pool_cf = cf_section_find("thread");
-	if (pool_cf) {
+	if (pool_cf != NULL) {
 		cf_section_parse(pool_cf, NULL, thread_config);
 	}
 
@@ -493,7 +485,9 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (found == NULL) {
 		found = spawn_thread(request->timestamp);
 		if (found == NULL) {
-			radlog(L_INFO, "The maximum number of threads (%d) are active, cannot spawn new thread to handle request", thread_pool.max_threads);
+			radlog(L_INFO, 
+					"The maximum number of threads (%d) are active, cannot spawn new thread to handle request", 
+					thread_pool.max_threads);
 			return -1;
 		}
 	}
@@ -547,9 +541,9 @@ int thread_pool_clean(time_t now)
 		static int old_active = -1;
 
 		if ((old_total != thread_pool.total_threads) ||
-		    (old_active != active_threads)) {
+				(old_active != active_threads)) {
 			DEBUG2("Threads: total/active/spare threads = %d/%d/%d",
-			       thread_pool.total_threads, active_threads, spare);
+					thread_pool.total_threads, active_threads, spare);
 			old_total = thread_pool.total_threads;
 			old_active = active_threads;
 		}

@@ -25,18 +25,18 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<sys/stat.h>
+#include <sys/stat.h>
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include	"radiusd.h"
+#include "radiusd.h"
 
-static NAS	*naslist = NULL;
+static NAS *naslist = NULL;
 
 /*
  *	Free a NAS list.
@@ -57,14 +57,14 @@ static void nas_free(NAS *cl)
  */
 int read_naslist_file(char *file)
 {
-	FILE	*fp;
-	char	buffer[256];
-	char	hostnm[256];
-	char	shortnm[256];
-	char	nastype[256];
-	int	lineno = 0;
-	char	*p;
-	NAS	*nas;
+	FILE *fp;
+	char buffer[256];
+	char hostnm[256];
+	char shortnm[256];
+	char nastype[256];
+	int lineno = 0;
+	char *p;
+	NAS *nas;
 
 	nas_free(naslist);
 	naslist = NULL;
@@ -87,7 +87,7 @@ int read_naslist_file(char *file)
 
 		p = buffer;
 		if (!getword(&p, hostnm, sizeof(hostnm)) ||
-		    !getword(&p, shortnm, sizeof(shortnm))) {
+				!getword(&p, shortnm, sizeof(shortnm))) {
 			radlog(L_ERR, "%s[%d]: unexpected end of line", file, lineno);
 			continue;
 		}
@@ -98,20 +98,20 @@ int read_naslist_file(char *file)
 		 */
 		if (strlen(hostnm) >= sizeof(nas->longname)) {
 			radlog(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
-			    file, lineno,
-			    strlen(hostnm), sizeof(nas->longname) - 1);
+					file, lineno,
+					strlen(hostnm), sizeof(nas->longname) - 1);
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(nas->shortname)) {
 			radlog(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
-			    file, lineno,
-			    strlen(shortnm), sizeof(nas->shortname) - 1);
+					file, lineno,
+					strlen(shortnm), sizeof(nas->shortname) - 1);
 			return -1;
 		}
 		if (strlen(nastype) >= sizeof(nas->nastype)) {
 			radlog(L_ERR, "%s[%d]: NAS type of length %d is greater than the allowed maximum of %d.",
-			    file, lineno,
-			    strlen(nastype), sizeof(nas->nastype) - 1);
+					file, lineno,
+					strlen(nastype), sizeof(nas->nastype) - 1);
 			return -1;
 		}
 		
@@ -129,7 +129,7 @@ int read_naslist_file(char *file)
 		} else {
 			nas->ipaddr = ip_getaddr(hostnm);
 			ip_hostname(nas->longname, sizeof(nas->longname),
-				    nas->ipaddr);
+					nas->ipaddr);
 		}
 
 		nas->next = naslist;
@@ -176,7 +176,7 @@ NAS *nas_findbyname(char *nasname)
 
 	for (nas = naslist; nas; nas = nas->next) {
 		if (strcmp(nasname, nas->shortname) == 0 ||
-		    strcmp(nasname, nas->longname) == 0)
+				strcmp(nasname, nas->longname) == 0)
 			return nas;
 		if (strcmp(nas->longname, "DEFAULT") == 0)
 			default_nas = nas;
@@ -208,7 +208,7 @@ const char *nas_name(uint32_t ipaddr)
  */
 const char *nas_name2(RADIUS_PACKET *packet)
 {
-	NAS	        *nas;
+	NAS *nas;
 
 	if ((nas = nas_find(packet->src_ipaddr)) != NULL) {
 		if (nas->shortname[0])

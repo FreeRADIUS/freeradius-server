@@ -21,48 +21,48 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<sys/file.h>
+#include <sys/file.h>
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
-#include	<fcntl.h>
-#include	<netdb.h>
-#include	<limits.h>
-#include	<sys/types.h>
-#include	<sys/socket.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <limits.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #if HAVE_NETINET_IN_H
-#  include      <netinet/in.h>
+#  include <netinet/in.h>
 #endif
 
-#include	"radiusd.h"
-#include	"radutmp.h"
-#include	"conffile.h"
+#include "radiusd.h"
+#include "radutmp.h"
+#include "conffile.h"
 
-const char		*progname;
-const char		*radlog_dir = NULL;
-const char              *radius_dir = NULL;
-const char              *radacct_dir = NULL;
-const char              *radlib_dir = NULL;
-int			debug_flag = 0;
-int                     proxy_synchronous = TRUE;
-int                     auth_port = 0;
-int                     acct_port;
-int                     proxy_retry_delay = RETRY_DELAY;
-int                     proxy_retry_count = RETRY_COUNT;
-int                     log_stripped_names;
-uint32_t                myip = INADDR_ANY;
-struct  main_config_t   mainconfig;
+const char *progname;
+const char *radlog_dir = NULL;
+const char *radius_dir = NULL;
+const char *radacct_dir = NULL;
+const char *radlib_dir = NULL;
+int debug_flag = 0;
+int proxy_synchronous = TRUE;
+int auth_port = 0;
+int acct_port;
+int proxy_retry_delay = RETRY_DELAY;
+int proxy_retry_count = RETRY_COUNT;
+int log_stripped_names;
+uint32_t myip = INADDR_ANY;
+struct main_config_t mainconfig;
 
 /*
  *      A mapping of configuration file names to internal variables
  */
 static CONF_PARSER server_config[] = {
-  { NULL, -1, 0, NULL, NULL }
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 
@@ -100,9 +100,9 @@ static void radutmp_unlock(int fd)
 }
 
 static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr, int port,
-			  const char *user)
+		const char *user)
 {
-	int		fd;
+	int fd;
 
 	if ((fd = open(RADUTMP, O_RDONLY|O_CREAT, 0644)) >= 0) {
 		/*
@@ -115,10 +115,10 @@ static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr, int port,
 		 */
 		while (read(fd, u, sizeof(*u)) == sizeof(*u)) {
 			if ((nasaddr != 0 && nasaddr != u->nas_address) ||
-			      (port >= 0  && port    != u->nas_port) ||
-			      (user != NULL &&
-			       strncmp(u->login, user, sizeof u->login) != 0) ||
-			       u->type != P_LOGIN)
+					(port >= 0  && port    != u->nas_port) ||
+					(user != NULL &&
+					strncmp(u->login, user, sizeof u->login) != 0) ||
+					u->type != P_LOGIN)
 				continue;
 			/*
 			 *	Match. Zap it.
@@ -139,12 +139,12 @@ static int do_stop_packet(const struct radutmp *u);
 int main(int argc, char **argv)
 {
 	CONF_SECTION *cs;
-	NAS	*nas;
+	NAS *nas;
 	uint32_t ip = 0;
-	int	nas_port = -1;
-	char	*user = NULL;
-	char	*s;
-	char	buf[256];
+	int nas_port = -1;
+	char *user = NULL;
+	char *s;
+	char buf[256];
 	struct radutmp u;
 
 	progname = argv[0];
@@ -163,7 +163,8 @@ int main(int argc, char **argv)
 		if (*s == 's' || *s == 'S') s++;
 		nas_port = atoi(s);
 	}
-	if (argc > 2) user     = argv[2];
+	if (argc > 2) 
+		user = argv[2];
 
 	radius_dir = strdup(RADIUS_DIR);
 
@@ -173,7 +174,7 @@ int main(int argc, char **argv)
 	}
 
 	cs = cf_section_find(NULL);
-	if(!cs) {
+	if (cs == NULL) {
 		fprintf(stderr, "%s: No configuration information in radiusd.conf.\n",
 			argv[0]);
 		exit(1);
@@ -190,18 +191,20 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
-	if (nas) ip = nas->ipaddr;
+	if (nas != NULL) 
+		ip = nas->ipaddr;
 
 	printf("%s: zapping termserver %s, port %d",
 		progname, ip_hostname(buf, sizeof(buf), ip), nas_port);
-	if (user) printf(", user %s", user);
+	if (user != NULL) 
+		printf(", user %s", user);
 	printf("\n");
 
-	if(nas_port < 0) {
+	if (nas_port < 0) {
 		return do_accton_packet(ip);
 	}
 
-	if(!radutmp_lookup(&u, ip, nas_port, user)) {
+	if (!radutmp_lookup(&u, ip, nas_port, user)) {
 		fprintf(stderr, "Entry not found\n");
 		return 1;
 	}
@@ -211,10 +214,10 @@ int main(int argc, char **argv)
 
 static int getport(const char *name)
 {
-	struct	servent		*svp;
+	struct servent *svp;
 
-	svp = getservbyname (name, "udp");
-	if (!svp) {
+	svp = getservbyname(name, "udp");
+	if (svp == NULL) {
 		return 0;
 	}
 
@@ -225,8 +228,8 @@ static const char *getlocalhostsecret(void)
 {
 	RADCLIENT *cl;
 
-	cl=client_find(htonl(INADDR_LOOPBACK));
-	if(!cl) {
+	cl = client_find(htonl(INADDR_LOOPBACK));
+	if (cl == NULL) {
 		radlog(L_ERR|L_CONS, "No clients entry for localhost");
 		exit(1);
 	}
@@ -271,14 +274,17 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 	}
 	req->id = getpid() & 0xFF;
 	req->code = PW_ACCOUNTING_REQUEST;
-        req->dst_port = acct_port;
-	if(req->dst_port == 0) req->dst_port = getport("radacct");
-	if(req->dst_port == 0) req->dst_port = PW_ACCT_UDP_PORT;
+	req->dst_port = acct_port;
+	if(req->dst_port == 0) 
+		req->dst_port = getport("radacct");
+	if(req->dst_port == 0) 
+		req->dst_port = PW_ACCT_UDP_PORT;
 	req->dst_ipaddr = ip_getaddr("localhost");
-	if(!req->dst_ipaddr) req->dst_ipaddr = 0x7f000001;
+	if(!req->dst_ipaddr) 
+		req->dst_ipaddr = 0x7f000001;
 	req->vps = NULL;
 
-	if(allports) {
+	if(allports != 0) {
 		INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_ACCOUNTING_OFF);
 		IPPAIR(PW_NAS_IP_ADDRESS, nasaddr);
 		INTPAIR(PW_ACCT_DELAY_TIME, 0);
@@ -294,13 +300,13 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 		INTPAIR(PW_NAS_PORT_ID, u->nas_port);
 		STRINGPAIR(PW_ACCT_SESSION_ID, session_id);
 		if(u->proto=='P') {
-		  INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
-		  INTPAIR(PW_FRAMED_PROTOCOL, PW_PPP);
+			INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
+			INTPAIR(PW_FRAMED_PROTOCOL, PW_PPP);
 		} else if(u->proto=='S') {
-		  INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
-		  INTPAIR(PW_FRAMED_PROTOCOL, PW_SLIP);
+			INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
+			INTPAIR(PW_FRAMED_PROTOCOL, PW_SLIP);
 		} else {
-		  INTPAIR(PW_SERVICE_TYPE, PW_LOGIN_USER); /* A guess, really */
+			INTPAIR(PW_SERVICE_TYPE, PW_LOGIN_USER); /* A guess, really */
 		}
 		IPPAIR(PW_FRAMED_IP_ADDRESS, u->framed_address);
 		INTPAIR(PW_ACCT_SESSION_TIME, 0);
@@ -315,7 +321,7 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 	}
 
 	for (i = 0; i < retries; i++) {
-		fd_set		rdfdesc;
+		fd_set rdfdesc;
 
 		rad_send(req, secret);
 
@@ -357,10 +363,10 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 
 static int do_accton_packet(uint32_t nasaddr)
 {
-  return do_packet(1, nasaddr, 0);
+	return do_packet(1, nasaddr, 0);
 }
 
 static int do_stop_packet(const struct radutmp *u)
 {
-  return do_packet(0, 0, u);
+	return do_packet(0, 0, u);
 }

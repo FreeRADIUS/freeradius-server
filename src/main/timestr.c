@@ -41,9 +41,9 @@ static const char *days[] =
 #define val(x)		(( (x) < 48 || (x) > 57) ? 0 : ((x) - 48))
 
 #ifdef DEBUG
-#  define xprintf if (1) printf
+#	define xprintf if (1) printf
 #else
-#  define xprintf if (0) printf
+#	define xprintf if (0) printf
 #endif
 
 /*
@@ -51,8 +51,8 @@ static const char *days[] =
  */
 static int strcode (const char **str)
 {
-	int		i;
-	size_t		l;
+	int i;
+	size_t l;
 
 	xprintf("strcode %s called\n", *str);
 
@@ -76,9 +76,9 @@ static int strcode (const char **str)
  */
 static int hour_fill(char *bitmap, const char *tm)
 {
-	char		*p;
-	int		start, end;
-	int		i, bit, byte;
+	char *p;
+	int start, end;
+	int i, bit, byte;
 
 	xprintf("hour_fill called for %s\n", tm);
 
@@ -102,9 +102,9 @@ static int hour_fill(char *bitmap, const char *tm)
 		if (end < 0) end = start;
 	}
 	/* Treat 2400 as 0000, and do some more silent error checks. */
-	if (end < 0)   end = 0;
+	if (end < 0) end = 0;
 	if (start < 0) start = 0;
-	if (end >= DAYMIN)   end = DAYMIN - 1;
+	if (end >= DAYMIN) end = DAYMIN - 1;
 	if (start >= DAYMIN) start = DAYMIN - 1;
 
 	xprintf("hour_fill: range from %d to %d\n", start, end);
@@ -115,7 +115,7 @@ static int hour_fill(char *bitmap, const char *tm)
 	i = start;
 	while (1) {
 		byte = (i / 8);
-		bit  = i % 8;
+		bit = i % 8;
 		xprintf("setting byte %d, bit %d\n", byte, bit);
 		bitmap[byte] |= (1 << bit);
 		if (i == end) break;
@@ -130,14 +130,15 @@ static int hour_fill(char *bitmap, const char *tm)
  */
 static int day_fill(char *bitmap, const char *tm)
 {
-	const char	*hr;
-	int		n;
-	int		start, end;
+	const char *hr;
+	int n;
+	int start, end;
 
 	for (hr = tm; *hr; hr++)
 		if (isdigit(*hr))
 			break;
-	if (hr == tm) tm = "Al";
+	if (hr == tm) 
+		tm = "Al";
 
 	xprintf("dayfill: hr %s    tm %s\n", hr, tm);
 
@@ -178,8 +179,8 @@ static int day_fill(char *bitmap, const char *tm)
  */
 static int week_fill(char *bitmap, char *tm)
 {
-	char		*s;
-	char		tmp[128];
+	char *s;
+	char tmp[128];
 
 	strncpy(tmp, tm, 128);
 	tmp[127] = 0;
@@ -201,14 +202,14 @@ static int week_fill(char *bitmap, char *tm)
  */
 int timestr_match(char *tmstr, time_t t)
 {
-	struct tm	*tm;
-	char		bitmap[WEEKMIN / 8];
-	int		now, tot, i;
-	int		byte, bit;
+	struct tm *tm;
+	char bitmap[WEEKMIN / 8];
+	int now, tot, i;
+	int byte, bit;
 #ifdef DEBUG2
-	int		y;
-	char		*s;
-	char		null[8];
+	int y;
+	char *s;
+	char null[8];
 #endif
 
 	tm = localtime(&t);
@@ -247,7 +248,8 @@ int timestr_match(char *tmstr, time_t t)
 			break;
 	}
 
-	if (!tot) return -1;
+	if (tot != 0) 
+		return -1;
 	return (i == now) ? 0 : tot;
 }
 
@@ -255,7 +257,7 @@ int timestr_match(char *tmstr, time_t t)
 
 int main(int argc, char **argv)
 {
-	int		l;
+	int l;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: test timestring\n");

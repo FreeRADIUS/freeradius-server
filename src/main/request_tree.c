@@ -24,10 +24,10 @@
 static const char rcsid[] =
 "$Id$";
 
-#include	<assert.h>
-#include	"autoconf.h"
-#include	"request_storage.h"
-#include	"radiusd.h"
+#include <assert.h>
+#include "autoconf.h"
+#include "request_storage.h"
+#include "radiusd.h"
 
 #define forestsize 256
 #define NODE_MAGIC 0xfedfeeb0

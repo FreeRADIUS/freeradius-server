@@ -24,31 +24,31 @@
 char sccsid[] =
 "@(#)builddbm.c	2.2 Copyright 1999 Cistron Internet Services";
 
-#include	"autoconf.h"
+#include "autoconf.h"
 
-#include	<sys/types.h>
-#include	<sys/stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
-#include	<stdio.h>
-#include	<strings.h>
-#include	<fcntl.h>
-#include	<stdlib.h>
-#include	<unistd.h>
+#include <stdio.h>
+#include <strings.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
 #ifdef WITH_DBM
-#  include	<dbm.h>
+#	include <dbm.h>
 #endif
 #ifdef WITH_NDBM
-#  include	<ndbm.h>
+#	include <ndbm.h>
 #endif
 
-#include	"radiusd.h"
+#include "radiusd.h"
 
-const char	*progname;
-int		debug_flag;
-char		*radius_dir;
-char		*radlog_dir;
+const char *progname;
+int debug_flag;
+char *radius_dir;
+char *radlog_dir;
 
-FILE		*userfd;
+FILE *userfd;
 
 
 /*
@@ -57,8 +57,8 @@ FILE		*userfd;
  */
 void makelist(char *out, int outlen, VALUE_PAIR *vp)
 {
-	char		*ptr;
-	int		len;
+	char *ptr;
+	int len;
 
 	ptr = out;
 	ptr[0] = 0;
@@ -77,18 +77,18 @@ void makelist(char *out, int outlen, VALUE_PAIR *vp)
 
 int main(int argc, char **argv)
 {
-	PAIR_LIST	*users;
-	char		name[MAX_STRING_LEN];
-	char		content[4096];
-	int		len;
-	datum		named;
-	datum		contentd;
-	int		defno = 0;
+	PAIR_LIST *users;
+	char name[MAX_STRING_LEN];
+	char content[4096];
+	int len;
+	datum named;
+	datum contentd;
+	int defno = 0;
 #ifdef WITH_DBM
-	int		fd;
+	int fd;
 #endif
 #ifdef WITH_NDBM
-	DBM	*dbm;
+	DBM *dbm;
 #endif
 
 	progname = argv[0];
@@ -113,13 +113,13 @@ int main(int argc, char **argv)
 #ifdef WITH_DBM
 	if ((fd = open("users.pag", O_WRONLY | O_CREAT | O_TRUNC, 0600)) < 0) {
 		fprintf(stderr, "%s: Couldn't open users.pag for writing\n",
-			progname);
+				progname);
 		exit(1);
 	}
 	close(fd);
 	if ((fd = open("users.dir", O_WRONLY | O_CREAT | O_TRUNC, 0600)) < 0) {
 		fprintf(stderr, "%s: Couldn't open users.dir for writing\n",
-			progname);
+				progname);
 		exit(1);
 	}
 	close(fd);
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
 #endif
 		{
 			fprintf(stderr, "%s: Couldn't store datum for %s\n",
-				progname, name);
+					progname, name);
 			exit(1);
 		}
 		users = users->next;

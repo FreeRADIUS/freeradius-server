@@ -25,14 +25,14 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdlib.h>
-#include	<string.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include	"radiusd.h"
-#include	"modules.h"
+#include "radiusd.h"
+#include "modules.h"
 
 
 /*
@@ -48,8 +48,8 @@ int rad_accounting(REQUEST *request)
 	if(!request->proxy) { /* Only need to do this once, before proxying */
 		reply = module_preacct(request);
 		if (reply != RLM_MODULE_NOOP &&
-		    reply != RLM_MODULE_OK &&
-		    reply != RLM_MODULE_UPDATED)
+				reply != RLM_MODULE_OK &&
+				reply != RLM_MODULE_UPDATED)
 			return reply;
 		
 		/*
@@ -69,8 +69,8 @@ int rad_accounting(REQUEST *request)
 		reply = module_accounting(request);
 	}
 	if (reply == RLM_MODULE_NOOP ||
-	    reply == RLM_MODULE_OK ||
-	    reply == RLM_MODULE_UPDATED) {
+			reply == RLM_MODULE_OK ||
+			reply == RLM_MODULE_UPDATED) {
 		/*
 		 *	Now send back an ACK to the NAS.
 		 */

@@ -24,20 +24,20 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
-#include	<assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
-#include	"radiusd.h"
-#include	"modpriv.h"
-#include	"modules.h"
-#include	"modcall.h"
-#include	"conffile.h"
-#include	"ltdl.h"
+#include "radiusd.h"
+#include "modpriv.h"
+#include "modules.h"
+#include "modcall.h"
+#include "conffile.h"
+#include "ltdl.h"
 
 /*
  *	Internal list of all of the modules we have loaded.
@@ -68,20 +68,20 @@ static indexed_modcallable *components[RLM_COMPONENT_COUNT];
  */
 const char *component_names[RLM_COMPONENT_COUNT] =
 {
-  "authenticate",
-  "authorize",
-  "preacct",
-  "accounting",
-  "session"
+	"authenticate",
+	"authorize",
+	"preacct",
+	"accounting",
+	"session"
 };
 
 static const char *subcomponent_names[RLM_COMPONENT_COUNT] =
 {
-  "authtype",
-  "autztype",
-  "preacctype",
-  "acctype",
-  "sesstype"
+	"authtype",
+	"autztype",
+	"preacctype",
+	"acctype",
+	"sesstype"
 };
 
 static void indexed_modcallable_free(indexed_modcallable **cf)
@@ -169,10 +169,12 @@ static int new_authtype_value(const char *name)
 	 *  If so, return the old value.
 	 */
 	old_value = dict_valbyname(PW_AUTHTYPE, name);
-	if (old_value) return old_value->value; 
+	if (old_value) 
+		return old_value->value; 
 	/* Look for the predefined Auth-Type value */
 	old_value = dict_valbyattr(PW_AUTHTYPE, 0);
-	if (!old_value) return 0;	/* something WIERD is happening */
+	if (!old_value) 
+		return 0;	/* something WIERD is happening */
 	
 	/* allocate a new value */
 	new_value = (DICT_VALUE *) rad_malloc(sizeof(DICT_VALUE));
@@ -192,10 +194,10 @@ static int new_authtype_value(const char *name)
  *	Find a module on disk or in memory, and link to it.
  */
 static module_list_t *linkto_module(const char *module_name,
-				    const char *cffilename, int cflineno)
+		const char *cffilename, int cflineno)
 {
-	module_list_t	**last, *node;
-	lt_dlhandle	*handle;
+	module_list_t **last, *node;
+	lt_dlhandle *handle;
 
 	/*
 	 *	Look through the global module library list for the
@@ -221,7 +223,7 @@ static module_list_t *linkto_module(const char *module_name,
 	handle = lt_dlopenext(module_name);
 	if (handle == NULL) {
 		radlog(L_ERR|L_CONS, "%s[%d] Failed to link to module '%s':"
-		       " %s\n", cffilename, cflineno, module_name, lt_dlerror());
+				" %s\n", cffilename, cflineno, module_name, lt_dlerror());
 		return NULL;
 	}
 
@@ -239,9 +241,9 @@ static module_list_t *linkto_module(const char *module_name,
 	node->module = (module_t *) lt_dlsym(node->handle, module_name);
 	if (!node->module) {
 		radlog(L_ERR|L_CONS, "%s[%d] Failed linking to "
-		       "%s structure in %s: %s\n",
-		       cffilename, cflineno,
-		       module_name, cffilename, lt_dlerror());
+				"%s structure in %s: %s\n",
+				cffilename, cflineno,
+				module_name, cffilename, lt_dlerror());
 		lt_dlclose(node->handle);	/* ignore any errors */
 		free(node);
 		return NULL;
@@ -250,7 +252,7 @@ static module_list_t *linkto_module(const char *module_name,
 	/* call the modules initialization */
 	if (node->module->init && (node->module->init)() < 0) {
 		radlog(L_ERR|L_CONS, "%s[%d] Module initialization failed.\n",
-		       cffilename, cflineno);
+				cffilename, cflineno);
 		lt_dlclose(node->handle);	/* ignore any errors */
 		free(node);
 		return NULL;
@@ -300,7 +302,7 @@ module_instance_t *find_module_instance(const char *instname)
 	 *	Look for the 'modules' configuration section.
 	 */
 	cs = cf_section_find("modules");
-	if (!cs) {
+	if (cs == NULL) {
 		radlog(L_ERR|L_CONS, "ERROR: Cannot find a 'modules' section in the configuration file.\n");
 		return NULL;
 	}
@@ -312,16 +314,16 @@ module_instance_t *find_module_instance(const char *instname)
 	 *	no name2.
 	 */
 	name1 = name2 = NULL;
-	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL)
-	    ; inst_cs ;
-	    inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {
-                name1 = cf_section_name1(inst_cs);
-                name2 = cf_section_name2(inst_cs);
+	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL); 
+			inst_cs != NULL;
+			inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {
+		name1 = cf_section_name1(inst_cs);
+		name2 = cf_section_name2(inst_cs);
 		if ( (name2 && !strcmp(name2, instname)) ||
-		     (!name2 && !strcmp(name1, instname)) )
+				(!name2 && !strcmp(name1, instname)) )
 			break;
 	}
-	if (!inst_cs) {
+	if (inst_cs == NULL) {
 		radlog(L_ERR|L_CONS, "ERROR: Cannot find a configuration entry for module \"%s\".\n", instname);
 		return NULL;
 	}
@@ -338,7 +340,7 @@ module_instance_t *find_module_instance(const char *instname)
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 	node->entry = linkto_module(module_name,
-				   "radiusd.conf", cf_section_lineno(inst_cs));
+			"radiusd.conf", cf_section_lineno(inst_cs));
 	if (!node->entry) {
 		free(node);
 		/* linkto_module logs any errors */
@@ -349,11 +351,11 @@ module_instance_t *find_module_instance(const char *instname)
 	 *	Call the module's instantiation routine.
 	 */
 	if ((node->entry->module->instantiate) &&
-	    ((node->entry->module->instantiate)(inst_cs,
-					       &node->insthandle) < 0)) {
+			((node->entry->module->instantiate)(inst_cs,
+			&node->insthandle) < 0)) {
 		radlog(L_ERR|L_CONS,
-		       "radiusd.conf[%d]: %s: Module instantiation failed.\n",
-		       cf_section_lineno(inst_cs), instname);
+				"radiusd.conf[%d]: %s: Module instantiation failed.\n",
+				cf_section_lineno(inst_cs), instname);
 		free(node);
 		return NULL;
 	}
@@ -477,9 +479,9 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 	subcomp = new_sublist(comp, idx);
 	if (!subcomp) {
 		radlog(L_ERR|L_CONS,
-		       "%s[%d] %s %s already configured - skipping",
-		       filename, cf_section_lineno(cs),
-		       subcomponent_names[comp], cf_section_name2(cs));
+				"%s[%d] %s %s already configured - skipping",
+				filename, cf_section_lineno(cs),
+				subcomponent_names[comp], cf_section_name2(cs));
 		return;
 	}
 
@@ -488,23 +490,23 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 
 static void load_component_section(CONF_SECTION *cs, int comp, const char *filename)
 {
-	modcallable	*this;
-	CONF_ITEM	*modref;
-        int		modreflineno;
-	int		idx;
+	modcallable *this;
+	CONF_ITEM *modref;
+	int modreflineno;
+	int idx;
 	indexed_modcallable *subcomp;
-	const char	*modname;
+	const char *modname;
 
-	for(modref=cf_item_find_next(cs, NULL)
-	    ; modref ;
-	    modref=cf_item_find_next(cs, modref)) {
+	for(modref=cf_item_find_next(cs, NULL); 
+			modref != NULL;
+			modref=cf_item_find_next(cs, modref)) {
 
 		if(cf_item_is_section(modref)) {
 			CONF_SECTION *scs;
 			scs = cf_itemtosection(modref);
 
 			if (!strcmp(cf_section_name1(scs),
-				    subcomponent_names[comp])) {
+					subcomponent_names[comp])) {
 				load_subcomponent_section(scs, comp, filename);
 				continue;
 			}
@@ -529,9 +531,9 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 		subcomp = new_sublist(comp, idx);
 		if (!subcomp) {
 			radlog(L_ERR|L_CONS,
-			    "%s[%d] %s %s already configured - skipping",
-			    filename, modreflineno, subcomponent_names[comp],
-			    modname);
+					"%s[%d] %s %s already configured - skipping",
+					filename, modreflineno, subcomponent_names[comp],
+					modname);
 			modcallable_free(&this);
 			continue;
 		}
@@ -539,8 +541,8 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 		/* If subcomp->modulelist is NULL, add_to_modcallable will
 		 * create it */
 		add_to_modcallable(&subcomp->modulelist, this,
-					comp, modreflineno);
-  	}
+				comp, modreflineno);
+	}
 }
 
 /*
@@ -552,9 +554,9 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
  */
 int setup_modules(void)
 {
-	int		comp;
-	CONF_SECTION	*cs;
-        const char *filename="radiusd.conf";
+	int comp;
+	CONF_SECTION *cs;
+	const char *filename="radiusd.conf";
 
 	/*
 	 *	No current list of modules: Go initialize libltdl.
@@ -571,7 +573,7 @@ int setup_modules(void)
 
 		if (lt_dlinit() != 0) {
 			radlog(L_ERR|L_CONS, "Failed to initialize libraries: %s\n",
-				lt_dlerror());
+					lt_dlerror());
 			exit(1); /* FIXME */
 			
 		}
@@ -584,7 +586,7 @@ int setup_modules(void)
 		lt_dlsetsearchpath(radlib_dir);
 		
 		DEBUG2("Module: Library search path is %s",
-		       lt_dlgetsearchpath());
+				lt_dlgetsearchpath());
 
 		/*
 		 *	Initialize the components.
@@ -603,7 +605,8 @@ int setup_modules(void)
 	 */
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		cs = cf_section_find(component_names[comp]);
-		if (!cs) continue;
+		if (cs == NULL) 
+			continue;
 		
 		load_component_section(cs, comp, filename);
 	}
@@ -651,7 +654,7 @@ int module_accounting(REQUEST *request)
  */
 int module_checksimul(REQUEST *request, int maxsimul)
 {
-	int		rcode;
+	int rcode;
 
 	if(!components[RLM_COMPONENT_SESS])
 		return 0;

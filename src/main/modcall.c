@@ -31,7 +31,7 @@
 
 /* mutually-recursive static functions need a prototype up front */
 static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,
-					int, int);
+		int, int);
 
 /* Actions may be a positive integer (the highest one returned in the group
  * will be returned), or the keyword "return", represented here by
@@ -144,8 +144,8 @@ static int str2action(const char *s, const char *filename, int lineno)
 		return atoi(s);
 	else {
 		radlog(L_ERR|L_CONS,
-			"%s[%d] Unknown action '%s'.\n",
-			filename, lineno, s);
+				"%s[%d] Unknown action '%s'.\n",
+				filename, lineno, s);
 		exit(1);
 	}
 }
@@ -174,7 +174,8 @@ static const char *comp2str[] = {
  */
 static void safe_lock(module_instance_t *instance)
 {
-	if (instance->mutex) pthread_mutex_lock(instance->mutex);
+	if (instance->mutex) 
+		pthread_mutex_lock(instance->mutex);
 }
 
 /*
@@ -182,7 +183,8 @@ static void safe_lock(module_instance_t *instance)
  */
 static void safe_unlock(module_instance_t *instance)
 {
-	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
+	if (instance->mutex) 
+		pthread_mutex_unlock(instance->mutex);
 }
 #else
 /*
@@ -193,20 +195,20 @@ static void safe_unlock(module_instance_t *instance)
 #endif
 
 static int call_modsingle(int component, modsingle *sp, REQUEST *request,
-			  int default_result)
+		int default_result)
 {
 	int myresult = default_result;
 
 	safe_lock(sp->modinst);
 	myresult = sp->modinst->entry->module->methods[component](
-			    sp->modinst->insthandle, request);
+			sp->modinst->insthandle, request);
 	safe_unlock(sp->modinst);
 
 	return myresult;
 }
 
 static int call_modgroup(int component, modgroup *g, REQUEST *request,
-			 int default_result)
+		int default_result)
 {
 	int myresult = default_result;
 	int myresultpref;
@@ -252,18 +254,18 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 	/* Choose a default return value appropriate for the component */
 	switch(component) {
-		case RLM_COMPONENT_AUTZ:   myresult = RLM_MODULE_NOTFOUND;break;
-		case RLM_COMPONENT_AUTH:   myresult = RLM_MODULE_REJECT;  break;
-		case RLM_COMPONENT_PREACCT:myresult = RLM_MODULE_NOOP;    break;
-		case RLM_COMPONENT_ACCT:   myresult = RLM_MODULE_NOOP;    break;
-		case RLM_COMPONENT_SESS:   myresult = RLM_MODULE_FAIL;    break;
+		case RLM_COMPONENT_AUTZ:    myresult = RLM_MODULE_NOTFOUND;break;
+		case RLM_COMPONENT_AUTH:    myresult = RLM_MODULE_REJECT;  break;
+		case RLM_COMPONENT_PREACCT: myresult = RLM_MODULE_NOOP;    break;
+		case RLM_COMPONENT_ACCT:    myresult = RLM_MODULE_NOOP;    break;
+		case RLM_COMPONENT_SESS:    myresult = RLM_MODULE_FAIL;    break;
 		default: myresult = RLM_MODULE_FAIL;
 	}
 
 	if(!c) {
-	  DEBUG2("modcall[%s]: Null object returns %s",
-		comp2str[component], rcode2str[myresult]);
-	  return myresult;
+		DEBUG2("modcall[%s]: Null object returns %s",
+				comp2str[component], rcode2str[myresult]);
+		return myresult;
 	}
 
 	if(c->type==MOD_GROUP) {
@@ -544,7 +546,7 @@ static void sanity_check(int component, module_instance_t *inst, int lineno,
 
 /* Parse a CONF_SECTION containing only result=action pairs */
 static void override_actions(modcallable *c, CONF_SECTION *cs,
-			     const char *filename)
+		const char *filename)
 {
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
@@ -570,8 +572,8 @@ static void override_actions(modcallable *c, CONF_SECTION *cs,
 }
 
 static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
-					 const char *filename, int grouptype,
-					 const char **modname)
+		const char *filename, int grouptype,
+		const char **modname)
 {
 	int lineno;
 	const char *modrefname;
@@ -591,15 +593,15 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		if(!strcmp(modrefname, "group")) {
 			*modname = "UnnamedGroup";
 			return do_compile_modgroup(component, cs, filename,
-						   GROUPTYPE_SIMPLEGROUP, grouptype);
+					GROUPTYPE_SIMPLEGROUP, grouptype);
 		} else if(!strcmp(modrefname, "redundant")) {
 			*modname = "UnnamedGroup";
 			return do_compile_modgroup(component, cs, filename,
-						   GROUPTYPE_REDUNDANT, grouptype);
+					GROUPTYPE_REDUNDANT, grouptype);
 		} else if(!strcmp(modrefname, "append")) {
 			*modname = "UnnamedGroup";
 			return do_compile_modgroup(component, cs, filename,
-						   GROUPTYPE_APPEND, grouptype);
+					GROUPTYPE_APPEND, grouptype);
 		}
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
@@ -634,18 +636,18 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 }
 
 modcallable *compile_modsingle(int component, CONF_ITEM *ci,
-			       const char *filename, const char **modname)
+		const char *filename, const char **modname)
 {
 	modcallable *ret = do_compile_modsingle(component, ci, filename,
-						GROUPTYPE_SIMPLEGROUP,
-						modname);
+		GROUPTYPE_SIMPLEGROUP,
+		modname);
 	/*dump_tree(component, ret);*/
 	return ret;
 }
 
 static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
-				        const char *filename, int grouptype,
-				        int parentgrouptype)
+		const char *filename, int grouptype,
+		int parentgrouptype)
 {
 	modgroup *g;
 	modcallable *c;
@@ -666,7 +668,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 			const char *junk;
 			modcallable *single;
 			single = do_compile_modsingle(component, ci, filename,
-						      grouptype, &junk);
+					grouptype, &junk);
 			add_child(g, single);
 		} else {
 			const char *attr, *value;
@@ -702,17 +704,17 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 }
 
 modcallable *compile_modgroup(int component, CONF_SECTION *cs,
-			      const char *filename)
+		const char *filename)
 {
 	modcallable *ret = do_compile_modgroup(component, cs, filename,
-						GROUPTYPE_SIMPLEGROUP,
-						GROUPTYPE_SIMPLEGROUP);
+			GROUPTYPE_SIMPLEGROUP,
+			GROUPTYPE_SIMPLEGROUP);
 	/*dump_tree(component, ret);*/
 	return ret;
 }
 
 void add_to_modcallable(modcallable **parent, modcallable *this,
-			int component, int lineno)
+		int component, int lineno)
 {
 	modgroup *g;
 
@@ -723,8 +725,8 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 		c = mod_grouptocallable(g);
 		c->next = NULL;
 		memcpy(c->actions,
-			defaultactions[component][GROUPTYPE_SIMPLEGROUP],
-			sizeof c->actions);
+				defaultactions[component][GROUPTYPE_SIMPLEGROUP],
+				sizeof c->actions);
 		c->lineno = lineno;
 		c->type = MOD_GROUP;
 		g->children = NULL;

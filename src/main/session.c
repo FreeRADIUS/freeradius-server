@@ -38,88 +38,88 @@
 int session_zap(uint32_t nasaddr, int port, const char *user,
 		const char *sessionid, uint32_t cliaddr, char proto, time_t t)
 {
-  static unsigned char id = 0;
+	static unsigned char id = 0;
 
-  REQUEST *stopreq;
-  RADIUS_PACKET *stoppkt;
-  VALUE_PAIR *vp, *userpair;
-  int ret;
+	REQUEST *stopreq;
+	RADIUS_PACKET *stoppkt;
+	VALUE_PAIR *vp, *userpair;
+	int ret;
 
-  stoppkt = rad_malloc(sizeof *stoppkt);
-  memset(stoppkt, 0, sizeof stoppkt);
-  stoppkt->data = NULL;
-  stoppkt->sockfd = acctfd;
-  stoppkt->code = PW_ACCOUNTING_REQUEST;
-  stoppkt->id = id++;
-  stoppkt->timestamp = t?t:time(0);
-  stoppkt->vps = NULL;
+	stoppkt = rad_malloc(sizeof *stoppkt);
+	memset(stoppkt, 0, sizeof stoppkt);
+	stoppkt->data = NULL;
+	stoppkt->sockfd = acctfd;
+	stoppkt->code = PW_ACCOUNTING_REQUEST;
+	stoppkt->id = id++;
+	stoppkt->timestamp = t?t:time(0);
+	stoppkt->vps = NULL;
 
-  /* Hold your breath */
+	/* Hold your breath */
 #define PAIR(n,v,t,e) do { \
-    if(!(vp = paircreate(n, t))) { \
-      radlog(L_ERR|L_CONS, "no memory"); \
-      pairfree(&stoppkt->vps); \
-      return 0; \
-    } \
-    vp->e = v; \
-    pairadd(&stoppkt->vps, vp); \
-  } while(0)
+		if(!(vp = paircreate(n, t))) { \
+			radlog(L_ERR|L_CONS, "no memory"); \
+			pairfree(&stoppkt->vps); \
+			return 0; \
+		} \
+		vp->e = v; \
+		pairadd(&stoppkt->vps, vp); \
+	} while(0)
 #define INTPAIR(n,v) PAIR(n,v,PW_TYPE_INTEGER,lvalue)
 #define IPPAIR(n,v) PAIR(n,v,PW_TYPE_IPADDR,lvalue)
 #define STRINGPAIR(n,v) do { \
-    if(!(vp = paircreate(n, PW_TYPE_STRING))) { \
-      radlog(L_ERR|L_CONS, "no memory"); \
-      pairfree(&stoppkt->vps); \
-      return 0; \
-    } \
-    strNcpy((char *)vp->strvalue, v, sizeof vp->strvalue); \
-    vp->length = strlen(v); \
-    pairadd(&stoppkt->vps, vp); \
-  } while(0)
+	if(!(vp = paircreate(n, PW_TYPE_STRING))) { \
+		radlog(L_ERR|L_CONS, "no memory"); \
+		pairfree(&stoppkt->vps); \
+		return 0; \
+	} \
+	strNcpy((char *)vp->strvalue, v, sizeof vp->strvalue); \
+	vp->length = strlen(v); \
+	pairadd(&stoppkt->vps, vp); \
+	} while(0)
 
-  INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_STOP);
-  IPPAIR(PW_NAS_IP_ADDRESS, nasaddr);
-  INTPAIR(PW_ACCT_DELAY_TIME, 0);
-  STRINGPAIR(PW_USER_NAME, user);
-  userpair = vp;
-  INTPAIR(PW_NAS_PORT_ID, port);
-  STRINGPAIR(PW_ACCT_SESSION_ID, sessionid);
-  if(proto == 'P') {
-    INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
-    INTPAIR(PW_FRAMED_PROTOCOL, PW_PPP);
-  } else if(proto == 'S') {
-    INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
-    INTPAIR(PW_FRAMED_PROTOCOL, PW_SLIP);
-  } else {
-    INTPAIR(PW_SERVICE_TYPE, PW_LOGIN_USER); /* A guess, really */
-  }
-  if(cliaddr)
-    IPPAIR(PW_FRAMED_IP_ADDRESS, cliaddr);
-  INTPAIR(PW_ACCT_SESSION_TIME, 0);
-  INTPAIR(PW_ACCT_INPUT_OCTETS, 0);
-  INTPAIR(PW_ACCT_OUTPUT_OCTETS, 0);
-  INTPAIR(PW_ACCT_INPUT_PACKETS, 0);
-  INTPAIR(PW_ACCT_OUTPUT_PACKETS, 0);
+	INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_STOP);
+	IPPAIR(PW_NAS_IP_ADDRESS, nasaddr);
+	INTPAIR(PW_ACCT_DELAY_TIME, 0);
+	STRINGPAIR(PW_USER_NAME, user);
+	userpair = vp;
+	INTPAIR(PW_NAS_PORT_ID, port);
+	STRINGPAIR(PW_ACCT_SESSION_ID, sessionid);
+	if(proto == 'P') {
+		INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
+		INTPAIR(PW_FRAMED_PROTOCOL, PW_PPP);
+	} else if(proto == 'S') {
+		INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
+		INTPAIR(PW_FRAMED_PROTOCOL, PW_SLIP);
+	} else {
+		INTPAIR(PW_SERVICE_TYPE, PW_LOGIN_USER); /* A guess, really */
+	}
+	if(cliaddr != NULL)
+		IPPAIR(PW_FRAMED_IP_ADDRESS, cliaddr);
+	INTPAIR(PW_ACCT_SESSION_TIME, 0);
+	INTPAIR(PW_ACCT_INPUT_OCTETS, 0);
+	INTPAIR(PW_ACCT_OUTPUT_OCTETS, 0);
+	INTPAIR(PW_ACCT_INPUT_PACKETS, 0);
+	INTPAIR(PW_ACCT_OUTPUT_PACKETS, 0);
 
-  stopreq = rad_malloc(sizeof *stopreq);
-  memset(stopreq, 0, sizeof *stopreq);
+	stopreq = rad_malloc(sizeof *stopreq);
+	memset(stopreq, 0, sizeof *stopreq);
 #ifndef NDEBUG
-  stopreq->magic = REQUEST_MAGIC;
+	stopreq->magic = REQUEST_MAGIC;
 #endif
-  stopreq->packet = stoppkt;
-  stopreq->proxy = NULL;
-  stopreq->reply = NULL;
-  stopreq->proxy_reply = NULL;
-  stopreq->config_items = NULL;
-  stopreq->username = userpair;
-  stopreq->password = NULL;
-  stopreq->timestamp = stoppkt->timestamp;
-  stopreq->number = 0; /* FIXME */
-  stopreq->child_pid = NO_SUCH_CHILD_PID;
-  stopreq->container = NULL;
-  ret = rad_process(stopreq, spawn_flag);
+	stopreq->packet = stoppkt;
+	stopreq->proxy = NULL;
+	stopreq->reply = NULL;
+	stopreq->proxy_reply = NULL;
+	stopreq->config_items = NULL;
+	stopreq->username = userpair;
+	stopreq->password = NULL;
+	stopreq->timestamp = stoppkt->timestamp;
+	stopreq->number = 0; /* FIXME */
+	stopreq->child_pid = NO_SUCH_CHILD_PID;
+	stopreq->container = NULL;
+	ret = rad_process(stopreq, spawn_flag);
 
-  return ret;
+	return ret;
 }
 
 

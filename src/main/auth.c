@@ -21,37 +21,37 @@
  * Copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
  */
+
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdlib.h>
-#include	<string.h>
-#include	<ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 #if HAVE_CRYPT_H
-#  include <crypt.h>
+#	include <crypt.h>
 #endif
 
 #ifdef OSFC2
-#  include	<sys/security.h>
-#  include	<prot.h>
+#	include <sys/security.h>
+#	include <prot.h>
 #endif
 
 #if HAVE_NETINET_IN_H
-#  include	<netinet/in.h>
+#	include <netinet/in.h>
 #endif
 
-#include	"radiusd.h"
-#include	"modules.h"
+#include "radiusd.h"
+#include "modules.h"
 
 /*
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
  */
-char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
-{
+char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
 	int		port = 0;
@@ -62,8 +62,8 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 		port = pair->lvalue;
 
 	snprintf(buf, buflen, "from nas %.128s port %d%s%.128s",
-		 nas_name2(request->packet), port,
-		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->strvalue : ""));
+			nas_name2(request->packet), port,
+			(do_cli ? " cli " : ""), (do_cli ? (char *)cli->strvalue : ""));
 
 	return buf;
 }
@@ -96,8 +96,8 @@ static int check_expiration(REQUEST *request)
 
 				result = -1;
 				vp = pairmake("Reply-Message",
-					      "Password Has Expired\r\n",
-					      T_OP_ADD);
+						"Password Has Expired\r\n",
+						T_OP_ADD);
 				pairfree(&request->reply->vps);
 				request->reply->vps = vp;
 				break;
@@ -125,15 +125,15 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	/* 
 	 *	Clean up the username
 	 */
-	if (!request->username) {
+	if (request->username == NULL) {
 		DEBUG2("rad_authlog:  no username found");
 		return -1;
 	}
 
 	if (request->username->strvalue) {
 		librad_safeprint((char *)request->username->strvalue,
-				 request->username->length,
-				 clean_username, sizeof(clean_username));
+				request->username->length,
+				clean_username, sizeof(clean_username));
 	} else {
 		strcpy(clean_username, "<No Username>");
 	}
@@ -162,18 +162,18 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 
 	if (goodpass) {
 		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
-		       msg,	
-		       clean_username,
-		       mainconfig.log_auth_goodpass ? "/" : "",
-		       mainconfig.log_auth_goodpass ? clean_password : "",
-		       auth_name(buf, sizeof(buf), request, 1));
+				msg,	
+				clean_username,
+				mainconfig.log_auth_goodpass ? "/" : "",
+				mainconfig.log_auth_goodpass ? clean_password : "",
+				auth_name(buf, sizeof(buf), request, 1));
 	} else {
 		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
-		       msg,	
-		       clean_username,
-		       mainconfig.log_auth_badpass ? "/" : "",
-		       mainconfig.log_auth_badpass ? clean_password : "",
-		       auth_name(buf, sizeof(buf), request, 1));
+				msg,	
+				clean_username,
+				mainconfig.log_auth_badpass ? "/" : "",
+				mainconfig.log_auth_badpass ? clean_password : "",
+				auth_name(buf, sizeof(buf), request, 1));
 	}
 	
 	return 0;
@@ -191,14 +191,14 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
  */
 int rad_check_password(REQUEST *request)
 {
-	VALUE_PAIR	*auth_type_pair;
-	VALUE_PAIR	*cur_config_item;
-	VALUE_PAIR	*password_pair;
-	VALUE_PAIR	*auth_item;
-	char		string[MAX_STRING_LEN];
-	int		auth_type = -1;
-	int		result;
-	int		auth_type_count = 0;
+	VALUE_PAIR *auth_type_pair;
+	VALUE_PAIR *cur_config_item;
+	VALUE_PAIR *password_pair;
+	VALUE_PAIR *auth_item;
+	char string[MAX_STRING_LEN];
+	int auth_type = -1;
+	int result;
+	int auth_type_count = 0;
 	result = 0;
 
 	/*
@@ -212,7 +212,7 @@ int rad_check_password(REQUEST *request)
 		auth_type_count++;
 
 		DEBUG2("  rad_check_password:  Found auth-type %s",
-		       auth_type_pair->strvalue);
+				auth_type_pair->strvalue);
 		cur_config_item = auth_type_pair->next;
 
 		if (auth_type == PW_AUTHTYPE_REJECT) {
@@ -279,9 +279,9 @@ int rad_check_password(REQUEST *request)
 				break;
 			}
 			if (strcmp((char *)password_pair->strvalue,
-			    crypt((char *)auth_item->strvalue,
-				  (char *)password_pair->strvalue)) != 0)
-					result = -1;
+					crypt((char *)auth_item->strvalue,
+							(char *)password_pair->strvalue)) != 0)
+				result = -1;
 			break;
 		case PW_AUTHTYPE_LOCAL:
 			DEBUG2("  auth: Local");
@@ -294,8 +294,8 @@ int rad_check_password(REQUEST *request)
 				 *	Plain text password.
 				 */
 				if (password_pair == NULL ||
-				    strcmp((char *)password_pair->strvalue,
-					   (char *)auth_item->strvalue)!=0)
+						strcmp((char *)password_pair->strvalue,
+								(char *)auth_item->strvalue)!=0)
 					result = -1;
 				break;
 			}
@@ -321,7 +321,7 @@ int rad_check_password(REQUEST *request)
 			break;
 		default:
 			DEBUG2("  auth: %s",
-			       dict_valbyattr(PW_AUTHTYPE, auth_type)->name);
+					dict_valbyattr(PW_AUTHTYPE, auth_type)->name);
 			/*
 			 *	See if there is a module that handles
 			 *	this type, and turn the RLM_ return
@@ -400,7 +400,7 @@ int rad_authenticate(REQUEST *request)
 	 *	pairs from the server to the initial reply.
 	 */
 	if ((request->proxy_reply) &&
-	    (request->packet->code == PW_AUTHENTICATION_REQUEST)) {
+			(request->packet->code == PW_AUTHENTICATION_REQUEST)) {
 		tmp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
 		if (tmp == NULL) {
 			radlog(L_ERR|L_CONS, "no memory");
@@ -475,9 +475,9 @@ int rad_authenticate(REQUEST *request)
 	 */
 	r = module_authorize(request);
 	if (r != RLM_MODULE_NOTFOUND &&
-	    r != RLM_MODULE_NOOP &&
-	    r != RLM_MODULE_OK &&
-	    r != RLM_MODULE_UPDATED) {
+			r != RLM_MODULE_NOOP &&
+			r != RLM_MODULE_OK &&
+			r != RLM_MODULE_UPDATED) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
 			rad_authlog("Invalid user", request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
@@ -494,7 +494,7 @@ int rad_authenticate(REQUEST *request)
 	 *	so, get out of here and send the packet.
 	 */
 	if ((request->proxy == NULL) &&
-	    (pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL)) {
+			(pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL)) {
 		return RLM_MODULE_OK;
 	}
 
@@ -532,37 +532,36 @@ int rad_authenticate(REQUEST *request)
 
 		/* double check: maybe the secret is wrong? */
 		if ((debug_flag > 1) &&
-		    (auth_item->attribute == PW_PASSWORD)) {
+				(auth_item->attribute == PW_PASSWORD)) {
 			u_char *p;
 
-		  p = auth_item->strvalue;
-		  while (*p) {
-		    if (!isprint(*p)) {
-		      log_debug("  WARNING: Unprintable characters in the password.\n           Double-check the shared secret on the server and the NAS!");
-		      break;
-		    }
-		    p++;
-		  }
+			p = auth_item->strvalue;
+			while (*p != '\0') {
+				if (!isprint(*p)) {
+					log_debug("  WARNING: Unprintable characters in the password.\n\t  Double-check the shared secret on the server and the NAS!");
+					break;
+				}
+				p++;
+			}
 		}
 	}
 
 	if (result >= 0 &&
-	   (check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
+			(check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
 		/*
 		 *	User authenticated O.K. Now we have to check
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (namepair &&
-		    (r = module_checksimul(request, check_item->lvalue)) != 0) {
+				(r = module_checksimul(request, check_item->lvalue)) != 0) {
 
 			if (check_item->lvalue > 1) {
-				sprintf(umsg,
-		"\r\nYou are already logged in %d times  - access denied\r\n\n",
-					(int)check_item->lvalue);
+				sprintf(umsg, 
+						"\r\nYou are already logged in %d times  - access denied\r\n\n",
+						(int)check_item->lvalue);
 				user_msg = umsg;
 			} else {
-				user_msg =
-		"\r\nYou are already logged in - access denied\r\n\n";
+				user_msg = "\r\nYou are already logged in - access denied\r\n\n";
 			}
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
@@ -577,7 +576,7 @@ int rad_authenticate(REQUEST *request)
 
 			strcpy(logstr, "Multiple logins");
 			sprintf(logstr, "%s (max %d) %s", logstr, check_item->lvalue,
-								r == 2 ? "[MPP attempt]" : "");
+					r == 2 ? "[MPP attempt]" : "");
 			rad_authlog(logstr, request, 1);
 
 			result = -1;
@@ -585,7 +584,7 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	if (result >= 0 &&
-	   (check_item = pairfind(request->config_items, PW_LOGIN_TIME)) != NULL) {
+			(check_item = pairfind(request->config_items, PW_LOGIN_TIME)) != NULL) {
 
 		/*
 		 *	Authentication is OK. Now see if this
@@ -603,8 +602,7 @@ int rad_authenticate(REQUEST *request)
 			 *	User called outside allowed time interval.
 			 */
 			result = -1;
-			user_msg =
-			"You are calling outside your allowed timespan\r\n";
+			user_msg = "You are calling outside your allowed timespan\r\n";
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			pairfree(&request->reply->vps);
@@ -614,7 +612,7 @@ int rad_authenticate(REQUEST *request)
 
 			strcpy(logstr, "Outside allowed timespan");
 			sprintf(logstr, "%s (time allowed %s)", logstr, 
-											check_item->strvalue);
+					check_item->strvalue);
 			rad_authlog(logstr, request, 1);
 
 		} else if (r > 0) {
@@ -623,13 +621,13 @@ int rad_authenticate(REQUEST *request)
 			 *	User is allowed, but set Session-Timeout.
 			 */
 			if ((reply_item = pairfind(request->reply->vps,
-			    PW_SESSION_TIMEOUT)) != NULL) {
+					PW_SESSION_TIMEOUT)) != NULL) {
 				if (reply_item->lvalue > (unsigned) r)
 					reply_item->lvalue = r;
 			} else {
 				if ((reply_item = paircreate(
-				    PW_SESSION_TIMEOUT,
-				    PW_TYPE_INTEGER)) == NULL) {
+						PW_SESSION_TIMEOUT,
+						PW_TYPE_INTEGER)) == NULL) {
 					radlog(L_ERR|L_CONS, "no memory");
 					exit(1);
 				}
@@ -671,17 +669,17 @@ int rad_authenticate(REQUEST *request)
 		 *  Find the NAS port ID.
 		 */
 		if ((tmp = pairfind(request->packet->vps,
-				    PW_NAS_PORT_ID)) != NULL)
+				PW_NAS_PORT_ID)) != NULL)
 			nas_port = tmp->lvalue;
 
 		if((tmp2 = pairfind(request->reply->vps,
-				    PW_ADD_PORT_TO_IP_ADDRESS)) != NULL) {
+				PW_ADD_PORT_TO_IP_ADDRESS)) != NULL) {
 			if (tmp->addport || (tmp2 && tmp2->lvalue)) {
 				tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
 				tmp->addport = 0;
 			}
 			pairdelete(&request->reply->vps,
-				   PW_ADD_PORT_TO_IP_ADDRESS);
+					PW_ADD_PORT_TO_IP_ADDRESS);
 		}
 	}
 
@@ -712,7 +710,7 @@ int rad_authenticate(REQUEST *request)
 	if ((auth_item = pairfind(request->reply->vps, PW_CALLBACK_ID)) != NULL) {
 		seen_callback_id = 1;
 		radius_xlat2(buf, sizeof(auth_item->strvalue),
-			     (char *)auth_item->strvalue, request);
+				(char *)auth_item->strvalue, request);
 		strNcpy((char *)auth_item->strvalue, buf,
 			sizeof(auth_item->strvalue));
 		auth_item->length = strlen((char *)auth_item->strvalue);
@@ -725,14 +723,14 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (exec_program && exec_wait) {
 		if (radius_exec_program(exec_program, request,
-		    exec_wait, &user_msg) != 0) {
+				exec_wait, &user_msg) != 0) {
 			/*
 			 *	Error. radius_exec_program() returns -1 on
 			 *	fork/exec errors, or >0 if the exec'ed program
 			 *	had a non-zero exit status.
 			 */
 			if (user_msg == NULL)
-		user_msg = "\r\nAccess denied (external check failed).";
+				user_msg = "\r\nAccess denied (external check failed).";
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			pairfree(&request->reply->vps);
@@ -740,7 +738,7 @@ int rad_authenticate(REQUEST *request)
 			request->reply->vps = tmp;
 			
 			rad_authlog("Login incorrect (external check failed)", 
-									request, 0);
+					request, 0);
 
 			return RLM_MODULE_OK;
 		}
@@ -773,16 +771,16 @@ int rad_authenticate(REQUEST *request)
 	 *	through radius_xlat2, modifying them in place.
 	 */
 	if (user_msg == NULL) {
-	  reply_item = pairfind(request->reply->vps, PW_REPLY_MESSAGE);
-	  while (reply_item) {
-	  	radius_xlat2(buf, sizeof(reply_item->strvalue),
-			     (char *)reply_item->strvalue, request);
+		reply_item = pairfind(request->reply->vps, PW_REPLY_MESSAGE);
+		while (reply_item) {
+			radius_xlat2(buf, sizeof(reply_item->strvalue),
+					(char *)reply_item->strvalue, request);
 		strNcpy((char *)reply_item->strvalue, buf,
-			sizeof(reply_item->strvalue));
+				sizeof(reply_item->strvalue));
 		reply_item->length = strlen((char *)reply_item->strvalue);
 		user_msg = NULL;
 		reply_item = pairfind(reply_item->next, PW_REPLY_MESSAGE);
-	  }
+		}
 	}
 
 	request->reply->code = PW_AUTHENTICATION_ACK;
@@ -795,7 +793,8 @@ int rad_authenticate(REQUEST *request)
 		radius_exec_program(exec_program, request, exec_wait, NULL);
 	}
 
-	if (exec_program) free(exec_program);
+	if (exec_program) 
+		free(exec_program);
 	return RLM_MODULE_OK;
 }
 
@@ -803,8 +802,8 @@ int rad_authenticate(REQUEST *request)
 /*
  *	These definitions are local, and shouldn't be used by anyone else.
  */
-#define PW_ENCODED	0
-#define PW_DECODED	1
+#define PW_ENCODED  0
+#define PW_DECODED  1
 
 /*
  * Find the password pair, decode pass if
@@ -847,7 +846,7 @@ VALUE_PAIR *rad_getpass(REQUEST *request) {
 	 *	Or if the decoded flag is set...just return
 	 */
 	if ((request->proxy != NULL) ||
-	    (auth_item->lvalue == PW_DECODED)) {
+			(auth_item->lvalue == PW_DECODED)) {
 		return auth_item;
 	}
 
@@ -855,8 +854,8 @@ VALUE_PAIR *rad_getpass(REQUEST *request) {
 	 *	If we get here, we have to decode the password.
 	 */
 	rad_pwdecode((char *)auth_item->strvalue,
-		     auth_item->length, request->secret,
-		     (char *)request->packet->vector);
+			auth_item->length, request->secret,
+			(char *)request->packet->vector);
 
 	/* 
 	 *	Set lvalue to PW_DECODED so we know not to

@@ -24,15 +24,15 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdlib.h>
-#include	<string.h>
-#include	<assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
-#include	"radiusd.h"
-#include	"request_list.h"
+#include "radiusd.h"
+#include "request_list.h"
 
 /*
  *  We keep the incoming requests in an array, indexed by ID.
@@ -48,10 +48,10 @@ typedef struct REQNODE {
 } REQNODE;
 
 typedef struct REQUESTINFO {
-	REQNODE		*first_request;
-	REQNODE		*last_request;
-	int		request_count;
-	time_t		last_cleaned_list;
+	REQNODE *first_request;
+	REQNODE *last_request;
+	int request_count;
+	time_t last_cleaned_list;
 } REQUESTINFO;
 
 static REQUESTINFO	request_list[256];
@@ -63,7 +63,7 @@ int rl_init(void)
 {
 	int i;
 
-  	/*
+	/*
 	 *	Initialize the request_list[] array.
 	 */
 	for (i = 0; i < 256; i++) {
@@ -89,13 +89,13 @@ void rl_delete(REQUEST *request)
 	
 	id = request->packet->id;
 
-	if (!prev) {
+	if (prev == NULL) {
 		request_list[id].first_request = next;
 	} else {
 		prev->next = next;
 	}
 
-	if (!next) {
+	if (next == NULL) {
 		request_list[id].last_request = prev;
 	} else {
 		next->prev = prev;
@@ -152,11 +152,11 @@ REQUEST *rl_find(REQUEST *request)
 	REQNODE *curreq;
 
 	for (curreq = request_list[request->packet->id].first_request;
-	     curreq != NULL ;
-	     curreq = ((REQNODE *)curreq->req->container)->next) {
+			curreq != NULL ;
+			curreq = ((REQNODE *)curreq->req->container)->next) {
 		if ((curreq->req->packet->code == request->packet->code) &&
-		    (curreq->req->packet->src_ipaddr == request->packet->src_ipaddr) &&
-		    (curreq->req->packet->src_port == request->packet->src_port)) {
+				(curreq->req->packet->src_ipaddr == request->packet->src_ipaddr) &&
+				(curreq->req->packet->src_port == request->packet->src_port)) {
 			break;
 		}
 	}
@@ -184,12 +184,12 @@ REQUEST *rl_find_proxy(REQUEST *request)
 	
 	for (id = 0; (id < 256) && (curreq == NULL); id++) {
 		for (curreq = request_list[id].first_request;
-		     curreq != NULL ;
-		     curreq = curreq->next) {
+				curreq != NULL ;
+				curreq = curreq->next) {
 			if (curreq->req->proxy &&
-			    (curreq->req->proxy->id == request->packet->id) &&
-			    (curreq->req->proxy->dst_ipaddr == request->packet->src_ipaddr) &&
-			    (curreq->req->proxy->dst_port == request->packet->src_port)) {
+					(curreq->req->proxy->id == request->packet->id) &&
+					(curreq->req->proxy->dst_ipaddr == request->packet->src_ipaddr) &&
+					(curreq->req->proxy->dst_port == request->packet->src_port)) {
 				
 				break;
 			}
@@ -218,8 +218,8 @@ int rl_walk(RL_WALK_FUNC walker, void *data)
 		 *	Walk over the request list for each ID.
 		 */
 		for (curreq = request_list[id].first_request;
-		     curreq != NULL ;
-		     curreq = next) {
+				curreq != NULL ;
+				curreq = next) {
 			/*
 			 *	The callback MIGHT delete the current
 			 *	request, so we CANNOT depend on curreq->next
@@ -249,7 +249,7 @@ REQUEST *rl_next(REQUEST *request)
 	/*
 	 *	If we were passed a request, then go to the "next" one.
 	 */
-	if (request) {
+	if (request != NULL) {
 		assert(request->magic == REQUEST_MAGIC);
 
 		/*

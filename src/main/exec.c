@@ -22,28 +22,28 @@
  */
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<sys/file.h>
+#include <sys/file.h>
 
-#include	<stdlib.h>
-#include	<string.h>
-#include	<fcntl.h>
-#include	<ctype.h>
-#include	<signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <ctype.h>
+#include <signal.h>
 
 #if HAVE_SYS_WAIT_H
-# include <sys/wait.h>
+#	include <sys/wait.h>
 #endif
 #ifndef WEXITSTATUS
-# define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
+#	define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
 #endif
 #ifndef WIFEXITED
-# define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
+#	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
-#include	"radiusd.h"
+#include "radiusd.h"
 
 /*
  *	Execute a program on successful authentication.
@@ -54,18 +54,18 @@ static const char rcsid[] = "$Id$";
 int radius_exec_program(const char *cmd, REQUEST *request,
 			int exec_wait, const char **user_msg)
 {
-	VALUE_PAIR	*vp;
-	static char	message[256];
-	char		answer[4096];
-	char		*argv[32];
-	char		*buf, *p;
-	int		pd[2];
-	pid_t		pid;
-	int		argc = -1;
-	int		comma = 0;
-	int		status;
-	int		n, left, done;
-	void		(*oldsig)(int) = NULL;
+	VALUE_PAIR *vp;
+	static char message[256];
+	char answer[4096];
+	char *argv[32];
+	char *buf, *p;
+	int pd[2];
+	pid_t pid;
+	int argc = -1;
+	int comma = 0;
+	int status;
+	int n, left, done;
+	void (*oldsig)(int) = NULL;
 
 	/*
 	 *	(hs)	- Open a pipe for child/parent communication.
@@ -89,9 +89,9 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 	if ((pid = fork()) == 0) {
 #define MAX_ENVP 1024
-		char		*envp[MAX_ENVP];
-		int		envlen;
-		char		buffer[1024];
+		char *envp[MAX_ENVP];
+		int envlen;
+		char buffer[1024];
 
 		/*	
 		 *	Child
@@ -140,11 +140,11 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			 */
 			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
 			for (p = buffer; *p != '='; p++) {
-			  if (*p == '-') {
-			    *p = '_';
-			  } else if (isalpha(*p)) {
-			    *p = toupper(*p);
-			  }
+				if (*p == '-') {
+					*p = '_';
+				} else if (isalpha(*p)) {
+					*p = toupper(*p);
+				}
 			}
 
 			n = strlen(buffer);
@@ -217,7 +217,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		vp = NULL;
 		n = userparse(answer, &vp);
-		if (vp) pairfree(&vp);
+		if (vp)
+			pairfree(&vp);
 
 		if (n != 0) {
 			radlog(L_DBG, "Exec-Program-Wait: plaintext: %s", answer);
@@ -245,8 +246,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			/*
 			 *  Replace any trailing comma by a NUL.
 			 */
- 			if (answer[strlen(answer) - 1] == ',')
- 				answer[strlen(answer) - 1] = '\0';
+			if (answer[strlen(answer) - 1] == ',')
+				answer[strlen(answer) - 1] = '\0';
 
 			radlog(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
 			if (userparse(answer, &vp) != 0)

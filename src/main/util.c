@@ -22,23 +22,23 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
-#include	<ctype.h>
-#include	<signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <signal.h>
 
-#include	<sys/stat.h>
-#include	<fcntl.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #if HAVE_UNISTD_H
-#include	<unistd.h>
+#	include <unistd.h>
 #endif
 
-#include	"radiusd.h"
+#include "radiusd.h"
 
 /*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in
@@ -87,18 +87,24 @@ void request_free(REQUEST **request_ptr)
 {
 	REQUEST *request;
 	
-	if (!request_ptr) return;
+	if (request_ptr == NULL) 
+		return;
 	request = *request_ptr;
 
-	if (request->packet) rad_free(&request->packet);
+	if (request->packet) 
+		rad_free(&request->packet);
 
-	if (request->proxy) rad_free(&request->proxy);
+	if (request->proxy) 
+		rad_free(&request->proxy);
 
-	if (request->reply) rad_free(&request->reply);
+	if (request->reply) 
+		rad_free(&request->reply);
 
-	if (request->proxy_reply) rad_free(&request->proxy_reply);
+	if (request->proxy_reply) 
+		rad_free(&request->proxy_reply);
 
-	if (request->config_items) pairfree(&request->config_items);
+	if (request->config_items) 
+		pairfree(&request->config_items);
 
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
@@ -131,9 +137,9 @@ int rad_checkfilename(const char *filename)
  */
 int rad_mkdir(char *directory, int mode)
 {
-	int		rcode;
-	char		*p;
-  	struct stat	st;
+	int rcode;
+	char *p;
+	struct stat st;
 
 	/*
 	 *	If the directory exists, don't do anything.
@@ -147,7 +153,7 @@ int rad_mkdir(char *directory, int mode)
 	 *	failing on any error.
 	 */
 	p = strrchr(directory, '/');
-	if (p) {
+	if (p != NULL) {
 		*p = '\0';
 		rcode = rad_mkdir(directory, mode);
 
@@ -186,7 +192,7 @@ void *rad_malloc(size_t size)
 	void *ptr = malloc(size);
 	
 	if (ptr == NULL) {
-                radlog(L_ERR|L_CONS, "no memory");
+		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 

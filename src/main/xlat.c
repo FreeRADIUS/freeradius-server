@@ -40,27 +40,27 @@ static const char rcsid[] =
 */
 static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,int type)
 {
-   if (pair)
-	 return vp_prints_value(out,outlen,pair,0);
-   else {
-	 switch (type) {
-	   case PW_TYPE_STRING :
-		  strNcpy(out,"_",outlen);
-		  break;
-	   case PW_TYPE_INTEGER :
-		  strNcpy(out,"0",outlen);
-		  break;
-	   case PW_TYPE_IPADDR :
-		  strNcpy(out,"?.?.?.?",outlen);
-		  break;
-	   case PW_TYPE_DATE :
-		  strNcpy(out,"0",outlen);
-		  break;
-	   default :
-		  strNcpy(out,"unknown_type",outlen);
-	 }
-	 return strlen(out);
-   }
+	if (pair != NULL)
+		return vp_prints_value(out,outlen,pair,0);
+	else {
+		switch (type) {
+			case PW_TYPE_STRING :
+				strNcpy(out,"_",outlen);
+				break;
+			case PW_TYPE_INTEGER :
+				strNcpy(out,"0",outlen);
+				break;
+			case PW_TYPE_IPADDR :
+				strNcpy(out,"?.?.?.?",outlen);
+				break;
+			case PW_TYPE_DATE :
+				strNcpy(out,"0",outlen);
+				break;
+			default :
+				strNcpy(out,"unknown_type",outlen);
+		}
+	return strlen(out);
+	}
 }
 
 /*
@@ -71,11 +71,11 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
 	DICT_ATTR * da;
 
 	da = dict_attrbyname(attrname);
-	if (da) {
-	  return (valuepair2str(out,outlen,pairfind(request,da->attr),da->type));
+	if (da != NULL) {
+		return (valuepair2str(out,outlen,pairfind(request,da->attr),da->type));
 	} else {
-	  *out = '\0';
-	  return 0;
+		*out = '\0';
+		return 0;
 	}
 }
 
@@ -125,20 +125,20 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 
 	if (strncasecmp(attrname,"reply:",6) == 0) {
 		if((tmpda = dict_attrbyname(&attrname[6])) && 
-			(tmppair = pairfind(request->reply->vps, tmpda->attr))) {
-	  	q += valuepair2str(q,freespace,tmppair,tmpda->type);
+				(tmppair = pairfind(request->reply->vps, tmpda->attr))) {
+			q += valuepair2str(q,freespace,tmppair,tmpda->type);
 			found = 1;
 		}
 	} else if (strncasecmp(attrname,"request:",8) == 0) {
 		if((tmpda = dict_attrbyname(&attrname[8])) && 
-			(tmppair = pairfind(request->packet->vps, tmpda->attr))) {
-	  	q += valuepair2str(q,freespace,tmppair,tmpda->type);
+				(tmppair = pairfind(request->packet->vps, tmpda->attr))) {
+			q += valuepair2str(q,freespace,tmppair,tmpda->type);
 			found = 1;
 		}
 	} else {
 		if((tmpda = dict_attrbyname(attrname)) && 
-			(tmppair = pairfind(request->packet->vps,tmpda->attr))) {
-	  	q += valuepair2str(q,freespace,tmppair,tmpda->type);
+				(tmppair = pairfind(request->packet->vps,tmpda->attr))) {
+			q += valuepair2str(q,freespace,tmppair,tmpda->type);
 			found = 1;
 		}
 	} 
@@ -149,10 +149,10 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 	 * useless if we found we we need
 	 */
 	if(found) {
-		while((*p) && (openbraces)) {
+		while((*p != '\0') && (openbraces > 0)) {
 			if(*p == '}') 
 				openbraces--;
-			if(openbraces)
+			if (openbraces > 0)
 				p++;
 		}
 	} else {
@@ -204,7 +204,7 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 {
 	int i, c,freespace;
- 	const char *p;
+	const char *p;
 	char *q;
 	VALUE_PAIR *tmp;
 	struct tm * TM;
@@ -216,7 +216,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 	/* Calculate freespace in output */
 	freespace = outlen - ((int)q-(int)out);
 		if (freespace <= 1)
-		  break;
+			break;
 		c = *p;
 		if ((c != '%') && (c != '$') && (c != '\\')) {
 			/*
@@ -231,7 +231,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 			*q++ = *p;
 			continue;
 		}
-		if (*++p == 0) break;
+		if (*++p == '\0') break;
 		if (c == '\\') switch(*p) {
 			case '\\':
 				*q++ = *p;

@@ -26,8 +26,8 @@
 static const char rcsid[] =
 "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -72,23 +72,23 @@ int debug_flag = 0;
 const char *progname = "radwho";
 const char *radlog_dir = "stdout";
 
-int                     proxy_synchronous = TRUE;
-const char              *radius_dir = NULL;
-const char              *radacct_dir = NULL;
-const char              *radlib_dir = NULL;
-int                     auth_port = 0;
-int                     acct_port;
-uint32_t                myip = INADDR_ANY;
-int                     proxy_retry_delay = RETRY_DELAY;
-int                     proxy_retry_count = RETRY_COUNT;
-int                     log_stripped_names;
-struct  main_config_t   mainconfig;
+int proxy_synchronous = TRUE;
+const char *radius_dir = NULL;
+const char *radacct_dir = NULL;
+const char *radlib_dir = NULL;
+int auth_port = 0;
+int acct_port;
+uint32_t myip = INADDR_ANY;
+int proxy_retry_delay = RETRY_DELAY;
+int proxy_retry_count = RETRY_COUNT;
+int log_stripped_names;
+struct main_config_t mainconfig;
 
 /*
  *	A mapping of configuration file names to internal variables
  */
 static CONF_PARSER server_config[] = {
-  { NULL, -1, 0, NULL, NULL }
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -132,7 +132,8 @@ static int ffile(const char *arg)
 		fp = safe_popen(fn, "r");
 	} else fp = fopen(fn, "r");
 
-	if (fp == NULL) return -1;
+	if (fp == NULL) 
+		return -1;
 
 	while(fgets(fn, 1024, fp)) {
 		if ((s = strchr(fn, '\n')) != NULL)
@@ -452,31 +453,31 @@ int main(int argc, char **argv)
 			if (ut.ut_user[0] && ut.ut_line[0]) {
 #endif
 #ifdef UT_HOSTSIZE
-			   if (showname)
+			if (showname)
 				printf((rawoutput == 0? ufmt1: ufmt1r),
-					ut.ut_name,
-					fullname(ut.ut_name),
-					"shell",
-					ttyshort(ut.ut_line),
+						ut.ut_name,
+						fullname(ut.ut_name),
+						"shell",
+						ttyshort(ut.ut_line),
 #ifdef HAVE_UTMPX_H
-					dotime(ut.ut_xtime),
+						dotime(ut.ut_xtime),
 #else
-					dotime(ut.ut_time),
+						dotime(ut.ut_time),
 #endif
-					ut.ut_host,
-					myname, eol);
-			    else
+						ut.ut_host,
+						myname, eol);
+			else
 				printf((rawoutput==0? ufmt2:ufmt2r),
-					ut.ut_name,
-					ttyshort(ut.ut_line),
-					"shell",
+						ut.ut_name,
+						ttyshort(ut.ut_line),
+						"shell",
 #ifdef HAVE_UTMPX_H
-					dotime(ut.ut_xtime),
+						dotime(ut.ut_xtime),
 #else
-					dotime(ut.ut_time),
+						dotime(ut.ut_time),
 #endif
-					ut.ut_host,
-					myname, eol);
+						ut.ut_host,
+						myname, eol);
 #endif
 			}
 		}
@@ -513,23 +514,23 @@ int main(int argc, char **argv)
 				portno = rt.nas_port;
 			}
 			if (showname)
-			    printf((rawoutput == 0? rfmt1: rfmt1r),
-				rt.login,
-				showcid ? rt.caller_id :
-				(showsid? session_id : fullname(rt.login)),
-				proto(rt.proto, rt.porttype),
-				portind, portno,
-				dotime(rt.time),
-				nas_name(rt.nas_address),
-				hostname(othername, sizeof(othername), rt.framed_address), eol);
+				printf((rawoutput == 0? rfmt1: rfmt1r),
+						rt.login,
+						showcid ? rt.caller_id :
+						(showsid? session_id : fullname(rt.login)),
+						proto(rt.proto, rt.porttype),
+						portind, portno,
+						dotime(rt.time),
+						nas_name(rt.nas_address),
+						hostname(othername, sizeof(othername), rt.framed_address), eol);
 			else
-			    printf((rawoutput == 0? rfmt2: rfmt2r),
-				rt.login,
-				portind, portno,
-				proto(rt.proto, rt.porttype),
-				dotime(rt.time),
-				nas_name(rt.nas_address),
-				hostname(othername, sizeof(othername), rt.framed_address), eol);
+				printf((rawoutput == 0? rfmt2: rfmt2r),
+						rt.login,
+						portind, portno,
+						proto(rt.proto, rt.porttype),
+						dotime(rt.time),
+						nas_name(rt.nas_address),
+						hostname(othername, sizeof(othername), rt.framed_address), eol);
 		}
 	}
 	fflush(stdout);

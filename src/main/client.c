@@ -24,25 +24,25 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<sys/stat.h>
+#include <sys/stat.h>
 
 #if HAVE_NETINET_IN_H
-#include	<netinet/in.h>
+#	include <netinet/in.h>
 #endif
 
-#include	<stdlib.h>
-#include	<string.h>
-#include	<netdb.h>
-#include	<ctype.h>
-#include	<fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <netdb.h>
+#include <ctype.h>
+#include <fcntl.h>
 
-#include	"radiusd.h"
-#include	"conffile.h"
+#include "radiusd.h"
+#include "conffile.h"
 
-RADCLIENT	*clients;
+RADCLIENT *clients;
 
 /*
  *	Free a RADCLIENT list.
@@ -64,15 +64,15 @@ static void clients_free(RADCLIENT *cl)
  */
 int read_clients_file(const char *file)
 {
-	FILE	*fp;
-	RADCLIENT	*c;
-	char	buffer[256];
-	char	hostnm[256];
-	char	secret[256];
-	char	shortnm[256];
+	FILE *fp;
+	RADCLIENT *c;
+	char buffer[256];
+	char hostnm[256];
+	char secret[256];
+	char shortnm[256];
 	uint32_t mask;
-	int	lineno = 0;
-	char	*p;
+	int lineno = 0;
+	char *p;
 
 	clients_free(clients);
 	clients = NULL;
@@ -97,7 +97,8 @@ int read_clients_file(const char *file)
 		 */
 		p = buffer;
 		while (*p &&
-		       ((*p == ' ') || (*p == '\t'))) p++;
+				((*p == ' ') || (*p == '\t'))) 
+			p++;
 
 		/*
 		 *	Skip comments and blank lines.
@@ -106,9 +107,9 @@ int read_clients_file(const char *file)
 			continue;
 
 		if (!getword(&p, hostnm, sizeof(hostnm)) ||
-		    !getword(&p, secret, sizeof(secret))) {
+				!getword(&p, secret, sizeof(secret))) {
 			radlog(L_ERR, "%s[%d]: unexpected end of line",
-			    file, lineno);
+					file, lineno);
 			return -1;
 		}
 
@@ -129,7 +130,7 @@ int read_clients_file(const char *file)
 			mask_length = atoi(p);
 			if ((mask_length <= 0) || (mask_length > 32)) {
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
-				       file, lineno, p);
+						file, lineno, p);
 				return -1;
 			}
 
@@ -144,20 +145,20 @@ int read_clients_file(const char *file)
 		 */
 		if (strlen(hostnm) >= sizeof(c->longname)) {
 			radlog(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
-			    file, lineno,
-			    strlen(hostnm), sizeof(c->longname) - 1);
+					file, lineno,
+					strlen(hostnm), sizeof(c->longname) - 1);
 			return -1;
 		}
 		if (strlen(secret) >= sizeof(c->secret)) {
 			radlog(L_ERR, "%s[%d]: secret of length %d is greater than the allowed maximum of %d.",
-			    file, lineno,
-			    strlen(secret), sizeof(c->secret) - 1);
+					file, lineno,
+					strlen(secret), sizeof(c->secret) - 1);
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(c->shortname)) {
 			radlog(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
-			    file, lineno,
-			    strlen(shortnm), sizeof(c->shortname) - 1);
+					file, lineno,
+					strlen(shortnm), sizeof(c->shortname) - 1);
 			return -1;
 		}
 		
@@ -169,7 +170,7 @@ int read_clients_file(const char *file)
 		c->ipaddr = ip_getaddr(hostnm);
 		if (c->ipaddr == INADDR_NONE) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
-			    file, lineno, hostnm);
+					file, lineno, hostnm);
 			return -1;
 		}
 		c->netmask = htonl(mask);
@@ -183,10 +184,10 @@ int read_clients_file(const char *file)
 		 *	the network as the long name.
 		 */
 		if (c->netmask == ~0) {
-		  ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
+			ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
 		} else {
-		  hostnm[strlen(hostnm)] = '/';
-		  strNcpy(c->longname, hostnm, sizeof(c->longname));
+			hostnm[strlen(hostnm)] = '/';
+			strNcpy(c->longname, hostnm, sizeof(c->longname));
 		}
 
 		c->next = clients;
@@ -209,7 +210,7 @@ RADCLIENT *client_find(uint32_t ipaddr)
 	for(cl = clients; cl; cl = cl->next) {
 		if ((ipaddr & cl->netmask) == cl->ipaddr) {
 			if ((!match) ||
-			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
+					(ntohl(cl->netmask) > ntohl(match->netmask))) {
 				match = cl;
 			}
 		}
@@ -224,12 +225,12 @@ RADCLIENT *client_find(uint32_t ipaddr)
  */
 void client_walk(void) 
 {
-	RADCLIENT	*cl;
-	char		host_ipaddr[16];
+	RADCLIENT *cl;
+	char host_ipaddr[16];
 
-	for(cl = clients; cl; cl = cl->next)
+	for (cl = clients; cl != NULL; cl = cl->next)
 		radlog(L_ERR, "client: client_walk: %s\n",
-			ip_ntoa(host_ipaddr, cl->ipaddr));
+				ip_ntoa(host_ipaddr, cl->ipaddr));
 }
 
 /*

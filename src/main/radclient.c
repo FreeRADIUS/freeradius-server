@@ -23,57 +23,57 @@
  */
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdio.h>
-#include	<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #if HAVE_UNISTD_H
-#include	<unistd.h>
+#	include <unistd.h>
 #endif
 
-#include	<string.h>
-#include	<ctype.h>
-#include	<netdb.h>
-#include	<sys/socket.h>
+#include <string.h>
+#include <ctype.h>
+#include <netdb.h>
+#include <sys/socket.h>
 
 #if HAVE_NETINET_IN_H
-#include	<netinet/in.h>
+#	include <netinet/in.h>
 #endif
 
 #if HAVE_SYS_SELECT_H
-#  include      <sys/select.h>
+#	include <sys/select.h>
 #endif
 
 #if HAVE_GETOPT_H
-#  include	<getopt.h>
+#	include <getopt.h>
 #endif
 
-#include	"conf.h"
-#include	"radpaths.h"
-#include	"missing.h"
+#include "conf.h"
+#include "radpaths.h"
+#include "missing.h"
 
-static int		retries = 10;
-static float		timeout = 3;
-static const char	*secret = "secret";
-static int		do_output = 1;
-static int		do_summary = 0;
-static int		filedone = 0;
-static int		totalapp = 0;
-static int 		totaldeny = 0;
+static int retries = 10;
+static float timeout = 3;
+static const char *secret = "secret";
+static int do_output = 1;
+static int do_summary = 0;
+static int filedone = 0;
+static int totalapp = 0;
+static int totaldeny = 0;
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
  */
 static VALUE_PAIR *readvp(FILE *fp)
 {
-	char		buf[128];
-	int 		last_token;
-	char		*p;
-	VALUE_PAIR	*vp;
-	VALUE_PAIR	*list;
-	int		error = 0;
+	char buf[128];
+	int last_token;
+	char *p;
+	VALUE_PAIR *vp;
+	VALUE_PAIR *list;
+	int error = 0;
 
 	list = NULL;
 
@@ -104,7 +104,8 @@ static VALUE_PAIR *readvp(FILE *fp)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [-c count] [-d raddb] [-f file] [-r retries] [-t timeout]\n		[-i id] [-qvx] server acct|auth <secret>\n");
+	fprintf(stderr, "Usage: radclient [-c count] [-d raddb] [-f file] [-r retries] [-t timeout]\n"
+			"[-i id] [-qvx] server acct|auth <secret>\n");
 	
 	fprintf(stderr, " -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, " -d raddb    Set dictionary directory.\n");
@@ -177,7 +178,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	/* libradius debug already prints out the value pairs for us */
 	if (!librad_debug && do_output) {
 		printf("Received response ID %d, code %d, length = %d\n",
-		       (*rep)->id, (*rep)->code, (*rep)->data_len);
+				(*rep)->id, (*rep)->code, (*rep)->data_len);
 		vp_printlist(stdout, (*rep)->vps);
 	}
 	if((*rep)->code == PW_AUTHENTICATION_ACK) {
@@ -191,31 +192,32 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 
 int main(int argc, char **argv)
 {
-	RADIUS_PACKET	*req;
-	RADIUS_PACKET	*rep = NULL;
-	char		*p;
-	int		c;
-	int		port = 0;
-	const char	*radius_dir = RADDBDIR;
-	char		*filename = NULL;
-	FILE		*fp;
-	int		count = 1;
-	int		loop;
-	char		password[256];
-	VALUE_PAIR	*vp;
-	int		id;
+	RADIUS_PACKET *req;
+	RADIUS_PACKET *rep = NULL;
+	char *p;
+	int c;
+	int port = 0;
+	const char *radius_dir = RADDBDIR;
+	char *filename = NULL;
+	FILE *fp;
+	int count = 1;
+	int loop;
+	char password[256];
+	VALUE_PAIR *vp;
+	int id;
 
 	id = ((int)getpid() & 0xff);
 
 	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:xv")) != EOF) switch(c) {
 		case 'c':
-			if (!isdigit(*optarg)) usage();
+			if (!isdigit(*optarg)) 
+				usage();
 			count = atoi(optarg);
 			break;
 		case 'd':
 			radius_dir = optarg;
 			break;
-       		case 'f':
+		case 'f':
 			filename = optarg;
 			break;
 		case 'q':
@@ -225,11 +227,13 @@ int main(int argc, char **argv)
 			librad_debug = 1;
 			break;
 		case 'r':
-			if (!isdigit(*optarg)) usage();
+			if (!isdigit(*optarg)) 
+				usage();
 			retries = atoi(optarg);
 			break;
 		case 'i':
-			if (!isdigit(*optarg)) usage();
+			if (!isdigit(*optarg)) 
+				usage();
 			id = atoi(optarg);
 			if ((id < 0) || (id > 255)) {
 				usage();
@@ -239,7 +243,8 @@ int main(int argc, char **argv)
 			do_summary = 1;
 			break;
 		case 't':
-			if (!isdigit(*optarg)) usage();
+			if (!isdigit(*optarg)) 
+				usage();
 			timeout = atof(optarg);
 			break;
 		case 'v':
@@ -349,22 +354,22 @@ int main(int argc, char **argv)
 		 *	Encrypt the Password attribute.
 		 */
 		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
-		  strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
 
-		  rad_pwencode((char *)vp->strvalue,
-			       &(vp->length),
-			       secret, (char *)req->vector);
-		  
-		  /*
-		   *	Not there, encrypt the CHAP-Password attribute.
-		   */
+			rad_pwencode((char *)vp->strvalue,
+				&(vp->length),
+				secret, (char *)req->vector);
+
+		/*
+		 *	Not there, encrypt the CHAP-Password attribute.
+		 */
 		} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
-		  strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
-		  rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
-		  vp->length = 17;
+			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+			rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
+			vp->length = 17;
 
 		} else {
-		  *password = '\0';
+			*password = '\0';
 		}
 	
 		/*
@@ -383,12 +388,12 @@ int main(int argc, char **argv)
 				req->data = NULL;
 
 				if (*password != '\0') {
-				  vp = pairfind(req->vps, PW_PASSWORD);
-				  if (vp) {
-				    strNcpy((char *)vp->strvalue, password,
-					    (vp->length)+1);
-				    vp->length = strlen(password);
-				  }
+					vp = pairfind(req->vps, PW_PASSWORD);
+					if (vp) {
+						strNcpy((char *)vp->strvalue, password,
+								(vp->length)+1);
+						vp->length = strlen(password);
+					}
 				}
 
 				librad_md5_calc(req->vector, req->vector,

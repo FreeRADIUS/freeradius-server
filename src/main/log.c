@@ -25,17 +25,17 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"libradius.h"
+#include "autoconf.h"
+#include "libradius.h"
 
-#include	<stdlib.h>
-#include	<string.h>
-#include	<stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
 
-#include	"radiusd.h"
+#include "radiusd.h"
 
 #if HAVE_SYSLOG_H
-#include	<syslog.h>
+#	include <syslog.h>
 #endif
 
 /*
@@ -44,22 +44,24 @@ static const char rcsid[] = "$Id$";
  */
 static int do_log(int lvl, const char *fmt, va_list ap)
 {
-	FILE	*msgfd = NULL;
-	const char  *s = ": ";
+	FILE *msgfd = NULL;
+	const char *s = ": ";
 	unsigned char *p;
-	char	buffer[8192];
-	time_t	timeval;
-	int	len;
+	char buffer[8192];
+	time_t timeval;
+	int len;
 #if HAVE_SYSLOG_H
-	int	use_syslog = FALSE;
+	int use_syslog = FALSE;
 #endif
 	if ((lvl & L_CONS) || radlog_dir == NULL || debug_flag) {
 		lvl &= ~L_CONS;
-		if (!debug_flag) fprintf(stdout, "%s: ", progname);
+		if (!debug_flag) 
+			fprintf(stdout, "%s: ", progname);
 		vfprintf(stdout, fmt, ap);
 		fprintf(stdout, "\n");
 	}
-	if (radlog_dir == NULL || debug_flag) return 0;
+	if (radlog_dir == NULL || debug_flag) 
+		return 0;
 
 	if (strcmp(radlog_dir, "stdout") == 0) {
 		msgfd = stdout;
@@ -72,7 +74,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 		sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
 		if ((msgfd = fopen(buffer, "a")) == NULL) {
 			fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-				progname, buffer, strerror(errno));
+					progname, buffer, strerror(errno));
 			return -1;
 		}
 	}
@@ -86,20 +88,20 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 
 		switch(lvl) {
 			case L_DBG:
-			  s = ": Debug: ";
-			  break;
+				s = ": Debug: ";
+				break;
 			case L_AUTH:
-			  s = ": Auth: ";
-			  break;
+				s = ": Auth: ";
+				break;
 			case L_PROXY:
-			  s = ": Proxy: ";
-			  break;
+				s = ": Proxy: ";
+				break;
 			case L_INFO:
-			  s = ": Info: ";
-			  break;
+				s = ": Info: ";
+				break;
 			case L_ERR:
-			  s = ": Error: ";
-			  break;
+				s = ": Error: ";
+				break;
 		}
 		strcat(buffer, s);
 	}
@@ -136,24 +138,24 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 			fflush(stdout);
 #if HAVE_SYSLOG_H
 	} else {
-	  switch(lvl) {
-	  	case L_DBG:
-			lvl = LOG_DEBUG;
-			break;
-		case L_AUTH:
-			lvl = LOG_NOTICE;
-			break;
-		case L_PROXY:
-			lvl = LOG_NOTICE;
-			break;
-		case L_INFO:
-			lvl = LOG_INFO;
-			break;
-		case L_ERR:
-			lvl = LOG_ERR;
-			break;
-	  }
-	  syslog(lvl, "%s", buffer);
+		switch(lvl) {
+			case L_DBG:
+				lvl = LOG_DEBUG;
+				break;
+			case L_AUTH:
+				lvl = LOG_NOTICE;
+				break;
+			case L_PROXY:
+				lvl = LOG_NOTICE;
+				break;
+			case L_INFO:
+				lvl = LOG_INFO;
+				break;
+			case L_ERR:
+				lvl = LOG_ERR;
+				break;
+		}
+		syslog(lvl, "%s", buffer);
 	}
 #endif
 
