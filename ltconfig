@@ -1973,11 +1973,7 @@ linux-gnu*)
   if test -f /lib/ld.so.1; then
     dynamic_linker='GNU ld.so'
   else
-    # Only the GNU ld.so supports shared libraries on MkLinux.
-    case "$host_cpu" in
-    powerpc*) dynamic_linker=no ;;
-    *) dynamic_linker='Linux ld.so' ;;
-    esac
+    dynamic_linker='Linux ld.so'
   fi
   ;;
 
