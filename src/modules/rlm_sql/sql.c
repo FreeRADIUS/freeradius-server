@@ -338,11 +338,16 @@ int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
 	ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
 
 	if (ret == SQL_DOWN) {
+	        /* close the socket that failed */
+	        (inst->module->sql_close)(sqlsocket, inst->config);
+
+		/* reconnect the socket */
 		if (connect_single_socket(sqlsocket, inst) < 0) {
 			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
 			return -1;
 		}
 
+		/* retry the query on the newly connected socket */
 		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
 
 		if (ret) {
@@ -375,11 +380,16 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 	ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
 
 	if (ret == SQL_DOWN) {
+	        /* close the socket that failed */
+	        (inst->module->sql_close)(sqlsocket, inst->config);
+
+		/* reconnect the socket */
 		if (connect_single_socket(sqlsocket, inst) < 0) {
 			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
 			return -1;
 		}
 
+		/* retry the query on the newly connected socket */
 		ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
 
 		if (ret) {
@@ -412,11 +422,16 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 	ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
 
 	if (ret == SQL_DOWN) {
+	        /* close the socket that failed */
+	        (inst->module->sql_close)(sqlsocket, inst->config);
+
+		/* reconnect the socket */
 		if (connect_single_socket(sqlsocket, inst) < 0) {
 			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
 			return -1;
 		}
 
+		/* retry the query on the newly connected socket */
 		ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
 
 		if (ret) {
