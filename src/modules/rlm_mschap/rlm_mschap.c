@@ -768,12 +768,21 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					if (smbPasswd.smb_passwd) 
 						memcpy(mppe_sendkey, smbPasswd.smb_passwd, 8);
 					if (smbPasswd.smb_nt_passwd)
-						memcpy(mppe_sendkey+8, smbPasswd.smb_nt_passwd, 16);
+					/* 
+					   According to RFC 2548 we should send NT hash.
+					   But in practice it doesn't work and we should
+					   send nthashhash instead
+					   If someone have different information please
+					   feel free to feedback.
+
+						memcpy (mppe_sendkey+8,smbPasswd.smb_nt_passwd,16);   
+					*/
+						md4_calc(mppe_sendkey+8, smbPasswd.smb_nt_passwd,16);
 					len = 32;
 					rad_pwencode(mppe_sendkey, &len, 
 						 request->secret, request->packet->vector);
 					mppe_add_reply( &request->reply->vps,
-						"MS-CHAP-MPPE-Keys",mppe_recvkey,len);
+						"MS-CHAP-MPPE-Keys",mppe_sendkey,len);
 				}
 			}
 		}
