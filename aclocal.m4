@@ -4066,7 +4066,7 @@ dnl #  AC_SMART_CHECK_INCLUDE(foo.h, [ #include <other.h> ])
 dnl #
 AC_DEFUN(AC_SMART_CHECK_INCLUDE, [
 
-ac_safe=`echo "$1" | sed 'y%./+-%__p_%'`
+ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
 AC_MSG_CHECKING([for $1])
 
 smart_include=
