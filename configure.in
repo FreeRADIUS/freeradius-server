@@ -831,6 +831,7 @@ AC_OUTPUT(\
 	./scripts/radiusd.cron.daily \
 	./scripts/radiusd.cron.monthly \
 	./scripts/cryptpasswd \
+	./raddb/dictionary \
 	./raddb/radiusd.conf
 )
 

@@ -1,0 +1,17 @@
+#
+#	This is the master dictionary file, which references the
+#	pre-defined dictionary files included with the server.
+#
+#	Any new/changed attributes MUST be placed in this file, as
+#	the pre-defined dictionaries SHOULD NOT be edited.
+#
+#	$Id$
+#
+$INCLUDE	@prefix@/share/freeradius/dictionary
+
+#
+#	Place additional attributes here.  They will over-ride the
+#	definitions in the pre-defined dictionaries.
+#
+#	See the 'man' page for 'dictionary' for information on
+#	the format of the dictionary files.
