@@ -111,11 +111,10 @@ typedef struct main_config_t {
 	int		log_auth_badpass;
 	int		log_auth_goodpass;
 	int		do_usercollide;
-	int		do_lower_user;
-	int		do_lower_pass;
-	char		*lower_time;
-	int		do_nospace_user;
-	int		do_nospace_pass;
+	char 	*do_lower_user;
+	char	*do_lower_pass;
+	char	*do_nospace_user;
+	char	*do_nospace_pass;
 	char		*nospace_time;
 } MAIN_CONFIG_T;
 

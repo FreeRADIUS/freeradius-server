@@ -167,13 +167,10 @@ static CONF_PARSER server_config[] = {
   { "user",           PW_TYPE_STRING_PTR, &uid_name,  NULL},
   { "group",          PW_TYPE_STRING_PTR, &gid_name,  NULL},
 
-  { "usercollide",    PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide, "no" },
-  { "lower_user",     PW_TYPE_BOOLEAN,    &mainconfig.do_lower_user, "no" },
-  { "lower_pass",     PW_TYPE_BOOLEAN,    &mainconfig.do_lower_pass, "no" },
-  { "lower_time",     PW_TYPE_STRING_PTR, &mainconfig.lower_time, "before" },
-  { "nospace_user",   PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_user, "no" },
-  { "nospace_pass",   PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_pass, "no" },
-  { "nospace_time",   PW_TYPE_STRING_PTR, &mainconfig.nospace_time, "before" },
+  { "lower_user",     PW_TYPE_STRING_PTR,    &mainconfig.do_lower_user, "no" },
+  { "lower_pass",     PW_TYPE_STRING_PTR,    &mainconfig.do_lower_pass, "no" },
+  { "nospace_user",   PW_TYPE_STRING_PTR,    &mainconfig.do_nospace_user, "no" },
+  { "nospace_pass",   PW_TYPE_STRING_PTR,    &mainconfig.do_nospace_pass, "no" },
 
   { "proxy_requests", PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
   { "proxy",          PW_TYPE_SUBSECTION, proxy_config,       NULL },
@@ -1378,36 +1375,35 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *
 	 *	See if we have to lower user/pass before processing
 	 */
-	if(strcmp(mainconfig.lower_time, "before") == 0) {
-		if(mainconfig.do_lower_user)
-			rad_lowerpair(request, request->username);
-		if(mainconfig.do_lower_pass)
-			rad_lowerpair(request, rad_getpass(request));
-	}
-	if(strcmp(mainconfig.nospace_time, "before") == 0) {
-		if(mainconfig.do_nospace_user)
-			rad_rmspace_pair(request, request->username);
-		if(mainconfig.do_nospace_pass)
-			rad_rmspace_pair(request, rad_getpass(request));
-	}
+	if(strcmp(mainconfig.do_lower_user, "before") == 0)
+		rad_lowerpair(request, request->username);
+	if(strcmp(mainconfig.do_lower_pass, "before") == 0)
+		rad_lowerpair(request, rad_getpass(request));
+
+	if(strcmp(mainconfig.do_nospace_user, "before") == 0)
+		rad_rmspace_pair(request, request->username);
+	if(strcmp(mainconfig.do_nospace_pass, "before") == 0)
+		rad_rmspace_pair(request, rad_getpass(request));
+
 	(*fun)(request);
 
 	/* See if we have to lower user/pass after processing */
-	if(strcmp(mainconfig.lower_time, "after") == 0) {
-		if(mainconfig.do_lower_user)
-			rad_lowerpair(request, request->username);
-		if(mainconfig.do_lower_pass)
-			rad_lowerpair(request, rad_getpass(request));
+	if(strcmp(mainconfig.do_lower_user, "after") == 0) {
+		rad_lowerpair(request, request->username);
 		reprocess = 1;
 	}
-
-	if(strcmp(mainconfig.nospace_time, "after") == 0) {
-		if(mainconfig.do_nospace_user)
-			rad_rmspace_pair(request, request->username);
-		if(mainconfig.do_nospace_pass)
-			rad_rmspace_pair(request, rad_getpass(request));
-		 reprocess = 1;
-	 }
+	if(strcmp(mainconfig.do_lower_pass, "after") == 0) {
+		rad_lowerpair(request, rad_getpass(request));
+		reprocess = 1;
+	}
+	if(strcmp(mainconfig.do_nospace_user, "after") == 0) {
+		rad_rmspace_pair(request, request->username);
+		reprocess = 1;
+	}
+	if(strcmp(mainconfig.do_nospace_pass, "after") == 0) {
+		rad_rmspace_pair(request, rad_getpass(request));
+		reprocess = 1;
+	}
 
 	/* Reprocess if we rejected last time */
 	if ((fun == rad_authenticate) &&

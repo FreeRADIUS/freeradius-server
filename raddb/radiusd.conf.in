@@ -194,42 +194,36 @@ log_auth_goodpass	= no
 #
 usercollide = no
 
-#
 # lower_user / lower_pass:  
-# Lowercase the username/password before processing it
+# Lowercase the username/password "before" or "after"
+# attempting to authenticate.  
+
+# If "before", the server will first modify the request
+# and then try to auth the user.  If "after", the server
+# will first auth using the values provided by the
+# user.  If that fails it will reprocess the request
+# after modifying it as you specify below.
+# 
 # This is as close as we can get to case insensitivity.  It is
 # the admin's job to ensure that the username on the auth
 # db side is *also* lowercase to make this work
+#
 # Default is 'no' (don't lowercase values)
+# Valid values = "before" / "after" / "no"
 #
 lower_user = no
 lower_pass = no
-
-# 
-# If you have configured above to lowercase the username and
-# password, you can decide here *when* to do that.  You can
-# lowercase them "before" any processing occurs, or you can
-# lowercase "after" authentication processing once and the
-# server will retry with the new lowercased values.
-#
-# Valid values:  "before" / "after"
-lower_time = before
 
 # nospace_user / nospace_pass:
 # Some users like to enter spaces in their username or
 # password incorrectly.  To save yourself the tech support
 # call, you can eliminate those spaces here:
+#
 # Default is 'no' (don't remove spaces)
+# Valid values = "before" / "after" / "no" (explanation above)
+#
 nospace_user = no
 nospace_pass = no
-
-#
-# See above for lower_time explanation.  Works the same way
-# except does nospace processing.
-#
-# Valid values:  "before" / "after"
-nospace_time = before
-
 
 #######################################################################
 #
