@@ -36,6 +36,10 @@
 #	include <netinet/in.h>
 #endif
 
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
 #include "radiusd.h"
 #include "rad_assert.h"
 #include "conffile.h"
@@ -562,6 +566,44 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 }
 
 /*
+ *	Used in a few places, so in one function for clarity.
+ */
+static void cf_fixup_children(CONF_SECTION *cs, CONF_SECTION *is)
+{
+	/*
+	 *	Add the included conf
+	 *	to our CONF_SECTION
+	 */
+	if (is->children != NULL) {
+		CONF_ITEM *ci;
+		
+		/*
+		 *	Re-write the parent of the
+		 *	moved children to be the
+		 *	upper-layer section.
+		 */
+		for (ci = is->children; ci; ci = ci->next) {
+			ci->parent = cs;
+		}
+		
+		/*
+		 *	If there are children, then
+		 *	move them up a layer.
+		 */
+		if (is->children) {
+			cf_item_add(cs, is->children);
+		}
+		is->children = NULL;
+	}
+	/*
+	 *	Always free the section for the
+	 *	$INCLUDEd file.
+	 */
+	cf_section_free(&is);
+}
+
+
+/*
  *	Read a part of the config file.
  */
 static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
@@ -661,8 +703,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *      I really really really hate this file.  -cparker
 		 */
 		if (strcasecmp(buf1, "$INCLUDE") == 0) {
-
-			CONF_SECTION      *is;
+			CONF_SECTION	*is;
 
 			t2 = getword(&ptr, buf2, sizeof(buf2));
 
@@ -672,47 +713,52 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				return NULL;
 			}
 
-			DEBUG2( "Config:   including file: %s", value );
-
-			if ((is = conf_read(cf, *lineno, value, parent)) == NULL) {
-				cf_section_free(&cs);
-				return NULL;
-			}
-
 			/*
-			 *	Add the included conf to our CONF_SECTION
+			 *	$INCLUDE foo/
+			 *
+			 *	Include ALL non-"dot" files in the directory.
+			 *	careful!
 			 */
-			if (is != NULL) {
-				if (is->children != NULL) {
-					CONF_ITEM *ci;
+			if (value[strlen(value) - 1] == '/') {
+				DIR		*dir;
+				struct dirent	*dp;
 
-					/*
-					 *	Re-write the parent of the
-					 *	moved children to be the
-					 *	upper-layer section.
-					 */
-					for (ci = is->children; ci; ci = ci->next) {
-						ci->parent = cs;
-					}
-
-					/*
-					 *	If there are children, then
-					 *	move them up a layer.
-					 */
-					if (is->children) {
-						cf_item_add(cs, is->children);
-					}
-					is->children = NULL;
+				DEBUG2( "Config:   including files in directory: %s", value );
+				dir = opendir(value);
+				if (!dir) {
+					radlog(L_ERR, "%s[%d]: Error reading directory %s: %s",
+					       cf, *lineno, value,
+					       strerror(errno));
+					cf_section_free(&cs);
+					return NULL;
 				}
-				/*
-				 *	Always free the section for the
-				 *	$INCLUDEd file.
-				 */
-				cf_section_free(&is);
-			}
 
+				/*
+				 *	Read the directory, ignoring "." files.
+				 */
+				while ((dp = readdir(dir)) != NULL) {
+					if (dp->d_name[0] == '.') continue;
+
+					snprintf(buf2, sizeof(buf2), "%s%s",
+						 value, dp->d_name);
+					if ((is = conf_read(cf, *lineno, buf2, parent)) == NULL) {
+						cf_section_free(&cs);
+						return NULL;
+					}
+					
+					cf_fixup_children(cs, is);
+				}
+				closedir(dir);
+			}  else { /* it was a normal file */
+				DEBUG2( "Config:   including file: %s", value );
+				if ((is = conf_read(cf, *lineno, value, parent)) == NULL) {
+					cf_section_free(&cs);
+					return NULL;
+				}
+				cf_fixup_children(cs, is);
+			}
 			continue;
-		}
+		} /* we were in an include */
 
 		/*
 		 *	No '=': must be a section or sub-section.
