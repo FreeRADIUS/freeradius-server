@@ -2,6 +2,7 @@
 #
 #  $Id$
 #
+CC=`grep CC ../../../Make.inc | sed 's/.*=//;s/ //g'`
 
 usage() {
     cat <<EOF
@@ -60,7 +61,7 @@ fi
 #
 #######################################################################
 compile() {
-cc $CFLAGS tmp$$.c $LIBS -o tmp$$ 2>/dev/null 1>/dev/null
+$CC $CFLAGS tmp$$.c $LIBS -o tmp$$ 2>/dev/null 1>/dev/null
 if [ "$?" = "0" ];then
   echo yes
   echo $DEF=$LIBS >>config.mak
@@ -329,7 +330,7 @@ int main(int argc, char **argv)
 }
 EOF
 
-cc $CFLAGS tmp$$.c -o tmp$$ 2>/dev/null 1>/dev/null
+$CC $CFLAGS tmp$$.c -o tmp$$ 2>/dev/null 1>/dev/null
 if [ "$?" = "0" ];then
   echo yes
   echo $DEF=$INCLUDE >>config.mak
