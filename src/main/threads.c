@@ -72,7 +72,7 @@ typedef struct THREAD_HANDLE {
 	int thread_num;
 	sem_t semaphore;
 	int status;
-	int request_count;
+	unsigned int request_count;
 	time_t timestamp;
 	REQUEST *request;
 	RAD_REQUEST_FUNP fun;
@@ -95,6 +95,7 @@ typedef struct THREAD_POOL {
 	int min_spare_threads;
 	int max_spare_threads;
 	int max_requests_per_thread;
+	unsigned long request_count;
 	time_t time_last_spawned;
 	int cleanup_delay;
 } THREAD_POOL;
@@ -141,6 +142,34 @@ static const CONF_PARSER thread_config[] = {
 };
 
 /*
+ *	Thread stats
+ */
+
+static void sig_stats(int sig)
+{
+	THREAD_HANDLE *handle;	
+	int active_threads = 0;
+
+	sig = sig; /* -Wunused */
+	reset_signal(SIGUSR1, sig_stats);
+
+
+	radlog(L_INFO, "Freeradius running");
+
+	for (handle = thread_pool.head; handle; handle = handle->next) {
+		if (handle->request != NULL)
+			active_threads++;
+	}
+
+	radlog(L_INFO, "STATS: Total Threads: %5d,    Active Threads: %7d", thread_pool.total_threads, active_threads);
+	radlog(L_INFO, "STATS: Total number of requests handled so far: %7ld", thread_pool.request_count);
+	radlog(L_INFO, "STATS: Per thread statistics:");
+	for(handle = thread_pool.head;handle;handle = handle->next)
+		radlog(L_INFO, "STATS: Thread Num: %5d,     Requests Handled: %7d", handle->thread_num,
+				handle->request_count);
+}
+
+/*
  *	The main thread handler for requests.
  *
  *	Wait on the semaphore until we have it, and process the request.
@@ -165,6 +194,7 @@ static void *request_handler_thread(void *arg)
 	sigaddset(&set, SIGHUP);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGQUIT);
+	sigaddset(&set, SIGUSR1);
 	pthread_sigmask(SIG_BLOCK, &set, NULL);
 #endif
 	
@@ -503,6 +533,10 @@ int thread_pool_init(void)
 	}
 
 	pool_initialized = TRUE;
+
+#ifdef SIGUSR1
+	signal(SIGUSR1, sig_stats);
+#endif
 	return 0;
 }
 
@@ -580,6 +614,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	found->request = request;
 	found->fun = fun;
 	found->request_count++;
+	thread_pool.request_count++;
 	sem_post(&found->semaphore);
 	thread_pool.active_threads = active_threads;
 

@@ -1053,7 +1053,7 @@ authenticate {
 
 	# Uncomment the following if you want to support PAP and you
 	# extract user passwords from the user database (LDAP,SQL, etc).
-	# You should use the 'files'module to set 'Auth-Type := PAP' for
+	# You should use the 'files'module to set 'Auth-Type = PAP' for
 	# this to work.
 #	authtype PAP {
 #		pap
@@ -1085,6 +1085,7 @@ accounting {
 
 # Session database, used for checking Simultaneous-Use. Either the radutmp 
 # or rlm_sql module can handle this.
+# The rlm_sql module is *much* faster
 session {
 	radutmp
 #	sql
