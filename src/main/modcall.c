@@ -644,7 +644,7 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 		{
 			1,			/* reject   */
 			1,			/* fail     */
-			3,			/* ok       */
+			MOD_ACTION_RETURN,	/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
 			1,			/* invalid  */
 			1,			/* userlock */
