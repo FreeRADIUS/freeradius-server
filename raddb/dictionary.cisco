@@ -12,12 +12,17 @@ VENDOR		Cisco		9
 #
 #	Standard attribute
 #
-ATTRIBUTE	Cisco-AVPair	1	string		Cisco
+ATTRIBUTE	Cisco-AVPair		1	string		Cisco
+ATTRIBUTE	Cisco-Port-Name		2	string		Cisco
 
 #
 #	Extra attributes sent by the Cisco, if you configure
 #	"radius-server vsa accounting" (requires IOS11.2+).
 #
+ATTRIBUTE	Cisco-101			101	string		Cisco
+ATTRIBUTE	Cisco-102			102	string		Cisco
+ATTRIBUTE	Cisco-103			103	string		Cisco
+ATTRIBUTE	Cisco-107			107	string		Cisco
 ATTRIBUTE       Cisco-Multilink-ID              187     integer		Cisco
 ATTRIBUTE       Cisco-Num-In-Multilink          188     integer		Cisco
 ATTRIBUTE       Cisco-Pre-Input-Octets          190     integer		Cisco
