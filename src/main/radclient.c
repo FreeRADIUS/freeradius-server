@@ -445,7 +445,7 @@ int main(int argc, char **argv)
 				
 			if (*password != '\0') {
 				if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
-					strNcpy((char *)vp->strvalue, password, vp->length + 1);
+					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
 					vp->length = strlen(password);
 					
 					rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
