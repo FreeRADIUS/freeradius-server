@@ -123,7 +123,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 
 		if (vendorpec != 9) continue; /* not a Cisco VSA, continue */
 
-		if ((vp->attribute & 0xffff) != 1) continue; /* Cisco-AVPair */
+		if ((vp->attribute & 0xffff) == 1) continue; /* Cisco-AVPair */
 
 		/*
 		 *  We strip out the duplicity from the value field,
