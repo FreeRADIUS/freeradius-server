@@ -42,6 +42,8 @@
  *  ZARAZA		3APA3A@security.nnov.ru
  */
  
+/*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
+
 #include	"autoconf.h"
 #include	"libradius.h"
 
