@@ -6,20 +6,9 @@
 
 #include "sql_module.h"
 
-#define QUERYLOG		"/var/log/radacct/radius.sql"
-#define SQLCONFIGFILE		"rlm_sql.conf"
-#define SQLBACKUP		"/var/log/radacct/sqlbackup.dat"
-#define CHECKRAD1		"/usr/sbin/checkrad"
-#define CHECKRAD2		"/usr/local/sbin/checkrad"
-
-#define	SQLBIGREC		32
-#define	SQLLILREC		16
 #define PW_VP_USERDATA		1
 #define PW_VP_GROUPDATA		2
 #define PW_VP_REALMDATA		3
-
-#define MAX_TABLE_LEN 		20
-#define MAX_AUTH_QUERY_LEN 	256
 
 typedef struct sqlrec {
 	char            AcctSessionId[SQLBIGREC];
@@ -43,46 +32,21 @@ typedef struct sqlrec {
         char            FramedProtocol[SQLBIGREC];
         char            FramedIPAddress[SQLLILREC];
         unsigned long	AcctDelayTime;
-} SQLREC; 
+} SQLACCTREC; 
 
-typedef struct sqlconfig {
-	char		sql_type[40];
-	char		sql_server[40];
-	int		sql_port;
-	char		sql_login[20];
-	char		sql_password[20];
-	char		sql_db[20];
-	char		sql_acct_table[MAX_TABLE_LEN];
-	char		sql_authcheck_table[MAX_TABLE_LEN];
-	char		sql_authreply_table[MAX_TABLE_LEN];
-	char		sql_groupcheck_table[MAX_TABLE_LEN];
-	char		sql_groupreply_table[MAX_TABLE_LEN];
-	char 		sql_usergroup_table[MAX_TABLE_LEN];
-	char 		sql_realm_table[MAX_TABLE_LEN];
-	char 		sql_realmgroup_table[MAX_TABLE_LEN];
-	char 		sql_nas_table[MAX_TABLE_LEN];
-	char 		sql_dict_table[MAX_TABLE_LEN];
-	int  		sql_keepopen;
-	int  		sqltrace;
-} SQLCONFIG;
-
-typedef struct sql {
-	SQLSOCK		*AuthSock;
-	SQLSOCK		*AcctSock;
-	SQLREC		*sqlrecord;
-	SQLREC		*backuprecord;
-	SQLCONFIG	config;
-} SQL;
-	
-#define SQL_LOCK_LEN sizeof(SQLREC)
-
-int		sql_start();
-int		sql_save_acct(SQLREC *sqlrecord);
-int		sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row);
-int		sql_checksocket(const char *facility);
-int		sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode);
-int		sql_check_multi(char *name, VALUE_PAIR *request, int maxsimul);
-
+int             sql_init(int reload);
+int             sql_init_socket(int reload);
+int             sql_close_socket(SQLSOCK *socket);
+SQLSOCK         *sql_get_socket(void);
+int             sql_release_socket(SQLSOCK *socket);
+int             sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord);
+int             sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row, int mode);
+int             sql_read_realms(SQLSOCK *socket);
+int             sql_getvpdata(SQLSOCK *socket, char *table, VALUE_PAIR **vp, char *user, int mode);
+int             sql_check_multi(SQLSOCK *socket, char *name, VALUE_PAIR *request, int maxsimul);
+int             sql_read_naslist(SQLSOCK *socket);
+int             sql_read_clients(SQLSOCK *socket);
+int             sql_dict_init(SQLSOCK *socket);
 
 SQL *sql;
 

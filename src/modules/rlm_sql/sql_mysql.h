@@ -5,17 +5,47 @@
  */
 
 #include	<mysql/mysql.h>
+#include	"conf.h"
 
 typedef MYSQL_ROW	SQL_ROW;
-typedef MYSQL_RES	SQL_RES;
 
-typedef struct {
-	MYSQL		*conn;
-	MYSQL_RES	*result;
+typedef struct sql_config {
+        char sql_server[40];
+        char sql_login[20];
+        char sql_password[20];
+        char sql_db[20];
+        char sql_acct_table[MAX_TABLE_LEN];
+        char sql_authcheck_table[MAX_TABLE_LEN];
+        char sql_authreply_table[MAX_TABLE_LEN];
+        char sql_groupcheck_table[MAX_TABLE_LEN];
+        char sql_groupreply_table[MAX_TABLE_LEN];
+        char sql_usergroup_table[MAX_TABLE_LEN];
+        char sql_realm_table[MAX_TABLE_LEN];
+        char sql_realmgroup_table[MAX_TABLE_LEN];
+        char sql_nas_table[MAX_TABLE_LEN];
+        char sql_dict_table[MAX_TABLE_LEN];
+        int  sensitiveusername;
+        int  sqltrace;
+	int  deletestalesessions;
+	int  max_sql_socks;
+} SQL_CONFIG;
+ 
+typedef struct sql_socket {
+	MYSQL		*sock;
+	MYSQL		conn;
+        MYSQL_RES	*result;
+        int             id;
+        int             in_use;
+	struct timeval	tv;
 } SQLSOCK;
+ 
+typedef struct sql {
+        SQL_CONFIG *config;
+        SQLSOCK *socks[MAX_SQL_SOCKS];
+} SQL;
 
 
-int sql_connect(void);
+SQLSOCK *sql_create_socket(void);
 int sql_checksocket(const char *facility);
 int sql_query(SQLSOCK *socket, char *querystr);
 int sql_select_query(SQLSOCK *socket, char *querystr);
@@ -29,4 +59,4 @@ void sql_close(SQLSOCK *socket);
 void sql_finish_query(SQLSOCK *socket);
 void sql_finish_select_query(SQLSOCK *socket);
 int sql_affected_rows(SQLSOCK *socket);
-char *sql_escape_string(const char *from);
+int sql_escape_string(char *to, char *from, int length);
