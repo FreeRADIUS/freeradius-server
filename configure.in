@@ -274,6 +274,18 @@ AC_ARG_WITH(snmp,
   esac ]
 )
 
+dnl extra argument: --with-usercollide
+AC_ARG_WITH(usercollide,
+[  --with-usercollide       Compile in user collision],
+[ case "$withval" in
+    no)
+	;;
+    yes)
+	AC_DEFINE(WITH_USERCOLLIDE)
+  esac ]
+)
+
+
 AC_SUBST(SNMPLIB)
 AC_SUBST(SNMPINC)
 
