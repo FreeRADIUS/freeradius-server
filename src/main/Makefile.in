@@ -155,8 +155,8 @@ radsqlrelay.o: radsqlrelay.c $(INCLUDES)
 radwho.o: radwho.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
 
-radwho: radwho.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radwho radwho.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o ../lib/libradius.la $(LIBS)
+radwho: radwho.o util.o log.o conffile.o ../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radwho radwho.o util.o log.o conffile.o ../lib/libradius.la $(LIBS)
 
 radzap.o: radzap.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radzap.c

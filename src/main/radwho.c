@@ -82,6 +82,11 @@ const char *radlib_dir = NULL;
 uint32_t myip = INADDR_ANY;
 int log_stripped_names;
 
+/*
+ *	Global, for log.c to use.
+ */
+struct main_config_t mainconfig;
+
 struct radutmp_config_t {
   char *radutmp_fn;
 } radutmpconfig;
@@ -354,6 +359,7 @@ int main(int argc, char **argv)
 	char *p, *q;
 	const char *portind;
 	int c, portno;
+	char buffer[2048];
 
 	radius_dir = strdup(RADIUS_DIR);
 
@@ -397,23 +403,26 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	Ensure that the configuration is initialized.
+	 *	Initialize mainconfig
 	 */
 	memset(&mainconfig, 0, sizeof(mainconfig));
+	mainconfig.radlog_dest = RADLOG_STDOUT;
 
-	/* Read radiusd.conf */
-	if ((maincs = read_radius_conf_file()) == NULL) {
-		fprintf(stderr, "%s: Errors reading radiusd.conf\n", argv[0]);
+        /* Read radiusd.conf */
+	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
+	maincs = conf_read(NULL, 0, buffer, NULL);
+	if (!maincs) {
+		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);
 		exit(1);
 	}
 
-	/* Read the radutmp section of radiusd.conf */
-	cs = cf_section_sub_find(cf_section_sub_find(maincs, "modules"), "radutmp");
-	if(!cs) {
-		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
-			argv[0]);
-		exit(1);
-	}
+        /* Read the radutmp section of radiusd.conf */
+        cs = cf_section_sub_find(cf_section_sub_find(maincs, "modules"), "radutmp");
+        if(!cs) {
+                fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
+                        argv[0]);
+                exit(1);
+        }
 
 	cf_section_parse(cs, NULL, module_config);
 
@@ -451,8 +460,7 @@ int main(int argc, char **argv)
 	}
 
 	if (showlocal && (fp = fopen(radutmp_file, "r"))) {
-		if (rawoutput == 0)
-		{
+		if (rawoutput == 0) {
 			fputs(showname ? hdr1 : hdr2, stdout);
 			fputs(eol, stdout);
 		}
@@ -477,7 +485,7 @@ int main(int argc, char **argv)
 #	define UT_TIME ut_time
 #endif
 			if (showname)
-				printf((rawoutput == 0? ufmt1: ufmt1r),
+				printf((rawoutput == 0 ? ufmt1: ufmt1r),
 						ut.ut_name,
 						fullname(ut.ut_name),
 						"shell",
@@ -486,7 +494,7 @@ int main(int argc, char **argv)
 						ut.ut_host,
 						myname, eol);
 			else
-				printf((rawoutput==0? ufmt2:ufmt2r),
+				printf((rawoutput==0 ? ufmt2:ufmt2r),
 						ut.ut_name,
 						ttyshort(ut.ut_line),
 						"shell",
@@ -506,11 +514,13 @@ int main(int argc, char **argv)
 		return 0;
 
 	if (!hdrdone) {
-		fputs(showname ? hdr1 : hdr2, stdout);
-		fputs(eol, stdout);
+		if (!rawoutput) {
+			fputs(showname ? hdr1 : hdr2, stdout);
+			fputs(eol, stdout);
+		}
 	}
 
-	while(fread(&rt, sizeof(rt), 1, fp) == 1) {
+	while (fread(&rt, sizeof(rt), 1, fp) == 1) {
 		if (rt.type == P_LOGIN) {
 			/*
 			 *	We don't show shell users if we are
@@ -529,7 +539,7 @@ int main(int argc, char **argv)
 				portind = "S";
 				portno = rt.nas_port;
 			}
-			if (showname)
+			if (showname) {
 				printf((rawoutput == 0? rfmt1: rfmt1r),
 						rt.login,
 						showcid ? rt.caller_id :
@@ -537,17 +547,18 @@ int main(int argc, char **argv)
 						proto(rt.proto, rt.porttype),
 						portind, portno,
 						dotime(rt.time),
-						nas_name3(nasname, sizeof(nasname), rt.nas_address),
+						ip_hostname(nasname, sizeof(nasname), rt.nas_address),
 						hostname(othername, sizeof(othername), rt.framed_address), eol);
-			else
+			} else {
 				printf((rawoutput == 0? rfmt2: rfmt2r),
 						rt.login,
 						portind, portno,
 						proto(rt.proto, rt.porttype),
 						dotime(rt.time),
-						nas_name3(nasname, sizeof(nasname), rt.nas_address),
+						ip_hostname(nasname, sizeof(nasname), rt.nas_address),
 						hostname(othername, sizeof(othername), rt.framed_address),
 						eol);
+			}
 		}
 	}
 	fflush(stdout);
