@@ -30,12 +30,12 @@ static const char rcsid[] =
  */
 int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun);
 
-
 /*
  *  A data structure which contains the information about
  *  the current thread.
  *
- *  child_pid     thread ID
+ *  pthread_id     pthread id
+ *  thread_num     server thread number, 1...number of threads
  *  semaphore     used to block the thread until a request comes in
  *  status        is the thread running or exited?
  *  request_count the number of requests that this thread has handled
@@ -46,7 +46,8 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun);
 typedef struct THREAD_HANDLE {
 	struct	THREAD_HANDLE *prev;
 	struct	THREAD_HANDLE *next;
-	pthread_t		child_pid;
+	pthread_t		pthread_id;
+	int			thread_num;
 	sem_t			semaphore;
 	int			status;
 	int			request_count;
@@ -66,7 +67,7 @@ typedef struct THREAD_POOL {
 	
 	int		total_threads;
 	int		active_threads;
-
+	int		max_thread_num;
 	int		start_threads;
 	int		max_threads;
 	int		min_spare_threads;
@@ -129,7 +130,7 @@ static void *request_handler_thread(void *arg)
 		 *	Wait for the semaphore to be given to us.
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
-		       self->child_pid);
+		       self->thread_num);
 		sem_wait(&self->semaphore);
 
 		/*
@@ -138,12 +139,12 @@ static void *request_handler_thread(void *arg)
 		 */
 		if (self->status == THREAD_CANCELLED) {
 			DEBUG2("Thread %d exiting on request from parent.",
-			       self->child_pid);
+			       self->thread_num);
 			break;
 		}
 		
 		DEBUG2("Thread %d handling request %08x, number %d",
-		       self->child_pid, self->request, self->request_count);
+		       self->thread_num, self->request, self->request_count);
 		
 		rad_respond(self->request, self->fun);
 		self->request = NULL;
@@ -307,7 +308,8 @@ static THREAD_HANDLE *spawn_thread(void)
 	memset(handle, 0, sizeof(THREAD_HANDLE));
 	handle->prev = NULL;
 	handle->next = NULL;
-	handle->child_pid = NO_SUCH_CHILD_PID;
+	handle->pthread_id = NO_SUCH_CHILD_PID;
+	handle->thread_num = thread_pool.max_thread_num++;
 	handle->request_count = 0;
 	handle->status = THREAD_RUNNING;
 	handle->timestamp = time(NULL);
@@ -344,7 +346,7 @@ static THREAD_HANDLE *spawn_thread(void)
 	 *	Create the thread detached, so that it cleans up it's
 	 *	own memory when it exits.
 	 */
-	rcode = pthread_create(&handle->child_pid, &attr,
+	rcode = pthread_create(&handle->pthread_id, &attr,
 			       request_handler_thread, handle);
 	if (rcode != 0) {
 		log(L_ERR|L_CONS, "Thread create failed: %s", strerror(errno));
@@ -357,7 +359,7 @@ static THREAD_HANDLE *spawn_thread(void)
 	 */
 	thread_pool.total_threads++;
 	DEBUG2("Thread spawned new child %d. Total threads in pool: %d",
-	       handle->child_pid, thread_pool.total_threads);
+	       handle->thread_num, thread_pool.total_threads);
 
 	/*
 	 *	Move the thread handle to the tail of the thread pool list.
@@ -389,6 +391,7 @@ int thread_pool_init(void)
 	thread_pool.head = NULL;
 	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
+	thread_pool.max_thread_num = 1;
 
 	pool_cf = cf_section_find("thread");
 	if (pool_cf) {
@@ -476,7 +479,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	return.  The thread eventually wakes up, and handles
 	 *	the request.
 	 */
-	DEBUG2("Thread %d assigned request %08x", found->child_pid, request);
+	DEBUG2("Thread %d assigned request %08x", found->thread_num, request);
 	move2tail(found);
 	found->request = request;
 	found->fun = fun;
@@ -497,7 +500,7 @@ int thread_pool_clean(void)
 {
 	int spare;
 	int i, total;
-	THREAD_HANDLE *handle;
+	THREAD_HANDLE *handle, *next;
 	int active_threads;
 
 	/*
@@ -564,7 +567,9 @@ int thread_pool_clean(void)
 		 *	Walk through the thread pool, deleting the
 		 *	first N idle threads we come across.
 		 */
-		for (handle = thread_pool.head; (handle != NULL) && (spare > 0) ; handle = handle->next) {
+		for (handle = thread_pool.head; (handle != NULL) && (spare > 0) ; handle = next) {
+			next = handle->next;
+
 			/*
 			 *	If the thread is not handling a
 			 *	request, then tell it to exit.
