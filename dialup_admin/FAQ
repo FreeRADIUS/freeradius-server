@@ -64,5 +64,7 @@ Check that the register_globals in php.ini is set to on. As of PHP 4.2.0 this is
 versions of dialup_admin will work even if register_globals is set to off if the php version is > 4.1.0
 (Thanks to Evren Yurtesen <eyurtese@turkuamk.fi> for the suggestion).
 
+In latest versions you can also enable sql debug (sql_debug: true) and ldap debug (ldap_debug: true)
+
 --
 kkalev

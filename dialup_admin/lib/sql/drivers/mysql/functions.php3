@@ -28,7 +28,7 @@ function da_sql_close($link,$config)
 function da_sql_query($link,$config,$query)
 {
 	if ($config[sql_debug] == 'true')
-		print "<b>DEBUG(SQL,MYSQL DRIVER): Query: $query</b><br>\n";
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Query: <i>$query</i></b><br>\n";
 	return @mysql_db_query($config[sql_database],$query,$link);
 }
 

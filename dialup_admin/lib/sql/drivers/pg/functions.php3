@@ -30,7 +30,7 @@ function da_sql_close($link,$config)
 function da_sql_query($link,$config,$query)
 {
 	if ($config[sql_debug] == 'true')
-		print "<b>DEBUG(SQL,PG DRIVER): Query: $query</b><br>\n";
+		print "<b>DEBUG(SQL,PG DRIVER): Query: <i>$query</i></b><br>\n";
 	return @pg_exec($link,$query);
 }
 
