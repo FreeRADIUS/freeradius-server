@@ -14,6 +14,7 @@ Framed-IP-Netmask		IP Netmask
 #Filter-Id
 Framed-MTU			MTU
 Framed-Compression		<a href="help/framed_compression_help.html" target=fc_help onclick=window.open("help/framed_compression_help.html","fc_help","width=600,height=210,toolbar=no,scrollbars=no,resizable=yes") title="Framed Compression Help Page"><font color="blue">Compression Used</font></a>
+Service-Type			Service Type
 #Login-IP-Host
 #Login-Service
 #Login-TCP-Port
