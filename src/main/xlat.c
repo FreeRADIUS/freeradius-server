@@ -370,6 +370,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			     int *open, REQUEST *request,
 			     RADIUS_ESCAPE_STRING func)
 {
+	int	do_length = 0;
 	char attrname[256];
 	const char *p;
 	char *q, *pa;
@@ -389,6 +390,11 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	 */
 	p++;
 	openbraces++;
+
+	if (*p == '#') {
+		p++;
+		do_length = 1;
+	}
 
 	/*
 	 *  Copy over the rest of the string.
@@ -448,12 +454,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 					c->module, attrname+ c->length + 1);
 		retlen = c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
 		/* If retlen is 0, treat it as not found */
-		if (retlen == 0) {
-			found = 0;
-		} else {
-			found = 1;
-			q += retlen;
-		}
+		if (retlen > 0) found = 1;
 
 		/*
 		 *	Not in the default xlat database.  Must be
@@ -462,7 +463,6 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	} else if ((retlen = xlat_packet(&xlat_inst[1], request, attrname,
 					 q, freespace, func)) > 0) {
 		found = 1;
-		q += retlen;
 
 		/*
 		 *	Look up the name, in order to get the correct
@@ -483,6 +483,13 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	 * useless if we found what we need
 	 */
 	if (found) {
+		if (do_length) {
+			snprintf(q, freespace, "%d", retlen);
+			retlen = strlen(q);
+		}
+
+		q += retlen;
+
 		while((*p != '\0') && (openbraces > 0)) {
 			/*
 			 *	Handle escapes outside of the loop.

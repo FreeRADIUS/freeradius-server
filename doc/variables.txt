@@ -15,7 +15,7 @@
      %{proxy-reply:Attribute-Name}   The value of the given Attribute-Name
                                      in the proxy reply packet (if it exists)
 
-  The above variable expansions also support the meta-Attribute
+  The above variable expansions also support the meta-attribute
 Packet-Type as well. See the RADIUS dictionary for details on its
 values.
 	 
@@ -43,7 +43,6 @@ matching defines other special variables, just like in Perl.
 and only when the expression matches.  They are NOT defined for the
 operator !~, or when =~ doesn't match.  Any use of =~ destroys all
 previous values of %{0}..%{8}, but the variables.
-
 
   Some examples.
 
@@ -91,6 +90,18 @@ defined in 'sh'.  For example:
     When attribute Foo is set:    returns value of attribute Foo
     When attribute Foo is unset:  returns value of attribute Bar (if any)
     When attribute Bar is unset:  returns literal string 'baz'
+
+
+  String Lengths
+  --------------
+
+  The dynamic translations support a few additional operatons, too.
+
+     %{#string}	The number of characters in %{string}.  If %{string}
+		is not set, then the length is not set.
+		e.g. %{#Junk-junk:-foo} will yeild the string "foo".
+		This will NOT work for the one-character variables
+		defined below.
 
 
   Attributes as environment variables in executed programs
