@@ -835,6 +835,13 @@ int main(int argc, char *argv[])
 		}
 
 		if (need_reload) {
+#if HAVE_PTHREAD_H
+			/*
+			 *	Threads: wait for all threads to stop
+			 *	processing before re-loading the
+			 *	config, so we don't pull the rug out
+			 *	from under them.
+			 */
 		        int max_wait = 0;
 		        for(;;) {
 			        /*
@@ -850,6 +857,7 @@ int main(int argc, char *argv[])
 				sleep(1);
 				max_wait++;
 			}
+#endif
 			if (read_mainconfig(TRUE) < 0) {
 				exit(1);
 			}
