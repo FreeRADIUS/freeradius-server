@@ -218,7 +218,8 @@ static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, con
 		return 0;
 	}
 
-	if (strlen(tmpuser)) {
+	if (*tmpuser) {
+		strNcpy(sqlusername, tmpuser, MAX_STRING_LEN * 2);
 		DEBUG2("sql_set_user:  escaped user --> '%s'", sqlusername);
 		vp = pairmake("SQL-User-Name", sqlusername, 0);
 		if (vp == NULL) {
