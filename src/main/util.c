@@ -94,36 +94,26 @@ void request_free(REQUEST *request)
 	free(request);
 }
 
-
-#if 0
 /*
- *	Build a reply radius packet, based on the request data.
+ *	Check a filename for sanity.
+ *
+ *	Allow only uppercase/lowercase letters, numbers, and '-_/.'
  */
-RADIUS_PACKET *build_reply(int code, REQUEST *request,
-	VALUE_PAIR *vps, const char *user_msg)
+int rad_checkfilename(const char *filename)
 {
-	VALUE_PAIR	*vp;
-
-	if (user_msg && (vp = paircreate(PW_REPLY_MESSAGE, PW_TYPE_STRING))) {
-		strNcpy((char *)vp->strvalue, user_msg, sizeof(vp->strvalue));
-		vp->length = strlen(user_msg);
-		pairadd(&(rp->vps), vp);
+	if (strspn(filename, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.") == strlen(filename)) {
+		return 0;
 	}
 
-	/*
-	 *	Get rid of the old reply (if it exists)
-	 */
-	if (request->reply) {
-		rad_free(request->reply);
-	}
-	request->reply = rp;
-
-	return rp;
+	return -1;
 }
-#endif
 
 /*
  *	Create possibly many directories.
+ *
+ *	Note that the input directory name is NOT a constant!
+ *	This is so that IF an error is returned, the 'directory' ptr
+ *	points to the name of the file which caused the error.
  */
 int rad_mkdir(char *directory, int mode)
 {
@@ -154,6 +144,11 @@ int rad_mkdir(char *directory, int mode)
 		if (rcode < 0) {
 			return rcode;
 		}
+
+		/*
+		 *	Reset the directory delimiter, and go ask
+		 *	the system to make the directory.
+		 */
 		*p = '/';
 	}
 
