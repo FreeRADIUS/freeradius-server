@@ -89,6 +89,7 @@ $INCLUDE dictionary.shiva
 $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
 $INCLUDE dictionary.telebit
+$INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tunnel
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.versanet
