@@ -109,6 +109,7 @@ static void usage(void)
 	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
+	fprintf(stderr, "  -p num      Send 'num' packets from a file in parallel.");
 	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
 	fprintf(stderr, "  -q          Do not print anything out.\n");
 	fprintf(stderr, "  -s          Print out summary information of auth results.\n");
@@ -684,6 +685,7 @@ int main(int argc, char **argv)
 	char filesecret[256];
 	FILE *fp;
 	int do_summary = 0;
+	int parallel = 1;
 	radclient_t	*this;
 
 	librad_debug = 0;
@@ -732,6 +734,10 @@ int main(int argc, char **argv)
 				usage();
 			}
 			break;
+		case 'p':
+			parallel = atoi(optarg);
+			if (parallel < 0) usage();
+
 		case 's':
 			do_summary = 1;
 			break;
@@ -899,6 +905,7 @@ int main(int argc, char **argv)
 	 *	loop.
 	 */
 	do {
+		int n = parallel;
 		radclient_t *next;
 		const char *filename = NULL;
 
@@ -929,11 +936,20 @@ int main(int argc, char **argv)
 
 			/*
 			 *	Packets from multiple '-f' are sent
-			 *	in parallel.  Packets from one file
-			 *	are sent in series.
+			 *	in parallel.
+			 *
+			 *	Packets from one file are sent in
+			 *	series, unless '-p' is specified, in
+			 *	which case N packets from each file
+			 *	are sent in parallel.
 			 */
 			if (this->filename != filename) {
 				filename = this->filename;
+				n = parallel;
+			}
+
+			if (n > 0) {
+				n--;
 
 				/*
 				 *	Send the current packet.
