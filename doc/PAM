@@ -1,5 +1,5 @@
 
-		PAM Support for Cistron-radiusd
+		PAM Support for FreeRadius
 
 
 0. INTRODUCTION
@@ -11,17 +11,16 @@
 
 1. USAGE
 
-   Use Auth-Type = Pam in the users file. For backwards compatibility,
-   you can also use Password = "PAM" but, like Password = "UNIX", this
-   is depreciated.
+   Use Auth-Type = Pam in the users file.  You cannot use Password = "PAM"
+   as in other radius servers. Sorry.
 
    You can also use ``Pam-Auth = "somestring"'' to specify an entry in
    /etc/pam.d. The default is "radius".
 
 2. NOTES
 
-   Added the following hacks, see CFLAGS in src/Makefile to activate.
-   Crude support for PAM authentication (-DPAM), User-Password = "PAM".
+   Use ./configure --iwth-pam to enable building of the PAM module
+   (for now)
 
    Miguel has made PAM changes to the Cistron radiusd, since he now uses
    it as the basis of many accounting systems. However, according to the

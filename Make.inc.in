@@ -17,6 +17,7 @@ logdir		= @logdir@
 raddbdir	= @raddbdir@
 radacctdir	= @radacctdir@
 
+MAKE		= @MAKE@
 CC		= @CC@
 RANLIB		= @RANLIB@
 INCLUDE		= 

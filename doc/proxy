@@ -1,10 +1,10 @@
 
-		Cistron-Radius as a proxy radius server.
+		FreeRadius as a proxy radius server.
 
 
 0. INTRODUCTION
 
-  It is now possible to use Cistron Radius as a proxy radius server. This
+  It is possible to use FreeRadius as a proxy radius server. This
   means that it can consult a remote radius server to validate a user.
   This is handy for roaming setups, or for renting ports to someone else.
 

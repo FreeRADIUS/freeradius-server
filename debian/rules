@@ -6,11 +6,11 @@
 SHELL=/bin/bash
 
 # Name.
-package = radiusd-cistron
+package = freeradius
 tmp     = $(shell pwd)/debian/tmp
 
 define checkdir
-	test -f src/radiusd.c
+	test -f src/main/radiusd.c
 endef
 
 build:

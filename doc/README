@@ -1,14 +1,14 @@
 
 0. WARNING!
 
-  Cistron Radius now uses autoconf - some of the default directories
+  ReeRadius now uses autoconf - some of the default directories
   have changed! Configuration is now by default in /usr/local/etc/raddb,
   and logfiles are in /usr/local/var/log/ ....
   See 2. for more info.
 
 1. INTRO
 
-  This is version 1.6-alphaX of the Cistron Radius daemon.
+  This is version 0.1 of the FreeRadius daemon.
 
 	*** THIS IS AN ALPHA VERSION! IT MIGHT NOT WORK ***
 
@@ -33,7 +33,7 @@
 
   Work on real manual pages is progressing slowly. For a large part you
   can use the documentation of the Livingston 2.01 server. Just remember
-  that using Prefix and Suffix in both the "users" and the (cistron-radiusd
+  that using Prefix and Suffix in both the "users" and the (FreeRadius
   specific) "hints" file will give unpredictable results. Well actually
   it will result in Prefix and Suffix probably not working in the "users"
   file if you already stripped them off in the "hints" file.
@@ -120,7 +120,7 @@
 
   Every NAS (Network Access Server, also known as terminal server) should have
   an entry in this file with an abbreviated name and the type of NAS it
-  is. Currently Cistron Radius supports the following NAS types:
+  is. Currently FreeRadius supports the following NAS types:
 
   Terminal Server                       Type in naslist
 
@@ -182,7 +182,7 @@
   You can uses spaces in usernames by escaping them with \ or by using
   quotes. For example, "joe user" or joe\ user.
 
-  The Cistron Radiusd does not trim any spaces from a username received
+  The FreeRadius server does not trim any spaces from a username received
   from the portmaster (livingston does, in perl notation, $user =~ s/\s+.*//;)
 
 4f. NEW RADIUS ATTRIBUTES (to be used in the USERS file).
@@ -280,19 +280,19 @@
 
 6.  MORE INFO, SUPPORT
 
-  I know that the documentation provided is sparse. However it is not in
+  We know that the documentation provided is sparse. However it is not in
   the scope of the radius server to provide a guide as to how terminal
   servers works and how the RADIUS protocol works and is used.
 
-  Unfortunately I do not have too much time myself to answer all questions
-  that might arise through email - you can always try sending me email,
-  ofcourse, but I cannot guarantee a reply, depends on how much time I have.
+  The latest version of FreeRadius is always available through
+  anonymous CVS from cvs.freeradius.org - for more info, see
+  http://www.freeradius.org/
 
-  The latest version of Cistron Radius is always available from
-  http://www.www.cistron.nl/radius/
-
-  There is a majordomo mailing list hosted by Cistron Internet Services. Send
-  a message with "help" in the body to cistron-radius-request@info.cistron.nl.
+  There is a majordomo mailing list hosted by Cistron Internet Services.
+  This list is mainly meant for developers of FreeRadius - as soon
+  as we have a BETA version, there will be a freeradius-users list.
+  To subscribe to the developers list, send a message with "help" in the
+  body to freeradius-devel-request@info.cistron.nl.
   You can browse the archive of this mailing list at
   http://info.cistron.nl/archives/cistron-radius/
 
@@ -313,4 +313,4 @@
   out how to subscribe.
 
 
-   README 1.6-alpha2  Miquel van Smoorenburg <miquels@cistron.nl>  11-Aug-1999
+   README 0.1-alpha  Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999

@@ -13,7 +13,7 @@ all:
 
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f *~ lib/*
+	@rm -f *~ lib/[0-9a-z]*
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common

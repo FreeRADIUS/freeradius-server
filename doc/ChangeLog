@@ -1,3 +1,11 @@
+1999-08-21  Miquel van Smoorenburg (miquels@cistron.nl)
+
+	* configure.in: check for GNU Make
+	* doc/*: change Cistron Radius to FreeRadius
+	* src/modules/Makefile.in: fix rm -f lib/* (bailed out on lib/CVS)
+	* debian/*: some changes (might want to rip out completely)
+	* doc/ChangeLog: new format, more like other projects.
+
 radiusd-cistron (1.6-alpha3) experimental; urgency=low
 
   * Changed directory structure. Each module is now in it's own directory.

@@ -7,6 +7,18 @@ dnl Check for GNU cc
 AC_PROG_CC
 AC_PROG_RANLIB
 
+dnl Find GNU Make.
+AC_CHECK_PROG(GMAKE, gmake, yes, no)
+if test $GMAKE = no; then
+  AC_PATH_PROG(MAKE, make, /usr/local/bin/make)
+else
+  AC_PATH_PROG(MAKE, gmake, /usr/local/gnu/bin/make)
+fi
+makever=`$ac_cv_path_MAKE --version 2>&1 | grep "GNU Make"`
+if test "$makever" = ""; then
+  AC_MSG_ERROR(GNU Make not installed  -fatal)
+fi
+
 dnl Set Default CFLAGS
 if test "$GCC" = "yes"; then
     CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
@@ -269,6 +281,7 @@ AC_OUTPUT(\
 	./Make.inc \
 	./Makefile
 	./src/Makefile \
+	./src/include/build-radpaths-h \
 	./src/lib/Makefile \
 	./src/main/Makefile \
 	./src/main/checkrad.pl \

@@ -1,11 +1,15 @@
 #
 # Makefile	Makefile for the cistron-radius package.
 #
-# Version:	@(#)Makefile  1.00 01-Jul-1999  miquels@cistron.nl
+#		NOTE: This top-level Makefile must not
+#		use GNU-make extensions. The lower ones can.
+#
+# Version:	@(#)Makefile  1.10 21-Aug-1999  miquels@cistron.nl
 #
 
 @INCLUDE@ @IQUOTE@Make.inc@IQUOTE@
 
+MAKE		= @MAKE@
 SUBDIRS		= src raddb doc scripts
 WHAT_TO_MAKE	= all
 

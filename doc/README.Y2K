@@ -1,17 +1,19 @@
 
-			Cistron Radius and Y2K
+			FreeRadius and Y2K
 
 
-   I've checked the source code of radiusd-cistron-1.5.4.3-beta15 for
-   obvious Y2K problems (use of tm_year from struct tm for example)
-   and couldn't find any.
+   I've checked the source code of radiusd-cistron-1.5.4.3-beta15 on
+   which FreeRadius is based for obvious Y2K problems (use of tm_year
+   from struct tm for example) and couldn't find any.
 
    This doesn't mean you can sue me if there happens to be a Y2K problem
-   anyway. It does mean that I am pretty sure Cistron Radius will survive
+   anyway. It does mean that I am pretty sure FreeRadius will survive
    31-12-1999 -> 01-01-2000 and that our ISP business will run uninterrupted.
 
+   Anyway, FreeRadius is still in Alpha stage. Perhaps the first 1.0
+   version will be released after 1-1-2000 and we don't need to worry
+   about this Y2K problem anymore.
 
 
-
-   README.Y2K  Miquel van Smoorenburg <miquels@cistron.nl>  26-Mar-1999
+   README.Y2K  Miquel van Smoorenburg <miquels@cistron.nl>  21-Aug-1999
 
