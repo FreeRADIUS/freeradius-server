@@ -196,6 +196,7 @@ int		pam_pass(char *name, char *passwd, const char *pamauth);
 #endif
 
 /* proxy.c */
+int proxy_receive(REQUEST *request);
 int proxy_send(REQUEST *request);
 struct timeval *proxy_setuptimeout(struct timeval *);
 void proxy_retry(void);

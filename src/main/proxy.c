@@ -33,7 +33,6 @@ static uint32_t	proxy_id = 1;
 
 static REQUEST	*proxy_requests = NULL;
 
-#ifdef WITH_OLD_PROXY
 static int allowed [] = {
 	PW_SERVICE_TYPE,
 	PW_FRAMED_PROTOCOL,
@@ -66,32 +65,75 @@ static int trusted_allowed [] = {
 	0,
 };
 
-
 /*
- *	Cleanup old outstanding requests.
+ *	We received a response from a remote radius server.
+ *	Find the original request, then return.
+ *	Returns:   1 replication don't reply
+ *	           0 proxy found
+ *		  -1 error don't reply
  */
-static void proxy_cleanup(void)
+int proxy_receive(REQUEST *request)
 {
-	REQUEST 		*a, *last, *next;
-	time_t			now;
+	VALUE_PAIR	*allowed_pairs;
+	int		i;
+	VALUE_PAIR	*proxypair;
+	VALUE_PAIR	*replicatepair;
+	VALUE_PAIR	*realmpair;
+	int		replicating;
+        REALM           *realm;
+        char            *realmname;
 
-	last = NULL;
-	now  = time(NULL);
+	/*
+	 *	FIXME: calculate md5 checksum!
+	 */
 
-	for (a = proxy_requests; a; a = next) {
-		next = a->next;
-		if (a->timestamp + MAX_REQUEST_TIME < now) {
-			if (last)
-				last->next = a->next;
-			else
-				proxy_requests = a->next;
-			request_free(a);
-			continue;
-		}
-		last = a;
+	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
+	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
+	if(proxypair) {
+		realmpair=proxypair;
+		replicating=0;
+	} else if(replicatepair) {
+		realmpair=replicatepair;
+		replicating=1;
+	} else {
+		log(L_PROXY, "Proxy reply to packet with no Realm");
+		return -1;
 	}
+
+	realmname=realmpair->strvalue;
+        realm = realm_find(realmname);
+	allowed_pairs = NULL;
+
+	/* FIXME - do we want to use the trusted/allowed filters on replicate
+	 * replies, which are not going to be used for anything except maybe
+	 * a log file? */
+	if (realm->trusted) {
+		/*
+		 *	Only allow some attributes to be propagated from
+		 *	the remote server back to the NAS, for security.
+		 */
+		allowed_pairs = NULL;
+		for(i = 0; trusted_allowed[i]; i++)
+			pairmove2(&allowed_pairs, &(request->proxy_reply->vps), trusted_allowed[i]);
+	} else {
+		/*
+		 *	Only allow some attributes to be propagated from
+		 *	the remote server back to the NAS, for security.
+		 */
+		allowed_pairs = NULL;
+		for(i = 0; allowed[i]; i++)
+			pairmove2(&allowed_pairs, &(request->proxy_reply->vps), allowed[i]);
+	}
+	
+	/*
+	 *	Delete the left-over attributes, and move the
+	 *	allowed ones back.
+	 */
+	pairfree(request->proxy_reply->vps);
+	request->proxy_reply->vps = allowed_pairs;
+
+	return replicating?1:0;
 }
-#endif
 
 /*
  *	Add a proxy-pair to the end of the request.
