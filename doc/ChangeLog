@@ -1,5 +1,24 @@
 FreeRADIUS 0.3.0 ; urgency=low
 
+	* Configurable fail-over when proxying packets.  If the
+	  home server doesn't respond to a repeated proxied request,
+	  it's marked as 'dead', and the next one in the list is used.
+	  Patch by Eddie Stassen <eddies@saix.net> and <spirn@21cn.com>
+	* Pass Access-Challenge attributes through the server, in
+	  preparation for EAP.
+	  Raghu <raghud@hereuare.com>
+	* More fixes for RFC compliance on the Message-Authenticator
+	  Raghu <raghud@hereuare.com>
+	* Merged OSFC2/OSFSIA authentication patches from Cistron.
+	  (Bug # 104)  The patches are not well tested, however.
+	* IBM DB2 UDB V7.1 SQL driver, contributed by
+	  Joerg Wendland <wendland@scan-plus.de>
+	* Fix the IP + Port address assignment.
+	  Bug found by "John Padula" <john_padula@aviancommunications.com>
+	* Patch to avoid smashing the contents of Ascend binary filters.
+	  Michael Chernyakhovsky <magmike@mail.ru>
+	* Create and Validate Message-Authenticator attribute, in
+	  preparation for EAP.
 	* Initialize variables properly in rlm_attr_filter.
 	  Patch from Andriy I Pilipenko <bamby@marka.net.ua>
 	* Renamed RedHat init script from 'radiusd.init' to 'radiusd'.
