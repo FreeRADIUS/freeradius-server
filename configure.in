@@ -41,6 +41,9 @@ AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
 
+abs_top_builddir=`pwd`
+AC_SUBST(abs_top_builddir)
+
 dnl # autoconf 2.50 and later
 dnl # AC_SYS_LARGEFILE
 
@@ -260,10 +263,11 @@ dnl #
 AC_ARG_WITH(openssl-includes,
 [  --with-openssl-includes=DIR      Directory to look for OpenSSL include files],
 [ case "$withval" in
-    *)
+    *) OPENSSL_INCLUDE="$withval"
 	;;
   esac ]
 )
+AC_SUBST(OPENSSL_INCLUDE)
 
 dnl #
 dnl # extra argument: --openssl-libraries=dir
@@ -271,10 +275,11 @@ dnl #
 AC_ARG_WITH(openssl-libraries,
 [  --with-openssl-libraries=DIR     Directory to look for OpenSSL library files],
 [ case "$withval" in
-    *)
+    *) OPENSSL_LIBS="$withval"
 	;;
   esac ]
 )
+AC_SUBST(OPENSSL_LIBS)
 
 
 dnl #
@@ -825,6 +830,8 @@ if test x"$rad_enable_largefiles" = xyes ; then
     AC_SUBST(LFS_LIBS)
 fi
 
+AC_SUBST(HOSTINFO, $host)
+
 dnl #############################################################
 dnl #
 dnl #  8. Checks for system services
@@ -837,7 +844,7 @@ dnl #
 top_builddir=`pwd`
 export top_builddir
 AC_MSG_RESULT([top_builddir=$top_builddir])
-AC_SUBST(top_builddir)
+dnl # AC_SUBST(top_builddir)
 AC_SUBST(LIBLTDL)
 AC_SUBST(INCLTDL)
 
@@ -939,10 +946,3 @@ AC_OUTPUT_COMMANDS([echo timestamp > src/include/stamp-h])
 AC_OUTPUT_COMMANDS([(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_OUTPUT_COMMANDS([(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
 AC_OUTPUT_COMMANDS([(cd ./scripts    && chmod +x rc.radiusd radwatch check-radiusd-config radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
-AC_OUTPUT_COMMANDS([
-cat >> src/include/autoconf.h <<EOF
-
-#define HOSTINFO	"$host"
-#define RADIUSD_VERSION "$RADIUSD_VERSION"
-EOF
-],host=$host)
