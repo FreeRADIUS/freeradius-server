@@ -1,5 +1,11 @@
 FreeRADIUS 0.8.1 ; $Date$, urgency=low
 
+	* String length checking in the PAP module, to avoid
+	  false positives in authentications.
+	* Use proper variable for log/error messages, instead of an
+	  uninitialized buffer.
+	* Perform an SQL 'close' on connections, before doing reconnects.
+	  This should fix connection leaks.
 	* Make the server better look for the return code from checkrad.
 	* Fixes to better handle Oracle character types from Stocker Gernot.
 	* Link order fixes for problems with crypt()
