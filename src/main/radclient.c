@@ -70,7 +70,7 @@ static char filesecret[256];
 static VALUE_PAIR *readvp(FILE *fp)
 {
 	char buf[8192];
-	int last_token;
+	LRAD_TOKEN last_token;
 	char *p;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *list;
@@ -209,6 +209,7 @@ int main(int argc, char **argv)
 	int id;
 
 	id = ((int)getpid() & 0xff);
+	librad_debug = 0;
 
 	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xv")) != EOF) switch(c) {
 		case 'c':
@@ -226,7 +227,7 @@ int main(int argc, char **argv)
 			do_output = 0;
 			break;
 		case 'x':
-			librad_debug = 1;
+			librad_debug++;
 			break;
 		case 'r':
 			if (!isdigit(*optarg)) 
