@@ -17,8 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000,2001  The FreeRADIUS server project
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2003  The FreeRADIUS server project
  */
 
 #include "autoconf.h"
@@ -33,62 +32,122 @@
 /*
  *	Compose the response.
  */
-static int eapmschapv2_compose(EAP_DS *eap_ds, VALUE_PAIR *reply)
+static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 {
 	uint8_t *ptr;
-	int code;
-	int length;
+	int16_t length;
+	mschapv2_header_t *hdr;
+	EAP_DS *eap_ds = handler->eap_ds;
 
+	eap_ds->request->code = PW_EAP_REQUEST;
 	eap_ds->request->type.type = PW_EAP_MSCHAPV2;
 
-	if (reply) switch (reply->attribute) {
+	switch (reply->attribute) {
 	case PW_MSCHAP_CHALLENGE:
-	  code = PW_EAP_MSCHAPV2_CHALLENGE;
-	  length = 1 + reply->length;
-	  break;
+		/*
+		 *   0                   1                   2                   3
+		 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *  |     Code      |   Identifier  |            Length             |
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *  |     Type      |   OpCode      |  MS-CHAPv2-ID |  MS-Length...
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *  |   MS-Length   |  Value-Size   |  Challenge...
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *  |                             Challenge...
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *  |                             Name...
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 */
+		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(handler->identity);
+		eap_ds->request->type.data = malloc(length);
+		/*
+		 *	Allocate room for the EAP-MS-CHAPv2 data.
+		 */
+		if (eap_ds->request->type.data == NULL) {
+			radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
+			return 0;
+		}
+		eap_ds->request->type.length = length;
+
+		ptr = eap_ds->request->type.data;
+		hdr = eap_ds->request->type.data;
+
+		hdr->opcode = PW_EAP_MSCHAPV2_CHALLENGE;
+		hdr->mschapv2_id = eap_ds->response->id + 1;
+		length = htons(length);
+		memcpy(hdr->ms_length, &length, sizeof(uint16_t));
+		hdr->value_size = MSCHAPV2_CHALLENGE_LEN;
+		
+		ptr += MSCHAPV2_HEADER_LEN;
+		
+		/*
+		 *	Copy the Challenge, success, or error over.
+		 */
+		memcpy(ptr, reply->strvalue, reply->length);
+		memcpy((ptr + reply->length), handler->identity, strlen(handler->identity));
+		break;
 
 	case PW_MSCHAP2_SUCCESS:
-	  length = 1 + reply->length;
-	  code = PW_EAP_MSCHAPV2_SUCCESS;
-	  break;
+		/*
+		 *   0                   1                   2                   3
+		 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *  |     Code      |   Identifier  |            Length             |
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *  |     Type      |   OpCode      |  MS-CHAPv2-ID |  MS-Length...
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *  |   MS-Length   |                    Message...
+		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 */
+		DEBUG2("MSCHAP Success\n");
+		length = 46;
+		eap_ds->request->type.data = malloc(length);
+		memset(eap_ds->request->type.data, 0, length);
+		/*
+		 *	Allocate room for the EAP-MS-CHAPv2 data.
+		 */
+		if (eap_ds->request->type.data == NULL) {
+			radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
+			return 0;
+		}
+		eap_ds->request->type.length = length;
+
+		eap_ds->request->type.data[0] = PW_EAP_MSCHAPV2_SUCCESS;
+		eap_ds->request->type.data[1] = eap_ds->response->id;
+		length = htons(length);
+		memcpy((eap_ds->request->type.data + 2), &length, sizeof(uint16_t));
+		memcpy((eap_ds->request->type.data + 4), reply->strvalue + 1, 42);
+		break;
 		
 	case PW_MSCHAP_ERROR:
-	  length = 1 + reply->length;
-	  code = PW_EAP_MSCHAPV2_FAILURE;
-	  break;
+		DEBUG2("MSCHAP Failure\n");
+		length = 4 + MSCHAPV2_FAILURE_MESSAGE_LEN;
+		eap_ds->request->type.data = malloc(length);
+		memset(eap_ds->request->type.data, 0, length);
+
+		/*
+		 *	Allocate room for the EAP-MS-CHAPv2 data.
+		 */
+		if (eap_ds->request->type.data == NULL) {
+			radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
+			return 0;
+		}
+		eap_ds->request->type.length = length;
+
+		eap_ds->request->type.data[0] = PW_EAP_MSCHAPV2_FAILURE;
+		eap_ds->request->type.data[1] = eap_ds->response->id;
+		length = htons(length);
+		memcpy((eap_ds->request->type.data + 2), &length, sizeof(uint16_t));
+		memcpy((eap_ds->request->type.data + 4), MSCHAPV2_FAILURE_MESSAGE, MSCHAPV2_FAILURE_MESSAGE_LEN);
+		break;
 		
 	default:
 		radlog(L_ERR, "rlm_eap_mschapv2: Internal sanity check failed");
 		return 0;
 		break;
-	} else {
-	  code = PW_EAP_MSCHAPV2_ACK;
-	  length = 1;
 	}
-
-	/*
-	 *	Allocate room for the EAP-MS-CHAPv2 data.
-	 */
-	eap_ds->request->type.data = malloc(length);
-	if (eap_ds->request->type.data == NULL) {
-		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
-		return 0;
-	}
-	eap_ds->request->type.length = length;
-
-	ptr = eap_ds->request->type.data;
-	*ptr = code;
-
-	/*
-	 *	Just an ACK.  Do nothing more.
-	 */
-	if (!reply) return 1;
-
-	/*
-	 *	Copy the Challenge, success, or error over.
-	 */
-	memcpy(ptr + 1, reply->strvalue, reply->length);
-
+	
 	return 1;
 }
 
@@ -138,7 +197,7 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmschapv2_compose(handler->eap_ds, challenge);
+	eapmschapv2_compose(handler, challenge);
 	pairfree(&challenge);
 
 	/*
@@ -207,10 +266,10 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	a challenge.
 		 */
 		case PW_EAP_MSCHAPV2_RESPONSE:
-		if (data->code != PW_EAP_MSCHAPV2_CHALLENGE) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected response received");
-			return 0;
-		}
+			if (data->code != PW_EAP_MSCHAPV2_CHALLENGE) {
+				radlog(L_ERR, "rlm_eap_mschapv2: Unexpected response received");
+				return 0;
+			}
 
 		/*
 		 *	4 for EAP header, 1 for EAP-MSCHAPv2 code, and
@@ -222,6 +281,10 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		}
 		break;
 
+	case PW_EAP_MSCHAPV2_SUCCESS:
+		eap_ds->request->code = PW_EAP_SUCCESS;
+		return 1;
+		break;
 		/*
 		 *	Something else, we don't know what it is.
 		 */
@@ -254,8 +317,8 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		return 0;
 	}
 	response->length = MSCHAPV2_RESPONSE_LEN;
-	memcpy(response->strvalue, &eap_ds->response->type.data[1],
-	       MSCHAPV2_CHALLENGE_LEN);
+	memcpy(response->strvalue + 2, &eap_ds->response->type.data[5],
+	       MSCHAPV2_RESPONSE_LEN - 2);
 
 	/*
 	 *	Add the pairs to the request, and call the 'mschap'
@@ -278,9 +341,16 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 				     PW_MSCHAP2_SUCCESS);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 	} else {
+		/*
+		 *	Don't return anything in the error message.
+		 */
+		eap_ds->request->code = PW_EAP_FAILURE;
+		return 1;
+#if 0
 		response = paircopy2(handler->request->reply->vps,
 				     PW_MSCHAP_ERROR);
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
+#endif
 	}
 
 	/*
@@ -295,7 +365,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	Compose the response (whatever it is),
 	 *	and return it to the over-lying EAP module.
 	 */
-	eapmschapv2_compose(handler->eap_ds, response);
+	eapmschapv2_compose(handler, response);
 	pairfree(&response);
 
 	return 1;

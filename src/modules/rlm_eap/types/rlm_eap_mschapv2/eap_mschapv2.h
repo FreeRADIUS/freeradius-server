@@ -10,9 +10,18 @@
 #define PW_EAP_MSCHAPV2_FAILURE		4
 #define PW_EAP_MSCHAPV2_MAX_CODES	4
 
-#define MSCHAPV2_HEADER_LEN 	4
+#define MSCHAPV2_HEADER_LEN 	5
 #define MSCHAPV2_CHALLENGE_LEN  16
 #define MSCHAPV2_RESPONSE_LEN  50
+
+#define MSCHAPV2_FAILURE_MESSAGE "E=691 R=0"
+#define MSCHAPV2_FAILURE_MESSAGE_LEN 9
+typedef struct mschapv2_header_t {
+	uint8_t opcode;
+	uint8_t mschapv2_id;
+	uint8_t ms_length[2];
+	uint8_t value_size;
+} mschapv2_header_t;
 
 typedef struct mschapv2_opaque_t {
 	int		code;
