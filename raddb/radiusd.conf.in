@@ -1299,5 +1299,11 @@ post-proxy {
 	#  module, and you MUST list it here, in the post-proxy
 	#  stage.
 	#
+	#  You MUST also use the 'nostrip' option in the 'realm'
+	#  configuration.  Otherwise, the User-Name attribute
+	#  in the proxied request will not match the user name
+	#  hidden inside of the EAP packet, and the end server will
+	#  reject the EAP request.
+	#
 	# eap
 }
