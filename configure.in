@@ -264,11 +264,10 @@ dnl #
 AC_ARG_WITH(openssl-includes,
 [  --with-openssl-includes=DIR      Directory to look for OpenSSL include files],
 [ case "$withval" in
-    *) OPENSSL_INCLUDE="$withval"
+    *) OPENSSL_INCLUDE_DIR="$withval"
 	;;
   esac ]
 )
-AC_SUBST(OPENSSL_INCLUDE)
 
 dnl #
 dnl # extra argument: --openssl-libraries=dir
@@ -276,12 +275,10 @@ dnl #
 AC_ARG_WITH(openssl-libraries,
 [  --with-openssl-libraries=DIR     Directory to look for OpenSSL library files],
 [ case "$withval" in
-    *) OPENSSL_LIBS="$withval"
+    *) OPENSSL_LIB_DIR="$withval"
 	;;
   esac ]
 )
-AC_SUBST(OPENSSL_LIBS)
-
 
 dnl #
 dnl #  These next two arguments don't actually do anything.  They're
@@ -525,15 +522,17 @@ then
   AC_DEFINE(OSFSIA)
 fi
 
-smart_try_dir="$OPENSSL_INCLUDE"
+smart_try_dir="$OPENSSL_INCLUDE_DIR"
 dnl # stupid RedHat shit
 CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
 FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
+OPENSSL_INCLUDE=
+OPENSSL_LIBS=
 if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
   AC_DEFINE(HAVE_OPENSSL_SSL_H)
   old_CPPFLAGS="$CPPFLAGS"
-  if test "x$OPENSSL_INCLUDE" != "x"; then
-      CPPFLAGS="-I$OPENSSL_INCLUDE $CPPFLAGS"
+  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
+      CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
   fi
   AC_CHECK_HEADERS( \
 	  openssl/err.h \
@@ -546,8 +545,8 @@ if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
   AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
        old_CPPFLAGS=$CPPFLAGS
        old_LIBS="$LIBS"
-       if test "x$OPENSSL_INCLUDE" != "x"; then
-           CPPFLAGS="-I$OPENSSL_INCLUDE"
+       if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
+           CPPFLAGS="-I$OPENSSL_INCLUDE_DIR"
 	   fi
        AC_EGREP_CPP(yes,
        [#include <openssl/crypto.h>
@@ -563,20 +562,30 @@ if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
              AC_MSG_RESULT(yes)
 
              # Look for the OpenSSL libraries.
-	     smart_try_dir=$OPENSSL_LIBS
+	     smart_try_dir=$OPENSSL_LIB_DIR
 	     FR_SMART_CHECK_LIB(crypto, DH_new)
 	     if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
 	       FR_SMART_CHECK_LIB(ssl, SSL_new)
-	       if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
+	       if test "x$ac_cv_lib_ssl_SSL_new" = "xyes"; then
+                 if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
+		   OPENSSL_INCLUDE="-I$OPENSSL_INCLUDE_DIR"
+	         fi
+		 if test "x$OPENSSL_LIB_DIR" != "x"; then
+		   OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
+	         fi
+                 OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
+	       else
 		 OPENSSL_INCLUDE=
 		 OPENSSL_LIBS=
 	       fi
-	       export OPENSSL_INCLUDE OPENSSL_LIBS
 	     fi
            fi
        CPPFLAGS=$old_CPPFLAGS
        LIBS="$old_LIBS"
 fi
+AC_SUBST(OPENSSL_INCLUDE)
+AC_SUBST(OPENSSL_LIBS)
+export OPENSSL_LIBS
 
 dnl #############################################################
 dnl #

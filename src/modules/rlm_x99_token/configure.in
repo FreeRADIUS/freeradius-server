@@ -15,25 +15,9 @@ if test x$with_[]modname != xno; then
 		[ fail="$fail inttypes.h" ]
 	)
 
-	dnl mostly for openssl
-	AC_ARG_WITH(rlm-x99-token-lib-dir,
-		    [  --with-rlm-x99-token-lib-dir directory for x99_token libs],
-		    x99_token_ldflags="$x99_token_ldflags -L$withval")
-	AC_ARG_WITH(rlm-x99-token-include-dir,
-		    [  --with-rlm-x99-token-include-dir directory for x99_token includes],
-		    x99_token_cflags="$x99_token_cflags -I$withval")
-
-	dnl #
-	dnl # extra argument: --openssl-includes=dir
-	dnl #
-	AC_ARG_WITH(openssl-includes,
-	[  --with-openssl-includes=DIR       Directory to look for OpenSSL include files],
-	[ case "$withval" in
-	    *)
-		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
-		;;
-	  esac ]
-	)
+	if test "x$OPENSSL_LIBS" = "x"; then
+		fail="$fail OpenSSL"
+	fi
 
 	targetname=modname     # keep this!  Don't change!
 else
@@ -56,8 +40,6 @@ x99_token_cflags="$x99_token_cflags -DX99_MODULE_NAME=\\\"modname\\\" $SMART_CFL
 x99_token_cflags="$x99_token_cflags -DFREERADIUS"
 AC_SUBST(x99_token_cflags)
 AC_SUBST(x99_token_ldflags)
-
-dnl AC_CONFIG_HEADER(config.h)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(Makefile)  # keep this!  Don't change!

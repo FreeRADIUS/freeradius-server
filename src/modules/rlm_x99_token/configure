@@ -837,13 +837,6 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
-Optional Packages:
-  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
-  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm-x99-token-lib-dir directory for x99_token libs
-  --with-rlm-x99-token-include-dir directory for x99_token includes
-  --with-openssl-includes=DIR       Directory to look for OpenSSL include files
-
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -2746,30 +2739,9 @@ fi
 
 
 
-
-# Check whether --with-rlm-x99-token-lib-dir or --without-rlm-x99-token-lib-dir was given.
-if test "${with_rlm_x99_token_lib_dir+set}" = set; then
-  withval="$with_rlm_x99_token_lib_dir"
-  x99_token_ldflags="$x99_token_ldflags -L$withval"
-fi;
-
-# Check whether --with-rlm-x99-token-include-dir or --without-rlm-x99-token-include-dir was given.
-if test "${with_rlm_x99_token_include_dir+set}" = set; then
-  withval="$with_rlm_x99_token_include_dir"
-  x99_token_cflags="$x99_token_cflags -I$withval"
-fi;
-
-
-# Check whether --with-openssl-includes or --without-openssl-includes was given.
-if test "${with_openssl_includes+set}" = set; then
-  withval="$with_openssl_includes"
-   case "$withval" in
-	    *)
-		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
-		;;
-	  esac
-
-fi;
+	if test "x$OPENSSL_LIBS" = "x"; then
+		fail="$fail OpenSSL"
+	fi
 
 	targetname=rlm_x99_token     # keep this!  Don't change!
 else
@@ -2793,7 +2765,6 @@ fi
 
 x99_token_cflags="$x99_token_cflags -DX99_MODULE_NAME=\\\"rlm_x99_token\\\" $SMART_CFLAGS"
 x99_token_cflags="$x99_token_cflags -DFREERADIUS"
-
 
 
 
