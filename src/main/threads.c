@@ -375,6 +375,8 @@ int thread_pool_init(void)
 	THREAD_HANDLE	*handle;
 	CONF_SECTION	*pool_cf;
 
+	DEBUG("Initializing the thread pool...");
+
 	/*
 	 *	Initialize the thread pool to some reasonable values.
 	 */
