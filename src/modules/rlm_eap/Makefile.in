@@ -32,7 +32,7 @@ radeapclient.o: radeapclient.c $(INCLUDES)
 allclean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
 
-install-types:
+install-types: radeapclient
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 	$(INSTALL) -m 755 radeapclient	$(R)$(bindir)
 
