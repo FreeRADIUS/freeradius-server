@@ -108,6 +108,9 @@
  * Feb 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Add support for ldap_initialize. That way we can specify the server as an ldap url.
  *	  Based on ideas from Derrik Pates <dpates@dsdk12.net>
+ * Mar 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * 	- Add an ldap_escape_func. Escape the * character from the filter so that we can avoid
+ * 	  the trivial DoS of username=*
  */
 static const char rcsid[] = "$Id$";
 
@@ -639,6 +642,40 @@ retry:
 
 
 /*
+ *	Translate the LDAP queries.
+ */
+static int ldap_escape_func(char *out, int outlen, const char *in)
+{
+	int len = 0;
+	
+	while (in[0]) {
+		/*
+		 *  Only one byte left.
+		 */
+		if (outlen <= 1) {
+			break;
+		}
+		
+		if (strchr("*", *in)) {
+			in++;
+			outlen--;
+			continue;
+		}
+		
+		/*
+		 *	Else it's a nice character.
+		 */
+		*out = *in;
+		out++;
+		in++;
+		outlen--;
+		len++;
+	}
+	*out = '\0';
+	return len;
+}
+
+/*
  * ldap_groupcmp(). Implement the Ldap-Group == "group" filter
  */
 
@@ -683,7 +720,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
                 char            *user_dn = NULL;
 
                 if (!radius_xlat(filter, sizeof(filter), inst->filter,
-					req, NULL)){
+					req, ldap_escape_func)){
                         DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter");
                         return 1;
                 }
@@ -984,7 +1021,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	       request->username->strvalue);
 
 	if (!radius_xlat(filter, sizeof(filter), inst->filter,
-			 request, NULL)) {
+			 request, ldap_escape_func)) {
 		radlog (L_ERR, "rlm_ldap: unable to create filter.\n");
 		return RLM_MODULE_INVALID;
 	}
