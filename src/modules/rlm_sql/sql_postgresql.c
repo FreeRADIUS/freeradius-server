@@ -25,7 +25,7 @@ int sql_connect(void) {
                 sql->config.sql_db,
                 sql->config.sql_login,
                 sql->config.sql_password))) {
-             log(L_ERR, "Init: Couldn't connect authentication socket to Postgres SQL server on %s as %s",
+             radlog(L_ERR, "Init: Couldn't connect authentication socket to Postgres SQL server on %s as %s",
                         sql->config.sql_server, sql->config.sql_login);
              sql->AuthSock->conn = NULL;
         }
@@ -37,7 +37,7 @@ int sql_connect(void) {
                 sql->config.sql_db,
                 sql->config.sql_login,
                 sql->config.sql_password))) {
-             log(L_ERR, "Init: Couldn't connect accounting socket to Postgres SQL server on %s as %s",
+             radlog(L_ERR, "Init: Couldn't connect accounting socket to Postgres SQL server on %s as %s",
                         sql->config.sql_server, sql->config.sql_login);
              sql->AcctSock->conn = NULL;
         }
@@ -58,7 +58,7 @@ int sql_checksocket(const char *facility) {
         if ((strncmp(facility, "Auth", 4) == 0)) {
                 if (sql->AuthSock->conn == NULL) {
                         if (sql->config.sql_keepopen)
-                                log(L_ERR, "%s: Keepopen set but had to reconnect to Postgres SQL", facility);
+                                radlog(L_ERR, "%s: Keepopen set but had to reconnect to Postgres SQL", facility);
                         /* Connect to the database server */
                         if (!(sql->AuthSock->conn = PQsetdbLogin(
                                 sql->config.sql_server,
@@ -68,7 +68,7 @@ int sql_checksocket(const char *facility) {
                                 sql->config.sql_login,
                                 sql->config.sql_password,
                                 sql->config.sql_db))) {
-                                log(L_ERR, "Auth: Couldn't connect authentication socket to Postgres SQL server on %s as %s",
+                                radlog(L_ERR, "Auth: Couldn't connect authentication socket to Postgres SQL server on %s as %s",
                                 sql->config.sql_server, sql->config.sql_login);
                                 sql->AuthSock->conn = NULL;
                                 return 0;
@@ -77,7 +77,7 @@ int sql_checksocket(const char *facility) {
         } else {
                 if (sql->AcctSock->conn == NULL) {
                         if (sql->config.sql_keepopen)
-                                log(L_ERR, "%s: Keepopen set but had to reconnect to Postgres SQL", facility);
+                                radlog(L_ERR, "%s: Keepopen set but had to reconnect to Postgres SQL", facility);
                         /* Connect to the database ******/
 SQL_ROW sql_fetch_row(SQLSOCK *socket) {
         int fields,tuples;
@@ -125,7 +125,7 @@ void sql_free_result(SQLSOCK *socket) {
  *************************************************************************/
 char *sql_error(SQLSOCK *socket) {
 
-        log(L_ERR,"PQSQL error: %s",PQerrorMessage(socket->conn));
+        radlog(L_ERR,"PQSQL error: %s",PQerrorMessage(socket->conn));
 
 }
 

@@ -101,7 +101,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	}
 
 	if ((passwd = fopen(passwd_file, "r")) == NULL) {
-		log(L_ERR, "HASH:  Can't open file %s: %s",
+		radlog(L_ERR, "HASH:  Can't open file %s: %s",
 		    passwd_file, strerror(errno));
 		return -1;
 	} else {
@@ -113,7 +113,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			for(ptr = bufptr; *ptr!=':'; ptr++);
 			len = ptr - bufptr;
 			if((len+1) > MAXUSERNAME) {
-				log(L_ERR, "HASH:  Username too long in line: %s", buffer);
+				radlog(L_ERR, "HASH:  Username too long in line: %s", buffer);
 			}
 			strncpy(username, buffer, len);
 			username[len] = '\0';
@@ -124,14 +124,14 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	
 			/* Allocate space for structure to go in hashtable */
 			if((new = (struct mypasswd *)malloc(sizeof(struct mypasswd))) == NULL) {
-				log(L_ERR, "HASH:  Out of memory!");
+				radlog(L_ERR, "HASH:  Out of memory!");
 				return -1;
 			}
 			memset((struct mypasswd *)new, 0, sizeof(struct mypasswd));
 
 			/* Put username into new structure */
 			if((new->pw_name = (char *)malloc(strlen(username)+1)) == NULL) {
-				log(L_ERR, "HASH:  Out of memory!");
+				radlog(L_ERR, "HASH:  Out of memory!");
 				return -1;
 			}
 			strncpy(new->pw_name, username, strlen(username)+1);
@@ -147,7 +147,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			/* Put passwords into new structure (*/
 			len = ptr - bufptr;
 			if((new->pw_passwd = (char *)malloc(len+1)) == NULL) {
-				log(L_ERR, "HASH:  Out of memory!");
+				radlog(L_ERR, "HASH:  Out of memory!");
 				return -1;
 			}
 			strncpy(new->pw_passwd, bufptr, len);
@@ -203,7 +203,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	 *	FIXME: Check for password expiry!
 	 */
 	if ((shadow = fopen(shadow_file, "r")) == NULL) {
-		log(L_ERR, "HASH:  Can't open file %s: %s",
+		radlog(L_ERR, "HASH:  Can't open file %s: %s",
 		    shadow_file, strerror(errno));
 		return -1;
 	} else {
@@ -214,12 +214,12 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			for(ptr = bufptr; *ptr!=':'; ptr++);
 			len = ptr - bufptr;
 			if((len+1) > MAXUSERNAME) {
-				log(L_ERR, "HASH:  Username too long in line: %s", buffer);
+				radlog(L_ERR, "HASH:  Username too long in line: %s", buffer);
 			}
 			strncpy(username, buffer, len);
 			username[len] = '\0';
 			if((new = findHashUser(username)) == NULL) {
-				log(L_ERR, "HASH:  Username %s in shadow but not passwd??", username);
+				radlog(L_ERR, "HASH:  Username %s in shadow but not passwd??", username);
 				continue;
 			}
 
@@ -231,7 +231,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			len = ptr - bufptr;
 
 			if((new->pw_passwd = (char *)malloc(len+1)) == NULL) {
-				log(L_ERR, "HASH:  Out of memory!");
+				radlog(L_ERR, "HASH:  Out of memory!");
 				return -1;
 			}
 			strncpy(new->pw_passwd, bufptr, len);
@@ -246,7 +246,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 	unix_hashradutmp();
 
 	/* log how many entries we stored from the passwd file */
-	log(L_INFO, "HASH:  Stored %d entries from %s", numread, passwd_file);
+	radlog(L_INFO, "HASH:  Stored %d entries from %s", numread, passwd_file);
 
 	return 0;
 }
@@ -292,7 +292,7 @@ int unix_buildGrpList(void) {
 
 		/* Make new mygroup structure in mem */
 		if((new = (struct mygroup *)malloc(sizeof(struct mygroup))) == NULL) {
-			log(L_ERR, "HASH:  (buildGrplist) Out of memory!");
+			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
 			return -1;
 		}
 		memset((struct mygroup*)new, 0, sizeof(struct mygroup));
@@ -300,7 +300,7 @@ int unix_buildGrpList(void) {
 		/* copy grp entries to my structure */
 		len = strlen(grp->gr_name);
 		if((new->gr_name = (char *)malloc(len+1)) == NULL) {
-			log(L_ERR, "HASH:  (buildGrplist) Out of memory!");
+			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
 			return -1;
 		}
 		strncpy(new->gr_name, grp->gr_name, len);
@@ -308,7 +308,7 @@ int unix_buildGrpList(void) {
 		
 		len = strlen(grp->gr_passwd);
 		if((new->gr_passwd= (char *)malloc(len+1)) == NULL) {
-			log(L_ERR, "HASH:  (buildGrplist) Out of memory!");
+			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
 			return -1;
 		}
 		strncpy(new->gr_passwd, grp->gr_passwd, len);
@@ -322,7 +322,7 @@ int unix_buildGrpList(void) {
 		for(member = grp->gr_mem; *member!=NULL; member++);
 		len = member - grp->gr_mem;
 		if((new->gr_mem = (char **)malloc((len+1)*sizeof(char **))) == NULL) {
-			log(L_ERR, "HASH:  (buildGrplist) Out of memory!");
+			radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
 			return -1;
 		}
 		/* Now go back and copy individual users into it */
@@ -330,7 +330,7 @@ int unix_buildGrpList(void) {
 			len2 = strlen(*member);
 			idx = member - grp->gr_mem;
 			if((new->gr_mem[idx] = (char *)malloc(len2+1)) == NULL) {
-				log(L_ERR, "HASH:  (buildGrplist) Out of memory!");
+				radlog(L_ERR, "HASH:  (buildGrplist) Out of memory!");
 				return -1;
 			}
 			strncpy(new->gr_mem[idx], *member, len2);
@@ -349,7 +349,7 @@ int unix_buildGrpList(void) {
 	/* End */
 	endgrent();
 
-	log(L_INFO, "HASH:  Stored %d entries from /etc/group", numread);
+	radlog(L_INFO, "HASH:  Stored %d entries from /etc/group", numread);
 
 	return 0;
 }

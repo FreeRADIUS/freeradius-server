@@ -25,13 +25,13 @@ SQLSOCK *sql_create_socket(void) {
 	SQLSOCK *socket;
 
 	if ((socket = malloc(sizeof(SQLSOCK))) == NULL) {
-		log(L_CONS|L_ERR, "sql_create_socket: no memory");
+		radlog(L_CONS|L_ERR, "sql_create_socket: no memory");
 		exit(1);
 	}
 
 	mysql_init(&(socket->conn));
 	if (!(socket->sock = mysql_real_connect(&(socket->conn), sql->config->sql_server, sql->config->sql_login, sql->config->sql_password, sql->config->sql_db, 0, NULL, 0))) {
-		log(L_ERR, "Init: Couldn't connect socket to MySQL server %s@%s:%s", sql->config->sql_login, sql->config->sql_server, sql->config->sql_db);
+		radlog(L_ERR, "Init: Couldn't connect socket to MySQL server %s@%s:%s", sql->config->sql_login, sql->config->sql_server, sql->config->sql_db);
 		socket->sock = NULL;
 		return NULL;
 	}
@@ -50,7 +50,7 @@ int sql_query(SQLSOCK *socket, char *querystr) {
 	if (sql->config->sqltrace)
 		DEBUG(querystr);
 	 if (socket->sock == NULL) {
-		log(L_ERR, "Socket not connected");
+		radlog(L_ERR, "Socket not connected");
 		return 0;
 	}
 	return mysql_query(socket->sock, querystr);
@@ -69,7 +69,7 @@ int sql_select_query(SQLSOCK *socket, char *querystr) {
 	if (sql->config->sqltrace)
 		DEBUG(querystr);
 	if (socket->sock == NULL) {
-		log(L_ERR, "Socket not connected");
+		radlog(L_ERR, "Socket not connected");
 		return 0;
 	}
 	mysql_query(socket->sock, querystr);
@@ -91,12 +91,12 @@ int sql_select_query(SQLSOCK *socket, char *querystr) {
 int sql_store_result(SQLSOCK *socket) {
 
 	if (socket->sock == NULL) {
-		log(L_ERR, "Socket not connected");
+		radlog(L_ERR, "Socket not connected");
 		return 0;
 	}
 	if (!(socket->result = mysql_store_result(socket->sock))) {
-		log(L_ERR,"MYSQL Error: Cannot get result");
-		log(L_ERR,"MYSQL Error: %s",mysql_error(socket->sock));
+		radlog(L_ERR,"MYSQL Error: Cannot get result");
+		radlog(L_ERR,"MYSQL Error: %s",mysql_error(socket->sock));
 		return 0;
 	}
 	return 1;
@@ -120,8 +120,8 @@ int sql_num_fields(SQLSOCK *socket) {
 #else
 	if (!(num = mysql_num_fields(socket->sock))) {
 #endif
-		log(L_ERR,"MYSQL Error: Cannot get result");
-		log(L_ERR,"MYSQL error: %s",mysql_error(socket->sock));
+		radlog(L_ERR,"MYSQL Error: Cannot get result");
+		radlog(L_ERR,"MYSQL error: %s",mysql_error(socket->sock));
 	}
 	return num;
 }

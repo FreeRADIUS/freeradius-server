@@ -110,7 +110,7 @@ static int dbm_find(DBM *dbmfile, char *name, VALUE_PAIR *request_pairs,
 	contentd.dptr[contentd.dsize] = '\0';
 
 	if (*ptr != '\n' && userparse(ptr, &check_tmp) != 0) {
-		log(L_ERR|L_CONS, "Parse error (check) for user %s", name);
+		radlog(L_ERR|L_CONS, "Parse error (check) for user %s", name);
 		pairfree(check_tmp);
 		return -1;
 	}
@@ -118,7 +118,7 @@ static int dbm_find(DBM *dbmfile, char *name, VALUE_PAIR *request_pairs,
 		ptr++;
 	}
 	if(*ptr != '\n') {
-		log(L_ERR|L_CONS, "Parse error (no reply pairs) for user %s",
+		radlog(L_ERR|L_CONS, "Parse error (no reply pairs) for user %s",
 			name);
 		pairfree(check_tmp);
 		return -1;
@@ -129,7 +129,7 @@ static int dbm_find(DBM *dbmfile, char *name, VALUE_PAIR *request_pairs,
 	 *	Parse the reply values
 	 */
 	if (userparse(ptr, &reply_tmp) != 0) {
-		log(L_ERR|L_CONS, "Parse error (reply) for user %s", name);
+		radlog(L_ERR|L_CONS, "Parse error (reply) for user %s", name);
 		pairfree(check_tmp);
 		pairfree(reply_tmp);
 		return -1;
@@ -267,7 +267,7 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list)
         if (!use_dbm &&
             (checkdbm(filename, ".dir") == 0 ||
              checkdbm(filename, ".db") == 0)) {
-                log(L_INFO|L_CONS, "DBM files found but no -b flag " "given - NOT using DBM");
+                radlog(L_INFO|L_CONS, "DBM files found but no -b flag " "given - NOT using DBM");
         }
 #endif
 
@@ -410,7 +410,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 
         inst = malloc(sizeof *inst);
         if (!inst) {
-                log(L_ERR|L_CONS, "Out of memory\n");
+                radlog(L_ERR|L_CONS, "Out of memory\n");
                 return -1;
         }
 
@@ -427,7 +427,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 
 	rcode = getusersfile(inst->usersfile, &inst->users);
         if (rcode != 0) {
-                log(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
+                radlog(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
                 free(inst->usersfile);
                 free(inst->acctusersfile);
                 free(inst);
@@ -436,7 +436,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 
 	rcode = getusersfile(inst->acctusersfile, &inst->acctusers);
         if (rcode != 0) {
-                log(L_ERR|L_CONS, "Errors reading %s", inst->acctusersfile);
+                radlog(L_ERR|L_CONS, "Errors reading %s", inst->acctusersfile);
                 pairlist_free(&inst->users);
                 free(inst->usersfile);
                 free(inst->acctusersfile);
@@ -504,7 +504,7 @@ static int file_authorize(void *instance, REQUEST *request,
 		if ((dbmfile = dbm_open(inst->usersfile, O_RDONLY, 0)) == NULL)
 #endif
 		{
-			log(L_ERR|L_CONS, "cannot open dbm file %s",
+			radlog(L_ERR|L_CONS, "cannot open dbm file %s",
 				buffer);
 			return RLM_MODULE_FAIL;
 		}
@@ -720,7 +720,7 @@ static int file_preacct(void *instance, REQUEST *request)
 		if ((dbmfile = dbm_open(inst->acctusersfile, O_RDONLY, 0)) == NULL)
 #endif
 		{
-			log(L_ERR|L_CONS, "cannot open dbm file %s",
+			radlog(L_ERR|L_CONS, "cannot open dbm file %s",
 				buffer);
 			return RLM_MODULE_FAIL;
 		}
@@ -859,10 +859,10 @@ static int file_accounting(void *instance, REQUEST *request)
 	sprintf(buffer, "%s/%s/%s", radacct_dir, nasname, "detail");
 	if ((outfd = open(buffer, O_WRONLY|O_APPEND|O_CREAT,
 			  inst->detailperm)) < 0) {
-		log(L_ERR, "Acct: Couldn't open file %s", buffer);
+		radlog(L_ERR, "Acct: Couldn't open file %s", buffer);
 		ret = RLM_MODULE_FAIL;
 	} else if ((outfp = fdopen(outfd, "a")) == NULL) {
-		log(L_ERR, "Acct: Couldn't open file %s: %s",
+		radlog(L_ERR, "Acct: Couldn't open file %s: %s",
 		    buffer, strerror(errno));
 		ret = RLM_MODULE_FAIL;
 		close(outfd);

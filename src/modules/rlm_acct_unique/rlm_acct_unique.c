@@ -73,7 +73,7 @@ static int unique_accounting(void *instance, REQUEST *request)
      */
     vp = paircreate(PW_ACCT_SESSION_START_TIME, PW_TYPE_DATE);
     if (!vp) {
-	    log(L_ERR, "%s", librad_errstr);
+	    radlog(L_ERR, "%s", librad_errstr);
 	    return RLM_MODULE_FAIL;
     }
     vp->lvalue = start_time;
@@ -104,7 +104,7 @@ static int unique_accounting(void *instance, REQUEST *request)
   
   vp = pairmake("Acct-Unique-Session-Id", buffer, 0);
   if (!vp) {
-	  log(L_ERR, "%s", librad_errstr);
+	  radlog(L_ERR, "%s", librad_errstr);
 	  return RLM_MODULE_FAIL;
   }
 

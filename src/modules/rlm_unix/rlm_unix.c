@@ -122,7 +122,7 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 	static int alreadydone=0;
 
 	if (alreadydone) {
-		log(L_ERR,
+		radlog(L_ERR,
 		    "rlm_unix: can't handle multiple authentication instances");
 		return -1;
 	}
@@ -131,15 +131,15 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	if (cache_passwd) {
-		log(L_INFO, "HASH:  Reinitializing hash structures "
+		radlog(L_INFO, "HASH:  Reinitializing hash structures "
 			"and lists for caching...");
 		if (unix_buildHashTable(passwd_file, shadow_file) < 0) {
-			log(L_ERR, "HASH:  unable to create user "
+			radlog(L_ERR, "HASH:  unable to create user "
 				"hash table.  disable caching and run debugs");
 			return -1;
 		}
 		if (unix_buildGrpList() < 0) {
-			log(L_ERR, "HASH:  unable to cache groups file.  "
+			radlog(L_ERR, "HASH:  unable to cache groups file.  "
 				"disable caching and run debugs");
 			return -1;
 		}
@@ -194,7 +194,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		log(L_AUTH, "rlm_unix: Attribute \"User-Name\" is required for authentication.");
+		radlog(L_AUTH, "rlm_unix: Attribute \"User-Name\" is required for authentication.");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -203,7 +203,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *	a Password attribute.
 	 */
 	if (!request->password) {
-		log(L_AUTH, "rlm_unix: Attribute \"Password\" is required for authentication.");
+		radlog(L_AUTH, "rlm_unix: Attribute \"Password\" is required for authentication.");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -212,7 +212,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *  and not anything else.
 	 */
 	if (request->password->attribute != PW_PASSWORD) {
-		log(L_AUTH, "rlm_unix: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+		radlog(L_AUTH, "rlm_unix: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_REJECT;
 	}
 
@@ -254,7 +254,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *	Users with a certain shell are always denied access.
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
-		log(L_AUTH, "rlm_unix: [%s]: invalid shell", name);
+		radlog(L_AUTH, "rlm_unix: [%s]: invalid shell", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -281,7 +281,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 */
 	if (spwd && spwd->sp_expire > 0 &&
 	    (time(NULL) / 86400) > spwd->sp_expire) {
-		log(L_AUTH, "rlm_unix: [%s]: password has expired", name);
+		radlog(L_AUTH, "rlm_unix: [%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -291,7 +291,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *	Check if password has expired.
 	 */
 	if (pwd->pw_expire > 0 && time(NULL) > pwd->pw_expire) {
-		log(L_AUTH, "rlm_unix: [%s]: password has expired", name);
+		radlog(L_AUTH, "rlm_unix: [%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -301,7 +301,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *	Check if account is locked.
 	 */
 	if (pr_pw->uflg.fg_lock!=1) {
-		log(L_AUTH, "rlm_unix: [%s]: account locked", name);
+		radlog(L_AUTH, "rlm_unix: [%s]: account locked", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif /* OSFC2 */
@@ -378,7 +378,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE))==NULL) {
-		log(L_ERR, "Accounting: no Accounting-Status-Type record.");
+		radlog(L_ERR, "Accounting: no Accounting-Status-Type record.");
 		return RLM_MODULE_OK;
 	}
 	status = vp->lvalue;

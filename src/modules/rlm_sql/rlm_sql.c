@@ -101,7 +101,7 @@ static int rlm_sql_init(void) {
 	int	reload = 0;
 
 	if ((sql = malloc(sizeof(SQL))) == NULL) {
-		log(L_ERR|L_CONS, "no memory");
+		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 
@@ -109,7 +109,7 @@ static int rlm_sql_init(void) {
         if (reload)
                 free(sql->config);
         if ((sql->config = malloc(sizeof(SQL_CONFIG))) == NULL) {
-                log(L_ERR|L_CONS, "no memory");
+                radlog(L_ERR|L_CONS, "no memory");
                 exit(1);
         }
 */
@@ -141,7 +141,7 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
         *      Check for valid input, zero length names not permitted
         */
        if (name[0] == 0) {
-               log(L_ERR, "zero length username not permitted\n");
+               radlog(L_ERR, "zero length username not permitted\n");
                return -1;
        }
 
@@ -224,7 +224,7 @@ static int rlm_sql_authenticate(REQUEST *request) {
 	if ((request->password == NULL) ||
 	    (request->password->length == 0) ||
 	    (request->password->attribute != PW_PASSWORD)) {
-		log(L_AUTH, "rlm_sql: Attribute \"Password\" is required for authentication.");
+		radlog(L_AUTH, "rlm_sql: Attribute \"Password\" is required for authentication.");
 		return RLM_MODULE_REJECT;
 	}
 	
@@ -236,7 +236,7 @@ static int rlm_sql_authenticate(REQUEST *request) {
 	if ((querystr = malloc(strlen(escaped_user) +
 			       strlen(sql->config->sql_authcheck_table) +
 			       sizeof(query))) == NULL) {
-                log(L_ERR|L_CONS, "no memory");
+                radlog(L_ERR|L_CONS, "no memory");
                 exit(1);
         }
 	
@@ -268,7 +268,7 @@ static int rlm_sql_accounting(REQUEST *request) {
 
 
         if ((sqlrecord = malloc(sizeof(SQLACCTREC))) == NULL) {
-                log(L_ERR|L_CONS, "no memory");
+                radlog(L_ERR|L_CONS, "no memory");
                 exit(1);        
         }
         

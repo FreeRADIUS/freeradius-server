@@ -84,7 +84,7 @@ int sql_init(CONF_PARSER *module_config, SQL_CONFIG *config, int reload) {
 
 	sql->config = config;
 
-       log(L_INFO,"SQL: Attempting to connect to %s@%s:%s", sql->config->sql_login, sql->config->sql_server, sql->config->sql_db);
+       radlog(L_INFO,"SQL: Attempting to connect to %s@%s:%s", sql->config->sql_login, sql->config->sql_server, sql->config->sql_db);
 
        sql_init_socket(reload);
            
@@ -107,13 +107,13 @@ int sql_init_socket(int reload) {
 	if (reload)
 	        for (i = 0; i < sql->config->max_sql_socks; i++)
 			if (!sql_close_socket(sql->socks[i]))
-				log(L_CONS|L_ERR, "Could not release socket %d", i);
+				radlog(L_CONS|L_ERR, "Could not release socket %d", i);
 	
 
         /* Initalize our connection pool */
         for (i = 0; i < sql->config->max_sql_socks; i++) {
 	 	if ((sql->socks[i] = sql_create_socket()) == NULL) {
-	   		log(L_CONS|L_ERR, "SQL: Failed to connect socket %d", i);
+	   		radlog(L_CONS|L_ERR, "SQL: Failed to connect socket %d", i);
 		} else {
 	   		sql->socks[i]->id = i;
            		sql->socks[i]->in_use = 0;
@@ -215,7 +215,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
 
 
      if((sqlfile = fopen(SQLQUERYLOG, "a")) == (FILE *)NULL) {
-            log(L_ERR, "Acct: Couldn't open file %s", SQLQUERYLOG);
+            radlog(L_ERR, "Acct: Couldn't open file %s", SQLQUERYLOG);
      } else { 
         #if defined(F_LOCK) && !defined(BSD)
               (void)lockf((int)sqlfile, (int)F_LOCK, (off_t)SQL_LOCK_LEN);
@@ -239,7 +239,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
 #endif /* NT_DOMAIN_HACK */
 
      if (sqlrecord->AcctStatusTypeId == PW_STATUS_ACCOUNTING_ON || sqlrecord->AcctStatusTypeId == PW_STATUS_ACCOUNTING_OFF) {
-        log(L_INFO, "Portmaster %s rebooted at %s", sqlrecord->NASIPAddress, sqlrecord->AcctTimeStamp);
+        radlog(L_INFO, "Portmaster %s rebooted at %s", sqlrecord->NASIPAddress, sqlrecord->AcctTimeStamp);
   
          /* The Terminal server informed us that it was rebooted
          * STOP all records from this NAS */
@@ -247,7 +247,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
          sprintf(querystr, "UPDATE %s SET AcctStopTime='%s', AcctSessionTime=unix_timestamp('%s') - unix_timestamp(AcctStartTime), AcctTerminateCause='%s', AcctStopDelay = %ld WHERE AcctSessionTime=0 AND AcctStopTime=0 AND NASIPAddress= '%s' AND AcctStartTime <= '%s'", sql->config->sql_acct_table, sqlrecord->AcctTimeStamp, sqlrecord->AcctTimeStamp, sqlrecord->AcctTerminateCause, sqlrecord->AcctDelayTime, sqlrecord->NASIPAddress, sqlrecord->AcctTimeStamp);
 
        	 if (sql_query(socket, querystr) < 0)
-	      log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(socket));
+	      radlog(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(socket));
 	 sql_finish_query(socket);
 
          if (sqlfile) {
@@ -261,7 +261,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
 	if (sqlrecord->AcctStatusTypeId == PW_STATUS_ALIVE) {
 		sprintf(querystr, "UPDATE %s SET FramedIPAddress = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress= '%s'", sql->config->sql_acct_table, sqlrecord->FramedIPAddress, sqlrecord->AcctSessionId, sqlrecord->UserName, sqlrecord->NASIPAddress);
 		if (sql_query(socket, querystr) < 0)
-			log(L_ERR, "Acct: Couldn't update SQL accounting for ALIVE packet - %s", sql_error(socket));
+			radlog(L_ERR, "Acct: Couldn't update SQL accounting for ALIVE packet - %s", sql_error(socket));
 		sql_finish_query(socket);
 
 		if (sqlfile) {
@@ -285,7 +285,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
              sqlrecord->NASIPAddress
              );
        	     if (sql_query(socket, querystr) < 0)
-	        log(L_ERR, "Acct: Couldn't update SQL accounting START record - %s", sql_error(socket));
+	        radlog(L_ERR, "Acct: Couldn't update SQL accounting START record - %s", sql_error(socket));
 	     sql_finish_query(socket);
 
              num = sql_affected_rows(socket);
@@ -312,7 +312,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
                 );                  
 
        	        if (sql_query(socket, querystr) < 0)
-	   	  log(L_ERR, "Acct: Couldn't insert SQL accounting START record - %s", sql_error(socket));
+	   	  radlog(L_ERR, "Acct: Couldn't insert SQL accounting START record - %s", sql_error(socket));
 		sql_finish_query(socket);
              }
 
@@ -342,7 +342,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
 
 
        	        if (sql_query(socket, querystr) < 0)
-	           log(L_ERR, "Acct: Couldn't update SQL accounting STOP record - %s", sql_error(socket));
+	           radlog(L_ERR, "Acct: Couldn't update SQL accounting STOP record - %s", sql_error(socket));
 		sql_finish_query(socket);
 
              } else if (num == 0) {
@@ -351,7 +351,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
 		/* If stop but zero session length AND no previous session found, drop it as in invalid packet */
 		/* This is to fix CISCO's aaa from filling our table with bogus crap */
 		if (sqlrecord->AcctSessionTime <= 0) {
-			log(L_ERR, "Acct: Invalid STOP record. [%s] STOP record but zero session length? (nas %s)", sqlrecord->UserName, sqlrecord->NASIPAddress);
+			radlog(L_ERR, "Acct: Invalid STOP record. [%s] STOP record but zero session length? (nas %s)", sqlrecord->UserName, sqlrecord->NASIPAddress);
 			return 0;
 		}
 #endif
@@ -381,7 +381,7 @@ int sql_save_acct(SQLSOCK *socket, SQLACCTREC *sqlrecord) {
                 );                  
 
        	        if (sql_query(socket, querystr) < 0)
-		   log(L_ERR, "Acct: Couldn't insert SQL accounting STOP record - %s", sql_error(socket));
+		   radlog(L_ERR, "Acct: Couldn't insert SQL accounting STOP record - %s", sql_error(socket));
 		sql_finish_query(socket);
              }
 
@@ -412,7 +412,7 @@ int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row, int mode) {
 
 
 	if((attr = dict_attrbyname(row[2])) == (DICT_ATTR *)NULL) {
-		log(L_ERR|L_CONS, "unknown attribute %s", row[2]);
+		radlog(L_ERR|L_CONS, "unknown attribute %s", row[2]);
 		return(-1);
 	}                              
 
@@ -471,7 +471,7 @@ int sql_getvpdata(SQLSOCK *socket, char *table, VALUE_PAIR **vp, char *user, int
 	while ((row = sql_fetch_row(socket))) {
 
 		if (sql_userparse(vp, row, mode) != 0) {
-	 		log(L_ERR|L_CONS, "Error getting data from database");
+	 		radlog(L_ERR|L_CONS, "Error getting data from database");
 			sql_finish_select_query(socket);
 			return -1;
 		}
@@ -509,7 +509,7 @@ static int sql_check_ts(SQL_ROW row) {
 	 *      Find NAS type.
 	 */
 	if ((nas = nas_find(ip_addr(row[4]))) == NULL) {
-                log(L_ERR, "Accounting: unknown NAS [%s]", row[4]);
+                radlog(L_ERR, "Accounting: unknown NAS [%s]", row[4]);
                 return -1;
         }
 
@@ -518,7 +518,7 @@ static int sql_check_ts(SQL_ROW row) {
          */
         handler = signal(SIGCHLD, SIG_DFL);
         if ((pid = fork()) < 0) {
-                log(L_ERR, "Accounting: fork: %s", strerror(errno));
+                radlog(L_ERR, "Accounting: fork: %s", strerror(errno));
                 signal(SIGCHLD, handler);
                 return -1;
         }
@@ -540,11 +540,11 @@ static int sql_check_ts(SQL_ROW row) {
                         kill(pid, SIGTERM);
                         sleep(1);
                         kill(pid, SIGKILL);
-                        log(L_ERR, "Check-TS: timeout waiting for checkrad");
+                        radlog(L_ERR, "Check-TS: timeout waiting for checkrad");
                         return 2;
                 }
                 if (e < 0) {
-                        log(L_ERR, "Check-TS: unknown error in waitpid()");
+                        radlog(L_ERR, "Check-TS: unknown error in waitpid()");
                         return 2;
                 }
                 return WEXITSTATUS(st);
@@ -566,7 +566,7 @@ static int sql_check_ts(SQL_ROW row) {
                 execl(CHECKRAD1, "checklogin", nas->nastype, row[4], row[5],
                         row[2], session_id, NULL);
         }
-        log(L_ERR, "Check-TS: exec %s: %s", s, strerror(errno));
+        radlog(L_ERR, "Check-TS: exec %s: %s", s, strerror(errno));
 
         /*
          *      Exit - 2 means "some error occured".
@@ -624,7 +624,7 @@ int sql_check_multi(SQLSOCK *socket, char *name, VALUE_PAIR *request, int maxsim
 				mpp = 2;   
 
 		} else if (check == 2)
-			log(L_ERR,"Problem with checkrad [%s] (from nas %s)", name, row[4]);
+			radlog(L_ERR,"Problem with checkrad [%s] (from nas %s)", name, row[4]);
 		else {
 			/*
 			 *	False record - zap it
@@ -633,7 +633,7 @@ int sql_check_multi(SQLSOCK *socket, char *name, VALUE_PAIR *request, int maxsim
 			if (sql->config->deletestalesessions) {
 				SQLSOCK *socket;
 
-   				log(L_ERR,"Deleteing stale session [%s] (from nas %s/%s)", row[2], row[4], row[5]);
+   				radlog(L_ERR,"Deleteing stale session [%s] (from nas %s/%s)", row[2], row[4], row[5]);
 				socket = sql_get_socket();
 				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'", sql->config->sql_acct_table, row[0]);
 				sql_query(socket, querystr);

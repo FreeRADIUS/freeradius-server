@@ -178,7 +178,7 @@ static int pam_auth(void *instance, REQUEST *request)
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		log(L_AUTH, "rlm_pam: Attribute \"User-Name\" is required for authentication.");
+		radlog(L_AUTH, "rlm_pam: Attribute \"User-Name\" is required for authentication.");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -187,7 +187,7 @@ static int pam_auth(void *instance, REQUEST *request)
 	 *	a Password attribute.
 	 */
 	if (!request->password) {
-		log(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.");
+		radlog(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -196,7 +196,7 @@ static int pam_auth(void *instance, REQUEST *request)
 	 *  and not anything else.
 	 */
 	if (request->password->attribute != PW_PASSWORD) {
-		log(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+		radlog(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_REJECT;
 	}
 

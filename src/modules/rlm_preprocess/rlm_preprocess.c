@@ -341,7 +341,7 @@ static int hints_setup(REQUEST *request)
 			 */
 			tmp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
 			if (!tmp) {
-				log(L_ERR|L_CONS, "no memory");
+				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
 			strcpy(tmp->strvalue, newname);
@@ -446,7 +446,7 @@ static void add_nas_attr(REQUEST *request)
 	if (!nas) {
 		nas = paircreate(PW_NAS_IP_ADDRESS, PW_TYPE_IPADDR);
 		if (!nas) {
-			log(L_ERR, "No memory");
+			radlog(L_ERR, "No memory");
 			exit(1);
 		}
 		nas->lvalue = request->packet->src_ipaddr;
@@ -469,7 +469,7 @@ static void add_nas_attr(REQUEST *request)
 	 */
 	nas = paircreate(PW_REQUEST_SRC_IP_ADDRESS, PW_TYPE_IPADDR);
 	if (!nas) {
-	  log(L_ERR, "No memory");
+	  radlog(L_ERR, "No memory");
 	  exit(1);
 	}
 	nas->lvalue = request->packet->src_ipaddr;
@@ -544,7 +544,7 @@ static int preprocess_authorize(void *instance, REQUEST *request,
 	add_nas_attr(request);
 
 	if (huntgroup_access(request->packet->vps) != RLM_MODULE_OK) {
-		log(L_AUTH, "No huntgroup access: [%s] (%s)",
+		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
 		return RLM_MODULE_REJECT;

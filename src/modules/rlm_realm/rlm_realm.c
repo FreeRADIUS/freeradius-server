@@ -64,7 +64,7 @@ static REALM *check_for_realm(REQUEST *request)
 		if (!vp) {
 			vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
 			if (!vp) {
-				log(L_ERR|L_CONS, "no memory");
+				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
 			strcpy(vp->strvalue, name);
@@ -133,7 +133,7 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
 	 */
 	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
 	if (!vp) {
-		log(L_ERR|L_CONS, "no memory");
+		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 	

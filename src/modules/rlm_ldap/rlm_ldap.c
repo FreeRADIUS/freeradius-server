@@ -303,7 +303,7 @@ static int perform_search(char *ldap_basedn, char *filter, char **attrs, LDAPMes
   msgid = ldap_search(ld,ldap_basedn,LDAP_SCOPE_SUBTREE,filter,attrs,0);
   pthread_mutex_unlock(&conn_mutex);
   if(msgid == -1) {
-    log(L_ERR,"rlm_ldap: thread #%p ldap_search() API failed\n", pthread_self());
+    radlog(L_ERR,"rlm_ldap: thread #%p ldap_search() API failed\n", pthread_self());
     goto fail;
   }
   
@@ -313,7 +313,7 @@ static int perform_search(char *ldap_basedn, char *filter, char **attrs, LDAPMes
   
   if(rc < 1) {
     ldap_perror( ld, "rlm_ldap: ldap_result()" );
-    log(L_ERR,"rlm_ldap: thread #%p ldap_result() failed - %s\n", pthread_self(), strerror(errno));
+    radlog(L_ERR,"rlm_ldap: thread #%p ldap_result() failed - %s\n", pthread_self(), strerror(errno));
     goto fail;
   }
   
@@ -322,7 +322,7 @@ static int perform_search(char *ldap_basedn, char *filter, char **attrs, LDAPMes
       break;
 
     case LDAP_TIMELIMIT_EXCEEDED:
-      log(L_ERR, "rlm_ldap: thread #%p Warning timelimit exceeded, using partial results\n", pthread_self());
+      radlog(L_ERR, "rlm_ldap: thread #%p Warning timelimit exceeded, using partial results\n", pthread_self());
       break;
 
     default:
@@ -383,7 +383,7 @@ static int rlm_ldap_authorize(void *instance, REQUEST *request,
      *      Check for valid input, zero length names not permitted
      */
     if (name[0] == 0) {
-          log(L_ERR, "rlm_ldap: zero length username not permitted\n");
+          radlog(L_ERR, "rlm_ldap: zero length username not permitted\n");
           return RLM_MODULE_FAIL;
     }
 
@@ -529,7 +529,7 @@ static int rlm_ldap_authenticate(void *instance, REQUEST *request)
      *  and not anything else. 
      */
     if(request->password->attribute != PW_PASSWORD) {
-      log(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+      radlog(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
       return RLM_MODULE_REJECT;
     }
 
@@ -537,7 +537,7 @@ static int rlm_ldap_authenticate(void *instance, REQUEST *request)
     passwd = request->password->strvalue;
 
     if(strlen(passwd) == 0) {
-        log(L_ERR, "rlm_ldap: empty password supplied");
+        radlog(L_ERR, "rlm_ldap: empty password supplied");
 	return RLM_MODULE_REJECT;
     }
 
@@ -586,31 +586,31 @@ static LDAP *rlm_ldap_connect(const char *dn, const char *password, int auth, in
 
     DEBUG("rlm_ldap: thread #%p (re)connect, authentication %d", pthread_self(), auth);
     if ((ld = ldap_init(ldap_server,ldap_port)) == NULL){
-      log(L_ERR, "rlm_ldap: ldap_init() failed");	    
+      radlog(L_ERR, "rlm_ldap: ldap_init() failed");	    
       *result = RLM_MODULE_FAIL;
       return(NULL);
     }
     
     if (timeout != NULL && ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, (void *)timeout) != LDAP_OPT_SUCCESS) {
-      log(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %d.%d", timeout->tv_sec, timeout->tv_usec);
+      radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %d.%d", timeout->tv_sec, timeout->tv_usec);
     }
    
     if (ldap_timelimit != -1 && ldap_set_option(ld, LDAP_OPT_TIMELIMIT, (void *) &ldap_timelimit) != LDAP_OPT_SUCCESS ){
-	log(L_ERR, "rlm_ldap: Could not set LDAP_OPT_TIMELIMIT %d", ldap_timelimit );
+	radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_TIMELIMIT %d", ldap_timelimit );
     }
     
     if(ldap_debug && ldap_set_option( NULL, LDAP_OPT_DEBUG_LEVEL, &ldap_debug ) != LDAP_OPT_SUCCESS ) {
-        log(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", ldap_debug);
+        radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", ldap_debug);
     }
 #ifdef HAVE_TLS
     if (ldap_tls_mode && ldap_set_option(ld, LDAP_OPT_X_TLS,(void *) &ldap_tls_mode) != LDAP_OPT_SUCCESS ){
-	log(L_ERR, "rlm_ldap: Could not set LDAP_OPT_X_TLS_TRY");
+	radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_X_TLS_TRY");
     }
 #endif
 
     if (!auth)
       if (ldap_enable_cache(ld, ldap_cache_ttl, ldap_cache_size) != LDAP_SUCCESS)
-	log(L_ERR,"rlm_ldap: ldap_enable_cache failed");
+	radlog(L_ERR,"rlm_ldap: ldap_enable_cache failed");
 
     msgid = ldap_bind(ld, dn, password, LDAP_AUTH_SIMPLE);
     if(msgid == -1) {
