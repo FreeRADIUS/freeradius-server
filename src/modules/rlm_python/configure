@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.3 
+# From configure.in Revision: 1.5 
 
 
 if test x$with_rlm_python != xno; then
@@ -1162,8 +1162,8 @@ fi
 
 		LIBS=$old_LIBS
 
-		if test "x$smart_lib" != "x" ; then
-			python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lpython${PY_VERSION}"
+		if test "x$ac_cv_lib_${ac_safe_Py_Initialize}" = "xyes"; then
+			python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lpython${PY_VERSION} -lm"
 			targetname=rlm_python
 		else
 			targetname=
