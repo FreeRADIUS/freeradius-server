@@ -265,6 +265,13 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
+	/*
+	 *  Check pointer before de-referencing it.
+	 */
+	if (!mysql_sock->result) {
+		return SQL_DOWN;
+	}
+
 	sqlsocket->row = mysql_fetch_row(mysql_sock->result);
 
 	if (sqlsocket->row == NULL) {
