@@ -35,38 +35,35 @@ static const char rcsid[] =
 
 #include "radiusd.h"
 #include "smux.h"
+#include "radius_snmp.h"
 
 #define min(A,B) ((A) < (B) ? (A) : (B))
 
-extern enum smux_event smux_event;
 
+
+/* internal prototypes */
+static int oid_compare (oid *, int, oid *, int);
+static void oid2in_addr (oid [], int, struct in_addr *);
+static void *oid_copy (void *, void *, size_t);
+static void oid_copy_addr (oid [], struct in_addr *, int);
 
 /* SMUX subtree vector. */
-struct list *treelist = NULL;
+static struct list *treelist = NULL;
 
 /* SMUX oid. */
-oid *smux_oid;
-size_t smux_oid_len;
-
-/* SMUX password. */
-extern char *smux_password;
-
-/* SNMP write access allowed */
-extern int snmp_write_access;
-
-/* SMUX socket */
-extern int smuxfd;
+static oid *smux_oid;
+static size_t smux_oid_len;
 
 /* SMUX failure count. */
-int fail = 0;
+static int fail = 0;
 
-void *
+static void *
 oid_copy (void *dest, void *src, size_t size)
 {
   return memcpy (dest, src, size * sizeof (oid));
 }
 
-void
+static void
 oid2in_addr (oid oid[], int len, struct in_addr *addr)
 {
   int i;
@@ -81,7 +78,7 @@ oid2in_addr (oid oid[], int len, struct in_addr *addr)
     *pnt++ = oid[i];
 }
 
-void
+static void
 oid_copy_addr (oid oid[], struct in_addr *addr, int len)
 {
   int i;
@@ -96,7 +93,7 @@ oid_copy_addr (oid oid[], struct in_addr *addr, int len)
     oid[i] = *pnt++;
 }
 
-int
+static int
 oid_compare (oid *o1, int o1_len, oid *o2, int o2_len)
 {
   int i;
@@ -116,7 +113,7 @@ oid_compare (oid *o1, int o1_len, oid *o2, int o2_len)
   return 0;
 }
 
-int
+static int
 oid_compare_part (oid *o1, int o1_len, oid *o2, int o2_len)
 {
   int i;
@@ -134,7 +131,7 @@ oid_compare_part (oid *o1, int o1_len, oid *o2, int o2_len)
   return 0;
 }
 
-void
+static void
 smux_oid_dump (char *prefix, oid *oid, size_t oid_len)
 {
   int i;
@@ -234,13 +231,13 @@ smux_sock ()
     {
       close (fd);
       DEBUG ("Can't connect to SNMP agent with SMUX: %s", strerror(errno));
-      smuxfd = -1;
+      fd = -1;
     }
 #endif
   return fd;
 }
 
-void
+static void
 smux_getresp_send (oid objid[], size_t objid_len, long reqid, long errstat,
 		   long errindex, u_char val_type, void *arg, size_t arg_len)
 {
@@ -294,10 +291,10 @@ smux_getresp_send (oid objid[], size_t objid_len, long reqid, long errstat,
 
   DEBUG2("SMUX getresp send: %d", ptr - buf);
   
-  ret = send (smuxfd, buf, (ptr - buf), 0);
+  ret = send (rad_snmp.smux_fd, buf, (ptr - buf), 0);
 }
 
-char *
+static char *
 smux_var (char *ptr, int len, oid objid[], size_t *objid_len,
           size_t *var_val_len,
           u_char *var_val_type,
@@ -390,7 +387,7 @@ smux_var (char *ptr, int len, oid objid[], size_t *objid_len,
    ucd-snmp smux and as such suppose, that the peer receives in the message
    only one variable. Fortunately, IBM seems to do the same in AIX. */
 
-int
+static int
 smux_set (oid *reqid, size_t *reqid_len,
           u_char val_type, void *val, size_t val_len, int action)
 {
@@ -461,7 +458,7 @@ smux_set (oid *reqid, size_t *reqid_len,
   return SNMP_ERR_NOSUCHNAME;
 }
 
-int
+static int
 smux_get (oid *reqid, size_t *reqid_len, int exact, 
 	  u_char *val_type,void **val, size_t *val_len)
 {
@@ -527,7 +524,7 @@ smux_get (oid *reqid, size_t *reqid_len, int exact,
   return SNMP_ERR_NOSUCHNAME;
 }
 
-int
+static int
 smux_getnext (oid *reqid, size_t *reqid_len, int exact, 
 		 u_char *val_type,void **val, size_t *val_len)
 {
@@ -614,7 +611,7 @@ smux_getnext (oid *reqid, size_t *reqid_len, int exact,
 }
 
 /* GET message header. */
-char *
+static char *
 smux_parse_get_header (char *ptr, size_t *len, long *reqid)
 {
   u_char type;
@@ -639,7 +636,7 @@ smux_parse_get_header (char *ptr, size_t *len, long *reqid)
   return ptr;
 }
 
-void
+static void
 smux_parse_set (char *ptr, size_t len, int action)
 {
   long reqid;
@@ -668,7 +665,7 @@ smux_parse_set (char *ptr, size_t len, int action)
     smux_getresp_send (oid, oid_len, reqid, ret, 3, ASN_NULL, NULL, 0);
 }
 
-void
+static void
 smux_parse_get (char *ptr, size_t len, int exact)
 {
   long reqid;
@@ -701,7 +698,7 @@ smux_parse_get (char *ptr, size_t len, int exact)
 }
 
 /* Parse SMUX_CLOSE message. */
-void
+static void
 smux_parse_close (char *ptr, int len)
 {
   long reason = 0;
@@ -715,7 +712,7 @@ smux_parse_close (char *ptr, int len)
 }
 
 /* SMUX_RRSP message. */
-void
+static void
 smux_parse_rrsp (char *ptr, int len)
 {
   char val;
@@ -727,7 +724,7 @@ smux_parse_rrsp (char *ptr, int len)
 }
 
 /* Parse SMUX message. */
-int
+static int
 smux_parse (char *ptr, int len)
 {
   /* this buffer we'll use for SOUT message. We could allocate it with malloc and 
@@ -843,22 +840,22 @@ smux_read ()
   DEBUG2 ("SMUX read start");
 
   /* Read message from SMUX socket. */
-  len = recv (smuxfd, buf, SMUXMAXPKTSIZE, 0);
+  len = recv (rad_snmp.smux_fd, buf, SMUXMAXPKTSIZE, 0);
 
   if (len < 0)
     {
       DEBUG ("Can't read all SMUX packet: %s", strerror (errno));
-      close (smuxfd);
-      smuxfd = -1;
+      close (rad_snmp.smux_fd);
+      rad_snmp.smux_fd = -1;
       smux_event=SMUX_CONNECT;
       return -1;
     }
 
   if (len == 0)
     {
-      DEBUG ("SMUX connection closed: %d", smuxfd);
-      close (smuxfd);
-      smuxfd = -1;
+      DEBUG ("SMUX connection closed: %d", rad_snmp.smux_fd);
+      close (rad_snmp.smux_fd);
+      rad_snmp.smux_fd = -1;
       smux_event=SMUX_CONNECT;
       return -1;
     }
@@ -870,8 +867,8 @@ smux_read ()
 
   if (ret < 0)
     {
-      close (smuxfd);
-      smuxfd = -1;
+      close (rad_snmp.smux_fd);
+      rad_snmp.smux_fd = -1;
       smux_event=SMUX_CONNECT;
       return -1;
     }
@@ -928,7 +925,7 @@ smux_open ()
   len = BUFSIZ;
   asn_build_header (buf, &len, (u_char) SMUX_OPEN, (ptr - buf) - 2);
 
-  return send (smuxfd, buf, (ptr - buf), 0);
+  return send (rad_snmp.smux_fd, buf, (ptr - buf), 0);
 }
 
 int
@@ -978,7 +975,7 @@ smux_register ()
 
       len = BUFSIZ;
       asn_build_header (buf, &len, (u_char) SMUX_RREQ, (ptr - buf) - 2);
-      ret = send (smuxfd, buf, (ptr - buf), 0);
+      ret = send (rad_snmp.smux_fd, buf, (ptr - buf), 0);
       if (ret < 0)
         return ret;
     }
@@ -995,8 +992,8 @@ smux_connect ()
   DEBUG2 ("SMUX connect try %d", fail + 1);
 
   /* Make socket.  Try to connect. */
-  smuxfd = smux_sock ();
-  if (smuxfd < 0)
+  rad_snmp.smux_fd = smux_sock ();
+  if (rad_snmp.smux_fd < 0)
     {
       if (++fail < SMUX_MAX_FAILURE)
 	smux_event=SMUX_CONNECT;
@@ -1008,8 +1005,8 @@ smux_connect ()
   if (ret < 0)
     {
       DEBUG ("SMUX open message send failed: %s", strerror (errno));
-      close (smuxfd);
-      smuxfd = -1;
+      close (rad_snmp.smux_fd);
+      rad_snmp.smux_fd = -1;
       smux_event=SMUX_CONNECT;
       return -1;
     }
@@ -1019,8 +1016,8 @@ smux_connect ()
   if (ret < 0)
     {
       DEBUG ("SMUX register message send failed: %s", strerror (errno));
-      close (smuxfd);
-      smuxfd = -1;
+      close (rad_snmp.smux_fd);
+      rad_snmp.smux_fd = -1;
       smux_event=SMUX_CONNECT;
       return -1;
     }
@@ -1036,9 +1033,9 @@ void
 smux_stop ()
 {
   smux_event=SMUX_NONE;
-  if (smuxfd >= 0)
-    close (smuxfd);
-  smuxfd = -1;
+  if (rad_snmp.smux_fd >= 0)
+    close (rad_snmp.smux_fd);
+  rad_snmp.smux_fd = -1;
 }
 
 int

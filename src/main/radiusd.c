@@ -73,12 +73,6 @@ char	        	*radius_dir = NULL;
 char			*radacct_dir = NULL;
 char			*radlog_dir = NULL;
 const char		*radlib_dir = NULL;
-#ifdef WITH_SNMP
-char			*smux_password = NULL;
-int			snmp_write_access = FALSE;
-enum smux_event         smux_event = SMUX_NONE;
-rad_snmp_t		rad_snmp;
-#endif
 int			log_stripped_names;
 int			debug_flag;
 int			use_dbm	= FALSE;
@@ -100,9 +94,6 @@ static int		request_list_busy = FALSE;
 static int		authfd;
 static int		acctfd;
 int	        	proxyfd;
-#ifdef WITH_SNMP
-int			smuxfd;
-#endif
 static int		spawn_flag = TRUE;
 static pid_t		radius_pid;
 static struct rlimit	core_limits;
@@ -175,10 +166,6 @@ static CONF_PARSER server_config[] = {
   { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
   { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
   { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "0" },
-#ifdef WITH_SNMP
-  { "smux_password",      PW_TYPE_STRING_PTR, &smux_password,     "" },
-  { "snmp_write_access",  PW_TYPE_BOOLEAN,    &snmp_write_access, "no" },
-#endif
   { "usercollide",  			PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide,		"no" },
   { "lower_user",  			PW_TYPE_BOOLEAN,    &mainconfig.do_lower_user,		"no" },
   { "lower_pass",  			PW_TYPE_BOOLEAN,    &mainconfig.do_lower_pass,		"no" },
@@ -886,8 +873,8 @@ int main(int argc, char **argv)
 		if (proxyfd >= 0)
 			FD_SET(proxyfd, &readfds);
 #ifdef WITH_SNMP
-		if (smuxfd >= 0)
-			FD_SET(smuxfd, &readfds);
+		if (rad_snmp.smux_fd >= 0)
+			FD_SET(rad_snmp.smux_fd, &readfds);
 #endif
 
 		status = select(32, &readfds, NULL, NULL,
@@ -1019,9 +1006,9 @@ int main(int argc, char **argv)
 		 *	which probably isn't a Good Thing.  It really
 		 *	should be wrapped, and handled in a thread pool.
 		 */
-		if ((smuxfd >= 0) &&
-		    FD_ISSET(smuxfd, &readfds) &&
-		    (smux_event == SMUX_READ)) {
+		if ((rad_snmp.smux_fd >= 0) &&
+		    FD_ISSET(rad_snmp.smux_fd, &readfds) &&
+		    (rad_snmp.smux_event == SMUX_READ)) {
 		  smux_read();
 		}
 		
@@ -1029,7 +1016,7 @@ int main(int argc, char **argv)
 		 *	If we've got to re-connect, then do so now,
 		 *	before calling select again.
 		 */
- 		if (smux_event == SMUX_CONNECT) {
+ 		if (rad_snmp.smux_event == SMUX_CONNECT) {
 		  smux_connect();
 		}
 #endif
