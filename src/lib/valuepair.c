@@ -527,6 +527,15 @@ static int gettime(const char *valstr, time_t *lvalue)
 	char		buf[64];
 	char		*p;
 	char		*f[4];
+	char            *tail = '\0';
+
+	/*
+	 * Test for unix timestamp date
+	 */
+	*lvalue = strtoul(valstr, &tail, 10);
+	if (*tail == '\0') {
+		return 0;
+	}
 
 	tm = &s_tm;
 	memset(tm, 0, sizeof(*tm));
