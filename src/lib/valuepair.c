@@ -377,6 +377,11 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr)
 	for(i = *from; i; i = next) {
 		next = i->next;
 
+
+		/*
+		 *	FIXME: Do we want to match *any* VSA if
+		 *	'attr == PW_VENDOR_SPECIFIC' ???
+		 */
 		if (i->attribute != attr) {
 			iprev = i;
 			continue;
@@ -624,7 +629,7 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
 	char		attr[64];
 	char		value[256];
 	char		*p;
-	int		token, t;
+	LRAD_TOKEN	token, t;
 
 	*eol = 0;
 
@@ -680,12 +685,12 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
  *	Read one line of attribute/value pairs. This might contain
  *	multiple pairs seperated by comma's.
  */
-int userparse(char *buffer, VALUE_PAIR **first_pair)
+LRAD_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
 {
 	VALUE_PAIR	*vp;
 	char		*p;
-	int		last_token = 0;
-	int		previous_token;
+	LRAD_TOKEN	last_token = T_INVALID;
+	LRAD_TOKEN	previous_token;
 
 	/*
 	 *	We allow an empty line.

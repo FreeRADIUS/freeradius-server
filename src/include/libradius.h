@@ -76,7 +76,7 @@
 #endif
 
 typedef struct dict_attr {
-	char			name[32];
+	char			name[40];
 	int			attr;
 	int			type;
 	int			vendor;
@@ -84,27 +84,27 @@ typedef struct dict_attr {
 } DICT_ATTR;
 
 typedef struct dict_value {
-	char			name[32];
-	char			attrname[32];
+	char			name[40];
+	char			attrname[40];
 	int			attr;
 	int			value;
 	struct dict_value	*next;
 } DICT_VALUE;
 
 typedef struct dict_vendor {
-	char			vendorname[32];
+	char			vendorname[40];
 	int			vendorpec;
 	int			vendorcode;
 	struct dict_vendor	*next;
 } DICT_VENDOR;
 
 typedef struct value_pair {
-	char			name[32];
+	char			name[40];
 	int			attribute;
 	int			type;
 	int			length; /* of strvalue */
 	uint32_t		lvalue;
-	int			operator;
+	LRAD_TOKEN		operator;
 	int			addport;
 	uint8_t			strvalue[MAX_STRING_LEN];
 	struct value_pair	*next;
@@ -201,7 +201,7 @@ void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(char **ptr, int *eol);
-int		userparse(char *buffer, VALUE_PAIR **first_pair);
+LRAD_TOKEN	userparse(char *buffer, VALUE_PAIR **first_pair);
 
 /*
  *	Error functions.

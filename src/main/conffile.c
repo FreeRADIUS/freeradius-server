@@ -62,7 +62,7 @@ struct conf_pair {
 	CONF_ITEM item;
 	char *attr;
 	char *value;
-	int operator;
+	LRAD_TOKEN operator;
 };
 struct conf_part {
 	CONF_ITEM item;
@@ -122,7 +122,7 @@ CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
  *	Create a new CONF_PAIR
  */
 static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
-		int operator, CONF_SECTION *parent)
+		LRAD_TOKEN operator, CONF_SECTION *parent)
 {
 	CONF_PAIR *cp;
 
@@ -639,7 +639,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (buf1[0] != 0 && buf2[0] == 0 && buf3[0] == 0) {
 			t2 = T_OP_EQ;
-		} else if (buf1[0] == 0 || buf2[0] == 0 || buf3[0] == 0 ||
+		} else if (buf1[0] == 0 || buf2[0] == 0 || 
 					(t2 < T_EQSTART || t2 > T_EQEND)) {
 			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 					cf, *lineno);

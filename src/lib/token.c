@@ -57,8 +57,8 @@ static const TOKEN tokens[] = {
  *	At end-of-line, buf[0] is set to '\0'.
  *	Returns 0 or special token value.
  */
-static int getthing(char **ptr, char *buf, int buflen, int tok,
-		    const TOKEN *tokenlist)
+static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
+			   const TOKEN *tokenlist)
 {
 	char	*s, *p;
 	int	quote;
@@ -158,15 +158,15 @@ static int getthing(char **ptr, char *buf, int buflen, int tok,
 		p++;
 	*ptr = p;
 
-	/* we got SOME form out output string, even if it is empty */
-	return 0;
+	/* we got SOME form of output string, even if it is empty */
+	return T_INVALID;
 }
 
 /*
  *	Read a "word" - this means we don't honor
  *	tokens as delimiters.
  */
-int getword(char **ptr, char *buf, int buflen)
+LRAD_TOKEN getword(char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 0, tokens) == T_EOL ? 0 : 1;
 }
@@ -174,7 +174,7 @@ int getword(char **ptr, char *buf, int buflen)
 /*
  *	Read the next word, use tokens as delimiters.
  */
-int gettoken(char **ptr, char *buf, int buflen)
+LRAD_TOKEN gettoken(char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 1, tokens);
 }

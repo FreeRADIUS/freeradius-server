@@ -770,7 +770,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	int             vals_idx;
 	char           *ptr;
 	TLDAP_RADIUS   *element;
-	int             token;
+	LRAD_TOKEN      token;
 	int             is_generic_attribute;
 	char            value[64];
 	VALUE_PAIR     *pairlist = NULL;

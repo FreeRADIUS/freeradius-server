@@ -136,7 +136,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	PAIR_LIST *pl = NULL, *last = NULL, *t;
 	int lineno = 0;
 	int old_lineno = 0;
-	int parsecode;
+	LRAD_TOKEN parsecode;
 	char newfile[8192];
 
 	/*
@@ -236,7 +236,7 @@ parse_again:
 			reply_tmp = NULL;
 			old_lineno = lineno;
 			parsecode = userparse(ptr, &check_tmp);
-			if (parsecode < 0) {
+			if (parsecode == T_INVALID) {
 				pairlist_free(&pl);
 				radlog(L_ERR|L_CONS,
 				"%s[%d]: Parse error (check) for entry %s: %s",
