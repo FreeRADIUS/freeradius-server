@@ -244,6 +244,8 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
 
 	DICT_ATTR *attr;
 	VALUE_PAIR *pair, *check;
+	char *ptr;
+	char buf[128];
 
 	if ((attr = dict_attrbyname(row[2])) == (DICT_ATTR *) NULL) {
 		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s", row[2]);
@@ -261,7 +263,15 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
 			mode == PW_VP_GROUPDATA)
 		return 0;
 
-	pair = pairmake(row[2], row[3], T_OP_CMP_EQ);
+	if (row[4] != NULL && strlen(row[4]) > 0) {
+		ptr = row[4];
+		if ((mode = gettoken(&ptr, buf, sizeof(buf))) <= T_EOL)
+			mode = T_OP_CMP_EQ;
+	} else {
+		mode = T_OP_CMP_EQ;
+	}
+
+	pair = pairmake(row[2], row[3], mode);
 	pairadd(first_pair, pair);
 
 	vp_printlist(stderr, *first_pair);
