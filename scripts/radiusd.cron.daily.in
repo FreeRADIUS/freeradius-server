@@ -1,14 +1,17 @@
 #! /bin/sh
 #
 # radiusd	Cron script to rotate radiusd log files daily.
-#		Debian/Linux: place this in /etc/cron.daily.
 #
 
+prefix=@prefix@
+localstatedir=@localstatedir@
+logdir=@logdir@
+
 umask 027
-cd /var/log
+cd $logdir
 
 # Take care of the standard logfiles.
-cd /var/log
+cd $logdir
 if [ -f radius.log ]
 then
 	savelog -g adm -m 640 -c 3 radius.log > /dev/null
