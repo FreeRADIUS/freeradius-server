@@ -6,6 +6,8 @@ Ver 1.55:
 * Add a few more keys in the userinfo and badusers tables.
 * Fix a problem with lib/sql/defaults.php3 where the first character in the default value when using
   operators was set to the opeator
+* Add a user find page. User can be searched based on the full name, department or RADIUS attribute.
+  The radius attribute should be included in the _user_ profile, not in a group/regular/default profile.
 Ver 1.54:
 * Add attributes for the sql group tables in admin.conf. Now SQL group support should really work!
 Ver 1.53:
