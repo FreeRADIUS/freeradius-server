@@ -139,9 +139,18 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		break;
 	}
 
-	DEBUG2("    rlm_realm: Looking up realm %s for User-Name = \"%s\"",
-	       (realmname == NULL) ? "NULL" : realmname,
-	       request->username->strvalue);
+	/*
+	 *	Print out excruciatingly descriptive debugging messages
+	 *	for the people who find it too difficult to think about
+	 *	what's going on.
+	 */
+	if (realmname) {
+		DEBUG2("    rlm_realm: Looking up realm %s for User-Name = \"%s\"",
+		       realmname, request->username->strvalue);
+	} else {
+		DEBUG2("    rlm_realm: No '%c' in User-Name = \"%s\", looking up realm NULL",
+		       inst->delim[0], request->username->strvalue);
+	}
 
 	/*
 	 *	Allow NULL realms.
