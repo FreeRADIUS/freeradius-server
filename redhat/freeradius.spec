@@ -1,7 +1,7 @@
 Summary: High-performance and highly configurable RADIUS server
 URL: http://www.freeradius.org/
 Name: freeradius
-Version: 0.8
+Version: 0.9
 Release: 1
 License: GPL
 Group: Networking/Daemons
@@ -103,17 +103,20 @@ fi
 %config /etc/pam.d/radius
 %config /etc/logrotate.d/radiusd
 %config /etc/rc.d/init.d/radiusd
-%config (noreplace) /etc/raddb/[a-ce-z]*
-%config /etc/raddb/d*
+%config (noreplace) /etc/raddb/*
+%{_bindir}/*
+%{_datadir}/%{name}/*
+%{_libdir}/*
 %{_mandir}/*/*
-/usr/bin/*
-/usr/sbin/*
-/usr/lib/*
+%{_sbindir}/*
 %attr(0700,radiusd,radiusd) %dir /var/log/radius
 %attr(0700,radiusd,radiusd) %dir /var/log/radius/radacct
 %attr(0700,radiusd,radiusd) %dir /var/run/radiusd
 
 %changelog
+* Fri May 23 2003 Marko Myllynen
+- update for 0.9
+
 * Wed Sep  4 2002 Marko Myllynen
 - fix libtool issues for good
 
