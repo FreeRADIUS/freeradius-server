@@ -12,11 +12,26 @@
 #include "autoconf.h"
 #include <sys/types.h>
 
-#ifdef HAVE_STDINT_H
+#if HAVE_STDINT_H
 #include <stdint.h>
 #endif
 
 #include <stdio.h>
+
+/*
+ *  Check for inclusion of <time.h>, versus <sys/time.h>
+ *  Taken verbatim from the autoconf manual.
+ */
+#if TIME_WITH_SYS_TIME
+# include <sys/time.h>
+# include <time.h>
+#else
+# if HAVE_SYS_TIME_H
+#  include <sys/time.h>
+# else
+#  include <time.h>
+# endif
+#endif
 
 #include "radius.h"
 #include "token.h"

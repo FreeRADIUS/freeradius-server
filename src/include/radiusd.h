@@ -11,8 +11,6 @@
 #include "conf.h"
 #include "missing.h"
 
-#include <sys/time.h>
-
 #if HAVE_PTHREAD_H
 #include	<pthread.h>
 typedef pthread_t child_pid_t ;
@@ -110,10 +108,15 @@ typedef struct pair_list {
 #define L_CONS			128
 
 #ifndef FALSE
-#  define FALSE 0
+#define FALSE 0
 #endif
 #ifndef TRUE
-#  define TRUE 1
+/*
+ *	This definition of true as NOT false is definitive. :) Making
+ *	it '1' can cause problems on stupid platforms.  See articles
+ *	on C portability for more information.
+ */
+#define TRUE (!FALSE)
 #endif
 
 /* for paircompare_register */
@@ -158,7 +161,6 @@ int		radutmp_checksimul(char *name, VALUE_PAIR *, int maxsimul);
 void		debug_pair(FILE *, VALUE_PAIR *);
 int		log_err (char *);
 void		sig_cleanup(int);
-void		remove_from_request_list(REQUEST *);
 int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
 
 /* util.c */
