@@ -26,24 +26,36 @@ static const char rcsid[] = "$Id$";
 #include <krb5.h>
 #include <com_err.h>
 
-/* module globals */
-static krb5_context context;
-
-/* initialize */
-static int krb5_init(void)
+/* instantiate */
+static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 {
 	int r;
+	krb5_context *context;
 
-        if ( (r = krb5_init_context(&context)) ) {
+	context = malloc(sizeof(*context));
+        if (!context) {
+                radlog(L_ERR|L_CONS, "Out of memory\n");
+                return -1;
+        }
+
+        if ((r = krb5_init_context(context)) ) {
 		radlog(L_AUTH, "rlm_krb5: krb5_init failed: %s",
-			error_message(r));
-                return 1;
+		       error_message(r));
+                return -1;
         } else {
 		radlog(L_AUTH, "rlm_krb5: krb5_init ok");
 	}
+
+	*instance = context;
 	return 0;
 }
 
+/* detach */
+static int krb5_detach(void *instance)
+{
+	free(instance);
+	return 0;
+}
 
 /* validate userid/passwd */
 static int krb5_auth(void *instance, REQUEST *request)
@@ -55,6 +67,7 @@ static int krb5_auth(void *instance, REQUEST *request)
                 KRB5_TGS_NAME
         };
         krb5_creds kcreds;
+	krb5_context context = *(krb5_context *) instance; /* copy data */
 	const char *user, *pass;
 
 	/*
@@ -129,13 +142,13 @@ static int krb5_auth(void *instance, REQUEST *request)
 module_t rlm_krb5 = {
   "Kerberos",
   0,				/* type: reserved */
-  krb5_init,			/* initialize */
-  NULL,				/* instantiation */
+  NULL,				/* initialize */
+  krb5_instantiate,   		/* instantiation */
   NULL,				/* authorize */
   krb5_auth,			/* authenticate */
   NULL,				/* pre-accounting */
   NULL,				/* accounting */
   NULL,				/* checksimul */
-  NULL,				/* detach */
+  krb5_detach,			/* detach */
   NULL,				/* destroy */
 };
