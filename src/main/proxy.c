@@ -35,7 +35,6 @@ static uint32_t	proxy_id = 1;
  */
 int proxy_receive(REQUEST *request)
 {
-	int		i;
 	VALUE_PAIR	*proxypair;
 	VALUE_PAIR	*replicatepair;
 	VALUE_PAIR	*realmpair;
