@@ -71,6 +71,7 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 
 typedef struct radclient {
 	uint32_t		ipaddr;
+	uint32_t		netmask;
 	char			longname[256];
 	u_char			secret[32];
 	char			shortname[32];
@@ -204,8 +205,7 @@ int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
 /* util.c */
 void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST *request);
-RADIUS_PACKET *	build_reply(int code, REQUEST *request,
-			    VALUE_PAIR *vps, const char *user_msg);
+int rad_mkdir(char *directory, int mode);
 
 /* client.c */
 int		read_clients_file(const char *file);
