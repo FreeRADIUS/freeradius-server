@@ -150,6 +150,19 @@ RADCLIENT *client_find(uint32_t ipaddr)
 	return cl;
 }
 
+/*
+ *	Walk the RADCLIENT list displaying the clients.  This function
+ *	is for debugging purposes.
+ */
+void client_walk(void) 
+{
+	RADCLIENT	*cl;
+	char		host_ipaddr[16];
+
+	for(cl = clients; cl; cl = cl->next)
+		radlog(L_ERR, "client: client_walk: %s\n",
+			ip_ntoa(host_ipaddr, cl->ipaddr));
+}
 
 /*
  *	Find the name of a client (prefer short name).
