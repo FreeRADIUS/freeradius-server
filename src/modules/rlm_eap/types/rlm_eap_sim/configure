@@ -11,14 +11,6 @@
 ac_help=
 ac_default_prefix=/usr/local
 # Any additions from configure.in:
-ac_help="$ac_help
-  --with-rlm-eap-sim-lib-dir=DIR    Directory for EAPSIM library files []"
-ac_help="$ac_help
- --with-rlm-eap-sim-include-dir=DIR Directory for EAPSIM include files []"
-ac_help="$ac_help
-  --with-openssl-includes=DIR       Directory to look for OpenSSL include files"
-ac_help="$ac_help
-  --with-openssl-libraries=DIR      Directory to look for OpenSSL library files"
 
 # Initialize some variables set by options.
 # The variables have the same names as the options, with
@@ -529,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.6 
+# From configure.in Revision: 1.1 
 
 
 fail=
@@ -540,7 +532,7 @@ if test x$with_rlm_eap_sim != xno; then
 	# Extract the first word of "gcc", so it can be a program name with args.
 set dummy gcc; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:544: checking for $ac_word" >&5
+echo "configure:536: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -570,7 +562,7 @@ if test -z "$CC"; then
   # Extract the first word of "cc", so it can be a program name with args.
 set dummy cc; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:574: checking for $ac_word" >&5
+echo "configure:566: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -621,7 +613,7 @@ fi
       # Extract the first word of "cl", so it can be a program name with args.
 set dummy cl; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:625: checking for $ac_word" >&5
+echo "configure:617: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -653,7 +645,7 @@ fi
 fi
 
 echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works""... $ac_c" 1>&6
-echo "configure:657: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works" >&5
+echo "configure:649: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works" >&5
 
 ac_ext=c
 # CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
@@ -664,12 +656,12 @@ cross_compiling=$ac_cv_prog_cc_cross
 
 cat > conftest.$ac_ext << EOF
 
-#line 668 "configure"
+#line 660 "configure"
 #include "confdefs.h"
 
 main(){return(0);}
 EOF
-if { (eval echo configure:673: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:665: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   ac_cv_prog_cc_works=yes
   # If we can't run a trivial program, we are probably using a cross compiler.
   if (./conftest; exit) 2>/dev/null; then
@@ -695,12 +687,12 @@ if test $ac_cv_prog_cc_works = no; then
   { echo "configure: error: installation or configuration problem: C compiler cannot create executables." 1>&2; exit 1; }
 fi
 echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler""... $ac_c" 1>&6
-echo "configure:699: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler" >&5
+echo "configure:691: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler" >&5
 echo "$ac_t""$ac_cv_prog_cc_cross" 1>&6
 cross_compiling=$ac_cv_prog_cc_cross
 
 echo $ac_n "checking whether we are using GNU C""... $ac_c" 1>&6
-echo "configure:704: checking whether we are using GNU C" >&5
+echo "configure:696: checking whether we are using GNU C" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_gcc'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -709,7 +701,7 @@ else
   yes;
 #endif
 EOF
-if { ac_try='${CC-cc} -E conftest.c'; { (eval echo configure:713: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; } | egrep yes >/dev/null 2>&1; then
+if { ac_try='${CC-cc} -E conftest.c'; { (eval echo configure:705: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; } | egrep yes >/dev/null 2>&1; then
   ac_cv_prog_gcc=yes
 else
   ac_cv_prog_gcc=no
@@ -728,7 +720,7 @@ ac_test_CFLAGS="${CFLAGS+set}"
 ac_save_CFLAGS="$CFLAGS"
 CFLAGS=
 echo $ac_n "checking whether ${CC-cc} accepts -g""... $ac_c" 1>&6
-echo "configure:732: checking whether ${CC-cc} accepts -g" >&5
+echo "configure:724: checking whether ${CC-cc} accepts -g" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_cc_g'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -760,544 +752,17 @@ else
 fi
 
 
-		rlm_eap_sim_lib_dir=
-	# Check whether --with-rlm-eap-sim-lib-dir or --without-rlm-eap-sim-lib-dir was given.
-if test "${with_rlm_eap_sim_lib_dir+set}" = set; then
-  withval="$with_rlm_eap_sim_lib_dir"
-   case "$withval" in
-	    no)
-		{ echo "configure: error: Need rlm-eap-sim-lib-dir" 1>&2; exit 1; }
-		;;
-	    yes)
-		;;
-	    *)
-		rlm_eap_sim_lib_dir="$withval"
-		;;
-	  esac 
-	
-fi
-
-
-		rlm_eap_sim_inc_dir=
-	# Check whether --with-rlm-eap-sim-include-dir or --without-rlm-eap-sim-include-dir was given.
-if test "${with_rlm_eap_sim_include_dir+set}" = set; then
-  withval="$with_rlm_eap_sim_include_dir"
-   case "$withval" in
-	    no)
-		{ echo "configure: error: Need rlm-eap-sim-include-dir" 1>&2; exit 1; }
-		;;
-	    yes)
-		;;
-	    *)
-		rlm_eap_sim_inc_dir="$withval"
-		;;
-	  esac 
-	
-fi
-
-
-				# Check whether --with-openssl-includes or --without-openssl-includes was given.
-if test "${with_openssl_includes+set}" = set; then
-  withval="$with_openssl_includes"
-   case "$withval" in
-	    *)
-		rlm_eap_sim_inc_dir=$withval
-		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
-		;;
-	  esac 
-	
-fi
-
-
-				# Check whether --with-openssl-libraries or --without-openssl-libraries was given.
-if test "${with_openssl_libraries+set}" = set; then
-  withval="$with_openssl_libraries"
-   case "$withval" in
-	    *)
-		rlm_eap_sim_lib_dir=$withval
-		SMART_LIBS="$SMART_LIBS -L$withval"
-		;;
-	  esac 
-	
-fi
-
-
-	smart_try_dir=$rlm_eap_sim_inc_dir
-        
-
-ac_safe=`echo "openssl/ssl.h" | sed 'y%./+-%__pm%'`
-echo $ac_n "checking for openssl/ssl.h""... $ac_c" 1>&6
-echo "configure:831: checking for openssl/ssl.h" >&5
-
-smart_include=
-smart_include_dir=
-
-  old_CFLAGS="$CFLAGS"
-  cat > conftest.$ac_ext <<EOF
-#line 838 "configure"
-#include "confdefs.h"
-
-		  #include <openssl/ssl.h>
-int main() {
- int a = 1;
-; return 0; }
-EOF
-if { (eval echo configure:846: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
-  rm -rf conftest*
-  smart_include=" "
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  smart_include=
-fi
-rm -f conftest*
-
-  if test "x$smart_include" = "x"; then
-    
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=openssl/ssl.h
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
-
-
-    for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
-      CFLAGS="$old_CFLAGS -I$try"
-
-      cat > conftest.$ac_ext <<EOF
-#line 890 "configure"
-#include "confdefs.h"
-
-		       #include <openssl/ssl.h>
-int main() {
- int a = 1;
-; return 0; }
-EOF
-if { (eval echo configure:898: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
-  rm -rf conftest*
-  smart_include="-I$try"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  smart_include=
-fi
-rm -f conftest*
-
-      if test "x$smart_include" != "x"; then
-        break;
-      fi
-    done
-    CFLAGS="$old_CFLAGS"
-  fi
-
-        if test "x$smart_include" != "x"; then
-    echo "$ac_t""yes" 1>&6
-    eval "ac_cv_header_$ac_safe=yes"
-    CFLAGS="$old_CFLAGS $smart_include"
-    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-  else
-    echo "$ac_t""no" 1>&6 
-fi
-
-	if test "x$ac_cv_header_openssl_ssl_h" != "xyes"; then
-		fail="$fail (openssl/ssl.h)"
+	if test "x$OPENSSL_INCLUDE" != "x"; then
+	  SMART_CFLAGS="-I$OPENSSL_INCLUDE"
+	else
+	  fail="$fail (openssl/ssl.h)"
 	fi
 
-	smart_try_dir=$rlm_eap_sim_lib_dir
-	
-
-sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
-echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
-echo "configure:935: checking for DH_new in -lcrypto" >&5
-
-smart_lib=
-smart_lib_dir=
-
-  old_LIBS="$LIBS"
-  LIBS="$LIBS -lcrypto"
-  cat > conftest.$ac_ext <<EOF
-#line 943 "configure"
-#include "confdefs.h"
-extern char DH_new();
-int main() {
- DH_new()
-; return 0; }
-EOF
-if { (eval echo configure:950: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  smart_lib="-lcrypto"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-fi
-rm -f conftest*
-
-  if test "x$smart_lib" = "x"; then
-    
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libcrypto${libltdl_cv_shlibext}
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-    
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libcrypto.a
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-    for try in $smart_try_dir $smart_lib_dir /usr/local/lib/ /opt/lib; do
-      LIBS="$old_LIBS -L$try -lcrypto"
-
-      cat > conftest.$ac_ext <<EOF
-#line 1019 "configure"
-#include "confdefs.h"
-extern char DH_new();
-int main() {
- DH_new()
-; return 0; }
-EOF
-if { (eval echo configure:1026: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  smart_lib="-L$try -lcrypto"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-fi
-rm -f conftest*
-      if test "x$smart_lib" != "x"; then
-        break;
-      fi
-    done
-    LIBS="$old_LIBS"
-  fi
-
-        if test "x$smart_lib" != "x"; then
-    echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-    LIBS="$old_LIBS $smart_lib"
-    SMART_LIBS="$SMART_LIBS $smart_lib"
-  else
-    echo "$ac_t""no" 1>&6 
-fi
-
-	if test "x$ac_cv_lib_crypto_DH_new" != "xyes"; then
- 	    fail="$fail libcrypto"
-	fi
-
-	
-
-sm_lib_safe=`echo "ssl" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "SSL_new" | sed 'y%./+-%__p_%'`
-echo $ac_n "checking for SSL_new in -lssl""... $ac_c" 1>&6
-echo "configure:1059: checking for SSL_new in -lssl" >&5
-
-smart_lib=
-smart_lib_dir=
-
-  old_LIBS="$LIBS"
-  LIBS="$LIBS -lssl"
-  cat > conftest.$ac_ext <<EOF
-#line 1067 "configure"
-#include "confdefs.h"
-extern char SSL_new();
-int main() {
- SSL_new()
-; return 0; }
-EOF
-if { (eval echo configure:1074: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  smart_lib="-lssl"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-fi
-rm -f conftest*
-
-  if test "x$smart_lib" = "x"; then
-    
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libssl${libltdl_cv_shlibext}
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-    
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libssl.a
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-    for try in $smart_try_dir $smart_lib_dir /usr/local/lib/ /opt/lib; do
-      LIBS="$old_LIBS -L$try -lssl"
-
-      cat > conftest.$ac_ext <<EOF
-#line 1143 "configure"
-#include "confdefs.h"
-extern char SSL_new();
-int main() {
- SSL_new()
-; return 0; }
-EOF
-if { (eval echo configure:1150: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
-  rm -rf conftest*
-  smart_lib="-L$try -lssl"
-else
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-fi
-rm -f conftest*
-      if test "x$smart_lib" != "x"; then
-        break;
-      fi
-    done
-    LIBS="$old_LIBS"
-  fi
-
-        if test "x$smart_lib" != "x"; then
-    echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-    LIBS="$old_LIBS $smart_lib"
-    SMART_LIBS="$SMART_LIBS $smart_lib"
-  else
-    echo "$ac_t""no" 1>&6 
-fi
-
-	if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
- 	    fail="$fail libssl"
-	fi
-
-echo $ac_n "checking how to run the C preprocessor""... $ac_c" 1>&6
-echo "configure:1179: checking how to run the C preprocessor" >&5
-# On Suns, sometimes $CPP names a directory.
-if test -n "$CPP" && test -d "$CPP"; then
-  CPP=
-fi
-if test -z "$CPP"; then
-if eval "test \"`echo '$''{'ac_cv_prog_CPP'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-    # This must be in double quotes, not single quotes, because CPP may get
-  # substituted into the Makefile and "${CC-cc}" will confuse make.
-  CPP="${CC-cc} -E"
-  # On the NeXT, cc -E runs the code through the compiler's parser,
-  # not just through cpp.
-  cat > conftest.$ac_ext <<EOF
-#line 1194 "configure"
-#include "confdefs.h"
-#include <assert.h>
-Syntax Error
-EOF
-ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:1200: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
-if test -z "$ac_err"; then
-  :
-else
-  echo "$ac_err" >&5
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  CPP="${CC-cc} -E -traditional-cpp"
-  cat > conftest.$ac_ext <<EOF
-#line 1211 "configure"
-#include "confdefs.h"
-#include <assert.h>
-Syntax Error
-EOF
-ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:1217: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
-if test -z "$ac_err"; then
-  :
-else
-  echo "$ac_err" >&5
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  CPP="${CC-cc} -nologo -E"
-  cat > conftest.$ac_ext <<EOF
-#line 1228 "configure"
-#include "confdefs.h"
-#include <assert.h>
-Syntax Error
-EOF
-ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:1234: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
-if test -z "$ac_err"; then
-  :
-else
-  echo "$ac_err" >&5
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  CPP=/lib/cpp
-fi
-rm -f conftest*
-fi
-rm -f conftest*
-fi
-rm -f conftest*
-  ac_cv_prog_CPP="$CPP"
-fi
-  CPP="$ac_cv_prog_CPP"
-else
-  ac_cv_prog_CPP="$CPP"
-fi
-echo "$ac_t""$CPP" 1>&6
-
-for ac_hdr in \
-	openssl/err.h \
-	openssl/rand.h \
-	openssl/engine.h
-	
-do
-ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
-echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-echo "configure:1266: checking for $ac_hdr" >&5
-if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
-  echo $ac_n "(cached) $ac_c" 1>&6
-else
-  cat > conftest.$ac_ext <<EOF
-#line 1271 "configure"
-#include "confdefs.h"
-#include <$ac_hdr>
-EOF
-ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:1276: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
-if test -z "$ac_err"; then
-  rm -rf conftest*
-  eval "ac_cv_header_$ac_safe=yes"
-else
-  echo "$ac_err" >&5
-  echo "configure: failed program was:" >&5
-  cat conftest.$ac_ext >&5
-  rm -rf conftest*
-  eval "ac_cv_header_$ac_safe=no"
-fi
-rm -f conftest*
-fi
-if eval "test \"`echo '$ac_cv_header_'$ac_safe`\" = yes"; then
-  echo "$ac_t""yes" 1>&6
-    ac_tr_hdr=HAVE_`echo $ac_hdr | sed 'y%abcdefghijklmnopqrstuvwxyz./-%ABCDEFGHIJKLMNOPQRSTUVWXYZ___%'`
-  cat >> confdefs.h <<EOF
-#define $ac_tr_hdr 1
-EOF
- 
-else
-  echo "$ac_t""no" 1>&6
-fi
-done
-
+	if test "x$OPENSSL_LIBS" != "x"; then
+	  SMART_LIBS="-L$OPENSSL_LIBS -lcrypto -lssl"
+	else
+	  fail="$fail libssl"
+        fi
 
 	targetname=rlm_eap_sim
 else
@@ -1460,7 +925,6 @@ s%@oldincludedir@%$oldincludedir%g
 s%@infodir@%$infodir%g
 s%@mandir@%$mandir%g
 s%@CC@%$CC%g
-s%@CPP@%$CPP%g
 s%@eap_sim_ldflags@%$eap_sim_ldflags%g
 s%@eap_sim_cflags@%$eap_sim_cflags%g
 s%@targetname@%$targetname%g

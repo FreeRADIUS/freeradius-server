@@ -513,6 +513,46 @@ then
   AC_DEFINE(OSFSIA)
 fi
 
+smart_try_dir="$OPENSSL_INCLUDE"
+AC_SMART_CHECK_INCLUDE(openssl/ssl.h)
+if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
+  AC_CHECK_HEADERS( \
+	  openssl/err.h \
+	  openssl/crypto.h \
+	  openssl/rand.h \
+	  openssl/engine.h
+  )
+
+  AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
+       old_CPPFLAGS=$CPPFLAGS
+       CPPFLAGS="-I$OPENSSL_INCLUDE"
+       AC_EGREP_CPP(yes,
+       [#include <openssl/crypto.h>
+       #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
+        yes
+       #endif
+       ], goodssl="yes")
+           if test "x$goodssl" != "xyes"; then
+             AC_MSG_RESULT(no)
+	     OPENSSL_INCLUDE=
+	     OPENSSL_LIBS=
+           else
+             AC_MSG_RESULT(yes)
+
+             # Look for the OpenSSL libraries.
+	     smart_try_dir=$OPENSSL_LIBS
+	     AC_SMART_CHECK_LIB(crypto, DH_new)
+	     if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
+	       AC_SMART_CHECK_LIB(ssl, SSL_new)
+	       if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
+		 OPENSSL_INCLUDE=
+		 OPENSSL_LIBS=
+	       fi
+	       export OPENSSL_INCLUDE OPENSSL_LIBS
+	     fi
+           fi
+       CPPFLAGS=$old_CPPFLAGS
+fi
 
 dnl #############################################################
 dnl #
