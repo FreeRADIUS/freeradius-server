@@ -59,8 +59,6 @@ INTRODUCTION
    15. The supplicant decrypts the Broadcast key with the Session key and 
        the session continues using the Broadcast and Session keys until 
        the session ends.
-   (Please note that WEP is not yet supported in freeradius)
-
 
   References:
 	The Implementation of EAP over RADIUS is based on the following RFCs
