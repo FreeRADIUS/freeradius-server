@@ -388,6 +388,11 @@ modules {
 		# ignore password set by any other module during
 		# authorization and will always use password file
 		#	ignore_password = yes  
+
+		# if use_mppe is not set to no mschap will
+		# add MS-CHAP-MPPE-Keys for MS-CHAPv1 and
+		# MS-MPPE-Recv-Key/MS-MPPE-Send-Key for MS-CHAPv2
+		use_mppe = no
 	}
 
 	# PAP module to authenticate users based on their stored password
