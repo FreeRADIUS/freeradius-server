@@ -244,6 +244,7 @@ static int xlat_config(void *instance, REQUEST *request,
 	CONF_SECTION *cs;
 	CONF_PAIR *cp;
 	char buffer[1024];
+	char xlat_buffer[1024];
 	char *p, *value;
 	const char *start = fmt;
 
@@ -252,6 +253,15 @@ static int xlat_config(void *instance, REQUEST *request,
 
 	cp = NULL;
 	cs = NULL;
+
+	/*
+	 *	Weird hacks...
+	 */
+	p = strchr(fmt, '%');
+	if (p) {
+		radius_xlat(xlat_buffer, sizeof(xlat_buffer), fmt, request, NULL);
+		start = fmt = xlat_buffer;
+	}
 
 	while (cp == NULL) {
 		/*
@@ -272,12 +282,12 @@ static int xlat_config(void *instance, REQUEST *request,
 			fmt++;	/* skip the period */
 
 			if (cs == NULL) {
-			  next = cf_section_find(buffer);
+				next = cf_section_find(buffer);
 			} else {
-			  next = cf_subsection_find_next(cs, NULL, buffer);
+				next = cf_subsection_find_next(cs, NULL, buffer);
 			}
 			if (next == NULL) {
-				radlog(L_ERR, "config: No such section %s in format string %s", buffer, start);
+				radlog(L_ERR, "config: section \"%s\" not found while dereferencing \"%s\"", buffer, start);
 				return 0;
 			}
 			cs = next;
@@ -286,7 +296,7 @@ static int xlat_config(void *instance, REQUEST *request,
 			cp = cf_pair_find(cs, buffer);
 
 			if (cp == NULL) {
-				radlog(L_ERR, "config: No such section %s in format string %s", buffer, start);
+				radlog(L_ERR, "config: item \"%s\" not found while dereferencing \"%s\"", buffer, start);
 				return 0;
 			}
 		}
