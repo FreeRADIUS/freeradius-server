@@ -87,6 +87,7 @@ typedef struct nas_port {
 struct radutmp_instance {
   NAS_PORT *nas_port_list;
   char *radutmp_fn;
+  char *username;
   int permission;
   int callerid_ok;
 };
@@ -94,6 +95,8 @@ struct radutmp_instance {
 static CONF_PARSER module_config[] = {
   { "filename", PW_TYPE_STRING_PTR,
     offsetof(struct radutmp_instance,radutmp_fn), NULL,  RADUTMP },
+  { "username", PW_TYPE_STRING_PTR,
+    offsetof(struct radutmp_instance,username), NULL,  "%{User-Name}"},
   { "perm",     PW_TYPE_INTEGER,
     offsetof(struct radutmp_instance,permission), NULL,  "0644" },
   { "callerid", PW_TYPE_BOOLEAN,
@@ -210,6 +213,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	int		nas_port_type = 0;
 	int		off;
 	struct radutmp_instance *inst = instance;
+	char		buffer[256];
 
 	/*
 	 *	Which type is this.
@@ -222,8 +226,15 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	if (status == PW_STATUS_ACCOUNTING_ON ||
 	    status == PW_STATUS_ACCOUNTING_OFF) rb_record = 1;
 
+	/*
+	 *	Translate the User-Name attribute, or whatever else
+	 *	they told us to use.
+	 */
+	*buffer = '\0';
+	radius_xlat(buffer, sizeof(buffer), inst->username, request, NULL);
+
 	if (!rb_record &&
-	    (vp = pairfind(request->packet->vps, PW_USER_NAME)) == NULL) do {
+	    (*buffer != '\0')) do {
 		int check1 = 0;
 		int check2 = 0;
 
@@ -265,13 +276,15 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	ut.porttype = 'A';
 
 	/*
+	 *  Copy the previous translated user name.
+	 */
+	strncpy(ut.login, buffer, RUT_NAMESIZE);
+
+	/*
 	 *	First, find the interesting attributes.
 	 */
 	for (vp = request->packet->vps; vp; vp = vp->next) {
 		switch (vp->attribute) {
-			case PW_USER_NAME:
-				strncpy(ut.login, vp->strvalue, RUT_NAMESIZE);
-				break;
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:
 				framed_address = vp->lvalue;
@@ -515,8 +528,9 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 {
 	struct radutmp	u;
 	int		fd;
-	VALUE_PAIR	*fra;
+	VALUE_PAIR	*vp;
 	uint32_t	ipno = 0;
+	char		*call_num = NULL;
 	int		rcode;
 	const char *name = (char *)request->username->strvalue;
 	struct radutmp_instance *inst = instance;
@@ -544,8 +558,10 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	/*
 	 *	Setup some stuff, like for MPP detection.
 	 */
-	if ((fra = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
-		ipno = fra->lvalue;
+	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
+		ipno = vp->lvalue;
+	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
+		call_num = vp->strvalue;	
 
 	/*
 	 *	lockf() the file while reading/writing.
@@ -578,6 +594,9 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 				 */
 				if (strchr("SCPA", u.proto) &&
 				    ipno && u.framed_address == ipno)
+					request->simul_mpp = 2;
+				else if (strchr("SCPA", u.proto) && call_num &&
+					!strncmp(u.caller_id,call_num,16))
 					request->simul_mpp = 2;
 			}
 			else {
