@@ -349,6 +349,7 @@ static int file_authorize(REQUEST *request,
 		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
 	int		nas_port = 0;
+	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
@@ -366,7 +367,8 @@ static int file_authorize(REQUEST *request,
  	/*
 	 *	Grab the canonical user name.
 	 */
-	name = request->username->strvalue;
+	namepair = request->username;
+	name = namepair ? (char *) namepair->strvalue : "NONE";
 
 	/*
 	 *	Find the NAS port ID.
@@ -431,9 +433,20 @@ static int file_authorize(REQUEST *request,
 
 	for(pl = users; pl; pl = pl->next) {
 
-		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
+		/*
+		 *	If the current entry is NOT a default,
+		 *	AND the name does NOT match the current entry,
+		 *	then skip to the next entry.
+		 */
+		if ((strcmp(pl->name, "DEFAULT") != 0) &&
+		    (strcmp(name, pl->name) != 0))
 			continue;
 
+		/*
+		 *	If the current request matches against the
+		 *	check pairs, then add the reply pairs from the
+		 *	entry to the current list of reply pairs.
+		 */
 		if (paircmp(request_pairs, pl->check, reply_pairs) == 0) {
 			DEBUG2("  users: Matched %s at %d",
 			       pl->name, pl->lineno);
@@ -579,11 +592,11 @@ static int file_preacct(REQUEST *request)
 	char		buffer[256];
 #endif
 
-	namepair = pairfind(request->packet->vps, PW_USER_NAME);
-	name = namepair?(char *)namepair->strvalue:"NONE";
+	namepair = request->username;
+	name = namepair ? (char *) namepair->strvalue : "NONE";
 	request_pairs = request->packet->vps;
 	config_pairs = &request->config_items;
-
+	
 	/*
 	 *	Find the entry for the user.
 	 */
