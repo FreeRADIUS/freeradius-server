@@ -237,6 +237,7 @@
 #define PW_AUTHTYPE_ACTIVCARD		5
 #define PW_AUTHTYPE_EAP                 6
 #define PW_AUTHTYPE_ACCEPT		254
+#define PW_AUTHTYPE_MS_CHAP		1028
 
 /*	Port Types		*/
 
