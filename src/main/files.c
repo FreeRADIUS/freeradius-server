@@ -126,7 +126,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	FILE *fp;
 	int mode = FIND_MODE_NAME;
 	char entry[256];
-	char buffer[256];
+	char buffer[8192];
 	char *ptr, *s;
 	VALUE_PAIR *check_tmp;
 	VALUE_PAIR *reply_tmp;
