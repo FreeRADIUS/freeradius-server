@@ -65,6 +65,9 @@ static const char rcsid[] =
 
 #include	<sys/resource.h>
 
+#include	<grp.h>
+#include	<pwd.h>
+
 /*
  *	Global variables.
  */
@@ -123,6 +126,10 @@ static int		cleanup_delay = CLEANUP_DELAY;
 static int		max_requests = MAX_REQUESTS;
 static int		dont_fork = FALSE;
 static const char	*pid_file = NULL;
+static uid_t		server_uid;
+static gid_t		server_gid;
+static const char	*uid_name = NULL;
+static const char	*gid_name = NULL;
 
 #if !defined(__linux__) && !defined(__GNU_LIBRARY__)
 extern int	errno;
@@ -166,13 +173,15 @@ static CONF_PARSER server_config[] = {
   { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
   { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
   { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "0" },
-  { "usercollide",  			PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide,		"no" },
-  { "lower_user",  			PW_TYPE_BOOLEAN,    &mainconfig.do_lower_user,		"no" },
-  { "lower_pass",  			PW_TYPE_BOOLEAN,    &mainconfig.do_lower_pass,		"no" },
-  { "lower_time",  			PW_TYPE_STRING_PTR,    &mainconfig.lower_time,		"before" },
-  { "nospace_user", 			PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_user,	"no" },
-  { "nospace_pass", 			PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_pass,	"no" },
-  { "nospace_time",  			PW_TYPE_STRING_PTR,    &mainconfig.nospace_time,		"before" },
+  { "user",           PW_TYPE_STRING_PTR, &uid_name,  NULL},
+  { "group",          PW_TYPE_STRING_PTR, &gid_name,  NULL},
+  { "usercollide",    PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide, "no" },
+  { "lower_user",     PW_TYPE_BOOLEAN,    &mainconfig.do_lower_user, "no" },
+  { "lower_pass",     PW_TYPE_BOOLEAN,    &mainconfig.do_lower_pass, "no" },
+  { "lower_time",     PW_TYPE_STRING_PTR, &mainconfig.lower_time, "before" },
+  { "nospace_user",   PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_user, "no" },
+  { "nospace_pass",   PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_pass, "no" },
+  { "nospace_time",   PW_TYPE_STRING_PTR, &mainconfig.nospace_time, "before" },
   { NULL, -1, NULL, NULL }
 };
 
@@ -214,9 +223,10 @@ static int reread_config(int reload)
 	 *	And parse the server's configuration values.
 	 */
 	cs = cf_section_find(NULL);
-	if (!cs)
+	if (!cs) {
+		radlog(L_ERR|L_CONS, "No configuration information in radiusd.conf!");
 		return -1;
-
+	}
 	cf_section_parse(cs, server_config);
 
 	/*
@@ -262,6 +272,49 @@ static int reread_config(int reload)
 			exit(1);
 		}
 	}
+
+	/*
+	 *	Set the UID and GID, but only if we're NOT running
+	 *	in debugging mode.
+	 */
+	if (!debug_flag) {
+		/*
+		 *	Set group.
+		 */
+		if (gid_name) {
+			struct group *gr;
+
+			gr = getgrnam(gid_name);
+			if (!gr) {
+				radlog(L_ERR|L_CONS, "Cannot switch to Group %s: %s", gid_name, strerror(errno));
+				exit(1);
+			}
+			server_gid = gr->gr_gid;
+			if (setgid(server_gid) < 0) {
+				radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s", gid_name, strerror(errno));
+				exit(1);
+			}
+		}
+
+		/*
+		 *	Set UID.
+		 */
+		if (uid_name) {
+			struct passwd *pw;
+
+			pw = getpwnam(uid_name);
+			if (!pw) {
+				radlog(L_ERR|L_CONS, "Cannot switch to User %s: %s", uid_name, strerror(errno));
+				exit(1);
+			}
+			server_uid = pw->pw_uid;
+			if (setuid(server_uid) < 0) {
+				radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", uid_name, strerror(errno));
+				exit(1);
+			}
+		}
+	}
+
 
 	/*
 	 *	Parse the server's proxy configuration values.
