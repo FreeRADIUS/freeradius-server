@@ -62,12 +62,13 @@ every login/logout recorded. The location of the detail file is
 \fIacct_dir/\fP\fBterminal_server\fP\fI/detail\fP.
 
 .IP "\-l \fIlogging directory\fP"
-This defaults to \fI/var/log\fP. \fBRadiusd\fP writes a logfile here called
-\fIradius.log\fP. It contains informational and error messages, and optionally
-a record of every login attempt (for aiding an ISP's helpdesk). The
-special argument \fIstdout\fP causes the information to get written
-to the standard output instead. The special argument \fIsyslog\fP sends the
-information with \fBsyslog\fP(3).
+This defaults to \fI/var/log\fP. \fBRadiusd\fP writes a logfile here
+called \fIradius.log\fP. It contains informational and error messages,
+and optionally a record of every login attempt (for aiding an ISP's
+helpdesk). The special arguments \fIstdout\fP and \fIstderr\fP cause
+the information to get written to the standard output, or standard
+error instead. The special argument \fIsyslog\fP sends the information
+with \fBsyslog\fP(3).
 
 .IP "\-g \fIfacility\fP"
 Specifies the syslog facility to be used with \fB-l syslog\fP. Default is
