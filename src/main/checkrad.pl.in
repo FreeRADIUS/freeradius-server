@@ -58,6 +58,12 @@ $lv_offs = 29;
 $lv_hole = 2;
 
 #
+#	USR-Hiper: $hiper_density is the reported port density (default 256
+#	but 24 makes more sense)
+#
+$hiper_density = 24;
+
+#
 #	Try to load Net::Telnet, SNMP_Session etc.
 #	Do not complain if we cannot find it.
 #	Prefer a locally installed copy.
@@ -89,7 +95,7 @@ sub naspasswd {
 		if (!$emptyok) {
 			print LOG "checkrad: naspasswd file not found; " .
 			"possible match for $ARGV[3]\n" if ($debug);
-			print STDERR "checkrad: naspassswd file not found; " .
+			print STDERR "checkrad: naspasswd file not found; " .
 			"possible match for $ARGV[3]\n";
 		}
 		return ();
@@ -273,7 +279,15 @@ sub livingston_snmp {
 #
 $csm	 = '.iso.org.dod.internet.private.enterprises.9';
 sub cisco_snmp {
-	$login = snmpget($ARGV[1], "public", "$csm.2.9.2.1.18.$ARGV[2]");
+        my ($login, $password) = naspasswd($ARGV[1], 1);
+	if($login ne 'SNMP') {
+	  if($debug) {
+	    print LOG "   Error: Need SNMP community string for $ARGV[1]\n";
+	  }
+	  return 2;
+	}
+
+	$login = snmpget($ARGV[1], $password, "$csm.2.9.2.1.18.$ARGV[2]");
 
 	print LOG "  user at port S$ARGV[2]: $login\n" if ($debug);
 
@@ -771,12 +785,22 @@ sub cyclades_snmp {
 # 
 $usrm	 = '.iso.org.dod.internet.private.enterprises.429';
 sub usrhiper_snmp {
+	my($login,$password,$oidext);
 
-	# Somebody please verify????
-	my($oidext) = $ARGV[2] + 1256;
+        ($login, $password) = naspasswd($ARGV[1], 1);
+	if($login ne 'SNMP') {
+	  if($debug) {
+	    print LOG "   Error: Need SNMP community string for $ARGV[1]\n";
+	  }
+	  return 2;
+	}
+	$password = "public" if $password eq "";
+
+	$oidext = 1257 + 256*int(($ARGV[2]-1) / $hiper_density) +
+		                (($ARGV[2]-1) % $hiper_density);
 	my ($login);
 
-	$login = snmpget($ARGV[1], "public", "$usrm.4.10.1.1.18.$oidext");
+	$login = snmpget($ARGV[1], $password, "$usrm.4.10.1.1.18.$oidext");
 	if ($login =~ /\"/) {
 		$login =~ /^.*\"([^"]+)\"/;
 		$login = $1;

@@ -432,9 +432,10 @@ int rad_authenticate(REQUEST *request)
 					   clean_buffer, sizeof(clean_buffer));
 			}
 			log(L_AUTH,
-				"Login incorrect: [%s/%s] (%s)%s",
+				"Login incorrect: [%s%s%s] (%s)%s",
 				auth_username(namepair),
-			        clean_buffer,
+				log_auth_pass?"/":"",
+				log_auth_pass?clean_buffer:"",
 				auth_name(buf, sizeof(buf), request, 1),
 				((result == -2) ? " reject" : ""));
 			/* double check: maybe the secret is wrong? */
