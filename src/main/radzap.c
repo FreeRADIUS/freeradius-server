@@ -31,7 +31,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <limits.h>
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
