@@ -15,6 +15,10 @@
 #include <string.h>
 #include <assert.h>
 
+#if HAVE_NETINET_IN_H
+#include	<netinet/in.h>
+#endif
+
 #include "radiusd.h"
 #include "conffile.h"
 #include "token.h"
