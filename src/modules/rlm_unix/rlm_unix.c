@@ -85,7 +85,7 @@ static int group_inst_explicit;
 /*
  *	The Group = handler.
  */
-static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
+static int groupcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	struct passwd	*pwd;
@@ -93,7 +93,10 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	char		**member;
 	char		*username;
 	int		retval;
-	check_pairs = check_pairs; reply_pairs = reply_pairs;
+
+	instance = instance;
+	check_pairs = check_pairs;
+	reply_pairs = reply_pairs;
 
 	if (!group_inst) {
 		radlog(L_ERR, "groupcmp: no group list known.");
@@ -131,9 +134,9 @@ static int unix_init(void)
 {
 	/* FIXME - delay these until a group file has been read so we know
 	 * groupcmp can actually do something */
-	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp);
+	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp, NULL);
 #ifdef PW_GROUP_NAME /* compat */
-	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp);
+	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp, NULL);
 #endif
 	return 0;
 }
