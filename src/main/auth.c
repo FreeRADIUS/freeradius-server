@@ -795,7 +795,8 @@ autz_redo:
 		 */
 		if ((vpPortId = pairfind(request->packet->vps,
 					 PW_NAS_PORT)) != NULL) {
-		  tmp->lvalue = htonl(ntohl(tmp->lvalue) + vpPortId->lvalue);
+		  unsigned long tvalue = ntohl(tmp->lvalue);
+		  tmp->lvalue = htonl(tvalue + vpPortId->lvalue);
 		  tmp->flags.addport = 0;
 		  ip_ntoa(tmp->strvalue, tmp->lvalue);
 		} else {
