@@ -1,5 +1,6 @@
 radiusd-freeradius (?) unstable; urgency=low
 
+  * Build-dep mysql changed package names.
   * Integer values are printed as unsigned numbers, to comply with RFC2866.
   * Fixed broken/reversed auth comparisons in SQL module.
   * Sucked out CPPness from inside a printf, as printf is a macro in newer
@@ -10,6 +11,7 @@ radiusd-freeradius (?) unstable; urgency=low
   * Changed debugging messages to give more info about execution flow.
   * Better counter module.  
   * Inserted CHAP support for SQL modules.
+  * Removed possible infinite loop.
 
  -- Chad Miller <cmiller@debian.org>  [TBA]
 
