@@ -29,4 +29,3 @@ rlm_radutmp
 rlm_realm
 rlm_sql
 rlm_unix
-rlm_x99_token
