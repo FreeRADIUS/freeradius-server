@@ -743,7 +743,8 @@ static int file_accounting(REQUEST *request)
 	 */
 	sprintf(buffer, "%s/%s/%s", radacct_dir, nasname, "detail");
 	if ((outfd = fopen(buffer, "a")) == NULL) {
-		log(L_ERR, "Acct: Couldn't open file %s", buffer);
+		log(L_ERR, "Acct: Couldn't open file %s: %s",
+		    buffer, strerror(errno));
 		ret = RLM_ACCT_FAIL;
 	} else {
 
