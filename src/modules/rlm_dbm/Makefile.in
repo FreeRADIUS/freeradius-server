@@ -1,8 +1,22 @@
 TARGET      = @targetname@
 SRCS        = rlm_dbm.c
 HEADERS     =
+RLM_UTILS   = rlm_dbm_parser rlm_dbm_cat
 RLM_CFLAGS  = @dbm_cflags@
 RLM_LIBS    = @dbm_ldflags@
-RLM_INSTALL =
+RLM_INSTALL = rlm_dbm_install
 
 include ../rules.mak
+
+rlm_dbm_parser: rlm_dbm_parser.o ../../lib/libradius.a
+	$(LIBTOOL) --mode=link $(CC) $^ $(LIBS) $(RLM_LIBS) -o $@
+
+rlm_dbm_cat: rlm_dbm_cat.o ../../lib/libradius.a
+	$(LIBTOOL) --mode=link $(CC) $^ $(LIBS) $(RLM_LIBS) -o $@
+
+#
+#  Install the utility programs in the bin directory.
+#
+rlm_dbm_install:
+	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_parser $(R)$(bindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_cat    $(R)$(bindir)
