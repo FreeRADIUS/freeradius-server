@@ -1,0 +1,88 @@
+
+	Detail module configuration
+
+
+0. INTRODUCTION
+
+  Most administrators use the detail accounting files that are created
+  in some way.  However, with the other logging options available to
+  FreeRADIUS there will undoubtably be those that want to disable this
+  feature.  The detail file generation is handled within the rlm_detail
+  module.
+
+  The other concern most administrators have is rotating this file on a
+  regular basis (daily, monthly, etc.).  Often this is often done by some
+  external program.  Why not have the RADIUS daemon do this automatically?
+  With all of the information available to the daemon we can easily have
+  it generate detail files with variable file names.
+
+1. USAGE.
+
+  To use this module add the detail configuration stanza to the
+  modules section in radiusd.conf.
+
+  For example:
+	modules {
+		detail {
+			detailfile = %A/%n/detail-%Y%m
+			detailperm = 0600
+		}
+	}
+
+  If you omit the detailfile option the server will automatically set
+  it to:
+       %A/%n/detail
+  which expands to {radius accounting directory}/{nas IP address}/detail.
+
+  The other option here is detailperm.  This allows you to configure the
+  file permissions of the detailfile.  If omitted the default is 0600.
+
+  The variables available for use with detailfile are:
+
+       %a       Protocol (SLIP/PPP)
+       %c       Callback-Number
+       %d       request day (DD)
+       %f       Framed IP address
+       %i       Calling Station ID
+       %l       request timestamp
+       %m       request month (MM)
+       %n       NAS IP address
+       %p       Port number
+       %s       Speed (PW_CONNECT_INFO)
+       %t       MTU
+       %u       User name
+       %y       request year (YY)      Not Y2K compliant, but included
+			               for completeness
+       %A       radacct_dir
+       %C       clientname
+       %D       request date (YYYYMMDD)
+       %I       request in ctime format
+       %L       radlog_dir
+       %R       radius_dir
+       %T       request timestamp in database format
+       %U       Stripped User name
+       %V       Request-Authenticator (Verified/None)
+       %Y       request year (YYYY)
+       %Z       All request attributes except password (must have big buffer)
+       ${AttributeName}                Corresponding value for AttributeName
+                                       in request
+       ${request:AttributeName}        Corresponding value for AttributeName
+                                       in request
+       ${reply:AttributeName}          Corresponding value for AttributeName
+                                       in reply
+
+  Some of these are more useful then others, but all are available.  The %y
+  option display only the last two digits of the year so really isn't
+  recommended, but it is available.  You can even have one detail file per
+  Username.
+
+2. IMPLEMENTATION
+
+  The rlm_detail module only deals with accounting to a detail file.  The
+  module will automatically create the lowest level directory if it doesn't
+  already exist.  If you use the %A variable the radius accounting directory
+  must already exist.
+
+  The expansion works by expanding the variables every time an accounting
+  packet is to be written.  The variables are expanded to include the
+  information available to the server at the time.
