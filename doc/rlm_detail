@@ -25,16 +25,16 @@
 	modules {
 		...
 		detail {
-			detailfile = %A/%n/detail-%Y%m
-			detailperm = 0600
-			dirperm = 0755
+		   detailfile = %A/%{Client-IP-Address}/detail-%Y%m
+		   detailperm = 0600
+		   dirperm = 0755
 		}
 		...
 	}
 
   If you omit the detailfile option the server will automatically set
   it to:
-       %A/%n/detail
+       %A/%{Client-IP-Address}/detail
   which expands to {radius accounting directory}/{nas IP address}/detail.
   This is the traditional place for the RADIUS daemons to generate the
   file.
@@ -70,11 +70,11 @@
        %V       Request-Authenticator (Verified/None)
        %Y       request year (YYYY)
        %Z       All request attributes except password (must have big buffer)
-       ${AttributeName}                Corresponding value for AttributeName
+       %{AttributeName}                Corresponding value for AttributeName
                                        in request
-       ${request:AttributeName}        Corresponding value for AttributeName
+       %{request:AttributeName}        Corresponding value for AttributeName
                                        in request
-       ${reply:AttributeName}          Corresponding value for AttributeName
+       %{reply:AttributeName}          Corresponding value for AttributeName
                                        in reply
 
   Some of these are more useful then others, but all are available.  You
