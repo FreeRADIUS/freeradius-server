@@ -17,7 +17,6 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 
 #include	"libradius.h"
-#include	"missing.h"
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>
@@ -26,6 +25,8 @@ static const char rcsid[] = "$Id$";
 #if HAVE_REGEX_H
 #  include	<regex.h>
 #endif
+
+#include	"missing.h"
 
 static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",
