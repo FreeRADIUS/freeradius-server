@@ -11,7 +11,7 @@
  *  If we have BOTH utmp.h and utmpx.h, then
  *  we prefer to use utmp.h, but only on systems other than Solaris.
  */
-#if !defined(sun) && !defined(sgi)
+#if !defined(sun) && !defined(sgi) && !defined(hpux)
 #ifdef HAVE_UTMP_H
 #undef HAVE_UTMPX_H
 #endif
@@ -27,6 +27,9 @@
 #  define UT_NAMESIZE	32
 #  define UT_LINESIZE	32
 #  define UT_HOSTSIZE	257
+#ifdef hpux
+#  define ut_name ut_user
+#endif
 #else
 #  include <utmp.h>
 #endif
