@@ -16,8 +16,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000  The FreeRADIUS server project
- * Copyright 2001  Google, Inc.
+ * Copyright 2000,2001,2002  The FreeRADIUS server project
+ * Copyright 2001,2002  Google, Inc.
  */
 
 /*
@@ -32,8 +32,6 @@
  */
 
 /*
- * TODO: all requests (success or fail) should take ~ the same amount of time.
- * TODO: x99_pwe: change add_vps to success_vps and fail_vps.
  * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
