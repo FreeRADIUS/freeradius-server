@@ -245,7 +245,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 
 	p = output;
 	ptr = input;
-	while (*ptr >= ' ') {
+	while (*ptr) {
 		/*
 		 *	Ignore anything other than "${"
 		 */
