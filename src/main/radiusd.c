@@ -585,7 +585,7 @@ int main(int argc, char *argv[])
 	pair_builtincompare_init();
 
 #if WITH_SNMP
-	radius_snmp_init();
+	if (mainconfig.do_snmp) radius_snmp_init();
 #endif
 
 	/*
@@ -812,7 +812,8 @@ int main(int argc, char *argv[])
 			if (proxyfd > max_fd) max_fd = proxyfd;
 		}
 #ifdef WITH_SNMP
-		if (rad_snmp.smux_fd >= 0) {
+		if (mainconfig.do_snmp &&
+		    (rad_snmp.smux_fd >= 0)) {
 			FD_SET(rad_snmp.smux_fd, &readfds);
 			if (rad_snmp.smux_fd > max_fd) max_fd = rad_snmp.smux_fd;
 		}
@@ -855,10 +856,12 @@ int main(int argc, char *argv[])
 				continue;
 			}
 #if WITH_SNMP
-			if (fd == acctfd)
-				rad_snmp.acct.total_requests++;
-			if (fd == authfd)
-				rad_snmp.auth.total_requests++;
+			if (mainconfig.do_snmp) {
+				if (fd == acctfd)
+					rad_snmp.acct.total_requests++;
+				if (fd == authfd)
+					rad_snmp.auth.total_requests++;
+			}
 #endif
 
 			/*
@@ -927,27 +930,29 @@ int main(int argc, char *argv[])
 		} /* loop over authfd, acctfd, proxyfd */
 
 #if WITH_SNMP
-		/*
-		 *  After handling all authentication/accounting
-		 *  requests, THEN process any pending SMUX/SNMP
-		 *  queries.
-		 *
-		 *  Note that the handling is done in the main server,
-		 *  which probably isn't a Good Thing.  It really
-		 *  should be wrapped, and handled in a thread pool.
-		 */
-		if ((rad_snmp.smux_fd >= 0) &&
-		    FD_ISSET(rad_snmp.smux_fd, &readfds) &&
-		    (rad_snmp.smux_event == SMUX_READ)) {
-			smux_read();
-		}
-		
-		/*
-		 *  If we've got to re-connect, then do so now,
-		 *  before calling select again.
-		 */
-		if (rad_snmp.smux_event == SMUX_CONNECT) {
-			smux_connect();
+		if (mainconfig.do_snmp) {
+			/*
+			 *  After handling all authentication/accounting
+			 *  requests, THEN process any pending SMUX/SNMP
+			 *  queries.
+			 *
+			 *  Note that the handling is done in the main server,
+			 *  which probably isn't a Good Thing.  It really
+			 *  should be wrapped, and handled in a thread pool.
+			 */
+			if ((rad_snmp.smux_fd >= 0) &&
+			    FD_ISSET(rad_snmp.smux_fd, &readfds) &&
+			    (rad_snmp.smux_event == SMUX_READ)) {
+				smux_read();
+			}
+			
+			/*
+			 *  If we've got to re-connect, then do so now,
+			 *  before calling select again.
+			 */
+			if (rad_snmp.smux_event == SMUX_CONNECT) {
+				smux_connect();
+			}
 		}
 #endif
 
@@ -2221,8 +2226,10 @@ static void sig_hup(int sig)
 		need_reload = TRUE;
 	}
 #ifdef WITH_SNMP
-	rad_snmp.smux_failures = 0;
-	rad_snmp.smux_event = SMUX_CONNECT;
+	if (mainconfig.do_snmp) {
+		rad_snmp.smux_failures = 0;
+		rad_snmp.smux_event = SMUX_CONNECT;
+	}
 #endif
 }
 

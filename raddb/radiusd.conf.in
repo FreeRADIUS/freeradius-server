@@ -388,9 +388,13 @@ $INCLUDE  ${confdir}/clients.conf
 
 # SNMP CONFIGURATION
 #
-#  Snmp configuration is only valid if you enabled SNMP support when
-#  you compiled radiusd.
+#  Snmp configuration is only valid if SNMP support was enabled
+#  at compile time.
 #
+#  To enable SNMP querying of the server, set the value of the
+#  'snmp' attribute to 'yes'
+#
+snmp	= no
 $INCLUDE  ${confdir}/snmp.conf
 
 
