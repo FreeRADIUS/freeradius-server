@@ -208,7 +208,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	if (config->sqltrace)
 		DEBUG(querystr);
 	if (oracle_sock->conn == NULL) {
-		radlog(L_ERR, "Socket not connected");
+		radlog(L_ERR, "rlm_sql_oracle: Socket not connected");
 		return SQL_DOWN;
 	}
 
