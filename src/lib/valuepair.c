@@ -232,19 +232,39 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		  
 			found = pairfind(*to, i->attribute);
 			switch (i->operator) {
+
 			  /*
-			   *  If an a similar attribute is found,
+			   *  If a similar attribute is found,
 			   *  replace it with the new one.  Otherwise,
-			   *  add it to the list.
+			   *  add the new one to the list.
+			   */
+			case T_OP_SET:		/* := */
+				if (found) {
+					pairdelete(to, found->attribute);
+				}
+				break;
+				
+			  /*
+			   *  If a similar attribute is found,
+			   *  delete it.
+			   */
+			case T_OP_SUB:		/* -= */
+				if (found) {
+					if (strcmp(found->strvalue,
+						   i->strvalue) == 0) {
+					  pairdelete(to, found->attribute);
+					}
+				}
+				tailfrom = i;
+				continue;
+				break;
+				
+			  /*
+			   *  If a similar attribute is found,
+			   *  ignore the new one.  Otherwise,
+			   *  add the new one to the list.
 			   */
 			default:
-			case T_OP_SET:		/* := */
-			  if (found) {
-			    pairdelete(to, found->attribute);
-			    break;
-			  }
-			  /* FALL THROUGH */
-
 			case T_OP_EQ:		/* = */
 				if (found) {
 					tailfrom = i;
@@ -252,9 +272,10 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 				}
 				break;
 
-				/*
-				 *  Add the new element to the list
-				 */
+			   /*
+			    *  Add the new element to the list, even
+			    *  if similar ones already exist.
+			    */
 			case T_OP_ADD:		/* += */
 				break;
 			}
@@ -407,8 +428,7 @@ VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->strvalue.
 	 */
-	strncpy(vp->strvalue, value, MAX_STRING_LEN);
-	vp->strvalue[MAX_STRING_LEN - 1] = 0;
+	strNcpy(vp->strvalue, value, MAX_STRING_LEN);
 
 	switch(da->type) {
 		case PW_TYPE_STRING:
