@@ -216,8 +216,9 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 			 * Net and Broadcast addresses are excluded
 			 */
 			or_result = i | data->netmask;
-			if (or_result == data->netmask ||
-			    (~or_result == 0)) {
+			if (~data->netmask != 0 &&
+				(or_result == data->netmask ||
+			    (~or_result == 0))) {
 				DEBUG("rlm_ippool: IP %s excluded",
 				      ip_ntoa(str, ntohl(i)));
 				continue;
