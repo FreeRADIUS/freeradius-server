@@ -119,7 +119,7 @@ static const CONF_PARSER thread_config[] = {
 static void *request_handler_thread(void *arg)
 {
 	THREAD_HANDLE	*self = (THREAD_HANDLE *) arg;
-#if HAVE_SIGPROCMASK
+#if HAVE_PTHREAD_SIGMASK
 	sigset_t set;
 
 	/*
@@ -134,8 +134,10 @@ static void *request_handler_thread(void *arg)
 	 */
 	sigemptyset(&set);
 	sigaddset(&set, SIGHUP);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGQUIT);
 	sigaddset(&set, SIGCHLD);
-	sigprocmask(SIG_BLOCK, &set, NULL);
+	pthread_sigmask(SIG_BLOCK, &set, NULL);
 #endif
 	
 	/*
@@ -147,7 +149,9 @@ static void *request_handler_thread(void *arg)
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
 				self->thread_num);
-		sem_wait(&self->semaphore);
+		if (sem_wait(&self->semaphore) < 0) {
+			break;
+		}
 
 		/*
 		 *	If we've been told to kill ourselves,
@@ -173,6 +177,7 @@ static void *request_handler_thread(void *arg)
 		 */
 	}
 
+ thread_exit:
 	/*
 	 *	This thread is exiting.  Delete any additional resources
 	 *	associated with it (semaphore, etc), and free the thread
