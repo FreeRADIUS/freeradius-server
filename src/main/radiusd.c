@@ -304,9 +304,9 @@ int main(int argc, char *argv[])
 	 */
 	memset(&mainconfig, 0, sizeof(mainconfig));
 #ifdef HAVE_SIGACTION
+	memset(&act, 0, sizeof(act));
 	act.sa_flags = 0 ;
 	sigemptyset( &act.sa_mask ) ;
-	act.sa_sigaction = NULL;
 #endif
 
 	/*  Process the options.  */
@@ -2209,9 +2209,10 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 * we refuse to handle SIGCHLDs normally until we're finished. */
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
+
+	memset(&act, 0, sizeof(act));
 	act.sa_flags = 0 ;
 	sigemptyset( &act.sa_mask ) ;
-	act.sa_sigaction = NULL;
 	act.sa_handler = queue_sig_cleanup;
 	sigaction(SIGCHLD, &act, NULL);
 #else
