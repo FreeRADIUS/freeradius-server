@@ -84,7 +84,7 @@ binary-arch: stamp-build
 	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-1.0.0-pre0
 
 	# split out inconvenient/controversal modules to other places
-	for modname in krb5 ldap mysql postgresql; do \
+	for modname in krb5 ldap mysql postgresql iodbc; do \
 		mkdir -p $(debiandir)/$(package)-$${modname}/$(libdir); \
 		mv $(freeradius_dir)/$(libdir)/rlm*_$${modname}* $(debiandir)/$(package)-$${modname}/$(libdir)/; \
 	done
@@ -101,7 +101,6 @@ binary-arch: stamp-build
 	install -g root -m 644 mibs/*.txt $(freeradius_dir)/usr/share/snmp/mibs
 
 	# supporting programs
-	install -g root -m 755 $(debiandir)/initscript $(freeradius_dir)/etc/init.d/$(package)
 	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`; \
 	cp $(freeradius_dir)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
 	cat $$TEMPFILE \
@@ -119,6 +118,8 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	dh_strip
 endif
 	dh_installlogrotate
+	dh_installinit -n
+	dh_installpam --name=radiusd
 	# We don't need ldconfig. None of our libraries go in it's paths
 	dh_makeshlibs -n
 	dh_shlibdeps
@@ -131,10 +132,10 @@ endif
 
 clean:	
 	dh_testdir
-	rm -f stamp-build debian/{files,substvars} debian/*.debhelper
+	rm -f stamp-build debian/{files,substvars} debian/*.debhelper libltdl/stamp-h1
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
-	rm -rf $(freeradius_dir) $(debiandir)/$(package)-{ldap,postgresql,mysql,krb5}{,.substvars}
+	rm -rf $(freeradius_dir) $(debiandir)/$(package)-{krb5,ldap,mysql,postgresql,iodbc}{,.substvars}
 	[ -f config.sub.dist ] && rm config.sub && mv config.sub.dist config.sub || true
 	[ -f config.guess.dist ] && rm config.guess && mv config.guess.dist config.guess || true
 

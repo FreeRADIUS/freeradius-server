@@ -5,7 +5,7 @@ set -e
 case "$1" in
   remove)
 	if [ -x /usr/sbin/invoke-rc.d ] ; then
-		invoke-rc.d freeradius stop
+		invoke-rc.d freeradius stop || true
 	else
 		/etc/init.d/freeradius stop
 	fi

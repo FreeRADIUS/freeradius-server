@@ -1,8 +1,56 @@
-freeradius (0.9.2-cvs20031016-0) unstable; urgency=low
+freeradius (0.9.3-cvs20040118-0) unstable; urgency=low
 
   * Current CVS version
+  * Seperated rlm_sql_iodbc into it's own package, freeradius-iodbc
+  * Imported downstream debian/ changes
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 16 Oct 2003 06:15:25 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 18 Jan 2004 18:40:42 +1100
+
+freeradius (0.9.2-4) unstable; urgency=high
+
+  * Patch from upstream head:
+   - Fix a remote DoS and possible exploit due to mis-handling
+     of tagged attributes, and Tunnel-Password attribute.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Fri, 21 Nov 2003 09:52:51 +1100
+
+freeradius (0.9.2-3) unstable; urgency=low
+
+  * Removed redundant code to delete contents of a directory
+    on purge which ends up being removed anyway.
+  * Provide a default pam.d configuration.
+  * Fix the usage of dh_installinit to not make the package uninstallable.
+  * Change package removal to not abort if we cannot stop the server.
+  * Debian-archive-fit version of freeradius.
+     Closes: #208620
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 11 Nov 2003 02:12:55 +1100
+
+freeradius (0.9.2-2) unstable; urgency=low
+
+  * Use dh_installinit rather than doing it by hand
+    This involves renaming the initfile in the source tarball
+  * Only add user freerad to the group shadow on first installation
+  * Only chmod /etc/freeradius to group-readable, not group-read/write
+  * Removed the freerad user when the freerad group is removed
+  * Removed spurious build-dependancy on autoconf2.13 and libtool(1.4)
+  * Build-conflict against libssl-dev
+  * Restore Kerberos and LDAP as they will build without OpenSSL
+  * Make myself the maintainer
+  * Update to Policy 3.6.1.0
+    - No changes needed
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun,  9 Nov 2003 00:07:52 +1100
+  
+freeradius (0.9.2-1) unstable; urgency=low
+
+  * Deleted RFCs: 2243 2289 2433 2548 2618 2616 2620 2621
+    2719 2759 2809 2865 2866 2867 2868 2869 2882 2924 3162
+    from source tarball due to non-DFSG-free copyright.
+  * Disabled PostgreSQL, x.99 token, EAP/TLS, Kerberos, LDAP
+    and SNMP agent support due to OpenSSL/GPL conflict.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu,  6 Nov 2003 22:40:32 +1100
 
 freeradius (0.9.2-0) unstable; urgency=low
 

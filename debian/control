@@ -1,9 +1,9 @@
 Source: freeradius
-Build-Depends: debhelper (>= 3.4.4), libltdl3-dev, libpam0g-dev, postgresql-dev, libmysqlclient10-dev | libmysqlclient-dev, libgdbm-dev | libgdbmg1-dev, libldap2-dev, libsasl2-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, libssl-dev, libtool1.4 | libtool (< 1.5), snmp, autoconf2.13, autotools-dev
+Build-Depends: debhelper (>= 3.4.4), libltdl3-dev, libpam0g-dev, postgresql-dev, libmysqlclient10-dev | libmysqlclient-dev, libgdbm-dev | libgdbmg1-dev, libldap2-dev, libsasl2-dev, libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, libssl-dev, libtool1.4 | libtool (< 1.5), snmp, autotools-dev
 Section: net
 Priority: optional
-Maintainer: Chad Miller <cmiller@debian.org>
-Standards-Version: 3.5.9
+Maintainer: Paul Hampson <Paul.Hampson@anu.edu.au>
+Standards-Version: 3.6.1.0
 
 Package: freeradius
 Architecture: any
@@ -57,3 +57,11 @@ Depends: freeradius, ${shlibs:Depends}
 Description: MySQL module for FreeRADIUS server
  The FreeRADIUS server can use MySQL to authenticate users and do accounting,
  and this module is necessary for that.
+
+Package: freeradius-iodbc
+Architecture: any
+Depends: freeradius, ${shlibs:Depends}
+Description: iODBC module for FreeRADIUS server
+ The FreeRADIUS server can use iODBC to access databases to authenticate users
+ and do accounting, and this module is necessary for that.
+

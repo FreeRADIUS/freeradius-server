@@ -11,8 +11,10 @@ case "$1" in
 	# make sure there is a user and group 'freerad'
 	groups freerad |grep freerad >/dev/null
 
-	# put user freerad in group shadow, so the daemon can auth locally
-	usermod -G shadow freerad
+	if [ "$2" = "" ] ; then
+		# put user freerad in group shadow, so the daemon can auth locally
+		usermod -G shadow freerad
+	fi
 
 	update-rc.d freeradius defaults 50 >/dev/null
 
@@ -34,8 +36,8 @@ case "$1" in
 
 	chown freerad:freerad /var/run/freeradius
 
-	find /etc/freeradius -type f -exec chgrp freerad {} \; -exec chmod 660 {} \;
-	find /etc/freeradius -type d -exec chgrp freerad {} \; -exec chmod 2770 {} \;
+	find /etc/freeradius -type f -exec chgrp freerad {} \; -exec chmod 640 {} \;
+	find /etc/freeradius -type d -exec chgrp freerad {} \; -exec chmod 2750 {} \;
 	find /var/log/freeradius -exec chown freerad {} \; -exec chgrp freerad {} \;
 
 	if [ "$2" = "" ] ; then
@@ -54,6 +56,11 @@ case "$1" in
   abort-upgrade)
 	;;
   abort-remove)
+	if [ -x /usr/sbin/invoke-rc.d ] ; then
+		invoke-rc.d freeradius start || true
+	else
+		/etc/init.d/freeradius start
+	fi
 	;;
   abort-deconfigure)
 	;;
