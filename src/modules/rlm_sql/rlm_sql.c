@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 
+#include "radiusd.h"
 #include "modules.h"
 #include "rlm_sql.h"
 

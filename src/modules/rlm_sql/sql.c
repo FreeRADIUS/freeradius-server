@@ -17,9 +17,8 @@
 #include	<errno.h>
 #include	<sys/wait.h>
 
-#include	"rlm_sql.h"
 #include	"radiusd.h"
-
+#include	"rlm_sql.h"
 
 
 
