@@ -262,7 +262,7 @@ static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, con
 	}
 
 	if (*tmpuser) {
-		strNcpy(sqlusername, tmpuser, MAX_STRING_LEN * 2);
+		strNcpy(sqlusername, tmpuser, sizeof(tmpuser));
 		DEBUG2("rlm_sql (%s): sql_set_user escaped user --> '%s'",
 		       inst->config->xlat_name, sqlusername);
 		vp = pairmake("SQL-User-Name", sqlusername, 0);
