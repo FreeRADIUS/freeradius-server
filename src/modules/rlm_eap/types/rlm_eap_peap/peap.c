@@ -264,6 +264,17 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	VALUE_PAIR *vp;
 	peap_tunnel_t *t = tls_session->opaque;
 
+#ifndef NDEBUG
+	if (debug_flag > 0) {
+		printf("  PEAP: Processing from tunneled session code %p %d\n",
+		       reply, reply->code);
+		
+		for (vp = reply->vps; vp != NULL; vp = vp->next) {
+			putchar('\t');vp_print(stdout, vp);putchar('\n');
+		}
+	}
+#endif
+
 	switch (reply->code) {
 	case PW_AUTHENTICATION_ACK:
 		DEBUG2("  PEAP: Tunneled authentication was successful.");
@@ -283,6 +294,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	Clean up the tunneled reply.
 			 */
 			pairdelete(&reply->vps, PW_PROXY_STATE);
+			pairdelete(&reply->vps, PW_EAP_MESSAGE);
 
 			pairadd(&request->reply->vps, reply->vps);
 			reply->vps = NULL;
@@ -344,8 +356,114 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
+	REQUEST *fake;
 
 	DEBUG2("  PEAP: Passing reply from proxy back into the tunnel.");
+
+	/*
+	 *	If there was a fake request associated with the proxied
+	 *	request, do more processing of it.
+	 */
+	fake = (REQUEST *) request_data_get(handler->request,
+					    handler->request->proxy,
+					    REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK);
+	
+	/*
+	 *	Do the callback, if it exists, and if it was a success.
+	 */
+	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
+		VALUE_PAIR *vp;
+		REQUEST *request = handler->request;
+
+		/*
+		 *	Terrible hacks.
+		 */
+		rad_assert(fake->packet == NULL);
+		fake->packet = request->proxy;
+		request->proxy = NULL;
+
+		rad_assert(fake->reply == NULL);
+		fake->reply = request->proxy_reply;
+		request->proxy_reply = NULL;
+
+		/*
+		 *	We MAY have deleted the state.  If so, add
+		 *	it back in.
+		 */
+		vp = pairfind(fake->packet->vps, PW_STATE);
+		if (!vp) {
+			vp = pairmake("State", "0x00", T_OP_EQ);
+			memcpy(vp->strvalue, handler->state,
+			       sizeof(handler->state));
+			vp->length = sizeof(handler->state);
+			pairadd(&fake->packet->vps, vp);
+		}
+
+		/*
+		 *	The NT Domain may have been removed, too.
+		 *	Add it back in.
+		 */
+		vp = pairfind(fake->packet->vps, PW_USER_NAME);
+		if (vp) {
+			strNcpy(vp->strvalue, handler->identity,
+				sizeof(vp->strvalue));
+			vp->length = strlen(vp->strvalue);
+		}
+
+		/*
+		 *	Perform a post-auth stage, which will get the EAP
+		 *	handler, too...
+		 */
+		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+		DEBUG2("  PEAP: Passing reply back for EAP-MS-CHAP-V2 %p %d",
+		       fake, fake->reply->code);
+		rcode = module_post_proxy(fake);
+
+		/*
+		 *	FIXME: If rcode returns fail, do something
+		 *	intelligent...
+		 */
+		DEBUG2("  POST-PROXY %d", rcode);
+		rcode = rad_postauth(fake);
+		DEBUG2("  POST-AUTH %d", rcode);
+
+#ifndef NDEBUG
+		if (debug_flag > 0) {
+			printf("  PEAP: Final reply from tunneled session code %d\n",
+			       fake->reply->code);
+			
+			for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
+				putchar('\t');vp_print(stdout, vp);putchar('\n');
+			}
+		}
+#endif
+
+		/*
+		 *	Terrible hacks.
+		 */
+		request->proxy = fake->packet;
+		fake->packet = NULL;
+		request->proxy_reply = fake->reply;
+		fake->reply = NULL;
+
+		/*
+		 *	And we're done with this request.
+		 */
+
+		switch (rcode) {
+                case RLM_MODULE_FAIL:
+			request_free(&fake);
+			eaptls_fail(handler->eap_ds, 0);
+			return 0;
+			break;
+			
+                default:  /* Don't Do Anything */
+			DEBUG2(" PEAP: Got reply %d",
+			       request->proxy_reply->code);
+			break;
+		}	
+	}
+	request_free(&fake);	/* robust if fake == NULL */
 
 	/*
 	 *	If there was no EAP-Message in the reply packet, then
@@ -356,6 +474,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	/*
 	 *	Process the reply from the home server.
 	 */
+
 	rcode = process_reply(handler, tls_session, handler->request,
 			      handler->request->proxy_reply);
 
@@ -392,6 +511,16 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 
 	eaptls_fail(handler->eap_ds, 0);
 	return 0;
+}
+
+/*
+ *	Free a request.
+ */
+static void my_request_free(void *data)
+{
+	REQUEST *request = (REQUEST *)data;
+
+	request_free(&request);
 }
 
 
@@ -544,8 +673,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			t->username = pairmake("User-Name", "", T_OP_EQ);
 			rad_assert(t->username != NULL);
 
-			memcpy(t->username->strvalue, data+1, data_len - 1);
-			t->username->length = data_len -1;
+			memcpy(t->username->strvalue, data + 1, data_len - 1);
+			t->username->length = data_len - 1;
 			t->username->strvalue[t->username->length] = 0;
 			DEBUG2("  PEAP: Got tunneled identity of %s", t->username->strvalue);
 
@@ -554,10 +683,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	set it here.
 			 */
 			if (t->default_eap_type != 0) {
-			  DEBUG2("  PEAP: Setting default EAP type for tunneled EAP session.");
-			  vp = pairmake("EAP-Type", "0", T_OP_EQ);
-			  vp->lvalue = t->default_eap_type;
-			  pairadd(&fake->config_items, vp);
+				DEBUG2("  PEAP: Setting default EAP type for tunneled EAP session.");
+				vp = pairmake("EAP-Type", "0", T_OP_EQ);
+				vp->lvalue = t->default_eap_type;
+				pairadd(&fake->config_items, vp);
 			}
 		}
 	} /* else there WAS a t->username */
@@ -566,6 +695,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		vp = paircopy(t->username);
 		pairadd(&fake->packet->vps, vp);
 		fake->username = pairfind(fake->packet->vps, PW_USER_NAME);
+		DEBUG2("  PEAP: Setting User-Name to %s",
+		       fake->username->strvalue);
 	}
 
 	/*
@@ -690,7 +821,6 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
 
-
 			/*
 			 *	The tunneled request was NOT handled,
 			 *	it has to be proxied.  This means that
@@ -720,6 +850,14 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 */
 				DEBUG2("  PEAP: Calling authenticate in order to initiate tunneled EAP session.");
 				rcode = module_authenticate(PW_AUTHTYPE_EAP, fake);
+				if (rcode == RLM_MODULE_OK) {
+					/*
+					 *	Authentication succeeded! Rah!
+					 */
+					fake->reply->code = PW_AUTHENTICATION_ACK;
+					goto do_process;
+				}
+
 				if (rcode != RLM_MODULE_HANDLED) {
 					DEBUG2("  PEAP: Can't handle the return code %d", rcode);
 					rcode = RLM_MODULE_REJECT;
@@ -761,6 +899,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			rad_assert(request->proxy == NULL);
 			request->proxy = fake->packet;
 			fake->packet = NULL;
+			rad_free(&fake->reply);
+			fake->reply = NULL;
 
 			/*
 			 *	Set up the callbacks for the tunnel
@@ -779,6 +919,32 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 						 tunnel, free);
 			rad_assert(rcode == 0);
+
+			/*
+			 *	We're not proxying it as EAP, so we've got
+			 *	to do the callback later.
+			 */
+			if ((fake->options & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
+				DEBUG2("  PEAP: Remembering to do EAP-MS-CHAP-V2 post-proxy.");
+
+				/*
+				 *	rlm_eap.c has taken care of associating
+				 *	the handler with the fake request.
+				 *
+				 *	So we associate the fake request with
+				 *	this request.
+				 */
+				rcode = request_data_add(request,
+							 request->proxy,
+							 REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
+							 fake, my_request_free);
+				rad_assert(rcode == 0);
+				
+				/*
+				 *	Do NOT free the fake request!
+				 */
+				return RLM_MODULE_UPDATED;
+			}
 
 			/*
 			 *	Didn't authenticate the packet, but
