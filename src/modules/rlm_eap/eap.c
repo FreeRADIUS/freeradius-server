@@ -92,7 +92,7 @@ static const char *eap_types[] = {
   "22",
   "23",
   "24",
-  "peap"			/* 25 */
+  "peap",			/* 25 */
   "26",
   "27",
   "28",
