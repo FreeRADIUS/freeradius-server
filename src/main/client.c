@@ -42,12 +42,10 @@ static const char rcsid[] = "$Id$";
 #include "radiusd.h"
 #include "conffile.h"
 
-RADCLIENT *clients = NULL;
-
 /*
  *	Free a RADCLIENT list.
  */
-static void clients_free(RADCLIENT *cl)
+void clients_free(RADCLIENT *cl)
 {
 	RADCLIENT *next;
 
@@ -74,8 +72,8 @@ int read_clients_file(const char *file)
 	int lineno = 0;
 	char *p;
 
-	clients_free(clients);
-	clients = NULL;
+	clients_free(mainconfig.clients);
+	mainconfig.clients = NULL;
 
 	if ((fp = fopen(file, "r")) == NULL) {
 		/* The clients file is no longer required.  All configuration
@@ -212,8 +210,8 @@ int read_clients_file(const char *file)
 			strNcpy(c->longname, hostnm, sizeof(c->longname));
 		}
 
-		c->next = clients;
-		clients = c;
+		c->next = mainconfig.clients;
+		mainconfig.clients = c;
 	}
 	fclose(fp);
 
@@ -229,7 +227,7 @@ RADCLIENT *client_find(uint32_t ipaddr)
 	RADCLIENT *cl;
 	RADCLIENT *match = NULL;
 
-	for (cl = clients; cl; cl = cl->next) {
+	for (cl = mainconfig.clients; cl; cl = cl->next) {
 		if ((ipaddr & cl->netmask) == cl->ipaddr) {
 			if ((!match) ||
 			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
@@ -250,7 +248,7 @@ void client_walk(void)
 	RADCLIENT *cl;
 	char host_ipaddr[16];
 
-	for (cl = clients; cl != NULL; cl = cl->next)
+	for (cl = mainconfig.clients; cl != NULL; cl = cl->next)
 		radlog(L_ERR, "client: client_walk: %s\n",
 				ip_ntoa(host_ipaddr, cl->ipaddr));
 }

@@ -548,16 +548,10 @@ int main(int argc, char *argv[])
 	spawn_flag = TRUE;
 	radius_dir = strdup(RADIUS_DIR);
 
-	signal(SIGHUP, sig_hup);
-	signal(SIGPIPE, SIG_IGN);	
-signal(SIGINT, sig_fatal);
-	signal(SIGQUIT, sig_fatal);
-	signal(SIGTERM, sig_fatal);
-
-	/* this is right for threads, too, right?  
-	 * (Threads shouldn't get signals (from us) -- just be pthread_cancel()led.)
+	/*
+	 *	Ensure that the configuration is initialized.
 	 */
-	signal(SIGCHLD, sig_cleanup);
+	memset(&mainconfig, 0, sizeof(mainconfig));
 
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:p:sSvxXyz")) != EOF) {
@@ -934,6 +928,30 @@ signal(SIGINT, sig_fatal);
 				buffer, auth_port, acct_port);
 	}
 
+	/*
+	 *	Now that we've set everything up, we can install the signal
+	 *	handlers.  Before this, if we get any signal, we don't know
+	 *	what to do, so we might as well do the default, and die.
+	 */
+	signal(SIGHUP, sig_hup);
+	signal(SIGPIPE, SIG_IGN);	
+	signal(SIGTERM, sig_fatal);
+
+	/*
+	 *	If we're debugging, then a CTRL-C will cause the
+	 *	server to die immediately.  Use SIGTERM to shut down
+	 *	the server cleanly in that case.
+	 */
+	if (debug_flag == 0) {
+		signal(SIGINT, sig_fatal);
+		signal(SIGQUIT, sig_fatal);
+	}
+
+	/* this is right for threads, too, right?  
+	 * (Threads shouldn't get signals (from us) -- just be pthread_cancel()led.)
+	 */
+	signal(SIGCHLD, sig_cleanup);
+
 	radlog(L_INFO, "Ready to process requests.");
 	start_time = time(NULL);
 
@@ -941,6 +959,59 @@ signal(SIGINT, sig_fatal);
 	 *  Receive user requests
 	 */
 	for (;;) {
+		/*
+		 *	If we've been told to exit, then do so,
+		 *	even if we have data waiting.
+		 */
+		if (do_exit) {
+			DEBUG("Exiting...");
+
+			/*
+			 *	Ignore the TERM signal: we're about
+			 *	to die.
+			 */
+			signal(SIGTERM, SIG_IGN);
+
+			/*
+			 *	Send a TERM signal to all associated
+			 *	processes (including us, which gets
+			 *	ignored.)
+			 */
+			kill(-radius_pid, SIGTERM);
+
+			/*
+			 *	FIXME: Kill child threads, and
+			 *	clean up?
+			 */
+
+			/*
+			 *	Detach any modules.
+			 */
+			detach_modules();
+			
+			/*
+			 *	FIXME: clean up any active REQUEST
+			 *	handles.
+			 */
+
+			/*
+			 *	Clean up the configuration data
+			 *	structures.
+			 */
+			cf_section_free(&mainconfig.config);
+			realm_free(mainconfig.realms);
+			clients_free(mainconfig.clients);
+
+			/*
+			 *	SIGTERM gets do_exit=0,
+			 *	and we want to exit cleanly.
+			 *
+			 *	Other signals make us exit
+			 *	with an error status.
+			 */
+			exit(do_exit - 1);
+		}
+
 		if (need_reload) {
 			if (reread_config(TRUE) < 0) {
 				exit(1);
@@ -971,29 +1042,13 @@ signal(SIGINT, sig_fatal);
 #endif
 
 		status = select(max_fd + 1, &readfds, NULL, NULL, tv);
-
-		/*
-		 *	If we've been told to exit, then do so,
-		 *	even if we have data waiting.
-		 */
-		if (do_exit) {
-			DEBUG("Exiting...");
-			detach_modules();
-			
-			/*
-			 *	SIGTERM gets do_exit=0,
-			 *	and we want to exit cleanly.
-			 *
-			 *	Other signals make us exit
-			 *	with an error status.
-			 */
-			exit(do_exit - 1);
-		}
-
 		if (status == -1) {
 			/*
-			 *  On interrupts, we clean up the
-			 *  request list.
+			 *	On interrupts, we clean up the request
+			 *	list.  We then continue with the loop,
+			 *	so that if we're supposed to exit,
+			 *	then the code at the start of the loop
+			 *	catches that, and exits.
 			 */
 			if (errno == EINTR) {
 				tv = rad_clean_list(time(NULL));
@@ -2350,45 +2405,17 @@ static void usage(void)
 
 
 /*
- *  We got a fatal signal. Clean up and exit.
+ *	We got a fatal signal.
  */
 static void sig_fatal(int sig)
 {
-	const char *me = "MASTER: ";
-
-	/*
-	 *  FIXME: Handle child threads, too...
-	 */
-	if (radius_pid != getpid()) {
-		me = "CHILD: ";
-	}
-
 	switch(sig) {
 		case SIGTERM:
-			radlog(L_INFO, "%sexit.", me);
 			do_exit = 1;
 			break;
 		default:
-			radlog(L_ERR, "%sexit on signal (%d)", me, sig);
 			do_exit = 2;
 			break;
-	}
-
-	/*
-	 *  We're running as a daemon, we're the MASTER daemon,
-	 *  and we got a fatal signal.  Tear the rest of the
-	 *  daemons down, as something absolutely horrible happened.
-	 */
-	if ((debug_flag == 0) && (dont_fork == 0)
-#ifndef HAVE_PTHREAD_H
-	    && (radius_pid == getpid())
-#endif
-	    ) {
-		/*
-		 *      Kill all of the processes in the current
-		 *	process group.
-		 */
-		kill(-radius_pid, SIGTERM);
 	}
 }
 

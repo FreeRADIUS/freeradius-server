@@ -71,13 +71,9 @@ struct conf_part {
 	struct conf_item *children;
 };
 
-CONF_SECTION *config = NULL;
-
 /*
  *	Yucky hacks.
  */
-extern RADCLIENT *clients;
-extern REALM *realms;
 extern int max_proxies;
 
 static int generate_realms(const char *filename);
@@ -833,8 +829,8 @@ int read_radius_conf_file(void)
 	 *	Free the old configuration data, and replace it
 	 *	with the new one.
 	 */
-	cf_section_free(&config);
-	config = cs;
+	cf_section_free(&mainconfig.config);
+	mainconfig.config = cs;
 	
 	/*
 	 *	And parse the directory configuration values.
@@ -918,8 +914,8 @@ static int generate_realms(const char *filename)
 	char *s, *t, *authhost, *accthost;
 
 	tail = &my_realms;
-	for (cs = cf_subsection_find_next(config, NULL, "realm"); cs != NULL;
-			cs = cf_subsection_find_next(config, cs, "realm")) {
+	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "realm"); cs != NULL;
+			cs = cf_subsection_find_next(mainconfig.config, cs, "realm")) {
 		if (!cs->name2) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Missing realm name", filename, cs->item.lineno);
 			return -1;
@@ -1066,43 +1062,9 @@ static int generate_realms(const char *filename)
 	 *	And make these realms preferred over the ones
 	 *	in the 'realms' file.
 	 */
-	*tail = realms;
-	realms = my_realms;
+	*tail = mainconfig.realms;
+	mainconfig.realms = my_realms;
 	
- 	/*Setup node and total info for multi-listed realms*/
-	for (c = realms; c; c = c->next) {
-		if(c->chose == 1) {
-			continue;
-		}
-		else {
-			int i = 0, b = 0;
-			REALM *rptr, *r_array[max_proxies];
-			for(rptr = c; rptr; rptr = rptr->next) {
-				/*if realm matches*/
-				if(strcasecmp(rptr->realm, c->realm) == 0) {
-					i++;
-					r_array[i] = rptr;
-					rptr->chose = 1;
-					rptr->node = i;
-				}
-			}
-			if (i > 1) {
-				for(b = 1; b <= i; b++) {
-					rptr = r_array[b];
-					rptr->total = i;
-				}
-			}
-			else {
-				c->total = 0;
-			}
-		}
-	}
-	
-	/*Set chose flag back to default (0) on all realms*/
-	for (c = realms; c; c = c->next) {
-		c->chose = 0;
-	}
-
 	return 0;
 }
 
@@ -1117,8 +1079,8 @@ static int generate_clients(const char *filename)
 	char		*hostnm, *secret, *shortnm, *netmask;
 	char            *nastype, *login, *password;
 
-	for (cs = cf_subsection_find_next(config, NULL, "client"); cs != NULL; 
-			cs = cf_subsection_find_next(config, cs, "client")) {
+	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "client"); cs != NULL; 
+	     cs = cf_subsection_find_next(mainconfig.config, cs, "client")) {
 		if (!cs->name2) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name", filename, cs->item.lineno);
 			return -1;
@@ -1239,8 +1201,8 @@ static int generate_clients(const char *filename)
 		if(password != NULL)
 		        strcpy(c->password, password);
 
-		c->next = clients;
-		clients = c;
+		c->next =mainconfig. clients;
+		mainconfig.clients = c;
 	}
 
 	return 0;
@@ -1255,7 +1217,7 @@ CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
 	CONF_ITEM	*ci;
 
 	if (section == NULL) {
-		section = config;
+		section = mainconfig.config;
 	}
 
 	for (ci = section->children; ci; ci = ci->next) {
@@ -1354,9 +1316,9 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char 
 CONF_SECTION *cf_section_find(const char *name)
 {
 	if (name)
-		return cf_section_sub_find(config, name);
+		return cf_section_sub_find(mainconfig.config, name);
 	else
-		return config;
+		return mainconfig.config;
 }
 
 /*
@@ -1446,6 +1408,7 @@ int cf_item_is_section(CONF_ITEM *item)
 }
 
 
+#if 0
 /* 
  * JMG dump_config tries to dump the config structure in a readable format
  * 
@@ -1485,5 +1448,6 @@ static int dump_config_section(CONF_SECTION *cs, int indent)
 
 int dump_config(void)
 {
-	return dump_config_section(config, 0);
+	return dump_config_section(mainconfig.config, 0);
 }
+#endif

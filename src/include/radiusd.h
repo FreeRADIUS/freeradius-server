@@ -11,6 +11,7 @@
 #include "radpaths.h"
 #include "conf.h"
 #include "missing.h"
+#include "conffile.h"
 
 #include <stdarg.h>
 
@@ -138,6 +139,9 @@ typedef struct main_config_t {
 	char		*nospace_time;
 	char		*log_file;
 	char		*checkrad;
+	CONF_SECTION	*config;
+	RADCLIENT	*clients;
+	REALM		*realms;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug
@@ -245,10 +249,12 @@ int		read_clients_file(const char *file);
 RADCLIENT	*client_find(uint32_t ipno);
 const char	*client_name(uint32_t ipno);
 void		client_walk(void);
+void		clients_free(RADCLIENT *cl);
 
 /* files.c */
 REALM		*realm_find(const char *, int);
 REALM		*realm_findbyaddr(uint32_t ipno, int port);
+void		realm_free(REALM *cl);
 void		realm_disable(uint32_t ipno, int port);
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);

@@ -44,8 +44,6 @@ static const char rcsid[] = "$Id$";
 extern int proxy_dead_time;
 int maximum_proxies;
 
-REALM *realms = NULL;
-
 /*
  *	Free a PAIR_LIST
  */
@@ -349,7 +347,7 @@ static void debug_pair_list(PAIR_LIST *pl)
 /*
  *	Free a REALM list.
  */
-static void realm_free(REALM *cl)
+void realm_free(REALM *cl)
 {
 	REALM *next;
 
@@ -374,9 +372,9 @@ int read_realms_file(const char *file)
 	int lineno = 0;
 	REALM *c, **tail;
 
-	realm_free(realms);
-	realms = NULL;
-	tail = &realms;
+	realm_free(mainconfig.realms);
+	mainconfig.realms = NULL;
+	tail = &mainconfig.realms;
 
 	if ((fp = fopen(file, "r")) == NULL) {
 		/* The realms file is not mandatory.  If it exists it will
@@ -503,7 +501,7 @@ void realm_disable(uint32_t ipaddr, int port)
 	time_t now;
 
 	now = time(NULL);
-	for(cl = realms; cl; cl = cl->next)
+	for(cl = mainconfig.realms; cl; cl = cl->next)
 		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
 			cl->active = FALSE;
 			cl->wakeup = now + proxy_dead_time;
@@ -538,7 +536,7 @@ REALM *realm_find(const char *realm, int acct)
 		realm = "NULL";
 	}
 	
-	for (cl = realms; cl; cl = cl->next) {
+	for (cl = mainconfig.realms; cl; cl = cl->next) {
 		/*
 		 *	Wake up any sleeping realm.
 		 */
@@ -579,7 +577,7 @@ REALM *realm_find(const char *realm, int acct)
 			if(cl->total > 1 && cl->ldflag == 1) {
 				/*Get all of the realms from initial list*/
 				for(i = 1; i <= cl->total; i++) {
-					for(realmptr = realms; realmptr; 
+					for(realmptr = mainconfig.realms; realmptr; 
                                             realmptr = realmptr->next) {
 						if((strcasecmp(realmptr->realm,
                                                    cl->realm)) == 0 &&
@@ -717,7 +715,7 @@ REALM *realm_findbyaddr(uint32_t ipaddr, int port)
 	 *	If we get a packet from an end server, then we mark it
 	 *	as active, and return the realm.
 	 */
-	for(cl = realms; cl != NULL; cl = cl->next)
+	for(cl = mainconfig.realms; cl != NULL; cl = cl->next)
 		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
 			cl->active = TRUE;
 			return cl;
@@ -736,9 +734,9 @@ void check_proxies(int max_config) {
 	REALM *next, *rptr;
 	if(max_config > 0) {
 		maximum_proxies = max_config;
-		for(rptr=realms; rptr; rptr = rptr->next) {
+		for(rptr=mainconfig.realms; rptr; rptr = rptr->next) {
 			if(rptr->total > max_config || rptr->total >= 1) {
-				for(next = realms; next; next = next->next) {
+				for(next = mainconfig.realms; next; next = next->next) {
 					if(next->ldflag != 0 &&
                                            next->ldflag != 1) {
 						radlog(L_ERR,
