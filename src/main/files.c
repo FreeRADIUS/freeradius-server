@@ -645,7 +645,7 @@ REALM *realm_findbyaddr(uint32_t ipaddr)
 	REALM *cl;
 
 	for(cl = realms; cl; cl = cl->next)
-		if (ipaddr = cl->ipaddr)
+		if (ipaddr == cl->ipaddr)
 			break;
 
 	return cl;
