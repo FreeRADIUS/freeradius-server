@@ -34,7 +34,7 @@ install:
 		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 	fi
-	chmod 600 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients $(R)$(raddbdir)/clients.conf
+	chmod 640 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients $(R)$(raddbdir)/clients.conf
 
 clean:
 
