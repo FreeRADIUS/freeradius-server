@@ -211,8 +211,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
  *	Read a part of the config file.
  */
 static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
-				      const char *name1, const char *name2,
-				      const CONF_PARSER *variables)
+				      const char *name1, const char *name2)
 {
 	CONF_SECTION	*cs, *csn, *csp, *css;
 	CONF_PAIR	*cpn;
@@ -282,7 +281,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 
 		if (t2 == T_LCBRACE) {
-			css = cf_section_read(cf, lineno, fp, name2, buf1, NULL);
+			css = cf_section_read(cf, lineno, fp, name2, buf1);
 			if (css == NULL) {
 				cf_section_free(cs);
 				return NULL;
@@ -301,7 +300,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *	Or, the beginning of a new section.
 		 */
 		if (t3 == T_LCBRACE) {
-			csn = cf_section_read(cf, lineno, fp, buf1, buf2, NULL);
+			csn = cf_section_read(cf, lineno, fp, buf1, buf2);
 			if (csn == NULL) {
 				cf_section_free(cs);
 				return NULL;
@@ -399,22 +398,13 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		return NULL;
 	}
 
-	/*
-	 *	If they passed a CONF_PARSER, go parse the data.
-	 *
-	 *	Hmm... this should really be up to the caller.
-	 */
-	if (variables) {
-		cf_section_parse(cs, variables);
-	}
-
 	return cs;
 }
 
 /*
  *	Read the config file.
  */
-CONF_SECTION *conf_read(const char *conffile, const CONF_PARSER variables[])
+CONF_SECTION *conf_read(const char *conffile)
 {
 	FILE		*fp;
 	int		lineno = 0;
@@ -428,7 +418,7 @@ CONF_SECTION *conf_read(const char *conffile, const CONF_PARSER variables[])
 		return NULL;
 	}
 
-	config = cf_section_read(conffile, &lineno, fp, NULL, NULL, variables);
+	config = cf_section_read(conffile, &lineno, fp, NULL, NULL);
 	fclose(fp);
 
 	return config;
@@ -440,7 +430,6 @@ CONF_SECTION *conf_read(const char *conffile, const CONF_PARSER variables[])
  * Miquel at http://www.miquels.cistron.nl/radius/
  */
 
-extern CONF_PARSER rad_config[];
 int read_radius_conf_file(void)
 {
 	char buffer[256];
@@ -448,7 +437,7 @@ int read_radius_conf_file(void)
 	/* Lets go for the new configuration files */
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
-	if (conf_read(buffer, rad_config) == NULL) {
+	if (conf_read(buffer) == NULL) {
 		return -1;
 	}
 

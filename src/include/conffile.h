@@ -39,7 +39,7 @@ typedef struct CONF_PARSER {
   void *data;			/* pointer to where to put it */
 } CONF_PARSER;
 
-CONF_SECTION	*conf_read(const char *conffile, const CONF_PARSER vars[]);
+CONF_SECTION	*conf_read(const char *conffile);
 CONF_PAIR	*cf_pair_alloc(const char *attr, const char *value, int operator);
 void		cf_pair_add(CONF_SECTION *cs, CONF_PAIR *cp_new);
 void		cf_pair_free(CONF_PAIR *cp);

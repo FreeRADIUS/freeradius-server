@@ -126,7 +126,7 @@ extern int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 /*
  *	A mapping of configuration file names to internal integers
  */
-CONF_PARSER rad_config[] = {
+static CONF_PARSER server_config[] = {
   { "max_request_time",   PW_TYPE_INTEGER,    &max_request_time },
   { "cleanup_delay",      PW_TYPE_INTEGER,    &cleanup_delay    },
   { "max_requests",       PW_TYPE_INTEGER,    &max_requests     },
@@ -152,6 +152,7 @@ static void reread_config(int reload)
 {
 	int res = 0;
 	int pid = getpid();
+	CONF_SECTION *cs;
 
 	if (allow_core_dumps) {
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
@@ -198,6 +199,15 @@ static void reread_config(int reload)
 		}
 		exit(1);
 	}
+
+	/*
+	 *	And parse the server's configuration values.
+	 */
+	cs = cf_section_find("main");
+	if (!cs)
+		return;
+
+	cf_section_parse(cs, server_config);
 }
 
 
