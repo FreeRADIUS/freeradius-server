@@ -1,4 +1,4 @@
-.TH RADIUSD 8 "21 March 1999" "" "Cistron Radius Daemon"
+.TH RADIUSD 8 "21 March 1999" "" "FreeRADIUS Daemon"
 .SH NAME
 radiusd -- Authentication, Authorization and Accounting server
 .SH SYNOPSIS
@@ -26,7 +26,7 @@ radiusd -- Authentication, Authorization and Accounting server
 .RB [ \-y ]
 .RB [ \-z ]
 .SH DESCRIPTION
-This is the Cistron implementation of the well known
+This is the FreeRADIUS implementation of the well known
 .B radius
 server program. It is based on \fILivingston's\fP radius version 1.16.
 Even though this program is largely compatible with \fILivingston's\fP
@@ -52,7 +52,7 @@ in the same directory. This file will contain all the authentication-request
 records. This can be useful for debugging, but not for normal operation.
 
 .IP \-S
-Write the stripped usernames (without prefix or suffix) in the \fIdetail\fP
+Write the stripped usernames (without prefix or suffix) in the \fBdetail\fP
 file instead of the raw record as received from the terminal server.
 
 .IP "\-a \fIaccounting directory\fP"
@@ -161,7 +161,7 @@ from the hints file. Authentication is then based on the contents of
 the UNIX \fI/etc/passwd\fP file. However it is also possible to define all
 users, and their passwords, in this file.
 .SH SEE ALSO
-builddbm(8rad), users(5rad), huntgroups(5rad), hints(5rad),
-clients(5rad), dictionary(5rad).
+radiusd.conf(5), users(5), huntgroups(5), hints(5),
+clients(5), dictionary(5).
 .SH AUTHOR
 Miquel van Smoorenburg, miquels@cistron.nl.
