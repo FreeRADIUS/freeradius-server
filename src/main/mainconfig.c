@@ -860,6 +860,59 @@ static int listen_bind(rad_listen_t *this)
 	return 0;
 }
 
+
+static int last_proxy_port = 0;
+
+/*
+ *	Externally visible function for creating a new proxy LISTENER.
+ *
+ *	For now, don't take ipaddr or port.
+ */
+int proxy_new_listener(void)
+{
+	int port;
+	rad_listen_t *this;
+
+	this = rad_malloc(sizeof(*this));
+
+	memset(this, 0, sizeof(*this));
+
+	this->ipaddr = mainconfig.myip;
+	this->type = RAD_LISTEN_PROXY;
+
+	/*
+	 *	Proxying was not previously defined: die.
+	 */
+	if (last_proxy_port == 0) return -1;
+
+	/*
+	 *	Keep going until we find an unused port.
+	 */
+	for (port = last_proxy_port + 1; port < 64000; port++) {
+		if (listen_bind(this) == 0) {
+			rad_listen_t **last;
+
+			last_proxy_port = port;
+
+			/*
+			 *	Add the new listener to the list of
+			 *	listeners.
+			 */
+			for (last = &mainconfig.listen;
+			     *last != NULL;
+			     last = &((*last)->next)) {
+				/* do nothing */
+			}
+
+			*last = this;
+			return this->fd;
+		}
+	}
+
+	return -1;
+}
+
+
 /*
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
@@ -977,6 +1030,7 @@ static int listen_init(const char *filename, rad_listen_t **head)
 		     this->port < 64000;
 		     this->port++) {
 			if (listen_bind(this) == 0) {
+				last_proxy_port = this->port;
 				*last = this;
 				return 0;
 			}

@@ -91,7 +91,6 @@ int syslog_facility;
 int log_stripped_names;
 int debug_flag = 0;
 int log_auth_detail = FALSE;
-int proxyfd;			/* should be deleted */
 int need_reload = FALSE;
 int sig_hup_block = FALSE;
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
@@ -750,6 +749,11 @@ static REQUEST *request_ok(RADIUS_PACKET *packet, uint8_t *secret,
 		rl_add(request);
 
 		/*
+		 *	ADD IN "server identifier" from "listen"
+		 *	directive!
+		 */
+
+		/*
 		 *	The request passes many of our sanity checks.
 		 *	From here on in, if anything goes wrong, we
 		 *	send a reject message, instead of dropping the
@@ -1113,7 +1117,6 @@ int main(int argc, char *argv[])
 		case RAD_LISTEN_PROXY:
 			DEBUG("Listening on proxy %s:%d",
 			      buffer, listener->port);
-			proxyfd = listener->fd;
 			break;
 
 		default:
@@ -1381,8 +1384,8 @@ int main(int argc, char *argv[])
 
 			/*
 			 *  Check if we know this client for
-			 *  authfd and acctfd.  Check if we know
-			 *  this proxy for proxyfd.
+			 *  authentication and accounting.  Check if we know
+			 *  this proxy for proxying.
 			 */
 			if (listener->type != RAD_LISTEN_PROXY) {
 				RADCLIENT *cl;
@@ -1451,7 +1454,7 @@ int main(int argc, char *argv[])
 			} else {
 				rad_respond(request, fun);
 			}
-		} /* loop over authfd, acctfd, proxyfd */
+		} /* loop over listening sockets*/
 
 #ifdef WITH_SNMP
 		if (mainconfig.do_snmp) {
@@ -1489,10 +1492,11 @@ int main(int argc, char *argv[])
 #ifdef HAVE_PTHREAD_H
 
 		/*
-		 *  Only clean the thread pool if we've spawned child threads.
+		 *	Only clean the thread pool if we're spawning
+		 *	child threads. 
 		 */
 		if (spawn_flag) {
-		  thread_pool_clean(time_now);
+			thread_pool_clean(time_now);
 		}
 #endif
 
@@ -1550,6 +1554,16 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	int finished = FALSE;
 	int reprocess = 0;
 
+	rad_assert(request->magic == REQUEST_MAGIC);
+
+	/*
+	 *	Don't decode the packet if it's an internal "fake"
+	 *	request.  Instead, just skip ahead to processing it.
+	 */
+	if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) {
+		goto skip_decode;
+	}
+
 	/*
 	 *  Put the decoded packet into it's proper place.
 	 */
@@ -1562,8 +1576,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		secret = request->secret;
 		original = NULL;
 	}
-
-	rad_assert(request->magic == REQUEST_MAGIC);
 
 	/*
 	 *  Decode the packet, verifying it's signature,
@@ -1588,20 +1600,20 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *  attributes from the list of VP's.
 	 */
 	if (request->proxy) {
-            int rcode;
-            rcode = proxy_receive(request);
-            switch (rcode) {
+		int rcode;
+		rcode = proxy_receive(request);
+		switch (rcode) {
                 default:  /* Don't Do Anything */
-                    break;
+			break;
                 case RLM_MODULE_FAIL:
-                    /* on error just continue with next request */
-                    goto next_request;
+			/* on error just continue with next request */
+			goto next_request;
                 case RLM_MODULE_HANDLED:
-                    /* if this was a replicated request, mark it as
-                     * finished first, because it was postponed
-                     */
-                    goto finished_request;
-            }
+			/* if this was a replicated request, mark it as
+			 * finished first, because it was postponed
+			 */
+			goto finished_request;
+		}
 
 	} else {
 		/*
@@ -1629,19 +1641,14 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		}
 	}
 
+ skip_decode:
 	/*
-	 *  We should have a User-Name attribute now.
+	 *	We should have a User-Name attribute now.
 	 */
 	if (request->username == NULL) {
 		request->username = pairfind(request->packet->vps,
 				PW_USER_NAME);
 	}
-
-	/*
-	 *  We have the semaphore, and have decoded the packet.
-	 *  Let's process the request.
-	 */
-	rad_assert(request->magic == REQUEST_MAGIC);
 
 	/*
 	 *  FIXME:  All this lowercase/nospace junk will be moved
@@ -1673,7 +1680,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 
 	/*
-	 *  Reprocess if we rejected last time
+	 *	Reprocess if we rejected last time
 	 */
 	if ((fun == rad_authenticate) &&
 	    (request->reply->code == PW_AUTHENTICATION_REJECT)) {
@@ -1694,7 +1701,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	  if (strcmp(mainconfig.do_nospace_pass, "after") == 0) {
 		  rad_rmspace_pair(request,
 				   pairfind(request->packet->vps, PW_PASSWORD));
-
 		  reprocess = 1;
 	  }
 
@@ -1710,7 +1716,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 
 	/*
-	 *  Status-Server requests NEVER get proxied.
+	 *	Status-Server requests NEVER get proxied.
 	 */
 	if (mainconfig.proxy_requests) {
 		if ((request->packet->code != PW_STATUS_SERVER) &&
@@ -1718,7 +1724,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			int rcode;
 
 			/*
-			 *  Try to proxy this request.
+			 *	Try to proxy this request.
 			 */
 			rcode = proxy_send(request);
 
@@ -1784,16 +1790,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		VALUE_PAIR *vp = NULL;
 
 		/*
-		 *  Perform RFC limitations on outgoing replies.
+		 *	Perform RFC limitations on outgoing replies.
 		 */
 		rfc_clean(request->reply);
 
 		/*
-		 *  Need to copy Proxy-State from request->packet->vps
+		 *	Need to copy Proxy-State from request->packet->vps
 		 */
 		vp = paircopy2(request->packet->vps, PW_PROXY_STATE);
-		if (vp != NULL)
-			pairadd(&(request->reply->vps), vp);
+		if (vp) pairadd(&(request->reply->vps), vp);
 
 		/*
 		 *  If the request isn't an authentication reject, OR
@@ -1830,6 +1835,14 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 
 finished_request:
+
+	/*
+	 *	Don't decode the packet if it's an internal "fake"
+	 *	request.  Instead, just skip ahead to processing it.
+	 */
+	if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) {
+		goto skip_free;
+	}
 
 	/*
 	 *  We're done handling the request.  Free up the linked
@@ -1873,6 +1886,7 @@ finished_request:
 		pairfree(&request->proxy_reply->vps);
 	}
 
+ skip_free:
 	DEBUG2("Finished request %d", request->number);
 	finished = TRUE;
 

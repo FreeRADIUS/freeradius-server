@@ -277,8 +277,6 @@ extern int		log_stripped_names;
 extern int		log_auth_detail;
 extern int		auth_port;
 extern int		acct_port;
-extern int		proxy_port;
-extern int		proxyfd;
 extern const char      *radiusd_version;
 
 /*
