@@ -27,14 +27,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
 #include "radiusd.h"
 #include "rad_assert.h"
 #include "conffile.h"
 #include "token.h"
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
 
 #include <sys/resource.h>
 #include <unistd.h>
