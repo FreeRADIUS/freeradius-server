@@ -339,6 +339,7 @@ int rad_check_password(REQUEST *request)
 			if (auth_item->attribute == PW_PASSWORD) {
 				if (strcmp((char *)password_pair->strvalue,
 					   (char *)auth_item->strvalue) != 0) {
+					DEBUG2("auth: user supplied User-Password does NOT match local User-Password");
 					return -1;
 				}
 				DEBUG2("auth: user supplied User-Password matches local User-Password");
@@ -358,8 +359,10 @@ int rad_check_password(REQUEST *request)
 			 *	Compare them
 			 */
 			if (memcmp(string + 1, auth_item->strvalue + 1,
-					CHAP_VALUE_LENGTH) != 0)
-				result = -1;
+				   CHAP_VALUE_LENGTH) != 0) {
+				DEBUG2("auth: user supplied CHAP-Password does NOT match local User-Password");
+				return -1;
+			}
 			DEBUG2("auth: user supplied CHAP-Password matches local User-Password");
 			break;
 		default:
