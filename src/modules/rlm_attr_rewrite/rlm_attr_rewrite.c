@@ -337,6 +337,11 @@ to_do_again:
 	}
 	else{
 		attr_vp = pairmake(data->attribute,replace_STR,0);
+		if (attr_vp == NULL){
+			DEBUG2("rlm_attr_rewrite: Could not add new attribute %s with value '%s'",
+				data->attribute,replace_STR);
+			return ret;
+		}
 		switch(data->searchin){
 			case RLM_REGEX_INPACKET:
 				pairadd(&request->packet->vps,attr_vp);
