@@ -9,7 +9,7 @@
 
 include Make.inc
 
-SUBDIRS		= libltdl src raddb scripts
+SUBDIRS		= ${LIBLTDLPATH} src raddb scripts
 WHAT_TO_MAKE	= all
 
 all:

@@ -32,10 +32,6 @@ AC_DEFUN([AC_PROG_LIBTOOL],
 # This can be used to rebuild libtool when needed
 LIBTOOL_DEPS="$ac_aux_dir/ltmain.sh"
 
-# Always use our own libtool.
-LIBTOOL='$(SHELL) $(top_builddir)/libtool'
-AC_SUBST(LIBTOOL)dnl
-
 # Prevent multiple expansion
 define([AC_PROG_LIBTOOL], [])
 ])
@@ -3543,23 +3539,59 @@ AC_DEFUN([AC_LIBLTDL_CONVENIENCE],
 # In the future, this macro may have to be called after AC_PROG_LIBTOOL.
 AC_DEFUN([AC_LIBLTDL_INSTALLABLE],
 [AC_BEFORE([$0],[AC_LIBTOOL_SETUP])dnl
-  AC_CHECK_LIB(ltdl, main,
-  [test x"$enable_ltdl_install" != xyes && enable_ltdl_install=no],
-  [if test x"$enable_ltdl_install" = xno; then
-     AC_MSG_WARN([libltdl not installed, but installation disabled])
-   else
+   AC_ARG_ENABLE(ltdl-install,
+     [  --disable-ltdl-install       do not install libltdl])
+   if test x"${enable_ltdl_install+set}" != xset; then
      enable_ltdl_install=yes
+     ac_configure_args="$ac_configure_args --enable-ltdl-install"
    fi
-  ])
-  if test x"$enable_ltdl_install" = x"yes"; then
-    ac_configure_args="$ac_configure_args --enable-ltdl-install"
-    LIBLTDL='${top_builddir}/'ifelse($#,1,[$1],['libltdl'])/libltdl.la
-    INCLTDL='-I${top_srcdir}/'ifelse($#,1,[$1],['libltdl'])
-  else
-    ac_configure_args="$ac_configure_args --enable-ltdl-install=no"
-    LIBLTDL="-lltdl"
-    INCLTDL=
-  fi
+   AC_ARG_WITH(ltdl-lib,
+     [  --with-ltdl-lib=DIR          libltdl library is in DIR [default=${top_builddir}/libltdl/]],
+     [ if test x"withval" = x"yes" || test x"withval" = x"no" ; then
+         AC_MSG_WARN([specify location of libltdl library])
+         withval=
+       fi
+     ])
+
+   save_LDFLAGS="$LDFLAGS"
+   LDFLAGS="$LDFLAGS -L$withval"
+   AC_CHECK_LIB(ltdl, lt_dlinit,
+     [ AC_ARG_WITH(ltdl-include,
+         [  --with-ltdl-include=DIR      libltdl include files are in DIR [default=$top_srcdir/libltdl/]],
+         [ if test x"withval" = x"yes" || test x"withval" = x"no" ; then
+             AC_MSG_WARN([specify location of ltdl.h])
+             withval=
+           fi
+           save_CPPFLAGS="$CPPFLAGS"
+           CPPFLAGS="$CPPFLAGS -I$withval"
+           AC_CHECK_HEADER(ltdl.h,
+             [ 
+               ltdl_found="yes"
+               INCLTDL="-I$withval" 
+               LIBLTDL="-lltdl"
+               LIBLTDLPATH=
+               ac_configure_args="$ac_configure_args --enable-ltdl-install=no"
+             ])
+           CPPFLAGS="$save_CPPFLAGS"
+         ])
+     ])
+   LDFLAGS="$save_LDFLAGS"
+
+   if test x"$enable_ltdl_install" = xno && test x"$ltdl_found" != xyes; then
+     AC_MSG_WARN([libltdl not installed, but installation disabled])
+   fi
+   if test x"$ltdl_found" = xyes; then
+     enable_ltdl_install="no"
+   fi
+
+   if test x"$enable_ltdl_install" = x"yes"; then
+     ac_configure_args="$ac_configure_args --enable-ltdl-install"
+     LIBLTDL='${top_builddir}/'ifelse($#,1,[$1],['libltdl'])/libltdl.la
+     INCLTDL='-I${top_srcdir}/'ifelse($#,1,[$1],['libltdl'])
+     AC_CONFIG_SUBDIRS('libtdl')
+     LIBLTDLPATH=libltdl
+   fi
+   AC_SUBST(LIBLTDLPATH)
 ])
 
 # old names
