@@ -79,7 +79,7 @@ int sql_save_acct(SQLREC *sqlrecord) {
 
          sprintf(querystr, "UPDATE %s SET AcctStopTime='%s', AcctSessionTime=unix_timestamp('%s') - unix_timestamp(AcctStartTime), AcctTerminateCause='%s' WHERE AcctSessionTime=0 AND AcctStopTime=0 AND NASIPAddress= '%s' AND AcctStartTime <= '%s'", sql->config.sql_acct_table, sqlrecord->AcctTimeStamp, sqlrecord->AcctTimeStamp, sqlrecord->AcctTerminateCause, sqlrecord->NASIPAddress, sqlrecord->AcctTimeStamp);
 
-       	 if (sql_query(sql->AcctSock, (const char *) querystr) < 0)
+       	 if (sql_query(sql->AcctSock, querystr) < 0)
 	      log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(sql->AcctSock));
 
          if (sqlfile) {
@@ -92,8 +92,8 @@ int sql_save_acct(SQLREC *sqlrecord) {
 
 	if (sqlrecord->AcctStatusTypeId == PW_STATUS_ALIVE) {
 		sprintf(querystr, "UPDATE %s SET Framed-IP-Address = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress= '%s'", sql->config.sql_acct_table, sqlrecord->FramedIPAddress, sqlrecord->AcctSessionId, sqlrecord->UserName, sqlrecord->NASIPAddress);
-		if (sql_query(sql->AcctSock, (const char *) querystr) < 0)
-		log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(sql->AcctSock));
+		if (sql_query(sql->AcctSock, querystr) < 0)
+			log(L_ERR, "Acct: Couldn't update SQL accounting after NAS reboot - %s", sql_error(sql->AcctSock));
 
 		if (sqlfile) {
 			fputs(querystr, sqlfile);
@@ -115,7 +115,7 @@ int sql_save_acct(SQLREC *sqlrecord) {
              sqlrecord->UserName,
              sqlrecord->NASIPAddress
              );
-       	     if (sql_query(sql->AcctSock, (const char *) querystr) < 0)
+       	     if (sql_query(sql->AcctSock, querystr) < 0)
 	        log(L_ERR, "Acct: Couldn't update SQL accounting START record - %s", sql_error(sql->AcctSock));
 
              num = sql_affected_rows(sql->AcctSock);
@@ -141,74 +141,65 @@ int sql_save_acct(SQLREC *sqlrecord) {
                 sqlrecord->AcctDelayTime
                 );                  
 
-       	        if (sql_query(sql->AcctSock, (const char *) querystr) < 0)
+       	        if (sql_query(sql->AcctSock, querystr) < 0)
 	   	  log(L_ERR, "Acct: Couldn't insert SQL accounting START record - %s", sql_error(sql->AcctSock));
              }
 
            /* Got stop record */
            } else {
 
-             sprintf(querystr, "SELECT RadAcctId FROM %s WHERE AcctSessionId='%s' AND NASIPAddress='%s' AND UserName='%s'", sql->config.sql_acct_table, sqlrecord->AcctSessionId, sqlrecord->NASIPAddress, sqlrecord->UserName);
-              sql_query(sql->AcctSock, querystr);
-              if (!(result = sql_store_result(sql->AcctSock)) && sql_num_fields(sql->AcctSock)) {
-                   log(L_ERR,"SQL Error: Cannot get result");
-                   log(L_ERR,"SQL error: %s",sql_error(sql->AcctSock));
-                    sql_close(sql->AcctSock);
-                    sql->AcctSock = NULL;
-              } else {
-                    num = sql_num_rows(result);
-	       	    sql_free_result(result);
-              }
+		sprintf(querystr, "SELECT RadAcctId FROM %s WHERE AcctSessionId='%s' AND NASIPAddress='%s' AND UserName='%s'", sql->config.sql_acct_table, sqlrecord->AcctSessionId, sqlrecord->NASIPAddress, sqlrecord->UserName);
+		sql_select_query(sql->AcctSock, querystr);
+		num = sql_num_rows(sql->AcctSock);
+		sql_finish_select_query(sql->AcctSock);
 
-             if (num > 0) {
+		if (num > 0) {
 
-                /* Set stop time on matching record with start time */
- 	        snprintf(querystr, 2048, "UPDATE %s SET AcctStopTime = '%s', AcctSessionTime = '%lu', AcctInputOctets = '%u', AcctOutputOctets = '%u', AcctTerminateCause = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress = '%s'", 
-	        sql->config.sql_acct_table,
-                sqlrecord->AcctTimeStamp,
-                sqlrecord->AcctSessionTime,
-                sqlrecord->AcctInputOctets,
-                sqlrecord->AcctOutputOctets,
-                sqlrecord->AcctTerminateCause,
-                sqlrecord->AcctSessionId,
-                sqlrecord->UserName,
-                sqlrecord->NASIPAddress
-                );
+              		/* Set stop time on matching record with start time */
+			snprintf(querystr, 2048, "UPDATE %s SET AcctStopTime = '%s', AcctSessionTime = '%lu', AcctInputOctets = '%u', AcctOutputOctets = '%u', AcctTerminateCause = '%s' WHERE AcctSessionId = '%s' AND UserName = '%s' AND NASIPAddress = '%s'", 
+			sql->config.sql_acct_table,
+			sqlrecord->AcctTimeStamp,
+			sqlrecord->AcctSessionTime,
+			sqlrecord->AcctInputOctets,
+			sqlrecord->AcctOutputOctets,
+			sqlrecord->AcctTerminateCause,
+			sqlrecord->AcctSessionId,
+			sqlrecord->UserName,
+			sqlrecord->NASIPAddress);
 
 
-       	        if (sql_query(sql->config.AcctSock, (const char *) querystr) < 0)
-	           log(L_ERR, "Acct: Couldn't update SQL accounting STOP record - %s", sql_error(sql->AcctSock));
+			if (sql_query(sql->AcctSock, querystr) < 0)
+				log(L_ERR, "Acct: Couldn't update SQL accounting STOP record - %s", sql_error(sql->AcctSock));
 
-             } else if (num == 0) {
+		} else if (num == 0) {
 
             
-                /* Insert record with no start time until matching start record comes */
-                snprintf(querystr, 2048, "INSERT INTO %s VALUES (0, '%s', '%s', '%s', '%s', %ld, '%s', 0, '%s', '%lu', '%s', '%s', '%u', '%u', '%s', '%s', '%s', '%s', '%s', '%s', %ld)",
-                sql->config.sql_acct_table,
-                sqlrecord->AcctSessionId,
-                sqlrecord->UserName,
-                sqlrecord->Realm,
-                sqlrecord->NASIPAddress,
-                sqlrecord->NASPortId,
-                sqlrecord->NASPortType,
-	        sqlrecord->AcctTimeStamp,
-		sqlrecord->AcctSessionTime,
-                sqlrecord->AcctAuthentic,
-                sqlrecord->ConnectInfo,
-		sqlrecord->AcctInputOctets,
-		sqlrecord->AcctOutputOctets,
-                sqlrecord->CalledStationId,
-                sqlrecord->CallingStationId,
-		sqlrecord->AcctTerminateCause,
-                sqlrecord->ServiceType,
-                sqlrecord->FramedProtocol,
-                sqlrecord->FramedIPAddress,
-                sqlrecord->AcctDelayTime
-                );                  
+			/* Insert record with no start time until matching start record comes */
+			snprintf(querystr, 2048, "INSERT INTO %s VALUES (0, '%s', '%s', '%s', '%s', %ld, '%s', 0, '%s', '%lu', '%s', '%s', '%u', '%u', '%s', '%s', '%s', '%s', '%s', '%s', %ld)",
+			sql->config.sql_acct_table,
+			sqlrecord->AcctSessionId,
+			sqlrecord->UserName,
+			sqlrecord->Realm,
+			sqlrecord->NASIPAddress,
+			sqlrecord->NASPortId,
+			sqlrecord->NASPortType,
+			sqlrecord->AcctTimeStamp,
+			sqlrecord->AcctSessionTime,
+			sqlrecord->AcctAuthentic,
+			sqlrecord->ConnectInfo,
+			sqlrecord->AcctInputOctets,
+			sqlrecord->AcctOutputOctets,
+			sqlrecord->CalledStationId,
+			sqlrecord->CallingStationId,
+			sqlrecord->AcctTerminateCause,
+			sqlrecord->ServiceType,
+			sqlrecord->FramedProtocol,
+			sqlrecord->FramedIPAddress,
+			sqlrecord->AcctDelayTime);                  
 
-       	        if (sql->config.sql_query(sql->AcctSock, (const char *) querystr) < 0)
-		   log(L_ERR, "Acct: Couldn't insert SQL accounting STOP record - %s", sql_error(sql->AcctSock));
-             }
+			if (sql_query(sql->AcctSock, querystr) < 0)
+				log(L_ERR, "Acct: Couldn't insert SQL accounting STOP record - %s", sql_error(sql->AcctSock));
+		}
 
           }
           if (sqlfile) {
@@ -263,7 +254,7 @@ int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row) {
 	VALUE_PAIR	*pair, *check;
 
 
-	if((attr = dict_attrfind(row[2])) == (DICT_ATTR *)NULL) {
+	if((attr = dict_attrbyvalue((int)row[2])) == (DICT_ATTR *)NULL) {
 #if 1 /* Be quiet. */
 		log(L_ERR|L_CONS, "unknown attribute %s", row[2]);
 #endif	
@@ -272,10 +263,10 @@ int sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row) {
 
 	/* If attribute is already there, skip it because we checked usercheck first 
 	   and we want user settings to over ride group settings */
-	if ((check = pairfind(*first_pair, attr->value)) != NULL)
+	if ((check = pairfind(*first_pair, attr->attr)) != NULL)
 		return 0;
 
-	pair = makepair(row[2], row[3], PW_OPERATOR_EQUAL);
+	pair = pairmake(row[2], row[3], T_OP_EQ);
 	pairadd(first_pair, pair);
 
 	return 0;

@@ -2,10 +2,10 @@
 include config.mak
 
 TARGET		= rlm_sql
-SRCS		= rlm_sql.c sql.c
-HEADERS		= rlm_sql.h
+SRCS		= rlm_sql.c sql.c sql_module.c
+HEADERS		= rlm_sql.h sql_module.h
 RLM_CFLAGS	=
-LIBS		= -lmysqlclient
+LIBS		=-L/usr/local/lib/mysql -lmysqlclient
 
 $(STATIC_OBJS): $(HEADERS)
 

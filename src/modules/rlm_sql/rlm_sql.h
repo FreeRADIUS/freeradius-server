@@ -6,17 +6,20 @@
 
 #include "sql_module.h"
 
-#define QUERYLOG	"/var/log/radacct/radius.sql"
-#define SQLCONFIGFILE	"radius.conf"
-#define SQLBACKUP	"/var/log/radacct/sqlbackup.dat"
+#define QUERYLOG		"/var/log/radacct/radius.sql"
+#define SQLCONFIGFILE		"rlm_sql.conf"
+#define SQLBACKUP		"/var/log/radacct/sqlbackup.dat"
+#define CHECKRAD1		"/usr/sbin/checkrad"
+#define CHECKRAD2		"/usr/local/sbin/checkrad"
 
-#define	SQLBIGREC	32
-#define	SQLLILREC	16
-#define PW_VP_USERDATA	1
-#define PW_VP_GROUPDATA	2
+#define	SQLBIGREC		32
+#define	SQLLILREC		16
+#define PW_VP_USERDATA		1
+#define PW_VP_GROUPDATA		2
+#define PW_VP_REALMDATA		3
 
-#define MAX_TABLE_LEN 20
-#define MAX_AUTH_QUERY_LEN 256
+#define MAX_TABLE_LEN 		20
+#define MAX_AUTH_QUERY_LEN 	256
 
 typedef struct sqlrec {
 	char            AcctSessionId[SQLBIGREC];
@@ -79,3 +82,7 @@ int		sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row);
 int		sql_checksocket(const char *facility);
 int		sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode);
 int		sql_check_multi(char *name, VALUE_PAIR *request, int maxsimul);
+
+
+SQL *sql;
+

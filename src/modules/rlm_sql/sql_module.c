@@ -4,8 +4,12 @@
  * Mike Machado <mike@innercite.com>
  */
 
+#include <stdio.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+
+#include 	"radiusd.h"
 #include	"rlm_sql.h"
-#include	"sql_module.h"
 
 
 /*************************************************************************
@@ -64,7 +68,7 @@ int sql_checksocket(const char *facility) {
 	} else {
 		if (sql->AcctSock->conn == NULL) {
 			MYSQL MyAcctConn;
-			if (mysql_keepopen)
+			if (sql->config.sql_keepopen)
 				log(L_ERR, "%s: Keepopen set but had to reconnect to MySQL", facility);
 			/* Connect to the database server */
 			mysql_init(&MyAcctConn);
@@ -89,11 +93,11 @@ int sql_checksocket(const char *facility) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-void sql_query(SQLSOCK *socket, char *querystr) {
+int sql_query(SQLSOCK *socket, char *querystr) {
 
  if (sql->config.sqltrace)
 	DEBUG(querystr);
- mysql_query(socket->conn, querystr);
+ return mysql_query(socket->conn, querystr);
 
 }
 
@@ -128,10 +132,10 @@ int sql_select_query(SQLSOCK *socket, char *querystr) {
  *************************************************************************/
 int sql_store_result(SQLSOCK *socket) {
 
-	if (!(socket->result = mysql_store_result(socket->conn)) {
+	if (!(socket->result = mysql_store_result(socket->conn))) {
 		log(L_ERR,"MYSQL Error: Cannot get result");
 		log(L_ERR,"MYSQL error: %s",mysql_error(socket->conn));
-		sql_close(socket->conn);
+		sql_close(socket);
 		return 0;
 	}
 	return 1;
@@ -150,10 +154,10 @@ int sql_store_result(SQLSOCK *socket) {
 int sql_num_fields(SQLSOCK *socket) {
 
 	int	num = 0;
-	if (!(num = mysql_num_fields(socket->conn)) {
+	if (!(num = mysql_num_fields(socket->conn))) {
 		log(L_ERR,"MYSQL Error: Cannot get result");
 		log(L_ERR,"MYSQL error: %s",mysql_error(socket->conn));
-		sql_close(socket->conn);
+		sql_close(socket);
 	}
 	return num;
 }
@@ -198,9 +202,9 @@ SQL_ROW sql_fetch_row(SQLSOCK *socket) {
  *               for a result set
  *
  *************************************************************************/
-int sql_free_result(SQLSOCK *socket) {
+void sql_free_result(SQLSOCK *socket) {
 
-   return mysql_free_result(socket->result);
+   mysql_free_result(socket->result);
 
 }
 
@@ -229,10 +233,49 @@ char *sql_error(SQLSOCK *socket) {
  *               connection
  *
  *************************************************************************/
-int sql_close(SQLSOCK *socket) {
+void sql_close(SQLSOCK *socket) {
 
-   return mysql_close(socket->conn);
+   mysql_close(socket->conn);
 
 }
 
 
+/*************************************************************************
+ *
+ *	Function: sql_finish_query
+ *
+ *	Purpose: End the query, such as freeing memory
+ *
+ *************************************************************************/
+void sql_finish_query(SQLSOCK *socket) {
+
+}
+
+
+
+/*************************************************************************
+ *
+ *	Function: sql_finish_select_query
+ *
+ *	Purpose: End the select query, such as freeing memory or result
+ *
+ *************************************************************************/
+void sql_finish_select_query(SQLSOCK *socket) {
+
+   sql_free_result(socket);
+}
+
+
+/*************************************************************************
+ *
+ *	Function: sql_affected_rows
+ *
+ *	Purpose: End the select quh as freeing memory or result
+ *
+ *************************************************************************/
+int sql_affected_rows(SQLSOCK *socket) {
+   int rows;
+
+   rows = mysql_affected_rows(socket->conn);
+   return rows;
+}
