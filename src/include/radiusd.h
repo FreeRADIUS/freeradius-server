@@ -39,6 +39,8 @@ typedef pid_t child_pid_t;
  */
 typedef struct request_data_t request_data_t;
 
+#define REQUEST_DATA_REGEX (0xadbeef00)
+
 typedef struct auth_req {
 #ifndef NDEBUG
 	uint32_t		magic; /* for debugging only */

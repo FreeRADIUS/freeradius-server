@@ -356,6 +356,33 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	} else if (decode_attr_packet(attrname, &q, freespace, request->packet, func)) {
 		found = 1;
 
+		/*
+		 *	Regex-style %{1}, %{2}, etc.
+		 */
+	} else if ((attrname[0] >= '0') && (attrname[0] <= '9')) {
+		int regex_num;
+		char *regex = NULL;
+		
+		/*
+		 *	Only 1 through 15 are allowed.
+		 *	See valuepair.c for reasons why...
+		 */
+		regex_num = atoi(attrname);
+		if ((regex_num > 0) && (regex_num < 16)) {
+			regex = request_data_get(request, request,
+						 REQUEST_DATA_REGEX | regex_num);
+		}
+		if (regex) {
+			/*
+			 *	Copy UP TO "freespace" bytes, including
+			 *	a zero byte.
+			 */
+			strNcpy(q, regex, freespace);
+			q += strlen(q);
+			free(regex); /* was strdup'd */
+			found = 1;
+		}
+
 	} else if (dict_attrbyname(attrname) == NULL) {
 		/*
 		 *	No attribute by that name, return an error.
