@@ -240,38 +240,37 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
+int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode) {
 
 	DICT_ATTR *attr;
 	VALUE_PAIR *pair, *check;
 	char *ptr;
 	char buf[128];
+	int pairmode = T_EOL;
 
 	if ((attr = dict_attrbyname(row[2])) == (DICT_ATTR *) NULL) {
 		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s", row[2]);
 		return (-1);
 	}
 
+	if (row[4] != NULL && strlen(row[4]) > 0) {
+		ptr = row[4];
+		pairmode = gettoken(&ptr, buf, sizeof(buf));
+	}
+	if (pairmode <= T_EOL) pairmode = T_OP_CMP_EQ;
+
 	/*
 	 * If attribute is already there, skip it because we checked usercheck first 
 	 * and we want user settings to over ride group settings 
 	 */
-	if ((check = pairfind(*first_pair, attr->attr)) != NULL &&
-#if defined( BINARY_FILTERS )
+	if (pairmode != T_OP_ADD && (check = pairfind(*first_pair, attr->attr)) != NULL &&
+#ifdef ASCEND_BINARY
 			attr->type != PW_TYPE_ABINARY &&
 #endif
-			mode == PW_VP_GROUPDATA)
+			querymode == PW_VP_GROUPDATA)
 		return 0;
 
-	if (row[4] != NULL && strlen(row[4]) > 0) {
-		ptr = row[4];
-		if ((mode = gettoken(&ptr, buf, sizeof(buf))) <= T_EOL)
-			mode = T_OP_CMP_EQ;
-	} else {
-		mode = T_OP_CMP_EQ;
-	}
-
-	pair = pairmake(row[2], row[3], mode);
+	pair = pairmake(row[2], row[3], pairmode);
 	pairadd(first_pair, pair);
 
 	return 0;
