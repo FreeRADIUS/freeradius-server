@@ -103,6 +103,10 @@ To disable the Ascend style attributes (which is a VERY good idea!):
 
    radius-server host X.Y.Z.A auth-port 1645 acct-port 1646
 
+To see Cisco-AVPair attributes in the Cisco debugging log:
+
+   radius-server vsa accounting
+
 4.  CREDITS
 
 Original  - Alan DeKok <aland@ox.org>
