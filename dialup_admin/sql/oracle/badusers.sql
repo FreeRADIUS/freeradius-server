@@ -10,7 +10,7 @@
 CREATE TABLE badusers (
 	id		INT PRIMARY KEY,
 	username	VARCHAR(30) NOT NULL,
-	actiondate	DATE,
+	actiondate	TIMESTAMP WITH TIME ZONE,
 	reason		VARCHAR(128) NOT NULL,
 	admin		VARCHAR(128) NOT NULL
 );
