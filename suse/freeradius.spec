@@ -17,7 +17,7 @@ Group:        Productivity/Networking/Radius/Servers
 Packager:     FreeRADIUS.org
 Provides:     radiusd
 Conflicts:    radiusd-livingston radiusd-cistron icradius
-Version:      0.8
+Version:      0.8.1
 Release:      0
 URL:          http://www.freeradius.org/
 Summary:      Very high configurable Radius-server
