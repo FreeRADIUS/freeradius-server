@@ -1,3 +1,10 @@
+radiusd-freeradius (0.4+00000000-1) unstable; urgency=high
+
+  * New build-dep on libssl-dev.
+  * Added python module, and forced it to split off from the base package.
+
+ -- Chad Miller <cmiller@debian.org>
+
 radiusd-freeradius (0.4-1) unstable; urgency=high
 
   * New release.

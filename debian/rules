@@ -39,7 +39,7 @@ binary-arch: build
 	rmdir $(radiusd_freeradius_dir)/$(execprefix)/include
 	rm $(radiusd_freeradius_dir)/$(execprefix)/usr/sbin/rc.radiusd
 	# split out inconvenient/controversal modules to other places
-	for modname in krb5 ldap mysql postgresql; do \
+	for modname in krb5 ldap mysql postgresql python; do \
 		mkdir -p $(debiandir)/radiusd-freeradius-$${modname}/$(libdir); \
 		mv $(radiusd_freeradius_dir)/$(libdir)/rlm*_$${modname}.* $(debiandir)/radiusd-freeradius-$${modname}/$(libdir)/; \
 	done
@@ -80,7 +80,7 @@ clean:
 	rm -f build debian/{files,substvars} debian/*.debhelper
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
-	rm -rf $(radiusd_freeradius_dir) radiusd-freeradius-{ldap,postgresql,mysql,krb5}{,.substvars}
+	rm -rf $(radiusd_freeradius_dir) radiusd-freeradius-{ldap,postgresql,mysql,krb5,python}{,.substvars}
 
 binary: binary-indep binary-arch
 
