@@ -89,6 +89,7 @@ typedef int (*COMPARE)(VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 extern char		*progname;
 extern int		debug_flag;
 extern char		*radacct_dir;
+extern char     *radlog_dir;
 extern char		*radius_dir;
 extern char		*radius_libdir;
 extern UINT4		expiration_seconds;
