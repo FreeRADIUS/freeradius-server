@@ -15,7 +15,7 @@ LIBS		= $(LIBLDAP) $(LIBLBER)
 # This should be where your LDAP LIBS are installed
 #
 # This is the default location for OpenLDAP libs
-LDAP_LOCATION=/usr/local/ldap
+LDAP_LOCATION=/usr/local
 # This is the default location for mozilla libs (at least on my system)
 #LDAP_LOCATION=/usr
 
@@ -32,7 +32,7 @@ $(DYNAMIC_OBJS): $(HEADERS)
 
 config.mak config.h:
 	@../checkconfig -l LIBLDAP ldap_init -lldap "-L$(LDAP_LOCATION)/lib -I$(LDAP_LOCATION)/include"
-	@../checkconfig -l LIBLDAP ldap_init "-lldap -llber" "-L$(LDAP_LOCATION)/lib -I$(LDAP_LOCATION)/include"
+	@../checkconfig -l LIBLDAP ldap_init "-lldap -llber -L$(LDAP_LOCATION)/lib" "-I$(LDAP_LOCATION)/include"
 # This should check for the mozilla sdk.  I have only used the procompiled
 # binary, I still need to try to compile it from source and see if it will
 # work with this
