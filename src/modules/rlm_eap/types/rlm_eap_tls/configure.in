@@ -7,6 +7,8 @@ SMART_LIBS=
 SMART_CLFAGS=
 if test x$with_[]modname != xno; then
 
+	AC_PROG_CC
+
 	dnl extra argument: --with-rlm-eap-tls-lib-dir
 	rlm_eap_tls_lib_dir=
 	AC_ARG_WITH(rlm-eap-tls-lib-dir,
