@@ -171,6 +171,7 @@ int proxy_send(REQUEST *request)
 	VALUE_PAIR		*realmpair;
 	VALUE_PAIR		*namepair;
 	VALUE_PAIR		*passpair;
+	VALUE_PAIR		*delaypair;
 	VALUE_PAIR		*vp, *vps;
 	CLIENT			*client;
 	REALM			*realm;
@@ -345,9 +346,11 @@ int proxy_send(REQUEST *request)
 	 */
 	rad_send(request->proxy, client->secret);
 	memcpy(request->proxysecret, client->secret, 32);
-	request->proxy_is_replicate=replicating;
-	request->proxy_try_count=RETRY_COUNT;
-	request->proxy_next_try=request->timestamp+RETRY_DELAY;
+	request->proxy_is_replicate = replicating;
+	request->proxy_try_count = RETRY_COUNT - 1;
+	request->proxy_next_try = request->timestamp + RETRY_DELAY;
+	delaypair = pairfind(vps, PW_ACCT_DELAY_TIME);
+	request->proxy->timestamp = request->timestamp - (delaypair ? delaypair->lvalue : 0);
 
 #if 0
 	/*
@@ -526,41 +529,71 @@ int proxy_receive(REQUEST *request)
 	return replicating?1:0;
 }
 
+/*
+ *  FIXME: Maybe keeping the proxy_requests list sorted by
+ *  proxy_next_try would be cheaper than all this searching.
+ */
 struct timeval *proxy_setuptimeout(struct timeval *tv)
 {
-  time_t now=time(0);
-  time_t difference, smallest;
-  int foundone=0;
-  REQUEST *p;
-  for (p = proxy_requests; p; p = p->next) {
-    if(!p->proxy_is_replicate)
-      continue;
-    difference=p->proxy_next_try-now;
-    if(!foundone) {
-      foundone=1;
-      smallest=difference;
-    } else {
-      if(difference<smallest)
-	smallest=difference;
-    }
-  }
-  if(!foundone)
-    return 0;
-  tv->tv_sec=smallest;
-  tv->tv_usec=0;
-  return tv;
+	time_t now = time(0);
+	time_t difference, smallest;
+	int foundone = 0;
+	REQUEST *p;
+
+	smallest = 0;
+	for (p = proxy_requests; p; p = p->next) {
+	  if (!p->proxy_is_replicate)
+	    continue;
+	  difference = p->proxy_next_try - now;
+	  if (!foundone) {
+	    foundone = 1;
+	    smallest = difference;
+	  } else {
+	    if (difference < smallest)
+	      smallest = difference;
+	  }
+	}
+	if (!foundone)
+	  return 0;
+
+	tv->tv_sec = smallest;
+	tv->tv_usec = 0;
+	return tv;
 }
 
 void proxy_retry(void)
 {
-  time_t now=time(0);
-  REQUEST *p;
-  for (p = proxy_requests; p; p = p->next) {
-    if(p->proxy_next_try <= now) {
-      if(!--p->proxy_try_count)
-	continue;
-      p->proxy_next_try=now+RETRY_DELAY;
-      rad_send(p->proxy, p->proxysecret);
-    }
-  }
+	time_t now = time(0);
+	REQUEST *p;
+
+	for (p = proxy_requests; p; p = p->next) {
+	  if (p->proxy_next_try <= now) {
+	    if (p->proxy_try_count) {
+	      --p->proxy_try_count;
+	      p->proxy_next_try = now + RETRY_DELAY;
+	      
+	      /* Fix up Acct-Delay-Time */
+	      if (p->proxy->code == PW_ACCOUNTING_REQUEST) {
+		VALUE_PAIR *delaypair;
+		delaypair = pairfind(p->proxy->vps, PW_ACCT_DELAY_TIME);
+
+		if (!delaypair) {
+		  delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
+		  if (!delaypair) {
+		    log(L_ERR|L_CONS, "no memory");
+		    exit(1);
+		  }
+		  pairadd(&p->proxy->vps, delaypair);
+		}
+		delaypair->lvalue = now - p->proxy->timestamp;
+		
+		/* Must recompile the valuepairs to wire format */
+		free(p->proxy->data);
+		p->proxy->data = NULL;
+	      }
+	      
+	      rad_send(p->proxy, p->proxysecret);
+	    }
+	  }
+	}
 }
