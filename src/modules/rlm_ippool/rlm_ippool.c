@@ -26,6 +26,8 @@
  * - Add support for the Pool-Name attribute
  * May 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  * - Check the return value of a gdbm_fetch() we didn't check
+ * - Change the nas entry in the ippool_key structure from uint32 to string[64]
+ *   That should allow us to also use the NAS-Identifier attribute
  */
 
 #include "config.h"
@@ -62,6 +64,7 @@
 #endif
 
 #define ALL_ONES 4294967295
+#define MAX_NAS_NAME_SIZE 64
 
 static const char rcsid[] = "$Id$";
 
@@ -93,7 +96,7 @@ typedef struct ippool_info {
 } ippool_info;
 
 typedef struct ippool_key {
-	uint32_t nas;
+	char nas[MAX_NAS_NAME_SIZE];
 	int port;
 } ippool_key;
 
@@ -208,6 +211,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 		int rcode;
 		uint32_t or_result;
 		char str[32];
+		char *nas_init = "NOT_EXIST";
 
 		DEBUG("rlm_ippool: Initializing database");
 		for(i=data->range_start,j=-1;i<=data->range_stop;i++,j--){
@@ -221,7 +225,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 				continue;
 			}
 			
-			key.nas = 0;
+			strcpy(key.nas, nas_init);
 			key.port = j;
 			key_datum.dptr = (ippool_key *) &key;
 			key_datum.dsize = sizeof(ippool_key);
@@ -273,7 +277,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	int acctstatustype = 0;
 	int port = -1;
 	int rcode;
-	uint32_t nas = 0;
+	char nas[MAX_NAS_NAME_SIZE];
 	ippool_info entry;
 	ippool_key key;
 	int num = 0;
@@ -296,10 +300,14 @@ static int ippool_accounting(void *instance, REQUEST *request)
 				return RLM_MODULE_NOOP;
 			}
 			if ((vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
-				nas = vp->lvalue;
+				strncpy(nas, vp->strvalue, MAX_NAS_NAME_SIZE - 1);
 			else {
-				DEBUG("rlm_ippool: Could not find nas ip address in packet.");
-				return RLM_MODULE_NOOP;
+				if ((vp = pairfind(request->packet->vps, PW_NAS_IDENTIFIER)) != NULL)
+					strncpy(nas, vp->strvalue, MAX_NAS_NAME_SIZE - 1);
+				else {
+					DEBUG("rlm_ippool: Could not find nas information in packet.");
+					return RLM_MODULE_NOOP;
+				}
 			}
 			break;
 		default:
@@ -308,7 +316,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 	}
 
-	key.nas = nas;
+	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE - 1);
 	key.port = port;
 	key_datum.dptr = (ippool_key *) &key;
 	key_datum.dsize = sizeof(ippool_key);
@@ -376,16 +384,16 @@ static int ippool_authorize(void *instance, REQUEST *request)
 	int delete = 0;
 	int rcode;
 	int num = 0;
-	uint32_t nas = 0;
+	char nas[MAX_NAS_NAME_SIZE];
 	datum key_datum;
 	datum nextkey;
 	datum data_datum;
 	ippool_key key;
 	ippool_info entry;
 	VALUE_PAIR *vp;
-	char str[32];
-	char str2[32];
 	char *cli = NULL;
+	char str[32];
+
 
 	/* quiet the compiler */
 	instance = instance;
@@ -403,10 +411,14 @@ static int ippool_authorize(void *instance, REQUEST *request)
 	 * Get the nas ip address
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
-		nas = vp->lvalue;
+		strncpy(nas, vp->strvalue, MAX_NAS_NAME_SIZE - 1);
 	else{
 		if ((vp = pairfind(request->packet->vps, PW_NAS_IDENTIFIER)) != NULL)
-			nas = vp->lvalue;
+			strncpy(nas, vp->strvalue, MAX_NAS_NAME_SIZE - 1);
+		else{
+			DEBUG("rlm_ippool: Could not find nas information.");
+			return RLM_MODULE_NOOP;
+		}
 	}
 
 	/*
@@ -421,9 +433,9 @@ static int ippool_authorize(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL){
 		port = vp->lvalue;
 
-		key.nas = nas;
+		strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
 		key.port = port;	
-		DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",ip_ntoa(str,nas),port);
+		DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",nas,port);
 		key_datum.dptr = (ippool_key *) &key;
 		key_datum.dsize = sizeof(ippool_key);
 
@@ -503,7 +515,7 @@ static int ippool_authorize(void *instance, REQUEST *request)
 		 	*/
 			if (cli != NULL && strcmp(entry.cli,cli) == 0 && entry.active){
 				memcpy(&key,key_datum.dptr,sizeof(ippool_key));
-				if (key.nas == nas)	
+				if (!strcmp(key.nas,nas))
 					break;
 			}
 			if (entry.active == 0){
@@ -561,7 +573,7 @@ static int ippool_authorize(void *instance, REQUEST *request)
 			if (data->fd >= 0) rad_unlockfd(data->fd, sizeof(int));
 		}
 		free(key_datum.dptr);
-		key.nas = nas;
+		strncpy(key.nas,nas,MAX_NAS_NAME_SIZE - 1);
 		key.port = port;
 		key_datum.dptr = (ippool_key *) &key;
 		key_datum.dsize = sizeof(ippool_key);
@@ -600,7 +612,7 @@ static int ippool_authorize(void *instance, REQUEST *request)
 			
 
 		DEBUG("rlm_ippool: Allocated ip %s to client on nas %s,port %d",ip_ntoa(str,entry.ipaddr),
-				ip_ntoa(str2,key.nas),port);
+				key.nas,port);
 		if ((vp = paircreate(PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR)) == NULL) {
 			radlog(L_ERR|L_CONS, "no memory");
 			return RLM_MODULE_NOOP;
