@@ -188,26 +188,15 @@ LEAP_PACKET *eapleap_extract(EAP_DS *eap_ds)
 	return packet;
 }
 
-/* 
- *	Verify the MS-CHAP response from the user.
+/*
+ *  Get the NT-Password hash.
  */
-int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password, 
-		   leap_session_t *session)
+static void eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 {
-	int i;
-	unsigned char unicode[512];
-	unsigned char ntpwdhash[16];
-	unsigned char response[24];
-	
-	
-	/*
-	 *	No password or previous packet.  Die.
-	 */
-	if ((password == NULL) || (session == NULL)) {
-		return 0;
-	}
-
 	if (password->attribute == PW_PASSWORD) {
+		int i;
+		unsigned char unicode[512];
+
 		/*
 		 *	Convert the password to NT's weird Unicode format.
 		 */
@@ -225,9 +214,34 @@ int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password,
 		 */
 		md4_calc(ntpwdhash, unicode, password->length * 2);
 
-	} else {
+	} else {		/* MUST be NT-Password */
+		/*
+		 *	FIXME: Check for broken (32-character)
+		 *	NT-Password's?
+		 */
 		memcpy(ntpwdhash, password->strvalue, 16);
 	}
+}
+
+
+/* 
+ *	Verify the MS-CHAP response from the user.
+ */
+int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password, 
+		   leap_session_t *session)
+{
+	unsigned char ntpwdhash[16];
+	unsigned char response[24];
+	
+	
+	/*
+	 *	No password or previous packet.  Die.
+	 */
+	if ((password == NULL) || (session == NULL)) {
+		return 0;
+	}
+
+	eapleap_ntpwdhash(ntpwdhash, password);
 
 	/*
 	 *	Calculate and verify the CHAP challenge.
@@ -251,8 +265,8 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 			    leap_session_t *session, VALUE_PAIR **reply_vps)
 {
 	int i;
-	unsigned char unicode[512];
-	unsigned char ntpwdhash[16];
+	unsigned char ntpwdhash[16], ntpwdhashhash[16];
+	unsigned char buffer[256];
 	LEAP_PACKET *reply;
 	char *p;
 	VALUE_PAIR *vp;
@@ -262,18 +276,6 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	 */
 	if ((password == NULL) || (session == NULL)) {
 		return NULL;
-	}
-
-	/*
-	 *	Convert the password to NT's weird Unicode format.
-	 */
-	memset(unicode, 0, sizeof(unicode));
-	for (i = 0; i < password->length; i++) {
-		/*
-		 *  Yes, the *even* bytes have the values,
-		 *  and the *odd* bytes are zero.
-		 */
-		unicode[(i << 1)] = password->strvalue[i];
 	}
 
 	reply = eapleap_alloc();
@@ -310,15 +312,14 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	/*
 	 *  MPPE hash = ntpwdhash(ntpwdhash(unicode(pw)))
 	 */
-	md4_calc(ntpwdhash, unicode, password->length * 2);
-	memcpy(unicode, ntpwdhash, 16);
-	md4_calc(ntpwdhash, unicode, 16);
+	eapleap_ntpwdhash(ntpwdhash, password);
+	md4_calc(ntpwdhashhash, ntpwdhash, 16);
 
 	/*
 	 *	Calculate our response, to authenticate ourselves
 	 *	to the AP.
 	 */
-	lrad_mschap(ntpwdhash, packet->challenge, reply->challenge);
+	lrad_mschap(ntpwdhashhash, packet->challenge, reply->challenge);
 
 	/*
 	 *  Calculate the leap:session-key attribute
@@ -333,8 +334,8 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	/*
 	 *	And calculate the MPPE session key.
 	 */
-	p = unicode;
-	memcpy(p, ntpwdhash, 16); /* MPPEHASH */
+	p = buffer;
+	memcpy(p, ntpwdhashhash, 16); /* MPPEHASH */
 	p += 16;
 	memcpy(p, packet->challenge, 8); /* APC */
 	p += 8;
@@ -348,7 +349,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	/*
 	 *	These 16 bytes are the session key to use.
 	 */
-	librad_md5_calc(ntpwdhash, unicode, 16 + 8 + 24 + 8 + 24);
+	librad_md5_calc(ntpwdhash, buffer, 16 + 8 + 24 + 8 + 24);
 
 	memcpy(vp->strvalue + vp->length, ntpwdhash, 16);
 	memset(vp->strvalue + vp->length + 16, 0,
