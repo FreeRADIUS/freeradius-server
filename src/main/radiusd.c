@@ -980,7 +980,7 @@ int main(int argc, char **argv)
 			request->child_pid = NO_SUCH_CHILD_PID;
 			request->prev = NULL;
 			request->next = NULL;
-			strNcpy(request->secret, secret, sizeof(request->secret));
+			strNcpy(request->secret, (char *)secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
 		} /* loop over authfd, acctfd, proxyfd */
 
