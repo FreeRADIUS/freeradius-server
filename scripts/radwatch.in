@@ -4,6 +4,14 @@
 #		restarts radiusd when it dies [which ofcourse
 #		never happens :)]
 #
+#   WARNING!  This script SHOULD NOT BE USED!  It's only here for historical
+#             purposes, and WILL be deleted in a future version of the
+#             the server.
+#
+#             If you want to watch and re-start the server, we recommend
+#             reading the file ../doc/supervise-radiusd.txt
+#
+#
 # Version:	$Id$
 #
 
