@@ -332,9 +332,10 @@ ldap_authorize(void *instance, REQUEST * request)
 	LDAPMessage	*def_attr_result = NULL;
 	ldap_instance	*inst = instance;
 	char		*user_dn = NULL;
-	char		*attrs[] = {"*", NULL};
-	static char	filter[MAX_AUTH_QUERY_LEN];
-	static char 	filt_patt[] = "(| (& (objectClass=GroupOfNames) (member=%{Ldap-UserDn})) (& (objectClass=GroupOfUniqueNames) (uniquemember=%{Ldap-UserDn})))"; 
+	const char	*attrs[] = {"*", NULL};
+	char		filter[MAX_AUTH_QUERY_LEN];
+	char		basedn[1024];
+	static const char filt_patt[] = "(| (& (objectClass=GroupOfNames) (member=%{Ldap-UserDn})) (& (objectClass=GroupOfUniqueNames) (uniquemember=%{Ldap-UserDn})))"; 
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	int		res;
@@ -343,14 +344,13 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	DEBUG("rlm_ldap: - authorize");
 
-	if(!request->username){
+	if (!request->username){
 		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Name\" is required for authentication.\n");
 		return RLM_MODULE_INVALID;
 	}
 
 	check_pairs = &request->config_items;
 	reply_pairs = &request->reply->vps;
-
 
 	/*
 	 * Check for valid input, zero length names not permitted
@@ -362,11 +362,19 @@ ldap_authorize(void *instance, REQUEST * request)
 	DEBUG("rlm_ldap: performing user authorization for %s",
 	       request->username->strvalue);
 
-	if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->filter,
-			request, NULL)) 
-		radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
+	if (!radius_xlat(filter, sizeof(filter), inst->filter,
+			 request, NULL)) {
+		radlog (L_ERR, "rlm_ldap: unable to create filter.\n");
+		return RLM_MODULE_INVALID;
+	}
 
-	if ((res = perform_search(instance, inst->basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
+	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
+			 request, NULL)) {
+		radlog (L_ERR, "rlm_ldap: unable to create basedn.\n");
+		return RLM_MODULE_INVALID;
+	}
+
+	if ((res = perform_search(instance, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
 		DEBUG("rlm_ldap: search failed");
 		return (res);
 	}
@@ -523,7 +531,8 @@ ldap_authenticate(void *instance, REQUEST * request)
 	LDAPMessage    *result, *msg;
 	ldap_instance  *inst = instance;
 	char           *user_dn, *attrs[] = {"uid", NULL};
-	static char	filter[MAX_AUTH_QUERY_LEN];
+        char		filter[MAX_AUTH_QUERY_LEN];
+	char		basedn[1024];
 	int             res;
 	VALUE_PAIR     *vp_user_dn;
 
@@ -533,7 +542,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	 * anything else.
 	 */
 
-	if(!request->username){
+	if (!request->username) {
 		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Name\" is required for authentication.\n");
 		return RLM_MODULE_INVALID;
 	}
@@ -552,11 +561,21 @@ ldap_authenticate(void *instance, REQUEST * request)
 		radlog(L_ERR, "rlm_ldap: empty password supplied");
 		return RLM_MODULE_INVALID;
 	}
+
 	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"", 
 	       request->username->strvalue, request->password->strvalue);
-	if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->filter,
-			request, NULL)) 
+
+	if (!radius_xlat(filter, sizeof(filter), inst->filter,
+			request, NULL)) {
 		radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
+		return RLM_MODULE_INVALID;
+	}
+
+	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
+			 request, NULL)) {
+		radlog (L_ERR, "rlm_ldap: unable to create basedn.\n");
+		return RLM_MODULE_INVALID;
+	}
 
 	while((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL) {
 		if ((res = perform_search(instance, inst->basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
