@@ -1,66 +1,55 @@
 
 include ../../Make.inc
 
-OBJS		= dict.o print.o radius.o valuepair.o token.o misc.o \
-		log.o filters.o missing.o md4.o md5.o sha1.o hmac.o snprintf.o
+SRCS		= dict.c print.c radius.c valuepair.c token.c misc.c \
+		log.c filters.c missing.c md4.c md5.c sha1.c hmac.c snprintf.c
 
 INCLUDES	= ../include/radius.h ../include/libradius.h \
 		  ../include/missing.h ../include/autoconf.h
 
 CFLAGS		+= -D_LIBRADIUS -I../include
 
-all:	$(LIBPREFIX)radius.a
+all:	static dynamic
 
-$(LIBPREFIX)radius.a: $(OBJS)
-	$(LIBTOOL) --mode=link $(LD) $(OBJS) -o $(LIBPREFIX)radius.a
+TARGET=$(LIBPREFIX)radius
 
-#	$(AR) rv $(LIBPREFIX)radius.a $(OBJS)
-#	$(RANLIB) $(LIBPREFIX)radius.a
+STATIC_OBJS	= $(SRCS:.c=.o)
+DYNAMIC_OBJS	= $(SRCS:.c=.lo)
 
-filters.o: filters.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c filters.c
+$(STATIC_OBJS):  $(INCLUDES)
+$(DYNAMIC_OBJS): $(INCLUDES)
 
-print.o: print.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c print.c
+#######################################################################
+#
+# define new rules
+#
+#######################################################################
+%.o : %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-dict.o: dict.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c dict.c
+%.lo : %.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
 
-radius.o: radius.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c radius.c
 
-valuepair.o: valuepair.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c valuepair.c
+$(TARGET).a: $(STATIC_OBJS)
+	$(LIBTOOL) --mode=link $(LD) \
+	-module -static $(CFLAGS) $^ -o $@ 
 
-token.o: token.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c token.c
 
-misc.o: misc.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c misc.c
+ifneq ($(USE_SHARED_LIBS),yes)
+LINK_MODE=-static
+endif
 
-log.o:	log.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c log.c
+$(TARGET).la: $(DYNAMIC_OBJS)
+	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	-module $(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) $^ 
 
-missing.o: missing.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c missing.c
+static: $(TARGET).a
 
-md4.o: md4.c ../include/md4.h
-	$(CC) $(CFLAGS) -c md4.c
-
-md5.o: md5.c ../include/md5.h
-	$(CC) $(CFLAGS) -c md5.c
-
-sha1.o: sha1.c ../include/sha1.h
-	$(CC) $(CFLAGS) -c sha1.c
-
-hmac.o: hmac.c $(INCLUDES) 
-	$(CC) $(CFLAGS) -c hmac.c
-
-snprntf.o: snprintf.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c snprintf.c
+dynamic: $(TARGET).la
 
 clean:
-	rm -f *.o $(LIBPREFIX)radius.a
+	rm -f *.o $(TARGET).a $(TARGET).la
 
 install:
 
