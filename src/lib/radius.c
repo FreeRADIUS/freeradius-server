@@ -155,9 +155,17 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			  /*
 			   *	If the Vendor-Specific attribute is getting
 			   *	full, then create a new VSA attribute
+			   *
+			   *	FIXME: Multiple VSA's per Vendor-Specific
+			   *	SHOULD be configurable.  When that's done,
+			   *	the (1), below, can be changed to point to
+			   *	a configuration variable which is set TRUE
+			   *	if the NAS cannot understand multiple VSA's
+			   *	per Vendor-Specific
 			   */
-			  if (vsa_length_ptr &&
-			      (reply->length + *vsa_length_ptr) >= MAX_STRING_LEN) {
+			  if ((1) || /* ALWAYS create a new Vendor-Specific */
+			      (vsa_length_ptr &&
+			       (reply->length + *vsa_length_ptr) >= MAX_STRING_LEN)) {
 				  vendorcode = 0;
 				  vendorpec = 0;
 				  vsa_length_ptr = NULL;
