@@ -486,13 +486,18 @@ int main(int argc, char **argv)
 
 	radius_pid = getpid();
 #ifdef RADIUS_PID
-	fp = fopen(pid_file, "w");
-	if (fp != NULL) {
-		fprintf(fp, "%d\n", radius_pid);
-		fclose(fp);
-	} else {
-		log(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
-		    pid_file, strerror(errno));
+	/*
+	 *	Only write the PID file if we're running as a daemon.
+	 */
+	if (dont_fork == FALSE) {
+		fp = fopen(pid_file, "w");
+		if (fp != NULL) {
+			fprintf(fp, "%d\n", radius_pid);
+			fclose(fp);
+		} else {
+			log(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
+			    pid_file, strerror(errno));
+		}
 	}
 #endif
 
