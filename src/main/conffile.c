@@ -22,15 +22,13 @@
 #include "token.h"
 #include "modules.h"
 
-#ifdef WITH_NEW_CONFIG
-
 #define xalloc malloc
 #define xstrdup strdup
 
 CONF_SECTION	*config;
-extern RADCLIENT  *clients;
-extern REALM	*realms;
-extern void realm_free(REALM *cl);
+
+extern RADCLIENT *clients;
+extern REALM	 *realms;
 
 static int generate_realms();
 static int generate_clients();
@@ -136,15 +134,71 @@ void cf_section_free(CONF_SECTION *cs)
 /*
  * Free _all_ in a CONF_SECTION and below
  */
-
 void cf_section_free_all(CONF_SECTION *cs)
 {
 
 }
+
+/*
+ *	Parse a configuration section into user-supplied variables.
+ */
+int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
+{
+	int i;
+	char      	**q;
+	CONF_PAIR *cp;
+	
+	/*
+	 *	Handle the user-supplied variables.
+	 */
+	for (i = 0; variables[i].name != NULL; i++) {
+		cp = cf_pair_find(cs, variables[i].name);
+		if (!cp) {
+			continue;
+		}
+		
+		switch (variables[i].type)
+		{
+		case PW_TYPE_INTEGER:
+			if (strcasecmp(cp->value, "yes") == 0) {
+				*(int *)variables[i].data = 1;
+			} else if (strcasecmp(cp->value, "no") == 0) {
+				*(int *)variables[i].data = 0;
+			} else {
+				*(int *)variables[i].data = atoi(cp->value);
+			}
+			DEBUG2("Config: %s.%s = %d",
+			       cs->name1,
+			       variables[i].name,
+			       *(int *)variables[i].data);
+			break;
+			
+		case PW_TYPE_STRING_PTR:
+			q = (char **) variables[i].data;
+			if (*q != NULL) {
+				free(*q);
+			}
+			DEBUG2("Config: %s.%s = %s",
+			       cs->name1,
+			       variables[i].name,
+			       cp->value);
+			*q = strdup(cp->value);
+			break;
+			
+		default:
+			log(L_ERR, "type %d not supported yet", variables[i].type);
+			break;
+		} /* switch over variable type */
+	} /* for all variables in the configuration section */
+	
+	return 0;
+}
+
+
 /*
  *	Read a part of the config file.
  */
-static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
+static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				      const char *name1, const char *name2,
 				      const CONF_PARSER *variables)
 {
@@ -156,7 +210,6 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 	char		buf2[256];
 	char		buf3[256];
 	int		t1, t2, t3;
-	char      	**q;
 	
 	/*
 	 *	Ensure that the user can't add CONF_SECTIONs
@@ -192,7 +245,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (t1 == T_RCBRACE) {
 			if (name1 == NULL || buf2[0]) {
-				log(L_ERR, "%s[%d]: syntax error #1",
+				log(L_ERR, "%s[%d]: Unexpected end of section",
 					cf, *lineno);
 				return NULL;
 			}
@@ -204,7 +257,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 		 */
 
 		if (t2 == T_LCBRACE) {
-			css = conf_readsection(cf, lineno, fp, name2, buf1, NULL);
+			css = cf_section_read(cf, lineno, fp, name2, buf1, NULL);
 			if (css == NULL)
 				return NULL;
 			for (csp = cs->sub; csp && csp->next; csp = csp->next)
@@ -221,7 +274,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 		 *	Or, the beginning of a new section.
 		 */
 		if (t3 == T_LCBRACE) {
-			csn = conf_readsection(cf, lineno, fp, buf1, buf2, NULL);
+			csn = cf_section_read(cf, lineno, fp, buf1, buf2, NULL);
 			if (csn == NULL)
 				return NULL;
 			/*
@@ -243,7 +296,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 			t2 = T_OP_EQ;
 		} else if (buf1[0] == 0 || buf2[0] == 0 || buf3[0] == 0 ||
 			  (t2 < T_EQSTART || t2 > T_EQEND)) {
-			log(L_ERR, "%s[%d]: syntax error #2",
+			log(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 				cf, *lineno);
 			return NULL;
 		}
@@ -256,51 +309,6 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 			log(L_ERR, "%s[%d]: Illegal configuration pair name",
 				cf, *lineno);
 			return NULL;
-		}
-
-		if (variables) {
-		  int i;
-
-		  i = 0;
-		  while ((variables[i].name != NULL) &&
-			 (strcmp(variables[i].name, buf1) != 0)) {
-		    i++;
-		  }
-
-		  if (variables[i].name != NULL) {
-		    switch (variables[i].type)
-		      {
-		      case PW_TYPE_INTEGER:
-			if (strcasecmp(buf3, "yes") == 0) {
-			  *(int *)variables[i].data = 1;
-			} else if (strcasecmp(buf3, "no") == 0) {
-			  *(int *)variables[i].data = 0;
-			} else {
-			  *(int *)variables[i].data = atoi(buf3);
-			}
-			DEBUG2("Config: %s = %d", variables[i].name,
-			       *(int *)variables[i].data);
-			break;
-
-		      case PW_TYPE_STRING_PTR:
-			q = (char **) variables[i].data;
-			if (*q != NULL) {
-			  free(*q);
-			}
-			DEBUG2("Config: %s = %s", variables[i].name, buf3);
-			*q = strdup(buf3);
-			break;
-
-		      default:
-			log(L_ERR, "type %d not supported yet", variables[i].type);
-			break;
-		      }
-
-		    /*
-		     *  Don't add it as a CONF_PAIR.
-		     */
-		    continue;
-		  }
 		}
 
 		/*
@@ -317,6 +325,13 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 		log(L_ERR,	
 			"%s[%d]: unexpected end of file", cf, *lineno);
 		return NULL;
+	}
+
+	/*
+	 *	If they passed a CONF_PARSER, go parse the data.
+	 */
+	if (variables) {
+		cf_section_parse(cs, variables);
 	}
 
 	return cs;
@@ -339,7 +354,7 @@ CONF_SECTION *conf_read(const char *conffile, const CONF_PARSER variables[])
 		return NULL;
 	}
 
-	config = conf_readsection(conffile, &lineno, fp, NULL, NULL, variables);
+	config = cf_section_read(conffile, &lineno, fp, NULL, NULL, variables);
 	fclose(fp);
 
 	return config;
@@ -352,7 +367,7 @@ CONF_SECTION *conf_read(const char *conffile, const CONF_PARSER variables[])
  */
 
 extern CONF_PARSER rad_config[];
-int read_new_config_files(void)
+int read_radius_conf_file(void)
 {
 	char buffer[256];
 
@@ -395,11 +410,8 @@ int read_new_config_files(void)
 static int generate_realms() 
 {
 	CONF_SECTION	*cs;
-	REALM			*c;
-	char			*s, *authhost, *accthost;
-
-	realm_free(realms);
-	realms = NULL;
+	REALM		*c;
+	char		*s, *authhost, *accthost;
 
 	for (cs = config; cs; cs = cs->next) {
 		if (strcmp(cs->name1, "realm") == 0) {
@@ -473,21 +485,6 @@ static int generate_realms()
 	return 0;
 }
 
-/*
- *	Free a RADCLIENT list.
- */
-
-static void clients_free(RADCLIENT *cl)
-{
-	RADCLIENT *next;
-
-	while(cl) {
-		next = cl->next;
-		free(cl);
-		cl = next;
-	}
-}
-
 /* JLN
  * Create the linked list of realms from the new configuration type
  * This way we don't have to change to much in the other source-files
@@ -498,9 +495,6 @@ static int generate_clients()
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
 	char		*hostnm, *secret, *shortnm;
-
-	clients_free(clients);
-	clients = NULL;
 
 	for (cs = config; cs; cs = cs->next) {
 		if (strcmp(cs->name1, "client") == 0) {
@@ -689,5 +683,3 @@ int dump_config()
 
 	return 0;
 }
-
-#endif
