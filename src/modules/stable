@@ -7,6 +7,7 @@ rlm_counter
 rlm_dbm
 rlm_detail
 rlm_eap
+rlm_eap_md5  
 rlm_fastusers
 rlm_files
 rlm_krb5
@@ -19,5 +20,9 @@ rlm_preprocess
 rlm_radutmp
 rlm_realm
 rlm_sql
+rlm_sql_freetds
+rlm_sql_iodbc
+rlm_sql_mysql
+rlm_sql_postgresql
 rlm_unix
 rlm_x99_token

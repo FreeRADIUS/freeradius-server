@@ -24,7 +24,7 @@ build:
 	dh_testdir
 	# dh_testroot
 	##./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies --without-rlm_python --without-rlm_ippool
-	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies `{ cd src/modules; ls -d rlm_*; } |while read dir; do egrep $$dir src/modules/stable >/dev/null || echo --disable-$$dir; done`
+	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies `find src/modules -type d |grep rlm_ |sed -e "s%.*/\(rlm_[^/]*\)\(/.*\)*%\\1%" |sort |uniq |while read dir; do egrep ^$dir\$ src/modules/stable >/dev/null || echo --disable-$dir; done`
 	make
 	touch build
 
