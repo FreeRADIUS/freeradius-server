@@ -1457,6 +1457,18 @@ lt_dlopenext (filename)
 		return handle;
 	}
 #endif	
+	/*
+	 *	WTF?  It's SUPPOSED to look for statically linked libraries,
+	 *	but the bugger doesn't!
+	 */
+	strcpy(tmp, filename);
+	strcat(tmp, ".a");
+	handle = lt_dlopen(tmp);
+	if (handle) {
+		last_error = saved_error;
+		lt_dlfree(tmp);
+		return handle;
+	}
 	last_error = file_not_found_error;
 	lt_dlfree(tmp);
 	return 0;
