@@ -14,7 +14,8 @@
   are welcome.
 * Parse the radius dictionary files so that we can show a pull down menu of possible values
   for various attributes.
-* Check the sql user code for sql injections
 * Also be able to keep username mappings in sql. Create an administration page
-* Get rid of register_globals. We only need a few user passed variables, we should get those
-  from the superglobals.
+* Improve sqlrelay support
+* Make the userinfo attributes configurable and create calculation formulas.Like:
+  Attribute-Name:DB-Attribute:Internal-Attribute:Initial-Value:Editable
+  Administrator:admin:admin:%U:No
