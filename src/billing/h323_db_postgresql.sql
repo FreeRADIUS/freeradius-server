@@ -226,10 +226,10 @@ SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, c
 FROM StopTelephony;
 
 CREATE OR REPLACE VIEW calls AS
-SELECT h323ConnectTime, AcctSessionTime, CalledStationId, H323RemoteAddress, NASIPAddress
+SELECT Date, Time, AcctSessionTime, CalledStationId, H323RemoteAddress, NASIPAddress
 FROM call_history
 WHERE AcctSessionTime > 0
-ORDER BY h323ConnectTime, CalledStationId, AcctSessionTime, H323RemoteAddress ASC;
+ORDER BY Date, Time, CalledStationId, AcctSessionTime, H323RemoteAddress ASC;
 
 CREATE OR REPLACE VIEW call_history_daily AS
 SELECT pots.h323ConnectTime, pots.AcctSessionTime, pots.CalledStationId, ip.H323RemoteAddress, pots.NASIPAddress
