@@ -1,42 +1,54 @@
 ------------ MAIN SERVER -------------
-o If you have a large user base and/or many authentication requests try using a scalable
-  authentication mechanism like ldap or sql.
-o Enable noatime on all the freeradius log files or better yet on the freeradius log directory.
-o Always use the latest cvs version. It will probably contain a few fixes and enhancements.
-o Always try to use the least modules possible. In particular if you can avoid it do not use the
-  detail and radwtmp (files) modules. They will slow down your accounting.
-o Use the users file to only set default profiles. Do not place any
-  users there. Keep it as small as possible. Always set default attributes in the users file and don't
-  fill the user entries in ldap/sql with default values. In general the ldap/sql user profiles should
-  contain user attributes only in special user cases.
-o Tune thread pool parameters to match your size requirements. Set max_requests_per_server to zero to
-  avoid server thread restarts.
-o Enlarge the timeout (10 secs) and retries (5-7) in the access servers for accounting.
-  That way you won't lose any accounting information.
+o If you have a large user base and/or many authentication requests try
+  using a scalable authentication mechanism like ldap or sql.
+o Enable noatime on all the freeradius log files or better yet on the
+  freeradius log directory.
+o Always use the latest cvs version.  It will probably contain a few
+  fixes and enhancements.
+o Always try to use the least modules possible.  In particular if you
+  can avoid it do not use the detail and radwtmp (files) modules.
+  They will slow down your accounting.
+o Use the users file to only set default profiles.  Do not place any
+  users there.  Keep it as small as possible.  Always set default
+  attributes in the users file and don't fill the user entries in
+  ldap/sql with default values.  In general the ldap/sql user profiles
+  should contain user attributes only in special user cases.
+o Tune thread pool parameters to match your size requirements.
+  Set max_requests_per_server to zero to avoid server thread restarts.
+o Enlarge the timeout (10 secs) and retries (5-7) in the access servers
+  for accounting.  That way you won't lose any accounting information.
 o Use well tuned Fast Ethernet connections to minimize latency.
-o freeradius is multi threaded and i/o bound. That means you should use the latest OS kernels/patches
-  for improved multi processor and network performance.
+o freeradius is multi threaded and i/o bound.  That means you should use
+  the latest OS kernels/patches for improved multi processor and
+  network performance.
 
 ------------ LDAP MODULE -------------
-o Tune the ldap_connections_number to be larger than the number of simultaneous user authentication requests.
-o Try to maximize caching in the ldap server.In particular *always* enable indexing of the uid attribute (equality index)
-  and the cn attribute (equality index - the cn attribute is used to search for groups). Make the ldap server
-  entry/directory cache memory sizes as large as possible. In general try allocating as much memory as you
+o Tune the ldap_connections_number to be larger than the number of
+  simultaneous user authentication requests.
+o Try to maximize caching in the ldap server.  In particular *always*
+  enable indexing of the uid attribute (equality index) and the
+  cn attribute (equality index - the cn attribute is used to search
+  for groups).  Make the ldap server entry/directory cache memory sizes
+  as large as possible.  In general try allocating as much memory as you
   can afford to your ldap server.
-o Put default profiles in ldap. User entries should only contain non standard
-  values in order to remain small and maximize the gains of caching the user
-  default/regular profiles.
-o Enable caching in the ldap module (try it first, the openldap code is not quite mature).
+o Put default profiles in ldap.  User entries should only contain
+  non standard values in order to remain small and maximize the gains
+  of caching the user default/regular profiles.
+o Enable caching in the ldap module (try it first, the openldap code
+  is not quite mature).
 
 ------------ SQL MODULE --------------
-o Tune the num_sql_socks to be larger than the number of simultaneous authentication/accounting requests.
-o Create an index for the radacct table to minimize the penalty of a growing accounting table. The index should
-  be for the UserName attribute with additional attributes: AcctSessionId,AcctStartTime,AcctStopTime,NASIPAddres
+o Tune the num_sql_socks to be larger than the number of simultaneous
+  authentication/accounting requests.
+o Create an index for the radacct table to minimize the penalty of a
+  growing accounting table. The index should be for the UserName attribute
+  with additional attributes:
+    AcctSessionId,AcctStartTime,AcctStopTime,NASIPAddres
 
 ------------ COUNTER MODULE ----------
 o Enable noatime on the counter db files.
-o Tune the cache-size configuration directive to match your needs. The cache size should be set to
-  2-3 * number of available nas ports
+o Tune the cache-size configuration directive to match your needs.
+  The cache size should be set to 2-3 * number of available nas ports.
 
 ------------ RADUTMP MODULE ----------
 o Enable noatime on the radutmp file
