@@ -311,4 +311,4 @@ AC_OUTPUT(\
 	./scripts/radwatch \
 )
 
-AC_OUTPUT_COMMANDS([echo timestamp > stamp-h])
+AC_OUTPUT_COMMANDS([echo timestamp > src/include/stamp-h])

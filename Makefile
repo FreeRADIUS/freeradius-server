@@ -39,17 +39,19 @@ distclean: clean
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
 #
 ######################################################################
+reconfig: configure src/include/autoconf.h.in
+
 configure: configure.in
 	autoconf
 
-# autoheader might not change config.h.in, so touch a stamp file
-config.h.in: stamp-h.in
-stamp-h.in: configure.in acconfig.h config.h.top config.h.bot
+# autoheader might not change autoconf.h.in, so touch a stamp file
+src/include/autoconf.h.in: src/include/stamp-h.in
+src/include/stamp-h.in: configure.in
 	autoheader
-	echo timestamp > stamp-h.in
+	echo timestamp > src/include/stamp-h.in
 
-config.h: stamp-h
-stamp-h: config.h.in config.status
+src/include/autoconf.h: src/include/stamp-h
+src/include/stamp-h: src/include/autoconf.h.in config.status
 	./config.status
 
 config.status: configure
