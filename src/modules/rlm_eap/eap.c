@@ -175,8 +175,8 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
  */
 int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
-	eaptype_t	*eaptype;
 	int	    	default_eap_type = inst->default_eap_type;
+	eaptype_t	*eaptype;
 	VALUE_PAIR	*vp;
 
 	eaptype = &handler->eap_ds->response->type;
@@ -314,7 +314,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *	Key off of the configured sub-modules.
 		 */
 		default:
-			DEBUG2("  rlm_eap: EAP_TYPE - %s",
+			DEBUG2("  rlm_eap: EAP/%s",
 			       eaptype_type2name(eaptype->type));
 			
 			/*
@@ -330,8 +330,8 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			handler->eap_type = eaptype->type;
 			if (eaptype_call(inst->types[eaptype->type],
 					 handler) == 0) {
-				DEBUG2(" rlm_eap: Handler failed in EAP type %d",
-				       eaptype->type);
+				DEBUG2(" rlm_eap: Handler failed in EAP/%s",
+				       eaptype_type2name(eaptype->type));
 				return EAP_INVALID;
 			}
 		break;
