@@ -1,12 +1,11 @@
 /*
  * files.c	Read config files into memory.
  *
- * Version:     @(#)files.c  2.52  10-Aug-1999  miquels@cistron.nl
+ * Version:     $Id$
  *
  */
 
-char files_sccsid[] =
-"@(#)files.c	2.52 Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -184,8 +183,8 @@ parse_again:
 			if(userparse(ptr, &check_tmp) != 0) {
 				pairlist_free(&pl);
 				log(L_ERR|L_CONS,
-				"%s[%d]: Parse error (check) for entry %s",
-					file, lineno, entry);
+				"%s[%d]: Parse error (check) for entry %s: %s",
+					file, lineno, entry, librad_errstr);
 				fclose(fp);
 				return NULL;
 			}
@@ -199,8 +198,8 @@ parse_again:
 				if (userparse(buffer, &reply_tmp)!=0) {
 					pairlist_free(&pl);
 					log(L_ERR|L_CONS,
-				"%s[%d]: Parse error (reply) for entry %s",
-						file, lineno, entry);
+				"%s[%d]: Parse error (reply) for entry %s: %s",
+					    file, lineno, entry, librad_errstr);
 					fclose(fp);
 					return NULL;
 				}
