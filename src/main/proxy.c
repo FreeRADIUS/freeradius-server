@@ -222,6 +222,8 @@ int proxy_send(REQUEST *request)
 	 */
 	if ((request->packet->code != PW_AUTHENTICATION_REQUEST) &&
 	    (request->packet->code != PW_ACCOUNTING_REQUEST)) {
+		DEBUG2("  ERROR: Cannot proxy packets of type %d",
+		       request->packet->code);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -271,6 +273,8 @@ int proxy_send(REQUEST *request)
 	realm = proxy_realm_ldb(request, realmname,
 				(request->packet->code == PW_ACCOUNTING_REQUEST));
 	if (realm == NULL) {
+		DEBUG2("  ERROR: Failed to find live home server for realm %s",
+		       realmname);
 		return RLM_MODULE_FAIL;
 	}
 
