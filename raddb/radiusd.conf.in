@@ -389,6 +389,18 @@ modules {
 		# authorization and will always use password file
 		#	ignore_password = yes  
 	}
+
+	# PAP module to authenticate users based on their stored password
+	# Supports multiple encryption schemes
+	# clear: Clear text
+	# crypt: Unix crypt
+	#   md5: MD5 ecnryption
+	#  sha1: SHA1 encryption. Not yet implemented
+	# DEFAULT: crypt
+	#pap {
+	#	encryption_scheme = crypt
+	#}
+
 	#  This module definition allows you to use LDAP for
 	#  authorization and authentication (Auth-Type = LDAP)
 	#  See doc/rlm_ldap for description of configuration options 
