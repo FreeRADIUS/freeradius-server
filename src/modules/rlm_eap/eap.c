@@ -914,21 +914,8 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
  */
 unsigned char *eap_regenerateid(REQUEST *request, unsigned char response_id)
 {
-	VALUE_PAIR 	*nas = NULL;
 	VALUE_PAIR 	*state = NULL;
 	unsigned char	*id = NULL;
-
-	/* This check should be in the server code */
-	nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
-	if (nas == NULL) {
-		nas = pairfind(request->packet->vps, PW_NAS_IDENTIFIER);
-		if (nas == NULL) {
-			radlog(L_ERR, "rlm_eap: Invalid RADIUS packet." 
-				" Both NAS-IP-Address & NAS-Identifier "
-				"are missing");
-			return NULL;
-		}
-	}
 
 	state = pairfind(request->packet->vps, PW_STATE);
 	if (state == NULL) {
@@ -940,7 +927,7 @@ unsigned char *eap_regenerateid(REQUEST *request, unsigned char response_id)
 		return NULL;
 	}
 
-	id = (unsigned char *)malloc(1/*Length*/ + 1/*Id*/ + state->length + nas->length);
+	id = (unsigned char *)malloc(1/*Length*/ + 1/*Id*/ + state->length + sizeof(request->packet->src_ipaddr));
 	if (id == NULL) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return NULL;
@@ -948,12 +935,16 @@ unsigned char *eap_regenerateid(REQUEST *request, unsigned char response_id)
 
 	/*
 	 * Generate unique-id to check for the reply 
-	 * id = Length + ID + State + (NAS-IP-Address | NAS-Identifier)
+	 * id = Length + ID + State + Client IP Address
+	 *
+	 *  Note that we do NOT use NAS-IP-Address, or NAS-Identifier,
+	 *  as they may lie to us!
 	 */
-	id[0] = (1 + 1 + state->length + nas->length) & 0xFF;
+	id[0] = (1 + 1 + state->length + sizeof(request->packet->src_ipaddr)) & 0xFF;
 	memcpy(id+1, &response_id, sizeof(unsigned char));
 	memcpy(id+2, state->strvalue, state->length);
-	memcpy(id+2+state->length, nas->strvalue, nas->length);
+	memcpy(id+2+state->length, &request->packet->src_ipaddr,
+	       sizeof(request->packet->src_ipaddr));
 
 	return id;
 }
@@ -964,21 +955,8 @@ unsigned char *eap_regenerateid(REQUEST *request, unsigned char response_id)
  */
 unsigned char *eap_generateid(REQUEST *request, unsigned char response_id)
 {
-	VALUE_PAIR 	*nas = NULL;
 	VALUE_PAIR 	*state = NULL;
 	unsigned char	*id = NULL;
-
-	/* This check should be in the server code */
-	nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
-	if (nas == NULL) {
-		nas = pairfind(request->packet->vps, PW_NAS_IDENTIFIER);
-		if (nas == NULL) {
-			radlog(L_ERR, "rlm_eap: Invalid RADIUS packet." 
-				" Both NAS-IP-Address & NAS-Identifier "
-				"are missing");
-			return NULL;
-		}
-	}
 
 	state = pairfind(request->reply->vps, PW_STATE);
 	if (state == NULL) {
@@ -986,7 +964,7 @@ unsigned char *eap_generateid(REQUEST *request, unsigned char response_id)
 		return NULL;
 	}
 
-	id = (unsigned char *)malloc(1/*Length*/ + 1/*Id*/ + state->length + nas->length);
+	id = (unsigned char *)malloc(1/*Length*/ + 1/*Id*/ + state->length + sizeof(request->packet->src_ipaddr));
 	if (id == NULL) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return NULL;
@@ -994,12 +972,16 @@ unsigned char *eap_generateid(REQUEST *request, unsigned char response_id)
 
 	/*
 	 * Generate unique-id to check for the reply 
-	 * id = Length + ID + State + (NAS-IP-Address | NAS-Identifier)
+	 * id = Length + ID + State + Client IP Address
+	 *
+	 *  Note that we do NOT use NAS-IP-Address, or NAS-Identifier,
+	 *  as they may lie to us!
 	 */
-	id[0] = (1 + 1 + state->length + nas->length) & 0xFF;
+	id[0] = (1 + 1 + state->length + sizeof(request->packet->src_ipaddr)) & 0xFF;
 	memcpy(id+1, &response_id, sizeof(unsigned char));
 	memcpy(id+2, state->strvalue, state->length);
-	memcpy(id+2+state->length, nas->strvalue, nas->length);
+	memcpy(id+2+state->length, &request->packet->src_ipaddr,
+               sizeof(request->packet->src_ipaddr));
 
 	return id;
 }
