@@ -73,6 +73,8 @@
 					putchar('\n'); \
 				     } \
 				} while(0)
+#  define TAG_VALID(x)          ((x) > 0 && (x) < 0x20)
+#  define TAG_VALID_ZERO(x)     ((x) >= 0 && (x) < 0x20)
 #endif
 
 typedef struct attr_flags {
@@ -88,6 +90,7 @@ typedef struct dict_attr {
 	int			attr;
 	int			type;
 	int			vendor;
+        ATTR_FLAGS              flags;
 	struct dict_attr	*next;
 } DICT_ATTR;
 
@@ -111,9 +114,9 @@ typedef struct value_pair {
 	int			type;
 	int			length; /* of strvalue */
 	uint32_t		lvalue;
-	ATTR_FLAGS		flags;
 	LRAD_TOKEN		operator;
 	uint8_t			strvalue[MAX_STRING_LEN];
+        ATTR_FLAGS              flags;
 	struct value_pair	*next;
 } VALUE_PAIR;
 
@@ -156,7 +159,7 @@ void		vp_printlist(FILE *, VALUE_PAIR *);
  *	Dictionary functions.
  */
 int		dict_addvendor(const char *name, int value);
-int		dict_addattr(const char *name, int vendor, int type, int value);
+int		dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS flags);
 int		dict_addvalue(const char *namestr, char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 DICT_ATTR	*dict_attrbyvalue(int attr);

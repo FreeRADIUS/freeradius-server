@@ -292,8 +292,27 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 					  memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
 					  reply->length = AUTH_VECTOR_LEN;
 				  }
+
+				  /* 
+				   *    TODO: This should encrypt attributes like Tunnel-Password
+				   *    here -- cparker@starnetusa.net
+				   */
 				  len = reply->length;
-				  
+
+				  /*
+				   *    Set the TAG at the beginning of the string if tagged.
+				   *    If tag value is not valid for tagged attribute, make 
+				   *    it 0x00 per RFC 2868.  -cparker
+				   */
+				  if(reply->flags.has_tag) {
+				          len++;
+					  if(TAG_VALID(reply->flags.tag)) {
+					          *ptr++ = reply->flags.tag;
+					  } else {
+					          *ptr++ = 0x00;
+					  }
+				  }
+				 
 				  /*
 				   *	Ensure we don't go too far.
 				   *	The 'length' of the attribute
@@ -314,8 +333,14 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				  
 				  *length_ptr += len;
 				  if (vsa_length_ptr) *vsa_length_ptr += len;
-				  memcpy(ptr, reply->strvalue,len);
-				  ptr += len;
+				  /*
+				   *  If we have tagged attributes we can't assume that
+				   *  len == reply->length.  Use reply->length for copying
+				   *  the string data into the packet.  Use len for the
+				   *  true length of the string+tags.
+				   */
+				  memcpy(ptr, reply->strvalue, reply->length);
+				  ptr += reply->length;
 				  total_length += len;
 				  break;
 				  
@@ -323,10 +348,21 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 			  case PW_TYPE_IPADDR:
 				  *length_ptr += 4;
 				  if (vsa_length_ptr) *vsa_length_ptr += 4;
-				  if (reply->type != PW_TYPE_IPADDR)
+
+				  if (reply->type == PW_TYPE_INTEGER ) {
+				          /*  If tagged, the tag becomes the MSB of the value */
+				          if(reply->flags.has_tag) {
+					         /*  Tag must be ( 0x01 -> 0x1F ) OR 0x00  */
+					         if(!TAG_VALID(reply->flags.tag)) {
+						       reply->flags.tag = 0x00;
+						 }
+					         lvalue = htonl((reply->lvalue & 0xffffff) |
+								((reply->flags.tag & 0xff) << 24));
+					  }
 					  lvalue = htonl(reply->lvalue);
-				  else
+				  } else {
 					  lvalue = reply->lvalue;
+				  }
 				  memcpy(ptr, &lvalue, 4);
 				  ptr += 4;
 				  total_length += 4;
@@ -977,6 +1013,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		} else {
 			strcpy(pair->name, attr->name);
 			pair->type = attr->type;
+			pair->flags = attr->flags;
 		}
 		pair->attribute = attribute;
 		pair->length = attrlen;
@@ -987,7 +1024,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_ABINARY:
 		case PW_TYPE_STRING:
-		case PW_TYPE_T_STRING:
 			/*
 			 *	Hmm... this is based on names right
 			 *	now.  We really shouldn't do this.
@@ -1002,15 +1038,28 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 				memcpy(pair->strvalue, my_digest, AUTH_VECTOR_LEN );
 				pair->strvalue[AUTH_VECTOR_LEN] = '\0';
 				pair->length = strlen(pair->strvalue);
-			} else
+			} else if (pair->flags.has_tag &&
+				   pair->type == PW_TYPE_STRING) {
+			        if(TAG_VALID(*ptr)) 
+				       pair->flags.tag = *ptr;
+				else
+				       pair->flags.tag = 0x00;
+				pair->length--;
+				memcpy(pair->strvalue, ptr + 1, 
+				       pair->length);
+			} else {
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
+			        pair->flags.tag = 0;
+			}
+
+			/* FIXME: Decrypt attributes like Tunnel-Password here -cparker */
+
 			break;
 			
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 		case PW_TYPE_IPADDR:
-		case PW_TYPE_T_INTEGER:
 			/*
 			 *	Check for RFC compliance.  If the
 			 *	attribute isn't compliant, turn it
@@ -1025,11 +1074,22 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 				pair->lvalue = 0xbaddbadd;
 				break;
 			}
-			memcpy(&lvalue, ptr, 4);
+
+      			memcpy(&lvalue, ptr, 4);
+
 			if (attr->type != PW_TYPE_IPADDR)
 				pair->lvalue = ntohl(lvalue);
 			else
 				pair->lvalue = lvalue;
+
+			/*
+			 *  Only PW_TYPE_INTEGER should have tags.
+			 */
+			if (pair->flags.has_tag &&
+			    pair->type == PW_TYPE_INTEGER) {
+			        pair->flags.tag = (pair->lvalue >> 24) & 0xff;
+				pair->lvalue &= 0xffffff;
+			}
 			break;
 			
 		default:

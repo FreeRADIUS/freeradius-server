@@ -31,8 +31,6 @@ static const char *dtypes[] = {
 	"date",
 	"abinary",
 	"octets",
-	"t_string",
-	"t_integer",
 	NULL,
 };
 
@@ -112,7 +110,7 @@ int dict_addvendor(const char *name, int value)
 	return 0;
 }
 
-int dict_addattr(const char *name, int vendor, int type, int value)
+int dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS flags)
 {
 	static int      max_attr = 0;
 	DICT_ATTR	*attr;
@@ -156,6 +154,8 @@ int dict_addattr(const char *name, int vendor, int type, int value)
 	strcpy(attr->name, name);
 	attr->attr = value;
 	attr->type = type;
+	attr->flags = flags;
+
 	if (vendor) {
 		attr->attr |= (vendor << 16);
 	} else if ((attr->attr >= 0) && (attr->attr < 256)) {
@@ -220,8 +220,8 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	char	valstr[256];
 	char	attrstr[256];
 	char	typestr[256];
-	char	vendorstr[256];
-	char	*p;
+	char	optstr[256];
+	char	*p, *s, *c;
 	char	*keyword;
 	char	*data;
 	int	line = 0;
@@ -232,6 +232,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	int	is_attrib;
 	int	vendor_usr_seen = 0;
 	int	is_nmc;
+	ATTR_FLAGS  flags;
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
 	    strlen(dir) >= sizeof(dirtmp) / 2) {
@@ -314,9 +315,9 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		if (is_attrib) {
 
 			vendor = 0;
-			vendorstr[0] = 0;
+			optstr[0] = 0;
 			if(sscanf(data, "%s%s%s%s", namestr,
-					valstr, typestr, vendorstr) < 3) {
+					valstr, typestr, optstr) < 3) {
 				librad_log(
 					"dict_init: %s[%d]: invalid ATTRIBUTE line",
 					fn, line);
@@ -328,7 +329,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			 *	We might need to add USR to the list of
 			 *	vendors first.
 			 */
-			if (is_nmc && vendorstr[0] == 0) {
+			if (is_nmc && optstr[0] == 0) {
 				if (!vendor_usr_seen) {
 					if (dict_addvendor("USR", VENDORPEC_USR) < 0) {
 						librad_log("dict_init: %s[%d]: %s", fn, line, librad_errstr);
@@ -336,7 +337,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 					}
 					vendor_usr_seen = 1;
 				}
-				strcpy(vendorstr, "USR");
+				strcpy(optstr, "USR");
 			}
 
 			/*
@@ -368,35 +369,80 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 			/*
 			 *	Ignore comments
 			 */
-			if (vendorstr[0] == '#') {
-				vendorstr[0] = '\0';
+			if (optstr[0] == '#') {
+				optstr[0] = '\0';
 			}
 
 			/*
 			 *	Only look up the vendor if the string
 			 *	is non-empty.
 			 */
-			if (vendorstr[0]) {
-				vendor = dict_vendorname(vendorstr);
-				if (!vendor) {
-					librad_log(
-						"dict_init: %s[%d]: unknown vendor %s",
-						fn, line, vendorstr);
-					return -1;
+
+			memset(&flags, 0, sizeof(flags));
+			s = strtok(optstr, ",");
+			while(s) {
+			        if (strcmp(s, "has_tag") == 0 ||
+				    strcmp(s, "has_tag=1") == 0) {
+				         /* Boolean flag, means this is a
+					    tagged attribute */
+				         flags.has_tag = 1;
 				}
+				else if (strncmp(s, "len+=", 5) == 0 ||
+					 strncmp(s, "len-=", 5) == 0) { 
+				          /* Length difference, to accomodate
+					     braindead NASes & their vendors */
+				          flags.len_disp = strtol(s + 5, &c, 0);
+					  if (*c) {
+					        librad_log(
+							   "dict_init: %s[%d] invalid option %s",
+							   fn, line, s);
+						return -1;
+					  }
+					  if (s[3] == '-') {
+					        flags.len_disp = -flags.len_disp;
+					  }
+				}
+				else if (strncmp(s, "encrypt=", 8) == 0) {
+				          /* Encryption method, defaults to 0 (none).
+					     Currently valid is just type 1,
+					     Tunnel-Password style, which can only
+					     be applied to strings. */    
+				          flags.encrypt = strtol(s + 8, &c, 0);
+					  if (*c) {
+					        librad_log(
+							   "dict_init: %s[%d] invalid option %s",
+							   fn, line, s);
+						return -1;
+					  }
+				}
+				else {
+				          /* Must be a vendor 'flag'... */
+				          if (strncmp(s, "vendor=", 5) == 0) {
+					        /* New format */
+					        s += 5;   
+					  }
+                         
+					  vendor = dict_vendorname(s);
+					  if (!vendor) {
+					        librad_log(
+							   "dict_init: %s[%d]: unknown vendor %s",
+							   fn, line, optstr);
+						return -1;
+					  }
+					  if (block_vendor && optstr[0] &&
+					      (block_vendor != vendor)) {
+					        librad_log(
+							   "dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
+							   fn, line, optstr);
+						return -1;
+					  }
+				}
+				s = strtok(NULL, ",");
 			}
-
-			if (block_vendor && vendorstr[0] &&
-			    (block_vendor != vendor)) {
-				librad_log(
-					"dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
-					fn, line, vendorstr);
-				return -1;
-			}
-
+ 
 			if (block_vendor) vendor = block_vendor;
 
-			if (dict_addattr(namestr, vendor, type, value) < 0) {
+			if (dict_addattr(namestr, vendor, type, value, flags) < 0) {
 				librad_log("dict_init: %s[%d]: %s",
 					   fn, line, librad_errstr);
 				return -1;
@@ -490,19 +536,19 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		}
 
 		if (DICT_STRCMP(keyword, "BEGIN-VENDOR") == 0) {
-			vendorstr[0] = 0;
-			if (sscanf(data, "%s", vendorstr) != 1) {
+			optstr[0] = 0;
+			if (sscanf(data, "%s", optstr) != 1) {
 				librad_log(
 				"dict_init: %s[%d] invalid BEGIN-VENDOR entry",
 					fn, line);
 				return -1;
 			}
 
-			vendor = dict_vendorname(vendorstr);
+			vendor = dict_vendorname(optstr);
 			if (!vendor) {
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
-					fn, line, vendorstr);
+					fn, line, optstr);
 				return -1;
 			}
 			block_vendor = vendor;
@@ -510,26 +556,26 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		}
 
 		if (DICT_STRCMP(keyword, "END-VENDOR") == 0) {
-			vendorstr[0] = 0;
-			if (sscanf(data, "%s", vendorstr) != 1) {
+			optstr[0] = 0;
+			if (sscanf(data, "%s", optstr) != 1) {
 				librad_log(
 				"dict_init: %s[%d] invalid END-VENDOR entry",
 					fn, line);
 				return -1;
 			}
 
-			vendor = dict_vendorname(vendorstr);
+			vendor = dict_vendorname(optstr);
 			if (!vendor) {
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
-					fn, line, vendorstr);
+					fn, line, optstr);
 				return -1;
 			}
 
 			if (vendor != block_vendor) {
 				librad_log(
 					"dict_init: %s[%d]: END-VENDOR %s does not match any previous BEGIN-VENDOR",
-					fn, line, vendorstr);
+					fn, line, optstr);
 				return -1;
 			}
 			block_vendor = 0;

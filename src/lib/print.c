@@ -88,7 +88,6 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 	char        buf[1024];
 	char        *a;
 	time_t      t;
-	int         offset;
 
 	out[0] = 0;
 	if (!vp) return 0;
@@ -98,26 +97,45 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			if (vp->attribute == PW_NAS_PORT_ID)
 				a = (char *)vp->strvalue;
 			else {
-				if (delimitst) {
-				  buf[0] = '"';
-				  librad_safeprint((char *)vp->strvalue,
-					  vp->length, buf + 1, sizeof(buf) - 2);
-				  strcat(buf, "\"");
+				if (delimitst && vp->flags.has_tag) {
+				        /* Tagged attribute: print delimter and ignore tag */
+				        buf[0] = '"';
+					librad_safeprint((char *)(vp->strvalue),
+							 vp->length, buf + 1, sizeof(buf) - 2);
+					strcat(buf, "\"");
+				} else if (delimitst) {
+				        /* Non-tagged attribute: print delimter */
+				        buf[0] = '"';
+					librad_safeprint((char *)vp->strvalue,
+							 vp->length, buf + 1, sizeof(buf) - 2);
+					strcat(buf, "\"");
 				} else {
-				  librad_safeprint((char *)vp->strvalue,
-					  vp->length, buf, sizeof(buf));
+				        /* Non-tagged attribute: no delimiter */
+				        librad_safeprint((char *)vp->strvalue,
+							 vp->length, buf, sizeof(buf));
 				}
-
 				a = buf;
 			}
 			break;
 		case PW_TYPE_INTEGER:
-			if ((v = dict_valbyattr(vp->attribute, vp->lvalue))
-				!= NULL)
-				a = v->name;
-			else {
-				snprintf(buf, sizeof(buf), "%u", vp->lvalue);
-				a = buf;
+		        if ( vp->flags.has_tag ) {
+			        /* Attribute value has a tag, need to ignore it */
+			        if ((v = dict_valbyattr(vp->attribute, (vp->lvalue & 0xffffff)))
+				    != NULL)
+				        a = v->name;
+				else {
+				        snprintf(buf, sizeof(buf), "%u", (vp->lvalue & 0xffffff));
+				        a = buf;
+				}
+			} else {
+			        /* Normal, non-tagged attribute */
+			        if ((v = dict_valbyattr(vp->attribute, vp->lvalue))
+				    != NULL)
+				        a = v->name;
+				else {
+				        snprintf(buf, sizeof(buf), "%u", vp->lvalue);
+					a = buf;
+				}
 			}
 			break;
 		case PW_TYPE_DATE:
@@ -155,43 +173,6 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		  a = buf;
 		  break;
 
-	        case PW_TYPE_T_STRING:
-		        if (delimitst) {
-				 offset = snprintf(buf, sizeof(buf), 
-						   "\"%u:", vp->strvalue[0]);
-				 librad_safeprint((char *)(vp->strvalue + 1),
-						  vp->length - 1, 
-						  buf + offset, 
-						  sizeof(buf) - offset);
-				 strcat(buf, "\"");
-		        } else {
-				 offset = snprintf(buf, sizeof(buf), 
-						   "%u:", vp->strvalue[0]);
-			         librad_safeprint((char *)(vp->strvalue + 1),
-						  vp->length - 1, 
-						  buf + offset, 
-						  sizeof(buf) - offset);
-		        }
-
-			a = buf;
-
-			break;
-
-		case PW_TYPE_T_INTEGER:
-		        offset = snprintf(buf,  sizeof(buf), "%u:", (vp->lvalue >> 24));
-			if ((v = dict_valbyattr(vp->attribute, (vp->lvalue)))
-				!= NULL)
-				snprintf(buf + offset, sizeof(buf) - offset, 
-					 "%s", v->name);
-			else {
-				snprintf(buf + offset, sizeof(buf) - offset, 
-					 "%u", vp->lvalue);
-			       
-			}
-
-			a = buf;
-
-			break;
 		default:
 			a = 0;
 			break;
@@ -216,9 +197,24 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 		return 0;
 	}
 
-	snprintf(out, outlen, "%s = ", vp->name);
-	len = strlen(out);
-	vp_prints_value(out + len, outlen - len, vp, 1);
+	if( vp->flags.has_tag ) {
+
+#ifdef MERIT_STYLE_TAGS
+	        snprintf(out, outlen, "%s = :%d:", vp->name, vp->flags.tag);
+#else
+		snprintf(out, outlen, "%s:%d = ", vp->name, vp->flags.tag);
+#endif
+		
+		len = strlen(out);
+		vp_prints_value(out + len, outlen - len, vp, 1);
+
+	} else {
+
+	        snprintf(out, outlen, "%s = ", vp->name);
+		len = strlen(out);
+		vp_prints_value(out + len, outlen - len, vp, 1);
+
+	}	  
 
 	return strlen(out);
 }
