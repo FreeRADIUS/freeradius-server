@@ -10,23 +10,12 @@
 
 #include "token.h"
 
-typedef struct conf_pair {
-	char			*attr;
-	char			*value;
-	int			operator;
-	int			lineno;
-	struct conf_pair	*next;
-} CONF_PAIR;
-
-typedef struct conf_part {
-	char			*name1;
-	char			*name2;
-	int			lineno;
-	CONF_PAIR		*cps;
-	struct conf_part	*sub;
-	struct conf_part	*next;
-	struct conf_part	*parent;
-} CONF_SECTION;
+/*
+ * Export the minimum amount of information about these structs
+ */
+typedef struct conf_item CONF_ITEM;
+typedef struct conf_pair CONF_PAIR;
+typedef struct conf_part CONF_SECTION;
 
 /*
  *  Instead of putting the information into a configuration structure,
@@ -48,11 +37,8 @@ typedef struct CONF_PARSER {
 #define Stringify(x) XStringify(x)
 
 CONF_SECTION	*conf_read(const char *conffile);
-CONF_PAIR	*cf_pair_alloc(const char *attr, const char *value, int operator);
-void		cf_pair_add(CONF_SECTION *cs, CONF_PAIR *cp_new);
 void		cf_pair_free(CONF_PAIR *cp);
 void		cf_section_free(CONF_SECTION *cp);
-void		cf_section_free_all(CONF_SECTION *cp);
 int		cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables);
 
 /* JLN -- Newly added */
@@ -67,8 +53,16 @@ int		read_radius_conf_file(void);
 
 char *cf_pair_attr(CONF_PAIR *pair);
 char *cf_pair_value(CONF_PAIR *pair);
+char *cf_section_name1(CONF_SECTION *section);
+char *cf_section_name2(CONF_SECTION *section);
 int dump_config(void);
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 				      CONF_SECTION *subsection,
 				      const char *name1);
+int cf_section_lineno(CONF_SECTION *section);
+int cf_pair_lineno(CONF_PAIR *pair);
+CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item);
+int cf_item_is_section(CONF_ITEM *item);
+CONF_PAIR *cf_itemtopair(CONF_ITEM *item);
+CONF_SECTION *cf_itemtosection(CONF_ITEM *item);
 #endif /* _CONFFILE_H */

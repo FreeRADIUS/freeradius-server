@@ -41,17 +41,6 @@ static const TOKEN tokens[] = {
 	{ NULL, 0,		},
 };
 
-static const TOKEN cftokens[] = {
-	{ "{",	T_LCBRACE,	},
-	{ "}",	T_RCBRACE,	},
-	{ ",",	T_COMMA,	},
-	{ ";",	T_SEMICOLON,	},
-	{ ":=",	T_OP_SET,	},
-	{ "=",	T_OP_EQ,	},
-	{ "#",	T_HASH,		},
-	{ NULL, 0,		},
-};
-
 /*
  *	This works only as long as special tokens
  *	are max. 2 characters, but it's fast.
@@ -187,17 +176,4 @@ int getword(char **ptr, char *buf, int buflen)
 int gettoken(char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 1, tokens);
-}
-
-/*
- *	Similar functions for conffile - same code, different token list
- */
-int getcfword(char **ptr, char *buf, int buflen)
-{
-	return getthing(ptr, buf, buflen, 0, cftokens) == T_EOL ? 0 : 1;
-}
-
-int getcftoken(char **ptr, char *buf, int buflen)
-{
-	return getthing(ptr, buf, buflen, 1, cftokens);
 }

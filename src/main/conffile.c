@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "radiusd.h"
 #include "conffile.h"
@@ -27,6 +28,30 @@ static const char rcsid[] =
 
 #define xalloc malloc
 #define xstrdup strdup
+
+typedef enum conf_type {
+	CONF_ITEM_PAIR,
+	CONF_ITEM_SECTION
+} CONF_ITEM_TYPE;
+
+struct conf_item {
+	struct conf_item	*next;
+	struct conf_part	*parent;
+	int			lineno;
+	CONF_ITEM_TYPE		type;
+};
+struct conf_pair {
+	CONF_ITEM	item;
+	char		*attr;
+	char		*value;
+	int		operator;
+};
+struct conf_part {
+	CONF_ITEM		item;
+	char			*name1;
+	char			*name2;
+	struct conf_item	*children;
+};
 
 CONF_SECTION	*config = NULL;
 
@@ -41,14 +66,47 @@ static int generate_clients(const char *filename);
 #endif
 
 /*
+ *	Isolate the scary casts in these tiny provably-safe functions
+ */
+CONF_PAIR *cf_itemtopair(CONF_ITEM *ci)
+{
+	if (ci == NULL)
+		return NULL;
+	assert(ci->type == CONF_ITEM_PAIR);
+	return (CONF_PAIR *)ci;
+}
+CONF_SECTION *cf_itemtosection(CONF_ITEM *ci)
+{
+	if (ci == NULL)
+		return NULL;
+	assert(ci->type == CONF_ITEM_SECTION);
+	return (CONF_SECTION *)ci;
+}
+static CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp)
+{
+	if (cp == NULL)
+		return NULL;
+	return (CONF_ITEM *)cp;
+}
+static CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
+{
+	if (cs == NULL)
+		return NULL;
+	return (CONF_ITEM *)cs;
+}
+
+/*
  *	Create a new CONF_PAIR
  */
-CONF_PAIR *cf_pair_alloc(const char *attr, const char *value, int operator)
+static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
+				int operator, CONF_SECTION *parent)
 {
 	CONF_PAIR	*cp;
 
 	cp = (CONF_PAIR *)xalloc(sizeof(CONF_PAIR));
 	memset(cp, 0, sizeof(CONF_PAIR));
+	cp->item.type = CONF_ITEM_PAIR;
+	cp->item.parent = parent;
 	cp->attr = xstrdup(attr);
 	cp->value = xstrdup(value);
 	cp->operator = operator;
@@ -57,19 +115,19 @@ CONF_PAIR *cf_pair_alloc(const char *attr, const char *value, int operator)
 }
 
 /*
- *	Add a pair to a configuration section.
+ *	Add an item to a configuration section.
  */
-void cf_pair_add(CONF_SECTION *cs, CONF_PAIR *cp_new)
+static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 {
-	CONF_PAIR *cp;
+	CONF_ITEM *ci;
 	
-	for (cp = cs->cps; cp && cp->next; cp = cp->next)
+	for (ci = cs->children; ci && ci->next; ci = ci->next)
 		;
 
-	if (cp == NULL)
-		cs->cps = cp_new;
+	if (ci == NULL)
+		cs->children = ci_new;
 	else
-		cp->next = cp_new;
+		ci->next = ci_new;
 }
 
 /*
@@ -96,9 +154,10 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 
 	cs = (CONF_SECTION *)xalloc(sizeof(CONF_SECTION));
 	memset(cs, 0, sizeof(CONF_SECTION));
+	cs->item.type = CONF_ITEM_SECTION;
+        cs->item.parent = parent;
 	cs->name1 = xstrdup(name1);
 	cs->name2 = (name2 && *name2) ? xstrdup(name2) : NULL;
-        cs->parent = parent;
 
 	return cs;
 }
@@ -108,22 +167,16 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
  */
 void cf_section_free(CONF_SECTION *cs)
 {
-	CONF_PAIR	*cp, *next;
-	CONF_SECTION *sub, *next_sub;
+	CONF_ITEM	*ci, *next;
 
 	if (cs == NULL) return;
 
-	for (cp = cs->cps; cp; cp = next) {
-		next = cp->next;
-		cf_pair_free(cp);
-	}
-
-	/*
-	 * Clear out any possible subsections as well
-	 */
-	for (sub = cs->sub; sub; sub = next_sub) {
-		next_sub = sub->next;
-		cf_section_free(sub);
+	for (ci = cs->children; ci; ci = next) {
+		next = ci->next;
+		if (ci->type==CONF_ITEM_PAIR)
+			cf_pair_free(cf_itemtopair(ci));
+		else
+			cf_section_free(cf_itemtosection(ci));
 	}
 
 	if (cs->name1) free(cs->name1);
@@ -239,7 +292,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				     const char *name1, const char *name2,
                                      CONF_SECTION *parent)
 {
-	CONF_SECTION	*cs, *csp, *css, *outercs;
+	CONF_SECTION	*cs, *css, *outercs;
 	CONF_PAIR	*cpn;
 	char		*ptr, *p, *q;
 	char		buf[8192];
@@ -273,7 +326,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 *	Allocate new section.
 	 */
 	cs = cf_section_alloc(name1, name2, parent);
-	cs->lineno = *lineno;
+	cs->item.lineno = *lineno;
 
 	/*
 	 *	Read.
@@ -289,13 +342,13 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *	No '=': must be a section or sub-section.
 		 */
 		if (strchr(ptr, '=') == NULL) {
-			t1 = getcftoken(&ptr, buf1, sizeof(buf1));
-			t2 = getcftoken(&ptr, buf2, sizeof(buf2));
-			t3 = getcftoken(&ptr, buf3, sizeof(buf3));
+			t1 = gettoken(&ptr, buf1, sizeof(buf1));
+			t2 = gettoken(&ptr, buf2, sizeof(buf2));
+			t3 = gettoken(&ptr, buf3, sizeof(buf3));
 		} else {
-			t1 = getcftoken(&ptr, buf1, sizeof(buf1));
-			t2 = getcftoken(&ptr, buf2, sizeof(buf2));
-			t3 = getcfword(&ptr, buf3, sizeof(buf3));
+			t1 = gettoken(&ptr, buf1, sizeof(buf1));
+			t2 = gettoken(&ptr, buf2, sizeof(buf2));
+			t3 = getword(&ptr, buf3, sizeof(buf3));
 		}
 
 		if (buf1[0] == 0 || buf1[0] == '#')
@@ -325,31 +378,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				cf_section_free(cs);
 				return NULL;
 			}
-			for (csp = cs->sub; csp && csp->next; csp = csp->next)
-				;
-			if (csp == NULL)
-				cs->sub = css;
-			else
-				csp->next = css;
+			cf_item_add(cs, cf_sectiontoitem(css));
 
 			continue;		
-		}
-
-		/*
-		 * Or an empty subsection shortcut
-		 */
-		if (t2 == T_SEMICOLON || t3 == T_SEMICOLON) {
-			css = cf_section_alloc(buf1,
-					t2==T_SEMICOLON ? NULL : buf2, cs);
-			css->lineno = *lineno;
-			for (csp = cs->sub; csp && csp->next; csp = csp->next)
-				;
-			if (csp == NULL)
-				cs->sub = css;
-			else
-				csp->next = css;
-
-                        continue;
 		}
 
 		/*
@@ -408,9 +439,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
                          * so things like ${confdir} can be defined
                          * there and used inside the module config
                          * sections */
-			for (outercs=cs->parent
+			for (outercs=cs->item.parent
                              ; !cpn && outercs ;
-                             outercs=outercs->parent) {
+                             outercs=outercs->item.parent) {
 				cpn = cf_pair_find(outercs, buf2);
 			}
 			if (!cpn) {
@@ -428,9 +459,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
-		cpn = cf_pair_alloc(buf1, buf, t2);
-		cpn->lineno = *lineno;
-		cf_pair_add(cs, cpn);
+		cpn = cf_pair_alloc(buf1, buf, t2, parent);
+		cpn->item.lineno = *lineno;
+		cf_item_add(cs, cf_pairtoitem(cpn));
 	}
 
 	/*
@@ -522,92 +553,92 @@ static int generate_realms(const char *filename)
 	REALM		*c;
 	char		*s, *authhost, *accthost;
 
-	for (cs = config->sub; cs; cs = cs->next) {
-		if (strcmp(cs->name1, "realm") == 0) {
-			if (!cs->name2) {
-				log(L_CONS|L_ERR, "%s[%d]: Missing realm name", filename, cs->lineno);
-				return -1;
-			}
-			/*
-			 * We've found a realm, allocate space for it
-			 */
-			if ((c = malloc(sizeof(REALM))) == NULL) {
-				log(L_CONS|L_ERR, "Out of memory");
-				return -1;
-			}
-			memset(c, 0, sizeof(REALM));
-			/*
-			 * An authhost must exist in the configuration
-			 */
-			if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
-				log(L_CONS|L_ERR, 
-				    "%s[%d]: No authhost entry in realm", 
-				    filename, cs->lineno);
-				return -1;
-			}
-			if ((s = strchr(authhost, ':')) != NULL) {
-				*s++ = 0;
-				c->auth_port = atoi(s);
-			} else {
-				c->auth_port = auth_port;
-			}
-			accthost = cf_section_value_find(cs, "accthost");
-			if ((s =strchr(accthost, ':')) != NULL) {
-				*s++ = 0;
-				c->acct_port = atoi(s);	
-			} else {
-				c->acct_port = acct_port;
-			}
-			if (strcmp(authhost, "LOCAL") != 0)
-				c->ipaddr = ip_getaddr(authhost);
-
-			/* 
-			 * Double check length, just to be sure!
-			 */
-			if (strlen(authhost) >= sizeof(c->server)) {
-				log(L_ERR, "%s[%d]: Server name of length %d is greater that allowed: %d",
-				    filename, cs->lineno,
-				    strlen(authhost), sizeof(c->server) - 1);
-				return -1;
-			}
-			if (strlen(cs->name2) >= sizeof(c->realm)) {
-				log(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
-				    filename, cs->lineno,
-				    strlen(cs->name2), sizeof(c->server) - 1);
-				return -1;
-			}
-			
-			strcpy(c->realm, cs->name2);
-			strcpy(c->server, authhost);	
-
-			s = cf_section_value_find(cs, "secret");
-			if (s == NULL) {
-				log(L_ERR, "%s[%d]: No shared secret supplied for realm",
-				    filename, cs->lineno);
-				return -1;
-			}
-
-			if (strlen(s) >= sizeof(c->secret)) {
-			  log(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
-			      filename, cs->lineno,
-			      strlen(s), sizeof(c->secret) - 1);
-			  return -1;
-			}
-			strNcpy(c->secret, s, sizeof(c->secret));
-
-			c->striprealm = 1;
-			
-			if ((cf_section_value_find(cs, "nostrip")) != NULL)
-				c->striprealm = 0;
-			if ((cf_section_value_find(cs, "noacct")) != NULL)
-				c->acct_port = 0;
-			if ((cf_section_value_find(cs, "trusted")) != NULL)
-				c->trusted = 1;
-
-			c->next = realms;
-			realms = c;
-
+	for (cs = cf_subsection_find_next(config, NULL, "realm")
+	     ; cs ;
+	     cs = cf_subsection_find_next(config, cs, "realm")) {
+		if (!cs->name2) {
+			log(L_CONS|L_ERR, "%s[%d]: Missing realm name", filename, cs->item.lineno);
+			return -1;
 		}
+		/*
+		 * We've found a realm, allocate space for it
+		 */
+		if ((c = malloc(sizeof(REALM))) == NULL) {
+			log(L_CONS|L_ERR, "Out of memory");
+			return -1;
+		}
+		memset(c, 0, sizeof(REALM));
+		/*
+		 * An authhost must exist in the configuration
+		 */
+		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
+			log(L_CONS|L_ERR, 
+			    "%s[%d]: No authhost entry in realm", 
+			    filename, cs->item.lineno);
+			return -1;
+		}
+		if ((s = strchr(authhost, ':')) != NULL) {
+			*s++ = 0;
+			c->auth_port = atoi(s);
+		} else {
+			c->auth_port = auth_port;
+		}
+		accthost = cf_section_value_find(cs, "accthost");
+		if ((s =strchr(accthost, ':')) != NULL) {
+			*s++ = 0;
+			c->acct_port = atoi(s);	
+		} else {
+			c->acct_port = acct_port;
+		}
+		if (strcmp(authhost, "LOCAL") != 0)
+			c->ipaddr = ip_getaddr(authhost);
+
+		/* 
+		 * Double check length, just to be sure!
+		 */
+		if (strlen(authhost) >= sizeof(c->server)) {
+			log(L_ERR, "%s[%d]: Server name of length %d is greater that allowed: %d",
+			    filename, cs->item.lineno,
+			    strlen(authhost), sizeof(c->server) - 1);
+			return -1;
+		}
+		if (strlen(cs->name2) >= sizeof(c->realm)) {
+			log(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
+			    filename, cs->item.lineno,
+			    strlen(cs->name2), sizeof(c->server) - 1);
+			return -1;
+		}
+		
+		strcpy(c->realm, cs->name2);
+		strcpy(c->server, authhost);	
+
+		s = cf_section_value_find(cs, "secret");
+		if (s == NULL) {
+			log(L_ERR, "%s[%d]: No shared secret supplied for realm",
+			    filename, cs->item.lineno);
+			return -1;
+		}
+
+		if (strlen(s) >= sizeof(c->secret)) {
+		  log(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+		      filename, cs->item.lineno,
+		      strlen(s), sizeof(c->secret) - 1);
+		  return -1;
+		}
+		strNcpy(c->secret, s, sizeof(c->secret));
+
+		c->striprealm = 1;
+		
+		if ((cf_section_value_find(cs, "nostrip")) != NULL)
+			c->striprealm = 0;
+		if ((cf_section_value_find(cs, "noacct")) != NULL)
+			c->acct_port = 0;
+		if ((cf_section_value_find(cs, "trusted")) != NULL)
+			c->trusted = 1;
+
+		c->next = realms;
+		realms = c;
+
 	}
 
 	return 0;
@@ -624,48 +655,48 @@ static int generate_clients(const char *filename)
 	RADCLIENT	*c;
 	char		*hostnm, *secret, *shortnm;
 
-	for (cs = config->sub; cs; cs = cs->next) {
-		if (strcmp(cs->name1, "client") == 0) {
-			if (!cs->name2) {
-				log(L_CONS|L_ERR, "%s[%d]: Missing client name", filename, cs->lineno);
-				return -1;
-			}
-			/*
-			 * Check the lengths, we don't want any core dumps
-			 */
-			hostnm = cs->name2;
-			secret = cf_section_value_find(cs, "secret");
-			shortnm = cf_section_value_find(cs, "shortname");
-
-			if (strlen(secret) >= sizeof(c->secret)) {
-				log(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
-				    filename, cs->lineno,
-				    strlen(secret), sizeof(c->secret) - 1);
-				return -1;
-			}
-			if (strlen(shortnm) > sizeof(c->shortname)) {
-				log(L_ERR, "%s[%d]: NAS short name of length %d is greater than the allowed maximum of %d.",
-				    filename, cs->lineno,
-				    strlen(shortnm), sizeof(c->shortname) - 1);
-				return -1;
-			}
-			/*
-			 * The size is fine.. Let's create the buffer
-			 */
-			if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
-				log(L_CONS|L_ERR, "Out of memory");
-				return -1;
-			}
-
-			c->ipaddr = ip_getaddr(hostnm);
-			strcpy(c->secret, secret);
-			strcpy(c->shortname, shortnm);
-			ip_hostname(c->longname, sizeof(c->longname),
-				    c->ipaddr);
-
-			c->next = clients;
-			clients = c;
+	for (cs = cf_subsection_find_next(config, NULL, "client")
+	     ; cs ;
+	     cs = cf_subsection_find_next(config, cs, "client")) {
+		if (!cs->name2) {
+			log(L_CONS|L_ERR, "%s[%d]: Missing client name", filename, cs->item.lineno);
+			return -1;
 		}
+		/*
+		 * Check the lengths, we don't want any core dumps
+		 */
+		hostnm = cs->name2;
+		secret = cf_section_value_find(cs, "secret");
+		shortnm = cf_section_value_find(cs, "shortname");
+
+		if (strlen(secret) >= sizeof(c->secret)) {
+			log(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+			    filename, cs->item.lineno,
+			    strlen(secret), sizeof(c->secret) - 1);
+			return -1;
+		}
+		if (strlen(shortnm) > sizeof(c->shortname)) {
+			log(L_ERR, "%s[%d]: NAS short name of length %d is greater than the allowed maximum of %d.",
+			    filename, cs->item.lineno,
+			    strlen(shortnm), sizeof(c->shortname) - 1);
+			return -1;
+		}
+		/*
+		 * The size is fine.. Let's create the buffer
+		 */
+		if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
+			log(L_CONS|L_ERR, "Out of memory");
+			return -1;
+		}
+
+		c->ipaddr = ip_getaddr(hostnm);
+		strcpy(c->secret, secret);
+		strcpy(c->shortname, shortnm);
+		ip_hostname(c->longname, sizeof(c->longname),
+			    c->ipaddr);
+
+		c->next = clients;
+		clients = c;
 	}
 
 	return 0;
@@ -677,17 +708,20 @@ static int generate_clients(const char *filename)
 
 CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
 {
-	CONF_PAIR	*cp;
+	CONF_ITEM	*ci;
 
 	if (section == NULL) {
 	  section = config;
 	}
 
-	for (cp = section->cps; cp; cp = cp->next)
-		if (name == NULL || strcmp(cp->attr, name) == 0)
+	for (ci = section->children; ci; ci = ci->next) {
+		if (ci->type != CONF_ITEM_PAIR)
+			continue;
+		if (name == NULL || strcmp(cf_itemtopair(ci)->attr, name) == 0)
 			break;
+	}
 
-	return cp;
+	return cf_itemtopair(ci);
 }
 
 /*
@@ -708,6 +742,23 @@ char *cf_pair_value(CONF_PAIR *pair)
 	return (pair ? pair->value : NULL);
 }
 
+/*
+ * Return the first label of a CONF_SECTION
+ */
+
+char *cf_section_name1(CONF_SECTION *section)
+{
+	return (section ? section->name1 : NULL);
+}
+
+/*
+ * Return the second label of a CONF_SECTION
+ */
+
+char *cf_section_name2(CONF_SECTION *section)
+{
+	return (section ? section->name2 : NULL);
+}
 
 /* 
  * Find a value in a CONF_SECTION
@@ -729,7 +780,7 @@ char *cf_section_value_find(CONF_SECTION *section, const char *attr)
 
 CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *attr)
 {
-	CONF_PAIR	*cp;
+	CONF_ITEM	*ci;
 
 	/*
 	 * If pair is NULL this must be a first time run
@@ -737,16 +788,19 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char 
 	 */
 
 	if (pair == NULL){
-		cp = cf_pair_find(section, attr);
-	} else {
-		cp = pair->next;
+		return cf_pair_find(section, attr);
 	}
 
-	for (; cp; cp = cp->next)
-		if (attr == NULL || strcmp(cp->attr, attr) == 0)
-			break;
+	ci = cf_pairtoitem(pair)->next;
 
-	return cp;
+	for (; ci; ci = ci->next) {
+		if (ci->type != CONF_ITEM_PAIR)
+			continue;
+		if (attr == NULL || strcmp(cf_itemtopair(ci)->attr, attr) == 0)
+			break;
+	}
+
+	return cf_itemtopair(ci);
 }
 
 /*
@@ -768,12 +822,15 @@ CONF_SECTION *cf_section_find(const char *name)
 CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
 {
 
-	CONF_SECTION *cs;
-	for (cs = section->sub; cs; cs = cs->next)
-		if (strcmp(cs->name1, name) == 0)
+	CONF_ITEM *ci;
+	for (ci = section->children; ci; ci = ci->next) {
+		if (ci->type != CONF_ITEM_SECTION)
+			continue;
+		if (strcmp(cf_itemtosection(ci)->name1, name) == 0)
 			break;
-	
-	return cs;
+	}
+
+	return cf_itemtosection(ci);
 
 }
 
@@ -787,7 +844,7 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 				      CONF_SECTION *subsection,
 				      const char *name1)
 {
-	CONF_SECTION	*cp;
+	CONF_ITEM	*ci;
 
 	/*
 	 * If subsection is NULL this must be a first time run
@@ -795,17 +852,55 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 	 */
 
 	if (subsection == NULL){
-		cp = section->sub;
+		ci = section->children;
 	} else {
-		cp = subsection->next;
+		ci = cf_sectiontoitem(subsection)->next;
 	}
 
-	for (; cp; cp = cp->next)
-		if (name1 == NULL || strcmp(cp->name1, name1) == 0)
+	for (; ci; ci = ci->next) {
+		if (ci->type != CONF_ITEM_SECTION)
+			continue;
+		if (name1 == NULL ||
+		    strcmp(cf_itemtosection(ci)->name1, name1) == 0)
 			break;
+	}
 
-	return cp;
+	return cf_itemtosection(ci);
 }
+
+/*
+ * Return the next item after a CONF_ITEM.
+ */
+
+CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item)
+{
+	/*
+	 * If item is NULL this must be a first time run
+	 * Return the first item
+	 */
+
+	if (item == NULL) {
+		return section->children;
+	} else {
+		return item->next;
+	}
+}
+
+int cf_section_lineno(CONF_SECTION *section)
+{
+	return cf_sectiontoitem(section)->lineno;
+}
+
+int cf_pair_lineno(CONF_PAIR *pair)
+{
+	return cf_pairtoitem(pair)->lineno;
+}
+
+int cf_item_is_section(CONF_ITEM *item)
+{
+	return item->type == CONF_ITEM_SECTION;
+}
+
 
 /* 
  * JMG dump_config tries to dump the config structure in a readable format
@@ -815,26 +910,30 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 static int dump_config_section(CONF_SECTION *cs, int indent)
 {
 	CONF_SECTION	*scs;
-
 	CONF_PAIR	*cp;
+	CONF_ITEM	*ci;
 
 	/* The DEBUG macro doesn't let me
 	 *   for(i=0;i<indent;++i) debugputchar('\t');
 	 * so I had to get creative. --Pac. */
 
-	for (cp = cs->cps; cp; cp = cp->next) 
-		DEBUG("%.*s%s = %s",
-			indent, "\t\t\t\t\t\t\t\t\t\t\t", cp->attr, cp->value);
-
-	for (scs = cs->sub; scs; scs = scs->next) {
-		DEBUG("%.*s%s %s%s{",
-			indent, "\t\t\t\t\t\t\t\t\t\t\t",
-			scs->name1,
-			scs->name2 ? scs->name2 : "",
-			scs->name2 ?  " " : "");
-		dump_config_section(scs, indent+1);
-		DEBUG("%.*s}",
-			indent, "\t\t\t\t\t\t\t\t\t\t\t");
+	for (ci = cs->children; ci; ci = ci->next) {
+		if (ci->type == CONF_ITEM_PAIR) {
+			cp=cf_itemtopair(ci);
+			DEBUG("%.*s%s = %s",
+				indent, "\t\t\t\t\t\t\t\t\t\t\t",
+				cp->attr, cp->value);
+		} else {
+			scs=cf_itemtosection(ci);
+			DEBUG("%.*s%s %s%s{",
+				indent, "\t\t\t\t\t\t\t\t\t\t\t",
+				scs->name1,
+				scs->name2 ? scs->name2 : "",
+				scs->name2 ?  " " : "");
+			dump_config_section(scs, indent+1);
+			DEBUG("%.*s}",
+				indent, "\t\t\t\t\t\t\t\t\t\t\t");
+		}
 	}
 
 	return 0;

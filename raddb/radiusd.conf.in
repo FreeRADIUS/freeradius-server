@@ -93,16 +93,16 @@ bind_address            = *
 #  RFC 2138 defines 1812 to be the new port.  Many new servers and
 #  NAS boxes use 1812, which can create interoperability problems.
 #
-#  The port is defined here to be 1645, for backwards compatibility.
-#  It is commented out so that the server will pick up the machine's
-#  local configuration for the radius port, as defined in /etc/services.
+#  The port is defined here to be 0 so that the server will pick up
+#  the machine's local configuration for the radius port, as defined
+#  in /etc/services.
 #
 #  If you want to use the default RADIUS port as defined on your server,
 #  (usually through 'grep radius /etc/services') set this to 0 (zero).
 #
 #  A port given on the command-line via '-p' over-rides this one.
 #
-#port = 1645
+port = 0
 
 #
 #  Where the utmp and wtmp style log files go.
@@ -520,32 +520,32 @@ modules {
 
 # Authentication types, Auth-Type = System and PAM for now.
 authenticate {
-	pam;
-	unix;
-#       sql;
-#       sql2;
+	pam
+	unix
+#       sql
+#       sql2
 # Uncomment this if you want to use ldap (Auth-Type = LDAP)
-#	ldap;
+#	ldap
 }
 
 # Authorization. First preprocess (hints and huntgroups files),
 # then look in the "users" file.
 authorize {
-	realm;
-	preprocess;
-	files;
+	realm
+	preprocess
+	files
 }
 
 # Pre-accounting. Look for proxy realm, first with the @suffix rule, then the
 # acct_users file, then preprocess (hints file).
 preacct {
-	realm;
-	files;
-	preprocess;
+	realm
+	files
+	preprocess
 }
 
 # Accounting. Log to detail file, and to the radwtmp file.
 accounting {
-	files;
-	unix;
+	files
+	unix
 }

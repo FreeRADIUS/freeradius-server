@@ -184,7 +184,7 @@ static module_list_t *find_module(module_list_t *head, const char *filename,
 	 */
 	handle = lt_dlopenext(filename);
 	if (handle == NULL) {
-		fprintf(stderr, "%s[%d] Failed to link to module %s:"
+		fprintf(stderr, "%s[%d] Failed to link to module '%s':"
 			" %s\n", cffilename, cflineno, filename, lt_dlerror());
 		return NULL;
 	}
@@ -242,6 +242,7 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 					       const char *instname)
 {
 	CONF_SECTION *cs, *inst_cs;
+	const char *name1, *name2;
 	module_instance_t *new;
 	char library[256];
 	char module_name[256];
@@ -273,17 +274,19 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL)
 	    ; inst_cs ;
 	    inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {
-		if ( (inst_cs->name2 && !strcmp(inst_cs->name2, instname)) ||
-		     (!inst_cs->name2 && !strcmp(inst_cs->name1, instname)) )
+                name1 = cf_section_name1(inst_cs);
+                name2 = cf_section_name2(inst_cs);
+		if ( (name2 && !strcmp(name2, instname)) ||
+		     (!name2 && !strcmp(name1, instname)) )
 			break;
 	}
 	if (!inst_cs)
 		return NULL;
 
-	snprintf(library, sizeof library, "rlm_%s.so", inst_cs->name1);
-	snprintf(module_name, sizeof module_name, "rlm_%s", inst_cs->name1);
+	snprintf(library, sizeof library, "rlm_%s.so", name1);
+	snprintf(module_name, sizeof module_name, "rlm_%s", name1);
 	new->entry = find_module(module_list, library, module_name,
-				 "radiusd.conf", inst_cs->lineno);
+				 "radiusd.conf", cf_section_lineno(inst_cs));
 	if(!new->entry) {
 		free(new);
 		return NULL;
@@ -295,7 +298,7 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 						    &new->insthandle) < 0) {
 		fprintf(stderr,
 			"radiusd.conf[%d]: %s: Module instantiation failed.\n",
-			inst_cs->lineno, instname);
+			cf_section_lineno(inst_cs), instname);
 		free(new);
 		return NULL;
 	}
@@ -304,7 +307,7 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 	new->next = module_instance_list;
 	module_instance_list = new;
 
-	DEBUG("Module: Instantiated %s (%s) ", inst_cs->name1, new->name);
+	DEBUG("Module: Instantiated %s (%s) ", name1, new->name);
 
 	return new;
 }
@@ -354,7 +357,9 @@ int setup_modules(void)
 	const char	*control;
 	int		comp;
 	CONF_SECTION	*cs;
-	CONF_SECTION	*modref;
+	CONF_ITEM	*modref;
+        int		modreflineno;
+        const char	*modrefname;
         const char *filename="radiusd.conf";
 
 	this = NULL; /* Shut up stupid gcc */
@@ -393,12 +398,6 @@ int setup_modules(void)
 		 */
 		lt_dlsetsearchpath(radlib_dir);
 		
-		/*
-		 *	Add 'raddb' directory, so that testing the server
-		 *	in the source directory can work.
-		 */
-		lt_dladdsearchdir(radius_dir);
-		
 		DEBUG2("modules: Library search path is %s",
 		       lt_dlgetsearchpath());
 
@@ -419,9 +418,9 @@ int setup_modules(void)
 	if (!cs)
 		continue;
 
-	for(modref=cf_subsection_find_next(cs, NULL, NULL)
+	for(modref=cf_item_find_next(cs, NULL)
 	    ; modref ;
-	    modref=cf_subsection_find_next(cs, modref, NULL)) {
+	    modref=cf_item_find_next(cs, modref)) {
 
 	/*
 	 *	Yes, we're missing two indents here.
@@ -429,16 +428,27 @@ int setup_modules(void)
 	 *	ofcourse means that this function should
 	 *	be split up....
 	 */
-	this = find_module_instance(module_instance_list, modref->name1);
+
+	if(cf_item_is_section(modref)) {
+		modreflineno = cf_section_lineno(cf_itemtosection(modref));
+		modrefname = cf_section_name1(cf_itemtosection(modref));
+	} else  {
+		modreflineno = cf_pair_lineno(cf_itemtopair(modref));
+		modrefname = cf_pair_attr(cf_itemtopair(modref));
+	}
+
+	this = find_module_instance(module_instance_list, modrefname);
 	if (this == NULL) {
-		exit(1); /* FIXME */
+		fprintf(stderr, "%s[%d] Unknown module '%s' in block '%s'\n",
+			filename, modreflineno, modrefname, control);
+		exit(1);
 	}
 
 	if (strcmp(control, "authorize") == 0) {
 		if (!this->entry->module->authorize) {
-			fprintf(stderr, "%s[%d] Module %s does not contain "
+			fprintf(stderr, "%s[%d] Module '%s' does not contain "
 					"an 'authorize' entry\n",
-					filename, modref->lineno,
+					filename, modreflineno,
 					this->entry->module->name);
 			exit(1);
 		}
@@ -446,9 +456,9 @@ int setup_modules(void)
 		add_to_list(&authorize, this);
 	} else if (strcmp(control, "authenticate") == 0) {
 		if (!this->entry->module->authenticate) {
-			fprintf(stderr, "%s[%d] Module %s does not contain "
+			fprintf(stderr, "%s[%d] Module '%s' does not contain "
 					"an 'authenticate' entry\n",
-					filename, modref->lineno,
+					filename, modreflineno,
 					this->entry->module->name);
 			exit(1);
 		}
@@ -456,18 +466,18 @@ int setup_modules(void)
 		add_to_list(&authenticate, this);
 	} else if (strcmp(control, "preacct") == 0) {
 		if (!this->entry->module->preaccounting) {
-			fprintf(stderr, "%s[%d] Module %s does not contain "
+			fprintf(stderr, "%s[%d] Module '%s' does not contain "
 					"a 'preacct' entry\n",
-					filename, modref->lineno,
+					filename, modreflineno,
 					this->entry->module->name);
 			exit(1);
 		}
 		add_to_list(&preacct, this);
 	} else if (strcmp(control, "accounting") == 0) {
 		if (!this->entry->module->accounting) {
-			fprintf(stderr, "%s[%d] Module %s does not contain "
+			fprintf(stderr, "%s[%d] Module '%s' does not contain "
 					"an 'accounting' entry\n",
-					filename, modref->lineno,
+					filename, modreflineno,
 					this->entry->module->name);
 			exit(1);
 		}
@@ -475,7 +485,7 @@ int setup_modules(void)
 		add_to_list(&accounting, this);
 	} else {
 		fprintf(stderr, "%s[%d] Unknown control \"%s\".\n",
-			filename, modref->lineno, control);
+			filename, modreflineno, control);
 		exit(1);
 	}
 
