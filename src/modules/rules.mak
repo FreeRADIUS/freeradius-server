@@ -22,7 +22,7 @@
 
 include $(RLM_DIR)../../../Make.inc
 
-all: static dynamic
+all: static dynamic $(RLM_UTILS)
 
 #######################################################################
 #
@@ -134,7 +134,7 @@ endif
 clean:
 	@rm -f *.a *.o *.lo *.la *~
 	@rm -rf .libs _libs
-	@rm -f config.cache config.log config.status
+	@rm -f config.cache config.log config.status $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
 
 distclean: clean
