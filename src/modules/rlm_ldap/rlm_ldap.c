@@ -105,7 +105,9 @@ typedef struct ldap_conn {
 	char		bound;
 	char		locked;
 	int		failed_conns;
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	mutex;
+#endif
 } LDAP_CONN;
 
 typedef struct {
@@ -1286,7 +1288,9 @@ ldap_authorize(void *instance, REQUEST * request)
  	 * Module should default to LDAP authentication if no Auth-Type
 	 * specified
 	 */
-	if (pairfind(*check_pairs, PW_AUTHTYPE) == NULL)
+	if ((pairfind(*check_pairs, PW_AUTH_TYPE) == NULL) &&
+	    request->password &&
+	    (request->password->attribute == PW_USER_PASSWORD)) {
 		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
 
 
