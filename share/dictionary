@@ -74,6 +74,7 @@ $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.itk
 $INCLUDE dictionary.juniper
+$INCLUDE dictionary.karlnet
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.navini
