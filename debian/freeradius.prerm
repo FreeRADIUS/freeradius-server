@@ -13,9 +13,12 @@ case "$1" in
 	;;
 esac
 
-if [ "$1" = "upgrade" -o  "$1" = "remove" ]
-then
-	/etc/init.d/freeradius stop
+if [ "$1" = "upgrade" -o  "$1" = "remove" ] ; then
+	if [ -x /usr/sbin/invoke-rc.d ] ; then
+		invoke-rc.d freeradius stop
+	else
+		/etc/init.d/freeradius stop
+	fi
 fi
 
 exit 0

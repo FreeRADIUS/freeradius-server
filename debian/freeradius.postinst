@@ -38,7 +38,12 @@ case "$1" in
 	find /etc/freeradius -type d -exec chgrp freerad {} \; -exec chmod 2770 {} \;
 	find /var/log/freeradius -exec chown freerad {} \; -exec chgrp freerad {} \;
 
-	/etc/init.d/freeradius start
+	if [ -x /usr/sbin/invoke-rc.d ] ; then
+		invoke-rc.d freeradius start
+	else
+		/etc/init.d/freeradius start
+	fi
+
 	;;
   abort-upgrade)
 	;;

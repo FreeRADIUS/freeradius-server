@@ -2,16 +2,13 @@
 
 set -e
 
-if [ "$1" = "remove" -o  "$1" = "purge" ]
-then
-	rm -f /etc/init.d/freeradius
-	update-rc.d -f freeradius remove >/dev/null
-fi
-
 case "$1" in
 	remove)
 		;;
 	purge)
+		rm -f /etc/init.d/freeradius
+		update-rc.d -f freeradius remove >/dev/null
+
 		if [ -d /var/log/freeradius ] 
 		then
 			cd /var/log/freeradius
