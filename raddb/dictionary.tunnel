@@ -15,7 +15,7 @@ ATTRIBUTE	Tunnel-Medium-Type		65	integer	has_tag
 ATTRIBUTE	Tunnel-Client-Endpoint		66	string	has_tag
 ATTRIBUTE	Tunnel-Server-Endpoint		67	string	has_tag
 ATTRIBUTE	Tunnel-Connection-Id		68	string	has_tag
-ATTRIBUTE	Tunnel-Password			69	string	has_tag
+ATTRIBUTE	Tunnel-Password			69	string	has_tag,encrypt=2
 ATTRIBUTE	Tunnel-Private-Group-Id		81	integer	has_tag
 ATTRIBUTE	Tunnel-Assignment-Id		82	string	has_tag
 ATTRIBUTE	Tunnel-Preference		83	integer	has_tag
@@ -23,12 +23,6 @@ ATTRIBUTE	Tunnel-Client-Auth-Id		90	string	has_tag
 ATTRIBUTE	Tunnel-Server-Auth-Id		91	string	has_tag
 
 VALUE		Framed-Protocol		PPTP			9
-
-#  Some of the new Tunnel values 
-#VALUE		Tunnel-Security		None			0
-#VALUE		Tunnel-Security		Control-Only		1
-#VALUE		Tunnel-Security		Data-Only		2
-#VALUE		Tunnel-Security		Both			3
 
 #	Tunnel Type
 

@@ -48,7 +48,7 @@ $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.redback
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
-#$INCLUDE dictionary.tunnel
+$INCLUDE dictionary.tunnel
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.versanet
 $INCLUDE dictionary.erx
