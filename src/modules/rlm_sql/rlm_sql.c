@@ -49,42 +49,78 @@ static const char rcsid[] =
 #include "rad_assert.h"
 
 static CONF_PARSER module_config[] = {
-	{"driver",PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_driver), NULL, "mysql"},
-	{"server",PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_server), NULL, "localhost"},
-	{"port",PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_port), NULL, ""},
-	{"login", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_login), NULL, ""},
-	{"password", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_password), NULL, ""},
-	{"radius_db", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_db), NULL, "radius"},
-	{"acct_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_acct_table), NULL, "radacct"},
-	{"acct_table2", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_acct_table2), NULL, "radacct"},
-	{"authcheck_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_authcheck_table), NULL, "radcheck"},
-	{"authreply_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_authreply_table), NULL, "radreply"},
-	{"groupcheck_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_groupcheck_table), NULL, "radgroupcheck"},
-	{"groupreply_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_groupreply_table), NULL, "radgroupreply"},
-	{"usergroup_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_usergroup_table), NULL, "usergroup"},
-	{"nas_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_nas_table), NULL, "nas"},
-	{"dict_table", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_dict_table), NULL, "dictionary"},
-	{"sqltrace", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,sqltrace), NULL, "no"},
-	{"sqltracefile", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,tracefile), NULL, SQLTRACEFILE},
-	{"deletestalesessions", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,deletestalesessions), NULL, "no"},
-	{"num_sql_socks", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
-	{"sql_user_name", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,query_user), NULL, ""},
-	{"default_user_profile", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,default_profile), NULL, ""},
-	{"query_on_not_found", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,query_on_not_found), NULL, "no"},
-	{"authorize_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
-	{"authorize_reply_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_reply_query), NULL, ""},
-	{"authorize_group_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
-	{"authorize_group_reply_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_reply_query), NULL, ""},
-	{"accounting_onoff_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_onoff_query), NULL, ""},
-	{"accounting_update_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_update_query), NULL, ""},
-	{"accounting_start_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_start_query), NULL, ""},
-	{"accounting_start_query_alt", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_start_query_alt), NULL, ""},
-	{"accounting_stop_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_stop_query), NULL, ""},
-	{"accounting_stop_query_alt", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_stop_query_alt), NULL, ""},
-	{"group_membership_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,groupmemb_query), NULL, ""},
-	{"connect_failure_retry_delay", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,connect_failure_retry_delay), NULL, "60"},
-	{"simul_count_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
-	{"simul_verify_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
+	{"driver",PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_driver), NULL, "mysql"},
+	{"server",PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_server), NULL, "localhost"},
+	{"port",PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_port), NULL, ""},
+	{"login", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_login), NULL, ""},
+	{"password", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_password), NULL, ""},
+	{"radius_db", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_db), NULL, "radius"},
+	{"acct_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_acct_table), NULL, "radacct"},
+	{"acct_table2", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_acct_table2), NULL, "radacct"},
+	{"authcheck_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_authcheck_table), NULL, "radcheck"},
+	{"authreply_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_authreply_table), NULL, "radreply"},
+	{"groupcheck_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_groupcheck_table), NULL, "radgroupcheck"},
+	{"groupreply_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_groupreply_table), NULL, "radgroupreply"},
+	{"usergroup_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_usergroup_table), NULL, "usergroup"},
+	{"nas_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_nas_table), NULL, "nas"},
+	{"dict_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_dict_table), NULL, "dictionary"},
+	{"sqltrace", PW_TYPE_BOOLEAN,
+	 offsetof(SQL_CONFIG,sqltrace), NULL, "no"},
+	{"sqltracefile", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,tracefile), NULL, SQLTRACEFILE},
+	{"deletestalesessions", PW_TYPE_BOOLEAN,
+	 offsetof(SQL_CONFIG,deletestalesessions), NULL, "no"},
+	{"num_sql_socks", PW_TYPE_INTEGER,
+	 offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
+	{"sql_user_name", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,query_user), NULL, ""},
+	{"default_user_profile", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,default_profile), NULL, ""},
+	{"query_on_not_found", PW_TYPE_BOOLEAN,
+	 offsetof(SQL_CONFIG,query_on_not_found), NULL, "no"},
+	{"authorize_check_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
+	{"authorize_reply_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,authorize_reply_query), NULL, ""},
+	{"authorize_group_check_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
+	{"authorize_group_reply_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,authorize_group_reply_query), NULL, ""},
+	{"accounting_onoff_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,accounting_onoff_query), NULL, ""},
+	{"accounting_update_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,accounting_update_query), NULL, ""},
+	{"accounting_start_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,accounting_start_query), NULL, ""},
+	{"accounting_start_query_alt", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,accounting_start_query_alt), NULL, ""},
+	{"accounting_stop_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,accounting_stop_query), NULL, ""},
+	{"accounting_stop_query_alt", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,accounting_stop_query_alt), NULL, ""},
+	{"group_membership_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,groupmemb_query), NULL, ""},
+	{"connect_failure_retry_delay", PW_TYPE_INTEGER,
+	 offsetof(SQL_CONFIG,connect_failure_retry_delay), NULL, "60"},
+	{"simul_count_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
+	{"simul_verify_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -364,10 +400,63 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 }
 
 
+static int rlm_sql_detach(void *instance)
+{
+	SQL_INST *inst = instance;
+
+	if (inst->sqlpool) {
+		sql_poolfree(inst);
+	}
+
+	if (inst->config->xlat_name) {
+		xlat_unregister(inst->config->xlat_name,sql_xlat);
+		free(inst->config->xlat_name);
+	}
+
+	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
+
+	if (inst->config) {
+		int i;
+
+		/*
+		 *	Free up dynamically allocated string pointers.
+		 */
+		for (i = 0; module_config[i].name != NULL; i++) {
+			char **p;
+			if (module_config[i].type != PW_TYPE_STRING_PTR) {
+				continue;
+			}
+			
+			/*
+			 *	Treat 'config' as an opaque array of bytes,
+			 *	and take the offset into it.  There's a
+			 *      (char*) pointer at that offset, and we want
+			 *	to point to it.
+			 */
+			p = (char **) (((char *)inst->config) + module_config[i].offset);
+			if (!*p) { /* nothing allocated */
+				continue;
+			}
+			free(*p);
+			*p = NULL;
+		}
+		free(inst->config);
+		inst->config = NULL;
+	}
+
+	if (inst->handle) {
+		/*
+		 *	FIXME: Call the modules 'destroy' function?
+		 */
+		lt_dlclose(inst->handle);	/* ignore any errors */
+	}
+	free(inst);
+
+	return 0;
+}
 static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 {
 	SQL_INST *inst;
-	lt_dlhandle handle;
 	char *xlat_name;
 
 	inst = rad_malloc(sizeof(SQL_INST));
@@ -381,8 +470,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	 * fail.
 	 */
 	if (cf_section_parse(conf, inst->config, module_config) < 0) {
-		free(inst->config);
-		free(inst);
+		rlm_sql_detach(inst);
 		return -1;
 	}
 
@@ -397,26 +485,27 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	if (inst->config->num_sql_socks > MAX_SQL_SOCKS) {
 		radlog(L_ERR | L_CONS, "rlm_sql (%s): sql_instantiate: number of sqlsockets cannot exceed MAX_SQL_SOCKS, %d",
 		       inst->config->xlat_name, MAX_SQL_SOCKS);
-		free(inst->config);
-		free(inst);
+		rlm_sql_detach(inst);
 		return -1;
 	}
 
-	handle = lt_dlopenext(inst->config->sql_driver);
-	if (handle == NULL) {
+	inst->handle = lt_dlopenext(inst->config->sql_driver);
+	if (inst->handle == NULL) {
 		radlog(L_ERR, "rlm_sql (%s): Could not link driver %s: %s",
 		       inst->config->xlat_name, inst->config->sql_driver,
 		       lt_dlerror());
 		radlog(L_ERR, "rlm_sql (%s): Make sure it (and all its dependent libraries!) are in the search path of your system's ld.",
 		       inst->config->xlat_name);
+		rlm_sql_detach(inst);
 		return -1;
 	}
 
-	inst->module = (rlm_sql_module_t *) lt_dlsym(handle, inst->config->sql_driver);
+	inst->module = (rlm_sql_module_t *) lt_dlsym(inst->handle, inst->config->sql_driver);
 	if (!inst->module) {
 		radlog(L_ERR, "rlm_sql (%s): Could not link symbol %s: %s",
 		       inst->config->xlat_name, inst->config->sql_driver,
 		       lt_dlerror());
+		rlm_sql_detach(inst);
 		return -1;
 	}
 
@@ -429,8 +518,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	       inst->config->sql_db);
 
 	if (sql_init_socketpool(inst) < 0) {
-		free(inst->config);
-		free(inst);
+		rlm_sql_detach(inst);
 		return -1;
 	}
 	paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
@@ -442,20 +530,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 
 static int rlm_sql_destroy(void)
 {
-	return 0;
-}
-
-static int rlm_sql_detach(void *instance)
-{
-	SQL_INST *inst = instance;
-
-	sql_poolfree(inst);
-	if (inst->config->xlat_name)
-		xlat_unregister(inst->config->xlat_name,sql_xlat);
-	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
-	free(inst->config);
-	free(inst);
-
 	return 0;
 }
 

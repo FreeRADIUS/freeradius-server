@@ -65,6 +65,7 @@ typedef struct sql_inst {
 	SQLSOCK		*last_used;
 	SQL_CONFIG	*config;
 
+	lt_dlhandle handle;
 	rlm_sql_module_t *module;
 } SQL_INST;
 
