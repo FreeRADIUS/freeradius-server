@@ -15,14 +15,20 @@ if ($config[sql_use_operators] == 'true'){
 }
 $user_exists = 'no';
 
+$cn = '-';
 $cn_lang = '-';
 $homeaddress = '-';
 $homeaddress_lang = '-';
 $fax = '-';
 $url = '-';
+$ou = '-';
 $ou_lang = '-';
 $title = '-';
 $title_lang = '-';
+$telephonenumber = '-';
+$homephone = '-';
+$mobile = '-';
+$mail = '-';
 $mailalt = '-';
 
 unset($item_vals);
@@ -66,12 +72,12 @@ if ($link){
 					if (@da_sql_num_rows($res,$config))
 						$user_exists = 'yes';
 					if (($row = @da_sql_fetch_array($res,$config))){	
-						$cn = ($row[Name]) ? $row[Name] : '-';
-						$telephonenumber = ($row[WorkPhone]) ? $row[WorkPhone] : '-';
-						$homephone = ($row[HomePhone]) ? $row[HomePhone] : '-';
-						$ou = ($row[Department]) ? $row[Department] : '-';
-						$mail = ($row[Mail]) ? $row[Mail] : '-';
-						$mobile = ($row[Mobile]) ? $row[Mobile] : '-';
+						$cn = ($row[Name] != '') ? $row[Name] : '-';
+						$telephonenumber = ($row[WorkPhone] != '') ? $row[WorkPhone] : '-';
+						$homephone = ($row[HomePhone] != '') ? $row[HomePhone] : '-';
+						$ou = ($row[Department] != '') ? $row[Department] : '-';
+						$mail = ($row[Mail] != '') ? $row[Mail] : '-';
+						$mobile = ($row[Mobile] != '') ? $row[Mobile] : '-';
 					}
 				}			
 			}
