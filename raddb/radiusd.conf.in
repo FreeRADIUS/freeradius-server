@@ -177,7 +177,7 @@ usercollide = no
 
 #
 # lower_user / lower_pass:  
-# Lowercase the username/passwprd before processing it
+# Lowercase the username/password before processing it
 # This is as close as we can get to case insensitivity.  It is
 # the admin's job to ensure that the username on the auth
 # db side is *also* lowercase to make this work
@@ -385,7 +385,37 @@ modules {
 	#}
 	
 	preprocess {
-		# No config options for this yet
+		huntgroups = ${confdir}/huntgroups
+		hints = ${confdir}/hints
+
+		#
+		# This hack changes Ascend's wierd port numberings
+		# to standard 0-??? port numbers so that the "+" works
+		# for IP address assignments.
+		#
+		with_ascend_hack = no
+		ascend_channels_per_line = 23
+
+		#
+		# Windows NT machines often authenticate themselves as
+		# NT_DOMAIN\username
+		#
+		# If this is set to 'yes', then the NT_DOMAIN portion
+		# of the user-name is silently discarded.
+		#
+		with_ntdomain_hack = no
+
+		#
+		# Specialix Jetstream 8500 24 port access server.
+		#
+		# If the user name is 10 characters or longer, a "/"
+		# and the excess characters after the 10th are
+		# appended to the user name.
+		#
+		# If you're not running that NAS, you don't need
+		# this hack.
+		#
+		with_specialix_jetstream_hack = no
 	}
 	files {
 		usersfile = ${confdir}/users
