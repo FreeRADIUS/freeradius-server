@@ -74,8 +74,15 @@ static int		spawn_flag = FALSE;
 static int		radius_pid;
 static int		need_reload = FALSE;
 static REQUEST		*first_request = NULL;
-static int		allow_core_dumps = FALSE;
 static struct rlimit	core_limits;
+
+/*
+ *  Configuration items.
+ */
+static int		allow_core_dumps = FALSE;
+static int		max_request_time = MAX_REQUEST_TIME;
+static int		cleanup_delay = CLEANUP_DELAY;
+static int		max_requests = MAX_REQUESTS;
 
 #if !defined(__linux__) && !defined(__GNU_LIBRARY__)
 extern int	errno;
@@ -93,6 +100,25 @@ static int	rad_respond (REQUEST *);
 static REQUEST	*rad_check_list(REQUEST *);
 static void	rad_spawn_child(REQUEST *, FUNP, int, int);
 
+#ifdef WITH_NEW_CONFIG
+typedef struct config2int_t {
+  const char	*name;
+  int		*value;
+} config2int_t;
+
+/*
+ *	A mapping of configuration file names to internal integers
+ */
+config2int_t config2int[] = {
+  { "max_request_time", &max_request_time },
+  { "cleanup_delay",    &cleanup_delay    },
+  { "max_requests",     &max_requests     },
+  { "allow_core_dumps", &allow_core_dumps },
+
+  { NULL, NULL}
+}
+#endif
+
 /*
  *	Read config files.
  */
@@ -100,6 +126,10 @@ static void reread_config(int reload)
 {
 	int res = 0;
 	int pid = getpid();
+#ifdef WITH_NEW_CONFIG
+	int i;
+	CONF_PAIR *cp;
+#endif
 
 	if (allow_core_dumps) {
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
@@ -146,6 +176,21 @@ static void reread_config(int reload)
 		}
 		exit(1);
 	}
+
+#ifdef WITH_NEW_CONFIG
+	for (i = 0; config2int[i].name != NULL; i++) {
+	  cp = cf_pair_find(NULL, config2int[i].name);
+	  if (cp) {
+	    if (!isdigit(cp->value[0])) {
+	      /* complain */
+	      continue;
+	    }
+	    DEBUG2("Setting %s = %s\n", config2int[i].name, cp->value);
+	    *config2int[i].value = atoi(cp->value);
+	  }
+	}
+#endif;
+
 }
 
 
@@ -900,7 +945,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 *	has hung: kill it, and continue.
 		 */
 		if (!curreq->finished && 
-		    (curreq->timestamp + MAX_REQUEST_TIME) <= curtime &&
+		    (curreq->timestamp + max_request_time) <= curtime &&
 		    curreq->child_pid != NO_SUCH_CHILD_PID) {
 			/*
 			 *	This request seems to have hung - kill it
@@ -926,7 +971,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 */
 		if (curreq->finished &&
 		    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
-		    (curreq->timestamp + CLEANUP_DELAY <= curtime)) {
+		    (curreq->timestamp + cleanup_delay <= curtime)) {
 			/*
 			 *	Request completed, delete it,
 			 *	and unlink it from the currently 'alive'
@@ -963,7 +1008,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 	/*
 	 *	This is a new request.
 	 */
-	if (request_count > MAX_REQUESTS) {
+	if (request_count > max_requests) {
 		log(L_ERR, "Dropping request (too many): "
 				"from client %s - ID: %d",
 				client_name(request->packet->src_ipaddr),
