@@ -6,6 +6,7 @@ Ver 1.60:
 * Add support for realm in username and allow for realm striping in the web pages and in log_badlogins
 * Add a few more comments in the admin.conf
 * Update the FAQ with an entry about the Online Users page not showing anything.
+* Update the FAQ with an entry about sessions.
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
