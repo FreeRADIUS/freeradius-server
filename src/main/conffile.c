@@ -658,7 +658,7 @@ static CONF_PARSER directory_config[] = {
   { "logdir",             PW_TYPE_STRING_PTR, &radlog_dir,        "${localstatedir}/log"},
   { "libdir",             PW_TYPE_STRING_PTR, &radlib_dir,        "${prefix}/lib"},
   { "radacctdir",         PW_TYPE_STRING_PTR, &radacct_dir,       "${logdir}/radacct" },
-  { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "0" },
+  { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "no" },
 
   /*
    *	We don't allow re-defining this, as doing so will cause
