@@ -52,10 +52,10 @@ static const char rcsid[] = "$Id$";
  *	Return -1 on fork/other errors in the parent process.
  */
 int radius_exec_program(const char *cmd, REQUEST *request,
-			int exec_wait, const char **user_msg)
+			int exec_wait, char *user_msg,
+			int msg_len, int parse_vp)
 {
 	VALUE_PAIR *vp;
-	static char message[256];
 	char answer[4096];
 	char *argv[256];
 	char *buf, *p;
@@ -65,6 +65,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	int comma = 0;
 	int status;
 	int n, left, done;
+
+	if (user_msg) *user_msg = '\0';
 
 	/*
 	 *	Open a pipe for child/parent communication, if
@@ -76,6 +78,13 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			       strerror(errno));
 			return -1;
 		}
+	} else {
+		/*
+		 *	We're not waiting, so we don't look for a
+		 *	message, or VP's.
+		 */
+		user_msg = NULL;
+		parse_vp = FALSE;
 	}
 
 	/*
@@ -301,26 +310,29 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	close(pd[0]);
 
+	DEBUG2("ANSWER %s", answer);
+
 	/*
 	 *	Parse the output, if any.
 	 */
 	if (done) {
-		/*
-		 *	For backwards compatibility, first check
-		 *	for plain text (user_msg).
-		 */
-		vp = NULL;
-		n = userparse(answer, &vp);
-		if (vp) {
-			pairfree(&vp);
+		n = -1;
+		if (parse_vp) {
+			/*
+			 *	For backwards compatibility, first check
+			 *	for plain text (user_msg).
+			 */
+			vp = NULL;
+			n = userparse(answer, &vp);
+			if (vp) {
+				pairfree(&vp);
+			}
 		}
 
 		if (n < 0) {
 			radlog(L_DBG, "Exec-Program-Wait: plaintext: %s", answer);
 			if (user_msg) {
-				strncpy(message, answer, sizeof(message));
-				message[sizeof(message) - 1] = 0;
-				*user_msg = message;
+				strNcpy(user_msg, answer, msg_len);
 			}
 		} else {
 			/*

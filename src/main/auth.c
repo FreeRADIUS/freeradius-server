@@ -805,7 +805,8 @@ autz_redo:
 	 */
 	if (exec_program && exec_wait) {
 		if (radius_exec_program(exec_program, request,
-				exec_wait, &user_msg) != 0) {
+					exec_wait,
+					umsg, sizeof(umsg), TRUE) != 0) {
 			free(exec_program);
 
 			/*
@@ -813,8 +814,11 @@ autz_redo:
 			 *	fork/exec errors, or >0 if the exec'ed program
 			 *	had a non-zero exit status.
 			 */
-			if (user_msg == NULL)
+			if (umsg[0] == '\0') {
 				user_msg = "\r\nAccess denied (external check failed).";
+			} else {
+				user_msg = &umsg[0];
+			}
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
@@ -887,7 +891,8 @@ autz_redo:
 		/*
 		 *	No need to check the exit status here.
 		 */
-		radius_exec_program(exec_program, request, exec_wait, NULL);
+		radius_exec_program(exec_program, request, exec_wait,
+				    NULL, 0, FALSE);
 	}
 
 	if (exec_program) 
@@ -902,6 +907,7 @@ autz_redo:
 		postauth_type = postauth_type_item->lvalue;
 	result = module_post_auth(postauth_type, request);
 	switch (result) {
+	default:
 	  break;
 	  
 	  /*

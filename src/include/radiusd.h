@@ -314,7 +314,8 @@ int		rad_check_password(REQUEST *request);
 
 /* exec.c */
 int		radius_exec_program(const char *,  REQUEST *,
-				    int, const char **user_msg);
+				    int, char *user_msg,
+				    int msg_len, int parse_vp);
 
 /* timestr.c */
 int		timestr_match(char *, time_t);

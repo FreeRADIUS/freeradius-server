@@ -97,8 +97,14 @@ int rad_accounting(REQUEST *request)
 		 *	don't check the return code.
 		 */
 		if (exec_program) {
+			/*
+			 *	Wait for the answer.
+			 *	Don't look for a user message.
+			 *	Do look for returned VP's.
+			 */
 			rcode = radius_exec_program(exec_program, request,
-						    exec_wait, NULL);
+						    exec_wait,
+						    NULL, 0, TRUE);
 			if (exec_wait) {
 				if (rcode != 0) {
 					free(exec_program);
