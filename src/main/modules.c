@@ -15,21 +15,16 @@ static const char rcsid[] = "$Id$";
 #include	<stdlib.h>
 #include	<string.h>
 
-#ifdef HAVE_DLFCN_H
-#  include	<dlfcn.h>
-#endif
-
-#ifndef RTLD_GLOBAL
-/*
- *	FreeBSD has libdl in it's Linux compatibility directory,
- *	but it doesn't define RTLD_GLOBAL.  Grr..
- */
-#define RTLD_GLOBAL 0
-#endif
-
 #include	"radiusd.h"
 #include	"modules.h"
 #include	"conffile.h"
+#include	"ltdl.h"
+
+/*
+ *  Temporary hack!
+ */
+#undef HAVE_DLOPEN
+#define HAVE_DLOPEN 1
 
 #ifndef HAVE_DLOPEN
 #include	"modules_static.h"
@@ -48,7 +43,7 @@ typedef struct module_list_t {
 	int			flags;		/* doing what, exactly? */
 	module_t		*module;
 #ifdef HAVE_DLOPEN
-	void			*handle;
+	lt_dlhandle		handle;
 #endif
 	struct module_list_t	*next;
 } module_list_t;
@@ -88,7 +83,7 @@ static void module_list_free(void)
 		if (ml->module->detach)
 			(ml->module->detach)();
 #ifdef HAVE_DLOPEN
-		dlclose(ml->handle);	/* ignore any errors */
+		lt_dlclose(ml->handle);	/* ignore any errors */
 #endif
 		free(ml);
 		ml = next;
@@ -268,23 +263,20 @@ int read_modules_file(char *filename)
 		 */
 		if (*library != '/')
 			sprintf(libraryfile, "%.500s/%.500s",
-				radlib_dir, library);
+#if 0
+				radlib_dir,
+#else
+				radius_dir,
+#endif
+				library);
 		else
 			strNcpy(libraryfile, library, sizeof(libraryfile));
 		DEBUG2("Module: Loading %s ...", libraryfile);
-#ifdef __OpenBSD__
-		/* OpenBSD doesn't pay attention to the second value
-		 * as of the present. It should be set to DL_LAZY for
-		 * future compatibility
-		 */
-		handle = dlopen(libraryfile, DL_LAZY);
-#else
-		handle = dlopen(libraryfile, RTLD_NOW | RTLD_GLOBAL);
-#endif
+		handle = lt_dlopen(libraryfile);
 
 		if (handle == NULL) {
 			fprintf(stderr, "[%s:%d] Failed to link to module %s:"
-				" %s\n", filename, lineno, libraryfile, dlerror());
+				" %s\n", filename, lineno, libraryfile, lt_dlerror());
 			exit(1); /* FIXME */
 		}
 #else /* HAVE_DLOPEN */
@@ -331,8 +323,8 @@ int read_modules_file(char *filename)
 		*p = '\0';
 
 #ifdef HAVE_DLOPEN
-		this->module = dlsym(this->handle, module_name);
-		error = dlerror();
+		this->module = (module_t *) lt_dlsym(this->handle, module_name);
+		error = lt_dlerror();
 		if (!this->module) {
 			fprintf(stderr, "[%s:%d] Failed linking to "
 					"%s structure in %s: %s\n",
