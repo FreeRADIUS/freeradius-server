@@ -133,7 +133,7 @@ ATTRIBUTE	Proxy-To-Realm		1048	string
 ATTRIBUTE	Replicate-To-Realm	1049	string
 ATTRIBUTE	Acct-Session-Start-Time	1050	date
 ATTRIBUTE	Acct-Unique-Session-Id  1051	string
-ATTRIBUTE	Request-Src-IP-Address	1052	ipaddr
+ATTRIBUTE	Client-IP-Address	1052	ipaddr
 ATTRIBUTE	Ldap-UserDn		1053	string
 ATTRIBUTE	NS-MTA-MD5-Password	1054	string
 

@@ -455,11 +455,8 @@ static void add_nas_attr(REQUEST *request)
 	}
 
 	/*
-	 *	Add in a Request-Src-IP-Address, to tell the user
+	 *	Add in a Client-IP-Address, to tell the user
 	 *	the source IP of the request.  That is, the client,
-	 *	but Client-IP-Address is too close to the old
-	 *	Client-FOO names, which I KNOW would confuse a lot
-	 *	of people.
 	 *
 	 *	Note that this MAY BE different from the NAS-IP-Address,
 	 *	especially if the request is being proxied.
@@ -468,7 +465,7 @@ static void add_nas_attr(REQUEST *request)
 	 *	and will NOT make it to any packets being sent from
 	 *	the server.
 	 */
-	nas = paircreate(PW_REQUEST_SRC_IP_ADDRESS, PW_TYPE_IPADDR);
+	nas = paircreate(PW_CLIENT_IP_ADDRESS, PW_TYPE_IPADDR);
 	if (!nas) {
 	  radlog(L_ERR, "No memory");
 	  exit(1);
