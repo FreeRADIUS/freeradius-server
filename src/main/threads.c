@@ -862,7 +862,7 @@ pid_t rad_fork(int exec_wait)
 			 *	This sometimes happens, for crazy reasons.
 			 */
 			if ((now - forkers[i].time_forked) > 30) {
-				forkers[i].thread_id == NO_SUCH_CHILD_PID;
+				forkers[i].thread_id = NO_SUCH_CHILD_PID;
 
 				/*
 				 *	Grab the child's exit condition,
