@@ -290,14 +290,12 @@ static int reread_config(int reload)
 	 *	says to, OR, if we're decreasing the debug from what it
 	 *	was before, allow that, too.
 	 */
-	fprintf(stderr, "XXXXXXXXXXXXX %d %d %d\n", old_debug_level, debug_level, debug_flag);
 	if ((debug_level > debug_flag) ||
 	    (debug_level <= old_debug_level)) {
 	  debug_flag = debug_level;
 	}
 	librad_debug = debug_flag;
 	old_debug_level = debug_level;
-	fprintf(stderr, "XXXXXXXXXXXXX %d %d %d\n", old_debug_level, debug_level, debug_flag);
 
 	/*  Reload the modules.  */
 	DEBUG2("read_config_files:  entering modules setup");
@@ -2439,7 +2437,6 @@ setup_timeout:
 			request->proxy_next_try = info->now + proxy_retry_delay;
 		}
 		difference = request->proxy_next_try - info->now;
-		
 	} else {
 		/*
 		 *  The request is NOT finished.
