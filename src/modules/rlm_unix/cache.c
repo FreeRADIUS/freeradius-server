@@ -77,7 +77,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 #endif
 	char buffer[BUFSIZE];
 	char idtmp[10];
-	char username[MAXUSERNAME];
+	char username[256];
 	char *ptr, *bufptr;
 	int len, hashindex, numread=0;
 	struct mypasswd *new, *cur;
@@ -103,7 +103,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 
 	cache = rad_malloc(sizeof(*cache));
 
-	memset(username, 0, MAXUSERNAME);
+	memset(username, 0, sizeof(username));
 
 	/* Init hash array */
 	memset(cache->hashtable, 0, sizeof cache->hashtable);
@@ -123,7 +123,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 		/* Get usernames from password file */
 		for(ptr = bufptr; *ptr!=':'; ptr++);
 		len = ptr - bufptr;
-		if((len+1) > MAXUSERNAME) {
+		if((len+1) > MAX_STRING_LEN) {
 			radlog(L_ERR, "rlm_unix:  Username too long in line: %s", buffer);
 		}
 		strncpy(username, buffer, len);
@@ -227,7 +227,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 			/* Get usernames from shadow file */
 			for(ptr = bufptr; *ptr!=':'; ptr++);
 			len = ptr - bufptr;
-			if((len+1) > MAXUSERNAME) {
+			if((len+1) > MAX_STRING_LEN) {
 				radlog(L_ERR, "HASH:  Username too long in line: %s", buffer);
 			}
 			strncpy(username, buffer, len);

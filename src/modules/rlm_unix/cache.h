@@ -8,10 +8,7 @@
 
 /* Misc definitions */
 #define BUFSIZE  1024
-#define MAXUSERNAME 20
 #define HASHTABLESIZE 100000
-#define PASSWDFILE "/etc/passwd"
-#define SHADOWFILE "/etc/shadow"
 #endif
 
 /* Structure definitions */
