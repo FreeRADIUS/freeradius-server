@@ -282,7 +282,7 @@ static char *
 x99_acquire_sd_lock(const char *syncdir, const char *username)
 {
     char *lockfile;
-    int i, fd;
+    int i, fd = -1;
     struct stat st;
 
     /* Verify permissions first. */
@@ -313,7 +313,7 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 	/* FIXME: does usleep() reset/generate SIGALRM on any systems? */
 	usleep(500000); /* 0.5 second */
     }
-    if (fd  == -1) {
+    if (fd == -1) {
 	x99_log(X99_LOG_ERR,
 		"x99_acquire_sd_lock: unable to acquire lock for [%s]",
 		username);
