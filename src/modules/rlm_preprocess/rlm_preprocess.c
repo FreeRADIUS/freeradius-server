@@ -28,10 +28,10 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 #include	"modules.h"
 
-
-/* FIXME: should this stuff be instance data? */
-static PAIR_LIST	*huntgroups;
-static PAIR_LIST	*hints;
+typedef struct rlm_preprocess_t {
+	PAIR_LIST	*huntgroups;
+	PAIR_LIST	*hints;
+} rlm_preprocess_t;
 
 #ifdef WITH_ASCEND_HACK
 /*
@@ -130,15 +130,6 @@ static void rad_mangle(REQUEST *request)
 			pairmove(&request_pairs, &tmp);
 		}
 	}
-
-#if 0
-	/*
-	 *	FIXME: find some substitute for this, or
-	 *	drop the log_auth_detail option all together.
-	 */
-	if (log_auth_detail)
-		rad_accounting_orig(request, -1, "detail.auth");
-#endif
 }
 
 /*
@@ -274,7 +265,7 @@ static int matches(char *name, PAIR_LIST *pl, char *matchpart)
  *	Add hints to the info sent by the terminal server
  *	based on the pattern of the username.
  */
-static int hints_setup(REQUEST *request)
+static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 {
 	char		newname[MAX_STRING_LEN];
 	char		*name;
@@ -368,18 +359,19 @@ static int hints_setup(REQUEST *request)
  *	See if the huntgroup matches. This function is
  *	tied to the "Huntgroup" keyword.
  */
-static int huntgroup_cmp(VALUE_PAIR *request, VALUE_PAIR *check,
-	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int huntgroup_cmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+			 VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	PAIR_LIST	*i;
 	char		*huntgroup;
+	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
 	huntgroup = (char *)check->strvalue;
 
-	for (i = huntgroups; i; i = i->next) {
+	for (i = data->huntgroups; i; i = i->next) {
 		if (strcmp(i->name, huntgroup) != 0)
 			continue;
 		if (paircmp(request, i->check, NULL) == 0) {
@@ -403,7 +395,7 @@ static int huntgroup_cmp(VALUE_PAIR *request, VALUE_PAIR *check,
 /*
  *	See if we have access to the huntgroup.
  */
-static int huntgroup_access(VALUE_PAIR *request_pairs)
+static int huntgroup_access(PAIR_LIST *huntgroups, VALUE_PAIR *request_pairs)
 {
 	PAIR_LIST	*i;
 	int		r = RLM_MODULE_OK;
@@ -478,27 +470,45 @@ static void add_nas_attr(REQUEST *request)
 /*
  *	Initialize.
  */
-static int preprocess_init(void)
+static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 {
 	int	rcode;
 	char	buffer[256];
+	rlm_preprocess_t *data;
 
-	pairlist_free(&huntgroups);
-	pairlist_free(&hints);
+	data = (rlm_preprocess_t *) malloc(sizeof(*data));
+	if (!data) {
+		radlog(L_ERR|L_CONS, "Out of memory\n");
+		return -1;
+	}
 
+	/*
+	 *	FIXME:  Pull this from the configuration file...
+	 */
 	sprintf(buffer, "%s/%s", radius_dir, RADIUS_HUNTGROUPS);
-	rcode = pairlist_read(buffer, &huntgroups, 0);
+	rcode = pairlist_read(buffer, &(data->huntgroups), 0);
 	if (rcode < 0) {
 		return -1;
 	}
 
+	/*
+	 *	FIXME:  Pull this from the configuration file...
+	 */
 	sprintf(buffer, "%s/%s", radius_dir, RADIUS_HINTS);
-	rcode = pairlist_read(buffer, &hints, 0);
+	rcode = pairlist_read(buffer, &(data->hints), 0);
 	if (rcode < 0) {
 		return -1;
 	}
 
-	paircompare_register(PW_HUNTGROUP_NAME, 0, huntgroup_cmp);
+	/*
+	 *	Register the huntgroup comparison operation.
+	 */
+	paircompare_register(PW_HUNTGROUP_NAME, 0, huntgroup_cmp, data);
+
+	/*
+	 *	Save the instantiation data for later.
+	 */
+	*instance = data;
 
 	return 0;
 }
@@ -509,8 +519,7 @@ static int preprocess_init(void)
 static int preprocess_authorize(void *instance, REQUEST *request)
 {
 	char buf[1024];
-
-	instance = instance;
+	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
 	/*
 	 *	Mangle the username, to get rid of stupid implementation
@@ -526,8 +535,10 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	 */
 	ascend_nasport_hack(pairfind(request->packet->vps, PW_NAS_PORT_ID));
 #endif
-
-	hints_setup(request);
+	if (data == NULL) {
+		fprintf(stderr, "FUCK ME\n");
+	}
+	hints_setup(data->hints, request);
 	
 	/*
 	 *	Note that we add the Request-Src-IP-Address to the request
@@ -537,7 +548,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	 */
 	add_nas_attr(request);
 
-	if (huntgroup_access(request->packet->vps) != RLM_MODULE_OK) {
+	if (huntgroup_access(data->huntgroups, request->packet->vps) != RLM_MODULE_OK) {
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
@@ -553,14 +564,14 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 static int preprocess_preaccounting(void *instance, REQUEST *request)
 {
 	int r;
+	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
-	instance = instance;
 	/*
 	 *  Ensure that we have the SAME user name for both
 	 *  authentication && accounting.
 	 */
 	rad_mangle(request);
-	r = hints_setup(request);
+	r = hints_setup(data->hints, request);
 
 	/*
 	 *  Ensure that we log the NAS IP Address in the packet.
@@ -571,13 +582,16 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 }
 
 /*
- *      Clean up.
+ *      Clean up the module's instance.
  */
-static int preprocess_destroy(void)
+static int preprocess_detach(void *instance)
 {
+	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
+
 	paircompare_unregister(PW_HUNTGROUP_NAME, huntgroup_cmp);
-	pairlist_free(&huntgroups);
-	pairlist_free(&hints);
+	pairlist_free(&(data->huntgroups));
+	pairlist_free(&(data->hints));
+	free(data);
 
 	return 0;
 }
@@ -585,15 +599,15 @@ static int preprocess_destroy(void)
 /* globally exported name */
 module_t rlm_preprocess = {
 	"preprocess",
-	0,				/* type: reserved */
-	preprocess_init,		/* initialization */
-	NULL,				/* instantiation */
-	preprocess_authorize,		/* authorization */
-	NULL,				/* authentication */
-	preprocess_preaccounting,	/* pre-accounting */
-	NULL,				/* accounting */
-	NULL,				/* checksimul */
-	NULL,				/* detach */
-	preprocess_destroy,		/* destroy */
+	0,			/* type: reserved */
+	NULL,			/* initialization */
+	preprocess_instantiate,	/* instantiation */
+	preprocess_authorize,	/* authorization */
+	NULL,			/* authentication */
+	preprocess_preaccounting, /* pre-accounting */
+	NULL,			/* accounting */
+	NULL,			/* checksimul */
+	preprocess_detach,	/* detach */
+	NULL,			/* destroy */
 };
 
