@@ -2,6 +2,7 @@ Ver 1.60:
 * Use require_once when including lib/functions.php3 in lib/sql
 * In the buttons toolbar Edit User should not be clickable.
 * Add an arrow gif in htdocs/images to be used in the buttons page when adding multiple finger pages
+* In snmpfinger also consider '-' as a valid character for a username
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
