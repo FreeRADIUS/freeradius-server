@@ -217,6 +217,13 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 			  }
 
 			  /*
+			   *	Print out ONLY the attributes which
+			   *	we're sending over the wire, and print
+			   *	them out BEFORE they're encrypted.
+			   */
+			  debug_pair(reply);
+
+			  /*
 			   *	We have a different vendor.  Re-set
 			   *	the vendor codes.
 			   */
@@ -459,14 +466,6 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 			  default:
 				  break;
 			  }
-			  
-			  /*
-			   *	Print out ONLY the attributes which
-			   *	we're sending over the wire.  Also,
-			   *	pick up any hacked password
-			   *	attributes.
-			   */
-			  debug_pair(reply);
 		  } /* done looping over all attributes */
 
 		  /*
@@ -1050,7 +1049,8 @@ RADIUS_PACKET *rad_recv(int fd)
 /*
  *	Calculate/check digest, and decode radius attributes.
  */
-int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret)
+int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+	       const char *secret)
 {
 	DICT_ATTR		*attr;
 	uint32_t		lvalue;
@@ -1305,9 +1305,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			case FLAG_ENCRYPT_USER_PASSWORD:
 				rad_pwdecode((char *)pair->strvalue,
 					     pair->length, secret,
-					     (char *)packet->vector);
-				pair->lvalue = 1; /* see main/auth.c */
-
+					     (char *)original->vector);
 				if (pair->attribute == PW_USER_PASSWORD) {
 					pair->length = strlen(pair->strvalue);
 				}
@@ -1495,7 +1493,8 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret,
 /*
  *	Decode password.
  */
-int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector)
+int rad_pwdecode(char *passwd, int pwlen, const char *secret,
+		 const char *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
 	char	digest[AUTH_VECTOR_LEN];
