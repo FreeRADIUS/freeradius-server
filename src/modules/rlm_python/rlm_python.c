@@ -498,6 +498,65 @@ static int python_function(REQUEST *request,
 }
 
 
+static struct varlookup {
+	const char*	name;
+	int		value;
+} constants[] = {
+	{ "L_DBG",		L_DBG			},
+	{ "L_AUTH",		L_AUTH			},
+	{ "L_INFO",		L_INFO			},
+	{ "L_ERR",		L_ERR			},
+	{ "L_PROXY",		L_PROXY			},
+	{ "L_CONS",		L_CONS			},
+	{ "RLM_MODULE_REJECT",	RLM_MODULE_REJECT	},
+	{ "RLM_MODULE_FAIL",	RLM_MODULE_FAIL		},
+	{ "RLM_MODULE_OK",	RLM_MODULE_OK		},
+	{ "RLM_MODULE_HANDLED",	RLM_MODULE_HANDLED	},
+	{ "RLM_MODULE_INVALID",	RLM_MODULE_INVALID	},
+	{ "RLM_MODULE_USERLOCK",RLM_MODULE_USERLOCK	},
+	{ "RLM_MODULE_NOTFOUND",RLM_MODULE_NOTFOUND	},
+	{ "RLM_MODULE_NOOP",	RLM_MODULE_NOOP		},
+	{ "RLM_MODULE_UPDATED",	RLM_MODULE_UPDATED	},
+	{ "RLM_MODULE_NUMCODES",RLM_MODULE_NUMCODES	},
+	{ NULL, 0 },
+};
+
+/*
+ * Import a user module and load a function from it
+ */
+static int load_python_function(const char* module, const char* func,
+				PyObject** pyModule, PyObject** pyFunc) {
+
+    if ((module==NULL) || (func==NULL)) {
+	*pyFunc=NULL;
+	*pyModule=NULL;
+    } else {
+	PyObject *pName;
+
+	pName = PyString_FromString(module);	
+	Py_INCREF(pName);
+	*pyModule = PyImport_Import(pName);
+	Py_DECREF(pName);
+	if (*pyModule != NULL) {
+	    PyObject *pDict;
+
+	    pDict = PyModule_GetDict(*pyModule);
+	    /* pDict: borrowed reference */
+
+	    *pyFunc = PyDict_GetItemString(pDict, func);
+	    /* pFunc: Borrowed reference */
+	} else {
+	    python_error();
+
+	    radlog(L_ERR, "Failed to import python module \"%s\"\n", module);
+	    return -1;
+	}
+    }
+
+    return 0;
+}
+
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -512,7 +571,8 @@ static int python_function(REQUEST *request,
 static int python_instantiate(CONF_SECTION *conf, void **instance)
 {
     rlm_python_t *data;
-    PyObject *pName, *module;
+    PyObject *module;
+    int idx;
 
     /*
 	 *	Set up a storage area for instance data
@@ -528,8 +588,6 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	return -1;
     }
 	
-    *instance = data;
-
 
     /*
      * Setup our 'radiusd' module.
@@ -541,283 +599,67 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 			"FreeRADIUS Module.")) == NULL) {
 
 	radlog(L_ERR, "Python Py_InitModule3 failed");
+	free(data);
+	return -1;
     }
     
     /*
-     * Constants
-     * xxx Find a way to automatically update this when C source changes.
+     * Load constants into module
      */
-    if ((PyModule_AddIntConstant(module, "L_DBG", L_DBG) == -1) ||
-	(PyModule_AddIntConstant(module, "L_AUTH", L_AUTH) == -1) ||
-	(PyModule_AddIntConstant(module, "L_INFO", L_INFO) == -1) ||
-	(PyModule_AddIntConstant(module, "L_ERR", L_ERR) == -1) ||
-	(PyModule_AddIntConstant(module, "L_PROXY", L_PROXY) == -1) ||
-	(PyModule_AddIntConstant(module, "L_CONS", L_CONS) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_REJECT",
-				 RLM_MODULE_REJECT) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_FAIL",
-				 RLM_MODULE_FAIL) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_OK",
-				 RLM_MODULE_OK) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_HANDLED",
-				 RLM_MODULE_HANDLED) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_INVALID",
-				 RLM_MODULE_INVALID) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_USERLOCK",
-				 RLM_MODULE_USERLOCK) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_NOTFOUND",
-				 RLM_MODULE_NOTFOUND) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_NOOP",
-				 RLM_MODULE_NOOP) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_UPDATED",
-				 RLM_MODULE_UPDATED) == -1) ||
-	(PyModule_AddIntConstant(module, "RLM_MODULE_NUMCODES",
-				 RLM_MODULE_NUMCODES) == -1)) {
+    for (idx=0; constants[idx].name; idx++)
+	if ((PyModule_AddIntConstant(module, constants[idx].name, constants[idx].value)) == -1) {
 
-	radlog(L_ERR, "Python AddIntConstant failed");
-	return -1;
-    }
+	    radlog(L_ERR, "Python AddIntConstant failed");
+	}
 
 
     /*
      * Import user modules.
-     * xxx There should be a more elegant way of writing this.
-     * xxx Loop through a pointer array for the objects and name strings?
      */
 
-    if ((data->mod_instantiate == NULL) || (data->func_instantiate == NULL)) {
-	data->pFunc_instantiate = NULL;
-    }
-    else {
-	pName = PyString_FromString(data->mod_instantiate);	
-	data->pModule_instantiate = PyImport_Import(pName);
-	if (data->pModule_instantiate != NULL) {
-	    PyObject *pDict;
-
-	    pDict = PyModule_GetDict(data->pModule_instantiate);
-	    /* pDict: borrowed reference */
-
-	    data->pFunc_instantiate =
-		PyDict_GetItemString(pDict, data->func_instantiate);
-	    /* pFunc: Borrowed reference */
-	}
-
-	else {
-	    python_error();
-
-	    /* No need to decrement references because we are exiting. */
-
-	    radlog(L_ERR, "Failed to import python module \"%s\"\n",
-		   data->mod_instantiate);
-	    return -1;
-	}
+    if (load_python_function(data->mod_instantiate, data->func_instantiate,
+		&data->pModule_instantiate, &data->pFunc_instantiate)==-1) {
+	/* TODO: check if we need to cleanup data */
+	return -1;
     }
 
-    if ((data->mod_authenticate == NULL) || (data->func_authenticate == NULL)) {
-	data->pFunc_authenticate = NULL;
-    }
-    else {
-	pName = PyString_FromString(data->mod_authenticate);
-
-	/* Import modules */
-	data->pModule_authenticate = PyImport_Import(pName);
-	if (data->pModule_authenticate != NULL) {
-	    PyObject *pDict;
-
-	    pDict = PyModule_GetDict(data->pModule_authenticate);
-	    /* pDict: borrowed reference */
-
-	    data->pFunc_authenticate =
-		PyDict_GetItemString(pDict, data->func_authenticate);
-	    /* pFunc: Borrowed reference */
-	}
-	else {
-	    python_error();
-
-	    /* No need to decrement references because we are exiting. */
-
-	    radlog(L_ERR, "Failed to import Python module \"%s\"\n",
-		   data->mod_authenticate);
-	    return -1;
-	}
+    if (load_python_function(data->mod_authenticate, data->func_authenticate,
+		&data->pModule_authenticate, &data->pFunc_authenticate)==-1) {
+	/* TODO: check if we need to cleanup data */
+	return -1;
     }
 
-    
-    if ((data->mod_authorize == NULL) || (data->func_authorize == NULL)) {
-	data->pFunc_authorize = NULL;
-    }
-    else {
-	pName = PyString_FromString(data->mod_authorize);	
-	data->pModule_authorize = PyImport_Import(pName);
-	if (data->pModule_authorize != NULL) {
-	    PyObject *pDict;
-
-	    pDict = PyModule_GetDict(data->pModule_authorize);
-	    /* pDict: borrowed reference */
-
-	    data->pFunc_authorize =
-		PyDict_GetItemString(pDict, data->func_authorize);
-	    /* pFunc: Borrowed reference */
-	}
-
-	else {
-	    python_error();
-
-	    /* No need to decrement references because we are exiting. */
-
-	    radlog(L_ERR, "Failed to import python module \"%s\"\n",
-		   data->mod_authorize);
-	    return -1;
-	}
+    if (load_python_function(data->mod_authorize, data->func_authorize,
+		&data->pModule_authorize, &data->pFunc_authorize)==-1) {
+	/* TODO: check if we need to cleanup data */
+	return -1;
     }
 
-    if ((data->mod_authenticate == NULL) || (data->func_authenticate == NULL)) {
-	data->pFunc_authenticate = NULL;
-    }
-    else {
-	pName = PyString_FromString(data->mod_authenticate);
-
-	/* Import modules */
-	data->pModule_authenticate = PyImport_Import(pName);
-	if (data->pModule_authenticate != NULL) {
-	    PyObject *pDict;
-
-	    pDict = PyModule_GetDict(data->pModule_authenticate);
-	    /* pDict: borrowed reference */
-
-	    data->pFunc_authenticate =
-		PyDict_GetItemString(pDict, data->func_authenticate);
-	    /* pFunc: Borrowed reference */
-	}
-	else {
-	    python_error();
-
-	    /* No need to decrement references because we are exiting. */
-
-	    radlog(L_ERR, "Failed to import Python module \"%s\"\n",
-		   data->mod_authenticate);
-	    return -1;
-	}
+    if (load_python_function(data->mod_preacct, data->func_preacct,
+		&data->pModule_preacct, &data->pFunc_preacct)==-1) {
+	/* TODO: check if we need to cleanup data */
+	return -1;
     }
 
-    if ((data->mod_preacct == NULL) || (data->func_preacct == NULL)) {
-	data->pFunc_preacct = NULL;
-    }
-    else {
-	pName = PyString_FromString(data->mod_preacct);
-
-	/* Import modules */
-	data->pModule_preacct = PyImport_Import(pName);
-	if (data->pModule_preacct != NULL) {
-	    PyObject *pDict;
-		
-	    pDict = PyModule_GetDict(data->pModule_preacct);
-	    /* pDict: borrowed reference */
-		
-	    data->pFunc_preacct =
-		PyDict_GetItemString(pDict, data->func_preacct);
-	    /* pFunc: Borrowed reference */
-	}
-	else {
-	    python_error();
-
-	    /* No need to decrement references because we are exiting. */
-		
-	    radlog(L_ERR, "Failed to import Python module \"%s\"\n",
-		   data->mod_preacct);
-	    return -1;
-	}
+    if (load_python_function(data->mod_accounting, data->func_accounting,
+		&data->pModule_accounting, &data->pFunc_accounting)==-1) {
+	/* TODO: check if we need to cleanup data */
+	return -1;
     }
 
-
-    if ((data->mod_accounting == NULL) || (data->func_accounting == NULL)){
-	data->pFunc_accounting = NULL;
-    }
-    else {
-	pName = PyString_FromString(data->mod_accounting);
-
-	/* Import modules */
-	data->pModule_accounting = PyImport_Import(pName);
-	if (data->pModule_accounting != NULL) {
-	    PyObject *pDict;
-		
-	    pDict = PyModule_GetDict(data->pModule_accounting);
-	    /* pDict: borrowed reference */
-
-	    data->pFunc_accounting =
-		PyDict_GetItemString(pDict, data->func_accounting);
-	    /* pFunc: Borrowed reference */
-	}
-	else {
-	    python_error();
-
-	    /* No need to decrement references because we are exiting. */
-		
-	    radlog(L_ERR, "Failed to import Python module \"%s\"\n",
-		   data->mod_accounting);
-	    return -1;
-	}
+    if (load_python_function(data->mod_checksimul, data->func_checksimul,
+		&data->pModule_checksimul, &data->pFunc_checksimul)==-1) {
+	/* TODO: check if we need to cleanup data */
+	return -1;
     }
 
-    if ((data->mod_checksimul == NULL) || (data->func_checksimul == NULL)){
-	data->pFunc_checksimul = NULL;
-    }
-    else {
-	pName = PyString_FromString(data->mod_checksimul);
-
-	/* Import modules */
-	data->pModule_checksimul = PyImport_Import(pName);
-	if (data->pModule_checksimul != NULL) {
-	    PyObject *pDict;
-		
-	    pDict = PyModule_GetDict(data->pModule_checksimul);
-	    /* pDict: borrowed reference */
-
-	    data->pFunc_checksimul =
-		PyDict_GetItemString(pDict, data->func_checksimul);
-	    /* pFunc: Borrowed reference */
-	}
-	else {
-	    python_error();
-		
-	    /* No need to decrement references because we are exiting. */
-		
-	    radlog(L_ERR, "Failed to import Python module \"%s\"\n",
-		   data->mod_checksimul);
-	    return -1;
-	}
+    if (load_python_function(data->mod_detach, data->func_detach,
+		&data->pModule_detach, &data->pFunc_detach)==-1) {
+	/* TODO: check if we need to cleanup data */
+	return -1;
     }
 
-
-    if ((data->mod_detach == NULL) || (data->func_detach == NULL)) {
-	data->func_detach = NULL;
-    }
-    else {
-	pName = PyString_FromString(data->mod_detach);
-
-	/* Import modules */
-	data->pModule_detach = PyImport_Import(pName);
-	if (data->pModule_detach != NULL) {
-	    PyObject *pDict;
-		
-	    pDict = PyModule_GetDict(data->pModule_detach);
-	    /* pDict: borrowed reference */
-
-	    data->pFunc_detach =
-		PyDict_GetItemString(pDict, data->func_detach);
-	    /* pFunc: Borrowed reference */
-	}
-	else {
-	    python_error();
-		
-	    /* No need to decrement references because we are exiting. */
-		
-	    radlog(L_ERR, "Failed to import Python module \"%s\"\n",
-		   data->mod_detach);
-	    return -1;
-	}
-    }
-
+    *instance=data;
 
     /* Call the instantiate function.  No request.  Use the return value. */
     return python_function(NULL, data->pFunc_instantiate, "instantiate");

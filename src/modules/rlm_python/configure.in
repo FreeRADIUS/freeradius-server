@@ -85,8 +85,8 @@ if test x$with_[]modname != xno; then
 		LIBS=$old_LIBS
 
 		if test "x$ac_cv_lib_${ac_safe_Py_Initialize}" = "xyes"; then
-		python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lm -lpython${PY_VERSION}"
-		targetname=modname
+			python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lpython${PY_VERSION}"
+			targetname=modname
 		else
 			targetname=
 			fail="$fail libpython$PY_VERSION"
