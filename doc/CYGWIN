@@ -112,28 +112,17 @@ zip	2.3-2
 zlib	1.1.4-1
 
 3.	Download the FreeRADIUS source code form
-http://www.freeradius.org/. Version 0.8.1 is the most recent at time of
-writing.
+http://www.freeradius.org/.
 
-4.	Expand freeradius.0.8.1.tar.gz
+4.	Expand the FreeRADIUS source file.
 
 5.	Make the following changes to the source code
 	(the diffs are reversed)
 
-Makefile
-
-< install: installed
----
-> install:
-71,73d70
-< installed:
-<       touch installed
-<
-
 src/main/Makefile.in
 
 145,148c145,148
-<       $(LIBTOOL) --mode=3Dinstall $(INSTALL) -m 755 $(INSTALLSTRIP)
+<       $(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP)
 radiusd.exe	$(R)$(sbindir)
 <       $(INSTALL) -m 755 $(INSTALLSTRIP) radwho.exe
 $(R)$(bindir)
@@ -142,7 +131,7 @@ $(R)$(bindir)
 <       $(INSTALL) -m 755 $(INSTALLSTRIP) radzap.exe
 $(R)$(bindir)
 ---
->       $(LIBTOOL) --mode=3Dinstall $(INSTALL) -m 755 $(INSTALLSTRIP)
+>       $(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP)
 radiusd	$(R)$(sbindir)
 >       $(INSTALL) -m 755 $(INSTALLSTRIP) radwho
 $(R)$(bindir)
@@ -175,20 +164,11 @@ src/modules/rlm_mschap/Makefile
 ---
 >       $(INSTALL) -m 755 $(INSTALLSTRIP) smbencrypt $(R)$(bindir)
 
-6.	Link gcc.exe to cc.exe is /bin with ln -s ./gcc.exe cc.exe -
-this is required because the rlm_eap_tls configure file is incorrect and
-uses cc even if it is not defined.
-
-7.	Run configure with the following command line
+6.	Run configure with the following command line
 
 ./configure -without-snmp -disable-shared -enable-static
 
-8.	Modify the Make.inc after configure has completed so that the
-STATIC_MODULES variable is set to
--dlpreopen ../modules/rlm_eap/types/rlm_eap_md5/rlm_eap_md5.la \
--dlpreopen ../modules/rlm_eap/types/rlm_eap_tls/rlm_eap_tls.la
-=09
-9.	Execute make and then make install
+7.	Execute make and then make install
 
 
 Philip Blow
