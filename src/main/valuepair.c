@@ -380,7 +380,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 					 *	Didn't match: delete old
 					 *	match, if it existed.
 					 */
-					if ((compare == 0) ||
+					if ((compare != 0) ||
 					    (rxmatch[i].rm_so == -1)) {
 						p = request_data_get(request, request,
 								     REQUEST_DATA_REGEX | i);
