@@ -238,6 +238,9 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		   (handler->eap_ds->response->type.type == PW_EAP_LEAP) &&
 		   (handler->eap_ds->request->code == PW_EAP_SUCCESS) &&
 		   (handler->eap_ds->request->type.type == 0)) {
+		VALUE_PAIR *state;
+
+		DEBUG2("  rlm_eap: Saving LEAP state");
 		handler->id = eap_regenerateid(request, (u_char)handler->eap_ds->request->id);
 		if (handler->id == NULL) {
 			radlog(L_ERR, "rlm_eap: problem in generating ID, Present EAP is not valid");
@@ -245,7 +248,19 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		} else {
 			eaplist_add(&(eap_stuff->echolist), handler);
 		}
+
+		/*
+		 *  And copy the State attribute from the request
+		 */
+		state = paircopy2(request->packet->vps, PW_STATE);
+
+		/*
+		 *  FIXME: Assert there's only 1 state?
+		 */
+		pairadd(&request->reply->vps, state);
+
 	} else {
+		DEBUG2("  rlm_eap: Freeing handler");
 		/* handler is no more required, free it now */
 		eap_handler_free(&handler);
 	}
