@@ -553,6 +553,7 @@ static int passwd_authorize(void *instance, REQUEST *request)
 		 *	over-write existing attributes.
 		 */
 		pairmove(&request->config_items, &key);
+		pairfree(&key);	/* pairmove may have NOT moved it */
 	}
 	return RLM_MODULE_OK;
 
