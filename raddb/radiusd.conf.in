@@ -597,6 +597,12 @@ modules {
 	#  Extensible Authentication Protocol
 	#
 	#  For all EAP related authentications 
+	#
+	#  Whatever you do, do NOT set 'Auth-Type := EAP'.  The server
+	#  is smart enough to figure this out on its own.  The most
+	#  common side effect of setting 'Auth-Type := EAP' is that the
+	#  users then cannot use ANY other authentication method.
+	#
 	eap {
 		#  Invoke the default supported EAP type when
 		#  EAP-Identity response is received.
@@ -844,10 +850,23 @@ modules {
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
 
 		ldap_connections_number = 5
+
 		#
 		# NOTICE: The password_header directive is NOT case insensitive
 		#
 		# password_header = "{clear}"
+		#
+		#  The server can usually figure this out on its own, and pull
+		#  the correct User-Password or NT-Password from the database.
+		#
+		#  Note that NT-Passwords MUST be stored as a 32-digit hex
+		#  string, and MUST start off with "0x", such as:
+		#
+		#	0x000102030405060708090a0b0c0d0e0f
+		#
+		#  Without the leading "0x", NT-Passwords will not work.
+		#  This goes for NT-Passwords stored in SQL, too.
+		#
 		# password_attribute = userPassword
 		# groupname_attribute = cn
 		# groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"
