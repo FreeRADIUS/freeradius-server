@@ -208,6 +208,13 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
 			found = 1;
 		}
+	} else if ((strncasecmp(attrname,"proxy-reply:",12) == 0) &&
+		   (request->proxy_reply != NULL)) {
+		if((tmpda = dict_attrbyname(&attrname[12])) && 
+				(tmppair = pairfind(request->proxy_reply->vps, tmpda->attr))) {
+			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
+			found = 1;
+		}
 	} else if ((c = find_xlat_func(attrname)) != NULL){
 		DEBUG("radius_xlat: Runing registered xlat function of module %s for string \'%s\'",
 				c->module, attrname+(c->length+1));
