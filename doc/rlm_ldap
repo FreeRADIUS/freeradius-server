@@ -109,12 +109,6 @@ the rlm_ldap module:
 #
 #	profile_attribute = "radiusProfileDn"
 
-#	access_group: membership in this group controls radius access for user
-#	default: NULL 
-#	(The default NULL means all users located in the LDAP tree under specified "basedn")
-#	
-		access_group = "cn=RemoteUsers,o=My Org,c=UA"
-
 #	access_attr_used_for_allow: Define if the access attribute (described below) will be
 #	used to allow access (meaning if it exists then user remote access will be allowed)
 #	or to deny access.

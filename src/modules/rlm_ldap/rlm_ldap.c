@@ -86,6 +86,8 @@
  *	  can either contain the name or the DN of the group. Added the groupmembership_attribute
  *	  configuration directive
  *	- Move the ldap_{get,release}_conn in ldap_groupcmp so that we hold a connection for the minimum time.
+ *	- Now that ldap_groupcmp is complete we really don't need access_group. Removed it.
+ *	- Remember to free groupmembership_attribute in ldap_detach
  */
 static const char rcsid[] = "$Id$";
 
@@ -189,7 +191,6 @@ typedef struct {
 	char           *basedn;
 	char           *default_profile;
 	char           *profile_attr;
-	char           *access_group;
 	char           *access_attr;
 	char           *passwd_hdr;
 	char           *passwd_attr;
@@ -223,7 +224,6 @@ static CONF_PARSER module_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
 	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,default_profile), NULL, NULL},
 	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,profile_attr), NULL, NULL},
-	{"access_group", PW_TYPE_STRING_PTR, offsetof(ldap_instance,access_group), NULL, NULL},
 	{"password_header", PW_TYPE_STRING_PTR, offsetof(ldap_instance,passwd_hdr), NULL, NULL},
 	{"password_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,passwd_attr), NULL, NULL},
 	/* LDAP attribute name that controls remote access */
@@ -909,7 +909,6 @@ ldap_authorize(void *instance, REQUEST * request)
 	LDAPMessage	*msg = NULL;
 	LDAPMessage	*def_msg = NULL;
 	LDAPMessage	*def_attr_msg = NULL;
-	LDAPMessage	*gr_result = NULL;
 	LDAPMessage	*def_result = NULL;
 	LDAPMessage	*def_attr_result = NULL;
 	ldap_instance	*inst = instance;
@@ -1034,42 +1033,6 @@ ldap_authorize(void *instance, REQUEST * request)
 	}
 	if (inst->cache_timeout >0)
 		ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
-
-	/* Remote access controled by group membership of the user object */
-	if (inst->access_group != NULL) {
-		static char	group[MAX_AUTH_QUERY_LEN];
-		static char	*attrs[] = {"dn", NULL};
-
-		DEBUG("rlm_ldap: checking user membership in dialup-enabling group %s", inst->access_group);
-		/*
-		 * uniquemember appears in Netscape Directory Server's groups
-		 * since we have objectclass groupOfNames and
-		 * groupOfUniqueNames
-		 */
-		if(!radius_xlat(group, MAX_AUTH_QUERY_LEN, inst->access_group,
-				request, NULL)) 
-			radlog (L_ERR, "rlm_ldap: unable to munge group.\n"); 
-
-		if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, inst->groupmemb_filt,
-			        request, NULL)) 
-			radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
-
-		if ((res = perform_search(instance, conn, group, LDAP_SCOPE_BASE, filter, attrs, &gr_result)) != RLM_MODULE_OK) {
-			if (inst->cache_timeout >0 && conn->ld != NULL)
-				ldap_disable_cache(conn->ld);
-			ldap_msgfree(result);
-			ldap_release_conn(conn_id,inst->conns);
-			if (res == RLM_MODULE_NOTFOUND){
-				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: User is not an access group member");
-				module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_fmsg_vp);
-				return (RLM_MODULE_USERLOCK);
-			}
-			else
-				return (res);
-		} else 
-			ldap_msgfree(gr_result);
-	}
 
 	/*
 	 * Check for the default profile entry. If it exists then add the 
@@ -1449,8 +1412,6 @@ ldap_detach(void *instance)
 		free((char *) inst->password);
 	if (inst->basedn)
 		free((char *) inst->basedn);
-	if (inst->access_group)
-		free((char *) inst->access_group);
 	if (inst->dictionary_mapping)
 		free(inst->dictionary_mapping);
 	if (inst->filter)
@@ -1463,6 +1424,8 @@ ldap_detach(void *instance)
 		free((char *) inst->groupname_attr);
 	if (inst->groupmemb_filt)
 		free((char *) inst->groupmemb_filt);
+	if (inst->groupmemb_attr)
+		free((char *) inst->groupmemb_attr);
 	if (inst->conns){
 		int i=0;
 
