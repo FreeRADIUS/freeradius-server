@@ -41,7 +41,7 @@ distclean: clean
 ######################################################################
 reconfig: configure src/include/autoconf.h.in
 
-configure: configure.in
+configure: configure.in aclocal.m4
 	autoconf
 
 # autoheader might not change autoconf.h.in, so touch a stamp file
