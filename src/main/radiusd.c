@@ -2434,7 +2434,8 @@ static struct timeval *setuptimeout()
 	 *	too long...
 	 */
 	if ((last_tv_ptr != NULL) &&
-	    (last_setup == now)) {
+	    (last_setup == now) &&
+	    (tv.tv_sec != 0)) {		
 		last_tv = tv;
 		DEBUG2("Waking up in %d seconds...",
 		       (int) last_tv_ptr->tv_sec);
