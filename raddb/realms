@@ -1,4 +1,12 @@
 #
+#	THIS FILE IS DEPRECATED.
+#
+#	You should NOT be using this file to configure the server.
+#	It is here ONLY for backwards compatibility.
+#
+#	See 'proxy.conf' for the new configuration.
+#
+#
 # realms	This file contains a list of realms. When a user logs
 #		in with @realm as the last part of the loginname,
 #		the realm part is looked up in this file. If found,
@@ -29,4 +37,4 @@
 #company.com		radius.company.com:1600
 #bla.com		LOCAL
 #replicateme		radius2.company.com		notrealm
-
+#foo.com			192.168.1.39

@@ -4,6 +4,8 @@
 #	You should NOT be using this file to configure the server.
 #	It is here ONLY for backwards compatibility.
 #
+#	See 'clients.conf' for the new configuration.
+#
 #
 # clients	This file contains a list of clients which are allowed to
 #		make authentication requests and their encryption key.
@@ -14,10 +16,6 @@
 #		  for the client.
 #		* The second field (seperated by blanks or tabs) is the 
 #		  encryption key.
-
-
-# This file is obselete!  Please use the much-better clients.conf file!
-
 
 # Client Name		Key
 #----------------	----------
