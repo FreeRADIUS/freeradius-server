@@ -23,7 +23,9 @@ function da_sql_host_connect($server,$config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
-	return @ocilogon($SQL_user, $SQL_passwd, $config[sql_database]);
+	$link = @ocilogon($SQL_user, $SQL_passwd, $config[sql_database]);
+        $res = @da_sql_query($link,$config,"ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'");
+	return $link;
 }
 
 function da_sql_connect($config)
@@ -37,7 +39,9 @@ function da_sql_connect($config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
-	return @ocilogon($SQL_user, $SQL_passwd, $config[sql_database]);
+	$link = @ocilogon($SQL_user, $SQL_passwd, $config[sql_database]);
+        $res = @da_sql_query($link,$config,"ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'");
+	return $link;
 }
 
 function da_sql_pconnect($config)
@@ -51,7 +55,9 @@ function da_sql_pconnect($config)
 		$SQL_user = $config[sql_username];
 		$SQL_passwd = $config[sql_password];
 	}
-	return @ociplogon($SQL_user, $SQL_passwd, $config[sql_database]);
+	$link = @ociplogon($SQL_user, $SQL_passwd, $config[sql_database]);
+        $res = @da_sql_query($link,$config,"ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'");
+	return $link;
 }
 
 function da_sql_close($link,$config)
