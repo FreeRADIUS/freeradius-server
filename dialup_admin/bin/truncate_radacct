@@ -34,6 +34,9 @@ $sql_password =~ s/(\W)/\\$1/g;
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
 $date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,$year,$wday,$yday,$isdst);
 print "$date\n";
+if (POSIX::strftime("%Y-%m-%d %T",localtime) eq $date){
+	die "Could not set correct back date.\n";
+}
 $query = "";
 $query = "LOCK TABLES $sql_accounting_table WRITE;" if ($sql_type eq 'mysql');
 $query .= "DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date' AND AcctStopTime IS NOT NULL ;";
