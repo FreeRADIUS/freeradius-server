@@ -20,12 +20,13 @@
 #else
 #  include <utmp.h>
 #endif
+
 #ifdef __osf__
 #  define UT_NAMESIZE	32
 #  define UT_LINESIZE	32
 #  define UT_HOSTSIZE	64
 #endif
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(bsdi)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(bsdi) || defined(__OpenBSD__)
 #  ifndef UTMP_FILE
 #    define UTMP_FILE "/var/run/utmp"
 #  endif

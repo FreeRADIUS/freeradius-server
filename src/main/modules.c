@@ -255,7 +255,15 @@ int read_modules_file(char *filename)
 				radius_dir, library);
 		else
 			strNcpy(libraryfile, library, sizeof(libraryfile));
+#ifdef __OpenBSD__
+		/* OpenBSD doesn't pay attention to the second value
+		 * as of the present. It should be set to DL_LAZY for
+		 * future compatibility
+		 */
+		handle = dlopen(libraryfile, DL_LAZY);
+#else
 		handle = dlopen(libraryfile, RTLD_NOW | RTLD_GLOBAL);
+#endif
 
 		if (handle == NULL) {
 			fprintf(stderr, "[%s:%d] Failed to link to module %s:"
