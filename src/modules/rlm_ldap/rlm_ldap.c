@@ -100,6 +100,7 @@
  *	- Allow multiple regular profiles for an entry
  * Oct 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Disable cache after searching for the default profile
+ *	- Use the MAX_FAILED_CONNS_* in ldap_authenticate() when calling ldap_connect()
  */
 static const char rcsid[] = "$Id$";
 
@@ -197,6 +198,7 @@ typedef struct {
 	int		cache_size;
 	int		do_comp;
 	int		default_allow;
+	int		failed_conns;
 	char           *login;
 	char           *password;
 	char           *filter;
@@ -334,6 +336,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->reply_item_map = NULL;
 	inst->check_item_map = NULL;
 	inst->conns = NULL;
+	inst->failed_conns = 0;
 
 	paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, ldap_groupcmp, inst);
 	DEBUG("conns: %p",inst->conns);
@@ -1218,6 +1221,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	int		conn_id = -1;
 
 	DEBUG("rlm_ldap: - authenticate");
+
 	/*
 	 * Ensure that we're being passed a plain-text password, and not
 	 * anything else.
@@ -1242,6 +1246,18 @@ ldap_authenticate(void *instance, REQUEST * request)
 		radlog(L_ERR, "rlm_ldap: empty password supplied");
 		return RLM_MODULE_INVALID;
 	}
+
+	/*
+	 * Check that we don't have any failed connections. If we do there's no real need
+	 * of runing. Also give it another chance if we have a lot of failed connections.
+	 */
+	if (inst->failed_conns > MAX_FAILED_CONNS_END)
+		inst->failed_conns = 0;
+	if (inst->failed_conns > MAX_FAILED_CONNS_START){
+		inst->failed_conns++;
+		return RLM_MODULE_FAIL;
+	}
+
 
 	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"", 
 	       request->username->strvalue, request->password->strvalue);
@@ -1297,9 +1313,14 @@ ldap_authenticate(void *instance, REQUEST * request)
 			       1, &res);
 	if (ld_user == NULL){
 		if (res == RLM_MODULE_REJECT){
+			inst->failed_conns = 0;
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Bind as user failed");
 			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 			pairadd(&request->packet->vps, module_fmsg_vp);
+		}
+		if (res == RLM_MODULE_FAIL){
+			DEBUG("rlm_ldap: ldap_connect() failed");
+			inst->failed_conns++;
 		}
 		return (res);
 	}
@@ -1307,6 +1328,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	DEBUG("rlm_ldap: user %s authenticated succesfully",
 	      request->username->strvalue);
 	ldap_unbind_s(ld_user);
+	inst->failed_conns = 0;
 
 	return RLM_MODULE_OK;
 }
