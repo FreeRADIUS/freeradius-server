@@ -321,8 +321,7 @@ void rl_delete(REQUEST *request)
 		if (request->proxy) {
 			pthread_mutex_lock(&proxy_mutex);
 			node = rbtree_find(proxy_tree, request);
-			rad_assert(node != NULL);
-			rbtree_delete(proxy_tree, node);
+			if (node) rbtree_delete(proxy_tree, node);
 			pthread_mutex_unlock(&proxy_mutex);
 		}
 #if 0
@@ -469,8 +468,9 @@ void rl_add_proxy(REQUEST *request)
 REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 {
 #ifdef WITH_RBTREE
-	REQUEST myrequest, *maybe;
+	REQUEST myrequest, *maybe = NULL;
 	RADIUS_PACKET myproxy;
+	rbnode_t *node;
 	
 	myrequest.proxy = &myproxy;
 	
@@ -483,7 +483,11 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 	myproxy.dst_port = packet->src_port;
 	
 	pthread_mutex_lock(&proxy_mutex);
-	maybe = rbtree_finddata(proxy_tree, &myrequest);
+	node = rbtree_find(proxy_tree, &myrequest);
+	if (node) {
+		maybe = rbtree_node2data(proxy_tree, node);
+		rbtree_delete(proxy_tree, node);
+	}
 	pthread_mutex_unlock(&proxy_mutex);
 	return maybe;
 #else
