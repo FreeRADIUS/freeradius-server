@@ -196,9 +196,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
-/*
- */
-static int checkval_authorize(void *instance, REQUEST *request)
+static int do_checkval(void *instance, REQUEST *request)
 {
 	rlm_checkval_t *data = (rlm_checkval_t *) instance;
 	int ret=RLM_MODULE_NOOP;
@@ -292,6 +290,18 @@ static int checkval_authorize(void *instance, REQUEST *request)
 }
 
 /*
+ */
+static int checkval_authorize(void *instance, REQUEST *request)
+{
+	return do_checkval(instance,request);
+}
+
+static int checkval_accounting(void *instance, REQUEST *request)
+{
+	return do_checkval(instance,request);
+}
+
+/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -309,7 +319,7 @@ module_t rlm_checkval = {
 		NULL,			/* authentication */
 		checkval_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
-		NULL,			/* accounting */
+		checkval_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,		        /* pre-proxy */
 		NULL,		        /* post-proxy */
