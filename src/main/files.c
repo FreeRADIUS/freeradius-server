@@ -19,6 +19,7 @@ static const char rcsid[] = "$Id$";
 #include	<netdb.h>
 #include	<ctype.h>
 #include	<fcntl.h>
+#include	<errno.h>
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>
@@ -119,13 +120,16 @@ PAIR_LIST *pairlist_read(const char *file, int complain)
 	int		lineno = 0;
 	int		old_lineno = 0;
 	int		parsecode;
+	char		newfile[8192];
 
 	/*
-	 *	Open the table
+	 *	Open the file.  The error message should be a little
+	 *	more useful...
 	 */
 	if ((fp = fopen(file, "r")) == NULL) {
 		if (!complain) return NULL;
-		log(L_CONS|L_ERR, "Couldn't open %s for reading", file);
+		log(L_CONS|L_ERR, "Couldn't open %s for reading: %s",
+		    file, strerror(errno));
 		return NULL;
 	}
 
@@ -171,8 +175,31 @@ parse_again:
 				while (!isspace(*ptr))
 					ptr++;
 				*ptr = 0;
-				if ((t = pairlist_read(s, 1)) == NULL)
-					continue;
+
+				/*
+				 *	If it's an absolute pathname,
+				 *	then use it verbatim.
+				 *
+				 *	If not, then make the $include
+				 *	files *relative* to the current
+				 *	file.
+				 */
+				if (*s != '/') {
+					strNcpy(newfile, file,
+						sizeof(newfile));
+					ptr = strrchr(newfile, '/');
+					strcpy(ptr + 1, s);
+					s = newfile;
+				}
+
+				if ((t = pairlist_read(s, 0)) == NULL) {
+					pairlist_free(&pl);
+					log(L_ERR|L_CONS,
+					    "%s[%d]: Could not open included file %s: %s",
+					    file, lineno, s, strerror(errno));
+					fclose(fp);
+				return NULL;
+				}
 				if (last)
 					last->next = t;
 				else
