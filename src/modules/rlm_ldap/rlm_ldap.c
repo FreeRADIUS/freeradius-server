@@ -101,7 +101,7 @@ VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *);
 
 static int rlm_ldap_init (int argc, char **argv)
 {
-	conf_main = module_config_find("ldap");       
+	conf_main = cf_module_config_find("ldap");       
 		
 /*       strcpy(ldap_server,"");
        strcpy(ldap_login,"");
@@ -111,25 +111,25 @@ static int rlm_ldap_init (int argc, char **argv)
        ldap_port = 389;
        use_ldap_auth = 0;
 
-	if (pair_find("ldapserver", conf_main) != NULL) {
-		strcpy(ldap_server,value_find("ldapserver",conf_main));
+	if (cf_pair_find(conf_main,"ldapserver") != NULL) {
+		strcpy(ldap_server,cf_section_value_find(conf_main,"ldapserver"));
 		use_ldap_auth = 1;
 	}
 	
-	if (pair_find("ldapport", conf_main) != NULL)
-		ldap_port = atoi(value_find("ldapport",conf_main)); 
+	if (cf_pair_find(conf_main,"ldapport") != NULL)
+		ldap_port = atoi(cf_section_value_find(conf_main,"ldapport")); 
 
-	if (pair_find("ldaplogin", conf_main) != NULL)
-		strcpy(ldap_login,value_find("ldaplogin",conf_main));
+	if (cf_pair_find(conf_main,"ldaplogin") != NULL)
+		strcpy(ldap_login,cf_section_value_find(conf_main,"ldaplogin"));
 
-	if (pair_find("ldappassword", conf_main) != NULL)
-		strcpy(ldap_password,value_find("ldappassword",conf_main));
+	if (cf_pair_find(conf_main,"ldappassword") != NULL)
+		strcpy(ldap_password,cf_section_value_find(conf_main,"ldappassword"));
 
-	if (pair_find("ldapbasedn", conf_main) != NULL)
-		strcpy(ldap_basedn,value_find("ldapbasedn",conf_main));
+	if (cf_pair_find(conf_main,"ldapbasedn") != NULL)
+		strcpy(ldap_basedn,cf_section_value_find(conf_main,"ldapbasedn"));
 
-	if (pair_find("ldapfilter", conf_main) != NULL)
-		strcpy(ldap_filter,value_find("ldapfilter",conf_main));
+	if (cf_pair_find(conf_main,"ldapfilter") != NULL)
+		strcpy(ldap_filter,cf_section_value_find(conf_main,"ldapfilter"));
 
        if ( (ld = ldap_init(ldap_server,ldap_port)) == NULL)	
 		return RLM_AUTZ_FAIL;           
@@ -269,7 +269,7 @@ static int rlm_ldap_authenticate(REQUEST *request)
     char *filter, *dn,
 	*attrs[] = { "uid",
 		     NULL };
-    char *name, char *passwd;
+    char *name, *passwd;
 
     /*
      *  Ensure that we're being passed a plain-text password,
