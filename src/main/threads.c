@@ -584,7 +584,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	request->child_pid = found->pthread_id;
 
 	/*
-	 *  Tell the child thread what to do.
+	 *	Tell the child thread what to do.
 	 */
 	found->request = request;
 	found->fun = fun;
@@ -592,9 +592,9 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	thread_pool.request_count++;
 
 	/*
-	 *  Now that the child has things to do, kick it.
+	 * 	Now that the child has things to do, kick it.
 	 */
-	sem_post(&handle->semaphore);
+	sem_post(&found->semaphore);
 
 	return 0;
 }
