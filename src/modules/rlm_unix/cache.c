@@ -44,6 +44,7 @@
 #include "radiusd.h"
 #include "radutmp.h"
 #include "cache.h"
+#include "config.h"
 
 /*
  *  Static prototypes
@@ -60,7 +61,7 @@ static struct mygroup *grphead = NULL;
 /* Builds the hash table up by storing passwd/shadow fields
  * in memory.  Returns -1 on failure, 0 on success.
  */
-int buildHashTable(void) {
+int buildHashTable(const char *passwd_file, const char *shadow_file) {
 	FILE *passwd;
 #if HAVE_SHADOW_H
 	FILE *shadow;
@@ -91,8 +92,16 @@ int buildHashTable(void) {
 	/* Init hash array */
 	memset((struct mypasswd *)hashtable, 0, (HASHTABLESIZE*(sizeof(struct mypasswd *))));
 
-	if( (passwd = fopen(PASSWDFILE, "r")) == NULL) {
-		log(L_ERR, "HASH:  Can't open file %s:  %s", PASSWDFILE, strerror(errno));
+	/*
+	 *	If not set, use pre-defined defaults.
+	 */
+	if (!passwd_file) {
+		passwd_file = PASSWDFILE;
+	}
+
+	if ((passwd = fopen(passwd_file, "r")) == NULL) {
+		log(L_ERR, "HASH:  Can't open file %s: %s",
+		    passwd_file, strerror(errno));
 		return -1;
 	} else {
 		while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) {
@@ -183,10 +192,18 @@ int buildHashTable(void) {
 
 #if HAVE_SHADOW_H
 	/*
+	 *	No shadow file, use pre-compiled default.
+	 */
+	if (!shadow_file) {
+		shadow_file = SHADOWFILE;
+	}
+
+	/*
 	 *	FIXME: Check for password expiry!
 	 */
-	if( (shadow = fopen(SHADOWFILE, "r")) == NULL) {
-		log(L_ERR, "HASH:  Can't open file %s: %s", SHADOWFILE, strerror(errno));
+	if ((shadow = fopen(shadow_file, "r")) == NULL) {
+		log(L_ERR, "HASH:  Can't open file %s: %s",
+		    shadow_file, strerror(errno));
 		return -1;
 	} else {
 		while(fgets(buffer, BUFSIZE , shadow) != (char *)NULL) {
@@ -196,7 +213,7 @@ int buildHashTable(void) {
 			for(ptr = bufptr; *ptr!=':'; ptr++);
 			len = ptr - bufptr;
 			if((len+1) > MAXUSERNAME) {
-				log(L_ERR, "HASH:  Username too long in line:  %s", buffer);
+				log(L_ERR, "HASH:  Username too long in line: %s", buffer);
 			}
 			strncpy(username, buffer, len);
 			username[len] = '\0';
@@ -228,7 +245,7 @@ int buildHashTable(void) {
 	hashradutmp();
 
 	/* log how many entries we stored from the passwd file */
-	log(L_INFO, "HASH:  Stored %d entries from %s", numread, PASSWDFILE);
+	log(L_INFO, "HASH:  Stored %d entries from %s", numread, passwd_file);
 
 	return 0;
 }

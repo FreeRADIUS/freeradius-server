@@ -45,36 +45,28 @@ static const char rcsid[] = "$Id$";
 #include	"modules.h"
 #include	"sysutmp.h"
 #include	"cache.h"
-
-#if !HAVE_CRYPT_H
-  extern char *crypt();
-#endif
+#include	"conffile.h"
 
 static char trans[64] =
    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define ENC(c) trans[c]
 
 /*
- *	Call getpwnam but cache the result.
+ *	Cache the password by default.
  */
-static struct passwd *rad_getpwnam(const char *name)
-{
-	static struct passwd *lastpwd;
-	static char lastname[64];
-	static time_t lasttime = 0;
-	time_t now;
+static int cache_passwd = TRUE;
+static char *passwd_file = NULL;
+static char *shadow_file = NULL;
+static char *group_file = NULL;
 
-	now = time(NULL);
-
-	if ((now <= lasttime + 5 ) && strncmp(name, lastname, sizeof(lastname)) == 0)
-		return lastpwd;
-
-	strNcpy(lastname, name, sizeof(lastname));
-	lastpwd = getpwnam(name);
-	lasttime = now;
-
-	return lastpwd;
-}
+static CONF_PARSER module_config[] = {
+	{ "cache",  PW_TYPE_BOOLEAN,    &cache_passwd },
+	{ "passwd", PW_TYPE_STRING_PTR, &passwd_file },
+	{ "shadow", PW_TYPE_STRING_PTR, &shadow_file },
+	{ "group",  PW_TYPE_STRING_PTR, &group_file },
+	
+	{ NULL, -1, NULL}		/* end the list */
+};
 
 /*
  *	The Group = handler.
@@ -93,7 +85,7 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	if (cache_passwd && (retval = H_groupcmp(check, username)) != -2)
 		return retval;
 
-	if ((pwd = rad_getpwnam(username)) == NULL)
+	if ((pwd = getpwnam(username)) == NULL)
 		return -1;
 
 	if ((grp = getgrnam(check->strvalue)) == NULL)
@@ -116,6 +108,19 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
  */
 static int unix_init(int argc, char **argv)
 {
+	CONF_SECTION *unix_cs;
+
+	/*
+	 *	Look for the module's configuration.
+	 *
+	 *	If it exists, go parse it, and die if the parse fails.
+	 */
+	unix_cs = cf_module_config_find("unix");
+	if (unix_cs &&
+	    (cf_section_parse(unix_cs, module_config) < 0)) {
+		return -1;
+	}
+	
 	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp);
 #ifdef PW_GROUP_NAME /* compat */
 	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp);
@@ -123,7 +128,7 @@ static int unix_init(int argc, char **argv)
 	if (cache_passwd) {
 		log(L_INFO, "HASH:  Reinitializing hash structures "
 			"and lists for caching...");
-		if(buildHashTable() < 0) {
+		if (buildHashTable(passwd_file, shadow_file) < 0) {
 			log(L_ERR, "HASH:  unable to create user "
 				"hash table.  disable caching and run debugs");
 			return -1;
@@ -200,7 +205,7 @@ static int unix_authenticate(REQUEST *request)
 	/*
 	 *	Get encrypted password from password file
 	 */
-	if ((pwd = rad_getpwnam(name)) == NULL) {
+	if ((pwd = getpwnam(name)) == NULL) {
 		return RLM_MODULE_REJECT;
 	}
 	encrypted_pass = pwd->pw_passwd;
