@@ -55,6 +55,7 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	* Correct handling of post-auth REJECT stanza to include externally and
 	  proxy-received rejections. (Bugzilla bug #149)
 	* Fix building SNMP support on Solaris 9, which needs -lkstat
+	* Fix bug in calling checkrad script with NAS port > 9999999
 
 FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03, urgency=high
 	Denial-of-Service Security Fix
