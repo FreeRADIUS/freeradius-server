@@ -26,6 +26,7 @@
 		detail {
 			detailfile = %A/%n/detail-%Y%m
 			detailperm = 0600
+			dirperm = 0755
 		}
 	}
 
@@ -34,8 +35,11 @@
        %A/%n/detail
   which expands to {radius accounting directory}/{nas IP address}/detail.
 
-  The other option here is detailperm.  This allows you to configure the
+  Another option here is detailperm.  This allows you to configure the
   file permissions of the detailfile.  If omitted the default is 0600.
+
+  You can also use the dirperm option to specify the permissions of the
+  directories created by the daemon when logging.
 
   The variables available for use with detailfile are:
 
