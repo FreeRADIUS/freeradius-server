@@ -114,7 +114,6 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	int status;
 	tls_session_t *ssn;
 	eap_tls_t    *eaptls;
-	int index;
 
 	eaptls = (eap_tls_t *)type_arg;
 
@@ -134,8 +133,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 * NOTE: If we want to set each item sepearately then
 	 * this index should be global.
 	 */
-	index = SSL_get_ex_new_index(0, "index", NULL, NULL, NULL);
-	SSL_set_ex_data(ssn->ssl, index, (void *)handler->identity);
+	SSL_set_ex_data(ssn->ssl, 0, (void *)handler->identity);
 
 	ssn->offset = eaptls->conf->fragment_size;
 	ssn->length_flag = eaptls->conf->include_length;
