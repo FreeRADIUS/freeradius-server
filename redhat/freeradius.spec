@@ -93,7 +93,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(0700,root,root) %dir /var/run/radiusd
 
 %changelog
-* Thu Jun  6 2002 Marko Myllynen <marko.myllynem@micsom.com>
+* Thu Jun  6 2002 Marko Myllynen
 - set noreplace for non-dictionary files in /etc/raddb
 
 * Sun May 26 2002 Frank Cusack <frank@google.com>
