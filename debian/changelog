@@ -1,6 +1,6 @@
 radiusd-freeradius (0.1-2) unstable; urgency=low
 
-  * Corrected spelling mistake of Kerberos configure setting.
+  * Moved package to non-US to allow in Kerberos and PostgreSQL.
   * Set Suggests of modules to main package.
 
  -- Chad Miller <cmiller@debian.org>  [TBA]

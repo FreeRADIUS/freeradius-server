@@ -1,6 +1,16 @@
 Source: radiusd-freeradius
-Build-Depends: debhelper, libltdl0-dev, libpam0g-dev, postgresql-dev, libmysqlclient6-dev, libgdbmg1-dev, libldap2-dev, libsasl-dev, libsnmp4.2-dev, libiodbc2-dev
-Section: net
+Build-Depends: debhelper, 
+	libltdl0-dev, 
+	libpam0g-dev, 
+	postgresql-dev, 
+	libmysqlclient6-dev, 
+	libgdbmg1-dev, 
+	libldap2-dev, 
+	libsasl-dev, 
+	libsnmp4.2-dev, 
+	libiodbc2-dev, 
+	libkrb5-dev
+Section: non-US/main/net
 Priority: optional
 Maintainer: Chad Miller <cmiller@debian.org>
 Standards-Version: 3.2.1
@@ -9,17 +19,27 @@ Package: radiusd-freeradius
 Architecture: any
 Depends: ${shlibs:Depends}
 Provides: radiusd
-Suggests: radiusd-freeradius-ldap, radiusd-freeradius-postgresql, radiusd-freeradius-mysql
+Suggests: radiusd-freeradius-ldap, 
+	radiusd-freeradius-postgresql, 
+	radiusd-freeradius-mysql,
+	radiusd-freeradius-krb5
 Conflicts: radiusd, radiusd-livingston, radiusd-cistron
 Description: A high-performance and highly configurable RADIUS server
  A high-performance RADIUS server derived from Cistron's server, and
  generally similar to Livingston's 2.0 server, with support for...
   - many vendor-specific attributes
   - proxying and replicating requests by any criteria
-  - authentication on system passwd, SQL, LDAP, users file, or PAM
+  - authentication on system passwd, SQL, Kerberos, LDAP, users file, or PAM
   - multiple DEFAULT configurations
   - regexp matching in string attributes
  and lots more.
+
+Package: radiusd-freeradius-krb5
+Architecture: any
+Depends: radiusd-freeradius, ${shlibs:Depends}
+Description: Kerberos module for FreeRADIUS server.
+ The FreeRADIUS server can use Kerberos to authenticate users, and this module
+ is necessary for that.
 
 Package: radiusd-freeradius-ldap
 Architecture: any

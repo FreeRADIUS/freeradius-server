@@ -22,7 +22,7 @@ build:
 # Builds the binary package.
 	dh_testdir
 	# dh_testroot
-	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies --without-rlm_krb5
+	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --libdir=$(libdir) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no --enable-strict-dependencies
 	make
 	touch build
 
@@ -38,7 +38,7 @@ binary-arch: build
 	rmdir $(tmp)/$(execprefix)/include
 	rm $(tmp)/$(execprefix)/usr/sbin/rc.radiusd
 	# split out inconvenient/controversal modules to other places
-	for modname in ldap mysql postgresql; do \
+	for modname in krb5 ldap mysql postgresql; do \
 		mkdir -p $(debiandir)/radiusd-freeradius-$$modname/$(libdir); \
 		mv $(tmp)/$(libdir)/rlm*_$${modname}.* $(debiandir)/radiusd-freeradius-$$modname/$(libdir)/; \
 	done
@@ -78,7 +78,7 @@ clean:
 	rm -f build debian/{files,substvars} debian/*.debhelper
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
-	rm -rf $(tmp) radiusd-freeradius-{ldap,postgresql,mysql}{,.substvars}
+	rm -rf $(tmp) radiusd-freeradius-{ldap,postgresql,mysql,krb5}{,.substvars}
 
 binary: binary-indep binary-arch
 
