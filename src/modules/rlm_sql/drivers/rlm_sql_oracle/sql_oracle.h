@@ -46,9 +46,10 @@ typedef struct sql_config {
 
 typedef struct sql {
 	SQL_CONFIG *config;
-	SQLSOCK *socks[MAX_SQL_SOCKS];
+	SQLSOCK *sqlpool;
 #if HAVE_PTHREAD_H
-	pthread_mutex_t sqlsock_mutex;
+	pthread_mutex_t *lock;
+	pthread_cond_t *notfull;
 #endif
 } SQL_INST;
  
