@@ -137,7 +137,51 @@ static int xlat_packet(void *instance, REQUEST *request,
 	 *	The "format" string is the attribute name.
 	 */
 	da = dict_attrbyname(fmt);
-	if (!da) return 0;
+	if (!da) {
+		int index;
+		const char *p = strchr(fmt, '[');
+		char buffer[256];
+
+		if (!p) return 0;
+		if (strlen(fmt) > sizeof(buffer)) return 0;
+
+		strNcpy(buffer, fmt, p - fmt + 1);
+
+		index = atoi(p + 1);
+
+		/*
+		 *	Check the format of the index before looking
+		 *	the attribute up in the dictionary, because
+		 *	it's a cheap check.
+		 */
+		p += 1 + strspn(p + 1, "0123456789");
+		if (*p != ']') {
+			DEBUG2("xlat: Invalid array reference in string at %s %s",
+			       fmt, p);
+			return 0;
+		}
+
+		da = dict_attrbyname(buffer);
+		if (!da) return 0;
+
+
+		/*
+		 *	Find the N'th value.
+		 */
+		for (vp = pairfind(vps, da->attr);
+		     vp != NULL;
+		     vp = pairfind(vp->next, da->attr)) {
+			if (index == 0) break;
+			index--;
+		}
+
+		/*
+		 *	Non-existent array reference.
+		 */
+		if (!vp) return 0;
+
+		return valuepair2str(out, outlen, vp, da->type, func);
+	}
 
 	vp = pairfind(vps, da->attr);
 	if (!vp) {

@@ -97,12 +97,23 @@ defined in 'sh'.  For example:
 
   The dynamic translations support a few additional operatons, too.
 
-     %{#string}	The number of characters in %{string}.  If %{string}
-		is not set, then the length is not set.
-		e.g. %{#Junk-junk:-foo} will yeild the string "foo".
-		This will NOT work for the one-character variables
-		defined below.
+     %{#string}
+	The number of characters in %{string}.  If %{string} is not
+	set, then the length is not set.  This will NOT work for the
+	one-character variables defined below.
 
+	e.g. %{#Junk-junk:-foo} will yeild the string "foo".
+
+
+     %{Attribute-Name[index]}
+	Reference the N'th occurance of the given attribute.  The
+	indexes start at zero.  This feature is NOT available for
+	non-attribute dynamic translations, like %{sql:...}.
+
+ 	e.g. %{User-Name[0]} is the same as %{User-Name}
+	e.g. %{Cisco-AVPair[2]} references the value of the *third*
+	     Cisco-AVPair attribute (if it exists) in the request
+	     packet,
 
   Attributes as environment variables in executed programs
   --------------------------------------------------------
