@@ -334,12 +334,25 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				return -1;
 			}
 
-			vendor = dict_vendorname(vendorstr);
-			if (vendorstr[0] && !vendor) {
-				librad_log(
-					"dict_init: %s[%d]: unknown vendor %s",
-					fn, line, vendorstr);
-				return -1;
+			/*
+			 *	Ignore comments
+			 */
+			if (vendorstr[0] == '#') {
+				vendorstr[0] = '\0';
+			}
+
+			/*
+			 *	Only look up the vendor if the string
+			 *	is non-empty.
+			 */
+			if (vendorstr[0]) {
+				vendor = dict_vendorname(vendorstr);
+				if (!vendor) {
+					librad_log(
+						"dict_init: %s[%d]: unknown vendor %s",
+						fn, line, vendorstr);
+					return -1;
+				}
 			}
 
 			if (block_vendor && vendorstr[0] &&
