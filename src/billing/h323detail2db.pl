@@ -355,20 +355,18 @@ sub main {
 
 	&debug_set($opt_x);
 
-	if ($opt_H) {
-		&db_connect($opt_H);
-	} else {
-		&db_connect($default_hostname);
-	}
-
 	if ($opt_f) {
+		if ($opt_H) { &db_connect($opt_H);
+		} else { &db_connect($default_hostname); }
+
 		&read_detailfile($opt_f);
+
+		&db_disconnect;
 	} else {
 		print "You didn't specify a detail file.\n";
 		exit(FAILURE);
 	}
 
-	&db_disconnect;
 }
 
 
