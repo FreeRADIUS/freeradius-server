@@ -588,7 +588,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	*/
 
 	if (paircmp(request, request->packet->vps, check_tmp, &reply_tmp) != 0) {
-		radlog(L_INFO, "rlm_sql (%s): Pairs do not match for user [%s]",
+		radlog(L_INFO, "rlm_sql (%s): No matching entry in the database for request from user [%s]",
 		       inst->config->xlat_name, sqlusername);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
