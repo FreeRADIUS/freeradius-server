@@ -56,17 +56,20 @@ void librad_safeprint(char *in, int inlen, char *out, int outlen)
 				break;
 			default:
 				if (*str < 32 || (*str >= 128)){
-					sprintf(out, "\\%03o", *str);
+					snprintf(out, outlen, "\\%03o", *str);
 					done += 4;
 					out  += 4;
+					outlen -= 4;
 				} else {
 					*out++ = *str;
+					outlen--;
 					done++;
 				}
 		}
 		if (sp) {
 			*out++ = '\\';
 			*out++ = sp;
+			outlen -= 2;
 			done += 2;
 		}
 		str++;
@@ -112,7 +115,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 				!= NULL)
 				a = v->name;
 			else {
-				sprintf(buf, "%d", vp->lvalue);
+				snprintf(buf, sizeof(buf), "%d", vp->lvalue);
 				a = buf;
 			}
 			break;
@@ -175,7 +178,7 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 		return 0;
 	}
 
-	sprintf(out, "%s = ", vp->name);
+	snprintf(out, outlen, "%s = ", vp->name);
 	len = strlen(out);
 	vp_prints_value(out + len, outlen - len, vp, 1);
 

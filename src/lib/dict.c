@@ -244,7 +244,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		dirtmp[p - fn] = 0;
 		dir = dirtmp;
 	} else if (dir && dir[0] && strcmp(dir, ".") != 0) {
-		sprintf(dirtmp, "%s/%s", dir, fn);
+		snprintf(dirtmp, sizeof(dirtmp), "%s/%s", dir, fn);
 		fn = dirtmp;
 	}
 

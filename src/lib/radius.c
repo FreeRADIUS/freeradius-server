@@ -722,7 +722,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 
 			memset(pair, 0, sizeof(VALUE_PAIR));
 			if ((attr = dict_attrbyvalue(attribute)) == NULL) {
-				sprintf(pair->name, "Attr-%d", attribute);
+				snprintf(pair->name, sizeof(pair->name), "Attr-%d", attribute);
 				pair->type = PW_TYPE_STRING;
 			} else {
 				strcpy(pair->name, attr->name);
