@@ -264,11 +264,30 @@ static int xlat_config(void *instance, REQUEST *request,
 	}
 
 	while (cp == NULL) {
+		int flag = 0;
+
 		/*
 		 *	Find the next section.
 		 */
-		for (p = buffer; (*fmt != 0) && (*fmt != '.'); p++, fmt++) {
+		for (p = buffer; (*fmt != 0); p++, fmt++) {
+			/*
+			 *	Allow '.' in names, by skipping over them
+			 *	in array references.  Geez, what a hack..
+			 */
 			*p = *fmt;
+			if (*p == '[') flag++;
+			if (*p == ']') {
+				flag--;
+				if (fmt[1] && (fmt[1] != '.')) {
+					radlog(L_ERR, "config: Unexpected text found after ']' in \"%s\"", start);
+					return 0;
+				}
+			}
+
+			if (*p == '.') {
+				if (flag > 0) continue;
+				break;
+			}
 		}
 		*p = '\0';
 
@@ -281,13 +300,30 @@ static int xlat_config(void *instance, REQUEST *request,
 
 			fmt++;	/* skip the period */
 
+			p = NULL;
 			if (cs == NULL) {
 				next = cf_section_find(buffer);
 			} else {
-				next = cf_subsection_find_next(cs, NULL, buffer);
+				if ((p = strchr(buffer, '[')) != NULL) {
+					char *q = NULL;
+					*p = '\0';
+					p++;
+					if ((q = strchr(p, ']')) == NULL) {
+						radlog(L_ERR, "config: Unbalanced reference in \"%s\"", start);
+						return 0;
+					}
+					*q = '\0';
+					next = cf_section_sub_find_name2(cs, buffer, p);
+				} else {
+					next = cf_subsection_find_next(cs, NULL, buffer);
+				}
 			}
 			if (next == NULL) {
-				radlog(L_ERR, "config: section \"%s\" not found while dereferencing \"%s\"", buffer, start);
+				if (p) {
+					radlog(L_ERR, "config: section \"%s[%s]\" not found while dereferencing \"%s\"", buffer, p, start);
+				} else {
+					radlog(L_ERR, "config: section \"%s\" not found while dereferencing \"%s\"", buffer, start);
+				}
 				return 0;
 			}
 			cs = next;
