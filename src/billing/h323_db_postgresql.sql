@@ -68,6 +68,7 @@ CREATE TABLE StartTelephony (
 create index starttelephony_AcctSessionId on starttelephony (AcctSessionId);
 create index starttelephony_NASIPAddress on starttelephony (NASIPAddress);
 create index starttelephony_h323SetupTime on starttelephony (h323SetupTime);
+create index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress);
 
 
 
@@ -118,7 +119,7 @@ create index stopvoiph323SetupTime on stopvoip (h323SetupTime);
 create index stopvoipAcctSessionTime on stopvoip (AcctSessionTime);
 create index stopvoiph323remoteaddress on stopvoip (h323remoteaddress);
 create index stopvoiph323ConfID on stopvoip (h323ConfID);
-create index stopvoipcombo on stopvoip (h323SetupTime, h323confid);
+create index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress);
 
 
 CREATE TABLE StopTelephony (

@@ -48,7 +48,7 @@ $password    = "";
 
 #### You should not have to modify anything below here
 $progname = "H323 Detail 2 DB";
-$version = 1.0;
+$version = 1.01;
 
 # Set up some basic variables
 $passno = 0; $double_match_no = 0;
@@ -144,10 +144,9 @@ sub db_update {
 
 sub db_read {
 	$passno++;
-        print "Record: $passno) Conf ID: $h323_conf_id   Connect Time: $h323_connect_time  Call Length: $AcctSessionTime   ";
+        print "Record: $passno) Conf ID: $h323_conf_id   Setup Time: $h323_setup_time  Call Length: $AcctSessionTime   ";
 	my $sth = $dbh->prepare("SELECT RadAcctId FROM Stop$h323_call_type
 		WHERE h323SetupTime = '$h323_setup_time'
-		AND AcctSessionId = '$AcctSessionId'
 		AND NASIPAddress = '$NasIPAddress'
 		AND h323confid = '$h323_conf_id'")
                 or die "Couldn't prepare statement: " . $dbh->errstr;
