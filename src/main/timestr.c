@@ -40,12 +40,6 @@ static const char *days[] =
 #define WEEKMIN		(24*60*7)
 #define val(x)		(( (x) < 48 || (x) > 57) ? 0 : ((x) - 48))
 
-#ifdef DEBUG
-#	define xprintf if (1) printf
-#else
-#	define xprintf if (0) printf
-#endif
-
 /*
  *	String code.
  */
@@ -54,7 +48,7 @@ static int strcode (const char **str)
 	int i;
 	size_t l;
 
-	xprintf("strcode %s called\n", *str);
+	DEBUG2("strcode %s called\n", *str);
 
 	for (i = 0; i < 10; i++) {
 		l = strlen(days[i]);
@@ -65,7 +59,7 @@ static int strcode (const char **str)
 			break;
 		}
 	}
-	xprintf("strcode result %d\n", i);
+	DEBUG2("strcode result %d\n", i);
 
 	return (i >= 10) ? -1 : i;
 
@@ -80,7 +74,7 @@ static int hour_fill(char *bitmap, const char *tm)
 	int start, end;
 	int i, bit, byte;
 
-	xprintf("hour_fill called for %s\n", tm);
+	DEBUG2("hour_fill called for %s\n", tm);
 
 	/*
 	 *	Get timerange in start and end.
@@ -107,7 +101,7 @@ static int hour_fill(char *bitmap, const char *tm)
 	if (end >= DAYMIN) end = DAYMIN - 1;
 	if (start >= DAYMIN) start = DAYMIN - 1;
 
-	xprintf("hour_fill: range from %d to %d\n", start, end);
+	DEBUG2("hour_fill: range from %d to %d\n", start, end);
 
 	/*
 	 *	Fill bitmap.
@@ -116,7 +110,7 @@ static int hour_fill(char *bitmap, const char *tm)
 	while (1) {
 		byte = (i / 8);
 		bit = i % 8;
-		xprintf("setting byte %d, bit %d\n", byte, bit);
+		DEBUG2("setting byte %d, bit %d\n", byte, bit);
 		bitmap[byte] |= (1 << bit);
 		if (i == end) break;
 		i++;
@@ -140,7 +134,7 @@ static int day_fill(char *bitmap, const char *tm)
 	if (hr == tm) 
 		tm = "Al";
 
-	xprintf("dayfill: hr %s    tm %s\n", hr, tm);
+	DEBUG2("dayfill: hr %s    tm %s\n", hr, tm);
 
 	while ((start = strcode(&tm)) >= 0) {
 		/*
@@ -162,7 +156,7 @@ static int day_fill(char *bitmap, const char *tm)
 			end = 6;
 		}
 		n = start;
-		xprintf("day_fill: range from %d to %d\n", start, end);
+		DEBUG2("day_fill: range from %d to %d\n", start, end);
 		while (1) {
 			hour_fill(bitmap + 180 * n, hr);
 			if (n == end) break;
@@ -238,7 +232,7 @@ int timestr_match(char *tmstr, time_t t)
 	while (1) {
 		byte = i / 8;
 		bit = i % 8;
-		xprintf("READ: checking byte %d bit %d\n", byte, bit);
+		DEBUG2("READ: checking byte %d bit %d\n", byte, bit);
 		if (!(bitmap[byte] & (1 << bit)))
 			break;
 		tot += 60;
