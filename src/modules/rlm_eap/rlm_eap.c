@@ -378,11 +378,11 @@ static int eap_authorize(void *instance, REQUEST *request)
 	/*
 	 *	RFC 2869, Section 2.3.1.  If a NAS sends an EAP-Identity,
 	 *	it MUST copy the identity into the User-Name attribute.
+	 *
+	 *	But we don't worry about that too much.  We depend on
+	 *	each EAP sub-module to look for handler->request->username,
+	 *	and to get excited if it doesn't appear.
 	 */
-	if (request->username == NULL) {
-		radlog(L_ERR, "rlm_eap: User-Name is required for EAP authentication");
-		return RLM_MODULE_FAIL;
-	}
 
 	vp = pairfind(request->config_items, PW_AUTH_TYPE);
 	if ((!vp) ||
