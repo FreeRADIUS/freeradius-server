@@ -993,8 +993,7 @@ int main(int argc, char **argv)
 			request->timestamp = time(NULL);
 			request->number = request_num_counter++;
 			request->child_pid = NO_SUCH_CHILD_PID;
-			request->prev = NULL;
-			request->next = NULL;
+			request->container = NULL;
 			strNcpy(request->secret, (char *)secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
 		} /* loop over authfd, acctfd, proxyfd */
@@ -2232,7 +2231,7 @@ static int refresh_request(REQUEST *request, void *data)
 			 *	 - kill it
 			 */
 			child_pid = request->child_pid;
-			radlog(L_ERR, "Killing unresponsive child %d for request %d",
+			radlog(L_ERR, "Killing unresponsive child %ld for request %d",
 			       child_pid, request->number);
 			child_kill(child_pid, SIGTERM);
 		} /* else no proxy reply, quietly fail */
