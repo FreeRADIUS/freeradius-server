@@ -106,8 +106,13 @@ void request_free(REQUEST **request_ptr)
 	if (request->config_items) 
 		pairfree(&request->config_items);
 
+	request->username = NULL;
+	request->password = NULL;
+
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
+	strcpy(request->secret, "REQUEST-DELETED");
+	strcpy(request->proxysecret, "REQUEST-DELETED");
 #endif
 	free(request);
 
