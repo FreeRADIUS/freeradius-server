@@ -1093,8 +1093,12 @@ static int rlm_sql_postauth(void *instance, REQUEST *request) {
 	SQLSOCK 	*sqlsocket = NULL;
 	SQL_INST	*inst = instance;
 	char		querystr[MAX_QUERY_LEN];
+	char		sqlusername[2*MAX_STRING_LEN+10];
 
 	DEBUG("rlm_sql (%s): Processing sql_postauth", inst->config->xlat_name);
+
+	if(sql_set_user(inst, request, sqlusername, 0) <0)
+		return RLM_MODULE_FAIL;
 
 	/* If postauth_query is not defined, we stop here */
 	if (inst->config->postauth_query[0] == '\0')
