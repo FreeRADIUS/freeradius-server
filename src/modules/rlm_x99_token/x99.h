@@ -32,7 +32,7 @@
 #define CHALLENGE_TEXT "Challenge: %s\n Response: "
 /* Must be a multiple of sizeof(des_cblock) (8); read docs before changing. */
 #define MAX_CHALLENGE_LEN 32
-/* Password that means "challenge me" in sync mode */
+/* Password that means "challenge me" in fast_sync mode */
 #define CHALLENGE_REQ "challenge"
 
 /* Max event window size for sync modes */
