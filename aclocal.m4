@@ -1005,7 +1005,7 @@ dnl #
     AC_LOCATE_DIR(smart_lib_dir,[lib$1${libltdl_cv_shlibext}])
     AC_LOCATE_DIR(smart_lib_dir,[lib$1.a])
 
-    for try in $smart_lib_dir /usr/local/lib/ /opt/lib; do
+    for try in $smart_try_dir $smart_lib_dir /usr/local/lib/ /opt/lib; do
       LIBS="$old_LIBS -L$try -l$1"
 
       AC_TRY_LINK([extern char $2();],
@@ -1055,7 +1055,7 @@ dnl #
   if test "x$smart_include" = "x"; then
     AC_LOCATE_DIR(smart_include_dir,$1)
 
-    for try in $smart_include_dir /usr/local/include/ /opt/include; do
+    for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
       CFLAGS="$old_CFLAGS -I$try"
 
       AC_TRY_COMPILE([#include <$1>],
