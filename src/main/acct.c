@@ -43,36 +43,41 @@ static const char rcsid[] = "$Id$";
  */
 int rad_accounting(REQUEST *request)
 {
-	int		reply;
+	int		reply = RLM_MODULE_OK;
 
-	if(!request->proxy) { /* Only need to do this once, before proxying */
+	if (!request->proxy) { /* Only need to do this once, before proxying */
 		reply = module_preacct(request);
 		if (reply != RLM_MODULE_NOOP &&
-				reply != RLM_MODULE_OK &&
-				reply != RLM_MODULE_UPDATED)
+		    reply != RLM_MODULE_OK &&
+		    reply != RLM_MODULE_UPDATED)
 			return reply;
 		
+		/*
+		 *	Do accounting, ONLY the first time through.
+		 *	This is to ensure that we log the packet
+		 *	immediately, even if the proxy never does.
+		 */
+		reply = module_accounting(request);
+		
+		/*
+		 *	Maybe one of the preacct modules has decided
+		 *	that a proxy should be used. If so, get out of
+		 *	here and send the proxied packet, but ONLY if
+		 *	there isn't one already...
+		 */
+		if (pairfind(request->config_items, PW_PROXY_TO_REALM)) {
+			return reply;
+		}
 	}
 
-	reply = RLM_MODULE_OK;
-
 	/*
-	 *	Do accounting
+	 *	We get here IF we're not proxying, OR if we've
+	 *	received the accounting reply from the end server,
+	 *	THEN we can reply to the NAS.
 	 */
-	reply = module_accounting(request);
-	
-	/*
-	 *	Maybe one of the preacct modules has decided
-	 *	that a proxy should be used. If so, get out of
-	 *	here and send the packet.
-	 */
-	if(pairfind(request->config_items, PW_PROXY_TO_REALM)) {
-	        return reply;
-	}
-
 	if (reply == RLM_MODULE_NOOP ||
-			reply == RLM_MODULE_OK ||
-			reply == RLM_MODULE_UPDATED) {
+	    reply == RLM_MODULE_OK ||
+	    reply == RLM_MODULE_UPDATED) {
 		/*
 		 *	Now send back an ACK to the NAS.
 		 */
