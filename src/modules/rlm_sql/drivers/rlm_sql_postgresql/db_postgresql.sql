@@ -148,13 +148,12 @@ CREATE TABLE realms (
  * anyway.
  */
 CREATE TABLE nas (
-	id		SERIAL PRIMARY KEY,
-	nasname		VARCHAR(128),
+	ipaddr		INET PRIMARY KEY,
 	shortname	VARCHAR(32) NOT NULL,
-	ipaddr		INET NOT NULL,
+	secret		VARCHAR(60) NOT NULL,
+	nasname		VARCHAR(128),
 	type		VARCHAR(30),
 	ports		int4,
-	secret		VARCHAR(60) NOT NULL,
 	community	VARCHAR(50),
 	snmp		VARCHAR(10),
 	naslocation	VARCHAR(32)
