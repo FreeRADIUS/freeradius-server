@@ -69,27 +69,27 @@ void md4_calc (unsigned char *, const unsigned char *, unsigned int);
 #define	MD4_DIGEST_STRING_LENGTH	(MD4_DIGEST_LENGTH * 2 + 1)
 
 typedef struct MD4Context {
-	u_int32_t state[4];			/* state */
-	u_int32_t count[2];			/* number of bits, mod 2^64 */
-	u_int8_t buffer[MD4_BLOCK_LENGTH];	/* input buffer */
+	uint32_t state[4];			/* state */
+	uint32_t count[2];			/* number of bits, mod 2^64 */
+	uint8_t buffer[MD4_BLOCK_LENGTH];	/* input buffer */
 } MD4_CTX;
 
 /*#include <sys/cdefs.h>*/
 
 /*__BEGIN_DECLS*/
 void	 MD4Init(MD4_CTX *);
-void	 MD4Update(MD4_CTX *, const u_int8_t *, size_t)
+void	 MD4Update(MD4_CTX *, const uint8_t *, size_t)
 /*		__attribute__((__bounded__(__string__,2,3)))*/;
-void	 MD4Final(u_int8_t [MD4_DIGEST_LENGTH], MD4_CTX *)
+void	 MD4Final(uint8_t [MD4_DIGEST_LENGTH], MD4_CTX *)
 /*		__attribute__((__bounded__(__minbytes__,1,MD4_DIGEST_LENGTH)))*/;
-void	 MD4Transform(u_int32_t [4], const u_int8_t [MD4_BLOCK_LENGTH])
+void	 MD4Transform(uint32_t [4], const uint8_t [MD4_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,1,4)))
 		__attribute__((__bounded__(__minbytes__,2,MD4_BLOCK_LENGTH)))*/;
 /*char	*MD4End(MD4_CTX *, char [MD4_DIGEST_STRING_LENGTH])
 		__attribute__((__bounded__(__minbytes__,2,MD4_DIGEST_STRING_LENGTH)));
 char	*MD4File(char *, char [MD4_DIGEST_STRING_LENGTH])
 		__attribute__((__bounded__(__minbytes__,2,MD4_DIGEST_STRING_LENGTH)));
-char	*MD4Data(const u_int8_t *, size_t, char [MD4_DIGEST_STRING_LENGTH])
+char	*MD4Data(const uint8_t *, size_t, char [MD4_DIGEST_STRING_LENGTH])
 		__attribute__((__bounded__(__string__,1,2)))
 		__attribute__((__bounded__(__minbytes__,3,MD4_DIGEST_STRING_LENGTH)));*/
 /*__END_DECLS*/
