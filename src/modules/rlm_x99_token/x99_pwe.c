@@ -21,12 +21,13 @@
 
 /*
  * This file implements password checking functions for each supported
- * encoding (PAP, CHAP, etc.).  It is expected to be temporary until a
- * libradius modular interface can be created.  The current libradius
- * interface is not sufficient for x9.9 use.
+ * encoding (PAP, CHAP, etc.).  The current libradius interface is not
+ * sufficient for x9.9 use.
  */
 
 #ifdef FREERADIUS
+#define _LRAD_MD4_H
+#define _LRAD_SHA1_H
 #include "libradius.h"
 #include "rad_assert.h"
 #endif
