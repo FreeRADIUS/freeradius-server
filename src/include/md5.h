@@ -25,6 +25,7 @@
 
 /* POINTER defines a generic pointer type */
 typedef unsigned char *POINTER;
+typedef const unsigned char *CONSTPOINTER;
 
 /* UINT2 defines a two byte word */
 typedef unsigned short int UINT2;
