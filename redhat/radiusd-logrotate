@@ -1,37 +1,46 @@
-# You can use this to rotate the /var/log/radwtmp, simply copy it to
-# /etc/logrotate.d/radiusd
+# You can use this to rotate the /var/log/radius/* files, simply copy
+# it to /etc/logrotate.d/radiusd
 
-# if you use defail files, You can uncomment the next block and
-# edit it accordling your /etc/raddb/naslist file. If you comment
-# the /var/log/radwtmp block you'll need to include the
-# postrotate/endscript parts to the *last* NAS-NAME/detail of this file
+# Last part should reload the server
 
-#/var/log/radius/radacct/NAS-NAME/detail {
-#	monthly
-#	rotate 4
-#	create
-#	compress
-#}
+/var/log/radius/radacct/*/detail {
+	monthly
+	rotate 4
+	create
+	missingok
+	compress
+}
 
 /var/log/radius/checkrad.log {
-        monthly
-        rotate 4
-        create
-        compress
+	monthly
+	rotate 4
+	create
+	missingok
+	compress
 }
 
 /var/log/radius/radius.log {
-        monthly
-        rotate 4
-        create
-        compress
+	monthly
+	rotate 4
+	create
+	missingok
+	compress
 }
 
 /var/log/radius/radwatch.log {
-        monthly
-        rotate 4
-        create
-        compress
+	monthly
+	rotate 4
+	create
+	missingok
+	compress
+}
+
+/var/log/radius/radutmp {
+	monthly
+	rotate 4
+	create
+	compress
+	missingok
 }
 
 /var/log/radius/radwtmp {
@@ -39,7 +48,8 @@
 	rotate 4
 	create
 	compress
+	missingok
 	postrotate
-		/etc/rc.d/init.d/radiusd reload
+		/etc/rc.d/init.d/radiusd condrestart
 	endscript
 }
