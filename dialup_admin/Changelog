@@ -6,6 +6,8 @@ Ver 1.68:
 * In log_badlogins for multiple logins if it is a mppp attempt, log it
 * Add a message when adding a user in the badusers table
 * Close sql connections in add_badusers.php3
+* Add a patch from Neil McCalden to not put spaces in the -p argument to the mysql binary.
+* Fix a bug in conf/config.php3. Patch from Neil McCalden
 Ver 1.65:
 * Add a captions.conf file with a few configurable captions for now
 * Move the nas list to a separate file called naslist.conf

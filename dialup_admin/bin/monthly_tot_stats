@@ -26,7 +26,7 @@ close CONF;
 die "sql_command directive is not set in admin.conf\n" if ($mysql eq '');
 die "Could not find mysql binary. Please make sure that the \$mysql variable points to the right location\n" if (! -x $mysql);
 
-$sql_password = ($sql_password == '') ? '' : "-p $sql_password";
+$sql_password = ($sql_password == '') ? '' : "-p$sql_password";
 
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
 if ($mday == 1){

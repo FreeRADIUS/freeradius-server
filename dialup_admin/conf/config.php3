@@ -44,8 +44,7 @@ if (!isset($config)){
 				$val=$config[$matches[1]];
 				$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
 			}
-			else
-				$config["$key"]="$v";
+			$config["$key"]="$v";
 		}
 	}
 	if ($use_session)
