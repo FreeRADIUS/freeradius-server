@@ -1,3 +1,14 @@
+radiusd-freeradius (0.3-2) unstable; urgency=low
+
+  * Moved to using logrotate instead of cron for files.
+  * Fixed permissions of log files. (closes: Bug#116242,#116243)
+  * Close file descriptors of stdin, stdout, stderr, if not debugging.
+    (closes: Bug#116768)
+  * Made package "non-native".  (An upload issue, not code.)  
+    (closes: Bug#119161)
+
+ -- Chad Miller <cmiller@debian.org>  Tue, 20 Nov 2001 10:50:20 -0500
+
 radiusd-freeradius (0.3-1) unstable; urgency=low
 
   * New release.

@@ -17,6 +17,4 @@ usr/lib
 usr/lib/freeradius
 var/
 var/log
-var/log/freeradius
-var/log/freeradius/radacct
 var/run

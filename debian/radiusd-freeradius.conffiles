@@ -1,3 +1,1 @@
-etc/cron.daily/freeradius
-etc/cron.monthly/freeradius
 etc/init.d/freeradius

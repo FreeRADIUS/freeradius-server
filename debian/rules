@@ -50,8 +50,7 @@ binary-arch: build
 	# dh_installchangelogs doc/ChangeLog
 	dh_compress
 	# supporting programs
-	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/$(prefix)/etc/cron.daily/freeradius
-	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/$(prefix)/etc/cron.monthly/freeradius
+	dh_installlogrotate
 	install -g root -m 755 $(debiandir)/initscript $(tmp)/$(prefix)/etc/init.d/freeradius
 	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`; \
 	cp $(tmp)/$(raddbdir)/radiusd.conf $$TEMPFILE; \

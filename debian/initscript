@@ -16,7 +16,7 @@ start)	echo -n "Starting $descr: "
         echo "$prog."
 	;;
 stop)	echo -n "Stopping $descr: "
-        start-stop-daemon --stop --quiet --pidfile $pidfile --exec $program
+        start-stop-daemon --stop --quiet --pidfile $pidfile
         echo "$prog."
         ;;
 restart) echo -n "Restarting $descr: "

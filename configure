@@ -562,7 +562,7 @@ fi
 
 
 
-# From configure.in Revision: 1.130 
+# From configure.in Revision: 1.131 
 RADIUSD_VERSION=0.4
 
 
