@@ -938,8 +938,8 @@ int main(int argc, char *argv[])
 			/*
 			 *  Receive the packet.
 			 */
-			if (sig_hup_block) {
-				continue;
+			if (sig_hup_block != FALSE) {
+			  continue;
 			}
 			packet = rad_recv(fd);
 			if (packet == NULL) {
