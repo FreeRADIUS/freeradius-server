@@ -70,6 +70,7 @@ typedef struct rlm_counter_t {
 	time_t last_reset;
 	int dict_attr;  /* attribute number for the counter. */
 	GDBM_FILE gdbm;
+	int fd;
 } rlm_counter_t;
 
 /*
@@ -120,7 +121,10 @@ static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 
+	rad_lockfd(data->fd, sizeof(int));
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
+	rad_unlockfd(data->fd, sizeof(int));
+
 	if (count_datum.dptr == NULL) {
 		return -1;
 	}
@@ -323,12 +327,14 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		exit(0);
 	}
 	data->gdbm = gdbm_open(data->filename, sizeof(int),
-			GDBM_WRCREAT | GDBM_SYNCOPT, 0600, NULL);
+			GDBM_WRCREAT | GDBM_SYNCOPT | GDBM_NOLOCK, 0600, NULL);
 	if (data->gdbm == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 				data->filename, strerror(errno));
 		return -1;
 	}
+	data->fd = gdbm_fdesc(data->gdbm);
+
 	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 		radlog(L_ERR, "rlm_counter: Failed to set cache size");
 
@@ -375,12 +381,13 @@ static int counter_accounting(void *instance, REQUEST *request)
 		 *	Open a completely new database.
 		 */
 		data->gdbm = gdbm_open(data->filename, sizeof(int),
-				GDBM_NEWDB | GDBM_SYNCOPT, 0600, NULL);
+				GDBM_NEWDB | GDBM_SYNCOPT | GDBM_NOLOCK, 0600, NULL);
 		if (data->gdbm == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 					data->filename, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
+		data->fd = gdbm_fdesc(data->gdbm);
 		if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 			radlog(L_ERR, "rlm_counter: Failed to set cache size");
 	}
@@ -414,6 +421,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 
+	rad_lockfd(data->fd, sizeof(int));
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	if (count_datum.dptr == NULL)
 		counter = 0;
@@ -454,6 +462,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	count_datum.dsize = sizeof(int);
 
 	rcode = gdbm_store(data->gdbm, key_datum, count_datum, GDBM_REPLACE);
+	rad_unlockfd(data->fd, sizeof(int));
 	if (rcode < 0) {
 		radlog(L_ERR, "rlm_counter: Failed storing data to %s: %s",
 				data->filename, gdbm_strerror(gdbm_errno));
@@ -505,21 +514,22 @@ static int counter_authorize(void *instance, REQUEST *request)
 		 *	Open a completely new database.
 		 */
 		data->gdbm = gdbm_open(data->filename, sizeof(int),
-				GDBM_NEWDB | GDBM_SYNCOPT, 0600, NULL);
+				GDBM_NEWDB | GDBM_SYNCOPT | GDBM_NOLOCK, 0600, NULL);
 		if (data->gdbm == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 					data->filename, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
+		data->fd = gdbm_fdesc(data->gdbm);
 		if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
 			radlog(L_ERR, "rlm_counter: Failed to set cache size");
 	}
 
 
 	/*
-	*      Look for the key.  User-Name is special.  It means
-	*      The REAL username, after stripping.
-	*/
+	 *      Look for the key.  User-Name is special.  It means
+	 *      The REAL username, after stripping.
+	 */
 	DEBUG2("rlm_counter: Entering module authorize code");
 	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr);
 	if (key_vp == NULL) {
@@ -528,11 +538,11 @@ static int counter_authorize(void *instance, REQUEST *request)
 	}
 
 	/*
-	*      Look for the check item
-	*/
-	
-	if ((dattr = dict_attrbyname(data->check_name)) == NULL)
+	 *      Look for the check item
+	 */
+	if ((dattr = dict_attrbyname(data->check_name)) == NULL) {
 		return ret;
+	}
 	if ((check_vp= pairfind(request->config_items, dattr->attr)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
 		return ret;
@@ -541,12 +551,13 @@ static int counter_authorize(void *instance, REQUEST *request)
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
 	
+	rad_lockfd(data->fd, sizeof(int));
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
+	rad_unlockfd(data->fd, sizeof(int));
 	if (count_datum.dptr != NULL){
 		memcpy(&counter, count_datum.dptr, sizeof(int));
 		free(count_datum.dptr);
 	}
-		
 
 	/*
 	 * Check if check item > counter
@@ -554,23 +565,26 @@ static int counter_authorize(void *instance, REQUEST *request)
 	res=check_vp->lvalue - counter;
 	if (res > 0) {
 		/*
-		 * We are assuming that simultaneous-use=1. But even if that does
-		 * not happen then our user could login at max for 2*max-usage-time
-		 * Is that acceptable?
+		 *	We are assuming that simultaneous-use=1. But
+		 *	even if that does not happen then our user
+		 *	could login at max for 2*max-usage-time Is
+		 *	that acceptable?
 		 */
 
 		/*
-		 *  User is allowed, but set Session-Timeout.
-		 *  Stolen from main/auth.c
+		 *	User is allowed, but set Session-Timeout.
+		 *	Stolen from main/auth.c
 		 */
 
 		/*
-		 * If we are near a reset then add the next limit, so that the user will
-		 * not need to login again
+		 *	If we are near a reset then add the next
+		 *	limit, so that the user will not need to
+		 *	login again
 		 */
-
-		if (data->reset_time && res >= (data->reset_time - request->timestamp))
+		if (data->reset_time && (
+			res >= (data->reset_time - request->timestamp))) {
 			res += check_vp->lvalue;
+		}
 
 		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
 		if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL) {
