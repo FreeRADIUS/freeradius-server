@@ -1,8 +1,10 @@
 Session-Type is used to select between groupings of
-modules using arbitrary attributes. It is similar
-to Autz-Type, but an update to Session-Type by a module
-in the session stanza will cause the named grouping
-to be immediately executed.
+modules in the session stanza using arbitrary attributes.
+It is functionally identical to Acct-Type, apart from
+the name of the attribute. This means that (unlike
+Autz-Type) the attribute must be set before the stanza
+is run. Changes to Session-Type during session will
+have no effect.
 
 This allows Simultaneous-Use checking behaviour to be very flexible.
 

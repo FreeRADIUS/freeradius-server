@@ -1,6 +1,9 @@
 This is now called Post-Auth-Type, for consistency.
 
 Post-Auth-Type is used to select between groupings of
-modules using arbitrary attributes. It is functionally
-identical to Autz-Type, apart from the name of the
-attribute.
+modules in the post-auth stanza using arbitrary attributes.
+It is functionally identical to Acct-Type, apart from
+the name of the attribute. This means that (unlike
+Autz-Type) the attribute must be set before the stanza
+is run. Changes to Post-Auth-Type during post-auth will
+have no effect.
