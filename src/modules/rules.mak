@@ -37,8 +37,8 @@ all: static dynamic
 # along with a number of other useful definitions.
 #
 #######################################################################
-STATIC_OBJS	= $(SRCS:.c=.o)
-DYNAMIC_OBJS	= $(SRCS:.c=.lo)
+STATIC_OBJS	+= $(SRCS:.c=.o)
+DYNAMIC_OBJS	+= $(SRCS:.c=.lo)
 CFLAGS		+= -I$(RLM_DIR)../../include
 
 #######################################################################
