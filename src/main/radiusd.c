@@ -174,7 +174,7 @@ int main(int argc, char **argv)
 	 *	Close unused file descriptors.
 	 */
 	for (t = 32; t >= 3; t--)
-			close(t);
+	    if(t!=devnull) close(t);
 
 	/*
 	 *	Process the options.
