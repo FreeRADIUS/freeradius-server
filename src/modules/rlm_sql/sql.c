@@ -274,8 +274,6 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
 	pair = pairmake(row[2], row[3], mode);
 	pairadd(first_pair, pair);
 
-	vp_printlist(stderr, *first_pair);
-
 	return 0;
 }
 
