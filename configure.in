@@ -201,26 +201,6 @@ AC_ARG_WITH(snmp,
   esac ]
 )
 
-
-
-dnl   move these into the mysql configure.in file
-AC_ARG_WITH(mysql-include-dir,
-[  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found ],
-[ mysql_include_dir="$withval" ]
-)
-
-AC_ARG_WITH(mysql-lib-dir,
-[  --with-mysql-lib-dir=DIR       Directory where the MySQL libraries may be found ],
-[ mysql_lib_dir="$withval" ]
-)
-
-AC_ARG_WITH(mysql-dir,
-[  --with-mysql-dir=DIR       Base directory where MySQL is installed ],
-[ mysql_lib_dir="$withval/lib/mysql"
-  mysql_include_dir="$withval/include"
-]
-)
-
 AC_ARG_ENABLE(ltdl-install,
 [  --disable-ltdl-install  do not install libltdl])
 if test x"${enable_ltdl_install+set}" != xset; then
@@ -609,7 +589,6 @@ if test "x$WITH_SNMP" = "xyes"; then
 fi
 
 POSTGRESQL_CHECKS
-MYSQL_CHECKS
 ORACLE_CHECKS
 ODBC_CHECKS
 

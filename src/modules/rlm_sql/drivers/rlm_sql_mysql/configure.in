@@ -2,6 +2,24 @@ AC_INIT(sql_mysql.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_mysql])
 
+dnl   move these into the mysql configure.in file
+AC_ARG_WITH(mysql-include-dir,
+[  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found ],
+[ mysql_include_dir="$withval" ]
+)
+
+AC_ARG_WITH(mysql-lib-dir,
+[  --with-mysql-lib-dir=DIR       Directory where the MySQL libraries may be found ],
+[ mysql_lib_dir="$withval" ]
+)
+
+AC_ARG_WITH(mysql-dir,
+[  --with-mysql-dir=DIR       Base directory where MySQL is installed ],
+[ mysql_lib_dir="$withval/lib/mysql"
+  mysql_include_dir="$withval/include"
+]
+)
+
 if test x$with_[]modname != xno; then
 
 	targetname=modname   # we might change this later.

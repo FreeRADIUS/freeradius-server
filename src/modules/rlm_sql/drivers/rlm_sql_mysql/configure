@@ -11,6 +11,12 @@
 ac_help=
 ac_default_prefix=/usr/local
 # Any additions from configure.in:
+ac_help="$ac_help
+  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found "
+ac_help="$ac_help
+  --with-mysql-lib-dir=DIR       Directory where the MySQL libraries may be found "
+ac_help="$ac_help
+  --with-mysql-dir=DIR       Base directory where MySQL is installed "
 
 # Initialize some variables set by options.
 # The variables have the same names as the options, with
@@ -521,7 +527,33 @@ else
 fi
 
 
-# From configure.in Revision: 1.1 
+# From configure.in Revision: 1.2 
+
+
+# Check whether --with-mysql-include-dir or --without-mysql-include-dir was given.
+if test "${with_mysql_include_dir+set}" = set; then
+  withval="$with_mysql_include_dir"
+   mysql_include_dir="$withval" 
+
+fi
+
+
+# Check whether --with-mysql-lib-dir or --without-mysql-lib-dir was given.
+if test "${with_mysql_lib_dir+set}" = set; then
+  withval="$with_mysql_lib_dir"
+   mysql_lib_dir="$withval" 
+
+fi
+
+
+# Check whether --with-mysql-dir or --without-mysql-dir was given.
+if test "${with_mysql_dir+set}" = set; then
+  withval="$with_mysql_dir"
+   mysql_lib_dir="$withval/lib/mysql"
+  mysql_include_dir="$withval/include"
+
+
+fi
 
 
 if test x$with_rlm_sql_mysql != xno; then
@@ -529,7 +561,7 @@ if test x$with_rlm_sql_mysql != xno; then
 	targetname=rlm_sql_mysql   # we might change this later.
 
 	echo $ac_n "checking for compress in -lz""... $ac_c" 1>&6
-echo "configure:533: checking for compress in -lz" >&5
+echo "configure:565: checking for compress in -lz" >&5
 ac_lib_var=`echo z'_'compress | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -537,7 +569,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lz  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 541 "configure"
+#line 573 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -548,7 +580,7 @@ int main() {
 compress()
 ; return 0; }
 EOF
-if { (eval echo configure:552: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:584: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -570,17 +602,17 @@ fi
 
 
 	echo $ac_n "checking for mysql/mysql.h""... $ac_c" 1>&6
-echo "configure:574: checking for mysql/mysql.h" >&5
+echo "configure:606: checking for mysql/mysql.h" >&5
 
 	cat > conftest.$ac_ext <<EOF
-#line 577 "configure"
+#line 609 "configure"
 #include "confdefs.h"
 #include <mysql/mysql.h>
 int main() {
 int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:584: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:616: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   MYSQL_INCLUDE=" "
 else
@@ -599,14 +631,14 @@ rm -f conftest*
 		for try in /usr/local/include /usr/local/mysql/include $mysql_include_dir; do
 			CFLAGS="$old_CFLAGS -I$try"
 			cat > conftest.$ac_ext <<EOF
-#line 603 "configure"
+#line 635 "configure"
 #include "confdefs.h"
 #include <mysql/mysql.h>
 int main() {
 int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:610: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:642: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   MYSQL_INCLUDE="-I$try"
 else
@@ -638,7 +670,7 @@ EOF
 
   
 		echo $ac_n "checking for mysql_init in -lmysqlclient""... $ac_c" 1>&6
-echo "configure:642: checking for mysql_init in -lmysqlclient" >&5
+echo "configure:674: checking for mysql_init in -lmysqlclient" >&5
 
 		old_LIBS="$LIBS"
 
@@ -646,14 +678,14 @@ echo "configure:642: checking for mysql_init in -lmysqlclient" >&5
 		for try in /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql $mysql_lib_dir; do
 			LIBS="$old_LIBS -L$try -lmysqlclient"
 			cat > conftest.$ac_ext <<EOF
-#line 650 "configure"
+#line 682 "configure"
 #include "confdefs.h"
 extern char mysql_init();
 int main() {
 mysql_init()
 ; return 0; }
 EOF
-if { (eval echo configure:657: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:689: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   MYSQL_LIBS="-L$try -lmysqlclient"
 else
