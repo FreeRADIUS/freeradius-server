@@ -15,151 +15,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * This module is based on LDAP patch to Cistron radiusd by James Golovich
- * <james@wwnet.net>, which in turn was based mostly on a Mysql+Cistron patch
- * from <oyarzun@wilmington.net>
- *
- * 17 Jan 2000,	Adrian Pavlykevych <pam@polynet.lviv.ua>
- *	- OpenLDAP SDK porting, basic TLS support, LDAP authorization,
- *	  fault tolerance with multiple LDAP server support
- * 24 May 2000,	Adrian Pavlykevych <pam@polynet.lviv.ua>
- *	- Converting to new configuration file format, futher improvements
- *	  in fault tolerance, threaded operation
- * 12 Dec 2000,	Adrian Pavlykevych <pam@polynet.lviv.ua>
- *	- Added preliminary support for multiple instances
- * 	- moved all instance configuration into dynamicly allocated structure
- *	- Removed connection maintenance thread and all attempts for multihreading
- *	  the module itself. OpenLDAP SDK is not thread safe when used with shared
- *	  LDAP connection.
- *	- Added configuration option for defining LDAP attribute of user object,
- *	  which controls remote access.
- * 16 Feb 2001, Hannu Laurila <hannu.laurila@japo.fi>
- * 	- LDAP<->RADIUS attribute mappings are now read from a file
- *  	- Support for generic RADIUS check and reply attribute.
- * Jun 2001, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Fix: check and reply attributes from LDAP _replace_ existing ones
- *	- Added "default_profile" directive, which points to radiusProfile
- *	  object, which contains default values for RADIUS users
- *	- Added "profile_attribute" directive, which specifies user object
- *	  attribute pointing to radiusProfile object.
- * Nov 2001, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Added support for adding the user password to the check. Based on
- *	  the password_header directive rlm_ldap will strip the
- *	  password header if needed. This will make support for CHAP much easier.
- *	- Added module messages when we reject a user.
- *	- Added ldap_groupcmp to allow searching for user group membership.
- *	- Added ldap_xlat to allow ldap urls in xlat strings. Something like:
- *	  %{ldap:ldap:///dc=company,dc=com?cn?sub?uid=user}
- * Nov 2001, Gordon Tetlow <gordont@gnf.org>
- *	- Do an xlat on the access_group attribute.
- * Dec 2001, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Added ldap caching for the default/regular profiles and group entries.
- *	- Fixed a memory leak in ldap_xlat.
- *	- Removed dict_attrbyname from ldap_pairget. They are not needed.
- *	- Moved the radius_xlat's for filter and basedn in ldap_authenticate() to
- *	  the right place.
- *	- Made the module thread safe. We create a connection pool and each thread
- *	  will call ldap_get_conn to lock one of the ldap connections and release with
- *	  a call to ldap_release_conn when it has finished.
- *	- Request only the user attributes that interest us (radius attributes,regular
- *	  profile,user password and access attribute).
- * Mar 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Fixed a bug where the ldap server will kill the idle connections from the ldap
- *	  connection pool. We now check if ldap_search returns LDAP_SERVER_DOWN and try to
- *	  reconnect if it does. Bug noted by Dan Perik <dan_perik-work@ntm.org.pg>
- * May 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Instead of the Group attribute we now have the Ldap-Group attribute, to avoid
- *	  collisions with other modules
- *	- If perform_search fails check the ld != NULL before using it. Based on a bug report
- *	  by John <jhogenmiller@pennswoods.net>
- * Jun 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Add the ability to do a paircmp on the check items. Add a compare_check_items boolean
- *	  configuration directive which defaults to no. If it is set then we will do a compare
- *	- Add another configuration directive. access_attr_used_for_allow. If it is set to yes
- *	  then the access_attr will be used to allow user access. If it is set to no then it will
- *	  be used to deny user access.
- *	- Remember to free inst->atts in ldap_detach()
- *	- Add a forgotten ldap_free_urldesc in ldap_xlat()
- *	- Add a variable locked in the LDAP_CONN structure. We use this to avoid deadlocks. The mutex
- *	  we are using is of type fast and can deadlock if the same thread tries to relock it. That
- *	  could happen in case of calls to xlat.
- *	- When ldap_search returns NO_SUCH_OBJECT don't return fail but notfound
- * Jul 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Fix the logic when we get an LDAP_SERVER_DOWN or we have conn->ld == NULL in perform_search
- *	- Try to minimize the penalty of having the ldap server go down. The comments before
- *	  MAX_FAILED_CONNS_* definitions should explain things.
- *	- Check for a number of error codes from ldap_search and log corresponding error messages
- *	  We should only reconnect when that can help things.
- *	- In ldap_groupcmp instead of first searching for the group object and then checking user
- *	  group membership combine them in one ldap search operation. That should make group
- *	  membership checks a lot faster.
- *	- Remember to do ldap_release_conn and ldap_msgfree when we do paircmp and the result is reject
- * Aug 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Add support for group membership attribute inside the user entry in ldap_groupcmp. The attribute
- *	  can either contain the name or the DN of the group. Added the groupmembership_attribute
- *	  configuration directive
- *	- Move the ldap_{get,release}_conn in ldap_groupcmp so that we hold a connection for the minimum time.
- *	- Now that ldap_groupcmp is complete we really don't need access_group. Removed it.
- *	- Remember to free groupmembership_attribute in ldap_detach
- *	- Don't delete existing generic attributes in ldap_pairget when adding new ones. Since generic attributes
- *	  have operators we don't need to try to be cleaver.
- * Sep 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Fix a crash in ldap_pairget when the attribute value is larger than the buffer size
- *	  Bug report by Stefan Radovanovici <sra@rtsffm.com>
- *	- If we add a check item then use the == operator. Based on an idea by Allister Maguire <amaguire@gnc.net.nz>
- *	- Only add a failure message for bind as user failed in ldap_authenticate if the result of ldap_connect was
- *	  RLM_MODULE_REJECT
- *	- Make tls_mode a configurable option. Patch from John <jhogenmiller@pennswoods.net>
- *	- Allow multiple regular profiles for an entry
- * Oct 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Disable cache after searching for the default profile
- *	- Use the MAX_FAILED_CONNS_* in ldap_authenticate() when calling ldap_connect()
- * Nov 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Set LDAP version to V3 before binding. Now freeradius should work with openldap21
- * Dec 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Set default values for the server and basedn parameters
- * Feb 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Add support for ldap_initialize. That way we can specify the server as an ldap url.
- *	  Based on ideas from Derrik Pates <dpates@dsdk12.net>
- * Mar 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- * 	- Add an ldap_escape_func. Escape the * character from the filter so that we can avoid
- * 	  the trivial DoS of username=*
- * 	- Remove the caching code. It does not exist in openldap21.
- *	  Based on a report from Mike Denka <mdenk@whidbey.net>
- * May 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Don't do a double free on the attribute maps. Bug noted by Derrik Pates <dpates@dsdk12.net>
- *	- Apply a patch from Alexander M. Pravking <fduch@antar.bryansk.ru> to do an xlat on the
- *	  retrieved attributes.
- * Aug 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- In case of a bad search filter, print out the corresponding filter
- * Sep 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Compile even if we don't have pthread's
- * Oct 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Add a new configuration directive, base_filter which is used for base scope searches
- *	  (When searching for the default/regular profiles for example)
- * Nov 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Add a new configuration directive, do_xlat (default: yes). If set we use pairxlatmove
- *	  on the radius attributes, else we fall back to the plain old pairadd. That way people
- *	  can fall back on the 0.8.1 behaviour without making changes to their ldap database or
- *	  gain a little performance by not using pairxlatmove
- * Dec 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Add a patch from Jon Miner <miner@doit.wisc.edu> to add the ability to configure
- *	  various LDAP TLS options
- *	- Only call pairfree if we are using pairxlatmove not for pairadd
- * Mar 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- If we are passed an empty password log a module failure message not an error message
- * Apr 2004, Kostas Kalveras <kkalev@noc.ntua.gr>
- *	- Add a patch from Tarun Bhushan <tarun.bhushan@macquarie.com> to add a tls_mode boolean
- *	  directive so that we can enable TLS connetions even if port is not set to 636
- *	- Add an error message if ldap_initialize() is not available and we are passed a URL like
- *	  'server' directive.
- *	- Add a per instance Ldap-Group attribute (of the form <instance>-Ldap-Group) and register
- *	  a corresponding ldap_groupcmp function
- *	- Small change to ldap_get_conn to fix problems on some platforms
- * Jul 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Don't core dump when ldap.attrmap contains only one reply item
- * Sep 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
- *	- Store the LDAP-UserDN attribute in the check item list not in the incoming request
+ *   Copyright 2004 The FreeRADIUS Server Project.
  */
 static const char rcsid[] = "$Id$";
 
@@ -292,7 +148,7 @@ typedef struct {
 	char		*tls_keyfile;
 	char		*tls_randfile;
 	char		*tls_require_cert;
-}               ldap_instance;
+}  ldap_instance;
 
 /* The default setting for TLS Certificate Verification */
 #define TLS_DEFAULT_VERIFY "allow"
@@ -359,7 +215,8 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,void *instance)
 
 	for(i=0;i<inst->num_conns;i++){
 		DEBUG("rlm_ldap: ldap_get_conn: Checking Id: %d",i);
-		if (conns[i].locked == 0 && pthread_mutex_trylock(&(conns[i].mutex)) == 0){
+		if ((conns[i].locked == 0) &&
+		    (pthread_mutex_trylock(&(conns[i].mutex)) == 0)) {
 			*ret = &conns[i];
 			conns[i].locked = 1;
 			DEBUG("rlm_ldap: ldap_get_conn: Got Id: %d",i);
@@ -496,7 +353,8 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		free(inst);
 		return -1;
 	}
-	if (inst->check_item_map == NULL && inst->reply_item_map == NULL){
+	if ((inst->check_item_map == NULL) &&
+	    (inst->reply_item_map == NULL)) {
 		radlog(L_ERR, "rlm_ldap: dictionary mappings file %s did not contain any mappings",
 			inst->dictionary_mapping);
 		free(inst);
@@ -581,7 +439,8 @@ read_mappings(ldap_instance* inst)
 	FILE* mapfile;
 	char *filename;
 	/* all buffers are of MAX_LINE_LEN so we can use sscanf without being afraid of buffer overflows */
-	char buf[MAX_LINE_LEN], itemType[MAX_LINE_LEN], radiusAttribute[MAX_LINE_LEN], ldapAttribute[MAX_LINE_LEN];
+	char buf[MAX_LINE_LEN], itemType[MAX_LINE_LEN];
+	char radiusAttribute[MAX_LINE_LEN], ldapAttribute[MAX_LINE_LEN];
 	int linenumber;
 
 	/* open the mappings file for reading */
@@ -614,13 +473,15 @@ read_mappings(ldap_instance* inst)
 		if (buf[0] == 0) continue;
 
 		/* extract tokens from the string */
-		token_count = sscanf(buf, "%s %s %s", itemType, radiusAttribute, ldapAttribute);
+		token_count = sscanf(buf, "%s %s %s", itemType,
+				     radiusAttribute, ldapAttribute);
 
 		if (token_count <= 0) /* no tokens */
 			continue;
 
 		if (token_count != 3) {
-			radlog(L_ERR, "rlm_ldap: Skipping %s line %i: %s", filename, linenumber, buf);
+			radlog(L_ERR, "rlm_ldap: Skipping %s line %i: %s",
+			       filename, linenumber, buf);
 			radlog(L_ERR, "rlm_ldap: Expected 3 tokens "
 			       "(Item type, RADIUS Attribute and LDAP Attribute) but found only %i", token_count);
 			continue;
@@ -695,7 +556,8 @@ retry:
 			DEBUG2("rlm_ldap: closing existing LDAP connection");
 			ldap_unbind_s(conn->ld);
 		}
-		if ((conn->ld = ldap_connect(instance, inst->login, inst->password, 0, &res)) == NULL) {
+		if ((conn->ld = ldap_connect(instance, inst->login,
+					     inst->password, 0, &res)) == NULL) {
 			radlog(L_ERR, "rlm_ldap: (re)connection attempt failed");
 			if (search_retry == 0)
 				conn->failed_conns++;
@@ -704,8 +566,10 @@ retry:
 		conn->bound = 1;
 		conn->failed_conns = 0;
 	}
-	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn ? search_basedn : "(null)" , filter);
-	switch (ldap_search_st(conn->ld, search_basedn, scope, filter, attrs, 0, &(inst->timeout), result)) {
+	DEBUG2("rlm_ldap: performing search in %s, with filter %s",
+	       search_basedn ? search_basedn : "(null)" , filter);
+	switch (ldap_search_st(conn->ld, search_basedn, scope, filter,
+			       attrs, 0, &(inst->timeout), result)) {
 	case LDAP_SUCCESS:
 	case LDAP_NO_SUCH_OBJECT:
 		break;
@@ -740,12 +604,14 @@ retry:
 	case LDAP_UNAVAILABLE:
 		/* We don't need to reconnect in these cases so we don't set conn->bound */
 		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s", ldap_err2string(ldap_errno));
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s",
+		       ldap_err2string(ldap_errno));
 		ldap_msgfree(*result);
 		return (RLM_MODULE_FAIL);
 	default:
 		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s", ldap_err2string(ldap_errno));
+		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s",
+		       ldap_err2string(ldap_errno));
 		conn->bound = 0;
 		ldap_msgfree(*result);
 		return (RLM_MODULE_FAIL);
@@ -798,8 +664,9 @@ static int ldap_escape_func(char *out, int outlen, const char *in)
  * ldap_groupcmp(). Implement the Ldap-Group == "group" filter
  */
 
-static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
-                VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
+			 VALUE_PAIR *check, VALUE_PAIR *check_pairs,
+			 VALUE_PAIR **reply_pairs)
 {
         char            filter[MAX_FILTER_STR_LEN];
         char            gr_filter[MAX_FILTER_STR_LEN];
@@ -870,12 +737,14 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
                 * Adding new attribute containing DN for LDAP object associated with
                 * given username
                 */
-                pairadd(request_pairs, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+                pairadd(request_pairs, pairmake("Ldap-UserDn", user_dn,
+						T_OP_EQ));
                 ldap_memfree(user_dn);
                 ldap_msgfree(result);
         }
 
-        if(!radius_xlat(gr_filter, sizeof(gr_filter), inst->groupmemb_filt, req, NULL)){
+        if(!radius_xlat(gr_filter, sizeof(gr_filter),
+			inst->groupmemb_filt, req, NULL)) {
                 DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter.");
                 return 1;
         }
@@ -885,15 +754,17 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 		snprintf(filter,sizeof(filter), "%s",gr_filter);
 		snprintf(basedn,sizeof(basedn), "%s",(char *)check->strvalue);
 	} else
-		snprintf(filter,sizeof(filter), "(&(%s=%s)%s)",inst->groupname_attr,(char *)check->strvalue,gr_filter);
+		snprintf(filter,sizeof(filter), "(&(%s=%s)%s)",
+			 inst->groupname_attr,
+			 (char *)check->strvalue,gr_filter);
 
-	if ((conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1){
+	if ((conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1) {
 		radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
 		return 1;
 	}
 
 	if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE,
-				filter, attrs, &result)) == RLM_MODULE_OK){
+				filter, attrs, &result)) == RLM_MODULE_OK) {
 		DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",
 				(char *)check->strvalue);
 		ldap_msgfree(result);
@@ -922,8 +793,9 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 		radlog(L_ERR, "rlm_ldap: Add ldap connections are in use");
 		return 1;
 	}
-	if ((res = perform_search(inst, conn, vp_user_dn->strvalue, LDAP_SCOPE_BASE,
-					filter, group_attrs,&result)) != RLM_MODULE_OK){
+	if ((res = perform_search(inst, conn, vp_user_dn->strvalue,
+				  LDAP_SCOPE_BASE, filter, group_attrs,
+				  &result)) != RLM_MODULE_OK) {
 		DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
 		ldap_release_conn(conn_id, inst->conns);
 		return 1;
@@ -935,9 +807,11 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 		ldap_msgfree(result);
 		return 1;
 	}
-	if ((vals = ldap_get_values(conn->ld, msg, inst->groupmemb_attr)) != NULL) {
+	if ((vals = ldap_get_values(conn->ld, msg,
+				    inst->groupmemb_attr)) != NULL) {
 		unsigned int i = 0;
 		char found = 0;
+
 		for (;i < ldap_count_values(vals);i++){
 			if (strchr(vals[i],',') != NULL){
 				/* This looks like a DN */
@@ -948,9 +822,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 				if ((res = perform_search(inst, conn, vals[i],
 						LDAP_SCOPE_BASE, filter,
 						attrs, &gr_result)) != RLM_MODULE_OK){
-					if (res != RLM_MODULE_NOTFOUND){
-						DEBUG("rlm_ldap::ldap_groupcmp: \
-							Search returned error");
+					if (res != RLM_MODULE_NOTFOUND) {
+						DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
 						ldap_value_free(vals);
 						ldap_msgfree(result);
 						ldap_release_conn(conn_id,inst->conns);
@@ -971,8 +844,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 		ldap_value_free(vals);
 		ldap_msgfree(result);
 		if (found == 0){
-			DEBUG("rlm_ldap::groupcmp: Group %s not found \
-				or user not a member",
+			DEBUG("rlm_ldap::groupcmp: Group %s not found or user not a member",
 				(char *)check->strvalue);
 			ldap_release_conn(conn_id,inst->conns);
 			return 1;
@@ -1022,16 +894,18 @@ static int ldap_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 		radlog (L_ERR, "rlm_ldap: LDAP URL parse failed.\n");
 		return 0;
 	}
-	if (ldap_url->lud_attrs == NULL || ldap_url->lud_attrs[0] == NULL || \
-		( ldap_url->lud_attrs[1] != NULL || ( ! strlen(ldap_url->lud_attrs[0]) || \
+	if (ldap_url->lud_attrs == NULL || ldap_url->lud_attrs[0] == NULL ||
+	    ( ldap_url->lud_attrs[1] != NULL ||
+	      ( ! strlen(ldap_url->lud_attrs[0]) ||
 		! strcmp(ldap_url->lud_attrs[0],"*") ) ) ){
 		radlog (L_ERR, "rlm_ldap: Invalid Attribute(s) request.\n");
 		ldap_free_urldesc(ldap_url);
 		return 0;
 	}
 	if (ldap_url->lud_host){
-		if (strncmp(inst->server,ldap_url->lud_host,strlen(inst->server)) != 0 || \
-				ldap_url->lud_port != inst->port){
+		if (strncmp(inst->server,ldap_url->lud_host,
+			    strlen(inst->server)) != 0 ||
+		    ldap_url->lud_port != inst->port) {
 			DEBUG("rlm_ldap: Requested server/port is not known to this module instance.");
 			ldap_free_urldesc(ldap_url);
 			return 0;
@@ -1472,7 +1346,8 @@ ldap_authenticate(void *instance, REQUEST * request)
 	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"",
 	       request->username->strvalue, request->password->strvalue);
 
-	while((vp_user_dn = pairfind(request->config_items, PW_LDAP_USERDN)) == NULL) {
+	while ((vp_user_dn = pairfind(request->config_items,
+				      PW_LDAP_USERDN)) == NULL) {
 		if (!radius_xlat(filter, sizeof(filter), inst->filter,
 				request, NULL)) {
 			radlog (L_ERR, "rlm_ldap: unable to create filter.\n");
@@ -1561,8 +1436,7 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 			return (NULL);
 		}
 #endif
-	}
-	else{
+	} else {
 		DEBUG("rlm_ldap: (re)connect to %s:%d, authentication %d", inst->server, inst->port, auth);
 		if ((ld = ldap_init(inst->server, inst->port)) == NULL) {
 			radlog(L_ERR, "rlm_ldap: ldap_init() failed");
@@ -1570,19 +1444,24 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 			return (NULL);
 		}
 	}
-	if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, (void *) &(inst->net_timeout)) != LDAP_OPT_SUCCESS) {
+	if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT,
+			    (void *) &(inst->net_timeout)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %ld.%ld", inst->net_timeout.tv_sec, inst->net_timeout.tv_usec);
 	}
+
 	if (ldap_set_option(ld, LDAP_OPT_TIMELIMIT, (void *) &(inst->timelimit)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_TIMELIMIT %d", inst->timelimit);
 	}
+
 	if (inst->ldap_debug && ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &(inst->ldap_debug)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", inst->ldap_debug);
 	}
+
 	ldap_version = LDAP_VERSION3;
 	if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP version to V3");
 	}
+
 #ifdef HAVE_LDAP_START_TLS
         if(inst->tls_mode) {
 		DEBUG("rlm_ldap: setting TLS mode to %d", inst->tls_mode);
@@ -1597,40 +1476,38 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 		DEBUG("rlm_ldap: setting TLS CACert File to %s", inst->tls_cacertfile);
 
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CACERTFILE,
-							  (void *) inst->tls_cacertfile )
-			 != LDAP_OPT_SUCCESS) {
+				      (void *) inst->tls_cacertfile )
+		     != LDAP_OPT_SUCCESS) {
 			radlog(L_ERR, "rlm_ldap: could not set "
-				   "LDAP_OPT_X_TLS_CACERTFILE option to %s", inst->tls_cacertfile);
+			       "LDAP_OPT_X_TLS_CACERTFILE option to %s", inst->tls_cacertfile);
 		}
 	}
-
+	
 	if(inst->tls_cacertdir != NULL) {
 		DEBUG("rlm_ldap: setting TLS CACert File to %s", inst->tls_cacertdir);
-
+		
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CACERTDIR,
-							  (void *) inst->tls_cacertdir )
-			 != LDAP_OPT_SUCCESS) {
+				      (void *) inst->tls_cacertdir )
+		     != LDAP_OPT_SUCCESS) {
 			radlog(L_ERR, "rlm_ldap: could not set "
-				   "LDAP_OPT_X_TLS_CACERTDIR option to %s", inst->tls_cacertdir);
+			       "LDAP_OPT_X_TLS_CACERTDIR option to %s", inst->tls_cacertdir);
 		}
 	}
 
 	if( strcmp( TLS_DEFAULT_VERIFY, inst->tls_require_cert ) != 0 ) {
 		DEBUG("rlm_ldap: setting TLS Require Cert to %s",
-			  inst->tls_require_cert);
+		      inst->tls_require_cert);
 	}
 
 
 #ifdef HAVE_INT_TLS_CONFIG
-
 	if ( ldap_int_tls_config( NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
-							  (inst->tls_require_cert) )
-		 != LDAP_OPT_SUCCESS) {
+				  (inst->tls_require_cert) )
+	     != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: could not set "
-			   "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s",
-			   inst->tls_require_cert);
+		       "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s",
+		       inst->tls_require_cert);
 	}
-
 #endif
 
 	if(inst->tls_certfile != NULL) {
@@ -1645,36 +1522,41 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 		}
 	}
 
-	if(inst->tls_keyfile != NULL) {
-		DEBUG("rlm_ldap: setting TLS Key File to %s", inst->tls_keyfile);
+	if (inst->tls_keyfile != NULL) {
+		DEBUG("rlm_ldap: setting TLS Key File to %s",
+		      inst->tls_keyfile);
 
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_KEYFILE,
-							  (void *) inst->tls_keyfile )
-			 != LDAP_OPT_SUCCESS) {
+				      (void *) inst->tls_keyfile )
+		     != LDAP_OPT_SUCCESS) {
 			radlog(L_ERR, "rlm_ldap: could not set "
-				   "LDAP_OPT_X_TLS_KEYFILE option to %s",
-				   inst->tls_keyfile);
+			       "LDAP_OPT_X_TLS_KEYFILE option to %s",
+			       inst->tls_keyfile);
 		}
 	}
 
-	if(inst->tls_randfile != NULL) {
-		DEBUG("rlm_ldap: setting TLS Key File to %s", inst->tls_randfile);
-
-		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_RANDOM_FILE,
-							  (void *) inst->tls_randfile )
-			 != LDAP_OPT_SUCCESS) {
+	if (inst->tls_randfile != NULL) {
+		DEBUG("rlm_ldap: setting TLS Key File to %s",
+		      inst->tls_randfile);
+		
+		if (ldap_set_option( NULL, LDAP_OPT_X_TLS_RANDOM_FILE,
+				     (void *) inst->tls_randfile)
+		    != LDAP_OPT_SUCCESS) {
 			radlog(L_ERR, "rlm_ldap: could not set "
-				   "LDAP_OPT_X_TLS_RANDOM_FILE option to %s",
-				   inst->tls_randfile);
+			       "LDAP_OPT_X_TLS_RANDOM_FILE option to %s",
+			       inst->tls_randfile);
 		}
 	}
+
 	if (inst->start_tls) {
 		DEBUG("rlm_ldap: starting TLS");
 		rc = ldap_start_tls_s(ld, NULL, NULL);
 		if (rc != LDAP_SUCCESS) {
 			DEBUG("rlm_ldap: ldap_start_tls_s()");
-			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-			radlog(L_ERR, "rlm_ldap: could not start TLS %s", ldap_err2string(ldap_errno));
+			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER,
+					&ldap_errno);
+			radlog(L_ERR, "rlm_ldap: could not start TLS %s",
+			       ldap_err2string(ldap_errno));
 			*result = RLM_MODULE_FAIL;
 			ldap_unbind_s(ld);
 			return (NULL);
@@ -1683,21 +1565,24 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 #endif /* HAVE_LDAP_START_TLS */
 
 	if (inst->is_url){
-		DEBUG("rlm_ldap: bind as %s/%s to %s", dn, password, inst->server);
+		DEBUG("rlm_ldap: bind as %s/%s to %s",
+		      dn, password, inst->server);
+	} else {
+		DEBUG("rlm_ldap: bind as %s/%s to %s:%d",
+		      dn, password, inst->server, inst->port);
 	}
-	else{
-		DEBUG("rlm_ldap: bind as %s/%s to %s:%d", dn, password, inst->server, inst->port);
-	}
+
 	msgid = ldap_bind(ld, dn, password,LDAP_AUTH_SIMPLE);
 	if (msgid == -1) {
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		if (inst->is_url)
+		if (inst->is_url) {
 			radlog(L_ERR, "rlm_ldap: %s bind to %s failed: %s",
 			 	dn, inst->server, ldap_err2string(ldap_errno));
-		else
+		} else {
 			radlog(L_ERR, "rlm_ldap: %s bind to %s:%d failed: %s",
 			 	dn, inst->server, inst->port,
 			 	ldap_err2string(ldap_errno));
+		}
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
 		return (NULL);
@@ -1706,20 +1591,22 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 
 	rc = ldap_result(ld, msgid, 1, &(inst->timeout), &res);
 
-	if(rc < 1) {
+	if (rc < 1) {
 		DEBUG("rlm_ldap: ldap_result()");
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		if (inst->is_url)
+		if (inst->is_url) {
 			radlog(L_ERR, "rlm_ldap: %s bind to %s failed: %s",
 				dn, inst->server, (rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
-		else
+		} else {
 			radlog(L_ERR, "rlm_ldap: %s bind to %s:%d failed: %s",
-				dn, inst->server, inst->port,
+			       dn, inst->server, inst->port,
 				(rc == 0) ? "timeout" : ldap_err2string(ldap_errno));
+		}
 		*result = RLM_MODULE_FAIL;
 		ldap_unbind_s(ld);
 		return (NULL);
 	}
+
 	ldap_errno = ldap_result2error(ld, res, 1);
 	switch (ldap_errno) {
 	case LDAP_SUCCESS:
@@ -1731,21 +1618,21 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 		if (auth){
 			DEBUG("rlm_ldap: Bind failed with invalid credentials");
 			*result = RLM_MODULE_REJECT;
-		}
-		else {
+		} else {
 			radlog(L_ERR, "rlm_ldap: LDAP login failed: check identity, password settings in ldap section of radiusd.conf");
 			*result = RLM_MODULE_FAIL;
 		}
 		break;
 
 	default:
-		if (inst->is_url)
+		if (inst->is_url) {
 			radlog(L_ERR,"rlm_ldap: %s bind to %s failed %s",
 				dn, inst->server, ldap_err2string(ldap_errno));
-		else
+		} else {
 			radlog(L_ERR,"rlm_ldap: %s bind to %s:%d failed %s",
 				dn, inst->server, inst->port,
 				ldap_err2string(ldap_errno));
+		}
 		*result = RLM_MODULE_FAIL;
 	}
 
@@ -1795,10 +1682,11 @@ ldap_detach(void *instance)
 		free((char *) inst->access_attr);
 	if (inst->profile_attr)
 		free((char *) inst->profile_attr);
-	if (inst->conns){
-		int i=0;
 
-		for(;i<inst->num_conns;i++){
+	if (inst->conns) {
+		int i;
+
+		for(i = 0;i < inst->num_conns; i++){
 			if (inst->conns[i].ld){
 				ldap_unbind_s(inst->conns[i].ld);
 			}
@@ -1894,7 +1782,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 
 	/* check if there is a mapping from this LDAP attribute to a RADIUS attribute */
 	for (element = item_map; element != NULL; element = element->next) {
-	if ((vals = ldap_get_values(ld,entry,element->attr)) != NULL){
+	if ((vals = ldap_get_values(ld,entry,element->attr)) != NULL) {
 			/* check whether this is a one-to-one-mapped ldap attribute or a generic
 			   attribute and set flag accordingly */
 
