@@ -225,11 +225,15 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 
 		line++;
-		if (buf[0] == '#' || buf[0] == 0 || buf[0] == '\n')
+		if (buf[0] == '#' || buf[0] == 0 ||
+		    buf[0] == '\n' || buf[0] == '\r')
 			continue;
 
-		keyword = strtok(buf, " \t\n");
-		data    = strtok(NULL, "\n");
+		keyword = strtok(buf, " \t\r\n");
+		if (keyword == NULL)
+			continue;
+
+		data    = strtok(NULL, "\r\n");
 		if (data == NULL || data[0] == 0) {
 			librad_log("dict_init: %s[%d]: invalid entry",
 				fn, line);
