@@ -1439,6 +1439,9 @@ ldap_authenticate(void *instance, REQUEST * request)
 
 	if (!request->password){
 		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Password\" is required for authentication.");
+		DEBUG2("  You seem to have set \"Auth-Type := LDAP\" somewhere.");
+		DEBUG2("  THAT CONFIGURATION IS WRONG.  DELETE IT.");
+		DEBUG2("  YOU ARE PREVENTING THE SERVER FROM WORKING PROPERLY.");
 		return RLM_MODULE_INVALID;
 	}
 
