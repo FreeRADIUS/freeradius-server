@@ -38,7 +38,8 @@ function connect2db($config)
 function get_user_info($ds,$user,$config)
 {
 	if ($ds){
-		$sr=@ldap_search($ds,"$config[ldap_base]", "uid=" . $user);
+		$attrs = array('cn');
+		$sr=@ldap_search($ds,"$config[ldap_base]", "uid=" . $user,$attrs);
 		$info = @ldap_get_entries($ds, $sr);
 		$cn = $info[0]["cn"][0];
 		if ($cn == '')

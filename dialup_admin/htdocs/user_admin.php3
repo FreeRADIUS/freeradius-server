@@ -170,7 +170,7 @@ if ($link){
 			$lastlog_time = $row['AcctStartTime'];
 			$lastlog_server_ip = $row['NASIPAddress'];
 			$lastlog_server_port = $row['NASPortId'];
-			$lastlog_session_time = date2timediv($lastlog_time);
+			$lastlog_session_time = date2timediv($lastlog_time,0);
 			if ($daily_limit != 'none'){
 				$remaining = $remaining - $lastlog_session_time;
 				if ($remaining < 0)

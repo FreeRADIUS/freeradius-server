@@ -64,13 +64,14 @@ function time2strclock($time)
 	return $ret;
 }
 
-function date2timediv($date)
+function date2timediv($date,$now)
 {
 	list($day,$time)=explode(' ',$date);
 	$day = explode('-',$day);
 	$time = explode(':',$time);
 	$timest = mktime($time[0],$time[1],$time[2],$day[1],$day[2],$day[0]);
-	$now = time();
+	if (!$now)
+		$now = time();
 	return ($now - $timest);
 }
 

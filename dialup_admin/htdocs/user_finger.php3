@@ -74,6 +74,7 @@ if ($link){
 		AcctStopTime = '0' AND NASIPAddress = '$name_data' $extra
 		GROUP BY UserName ORDER BY AcctStartTime;");
 		if ($search){
+			$now = time();
 			while($row = @da_sql_fetch_array($search,$config)){
 				$num++;
 				$h += 21;
@@ -82,7 +83,7 @@ if ($link){
 				if ($finger_info[$servers_num][$num]['ip'] == '')
 					$finger_info[$servers_num][$num]['ip'] = '-';
 				$session_time = $row['AcctStartTime'];
-				$session_time = date2timediv($session_time);
+				$session_time = date2timediv($session_time,$now);
 				$finger_info[$servers_num][$num]['session_time'] = time2strclock($session_time);
 				$finger_info[$servers_num][$num]['user'] = $user;
 				$finger_info[$servers_num][$num]['callerid'] = $row['CallingStationId'];

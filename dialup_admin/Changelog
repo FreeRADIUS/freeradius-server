@@ -14,6 +14,11 @@ Ver 1.60:
 * html fixes in accounting.php3
 * Fix a problem in user_accounting when NASIPAddress is not set.
 * Use CISCO-AAA-SESSION-MIB in snmpfinger
+* In lib/ldap/functions.php3 only ask for the cn attribute in ldap_search not the whole entry. That should make
+  user_finger a lot faster when the user database is in ldap
+* In lib/functions.php3 pass a second argument to date2timediv with the current time. user_finger calls that
+  function for each online user so we now don't need to do a lot of calls to time() but only one. That should make
+  user_finger somewhat faster.
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page
