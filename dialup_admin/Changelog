@@ -8,6 +8,11 @@ Ver 1.56:
 * Fix a bug in lib/sql/change_passwd.php3 when not using operators.
   Bug report from Sheldon Fougere <sfougere@solutioninc.com>
 * Add the caller id in the connection status attributes in the show user page
+* Allow for multiple default values. Also add a generic flag in ldap attrmap. If it exists then the
+  attribute is generic and user values *do not* overwrite default values. The operators in the generic
+  attribute can be used for that. The same is very difficult to implement for sql, so for now user
+  values overwrite default values in sql (user edit page).
+  A lot of code and a lot of files where changed so there may be bugs somewhere.
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files

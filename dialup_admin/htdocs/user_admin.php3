@@ -44,13 +44,13 @@ EOM;
 	exit();
 }
 
-$monthly_limit = ($item_vals['Max-Weekly-Session'][0] != '') ? $item_vals['Max-Weekly-Session'][0] : $default_vals['Max-Weekly-Session'];
+$monthly_limit = ($item_vals['Max-Weekly-Session'][0] != '') ? $item_vals['Max-Weekly-Session'][0] : $default_vals['Max-Weekly-Session'][0];
 $monthly_limit = ($monthly_limit) ? $monthly_limit : $config[counter_default_monthly];
-$weekly_limit = ($item_vals['Max-Weekly-Session'][0] != '') ? $item_vals['Max-Weekly-Session'][0] : $default_vals['Max-Weekly-Session'];
+$weekly_limit = ($item_vals['Max-Weekly-Session'][0] != '') ? $item_vals['Max-Weekly-Session'][0] : $default_vals['Max-Weekly-Session'][0];
 $weekly_limit = ($weekly_limit) ? $weekly_limit : $config[counter_default_weekly];
-$daily_limit = ($item_vals['Max-Daily-Session'][0] != '') ? $item_vals['Max-Daily-Session'][0] : $default_vals['Max-Daily-Session'];
+$daily_limit = ($item_vals['Max-Daily-Session'][0] != '') ? $item_vals['Max-Daily-Session'][0] : $default_vals['Max-Daily-Session'][0];
 $daily_limit = ($daily_limit) ? $daily_limit : $config[counter_default_daily];
-$session_limit = ($item_vals['Session-Timeout'][0] != '') ? $item_vals['Session-Timeout'][0] : $default_vals['Session-Timeout'];
+$session_limit = ($item_vals['Session-Timeout'][0] != '') ? $item_vals['Session-Timeout'][0] : $default_vals['Session-Timeout'][0];
 $session_limit = ($session_limit) ? $session_limit : 'none';
 $remaining = 'unlimited time';
 $log_color = 'green';
@@ -247,7 +247,7 @@ EON;
 else
 	$descr = '-';
 
-$expiration = $default_vals['Expiration'];
+$expiration = $default_vals['Expiration'][0];
 if ($item_vals['Expiration'][0] != '')
 	$expiration = $item_vals['Expiration'][0];
 if ($expiration != ''){

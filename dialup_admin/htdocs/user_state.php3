@@ -13,7 +13,7 @@ else
 $vars = array( 'Dialup-Access' => 'TRUE','Dialup-Lock-Msg' => '-',
 		'Max-Weekly-Session' => 0,'Max-Daily-Session' => 0);
 foreach($vars as $key => $val){
-	$val = ($item_vals["$key"][0] != "") ? $item_vals["$key"][0] : $default_vals["$key"];
+	$val = ($item_vals["$key"][0] != "") ? $item_vals["$key"][0] : $default_vals["$key"][0];
 	$vars["$key"]=$val;
 }
 $vars['Dialup-Access'] = ($vars['Dialup-Access'] == 'FALSE') ? 'inactive' : 'active';

@@ -1,4 +1,5 @@
 <?php
+require('../lib/functions.php3');
 	$ds = @ldap_connect($config[ldap_server]);
 	if ($ds){
 		$r = @ldap_bind($ds,"$config[ldap_binddn]",$config[ldap_bindpw]);
@@ -20,8 +21,7 @@
 //	if value is the same as the default and the corresponding attribute in ldap does not exist or
 //	the value is the same as that in ldap then continue
 //
-					if ( ($val == $default_vals["$key"] && !isset($item_vals["$key"][$j])) ||
-						$val == $item_vals["$key"][$j])
+					if ( (check_defaults($val,'',$default_vals["$key"]) && !isset($item_vals["$key"][$j])) || $val == $item_vals["$key"][$j])
 						continue;
 //
 //	if value is null and ldap attribute does not exist then continue
@@ -32,7 +32,7 @@
 //	if values is the same as the default or if the value is null and the ldap attribute exists
 //	then delete them
 //
-					if (($val == $default_vals["$key"] || $val == '') && 
+					if ((check_defaults($val,'',$default_vals["$key"]) || $val == '') && 
 						isset($item_vals["$key"][$j]))
 						$del[$attrmap["$key"]][] = $item_vals["$key"][$j];
 //

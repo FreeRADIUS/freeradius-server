@@ -40,7 +40,7 @@
 //	if value is the same as the default and the corresponding attribute in ldap does not exist or
 //	the value is the same as that in ldap then continue
 //
-	        		if ( $$attrmap["$key"] == $default_vals["$key"])
+	        		if ( check_defaults($$attrmap["$key"],'',$default_vals["$key"]))
 	                		continue;
 				if ( $$attrmap["$key"] == '')
 					continue;

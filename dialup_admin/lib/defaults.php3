@@ -5,7 +5,7 @@ foreach($ARR as $val) {
 	if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
 		continue;
 	list($key,$v)=split(":[[:space:]]*",$val);
-	$default_vals["$key"]="$v";
+	$default_vals["$key"][0]="$v";
 }
 if (is_file("../lib/$config[general_lib_type]/defaults.php3"))
         include("../lib/$config[general_lib_type]/defaults.php3");

@@ -61,6 +61,8 @@ if ($link){
 				echo "<b>Could not add user to group $Fgroup: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
 		if (!$da_abort){
+			if ($Fgroup != '')
+				require('../lib/defaults.php3');
 			foreach($show_attrs as $key => $attr){
 				if ($attrmap["$key"] == 'none')
 					continue;
@@ -80,13 +82,13 @@ if ($link){
 						echo "<b>Invalid operator ($op_val) for attribute $key</b><br>\n";
 						coninue;
 					}
-					$op_val = ",'$op_val'";
+					$op_val2 = ",'$op_val'";
 				}
-				if ($val == '' || $val == $default_vals["$key"])
+				if ($val == '' || check_defaults($val,$op_val,$default_vals["$key"]))
 					continue;
 				$res = @da_sql_query($link,$config,
 				"INSERT INTO $table (Attribute,Value,UserName $text)
-				VALUES ('$attrmap[$key]','$val','$login' $op_val);");
+				VALUES ('$attrmap[$key]','$val','$login' $op_val2);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Query failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 			}

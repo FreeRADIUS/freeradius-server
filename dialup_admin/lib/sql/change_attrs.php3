@@ -1,4 +1,5 @@
 <?php
+require('../lib/functions.php3');
 if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
         include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
 else{
@@ -60,15 +61,15 @@ if ($link){
 	// 	if value is the same as that in the sql database do nothing
 			if ($val == $item_vals["$key"][$j])
 				continue;
-	//	if value is null and corresponding value exists then delete
-			else if (($val == $default_vals["$key"] || $val == '') && isset($item_vals["$key"][$j])){
+	//	if value is null or equals the default value and corresponding value exists then delete
+			else if ((check_defaults($val,$op_val,$default_vals["$key"]) || $val == '') && isset($item_vals["$key"][$j])){
 				$res = @da_sql_query($link,$config,
 				"DELETE FROM $table WHERE $query_key = '$login' AND Attribute = '$sql_attr';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Delete failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
-	//	if value is null then don't add it 
-			else if ($val == '')
+	//	if value is null or equals the default value then don't add it 
+			else if ($val == '' || check_defaults($val,$op_val,$default_vals["$key"]))
 				continue;
 	//	if value differs from the sql value then update
 			else{

@@ -86,6 +86,8 @@ function date2time($date)
 function bytes2str($bytes)
 {
 	$bytes=floor($bytes);
+	if ($bytes > 536870912)
+		$str = sprintf("%5.2f GBs", $bytes/1073741824);
 	if ($bytes > 524288)
 		$str = sprintf("%5.2f MBs", $bytes/1048576);
 	else
@@ -97,5 +99,14 @@ function bytes2str($bytes)
 function nothing($ret)
 {
 	return $ret;
+}
+function check_defaults($val,$op,$def)
+{
+	for($i=0;$i<$def[count];$i++){
+		if ($val == $def[$i] && ($op == '' || $op == $def[operator][$i]))
+			return 1;
+	}
+
+	return 0;
 }
 ?>

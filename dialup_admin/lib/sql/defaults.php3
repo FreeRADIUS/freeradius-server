@@ -63,10 +63,9 @@ if ($login != ''){
 				foreach($attrmap as $key => $val){
 					if (isset($tmp[$val])){
 						if ($use_op)
-							if ($tmp[$val][operator][0] != '')
-								$default_vals["$key"][operator] = $tmp[$val][operator][0];
+							$default_vals["$key"][operator] = $tmp["$val"][operator];
 						if ($tmp[$val][0] != '')
-							$default_vals["$key"] = $tmp[$val][0];
+							$default_vals["$key"] = $tmp["$val"];
 					}
 				}
 			}

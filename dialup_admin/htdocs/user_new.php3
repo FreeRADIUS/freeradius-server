@@ -151,7 +151,7 @@ EOM;
 		if ($name == 'none')
 			continue;
 		$oper_name = $name . '_op';
-		$val = ($item_vals["$key"][0] != "") ? $item_vals["$key"][0] : $default_vals["$key"];
+		$val = ($item_vals["$key"][0] != "") ? $item_vals["$key"][0] : $default_vals["$key"][0];
 		print <<<EOM
 <tr>
 <td align=right bgcolor="#d0ddb0">

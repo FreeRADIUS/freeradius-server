@@ -10,8 +10,15 @@ if ($config[ldap_default_dn] != ''){
        			$dn = $info[0]['dn'];
        			if ($dn != ''){
                			foreach($attrmap as $key => $val){
-					if ($info[0]["$val"][0] != '')
-	                       			$default_vals["$key"] = $info[0]["$val"][0];
+						if ($info[0]["$val"][0] != ''){
+							if ($attrmap[generic]["$key"] == 'generic'){
+								for($i=0;$i<$info[0]["$val"][count];$i++)
+									$default_vals["$key"][] = $info[0]["$val"][$i];
+								$default_vals["$key"][count] += $info[0]["$val"][count];
+							}
+							else
+								$default_vals["$key"] = $info[0]["$val"];
+						}
 				}
 			}
 		}
@@ -26,8 +33,17 @@ if ($config[ldap_default_dn] != ''){
 						$dn3 = $info2[0]['dn'];
 						if ($dn3 != ''){
 							foreach($attrmap as $key => $val){
-								if ($info2[0]["$val"][0] != '')
-									$default_vals["$key"] = $info2[0]["$val"][0];
+								if ($info2[0]["$val"][0] != ''){
+									if (!isset($default_vals["$key"]))
+										$default_vals["$key"] = array();
+									if ($attrmap[generic]["$key"] == 'generic'){
+										for($i=0;$i<$info2[0]["$val"][count];$i++)
+											$default_vals["$key"][] = $info2[0]["$val"][$i];
+										$default_vals["$key"][count] += $info2[0]["$val"][count];
+									}
+									else
+										$default_vals["$key"] = $info2[0]["$val"];
+								}
 							}
 						}
 					}

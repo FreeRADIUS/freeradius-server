@@ -121,11 +121,13 @@ EOM;
 }
 	foreach($show_attrs as $key => $desc){
 		$name = $attrmap["$key"];
+		$generic = $attrmap[generic]["$key"];
 		if ($name == 'none')
 			continue;
 		unset($vals);
 		unset($selected);
 		unset($ops);
+		$def_added = 0;
 		if ($item_vals["$key"][count]){
 			for($i=0;$i<$item_vals["$key"][count];$i++){
 				$vals[] = $item_vals["$key"][$i];
@@ -133,12 +135,27 @@ EOM;
 			}
 		}
 		else{
-			$vals[] = $default_vals["$key"];
-			$ops[] = ($default_vals["$key"][operator] != '') ? $default_vals["$key"][operator] : '=';
+			if ($default_vals["$key"][count]){
+				for($i=0;$i<$default_vals["$key"][count];$i++){
+					$vals[] = $default_vals["$key"][$i];
+					$ops[] = $default_vals["$key"][operator][$i];
+				}
+			}
+			else{
+				$vals[] = '';
+				$ops[] = '=';
+			}
+			$def_added = 1;
 		}
+		if ($generic == 'generic' && $def_added == 0){
+			for($i=0;$i<$default_vals["$key"][count];$i++){
+				$vals[] = $default_vals["$key"][$i];
+				$ops[] = $default_vals["$key"][operator][$i];
+			}
+		}	
 		if ($add && $name == $add_attr){
-			array_push($vals, $default_vals["$key"]);
-			array_push($ops, '=');
+			$vals[] = $default_vals["$key"][0];
+			$ops[] = ($default_vals["$key"][operator][0] != '') ? $default_vals["$key"][operator][0] : '=';
 		}
 
 		$i = 0;
