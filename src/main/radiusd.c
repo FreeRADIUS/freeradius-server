@@ -580,7 +580,9 @@ int main(int argc, char **argv)
 	 *  This really should only be just after the 'setsid()', above.
 	 *  That way, we only create the thread pool for daemon mode.
 	 */
-	thread_pool_init();
+	if (spawn_flag) {
+		thread_pool_init();
+	}
 #endif
 
 	/*
@@ -713,7 +715,7 @@ int main(int argc, char **argv)
 			request->reply = NULL;
 			request->proxy_reply = NULL;
 			request->config_items = NULL;
-			request->username = pairfind(request->packet->vps, PW_USER_NAME);
+			request->username = NULL;
 			request->password = NULL;
 			request->timestamp = time(NULL);
 			request->child_pid = NO_SUCH_CHILD_PID;
@@ -1014,6 +1016,35 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	and forget about the request.
 	 */
  finished_request:
+	/*
+	 *	We're done handling the request.  Free up the linked
+	 *	lists of value pairs.  This might take a long time,
+	 *	so it's more efficient to do it in a child thread,
+	 *	instead of in the main handler when it eventually
+	 *	gets around to deleting the request.
+	 *
+	 *	Also, no one should be using these items after the
+	 *	request is finished, and the reply is sent.  Cleaning
+	 *	them up here ensures that they're not being used again.
+	 *
+	 *	Hmm... cleaning them up in the child thread also seems
+	 *	to make the server run more efficiently!
+	 */
+	if (request->packet && request->packet->vps) {
+		pairfree(request->packet->vps);
+		request->packet->vps = NULL;
+		request->username = NULL;
+		request->password = NULL;
+	}
+	if (request->reply && request->reply->vps) {
+		pairfree(request->reply->vps);
+		request->reply->vps = NULL;
+	}
+	if (request->config_items) {
+		pairfree(request->config_items);
+		request->config_items = NULL;
+	}
+
 	DEBUG2("Finished request");
 	finished = TRUE;
 	
@@ -1060,7 +1091,12 @@ static int rad_clean_list(void)
 	}
 
 #ifdef WITH_THREAD_POOL
-	thread_pool_clean();
+	/*
+	 *	Only clean the thread pool if we've spawned child threads.
+	 */
+	if (spawn_flag) {
+		thread_pool_clean();
+	}
 #endif
 
 	/*
