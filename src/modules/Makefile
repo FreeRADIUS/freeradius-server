@@ -13,7 +13,7 @@ WHAT_TO_MAKE	= all
 #  to be something, then build dynamic libraries, too.
 #
 TARGET_LIBS = static
-ifneq ($(LIBDL),)
+ifneq ($(DYNAMIC_MODULES),)
 TARGET_LIBS += dynamic
 endif
 
