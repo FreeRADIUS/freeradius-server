@@ -889,7 +889,7 @@ int main(int argc, char *argv[])
 
 			case 's':	/* Single process mode */
 				spawn_flag = FALSE;
-				dont_fork = TRUE
+				dont_fork = TRUE;
 				break;
 
 			case 'v':
