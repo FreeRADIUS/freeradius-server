@@ -2,7 +2,7 @@
 include ../../Make.inc
 
 OBJS		= dict.o print.o radius.o valuepair.o token.o misc.o \
-		log.o filters.o missing.o md5.o hmac.o snprintf.o
+		log.o filters.o missing.o md4.o md5.o sha1.o hmac.o snprintf.o
 
 INCLUDES	= ../include/radius.h ../include/libradius.h \
 		  ../include/missing.h ../include/autoconf.h
@@ -44,8 +44,14 @@ log.o:	log.c $(INCLUDES)
 missing.o: missing.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c missing.c
 
+md4.o: md4.c ../include/md4.h
+	$(CC) $(CFLAGS) -c md4.c
+
 md5.o: md5.c ../include/md5.h
 	$(CC) $(CFLAGS) -c md5.c
+
+sha1.o: sha1.c ../include/sha1.h
+	$(CC) $(CFLAGS) -c sha1.c
 
 hmac.o: hmac.c $(INCLUDES) 
 	$(CC) $(CFLAGS) -c hmac.c

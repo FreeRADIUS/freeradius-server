@@ -2,7 +2,7 @@ New features were added:
 + LM support to MS-CHAP
 + support  for  SAMBA passwd files. It introduces new files smbpass.c and
   smbpass.h
-+ support for MS-CHAPv2. SHA1 digest support was added (sha1.c, sha2.c)
++ support for MS-CHAPv2. SHA1 digest support was added (sha1.c, sha1.h)
 ! module is configurable via radiusd.conf and supports instances
 ! module supports both authorization and authentication. Authorization
   sets authentication to MS-CHAP if any NTLM-related things found.

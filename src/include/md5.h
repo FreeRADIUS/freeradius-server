@@ -24,17 +24,23 @@
 #endif
 
 /* POINTER defines a generic pointer type */
+#ifndef _POINTER_T
 typedef unsigned char *POINTER;
+#endif
 typedef const unsigned char *CONSTPOINTER;
 
 /* UINT2 defines a two byte word */
+#ifndef _UINT2_T
 typedef unsigned short int UINT2;
+#endif
 
 /* UINT4 defines a four byte word */
+#ifndef _UINT4_T
 #if defined(__alpha) && (defined(__osf__) || defined(__linux__))
 typedef unsigned int UINT4;
 #else
 typedef unsigned long int UINT4;
+#endif
 #endif
 
 /* PROTO_LIST is defined depending on how PROTOTYPES is defined above.

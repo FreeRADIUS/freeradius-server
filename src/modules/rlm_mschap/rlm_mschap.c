@@ -56,6 +56,7 @@
 #include	"modules.h"
 
 #include	"des.h"
+#include        "md4.h"
 #include        "md5.h"
 #include	"sha1.h"
 #include	"smbpass.h"
@@ -108,8 +109,6 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
 static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
                        uint8_t* salt,uint8_t* enckey,uint8_t* key);
 #endif
-
-void md4_calc (unsigned char *, unsigned char *, unsigned int);
 
 
 
