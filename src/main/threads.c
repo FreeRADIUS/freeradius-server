@@ -118,6 +118,8 @@ static void *request_handler_thread(void *arg)
 {
 	THREAD_HANDLE	*self;
 	REQUEST		*request;
+	RADIUS_PACKET	*packet;
+	const char	*secret;
 
 	self = (THREAD_HANDLE *) arg;
 	
@@ -145,8 +147,18 @@ static void *request_handler_thread(void *arg)
 		DEBUG2("Thread %d handling request %08x, number %d",
 		       self->child_pid, self->request, self->request_count);
 		
-
 		request = self->request;
+
+		/*
+		 *	Put the decoded packet into it's proper place.
+		 */
+		if (request->proxy_reply != NULL) {
+			packet = request->proxy_reply;
+			secret = request->proxysecret;
+		} else {
+			packet = request->packet;
+			secret = request->secret;
+		}
 
 		/*
 		 *	Decode the packet, verifying it's signature,
@@ -156,19 +168,26 @@ static void *request_handler_thread(void *arg)
 		 *	a child thread, not the master.  This helps to
 		 *	spread the load a little bit.
 		 */
-		if (rad_decode(request->packet, request->secret) != 0) {
-			log(L_ERR, "%s", librad_errstr);
-			request->child_pid = NO_SUCH_CHILD_PID;
-			request->finished = TRUE;
-			goto next_request;
+		if (rad_decode(packet, secret) != 0) {
+		    log(L_ERR, "%s", librad_errstr);
+		    request->child_pid = NO_SUCH_CHILD_PID;
+		    request->finished = TRUE;
+
+		    /*
+		     *	Send a reject?
+		     */
+
+		    goto next_request;
 		}
 		
 		/*
-		 *	We have a User-Name attribute now, presumably.
+		 *	We should have a User-Name attribute now.
 		 */
-		request->username = pairfind(request->packet->vps,
-						   PW_USER_NAME);
-		
+		if (request->username == NULL) {
+			request->username = pairfind(request->packet->vps,
+						     PW_USER_NAME);
+		}
+
 		/*
 		 *	We have the semaphore, and have decoded the packet.
 		 *	Let's process the request.
@@ -182,10 +201,20 @@ static void *request_handler_thread(void *arg)
 		rad_respond(request);
 
 		/*
-		 *	We're done processing the request, set the request
-		 *	to be finished, and forget about the request.
+		 *	We're done processing the request, set the
+		 *	request to be finished, clean up as necessary,
+		 *	and forget about the request.
 		 */
 	next_request:
+		/*
+		 *	The proxy reply VP's aren't going to be used
+		 *	any more, so we might as well get rid of them
+		 *	in the child thread.
+		 */
+		if (request->proxy_reply) {
+			pairfree(request->proxy_reply->vps);
+			request->proxy_reply->vps = NULL;
+		}
 		self->request = NULL;
 
 		/*
