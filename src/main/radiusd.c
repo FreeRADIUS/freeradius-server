@@ -151,7 +151,7 @@ static void reread_config(int reload)
 
 int main(int argc, char **argv)
 {
-	CLIENT			*cl;
+	RADCLIENT		*cl;
 	REQUEST			*request;
 	RADIUS_PACKET		*packet;
 #ifdef RADIUS_PID

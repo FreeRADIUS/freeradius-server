@@ -40,7 +40,7 @@ typedef struct auth_req {
 	time_t			timestamp;
 
 	/* Could almost keep a const char * here instead of a _copy_ of the
-	 * secret... but what if the CLIENT structure is freed because it was
+	 * secret... but what if the RADCLIENT structure is freed because it was
 	 * taken out of the config file and SIGHUPed? */
 	char			proxysecret[32];
 	int			proxy_is_replicate;
@@ -52,13 +52,13 @@ typedef struct auth_req {
 	struct auth_req		*next;
 } REQUEST;
 
-typedef struct client {
+typedef struct radclient {
 	uint32_t		ipaddr;
 	char			longname[256];
 	u_char			secret[32];
 	char			shortname[32];
-	struct client		*next;
-} CLIENT;
+	struct radclient	*next;
+} RADCLIENT;
 
 typedef struct nas {
 	uint32_t		ipaddr;
@@ -162,10 +162,10 @@ struct passwd	*rad_getpwnam(const char *);
 void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST *request);
 RADIUS_PACKET *	build_reply(int code, REQUEST *request,
-			VALUE_PAIR *vps, const char *user_msg);
+			    VALUE_PAIR *vps, const char *user_msg);
 
 /* files.c */
-CLIENT		*client_find(uint32_t ipno);
+RADCLIENT	*client_find(uint32_t ipno);
 char		*client_name(uint32_t ipno);
 int		read_clients_file(const char *);
 REALM		*realm_find(const char *);

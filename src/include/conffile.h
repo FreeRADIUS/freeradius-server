@@ -31,10 +31,6 @@ void		cf_section_free(CONF_SECTION *cp);
 void		cf_section_free_all(CONF_SECTION *cp);
 
 /* JLN -- Newly added */
-
-CLIENT		*client_find(uint32_t ipno);
-REALM		*realm_find(const char *realm);
-char		*client_name(uint32_t ipaddr);
 		
 CONF_PAIR	*cf_pair_find(CONF_SECTION *section, const char *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *name);

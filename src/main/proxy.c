@@ -173,7 +173,7 @@ int proxy_send(REQUEST *request)
 	VALUE_PAIR		*passpair;
 	VALUE_PAIR		*delaypair;
 	VALUE_PAIR		*vp, *vps;
-	CLIENT			*client;
+	RADCLIENT		*client;
 	REALM			*realm;
 	char			*realmname;
 	int			replicating;
@@ -544,7 +544,7 @@ int proxy_receive(REQUEST *request)
  */
 struct timeval *proxy_setuptimeout(struct timeval *tv)
 {
-	time_t now = time(0);
+	time_t now = time(NULL);
 	time_t difference, smallest;
 	int foundone = 0;
 	REQUEST *p;
@@ -572,7 +572,7 @@ struct timeval *proxy_setuptimeout(struct timeval *tv)
 
 void proxy_retry(void)
 {
-	time_t now = time(0);
+	time_t now = time(NULL);
 	REQUEST *p;
 
 	for (p = proxy_requests; p; p = p->next) {

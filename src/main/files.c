@@ -29,7 +29,7 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 #include	"modules.h"
 
-CLIENT			*clients;
+RADCLIENT			*clients;
 #ifndef WITH_NEW_CONFIG
 static
 #endif
@@ -281,11 +281,11 @@ static void debug_pair_list(PAIR_LIST *pl)
 #endif
 
 /*
- *	Free a CLIENT list.
+ *	Free a RADCLIENT list.
  */
-static void clients_free(CLIENT *cl)
+static void clients_free(RADCLIENT *cl)
 {
-	CLIENT *next;
+	RADCLIENT *next;
 
 	while(cl) {
 		next = cl->next;
@@ -301,7 +301,7 @@ static void clients_free(CLIENT *cl)
 int read_clients_file(const char *file)
 {
 	FILE	*fp;
-	CLIENT	*c;
+	RADCLIENT	*c;
 	char	buffer[256];
 	char	hostnm[256];
 	char	secret[256];
@@ -361,7 +361,7 @@ int read_clients_file(const char *file)
 		/*
 		 *	It should be OK now, let's create the buffer.
 		 */
-		if ((c = malloc(sizeof(CLIENT))) == NULL) {
+		if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
 			log(L_CONS|L_ERR, "%s[%d]: out of memory",
 				file, lineno);
 			return -1;
@@ -387,11 +387,11 @@ int read_clients_file(const char *file)
 
 
 /*
- *	Find a client in the CLIENTS list.
+ *	Find a client in the RADCLIENTS list.
  */
-CLIENT *client_find(uint32_t ipaddr)
+RADCLIENT *client_find(uint32_t ipaddr)
 {
-	CLIENT *cl;
+	RADCLIENT *cl;
 
 	for(cl = clients; cl; cl = cl->next)
 		if (ipaddr == cl->ipaddr)
@@ -406,7 +406,7 @@ CLIENT *client_find(uint32_t ipaddr)
  */
 char *client_name(uint32_t ipaddr)
 {
-	CLIENT *cl;
+	RADCLIENT *cl;
 
 	if ((cl = client_find(ipaddr)) != NULL) {
 		if (cl->shortname[0])

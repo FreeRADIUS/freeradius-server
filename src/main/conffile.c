@@ -26,7 +26,7 @@
 #define xstrdup strdup
 
 CONF_SECTION	*config;
-extern CLIENT	*clients;
+extern RADCLIENT  *clients;
 extern REALM	*realms;
 extern void realm_free(REALM *cl);
 
@@ -424,12 +424,12 @@ static int generate_realms()
 }
 
 /*
- *	Free a CLIENT list.
+ *	Free a RADCLIENT list.
  */
 
-static void clients_free(CLIENT *cl)
+static void clients_free(RADCLIENT *cl)
 {
-	CLIENT *next;
+	RADCLIENT *next;
 
 	while(cl) {
 		next = cl->next;
@@ -446,8 +446,8 @@ static void clients_free(CLIENT *cl)
 static int generate_clients() 
 {
 	CONF_SECTION	*cs;
-	CLIENT			*c;
-	char			*hostnm, *secret, *shortnm;
+	RADCLIENT	*c;
+	char		*hostnm, *secret, *shortnm;
 
 	clients_free(clients);
 	clients = NULL;
@@ -476,7 +476,7 @@ static int generate_clients()
 			/*
 			 * The size is fine.. Let's create the buffer
 			 */
-			if ((c = malloc(sizeof(CLIENT))) == NULL) {
+			if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
 				log(L_CONS|L_ERR, "[%s]: out of memory while doint client",
 					hostnm);
 				return -1;
