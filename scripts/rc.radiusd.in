@@ -2,10 +2,6 @@
 #
 # radiusd	Start the radius daemon.
 #
-#		This is a script suitable for the Debian Linux distribution.
-#		Copy it to /etc/init.d/radiusd, make it executable, and
-#		execute "update-rc.d radiusd defaults 50".
-#
 
 prefix=@prefix@
 exec_prefix=@exec_prefix@
@@ -66,9 +62,9 @@ case "$1" in
 		$rundir/$NAME1.pid --exec $RADIUSD
 	;;
   restart)
-	sh /etc/init.d/radiusd stop quiet
+	sh $0 stop quiet
 	sleep 3
-	/etc/init.d/radiusd start
+	sh $0 start
 	;;
   *)
         echo "Usage: /etc/init.d/$NAME1 {start|stop|reload|restart}"
