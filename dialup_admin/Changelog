@@ -18,6 +18,7 @@ Ver 1.78:
 * Make all counter limits default to none so that people don't get confused
 * In clear_opensessions depending on sql type use either IS NULL or = 0 in the DELETE statement.
   We need to find a cleaner solution to this. This closes bug#175
+* Log somewhat more verbose error messages when the sql_command binary is not found in the bin scripts
 Ver 1.75:
 * A LOT of security related fixes. Now dialupadmin should hopefully be secure enough to
   be accessed by normal users (not administrators).

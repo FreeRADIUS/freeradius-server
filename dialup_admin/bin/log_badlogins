@@ -103,7 +103,7 @@ $pass =~ s/(\W)/\\$1/g;
 die "SQL server not defined\n" if ($sql_server eq '');
 
 die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
-die "Could not find sql binary. Please make sure that the \$sqlcmd variable points to the right location\n" if (! -x $sqlcmd);
+die "sql command '$sqlcmd' not found or does not seem to be executable\n" if (! -x $sqlcmd);
 
 $opt = "";
 $opt = "-O connect_timeout=$sql_timeout" if ($sql_timeout);
