@@ -175,10 +175,11 @@ static int new_authtype_value(const char *name)
   return new_value->value;
 }
 
+/* Why is this both here and in radiusd.c:server_config? --Pac. */
 static CONF_PARSER module_config[] = {
-  { "lib_dir",            PW_TYPE_STRING_PTR, &radlib_dir },
+  { "lib_dir",            PW_TYPE_STRING_PTR, &radlib_dir,        LIBDIR },
 
-  { NULL, -1, NULL}
+  { NULL, -1, NULL, NULL }
 };
 
 /*

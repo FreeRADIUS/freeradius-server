@@ -39,7 +39,12 @@ typedef struct CONF_PARSER {
   const char *name;
   int type;			/* PW_TYPE_STRING, etc. */
   void *data;			/* pointer to where to put it */
+  const char *dflt;		/* default as it would appear in radiusd.conf */
 } CONF_PARSER;
+
+/* This preprocessor trick will be useful in initializing CONF_PARSER struct */
+#define XStringify(x) #x
+#define Stringify(x) XStringify(x)
 
 CONF_SECTION	*conf_read(const char *conffile);
 CONF_PAIR	*cf_pair_alloc(const char *attr, const char *value, int operator);

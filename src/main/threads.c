@@ -80,13 +80,18 @@ static THREAD_POOL thread_pool;
  *	A mapping of configuration file names to internal integers
  */
 static const CONF_PARSER thread_config[] = {
-	{ "start_servers",       PW_TYPE_INTEGER, &thread_pool.start_threads}, 
-	{ "max_servers",         PW_TYPE_INTEGER, &thread_pool.max_threads}, 
-	{ "min_spare_servers",   PW_TYPE_INTEGER, &thread_pool.min_spare_threads}, 
-	{ "max_spare_servers",   PW_TYPE_INTEGER, &thread_pool.max_spare_threads}, 
-	{ "max_requests_per_server", PW_TYPE_INTEGER, &thread_pool.max_requests_per_thread}, 
+	{ "start_servers",                      PW_TYPE_INTEGER,
+	  &thread_pool.start_threads,           "5" }, 
+	{ "max_servers",                        PW_TYPE_INTEGER,
+	  &thread_pool.max_threads,             "32" }, 
+	{ "min_spare_servers",                  PW_TYPE_INTEGER,
+	  &thread_pool.min_spare_threads,       "3" }, 
+	{ "max_spare_servers",                  PW_TYPE_INTEGER,
+	  &thread_pool.max_spare_threads,       "10" }, 
+	{ "max_requests_per_server",            PW_TYPE_INTEGER,
+	  &thread_pool.max_requests_per_thread, "0"}, 
 	
-	{ NULL, -1, NULL}
+	{ NULL, -1, NULL, NULL }
 };
 
 /*
@@ -384,11 +389,6 @@ int thread_pool_init(void)
 	thread_pool.head = NULL;
 	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
-	thread_pool.start_threads = 5;
-	thread_pool.max_threads = 32;
-	thread_pool.min_spare_threads = 3;
-	thread_pool.max_spare_threads = 10;
-	thread_pool.max_requests_per_thread = 0; /* infinity */
 
 	pool_cf = cf_section_find("thread");
 	if (pool_cf) {

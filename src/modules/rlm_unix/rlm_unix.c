@@ -57,12 +57,12 @@ static char *shadow_file = NULL;
 static char *group_file = NULL;
 
 static CONF_PARSER module_config[] = {
-	{ "cache",  PW_TYPE_BOOLEAN,    &cache_passwd },
-	{ "passwd", PW_TYPE_STRING_PTR, &passwd_file },
-	{ "shadow", PW_TYPE_STRING_PTR, &shadow_file },
-	{ "group",  PW_TYPE_STRING_PTR, &group_file },
+	{ "cache",  PW_TYPE_BOOLEAN,    &cache_passwd, "yes" },
+	{ "passwd", PW_TYPE_STRING_PTR, &passwd_file,  NULL },
+	{ "shadow", PW_TYPE_STRING_PTR, &shadow_file,  NULL },
+	{ "group",  PW_TYPE_STRING_PTR, &group_file,   NULL },
 	
-	{ NULL, -1, NULL}		/* end the list */
+	{ NULL, -1, NULL, NULL }		/* end the list */
 };
 
 /*

@@ -23,15 +23,10 @@ typedef struct example_config_t {
 } example_config_t;
 
 /*
- *	Define the local copy of our example configuration,
- *	and initialize it so some values.
+ *	Define the local copy of our example configuration.
+ *	Initialization will be done by the CONF_PARSER.
  */
-static example_config_t config = {
-	FALSE,			/* boolean */
-	1,			/* integer */
-	NULL,			/* string */
-	0			/* IP address */
-};
+static example_config_t config;
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -43,12 +38,12 @@ static example_config_t config = {
  *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
-  { "integer", PW_TYPE_INTEGER,    &config.value },
-  { "boolean", PW_TYPE_BOOLEAN,    &config.boolean },
-  { "string",  PW_TYPE_STRING_PTR, &config.string },
-  { "ipaddr",  PW_TYPE_IPADDR,     &config.ipaddr },
+  { "integer", PW_TYPE_INTEGER,    &config.value,   "1" },
+  { "boolean", PW_TYPE_BOOLEAN,    &config.boolean, "no" },
+  { "string",  PW_TYPE_STRING_PTR, &config.string,  NULL },
+  { "ipaddr",  PW_TYPE_IPADDR,     &config.ipaddr,  "*" },
 
-  { NULL, -1, NULL}		/* end the list */
+  { NULL, -1, NULL, NULL }		/* end the list */
 };
 
 /*

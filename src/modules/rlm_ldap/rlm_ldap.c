@@ -102,21 +102,21 @@ static int cleanup;
 static int readers; /* number of threads performing LDAP lookups */ 
 
 static CONF_PARSER ldap_config[] = {
-  { "server",		PW_TYPE_STRING_PTR,	&ldap_server },
-  { "port",		PW_TYPE_INTEGER,	&ldap_port },
-  { "net_timeout",	PW_TYPE_INTEGER,	&ldap_net_timeout.tv_sec},
-  { "timeout",		PW_TYPE_INTEGER,	&ldap_timeout.tv_sec},
+  { "server",		PW_TYPE_STRING_PTR, &ldap_server,	      NULL },
+  { "port",		PW_TYPE_INTEGER,    &ldap_port,		      "389" },
+  { "net_timeout",	PW_TYPE_INTEGER,    &ldap_net_timeout.tv_sec, "-1" },
+  { "timeout",		PW_TYPE_INTEGER,    &ldap_timeout.tv_sec,     "-1" },
 
-  { "identity",		PW_TYPE_STRING_PTR,	&ldap_login },
-  { "password",		PW_TYPE_STRING_PTR,	&ldap_password },
-  { "basedn",		PW_TYPE_STRING_PTR,	&ldap_basedn },
-  { "filter",		PW_TYPE_STRING_PTR,	&ldap_filter },
-  { "access_group",	PW_TYPE_STRING_PTR,	&ldap_radius_group },
+  { "identity",		PW_TYPE_STRING_PTR, &ldap_login,	      NULL },
+  { "password",		PW_TYPE_STRING_PTR, &ldap_password,	      NULL },
+  { "basedn",		PW_TYPE_STRING_PTR, &ldap_basedn,	      NULL },
+  { "filter",		PW_TYPE_STRING_PTR, &ldap_filter,	      NULL },
+  { "access_group",	PW_TYPE_STRING_PTR, &ldap_radius_group,	      NULL },
 
-  { "cache_size",	PW_TYPE_INTEGER,	&ldap_cache_size },
-  { "cache_ttl",	PW_TYPE_INTEGER,	&ldap_cache_ttl },
+  { "cache_size",	PW_TYPE_INTEGER,    &ldap_cache_size,	      "0" },
+  { "cache_ttl",	PW_TYPE_INTEGER,    &ldap_cache_ttl,	      "30" },
   
-  { NULL, -1, NULL}
+  { NULL, -1, NULL, NULL }
 };
 
 /* LDAP attribute name that controls remote access */

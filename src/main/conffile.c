@@ -117,7 +117,7 @@ void cf_section_free(CONF_SECTION *cs)
 	}
 
 	/*
-	 * Clear out any possible subsections aswell
+	 * Clear out any possible subsections as well
 	 */
 	for (sub = cs->sub; sub; sub = next_sub) {
 		next_sub = sub->next;
@@ -143,14 +143,17 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 	CONF_PAIR	*cp;
 	uint32_t	ipaddr;
 	char		buffer[1024];
+	const char	*value;
 
 	/*
 	 *	Handle the user-supplied variables.
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
+		value = variables[i].dflt;
+
 		cp = cf_pair_find(cs, variables[i].name);
-		if (!cp) {
-			continue;
+		if (cp) {
+			value = cp->value;
 		}
 		
 		switch (variables[i].type)
@@ -159,25 +162,25 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			/*
 			 *	Allow yes/no and on/off
 			 */
-			if ((strcasecmp(cp->value, "yes") == 0) ||
-			    (strcasecmp(cp->value, "on") == 0)) {
+			if ((strcasecmp(value, "yes") == 0) ||
+			    (strcasecmp(value, "on") == 0)) {
 				*(int *)variables[i].data = 1;
-			} else if ((strcasecmp(cp->value, "no") == 0) ||
-				   (strcasecmp(cp->value, "off") == 0)) {
+			} else if ((strcasecmp(value, "no") == 0) ||
+				   (strcasecmp(value, "off") == 0)) {
 				*(int *)variables[i].data = 0;
 			} else {
 				*(int *)variables[i].data = 0;
-				log(L_ERR, "Bad value \"%s\" for boolean variable %s", cp->value, cp->attr);
+				log(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
 				return -1;
 			}
 			DEBUG2("Config: %s.%s = %s",
 			       cs->name1,
 			       variables[i].name,
-			       cp->value);
+			       value);
 			break;
 
 		case PW_TYPE_INTEGER:
-			*(int *)variables[i].data = atoi(cp->value);
+			*(int *)variables[i].data = strtol(value, 0, 0);
 			DEBUG2("Config: %s.%s = %d",
 			       cs->name1,
 			       variables[i].name,
@@ -192,27 +195,27 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			DEBUG2("Config: %s.%s = \"%s\"",
 			       cs->name1,
 			       variables[i].name,
-			       cp->value);
-			*q = strdup(cp->value);
+			       value ? value : "(null)");
+			*q = value ? strdup(value) : NULL;
 			break;
 
 		case PW_TYPE_IPADDR:
 			/*
 			 *	Allow '*' as any address
 			 */
-			if (strcmp(cp->value, "*") == 0) {
+			if (strcmp(value, "*") == 0) {
 				*(uint32_t *) variables[i].data = 0;
 				break;
 			}
-			ipaddr = ip_getaddr(cp->value);
+			ipaddr = ip_getaddr(value);
 			if (ipaddr == 0) {
-				log(L_ERR, "Can't find IP address for host %s", cp->value);
+				log(L_ERR, "Can't find IP address for host %s", value);
 				return -1;
 			}
 			DEBUG2("Config: %s.%s = %s IP address [%s]",
 			       cs->name1,
 			       variables[i].name,
-			       cp->value, ip_ntoa(buffer, ipaddr));
+			       value, ip_ntoa(buffer, ipaddr));
 			*(uint32_t *) variables[i].data = ipaddr;
 			break;
 			

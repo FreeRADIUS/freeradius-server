@@ -141,36 +141,42 @@ extern int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
  *	A mapping of configuration file names to internal variables
  */
 static CONF_PARSER server_config[] = {
-  { "max_request_time",   PW_TYPE_INTEGER,    &max_request_time },
-  { "cleanup_delay",      PW_TYPE_INTEGER,    &cleanup_delay    },
-  { "max_requests",       PW_TYPE_INTEGER,    &max_requests     },
-  { "port",               PW_TYPE_INTEGER,    &auth_port },
-  { "allow_core_dumps",   PW_TYPE_BOOLEAN,    &allow_core_dumps },
-  { "log_stripped_names", PW_TYPE_BOOLEAN,    &log_stripped_names },
-  { "log_auth",           PW_TYPE_BOOLEAN,    &log_auth },
-  { "log_auth_pass",      PW_TYPE_BOOLEAN,    &log_auth_pass },
-  { "pidfile",            PW_TYPE_STRING_PTR, &pid_file },
-  { "log_dir",            PW_TYPE_STRING_PTR, &radlog_dir },
-  { "lib_dir",            PW_TYPE_STRING_PTR, &radlib_dir },
-  { "acct_dir",           PW_TYPE_STRING_PTR, &radacct_dir },
-  { "bind_address",       PW_TYPE_IPADDR,     &myip },
-  { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests },
+  { "max_request_time",   PW_TYPE_INTEGER,
+    &max_request_time,    Stringify(MAX_REQUEST_TIME) },
+  { "cleanup_delay",      PW_TYPE_INTEGER,
+    &cleanup_delay,       Stringify(CLEANUP_DELAY) },
+  { "max_requests",       PW_TYPE_INTEGER,
+    &max_requests,	  Stringify(MAX_REQUESTS) },
+  { "port",               PW_TYPE_INTEGER,
+    &auth_port,		  Stringify(PW_AUTH_UDP_PORT) },
+  { "allow_core_dumps",   PW_TYPE_BOOLEAN,    &allow_core_dumps,  "no" },
+  { "log_stripped_names", PW_TYPE_BOOLEAN,    &log_stripped_names,"no" },
+  { "log_auth",           PW_TYPE_BOOLEAN,    &log_auth,          "no" },
+  { "log_auth_pass",      PW_TYPE_BOOLEAN,    &log_auth_pass,     "no" },
+  { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          RADIUS_PID },
+  { "log_dir",            PW_TYPE_STRING_PTR, &radlog_dir,        RADLOG_DIR },
+  { "lib_dir",            PW_TYPE_STRING_PTR, &radlib_dir,        LIBDIR },
+  { "acct_dir",           PW_TYPE_STRING_PTR, &radacct_dir,       RADACCT_DIR },
+  { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
+  { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
 #if 0
-  { "confdir",            PW_TYPE_STRING_PTR, &radius_dir },
+  { "confdir",            PW_TYPE_STRING_PTR, &radius_dir,        RADIUS_DIR },
 #endif
 
-  { NULL, -1, NULL}
+  { NULL, -1, NULL, NULL }
 };
 
 /*
  *	Map the proxy server configuration parameters to variables.
  */
 static CONF_PARSER proxy_config[] = {
-  { "retry_delay",  PW_TYPE_INTEGER,    &proxy_retry_delay },
-  { "retry_count",  PW_TYPE_INTEGER,    &proxy_retry_count },
-  { "synchonous",   PW_TYPE_BOOLEAN,    &proxy_synchronous },
+  { "retry_delay",  PW_TYPE_INTEGER,
+    &proxy_retry_delay, Stringify(RETRY_DELAY) },
+  { "retry_count",  PW_TYPE_INTEGER,
+    &proxy_retry_count, Stringify(RETRY_COUNT) },
+  { "synchronous",  PW_TYPE_BOOLEAN, &proxy_synchronous, "yes" },
 
-  { NULL, -1, NULL}
+  { NULL, -1, NULL, NULL }
 };
 
 /*
@@ -203,7 +209,7 @@ static void reread_config(int reload)
 	/*
 	 *	And parse the server's configuration values.
 	 */
-	cs = cf_section_find("main");
+	cs = cf_section_find(NULL);
 	if (!cs)
 		return;
 
@@ -413,11 +419,7 @@ int main(int argc, char **argv)
 
 	debug_flag = 0;
 	spawn_flag = TRUE;
-	radacct_dir = strdup(RADACCT_DIR);
 	radius_dir = strdup(RADIUS_DIR);
-	radlog_dir = strdup(RADLOG_DIR);
-	radlib_dir = strdup(LIBDIR);
-	pid_file = strdup(RADIUS_PID);
 
 	signal(SIGHUP, sig_hup);
 	signal(SIGINT, sig_fatal);
