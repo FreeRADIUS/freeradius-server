@@ -73,13 +73,26 @@ typedef struct THREAD_POOL {
 	
 	int		total_threads;
 	int		active_threads;
+
+	int		max_threads;
 	int		min_spare_threads;
 	int		max_spare_threads;
-	int		max_threads;
 	int		max_requests_per_thread;
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
+
+/*
+ *	A mapping of configuration file names to internal integers
+ */
+static CONF_PARSER thread_config[] = {
+	{ "max_threads",       PW_TYPE_INTEGER, &thread_pool.max_threads}, 
+	{ "min_spare_threads", PW_TYPE_INTEGER, &thread_pool.min_spare_threads}, 
+	{ "max_spare_threads", PW_TYPE_INTEGER, &thread_pool.max_spare_threads}, 
+	{ "max_requests_per_thread", PW_TYPE_INTEGER, &thread_pool.max_requests_per_thread}, 
+	
+	{ NULL, -1, NULL}
+};
 
 /*
  *	If the child *thread* gets a termination signal,
@@ -443,7 +456,6 @@ int thread_pool_init(int num_threads)
 	int i;
 	THREAD_HANDLE	*handle;
 	CONF_SECTION	*pool_cf;
-	CONF_PAIR	*cf;
 
 	/*
 	 *	Initialize the thread pool to some reasonable values.
@@ -452,13 +464,14 @@ int thread_pool_init(int num_threads)
 	thread_pool.head = NULL;
 	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
+	thread_pool.max_threads = 32;
 	thread_pool.min_spare_threads = 3;
 	thread_pool.max_spare_threads = 10;
-	thread_pool.max_threads = 32;
+	thread_pool.max_requests_per_thread = 0; /* infinity */
 
 	pool_cf = cf_section_find("thread");
 	if (pool_cf) {
-		
+		cf_section_parse(pool_cf, thread_config);
 	}
 
 	/*
