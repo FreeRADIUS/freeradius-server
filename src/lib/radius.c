@@ -332,7 +332,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 						  len++;
 						  *ptr++ = reply->flags.tag;
 
-					  } else if (reply->flags.encrypt == 2) {
+					  } else if (reply->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
 						  /*
 						   *  Tunnel passwords
 						   *  REQUIRE a tag,
@@ -1160,11 +1160,14 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		case PW_TYPE_ABINARY:
 		case PW_TYPE_STRING:
 			if (pair->flags.has_tag &&
-				   pair->type == PW_TYPE_STRING) {
+			    pair->type == PW_TYPE_STRING) {
+				int offset = 0;
+
 				if(TAG_VALID(*ptr)) {
-					pair->flags.tag = *ptr++;
+					pair->flags.tag = *ptr;
 					pair->length--;
-				} else if (pair->flags.encrypt == 2) {
+					offset = 1;
+				} else if (pair->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
 					/*
 					 * from RFC2868 - 3.5.  Tunnel-Password
 					 * If the value of the Tag field is greater than
@@ -1174,12 +1177,12 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 					 * otherwise, the Tag field SHOULD be ignored.
 					 */
 					pair->flags.tag = 0x00;
-					ptr++;
 					pair->length--;
+					offset = 1;
 				} else {
 				       pair->flags.tag = 0x00;
 				}
-				memcpy(pair->strvalue, ptr, 
+				memcpy(pair->strvalue, ptr + offset,
 				       pair->length);
 			} else {
 				/* attrlen always < MAX_STRING_LEN */
