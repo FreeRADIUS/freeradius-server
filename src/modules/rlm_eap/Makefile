@@ -1,16 +1,11 @@
 TARGET      = rlm_eap
 SRCS        = rlm_eap.c eap.c mem.c
 HEADERS     = eap.h
-RLM_CFLAGS  =  -I/usr/include $(INCLTDL)
-RLM_LIBS    =  -lc
+RLM_CFLAGS  =  $(INCLTDL)
+RLM_LIBS    =  
 RLM_INSTALL = install-types
 
-WHAT_TO_MAKE	= all
-
 RLM_SUBDIRS = types
-#RLM_SUBDIRS = 
-
-TARGET_LIBS = static dynamic
 
 #
 #  If Not using shared libraries, add in ALL known static eap_types
