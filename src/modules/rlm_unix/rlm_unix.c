@@ -439,7 +439,7 @@ static int unix_accounting(REQUEST *request)
 		strncpy(ut.ut_host, buf, UT_HOSTSIZE);
 	}
 #endif
-#ifdef __svr4__
+#ifdef HAVE_UTMPX_H
 	ut.ut_xtime = t- delay;
 #else
 	ut.ut_time = t - delay;

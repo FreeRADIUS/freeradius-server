@@ -7,10 +7,10 @@
 #ifndef SYSUTMP_H_INCLUDED
 #define SYSUTMP_H_INCLUDED
 
-#ifdef HAVE_UTMP_H
+#if defined(HAVE_UTMP_H) || defined(HAVE_UTMPX_H)
 
 /* UTMP stuff. Uses utmpx on svr4 */
-#ifdef __svr4__
+#ifdef HAVE_UTMPX_H
 #  include <utmpx.h>
 #  include <sys/fcntl.h>
 #  define utmp utmpx

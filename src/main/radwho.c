@@ -486,7 +486,7 @@ int main(int argc, char **argv)
 					fullname(ut.ut_name),
 					"shell",
 					ttyshort(ut.ut_line),
-#ifdef __svr4__
+#ifdef HAVE_UTMPX_H
 					dotime(ut.ut_xtime),
 #else
 					dotime(ut.ut_time),
@@ -498,7 +498,7 @@ int main(int argc, char **argv)
 					ut.ut_name,
 					ttyshort(ut.ut_line),
 					"shell",
-#ifdef __svr4__
+#ifdef HAVE_UTMPX_H
 					dotime(ut.ut_xtime),
 #else
 					dotime(ut.ut_time),
