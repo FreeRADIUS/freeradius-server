@@ -470,7 +470,7 @@ modules {
 		hashsize = 1000
 		compat = no
 		# Reload the hash every 600 seconds (10mins)
-		reload_hash = 600
+		hash_reload = 600
 	}
 	
 	detail {
