@@ -140,31 +140,6 @@ static int dbm_find(char *name, VALUE_PAIR *request_pairs,
 }
 #endif /* DBM */
 
-
-#ifdef WITH_ASCEND_HACK
-/*
- *	dgreer --
- *	This hack changes Ascend's wierd port numberings
- *	to standard 0-??? port numbers so that the "+" works
- *	for IP address assignments.
- */
-static int ascend_port_number(int nas_port)
-{
-	int service;
-	int line;
-	int channel;
-
-	if (nas_port > 9999) {
-		service = nas_port/10000; /* 1=digital 2=analog */
-		line = (nas_port - (10000 * service)) / 100;
-		channel = nas_port-((10000 * service)+(100 * line));
-		nas_port =
-			(channel - 1) + (line - 1) * ASCEND_CHANNELS_PER_LINE;
-	}
-	return nas_port;
-}
-#endif
-
 /*
  *     See if a VALUE_PAIR list contains Fall-Through = Yes
  */
@@ -460,9 +435,6 @@ static int file_authorize(REQUEST *request,
 	if ((tmp = pairfind(*reply_pairs, PW_FRAMED_IP_ADDRESS)) != NULL) {
 		tmp2 = pairfind(*reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
 		if (tmp->addport || (tmp2 && tmp2->lvalue)) {
-#ifdef WITH_ASCEND_HACK
-			nas_port = ascend_port_number(nas_port);
-#endif
 			tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
 			tmp->addport = 0;
 		}

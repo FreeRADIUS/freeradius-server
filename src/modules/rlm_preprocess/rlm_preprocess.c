@@ -32,6 +32,33 @@ static const char rcsid[] = "$Id$";
 static PAIR_LIST	*huntgroups;
 static PAIR_LIST	*hints;
 
+#ifdef WITH_ASCEND_HACK
+/*
+ *	dgreer --
+ *	This hack changes Ascend's wierd port numberings
+ *	to standard 0-??? port numbers so that the "+" works
+ *	for IP address assignments.
+ */
+static void ascend_nasport_hack(VALUE_PAIR *nas_port)
+{
+	int service;
+	int line;
+	int channel;
+
+	if (!nas_port) {
+		return;
+	}
+
+	if (nas_port->lvalue > 9999) {
+		service = nas_port/10000; /* 1=digital 2=analog */
+		line = (nas_port - (10000 * service)) / 100;
+		channel = nas_port-((10000 * service)+(100 * line));
+		nas_port->lvalue =
+			(channel - 1) + (line - 1) * ASCEND_CHANNELS_PER_LINE;
+	}
+}
+#endif
+
 /*
  *	Mangle username if needed, IN PLACE.
  */
@@ -443,6 +470,15 @@ static int preprocess_authorize(REQUEST *request,
 	 *	bugs.
 	 */
 	rad_mangle(request);
+
+#ifdef WITH_ASCEND_HACK
+	/*
+	 *	If we're using Ascend systems, hack the NAS-Port-Id
+	 *	in place, to go from Ascend's weird values to something
+	 *	approaching rationality.
+	 */
+	ascend_nasport_hack(pairfind(request->vps, PW_NAS_PORT_ID));
+#endif
 
 	hints_setup(request);
 	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
