@@ -444,7 +444,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			 */
 			if ((p = strrchr(value, '+')) != NULL && !p[1]) {
 				s = strdup(value);
-				p = strrchr(s, '+')
+				p = strrchr(s, '+');
 				*p = 0;
 				vp->addport = 1;
 			} else
