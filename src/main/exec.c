@@ -373,6 +373,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
 			radlog(L_DBG, "Exec-Program: returned: %d", status);
+			return status;
 		}
 	}
 
