@@ -3,7 +3,7 @@
 # radtest	Emulate the user interface of the old
 #		radtest that used to be part of cistron-radius.
 #
-# Version:	@(#)radtest.sh	1.10  25-Jul-1999  miquels@cistron.nl
+# Version:	$Id$
 #
 
 prefix="@prefix@"
@@ -19,6 +19,14 @@ radclient=$bindir/radclient
 if [ ! -x "$radclient" ] && [ -x ./radclient ]
 then
 	radclient=./radclient
+fi
+
+if [ "$1" = "-d" ]
+then
+    DICTIONARY="-d $2"
+    shift;shift
+else
+    DICTIONARY=""
 fi
 
 if [ $# -lt 5 ] || [ $# -gt 7 ]
@@ -42,5 +50,5 @@ fi
 	then
 		echo "Framed-Protocol = PPP"
 	fi
-) | $radclient -dn $3 auth $5
+) | $radclient $DICTIONARY -xn $3 auth $5
 
