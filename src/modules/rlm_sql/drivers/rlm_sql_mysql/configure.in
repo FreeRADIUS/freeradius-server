@@ -2,7 +2,6 @@ AC_INIT(sql_mysql.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_mysql])
 
-dnl   move these into the mysql configure.in file
 AC_ARG_WITH(mysql-include-dir,
 [  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found ],
 [ mysql_include_dir="$withval" ]
