@@ -1,4 +1,6 @@
 /*
+ * Id: postgresql.conf,v 1.8.2.11 2003/07/15 11:15:43 pnixon Exp $
+ *
  * --- Peter Nixon [ codemonkey@peternixon.net ]
  * This is a custom SQL schema for doing H323 VoIP accounting with FreeRadius and
  * Cisco gateways (I am using 5300 and 5350 series).

@@ -1,4 +1,6 @@
 /*
+ * Id: postgresql.conf,v 1.8.2.11 2003/07/15 11:15:43 pnixon Exp $
+ *
  * Old Function 'strip_dot' Now replaced by one written plpgsql
  *
  * Note: On SuSE Linux 8.0 and 8.1 you need to do the following from the command line before
