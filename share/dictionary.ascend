@@ -582,10 +582,12 @@ VALUE		Ascend-Bridge		Bridge-Yes		1
 VALUE  		Ascend-TS-Idle-Mode     TS-Idle-None		0
 VALUE	  	Ascend-TS-Idle-Mode     TS-Idle-Input		1
 VALUE  		Ascend-TS-Idle-Mode     TS-Idle-Input-Output	2
+
 VALUE		Ascend-Send-Auth	Send-Auth-None		0
 VALUE		Ascend-Send-Auth	Send-Auth-PAP		1
 VALUE		Ascend-Send-Auth	Send-Auth-CHAP		2
 VALUE		Ascend-Send-Auth	Send-Auth-MS-CHAP	3
+
 VALUE		Ascend-Link-Compression	Link-Comp-None		0
 VALUE		Ascend-Link-Compression	Link-Comp-Stac		1
 VALUE		Ascend-Link-Compression	Link-Comp-Stac-Draft-9	2
@@ -702,10 +704,13 @@ VALUE		Ascend-Event-Type	Ascend-ColdStart	1
 VALUE		Ascend-Event-Type	Ascend-Session-Event	2
 VALUE		Ascend-BACP-Enable	BACP-No			0
 VALUE		Ascend-BACP-Enable	BACP-Yes		1
+
 VALUE		Ascend-Dialout-Allowed	Dialout-Not-Allowed	0
 VALUE		Ascend-Dialout-Allowed	Dialout-Allowed		1
+
 VALUE		Ascend-Shared-Profile-Enable    Shared-Profile-No       0
 VALUE		Ascend-Shared-Profile-Enable    Shared-Profile-Yes      1
+
 VALUE		Ascend-Temporary-Rtes	Temp-Rtes-No		0
 VALUE		Ascend-Temporary-Rtes	Temp-Rtes-Yes		1
 
@@ -977,26 +982,15 @@ VALUE	Ascend-Numbering-Plan-ID		Private-Numbering-Plan	9
 VALUE	Ascend-Numbering-Plan-ID		Unknown-Numbering-Plan	0
 VALUE	Ascend-PPPoE-Enable		PPPoE-No	0
 VALUE	Ascend-PPPoE-Enable		PPPoE-Yes	1
-VALUE	Ascend-PW-Lifetime		Lifetime-In-Days	0
-VALUE	Ascend-PW-Warntime		Days-Of-Warning	0
 VALUE	Ascend-Port-Redir-Protocol		Ascend-Proto-TCP	6
 VALUE	Ascend-Port-Redir-Protocol		Ascend-Proto-UDP	17
 VALUE	Ascend-Private-Route-Required		Required-No	0
 VALUE	Ascend-Private-Route-Required		Required-Yes	1
-VALUE	Ascend-Require-Auth		Not-Require-Auth	0
-VALUE	Ascend-Require-Auth		Require-Auth	1
 VALUE	Ascend-Route-Appletalk		Route-Appletalk-No	0
 VALUE	Ascend-Route-Appletalk		Route-Appletalk-Yes	1
-VALUE	Ascend-Route-IP		Route-IP-No	0
-VALUE	Ascend-Route-IP		Route-IP-Yes	1
-VALUE	Ascend-Route-IPX		Route-IPX-No	0
-VALUE	Ascend-Route-IPX		Route-IPX-Yes	1
 VALUE	Ascend-SVC-Enabled		Ascend-SVC-Enabled-No	0
 VALUE	Ascend-SVC-Enabled		Ascend-SVC-Enabled-Yes	1
-VALUE	Ascend-Send-Auth		Send-Auth-CHAP	2
-VALUE	Ascend-Send-Auth		Send-Auth-MS-CHAP	3
-VALUE	Ascend-Send-Auth		Send-Auth-None	0
-VALUE	Ascend-Send-Auth		Send-Auth-PAP	1
+
 VALUE	Ascend-Service-Type		Ascend-Service-Type-ATM	20
 VALUE	Ascend-Service-Type		Ascend-Service-Type-Combinet	7
 VALUE	Ascend-Service-Type		Ascend-Service-Type-EuRaw	9
@@ -1031,22 +1025,10 @@ VALUE	Ascend-Session-Type		Ascend-Session-G729	5
 VALUE	Ascend-Session-Type		Ascend-Session-RT24	8
 VALUE	Ascend-Session-Type		Ascend-Session-Unknown	1
 VALUE	Ascend-Session-Type		Ascend-Session-Unused	0
-VALUE	Ascend-Shared-Profile-Enable		Shared-Profile-No	0
-VALUE	Ascend-Shared-Profile-Enable		Shared-Profile-Yes	1
-VALUE	Ascend-Source-IP-Check		Source-IP-Check-No	0
-VALUE	Ascend-Source-IP-Check		Source-IP-Check-Yes	1
-VALUE	Ascend-TS-Idle-Mode		TS-Idle-Input	1
-VALUE	Ascend-TS-Idle-Mode		TS-Idle-Input-Output	2
-VALUE	Ascend-TS-Idle-Mode		TS-Idle-None	0
-VALUE	Ascend-Token-Immediate		Tok-Imm-No	0
-VALUE	Ascend-Token-Immediate		Tok-Imm-Yes	1
+
 VALUE	Ascend-Tunneling-Protocol		ATMP-Tunnel	0
 VALUE	Ascend-Tunneling-Protocol		VTP-Tunnel	1
-VALUE	Ascend-User-Acct-Base		Base-10	0
-VALUE	Ascend-User-Acct-Base		Base-16	1
-VALUE	Ascend-User-Acct-Type		Ascend-User-Acct-None	0
-VALUE	Ascend-User-Acct-Type		Ascend-User-Acct-User	1
-VALUE	Ascend-User-Acct-Type		Ascend-User-Acct-User-Default	2
+
 VALUE	Ascend-X25-Pad-X3-Profile		CC_SSP	4
 VALUE	Ascend-X25-Pad-X3-Profile		CC_TSP	5
 VALUE	Ascend-X25-Pad-X3-Profile		CRT	0

@@ -179,6 +179,7 @@ ATTRIBUTE	ARAP-Challenge-Response	84	string	# 10 octets
 ATTRIBUTE	Acct-Interim-Interval   85      integer
 ATTRIBUTE	NAS-Port-Id		87	string
 ATTRIBUTE	Framed-Pool		88	string
+ATTRIBUTE	Originating-Line-Info	94	string
 ATTRIBUTE	NAS-IPv6-Address	95	ipv6addr
 ATTRIBUTE	Framed-Interface-Id	96	ifid
 ATTRIBUTE	Framed-IPv6-Prefix	97	octets # ipv6prefix
@@ -627,6 +628,9 @@ VALUE		Post-Auth-Type		Local			0
 VALUE		Fall-Through		No			0
 VALUE		Fall-Through		Yes			1
 
+#VALUE		Strip-User-Name		No			0
+#VALUE		Strip-User-Name		Yes			1
+
 VALUE		Packet-Type	Access-Request			1
 VALUE		Packet-Type	Access-Accept			2
 VALUE		Packet-Type	Access-Reject			3
@@ -640,16 +644,6 @@ VALUE		Packet-Type	Accounting-Message		10
 VALUE		Packet-Type	Access-Challenge		11
 VALUE		Packet-Type	Status-Server			12
 VALUE		Packet-Type	Status-Client			13
-
-#
-#  Defined in RFC 2882
-#
-VALUE		Packet-Type	Disconnect-Request		40
-VALUE		Packet-Type	Disconnect-ACK			41
-VALUE		Packet-Type	Disconnect-NAK			42
-VALUE		Packet-Type	CoA-Request			43
-VALUE		Packet-Type	CoA-ACK				44
-VALUE		Packet-Type	CoA-NAK				45
 
 #
 #	The following packet types are described in RFC 2882,
@@ -713,7 +707,6 @@ VALUE		EAP-Type	RSA-Public-Key		9
 VALUE		EAP-Type	DSS-Unilateral		10
 VALUE		EAP-Type	KEA			11
 VALUE		EAP-Type	KEA-Validate		12
-VALUE		EAP-Type	KEA			11
 VALUE		EAP-Type	EAP-TLS			13
 VALUE		EAP-Type	Defender-Token		14
 VALUE		EAP-Type	RSA-SecurID-EAP		15

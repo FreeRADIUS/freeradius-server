@@ -1254,12 +1254,16 @@ VALUE	USR-Request-Type			Access-Accept		2
 VALUE	USR-Request-Type			Access-Reject		3
 VALUE	USR-Request-Type			Accounting-Request	4
 VALUE	USR-Request-Type			Accounting-Response	5
+# The next three non standard packet types are used by
+# US Robotics Security/Accounting Server
 VALUE	USR-Request-Type			Access-Password-Change	7
 VALUE	USR-Request-Type			Access-Password-Ack	8
 VALUE	USR-Request-Type			Access-Password-Reject	9
 VALUE	USR-Request-Type			Access-Challenge	11
 VALUE	USR-Request-Type			Status-Server		12
 VALUE	USR-Request-Type			Status-Client		13
+# Non standard packet types used by NetServer to implement
+# resource management and NAS reboot conditions
 VALUE	USR-Request-Type			Resource-Free-Request	21
 VALUE	USR-Request-Type			Resource-Free-Response	22
 VALUE	USR-Request-Type			Resource-Query-Request	23
@@ -1267,15 +1271,9 @@ VALUE	USR-Request-Type			Resource-Query-Response	24
 VALUE	USR-Request-Type			Disconnect-User		25
 VALUE	USR-Request-Type			NAS-Reboot-Request	26
 VALUE	USR-Request-Type			NAS-Reboot-Response	27
+# This value is used for Tacacs Plus translation
 VALUE	USR-Request-Type			Tacacs-Message		253
 VALUE	USR-Request-Type			Reserved		255
-
-VALUE	USR-PW_Framed_Routing_V2		Off			0
-VALUE	USR-PW_Framed_Routing_V2		On			1
-
-VALUE	USR-Syslog-Tap				Off			0
-VALUE	USR-Syslog-Tap				Raw			1
-VALUE	USR-Syslog-Tap				Framed			2
 
 VALUE	USR-Speed-Of-Connection			Auto			0
 VALUE	USR-Speed-Of-Connection			56			1
@@ -1340,32 +1338,6 @@ VALUE	USR-Callback-Type			ANI			2
 VALUE	USR-Callback-Type			Static			3
 VALUE	USR-Callback-Type			Dynamic			4
 
-VALUE	USR-Request-Type			Access-Request		1
-VALUE	USR-Request-Type			Access-Accept		2
-VALUE	USR-Request-Type			Access-Reject		3
-VALUE	USR-Request-Type			Accounting-Request	4
-VALUE	USR-Request-Type			Accounting-Response	5
-# The next three non standard packet types are used by
-# US Robotics Security/Accounting Server
-VALUE	USR-Request-Type			Access-Password-Change	7
-VALUE	USR-Request-Type			Access-Password-Ack	8
-VALUE	USR-Request-Type			Access-Password-Reject	9
-VALUE	USR-Request-Type			Access-Challenge	11
-VALUE	USR-Request-Type			Status-Server		12
-VALUE	USR-Request-Type			Status-Client		13
-# Non standard packet types used by NetServer to implement
-# resource management and NAS reboot conditions
-VALUE	USR-Request-Type			Resource-Free-Request	21
-VALUE	USR-Request-Type			Resource-Free-Response	22
-VALUE	USR-Request-Type			Resource-Query-Request	23
-VALUE	USR-Request-Type			Resource-Query-Response	24
-VALUE	USR-Request-Type			Disconnect-User		25
-VALUE	USR-Request-Type			NAS-Reboot-Request	26
-VALUE	USR-Request-Type			NAS-Reboot-Response	27
-# This value is used for Tacacs Plus translation
-VALUE	USR-Request-Type			Tacacs-Message		253
-VALUE	USR-Request-Type			Reserved		255
-
 VALUE	USR-NAS-Type				3Com-NMC		0
 VALUE	USR-NAS-Type				3Com-NETServer		1
 VALUE	USR-NAS-Type				3Com-HiPerArc		2
@@ -1385,4 +1357,5 @@ VALUE	USR-Auth-Mode				Auth-Netware		6
 VALUE	USR-Auth-Mode				Auth-Skey		7
 VALUE	USR-Auth-Mode				Auth-EAP-Proxy		8
 VALUE	USR-Auth-Mode				Auth-UNIX-Crypt		9
+
 END-VENDOR USR
