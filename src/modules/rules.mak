@@ -124,3 +124,4 @@ distclean:
 # ??? do any module-specific installation?
 #
 install:
+	[ "x$$TARGET" != "x" ] && $(LIBTOOL) install -c $(TARGET).la $(libdir)/$(TARGET).la;exit 0
