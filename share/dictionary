@@ -72,6 +72,7 @@ $INCLUDE dictionary.colubris
 $INCLUDE dictionary.erx
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.freeradius
+$INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.itk
 $INCLUDE dictionary.juniper
