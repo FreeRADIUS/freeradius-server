@@ -199,7 +199,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 		if (cur->in_use == SQLSOCK_UNLOCKED) {
 #endif
 			(inst->used)++;
-#ifne HAVE_PTHREAD_H
+#ifndef HAVE_PTHREAD_H
 			cur->in_use = SQLSOCK_LOCKED;
 #endif
 			radlog(L_DBG, "rlm_sql: Reserving sql socket id: %d", cur->id);
