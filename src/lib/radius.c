@@ -1329,6 +1329,7 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 	return pwlen;
 }
 
+
 /*
  *	Encode Tunnel-Password attributes when sending them out on the wire.
  *
@@ -1338,6 +1339,8 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
  *      This is per RFC-2868 which adds a two char SALT to the initial intermediate
  *      value MD5 hash.
  */
+
+int saltoffset = 0;
 
 int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
 {
@@ -1367,9 +1370,9 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 
 
 	/* generate salt */
-	salt[0] = (vector[0] ^ vector[1] ^ 0x3A) | 0x80;
-	salt[1] = (vector[2] ^ vector[3] ^ vector[4]);
-
+	saltoffset++;
+	salt[0] = (vector[0] ^ vector[1] ^ 0x3A ^ (char) ( (saltoffset>>8) & 0x000000ff ) ) | 0x80;
+	salt[1] = (vector[2] ^ vector[3] ^ vector[4] ^ (char) (saltoffset & 0x000000ff) );
 	
 	/*
 	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
