@@ -45,7 +45,7 @@ char rlm_files_sccsid[] =
 static DBM	*dbmfile;
 #endif
 
-PAIR_LIST	*users = NULL;
+static PAIR_LIST	*users = NULL;
 
 #if defined(WITH_DBM) || defined(WITH_NDBM)
 /*
@@ -201,6 +201,38 @@ static int file_init(int argc, char **argv)
 #endif
 
 	if (!use_dbm) users = pairlist_read(fn, 1);
+
+	/*
+	 *	Walk through the 'users' file list, looking for
+	 *	check-items in the reply-item lists.
+	 */
+	if (debug_flag) {
+	  PAIR_LIST *entry;
+	  VALUE_PAIR *vp;
+
+	  entry = users;
+	  while (entry) {
+	    vp = entry->reply;
+	    while (vp) {
+	      /*
+	       *	If it's NOT a vendor attribute,
+	       *	and it's NOT a wire protocol
+	       *	and we ignore Fall-Through,
+	       *	then bitch about it, giving a good warning message.
+	       */
+	      if (!(vp->attribute & ~0xffff) &&
+		  (vp->attribute > 0xff) &&
+		  (vp->attribute != PW_FALL_THROUGH)) {
+		log_debug("[%s]:%d WARNING! Found possible check item '%s' in "
+			  "the reply list for user %s",
+			  fn, entry->lineno, vp->name, entry->name);
+	      }
+	      vp = vp->next;
+	    }
+	    entry = entry->next;
+	  }
+
+	}
 
 	return users ? 0 : -1;
 }
