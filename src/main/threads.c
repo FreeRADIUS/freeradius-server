@@ -176,9 +176,9 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	int num_entries;
 
-	thread_pool.request_count++;
-
 	pthread_mutex_lock(&thread_pool.mutex);
+
+	thread_pool.request_count++;
 
 	/*
 	 *	If the queue is empty, re-set the indices to zero,
@@ -883,7 +883,6 @@ int thread_pool_clean(time_t now)
 			if ((handle->request == NULL) &&
 			    (handle->status == THREAD_RUNNING)) {
 				handle->status = THREAD_CANCELLED;
-
 				/*
 				 *	Post an extra semaphore, as a
 				 *	signal to wake up, and exit.
