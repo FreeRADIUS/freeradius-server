@@ -505,7 +505,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *	stand right now.
 	 */
 	if (inst->shadow_file != NULL) {
-		if ((spwd = fgetspnam(inst->shadow_file, name)) == NULL)
+		if ((spwd = fgetspnam(inst->shadow_file, name)) != NULL)
 			encrypted_pass = get_shadow_encrypted_pwd(spwd);
 	} else if ((encrypted_pass == NULL) || (strlen(encrypted_pass) < 10)) {
 		if ((spwd = getspnam(name)) != NULL)
