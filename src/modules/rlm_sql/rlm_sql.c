@@ -139,11 +139,11 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 	}
 
 	ret = rlm_sql_fetch_row(sqlsocket, inst);
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 
 	if (ret) {
 		DEBUG("rlm_sql (%s): SQL query did not succeed",
 		      inst->config->xlat_name);
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
@@ -152,6 +152,7 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 	if (row == NULL) {
 		DEBUG("rlm_sql (%s): SQL query did not return any results",
 		      inst->config->xlat_name);
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
@@ -159,6 +160,7 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 	if (row[0] == NULL){
 		DEBUG("rlm_sql (%s): row[0] returned NULL",
 		      inst->config->xlat_name);
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
@@ -166,6 +168,7 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 	if (ret > freespace){
 		DEBUG("rlm_sql (%s): sql_xlat:: Insufficient string space",
 		      inst->config->xlat_name);
+		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
@@ -175,6 +178,7 @@ static int sql_xlat(void *instance, REQUEST *request, char *fmt, char *out, int 
 	DEBUG("rlm_sql (%s): - sql_xlat finished",
 	      inst->config->xlat_name);
 
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 	sql_release_socket(inst,sqlsocket);
 	return ret;
 }
@@ -786,6 +790,15 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
 			break;
+
+			/*
+			 *	Anything else is ignored.
+			 */
+		default:
+			radlog(L_INFO, "rlm_sql (%s): Unsupported Acct-Status-Type = %d", inst->config->xlat_name, acctstatustype);
+			return RLM_MODULE_NOOP;
+			break;
+
 	}
 
 	sql_release_socket(inst, sqlsocket);
@@ -956,7 +969,6 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 			session_zap(request->packet->sockfd,
 			nas_addr,nas_port,row[2],row[1],
 			framed_addr, proto,0);
-
 		}
 	}
 
