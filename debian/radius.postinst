@@ -1,0 +1,53 @@
+#! /bin/sh
+
+set -e
+
+case "$1" in
+  configure)
+
+	addgroup --system freerad || true
+	groups freerad 2>/dev/null || adduser --system --no-create-home --home /etc/freeradius --ingroup freerad --disabled-password freerad
+
+	# make sure there is a user and group 'freerad'
+	groups freerad |grep freerad >/dev/null
+
+	# put user freerad in group shadow, so the daemon can auth locally
+	usermod -G shadow freerad
+
+	update-rc.d freeradius defaults 50 >/dev/null
+
+	if [ ! -d /var/log/freeradius ]; then
+		mkdir -p /var/log/freeradius
+	fi
+
+	if [ ! -f /var/log/freeradius/radius.log ]; then
+		touch /var/log/freeradius/radius.log
+	fi
+
+	if [ ! -f /var/log/freeradius/radwtmp ]; then
+		touch /var/log/freeradius/radwtmp
+	fi
+
+	if [ ! -d /var/run/freeradius ]; then
+		mkdir /var/run/freeradius
+	fi
+
+	chown freerad:freerad /var/run/freeradius
+
+	find /etc/freeradius -type f -exec chgrp freerad {} \; -exec chmod 660 {} \;
+	find /etc/freeradius -type d -exec chgrp freerad {} \; -exec chmod 2770 {} \;
+	find /var/log/freeradius -exec chown freerad {} \; -exec chgrp freerad {} \;
+
+	/etc/init.d/freeradius start
+	;;
+  abort-upgrade)
+	;;
+  abort-remove)
+	;;
+  abort-deconfigure)
+	;;
+esac
+
+#DEBHELPER#
+
+exit 0

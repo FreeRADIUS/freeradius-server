@@ -3,9 +3,9 @@
 
 set -u
 
-prog="radiusd"
-program="/usr/sbin/freeradiusd"
-pidfile="/var/run/radiusd-freeradius/radiusd.pid"
+prog="freeradius"
+program="/usr/sbin/freeradius"
+pidfile="/var/run/freeradius/freeradius.pid"
 descr="FreeRADIUS daemon"
 
 test -f $program || exit 0
@@ -30,10 +30,10 @@ restart) echo -n "Restarting $descr: "
         ;;
 reload|force-reload) 
 		echo -n "Reloading configuration files for $descr"
-		killall -HUP radiusd
+		killall -HUP $prog
         echo "."
         ;;
-*)	echo "Usage: /etc/init.d/radiusd start|stop|restart|reload|force-reload"
+*)	echo "Usage: /etc/init.d/freeradius start|stop|restart|reload|force-reload"
         exit 1 
         ;;
 esac

@@ -12,18 +12,18 @@ case "$1" in
 	remove)
 		;;
 	purge)
-		if [ -d /var/log/radiusd-freeradius ] 
+		if [ -d /var/log/freeradius ] 
 		then
-			cd /var/log/radiusd-freeradius
+			cd /var/log/freeradius
 			rm -f radius.log radius.log.* radius.log.*.gz
 			rm -f radwtmp radwtmp.* radwtmp.*.gz
 			rm -f radutmp radwatch.log
 			test -d radacct && rm -rf radacct
 
 			cd /var/log
-			rm -rf /var/log/radiusd-freeradius
+			rm -rf /var/log/freeradius
 		fi
-		rm -rf /etc/raddb
+		rm -rf /etc/freeradius
 		deluser freerad shadow || true
 		deluser freerad || true
 		;;
