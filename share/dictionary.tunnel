@@ -48,4 +48,14 @@ VALUE		Tunnel-Medium-Type	IP		1
 VALUE		Tunnel-Medium-Type	X25		2
 VALUE		Tunnel-Medium-Type	ATM		3
 VALUE		Tunnel-Medium-Type	Frame-Relay	4
-
+VALUE		Tunnel-Medium-Type	BBN-1822	5
+VALUE		Tunnel-Medium-Type	IEEE-802	6
+VALUE		Tunnel-Medium-Type	E.163		7
+VALUE		Tunnel-Medium-Type	E.164		8
+VALUE		Tunnel-Medium-Type	F.69		9
+VALUE		Tunnel-Medium-Type	X.121		10
+VALUE		Tunnel-Medium-Type	IPX		11
+VALUE		Tunnel-Medium-Type	Appletalk	12
+VALUE		Tunnel-Medium-Type	DecNet-IV	13
+VALUE		Tunnel-Medium-Type	Banyan-Vines	14
+VALUE		Tunnel-Medium-Type	E.164-NSAP	15
