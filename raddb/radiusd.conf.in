@@ -1045,7 +1045,7 @@ modules {
 	#  key.  The count is incremented when accounting packets are
 	#  received by the server.  The value of the increment depends
 	#  on the attribute type.
-	#  If the attribute is Acct-Session-Time or an integer we add the
+	#  If the attribute is Acct-Session-Time or of an integer type we add the
 	#  value of the attribute. If it is anything else we increase the
 	#  counter by one.
 	#
