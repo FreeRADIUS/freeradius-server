@@ -516,12 +516,15 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		         /* Wildcard tag for check items */
 		         tag = TAG_ANY;
 			 *ts = 0;
-		 } else {
+		 } else if ((ts[1] >= 0) && (ts[1] <= '9')) {
 		         /* It's not a wild card tag */
 		         tag = strtol(ts + 1, &tc, 0);
 			 if (tc && !*tc && TAG_VALID_ZERO(tag))
-			        *ts = 0;
+				 *ts = 0;
 			 else tag = 0;
+		 } else {
+			 librad_log("Invalid tag for attribute %s", attribute);
+			 return NULL;
 		 }
 		 found_tag = 1;
 	}
