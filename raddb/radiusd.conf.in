@@ -689,6 +689,17 @@ modules {
 		#		include_length = yes
 		#}
 
+		#  The tunneled EAP session needs a default EAP type
+		#  which is separate from the one for the non-tunneled
+		#  EAP module.  Inside of the TTLS tunnel, we
+		#  recommend using EAP-MD5.  If the request does not
+		#  contain an EAP conversation, then this configuration
+		#  entry is ignored.
+		#
+		#ttls {
+		#	default_eap_type = md5
+		#}
+
 
 	}
 
