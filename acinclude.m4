@@ -283,7 +283,7 @@ dnl #
               SNMP_LIBS=)
 
   if test "x$SNMP_LIBS" = "x"; then
-    for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $snmp_lib_dir; do
+    for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $with_snmp_lib_dir; do
       LIBS="$old_LIBS -L$try -lsnmp"
       AC_TRY_LINK([extern char snmp_build_var_op();],
                   [ snmp_build_var_op()],
@@ -300,6 +300,19 @@ dnl   #
       AC_TRY_LINK([extern char snmp_build_var_op();],
                   [ snmp_build_var_op()],
                   SNMP_LIBS="-L$try -lsnmp -lcrypto",
+                  SNMP_LIBS=)
+      if test "x$SNMP_LIBS" != "x"; then
+        break;
+      fi
+dnl   #
+dnl   #  That didn't work.  Try adding the '-lkstat' line.
+dnl   #  Some SNMP libraries are linked against Kernel Statistics,
+dnl   #  in particular, Solaris 9...
+dnl   #
+      LIBS="$old_LIBS -L$try -lsnmp -lcrypto -lkstat"
+      AC_TRY_LINK([extern char snmp_build_var_op();],
+                  [ snmp_build_var_op()],
+                  SNMP_LIBS="-L$try -lsnmp -lcrypto -lkstat",
                   SNMP_LIBS=)
       if test "x$SNMP_LIBS" != "x"; then
         break;
