@@ -33,6 +33,8 @@
 #	Config: $debug is the file you want to put debug messages in
 #		$snmpget is the location of your ``snmpget'' program
 #		$snmpwalk is the location of your ``snmpwalk'' program
+#	        $snmp_timeout is the timeout for snmp queries
+#	        $snmp_retries is the number of retries for timed out snmp queries
 #		$rusers is the location of your ``rusers'' program
 #		$naspass is the location of your NAS admin password file
 #
@@ -48,6 +50,8 @@ $debug		= "";
 
 $snmpget	= "@SNMPGET@";
 $snmpwalk	= "@SNMPWALK@";
+$snmp_timeout	= 5;
+$snmp_retries	= 1;
 $rusers		= "@RUSERS@";
 $naspass	= "$raddbdir/naspasswd";
 
@@ -131,6 +135,37 @@ sub check_net_telnet {
 }
 
 #
+#       Do snmpwalk by calling snmpwalk.
+#
+sub snmpwalk_prog {
+	my ($host, $community, $oid) = @_;
+	local $_;
+
+	print LOG "snpwalk: $snmpwalk -r $snmp_retries -t $snmp_timeout $host $community $oid\n";
+	$_ = `$snmpwalk -r $snmp_retries -t $snmp_timeout $host $community $oid`;
+
+	return $_;
+}
+
+#
+#       Do snmpwalk.
+#
+sub snmpwalk {
+	my $ret;
+
+	if (-x $snmpwalk) {
+		$ret = snmpwalk_prog(@_);
+	} else {
+		$e = "$snmpwalk not found!";
+		print LOG "$e\n" if ($debug);
+		print STDERR "checkrad: $e\n";
+		$ret = "";
+	}
+	$ret;
+}
+
+
+#
 #	Do snmpget by calling snmpget.
 #
 sub snmpget_prog {
@@ -138,8 +173,8 @@ sub snmpget_prog {
 	my ($ret);
 	local $_;
 
-	print LOG "snmpget: $snmpget $host $community $oid\n";
-	$_ = `$snmpget $host $community $oid`;
+	print LOG "snmpget: $snmpget -r $snmp_retries -t $snmp_timeout $host $community $oid\n";
+	$_ = `$snmpget -r $snmp_retries -t $snmp_timeout $host $community $oid`;
 	if (/^.*(\s|\")([0-9A-Za-z]{8})(\s|\"|$).*$/) {
 		# Session ID format.
 		$ret = $2;
@@ -342,8 +377,7 @@ sub cisco_snmp {
 	# The good thing about this MIB is that it reports all the users
 	# regardless if they are ISDN or modem users.
 	# --kkalev
-	$out=`$snmpwalk $ARGV[1] $pass .iso.org.dod.internet.private.enterprises.9.9.150.1.1.3.1.2`;
-	print LOG "$snmpwalk $ARGV[1] $pass .iso.org.dod.internet.private.enterprises.9.9.150.1.1.3.1.2\n";
+	$out=snmpwalk($ARGV[1],$pass,".iso.org.dod.internet.private.enterprises.9.9.150.1.1.3.1.2");
 	if ($out =~ /^$/){
 		if ($port < 20000) {
 			#
@@ -366,7 +400,7 @@ sub cisco_snmp {
 		if($login eq $ARGV[3]) {
 	        	return 1;
 		}else{
-	        	$out=`$snmpwalk $ARGV[1] $pass .iso.org.dod.internet.private.enterprises.9.9.27.1.1.3.1.7`;
+			$out=snmpwalk($ARGV[1],$pass,".iso.org.dod.internet.private.enterprises.9.9.27.1.1.3.1.7");
 	        	if($out=~/\"$ARGV[3]\"/){
 	                	return 1;
 	        	}else{
@@ -861,19 +895,8 @@ sub cyclades_snmp {
    
    $oid = ".1.3.6.1.4.1.2925.3.3.6.1.1.2";
 
-   if (-e $snmpwalk && -x $snmpwalk) { 	
-      #
-      # Get a list of logged in users via snmpwalk
-      #
-      # I'm looking for a way to do this using SNMP_Session
-      # module. Any help would be great.
-      #
-      $_ = `$snmpwalk $ARGV[1] public $oid`;
-      $ret = ((/$ARGV[3]/) ? 1 : 0);
-   } else {
-      print LOG "   Error: can't execute $snmpwalk\n" if $debug;
-      $ret = 2;
-   }
+   $_ = snmpwalk($ARGV[1],"public",$oid);
+   $ret = ((/$ARGV[3]/) ? 1 : 0);
    $ret;
 }
 
