@@ -737,6 +737,20 @@ RADIUS_PACKET *rad_recv(int fd)
 	totallen = ntohs(len);
 
 	/*
+	 *	Code of 0 is not understood.
+	 *	Code of 16 or greate is not understood.
+	 */
+	if ((hdr->code == 0) ||
+	    (hdr->code >= 16)) {
+		librad_log("WARNING: Bad RADIUS packet from host %s: unknown packet code %d",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   hdr->code);
+		free(packet);
+		return NULL;
+		
+	}
+
+	/*
 	 *	Repeat the length checks.  This time, instead of
 	 *	looking at the data we received, look at the value
 	 *	of the 'length' field inside of the packet.
