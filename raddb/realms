@@ -5,36 +5,3 @@
 #	It is here ONLY for backwards compatibility.
 #
 #	See 'proxy.conf' for the new configuration.
-#
-#
-# realms	This file contains a list of realms. When a user logs
-#		in with @realm as the last part of the loginname,
-#		the realm part is looked up in this file. If found,
-#		the request is sent to the listed remote radius server.
-#
-#		Description of the fields:
-#
-#		* The first field is a realm name.
-#		  The realm DEFAULT matches all realms.
-#		* The second field is a hostname. Optional is :port to
-#		  use a non-standard port. In that case, port is the
-#		  authentication port and the accounting port is taken
-#		  as port + 1.
-#		  If this field is set to LOCAL, the request is processed
-#		  normally without sending it to a remote radius server.
-#		* Extra fields with options can follow. Currently
-#		  defined options:
-#		  - nostrip	do not strip @realm from the username
-#		  - notrealm    do not match realm in proxy decisions
-#				this option replaces 'notsuffix'
-#
-#		  - notsuffix	deprecated, but still supported
-#
-
-# Realm                 Remote server [:port]		Options
-#----------------	---------------------		-------
-#isp2.com		radius.isp2.com			nostrip
-#company.com		radius.company.com:1600
-#bla.com		LOCAL
-#replicateme		radius2.company.com		notrealm
-#foo.com			192.168.1.39
