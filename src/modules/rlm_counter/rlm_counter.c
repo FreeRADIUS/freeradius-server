@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "radiusd.h"
 #include "modules.h"
@@ -55,7 +56,7 @@ static const char rcsid[] = "$Id$";
  */
 typedef struct rlm_counter_t {
 	char *filename;  /* name of the database file */
-	char *reset;  /* daily, weekly, monthly, never */
+	char *reset;  /* daily, weekly, monthly, never or user defined */
 	char *key_name;  /* User-Name */
 	char *count_attribute;  /* Acct-Session-Time */
 	char *counter_name;  /* Daily-Session-Time */
@@ -133,43 +134,61 @@ static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_
 static int find_next_reset(rlm_counter_t *data, time_t timeval)
 {
 	int ret=0;
+	unsigned int num=1;
+	char last = 0;
 	struct tm *tm=NULL;
 
 	tm = localtime(&timeval);
 	tm->tm_sec = tm->tm_min = 0;
 
-	if (strcmp(data->reset, "hourly") == 0) {
+	if (data->reset == NULL)
+		return -1;
+	if (isdigit(data->reset[0])){
+		unsigned int len=0;
+
+		len = strlen(data->reset);
+		if (len == 0)
+			return -1;
+		last = data->reset[len - 1];
+		if (!isalpha(last))
+			last = 'd';
+		num = atoi(data->reset);
+		DEBUG("rlm_counter: num=%d, last=%c",num,last);
+	}
+	if (strcmp(data->reset, "hourly") == 0 || last == 'h') {
 		/*
 		 *  Round up to the next nearest hour.
 		 */
-		tm->tm_hour++;
+		tm->tm_hour += num;
 		data->reset_time = mktime(tm);
-	} else if (strcmp(data->reset, "daily") == 0) {
+	} else if (strcmp(data->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round up to the next nearest day.
 		 */
 		tm->tm_hour = 0;
-		tm->tm_mday++;
+		tm->tm_mday += num;
 		data->reset_time = mktime(tm);
-	} else if (strcmp(data->reset, "weekly") == 0) {
+	} else if (strcmp(data->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round up to the next nearest week.
 		 */
 		tm->tm_hour = 0;
-		tm->tm_mday += (7 - tm->tm_wday);
+		tm->tm_mday += (7 - tm->tm_wday) +(7*(num-1));
 		data->reset_time = mktime(tm);
-	} else if (strcmp(data->reset, "monthly") == 0) {
+	} else if (strcmp(data->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
-		tm->tm_mon++;
+		tm->tm_mon += num;
 		data->reset_time = mktime(tm);
 	} else if (strcmp(data->reset, "never") == 0) {
 		data->reset_time = 0;
 	} else {
 		radlog(L_ERR, "rlm_counter: Unknown reset timer \"%s\"",
-				data->reset);
-		ret=-1;
+			data->reset);
+		return -1;
 	}
+	DEBUG2("rlm_counter: Current Time: %d, Next reset %d", 
+		(int)timeval,(int)data->reset_time);
 
 	return ret;
 }
@@ -298,7 +317,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 
 	if (find_next_reset(data,now) == -1)
 		return -1;
-	DEBUG2("rlm_counter: Next reset %d", (int)data->reset_time);
 
 	if (data->filename == NULL) {
 		radlog(L_ERR, "rlm_counter: 'filename' must be set.");

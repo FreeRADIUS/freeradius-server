@@ -580,6 +580,12 @@ modules {
 	#
 	#  The 'reset' parameter defines when the counters are all reset to
 	#  zero.  It can be hourly, daily, weekly, monthly or never.
+	#  It can also be user defined. It should be of the form:
+	#  num[hdwm] where:
+	#  h: hours, d: days, w: weeks, m: months
+	#  If the leter is ommited days will be assumed. In example:
+	#  reset = 10h (reset every 10 hours)
+	#  reset = 12  (reset every 12 days)
 	#
 	#  The counter-name is the name of the attribute in the 'users'
 	#  file used to access that counter.  e.g.
