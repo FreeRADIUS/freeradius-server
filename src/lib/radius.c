@@ -1311,17 +1311,31 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		
 		switch (pair->type) {
 			
-		case PW_TYPE_OCTETS:
+			/*
+			 *	The attribute may be zero length,
+			 *	or it may have a tag, and then no data...
+			 */
 		case PW_TYPE_STRING:
-			if (pair->flags.has_tag &&
-			    pair->type == PW_TYPE_STRING) {
+			if (pair->flags.has_tag) {
 				int offset = 0;
 
+				/*
+				 *	If there's sufficient room for
+				 *	a tag, and the tag looks valid,
+				 *	then use it.
+				 */
 				if ((pair->length > 0) &&
 				    TAG_VALID(*ptr)) {
 					pair->flags.tag = *ptr;
 					pair->length--;
 					offset = 1;
+
+					/*
+					 *	If the leading tag
+					 *	isn't valid, then it's
+					 *	ignored for the tunnel
+					 *	password attribute.
+					 */
 				} else if (pair->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
 					/*
 					 * from RFC2868 - 3.5.  Tunnel-Password
@@ -1346,9 +1360,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			} else {
 			  /*
 			   *	Ascend binary attributes never have a
-			   *	tag
+			   *	tag, and neither do the 'octets' type.
 			   */
 			case PW_TYPE_ABINARY:
+			case PW_TYPE_OCTETS:
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
 			        pair->flags.tag = 0;
@@ -1392,13 +1407,20 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				break;
 
 				/*
-				 *  Tunnel-Password
+				 *	Tunnel-Password's may go ONLY
+				 *	in response packets.
 				 */
 			case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			        rad_tunnel_pwdecode((char *)pair->strvalue,
-						    &pair->length, 
-						    secret,
-						    (char *)original->vector);
+				if (!original) {
+					librad_log("ERROR: Tunnel-Password attribute in request: Cannot decrypt it.");
+					return -1;
+				}
+				if (rad_tunnel_pwdecode(pair->strvalue,
+							&pair->length, 
+							secret,
+							(char *)original->vector) < 0) {
+					return -1;
+				}
 				break;
 
 				/*
@@ -1674,15 +1696,14 @@ static unsigned int salt_offset = 0;
  *      This is per RFC-2868 which adds a two char SALT to the initial intermediate
  *      value MD5 hash.
  */
-int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
+int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
+			const char *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
 	unsigned char	digest[AUTH_VECTOR_LEN];
 	char*   salt;
 	int	i, n, secretlen;
 	unsigned len;
-	
-
 	
 	len = *pwlen;
 
@@ -1704,14 +1725,11 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 	/*
 	 *	Generate salt.  The RFC's say:
 	 *
-	 *	high bit of salt[0] must be set.
-	 *	each salt in a packet should be unique.
-	 *	they should be random
+	 *	The high bit of salt[0] must be set, each salt in a
+	 *	packet should be unique, and they should be random
 	 *
-	 *	So, we set the high bit,
-	 *	add in a counter,
-	 *	and then add in some CSPRNG data.
-	 *	should be OK..
+	 *	So, we set the high bit, add in a counter, and then
+	 *	add in some CSPRNG data.  should be OK..
 	 */
 	salt[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
 		   (lrad_rand() & 0x07));
@@ -1742,12 +1760,13 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 			librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
 		}
 		else {
-			memcpy(buffer + secretlen, passwd + n - AUTH_PASS_LEN, AUTH_PASS_LEN);
+			memcpy(buffer + secretlen, passwd + n - AUTH_PASS_LEN, AUTH_PASS_LEN);	
 			librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
 		}
 		
-		for (i = 0; i < AUTH_PASS_LEN; i++)
+		for (i = 0; i < AUTH_PASS_LEN; i++) {
 			passwd[i + n] ^= digest[i];
+		}
 	}
 	passwd[n] = 0;
 	return 0;
@@ -1756,61 +1775,110 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 /*
  *	Decode Tunnel-Password encrypted attributes.
  *
- *      Defined in RFC-2868, this adds a two char SALT to the initial intermediate
- *      value, to differentiate it from the above.
+ *      Defined in RFC-2868, this uses a two char SALT along with the
+ *      initial intermediate value, to differentiate it from the
+ *      above.
  */
-
-int rad_tunnel_pwdecode(char *passwd, int * pwlen, const char *secret, const char *vector)
+int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
+			const char *vector)
 {
-	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
-	unsigned char	digest[AUTH_VECTOR_LEN];
-	char    salt[2];
-	int	ntimes, secretlen;
-	unsigned i, n, len;
+	uint8_t		buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
+	uint8_t		digest[AUTH_VECTOR_LEN];
+	uint8_t		decrypted[MAX_STRING_LEN + 1];
+	int		secretlen;
+	unsigned	i, n, len;
 	
 	len = *pwlen;
 
-	if(len < 3) {
-	  return len;
+	/*
+	 *	We need at least a salt.
+	 */
+	if (len < 2) {
+		librad_log("tunnel password is too short");
+		return -1;
 	}
-	salt[0] = passwd[0];
-	salt[1] = passwd[1];
 
-	passwd += 2;
-	len -= 2;
-	
+	/*
+	 *	There's a salt, but no password.  Or, there's a salt 
+	 *	and a 'data_len' octet.  It's wrong, but at least we
+	 *	can figure out what it means: the password is empty.
+	 *
+	 *	Note that this means we ignore the 'data_len' field,
+	 *	if the attribute length tells us that there's no
+	 *	more data.  So the 'data_len' field may be wrong,
+	 *	but that's ok...
+	 */
+	if (len <= 3) {
+		passwd[0] = 0;
+		*pwlen = 0;
+		return 0;
+	}
+
+	len -= 2;		/* discount the salt */
+
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
+
+	/*
+	 *	Set up the initial key:
+	 *
+	 *	 b(1) = MD5(secret + vector + salt)
+	 */
 	memcpy(buffer, secret, secretlen);
+	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
+	memcpy(buffer + secretlen + AUTH_VECTOR_LEN, passwd, 2);
+	librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
 
-	ntimes = (len-1)/AUTH_PASS_LEN;
-	do {
-		if(!ntimes){
-			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
-			librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
-		}
-		else {
-			memcpy(buffer + secretlen, passwd + AUTH_PASS_LEN * (ntimes - 1), AUTH_PASS_LEN);
-			librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
-		}
-		for ( i = 0, n = ntimes * AUTH_PASS_LEN; i < AUTH_PASS_LEN && (i + n) < len; i++)
-			passwd[i + n] ^= digest[i];
-	} while(ntimes--);
-	passwd[len] = '\0';
-
-	if (*(unsigned char*)passwd >= len) {
-		/* Pasword is broken, original password should be longer */
-		*pwlen = 2;
-		passwd[0]=passwd[1]=0;
-		return 0;
+	/*
+	 *	A quick check: decrypt the first octet of the password,
+	 *	which is the 'data_len' field.  Ensure it's sane.
+	 *
+	 *	'n' doesn't include the 'data_len' octet
+	 *	'len' does.
+	 */
+	n = passwd[2] ^ digest[0];
+	if (n >= len) {
+		librad_log("tunnel password is too long for the attribute");
+		return -1;
 	}
-	len = *pwlen = *passwd; /* restore original length */
-	for (n=0; n<len; n++) passwd[n-2]=passwd[n+1];
-	passwd[len-2] = 0;
-	return len;
+
+	/*
+	 *	Loop over the data, decrypting it, and generating
+	 *	the key for the next round of decryption.
+	 */
+	for (n = 0; n < len; n += AUTH_PASS_LEN) {
+		for (i = 0; i < AUTH_PASS_LEN; i++) {
+			decrypted[n + i] = passwd[n + i + 2] ^ digest[i];
+
+			/*
+			 *	Encrypted password may not be aligned
+			 *	on 16 octets, so we catch that here...
+			 */
+			if ((n + i) == len) break;
+		}
+
+		/*
+		 *	Update the digest, based on
+		 *
+		 *	b(n) = MD5(secret + cleartext(n-1)
+		 *
+		 *	but only if there's more data...
+		 */
+		memcpy(buffer + secretlen, passwd + n + 2, AUTH_PASS_LEN);
+		librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
+	}
+
+	/*
+	 *	We've already validated the length of the decrypted
+	 *	password.  Copy it back to the caller.
+	 */
+	memcpy(passwd, decrypted + 1, decrypted[0]);
+	passwd[decrypted[0]] = 0;
+	*pwlen = decrypted[0];
+
+	return decrypted[0];
 }
 
 /*
