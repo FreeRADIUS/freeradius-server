@@ -31,18 +31,19 @@ static const char rcsid[] = "$Id$";
 
 /*
  * The X9.9 MAC is used by tokens in the following manner:
- * 1. Convert the challenge to ASCII bytes (eg "12345" -> 0x3132333435).
- * 2. Pad LSB of a 64-bit block w/ 0 bytes if challenge < 8 bytes (digits).
- * 3. Encrypt w/ DES.
- * 4. Convert the most significant 32 bits of the ciphertext
- *    to 8 hex digits as a string (eg 0x1234567f -> "1234567f").
- * 5. Apply any vendor specific transformations on chars "a" thru "f".
  *
- * Most (?) tokens probably support a max of an 8 character challenge,
- * but at least one supports performing the full CBC mode encryption
- * of an arbitrary length challenge.  So we don't limit ourselves
- * to just an ECB mode encryption.
+ * 1. Possibly convert the challenge to ASCII (eg "12345" -> 0x3132333435).
+ *    Note that we do this unconditionally (we don't yet support tokens
+ *    that can use raw challenge bytes (SafeWord Gold/Platinum)).
+ * 2. Use the possibly converted challenge as the plaintext input to
+ *    the X9.9 MAC algorithm.
+ * 3. Convert the 32 bit MAC to ASCII (eg 0x1234567f -> "1234567f").
+ *    Note that some tokens (SafeWord Gold/Platinum) can display a 64 bit MAC;
+ *    we don't support those yet.
+ * 4. Apply any vendor specific transformations on chars "a" thru "f".
+ * 5. Use the result as the response.
  */
+
 /* Returns 0 on success, non-zero otherwise.  response sized as indicated. */
 int
 x99_response(const char *challenge, char response[9],
@@ -58,9 +59,7 @@ x99_response(const char *challenge, char response[9],
 
     /* Step 4, 5 */
     if (card_id & X99_CF_DD) {
-	if (card_id & X99_CF_SNK) {
-	    conversion = x99_snk_dec_conversion;
-	} else if (card_id & X99_CF_CRYPTOCARD) {
+	if (card_id & X99_CF_CRYPTOCARD) {
 	    conversion = x99_cc_dec_conversion;
 	} else {
 	    /* This should not happen. */
@@ -95,8 +94,14 @@ x99_response(const char *challenge, char response[9],
  *    block must be zero padded.
  * 2. The MAC is the most significant 32 bits of the last cipherblock.
  *
+ * Most tokens support a max of an 8 character challenge, but at least one
+ * (CRYPTOCard RB-1) supports performing the full CBC mode encryption
+ * of an arbitrary length challenge.  So we don't limit ourselves
+ * to just an ECB mode encryption.
+ *
  * This routine returns the entire 64 bit last cipherblock, at least one sync
- * mode needs this.  Returns 0 on success, non-zero otherwise.
+ * mode needs this (and ANSI X9.9 states that the MAC can be 48 and 64 bit
+ * MACs should be supported).  Returns 0 on success, non-zero otherwise.
  */
 int
 x99_mac(const char *input, des_cblock output, des_cblock keyblock)
