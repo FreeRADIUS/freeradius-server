@@ -67,7 +67,6 @@ static CONF_PARSER proxy_config[] = {
 	{ "synchronous",  PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_synchronous, "no" },
 	{ "default_fallback", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_fallback, "no" },
 	{ "dead_time",    PW_TYPE_INTEGER, 0, &mainconfig.proxy_dead_time, Stringify(DEAD_TIME) },
-	{ "servers_per_realm",  PW_TYPE_INTEGER, 0, &mainconfig.max_proxies, Stringify(MAX_PROXIES) },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
