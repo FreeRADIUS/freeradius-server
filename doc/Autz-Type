@@ -19,9 +19,10 @@ authorize{
 	}
 }
 
-What happens is that the first time the authorize section is examined the suffix,preprocess and files module
-are executed. If Autz-Type is set after that the server core checks for any matching autztype subsection.
-If one is found it is called. The users file should look something like this:
+What happens is that the first time the authorize section is examined the suffix,preprocess
+and files modules are executed. If Autz-Type is set after that the server core checks for
+any matching autztype subsection. If one is found it is called. The users file should look
+something like this:
 
 DEFAULT	Called-Station-Id == "123456789", Autz-Type := Ldap
 

@@ -65,6 +65,7 @@
  *	- Add another configuration directive. access_attr_used_for_allow. If it is set to yes
  *	  then the access_attr will be used to allow user access. If it is set to no then it will
  *	  be used to deny user access.
+ *	- Remember to free inst->atts in ldap_detach()
  */
 static const char rcsid[] = "$Id$";
 
@@ -1353,6 +1354,14 @@ ldap_detach(void *instance)
 		free(pair->radius_attr);
 		free(pair);
 		pair = nextpair;
+	}
+
+	if (inst->atts){
+		int i = 0;
+
+		while(inst->atts[i])
+			free(inst->atts[i++]);
+		free(inst->atts);
 	}
 
 	paircompare_unregister(PW_LDAP_GROUP, ldap_groupcmp);
