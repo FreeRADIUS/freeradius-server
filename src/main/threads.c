@@ -194,7 +194,7 @@ static void *request_handler_thread(void *arg)
 	sigaddset(&set, SIGHUP);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGQUIT);
-	sigaddset(&set, SIGUSR1);
+	sigaddset(&set, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &set, NULL);
 #endif
 	
@@ -974,6 +974,12 @@ int rad_savepid(pid_t pid, int status)
 			 */
 			forkers[i].status = status;
 			sem_post(&forkers[i].child_done);
+
+			/*
+			 *  If the child is more than 60 seconds out
+			 *  of date, then delete it.
+			 */
+
 			return 0;		
 		}
 	}

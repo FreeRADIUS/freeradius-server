@@ -129,7 +129,10 @@ static void instance_list_free(module_instance_t **i)
 	*i = NULL;
 }
 
-static void module_list_free(void)
+/*
+ *	Remove all of the modules.
+ */
+int detach_modules(void)
 {
 	module_list_t *ml, *next;
 	int i;
@@ -154,6 +157,8 @@ static void module_list_free(void)
 	}
 
 	module_list = NULL;
+
+	return 0;
 }
 
 /*
@@ -637,7 +642,7 @@ int setup_modules(void)
 		}
 
 	} else {
-		module_list_free();
+		detach_modules();
 	}
 
 	/*

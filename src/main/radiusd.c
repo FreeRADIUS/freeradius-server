@@ -140,8 +140,13 @@ static const char *gid_name = NULL;
 static int proxy_requests = TRUE;
 static int needs_child_cleanup = 0;
 static time_t start_time = 0;
-int spawn_flag = TRUE;
+static int spawn_flag = TRUE;
+static int do_exit = 0;
 
+
+/*
+ *	Static functions.
+ */
 static void usage(void);
 
 static void sig_fatal (int);
@@ -324,20 +329,8 @@ static int reread_config(int reload)
 	 *	dump core.
 	 */
 	if ((allow_core_dumps == FALSE) && (debug_flag == 0)) {
-#ifdef SIGTRAP
-		signal(SIGTRAP, sig_fatal);
-#endif
-#ifdef SIGIOT
-		signal(SIGIOT, sig_fatal);
-#endif
-#ifdef SIGFPE
-		signal(SIGFPE, sig_fatal);
-#endif
 #ifdef SIGSEGV
 		signal(SIGSEGV, sig_fatal);
-#endif
-#ifdef SIGILL
-		signal(SIGILL, sig_fatal);
 #endif
 	}
 
@@ -556,9 +549,9 @@ int main(int argc, char *argv[])
 	radius_dir = strdup(RADIUS_DIR);
 
 	signal(SIGHUP, sig_hup);
-	signal(SIGINT, sig_fatal);
+	signal(SIGPIPE, SIG_IGN);	
+signal(SIGINT, sig_fatal);
 	signal(SIGQUIT, sig_fatal);
-	signal(SIGPIPE, SIG_IGN);
 	signal(SIGTERM, sig_fatal);
 
 	/* this is right for threads, too, right?  
@@ -984,6 +977,19 @@ int main(int argc, char *argv[])
 			 *  request list.
 			 */
 			if (errno == EINTR) {
+				if (do_exit) {
+					DEBUG("Exiting...");
+					detach_modules();
+
+					/*
+					 *	SIGTERM gets do_exit=0,
+					 *	and we want to exit cleanly.
+					 *
+					 *	Other signals make us exit
+					 *	with an error status.
+					 */
+					exit(do_exit - 1);
+				}
 				tv = rad_clean_list(time(NULL));
 				continue;
 			}
@@ -2342,9 +2348,11 @@ static void usage(void)
  */
 static void sig_fatal(int sig)
 {
-	int child_sig;
 	const char *me = "MASTER: ";
 
+	/*
+	 *  FIXME: Handle child threads, too...
+	 */
 	if (radius_pid != getpid()) {
 		me = "CHILD: ";
 	}
@@ -2352,32 +2360,33 @@ static void sig_fatal(int sig)
 	switch(sig) {
 		case SIGTERM:
 			radlog(L_INFO, "%sexit.", me);
-			child_sig = SIGTERM;
+			do_exit = 1;
 			break;
 		default:
 			radlog(L_ERR, "%sexit on signal (%d)", me, sig);
-			child_sig = SIGKILL;
+			do_exit = 2;
 			break;
 	}
 
-
-#ifndef HAVE_PTHREAD_H
 	/*
 	 *  We're running as a daemon, we're the MASTER daemon,
 	 *  and we got a fatal signal.  Tear the rest of the
 	 *  daemons down, as something absolutely horrible happened.
 	 */
-	if ((debug_flag == 0) && (dont_fork == 0) &&
-	    (radius_pid == getpid())) {
+	if ((debug_flag == 0) && (dont_fork == 0)
+#ifndef HAVE_PTHREAD_H
+	    && (radius_pid == getpid())
+#endif
+	    ) {
 		/*
 		 *      Kill all of the processes in the current
-		 *  process group.
+		 *	process group.
 		 */
-		kill(0, child_sig);
-	}
+		kill(0, SIGKILL);
+#ifdef HAVE_PTHREAD_H
+		pthread_kill(0, SIGKILL);
 #endif
-
-	exit(sig == SIGTERM ? 0 : 1);
+	}
 }
 
 
