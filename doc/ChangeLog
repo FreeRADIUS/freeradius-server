@@ -1,3 +1,6 @@
+2000-10-17  Antonio Dias (accdias@sst.com.br)
+	* doc/README.cisco updated (Chris Parker <cparker@starnetusa.net>)
+
 1999-09-28  Miquel van Smoorenburg (miquels@cistron.nl)
 
 	* Changed some strcpy()s over to strNcpy. It would be better
