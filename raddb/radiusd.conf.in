@@ -1154,6 +1154,16 @@ $INCLUDE ${confdir}/eap.conf
 	#
 	$INCLUDE  ${confdir}/sql.conf
 
+
+	#  For Cisco VoIP specific accounting with Postgresql,
+	#  use:		${confdir}/pgsql-voip.conf
+	#
+	#  You will also need the sql schema from:
+	#  	 src/billing/cisco_h323_db_schema-postgres.sql
+	#  Note: This config can be use AS WELL AS the standard sql
+	#  config if you need SQL based Auth
+	
+
 	#  Write a 'utmp' style file, of which users are currently
 	#  logged in, and where they've logged in from.
 	#
@@ -1769,6 +1779,11 @@ accounting {
 	#
 	#  See "Accounting queries" in sql.conf
 #	sql
+
+
+	#  Cisco VoIP specific bulk accounting
+#	pgsql-voip
+
 }
 
 
