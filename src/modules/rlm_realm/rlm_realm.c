@@ -94,6 +94,7 @@ static REALM *check_for_realm(REQUEST *request)
 	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
 	    (realm->acct_port == 0)) {
 		/* log a warning that the packet isn't getting proxied ??? */
+		DEBUG2("rlm_realm:  acct_port is not set.  proxy cancelled");
 		return NULL;
 	}
 
@@ -103,6 +104,7 @@ static REALM *check_for_realm(REQUEST *request)
 	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
 	    (realm->auth_port == 0)) {
 		/* log a warning that the packet isn't getting proxied ??? */
+		DEBUG2("rlm_realm:  auth_port is not set.  proxy cancelled");
 		return NULL;
 	}
 
