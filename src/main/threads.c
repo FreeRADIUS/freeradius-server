@@ -142,34 +142,6 @@ static const CONF_PARSER thread_config[] = {
 };
 
 /*
- *	Thread stats
- */
-
-static void sig_stats(int sig)
-{
-	THREAD_HANDLE *handle;	
-	int active_threads = 0;
-
-	sig = sig; /* -Wunused */
-	reset_signal(SIGUSR1, sig_stats);
-
-
-	radlog(L_INFO, "Freeradius running");
-
-	for (handle = thread_pool.head; handle; handle = handle->next) {
-		if (handle->request != NULL)
-			active_threads++;
-	}
-
-	radlog(L_INFO, "STATS: Total Threads: %5d,    Active Threads: %7d", thread_pool.total_threads, active_threads);
-	radlog(L_INFO, "STATS: Total number of requests handled so far: %7ld", thread_pool.request_count);
-	radlog(L_INFO, "STATS: Per thread statistics:");
-	for(handle = thread_pool.head;handle;handle = handle->next)
-		radlog(L_INFO, "STATS: Thread Num: %5d,     Requests Handled: %7d", handle->thread_num,
-				handle->request_count);
-}
-
-/*
  *	The main thread handler for requests.
  *
  *	Wait on the semaphore until we have it, and process the request.
@@ -533,10 +505,6 @@ int thread_pool_init(void)
 	}
 
 	pool_initialized = TRUE;
-
-#ifdef SIGUSR1
-	signal(SIGUSR1, sig_stats);
-#endif
 	return 0;
 }
 
