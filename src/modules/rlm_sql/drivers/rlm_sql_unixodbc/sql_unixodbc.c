@@ -18,11 +18,17 @@ typedef struct rlm_sql_unixodbc_sock {
 	SQLHSTMT stmt_handle;
 	SQL_ROW row;
 	void *conn;
-} rlm_sql_unixodbc_sock;;
+} rlm_sql_unixodbc_sock;
 
 
 #include <sql.h>
 #include <sqlext.h>
+
+/* Forward declarations */
+static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config); 
+static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config); 
+static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config); 
+static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config); 
 
 
 /*************************************************************************
