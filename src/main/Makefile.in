@@ -24,6 +24,12 @@ BINARIES	= radiusd radwho radzap radclient radrelay
 # at build time.
 #
 ifneq ($(USE_SHARED_LIBS),yes)
+#
+#  For static linking...
+#
+#MODULES += rlm_eap_md5  rlm_eap_leap rlm_eap_tls rlm_eap_ttls
+#LIBS += $(OPENSSL_LIB) -lcrypto -lssl -lcrypto -lssl
+#
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 MODULE_OBJS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done)
 endif
