@@ -1,4 +1,8 @@
-FreeRADIUS Password Caching 
+FreeRADIUS Password Caching for Unix modules
+
+If you are using FreeBSD or NetBSD, then you do NOT want to cache the
+passwords!  See 'radiusd.conf', the comments in the 'unix' section,
+for more details.
 
 Acknowledgements
 
