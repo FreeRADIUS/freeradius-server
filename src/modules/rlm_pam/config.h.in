@@ -1,0 +1,4 @@
+/* config.h.in.  Generated automatically from configure.in by autoheader.  */
+
+/* Define if you have the <security/pam_appl.h> header file.  */
+#undef HAVE_SECURITY_PAM_APPL_H
