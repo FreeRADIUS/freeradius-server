@@ -62,7 +62,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	c = rad_malloc(sizeof(struct xlat_cmp));
 
 	c->do_xlat = func;
-	strncpy(c->module, module, MAX_STRING_LEN);
+	strNcpy(c->module, module, sizeof(c->module));
 	c->length = strlen(c->module);
 	c->instance = instance;
 	c->next = cmp;
