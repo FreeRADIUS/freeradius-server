@@ -36,6 +36,7 @@
  */
 
 #include <stdio.h>
+#include <malloc.h>
 #include "eap.h"
 
 #include "eap_md5.h"
@@ -45,14 +46,14 @@
  */
 MD5_PACKET *eapmd5_alloc(void)
 {
-        MD5_PACKET   *rp;
+	MD5_PACKET   *rp;
 
-        if ((rp = malloc(sizeof(MD5_PACKET))) == NULL) {
-                radlog(L_ERR, "rlm_eap_md5: out of memory");
-                return NULL;
-        }
-        memset(rp, 0, sizeof(MD5_PACKET));
-        return rp;
+	if ((rp = malloc(sizeof(MD5_PACKET))) == NULL) {
+		radlog(L_ERR, "rlm_eap_md5: out of memory");
+		return NULL;
+	}
+	memset(rp, 0, sizeof(MD5_PACKET));
+	return rp;
 }
 
 /*
@@ -60,18 +61,18 @@ MD5_PACKET *eapmd5_alloc(void)
  */
 void eapmd5_free(MD5_PACKET **md5_packet_ptr)
 {
-        MD5_PACKET *md5_packet;
+	MD5_PACKET *md5_packet;
 
-        if (!md5_packet_ptr) return;
-        md5_packet = *md5_packet_ptr;
-        if (md5_packet == NULL) return;
+	if (!md5_packet_ptr) return;
+	md5_packet = *md5_packet_ptr;
+	if (md5_packet == NULL) return;
 
-        if (md5_packet->value) free(md5_packet->value);
-        if (md5_packet->name) free(md5_packet->name);
+	if (md5_packet->value) free(md5_packet->value);
+	if (md5_packet->name) free(md5_packet->name);
 
-        free(md5_packet);
+	free(md5_packet);
 
-        *md5_packet_ptr = NULL;
+	*md5_packet_ptr = NULL;
 }
 
 /* 
@@ -79,18 +80,19 @@ void eapmd5_free(MD5_PACKET **md5_packet_ptr)
  */ 
 MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 {
-        md5_packet_t	*data;
-        MD5_PACKET	*packet;
+	md5_packet_t	*data;
+	MD5_PACKET	*packet;
 	int 		name_len;
 
 	if (!eap_ds 						|| 
 		!eap_ds->response 				|| 
-        	(eap_ds->response->code != PW_MD5_RESPONSE)	||
+        (eap_ds->response->code != PW_MD5_RESPONSE)	||
 		eap_ds->response->type.type != PW_EAP_MD5		||
 		!eap_ds->response->type.data 			||
 		(eap_ds->response->length < MD5_HEADER_LEN)	||
 		(eap_ds->response->type.data[0] <= 0)	) {
-                radlog(L_ERR, "rlm_eap_md5: corrupted data");
+
+		radlog(L_ERR, "rlm_eap_md5: corrupted data");
 		return NULL;
 	}
 
@@ -108,13 +110,13 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	packet->value = NULL;
 	packet->name = NULL;
 
-        data = (md5_packet_t *)eap_ds->response->type.data;
+	data = (md5_packet_t *)eap_ds->response->type.data;
 
-        packet->value_size = data->value_size;
+	packet->value_size = data->value_size;
 
 	packet->value = malloc(packet->value_size);
 	if (packet->value == NULL) {
-                radlog(L_ERR, "rlm_eap_md5: out of memory");
+		radlog(L_ERR, "rlm_eap_md5: out of memory");
 		eapmd5_free(&packet);
 		return NULL;
 	}
@@ -139,6 +141,58 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 }
 
 /*
+ * Generate a random value
+ * challenge = MD5(random)
+ */
+int eapmd5_challenge(unsigned char *value, int len)
+{
+	/*
+	 * TODO: Make sure Challenge is always unique,
+	 * 	     no matter how many times it is called.
+	 * 	     random_vector() in lib/radius.c should be used.
+	 */
+	librad_md5_calc((u_char *)value, (u_char *)value, len);
+	radlog(L_INFO, "rlm_eap_md5: Issuing Challenge");
+
+	return 1;
+}
+
+/* 
+ * verify = MD5(id+password+challenge_sent)
+ */
+int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password, 
+		md5_packet_t *challenge)
+{
+	int		len;
+	char	*ptr;
+	char	string[MAX_STRING_LEN*2];
+	unsigned char output[MAX_STRING_LEN];
+
+	if ((password == NULL) || (challenge == NULL)) {
+		return 0;
+	}
+
+	len = 0;
+	ptr = string;
+
+	*ptr++ = packet->id;
+	len++;
+	memcpy(ptr, password->strvalue, password->length);
+	ptr += password->length;
+	len += password->length;
+
+	memcpy(ptr, challenge->value_name, challenge->value_size);
+	len += challenge->value_size;
+
+	librad_md5_calc((u_char *)output, (u_char *)string, len);
+
+	if (memcmp(output, packet->value, packet->value_size) != 0) {
+		return 0;
+	}
+	return 1;
+}
+
+/*
  * Identify whether the response that you got is either the
  * response to the challenge that we sent or a new one.
  * If it is a response to the request then issue success/failure
@@ -160,10 +214,7 @@ MD5_PACKET *eapmd5_process(MD5_PACKET *packet, int id,
 	
 	if (request) {
 		/* verify and issue Success/failure */
-		eapmd5_challenge(packet->id, password->strvalue, password->length,
-			request->value_name, request->value_size, output);
-
-		if (memcmp(output, packet->value, packet->value_size) != 0) {
+		if (eapmd5_verify(packet, password, request) == 0) {
 			radlog(L_INFO, "rlm_eap_md5: Challenge failed");
 			reply->code = PW_MD5_FAILURE;
 		}
@@ -172,14 +223,17 @@ MD5_PACKET *eapmd5_process(MD5_PACKET *packet, int id,
 		}
 	} else {
 		/*
-		 * Issue a challenge, value is a random number.
-		 * If no value then generate some random number
+		 * Previous request not found.
+		 * Probably it is timed out.
+		 * So send another challenge.
+		 * TODO: Later Send these challenges for the configurable
+		 * 		number of times for each user & stop.
 		 */
-		eapmd5_challenge(id, password->strvalue, password->length,
-				packet->value, packet->value_size, output);
+		eapmd5_challenge(reply->value, MD5_LEN);
+		reply->code = PW_MD5_CHALLENGE;
+		radlog(L_INFO, "rlm_eap_md5: Previous request not found");
 		radlog(L_INFO, "rlm_eap_md5: Issuing Challenge to the user - %s",
 			(char *)username->strvalue);
-		reply->code = PW_MD5_CHALLENGE;
 	}
 
 	/* fill reply packet */
@@ -210,12 +264,12 @@ MD5_PACKET *eapmd5_initiate(EAP_DS *eap_ds)
 
 	reply = eapmd5_alloc();
 	if (reply == NULL)  {
-                radlog(L_ERR, "rlm_eap_md5: out of memory");
+		radlog(L_ERR, "rlm_eap_md5: out of memory");
 		return NULL;
 	}
 
 	reply->code = PW_MD5_CHALLENGE;
-	reply->length = MD5_HEADER_LEN + 1 + MD5_LEN;
+	reply->length = MD5_HEADER_LEN + 1/*value_size*/ + MD5_LEN;
 	reply->value_size = MD5_LEN;
 
 	reply->value = malloc(reply->value_size);
@@ -225,48 +279,9 @@ MD5_PACKET *eapmd5_initiate(EAP_DS *eap_ds)
 		return NULL;
 	}
 
-        /*
-         * generate some random challenge value
-	 *
-	 * TODO: Make sure Challenge is always unique,
-	 * 	no matter how many times it is called
-         */
-        librad_md5_calc((uint8_t *)reply->value, (uint8_t *)reply->value, MD5_LEN);
+	eapmd5_challenge(reply->value, MD5_LEN);
 
 	return reply;
-}
-
-/* 
- * challenge = MD5(id+password+MD5(random))
- */
-int eapmd5_challenge(int id,
-	       	unsigned char *password, int pass_len, 
-		unsigned char *challenge, int challenge_len,
-	       	unsigned char *output)
-{
-        int             len;
-        char            *ptr;
-        char            string[MAX_STRING_LEN];
-
-        if ((password == NULL) || (challenge == NULL)) {
-                return 0;
-        }
-
-        len = 0;
-        ptr = string;
-
-        *ptr++ = id;
-        len++;
-        memcpy(ptr, password, pass_len);
-        ptr += pass_len;
-        len += pass_len;
-
-	memcpy(ptr, challenge, challenge_len);
-	len += challenge_len;
-
-        librad_md5_calc((u_char *)output, (u_char *)string, len);
-
-        return 1;
 }
 
 /* 
@@ -281,7 +296,7 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 
 		eap_ds->request->type.type = PW_EAP_MD5;
 
-		eap_ds->request->type.data = malloc(reply->length - 4);
+		eap_ds->request->type.data = malloc(reply->length - MD5_HEADER_LEN);
 		if (eap_ds->request->type.data == NULL) {
 			radlog(L_ERR, "rlm_eap_md5: out of memory");
 			return 0;
@@ -290,15 +305,16 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 		*ptr++ = (uint8_t)(reply->value_size & 0xFF);
 		memcpy(ptr, reply->value, reply->value_size);
 
+		/* Just the Challenge length */
 		eap_ds->request->type.length = reply->value_size + 1;
 
-		name_len = reply->length - (reply->value_size + 5);
-		if (reply->name  && name_len) {
+		name_len = reply->length - (reply->value_size + 1 + MD5_HEADER_LEN);
+		if (name_len && reply->name) {
 			ptr += reply->value_size;
 			memcpy(ptr, reply->name, name_len);
+			/* Challenge length + Name length */
 			eap_ds->request->type.length += name_len;
 		}
-
 	} else {
 		eap_ds->request->type.length = 0;
 		/* TODO: In future we might add message here wrt rfc1994 */

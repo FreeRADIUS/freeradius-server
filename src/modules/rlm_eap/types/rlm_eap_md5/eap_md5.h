@@ -23,19 +23,19 @@
 /* eap packet structure */
 typedef struct md5_packet_t {
 /*
-  uint8_t	code;
-  uint8_t	id;
-  uint16_t	length;
+	uint8_t	code;
+	uint8_t	id;
+	uint16_t	length;
 */
-  uint8_t	value_size;
-  uint8_t	value_name[1];
+	uint8_t	value_size;
+	uint8_t	value_name[1];
 } md5_packet_t;
 
 typedef struct md5_packet {
 	unsigned char	code;
 	unsigned char	id;
 	unsigned int	length;
-	unsigned int	value_size;
+	unsigned char	value_size;
 	unsigned char	*value;
 	char		*name;
 /*	char		*message; */
@@ -53,15 +53,13 @@ typedef struct md5_list {
 
 MD5_PACKET 	*eapmd5_alloc(void);
 void 		eapmd5_free(MD5_PACKET **md5_packet_ptr);
-MD5_PACKET 	*eapmd5_extract(EAP_DS *auth);
+
 int 		eapmd5_compose(EAP_DS *auth, MD5_PACKET *reply);
+MD5_PACKET 	*eapmd5_extract(EAP_DS *auth);
 MD5_PACKET 	*eapmd5_initiate(EAP_DS *eap_ds);
 MD5_PACKET 	*eapmd5_process(MD5_PACKET *packet, int id, 
-			VALUE_PAIR *username, VALUE_PAIR* password,
+				VALUE_PAIR *username, VALUE_PAIR* password,
 	       		md5_packet_t *req);
-int 		eapmd5_challenge(int id,
-	       		unsigned char *password, int pass_len,
-	       		unsigned char *challenge, int challenge_len,
-	       		unsigned char *output);
-
+int 		eapmd5_challenge(unsigned char *value, int len);
+int 		eapmd5_verify(MD5_PACKET *pkt, VALUE_PAIR* pwd, md5_packet_t *ch);
 #endif /*_EAP_MD5_H*/
