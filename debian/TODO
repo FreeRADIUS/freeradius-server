@@ -4,11 +4,11 @@ TODO list for the Debian package:
 * Begin writing manpages for topics listed in the
   debian/freeradius.undocumented file.
 
-04 May 2003 -- Paul Hampson
-* Debian Policy compliance audit (Not hard, only 3.5.7 => 3.5.9)
+09 July 2003 -- Paul Hampson
+* Debian Policy compliance audit (Not hard, only 3.5.9 => 3.5.10)
 * Debhelper usage check/best practice audit
   (http://lists.debian.org/debian-devel-announce/2003/debian-devel-announce-200303/msg00002.html)
 * Check licensing on RFCs.... Will have to remove from src package if they're
   bad. (Not that hard, thankfully.)
-* See if it builds cleanly on Debian/stable.
+* See if it builds cleanly on Debian/stable: libsasl2-dev has to become libsasl-dev, at least.
 * Investigate use of logrotate.
