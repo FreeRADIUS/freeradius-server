@@ -377,7 +377,6 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		 *	Process VALUE lines.
 		 */
 		if (strcmp(keyword, "VALUE") == 0) {
-
 			if (sscanf(data, "%s%s%s", attrstr,
 						namestr, valstr) != 3) {
 				librad_log("dict_init: %s[%d]: invalid VALUE line",
@@ -402,6 +401,19 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				value = atoi(valstr);
 			else
 				sscanf(valstr, "%i", &value);
+
+#if 0
+			/*
+			 *	This WOULD be nice, but the dictionary
+			 *	files require heavy editing to enable it,
+			 *	as many entries are out of order. :(
+			 */
+			if (dict_attrbyname(attrstr) == NULL) {
+				librad_log("dict_init: %s[%d]: No previously defined ATTRIBUTE %s for VALUE", 
+					   fn, line, attrstr);
+				return -1;
+			}
+#endif
 
 			if (dict_addvalue(namestr, attrstr, value) < 0) {
 				librad_log("dict_init: %s[%d]: %s", 
