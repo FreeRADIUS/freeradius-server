@@ -181,11 +181,14 @@ uint32_t ip_addr(const char *ip_str)
  */
 char *strNcpy(char *dest, const char *src, int n)
 {
-	if (n > 0)
-		strncpy(dest, src, n);
-	else
-		n = 1;
-	dest[n - 1] = 0;
+	char *p = dest;
+
+	while ((n > 1) && (*src)) {
+		*(p++) = *(src++);
+		
+		n--;
+	}
+	*p = '\0';
 
 	return dest;
 }
