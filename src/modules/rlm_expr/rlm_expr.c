@@ -269,6 +269,8 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	
 	inst = rad_malloc(sizeof(rlm_expr_t));
+	if (!inst)
+		return -1;
 	memset(inst, 0, sizeof(rlm_expr_t));
 		
 	xlat_name = cf_section_name2(conf);

@@ -544,7 +544,8 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 	struct fastuser_instance *inst=0;
 
 	inst = rad_malloc(sizeof *inst);
-
+	if (!inst)
+		return -1;
 	memset(inst, 0, sizeof(*inst));
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
