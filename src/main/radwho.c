@@ -56,7 +56,7 @@ static int showptype = 0;
 static int showcid = 0;
 int debug_flag = 0;
 const char *progname = "radwho";
-char *radlog_dir = "stdout";
+const char *radlog_dir = "stdout";
 
 
 /*

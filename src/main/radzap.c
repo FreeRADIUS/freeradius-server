@@ -22,7 +22,7 @@
 
 int debug_flag = 0;
 const char *progname = "radzap";
-char *radlog_dir = NULL;
+const char *radlog_dir = NULL;
 
 /*
  *	Zap a user from the radutmp and radwtmp file.
