@@ -64,6 +64,7 @@ const char		*progname = NULL;
 const char	        *radius_dir = NULL;
 const char		*radacct_dir = NULL;
 const char		*radlog_dir = NULL;
+const char		*radlib_dir = NULL;
 int			log_stripped_names;
 int			debug_flag;
 int			use_dbm	= FALSE;
@@ -148,6 +149,7 @@ static CONF_PARSER server_config[] = {
   { "log_auth_pass",      PW_TYPE_BOOLEAN,    &log_auth_pass },
   { "pidfile",            PW_TYPE_STRING_PTR, &pid_file },
   { "log_dir",            PW_TYPE_STRING_PTR, &radlog_dir },
+  { "lib_dir",            PW_TYPE_STRING_PTR, &radlib_dir },
   { "acct_dir",           PW_TYPE_STRING_PTR, &radacct_dir },
   { "bind_address",       PW_TYPE_IPADDR,     &myip },
   { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests },
@@ -297,6 +299,7 @@ int main(int argc, char **argv)
 	radacct_dir = strdup(RADACCT_DIR);
 	radius_dir = strdup(RADIUS_DIR);
 	radlog_dir = strdup(RADLOG_DIR);
+	radlib_dir = strdup(LIBDIR);
 	pid_file = strdup(RADIUS_PID);
 
 	signal(SIGHUP, sig_hup);
@@ -1416,7 +1419,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 				" from client %s - ID: %d",
 				client_name(request->packet->src_ipaddr),
 				request->packet->id);
-
 			}
 
 		      	/*
@@ -1443,6 +1445,14 @@ static REQUEST *rad_check_list(REQUEST *request)
 				   *	with the same ID, while we were processing
 				   *	the old one!  What should we do?
 				   */
+				log(L_ERR,
+				"Dropping conflicting authentication packet"
+				" from client %s - ID: %d",
+				client_name(request->packet->src_ipaddr),
+				request->packet->id);
+				request_free(request);
+				request = NULL;
+				break;
 			  }
 		  }
 		}
