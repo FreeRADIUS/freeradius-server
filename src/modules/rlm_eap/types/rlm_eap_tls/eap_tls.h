@@ -242,37 +242,39 @@ typedef struct _tls_info_t {
  * clean_out - data that is cleaned after receiving.
  * dirty_out - data EAP server sends. 
  * offset    - current fragment size transmitted
+ * fragment  - In Fragment mode or not. If yes, the current fragment number
  */
 typedef struct _tls_session_t {
 
-        SSL 		*ssl;
+	SSL 		*ssl;
 	tls_info_t	info;
 
-        BIO 		*into_ssl;
-        BIO 		*from_ssl;
-        BIO 		*bio_type; /* TODO: This is just for debugging purpose, 
+	BIO 		*into_ssl;
+	BIO 		*from_ssl;
+	BIO 		*bio_type; /* TODO: This is just for debugging purpose, 
 			  Later it should be removed */
-        record_t 	clean_in;
-        record_t 	clean_out;
-        record_t 	dirty_in;
-        record_t 	dirty_out;
+	record_t 	clean_in;
+	record_t 	clean_out;
+	record_t 	dirty_in;
+	record_t 	dirty_out;
 
 	/*
 	 * Framed-MTU attribute in RADIUS, 
 	 * if present, can also be used to set this
 	 */
 	unsigned int 	offset;
+	int 		fragment;
 } tls_session_t;
 
 
 /* configured values goes right here */
 typedef struct eap_tls_conf {
-        char	*private_key_password;
-        char	*private_key_file;
-        char	*certificate_file;
-        char	*ca_file;
-        char	*dh_file;
-        char	*random_file;
+	char	*private_key_password;
+	char	*private_key_file;
+	char	*certificate_file;
+	char	*ca_file;
+	char	*dh_file;
+	char	*random_file;
 	int	fragment_size; /* always < 4096 (due to radius limit), 0 by default = 2048 */
 } EAP_TLS_CONF;
 
@@ -299,7 +301,7 @@ void 		eaptls_operation(EAPTLS_PACKET *eaptls_packet,
 			eaptls_status_t status, EAP_HANDLER *handler);
 
 /* Callbacks */
-void 		cbtls_info(SSL *s, int where, int ret);
+void 		cbtls_info(const SSL *s, int where, int ret);
 int 		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 void 		cbtls_msg(int write_p, int version, int content_type,
 	       		const void *buf, size_t len, SSL *ssl, void *arg);
