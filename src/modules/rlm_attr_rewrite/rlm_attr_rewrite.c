@@ -291,7 +291,7 @@ do_again:
 		counter = 0;
 
 		for ( i = 0 ;i < (unsigned)data->num_matches; i++) {
-			err = regexec(&preg, ptr2, 9, pmatch, 0);
+			err = regexec(&preg, ptr2, REQUEST_MAX_REGEX, pmatch, 0);
 			if (err == REG_NOMATCH) {
 				if (i == 0) {
 					DEBUG2("rlm_attr_rewrite: No match found for attribute %s with value '%s'",
@@ -329,7 +329,7 @@ do_again:
 				/*
 				 * We only run on the first match, sorry
 				 */
-				for(j = 0; j <= 8; j++){
+				for(j = 0; j <= REQUEST_MAX_REGEX; j++){
 					char *p;
 					char buffer[sizeof(attr_vp->strvalue)];
 
@@ -350,8 +350,9 @@ do_again:
 						break;
 					}
 					memcpy(buffer,
-						attr_vp->strvalue + pmatch[j].rm_so,pmatch[j].rm_eo);
-					buffer[pmatch[j].rm_eo] = '\0';
+					       attr_vp->strvalue + pmatch[j].rm_so,
+					       pmatch[j].rm_eo - pmatch[j].rm_so);
+					buffer[pmatch[j].rm_eo - pmatch[j].rm_so] = '\0';
 					p = strdup(buffer);
 					request_data_add(request,request,REQUEST_DATA_REGEX | j,p,free);
 				}
