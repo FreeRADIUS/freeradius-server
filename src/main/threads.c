@@ -466,6 +466,7 @@ int thread_pool_init(void)
 	thread_pool.head = NULL;
 	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
+	thread_pool.start_threads = 5;
 	thread_pool.max_threads = 32;
 	thread_pool.min_spare_threads = 3;
 	thread_pool.max_spare_threads = 10;
