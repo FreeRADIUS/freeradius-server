@@ -57,8 +57,8 @@ the rlm_ldap module:
 #	filter: LDAP search filter, to locate user object using name
 #	supplied by client during Radius authentication
 #	
-#	default: none
-		filter   = "(uid=%u)"
+#	default: 
+#		filter   = "(uid=%u)"
 
 #	default_profile: DN of a LDAP object, which contains default RADIUS 
 #	attributes. 
