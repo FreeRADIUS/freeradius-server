@@ -125,7 +125,7 @@ x99_token_init(void)
 	return -1;
     }
 
-    /* Initialize the password encoding/checking functions. */
+    /* Initialize the passcode encoding/checking functions. */
     x99_pwe_init();
 
     return 0;
@@ -564,6 +564,8 @@ good_state:
 			username);
 	    return RLM_MODULE_USERLOCK;
 	}
+
+	/* We're now in "ewindow2 mode" ... subsequent logic must test fc */
 	goto sync_response;
     }
 
@@ -706,7 +708,7 @@ sync_response:
 	    DEBUG("rlm_x99_token: auth: [%s], sync challenge %d %s, "
 		  "expecting response %s", username, i, challenge, e_response);
 
-	    /* Test user-supplied password. */
+	    /* Test user-supplied passcode. */
 	    if (x99_pw_valid(request, inst, pwattr, e_response, &add_vps)) {
 		/*
 		 * Yay!  User authenticated via sync mode.  Resync.
@@ -755,7 +757,7 @@ sync_response:
 		}
 		goto return_pw_valid;
 
-	    } /* if (password is valid) */
+	    } /* if (passcode is valid) */
 	} /* for (each slot in the window) */
     } /* if (card is in sync mode and sync mode allowed) */
 

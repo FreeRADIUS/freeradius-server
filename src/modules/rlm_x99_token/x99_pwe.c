@@ -20,14 +20,13 @@
  */
 
 /*
- * This file implements password checking functions for each supported
- * encoding (PAP, CHAP, etc.).  The current libradius interface is not
- * sufficient for x9.9 use.
+ * This file implements passcode (password) checking functions for each
+ * supported encoding (PAP, CHAP, etc.).  The current libradius interface
+ * is not sufficient for X9.9 use.
  */
 
 #ifdef FREERADIUS
 #define _LRAD_MD4_H
-#define _LRAD_MD5_H
 #define _LRAD_SHA1_H
 #include "libradius.h"
 #include "rad_assert.h"
@@ -746,14 +745,14 @@ static void
 x99_key_from_hash(des_cblock *key, const unsigned char hashbytes[7])
 {
     int i;
-    unsigned char cNext = 0;
-    unsigned char cWorking = 0;
+    unsigned char working;
+    unsigned char next = 0;
 
     for (i = 0; i < 7; ++i) {
-	cWorking = hashbytes[i];
-	(*key)[i] = (cWorking >> i) | cNext;
-	cNext = (cWorking << (7 - i));
+	working = hashbytes[i];
+	(*key)[i] = (working >> i) | next;
+	next = (working << (7 - i));
     }
-    (*key)[i] = cNext;
+    (*key)[i] = next;
 }
 
