@@ -166,11 +166,11 @@ static int my_dict_init(char *dir, char *fn)
 	FILE	*fp;
 	char 	dirtmp[256];
 	char	buf[256];
-	char	namestr[64];
-	char	valstr[64];
-	char	attrstr[64];
-	char	typestr[64];
-	char	vendorstr[64];
+	char	namestr[256];
+	char	valstr[256];
+	char	attrstr[256];
+	char	typestr[256];
+	char	vendorstr[256];
 	char	*p;
 	char	*keyword;
 	char	*data;
@@ -257,6 +257,7 @@ static int my_dict_init(char *dir, char *fn)
 			if (is_nmc && vendorstr[0] == 0) {
 				if (!vendor_usr_seen) {
 					if (dict_addvendor("USR", VENDORPEC_USR) < 0)
+						librad_log("dict_init: %s[%d]: %s", fn, line, librad_errstr);
 						return -1;
 					vendor_usr_seen = 1;
 				}
@@ -298,6 +299,8 @@ static int my_dict_init(char *dir, char *fn)
 			}
 
 			if (dict_addattr(namestr, vendor, type, value) < 0) {
+				librad_log("dict_init: %s[%d]: %s",
+					   fn, line, librad_errstr);
 				return -1;
 			}
 
@@ -334,6 +337,8 @@ static int my_dict_init(char *dir, char *fn)
 				sscanf(valstr, "%i", &value);
 
 			if (dict_addvalue(namestr, attrstr, value) < 0) {
+				librad_log("dict_init: %s[%d]: %s", 
+					   fn, line, librad_errstr);
 				return -1;
 			}
 		}
@@ -361,8 +366,11 @@ static int my_dict_init(char *dir, char *fn)
 			value = atoi(valstr);
 
 			/* Create a new VENDOR entry for the list */
-			if (dict_addvendor(attrstr, value) < 0)
+			if (dict_addvendor(attrstr, value) < 0) {
+				librad_log("dict_init: %s[%d]: %s",
+					   fn, line, librad_errstr);
 				return -1;
+			}
 #ifdef ATTRIB_NMC
 			if (value == VENDORPEC_USR)
 				vendor_usr_seen = 1;
