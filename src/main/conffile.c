@@ -1062,6 +1062,7 @@ static int generate_clients(const char *filename)
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
 	char		*hostnm, *secret, *shortnm, *netmask;
+	char            *nastype, *login, *password;
 
 	for (cs = cf_subsection_find_next(config, NULL, "client"); cs != NULL; 
 			cs = cf_subsection_find_next(config, cs, "client")) {
@@ -1100,10 +1101,40 @@ static int generate_clients(const char *filename)
 					strlen(shortnm), sizeof(c->shortname) - 1);
 			return -1;
 		}
+
+		if((nastype = cf_section_value_find(cs, "nastype")) != NULL) {
+		        if(strlen(nastype) >= sizeof(c->nastype)) { 
+			       radlog(L_ERR, "%s[%d]: nastype of length %d longer than the allowed maximum of %d",
+				      filename, cs->item.lineno, 
+				      strlen(nastype), sizeof(c->nastype) - 1);
+			       return -1;
+			}
+		}
+
+		if((login = cf_section_value_find(cs, "login")) != NULL) {
+		        if(strlen(login) >= sizeof(c->login)) { 
+			       radlog(L_ERR, "%s[%d]: login of length %d longer than the allowed maximum of %d",
+				      filename, cs->item.lineno, 
+				      strlen(login), sizeof(c->login) - 1);
+			       return -1;
+			}
+		}
+
+		if((password = cf_section_value_find(cs, "password")) != NULL) {
+		        if(strlen(password) >= sizeof(c->password)) { 
+			       radlog(L_ERR, "%s[%d]: password of length %d longer than the allowed maximum of %d",
+				      filename, cs->item.lineno, 
+				      strlen(password), sizeof(c->password) - 1);
+			       return -1;
+			}
+		}
+
 		/*
 		 * The size is fine.. Let's create the buffer
 		 */
 		c = rad_malloc(sizeof(RADCLIENT));
+		memset(c, 0, sizeof(RADCLIENT));
+
 
 		/*
 		 *	Look for netmasks.
@@ -1149,6 +1180,12 @@ static int generate_clients(const char *filename)
 
 		strcpy((char *)c->secret, secret);
 		strcpy(c->shortname, shortnm);
+		if(nastype != NULL)
+		        strcpy(c->nastype, nastype);
+		if(login != NULL)
+		        strcpy(c->login, login);
+		if(password != NULL)
+		        strcpy(c->password, password);
 
 		c->next = clients;
 		clients = c;

@@ -79,6 +79,9 @@ typedef struct radclient {
 	char			longname[256];
 	u_char			secret[32];
 	char			shortname[32];
+	char			nastype[32];
+	char			login[32];
+	char			password[32];
 	struct radclient	*next;
 } RADCLIENT;
 
