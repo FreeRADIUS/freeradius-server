@@ -33,6 +33,7 @@
 
 struct fastuser_instance {
 	char *compat_mode;
+	int	 normal_defaults;
 
 	/* hash table */
 	long hashsize;
@@ -60,6 +61,7 @@ static CONF_PARSER module_config[] = {
 	{ "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, RADIUS_USERS },
 	{ "hashsize",     PW_TYPE_INTEGER, &config.hashsize, "100000" },
 	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
+	{ "normal_defaults", PW_TYPE_BOOLEAN, &config.normal_defaults, "yes" },
 	{ NULL, -1, NULL, NULL }
 };
 
@@ -68,9 +70,10 @@ static int fastuser_getfile(const char *filename, PAIR_LIST **hashtable)
 	int rcode;
 	PAIR_LIST *users = NULL;
 	int compat_mode = FALSE;
-	PAIR_LIST *entry, *next;
+	PAIR_LIST *entry, *next, *cur;
 	VALUE_PAIR *vp;
 	int hashindex = 0;
+	int numdefaults = 0;
 
 	rcode = pairlist_read(filename, &users, 1);
 	if (rcode < 0) {
@@ -193,8 +196,16 @@ static int fastuser_getfile(const char *filename, PAIR_LIST **hashtable)
 
 		/* Save the DEFAULT entry specially */
 		if(strcmp(entry->name, "DEFAULT")==0) {
-			config.default_entry = entry;
-			config.default_entry->next = NULL;
+				numdefaults++;
+				/* put it at the end of the list */
+				if(config.default_entry) {
+					for(cur=config.default_entry; cur->next; cur=cur->next);
+					cur->next = entry;
+					entry->next = NULL;
+				} else {
+					config.default_entry = entry;
+					config.default_entry->next = NULL;
+				}
 
 		} else {
 
@@ -210,10 +221,17 @@ static int fastuser_getfile(const char *filename, PAIR_LIST **hashtable)
 
 	} /* while(entry) loop */
 
+	if(!config.normal_defaults && (numdefaults>1)) {
+		radlog(L_INFO, "Warning:  fastusers found multiple DEFAULT entries.  Using the first.");
+	}
+
 	/* 
-	 * Remove auth-type from the Default
-	 * entry because it's not a real
-	 * default
+	 * We *should* do this to help out clueless admins
+	 * but it's documented, so it will confuse those who
+	 * do read the docs if we do it here as well
+	if(!config.normal_defaults) {
+		pairdelete(&config.default_entry->check, PW_AUTHTYPE);
+	}
 	 */
 
 	return 0;
@@ -261,7 +279,7 @@ static PAIR_LIST *fastuser_find(PAIR_LIST **hashtable,
    }
 
    if(cur) {
-      DEBUG2("  HASH:  user %s found in hashtable bucket %d", user, idx);
+      DEBUG2("  fastusers:  user %s found in hashtable bucket %d", user, idx);
       return cur;
    }
 
@@ -295,7 +313,7 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 	 * Sue me.  The tradeoff for this extra variable
 	 * is clean code below
 	 */
-	memsize = sizeof(PAIR_LIST *) * inst->hashsize;
+	memsize = sizeof(PAIR_LIST *) * config.hashsize;
 	/* 
 	 * Allocate space for hash table here
 	 */
@@ -307,7 +325,7 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 
 	rcode = fastuser_getfile(config.usersfile, inst->hashtable);
 	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
+		radlog(L_ERR|L_CONS, "Errors reading %s", config.usersfile);
 		return -1;
 	}
 
@@ -315,6 +333,7 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 	inst->hashsize = config.hashsize;
 	inst->default_entry = config.default_entry;
 	inst->compat_mode = config.compat_mode;
+	inst->normal_defaults = config.normal_defaults;
 	inst->users = NULL;
 
 	config.usersfile = NULL;
@@ -335,6 +354,7 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
  */
 static int fastuser_authorize(void *instance, REQUEST *request)
 {
+
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	*check_tmp;
@@ -345,6 +365,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	PAIR_LIST		*user;
 	const char	*name;
 	int			found=0;
+	int			checkdefault = 0;
 	struct fastuser_instance *inst = instance;
 
 	request_pairs = request->packet->vps;
@@ -361,15 +382,27 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	 *	Find the entry for the user.
 	 */
 	if((user=fastuser_find(inst->hashtable, name, inst->hashsize))==NULL) {
-		return RLM_MODULE_NOTFOUND;
+		if(inst->normal_defaults) {
+			checkdefault = 1;
+		} else {
+			return RLM_MODULE_NOTFOUND;
+		}
 	}
 
-	if(mainconfig.do_usercollide) {
+	/*
+	 * Usercollide means we have to compare check pairs
+	 * _and_ the password
+	 */
+	if(mainconfig.do_usercollide && !checkdefault) {
 		/* Save the orginal config items */
 		check_save = paircopy(request->config_items);
 
 		while((user) && (!found) && (strcmp(user->name, name)==0)) {
-			DEBUG2("  fastusers: Checking %s at %d", user->name, user->lineno);
+			if(paircmp(request_pairs, user->check, reply_pairs) != 0) {
+				user = user->next;
+				continue;
+			}
+			DEBUG2("  fastusers(uc): Checking %s at %d", user->name, user->lineno);
 
 			/* Copy this users check pairs to the request */
 			check_tmp = paircopy(user->check);
@@ -392,39 +425,113 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 		/* Free our saved config items */
 		pairfree(check_save);
+	}
 
-		if(!found) 
-			return RLM_MODULE_NOTFOUND;
-	} 
+	/*
+	 * No usercollide, just compare check pairs
+	 */
+	if(!mainconfig.do_usercollide && !checkdefault) {
+		while((user) && (!found) && (strcmp(user->name, name)==0)) {
+			if(paircmp(request_pairs, user->check, reply_pairs) == 0) {
+				found = 1;
+				DEBUG2("  fastusers: Matched %s at %d", user->name, user->lineno);
+			} else {
+				user = user->next;
+			}	
+		}
+	}
 
-	DEBUG2("  fastusers: Matched %s at %d", user->name, user->lineno);
+	/* 
+	 * When we get here, we've either found the user or not
+	 * and we either do normal DEFAULTs or not.  
+	 */
 	
-	/* We've already done this above if(mainconfig.do_usercollide) */
-	if(!mainconfig.do_usercollide) {
+	/*
+	 * We found the user & normal default 
+	 * copy relevant pairs and return
+	 */
+	if(found && inst->normal_defaults) {
 		check_tmp = paircopy(user->check);
 		pairmove(check_pairs, &check_tmp);
 		pairfree(check_tmp); 
-	}
-	reply_tmp = paircopy(user->reply);
-	pairmove(reply_pairs, &reply_tmp);
-	pairfree(reply_tmp);
-
-	/* 
-	 * We also need to add the pairs from 
-	 * inst->default_entry if the vp is
-	 * not already present.
-	 */
-		
-	if(inst->default_entry) {
-		check_tmp = paircopy(inst->default_entry->check);
-		reply_tmp = paircopy(inst->default_entry->reply);
+		reply_tmp = paircopy(user->reply);
 		pairmove(reply_pairs, &reply_tmp);
-		pairmove(check_pairs, &check_tmp);
 		pairfree(reply_tmp);
-		pairfree(check_tmp); 
+		return RLM_MODULE_UPDATED;
 	}
 
-	return RLM_MODULE_UPDATED;
+	/*
+	 * We didn't find the user, and we aren't supposed to
+	 * check defaults.  So just report not found.
+	 */
+	if(!found && !inst->normal_defaults) {
+		return RLM_MODULE_NOTFOUND;
+	}
+
+	/*
+	 * We didn't find the user, but we should 
+	 * check the defaults.  
+	 */
+	if(!found && inst->normal_defaults) {
+		user = inst->default_entry;
+		while((user) && (!found)) {
+			if(paircmp(request_pairs, user->check, reply_pairs) == 0) {
+				DEBUG2("  fastusers: Matched %s at %d", user->name, user->lineno);
+				found = 1;
+			} else {
+				user = user->next;
+			}
+		}
+
+		if(found) {
+			check_tmp = paircopy(user->check);
+			pairmove(check_pairs, &check_tmp);
+			pairfree(check_tmp); 
+			reply_tmp = paircopy(user->reply);
+			pairmove(reply_pairs, &reply_tmp);
+			pairfree(reply_tmp);
+			return RLM_MODULE_UPDATED;
+
+		} else {
+			return RLM_MODULE_NOTFOUND;
+		}
+	}
+
+	/*
+	 * We found the user, and we don't use normal defaults.
+	 * So copy the check and reply pairs from the default
+	 * entry to the request
+	 */
+	if(found && !inst->normal_defaults) {
+
+		/* We've already done this above if(mainconfig.do_usercollide) */
+		if(!mainconfig.do_usercollide) {
+			check_tmp = paircopy(user->check);
+			pairmove(check_pairs, &check_tmp);
+			pairfree(check_tmp); 
+		}
+		reply_tmp = paircopy(user->reply);
+		pairmove(reply_pairs, &reply_tmp);
+		pairfree(reply_tmp);
+
+		/* 
+		 * We also need to add the pairs from 
+		 * inst->default_entry if the vp is
+		 * not already present.
+		 */
+		
+		if(inst->default_entry) {
+			check_tmp = paircopy(inst->default_entry->check);
+			reply_tmp = paircopy(inst->default_entry->reply);
+			pairmove(reply_pairs, &reply_tmp);
+			pairmove(check_pairs, &check_tmp);
+			pairfree(reply_tmp);
+			pairfree(check_tmp); 
+		}
+
+		return RLM_MODULE_UPDATED;
+	}
+
 }
 
 /*
