@@ -403,7 +403,7 @@ sub main {
 	} elsif ($quiet) { $verbose -= $quiet; }
 	&procedure_set($opt_p);
 	if ($opt_d) { 
-		if ($verbose > 0) { print "DEBUG: Using database \"$opt_d\" instead of default database \"$database\"\n"; }
+		if ($verbose > 0) { print "Using database \"$opt_d\" instead of default database \"$database\"\n"; }
 		$database = $opt_d;
 	}
 
