@@ -5,6 +5,8 @@ Ver 1.63:
   instead of writing it directly in UUCP format.
 * Call lib/{ldap,sql}/user_info in user_info before displaying any information about the user
 * Add a configuration directive general_charset. Add a language meta tag in all pages
+* Use sql_extra_servers directive when adding users in the badusers table. Add a da_sql_host_connect() function
+  to connect to a specific sql host
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime

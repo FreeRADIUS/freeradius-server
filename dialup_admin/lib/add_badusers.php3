@@ -15,15 +15,21 @@ if ($HTTP_SERVER_VARS["PHP_AUTH_USER"] != '')
 if ($msg == '')
 	echo "<b>Lock Message should not be empty</b><br>\n";
 else{
-	$link = @da_sql_pconnect($config);
-	if ($link){
-		$r = da_sql_query($link,$config,
-		"INSERT INTO $config[sql_badusers_table] (UserName,Date,Admin,Reason)
-		VALUES ('$login','$date','$admin','$msg');");
-		if (!$r)
-			echo "<b>SQL Error:" . da_sql_error($link,$config) . "</b><br>\n";
+	$sql_servers = array();
+	if ($config[sql_extra_servers] != '')
+		$sql_servers = explode(' ',$config[sql_extra_servers]);
+	$sql_servers[] = $config[sql_server];
+	foreach ($sql_servers as $server){
+		$link = @da_sql_host_connect($server,$config);
+		if ($link){
+			$r = da_sql_query($link,$config,
+			"INSERT INTO $config[sql_badusers_table] (UserName,Date,Admin,Reason)
+			VALUES ('$login','$date','$admin','$msg');");
+			if (!$r)
+				echo "<b>SQL Error:" . da_sql_error($link,$config) . "</b><br>\n";
+		}
+		else
+			echo "<b>SQL Error: Could not connect to SQL database: $server</b><br>\n";
 	}
-	else
-		echo "<b>SQL Error: Could not connect to SQL database</b><br>\n";
 }
 ?>

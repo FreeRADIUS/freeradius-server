@@ -1,4 +1,19 @@
 <?php
+function da_sql_host_connect($server,$config)
+{
+	if ($config[sql_use_http_credentials] == 'yes'){
+		global $HTTP_SERVER_VARS;
+		$SQL_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+		$SQL_passwd = $HTTP_SERVER_VARS["PHP_AUTH_PW"];
+	}
+	else{
+		$SQL_user = $config[sql_username];
+		$SQL_passwd = $config[sql_password];
+	}
+
+	return @mysql_connect("$server:$config[sql_port]",$SQL_user,$SQL_passwd);
+}
+
 function da_sql_connect($config)
 {
 	if ($config[sql_use_http_credentials] == 'yes'){
@@ -16,8 +31,17 @@ function da_sql_connect($config)
 
 function da_sql_pconnect($config)
 {
-	return @mysql_pconnect("$config[sql_server]:$config[sql_port]",$config[sql_username],
-				$config[sql_password]);
+	if ($config[sql_use_http_credentials] == 'yes'){
+		global $HTTP_SERVER_VARS;
+		$SQL_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
+		$SQL_passwd = $HTTP_SERVER_VARS["PHP_AUTH_PW"];
+	}
+	else{
+		$SQL_user = $config[sql_username];
+		$SQL_passwd = $config[sql_password];
+	}
+
+	return @mysql_pconnect("$config[sql_server]:$config[sql_port]",$SQL_user,$SQL_passwd);
 }
 
 function da_sql_close($link,$config)
