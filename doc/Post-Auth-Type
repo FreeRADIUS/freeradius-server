@@ -1,0 +1,6 @@
+This is now called Post-Auth-Type, for consistency.
+
+Post-Auth-Type is used to select between groupings of
+modules using arbitrary attributes. It is functionally
+identical to Autz-Type, apart from the name of the
+attribute.

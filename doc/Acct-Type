@@ -10,12 +10,17 @@ part of the default files {} module is the 'acct_users' file, which
 serves the same purpose as the 'users' file, but applies to accounting
 packets.
 
+Like Autz-Type, if a module changes Acct-Type, after the current
+selection of modules has been run, the section is reexamined for
+a subsection matching the new Acct-Type.
+
 For example, a server administrator is responsible for handling the
 accounting data for two different realms, foo.com and bar.com, and
 wishes to use different instances of the SQL module for each. In
 addition, there is one RADIUS client sending accounting data that is
 to be logged only to a specific detail file. Everything else should
 use a third SQL instance.
+
 
 The acct_users file would look something like this:
 

@@ -82,7 +82,7 @@ DEFAULT Called-Station-Id == "236473", Session-Type := SQL
 
 radiusd.conf---
 
-session{
+session {
 	radutmp
 	Session-Type SQL {
 		sql

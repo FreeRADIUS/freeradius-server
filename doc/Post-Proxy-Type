@@ -1,0 +1,4 @@
+Post-Proxy-Type is used to select between groupings of
+modules using arbitrary attributes. It is functionally
+identical to Autz-Type, apart from the name of the
+attribute.
