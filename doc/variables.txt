@@ -56,6 +56,9 @@ so the attribute User-Name can be passed on the command line to the
 program as %{User-Name}, or used inside the program as the environment
 variable USER_NAME (or $USER_NAME for shell scripts).
 
+If you want to see the list of all of the variables, try adding a line
+'printenv > /tmp/exec-program-wait' to the script.  Then look in the
+file for a complete list of variables.
 
 The following one-character variables are also defined.  However, they
 are duplicates of the previous general cases, and are only provided
