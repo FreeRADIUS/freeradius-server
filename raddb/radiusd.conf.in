@@ -1612,6 +1612,8 @@ instantiate {
 	# the check-name attribute before any module which sets
 	# it
 #	daily
+	expiration
+	logintime
 }
 
 #  Authorization. First preprocess (hints and huntgroups files),
@@ -1713,6 +1715,9 @@ authorize {
 	#
 	# Use the checkval module
 #	checkval
+
+	expiration
+	logintime
 }
 
 
