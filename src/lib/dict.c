@@ -236,7 +236,6 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	int	block_vendor;
 	int	is_attrib;
 	int	vendor_usr_seen = 0;
-	int	is_nmc;
 	ATTR_FLAGS  flags;
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
@@ -316,10 +315,6 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		if (strcasecmp(keyword, "ATTRIBUTE") == 0)
 			is_attrib = 1;
 
-		is_nmc = 0;
-		if (strcasecmp(keyword, "ATTRIB_NMC") == 0)
-			is_attrib = is_nmc = 1;
-
 		if (is_attrib) {
 
 			vendor = 0;
@@ -331,23 +326,6 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 					fn, line);
 				fclose(fp);
 				return -1;
-			}
-
-			/*
-			 *	Convert ATTRIB_NMC into our format.
-			 *	We might need to add USR to the list of
-			 *	vendors first.
-			 */
-			if (is_nmc && optstr[0] == 0) {
-				if (!vendor_usr_seen) {
-					if (dict_addvendor("USR", VENDORPEC_USR) < 0) {
-						librad_log("dict_init: %s[%d]: %s", fn, line, librad_errstr);
-						fclose(fp);
-						return -1;
-					}
-					vendor_usr_seen = 1;
-				}
-				strcpy(optstr, "USR");
 			}
 
 			/*
@@ -462,7 +440,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				return -1;
 			}
 			continue;
-		} /* ATTRIBUTE, or ATTRIB_NMC */
+		} /* ATTRIBUTE */
 
 		/*
 		 *	Process VALUE lines.
