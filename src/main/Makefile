@@ -10,7 +10,7 @@ SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h \
 		  ../include/autoconf.h
 
-CFLAGS		+= -I../include -I../libltdl
+CFLAGS		+= -I../include
 LDFLAGS		+= -L../lib
 LIBS		+= -lradius
 
@@ -20,7 +20,7 @@ radiusd: $(SERVER_OBJS) ../lib/libradius.a
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LIBS) $(LDBM) $(LCRYPT) $(PTHREADLIB) \
-		$(MODULE_LIBS) ../libltdl/libltdl.la
+		$(MODULE_LIBS) $(LIBLTDL)
 
 radiusd.o: radiusd.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radiusd.c
@@ -41,7 +41,7 @@ nas.o:  nas.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c nas.c
 
 modules.o:  modules.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c modules.c
+	$(CC) $(CFLAGS) $(INCLTDL) -c modules.c
 
 radutmp.o:  radutmp.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radutmp.c
