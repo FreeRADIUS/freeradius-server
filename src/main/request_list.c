@@ -920,6 +920,19 @@ setup_timeout:
 		 *  in the given retry window.
 		 */
 		if (mainconfig.proxy_synchronous) {
+			/*
+			 *	If the retry_delay * count has passed,
+			 *	then mark the realm dead.
+			 */
+			if (info->now > (request->timestamp + (mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count))) {
+				rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+				request_reject(request);
+				
+				realm_disable(request->proxy->dst_ipaddr,
+					      request->proxy->dst_port);
+				request->finished = TRUE;
+				goto setup_timeout;
+			}
 			request->proxy_next_try = info->now + mainconfig.proxy_retry_delay;
 		}
 		difference = request->proxy_next_try - info->now;
