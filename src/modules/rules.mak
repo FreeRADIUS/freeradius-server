@@ -121,7 +121,10 @@ distclean:
 	@rm -f config.h config.mak
 
 #
-# ??? do any module-specific installation?
+#  Do any module-specific installation.
+#
+#  If there isn't a TARGET defined, then don't do anything.
+#  Otherwise, install the libraries into $(libdir)
 #
 install:
-	[ "x$(TARGET)" != "x" ] && $(LIBTOOL) install -c $(TARGET).la $(libdir)/$(TARGET).la;exit 0
+	[ "x$(TARGET)" = "x" ] || $(LIBTOOL) install -c $(TARGET).la $(libdir)/$(TARGET).la
