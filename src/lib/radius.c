@@ -76,7 +76,7 @@ static const char *packet_codes[] = {
 int rad_send(RADIUS_PACKET *packet, const char *secret)
 {
 	VALUE_PAIR		*reply;
-	struct	sockaddr	saremote;
+	struct	sockaddr_in	saremote;
 	struct	sockaddr_in	*sa;
 	const char		*what;
 	uint8_t			ip_buffer[16];

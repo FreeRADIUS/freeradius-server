@@ -315,7 +315,7 @@ static module_instance_t *find_module_instance(const char *instname)
 	 *	name2 from the config section, or name1 if there was
 	 *	no name2.
 	 */
-
+	name1 = name2 = NULL;
 	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL)
 	    ; inst_cs ;
 	    inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {

@@ -418,7 +418,7 @@ int main(int argc, char **argv)
 	RADIUS_PACKET		*packet;
 	u_char                  *secret;
 	unsigned char		buffer[4096];
-	struct	sockaddr	salocal;
+	struct	sockaddr_in	salocal;
 	struct	sockaddr_in	*sa;
 	fd_set			readfds;
 	int			result;
@@ -678,13 +678,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	sa = (struct sockaddr_in *) & salocal;
-        memset ((char *) sa, '\0', sizeof (salocal));
+	sa = (struct sockaddr_in *) &salocal;
+        memset ((char *) sa, '\0', sizeof(salocal));
 	sa->sin_family = AF_INET;
 	sa->sin_addr.s_addr = myip;
 	sa->sin_port = htons(auth_port);
 
-	result = bind (authfd, & salocal, sizeof (*sa));
+	result = bind (authfd, & salocal, sizeof(*sa));
 	if (result < 0) {
 		perror ("auth bind");
 		exit(1);
@@ -705,13 +705,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	sa = (struct sockaddr_in *) & salocal;
-        memset ((char *) sa, '\0', sizeof (salocal));
+	sa = (struct sockaddr_in *) &salocal;
+        memset ((char *) sa, '\0', sizeof(salocal));
 	sa->sin_family = AF_INET;
 	sa->sin_addr.s_addr = myip;
 	sa->sin_port = htons(acct_port);
 
-	result = bind (acctfd, & salocal, sizeof (*sa));
+	result = bind (acctfd, & salocal, sizeof(*sa));
 	if (result < 0) {
 		perror ("acct bind");
 		exit(1);
@@ -731,8 +731,8 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 		
-		sa = (struct sockaddr_in *) & salocal;
-		memset ((char *) sa, '\0', sizeof (salocal));
+		sa = (struct sockaddr_in *) &salocal;
+		memset((char *) sa, '\0', sizeof(salocal));
 		sa->sin_family = AF_INET;
 		sa->sin_addr.s_addr = myip;
 		
@@ -742,7 +742,7 @@ int main(int argc, char **argv)
 		 */
 		for (proxy_port = acct_port + 1; proxy_port < 64000; proxy_port++) {
 			sa->sin_port = htons(proxy_port);
-			result = bind (proxyfd, & salocal, sizeof (*sa));
+			result = bind(proxyfd, & salocal, sizeof(*sa));
 			if (result == 0) {
 				break;
 			}
