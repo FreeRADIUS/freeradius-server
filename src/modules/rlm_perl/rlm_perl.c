@@ -895,7 +895,7 @@ static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv) {
        char            *val;
        VALUE_PAIR      *vpp;
 
-       if (SvTRUE(sv)) {
+       if (SvOK(sv)) {
                val = SvPV_nolen(sv);
                vpp = pairmake(key, val, T_OP_EQ);
                if (vpp != NULL) {
