@@ -276,7 +276,7 @@ static int pam_auth(void *instance, REQUEST *request)
 
 #ifdef HAVE_SYSLOG_H
 	if (!strcmp(radlog_dir, "syslog")) {
-		openlog(progname, LOG_PID, syslog_facility);
+		openlog(progname, LOG_PID, mainconfig.syslog_facility);
 	}
 #endif
 
