@@ -105,6 +105,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		  int			vendorcode, vendorpec;
 		  u_short		total_length;
 		  int			len, allowed;
+		  uint8_t		*msg_auth_ptr = NULL;
 		  
 		  hdr = (radius_packet_t *) malloc(PACKET_DATA_LEN);
 		  if (!hdr) {
@@ -149,6 +150,18 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			  }
 
 			  /*
+			   *	Do stuff for Message-Authenticator
+			   */
+			  if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
+				  /*
+				   *  Set it to zero!
+				   */
+				  reply->length = AUTH_VECTOR_LEN;
+				  memset(reply->strvalue, 0, AUTH_VECTOR_LEN);
+				  msg_auth_ptr = ptr;
+			  }
+
+			  /*
 			   *	We have a different vendor.  Re-set
 			   *	the vendor codes.
 			   */
@@ -185,7 +198,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			  if ((vendorcode == 0) &&
 			      ((vendorcode = VENDOR(reply->attribute)) != 0)) {
 				  vendorpec  = dict_vendorpec(vendorcode);
-
+				  
 				  /*
 				   *	This is a potentially bad error...
 				   *	we can't find the vendor ID!
@@ -323,15 +336,29 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		   *	need to calculate the md5 hash over the entire packet
 		   *	and put it in the vector.
 		   */
+		  secretlen = strlen(secret);
 		  if (packet->code != PW_AUTHENTICATION_REQUEST &&
 		      packet->code != PW_STATUS_SERVER) {
-		  	secretlen = strlen(secret);
 			memcpy((char *)hdr + packet->data_len, secret, secretlen);
 			librad_md5_calc(digest, (unsigned char *)hdr,
 					packet->data_len + secretlen);
 			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
 			memset((char *)hdr + packet->data_len, 0, secretlen);
 		  }
+
+		  /*
+		   *	Set the Message-Authenticator attribute,
+		   *	AFTER setting the reply authentication vector!
+		   */
+		  if (msg_auth_ptr) {
+			  uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
+
+			  memset(msg_auth_ptr + 2, 0, AUTH_VECTOR_LEN);
+			  lrad_hmac_md5(packet->data, packet->data_len,
+					secret, secretlen, calc_auth_vector);
+			  memcpy(msg_auth_ptr + 2, calc_auth_vector, AUTH_VECTOR_LEN);
+		  }
+
 
 		  /*
 		   *	If packet->data points to data, then we print out
@@ -558,6 +585,8 @@ RADIUS_PACKET *rad_recv(int fd)
 		 *	Sanity check the attributes for length.
 		 */
 		switch (attr[0]) {
+		default:	/* don't do anything by default */
+			break;
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
 				librad_log("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
@@ -683,10 +712,47 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	}
 
 	/*
+	 *	Before we allocate memory for the attributes, do more
+	 *	sanity checking.
+	 */
+	ptr = hdr->data;
+	length = packet->data_len - AUTH_HDR_LEN;
+	while (length > 0) {
+		uint8_t msg_auth_vector[AUTH_VECTOR_LEN];
+		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
+
+		attrlen = ptr[1];
+
+		switch (ptr[0]) {
+		default:	/* don't do anything. */
+			break;
+
+		case PW_MESSAGE_AUTHENTICATOR:
+			memcpy(msg_auth_vector, &ptr[2], sizeof(msg_auth_vector));
+			memset(&ptr[2], 0, AUTH_VECTOR_LEN);
+
+			lrad_hmac_md5(packet->data, packet->data_len,
+				      secret, strlen(secret), calc_auth_vector);
+			if (memcmp(calc_auth_vector, msg_auth_vector,
+				    sizeof(calc_auth_vector)) != 0) {
+				char buffer[32];
+				librad_log("Received packet from %s with invalid Message-Authenticator!",
+					   ip_ntoa(buffer, packet->src_ipaddr));
+				return 1;
+			} /* else the message authenticator was good */
+			memcpy(&ptr[2], msg_auth_vector, AUTH_VECTOR_LEN);
+			break;
+		} /* switch over the attributes */
+
+		ptr += attrlen;
+		length -= attrlen;
+	} /* loop over the packet, sanity checking the attributes */
+
+	/*
 	 *	Extract attribute-value pairs
 	 */
 	ptr = hdr->data;
-	length -= AUTH_HDR_LEN;
+	length = packet->data_len - AUTH_HDR_LEN;
 	first_pair = NULL;
 	prev = NULL;
 
@@ -701,10 +767,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			attribute = *ptr++;
 			attrlen   = *ptr++;
 		}
-		if (attrlen < 2) { /* rad_recv() now handles this check */
-			length = 0;
-			continue;
-		}
+
 		attrlen -= 2;
 		length  -= 2;
 
@@ -743,103 +806,93 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			 */
 		}
 
-		if ( attrlen >= MAX_STRING_LEN ) {
-			DEBUG("attribute %d too long, %d >= %d\n", attribute,
-				attrlen, MAX_STRING_LEN);
+		/*
+		 *	FIXME: should we us paircreate() ?
+		 */
+		if ((pair = malloc(sizeof(VALUE_PAIR))) == NULL) {
+			pairfree(&first_pair);
+			librad_log("out of memory");
+			errno = ENOMEM;
+			return -1;
 		}
-		/* rad_recv() now handles this check */
-		else if ( attrlen > length ) {
-			DEBUG("attribute %d longer than buffer left, %d > %d\n",
-				attribute, attrlen, length);
+		
+		memset(pair, 0, sizeof(VALUE_PAIR));
+		if ((attr = dict_attrbyvalue(attribute)) == NULL) {
+			snprintf(pair->name, sizeof(pair->name), "Attr-%d", attribute);
+			pair->type = PW_TYPE_STRING;
+		} else {
+			strcpy(pair->name, attr->name);
+			pair->type = attr->type;
 		}
-		else {
+		pair->attribute = attribute;
+		pair->length = attrlen;
+		pair->next = NULL;
+		
+		switch (pair->type) {
+			
+		case PW_TYPE_OCTETS:
+		case PW_TYPE_ABINARY:
+		case PW_TYPE_STRING:
 			/*
-			 *	FIXME: should we us paircreate() ?
+			 *	Hmm... this is based on names right
+			 *	now.  We really shouldn't do this.
+			 *	It should be based on the value of
+			 *	the attribute (VSA or not).
 			 */
-			if ((pair = malloc(sizeof(VALUE_PAIR))) == NULL) {
-				pairfree(&first_pair);
-				librad_log("out of memory");
-				errno = ENOMEM;
-				return -1;
-			}
-
-			memset(pair, 0, sizeof(VALUE_PAIR));
-			if ((attr = dict_attrbyvalue(attribute)) == NULL) {
-				snprintf(pair->name, sizeof(pair->name), "Attr-%d", attribute);
-				pair->type = PW_TYPE_STRING;
-			} else {
-				strcpy(pair->name, attr->name);
-				pair->type = attr->type;
-			}
-			pair->attribute = attribute;
-			pair->length = attrlen;
-			pair->next = NULL;
-
-			switch (pair->type) {
-
-			case PW_TYPE_OCTETS:
-			case PW_TYPE_ABINARY:
-			case PW_TYPE_STRING:
-				/*
-				 *  Hmm... this is based on names
-				 *  right now.  We really shouldn't do
-				 *  this.  It should be based on the value
-				 *  of the attribute (VSA or not).
-				 */
-				if ((strcmp(pair->name, "Ascend-Send-Secret") == 0) ||
-				    (strcmp(pair->name, "Ascend-Receive-Secret") == 0)) {
-					uint8_t my_digest[AUTH_VECTOR_LEN];
-					make_secret( my_digest, original->vector,
-						     secret, ptr);
-					memcpy(pair->strvalue, my_digest, AUTH_VECTOR_LEN );
-					pair->strvalue[AUTH_VECTOR_LEN] = '\0';
-					pair->length = strlen(pair->strvalue);
-				} else
+			if ((strcmp(pair->name, "Ascend-Send-Secret") == 0) ||
+			    (strcmp(pair->name, "Ascend-Receive-Secret") == 0)) {
+				uint8_t my_digest[AUTH_VECTOR_LEN];
+				make_secret( my_digest, original->vector,
+					     secret, ptr);
+				memcpy(pair->strvalue, my_digest, AUTH_VECTOR_LEN );
+				pair->strvalue[AUTH_VECTOR_LEN] = '\0';
+				pair->length = strlen(pair->strvalue);
+			} else
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
-				break;
+			break;
 			
-			case PW_TYPE_INTEGER:
-			case PW_TYPE_DATE:
-			case PW_TYPE_IPADDR:
-				/*
-				 *	Check for RFC compliance.
-				 *	If the attribute isn't compliant,
-				 *	turn it into a string of raw octets.
-				 *
-				 *	Also set the lvalue to something
-				 *	which should never match anything.
-				 */
-				if (attrlen != 4) {
-					pair->type = PW_TYPE_OCTETS;
-					memcpy(pair->strvalue, ptr, attrlen);
-					pair->lvalue = 0xbaddbadd;
-					break;
-				}
-				memcpy(&lvalue, ptr, 4);
-				if (attr->type != PW_TYPE_IPADDR)
-					pair->lvalue = ntohl(lvalue);
-				else
-					pair->lvalue = lvalue;
-				break;
-			
-			default:
-				DEBUG("    %s (Unknown Type %d)\n",
-					attr->name,attr->type);
-				free(pair);
-				pair = NULL;
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_DATE:
+		case PW_TYPE_IPADDR:
+			/*
+			 *	Check for RFC compliance.  If the
+			 *	attribute isn't compliant, turn it
+			 *	into a string of raw octets.
+			 *
+			 *	Also set the lvalue to something
+			 *	which should never match anything.
+			 */
+			if (attrlen != 4) {
+				pair->type = PW_TYPE_OCTETS;
+				memcpy(pair->strvalue, ptr, attrlen);
+				pair->lvalue = 0xbaddbadd;
 				break;
 			}
-
-			if (pair) {
-				debug_pair(pair);
-				if (first_pair == NULL)
-					first_pair = pair;
-				else
-				  	prev->next = pair;
-				prev = pair;
-			}
+			memcpy(&lvalue, ptr, 4);
+			if (attr->type != PW_TYPE_IPADDR)
+				pair->lvalue = ntohl(lvalue);
+			else
+				pair->lvalue = lvalue;
+			break;
+			
+		default:
+			DEBUG("    %s (Unknown Type %d)\n",
+			      attr->name,attr->type);
+			free(pair);
+			pair = NULL;
+			break;
 		}
+		
+		if (pair) {
+			debug_pair(pair);
+			if (first_pair == NULL)
+				first_pair = pair;
+			else
+				  	prev->next = pair;
+			prev = pair;
+		}
+
 		ptr += attrlen;
 		length -= attrlen;
 		if (vendorlen > 0) vendorlen -= (attrlen + 2);
