@@ -51,15 +51,6 @@ static const char rcsid[] = "$Id$";
 
 #include "udpfromto.h"
 
-/* Remove this when autoconf can detect this. */
-#if defined(IP_RECVDSTADDR) && !defined(HAVE_IP_RECVDSTADDR)
-#  define HAVE_IP_RECVDSTADDR
-#endif
-
-#if defined(IP_SENDSRCADDR) && !defined(HAVE_IP_SENDSRCADDR)
-#  define HAVE_IP_SENDSRCADDR
-#endif
-
 int udpfromto_init(int s)
 {
 	int err = -1, opt = 1;
@@ -218,7 +209,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	cmsg->cmsg_type = IP_SENDSRCADDR;
 	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_addr));
 	memcpy((struct in_addr *)CMSG_DATA(cmsg), 
-			&((struct sockaddr_in *)from)->sin_addr, sizeof(struct in_addr));
+	       &((struct sockaddr_in *)from)->sin_addr, sizeof(struct in_addr));
 # endif
 
 	return sendmsg(s, &msgh, flags);
