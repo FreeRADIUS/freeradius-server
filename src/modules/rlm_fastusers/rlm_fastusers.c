@@ -669,15 +669,15 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 			pairmove(&request->reply->vps, &reply_tmp);
 			pairfree(&reply_tmp);
 
-		}
+			/*                         
+			 * There's no fallthru on this default which    
+			 * is *before* we find the user in the file,         
+			 * so we know it's safe to quit here                        
+			 */
+			if (!fallthrough(curdefault->reply))
+			  break;
 
-		/* 
-		 * There's no fallthru on this default which
-		 * is *before* we find the user in the file, 
-		 * so we know it's safe to quit here
-		 */
-		if (!fallthrough(curdefault->reply))
-			break;
+		}
 
 		/*
 		 * If we found the user, we want to stop
