@@ -50,6 +50,11 @@
 #include <pwd.h>
 
 
+#ifdef WITH_UDPFROMTO
+#include "udpfromto.h"
+#endif
+
+
 struct main_config_t mainconfig;
 
 /*
@@ -846,6 +851,16 @@ static int listen_bind(rad_listen_t *this)
 		return -1;
 	}
 	
+
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	Initialize udpfromto for all sockets.
+	 */
+	if (udpfromto_init(this->fd) != 0) {
+		radlog(L_ERR|L_CONS, "ERROR: udpfromto init failed.");
+	}
+#endif
+
 	sa = (struct sockaddr_in *) &salocal;
 	memset ((char *) sa, '\0', sizeof(salocal));
 	sa->sin_family = AF_INET;
