@@ -924,7 +924,22 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			*eap_packet_p = NULL;
 			return NULL;
 		}
-	} else {
+
+		/*
+		 *      A little more paranoia.  In each request, if
+		 *      identity does not match the User-Name, ignore.
+		 *
+		 *	i.e. If they change their User-Name part way through
+		 *	the EAP transaction.
+		 */
+		if (request->username &&
+		    (strncmp(handler->identity, request->username->strvalue, MAX_STRING_LEN) != 0)) {
+			radlog(L_ERR, "rlm_eap: Identity does not match User-Name.  Authentication failed.");
+			free(*eap_packet_p);
+			*eap_packet_p = NULL;
+			return NULL;
+		}
+	} else {		/* packet was EAP identity */
 		handler = eap_handler_alloc();
 		if (handler == NULL) {
 			radlog(L_ERR, "rlm_eap: out of memory");
@@ -940,6 +955,18 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 		handler->identity = eap_identity(eap_packet);
 		if (handler->identity == NULL) {
 			radlog(L_ERR, "rlm_eap: Identity Unknown, authentication failed");
+			free(*eap_packet_p);
+			*eap_packet_p = NULL;
+			eap_handler_free(&handler);
+			return NULL;
+		}
+
+		/*
+		 *      Paranoia, check identity against request username
+		 */
+		if (request->username &&
+		    (strncmp(handler->identity, request->username->strvalue, MAX_STRING_LEN) != 0)) {
+			radlog(L_ERR, "rlm_eap: Identity does not match User-Name, authentication failed.");
 			free(*eap_packet_p);
 			*eap_packet_p = NULL;
 			eap_handler_free(&handler);
