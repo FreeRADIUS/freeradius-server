@@ -371,15 +371,24 @@ modules {
 		radwtmp = ${logdir}/radwtmp
 	}
 
-	# Uncomment this if you want to use ldap (Auth-Type = LDAP)
-	# Also uncomment it in the authenticate{} block below
-	#ldap {
-	#	server = localhost
-	#	login = "cn=admin,o=My Org,c=US"
-	#	password = mypass
-	#	basedn = "o=My Org,c=US"
-	#	filter = "(uid=%u)"
-	#}
+        # This module definition allows you to use LDAP for
+        # authorization and authentication (Auth-Type = LDAP)
+        # See doc/README.rlm_ldap for description of configuration options 
+        # and sample authorize{} and authenticate{} blocks 
+        ldap {
+                server   = "ldap.your.domain"
+              # login    = "cn=admin,o=My Org,c=US"
+              # password = mypass
+                basedn   = "o=My Org,c=US"
+                filter   = "(uid=%u)"
+                access_group = "cn=clients,ou=dialup,o=My Org,c=US"
+                access_attr = "dialupAccess"
+                dictionary_mapping = ${raddbdir}/ldap.attrmap
+                timeout = 4
+                timelimit = 3
+                net_timeout = 1
+                ldap_debug = 0x0000
+        }
 
 	#
 	#  You can have multiple instances of the realm module to

@@ -1,0 +1,47 @@
+#
+# Mapping of RADIUS dictionary attributes to LDAP directory attributes
+# to be used by LDAP authentication and authorization module (rlm_ldap)
+#
+# Format:
+#   ItemType	RADIUS-Attribute-Name		ldapAttributeName
+#
+# Where:
+#   ItemType              = checkItem or replyItem 
+#   RADIUS-Attribute-Name = attribute name in RADIUS dictionary
+#   ldapAttributeName     = attribute name in LDAP schema
+#
+# This file should be made more complete....
+#
+
+checkItem	Auth-Type			radiusAuthType
+checkItem	Simultaneous-Use		npSessionsAllowed
+checkItem	Called-Station-Id		radiusCalledStationId
+checkItem	Calling-Station-Id		radiusCallingStationId
+
+replyItem	Service-Type			radiusServiceType
+replyItem	Framed-Protocol			radiusFramedProtocol
+replyItem	Framed-IP-Address		radiusFramedIPAddress
+replyItem	Framed-IP-Netmask		radiusFramedIPNetmask
+replyItem	Framed-Route			radiusFramedRoute
+replyItem	Framed-Routing			radiusFramedRouting
+replyItem	Filter-Id			radiusFilterId
+replyItem	Framed-MTU			radiusFramedMTU
+replyItem	Framed-Compression		radiusFramedCompression
+replyItem	Login-IP-Host			radiusLoginIPHost
+replyItem	Login-Service			radiusLoginService
+replyItem	Login-TCP-Port			radiusLoginTCPPort
+replyItem	Callback-Number			radiusCallbackNumber
+replyItem	Callback-Id			radiusCallbackId
+replyItem	Framed-IPX-Network		radiusFramedIPXNetwork
+replyItem	Class				radiusClass
+replyItem	Session-Timeout			radiusSessionTimeout
+replyItem	Idle-Timeout			radiusIdleTimeout
+replyItem	Termination-Action		radiusTerminationAction
+replyItem	Login-LAT-Service		radiusLoginLATService
+replyItem	Login-LAT-Node			radiusLoginLATNode
+replyItem	Login-LAT-Group			radiusLoginLATGroup
+replyItem	Framed-AppleTalk-Link		radiusFramedAppleTalkLink
+replyItem	Framed-AppleTalk-Network	radiusFramedAppleTalkNetwork
+replyItem	Framed-AppleTalk-Zone		radiusFramedAppleTalkZone
+replyItem	Port-Limit			radiusPortLimit
+replyItem	Login-LAT-Port			radiusLoginLATPort
