@@ -640,8 +640,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Proxy-To-Realm is bright enough to NOT do so
 	 *	when it's a local realm.
 	 */
-	if (pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL) {
-		DEBUG2("  rlm_eap: Request is supposed to be proxied.  Not doing EAP.");
+	if ((vp = pairfind(request->config_items, PW_PROXY_TO_REALM)) != NULL) {
+		DEBUG2("  rlm_eap: Request is supposed to be proxied to Realm %s.  Not doing EAP.", vp->strvalue);
 	  	return EAP_NOOP;
 	}
 
