@@ -271,42 +271,6 @@ static int hunt_paircmp(VALUE_PAIR *request, VALUE_PAIR *check)
 
 
 /*
- *	Compare prefix/suffix
- */
-static int presufcmp(VALUE_PAIR *check, char *name, char *rest)
-{
-	int		len, namelen;
-	int		ret = -1;
-
-#if 0 /* DEBUG */
-	printf("Comparing %s and %s, check->attr is %d\n",
-		name, check->strvalue, check->attribute);
-#endif
-
-	len = strlen((char *)check->strvalue);
-	switch (check->attribute) {
-		case PW_PREFIX:
-			ret = strncmp(name, (char *)check->strvalue, len);
-			if (ret == 0 && rest)
-				strcpy(rest, name + len);
-			break;
-		case PW_SUFFIX:
-			namelen = strlen(name);
-			if (namelen < len)
-				break;
-			ret = strcmp(name + namelen - len,
-				     (char *)check->strvalue);
-			if (ret == 0 && rest) {
-				strncpy(rest, name, namelen - len);
-				rest[namelen - len] = 0;
-			}
-			break;
-	}
-
-	return ret;
-}
-
-/*
  *	Add hints to the info sent by the terminal server
  *	based on the pattern of the username, and other attributes.
  */
@@ -361,43 +325,6 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 
 	return RLM_MODULE_UPDATED;
 }
-
-/*
- *	See if the huntgroup matches. This function is
- *	tied to the "Huntgroup" keyword.
- */
-static int huntgroup_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
-			 VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
-{
-	PAIR_LIST	*i;
-	char		*huntgroup;
-	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
-
-	check_pairs = check_pairs; /* shut the compiler up */
-	reply_pairs = reply_pairs;
-
-	huntgroup = (char *)check->strvalue;
-
-	for (i = data->huntgroups; i; i = i->next) {
-		if (strcmp(i->name, huntgroup) != 0)
-			continue;
-		if (paircmp(req, request, i->check, NULL) == 0) {
-			DEBUG2("  huntgroups: Matched %s at %d",
-			       i->name, i->lineno);
-			break;
-		}
-	}
-
-	/*
-	 *	paircmp() expects to see zero on match, so let's
-	 *	keep it happy.
-	 */
-	if (i == NULL) {
-		return -1;
-	}
-	return 0;
-}
-
 
 /*
  *	See if we have access to the huntgroup.
@@ -543,11 +470,6 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
-	 *	Register the huntgroup comparison operation.
-	 */
-	paircompare_register(PW_HUNTGROUP_NAME, 0, huntgroup_cmp, data);
-
-	/*
 	 *	Save the instantiation data for later.
 	 */
 	*instance = data;
@@ -665,7 +587,6 @@ static int preprocess_detach(void *instance)
 {
 	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
-	paircompare_unregister(PW_HUNTGROUP_NAME, huntgroup_cmp);
 	pairlist_free(&(data->huntgroups));
 	pairlist_free(&(data->hints));
 
