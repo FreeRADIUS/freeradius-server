@@ -5,7 +5,7 @@ set -u
 
 prog="freeradius"
 program="/usr/sbin/freeradius"
-pidfile="/var/run/freeradius.pid"
+pidfile="/var/run/freeradius/freeradius.pid"
 descr="FreeRADIUS daemon"
 
 test -f $program || exit 0
