@@ -1,6 +1,19 @@
-# Detail files should not be rotated here. Instead in radiusd.conf set
+# There are different detail-rotating strategies you can use.  One is
+# to write to a single detail file per IP and use the rotate config
+# below.  Another is to write to a daily detail file per IP with:
 #     detailfile = ${radacctdir}/%{Client-IP-Address}/%Y%m%d-detail
-# Which will cause the detail files to be automatically created every day.
+# (or similar) in radiusd.conf, without rotation.  If you go with the
+# second technique, you will need another cron job that removes old
+# detail files.  You do not need to comment out the below for method #2.
+/var/log/radius/radacct/*/detail {
+    compress
+    dateext
+    maxage 365
+    rotate 99
+    size=+1024k
+    notifempty
+    missingok
+}
 
 /var/log/radius/radius.log {
     compress
@@ -35,3 +48,13 @@
     create 640 root root
 }
 
+/var/log/radius/sqltrace.sql {
+    compress
+    dateext
+    maxage 365
+    rotate 99
+    size=+2048k
+    notifempty
+    missingok
+    create 640 root root
+}

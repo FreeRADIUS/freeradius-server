@@ -47,3 +47,10 @@
 	compress
 	missingok
 }
+/var/log/radius/sqltrace.sql {
+        monthly
+        rotate 4
+        create
+        compress
+        missingok
+}
