@@ -6,6 +6,7 @@ else{
 	exit();
 }
 if ($config[sql_use_operators] == 'true'){
+	include("../lib/operators.php3");
 	$text = ',op';
 	$passwd_op = ",':='";
 }
@@ -43,15 +44,24 @@ if ($link){
 			foreach($show_attrs as $key => $attr){
 				if ($attrmap["$key"] == 'none')
 					continue;
-				if ($attr_type[$key] == 'checkItem')
+				if ($attr_type[$key] == 'checkItem'){
 					$table = "$config[sql_check_table]";
-				else if ($attr_type[$key] == 'replyItem')
+					$type = 1;
+				}
+				else if ($attr_type[$key] == 'replyItem'){
 					$table = "$config[sql_reply_table]";
+					$type = 2;
+				}
 				$val = $$attrmap["$key"];
 				$op_name = $attrmap["$key"] . '_op';
 				$op_val = $$op_name;
-				if ($op_val != '')
+				if ($op_val != ''){
+					if (check_operator($op_val,$type) == -1){
+						echo "<b>Invalid operator ($op_val) for attribute $key</b><br>\n";
+						coninue;
+					}
 					$op_val = ",'$op_val'";
+				}
 				if ($val == '' || $val == $default_vals["$key"])
 					continue;
 				$res = @da_sql_query($link,$config,

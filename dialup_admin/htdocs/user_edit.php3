@@ -7,9 +7,7 @@ if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
 if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 	$colspan=2;
 	$show_ops = 1;
-	$op_eq = '=';
-	$op_set = ':=';
-	$op_add = '+=';
+	include("../lib/operators.php3");
 }
 else{
 	$show_ops = 0;
@@ -132,6 +130,14 @@ EOM;
 <option $selected[$op_eq] value="=">=
 <option $selected[$op_set] value=":=">:=
 <option $selected[$op_add] value="+=">+=
+<option $selected[$op_eq2] value="==">==
+<option $selected[$op_ne] value="!=">!=
+<option $selected[$op_gt] value=">">&gt;
+<option $selected[$op_ge] value=">=">&gt;=
+<option $selected[$op_lt] value="<">&lt;
+<option $selected[$op_le] value="<=">&lt;=
+<option $selected[$op_regeq] value="=~">=~
+<option $selected[$op_regne] value="!~">!~
 </select>
 </td>
 EOM;

@@ -22,21 +22,31 @@ if ($link){
 		while(isset($$name)){
 			$val=$$name;
 			$op_name = $name . '_op';
-			$op_val = $$op_name;
-			if ($op_val != ''){
-				$op_val1 = "'$op_val'";
-				$op_val2 = ",'$op_val'";
-			}
 			$i++;
 			$j++;
 			$name = $attrmap["$key"] . $i;
 
 			$sql_attr=$attrmap["$key"];
-			if ($attr_type["$key"] == 'checkItem')
+			if ($attr_type["$key"] == 'checkItem'){
 				$table = $config[sql_check_table];
-			else if ($attr_type["$key"] == 'replyItem')
+				$type = 1;
+			}
+			else if ($attr_type["$key"] == 'replyItem'){
 				$table = $config[sql_reply_table];
-	// if we have operators the operator has changed and the corresponding value exists then update
+				$type = 2;
+			}
+			if ($use_ops){
+				$op_val = $$op_name;
+				if ($op_val != ''){
+					if (check_operator($op_val,$type) == -1){
+						echo "<b>Invalid operator ($op_val) for attribute $key</b><br>\n";
+						continue;
+					}
+					$op_val1 = "'$op_val'";
+					$op_val2 = ",'$op_val'";
+				}
+			}
+	// if we have operators, the operator has changed and the corresponding value exists then update
 			if ($use_ops && isset($item_vals["$key"][operator][$j]) &&
 				$op_val != $item_vals["$key"][operator][$j] ){
 				$res = @da_sql_query($link,$config,

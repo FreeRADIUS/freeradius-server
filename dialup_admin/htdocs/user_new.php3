@@ -10,9 +10,6 @@ require('../lib/defaults.php3');
 if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 	$colspan=2;
 	$show_ops=1;
-	$op_eq = '=';
-	$op_set = ':=';
-	$op_add = '+=';
 }else{
 	$show_ops = 0;
 	$colspan=1;
@@ -151,6 +148,15 @@ EOM;
 <option selected value="=">=
 <option value=":=">:=
 <option value="+=">+=
+<option value="==">==
+<option value="!=">!=
+<option value=">">&gt;
+<option value=">=">&gt;=
+<option value="<">&lt;
+<option value="<=">&lt;=
+<option value="=~">=~
+<option value="!~">!~
+
 </select>
 </td>
 EOM;
