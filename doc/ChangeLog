@@ -4,6 +4,7 @@ FreeRADIUS 0.9.2 ; Date: $Date$, urgency=low
 	* Only reject packets once
 	* rlm_counter rejects packets which predate last server reset
 	* Fix rlm_exec to work when wait=no
+	* radrelay rejects records without an Acct-Status-Type attribute
 
 FreeRADIUS 0.9.1 ; Date: 2003/09/04 14:56:34, urgency=low
 
