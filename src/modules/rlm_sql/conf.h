@@ -25,6 +25,7 @@ typedef struct sql_config {
 	char   *sql_nas_table;
 	char   *sql_dict_table;
 	char   *query_user;
+	char   *default_profile;
 	char   *authorize_check_query;
 	char   *authorize_reply_query;
 	char   *authorize_group_check_query;
@@ -44,6 +45,7 @@ typedef struct sql_config {
 	int     deletestalesessions;
 	int     num_sql_socks;
 	int     connect_failure_retry_delay;
+	int	query_on_not_found;
 
 	/* individual driver config */
 	void	*localcfg;

@@ -69,6 +69,8 @@ static CONF_PARSER module_config[] = {
 	{"deletestalesessions", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,deletestalesessions), NULL, "0"},
 	{"num_sql_socks", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
 	{"sql_user_name", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,query_user), NULL, ""},
+	{"default_user_profile", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,default_profile), NULL, ""},
+	{"query_on_not_found", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,query_on_not_found), NULL, "no"},
 	{"authorize_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
 	{"authorize_reply_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_reply_query), NULL, ""},
 	{"authorize_group_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
@@ -414,6 +416,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
+	VALUE_PAIR *user_profile = NULL;
 	int     found = 0;
 	SQLSOCK *sqlsocket;
 	SQL_INST *inst = instance;
@@ -439,6 +442,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	/*
 	 *  After this point, ALL 'return's MUST release the SQL socket!
 	 */
+
 
 	/*
 	 * Set, escape, and check the user attr here
@@ -473,39 +477,45 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		return RLM_MODULE_FAIL;
 
 	} else {
-		int     gcheck;
-		
-		radlog(L_DBG, "rlm_sql: User %s not found", sqlusername);
+		radlog(L_DBG, "rlm_sql: User %s not found in radcheck", sqlusername);
 
                 /*
 		 * We didn't find the user in radcheck, so we try looking
 		 * for radgroupcheck entry
 		 */
                 radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, sql_escape_func);
-                gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
+                found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
                 radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, sql_escape_func);
                 sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
-                if (gcheck) {
-                        found = 1;
-                } else {
-                        /*
-                        * We didn't find the user, so we try looking
-                        * for a DEFAULT entry
-                        */
-                        if (sql_set_user(inst, request, sqlusername, "DEFAULT") < 0) {
-                                sql_release_socket(inst, sqlsocket);
-                                return RLM_MODULE_FAIL;
-                        }
-                        radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, sql_escape_func);
-                        gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
-                        radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, sql_escape_func);
-                        gcheck = sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
-                        if (gcheck)
-                                found = 1;
-                }
         }
+	if (!found)
+		radlog(L_DBG, "rlm_sql: User %s not found in radgroupcheck",sqlusername);
+	if (found || (!found && inst->config->query_on_not_found)){
+		/*
+	 	* Check for a default_profile or for a User-Profile.
+		*/
+		user_profile = pairfind(request->config_items, PW_USER_PROFILE);
+		if (inst->config->default_profile[0] != 0 || user_profile != NULL){
+			char *profile = inst->config->default_profile;
+
+			if (user_profile != NULL)
+				profile = user_profile->strvalue;
+			if (profile && strlen(profile)){
+				radlog(L_DBG, "rlm_sql: Checking profile %s",profile);
+				if (sql_set_user(inst, request, sqlusername, profile) < 0) {
+					return RLM_MODULE_FAIL;
+				}
+				radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query,
+									request, sql_escape_func);
+				found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
+				radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query,
+									request, sql_escape_func);
+				sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
+			}
+		}
+	}
 	if (!found) {
-		radlog(L_DBG, "rlm_sql: DEFAULT not found");
+		radlog(L_DBG, "rlm_sql: User not found");
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);

@@ -15,7 +15,7 @@ Each line of the file can contain one of the following strings
 .B ATTRIBUTE name  number  type
 Define a name to RADIUS attribute number mapping.  The \fIname\fP
 field can be any non-space text.  The \fInumber\fP must contain
-an ASCII number for that name, as given in \fIRFC2138\fP. The
+an ASCII number for that name, as given in \fIRFC2865\fP. The
 \fItype\fP field can be one of \fIstring\fP, \fIipaddr\fP,
 \fIinteger\fP, or \fIdate\fP.
 
@@ -24,7 +24,7 @@ an ASCII number for that name, as given in \fIRFC2138\fP. The
 Define a value name to value number mapping.  The \fIattribute-name\fP
 field must be previously defined by an \fIATTRIBUTE\fP entry.  The
 \fIvalue-name\fP can be any non-space text.  The \fInumber\fP must
-contain an ASCII number for that name, as given in \fIRFC2138\fP.
+contain an ASCII number for that name, as given in \fIRFC2865\fP.
 
 .TP 0.5i
 .B VENDOR vendor-name number
@@ -44,5 +44,5 @@ Include dictionary entries from the file \fIfilename\fP.  The
 .SH "SEE ALSO"
 .BR radiusd (8),
 .BR naslist (5),
-.BR RFC2138 ,
-.BR RFC2139
+.BR RFC2865 ,
+.BR RFC2866
