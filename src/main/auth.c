@@ -231,16 +231,16 @@ static int rad_check_password(REQUEST *request,
 			 */
 			result = module_authenticate(auth_type, request);
 			switch (result) {
-				case RLM_AUTH_FAIL:
+				case RLM_MODULE_FAIL:
 					result = 1;
 					break;
-				case RLM_AUTH_REJECT:
+				case RLM_MODULE_REJECT:
 					result = -1;
 					break;
-				case RLM_AUTH_OK:
+				case RLM_MODULE_OK:
 					result = 0;
 					break;
-				case RLM_AUTH_HANDLED:
+				case RLM_MODULE_HANDLED:
 					result = 1;
 					break;
 			}
@@ -314,7 +314,7 @@ int rad_authenticate(REQUEST *request)
 		log(L_ERR, "zero length username not permitted\n");
 		request->reply = build_reply(PW_AUTHENTICATION_REJECT,
 					     request, NULL, NULL);
-		return RLM_AUTZ_NOTFOUND;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -356,8 +356,8 @@ int rad_authenticate(REQUEST *request)
 	 *	Get the user's authorization information from the database
 	 */
 	r = module_authorize(request, &request->config_items, &user_reply);
-	if (r != RLM_AUTZ_OK) {
-		if (r != RLM_AUTZ_FAIL && r != RLM_AUTZ_HANDLED) {
+	if (r != RLM_MODULE_OK) {
+		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
 			log(L_AUTH, "Invalid user: [%s%s%s] (%s)",
 			    namepair->strvalue,
 			    log_auth_pass ? "/" : "",

@@ -132,7 +132,7 @@ static int rlm_ldap_init (int argc, char **argv)
 		strcpy(ldap_filter,cf_section_value_find(conf_main,"ldapfilter"));
 
        if ( (ld = ldap_init(ldap_server,ldap_port)) == NULL)	
-		return RLM_AUTZ_FAIL;           
+		return RLM_MODULE_FAIL;
        if ( ldap_bind_s(ld,ldap_login,ldap_password, LDAP_AUTH_SIMPLE) != LDAP_SUCCESS){
 	   log(L_ERR,"LDAP ldap_simple_bind_s failed");
            ldap_unbind_s(ld);
@@ -191,26 +191,26 @@ static int rlm_ldap_authorize(REQUEST *request,
     filter = make_filter(ldap_filter, name);
     if (ldap_search_s(ld,ldap_basedn,LDAP_SCOPE_SUBTREE,filter,attrs,0,&result) != LDAP_SUCCESS) {
 	DEBUG("LDAP search failed");
-        return RLM_AUTZ_FAIL;
+        return RLM_MODULE_FAIL;
     }
     
     if ((ldap_count_entries(ld,result)) != 1) {
 	DEBUG("LDAP user object not found or got ambiguous search result");
-	return RLM_AUTZ_NOTFOUND;
+	return RLM_MODULE_OK;
     }
 
     if ((msg = ldap_first_entry(ld,result)) == NULL) {
-        return RLM_AUTZ_FAIL;
+        return RLM_MODULE_FAIL;
     }
 /* Remote access is controled by LDAP_RADIUSACCESS attribute of user object */ 
     if ((vals = ldap_get_values(ld, msg, LDAP_RADIUSACCESS)) != NULL ) {
         if(!strncmp(vals[0],"FALSE",5)) {
                 DEBUG("LDAP dialup access disabled");
-                return RLM_AUTZ_REJECT;
+                return RLM_MODULE_REJECT;
         }
     } else {
         DEBUG("LDAP no %s attribute - access denied by default", LDAP_RADIUSACCESS);
-        return RLM_AUTZ_REJECT;
+        return RLM_MODULE_REJECT;
     }
 
     DEBUG("LDAP looking for check items in directory..."); 
@@ -251,7 +251,7 @@ static int rlm_ldap_authorize(REQUEST *request,
 #endif
 
     DEBUG("LDAP user %s authorized to use remote access", name);
-    return RLM_AUTZ_OK;
+    return RLM_MODULE_OK;
 }
 
 /*************************************************************************
@@ -277,16 +277,15 @@ static int rlm_ldap_authenticate(REQUEST *request)
      */
     if (request->password->attribute != PW_PASSWORD) {
       log(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
-      return RLM_AUTH_REJECT;
+      return RLM_MODULE_REJECT;
     }
 
     name = request->username->strvalue;
     passwd = request->password->strvalue;
 
-    if (use_ldap_auth == 0) 
-    {
+    if (use_ldap_auth == 0) {
       log(L_ERR,"LDAP Auth specified in users file, but not in ldapserver file");
-      return RLM_AUTZ_FAIL;
+      return RLM_MODULE_FAIL;
     }
 
     DEBUG("LDAP login attempt by '%s' with password '%s'",name,passwd);
@@ -294,39 +293,39 @@ static int rlm_ldap_authenticate(REQUEST *request)
 	filter = make_filter(ldap_filter, name);
 
     if (ldap_search_s(ld,ldap_basedn,LDAP_SCOPE_SUBTREE,filter,attrs,1,&result) != LDAP_SUCCESS) {
-	return RLM_AUTZ_FAIL;
+	return RLM_MODULE_FAIL;
     }
 
     if ((ldap_count_entries(ld,result)) != 1) {
-	return RLM_AUTZ_FAIL;
+	return RLM_MODULE_FAIL;
     }
 
     if ((msg = ldap_first_entry(ld,result)) == NULL) {
-	return RLM_AUTZ_FAIL;
+	return RLM_MODULE_FAIL;
     }
 
     if ((dn = ldap_get_dn(ld,msg)) == NULL) {
-	return RLM_AUTZ_FAIL;
+	return RLM_MODULE_FAIL;
     }
 
     DEBUG("LDAP user DN: %s", dn);
 
     if (strlen(passwd) == 0) {
-	return RLM_AUTZ_FAIL;
+	return RLM_MODULE_FAIL;
     }
     if ( (ld_user = ldap_init(ldap_server,ldap_port)) == NULL)
-        return RLM_AUTZ_FAIL;
+        return RLM_MODULE_FAIL;
 
     if (ldap_simple_bind_s(ld_user,dn,passwd) != LDAP_SUCCESS) {
 	ldap_unbind_s(ld_user);
-	return RLM_AUTZ_REJECT;
+	return RLM_MODULE_REJECT;
     }
 
     free(dn);
     ldap_unbind_s(ld_user);
 
     DEBUG("LDAP User %s authenticated succesfully", name);
-    return RLM_AUTZ_OK;
+    return RLM_MODULE_OK;
 	}
 
 static int rlm_ldap_detach(void)

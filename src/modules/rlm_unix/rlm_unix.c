@@ -183,25 +183,25 @@ static int unix_authenticate(REQUEST *request)
 	 */
 	if (request->password->attribute != PW_PASSWORD) {
 		log(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 
 	name = request->username->strvalue;
 	passwd = request->password->strvalue;
 
 	if (cache_passwd && (ret = H_unix_pass(name, passwd)) != -2)
-		return (ret == 0) ? RLM_AUTH_OK : RLM_AUTH_REJECT;
+		return (ret == 0) ? RLM_MODULE_OK : RLM_MODULE_REJECT;
 
 #ifdef OSFC2
 	if ((pr_pw = getprpwnam(name)) == NULL)
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 	encrypted_pass = pr_pw->ufld.fd_encrypt;
 #else /* OSFC2 */
 	/*
 	 *	Get encrypted password from password file
 	 */
 	if ((pwd = rad_getpwnam(name)) == NULL) {
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 	encrypted_pass = pwd->pw_passwd;
 #endif /* OSFC2 */
@@ -225,7 +225,7 @@ static int unix_authenticate(REQUEST *request)
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
 		log(L_AUTH, "rlm_unix: [%s]: invalid shell", name);
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 #endif
 
@@ -242,7 +242,7 @@ static int unix_authenticate(REQUEST *request)
 	}
 	endusershell();
 	if (shell == NULL)
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 #endif
 
 #if defined(HAVE_GETSPNAM) && !defined(M_UNIX)
@@ -252,7 +252,7 @@ static int unix_authenticate(REQUEST *request)
 	if (spwd && spwd->sp_expire > 0 &&
 	    (time(NULL) / 86400) > spwd->sp_expire) {
 		log(L_AUTH, "rlm_unix: [%s]: password has expired", name);
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 #endif
 
@@ -262,7 +262,7 @@ static int unix_authenticate(REQUEST *request)
 	 */
 	if (pwd->pw_expire > 0 && time(NULL) > pwd->pw_expire) {
 		log(L_AUTH, "rlm_unix: [%s]: password has expired", name);
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 #endif
 
@@ -272,7 +272,7 @@ static int unix_authenticate(REQUEST *request)
 	 */
 	if (pr_pw->uflg.fg_lock!=1) {
 		log(L_AUTH, "rlm_unix: [%s]: account locked", name);
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 #endif /* OSFC2 */
 
@@ -280,16 +280,16 @@ static int unix_authenticate(REQUEST *request)
 	 *	We might have a passwordless account.
 	 */
 	if (encrypted_pass[0] == 0)
-		return RLM_AUTH_OK;
+		return RLM_MODULE_OK;
 
 	/*
 	 *	Check encrypted password.
 	 */
 	encpw = crypt(passwd, encrypted_pass);
 	if (strcmp(encpw, encrypted_pass))
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 
-	return RLM_AUTH_OK;
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -347,7 +347,7 @@ static int unix_accounting(REQUEST *request)
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE))==NULL) {
 		log(L_ERR, "Accounting: no Accounting-Status-Type record.");
-		return RLM_ACCT_FAIL_SOFT;
+		return RLM_MODULE_OK;
 	}
 	status = vp->lvalue;
 
@@ -356,14 +356,14 @@ static int unix_accounting(REQUEST *request)
 	 */
 	if (status != PW_STATUS_START &&
 	    status != PW_STATUS_STOP)
-		return RLM_ACCT_OK;
+		return RLM_MODULE_OK;
 
 	/*
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_USER_NAME)) == NULL)
-		return RLM_ACCT_OK;
+		return RLM_MODULE_OK;
 
 	time(&t);
 	memset(&ut, 0, sizeof(ut));
@@ -404,7 +404,7 @@ static int unix_accounting(REQUEST *request)
 	 *	where we didn't see a PW_NAS_PORT_ID.
 	 */
 	if (strncmp(ut.ut_name, "!root", sizeof(ut.ut_name)) == 0 || !port_seen)
-		return RLM_ACCT_OK;
+		return RLM_MODULE_OK;
 
 	/*
 	 *	If we didn't find out the NAS address, use the
@@ -465,14 +465,14 @@ static int unix_accounting(REQUEST *request)
 	 *	FIXME: return correct error.
 	 *	Check if file is there. If not, we don't write the
 	 *	wtmp file. If it is, we try to write. If we fail,
-	 *	return RLM_ACCT_FAIL ..
+	 *	return RLM_MODULE_FAIL ..
 	 */
 	if ((fp = fopen(RADWTMP, "a")) != NULL) {
 		fwrite(&ut, sizeof(ut), 1, fp);
 		fclose(fp);
 	}
 
-	return RLM_ACCT_OK;
+	return RLM_MODULE_OK;
 }
 
 /* globally exported name */

@@ -286,7 +286,7 @@ static int hints_setup(REQUEST *request)
 	request_pairs = request->packet->vps;
 
 	if (hints == NULL || request_pairs == NULL)
-		return RLM_AUTZ_OK;
+		return RLM_MODULE_OK;
 
 	/* 
 	 *	Check for valid input, zero length names not permitted 
@@ -300,7 +300,7 @@ static int hints_setup(REQUEST *request)
 		/*
 		 *	No name, nothing to do.
 		 */
-		return RLM_AUTZ_OK;
+		return RLM_MODULE_OK;
 
 	for (i = hints; i; i = i->next) {
 		if (matches(name, i, newname)) {
@@ -310,7 +310,7 @@ static int hints_setup(REQUEST *request)
 		}
 	}
 
-	if (i == NULL) return RLM_AUTZ_OK;
+	if (i == NULL) return RLM_MODULE_OK;
 
 	add = paircopy(i->reply);
 
@@ -359,7 +359,7 @@ static int hints_setup(REQUEST *request)
 		;
 	if (last) last->next = add;
 
-	return RLM_AUTZ_OK;
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -404,14 +404,14 @@ static int huntgroup_cmp(VALUE_PAIR *request, VALUE_PAIR *check,
 static int huntgroup_access(VALUE_PAIR *request_pairs)
 {
 	PAIR_LIST	*i;
-	int		r = RLM_AUTZ_OK;
+	int		r = RLM_MODULE_OK;
 
 	/*
 	 *	We're not controlling access by huntgroups:
 	 *	Allow them in.
 	 */
 	if (huntgroups == NULL)
-		return RLM_AUTZ_OK;
+		return RLM_MODULE_OK;
 
 	for(i = huntgroups; i; i = i->next) {
 		/*
@@ -423,9 +423,9 @@ static int huntgroup_access(VALUE_PAIR *request_pairs)
 		/*
 		 *	Now check for access.
 		 */
-		r = RLM_AUTZ_REJECT;
+		r = RLM_MODULE_REJECT;
 		if (hunt_paircmp(request_pairs, i->reply) == 0) {
-			r = RLM_AUTZ_OK;
+			r = RLM_MODULE_OK;
 		}
 		break;
 	}
@@ -535,14 +535,14 @@ static int preprocess_authorize(REQUEST *request,
 	 */
 	add_nas_attr(request);
 
-	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
+	if (huntgroup_access(request->packet->vps) != RLM_MODULE_OK) {
 		log(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
-		return RLM_AUTZ_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 
-	return RLM_AUTZ_NOTFOUND; /* Meaning: try next autorization module */
+	return RLM_MODULE_OK; /* Meaning: try next authorization module */
 }
 
 /*
@@ -562,7 +562,7 @@ static int preprocess_preaccounting(REQUEST *request)
 	 */
 	add_nas_attr(request);
 
-	return RLM_PRAC_OK;
+	return RLM_MODULE_OK;
 }
 
 /*

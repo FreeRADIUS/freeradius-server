@@ -164,7 +164,7 @@ static int realm_authorize(REQUEST *request,
 	 */
 	realm = check_for_realm(request);
 	if (!realm) {
-		return RLM_AUTZ_NOTFOUND;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -172,7 +172,7 @@ static int realm_authorize(REQUEST *request,
 	 */
 	add_proxy_to_realm(check_pairs, realm);
 
-	return RLM_AUTZ_NOTFOUND; /* try the next module */
+	return RLM_MODULE_OK; /* try the next module */
 }
 
 /*
@@ -185,7 +185,7 @@ static int realm_preacct(REQUEST *request)
 	REALM *realm;
 	
 	if (!name)
-	  return RLM_PRAC_OK;
+	  return RLM_MODULE_OK;
 	
 
 	/*
@@ -195,7 +195,7 @@ static int realm_preacct(REQUEST *request)
 	 */
 	realm = check_for_realm(request);
 	if (!realm) {
-		return RLM_PRAC_OK;
+		return RLM_MODULE_OK;
 	}
 
 
@@ -204,7 +204,7 @@ static int realm_preacct(REQUEST *request)
 	 */
 	add_proxy_to_realm(&request->config_items, realm);
 
-	return RLM_PRAC_OK; /* try the next module */
+	return RLM_MODULE_OK; /* try the next module */
 }
 
 /* globally exported name */

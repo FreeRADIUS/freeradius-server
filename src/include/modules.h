@@ -5,6 +5,20 @@
  *
  */
 
+/*
+ *	The types of the functions which are supported by each module.
+ *	The functional parameters are defined here, so we don't have to
+ *	edit each and every module when we decide to add another type
+ *	of request handler.
+ */
+typedef int (*RLM_AUTHORIZE_FUNCP)(REQUEST *request, 
+				   VALUE_PAIR **check_items,
+				   VALUE_PAIR **reply_items);
+typedef int (*RLM_AUTHENTICATE_FUNCP)(REQUEST *request);
+typedef int (*RLM_POST_AUTHENTICATE_FUNCP)(REQUEST *request);
+typedef int (*RLM_PRE_ACCOUNTING_FUNCP)(REQUEST *request);
+typedef int (*RLM_ACCOUNTING_FUNCP)(REQUEST *request);
+
 typedef struct module_t {
 	const char	*name;
 	int	type;			/* reserved */
@@ -18,29 +32,11 @@ typedef struct module_t {
 } module_t;
 
 enum {
-  RLM_AUTH_FAIL = -2,		/* Failed (don't reply) */
-  RLM_AUTH_REJECT = -1,		/* authentication failed - reject */
-  RLM_AUTH_OK = 0,		/* OK */
-  RLM_AUTH_HANDLED = 1		/* OK, handled (don't reply) */
+	RLM_MODULE_REJECT = -2,	/* reject the request */
+	RLM_MODULE_FAIL = -1,	/* module failed, don't reply */
+	RLM_MODULE_OK = 0,	/* the module is OK, continue */
+	RLM_MODULE_HANDLED = 1,	/* the module handled the request, so stop. */
 };
-enum {
-  RLM_AUTZ_REJECT = -3,		/* Reject user */
-  RLM_AUTZ_FAIL = -2,		/* Failed (don't reply) */
-  RLM_AUTZ_NOTFOUND = -1,	/* User not found - try next autorization */
-  RLM_AUTZ_OK = 0,		/* OK */
-  RLM_AUTZ_HANDLED = 1		/* OK, handled (don't reply) */
-};
-enum {
-  RLM_PRAC_FAIL = -1,		/* Failed (don't reply) */
-  RLM_PRAC_OK = 0		/* OK */
-};
-enum {
-  RLM_ACCT_FAIL = -2,		/* Failed (don't reply) */
-  RLM_ACCT_FAIL_SOFT = -1,	/* Failed, but who cares. Continue */
-  RLM_ACCT_OK = 0,		/* OK */
-  RLM_ACCT_HANDLED = 1		/* OK, handled (don't reply) */
-};
-#define RLM_ACCT_FAIL_HARD RLM_ACCT_FAIL
 
 int read_modules_file(char *filename);
 int module_authorize(REQUEST *request, 

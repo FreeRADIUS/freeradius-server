@@ -41,7 +41,7 @@ static int radius_authorize(REQUEST *request,
   check_pairs = check_pairs;
   reply_pairs = reply_pairs;
 
-  return RLM_AUTZ_OK;
+  return RLM_MODULE_OK;
 }
 
 /*
@@ -52,7 +52,7 @@ static int radius_authenticate(REQUEST *request)
   /* quiet the compiler */
   request = request;
 
-  return RLM_AUTH_OK;
+  return RLM_MODULE_OK;
 }
 
 /*
@@ -63,7 +63,7 @@ static int radius_preacct(REQUEST *request)
   /* quiet the compiler */
   request = request;
 
-  return RLM_PRAC_OK;
+  return RLM_MODULE_OK;
 }
 
 /*
@@ -74,7 +74,7 @@ static int radius_accounting(REQUEST *request)
   /* quiet the compiler */
   request = request;
 
-  return RLM_ACCT_OK;
+  return RLM_MODULE_OK;
 }
 
 /* globally exported name */

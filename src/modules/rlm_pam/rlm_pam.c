@@ -177,7 +177,7 @@ static int pam_auth(REQUEST *request)
 	 */
 	if (request->password->attribute != PW_PASSWORD) {
 		log(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
-		return RLM_AUTH_REJECT;
+		return RLM_MODULE_REJECT;
 	}
 
 	pair = pairfind(request->config_items, PAM_AUTH_ATTR);
@@ -186,7 +186,10 @@ static int pam_auth(REQUEST *request)
 	r = pam_pass(request->username->strvalue,
 		     request->password->strvalue,
 		     pam_auth_string);
-	return (r == 0) ? RLM_AUTH_OK : RLM_AUTH_REJECT;
+	if (r == 0) {
+		return RLM_MODULE_OK;
+	}
+	return RLM_MODULE_REJECT;
 }
 
 module_t rlm_pam = {

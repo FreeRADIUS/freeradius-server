@@ -415,28 +415,110 @@ int read_modules_file(char *filename)
 
 
 /*
+ *	Update the Stripped-User-Name attribute.
+ */
+static void update_username(REQUEST *request, char *newname)
+{
+	VALUE_PAIR *vp;
+
+	/*
+	 *	If there isn't a Stripped-User-Name attribute,
+	 *	go add one, and make it the definitive user name.
+	 */
+	if (request->username->attribute != PW_STRIPPED_USER_NAME) {
+		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+		if (!vp) {
+			log(L_ERR|L_CONS, "no memory");
+			exit(1);
+		}
+		DEBUG2("  authorize: Creating Stripped-User-Name of %s", newname);
+		strcpy(vp->strvalue, newname);
+		vp->length = strlen(vp->strvalue);
+		pairadd(&request->packet->vps, vp);
+		request->username = vp;
+		return;
+	}
+
+	/*
+	 *	There is one, update it in place.
+	 */
+	vp = request->username;
+	DEBUG2("  authorize: Updating Stripped-User-Name from %s to %s",
+	       vp->strvalue, newname);
+	strcpy(vp->strvalue, newname);
+	vp->length = strlen(vp->strvalue);
+}
+
+/*
  *	Call all authorization modules until one returns
- *	somethings else than RLM_AUTZ_NOTFOUND
+ *	somethings else than RLM_MODULE_OK
  */
 int module_authorize(REQUEST *request,
 		     VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
 {
 	config_module_t	*this;
-	int		rcode = RLM_AUTZ_NOTFOUND;
+	int		rcode = RLM_MODULE_OK;
 
 	this = authorize;
-	rcode = RLM_AUTZ_NOTFOUND;
+	rcode = RLM_MODULE_OK;
 
-	while (this && rcode == RLM_AUTZ_NOTFOUND) {
+	while (this && rcode == RLM_MODULE_OK) {
 		DEBUG2("  authorize: %s", this->entry->module->name);
 		rcode = (this->entry->module->authorize)
-				(request, check_items, reply_items);
+			(request, check_items, reply_items);
 		this = this->next;
+	}
+
+	/*
+	 *	Before authenticating the user, update the
+	 *	Stripped-User-Name attribute with any additions.
+	 *
+	 *	No name: nothing to add.
+	 */
+	if (request->username != NULL) {
+		char newname[256];
+		VALUE_PAIR *vp;
+
+		/*
+		 *	Try to add a prefix
+		 */
+		for (vp = request->config_items; vp != NULL; vp = vp->next) {
+			switch (vp->attribute) {
+			default:
+				break;
+				
+			case PW_ADD_PREFIX:
+				if ((vp->length + request->username->length) > sizeof(vp->strvalue)) {
+					DEBUG2("\"%s\"+\"%s\" too long",
+					       vp->strvalue,
+					       request->username->strvalue);
+					continue;
+				}
+				strcpy(newname, vp->strvalue);
+				strcat(newname, request->username->strvalue);
+				update_username(request, newname);
+				break;
+				
+			case PW_ADD_SUFFIX:
+				if ((vp->length + request->username->length) > sizeof(vp->strvalue)) {
+					DEBUG2("\"%s\"+\"%s\" too long",
+					       request->username->strvalue,
+					       vp->strvalue);
+					continue;
+				}
+				strcpy(newname, request->username->strvalue);
+				strcat(newname, vp->strvalue);
+				update_username(request, newname);
+				break;
+			}
+		} /* over all configuration items */
+
+		pairdelete(&request->config_items, PW_ADD_PREFIX);
+		pairdelete(&request->config_items, PW_ADD_SUFFIX);
 	}
 
 	return rcode;
 }
-
 
 /*
  *	Authenticate a user/password with various methods.
@@ -449,9 +531,8 @@ int module_authenticate(int auth_type, REQUEST *request)
 	 *  We MUST have a password, of SOME type!
 	 */
 	if (request->password == NULL) {
-		return RLM_AUTH_FAIL;
+		return RLM_MODULE_FAIL;
 	}
-
 
 	this = authenticate;
 	while (this && this->entry->auth_type != auth_type)
@@ -461,7 +542,7 @@ int module_authenticate(int auth_type, REQUEST *request)
 		/*
 		 *	No such auth_type, or module auth_type not defined
 		 */
-		return RLM_AUTH_FAIL;
+		return RLM_MODULE_FAIL;
 	}
 
 	DEBUG2("  authenticate: %s", this->entry->module->name);
@@ -478,9 +559,9 @@ int module_preacct(REQUEST *request)
 	int		rcode;
 
 	this = preacct;
-	rcode = RLM_PRAC_OK;
+	rcode = RLM_MODULE_OK;
 
-	while (this && (rcode == RLM_PRAC_OK)) {
+	while (this && (rcode == RLM_MODULE_OK)) {
 		DEBUG2("  preacct: %s", this->entry->module->name);
 		rcode = (this->entry->module->preaccounting)(request);
 		this = this->next;
@@ -498,9 +579,9 @@ int module_accounting(REQUEST *request)
 	int		rcode;
 
 	this = accounting;
-	rcode = RLM_ACCT_OK;
+	rcode = RLM_MODULE_OK;
 
-	while (this && (rcode == RLM_ACCT_OK || rcode == RLM_ACCT_FAIL_SOFT)) {
+	while (this && (rcode == RLM_MODULE_OK)) {
 		DEBUG2("  accounting: %s", this->entry->module->name);
 		rcode = (this->entry->module->accounting)(request);
 		this = this->next;

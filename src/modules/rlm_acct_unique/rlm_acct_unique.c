@@ -71,7 +71,8 @@ static int unique_accounting(REQUEST *request)
      */
     vp = paircreate(PW_ACCT_SESSION_START_TIME, PW_TYPE_DATE);
     if (!vp) {
-      return RLM_ACCT_FAIL;
+	    log(L_ERR, "%s", librad_errstr);
+	    return RLM_MODULE_FAIL;
     }
     vp->lvalue = start_time;
     pairadd(&request->packet->vps, vp);
@@ -101,13 +102,14 @@ static int unique_accounting(REQUEST *request)
   
   vp = pairmake("Acct-Unique-Session-Id", buffer, 0);
   if (!vp) {
-    return RLM_ACCT_OK;		/* ??? probably wrong ... */
+	  log(L_ERR, "%s", librad_errstr);
+	  return RLM_MODULE_FAIL;
   }
 
   /* add the (hopefully) unique session ID to the packet */
   pairadd(&request->packet->vps, vp);
   
-  return RLM_ACCT_OK;
+  return RLM_MODULE_OK;
 }
 
 /* FIXME: unique_accounting should probably be called from preacct */

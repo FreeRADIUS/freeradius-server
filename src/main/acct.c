@@ -40,8 +40,8 @@ int rad_accounting(REQUEST *request)
 
 	if(!request->proxy) { /* Only need to do this once, before proxying */
 	  reply = module_preacct(request);
-	  if(reply!=RLM_PRAC_OK)
-		  return RLM_ACCT_FAIL;
+	  if (reply != RLM_MODULE_OK)
+		  return RLM_MODULE_FAIL;
 
 	  /* Maybe one of the preacct modules has decided that a proxy should
 	   * be used. If so, get out of here and send the packet. */
@@ -49,8 +49,8 @@ int rad_accounting(REQUEST *request)
 		  return 0;
 	}
 
-	reply=RLM_ACCT_OK;
-	if(!request->proxy) {
+	reply = RLM_MODULE_OK;
+	if (!request->proxy) {
 		/*
 		 *	Keep the radutmp file in sync.
 		 */
@@ -61,13 +61,13 @@ int rad_accounting(REQUEST *request)
 		 */
 		reply = module_accounting(request);
 	}
-	if (reply == RLM_ACCT_OK || reply == RLM_ACCT_FAIL_SOFT) {
+	if (reply == RLM_MODULE_OK) {
 		/*
 		 *	Now send back an ACK to the NAS.
 		 */
 		request->reply = build_reply(PW_ACCOUNTING_RESPONSE, request,
 					     NULL, NULL);
-		reply = RLM_ACCT_OK;
+		reply = RLM_MODULE_OK;
 	}
 
 	return reply;

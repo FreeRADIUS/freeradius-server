@@ -395,7 +395,7 @@ static int file_authorize(REQUEST *request,
 		{
 			log(L_ERR|L_CONS, "cannot open dbm file %s",
 				buffer);
-			return RLM_AUTZ_FAIL;
+			return RLM_MODULE_FAIL;
 		}
 
 		r = dbm_find(name, request_pairs, check_pairs, reply_pairs);
@@ -460,10 +460,11 @@ static int file_authorize(REQUEST *request,
 	}
 
 	/*
-	 *	See if we succeeded.
+	 *	See if we succeeded.  If we didn't find the user,
+	 *	then exit from the module.
 	 */
 	if (!found)
-		return RLM_AUTZ_NOTFOUND; /* didn't find the user */
+		return RLM_MODULE_OK;
 
 	/*
 	 *	Add the port number to the Framed-IP-Address if
@@ -487,7 +488,7 @@ static int file_authorize(REQUEST *request,
 	 */
 	pairdelete(reply_pairs, PW_FALL_THROUGH);
 
-	return RLM_AUTZ_OK;
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -496,7 +497,7 @@ static int file_authorize(REQUEST *request,
 static int file_authenticate(REQUEST *request)
 {
 	request = request;
-	return RLM_AUTH_OK;
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -604,7 +605,7 @@ static int file_preacct(REQUEST *request)
 		{
 			log(L_ERR|L_CONS, "cannot open dbm file %s",
 				buffer);
-			return RLM_PRAC_FAIL;
+			return RLM_MODULE_FAIL;
 		}
 
 		r = dbm_find(name, request_pairs, config_pairs, &reply_pairs);
@@ -672,7 +673,7 @@ static int file_preacct(REQUEST *request)
 	 *	See if we succeeded.
 	 */
 	if (!found)
-		return RLM_PRAC_OK; /* on to the next module */
+		return RLM_MODULE_OK; /* on to the next module */
 
 	/*
 	 *	FIXME: log a warning if there are any reply items other than
@@ -680,7 +681,7 @@ static int file_preacct(REQUEST *request)
 	 */
 	pairfree(reply_pairs); /* Don't need these */
 
-	return RLM_PRAC_OK;
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -695,7 +696,7 @@ static int file_accounting(REQUEST *request)
 	uint32_t	nas;
 	NAS		*cl;
 	long		curtime;
-	int		ret = RLM_ACCT_OK;
+	int		ret = RLM_MODULE_OK;
 	struct stat	st;
 
 	/*
@@ -704,7 +705,7 @@ static int file_accounting(REQUEST *request)
 	 */
 	if (stat(radacct_dir, &st) < 0) {
 		DEBUG("No accounting directory %s", radacct_dir);
-		return RLM_ACCT_OK;
+		return RLM_MODULE_OK;
 	}
 	curtime = time(0);
 
@@ -745,7 +746,7 @@ static int file_accounting(REQUEST *request)
 	if ((outfd = fopen(buffer, "a")) == NULL) {
 		log(L_ERR, "Acct: Couldn't open file %s: %s",
 		    buffer, strerror(errno));
-		ret = RLM_ACCT_FAIL;
+		ret = RLM_MODULE_FAIL;
 	} else {
 
 		/* Post a timestamp */
