@@ -31,7 +31,7 @@ void SHA1FinalNoLen(unsigned char digest[20], SHA1_CTX* context);
 /*
  * FIPS 186-2 PRF based upon SHA1.
  */
-extern void fips186_2prf(u_int8_t mk[20], u_int8_t finalkey[160]);
+extern void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160]);
 
 
 #endif /* _LRAD_SHA1_H */
