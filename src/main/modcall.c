@@ -43,7 +43,7 @@ static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,
 struct modcallable {
 	struct modcallable *next;
 	int actions[RLM_MODULE_NUMCODES];
-	char *name;
+	const char *name;
 	enum { MOD_SINGLE, MOD_GROUP } type;
 };
 

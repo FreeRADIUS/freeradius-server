@@ -74,7 +74,7 @@ static int r_mkdir(const char *part) {
 }
 		
 
-int radlogdir_iswritable(char *effectiveuser) {
+int radlogdir_iswritable(const char *effectiveuser) {
 	struct passwd *pwent;
 
 	if (radlog_dir[0] != '/')

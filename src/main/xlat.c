@@ -35,7 +35,7 @@ static const char rcsid[] =
 
 #include	"radiusd.h"
 
-static struct xlat_cmp {
+struct xlat_cmp {
 	char module[MAX_STRING_LEN];
 	int length;
 	void *instance;

@@ -57,7 +57,7 @@ static void Encode PROTO_LIST
   ((unsigned char *, UINT4 *, unsigned int));
 static void Decode PROTO_LIST
   ((UINT4 *, const unsigned char *, unsigned int));
-static void MD5_memcpy PROTO_LIST ((POINTER, POINTER, unsigned int));
+static void MD5_memcpy PROTO_LIST ((POINTER, CONSTPOINTER, unsigned int));
 static void MD5_memset PROTO_LIST ((POINTER, int, unsigned int));
 
 static const unsigned char PADDING[64] = {
@@ -151,7 +151,7 @@ unsigned int inputLen;                     /* length of input block */
 */
   if (inputLen >= partLen) {
  MD5_memcpy
-   ((POINTER)&context->buffer[index], (POINTER)input, partLen);
+   ((POINTER)&context->buffer[index], (CONSTPOINTER)input, partLen);
  MD5Transform (context->state, context->buffer);
 
  for (i = partLen; i + 63 < inputLen; i += 64)
@@ -164,7 +164,7 @@ unsigned int inputLen;                     /* length of input block */
 
   /* Buffer remaining input */
   MD5_memcpy
- ((POINTER)&context->buffer[index], (POINTER)&input[i],
+ ((POINTER)&context->buffer[index], (CONSTPOINTER)&input[i],
   inputLen-i);
 }
 
@@ -328,7 +328,7 @@ unsigned int len;
 
 static void MD5_memcpy (output, input, len)
 POINTER output;
-POINTER input;
+CONSTPOINTER input;
 unsigned int len;
 {
   unsigned int i;

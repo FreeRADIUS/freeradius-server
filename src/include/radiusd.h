@@ -225,6 +225,7 @@ int		rad_mkdir(char *directory, int mode);
 int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		xfree(const char *ptr);
+void		rad_assert_fail (const char *file, unsigned int line);
 
 /* client.c */
 int		read_clients_file(const char *file);
@@ -252,7 +253,7 @@ NAS		*nas_findbyname(char *nasname);
 void		version(void);
 
 /* log.c */
-int radlogdir_iswritable(char *);
+int radlogdir_iswritable(const char *);
 int		radlog(int, const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
@@ -302,9 +303,7 @@ int		xlat_register(char *module, RAD_XLAT_FUNC func, void *instance);
 void		xlat_unregister(char *module, RAD_XLAT_FUNC func);
 
 
-#ifdef WITH_THREAD_POOL
 /* threads.c */
 extern		int thread_pool_init(void);
 extern		int thread_pool_clean(time_t now);
-#endif
 #endif /*RADIUSD_H*/

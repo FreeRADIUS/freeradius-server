@@ -565,7 +565,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'a':
-				if (radacct_dir) free(radacct_dir);
+				if (radacct_dir) xfree(radacct_dir);
 				radacct_dir = strdup(optarg);
 				break;
 			
@@ -574,7 +574,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'd':
-				if (radius_dir) free(radius_dir);
+				if (radius_dir) xfree(radius_dir);
 				radius_dir = strdup(optarg);
 				break;
 			
@@ -2070,7 +2070,7 @@ void sig_cleanup(int sig)
 	 *	Wait for the child, without hanging.
 	 */
 	for (;;) {
-		pid = waitpid((pid_t)-1, &status, WNOHANG);
+		pid = (child_pid_t) waitpid((pid_t)-1, &status, WNOHANG);
 		if ((int)pid <= 0)
 			return;
 
@@ -2082,7 +2082,7 @@ void sig_cleanup(int sig)
 		if (debug_flag && (WIFSIGNALED(status))) {
 			radlog(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch "
 					"signal %d: killing all active servers.\n",
-					pid, WTERMSIG(status));
+					(int)pid, WTERMSIG(status));
 			kill(0, SIGTERM);
 			exit(1);
 		}
@@ -2352,7 +2352,7 @@ static int refresh_request(REQUEST *request, void *data)
 		} else if ((child_pid != NO_SUCH_CHILD_PID) &&
 			   ((request->options & RAD_REQUEST_OPTION_LOGGED_CHILD) == 0)) {
 			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d",
-			       child_pid, number);
+			       (unsigned long)child_pid, number);
 
 			/*
 			 *  Set the option that we've sent a log message,

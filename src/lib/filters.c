@@ -1346,7 +1346,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
     /* print for source */
     if (filter.u.ipx.srcIpxNet) {
       i = snprintf(p, len, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
-		  ntohl(filter.u.ipx.srcIpxNet),
+		  (unsigned int)ntohl(filter.u.ipx.srcIpxNet),
 		  filter.u.ipx.srcIpxNode[0], filter.u.ipx.srcIpxNode[1], 
 		  filter.u.ipx.srcIpxNode[2], filter.u.ipx.srcIpxNode[3], 
 		  filter.u.ipx.srcIpxNode[4], filter.u.ipx.srcIpxNode[5]);
@@ -1365,7 +1365,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
     /* same for destination */
     if (filter.u.ipx.dstIpxNet) {
       i = snprintf(p, len, " dstipxnet 0x%04x dstipxnode 0x%02x%02x%02x%02x%02x%02x",
-		  ntohl(filter.u.ipx.dstIpxNet),
+		  (unsigned int)ntohl(filter.u.ipx.dstIpxNet),
 		  filter.u.ipx.dstIpxNode[0], filter.u.ipx.dstIpxNode[1], 
 		  filter.u.ipx.dstIpxNode[2], filter.u.ipx.dstIpxNode[3], 
 		  filter.u.ipx.dstIpxNode[4], filter.u.ipx.dstIpxNode[5]);
