@@ -24,11 +24,9 @@ $mobile = '-';
 $mail = '-';
 $mailalt = '-';
 
-if (!isset($ds))
-	$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
+$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 if ($ds) {
-	if (!isset($r))
-		$r=@da_ldap_bind($ds,$config);
+	$r=@da_ldap_bind($ds,$config);
 	$sr=@ldap_search($ds,"$config[ldap_base]", 'uid=' . $login);
 	$info = @ldap_get_entries($ds, $sr);
 	$dn = $info[0]['dn'];

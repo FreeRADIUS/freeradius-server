@@ -1,10 +1,8 @@
 <?php
 require_once('../lib/ldap/functions.php3');
-	if (!isset($ds))
-		$ds = @ldap_connect($config[ldap_server]);
+	$ds = @ldap_connect($config[ldap_server]);
 	if ($ds){
-		if (!isset($r))
-			$r = @da_ldap_bind($ds,$config);
+		$r = @da_ldap_bind($ds,$config);
 		if ($r){
 			list ($givenname,$sn) = split(' ',$Fcn,3);
 			$dn = 'uid=' . $login . ',' . $config[ldap_default_new_entry_suffix];

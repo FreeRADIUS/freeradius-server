@@ -45,6 +45,7 @@ Ver 1.59:
 * Also cache the default.vals file.
 * Update documentation
 * Only connect and bind to the ldap server if we haven't done that before.
+* Remove previous change. It was causing problems
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
