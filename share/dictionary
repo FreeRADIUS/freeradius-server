@@ -181,6 +181,10 @@ ATTRIBUTE	Login-IPv6-Host		98	ipv6addr
 ATTRIBUTE	Framed-IPv6-Route	99	string
 ATTRIBUTE	Framed-IPv6-Pool	100	string
 
+#  As defined in RFC 3576
+ATTRIBUTE	Error-Cause		101	integer
+
+#  As defined in draft-sterman-aaa-sip-00.txt
 ATTRIBUTE	Digest-Response		206	string
 ATTRIBUTE	Digest-Attributes	207	octets	# stupid format
 
@@ -459,7 +463,7 @@ VALUE		NAS-Port-Type		Wireless-UMTS		23
 VALUE		NAS-Port-Type		Wireless-1X-EV		24
 VALUE		NAS-Port-Type		IAPP			25
 
-#	Acct Terminate Causes, available in 3.3.2 and later
+#	Acct Terminate Causes
 
 VALUE           Acct-Terminate-Cause    User-Request            1
 VALUE           Acct-Terminate-Cause    Lost-Carrier            2
@@ -489,6 +493,25 @@ VALUE		Acct-Terminate-Cause	Port-Disabled		22
 
 VALUE		Prompt			No-Echo			0
 VALUE		Prompt			Echo			1
+
+#
+#	Error causes
+#
+VALUE		Error-Cause		Residual-Context-Removed	201
+VALUE		Error-Cause		Invalid-EAP-Packet		202
+VALUE		Error-Cause		Unsupported-Attribute		401
+VALUE		Error-Cause		Missing-Attribute		402
+VALUE		Error-Cause		NAS-Identification-Mismatch	403
+VALUE		Error-Cause		Invalid-Request			404
+VALUE		Error-Cause		Unsupported-Service		405
+VALUE		Error-Cause		Unsupported-Extension		406
+VALUE		Error-Cause		Administratively-Prohibited	501
+VALUE		Error-Cause		Proxy-Request-Not-Routable	502
+VALUE		Error-Cause		Session-Context-Not-Found	503
+VALUE		Error-Cause		Session-Context-Not-Removable	504
+VALUE		Error-Cause		Proxy-Processing-Error		505
+VALUE		Error-Cause		Resources-Unavailable		506
+VALUE		Error-Cause		Request-Initiated		507
 
 #
 #	Non-Protocol Integer Translations
@@ -559,6 +582,16 @@ VALUE		Packet-Type	Accounting-Message		10
 VALUE		Packet-Type	Access-Challenge		11
 VALUE		Packet-Type	Status-Server			12
 VALUE		Packet-Type	Status-Client			13
+
+#
+#  Defined in RFC 2882
+#
+VALUE		Packet-Type	Disconnect-Request		40
+VALUE		Packet-Type	Disconnect-ACK			41
+VALUE		Packet-Type	Disconnect-NAK			42
+VALUE		Packet-Type	CoA-Request			43
+VALUE		Packet-Type	CoA-ACK				44
+VALUE		Packet-Type	CoA-NAK				45
 
 #
 #	The following packet types are described in RFC 2882,
