@@ -7,6 +7,7 @@ Ver 1.56:
 * Escape double quotes in attribute values in the user edit page
 * Fix a bug in lib/sql/change_passwd.php3 when not using operators.
   Bug report from Sheldon Fougere <sfougere@solutioninc.com>
+* Add the caller id in the connection status attributes in the show user page
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files

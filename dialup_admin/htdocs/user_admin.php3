@@ -181,6 +181,9 @@ if ($link){
 			$lastlog_client_ip = $row['FramedIPAddress'];	
 			$lastlog_server_name = gethostbyaddr($lastlog_server_ip);
 			$lastlog_client_name = gethostbyaddr($lastlog_client_ip);
+			$lastlog_callerid = $row['CallingStationId'];
+			if ($lastlog_callerid == '')
+				$lastlog_callerid = 'not available';
 			$lastlog_input = $row['AcctInputOctets'];
 			if ($lastlog_input)
 				$lastlog_input = bytes2str($lastlog_input);
@@ -208,6 +211,9 @@ if ($link){
 				$lastlog_client_ip = $row['FramedIPAddress'];	
 		$lastlog_server_name = ($lastlog_server_ip != '') ? gethostbyaddr($lastlog_server_ip) : '-';
 		$lastlog_client_name = ($lastlog_client_ip != '') ? gethostbyaddr($lastlog_client_ip) : '-';
+				$lastlog_callerid = $row['CallingStationId'];
+				if ($lastlog_callerid == '')
+					$lastlog_callerid = 'not available';
 				$lastlog_input = $row['AcctInputOctets'];
 				$lastlog_input = bytes2str($lastlog_input);
 				$lastlog_output = $row['AcctOutputOctets'];

@@ -110,6 +110,11 @@ if ($logged_now){
 	$lastlog_server_port
 	</td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">
+	Caller Id
+	</td><td>
+	$lastlog_callerid
+	</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">
 	Upload
 	</td><td>
 	$lastlog_input
@@ -156,6 +161,11 @@ else print <<<EOM
 	NAS Port
 	</td><td>
 	$lastlog_server_port
+	</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">
+	Caller Id
+	</td><td>
+	$lastlog_callerid
 	</td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">
 	Upload
