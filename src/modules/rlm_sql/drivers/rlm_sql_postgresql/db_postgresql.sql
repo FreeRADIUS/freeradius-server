@@ -152,20 +152,18 @@ CREATE TABLE realms (
 
 /*
  * Table structure for table 'nas'
- * This is not currently used by FreeRADIUS but is usefull for reporting
- * anyway.
  */
 CREATE TABLE nas (
-	ipaddr		INET PRIMARY KEY,
+	id		SERIAL PRIMARY KEY,
+	nasname		VARCHAR(128) NOT NULL,
 	shortname	VARCHAR(32) NOT NULL,
-	secret		VARCHAR(60) NOT NULL,
-	nasname		VARCHAR(128),
-	type		VARCHAR(30),
+	type		VARCHAR(30) NOT NULL DEFAULT 'other',
 	ports		int4,
+	secret		VARCHAR(60) NOT NULL,
 	community	VARCHAR(50),
-	snmp		VARCHAR(10),
-	naslocation	VARCHAR(32)
+	description	VARCHAR(200)
 );
+create index nas_nasname on nas (nasname);
 
 --
 -- Table structure for table 'radpostauth'
