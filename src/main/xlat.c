@@ -26,7 +26,7 @@ static const char rcsid[] =
 /*
    Convert the value on a VALUE_PAIR to string
 */
-int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,int type)
+static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,int type)
 {
    if (pair)
 	 return vp_prints_value(out,outlen,pair,0);
@@ -55,7 +55,7 @@ int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,int type)
 /*
   Returns a string with value of Attribute
 */
-int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrname)
+static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrname)
 {
 	DICT_ATTR * da;
 
