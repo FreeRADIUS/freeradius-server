@@ -334,6 +334,7 @@ int proxy_send(REQUEST *request);
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 int		rad_check_password(REQUEST *request);
+int		rad_postauth(REQUEST *);
 
 /* exec.c */
 int		radius_exec_program(const char *,  REQUEST *, int,
