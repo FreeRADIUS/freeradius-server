@@ -186,24 +186,6 @@ static int rlm_sql_authorize(REQUEST *request)
        pairfree(check_tmp);
        
        
-       /*
-        *      Fix dynamic IP address if needed.
-        */
-       if ((tmp = pairfind(request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS)) != NULL){
-               if (tmp->lvalue != 0) {
-                       tmp = pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS);
-                       if (tmp) {
-                               /*
-                                *      FIXME: This only works because IP
-                                *      numbers are stored in host order
-                                *      everywhere in this program.
-                                */
-                               tmp->lvalue += nas_port;
-                       }
-               }
-               pairdelete(request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS);
-       }
-
 	return RLM_MODULE_OK;
 }
 

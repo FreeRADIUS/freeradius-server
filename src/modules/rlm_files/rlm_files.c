@@ -373,7 +373,6 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
  */
 static int file_authorize(void *instance, REQUEST *request)
 {
-	int		nas_port = 0;
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	*check_tmp;
@@ -406,12 +405,6 @@ static int file_authorize(void *instance, REQUEST *request)
 	 */
 	namepair = request->username;
 	name = namepair ? (char *) namepair->strvalue : "NONE";
-
-	/*
-	 *	Find the NAS port ID.
-	 */
-	if ((tmp = pairfind(request_pairs, PW_NAS_PORT_ID)) != NULL)
-		nas_port = tmp->lvalue;
 
 	/*
 	 *	Find the entry for the user.
@@ -573,25 +566,6 @@ static int file_authorize(void *instance, REQUEST *request)
 	 */
 	if (!found)
 		return RLM_MODULE_NOTFOUND;
-
-	/*
-	 *	Add the port number to the Framed-IP-Address if
-	 *	vp->addport is set, or if the Add-Port-To-IP-Address
-	 *	pair is present.
-	 *
-	 *	FIXME: this should not happen here, but
-	 *	after module_authorize in the main code!
-	 */
-	if ((tmp = pairfind(*reply_pairs, PW_FRAMED_IP_ADDRESS)) != NULL) {
-		VALUE_PAIR *tmp2;
-
-		tmp2 = pairfind(*reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
-		if (tmp->addport || (tmp2 && tmp2->lvalue)) {
-			tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
-			tmp->addport = 0;
-		}
-		pairdelete(reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
-	}
 
 	/*
 	 *	Remove server internal parameters.
