@@ -1,7 +1,7 @@
 # must be first
 include config.mak
 
-TARGET	= #rlm_pam
+TARGET	= rlm_pam
 SRCS	= rlm_pam.c
 LIBS	= -lpam -ldl
 
