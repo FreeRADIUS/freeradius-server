@@ -599,7 +599,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	return RLM_MODULE_FAIL ..
 	 */
 	if ((fp = fopen(inst->radwtmp, "a")) != NULL) {
-		if ((fwrite(&ut, sizeof(ut), 1, fp)) != sizeof(ut)) {
+		if ((fwrite(&ut, sizeof(ut), 1, fp)) != 1) {
 			fclose(fp);
 			return RLM_MODULE_FAIL;
 		}
