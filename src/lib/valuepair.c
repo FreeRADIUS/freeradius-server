@@ -359,11 +359,15 @@ static VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
 	VALUE_PAIR	*vp;
 	char		*p, *s;
 
-	if ((da = dict_attrbyname(attribute)) == NULL)
+	if ((da = dict_attrbyname(attribute)) == NULL) {
+		librad_log("unknown attribute %s", attribute);
 		return NULL;
+	}
 
-	if ((vp = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL)
+	if ((vp = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL) {
+		librad_log("out of memory");
 		return NULL;
+	}
 
 	memset(vp, 0, sizeof(VALUE_PAIR));
 	vp->attribute = da->attr;
@@ -429,12 +433,14 @@ static VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
 		case PW_TYPE_DATE:
 			if ((vp->lvalue = gettime(value)) == (time_t)-1) {
 				free(vp);
+				librad_log("failed to get time");
 				return NULL;
 			}
 			vp->length = 4;
 			break;
 		default:
 			free(vp);
+			librad_log("unknown attribute type");
 			return NULL;
 	}
 	return vp;
@@ -456,26 +462,34 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
 
 	/* Get attribute. */
 	gettoken(ptr, attr, sizeof(attr));
-	if (attr[0] == 0)
+	if (attr[0] == 0) {
+		librad_log("No token read");
 		return NULL;
+	}
 
 	/* Now we should have an '=' here. */
 	token = gettoken(ptr, buf, sizeof(buf));
-	if (token < T_EQSTART || token > T_EQEND)
+	if (token < T_EQSTART || token > T_EQEND) {
+		librad_log("expecting '='");
 		return NULL;
+	}
 
 	/* Read value. */
 	gettoken(ptr, value, sizeof(value));
-	if (value[0] == 0)
+	if (value[0] == 0) {
+		librad_log("failed to get value");
 		return NULL;
+	}
 
 	/*
 	 *	Peek at the next token. Must be T_EOL or T_COMMA.
 	 */
 	p = *ptr;
 	t = gettoken(&p, buf, sizeof(buf));
-	if (t != T_EOL && t != T_COMMA)
+	if (t != T_EOL && t != T_COMMA) {
+		librad_log("Expected end of line or comma");
 		return NULL;
+	}
 
 	if (t == T_COMMA) {
 		*ptr = p;
@@ -484,8 +498,9 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
 		 */
 		if (*p == 0)
 			*eol = 1;
-	} else
+	} else {
 		*eol = 1;
+	}
 
 	return pairmake(attr, value, token);
 }

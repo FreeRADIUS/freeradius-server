@@ -39,7 +39,7 @@ VALUE_PAIR *readvp(void)
 		p = buf;
 		do {
 			if ((vp = pairread(&p, &eol)) == NULL) {
-				librad_perror("radclient");
+				librad_perror("radclient:");
 				error = 1;
 				break;
 			}
@@ -51,7 +51,7 @@ VALUE_PAIR *readvp(void)
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [-dn] server acct|auth <secret>\n");
+	fprintf(stderr, "Usage: radclient [-d raddb ] [-nx] server acct|auth <secret>\n");
 	exit(1);
 }
 
@@ -66,18 +66,17 @@ int main(int argc, char **argv)
 	int		c;
 	int		port = 0;
 	int		s;
+	char		*radius_dir = RADDBDIR;
 
-	if (dict_init(RADDBDIR, RADIUS_DICTIONARY) < 0) {
-		librad_perror("radclient");
-		return 1;
-	}
-
-	while ((c = getopt(argc, argv, "dn")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:nx")) != EOF) switch(c) {
 		case 'd':
-			librad_debug = 1;
+			radius_dir = optarg;
 			break;
 		case 'n':
 			do_output = 0;
+			break;
+		case 'x':
+			librad_debug = 1;
 			break;
 		default:
 			usage();
@@ -86,8 +85,14 @@ int main(int argc, char **argv)
 	argc -= (optind - 1);
 	argv += (optind - 1);
 
-	if (argc < 4)
+	if (argc < 4) {
 		usage();
+	}
+
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+		librad_perror("radclient");
+		return 1;
+	}
 
 	if ((req = rad_alloc(1)) == NULL) {
 		librad_perror("radclient");
@@ -115,8 +120,9 @@ int main(int argc, char **argv)
 	} else if (isdigit(argv[2][0])) {
 		if (port == 0) port = 1645;
 		port = atoi(argv[2]);
-	} else
+	} else {
 		usage();
+	}
 
 	/*
 	 *	Resolve hostname.
@@ -136,8 +142,9 @@ int main(int argc, char **argv)
 	/*
 	 *	Read valuepairs.
 	 */
-	if ((req->vps = readvp()) == NULL)
+	if ((req->vps = readvp()) == NULL) {
 		exit(1);
+	}
 
 	/*
 	 *	Find the password pair and encode it.

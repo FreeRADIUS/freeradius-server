@@ -3,13 +3,13 @@ SRCS	= rlm_unix.c cache.c
 
 include ../rules.mak
 
-CFLAGS		+= -DLOGDIR=\"$(LOGDIR)\"
+CFLAGS	+= -DLOGDIR=\"$(LOGDIR)\"
+LIBS	= $(LIBSHADOW) $(LIBCRYPT)
+
 
 rlm_unix.c: config.h
 
 include config.mak
-
-LIBS += $(LIBSHADOW) $(LIBCRYPT)
 
 config: config.mak
 
