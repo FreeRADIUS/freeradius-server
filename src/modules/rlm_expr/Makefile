@@ -1,5 +1,5 @@
 TARGET		= rlm_expr
-SRCS		= rlm_expr.c
+SRCS		= rlm_expr.c paircmp.c
 HEADERS		= 
 RLM_CFLAGS	=
 RLM_LIBS	= 

@@ -1361,6 +1361,8 @@ $INCLUDE ${confdir}/eap.conf
 	#  The value of the attribute will be replaced with the output
 	#  of the program which is executed.  Due to RADIUS protocol
 	#  limitations, any output over 253 bytes will be ignored.
+	#
+	#  The module also registers a few paircompare functions
 	expr {
 	}
 

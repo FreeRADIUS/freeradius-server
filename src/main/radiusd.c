@@ -847,11 +847,6 @@ int main(int argc, char *argv[])
 	/*  Initialize the request list.  */
 	rl_init();
 
-	/*
-	 *  Register built-in compare functions.
-	 */
-	pair_builtincompare_init();
-
 #ifdef WITH_SNMP
 	if (mainconfig.do_snmp) radius_snmp_init();
 #endif

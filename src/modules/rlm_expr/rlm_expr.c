@@ -280,6 +280,10 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 		inst->xlat_name = strdup(xlat_name);
 		xlat_register(xlat_name, expr_xlat, inst);
 	}
+	/*
+	 * Initialize various paircompare functions
+	 */
+	pair_builtincompare_init();
 	*instance = inst;
 
 	return 0;
