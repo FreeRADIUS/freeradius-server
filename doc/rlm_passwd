@@ -94,7 +94,7 @@ A: Probably you can, if BLA-BLA-BLA stores password in some format supported
     authtype = NS-MTA-MD5
    for Netscape MD5.
 
-Q: Is it difference difference between rlm_passwd and rlm_unix?
+Q: Are where are differences between rlm_passwd and rlm_unix?
 A: rlm_passwd supports passwd files in any format and may be used, for
    example, to parse FreeBSD's master.passwd or SAMBA smbpasswd files, but
    it can't perform system authentication (for example to authenticate
