@@ -507,6 +507,8 @@ static int read_realms_file(const char *file)
 				c->striprealm = 0;
 			if (strstr(opts, "noacct") != NULL)
 				c->acct_port = 0;
+			if (strstr(opts, "trusted") != NULL)
+				c->trusted = 1;
 		}
 
 		c->next = realms;
