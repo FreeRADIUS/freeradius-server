@@ -343,6 +343,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			librad_md5_calc(digest, (unsigned char *)hdr,
 					packet->data_len + secretlen);
 			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
+			memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
 			memset((char *)hdr + packet->data_len, 0, secretlen);
 		  }
 
@@ -688,50 +689,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	radius_packet_t		*hdr;
 
 	hdr = (radius_packet_t *)packet->data;
-	length = packet->data_len;
-
-	/*
-	 *	Calculate and/or verify digest.
-	 */
-	switch(packet->code) {
-		case PW_AUTHENTICATION_REQUEST:
-		case PW_STATUS_SERVER:
-			/*
-			 *	The authentication vector is random
-			 *	nonsense, invented by the client.
-			 */
-			break;
-		case PW_ACCOUNTING_REQUEST:
-			if (calc_acctdigest(packet, secret,
-			    (char *)packet->data, length) > 1) {
-				char buffer[32];
-				librad_log("Received accounting packet "
-				    "from %s with invalid signature!",
-				    ip_ntoa(buffer, packet->src_ipaddr));
-				return 1;
-			}
-			break;
-
-			/* Verify the reply digest */
-		case PW_AUTHENTICATION_ACK:
-		case PW_AUTHENTICATION_REJECT:
-			if (calc_replydigest(packet, original, secret,
-					     (char *)packet->data,
-					     length) > 1) {
-				char buffer[32];
-				librad_log("Received authentication reply packet "
-					   "from %s with invalid signature!",
-					   ip_ntoa(buffer, packet->src_ipaddr));
-				return 1;
-			}
-		  break;
-
-		case PW_ACCOUNTING_RESPONSE:
-			/*
-			 *	FIXME!  Calculate the response digest!
-			 */
-			break;
-	}
 
 	/*
 	 *	Before we allocate memory for the attributes, do more
@@ -740,7 +697,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	ptr = hdr->data;
 	length = packet->data_len - AUTH_HDR_LEN;
 	while (length > 0) {
-		uint8_t msg_auth_vector[AUTH_VECTOR_LEN];
+		uint8_t	msg_auth_vector[AUTH_VECTOR_LEN];
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 		attrlen = ptr[1];
@@ -766,13 +723,58 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 					   ip_ntoa(buffer, packet->src_ipaddr));
 				return 1;
 			} /* else the message authenticator was good */
-			memcpy(&ptr[2], msg_auth_vector, AUTH_VECTOR_LEN);
+
+			/*
+			 *  Leave the Message-Authenticator filled with
+			 *  zero bytes.
+			 */
 			break;
 		} /* switch over the attributes */
 
 		ptr += attrlen;
 		length -= attrlen;
 	} /* loop over the packet, sanity checking the attributes */
+
+	/*
+	 *	Calculate and/or verify digest.
+	 */
+	length = packet->data_len;
+	switch(packet->code) {
+		case PW_AUTHENTICATION_REQUEST:
+		case PW_STATUS_SERVER:
+			/*
+			 *	The authentication vector is random
+			 *	nonsense, invented by the client.
+			 */
+			break;
+
+		case PW_ACCOUNTING_REQUEST:
+			if (calc_acctdigest(packet, secret,
+			    (char *)packet->data, length) > 1) {
+				char buffer[32];
+				librad_log("Received Accounting-Request packet "
+				    "from %s with invalid signature!",
+				    ip_ntoa(buffer, packet->src_ipaddr));
+				return 1;
+			}
+			break;
+
+			/* Verify the reply digest */
+		case PW_AUTHENTICATION_ACK:
+		case PW_AUTHENTICATION_REJECT:
+		case PW_ACCOUNTING_RESPONSE:
+			if (calc_replydigest(packet, original, secret,
+					     (char *)packet->data,
+					     length) > 1) {
+				char buffer[32];
+				librad_log("Received %s packet "
+					   "from %s with invalid signature!",
+					   packet_codes[packet->code],
+					   ip_ntoa(buffer, packet->src_ipaddr));
+				return 1;
+			}
+		  break;
+	}
 
 	/*
 	 *	Extract attribute-value pairs
