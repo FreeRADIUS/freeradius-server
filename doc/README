@@ -78,9 +78,6 @@
   configuration.  It will warn you about the files it could not install.
 
   o Copy the examples in raddb to /etc/raddb and edit+rename the sample files.
-  o If you have a Debian system, you might want to install rc.radiusd
-    as /etc/init.d/radiusd and install startup symlinks with
-    "update-rc.d radiusd defaults".
   o Start radiusd (using /etc/init.d/radiusd start if applicable).
 
 3. CONFIGURATION FILES
