@@ -1,0 +1,136 @@
+RADIUS MS-CHAP v1/v2 + MPPE support module
+
+0. Introduction
+
+rlm_mschap allows to authenticate users via MS-CHAPv1 or MS-CHAPv2
+protocol. To authenticate user user via MS-CHAPv1 either NT-Password
+or LM-Password is required (this depends on NAS and client settings).
+Unless client is some outdated system (like Windows for Workgroups)
+NT-Password is usually enougth.
+Only NT-Password may be used to authenticate user via MS-CHAPv2. NT
+and LM passwords are one way hashes taken with different algorythms
+used in Windows network instead of cleartext password.
+Cleartext password can't be recovered from hash by some universal method,
+but, in fact, unlike unix hashes, one who knows hash can use all network
+resources without knowlege of cleartext password. Make sure hashes
+are stored and transmitted other network securely.
+
+Also rlm_mschap implements generation of MPPE initial keys and related
+attributes.
+
+1. What does it do
+
+The task for authorization part in RADIUS is to obtain user's parameters
+from storage. For MS-CHAP you should either store NT-Password/LM-Password
+in some source (LDAP, database, users file, SAMBA password file, etc) or
+to store cleartext password. In second case cleartext should be converted
+to NT/LM  hashes. To perform this task rlm_mschap should be included in
+authorize{} section of config.cf (at the end of this section). Another
+reason to include rlm_mschap in authorize{} is to auto-detect MS-CHAP
+authentication attempt by specific attrbiutes. For this case 
+	authtype = MS-CHAP
+should be present in config section for mschap.
+
+During authentication rlm_mschap checks challenge/response and adds
+MPPE attributes (if required).
+
+2. How should I configure it
+
+First, edit config.cf file.
+
+Config section parameters:
+
+   authtype = MS-CHAP
+ is only required if you want to allow user to select between MS-CHAP
+ and other authentication type (such as PAP or CHAP). In this case you
+ need to include mschap in authorize{} section. If mschap find attributes
+ related to MS-CHAP authentication it will replace Auth-Type parameter
+ with one specified in in authtype.
+
+  use_mppe = no
+  use_mppe = yes (default)
+ If use_mppe set to no mschap will not generate MPPE-soecific attrbutes.
+ MPPE is only used then you need data encryption (PPTP tunnel or PPP
+ connection with data encryption supported by Microsoft RAS. For example
+ you needn't MPPE if you use Cisco ASxxxx).
+
+  require_encryption = no (default)
+  require_encryption = yes
+ if require_encryption set to no NAS will allow client to choose if he
+ wants to encrypt data inside PPTP or PPP connection. If
+ require_encryption = yes NAS will force data encryption and client
+ without Microsoft data encryption support will be disconnected.
+
+  require_strong = no (default)
+  require_strong = yes
+ if require_strong set to no client is allowed to use any key length, if
+ yes only strong 128-bit keys are allowed.
+
+Authorize{} section:
+
+ You may want to include mschap in authorize{} section if either:
+  - you need mschap was launched only if NAS requests MS-CHAP authentication
+  - you store plain text passwords
+ In last case mschap should follow the last module which retrieves user's
+ information (for example after rlm_ldap if you store information in LDAP)
+
+Authenticate{} section:
+
+ Of cause, mschap should be included in authenticate{} section.
+
+Second, you should place passwords or hashes in some place. Yes, you can use
+SAMBA password file format (see rlm_passwd). If you prefer to store hashed
+passwords you can use smbencrypt utility located in the src/modules/rlm_mschap.
+Hint: use `cut` to obtain LM and NT hashes separately.
+
+3. Known bugs:
+
+ - Only ASCII passwords are supported.
+ Unicode conversion is not fully implemented yet and passwords with
+ extended characters will not work unless you didn't exported NT/LM
+ hashes from some some external source (for example from NT domain).
+ - FreeRADIUS doesn't correctly proxies MS-CHAP-MPPE-Keys reply for
+ MS-CHAPv1 MPPE support between RRAS and ISA servers.
+ Data in this attribute is encoded in a same fashion as User-Password
+ attribute and thouse should be reassembled. FreeRADIUS architecture
+ allows things like this (and it works for MS-CHAPv2 MPPE support), but
+ for this specific type of encoding it's not implemented yet. If you
+ really need this feature - call developers and it will be implemented.
+ - 128 bit MPPE support is not implemented like RFC 3079 says.
+ It's a bug of RFC 3079 commited by developers. Glenn Zorn <gwz@cisco.com>
+ promised to submit the correction.
+
+
+4. FAQ
+
+Q: Mschap doesn't work after upgrading from older FreeRADIUS version
+A: Make sure to update dictionary.microsoft located in raddb directory.
+
+Q: Can I use rlm_mschap to authenticate against NT or Win2K domain?
+A: NO. rlm_mschap is supposed to perform MS-CHAP authentication, not
+   authentication against domain.
+
+Q: Can I migrate my dialup users from NT or Win2K domain to FreeRADIUS?
+A: Yes. You can use pwdump2 utility by Todd Sabin to obtain NT/LM hashed
+   passwords. Check http://www.packetstormsecurity.org for pwdump2 and same
+   tools. This will produce SAMBA passwd file you can use with rlm_passwd
+   module or you can export this data to some database.
+
+Q: I see integrated support for SAMBA passwd format in rlm_mschap. May
+   I use it?
+A: You shouldn't, because this functionality is moved to rlm_passwd module
+   and will be excluded from future rlm_mschap versions.
+
+Q: Can I synchronize my SAMBA domain with NT/2K domain to obtain hashed
+   passwords into passwd file or LDAP automatically?
+A: At current time (Wed Jul 17 18:14:34 MSD 2002) SAMBA doesn't support
+   BDC role and undocumented domain syncrhonization API. But the work is
+   in progress. If somebody really interested it's really possible to
+   create a daemon based on pwdump2 code which will dump NT/LM hashes from
+   domain controller to file or to give 'em other the network by request.
+
+5. Acknowlegements:
+
+   Jay Miller, <jaymiller@socket.net> initial MS-CHAPv1 realization
+   Takahiro Wagatsuma, <waga@sic.shibaura-it.ac.jp> MPPE support
+   ZARAZA, <3APA3A@security.nnov.ru> modifications, MS-CHAPv2, documentation
