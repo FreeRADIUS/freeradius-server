@@ -315,17 +315,19 @@ if test "$WITH_THREADS" = "yes"; then
   AC_SUBST(PTHREADLIB)
 fi
 
-dnl If using thread pools, check that threading is enabled
-if test "$WITH_THREADS" != "yes"; then
-  AC_MSG_ERROR(You must have threads enabled for thread pools to work.)
-fi
+if test "$WITH_THREAD_POOL" = "yes"; then
+  dnl If using thread pools, check that threading is enabled
+  if test "$WITH_THREADS" != "yes"; then
+    AC_MSG_ERROR(You must have threads enabled for thread pools to work.)
+  fi
 
-dnl If using thread pools, check that we have thread libraries
-if test "X$PTHREADLIB" = "X"; then
-  AC_MSG_ERROR(You must have threading libraries for thread pools to work.)
-fi
+  dnl If using thread pools, check that we have thread libraries
+  if test "X$PTHREADLIB" = "X"; then
+    AC_MSG_ERROR(You must have threading libraries for thread pools to work.)
+  fi
 
-AC_DEFINE(WITH_THREAD_POOL,1)
+  AC_DEFINE(WITH_THREAD_POOL,1)
+fi
 
 dnl Check for -lsocket
 AC_CHECK_LIB(socket, getsockname,
