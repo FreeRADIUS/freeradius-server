@@ -39,7 +39,12 @@ if test x$with_[]modname != xno; then
 	AC_CHECK_HEADERS(crypt.h shadow.h)
 	AC_CHECK_FUNCS(getspnam getusershell)
 
-	AC_CHECK_LIB(shadow, getspnam, [ unix_ldflags="${unix_ldflags} -lshadow" ])
+	AC_CHECK_LIB(shadow, getspnam, 
+		[ 
+			unix_ldflags="${unix_ldflags} -lshadow"
+			AC_DEFINE(HAVE_GETSPNAM) 
+		]
+	)
 
 	targetname=modname
 else
