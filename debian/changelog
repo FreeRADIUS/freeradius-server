@@ -1,7 +1,7 @@
-freeradius (0.8.1+0.9pre20030511-1) unstable; urgency=low
+freeradius (0.8.1+0.9pre20030617-1) unstable; urgency=low
 
   * New Upstream release.
-   - Dictionary files are in /usr/share/freeradius.
+   - Upstream dictionary files are in /usr/share/freeradius.
   * Renamed pacakge to 'freeradius*' from 'radiusd-freeradius*'.
   * Moved file hierarchy around to be neater:
    - /etc/raddb -> /etc/freeradius
@@ -10,11 +10,11 @@ freeradius (0.8.1+0.9pre20030511-1) unstable; urgency=low
    - /var/run/radiusd/radiusd.pid -> /var/run/freeradius/freeradius.pid
   * Included RFCs in documentation.
   * Patch to 'configure' to work with openssl0.9.7
-  * Made /etc/init.d/freeradius actually able to find the process to stop.
   * Enabled the daemon to run under user 'freerad:freerad' by default.
   * Added support for DEB_BUILD_OPTIONS for policy 3.5.9 compliance.
+  * Included SNMP mibs for Radius
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun,  4 May 2003 03:33:57 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 17 Jun 2003 02:35:17 +1000
 
 radiusd-freeradius (0.7+cvs20021113-1) unstable; urgency=low
  
