@@ -6,27 +6,27 @@
  *
  */
 
-#ifndef HAVE_CRYPT
+#ifdef NEED_DECLARATION_CRYPT
 char *crypt(char *key, char *salt);
 #endif
 
-#ifndef HAVE_STRNCASECMP
+#ifdef NEED_DECLARATION_STRNCASECMP
 int strncasecmp(char *s1, char *s2, int n);
 #endif
 
-#ifndef HAVE_STRCASECMP
+#ifdef NEED_DECLARATION_STRCASECMP
 int strcasecmp(char *s1, char *s2);
 #endif
 
-#ifndef HAVE_INET_ATON
+#ifdef NEED_DECLARATION_INET_ATON
 struct in_addr;
 int inet_aton(char *cp, struct in_addr *inp);
 #endif
 
-#ifndef HAVE_GETHOSTNAME
+#ifdef NEED_DECLARATION_GETHOSTNAME
 int gethostname(char *name, int len);
 #endif
 
-#ifndef HAVE_SETLINEBUF
+#ifdef NEED_DECLARATION_SETLINEBUF
 #define setlinebuf(x)     0
 #endif

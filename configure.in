@@ -338,6 +338,7 @@ AC_CHECK_HEADERS( \
 	getopt.h \
 	malloc.h \
 	utmp.h \
+	utmpx.h \
 	sys/select.h \
 	dlfcn.h \
 	regex.h \
@@ -439,6 +440,14 @@ AC_CHECK_FUNCS( \
 	gethostname \
 	setlinebuf \
 	getusershell
+)
+RADIUSD_NEED_DECLARATIONS( \
+	crypt \
+	strncasecmp \
+	strcasecmp \
+	inet_aton \
+	gethostname \
+	setlinebuf
 )
 
 AC_TYPE_SIGNAL
@@ -576,7 +585,6 @@ dnl *** check for having dlerror()
 	AC_CHECK_FUNC(dlerror,
 		MODULE_HAVE_DLERROR=1,
 		MODULE_HAVE_DLERROR=0)
-	LIBS="$LIBS_orig"
 fi
 dnl *** done, have e got an implementation?
 if test -z "$DYNAMIC_MODULES"; then
