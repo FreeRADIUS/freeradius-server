@@ -72,9 +72,8 @@ DEFAULT Realm == "customer2", Autz-Type := customer2, Auth-Type := customer2
 ----------------------------
 
 Apart from Autz-Type the server also supports the use of
-Acct-Type, Session-Type, Post-Auth-Type, Pre-Proxy-Type, Post-Proxy-Type
-and Pre-Acct-Type for the corresponding sections. The corresponding section
-names in the radiusd.conf file are the same.  So for example:
+Acct-Type, Session-Type and Post-Auth-Type for the corresponding sections.
+The corresponding section names in the radiusd.conf file are the same.  So for example:
 
 users file---
 
