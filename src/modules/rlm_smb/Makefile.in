@@ -1,6 +1,10 @@
 TARGET     = @targetname@
-SRCS       = rlm_smb.c
-HEADERS    = 
+SRCS       = rlm_smb.c md4.c rfcnb-io.c rfcnb-util.c rlm_smb.c session.c \
+	smbdes.c smbencrypt.c smblib.c smblib-util.c valid.c
+HEADERS    = byteorder.h rfcnb-common.h rfcnb-error.h rfcnb.h rfcnb-io.h \
+		rfcnb-priv.h rfcnb-util.h smblib-common.h smblib.h \
+		smblib-priv.h std-defines.h std-includes.h valid.h
+
 RLM_LIBS   = @smb_ldflags@
 RLM_CFLAGS = @smb_cflags@
 

@@ -39,18 +39,6 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
-	smart_try_dir=$rlm_smb_include_dir
-	AC_SMART_CHECK_INCLUDE(smbclient.h)
-
-	smart_try_dir=$rlm_smb_lib_dir
-
-	AC_CHECK_LIB(smbclient, smbc_init,
-		[ 
-			smb_ldflags="-lsmbclient"
-		],
-		[ fail=$fail" -lsmbclient" ]
-	)
-
 	targetname=modname
 else
 	targetname=
