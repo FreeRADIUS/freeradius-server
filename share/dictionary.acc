@@ -52,6 +52,12 @@ ATTRIBUTE	Acc-Dialout-Auth-Mode		38	integer		Acc
 ATTRIBUTE	Acc-Dialout-Auth-Password	39	string		Acc
 ATTRIBUTE	Acc-Dialout-Auth-Username	40	string		Acc
 ATTRIBUTE	Acc-Access-Community		42	integer		Acc
+ATTRIBUTE	Acc-Vpsm-Reject-Cause		43	integer		Acc
+ATTRIBUTE	Acc-Ace-Token			44	string 		Acc
+ATTRIBUTE	Acc-Ace-Token-Ttl		45	integer		Acc
+ATTRIBUTE	Acc-Ip-Pool-Name		46	string 		Acc
+ATTRIBUTE	Acc-Igmp-Admin-State		47	integer		Acc
+ATTRIBUTE	Acc-Igmp-Version		48	integer		Acc
 
 VALUE		Acc-Reason-Code		No-reason-No-Failure		0
 VALUE		Acc-Reason-Code		Resource-shortage		1
@@ -227,3 +233,19 @@ VALUE		Acc-Dialout-Auth-Mode	NONE				4
 VALUE		Acc-Access-Community	PUBLIC				1
 VALUE		Acc-Access-Community	NETMAN				2
 
+#	Acc-Vpsm-Reject-Cause values (available in access-reject packets only) 
+VALUE	Acc-Vpsm-Reject-Cause	No-Access-Partition             1
+VALUE	Acc-Vpsm-Reject-Cause   Access-Partition-Disabled       2
+VALUE	Acc-Vpsm-Reject-Cause	Partition-Portlimit-Exceeded    3
+VALUE	Acc-Vpsm-Reject-Cause	License-Portlimit-Exceeded      4
+VALUE	Acc-Vpsm-Reject-Cause	Home-Server-Down                5
+VALUE	Acc-Vpsm-Reject-Cause	Rejected-By-Home-Server         6
+VALUE	Acc-Vpsm-Reject-Cause	NAS-Administratively-Disabled   7
+
+#	Acc-Igmp-Admin-State values 
+VALUE	Acc-Igmp-Admin-State	Enabled     			1
+VALUE	Acc-Igmp-Admin-State	Disabled    			2
+
+#	Acc-Igmp-Version values 
+VALUE	Acc-Igmp-Version	V1    				1
+VALUE	Acc-Igmp-Version	V2   				2

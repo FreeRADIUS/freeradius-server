@@ -1,9 +1,6 @@
 #
 # Redback dictionary.
 #
-#		Enable by putting the line "$INCLUDE dictionary.redback" into
-#		the main dictionary file.
-#
 # Version:	1.00  14-Sep-2000  Chris Adams <cmadams@hiwaay.net>
 #		$Id$
 #
