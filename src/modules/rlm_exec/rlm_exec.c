@@ -43,6 +43,8 @@ typedef struct rlm_exec_t {
 	char	*program;
 	char	*input;
 	char	*output;
+	char	*packet_type;
+	int	packet_code;
 } rlm_exec_t;
 
 /*
@@ -59,9 +61,11 @@ static CONF_PARSER module_config[] = {
 	{ "program",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,program), NULL, NULL },
 	{ "input_pairs", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_exec_t,input), NULL, NULL },
+	  offsetof(rlm_exec_t,input), NULL, "request" },
 	{ "output_pairs",  PW_TYPE_STRING_PTR,
-	  offsetof(rlm_exec_t,output), NULL, NULL },
+	  offsetof(rlm_exec_t,output), NULL, "reply" },
+	{ "packet_type", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_exec_t,packet_type), NULL, NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -161,6 +165,7 @@ static int exec_detach(void *instance)
 	if (inst->program) free(inst->program);
 	if (inst->input) free(inst->input);
 	if (inst->output) free(inst->output);
+	if (inst->packet_type) free(inst->packet_type);
 
 	free(inst);
 	return 0;
@@ -219,6 +224,23 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
+	/*
+	 *	Get the packet type on which to execute
+	 */
+	if (!inst->packet_type) {
+		inst->packet_code = 0;
+	} else {
+		DICT_VALUE	*dval;
+		
+		dval = dict_valbyname(PW_PACKET_TYPE, inst->packet_type);
+		if (!dval) {
+			radlog(L_ERR, "rlm_exec: Unknown packet type %s: See list of VALUEs for Packet-Type in share/dictionary", inst->packet_type);
+			exec_detach(inst);
+			return -1;
+		}
+		inst->packet_code = dval->value;
+	}
+
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL) 
 		xlat_name = cf_section_name1(conf);
@@ -250,6 +272,21 @@ static int exec_dispatch(void *instance, REQUEST *request)
 		radlog(L_ERR, "rlm_exec (%s): We require a program to execute",
 		       inst->xlat_name);
 		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	See if we're supposed to execute it now.
+	 */
+	if (!((inst->packet_code == 0) ||
+	      (request->packet->code == inst->packet_code) ||
+	      (request->reply->code == inst->packet_code) ||
+	      (request->proxy &&
+	       (request->proxy->code == inst->packet_code)) ||
+	      (request->proxy_reply &&
+	       (request->proxy_reply->code == inst->packet_code)))) {
+		DEBUG2("  rlm_exec (%s): Packet type is not %s.  Not executing.",
+		       inst->xlat_name, inst->packet_type);
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
