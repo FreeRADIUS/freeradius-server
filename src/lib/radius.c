@@ -1728,7 +1728,7 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 	unsigned char	digest[AUTH_VECTOR_LEN];
 	char*   salt;
 	int	i, n, secretlen;
-	unsigned len;
+	unsigned len, n2;
 	
 	len = *pwlen;
 
@@ -1778,8 +1778,8 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 	secretlen = strlen(secret);
 	memcpy(buffer, secret, secretlen);
 	
-	for (n = 0; n < len; n+=AUTH_PASS_LEN) {
-		if (!n) {
+	for (n2 = 0; n2 < len; n2+=AUTH_PASS_LEN) {
+		if (!n2) {
 			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
 			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
 			librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
@@ -1790,10 +1790,10 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 		}
 		
 		for (i = 0; i < AUTH_PASS_LEN; i++) {
-			passwd[i + n] ^= digest[i];
+			passwd[i + n2] ^= digest[i];
 		}
 	}
-	passwd[n] = 0;
+	passwd[n2] = 0;
 	return 0;
 }
 
