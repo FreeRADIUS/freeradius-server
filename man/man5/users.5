@@ -1,0 +1,126 @@
+.TH USERS 5 "05 August 2000"
+.SH NAME
+users \- RADIUS users file
+.SH DESCRIPTION
+The \fIusers\fP file resides in the radius database directory,
+by default \fI/etc/raddb\fP.  It contains a series of configuration
+directives which are used by the server to decide how to authorize and
+authenticate each user request.
+
+Every line starting with a hash sign
+.RB (' # ')
+is treated as comment and ignored.
+.PP
+
+Each entry of the file begins with a username, followed by a (possibly
+empty) list of check items.  The next line begins with a tab, and a
+(possibly empty) list of reply items.  Each item in the check or reply
+item list is an attribute of the form \fIname = value\fP.  Multiple
+items may be placed on one line, in which case they must be seperated
+by commas.
+
+The check items are a list of attributes used to match the incoming
+request.  If the username matches, AND all of the check items match
+the incoming request, then the reply items are added to the list of
+attributes which will be used in the reply to that request.  This
+process is repeated for all of the entries in the users file.
+
+.SH CAVEATS
+The special username \fIDEFAULT\fP matches any usernames.
+
+The entries are processed in order, from the top of the 'users' file,
+on down.  If an entry contains the special attribute 'Fall-Through =
+No' as a reply attribute, then the processing of the file stops, and
+no more entries are matched.  Any reply item list without any
+Fall-Through attribute is treated as though it included a
+'Fall-Through = No' attribute.
+
+If an entry contains the special attribute 'Fall-Through = Yes' as a
+reply attribute, then the processing proceeds to the next entry in
+order.
+
+Care should be taken when using Fall-Through.  The server should be
+tested in debugging mode with a number of test requests, in order to
+verify that the configured entries behave as expected.
+
+.SH OPERATORS
+Additional operators other than '=' may be used for the attributes in
+either the check item, or reply item list.  The following is a list of
+operators, and their meaning.
+
+.IP "Attribute = Value"
+Not allowed as a check item.
+.br
+As a reply item, it means "add the item
+to the reply list, but only if there is no other item of the same
+attribute."
+
+.IP "Attribute := Value"
+Always matches as a check item, and replaces in the request any
+attribute of the same name.  If no attribute of that name appears in
+the request, then this attribute is added.
+.br
+As a reply item, it has an identical meaning, but for the reply items,
+instead of the request items.
+
+.IP "Attribute += Value"
+Always matches as a check item, and adds the current attribute with
+value to the incoming request.
+.br
+As a reply item, it has an identical meaning, but the attribute is
+added to the reply items.
+
+.IP "Attribute != Value"
+As a check item, matches if the given attribute is in the request, AND
+does not have the given value.
+
+.IP "Attribute > Value"
+As a check item, it matches if the request contains an attribute with
+a value greater than the one given.
+.br
+Not allowed as a reply item.
+
+.IP "Attribute >= Value"
+As a check item, it matches if the request contains an attribute with
+a value greater than, or equal to the one given.
+.br
+Not allowed as a reply item.
+
+.IP "Attribute < Value"
+As a check item, it matches if the request contains an attribute with
+a value less than the one given.
+.br
+Not allowed as a reply item.
+
+.IP "Attribute <= Value"
+As a check item, it matches if the request contains an attribute with
+a value less than, or equal to the one given.
+.br
+Not allowed as a reply item.
+
+.IP "Attribute =~ Expression"
+As a check item, it matches if the request contains an attribute which
+matches the given regular expression.  This operator may only be
+applied to string attributes.
+.br
+Not allowed as a reply item.
+
+.IP "Attribute !~ Expression"
+As a check item, it matches if the request contains an attribute which
+does not match the given regular expression.  This operator may only be
+applied to string attributes.
+.br
+Not allowed as a reply item.
+
+
+
+
+.SH FILES
+.I /etc/raddb/users
+.SH "SEE ALSO"
+.BR radiusd (8),
+.BR dictionary (5)
+.BR naslist (5)
+
+.SH AUTHOR
+The FreeRADIUS team.
