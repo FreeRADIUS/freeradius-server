@@ -4134,7 +4134,7 @@ dnl #  Look for a header file in a number of places.
 dnl #
 dnl #  Usage:  AC_CHECK_STRUCT_HAS_MEMBER([#include <foo.h>], [struct foo], member)
 dnl #  If the member is defined, then the variable
-dnl #     ac_cv_type_struct_foo_member is set to 'yes'
+dnl #     ac_cv_type_struct_foo_has_member is set to 'yes'
 dnl #
 AC_DEFUN(AC_CHECK_STRUCT_HAS_MEMBER, [
   AC_MSG_CHECKING([for $3 in $2])

@@ -592,7 +592,7 @@ dnl # if not, set it to define ut_xtime == ut_tv.tv_sec
 if test "x$ac_cv_header_utmpx_h" = "xyes"
 then
  AC_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
- if test "x$ac_cv_type_struct_utmpx_ut_xtime" = "x"
+ if test "x$ac_cv_type_struct_utmpx_has_ut_xtime" = "x"
  then
    AC_DEFINE(ut_xtime,ut_tv.tv_sec)
  fi

@@ -731,7 +731,7 @@ fi
 
 
 
-# From configure.in Revision: 1.181 
+# From configure.in Revision: 1.182 
 RADIUSD_MAJOR_VERSION=1
 RADIUSD_MINOR_VERSION=0.0-pre0
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -7445,7 +7445,7 @@ rm -f conftest*
     eval "ac_cv_type_${ac_safe_type}_has_ut_xtime="
  fi
 
- if test "x$ac_cv_type_struct_utmpx_ut_xtime" = "x"
+ if test "x$ac_cv_type_struct_utmpx_has_ut_xtime" = "x"
  then
    cat >> confdefs.h <<\EOF
 #define ut_xtime ut_tv.tv_sec
