@@ -52,85 +52,6 @@ static CONF_PARSER module_config[] = {
 };
 
 /*
- *	Sanitize the name for security!  Only permit letters, numbers,
- *	-, _, / and \.  Anything else will be rejected.
- */
-static int rad_cleandir(const char *dirbuf, int length) {
-
-	size_t p=0;
-
-	DEBUG2("HERE:  %s", dirbuf);
-	if (strstr(dirbuf, "..")) {
-		radlog(L_ERR, "rlm_detail: Directory \"%s\" contains \"..\" which is not valid.",
-			dirbuf);
-		return -1;
-	}
-
-	p = strspn(dirbuf, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/%.");
-
-	if (p != length) {
-		radlog(L_ERR|L_CONS, "rlm_detail: Illegal character in detail filename.");
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
- * Make non-existant directories
- * This function is admitedly ugly
- */
-static char *rad_mkdir(const char *dirbuf, int perm) {
-	char *tmpbuf=0, *cur=0, *last=0;
-	int madeone = 0;
-	struct stat	st;
-
-	/* 
-	 * We need a copy we can play with 
-	 * so we make one here
-	 */
-	tmpbuf = strdup(dirbuf);
-
-	/*
-	 * We have to skip the first char if
-	 * it's a '/'
-	 */
-	cur = tmpbuf;
-	if(*cur == '/')
-		cur++;
-
-	while((cur = strchr(cur, '/')) != NULL) {
-		*cur = '\0';
-
-		/* 
-		 * If the dir doesn't exist, make it
-		 */
-		if((stat(tmpbuf, &st) < 0)) {
-			DEBUG2("rad_mkdir:  Making %s", tmpbuf); 
-			if ((mkdir(tmpbuf, perm) < 0) &&
-					(errno != EEXIST)) {
-				radlog(L_ERR, "rlm_mkdir: Couldn't create %s: %s",
-								tmpbuf, strerror(errno));
-				return NULL;
-			} else {
-				madeone++;
-			 DEBUG2("rad_mkdir:  Made %s", tmpbuf); 
-			}
-		}
-
-		*cur = '/';
-		last = cur;
-		cur++;
-	}
-	if(madeone) {
-		*last = '\0';
-		return tmpbuf;
-	} else {
-		return NULL;
-	}
-}
-
-/*
  *	(Re-)read radiusd.conf into memory.
  */
 static int detail_instantiate(CONF_SECTION *conf, void **instance)
@@ -153,10 +74,6 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	inst->dirperm = config.dirperm;
 	inst->last_made_directory = NULL;
 	config.detailfile = NULL;
-
-	if(rad_cleandir(inst->detailfile, strlen(inst->detailfile)) < 0) {
-		return -1;
-	}
 
 	*instance = inst;
 	return 0;
@@ -188,10 +105,6 @@ static int detail_accounting(void *instance, REQUEST *request)
 	radius_xlat2(buffer, sizeof(buffer), inst->detailfile, request,
 		     request->reply->vps);
 
-	if(rad_cleandir(buffer, strlen(buffer)) < 0) {
-		return RLM_MODULE_FAIL;
-	}
-			
 	/*
 	 *	Grab the last directory delimiter.
 	 */
@@ -226,15 +139,13 @@ static int detail_accounting(void *instance, REQUEST *request)
 			}
 			
 			/*
-			 *	Try to create the new directory.
+			 *	Go create possibly multiple directories.
 			 */
-			if((lastdir = rad_mkdir(buffer, inst->dirperm)) != NULL) {
-				/*
-				 *	Save a copy of the directory name that
-				 *	we just created.
-				 */
-				inst->last_made_directory = strdup(lastdir);
+			if (rad_mkdir(buffer, inst->dirperm) < 0) {
+				radlog(L_ERR, "rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
+				return RLM_MODULE_FAIL;
 			}
+			inst->last_made_directory = strdup(buffer);
 		}
 		
 	} /* else there was no directory delimiter. */
