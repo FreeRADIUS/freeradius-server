@@ -84,9 +84,9 @@ if ($link){
 	"SELECT AcctStartTime,UserName,NASIPAddress,NASPortId,AcctTerminateCause,CallingStationId
 	FROM $config[sql_accounting_table]
 	WHERE AcctStartTime <= '$now_str' AND AcctStartTime >= '$prev_str'
-	AND AcctTerminateCause LIKE 'Login-Incorrect%' OR
+	AND (AcctTerminateCause LIKE 'Login-Incorrect%' OR
 	AcctTerminateCause LIKE 'Invalid-User%' OR
-	AcctTerminateCause LIKE 'Multiple-Logins%' $callerid_str
+	AcctTerminateCause LIKE 'Multiple-Logins%') $callerid_str
 	ORDER BY AcctStartTime $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
