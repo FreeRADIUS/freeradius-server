@@ -870,7 +870,6 @@ int main(int argc, char *argv[])
 		}
 #endif
 
-
 		if (status == -1) {
 			/*
 			 *	On interrupts, we clean up the request
@@ -938,7 +937,7 @@ int main(int argc, char *argv[])
 			} else {    /* It came in on the proxy port */
 				REALM *rl;
 				if ((rl = realm_findbyaddr(packet->src_ipaddr,packet->src_port)) == NULL) {
-					radlog(L_ERR, "Ignoring request from unknown proxy %s:%d",
+					radlog(L_ERR, "Ignoring request from unknown home server %s:%d",
 					ip_ntoa((char *)buffer, packet->src_ipaddr),
 					packet->src_port);
 					rad_free(&packet);
@@ -1510,27 +1509,40 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			 */
 			rcode = proxy_send(request);
 
+			switch (rcode) {
+			default:
+				
 			/*
 			 *  There was an error trying to proxy the request.
 			 *  Drop it on the floor.
 			 */
-			if (rcode == RLM_MODULE_FAIL) {
+			case RLM_MODULE_FAIL:
 				DEBUG2("Error trying to proxy request %d: Rejecting it", request->number);
 				rad_reject(request);
 				goto finished_request;
-			}
-			if (rcode == RLM_MODULE_REJECT ) {
-			  DEBUG2("Request %d rejected in proxy_send.", request->number);
-			  rad_reject(request);
-			  goto finished_request;
-			}
+				break;
+
 			/*
-			 *  If thie proxy code has handled the request,
+			 *  The pre-proxy module has decided to reject
+			 *  the request.  Do so.
+			 */
+			case RLM_MODULE_REJECT:
+				DEBUG2("Request %d rejected in proxy_send.", request->number);
+				rad_reject(request);
+				goto finished_request;
+				break;
+				
+			/*
+			 *  If the proxy code has handled the request,
 			 *  then postpone more processing, until we get
 			 *  the reply packet from the home server.
 			 */
-			if (rcode == RLM_MODULE_HANDLED) {
+			case RLM_MODULE_HANDLED:
+				/*
+				 *  rad_send??
+				 */
 				goto postpone_request;
+				break;
 			}
 
 			/*
