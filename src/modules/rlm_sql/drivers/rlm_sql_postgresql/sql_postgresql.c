@@ -20,7 +20,9 @@
  * Copyright 2000  The FreeRADIUS server project
  * Copyright 2000  Mike Machado <mike@innercite.com>
  * Copyright 2000  Alan DeKok <aland@ox.org>
- * 
+ */
+
+/*
  * April 2001:
  *
  * Use blocking queries and delete unused functions. In
@@ -42,8 +44,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include 	"radiusd.h"
-#include	"sql_postgresql.h"
+#include "radiusd.h"
+#include "sql_postgresql.h"
 
 /* Internal function. Return true if the postgresql status value
  * indicates successful completion of the query. Return false otherwise
@@ -51,7 +53,7 @@
 static int
 status_is_ok(ExecStatusType status)
 {
-    return status == PGRES_COMMAND_OK || status == PGRES_TUPLES_OK;
+	return status == PGRES_COMMAND_OK || status == PGRES_TUPLES_OK;
 }
 
 
@@ -60,7 +62,7 @@ status_is_ok(ExecStatusType status)
 static int
 affected_rows(PGresult * result)
 {
-    return atoi(PQcmdTuples(result));
+	return atoi(PQcmdTuples(result));
 }
 
 /* Internal function. Free the row of the current result that's stored
@@ -94,28 +96,28 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	rlm_sql_postgres_sock *pg_sock;
 
 	if (config->sql_server[0] != '\0') {
-	    host = " host=";
+		host = " host=";
 	} else {
-	    host = "";
+		host = "";
 	}
 
 	if (config->sql_port[0] != '\0') {
-	    port = " port=";
+		port = " port=";
 	} else {
-	    port = "";
+		port = "";
 	}
 
-        sqlsocket->conn = (rlm_sql_postgres_sock *)rad_malloc(sizeof(rlm_sql_postgres_sock));
+	sqlsocket->conn = (rlm_sql_postgres_sock *)rad_malloc(sizeof(rlm_sql_postgres_sock));
 
 	pg_sock = sqlsocket->conn;
-   
+
 	snprintf(connstring, sizeof(connstring),
-		 "dbname=%s%s%s%s%s user=%s password=%s",
-		 config->sql_db, host, config->sql_server,
-		 port, config->sql_port,
-		 config->sql_login, config->sql_password);
+			"dbname=%s%s%s%s%s user=%s password=%s",
+			config->sql_db, host, config->sql_server,
+			port, config->sql_port,
+			config->sql_login, config->sql_password);
 	pg_sock->row=NULL;
-	pg_sock->result=NULL;	 
+	pg_sock->result=NULL;
 	pg_sock->conn=PQconnectdb(connstring);
 
 	if (PQstatus(sqlsocket->conn) == CONNECTION_BAD) {
@@ -137,7 +139,6 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
-
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
 	if (config->sqltrace)
@@ -152,25 +153,33 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	if (!pg_sock->result)
 	{
 		radlog(L_ERR, "PostgreSQL Query failed Error: %s", 
-		       PQerrorMessage(pg_sock->conn));
+				PQerrorMessage(pg_sock->conn));
 		return  -1;
 	} else {
-	        ExecStatusType status = PQresultStatus(pg_sock->result);
+		ExecStatusType status = PQresultStatus(pg_sock->result);
 
 		radlog(L_DBG, "rlm_postgresql Status: %s", PQresStatus(status));
 
 		radlog(L_DBG, "sql_postgresql: affected rows = %s",
-		       PQcmdTuples(pg_sock->result));
+				PQcmdTuples(pg_sock->result));
 
 		if (!status_is_ok(status))
 			return -1;
-	}
 
-	/* store the number of affected rows because the sql module
-	 * calls finish_query before it retrieves the number of affected
-	 * rows from the driver */
-	pg_sock->affected_rows = affected_rows(pg_sock->result);
-	return 0;
+		if (strncasecmp("select", querystr, 6) != 0) {
+		/* store the number of affected rows because the sql module
+		 * calls finish_query before it retrieves the number of affected
+		 * rows from the driver */
+		pg_sock->affected_rows = affected_rows(pg_sock->result);
+		return 0;
+		} else {
+			if ((sql_store_result(sqlsocket, config) == 0)
+					&& (sql_num_fields(sqlsocket, config)>=0))
+				return 0;
+			else
+				return -1;
+		}
+	}
 }
 
 
@@ -182,37 +191,7 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
  *
  *************************************************************************/
 int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
-
-	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
-
-	if (config->sqltrace)
-		radlog(L_DBG, querystr);
-
-	if (pg_sock->conn == NULL) {
-		radlog(L_ERR, "Socket not connected");
-		return -1;
-	}
-
-	pg_sock->result = PQexec(pg_sock->conn, querystr);
-	if (!pg_sock->result)
-	{
-		radlog(L_ERR, "PostgreSQL Query failed Error: %s", 
-		       PQerrorMessage(pg_sock->conn));
-		return  -1;
-	} else {
-	        ExecStatusType status = PQresultStatus(pg_sock->result);
-		
-		radlog(L_DBG, "rlm_postgresql Status: %s", PQresStatus(status));
-		
-		if (!status_is_ok(status))
-			return -1;
-
-		if ((sql_store_result(sqlsocket, config) == 0)
-		    && (sql_num_fields(sqlsocket, config)>=0))
-			return 0;
-		else
-			return -1;
-	}
+	sql_query(sqlsocket, config, querystr);
 }
 
 
@@ -243,7 +222,7 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
-	int     num = 0;
+	int num = 0;
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
 	if (!(num = PQnfields(pg_sock->result))) {
@@ -396,26 +375,26 @@ int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 static int
 not_implemented(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
-    radlog(L_ERR, "sql_postgresql: calling unimplemented function");
-    exit(1);
+	radlog(L_ERR, "sql_postgresql: calling unimplemented function");
+	exit(1);
 }
 
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_postgresql = {
-        "rlm_sql_postgresql",
-        sql_init_socket,
-        not_implemented, /* sql_destroy_socket*/
-        sql_query,
-        sql_select_query,
-        not_implemented, /* sql_store_result */
-        not_implemented, /* sql_num_fields */
-        not_implemented, /* sql_num_rows */
-        sql_fetch_row,
-        not_implemented, /* sql_free_result */
-        sql_error,
-        sql_close,
-        sql_finish_query,
-        sql_finish_select_query,
-        sql_affected_rows,
+	"rlm_sql_postgresql",
+	sql_init_socket,
+	not_implemented, /* sql_destroy_socket*/
+	sql_query,
+	sql_select_query,
+	not_implemented, /* sql_store_result */
+	not_implemented, /* sql_num_fields */
+	not_implemented, /* sql_num_rows */
+	sql_fetch_row,
+	not_implemented, /* sql_free_result */
+	sql_error,
+	sql_close,
+	sql_finish_query,
+	sql_finish_select_query,
+	sql_affected_rows,
 };
