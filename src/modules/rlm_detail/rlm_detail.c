@@ -184,9 +184,9 @@ static int detail_accounting(void *instance, REQUEST *request)
 		 *	Add non-protocol attibutes.
 		 */
 		fprintf(outfp, "\tTimestamp = %ld\n", request->timestamp);
-		if (request->packet->verified)
+		if (request->packet->verified == 2)
 			fputs("\tRequest-Authenticator = Verified\n", outfp);
-		else
+		else if (request->packet->verified == 1)
 			fputs("\tRequest-Authenticator = None\n", outfp);
 		fputs("\n", outfp);
 		fclose(outfp);
