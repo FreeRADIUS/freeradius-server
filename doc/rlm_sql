@@ -40,6 +40,8 @@
      b. The user IS found in radcheck, but the check items don't match
      c. The user IS found in radcheck, the check items DO match AND
         Fall-Through is set in the radreply table
+     d. The user IS found in radcheck, the check items DO match AND
+	the read_groups directive is set to 'yes'
   4. If groups are to be processed for this user, the first thing that is
      done is the list of groups this user is a member of is pulled from the
      usergroup table ordered by the priority field.  The priority field of
