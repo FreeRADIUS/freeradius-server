@@ -344,8 +344,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	if ((results_ret = ct_results(sybase_sock->command, &result_type)) == CS_SUCCEED) {
 		if (result_type != CS_CMD_SUCCEED) {
 			if  (result_type == CS_ROW_RESULT) {
-				radlog(L_ERR,"rlm_sql_sybase(sql_query): sql_query processed a query returning rows.
-						 Use sql_select_query instead!");
+				radlog(L_ERR,"rlm_sql_sybase(sql_query): sql_query processed a query returning rows. Use sql_select_query instead!");
 			}
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): Result failure or unexpected result type from query\n%s",
 					 sql_error(sqlsocket, config));
