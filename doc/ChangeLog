@@ -1,15 +1,45 @@
 FreeRADIUS 0.5.0 ; urgency=low
 
+	* Many bug fixes
+	* Use thread-safe versions of library calls.  This work is still
+	  on-going.
+	* New rlm_passwd module, to allow general parsing of passwd-style
+	  files.
+	* Preliminary EAP-TLS support.
+	* Updated LDAPv3 schema
+	* Correct checks for Odbc, and fix bugs in the module.
+	  Andreas Kainz <aka@maxxio.at>
+	* MAN page fixes and updates
+	* Added PHP web interface 'dialup_admin'
+	* Password = "UNIX" or "PAM" backwards compatibility removed.
+	* Use the operators in the SQL schema and queries, and bug
+	  fixes in the SQL module.
+	  Randy Moore <ramoore@axion-it.net>
+	* fgetpwent() compatibility, for systems without it,
+	  from Daniel Carroll <freeradius@defiant.mesastate.edu>
+	* Added PAP authentication module, as a step to removing
+	  most authentication handlers in other modules.
+	* Send a Access-Reject after max_request_time
+	* Multiple fixes in the LDAP module.
+	* Quintum dictionary by Jeremy McNamara <jj@indie.org>
 	* Preliminary EAP Module with MD5 support
 	  Contributed by Raghu <raghud@hereuare.com>
-	* Password = "UNIX" or "PAM" backwards compatibility removed.
+	* Better sanity checking for bad VSA's when receiving a packet
+	* new 'xlat register' so that attribute values may be pulled
+	  out of configurable databases at run-time.
+	  e.g. %{ldap:ldap:///dc=company,dc=com?uid?sub?uid=%u}
+	* Minor fixes to debian package rules
 	* Attribute 'Password' deprecated in favor of 'User-Password'.
 	* MS-CHAP and MS-CHAPv2 MPPE support added.
 	  Contributed by Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp>.
 	* X9.9 token enhancements (several).
 
+  --  Alan DeKok <aland@ox.org>
+
 FreeRADIUS 0.4.0 ; urgency=low
 
+	* Allow the MS-CHAP module to work, and to read /etc/smbpass
+	  3APA3A <3APA3A@SECURITY.NNOV.RU>
 	* Remove the server requirement that one of User-Password
 	  or CHAP-Password exist when doing authentication.  These
 	  checks should be handled by the modules.  This change
