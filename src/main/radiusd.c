@@ -65,6 +65,8 @@ static int		acct_pid;
 static int		radius_pid;
 static int		need_reload = 0;
 static REQUEST		*first_request;
+static int		allow_core_dumps = 0;
+static struct rlimit	core_limits;
 
 #if !defined(__linux__) && !defined(__GNU_LIBRARY__)
 extern int	errno;
@@ -88,6 +90,34 @@ static void reread_config(int reload)
 {
 	int res = 0;
 	int pid = getpid();
+
+	if (allow_core_dumps) {
+		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
+			log(L_ERR|L_CONS, "Cannot update core dump limit: %s",
+			    strerror(errno));
+			exit(1);
+
+		} else if (core_limits.rlim_cur != 0)
+		  log(L_INFO, "Core dumps are enabled.");
+
+
+	} else if (!debug_flag) {
+		/*
+		 *	Not debugging.  Set the core size to zero, to
+		 *	prevent security breaches.  i.e. People
+		 *	reading passwords from the 'core' file.
+		 */
+		struct rlimit limits;
+
+		limits.rlim_cur = 0;
+		limits.rlim_max = core_limits.rlim_max;
+		
+		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
+			log(L_ERR|L_CONS, "Cannot disable core dumps: %s",
+			    strerror(errno));
+			exit(1);
+		}
+	}
 
 	if (!reload) {
 		log(L_INFO, "Starting - reading configuration files ...");
@@ -324,6 +354,17 @@ int main(int argc, char **argv)
 		fclose(fp);
 	}
 #endif
+
+
+	/*
+	 *	Get the current maximum for core files.
+	 */
+	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
+		log(L_ERR|L_CONS, "Failed to get current core limit:"
+		    "  %s", strerror(errno));
+		exit(1);
+	}
+		
 	/*
 	 *	Read config files.
 	 */
@@ -339,7 +380,9 @@ int main(int argc, char **argv)
 	 */
 	if (!debug_flag && devnull >= 0) {
 		dup2(devnull, 0);
-		dup2(devnull, 1);
+		if (strcmp(radlog_dir, "stdout") != 0) {
+		  dup2(devnull, 1);
+		}
 		dup2(devnull, 2);
 		if (devnull > 2) close(devnull);
 	}
@@ -364,28 +407,7 @@ int main(int argc, char **argv)
 	 *	Use linebuffered or unbuffered stdout if
 	 *	the debug flag is on.
 	 */
-	if (debug_flag) {
-		setlinebuf(stdout);
-
-		/*
-		 *	Not debugging: set the core size to zero, to prevent
-		 *	security breaches.
-		 *
-		 *	i.e. People reading passwords from the 'core' file.
-		 */
-	} else { 
-		struct rlimit limits;
-		
-		limits.rlim_cur = 0;
-		limits.rlim_max = 0;
-		
-		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
-			log(L_ERR|L_CONS, "Failed to set core limit: %s",
-			    strerror(errno));
-			exit(1);
-		}
-	}
-
+	if (debug_flag) setlinebuf(stdout);
 
 	/*
 	 *	If we are in forking mode, we will start a child
