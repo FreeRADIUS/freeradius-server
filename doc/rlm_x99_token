@@ -16,7 +16,7 @@
 
 	Secure Computing (SafeWord (various models))
 	<http://www.securecomputing.com/index.cfm?sKey=688>
-	Not supported.
+	Async support only.
 	Formerly Enigma Logic.
 
 	VASCO (DigiPass (various models))
@@ -29,7 +29,7 @@
 
 	PassGo (Defender aka SNK, Defender Plus, Defender One)
 	<http://www.passgo.com/products/defender/>
-	Not supported.
+	Fully supported.
 	This product has a history of acquisition:
 	PassGo, Symantec, AXENT, AssureNet Pathways (name change only),
 	Digital Pathways.  Also, to add to the fun, PassGo was acquired
@@ -37,31 +37,26 @@
 	seems to have been called "SecureNet Key" aka SNK or SNK/4.
 
     If you know of other vendors, please email me (frank@google.com)
-    and I'll add them to the list above.  If you own any of the above
-    tokens and would like support added (except ActivCard and PassGo),
-    and can send me the docs and some sample tokens, I will be happy to
-    add support.
+    and I'll add them to the list above.
 
-    Although ActivCard has full specs, I cannot add support because their
-    synchronous algorithm is patented.  Oh, well, their loss.
+    Although ActivCard has full specs, I cannot add support to the public
+    codebase because their synchronous algorithm is patented.  Oh, well,
+    their loss.  I can, however, add code which you may not distribute.
+    You will need to obtain their development kit and sign an NDA.  Async
+    mode is not supported for ActivCard because you need the dev. kit (+NDA)
+    to extract or program the keys.
 
     The PassGo Defender One is an OEM version of the ActivCard One and
     so it suffers from the same patent issues.  I believe the Defender Plus
-    also uses the same algorithm.  The Defender doesn't support a sync
-    mode, so support for PassGo tokens will probably never be added.
-
-    Note that I would be happy to add support for ActivCard/PassGo if
-    ActivCard will give me a license to implement and distribute code.
-
-    I believe that most of the above tokens should work in "generic" mode,
-    however, this is highly discouraged due to the weakness of DES.
+    also uses the same algorithm.
 
     No support is available for programming tokens.  You will need to
     write this yourself, or use the vendor's programming tools and extract
     the key information in order to use this module.
 
     I *strongly* discourage the use of "soft tokens" or Palm tokens.  These
-    are easily compromisable, since the key is insufficiently protected.
+    are easily compromisable, since the key is likely to be insufficiently
+    protected.
 
     In addition to this freeradius module, I will make a PAM module available
     that will support the same file format.  These docs will be updated
@@ -144,7 +139,7 @@
     In addition to the shielding of the plaintext, and ease of use,
     another advantage of sync mode is to support authentication methods
     where a challenge cannot be presented to the user, e.g. when using
-    the Microsoft Windows VPN client.  [This support does not exist yet.]
+    the Microsoft Windows VPN client.
     
 
 4.  SITE-SPECIFIC CHALLENGE TRANSFORM
@@ -204,9 +199,9 @@
     for that token yet, and now that I've mentioned it, it is another
     exceptionally weak transform, but you get the idea.
 
-    Note that the CRYPTOCard RB-1 supports arbitrarily long challenge
-    strings.  You should take advantage of this when implementing your
-    transform.  You will still have to stay under MAX_CHALLENGE_LEN
+    Note that older CRYPTOCard RB-1 tokens support arbitrarily long
+    challenge strings.  You should take advantage of this when implementing
+    your transform.  You will still have to stay under MAX_CHALLENGE_LEN
     digits.  (This is why MAX_CHALLENGE_LEN is set to 32 even though
     the displayed challenge would generally be much smaller.)
 
@@ -236,10 +231,11 @@
 
 7.  LOG MESSAGES
 
-    All errors contain the word "unable" or "bad".  You will want
-    to scan for these automatically or periodically.  "bad state" messages
-    indicate a problem with the State attribute, which the server uses
-    to track challenges (for async mode).  They are all of the form
+    All errors begin with "rlm_x99_token" (only errors are logged,
+    there are no "success" log messages).  You will want to scan for
+    these automatically or periodically.  "bad state" messages indicate
+    a problem with the State attribute, which the server uses to track
+    challenges (for async mode).  They are all of the form
     "bad state for [%s]: <problem>", where <problem> is one of:
 
     length:  The length is not as expected.  Could be an attempted attack,
