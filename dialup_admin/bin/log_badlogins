@@ -59,7 +59,7 @@ for(;;){
 			$user = $nas = $port = $caller = '-';
 			if (/Login incorrect/){
 				if (/Login incorrect \((.+?)\):/){
-					$cause = 'Login-Incorrect ($1)';
+					$cause = "Login-Incorrect ($1)";
 				}else{
 					$cause='Login-Incorrect';
 				}
@@ -67,7 +67,7 @@ for(;;){
 			}
 			elsif (/Invalid user/){
 				if (/Invalid user \((.+?)\):/){
-					$cause = 'Invalid-User ($1)';
+					$cause = "Invalid-User ($1)";
 				}else{
 					$cause='Invalid-User';
 				}
@@ -78,7 +78,7 @@ for(;;){
 				$do=1;
 			}
 			elsif (/(Outside allowed timespan \(.+?\)):/){
-				$cause = '$1';
+				$cause = "$1";
 				$do=1;
 			}
 			if ($do){
@@ -97,8 +97,8 @@ for(;;){
 					($nas,$port,$caller) = (split /\s+/,$2)[1,3,5];
 				}
 				$caller='' if (!defined($caller));
-				$user =~s/[^\w]//g;
-				$nas =~s/[^\w]//g;
+				$user =~s/[^\w\-\.]//g;
+				$nas =~s/[^\w\.]//g;
 				if ($nas ne 'localhost' && $nas !~ /\.$domain$/){
 					$nas .= '.$domain';
 				}

@@ -4,6 +4,7 @@ Ver 1.61:
   language specific user attributes will be added in the change info and new user pages. Remove comments from
   admin.conf about the change info page not working if this directive is used.
 * When spliting cn in lib/ldap/create_user.php3 limit the split to 2 new elements not 3.
+* Fix a few bugs in log_badlogins
 Ver 1.60:
 * Use require_once when including lib/functions.php3 in lib/sql
 * In the buttons toolbar Edit User should not be clickable.
