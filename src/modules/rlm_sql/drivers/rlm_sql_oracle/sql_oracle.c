@@ -12,61 +12,77 @@
 
 #include 	"radiusd.h"
 #include	"sql_oracle.h"
-#include	"rlm_sql.h"
 
 #define	MAX_DATASTR_LEN	64
 
 /*************************************************************************
  *
- *	Function: sql_create_socket
+ *	Function: sql_init_socket
  *
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-SQLSOCK *sql_create_socket(SQL_INST *inst)
-{
-	SQLSOCK *socket;
+int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+	
+	rlm_sql_oracle_sock *oracle_sock;
 
-	socket = rad_malloc(sizeof(SQLSOCK));
+	sqlsocket->conn = (rlm_sql_oracle_sock *)rad_malloc(sizeof(rlm_sql_oracle_sock));
 
-	if (OCIEnvCreate(&socket->env, OCI_DEFAULT, (dvoid *)0,
+	oracle_sock = sqlsocket->conn;
+
+	if (OCIEnvCreate(&oracle_sock->env, OCI_DEFAULT, (dvoid *)0,
 		(dvoid * (*)(dvoid *, size_t)) 0,
 		(dvoid * (*)(dvoid *, dvoid *, size_t))0, 
 		(void (*)(dvoid *, dvoid *)) 0,
 		0, (dvoid **)0 )) {
 		radlog(L_ERR,"Init: Couldn't init Oracle OCI environment (OCIEnvCreate())");
-		return NULL;
+		return -1;
 	}
 
-	if (OCIHandleAlloc((dvoid *) socket->env, (dvoid **) &socket->errHandle,
+	if (OCIHandleAlloc((dvoid *) oracle_sock->env, (dvoid **) &oracle_sock->errHandle,
 		(ub4) OCI_HTYPE_ERROR, (size_t) 0, (dvoid **) 0))
 	{
 		radlog(L_ERR,"Init: Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
-		return NULL;
+		return -1;
 	}
 
 	/* Allocate handles for select and update queries */
-	if (OCIHandleAlloc((dvoid *)socket->env, (dvoid **) &socket->queryHandle,
+	if (OCIHandleAlloc((dvoid *)oracle_sock->env, (dvoid **) &oracle_sock->queryHandle,
 				(ub4)OCI_HTYPE_STMT, (CONST size_t) 0, (dvoid **) 0)
-	    ||  OCIHandleAlloc((dvoid *)socket->env, (dvoid **) &socket->queryHandle,
+	    ||  OCIHandleAlloc((dvoid *)oracle_sock->env, (dvoid **) &oracle_sock->queryHandle,
 				(ub4)OCI_HTYPE_STMT, (CONST size_t) 0, (dvoid **) 0))
 	{
 		radlog(L_ERR,"Init: Couldn't init Oracle query handles: %s",
-			sql_error(socket));
-		return NULL;
+			sql_error(sqlsocket));
+		return -1;
 	}
 
 
-	if (OCILogon(socket->env, socket->errHandle, &socket->conn,
-			inst->config->sql_login, strlen(inst->config->sql_login),
-			inst->config->sql_password,  strlen(inst->config->sql_password),
-			inst->config->sql_db, strlen(inst->config->sql_db)))
+	if (OCILogon(oracle_sock->env, oracle_sock->errHandle, &oracle_sock->conn,
+			config->sql_login, strlen(config->sql_login),
+			config->sql_password,  strlen(config->sql_password),
+			config->sql_db, strlen(config->sql_db)))
 	{
-		radlog(L_ERR,"Init: Oracle logon failed: '%s'", sql_error(socket));
-		return NULL;
+		radlog(L_ERR,"Init: Oracle logon failed: '%s'", sql_error(sqlsocket));
+		return -1;
 	}
 
-	return socket;
+	return 0;
+}
+
+
+/*************************************************************************
+ *
+ *	Function: sql_destroy_socket
+ *
+ *	Purpose: Free socket and private connection data
+ *
+ *************************************************************************/
+int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
+	/* FIXME: Someone write the oracle specific disconnect and free code!! */
+
+	free(sqlsocket);
 }
 
 /*************************************************************************
@@ -77,27 +93,28 @@ SQLSOCK *sql_create_socket(SQL_INST *inst)
  *               the database.
  *
  *************************************************************************/
-int sql_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
-{
-	int	x;
+int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
-	if (inst->config->sqltrace)
+	int	x;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
+
+	if (config->sqltrace)
 		DEBUG(querystr);
-	 if (socket->conn == NULL) {
+	 if (oracle_socket->conn == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return 0;
 	}
 
-	if (OCIStmtPrepare (socket->queryHandle, socket->errHandle,
+	if (OCIStmtPrepare (oracle_socket->queryHandle, oracle_socket->errHandle,
 				querystr, strlen(querystr),
 				OCI_NTV_SYNTAX, OCI_DEFAULT))  {
-		radlog(L_ERR,"sql_query: prepare failed: %s",sql_error(socket));
+		radlog(L_ERR,"sql_query: prepare failed: %s",sql_error(sqlsocket));
 		return -1;
 	}
 
-	x = OCIStmtExecute(socket->conn,
-				socket->queryHandle,
-				socket->errHandle,
+	x = OCIStmtExecute(oracle_sock->conn,
+				oracle_sock->queryHandle,
+				oracle_sock->errHandle,
 				(ub4) 1,
 				(ub4) 0,
 				(OCISnapshot *) NULL,
@@ -108,7 +125,7 @@ int sql_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 		return -1;
 	}
 
-	x = OCITransCommit(socket->conn, socket->errHandle, (ub4) 0);
+	x = OCITransCommit(oracle_sock->conn, oracle_sock->errHandle, (ub4) 0);
 	if (x != OCI_SUCCESS)
 		return -1;
 
@@ -123,8 +140,8 @@ int sql_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
-{
+int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+
 	int		x;
 	int		y;
 	int		colcount;
@@ -133,25 +150,26 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 	ub2		dtype;
 	ub4		dsize;
 	char		**rowdata=NULL;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
-	if (inst->config->sqltrace)
+	if (config->sqltrace)
 		DEBUG(querystr);
-	 if (socket->conn == NULL) {
+	 if (oracle_sock->conn == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return -1;
 	}
 
-	if (OCIStmtPrepare (socket->queryHandle, socket->errHandle,
+	if (OCIStmtPrepare (oracle_sock->queryHandle, oracle_sock->errHandle,
 				querystr, strlen(querystr),
 				OCI_NTV_SYNTAX, OCI_DEFAULT))  {
-		radlog(L_ERR,"sql_select_query: prepare failed: %s",sql_error(socket));
+		radlog(L_ERR,"sql_select_query: prepare failed: %s",sql_error(sqlsocket));
 		return -1;
 	}
 
 	/* Query only one row by default (for now) */
-	x = OCIStmtExecute(socket->conn,
-				socket->queryHandle,
-				socket->errHandle,
+	x = OCIStmtExecute(oracle_sock->conn,
+				oracle_sock->queryHandle,
+				oracle_sock->errHandle,
 				(ub4) 0,
 				(ub4) 0,
 				(OCISnapshot *) NULL,
@@ -173,7 +191,7 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 	 * all data to strings for ease of use.  Fortunately, most
 	 * of the data we deal with is already in string format.
 	 */
-	colcount=sql_num_fields(socket);
+	colcount=sql_num_fields(sqlsocket);
 
 	/* DEBUG2("sql_select_query(): colcount=%d",colcount); */
 
@@ -181,22 +199,22 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 	memset(rowdata, 0, (sizeof(char *) * (colcount+1) ));
 
 	for (y=1; y <= colcount; y++) {
-		x=OCIParamGet(socket->queryHandle, OCI_HTYPE_STMT,
-				socket->errHandle,
+		x=OCIParamGet(oracle_sock->queryHandle, OCI_HTYPE_STMT,
+				oracle_sock->errHandle,
 				(dvoid **)&param,
 				(ub4) y);
 		if (x != OCI_SUCCESS) {
 			radlog(L_ERR,"sql_select_query: OCIParamGet() failed: %s",
-				sql_error(socket));
+				sql_error(sqlsocket));
 			return -1;
 		}
 
 		x=OCIAttrGet((dvoid*)param, OCI_DTYPE_PARAM, 
 			   (dvoid*)&dtype, (ub4*)0, OCI_ATTR_DATA_TYPE,
-			   socket->errHandle);
+			   oracle_sock->errHandle);
 		if (x != OCI_SUCCESS) {
 			radlog(L_ERR,"sql_select_query: OCIAttrGet() failed: %s",
-				sql_error(socket));
+				sql_error(sqlsocket));
 			return -1;
 		}
 
@@ -212,10 +230,10 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 		case SQLT_STR:
 			x=OCIAttrGet((dvoid*)param, (ub4) OCI_DTYPE_PARAM,
 				   (dvoid*) &dsize, (ub4 *)0, (ub4) OCI_ATTR_DATA_SIZE,
-				   socket->errHandle);
+				   oracle_sock->errHandle);
 			if (x != OCI_SUCCESS) {
 				radlog(L_ERR,"sql_select_query: OCIAttrGet() failed: %s",
-					sql_error(socket));
+					sql_error(sqlsocket));
 				return -1;
 			}
 			rowdata[y-1]=rad_malloc(dsize+1);
@@ -235,9 +253,9 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 			break;
 		}
 
-		x=OCIDefineByPos(socket->queryHandle,
+		x=OCIDefineByPos(oracle_sock->queryHandle,
 				&define,
-				socket->errHandle,
+				oracle_sock->errHandle,
 				y,
 				(ub1 *) rowdata[y-1],
 				dsize,
@@ -248,14 +266,14 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 				OCI_DEFAULT);
 		if (x != OCI_SUCCESS) {
 			radlog(L_ERR,"sql_select_query: OCIDefineByPos() failed: %s",
-				sql_error(socket));
+				sql_error(sqlsocket));
 			return -1;
 		}
 	}
 
 	rowdata[y-1]=NULL; /* Terminate the array */
 
-	socket->results=rowdata;
+	oracle_sock->results=rowdata;
 
 	return 1;
 }
@@ -269,7 +287,7 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
  *               set for the query.
  *
  *************************************************************************/
-int sql_store_result(SQLSOCK *socket) {
+int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	/* Not needed for Oracle */
 	return 0;
 }
@@ -283,19 +301,20 @@ int sql_store_result(SQLSOCK *socket) {
  *               of columns from query
  *
  *************************************************************************/
-int sql_num_fields(SQLSOCK *socket) {
+int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	ub4		count;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
 	/* get the number of columns in the select list */ 
-	if (OCIAttrGet ((dvoid *)socket->queryHandle,
+	if (OCIAttrGet ((dvoid *)oracle_sock->queryHandle,
 			(ub4)OCI_HTYPE_STMT,
 			(dvoid *) &count,
 			(ub4 *) 0,
 			(ub4)OCI_ATTR_PARAM_COUNT,
-			socket->errHandle)) {
+			oracle_sock->errHandle)) {
 		radlog(L_ERR,"sql_num_fields: error retrieving colun count: %s",
-			sql_error(socket));
+			sql_error(sqlsocket));
 		return -1;
 	}
 	return count;
@@ -309,16 +328,17 @@ int sql_num_fields(SQLSOCK *socket) {
  *               query
  *
  *************************************************************************/
-int sql_num_rows(SQLSOCK *socket) {
+int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	ub4	rows=0;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
-	OCIAttrGet((CONST dvoid *)socket->queryHandle,
+	OCIAttrGet((CONST dvoid *)oracle_sock->queryHandle,
 			OCI_HTYPE_STMT,
 			(dvoid *)&rows, 
 			(ub4 *) sizeof(ub4),
 			OCI_ATTR_ROW_COUNT,
-			socket->errHandle);
+			oracle_sock->errHandle);
 
 	return rows;
 }
@@ -332,12 +352,13 @@ int sql_num_rows(SQLSOCK *socket) {
  *               with all the data for the query
  *
  *************************************************************************/
-SQL_ROW sql_fetch_row(SQLSOCK *socket)
-{
-	int	x;
+SQL_ROW sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
-	x=OCIStmtFetch(socket->queryHandle,
-			socket->errHandle,
+	int	x;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
+
+	x=OCIStmtFetch(oracle_sock->queryHandle,
+			oracle_sock->errHandle,
 			1,
 			OCI_FETCH_NEXT,
 			OCI_DEFAULT);
@@ -346,11 +367,11 @@ SQL_ROW sql_fetch_row(SQLSOCK *socket)
 	}
 	else if (x != OCI_SUCCESS) {
 		radlog(L_ERR,"sql_fetch_row: fetch failed: %s",
-				sql_error(socket));
+				sql_error(sqlsocket));
 		return NULL;
 	}
 
-	return socket->results;
+	return oracle_sock->results;
 }
 
 
@@ -363,14 +384,16 @@ SQL_ROW sql_fetch_row(SQLSOCK *socket)
  *               for a result set
  *
  *************************************************************************/
-void sql_free_result(SQLSOCK *socket) {
-	int i=0;
+int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
-	for(i=0; i<sql_num_fields(socket); i++) {
-		free(socket->results[i]);
+	int i=0;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
+
+	for(i=0; i<sql_num_fields(sqlsocket); i++) {
+		free(oracle_sock->results[i]);
 	}
-	free(socket->results);
-	socket->results=NULL;
+	free(oracle_sock->results);
+	oracle_sock->results=NULL;
 }
 
 
@@ -383,14 +406,15 @@ void sql_free_result(SQLSOCK *socket) {
  *               connection
  *
  *************************************************************************/
-char *sql_error(SQLSOCK *socket)
-{
+char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
 	static char	msgbuf[512];
 	int		errcode = 0;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
  
 	memset((void *) msgbuf, (int)'\0', sizeof(msgbuf));
 
-	OCIErrorGet((dvoid *) socket->errHandle, (ub4) 1, (text *) NULL,
+	OCIErrorGet((dvoid *) oracle_sock->errHandle, (ub4) 1, (text *) NULL,
 		&errcode, msgbuf, (ub4) sizeof(msgbuf), (ub4) OCI_HTYPE_ERROR);
 	if (errcode) {
 		return msgbuf;
@@ -409,24 +433,27 @@ char *sql_error(SQLSOCK *socket)
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-void sql_close(SQLSOCK *socket)
-{
+int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
-	if (socket->conn) {
-		OCILogoff (socket->conn, socket->errHandle);
-	}
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
-	if (socket->queryHandle) {
-		OCIHandleFree((dvoid *)socket->queryHandle, (ub4) OCI_HTYPE_STMT);
-	}
-	if (socket->errHandle) {
-		OCIHandleFree((dvoid *)socket->errHandle, (ub4) OCI_HTYPE_ERROR);
-	}
-	if (socket->env) {
-		OCIHandleFree((dvoid *)socket->env, (ub4) OCI_HTYPE_ENV);
+	if (oracle_sock->conn) {
+		OCILogoff (oracle_sock->conn, oracle_sock->errHandle);
 	}
 
-	socket->conn = NULL;
+	if (oracle_sock->queryHandle) {
+		OCIHandleFree((dvoid *)oracle_sock->queryHandle, (ub4) OCI_HTYPE_STMT);
+	}
+	if (oracle_sock->errHandle) {
+		OCIHandleFree((dvoid *)oracle_sock->errHandle, (ub4) OCI_HTYPE_ERROR);
+	}
+	if (oracle_sock->env) {
+		OCIHandleFree((dvoid *)oracle_sock->env, (ub4) OCI_HTYPE_ENV);
+	}
+
+	oracle_sock->conn = NULL;
+
+	return 0;
 }
 
 
@@ -437,10 +464,10 @@ void sql_close(SQLSOCK *socket)
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-void sql_finish_query(SQLSOCK *socket)
-{
+int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
 	/* Nothing to do here for Oracle */
-	sql_free_result(socket);
+	sql_free_result(sqlsocket);
 }
 
 
@@ -452,16 +479,18 @@ void sql_finish_query(SQLSOCK *socket)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-void sql_finish_select_query(SQLSOCK *socket)
-{
-	int 	x=0;
+int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
-	if (socket->results) {
-		while(socket->results[x]) free(socket->results[x++]);
-		free(socket->results);
-		socket->results=NULL;
+	int 	x=0;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
+
+	if (oracle_sock->results) {
+		while(oracle_sock->results[x]) free(oracle_sock->results[x++]);
+		free(oracle_sock->results);
+		oracle_sock->results=NULL;
 	}
 
+	return 0;
 }
 
 
@@ -473,8 +502,9 @@ void sql_finish_select_query(SQLSOCK *socket)
  *               or insert)
  *
  *************************************************************************/
-int sql_affected_rows(SQLSOCK *socket) {
-	return sql_num_rows(socket);
+int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
+	return sql_num_rows(sqlsocket);
 }
 
 
@@ -485,8 +515,8 @@ int sql_affected_rows(SQLSOCK *socket) {
  *      Purpose: Esacpe "'" and any other wierd charactors
  *
  *************************************************************************/
-int sql_escape_string(char *to, char *from, int length)
-{
+int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length) {
+
 	int x;
 	int y;
 
@@ -498,7 +528,7 @@ int sql_escape_string(char *to, char *from, int length)
 	}
 	to[y]=0;
 
-	return 1;
+	return 0;
 }
 
 /*************************************************************************
@@ -508,13 +538,14 @@ int sql_escape_string(char *to, char *from, int length)
  *      Purpose: Check query return value for potential errors
  *
  *************************************************************************/
-static void checkerr(SQLSOCK *socket, sword status)
-{
+static void checkerr(SQLSOCK *sqlsocket, sword status) {
+
+	
 	switch (status)	{
 	case OCI_SUCCESS: break;
 	case OCI_SUCCESS_WITH_INFO:
 		printf("status = OCI_SUCCESS_WITH_INFO\n");
-		printf("OCI err: %s\n",sql_error(socket));
+		printf("OCI err: %s\n",sql_error(sqlsocket));
 		break;
 	case OCI_NEED_DATA:
 		printf("status = OCI_NEED_DATA\n");
@@ -524,7 +555,7 @@ static void checkerr(SQLSOCK *socket, sword status)
 		break;
 	case OCI_ERROR:
 		printf("status = OCI_ERROR\n");
-		printf("OCI err: %s\n",sql_error(socket));
+		printf("OCI err: %s\n",sql_error(sqlsocket));
 		break;
 	case OCI_INVALID_HANDLE:
 		printf("status = OCI_INVALID_HANDLE\n");
@@ -540,3 +571,23 @@ static void checkerr(SQLSOCK *socket, sword status)
 	}
 }
 
+
+/* Exported to rlm_sql */
+rlm_sql_module_t rlm_sql_oracle = {
+	"rlm_sql_oracle",
+	sql_init_socket,
+	sql_destroy_socket,
+	sql_query,
+	sql_select_query,
+	sql_store_result,
+	sql_num_fields,
+	sql_num_rows,
+	sql_fetch_row,
+	sql_free_result,
+	sql_error,
+	sql_close,
+	sql_finish_query,
+	sql_finish_select_query,
+	sql_affected_rows,
+	sql_escape_string
+};
