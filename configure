@@ -5691,11 +5691,11 @@ fi
 # Check whether --enable-developer or --disable-developer was given.
 if test "${enable_developer+set}" = set; then
   enableval="$enable_developer"
-   case "$withval" in
-    *)
+   case "$enableval" in
+    no)
 	developer=no
 	;;
-    yes)
+    *)
 	developer=yes
   esac 
 
