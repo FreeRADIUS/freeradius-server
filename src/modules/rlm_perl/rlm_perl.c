@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "radiusd.h"
 #include "modules.h"
@@ -54,6 +55,7 @@ static const char rcsid[] = "$Id$";
 typedef struct perl_config {
 	char	*cmd;
 	char	*persistent;
+	char	*xlat_name;
 } PERL_CONFIG;
 
 /*
@@ -96,7 +98,7 @@ EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
  */
 static int perl_init(void)
 {
-	/*
+	/*	
 	 *	Everything's OK, return without an error.
 	 */
 	return 0;	
@@ -118,7 +120,90 @@ static void xs_init(pTHX)
 	
 }
 
+/*
+ * Perl xlat we use already running perl just recompile and store in memory 
+ * REMEMBER: each file will only be compiled once. Note that the process 
+ * will continue to grow for each file that it uses and is not compiled. 
+ * 
+ *  e.g.
+ *  %{perl:/usr/bin/test.pl %{User-Name}} will run /usr/bin/test.pl,
+ * give @ARGV with User-Name in $ARGV[0]
+ *  To return something just assign it to $main::ret_val
+ *
+ * test.pl:
+ *
+ * use strict;
+ * $!=0;
+ * my ($ret_val);
+ * print "ARGV[1]=$ARGV[1] ARGV[2]=$ARGV[2]\n";
+ * $main::ret_val = "B";
+ * die;
+ */ 
 
+static int perl_xlat(void *instance, REQUEST *request, char *fmt, char *out, int freespace,
+		                        RADIUS_ESCAPE_STRING func)
+{
+	PERL_INST	*inst=instance;
+	AV	*array_av;
+	SV	*ret_val;
+	char	*args[] = {"", DO_CLEAN, NULL}; 	
+	char	params[1024], *tmp_ptr, *ptr;
+	int	exitstatus=0,len;
+	I32	key;
+	STRLEN	n_a;
+	
+	/*
+         * Do an xlat on the provided string (nice recursive operation).
+        */
+	
+        if (!radius_xlat(params, sizeof(params), fmt, request, func))
+	{
+		radlog(L_ERR, "rlm_perl: xlat failed.");
+		return 0;
+        }
+	
+	PERL_SET_CONTEXT(inst->perl);
+	ptr = strtok(params, " ");
+
+	args[0] = ptr;
+	array_av = get_av("ARGV",0);
+	
+	ret_val = get_sv("main::ret_val",1);
+	
+	key = 0;
+  	while ((tmp_ptr=strtok(NULL, " ")) != NULL) {
+		av_store(array_av,key++,newSVpv(tmp_ptr,0));
+	} 
+	
+	PERL_SET_CONTEXT(inst->perl);
+	call_argv("Embed::Persistent::eval_file", G_DISCARD | G_EVAL, args);
+	
+	if (SvTRUE(ERRSV)) { 
+		exitstatus = SvIV(perl_get_sv("!",FALSE));
+		radlog(L_INFO, "perl_embed::perl_xlat exit status=%d, %s\n", exitstatus, SvPV(ERRSV,n_a));
+	} 
+	
+	/*
+	 * Now get the variable we need 
+	 * His name is $ret_val
+	 */
+	
+	out = NULL;	
+        
+	if (SvTRUE(ret_val)) { 
+		
+		out =  SvPV(ret_val,n_a);
+		len = strlen(out);
+		
+		radlog(L_INFO,"Len is %d , out is %s", len, out);
+		
+		if (len <= freespace)
+			return len;
+	}
+	
+	return 0;
+	 
+}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -133,7 +218,7 @@ static void xs_init(pTHX)
 static int perl_instantiate(CONF_SECTION *conf, void **instance)
 {
 	PERL_INST	*inst;	
-	char *embed[2];
+	char *embed[2], *xlat_name;
 	int exitstatus = 0;
 	
 	/*
@@ -186,6 +271,13 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	inst->env_hv = perl_get_hv("ENV",0);
         inst->result_hv = perl_get_hv("main::result",1);
 	
+	xlat_name = cf_section_name2(conf);
+	if (xlat_name == NULL) 
+		xlat_name = cf_section_name1(conf);
+	if (xlat_name){ 
+		inst->config->xlat_name = strdup(xlat_name);
+		xlat_register(xlat_name, perl_xlat, inst); 
+	} 
 	*instance = inst;
 	
 	return 0;
