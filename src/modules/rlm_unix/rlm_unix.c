@@ -10,14 +10,10 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
-#include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<unistd.h>
 #include	<grp.h>
 #include	<pwd.h>
-#include	<errno.h>
 
 #include "config.h"
 
@@ -280,7 +276,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 *      Check if password has expired.
 	 */
 	if (spwd && spwd->sp_expire > 0 &&
-	    (time(NULL) / 86400) > spwd->sp_expire) {
+	    (request->timestamp / 86400) > spwd->sp_expire) {
 		radlog(L_AUTH, "rlm_unix: [%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -290,7 +286,8 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Check if password has expired.
 	 */
-	if (pwd->pw_expire > 0 && time(NULL) > pwd->pw_expire) {
+	if ((pwd->pw_expire > 0) &&
+	    (request->timestamp > pwd->pw_expire)) {
 		radlog(L_AUTH, "rlm_unix: [%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -397,7 +394,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_USER_NAME)) == NULL)
 		return RLM_MODULE_NOOP;
 
-	time(&t);
+	t = request->timestamp;
 	memset(&ut, 0, sizeof(ut));
 
 	/*

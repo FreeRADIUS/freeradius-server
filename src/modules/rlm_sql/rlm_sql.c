@@ -381,7 +381,7 @@ static int rlm_sql_accounting(REQUEST *request) {
         }
 
 
-        nowtime = time(0) - sqlrecord->AcctDelayTime;
+        nowtime = request->timestamp - sqlrecord->AcctDelayTime;
         tim = localtime(&nowtime);
         strftime(datebuf, sizeof(datebuf), "%Y%m%d%H%M%S", tim);
 
