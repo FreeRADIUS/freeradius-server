@@ -707,7 +707,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (packet->data_len < AUTH_HDR_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (%d < %d)",
+		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (received %d < minimum %d)",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 			   packet->data_len, AUTH_HDR_LEN);
 		free(packet);
@@ -720,7 +720,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	" ... and maximum length is 4096."
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (%d > %d)",
+		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (received %d > maximum %d)",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 			   packet->data_len, MAX_PACKET_LEN);
 		free(packet);
@@ -737,6 +737,40 @@ RADIUS_PACKET *rad_recv(int fd)
 	totallen = ntohs(len);
 
 	/*
+	 *	Repeat the length checks.  This time, instead of
+	 *	looking at the data we received, look at the value
+	 *	of the 'length' field inside of the packet.
+	 *
+	 *	Check for packets smaller than the packet header.
+	 *
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	"The minimum length is 20 ..."
+	 */
+	if (totallen < AUTH_HDR_LEN) {
+		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (length %d < minimum %d)",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   totallen, AUTH_HDR_LEN);
+		free(packet);
+		return NULL;
+	}
+
+	/*
+	 *	And again, for the value of the 'length' field.
+	 *
+	 *	RFC 2865, Section 3., subsection 'length' says:
+	 *
+	 *	" ... and maximum length is 4096."
+	 */
+	if (totallen > MAX_PACKET_LEN) {
+		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (length %d > maximum %d)",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   totallen, MAX_PACKET_LEN);
+		free(packet);
+		return NULL;
+	}
+
+	/*
 	 *	RFC 2865, Section 3., subsection 'length' says:
 	 *
 	 *	"If the packet is shorter than the Length field
@@ -745,7 +779,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	i.e. No response to the NAS.
 	 */
 	if (packet->data_len < totallen) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet size says %d",
+		librad_log("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet length says %d",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
 			   packet->data_len, totallen);
 		free(packet);
@@ -763,9 +797,7 @@ RADIUS_PACKET *rad_recv(int fd)
 		 *	We're shortening the packet below, but just
 		 *	to be paranoid, zero out the extra data.
 		 */
-		memset(packet->data + totallen, 0,
-		       packet->data_len - totallen);
-
+		memset(data + totallen, 0, packet->data_len - totallen);
 		packet->data_len = totallen;
 	}
 
