@@ -118,9 +118,9 @@ typedef struct dict_attr {
 } DICT_ATTR;
 
 typedef struct dict_value {
-	char			name[40];
 	int			attr;
 	int			value;
+	char			name[1];
 } DICT_VALUE;
 
 typedef struct dict_vendor {

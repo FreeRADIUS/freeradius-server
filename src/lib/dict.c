@@ -267,20 +267,23 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	return 0;
 }
 
+#define DICT_VALUE_MAX_NAME_LEN (128)
+
 /*
  *	Add a value for an attribute to the dictionary.
  */
 int dict_addvalue(const char *namestr, char *attrstr, int value)
 {
+	size_t		length;
 	DICT_ATTR	*dattr;
 	DICT_VALUE	*dval;
 
-	if (strlen(namestr) > (sizeof(dval->name) -1)) {
+	if ((length = strlen(namestr)) >= DICT_VALUE_MAX_NAME_LEN) {
 		librad_log("dict_addvalue: value name too long");
 		return -1;
 	}
 
-	if ((dval = (DICT_VALUE *)malloc(sizeof(DICT_VALUE))) == NULL) {
+	if ((dval = malloc(sizeof(*dval) + length)) == NULL) {
 		librad_log("dict_addvalue: out of memory");
 		return -1;
 	}
@@ -1011,20 +1014,27 @@ DICT_VALUE *dict_valbyattr(int attr, int val)
 }
 
 /*
- *	Get a value by its name.
- *      If you pass an actual attr, it will try to match it.
- *      If you just want it to return on the first match,
- *      send it 0 as the attr. I hope this works the way it
- *      seems to. :) --kph
+ *	Get a value by its name, keyed off of an attribute.
  */
 DICT_VALUE *dict_valbyname(int attr, const char *name)
 {
-	DICT_VALUE	myval;
+	DICT_VALUE	*dv;	
 
-	myval.attr = attr;
-	strNcpy(myval.name, name, sizeof(myval.name));
+	/*
+	 *	This is a bit of a hack.
+	 */
+	uint8_t		buffer[sizeof(*dv) + DICT_VALUE_MAX_NAME_LEN];
 
-	return rbtree_finddata(values_byname, &myval);
+	/*
+	 *	The name is too long, we can't find it.
+	 */
+	if (strlen(name) >= DICT_VALUE_MAX_NAME_LEN) return NULL;
+
+	dv = (DICT_VALUE *) buffer;
+	dv->attr = attr;
+	strcpy(dv->name, name);
+
+	return rbtree_finddata(values_byname, dv);
 }
 
 /*
