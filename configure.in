@@ -318,6 +318,11 @@ dnl If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 PTHREADLIB=
 if test "$WITH_THREADS" = "yes"; then 
   AC_CHECK_HEADERS(pthread.h)
+
+  if text "X$ac_cv_header_pthread_h" = "X"; then
+    AC_MSG_ERROR("You are trying to use threads without a POSIX <pthread.h>")
+  fi
+
   AC_CHECK_LIB(pthread, pthread_create,
     PTHREADLIB="-lpthread"
   )
@@ -577,10 +582,6 @@ if test "$CRYPTLIB" != ""; then
 else
   AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT))
 fi
-
-AC_SUBST(MODULE_LIBS)
-AC_SUBST(MODULE_CFLAGS)
-AC_SUBST(MODULE_LDFLAGS)
 
 dnl #############################################################
 dnl #
