@@ -45,9 +45,6 @@ void version(void)
 #if defined(OSFC2)
 	fprintf(stderr," OSFC2");
 #endif
-#if defined(WITH_DICT_NOCASE)
-	fprintf(stderr," WITH_DICT_NOCASE");
-#endif
 #if defined(WITH_SNMP)
 	fprintf(stderr," WITH_SNMP");
 #endif
