@@ -60,8 +60,8 @@ create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress)
  */
 CREATE TABLE StopVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
-	H323SetupTime		TIMESTAMP with time zone NOT NULL,
-	H323ConnectTime		TIMESTAMP with time zone NOT NULL,
+	H323SetupTime		TIMESTAMP with time zone,
+	H323ConnectTime		TIMESTAMP with time zone,
 	H323DisconnectTime	TIMESTAMP with time zone NOT NULL,
 	UserName		VARCHAR(32),
 	RadiusServerName	VARCHAR(32),
@@ -180,18 +180,21 @@ CREATE VIEW customerip AS
  *
  */
 
+
 CREATE OR REPLACE FUNCTION strip_dot (VARCHAR) RETURNS TIMESTAMPTZ AS '
  DECLARE
-	original_timestamp ALIAS FOR $1;
+        original_timestamp ALIAS FOR $1;
  BEGIN
-	IF substring(original_timestamp from 1 for 1) = ''.'' THEN
-		RETURN substring(original_timestamp from 2);
-	ELSE
-		RETURN original_timestamp;
-	END IF;
+	IF original_timestamp = '''' THEN
+		RETURN NULL;
+        END IF;
+        IF substring(original_timestamp from 1 for 1) = ''.'' THEN
+                RETURN substring(original_timestamp from 2);
+        ELSE
+                RETURN original_timestamp;
+        END IF;
  END;
 ' LANGUAGE 'plpgsql';
-
 /*
  * Table structure for 'isdn_error_codes' table
  *
