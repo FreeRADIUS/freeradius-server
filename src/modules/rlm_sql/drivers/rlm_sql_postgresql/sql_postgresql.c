@@ -255,8 +255,8 @@ SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	pg_sock->num_fields = records;
 
 	if ((PQntuples(pg_sock->result) > 0) && (records > 0)) {
-		pg_sock->row = (char **)rad_malloc(records*sizeof(char *)+1);
-		memset(pg_sock->row, '\0', records*sizeof(char *)+1);
+		pg_sock->row = (char **)rad_malloc((records+1)*sizeof(char *));
+		memset(pg_sock->row, '\0', (records+1)*sizeof(char *));
 
 		for (i = 0; i < records; i++) {
 			len = PQgetlength(pg_sock->result, pg_sock->cur_row, i);
