@@ -53,8 +53,6 @@
 static const char rcsid[] =
 "$Id$";
 
-#define xstrdup strdup
-
 typedef enum conf_type {
 	CONF_ITEM_PAIR,
 	CONF_ITEM_SECTION
@@ -77,6 +75,7 @@ struct conf_part {
 	char *name1;
 	char *name2;
 	struct conf_item *children;
+	rbtree_t	*pair_tree; /* and a partridge.. */
 };
 
 /*
@@ -121,8 +120,8 @@ static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 	memset(cp, 0, sizeof(CONF_PAIR));
 	cp->item.type = CONF_ITEM_PAIR;
 	cp->item.parent = parent;
-	cp->attr = xstrdup(attr);
-	cp->value = xstrdup(value);
+	cp->attr = strdup(attr);
+	cp->value = strdup(value);
 	cp->operator = operator;
 
 	return cp;
@@ -148,26 +147,18 @@ void cf_pair_free(CONF_PAIR **cp)
 	*cp = NULL;
 }
 
+
 /*
- *	Allocate a CONF_SECTION
+ *	rbtree callback function
  */
-static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
-		CONF_SECTION *parent)
+static int pair_cmp(const void *a, const void *b)
 {
-	CONF_SECTION	*cs;
+	const CONF_PAIR *one = a;
+	const CONF_PAIR *two = b;
 
-	if (name1 == NULL || !name1[0])
-		name1 = "main";
-
-	cs = (CONF_SECTION *)rad_malloc(sizeof(CONF_SECTION));
-	memset(cs, 0, sizeof(CONF_SECTION));
-	cs->item.type = CONF_ITEM_SECTION;
-	cs->item.parent = parent;
-	cs->name1 = strdup(name1);
-	cs->name2 = (name2 && *name2) ? xstrdup(name2) : NULL;
-
-	return cs;
+	return strcmp(one->attr, two->attr);
 }
+
 
 /*
  *	Free a CONF_SECTION
@@ -193,6 +184,8 @@ void cf_section_free(CONF_SECTION **cs)
 		free((*cs)->name1);
 	if ((*cs)->name2)
 		free((*cs)->name2);
+	if ((*cs)->pair_tree)
+		rbtree_free((*cs)->pair_tree);
 
 	/*
 	 * And free the section
@@ -204,6 +197,45 @@ void cf_section_free(CONF_SECTION **cs)
 
 	*cs = NULL;
 }
+
+
+/*
+ *	Allocate a CONF_SECTION
+ */
+static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
+		CONF_SECTION *parent)
+{
+	CONF_SECTION	*cs;
+
+	if (name1 == NULL || !name1[0])
+		name1 = "main";
+
+	cs = (CONF_SECTION *)rad_malloc(sizeof(CONF_SECTION));
+	memset(cs, 0, sizeof(CONF_SECTION));
+	cs->item.type = CONF_ITEM_SECTION;
+	cs->item.parent = parent;
+	cs->name1 = strdup(name1);
+	if (!cs->name1) {
+		cf_section_free(&cs);
+		return NULL;
+	}
+	
+	if (name2 && *name2) {
+		cs->name2 = strdup(name2);
+		if (!cs->name2) {
+			cf_section_free(&cs);
+			return NULL;
+		}
+	}
+	cs->pair_tree = rbtree_create(pair_cmp, NULL, 0);
+	if (!cs->pair_tree) {
+		cf_section_free(&cs);
+		return NULL;
+	}
+
+	return cs;
+}
+
 
 /*
  *	Add an item to a configuration section.
@@ -219,6 +251,13 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 		cs->children = ci_new;
 	else
 		ci->next = ci_new;
+
+	/*
+	 *	For fast lookups.
+	 */
+	if (ci_new->type == CONF_ITEM_PAIR) {
+		rbtree_insert(cs->pair_tree, ci_new);
+	}
 }
 
 /*
@@ -903,22 +942,31 @@ CONF_SECTION *conf_read(const char *fromfile, int fromline,
 /*
  * Return a CONF_PAIR within a CONF_SECTION.
  */
-CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
+CONF_PAIR *cf_pair_find(CONF_SECTION *cs, const char *name)
 {
 	CONF_ITEM	*ci;
 
-	if (section == NULL) {
-		section = mainconfig.config;
+	if (!cs) cs = mainconfig.config;
+
+	/*
+	 *	Find the name in the tree, for speed.
+	 */
+	if (name) {
+		CONF_PAIR mycp;
+
+		mycp.attr = name;
+		return rbtree_finddata(cs->pair_tree, &mycp);
 	}
 
-	for (ci = section->children; ci; ci = ci->next) {
-		if (ci->type != CONF_ITEM_PAIR)
-			continue;
-		if (name == NULL || strcmp(cf_itemtopair(ci)->attr, name) == 0)
-			break;
+	/*
+	 *	Else find the first one
+	 */
+	for (ci = cs->children; ci; ci = ci->next) {
+		if (ci->type == CONF_ITEM_PAIR)
+			return cf_itemtopair(ci);
 	}
-
-	return cf_itemtopair(ci);
+	
+	return NULL;
 }
 
 /*
