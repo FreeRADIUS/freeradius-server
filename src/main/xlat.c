@@ -366,16 +366,13 @@ static xlat_t *xlat_find(const char *module)
 	char *p;
 	xlat_t my_xlat;
 
-	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
-
-	/*
-	 *	We get passed the WHOLE string, and all we want here
-	 *	is the first piece.
-	 */
-	p = strchr(my_xlat.module, ':');
-	if (p) *p = '\0';
-
-	my_xlat.length = strlen(my_xlat.module);
+	p = my_xlat.module;
+	my_xlat.length = 0;
+	while (*module && (*module != ':')) {
+		*(p++) = *(module++);
+		my_xlat.length++;
+	}
+	*p = '\0';
 
 	return rbtree_finddata(xlat_root, &my_xlat);
 }
