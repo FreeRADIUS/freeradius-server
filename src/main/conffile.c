@@ -38,6 +38,10 @@
 
 #ifdef HAVE_DIRENT_H
 #include <dirent.h>
+
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 #endif
 
 #include "radiusd.h"
@@ -723,6 +727,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			if (value[strlen(value) - 1] == '/') {
 				DIR		*dir;
 				struct dirent	*dp;
+				struct stat stat_buf;
 
 				DEBUG2( "Config:   including files in directory: %s", value );
 				dir = opendir(value);
@@ -743,6 +748,8 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 					snprintf(buf2, sizeof(buf2), "%s%s",
 						 value, dp->d_name);
+					if ((stat(buf2, &stat_buf) != 0) ||
+					    S_ISDIR(stat_buf.st_mode)) continue;
 					if ((is = conf_read(cf, *lineno, buf2, parent)) == NULL) {
 						closedir(dir);
 						cf_section_free(&cs);
