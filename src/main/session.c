@@ -150,8 +150,12 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	 *	Find NAS type.
 	 */
 	if ((nas = nas_find(nasaddr)) == NULL) {
-		radlog(L_ERR, "Accounting: unknown NAS");
-		return -1;
+	/*	radlog(L_ERR, "Accounting: unknown NAS, so trusting radutmp");	*/
+		return 1;
+	}
+	if (nas->nastype == "other") {
+	/*	radlog(L_ERR, "Accounting: NAS type is 'other', so trusting radutmp");	*/
+		return 1;
 	}
 
 	/*
