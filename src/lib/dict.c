@@ -14,6 +14,7 @@ static const char rcsid[] = "$Id$";
 #include	<sys/types.h>
 #include	<ctype.h>
 #include	<string.h>
+#include	<errno.h>
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>
@@ -165,7 +166,7 @@ int dict_addvalue(char *namestr, char *attrstr, int value)
 /*
  *	Initialize the dictionary.
  */
-static int my_dict_init(char *dir, char *fn)
+static int my_dict_init(char *dir, char *fn, char *src_file, int src_line)
 {
 	FILE	*fp;
 	char 	dirtmp[256];
@@ -209,7 +210,13 @@ static int my_dict_init(char *dir, char *fn)
 	}
 
 	if ((fp = fopen(fn, "r")) == NULL) {
-		librad_log("dict_init: Couldn't open dictionary: %s", fn);
+		if (!src_file) {
+			librad_log("dict_init: Couldn't open dictionary \"%s\": %s",
+				   fn, strerror(errno));
+		} else {
+			librad_log("dict_init: %s[%d]: Couldn't open dictionary \"%s\": %s",
+				   src_file, src_line, fn, strerror(errno));
+		}
 		return -1;
 	}
 
@@ -233,7 +240,7 @@ static int my_dict_init(char *dir, char *fn)
 		 *	See if we need to import another dictionary.
 		 */
 		if (strcasecmp(keyword, "$INCLUDE") == 0) {
-			if (my_dict_init(dir, data) < 0)
+			if (my_dict_init(dir, data, fn, line) < 0)
 				return -1;
 			continue;
 		}
@@ -465,7 +472,7 @@ int dict_init(char *dir, char *fn)
 
 	dict_free();
 
-	if (my_dict_init(dir, fn) < 0)
+	if (my_dict_init(dir, fn, NULL, 0) < 0)
 		return -1;
 
 	for (dval = dictionary_values; dval; dval = dval->next) {
