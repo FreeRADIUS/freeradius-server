@@ -395,7 +395,7 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 		} else if ((vp = paircreate(PW_STRIPPED_USER_NAME,
 			    PW_TYPE_STRING)) != NULL) {
 			strcpy(vp->strvalue, rest);
-			request->length = strlen(rest);
+			vp->length = strlen(rest);
 			pairadd(&request, vp);
 		}
 	}
