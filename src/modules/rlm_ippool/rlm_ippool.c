@@ -818,7 +818,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 				key.nas,port);
 		if ((vp = paircreate(PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR)) == NULL) {
 			radlog(L_ERR|L_CONS, "no memory");
-			return RLM_MODULE_NOOP;
+			return RLM_MODULE_FAIL;
 		}
 		vp->lvalue = entry.ipaddr;
 		ip_ntoa(vp->strvalue, vp->lvalue);
@@ -842,7 +842,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	else{
 		pthread_mutex_unlock(&data->op_mutex);
 		DEBUG("rlm_ippool: No available ip addresses in pool.");
-		return RLM_MODULE_NOOP;
+		return RLM_MODULE_NOTFOUND;
 	}
 
 	return RLM_MODULE_OK;
