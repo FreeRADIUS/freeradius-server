@@ -17,6 +17,7 @@
 #include	<sys/socket.h>
 #include	<sys/time.h>
 #include	<netinet/in.h>
+#include <errno.h>
 
 #if HAVE_SYS_SELECT_H
 #  include      <sys/select.h>
