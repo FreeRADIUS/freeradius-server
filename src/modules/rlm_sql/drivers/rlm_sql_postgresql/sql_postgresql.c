@@ -146,7 +146,10 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 		return  -1;
 	}
 
-	return PQsendQuery(pg_sock->conn, querystr);
+	if (PQsendQuery(pg_sock->conn, querystr))
+		return 0;
+	else
+		return -1;
 }
 
 
@@ -176,10 +179,10 @@ int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	}
 
 
-	if (PQsendQuery(pg_sock->conn, querystr))
+	if (!PQsendQuery(pg_sock->conn, querystr))
 		return -1;
 
-	if (sql_store_result(sqlsocket, config) && sql_num_fields(sqlsocket, config))
+	if ((sql_store_result(sqlsocket, config) == 0) && sql_num_fields(sqlsocket, config))
 		return 0;
 	else
 		return -1;
@@ -205,11 +208,10 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	}
 
 	pg_sock->cur_row = 0;
-	sql_free_result(pg_sock,config);
-	pg_sock->result = PQgetResult(pg_sock->conn);
+	sql_free_result(sqlsocket, config);
+	while ( (pg_sock->result = PQgetResult(pg_sock->conn)) == NULL );
 	status=PQresultStatus(pg_sock->result);
 	
-
 	if ((status!=PGRES_COMMAND_OK) && (status!=PGRES_TUPLES_OK)) {
 		radlog(L_ERR, "PostgreSQL Error: Cannot get result");
 		radlog(L_ERR, "PostgreSQL Error: %s", PQerrorMessage(pg_sock->conn));
