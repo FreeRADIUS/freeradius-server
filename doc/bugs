@@ -1,7 +1,6 @@
 
 ( The FreeRADIUS web site is at <URL: http://www.freeradius.org/>, and
-most information referenced in this document can be found there.  A web
-interface to the BTS can be found at <URL: http://bugs.freeradius.org/>.)
+most information referenced in this document can be found there.
 
 This is primarily for non-developers of the FreeRADIUS server.  If you are
 able to patch the code to work correctly, then we invite you to join the 
@@ -43,46 +42,7 @@ program you were running, and the name of the operating system.
 Without this information, it's impossible for anyone to know why the
 program core dumped.
 
-
-= Filing a bug report
-
-If you see something that's obviously a bug, and the developers agree,
-then you should keep 'em from forgetting about it by filing a bug report.
-Using the bug-tracking system (often called 'BTS') is rather easy, once
-one understands how it works.
-
-Since few (if any!) of the developers have ever met each other in real
-life, it's sensible to use the only communication method everyone is
-accustomed to; the BTS uses email messages to do _everything_.
-
-Don't send HTML or any attachments, please.  If you don't know what this
-means, and you're using some mailer like Netscape Communicator or
-Microsoft Outlook, please ask someone first.  No HTML.  No Rich-text.  No
-GPG/PGP signed messages.  No vcards.   ** Plain text only! **
-
-To submit a bug report, you should mail 'submit@bugs.freeradius.org' with
-a well-defined structure in the body:  First a header, then a description.
-
-The first non-empty line in the body of the message should describe what
-part of the project needs help, using the "Package: " line.  What follows
-"Package: " should be nothing but one of the following words:
-  core             -- the main server
-  rlm              -- about modules
-  documentation
-  bts              -- bug-tracking problem, suggestions
-  website
-
-After that, you should put a few empty lines, and then describe what the
-problem is and how you think it could best be fixed.  Include exact error
-messages, and don't assume the developers know _anything_ about what OS or
-environment you're using.
-
-Mailing 'submit' is ONLY for submission of NEW reports.  If you have
-follow-up information and you know the bug number, mail
-BUGNUMBER@bugs.freeradius.org (replacing BUGNUMBER with the actual bug
-number, of course).
-
 --
 
-Chad Miller, FreeRADIUS Project, copyright 2001
-$Revision$
+FreeRADIUS Project, copyright 2001
+$Id$
