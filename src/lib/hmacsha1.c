@@ -67,7 +67,7 @@ lrad_hmac_sha1(const unsigned char *text, int text_len,
 				j=0;
 			}
 			j++;
-			
+
 			printf("%02x", key[i]);
 		}
 		printf("\nDATA: (%d)    ",text_len);
@@ -78,14 +78,14 @@ lrad_hmac_sha1(const unsigned char *text, int text_len,
 		    printf("\n            ");
 		    k=0;
 		    j=0;
-		  } 
+		  }
 		  if(j==4) {
 		    printf("_");
 		    j=0;
 		  }
 		  k++;
 		  j++;
-		  
+
 		  printf("%02x", text[i]);
 		}
 		printf("\n");
@@ -147,7 +147,7 @@ lrad_hmac_sha1(const unsigned char *text, int text_len,
 				j=0;
 			}
 			j++;
-			
+
 			printf("%02x", digest[i]);
 		}
 		printf("\n");
@@ -161,7 +161,7 @@ Test Vectors (Trailing '\0' of a character string not included in test):
   key =         "Jefe"
   data =        "what do ya want for nothing?"
   data_len =    28 bytes
-  digest =      
+  digest =
 
   key =         0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
     printf("%02x", digest[i]);
   }
   printf("\n");
-  
+
   exit(0);
   return 0;
 }

@@ -147,7 +147,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 			if (((dattr = dict_attrbyname(newattr)) != NULL) &&
 			    (dattr->type == PW_TYPE_STRING)) {
 				VALUE_PAIR *newvp;
-				
+
 				/*
 				 *  Make a new attribute.
 				 */
@@ -185,7 +185,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	 */
 	request_pairs = request->packet->vps;
 	namepair = pairfind(request_pairs, PW_USER_NAME);
-	if ((namepair == NULL) || 
+	if ((namepair == NULL) ||
 	    (namepair->length <= 0)) {
 	  return;
 	}
@@ -323,8 +323,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	if (hints == NULL || request_pairs == NULL)
 		return RLM_MODULE_NOOP;
 
-	/* 
-	 *	Check for valid input, zero length names not permitted 
+	/*
+	 *	Check for valid input, zero length names not permitted
 	 */
 	if ((tmp = pairfind(request_pairs, PW_USER_NAME)) == NULL)
 		name = NULL;
@@ -440,7 +440,7 @@ static int huntgroup_access(PAIR_LIST *huntgroups, VALUE_PAIR *request_pairs)
 					radlog(L_ERR, "No memory");
 					exit(1);
 				}
-				
+
 				strNcpy(vp->strvalue, i->name,
 					sizeof(vp->strvalue));
 				vp->length = strlen(vp->strvalue);

@@ -73,7 +73,7 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 EAP_DS *eap_ds_alloc(void)
 {
 	EAP_DS	*eap_ds;
-        
+
 	eap_ds = rad_malloc(sizeof(EAP_DS));
 	memset(eap_ds, 0, sizeof(EAP_DS));
 	if ((eap_ds->response = eap_packet_alloc()) == NULL) {
@@ -110,7 +110,7 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 EAP_HANDLER *eap_handler_alloc(void)
 {
 	EAP_HANDLER	*handler;
-        
+
 	handler = rad_malloc(sizeof(EAP_HANDLER));
 	memset(handler, 0, sizeof(EAP_HANDLER));
 	return handler;
@@ -173,7 +173,7 @@ void eaplist_free(rlm_eap_t *inst)
 			eap_handler_free(&node);
 			node = next;
 		}
-		
+
 		inst->sessions[i] = NULL;
 	}
 }
@@ -198,7 +198,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 */
 	state = generate_state(handler->request->timestamp);
 	pairadd(&(handler->request->reply->vps), state);
-		
+
 	/*
 	 *	Create a unique 'key' for the handler, based
 	 *	on State, Client-IP-Address, and EAP ID.
@@ -226,7 +226,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	last = &(inst->sessions[state->strvalue[0]]);
 
 	while (*last) last = &((*last)->next);
-	
+
 	*last = handler;
 
 	/*
@@ -294,7 +294,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		next = node->next;
 
 		/*
-		 *	If the time on this entry has expired, 
+		 *	If the time on this entry has expired,
 		 *	delete it.  We do this while walking the list,
 		 *	in order to spread out the work of deleting old
 		 *	sessions.
@@ -330,7 +330,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 				node = NULL;
 				break;
 			}
-			
+
 			DEBUG2("  rlm_eap: Request found, released from the list");
 			/*
 			 *	detach the node from the list

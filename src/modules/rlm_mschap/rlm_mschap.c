@@ -1,5 +1,5 @@
 /*
- * rlm_mschap.c	
+ * rlm_mschap.c
  *
  * Version:	$Id$
  *
@@ -39,7 +39,7 @@
  *  aka
  *  ZARAZA		3APA3A@security.nnov.ru
  */
- 
+
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 
 #include	"autoconf.h"
@@ -69,7 +69,7 @@ static int hex2bin (const char *szHex, unsigned char* szBin, int len)
 {
 	char * c1, * c2;
 	int i;
-   
+
    	for (i = 0; i < len; i++) {
 		if( !(c1 = memchr(letters, toupper((int) szHex[i << 1]), 16)) ||
 		    !(c2 = memchr(letters, toupper((int) szHex[(i << 1) + 1]), 16)))
@@ -82,7 +82,7 @@ static int hex2bin (const char *szHex, unsigned char* szBin, int len)
 /*
  *	bin2hex creates hexadecimal presentation
  *	of binary data
- */ 
+ */
 static void bin2hex (const unsigned char *szBin, char *szHex, int len)
 {
 	int i;
@@ -125,7 +125,7 @@ static int pdb_decode_acct_ctrl(const char *p)
 			  break;
 
 			case 'D':  /* 'D'isabled. */
-			  acct_ctrl |= ACB_DISABLED ; 
+			  acct_ctrl |= ACB_DISABLED ;
 			  break;
 
 			case 'H':  /* 'H'omedir required. */
@@ -169,7 +169,7 @@ static int pdb_decode_acct_ctrl(const char *p)
 
 			case ':':
 			case '\n':
-			case '\0': 
+			case '\0':
 			case ']':
 			default:
 			  finished = 1;
@@ -217,7 +217,7 @@ static void challenge_hash( const char *peer_challenge,
 {
 	SHA1_CTX Context;
 	char hash[20];
-	
+
 	SHA1Init(&Context);
 	SHA1Update(&Context, peer_challenge, 16);
 	SHA1Update(&Context, auth_challenge, 16);
@@ -231,7 +231,7 @@ static void mschap2(const char *peer_challenge, const char *auth_challenge,
 		    char *response)
 {
 	char challenge[8];
-	
+
 	challenge_hash(peer_challenge, auth_challenge, user_name,
 		       challenge);
 
@@ -255,7 +255,7 @@ static void auth_response(const char *username, const char *nt_password,
 	 0x65, 0x72, 0x20, 0x74, 0x6F, 0x20, 0x63, 0x6C, 0x69, 0x65,
 	 0x6E, 0x74, 0x20, 0x73, 0x69, 0x67, 0x6E, 0x69, 0x6E, 0x67,
 	 0x20, 0x63, 0x6F, 0x6E, 0x73, 0x74, 0x61, 0x6E, 0x74};
-                                             
+
 	const char magic2[41] =
 	{0x50, 0x61, 0x64, 0x20, 0x74, 0x6F, 0x20, 0x6D, 0x61, 0x6B,
 	 0x65, 0x20, 0x69, 0x74, 0x20, 0x64, 0x6F, 0x20, 0x6D, 0x6F,
@@ -321,7 +321,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(struct mschap_instance, passwd_file), NULL,  NULL },
 	{ "authtype",   PW_TYPE_STRING_PTR,
 	  offsetof(struct mschap_instance, auth_type), NULL,  NULL },
-	
+
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -337,7 +337,7 @@ static int mschap_detach(void *instance){
 	return 0;
 #undef inst
 }
-	
+
 /*
  *	Create instance for our module. Allocate space for
  *	instance structure and read configuration parameters
@@ -546,7 +546,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	if (!challenge) {
 		return RLM_MODULE_NOOP;
 	}
-		
+
 	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE);
 	if (!response)
 		response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE);
@@ -589,7 +589,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
  *	or in configured passwd file.
  *	If one is found we will check paraneters given by NAS.
  *
- *	If PW_SMB_ACCOUNT_CTRL is not set to ACB_PWNOTREQ we must have 
+ *	If PW_SMB_ACCOUNT_CTRL is not set to ACB_PWNOTREQ we must have
  *	one of:
  *		PAP:      PW_PASSWORD or
  *		MS-CHAP:  PW_MSCHAP_CHALLENGE and PW_MSCHAP_RESPONSE or
@@ -613,7 +613,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
         uint8_t mppe_recvkey[34];
 	char *username_string;
 	int chap = 0;
-	
+
 	/*
 	 *	Find the SMB-Account-Ctrl attribute, or the
 	 *	SMB-Account-Ctrl-Text attribute.
@@ -720,7 +720,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		DEBUG2("  rlm_mschap: No LM-Password or NT-Password attribute found.  Cannot perform MS-CHAP authentication.");
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	/*
 	 *	We MAY be asked to take a User-Password attribute from
 	 *	the packet, and compare it to passwords retrieved from
@@ -774,7 +774,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog(L_AUTH, "rlm_mschap: MS-CHAP-Challenge has the wrong format.");
 			return RLM_MODULE_INVALID;
 		}
-	
+
 		/*
 		 *	Responses are 50 octets.
 		 */
@@ -782,7 +782,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog(L_AUTH, "rlm_mschap: MS-CHAP-Response has the wrong format.");
 			return RLM_MODULE_INVALID;
 		}
-	    
+
 		/*
 		 *	We are doing MS-CHAP.  Calculate the MS-CHAP
 		 *	response
@@ -804,7 +804,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			DEBUG2("  rlm_mschap: FAILED: No NT/LM-Password");
 			return RLM_MODULE_REJECT;
 		}
-		
+
 		/*
 		 *	Calculate the expected response.
 		 */
@@ -826,7 +826,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog(L_AUTH, "rlm_mschap: MS-CHAP-Challenge has the wrong format.");
 			return RLM_MODULE_INVALID;
 		}
-	
+
 		/*
 		 *	Responses are 50 octets.
 		 */
@@ -858,7 +858,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		} else {
 		        username_string = username->strvalue;
 		}
-	    
+
 		/*
 		 *	We are doing MS-CHAPv2
 		 *	We need NT hash for it to calculate response
@@ -887,7 +887,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		add_reply( &request->reply->vps, *response->strvalue,
 			   "MS-CHAP2-Success", msch2resp, 42);
 		chap = 2;
-		
+
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
 		radlog(L_AUTH, "rlm_mschap: No MS-CHAP response found");
 		return RLM_MODULE_INVALID;
@@ -934,7 +934,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			}
 
 			if (nt_password) {
-				/* 
+				/*
 				 *	According to RFC 2548 we
 				 *	should send NT hash.  But in
 				 *	practice it doesn't work.
@@ -955,14 +955,14 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					       nt_password->strvalue,
 					       response->strvalue + 26,
 					       mppe_sendkey, mppe_recvkey);
-			
+
 			mppe_add_reply(&request->reply->vps,
 				       "MS-MPPE-Recv-Key",
 				       mppe_recvkey, 16);
 			mppe_add_reply(&request->reply->vps,
 				       "MS-MPPE-Send-Key",
 				       mppe_sendkey, 16);
-			
+
 		}
 		reply_attr = pairmake("MS-MPPE-Encryption-Policy",
 				      (inst->require_encryption)? "0x00000002":"0x00000001",
@@ -974,7 +974,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				      T_OP_EQ);
 		rad_assert(reply_attr != NULL);
 		pairadd(&request->reply->vps, reply_attr);
-		
+
 	} /* else we weren't asked to use MPPE */
 
 	return RLM_MODULE_OK;

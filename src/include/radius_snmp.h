@@ -96,7 +96,7 @@ extern rad_snmp_t	rad_snmp;
 
 
 #else
-#define  RAD_SNMP_INC(_x) 
+#define  RAD_SNMP_INC(_x)
 #define RAD_SNMP_FD_INC(_fd, _x)
 
 #endif /* WITH_SNMP */

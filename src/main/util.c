@@ -71,7 +71,7 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
 		return SIG_ERR;
 	return oact.sa_handler;
 #else
-	
+
 	/*
 	 *	re-set by calling the 'signal' function, which
 	 *	may cause infinite recursion and core dumps due to
@@ -89,7 +89,7 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  */
 struct request_data_t {
 	request_data_t	*next;
-	
+
 	void		*unique_ptr;
 	int		unique_int;
 	void		*opaque;
@@ -188,20 +188,20 @@ void request_free(REQUEST **request_ptr)
 	 *	blow up!
 	 */
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-	
-	if (request->packet) 
+
+	if (request->packet)
 		rad_free(&request->packet);
 
-	if (request->proxy) 
+	if (request->proxy)
 		rad_free(&request->proxy);
 
-	if (request->reply) 
+	if (request->reply)
 		rad_free(&request->reply);
 
-	if (request->proxy_reply) 
+	if (request->proxy_reply)
 		rad_free(&request->proxy_reply);
 
-	if (request->config_items) 
+	if (request->config_items)
 		pairfree(&request->config_items);
 
 	request->username = NULL;
@@ -306,7 +306,7 @@ int rad_mkdir(char *directory, int mode)
 void *rad_malloc(size_t size)
 {
 	void *ptr = malloc(size);
-	
+
 	if (ptr == NULL) {
 		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
@@ -428,7 +428,7 @@ void rfc_clean(RADIUS_PACKET *packet)
 		vps = packet->vps;
 		packet->vps = NULL;
 		break;
-		
+
 		/*
 		 *	Accounting responses can only contain
 		 *	Proxy-State and VSA's.  Note that we do NOT
@@ -485,7 +485,7 @@ void rfc_clean(RADIUS_PACKET *packet)
 	if (request->options & RAD_REQUEST_OPTION_REJECTED) {
 		return;
 	}
-	
+
 	DEBUG2("Server rejecting request %d.", request->number);
 	switch (request->packet->code) {
 		/*
@@ -502,7 +502,7 @@ void rfc_clean(RADIUS_PACKET *packet)
 		 *  reject message sent.
 		 */
 		case PW_AUTHENTICATION_REQUEST:
-			request->reply->code = PW_AUTHENTICATION_REJECT; 
+			request->reply->code = PW_AUTHENTICATION_REJECT;
 
 			/*
 			 *  Perform RFC limitations on outgoing replies.
@@ -517,7 +517,7 @@ void rfc_clean(RADIUS_PACKET *packet)
 				pairadd(&(request->reply->vps), vps);
 			break;
 	}
-	
+
 	/*
 	 *  If a reply exists, send it.
 	 */

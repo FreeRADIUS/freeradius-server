@@ -180,7 +180,7 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 
 	/*
 	 *	Process the packet.  We don't care about any previous
-	 *	EAP packets, as 
+	 *	EAP packets, as
 	 */
 	if (!reply) {
 		return 0;

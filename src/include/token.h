@@ -32,7 +32,7 @@ typedef enum lrad_token_t {
   T_RBRACE,			/* ) */
   T_COMMA,			/* , */
   T_SEMICOLON,			/* ; */
-  
+
   T_OP_ADD,			/* += */
   T_OP_SUB,			/* -= */
   T_OP_SET,			/* := */

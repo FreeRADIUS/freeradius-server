@@ -44,7 +44,7 @@ int lrad_crypt_check(const char *key, const char *crypted)
 {
 	char *passwd;
 	int cmp = 0;
-	
+
 #ifdef HAVE_PTHREAD_H
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
@@ -53,10 +53,10 @@ int lrad_crypt_check(const char *key, const char *crypted)
 		pthread_mutex_init(&lrad_crypt_mutex, NULL);
 		lrad_crypt_init = 1;
 	}
-	
+
 	pthread_mutex_lock(&lrad_crypt_mutex);
 #endif
-	
+
 	passwd = crypt(key, crypted);
 
 	/*
@@ -67,11 +67,11 @@ int lrad_crypt_check(const char *key, const char *crypted)
 	if (passwd) {
 		cmp = strcmp(crypted, passwd);
 	}
-	
+
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_unlock(&lrad_crypt_mutex);
 #endif
-	
+
 	/*
 	 *	Error.
 	 */

@@ -1,5 +1,5 @@
 /*
- * rlm_radutmp.c	
+ * rlm_radutmp.c
  *
  * Version:	$Id$
  *
@@ -143,7 +143,7 @@ static int radutmp_zap(rlm_radutmp_t *inst,
 	 *	Lock the utmp file, prefer lockf() over flock().
 	 */
 	rad_lockfd(fd, LOCK_LEN);
-	
+
 	/*
 	 *	Find the entry for this NAS / portno combination.
 	 */
@@ -441,7 +441,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	Lock the utmp file, prefer lockf() over flock().
 	 */
 	rad_lockfd(fd, LOCK_LEN);
-	
+
 	/*
 	 *	Find the entry for this NAS / portno combination.
 	 */
@@ -449,7 +449,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				   ut.nas_port)) != NULL) {
 		lseek(fd, (off_t)cache->offset, SEEK_SET);
 	}
-	
+
 	r = 0;
 	off = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
@@ -457,7 +457,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		if (u.nas_address != ut.nas_address ||
 		    u.nas_port	  != ut.nas_port)
 			continue;
-		
+
 		/*
 		 *	Don't compare stop records to unused entries.
 		 */
@@ -480,7 +480,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			r = -1;
 			break;
 		}
-		
+
 		if (status == PW_STATUS_START &&
 		    strncmp(ut.session_id, u.session_id,
 			    sizeof(u.session_id)) == 0  &&
@@ -496,7 +496,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			r = -1;
 			break;
 		}
-		
+
 		/*
 		 *	FIXME: the ALIVE record could need
 		 *	some more checking, but anyway I'd
@@ -513,7 +513,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			if (u.login[0] != 0)
 				just_an_update = 1;
 		}
-		
+
 		if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
 			radlog(L_ERR, "rlm_radutmp: negative lseek!");
 			lseek(fd, (off_t)0, SEEK_SET);
@@ -542,11 +542,11 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			cache->next = inst->nas_port_list;
 			inst->nas_port_list = cache;
 		}
-		
+
 		ut.type = P_LOGIN;
 		write(fd, &ut, sizeof(u));
 	}
-	
+
 	/*
 	 *	The user has logged off, delete the entry by
 	 *	re-writing it in place.
@@ -655,7 +655,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
 		ipno = vp->lvalue;
 	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
-		call_num = vp->strvalue;	
+		call_num = vp->strvalue;
 
 	/*
 	 *	lock the file while reading/writing.
@@ -706,7 +706,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 			rcode = rad_check_ts(u.nas_address, u.nas_port,
 					     utmp_login, session_id);
 			rad_lockfd(fd, LOCK_LEN);
-			
+
 			/*
 			 *	Failed to check the terminal server for
 			 *	duplicate logins: Return an error.

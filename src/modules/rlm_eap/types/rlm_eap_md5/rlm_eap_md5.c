@@ -96,7 +96,7 @@ static int md5_initiate(void *type_data, EAP_HANDLER *handler)
 	 *	to us...
 	 */
 	handler->stage = AUTHENTICATE;
-	
+
 	return 1;
 }
 

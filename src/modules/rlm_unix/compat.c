@@ -21,7 +21,7 @@
  *   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  * Copyright 2001  The FreeRADIUS server project.
- */    
+ */
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
@@ -92,7 +92,7 @@ struct passwd *rad_fgetpwent(FILE *pwhandle) {
 	ptr = buffer;
 	RAD_EXTRACT_FIELD("Username", username);
 	pwbuf.pw_name = username;
-	
+
 	/* Get (encrypted) password from password file (shadow comes later) */
 	if (*ptr != '\0') ptr++;
 	RAD_EXTRACT_FIELD("Password", userpwd);
@@ -102,12 +102,12 @@ struct passwd *rad_fgetpwent(FILE *pwhandle) {
 	if (*ptr != '\0') ptr++;
 	RAD_EXTRACT_FIELD("UID", uidtmp);
 	pwbuf.pw_uid = atoi(uidtmp);
-	
+
 	/* Get gid from the password file */
 	if (*ptr != '\0') ptr++;
 	RAD_EXTRACT_FIELD("GID", gidtmp);
 	pwbuf.pw_gid = atoi(gidtmp);
-	
+
 	/* Get the GECOS (name) field from the password file */
 	if (*ptr != '\0') ptr++;
 	RAD_EXTRACT_FIELD("GECOS", gecostmp);
@@ -176,7 +176,7 @@ shadow_pwd_t *rad_fgetspent(FILE *sphandle) {
 	ptr = buffer;
 	RAD_EXTRACT_FIELD("Username", username);
 	GET_SP_NAME(&spbuf) = username;
-	
+
 	/* Get (encrypted) passwords from the shadow file */
 	if (*ptr != '\0') ptr++;
 	RAD_EXTRACT_FIELD("Password", userpwd);

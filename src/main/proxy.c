@@ -121,7 +121,7 @@ static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 {
 	REALM		*cl, *lb;
 	uint32_t	count;
-	
+
 	lb = NULL;
 	count = 0;
 	for (cl = mainconfig.realms; cl; cl = cl->next) {
@@ -279,20 +279,20 @@ int proxy_send(REQUEST *request)
 	 */
 	pairadd(&request->packet->vps,
 		pairmake("Realm", realm->realm, T_OP_EQ));
-	
+
 	/*
 	 *	Access-Request: look for LOCAL realm.
 	 *	Accounting-Request: look for LOCAL realm.
 	 */
 	if (((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
 	     (realm->ipaddr == htonl(INADDR_NONE))) ||
-	    ((request->packet->code == PW_ACCOUNTING_REQUEST) &&	    
+	    ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
 	     (realm->acct_ipaddr == htonl(INADDR_NONE)))) {
 		DEBUG2(" WARNING: Cancelling proxy to Realm %s, as the realm is local.",
 		       realm->realm);
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	/*
 	 *	Allocate the proxy packet, only if it wasn't already
 	 *	allocated by a module.  This check is mainly to support
@@ -345,7 +345,7 @@ int proxy_send(REQUEST *request)
 		vps = paircopy(request->packet->vps);
 		namepair = pairfind(vps, PW_USER_NAME);
 		strippednamepair = pairfind(vps, PW_STRIPPED_USER_NAME);
-		
+
 		/*
 		 *	If there's a Stripped-User-Name attribute in
 		 *	the request, then use THAT as the User-Name
@@ -404,7 +404,7 @@ int proxy_send(REQUEST *request)
 	 *	Proxied requests get sent out the proxy FD ONLY.
 	 */
 	request->proxy->sockfd = proxyfd;
-	
+
 	request->proxy->code = request->packet->code;
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->proxy->dst_port = realm->auth_port;

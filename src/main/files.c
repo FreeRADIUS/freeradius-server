@@ -89,7 +89,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	 *	more useful...
 	 */
 	if ((fp = fopen(file, "r")) == NULL) {
-		if (!complain) 
+		if (!complain)
 			return -1;
 		radlog(L_CONS|L_ERR, "Couldn't open %s for reading: %s",
 				file, strerror(errno));
@@ -186,7 +186,7 @@ parse_again:
 				 *	of entries.  Go to the end of the
 				 *	list.
 				 */
-				while (*last) 
+				while (*last)
 					last = &((*last)->next);
 				continue;
 			}
@@ -513,7 +513,7 @@ REALM *realm_find(const char *realm, int accounting)
 	if (realm == NULL) {
 		realm = "NULL";
 	}
-	
+
 	for (cl = mainconfig.realms; cl; cl = cl->next) {
 		/*
 		 *	Wake up any sleeping realm.
@@ -595,7 +595,7 @@ REALM *realm_find(const char *realm, int accounting)
 		}
 	}
 
-	/*      If we didn't find the realm 'NULL' don't return the 
+	/*      If we didn't find the realm 'NULL' don't return the
 	 *      DEFAULT entry.
 	 */
 	if ((strcmp(realm, "NULL")) == 0) {
@@ -620,7 +620,7 @@ REALM *realm_find(const char *realm, int accounting)
 REALM *realm_findbyaddr(uint32_t ipaddr, int port)
 {
 	REALM *cl;
-	
+
 	/*
 	 *	Note that we do NOT check for inactive realms!
 	 *

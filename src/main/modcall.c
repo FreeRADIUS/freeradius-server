@@ -180,7 +180,7 @@ static const char *comp2str[] = {
  */
 static void safe_lock(module_instance_t *instance)
 {
-	if (instance->mutex) 
+	if (instance->mutex)
 		pthread_mutex_lock(instance->mutex);
 }
 
@@ -189,7 +189,7 @@ static void safe_lock(module_instance_t *instance)
  */
 static void safe_unlock(module_instance_t *instance)
 {
-	if (instance->mutex) 
+	if (instance->mutex)
 		pthread_mutex_unlock(instance->mutex);
 }
 #else
@@ -206,14 +206,14 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 	int myresult = default_result;
 
 	DEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
-	       comp2str[component], sp->modinst->name, 
+	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 	safe_lock(sp->modinst);
 	myresult = sp->modinst->entry->module->methods[component](
 			sp->modinst->insthandle, request);
 	safe_unlock(sp->modinst);
 	DEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
-	       comp2str[component], sp->modinst->name, 
+	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 
 	return myresult;

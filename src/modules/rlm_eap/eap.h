@@ -48,8 +48,8 @@
  * response = Received EAP packet
  * request = Sending EAP packet
  *
- * Note: We are authentication server, 
- *  we get ONLY EAP-Responses and 
+ * Note: We are authentication server,
+ *  we get ONLY EAP-Responses and
  *  we send EAP-Request/EAP-success/EAP-failure
  */
 typedef struct eap_ds {
@@ -60,7 +60,7 @@ typedef struct eap_ds {
 
 /*
  * Currently there are only 2 types
- * of operations defined, 
+ * of operations defined,
  * apart from attach & detach for each EAP-Type.
  */
 typedef enum operation_t {
@@ -75,7 +75,7 @@ typedef enum operation_t {
  * Each handler contains information for one specific EAP-Type.
  * This way we don't need to change any interfaces in future.
  * It is also a list of EAP-request handlers waiting for EAP-response
- * eap_id = copy of the eap packet we sent to the 
+ * eap_id = copy of the eap packet we sent to the
  *
  * next = pointer to next
  * state = state attribute from the reply we sent
@@ -90,9 +90,9 @@ typedef enum operation_t {
  * eap_ds   = Current EAP response.
  * opaque   = EAP-Type holds some data that corresponds to the current
  *		EAP-request/response
- * free_opaque = To release memory held by opaque, 
+ * free_opaque = To release memory held by opaque,
  * 		when this handler is timedout & needs to be deleted.
- * 		It is the responsibility of the specific EAP-TYPE 
+ * 		It is the responsibility of the specific EAP-TYPE
  * 		to avoid any memory leaks in opaque
  *		Hence this pointer should be provided by the EAP-Type
  *		if opaque is not NULL
@@ -124,7 +124,7 @@ typedef struct _eap_handler {
 	int		stage;
 } EAP_HANDLER;
 
-/* 
+/*
  * Interface to call EAP sub mdoules
  */
 typedef struct eap_type_t {

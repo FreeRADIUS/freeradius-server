@@ -155,7 +155,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	we prolly must create it the dir(s)
 	 */
 	if ((p) && (stat(buffer, &st) < 0)) {
-		*p = '\0';	
+		*p = '\0';
 		/*
 		 *	NO previously cached directory name, so we've
 		 *	got to create a new one.
@@ -167,8 +167,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 *	so we've got to create a new one.
 		 */
 		if ((inst->last_made_directory == NULL) ||
-		    (strcmp(inst->last_made_directory, buffer) != 0)) { 
-			
+		    (strcmp(inst->last_made_directory, buffer) != 0)) {
+
 			/*
 			 *	Free any previously cached name.
 			 */
@@ -176,7 +176,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 				free((char *) inst->last_made_directory);
 				inst->last_made_directory = NULL;
 			}
-			
+
 			/*
 			 *	Go create possibly multiple directories.
 			 */
@@ -186,8 +186,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			}
 			inst->last_made_directory = strdup(buffer);
 		}
-		
-		*p = '/';	
+
+		*p = '/';
 	} /* else there was no directory delimiter. */
 
 	/*
@@ -270,7 +270,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 */
 	fseek(outfp, 0L, SEEK_END);
 	fputs(CTIME_R(&request->timestamp, buffer, DIRLEN), outfp);
-	
+
 	/* Write each attribute/value to the log file */
 	while (pair) {
 		/*
@@ -314,7 +314,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		else if (request->packet->verified == 1)
 			fputs("\tRequest-Authenticator = None\n", outfp);
 	}
-	
+
 	fputs("\n", outfp);
 
 	if (inst->locking) {
@@ -323,7 +323,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		rad_unlockfd(outfd, 0);
 		DEBUG("rlm_detail: Released filelock");
 	}
-	
+
 	fclose(outfp);
 
 	/*

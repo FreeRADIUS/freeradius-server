@@ -179,7 +179,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	case EAPTLS_SUCCESS:
 		{
 			eap_packet_t eap_packet;
-			
+
 			eap_packet.code = PW_EAP_REQUEST;
 			eap_packet.id = handler->eap_ds->response->id + 1;
 			eap_packet.length[0] = 0;
@@ -188,7 +188,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 
 			record_plus(&tls_session->clean_in,
 				    &eap_packet, sizeof(eap_packet));
-			
+
 			tls_handshake_send(tls_session);
 			record_init(&tls_session->clean_in);
 		}
@@ -235,7 +235,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		tls_session->opaque = peap_alloc(inst);
 		tls_session->free_opaque = peap_free;
 	}
-	
+
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
@@ -244,14 +244,14 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	case RLM_MODULE_REJECT:
 		eaptls_fail(handler->eap_ds, 0);
 		return 0;
-	  
+
 	case RLM_MODULE_HANDLED:
 		eaptls_request(handler->eap_ds, tls_session);
 		return 1;
 
 	case RLM_MODULE_OK:
 		eaptls_success(handler->eap_ds, 0);
-		eaptls_gen_mppe_keys(&handler->request->reply->vps, 
+		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
 				     "client EAP encryption");
 		return 1;

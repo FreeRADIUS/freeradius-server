@@ -35,7 +35,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
 	{ "ignore_unknown_eap_types", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_t, ignore_unknown_eap_types), NULL, "no" },
-	
+
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
@@ -83,7 +83,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	int		num_types;
 	CONF_SECTION 	*scs;
 	rlm_eap_t	*inst;
-	
+
 	inst = (rlm_eap_t *) malloc(sizeof(*inst));
 	if (!inst) {
 		return -1;
@@ -174,7 +174,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	pthread_mutex_init(&(inst->session_mutex), NULL);
 	pthread_mutex_init(&(inst->module_mutex), NULL);
 #endif
-	
+
 	*instance = inst;
 	return 0;
 }
@@ -397,7 +397,7 @@ static int eap_authorize(void *instance, REQUEST *request)
 	rlm_eap_t	*inst;
 	int		status;
 	VALUE_PAIR	*vp;
-	
+
 	inst = (rlm_eap_t *)instance;
 
 	/*
@@ -429,7 +429,7 @@ static int eap_authorize(void *instance, REQUEST *request)
 	default:
 		break;
 	}
-	
+
 	/*
 	 *	RFC 2869, Section 2.3.1.  If a NAS sends an EAP-Identity,
 	 *	it MUST copy the identity into the User-Name attribute.
@@ -492,13 +492,13 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 			eap_handler_free(&handler);
 			return RLM_MODULE_REJECT;
 		}
-		
+
 		/*
 		 *	We are done, wrap the EAP-request in RADIUS to send
 		 *	with all other required radius attributes
 		 */
 		rcode = eap_compose(handler);
-		
+
 		/*
 		 *	Add to the list only if it is EAP-Request, OR if
 		 *	it's LEAP, and a response.
@@ -512,7 +512,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 			/* handler is not required any more, free it now */
 			eap_handler_free(&handler);
 		}
-		
+
 		/*
 		 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
 		 *	says that we MUST include a User-Name attribute in the
@@ -531,7 +531,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 				pairadd(&(request->reply->vps), vp);
 			}
 		}
-		
+
 		return RLM_MODULE_OK;
 	}
 
@@ -553,7 +553,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		if (!vp) {
 			return RLM_MODULE_NOOP;
 		}
-		
+
 		/*
 		 *	If it's "leap:session-key", then stop.
 		 *

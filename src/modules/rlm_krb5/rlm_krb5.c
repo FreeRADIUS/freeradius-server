@@ -272,7 +272,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 	 *	Actually perform the authentication
 	 */
 	memset((char *)&kcreds, 0, sizeof(kcreds));
-	
+
 	if ( (r = krb5_parse_name(context, user, &kcreds.client)) ) {
 		radlog(L_AUTH, "rlm_krb5: [%s] krb5_parse_name failed: %s",
 		       user, error_message(r));
@@ -316,7 +316,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 		krb5_cc_destroy(context, ccache);
 		return r;
 	}
-	
+
 	return RLM_MODULE_REJECT;
 }
 
@@ -380,7 +380,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 	       userP->realm);
 
 	krb5_cc_default(context, &id);
-	
+
 	ret = krb5_verify_user(context,
 			       userP,
 			       id,

@@ -38,7 +38,7 @@ typedef struct rlm_sql_iodbc_sock {
 	HSTMT   stmt_handle;
 	int		id;
 	SQL_ROW row;
-	
+
 	struct sql_socket *next;
 
 	void	*conn;
@@ -68,21 +68,21 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	memset(iodbc_sock, 0, sizeof(*iodbc_sock));
 
 	if(SQLAllocEnv(&iodbc_sock->env_handle) != SQL_SUCCESS) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s", 
+		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
 
 	if(SQLAllocConnect(iodbc_sock->env_handle, &iodbc_sock->dbc_handle) != SQL_SUCCESS) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocConnect failed:  %s", 
+		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocConnect failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
 
-	if (SQLConnect(iodbc_sock->dbc_handle, config->sql_db, SQL_NTS, 
-				config->sql_login, SQL_NTS, config->sql_password, 
+	if (SQLConnect(iodbc_sock->dbc_handle, config->sql_db, SQL_NTS,
+				config->sql_login, SQL_NTS, config->sql_password,
 				SQL_NTS) != SQL_SUCCESS) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: SQLConnectfailed:  %s", 
+		radlog(L_CONS|L_ERR, "sql_create_socket: SQLConnectfailed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
@@ -117,7 +117,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
 
 	if(SQLAllocStmt(iodbc_sock->dbc_handle, &iodbc_sock->stmt_handle) != SQL_SUCCESS) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocStmt failed:  %s", 
+		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocStmt failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
@@ -155,13 +155,13 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
 
 	if(sql_query(sqlsocket, config, querystr) < 0) {
-		return -1;	
+		return -1;
 	}
 
 	numfields = sql_num_fields(sqlsocket, config);
 
 	row = (char **) rad_malloc(sizeof(char *) * (numfields+1));
-	memset(row, 0, (sizeof(char *) * (numfields))); 
+	memset(row, 0, (sizeof(char *) * (numfields)));
 	row[numfields] = NULL;
 
 	for(i=1; i<=numfields; i++) {
@@ -169,8 +169,8 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 										NULL, 0, NULL, &len);
 		len++;
 
-		/* 
-		 * Allocate space for each column 
+		/*
+		 * Allocate space for each column
 		 */
 		row[i-1] = (SQLCHAR*)rad_malloc((int)len);
 
@@ -261,7 +261,7 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		return 0;
 	}
 	/* XXX Check rc for database down, if so, return SQL_DOWN */
-	
+
 	sqlsocket->row = iodbc_sock->row;
 	return 0;
 }
@@ -309,7 +309,7 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	static SQLCHAR error[256] = "";
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
 
-	SQLError(iodbc_sock->env_handle, iodbc_sock->dbc_handle, iodbc_sock->stmt_handle, 
+	SQLError(iodbc_sock->env_handle, iodbc_sock->dbc_handle, iodbc_sock->stmt_handle,
 		state, &errornum, error, 256, &length);
 	return error;
 }

@@ -1,5 +1,5 @@
 /*
- * rlm_python.c	
+ * rlm_python.c
  *
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -48,7 +48,7 @@ typedef struct rlm_python_t {
     /* Names of modules */
     char
         *mod_instantiate,
-        *mod_authorize, 
+        *mod_authorize,
 	*mod_authenticate,
 	*mod_preacct,
 	*mod_accounting,
@@ -57,7 +57,7 @@ typedef struct rlm_python_t {
 
     /* Names of functions */
         *func_instantiate,
-        *func_authorize, 
+        *func_authorize,
 	*func_authenticate,
 	*func_preacct,
 	*func_accounting,
@@ -190,7 +190,7 @@ static void python_error(void) {
     PyErr_Fetch(&pType, &pValue, &pTraceback);
     pStr1 = PyObject_Str(pType);
     pStr2 = PyObject_Str(pValue);
-    
+
     radlog(L_ERR, "%s: %s\n",
 	   PyString_AsString(pStr1), PyString_AsString(pStr2));
 }
@@ -205,23 +205,23 @@ static void add_vp_tuple(VALUE_PAIR **vpp, PyObject *pValue,
     if (pValue == Py_None) {
 	return;
     }
-    
+
     if (!PyTuple_Check(pValue)) {
 	radlog(L_ERR, "%s: non-tuple passed", function_name);
     }
 
     /* Get the tuple size. */
     outertuplesize = PyTuple_Size(pValue);
-    
+
     for (i = 0; i < outertuplesize; i++) {
 	PyObject *pTupleElement = PyTuple_GetItem(pValue, i);
-		    
+
 	if ((pTupleElement != NULL) &&
 	    (PyTuple_Check(pTupleElement))) {
 
 	    /* Check if it's a pair */
 	    int tuplesize;
-			
+
 	    if ((tuplesize = PyTuple_Size(pTupleElement)) != 2) {
 		radlog(L_ERR, "%s: tuple element %d is a tuple "
 		       " of size %d. must be 2\n", function_name,
@@ -229,7 +229,7 @@ static void add_vp_tuple(VALUE_PAIR **vpp, PyObject *pValue,
 	    }
 	    else {
 		PyObject *pString1, *pString2;
-			    
+
 		pString1 = PyTuple_GetItem(pTupleElement, 0);
 		pString2 = PyTuple_GetItem(pTupleElement, 1);
 
@@ -241,7 +241,7 @@ static void add_vp_tuple(VALUE_PAIR **vpp, PyObject *pValue,
 
 
 		    const char *s1, *s2;
-				
+
 		    /* pairmake() will convert and find any
 		     * errors in the pair.
 		     */
@@ -301,7 +301,7 @@ static int python_function(REQUEST *request,
 
     PyObject *pValue, *pValuePairContainer, **pValueHolder, **pValueHolderPtr;
     int i, n_tuple, return_value;
-    
+
     /* Return with "OK, continue" if the function is not defined. */
     if (pFunc == NULL) {
 	return RLM_MODULE_OK;
@@ -309,8 +309,8 @@ static int python_function(REQUEST *request,
 
     /* Default return value is "OK, continue" */
     return_value = RLM_MODULE_OK;
-    
-    /* We will pass a tuple containing (name, value) tuples 
+
+    /* We will pass a tuple containing (name, value) tuples
      * We can safely use the Python function to build up a tuple,
      * since the tuple is not used elsewhere.
      *
@@ -324,7 +324,7 @@ static int python_function(REQUEST *request,
 	    n_tuple++;
 	}
     }
-	
+
     /* Create the tuple and a holder for the pointers, so that we can
      * decref more efficiently later without the overhead of reading
      * the tuple.
@@ -335,10 +335,10 @@ static int python_function(REQUEST *request,
 
     if (NULL == (pValueHolder = pValueHolderPtr =
 		 malloc(sizeof(PyObject *) * n_tuple))) {
-	    
+
 	radlog(L_ERR, "%s: malloc of %d bytes failed\n",
 	       function_name, sizeof(PyObject *) * n_tuple);
-	    
+
 	return -1;
     }
 
@@ -347,14 +347,14 @@ static int python_function(REQUEST *request,
     }
     else {
 	pValuePairContainer = PyTuple_New(n_tuple);
-    
+
 	i = 0;
 	for (vp = request->packet->vps; vp; vp = vp->next) {
 	    PyObject *pValuePair, *pString1, *pString2;
-	
+
 	    /* The inside tuple has two only: */
 	    pValuePair = PyTuple_New(2);
-	
+
 	    /* The name. logic from vp_prints, lib/print.c */
 	    if (vp->flags.has_tag) {
 		snprintf(buf, BUF_SIZE, "%s:%d", vp->name, vp->flags.tag);
@@ -362,31 +362,31 @@ static int python_function(REQUEST *request,
 	    else {
 		strcpy(buf, vp->name);
 	    }
-	
+
 	    pString1 = PyString_FromString(buf);
 	    PyTuple_SetItem(pValuePair, 0, pString1);
-	
-	
+
+
 	    /* The value. Use delimiter - don't know what that means */
 	    vp_prints_value(buf, sizeof(buf), vp, 1);
 	    pString2 = PyString_FromString(buf);
 	    PyTuple_SetItem(pValuePair, 1, pString2);
-	
+
 	    /* Put the tuple inside the container */
 	    PyTuple_SetItem(pValuePairContainer, i++, pValuePair);
-	
+
 	    /* Store the pointer in our malloc() storage */
 	    *pValueHolderPtr++ = pValuePair;
 	}
     }
 
-    
+
     /* Call Python function.
      */
-    
+
     if (pFunc && PyCallable_Check(pFunc)) {
 	PyObject *pArgs;
-	
+
 	/* call the function with a singleton tuple containing the
 	 * container tuple.
 	 */
@@ -399,13 +399,13 @@ static int python_function(REQUEST *request,
 	    radlog(L_ERR, "%s: could not set tuple item", function_name);
 	    return -1;
 	}
-	
+
 	if ((pValue = PyObject_CallObject(pFunc, pArgs)) == NULL) {
 	    radlog(L_ERR, "%s: function call failed", function_name);
 	    python_error();
 	    return -1;
 	}
-	
+
 	/* The function returns either:
 	 *  1. tuple containing the integer return value,
 	 *  then the integer reply code (or None to not set),
@@ -438,7 +438,7 @@ static int python_function(REQUEST *request,
 		else {
 		    /* Now have the return value */
 		    return_value = PyInt_AsLong(pTupleInt);
-		    
+
 		    /* Reply item tuple */
 		    add_vp_tuple(&request->reply->vps,
 				 PyTuple_GetItem(pValue, 1), function_name);
@@ -472,7 +472,7 @@ static int python_function(REQUEST *request,
     /* Decrease reference count for the tuples passed, the
      * container tuple, and the return value.
      */
-	    
+
     pValueHolderPtr = pValueHolder;
     i = n_tuple;
     while (i--) {
@@ -482,17 +482,17 @@ static int python_function(REQUEST *request,
     }
     free(pValueHolder);
     Py_DECREF(pValuePairContainer);
-    
+
     /* pDict and pFunc are borrowed and must not be Py_DECREF-ed */
 
     /* Free pairs if we are rejecting.
      * xxx Shouldn't the core do that?
      */
-    
+
     if ((return_value == RLM_MODULE_REJECT) && (request != NULL)) {
 	pairfree(&(request->reply->vps));
     }
-    
+
     /* Return the specified by the Python module */
     return return_value;
 }
@@ -533,7 +533,7 @@ static int load_python_function(const char* module, const char* func,
     } else {
 	PyObject *pName;
 
-	pName = PyString_FromString(module);	
+	pName = PyString_FromString(module);
 	Py_INCREF(pName);
 	*pyModule = PyImport_Import(pName);
 	Py_DECREF(pName);
@@ -591,12 +591,12 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	free(data);
 	return -1;
     }
-	
+
 
     /*
      * Setup our 'radiusd' module.
      */
-    
+
     /* Code */
     if ((module = data->pModule_builtin =
 	 Py_InitModule3("radiusd", radiusd_methods,
@@ -606,7 +606,7 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	free(data);
 	return -1;
     }
-    
+
     /*
      * Load constants into module
      */
@@ -672,7 +672,7 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 /* Wrapper functions */
 static int python_authorize(void *instance, REQUEST *request)
 {
-    return python_function(request, 
+    return python_function(request,
 			   ((struct rlm_python_t *)instance)->pFunc_authorize,
 			   "authorize");
 }
@@ -680,7 +680,7 @@ static int python_authorize(void *instance, REQUEST *request)
 static int python_authenticate(void *instance, REQUEST *request)
 {
     return python_function(
-	request, 
+	request,
 	((struct rlm_python_t *)instance)->pFunc_authenticate,
 	"authenticate");
 }
@@ -688,7 +688,7 @@ static int python_authenticate(void *instance, REQUEST *request)
 static int python_preacct(void *instance, REQUEST *request)
 {
     return python_function(
-	request, 
+	request,
 	((struct rlm_python_t *)instance)->pFunc_preacct,
 	"preacct");
 }
@@ -696,7 +696,7 @@ static int python_preacct(void *instance, REQUEST *request)
 static int python_accounting(void *instance, REQUEST *request)
 {
     return python_function(
-	request, 
+	request,
 	((struct rlm_python_t *)instance)->pFunc_accounting,
 	"accounting");
 }
@@ -704,7 +704,7 @@ static int python_accounting(void *instance, REQUEST *request)
 static int python_checksimul(void *instance, REQUEST *request)
 {
     return python_function(
-	request, 
+	request,
 	((struct rlm_python_t *)instance)->pFunc_checksimul,
 	"checksimul");
 }
@@ -713,21 +713,21 @@ static int python_checksimul(void *instance, REQUEST *request)
 static int python_detach(void *instance)
 {
     int return_value;
-    
+
     /* Default return value is failure */
     return_value = -1;
 
     if (((rlm_python_t *)instance)->pFunc_detach &&
 	PyCallable_Check(((rlm_python_t *)instance)->pFunc_detach)) {
-	
+
 	PyObject *pArgs, *pValue;
-	
+
 	/* call the function with an empty tuple */
 
 	pArgs = PyTuple_New(0);
 	pValue = PyObject_CallObject(((rlm_python_t *)instance)->pFunc_detach,
 				     pArgs);
-	
+
 	if (pValue == NULL) {
 	    python_error();
 	    return -1;
@@ -756,7 +756,7 @@ static int python_detach(void *instance)
 #endif
 
     radlog(L_DBG, "python_detach done");
-    
+
     /* Return the specified by the Python module */
     return return_value;
 }
@@ -771,7 +771,7 @@ static int python_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_python = {
-	"python",	
+	"python",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	python_init,			/* initialization */
 	python_instantiate,		/* instantiation */

@@ -57,7 +57,7 @@ int rad_accounting(REQUEST *request)
 		    reply != RLM_MODULE_OK &&
 		    reply != RLM_MODULE_UPDATED)
 			return reply;
-		
+
 		/*
 		 *	Do accounting, ONLY the first time through.
 		 *	This is to ensure that we log the packet
@@ -67,7 +67,7 @@ int rad_accounting(REQUEST *request)
 		if (vp)
 			acct_type = vp->lvalue;
 		reply = module_accounting(acct_type,request);
-		
+
 		/*
 		 *	See if we need to execute a program.
 		 *	FIXME: somehow cache this info, and only execute the
@@ -87,7 +87,7 @@ int rad_accounting(REQUEST *request)
 			exec_program = strdup((char *)vp->strvalue);
 			pairdelete(&request->reply->vps, PW_EXEC_PROGRAM_WAIT);
 		}
-		
+
 		/*
 		 *	If we want to exec a program, but wait for it,
 		 *	do it first before sending the reply, or
@@ -115,7 +115,7 @@ int rad_accounting(REQUEST *request)
 			 */
 			pairmove(&request->reply->vps, &vp);
 			pairfree(&vp);
-				
+
 			if (exec_wait) {
 				if (rcode != 0) {
 					return reply;

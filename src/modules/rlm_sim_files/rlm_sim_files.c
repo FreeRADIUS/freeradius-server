@@ -146,7 +146,7 @@ static int sim_file_authorize(void *instance, REQUEST *request)
 
 	imsicount = 0;
 	lineno = 0;
-	
+
 	while(fgets(tripbuf, sizeof(tripbuf), triplets) == tripbuf
 	      && imsicount < 3)
 	{
@@ -208,33 +208,33 @@ static int sim_file_authorize(void *instance, REQUEST *request)
 			/* complain about malformed line */
 			continue;
 		}
-		
-			
+
+
 		r = paircreate(ATTRIBUTE_EAP_SIM_RAND1 + imsicount, PW_TYPE_OCTETS);
 		r = pairparsevalue(r, chal);
 		pairadd(reply_pairs, r);
-		
+
 		k = paircreate(ATTRIBUTE_EAP_SIM_KC1 + imsicount, PW_TYPE_OCTETS);
 		k = pairparsevalue(k, kc);
 		rad_assert(k != NULL);
 		pairadd(reply_pairs, k);
-		
+
 		s = paircreate(ATTRIBUTE_EAP_SIM_SRES1 + imsicount, PW_TYPE_OCTETS);
 		s = pairparsevalue(s, sres);
 		pairadd(reply_pairs, s);
-		
+
 		imsicount++;
 	}
 	fclose(triplets);
-	
+
 	if (imsicount < 3)
 	{
 		DEBUG("rlm_sim_files: "
-		      "insufficient number of challenges for imsi %s: %d\n", 
+		      "insufficient number of challenges for imsi %s: %d\n",
 		      name, imsicount);
 		return RLM_MODULE_NOTFOUND;
 	}
-	
+
 	DEBUG("rlm_sim_files: "
 	      "authorized user/imsi %s\n", name);
 

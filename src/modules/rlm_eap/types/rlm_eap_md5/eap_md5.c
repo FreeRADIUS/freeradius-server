@@ -24,7 +24,7 @@
 /*
  *
  *  MD5 Packet Format in EAP Type-Data
- *  --- ------ ------ -- --- --------- 
+ *  --- ------ ------ -- --- ---------
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -75,9 +75,9 @@ void eapmd5_free(MD5_PACKET **md5_packet_ptr)
 	*md5_packet_ptr = NULL;
 }
 
-/* 
+/*
  *	We expect only RESPONSE for which SUCCESS or FAILURE is sent back
- */ 
+ */
 MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 {
 	md5_packet_t	*data;
@@ -89,8 +89,8 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	 *	one byte of type data (EAP-MD5) following the 4-byte
 	 *	EAP-Packet header.
 	 */
-	if (!eap_ds 					 || 
-	    !eap_ds->response 				 || 
+	if (!eap_ds 					 ||
+	    !eap_ds->response 				 ||
 	    (eap_ds->response->code != PW_MD5_RESPONSE)	 ||
 	    eap_ds->response->type.type != PW_EAP_MD5	 ||
 	    !eap_ds->response->type.data 		 ||
@@ -157,10 +157,10 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 }
 
 
-/* 
+/*
  * verify = MD5(id+password+challenge_sent)
  */
-int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password, 
+int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 		  uint8_t *challenge)
 {
 	char	*ptr;
@@ -205,7 +205,7 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 	return 1;
 }
 
-/* 
+/*
  *	Compose the portions of the reply packet specific to the
  *	EAP-MD5 protocol, in the EAP reply typedata
  */

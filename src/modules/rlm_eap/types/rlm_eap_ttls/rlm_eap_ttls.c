@@ -250,7 +250,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 */
 	case PW_AUTHENTICATION_ACK:
 		eaptls_success(handler->eap_ds, 0);
-		eaptls_gen_mppe_keys(&handler->request->reply->vps, 
+		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
 				     "ttls keying material");
 		return 1;

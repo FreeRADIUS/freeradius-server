@@ -168,7 +168,7 @@ int paircompare_register(int attr, int compare_attr, RAD_COMPARE_FUNC fun, void 
 
 	c = rad_malloc(sizeof(struct cmp));
 
-	if (compare_attr < 0) 
+	if (compare_attr < 0)
 		compare_attr = attr;
 	c->compare = fun;
 	c->attribute = attr;
@@ -309,7 +309,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			rcode = radius_xlat(buffer, sizeof(buffer),
 					    check_item->strvalue,
 					    req, NULL);
-			
+
 			/*
 			 *	Parse the string into a new value.
 			 */
@@ -344,7 +344,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			case T_OP_GT:
 				if (compare <= 0) result = -1;
 				break;
-		    
+
 			case T_OP_LE:
 				if (compare > 0) result = -1;
 				break;
@@ -455,7 +455,7 @@ static int portcmp(void *instance,
 			return 0;
 		}
 		s = strtok(NULL, ",");
-	} 
+	}
 
 	return -1;
 }
@@ -463,7 +463,7 @@ static int portcmp(void *instance,
 /*
  *	Compare prefix/suffix.
  *
- *	If they compare: 
+ *	If they compare:
  *	- if PW_STRIP_USER_NAME is present in check_pairs,
  *	  strip the username of prefix/suffix.
  *	- if PW_STRIP_USER_NAME is not present in check_pairs,
@@ -479,7 +479,7 @@ static int presufcmp(void *instance,
 	char rest[MAX_STRING_LEN];
 	int len, namelen;
 	int ret = -1;
-	
+
 	instance = instance;
 	reply_pairs = reply_pairs; /* shut the compiler up */
 
@@ -541,7 +541,7 @@ static int presufcmp(void *instance,
  *	and have one less system call to do.
  */
 static int timecmp(void *instance,
-		   REQUEST *req UNUSED, 
+		   REQUEST *req UNUSED,
 		   VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
@@ -721,7 +721,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			rcode = radius_xlat(buffer, sizeof(buffer),
 					    i->strvalue,
 					    req, NULL);
-			
+
 			/*
 			 *	Parse the string into a new value.
 			 */
@@ -730,7 +730,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 
 		found = pairfind(*to, i->attribute);
 		switch (i->operator) {
-			
+
 			/*
 			 *  If a similar attribute is found,
 			 *  delete it.
@@ -741,7 +741,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 				    (strcmp((char *)found->strvalue,
 					    (char *)i->strvalue) == 0)){
 					pairdelete(to, found->attribute);
-					
+
 					/*
 					 *	'tailto' may have been
 					 *	deleted...
@@ -755,7 +755,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			tailfrom = i;
 			continue;
 			break;
-			
+
 			/*
 			 *  Add it, if it's not already there.
 			 */
@@ -765,7 +765,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 				continue; /* with the loop */
 			}
 			break;
-			
+
 			/*
 			 *  If a similar attribute is found,
 			 *  replace it with the new one.  Otherwise,
@@ -781,14 +781,14 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 				continue;
 			}
 			break;
-			
+
 			/*
 			 *  FIXME: Add support for <=, >=, <, >
 			 *
 			 *  which will mean (for integers)
 			 *  'make the attribute the smaller, etc'
 			 */
-			
+
 			/*
 			 *  Add the new element to the list, even
 			 *  if similar ones already exist.
@@ -797,12 +797,12 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 		case T_OP_ADD:		/* += */
 			break;
 		}
-		
+
 		if (tailfrom)
 			tailfrom->next = next;
 		else
 			*from = next;
-		
+
 		/*
 		 *	If ALL of the 'to' attributes have been deleted,
 		 *	then ensure that the 'tail' is updated to point

@@ -53,10 +53,10 @@ static void dump_record(datum key,datum data)
 	int i,j;
 	char *p;
 	for(i = 0, p = key.dptr; i < key.dsize; i++, p++)
-	  putchar(*p); 
+	  putchar(*p);
 	if ( i < lotstup ) while( i++ <= lotstup) putchar(' ');
 		else putchar(' ');
-	
+
 	for(j = 0, p = data.dptr ; j < data.dsize && *p ; i++, p++ ) {
 		putchar(*p);
 		if ( needwrap && *p == ',' && i > wraplen ) putchar('\n');
@@ -65,14 +65,14 @@ static void dump_record(datum key,datum data)
 			i = 0;
 		}
 	}
-	   
+
 	putchar('\n');
 }
 
 static void usage(void)
 {
 	fprintf(stderr, "Usage: %s: [-f file] [-w] [-i number] [-l number] [-v]\n\n",progname);
-	
+
 	exit(1);
 }
 
@@ -83,11 +83,11 @@ int main(int n, char **argv) {
 	datum	k,d;
 	int 	ch;
 	int 	i;
-	
+
 	progname = argv[0];
-	
-	
-	
+
+
+
 	while ((ch = getopt(n, argv, "i:l:wf:v")) != -1)
 		switch (ch) {
 			case 'i': 	if (!isdigit((int) *optarg)) usage();
@@ -96,7 +96,7 @@ int main(int n, char **argv) {
 			case 'l':	if (!isdigit((int) *optarg)) usage();
 					wraplen = atoi(optarg);
 					break;
-			case 'w':	needwrap = 1; 
+			case 'w':	needwrap = 1;
 					break;
 			case 'f':	fname = optarg;
 					break;
@@ -104,11 +104,11 @@ int main(int n, char **argv) {
 					exit(0);
 					break;
 			default : usage(); exit(1); break;
-			
+
 		}
 	n -= (optind - 1);
 	argv += (optind -1);
-	
+
 	if ( fname == NULL) fname = "sandy_db";
 
 	if ( ( pdb = dbm_open(fname, O_RDONLY, 0777) ) == NULL ) {
@@ -119,21 +119,21 @@ int main(int n, char **argv) {
 		for ( i = 1 ; i < n ; i++ ) {
 			printf(" Check: %s\n",argv[i]);
 			k.dptr  = argv[i];
-			k.dsize = strlen(argv[i]) + 1; 
+			k.dsize = strlen(argv[i]) + 1;
 			if ( (d = dbm_fetch(pdb,k)).dptr == NULL ) {
 				printf("Not found\n");
 			} else dump_record(k, d);
 		}
 	} else {
-		for ( k = dbm_firstkey(pdb) ; k.dptr != NULL ; k = dbm_nextkey(pdb) ) 
+		for ( k = dbm_firstkey(pdb) ; k.dptr != NULL ; k = dbm_nextkey(pdb) )
 			if ( (d = dbm_fetch(pdb,k)).dptr == NULL ) {
 				perror("Couldn't fetch user record");
 				exit(1);
 			} else dump_record(k, d);
 	}
 	dbm_close(pdb);
-	fflush(stdout);			
-	
+	fflush(stdout);
+
 	return 0;
-	
+
 }

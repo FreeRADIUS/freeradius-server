@@ -1,5 +1,5 @@
 /*
- * cb.c 
+ * cb.c
  *
  * Version:     $Id$
  *
@@ -75,7 +75,7 @@ void cbtls_info(const SSL *s, int where, int ret)
  *	4.Verifying that the credentials presented by the certificate
  *	fulfill additional requirements specific to the application,
  *	such as with respect to access control lists or with respect
- *	to OCSP (Online Certificate Status Processing). 
+ *	to OCSP (Online Certificate Status Processing).
  *
  *	NOTE: This callback will be called multiple times based on the
  *	depth of the root certificate chain
@@ -84,7 +84,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 {
 	char subject[256]; /* Used for the subject name */
 	char issuer[256]; /* Used for the issuer name */
-	char buf[256]; 
+	char buf[256];
 	char *user_name = NULL; /* User-Name */
 	X509 *client_cert;
 	SSL *ssl;
@@ -151,7 +151,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		  }
 		*/
 		radlog(L_INFO, "error=%d", err);
-		
+
 		radlog(L_INFO, "--> User-Name = %s", user_name);
 		radlog(L_INFO, "--> BUF-Name = %s", buf);
 		radlog(L_INFO, "--> subject = %s", subject);
@@ -166,7 +166,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
  *	Fill in our 'info' with TLS data.
  */
 void cbtls_msg(int write_p, int msg_version, int content_type,
-	       const void *buf, size_t len, 
+	       const void *buf, size_t len,
 	       SSL *ssl UNUSED, void *arg)
 {
 	tls_session_t *state = (tls_session_t *)arg;
@@ -181,7 +181,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 		state->info.alert_level = ((const unsigned char*)buf)[0];
 		state->info.alert_description = ((const unsigned char*)buf)[1];
 		state->info.handshake_type = 0x00;
-	
+
 	} else if (content_type == SSL3_RT_HANDSHAKE) {
 		state->info.handshake_type = ((const unsigned char*)buf)[0];
 		state->info.alert_level = 0x00;
@@ -190,9 +190,9 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	tls_session_information(state);
 }
 
-int cbtls_password(char *buf, 
-		   int num UNUSED, 
-		   int rwflag UNUSED, 
+int cbtls_password(char *buf,
+		   int num UNUSED,
+		   int rwflag UNUSED,
 		   void *userdata)
 {
 	strcpy(buf, (char *)userdata);

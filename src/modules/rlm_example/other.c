@@ -1,5 +1,5 @@
 /*
- * other.c	
+ * other.c
  *
  * Version:	$Id$
  *

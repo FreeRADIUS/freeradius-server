@@ -78,7 +78,7 @@ static CONF_PARSER module_config[] = {
 static int smb_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_smb_t *data;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -96,9 +96,9 @@ static int smb_instantiate(CONF_SECTION *conf, void **instance)
 		free(data);
 		return -1;
 	}
-	
+
 	*instance = data;
-	
+
 	return 0;
 }
 
@@ -153,7 +153,7 @@ static int smb_authenticate(void *instance, REQUEST *request)
 	case 2:			/* protocol failure */
 	  return RLM_MODULE_FAIL;
 	  break;
-	  
+
 	case 3:			/* invalid user name or password */
 	  return RLM_MODULE_REJECT;
 	}
@@ -186,7 +186,7 @@ static int smb_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_smb = {
-	"SMB",	
+	"SMB",
 	RLM_TYPE_THREAD_UNSAFE,		/* type */
 	NULL,				/* initialization */
 	smb_instantiate,		/* instantiation */

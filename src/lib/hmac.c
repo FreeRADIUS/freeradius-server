@@ -158,12 +158,12 @@ int main(int argc, char **argv)
   text_len = strlen(text);
 
   lrad_hmac_md5(text, text_len, key, key_len, digest);
-  
+
   for (i = 0; i < 16; i++) {
     printf("%02x", digest[i]);
   }
   printf("\n");
-  
+
   exit(0);
   return 0;
 }

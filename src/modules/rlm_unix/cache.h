@@ -2,7 +2,7 @@
  * cache.h   Definitions for structures and functions needed in cache.c
  *
  * Version: cache.c  0.99  04-13-1999  jeff@apex.net
- */    
+ */
 #ifndef _CACHE_H
 #define _CACHE_H
 
@@ -27,7 +27,7 @@ struct mygroup {
 	gid_t   gr_gid;          /* group id */
 	char    **gr_mem;        /* group members */
 	struct mygroup *next;    /* next */
-};         
+};
 
 struct pwcache {
   struct mypasswd *hashtable[HASHTABLESIZE];

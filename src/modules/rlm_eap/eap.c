@@ -33,7 +33,7 @@
  * +-+-+-+-+
  *
  *
- * EAP Request and Response Packet Format 
+ * EAP Request and Response Packet Format
  * --- ------- --- -------- ------ ------
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -44,7 +44,7 @@
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
  *
  *
- * EAP Success and Failure Packet Format 
+ * EAP Success and Failure Packet Format
  * --- ------- --- ------- ------ ------
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -68,7 +68,7 @@ static const char *eap_codes[] = {
 
 /*
  * Load all the required eap authentication types.
- * Get all the supported EAP-types from config file. 
+ * Get all the supported EAP-types from config file.
  */
 int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 {
@@ -84,7 +84,7 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	/* Link the loaded EAP-Type */
 	handle = lt_dlopenext(buffer);
 	if (handle == NULL) {
-		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s", 
+		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s",
 		       eaptype_name, lt_dlerror());
 		return -1;
 	}
@@ -110,7 +110,7 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	 */
 	node->typename = eaptype_name;
 	node->type_data = NULL;
-	
+
 	node->type = (EAP_TYPE *)lt_dlsym(node->handle, buffer);
 	if (!node->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to %s structure in %s: %s",
@@ -119,7 +119,7 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 		free(node);
 		return -1;
 	}
-	if ((node->type->attach) && 
+	if ((node->type->attach) &&
 	    ((node->type->attach)(node->cs, &(node->type_data)) < 0)) {
 
 		radlog(L_ERR, "rlm_eap: Failed to initialize type %s",
@@ -181,8 +181,8 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 
 /*
  * Based on TYPE, call the appropriate EAP-type handler
- * Default to the configured EAP-Type 
- * for all Unsupported EAP-Types 
+ * Default to the configured EAP-Type
+ * for all Unsupported EAP-Types
  */
 int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
@@ -209,14 +209,14 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 	switch(eaptype->type) {
 	case PW_EAP_IDENTITY:
 		DEBUG2("  rlm_eap: EAP Identity");
-		
+
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
 		vp = pairfind(handler->request->config_items,
 			      PW_EAP_TYPE);
 		if (vp) default_eap_type = vp->lvalue;
-		
+
 	do_initiate:
 		/*
 		 *	Ensure it's valid.
@@ -229,10 +229,10 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 						 namebuf, sizeof(namebuf)));
 			return EAP_INVALID;
 		}
-		
+
 		handler->stage = INITIATE;
 		handler->eap_type = default_eap_type;
-		
+
 		/*
 		 *	Wild & crazy stuff!  For TTLS & PEAP, we
 		 *	initiate a TLS session, and then pass that
@@ -245,8 +245,8 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		    (default_eap_type == PW_EAP_PEAP)) {
 			default_eap_type = PW_EAP_TLS;
 		}
-		
-		
+
+
 		/*
 		 *	We don't do TLS inside of TLS, as it's a bad
 		 *	idea...
@@ -256,10 +256,10 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
 			return EAP_INVALID;
 		}
-		
+
 		if (eaptype_call(inst->types[default_eap_type],
 				 handler) == 0) {
-			DEBUG2(" rlm_eap: Default EAP type %s failed in initiate", 
+			DEBUG2(" rlm_eap: Default EAP type %s failed in initiate",
 			       eaptype_type2name(default_eap_type,
 						 namebuf, sizeof(namebuf)));
 			return EAP_INVALID;
@@ -302,7 +302,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		eaptype_name = eaptype_type2name(default_eap_type,
 						 namebuf, sizeof(namebuf));
 		DEBUG2(" rlm_eap: EAP-NAK asked for EAP-Type/%s",
-		       eaptype_name);		       
+		       eaptype_name);
 
 		/*
 		 *	Prevent a firestorm if the client is confused.
@@ -338,7 +338,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 							 namebuf,
 							 sizeof(namebuf));
 			DEBUG2("  rlm_eap: EAP/%s", eaptype_name);
-			
+
 			/*
 			 *	We haven't configured it, it doesn't exit.
 			 */
@@ -347,7 +347,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 				       eaptype->type);
 				return EAP_INVALID;
 			}
-			
+
 			rad_assert(handler->stage == AUTHENTICATE);
 			handler->eap_type = eaptype->type;
 			if (eaptype_call(inst->types[eaptype->type],
@@ -461,7 +461,7 @@ int eap_compose(EAP_HANDLER *handler)
 		 *	mentioned restriction.
 		 */
 		reply->id = handler->eap_ds->response->id;
-		
+
 		switch (reply->code) {
 			/*
 			 *	The Id is a simple "ack" for success
@@ -470,7 +470,7 @@ int eap_compose(EAP_HANDLER *handler)
 		case PW_EAP_SUCCESS:
 		case PW_EAP_FAILURE:
 	    		break;
-			
+
 			/*
 			 *	We've sent a response to their
 			 *	request, the Id is incremented.
@@ -499,7 +499,7 @@ int eap_compose(EAP_HANDLER *handler)
 
 		eap_ds->request->type.type = handler->eap_type;
 	}
-	  
+
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
 		return RLM_MODULE_INVALID;
@@ -519,7 +519,7 @@ int eap_compose(EAP_HANDLER *handler)
 			eap_len = 0;
 		}
 
-		/* 
+		/*
 		 * create a value pair & append it to the request reply list
 		 * This memory gets freed up when request is freed up
 		 */
@@ -681,7 +681,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 				vp->lvalue = eap_msg->strvalue[4];
 				pairadd(&(request->packet->vps), vp);
 			}
-			
+
 			/*
 			 *	We've been told to ignore unknown EAP
 			 *	types, AND it's an unknown type.
@@ -729,7 +729,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 				return EAP_NOOP;
 			}
 		} /* else it's not an EAP-Request or EAP-Response */
- 
+
 		/*
 		 *	No EAP-Start found.  Proxying: return NOOP.
 		 *	Not proxying, return NOTFOUND.

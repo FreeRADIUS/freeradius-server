@@ -153,12 +153,12 @@ static pthread_mutex_t fork_mutex;
  *	A mapping of configuration file names to internal integers
  */
 static const CONF_PARSER thread_config[] = {
-	{ "start_servers",           PW_TYPE_INTEGER, 0, &thread_pool.start_threads,           "5" }, 
-	{ "max_servers",             PW_TYPE_INTEGER, 0, &thread_pool.max_threads,             "32" }, 
-	{ "min_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.min_spare_threads,       "3" }, 
-	{ "max_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.max_spare_threads,       "10" }, 
-	{ "max_requests_per_server", PW_TYPE_INTEGER, 0, &thread_pool.max_requests_per_thread, "0" }, 
-	{ "cleanup_delay",           PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,           "5" }, 
+	{ "start_servers",           PW_TYPE_INTEGER, 0, &thread_pool.start_threads,           "5" },
+	{ "max_servers",             PW_TYPE_INTEGER, 0, &thread_pool.max_threads,             "32" },
+	{ "min_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.min_spare_threads,       "3" },
+	{ "max_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.max_spare_threads,       "10" },
+	{ "max_requests_per_server", PW_TYPE_INTEGER, 0, &thread_pool.max_requests_per_thread, "0" },
+	{ "cleanup_delay",           PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,           "5" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -314,7 +314,7 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 		struct timeval tv;
 #ifdef HAVE_PTHREAD_SIGMASK
 		sigset_t set, old_set;
-		
+
 		/*
 		 *	Block a large number of signals which could
 		 *	cause the select to return EINTR
@@ -340,7 +340,7 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 		for (count = 0; count < 10; count++) {
 			tv.tv_sec = 0;
 			tv.tv_usec = 10000; /* sleep for 10 milliseconds */
-			
+
 			/*
 			 *	Portable sleep that's thread-safe.
 			 *
@@ -352,7 +352,7 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 				ok = TRUE;
 				break;
 			}
-		}			
+		}
 
 #ifdef HAVE_PTHREAD_SIGMASK
 		/*
@@ -400,7 +400,7 @@ static void *request_handler_thread(void *arg)
 	sigaddset(&set, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &set, NULL);
 #endif
-	
+
 	/*
 	 *	Loop forever, until told to exit.
 	 */
@@ -453,7 +453,7 @@ static void *request_handler_thread(void *arg)
 		DEBUG2("Thread %d handling request %d, (%d handled so far)",
 		       self->thread_num, self->request->number,
 		       self->request_count);
-		
+
 		/*
 		 *	Respond, and reset request->child_pid
 		 */
@@ -505,7 +505,7 @@ static void delete_thread(THREAD_HANDLE *handle)
 	} else {
 		prev->next = next;
 	}
-  
+
 	if (next == NULL) {
 		rad_assert(thread_pool.tail == handle);
 		thread_pool.tail = prev;
@@ -570,7 +570,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	 */
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	
+
 	/*
 	 *	Create the thread detached, so that it cleans up it's
 	 *	own memory when it exits.
@@ -622,11 +622,11 @@ static THREAD_HANDLE *spawn_thread(time_t now)
  *      until all threads are finished handling requests.  This returns
  *      the number of active threads to 'radiusd.c'.
  */
-int total_active_threads(void) 
+int total_active_threads(void)
 {
         int rcode = 0;
 	THREAD_HANDLE *handle;
-	
+
 	for (handle = thread_pool.head; handle != NULL; handle = handle->next){
 		if (handle->request != NULL) {
 			rcode ++;
@@ -749,8 +749,8 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	if (thread_pool.active_threads == thread_pool.total_threads) {
 		if (spawn_thread(request->timestamp) == NULL) {
-			radlog(L_INFO, 
-			       "The maximum number of threads (%d) are active, cannot spawn new thread to handle request", 
+			radlog(L_INFO,
+			       "The maximum number of threads (%d) are active, cannot spawn new thread to handle request",
 			       thread_pool.max_threads);
 			return 0;
 		}
@@ -904,7 +904,7 @@ int thread_pool_clean(time_t now)
 			}
 		}
 	}
-  
+
 	/*
 	 *	Otherwise everything's kosher.  There are not too few,
 	 *	or too many spare threads.  Exit happily.
@@ -920,12 +920,12 @@ static int exec_initialized = FALSE;
 void rad_exec_init(void)
 {
 	int i;
-	
+
 	/*
 	 *	Initialize the mutex used to remember calls to fork.
 	 */
 	pthread_mutex_init(&fork_mutex, NULL);
-	
+
 	/*
 	 *	Initialize the data structure where we remember the
 	 *	mappings of thread ID && child PID to exit status.
@@ -952,7 +952,7 @@ void rad_exec_init(void)
 pid_t rad_fork(int exec_wait)
 {
 	sigset_t set;
-	pid_t child_pid;	
+	pid_t child_pid;
 
 	/*
 	 *	The thread is NOT interested in waiting for the exit
@@ -998,7 +998,7 @@ pid_t rad_fork(int exec_wait)
 		 */
 		i = PID_2_ARRAY(child_pid);
 		found = -1;
-		
+
 		/*
 		 *	We may have multiple threads trying to find an
 		 *	empty position, so we lock the array until
@@ -1195,7 +1195,7 @@ int rad_savepid(pid_t pid, int status)
 			 *	That is, we've forked, and the forker
 			 *	is waiting nearly forever
 			 */
-			return 0;		
+			return 0;
 		}
 
 		i++;

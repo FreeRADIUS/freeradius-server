@@ -196,7 +196,7 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
  *
  *	Function: sql_get_socket
  *
- *	Purpose: Return a SQL sqlsocket from the connection pool           
+ *	Purpose: Return a SQL sqlsocket from the connection pool
  *
  *************************************************************************/
 SQLSOCK * sql_get_socket(SQL_INST * inst)
@@ -254,7 +254,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		if (unconnected != 0 || tried_to_connect != 0) {
 			radlog(L_INFO, "rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
 		}
-		
+
 		/*
 		 *	The socket is returned in the locked
 		 *	state.
@@ -285,7 +285,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		}
 
 		/*
-		 *	If we're at the socket we started 
+		 *	If we're at the socket we started
 		 */
 		if (cur == start) {
 			break;
@@ -301,7 +301,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
  *
  *	Function: sql_release_socket
  *
- *	Purpose: Frees a SQL sqlsocket back to the connection pool           
+ *	Purpose: Frees a SQL sqlsocket back to the connection pool
  *
  *************************************************************************/
 int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
@@ -352,8 +352,8 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 	if (pairmode <= T_EOL) pairmode = T_OP_CMP_EQ;
 
 	/*
-	 * If attribute is already there, skip it because we checked usercheck first 
-	 * and we want user settings to over ride group settings 
+	 * If attribute is already there, skip it because we checked usercheck first
+	 * and we want user settings to over ride group settings
 	 */
 	if (pairmode != T_OP_ADD && (check = pairfind(*first_pair, attr->attr)) != NULL &&
 #ifdef ASCEND_BINARY
@@ -557,7 +557,7 @@ void query_log(REQUEST *request, SQL_INST *inst, char *querystr)
 			       buffer);
 		} else {
 			int fd = fileno(sqlfile);
-			
+
 			rad_lockfd(fd, MAX_QUERY_LEN);
 			fputs(querystr, sqlfile);
 			fputs(";\n", sqlfile);

@@ -64,10 +64,10 @@ void 		eapleap_free(LEAP_PACKET **leap_packet_ptr);
 int 		eapleap_compose(EAP_DS *auth, LEAP_PACKET *reply);
 LEAP_PACKET 	*eapleap_extract(EAP_DS *auth);
 LEAP_PACKET 	*eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name);
-int		eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password, 
+int		eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password,
 			       leap_session_t *session);
 LEAP_PACKET	*eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
-				VALUE_PAIR *user_name, VALUE_PAIR* password, 
+				VALUE_PAIR *user_name, VALUE_PAIR* password,
 				leap_session_t *session,
 				VALUE_PAIR **reply_vps);
 #endif /*_EAP_LEAP_H*/

@@ -42,7 +42,7 @@ typedef struct rlm_acct_unique_list_t {
 
 typedef struct rlm_acct_unique_t {
 	char			*key;
-	rlm_acct_unique_list_t *head;		
+	rlm_acct_unique_list_t *head;
 } rlm_acct_unique_t;
 
 static CONF_PARSER module_config[] = {
@@ -55,8 +55,8 @@ static CONF_PARSER module_config[] = {
  */
 static void unique_add_attr(rlm_acct_unique_t *inst, DICT_ATTR *dattr)
 {
-	rlm_acct_unique_list_t 	*new;		
-	
+	rlm_acct_unique_list_t 	*new;
+
 	new = rad_malloc(sizeof(*new));
 	memset(new, 0, sizeof(*new));
 
@@ -74,14 +74,14 @@ static int unique_parse_key(rlm_acct_unique_t *inst, char *key)
 {
 	char *ptr, *prev, *keyptr;
 	DICT_ATTR *a;
-	
+
 	keyptr = key;
 	ptr = key;
 	prev = key;
-	
+
 	/* Let's remove spaces in the string */
 	rad_rmspace(key);
-	
+
 	ptr = key;
 	while(ptr) {
 		switch(*ptr) {
@@ -107,9 +107,9 @@ static int unique_parse_key(rlm_acct_unique_t *inst, char *key)
 			continue;
 			break;
 		}
-		ptr++;	
-	}	
-	
+		ptr++;
+	}
+
 	return 0;
 }
 
@@ -140,24 +140,24 @@ static int unique_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst = rad_malloc(sizeof(*inst));
 	memset(inst, 0, sizeof(*inst));
-	
+
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
 		return -1;
 	}
 
-	/* 
-	 *	Check to see if 'key' has something in it 
-	 */	
+	/*
+	 *	Check to see if 'key' has something in it
+	 */
 	if (!inst->key) {
 		radlog(L_ERR,"rlm_acct_unique: Cannot find value for 'key' in configuration.");
 		free(inst);
 		return -1;
 	}
 
-	/* 
+	/*
 	 * Go thru the list of keys and build attr_list;
-	 */	
+	 */
 	if (unique_parse_key(inst, inst->key) < 0) {
 		unique_detach(inst); /* clean up memory */
 		return -1;
@@ -182,13 +182,13 @@ static int add_unique_id(void *instance, REQUEST *request)
 	int length, left;
 	rlm_acct_unique_t *inst = instance;
 	rlm_acct_unique_list_t *cur;
-  
+
 	/* initialize variables */
 	p = buffer;
 	left = BUFFERLEN;
 	length = 0;
 	cur = inst->head;
-	
+
 	/*
 	 *  A unique ID already exists: don't do anything.
 	 */
@@ -196,7 +196,7 @@ static int add_unique_id(void *instance, REQUEST *request)
 	if (vp) {
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	/* loop over items to create unique identifiers */
 	while (cur) {
 		vp = pairfind(request->packet->vps, cur->dattr->attr);
@@ -210,25 +210,25 @@ static int add_unique_id(void *instance, REQUEST *request)
 		cur = cur->next;
 	}
 	buffer[BUFFERLEN-left-1] = '\0';
-	
+
 	DEBUG2("rlm_acct_unique: Hashing '%s'", buffer);
 	/* calculate a 'unique' string based on the above information */
 	librad_md5_calc(md5_buf, (u_char *)buffer, (p - buffer));
 	sprintf(buffer, "%02x%02x%02x%02x%02x%02x%02x%02x",
 		md5_buf[0], md5_buf[1], md5_buf[2], md5_buf[3],
 		md5_buf[4], md5_buf[5], md5_buf[6], md5_buf[7]);
-	
+
 	DEBUG2("rlm_acct_unique: Acct-Unique-Session-ID = \"%s\".", buffer);
-	
+
 	vp = pairmake("Acct-Unique-Session-Id", buffer, 0);
 	if (!vp) {
 		radlog(L_ERR, "%s", librad_errstr);
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	/* add the (hopefully) unique session ID to the packet */
 	pairadd(&request->packet->vps, vp);
-	
+
 	return RLM_MODULE_OK;
 }
 

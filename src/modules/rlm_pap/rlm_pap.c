@@ -85,7 +85,7 @@ static void pap_hexify(char *buffer, char *str, int len)
 	char *pch = str;
 	char ch;
 	int i;
-	
+
 	for(i = 0;i < len; i ++) {
 		ch = pch[i];
 		buffer[2*i] = pap_hextab[(ch>>4) & 15];
@@ -182,7 +182,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	DEBUG("rlm_pap: login attempt by \"%s\" with password %s", 
+	DEBUG("rlm_pap: login attempt by \"%s\" with password %s",
 		request->username->strvalue, request->password->strvalue);
 
 	if (((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL) ||
@@ -196,7 +196,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	DEBUG("rlm_pap: Using password \"%s\" for user %s authentication.",
 	      passwd_item->strvalue, request->username->strvalue);
-	
+
 	if (inst->sch == PAP_ENC_INVALID || inst->sch > PAP_MAX_ENC){
 		radlog(L_ERR, "rlm_pap: Wrong password scheme");
 		return RLM_MODULE_FAIL;
@@ -303,7 +303,7 @@ static int pap_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_pap = {
-	"PAP",	
+	"PAP",
 	0,				/* type */
 	NULL,				/* initialization */
 	pap_instantiate,		/* instantiation */

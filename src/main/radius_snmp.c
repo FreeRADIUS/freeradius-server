@@ -1,4 +1,4 @@
-/* 
+/*
  * radius_snmp.c	Radius SNMP support
  *
  * Version:	$Id$
@@ -141,7 +141,7 @@ static const unsigned char *radAuthEntry(struct variable *vp,
 	size_t  *var_len,
 	WriteMethod **write_method);
 
-static struct variable radiusacc_variables[] = 
+static struct variable radiusacc_variables[] =
 {
 	{RADIUSACCSERVIDENT, STRING, RONLY, radAccServ, 1, {1}},
 	{RADIUSACCSERVUPTIME, TIMETICKS, RONLY, radAccServ, 1, {2}},
@@ -246,7 +246,7 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact) {
 }
 
 static int
-radServReset (int action, u_char *var_val, u_char var_val_type, 
+radServReset (int action, u_char *var_val, u_char var_val_type,
 		size_t var_val_len, const unsigned char *statP, oid *name,
 		size_t name_len) {
 
@@ -255,13 +255,13 @@ radServReset (int action, u_char *var_val, u_char var_val_type,
 
 	switch (action) {
 		case RESERVE1:
-			if (var_val_type != INTEGER) 
+			if (var_val_type != INTEGER)
 				return SNMP_ERR_WRONGTYPE;
-			if (var_val_len != sizeof (long)) 
+			if (var_val_len != sizeof (long))
 				return SNMP_ERR_WRONGLENGTH;
 			if (! asn_parse_int(var_val, &big, &var_val_type, &i, sizeof(long)))
 				return SNMP_ERR_WRONGENCODING;
-			if (i != 2) 
+			if (i != 2)
 				return SNMP_ERR_WRONGVALUE;
 			break;
 		case COMMIT:
@@ -276,7 +276,7 @@ radServReset (int action, u_char *var_val, u_char var_val_type,
 }
 
 static const unsigned char *
-radAccServ(struct variable *vp, oid *name, size_t *length, int exact, 
+radAccServ(struct variable *vp, oid *name, size_t *length, int exact,
 		size_t *var_len, WriteMethod **write_method) {
 
 	static int result;
@@ -350,7 +350,7 @@ radAccServ(struct variable *vp, oid *name, size_t *length, int exact,
 }
 
 static const unsigned char *
-radAccEntry(struct variable *vp, oid *name, size_t *length, int exact, 
+radAccEntry(struct variable *vp, oid *name, size_t *length, int exact,
 		size_t *var_len, WriteMethod **write_method) {
 
 	RADCLIENT *c;
@@ -404,7 +404,7 @@ radAccEntry(struct variable *vp, oid *name, size_t *length, int exact,
 }
 
 static const unsigned char *
-radAuthServ(struct variable *vp, oid *name, size_t *length, int exact, 
+radAuthServ(struct variable *vp, oid *name, size_t *length, int exact,
 		size_t *var_len, WriteMethod **write_method) {
 
 	static int result;
@@ -484,7 +484,7 @@ radAuthServ(struct variable *vp, oid *name, size_t *length, int exact,
 }
 
 static const unsigned char *
-radAuthEntry(struct variable *vp, oid	 *name, size_t *length, int exact, 
+radAuthEntry(struct variable *vp, oid	 *name, size_t *length, int exact,
 		size_t *var_len, WriteMethod **write_method) {
 
 	RADCLIENT *c;
@@ -582,7 +582,7 @@ radius_snmp_init (void) {
 	 *  Parse the SNMP configuration information.
 	 */
 	cs = cf_section_find(NULL);
-	if (cs != NULL) 
+	if (cs != NULL)
 		cf_section_parse(cs, NULL, snmp_config);
 
 	/*

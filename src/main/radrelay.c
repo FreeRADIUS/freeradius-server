@@ -20,7 +20,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- * 
+ *
  * Copyright 2001 Cistron Internet Services B.V.
  * Copyright 2002 Simon Ekstrand <simon@routemeister.net>
  *
@@ -463,7 +463,7 @@ int do_send(struct relay_request *r, char *secret)
 	 * Acct-Delay-Time value).
 	 * Otherwise the radius server may consider the
 	 * packet a duplicate and we 'll get caught in a
-	 * loop. 
+	 * loop.
 	 */
 	if (r->retrans > 0){
 		id_map[r->req->id] = 0;

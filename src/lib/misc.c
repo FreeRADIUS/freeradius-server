@@ -131,7 +131,7 @@ uint32_t ip_getaddr(const char *host)
 	if (hp == NULL) {
 		return htonl(INADDR_NONE);
 	}
-	
+
 	/*
 	 *	Paranoia from a Bind vulnerability.  An attacker
 	 *	can manipulate DNS entries to change the length of the
@@ -185,7 +185,7 @@ char *strNcpy(char *dest, const char *src, int n)
 
 	while ((n > 1) && (*src)) {
 		*(p++) = *(src++);
-		
+
 		n--;
 	}
 	*p = '\0';
@@ -207,7 +207,7 @@ void rad_lowercase(char *str) {
  * Remove spaces from a string
  */
 void rad_rmspace(char *str) {
-	char *s = str;	
+	char *s = str;
 	char *ptr = str;
 
   while(ptr && *ptr!='\0') {

@@ -140,7 +140,7 @@ static int gtc_initiate(void *type_data, EAP_HANDLER *handler)
 	 *	to us...
 	 */
 	handler->stage = AUTHENTICATE;
-	
+
 	return 1;
 }
 
@@ -169,7 +169,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		eap_ds->request->code = PW_EAP_FAILURE;
 		return 0;
 	}
-	
+
 #if 0
 	if (debug_flag > 2) {
 		int i;
@@ -178,7 +178,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 			if ((i & 0x0f) == 0) printf("%d: ", i);
 
 			printf("%02x ", eap_ds->response->type.data[i]);
-			
+
 			if ((i & 0x0f) == 0x0f) printf("\n");
 		}
 	}
@@ -197,13 +197,13 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
-		
+
 		if (eap_ds->response->type.length != vp->length) {
 			DEBUG2("  rlm_eap_gtc: ERROR: Passwords are of different length. %d %d", eap_ds->response->type.length, vp->length);
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
-		
+
 		if (memcmp(eap_ds->response->type.data,
 			   vp->strvalue, vp->length) != 0) {
 			DEBUG2("  rlm_eap_gtc: ERROR: Passwords are different");
@@ -248,12 +248,12 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
-		
+
 	} else {
 		radlog(L_ERR, "rlm_eap_gtc: Response is too large to understand");
 		eap_ds->request->code = PW_EAP_FAILURE;
 		return 0;
-		
+
 	}
 
 	DEBUG2("  rlm_eap_gtc: Everything is OK.");

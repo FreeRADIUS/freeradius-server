@@ -12,12 +12,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -34,7 +34,7 @@ typedef unsigned int   uint32;
 #define max(a,b) (a < b ? b : a)
 
 #define SMB_DEF_IDF 0x424D53FF        /* "\377SMB" */
- 
+
 /* Core protocol commands */
 
 #define SMBmkdir      0x00   /* create directory */
@@ -244,8 +244,8 @@ typedef unsigned char UCHAR;
 
 #define SMB_tconr_mbs_offset    33        /* max buffer size         */
 #define SMB_tconr_tid_offset    35        /* returned tree id        */
-#define SMB_tconr_bcc_offset    37       
-#define SMB_tconr_len           39 
+#define SMB_tconr_bcc_offset    37
+#define SMB_tconr_len           39
 
 #define SMB_tconx_axc_offset    33        /* And X Command                */
 #define SMB_tconx_axr_offset    34        /* reserved                     */
@@ -312,7 +312,7 @@ typedef unsigned char UCHAR;
 
 #define SMB_clos_fid_offset     33        /* FID to close            */
 #define SMB_clos_tim_offset     35        /* Last mod time           */
-#define SMB_clos_bcc_offset     39        /* bcc                     */        
+#define SMB_clos_bcc_offset     39        /* bcc                     */
 #define SMB_clos_len            41
 
 /* Offsets related to Write requests                                 */
@@ -475,7 +475,7 @@ typedef unsigned char UCHAR;
 
 #define SMB_LMapi_SetUserInfo     0x0072
 #define SMB_LMapi_UserPasswordSet 0x0073
- 
+
 /* Structures and defines we use in the client interface */
 
 /* The protocols we might support. Perhaps a bit ambitious, as only RFCNB */
@@ -491,7 +491,7 @@ typedef enum {SMB_State_NoState, SMB_State_Stopped, SMB_State_Started} SMB_State
 /* We must make it possible for callers to specify these ... */
 
 
-static const char *SMB_Prots[] = {"PC NETWORK PROGRAM 1.0", 
+static const char *SMB_Prots[] = {"PC NETWORK PROGRAM 1.0",
 			    "MICROSOFT NETWORKS 1.03",
 			    "MICROSOFT NETWORKS 3.0",
 			    "DOS LANMAN1.0",
@@ -564,7 +564,7 @@ struct SMB_Connect_Def {
   int max_xmit;    /* Max xmit permitted by server                  */
   int Security;    /* 0 = share, 1 = user                           */
   int Raw_Support; /* bit 0 = 1 = Read Raw supported, 1 = 1 Write raw */
-  BOOL encrypt_passwords; /* FALSE = don't                          */ 
+  BOOL encrypt_passwords; /* FALSE = don't                          */
   int MaxMPX, MaxVC, MaxRaw;
   unsigned int SessionKey, Capabilities;
   int SvrTZ;                                 /* Server Time Zone */

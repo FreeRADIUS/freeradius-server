@@ -1,5 +1,5 @@
 /*
- * xlat.c	Translate strings.  This is the first version of xlat 
+ * xlat.c	Translate strings.  This is the first version of xlat
  * 		incorporated to RADIUS
  *
  * Version:	$Id$
@@ -22,7 +22,7 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
-static const char rcsid[] = 
+static const char rcsid[] =
 "$Id$";
 
 #include	"autoconf.h"
@@ -154,7 +154,7 @@ static int decode_attr_packet(const char *from, char **to, int freespace,
 {
 	DICT_ATTR *tmpda;
 	VALUE_PAIR *vp;
-	
+
 	tmpda = dict_attrbyname(from);
 	if (!tmpda) return 0;
 
@@ -205,7 +205,7 @@ static int decode_attr_vps(const char *from, char **to, int freespace,
 {
 	DICT_ATTR *tmpda;
 	VALUE_PAIR *vp;
-	
+
 	tmpda = dict_attrbyname(from);
 	if (!tmpda) return 0;
 
@@ -242,10 +242,10 @@ static void decode_attribute(const char **from, char **to, int freespace,
 
 	*q = '\0';
 
-	/* 
-	 * Skip the '{' at the front of 'p' 
-	 * Increment open braces 
-	 */ 
+	/*
+	 * Skip the '{' at the front of 'p'
+	 * Increment open braces
+	 */
 	p++;
 	openbraces++;
 
@@ -266,7 +266,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 				openbraces++;
 				*pa++ = *p++;
 				break;
-				
+
 			case '}':
 				openbraces--;
 				if (openbraces == *open) {
@@ -465,7 +465,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			/*
 			 * We check if we're inside an open brace.  If we are
 			 * then we assume this brace is NOT literal, but is
-			 * a closing brace and apply it 
+			 * a closing brace and apply it
 			 */
 			if ((c == '}') && openbraces) {
 				openbraces--;

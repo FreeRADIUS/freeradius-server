@@ -1,5 +1,5 @@
 /*
- * rlm_cram.c	
+ * rlm_cram.c
  *
  * Version:	$Id$
  *
@@ -19,7 +19,7 @@
  *
  * Copyright 2002  The FreeRADIUS server project
  */
- 
+
 /*
  *   CRAM mail authentication (APOP, CRAM-MD5)
  *   by 3APA3A
@@ -39,7 +39,7 @@
  *	for APOP/CRAM-MD5/CRAM-MD4, 20 octets for CRAM-SHA1
  *
  *   (c) 2002 by SANDY (http://www.sandy.ru/) under GPL
- */ 
+ */
 
 #include	"autoconf.h"
 #include	"libradius.h"

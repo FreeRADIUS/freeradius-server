@@ -19,7 +19,7 @@
  *
  * Copyright 2001  The FreeRADIUS server project
  * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
- * 
+ *
  * March 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  * - Initial release
  * April 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
@@ -181,7 +181,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	unsigned j;
 	const char *cli = "0";
 	char *pool_name = NULL;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -220,7 +220,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 		free(data);
 		return -1;
 	}
-	
+
 	data->gdbm = gdbm_open(data->session_db, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (data->gdbm == NULL) {
@@ -266,7 +266,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 				      ip_ntoa(str, ntohl(i)));
 				continue;
 			}
-			
+
 			strcpy(key.nas, nas_init);
 			key.port = j;
 			key_datum.dptr = (char *) &key;
@@ -302,14 +302,14 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 
 	pthread_mutex_init(&data->op_mutex, NULL);
 	*instance = data;
-	
+
 	return 0;
 }
 
 
 /*
  *	Check for an Accounting-Stop
- *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.	
+ *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.
  */
 static int ippool_accounting(void *instance, REQUEST *request)
 {
@@ -508,7 +508,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 	memset(key.nas,0,MAX_NAS_NAME_SIZE);
 	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
-	key.port = port;	
+	key.port = port;
 	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%u",key.nas,key.port);
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
@@ -604,13 +604,13 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	pthread_mutex_lock(&data->op_mutex);
 
 	key_datum.dptr = NULL;
-	if (cli != NULL){	
+	if (cli != NULL){
 		key_datum = gdbm_firstkey(data->gdbm);
 		while(key_datum.dptr){
 			data_datum = gdbm_fetch(data->gdbm, key_datum);
 			if (data_datum.dptr){
 				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
-				free(data_datum.dptr);	
+				free(data_datum.dptr);
 				/*
 		 		* If we find an entry for the same caller-id and nas with active=1
 		 		* then we use that for multilink (MPPP) to work properly.
@@ -635,18 +635,18 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			data_datum = gdbm_fetch(data->gdbm, key_datum);
 			if (data_datum.dptr){
 				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
-				free(data_datum.dptr);	
+				free(data_datum.dptr);
 
 				/*
 				 * Find an entry with active == 0
 				 */
 				if (entry.active == 0){
-					datum tmp;		
+					datum tmp;
 
 					tmp.dptr = (char *) &entry.ipaddr;
 					tmp.dsize = sizeof(uint32_t);
 					data_datum = gdbm_fetch(data->ip, tmp);
-	
+
 					/*
 					 * If we find an entry in the ip index and the number is zero (meaning
 					 * that we haven't allocated the same ip address to another nas/port pair)
@@ -655,7 +655,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 					 * Else we don't delete the session entry since we haven't yet deallocated the
 					 * corresponding ip address and we continue our search.
 					 */
-	
+
 					if (data_datum.dptr){
 						memcpy(&num,data_datum.dptr, sizeof(int));
 						free(data_datum.dptr);
@@ -698,7 +698,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			 */
 			datum key_datum_tmp;
 			datum data_datum_tmp;
-			ippool_key key_tmp;	
+			ippool_key key_tmp;
 
 			memset(key_tmp.nas,0,MAX_NAS_NAME_SIZE);
 			strncpy(key_tmp.nas,nas,MAX_NAS_NAME_SIZE -1 );
@@ -758,7 +758,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		key.port = port;
 		key_datum.dptr = (char *) &key;
 		key_datum.dsize = sizeof(ippool_key);
-		
+
 		DEBUG2("rlm_ippool: Allocating ip to nas/port: %s/%u",key.nas,key.port);
 		rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
@@ -770,7 +770,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 		/* Increase the ip index count */
 		key_datum.dptr = (char *) &entry.ipaddr;
-		key_datum.dsize = sizeof(uint32_t);	
+		key_datum.dsize = sizeof(uint32_t);
 		data_datum = gdbm_fetch(data->ip, key_datum);
 		if (data_datum.dptr){
 			memcpy(&num,data_datum.dptr,sizeof(int));
@@ -789,7 +789,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		pthread_mutex_unlock(&data->op_mutex);
-			
+
 
 		DEBUG("rlm_ippool: Allocated ip %s to client on nas %s,port %u",ip_ntoa(str,entry.ipaddr),
 				key.nas,port);
@@ -849,7 +849,7 @@ static int ippool_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_ippool = {
-	"IPPOOL",	
+	"IPPOOL",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	ippool_instantiate,		/* instantiation */

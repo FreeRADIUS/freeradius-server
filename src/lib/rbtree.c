@@ -116,13 +116,13 @@ static void RotateLeft(rbtree_t *tree, rbnode_t *X)
 	/**************************
 	 *  rotate Node X to left *
 	 **************************/
-	
+
 	rbnode_t *Y = X->Right;
-	
+
 	/* establish X->Right link */
 	X->Right = Y->Left;
 	if (Y->Left != NIL) Y->Left->Parent = X;
-	
+
 	/* establish Y->Parent link */
 	if (Y != NIL) Y->Parent = X->Parent;
 	if (X->Parent) {
@@ -133,7 +133,7 @@ static void RotateLeft(rbtree_t *tree, rbnode_t *X)
 	} else {
 		tree->Root = Y;
 	}
-	
+
 	/* link X and Y */
 	Y->Left = X;
 	if (X != NIL) X->Parent = Y;
@@ -144,13 +144,13 @@ static void RotateRight(rbtree_t *tree, rbnode_t *X)
 	/****************************
 	 *  rotate Node X to right  *
 	 ****************************/
-	
+
 	rbnode_t *Y = X->Left;
-	
+
 	/* establish X->Left link */
 	X->Left = Y->Right;
 	if (Y->Right != NIL) Y->Right->Parent = X;
-	
+
 	/* establish Y->Parent link */
 	if (Y != NIL) Y->Parent = X->Parent;
 	if (X->Parent) {
@@ -161,7 +161,7 @@ static void RotateRight(rbtree_t *tree, rbnode_t *X)
 	} else {
 		tree->Root = Y;
 	}
-	
+
 	/* link X and Y */
 	Y->Right = X;
 	if (X != NIL) X->Parent = Y;
@@ -173,46 +173,46 @@ static void InsertFixup(rbtree_t *tree, rbnode_t *X)
 	 *  maintain red-black tree balance  *
 	 *  after inserting node X           *
 	 *************************************/
-	
+
 	/* check red-black properties */
 	while (X != tree->Root && X->Parent->Color == Red) {
 		/* we have a violation */
 		if (X->Parent == X->Parent->Parent->Left) {
 			rbnode_t *Y = X->Parent->Parent->Right;
 			if (Y->Color == Red) {
-				
+
 				/* uncle is red */
 				X->Parent->Color = Black;
 				Y->Color = Black;
 				X->Parent->Parent->Color = Red;
 				X = X->Parent->Parent;
 			} else {
-				
+
 				/* uncle is black */
 				if (X == X->Parent->Right) {
 					/* make X a left child */
 					X = X->Parent;
 					RotateLeft(tree, X);
 				}
-				
+
 				/* recolor and rotate */
 				X->Parent->Color = Black;
 				X->Parent->Parent->Color = Red;
 				RotateRight(tree, X->Parent->Parent);
 			}
 		} else {
-			
+
 			/* mirror image of above code */
 			rbnode_t *Y = X->Parent->Parent->Left;
 			if (Y->Color == Red) {
-				
+
 				/* uncle is red */
 				X->Parent->Color = Black;
 				Y->Color = Black;
 				X->Parent->Parent->Color = Red;
 				X = X->Parent->Parent;
 			} else {
-				
+
 				/* uncle is black */
 				if (X == X->Parent->Left) {
 					X = X->Parent;
@@ -235,11 +235,11 @@ static void InsertFixup(rbtree_t *tree, rbnode_t *X)
 int rbtree_insert(rbtree_t *tree, void *Data)
 {
 	rbnode_t *Current, *Parent, *X;
-	
+
 	/***********************************************
 	 *  allocate node for Data and insert in tree  *
 	 ***********************************************/
-	
+
 	/* find where node belongs */
 	Current = tree->Root;
 	Parent = NULL;
@@ -268,7 +268,7 @@ int rbtree_insert(rbtree_t *tree, void *Data)
 		Parent = Current;
 		Current = (result < 0) ? Current->Left : Current->Right;
 	}
-	
+
 	/* setup new node */
 	if ((X = malloc (sizeof(*X))) == NULL) {
 		exit(1);
@@ -279,7 +279,7 @@ int rbtree_insert(rbtree_t *tree, void *Data)
 	X->Left = NIL;
 	X->Right = NIL;
 	X->Color = Red;
-	
+
 	/* insert node in tree */
 	if (Parent) {
 		if (tree->Compare(Data, Parent->Data) <= 0)
@@ -289,7 +289,7 @@ int rbtree_insert(rbtree_t *tree, void *Data)
 	} else {
 		tree->Root = X;
 	}
-	
+
 	InsertFixup(tree, X);
 
 	tree->num_elements++;
@@ -304,7 +304,7 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X)
 	 *  maintain red-black tree balance  *
 	 *  after deleting node X            *
 	 *************************************/
-	
+
 	while (X != tree->Root && X->Color == Black) {
 		if (X == X->Parent->Left) {
 			rbnode_t *W = X->Parent->Right;
@@ -365,13 +365,13 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X)
 void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 {
 	rbnode_t *X, *Y;
-	
+
 	/*****************************
 	 *  delete node Z from tree  *
 	 *****************************/
-	
+
 	if (!Z || Z == NIL) return;
-	
+
 	if (Z->Left == NIL || Z->Right == NIL) {
 		/* Y has a NIL node as a child */
 		Y = Z;
@@ -380,13 +380,13 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 		Y = Z->Right;
 		while (Y->Left != NIL) Y = Y->Left;
 	}
-	
+
 	/* X is Y's only child */
 	if (Y->Left != NIL)
 		X = Y->Left;
 	else
 		X = Y->Right;
-	
+
 	/* remove Y from the parent chain */
 	X->Parent = Y->Parent;
 	if (Y->Parent)
@@ -396,7 +396,7 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 			Y->Parent->Right = X;
 	else
 		tree->Root = X;
-	
+
 	if (Y != Z) {
 		/*
 		 *	Move the child's data to here, and then
@@ -424,7 +424,7 @@ rbnode_t *rbtree_find(rbtree_t *tree, void *Data)
 	/*******************************
 	 *  find node containing Data  *
 	 *******************************/
-	
+
 	rbnode_t *Current = tree->Root;
 
 	while (Current != NIL) {
@@ -536,11 +536,11 @@ static int WalkNodePostOrder(rbnode_t *X, int (*callback)(void *))
 int rbtree_walk(rbtree_t *tree, int (*callback)(void *), RBTREE_ORDER order)
 {
 	switch (order) {
-	case PreOrder:		
+	case PreOrder:
 		return WalkNodePreOrder(tree->Root, callback);
-	case InOrder:		
+	case InOrder:
 		return WalkNodeInOrder(tree->Root, callback);
-	case PostOrder:		
+	case PostOrder:
 		return WalkNodePostOrder(tree->Root, callback);
 
 	default:

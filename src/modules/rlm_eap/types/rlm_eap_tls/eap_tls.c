@@ -23,7 +23,7 @@
 
 /*
  *
- *  TLS Packet Format in EAP 
+ *  TLS Packet Format in EAP
  *  --- ------ ------ -- ---
  * 0                   1                   2                   3
  * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -129,7 +129,7 @@ int eaptls_fail(EAP_DS *eap_ds, int peap_flag)
 /*
    A single TLS record may be up to 16384 octets in length, but a TLS
    message may span multiple TLS records, and a TLS certificate message
-   may in principle be as long as 16MB. 
+   may in principle be as long as 16MB.
 */
 
 /*
@@ -145,17 +145,17 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	unsigned int 	nlen;
 	unsigned int 	lbit = 0;
 
-	/* This value determines whether we set (L)ength flag for 
-		EVERY packet we send and add corresponding 
+	/* This value determines whether we set (L)ength flag for
+		EVERY packet we send and add corresponding
 		"TLS Message Length" field.
 
 	length_flag = TRUE;
 		This means we include L flag and "TLS Msg Len" in EVERY
 		packet we send out.
-       
+
 	length_flag = FALSE;
 		This means we include L flag and "TLS Msg Len" **ONLY**
-		in First packet of a fragment series. We do not use 
+		in First packet of a fragment series. We do not use
 		it anywhere else.
 
 		Having L flag in every packet is prefered.
@@ -332,9 +332,9 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 	 *	Find if this is a reply to the previous request sent
 	 */
 	if ((eaptls_packet == NULL) ||
-	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) && 
+	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eaptls_packet->flags & 0xc0) == 0x00))) {
-		
+
 		if (prev_eap_ds->request->id == eap_ds->response->id) {
 			/*
 			 *	Run the ACK handler directly from here.
@@ -618,8 +618,8 @@ static void eaptls_operation(EAPTLS_PACKET *eaptls_packet UNUSED,
 
 	tls_session = (tls_session_t *)handler->opaque;
 
-	if ((status == EAPTLS_MORE_FRAGMENTS) || 
-	    (status == EAPTLS_MORE_FRAGMENTS_WITH_LENGTH) || 
+	if ((status == EAPTLS_MORE_FRAGMENTS) ||
+	    (status == EAPTLS_MORE_FRAGMENTS_WITH_LENGTH) ||
 	    (status == EAPTLS_FIRST_FRAGMENT)) {
 		/*
 		 * Send the ACK.
@@ -686,7 +686,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 
 	DEBUG2("  rlm_eap_tls: processing TLS");
 
-	/* This case is when SSL generates Alert then we 
+	/* This case is when SSL generates Alert then we
 	 * send that alert to the client and then send the EAP-Failure
 	 */
 	status = eaptls_verify(handler);
@@ -740,7 +740,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		return EAPTLS_FAIL;
 
 	/*
-	 *	Get the session struct from the handler 
+	 *	Get the session struct from the handler
 	 *
 	 *	update the dirty_in buffer
 	 *
@@ -749,7 +749,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	 * 	CAUTION while reinitializing this buffer, it should be
 	 * 	reinitialized only when this M bit is NOT set.
 	 */
-	if (tlspacket->dlen != 
+	if (tlspacket->dlen !=
 	    record_plus(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
 		eaptls_free(&tlspacket);
 		radlog(L_ERR, "rlm_eap_tls: Exceeded maximum record size");
@@ -770,7 +770,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	 *	Continue the handshake.
 	 */
 	eaptls_operation(tlspacket, status, handler);
-		
+
 	eaptls_free(&tlspacket);
 	return EAPTLS_HANDLED;
 }

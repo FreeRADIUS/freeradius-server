@@ -211,4 +211,4 @@ struct tm *gmtime_r(const time_t *l_clock, struct tm *result)
 
   return result;
 }
-#endif 
+#endif

@@ -62,8 +62,8 @@ struct fastuser_instance {
 /* Function declarations */
 static int fallthrough(VALUE_PAIR *vp);
 static int fastuser_buildhash(struct fastuser_instance *inst);
-static int fastuser_getfile(struct fastuser_instance *inst, const char *filename, 
-														PAIR_LIST **default_list, PAIR_LIST **pair_list, 
+static int fastuser_getfile(struct fastuser_instance *inst, const char *filename,
+														PAIR_LIST **default_list, PAIR_LIST **pair_list,
 														int isacctfile);
 static int fastuser_hash(const char *s, long hashtablesize);
 static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *entry, int idx);
@@ -106,7 +106,7 @@ static int rad_check_return(VALUE_PAIR *list)
 {
       VALUE_PAIR      *authtype;
 
-      /* 
+      /*
        * We check for Auth-Type = Reject here
        */
 
@@ -129,7 +129,7 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 	int reloadusers = 1;
 	int reloadacctusers = 1;
 
-	/* 
+	/*
 	 * Allocate space for hash table here
 	 */
 	memsize = sizeof(PAIR_LIST *) * inst->hashsize;
@@ -196,7 +196,7 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 					cur = oldhash[hashindex];
 					pairlist_free(&cur);
 				}
-			} 
+			}
 			free(oldhash);
 		}
 		pairlist_free(&olddefaults);
@@ -208,14 +208,14 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 		pairlist_free(&oldacctusers);
 	}
 
-	if(inst->stats) 
+	if(inst->stats)
 		fastuser_tablestats(inst->hashtable, inst->hashsize);
 
-	return 0;	
+	return 0;
 }
 
-static int fastuser_getfile(struct fastuser_instance *inst, const char *filename, 
-														PAIR_LIST **default_list, PAIR_LIST **pair_list, 
+static int fastuser_getfile(struct fastuser_instance *inst, const char *filename,
+														PAIR_LIST **default_list, PAIR_LIST **pair_list,
 														int isacctfile) {
 	int rcode;
 	PAIR_LIST *users = NULL;
@@ -234,7 +234,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 	if (strcmp(inst->compat_mode, "cistron") == 0) {
 		compat_mode = TRUE;
 	}
-        
+
 	entry = users;
 	while (entry) {
 		if (compat_mode) {
@@ -254,13 +254,13 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 			 *	Ignore attributes which are set
 			 *	properly.
 			 */
-			if (vp->operator != T_OP_EQ) 
+			if (vp->operator != T_OP_EQ)
 				continue;
-				
+
 
 			/*
 			 *	If it's a vendor attribute,
-			 *	or it's a wire protocol, 
+			 *	or it's a wire protocol,
 			 *	ensure it has '=='.
 			 */
 			if (((vp->attribute & ~0xffff) != 0) ||
@@ -275,7 +275,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 				vp->operator = T_OP_CMP_EQ;
 				continue;
 			}
-				
+
 			/*
 			 *	Cistron Compatibility mode.
 			 *
@@ -304,10 +304,10 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 					vp->operator = T_OP_CMP_EQ;
 				}
 			}
-				
+
 		} /* end of loop over check items */
-                
-                
+
+
 		/*
 		 *	Look for server configuration items
 		 *	in the reply list.
@@ -329,7 +329,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 				log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
 					"\tfound in reply item list for user \"%s\".\n"
 					"\tThis attribute MUST go on the first line"
-					" with the other check items", 
+					" with the other check items",
 					filename, entry->lineno, vp->name,
 					entry->name);
 			}
@@ -348,11 +348,11 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 		if(!isacctfile) {
 			/* Save the DEFAULT entry specially */
 			if(strcmp(entry->name, "DEFAULT")==0) {
-				
+
 				/* Save this as the last default we've seen */
 				lastdefault = entry;
 				numdefaults++;
-	
+
 				/* put it at the end of the list */
 				if(defaults) {
 					for(cur=defaults; cur->next; cur=cur->next);
@@ -360,18 +360,18 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 					entry->next = NULL;
 				} else {
 					defaults = entry;
-					defaults->next = NULL; 
+					defaults->next = NULL;
 				}
-	
+
 			} else {
 				numusers++;
-	
+
 				/* Hash the username */
 				hashindex = fastuser_hash(entry->name, inst->hashsize);
-	
+
 				/* Store the last default before this entry */
 				entry->lastdefault = lastdefault;
-	
+
 				/* Store user in the hash */
 				fastuser_store(pair_list, entry, hashindex);
 			}
@@ -410,7 +410,7 @@ static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *new, int idx) {
 	cur = hashtable[idx];
 	/* store new record at end of list */
 	if(cur) {
-		while (cur->next != NULL) 
+		while (cur->next != NULL)
 			cur=cur->next;
 		cur->next = new;
 		new->next = NULL;
@@ -425,7 +425,7 @@ static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *new, int idx) {
  * Looks up user in hashtable.  If user can't be found, returns 0.
  * Otherwise returns a pointer to the structure for the user
  */
-static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user, 
+static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 		                            const char *username)
 {
 	PAIR_LIST *cur=user;
@@ -445,7 +445,7 @@ static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 			if(mainconfig.do_usercollide) {
 				if((userfound = fastuser_passcheck(request, cur, username))==0) {
 					cur = cur->next;
-				} 
+				}
 
 			} else {
 				userfound = 1;
@@ -486,14 +486,14 @@ static void fastuser_tablestats(PAIR_LIST **hashtable, long size) {
 		}
 	}
 
-	for(i=0; i<256; i++) 
+	for(i=0; i<256; i++)
 		if(countarray[i]) {
 			radlog(L_INFO, "rlm_fastusers:  Hash buckets with %d users:  %d",
 						i, countarray[i]);
 		}
 
 	if(toomany) {
-		radlog(L_INFO, "rlm_fastusers:  Hash buckets with more than 256:  %d", 
+		radlog(L_INFO, "rlm_fastusers:  Hash buckets with more than 256:  %d",
 					toomany);
 	}
 }
@@ -504,13 +504,13 @@ static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user,
 	int found=0;
 	VALUE_PAIR	*check_save;
 
-	/* 
+	/*
 	 * We check for REJECT specially here or a REJECT
 	 * user will never match
 	 */
 	check_save = pairfind(user->check, PW_AUTHTYPE);
 	if((check_save) && check_save->lvalue == PW_AUTHTYPE_REJECT)  {
-		DEBUG2("  fastusers(uc):  User '%s' line %d is Auth-Type Reject, but usercollide match", 
+		DEBUG2("  fastusers(uc):  User '%s' line %d is Auth-Type Reject, but usercollide match",
 					user->name, user->lineno);
 		return 1;
 	}
@@ -518,7 +518,7 @@ static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user,
 	/* Save the orginal config items */
 	check_save = request->config_items;
 	request->config_items = NULL;
-	
+
 	DEBUG2("  fastusers(uc): Checking %s at %d", user->name, user->lineno);
 
 	/* Copy this users check pairs to the request */
@@ -531,7 +531,7 @@ static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user,
 	}
 
 	/* Restore check items */
-	pairfree(&request->config_items); 
+	pairfree(&request->config_items);
 	request->config_items = check_save;
 
 	return found;
@@ -616,10 +616,10 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	hashidx = fastuser_hash(name, inst->hashsize);
 	user = inst->hashtable[hashidx];
 	if((user=fastuser_find(request, user, name))!=NULL) {
-		userfound = 1;		
+		userfound = 1;
 	}
 
-	/* 
+	/*
 	 * If there's no lastdefault and we
 	 * don't fallthrough, just copy the
 	 * pairs for this user and return
@@ -629,7 +629,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 		check_tmp = paircopy(user->check);
 		pairmove(&request->config_items, &check_tmp);
-		pairfree(&check_tmp); 
+		pairfree(&check_tmp);
 
 		reply_tmp = paircopy(user->reply);
 		pairmove(&request->reply->vps, &reply_tmp);
@@ -644,8 +644,8 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		}
 	}
 
-	/* 
-	 * When we get here, we've either found 
+	/*
+	 * When we get here, we've either found
 	 * the user or not, but to preserve order
 	 * we start at the top of the default
 	 * list and work our way thru
@@ -654,27 +654,27 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	 * and return
 	 */
 	DEBUG2("rlm_fastusers:  checking defaults");
-			
+
 	curdefault = inst->defaults;
 	while(curdefault) {
-		if(paircmp(request, request->packet->vps, curdefault->check, 
+		if(paircmp(request, request->packet->vps, curdefault->check,
 							&request->reply->vps) == 0) {
-			DEBUG2("  fastusers: Matched %s at %d", 
+			DEBUG2("  fastusers: Matched %s at %d",
 							curdefault->name, curdefault->lineno);
 			defaultfound = 1;
 
 			check_tmp = paircopy(curdefault->check);
 			pairmove(&request->config_items, &check_tmp);
-			pairfree(&check_tmp); 
+			pairfree(&check_tmp);
 
 			reply_tmp = paircopy(curdefault->reply);
 			pairmove(&request->reply->vps, &reply_tmp);
 			pairfree(&reply_tmp);
 
-			/*                         
-			 * There's no fallthru on this default which    
-			 * is *before* we find the user in the file,         
-			 * so we know it's safe to quit here                        
+			/*
+			 * There's no fallthru on this default which
+			 * is *before* we find the user in the file,
+			 * so we know it's safe to quit here
 			 */
 			if (!fallthrough(curdefault->reply))
 			  break;
@@ -693,7 +693,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 			check_tmp = paircopy(user->check);
 			pairmove(&request->config_items, &check_tmp);
-			pairfree(&check_tmp); 
+			pairfree(&check_tmp);
 
 			reply_tmp = paircopy(user->reply);
 			pairmove(&request->reply->vps, &reply_tmp);
@@ -704,13 +704,13 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 				return(rad_check_return(user->check));
 			}
 
-			/* 
+			/*
 			 * Find next occurence of THIS user in
 			 * the users file
 			 */
 			user=user->next;
 			user=fastuser_find(request, user, name);
-		} 
+		}
 
 		curdefault = curdefault->next;
 	}
@@ -758,7 +758,7 @@ static int fastuser_preacct(void *instance, REQUEST *request)
 	name = namepair ? (char *) namepair->strvalue : "NONE";
 	request_pairs = request->packet->vps;
 	config_pairs = &request->config_items;
-	
+
 	/*
 	 *	Find the entry for the user.
 	 */
@@ -815,7 +815,7 @@ static int fastuser_detach(void *instance)
 			cur = inst->hashtable[hashindex];
 			pairlist_free(&cur);
 		}
-	} 
+	}
 
 	free(inst->compat_mode);
 	free(inst->hashtable);

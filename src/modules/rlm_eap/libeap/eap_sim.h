@@ -32,13 +32,13 @@
 #define ATTRIBUTE_EAP_SIM_BASE      (6*256)
 
 #define ATTRIBUTE_EAP_SIM_SUBTYPE   1023
-#define ATTRIBUTE_EAP_SIM_RAND1           1024	
-#define ATTRIBUTE_EAP_SIM_RAND2           1025	
-#define ATTRIBUTE_EAP_SIM_RAND3           1026	
+#define ATTRIBUTE_EAP_SIM_RAND1           1024
+#define ATTRIBUTE_EAP_SIM_RAND2           1025
+#define ATTRIBUTE_EAP_SIM_RAND3           1026
 
-#define ATTRIBUTE_EAP_SIM_SRES1           1027	
-#define ATTRIBUTE_EAP_SIM_SRES2           1028	
-#define ATTRIBUTE_EAP_SIM_SRES3           1029	
+#define ATTRIBUTE_EAP_SIM_SRES1           1027
+#define ATTRIBUTE_EAP_SIM_SRES2           1028
+#define ATTRIBUTE_EAP_SIM_SRES3           1029
 
 #define ATTRIBUTE_EAP_SIM_STATE           1030
 #define ATTRIBUTE_EAP_SIM_IMSI            1031
@@ -61,11 +61,11 @@ enum eapsim_subtype {
 enum eapsim_clientstates {
   eapsim_client_init = 0,
   eapsim_client_start = 1,
-  eapsim_client_maxstates 
+  eapsim_client_maxstates
 };
 
 /* server states
- * 
+ *
  * in server_start, we send a EAP-SIM Start message.
  *
  */
@@ -104,14 +104,14 @@ extern int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep);
 extern int unmap_eapsim_types(RADIUS_PACKET *r);
 extern const char *sim_state2name(enum eapsim_clientstates state, char *buf, int buflen);
 extern const char *sim_subtype2name(enum eapsim_subtype subtype, char *buf, int buflen);
-extern int unmap_eapsim_basictypes(RADIUS_PACKET *r, 
+extern int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 				   uint8_t *attr, unsigned int attrlen);
 
 
 /************************/
 /*   CRYPTO FUNCTIONS   */
 /************************/
- 
+
 /*
  * key derivation functions/structures
  *
@@ -142,7 +142,7 @@ struct eapsim_keys {
   unsigned char K_encr[16];
   unsigned char msk[64];
   unsigned char emsk[64];
-};  
+};
 
 
 /*

@@ -130,8 +130,8 @@ static int counter_detach(void *instance);
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance, 
-		       REQUEST *req UNUSED, 
+static int counter_cmp(void *instance,
+		       REQUEST *req UNUSED,
 		       VALUE_PAIR *request, VALUE_PAIR *check,
 		       VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
@@ -174,7 +174,7 @@ static int add_defaults(rlm_counter_t *data)
 	datum time_datum;
 	const char *default1 = "DEFAULT1";
 	const char *default2 = "DEFAULT2";
-	
+
 	DEBUG2("rlm_counter: add_defaults: Start");
 
 	key_datum.dptr = (char *) default1;
@@ -232,7 +232,7 @@ static int reset_db(rlm_counter_t *data)
 	 */
 	ret = add_defaults(data);
 	if (ret != RLM_MODULE_OK)
-		return ret;	
+		return ret;
 
 	DEBUG2("rlm_counter: reset_db ended");
 
@@ -298,7 +298,7 @@ static int find_next_reset(rlm_counter_t *data, time_t timeval)
 		return -1;
 	}
 	strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
-	DEBUG2("rlm_counter: Current Time: %d [%s], Next reset %d [%s]", 
+	DEBUG2("rlm_counter: Current Time: %d [%s], Next reset %d [%s]",
 		(int)timeval,sCurrentTime,(int)data->reset_time,sNextTime);
 
 	return ret;
@@ -328,7 +328,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	datum time_datum;
 	const char *default1 = "DEFAULT1";
 	const char *default2 = "DEFAULT2";
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -350,7 +350,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	cache_size = data->cache_size;
 
 	/*
-	 *	Discover the attribute number of the key. 
+	 *	Discover the attribute number of the key.
 	 */
 	if (data->key_name == NULL) {
 		radlog(L_ERR, "rlm_counter: 'key' must be set.");
@@ -365,9 +365,9 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	data->key_attr = dattr->attr;
-	
+
 	/*
-	 *	Discover the attribute number of the counter. 
+	 *	Discover the attribute number of the counter.
 	 */
 	if (data->count_attribute == NULL) {
 		radlog(L_ERR, "rlm_counter: 'count-attribute' must be set.");
@@ -434,7 +434,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 			return -1;
 		}
 		data->service_val = dval->value;
-	}	
+	}
 
 	/*
 	 * Find when to reset the database.
@@ -507,7 +507,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		key_datum.dptr = (char *)default2;
 		key_datum.dsize = strlen(default2);
 
-		time_datum = gdbm_fetch(data->gdbm, key_datum);	
+		time_datum = gdbm_fetch(data->gdbm, key_datum);
 		if (time_datum.dptr != NULL){
 			memcpy(&data->last_reset, time_datum.dptr, sizeof(time_t));
 			free(time_datum.dptr);
@@ -534,7 +534,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	pthread_mutex_init(&data->mutex, NULL);
 
 	*instance = data;
-	
+
 	return 0;
 }
 
@@ -608,7 +608,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 		}
 	}
 
-	
+
 
 	/*
 	 *	Look for the key.  User-Name is special.  It means
@@ -650,8 +650,8 @@ static int counter_accounting(void *instance, REQUEST *request)
 		free(count_datum.dptr);
 		if (counter.uniqueid)
 			DEBUG("rlm_counter: Counter Unique ID = '%s'",counter.uniqueid);
-		if (uniqueid_vp != NULL){ 
-			if (counter.uniqueid != NULL && 
+		if (uniqueid_vp != NULL){
+			if (counter.uniqueid != NULL &&
 				strncmp(uniqueid_vp->strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0){
 				DEBUG("rlm_counter: Unique IDs for user match. Droping the request.");
 				return RLM_MODULE_NOOP;
@@ -775,7 +775,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	 */
 
 	counter.user_counter = 0;
-	
+
 	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->strvalue);
 	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
@@ -797,7 +797,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 		DEBUG("rlm_counter: res is greater than zero");
 		if (data->count_attr == PW_ACCT_SESSION_TIME) {
 			/*
-			 * Do the following only if the count attribute is 
+			 * Do the following only if the count attribute is
 			 * AcctSessionTime
 			 */
 
@@ -857,7 +857,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 
 		snprintf(module_fmsg,sizeof(module_fmsg), "rlm_counter: Maximum %s usage time reached", data->reset);
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_fmsg_vp);	
+		pairadd(&request->packet->vps, module_fmsg_vp);
 
 		ret=RLM_MODULE_REJECT;
 
@@ -898,7 +898,7 @@ static int counter_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_counter = {
-	"Counter",	
+	"Counter",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	counter_instantiate,		/* instantiation */

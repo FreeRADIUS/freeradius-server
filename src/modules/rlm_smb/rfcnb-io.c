@@ -12,12 +12,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -56,7 +56,7 @@ int RFCNB_Set_Timeout(int seconds)
   int temp;
   /* If we are on a Bezerkeley system, use sigvec, else sigaction */
 #ifndef SA_RESTART
-  struct sigvec invec, outvec; 
+  struct sigvec invec, outvec;
 #else
   struct sigaction inact, outact;
 #endif
@@ -112,7 +112,7 @@ int RFCNB_Discard_Rest(struct RFCNB_Con *con, int len)
 
     if (bytes_read <= 0) { /* Error so return */
 
-      if (bytes_read < 0) 
+      if (bytes_read < 0)
 	RFCNB_errno = RFCNBE_BadRead;
       else
 	RFCNB_errno = RFCNBE_ConGone;
@@ -121,7 +121,7 @@ int RFCNB_Discard_Rest(struct RFCNB_Con *con, int len)
       return(RFCNBE_Bad);
 
     }
-    
+
     rest = rest - bytes_read;
 
   }
@@ -133,9 +133,9 @@ int RFCNB_Discard_Rest(struct RFCNB_Con *con, int len)
 
 /* Send an RFCNB packet to the connection.
 
-   We just send each of the blocks linked together ... 
+   We just send each of the blocks linked together ...
 
-   If we can, try to send it as one iovec ... 
+   If we can, try to send it as one iovec ...
 
 */
 
@@ -160,7 +160,7 @@ int RFCNB_Put_Pkt(struct RFCNB_Con *con, struct RFCNB_Pkt *pkt, int len)
 
     this_len = pkt_ptr -> len;
     this_data = pkt_ptr -> data;
-    if ((tot_sent + this_len) > len) 
+    if ((tot_sent + this_len) > len)
       this_len = len - tot_sent;        /* Adjust so we don't send too much */
 
     /* Now plug into the iovec ... */
@@ -183,7 +183,7 @@ int RFCNB_Put_Pkt(struct RFCNB_Con *con, struct RFCNB_Pkt *pkt, int len)
 
   /* Set up an alarm if timeouts are set ... */
 
-  if (RFCNB_Timeout > 0) 
+  if (RFCNB_Timeout > 0)
     alarm(RFCNB_Timeout);
 
   if ((len_sent = writev(con -> fd, io_list, i)) < 0) { /* An error */
@@ -221,10 +221,10 @@ int RFCNB_Put_Pkt(struct RFCNB_Con *con, struct RFCNB_Pkt *pkt, int len)
 
 }
 
-/* Read an RFCNB packet off the connection. 
+/* Read an RFCNB packet off the connection.
 
    We read the first 4 bytes, that tells us the length, then read the
-   rest. We should implement a timeout, but we don't just yet 
+   rest. We should implement a timeout, but we don't just yet
 
 */
 
@@ -252,7 +252,7 @@ int RFCNB_Get_Pkt(struct RFCNB_Con *con, struct RFCNB_Pkt *pkt, int len)
 
   /* We discard keep alives here ... */
 
-  if (RFCNB_Timeout > 0) 
+  if (RFCNB_Timeout > 0)
     alarm(RFCNB_Timeout);
 
   while (seen_keep_alive) {
@@ -277,9 +277,9 @@ int RFCNB_Get_Pkt(struct RFCNB_Con *con, struct RFCNB_Pkt *pkt, int len)
 
 #ifdef RFCNB_DEBUG
       fprintf(stderr, "Connection closed reading\n");
-#endif 
+#endif
 
-      if (errno == EINTR) 
+      if (errno == EINTR)
 	RFCNB_errno = RFCNBE_Timeout;
       else
 	RFCNB_errno = RFCNBE_ConGone;
@@ -293,14 +293,14 @@ int RFCNB_Get_Pkt(struct RFCNB_Con *con, struct RFCNB_Pkt *pkt, int len)
 #ifdef RFCNB_DEBUG
       fprintf(stderr, "RFCNB KEEP ALIVE received\n");
 #endif
-      
+
     }
     else {
       seen_keep_alive = FALSE;
     }
 
   }
- 
+
   /* What if we got less than or equal to a hdr size in bytes? */
 
   if (read_len < sizeof(hdr)) { /* We got a small packet */
@@ -323,7 +323,7 @@ int RFCNB_Get_Pkt(struct RFCNB_Con *con, struct RFCNB_Pkt *pkt, int len)
 
 #ifdef RFCNB_DEBUG
   fprintf(stderr, "Reading Pkt: Length = %i\n", pkt_len);
-#endif  
+#endif
 
   /* Now copy in the hdr */
 

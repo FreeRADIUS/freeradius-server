@@ -117,7 +117,7 @@ static void usage(void)
         fprintf(stderr, "  [port]          Terminal Server port to match\n");
         fprintf(stderr, "  [user]          Login account to match\n");
         exit(1);
-}                
+}
 
 
 /*
@@ -141,9 +141,9 @@ int main(int argc, char **argv)
 
         /*  Process the options.  */
         while ((argval = getopt(argc, argv, "d:p:r:")) != EOF) {
-                                
+
                 switch(argval) {
-                        
+
 			case 'd':
 				if (radius_dir) free(radius_dir);
 				radius_dir = strdup(optarg);
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
                         case 'p':
 				acct_port = atoi(optarg);
                                 break;
-                                 
+
                         case 'r':
                                 if ((radiusip = ip_getaddr(optarg)) == INADDR_NONE) {
                                         fprintf(stderr, "%s: %s: radius server unknown\n",
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
                                         exit(1);
 				}
                                 break;
-                               
+
                         default:
                                 usage();
                                 exit(1);
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
-	if (nas != NULL) 
+	if (nas != NULL)
 		ip = nas->ipaddr;
 
 	/*
@@ -217,7 +217,7 @@ int main(int argc, char **argv)
 
 	printf("%s: zapping termserver %s, port %u",
 		progname, ip_hostname(buf, sizeof(buf), ip), nas_port);
-	if (user != NULL) 
+	if (user != NULL)
 		printf(", user %s", user);
 	printf("\n");
 
@@ -298,9 +298,9 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 	req->id = getpid() & 0xFF;
 	req->code = PW_ACCOUNTING_REQUEST;
 	req->dst_port = acct_port;
-	if(req->dst_port == 0) 
+	if(req->dst_port == 0)
 		req->dst_port = getport("radacct");
-	if(req->dst_port == 0) 
+	if(req->dst_port == 0)
 		req->dst_port = PW_ACCT_UDP_PORT;
 	if (radiusip == INADDR_NONE) {
 		req->dst_ipaddr = ip_getaddr("localhost");
@@ -308,7 +308,7 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 	else {
 		req->dst_ipaddr = radiusip;
 	}
-	if(!req->dst_ipaddr) 
+	if(!req->dst_ipaddr)
 		req->dst_ipaddr = 0x7f000001;
 	req->vps = NULL;
 	secret = getsecret(req->dst_ipaddr);

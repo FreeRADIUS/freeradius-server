@@ -156,13 +156,13 @@ VALUE_PAIR *generate_state(time_t timestamp)
 }
 
 /*
- * Returns 0 on success, non-zero otherwise. 
+ * Returns 0 on success, non-zero otherwise.
  */
 int verify_state(VALUE_PAIR *state, time_t timestamp)
 {
 	unsigned char hmac[EAP_HMAC_SIZE];
 	unsigned char value[EAP_CHALLENGE_LEN + sizeof(timestamp)];
-	
+
 	/*
 	 *	The length is wrong.  Don't do anything.
 	 */

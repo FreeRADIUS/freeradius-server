@@ -82,12 +82,12 @@ unsigned long 	st_errors = 0,
 int dumplist(VALUE_PAIR *vp) {
 
 	while (vp != NULL) {
-	
+
 		printf("VP: name: %s\nattribute: %d\ntype: %d\nlvalue: %lu"
 			"\noperator %d\naddport: %d\nValue: %s\n",
 		   	vp -> name, vp -> attribute, vp -> type, vp -> lvalue,
 		   	vp -> operator, vp -> addport, (char*)vp -> strvalue);
-		vp = vp -> next;	
+		vp = vp -> next;
 	}
 	return 0;
 }
@@ -107,18 +107,18 @@ static int open_storage(const char * fname) {
 	perror("Couldn't open database");
 	return 1;
   }
-  return 0; 
+  return 0;
 }
 
 static void  close_storage(void){
-  dbm_close(pdb); 
+  dbm_close(pdb);
 }
 
 static int  addlinetocontent(VALUE_PAIR *vp) {
-	
+
 	int outlen = sizeof(content) - concntr - 1;
 	int lendiv;
-	
+
 	if ( outlen < 4 ) return -1;
 	if ( vp == NULL ) { /* add empty line */
 		content[concntr++] = '\n';
@@ -128,7 +128,7 @@ static int  addlinetocontent(VALUE_PAIR *vp) {
 			lendiv = vp_prints(&content[concntr],outlen,vp);
 			if ( lendiv > 0 ) {
 				outlen -= lendiv;
-				
+
 				if (outlen > 3)  {
 					strcat(content,", ");
 					concntr += lendiv + 2;
@@ -136,25 +136,25 @@ static int  addlinetocontent(VALUE_PAIR *vp) {
 				} else {
 					concntr = 0;
 					return -1;
-				} 
+				}
 			}
-			vp = vp -> next;	
+			vp = vp -> next;
 		}
-	
+
 		if ( concntr > 2 ) {  /* remove trailing ',' */
 			content[--concntr] = '\0';
 			content[concntr - 1] = '\n';
 		}
 	}
-		
-	return 0;	
+
+	return 0;
 }
 
 static int storecontent (const char * username) {
-	
+
 	 datum d,k;
 	 int res;
-	
+
 	if ( pdb == NULL || concntr < 3 ) return 1;
 
 	DOUT2("store:\n%s\ncontent:\n%s",username,content);
@@ -164,7 +164,7 @@ static int storecontent (const char * username) {
 
 	k.dptr = username;
 	k.dsize = strlen(username) + 1;
-	
+
 	res = dbm_store(pdb, k, d, DBM_INSERT);
 	if ( res == 1 ) dbm_store(pdb, k, d, DBM_REPLACE);
 	if ( res < 0 ) {
@@ -172,16 +172,16 @@ static int storecontent (const char * username) {
 	  st_errors++;
 	  st_skiped++;
 	}  else st_loaded++;
-	
+
 	concntr = 0;
 	*content = '\0';
 	return 0;
 }
 
 static int getuname(char **p,char *u,int n) {
-	int	i; 
-	
-	for(i=0 ; ( i < n-1 ) && ( **p ) && (! isspace((int) **p) ) ; (*p)++ ) 
+	int	i;
+
+	for(i=0 ; ( i < n-1 ) && ( **p ) && (! isspace((int) **p) ) ; (*p)++ )
 	    u[i++] = **p;
 	u[i] = '\0';
 	return ( i == 0) ? 1:0;
@@ -190,7 +190,7 @@ static int getuname(char **p,char *u,int n) {
 static int sm_parse_file(FILE*fp,const char* fname) {
         LRAD_TOKEN tok;
         VALUE_PAIR *vp = NULL;
-	sm_parse_state_t  parse_state = SMP_USER; 
+	sm_parse_state_t  parse_state = SMP_USER;
 	unsigned long lino  = 0;
 	char *p;
 	char buff[MAX_BUFF_SIZE];
@@ -198,7 +198,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 
 
 	while( parse_state != SMP_INVALID && fgets(buff, sizeof(buff), fp) != NULL ) {
-		
+
 		lino ++;
 		st_lines++;
 		if ( strchr(buff, '\n') == NULL) {
@@ -207,10 +207,10 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 			st_skiped++; /* _LINE_ skiped */
 			continue;
 		}
-	
+
 		DOUT2("Parseline: %s",buff);
 		for ( p = buff; isspace((int) *p); p++);
-		 
+
 		if ( *p == '#' || *p == 0 ) continue;
 
 		/* userparse hack */
@@ -229,7 +229,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 
 		if ( parse_state == SMP_USER ) {
 		    tok = getuname(&p,username,sizeof(username));
-		    
+
 		    /* check: is it include. not implemented */
 
 		    if ( tok ) {
@@ -239,7 +239,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 		    } else {
 		    	parse_state = SMP_PATTERN;
 		    	DOUT1("Found user: %s\n",username);
-		    	
+
 		    }
 		}
 		if ( parse_state == SMP_PATTERN || parse_state == SMP_ACTION ) {
@@ -249,22 +249,22 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 
 		    if ( *p && ( *p != ';' ) ) tok = userparse(p,&vp);
 		    else tok = T_EOL;  /* ';' - signs empty line */
-		    
+
 		    switch(tok) {
 		    	case T_EOL: /* add to content */
 		    			addlinetocontent(vp);
 		    			pairfree(&vp);
-		    			if ( parse_state == SMP_PATTERN ) 
+		    			if ( parse_state == SMP_PATTERN )
 		    				parse_state = SMP_ACTION;
 		    			else parse_state = SMP_PATTERN_OR_USER;
-		    			 
+
 		    	case T_COMMA: break;  /* parse next line */
 		    	default: /* error: we do  not expect anything else */
-		    			fprintf(stderr ,"%s: %s[%lu]: sintax error\n",progname,fname,lino); 
+		    			fprintf(stderr ,"%s: %s[%lu]: sintax error\n",progname,fname,lino);
 		    			librad_perror("Error");
 		    			parse_state = SMP_INVALID;
 		    			st_errors++;
-		    }	
+		    }
 		}
 	}
 	if ( feof(fp) ) switch (parse_state ) {
@@ -302,25 +302,25 @@ static void sm_usage(void) {
 	fprintf(stderr, "-q	do not print statistic\n");
 	fprintf(stderr, "-v	print version\n");
 	fprintf(stderr, "-r	remove user(s) from database\n");
-	
+
 }
 
 int main(int n,char **argv) {
-        
+
 	const char *fname = NULL;
 	const char *ofile = NULL;
 	FILE 	*fp;
 	int	print_stat = 1;
 	int 	ch;
 	const char  *sm_radius_dir = NULL;
-	
+
 	progname = argv[0];
 
 	librad_debug = 0;
-	
-	while ((ch = getopt(n, argv, "d:i:xo:qvc")) != -1) 
+
+	while ((ch = getopt(n, argv, "d:i:xo:qvc")) != -1)
 	 	switch (ch) {
-	 		case 'd': 	
+	 		case 'd':
 	 			sm_radius_dir = optarg;
 				break;
 			case 'i':
@@ -330,7 +330,7 @@ int main(int n,char **argv) {
 				librad_debug++;
 			case 'o':
 				ofile = optarg;
-				break;	
+				break;
 			case 'q':
 				print_stat = 0;
 				break;
@@ -347,7 +347,7 @@ int main(int n,char **argv) {
 
 
 	if ( sm_radius_dir == NULL ) sm_radius_dir = RADDBDIR;
-	
+
 	DOUT1("Use dictionary in: %s\n",sm_radius_dir);
 	if (dict_init(sm_radius_dir, RADIUS_DICTIONARY) < 0 ) {
        		librad_perror("parser: init dictionary:");
@@ -360,8 +360,8 @@ int main(int n,char **argv) {
 	} else if ( ( fp = fopen(fname, "r") ) == NULL ) {
 		fprintf( stderr,"%s: Couldn't open source file\n", progname);
 		exit(1);
-	} 
-	
+	}
+
 	if ( ofile == NULL ) ofile = "sandy_db" ;
 	if ( open_storage(ofile) ) {
 	 	exit (1);

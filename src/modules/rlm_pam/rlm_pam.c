@@ -125,11 +125,11 @@ static int PAM_conv (int num_msg,
   struct pam_response *reply = NULL;
   int size = sizeof(struct pam_response);
   my_PAM *pam_config = (my_PAM *) appdata_ptr;
-  
+
 #define GET_MEM if (reply) realloc(reply, size); else reply = rad_malloc(size); \
   size += sizeof(struct pam_response)
 #define COPY_STRING(s) ((s) ? strdup(s) : NULL)
-				     
+
   for (count = 0; count < num_msg; count++) {
     switch (msg[count]->msg_style) {
     case PAM_PROMPT_ECHO_ON:
@@ -171,7 +171,7 @@ static int PAM_conv (int num_msg,
  *************************************************************************/
 
 /* cjd 19980706
- * 
+ *
  * for most flexibility, passing a pamauth type to this function
  * allows you to have multiple authentication types (i.e. multiple
  * files associated with radius in /etc/pam.d)

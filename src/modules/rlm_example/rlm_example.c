@@ -1,5 +1,5 @@
 /*
- * rlm_example.c	
+ * rlm_example.c
  *
  * Version:	$Id$
  *
@@ -94,7 +94,7 @@ static int example_init(void)
 static int example_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_example_t *data;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -112,9 +112,9 @@ static int example_instantiate(CONF_SECTION *conf, void **instance)
 		free(data);
 		return -1;
 	}
-	
+
 	*instance = data;
-	
+
 	return 0;
 }
 
@@ -169,7 +169,7 @@ static int example_authenticate(void *instance, REQUEST *request)
 	/* quiet the compiler */
 	instance = instance;
 	request = request;
-	
+
 	return RLM_MODULE_OK;
 }
 
@@ -181,7 +181,7 @@ static int example_preacct(void *instance, REQUEST *request)
 	/* quiet the compiler */
 	instance = instance;
 	request = request;
-	
+
 	return RLM_MODULE_OK;
 }
 
@@ -193,7 +193,7 @@ static int example_accounting(void *instance, REQUEST *request)
 	/* quiet the compiler */
 	instance = instance;
 	request = request;
-	
+
 	return RLM_MODULE_OK;
 }
 
@@ -233,7 +233,7 @@ static int example_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_example = {
-	"example",	
+	"example",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	example_init,			/* initialization */
 	example_instantiate,		/* instantiation */

@@ -54,7 +54,7 @@ typedef struct rlm_attr_rewrite_t {
 	char searchin;		/* The same as above just coded as a number for speed */
 	char *replace;		/* The replacement */
 	int replace_len;	/* The length of the replacement string */
-	int  append;		/* Switch to control append mode (1,0) */ 
+	int  append;		/* Switch to control append mode (1,0) */
 	int  nocase;		/* Ignore case */
 	int  new_attr;		/* Boolean. Do we create a new attribute or not? */
 	int  num_matches;	/* Maximum number of matches */
@@ -80,7 +80,7 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 	rlm_attr_rewrite_t *data;
 	DICT_ATTR *dattr;
 	char *instance_name = NULL;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -100,7 +100,7 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
-	 *	Discover the attribute number of the key. 
+	 *	Discover the attribute number of the key.
 	 */
 	if (data->attribute == NULL) {
 		radlog(L_ERR, "rlm_attr_rewrite: 'attribute' must be set.");
@@ -155,10 +155,10 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 	instance_name = cf_section_name2(conf);
 	if (instance_name != NULL)
 		data->name = strdup(instance_name);
-	
-	
+
+
 	*instance = data;
-	
+
 	return 0;
 }
 
@@ -276,12 +276,12 @@ do_again:
 			len = pmatch.rm_so;
 			if (data->append) {
 				len = len + (pmatch.rm_eo - pmatch.rm_so);
-			} 
+			}
 			counter += len;
 			if (counter >= MAX_STRING_LEN) {
 				regfree(&preg);
 				DEBUG2("rlm_attr_rewrite: Replacement out of limits for attribute %s with value '%s'",
-						data->attribute, attr_vp->strvalue);	
+						data->attribute, attr_vp->strvalue);
 				return ret;
 			}
 
@@ -303,12 +303,12 @@ do_again:
 			if (counter >= MAX_STRING_LEN) {
 				regfree(&preg);
 				DEBUG2("rlm_attr_rewrite: Replacement out of limits for attribute %s with value '%s'",
-						data->attribute, attr_vp->strvalue);	
+						data->attribute, attr_vp->strvalue);
 				return ret;
 			}
 			if (replace_len){
 				strncpy(ptr, replace_STR, replace_len);
-				ptr += replace_len;	
+				ptr += replace_len;
 			}
 		}
 		regfree(&preg);
@@ -316,7 +316,7 @@ do_again:
 		counter += len;
 		if (counter >= MAX_STRING_LEN){
 			DEBUG2("rlm_attr_rewrite: Replacement out of limits for attribute %s with value '%s'",
-					data->attribute, attr_vp->strvalue);	
+					data->attribute, attr_vp->strvalue);
 			return ret;
 		}
 		strncpy(ptr, ptr2, len);
@@ -361,7 +361,7 @@ to_do_again:
 		DEBUG2("rlm_attr_rewrite: Added attribute %s with value '%s'",data->attribute,replace_STR);
 		ret = RLM_MODULE_OK;
 	}
-				
+
 
 	return ret;
 }
@@ -412,7 +412,7 @@ static int attr_rewrite_detach(void *instance)
 		free(data->attribute);
 	if (data->search)
 		free(data->search);
-	if (data->replace)	
+	if (data->replace)
 		free(data->replace);
 	if (data->name)
 		free(data->name);
@@ -431,7 +431,7 @@ static int attr_rewrite_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_attr_rewrite = {
-	"attr_rewrite",	
+	"attr_rewrite",
 	RLM_TYPE_THREAD_UNSAFE,		/* type */
 	NULL,				/* initialization */
 	attr_rewrite_instantiate,		/* instantiation */

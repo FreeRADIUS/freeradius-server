@@ -34,11 +34,11 @@
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
 #endif
-#ifndef REG_EXTENDED 
+#ifndef REG_EXTENDED
 #define REG_EXTENDED (0)
 #endif
 
-#ifndef REG_NOSUB 
+#ifndef REG_NOSUB
 #define REG_NOSUB (0)
 #endif
 /*
@@ -117,7 +117,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 		{ "binary", PW_TYPE_OCTETS },
 		{ NULL, 0 }
 	};
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -166,7 +166,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	data->item_attr = dattr->attr;
-	
+
 	/*
 	 *	Add the check attribute name to the dictionary
 	 *	if it does not already exists. dict_addattr() handles that
@@ -198,7 +198,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	*instance = data;
-	
+
 	return 0;
 }
 
@@ -218,7 +218,7 @@ static int do_checkval(void *instance, REQUEST *request)
 	/*
 	*      Look for the check item
 	*/
-	
+
 	if (!(item_vp = pairfind(request->packet->vps, data->item_attr))){
 		DEBUG2("rlm_checkval: Could not find item named %s in request", data->item_name);
 		if (data->notfound_reject)
@@ -259,7 +259,7 @@ static int do_checkval(void *instance, REQUEST *request)
 			}
 		}
 		else{	/* Integer or Date */
-	
+
 			if (item_vp->lvalue == chk_vp->lvalue)
 				ret = RLM_MODULE_OK;
 			else
@@ -278,7 +278,7 @@ static int do_checkval(void *instance, REQUEST *request)
 				regerror(err, &reg,err_msg, MAX_STRING_LEN);
 				DEBUG("rlm_checkval: regcomp() returned error: %s", err_msg);
 				return RLM_MODULE_FAIL;
-			} 
+			}
 			if (regexec(&reg, (char *)item_vp->strvalue,0, NULL, 0) == 0)
 				ret = RLM_MODULE_OK;
 			else
@@ -294,7 +294,7 @@ static int do_checkval(void *instance, REQUEST *request)
 			char module_fmsg[MAX_STRING_LEN];
 			VALUE_PAIR *module_fmsg_vp;
 
-			snprintf(module_fmsg,sizeof(module_fmsg), 
+			snprintf(module_fmsg,sizeof(module_fmsg),
 				"rlm_checkval: Could not find item named %s in request", data->item_name);
 			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 			pairadd(&request->packet->vps, module_fmsg_vp);
@@ -336,7 +336,7 @@ static int checkval_accounting(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_checkval = {
-	"checkval",	
+	"checkval",
 	0,		/* type */
 	NULL,				/* initialization */
 	checkval_instantiate,		/* instantiation */

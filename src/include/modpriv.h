@@ -18,7 +18,7 @@ typedef struct module_list_t {
 
 /*
  *	Per-instance data structure, to correlate the modules
- *	with the instance names (may NOT be the module names!), 
+ *	with the instance names (may NOT be the module names!),
  *	and the per-instance data structures.
  */
 typedef struct module_instance_t {

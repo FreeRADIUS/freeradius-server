@@ -96,7 +96,7 @@ int read_clients_file(const char *file)
 		 */
 		p = buffer;
 		while (*p &&
-				((*p == ' ') || (*p == '\t'))) 
+				((*p == ' ') || (*p == '\t')))
 			p++;
 
 		/*
@@ -163,7 +163,7 @@ int read_clients_file(const char *file)
 			       (int) sizeof(c->shortname) - 1);
 			return -1;
 		}
-		
+
 		/*
 		 *	It should be OK now, let's create the buffer.
 		 */
@@ -247,7 +247,7 @@ RADCLIENT *client_find(uint32_t ipaddr)
  *	Walk the RADCLIENT list displaying the clients.  This function
  *	is for debugging purposes.
  */
-void client_walk(void) 
+void client_walk(void)
 {
 	RADCLIENT *cl;
 	char host_ipaddr[16];
@@ -272,10 +272,10 @@ const char *client_name(uint32_t ipaddr)
 		else
 			return cl->longname;
 	}
-	
-	/* 
-	 * this isn't normally reachable, but if a loggable event happens just 
-	 * after a client list change and a HUP, then we may not know this 
+
+	/*
+	 * this isn't normally reachable, but if a loggable event happens just
+	 * after a client list change and a HUP, then we may not know this
 	 * information any more.
 	 *
 	 * If you see lots of these, then there's something wrong.

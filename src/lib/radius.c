@@ -194,7 +194,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		   *	RADIUS packet size, by one attribute.
 		   */
 		  uint8_t		data[MAX_PACKET_LEN + 256];
-		  
+
 		  /*
 		   *	Use memory on the stack, until we know how
 		   *	large the packet will be.
@@ -230,7 +230,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 		  default:
 			  break;
-			  
+
 		  }
 		  memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
 
@@ -238,9 +238,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			what, packet->id,
 			ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
 			packet->dst_port);
-		  
+
 		  total_length = AUTH_HDR_LEN;
-		  
+
 		  /*
 		   *	Load up the configuration values for the user
 		   */
@@ -328,7 +328,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			  if ((vendorcode == 0) &&
 			      ((vendorcode = VENDOR(reply->attribute)) != 0)) {
 				  vendorpec  = dict_vendorpec(vendorcode);
-				  
+
 				  /*
 				   *	This is a potentially bad error...
 				   *	we can't find the vendor ID!
@@ -381,9 +381,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				  *ptr++ = 2;
 				  total_length += 2;
 			  }
-			  
+
 			  switch(reply->type) {
-				  
+
 				  /*
 				   *	Ascend binary attributes are
 				   *	stored internally in binary form.
@@ -454,7 +454,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 						  *ptr++ = 0x00;
 					  } /* else don't write a tag */
 				  } /* else the attribute doesn't have a tag */
-				 
+
 				  /*
 				   *	Ensure we don't go too far.
 				   *	The 'length' of the attribute
@@ -468,11 +468,11 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				  } else {
 					  allowed -= *length_ptr;
 				  }
-				  
+
 				  if (len > allowed) {
 					  len = allowed;
 				  }
-				  
+
 				  *length_ptr += len;
 				  if (vsa_length_ptr) *vsa_length_ptr += len;
 				  /*
@@ -485,7 +485,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				  ptr += reply->length;
 				  total_length += len;
 				  break;
-				  
+
 			  case PW_TYPE_INTEGER:
 			  case PW_TYPE_IPADDR:
 				  *length_ptr += 4;
@@ -566,11 +566,11 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		   */
 		  if (msg_auth_offset) {
 			  uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
-			  
+
 			  switch (packet->code) {
 			  default:
 				  break;
-				  
+
 			  case PW_AUTHENTICATION_ACK:
 			  case PW_AUTHENTICATION_REJECT:
 			  case PW_ACCESS_CHALLENGE:
@@ -579,7 +579,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 					 AUTH_VECTOR_LEN);
 				  break;
 			  }
-			  
+
 			  /*
 			   *	Set the authentication vector to zero,
 			   *	calculate the signature, and put it
@@ -624,7 +624,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				MD5Update(&context, packet->data, packet->data_len);
 				MD5Update(&context, secret, strlen(secret));
 				MD5Final(digest, &context);
-				
+
 				memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
 				memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
 				break;
@@ -640,13 +640,13 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	  	DEBUG("Re-sending %s of id %d to %s:%d\n", what, packet->id,
 		      ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
 		      packet->dst_port);
-		
+
 		for (reply = packet->vps; reply; reply = reply->next) {
 			/* FIXME: ignore attributes > 0xff */
 			debug_pair(reply);
 		}
 	}
-	
+
 	/*
 	 *	And send it on it's way.
 	 */
@@ -699,7 +699,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 	 *	as the original MD5 sum (packet->vector).
 	 */
 	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
-	
+
 	/*
 	 *  MD5(packet + secret);
 	 */
@@ -778,7 +778,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	int			seen_eap;
 	uint8_t			data[MAX_PACKET_LEN];
 	int			num_attributes;
-	
+
 	/*
 	 *	Allocate the new request data structure
 	 */
@@ -802,7 +802,7 @@ RADIUS_PACKET *rad_recv(int fd)
 		struct sockaddr_in	salocal;
 		salen_local = sizeof(salocal);
 		memset(&salocal, 0, sizeof(salocal));
-		packet->data_len = recvfromto(fd, data, sizeof(data), 0, 
+		packet->data_len = recvfromto(fd, data, sizeof(data), 0,
 					      (struct sockaddr *)&saremote, &salen,
 					      (struct sockaddr *)&salocal, &salen_local);
 		packet->dst_ipaddr = salocal.sin_addr.s_addr;
@@ -979,7 +979,7 @@ RADIUS_PACKET *rad_recv(int fd)
 			free(packet);
 			return NULL;
 		}
-		
+
 		/*
 		 *	Attributes are at LEAST as long as the ID & length
 		 *	fields.  Anything shorter is an invalid attribute.
@@ -1013,7 +1013,7 @@ RADIUS_PACKET *rad_recv(int fd)
 			}
 			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
 			break;
-			
+
 		case PW_VENDOR_SPECIFIC:
 			if (attr[1] <= 6) {
 				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has invalid length %d",
@@ -1102,7 +1102,7 @@ RADIUS_PACKET *rad_recv(int fd)
 			       packet_codes[hdr->code],
 			       ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port);
 		} else {
-			printf("rad_recv: Packet from host %s:%d code=%d",	
+			printf("rad_recv: Packet from host %s:%d code=%d",
 			       ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port,
 			       hdr->code);
 		}
@@ -1364,7 +1364,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			} else if ((vendorcode == VENDORPEC_USR) &&
 				   ((ptr[4] == 0) && (ptr[5] == 0))) {
 				DICT_ATTR *da;
-				
+
 				da = dict_attrbyvalue((vendorcode << 16) |
 						      (ptr[6] << 8) |
 						      ptr[7]);
@@ -1400,13 +1400,13 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			librad_log("out of memory");
 			return -1;
 		}
-		
+
 		pair->length = attrlen;
 		pair->operator = T_OP_EQ;
 		pair->next = NULL;
-		
+
 		switch (pair->type) {
-			
+
 			/*
 			 *	The attribute may be zero length,
 			 *	or it may have a tag, and then no data...
@@ -1500,7 +1500,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					return -1;
 				}
 				if (rad_tunnel_pwdecode(pair->strvalue,
-							&pair->length, 
+							&pair->length,
 							secret,
 							(char *)original->vector) < 0) {
 					return -1;
@@ -1525,7 +1525,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				break;
 			} /* switch over encryption flags */
 			break;	/* from octets/string/abinary */
-			
+
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 		case PW_TYPE_IPADDR:
@@ -1584,7 +1584,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				}
 			}
 			break;
-			
+
 			/*
 			 *	IPv6 interface ID is 8 octets long.
 			 */
@@ -1634,7 +1634,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			pair = NULL;
 			break;
 		}
-		
+
 		if (pair) {
 			debug_pair(pair);
 			*tail = pair;
@@ -1713,7 +1713,7 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret,
 	 *	Length > AUTH_PASS_LEN, so we need to use the extended
 	 *	algorithm.
 	 */
-	for (n = 0; n < 128 && n <= (len - AUTH_PASS_LEN); n += AUTH_PASS_LEN) { 
+	for (n = 0; n < 128 && n <= (len - AUTH_PASS_LEN); n += AUTH_PASS_LEN) {
 		memcpy(buffer + secretlen, passwd + n, AUTH_PASS_LEN);
 		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
 		for (i = 0; i < AUTH_PASS_LEN; i++)
@@ -1762,7 +1762,7 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret,
 	 */
 	rlen = ((pwlen - 1) / AUTH_PASS_LEN) * AUTH_PASS_LEN;
 
-	for (n = rlen; n > 0; n -= AUTH_PASS_LEN ) { 
+	for (n = rlen; n > 0; n -= AUTH_PASS_LEN ) {
 		s = (n == AUTH_PASS_LEN) ? r : (passwd + n - AUTH_PASS_LEN);
 		memcpy(buffer + secretlen, s, AUTH_PASS_LEN);
 		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
@@ -1793,7 +1793,7 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 	char*   salt;
 	int	i, n, secretlen;
 	unsigned len, n2;
-	
+
 	len = *pwlen;
 
 	if (len > 127) len = 127;
@@ -1823,7 +1823,7 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 	salt[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
 		   (lrad_rand() & 0x07));
 	salt[1] = lrad_rand();
-	
+
 	/*
 	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
 	 */
@@ -1835,23 +1835,23 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 	}
 	/* set new password length */
 	*pwlen = len + 2;
-	
+
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
 	memcpy(buffer, secret, secretlen);
-	
+
 	for (n2 = 0; n2 < len; n2+=AUTH_PASS_LEN) {
 		if (!n2) {
 			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
 			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
 			librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
 		} else {
-			memcpy(buffer + secretlen, passwd + n2 - AUTH_PASS_LEN, AUTH_PASS_LEN);	
+			memcpy(buffer + secretlen, passwd + n2 - AUTH_PASS_LEN, AUTH_PASS_LEN);
 			librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
 		}
-		
+
 		for (i = 0; i < AUTH_PASS_LEN; i++) {
 			passwd[i + n2] ^= digest[i];
 		}
@@ -1875,7 +1875,7 @@ int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
 	uint8_t		decrypted[MAX_STRING_LEN + 1];
 	int		secretlen;
 	unsigned	i, n, len;
-	
+
 	len = *pwlen;
 
 	/*
@@ -1887,7 +1887,7 @@ int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
 	}
 
 	/*
-	 *	There's a salt, but no password.  Or, there's a salt 
+	 *	There's a salt, but no password.  Or, there's a salt
 	 *	and a 'data_len' octet.  It's wrong, but at least we
 	 *	can figure out what it means: the password is empty.
 	 *
@@ -2017,7 +2017,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id,
 		i += challenge->length;
 	} else {
 		memcpy(ptr, packet->vector, AUTH_VECTOR_LEN);
-		i += AUTH_VECTOR_LEN; 
+		i += AUTH_VECTOR_LEN;
 	}
 
 	*output = id;

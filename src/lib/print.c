@@ -208,7 +208,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			break;
 	}
 	strNcpy(out, a?a:"UNKNOWN-TYPE", outlen);
-	
+
 	return strlen(out);
 }
 
@@ -272,7 +272,7 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 
 		snprintf(out, outlen, "%s:%d %s ", vp->name, vp->flags.tag,
 			 token);
-		
+
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
@@ -282,7 +282,7 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
-	}	  
+	}
 
 	return strlen(out);
 }

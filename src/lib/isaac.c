@@ -70,11 +70,11 @@ void lrad_randinit(lrad_randctx *ctx, int flag)
   m=ctx->randmem;
   r=ctx->randrsl;
   a=b=c=d=e=f=g=h=0x9e3779b9;  /* the golden ratio */
-  
+
   for (i=0; i<4; ++i) {        /* scramble it */
     mix(a,b,c,d,e,f,g,h);
   }
-  
+
   if (flag) {
     /* initialize using the contents of r[] as the seed */
     for (i=0; i<RANDSIZ; i+=8) {
@@ -100,7 +100,7 @@ void lrad_randinit(lrad_randctx *ctx, int flag)
       m[i+4]=e; m[i+5]=f; m[i+6]=g; m[i+7]=h;
     }
   }
-  
+
   lrad_isaac(ctx);       /* fill in the first set of results */
   ctx->randcnt=RANDSIZ;  /* prepare to use the first set of results */
 }
@@ -116,9 +116,9 @@ int main()
 {
   uint32_t i,j;
   lrad_randctx ctx;
-  
+
   ctx.randa = ctx.randb = ctx.randc = (uint32_t)0;
-  
+
   for (i=0; i<256; ++i) ctx.randrsl[i]=(uint32_t)0;
   lrad_randinit(&ctx, 1);
   for (i=0; i<2; ++i) {

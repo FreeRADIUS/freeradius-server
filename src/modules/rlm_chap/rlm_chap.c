@@ -40,7 +40,7 @@ static const char rcsid[] = "$Id$";
 
 static int chap_authorize(void *instance, REQUEST *request)
 {
-	
+
 	/* quiet the compiler */
 	instance = instance;
 	request = request;
@@ -54,13 +54,13 @@ static int chap_authorize(void *instance, REQUEST *request)
 		DEBUG2("  rlm_chap: WARNING: Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	DEBUG("  rlm_chap: Setting 'Auth-Type := CHAP'");
 	pairadd(&request->config_items,
 		pairmake("Auth-Type", "CHAP", T_OP_EQ));
 	return RLM_MODULE_OK;
 }
-	
+
 
 /*
  *	Find the named user in this modules database.  Create the set
@@ -102,7 +102,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Don't print out the CHAP password here.  It's binary crap.
 	 */
-	DEBUG("  rlm_chap: login attempt by \"%s\" with CHAP password", 
+	DEBUG("  rlm_chap: login attempt by \"%s\" with CHAP password",
 		request->username->strvalue);
 
 	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
@@ -115,9 +115,9 @@ static int chap_authenticate(void *instance, REQUEST *request)
 
 	DEBUG("  rlm_chap: Using clear text password %s for user %s authentication.",
 	      passwd_item->strvalue, request->username->strvalue);
-	
+
 	rad_chap_encode(request->packet,pass_str,request->password->strvalue[0],passwd_item);
-	
+
 	if (memcmp(pass_str+1,request->password->strvalue+1,CHAP_VALUE_LENGTH) != 0){
 		DEBUG("  rlm_chap: Pasword check failed");
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_chap: Wrong user password");
@@ -141,7 +141,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_chap = {
-	"CHAP",	
+	"CHAP",
 	0,				/* type */
 	NULL,				/* initialization */
 	NULL,				/* instantiation */

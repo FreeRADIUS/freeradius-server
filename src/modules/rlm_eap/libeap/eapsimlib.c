@@ -2,7 +2,7 @@
  * eapsimlib.c    based upon draft-haverinen-pppext-eap-sim-11.txt.
  *
  * The development of the EAP/SIM support was funded by Internet Foundation
- * Austria (http://www.nic.at/ipa). 
+ * Austria (http://www.nic.at/ipa).
  *
  * code common to EAP-SIM clients and to servers.
  *
@@ -30,14 +30,14 @@
  *  EAP-SIM PACKET FORMAT
  *  ------- ------ ------
  *
- * EAP Request and Response Packet Format 
+ * EAP Request and Response Packet Format
  * --- ------- --- -------- ------ ------
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |     Code      |  Identifier   |            Length             |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |     Type      |  SIM-Type     |   SIM-Length  |     value ... |  
+ * |     Type      |  SIM-Type     |   SIM-Length  |     value ... |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  * with SIM-Type/SIM-Length/Value... repeating. SIM-Length is in units
@@ -67,7 +67,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	uint8_t          *encodedmsg, *attr;
 	unsigned int      id, eapcode;
 	unsigned char    *macspace, *append;
-	int               appendlen; 
+	int               appendlen;
 
 	macspace = NULL;
 	append = NULL;
@@ -88,7 +88,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		{
 			continue;
 		}
-		
+
 		vplen = vp->length;
 
 		/*
@@ -117,7 +117,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	{
 		return 0;
 	}
-		
+
 
 	/*
 	 * figured out the length, so malloc some space for the results.
@@ -129,11 +129,11 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	 * EAP is 1-code, 1-identifier, 2-length, 1-type = 5 overhead.
 	 *
 	 * SIM code adds a subtype, and 2 bytes of reserved = 3.
-	 * 
+	 *
 	 */
 
 	/* malloc space for it */
-		
+
 	encoded_size += 3;
 	encodedmsg = malloc(encoded_size);
 	if (encodedmsg == NULL) {
@@ -222,7 +222,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		eapcode = vp->lvalue;
 	}
 
-	
+
 	ep->code = eapcode;
 	ep->id   = (id & 0xff);
 	ep->type.type = PW_EAP_SIM;
@@ -241,7 +241,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		eap_packet_t	*hdr;
 		uint16_t         hmaclen, total_length = 0;
 		unsigned char    sha1digest[20];
-	
+
 		total_length = EAP_HEADER_LEN + 1 + encoded_size;
 		hmaclen = total_length + appendlen;
 		buffer = (unsigned char *)malloc(hmaclen);
@@ -272,7 +272,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 
 		/* done with the buffer, free it */
 		free(buffer);
-		
+
 		/* now copy the digest to where it belongs in the AT_MAC */
                 /* note that it is truncated to 128-bits */
 		memcpy(macspace, sha1digest, 16);
@@ -281,11 +281,11 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	/* if we had an AT_MAC and no key, then fail */
 	if(macspace != NULL && vp == NULL)
 	{
-		if(encodedmsg != NULL) 
+		if(encodedmsg != NULL)
 			free(encodedmsg);
 		return 0;
 	}
-	
+
 	return 1;
 }
 
@@ -311,7 +311,7 @@ int map_eapsim_types(RADIUS_PACKET *r)
  * wrong and the packet should be discarded.
  *
  */
-int unmap_eapsim_basictypes(RADIUS_PACKET *r, 
+int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			    uint8_t *attr, unsigned int attrlen)
 {
 	VALUE_PAIR              *newvp;
@@ -385,7 +385,7 @@ int unmap_eapsim_types(RADIUS_PACKET *r)
 
 /*
  * calculate the MAC for the EAP message, given the key.
- * The "extra" will be appended to the EAP message and included in the 
+ * The "extra" will be appended to the EAP message and included in the
  * HMAC.
  *
  */
@@ -461,7 +461,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 			attr += attr[1]*4;
 		}
 	}
-		
+
 	/* now, HMAC-SHA1 it with the key. */
 	lrad_hmac_sha1(buffer, len,
 		       key, 16,
@@ -483,7 +483,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
  * definitions changed to take a buffer for unknowns
  * as this is more thread safe.
  */
-const char *simstates[]={ "init", "start", NULL };	
+const char *simstates[]={ "init", "start", NULL };
 
 const char *sim_state2name(enum eapsim_clientstates state,
 			   char *statenamebuf,
@@ -503,12 +503,12 @@ const char *sim_state2name(enum eapsim_clientstates state,
 
 const char *subtypes[]={ "subtype0", "subtype1", "subtype2", "subtype3",
 			 "subtype4", "subtype5", "subtype6", "subtype7",
-			 "subtype8", "subtype9", 
+			 "subtype8", "subtype9",
 			 "start",
 			 "challenge",
 			 "notification",
 			 "reauth",
-			 NULL };	
+			 NULL };
 
 const char *sim_subtype2name(enum eapsim_subtype subtype,
 			     char *subtypenamebuf,
@@ -580,8 +580,8 @@ main(int argc, char *argv[])
 	while(!filedone) {
 		if(req->vps) pairfree(&req->vps);
 		if(req2->vps) pairfree(&req2->vps);
-		
-		if ((req->vps = readvp2(stdin, &filedone, "eapsimlib:")) == NULL) { 
+
+		if ((req->vps = readvp2(stdin, &filedone, "eapsimlib:")) == NULL) {
 			break;
 		}
 
@@ -611,7 +611,7 @@ main(int argc, char *argv[])
 			      ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC);
 		vpkey   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_KEY);
 		vpextra = pairfind(req->vps, ATTRIBUTE_EAP_SIM_EXTRA);
-		
+
 		if(vp != NULL && vpkey != NULL && vpextra!=NULL) {
 			uint8_t calcmac[16];
 
@@ -633,7 +633,7 @@ main(int argc, char *argv[])
 						j=0;
 					}
 					j++;
-					
+
 					printf("%02x", calcmac[i]);
 				}
 				printf(" did not match\n");
@@ -645,5 +645,5 @@ main(int argc, char *argv[])
 }
 #endif
 
-	
-	
+
+

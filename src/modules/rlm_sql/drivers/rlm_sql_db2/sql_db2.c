@@ -23,8 +23,8 @@
  * Copyright 2001  Joerg Wendland <wendland@scan-plus.de>
  */
 
-/* 
- * Modification of rlm_sql_db2 to handle IBM DB2 UDB V7 
+/*
+ * Modification of rlm_sql_db2 to handle IBM DB2 UDB V7
  * by Joerg Wendland <wendland@scan-plus.de>
  */
 
@@ -87,12 +87,12 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 }
 
 
-/************************************************************************* 
- *                                                                         
- *      Function: sql_destroy_socket                                       
- *                                                                         
- *      Purpose: Free socket and private connection data                   
- *                                                                         
+/*************************************************************************
+ *
+ *      Function: sql_destroy_socket
+ *
+ *      Purpose: Free socket and private connection data
+ *
  *************************************************************************/
 static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
@@ -108,7 +108,7 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) 
+static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 {
 	SQLRETURN retval;
 	rlm_sql_db2_sock *sock;
@@ -119,7 +119,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 		radlog(L_DBG,"query:\n%s", querystr);
 
 	/* allocate handle for statement */
-	SQLAllocHandle(SQL_HANDLE_STMT, sock->hdbc, 
+	SQLAllocHandle(SQL_HANDLE_STMT, sock->hdbc,
 			&(sock->stmt));
 
 	/* execute query */
@@ -141,7 +141,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) 
+static int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 {
 	return sql_query(sqlsocket, config, querystr);
 }
@@ -155,7 +155,7 @@ static int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *query
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	return 0;
 }
@@ -169,7 +169,7 @@ static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	SQLSMALLINT c;
 	rlm_sql_db2_sock *sock;
@@ -189,7 +189,7 @@ static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'
  *
  *************************************************************************/
-static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	int c, i;
 	SQLINTEGER len, slen;
@@ -231,7 +231,7 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	rlm_sql_db2_sock *sock;
 	sock = sqlsocket->conn;
@@ -249,7 +249,7 @@ static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	/* this should really be enough, if not, you still got the sqlstate */
 #define MSGLEN 512
@@ -278,7 +278,7 @@ static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	rlm_sql_db2_sock *sock;
 
@@ -297,7 +297,7 @@ static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	return 0;
 }
@@ -311,7 +311,7 @@ static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	return sql_finish_query(sqlsocket, config);
 }
@@ -324,7 +324,7 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *	Purpose: Return the number of rows affected by the last query.
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) 
+static int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	SQLINTEGER c;
 	rlm_sql_db2_sock *sock;

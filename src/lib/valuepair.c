@@ -318,7 +318,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 */
 		if (i->attribute == PW_FALL_THROUGH ||
 		    (i->attribute != PW_HINT && i->attribute != PW_FRAMED_ROUTE)) {
-		  
+
 			found = pairfind(*to, i->attribute);
 			switch (i->operator) {
 
@@ -332,7 +332,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					    (strcmp((char *)found->strvalue,
 						    (char *)i->strvalue) == 0)){
 						pairdelete(to, found->attribute);
-						
+
 						/*
 						 *	'tailto' may have been
 						 *	deleted...
@@ -346,9 +346,9 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 				tailfrom = i;
 				continue;
 				break;
-				
+
 /* really HAVE_REGEX_H */
-#if 0 
+#if 0
 				/*
 				 *  Attr-Name =~ "s/find/replace/"
 				 *
@@ -375,7 +375,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			    q = strchr(str, *p);
 			    *(q++) = '\0';
 			    q[strlen(q) - 1] = '\0';
-			    
+
 			    regcomp(&reg, str, 0);
 			    if (regexec(&reg, found->strvalue,
 					1, match, 0) == 0) {
@@ -435,7 +435,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			tailfrom->next = next;
 		else
 			*from = next;
-		
+
 		/*
 		 *	If ALL of the 'to' attributes have been deleted,
 		 *	then ensure that the 'tail' is updated to point
@@ -576,7 +576,7 @@ static int gettime(const char *valstr, time_t *lvalue)
 	 */
 	tm->tm_mon = 12;
 	for (i = 0; i < 3; i++) {
-		if (isalpha( (int) *f[i])) {	
+		if (isalpha( (int) *f[i])) {
 			/*
 			 *  Bubble the month to the front of the list
 			 */
@@ -760,7 +760,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 				while (*cp && vp->length < MAX_STRING_LEN) {
 					unsigned int tmp;
-					
+
 					if (sscanf(cp, "%02x", &tmp) != 1) {
 						librad_log("Non-hex characters at %c%c", cp[0], cp[1]);
 						return NULL;
@@ -949,16 +949,16 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		case PW_TYPE_IFID:
 			if (vp->length != 8) goto length_error;
 			break;
-			
+
 		case PW_TYPE_IPV6ADDR:
 			if (vp->length != 16) goto length_error;
 			break;
-			
+
 #ifdef ASCEND_BINARY
 		case PW_TYPE_ABINARY:
 			if (vp->length != 32) goto length_error;
 			break;
-#endif		  
+#endif
 		default:	/* string, octets, etc. */
 			break;
 		}
@@ -1069,8 +1069,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		       else tag = 0;
 		}
 		found_tag = 1;
-	}	
-	
+	}
+
 	if (found_tag) {
 	  vp->flags.tag = tag;
 	}
@@ -1114,7 +1114,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		if (res != 0) {
 			char	msg[128];
 
-			regerror(res, &cre, msg, sizeof(msg));               
+			regerror(res, &cre, msg, sizeof(msg));
 			librad_log("Illegal regular expression in attribute: %s: %s",
 				vp->name, msg);
 			pairbasicfree(vp);
@@ -1212,13 +1212,13 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	case T_BACK_QUOTED_STRING:
 		vp = pairmake(attr, NULL, token);
 		if (!vp) return vp;
-		
+
 		vp->flags.do_xlat = 1;
 		strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
 		vp->length = 0;
 		break;
 	}
-	
+
 	return vp;
 }
 
@@ -1306,7 +1306,7 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 			}
 			break;
 		}
-		
+
 		pairadd(&list, vp);
 		buf[0] = '\0';
 	}

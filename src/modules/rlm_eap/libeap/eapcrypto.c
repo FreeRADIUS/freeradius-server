@@ -2,7 +2,7 @@
  * eapcrypto.c      Common key derivation routines for EAP/SIM.
  *
  * The development of the EAP/SIM support was funded by Internet Foundation
- * Austria (http://www.nic.at/ipa). 
+ * Austria (http://www.nic.at/ipa).
  *
  * Version:     $Id$
  *
@@ -51,17 +51,17 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 	memcpy(p, ek->Kc[2], EAPSIM_Kc_SIZE);       p = p+EAPSIM_Kc_SIZE;
 	memcpy(p, ek->nonce_mt, sizeof(ek->nonce_mt)); p=p+sizeof(ek->nonce_mt);
 	memcpy(p, ek->versionlist, ek->versionlistlen);p=p+ek->versionlistlen;
-	memcpy(p, ek->versionselect, sizeof(ek->versionselect)); p=p+sizeof(ek->versionselect); 
+	memcpy(p, ek->versionselect, sizeof(ek->versionselect)); p=p+sizeof(ek->versionselect);
 	/* *p++ = ek->versionselect[1]; */
-	
+
 	blen = p - buf;
 
 #if defined(TEST_CASE) || defined(DUMP_EAPSIM_KEYS)
 	{
 	  unsigned int i, j, k;
-	  
+
 	  j=0; k=0;
-	  
+
 	  printf("SHA1buffer was: ");
 	  for (i = 0; i < blen; i++) {
 	    if(j==4) {
@@ -72,7 +72,7 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 	      printf("\n                ");
 	      k=0;
 	      j=0;
-	    } 
+	    }
 	    j++;
 	    k++;
 
@@ -80,9 +80,9 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 	  }
 	  printf("\n");
 	}
-#endif	  
+#endif
 
-	  
+
 	/* do the master key first */
 	SHA1Init(&context);
 	SHA1Update(&context, buf, blen);
@@ -146,7 +146,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 	}
 
 	printf("\n   select %02x %02x\n",
-	       ek->versionselect[0], 
+	       ek->versionselect[0],
 	       ek->versionselect[1]);
 
 	printf("\n\nOutput\n");
@@ -194,7 +194,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 			printf("\n            ");
 			k=0;
 			j=0;
-		} 
+		}
 		if(j==4) {
 			printf("_");
 			j=0;
@@ -211,7 +211,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 			printf("\n            ");
 			k=0;
 			j=0;
-		} 
+		}
 		if(j==4) {
 			printf("_");
 			j=0;
@@ -237,11 +237,11 @@ struct eapsim_keys inputkey1 = {
 	  0x89, 0xab, 0xcd, 0xef, 0x89, 0xab, 0xcd, 0xef,
 	  0x9a, 0xbc, 0xde, 0xf8, 0x9a, 0xbc, 0xde, 0xf8,
 	  0x9a, 0xbc, 0xde, 0xf8, 0x9a, 0xbc, 0xde, 0xf8,
-	  0xab, 0xcd, 0xef, 0x89, 0xab, 0xcd, 0xef, 0x89,   
+	  0xab, 0xcd, 0xef, 0x89, 0xab, 0xcd, 0xef, 0x89,
 	  0xab, 0xcd, 0xef, 0x89, 0xab, 0xcd, 0xef, 0x89,
 	  0x12, 0x34, 0xab, 0xcd,                             /* sresX */
-	  0x12, 0x34, 0xab, 0xcd, 
-	  0x23, 0x4a, 0xbc, 0xd1, 
+	  0x12, 0x34, 0xab, 0xcd,
+	  0x23, 0x4a, 0xbc, 0xd1,
 	  0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,  /* Kc */
 	  0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87,
 	  0x30, 0x41, 0x52, 0x63, 0x74, 0x85, 0x96, 0xa7,
@@ -252,7 +252,7 @@ struct eapsim_keys inputkey1 = {
 
 struct eapsim_keys inputkey2 = {
   {'1','2','4','4','0','7','0','1','0','0','0','0','0','0','0','1','@','e','a','p','s','i','m','.','f','o','o'},
-  27, 
+  27,
   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,   /* nonce_mt */
   0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
   0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -263,14 +263,14 @@ struct eapsim_keys inputkey2 = {
   0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
 
   0xd1, 0xd2, 0xd3, 0xd4,  /* SRES 1 */
-  0xe1, 0xe2, 0xe3, 0xe4, 
-  0xf1, 0xf2, 0xf3, 0xf4, 
+  0xe1, 0xe2, 0xe3, 0xe4,
+  0xf1, 0xf2, 0xf3, 0xf4,
 
   0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,   /* Kc */
   0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
   0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
   /*   {0x00, 0x02, 0x00, 0x01}, */
-  {0x00, 0x01}, 
+  {0x00, 0x01},
   2,
   0x00, 0x01 ,
 };
@@ -293,8 +293,8 @@ main(int argc, char *argv[])
 }
 #endif
 
-	
-	
+
+
 
 
 

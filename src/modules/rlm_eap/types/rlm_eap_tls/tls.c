@@ -1,5 +1,5 @@
 /*
- * tls.c 
+ * tls.c
  *
  * Version:     $Id$
  *
@@ -146,13 +146,13 @@ static void int_ssl_check(SSL *s, int ret, const char *text)
  * We are the server, we always get the dirty data
  * (Handshake data is also considered as dirty data)
  * During handshake, since SSL API handles itself,
- * After clean-up, dirty_out will be filled with 
+ * After clean-up, dirty_out will be filled with
  * the data required for handshaking. So we check
  * if dirty_out is empty then we simply send it back.
  * As of now, if handshake is successful, then it is EAP-Success
  * or else EAP-failure should be sent
  *
- * Fill the Bio with the dirty data to clean it 
+ * Fill the Bio with the dirty data to clean it
  * Get the cleaned data from SSL, if it is not Handshake data
  */
 int tls_handshake_recv(tls_session_t *ssn)
@@ -263,7 +263,7 @@ void session_close(tls_session_t *ssn)
 	if(ssn->ssl)
 		SSL_free(ssn->ssl);
 #if 0
-/* 
+/*
  * WARNING: SSL_free seems to decrement the reference counts already,
  * 	so doing this might crash the application.
  */
@@ -363,7 +363,7 @@ void tls_session_information(tls_session_t *tls_session)
 	if (debug_flag == 0) {
 		return;
 	}
-	
+
 	str_write_p = tls_session->info.origin ? ">>>" : "<<<";
 
 	switch (tls_session->info.version)
@@ -404,7 +404,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 		if (tls_session->info.content_type == SSL3_RT_ALERT) {
 			str_details1 = ", ???";
-			
+
 			if (tls_session->info.record_len == 2) {
 
 				switch (tls_session->info.alert_level) {
@@ -490,7 +490,7 @@ void tls_session_information(tls_session_t *tls_session)
 				}
 			}
 		}
-		
+
 		if (tls_session->info.content_type == SSL3_RT_HANDSHAKE) {
 			str_details1 = "???";
 
@@ -531,8 +531,8 @@ void tls_session_information(tls_session_t *tls_session)
 		}
 	}
 
-	sprintf(tls_session->info.info_description, "%s %s%s [length %04lx]%s%s\n", 
-		str_write_p, str_version, str_content_type, 
+	sprintf(tls_session->info.info_description, "%s %s%s [length %04lx]%s%s\n",
+		str_write_p, str_version, str_content_type,
 		(unsigned long)tls_session->info.record_len, str_details1, str_details2);
 	DEBUG2("  rlm_eap_tls: %s\n", tls_session->info.info_description);
 }

@@ -12,12 +12,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -134,7 +134,7 @@ SMB_Handle_Type SMB_Connect_Server(SMB_Handle_Type Con_Handle,
   strcpy(con -> PDomain, NTdomain);
   strcpy(con -> OSName, SMBLIB_DEFAULT_OSNAME);
   strcpy(con -> LMType, SMBLIB_DEFAULT_LMTYPE);
-  con -> first_tree = con -> last_tree = NULL; 
+  con -> first_tree = con -> last_tree = NULL;
 
   SMB_Get_My_Name(con -> myname, sizeof(con -> myname));
 
@@ -144,7 +144,7 @@ SMB_Handle_Type SMB_Connect_Server(SMB_Handle_Type Con_Handle,
 
   con -> pid = getpid();
   con -> mid = con -> pid;      /* This will do for now ... */
-  con -> uid = 0;               /* Until we have done a logon, no uid ... */ 
+  con -> uid = 0;               /* Until we have done a logon, no uid ... */
   con -> gid = getgid();
 
   /* Now connect to the remote end, but first upper case the name of the
@@ -152,12 +152,12 @@ SMB_Handle_Type SMB_Connect_Server(SMB_Handle_Type Con_Handle,
 
   for (i=0; i < strlen(server); i++)
     called[i] = toupper(server[i]);
-		       
+
   called[strlen(server)] = 0;    /* Make it a string */
 
   for (i=0; i < strlen(con -> myname); i++)
     calling[i] = toupper(con -> myname[i]);
-		       
+
   calling[strlen(con -> myname)] = 0;    /* Make it a string */
 
   if (strcmp(con -> address, "") == 0)
@@ -197,8 +197,8 @@ static const char *SMB_Prots_Restrict[] = {"PC NETWORK PROGRAM 1.0",
 
 SMB_Handle_Type SMB_Connect(SMB_Handle_Type Con_Handle,
 			    SMB_Tree_Handle *tree,
-			    char *service, 
-			    char *username, 
+			    char *service,
+			    char *username,
 			    char *password)
 
 { SMB_Handle_Type con;
@@ -254,12 +254,12 @@ SMB_Handle_Type SMB_Connect(SMB_Handle_Type Con_Handle,
 
   for (i=0; i < strlen(host); i++)
     called[i] = toupper(host[i]);
-		       
+
   called[strlen(host)] = 0;    /* Make it a string */
 
   for (i=0; i < strlen(con -> myname); i++)
     calling[i] = toupper(con -> myname[i]);
-		       
+
   calling[strlen(con -> myname)] = 0;    /* Make it a string */
 
   if (strcmp(con -> address, "") == 0)
@@ -311,7 +311,7 @@ SMB_Handle_Type SMB_Connect(SMB_Handle_Type Con_Handle,
 /* Logon to the server. That is, do a session setup if we can. We do not do */
 /* Unicode yet!                                                             */
 
-int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName, 
+int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName,
 		     char *PassWord)
 
 { struct RFCNB_Pkt *pkt;
@@ -333,9 +333,9 @@ int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName,
   if (Con_Handle -> encrypt_passwords)
   {
     pass_len=24;
-    SMBencrypt((uchar *) PassWord, (uchar *)Con_Handle -> Encrypt_Key,(uchar *)pword); 
-  } 
-  else 
+    SMBencrypt((uchar *) PassWord, (uchar *)Con_Handle -> Encrypt_Key,(uchar *)pword);
+  }
+  else
 	pass_len=strlen(pword);
 
 
@@ -343,8 +343,8 @@ int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName,
 
   if (Con_Handle -> protocol < SMB_P_NT1) {
 
-    param_len = strlen(UserName) + 1 + pass_len + 1 + 
-                strlen(Con_Handle -> PDomain) + 1 + 
+    param_len = strlen(UserName) + 1 + pass_len + 1 +
+                strlen(Con_Handle -> PDomain) + 1 +
 	        strlen(Con_Handle -> OSName) + 1;
 
     pkt_len = SMB_ssetpLM_len + param_len;
@@ -407,8 +407,8 @@ int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName,
 
     /* We don't admit to UNICODE support ... */
 
-    param_len = strlen(UserName) + 1 + pass_len + 
-                strlen(Con_Handle -> PDomain) + 1 + 
+    param_len = strlen(UserName) + 1 + pass_len +
+                strlen(Con_Handle -> PDomain) + 1 +
 	        strlen(Con_Handle -> OSName) + 1 +
 		strlen(Con_Handle -> LMType) + 1;
 
@@ -525,13 +525,13 @@ int SMB_Logon_Server(SMB_Handle_Type Con_Handle, char *UserName,
        {
                /* do we allow guest login? NO! */
                return(SMBlibE_BAD);
- 
+
        }
  /** @@@ mdz: } **/
 
 
 #ifdef DEBUG
-  fprintf(stderr, "SessSetupAndX response. Action = %i\n", 
+  fprintf(stderr, "SessSetupAndX response. Action = %i\n",
           SVAL(SMB_Hdr(pkt), SMB_ssetpr_act_offset));
 #endif
 

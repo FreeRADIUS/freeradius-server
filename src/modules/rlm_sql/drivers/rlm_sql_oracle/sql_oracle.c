@@ -58,7 +58,7 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	static char	msgbuf[512];
 	sb4		errcode = 0;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
- 
+
 	memset((void *) msgbuf, (int)'\0', sizeof(msgbuf));
 
 	OCIErrorGet((dvoid *) oracle_sock->errHandle, (ub4) 1, (text *) NULL,
@@ -114,7 +114,7 @@ static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-	
+
 	rlm_sql_oracle_sock *oracle_sock;
 
 	if (!sqlsocket->conn) {
@@ -129,7 +129,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	if (OCIEnvCreate(&oracle_sock->env, OCI_DEFAULT|OCI_THREADED, (dvoid *)0,
 		(dvoid * (*)(dvoid *, size_t)) 0,
-		(dvoid * (*)(dvoid *, dvoid *, size_t))0, 
+		(dvoid * (*)(dvoid *, dvoid *, size_t))0,
 		(void (*)(dvoid *, dvoid *)) 0,
 		0, (dvoid **)0 )) {
 		radlog(L_ERR,"rlm_sql_oracle: Couldn't init Oracle OCI environment (OCIEnvCreate())");
@@ -194,7 +194,7 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	ub4		count;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
-	/* get the number of columns in the select list */ 
+	/* get the number of columns in the select list */
 	if (OCIAttrGet ((dvoid *)oracle_sock->queryHandle,
 			(ub4)OCI_HTYPE_STMT,
 			(dvoid *) &count,
@@ -345,7 +345,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 			return -1;
 		}
 
-		x=OCIAttrGet((dvoid*)param, OCI_DTYPE_PARAM, 
+		x=OCIAttrGet((dvoid*)param, OCI_DTYPE_PARAM,
 			   (dvoid*)&dtype, (ub4*)0, OCI_ATTR_DATA_TYPE,
 			   oracle_sock->errHandle);
 		if (x != OCI_SUCCESS) {
@@ -455,7 +455,7 @@ static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	OCIAttrGet((CONST dvoid *)oracle_sock->queryHandle,
 			OCI_HTYPE_STMT,
-			(dvoid *)&rows, 
+			(dvoid *)&rows,
 			(ub4 *) sizeof(ub4),
 			OCI_ATTR_ROW_COUNT,
 			oracle_sock->errHandle);
@@ -527,7 +527,7 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			0,
 			OCI_FETCH_NEXT,
 			OCI_DEFAULT);
-	
+
 	num_fields = sql_num_fields(sqlsocket, config);
 	if (num_fields >= 0) {
 		for(x=0; x < num_fields; x++) {

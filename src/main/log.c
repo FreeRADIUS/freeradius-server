@@ -81,7 +81,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		return 0;
 	}
 
-	if (debug_flag 
+	if (debug_flag
 	    || (radlog_dest == RADLOG_STDOUT)
 	    || (radlog_dir == NULL)) {
 	        msgfd = stdout;
@@ -102,7 +102,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		} else if ((msgfd = fopen(mainconfig.log_file, "a")) == NULL) {
 		         fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
 				 progname, mainconfig.log_file, strerror(errno));
-				
+
 			 fprintf(stderr, "  (");
 			 vfprintf(stderr, fmt, ap);  /* the message that caused the log */
 			 fprintf(stderr, ")\n");
@@ -148,7 +148,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 			*p = '?';
 	}
 	strcat(buffer, "\n");
-	
+
 	/*
 	 *   If we're debugging, for small values of debug, then
 	 *   we don't do timestamps.
@@ -230,16 +230,16 @@ int radlog(int lvl, const char *msg, ...)
 
 /*
  *      Dump a whole list of attributes to DEBUG2
- */                     
+ */
 void vp_listdebug(VALUE_PAIR *vp)
-{       
-        char tmpPair[70];  
+{
+        char tmpPair[70];
         for (; vp; vp = vp->next) {
                 vp_prints(tmpPair, sizeof(tmpPair), vp);
                 DEBUG2("     %s", tmpPair);
-        }               
+        }
 }
-   
 
- 
-        
+
+
+

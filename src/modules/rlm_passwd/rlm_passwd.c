@@ -127,13 +127,13 @@ static unsigned int hash(const unsigned char * username, unsigned int tablesize)
 		h = h * 7907 + *username++;
 	}
 	return h%tablesize;
-} 
+}
 
 static void release_hash_table(struct hashtable * ht){
 	int i;
 
 	if (!ht) return;
-	for (i=0; i<ht->tablesize; i++) 
+	for (i=0; i<ht->tablesize; i++)
  		if (ht->table[i])
  			destroy_password(ht->table[i]);
 	if (ht->table) free(ht->table);
@@ -159,7 +159,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	char *list;
 	char *nextlist=0;
 	int i;
-	
+
 	ht = (struct hashtable *) rad_malloc(sizeof(struct hashtable));
 	if(!ht) {
 		return NULL;
@@ -202,7 +202,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 				free(hashentry);
 				continue;
 			}
-			
+
 			if (islist) {
 				list = hashentry->field[keyfield];
 				for (nextlist = list; *nextlist && *nextlist!=','; nextlist++);
@@ -244,7 +244,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 	char buffer[1024];
 	int len;
 	char *list, *nextlist;
-	
+
 	if (ht->tablesize > 0) {
 		/* get saved address of next item to check from buffer */
 		hashentry = ht->last_found;
@@ -274,7 +274,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 					if(!strcmp(list, name)) return passwd;
 				}
 			}
-			
+
 		}
 	}
 	fclose(ht->fp);
@@ -287,7 +287,7 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
 {
 	int h;
 	struct mypasswd * hashentry;
-	
+
 	if (!ht || !name || *name == '\0') return NULL;
 	ht->last_found = NULL;
 	if (ht->tablesize > 0) {
@@ -314,7 +314,7 @@ int main(void){
  char *buffer;
  struct mypasswd* pw;
  int i;
- 
+
  ht = build_hash_table("/etc/group", 4, 3, 1, 100, 0, ":");
  if(!ht) {
  	printf("Hash table not built\n");
@@ -354,7 +354,7 @@ struct passwd_instance {
 
 static CONF_PARSER module_config[] = {
 	{ "filename",   PW_TYPE_STRING_PTR,
-	   offsetof(struct passwd_instance, filename), NULL,  NULL },	
+	   offsetof(struct passwd_instance, filename), NULL,  NULL },
 	{ "format",   PW_TYPE_STRING_PTR,
 	   offsetof(struct passwd_instance, format), NULL,  NULL },
 	{ "authtype",   PW_TYPE_STRING_PTR,
@@ -375,11 +375,11 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 #define inst ((struct passwd_instance *)*instance)
 	int nfields=0, keyfield=-1, listable=0;
 	char *s;
-	char *lf=NULL; /* destination list flags temporary */ 
+	char *lf=NULL; /* destination list flags temporary */
 	int len;
 	int i;
 	DICT_ATTR * da;
-	
+
 	*instance = rad_malloc(sizeof(struct passwd_instance));
 	if ( !*instance) {
 		radlog(L_ERR, "rlm_passwd: cann't alloc instance");
@@ -411,7 +411,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 			if(*(s+1) == ','){
 				listable = 1;
 				s++;
-			} 
+			}
 			if(*(s+1) == '='){
 				lf[nfields]=1;
 				s++;
@@ -428,7 +428,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_passwd: no field market as key in format: %s", inst->format);
 		return -1;
 	}
-	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, inst->delimiter)) ){ 
+	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, inst->delimiter)) ){
 		radlog(L_ERR, "rlm_passwd: can't build hashtable from passwd file");
 		return -1;
 	}
@@ -442,7 +442,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		release_ht(inst->ht);
 		return -1;
 	}
-	
+
 	memcpy(inst->pwdfmt->listflag, lf, nfields);
 
 	free(lf);
@@ -469,7 +469,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	inst->listable = listable;
 	radlog(L_INFO, "rlm_passwd: nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield, inst->pwdfmt->field[keyfield], listable?"yes":"no");
 	return 0;
-	
+
 #undef inst
 }
 
@@ -489,7 +489,7 @@ static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct m
 {
 	int i;
 	VALUE_PAIR *newpair;
-	
+
 	for (i=0; i<inst->nfields; i++) {
 		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
 			if (! (newpair = pairmake (inst->pwdfmt->field[i], pw->field[i], T_OP_EQ))) {
@@ -510,7 +510,7 @@ static int passwd_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR * key;
 	struct mypasswd * pw;
 	int found = 0;
-	
+
 	if(!request || !request->packet ||!request->packet->vps)
 	 return RLM_MODULE_INVALID;
 	for (key = request->packet->vps;
@@ -543,7 +543,7 @@ static int passwd_authorize(void *instance, REQUEST *request)
 		pairadd (&request->config_items, key);
 	}
 	return RLM_MODULE_OK;
-	
+
 #undef inst
 }
 

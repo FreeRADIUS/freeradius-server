@@ -12,12 +12,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -45,7 +45,7 @@ void (*Prot_Print_Routine)() = NULL;      /* Pointer to print routine */
 /* Set up a session with a remote name. We are passed Called_Name as a
    string which we convert to a NetBIOS name, ie space terminated, up to
    16 characters only if we need to. If Called_Address is not empty, then
-   we use it to connect to the remote end, but put in Called_Name ... Called 
+   we use it to connect to the remote end, but put in Called_Name ... Called
    Address can be a DNS based name, or a TCP/IP address ...
 */
 
@@ -71,7 +71,7 @@ void *RFCNB_Call(char *Called_Name, char *Calling_Name, char *Called_Address,
     return(NULL);
 
     }
- 
+
   con -> fd = -0;             /* no descriptor yet */
   con -> rfc_errno = 0;           /* no error yet */
   con -> timeout = 0;         /* no timeout   */
@@ -105,7 +105,7 @@ void *RFCNB_Call(char *Called_Name, char *Calling_Name, char *Called_Address,
     /* And tack it onto the list of addresses we called        */
 
     if ((redir_addr = (struct redirect_addr *)malloc(sizeof(struct redirect_addr))) == NULL) { /* Could not get space */
-      
+
       RFCNB_errno = RFCNBE_NoSpace;
       RFCNB_saved_errno = errno;
       return(NULL);
@@ -140,10 +140,10 @@ void *RFCNB_Call(char *Called_Name, char *Calling_Name, char *Called_Address,
     con -> fd = Client;
 
     /* Now send and handle the RFCNB session request              */
-    /* If we get a redirect, we will comeback with redirect true 
+    /* If we get a redirect, we will comeback with redirect true
        and a new IP address in DEST_IP                            */
 
-    if ((errno = RFCNB_Session_Req(con, 
+    if ((errno = RFCNB_Session_Req(con,
 				   Called_Name,
    				   Calling_Name,
 				   &redirect, &Dest_IP, &port)) < 0) {
@@ -169,7 +169,7 @@ void *RFCNB_Call(char *Called_Name, char *Calling_Name, char *Called_Address,
 
 }
 
-/* We send a packet to the other end ... for the moment, we treat the 
+/* We send a packet to the other end ... for the moment, we treat the
    data as a series of pointers to blocks of data ... we should check the
    length ... */
 
@@ -202,7 +202,7 @@ int RFCNB_Send(struct RFCNB_Con *Con_Handle, struct RFCNB_Pkt *udata, int Length
 #ifdef RFCNB_DEBUG
 
   fprintf(stderr, "Sending packet: ");
-  
+
 #endif
 
   if ((len = RFCNB_Put_Pkt(Con_Handle, pkt, Length + RFCNB_Pkt_Hdr_Len)) < 0) {
@@ -210,7 +210,7 @@ int RFCNB_Send(struct RFCNB_Con *Con_Handle, struct RFCNB_Pkt *udata, int Length
     /* No need to change RFCNB_errno as it was done by put_pkt ...     */
 
     return(RFCNBE_Bad);   /* Should be able to write that lot ... */
-    
+
   }
 
   /* Now we have sent that lot, let's get rid of the RFCNB Header and return */
@@ -223,7 +223,7 @@ int RFCNB_Send(struct RFCNB_Con *Con_Handle, struct RFCNB_Pkt *udata, int Length
 
 }
 
-/* We pick up a message from the internet ... We have to worry about 
+/* We pick up a message from the internet ... We have to worry about
    non-message packets ...                                           */
 
 int RFCNB_Recv(void *con_Handle, struct RFCNB_Pkt *Data, int Length)
@@ -298,7 +298,7 @@ int RFCNB_Set_Sock_NoDelay(struct RFCNB_Con *con_Handle, BOOL yn)
 
 {
 
-  return(setsockopt(con_Handle -> fd, IPPROTO_TCP, TCP_NODELAY, 
+  return(setsockopt(con_Handle -> fd, IPPROTO_TCP, TCP_NODELAY,
 		    (char *)&yn, sizeof(yn)));
 
 }

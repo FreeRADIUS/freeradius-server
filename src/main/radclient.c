@@ -101,7 +101,7 @@ static radclient_t *radclient_tail = NULL;
 static void usage(void)
 {
 	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
-	
+
 	fprintf(stderr, "  <command>    One of auth, acct, status, or disconnect.\n");
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
@@ -138,7 +138,7 @@ static void radclient_free(radclient_t *radclient)
 		assert(radclient_head == radclient);
 		radclient_head = next;
 	}
-	
+
 	if (next) {
 		assert(radclient_tail != radclient);
 		next->prev = prev;
@@ -190,18 +190,18 @@ static radclient_t *radclient_init(const char *filename)
 			return NULL; /* memory leak "start" */
 		}
 		memset(radclient, 0, sizeof(*radclient));
-		
+
 		radclient->request = rad_alloc(1);
 		if (!radclient->request) {
 			librad_perror("radclient: ");
 			radclient_free(radclient);
 			return NULL; /* memory leak "start" */
 		}
-		
+
 		radclient->filename = filename;
 		radclient->request->id = -1; /* allocate when sending */
 		radclient->packet_number = packet_number++;
-		
+
 		/*
 		 *	Read the VP's.
 		 */
@@ -210,7 +210,7 @@ static radclient_t *radclient_init(const char *filename)
 			radclient_free(radclient);
 			return NULL; /* memory leak "start" */
 		}
-		
+
 		/*
 		 *	Keep a copy of the the User-Password attribute.
 		 */
@@ -224,7 +224,7 @@ static radclient_t *radclient_init(const char *filename)
 		} else {
 			radclient->password[0] = '\0';
 		}
-		
+
 		/*
 		 *  Fix up Digest-Attributes issues
 		 */
@@ -232,7 +232,7 @@ static radclient_t *radclient_init(const char *filename)
 			switch (vp->attribute) {
 			default:
 				break;
-				
+
 				/*
 				 *	Allow it to set the packet type in
 				 *	the attributes read from the file.
@@ -240,11 +240,11 @@ static radclient_t *radclient_init(const char *filename)
 			case PW_PACKET_TYPE:
 				radclient->request->code = vp->lvalue;
 				break;
-				
+
 			case PW_PACKET_DST_PORT:
 				radclient->request->dst_port = (vp->lvalue & 0xffff);
 				break;
-				
+
 			case PW_DIGEST_REALM:
 			case PW_DIGEST_NONCE:
 			case PW_DIGEST_METHOD:
@@ -274,9 +274,9 @@ static radclient_t *radclient_init(const char *filename)
 			prev = radclient;
 		}
 	} while (!filedone); /* loop until the file is done. */
-	
+
 	if (fp != stdin) fclose(fp);
-	
+
 	/*
 	 *	And we're done.
 	 */
@@ -330,7 +330,7 @@ static int filename_walk(void *data)
 	if (!radclient) {
 		exit(1);
 	}
-	
+
 	if (!radclient_head) {
 		assert(radclient_tail == NULL);
 		radclient_head = radclient;
@@ -470,10 +470,10 @@ static int send_one_packet(radclient_t *radclient)
 
 		assert(radclient->request->id != -1);
 		assert(radclient->request->data == NULL);
-		
+
 		librad_md5_calc(radclient->request->vector, radclient->request->vector,
 				sizeof(radclient->request->vector));
-		
+
 		/*
 		 *	Update the password, so it can be encrypted with the
 		 *	new authentication vector.
@@ -484,11 +484,11 @@ static int send_one_packet(radclient_t *radclient)
 			if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
 				strNcpy((char *)vp->strvalue, radclient->password, strlen(radclient->password) + 1);
 				vp->length = strlen(radclient->password);
-				
+
 			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
 				strNcpy((char *)vp->strvalue, radclient->password, strlen(radclient->password) + 1);
 				vp->length = strlen(radclient->password);
-				
+
 				rad_chap_encode(radclient->request, (char *) vp->strvalue, radclient->request->id, vp);
 				vp->length = 17;
 			}
@@ -575,25 +575,25 @@ static int recv_one_packet(int wait_time)
 	RADIUS_PACKET	myrequest, *reply;
 	rbnode_t	*node;
 
-	
+
 	/* And wait for reply, timing out as necessary */
 	FD_ZERO(&set);
 	FD_SET(sockfd, &set);
-	
+
 	if (wait_time <= 0) {
 		tv.tv_sec = 0;
 	} else {
 		tv.tv_sec = wait_time;
 	}
 	tv.tv_usec = 0;
-	
+
 	/*
 	 *	No packet was received.
 	 */
 	if (select(sockfd + 1, &set, NULL, NULL, &tv) != 1) {
 		return 0;
 	}
-	
+
 	/*
 	 *	Look for the packet.
 	 */
@@ -716,7 +716,7 @@ int main(int argc, char **argv)
 
 	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xv")) != EOF) switch(c) {
 		case 'c':
-			if (!isdigit((int) *optarg)) 
+			if (!isdigit((int) *optarg))
 				usage();
 			resend_count = atoi(optarg);
 			break;
@@ -733,12 +733,12 @@ int main(int argc, char **argv)
 			librad_debug++;
 			break;
 		case 'r':
-			if (!isdigit((int) *optarg)) 
+			if (!isdigit((int) *optarg))
 				usage();
 			retries = atoi(optarg);
 			break;
 		case 'i':
-			if (!isdigit((int) *optarg)) 
+			if (!isdigit((int) *optarg))
 				usage();
 			id = atoi(optarg);
 			if ((id < 0) || (id > 255)) {
@@ -749,7 +749,7 @@ int main(int argc, char **argv)
 			do_summary = 1;
 			break;
 		case 't':
-			if (!isdigit((int) *optarg)) 
+			if (!isdigit((int) *optarg))
 				usage();
 			timeout = atof(optarg);
 			break;
@@ -914,7 +914,7 @@ int main(int argc, char **argv)
 		/*
 		 *	Walk over the packets, sending them.
 		 */
-		
+
 		for (this = radclient_head; this != NULL; this = next) {
 			next = this->next;
 

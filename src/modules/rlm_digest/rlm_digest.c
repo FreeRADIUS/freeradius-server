@@ -90,7 +90,7 @@ static int digest_authorize(void *instance, REQUEST *request)
 			}
 
 			attrlen = p[1];	/* stupid VSA format */
-			
+
 			/*
 			 *	Too short.
 			 */
@@ -98,7 +98,7 @@ static int digest_authorize(void *instance, REQUEST *request)
 				DEBUG("ERROR: Received Digest-Attributes with short sub-attribute %d, of length %d", p[0], attrlen);
 				return RLM_MODULE_INVALID;
 			}
-			
+
 			/*
 			 *	Too long.
 			 */
@@ -139,7 +139,7 @@ static int digest_authorize(void *instance, REQUEST *request)
 			 */
 
 			length -= attrlen;
-			p += attrlen;			
+			p += attrlen;
 		} /* loop over this one attribute */
 
 		/*
@@ -334,7 +334,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		a2_len += (body->length >> 1);
 
 	} else if ((qop != NULL) &&
-		   (strcasecmp(qop->strvalue, "auth") != 0)) {	
+		   (strcasecmp(qop->strvalue, "auth") != 0)) {
 		DEBUG("ERROR: Unknown Digest-QOP \"%s\": Cannot perform Digest authentication", qop->strvalue);
 		return RLM_MODULE_INVALID;
 	}
@@ -364,7 +364,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 
 	kd[kd_len] = ':';
 	kd_len++;
-	
+
 	memcpy(&kd[kd_len], nonce->strvalue, nonce->length);
 	kd_len += nonce->length;
 
@@ -458,7 +458,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			printf("%02x", kd[i]);
 		}
 		printf("\n");
-		
+
 		printf("RECEIVED ");
 		for (i = 0; i < 16; i++) {
 			printf("%02x", hash[i]);
@@ -488,7 +488,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_digest = {
-	"DIGEST",	
+	"DIGEST",
 	0,				/* type */
 	NULL,				/* initialization */
 	NULL,				/* instantiation */

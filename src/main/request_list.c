@@ -44,8 +44,8 @@ static const char rcsid[] = "$Id$";
 /*
  *  We keep the incoming requests in an array, indexed by ID.
  *
- *  Each array element contains a linked list of containers of 
- *  active requests, a count of the number of requests, and a time 
+ *  Each array element contains a linked list of containers of
+ *  active requests, a count of the number of requests, and a time
  *  at which the first request in the list must be serviced.
  */
 
@@ -197,7 +197,7 @@ int rl_init(void)
 		request_list[i].request_count = 0;
 		request_list[i].last_cleaned_list = 0;
 	}
-	
+
 #ifdef WITH_RBTREE
 	request_tree = rbtree_create(request_cmp, NULL, 0);
 	if (!request_tree) {
@@ -236,7 +236,7 @@ void rl_delete(REQUEST *request)
 
 	prev = ((REQNODE *) request->container)->prev;
 	next = ((REQNODE *) request->container)->next;
-	
+
 	id = request->packet->id;
 
 	/*
@@ -250,7 +250,7 @@ void rl_delete(REQUEST *request)
 	if (last_request == request) {
 		last_request = rl_next(last_request);
 	}
-	
+
 
 	if (prev == NULL) {
 		request_list[id].first_request = next;
@@ -263,7 +263,7 @@ void rl_delete(REQUEST *request)
 	} else {
 		next->prev = prev;
 	}
-	
+
 	free(request->container);
 
 #ifdef WITH_SNMP
@@ -386,7 +386,7 @@ void rl_add(REQUEST *request)
 /*
  *	Look up a particular request, using:
  *
- *	Request ID, request code, source IP, source port, 
+ *	Request ID, request code, source IP, source port,
  *
  *	Note that we do NOT use the request vector to look up requests.
  *
@@ -397,9 +397,9 @@ REQUEST *rl_find(RADIUS_PACKET *packet)
 {
 #ifdef WITH_RBTREE
 	REQUEST myrequest;
-	
+
 	myrequest.packet = packet;
-	
+
 	return rbtree_finddata(request_tree, &myrequest);
 #else
 	REQNODE *curreq;
@@ -471,17 +471,17 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 	REQUEST myrequest, *maybe = NULL;
 	RADIUS_PACKET myproxy;
 	rbnode_t *node;
-	
+
 	myrequest.proxy = &myproxy;
-	
+
 	myproxy.id = packet->id;
-	
+
 	/*
 	 *	FIXME: Look for BOTH src/dst stuff.
 	 */
 	myproxy.dst_ipaddr = packet->src_ipaddr;
 	myproxy.dst_port = packet->src_port;
-	
+
 	pthread_mutex_lock(&proxy_mutex);
 	node = rbtree_find(proxy_tree, &myrequest);
 	if (node) {
@@ -493,7 +493,7 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 #else
 	REQNODE *curreq = NULL;
 	int id;
-	
+
 	/*
 	 *	The Proxy RADIUS Id is completely independent
 	 *	of the original request Id.  We've got to root through
@@ -624,7 +624,7 @@ int rl_num_requests(void)
 	for (id = 0; id < 256; id++) {
 		request_count += request_list[id].request_count;
 	}
-	
+
 	return request_count;
 }
 
@@ -727,7 +727,7 @@ static int refresh_request(REQUEST *request, void *data)
 		 */
 		if (request->proxy && !request->proxy_reply) {
 			rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-			
+
 			radlog(L_ERR, "Rejecting request %d due to lack of any response from home server %s:%d",
 			       request->number,
 			       client_name(request->packet->src_ipaddr),
@@ -749,7 +749,7 @@ static int refresh_request(REQUEST *request, void *data)
 				pthread_cancel(child_pid);
 #endif
 			} /* else no proxy reply, quietly fail */
-		
+
 			/*
 			 *	Maybe we haven't killed it.  In that
 			 *	case, print a warning.
@@ -824,7 +824,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  It's not yet time to re-send this proxied request.
 	 */
 	if (request->proxy_next_try > info->now) goto setup_timeout;
-	
+
 	/*
 	 *  If the proxy retry count is zero, then
 	 *  we've sent the last try, and have NOT received
@@ -846,12 +846,12 @@ static int refresh_request(REQUEST *request, void *data)
 	 */
 	request->proxy_try_count--;
 	request->proxy_next_try = info->now + mainconfig.proxy_retry_delay;
-		
+
 	/* Fix up Acct-Delay-Time */
 	if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
 		VALUE_PAIR *delaypair;
 		delaypair = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
-		
+
 		if (!delaypair) {
 			delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
 			if (!delaypair) {
@@ -861,7 +861,7 @@ static int refresh_request(REQUEST *request, void *data)
 			pairadd(&request->proxy->vps, delaypair);
 		}
 		delaypair->lvalue = info->now - request->proxy->timestamp;
-			
+
 		/* Must recompile the valuepairs to wire format */
 		free(request->proxy->data);
 		request->proxy->data = NULL;
@@ -1001,7 +1001,7 @@ struct timeval *rl_clean_list(time_t now)
 	 */
 	if ((last_tv_ptr != NULL) &&
 	    (last_cleaned_list == now) &&
-	    (tv.tv_sec != 0)) {		
+	    (tv.tv_sec != 0)) {
 		int i;
 
 		/*
@@ -1011,7 +1011,7 @@ struct timeval *rl_clean_list(time_t now)
 		 *
 		 *  If there is NO previous request, go look for one.
 		 */
-		if (!last_request) 
+		if (!last_request)
 			last_request = rl_next(last_request);
 
 		/*
@@ -1022,10 +1022,10 @@ struct timeval *rl_clean_list(time_t now)
 		 *  And only do this servicing, if we have a request
 		 *  to service.
 		 */
-		if (last_request) 
+		if (last_request)
 			for (i = 0; i < mainconfig.cleanup_delay; i++) {
 				REQUEST *next;
-			
+
 				/*
 				 *  This function call MAY delete the
 				 *  request pointed to by 'last_request'.
@@ -1037,7 +1037,7 @@ struct timeval *rl_clean_list(time_t now)
 				/*
 				 *  Nothing to do any more, exit.
 				 */
-				if (!last_request) 
+				if (!last_request)
 					break;
 			}
 
@@ -1072,7 +1072,7 @@ struct timeval *rl_clean_list(time_t now)
 		 *  If we ARE proxying, then we can safely sleep
 		 *  forever if we're told to NEVER send proxy retries
 		 *  ourselves, until the NAS kicks us again.
-		 * 
+		 *
 		 *  Otherwise, there are no outstanding requests, then
 		 *  we can sleep forever.  This happens when we get
 		 *  woken up with a bad packet.  It's discarded, so if

@@ -100,7 +100,7 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 		if (strcmp(compat_mode_str, "cistron") == 0) {
 			compat_mode = TRUE;
 		}
-	
+
 		entry = users;
 		while (entry) {
 			if (compat_mode) {
@@ -127,7 +127,7 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 
 				/*
 				 *	If it's a vendor attribute,
-				 *	or it's a wire protocol, 
+				 *	or it's a wire protocol,
 				 *	ensure it has '=='.
 				 */
 				if (((vp->attribute & ~0xffff) != 0) ||
@@ -144,7 +144,7 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 					vp->operator = T_OP_CMP_EQ;
 					continue;
 				}
-				
+
 				/*
 				 *	Cistron Compatibility mode.
 				 *
@@ -173,10 +173,10 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 						vp->operator = T_OP_CMP_EQ;
 					}
 				}
-				
+
 			} /* end of loop over check items */
-		
-		
+
+
 			/*
 			 *	Look for server configuration items
 			 *	in the reply list.
@@ -198,15 +198,15 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
 							"\tfound in reply item list for user \"%s\".\n"
 							"\tThis attribute MUST go on the first line"
-							" with the other check items", 
+							" with the other check items",
 							filename, entry->lineno, vp->name,
 							entry->name);
 				}
 			}
-		
+
 			entry = entry->next;
 		}
-	
+
 	}
 
 	*pair_list = users;
@@ -322,19 +322,19 @@ static int file_authorize(void *instance, REQUEST *request)
 
 			if((mainconfig.do_usercollide) && (strcmp(pl->name, "DEFAULT"))) {
 
-				/* 
+				/*
 				 * We have to make sure the password
 				 * matches as well
 				 */
-	
+
 				/* Save the orginal config items */
 				check_save = paircopy(request->config_items);
-	
+
 				/* Copy this users check pairs to the request */
 				check_tmp = paircopy(pl->check);
 				pairmove(check_pairs, &check_tmp);
 				pairfree(&check_tmp);
-	
+
 				DEBUG2("    users: Checking %s at %d", pl->name, pl->lineno);
 				/* Check the req to see if we matched */
 				if (rad_check_password(request)==0) {
@@ -345,8 +345,8 @@ static int file_authorize(void *instance, REQUEST *request)
 					/* Free our saved config items */
 					pairfree(&check_save);
 
-					/* 
-					 * Already copied check items, so 
+					/*
+					 * Already copied check items, so
 					 * just copy reply here
 					 */
 					reply_tmp = paircopy(pl->reply);
@@ -361,10 +361,10 @@ static int file_authorize(void *instance, REQUEST *request)
 					check_pairs = &request->config_items;
 					continue;
 				}
-	
+
 			/* No usercollide */
 			} else {
-		
+
 				DEBUG2("    users: Matched %s at %d", pl->name, pl->lineno);
 				found = 1;
 				check_tmp = paircopy(pl->check);
@@ -381,7 +381,7 @@ static int file_authorize(void *instance, REQUEST *request)
 				break;
 		}
 	}
-	
+
 	/*
 	 *	See if we succeeded.  If we didn't find the user,
 	 *	then exit from the module.
@@ -511,12 +511,12 @@ static int file_preproxy(void *instance, REQUEST *request)
 				if (vp->flags.do_xlat) {
 					int rcode;
 					char buffer[sizeof(vp->strvalue)];
-					
+
 					vp->flags.do_xlat = 0;
 					rcode = radius_xlat(buffer, sizeof(buffer),
 							    vp->strvalue,
 							    request, NULL);
-					
+
 					/*
 					 *	Parse the string into
 					 *	a new value.

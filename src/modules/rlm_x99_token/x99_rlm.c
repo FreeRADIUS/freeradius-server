@@ -27,7 +27,7 @@
  * An attacker can learn the token's secret by observing two
  * challenge/response pairs.  See ANSI document X9 TG-24-1999
  * <URL:http://www.x9.org/TG24_1999.pdf>.
- * 
+ *
  * Please read the accompanying docs.
  */
 
@@ -851,7 +851,7 @@ x99_token_destroy(void)
  *	is single-threaded.
  */
 module_t rlm_x99_token = {
-	"x99_token",	
+	"x99_token",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	x99_token_init,			/* initialization */
 	x99_token_instantiate,		/* instantiation */

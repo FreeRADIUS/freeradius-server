@@ -53,14 +53,14 @@ static const char rcsid[] =
 /*
  *	Header above output and format.
  */
-static const char *hdr1 = 
+static const char *hdr1 =
 "Login      Name              What  TTY  When      From      Location";
 static const char *ufmt1 = "%-10.10s %-17.17s %-5.5s %-4.4s %-9.9s %-9.9s %-.16s%s";
 static const char *ufmt1r = "%s,%s,%s,%s,%s,%s,%s%s";
 static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3d %-9.9s %-9.9s %-.19s%s";
 static const char *rfmt1r = "%s,%s,%s,%s%d,%s,%s,%s%s";
 
-static const char *hdr2 = 
+static const char *hdr2 =
 "Login      Port    What      When          From       Location";
 static const char *ufmt2 = "%-10.10s %-6.6d %-7.7s %-13.13s %-10.10s %-.16s%s";
 static const char *ufmt2r = "%s,%d,%s,%s,%s,%s%s";
@@ -135,7 +135,7 @@ static int ffile(const char *arg)
 		fp = safe_popen(fn, "r");
 	} else fp = fopen(fn, "r");
 
-	if (fp == NULL) 
+	if (fp == NULL)
 		return -1;
 
 	while(fgets(fn, 1024, fp)) {
@@ -455,7 +455,7 @@ int main(int argc, char **argv)
 
 	if (showlocal && (fp = fopen(radutmp_file, "r"))) {
 		if (rawoutput == 0)
-		{	
+		{
 			fputs(showname ? hdr1 : hdr2, stdout);
 			fputs(eol, stdout);
 		}
@@ -549,7 +549,7 @@ int main(int argc, char **argv)
 						proto(rt.proto, rt.porttype),
 						dotime(rt.time),
 						nas_name3(nasname, sizeof(nasname), rt.nas_address),
-						hostname(othername, sizeof(othername), rt.framed_address), 	
+						hostname(othername, sizeof(othername), rt.framed_address),
 						eol);
 		}
 	}

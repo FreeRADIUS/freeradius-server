@@ -27,14 +27,14 @@
 /*
  * Add value pair to reply
  */
-static void add_reply(VALUE_PAIR** vp, 
+static void add_reply(VALUE_PAIR** vp,
 		      const char* name, const char* value, int len)
 {
 	VALUE_PAIR *reply_attr;
 	reply_attr = pairmake(name, "", T_OP_EQ);
 	if (!reply_attr) {
 		DEBUG("rlm_eap_tls: "
-		      "add_reply failed to create attribute %s: %s\n", 
+		      "add_reply failed to create attribute %s: %s\n",
 		      name, librad_errstr);
 		return;
 	}
@@ -47,7 +47,7 @@ static void add_reply(VALUE_PAIR** vp,
 /*
  * TLS PRF from RFC 2246
  */
-static void P_hash(const EVP_MD *evp_md, 
+static void P_hash(const EVP_MD *evp_md,
 		   const unsigned char *secret, unsigned int secret_len,
 		   const unsigned char *seed,   unsigned int seed_len,
 		   unsigned char *out, unsigned int out_len)
@@ -142,7 +142,7 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 
 	PRF(s->session->master_key, s->session->master_key_length,
 	    seed, prf_size, out, buf, sizeof(out));
-	    
+
 	p = out;
 	add_reply(reply_vps, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
 	p += EAPTLS_MPPE_KEY_LEN;

@@ -5,7 +5,7 @@
  * You should have received a copy of the GNU General Public License
  * along with GNU Zebra; see the file COPYING.  If not, write to the Free
  * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.  
+ * 02111-1307, USA.
  */
 
 #ifndef _SMUX_H
@@ -128,7 +128,7 @@ void smux_init(oid [], size_t);
 void smux_start(void);
 void smux_stop(void);
 void smux_register_mib(const char *, struct variable *, size_t, int, oid [], size_t);
-int smux_header_generic (struct variable *, oid [], size_t *, int, size_t *, 
+int smux_header_generic (struct variable *, oid [], size_t *, int, size_t *,
     WriteMethod **);
 int smux_open(void);
 int smux_str2oid (char *str, oid *my_oid, size_t *oid_len);

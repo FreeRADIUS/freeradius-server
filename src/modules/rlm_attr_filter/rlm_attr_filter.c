@@ -8,12 +8,12 @@
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 if the
  *   License as published by the Free Software Foundation.
- * 
+ *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
- *  
+ *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
@@ -62,7 +62,7 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		     default:
 			radlog(L_ERR, "Invalid operator for item %s: "
 			"reverting to '=='", check_item->name);
-			
+
 		case T_OP_CMP_TRUE:       /* comp always == 0 */
 		case T_OP_CMP_FALSE:      /* comp always == 1 */
 		case T_OP_CMP_EQ:
@@ -96,7 +96,7 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 			++*(fa);
 		    }
 		    break;
-				
+
 		case T_OP_LE:
 		    if (comp <= 0) {
 			++*(pa);
@@ -195,17 +195,17 @@ static int getattrsfile(const char *filename, PAIR_LIST **pair_list)
 	if (rcode < 0) {
 		return -1;
 	}
-	
+
 	/*
 	 * Walk through the 'attrs' file list.
 	 */
-	
+
 	entry = attrs;
 	while (entry) {
-		
+
 		entry->check = entry->reply;
 		entry->reply = NULL;
-	
+
 		for (vp = entry->check; vp != NULL; vp = vp->next) {
 
 		    /*
@@ -223,7 +223,7 @@ static int getattrsfile(const char *filename, PAIR_LIST **pair_list)
 				  entry->name);
 		    }
 		}
-	    
+
 		entry = entry->next;
 	}
 
@@ -297,7 +297,7 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 	 */
 	realmpair = pairfind(request_pairs, PW_REALM);
 	if(!realmpair) {
-		/*    Can't find a realm, so no filtering of attributes 
+		/*    Can't find a realm, so no filtering of attributes
 		 *    or should we use a DEFAULT entry?
 		 *    For now, just return NOTFOUND. (maybe NOOP?)
 		 */
@@ -343,12 +343,12 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 
 		}
 
-                /* 
+                /*
                  * Iterate through the reply items, comparing each reply item
-		 * to every rule, then moving it to the reply_tmp list 
+		 * to every rule, then moving it to the reply_tmp list
 		 * only if it matches all rules for that attribute.
 		 * IE, Idle-Timeout is moved only if it matches all rules that
-                 * describe an Idle-Timeout.  
+                 * describe an Idle-Timeout.
                  */
 
 		for(reply_item = *reply_items;
@@ -367,7 +367,7 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 
 			    compare = simplepaircmp(request, reply_item,
 						    check_item);
-			    check_pair(check_item, reply_item, compare, 
+			    check_pair(check_item, reply_item, compare,
 				       &pass, &fail);
 			}
 
@@ -487,7 +487,7 @@ static int attr_filter_accounting(void *instance, REQUEST *request)
 
 		    /* reset the pass/fail vars for each packet->vp. */
 		    pass = fail = 0;
-		
+
 		    /* reset the check_item pointer to beginning of the list */
 		    check_item = pl->check;
 
@@ -512,7 +512,7 @@ static int attr_filter_accounting(void *instance, REQUEST *request)
 	}
 	pairfree (&request->packet->vps);
 	request->packet->vps = send_tmp;
-	
+
 	/*
 	 * See if we succeeded. If we didn't find the realm,
 	 * then exit from the module.
@@ -737,7 +737,7 @@ static int attr_filter_postproxy(void *instance, REQUEST *request)
 
 			    compare = simplepaircmp(request, reply_item,
 						    check_item);
-			    check_pair(check_item, reply_item, compare, 
+			    check_pair(check_item, reply_item, compare,
 				       &pass, &fail);
 			}
 
@@ -774,7 +774,7 @@ static int attr_filter_postproxy(void *instance, REQUEST *request)
 
 	return RLM_MODULE_UPDATED;
 }
-		
+
 /*
  *	Clean up.
  */

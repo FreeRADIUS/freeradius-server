@@ -97,12 +97,12 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	radius_xlat(answer, sizeof(answer), cmd, request, NULL);
 	buf = answer;
-	
+
 	/*
 	 *	Log the command if we are debugging something
 	 */
 	DEBUG("Exec-Program: %s", buf);
-	
+
 	/*
 	 *	Build vector list of arguments and execute.
 	 *
@@ -133,7 +133,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		int envlen;
 		char buffer[1024];
 
-		/*	
+		/*
 		 *	Child process.
 		 *
 		 *	We try to be fail-safe here.  So if ANYTHING
@@ -165,7 +165,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				       strerror(errno));
 				exit(1);
 			}
-			
+
 			/*
 			 *	pd[1] is the FD that the child will write to,
 			 *	so we make it STDOUT.

@@ -36,7 +36,7 @@
  * +-+-+-+-+
  *
  *
- * EAP Request and Response Packet Format 
+ * EAP Request and Response Packet Format
  * --- ------- --- -------- ------ ------
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -47,7 +47,7 @@
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
  *
  *
- * EAP Success and Failure Packet Format 
+ * EAP Success and Failure Packet Format
  * --- ------- --- ------- ------ ------
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -63,7 +63,7 @@
 static const char rcsid[] = "$Id$";
 
 static const char *eap_types[] = {
-  "",   
+  "",
   "identity",
   "notification",
   "nak",			/* NAK */
@@ -108,7 +108,7 @@ int eaptype_name2type(const char *name)
 			return i;
 		}
 	}
-	
+
 	return -1;
 }
 
@@ -167,9 +167,9 @@ static int eap_wireformat(EAP_PACKET *reply)
 
 	eap_packet_t	*hdr;
 	uint16_t total_length = 0;
-	
+
 	if (reply == NULL) return EAP_INVALID;
-	
+
 	/*
 	 * if reply->packet is set, then the wire format
 	 * has already been calculated, just succeed!
@@ -257,7 +257,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 			eap_len = 0;
 		}
 
-		/* 
+		/*
 		 * create a value pair & append it to the packet list
 		 * This memory gets freed up when packet is freed up
 		 */
@@ -337,13 +337,13 @@ void map_eap_types(RADIUS_PACKET *req)
 	}
 
 	vp = pairfind(req->vps, ATTRIBUTE_EAP_CODE);
-	if(vp == NULL) {	
+	if(vp == NULL) {
 		eapcode = PW_EAP_REQUEST;
 	} else {
 		eapcode = vp->lvalue;
 	}
 
-	
+
 	for(vp = req->vps; vp != NULL; vp = vpnext) {
 		/* save it in case it changes! */
 		vpnext = vp->next;
@@ -359,7 +359,7 @@ void map_eap_types(RADIUS_PACKET *req)
 	}
 
 	eap_type = vp->attribute - ATTRIBUTE_EAP_BASE;
-		
+
 	switch(eap_type) {
 	case PW_EAP_IDENTITY:
 	case PW_EAP_NOTIFICATION:
@@ -376,10 +376,10 @@ void map_eap_types(RADIUS_PACKET *req)
 		 * no known special handling, it is just encoded as an
 		 * EAP-message with the given type.
 		 */
-		
+
 		/* nuke any existing EAP-Messages */
 		pairdelete(&req->vps, PW_EAP_MESSAGE);
-		
+
 		memset(&ep, 0, sizeof(ep));
 		ep.code = eapcode;
 		ep.id   = id;
@@ -389,7 +389,7 @@ void map_eap_types(RADIUS_PACKET *req)
 		eap_basic_compose(req, &ep);
 	}
 }
-			
+
 /*
  * Handles multiple EAP-Message attrs
  * ie concatenates all to get the complete EAP packet.
@@ -443,7 +443,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 	total_len = 0;
 	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE)) {
 		total_len += vp->length;
-		
+
 		if (total_len > len) {
 			radlog(L_ERR, "rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
 			return NULL;
@@ -514,18 +514,18 @@ void unmap_eap_types(RADIUS_PACKET *rep)
 	case PW_EAP_FAILURE:
 		/* no data */
 		break;
-		
+
 	case PW_EAP_REQUEST:
 	case PW_EAP_RESPONSE:
 		/* there is a type field, which we use to create
 		 * a new attribute */
-		
+
 		/* the length was decode already into the attribute
 		 * length, and was checked already. Network byte
 		 * order, just pull it out using math.
 		 */
 		len = e->length[0]*256 + e->length[1];
-		
+
 		/* verify the length is big enough to hold type */
 		if(len < 5)
 		{
@@ -533,7 +533,7 @@ void unmap_eap_types(RADIUS_PACKET *rep)
 		}
 
 		type = e->data[0];
-		
+
 		type += ATTRIBUTE_EAP_BASE;
 		len -= 5;
 
@@ -550,4 +550,4 @@ void unmap_eap_types(RADIUS_PACKET *rep)
 
 	return;
 }
-			
+

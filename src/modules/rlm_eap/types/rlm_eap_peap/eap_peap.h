@@ -1,5 +1,5 @@
 /*
- * eap_peap.h 
+ * eap_peap.h
  *
  * Version:     $Id$
  *

@@ -1,5 +1,5 @@
 /*
- * x99_util.c	
+ * x99_util.c
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify

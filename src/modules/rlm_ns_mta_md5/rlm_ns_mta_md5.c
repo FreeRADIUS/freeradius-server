@@ -3,12 +3,12 @@
  *		Taken from the hacks for qmail located at nrg4u.com
  *		by Andre Oppermann.
  *
- * 		NS-MTA-MD5 passwords are 64 byte strings, the first  
- * 		32 bytes being the password hash and the last 32 bytes 
- * 		the salt.  The clear text password and the salt are MD5 
+ * 		NS-MTA-MD5 passwords are 64 byte strings, the first
+ * 		32 bytes being the password hash and the last 32 bytes
+ * 		the salt.  The clear text password and the salt are MD5
  * 		hashed[1].  If the resulting hash concatenated with the salt
- * 		are equivalent to the original NS-MTA-MD5 password the 
- * 		password is correct. 
+ * 		are equivalent to the original NS-MTA-MD5 password the
+ * 		password is correct.
  *
  *   		[1] Read the source for details.
  *
@@ -121,7 +121,7 @@ static int ns_mta_md5_pass(const char *clear, const char *encrypted)
 static int module_auth(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *md5_password;
-	
+
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Password attribute.

@@ -1,5 +1,5 @@
 /*
- * cache.c	Offers ability to cache /etc/group, /etc/passwd, 
+ * cache.c	Offers ability to cache /etc/group, /etc/passwd,
  * 		/etc/shadow,
  *
  * 		All users in the passwd/shadow files are stored in a hash table.
@@ -7,8 +7,8 @@
  * 		lookup.  For the unitiated, that's blazing.  You can't have less
  * 		than one comparison, for example.
  *
- * 		The /etc/group file is stored in a singly linked list, as that 
- * 		appears to be fast enough.  It's generally a small enough file 
+ * 		The /etc/group file is stored in a singly linked list, as that
+ * 		appears to be fast enough.  It's generally a small enough file
  * 		that hashing is	unnecessary.
  *
  * Version: $Id$
@@ -30,7 +30,7 @@
  * Copyright 2000  The FreeRADIUS server project.
  * Copyright 1999  Jeff Carneal <jeff@apex.com>, Apex Internet Services, Inc.
  * Copyright 2000  Alan DeKok <aland@ox.org>
- */    
+ */
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
@@ -122,7 +122,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 
 	while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) {
 		numread++;
-		
+
 		bufptr = buffer;
 		/* Get usernames from password file */
 		for(ptr = bufptr; *ptr!=':'; ptr++);
@@ -132,30 +132,30 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 		}
 		strncpy(username, buffer, len);
 		username[len] = '\0';
-		
+
 		/* Hash the username */
-		hashindex = hashUserName(username);	
+		hashindex = hashUserName(username);
 		/*printf("%s:%d\n", username, hashindex);*/
-		
+
 		/* Allocate space for structure to go in hashtable */
 		new = (struct mypasswd *)rad_malloc(sizeof(struct mypasswd));
 		memset(new, 0, sizeof(struct mypasswd));
-		
+
 		/* Put username into new structure */
 		new->pw_name = (char *)rad_malloc(strlen(username)+1);
 		strncpy(new->pw_name, username, strlen(username)+1);
-		
+
 		/* Put passwords into array, if not shadowed */
 		/* Get passwords from password file (shadow comes later) */
 		ptr++;
 		bufptr = ptr;
 		while(*ptr!=':')
 			ptr++;
-		
+
 #if !HAVE_SHADOW_H
 		/* Put passwords into new structure (*/
 		len = ptr - bufptr;
-		
+
 		if (len > 0) {
 			new->pw_passwd = (char *)rad_malloc(len+1);
 			strncpy(new->pw_passwd, bufptr, len);
@@ -163,11 +163,11 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 		} else {
 			new->pw_passwd = NULL;
 		}
-		
-#endif /* !HAVE_SHADOW_H */  
-		
-		/* 
-		 * Put uid into structure.  Not sure why, but 
+
+#endif /* !HAVE_SHADOW_H */
+
+		/*
+		 * Put uid into structure.  Not sure why, but
 		 * at least we'll have it later if we need it
 		 */
 		ptr++;
@@ -177,10 +177,10 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 		len = ptr - bufptr;
 		strncpy(idtmp, bufptr, len);
 		idtmp[len] = '\0';
-		new->pw_uid = (uid_t)atoi(idtmp);	
-		
-		/* 
-		 * Put gid into structure.  
+		new->pw_uid = (uid_t)atoi(idtmp);
+
+		/*
+		 * Put gid into structure.
 		 */
 		ptr++;
 		bufptr = ptr;
@@ -189,26 +189,26 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 		len = ptr - bufptr;
 		strncpy(idtmp, bufptr, len);
 		idtmp[len] = '\0';
-		new->pw_gid = (gid_t)atoi(idtmp);	
-		
-		/* 
-		 * Put name into structure.  
+		new->pw_gid = (gid_t)atoi(idtmp);
+
+		/*
+		 * Put name into structure.
 		 */
 		ptr++;
 		bufptr = ptr;
 		while(*ptr!=':')
 			ptr++;
-		
+
 		len = ptr - bufptr;
 		new->pw_gecos = (char *)rad_malloc(len+1);
 		strncpy(new->pw_gecos, bufptr, len);
 		new->pw_gecos[len] = '\0';
-		
-		/* 
+
+		/*
 		 * We'll skip home dir and shell
 		 * as I can't think of any use for storing them
 		 */
-		
+
 		/*printf("User:  %s, UID:  %d, GID:  %d\n", new->pw_name, new->pw_uid, new->pw_gid);*/
 		/* Store user in the hash */
 		storeHashUser(cache, new, hashindex);
@@ -241,24 +241,24 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 				continue;
 			}
 
-			/* 
+			/*
 			 * In order to put passwd in correct structure, we have
 			 * to skip any struct that has a passwd already for that
 			 * user
-			 */ 
+			 */
 			cur = new;
-			while(new && (strcmp(new->pw_name, username)<=0) 
+			while(new && (strcmp(new->pw_name, username)<=0)
 						&& (new->pw_passwd == NULL)) {
 				cur = new;
 				new = new->next;
-			}		
+			}
 			/* Go back one, we passed it in the above loop */
 			new = cur;
 
 			/*
 			 * When we get here, we should be at the last duplicate
 			 * user structure in this hash bucket
-			 */ 
+			 */
 
 			/* Put passwords into struct from shadow file */
 			ptr++;
@@ -305,22 +305,22 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 		/* Make new mygroup structure in mem */
 		g_new = (struct mygroup *)rad_malloc(sizeof(struct mygroup));
 		memset(g_new, 0, sizeof(struct mygroup));
-	
+
 		/* copy grp entries to my structure */
 		len = strlen(grp->gr_name);
 		g_new->gr_name = (char *)rad_malloc(len+1);
 		strncpy(g_new->gr_name, grp->gr_name, len);
 		g_new->gr_name[len] = '\0';
-		
+
 		len = strlen(grp->gr_passwd);
 		g_new->gr_passwd= (char *)rad_malloc(len+1);
 		strncpy(g_new->gr_passwd, grp->gr_passwd, len);
 		g_new->gr_passwd[len] = '\0';
 
-		g_new->gr_gid = grp->gr_gid;	
-		
+		g_new->gr_gid = grp->gr_gid;
+
 		/* Allocate space for user list, as much as I hate doing groups
-	  	 * that way.  
+	  	 * that way.
 		 */
 		for(member = grp->gr_mem; *member!=NULL; member++);
 		len = member - grp->gr_mem;
@@ -372,7 +372,7 @@ void unix_freepwcache(struct pwcache *cache)
 				cur = next;
 			}
 		}
-	}	
+	}
 
 	g_cur = cache->grphead;
 
@@ -388,13 +388,13 @@ void unix_freepwcache(struct pwcache *cache)
 		free(g_cur->gr_passwd);
 		free(g_cur);
 		g_cur = g_next;
-	}                                  
+	}
 
 	free(cache);
 }
 
 /*
- * Looks up user in hashtable.  If user can't be found, returns 0.  
+ * Looks up user in hashtable.  If user can't be found, returns 0.
  * Otherwise returns a pointer to the structure for the user
  */
 static struct mypasswd *findHashUser(struct pwcache *cache, const char *user)
@@ -441,10 +441,10 @@ static int hashUserName(const char *s) {
 	}
 
 	return (hash % HASHTABLESIZE);
-}              
+}
 
 /*
- *	Emulate the cistron unix_pass function, but do it using 
+ *	Emulate the cistron unix_pass function, but do it using
  *	our hashtable (iow, make it blaze).
  * return  0 on success
  * return -1 on failure
@@ -472,38 +472,38 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 
 	if(mainconfig.do_usercollide) {
 		while(pwd) {
-			/* 
+			/*
 		 	 * Make sure same user still.  If not, return as if
-			 * wrong pass given 
+			 * wrong pass given
 			 */
-			if(strcmp(name, pwd->pw_name)) 
-				return -1;	
-	
-			/* 
+			if(strcmp(name, pwd->pw_name))
+				return -1;
+
+			/*
 		 	 * Could still be null passwd
 			 */
 			encrypted_pass = pwd->pw_passwd;
 			if (encrypted_pass == NULL) {
 				return 0;
 			}
-	
-			/* 
+
+			/*
 		 	 * Check password
 			 */
 			if(lrad_crypt_check(passwd, encrypted_pass) == 0) {
-				/* 
+				/*
 				 * Add 'Class' pair here with value of full
 				 * name from passwd
 				 */
 				if(strlen(pwd->pw_gecos))
 					pairadd(reply_items, pairmake("Class", pwd->pw_gecos, T_OP_EQ));
-				
-				return 0;	
+
+				return 0;
 			}
 			pwd = pwd->next;
 		}
-		/* 
-		 * If we get here, pwd is null, and no users matched 
+		/*
+		 * If we get here, pwd is null, and no users matched
 		 */
 		return -1;
 	} else {
@@ -536,8 +536,8 @@ int H_groupcmp(struct pwcache *cache, VALUE_PAIR *check, char *username)
 	if(cache->grphead) {
 		cur = cache->grphead;
 		while((cur) && (strcmp(cur->gr_name, (char *)check->strvalue))){
-			cur = cur->next;	
-		}	
+			cur = cur->next;
+		}
 		/* found the group, now compare it */
 		if(!cur) {
 			/* Default to old function if we can't find it */

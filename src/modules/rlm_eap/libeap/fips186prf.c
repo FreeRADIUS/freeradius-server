@@ -2,7 +2,7 @@
  * fips186prf.c    An implementation of the FIPS-186-2 SHA1-based PRF.
  *
  * The development of the EAP/SIM support was funded by Internet Foundation
- * Austria (http://www.nic.at/ipa). 
+ * Austria (http://www.nic.at/ipa).
  *
  * This code was written from scratch by Michael Richardson, and it is
  * dual licensed under both GPL and BSD.
@@ -81,7 +81,7 @@ static void onesixty_add_mod(onesixty *sum, onesixty *a, onesixty *b)
 	int i, carry;
 
 	carry = 0;
-	for(i=19; i>=0; i--) { 
+	for(i=19; i>=0; i--) {
 /*	for(i=0; i<20; i++) {  */
 		s = a->p[i] + b->p[i] + carry;
 		sum->p[i] = s & 0xff;
@@ -105,32 +105,32 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 	onesixty xval, xkey, w_0, w_1, sum, one;
 	uint8_t *f;
 	char zeros[64];
-	
+
 	/*
 	 * let XKEY := MK,
 	 *
-	 * Step 3: For j = 0 to 3 do 	 
-         *   a. XVAL = XKEY 
-         *   b. w_0 = SHA1(XVAL) 
+	 * Step 3: For j = 0 to 3 do
+         *   a. XVAL = XKEY
+         *   b. w_0 = SHA1(XVAL)
          *   c. XKEY = (1 + XKEY + w_0) mod 2^160
-         *   d. XVAL = XKEY 
-         *   e. w_1 = SHA1(XVAL) 
+         *   d. XVAL = XKEY
+         *   e. w_1 = SHA1(XVAL)
          *   f. XKEY = (1 + XKEY + w_1) mod 2^160
-         * 3.3 x_j = w_0|w_1 
+         * 3.3 x_j = w_0|w_1
 	 *
 	 */
 	memcpy(&xkey, mk, sizeof(xkey));
-	
+
 	/* make the value 1 */
 	memset(&one,  0, sizeof(one));
 	one.p[19]=1;
-	
+
 	f=finalkey;
-	
+
 	for(j=0; j<4; j++) {
 		/*   a. XVAL = XKEY  */
 		xval = xkey;
-		
+
 		/*   b. w_0 = SHA1(XVAL)  */
 		SHA1Init(&context);
 
@@ -138,14 +138,14 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		memcpy(zeros, xval.p, 20);
 		SHA1Transform(context.state, zeros);
 		SHA1FinalNoLen(w_0.p, &context);
-		
+
 		/*   c. XKEY = (1 + XKEY + w_0) mod 2^160 */
 		onesixty_add_mod(&sum,  &xkey, &w_0);
 		onesixty_add_mod(&xkey, &sum,  &one);
-		
+
 		/*   d. XVAL = XKEY  */
 		xval = xkey;
-		
+
 		/*   e. w_1 = SHA1(XVAL)  */
 		SHA1Init(&context);
 
@@ -153,15 +153,15 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		memcpy(zeros, xval.p, 20);
 		SHA1Transform(context.state, zeros);
 		SHA1FinalNoLen(w_1.p, &context);
-		
+
 		/*   f. XKEY = (1 + XKEY + w_1) mod 2^160 */
 		onesixty_add_mod(&sum,  &xkey, &w_1);
 		onesixty_add_mod(&xkey, &sum,  &one);
-		
+
 		/* now store it away */
 		memcpy(f, &w_0, 20);
 		f += 20;
-		
+
 		memcpy(f, &w_1, 20);
 		f += 20;
 	}
@@ -173,44 +173,44 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
  *
  * page 5
  *
- * XKEY=     bd029bbe 7f51960b cf9edb2b 61f06f0f eb5a38b6 
- * XSEED=    00000000 00000000 00000000 00000000 00000000 
+ * XKEY=     bd029bbe 7f51960b cf9edb2b 61f06f0f eb5a38b6
+ * XSEED=    00000000 00000000 00000000 00000000 00000000
  *
  *
- * The first loop through step 3.2 provides: 
- * 
- * XVAL=     bd029bbe 7f51960b cf9edb2b 61f06f0f eb5a38b6 
- *  
+ * The first loop through step 3.2 provides:
+ *
+ * XVAL=     bd029bbe 7f51960b cf9edb2b 61f06f0f eb5a38b6
+ *
  * Using the routine in Appendix 3.3, Constructing The Function G From SHA-1,
  * in step 3.2.b of the Change Notice algorithm for computing values of x
- * provides:  
+ * provides:
  *
- * w[0]=     2070b322 3dba372f de1c0ffc 7b2e3b49 8b260614 
- * 
- * 
- * The following value is the updated XKEY value from step 3.2.c: 
+ * w[0]=     2070b322 3dba372f de1c0ffc 7b2e3b49 8b260614
  *
- * XKEY=     dd734ee0 bd0bcd3b adbaeb27 dd1eaa59 76803ecb 
- * 
- * The second loop through step 3.2 provides: 
- * 
- * XVAL=     dd734ee0 bd0bcd3b adbaeb27 dd1eaa59 76803ecb 
- *  
+ *
+ * The following value is the updated XKEY value from step 3.2.c:
+ *
+ * XKEY=     dd734ee0 bd0bcd3b adbaeb27 dd1eaa59 76803ecb
+ *
+ * The second loop through step 3.2 provides:
+ *
+ * XVAL=     dd734ee0 bd0bcd3b adbaeb27 dd1eaa59 76803ecb
+ *
  * Using the routine in Appendix 3.3, Constructing The Function G From SHA-1,
  * in step 3.2.b of the Change Notice algorithm for computing values of x
- * provides:  
+ * provides:
  *
- * w[1]=     3c6c18ba cb0f6c55 babb1378 8e20d737 a3275116 
+ * w[1]=     3c6c18ba cb0f6c55 babb1378 8e20d737 a3275116
  *
- * The following value is the updated XKEY value from step 3.2.c: 
+ * The following value is the updated XKEY value from step 3.2.c:
  *
- * 
- * XKEY=     19df679b 881b3991 6875fea0 6b3f8191 19a78fe2 
  *
- * Step 3.3 provides the following values: 
- * 
- * w[0] || w[1]=  2070b322 3dba372f de1c0ffc 7b2e3b49 8b260614 
- *                3c6c18ba cb0f6c55 babb1378 8e20d737 a3275116 
+ * XKEY=     19df679b 881b3991 6875fea0 6b3f8191 19a78fe2
+ *
+ * Step 3.3 provides the following values:
+ *
+ * w[0] || w[1]=  2070b322 3dba372f de1c0ffc 7b2e3b49 8b260614
+ *                3c6c18ba cb0f6c55 babb1378 8e20d737 a3275116
  *
  */
 
@@ -240,7 +240,7 @@ main(int argc, char *argv[])
 
 		printf("%02x", mk[i]);
 	}
-	
+
 	printf("|\nOutput was: ");
 	j=0; k=0;
 	for (i = 0; i < 160; i++) {
@@ -248,7 +248,7 @@ main(int argc, char *argv[])
 			printf("\n            ");
 			k=0;
 			j=0;
-		} 
+		}
 		if(j==4) {
 			printf("_");
 			j=0;
@@ -262,11 +262,18 @@ main(int argc, char *argv[])
 }
 #endif
 
-	
-	
+
+
 /*
  * $Log$
- * Revision 1.2  2003-11-06 15:37:24  aland
+ * Revision 1.3  2004-02-26 19:04:30  aland
+ * 	perl -i -npe "s/[ \t]+$//g" `find src -name "*.[ch]" -print`
+ *
+ * 	Whitespace changes only, from a fresh checkout.
+ *
+ * 	For bug # 13
+ *
+ * Revision 1.2  2003/11/06 15:37:24  aland
  * 	Update includes to work a little better
  *
  * Revision 1.1  2003/10/29 02:49:19  mcr

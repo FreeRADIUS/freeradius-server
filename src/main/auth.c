@@ -124,7 +124,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 		username = request->username;
 	}
 
-	/* 
+	/*
 	 *	Clean up the username
 	 */
 	if (username == NULL) {
@@ -135,7 +135,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 				clean_username, sizeof(clean_username));
 	}
 
-	/* 
+	/*
 	 *	Clean up the password
 	 */
 	if (mainconfig.log_auth_badpass || mainconfig.log_auth_goodpass) {
@@ -152,20 +152,20 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 
 	if (goodpass) {
 		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
-				msg,	
+				msg,
 				clean_username,
 				mainconfig.log_auth_goodpass ? "/" : "",
 				mainconfig.log_auth_goodpass ? clean_password : "",
 				auth_name(buf, sizeof(buf), request, 1));
 	} else {
 		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
-				msg,	
+				msg,
 				clean_username,
 				mainconfig.log_auth_badpass ? "/" : "",
 				mainconfig.log_auth_badpass ? clean_password : "",
 				auth_name(buf, sizeof(buf), request, 1));
 	}
-	
+
 	return 0;
 }
 
@@ -212,14 +212,14 @@ int rad_check_password(REQUEST *request)
 	}
 
 	if (( auth_type_count > 1) && (debug_flag)) {
-		radlog(L_ERR, "Warning:  Found %d auth-types on request for user '%s'", 
+		radlog(L_ERR, "Warning:  Found %d auth-types on request for user '%s'",
 			auth_type_count, request->username->strvalue);
 	}
 
 	/*
-	 *	This means we have a proxy reply or an accept  
-	 *  and it wasn't rejected in the above loop.  So 
-	 *  that means it is accepted and we do no further 
+	 *	This means we have a proxy reply or an accept
+	 *  and it wasn't rejected in the above loop.  So
+	 *  that means it is accepted and we do no further
 	 *  authentication
 	 */
 	if ((auth_type == PW_AUTHTYPE_ACCEPT) || (request->proxy)) {
@@ -275,7 +275,7 @@ int rad_check_password(REQUEST *request)
 					"(No Crypt-Password configured for the user)", request, 0);
 				return -1;
 			}
-					
+
 			switch (lrad_crypt_check((char *)auth_item->strvalue,
 									 (char *)password_pair->strvalue)) {
 			case -1:
@@ -401,7 +401,7 @@ static int rad_postauth(REQUEST *request)
 	switch (result) {
 	default:
 	  break;
-	  
+
 	  /*
 	   *	The module failed, or said to reject the user: Do so.
 	   */
@@ -517,7 +517,7 @@ int rad_authenticate(REQUEST *request)
 		request->password = pairfind(request->packet->vps,
 					     PW_PASSWORD);
 	}
-	  
+
 	/*
 	 *	Discover which password we want to use.
 	 */
@@ -529,10 +529,10 @@ int rad_authenticate(REQUEST *request)
 		/*
 		 *	Maybe there's a CHAP-Password?
 		 */
-		if ((auth_item = pairfind(request->packet->vps, 
+		if ((auth_item = pairfind(request->packet->vps,
 				PW_CHAP_PASSWORD)) != NULL) {
 			password = "<CHAP-PASSWORD>";
-		
+
 		} else {
 			/*
 			 *	No password we recognize.
@@ -541,7 +541,7 @@ int rad_authenticate(REQUEST *request)
 		}
 	}
 	request->password = auth_item;
-	
+
 	/*
 	 *	Get the user's authorization information from the database
 	 */
@@ -618,7 +618,7 @@ autz_redo:
 			return RLM_MODULE_HANDLED;
 		}
 	} while(0);
-	
+
 	/*
 	 *	Failed to validate the user.
 	 *
@@ -685,7 +685,7 @@ autz_redo:
 			}
 			if (!mpp_ok){
 				if (check_item->lvalue > 1) {
-		  		snprintf(umsg, sizeof(umsg), 
+		  		snprintf(umsg, sizeof(umsg),
 							"\r\nYou are already logged in %d times  - access denied\r\n\n",
 							(int)check_item->lvalue);
 					user_msg = umsg;
@@ -746,7 +746,7 @@ autz_redo:
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 
-			snprintf(logstr, sizeof(logstr), "Outside allowed timespan (time allowed %s)", 
+			snprintf(logstr, sizeof(logstr), "Outside allowed timespan (time allowed %s)",
 				 check_item->strvalue);
 			rad_authlog(logstr, request, 1);
 
@@ -805,11 +805,11 @@ autz_redo:
 	 *	Add the port number to the Framed-IP-Address if
 	 *	vp->addport is set.
 	 */
-	if (((tmp = pairfind(request->reply->vps, 
+	if (((tmp = pairfind(request->reply->vps,
 			     PW_FRAMED_IP_ADDRESS)) != NULL) &&
 	    (tmp->flags.addport != 0)) {
 		VALUE_PAIR *vpPortId;
-		
+
 		/*
 		 *  Find the NAS port ID.
 		 */
@@ -893,7 +893,7 @@ autz_redo:
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 
 			pairadd(&request->reply->vps, tmp);
-			rad_authlog("Login incorrect (external check failed)", 
+			rad_authlog("Login incorrect (external check failed)",
 					request, 0);
 
 			return RLM_MODULE_REJECT;
@@ -964,7 +964,7 @@ autz_redo:
 				    NULL, 0, request->packet->vps, NULL);
 	}
 
-	if (exec_program) 
+	if (exec_program)
 		free(exec_program);
 
 	result = rad_postauth(request);

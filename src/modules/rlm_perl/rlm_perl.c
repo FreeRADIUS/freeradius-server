@@ -1,5 +1,5 @@
 /*
- * rlm_perl.c	
+ * rlm_perl.c
  *
  * Version:    $Id$
  *
@@ -63,7 +63,7 @@ static const char rcsid[] = "$Id$";
 typedef struct perl_inst {
 	/* Name of the perl module */
 	char	*module;
-	
+
 	/* Name of the functions for each module method */
 	char	*func_authorize;
 	char	*func_authenticate;
@@ -112,10 +112,10 @@ static CONF_PARSER module_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
-		
+
 /*
  * man perlembed
- */ 
+ */
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
 /*
@@ -152,7 +152,7 @@ typedef struct PERL_POOL {
 	int		max_request_per_clone;
 	int		cleanup_delay;
 	perl_mutex 	mutex;
-	time_t		time_when_last_added;	
+	time_t		time_when_last_added;
 } PERL_POOL;
 
 static PERL_POOL perl_pool;
@@ -224,12 +224,12 @@ static void **rlm_perl_get_handles(pTHX)
 }
 
 static void rlm_perl_close_handles(void **handles)
-{   
+{
 	int i;
 
 	if (!handles) {
 		return;
-	}   
+	}
 
 	for (i=0; handles[i]; i++) {
 		radlog(L_DBG, "close 0x%lx\n", (unsigned long)handles[i]);
@@ -243,20 +243,20 @@ static PerlInterpreter *rlm_perl_clone()
 {
 	PerlInterpreter *clone;
 	UV	clone_flags = CLONEf_KEEP_PTR_TABLE;
-	
+
 	PERL_SET_CONTEXT(interp);
-	
+
 	clone = perl_clone(interp, clone_flags);
-	{	
+	{
 		dTHXa(clone);
 	}
-    	
+
 	ptr_table_free(PL_ptr_table);
 	PL_ptr_table = NULL;
 
 	PERL_SET_CONTEXT(aTHX);
     	rlm_perl_clear_handles(aTHX);
-	
+
 	return clone;
 }
 
@@ -275,13 +275,13 @@ static void rlm_perl_destruct(PerlInterpreter *perl)
 		dTHXa(perl);
 	}
 	/*
-	 * FIXME: This shouldn't happen 
+	 * FIXME: This shouldn't happen
 	 *
 	 */
 	while (PL_scopestack_ix > 1 ){
 		LEAVE;
 	}
-	
+
 	perl_destruct(perl);
 	perl_free(perl);
 
@@ -291,12 +291,12 @@ static void rlm_perl_destruct(PerlInterpreter *perl)
 }
 
 static void rlm_destroy_perl(PerlInterpreter *perl)
-{	
+{
 	void	**handles;
-	
+
 	dTHXa(perl);
 	PERL_SET_CONTEXT(perl);
-	
+
 	handles = rlm_perl_get_handles(aTHX);
 	rlm_perl_destruct(perl);
 	rlm_perl_close_handles(handles);
@@ -309,13 +309,13 @@ static void delete_pool_handle(POOL_HANDLE *handle)
 
         prev = handle->prev;
         next = handle->next;
-	
+
         if (prev == NULL) {
                 perl_pool.head = next;
         } else {
                 prev->next = next;
         }
-  
+
         if (next == NULL) {
                 perl_pool.tail = prev;
         } else {
@@ -344,7 +344,7 @@ static void move2tail(POOL_HANDLE *handle)
 
 	prev = handle->prev;
 	next = handle->next;
-  
+
 	if ((next != NULL) ||
 			(prev != NULL)) {
 		if (next == NULL) {
@@ -354,7 +354,7 @@ static void move2tail(POOL_HANDLE *handle)
 		if (prev == NULL) {
 			perl_pool.head = next;
 			next->prev = NULL;
-		
+
 		} else {
 
 			prev->next = next;
@@ -378,53 +378,53 @@ static POOL_HANDLE *pool_grow () {
 	if (perl_pool.max_clones == perl_pool.current_clones) {
 		return NULL;
 	}
-	
+
 	handle = (POOL_HANDLE *)rad_malloc(sizeof(POOL_HANDLE));
-	
+
 	if (!handle) {
 		radlog(L_ERR,"Could not find free memory for pool. Aborting");
 		return NULL;
-	}	
-	
+	}
+
 	handle->prev = NULL;
 	handle->next = NULL;
 	handle->status = idle;
 	handle->clone = rlm_perl_clone();
-	handle->request_count = 0;	
+	handle->request_count = 0;
 	perl_pool.current_clones++;
 	move2tail(handle);
-	
+
 	now = time(NULL);
 	perl_pool.time_when_last_added = now;
-	
+
 	return handle;
 }
 
-static POOL_HANDLE *pool_pop() 
+static POOL_HANDLE *pool_pop()
 {
 	POOL_HANDLE	*handle;
 	POOL_HANDLE	*found;
 	POOL_HANDLE	*tmp;
 	/*
-	 * Lock the pool and be fast other thread maybe 
+	 * Lock the pool and be fast other thread maybe
 	 * waiting for us to finish
 	 */
 	MUTEX_LOCK(&perl_pool.mutex);
-	
+
 	found = NULL;
-	
+
 	for (handle = perl_pool.head; handle ; handle = tmp) {
 		tmp = handle->next;
-		
+
 		if (handle->status == idle){
 			found = handle;
 			break;
 		}
 	}
-	
+
 	if (found == NULL) {
 		if (perl_pool.current_clones < perl_pool.max_clones ) {
-			
+
 			found = pool_grow();
 			perl_pool.current_clones++;
 
@@ -432,7 +432,7 @@ static POOL_HANDLE *pool_pop()
 				radlog(L_ERR,"Cannot grow pool returning");
 				MUTEX_UNLOCK(&perl_pool.mutex);
 				return NULL;
-			} 
+			}
 		} else {
 			radlog(L_ERR,"reached maximum clones %d cannot grow",
 					perl_pool.current_clones);
@@ -442,14 +442,14 @@ static POOL_HANDLE *pool_pop()
 	}
 
 	move2tail(found);
-	found->status = busy;	
+	found->status = busy;
 	perl_pool.active_clones++;
 	found->request_count++;
 	/*
 	 * Hurry Up
 	 */
 	MUTEX_UNLOCK(&perl_pool.mutex);
-	radlog(L_DBG,"perl_pool: item 0x%lx asigned new request. Handled so far: %d", 
+	radlog(L_DBG,"perl_pool: item 0x%lx asigned new request. Handled so far: %d",
 			(unsigned long) found->clone, found->request_count);
 	return found;
 }
@@ -464,11 +464,11 @@ static int pool_release(POOL_HANDLE *handle) {
 	MUTEX_LOCK(&perl_pool.mutex);
 	handle->status = idle;
 	perl_pool.active_clones--;
-	
+
 	spare = perl_pool.current_clones - perl_pool.active_clones;
 
 	radlog(L_DBG,"perl_pool total/active/spare [%d/%d/%d]"
-			, perl_pool.current_clones, perl_pool.active_clones, spare);	
+			, perl_pool.current_clones, perl_pool.active_clones, spare);
 
 	if (spare < perl_pool.min_spare_clones) {
 		t = perl_pool.min_spare_clones - spare;
@@ -508,24 +508,24 @@ static int pool_release(POOL_HANDLE *handle) {
 }
 static int init_pool (CONF_SECTION *conf) {
 	POOL_HANDLE 	*handle;
-	int t;	
-	
+	int t;
+
 	MUTEX_INIT(&perl_pool.mutex);
-	
+
 	/*
-	 * Read The Config 
+	 * Read The Config
 	 *
 	 */
-	
+
 	cf_section_parse(conf,NULL,pool_conf);
-	
+
 	for(t = 0;t < perl_pool.start_clones ;t++){
 		if ((handle = pool_grow()) == NULL) {
 			return -1;
 		}
-		
+
 	}
-	
+
 	return 1;
 }
 #endif
@@ -545,28 +545,28 @@ static int perl_init(void)
 	}
 
 	perl_construct(interp);
-	PL_perl_destruct_level = 2;	
-	
+	PL_perl_destruct_level = 2;
+
 	return 0;
-	
+
 }
 
 static void xs_init(pTHX)
 {
 	char *file = __FILE__;
-	
+
 	/* DynaLoader is a special case */
-	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file); 
-	
+	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
+
 }
 /*
  *
  * This is wrapper for radlog
- * Now users can call radiusd::radlog(level,msg) wich is the same 
+ * Now users can call radiusd::radlog(level,msg) wich is the same
  * calling radlog from C code.
  * Boyan
  */
-static XS(XS_radiusd_radlog) 
+static XS(XS_radiusd_radlog)
 {
        dXSARGS;
        if (items !=2)
@@ -574,10 +574,10 @@ static XS(XS_radiusd_radlog)
        {
 	       int     level;
 	       char    *msg;
-	      
+
 	       level = (int) SvIV(ST(0));
 	       msg   = (char *) SvPV(ST(1), PL_na);
-	       
+
 	       /*
 		*	Because 'msg' is a 'char *', we don't want '%s', etc.
 		*	in it to give us printf-style vulnerabilities.
@@ -593,33 +593,33 @@ static XS(XS_radiusd_radlog)
 static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 		     int freespace, RADIUS_ESCAPE_STRING func)
 {
-	
+
 	PERL_INST	*inst= (PERL_INST *) instance;
 	PerlInterpreter *perl;
 	char		params[1024], *tmp_ptr, *ptr, *tmp;
 	int		count, ret;
 	STRLEN		n_a;
-		
+
 	perl = interp;
 
 #ifdef USE_ITHREADS
 	POOL_HANDLE	*handle;
-	
+
 	if ((handle = pool_pop()) == NULL) {
 		return 0;
 	}
-	
+
 	perl = handle->clone;
 
 	radlog(L_DBG,"Found a interpetator 0x%lx",(unsigned long) perl);
 	{
 	dTHXa(perl);
 	}
-#endif	
-	{	
+#endif
+	{
 	dSP;
 	ENTER;SAVETMPS;
-	
+
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	*/
@@ -635,27 +635,27 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 
 	while ((tmp_ptr = strtok(NULL, " ")) != NULL) {
 		XPUSHs(sv_2mortal(newSVpv(tmp_ptr,0)));
-	} 
+	}
 
 	PUTBACK;
-	
+
 	count = call_pv(inst->func_xlat, G_SCALAR | G_EVAL);
 
 	SPAGAIN;
-	if (SvTRUE(ERRSV)) { 
+	if (SvTRUE(ERRSV)) {
 		radlog(L_ERR, "rlm_perl: perl_xlat exit %s\n",
 		       SvPV(ERRSV,n_a));
 		return 0;
-	} 
+	}
 
-	if (count > 0) { 
+	if (count > 0) {
 		tmp = POPp;
 		ret = strlen(tmp);
 		strncpy(out,tmp,ret);
 
 		radlog(L_DBG,"rlm_perl: Len is %d , out is %s freespace is %d",
 		       ret, out,freespace);
-	
+
 		PUTBACK ;
 		FREETMPS ;
 		LEAVE ;
@@ -679,10 +679,10 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  *
- *	Boyan: 
+ *	Boyan:
  *	Setup a hashes wich we will use later
- *	parse a module and give him a chance to live 
- *	
+ *	parse a module and give him a chance to live
+ *
  */
 static int perl_instantiate(CONF_SECTION *conf, void **instance)
 {
@@ -690,16 +690,16 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	HV		*rad_reply_hv = newHV();
 	HV		*rad_check_hv = newHV();
 	HV		*rad_request_hv = newHV();
-	
+
 	char *embed[4], *xlat_name;
 	int exitstatus = 0, argc=0;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
 	inst = rad_malloc(sizeof(PERL_INST));
 	memset(inst, 0, sizeof(PERL_INST));
-		
+
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
@@ -708,7 +708,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		free(inst);
 		return -1;
 	}
-	
+
 
 	embed[0] = NULL;
 	if (inst->perl_flags) {
@@ -721,7 +721,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		embed[2] = "0";
 		argc = 3;
 	}
-	
+
 	exitstatus = perl_parse(interp, xs_init, argc, embed, NULL);
 
 #if PERL_REVISION >= 5 && PERL_VERSION >=8
@@ -744,26 +744,26 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL)
 		xlat_name = cf_section_name1(conf);
-	if (xlat_name){ 
+	if (xlat_name){
 		inst->xlat_name = strdup(xlat_name);
-		xlat_register(xlat_name, perl_xlat, inst); 
-	} 
+		xlat_register(xlat_name, perl_xlat, inst);
+	}
 
-#ifdef USE_ITHREADS	
-	
+#ifdef USE_ITHREADS
+
 	if ((init_pool(conf)) == -1) {
 		radlog(L_ERR,"Couldn't init a pool of perl clones. Exiting");
 		return -1;
 	}
-	
+
 #endif
 	*instance = inst;
-	
+
 	return 0;
 }
 
 /*
- *  	get the vps and put them in perl hash 
+ *  	get the vps and put them in perl hash
  *  	If one VP have multiple values it is added as array_ref
  *  	Example for this is Cisco-AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
@@ -777,7 +777,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 
 	hv_clear(rad_hv);
 	nvp = paircopy(vp);
-	
+
 	while (nvp != NULL) {
 		attr = nvp->attribute;
 		vpa = paircopy2(nvp,attr);
@@ -806,10 +806,10 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		nvp = vpa;
 	}
 }
-		
+
 /*
  *
- *     Verify that a Perl SV is a string and save it in FreeRadius 
+ *     Verify that a Perl SV is a string and save it in FreeRadius
  *     Value Pair Format
  *
  */
@@ -817,7 +817,7 @@ static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv) {
        char            *val;
        int             val_len;
        VALUE_PAIR      *vpp;
- 
+
        if ((sv != NULL) && (SvPOK(sv))) {
                val = SvPV(sv, val_len);
                vpp = pairmake(key, val, T_OP_EQ);
@@ -837,16 +837,16 @@ static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv) {
 
 /*
   *     Boyan :
-  *     Gets the content from hashes 
+  *     Gets the content from hashes
   */
-static int get_hv_content(HV *my_hv, VALUE_PAIR **vp) 
+static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
 {
        SV		*res_sv, **av_sv;
        AV		*av;
        char		*key;
        I32		key_len, len, i, j;
        int		ret=0;
-        
+
        for (i = hv_iterinit(my_hv); i > 0; i--) {
                res_sv = hv_iternextsv(my_hv,&key,&key_len);
                if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
@@ -858,15 +858,15 @@ static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
                        }
                } else ret = pairadd_sv(vp, key, res_sv) + ret;
         }
- 
+
         return ret;
 }
 
 /*
- * 	Call the function_name inside the module 
+ * 	Call the function_name inside the module
  * 	Store all vps in hashes %RAD_CHECK %RAD_REPLY %RAD_REQUEST
- * 	
- */	
+ *
+ */
 static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 {
 
@@ -874,27 +874,27 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	VALUE_PAIR	*vp;
 	int		exitstatus=0, count;
 	STRLEN		n_a;
-	
+
 	HV		*rad_reply_hv;
 	HV		*rad_check_hv;
 	HV		*rad_request_hv;
 
 #ifdef USE_ITHREADS
 	POOL_HANDLE	*handle;
-	
+
 	if ((handle = pool_pop()) == NULL) {
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	radlog(L_DBG,"found interpetator at address 0x%lx",(unsigned long) handle->clone);
-	{	
+	{
 	dTHXa(handle->clone);
 	PERL_SET_CONTEXT(handle->clone);
 	}
 #endif
 	{
 	dSP;
-	
+
 	ENTER;
 	SAVETMPS;
 
@@ -911,38 +911,38 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	rad_check_hv = get_hv("RAD_CHECK",1);
 	rad_request_hv = get_hv("RAD_REQUEST",1);
 
-	
-	
+
+
 	perl_store_vps(request->reply->vps, rad_reply_hv);
 	perl_store_vps(request->config_items, rad_check_hv);
 	perl_store_vps(request->packet->vps, rad_request_hv);
 	vp = NULL;
-	
-	
-	PUSHMARK(SP);	
-	/*	
+
+
+	PUSHMARK(SP);
+	/*
 	* This way %RAD_xx can be pushed onto stack as sub parameters.
 	* XPUSHs( newRV_noinc((SV *)rad_request_hv) );
 	* XPUSHs( newRV_noinc((SV *)rad_reply_hv) );
 	* XPUSHs( newRV_noinc((SV *)rad_check_hv) );
 	* PUTBACK;
 	*/
-	
+
 	count = call_pv(function_name, G_SCALAR | G_EVAL | G_NOARGS);
 
-	SPAGAIN;	
-	
+	SPAGAIN;
+
 	if (count == 1) {
 		exitstatus = POPi;
 		if (exitstatus >= 100 || exitstatus < 0) {
 			exitstatus = RLM_MODULE_FAIL;
 		}
 	}
-		
-	PUTBACK;	
+
+	PUTBACK;
 	FREETMPS;
 	LEAVE;
-	
+
 	if (SvTRUE(ERRSV)) {
 		radlog(L_ERR, "rlm_perl: perl_embed:: module = %s , func = %s exit status= %s\n",
 		       inst->module,
@@ -952,12 +952,12 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
 		pairmove(&request->reply->vps, &vp);
 		pairfree(&vp);
-	} 
+	}
 
 	if ((get_hv_content(rad_check_hv, &vp)) > 0 ) {
 		pairmove(&request->config_items, &vp);
 		pairfree(&vp);
-	} 
+	}
 
 #if 0
 	/*
@@ -1023,11 +1023,11 @@ static int perl_accounting(void *instance, REQUEST *request)
                 radlog(L_ERR, "Invalid Accounting Packet");
                 return RLM_MODULE_INVALID;
         }
-	
+
 	switch (acctstatustype) {
 
 		case PW_STATUS_START:
-			
+
 			if (((PERL_INST *)instance)->func_start_accounting) {
 				return rlmperl_call(instance, request,
 					    ((PERL_INST *)instance)->func_start_accounting);
@@ -1054,7 +1054,7 @@ static int perl_accounting(void *instance, REQUEST *request)
 	}
 }
 /*
- *	Check for simultaneouse-use 
+ *	Check for simultaneouse-use
  */
 
 static int perl_checksimul(void *instance, REQUEST *request)
@@ -1064,26 +1064,26 @@ static int perl_checksimul(void *instance, REQUEST *request)
 }
 
 /*
- * Detach a instance give a chance to a module to make some internal setup ... 
+ * Detach a instance give a chance to a module to make some internal setup ...
  */
 static int perl_detach(void *instance)
-{	
+{
 	PERL_INST	*inst = (PERL_INST *) instance;
 	int 		exitstatus=0,count=0;
-	
-#ifdef USE_ITHREADS	
+
+#ifdef USE_ITHREADS
 	POOL_HANDLE	*handle;
-	
+
 	for (handle = perl_pool.head; handle; handle = handle->next) {
-		
+
 		radlog(L_INFO,"Detach perl 0x%lx", (unsigned long) handle->clone);
 		/*
-		 * Wait until clone becomes idle 
+		 * Wait until clone becomes idle
 		 *
 		 */
 		while (handle->status == busy) {
 		}
-		
+
 		/*
 		 * Give a clones chance to run detach function
 		 */
@@ -1094,7 +1094,7 @@ static int perl_detach(void *instance)
 		dSP; PUSHMARK(SP);
 		count = call_pv(inst->func_detach, G_SCALAR | G_EVAL );
 		SPAGAIN;
-		
+
 		if (count == 1) {
 			exitstatus = POPi;
 			/*
@@ -1115,20 +1115,20 @@ static int perl_detach(void *instance)
 	/*
 	 *
 	 * FIXME: For more efficienty we don't
-	 * free entire pool. We only reread config flags thus way 
+	 * free entire pool. We only reread config flags thus way
 	 * we can extend pool_size.
-	 * 
+	 *
 	 */
 	{
 	dTHXa(interp);
 	PERL_SET_CONTEXT(interp);
-#endif /* USE_ITHREADS */	
+#endif /* USE_ITHREADS */
 	{
 	dSP;
-	PUSHMARK(SP);	
+	PUSHMARK(SP);
 	count = call_pv(inst->func_detach, G_SCALAR | G_EVAL );
 	SPAGAIN;
-	
+
 	if (count == 1) {
 		exitstatus = POPi;
 		if (exitstatus >= 100 || exitstatus < 0) {
@@ -1170,14 +1170,14 @@ module_t rlm_perl = {
 	RLM_TYPE_THREAD_SAFE,		/* type */
 #else
 	RLM_TYPE_THREAD_UNSAFE,
-#endif	
+#endif
 	perl_init,			/* initialization */
 	perl_instantiate,		/* instantiation */
 	{
 		perl_authenticate,
 		perl_authorize,
 		perl_preacct,
-		perl_accounting, 
+		perl_accounting,
 		perl_checksimul,      	/* check simul */
 		NULL,                   /* pre-proxy */
 		NULL,                   /* post-proxy */

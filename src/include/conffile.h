@@ -47,10 +47,10 @@ void		cf_pair_free(CONF_PAIR **cp);
 void		cf_section_free(CONF_SECTION **cp);
 int		cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables);
 
-CONF_SECTION *conf_read(const char *fromfile, int fromline, 
+CONF_SECTION *conf_read(const char *fromfile, int fromline,
 			const char *conffile, CONF_SECTION *parent);
 
-		
+
 CONF_PAIR	*cf_pair_find(CONF_SECTION *section, const char *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *name);
 CONF_SECTION	*cf_section_find(const char *name);

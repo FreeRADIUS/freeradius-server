@@ -1,7 +1,7 @@
 /* modcall.h: the outside interface to the module-calling tree. Includes
  * functions to build the tree from the config file, and to call it by
  * feeding it REQUESTs.
- * 
+ *
  * Version: $Id$ */
 
 #include "conffile.h" /* Need CONF_* definitions */

@@ -269,7 +269,7 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 		rbtree_insert(values_fixup, dval);
 		return 0;
 	}
-	
+
 	/*
 	 *	Add the value into the dictionary.
 	 */
@@ -348,7 +348,7 @@ static int process_attribute(const char* fn, const int line,
 			 flags.has_tag = 1;
 		}
 		else if (strncmp(s, "len+=", 5) == 0 ||
-			 strncmp(s, "len-=", 5) == 0) { 
+			 strncmp(s, "len-=", 5) == 0) {
 			  /* Length difference, to accomodate
 			     braindead NASes & their vendors */
 			  flags.len_disp = strtol(s + 5, &c, 0);
@@ -365,7 +365,7 @@ static int process_attribute(const char* fn, const int line,
 			  /* Encryption method, defaults to 0 (none).
 			     Currently valid is just type 2,
 			     Tunnel-Password style, which can only
-			     be applied to strings. */    
+			     be applied to strings. */
 			  flags.encrypt = strtol(s + 8, &c, 0);
 			  if (*c) {
 				librad_log( "dict_init: %s[%d] invalid option %s",
@@ -377,9 +377,9 @@ static int process_attribute(const char* fn, const int line,
 			  /* Must be a vendor 'flag'... */
 			  if (strncmp(s, "vendor=", 5) == 0) {
 				/* New format */
-				s += 5;   
+				s += 5;
 			  }
-	 
+
 			  vendor = dict_vendorbyname(s);
 			  if (!vendor) {
 				librad_log( "dict_init: %s[%d]: unknown vendor %s",
@@ -443,7 +443,7 @@ static int process_value(const char* fn, const int line, const char* data)
 		sscanf(valstr, "%i", &value);
 
 	if (dict_addvalue(namestr, attrstr, value) < 0) {
-		librad_log("dict_init: %s[%d]: %s", 
+		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
 		return -1;
 	}
@@ -689,7 +689,7 @@ static int attrname_cmp(const void *a, const void *b)
  */
 static int attrvalue_cmp(const void *a, const void *b)
 {
-	return (((const DICT_ATTR *)a)->attr - 
+	return (((const DICT_ATTR *)a)->attr -
 		((const DICT_ATTR *)b)->attr);
 }
 
@@ -700,7 +700,7 @@ static int attrvalue_cmp(const void *a, const void *b)
 static int valuename_cmp(const void *a, const void *b)
 {
 	int rcode;
-	rcode = (((const DICT_VALUE *)a)->attr - 
+	rcode = (((const DICT_VALUE *)a)->attr -
 		 ((const DICT_VALUE *)b)->attr);
 	if (rcode != 0) return rcode;
 
@@ -715,11 +715,11 @@ static int valuename_cmp(const void *a, const void *b)
 static int valuevalue_cmp(const void *a, const void *b)
 {
 	int rcode;
-	rcode = (((const DICT_VALUE *)a)->attr - 
+	rcode = (((const DICT_VALUE *)a)->attr -
 		 ((const DICT_VALUE *)b)->attr);
 	if (rcode != 0) return rcode;
 
-	return (((const DICT_VALUE *)a)->value - 
+	return (((const DICT_VALUE *)a)->value -
 		 ((const DICT_VALUE *)b)->value);
 }
 
@@ -734,7 +734,7 @@ static int valuefixup_cmp(const void *a, const void *b)
 			   (const char *) ((const DICT_VALUE *)b)->attr);
 	if (rcode != 0) return rcode;
 
-	return (((const DICT_VALUE *)a)->value - 
+	return (((const DICT_VALUE *)a)->value -
 		((const DICT_VALUE *)b)->value);
 }
 
@@ -852,9 +852,9 @@ DICT_ATTR *dict_attrbyvalue(int val)
 
 	} else {
 		DICT_ATTR myattr;
-		
+
 		myattr.attr = val;
-		return rbtree_finddata(attributes_byvalue, &myattr); 
+		return rbtree_finddata(attributes_byvalue, &myattr);
 	}
 
 	return NULL;		/* never reached, but useful */
@@ -866,10 +866,10 @@ DICT_ATTR *dict_attrbyvalue(int val)
 DICT_ATTR *dict_attrbyname(const char *name)
 {
 	DICT_ATTR myattr;
-	
+
 	strNcpy(myattr.name, name, sizeof(myattr.name));
-	
-	return rbtree_finddata(attributes_byname, &myattr); 
+
+	return rbtree_finddata(attributes_byname, &myattr);
 }
 
 /*

@@ -1,5 +1,5 @@
 /*
- * rlm_realm.c	
+ * rlm_realm.c
  *
  * Version:	$Id$
  *
@@ -111,19 +111,19 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	{
 
 	case REALM_FORMAT_SUFFIX:
-	  
+
 	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */
-		realmname = strrchr(username, inst->delim[0]);		
+		realmname = strrchr(username, inst->delim[0]);
 		if (realmname) {
 			*realmname = '\0';
 			realmname++;
 		}
 		break;
-		
+
 	case REALM_FORMAT_PREFIX:
-		
+
 		/* DEBUG2("  rlm_realm: Checking for prefix before \"%c\"", inst->delim[0]); */
-		
+
 		ptr = strchr(username, inst->delim[0]);
 		if (ptr) {
 			*ptr = '\0';
@@ -132,7 +132,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		     username = ptr;
 		}
 		break;
-	       
+
 	default:
 		realmname = NULL;
 		break;
@@ -161,7 +161,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		return NULL;
 	}
 	DEBUG2("    rlm_realm: Found realm \"%s\"", realm->realm);
-	
+
 	/*
 	 *	If we've been told to strip the realm off, then do so.
 	 */
@@ -207,7 +207,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		DEBUG2("    rlm_realm: Unknown packet code %d\n",
 		       request->packet->code);
 		return NULL;		/* don't do anything */
-		
+
 		/*
 		 *	Perhaps accounting proxying was turned off.
 		 */
@@ -278,7 +278,7 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
 		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
-	
+
 	/*
 	 *  Add it, even if it's already present.
 	 */
@@ -329,7 +329,7 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
 
 
 
- 
+
 
 /*
  *  Examine a request for a username with an realm, and if it
@@ -373,7 +373,7 @@ static int realm_preacct(void *instance, REQUEST *request)
 
 	if (!name)
 	  return RLM_MODULE_OK;
-	
+
 
 	/*
 	 *	Check if we've got to proxy the request.

@@ -61,7 +61,7 @@ typedef struct rlm_dbm_t {
 #ifdef SANDY_MOD
 	char	*dms_servers;
 	char	*ducpd_servers;
-#endif 
+#endif
 	char	*userfile;
 	int	findmod;
 } rlm_dbm_t;
@@ -73,24 +73,24 @@ typedef struct user_entry {
 
 
 static CONF_PARSER module_config[] = {
-        { "usersfile",     PW_TYPE_STRING_PTR,offsetof(struct rlm_dbm_t,userfile), 
+        { "usersfile",     PW_TYPE_STRING_PTR,offsetof(struct rlm_dbm_t,userfile),
 		NULL, "/etc/uf" },
         { NULL, -1, 0, NULL, NULL }
 };
 
 static void sm_user_list_wipe (SM_USER_ENTRY **ue) {
-	
+
 	SM_USER_ENTRY * pue, *nue;
-	
+
 	if ( ! *ue ) return ;
 	pue = *ue;
-	
+
 	while ( pue != NULL ) {
 		nue = pue -> next;
 		DEBUG2("Remove %s from user list", pue -> username);
 		free(pue -> username);
 		free(pue);
-		pue = nue; 
+		pue = nue;
 	}
 	*ue = NULL;
 }
@@ -103,9 +103,9 @@ static void sm_user_list_wipe (SM_USER_ENTRY **ue) {
  */
 
 static int sm_user_list_add(SM_USER_ENTRY **ue, const char *un) {
-	
+
 	while( *ue ) {
-		if ( strcmp( (*ue) -> username, un) == 0 ) return 1; 
+		if ( strcmp( (*ue) -> username, un) == 0 ) return 1;
 		ue = & ((*ue) -> next);
 	}
 	*ue = malloc(sizeof(SM_USER_ENTRY));
@@ -143,12 +143,12 @@ static int isfallthrough(VALUE_PAIR *vp) {
  *  pdb	- ndbm handler
  *  username - user name from request
  *  request - pair originated from the nas
- *  mode - search mode SM_SM_ACCUM - accumulative search mode 
+ *  mode - search mode SM_SM_ACCUM - accumulative search mode
  *  out-parameters:
  *  in-out:
  *  parsed_users - list of parsed user names for loop removal
  */
- 
+
 static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* request, VALUE_PAIR **config,
 		VALUE_PAIR **reply, SM_USER_ENTRY **ulist)
 {
@@ -157,53 +157,53 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
    	VALUE_PAIR *vp = NULL,* tmp_config = NULL, *tmp_reply = NULL, *nu_reply = NULL;
    	VALUE_PAIR *join_attr;
    	char 	*ch,*beg;
-   	
-   	int	parse_state = SMP_PATTERN; 
+
+   	int	parse_state = SMP_PATTERN;
 	int     continue_search = 1;
-   	
+
    	/* check for loop */
-   	
+
    	DEBUG2("sm_parse_user.c: check for loops");
 
    	if ( (retcod = sm_user_list_add(ulist,username) ) ) {
    		if ( retcod < 0 ) radlog(L_ERR,"rlm_dbm: Couldn't allocate memory");
    			else radlog(L_ERR,"rlm_dbm: Invalid configuration: loop detected");
-   		return RLM_MODULE_FAIL;  
+   		return RLM_MODULE_FAIL;
    	}
 
    	/* retrieve user content */
-   	
+
    	k.dptr  = username;
    	k.dsize = strlen(username) + 1 ; /* username stored with '\0' */
-   	
+
    	d = dbm_fetch(pdb, k);
    	if ( d.dptr == NULL ) {
    		 DEBUG2("rlm_dbm: User <%s> not foud in database\n",username);
    		 return RLM_MODULE_NOTFOUND;
    	}
-   	
+
    	ch = d.dptr;
    	ch [ d.dsize - 1 ] = '\0'; /* should be closed by 0 */
-   	
+
 	DEBUG2("sm_parse_user: start parsing: user: %s", username);
-	
+
    	/*  start parse content */
    	while ( parse_state != SMP_ERROR && *ch && continue_search ) {
 
    		beg = ch;
 
    		while( *ch && *ch != '\n') ch++ ;
-   		
+
 		if ( *ch == '\n' ) { *ch = 0; ch++; }
 
-		DEBUG2("parse buffer: <<%s>>\n",beg); 
-   		
+		DEBUG2("parse buffer: <<%s>>\n",beg);
+
    		retcod = userparse(beg,&vp);
    		if ( retcod == T_INVALID ) librad_perror("parse error ");
-		
+
    	 	switch ( retcod ) {
    	 		case T_COMMA: break; /* continue parse the current list */
-   	 		case T_EOL:	DEBUG2("rlm_dbm: recod parsed\n"); /* vp contains full pair list */ 
+   	 		case T_EOL:	DEBUG2("rlm_dbm: recod parsed\n"); /* vp contains full pair list */
    	 				if ( parse_state == SMP_PATTERN ) { /* pattern line found */
    	 					DEBUG2("process pattern");
    	 					/* check pattern against request */
@@ -214,7 +214,7 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
    	 						parse_state = SMP_REPLY; /* look for reply */
    	 					} else  {
    	 						  /* skip reply */
-   	 						DEBUG2("rlm_dbm: patern not matched, reply skiped");  
+   	 						DEBUG2("rlm_dbm: patern not matched, reply skiped");
    	 						pairfree(&vp);
    	 						while ( *ch && *ch !='\n' ) ch++;
    	 						if ( *ch == '\n' ) ch++;
@@ -223,11 +223,11 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
    	 					/* look for join-attribute */
    	 					DEBUG2("rlm_dbm: Reply found");
 						join_attr = vp;
-   	 					while( (join_attr = pairfind(join_attr,SM_JOIN_ATTR) ) != NULL ) { 
+   	 					while( (join_attr = pairfind(join_attr,SM_JOIN_ATTR) ) != NULL ) {
    	 					 	DEBUG2("rlm_dbm: Proccess nested record: username %s",
    	 					 		(char *)join_attr->strvalue);
    	 					 	/* res =  RLM_MODULE_NOTFOUND; */
-   	 						res =  sm_parse_user(pdb, (char *)join_attr->strvalue, request, &tmp_config, 
+   	 						res =  sm_parse_user(pdb, (char *)join_attr->strvalue, request, &tmp_config,
    	 					 			&nu_reply, ulist);
 							DEBUG("rlm_dbm: recived: %d\n",res);
 							switch ( res ) {
@@ -257,15 +257,15 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
 						pairfree(&vp);
 						pairfree(&nu_reply);   	 				}
    	 				break;
-   	 		default: 	/* we do not wait that !!!! */ 
+   	 		default: 	/* we do not wait that !!!! */
    	 				parse_state = SMP_ERROR;
    	 				DEBUG2("rlm_dbm: Unknown token: %d\n",retcod);
    	 				break;
    	 	}
-   	 	
+
    	}
    	if ( parse_state == SMP_PATTERN  ) {
-   		pairmove(config,&tmp_config); 
+   		pairmove(config,&tmp_config);
 		pairfree(&tmp_config);
    		pairmove(reply,&tmp_reply);
 		pairfree(&tmp_reply);
@@ -282,11 +282,11 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
 
 static int sm_postprocessor(VALUE_PAIR **reply UNUSED) {
 	return 0;
-} 
+}
 
 static int rlm_dbm_instantiate(CONF_SECTION *conf, void **instance) {
 	struct rlm_dbm_t *inst;
-	
+
 	inst = rad_malloc(sizeof(rlm_dbm_t));
 	if (!inst) {
 		return -1;
@@ -294,7 +294,7 @@ static int rlm_dbm_instantiate(CONF_SECTION *conf, void **instance) {
 	memset(inst, 0, sizeof(*inst));
 
         if (cf_section_parse(conf, inst, module_config) < 0) {
-                free(inst);      
+                free(inst);
                 return -1;
         }
 	*instance = inst;
@@ -310,22 +310,22 @@ static int rlm_dbm_authorize(void *instance, REQUEST *request)
         int             found = 0;
         const char      *name;
 	SM_USER_ENTRY	*ulist = NULL;
-	DBM		*pdb; 
+	DBM		*pdb;
 
         struct rlm_dbm_t *inst = instance;
 
         VALUE_PAIR **check_pairs, **reply_pairs;
-                                
+
         request_pairs = request->packet->vps;
         check_pairs = &request->config_items;
         reply_pairs = &request->reply->vps;
-	
+
         /*
          *      Grab the canonical user name.
          */
         namepair = request->username;
         name = namepair ? (char *) namepair->strvalue : "NONE";
-	
+
 	DEBUG2("rlm_dbm: try open database file: %s\n",inst -> userfile);
 
 	/* open database */
@@ -335,9 +335,9 @@ static int rlm_dbm_authorize(void *instance, REQUEST *request)
 	   	if ( found == RLM_MODULE_NOTFOUND ) {
 		  sm_user_list_wipe(&ulist);
 		  found = sm_parse_user(pdb, "DEFAULT", request_pairs, &check_tmp, &reply_tmp, &ulist);
-		} 	
+		}
 		dbm_close(pdb);
-	} else { 
+	} else {
 		found = RLM_MODULE_FAIL;
 		DEBUG2("rlm_dbm: Cannot open database file: %s\n",
 		       strerror(errno));
@@ -353,7 +353,7 @@ static int rlm_dbm_authorize(void *instance, REQUEST *request)
 	sm_user_list_wipe(&ulist);
 	pairfree(&reply_tmp);
 	pairfree(&check_tmp);
-	
+
 	return found;
 }
 
@@ -367,7 +367,7 @@ static int rlm_dbm_detach(void *instance)
 
 
 /* globally exported name */
-module_t rlm_dbm = {   
+module_t rlm_dbm = {
         "dbm",
         0,                              /* type: reserved */
         NULL,                           /* initialization */

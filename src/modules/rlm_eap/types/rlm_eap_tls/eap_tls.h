@@ -1,5 +1,5 @@
 /*
- * eap_tls.h 
+ * eap_tls.h
  *
  * Version:     $Id$
  *
@@ -70,8 +70,8 @@
  *	use the OpenSSL names for these.
  */
 enum ContentType {
-	change_cipher_spec = 20, 
-	alert = 21, 
+	change_cipher_spec = 20,
+	alert = 21,
 	handshake = 22,
 	application_data = 23
 };
@@ -124,17 +124,17 @@ enum HandshakeType {
 /*
  * From rfc
    Flags
-  
+
       0 1 2 3 4 5 6 7 8
       +-+-+-+-+-+-+-+-+
       |L M S R R R R R|
       +-+-+-+-+-+-+-+-+
-  
+
       L = Length included
       M = More fragments
       S = EAP-TLS start
       R = Reserved
-  
+
       The L bit (length included) is set to indicate the presence of the
       four octet TLS Message Length field, and MUST be set for the first
       fragment of a fragmented TLS message or set of messages. The M bit
@@ -142,15 +142,15 @@ enum HandshakeType {
       (EAP-TLS start) is set in an EAP-TLS Start message.  This
       differentiates the EAP-TLS Start message from a fragment
       acknowledgement.
-  
+
    TLS Message Length
-  
+
       The TLS Message Length field is four octets, and is present only
       if the L bit is set. This field provides the total length of the
       TLS message or set of messages that is being fragmented.
-  
+
    TLS data
-  
+
       The TLS data consists of the encapsulated TLS packet in TLS record
       format.
  *
@@ -237,8 +237,8 @@ void 		session_init(tls_session_t *ssn);
 /* record */
 void 		record_init(record_t *buf);
 void 		record_close(record_t *buf);
-unsigned int 	record_plus(record_t *buf, const unsigned char *ptr, 
+unsigned int 	record_plus(record_t *buf, const unsigned char *ptr,
 			    unsigned int size);
-unsigned int 	record_minus(record_t *buf, unsigned char *ptr, 
+unsigned int 	record_minus(record_t *buf, unsigned char *ptr,
 			     unsigned int size);
 #endif /*_EAP_TLS_H*/

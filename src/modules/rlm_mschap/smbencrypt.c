@@ -69,7 +69,7 @@ int main (int argc, char *argv[])
 	char hash[16];
 	char ntpass[33];
 	char lmpass[33];
-	
+
 	fprintf(stderr, "LM Hash                         \tNT Hash\n");
 	fprintf(stderr, "--------------------------------\t--------------------------------\n");
 	fflush(stderr);

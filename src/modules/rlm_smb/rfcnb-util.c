@@ -12,12 +12,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -48,7 +48,7 @@ void RFCNB_CvtPad_Name(char *name1, char *name2)
     if (i >= len) {
 
      c1 = 'C'; c2 = 'A'; /* CA is a space */
- 
+
     } else {
 
       c = name1[i];
@@ -69,8 +69,8 @@ void RFCNB_CvtPad_Name(char *name1, char *name2)
    Uses the encoding in RFC1001. Each nibble of byte is added to 'A'
    to produce the next byte in the name.
 
-   This routine assumes that AName is 16 bytes long and that NBName has 
-   space for 32 chars, so be careful ... 
+   This routine assumes that AName is 16 bytes long and that NBName has
+   space for 32 chars, so be careful ...
 
 */
 
@@ -132,8 +132,8 @@ void RFCNB_Print_Hex(FILE *fd, struct RFCNB_Pkt *pkt, int Offset, int Len)
 
   while (pkt_ptr != NULL) {
 
-    for (i = 0; 
-	 i < ((Len > (pkt_ptr -> len)?pkt_ptr -> len:Len) - Offset); 
+    for (i = 0;
+	 i < ((Len > (pkt_ptr -> len)?pkt_ptr -> len:Len) - Offset);
 	 i++) {
 
       c = pkt_ptr -> data[i + Offset];
@@ -237,10 +237,10 @@ void RFCNB_Print_Pkt(FILE *fd, char *dirn, struct RFCNB_Pkt *pkt, int len)
 
   switch (RFCNB_Pkt_Type(pkt -> data)) {
 
-  case RFCNB_SESSION_MESSAGE: 
+  case RFCNB_SESSION_MESSAGE:
 
     fprintf(fd, "SESSION MESSAGE: Length = %i\n", RFCNB_Pkt_Len(pkt -> data));
-    RFCNB_Print_Hex(fd, pkt, RFCNB_Pkt_Hdr_Len, 
+    RFCNB_Print_Hex(fd, pkt, RFCNB_Pkt_Hdr_Len,
 #ifdef RFCNB_PRINT_DATA
 		    RFCNB_Pkt_Len(pkt -> data) - RFCNB_Pkt_Hdr_Len);
 #else
@@ -248,7 +248,7 @@ void RFCNB_Print_Pkt(FILE *fd, char *dirn, struct RFCNB_Pkt *pkt, int len)
 #endif
 
   if (Prot_Print_Routine != 0) { /* Print the rest of the packet */
-	
+
     Prot_Print_Routine(fd, strcmp(dirn, "sent"), pkt, RFCNB_Pkt_Hdr_Len,
 		       RFCNB_Pkt_Len(pkt -> data) - RFCNB_Pkt_Hdr_Len);
 
@@ -275,7 +275,7 @@ void RFCNB_Print_Pkt(FILE *fd, char *dirn, struct RFCNB_Pkt *pkt, int len)
       break;
 
  case RFCNB_SESSION_REJ:
-      fprintf(fd, "RFCNB SESSION REJECT: Length = %i\n", 
+      fprintf(fd, "RFCNB SESSION REJECT: Length = %i\n",
 		  RFCNB_Pkt_Len(pkt -> data));
 
       if (RFCNB_Pkt_Len(pkt -> data) < 1) {
@@ -366,7 +366,7 @@ int RFCNB_IP_Connect(struct in_addr Dest_IP, int port)
     RFCNB_errno = RFCNBE_BadSocket;
     RFCNB_saved_errno = errno;
     return(RFCNBE_Bad);
-    } 
+    }
 
   bzero((char *)&Socket, sizeof(Socket));
   memcpy((char *)&Socket.sin_addr, (char *)&Dest_IP, sizeof(Dest_IP));
@@ -388,13 +388,13 @@ int RFCNB_IP_Connect(struct in_addr Dest_IP, int port)
 
 }
 
-/* handle the details of establishing the RFCNB session with remote 
-   end 
+/* handle the details of establishing the RFCNB session with remote
+   end
 
 */
 
-int RFCNB_Session_Req(struct RFCNB_Con *con, 
-		      char *Called_Name, 
+int RFCNB_Session_Req(struct RFCNB_Con *con,
+		      char *Called_Name,
 		      char *Calling_Name,
 		      BOOL *redirect,
 		      struct in_addr *Dest_IP,
@@ -433,7 +433,7 @@ int RFCNB_Session_Req(struct RFCNB_Con *con,
 #ifdef RFCNB_DEBUG
 
   fprintf(stderr, "Sending packet: ");
-  
+
 #endif
 
   if ((len = RFCNB_Put_Pkt(con, pkt, RFCNB_Pkt_Sess_Len)) < 0) {
@@ -465,10 +465,10 @@ int RFCNB_Session_Req(struct RFCNB_Con *con,
     case RFCNB_SESSION_REJ:         /* Didnt like us ... too bad */
 
       /* Why did we get rejected ? */
-    
+
       switch (CVAL(resp,RFCNB_Pkt_Error_Offset)) {
 
-      case 0x80: 
+      case 0x80:
 	RFCNB_errno = RFCNBE_CallRejNLOCN;
 	break;
       case 0x81:

@@ -93,7 +93,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(struct unix_instance,usegroup), NULL,     "no" },
 	{ "cache_reload", PW_TYPE_INTEGER,
 	  offsetof(struct unix_instance,cache_reload), NULL, "600" },
-	
+
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -815,7 +815,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		fclose(fp);
-	} else 
+	} else
 		return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;

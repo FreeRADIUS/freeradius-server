@@ -1,5 +1,5 @@
 /*
- * eap_ttls.h 
+ * eap_ttls.h
  *
  * Version:     $Id$
  *

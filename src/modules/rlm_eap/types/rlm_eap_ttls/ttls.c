@@ -23,17 +23,17 @@
 #include "eap_ttls.h"
 
 /*
- *    0                   1                   2                   3 
- *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
- *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
- *   |                           AVP Code                            | 
- *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
- *   |V M r r r r r r|                  AVP Length                   | 
- *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
- *   |                        Vendor-ID (opt)                        | 
- *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
- *   |    Data ... 
- *   +-+-+-+-+-+-+-+-+ 
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |                           AVP Code                            |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |V M r r r r r r|                  AVP Length                   |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |                        Vendor-ID (opt)                        |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |    Data ...
+ *   +-+-+-+-+-+-+-+-+
  */
 
 /*
@@ -79,7 +79,7 @@ static int diameter_verify(const uint8_t *data, int data_len)
 			attribute = (vendor << 16) | attr;
 
 			da = dict_attrbyvalue(attribute);
-			
+
 			/*
 			 *	SHOULD check ((length & (1 << 30)) != 0)
 			 *	for the mandatory bit.
@@ -106,7 +106,7 @@ static int diameter_verify(const uint8_t *data, int data_len)
 		/*
 		 *	Too short or too long is bad.
 		 *
-		 *	FIXME: EAP-Message 
+		 *	FIXME: EAP-Message
 		 */
 		if ((length < offset) ||
 		    (length > (MAX_STRING_LEN + 8)) ||
@@ -226,7 +226,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 			pairfree(&first);
 			return NULL;
 		}
-		
+
 		/*
 		 *	If it's a type from our dictionary, then
 		 *	we need to put the data in a relevant place.
@@ -256,7 +256,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		    return NULL;
 		  }
 		  memcpy(&vp->lvalue, data, vp->length);
-		  
+
 		  /*
 		   *	Stored in network byte order: don't change it.
 		   */
@@ -287,7 +287,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		case PW_USER_PASSWORD:
 			{
 				int i;
-				
+
 				for (i = 0; i < vp->length; i++) {
 					if (vp->strvalue[i] == 0) {
 						vp->length = i;
@@ -507,13 +507,13 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 	if (total > 0) {
 #ifndef NDEBUG
 		int i;
-		
+
 		if (debug_flag > 2) {
 			for (i = 0; i < total; i++) {
 				if ((i & 0x0f) == 0) printf("  TTLS tunnel data out %04x: ", i);
-				
+
 				printf("%02x ", buffer[i]);
-				
+
 				if ((i & 0x0f) == 0x0f) printf("\n");
 			}
 			if ((total & 0x0f) != 0) printf("\n");
@@ -722,7 +722,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	case RLM_MODULE_REJECT:
 		DEBUG2("  TTLS: Reply was rejected");
 		return 0;
-	  
+
 	case RLM_MODULE_HANDLED:
 		DEBUG2("  TTLS: Reply was handled");
 		eaptls_request(handler->eap_ds, tls_session);
@@ -731,7 +731,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	case RLM_MODULE_OK:
 		DEBUG2("  TTLS: Reply was OK");
 		eaptls_success(handler->eap_ds, 0);
-		eaptls_gen_mppe_keys(&handler->request->reply->vps, 
+		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
 				     "ttls keying material");
 		return 1;
@@ -803,7 +803,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	If there's no data, maybe this is an ACK to an
 	 *	MS-CHAP2-Success.
-	 */	
+	 */
 	if (err == 0) {
 		if (t->authenticated) {
 			DEBUG2("  TTLS: Got ACK, and the user was already authenticated.");
@@ -825,9 +825,9 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	if (debug_flag > 2) {
 		for (i = 0; i < data_len; i++) {
 			if ((i & 0x0f) == 0) printf("  TTLS tunnel data in %04x: ", i);
-			
+
 			printf("%02x ", data[i]);
-			
+
 			if ((i & 0x0f) == 0x0f) printf("\n");
 		}
 		if ((data_len & 0x0f) != 0) printf("\n");
@@ -897,12 +897,12 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 */
 				t->username = pairmake("User-Name", "", T_OP_EQ);
 				rad_assert(t->username != NULL);
-				
+
 				memcpy(t->username->strvalue, vp->strvalue + 5,
 				       vp->length - 5);
 				t->username->length = vp->length - 5;
 				t->username->strvalue[t->username->length] = 0;
-				
+
 				DEBUG2("  TTLS: Got tunneled identity of %s",
 				       t->username->strvalue);
 
@@ -1045,7 +1045,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	  }
 	}
 #endif
-	
+
 	/*
 	 *	Decide what to do with the reply.
 	 */
@@ -1084,12 +1084,12 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			/*
 			 *	Associate the callback with the request.
 			 */
-			rcode = request_data_add(request, 
+			rcode = request_data_add(request,
 						 request->proxy,
 						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 						 tunnel, free);
 			rad_assert(rcode == 0);
-			
+
 			/*
 			 *	Didn't authenticate the packet, but
 			 *	we're proxying it.
@@ -1108,7 +1108,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				      fake->reply);
 		break;
 	}
-	
+
 	request_free(&fake);
 
 	return rcode;

@@ -1,5 +1,5 @@
 /*
- * rlm_eap_tls.h 
+ * rlm_eap_tls.h
  *
  * Version:     $Id$
  *
@@ -106,7 +106,7 @@ typedef enum {
  */
 typedef struct _record_t {
 	unsigned char data[MAX_RECORD_SIZE];
-	unsigned int  used; 
+	unsigned int  used;
 } record_t;
 
 typedef struct _tls_info_t {
@@ -123,13 +123,13 @@ typedef struct _tls_info_t {
 
 /*
  * tls_session_t Structure gets stored as opaque in EAP_HANDLER
- * This contains EAP-REQUEST specific data 
+ * This contains EAP-REQUEST specific data
  * (ie EAPTLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
  *
  * clean_in  - data that needs to be sent but only after it is soiled.
  * dirty_in  - data EAP server receives.
  * clean_out - data that is cleaned after receiving.
- * dirty_out - data EAP server sends. 
+ * dirty_out - data EAP server sends.
  * offset    - current fragment size transmitted
  * fragment  - Flag, In fragment mode or not.
  * tls_msg_len - Actual/Total TLS message length.
@@ -148,7 +148,7 @@ typedef struct _tls_session_t {
 	record_t 	dirty_out;
 
 	/*
-	 * Framed-MTU attribute in RADIUS, 
+	 * Framed-MTU attribute in RADIUS,
 	 * if present, can also be used to set this
 	 */
 	unsigned int 	offset;

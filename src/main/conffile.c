@@ -148,7 +148,7 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 {
 	CONF_SECTION	*cs;
 
-	if (name1 == NULL || !name1[0]) 
+	if (name1 == NULL || !name1[0])
 		name1 = "main";
 
 	cs = (CONF_SECTION *)rad_malloc(sizeof(CONF_SECTION));
@@ -181,9 +181,9 @@ void cf_section_free(CONF_SECTION **cs)
 		}
 	}
 
-	if ((*cs)->name1) 
+	if ((*cs)->name1)
 		free((*cs)->name1);
-	if ((*cs)->name2) 
+	if ((*cs)->name2)
 		free((*cs)->name2);
 
 	/*
@@ -203,7 +203,7 @@ void cf_section_free(CONF_SECTION **cs)
 static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 {
 	CONF_ITEM *ci;
-	
+
 	for (ci = cs->children; ci && ci->next; ci = ci->next)
 		;
 
@@ -224,7 +224,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 	const char *end, *ptr;
 	char name[8192];
 	CONF_SECTION *parentcs;
-	
+
 	/*
 	 *	Find the master parent conf section.
 	 *	We can't use mainconfig.config, because we're in the
@@ -259,9 +259,9 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 				       cf, *lineno);
 				return NULL;
 			}
-			
+
 			ptr += 2;
-			
+
 			cp = NULL;
 			up = 0;
 
@@ -272,7 +272,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 				up = 1;
 				cs = outercs;
 				ptr++;
-				
+
 				/*
 				 *	${..foo} means "foo from the section
 				 *	enclosing this section" (etc.)
@@ -324,9 +324,9 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 				 */
 				if (*ptr == '.') {
 					CONF_SECTION *next;
-					
+
 					ptr++;	/* skip the period */
-					
+
 					/*
 					 *	Find the sub-section.
 					 */
@@ -336,7 +336,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 						return NULL;
 					}
 					cs = next;
-					
+
 				} else { /* no period, must be a conf-part */
 					/*
 					 *	Find in the current referenced
@@ -357,7 +357,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 					}
 				}
 			} /* until cp is non-NULL */
-			
+
 			/*
 			 *  Substitute the value of the variable.
 			 */
@@ -382,10 +382,10 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 				       cf, *lineno);
 				return NULL;
 			}
-			
+
 			memcpy(name, ptr, end - ptr);
 			name[end - ptr] = '\0';
-			
+
 			/*
 			 *	Get the environment variable.
 			 *	If none exists, then make it an empty string.
@@ -407,7 +407,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			*(p++) = *(ptr++);
 		}
 	} /* loop over all of the input string. */
-		
+
 	*p = '\0';
 
 	return output;
@@ -444,7 +444,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		if (cp) {
 			value = cp->value;
 		}
-		
+
 		switch (variables[i].type)
 		{
 		case PW_TYPE_SUBSECTION:
@@ -496,7 +496,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 					variables[i].name,
 					*(int *)data);
 			break;
-			
+
 		case PW_TYPE_STRING_PTR:
 			q = (char **) data;
 			if (*q != NULL) {
@@ -543,14 +543,14 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 					value, ip_ntoa(buffer, ipaddr));
 			*(uint32_t *) data = ipaddr;
 			break;
-			
+
 		default:
 			radlog(L_ERR, "type %d not supported yet", variables[i].type);
 			return -1;
 			break;
 		} /* switch over variable type */
 	} /* for all variables in the configuration section */
-	
+
 	return 0;
 }
 
@@ -572,7 +572,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	int t1, t2, t3;
 	char *cbuf = buf;
 	int len;
-	
+
 	/*
 	 *	Ensure that the user can't add CONF_SECTIONs
 	 *	with 'internal' names;
@@ -650,7 +650,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		/*
 		 *	Allow for $INCLUDE files
 		 *
-		 *      This *SHOULD* work for any level include.  
+		 *      This *SHOULD* work for any level include.
 		 *      I really really really hate this file.  -cparker
 		 */
 		if (strcasecmp(buf1, "$INCLUDE") == 0) {
@@ -678,7 +678,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			if (is != NULL) {
 				if (is->children != NULL) {
 					CONF_ITEM *ci;
-			
+
 					/*
 					 *	Re-write the parent of the
 					 *	moved children to be the
@@ -749,7 +749,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		/*
 		 *	Ignore semi-colons.
 		 */
-		if (*buf2 == ';') 
+		if (*buf2 == ';')
 			*buf2 = '\0';
 
 		/*
@@ -757,7 +757,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (buf1[0] != 0 && buf2[0] == 0 && buf3[0] == 0) {
 			t2 = T_OP_EQ;
-		} else if (buf1[0] == 0 || buf2[0] == 0 || 
+		} else if (buf1[0] == 0 || buf2[0] == 0 ||
 			   (t2 < T_EQSTART || t2 > T_EQEND)) {
 			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 					cf, *lineno);
@@ -809,13 +809,13 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 /*
  *	Read the config file.
  */
-CONF_SECTION *conf_read(const char *fromfile, int fromline, 
+CONF_SECTION *conf_read(const char *fromfile, int fromline,
 			const char *conffile, CONF_SECTION *parent)
 {
 	FILE		*fp;
 	int		lineno = 0;
 	CONF_SECTION	*cs;
-	
+
 	if ((fp = fopen(conffile, "r")) == NULL) {
 		if (fromfile) {
 			radlog(L_ERR|L_CONS, "%s[%d]: Unable to open file \"%s\": %s",
@@ -839,7 +839,7 @@ CONF_SECTION *conf_read(const char *fromfile, int fromline,
 }
 
 
-/* 
+/*
  * Return a CONF_PAIR within a CONF_SECTION.
  */
 CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
@@ -896,7 +896,7 @@ char *cf_section_name2(CONF_SECTION *section)
 	return (section ? section->name2 : NULL);
 }
 
-/* 
+/*
  * Find a value in a CONF_SECTION
  */
 char *cf_section_value_find(CONF_SECTION *section, const char *attr)
@@ -996,7 +996,7 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 	for (; ci; ci = ci->next) {
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
-		if ((name1 == NULL) || 
+		if ((name1 == NULL) ||
 				(strcmp(cf_itemtosection(ci)->name1, name1) == 0))
 			break;
 	}
@@ -1039,9 +1039,9 @@ int cf_item_is_section(CONF_ITEM *item)
 
 
 #if 0
-/* 
+/*
  * JMG dump_config tries to dump the config structure in a readable format
- * 
+ *
 */
 
 static int dump_config_section(CONF_SECTION *cs, int indent)

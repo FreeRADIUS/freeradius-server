@@ -200,7 +200,7 @@
 #define PW_NAS_PROMPT_USER		7
 #define PW_AUTHENTICATE_ONLY		8
 #define PW_CALLBACK_NAS_PROMPT		9
-	      
+
 /*	Framed Protocols	*/
 
 #define	PW_PPP				1

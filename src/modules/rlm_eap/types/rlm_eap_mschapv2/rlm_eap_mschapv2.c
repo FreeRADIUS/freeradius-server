@@ -78,9 +78,9 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 		length = htons(length);
 		memcpy(hdr->ms_length, &length, sizeof(uint16_t));
 		hdr->value_size = MSCHAPV2_CHALLENGE_LEN;
-		
+
 		ptr += MSCHAPV2_HEADER_LEN;
-		
+
 		/*
 		 *	Copy the Challenge, success, or error over.
 		 */
@@ -119,7 +119,7 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 		memcpy((eap_ds->request->type.data + 2), &length, sizeof(uint16_t));
 		memcpy((eap_ds->request->type.data + 4), reply->strvalue + 1, 42);
 		break;
-		
+
 	case PW_MSCHAP_ERROR:
 		DEBUG2("MSCHAP Failure\n");
 		length = 4 + MSCHAPV2_FAILURE_MESSAGE_LEN;
@@ -141,13 +141,13 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 		memcpy((eap_ds->request->type.data + 2), &length, sizeof(uint16_t));
 		memcpy((eap_ds->request->type.data + 4), MSCHAPV2_FAILURE_MESSAGE, MSCHAPV2_FAILURE_MESSAGE_LEN);
 		break;
-		
+
 	default:
 		radlog(L_ERR, "rlm_eap_mschapv2: Internal sanity check failed");
 		return 0;
 		break;
 	}
-	
+
 	return 1;
 }
 
@@ -192,7 +192,7 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 
 	handler->opaque = data;
 	handler->free_opaque = free;
-	
+
 	/*
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
@@ -214,7 +214,7 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 	 *	to us...
 	 */
 	handler->stage = AUTHENTICATE;
-	
+
 	return 1;
 }
 
@@ -284,7 +284,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 
 		/*
 		 *	4 for EAP header, 1 for EAP-MSCHAPv2 code, and
-		 *	50 for 
+		 *	50 for
 		 */
 		if (eap_ds->response->length < (4 + 1 + MSCHAPV2_RESPONSE_LEN)) {
 			radlog(L_ERR, "rlm_eap_mschapv2: MS-CHAPV2-Response is too short (%d)", eap_ds->response->length - 5);

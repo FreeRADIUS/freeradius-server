@@ -138,7 +138,7 @@ static int day_fill(char *bitmap, const char *tm)
 	for (hr = tm; *hr; hr++)
 		if (isdigit((int) *hr))
 			break;
-	if (hr == tm) 
+	if (hr == tm)
 		tm = "Al";
 
 	timestr_debug("dayfill: hr %s    tm %s\n", hr, tm);
@@ -249,7 +249,7 @@ int timestr_match(char *tmstr, time_t t)
 			break;
 	}
 
-	if (tot == 0) 
+	if (tot == 0)
 		return -1;
 
 	return (i == now) ? 0 : tot;

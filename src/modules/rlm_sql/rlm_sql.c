@@ -243,7 +243,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 static int sql_escape_func(char *out, int outlen, const char *in)
 {
 	int len = 0;
-	
+
 	while (in[0]) {
 		/*
 		 *  Only one byte left.
@@ -251,7 +251,7 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 		if (outlen <= 1) {
 			break;
 		}
-		
+
 		/*
 		 *	Non-printable characters get replaced with their
 		 *	mime-encoded equivalents.
@@ -265,7 +265,7 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 			len += 3;
 			continue;
 		}
-		
+
 		/*
 		 *	Else it's a nice character.
 		 */
@@ -430,7 +430,7 @@ static int rlm_sql_detach(void *instance)
 			if (module_config[i].type != PW_TYPE_STRING_PTR) {
 				continue;
 			}
-			
+
 			/*
 			 *	Treat 'config' as an opaque array of bytes,
 			 *	and take the offset into it.  There's a
@@ -674,7 +674,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	DEBUG2("rlm_sql:  check items");
 	vp_listdebug(check_tmp);
 	DEBUG2("rlm_sql:  reply items");
-	vp_listdebug(reply_tmp); 
+	vp_listdebug(reply_tmp);
 	*/
 
 	if (paircmp(request, request->packet->vps, check_tmp, &reply_tmp) != 0) {
@@ -735,7 +735,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	switch (acctstatustype) {
 			/*
 			 * The Terminal server informed us that it was rebooted
-			 * STOP all records from this NAS 
+			 * STOP all records from this NAS
 			 */
 		case PW_STATUS_ACCOUNTING_ON:
 		case PW_STATUS_ACCOUNTING_OFF:
@@ -809,7 +809,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					       (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 
 					/*
-					 * We failed the insert above.  It's probably because 
+					 * We failed the insert above.  It's probably because
 					 * the stop record came before the start.  We try an
 					 * our alternate query now (typically an UPDATE)
 					 */
@@ -819,7 +819,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					if (*querystr) { /* non-empty query */
 						if (rlm_sql_query(sqlsocket, inst, querystr)) {
 							radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL" "accounting START record - %s",
-							       inst->config->xlat_name, 
+							       inst->config->xlat_name,
 							       (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 							ret = RLM_MODULE_FAIL;
 						}
@@ -858,7 +858,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					if (numaffected < 1) {
 						/*
 						 * If our update above didn't match anything
-						 * we assume it's because we haven't seen a 
+						 * we assume it's because we haven't seen a
 						 * matching Start record.  So we have to
 						 * insert this stop rather than do an update
 						 */
@@ -871,7 +871,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					         */
 					        if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME)) != NULL)
 					                acctsessiontime = pair->lvalue;
-	
+
 					        if (acctsessiontime <= 0) {
 				        	        radius_xlat(logstr, sizeof(logstr), "rlm_sql: Stop packet with zero session length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, sql_escape_func);
 					                radlog(L_ERR, logstr);
@@ -915,7 +915,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 /*
  *        See if a user is already logged in. Sets request->simul_count to the
  *        current session count for this user.
- * 
+ *
  *        Check twice. If on the first pass the user exceeds his
  *        max. number of logins, do a second pass and validate all
  *        logins by querying the terminal server (using eg. SNMP).
@@ -1008,7 +1008,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
         if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
                 ipno = vp->lvalue;
         if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
-                call_num = vp->strvalue;        
+                call_num = vp->strvalue;
 
 
 	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {

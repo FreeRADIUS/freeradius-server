@@ -12,12 +12,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -56,7 +56,7 @@ char *SMB_DOSTimToStr(int DOS_time)
   SMB_Time_Temp[0] = 0;
 
   DOS_sec   = (DOS_time & 0x001F) * 2;
-  DOS_min   = (DOS_time & 0x07E0) >> 5;   
+  DOS_min   = (DOS_time & 0x07E0) >> 5;
   DOS_hour  = ((DOS_time & 0xF800) >> 11);
 
   DOS_day   = (DOS_time & 0x001F0000) >> 16;
@@ -71,7 +71,7 @@ char *SMB_DOSTimToStr(int DOS_time)
 }
 
 /* Convert an attribute byte/word etc to a string ... We return a pointer
-   to a static string which we guarantee is long enough. If verbose is 
+   to a static string which we guarantee is long enough. If verbose is
    true, we print out long form of strings ...                            */
 
 char *SMB_AtrToStr(int attribs, BOOL verbose)
@@ -80,22 +80,22 @@ char *SMB_AtrToStr(int attribs, BOOL verbose)
 
   SMB_Attrib_Temp[0] = 0;
 
-  if (attribs & SMB_FA_ROF) 
+  if (attribs & SMB_FA_ROF)
     strcat(SMB_Attrib_Temp, (verbose?"Read Only ":"R"));
 
-  if (attribs & SMB_FA_HID) 
+  if (attribs & SMB_FA_HID)
     strcat(SMB_Attrib_Temp, (verbose?"Hidden ":"H"));
 
-  if (attribs & SMB_FA_SYS) 
+  if (attribs & SMB_FA_SYS)
     strcat(SMB_Attrib_Temp, (verbose?"System ":"S"));
 
-  if (attribs & SMB_FA_VOL) 
+  if (attribs & SMB_FA_VOL)
     strcat(SMB_Attrib_Temp, (verbose?"Volume ":"V"));
 
-  if (attribs & SMB_FA_DIR) 
+  if (attribs & SMB_FA_DIR)
     strcat(SMB_Attrib_Temp, (verbose?"Directory ":"D"));
 
-  if (attribs & SMB_FA_ARC) 
+  if (attribs & SMB_FA_ARC)
     strcat(SMB_Attrib_Temp, (verbose?"Archive ":"A"));
 
   return(SMB_Attrib_Temp);
@@ -308,7 +308,7 @@ int SMB_Negotiate(SMB_Handle_Type Con_Handle, char *Prots[])
     return(SMBlibE_BAD);
 
   }
-  
+
   if (SVAL(SMB_Hdr(pkt), SMB_negrCP_idx_offset) == 0xFFFF) {
 
 #ifdef DEBUG
@@ -334,7 +334,7 @@ int SMB_Negotiate(SMB_Handle_Type Con_Handle, char *Prots[])
     return(SMBlibE_BAD);
 
   }
-  
+
   switch (CVAL(SMB_Hdr(pkt), SMB_hdr_wct_offset)) {
 
   case 0x01:      /* No more info ... */
@@ -354,7 +354,7 @@ int SMB_Negotiate(SMB_Handle_Type Con_Handle, char *Prots[])
     Con_Handle -> SessionKey = IVAL(SMB_Hdr(pkt), SMB_negrLM_sk_offset);
     Con_Handle -> SvrTZ = SVAL(SMB_Hdr(pkt), SMB_negrLM_stz_offset);
     Con_Handle -> Encrypt_Key_Len = SVAL(SMB_Hdr(pkt), SMB_negrLM_ekl_offset);
-    
+
     p = (SMB_Hdr(pkt) + SMB_negrLM_buf_offset);
     fprintf(stderr, "%d", (char *)(SMB_Hdr(pkt) + SMB_negrLM_buf_offset));
     memcpy(Con_Handle->Encrypt_Key, p, 8);
@@ -432,9 +432,9 @@ void SMB_Get_My_Name(char *name, int len)
 
 /* Send a TCON to the remote server ...               */
 
-SMB_Tree_Handle SMB_TreeConnect(SMB_Handle_Type Con_Handle, 
+SMB_Tree_Handle SMB_TreeConnect(SMB_Handle_Type Con_Handle,
 				SMB_Tree_Handle Tree_Handle,
-				char *path, 
+				char *path,
 				char *password,
 				char *device)
 
@@ -481,11 +481,11 @@ SMB_Tree_Handle SMB_TreeConnect(SMB_Handle_Type Con_Handle,
     tree = (SMB_Tree_Handle)malloc(sizeof(struct SMB_Tree_Structure));
 
     if (tree == NULL) {
-    
+
       RFCNB_Free_Pkt(pkt);
       SMBlib_errno = SMBlibE_NoSpace;
       return(NULL);
-      
+
     }
   }
   else {
@@ -548,7 +548,7 @@ SMB_Tree_Handle SMB_TreeConnect(SMB_Handle_Type Con_Handle,
     fprintf(stderr, "Error receiving response to TCon\n");
 #endif
 
-    if (Tree_Handle == NULL) 
+    if (Tree_Handle == NULL)
       free(tree);
     RFCNB_Free_Pkt(pkt);
     SMBlib_errno = -SMBlibE_RecvFailed;
@@ -600,7 +600,7 @@ SMB_Tree_Handle SMB_TreeConnect(SMB_Handle_Type Con_Handle,
   }
 
   RFCNB_Free_Pkt(pkt);
-  return(tree); 
+  return(tree);
 
 }
 
@@ -758,7 +758,7 @@ int SMB_Get_Error_Msg(int msg, char *msgbuf, int len)
 
   if (msg >= 0) {
 
-    strncpy(msgbuf, 
+    strncpy(msgbuf,
 	    SMBlib_Error_Messages[msg>SMBlibE_NoSuchMsg?SMBlibE_NoSuchMsg:msg],
 	    len - 1);
     msgbuf[len - 1] = 0; /* Make sure it is a string */

@@ -3,7 +3,7 @@
  *              of the routines that we would like to use...
  *
  * Version: cache.c  0.99  04-13-1999  jeff@apex.net
- */    
+ */
 #ifndef _COMPAT_H
 #define _COMPAT_H
 

@@ -23,7 +23,7 @@
 /*
  *
  *  LEAP Packet Format in EAP Type-Data
- *  --- ------ ------ -- --- --------- 
+ *  --- ------ ------ -- --- ---------
  *    0                   1                   2		        3
  *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -82,9 +82,9 @@ void eapleap_free(LEAP_PACKET **leap_packet_ptr)
 	*leap_packet_ptr = NULL;
 }
 
-/* 
+/*
  *   Extract the data from the LEAP packet.
- */ 
+ */
 LEAP_PACKET *eapleap_extract(EAP_DS *eap_ds)
 {
 	leap_packet_t	*data;
@@ -95,8 +95,8 @@ LEAP_PACKET *eapleap_extract(EAP_DS *eap_ds)
 	 *	LEAP can have EAP-Response or EAP-Request (step 5)
 	 *	messages sent to it.
 	 */
-	if (!eap_ds || 
-	    !eap_ds->response || 
+	if (!eap_ds ||
+	    !eap_ds->response ||
 	    ((eap_ds->response->code != PW_EAP_RESPONSE) &&
 	     (eap_ds->response->code != PW_EAP_REQUEST)) ||
 	    eap_ds->response->type.type != PW_EAP_LEAP ||
@@ -212,7 +212,7 @@ static void eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 			 */
 			unicode[(i << 1)] = password->strvalue[i];
 		}
-		
+
 		/*
 		 *  Get the NT Password hash.
 		 */
@@ -228,16 +228,16 @@ static void eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 }
 
 
-/* 
+/*
  *	Verify the MS-CHAP response from the user.
  */
-int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password, 
+int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password,
 		   leap_session_t *session)
 {
 	unsigned char ntpwdhash[16];
 	unsigned char response[24];
-	
-	
+
+
 	/*
 	 *	No password or previous packet.  Die.
 	 */
@@ -261,11 +261,11 @@ int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password,
 	return 0;
 }
 
-/* 
+/*
  *	Verify ourselves to the AP
  */
 LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
-			    VALUE_PAIR *user_name, VALUE_PAIR* password, 
+			    VALUE_PAIR *user_name, VALUE_PAIR* password,
 			    leap_session_t *session, VALUE_PAIR **reply_vps)
 {
 	int i;
@@ -274,7 +274,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	LEAP_PACKET *reply;
 	char *p;
 	VALUE_PAIR *vp;
-	
+
 	/*
 	 *	No password or previous packet.  Die.
 	 */
@@ -305,7 +305,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 		eapleap_free(&reply);
 		return NULL;
 	}
-	
+
 	/*
 	 *	Copy the name over, and ensure it's NUL terminated.
 	 */
@@ -412,7 +412,7 @@ LEAP_PACKET *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 		eapleap_free(&reply);
 		return NULL;
 	}
-	
+
 	/*
 	 *	Copy the name over, and ensure it's NUL terminated.
 	 */
@@ -423,7 +423,7 @@ LEAP_PACKET *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	return reply;
 }
 
-/* 
+/*
  * compose the LEAP reply packet in the EAP reply typedata
  */
 int eapleap_compose(EAP_DS *eap_ds, LEAP_PACKET *reply)
@@ -438,7 +438,7 @@ int eapleap_compose(EAP_DS *eap_ds, LEAP_PACKET *reply)
 	case PW_EAP_RESPONSE:
 		eap_ds->request->type.type = PW_EAP_LEAP;
 		eap_ds->request->type.length = reply->length;
-		
+
 		eap_ds->request->type.data = malloc(reply->length);
 		if (eap_ds->request->type.data == NULL) {
 			radlog(L_ERR, "rlm_eap_leap: out of memory");

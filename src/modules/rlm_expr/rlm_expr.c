@@ -59,7 +59,7 @@ typedef struct expr_map_t {
 	expr_token_t token;
 } expr_map_t;
 
-static expr_map_t map[] = 
+static expr_map_t map[] =
 {
 	{'+',	TOKEN_ADD },
 	{'-',	TOKEN_SUBTRACT },
@@ -148,7 +148,7 @@ static int get_number(REQUEST *request, const char **string, int *answer)
 				DEBUG2("rlm_expr: Not a number at \"%s\"", p);
 				return -1;
 			}
-			
+
 			/*
 			 *  This is doing it the hard way, but it also allows
 			 *  us to increment 'p'.
@@ -166,7 +166,7 @@ static int get_number(REQUEST *request, const char **string, int *answer)
 		case TOKEN_NONE:
 			result = x;
 			break;
-			
+
 		case TOKEN_ADD:
 			result += x;
 			break;
@@ -212,7 +212,7 @@ static int get_number(REQUEST *request, const char **string, int *answer)
 
 /*
  *  Do xlat of strings!
- */ 
+ */
 static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int outlen,
 		                        RADIUS_ESCAPE_STRING func)
 {
@@ -263,25 +263,25 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_expr_t	*inst;
 	char		*xlat_name;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	
+
 	inst = rad_malloc(sizeof(rlm_expr_t));
 	if (!inst)
 		return -1;
 	memset(inst, 0, sizeof(rlm_expr_t));
-		
+
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) 
+	if (xlat_name == NULL)
 		xlat_name = cf_section_name1(conf);
-	if (xlat_name){ 
+	if (xlat_name){
 		inst->xlat_name = strdup(xlat_name);
-		xlat_register(xlat_name, expr_xlat, inst); 
-	} 
+		xlat_register(xlat_name, expr_xlat, inst);
+	}
 	*instance = inst;
-	
+
 	return 0;
 }
 

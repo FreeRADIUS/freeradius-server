@@ -118,7 +118,7 @@ static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
 
 /*
  *	Do xlat of strings.
- */ 
+ */
 static int exec_xlat(void *instance, REQUEST *request,
 		     char *fmt, char *out, int outlen,
 		     RADIUS_ESCAPE_STRING func)
@@ -190,16 +190,16 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_exec_t	*inst;
 	char		*xlat_name;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	
+
 	inst = rad_malloc(sizeof(rlm_exec_t));
 	if (!inst)
 		return -1;
 	memset(inst, 0, sizeof(rlm_exec_t));
-		
+
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
@@ -209,7 +209,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 		exec_detach(inst);
 		return -1;
 	}
-	
+
 	/*
 	 *	No input pairs defined.  Why are we executing a program?
 	 */
@@ -246,7 +246,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 		inst->packet_code = 0;
 	} else {
 		DICT_VALUE	*dval;
-		
+
 		dval = dict_valbyname(PW_PACKET_TYPE, inst->packet_type);
 		if (!dval) {
 			radlog(L_ERR, "rlm_exec: Unknown packet type %s: See list of VALUEs for Packet-Type in share/dictionary", inst->packet_type);
@@ -257,15 +257,15 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) 
+	if (xlat_name == NULL)
 		xlat_name = cf_section_name1(conf);
-	if (xlat_name){ 
+	if (xlat_name){
 		inst->xlat_name = strdup(xlat_name);
-		xlat_register(xlat_name, exec_xlat, inst); 
-	} 
+		xlat_register(xlat_name, exec_xlat, inst);
+	}
 
 	*instance = inst;
-	
+
 	return 0;
 }
 

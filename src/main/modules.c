@@ -218,7 +218,7 @@ static module_list_t *linkto_module(const char *module_name,
 	node->next = NULL;
 	node->handle = handle;
 	strNcpy(node->name, module_name, sizeof(node->name));
-	
+
 	/*
 	 *	Link to the module's rlm_FOO{} module structure.
 	 */
@@ -237,7 +237,7 @@ static module_list_t *linkto_module(const char *module_name,
 		free(node);
 		return NULL;
 	}
-	
+
 	/* call the modules initialization */
 	if (node->module->init && (node->module->init)() < 0) {
 		radlog(L_ERR|L_CONS, "%s[%d] Module initialization failed.\n",
@@ -304,7 +304,7 @@ module_instance_t *find_module_instance(const char *instname)
 	 *	no name2.
 	 */
 	name1 = name2 = NULL;
-	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL); 
+	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL);
 			inst_cs != NULL;
 			inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {
 		name1 = cf_section_name1(inst_cs);
@@ -324,7 +324,7 @@ module_instance_t *find_module_instance(const char *instname)
 	node = rad_malloc(sizeof(*node));
 	node->next = NULL;
 	node->insthandle = NULL;
-	
+
 	/*
 	 *	Link to the module by name: rlm_FOO-major.minor
 	 */
@@ -351,7 +351,7 @@ module_instance_t *find_module_instance(const char *instname)
 		/* linkto_module logs any errors */
 		return NULL;
 	}
-	
+
 	/*
 	 *	Call the module's instantiation routine.
 	 */
@@ -390,11 +390,11 @@ module_instance_t *find_module_instance(const char *instname)
 		node->mutex = NULL;
 	}
 
-#endif	
+#endif
 	*last = node;
 
 	DEBUG("Module: Instantiated %s (%s) ", name1, node->name);
-	
+
 	return node;
 }
 
@@ -419,7 +419,7 @@ static indexed_modcallable *new_sublist(int comp, int idx)
 		/* It is an error to try to create a sublist that already
 		 * exists. It would almost certainly be caused by accidental
 		 * duplication in the config file.
-		 * 
+		 *
 		 * index 0 is the exception, because it is used when we want
 		 * to collect _all_ listed modules under a single index by
 		 * default, which is currently the case in all components
@@ -526,7 +526,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 	const char *modname;
 	char *visiblename;
 
-	for (modref=cf_item_find_next(cs, NULL); 
+	for (modref=cf_item_find_next(cs, NULL);
 			modref != NULL;
 			modref=cf_item_find_next(cs, modref)) {
 
@@ -666,7 +666,7 @@ int setup_modules(void)
 		/*
 		 *	Set the default list of preloaded symbols.
 		 *	This is used to initialize libltdl's list of
-		 *	preloaded modules. 
+		 *	preloaded modules.
 		 *
 		 *	i.e. Static modules.
 		 */
@@ -676,7 +676,7 @@ int setup_modules(void)
 			radlog(L_ERR|L_CONS, "Failed to initialize libraries: %s\n",
 					lt_dlerror());
 			exit(1); /* FIXME */
-			
+
 		}
 
 		/*
@@ -685,7 +685,7 @@ int setup_modules(void)
 		 *	any location on the disk.
 		 */
 		lt_dlsetsearchpath(radlib_dir);
-		
+
 		DEBUG2("Module: Library search path is %s",
 				lt_dlgetsearchpath());
 
@@ -736,7 +736,7 @@ int setup_modules(void)
 			 *	Allow some old names, too.
 			 */
 			if (!next && (comp <= 4)) {
-				
+
 				next = cf_subsection_find_next(cs, sub,
 							       old_section_type_value[comp].typename);
 			}
@@ -834,11 +834,11 @@ int setup_modules(void)
 			if (cf_item_is_section(ci)) {
 				radlog(L_ERR|L_CONS,
 				       "%s[%d] Subsection for module instantiate is not allowed\n", filename,
-				       
+
 				       cf_section_lineno(cf_itemtosection(ci)));
 				exit(1);
 			}
-	
+
 			cp = cf_itemtopair(ci);
 			name = cf_pair_attr(cp);
 			module = find_module_instance(name);
@@ -854,9 +854,9 @@ int setup_modules(void)
 	 */
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		cs = cf_section_find(component_names[comp]);
-		if (cs == NULL) 
+		if (cs == NULL)
 			continue;
-		
+
 		if (load_component_section(cs, comp, filename) < 0) {
 			exit(1);
 		}

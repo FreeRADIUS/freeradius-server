@@ -113,7 +113,7 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 		DEBUG2("  rlm_eap_peap: Identity - %s", identity);
 		return 1;
 		break;
-		
+
 		/*
 		 *	If the first byte of the packet is
 		 *	EAP-Response, and the EAP data is a TLV,
@@ -200,12 +200,12 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	if (debug_flag > 2) {
 		int i;
 		int total = vp->length - 4;
-		
+
 		if (debug_flag > 0) for (i = 0; i < total; i++) {
 			if ((i & 0x0f) == 0) printf("  PEAP tunnel data out %04x: ", i);
-			
+
 			printf("%02x ", vp->strvalue[i + 4]);
-			
+
 			if ((i & 0x0f) == 0x0f) printf("\n");
 		}
 		if ((total & 0x0f) != 0) printf("\n");
@@ -270,7 +270,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eappeap_success(handler, tls_session);
 		rcode = RLM_MODULE_HANDLED;
-		
+
 		/*
 		 *	If we've been told to use the attributes from
 		 *	the reply, then do so.
@@ -371,7 +371,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		DEBUG2("  PEAP: Reply was rejected");
 		eaptls_fail(handler->eap_ds, 0);
 		return 0;
-	  
+
 	case RLM_MODULE_HANDLED:
 		DEBUG2("  PEAP: Reply was handled");
 		eaptls_request(handler->eap_ds, tls_session);
@@ -380,7 +380,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	case RLM_MODULE_OK:
 		DEBUG2("  PEAP: Reply was OK");
 		eaptls_success(handler->eap_ds, 0);
-		eaptls_gen_mppe_keys(&handler->request->reply->vps, 
+		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
 				     "client EAP encryption");
 		return 1;
@@ -455,7 +455,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	If there's no data, maybe this is an ACK to an
 	 *	MS-CHAP2-Success.
-	 */	
+	 */
 	if (err == 0) {
 		/*
 		 *	FIXME: Call SSL_get_error() to see what went
@@ -464,7 +464,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		radlog(L_INFO, "rlm_eap_peap: No data inside of the tunnel.");
 		return RLM_MODULE_REJECT;
 	}
- 
+
 	data_len = tls_session->clean_out.used = err;
 	data = tls_session->clean_out.data;
 
@@ -472,9 +472,9 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	if (debug_flag > 2) {
 		for (i = 0; i < data_len; i++) {
 			if ((i & 0x0f) == 0) printf("  PEAP tunnel data in %04x: ", i);
-			
+
 			printf("%02x ", data[i]);
-			
+
 			if ((i & 0x0f) == 0x0f) printf("\n");
 		}
 		if ((data_len & 0x0f) != 0) printf("\n");
@@ -543,7 +543,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		if ((data[0] == PW_EAP_IDENTITY) && (data_len > 1)) {
 			t->username = pairmake("User-Name", "", T_OP_EQ);
 			rad_assert(t->username != NULL);
-				
+
 			memcpy(t->username->strvalue, data+1, data_len - 1);
 			t->username->length = data_len -1;
 			t->username->strvalue[t->username->length] = 0;
@@ -652,7 +652,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 #ifndef NDEBUG
 	if (debug_flag > 0) {
 		printf("  PEAP: Sending tunneled request\n");
-		
+
 		for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
 			putchar('\t');vp_print(stdout, vp);putchar('\n');
 		}
@@ -673,7 +673,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	if (debug_flag > 0) {
 		printf("  PEAP: Got tunneled reply RADIUS code %d\n",
 		 fake->reply->code);
-		
+
 		for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
 			putchar('\t');vp_print(stdout, vp);putchar('\n');
 		}
@@ -708,13 +708,13 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 */
 			if (!t->proxy_tunneled_request_as_eap) {
 				fake->options |= RAD_REQUEST_OPTION_PROXY_EAP;
-				
+
 				/*
 				 *	Hmm... should we check for
 				 *	Auth-Type & EAP-Message here?
 				 */
 
-				
+
 				/*
 				 *	Run the EAP authentication.
 				 */
@@ -725,7 +725,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 					rcode = RLM_MODULE_REJECT;
 					goto done;
 				}
-				
+
 				/*
 				 *	The module decided it wasn't
 				 *	done.  Handle it like normal.
@@ -774,12 +774,12 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			/*
 			 *	Associate the callback with the request.
 			 */
-			rcode = request_data_add(request, 
+			rcode = request_data_add(request,
 						 request->proxy,
 						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 						 tunnel, free);
 			rad_assert(rcode == 0);
-			
+
 			/*
 			 *	Didn't authenticate the packet, but
 			 *	we're proxying it.
@@ -798,9 +798,9 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				      fake->reply);
 		break;
 	}
-	
+
  done:
 	request_free(&fake);
-	
+
 	return rcode;
 }

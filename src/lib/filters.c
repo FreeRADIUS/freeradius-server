@@ -164,7 +164,7 @@ typedef struct ascend_ipx_filter_t {
  *
  *	value:		A value to compare against the masked bits at
  *			offset in a users packet.
- *			
+ *
  *	compNeq:	Defines type of comarison (Equal or Notequal)
  *			default is Equal.
  *
@@ -363,7 +363,7 @@ static int str2argv(char *str, char **argv, int max_argc)
 
 		argv[argc] = str;
 		argc++;
-		
+
 		while (*str && (*str != ' ')) str++;
 	}
 
@@ -536,19 +536,19 @@ static int ascend_parse_ipx_net(int argc, char **argv,
  *
  *	cmd:            One of ">" or "<" or "=" or "!=".
  *
- *	value:          Socket value to be compared against, in hex. 
- *			
+ *	value:          Socket value to be compared against, in hex.
+ *
  *	dstipxnet:	Keyword for destination IPX address.
- *			nnnn = IPX Node address. 
- *			
+ *			nnnn = IPX Node address.
+ *
  *	dstipxnode:	Keyword for destination IPX Node address.
  *  		mmmmm = IPX Node Address, could be FFFFFF.
  *		       A valid ipx node number should accompany ipx net number.
- *			
+ *
  *	dstipxsoc:	Keyword for destination IPX socket address.
- *			
+ *
  *	cmd:		One of ">" or "<" or "=" or "!=".
- *			
+ *
  *	value:		Socket value to be compared against, in hex.
  */
 static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
@@ -580,7 +580,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 			argv += rcode + 1;
 			flags |= 0x01;
 			break;
-			
+
 		case FILTER_IPX_DST_IPXNET:
 			if (flags & 0x02) return -1;
 			rcode = ascend_parse_ipx_net(argc - 1, argv + 1,
@@ -591,7 +591,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 			argv += rcode + 1;
 			flags |= 0x02;
 			break;
-			
+
 		default:
 			librad_log("Unknown string \"%s\" in IPX data filter",
 				   argv[0]);
@@ -678,7 +678,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 		 *	Do the last one, too.
 		 */
 		if (ip[count] > 255) return -1;
-		
+
 		/*
 		 *	24, 16, 8, 0, done.
 		 */
@@ -749,19 +749,19 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
  *	reply. The format of the string is:
  *
  *	ip dir action [ dstip n.n.n.n/nn ] [ srcip n.n.n.n/nn ]
- *	    [ proto [ dstport cmp value ] [ srcport cmd value ] [ est ] ] 
+ *	    [ proto [ dstport cmp value ] [ srcport cmd value ] [ est ] ]
  *
  *	Fields in [...] are optional.
  *
  *	dstip:		Keyword for destination IP address.
- *			n.n.n.n = IP address. /nn - netmask. 
- *			
+ *			n.n.n.n = IP address. /nn - netmask.
+ *
  *	srcip:		Keyword for source IP address.
- *			n.n.n.n = IP address. /nn - netmask. 
- *			
+ *			n.n.n.n = IP address. /nn - netmask.
+ *
  *	proto:		Optional protocol field. Either a name or
  *			number. Known names are in FilterProtoName[].
- *			
+ *
  *	dstport:	Keyword for destination port. Only valid with tcp
  *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
  *			a name or number.
@@ -769,9 +769,9 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
  *	srcport:	Keyword for source port. Only valid with tcp
  *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
  *			a name or number.
- *			
+ *
  *	est:		Keyword for TCP established. Valid only for tcp.
- *			
+ *
  */
 static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 {
@@ -816,7 +816,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			argv += 2;
 			argc -= 2;
 			break;
-			
+
 			/*
 			 *	Should be protocol, ASCII or otherwise.
 			 */
@@ -889,7 +889,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			argc--;
 			flags = 0x07;
 			break;
-			
+
 			/*
 			 *	Unknown thingy.
 			 */
@@ -924,16 +924,16 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
  *
  *	Fields in [...] are optional.
  *
- *	offset:		A Number. Specifies an offset into a frame 
+ *	offset:		A Number. Specifies an offset into a frame
  *			to start comparing.
- *			
+ *
  *	mask:		A hexadecimal mask of bits to compare.
- *			
+ *
  *	value:		A value to compare with the masked data.
  *
  *	compNeq:	Defines type of comparison. ( "==" or "!=")
  *			Default is "==".
- *			
+ *
  *	more:		Optional keyword MORE, to represent the attachment
  *			to the next entry.
  */
@@ -1006,7 +1006,7 @@ static int ascend_parse_generic(int argc, char **argv,
 			filter->compNeq = FALSE;
 			flags |= 0x01;
 			break;
-			
+
 		case FILTER_MORE:
 			if (flags & 0x02) return -1;
 			filter->more = htons( 1 );
@@ -1035,11 +1035,11 @@ static int ascend_parse_generic(int argc, char **argv,
  *
  *	pair:			Pointer to value_pair to place return.
  *
- *	valstr:			The string to parse	
+ *	valstr:			The string to parse
  *
  *	return:			-1 for error or 0.
  */
-int 
+int
 ascend_parse_filter(VALUE_PAIR *pair)
 {
 	int		token, type;
@@ -1047,9 +1047,9 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	int		argc;
 	char		*argv[32];
 	ascend_filter_t filter;
-	
+
 	rcode = -1;
-	
+
 	/*
 	 *	Tokenize the input string in the VP.
 	 *
@@ -1058,13 +1058,13 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	 */
 	argc = str2argv(pair->strvalue, argv, 32);
 	if (argc < 3) return -1;
-	
+
 	/*
 	 *	Decide which filter type it is: ip, ipx, or generic
 	 */
 	type = lrad_str2int(filterType, argv[0], -1);
 	memset(&filter, 0, sizeof(filter));
-	
+
 	/*
 	 *	Validate the filter type.
 	 */
@@ -1074,13 +1074,13 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	case RAD_FILTER_IPX:
 		filter.type = type;
 		break;
-		
+
 	default:
 		librad_log("Unknown Ascend filter type \"%s\"", argv[0]);
 		return -1;
 		break;
 	}
-	
+
 	/*
 	 *	Parse direction
 	 */
@@ -1137,7 +1137,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	default:		/* should never reach here. */
 		break;
 	}
-	
+
 	/*
 	 *	Touch the VP only if everything was OK.
 	 */
@@ -1145,21 +1145,21 @@ ascend_parse_filter(VALUE_PAIR *pair)
 		pair->length = SIZEOF_RADFILTER;
 		memcpy(pair->strvalue, &filter, sizeof(filter));
 	}
-	
+
 	return rcode;
-	
+
 #if 0
     /*
-     * if 'more' is set then this new entry must exist, be a 
-     * FILTER_GENERIC_TYPE, direction and disposition must match for 
-     * the previous 'more' to be valid. If any should fail then TURN OFF 
+     * if 'more' is set then this new entry must exist, be a
+     * FILTER_GENERIC_TYPE, direction and disposition must match for
+     * the previous 'more' to be valid. If any should fail then TURN OFF
      * previous 'more'
      */
     if( prevRadPair ) {
 	filt = ( RadFilter * )prevRadPair->strvalue;
 	if(( tok != FILTER_GENERIC_TYPE ) || (rc == -1 ) ||
-	   ( prevRadPair->attribute != pair->attribute ) || 
-	   ( filt->indirection != radFil.indirection ) || 
+	   ( prevRadPair->attribute != pair->attribute ) ||
+	   ( filt->indirection != radFil.indirection ) ||
 	   ( filt->forward != radFil.forward ) ) {
 	    gen = &filt->u.generic;
 	    gen->more = FALSE;
@@ -1171,7 +1171,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
     if( rc != -1 && tok == FILTER_GENERIC_TYPE ) {
 	if( radFil.u.generic.more ) {
 	    prevRadPair = pair;
-	} 
+	}
     }
 
     if( rc != -1 ) {
@@ -1195,10 +1195,10 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   int 			i;
   char			*p;
   ascend_filter_t	filter;
-  
+
   static const char *action[] = {"drop", "forward"};
   static const char *direction[] = {"out", "in"};
-  
+
   p = (char *)buffer;
 
   /*
@@ -1252,12 +1252,12 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       p += i;
       len -= i;
     }
-    
-    i =  snprintf(p, len, " %s", 
+
+    i =  snprintf(p, len, " %s",
 		  lrad_int2str(filterProtoName, filter.u.ip.proto, "??"));
     p += i;
     len -= i;
-    
+
     if (filter.u.ip.srcPortComp > RAD_NO_COMPARE) {
       i = snprintf(p, len, " srcport %s %d",
 		   lrad_int2str(filterCompare, filter.u.ip.srcPortComp, "??"),
@@ -1273,7 +1273,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       p += i;
       len -= i;
     }
-    
+
     if (filter.u.ip.established) {
       i = snprintf(p, len, " est");
       p += i;
@@ -1288,8 +1288,8 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
     if (filter.u.ipx.src.net) {
       i = snprintf(p, len, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
 		  (unsigned int)ntohl(filter.u.ipx.src.net),
-		  filter.u.ipx.src.node[0], filter.u.ipx.src.node[1], 
-		  filter.u.ipx.src.node[2], filter.u.ipx.src.node[3], 
+		  filter.u.ipx.src.node[0], filter.u.ipx.src.node[1],
+		  filter.u.ipx.src.node[2], filter.u.ipx.src.node[3],
 		  filter.u.ipx.src.node[4], filter.u.ipx.src.node[5]);
       p += i;
       len -= i;
@@ -1307,8 +1307,8 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
     if (filter.u.ipx.dst.net) {
       i = snprintf(p, len, " dstipxnet 0x%04x dstipxnode 0x%02x%02x%02x%02x%02x%02x",
 		  (unsigned int)ntohl(filter.u.ipx.dst.net),
-		  filter.u.ipx.dst.node[0], filter.u.ipx.dst.node[1], 
-		  filter.u.ipx.dst.node[2], filter.u.ipx.dst.node[3], 
+		  filter.u.ipx.dst.node[0], filter.u.ipx.dst.node[1],
+		  filter.u.ipx.dst.node[2], filter.u.ipx.dst.node[3],
 		  filter.u.ipx.dst.node[4], filter.u.ipx.dst.node[5]);
       p += i;
       len -= i;

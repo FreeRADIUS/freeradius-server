@@ -13,7 +13,7 @@
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
- *  Helper functions to get/set addresses of UDP packets 
+ *  Helper functions to get/set addresses of UDP packets
  *  based on recvfromto by Miquel van Smoorenburg
  *
  * recvfromto	Like recvfrom, but also stores the destination
@@ -29,8 +29,8 @@
  *		version 2 of the License, or (at your option) any later version.
  *
  * sendfromto	added 18/08/2003, Jan Berkel <jan@sitadelle.com>
- *		Works on Linux and FreeBSD (5.x) 			
- * 
+ *		Works on Linux and FreeBSD (5.x)
+ *
  * Version: $Id$
  */
 
@@ -64,14 +64,14 @@ int udpfromto_init(int s)
 
 #ifdef HAVE_IP_RECVDSTADDR
 	/*
-	 * Set the IP_RECVDSTADDR option (BSD). 
-	 * Note: IP_RECVDSTADDR == IP_SENDSRCADDR 
+	 * Set the IP_RECVDSTADDR option (BSD).
+	 * Note: IP_RECVDSTADDR == IP_SENDSRCADDR
 	 */
 	err = setsockopt(s, IPPROTO_IP, IP_RECVDSTADDR, &opt, sizeof(opt));
 #endif
 	return err;
 }
-	
+
 int recvfromto(int s, void *buf, size_t len, int flags,
 	struct sockaddr *from, socklen_t *fromlen,
 	struct sockaddr *to, socklen_t *tolen)
@@ -106,7 +106,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 		l = sizeof(si);
 		if (getsockname(s, (struct sockaddr *)&si, &l) == 0) {
 			((struct sockaddr_in *)to)->sin_port = si.sin_port;
-			((struct sockaddr_in *)to)->sin_addr = si.sin_addr; 
+			((struct sockaddr_in *)to)->sin_addr = si.sin_addr;
 		}
 		if (tolen) *tolen = sizeof(struct sockaddr_in);
 	}
@@ -161,7 +161,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 # endif
 	}
 	return err;
-#else 
+#else
 	/* fallback: call recvfrom */
 	return recvfrom(s, buf, len, flags, from, fromlen);
 #endif /* defined(HAVE_IP_PKTINFO) || defined(HAVE_IP_RECVDSTADDR) */
@@ -195,7 +195,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	msgh.msg_controllen = sizeof(cmsgbuf);
 	msgh.msg_name = to;
 	msgh.msg_namelen = tolen;
-	
+
 	cmsg = CMSG_FIRSTHDR(&msgh);
 
 # ifdef HAVE_IP_PKTINFO
@@ -210,7 +210,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	cmsg->cmsg_level = IPPROTO_IP;
 	cmsg->cmsg_type = IP_SENDSRCADDR;
 	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_addr));
-	memcpy((struct in_addr *)CMSG_DATA(cmsg), 
+	memcpy((struct in_addr *)CMSG_DATA(cmsg),
 	       &((struct sockaddr_in *)from)->sin_addr, sizeof(struct in_addr));
 # endif
 
@@ -226,7 +226,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 /*
  *	Small test program to test recvfromto/sendfromto
  *
- *	use a virtual IP address as first argument to test 
+ *	use a virtual IP address as first argument to test
  *
  *	reply packet should originate from virtual IP and not
  *	from the default interface the alias is bound to
@@ -267,7 +267,7 @@ int main(int argc, char **argv)
 			return 0;
 		case 0:
 			/* child */
-			usleep(100000);	
+			usleep(100000);
 			goto client;
 	}
 
@@ -301,7 +301,7 @@ int main(int argc, char **argv)
 		inet_ntoa(to.sin_addr), ntohs(to.sin_port));
 
 	printf("server: replying from address packet was received on to source address\n");
-		
+
 	if ((n = sendfromto(server_socket, buf, n, 0,
 		(struct sockaddr *)&to, tl,
 		(struct sockaddr *)&from, fl)) < 0) {
@@ -329,12 +329,12 @@ client:
 	in.sin_addr.s_addr = inet_addr(destip);
 
 	printf("client: sending packet to %s:%d\n", destip, port);
-	if (sendto(client_socket, TESTSTRING, TESTLEN, 0, 
+	if (sendto(client_socket, TESTSTRING, TESTLEN, 0,
 			(struct sockaddr *)&in, sizeof(in)) < 0) {
 		perror("client: sendto");
 		_exit(0);
 	}
-			
+
 	printf("client: waiting for reply from server on INADDR_ANY:%d\n", port+1);
 
 	if ((n = recvfromto(client_socket, buf, sizeof(buf), 0,

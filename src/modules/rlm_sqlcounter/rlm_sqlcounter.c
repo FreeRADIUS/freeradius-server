@@ -43,16 +43,16 @@
 
 
 /* 	Note: When your counter spans more than 1 period (ie 3 months or 2 weeks), this module
- *	probably does NOT do what you want!  It calculates the range of dates to count across 
+ *	probably does NOT do what you want!  It calculates the range of dates to count across
  *	by first calculating the End of the Current period and then subtracting the number of
  *	periods you specify from that to determine the beginning of the range.
  *
- *	For example, if you specify a 3 month counter and today is June 15th, the end of the current 
- *	period is June 30. Subtracting 3 months from that gives April 1st.  So, the counter will 
+ *	For example, if you specify a 3 month counter and today is June 15th, the end of the current
+ *	period is June 30. Subtracting 3 months from that gives April 1st.  So, the counter will
  *	sum radacct entries from April 1st to June 30. Then, next month, it will sum entries
  *	from May 1st to July 31st.
  *
- *	To fix this behavior, we need to add some way of storing the Next Reset Time 
+ *	To fix this behavior, we need to add some way of storing the Next Reset Time
  */
 
 
@@ -157,7 +157,7 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 		return -1;
 	}
 	strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
-	DEBUG2("rlm_sqlcounter: Current Time: %d [%s], Next reset %d [%s]", 
+	DEBUG2("rlm_sqlcounter: Current Time: %d [%s], Next reset %d [%s]",
 		(int)timeval,sCurrentTime,(int)data->reset_time, sNextTime);
 
 	return ret;
@@ -227,7 +227,7 @@ static int find_prev_reset(rlm_sqlcounter_t *data, time_t timeval)
 		return -1;
 	}
 	strftime(sPrevTime, sizeof(sPrevTime),"%Y-%m-%d %H:%M:%S",tm);
-	DEBUG2("rlm_sqlcounter: Current Time: %d [%s], Prev reset %d [%s]", 
+	DEBUG2("rlm_sqlcounter: Current Time: %d [%s], Prev reset %d [%s]",
 		(int)timeval,sCurrentTime,(int)data->last_reset, sPrevTime);
 
 	return ret;
@@ -264,7 +264,7 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 			/*
 			 * We check if we're inside an open brace.  If we are
 			 * then we assume this brace is NOT literal, but is
-			 * a closing brace and apply it 
+			 * a closing brace and apply it
 			 */
 			if((c == '}') && openbraces) {
 				openbraces--;
@@ -295,20 +295,20 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 				*q++ = *p;
 			case 'b': /* last_reset */
 				sprintf(tmpdt, "%lu", data->last_reset);
-				strNcpy(q, tmpdt, freespace); 
+				strNcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
 			case 'e': /* reset_time */
 				sprintf(tmpdt, "%lu", data->reset_time);
-				strNcpy(q, tmpdt, freespace); 
+				strNcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
 			case 'k': /* Key Name */
-				strNcpy(q, data->key_name, freespace); 
+				strNcpy(q, data->key_name, freespace);
 				q += strlen(q);
 				break;
 			case 'S': /* SQL module instance */
-				strNcpy(q, data->sqlmod_inst, freespace); 
+				strNcpy(q, data->sqlmod_inst, freespace);
 				q += strlen(q);
 				break;
 			default:
@@ -374,7 +374,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	DICT_ATTR *dattr;
 	ATTR_FLAGS flags;
 	time_t now;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -394,7 +394,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
-	 *	Discover the attribute number of the key. 
+	 *	Discover the attribute number of the key.
 	 */
 	if (data->key_name == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'key' must be set.");
@@ -407,7 +407,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	data->key_attr = dattr->attr;
-	
+
 
 	/*
 	 *  Create a new attribute for the counter.
@@ -474,7 +474,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	paircompare_register(data->dict_attr, 0, sqlcounter_cmp, data);
 
 	*instance = data;
-	
+
 	return 0;
 }
 
@@ -616,12 +616,12 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 
 		snprintf(module_fmsg, sizeof(module_fmsg), "rlm_sqlcounter: Maximum %s usage time reached", data->reset);
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_fmsg_vp);	
+		pairadd(&request->packet->vps, module_fmsg_vp);
 
 		ret=RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_sqlcounter: Rejected user %s, check_item=%d, counter=%d",
-				key_vp->strvalue,check_vp->lvalue,counter); 
+				key_vp->strvalue,check_vp->lvalue,counter);
 	}
 
 	return ret;
@@ -652,7 +652,7 @@ static int sqlcounter_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_sqlcounter = {
-	"SQL Counter",	
+	"SQL Counter",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	sqlcounter_instantiate,		/* instantiation */

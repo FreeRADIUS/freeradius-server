@@ -2,7 +2,7 @@
  * rlm_eap_sim.c    Handles that are called from eap for SIM
  *
  * The development of the EAP/SIM support was funded by Internet Foundation
- * Austria (http://www.nic.at/ipa). 
+ * Austria (http://www.nic.at/ipa).
  *
  * Version:     $Id$
  *
@@ -39,20 +39,20 @@
 struct eap_sim_server_state {
 	enum eapsim_serverstates state;
 	struct eapsim_keys keys;
-	
+
 };
 
 /*
  * Add value pair to reply
  */
-static void add_reply(VALUE_PAIR** vp, 
+static void add_reply(VALUE_PAIR** vp,
 		      const char* name, const char* value, int len)
 {
 	VALUE_PAIR *reply_attr;
 	reply_attr = pairmake(name, "", T_OP_EQ);
 	if (!reply_attr) {
 		DEBUG("rlm_eap_sim: "
-		      "add_reply failed to create attribute %s: %s\n", 
+		      "add_reply failed to create attribute %s: %s\n",
 		      name, librad_errstr);
 		return;
 	}
@@ -67,7 +67,7 @@ static void eap_sim_state_free(void *opaque)
 	struct eap_sim_server_state *ess = (struct eap_sim_server_state *)opaque;
 
 	if (!ess) return;
-	
+
 	free(ess);
 }
 
@@ -93,7 +93,7 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	rad_assert(handler->request->reply);
 
 	ess = (struct eap_sim_server_state *)handler->opaque;
-	
+
 	/* these are the outgoing attributes */
 	vps = &handler->request->reply->vps;
 
@@ -208,7 +208,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	ess = (struct eap_sim_server_state *)handler->opaque;
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->request->reply);
-	
+
 	/* invps is the data from the client.
 	 * but, this is for non-protocol data here. We should
 	 * already have consumed any client originated data.
@@ -220,7 +220,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 
 	printf("+++> EAP-sim decoded packet:\n");
 	vp_printlist(stdout, *invps);
-	
+
 	/* okay, we got the challenges! Put them into an attribute */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND,
 			   PW_TYPE_OCTETS);
@@ -238,12 +238,12 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	/* all set, calculate keys! */
 	eapsim_calculate_keys(&ess->keys);
 
-#ifdef EAP_SIM_DEBUG_PRF	
+#ifdef EAP_SIM_DEBUG_PRF
 	eapsim_dump_mk(&ess->keys);
 #endif
 
 	/*
-	 * need to include an AT_MAC attribute so that it will get 
+	 * need to include an AT_MAC attribute so that it will get
 	 * calculated. The NONCE_MT and the MAC are both 16 bytes, so
 	 * we store the NONCE_MT in the MAC for the encoder, which
 	 * will pull it out before it does the operation.
@@ -268,7 +268,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	return 1;
 }
 
-#ifndef EAPTLS_MPPE_KEY_LEN 
+#ifndef EAPTLS_MPPE_KEY_LEN
 #define EAPTLS_MPPE_KEY_LEN     32
 #endif
 
@@ -334,7 +334,7 @@ static void eap_sim_stateenter(EAP_HANDLER *handler,
 		 */
 		break;
 	}
-	
+
 	ess->state = newstate;
 
 	/* build the target packet */
@@ -410,7 +410,7 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 
 	nonce_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT);
 	selectedversion_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION);
-	
+
 	if(nonce_vp == NULL ||
 	   selectedversion_vp == NULL) {
 		DEBUG2("   client did not select a version and send a NONCE");
@@ -444,12 +444,12 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 		return 0;
 	}
 	memcpy(ess->keys.nonce_mt, nonce_vp->strvalue+2, 16);
-	
+
 	/* everything looks good, change states */
 	eap_sim_stateenter(handler, ess, eapsim_server_challenge);
 	return 1;
 }
-	
+
 
 /*
  * process an EAP-Sim/Response/Challenge
@@ -469,7 +469,7 @@ static int process_eap_sim_challenge(EAP_HANDLER *handler, VALUE_PAIR *vps)
 	memcpy(srescat +(0*EAPSIM_SRES_SIZE), ess->keys.sres[0], EAPSIM_SRES_SIZE);
 	memcpy(srescat +(1*EAPSIM_SRES_SIZE), ess->keys.sres[1], EAPSIM_SRES_SIZE);
 	memcpy(srescat +(2*EAPSIM_SRES_SIZE), ess->keys.sres[2], EAPSIM_SRES_SIZE);
-	
+
 	/* verify the MAC, now that we have all the keys. */
 	if(eapsim_checkmac(vps, ess->keys.K_aut,
 			   srescat, sizeof(srescat),
@@ -487,7 +487,7 @@ static int process_eap_sim_challenge(EAP_HANDLER *handler, VALUE_PAIR *vps)
 			  j=0;
 			}
 			j++;
-			
+
 			sprintf(m, "%02x", calcmac[i]);
 			m = m + strlen(m);
 		}
@@ -499,7 +499,7 @@ static int process_eap_sim_challenge(EAP_HANDLER *handler, VALUE_PAIR *vps)
 	eap_sim_stateenter(handler, ess, eapsim_server_success);
 	return 1;
 }
-	
+
 
 /*
  *	Authenticate a previously sent challenge.
@@ -544,7 +544,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 			 */
 			eap_sim_stateenter(handler, ess, eapsim_server_start);
 			return 1;
-			
+
 		case eapsim_start:
 			/*
 			 * a response to our EAP-Sim/Request/Start!
@@ -562,7 +562,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 			 */
 			eap_sim_stateenter(handler, ess, eapsim_server_challenge);
 			return 1;
-			
+
 		case eapsim_challenge:
 			/*
 			 * a response to our EAP-Sim/Request/Challenge!
@@ -598,7 +598,14 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.10  2004-01-30 20:35:33  mcr
+ * Revision 1.11  2004-02-26 19:04:31  aland
+ * 	perl -i -npe "s/[ \t]+$//g" `find src -name "*.[ch]" -print`
+ *
+ * 	Whitespace changes only, from a fresh checkout.
+ *
+ * 	For bug # 13
+ *
+ * Revision 1.10  2004/01/30 20:35:33  mcr
  * 	capture the RAND/SRES/Kc when we initialize the SIM
  * 	rather than later, when they may have changed.
  *

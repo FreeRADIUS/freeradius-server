@@ -92,7 +92,7 @@ static int str2rcode(const char *s)
 static int always_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_always_t *data;
-	
+
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -110,7 +110,7 @@ static int always_instantiate(CONF_SECTION *conf, void **instance)
 		free(data);
 		return -1;
 	}
-	
+
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
 	 */
@@ -161,7 +161,7 @@ static int always_detach(void *instance)
 }
 
 module_t rlm_always = {
-	"always",	
+	"always",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* initialization */
 	always_instantiate,		/* instantiation */

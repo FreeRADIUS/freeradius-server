@@ -119,7 +119,7 @@ int read_naslist_file(char *file)
 			       (int) sizeof(nas->nastype) - 1);
 			return -1;
 		}
-		
+
 		/*
 		 *	It should be OK now, let's create the buffer.
 		 */
@@ -227,7 +227,7 @@ const char *nas_name2(RADIUS_PACKET *packet)
 }
 
 /*
- *	Find the name of a nas (prefer short name) based on ipaddr, 
+ *	Find the name of a nas (prefer short name) based on ipaddr,
  *	store in passed buffer.  If NAS is unknown, return dotted quad.
  */
 char * nas_name3(char *buf, size_t buflen, uint32_t ipaddr)

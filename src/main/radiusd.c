@@ -239,7 +239,7 @@ static int str2fac(const char *s)
 			progname, s);
 		exit(1);
 	}
-	
+
 	/* this should never be reached */
 	return LOG_DAEMON;
 }
@@ -354,14 +354,14 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
 
 			radlog(L_ERR, "Unknown packet code %d from client %s:%d "
-			       "- ID %d : IGNORED", packet->code, 
+			       "- ID %d : IGNORED", packet->code,
 			       client_name(packet->src_ipaddr),
-			       packet->src_port, packet->id); 
+			       packet->src_port, packet->id);
 			return NULL;
 			break;
 
 	} /* switch over packet types */
-	
+
 	/*
 	 *	Don't handle proxy replies here.  They need to
 	 *	return the *old* request, so we can re-process it.
@@ -382,7 +382,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		 */
 		if (mainconfig.max_requests) {
 			int request_count = rl_num_requests();
-			
+
 			/*
 			 *	This is a new request.  Let's see if
 			 *	it makes us go over our configured
@@ -390,7 +390,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 */
 			if (request_count > mainconfig.max_requests) {
 				radlog(L_ERR, "Dropping request (%d is too many): "
-				       "from client %s:%d - ID: %d", request_count, 
+				       "from client %s:%d - ID: %d", request_count,
 				       client_name(packet->src_ipaddr),
 				       packet->src_port, packet->id);
 				radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n"
@@ -411,7 +411,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 
 		return fun;
 	}
-	
+
 	/*
 	 *	The current request isn't finished, which
 	 *	means that the NAS sent us a new packet, while
@@ -443,7 +443,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 				 */
 				if (!mainconfig.proxy_synchronous) {
 					RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
-					
+
 					DEBUG2("Ignoring duplicate packet from client "
 					       "%s:%d - ID: %d, due to outstanding proxied request %d.",
 					       client_name(packet->src_ipaddr),
@@ -463,11 +463,11 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 					 */
 				} else {
 					char buffer[64];
-					
+
 					DEBUG2("Sending duplicate proxied request to home server %s:%d - ID: %d",
 					       ip_ntoa(buffer, curreq->proxy->dst_ipaddr),
 					       curreq->proxy->dst_port,
-					       
+
 					       curreq->proxy->id);
 				}
 				curreq->proxy_next_try = time_now + mainconfig.proxy_retry_delay;
@@ -536,7 +536,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			rad_send(curreq->reply, curreq->packet, curreq->secret);
 			return NULL;
 		}
-		
+
 		/*
 		 *	Maybe we've saved a reply packet.  If so,
 		 *	re-send it.  Otherwise, just complain.
@@ -561,7 +561,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		       packet->src_port, packet->id);
 		return NULL;
 	} /* else the vectors were different, so we discard the old request. */
-	
+
 	/*
 	 *	'packet' has the same source IP, source port, code,
 	 *	and Id as 'curreq', but a different authentication
@@ -570,7 +570,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 	 *	if the first reply got lost in the network.
 	 */
 	rl_delete(curreq);
-	
+
 	/*
 	 *	The request is OK.  We can process it...
 	 *
@@ -590,7 +590,7 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 	REALM *cl;
 	REQUEST *oldreq;
 	char buffer[32];
-	
+
 	/*
 	 *	Find the original request in the request list
 	 */
@@ -623,7 +623,7 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 		       oldreq->number);
 		return NULL;
 	}
-	
+
 	/*
 	 *	If there is already a reply, maybe this one is a
 	 *	duplicate?
@@ -644,7 +644,7 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 			 !  */
 			DEBUG2("Ignoring conflicting proxy reply");
 		}
-		
+
 		/*
 		 *	We've already received a reply, so
 		 *	we discard this one, as we don't want
@@ -727,7 +727,7 @@ static REQUEST *request_ok(RADIUS_PACKET *packet, uint8_t *secret)
 		 *	reply packet to it.
 		 */
 		rad_assert(request->reply != NULL);
-		
+
 	} else {		/* remember the new request */
 		/*
 		 *	A unique per-request counter.
@@ -841,7 +841,7 @@ int main(int argc, char *argv[])
 				if (radacct_dir) xfree(radacct_dir);
 				radacct_dir = strdup(optarg);
 				break;
-			
+
 			case 'c':
 				/* ignore for backwards compatibility with Cistron */
 				break;
@@ -850,7 +850,7 @@ int main(int argc, char *argv[])
 				if (radius_dir) xfree(radius_dir);
 				radius_dir = strdup(optarg);
 				break;
-			
+
 			case 'f':
 				dont_fork = TRUE;
 				break;
@@ -866,11 +866,11 @@ int main(int argc, char *argv[])
 					exit(1);
 				}
 				break;
-			
+
 			case 'l':
 				radlog_dir = strdup(optarg);
 				break;
-			
+
 				/*
 				 *  We should also have this as a configuration
 				 *  file directive.
@@ -912,7 +912,7 @@ int main(int argc, char *argv[])
 			case 'x':
 				debug_flag++;
 				break;
-			
+
 			case 'y':
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
@@ -994,7 +994,7 @@ int main(int argc, char *argv[])
 	if (radius_port != 0) {
 		auth_port = radius_port;
 	} /* else auth_port is set from the config file */
-	
+
 	/*
 	 *  Maybe auth_port *wasn't* set from the config file,
 	 *  or the config file set it to zero.
@@ -1011,7 +1011,7 @@ int main(int argc, char *argv[])
 			 *  there, too.
 			 */
 			svp = getservbyname ("radacct", "udp");
-			if (svp != NULL) 
+			if (svp != NULL)
 				acct_port = ntohs(svp->s_port);
 		} else {
 			auth_port = PW_AUTH_UDP_PORT;
@@ -1047,9 +1047,9 @@ int main(int argc, char *argv[])
 	 *  If we haven't already gotten acct_port from /etc/services,
 	 *  then make it auth_port + 1.
 	 */
-	if (acct_port == 0) 
+	if (acct_port == 0)
 		acct_port = auth_port + 1;
-	
+
 	acctfd = socket (AF_INET, SOCK_DGRAM, 0);
 	if (acctfd < 0) {
 		perror ("acct socket");
@@ -1082,12 +1082,12 @@ int main(int argc, char *argv[])
 			perror ("proxy socket");
 			exit(1);
 		}
-		
+
 		sa = (struct sockaddr_in *) &salocal;
 		memset((char *) sa, '\0', sizeof(salocal));
 		sa->sin_family = AF_INET;
 		sa->sin_addr.s_addr = mainconfig.myip;
-		
+
 		/*
 		 *  Set the proxy port to be one more than the
 		 *  accounting port.
@@ -1099,7 +1099,7 @@ int main(int argc, char *argv[])
 				break;
 			}
 		}
-		
+
 		/*
 		 *  Couldn't find a port to which we could bind.
 		 */
@@ -1183,7 +1183,7 @@ int main(int argc, char *argv[])
 	 */
 	if (debug_flag == FALSE) {
 		int devnull;
-		
+
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			radlog(L_ERR|L_CONS, "Failed opening /dev/null: %s\n",
@@ -1216,7 +1216,7 @@ int main(int argc, char *argv[])
 	 *  Use linebuffered or unbuffered stdout if
 	 *  the debug flag is on.
 	 */
-	if (debug_flag == TRUE) 
+	if (debug_flag == TRUE)
 		setlinebuf(stdout);
 
 	if (mainconfig.myip == INADDR_ANY) {
@@ -1238,7 +1238,7 @@ int main(int argc, char *argv[])
 	 *	handlers.  Before this, if we get any signal, we don't know
 	 *	what to do, so we might as well do the default, and die.
 	 */
-	signal(SIGPIPE, SIG_IGN);	
+	signal(SIGPIPE, SIG_IGN);
 #ifdef HAVE_SIGACTION
 	act.sa_handler = sig_hup;
 	sigaction(SIGHUP, &act, NULL);
@@ -1323,7 +1323,7 @@ int main(int argc, char *argv[])
 			 *	Detach any modules.
 			 */
 			detach_modules();
-			
+
 			/*
 			 *	FIXME: clean up any active REQUEST
 			 *	handles.
@@ -1569,7 +1569,7 @@ int main(int argc, char *argv[])
 			    (rad_snmp.smux_event == SMUX_READ)) {
 				smux_read();
 			}
-			
+
 			/*
 			 *  If we've got to re-connect, then do so now,
 			 *  before calling select again.
@@ -1595,13 +1595,13 @@ int main(int argc, char *argv[])
 		  thread_pool_clean(time_now);
 		}
 #endif
-	
+
 
 	} /* loop forever */
 }
 
 
-/* 
+/*
  * FIXME:  The next two functions should all
  * be in a module.  But not until we have
  * more control over module execution.
@@ -1628,11 +1628,11 @@ static int rad_rmspace_pair(REQUEST *request UNUSED, VALUE_PAIR *vp) {
 	if (vp == NULL) {
 		return -1;
 	}
-	
+
 	rad_rmspace((char *)vp->strvalue);
 	vp->length = strlen((char *)vp->strvalue);
 	DEBUG2("rad_rmspace_pair:  %s now '%s'", vp->name, vp->strvalue);
-	
+
 	return 0;
 }
 
@@ -1649,7 +1649,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	const char *secret;
 	int finished = FALSE;
 	int reprocess = 0;
-	
+
 	/*
 	 *  Put the decoded packet into it's proper place.
 	 */
@@ -1664,7 +1664,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 
 	rad_assert(request->magic == REQUEST_MAGIC);
-	
+
 	/*
 	 *  Decode the packet, verifying it's signature,
 	 *  and parsing the attributes into structures.
@@ -1682,7 +1682,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		request_reject(request);
 		goto finished_request;
 	}
-	
+
 	/*
 	 *  For proxy replies, remove non-allowed
 	 *  attributes from the list of VP's.
@@ -1728,7 +1728,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			request->options |= RAD_REQUEST_OPTION_DONT_CACHE;
 		}
 	}
-	
+
 	/*
 	 *  We should have a User-Name attribute now.
 	 */
@@ -1743,7 +1743,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	rad_assert(request->magic == REQUEST_MAGIC);
 
-	/* 
+	/*
 	 *  FIXME:  All this lowercase/nospace junk will be moved
 	 *  into a module after module failover is fully in place
 	 *
@@ -1797,7 +1797,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 		  reprocess = 1;
 	  }
-	  
+
 	  /*
 	   *	If we're re-processing the request, re-set it.
 	   */
@@ -1808,7 +1808,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		  (*fun)(request);
 	  }
 	}
-	
+
 	/*
 	 *  Status-Server requests NEVER get proxied.
 	 */
@@ -1825,7 +1825,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			switch (rcode) {
 			default:
 				break;
-				
+
 			/*
 			 *  There was an error trying to proxy the request.
 			 *  Drop it on the floor.
@@ -1845,7 +1845,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 				request_reject(request);
 				goto finished_request;
 				break;
-				
+
 			/*
 			 *  If the proxy code has handled the request,
 			 *  then postpone more processing, until we get
@@ -1899,7 +1899,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *  Need to copy Proxy-State from request->packet->vps
 		 */
 		vp = paircopy2(request->packet->vps, PW_PROXY_STATE);
-		if (vp != NULL) 
+		if (vp != NULL)
 			pairadd(&(request->reply->vps), vp);
 
 		/*
@@ -2007,7 +2007,7 @@ static void sig_cleanup(int sig)
 	pid_t pid;
 
 	sig = sig; /* -Wunused */
- 
+
 	got_child = FALSE;
 
 	needs_child_cleanup = 0;  /* reset the queued cleanup number */
@@ -2016,7 +2016,7 @@ static void sig_cleanup(int sig)
 	 *  Reset the signal handler, if required.
 	 */
 	reset_signal(SIGCHLD, sig_cleanup);
-	
+
 	/*
 	 *	Wait for the child, without hanging.
 	 */

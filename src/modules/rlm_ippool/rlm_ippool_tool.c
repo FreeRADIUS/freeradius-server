@@ -29,7 +29,7 @@
 
 // Copyright 2003 by Edwin Groothuis, edwin@mavetju.org
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
@@ -38,7 +38,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
 //    documentation and/or other materials provided with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -117,13 +117,13 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 		printf("rlm_ippool_tool: Unable to convert IP address '%s'\n", ipaddress);
 		return;
 	}
-	
+
     if (sessiondb==NULL)
 	{
 		printf("rlm_ippool_tool: Unable to open DB '%s'\n", sessiondbname);
 		return;
 	}
-	
+
     if (indexdb==NULL)
 	{
 		printf("rlm_ippool_tool: Unable to open DB '%s'\n", indexdbname);
@@ -131,7 +131,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 	}
 
 	port = strtoul(NASport,NULL,0);
-	
+
 	/* Basically from rlm_ippool.c */
 
 	memset(key.nas,0,MAX_NAS_NAME_SIZE);
@@ -144,7 +144,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 	if (data_datum.dptr != NULL){
 		found = 1;
 		memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
-		free(data_datum.dptr);	
+		free(data_datum.dptr);
 		if (entry.active){
 			printf("rlm_ippool_tool: Deleting stale entry for ip/port %s/%u",
 					ipaddress, port);
@@ -191,13 +191,13 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 	}
 	key_datum.dptr = NULL;
 
-	if (cli != NULL){	
+	if (cli != NULL){
 		key_datum = gdbm_firstkey(sessiondb);
 		while(key_datum.dptr){
 			data_datum = gdbm_fetch(sessiondb, key_datum);
 			if (data_datum.dptr){
 				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
-				free(data_datum.dptr);	
+				free(data_datum.dptr);
 				/*
 		 		* If we find an entry for the same caller-id and nas with active=1
 		 		* then we use that for multilink (MPPP) to work properly.
@@ -303,7 +303,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 
 		/* Increase the ip index count */
 		key_datum.dptr = (char *) &entry.ipaddr;
-		key_datum.dsize = sizeof(uint32_t);	
+		key_datum.dsize = sizeof(uint32_t);
 		data_datum = gdbm_fetch(indexdb, key_datum);
 		if (data_datum.dptr){
 			memcpy(&num,data_datum.dptr,sizeof(int));
@@ -464,7 +464,7 @@ int main(int argc,char **argv) {
     if ((argc==2 || argc==3) && !nflag) {
 		viewdb(argv[0],argv[1],argv[2]);
 		if (cflag) printf("%d\n",active);
-	} else 
+	} else
 		if (argc==5 && nflag)
 			addip(argv[0],argv[1],argv[2],argv[3],argv[4]);
 		else

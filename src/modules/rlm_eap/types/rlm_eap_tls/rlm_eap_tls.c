@@ -154,7 +154,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	}
 	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
-	/* 
+	/*
 	 * Set the password to load private key
 	 */
 	if (conf->private_key_password) {
@@ -189,7 +189,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	ctx_options |= SSL_OP_NO_SSLv2;
    	ctx_options |= SSL_OP_NO_SSLv3;
 
-	/* 
+	/*
 	 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
 	 *	small subgroup attacks and forward secrecy. Always
 	 *	using
@@ -279,7 +279,7 @@ static int eaptls_detach(void *arg)
 		conf->private_key_password = NULL;
 		if (conf->random_file) free(conf->random_file);
 		conf->random_file = NULL;
-		
+
 		free(inst->conf);
 		inst->conf = NULL;
 	}
@@ -513,14 +513,14 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 			int i;
 			unsigned int data_len;
 			unsigned char buffer[1024];
-			
+
 			data_len = record_minus(&tls_session->dirty_in,
 						buffer, sizeof(buffer));
 			log_debug("  Tunneled data (%u bytes)\n", data_len);
 			for (i = 0; i < data_len; i++) {
 				if ((i & 0x0f) == 0) printf("  %d: ", i);
 				if ((i & 0x0f) == 0x0f) printf("\n");
-				
+
 				printf("%02x ", buffer[i]);
 			}
 		}
@@ -541,7 +541,7 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 	 *	Success: Return MPPE keys.
 	 */
 	eaptls_success(handler->eap_ds, 0);
-	eaptls_gen_mppe_keys(&handler->request->reply->vps, 
+	eaptls_gen_mppe_keys(&handler->request->reply->vps,
 			     tls_session->ssl,
 			     "client EAP encryption");
 	return 1;

@@ -94,7 +94,7 @@ static CONF_PARSER server_config[] = {
 	 *	files.
 	 */
 	{ "prefix",             PW_TYPE_STRING_PTR, 0, &prefix,            "/usr/local"},
-	{ "localstatedir",      PW_TYPE_STRING_PTR, 0, &localstatedir,     "${prefix}/var"}, 
+	{ "localstatedir",      PW_TYPE_STRING_PTR, 0, &localstatedir,     "${prefix}/var"},
 	{ "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
 	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
 	{ "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
@@ -200,7 +200,7 @@ static int xlat_config(void *instance, REQUEST *request,
 			outlen = strlen(value) + 1;
 		}
 	}
-	
+
 	return func(out, outlen, value);
 }
 
@@ -234,7 +234,7 @@ static int r_mkdir(const char *part) {
 
 	return(0);
 }
-		
+
 /*
  *	Checks if the log directory is writeable by a particular user.
  */
@@ -251,11 +251,11 @@ static int radlogdir_iswritable(const char *effectiveuser) {
 	if (strstr(radlog_dir, "radius") == NULL)
 		return(0);
 
-	/* we have a logdir that mentions 'radius', so it's probably 
-	 * safe to chown the immediate directory to be owned by the normal 
+	/* we have a logdir that mentions 'radius', so it's probably
+	 * safe to chown the immediate directory to be owned by the normal
 	 * process owner. we gotta do it before we give up root.  -chad
 	 */
-	
+
 	if (!effectiveuser) {
 		return 1;
 	}
@@ -273,7 +273,7 @@ static int radlogdir_iswritable(const char *effectiveuser) {
 
 
 static int switch_users(void) {
-	
+
 	/*
 	 *  Switch UID and GID to what is specified in the config file
 	 */
@@ -322,7 +322,7 @@ static int switch_users(void) {
 }
 
 
-/* 
+/*
  * Create the linked list of realms from the new configuration type
  * This way we don't have to change to much in the other source-files
  */
@@ -382,7 +382,7 @@ static int generate_realms(const char *filename)
 				}
 			}
 
-			/* 
+			/*
 			 * Double check length, just to be sure!
 			 */
 			if (strlen(authhost) >= sizeof(c->server)) {
@@ -403,7 +403,7 @@ static int generate_realms(const char *filename)
 		} else {
 			if ((s = strchr(accthost, ':')) != NULL) {
 				*s++ = 0;
-				c->acct_port = atoi(s);	
+				c->acct_port = atoi(s);
 			} else {
 				c->acct_port = acct_port;
 			}
@@ -422,7 +422,7 @@ static int generate_realms(const char *filename)
 					       accthost);
 					return -1;
 				}
-			}				    
+			}
 
 			if (strlen(accthost) >= sizeof(c->acct_server)) {
 				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
@@ -440,10 +440,10 @@ static int generate_realms(const char *filename)
 			       (int) sizeof(c->server) - 1);
 			return -1;
 		}
-		
+
 		strcpy(c->realm, name2);
                 if (authhost) strcpy(c->server, authhost);
-		if (accthost) strcpy(c->acct_server, accthost);	
+		if (accthost) strcpy(c->acct_server, accthost);
 
 		/*
 		 *	If one or the other of authentication/accounting
@@ -457,7 +457,7 @@ static int generate_realms(const char *filename)
 				       filename, cf_section_lineno(cs), name2);
 				return -1;
 			}
-			
+
 			if (strlen(s) >= sizeof(c->secret)) {
 				radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
 				       filename, cf_section_lineno(cs),
@@ -468,7 +468,7 @@ static int generate_realms(const char *filename)
 		}
 
 		c->striprealm = 1;
-		
+
 		if ((cf_section_value_find(cs, "nostrip")) != NULL)
 			c->striprealm = 0;
 		if ((cf_section_value_find(cs, "noacct")) != NULL)
@@ -572,7 +572,7 @@ static int generate_clients(const char *filename)
 	char		*name2;
 
 	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "client");
-	     cs != NULL; 
+	     cs != NULL;
 	     cs = cf_subsection_find_next(mainconfig.config, cs, "client")) {
 
 		name2 = cf_section_name2(cs);
@@ -614,27 +614,27 @@ static int generate_clients(const char *filename)
 		}
 
 		if((nastype = cf_section_value_find(cs, "nastype")) != NULL) {
-		        if(strlen(nastype) >= sizeof(c->nastype)) { 
+		        if(strlen(nastype) >= sizeof(c->nastype)) {
 			       radlog(L_ERR, "%s[%d]: nastype of length %d longer than the allowed maximum of %d",
-				      filename, cf_section_lineno(cs), 
+				      filename, cf_section_lineno(cs),
 				      strlen(nastype), sizeof(c->nastype) - 1);
 			       return -1;
 			}
 		}
 
 		if((login = cf_section_value_find(cs, "login")) != NULL) {
-		        if(strlen(login) >= sizeof(c->login)) { 
+		        if(strlen(login) >= sizeof(c->login)) {
 			       radlog(L_ERR, "%s[%d]: login of length %d longer than the allowed maximum of %d",
-				      filename, cf_section_lineno(cs), 
+				      filename, cf_section_lineno(cs),
 				      strlen(login), sizeof(c->login) - 1);
 			       return -1;
 			}
 		}
 
 		if((password = cf_section_value_find(cs, "password")) != NULL) {
-		        if(strlen(password) >= sizeof(c->password)) { 
+		        if(strlen(password) >= sizeof(c->password)) {
 			       radlog(L_ERR, "%s[%d]: password of length %d longer than the allowed maximum of %d",
-				      filename, cf_section_lineno(cs), 
+				      filename, cf_section_lineno(cs),
 				      strlen(password), sizeof(c->password) - 1);
 			       return -1;
 			}
@@ -659,7 +659,7 @@ static int generate_clients(const char *filename)
 						filename, cf_section_lineno(cs), netmask + 1);
 				return -1;
 			}
-			
+
 			c->netmask = (1 << 31);
 			for (i = 1; i < mask_length; i++) {
 				c->netmask |= (c->netmask >> 1);
@@ -838,7 +838,7 @@ int read_mainconfig(int reload)
 	}
 	librad_debug = debug_flag;
 	old_debug_level = mainconfig.debug_level;
-	
+
 	/*
 	 *  Go update our behaviour, based on the configuration
 	 *  changes.
@@ -873,7 +873,7 @@ int read_mainconfig(int reload)
 
 		limits.rlim_cur = 0;
 		limits.rlim_max = core_limits.rlim_max;
-		
+
 		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
 			radlog(L_ERR|L_CONS, "Cannot disable core dumps: %s",
 					strerror(errno));
@@ -890,7 +890,7 @@ int read_mainconfig(int reload)
 		 *	We need root to do mkdir() and chown(), so we
 		 *	do this before giving up root.
 		 */
-		radlogdir_iswritable(mainconfig.uid_name); 
+		radlogdir_iswritable(mainconfig.uid_name);
 	}
 	switch_users();
 
