@@ -1,6 +1,34 @@
-FreeRADIUS 0.5.0 ; urgency=low
+FreeRADIUS 0.5.0 ; $Date$, urgency=low
 
-	* Many bug fixes
+	* Many bug fixes.  For explicit details, see:
+		http://www.freeradius.org/cvs-log/
+	* Fix a logic bug in the 'walk over request list' code, which
+	  would sometimes result in a request being deleted while it
+	  was still being processed.  Found by Rainer Clasen
+	* New 'tuning' guide, for optimizing the server's speed.
+	* The default ports are now 1812/1813, which is the standard.
+	* Fix a bug which would hang the server when many SQL connections
+	  were open.  Found by Cvetan Ivanov <zezo@spnet.net>
+	* Updated MySQL schema, with sanity checks, based on a schema from
+	  Thomas Huehn <huehn@eozaen.net>
+	* Added 'Aptis' (Nortel CVX) dictionary.
+	* Added Ipv6 attributes (as 'octets' type for now)
+	* 'xlat' capability for SQL, so other modules can do SQL qeuries.
+	* We don't need a shared secret for LOCAL realms.
+	* Added better description of internal variables.
+	* Configurable fail-over to DEFAULT realm.  Sometimes we don't
+	  want to use the DEFAULT realm, if all configured realms are
+	  marked dead.  From Rainer Clasen.
+	* new configuration items 'max_attributes' and 'reject_delay'
+	  If the packet contains too many attributes, it can be rejected.
+	  We can also delay sending an Access-Reject, which slows down
+	  certain DoS attacks.
+	* Updates to redhat scripts and spec file, from Marko Myllynen.
+	* Python module (EXPERIMENTAL) from migs paraz <mparaz@yahoo.com>
+	* Add ability to find *best* match when comparing attributes.
+	  If there is more than one attribute in a request and the first
+	  one doesn't match, go check the second one, instead of failing.
+	* unixODBC support for SQL, from Dmitri Ageev <d_ageev@ortcc.ru>
 	* Use thread-safe versions of library calls.  This work is still
 	  on-going.
 	* New rlm_passwd module, to allow general parsing of passwd-style
