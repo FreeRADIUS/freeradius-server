@@ -93,6 +93,7 @@
  * Sep 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Fix a crash in ldap_pairget when the attribute value is larger than the buffer size
  *	  Bug report by Stefan Radovanovici <sra@rtsffm.com>
+ *	- If we add a check item then use the == operator. Based on an idea by Allister Maguire <amaguire@gnc.net.nz>
  */
 static const char rcsid[] = "$Id$";
 
@@ -253,7 +254,7 @@ static CONF_PARSER module_config[] = {
 #ifdef FIELDCPY
 static void     fieldcpy(char *, char **);
 #endif
-static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **);
+static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **,char);
 static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 static int ldap_xlat(void *,REQUEST *, char *, char *,int, RADIUS_ESCAPE_STRING);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *);
@@ -1056,9 +1057,9 @@ ldap_authorize(void *instance, REQUEST * request)
 				profile, LDAP_SCOPE_BASE, 
 				filter, inst->atts, &def_result)) == RLM_MODULE_OK){
 				if ((def_msg = ldap_first_entry(conn->ld,def_result))){
-					if ((check_tmp = ldap_pairget(conn->ld,def_msg,inst->check_item_map,check_pairs)))
+					if ((check_tmp = ldap_pairget(conn->ld,def_msg,inst->check_item_map,check_pairs,1)))
 						pairadd(check_pairs,check_tmp);
-					if ((reply_tmp = ldap_pairget(conn->ld,def_msg,inst->reply_item_map,reply_pairs)))
+					if ((reply_tmp = ldap_pairget(conn->ld,def_msg,inst->reply_item_map,reply_pairs,0)))
 						pairadd(reply_pairs,reply_tmp);
 				}
 				ldap_msgfree(def_result);
@@ -1083,9 +1084,9 @@ ldap_authorize(void *instance, REQUEST * request)
 				vals[0], LDAP_SCOPE_BASE, 
 				filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
 				if ((def_attr_msg = ldap_first_entry(conn->ld,def_attr_result))){
-					if ((check_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->check_item_map,check_pairs)))
+					if ((check_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->check_item_map,check_pairs,1)))
 						pairadd(check_pairs,check_tmp);
-					if ((reply_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->reply_item_map,reply_pairs)))
+					if ((reply_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->reply_item_map,reply_pairs,0)))
 						pairadd(reply_pairs,reply_tmp);
 				}
 				ldap_msgfree(def_attr_result);
@@ -1143,14 +1144,14 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	DEBUG("rlm_ldap: looking for check items in directory...");
 
-	if ((check_tmp = ldap_pairget(conn->ld, msg, inst->check_item_map,check_pairs)) != NULL)
+	if ((check_tmp = ldap_pairget(conn->ld, msg, inst->check_item_map,check_pairs,1)) != NULL)
 		pairadd(check_pairs, check_tmp);
 
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
 
 
-	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs)) != NULL)
+	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs,0)) != NULL)
 		pairadd(reply_pairs, reply_tmp);
 
        if (inst->do_comp && paircmp(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
@@ -1524,7 +1525,7 @@ fieldcpy(char *string, char **uptr)
 
 static VALUE_PAIR *
 ldap_pairget(LDAP * ld, LDAPMessage * entry,
-	     TLDAP_RADIUS * item_map, VALUE_PAIR **pairs)
+	     TLDAP_RADIUS * item_map, VALUE_PAIR **pairs,char is_check)
 {
 	char          **vals;
 	int             vals_count;
@@ -1572,7 +1573,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 					/* this is a one-to-one-mapped attribute */
 					token = gettoken(&ptr, value, sizeof(value) - 1);
 					if (token < T_EQSTART || token > T_EQEND) {
-						token = T_OP_EQ;
+						token = (is_check) ? T_OP_CMP_EQ : T_OP_EQ;
 					} else {
 						gettoken(&ptr, value, sizeof(value) - 1);
 					}
