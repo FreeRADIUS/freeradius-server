@@ -646,7 +646,7 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 
 	PERL_INST	*inst= (PERL_INST *) instance;
 	PerlInterpreter *perl;
-	char		params[1024], *tmp_ptr, *ptr, *tmp;
+	char		params[1024], *ptr, *tmp;
 	int		count, ret=0;
 	STRLEN		n_a;
 #ifndef USE_ITHREADS
@@ -682,10 +682,9 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 
 	PUSHMARK(SP);
 
-	XPUSHs(sv_2mortal(newSVpv(ptr,0)));
-
-	while ((tmp_ptr = strtok(NULL, " ")) != NULL) {
-		XPUSHs(sv_2mortal(newSVpv(tmp_ptr,0)));
+	while (ptr != NULL) {
+		XPUSHs(sv_2mortal(newSVpv(ptr,0)));
+		ptr = strtok(NULL, " ");
 	}
 
 	PUTBACK;
