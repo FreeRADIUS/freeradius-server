@@ -15,8 +15,7 @@
 /* $Id$ */
 
 /*
- *  Alan DeKok's comments:  This code SUCKS.  Having a static string
- *  instead of passing function parameters is a STUPID thing to do.
+ *  Alan DeKok's comments:  This code SUCKS.
  *
  *  This code should be re-written to get rid of Ascend's copyright,
  *  and to fix all of the horrible crap of the current implementation.
@@ -31,8 +30,6 @@
 #if HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
-
-#define NO_TOKEN -1
 
 /*
  * Two types of filters are supported, GENERIC and IP.  The identifiers
@@ -56,8 +53,8 @@
 #define IPX_NODE_ADDR_LEN		6
 
 typedef uint32_t		IpxNet;
-typedef unsigned char		IpxNode[ IPX_NODE_ADDR_LEN ];
-typedef unsigned short		IpxSocket;
+typedef uint8_t			IpxNode[ IPX_NODE_ADDR_LEN ];
+typedef uint16_t		IpxSocket;
 
 #if ! defined( FALSE )
 # define FALSE		0
@@ -70,92 +67,92 @@ typedef unsigned short		IpxSocket;
  * An enumerated values for the IP filter port comparisons.
  */
 typedef enum {
-	RAD_NO_COMPARE,
+	RAD_NO_COMPARE = 0,
 	RAD_COMPARE_LESS,
 	RAD_COMPARE_EQUAL,
 	RAD_COMPARE_GREATER,
 	RAD_COMPARE_NOT_EQUAL
 } RadFilterComparison;
 
-    /*
-     * RadIpFilter:
-     *
-     * The binary format of an IP filter.  ALL fields are stored in
-     * network byte order.
-     *
-     *	srcip:		The source IP address.
-     *
-     *	dstip:		The destination IP address.
-     *
-     *	srcmask:	The number of leading one bits in the source address
-     *			mask.  Specifies the bits of interest.
-     *
-     *	dstmask:	The number of leading one bits in the destination
-     *			address mask. Specifies the bits of interest.
-     *
-     *	proto:		The IP protocol number
-     *
-     *	establised:	A boolean value.  TRUE when we care about the
-     *			established state of a TCP connection.  FALSE when
-     *			we dont care.
-     *
-     *	srcport:	TCP or UDP source port number.
-     *
-     *	dstport:	TCP or UDP destination port number.
-     *
-     *	srcPortCmp:	One of the values of the RadFilterComparison enumeration
-     *			specifying how to compare the srcport value.
-     *
-     *	dstPortCmp:	One of the values of the RadFilterComparison enumeration
-     *			specifying how to compare the dstport value.
-     *
-     *	fill:		Round things out to a dword boundary.
-     */
+/*
+ * RadIpFilter:
+ *
+ * The binary format of an IP filter.  ALL fields are stored in
+ * network byte order.
+ *
+ *	srcip:		The source IP address.
+ *
+ *	dstip:		The destination IP address.
+ *
+ *	srcmask:	The number of leading one bits in the source address
+ *			mask.  Specifies the bits of interest.
+ *
+ *	dstmask:	The number of leading one bits in the destination
+ *			address mask. Specifies the bits of interest.
+ *
+ *	proto:		The IP protocol number
+ *
+ *	establised:	A boolean value.  TRUE when we care about the
+ *			established state of a TCP connection.  FALSE when
+ *			we dont care.
+ *
+ *	srcport:	TCP or UDP source port number.
+ *
+ *	dstport:	TCP or UDP destination port number.
+ *
+ *	srcPortCmp:	One of the values of the RadFilterComparison enumeration
+ *			specifying how to compare the srcport value.
+ *
+ *	dstPortCmp:	One of the values of the RadFilterComparison enumeration
+ *			specifying how to compare the dstport value.
+ *
+ *	fill:		Round things out to a dword boundary.
+ */
 typedef struct radip {
-    uint32_t  		srcip;
-    uint32_t  		dstip;
-    unsigned char 	srcmask;
-    unsigned char 	dstmask;
-    unsigned char	proto;
-    unsigned char	established;
-    unsigned short	srcport;
-    unsigned short	dstport;
-    unsigned char	srcPortComp;
-    unsigned char	dstPortComp;
-    unsigned char       fill[4];        /* used to be fill[2] */
+	uint32_t	srcip;
+	uint32_t	dstip;
+	uint8_t 	srcmask;
+	uint8_t 	dstmask;
+	uint8_t		proto;
+	uint8_t		established;
+	uint16_t	srcport;
+	uint16_t	dstport;
+	uint8_t		srcPortComp;
+	uint8_t		dstPortComp;
+	unsigned char   fill[4];        /* used to be fill[2] */
 } RadIpFilter;
 
-    /*
-     * RadIpxFilter:
-     * The binary format of a GENERIC filter.  ALL fields are stored in
-     * network byte order.
-     *
-     *  srcIpxNet:      Source IPX Net address
-     *
-     *  srcIpxNode:     Source IPX Node address
-     *
-     *  srcIpxSoc:      Source IPX socket address
-     *
-     *  dstIpxNet:      Destination IPX Net address
-     *
-     *  dstIpxNode:     Destination IPX Node address
-     *
-     *  dstIpxSoc:      Destination IPX socket address
-     *
-     *  srcSocComp:     Source socket compare value
-     *
-     *  dstSocComp:     Destination socket compare value
-     *
-     */
+/*
+ * RadIpxFilter:
+ * The binary format of an IPX filter.  ALL fields are stored in
+ * network byte order.
+ *
+ *  srcIpxNet:      Source IPX Net address
+ *
+ *  srcIpxNode:     Source IPX Node address
+ *
+ *  srcIpxSoc:      Source IPX socket address
+ *
+ *  dstIpxNet:      Destination IPX Net address
+ *
+ *  dstIpxNode:     Destination IPX Node address
+ *
+ *  dstIpxSoc:      Destination IPX socket address
+ *
+ *  srcSocComp:     Source socket compare value
+ *
+ *  dstSocComp:     Destination socket compare value
+ *
+ */
 typedef struct radipx {                         
-    IpxNet              srcIpxNet;                      /* LongWord */
-    IpxNode             srcIpxNode;                     /* Byte[6] */
-    IpxSocket           srcIpxSoc;                      /* Word */
-    IpxNet              dstIpxNet;                      /* LongWord */
-    IpxNode             dstIpxNode;                     /* Byte[6] */
-    IpxSocket           dstIpxSoc;                      /* Word */
-    unsigned char       srcSocComp;
-    unsigned char       dstSocComp;
+	IpxNet		srcIpxNet; /* LongWord */
+	IpxNode		srcIpxNode; /* Byte[6] */
+	IpxSocket	srcIpxSoc; /* Word */
+	IpxNet		dstIpxNet; /* LongWord */
+	IpxNode		dstIpxNode;                     /* Byte[6] */
+	IpxSocket	dstIpxSoc;                      /* Word */
+	uint8_t		srcSocComp;
+	uint8_t		dstSocComp;
 } RadIpxFilter;
 
     /*
@@ -183,13 +180,13 @@ typedef struct radipx {
      *	fill:		Round things out to a dword boundary
      */
 typedef struct radgeneric {
-    unsigned short	offset;
-    unsigned short	len;
-    unsigned short	more;
-    unsigned char	mask[ RAD_MAX_FILTER_LEN ];
-    unsigned char	value[ RAD_MAX_FILTER_LEN ];
-    unsigned char	compNeq;
-    unsigned char       fill[3];        /* used to be fill */
+	uint16_t	offset;
+	uint16_t	len;
+	uint16_t	more;
+	uint8_t		mask[ RAD_MAX_FILTER_LEN ];
+	uint8_t		value[ RAD_MAX_FILTER_LEN ];
+	uint8_t		compNeq;
+	uint8_t       fill[3];        /* used to be fill[1] */
 } RadGenericFilter;
 
     /*
@@ -214,22 +211,17 @@ typedef struct radgeneric {
      *			generic:	A generic filter entry
      */
 typedef struct filter {
-    unsigned char 	type;
-    unsigned char	forward;
-    unsigned char	indirection;
-    unsigned char	fill;
-    union {
-	RadIpFilter   	 ip;
-	RadIpxFilter   	 ipx;
-	RadGenericFilter generic;
-    } u;
+	uint8_t 	type;
+	uint8_t		forward;
+	uint8_t		indirection;
+	uint8_t		fill;
+	union {
+		RadIpFilter   	 ip;
+		RadIpxFilter   	 ipx;
+		RadGenericFilter generic;
+	} u;
 } RadFilter;
 #define SIZEOF_RADFILTER 32
-
-typedef struct {
-    const char*	name;
-    unsigned int 	value;
-} KeywordStruct;
 
 /*
  * FilterPortType:
@@ -239,33 +231,33 @@ typedef struct {
  *
  * ??? What the heck is wrong with getservbyname?
  */
-static const KeywordStruct filterPortType[] = {
-    { "ftp-data", 20 },
-    { "ftp", 21 },
-    { "telnet", 23 },
-    { "smtp", 25 },
-    { "nameserver", 42 },
-    { "domain", 53 },
-    { "tftp", 69 },
-    { "gopher", 70 },
-    { "finger", 79 },
-    { "www", 80 },
-    { "kerberos", 88 },
-    { "hostname", 101 },
-    { "nntp", 119 },
-    { "ntp", 123 },
-    { "exec", 512 },
-    { "login", 513 },
-    { "cmd", 514 },
-    { "talk", 517 },
-    {  NULL , NO_TOKEN },
+static const LRAD_NAME_NUMBER filterPortType[] = {
+	{ "ftp-data",   20 },
+	{ "ftp",	21 },
+	{ "telnet",	23 },
+	{ "smtp",	25 },
+	{ "nameserver", 42 },
+	{ "domain",	53 },
+	{ "tftp",	69 },
+	{ "gopher",	70 },
+	{ "finger",	79 },
+	{ "www",	80 },
+	{ "kerberos",	88 },
+	{ "hostname",	101 },
+	{ "nntp",	119 },
+	{ "ntp",	123 },
+	{ "exec",	512 },
+	{ "login",	513 },
+	{ "cmd",	514 },
+	{ "talk",	517 },
+	{  NULL ,	0},
 };
 
-static const KeywordStruct filterType[] = {
-    { "generic",RAD_FILTER_GENERIC},
-    { "ip", 	RAD_FILTER_IP},
-    { "ipx", 	RAD_FILTER_IPX},
-    { NULL, 	NO_TOKEN},
+static const LRAD_NAME_NUMBER filterType[] = {
+	{ "generic",RAD_FILTER_GENERIC},
+	{ "ip", 	RAD_FILTER_IP},
+	{ "ipx", 	RAD_FILTER_IPX},
+	{ NULL, 	0},
 };
 
 typedef enum {
@@ -297,7 +289,7 @@ typedef enum {
 } FilterTokens;
 
 
-static const KeywordStruct filterKeywords[] = {
+static const LRAD_NAME_NUMBER filterKeywords[] = {
     { "ip", 	FILTER_IP_TYPE },
     { "generic",FILTER_GENERIC_TYPE },
     { "in", 	FILTER_IN },
@@ -319,7 +311,7 @@ static const KeywordStruct filterKeywords[] = {
     { "srcipxnet",	FILTER_IPX_SRC_IPXNET  },
     { "srcipxnode",	FILTER_IPX_SRC_IPXNODE  },
     { "srcipxsock",	FILTER_IPX_SRC_IPXSOCK  },
-    {  NULL , NO_TOKEN },
+    {  NULL , 		0},
 };
 
 #define FILTER_DIRECTION 	0
@@ -341,83 +333,33 @@ static const KeywordStruct filterKeywords[] = {
  *
  *  ??? What the heck is wrong with getprotobyname?
  */
-static const KeywordStruct filterProtoName[] = {
-    { "tcp",  6 },
-    { "udp",  17 },
-    { "ospf", 89 },
-    { "icmp", 1 },
-    { "0", 0 },
-    {  NULL , NO_TOKEN },
+static const LRAD_NAME_NUMBER filterProtoName[] = {
+	{ "tcp",  6 },
+	{ "udp",  17 },
+	{ "ospf", 89 },
+	{ "icmp", 1 },
+	{ "0",	  0 },
+	{  NULL , 0 },
 };
 
-static const KeywordStruct filterCompare[] = {
-    { ">", RAD_COMPARE_GREATER },
-    { "=", RAD_COMPARE_EQUAL },
-    { "<", RAD_COMPARE_LESS },
-    { "!=", RAD_COMPARE_NOT_EQUAL },
-    {  NULL , NO_TOKEN },
+static const LRAD_NAME_NUMBER filterCompare[] = {
+	{ ">",	RAD_COMPARE_GREATER },
+	{ "=",	RAD_COMPARE_EQUAL },
+	{ "<",	RAD_COMPARE_LESS },
+	{ "!=", RAD_COMPARE_NOT_EQUAL },
+	{ NULL, 0 },
 };
 
-static int findKey ( const char *string, const KeywordStruct *list );
-static int isAllDigit ( const char *token );
-static short a2octet ( const char *tok, char *retBuf );
-static char defaultNetmask ( uint32_t address );
-static int ipAddressStringToValue ( char *string, uint32_t *ipAddress,
-					 char *netmask);
-static int parseIpFilter ( const char *curString, RadFilter *curEntry );
-static int parseGenericFilter ( const char *curString, RadFilter *curEntry );
-static int parseIpxFilter ( const char *curString, RadFilter *curEntry );
-static int stringToNode   ( unsigned char* dest,  unsigned char* src );
-
-    /*
-     * findKey:
-     *
-     * Given a table of keywords, it will try and match string to an
-     * entry. If it does it returns that keyword value. if no NO_TOKEN is
-     * returned. A sanity check is made for upper case characters.
-     *
-     *	string:			Pointer to the token to match.
-     *
-     *	list:			Point to the list of keywords.
-     *
-     *	returns:		Keyword value on a match or NO_TOKEN.
-     */
-int findKey(const char *string, const KeywordStruct *list)
-{
-    short 	len;
-    const KeywordStruct*  entry;
-    char	buf[80], *ptr;
-
-    len = strlen( string );
-    for( ptr = buf ; len; len--, string++ ) {
-	if( isupper( (int) *string ) ) {
-	    *ptr++ = tolower( (int) *string );
-	} else {
-	    *ptr++ = *string;
-	}
-    }
-    *ptr = 0;
-    entry = list;
-    while( entry->name ) {
-   	if( strcmp( entry->name, buf ) == 0 ) {
-	    break;
-	}
-	entry++;
-    }
-    return( entry->value );
-}
-
-    /*
-     * isAllDigit:
-     *
-     * Routine checks a string to make sure all values are digits.
-     *
-     *	token:			Pointer to sting to check.
-     *
-     * 	returns:		TRUE if all digits, or FALSE.
-     *
-     */
-
+/*
+ * isAllDigit:
+ *
+ * Routine checks a string to make sure all values are digits.
+ *
+ *	token:			Pointer to sting to check.
+ *
+ * 	returns:		TRUE if all digits, or FALSE.
+ *
+ */
 static int
 isAllDigit(const char *token)
 {
@@ -438,20 +380,20 @@ isAllDigit(const char *token)
     return( TRUE );
 }
 
-    /*
-     * a2octet:
-     *
-     * Converts the ascii mask and value for generic filters into octets.
-     * It also does a sanity check to see if the string is greater than
-     * MAX_FILTER_LEN. It assumes the sting is hex with NO leading "0x"
-     *
-     *	tok:			Pointer to the string.
-     *
-     *  retBuf:			Pointer to place the octets.
-     *
-     *	returns:		Number of octects or -1 for error.
-     * 
-     */
+/*
+ * a2octet:
+ *
+ * Converts the ascii mask and value for generic filters into octets.
+ * It also does a sanity check to see if the string is greater than
+ * MAX_FILTER_LEN. It assumes the sting is hex with NO leading "0x"
+ *
+ *	tok:			Pointer to the string.
+ *
+ *  retBuf:			Pointer to place the octets.
+ *
+ *	returns:		Number of octects or -1 for error.
+ * 
+ */
 static short
 a2octet(const char *tok, char *retBuf)
 {
@@ -501,19 +443,18 @@ a2octet(const char *tok, char *retBuf)
 
 
 
-    /*
-     * defaultNetmask:
-     *
-     *	Given an ip address this routine calculate a default netmask.
-     *
-     *	address:		Ip address.
-     *
-     *	returns:		Number of bits for the netmask
-     *
-     */
+/*
+ * defaultNetmask:
+ *
+ *	Given an ip address this routine calculate a default netmask.
+ *
+ *	address:		Ip address.
+ *
+ *	returns:		Number of bits for the netmask
+ *
+ */
 static char
-defaultNetmask(address)
-uint32_t	address;
+defaultNetmask(uint32_t address)
 {
     char netmask;
 
@@ -531,37 +472,35 @@ uint32_t	address;
     return netmask;
 }
 
-		
-static const char ipAddressDigits[] = "1234567890./";
-    /*
-     * This functions attempts to convert an IP address in ASCII dot
-     * with an optional netmask part to a pair of IpAddress.  Note:
-     * An IpAddress is always stored in network byte order.
-     *
-     * Parameters:
-     *
-     *  string:		Pointer to a NULL terminated IP address in dot 
-     *			notation followed by an optional /nn to indicate
-     *			the number leading of bits in the netmask.
-     * 
-     *  ipAddress:	Pointer to an IpAddress where the converted
-     *			address will be stored.
-     *
-     *	netmask:	Pointer to an IpAddress where the netmask
-     *			will be stored.  If no netmask is passed as
-     *			as part of the address the default netmask will
-     *			be stored here.
-     *
-     * Returns:
-     *	<>		TRUE if valid conversion, FALSE otherwise.
-     *
-     *	*ipAddress:	If function returns TRUE, the IP address in NBO.
-     *	*netmask:	If function returns TRUE, the netmask in NBO.
-     */
 
+/*
+ * This functions attempts to convert an IP address in ASCII dot
+ * with an optional netmask part to a pair of IpAddress.  Note:
+ * An IpAddress is always stored in network byte order.
+ *
+ * Parameters:
+ *
+ *  string:		Pointer to a NULL terminated IP address in dot 
+ *			notation followed by an optional /nn to indicate
+ *			the number leading of bits in the netmask.
+ * 
+ *  ipAddress:	Pointer to an IpAddress where the converted
+ *			address will be stored.
+ *
+ *	netmask:	Pointer to an IpAddress where the netmask
+ *			will be stored.  If no netmask is passed as
+ *			as part of the address the default netmask will
+ *			be stored here.
+ *
+ * Returns:
+ *	<>		TRUE if valid conversion, FALSE otherwise.
+ *
+ *	*ipAddress:	If function returns TRUE, the IP address in NBO.
+ *	*netmask:	If function returns TRUE, the netmask in NBO.
+ */
 static int
 ipAddressStringToValue(char *string, uint32_t *ipAddress,
-	char *netmask)
+		       char *netmask)
 {
     u_char*	dst;
     char*	cp;
@@ -588,7 +527,7 @@ ipAddressStringToValue(char *string, uint32_t *ipAddress,
     cp = string;
     numDots = 0;
     while( *cp ) {
-	if( !strchr( ipAddressDigits, *cp) ) {
+	if( !strchr("1234567890./", *cp) ) {
 	    return( FALSE );
 	}
 	if ( *cp == '.') {
@@ -629,14 +568,12 @@ ipAddressStringToValue(char *string, uint32_t *ipAddress,
     return TRUE;
 }
 
-    /*
-     * Convert a 12 digit string representation of a hex data field to a
-     * value.
-     */
+/*
+ * Convert a 12 digit string representation of a hex data field to a
+ * value.
+ */
 static int
-stringToNode(dest, src )
-unsigned char* 	dest;
-unsigned char*  src;
+stringToNode(unsigned char *dest, unsigned char *src)
 {
     int         srcIx = 0;
     int         ix;
@@ -681,64 +618,61 @@ unsigned char*  src;
 }
 
 
-    /*
-     * parseIpxFilter:
-     *
-     * This routine parses an IPX filter string from a RADIUS
-     * reply. The format of the string is:
-     *
-     *	ipx dir action [ srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]]
-     * 	               [ dstipxnet nnnn dstipxnode mmmmm [dstipxsoc cmd value ]]
-     *
-     * Fields in [...] are optional.
-     *	where:
-     *
-     *  ipx:		Keyword to designate an IPX filter. Actually this
-     *			has been determined by parseFilter.
-     *
-     *	dir:		Filter direction. "IN" or "OUT"
-     *
-     *	action:		Filter action. "FORWARD" or "DROP"
-     *
-     *  srcipxnet:      Keyword for source IPX address.
-     *                  nnnn = IPX Node address.
-     *
-     *  srcipxnode:     Keyword for source IPX Node address.
-     *                  mmmmm = IPX Node Address, could be FFFFFF.
-     *                  A vlid ipx node number should accompany ipx net number.
-     *
-     *  srcipxsoc:      Keyword for source IPX socket address.
-     *
-     *  cmd:            One of ">" or "<" or "=" or "!=".
-     *
-     *  value:          Socket value to be compared against, in hex. 
-     *			
-     *	dstipxnet:	Keyword for destination IPX address.
-     *			nnnn = IPX Node address. 
-     *			
-     *	dstipxnode:	Keyword for destination IPX Node address.
-     *  		mmmmm = IPX Node Address, could be FFFFFF.
-     *			A vlid ipx node number should accompany ipx net number.
-     *			
-     *	dstipxsoc:	Keyword for destination IPX socket address.
-     *			
-     *	cmd:		One of ">" or "<" or "=" or "!=".
-     *			
-     *	value:		Socket value to be compared against, in hex.
-     *			
-     *			
-     * expects:
-     *
-     *	curEntry:	Pointer to place the filter structure
-     *
-     *	returns:	-1 for error or 0 for OK
-     *	
-     */
-
+/*
+ * parseIpxFilter:
+ *
+ * This routine parses an IPX filter string from a RADIUS
+ * reply. The format of the string is:
+ *
+ *	ipx dir action [ srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]]
+ * 	               [ dstipxnet nnnn dstipxnode mmmmm [dstipxsoc cmd value ]]
+ *
+ * Fields in [...] are optional.
+ *	where:
+ *
+ *  ipx:		Keyword to designate an IPX filter. Actually this
+ *			has been determined by parseFilter.
+ *
+ *	dir:		Filter direction. "IN" or "OUT"
+ *
+ *	action:		Filter action. "FORWARD" or "DROP"
+ *
+ *  srcipxnet:      Keyword for source IPX address.
+ *                  nnnn = IPX Node address.
+ *
+ *  srcipxnode:     Keyword for source IPX Node address.
+ *                  mmmmm = IPX Node Address, could be FFFFFF.
+ *                  A vlid ipx node number should accompany ipx net number.
+ *
+ *  srcipxsoc:      Keyword for source IPX socket address.
+ *
+ *  cmd:            One of ">" or "<" or "=" or "!=".
+ *
+ *  value:          Socket value to be compared against, in hex. 
+ *			
+ *	dstipxnet:	Keyword for destination IPX address.
+ *			nnnn = IPX Node address. 
+ *			
+ *	dstipxnode:	Keyword for destination IPX Node address.
+ *  		mmmmm = IPX Node Address, could be FFFFFF.
+ *			A vlid ipx node number should accompany ipx net number.
+ *			
+ *	dstipxsoc:	Keyword for destination IPX socket address.
+ *			
+ *	cmd:		One of ">" or "<" or "=" or "!=".
+ *			
+ *	value:		Socket value to be compared against, in hex.
+ *			
+ *			
+ * expects:
+ *
+ *	curEntry:	Pointer to place the filter structure
+ *
+ *	returns:	-1 for error or 0 for OK
+ *	
+ */
 static int 
-parseIpxFilter(curString, curEntry)
-const char	*curString;
-RadFilter	*curEntry;
+parseIpxFilter(const char *curString, RadFilter *curEntry)
 {
     unsigned long	elements = 0l;
     int			tok; 
@@ -752,7 +686,7 @@ RadFilter	*curEntry;
     ipx = &curEntry->u.ipx;
  
     while( token ) {
-  	tok = findKey( token, filterKeywords );
+  	tok = lrad_str2int(filterKeywords, token, -1);
 	switch( tok ) {
 	    case FILTER_IN:
 	    case FILTER_OUT:
@@ -806,9 +740,9 @@ RadFilter	*curEntry;
                 token = strtok( NULL, " " );
 
 		if ( token ) {
-		    cmp = findKey( token, filterCompare );
-		    if( cmp != (RadFilterComparison)NO_TOKEN ) {
-		    token = strtok( NULL, " " );
+		    cmp = lrad_str2int(filterCompare, token, -1);
+		    if (cmp >= 0) {
+		      token = strtok( NULL, " " );
 			if ( token ) {
 			    if ( tok == FILTER_IPX_DST_IPXSOCK ) {
 				ipx->dstSocComp = cmp;
@@ -843,56 +777,54 @@ doneErr:
     return( -1 );
 }
 
-    /*
-     * parseIpFilter:
-     *
-     * This routine parses an IP filter string from a RADIUS
-     * reply. The format of the string is:
-     *
-     *	ip dir action [ dstip n.n.n.n/nn ] [ srcip n.n.n.n/nn ]
-     *	    [ proto [ dstport cmp value ] [ srcport cmd value ] [ est ] ] 
-     *
-     * Fields in [...] are optional.
-     *	where:
-     *
-     *  ip:		Keyword to designate an IP filter. Actually this
-     *			has been determined by parseFilter.
-     *
-     *	dir:		Filter direction. "IN" or "OUT"
-     *
-     *	action:		Filter action. "FORWARD" or "DROP"
-     *
-     *	dstip:		Keyword for destination IP address.
-     *			n.n.n.n = IP address. /nn - netmask. 
-     *			
-     *	srcip:		Keyword for source IP address.
-     *			n.n.n.n = IP address. /nn - netmask. 
-     *			
-     *	proto:		Optional protocol field. Either a name or
-     *			number. Known names are in FilterProtoName[].
-     *			
-     *	dstpost:	Keyword for destination port. Only valid with tcp
-     *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
-     *			a name or number.
-     *
-     *	srcpost:	Keyword for source port. Only valid with tcp
-     *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
-     *			a name or number.
-     *			
-     *	est:		Keyword for TCP established. Valid only for tcp.
-     *			
-     * expects:
-     *
-     *	curEntry:	Pointer to place the filter structure
-     *
-     *	returns:	-1 for error or 0 for OK
-     *	
-     */
 
+/*
+ * parseIpFilter:
+ *
+ * This routine parses an IP filter string from a RADIUS
+ * reply. The format of the string is:
+ *
+ *	ip dir action [ dstip n.n.n.n/nn ] [ srcip n.n.n.n/nn ]
+ *	    [ proto [ dstport cmp value ] [ srcport cmd value ] [ est ] ] 
+ *
+ * Fields in [...] are optional.
+ *	where:
+ *
+ *  ip:		Keyword to designate an IP filter. Actually this
+ *			has been determined by parseFilter.
+ *
+ *	dir:		Filter direction. "IN" or "OUT"
+ *
+ *	action:		Filter action. "FORWARD" or "DROP"
+ *
+ *	dstip:		Keyword for destination IP address.
+ *			n.n.n.n = IP address. /nn - netmask. 
+ *			
+ *	srcip:		Keyword for source IP address.
+ *			n.n.n.n = IP address. /nn - netmask. 
+ *			
+ *	proto:		Optional protocol field. Either a name or
+ *			number. Known names are in FilterProtoName[].
+ *			
+ *	dstpost:	Keyword for destination port. Only valid with tcp
+ *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
+ *			a name or number.
+ *
+ *	srcpost:	Keyword for source port. Only valid with tcp
+ *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
+ *			a name or number.
+ *			
+ *	est:		Keyword for TCP established. Valid only for tcp.
+ *			
+ * expects:
+ *
+ *	curEntry:	Pointer to place the filter structure
+ *
+ *	returns:	-1 for error or 0 for OK
+ *	
+ */
 static int 
-parseIpFilter(curString, curEntry)
-const char	*curString;
-RadFilter	*curEntry;
+parseIpFilter(const char *curString, RadFilter *curEntry)
 {
  
     unsigned long	elements = 0l;
@@ -908,7 +840,7 @@ RadFilter	*curEntry;
     ip->established = FALSE;
  
     while( token ) {
-  	tok = findKey( token, filterKeywords );
+  	tok = lrad_str2int(filterKeywords, token, -1);
 	switch( tok ) {
 	    case FILTER_IN:
 	    case FILTER_OUT:
@@ -954,16 +886,16 @@ RadFilter	*curEntry;
 
 		token = strtok( NULL, " " );
 		if ( token ) {
-  		    cmp = findKey( token, filterCompare );
-		    if( cmp != (RadFilterComparison)NO_TOKEN ) {
+  		    cmp = lrad_str2int(filterCompare, token, -1);
+		    if (cmp >= 0) {
 			token = strtok( NULL, " " );
 			if ( token ) {
 			    if( isAllDigit( token ) ) {
 				port = atoi( (char *) token );
 			    } else {
-  		    	        port = findKey( token, filterPortType );
+  		    	        port = lrad_str2int(filterPortType, token, -1);
 			    }
-			    if( port != (short) NO_TOKEN ) {
+			    if (port >= 0) {
 				if( tok == FILTER_IP_DST_PORT ) {
 				    ip->dstPortComp = cmp;
 				    ip->dstport = htons( port );
@@ -989,9 +921,8 @@ RadFilter	*curEntry;
 		if( isAllDigit( token ) ) {
 		    tok = atoi( (char *) token );
 		} else {
-		    tok = findKey( token, filterProtoName );
-
-		    if( tok == NO_TOKEN ) {
+		    tok = lrad_str2int(filterProtoName, token, -1);
+		    if (tok == -1) {
 			librad_log("ip filter error: do not recognize %s in %s \n",
 			     token, curString );
 			goto doneErr;
@@ -1010,49 +941,46 @@ doneErr:
     return( -1 );
 }
 
-    /*
-     * parseGenericFilter:
-     *
-     * This routine parses a Generic filter string from a RADIUS
-     * reply. The format of the string is:
-     *
-     *	GENERIC dir action offset mask value [== or != ] [more]
-     *
-     * Fields in [...] are optional.
-     *	where:
-     *
-     * 	generic:	Keyword to indicate a generic filter. This
-     *			has been determined by parseFilter.
-     *
-     *	dir:		Filter direction. "IN" or "OUT"
-     *
-     *	action:		Filter action. "FORWARD" or "DROP"
-     *
-     *	offset:		A Number. Specifies an offset into a frame 
-     *			to start comparing.
-     *			
-     *	mask:		A hexadecimal mask of bits to compare.
-     *			
-     *	value:		A value to compare with the masked data.
-     *
-     *	compNeq:	Defines type of comparison. ( "==" or "!=")
-     *			Default is "==".
-     *			
-     *	more:		Optional keyword MORE, to represent the attachment
-     *			to the next entry.
-     *
-     * expects:
-     *
-     *	curEntry:	Pointer to place the filter structure
-     *
-     *	returns:	-1 for error or 0 for OK
-     *	
-     */
-
+/*
+ * parseGenericFilter:
+ *
+ * This routine parses a Generic filter string from a RADIUS
+ * reply. The format of the string is:
+ *
+ *	GENERIC dir action offset mask value [== or != ] [more]
+ *
+ * Fields in [...] are optional.
+ *	where:
+ *
+ * 	generic:	Keyword to indicate a generic filter. This
+ *			has been determined by parseFilter.
+ *
+ *	dir:		Filter direction. "IN" or "OUT"
+ *
+ *	action:		Filter action. "FORWARD" or "DROP"
+ *
+ *	offset:		A Number. Specifies an offset into a frame 
+ *			to start comparing.
+ *			
+ *	mask:		A hexadecimal mask of bits to compare.
+ *			
+ *	value:		A value to compare with the masked data.
+ *
+ *	compNeq:	Defines type of comparison. ( "==" or "!=")
+ *			Default is "==".
+ *			
+ *	more:		Optional keyword MORE, to represent the attachment
+ *			to the next entry.
+ *
+ * expects:
+ *
+ *	curEntry:	Pointer to place the filter structure
+ *
+ *	returns:	-1 for error or 0 for OK
+ *	
+ */
 static int
-parseGenericFilter(curString, curEntry)
-const char	*curString;
-RadFilter	*curEntry;
+parseGenericFilter(const char *curString, RadFilter *curEntry)
 {
     unsigned long	elements = 0l; 
     int			tok; 
@@ -1071,7 +999,7 @@ RadFilter	*curEntry;
     gen->compNeq = FALSE;	
 
     while( token ) {
-  	tok = findKey( token, filterKeywords );
+  	tok = lrad_str2int(filterKeywords, token, -1);
 	switch( tok ) {
 	    case FILTER_IN:
 	    case FILTER_OUT:
@@ -1138,18 +1066,19 @@ doneErr:
     return( -1 );
 }
 		       
-    /*
-     * filterBinary:
-     *
-     * This routine will call routines to parse entries from an ASCII format
-     * to a binary format recognized by the Ascend boxes.
-     *
-     *	pair:			Pointer to value_pair to place return.
-     *
-     *	valstr:			The string to parse	
-     *
-     *	return:			-1 for error or 0.
-     */
+
+/*
+ * filterBinary:
+ *
+ * This routine will call routines to parse entries from an ASCII format
+ * to a binary format recognized by the Ascend boxes.
+ *
+ *	pair:			Pointer to value_pair to place return.
+ *
+ *	valstr:			The string to parse	
+ *
+ *	return:			-1 for error or 0.
+ */
 int 
 filterBinary(VALUE_PAIR *pair, const char *valstr)
 {
@@ -1171,7 +1100,7 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
     if (!copied_valstr) return -1;
 
     token = strtok(copied_valstr, " " );
-    tok = findKey( token, filterType );
+    tok = lrad_str2int(filterType, token, -1);
     pair->length = SIZEOF_RADFILTER;
     switch( tok ) {
       case RAD_FILTER_GENERIC:
@@ -1223,7 +1152,6 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
     return(rc);
 }
 
-
 /********************************************************************/
 
 /*
@@ -1231,21 +1159,6 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
  *  server by Alan DeKok <aland@ox.org>, and as such, falls under
  *  the GPL, and not under the previous Ascend license.
  */
-
-static const char *FindValue(unsigned int value, const KeywordStruct *list)
-{
-  const KeywordStruct	*entry;
-
-  entry = list;
-  while (entry->name) {
-    if (entry->value == value) {
-      return entry->name;
-    }
-    entry++;
-  }
-
-  return "???";
-}
 
 /*
  *	Print an Ascend binary filter attribute to a string,
@@ -1284,7 +1197,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   len -= 3;			/* account for leading & trailing quotes */
 
   i = snprintf(p, len, "%s %s %s",
-	       FindValue(filter.type, filterType),
+	       lrad_int2str(filterType, filter.type, "??"),
 	       direction[filter.indirection & 0x01],
 	       action[filter.forward & 0x01]);
 
@@ -1297,7 +1210,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   if (filter.type == RAD_FILTER_IP) {
 
     i =  snprintf(p, len, " %s", 
-		  FindValue(filter.u.ip.proto, filterProtoName));
+		  lrad_int2str(filterProtoName, filter.u.ip.proto, "??"));
     p += i;
     len -= i;
     
@@ -1325,7 +1238,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 
     if (filter.u.ip.dstPortComp) {
       i = snprintf(p, len, " dstport %s %d",
-		   FindValue(filter.u.ip.dstPortComp, filterCompare),
+		   lrad_int2str(filterCompare, filter.u.ip.dstPortComp, "??"),
 		   ntohs(filter.u.ip.dstport));
       p += i;
       len -= i;
@@ -1333,7 +1246,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
     
     if (filter.u.ip.srcPortComp) {
       i = snprintf(p, len, " srcport %s %d",
-		   FindValue(filter.u.ip.srcPortComp, filterCompare),
+		   lrad_int2str(filterCompare, filter.u.ip.srcPortComp, "??"),
 		   ntohs(filter.u.ip.srcport));
       p += i;
       len -= i;
@@ -1361,7 +1274,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 
       if (filter.u.ipx.srcSocComp) {
 	i = snprintf(p, len, " srcipxsock %s 0x%04x",
-		     FindValue(filter.u.ipx.srcSocComp, filterCompare),
+		     lrad_int2str(filterCompare, filter.u.ipx.srcSocComp, "??"),
 		     ntohs(filter.u.ipx.srcIpxSoc));
 	p += i;
 	len -= i;
@@ -1380,7 +1293,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 
       if (filter.u.ipx.dstSocComp) {
 	i = snprintf(p, len, " dstipxsock %s 0x%04x",
-		     FindValue(filter.u.ipx.dstSocComp, filterCompare),
+		     lrad_int2str(filterCompare, filter.u.ipx.dstSocComp, "??"),
 		     ntohs(filter.u.ipx.dstIpxSoc));
 	p += i;
 	len -= i;
