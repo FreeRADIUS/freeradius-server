@@ -640,14 +640,8 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 			pairmove(&request->config_items, &check_tmp);
 			pairfree(&check_tmp); 
 
-			DEBUG2("PAIRS:  reply (first)");
-			vp_printlist(stderr, request->reply->vps);
 			reply_tmp = paircopy(user->reply);
-			DEBUG2("PAIRS:  reply_tmp");
-			vp_printlist(stderr, reply_tmp);
 			pairmove(&request->reply->vps, &reply_tmp);
-			DEBUG2("PAIRS:  reply (second)");
-			vp_printlist(stderr, request->reply->vps);
 			pairfree(&reply_tmp);
 
 			if(!fallthrough(user->reply)) {
