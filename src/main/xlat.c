@@ -144,6 +144,61 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 }
 
 /*
+ *	Decode an attribute name from a particular RADIUS_PACKET
+ *	into a string.
+ */
+static int decode_attr_packet(const char *from, char **to, int freespace,
+			      RADIUS_PACKET *packet,
+			      RADIUS_ESCAPE_STRING func)
+
+{
+	DICT_ATTR *tmpda;
+	VALUE_PAIR *vp;
+	
+	tmpda = dict_attrbyname(from);
+	if (!tmpda) return 0;
+
+	/*
+	 *	See if the VP is defined.
+	 */
+	vp = pairfind(packet->vps, tmpda->attr);
+	if (vp) {
+		*to += valuepair2str(*to, freespace, vp,
+				     tmpda->type, func);
+		return 1;
+	}
+
+	/*
+	 *	Non-protocol attributes.
+	 */
+	switch (tmpda->attr) {
+		case PW_PACKET_TYPE:
+		{
+			ssize_t size;
+			DICT_VALUE *dval;
+
+			dval = dict_valbyattr(tmpda->attr, packet->code);
+			if (dval) {
+				size = snprintf(*to, freespace, "%s",
+						dval->name);
+			} else {
+				size = snprintf(*to, freespace, "%d",
+						packet->code);
+			}
+			*to += size;
+			return 1;
+		}
+		break;
+
+		default:
+			break;
+	}
+
+	return 0;
+}
+
+
+/*
  *  Decode an attribute name into a string.
  */
 static void decode_attribute(const char **from, char **to, int freespace,
@@ -225,32 +280,31 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	 *	Find an attribute from the reply.
 	 */
 	if (strncasecmp(attrname,"reply:",6) == 0) {
-		if((tmpda = dict_attrbyname(&attrname[6])) && 
-				(tmppair = pairfind(request->reply->vps, tmpda->attr))) {
-			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
-			found = 1;
-		}
+		found = decode_attr_packet(&attrname[6], &q, freespace,
+					   request->reply, func);
 
 		/*
 		 *	Find an attribute from the request.
 		 */
 	} else if (strncasecmp(attrname,"request:",8) == 0) {
-		if((tmpda = dict_attrbyname(&attrname[8])) && 
-				(tmppair = pairfind(request->packet->vps, tmpda->attr))) {
-			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
-			found = 1;
-		}
+		found = decode_attr_packet(&attrname[8], &q, freespace,
+					   request->packet, func);
+
+		/*
+		 *	Find an attribute from the proxy request.
+		 */
+	} else if ((strncasecmp(attrname,"proxy-request:",14) == 0) &&
+		   (request->proxy_reply != NULL)) {
+		found = decode_attr_packet(&attrname[14], &q, freespace,
+					   request->proxy, func);
 
 		/*
 		 *	Find an attribute from the proxy reply.
 		 */
 	} else if ((strncasecmp(attrname,"proxy-reply:",12) == 0) &&
 		   (request->proxy_reply != NULL)) {
-		if((tmpda = dict_attrbyname(&attrname[12])) && 
-				(tmppair = pairfind(request->proxy_reply->vps, tmpda->attr))) {
-			q += valuepair2str(q,freespace,tmppair,tmpda->type, func);
-			found = 1;
-		}
+		found = decode_attr_packet(&attrname[12], &q, freespace,
+					   request->proxy_reply, func);
 
 		/*
 		 *	Find a string from a registered function.
