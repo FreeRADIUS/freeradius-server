@@ -320,11 +320,23 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				   *    tagged attribute, make it 0x00
 				   *    per RFC 2868.  -cparker
 				   */
-				  if ((reply->flags.has_tag) &&
-				      TAG_VALID(reply->flags.tag)) {
-					  len++;
-					  *ptr++ = reply->flags.tag;
-				  }
+				  if (reply->flags.has_tag) {
+					  if (TAG_VALID(reply->flags.tag)) {
+						  len++;
+						  *ptr++ = reply->flags.tag;
+
+					  } else if (reply->flags.encrypt == 2) {
+						  /*
+						   *  Tunnel passwords
+						   *  REQUIRE a tag,
+						   *  even if we don't
+						   *  have a valid
+						   *  tag.
+						   */
+						  len++;
+						  *ptr++ = 0x00;
+					  } /* else don't write a tag */
+				  } /* else the attribute doesn't have a tag */
 				 
 				  /*
 				   *	Ensure we don't go too far.
@@ -1096,9 +1108,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			} else if (pair->flags.has_tag &&
 				   pair->type == PW_TYPE_STRING) {
 				if(TAG_VALID(*ptr)) {
-				       pair->flags.tag = *ptr++;
+					pair->flags.tag = *ptr++;
 					pair->length--;
-				} else if(pair->flags.encrypt == 2) {
+				} else if (pair->flags.encrypt == 2) {
 					/*
 					 * from RFC2868 - 3.5.  Tunnel-Password
 					 * If the value of the Tag field is greater than
@@ -1164,7 +1176,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			if (pair->flags.has_tag &&
 			    pair->type == PW_TYPE_INTEGER) {
 			        pair->flags.tag = (pair->lvalue >> 24) & 0xff;
-				pair->lvalue &= 0xffffff;
+				pair->lvalue &= 0x00ffffff;
 			}
 			break;
 			
