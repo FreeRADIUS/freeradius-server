@@ -3,8 +3,9 @@
  *
  *		Yep I should learn to use lex & yacc, or at least
  *		write a decent parser. I know how to do that, really :)
+ *		miquels@cistron.nl
  *
- * Version:	@(#)conffile.c  1.00  05-Nov-1998  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
@@ -26,10 +27,17 @@ CONF_SECTION	*config;
 REALM			*realms;
 CLIENT			*clients;
 
+static int generate_realms();
+static int generate_clients();
+
+#ifndef RADIUS_CONFIG
+#define RADIUS_CONFIG "radius.conf"
+#endif
+
 /*
  *	Create a new CONF_PAIR
  */
-CONF_PAIR *cp_alloc(char *attr, char *value, int operator)
+CONF_PAIR *cf_pair_alloc(const char *attr, const char *value, int operator)
 {
 	CONF_PAIR	*cp;
 
@@ -45,7 +53,7 @@ CONF_PAIR *cp_alloc(char *attr, char *value, int operator)
 /*
  *	Free a CONF_PAIR
  */
-void cp_free(CONF_PAIR *cp)
+void cf_pair_free(CONF_PAIR *cp)
 {
 	if (cp == NULL) return;
 
@@ -57,7 +65,7 @@ void cp_free(CONF_PAIR *cp)
 /*
  *	Allocate a CONF_SECTION
  */
-CONF_SECTION *cs_alloc(char *name1, char *name2)
+CONF_SECTION *cf_section_alloc(const char *name1, const char *name2)
 {
 	CONF_SECTION	*cs;
 
@@ -75,7 +83,7 @@ CONF_SECTION *cs_alloc(char *name1, char *name2)
 /*
  *	Free a CONF_SECTION
  */
-void cs_free(CONF_SECTION *cs)
+void cf_section_free(CONF_SECTION *cs)
 {
 	CONF_PAIR	*cp, *next;
 	CONF_SECTION *sub, *next_sub;
@@ -84,7 +92,7 @@ void cs_free(CONF_SECTION *cs)
 
 	for (cp = cs->cps; cp; cp = next) {
 		next = cp->next;
-		cp_free(cp);
+		cf_pair_free(cp);
 	}
 
 	/*
@@ -92,7 +100,7 @@ void cs_free(CONF_SECTION *cs)
 	 */
 	for (sub = cs->sub; sub; sub = next_sub) {
 		next_sub = sub->next;
-		cs_free(sub);
+		cf_section_free(sub);
 	}
 
 	if (cs->name1) free(cs->name1);
@@ -108,15 +116,15 @@ void cs_free(CONF_SECTION *cs)
  * Free _all_ in a CONF_SECTION and below
  */
 
-void cs_free_all(CONF_SECTION *cs)
+void cf_section_free_all(CONF_SECTION *cs)
 {
 
 }
 /*
  *	Read a part of the config file.
  */
-static CONF_SECTION *conf_readsection(char *cf, int *lineno, FILE *fp,
-				char *name1, char *name2)
+static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
+				const char *name1, const char *name2)
 {
 	CONF_SECTION	*cs, *csn, *csp, *css;
 	CONF_PAIR	*cp, *cpn;
@@ -130,7 +138,7 @@ static CONF_SECTION *conf_readsection(char *cf, int *lineno, FILE *fp,
 	/*
 	 *	Allocate new section.
 	 */
-	cs = cs_alloc(name1, name2);
+	cs = cf_section_alloc(name1, name2);
 
 	/*
 	 *	Read.
@@ -210,7 +218,7 @@ static CONF_SECTION *conf_readsection(char *cf, int *lineno, FILE *fp,
 		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
-		cpn = cp_alloc(buf1, buf3, t2);
+		cpn = cf_pair_alloc(buf1, buf3, t2);
 		for (cp = cs->cps; cp && cp->next; cp = cp->next)
 			;
 		if (cp == NULL)
@@ -234,12 +242,12 @@ static CONF_SECTION *conf_readsection(char *cf, int *lineno, FILE *fp,
 /*
  *	Read the config file.
  */
-CONF_SECTION *conf_read(char *conffile)
+CONF_SECTION *conf_read(const char *conffile)
 {
 	FILE		*fp;
 	int		lineno = 0;
 
-	cs_free(config);
+	cf_section_free(config);
 	config = NULL;	
 
 	if ((fp = fopen(conffile, "r")) == NULL) {
@@ -328,7 +336,7 @@ static void realm_free(REALM *cl)
  * Find a realm in the realm linked-list
  */
 
-REALM *realm_find(char *realm)
+REALM *realm_find(const char *realm)
 {
 	REALM *cl;
 
@@ -348,7 +356,7 @@ REALM *realm_find(char *realm)
  * This way we don't have to change to much in the other source-files
  */
 
-int generate_realms() 
+static int generate_realms() 
 {
 	CONF_SECTION	*cs;
 	REALM			*c;
@@ -370,7 +378,7 @@ int generate_realms()
 			/*
 			 * An authhost must exist in the configuration
 			 */
-			if ((authhost = value_find("authhost", cs)) == NULL) {
+			if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
 				log(L_CONS|L_ERR, 
 					"No authhost entry for realm: %s", 
 					cs->name2);
@@ -382,7 +390,7 @@ int generate_realms()
 			} else {
 				c->auth_port = auth_port;
 			}
-			accthost = value_find("accthost", cs);
+			accthost = cf_section_value_find(cs, "accthost");
 			if ((s =strchr(accthost, ':')) != NULL) {
 				*s++ = 0;
 				c->acct_port = atoi(s);	
@@ -413,11 +421,11 @@ int generate_realms()
 			strcpy(c->server, authhost);	
 			c->striprealm = 1;
 			
-			if ((value_find("nostrip", cs)) != NULL)
+			if ((cf_section_value_find(cs, "nostrip")) != NULL)
 				c->striprealm = 0;
-			if ((value_find("noacct", cs)) != NULL)
+			if ((cf_section_value_find(cs, "noacct")) != NULL)
 				c->acct_port = 0;
-			if ((value_find("trusted", cs)) != NULL)
+			if ((cf_section_value_find(cs, "trusted")) != NULL)
 				c->acct_port = 0;
 
 			c->next = realms;
@@ -449,7 +457,7 @@ static void clients_free(CLIENT *cl)
  * This way we don't have to change to much in the other source-files
  */
 
-int generate_clients() 
+static int generate_clients() 
 {
 	CONF_SECTION	*cs;
 	CLIENT			*c;
@@ -464,8 +472,8 @@ int generate_clients()
 			 * Check the lengths, we don't want any core dumps
 			 */
 			hostnm = cs->name2;
-			secret = value_find("secret", cs);
-			shortnm = value_find("shortname", cs);
+			secret = cf_section_value_find(cs, "secret");
+			shortnm = cf_section_value_find(cs, "shortname");
 
 			if (strlen(secret) >= sizeof(c->secret)) {
 				log(L_ERR, "[%s]: secret of length %d is greater than the allowed maximum of %d.",
@@ -535,7 +543,7 @@ char *client_name(UINT4 ipaddr)
  * Return a CONF_PAIR within a CONF_SECTION.
  */
 
-CONF_PAIR *pair_find(char *name, CONF_SECTION *section)
+CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
 {
 	CONF_PAIR	*cp;
 
@@ -550,7 +558,7 @@ CONF_PAIR *pair_find(char *name, CONF_SECTION *section)
  * Return the value of a CONF_PAIR
  */
 
-char *pair_value(CONF_PAIR *pair)
+char *cf_pair_value(CONF_PAIR *pair)
 {
 	return (pair ? pair->value : NULL);
 }
@@ -559,11 +567,11 @@ char *pair_value(CONF_PAIR *pair)
 /* 
  * Find a value in a CONF_SECTION
  */
-char *value_find(char *attr, CONF_SECTION *section)
+char *cf_section_value_find(CONF_SECTION *section, const char *attr)
 {
 	CONF_PAIR	*cp;
 
-	cp = pair_find(attr, section);
+	cp = cf_pair_find(section, attr);
 
 	return (cp ? cp->value : NULL);
 }
@@ -573,7 +581,7 @@ char *value_find(char *attr, CONF_SECTION *section)
  * with a certain name (char *attr)
  */
 
-CONF_PAIR *pair_find_next(char *attr, CONF_PAIR *pair, CONF_SECTION *section)
+CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *attr)
 {
 	CONF_PAIR	*cp;
 
@@ -583,7 +591,7 @@ CONF_PAIR *pair_find_next(char *attr, CONF_PAIR *pair, CONF_SECTION *section)
 	 */
 
 	if (pair == NULL){
-		cp = pair_find(attr, section);
+		cp = cf_pair_find(section, attr);
 	} else {
 		cp = pair->next;
 	}
@@ -599,7 +607,7 @@ CONF_PAIR *pair_find_next(char *attr, CONF_PAIR *pair, CONF_SECTION *section)
  * Find a CONF_SECTION
  */
 
-CONF_SECTION *section_find(char *name)
+CONF_SECTION *cf_section_find(const char *name)
 {
 	CONF_SECTION *cs;
 	
@@ -614,7 +622,7 @@ CONF_SECTION *section_find(char *name)
  * Find a sub-section in a section
  */
 
-CONF_SECTION *section_sub_find(CONF_SECTION *section, char *name) {
+CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name) {
 
 	CONF_SECTION *cs;
 	for (cs = section->sub; cs; cs = cs->next)
@@ -629,13 +637,13 @@ CONF_SECTION *section_sub_find(CONF_SECTION *section, char *name) {
  * Find the configuration section for a module
  */
 
-CONF_SECTION *module_config_find(char *modulename)
+CONF_SECTION *cf_module_config_find(const char *modulename)
 {
 	CONF_SECTION *cs;
 
 	for (cs = config; cs; cs = cs->next)
-		if ((strcmp(cs->name1, "module") == NULL)
-			&& (strcmp(cs->name2, modulename) == NULL))
+		if ((strcmp(cs->name1, "module") == 0)
+			&& (strcmp(cs->name2, modulename) == 0))
 			break;
 
 	return cs;
