@@ -12,10 +12,10 @@ Radius Account Unique Module
     specified by the 'key' variable in the module's configuration section.  
     Based on the attributes listed, it will concatenate the attribute name 
     and value received in the accounting request packet, and then calculate 
-    a (unique) md5 checksum from that concatenated list of attributes.  
+    a (unique) md5 digest value from that concatenated list of attributes.  
     That's a mouthful, read it again for clarity :)
 
-    After generating the md5 checksum, it adds it to the accounting
+    After generating the md5 digest value, it adds it to the accounting
     request packet received from the client.  It will look something like
     this in your detail file:
 
@@ -56,6 +56,8 @@ Radius Account Unique Module
       unix
     }
 
+    Then either stop and restart radiusd (or kill -HUP) and you're
+    ready to go.    
 
 4.  ACKNOWLEDGEMENTS
 
