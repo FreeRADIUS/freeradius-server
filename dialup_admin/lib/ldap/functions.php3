@@ -67,4 +67,14 @@ function closedb($ds,$config)
 	if ($ds)
 		@ldap_close($ds);
 }
+function ldap_xlat($filter,$login,$config)
+{
+	$string = $filter;
+	if ($filter != ''){
+		$string = preg_replace('/%u/',$login,$string);
+		$string = preg_replace('/%U/',$HTTP_SERVER_VARS["PHP_AUTH_USER"],$string);
+	}
+
+	return $string;
+}
 ?>

@@ -27,9 +27,13 @@ if ($config[ldap_default_dn] != ''){
 		}
 		if ($regular_profile_attr != ''){
 			$get_attrs = array("$regular_profile_attr");
+			if ($config[ldap_filter] != '')
+				$filter = ldap_xlat($config[ldap_filter],$login,$config);
+			else
+				$filter = 'uid=' . $login;
 			if ($config[ldap_debug] == 'true')
-				print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='uid=$login'</b><br>\n";
-			$sr=@ldap_search($ds,"$config[ldap_base]","uid=" . $login,$get_attrs);
+				print "<b>DEBUG(LDAP): Search Query: BASE='$config[ldap_base]',FILTER='$filter'</b><br>\n";
+			$sr=@ldap_search($ds,"$config[ldap_base]",$filter,$get_attrs);
 			if ($info = @ldap_get_entries($ds,$sr)){
 				for($i=0;$i<$info[0][$regular_profile_attr]["count"];$i++){
 					$dn2 = $info[0][$regular_profile_attr][$i];

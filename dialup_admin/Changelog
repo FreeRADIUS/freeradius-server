@@ -42,6 +42,8 @@ Ver 1.63:
 * Also check for $server != '' in stats.php3. Bug noted by Ulrich Walcher <uwalcher@bcore.de>
 * Consider the account locked either if Dialup-Access == FALSE or if it is not set at all
 * Calculate weekly used time correctly (from Sunday 00:00:00)
+* Allow for defining the ldap_filter used when searching for a user. The filter supports dynamic variables
+  like %u (username) and %U (username provided though http auth)
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
