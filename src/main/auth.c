@@ -280,6 +280,12 @@ int rad_authenticate(REQUEST *request)
 
 	user_reply = NULL;
 	password = "";
+
+	/*
+	 *	Free any pre-existing configuration items.
+	 *
+	 *	This should ONLY be happening for proxy replies.
+	 */
 	if (request->config_items) {
 	  pairfree(request->config_items);
 	  request->config_items = NULL;
@@ -294,21 +300,22 @@ int rad_authenticate(REQUEST *request)
 	if (request->proxy_reply) {
 		if (request->proxy_reply->code == PW_AUTHENTICATION_REJECT ||
 		    request->proxy_reply->code == PW_AUTHENTICATION_ACK) {
-			request->config_items = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
-			if (request->config_items == NULL) {
+			tmp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
+			if (tmp == NULL) {
 				log(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
 		}
-		if (request->proxy_reply->code == PW_AUTHENTICATION_REJECT)
-			request->config_items->lvalue = PW_AUTHTYPE_REJECT;
 		if (request->proxy_reply->code == PW_AUTHENTICATION_ACK)
-			request->config_items->lvalue = PW_AUTHTYPE_ACCEPT;
+			tmp->lvalue = PW_AUTHTYPE_ACCEPT;
+		else		/* failsafe: all others mean reject */
+			tmp->lvalue = PW_AUTHTYPE_REJECT;
 
 		if (request->proxy_reply->vps) {
 			user_reply = request->proxy_reply->vps;
 			request->proxy_reply->vps = NULL;
 		}
+		pairadd(&request->config_items, tmp);
 	}
 
 	/*
