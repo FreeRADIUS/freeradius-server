@@ -389,6 +389,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			 */
 			if((c == '}') && openbraces) {
 				openbraces--;
+				p++; /* skip it */
 				continue;
 			}
 			*q++ = *p++;
