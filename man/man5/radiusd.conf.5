@@ -1,33 +1,37 @@
-.TH radiusd.conf 5 "02 May 2000"
+.TH radiusd.conf 5 "02 May 2000" "" "RADIUS Daemon configuration file"
 .SH NAME
-radiusd.conf \- FreeRADIUS Daemon configuration file
+radiusd.conf \- configuration file for the FreeRADIUS server
 .SH DESCRIPTION
-The \fIradiusd.conf\fP file resides in the radius database directory,
-by default \fI/etc/raddb\fP.  It defines the global configuration for
+The \fBradiusd.conf\fP file resides in the radius database directory,
+by default \fB/etc/raddb\fP.  It defines the global configuration for
 the FreeRADIUS server.
 
 .SH "FILE FORMAT"
-The file consists of sections and attribute-value pairs.  A section
-begins with a section name, followed by an open bracket \fI{\fP.  The
-section may contain other sections, or attribute-value pairs.  The
-section ends with a close bracket \fI}\fP.  Attribute-value pairs are
-of the form 'name = value'.
+The file consists of attribute-value pairs, sections, and comments.
 
-The file is line-based.  That is, each newline-terminated line
-represents either a comment, a section name, or a attribute-value
-pair.
+Attribute-value pairs are of the form \fBname = value\fP.
 
-Any line beginning with a hash (#) is deemed to be a comment, and is
+A section begins with a section name, followed on the same line by an
+open bracket \fB{\fP.  The section may contain other sections, or
+attribute-value pairs.  The section ends with a close bracket \fB}\fP,
+on a line by itself.
+
+Any line beginning with a (\fB#\fP) is deemed to be a comment, and is
 ignored.  Lines containing only whitespace are also ignored.
 
-Variables may reference each other, so long as they have previously
-been defined.  The standard shell reference format \fI${name}\fP
-is used.
+The file is line-based.  That is, each newline-terminated line
+represents either a comment, a section name, or an attribute-value
+pair.  It is not possible to specify multiple items on the same line,
+and there are no continuation lines.
 
-The exact configuration directives are too numerous to list here, so
-this manual page documents only the file format.  Please read the
-sample configuration file distributed with the server for comments
-describing each configuration directive.
+The value for a particular attribute may reference a previously
+defined attribute by name. The standard shell reference format
+\fB${name}\fP is used.
+
+The individidual configuration directives are too numerous to list
+here, so this manual page only documents the file format.  Please read
+the sample configuration file distributed with the server for comments
+describing each of the allowed configuration directives.
 
 .SH EXAMPLES
 .PP
@@ -35,13 +39,13 @@ describing each configuration directive.
 	foo = bar
 
 .DE
-Sets variable \fIfoo\fP to value \fIbar\fP.
+Sets variable \fBfoo\fP to value \fBbar\fP.
 
 .DS
 	blogs = ${foo}
 
 .DE
-Sets variable \fIblogs\fP to the value of variable \fIfoo\fP.
+Sets variable \fBblogs\fP to the value of variable \fBfoo\fP.
 
 .DS
 	my_section {
@@ -51,15 +55,16 @@ Sets variable \fIblogs\fP to the value of variable \fIfoo\fP.
 	}
 
 .DE
-Defines a section named \fImy_section\fP, containing variable
-\fIbaz\fP.
+Defines a section named \fBmy_section\fP, containing variable
+\fBbaz\fP.
 
 .PP
 .SH FILES
-.I /etc/raddb/radiusd.conf
+/etc/raddb/radiusd.conf
 .SH "SEE ALSO"
 .BR radiusd (8) ,
+.BR users (5)
 .BR clients (5)
 
 .SH AUTHOR
-The FreeRADIUS team.
+Alan DeKok <aland@ox.org>
