@@ -4,6 +4,7 @@
  * Version:	$Id$
  *
  */
+static const char rcsid[] = "$Id";
 
 #include	"autoconf.h"
 
@@ -161,6 +162,8 @@ int main(int argc, char **argv)
 	FILE		*fp;
 	int		count = 1;
 	int		loop;
+	char		password[256];
+	VALUE_PAIR	*vp;
 
 	while ((c = getopt(argc, argv, "c:d:f:hqt:r:xv")) != EOF) switch(c) {
 		case 'c':
@@ -284,6 +287,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	vp = pairfind(req->vps, PW_PASSWORD);
+	if (vp) {
+	  strNcpy(password, vp->strvalue, sizeof(vp->length));
+	} else {
+	  *password = '\0';
+	}
+
 	/*
 	 *	Loop, sending the packet N times.
 	 */
@@ -296,14 +306,15 @@ int main(int argc, char **argv)
 		 *	ID and authentication vector.
 		 */
 		if (req->data) {
-			VALUE_PAIR *pass;
 			free(req->data);
 			req->data = NULL;
-			
-			pass = pairfind(req->vps, PW_PASSWORD);
-			rad_pwencode(pass->strvalue,
-				     &(pass->length),
-				     secret, req->vector);
+			if (*password != '\0') {
+			  vp = pairfind(req->vps, PW_PASSWORD);
+			  if (vp) {
+			    strNcpy(vp->strvalue, password, sizeof(password));
+			    vp->length = strlen(password);
+			  }
+			}
 			
 			librad_md5_calc(req->vector, req->vector,
 					sizeof(req->vector));
