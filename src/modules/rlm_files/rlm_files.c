@@ -237,6 +237,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 
         inst->usersfile = config.usersfile;
         inst->acctusersfile = config.acctusersfile;
+        inst->compat_mode = config.compat_mode;
         config.usersfile = NULL;
         config.acctusersfile = NULL;
 
@@ -258,6 +259,8 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
                 free(inst);
                 return -1;
         }
+
+        config.compat_mode = NULL;
 
         *instance = inst;
         return 0;
