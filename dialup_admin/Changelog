@@ -26,6 +26,7 @@ Ver 1.60:
   user_info will not work in that case.
 * Fix a small bug in lib/ldap/defaults.php3. We should not be using $i in a for() loop but a new variable
 * Add a comment in admin.conf about ldap server failover
+* Map a specific username to the directory manager if we are using ldap and http authentication
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page

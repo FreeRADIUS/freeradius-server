@@ -6,6 +6,10 @@ function da_ldap_bind($ds,$config)
 			global $HTTP_SERVER_VARS;
 			$din = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
 			$pass = $HTTP_SERVER_VARS["PHP_AUTH_PW"];
+			if ($config[ldap_map_to_directory_manager] != '' &&
+			$din == $config[ldap_map_to_directory_manager] &&
+			$config[ldap_directory_manager] != '')
+				$din = $config[ldap_directory_manager];
 		}
 		if ($config[ldap_use_http_credentials] != 'yes' ||
 			($din == '' && $pass == '')){
