@@ -747,6 +747,9 @@ modules {
 	#            Field marked as '*' is key field. That is, the parameter
 	#            with this name from the request is used to search for
 	#            the record from passwd file
+	#            Attribute marked as '=' is added to reply_itmes instead
+	#            of default configure_itmes
+	#	     Attribute marked as '~' is added to request_items
 	#
 	#            Field marked as ',' may contain a comma separated list
 	#            of attributes.
@@ -777,7 +780,7 @@ modules {
 	#
 	#passwd etc_group {
 	#	filename = /etc/group
-	#	format = "Group-Name:::*,User-Name"
+	#	format = "=Group-Name:::*,User-Name"
 	#	hashsize = 50
 	#	ignorenislike = yes
 	#	allowmultiplekeys = yes
