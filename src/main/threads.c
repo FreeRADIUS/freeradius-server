@@ -120,6 +120,7 @@ static void *request_handler_thread(void *arg)
 	REQUEST		*request;
 	RADIUS_PACKET	*packet;
 	const char	*secret;
+	int		replicating;
 
 	self = (THREAD_HANDLE *) arg;
 	
@@ -178,6 +179,17 @@ static void *request_handler_thread(void *arg)
 		     */
 
 		    goto next_request;
+		}
+
+		/*
+		 *	For proxy replies, remove non-allowed
+		 *	attributes from the list of VP's.
+		 */
+		if (request->proxy) {
+			replicating = proxy_receive(request);
+			if (replicating != 0) {
+				goto next_request;
+			}
 		}
 		
 		/*
