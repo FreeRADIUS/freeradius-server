@@ -48,7 +48,8 @@ build-simple stamp-build:
 		--with-raddbdir=$(raddbdir) \
 		--with-logdir=/var/log/$(package) \
 		--with-thread-pool --with-system-libtool \
-		--enable-ltdl-install=no --enable-strict-dependencies
+		--enable-ltdl-install=no --enable-strict-dependencies \
+		--enable-developer
 	
 	# Modify Make.inc for Debian...
 	TEMPFILE=`mktemp /tmp/radmake-XXXXXX`; \
