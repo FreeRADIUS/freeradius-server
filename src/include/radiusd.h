@@ -241,12 +241,6 @@ int		log_debug(const char *, ...)
 #endif
 ;
 
-/* pam.c */
-#ifdef WITH_PAM
-int		pam_pass(char *name, char *passwd, const char *pamauth);
-#define PAM_DEFAULT_TYPE    "radius"
-#endif
-
 /* proxy.c */
 int proxy_receive(REQUEST *request);
 int proxy_send(REQUEST *request);
