@@ -32,7 +32,7 @@
 
 /* mutually-recursive static functions need a prototype up front */
 static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,
-		int, int);
+					int, int);
 
 /* Actions may be a positive integer (the highest one returned in the group
  * will be returned), or the keyword "return", represented here by
@@ -88,6 +88,8 @@ static void add_child(modgroup *g, modcallable *c)
 	modcallable **head = &g->children;
 	modcallable *node = *head;
 	modcallable **last = head;
+
+	if (!c) return;
 
 	while (node) {
 		last = &node->next;
@@ -875,29 +877,32 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 
 	if (cf_item_is_section(ci)) {
 		CONF_SECTION *cs = cf_itemtosection(ci);
+		const char *name2 = cf_section_name2(cs);
 
 		lineno = cf_section_lineno(cs);
 		modrefname = cf_section_name1(cs);
+		if (!name2) name2 = "_UnNamedGroup";
 
 		/* group{}, redundant{}, or append{} may appear where a
 		 * single module instance was expected - in that case, we
 		 * hand it off to compile_modgroup */
 		if (strcmp(modrefname, "group") == 0) {
-			*modname = "UnnamedGroup";
+			*modname = name2;
 			return do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_SIMPLEGROUP, grouptype);
 		} else if (strcmp(modrefname, "redundant") == 0) {
-			*modname = "UnnamedGroup";
+			*modname = name2;
 			return do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_REDUNDANT, grouptype);
 		} else if (strcmp(modrefname, "append") == 0) {
-			*modname = "UnnamedGroup";
+			*modname = name2;
 			return do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_APPEND, grouptype);
 		} else if (strcmp(modrefname, "load-balance") == 0) {
-			*modname = "UnnamedGroup";
+			*modname = name2;
 			csingle= do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_SIMPLEGROUP, grouptype);
+			if (!csingle) return NULL;
 			csingle->type = MOD_LOAD_BALANCE;
 			return csingle;
 		}
@@ -907,26 +912,75 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		modrefname = cf_pair_attr(cp);
 	}
 
+	/*
+	 *	See if the module is a virtual one.  If so, return that,
+	 *	rather than doing anything here.
+	 */
+	this = find_module_instance(modrefname);
+	if (!this) {
+		CONF_SECTION *cs, *subcs;
+
+		/*
+		 *	Then, look for a named "modules virtual {" section.
+		 */
+		if (((subcs = cf_section_find(NULL)) != NULL) &&
+		    ((cs = cf_section_sub_find_name2(subcs, "instantiate", NULL)) != NULL)) {
+			const char *name1, *name2;
+
+			name1 = name2 = NULL;
+			for (subcs = cf_subsection_find_next(cs, NULL, NULL);
+			     subcs != NULL;
+			     subcs=cf_subsection_find_next(cs, subcs, NULL)) {
+				name1 = cf_section_name1(subcs);
+				name2 = cf_section_name2(subcs);
+				if ((name2 && (strcmp(name2, modrefname) == 0)) ||
+				    (!name2 && (strcmp(name1, modrefname) == 0))) {
+					break;
+				}
+			}
+			if (subcs) {
+				/*
+				 *	As it's sole configuration, the
+				 *	virtual module takes a section which
+				 *	contains the 
+				 */
+				return do_compile_modsingle(component,
+							    cf_sectiontoitem(subcs),
+							    filename,
+							    grouptype,
+							    modname);
+			}
+		}
+	}
+	if (!this) {
+		*modname = NULL;
+		radlog(L_ERR|L_CONS, "%s[%d] Unknown module \"%s\".", filename,
+		       lineno, modrefname);
+		return NULL;
+	}
+
+	/*
+	 *	We know it's all OK, allocate the structures, and fill
+	 *	them in.
+	 */
 	single = rad_malloc(sizeof(*single));
 	csingle = mod_singletocallable(single);
 	csingle->next = NULL;
-	memcpy(csingle->actions,
-			defaultactions[component][grouptype],
-			sizeof csingle->actions);
+	memcpy(csingle->actions, defaultactions[component][grouptype],
+	       sizeof csingle->actions);
 	rad_assert(modrefname != NULL);
 	csingle->name = modrefname;
 	csingle->type = MOD_SINGLE;
 
+	/*
+	 *	Singles can override the actions, virtual modules cannot.
+	 *
+	 *	FIXME: We may want to re-visit how to do this...
+	 *	maybe a csingle as a ref?
+	 */
 	if (cf_item_is_section(ci)) {
 		/* override default actions with what's in the CONF_SECTION */
 		override_actions(csingle, cf_itemtosection(ci), filename);
-	}
-
-	this = find_module_instance(modrefname);
-	if (this == NULL) {
-		radlog(L_ERR|L_CONS, "%s[%d] Unknown module \"%s\".", filename,
-		       lineno, modrefname);
-		exit(1); /* FIXME */
 	}
 
 	sanity_check(component, this, filename);
@@ -947,8 +1001,8 @@ modcallable *compile_modsingle(int component, CONF_ITEM *ci,
 }
 
 static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
-		const char *filename, int grouptype,
-		int parentgrouptype)
+					const char *filename, int grouptype,
+					int parentgrouptype)
 {
 	modgroup *g;
 	modcallable *c;
@@ -959,18 +1013,34 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 	c = mod_grouptocallable(g);
 	c->next = NULL;
 	memcpy(c->actions, defaultactions[component][parentgrouptype],
-		sizeof c->actions);
+	       sizeof c->actions);
 	c->name = cf_section_name1(cs);
+	if (cf_section_name2(cs)) c->name = cf_section_name2(cs);
 	rad_assert(c->name != NULL);
 	c->type = MOD_GROUP;
 	g->children = NULL;
 
-	for (ci=cf_item_find_next(cs, NULL); ci != NULL; ci=cf_item_find_next(cs, ci)) {
+	for (ci=cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(cs, ci)) {
 		if(cf_item_is_section(ci)) {
-			const char *junk;
+			const char *junk = NULL;
 			modcallable *single;
+			int lineno;
+			CONF_SECTION *subcs = cf_itemtosection(ci);
+
+			lineno = cf_section_lineno(subcs);
+
 			single = do_compile_modsingle(component, ci, filename,
 						      grouptype, &junk);
+			if (!single) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] Failed to parse \"%s\" subsection.\n",
+				       filename, lineno,
+				       cf_section_name1(subcs));
+				modcallable_free(&c);
+				return NULL;
+			}
 			add_child(g, single);
 		} else {
 			const char *attr, *value;
@@ -985,11 +1055,18 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 			 * actions specified... */
 			if(value[0]==0) {
 				modcallable *single;
-				const char *junk;
+				const char *junk = NULL;
 
 				single = do_compile_modsingle(component,
 						cf_pairtoitem(cp), filename,
 						grouptype, &junk);
+				if (!single) {
+					radlog(L_ERR|L_CONS,
+					       "%s[%d] Failed to parse \"%s\" entry.\n",
+					       filename, lineno, attr);
+					modcallable_free(&c);
+					return NULL;
+				}
 				add_child(g, single);
 			} else {
 				/* ...or an action to be applied to this
@@ -1009,16 +1086,18 @@ modcallable *compile_modgroup(int component, CONF_SECTION *cs,
 		const char *filename)
 {
 	modcallable *ret = do_compile_modgroup(component, cs, filename,
-			GROUPTYPE_SIMPLEGROUP,
-			GROUPTYPE_SIMPLEGROUP);
+					       GROUPTYPE_SIMPLEGROUP,
+					       GROUPTYPE_SIMPLEGROUP);
 	dump_tree(component, ret);
 	return ret;
 }
 
 void add_to_modcallable(modcallable **parent, modcallable *this,
-		int component, char *name)
+			int component, char *name)
 {
 	modgroup *g;
+	
+	rad_assert(this != NULL);
 
 	if (*parent == NULL) {
 		modcallable *c;
@@ -1027,8 +1106,8 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 		c = mod_grouptocallable(g);
 		c->next = NULL;
 		memcpy(c->actions,
-				defaultactions[component][GROUPTYPE_SIMPLEGROUP],
-				sizeof c->actions);
+		       defaultactions[component][GROUPTYPE_SIMPLEGROUP],
+		       sizeof c->actions);
 		rad_assert(name != NULL);
 		c->name = name;
 		c->type = MOD_GROUP;
@@ -1047,7 +1126,9 @@ void modcallable_free(modcallable **pc)
 	modcallable *c, *loop, *next;
 	c = *pc;
 	if(c->type==MOD_GROUP) {
-		for(loop=mod_callabletogroup(c)->children ; loop ; loop=next) {
+		for(loop = mod_callabletogroup(c)->children;
+		    loop ;
+		    loop = next) {
 			next = loop->next;
 			modcallable_free(&loop);
 		}

@@ -305,8 +305,8 @@ module_instance_t *find_module_instance(const char *instname)
 	 */
 	name1 = name2 = NULL;
 	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL);
-			inst_cs != NULL;
-			inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {
+	    inst_cs != NULL;
+	    inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {
 		name1 = cf_section_name1(inst_cs);
 		name2 = cf_section_name2(inst_cs);
 		if ( (name2 && !strcmp(name2, instname)) ||
@@ -326,20 +326,10 @@ module_instance_t *find_module_instance(const char *instname)
 	node->insthandle = NULL;
 
 	/*
-	 *	Link to the module by name: rlm_FOO-major.minor
+	 *	Names in the "modules" section aren't prefixed
+	 *	with "rlm_", so we add it here.
 	 */
-	if (strncmp(name1, "rlm_", 4)) {
-#if 0
-		snprintf(module_name, sizeof(module_name), "rlm_%s-%d.%d",
-			 name1, RADIUSD_MAJOR_VERSION, RADIUSD_MINOR_VERSION);
-#else
-		snprintf(module_name, sizeof(module_name), "rlm_%s",
-			 name1);
-#endif
-	} else {
-		strNcpy(module_name, name1, sizeof(module_name));
-
-	}
+	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
 	/*
 	 *  FIXME: "radiusd.conf" is wrong here; must find cf filename
@@ -470,8 +460,8 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 }
 
 /* Load a flat module list, as found inside an authtype{} block */
-static void load_subcomponent_section(CONF_SECTION *cs, int comp,
-				      const char *filename)
+static int load_subcomponent_section(CONF_SECTION *cs, int comp,
+				     const char *filename)
 {
 	int idx;
 	indexed_modcallable *subcomp;
@@ -481,6 +471,9 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp,
 	static int meaningless_counter = 1;
 
 	ml = compile_modgroup(comp, cs, filename);
+	if (!ml) {
+		return 0;
+	}	
 
 	/* We must assign a numeric index to this subcomponent. For
 	 * auth, it is generated and placed in the dictionary by
@@ -511,14 +504,15 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp,
 	subcomp = new_sublist(comp, idx);
 	if (!subcomp) {
 		radlog(L_ERR|L_CONS,
-				"%s[%d] %s %s already configured - skipping",
-				filename, cf_section_lineno(cs),
-				subcomponent_names[comp], cf_section_name2(cs));
+		       "%s[%d] %s %s already configured - skipping",
+		       filename, cf_section_lineno(cs),
+		       subcomponent_names[comp], cf_section_name2(cs));
 		modcallable_free(&ml);
-		return;
+		return 1;
 	}
 
 	subcomp->modulelist = ml;
+	return 1;		/* OK */
 }
 
 static int load_component_section(CONF_SECTION *cs, int comp,
@@ -543,7 +537,10 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 			sec_name = cf_section_name1(scs);
 			if (strcmp(sec_name,
 				   subcomponent_names[comp]) == 0) {
-				load_subcomponent_section(scs, comp, filename);
+				if (!load_subcomponent_section(scs, comp,
+							       filename)) {
+					return 0; /* FIXME: memleak? */
+				}
 				continue;
 			}
 
@@ -552,7 +549,10 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 			 */
 			if (strcmp(sec_name,
 				   old_subcomponent_names[comp]) == 0) {
-				load_subcomponent_section(scs, comp, filename);
+				if (!load_subcomponent_section(scs, comp,
+							       filename)) {
+					return 0; /* FIXME: memleak? */
+				}
 				continue;
 			}
 		} else {
@@ -566,6 +566,13 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 		 *	and return the failure code up the stack.
 		 */
 		this = compile_modsingle(comp, modref, filename, &modname);
+		if (!this) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d] Failed to parse %s section.\n",
+			       filename, cf_section_lineno(cs),
+			       cf_section_name1(cs));
+			return -1;
+		}
 
 		if (comp == RLM_COMPONENT_AUTH) {
 			DICT_VALUE *dval;
@@ -604,7 +611,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 		if (visiblename == NULL)
 			visiblename = cf_section_name1(cs);
 		add_to_modcallable(&subcomp->modulelist, this,
-				comp, visiblename);
+				   comp, visiblename);
 	}
 
 	return 0;
@@ -829,12 +836,12 @@ int setup_modules(void)
 		     ci != NULL;
 		     ci=cf_item_find_next(cs, ci)) {
 
+			/*
+			 *	Skip sections.  They'll be handled
+			 *	later, if they're referenced at all...
+			 */
 			if (cf_item_is_section(ci)) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] Subsection for module instantiate is not allowed\n", filename,
-
-				       cf_section_lineno(cf_itemtosection(ci)));
-				exit(1);
+				continue;
 			}
 
 			cp = cf_itemtopair(ci);
