@@ -1,4 +1,6 @@
-FreeRADIUS 1.0.0 ; $Date$, urgency=low
+FreeRADIUS 1.1.0 ; $Date $, urgency=low
+
+FreeRADIUS 1.0.0 ; Date: 2004/05/28 12:43:16, urgency=low
 
 	* Many, many minor bug fixes and feature enhancements.
 	* Fix a bug in the attr_filter module, which would throw away
