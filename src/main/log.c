@@ -114,7 +114,6 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	const char *s = ": ";
 	unsigned char *p;
 	char buffer[8192];
-	time_t timeval;
 	int len;
 
 	/*
@@ -148,11 +147,15 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 		}
 	}
 
-	timeval = time(NULL);
 #if HAVE_SYSLOG_H
-	if (radlog_dest == RADLOG_SYSLOG)
+	if (radlog_dest == RADLOG_SYSLOG) {
 		*buffer = '\0';
-	else {
+		len = 0;
+	} else
+#endif
+	{
+		time_t timeval;
+		timeval = time(NULL);
 		ctime_r(&timeval, buffer);
 
 		switch(lvl & ~L_CONS) {
@@ -173,9 +176,8 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 				break;
 		}
 		strcat(buffer, s);
+		len = strlen(buffer);
 	}
-#endif
-	len = strlen(buffer);
 
 #ifdef HAVE_VSNPRINTF
 	vsnprintf(buffer + len, sizeof(buffer) - len -1, fmt, ap);
@@ -196,21 +198,21 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 			*p = '?';
 	}
 	strcat(buffer, "\n");
-
-	if ((lvl & L_CONS) || radlog_dir == NULL || debug_flag) {
-		if (!debug_flag) 
-			fprintf(stdout, "%s: ", progname);
-		fprintf(stdout, "%s", buffer+len);
+	
+	/*
+	 *  Small debug levels: no timestamp
+	 */
+	if ((debug_flag == 1) || (debug_flag == 2)) {
+		p = buffer + len;
+	} else {
+		p = buffer;
 	}
 
-	if (radlog_dir == NULL || debug_flag) 
-		return 0;
-
-
 #if HAVE_SYSLOG_H
-	if (radlog_dest != RADLOG_SYSLOG) {
-		fputs(buffer, msgfd);
+	if (radlog_dest != RADLOG_SYSLOG)
 #endif
+	{
+		fputs(p, msgfd);
 		if (msgfd == stdout) {
 			fflush(stdout);
 		} else if (msgfd == stderr) {
@@ -218,9 +220,9 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 		} else {
 			fclose(msgfd);
 		}
-
+	}
 #if HAVE_SYSLOG_H
-	} else {
+	else {			/* it was syslog */
 		switch(lvl & ~L_CONS) {
 			case L_DBG:
 				lvl = LOG_DEBUG;
@@ -238,7 +240,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 				lvl = LOG_ERR;
 				break;
 		}
-		syslog(lvl, "%s", buffer);
+		syslog(lvl, "%s", buffer + len); /* don't print timestamp */
 	}
 #endif
 
@@ -268,4 +270,3 @@ int radlog(int lvl, const char *msg, ...)
 
 	return r;
 }
-
