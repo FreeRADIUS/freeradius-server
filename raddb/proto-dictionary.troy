@@ -1,0 +1,488 @@
+#
+# Prototype Dictionary - Not checked for accuracy yet.
+#
+
+
+#
+# Default, RFC compliant attributes and values.
+#
+
+VENDOR rfc {
+	ATTRIBUTE User-Name {
+		Attribute-Id	1
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Password {
+		Attribute-Id	2
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE CHAP-Password {
+		Attribute-Id	3
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE NAS-IP-Address {
+		Attribute-Id	4
+		Attribute-Type	ipaddr
+	}
+
+	ATTRIBUTE NAS-Port-Id {
+		Attribute-Id	5
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Service-Type {
+		Attribute-Id	6
+		Attribute-Type	integer
+		VALUES {
+			Login-User		1
+			Framed-User		2
+			Callback-Login-User	3
+			Callback-Framed-User	4
+			Outbound-User		5
+			Administrative-User	6
+			NAS-Prompt-User		7
+			Call-Check		10
+		}
+	}
+
+	ATTRIBUTE Framed-Protocol {
+		Attribute-Id	7
+		Attribute-Type	integer
+		VALUES {
+			PPP	1
+			SLIP	2
+		}
+	}
+
+	ATTRIBUTE Framed-IP-Address {
+		Attribute-Id	8
+		Attribute-Type	ipaddr
+	}
+
+	ATTRIBUTE Framed-IP-Netmask {
+		Attribute-Id	9
+		Attribute-Type	ipaddr
+	}
+
+	ATTRIBUTE Framed-Routing {
+		Attribute-Id	10
+		Attribute-Type	integer
+		VALUES {
+			None			0
+			Broadcast		1
+			Listen			2
+			Broadcast-Listen	3
+		}
+	}
+
+	ATTRIBUTE Filter-Id {
+		Attribute-Id	11
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Framed-MTU {
+		Attribute-Id	12
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Framed-Compression {
+		Attribute-Id	13
+		Attribute-Type	integer
+		VALUES {
+			None			0
+			Van-Jacobson-TCP-IP	1
+		}
+	}
+
+	ATTRIBUTE Login-IP-Host {
+		Attribute-Id	14
+		Attribute-Type	ipaddr
+	}
+
+	ATTRIBUTE Login-Service {
+		Attribute-Id	15
+		Attribute-Type	integer
+		VALUES
+			Telnet		0
+			Rlogin		1
+			TCP-Clear	2
+			PortMaster	3
+		}
+	}
+
+	ATTRIBUTE Login-TCP-Port {
+		Attribute-Id	16
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Reply-Message {
+		Attribute-Id	18
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Callback-Number {
+		Attribute-Id	19
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Callback-Id {
+		Attribute-Id	20
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Framed-Route {
+		Attribute-Id	22
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Framed-IPX-Network {
+		Attribute-Id	23
+		Attribute-Type	ipaddr
+	}
+
+	ATTRIBUTE State {
+		Attribute-Id	24
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Class {
+		Attribute-Id	25
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Vendor-Specific {
+		Attribute-Id	26
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Session-Timeout {
+		Attribute-Id	27
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Idle-Timeout {
+		Attribute-Id	28
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Termination-Action {
+		Attribute-Id	29
+		Attribute-Type	integer
+		VALUES {
+			Default		0
+			RADIUS-Request	1
+		}
+	}
+
+	ATTRIBUTE Called-Station-Id {
+		Attribute-Id	30
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Calling-Station-Id {
+		Attribute-Id	31
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE NAS-Identifier {
+		Attribute-Id	32
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Proxy-State {
+		Attribute-Id	33
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Login-LAT-Service {
+		Attribute-Id	34
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Login-LAT-Node {
+		Attribute-Id	35
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Login-LAT-Group {
+		Attribute-Id	36
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Framed-AppleTalk-Link {
+		Attribute-Id	37
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Framed-AppleTalk-Network {
+		Attribute-Id	38
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Framed-AppleTalk-Zone {
+		Attribute-Id	39
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Acct-Status-Type {
+		Attribute-Id	40
+		Attribute-Type	integer
+		VALUES{
+			Start		1
+			Stop		2
+			Alive		3
+			Accounting-On	7
+			Accounting-Off	8
+		}
+	}
+
+	ATTRIBUTE Acct-Delay-Time {
+		Attribute-Id	41
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Acct-Input-Octets {
+		Attribute-Id	42
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Acct-Output-Octets {
+		Attribute-Id	43
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Acct-Session-Id {
+		Attribute-Id	44
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Acct-Authentic {
+		Attribute-Id	45
+		Attribute-Type	integer
+		VALUES {
+			RADIUS		1
+			Local		2
+		}
+	}
+
+	ATTRIBUTE Acct-Session-Time {
+		Attribute-Id	46
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Acct-Input-Packets {
+		Attribute-Id	47
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Acct-Output-Packets {
+		Attribute-Id	48
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Acct-Terminate-Cause {
+		Attribute-Id	49
+		Attribute-Type	integer
+		VALUES {
+			User-Request		1
+			Lost-Carrier		2
+			Lost-Service		3
+			Idle-Timeout		4
+			Session-Timeout		5
+			Admin-Reset		6
+			Admin-Reboot		7
+			Port-Error		8
+			NAS-Error		9
+			NAS-Request		10
+			NAS-Reboot		11
+			Port-Unneeded		12
+			Port-Preempted		13
+			Port-Suspended		14
+			Service-Unavailable	15
+			Callback		16
+			User-Error		17
+			Host-Request		18
+		}
+	}
+
+	ATTRIBUTE Acct-Multi-Session-Id {
+		Attribute-Id	50
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Acct-Link-Count {
+		Attribute-Id	51
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE CHAP-Challenge {
+		Attribute-Id	60
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE NAS-Port-Type {
+		Attribute-Id	61
+		Attribute-Type	integer
+		VALUES {
+			Async		0
+			Sync		1
+			ISDN		2
+			ISDN-V120	3
+			ISDN-V110	4
+		}
+	}
+
+	ATTRIBUTE Port-Limit {
+		Attribute-Id	62
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Login-LAT-Port {
+		Attribute-Id	63
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Connect-Info {
+		Attribute-Id	77
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Huntgroup-Name {
+		Attribute-Id	221
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE User-Category {
+		Attribute-Id	1029
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Group-Name {
+		Attribute-Id	1030
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Simultaneous-Use {
+		Attribute-Id	1034
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Strip-User-Name {
+		Attribute-Id	1035
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Fall-Through {
+		Attribute-Id	1036
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Add-Port-To-IP-Address {
+		Attribute-Id	1037
+		Attribute-Type	integer
+	}
+
+	ATTRIBUTE Exec-Program {
+		Attribute-Id	1038
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Exec-Program-Wait {
+		Attribute-Id	1039
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Hint {
+		Attribute-Id	1040
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Pam-Auth {
+		Attribute-Id	1041
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Login-Time {
+		Attribute-Id	1042
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Expiration {
+		Attribute-Id	21
+		Attribute-Type	date
+	}
+
+	ATTRIBUTE Auth-Type {
+		Attribute-Id	1000
+		Attribute-Type	integer
+		VALUES {
+			Local		0
+			System		1
+			SecurID		2
+			Crypt-Local	3
+			Reject		4
+			ActivCard	4
+			Pam		253
+			Accept		254
+		}
+	}
+
+	ATTRIBUTE Menu {
+		Attribute-Id	1001
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Termination-Menu {
+		Attribute-Id	1002
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Prefix {
+		Attribute-Id	1003
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Suffix {
+		Attribute-Id	1004
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Group {
+		Attribute-Id	1005
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Crypt-Password {
+		Attribute-Id	1006
+		Attribute-Type	string
+	}
+
+	ATTRIBUTE Connect-Rate {
+		Attribute-Id	1007
+		Attribute-Type	integer
+	}
+}
+
+#
+# Vendor specific dictionary values.
+#
+# If there are already values for a particular
+# attribute, the VSA values will be appended to it.
+#
+
+VENDOR cistron
+	ATTRIBUTE Auth-Type {
+		Attribute-Id	1000
+		Attribute-Type	integer
+		VALUES {
+			rlm_foo		252
+			Pam		253
+			Accept		254
+		}
+	}
+}
+
+

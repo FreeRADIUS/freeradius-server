@@ -1,0 +1,129 @@
+
+NAS max1.NY {
+	NAS-Type	Ascend
+	NAS-Host-Name	max1.isp.com
+	NAS-IP-Address	192.168.1.10
+	NAS-Key		testing123
+	NAS-Huntgroup	POP1
+}
+
+REALM myisp.net {
+	Auth-Servers {
+		LOCAL
+	}
+	Acct-Servers {
+		LOCAL
+	}
+}
+	
+
+REALM otherisp.net {
+	Auth-Timeout	30
+	Auth-Retry	5
+	Auth-Servers {
+		10.20.30.41:1642
+		10.20.30.42:1642
+	}
+	Acct-Timeout	30
+	Acct-Retry	5
+	Acct-Servers {
+		10.20.30.43:1643
+		10.20.30.44:1643
+	}
+	Key		testing123
+	Max-Users	100
+}
+
+
+Authentication {
+	Module rlm_pam.so
+	Module rlm_unix.so
+	Module rlm_sqlauth.so {
+		SQL-Type	MySQL
+		SQL-Address	localhost
+		SQL-User	radius
+		SQL-Passwd	testing
+		SQL-Database	radius
+		SQL-Table	passwd
+	}
+}
+
+Authorization {
+	Module rlm_preprocess.so
+	Module rlm_files.so
+}
+
+Accounting {
+	Module rlm_preprocess.so
+	Module rlm_files.so
+	Module rlm_unix.so
+	Module rlm_sqlutmp.so {
+		SQL-Type	MySQL
+		SQL-Address	localhost
+		SQL-User	radius
+		SQL-Passwd	testing
+		SQL-Database	radius
+		SQL-Table	utmp
+	}
+	Module rlm_sqlacct.so {
+		SQL-Type	MySQL
+		SQL-Address	localhost
+		SQL-User	radius
+		SQL-Passwd	testing
+		SQL-Database	radius
+		SQL-Table	detail
+		SQL-Attribute-Map {
+			Acct-Session-Id		sesson_id
+			User-Name		user_name
+			...
+		}
+	}
+}
+
+
+GROUP static {
+	Check-Items {
+		Auth-Type System
+		NAS-Huntgroup = POP1
+	}
+	Reply-Items {
+		Framed-Routing None
+		Framed-Netmask 255.255.255.255
+		Ascend-Maximum-Channels 1
+	}
+}
+
+GROUP 2channel {
+	Check-Items {
+		Auth-Type System
+	}
+	Reply-Items {
+		Ascend-Maximum-Channels 2
+	}
+}
+
+# 
+# if the user is dialed to the appropriate POP, let's assign them a static IP
+# 
+USER testuser {
+	Group = static;
+	Reply-Items {
+		Framed-Address = 10.100.200.1
+	}
+}
+
+# Assign and route a subnet to a user
+USER foo {
+	Group = static;
+	Reply-Items {
+		Framed-Address	10.200.300.1
+		Framed-Netmask	255.255.255.0
+		Framed-Route	10.200.300.0/24 10.200.300.1 1
+	}
+}
+
+
+USER DEFAULT {
+	...
+}
+
