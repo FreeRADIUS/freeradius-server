@@ -259,6 +259,7 @@ ATTRIBUTE	Pre-Acct-Type		1017	integer
 #	by the EAP module, for informational purposed only.
 #
 ATTRIBUTE	EAP-Type		1018	integer
+ATTRIBUTE	EAP-TLS-Require-Client-Cert	1019	integer
 
 #
 #	Integer Translations
@@ -575,3 +576,10 @@ VALUE		EAP-Type	SecuriSuite-EAP		39
 VALUE		EAP-Type	DeviceConnect-EAP	40
 VALUE		EAP-Type	EAP-SPEKE		41
 VALUE		EAP-Type	EAP-MOBAC		42
+
+#
+#	This says TLS, but it's only valid for TTLS & PEAP.
+#	EAP-TLS *always* requires a client certificate.
+#
+VALUE	EAP-TLS-Require-Client-Cert No	0
+VALUE	EAP-TLS-Require-Client-Cert Yes	1
