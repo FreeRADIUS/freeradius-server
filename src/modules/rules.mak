@@ -143,8 +143,11 @@ distclean: clean
 	@test -f Makefile.in && rm -f Makefile
 
 reconfig:
-	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -l $(RLM_DIR)../../..
-	@[ "x$(AUTOHEADER)" != "x" ] && [ -f ./config.h.in ] && $(AUTOHEADER)
+	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -I $(RLM_DIR)../../..
+	@[ "x$(AUTOHEADER)" != "x" ] && [ -f ./configure.in ] && \
+	if grep AC_CONFIG_HEADERS configure.in >/dev/null; then\
+		$(AUTOHEADER);\
+	fi
 
 #
 #  Do any module-specific installation.
