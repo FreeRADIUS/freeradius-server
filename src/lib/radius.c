@@ -507,13 +507,21 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	Both AUTH_VECTOR_LEN and the MD5 output are 16 octets
 	 *	long, so we copy the user's vector to the end of our
 	 *	pool, and make the pool out of the hash of the two.
+	 *
+	 *	However, doing this for *every* packet can be time
+	 *	consuming.  Instead, we do it (on average) once every
+	 *	32 packets, and do less work the rest of the time.
 	 */
-	memcpy((char *) random_vector_pool + AUTH_VECTOR_LEN,
-	       (char *) packet->vector, AUTH_VECTOR_LEN);
-	librad_md5_calc((char *) random_vector_pool,
-			(char *) random_vector_pool,
-			sizeof(random_vector_pool));
-
+	if ((random_vector_pool[0] & 0x1f) == 0x00) {
+	  memcpy((char *) random_vector_pool + AUTH_VECTOR_LEN,
+		 (char *) packet->vector, AUTH_VECTOR_LEN);
+	  librad_md5_calc((char *) random_vector_pool,
+			  (char *) random_vector_pool,
+			  sizeof(random_vector_pool));
+	} else {
+	  random_vector_pool[random_vector_pool[1] & 0x1f] ^= 
+	    packet->vector[random_vector_pool[2] & 0x0f];
+	}
 	return packet;
 }
 
