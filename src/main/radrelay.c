@@ -83,7 +83,9 @@ struct main_config_t mainconfig;
 #define		STATE_WAIT	2
 #define		STATE_SHUTDOWN	3
 
-#define		NR_SLOTS	64
+#define		NR_SLOTS		64
+#define		DEFAULT_SLEEP		50
+#define		DEFAULT_SLEEP_EVERY	1
 
 /*
  *	A relay request.
@@ -105,6 +107,8 @@ struct relay_misc {
 	char		detail[1024];			/* Detail file */
 	char 		*secret;			/* Secret */
 	char		f_secret[256];			/* File secret */
+	int		sleep_time;			/* Time to sleep between sending packets */
+	int		sleep_every;			/* Sleep every so many packets */
 };
 
 /*
@@ -167,7 +171,7 @@ void sigterm_handler(int sig)
 /*
  *	Sleep a number of milli seconds
  */
-void ms_sleep(int msec)
+inline void ms_sleep(int msec)
 {
 	struct timeval tv;
 
@@ -179,7 +183,7 @@ void ms_sleep(int msec)
 /*
  *	Does this (remotely) look like "Tue Jan 23 06:55:48 2001" ?
  */
-int isdateline(char *d)
+inline int isdateline(char *d)
 {
 	int y;
 
@@ -681,7 +685,8 @@ void loop(struct relay_misc *r_args)
 		for (i = 0; i < NR_SLOTS; i++) {
 			if (slots[i].state == STATE_FULL) {
 				n += do_send(&slots[i], r_args->secret);
-				ms_sleep(140);
+				if ((n % r_args->sleep_every) == 0)
+					ms_sleep(r_args->sleep_time);
 				if (n > NR_SLOTS / 2)
 					break;
 			}
@@ -742,7 +747,8 @@ int find_shortname(char *shortname, char **host, char **secret)
 void usage(void)
 {
 	fprintf(stderr, "Usage: radrelay [-a accounting_dir] [-d radius_dir] [-i local_ip] [-s secret]\n");
-	fprintf(stderr, "[-S secret_file] [-fx] <[-n shortname] [-r remote-server[:port]]> detailfile\n");
+	fprintf(stderr, "[-e sleep_every packets] [-t sleep_time (ms)] [-S secret_file] [-fx]\n");
+	fprintf(stderr, " <[-n shortname] [-r remote-server[:port]]> detailfile\n");
 	fprintf(stderr, " -a accounting_dir     Base accounting directory.\n");
 	fprintf(stderr, " -d radius_dir         Base radius (raddb) directory.\n");
 	fprintf(stderr, " -f                    Stay in the foreground (don't fork).\n");
@@ -750,6 +756,10 @@ void usage(void)
 	fprintf(stderr, " -i local_ip           Use local_ip as source address.\n");
 	fprintf(stderr, " -n shortname          Use the [shortname] entry from clients.conf for\n");
 	fprintf(stderr, "                       ip-adress and secret.\n");
+	fprintf(stderr, " -t sleep_time		Sleep so much time (in ms) between sending packets. Default: %dms.\n",
+						DEFAULT_SLEEP);
+	fprintf(stderr, " -e sleep_every	Sleep after sending so many packets. Default: %d\n",
+						DEFAULT_SLEEP_EVERY); 
 	fprintf(stderr, " -r remote-server      The destination address/hostname.\n");
 	fprintf(stderr, " -s secret             Server secret.\n");
 	fprintf(stderr, " -S secret_file        Read server secret from file.\n");
@@ -779,6 +789,8 @@ int main(int argc, char **argv)
 	memset((char *) r_args.detail, 0, 1024);
 	memset((char *) r_args.f_secret, 0, 256);
 	r_args.secret = NULL;
+	r_args.sleep_time = DEFAULT_SLEEP;
+	r_args.sleep_every = DEFAULT_SLEEP_EVERY;
 
 	shortname = NULL;
 	server_name = NULL;
@@ -796,7 +808,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while ((c = getopt(argc, argv, "a:d:fhi:n:r:s:S:x")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "a:d:fhi:t:e:n:r:s:S:x")) != EOF) switch(c) {
 		case 'a':
 			if (strlen(optarg) > 1021) {
 				fprintf(stderr, "%s: acct_dir to long\n", progname);
@@ -814,6 +826,12 @@ int main(int argc, char **argv)
 			break;
 		case 'n':
 			shortname = optarg;
+			break;
+		case 't':
+			r_args.sleep_time = atoi(optarg);
+			break;
+		case 'e':
+			r_args.sleep_every = atoi(optarg);
 			break;
 		case 'r':
 			server_name = optarg;
