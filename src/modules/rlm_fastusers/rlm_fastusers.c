@@ -452,7 +452,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 			/* Copy this users check pairs to the request */
 			check_tmp = paircopy(user->check);
 			pairmove(check_pairs, &check_tmp);
-			pairfree(check_tmp); 
+			pairfree(&check_tmp); 
 
 			/* Check the req to see if we matched */
 			if(rad_check_password(request)==0) {
@@ -461,7 +461,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 			/* We didn't match here */
 			} else {
 				/* Restore check items */
-				pairfree(request->config_items); 
+				pairfree(&request->config_items); 
 				request->config_items = paircopy(check_save);
 				check_pairs = &request->config_items;
 				user = user->next;
@@ -469,7 +469,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		}
 
 		/* Free our saved config items */
-		pairfree(check_save);
+		pairfree(&check_save);
 	}
 
 	/*
@@ -498,10 +498,10 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	if(found && inst->normal_defaults) {
 		check_tmp = paircopy(user->check);
 		pairmove(check_pairs, &check_tmp);
-		pairfree(check_tmp); 
+		pairfree(&check_tmp); 
 		reply_tmp = paircopy(user->reply);
 		pairmove(reply_pairs, &reply_tmp);
-		pairfree(reply_tmp);
+		pairfree(&reply_tmp);
 		return RLM_MODULE_UPDATED;
 	}
 
@@ -531,10 +531,10 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		if(found) {
 			check_tmp = paircopy(user->check);
 			pairmove(check_pairs, &check_tmp);
-			pairfree(check_tmp); 
+			pairfree(&check_tmp); 
 			reply_tmp = paircopy(user->reply);
 			pairmove(reply_pairs, &reply_tmp);
-			pairfree(reply_tmp);
+			pairfree(&reply_tmp);
 			return RLM_MODULE_UPDATED;
 
 		} else {
@@ -553,11 +553,11 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		if(!mainconfig.do_usercollide) {
 			check_tmp = paircopy(user->check);
 			pairmove(check_pairs, &check_tmp);
-			pairfree(check_tmp); 
+			pairfree(&check_tmp); 
 		}
 		reply_tmp = paircopy(user->reply);
 		pairmove(reply_pairs, &reply_tmp);
-		pairfree(reply_tmp);
+		pairfree(&reply_tmp);
 
 		/* 
 		 * We also need to add the pairs from 
@@ -570,8 +570,8 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 			reply_tmp = paircopy(inst->default_entry->reply);
 			pairmove(reply_pairs, &reply_tmp);
 			pairmove(check_pairs, &check_tmp);
-			pairfree(reply_tmp);
-			pairfree(check_tmp); 
+			pairfree(&reply_tmp);
+			pairfree(&check_tmp); 
 		}
 
 		return RLM_MODULE_UPDATED;

@@ -280,8 +280,8 @@ rlm_sql_authorize(void *instance, REQUEST * request)
 
 	pairmove(&request->reply->vps, &reply_tmp);
 	pairmove(&request->config_items, &check_tmp);
-	pairfree(reply_tmp);
-	pairfree(check_tmp);
+	pairfree(&reply_tmp);
+	pairfree(&check_tmp);
 
 	return RLM_MODULE_OK;
 }

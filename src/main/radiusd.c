@@ -1258,7 +1258,7 @@ static void rfc_clean(RADIUS_PACKET *packet)
 		 */
 	case PW_AUTHENTICATION_REJECT:
 		pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
-		pairfree(packet->vps);
+		pairfree(&packet->vps);
 		packet->vps = vps;
 		break;
 	}
@@ -1409,8 +1409,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if ((fun == rad_authenticate) &&
 	    (request->reply->code == PW_AUTHENTICATION_REJECT) &&
 	    (reprocess))  {
-		pairfree(request->config_items);
-		request->config_items = NULL;
+		pairfree(&request->config_items);
 		(*fun)(request);
 	}
 	
@@ -1496,18 +1495,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		goto postpone_request;
 
 	if (request->packet && request->packet->vps) {
-		pairfree(request->packet->vps);
-		request->packet->vps = NULL;
+		pairfree(&request->packet->vps);
 		request->username = NULL;
 		request->password = NULL;
 	}
 	if (request->reply && request->reply->vps) {
-		pairfree(request->reply->vps);
-		request->reply->vps = NULL;
+		pairfree(&request->reply->vps);
 	}
 	if (request->config_items) {
-		pairfree(request->config_items);
-		request->config_items = NULL;
+		pairfree(&request->config_items);
 	}
 
 	DEBUG2("Finished request");

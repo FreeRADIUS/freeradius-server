@@ -310,7 +310,7 @@ static int file_authorize(void *instance, REQUEST *request)
 				/* Copy this users check pairs to the request */
 				check_tmp = paircopy(pl->check);
 				pairmove(check_pairs, &check_tmp);
-				pairfree(check_tmp);
+				pairfree(&check_tmp);
 	
 				DEBUG2("  users: Checking %s at %d", pl->name, pl->lineno);
 				/* Check the req to see if we matched */
@@ -320,7 +320,7 @@ static int file_authorize(void *instance, REQUEST *request)
 					found = 1;
 
 					/* Free our saved config items */
-					pairfree(check_save);
+					pairfree(&check_save);
 
 					/* 
 					 * Already copied check items, so 
@@ -328,12 +328,12 @@ static int file_authorize(void *instance, REQUEST *request)
 					 */
 					reply_tmp = paircopy(pl->reply);
 					pairmove(reply_pairs, &reply_tmp);
-					pairfree(reply_tmp);
+					pairfree(&reply_tmp);
 
 				/* We didn't match here */
 				} else {
 					/* Restore check items */
-					pairfree(request->config_items);
+					pairfree(&request->config_items);
 					request->config_items = paircopy(check_save);
 					check_pairs = &request->config_items;
 					continue;
@@ -348,8 +348,8 @@ static int file_authorize(void *instance, REQUEST *request)
 				reply_tmp = paircopy(pl->reply);
 				pairmove(reply_pairs, &reply_tmp);
 				pairmove(check_pairs, &check_tmp);
-				pairfree(reply_tmp);
-				pairfree(check_tmp); /* should be NULL */
+				pairfree(&reply_tmp);
+				pairfree(&check_tmp); /* should be NULL */
 			}
 			/*
 			 *	Fallthrough?
@@ -415,8 +415,8 @@ static int file_preacct(void *instance, REQUEST *request)
 			reply_tmp = paircopy(pl->reply);
 			pairmove(&reply_pairs, &reply_tmp);
 			pairmove(config_pairs, &check_tmp);
-			pairfree(reply_tmp);
-			pairfree(check_tmp); /* should be NULL */
+			pairfree(&reply_tmp);
+			pairfree(&check_tmp); /* should be NULL */
 			/*
 			 *	Fallthrough?
 			 */
@@ -435,7 +435,7 @@ static int file_preacct(void *instance, REQUEST *request)
 	 *	FIXME: log a warning if there are any reply items other than
 	 *	Fallthrough
 	 */
-	pairfree(reply_pairs); /* Don't need these */
+	pairfree(&reply_pairs); /* Don't need these */
 
 	return RLM_MODULE_OK;
 }

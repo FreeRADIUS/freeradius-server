@@ -681,7 +681,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			 *	FIXME: should we us paircreate() ?
 			 */
 			if ((pair = malloc(sizeof(VALUE_PAIR))) == NULL) {
-				pairfree(first_pair);
+				pairfree(&first_pair);
 				librad_log("out of memory");
 				errno = ENOMEM;
 				return -1;
@@ -1045,10 +1045,13 @@ RADIUS_PACKET *rad_alloc(int newvector)
  */
 void rad_free(RADIUS_PACKET **radius_packet_ptr)
 {
-	RADIUS_PACKET *radius_packet = *radius_packet_ptr;
+	RADIUS_PACKET *radius_packet;
+
+	if (!radius_packet_ptr) return;
+	radius_packet = *radius_packet_ptr;
 
 	if (radius_packet->data) free(radius_packet->data);
-	if (radius_packet->vps) pairfree(radius_packet->vps);
+	if (radius_packet->vps) pairfree(&radius_packet->vps);
 
 	free(radius_packet);
 

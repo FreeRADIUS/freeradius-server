@@ -35,7 +35,7 @@ int session_zap(uint32_t nasaddr, int port, const char *user,
 #define PAIR(n,v,t,e) do { \
     if(!(vp=paircreate(n, t))) { \
       radlog(L_ERR|L_CONS, "no memory"); \
-      pairfree(stoppkt.vps); \
+      pairfree(&stoppkt.vps); \
       return 0; \
     } \
     vp->e=v; \
@@ -46,7 +46,7 @@ int session_zap(uint32_t nasaddr, int port, const char *user,
 #define STRINGPAIR(n,v) do { \
     if(!(vp=paircreate(n, PW_TYPE_STRING))) { \
       radlog(L_ERR|L_CONS, "no memory"); \
-      pairfree(stoppkt.vps); \
+      pairfree(&stoppkt.vps); \
       return 0; \
     } \
     strNcpy((char *)vp->strvalue, v, sizeof vp->strvalue); \
@@ -98,7 +98,7 @@ int session_zap(uint32_t nasaddr, int port, const char *user,
   else
     ret=0;
 
-  pairfree(stoppkt.vps);
+  pairfree(&stoppkt.vps);
   return ret;
 }
 

@@ -66,17 +66,22 @@ VALUE_PAIR *paircreate(int attr, int type)
 
 /*
  *	Release the memory used by a list of attribute-value
- *	pairs.
+ *	pairs, and sets the pair pointer to NULL.
  */
-void pairfree(VALUE_PAIR *pair)
+void pairfree(VALUE_PAIR **pair_ptr)
 {
-	VALUE_PAIR	*next;
+	VALUE_PAIR	*next, *pair;
 
-	while(pair != NULL) {
+	if (!pair_ptr) return;
+	pair = *pair_ptr;
+
+	while (pair != NULL) {
 		next = pair->next;
 		free(pair);
 		pair = next;
 	}
+
+	*pair_ptr = NULL;
 }
 
 

@@ -179,7 +179,7 @@ int		calc_acctdigest(RADIUS_PACKET *packet, const char *secret,
 
 /* valuepair.c */
 VALUE_PAIR	*paircreate(int attr, int type);
-void		pairfree(VALUE_PAIR *);
+void		pairfree(VALUE_PAIR **);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, int);
 void		pairdelete(VALUE_PAIR **, int);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
