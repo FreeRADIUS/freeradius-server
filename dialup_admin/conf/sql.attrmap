@@ -17,7 +17,7 @@ checkItem	Dialup-Access			none
 checkItem	Max-Daily-Session		Max-Daily-Session
 checkItem	Max-Weekly-Session		Max-Weekly-Session
 checkItem	Login-Time			Login-Time
-chechItem	Expiration			Expiration
+checkItem	Expiration			Expiration
 
 replyItem	Service-Type			Service-Type
 replyItem	Framed-Protocol			Framed-Protocol

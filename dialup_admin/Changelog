@@ -5,6 +5,7 @@ Ver 1.62:
 * Add a few comments in bin/clean_radacct
 * Add a new script bin/truncate_radacct which will delete all sessions from the radacct table which
   are older than a configurable number of days
+* Fix a typo in sql.attrmap. Fix by Evren Yurtesen <eyurtese@turkuamk.fi>
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
