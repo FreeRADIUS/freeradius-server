@@ -306,7 +306,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 				      proxy_buffer);
 			}
 		}
-		fprintf(outfp, "\tTimestamp = %ld\n", request->timestamp);
+		fprintf(outfp, "\tTimestamp = %ld\n",
+			(unsigned long) request->timestamp);
 
 		if (request->packet->verified == 2)
 			fputs("\tRequest-Authenticator = Verified\n", outfp);

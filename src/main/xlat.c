@@ -544,7 +544,8 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'l': /* request timestamp */
-				snprintf(tmpdt, sizeof(tmpdt), "%lu",request->timestamp);
+				snprintf(tmpdt, sizeof(tmpdt), "%lu",
+					 (unsigned long) request->timestamp);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				p++;
