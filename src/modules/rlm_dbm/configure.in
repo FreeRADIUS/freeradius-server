@@ -13,9 +13,15 @@ if test x$with_[]modname != xno; then
 	else
 		AC_SMART_CHECK_INCLUDE(gdbm/ndbm.h)
 		if test "x$ac_cv_header_gdbm_ndbm_h" = "xyes"; then
-        	  SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBM_NDBM_H"
-        	else
-		  fail="$fail ndbm.h or gdbm/ndbm.h"
+			SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBM_NDBM_H"
+		else
+			ac_cv_header_gdbm_ndbm_h="bad autoconf assumption"
+			AC_SMART_CHECK_INCLUDE(gdbm-ndbm.h)
+			if test "x$ac_cv_header_gdbm_ndbm_h" = "xyes"; then
+				SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBMNDBM_H"
+			else
+				fail="$fail (ndbm.h or gdbm/ndbm.h or gdbm-ndbm.h)"
+			fi
 		fi
 	fi
 
@@ -23,7 +29,7 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
 		AC_SMART_CHECK_LIB(gdbm, dbm_open)
 		if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
-			fail="$fail libndbm or libgdm	"
+			fail="$fail (libndbm or libgdm)"
 		fi
 	fi
 

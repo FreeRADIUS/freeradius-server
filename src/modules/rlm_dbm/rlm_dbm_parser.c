@@ -12,7 +12,6 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *
  *  Copyright 2001 Koulik Andrei, Sandy Service
  */
 
@@ -31,6 +30,10 @@ char sccsid[] =
 
 #ifdef HAVE_GDBM_NDBM_H
 #include <gdbm/ndbm.h>
+#endif
+
+#ifdef HAVE_GDBMNDBM_H
+#include <gdbm-ndbm.h>
 #endif
 
 #include <stdio.h>

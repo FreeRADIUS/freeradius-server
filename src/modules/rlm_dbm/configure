@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.4 
+# From configure.in Revision: 1.5 
 
 
 if test x$with_rlm_dbm != xno; then
@@ -1025,16 +1025,116 @@ rm -f conftest*
 fi
 
 		if test "x$ac_cv_header_gdbm_ndbm_h" = "xyes"; then
-        	  SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBM_NDBM_H"
-        	else
-		  fail="$fail ndbm.h or gdbm/ndbm.h"
+			SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBM_NDBM_H"
+		else
+			
+
+ac_safe=`echo "gdbm-ndbm.h" | sed 'y%./+-%__p_%'`
+echo $ac_n "checking for gdbm-ndbm.h""... $ac_c" 1>&6
+echo "configure:1035: checking for gdbm-ndbm.h" >&5
+
+smart_include=
+smart_include_dir=
+
+  old_CFLAGS="$CFLAGS"
+  cat > conftest.$ac_ext <<EOF
+#line 1042 "configure"
+#include "confdefs.h"
+#include <gdbm-ndbm.h>
+int main() {
+ int a = 1;
+; return 0; }
+EOF
+if { (eval echo configure:1049: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  smart_include=" "
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  rm -rf conftest*
+  smart_include=
+fi
+rm -f conftest*
+
+  if test "x$smart_include" = "x"; then
+    
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=gdbm-ndbm.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+
+
+    for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
+      CFLAGS="$old_CFLAGS -I$try"
+
+      cat > conftest.$ac_ext <<EOF
+#line 1093 "configure"
+#include "confdefs.h"
+#include <gdbm-ndbm.h>
+int main() {
+ int a = 1;
+; return 0; }
+EOF
+if { (eval echo configure:1100: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  smart_include="-I$try"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  rm -rf conftest*
+  smart_include=
+fi
+rm -f conftest*
+
+      if test "x$smart_include" != "x"; then
+        break;
+      fi
+    done
+    CFLAGS="$old_CFLAGS"
+  fi
+
+        if test "x$smart_include" != "x"; then
+    echo "$ac_t""yes" 1>&6
+    eval "ac_cv_header_$ac_safe=yes"
+    CFLAGS="$old_CFLAGS $smart_include"
+    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+  else
+    echo "$ac_t""no" 1>&6 
+fi
+
+			if test "x$ac_cv_header_gdbm_ndbm_h" = "xyes"; then
+				SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBMNDBM_H"
+			else
+				fail="$fail (ndbm.h or gdbm/ndbm.h or gdbm-ndbm.h)"
+			fi
 		fi
 	fi
 
 	
 
 echo $ac_n "checking for dbm_open in -lndbm""... $ac_c" 1>&6
-echo "configure:1038: checking for dbm_open in -lndbm" >&5
+echo "configure:1138: checking for dbm_open in -lndbm" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -1042,14 +1142,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lndbm"
   cat > conftest.$ac_ext <<EOF
-#line 1046 "configure"
+#line 1146 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1053: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1153: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lndbm"
 else
@@ -1118,14 +1218,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lndbm"
 
       cat > conftest.$ac_ext <<EOF
-#line 1122 "configure"
+#line 1222 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1129: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1229: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lndbm"
 else
@@ -1153,7 +1253,7 @@ fi
 		
 
 echo $ac_n "checking for dbm_open in -lgdbm""... $ac_c" 1>&6
-echo "configure:1157: checking for dbm_open in -lgdbm" >&5
+echo "configure:1257: checking for dbm_open in -lgdbm" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -1161,14 +1261,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lgdbm"
   cat > conftest.$ac_ext <<EOF
-#line 1165 "configure"
+#line 1265 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1172: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1272: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lgdbm"
 else
@@ -1237,14 +1337,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lgdbm"
 
       cat > conftest.$ac_ext <<EOF
-#line 1241 "configure"
+#line 1341 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1248: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1348: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lgdbm"
 else
@@ -1269,7 +1369,7 @@ rm -f conftest*
 fi
 
 		if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
-			fail="$fail libndbm or libgdm	"
+			fail="$fail (libndbm or libgdm)"
 		fi
 	fi
 

@@ -30,6 +30,10 @@
 #include <gdbm/ndbm.h>
 #endif
 
+#ifdef HAVE_GDBMNDBM_H
+#include <gdbm-ndbm.h>
+#endif
+
 #include <unistd.h>
 #include <ctype.h>
 
