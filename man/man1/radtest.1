@@ -5,7 +5,7 @@ radtest - send packets to a RADIUS server, show reply
 .B radtest
 .RB [ \-d
 .IR raddb_directory ]
-.I user password radius-server nas-port-id secret
+.I user password radius-server nas-port-number secret
 .RB [ ppphint ]
 .RB [ nasname ]
 .SH DESCRIPTION
@@ -30,8 +30,8 @@ Password of the user.
 Hostname or IP address of the radius server. Optionally, you may specify a
 port by appending :port
 
-.IP nas-port-id
-The value of the NAS-Port-Id attribute. Is an integer between 0 and 2^31,
+.IP nas-port-number
+The value of the NAS-Port attribute. Is an integer between 0 and 2^31,
 and it really doesn't matter what you put here. \fI10\fP will do fine.
 
 .IP secret
