@@ -578,6 +578,7 @@ int eap_compose(EAP_HANDLER *handler)
 		/* Should never enter here */
 		radlog(L_ERR, "rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
 		request->reply->code = PW_AUTHENTICATION_REJECT;
+		reply->code = PW_EAP_FAILURE;
 		rcode = RLM_MODULE_REJECT;
 		break;
 	}
