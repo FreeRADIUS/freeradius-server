@@ -99,7 +99,7 @@ int sql_init_socketpool(SQL_INST * inst) {
 		sqlsocket->id = i;
 		sqlsocket->state = sockunconnected;
 
-#if HAVE_PTHREAD_H
+#if HAVE_SEMAPHORE_H
 		/*
 		 *  FIXME! Check return codes!
 		 */
@@ -150,7 +150,7 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket) {
 
 	radlog(L_DBG, "rlm_sql: Closing sqlsocket %d", sqlsocket->id);
 	(inst->module->sql_close)(sqlsocket, inst->config);
-#if HAVE_PTHREAD_H
+#if HAVE_SEMAPHORE_H
 	sem_destroy(sqlsocket->semaphore);
 #endif
 	free(sqlsocket);
@@ -193,13 +193,13 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 			continue;
 		}
 
-#if HAVE_PTHREAD_H
+#if HAVE_SEMAPHORE_H
 		if (sem_trywait(cur->semaphore) == 0) {
 #else
 		if (cur->in_use == SQLSOCK_UNLOCKED) {
 #endif
 			(inst->used)++;
-#ifndef HAVE_PTHREAD_H
+#ifndef HAVE_SEMAPHORE_H
 			cur->in_use = SQLSOCK_LOCKED;
 #endif
 			radlog(L_DBG, "rlm_sql: Reserving sql socket id: %d", cur->id);
@@ -222,7 +222,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
 
 	(inst->used)--;
-#if HAVE_PTHREAD_H
+#if HAVE_SEMAPHORE_H
 	sem_post(sqlsocket->semaphore);
 #else
 	sqlsocket->in_use = SQLSOCK_UNLOCKED;

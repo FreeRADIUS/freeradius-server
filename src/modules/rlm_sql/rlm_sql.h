@@ -7,6 +7,9 @@
 ***************************************************************************/
 #if HAVE_PTHREAD_H
 #include        <pthread.h>
+#endif
+
+#if HAVE_SEMAPHORE_H
 #include        <semaphore.h>
 #endif
 
@@ -29,7 +32,7 @@ typedef char** SQL_ROW;
 
 typedef struct sql_socket {
 	int     id;
-#if HAVE_PTHREAD_H
+#if HAVE_SEMAPHORE_H
 	sem_t  *semaphore;
 #else
 	int     in_use;
