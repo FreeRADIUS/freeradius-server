@@ -51,7 +51,7 @@ char * ip_hostname(UINT4 ipaddr)
  *	Return an IP address in from a host
  *	name or address in dot notation.
  */
-UINT4 ip_getaddr(char *host)
+UINT4 ip_getaddr(const char *host)
 {
 	struct hostent	*hp;
 	UINT4		a;
@@ -87,7 +87,7 @@ char *ip_ntoa(char *buffer, UINT4 ipaddr)
  *	Return an IP address from
  *	one supplied in standard dot notation.
  */
-UINT4 ip_addr(char *ip_str)
+UINT4 ip_addr(const char *ip_str)
 {
 	struct in_addr	in;
 
@@ -100,7 +100,7 @@ UINT4 ip_addr(char *ip_str)
 /*
  *	Like strncpy, but always adds \0
  */
-char *strNcpy(char *dest, char *src, int n)
+char *strNcpy(char *dest, const char *src, int n)
 {
 	if (n > 0)
 		strncpy(dest, src, n);

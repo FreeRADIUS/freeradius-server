@@ -58,7 +58,7 @@ int rad_send(RADIUS_PACKET *packet, char *secret)
 	VALUE_PAIR		*reply;
 	struct	sockaddr	saremote;
 	struct	sockaddr_in	*sin;
-	char			*what;
+	const char		*what;
 	u_char			ip_buffer[16];
 
 	reply = packet->vps;

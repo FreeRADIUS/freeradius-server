@@ -89,10 +89,10 @@ typedef int (*COMPARE)(VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
  */
 extern char		*progname;
 extern int		debug_flag;
-extern char		*radacct_dir;
-extern char		*radlog_dir;
-extern char		*radius_dir;
-extern char		*radius_libdir;
+extern const char	*radacct_dir;
+extern const char	*radlog_dir;
+extern const char	*radius_dir;
+extern const char	*radius_libdir;
 extern UINT4		expiration_seconds;
 extern int		radius_pid;
 extern int		use_dbm;
@@ -139,7 +139,7 @@ CLIENT		*client_find(UINT4 ipno);
 char		*client_name(UINT4 ipno);
 int		read_clients_file(char *);
 REALM		*realm_find(char *);
-PAIR_LIST	*pairlist_read(char *file, int complain);
+PAIR_LIST	*pairlist_read(const char *file, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);
 
@@ -154,8 +154,8 @@ NAS		*nas_findbyname(char *nasname);
 void		version(void);
 
 /* log.c */
-int		log(int, char *, ...);
-int		log_debug(char *, ...);
+int		log(int, const char *, ...);
+int		log_debug(const char *, ...);
 
 /* pam.c */
 #ifdef WITH_PAM

@@ -160,7 +160,7 @@ VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr);
-VALUE_PAIR	*pairmake(char *attribute, char *value, int operator);
+VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(char **ptr, int *eol);
 int		userparse(char *buffer, VALUE_PAIR **first_pair);
 
@@ -179,10 +179,10 @@ extern int	librad_debug;
  *	Several handy miscellaneous functions.
  */
 char *		ip_hostname (UINT4);
-UINT4		ip_getaddr (char *);
+UINT4		ip_getaddr (const char *);
 char *		ip_ntoa(char *, UINT4);
-UINT4		ip_addr(char *);
-char		*strNcpy(char *dest, char *src, int n);
+UINT4		ip_addr(const char *);
+char		*strNcpy(char *dest, const char *src, int n);
 
 #ifdef ASCEND_BINARY
 /* filters.c */

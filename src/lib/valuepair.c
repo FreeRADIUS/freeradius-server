@@ -401,7 +401,7 @@ static time_t gettime(char *valstr)
 /*
  *	Create a VALUE_PAIR from an ASCII attribute and value.
  */
-VALUE_PAIR *pairmake(char *attribute, char *value, int operator)
+VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 {
 	DICT_ATTR	*da;
 	DICT_VALUE	*dval;

@@ -137,6 +137,8 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		  a = buf;
 		  print_abinary(vp, buf, sizeof(buf));
 		  break;
+#else
+		  /* FALL THROUGH */
 #endif
 		case PW_TYPE_OCTETS:
 		  strcpy(buf, "0x");
