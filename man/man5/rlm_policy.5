@@ -50,13 +50,16 @@ While the brackets are required, no arguments may be passed.
 .PP
 .SS "if" statements
 are supported.
+.PP
 if (condition) {
 .br
 	...
 .br
 }
 .DE
+.PP
 and "else"
+.PP
 if (condition) {
 .br
 	...
@@ -67,7 +70,9 @@ if (condition) {
 .br
 }
 .DE
+.PP
 also, "else if"
+.PP
 if (condition) {
 .br
 	...
@@ -81,14 +86,23 @@ if (condition) {
 .PP
 .SS Conditions within "if" statements
 Always have to have brackets around them.  Sorry.
-.BR (foo)
-.BR (!(foo))
-.BR (foo == bar)
-.BR ("string" == "string")
-.BR ((condition) || (condition))
-.BR ((condition) && (condition))
-.BR && and || have equal precedence.
-.BR you can't call a function as a condition.
+.PP
+ (foo)
+.PP
+ (!(foo))
+.PP
+ (foo == bar)
+.PP
+ ("string" == "string")
+.PP
+ ((condition) || (condition))
+.PP
+ ((condition) && (condition))
+.PP
+ && and || have equal precedence.
+.PP
+ you can't call a function as a condition.
+.PP
 .PP
 .SS Adding attributes to reply packet (or other location)
 reply .= {
@@ -104,9 +118,13 @@ The first name can be "request", "reply", "control", "proxy-request",
 or "proxy-reply".
 .PP
 The operator can be
-.BR .= - appends attributes to end of the list
-.BR := - replaces existing list with the attributes in the list (bad idea)
-.BR = - use operators from "attribute = value" to decide what to do. (see "users")
+.PP
+ .= - appends attributes to end of the list
+.PP
+ := - replaces existing list with the attributes in the list (bad idea)
+.PP
+ = - use operators from "attribute = value" to decide what to do. (see "users")
+.PP
 The block must contain only attributes and values.  Nothing else is permitted.
 
 .SH SECTIONS
