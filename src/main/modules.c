@@ -574,7 +574,7 @@ typedef struct section_type_value_t {
 static const section_type_value_t section_type_value[] = {
 	{ "authorize",    "autztype", PW_AUTZTYPE },
 	{ "authenticate", "authtype", PW_AUTHTYPE },
-	{ "accounting",   "accttype", PW_ACCTTYPE },
+	{ "accounting",   "acctype", PW_ACCTTYPE },
 	{ "session",     "sesstype", PW_SESSTYPE },
 	{ "post-auth",	"post-authtype", PW_POSTAUTHTYPE },
 	{ NULL, NULL, 0 }
