@@ -68,7 +68,7 @@ void pairlist_free(PAIR_LIST **pl)
  *	If User-Password or Crypt-Password is set, but there is no
  *	Auth-Type, add one (kludge!).
  */
-static void auth_type_fixup(VALUE_PAIR *check)
+static void auth_type_fixup(VALUE_PAIR **check)
 {
 	VALUE_PAIR *vp;
 	VALUE_PAIR *c = NULL;
@@ -78,7 +78,7 @@ static void auth_type_fixup(VALUE_PAIR *check)
 	 *	See if a password is present. Return right away
 	 *	if we see Auth-Type.
 	 */
-	for (vp = check; vp; vp = vp->next) {
+	for (vp = *check; vp; vp = vp->next) {
 		if (vp->attribute == PW_AUTHTYPE)
 			return;
 		if (vp->attribute == PW_PASSWORD) {
@@ -105,14 +105,10 @@ static void auth_type_fixup(VALUE_PAIR *check)
 	vp->lvalue = n;
 	vp->operator = T_OP_ADD;
 
-#if 0
-	vp->next = c->next;
-	c->next = vp;
-#endif
-	vp->next = check;
-	check = vp;
+	vp->next = *check;
+	*check = vp;
 
-	for(vp = check; vp; vp = vp->next) {
+	for(vp = *check; vp; vp = vp->next) {
 		DEBUG2("  auth_type_fixup: %s [%d]", vp->name, vp->attribute);
 	}
 
@@ -284,7 +280,7 @@ parse_again:
 				 */
 				t = rad_malloc(sizeof(PAIR_LIST));
 
-				auth_type_fixup(check_tmp);
+				auth_type_fixup(&check_tmp);
 				memset(t, 0, sizeof(*t));
 				t->name = strdup(entry);
 				t->check = check_tmp;
