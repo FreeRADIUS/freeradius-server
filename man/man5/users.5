@@ -1,4 +1,4 @@
-.TH USERS 5 "05 August 2000" "" "FreeRADIUS user authorization file"
+.TH USERS 5 "08 September 2001" "" "FreeRADIUS user authorization file"
 .SH NAME
 users \- user authorization file for the FreeRADIUS server
 .SH DESCRIPTION
@@ -70,9 +70,9 @@ attribute."
 
 .TP 0.5i
 .B "Attribute := Value"
-Always matches as a check item, and replaces in the request any
-attribute of the same name.  If no attribute of that name appears in
-the request, then this attribute is added.
+Always matches as a check item, and replaces in the configuration
+items any attribute of the same name.  If no attribute of that name
+appears in the request, then this attribute is added.
 .br
 As a reply item, it has an identical meaning, but for the reply items,
 instead of the request items.
@@ -87,7 +87,7 @@ Not allowed as a reply item.
 .TP 0.5i
 .B "Attribute += Value"
 Always matches as a check item, and adds the current attribute with
-value to the incoming request.
+value to the list of configuration items.
 .br
 As a reply item, it has an identical meaning, but the attribute is
 added to the reply items.
