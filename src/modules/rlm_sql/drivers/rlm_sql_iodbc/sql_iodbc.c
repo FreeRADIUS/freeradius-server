@@ -1,7 +1,7 @@
 /***************************************************************************
 *  iODBC support for FreeRadius
 *  www.iodbc.org   - iODBC info
-*  Jeff Carneal    - Author
+*  Jeff Carneal    - Author of this module driver <jeff@apex.net>
 ***************************************************************************/
 #include <stdio.h>
 #include <sys/stat.h>
@@ -67,7 +67,7 @@ SQLSOCK *sql_create_socket(SQL_INST *inst)
 int sql_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 {
 	if (inst->config->sqltrace)
-		DEBUG(querystr);
+		radlog(L_DBG, "rlm_sql:  %s", querystr);
 	if (socket->dbc_handle == NULL) {
 		radlog(L_ERR, "sql_query:  Socket not connected");
 		return 0;
@@ -92,6 +92,46 @@ int sql_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
  *************************************************************************/
 int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 {
+	int numfields = 0;
+	int i=0;
+	char **row=NULL;
+	SQLINTEGER len=0;
+
+	if(sql_query(inst, socket, querystr) < 0) {
+		return -1;	
+	}
+
+	numfields = sql_num_fields(socket);
+
+	if( (row = (char **)malloc(sizeof(char *) * numfields)) == NULL) {
+		radlog(L_ERR, "sql_select_query:  Out of memory!");
+		return -1;
+	}
+	memset(row, 0, (sizeof(char *) * (numfields))); 
+	row[numfields-1] = NULL;
+
+	for(i=1; i<=numfields; i++) {
+		SQLColAttributes(socket->stmt_handle, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH,
+										NULL, 0, NULL, &len);
+		len++;
+
+		/* 
+		 * Allocate space for each column 
+		 */
+		row[i-1] = (SQLCHAR*)malloc((int)len);
+
+		/*
+		 * This makes me feel dirty, but, according to Microsoft, it works.
+		 * Any ODBC datatype can be converted to a 'char *' according to
+		 * the following:
+		 *
+		 * http://msdn.microsoft.com/library/psdk/dasdk/odap4o4z.htm
+		 */
+		SQLBindCol(socket->stmt_handle, i, SQL_C_CHAR, (SQLCHAR *)row[i-1], len, 0);
+	}
+
+	socket->row = row;
+
 	return 0;
 }
 
@@ -118,7 +158,11 @@ int sql_store_result(SQLSOCK *socket) {
  *
  *************************************************************************/
 int sql_num_fields(SQLSOCK *socket) {
-	return 0;
+	int count=0;
+
+	SQLNumResultCols(socket->stmt_handle, (SQLSMALLINT *)&count);
+
+	return count;
 }
 
 /*************************************************************************
@@ -130,6 +174,12 @@ int sql_num_fields(SQLSOCK *socket) {
  *
  *************************************************************************/
 int sql_num_rows(SQLSOCK *socket) {
+	/*
+	 * I presume this function is used to determine the number of
+	 * rows in a result set *before* fetching them.  I don't think
+	 * this is possible in ODBC 2.x, but I'd be happy to be proven
+	 * wrong.  If you know how to do this, email me at jeff@apex.net
+	 */
 	return 0;
 }
 
@@ -144,7 +194,12 @@ int sql_num_rows(SQLSOCK *socket) {
  *************************************************************************/
 SQL_ROW sql_fetch_row(SQLSOCK *socket)
 {
-	return 0;
+	SQLRETURN rc;
+
+	if((rc = SQLFetch(socket->stmt_handle)) == SQL_NO_DATA_FOUND) {
+		return NULL;
+	}
+	return socket->row;
 }
 
 
@@ -158,8 +213,14 @@ SQL_ROW sql_fetch_row(SQLSOCK *socket)
  *
  *************************************************************************/
 void sql_free_result(SQLSOCK *socket) {
-}
+	int i=0;
 
+	for(i=0; i<sql_num_fields(socket); i++) {
+		free(socket->row[i]);
+	}
+	free(socket->row);
+	socket->row=NULL;
+}
 
 
 /*************************************************************************
@@ -212,8 +273,7 @@ void sql_close(SQLSOCK *socket)
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-void sql_finish_query(SQLSOCK *socket)
-{
+void sql_finish_query(SQLSOCK *socket) {
 }
 
 
@@ -225,8 +285,7 @@ void sql_finish_query(SQLSOCK *socket)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-void sql_finish_select_query(SQLSOCK *socket)
-{
+void sql_finish_select_query(SQLSOCK *socket) {
 }
 
 

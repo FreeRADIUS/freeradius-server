@@ -24,6 +24,7 @@ typedef struct sql_socket {
 #else
 	int		in_use;
 #endif
+	SQL_ROW row;
 	struct sql_socket *next;
 } SQLSOCK;
 
