@@ -1495,6 +1495,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 	       (request_list_entry->request_count != 0));
 	assert((request_list_entry->first_request != NULL) ||
 	       (request_list_entry->request_count == 0));
+
 	curreq = request_list_entry->first_request;
 	prevreq = NULL;
 	pkt = request->packet;
@@ -1686,7 +1687,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 			    "from client %s - ID: %d", request_count, 
 			    client_name(request->packet->src_ipaddr),
 			    request->packet->id);
-			sig_cleanup(SIGCHLD);
 			request_free(request);
 			request_list_busy = FALSE;
 			return NULL;
@@ -1840,8 +1840,6 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	Register the Child
 	 */
 	request->child_pid = child_pid;
-
-	sig_cleanup(SIGCHLD);
 	return 0;
 }
 #endif /* WITH_THREAD_POOL */
@@ -1849,10 +1847,13 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 /*ARGSUSED*/
 void sig_cleanup(int sig)
 {
+#ifndef HAVE_PTHREAD_H
 	int		i;
 	int		status;
         child_pid_t	pid;
 	REQUEST		*curreq;
+#endif
+
 	sig = sig; /* -Wunused */
  
 	/*
@@ -1869,6 +1870,11 @@ void sig_cleanup(int sig)
 	 */
 	reset_signal(SIGCHLD, sig_cleanup);
 	
+	/*
+	 *  If we're using pthreads, then there are NO child processes,
+	 *  so the waitpid() call, and the following code, is useless.
+	 */
+#ifndef HAVE_PTHREAD_H
         for (;;) {
 		pid = waitpid((pid_t)-1, &status, WNOHANG);
                 if (pid <= 0)
@@ -1900,6 +1906,7 @@ void sig_cleanup(int sig)
 			}
 		}
         }
+#endif /* !defined HAVE_PTHREAD_H */
 }
 
 /*
