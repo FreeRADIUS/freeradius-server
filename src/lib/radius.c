@@ -36,6 +36,9 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 
 #include	"libradius.h"
+#ifdef WITH_UDPFROMTO
+#include	"udpfromto.h"
+#endif
 
 #ifdef HAVE_NETINET_IN_H
 #include	<netinet/in.h>
@@ -652,9 +655,21 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	sa->sin_family = AF_INET;
 	sa->sin_addr.s_addr = packet->dst_ipaddr;
 	sa->sin_port = htons(packet->dst_port);
-
+#ifndef WITH_UDPFROMTO
 	return sendto(packet->sockfd, packet->data, (int)packet->data_len, 0,
 		      (struct sockaddr *)&saremote, sizeof(struct sockaddr_in));
+#else
+	{
+	struct sockaddr_in salocal;
+	memset ((char *) &salocal, '\0', sizeof (salocal));
+	salocal.sin_family = AF_INET;
+	salocal.sin_addr.s_addr = packet->src_ipaddr;
+
+	return sendfromto(packet->sockfd, packet->data, (int)packet->data_len, 0,
+			(struct sockaddr *)&salocal,  sizeof(struct sockaddr_in),
+			(struct sockaddr *)&saremote, sizeof(struct sockaddr_in));
+	}
+#endif
 }
 
 
@@ -778,8 +793,21 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	salen = sizeof(saremote);
 	memset(&saremote, 0, sizeof(saremote));
+#ifndef WITH_UDPFROMTO
 	packet->data_len = recvfrom(fd, data, sizeof(data),
 		0, (struct sockaddr *)&saremote, &salen);
+#else
+	{
+		socklen_t		salen_local;
+		struct sockaddr_in	salocal;
+		salen_local = sizeof(salocal);
+		memset(&salocal, 0, sizeof(salocal));
+		packet->data_len = recvfromto(fd, data, sizeof(data), 0, 
+					      (struct sockaddr *)&saremote, &salen,
+					      (struct sockaddr *)&salocal, &salen_local);
+		packet->dst_ipaddr = salocal.sin_addr.s_addr;
+	}
+#endif
 
 	/*
 	 *	Check for socket errors.
@@ -1216,9 +1244,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (rcode > 1) {
 				char buffer[32];
 				librad_log("Received %s packet "
-					   "from %s with invalid signature (err=%d)!  (Shared secret is incorrect.)",
+					   "from %s:%d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
 					   packet_codes[packet->code],
 					   ip_ntoa(buffer, packet->src_ipaddr),
+					   packet->src_port,
 					   rcode);
 				return -1;
 			}
