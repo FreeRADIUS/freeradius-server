@@ -76,11 +76,12 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
-	/* FIXME: Someone write the odbc specific disconnect and free code!! */
-
-	free(sqlsocket);
+static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+{
+	/*
+	 *	FIXME: Someone write the odbc specific disconnect and
+	 *	free code!!
+	 */
 	return 0;
 }
 
