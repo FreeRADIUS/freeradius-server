@@ -42,7 +42,15 @@ static int leap_initiate(void *instance, EAP_HANDLER *handler)
 	LEAP_PACKET	*reply;
 
 	DEBUG2("  rlm_eap_leap: Stage 2");
-	
+
+	/*
+	 *	LEAP requires a User-Name attribute
+	 */
+	if (!handler->request->username) {
+		DEBUG2("  rlm_eap_leap: User-Name is required for EAP-LEAP authentication.");
+		return 0;
+	}
+
 	reply = eapleap_initiate(handler->eap_ds, handler->request->username);
 	if (reply == NULL)
 		return 0;
