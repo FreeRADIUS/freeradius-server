@@ -1,5 +1,5 @@
 TARGET     = @targetname@
-SRCS       = rlm_pam.c
+SRCS       = rlm_python.c
 HEADERS    =
 RLM_LIBS   = @python_ldflags@
 RLM_CFLAGS = @python_cflags@
