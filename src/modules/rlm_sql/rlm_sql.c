@@ -515,8 +515,8 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			query_log(inst, querystr);
 
 			if (querystr) {
-				if ((querystr) && (inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
-					radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting START record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
+					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting START record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 				}
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
@@ -534,7 +534,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 				if (querystr) {
 					if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
-						radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting START record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+						radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 					}
 					(inst->module->sql_finish_query)(sqlsocket, inst->config);
 				}
