@@ -291,7 +291,8 @@ int rad_check_password(REQUEST *request)
 			DEBUG2("auth: type Crypt");
 			if (password_pair == NULL) {
 				DEBUG2("No Crypt-Password configured for the user");
-				rad_authlog("No Crypt-Password configured for the user", request, 0);
+				rad_authlog("Login incorrect "
+					"(No Crypt-Password configured for the user)", request, 0);
 				return -1;
 			}
 					
@@ -319,7 +320,8 @@ int rad_check_password(REQUEST *request)
 			 */
 			if (password_pair == NULL) {
 				DEBUG2("auth: No password configured for the user");
-				rad_authlog("No password configured for the user", request, 0);
+				rad_authlog("Login incorrect "
+					"(No password configured for the user)", request, 0);
 				return -1;
 			}
 
@@ -336,7 +338,8 @@ int rad_check_password(REQUEST *request)
 
 			} else if (auth_item->attribute != PW_CHAP_PASSWORD) {
 				DEBUG2("The user did not supply a User-Password or a CHAP-Password attribute");
-				rad_authlog("The user did not supply a User-Password or a CHAP-Password attribute", request, 0);
+				rad_authlog("Login incorrect "
+					"(no User-Password or CHAP-Password attribute)", request, 0);
 				return -1;
 			}
 
@@ -470,7 +473,7 @@ int rad_authenticate(REQUEST *request)
 		 */
 		if ((request->proxy_reply->code != PW_AUTHENTICATION_ACK) &&
 		    (request->proxy_reply->code != PW_ACCESS_CHALLENGE)) {
-			rad_authlog("Home server says invalid user", request, 0);
+			rad_authlog("Login incorrect (Home Server says so)", request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			return RLM_MODULE_REJECT;
 		}
@@ -531,6 +534,7 @@ autz_redo:
 			}
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
+
 		/*
 		 *	Hope that the module returning REJECT is smart
 		 *	enough to do pairfre(&request->reply->vps)...
@@ -648,9 +652,9 @@ autz_redo:
 				request->reply->code = PW_AUTHENTICATION_REJECT;
 
 				/*
-		 		*	They're trying to log in too many times.
-		 		*	Remove ALL reply attributes.
-		 		*/
+				 *	They're trying to log in too many times.
+				 *	Remove ALL reply attributes.
+				 */
 				pairfree(&request->reply->vps);
 				tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 				request->reply->vps = tmp;
@@ -666,7 +670,7 @@ autz_redo:
 	}
 
 	if (result >= 0 &&
-			(check_item = pairfind(request->config_items, PW_LOGIN_TIME)) != NULL) {
+	    (check_item = pairfind(request->config_items, PW_LOGIN_TIME)) != NULL) {
 
 		/*
 		 *	Authentication is OK. Now see if this
@@ -739,7 +743,7 @@ autz_redo:
 	 *	vp->addport is set.
 	 */
 	if (((tmp = pairfind(request->reply->vps, 
-			    PW_FRAMED_IP_ADDRESS)) != NULL) &&
+			     PW_FRAMED_IP_ADDRESS)) != NULL) &&
 	    (tmp->flags.addport != 0)) {
 		VALUE_PAIR *vpPortId;
 		
@@ -750,6 +754,9 @@ autz_redo:
 					 PW_NAS_PORT_ID)) != NULL) {
 		  tmp->lvalue = htonl(ntohl(tmp->lvalue) + vpPortId->lvalue);
 		  tmp->flags.addport = 0;
+		} else {
+			DEBUG2("WARNING: No NAS-Port attribute in request.  CANNOT return a Framed-IP-Address + NAS-Port.\n");
+			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
 		}
 	}
 
