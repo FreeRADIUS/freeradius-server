@@ -257,18 +257,22 @@ int rad_check_password(REQUEST *request)
 	 */
 	if ((password_pair = pairfind(request->config_items, PW_CRYPT_PASSWORD)) != NULL)
 		auth_type = PW_AUTHTYPE_CRYPT;
-	else if ((password_pair = pairfind(request->config_items, PW_PASSWORD)) != NULL)
-		auth_type = PW_AUTHTYPE_LOCAL;
+	else
+		password_pair = pairfind(request->config_items, PW_PASSWORD);
 
-	if (auth_type < 0) {
-		/*
-		 *	The admin hasn't told us how to
-		 *	authenticate the user, so we reject them!
-		 *
-		 *	This is fail-safe.
-		 */
-		DEBUG2("auth: No Auth-Type configuration for the request, rejecting the user");
-		return -2;
+	if (auth_type < 0)
+		if (password_pair) {
+			auth_type = PW_AUTHTYPE_LOCAL;
+		} else {
+			/*
+		 	*	The admin hasn't told us how to
+		 	*	authenticate the user, so we reject them!
+		 	*
+		 	*	This is fail-safe.
+		 	*/
+			DEBUG2("auth: No Auth-Type configuration for the request, rejecting the user");
+			return -2;
+		}
 	}
 
 	switch(auth_type) {
