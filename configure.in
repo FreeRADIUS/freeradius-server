@@ -301,6 +301,10 @@ AM_MISSING_PROG(ACLOCAL, aclocal, $missing_dir)
 AM_MISSING_PROG(AUTOCONF, autoconf, $missing_dir)
 AM_MISSING_PROG(AUTOHEADER, autoheader, $missing_dir)
 
+AC_PATH_PROG(LOCATE,locate)
+AC_PATH_PROG(DIRNAME,dirname)
+AC_PATH_PROG(GREP,grep)
+
 dnl #
 dnl # check for AIX, to allow us to use some BSD functions
 dnl # must be before macros that call the compiler.
