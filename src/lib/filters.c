@@ -18,14 +18,6 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
  * Copyright 2003  The FreeRADIUS server project
- *
- *  The commented out code (#if 0) is:
- *
- *      Copyright (c) 1994 Ascend Communications, Inc.
- *      All rights reserved.
- *
- *
- *  But we don't use it any more...
  */
 
 static const char rcsid[] = "$Id$";
@@ -61,27 +53,10 @@ static const char rcsid[] = "$Id$";
 
 #define IPX_NODE_ADDR_LEN		6
 
-typedef uint32_t		IpxNet;
-typedef uint8_t			IpxNode[ IPX_NODE_ADDR_LEN ];
-typedef uint16_t		IpxSocket;
-
 #if ! defined( FALSE )
 # define FALSE		0
 # define TRUE		(! FALSE)
 #endif
-
-/*
- * RadFilterComparison:
- *
- * An enumerated values for the IP filter port comparisons.
- */
-typedef enum {
-	RAD_NO_COMPARE = 0,
-	RAD_COMPARE_LESS,
-	RAD_COMPARE_EQUAL,
-	RAD_COMPARE_GREATER,
-	RAD_COMPARE_NOT_EQUAL
-} RadFilterComparison;
 
 /*
  *	ascend_ip_filter_t
@@ -133,38 +108,43 @@ typedef struct ascend_ip_filter_t {
 	unsigned char   fill[4];        /* used to be fill[2] */
 } ascend_ip_filter_t;
 
+
 /*
- * RadIpxFilter:
- * The binary format of an IPX filter.  ALL fields are stored in
- * network byte order.
+ *	ascend_ipx_net_t
  *
- *  srcIpxNet:      Source IPX Net address
+ *	net:      IPX Net address
  *
- *  srcIpxNode:     Source IPX Node address
+ *	node:     IPX Node address
  *
- *  srcIpxSoc:      Source IPX socket address
- *
- *  dstIpxNet:      Destination IPX Net address
- *
- *  dstIpxNode:     Destination IPX Node address
- *
- *  dstIpxSoc:      Destination IPX socket address
- *
- *  srcSocComp:     Source socket compare value
- *
- *  dstSocComp:     Destination socket compare value
- *
+ *	socket:      IPX socket address
  */
-typedef struct radipx {                         
-	IpxNet		srcIpxNet; /* LongWord */
-	IpxNode		srcIpxNode; /* Byte[6] */
-	IpxSocket	srcIpxSoc; /* Word */
-	IpxNet		dstIpxNet; /* LongWord */
-	IpxNode		dstIpxNode;                     /* Byte[6] */
-	IpxSocket	dstIpxSoc;                      /* Word */
+typedef struct ascend_ipx_net_t {
+	uint32_t	net;
+	uint8_t		node[IPX_NODE_ADDR_LEN];
+	uint16_t	socket;
+} ascend_ipx_net_t;
+
+/*
+ *	ascend_ipx_filter_t
+ *
+ *	The binary format of an IPX filter.  ALL fields are stored in
+ *	network byte order.
+ *
+ *	src:		Source net, node, and socket.
+ *
+ *	dst:		Destination net, node, and socket.
+ *
+ *	srcSocComp:     Source socket compare value
+ *
+ *	dstSocComp:     Destination socket compare value
+ */
+typedef struct ascend_ipx_filter_t {
+	ascend_ipx_net_t src;
+	ascend_ipx_net_t dst;
 	uint8_t		srcSocComp;
 	uint8_t		dstSocComp;
-} RadIpxFilter;
+} ascend_ipx_filter_t;
+
 
 /*
  *	ascend_generic_filter_t
@@ -197,7 +177,7 @@ typedef struct ascend_generic_filter_t {
 	uint8_t		mask[ RAD_MAX_FILTER_LEN ];
 	uint8_t		value[ RAD_MAX_FILTER_LEN ];
 	uint8_t		compNeq;
-	uint8_t       fill[3];        /* used to be fill[1] */
+	uint8_t		fill[3];        /* used to be fill[1] */
 } ascend_generic_filter_t;
 
 /*
@@ -230,7 +210,7 @@ typedef struct ascend_filter_t {
 	uint8_t		fill;
 	union {
 		ascend_ip_filter_t   	 ip;
-		RadIpxFilter   	 ipx;
+		ascend_ipx_filter_t   	 ipx;
 		ascend_generic_filter_t	generic;
 	} u;
 } ascend_filter_t;
@@ -327,18 +307,6 @@ static const LRAD_NAME_NUMBER filterKeywords[] = {
 	{  NULL , 	-1},
 };
 
-#define FILTER_DIRECTION 	0
-#define FILTER_DISPOSITION	1
-#define IP_FILTER_COMPLETE  	0x3	/* bits shifted by FILTER_DIRECTION */
-					/* FILTER_DISPOSITION */
-
-#define IPX_FILTER_COMPLETE      0x3     /* bits shifted by FILTER_DIRECTION */
-                                        /* FILTER_DISPOSITION */
-
-#define GENERIC_FILTER_COMPLETE 0x1c3	/* bits shifted for FILTER_DIRECTION */
-					/* FILTER_DISPOSITION, FILTER_GENERIC_OFFSET*/
-					/* FILTER_GENERIC_MASK, FILTER_GENERIC_VALUE*/
-
 /*
  * FilterProtoName:
  *
@@ -354,6 +322,20 @@ static const LRAD_NAME_NUMBER filterProtoName[] = {
 	{ "0",	  0 },
 	{  NULL , -1 },
 };
+
+
+/*
+ * RadFilterComparison:
+ *
+ * An enumerated values for the IP filter port comparisons.
+ */
+typedef enum {
+	RAD_NO_COMPARE = 0,
+	RAD_COMPARE_LESS,
+	RAD_COMPARE_EQUAL,
+	RAD_COMPARE_GREATER,
+	RAD_COMPARE_NOT_EQUAL
+} RadFilterComparison;
 
 static const LRAD_NAME_NUMBER filterCompare[] = {
 	{ "<",	RAD_COMPARE_LESS },
@@ -389,65 +371,156 @@ static int str2argv(char *str, char **argv, int max_argc)
 }
 
 
-#if 0
 /*
- * Convert a 12 digit string representation of a hex data field to a
- * value.
+ *	hex2bin converts hexadecimal strings into binary
+ *
+ *	Hmm... there are a number of such functions in the source.
+ *	maybe we want to make a library function?
  */
-static int
-stringToNode(unsigned char *dest, unsigned char *src)
+static int hex2bin(const char *str, uint8_t *bin, int length)
 {
-    int         srcIx = 0;
-    int         ix;
-    int         nibble1;
-    int         nibble2;
-    int		temp;
-    unsigned char *src1;
+	int		len;
+	const		char *letters = "0123456789ABCDEFabcdef";
 
-    src1 = (unsigned char *) strchr((char *)src, 'x');
+	/*
+	 *	Must be byte aligned, not nibble aligned.
+	 */
+	len = strlen(str);
+	if ((len & 0x01) != 0) return -1;
 
-    if (src1 == NULL)
-	src1 = (unsigned char *) strchr((char *)src,'X');
+	/*
+	 *	Input string is too long to fit.  Don't even bother
+	 *	trying.
+	 */
+	if ((len / 2) > length) return -1;
 
-    if (src1 == NULL)
-	src1 = src;
-    else
-	src1++;
+	/*
+	 *	Input string contains non-hex characters, die.
+	 */
+	if (strspn(str, letters) != len) return -1;
 
-    /* skip any leading 0x or 0X 's */
-    temp = strlen( (char*) src1 );
-    if( strlen( (char*) src1 ) != ( IPX_NODE_ADDR_LEN * 2 ) ) {
-        return( FALSE );
-    }
+	len = 0;
+	while (*str) {
+		char	*c1, *c2;
 
-    for ( ix = 0; ix < IPX_NODE_ADDR_LEN; ++ix ) {
-        if ( src1[ srcIx ] <= '9' ) {
-            nibble1 = src1[ srcIx ] & 0x0f;
-        } else {
-            nibble1 = (src1[ srcIx ] & 0x0f) + 9;
-        }
-        srcIx += 1;
-        if ( src1[ srcIx ] <= '9' ) {
-            nibble2 = src1[ srcIx ] & 0x0f;
-        } else {
-            nibble2 = (src1[ srcIx ] & 0x0f) + 9;
-        }
-        srcIx += 1;
-        ((unsigned char *) dest)[ ix ] = (unsigned char) (nibble1 << 4) + nibble2;
-    }
+		c1 = memchr(letters, toupper((int) *(str++)), 16);
+		c2 = memchr(letters, toupper((int) *(str++)), 16);
 
-    return( TRUE );
+		*(bin++) = ((c1-letters)<<4) + (c2-letters);
+		len++;
+	}
+
+        return len;
 }
 
 
 /*
- * parseIpxFilter:
+ *	ascend_parse_ipx_net
  *
- * This routine parses an IPX filter string from a RADIUS
- * reply. The format of the string is:
+ *	srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]
+ */
+static int ascend_parse_ipx_net(int argc, char **argv,
+				ascend_ipx_net_t *net, uint8_t *comp)
+{
+	int		token;
+	const char	*p;
+
+	if (argc < 3) return -1;
+
+	/*
+	 *	Parse the net, which is a hex number.
+	 */
+	net->net = htonl(strtol(argv[0], NULL, 16));
+
+	/*
+	 *	Parse the node.
+	 */
+	token = lrad_str2int(filterKeywords, argv[1], -1);
+	switch (token) {
+	case FILTER_IPX_SRC_IPXNODE:
+	case FILTER_IPX_DST_IPXNODE:
+		break;
+
+	default:
+		return -1;
+	}
+
+	/*
+	 *	Can have a leading "0x" or "0X"
+	 */
+	p = argv[2];
+	if ((memcmp(p, "0X", 2) == 0) ||
+	    (memcmp(p, "0x", 2) == 0)) p += 2;
+
+	/*
+	 *	Node must be 6 octets long.
+	 */
+	token = hex2bin(p, net->node, IPX_NODE_ADDR_LEN);
+	if (token != IPX_NODE_ADDR_LEN) return -1;
+
+	/*
+	 *	Nothing more, die.
+	 */
+	if (argc == 3) return 3;
+
+	/*
+	 *	Can't be too little or too much.
+	 */
+	if (argc != 6) return -1;
+
+	/*
+	 *	Parse the socket.
+	 */
+	token = lrad_str2int(filterKeywords, argv[3], -1);
+	switch (token) {
+	case FILTER_IPX_SRC_IPXSOCK:
+	case FILTER_IPX_DST_IPXSOCK:
+		break;
+
+	default:
+		return -1;
+	}
+
+	/*
+	 *	Parse the command "<", ">", "=" or "!="
+	 */
+	token = lrad_str2int(filterCompare, argv[4], -1);
+	switch (token) {
+	case RAD_COMPARE_LESS:
+	case RAD_COMPARE_EQUAL:
+	case RAD_COMPARE_GREATER:
+	case RAD_COMPARE_NOT_EQUAL:
+		*comp = token;
+		break;
+
+	default:
+		return -1;
+	}
+
+	/*
+	 *	Parse the value.
+	 */
+	token = strtoul(argv[5], NULL, 16);
+	if (token > 65535) return -1;
+
+	net->socket = token;
+	net->socket = htons(net->socket);
+
+
+	/*
+	 *	Everything's OK, we parsed 6 entries.
+	 */
+	return 6;
+}
+
+/*
+ *	ascend_parse_ipx_filter
  *
- *	ipx dir action [ srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]]
- * 	               [ dstipxnet nnnn dstipxnode mmmmm [dstipxsoc cmd value ]]
+ *	This routine parses an IPX filter string from a string.
+ *	The format of the string is:
+ *
+ *	[ srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]]
+ * 	[ dstipxnet nnnn dstipxnode mmmmm [dstipxsoc cmd value ]]
  *
  * Fields in [...] are optional.
  *	where:
@@ -459,139 +532,84 @@ stringToNode(unsigned char *dest, unsigned char *src)
  *                  mmmmm = IPX Node Address, could be FFFFFF.
  *                  A vlid ipx node number should accompany ipx net number.
  *
- *  srcipxsoc:      Keyword for source IPX socket address.
+ *	srcipxsoc:      Keyword for source IPX socket address.
  *
- *  cmd:            One of ">" or "<" or "=" or "!=".
+ *	cmd:            One of ">" or "<" or "=" or "!=".
  *
- *  value:          Socket value to be compared against, in hex. 
+ *	value:          Socket value to be compared against, in hex. 
  *			
  *	dstipxnet:	Keyword for destination IPX address.
  *			nnnn = IPX Node address. 
  *			
  *	dstipxnode:	Keyword for destination IPX Node address.
  *  		mmmmm = IPX Node Address, could be FFFFFF.
- *			A vlid ipx node number should accompany ipx net number.
+ *		       A valid ipx node number should accompany ipx net number.
  *			
  *	dstipxsoc:	Keyword for destination IPX socket address.
  *			
  *	cmd:		One of ">" or "<" or "=" or "!=".
  *			
  *	value:		Socket value to be compared against, in hex.
- *			
- *			
- * expects:
- *
- *	curEntry:	Pointer to place the filter structure
- *
- *	returns:	-1 for error or 0 for OK
- *	
  */
-static int 
-parseIpxFilter(const char *curString, RadFilter *curEntry)
+static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 {
-    unsigned long	elements = 0l;
-    int			tok; 
-    char*		token;
-    RadIpxFilter*	ipx;
+	int rcode;
+	int token;
+	int flags = 0;
 
-    token = strtok( NULL, " " ); 
+	/*
+	 *	We may have nothing, in which case we simply return.
+	 */
+	if (argc == 0) return 0;
 
-    memset( curEntry, '\0', sizeof( RadFilter ) );
-    curEntry->type = RAD_FILTER_IPX; 
-    ipx = &curEntry->u.ipx;
- 
-    while( token ) {
-  	tok = lrad_str2int(filterKeywords, token, -1);
-	switch( tok ) {
-	    case FILTER_IN:
-	    case FILTER_OUT:
-		curEntry->indirection = tok == FILTER_IN ? TRUE: FALSE;
-	        elements |= (1 << FILTER_DIRECTION );
-		break;
+	/*
+	 *	Must have "net N node M"
+	 */
+	if (argc < 4) return -1;
 
-	    case FILTER_FORWARD:
-	    case FILTER_DROP:
-	        elements |= (1 << FILTER_DISPOSITION );
-		if( tok == FILTER_FORWARD ) {
-		    curEntry->forward = TRUE;
-		} else {
-		    curEntry->forward = FALSE;
+	while ((argc > 0) && (flags != 0x03)) {
+		token = lrad_str2int(filterKeywords, argv[0], -1);
+		switch (token) {
+		case FILTER_IPX_SRC_IPXNET:
+			if (flags & 0x01) return -1;
+			rcode = ascend_parse_ipx_net(argc - 1, argv + 1,
+						     &(filter->src),
+						     &(filter->srcSocComp));
+			if (rcode < 0) return -1;
+			argc -= (rcode + 1);
+			argv += rcode + 1;
+			flags |= 0x01;
+			break;
+			
+		case FILTER_IPX_DST_IPXNET:
+			if (flags & 0x02) return -1;
+			rcode = ascend_parse_ipx_net(argc - 1, argv + 1,
+						     &(filter->dst),
+						     &(filter->dstSocComp));
+			if (rcode < 0) return -1;
+			argc -= (rcode + 1);
+			argv += rcode + 1;
+			flags |= 0x02;
+			break;
+			
+		default:
+			librad_log("Unknown string \"%s\" in IPX data filter",
+				   argv[0]);
+			return -1;
 		}
-		break;
-
-	    case FILTER_IPX_DST_IPXNET:
-	    case FILTER_IPX_SRC_IPXNET:
-		token = strtok( NULL, " " );
-
-		if ( token ) {
-		    if( tok == FILTER_IPX_DST_IPXNET ) {
-			ipx->dstIpxNet = ntohl( strtol( token, 0, 16 ));
-		    } else {
-			ipx->srcIpxNet = ntohl( strtol( token, 0, 16 ));
-		    }
-		    break;
-		} 
-		goto doneErr; 
-
-            case FILTER_IPX_DST_IPXNODE:
-            case FILTER_IPX_SRC_IPXNODE:
-		token = strtok( NULL, " " );
-
-		if ( token ) {
-		    if ( tok == FILTER_IPX_DST_IPXNODE) {
-			stringToNode( (unsigned char *)ipx->dstIpxNode, (unsigned char*)token );
-		    } else {
-			stringToNode( (unsigned char *)ipx->srcIpxNode, (unsigned char*)token );
-		    }
-		    break;
-		}
-                goto doneErr;
-
-            case FILTER_IPX_DST_IPXSOCK:
-            case FILTER_IPX_SRC_IPXSOCK:
-	    {
-		RadFilterComparison cmp;
-
-                token = strtok( NULL, " " );
-
-		if ( token ) {
-		    cmp = lrad_str2int(filterCompare, token, RAD_NO_COMPARE);
-		    if (cmp > RAD_NO_COMPARE) {
-		      token = strtok( NULL, " " );
-			if ( token ) {
-			    if ( tok == FILTER_IPX_DST_IPXSOCK ) {
-				ipx->dstSocComp = cmp;
-				ipx->dstIpxSoc = 
-			    ntohs( (IpxSocket) strtol( token, NULL, 16 ));
-			    } else {
-				ipx->srcSocComp = cmp;
-				ipx->srcIpxSoc 
-				    = ntohs( (IpxSocket) strtol( token, NULL, 16 ));
-			    }
-			    break;
-			}
-		    }
-		}
-		goto doneErr;
-	     }
-
-	    default:
-		/* no keyword match */
-		goto doneErr;
 	}
-        token = strtok( NULL, " " ); 
-    } 
 
-    if( elements == IPX_FILTER_COMPLETE ) {
-	return( 0 );
-    }
+	/*
+	 *	Arguments left over: die.
+	 */
+	if (argc != 0) return -1;
 
-doneErr:
-    librad_log("ipx filter error: do not recognize \"%s\" in \"%s\"\n",
-	      token, curString );
-    return( -1 );
+	/*
+	 *	Everything's OK.
+	 */
+	return 0;
 }
-#endif
+
 
 /*
  *	Parse an IP address and optionally a netmask, to a uint32_t.
@@ -894,48 +912,6 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 
 
 /*
- *	hex2bin converts hexadecimal strings into binary
- *
- *	Hmm... there are a number of such functions in the source.
- *	maybe we want to make a library function?
- */
-static int hex2bin(const char *str, uint8_t *bin, int length)
-{
-	int		len;
-	const		char *letters = "0123456789ABCDEFabcdef";
-
-	/*
-	 *	Must be byte aligned, not nibble aligned.
-	 */
-	len = strlen(str);
-	if ((len & 0x01) != 0) return -1;
-
-	/*
-	 *	Input string is too long to fit.  Don't even bother
-	 *	trying.
-	 */
-	if ((len / 2) > length) return -1;
-
-	/*
-	 *	Input string contains non-hex characters, die.
-	 */
-	if (strspn(str, letters) != len) return -1;
-
-	len = 0;
-	while (*str) {
-		char	*c1, *c2;
-
-		c1 = memchr(letters, toupper((int) *(str++)), 16);
-		c2 = memchr(letters, toupper((int) *(str++)), 16);
-
-		*(bin++) = ((c1-letters)<<4) + (c2-letters);
-		len++;
-	}
-
-        return len;
-}
-
-/*
  *	ascend_parse_generic
  *
  *	This routine parses a Generic filter string from a RADIUS
@@ -1146,14 +1122,15 @@ ascend_parse_filter(VALUE_PAIR *pair)
 		rcode = ascend_parse_generic(argc - 3, &argv[3],
 					  &filter.u.generic);
 		break;
+
 	case RAD_FILTER_IP:
 		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.u.ip);
 		break;
-#if 0
+
 	case RAD_FILTER_IPX:
-		rc = parseIpxFilter( valstr, &radFil );
+		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter.u.ipx);
 		break;
-#endif
+
 	default:		/* should never reach here. */
 		break;
 	}
@@ -1305,38 +1282,38 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
      */
   } else if (filter.type == RAD_FILTER_IPX) {
     /* print for source */
-    if (filter.u.ipx.srcIpxNet) {
+    if (filter.u.ipx.src.net) {
       i = snprintf(p, len, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
-		  (unsigned int)ntohl(filter.u.ipx.srcIpxNet),
-		  filter.u.ipx.srcIpxNode[0], filter.u.ipx.srcIpxNode[1], 
-		  filter.u.ipx.srcIpxNode[2], filter.u.ipx.srcIpxNode[3], 
-		  filter.u.ipx.srcIpxNode[4], filter.u.ipx.srcIpxNode[5]);
+		  (unsigned int)ntohl(filter.u.ipx.src.net),
+		  filter.u.ipx.src.node[0], filter.u.ipx.src.node[1], 
+		  filter.u.ipx.src.node[2], filter.u.ipx.src.node[3], 
+		  filter.u.ipx.src.node[4], filter.u.ipx.src.node[5]);
       p += i;
       len -= i;
 
       if (filter.u.ipx.srcSocComp > RAD_NO_COMPARE) {
 	i = snprintf(p, len, " srcipxsock %s 0x%04x",
 		     lrad_int2str(filterCompare, filter.u.ipx.srcSocComp, "??"),
-		     ntohs(filter.u.ipx.srcIpxSoc));
+		     ntohs(filter.u.ipx.src.socket));
 	p += i;
 	len -= i;
       }
     }
 
     /* same for destination */
-    if (filter.u.ipx.dstIpxNet) {
+    if (filter.u.ipx.dst.net) {
       i = snprintf(p, len, " dstipxnet 0x%04x dstipxnode 0x%02x%02x%02x%02x%02x%02x",
-		  (unsigned int)ntohl(filter.u.ipx.dstIpxNet),
-		  filter.u.ipx.dstIpxNode[0], filter.u.ipx.dstIpxNode[1], 
-		  filter.u.ipx.dstIpxNode[2], filter.u.ipx.dstIpxNode[3], 
-		  filter.u.ipx.dstIpxNode[4], filter.u.ipx.dstIpxNode[5]);
+		  (unsigned int)ntohl(filter.u.ipx.dst.net),
+		  filter.u.ipx.dst.node[0], filter.u.ipx.dst.node[1], 
+		  filter.u.ipx.dst.node[2], filter.u.ipx.dst.node[3], 
+		  filter.u.ipx.dst.node[4], filter.u.ipx.dst.node[5]);
       p += i;
       len -= i;
 
       if (filter.u.ipx.dstSocComp > RAD_NO_COMPARE) {
 	i = snprintf(p, len, " dstipxsock %s 0x%04x",
 		     lrad_int2str(filterCompare, filter.u.ipx.dstSocComp, "??"),
-		     ntohs(filter.u.ipx.dstIpxSoc));
+		     ntohs(filter.u.ipx.dst.socket));
 	p += i;
 	len -= i;
       }
