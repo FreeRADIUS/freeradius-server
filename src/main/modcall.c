@@ -70,7 +70,7 @@ static modsingle *mod_callabletosingle(modcallable *p)
 }
 static modgroup *mod_callabletogroup(modcallable *p)
 {
-	rad_assert(p->type==MOD_GROUP);
+	rad_assert((p->type==MOD_GROUP) || (p->type==MOD_LOAD_BALANCE));
 	return (modgroup *)p;
 }
 static modcallable *mod_singletocallable(modsingle *p)
@@ -346,7 +346,7 @@ static int call_modloadbalance(int component, modgroup *g, REQUEST *request,
 	rad_assert(child != NULL);
 
 	/* Call the chosen child by recursing into modcall */
-	return modcall(component, p, request);
+	return modcall(component, child, request);
 }
 
 int modcall(int component, modcallable *c, REQUEST *request)
@@ -894,6 +894,12 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 			*modname = "UnnamedGroup";
 			return do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_APPEND, grouptype);
+		} else if (strcmp(modrefname, "load-balance") == 0) {
+			*modname = "UnnamedGroup";
+			csingle= do_compile_modgroup(component, cs, filename,
+					GROUPTYPE_SIMPLEGROUP, grouptype);
+			csingle->type = MOD_LOAD_BALANCE;
+			return csingle;
 		}
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
