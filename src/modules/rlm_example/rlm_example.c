@@ -160,6 +160,8 @@ static int example_authorize(void *instance, REQUEST *request)
 	 */
        	reply = pairmake("Reply-Message", "This is a challenge", T_OP_EQ);
 	pairadd(&request->reply->vps, reply);
+	state = pairmake("State", "0", T_OP_EQ);
+	pairadd(&request->reply->vps, state);
 
 	/*
 	 *  Mark the packet as an Access-Challenge packet.
