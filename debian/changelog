@@ -5,6 +5,7 @@ radiusd-freeradius (?) unstable; urgency=low
   * Sucked out CPPness from inside a printf, as printf is a macro in newer
     compilers (gcc3.0, e.g.).  (closes: Bug#100889)
   * Sundry LDAP configuration, unresponsive thread, and proxying fixes.
+  * Added user 'freerad' into the 'shadow' group.
 
  -- Chad Miller <cmiller@debian.org>  [TBA]
 

@@ -6,10 +6,13 @@ case "$1" in
   configure)
 
 	addgroup --system freerad || true
-	adduser --system --no-create-home --home /etc/raddb --ingroup freerad --disabled-password freerad || true
+	groups freerad >/dev/null || adduser --system --no-create-home --home /etc/raddb --ingroup freerad --disabled-password freerad
 
 	# make sure there is a user and group 'freerad'
-	groups freerad |grep freerad 
+	groups freerad |grep freerad >/dev/null
+
+	# put user freerad in group shadow, so the daemon can auth locally
+	usermod -G shadow freerad
 
 	update-rc.d freeradius defaults 50 >/dev/null
 
