@@ -15,12 +15,10 @@ if test x$with_[]modname != xno; then
 
 	dnl mostly for openssl
 	AC_ARG_WITH(rlm-x99-token-lib-dir,
-		    AC_HELP_STRING([--with-rlm-x99-token-lib-dir],
-				   [directory for x99_token libs]),
+		    [  --with-rlm-x99-token-lib-dir directory for x99_token libs],
 		    x99_token_ldflags="$x99_token_ldflags -L$withval")
 	AC_ARG_WITH(rlm-x99-token-include-dir,
-		    AC_HELP_STRING([--with-rlm-x99-token-include-dir],
-				   [directory for x99_token includes]),
+		    [  --with-rlm-x99-token-include-dir directory for x99_token includes],
 		    x99_token_cflags="$x99_token_cflags -I$withval")
 
 	dnl openssl
