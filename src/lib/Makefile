@@ -5,7 +5,7 @@ OBJS		= dict.o md5.o print.o radius.o valuepair.o token.o misc.o \
 		log.o filters.o missing.o
 
 INCLUDES	= ../include/radius.h ../include/libradius.h \
-		  ../include/missing.h
+		  ../include/missing.h ../include/autoconf.h
 
 CFLAGS		+= -D_LIBRADIUS -I../include
 
