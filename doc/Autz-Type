@@ -65,16 +65,16 @@ authorize{
 
 users file-------------------
 
-DEFAULT Realm == "customer1", Autz-Type := customer1, Auth-Type := customer2
+DEFAULT Realm == "customer1", Autz-Type := customer1, Auth-Type := customer1
 
 DEFAULT Realm == "customer2", Autz-Type := customer2, Auth-Type := customer2
 
 ----------------------------
 
 Apart from Autz-Type the server also supports the use of
-Post=Auth-Type,Session-Type and Acct-Type for the corresponding
-sections. The corresponding section names in the radiusd.conf file are
-the same.  So for example:
+Acct-Type, Session-Type, Post-Auth-Type, Pre-Proxy-Type, Post-Proxy-Type
+and Pre-Acct-Type for the corresponding sections. The corresponding section
+names in the radiusd.conf file are the same.  So for example:
 
 users file---
 
