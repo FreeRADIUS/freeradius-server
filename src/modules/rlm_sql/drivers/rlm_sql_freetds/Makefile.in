@@ -2,14 +2,9 @@ include ../../../../../Make.inc
 
 TARGET			= @targetname@
 SRCS			= sql_freetds.c
-HEADERS			= sql_freetds.h
 RLM_SQL_CFLAGS		= @sql_freetds_cflags@
 RLM_SQL_CXXFLAGS	= @sql_freetds_cxxflags@
 RLM_SQL_LDFLAGS		= @sql_freetds_ldflags@
 RLM_SQL_LIBS		= @sql_freetds_libs@
 
 include ../rules.mak
-
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS) 
