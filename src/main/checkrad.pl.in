@@ -56,6 +56,11 @@ $snmp_retries	= 1;
 $rusers		= "@RUSERS@";
 $naspass	= "$raddbdir/naspasswd";
 
+# Community string. Change this if yours isn't "public". 
+$cmmty_string	= "public";
+# path to finger command
+$finger = "/usr/bin/finger";
+
 #
 #	USR-Hiper: $hiper_density is the reported port density (default 256
 #	but 24 makes more sense)
@@ -142,8 +147,8 @@ sub snmpwalk_prog {
 	my ($host, $community, $oid) = @_;
 	local $_;
 
-	print LOG "snpwalk: $snmpwalk -r $snmp_retries -t $snmp_timeout $host $community $oid\n";
-	$_ = `$snmpwalk -r $snmp_retries -t $snmp_timeout $host $community $oid`;
+	print LOG "snpwalk: $snmpwalk -r $snmp_retries -t $snmp_timeout $host '$community' $oid\n";
+	$_ = `$snmpwalk -r $snmp_retries -t $snmp_timeout $host '$community' $oid`;
 
 	return $_;
 }
@@ -299,7 +304,7 @@ sub livingston_snmp {
 	} else {
 		$test_index = 32;
 	}
-	$_ = snmpget($ARGV[1], "public", "$lvm.3.2.1.1.1.2.$test_index");
+	$_ = snmpget($ARGV[1], "$cmmty_string", "$lvm.3.2.1.1.1.2.$test_index");
 	/S([0-9]+)/;
 	$xport = $1 + 0;
 	$ifIndex = $ARGV[2] + ($test_index - $xport);
@@ -310,7 +315,7 @@ sub livingston_snmp {
 	#
 	#	Now get the session id from the terminal server.
 	#
-	$sessid = snmpget($ARGV[1], "public", "$lvm.3.2.1.1.1.5.$ifIndex");
+	$sessid = snmpget($ARGV[1], "$cmmty_string", "$lvm.3.2.1.1.1.5.$ifIndex");
 
 	print LOG "  session id at port S$ARGV[2]: $sessid\n" if ($debug);
 
@@ -341,8 +346,8 @@ sub cvx_snmp {
 	#	However an active session doesn't have a Stop time,
 	#	so we can differentiate that way.
 	#
-	my $login = snmpget($ARGV[1], "public", "$apm1." . hex($sessid));
-	my $stopt = snmpget($ARGV[1], "public", "$apm2." . hex($sessid));
+	my $login = snmpget($ARGV[1], "$cmmty_string", "$apm1." . hex($sessid));
+	my $stopt = snmpget($ARGV[1], "$cmmty_string", "$apm2." . hex($sessid));
 	$login = "--" if ($stopt > 0);
 
 	print LOG "  login with session-id $ARGV[4]: $login\n" if ($debug);
@@ -359,7 +364,7 @@ sub cisco_snmp {
 	# Look up community string in naspasswd file.
 	my ($login, $pass) = naspasswd($ARGV[1], 1);
 	if ($login eq '') {
-		$pass = 'public';
+		$pass = $cmmty_string;
 	} elsif ($login ne 'SNMP') {
 		if ($debug) {
 			print LOG
@@ -410,7 +415,7 @@ $msm    = '.iso.org.dod.internet.private.enterprises.995';
 sub multitech_snmp {
 	my $temp = $ARGV[2] + 1;
 
-        $login = snmpget($ARGV[1], "public", "$msm.2.31.1.1.1.$temp");
+        $login = snmpget($ARGV[1], "$cmmty_string", "$msm.2.31.1.1.1.$temp");
         print LOG " user at port S$ARGV[2]: $login\n" if ($debug);
 
         ($login eq $ARGV[3]) ? 1 : 0;
@@ -440,7 +445,7 @@ sub multitech_snmp {
 sub computone_finger {
 	my $trunc, $ver;
 
-	open(FD, "finger \@$ARGV[1]|") or return 2;
+	open(FD, "$finger \@$ARGV[1]|") or return 2;
 	<FD>; # the [hostname] line is definitely uninteresting
 	$trunc = substr($ARGV[3], 0, 12);
 	$ver = "";
@@ -477,7 +482,7 @@ sub computone_finger {
 #	Author: Shiloh Costa of MDI Internet Inc. <costa@mdi.ca>
 #
 sub max40xx_finger {
-	open(FD, "finger $ARGV[3]\@$ARGV[1]|");
+	open(FD, "$finger $ARGV[3]\@$ARGV[1]|");
 	while(<FD>) {
 	   $line = <FD>;
 	   if( $line =~ /Session/ ){
@@ -512,10 +517,12 @@ sub ascend_snmp {
 	#
 	$sess_id = $ARGV[4];
 	if ($sess_id !~ /^0/ && $sess_id !~ /[a-f]/i) {
-		$l1 = snmpget($ARGV[1], "public", "$asm.12.3.1.4.$sess_id");
+		$l1 = snmpget($ARGV[1], "$cmmty_string", "$asm.12.3.1.4.$sess_id");
 	}
-	$sess_id = hex $ARGV[4];
-	$l2 = snmpget($ARGV[1], "public", "$asm.12.3.1.4.$sess_id");
+	if (!$l1){
+		$sess_id = hex $ARGV[4];
+		$l2 = snmpget($ARGV[1], "$cmmty_string", "$asm.12.3.1.4.$sess_id");
+	}
 
 	print LOG "  user at port S$ARGV[2]: $l1 (dec)\n" if ($debug && $l1);
 	print LOG "  user at port S$ARGV[2]: $l2 (hex)\n" if ($debug && $l2);
@@ -532,7 +539,7 @@ sub portslave_finger {
 
 	$Port_seen = 0;
 
-	open(FD, "finger \@$ARGV[1]|");
+	open(FD, "$finger \@$ARGV[1]|");
 	while(<FD>) {
 		#
 		#	Check for ^Port. If we don't see it we
@@ -878,7 +885,7 @@ sub cyclades_snmp {
    
    $oid = ".1.3.6.1.4.1.2925.3.3.6.1.1.2";
 
-   $_ = snmpwalk($ARGV[1],"public",$oid);
+   $_ = snmpwalk($ARGV[1],"$cmmty_string",$oid);
    $ret = ((/$ARGV[3]/) ? 1 : 0);
    $ret;
 }
@@ -906,9 +913,9 @@ sub usrhiper_snmp {
 		}
 		return 2;
 	} else {
-# If password is defined in naspasswd file, use it as community, otherwise use public
+# If password is defined in naspasswd file, use it as community, otherwise use $cmmty_string
 		if ($password eq '') {
-		    $password = "public";
+		    $password = "$cmmty_string";
 		}	
 	}
 	my ($ver) = get_hiper_ver(usrm=>$usrm, target=>$ARGV[1], community=>$password);
@@ -1051,9 +1058,9 @@ sub versanet_snmp {
 	print LOG "port = $port " if ($debug);
 	$slot = (($ARGV[2]-$port)/8)+1;
 	print LOG "slot = $slot" if ($debug);
-	$loginname = snmpget($ARGV[1], "public", "$vsm.27.1.1.3.$slot.$port");
+	$loginname = snmpget($ARGV[1], "$cmmty_string", "$vsm.27.1.1.3.$slot.$port");
 #
-#	Note: the "public" string above could be replaced by the public
+#	Note: the "$cmmty_string" string above could be replaced by the public
 #	      community string defined in Versanet VN2001/VN2002.
 #
 	  print LOG "  user at slot $slot port $port: $loginname\n" if ($debug);	  ($loginname eq $ARGV[3]) ? 1 : 0;	
@@ -1074,7 +1081,7 @@ sub versanet_snmp {
 # So check exact match of username!
 
 sub bay_finger {		# ARGV: 1=nas_ip, 2=nas_port, 3=login, 4=sessid
-    open(FINGER, "finger $ARGV[3]\@$ARGV[1]|") || return 2; # error
+    open(FINGER, "$finger $ARGV[3]\@$ARGV[1]|") || return 2; # error
     while(<FINGER>) {
 	my ($Asy, $PPP, $User) = split;
 	if( $User =~ /^$ARGV[3]$/ ){
@@ -1139,7 +1146,7 @@ sub find_l2tp_login
 
 sub cisco_l2tp_snmp
 {
-  my $login = find_l2tp_login("$ARGV[1]", 'public', "$ARGV[2]");
+  my $login = find_l2tp_login("$ARGV[1]", $cmmty_string, "$ARGV[2]");
   print LOG "  user at port S$ARGV[2]: $login\n" if ($debug);
   ($login eq "$ARGV[3]\@$realm") ? 1 : 0;
 }
