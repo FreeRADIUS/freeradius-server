@@ -109,6 +109,14 @@ struct relay_misc {
 	char		f_secret[256];			/* File secret */
 	int		sleep_time;			/* Time to sleep between sending packets */
 	int		sleep_every;			/* Sleep every so many packets */
+	int		records_print;			/* Print statistics after so many records */
+};
+
+struct relay_stats {
+	time_t		startup;
+	uint32_t	records_read;			/* Records read */
+	uint32_t	packets_sent;			/* Packets sent */
+	uint32_t	last_print_records;		/* Records on last statistics printout */
 };
 
 /*
@@ -545,6 +553,7 @@ void loop(struct relay_misc *r_args)
 	FILE *fp = NULL;
 	struct relay_request *r;
 	struct timeval tv;
+	struct relay_stats stats;
 	fd_set readfds;
 	char work[1030];
 	time_t now, last_rename = 0;
@@ -557,6 +566,9 @@ void loop(struct relay_misc *r_args)
 	strcat(work, ".work");
 
 	id = ((int)getpid() & 0xff);
+
+	memset(&stats,0,sizeof(struct relay_stats));
+	stats.startup = time(NULL);
 
 	/*
 	 * Initialize all our slots, might as well do this right away.
@@ -638,6 +650,21 @@ void loop(struct relay_misc *r_args)
 				fseek(fp, fpos, SEEK_SET);
 				rad_unlockfd(fileno(fp), 0);
 			} while(0);
+			if (r_args->records_print && state == STATE_RUN){
+				stats.records_read++;
+				if (stats.last_print_records - stats.records_read >= r_args->records_print){
+					now = time(NULL);
+					fprintf(stderr, "%s: Running and Processing Records.\n",progname);		
+					fprintf(stderr, "Seconds since startup: %d\n",now - stats.startup);
+					fprintf(stderr, "Records Read: %d\n",stats.records_read);
+					fprintf(stderr, "Packets Sent: %d\n",stats.packets_sent);
+					fprintf(stderr, "Record Rate since startup: %.2f\n",
+						stats.records_read / (now - stats.startup));
+					fprintf(stderr, "Packet Rate since startup: %.2f\n",
+						stats.packets_sent / (now - stats.startup));
+					stats.last_print_records = stats.records_read;
+				}
+			}
 			if (r->state == STATE_FULL)
 				request_head = (request_head + 1) % NR_SLOTS;
 		}
@@ -691,6 +718,8 @@ void loop(struct relay_misc *r_args)
 					break;
 			}
 		}
+		if (r_args->records_print)
+			stats.packets_sent += n;
 	}
 }
 
@@ -748,7 +777,7 @@ void usage(void)
 {
 	fprintf(stderr, "Usage: radrelay [-a accounting_dir] [-d radius_dir] [-i local_ip] [-s secret]\n");
 	fprintf(stderr, "[-e sleep_every packets] [-t sleep_time (ms)] [-S secret_file] [-fx]\n");
-	fprintf(stderr, " <[-n shortname] [-r remote-server[:port]]> detailfile\n");
+	fprintf(stderr, "[-R records_print] <[-n shortname] [-r remote-server[:port]]> detailfile\n");
 	fprintf(stderr, " -a accounting_dir     Base accounting directory.\n");
 	fprintf(stderr, " -d radius_dir         Base radius (raddb) directory.\n");
 	fprintf(stderr, " -f                    Stay in the foreground (don't fork).\n");
@@ -760,6 +789,7 @@ void usage(void)
 						DEFAULT_SLEEP);
 	fprintf(stderr, " -e sleep_every	Sleep after sending so many packets. Default: %d\n",
 						DEFAULT_SLEEP_EVERY); 
+	fprintf(stderr, " -R records_print	If in foreground mode, print statistics after so many records read.\n");
 	fprintf(stderr, " -r remote-server      The destination address/hostname.\n");
 	fprintf(stderr, " -s secret             Server secret.\n");
 	fprintf(stderr, " -S secret_file        Read server secret from file.\n");
@@ -808,7 +838,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while ((c = getopt(argc, argv, "a:d:fhi:t:e:n:r:s:S:x")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "a:d:fhi:t:e:n:r:R:s:S:x")) != EOF) switch(c) {
 		case 'a':
 			if (strlen(optarg) > 1021) {
 				fprintf(stderr, "%s: acct_dir to long\n", progname);
@@ -832,6 +862,13 @@ int main(int argc, char **argv)
 			break;
 		case 'e':
 			r_args.sleep_every = atoi(optarg);
+			break;
+		case 'R':
+			if (!dontfork){
+				fprintf(stderr, "%s: Not in foreground mode. Can't print statistics.\n",progname);
+				usage();
+			}
+			r_args.records_print = atoi(optarg);
 			break;
 		case 'r':
 			server_name = optarg;
