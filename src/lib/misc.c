@@ -21,6 +21,7 @@ static const char rcsid[] =
 #include	<ctype.h>
 #include	<sys/file.h>
 #include	<fcntl.h>
+#include	<unistd.h>
 
 #include	"libradius.h"
 #include	"missing.h"
@@ -53,7 +54,7 @@ char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 	hp = gethostbyaddr((char *)&ipaddr, sizeof(struct in_addr), AF_INET);
 #else
 	hp = gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr), AF_INET,
-			     buffer, sizeof(buffer), &error);
+			     &result, buffer, sizeof(buffer), &error);
 #endif
 	if ((hp == NULL) ||
 	    (strlen((char *)hp->h_name) >= buflen)) {

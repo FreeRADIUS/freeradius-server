@@ -31,6 +31,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <limits.h>
+#include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -78,7 +79,7 @@ static int radutmp_lookup(struct radutmp *u, uint32_t nasaddr,
 
 	if ((fd = open(RADUTMP, O_RDONLY|O_CREAT, 0644)) >= 0) {
 		/*
-		 *	Lock the utmp file, prefer lockf() over flock().
+		 *	Lock the utmp file.
 		 */
 		rad_lockfd(fd, LOCK_LEN);
 
