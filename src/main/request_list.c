@@ -232,13 +232,16 @@ REQUEST *rl_next(REQUEST *request)
 		 *	This ID has a request, return it.
 		 */
 		if (request_list[id & 0xff].first_request) {
-			return request_list[id & 0xff].first_request;
+			if(request != request_list[id & 0xff].first_request) {
+				return request_list[id & 0xff].first_request;
+			}
 		}
 	}
 
 	/*
 	 *	No requests at all in the list. Nothing to do.
 	 */
+	DEBUG2("rl_next:  returning NULL");
 	return NULL;
 }
 
