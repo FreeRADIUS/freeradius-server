@@ -26,6 +26,53 @@
 #include	"radiusd.h"
 #include	"modules.h"
 
+typedef struct rlm_pam_t {
+	const char *pam_auth_name;
+} rlm_pam_t;
+
+static rlm_pam_t config;
+
+static CONF_PARSER module_config[] = {
+	{ "pam_auth",    PW_TYPE_STRING_PTR, &config.pam_auth_name, "radiusd" },
+	{ NULL, -1, NULL, NULL }
+};
+
+/*
+ *	(Re-)read radiusd.conf into memory.
+ */
+static int pam_instantiate(CONF_SECTION *conf, void **instance)
+{
+	rlm_pam_t *data;
+
+	if (cf_section_parse(conf, module_config) < 0) {
+		return -1;
+	}
+
+	data = malloc(sizeof(*data));
+	if (!data) {
+		radlog(L_ERR|L_CONS, "rlm_pam: Out of memory\n");
+		return -1;
+	}
+
+	data->pam_auth_name = config.pam_auth_name;
+	config.pam_auth_name = NULL;
+
+	*instance = data;
+	return 0;
+}
+
+/*
+ *	Clean up.
+ */
+static int pam_detach(void *instance)
+{
+	rlm_pam_t *data = (rlm_pam_t *) instance;
+
+	free((char *) data->pam_auth_name);
+        free((char *) data);
+	return 0;
+}
+
 /*************************************************************************
  *
  *	Function: PAM_conv
@@ -162,9 +209,9 @@ static int pam_auth(void *instance, REQUEST *request)
 {
 	int	r;
 	VALUE_PAIR *pair;
-	const char *pam_auth_string = "radiusd";
+	rlm_pam_t *data = (rlm_pam_t *) instance;
 
-	instance = instance;
+	const char *pam_auth_string = data->pam_auth_name;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -193,6 +240,10 @@ static int pam_auth(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
+	/*
+	 *	Let the 'users' file over-ride the PAM auth name string,
+	 *	for backwards compatibility.
+	 */
 	pair = pairfind(request->config_items, PAM_AUTH_ATTR);
 	if (pair) pam_auth_string = (char *)pair->strvalue;
 
@@ -209,13 +260,13 @@ module_t rlm_pam = {
   "Pam",
   0,				/* type: reserved */
   NULL,				/* initialize */
-  NULL,				/* instantiation */
+  pam_instantiate,		/* instantiation */
   NULL,				/* authorize */
   pam_auth,			/* authenticate */
   NULL,				/* pre-accounting */
   NULL,				/* accounting */
   NULL,				/* checksimul */
-  NULL,				/* detach */
+  pam_detach,			/* detach */
   NULL,				/* destroy */
 };
 
