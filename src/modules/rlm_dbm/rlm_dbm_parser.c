@@ -90,37 +90,6 @@ int dumplist(VALUE_PAIR *vp) {
 */
 
 
-char const *sm_tokens[]={
-		"INVALID","EOL","{","}","(",")",",",";","+=",
-		"-=",":=","=","!=",">=",">","<=","<","=~","!~","==","#"
-	   };
-	
-	
-
-static int sm_prints(char *out, int outlen, VALUE_PAIR *vp) {
-
-        int             len;
-
-        out[0] = 0; 
-        if (!vp) return 0;
-
-        if (strlen(vp->name) + 4 > (size_t)outlen) {
-                return 0;
-        }
-
-        snprintf(out, outlen, "%s %s ", 
-        		vp->name, 
-        		sm_tokens[vp->operator] );
-        len = strlen(out);
-
-        vp_prints_value(out + len, outlen - len, vp, 1);
-
-
-        return strlen(out);
-	
-}
-
-
 char content[4096];
 int  concntr = 0;
 int  oflags = O_RDWR | O_CREAT;
@@ -151,7 +120,7 @@ static int  addlinetocontent(VALUE_PAIR *vp) {
 		content[concntr] = '\0';
 	} else {
 		while ( vp != NULL ){
-			lendiv = sm_prints(&content[concntr],outlen,vp);
+			lendiv = vp_prints(&content[concntr],outlen,vp);
 			if ( lendiv > 0 ) {
 				outlen -= lendiv;
 				
