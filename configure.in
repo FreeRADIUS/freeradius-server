@@ -192,52 +192,47 @@ AC_ARG_WITH(spcj-hack,
 )
 
 dnl extra argument: --with-dict-nocase
+WITH_DICT_NOCASE=yes
 AC_ARG_WITH(dict-nocase,
 [  --with-dict-nocase      Make dictionary case-independant (default=yes)],
-[WITH_DICT_NOCASE=$withval
-  case "$withval" in
-    no)
-	WITH_DICT_NOCASE="";;
+[  case "$withval" in
     yes)
-	AC_DEFINE(WITH_DICT_NOCASE)
+	;;
+    *)
+	WITH_DICT_NOCASE=""
   esac ]
 )
-dnl if they haven't said to use it, do so.
-if test "$WITH_DICT_NOCASE" = "";then
+if test "X$WITH_DICT_NOCASE" = "Xyes"; then
   AC_DEFINE(WITH_DICT_NOCASE)
 fi
 
 dnl extra argument: --with-attrib-nmc
-ATTRIB_NMC=
+ATTRIB_NMC=yes
 AC_ARG_WITH(attrib-nmc,
 [  --with-attrib-nmc       Include USR-style vendor specific attributes (default=yes)],
-[ ATTRIB_NMC=$withval
- case "$withval" in
-    no)
-	ATTRIB_NMC="";;
+[ case "$withval" in
     yes)
-	AC_DEFINE(ATTRIB_NMC)
+	;;
+    *)
+	ATTRIB_NMC=""
   esac ]
 )
-dnl if they haven't said to use it, do so.
-if test "$ATTRIB_NMC" = "";then
+if test "X$ATTRIB_NMC" = "Xyes"; then
   AC_DEFINE(ATTRIB_NMC)
 fi
 
 dnl extra argument: --with-ascend-binary
-ASCEND_BINARY=
+ASCEND_BINARY=yes
 AC_ARG_WITH(ascend-binary,
 [  --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)],
-[ ASCEND_BINARY=$withval
- case "$withval" in
-    no)
-	;;
+[ case "$withval" in
     yes)
-	AC_DEFINE(ASCEND_BINARY)
+	;;
+    *)
+	ASCEND_BINARY=""
   esac ]
 )
-dnl if they haven't said to use it, do so.
-if test "X$ASCEND_BINARY" = "X";then
+if test "X$ASCEND_BINARY" = "Xyes"; then
   AC_DEFINE(ASCEND_BINARY)
 fi
 
@@ -246,8 +241,10 @@ WITH_THREADS=yes
 AC_ARG_WITH(threads,
 [  --with-threads          Use threads, if available.  (default=yes) ],
 [ case "$withval" in
+    yes)
+	;;
     *)
-	WITH_THREADS=$withval
+	WITH_THREADS=""
   esac ]
 )
 
