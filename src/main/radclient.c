@@ -121,29 +121,30 @@ static void usage(void)
 /*
  *	Free a radclient struct
  */
-static void radclient_free(void *data)
+static void radclient_free(radclient_t *radclient)
 {
-	radclient_t *radclient = (radclient_t *) data;
-
-	if (!radclient) return;
+	radclient_t *prev, *next;
 
 	if (radclient->request) rad_free(&radclient->request);
 	if (radclient->reply) rad_free(&radclient->reply);
 
-	if (!radclient->prev) {
-		assert(radclient_head = radclient);
-		radclient_head = radclient->next;
-	} else {
-		assert(radclient_head != radclient);
-		radclient->prev->next = radclient->next;
-	}
+	prev = radclient->prev;
+	next = radclient->next;
 
-	if (!radclient->next) {
-		assert(radclient_tail = radclient);
-		radclient_tail = radclient->prev;
+	if (prev) {
+		assert(radclient_head != radclient);
+		prev->next = next;
 	} else {
+		assert(radclient_head == radclient);
+		radclient_head = next;
+	}
+	
+	if (next) {
 		assert(radclient_tail != radclient);
-		radclient->next->prev = radclient->prev;
+		next->prev = prev;
+	} else {
+		assert(radclient_tail == radclient);
+		radclient_tail = prev;
 	}
 
 	free(radclient);
@@ -333,19 +334,18 @@ static int filename_walk(void *data)
 	if (!radclient_head) {
 		assert(radclient_tail == NULL);
 		radclient_head = radclient;
-		radclient_tail = radclient;
 	} else {
 		assert(radclient_tail->next == NULL);
 		radclient_tail->next = radclient;
 		radclient->prev = radclient_tail;
-
-		/*
-		 *	We may have a list of "radclient" structures
-		 *	returned.
-		 */
-		while (radclient->next) radclient = radclient->next;
-		radclient_tail = radclient;
 	}
+
+	/*
+	 *	We may have had a list of "radclient" structures
+	 *	returned to us.
+	 */
+	while (radclient->next) radclient = radclient->next;
+	radclient_tail = radclient;
 
 	return 0;
 }
@@ -422,7 +422,7 @@ static int send_one_packet(radclient_t *radclient)
 	 *	Sent this packet as many times as requested.
 	 *	ignore it.
 	 */
-	if (radclient->resend > resend_count) {
+	if (radclient->resend >= resend_count) {
 		radclient->done = 1;
 		return 0;
 	}
@@ -906,6 +906,7 @@ int main(int argc, char **argv)
 	 */
 	do {
 		radclient_t *next;
+		const char *filename = NULL;
 
 		done = 1;
 		sleep_time = -1;
@@ -913,12 +914,25 @@ int main(int argc, char **argv)
 		/*
 		 *	Walk over the packets, sending them.
 		 */
+		
 		for (this = radclient_head; this != NULL; this = next) {
 			next = this->next;
 
-			radclient_send(this);
-			if (this->done) {
-				radclient_free(this);
+			/*
+			 *	Packets from multiple '-f' are sent
+			 *	in parallel.  Packets from one file
+			 *	are sent in series.
+			 */
+			if (this->filename != filename) {
+				filename = this->filename;
+				radclient_send(this);
+				if (this->done) {
+					radclient_free(this);
+				}
+			} else {
+				assert(this->done == 0);
+				assert(this->reply == NULL);
+				done = 0;
 			}
 		}
 
@@ -927,6 +941,8 @@ int main(int argc, char **argv)
 		 */
 		if (rbtree_num_elements(request_tree) > 0) {
 			done = 0;
+		} else {
+			sleep_time = 0;
 		}
 
 		/*
