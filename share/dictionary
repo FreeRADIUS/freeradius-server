@@ -45,7 +45,10 @@ $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.cabletron
 $INCLUDE dictionary.cisco
-$INCLUDE dictionary.cisco.vpn3000
+#
+#  This is the same as the altiga dictionary.
+#
+#$INCLUDE dictionary.cisco.vpn3000
 $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.colubris
