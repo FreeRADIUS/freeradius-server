@@ -112,8 +112,8 @@ builddbm.o: builddbm.c
 radwho.o: radwho.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radwho.c
 
-radwho: radwho.o util.o nas.o client.o log.o conffile.o files.o
-	$(CC) $(LDFLAGS) -o radwho radwho.o util.o nas.o client.o log.o conffile.o files.o $(LIBS)
+radwho: radwho.o util.o nas.o client.o log.o conffile.o files.o xlat.o
+	$(CC) $(LDFLAGS) -o radwho radwho.o util.o nas.o client.o log.o conffile.o files.o xlat.o $(LIBS)
 
 raduse: raduse.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o raduse raduse.o $(LIBS)
@@ -121,8 +121,8 @@ raduse: raduse.o
 radzap.o: radzap.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radzap.c
 
-radzap: radzap.o util.o nas.o log.o client.o conffile.o files.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o log.o client.o conffile.o files.o $(LIBS)
+radzap: radzap.o util.o nas.o log.o client.o conffile.o files.o xlat.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o log.o client.o conffile.o files.o xlat.o $(LIBS)
 
 clean:
 	rm -rf *.o *.so *~ modules_static.h radiusd radwho raduse \

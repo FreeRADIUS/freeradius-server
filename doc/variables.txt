@@ -9,6 +9,22 @@ The variables defined by the server are:
      %{proxy-reply:Attribute-Name}   Corresponding value for Attribute-Name
                                      in the proxy reply (if it exists)
 
+     %{config:section.subsection.item} Corresponding value in 'radiusd.conf'
+                                       for the string value of that item.
+
+  The %{config:...} variables should be used VERY carefully, as they
+may leak secret information from your RADIUS server, if you use them
+in reply attributes to the NAS!
+
+  e.g.
+
+  %{User-Name}			 The string value of the User-Name attribute.
+  %{proxy-reply:Framed-Protocol} The string value of the Framed-Protocol
+				 attribute, from the proxy reply.
+  %{config:modules.unix.passwd}  The string value of the 'passwd' configuration
+				 item in the 'unix' module, in the 'modules'
+				 section of radiusd.conf.
+
 Additionally, you can use syntax similar to ${foo:-bar} as defined in
 'sh'.  For example:
 

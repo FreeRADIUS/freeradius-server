@@ -721,6 +721,75 @@ static CONF_SECTION *conf_read(const char *fromfile, int fromline,
 }
 
 /*
+ *	Xlat for %{config:section.subsection.attribute}
+ */
+static int xlat_config(void *instance, REQUEST *request,
+		       char *fmt, char *out, int outlen,
+		       RADIUS_ESCAPE_STRING func)
+{
+	CONF_SECTION *cs;
+	CONF_PAIR *cp;
+	char buffer[1024];
+	char *p;
+	const char *start = fmt;
+
+	cp = NULL;
+	cs = NULL;
+
+	while (cp == NULL) {
+		/*
+		 *	Find the next section.
+		 */
+		for (p = buffer; (*fmt != 0) && (*fmt != '.'); p++, fmt++) {
+			*p = *fmt;
+		}
+		*p = '\0';
+
+		/*
+		 *  The character is a '.', find a section (as the user
+		 *  has given us a subsection to find)
+		 */
+		if (*fmt == '.') {
+			CONF_SECTION *next;
+
+			fmt++;	/* skip the period */
+
+			if (cs == NULL) {
+			  next = cf_section_find(buffer);
+			} else {
+			  next = cf_subsection_find_next(cs, NULL, buffer);
+			}
+			if (next == NULL) {
+				radlog(L_ERR, "config: No such section %s in format string %s", buffer, start);
+				return 0;
+			}
+			cs = next;
+
+		} else {	/* no period, must be a conf-part */
+			cp = cf_pair_find(cs, buffer);
+
+			if (cp == NULL) {
+				radlog(L_ERR, "config: No such section %s in format string %s", buffer, start);
+				return 0;
+			}
+		}
+	} /* until cp is non-NULL */
+
+	/*
+	 *  Ensure that we only copy what's necessary.
+	 *
+	 *  If 'outlen' is too small, then the output is chopped to fit.
+	 */
+	if (outlen > strlen(cp->value)) {
+		outlen = strlen(cp->value) + 1;
+	}
+	
+	strNcpy(out, cp->value, outlen);
+    
+	return outlen;
+}
+
+/*
  *	These are not used anywhere else..
  */
 static const char *localstatedir = NULL;
@@ -828,6 +897,11 @@ int read_radius_conf_file(void)
 		radlog(L_ERR|L_CONS, "Errors reading naslist");
 		return -1;
 	}
+
+	/*
+	 *  Register the %{config:section.subsection} xlat function.
+	 */
+	xlat_register("config", xlat_config, NULL);
 
 	return 0;	
 }
