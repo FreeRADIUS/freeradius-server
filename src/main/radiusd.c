@@ -528,6 +528,7 @@ int main(int argc, char *argv[])
 	int pid;
 	int i;
 	int fd = 0;
+	int max_fd;
 	int status;
 	int radius_port = 0;
 	struct servent *svp;
@@ -945,18 +946,27 @@ int main(int argc, char *argv[])
 		}
 
 		FD_ZERO(&readfds);
-		if (authfd >= 0)
+		max_fd = 0;
+		if (authfd >= 0) {
 			FD_SET(authfd, &readfds);
-		if (acctfd >= 0)
+			if (authfd > max_fd) max_fd = authfd;
+		}
+		if (acctfd >= 0) {
 			FD_SET(acctfd, &readfds);
-		if (proxyfd >= 0)
+			if (acctfd > max_fd) max_fd = acctfd;
+		}
+		if (proxyfd >= 0) {
 			FD_SET(proxyfd, &readfds);
+			if (proxyfd > max_fd) max_fd = proxyfd;
+		}
 #ifdef WITH_SNMP
-		if (rad_snmp.smux_fd >= 0)
+		if (rad_snmp.smux_fd >= 0) {
 			FD_SET(rad_snmp.smux_fd, &readfds);
+			if (rad_snmp.smux_fd > max_fd) max_fd = rad_snmp.smux_fd;
+		}
 #endif
 
-		status = select(32, &readfds, NULL, NULL, tv);
+		status = select(max_fd, &readfds, NULL, NULL, tv);
 		if (status == -1) {
 			/*
 			 *  On interrupts, we clean up the
