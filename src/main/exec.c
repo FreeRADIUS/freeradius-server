@@ -40,25 +40,25 @@ char exec_sccsid[] =
  *	%i   Calling Station ID
  *
  */
-char *radius_xlate(const char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
+char *radius_xlate(char *output, size_t outputlen, const char *fmt,
+		   VALUE_PAIR *request, VALUE_PAIR *reply)
 {
-	static char buf[MAX_STRING_LEN * 2];
 	int n, i = 0, c;
 	const char *p;
 	VALUE_PAIR *tmp;
 
-	for (p = str; *p; p++) {
-		if (i >= MAX_STRING_LEN)
+	for (p = fmt; *p; p++) {
+		if (i >= outputlen)
 			break;
 		c = *p;
 		if (c != '%') {
-			buf[i++] = *p;
+			output[i++] = *p;
 			continue;
 		}
 		if (*++p == 0) break;
 		if (c == '%') switch(*p) {
 			case '%':
-				buf[i++] = *p;
+				output[i++] = *p;
 				break;
 			case 'f': /* Framed IP address */
 				n = 0;
@@ -66,8 +66,8 @@ char *radius_xlate(const char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
 				     PW_FRAMED_IP_ADDRESS)) != NULL) {
 					n = tmp->lvalue;
 				}
-				ip_ntoa(buf + i, n);
-				i += strlen(buf + i);
+				ip_ntoa(output + i, n);
+				i += strlen(output + i);
 				break;
 			case 'n': /* NAS IP address */
 				n = 0;
@@ -75,8 +75,8 @@ char *radius_xlate(const char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
 				     PW_NAS_IP_ADDRESS)) != NULL) {
 					n = tmp->lvalue;
 				}
-				ip_ntoa(buf + i, n);
-				i += strlen(buf + i);
+				ip_ntoa(output + i, n);
+				i += strlen(output + i);
 				break;
 			case 't': /* MTU */
 				n = 0;
@@ -84,8 +84,8 @@ char *radius_xlate(const char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
 				     PW_FRAMED_MTU)) != NULL) {
 					n = tmp->lvalue;
 				}
-				sprintf(buf + i, "%d", n);
-				i += strlen(buf + i);
+				sprintf(output + i, "%d", n);
+				i += strlen(output + i);
 				break;
 			case 'p': /* Port number */
 				n = 0;
@@ -93,60 +93,60 @@ char *radius_xlate(const char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
 				     PW_NAS_PORT_ID)) != NULL) {
 					n = tmp->lvalue;
 				}
-				sprintf(buf + i, "%d", n);
-				i += strlen(buf + i);
+				sprintf(output + i, "%d", n);
+				i += strlen(output + i);
 				break;
 			case 'u': /* User name */
 				if ((tmp = pairfind(request,
 				     PW_USER_NAME)) != NULL)
-					strcpy(buf + i, tmp->strvalue);
+					strcpy(output + i, tmp->strvalue);
 				else
-					strcpy(buf + i, "unknown");
-				i += strlen(buf + i);
+					strcpy(output + i, "unknown");
+				i += strlen(output + i);
 				break;
 			case 'i': /* Calling station ID */
 				if ((tmp = pairfind(request,
 				     PW_CALLING_STATION_ID)) != NULL)
-					strcpy(buf + i, tmp->strvalue);
+					strcpy(output + i, tmp->strvalue);
 				else
-					strcpy(buf + i, "unknown");
-				i += strlen(buf + i);
+					strcpy(output + i, "unknown");
+				i += strlen(output + i);
 				break;
 			case 'c': /* Callback-Number */
 				if ((tmp = pairfind(reply,
 				     PW_CALLBACK_NUMBER)) != NULL)
-					strcpy(buf + i, tmp->strvalue);
+					strcpy(output + i, tmp->strvalue);
 				else
-					strcpy(buf + i, "unknown");
-				i += strlen(buf + i);
+					strcpy(output + i, "unknown");
+				i += strlen(output + i);
 				break;
 			case 'a': /* Protocol: SLIP/PPP */
 				if ((tmp = pairfind(reply,
 				     PW_FRAMED_PROTOCOL)) != NULL)
-		strcpy(buf + i, tmp->lvalue == PW_PPP ? "PPP" : "SLIP");
+		strcpy(output + i, tmp->lvalue == PW_PPP ? "PPP" : "SLIP");
 				else
-					strcpy(buf + i, "unknown");
-				i += strlen(buf + i);
+					strcpy(output + i, "unknown");
+				i += strlen(output + i);
 				break;
 			case 's': /* Speed */
 				if ((tmp = pairfind(request,
 				     PW_CONNECT_INFO)) != NULL)
-					strcpy(buf + i, tmp->strvalue);
+					strcpy(output + i, tmp->strvalue);
 				else
-					strcpy(buf + i, "unknown");
-				i += strlen(buf + i);
+					strcpy(output + i, "unknown");
+				i += strlen(output + i);
 				break;
 			default:
-				buf[i++] = '%';
-				buf[i++] = *p;
+				output[i++] = '%';
+				output[i++] = *p;
 				break;
 		}
 	}
-	if (i >= MAX_STRING_LEN)
-		i = MAX_STRING_LEN - 1;
-	buf[i++] = 0;
+	if (i >= outputlen)
+		i = outputlen - 1;
+	output[i] = 0;
 
-	return buf;
+	return output;
 }
 
 /*
@@ -197,7 +197,8 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 		/*	
 		 *	Child
 		 */
-		buf = radius_xlate(cmd, request, *reply);
+		buf = radius_xlate(answer, sizeof(answer), cmd,
+				   request, *reply);
 
 		/*
 		 *	XXX FIXME: This is debugging info.

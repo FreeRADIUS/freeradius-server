@@ -199,7 +199,9 @@ char		*auth_name(REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 
 /* exec.c */
-char		*radius_xlate(const char *, VALUE_PAIR *req, VALUE_PAIR *reply);
+char		*radius_xlate(char *output, size_t outputlen,
+			      const char *fmt,
+			      VALUE_PAIR *req, VALUE_PAIR *reply);
 int		radius_exec_program(const char *, VALUE_PAIR *, VALUE_PAIR **,
 			int, const char **user_msg);
 

@@ -264,7 +264,6 @@ int rad_authenticate(REQUEST *request)
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
 	const char	*user_msg;
-	char		*ptr;
 	const char	*password;
 	char		*exec_program;
 	int		exec_wait;
@@ -559,9 +558,10 @@ int rad_authenticate(REQUEST *request)
 	seen_callback_id = 0;
 	if ((auth_item = pairfind(user_reply, PW_CALLBACK_ID)) != NULL) {
 		seen_callback_id = 1;
-		ptr = radius_xlate(auth_item->strvalue,
-			request->packet->vps, user_reply);
-		strNcpy(auth_item->strvalue, ptr, sizeof(auth_item->strvalue));
+		radius_xlate(umsg, sizeof(auth_item->strvalue),
+			     auth_item->strvalue,
+			     request->packet->vps, user_reply);
+		strNcpy(auth_item->strvalue, umsg, sizeof(auth_item->strvalue));
 		auth_item->length = strlen(auth_item->strvalue);
 	}
 
@@ -618,19 +618,18 @@ int rad_authenticate(REQUEST *request)
 
 	/*
 	 *	Filter (possibly multiple) Reply-Message attributes
-	 *	through radius_xlate
+	 *	through radius_xlate, modifying them in place.
 	 */
 	if (user_msg == NULL) {
 	  reply_item = pairfind(user_reply, PW_REPLY_MESSAGE);
 	  while (reply_item) {
-			user_msg = radius_xlate(reply_item->strvalue,
-				request->packet->vps, user_reply);
-			strNcpy(reply_item->strvalue, user_msg,
-				sizeof(reply_item->strvalue));
-			reply_item->length = strlen(reply_item->strvalue);
-			user_msg = NULL;
-			reply_item = pairfind(reply_item->next,
-					      PW_REPLY_MESSAGE);
+	  	radius_xlate(umsg, sizeof(reply_item->strvalue),
+			     reply_item->strvalue,
+			     request->packet->vps, user_reply);
+		strNcpy(reply_item->strvalue, umsg, sizeof(reply_item->strvalue));
+		reply_item->length = strlen(reply_item->strvalue);
+		user_msg = NULL;
+		reply_item = pairfind(reply_item->next, PW_REPLY_MESSAGE);
 	  }
 	}
 
