@@ -28,7 +28,7 @@ static const char rcsid[] = "$Id$";
 /*
  *	Call getpwnam but cache the result.
  */
-struct passwd *rad_getpwnam(char *name)
+struct passwd *rad_getpwnam(const char *name)
 {
 	static struct passwd *lastpwd;
 	static char lastname[64];
@@ -91,7 +91,7 @@ void request_free(REQUEST *request)
  *	Build a reply radius packet, based on the request data.
  */
 RADIUS_PACKET *build_reply(int code, REQUEST *request,
-	VALUE_PAIR *vps, char *user_msg)
+	VALUE_PAIR *vps, const char *user_msg)
 {
 	RADIUS_PACKET	*rp;
 	VALUE_PAIR	*vp;
@@ -159,7 +159,7 @@ VALUE_PAIR *rad_get_username(REQUEST *request)
  *	will go into a Stripped-User-Name attribute, if it exists.
  *	If not, one will be created.
  */
-int rad_put_username(REQUEST *request, char *username, int length)
+int rad_put_username(REQUEST *request, const char *username, int length)
 {
   VALUE_PAIR **tail;
   VALUE_PAIR *pair;

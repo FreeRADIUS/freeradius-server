@@ -72,7 +72,7 @@ char *auth_name(REQUEST *request, int do_cli)
 /*
  *	Check if account has expired, and if user may login now.
  */
-static int check_expiration(VALUE_PAIR *check_item, char *umsg, char **user_msg)
+static int check_expiration(VALUE_PAIR *check_item, char *umsg, const char **user_msg)
 {
 	int result;
 
@@ -111,7 +111,7 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, char **user_msg)
 static int rad_check_password(REQUEST *request,
 	VALUE_PAIR *check_item,
 	VALUE_PAIR *namepair,
-	char **user_msg)
+	const char **user_msg)
 {
 	VALUE_PAIR	*auth_type_pair;
 	VALUE_PAIR	*password_pair;
@@ -392,9 +392,9 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*tmp;
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
-	char		*user_msg;
+	const char	*user_msg;
 	char		*ptr;
-	char		*password;
+	const char	*password;
 	char		*exec_program;
 	int		exec_wait;
 	int		seen_callback_id;

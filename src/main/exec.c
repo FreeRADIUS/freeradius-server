@@ -40,7 +40,7 @@ char exec_sccsid[] =
  *	%i   Calling Station ID
  *
  */
-char *radius_xlate(char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
+char *radius_xlate(const char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
 {
 	static char buf[MAX_STRING_LEN * 2];
 	int n, i = 0, c;
@@ -155,8 +155,9 @@ char *radius_xlate(char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
  *	Return the exit code of the called program if exec_wait != 0.
  *
  */
-int radius_exec_program(char *cmd, VALUE_PAIR *request, VALUE_PAIR **reply,
-		int exec_wait, char **user_msg)
+int radius_exec_program(const char *cmd, VALUE_PAIR *request,
+			VALUE_PAIR **reply, int exec_wait,
+			const char **user_msg)
 {
 	VALUE_PAIR	*vp;
 	static char	message[256];
