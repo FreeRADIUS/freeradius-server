@@ -38,7 +38,7 @@
 # This is a complete entry for "steve". Note that there is no Fall-Through
 # entry so that no DEFAULT entry will be used.
 #
-#steve	Auth-Type = Local, Password = "testing"
+#steve	Auth-Type := Local, Password == "testing"
 #	Service-Type = Framed-User,
 #	Framed-Protocol = PPP,
 #	Framed-IP-Address = 172.16.3.33,
@@ -51,7 +51,7 @@
 #
 # Dial user back and telnet to the default host for that port
 #
-#Deg	Auth-Type = Local, Password = "ge55ged"
+#Deg	Auth-Type := Local, Password == "ge55ged"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = 0.0.0.0,
 #	Callback-Number = "9,5551212",
@@ -63,7 +63,7 @@
 # connection will be broken and the user will be dialed back after which
 # he will get a connection to the host "timeshare1".
 #
-#dialbk	Auth-Type = Local, Password = "callme"
+#dialbk	Auth-Type := Local, Password == "callme"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = timeshare1,
 #	Login-Service = PortMaster,
@@ -75,7 +75,7 @@
 # Note that by setting "Fall-Through" the rest will be gotten from the
 # appropriate DEFAULT entry.
 #
-#swilson	Service-Type = Framed-User, Huntgroup-Name = "alphen"
+#swilson	Service-Type == Framed-User, Huntgroup-Name == "alphen"
 #		Framed-IP-Address = 192.168.1.65,
 #		Fall-Through = Yes
 
@@ -91,7 +91,7 @@
 # First setup all accounts to be checked against the UNIX /etc/passwd.
 # (Unless a password was already given earlier in this file).
 #
-DEFAULT	Auth-Type = System
+DEFAULT	Auth-Type := System
 	Fall-Through = 1
 
 #
@@ -99,18 +99,18 @@ DEFAULT	Auth-Type = System
 # Note that the "+" behind the IP address means that this is the "base"
 # IP address. The Port-Id (S0, S1 etc) will be added to it.
 #
-#DEFAULT	Service-Type = Framed-User, Huntgroup-Name = "alphen"
+#DEFAULT	Service-Type == Framed-User, Huntgroup-Name == "alphen"
 #		Framed-IP-Address = 192.168.1.32+,
 #		Fall-Through = Yes
 
-#DEFAULT	Service-Type = Framed-User, Huntgroup-Name = "delft"
+#DEFAULT	Service-Type == Framed-User, Huntgroup-Name == "delft"
 #		Framed-IP-Address = 192.168.2.32+,
 #		Fall-Through = Yes
 
 #
 # Defaults for all framed connections.
 #
-DEFAULT	Service-Type = Framed-User
+DEFAULT	Service-Type == Framed-User
 	Framed-IP-Address = 255.255.255.254,
 	Framed-MTU = 576,
 	Service-Type = Framed-User,
@@ -122,21 +122,21 @@ DEFAULT	Service-Type = Framed-User
 #	by the terminal server in which case there may not be a "P" suffix.
 #	The terminal server sends "Framed-Protocol = PPP" for auto PPP.
 #
-DEFAULT	Framed-Protocol = PPP
+DEFAULT	Framed-Protocol == PPP
 	Framed-Protocol = PPP,
 	Framed-Compression = Van-Jacobson-TCP-IP
 
 #
 # Default for CSLIP: dynamic IP address, SLIP mode, VJ-compression.
 #
-DEFAULT	Hint = "CSLIP"
+DEFAULT	Hint == "CSLIP"
 	Framed-Protocol = SLIP,
 	Framed-Compression = Van-Jacobson-TCP-IP
 
 #
 # Default for SLIP: dynamic IP address, SLIP mode.
 #
-DEFAULT	Hint = "SLIP"
+DEFAULT	Hint == "SLIP"
 	Framed-Protocol = SLIP
 
 #
