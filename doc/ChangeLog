@@ -1,4 +1,69 @@
-FreeRADIUS 0.5.0 ; $Date$, urgency=medium
+FreeRADIUS 0.6.0 ; $Date$, urgency=medium
+
+	* Many bug fixes.  For explicit details, see:
+		http://www.freeradius.org/cvs-log/
+	* In SQL, look in radcheck, if not found there, try radgroupcheck.
+	  Patch from Thomas Jalsovsky.
+	* Set sql user name for ALIVE accounting packets, too.
+	  Patch from Simon <lists@routemeister.net>.
+	* Use port-specific checking for realms, now that we can proxy to
+	  different auth/acct servers for the same realms.
+	  Patch from Eddie Stassen.
+	* Minor updates to encrypted tunnel passwords.
+	* Default 'run_dir' is now /var/run/radiusd, not var/run.
+	  /var/run is writeable only by root, and radiusd may be run suid.
+	* Modules are now versioned, so that upgrading the server
+	  ensures that the new modules are installed.
+	* Fix sql code, so that magic SQL characters don't get the
+	  SQL server excited.
+	* Remove references to "UNKNOWN-NAS" in log messages.
+	* Properly handle fork() and obtaining child processes exit
+	  status when using threads.  (pthread is broken w.r.t. signals)
+	* Correct code which would send erroneous reject, when the reject
+	  was delayed, and a new request came in.
+	* Fix race condition where proxied requests would sometimes never
+	  be re-sent.  Bug noted by Eddie Stassen.
+	* Corrected LDAP3 schema
+	* Implemented Digest authentication, as per IETF document
+	  draft-sterman-aaa-sip-00.txt, to perform authentication against
+	  a Cisco SIP server.
+	* If no password or group files have been specified in the config,
+	  use the standard system calls to find them, rather than giving
+	  up.  Patch from Steve Langasek.	
+	* Return Proxy-State attributes in a delated Access-Reject
+	* Corrected 'session zap' logic, when an old and unused session
+	  is deleted from the databases.  Accounting packets with garbage
+	  Client-IP-Address attributes should no longer be a problem.
+	* Bug fixed in LDAP attribute map, for MS-CHAP related attributes.
+	* Fixes to the EAP module to work better with XP.
+	* Support for MS-SQL, using the FreeTDS library,
+	  from Dmitri Ageev
+	* New operators =* and !*.  See 'man 5 users' for details.
+	* Added translation for %{config:section.subsection.item}, to
+	  allow run-time translation of internal configuration parameters.
+	* New rlm_sqlcounter module, to keep counters based on SQL data.
+	* Fix rlm_realm, to allow seperate proxying of accounting and
+	  authentication requests.
+	* Bug fixes in PostgreSQL back-end, from Andrew Kukhta.
+	* Increase internal buffers, to allow large SQL query strings.
+	* Added debug level 3 (-xxx), where debug messages have time stamps.
+	* Fix 'radwho' to use the correct radutmp file, as found by
+	  'configure' (but radwho still doesn't read radiusd.conf)
+	* Fix bugs in tunnel (tagged attribute) code, which would prevent
+	  tagged attributes from being generated correctly in a packet.
+	* Support for Digest authentication, as per IETF Internet Draft
+	  draft-sterman-aaa-sip-00.txt
+	* Build only 'stable' modules by default.  Experimental modules
+	  require --with-experimental-modules to be passed to 'configure'
+	* New module rlm_ippool, to do server-side IP pooling.
+	* Fix rlm_eap module for portability, to work on non-x86 platforms.
+	* Re-connect to the LDAP server if the connection idles out
+	* Increased the visibility of the warning messages when doing
+	  'make install'
+	* Fixed EAP module to use 16-bit integers, so that it will
+	  work on big-endian architectures.
+	
+FreeRADIUS 0.5.0 ; Date: 2002/03/14 22:18:22, urgency=medium
 
 	* Many bug fixes.  For explicit details, see:
 		http://www.freeradius.org/cvs-log/
