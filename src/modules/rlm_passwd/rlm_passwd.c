@@ -395,6 +395,10 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 				lf[nfields]=1;
 				s++;
 			}
+			if(*(s+1) == '~'){
+				lf[nfields]=2;
+				s++;
+			}
 			nfields++;
 		}
 		s++;
@@ -425,6 +429,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		if (*inst->pwdfmt->field[i] == '*') inst->pwdfmt->field[i]++;
 		if (*inst->pwdfmt->field[i] == ',') inst->pwdfmt->field[i]++;
 		if (*inst->pwdfmt->field[i] == '=') inst->pwdfmt->field[i]++;
+		if (*inst->pwdfmt->field[i] == '~') inst->pwdfmt->field[i]++;
 	}
 	if (!*inst->pwdfmt->field[keyfield]) {
 		radlog(L_ERR, "rlm_passwd: key field is empty");
@@ -503,7 +508,8 @@ static int passwd_authorize(void *instance, REQUEST *request)
 		}
 		do {
 			addresult(inst, &request->config_items, pw, 0, "config_items");
-			addresult(inst, &request->packet->vps, 	pw, 1, "request_items");
+			addresult(inst, &request->reply->vps, pw, 1, "reply_items");
+			addresult(inst, &request->packet->vps, 	pw, 2, "request_items");
 		} while ( (pw = get_next(name, inst->ht)) );
 		found++;
 		if (!inst->allowmultiple) break;
