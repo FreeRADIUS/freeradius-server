@@ -513,6 +513,18 @@ void rl_add_proxy(REQUEST *request)
 			DEBUG2(" proxy: creating %08x:%d",
 			       entry->dst_ipaddr,
 			       entry->dst_port);
+
+			/*
+			 *	Insert the new home server entry into
+			 *	the tree.
+			 *
+			 *	FIXME: We don't (currently) delete the
+			 *	entries, so this is technically a
+			 *	memory leak.
+			 */
+			if (rbtree_insert(proxy_id_tree, entry) == 0) {
+			  rad_assert("FAIL" == NULL);
+			}
 		}
 		
 		/*
@@ -544,7 +556,6 @@ void rl_add_proxy(REQUEST *request)
 		       request->proxy->id);
 	}
 #endif /* PROXY_ID */
-
 
 	if (!rbtree_insert(proxy_tree, request)) {
 		rad_assert("FAILED" == 0);
