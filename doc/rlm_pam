@@ -81,13 +81,7 @@ session    required     /lib/security/pam_unix_session.so
 
 2. NOTES
 
-   Miguel has made PAM changes to the Cistron radiusd, since he now uses
-   it as the basis of many accounting systems. However, according to the
-   PAM experts, calling the pam_start function for each user to be
-   authenticated is a bad idea. Seems to work for him, though.
-
-   Besides, the Pam-Auth attribute only works if pam_start is called
-   everytime anyways ..
+   None.
 
 3. TODO:
 
