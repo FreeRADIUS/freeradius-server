@@ -229,6 +229,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 
 		if (unconnected != 0 || tried_to_connect != 0) {
 			radlog(L_INFO, "rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
+		}
 
 			/*
 			 *	The socket is returned in the locked
@@ -242,9 +243,8 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 			 *	the 'inst->last_used' variable.  This is OK,
 			 *	as it's a pointer only used for reading.
 			 */
-			inst->last_used = cur->next;
-			return cur;
-		}
+		inst->last_used = cur->next;
+		return cur;
 
 #if HAVE_PTHREAD_H
 		/*
