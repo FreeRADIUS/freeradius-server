@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.10.2.1 
+# From configure.in Revision: 1.10.2.2 
 
 
 if test x$with_rlm_dbm != xno; then
@@ -1322,7 +1322,7 @@ rm -f conftest*
 fi
 
 		if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
-			
+						
 
 sm_lib_safe=`echo "gdbm" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "dbm_open" | sed 'y%./+-%__p_%'`
@@ -1443,7 +1443,7 @@ rm -f conftest*
 fi
 
 			if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
-				
+								
 
 sm_lib_safe=`echo "gdbm_compat" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "dbm_open" | sed 'y%./+-%__p_%'`
@@ -1563,8 +1563,8 @@ rm -f conftest*
     echo "$ac_t""no" 1>&6 
 fi
 
-				if test "x$ac_cv_lib_gdbm_dbm_open" != "xyes"; then
-					fail="$fail (libndbm or libgdm)"
+				if test "x$ac_cv_lib_gdbm_compat_dbm_open" != "xyes"; then
+					fail="$fail (libndbm or libgdbm or libgdbm_compat)"
 				fi
 			fi
 		fi
