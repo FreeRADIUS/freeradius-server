@@ -1,13 +1,13 @@
 Source: radiusd-freeradius
+Build-Depends: libltdl-dev | libltdl0-dev
 Section: net
 Priority: standard
 Maintainer: Chad Miller <cmiller@debian.org>
 Standards-Version: 3.2.1
 
-Package: freeradius
+Package: radiusd-freeradius
 Architecture: any
 Depends: ${shlibs:Depends}, libltdl | libltdl0
-Build-depends: libltdl-dev | libltdl0-dev
 Provides: radiusd
 Conflicts: radiusd, radiusd-livingston, radiusd-cistron
 Description: A high-performance and highly configurable RADIUS server

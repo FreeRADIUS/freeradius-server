@@ -1,24 +1,26 @@
-#! /bin/sh
+#! /bin/sh -e
 
 case "$1" in
   configure)
-	update-rc.d radiusd defaults 50 > /dev/null
-	if [ ! -f /var/log/radius.log ]
+	update-rc.d freeradius defaults 50 >/dev/null
+	if [ ! -d /var/log/freeradius ]
 	then
-		touch /var/log/radius.log
-		chmod 640 /var/log/radius.log
-		chown root:adm /var/log/radius.log
+		mkdir -p /var/log/freeradius
 	fi
-	if [ ! -f /var/log/radwtmp ]
+	if [ ! -f /var/log/freeradius/radius.log ]
 	then
-		touch /var/log/radwtmp
-		chmod 644 /var/log/radwtmp
-		chown root:adm /var/log/radius.log
+		touch /var/log/freeradius/radius.log
+		chmod 640 /var/log/freeradius/radius.log
+		chown root:adm /var/log/freeradius/radius.log
 	fi
-	[ -d /usr/doc -a ! -e /usr/doc/freeradius -a /usr/share/doc/freeradius ] && \
-		ln -sf ../share/doc/freeradius /usr/doc/freeradius
+	if [ ! -f /var/log/freeradius/radwtmp ]
+	then
+		touch /var/log/freeradius/radwtmp
+		chmod 644 /var/log/freeradius/radwtmp
+		chown root:adm /var/log/freeradius/radius.log
+	fi
 	ldconfig
-	/etc/init.d/radiusd start
+	/etc/init.d/freeradius start
 	;;
   abort-upgrade)
 	;;
@@ -27,5 +29,7 @@ case "$1" in
   abort-deconfigure)
 	;;
 esac
+
+#DEBHELPER#
 
 exit 0

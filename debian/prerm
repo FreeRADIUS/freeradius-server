@@ -1,18 +1,23 @@
-#! /bin/sh
+#! /bin/sh -e
 
 case "$1" in
   remove)
-	/etc/init.d/radiusd stop
-	[ -L /usr/doc/freeradius ] && rm -f /usr/doc/freeradius
 	;;
   upgrade)
-	/etc/init.d/radiusd stop
-	[ -L /usr/doc/freeradius ] && rm -f /usr/doc/freeradius
 	;;
   failed-upgrade)
 	;;
   deconfigure)
 	;;
 esac
+
+if [ "$1" = "upgrade" -o  "$1" = "remove" ]
+then
+	if [ -L /usr/doc/radiusd-freeradius ]
+	then
+		rm -f /usr/doc/radiusd-freeradius
+	fi
+	/etc/init.d/freeradius stop
+fi
 
 exit 0

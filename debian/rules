@@ -5,32 +5,30 @@
 
 SHELL=/bin/bash
 
-# Name.
+export DH_VERBOSE=1
+
 package = freeradius
 tmp     = $(shell pwd)/debian/tmp
 
 prefix	= /
 exec_prefix	= /usr
 mandir	= $(exec_prefix)/share/man
+logdir	= /var/log/freeradius
 pkgdocdir	= $(exec_prefix)/share/doc/freeradius
 
-define checkdir
-	test -f src/main/radiusd.c
-endef
-
-build:
+build: clean
 # Builds the binary package.
-	$(checkdir)
-	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --mandir=$(mandir) --with-thread-pool --enable-ltdl-install=no
+	dh_testdir
+	# dh_testroot
+	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --mandir=$(mandir) --with-logdir=$(logdir) --with-thread-pool --enable-ltdl-install=no
 	make
 	touch build
 
 # Architecture independant files.
 binary-indep:   build
-	$(checkdir)
 
 # Make a binary package (.deb file)
-binary-arch:	build checkroot
+binary-arch:	build
 	dh_clean
 	dh_installdirs
 	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) R=$(tmp)
@@ -38,25 +36,25 @@ binary-arch:	build checkroot
 	rmdir $(tmp)/include
 	rm $(tmp)/usr/sbin/rc.radiusd
 	# man pages & docs
-	find $(tmp)$(mandir) -type f -exec gzip -9 {} \;  # policy, sec 6.1
 	dh_undocumented 
 	install -g root -m 644 CREDITS $(tmp)$(pkgdocdir)/credits
-	dh_installdocs doc/*
-	dh_installchangelogs $(tmp)$(pkgdocdir)/ChangeLog
+	dh_installdocs doc/README*
+	dh_installchangelogs doc/ChangeLog
+	dh_compress
 	# supporting programs
-	install -g root -m 755 scripts/rc.radiusd $(tmp)/etc/init.d/radiusd
-	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/etc/cron.daily/radiusd
-	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/etc/cron.monthly/radiusd
+	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/etc/cron.daily/freeradius
+	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/etc/cron.monthly/freeradius
+	install -g root -m 755 scripts/rc.radiusd $(tmp)/etc/init.d/freeradius
 	# fix up conf file  --  all of these should be commented on in README.Debian
 	cp $(tmp)/etc/raddb/radiusd.conf newconf
 	cat newconf \
 		| sed -e 's/        /	/g' \
-		| sed -e 's/       /	/g' \
 		| sed -e '/^	pam {/,/^	}/s/^/#deb#/' \
 		| sed -e 's/^	pam$$/#deb#	pam/' \
 		| sed -e 's/^	radutmp$$/#deb#	radutmp/' \
 		| sed -e '/^	example {/,/^	}/s/^/#deb#/' \
 		| sed -e '/^	sql .*{/,/^	}/s/^/#deb#/' \
+		| sed -e '/^	always .*{/,/^	}/s/^/#deb#/' \
 		| sed -e 's/^		#	shadow		=/		shadow		=/' \
 		| sed -e 's/^group = nobody/group = nogroup/' \
 			> $(tmp)/etc/raddb/radiusd.conf
@@ -72,17 +70,12 @@ binary-arch:	build checkroot
 	dh_md5sums
 	dh_gencontrol
 	dh_builddeb
-	dh_clean
 
-clean:	checkroot
+clean:	
 	dh_clean
 	[ -f Make.inc ] && make distclean || true
 	rm -f build debian/{files,substvars}
 
 binary: binary-indep binary-arch
 
-checkroot:
-	$(checkdir)
-	test root = "`whoami`"
-
-.PHONY: binary binary-arch binary-indep clean checkroot
+.PHONY: binary binary-arch binary-indep clean

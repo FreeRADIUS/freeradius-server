@@ -1,4 +1,9 @@
+/etc/cron.daily/freeradius
+/etc/cron.monthly/freeradius
+/etc/init.d/freeradius
+/etc/raddb/bay.vendor
 /etc/raddb/clients
+/etc/raddb/clients.conf
 /etc/raddb/dictionary
 /etc/raddb/dictionary.acc
 /etc/raddb/dictionary.ascend
@@ -13,9 +18,8 @@
 /etc/raddb/huntgroups
 /etc/raddb/naslist
 /etc/raddb/naspasswd
-/etc/raddb/users
+/etc/raddb/proxy.conf
 /etc/raddb/radiusd.conf
 /etc/raddb/realms
-/etc/init.d/radiusd
-/etc/cron.daily/radiusd
-/etc/cron.monthly/radiusd
+/etc/raddb/snmp.conf
+/etc/raddb/users
