@@ -19,6 +19,10 @@
  *
  * Copyright 2001  The FreeRADIUS server project
  * Copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
+ *
+ * Nov 03 2001, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - Added authorize() function to set Auth-Type if Chap-Password exists
+ * - Added module messages when rejecting user
  */
 
 #include "autoconf.h"
@@ -34,6 +38,25 @@
 
 static const char rcsid[] = "$Id$";
 
+static int chap_authorize(void *instance, REQUEST *request)
+{
+	
+	/* quiet the compiler */
+	instance = instance;
+	request = request;
+
+	if (!request->password || request->password->attribute != PW_CHAP_PASSWORD){
+		DEBUG("rlm_chap: Could not find proper Chap-Password attribute in request");
+		return RLM_MODULE_NOOP;
+	}
+	if (pairfind(request->config_items, PW_AUTHTYPE) == NULL){
+		DEBUG("rlm_chap: Adding Auth-Type = CHAP");
+		pairadd(&request->config_items, pairmake("Auth-Type", "CHAP", T_OP_EQ));
+	}
+
+	return RLM_MODULE_OK;
+}
+	
 
 /*
  *	Find the named user in this modules database.  Create the set
@@ -45,6 +68,8 @@ static int chap_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *passwd_item;
 	char pass_str[MAX_STRING_LEN];
+	VALUE_PAIR *module_msg_vp;
+	char module_msg[MAX_STRING_LEN];
 
 	/* quiet the compiler */
 	instance = instance;
@@ -75,6 +100,9 @@ static int chap_authenticate(void *instance, REQUEST *request)
 
 	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
 		DEBUG("rlm_chap: Could not find clear text password for user %s",request->username->strvalue);
+		snprintf(module_msg,MAX_STRING_LEN - 1,"rlm_chap: Clear text password not available");
+		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_msg_vp);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -83,12 +111,17 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	
 	rad_chap_encode(request->packet,pass_str,request->password->strvalue[0],passwd_item);
 	
-	if (memcmp(pass_str+1,request->password->strvalue+1,CHAP_VALUE_LENGTH) == 0){
-		DEBUG("rlm_chap: chap user %s authenticated succesfully",request->username->strvalue);
-		return RLM_MODULE_OK;
+	if (memcmp(pass_str+1,request->password->strvalue+1,CHAP_VALUE_LENGTH) != 0){
+		DEBUG("rlm_chap: Pasword check failed");
+		snprintf(module_msg,MAX_STRING_LEN - 1,"rlm_chap: Wrong user password");
+		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_msg_vp);
+		return RLM_MODULE_REJECT;
 	}
 
-	return RLM_MODULE_REJECT;
+	DEBUG("rlm_chap: chap user %s authenticated succesfully",request->username->strvalue);
+
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -107,7 +140,7 @@ module_t rlm_chap = {
 	NULL,				/* instantiation */
 	{
 		chap_authenticate,	/* authentication */
-		NULL,		 	/* authorization */
+		chap_authorize,	 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL			/* checksimul */
