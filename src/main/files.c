@@ -11,7 +11,6 @@ char files_sccsid[] =
 #include	"autoconf.h"
 
 #include	<sys/types.h>
-#include	<sys/socket.h>
 #include	<sys/time.h>
 #include	<sys/stat.h>
 #include	<netinet/in.h>
@@ -137,6 +136,11 @@ PAIR_LIST *pairlist_read(char *file, int complain)
 	 */
 	while(fgets(buffer, sizeof(buffer), fp) != (char *)NULL) {
 		lineno++;
+		if (strchr(buffer, '\n') == NULL) {
+			log(L_ERR, "%s[%d]: line too long", file, lineno);
+			pairlist_free(&pl);
+			return NULL;
+		}
 		if (buffer[0] == '#' || buffer[0] == '\n') continue;
 parse_again:
 		if(mode == FIND_MODE_NAME) {
@@ -178,6 +182,7 @@ parse_again:
 			reply_tmp = NULL;
 			old_lineno = lineno;
 			if(userparse(ptr, &check_tmp) != 0) {
+				pairlist_free(&pl);
 				log(L_ERR|L_CONS,
 				"%s[%d]: Parse error (check) for entry %s",
 					file, lineno, entry);
@@ -192,6 +197,7 @@ parse_again:
 				 *	Parse the reply values
 				 */
 				if (userparse(buffer, &reply_tmp)!=0) {
+					pairlist_free(&pl);
 					log(L_ERR|L_CONS,
 				"%s[%d]: Parse error (reply) for entry %s",
 						file, lineno, entry);
@@ -288,13 +294,13 @@ static void clients_free(CLIENT *cl)
 int read_clients_file(char *file)
 {
 	FILE	*fp;
+	CLIENT	*c;
 	char	buffer[256];
-	char	hostnm[128];
-	char	secret[32];
-	char	shortnm[32];
+	char	hostnm[256];
+	char	secret[256];
+	char	shortnm[256];
 	int	lineno = 0;
 	char	*p;
-	CLIENT	*c;
 
 	clients_free(clients);
 	clients = NULL;
@@ -305,17 +311,49 @@ int read_clients_file(char *file)
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
+		if (strchr(buffer, '\n') == NULL) {
+			log(L_ERR, "%s[%d]: line too long", file, lineno);
+			return -1;
+		}
 		if (buffer[0] == '#' || buffer[0] == '\n')
 			continue;
+
 		p = buffer;
 
 		if (!getword(&p, hostnm, sizeof(hostnm)) ||
 		    !getword(&p, secret, sizeof(secret))) {
-			log(L_ERR, "%s[%d]: syntax error", file, lineno);
-			continue;
+			log(L_ERR, "%s[%d]: unexpected end of line",
+			    file, lineno);
+			return -1;
 		}
+
 		(void)getword(&p, shortnm, sizeof(shortnm));
 
+		/*
+		 *	Double-check lengths to be sure they're sane
+		 */
+		if (strlen(hostnm) >= sizeof(c->longname)) {
+			log(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
+			    file, lineno,
+			    strlen(hostnm), sizeof(c->longname) - 1);
+			return -1;
+		}
+		if (strlen(secret) >= sizeof(c->secret)) {
+			log(L_ERR, "%s[%d]: secret of length %d is greater than the allowed maximum of %d.",
+			    file, lineno,
+			    strlen(secret), sizeof(c->secret) - 1);
+			return -1;
+		}
+		if (strlen(shortnm) > sizeof(c->shortname)) {
+			log(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
+			    file, lineno,
+			    strlen(shortnm), sizeof(c->shortname) - 1);
+			return -1;
+		}
+		
+		/*
+		 *	It should be OK now, let's create the buffer.
+		 */
 		if ((c = malloc(sizeof(CLIENT))) == NULL) {
 			log(L_CONS|L_ERR, "%s[%d]: out of memory",
 				file, lineno);
@@ -391,9 +429,9 @@ int read_realms_file(char *file)
 {
 	FILE	*fp;
 	char	buffer[256];
-	char	realm[32];
-	char	hostnm[128];
-	char	opts[32];
+	char	realm[256];
+	char	hostnm[256];
+	char	opts[256];
 	char	*s, *p;
 	int	lineno = 0;
 	REALM	*c;
@@ -411,6 +449,10 @@ int read_realms_file(char *file)
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
+		if (strchr(buffer, '\n') == NULL) {
+			log(L_ERR, "%s[%d]: line too long", file, lineno);
+			return -1;
+		}
 		if (buffer[0] == '#' || buffer[0] == '\n')
 			continue;
 		p = buffer;
@@ -437,6 +479,26 @@ int read_realms_file(char *file)
 		}
 		if (strcmp(hostnm, "LOCAL") != 0)
 			c->ipaddr = ip_getaddr(hostnm);
+
+		/*
+		 *	Double-check lengths to be sure they're sane
+		 */
+		if (strlen(hostnm) >= sizeof(c->server)) {
+			log(L_ERR, "%s[%d]: server name of length %d is greater than the allowed maximum of %d.",
+			    file, lineno,
+			    strlen(hostnm), sizeof(c->server) - 1);
+			return -1;
+		}
+		if (strlen(realm) > sizeof(c->realm)) {
+			log(L_ERR, "%s[%d]: realm of length %d is greater than the allowed maximum of %d.",
+			    file, lineno,
+			    strlen(realm), sizeof(c->realm) - 1);
+			return -1;
+		}
+
+		/*
+		 *	OK, they're sane, copy them over.
+		 */
 		strcpy(c->realm, realm);
 		strcpy(c->server, hostnm);
 		c->striprealm = 1;
