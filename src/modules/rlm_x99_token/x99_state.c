@@ -28,6 +28,7 @@
 
 #include <string.h>
 #include <openssl/des.h> /* des_cblock */
+#include <openssl/md5.h>
 #include <openssl/hmac.h>
 
 
