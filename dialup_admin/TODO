@@ -14,3 +14,5 @@
   reports which could be printed or sent by email to the users containing their billing
   information. We also need more statistics pages with fancy bars and diagrams. Ideas
   are welcome.
+* Parse the radius dictionary files so that we can show a pull down menu of possible values
+  for various attributes.
