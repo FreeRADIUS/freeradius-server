@@ -1021,9 +1021,12 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *
 	 *	A packet with an EAP-Message attribute MUST also have
 	 *	a Message-Authenticator attribute.
+	 *
+	 *	A Message-Authenticator all by itself is OK, though.
 	 */
 	if (seen_eap &&
-	    (seen_eap == (PW_EAP_MESSAGE | PW_MESSAGE_AUTHENTICATOR))) {
+	    (seen_eap != PW_MESSAGE_AUTHENTICATOR) &&
+	    (seen_eap != (PW_EAP_MESSAGE | PW_MESSAGE_AUTHENTICATOR))) {
 		librad_log("WARNING: Insecure packet from host %s:  Received EAP-Message with no Message-Authenticator.",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 		free(packet);
