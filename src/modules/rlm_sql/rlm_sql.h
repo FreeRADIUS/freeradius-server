@@ -64,7 +64,7 @@ typedef struct sqlconfig {
 typedef struct sql {
 	SQLSOCK		*AuthSock;
 	SQLSOCK		*AcctSock;
-	SQLREC		sqlrecord;
+	SQLREC		*sqlrecord;
 	SQLCONFIG	config;
 } SQL;
 	

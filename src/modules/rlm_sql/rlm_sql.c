@@ -10,6 +10,8 @@
 #include "rlm_sql.h"
 
 
+SQL *sql = NULL;
+
 
 /***********************************************************************
  * start of main routines
@@ -23,7 +25,6 @@ static int rlm_sql_init(int rehup) {
         int     line_no;
         char    buffer[256];
         char    sqlfile[256];
-	SQL	*sql;
 
 	if ((sql = malloc(sizeof(SQL))) == NULL) {
 		log(L_ERR|L_CONS, "no memory");
@@ -224,8 +225,7 @@ static int rlm_sql_init(int rehup) {
        sql->config.sql_server,
        sql->config.sql_db);
 
-       if (sql_keepopen) {
-
+       if (sql_keepopen)
 	   sql_connect(sql);
            
        return 0;
@@ -284,7 +284,7 @@ static int rlm_sql_authorize(REQUEST *request, char *name, VALUE_PAIR **check_pa
 
 
 	if ((found = sql_getvpdata(sql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) <= 0)
-		return -1;
+		return RLM_AUTZ_NOTFOUND;
 	sql_getvpdata(sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
 	sql_getvpdata(sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
 	sql_getvpdata(sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
@@ -318,7 +318,7 @@ static int rlm_sql_authorize(REQUEST *request, char *name, VALUE_PAIR **check_pa
 	/*
 	 *	Remove server internal parameters.
 	 */
-	return 0;
+	return RLM_AUTZ_OK;
 }
 
 static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
@@ -334,12 +334,12 @@ static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
 	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", mysql_authcheck_table, user);
 	if (sqltrace)
 		DEBUG(querystr);
-	mysql_query(MyAcctSock, querystr);
-	if (!(result = mysql_store_result(MyAcctSock)) && mysql_num_fields(MyAcctSock)) {
+	mysql_query(sql->AcctSock, querystr);
+	if (!(result = mysql_store_result(sql->AcctSock)) && mysql_num_fields(sql->AcctSock)) {
 		log(L_ERR,"MYSQL Error: Cannot get result");
-		log(L_ERR,"MYSQL error: %s",mysql_error(MyAcctSock));
-		mysql_close(MyAcctSock);
-		MyAcctSock = NULL;
+		log(L_ERR,"MYSQL error: %s",mysql_error(sql->AcctSock));
+		mysql_close(sql->AcctSock);
+		sql->AcctSock = NULL;
 	} else {
 		row = mysql_fetch_row(result);
 		mysql_free_result(result);
@@ -531,8 +531,8 @@ static int rlm_sql_accounting(REQUEST *request) {
 	if (mysql_save_acct(&sqlrecord) == 0)
 		return RLM_ACCT_FAIL_SOFT;
 	if (!mysql_keepopen) {
-		mysql_close(MyAcctSock);
-		MyAcctSock = NULL;
+		mysql_close(sql->AcctSock);
+		sql->AcctSock = NULL;
 	}
 
 	return RLM_ACCT_OK;
