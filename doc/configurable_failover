@@ -66,7 +66,7 @@ A GROUP is a section of radiusd.conf that includes some MODCALLABLEs.
 Examples of GROUPs above include "authorize{...}", which implements the C
 function module_authorize, and "redundant{...}", which contains two SINGLEs
 that refer to a couple of redundant databases. Note that a GROUP can contain
-other GROUPs - "authtype SQL{...}" is also a GROUP, which implements the C
+other GROUPs - "Auth-Type SQL{...}" is also a GROUP, which implements the C
 function module_authenticate when Auth-Type is set to SQL.
 
 Now here's the fun part - what happens when a GROUP is called? It simply runs
@@ -196,7 +196,7 @@ instances could find the user.
   but the latter is just a whole lot easier to read.
 
 3. "authenticate{...}" itself is not a GROUP, even though it contains a list
-of authtype GROUPs, because its semantics are totally different - it uses
+of Auth-Type GROUPs, because its semantics are totally different - it uses
 Auth-Type to decide which of its members to call, and their order is
 irrelevant.
 

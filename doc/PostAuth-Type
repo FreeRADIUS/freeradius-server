@@ -1,3 +1,5 @@
+This is now called Post-Auth-Type, for consistency.
+
 Like Auth-Type for authentication method selection freeradius also
 supports the Autz-Type to select between authorization methods.  The only
 problem is that authorization is the first thing to be called when an
@@ -12,10 +14,10 @@ authorize{
 	suffix
 	preprocess
 	# whatever other authorize modules here
-	autztype Ldap{
+	Autz-Type Ldap{
 		ldap
 	}
-	autztype SQL{
+	Autz-Type SQL{
 		sql
 	}
 	files
@@ -23,7 +25,7 @@ authorize{
 
 What happens is that the first time the authorize section is examined the
 suffix, preprocess and files modules are executed.  If Autz-Type is set
-after that the server core checks for any matching autztype subsection.
+after that the server core checks for any matching Autz-Type subsection.
 If one is found it is called.  The users file should look something
 like this:
 
@@ -41,10 +43,10 @@ belonging to other companies.  In detail:
 radiusd.conf-----------------
 
 authenticate{
-	authtype customer1{
+	Auth-Type customer1{
 		ldap1
 	}
-	authtype customer2{
+	Auth-Type customer2{
 		ldap2
 	}
 }
@@ -52,10 +54,10 @@ authenticate{
 authorize{
 	preprocess
 	suffix
-	autztype customer1{
+	Autz-Type customer1{
 		ldap1
 	}
-	autztype customer2{
+	Autz-Type customer2{
 		ldap2
 	}
 	files
@@ -71,10 +73,10 @@ DEFAULT Realm == "customer2", Autz-Type := customer2, Auth-Type := customer2
 
 ----------------------------
 
-Apart from Autz-Type the server also supports the use of PostAuth-Type,Session-Type
-and Acct-Type for the corresponding sections. The corresponding section names in the
-radiusd.conf file are post-authtype,sestype and accttype.
-So for example:
+Apart from Autz-Type the server also supports the use of
+Post-Auth-Type, Session-Type and Acct-Type for the corresponding
+sections. The corresponding section names in the radiusd.conf file are
+the same.  So for example:
 
 users file---
 
@@ -84,7 +86,7 @@ radiusd.conf---
 
 session{
 	radutmp
-	sesstype SQL {
+	Session-Type SQL {
 		sql
 	}
 }

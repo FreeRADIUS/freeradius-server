@@ -113,11 +113,11 @@ optional features of the module. Each module should document what parameters
 it accepts and what they do.
 
 For each Access-Request that comes to the server, the authorize{}
-block is called. Then one of the authtype{} blocks from authenticate{}
+block is called. Then one of the Auth-Type{} blocks from authenticate{}
 is called, depending on the Auth-Type attribute that was chosen by
-authorize{}. Finally, the postauth{} block is called.  If authorize{}
+authorize{}. Finally, the post-auth{} block is called.  If authorize{}
 set the Proxy-To-Realm attribute, then proxying takes over via
-preproxy{} and postproxy{}, and the local authenticate{} phase is
+pre-proxy{} and post-proxy{}, and the local authenticate{} phase is
 skipped.
 
 For each Accounting-Request that comes to the server, the preacct{} block is
