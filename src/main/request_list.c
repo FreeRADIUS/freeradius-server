@@ -102,6 +102,45 @@ void rl_delete(REQUEST *request)
 	}
 	
 	free(request->container);
+
+#ifdef WITH_SNMP
+	/*
+	 *	Update the SNMP statistics.
+	 *
+	 *	Note that we do NOT do this in rad_respond(),
+	 *	as that function is called from child threads.
+	 *	Instead, we update the stats when a request is
+	 *	deleted, because only the main server thread calls
+	 *	this function...
+	 */
+	if (mainconfig.do_snmp) {
+		switch (request->reply->code) {
+		case PW_AUTHENTICATION_ACK:
+		  rad_snmp.auth.total_responses++;
+		  rad_snmp.auth.total_access_accepts++;
+		  break;
+
+		case PW_AUTHENTICATION_REJECT:
+		  rad_snmp.auth.total_responses++;
+		  rad_snmp.auth.total_access_rejects++;
+		  break;
+
+		case PW_ACCESS_CHALLENGE:
+		  rad_snmp.auth.total_responses++;
+		  rad_snmp.auth.total_access_challenges++;
+		  break;
+
+		case PW_ACCOUNTING_RESPONSE:
+		  rad_snmp.acct.total_responses++;
+		  break;
+
+		default:
+			break;
+		}
+	}
+#endif
+
+
 	request_free(&request);
 	request_list[id].request_count--;
 }

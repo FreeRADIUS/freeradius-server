@@ -273,6 +273,11 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	port, and ignore them, if so.
 			 */
 			if (packet->sockfd != authfd) {
+#ifdef WITH_SNMP
+				if (mainconfig.do_snmp)
+					rad_snmp.auth.total_packets_dropped++;
+#endif
+
 				radlog(L_ERR, "Authentication-Request sent to a non-authentication port from "
 					"client %s:%d - ID %d : IGNORED",
 					client_name(packet->src_ipaddr),
@@ -288,6 +293,11 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	port, and ignore them, if so.
 			 */
 			if (packet->sockfd != acctfd) {
+#ifdef WITH_SNMP
+				if (mainconfig.do_snmp)
+					rad_snmp.acct.total_packets_dropped++;
+#endif
+
 				radlog(L_ERR, "Accounting-Request packet sent to a non-accounting port from "
 				       "client %s:%d - ID %d : IGNORED",
 				       client_name(packet->src_ipaddr),
@@ -306,6 +316,11 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	packet is dropped.
 			 */
 			if (packet->sockfd != proxyfd) {
+#ifdef WITH_SNMP
+				if (mainconfig.do_snmp)
+					rad_snmp.auth.total_packets_dropped++;
+#endif
+
 				radlog(L_ERR, "Authentication reply packet code %d sent to a non-proxy reply port from "
 				       "client %s:%d - ID %d : IGNORED",
 				       packet->code,
@@ -323,6 +338,11 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			 *	packet is dropped.
 			 */
 			if (packet->sockfd != proxyfd) {
+#ifdef WITH_SNMP
+				if (mainconfig.do_snmp)
+					rad_snmp.acct.total_packets_dropped++;
+#endif
+
 				radlog(L_ERR, "Accounting reply packet code %d sent to a non-proxy reply port from "
 				       "client %s:%d - ID %d : IGNORED",
 				       packet->code,
@@ -342,6 +362,10 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			break;
 
 		case PW_PASSWORD_REQUEST:
+#ifdef WITH_SNMP
+			if (mainconfig.do_snmp)
+				rad_snmp.auth.total_unknown_types++;
+#endif
 			/*
 			 *  We don't support this anymore.
 			 */
@@ -352,6 +376,11 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			break;
 
 		default:
+#ifdef WITH_SNMP
+			if (mainconfig.do_snmp) {
+				rad_snmp.auth.total_unknown_types++;
+			}
+#endif
 			radlog(L_ERR, "Unknown packet code %d from client %s:%d "
 			       "- ID %d : IGNORED", packet->code, 
 			       client_name(packet->src_ipaddr),
@@ -388,6 +417,14 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 	 *	be associated with the wrong NAS request.
 	 */
 	if (!curreq->finished) {
+#ifdef WITH_SNMP
+		if (mainconfig.do_snmp)
+			if (packet->sockfd == authfd) 
+				rad_snmp.auth.total_packets_dropped++;
+			else if (packet->sockfd == acctfd)
+				rad_snmp.acct.total_packets_dropped++;
+
+#endif
 		radlog(L_ERR, "Dropping conflicting packet from "
 		       "client %s:%d - ID: %d due to unfinished request %d",
 		       client_name(packet->src_ipaddr),
@@ -410,6 +447,11 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		   sizeof(packet->vector)) == 0) {
 		rad_assert(curreq->reply != NULL);
 		
+#ifdef WITH_SNMP
+		if (mainconfig.do_snmp)
+			rad_snmp.auth.total_dup_requests++;
+#endif
+
 		/*
 		 *	If the packet has been delayed, then silently
 		 *	send a response, and clear the delayed flag.
@@ -456,6 +498,14 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		 *	so we silently drop it, too.
 		 */
 		if (!curreq->proxy) {
+#ifdef WITH_SNMP
+			if (mainconfig.do_snmp)
+				if (packet->sockfd == authfd) 
+					rad_snmp.auth.total_packets_dropped++;
+				else if (packet->sockfd == acctfd)
+					rad_snmp.acct.total_packets_dropped++;
+
+#endif
 			radlog(L_ERR, "Dropping packet from client "
 			       "%s:%d - ID: %d due to dead request %d",
 			       client_name(packet->src_ipaddr),
@@ -472,6 +522,14 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		 *	so we drop the request.
 		 */
 		if (curreq->proxy_reply) {
+#ifdef WITH_SNMP
+			if (mainconfig.do_snmp)
+				if (packet->sockfd == authfd) 
+					rad_snmp.auth.total_packets_dropped++;
+				else if (packet->sockfd == acctfd)
+					rad_snmp.acct.total_packets_dropped++;
+
+#endif
 			radlog(L_ERR, "Dropping packet from client "
 			       "%s:%d - ID: %d due to confused proxied request %d",
 			       client_name(packet->src_ipaddr),
@@ -486,6 +544,14 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 		 *	from the NAS.
 		 */
 		if (!mainconfig.proxy_synchronous) {
+#ifdef WITH_SNMP
+			if (mainconfig.do_snmp)
+				if (packet->sockfd == authfd) 
+					rad_snmp.auth.total_packets_dropped++;
+				else if (packet->sockfd == acctfd)
+					rad_snmp.acct.total_packets_dropped++;
+
+#endif
 			DEBUG2("Ignoring duplicate packet from client "
 			       "%s:%d - ID: %d, due to outstanding proxied request %d.",
 			       client_name(packet->src_ipaddr),
@@ -1470,6 +1536,16 @@ int main(int argc, char *argv[])
 			if (fd != proxyfd) {
 				RADCLIENT *cl;
 				if ((cl = client_find(packet->src_ipaddr)) == NULL) {
+#ifdef WITH_SNMP
+					if (mainconfig.do_snmp) {
+						if (fd == acctfd)
+							rad_snmp.acct.total_invalid_requests++;
+						if (fd == authfd)
+							rad_snmp.auth.total_invalid__requests++;
+					}
+#endif
+
+
 					radlog(L_ERR, "Ignoring request from unknown client %s:%d",
 					ip_ntoa((char *)buffer, packet->src_ipaddr),
 					packet->src_port);
@@ -1525,8 +1601,6 @@ int main(int argc, char *argv[])
 					/*
 					 *	FIXME: Maybe just drop
 					 *	the packet on the floor?
-					 *
-					 *	rl_delete(request) ?
 					 */
 					rad_reject(request);
 					request->finished = TRUE;
@@ -2447,6 +2521,7 @@ static int refresh_request(REQUEST *request, void *data)
 	    ((request->timestamp + mainconfig.cleanup_delay <= info->now) ||
 	     ((request->options & RAD_REQUEST_OPTION_DONT_CACHE) != 0))) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+
 		/*
 		 *  Request completed, delete it, and unlink it
 		 *  from the currently 'alive' list of requests.
@@ -2454,7 +2529,7 @@ static int refresh_request(REQUEST *request, void *data)
 		DEBUG2("Cleaning up request %d ID %d with timestamp %08lx",
 				request->number, request->packet->id,
 				(unsigned long)request->timestamp);
-		
+
 		/*
 		 *  Delete the request.
 		 */
