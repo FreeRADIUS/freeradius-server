@@ -133,7 +133,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 		} else if (radlog_dest == RADLOG_STDERR) {
 			msgfd = stderr;
 
-		} else {
+		} else if (radlog_dest != RADLOG_SYSLOG) {
 
 			sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
 			if ((msgfd = fopen(buffer, "a")) == NULL) {
