@@ -72,6 +72,9 @@ if ($test_user == 1){
 	$fp = popen("$comm","w");
 	if ($fp){
 		foreach ($req as $val){
+			// Ignore comments
+			if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+				continue;
 			fwrite($fp,$val);
 		}
 		if ($test_login){

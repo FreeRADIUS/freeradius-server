@@ -46,6 +46,7 @@ Ver 1.59:
 * Update documentation
 * Only connect and bind to the ldap server if we haven't done that before.
 * Remove previous change. It was causing problems
+* In the user test page ignore comments from the auth.request file
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
