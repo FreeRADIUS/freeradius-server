@@ -25,6 +25,9 @@ if test "$GCC" = "yes"; then
     CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
 fi
 
+dnl Figure out how to build shared libraries
+AC_PROG_LIBTOOL
+
 dnl extra argument: --with-logdir
 logdir='${localstatedir}/log'
 AC_MSG_CHECKING(logdir)
@@ -475,6 +478,13 @@ AC_SUBST(MODULE_LIBS)
 AC_SUBST(MODULE_CFLAGS)
 AC_SUBST(MODULE_LDFLAGS)
 AC_SUBST(MODULE_HAVE_DLERROR)
+
+dnl #
+dnl # Figure out where libtool is located,
+dnl # and set the LT_COMPILE and LT_LINK flags.
+dnl #
+LIBTOOL="/bin/sh `pwd`/libtool"
+AC_SUBST(LIBTOOL)
 
 AC_OUTPUT(\
 	
