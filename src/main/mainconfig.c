@@ -502,12 +502,14 @@ static int generate_clients(const char *filename)
 	char            *nastype, *login, *password;
 	char		*name2;
 
-	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "client"); cs != NULL; 
+	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "client");
+	     cs != NULL; 
 	     cs = cf_subsection_find_next(mainconfig.config, cs, "client")) {
 
 		name2 = cf_section_name2(cs);
 		if (!name2) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name", filename, cf_section_lineno(cs));
+			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name",
+			       filename, cf_section_lineno(cs));
 			return -1;
 		}
 		/*
@@ -637,7 +639,7 @@ static int generate_clients(const char *filename)
 #define RADIUS_CONFIG "radiusd.conf"
 #endif
 
-int read_radius_conf_file(void)
+CONF_SECTION *read_radius_conf_file(void)
 {
 	char buffer[256];
 	CONF_SECTION *cs;
@@ -645,22 +647,8 @@ int read_radius_conf_file(void)
 	/* Lets go look for the new configuration files */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if ((cs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
-		return -1;
+		return NULL;
 	}
-
-	/*
-	 *	Free the old configuration data, and replace it
-	 *	with the new one.
-	 */
-	cf_section_free(&mainconfig.config);
-	mainconfig.config = cs;
-	
-	/*
-	 *	And parse the directory configuration values.
-	 */
-	cs = cf_section_find(NULL);
-	if (cs == NULL)
-		return -1;
 
 	/*
 	 *	This allows us to figure out where, relative to
@@ -673,11 +661,13 @@ int read_radius_conf_file(void)
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
 				librad_errstr);
-		return -1;
+		cf_section_free(&cs);
+		return NULL;
 	}
 
-	return 0;	
+	return cs;
 }
+
 
 /*
  *	Read config files.
@@ -689,6 +679,7 @@ int read_mainconfig(int reload)
 	struct rlimit core_limits;
 	static int old_debug_level = -1;
 	char buffer[1024];
+	CONF_SECTION *cs, *oldcs;
 
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
@@ -698,7 +689,7 @@ int read_mainconfig(int reload)
 
 	/* First read radiusd.conf */
 	DEBUG2("reread_config:  reading radiusd.conf");
-	if (read_radius_conf_file() < 0) {
+	if ((cs = read_radius_conf_file()) == NULL) {
 		if (debug_flag) {
 			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
 		} else {
@@ -706,6 +697,17 @@ int read_mainconfig(int reload)
 		}
 		return -1;
 	}
+
+	/*
+	 *	Free the old configuration items, and replace them
+	 *	with the new ones.
+	 *
+	 *	Note that where possible, we do atomic switch-overs,
+	 *	to ensure that the pointers are always valid.
+	 */
+	oldcs = mainconfig.config;
+	mainconfig.config = cs;
+	cf_section_free(&oldcs);
 
 	/* old-style naslist file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
