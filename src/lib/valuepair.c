@@ -775,6 +775,91 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 }
 
 /*
+ *	Create a VALUE_PAIR from an ASCII attribute and value,
+ *	where the attribute name is in the form:
+ *
+ *	Attr-%d
+ *	Vendor-%d-Attr-%d
+ */
+static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
+				int operator)
+{
+	int		attr;
+	const char	*p;
+	VALUE_PAIR	*vp;
+
+	/*
+	 *	Unknown attributes MUST be of type 'octets'
+	 */
+	if (strncasecmp(value, "0x", 2) != 0) {
+		goto error;
+	}
+
+	if (strncasecmp(attribute, "Attr-", 5) == 0) {
+		attr = atoi(attribute + 5);
+		p = attribute + 5;
+		p += strspn(p, "0123456789");
+		if (*p != 0) goto error;
+
+	} else if (strncasecmp(attribute, "Vendor-", 7) == 0) {
+		int vendor;
+
+		vendor = atoi(attribute + 7);
+		if ((vendor == 0) || (vendor > 65535)) goto error;
+
+		p = attribute + 7;
+		p += strspn(p, "0123456789");
+
+		/*
+		 *	Not Vendor-%d-Attr-%d
+		 */
+		if (strncasecmp(p, "-Attr-", 6) != 0) goto error;
+
+		p += 6;
+		attr = atoi(p);
+
+		p += strspn(p, "0123456789");
+		if (*p != 0) goto error;
+
+		if ((attr == 0) || (attr > 65535)) goto error;
+
+		attr |= (vendor << 16);
+
+	} else {		/* very much unknown: die */
+	error:
+		librad_log("Unknown attribute %s", attribute);
+		return NULL;
+	}
+
+	/*
+	 *	We've now parsed the attribute properly, and verified
+	 *	it to be of type 'octets'.  Let's create it.
+	 */
+	if ((vp = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL) {
+		librad_log("out of memory");
+		return NULL;
+	}
+	memset(vp, 0, sizeof(VALUE_PAIR));
+
+	vp->attribute = attr;
+	vp->type = PW_TYPE_OCTETS;
+	vp->operator = (operator == 0) ? T_OP_EQ : operator;
+	strcpy(vp->name, attribute);
+	vp->next = NULL;
+
+	/*
+	 *	It may not be valid hex characters.
+	 */
+	if (pairparsevalue(vp, value) == NULL) {
+		pairfree(&vp);
+		return NULL;
+	}
+
+	return vp;
+}
+
+
+/*
  *	Create a VALUE_PAIR from an ASCII attribute and value.
  */
 VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
@@ -815,9 +900,12 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		 found_tag = 1;
 	}
 
+	/*
+	 *	It's not found in the dictionary, so we use
+	 *	another method to create the attribute.
+	 */
 	if ((da = dict_attrbyname(attribute)) == NULL) {
-		librad_log("Unknown attribute %s", attribute);
-		return NULL;
+		return pairmake_any(attribute, value, operator);
 	}
 
 	if ((vp = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL) {
