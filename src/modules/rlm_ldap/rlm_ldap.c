@@ -98,6 +98,8 @@
  *	  RLM_MODULE_REJECT
  *	- Make tls_mode a configurable option. Patch from John <jhogenmiller@pennswoods.net>
  *	- Allow multiple regular profiles for an entry
+ * Oct 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Disable cache after searching for the default profile
  */
 static const char rcsid[] = "$Id$";
 
@@ -1072,6 +1074,8 @@ ldap_authorize(void *instance, REQUEST * request)
 				DEBUG("rlm_ldap: default_profile/user-profile search failed");
 		}
 	}
+	if (inst->cache_timeout >0)
+		ldap_disable_cache(conn->ld);
 
 	/*
 	 * Check for the profile attribute. If it exists, we assume that it 
