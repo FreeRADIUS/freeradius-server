@@ -248,6 +248,7 @@ int		read_naslist_file(char *);
 NAS		*nas_find(uint32_t ipno);
 const char	*nas_name(uint32_t ipno);
 const char	*nas_name2(RADIUS_PACKET *r);
+char  *		nas_name3(char *buf, size_t buflen, uint32_t ipno);
 NAS		*nas_findbyname(char *nasname);
 
 /* version.c */

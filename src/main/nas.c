@@ -200,7 +200,7 @@ const char *nas_name(uint32_t ipaddr)
 			return nas->longname;
 	}
 
-	return client_name(ipaddr);
+	return "UNKNOWN-NAS";
 }
 
 /*
@@ -217,6 +217,29 @@ const char *nas_name2(RADIUS_PACKET *packet)
 			return nas->longname;
 	}
 
-	return client_name(packet->src_ipaddr);
+	return "UNKNOWN-NAS";
 }
+
+/*
+ *	Find the name of a nas (prefer short name) based on ipaddr, 
+ *	store in passed buffer.  If NAS is unknown, return dotted quad.
+ */
+char * nas_name3(char *buf, size_t buflen, uint32_t ipaddr)
+{
+	NAS *nas;
+
+	if ((nas = nas_find(ipaddr)) != NULL) {
+		if (nas->shortname[0]) {
+			strNcpy(buf, (char *)nas->shortname, buflen);
+			return buf;
+		}
+		else {
+			strNcpy(buf, (char *)nas->longname, buflen);
+			return buf;
+		}
+	}
+	ip_ntoa(buf, ipaddr);
+	return buf;
+}
+
 

@@ -346,6 +346,7 @@ int main(int argc, char **argv)
 	char inbuf[128];
 	char myname[128];
 	char othername[256];
+	char nasname[1024];
 	char session_id[sizeof(rt.session_id)+1];
 	int fingerd = 0;
 	int showlocal = 0;
@@ -525,7 +526,7 @@ int main(int argc, char **argv)
 						proto(rt.proto, rt.porttype),
 						portind, portno,
 						dotime(rt.time),
-						nas_name(rt.nas_address),
+						nas_name3(nasname, sizeof(nasname), rt.nas_address),
 						hostname(othername, sizeof(othername), rt.framed_address), eol);
 			else
 				printf((rawoutput == 0? rfmt2: rfmt2r),
@@ -533,7 +534,7 @@ int main(int argc, char **argv)
 						portind, portno,
 						proto(rt.proto, rt.porttype),
 						dotime(rt.time),
-						nas_name(rt.nas_address),
+						nas_name3(nasname, sizeof(nasname), rt.nas_address),
 						hostname(othername, sizeof(othername), rt.framed_address), 	
 						eol);
 		}
