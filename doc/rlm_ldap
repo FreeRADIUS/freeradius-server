@@ -160,6 +160,15 @@ Also, adding the host:port information SHOULD be avoided unless there are more t
 ldap module instances in which case the host,port information can be used to distinguish
 which module will actually return the information (the xlat function will return NULL if
 the host,port information does not correspond to the configured attributes).
+
+USER PROFILE ATTRIBUTE:
+
+The module can use the User-Profile attribute. If it is set, it will assume that it contains
+the DN of a profile entry containing radius attributes. This entry will _replace_ the default
+profile directive. That way we can use different profiles based on checks on the radius attributes
+contained in the Access-Request packets. For example (users file):
+
+DEFAULT	Service-Type == Outbound-User, User-Profile := "uid=outbound-dialup,dc=company,dc=com"
  
 
 DIRECTORY COMPATIBILITY NOTE:

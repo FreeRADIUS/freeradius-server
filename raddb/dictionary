@@ -171,6 +171,7 @@ ATTRIBUTE	LM-Password		1057	octets
 ATTRIBUTE	NT-Password		1058	octets
 ATTRIBUTE	SMB-Account-CTRL	1059	integer
 ATTRIBUTE	SMB-Account-CTRL-TEXT	1061	string
+ATTRIBUTE	User-Profile		1062	string
 
 
 #

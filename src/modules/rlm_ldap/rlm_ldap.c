@@ -761,6 +761,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	VALUE_PAIR	**check_pairs, **reply_pairs;
 	char		**vals;
 	VALUE_PAIR      *module_msg_vp;
+	VALUE_PAIR	*user_profile;
 	char            module_msg[MAX_STRING_LEN];
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
@@ -899,20 +900,27 @@ ldap_authorize(void *instance, REQUEST * request)
 	 * attributes it contains in the check and reply pairs
 	 */
 
-	if (inst->default_profile){
+	user_profile = pairfind(request->config_items, PW_USER_PROFILE);
+	if (inst->default_profile || user_profile){
+		char *profile = inst->default_profile;
+
 		strncpy(filter,"(objectclass=radiusprofile)",MAX_AUTH_QUERY_LEN);
-		if ((res = perform_search(instance, conn,
-			inst->default_profile, LDAP_SCOPE_BASE, 
-			filter, inst->atts, &def_result)) == RLM_MODULE_OK){
-			if ((def_msg = ldap_first_entry(conn->ld,def_result))){
-				if ((check_tmp = ldap_pairget(conn->ld,def_msg,inst->check_item_map,check_pairs)))
-					pairadd(check_pairs,check_tmp);
-				if ((reply_tmp = ldap_pairget(conn->ld,def_msg,inst->reply_item_map,reply_pairs)))
-					pairadd(reply_pairs,reply_tmp);
-			}
-			ldap_msgfree(def_result);
-		} else 
-			DEBUG("rlm_ldap: default_profile search failed");
+		if (user_profile)
+			profile = user_profile->strvalue;
+		if (profile && strlen(profile)){
+			if ((res = perform_search(instance, conn,
+				profile, LDAP_SCOPE_BASE, 
+				filter, inst->atts, &def_result)) == RLM_MODULE_OK){
+				if ((def_msg = ldap_first_entry(conn->ld,def_result))){
+					if ((check_tmp = ldap_pairget(conn->ld,def_msg,inst->check_item_map,check_pairs)))
+						pairadd(check_pairs,check_tmp);
+					if ((reply_tmp = ldap_pairget(conn->ld,def_msg,inst->reply_item_map,reply_pairs)))
+						pairadd(reply_pairs,reply_tmp);
+				}
+				ldap_msgfree(def_result);
+			} else 
+				DEBUG("rlm_ldap: default_profile/user-profile search failed");
+		}
 	}
 
 	/*

@@ -139,6 +139,7 @@
 #define PW_SMB_ACCOUNT_CTRL		1059
 #define PW_X99_FAST			1060
 #define PW_SMB_ACCOUNT_CTRL_TEXT	1061
+#define PW_USER_PROFILE			1062
 
 /*
  *	Integer Translations
