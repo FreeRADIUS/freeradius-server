@@ -1,7 +1,25 @@
+FreeRADIUS 0.9.1 ; $Date$, urgency=low
+	* Replicate-To-Realm is deprecated, and hence no longer documented
+	* Document rlm_detail support for authorize and post-auth sections
+	* Improve slightly MySQL accounting record SQL query
+	* Opaquefied CHAP-Challenge
+	* Add attributes to Nomadix dictionary
+	* Fix rlm_exec's parsing of non-attribute return values
+	* Fix for a segfault while reading config files
+	* Fix for a segfault regarding hostname lengths
+	* Fix for a segfault while reading deprecated config files
+	* Fix compilation of radiusd.c when threads are disabled
+	* Recover from inability to relay
+	* Stop complaining in error log when a system call is interrupted.
+	* Don't print binary CHAP-Passwords into the logs.
+	* Successfully detect GNU dbm >= 1.8.1's dbm compatibility library
+	* Fix rlm_unix to deal with requests without a username
+	* Fix "uninmplemented function" crash in postgresql driver on -HUP
+	* Revert INTERVAL types to BIGINT in postgresql example schema
+
 FreeRADIUS 0.9.0 ; Date: 2003/07/04 21:01:29, urgency=low
 
 	* Many, many, bug fixes and feature enhancements.
-	* Fixes after beta testing of 0.9.0-pre1
 	* radrelay now updates packet 'id' on retransmissions.
 	* More checks for thread-safe functions.
 	* Fix CHAP related buffer overflow (ouch!), thanks to Masao NISHIKU.
