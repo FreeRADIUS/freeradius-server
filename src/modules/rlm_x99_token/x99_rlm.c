@@ -32,7 +32,6 @@
  */
 
 /*
- * TODO: support max usage limit (x iterations)
  * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
@@ -182,6 +181,13 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 		"fast_sync is yes, but allow_sync is no; disabling fast_sync");
     }
 
+    if (!data->allow_sync && !data->allow_async) {
+	x99_log(X99_LOG_ERR,
+		"at least one of {allow_async, allow_sync} must be set");
+	free(data);
+	return -1;
+    }
+
     if (data->ewindow_size > MAX_EWINDOW_SIZE || data->ewindow_size < 0) {
 	data->ewindow_size = 0;
 	x99_log(X99_LOG_ERR, "max event window size is %d, using default of 0",
@@ -229,10 +235,12 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
     if (stat(data->syncdir, &st) != 0) {
 	x99_log(X99_LOG_ERR, "syncdir %s error: %s",
 		data->syncdir, strerror(errno));
+	free(data);
 	return -1;
     }
     if (st.st_mode != (S_IFDIR|S_IRWXU)) {
 	x99_log(X99_LOG_ERR, "syncdir %s has loose permissions", data->syncdir);
+	free(data);
 	return -1;
     }
 
@@ -619,7 +627,8 @@ sync_response:
 		x99_log(X99_LOG_ERR,
 			"auth: unable to get sync data e:%d t:%d for [%s]",
 			i, 0, username);
-		return RLM_MODULE_FAIL;
+		rc = RLM_MODULE_FAIL;
+		goto return_pw_valid;
 		/* NB: last_auth, failcount not updated. */
 	    }
 
@@ -629,7 +638,8 @@ sync_response:
 		x99_log(X99_LOG_ERR, "auth: unable to calculate sync response "
 			"e:%d t:%d for [%s], to challenge %s",
 			i, 0, username, challenge);
-		return RLM_MODULE_FAIL;
+		rc = RLM_MODULE_FAIL;
+		goto return_pw_valid;
 		/* NB: last_auth, failcount not updated. */
 	    }
 	    DEBUG("rlm_x99_token: auth: [%s], sync challenge %d %s, "
@@ -641,13 +651,13 @@ sync_response:
 		 * Yay!  User authenticated via sync mode.  Resync.
 		 *
 		 * The same failure/replay issue applies here as in the
-		 * identical code block in the async section, above, with
+		 * identical code block in the async section above, with
 		 * the additional problem that a response can be reused
 		 * indefinitely!  (until the sync data is updated)
 		 */
 		rc = RLM_MODULE_OK;
 		if (x99_get_sync_data(inst->syncdir,username,user_info.card_id,
-				      1, 0 ,challenge,user_info.keyblock) != 0){
+				      1, 0, challenge,user_info.keyblock) != 0){
 		    x99_log(X99_LOG_ERR, "auth: unable to get sync data "
 			    "e:%d t:%d for [%s] (for resync)", 1, 0, username);
 		    rc = RLM_MODULE_FAIL;
