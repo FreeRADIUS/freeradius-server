@@ -49,6 +49,8 @@ typedef struct radius_packet_t {
   uint8_t	data[1];
 } radius_packet_t;
 
+static uint8_t random_vector_pool[AUTH_VECTOR_LEN*2];
+
 /*
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
@@ -106,7 +108,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		    librad_log("Out of memory");
 		    return -1;
 		  }
-		  packet->data = (char *) hdr;
+		  packet->data = (uint8_t *) hdr;
 		  
 		  /*
 		   *	Build standard header
@@ -492,6 +494,26 @@ RADIUS_PACKET *rad_recv(int fd)
 	packet->id = hdr->id;
 	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
 
+	/*
+	 *	Merge information from the outside world into our
+	 *	random vector pool.  The MD5 is expensive, but it's
+	 *	amortized over *legal* packets from *known* clients,
+	 *	so the problem isn't too bad.
+	 *
+	 *	The MD5 helps to make sure that the random pool uses
+	 *	information from outside to increase entropy, without
+	 *	being contaminated by that information.
+	 *
+	 *	Both AUTH_VECTOR_LEN and the MD5 output are 16 octets
+	 *	long, so we copy the user's vector to the end of our
+	 *	pool, and make the pool out of the hash of the two.
+	 */
+	memcpy((char *) random_vector_pool + AUTH_VECTOR_LEN,
+	       (char *) packet->vector, AUTH_VECTOR_LEN);
+	librad_md5_calc((char *) random_vector_pool,
+			(char *) random_vector_pool,
+			sizeof(random_vector_pool));
+
 	return packet;
 }
 
@@ -873,14 +895,12 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *pas
  */
 static void random_vector(char *vector)
 {
-	int		randno;
 	int		i;
 	static int	did_srand = 0;
+	static int	counter = 0;
 #ifdef __linux__
 	static int	urandom_fd = -1;
-#endif
 
-#ifdef __linux__
 	/*
 	 *	Use /dev/urandom if available.
 	 */
@@ -918,14 +938,46 @@ static void random_vector(char *vector)
 #endif
 
 	if (!did_srand) {
-		srand(time(0) + getpid());
+		srand(time(NULL) + getpid());
+
+		/*
+		 *	Now that we have a bad random seed, let's
+		 *	make it a little better by MD5'ing it.
+		 */
+		for (i = 0; i < sizeof(random_vector_pool); i++) {
+			random_vector_pool[i] ^= rand() & 0xff;
+		}
+
+		librad_md5_calc((char *) random_vector_pool,
+				(char *) random_vector_pool,
+				sizeof(random_vector_pool));
+
 		did_srand = 1;
 	}
-	for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(int)) {
-		randno = rand();
-		memcpy(vector, &randno, sizeof(int));
-		vector += sizeof(int);
-	}
+
+	/*
+	 *	Modify our random pool, based on the counter,
+	 *	and put the resulting information through MD5,
+	 *	so it's all mashed together.
+	 */
+	counter++;
+	random_vector_pool[AUTH_VECTOR_LEN]     ^= (counter & 0xff);
+	random_vector_pool[AUTH_VECTOR_LEN + 1] ^= ((counter >> 8) & 0xff);
+	random_vector_pool[AUTH_VECTOR_LEN + 2] ^= ((counter >> 16) & 0xff);
+	random_vector_pool[AUTH_VECTOR_LEN + 3] ^= ((counter >> 24) & 0xff);
+	librad_md5_calc((char *) random_vector_pool,
+			(char *) random_vector_pool,
+			sizeof(random_vector_pool));
+
+	/*
+	 *	And do another MD5 hash of the result, to give
+	 *	the user a random vector.  This ensures that the
+	 *	user has a random vector, without us giving them
+	 *	and exact image of what's in the random pool.
+	 */
+	librad_md5_calc((char *) vector,
+			(char *) random_vector_pool,
+			sizeof(random_vector_pool));
 }
 
 
