@@ -42,6 +42,7 @@ static const char *days[] =
 
 #if 0 /* Set to 1 if you're a developer and want to debug this code */
 #	define timestr_debug DEBUG2
+#	define do_timestr_debug 1
 #else
 #	define timestr_debug if (0) printf
 #endif
@@ -206,7 +207,7 @@ int timestr_match(char *tmstr, time_t t)
 	char bitmap[WEEKMIN / 8];
 	int now, tot, i;
 	int byte, bit;
-#ifdef timestr_debug
+#if do_timestr_debug
 	int y;
 	char *s;
 	char null[8];
@@ -218,16 +219,16 @@ int timestr_match(char *tmstr, time_t t)
 	memset(bitmap, 0, sizeof(bitmap));
 	week_fill(bitmap, tmstr);
 
-#ifdef timestr_debug
+#if do_timestr_debug
 	memset(null, 0, 8);
 	for (i = 0; i < 7; i++) {
-		printf("%d: ", i);
+		timestr_debug("%d: ", i);
 		s = bitmap + 180 * i;
 		for (y = 0; y < 23; y++) {
 			s = bitmap + 180 * i + (75 * y) / 10;
-			printf("%c", memcmp(s, null, 8) == 0 ? '.' : '#');
+			timestr_debug("%c", memcmp(s, null, 8) == 0 ? '.' : '#');
 		}
-		printf("\n");
+		timestr_debug("\n");
 	}
 #endif
 
