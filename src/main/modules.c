@@ -598,42 +598,6 @@ int setup_modules(void)
 	return 0;
 }
 
-
-/*
- *	Update the Stripped-User-Name attribute.
- */
-static void update_username(REQUEST *request, char *newname)
-{
-	VALUE_PAIR *vp;
-
-	/*
-	 *	If there isn't a Stripped-User-Name attribute,
-	 *	go add one, and make it the definitive user name.
-	 */
-	if (request->username->attribute != PW_STRIPPED_USER_NAME) {
-		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
-		if (!vp) {
-			radlog(L_ERR|L_CONS, "no memory");
-			exit(1);
-		}
-		DEBUG2("  authorize: Creating Stripped-User-Name of %s", newname);
-		strcpy((char *)vp->strvalue, newname);
-		vp->length = strlen((char *)vp->strvalue);
-		pairadd(&request->packet->vps, vp);
-		request->username = vp;
-		return;
-	}
-
-	/*
-	 *	There is one, update it in place.
-	 */
-	vp = request->username;
-	DEBUG2("  authorize: Updating Stripped-User-Name from %s to %s",
-	       vp->strvalue, newname);
-	strcpy((char *)vp->strvalue, newname);
-	vp->length = strlen((char *)vp->strvalue);
-}
-
 #if HAVE_PTHREAD_H
 /*
  *	Lock the mutex for the module
@@ -677,55 +641,6 @@ int module_authorize(REQUEST *request)
 			 this->instance->insthandle, request);
 		safe_unlock(this);
 		this = this->next;
-	}
-
-	/*
-	 *	Before authenticating the user, update the
-	 *	Stripped-User-Name attribute with any additions.
-	 *
-	 *	No name: nothing to add.
-	 */
-	if (request->username != NULL) {
-		char newname[256];
-		VALUE_PAIR *vp;
-
-		/*
-		 *	Try to add a prefix
-		 */
-		for (vp = request->config_items; vp != NULL; vp = vp->next) {
-			switch (vp->attribute) {
-			default:
-				break;
-				
-			case PW_ADD_PREFIX:
-				if ((size_t)(vp->length + request->username->length) > sizeof(vp->strvalue)) {
-					DEBUG2("\"%s\"+\"%s\" too long",
-					       vp->strvalue,
-					       request->username->strvalue);
-					continue;
-				}
-				strcpy(newname, (char *)vp->strvalue);
-				strcat(newname, (char *)request->username->strvalue);
-				update_username(request, newname);
-				break;
-				
-			case PW_ADD_SUFFIX:
-				if ((size_t)(vp->length + request->username->length) > sizeof(vp->strvalue)) {
-					DEBUG2("\"%s\"+\"%s\" too long",
-					       request->username->strvalue,
-					       vp->strvalue);
-					continue;
-				}
-				strcpy(newname,
-					(char *)request->username->strvalue);
-				strcat(newname, (char *)vp->strvalue);
-				update_username(request, newname);
-				break;
-			}
-		} /* over all configuration items */
-
-		pairdelete(&request->config_items, PW_ADD_PREFIX);
-		pairdelete(&request->config_items, PW_ADD_SUFFIX);
 	}
 
 	return rcode;
