@@ -85,7 +85,7 @@ dnl		AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.a])
 		if test "x$MYSQL_LIBS" = "x"; then
 			AC_MSG_RESULT(no)
 			MYSQL_INCLUDE=
-			AC_MSG_WARN([mysql headers not found.  Use --with-mysql-include-dir=<path>.])
+			AC_MSG_WARN([mysql libraries not found.  Use --with-mysql-lib-dir=<path>.])
 			targetname=   # disabled module
 		else
 			AC_MSG_RESULT(yes) 
