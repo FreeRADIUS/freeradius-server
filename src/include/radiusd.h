@@ -123,16 +123,16 @@ int		log_err (char *);
 void		sig_cleanup(int);
 
 /* util.c */
-struct passwd	*rad_getpwnam(char *);
+struct passwd	*rad_getpwnam(const char *);
 #if defined (sun) && defined(__svr4__)
 void		(*sun_signal(int signo, void (*func)(int)))(int);
 #define signal sun_signal
 #endif
 void		request_free(REQUEST *request);
 RADIUS_PACKET *	build_reply(int code, REQUEST *request,
-			VALUE_PAIR *vps, char *user_msg);
+			VALUE_PAIR *vps, const char *user_msg);
 VALUE_PAIR	*rad_get_username(REQUEST *request);
-int		rad_put_username(REQUEST *request, char *username, int length);
+int		rad_put_username(REQUEST *request, const char *username, int length);
 
 /* files.c */
 CLIENT		*client_find(UINT4 ipno);
@@ -173,9 +173,9 @@ int		rad_mangle(REQUEST *request);
 int		rad_authenticate (REQUEST *);
 
 /* exec.c */
-char		*radius_xlate(char *, VALUE_PAIR *req, VALUE_PAIR *reply);
-int		radius_exec_program(char *, VALUE_PAIR *, VALUE_PAIR **,
-			int, char **user_msg);
+char		*radius_xlate(const char *, VALUE_PAIR *req, VALUE_PAIR *reply);
+int		radius_exec_program(const char *, VALUE_PAIR *, VALUE_PAIR **,
+			int, const char **user_msg);
 
 /* timestr.c */
 int		timestr_match(char *, time_t);
