@@ -35,7 +35,7 @@
 #include	"modules.h"
 
 /* End a session by faking a Stop packet to all accounting modules */
-int session_zap(uint32_t nasaddr, int port, const char *user,
+int session_zap(int sockfd, uint32_t nasaddr, int port, const char *user,
 		const char *sessionid, uint32_t cliaddr, char proto, time_t t)
 {
 	static unsigned char id = 0;
@@ -48,7 +48,7 @@ int session_zap(uint32_t nasaddr, int port, const char *user,
 	stoppkt = rad_malloc(sizeof *stoppkt);
 	memset(stoppkt, 0, sizeof stoppkt);
 	stoppkt->data = NULL;
-	stoppkt->sockfd = acctfd;
+	stoppkt->sockfd = sockfd;
 	stoppkt->code = PW_ACCOUNTING_REQUEST;
 	stoppkt->id = id++;
 	stoppkt->timestamp = t?t:time(0);

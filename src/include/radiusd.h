@@ -186,7 +186,6 @@ extern uint32_t		myip;
 extern int		log_auth_detail;
 extern int		auth_port;
 extern int		acct_port;
-extern int		acctfd;
 extern int		proxy_port;
 extern int		proxyfd;
 extern int		proxy_retry_count;
@@ -208,7 +207,7 @@ int		rad_accounting(REQUEST *);
 /* session.c */
 int		rad_check_ts(uint32_t nasaddr, int port, const char *user,
 			     const char *sessionid);
-int		session_zap(uint32_t nasaddr, int port, const char *user,
+int		session_zap(int fd, uint32_t nasaddr, int port, const char *user,
 			    const char *sessionid, uint32_t cliaddr,
 			    char proto, time_t t);
 
