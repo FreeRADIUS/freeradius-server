@@ -410,9 +410,9 @@ static int process_attribute(const char* fn, const int line,
 		}
 		else {
 			  /* Must be a vendor 'flag'... */
-			  if (strncmp(s, "vendor=", 5) == 0) {
+			  if (strncmp(s, "vendor=", 7) == 0) {
 				/* New format */
-				s += 5;
+				s += 7;
 			  }
 
 			  vendor = dict_vendorbyname(s);
