@@ -45,13 +45,22 @@ int session_zap(int sockfd, uint32_t nasaddr, int port, const char *user,
 	VALUE_PAIR *vp, *userpair;
 	int ret;
 
-	stoppkt = rad_malloc(sizeof *stoppkt);
-	memset(stoppkt, 0, sizeof stoppkt);
-	stoppkt->data = NULL;
-	stoppkt->sockfd = sockfd;
-	stoppkt->code = PW_ACCOUNTING_REQUEST;
+	stoppkt = rad_alloc(0);
+
+	stoppkt->sockfd = -1;
+	stoppkt->src_ipaddr = htonl(INADDR_LOOPBACK);
+	stoppkt->dst_ipaddr = htonl(INADDR_LOOPBACK);
+	stoppkt->src_port = 0;
+	stoppkt->dst_port = 0;
+
 	stoppkt->id = id++;
+	stoppkt->code = PW_ACCOUNTING_REQUEST;
+
 	stoppkt->timestamp = t?t:time(0);
+
+	stoppkt->data = NULL;
+	stoppkt->data_len = 0;
+
 	stoppkt->vps = NULL;
 
 	/* Hold your breath */
@@ -108,16 +117,42 @@ int session_zap(int sockfd, uint32_t nasaddr, int port, const char *user,
 #endif
 	stopreq->packet = stoppkt;
 	stopreq->proxy = NULL;
-	stopreq->reply = NULL;
+
+	/*
+	 *  Leave room for a fake reply
+	 */
+	stopreq->reply = rad_alloc(0);
+
+	stopreq->reply->sockfd = stopreq->packet->sockfd;
+	stopreq->reply->dst_ipaddr = stopreq->packet->src_ipaddr;
+	stopreq->reply->dst_port = stopreq->packet->src_port;
+	stopreq->reply->id = stopreq->packet->id;
+	stopreq->reply->code = 0; /* UNKNOWN code */
+	stopreq->reply->vps = NULL;
+	stopreq->reply->data = NULL;
+	stopreq->reply->data_len = 0;
+	
 	stopreq->proxy_reply = NULL;
 	stopreq->config_items = NULL;
 	stopreq->username = userpair;
 	stopreq->password = NULL;
 	stopreq->timestamp = stoppkt->timestamp;
-	stopreq->number = 0; /* FIXME */
+
+	/*
+	 *  This request does NOT exist in the request list, as it's
+	 *  not managed by rad_process().  Therefore, there's no number,
+	 *  PID, or other stuff associated with it.
+	 */
+	stopreq->number = 0;
 	stopreq->child_pid = NO_SUCH_CHILD_PID;
 	stopreq->container = NULL;
-	ret = rad_process(stopreq, spawn_flag);
+
+	ret = rad_accounting(stopreq);
+
+	/*
+	 *  We've got to clean it up by hand, because no one else will.
+	 */
+	request_free(&stopreq);
 
 	return ret;
 }
