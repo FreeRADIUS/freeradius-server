@@ -918,8 +918,6 @@ $INCLUDE ${confdir}/eap.conf
 	
 	#  rewrite arbitrary packets.  Useful in accounting and authorization.
 	#
-	## This module is highly experimental at the moment.  Please give 
-	## feedback to the mailing list.
 	#
 	#  The module can also use the Rewrite-Rule attribute. If it
 	#  is set and matches the name of the module instance, then
@@ -929,6 +927,12 @@ $INCLUDE ${confdir}/eap.conf
 	#  will be created containing the value replacewith and it
 	#  will be added to searchin (packet, reply, proxy, proxy_reply or config).
 	# searchfor,ignore_case and max_matches will be ignored in that case.
+	#
+	# Backreferences are supported: %{0} will contain the string the whole match
+	# and %{1} to %{8} will contain the contents of the 1st to the 8th parentheses
+	#
+	# If max_matches is greater than one the backreferences will correspond to the
+	# first match
 
 	#
 	#attr_rewrite sanecallerid {

@@ -169,7 +169,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	VALUE_PAIR *attr_vp = NULL;
 	VALUE_PAIR *tmp = NULL;
 	regex_t preg;
-	regmatch_t pmatch;
+	regmatch_t pmatch[9];
 	int cflags = 0;
 	int err = 0;
 	char done_xlat = 0;
@@ -249,6 +249,8 @@ do_again:
 	}
 
 	if (!data->new_attr){
+		unsigned int j = 0;
+
 		if ((err = regcomp(&preg,search_STR,cflags))) {
 			regerror(err, &preg, err_msg, MAX_STRING_LEN);
 			DEBUG2("rlm_attr_rewrite: regcomp() returned error: %s",err_msg);
@@ -259,7 +261,7 @@ do_again:
 		counter = 0;
 
 		for ( i = 0 ;i < (unsigned)data->num_matches; i++) {
-			err = regexec(&preg, ptr2, 1, &pmatch, 0);
+			err = regexec(&preg, ptr2, 9, pmatch, 0);
 			if (err == REG_NOMATCH) {
 				if (i == 0) {
 					DEBUG2("rlm_attr_rewrite: No match found for attribute %s with value '%s'",
@@ -275,11 +277,11 @@ do_again:
 						data->attribute, attr_vp->strvalue);
 				return ret;
 			}
-			if (pmatch.rm_so == -1)
+			if (pmatch[0].rm_so == -1)
 				break;
-			len = pmatch.rm_so;
+			len = pmatch[0].rm_so;
 			if (data->append) {
-				len = len + (pmatch.rm_eo - pmatch.rm_so);
+				len = len + (pmatch[0].rm_eo - pmatch[0].rm_so);
 			}
 			counter += len;
 			if (counter >= MAX_STRING_LEN) {
@@ -291,7 +293,39 @@ do_again:
 
 			strncpy(ptr, ptr2,len);
 			ptr += len;
-			ptr2 += pmatch.rm_eo;
+			ptr2 += pmatch[0].rm_eo;
+
+			if (i == 0){
+				/*
+				 * We only run on the first match, sorry
+				 */
+				for(j = 0; j <= 8; j++){
+					char *p;
+					char buffer[sizeof(attr_vp->strvalue)];
+
+					/*
+				   	 * Stolen from src/main/valuepair.c, paircmp()
+				 	 */
+				
+					/*
+					 * Delete old matches if the corresponding match does not
+					 * exist in the current regex
+					 */
+					if (pmatch[j].rm_so == -1){
+						p = request_data_get(request,request,REQUEST_DATA_REGEX | j);
+						if (p){
+							free(p);
+							continue;
+						}
+						break;
+					}
+					memcpy(buffer,
+						attr_vp->strvalue + pmatch[j].rm_so,pmatch[j].rm_eo);
+					buffer[pmatch[j].rm_eo] = '\0';
+					p = strdup(buffer);
+					request_data_add(request,request,REQUEST_DATA_REGEX | j,p,free);
+				}
+			}
 
 			if (!done_xlat){
 				if (data->replace_len != 0 &&
