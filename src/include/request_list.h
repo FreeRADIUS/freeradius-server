@@ -8,22 +8,6 @@
  *
  */
 
-/*
- *  We keep the incoming requests in an array, indexed by ID.
- *
- *  Each array element contains a linked list of active requests,
- *  a count of the number of requests, and a time at which the first
- *  request in the list must be serviced.
- */
-typedef struct REQUEST_LIST {
-	REQUEST		*first_request;
-	REQUEST		*last_request;
-	int		request_count;
-	time_t		last_cleaned_list;
-} REQUEST_LIST;
-
-extern REQUEST_LIST	request_list[256];
-
 extern int rl_init(void);
 extern void rl_delete(REQUEST *request);
 extern void rl_add(REQUEST *request);

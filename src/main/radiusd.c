@@ -92,7 +92,6 @@ int			need_reload = FALSE;
 struct	main_config_t 	mainconfig;
 
 static int		got_child = FALSE;
-static int		request_list_busy = FALSE;
 static int		authfd;
 static int		acctfd;
 int	        	proxyfd;
@@ -1631,13 +1630,6 @@ static struct timeval *rad_clean_list(time_t now)
 #endif
 	
 	/*
-	 *	When mucking around with the request list, we block
-	 *	asynchronous access (through the SIGCHLD handler) to
-	 *	the list - equivalent to sigblock(SIGCHLD).
-	 */
-	request_list_busy = TRUE;
-
-	/*
 	 *	Hmmm... this is Big Magic.  We make it seem like
 	 *	there's an additional second to wait, for a whole
 	 *	host of reasons which I can't explain adequately,
@@ -1646,11 +1638,6 @@ static struct timeval *rad_clean_list(time_t now)
 	info.now--;
 
 	rl_walk(refresh_request, &info);
-
-	/*
-	 *	We're done playing with the request list.
-	 */
-	request_list_busy = FALSE;
 
 	/*
 	 *	We haven't found a time at which we need to wake up.
@@ -1709,13 +1696,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	}
 
 	now = request->timestamp; /* good enough for our purposes */
-
-	/*
-	 *	When mucking around with the request list, we block
-	 *	asynchronous access (through the SIGCHLD handler) to
-	 *	the list - equivalent to sigblock(SIGCHLD).
-	 */
-	request_list_busy = TRUE;
 
 	/*
 	 *	Look for an existing copy of this request.
@@ -1824,7 +1804,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 *	and we have nothing more to do.
 	 */
 	if (request == NULL) {
-		request_list_busy = FALSE;
 		return NULL;
 	}
 
@@ -1847,7 +1826,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 			       request->packet->id);
 			radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n\tThe value for 'max_requests' is probably set too low.\n");
 			request_free(&request);
-			request_list_busy = FALSE;
 			return NULL;
 		}
 	}
@@ -1860,7 +1838,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	/*
 	 *	And return the request to be handled.
 	 */
-	request_list_busy = FALSE;
 	return request;
 }
 
@@ -2003,13 +1980,6 @@ void sig_cleanup(int sig)
 
 	sig = sig; /* -Wunused */
  
-	/*
-	 *	request_list_busy is a lock on the request list
-	 */
-	if (request_list_busy) {
-		got_child = TRUE;
-		return;
-	}
 	got_child = FALSE;
 
 	/*
@@ -2040,17 +2010,13 @@ void sig_cleanup(int sig)
 		}
 
 		/*
-		 *	Service all of the requests in the queues
+		 *	Loop over ALL of the active requests, looking
+		 *	for the one which caused the signal.
 		 */
-		for (i = 0; i < 256; i++) {
-			curreq = request_list[i].first_request;
-			while (curreq != (REQUEST *)NULL) {
-				if (curreq->child_pid == pid) {
-					curreq->child_pid = NO_SUCH_CHILD_PID;
-					break;
-				}
-				curreq = curreq->next;
-			}
+		for (curreq = rl_next(NULL); curreq != NULL; curreq = rl_next(curreq)) {
+			if (curreq->child_pid == pid) {
+				curreq->child_pid = NO_SUCH_CHILD_PID;
+				break;
 		}
         }
 #endif /* !defined HAVE_PTHREAD_H */

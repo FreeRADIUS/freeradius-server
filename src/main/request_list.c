@@ -18,7 +18,21 @@ static const char rcsid[] = "$Id$";
 #include	"radiusd.h"
 #include	"request_list.h"
 
-REQUEST_LIST	request_list[256];
+/*
+ *  We keep the incoming requests in an array, indexed by ID.
+ *
+ *  Each array element contains a linked list of active requests,
+ *  a count of the number of requests, and a time at which the first
+ *  request in the list must be serviced.
+ */
+typedef struct REQUEST_LIST {
+	REQUEST		*first_request;
+	REQUEST		*last_request;
+	int		request_count;
+	time_t		last_cleaned_list;
+} REQUEST_LIST;
+
+static REQUEST_LIST	request_list[256];
 
 /*
  *	Initialize the request list.
@@ -235,6 +249,8 @@ REQUEST *rl_next(REQUEST *request)
 		 *	This ID has a request, return it.
 		 */
 		if (request_list[id & 0xff].first_request) {
+			assert(request_list[id&0xff].first_request != request);
+
 			return request_list[id & 0xff].first_request;
 		}
 	}
