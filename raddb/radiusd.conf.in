@@ -688,8 +688,9 @@ modules {
 	#	allowmultiplekeys = no
 	#}
 
-	#  Similar configuration, for the /etc/group file. Adds Group-Name
-	#  attribute for every group user is member of
+	#  Similar configuration, for the /etc/group file. Adds a Group-Name
+	#  attribute for every group that the user is member of.
+	#
 	#passwd etc_group {
 	#	filename = /etc/group
 	#	format = "Group-Name:::*,User-Name"
@@ -983,6 +984,12 @@ modules {
 		mpp = no
 	}
 
+	#
+	#  The 'expression' module current has no configuration.
+	#
+	expr {
+	}
+
 	# ANSI X9.9 token support.  Not included by default.
 	# $INCLUDE  ${confdir}/x99.conf
 
@@ -1005,7 +1012,17 @@ modules {
 # here, and ensure that the configuration will be OK.
 #
 instantiate {
-
+	#
+	#  The expression module doesn't do authorization,
+	#  authentication, or accounting.  It only does dynamic
+	#  translation, of the form:
+	#
+	#	Session-Timeout = `%{expr:2 + 3}`
+	#
+	#  So the module needs to be instantiated, but CANNOT be
+	#  listed in any other section.
+	#
+	expr
 }
 
 # Authorization. First preprocess (hints and huntgroups files),

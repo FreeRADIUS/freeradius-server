@@ -46,28 +46,37 @@ typedef enum expr_token_t {
   TOKEN_INTEGER,
   TOKEN_ADD,
   TOKEN_SUBTRACT,
-  TOKEN_XLAT
+  TOKEN_DIVIDE,
+  TOKEN_REMAINDER,
+  TOKEN_MULTIPLY,
+  TOKEN_AND,
+  TOKEN_OR,
+  TOKEN_LAST
 } expr_token_t;
 
-/*
- *  Do xlat of strings!
- */ 
-static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int outlen,
-		                        RADIUS_ESCAPE_STRING func)
-{
-	int		result, x;
-	const char	*p;	
-	expr_token_t	this;
-	rlm_expr_t	*inst = instance;
-	char		buffer[256];
+typedef struct expr_map_t {
+	char op;
+	expr_token_t token;
+} expr_map_t;
 
-	/*
-	 * Do an xlat on the provided string (nice recursive operation).
-	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
-		radlog(L_ERR, "rlm_expr: xlat failed.");
-		return 0;
-	}
+static expr_map_t map[] = 
+{
+	{'+',	TOKEN_ADD },
+	{'-',	TOKEN_SUBTRACT },
+	{'/',	TOKEN_DIVIDE },
+	{'*',	TOKEN_MULTIPLY },
+	{'%',	TOKEN_REMAINDER },
+	{'&',	TOKEN_AND },
+	{'|',	TOKEN_OR },
+	{0,	TOKEN_LAST}
+};
+
+static int get_number(REQUEST *request, const char **string, int *answer)
+{
+	int		i, found;
+	int		result, x;
+	const char	*p;
+	expr_token_t	this;
 
 	/*
 	 *  Loop over the input.
@@ -75,53 +84,82 @@ static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 	result = 0;
 	this = TOKEN_NONE;
 
-	for (p = buffer; *p != '\0'; /* nothing */) {
+	for (p = *string; *p != '\0'; /* nothing */) {
 		if ((*p == ' ') ||
 		    (*p == '\t')) {
 			p++;
 			continue;
 		}
 
-		if (*p == '+') {
-			if (this != TOKEN_NONE) {
-				DEBUG2("rlm_expr: Invalid operator at \"%s\"", p);
-				return 0;
+		/*
+		 *  Discover which token it is.
+		 */
+		found = FALSE;
+		for (i = 0; map[i].token != TOKEN_LAST; i++) {
+			if (*p == map[i].op) {
+				if (this != TOKEN_NONE) {
+					DEBUG2("rlm_expr: Invalid operator at \"%s\"", p);
+					return -1;
+				}
+				this = map[i].token;
+				p++;
+				found = TRUE;
+				break;
 			}
-			this = TOKEN_ADD;
-			p++;
-			continue;
 		}
 
-		if (*p == '-') {
-			if (this != TOKEN_NONE) {
-				DEBUG2("rlm_expr: Invalid operator at \"%s\"", p);
-				return 0;
-			}
-			this = TOKEN_SUBTRACT;
-			p++;
+		/*
+		 *  Found the algebraic operator.  Get the next number.
+		 */
+		if (found) {
 			continue;
 		}
 
 		/*
-		 *  NOT a number: die!
+		 *  End of a group.  Stop.
 		 */
-		if ((*p < '0') || (*p > '9')) {
-			DEBUG2("rlm_expr: Not a number at \"%s\"", p);
-			return 0;
-		}
-		
-		/*
-		 *  This is doing it the hard way, but it also allows
-		 *  us to increment 'p'.
-		 */
-		x = 0;
-		while ((*p >= '0') && (*p <= '9')) {
-			x *= 10;
-			x += (*p - '0');
+		if (*p == ')') {
+			if (this != TOKEN_NONE) {
+				DEBUG2("rlm_expr: Trailing operator before end sub-expression at \"%s\"", p);
+				return -1;
+			}
 			p++;
+			break;
 		}
-	
-		DEBUG2("rlm_expr: %d %d\n", result, x);
+
+		/*
+		 *  Start of a group.  Call ourselves recursively.
+		 */
+		if (*p == '(') {
+			p++;
+
+			found = get_number(request, &p, &x);
+			if (found < 0) {
+				return -1;
+			}
+		} else {
+			/*
+			 *  No algrebraic operator found, the next thing
+			 *  MUST be a number.
+			 *
+			 *  If it isn't, then we die.
+			 */
+			if ((*p < '0') || (*p > '9')) {
+				DEBUG2("rlm_expr: Not a number at \"%s\"", p);
+				return -1;
+			}
+			
+			/*
+			 *  This is doing it the hard way, but it also allows
+			 *  us to increment 'p'.
+			 */
+			x = 0;
+			while ((*p >= '0') && (*p <= '9')) {
+				x *= 10;
+				x += (*p - '0');
+				p++;
+			}
+		}
 
 		switch (this) {
 		default:
@@ -136,12 +174,73 @@ static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 		case TOKEN_SUBTRACT:
 			result -= x;
 			break;
+
+		case TOKEN_DIVIDE:
+			result /= x;
+			break;
+
+		case TOKEN_REMAINDER:
+			result %= x;
+			break;
+
+		case TOKEN_MULTIPLY:
+			result *= x;
+			break;
+
+		case TOKEN_AND:
+			result &= x;
+			break;
+
+		case TOKEN_OR:
+			result |= x;
+			break;
 		}
 
 		/*
 		 *  We've used this token.
 		 */
 		this = TOKEN_NONE;
+	}
+
+	/*
+	 *  And return the answer to the caller.
+	 */
+	*string = p;
+	*answer = result;
+	return 0;
+}
+
+/*
+ *  Do xlat of strings!
+ */ 
+static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int outlen,
+		                        RADIUS_ESCAPE_STRING func)
+{
+	int		rcode, result;
+	rlm_expr_t	*inst = instance;
+	const		char *p;
+	char		buffer[256];
+
+	/*
+	 * Do an xlat on the provided string (nice recursive operation).
+	 */
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		return 0;
+	}
+
+	p = buffer;
+	rcode = get_number(request, &p, &result);
+	if (rcode < 0) {
+		return 0;
+	}
+
+	/*
+	 *  We MUST have eaten the entire input string.
+	 */
+	if (*p != '\0') {
+		DEBUG2("rlm_expr: Failed at %s", p);
+		return 0;
 	}
 
 	snprintf(out, outlen, "%d", result);
