@@ -38,6 +38,12 @@ SRCS		= rlm_example.c other.c
 HEADERS		= config.h other.h
 
 #
+#  The name of the module-specific install to call, when
+#  performing a generic install.
+#
+RLM_INSTALL	= install-example
+
+#
 #  Use the following flags if the compiler is GCC, and you're
 #  extremely paranoid.
 #
@@ -96,3 +102,12 @@ $(DYNAMIC_OBJS): $(HEADERS)
 #######################################################################
 config.mak config.h:
 	@../checkconfig -l LIBC_STRCPY strcpy -lc
+
+
+#######################################################################
+#
+#  A fake install example.  It does nothing.
+#
+#######################################################################
+install-example:
+	touch .
