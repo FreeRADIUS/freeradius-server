@@ -52,8 +52,12 @@ struct conf_part {
 
 CONF_SECTION	*config = NULL;
 
+/*
+ *	Yucky hacks.
+ */
 extern RADCLIENT *clients;
 extern REALM	 *realms;
+extern int read_realms_file(const char *file);
 
 static int generate_realms(const char *filename);
 static int generate_clients(const char *filename);
@@ -565,6 +569,21 @@ static CONF_SECTION *conf_read(const char *fromfile, int fromline, const char *c
 	return cs;
 }
 
+static CONF_PARSER directory_config[] = {
+  { "logdir",             PW_TYPE_STRING_PTR, &radlog_dir,        RADLOG_DIR },
+  { "libdir",             PW_TYPE_STRING_PTR, &radlib_dir,        LIBDIR },
+  { "radacctdir",         PW_TYPE_STRING_PTR, &radacct_dir,       RADACCT_DIR },
+  /*
+   *	We don't allow re-defining this, as doing so will cause
+   *	all sorts of confusion.
+   */
+#if 0
+  { "confdir",            PW_TYPE_STRING_PTR, &radius_dir,        RADIUS_DIR },
+#endif
+  { NULL, -1, NULL, NULL }
+};
+
+
 /* JLN
  * Read the configuration and library
  * This uses the new kind of configuration file as defined by
@@ -576,8 +595,7 @@ int read_radius_conf_file(void)
 	char buffer[256];
 	CONF_SECTION *cs;
 
-	/* Lets go for the new configuration files */
-
+	/* Lets go look for the new configuration files */
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if ((cs = conf_read(NULL, 0, buffer)) == NULL) {
 		return -1;
@@ -590,20 +608,64 @@ int read_radius_conf_file(void)
 	cf_section_free(config);
 	config = cs;
 	
-
+	/*
+	 *	And parse the directory configuration values.
+	 */
+	cs = cf_section_find(NULL);
+	if (!cs)
+		return -1;
 
 	/*
-	 * Fail if we can't generate list of clients
+	 *	This allows us to figure out where, relative to
+	 *	radiusd.conf, the other configuration files exist.
 	 */
+	cf_section_parse(cs, directory_config);
 
-	if (generate_clients(buffer) < 0) {
+        /* Initialize the dictionary */
+	DEBUG2("read_config_files:  reading dictionary");
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
+	        radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
+		    librad_errstr);
+		return -1;
+	}
+
+	/* old-style clients file */
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
+	DEBUG2("read_config_files:  reading clients");
+	if (read_clients_file(buffer) < 0) {
+	        radlog(L_ERR|L_CONS, "Errors reading clients");
 		return -1;
 	}
 
 	/*
-	 * If there isn't any realms it isn't fatal..
+	 *	Add to that, the *new* list of clients.
 	 */
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
+	if (generate_clients(buffer) < 0) {
+		return -1;
+	}
+
+	/* old-style realms file */
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_REALMS);
+	DEBUG2("read_config_files:  reading realms");
+	if (read_realms_file(buffer) < 0) {
+	        radlog(L_ERR|L_CONS, "Errors reading realms");
+		return -1;
+	}
+
+	/*
+	 *	If there isn't any realms it isn't fatal..
+	 */
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if (generate_realms(buffer) < 0) {
+		return -1;
+	}
+
+	/* old-style naslist file */
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
+	DEBUG2("read_config_files:  reading naslist");
+	if (read_naslist_file(buffer) < 0) {
+	        radlog(L_ERR|L_CONS, "Errors reading naslist");
 		return -1;
 	}
 

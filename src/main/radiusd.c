@@ -57,6 +57,7 @@ static const char rcsid[] =
 #include <assert.h>
 
 #include	"conffile.h"
+#include	"modules.h"
 
 #if WITH_SNMP
 #include	"radius_snmp.h"
@@ -172,14 +173,8 @@ static CONF_PARSER server_config[] = {
   { "log_auth",           PW_TYPE_BOOLEAN,    &log_auth,          "no" },
   { "log_auth_pass",      PW_TYPE_BOOLEAN,    &log_auth_pass,     "no" },
   { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          RADIUS_PID },
-  { "log_dir",            PW_TYPE_STRING_PTR, &radlog_dir,        RADLOG_DIR },
-  { "lib_dir",            PW_TYPE_STRING_PTR, &radlib_dir,        LIBDIR },
-  { "acct_dir",           PW_TYPE_STRING_PTR, &radacct_dir,       RADACCT_DIR },
   { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
   { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
-#if 0
-  { "confdir",            PW_TYPE_STRING_PTR, &radius_dir,        RADIUS_DIR },
-#endif
   { "hostname_lookups",   PW_TYPE_BOOLEAN,    &librad_dodns,      "0" },
 #ifdef WITH_SNMP
   { "smux_password",      PW_TYPE_STRING_PTR, &smux_password,     "" },
@@ -211,9 +206,8 @@ static CONF_PARSER proxy_config[] = {
 /*
  *	Read config files.
  */
-static void reread_config(int reload)
+static int reread_config(int reload)
 {
-	int res = 0;
 	int pid = getpid();
 	CONF_SECTION *cs;
 
@@ -227,7 +221,7 @@ static void reread_config(int reload)
 	DEBUG2("reread_config:  reading radiusd.conf");
 	if (read_radius_conf_file() < 0) {
 		radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
-		return;
+		return -1;
 	}
 
 	/*
@@ -235,20 +229,17 @@ static void reread_config(int reload)
 	 */
 	cs = cf_section_find(NULL);
 	if (!cs)
-		return;
+		return -1;
 
 	cf_section_parse(cs, server_config);
 
-	/* Read users file etc. */
-	if (res == 0 && read_config_files() != 0)
-		res = -1;
-
-	if (res != 0) {
-	  if (pid == radius_pid) {
-			radlog(L_ERR|L_CONS,
-				"Errors reading config file - EXITING");
-		}
-		exit(1);
+	/*
+	 *	Reload the modules.
+	 */
+	DEBUG2("read_config_files:  entering modules setup");
+	if (setup_modules() < 0) {
+		radlog(L_ERR|L_CONS, "Errors setting up modules");
+		return -1;
 	}
 
 	/*
@@ -289,13 +280,12 @@ static void reread_config(int reload)
 	/*
 	 *	Parse the server's proxy configuration values.
 	 */
-	if (proxy_requests) {
-		cs = cf_section_find("proxy");
-		if (!cs)
-			return;
-		
+	if ((proxy_requests) &&
+	    ((cs = cf_section_find("proxy")) != NULL)) {
 		cf_section_parse(cs, proxy_config);
 	}
+
+	return 0;
 }
 
 /*
@@ -615,7 +605,9 @@ int main(int argc, char **argv)
 	/*
 	 *	Read the configuration files, BEFORE doing anything else.
 	 */
-	reread_config(0);
+	if (reread_config(0) < 0) {
+		exit(1);
+	}
 
 #if HAVE_SYSLOG_H
 	/*
@@ -880,7 +872,9 @@ int main(int argc, char **argv)
 		time_t now;
 
 		if (need_reload) {
-			reread_config(TRUE);
+			if (reread_config(TRUE) < 0) {
+				exit(1);
+			}
 			need_reload = FALSE;
 			radlog(L_INFO, "Ready to process requests.");
 		}
@@ -940,8 +934,9 @@ int main(int argc, char **argv)
 #endif
 
 			/*
-			 *	Check if we know this client for authfd and acctfd.
-			 *      Check if we know this proxy for proxyfd.
+			 *	Check if we know this client for
+			 *	authfd and acctfd.  Check if we know
+			 *	this proxy for proxyfd.
 			 */
 			if(fd != proxyfd) {
 			        RADCLIENT    *cl;

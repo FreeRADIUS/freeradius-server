@@ -472,13 +472,6 @@ static config_module_t *lookup_indexed_config(indexed_config_module_t *head,
 	return NULL;
 }
 
-/* Why is this both here and in radiusd.c:server_config? --Pac. */
-static CONF_PARSER module_config[] = {
-  { "libdir",            PW_TYPE_STRING_PTR, &radlib_dir,        LIBDIR },
-
-  { NULL, -1, NULL, NULL }
-};
-
 static void load_authtype_subsection(CONF_SECTION *cs, const char *filename)
 {
 	module_instance_t *this;
@@ -693,14 +686,6 @@ int setup_modules(void)
 	int		comp;
 	CONF_SECTION	*cs;
         const char *filename="radiusd.conf";
-
-	/*
-	 *	And parse the modules configuration values.
-	 */
-	cs = cf_section_find(NULL);
-	if (cs) {
-		cf_section_parse(cs, module_config);
-	}
 
 	/*
 	 *	No current list of modules: Go initialize libltdl.
