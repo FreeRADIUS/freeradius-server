@@ -11,6 +11,7 @@ $(STATIC_OBJS): $(HEADERS)
 
 $(DYNAMIC_OBJS): $(HEADERS) 
 
+###
 # over-ride the previous assignment if we're not building anything
 ifeq ($(LIBMYSQL),)
 TARGET        =
@@ -20,4 +21,4 @@ include ../rules.mak
 
 # must be last
 config.mak:
-	@../checkconfig -l LIBMYSQL mysql_init -lmysqlclient
+	@../checkconfig -l LIBMYSQL mysql_init -lmysqlclient -L/usr/local/lib/mysql
