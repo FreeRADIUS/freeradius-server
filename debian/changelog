@@ -1,8 +1,10 @@
-freeradius (1.0.0+cvs20040609-0) unstable; urgency=low
+freeradius (1.0.0+cvs20040707-0) unstable; urgency=low
 
   * Current CVS version
+  * FreeRADIUS 1.1.0 is now able to use net-snmp in ucd-snmp
+    compatibility mode.
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  9 Jun 2004 00:16:06 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  7 Jul 2004 09:31:07 +1000
 
 freeradius (0.9.3-cvs20040421-0) unstable; urgency=low
 

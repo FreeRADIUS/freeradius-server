@@ -1,4 +1,7 @@
 FreeRADIUS 1.1.0 ; $Date $, urgency=low
+	* Now uses autoconf 2.5x, and the various associated tools.
+	* Include ucd-snmp-config.h, fixing use of net-snmp's
+	  ucd-snmp backwards compatibility mode.
 
 FreeRADIUS 1.0.0 ; Date: 2004/05/28 12:43:16, urgency=low
 
