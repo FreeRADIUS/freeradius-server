@@ -12,5 +12,5 @@ CREATE TABLE userinfo (
   Mobile varchar(200),
   PRIMARY KEY (id),
   KEY UserName (UserName),
-  KEY Departmet (Department)
+  KEY Department (Department)
 );
