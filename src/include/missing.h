@@ -69,7 +69,3 @@ void endusershell(void);
 #ifndef INADDR_NONE
 #define INADDR_NONE     ((uint32_t) 0xffffffff)
 #endif
-
-#ifndef GDBM_SYNC
-#define GDBM_SYNC (0)
-#endif
