@@ -46,19 +46,19 @@ $password    = "";
 
 
 #### You should not have to modify anything below here
-$progname = "H323 Detail 2 DB";
+$progname = "H323 Detail to DB parser";
 $version = 2;
 
 # Set up some basic variables
-$passno = 0; $double_match_no = 0;
+$passno = 0; $double_match_no = 0; $verbose = 0;
 $starttime = time();
 
 
 sub db_connect {
 	my $hostname = shift;
-	if (&debug_get()) { print "DEBUG: Connecting to Database Host: $hostname\n" }
+	if ($verbose > 1) { print "DEBUG: Connecting to Database Host: $hostname\n" }
 	if ($hostname eq 'localhost') {
-	if (&debug_get()) { print "DEBUG: localhost connection so using UNIX socket instead of network socket.\n" }
+	if ($verbose > 1) { print "DEBUG: localhost connection so using UNIX socket instead of network socket.\n" }
 		$dbh = DBI->connect("DBI:Pg:dbname=$database", "$user", "$password")
         	        or die "Couldn't connect to database: " . DBI->errstr;
 	}
@@ -70,7 +70,7 @@ sub db_connect {
 
 sub db_disconnect {
 	### Now, disconnect from the database
-	if (&debug_get()) { print "DEBUG: Disconnecting from Database Host: $hostname\n" }
+	if ($verbose > 1) { print "DEBUG: Disconnecting from Database Host: $hostname\n" }
 	$dbh->disconnect
 	    or warn "Disconnection failed: $DBI::errstr\n";
 }
@@ -78,7 +78,7 @@ sub db_disconnect {
 
 sub procedure_insert {
 	$passno++;
-	if (&verbose_get()) { print " Seconds: $AcctSessionTime  " }
+	if ($verbose > 0) { print "Record: $passno) Conf ID: $h323_conf_id   Setup Time: $h323_setup_time  Call Length: $AcctSessionTime   "; }
 	if ($h323_call_type eq 'VoIP') { 
         $sth2 = $dbh->prepare("SELECT VoIPInsertRecord('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
 		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$h323_call_origin', '$h323_setup_time',
@@ -91,12 +91,11 @@ sub procedure_insert {
 	} else { print "ERROR: Unsupported h323calltype \"$h323_call_type\"\n" }
 	$sth2->execute();
 
- 	if (&verbose_get()) { print "added to DB\n"; }
+ 	if ($verbose > 0) { print "sent to DB\n"; }
 	$sth2->finish();
 }
 
 sub db_insert {
-	if (&verbose_get()) { print " Seconds: $AcctSessionTime  " }
 	if ($h323_call_type eq 'VoIP') { 
         $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (
 		UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
@@ -117,7 +116,7 @@ sub db_insert {
 
 	$sth2->execute();
 	#my $returned_rows = $sth2->rows;
- 	if (&verbose_get()) { print "added to DB\n"; }
+ 	if ($verbose > 0) { print "added to DB\n"; }
 	$sth2->finish();
 
 }
@@ -133,14 +132,14 @@ sub db_update {
 		AND NASIPAddress = '$NasIPAddress' AND h323confid = '$h323_conf_id'");
         $sth2->execute();
         my $returned_rows = $sth2->rows;
-	if (&verbose_get()) { print " $returned_rows record(s) updated\n" }
+	if ($verbose > 0) { print " $returned_rows record(s) updated\n" }
         $sth2->finish();
 
 }
 
 sub db_read {
 	$passno++;
-	if (&verbose_get()) { print "Record: $passno) Conf ID: $h323_conf_id   Setup Time: $h323_setup_time  Call Length: $AcctSessionTime   "; }
+	if ($verbose > 0) { print "Record: $passno) Conf ID: $h323_conf_id   Setup Time: $h323_setup_time  Call Length: $AcctSessionTime   "; }
 	my $sth = $dbh->prepare("SELECT RadAcctId FROM Stop$h323_call_type
 		WHERE h323SetupTime = '$h323_setup_time'
 		AND NASIPAddress = '$NasIPAddress'
@@ -155,7 +154,7 @@ sub db_read {
           if ($sth->rows == 0) {
 		&db_insert;
           } elsif ($sth->rows == 1) {
-                if (&verbose_get()) { print "Exists in DB.\n"; }
+                if ($verbose > 0) { print "Exists in DB.\n"; }
 		# FIXME: Make updates an option!
                 #while (@data = $sth->fetchrow_array()) {
                 #my $dbAcctSessionId = $data[1];
@@ -176,7 +175,7 @@ sub read_record {
 	@record = ();
 	while ($keepreading) {
 		$_ = <DETAIL>;
-		print "$_" if (&debug_get());
+		print "$_" if ($verbose > 1);
 		if ( /^$/ ) {
 			$keepreading = 0;
 		} else {
@@ -186,7 +185,7 @@ sub read_record {
 }
 
 sub process_record {
-	if (&debug_get()) { print "DEBUG: Processing Record\n"; }
+	if ($verbose > 1) { print "DEBUG: Processing Record\n"; }
 	# Clear the variable we use.
 	$UserName = ""; $NasPort=""; $NasPortType="";
 	 $NasIPAddress = ""; $AcctStatusType=""; $AcctSessionTime="";
@@ -210,10 +209,10 @@ sub process_record {
 
 	# All the data we need is in Stop records.
 	if ($AcctStatusType eq "Start") {
-		if (&debug_get()) { print "DEBUG: Skipping \"Start\" record\n"; }
+		if ($verbose > 1) { print "DEBUG: Skipping \"Start\" record\n"; }
 		return;
 	} elsif ($AcctStatusType eq "Alive"){
-		if (&debug_get()) { print "DEBUG: Skipping \"Alive\" record\n"; }
+		if ($verbose > 1) { print "DEBUG: Skipping \"Alive\" record\n"; }
 		return;
 	};
 
@@ -301,12 +300,17 @@ sub process_record {
 	if ($h323_call_type) { 
 		if (&procedure_get()) { &procedure_insert; }
 		else { &db_read; }
-	} else { if (&debug_get()) { print "DEBUG: Skipping non-h323 record\n"; } }
+	} else { if ($verbose > 1) { print "DEBUG: Skipping non-h323 record\n"; } }
 }
 
 sub read_detailfile {
 	my $filename = shift; my @record = ();
-	if (&debug_get()) { print "DEBUG: Reading detail file: $filename\n" }
+	if ($verbose > 1) { print "DEBUG: Reading detail file: $filename\n" }
+	# test if the file exists and is readable
+	if ((-r $filename) != 1) { 
+		if ($verbose >= 0) { print "INFO: Skipping file \"$filename\" as it is not readable or does not exist.\n" }
+		return;
+	 }
 	if ( $filename =~ /.gz$/ ) {
 		open (DETAIL, "$GZCAT $filename |") || warn "read_detailfile(\"$filename\"): $!\n";
 	} elsif ( $filename =~ /.Z$/ ) {
@@ -317,10 +321,10 @@ sub read_detailfile {
 		open (DETAIL, "<$filename") || warn "read_detailfile(\"$filename\"): $!\n";
 	}
 	$valid_input = (eof(DETAIL) ? 0 : 1);
-	if (&debug_get()) { print "DEBUG: Starting to read records from $filename\n"; }
+	if ($verbose > 1) { print "DEBUG: Starting to read records from $filename\n"; }
 	while($valid_input) {
 		$valid_input = 0 if (eof(DETAIL));
-		if (&debug_get()) { print "DEBUG: Reading Record\n"; }
+		if ($verbose > 1) { print "DEBUG: Reading Record\n"; }
 		&read_record;
 		&process_record;
 	}
@@ -328,7 +332,7 @@ sub read_detailfile {
 	if ($runtime > 0) { 
 	} else { $runtime = 1; }
 	my $speed = ($passno / $runtime); 
-        print "\n $passno records from $filename were processed in $runtime seconds ($speed records/sec) \n";
+        if ($verbose >= 0) { print "\n $passno records from $filename were processed in $runtime seconds ($speed records/sec) \n"; }
 }
 
 sub print_usage_info {
@@ -338,7 +342,7 @@ sub print_usage_info {
 	$underbar =~ s/./-/g;
 	print "$leader\n$underbar\n";
 	print "\n";
-	print "  Syntax:   h323detail2db.pl [ options ]\n";
+	print "  Syntax:   h323detail2db.pl [ options ] file\n";
 	print "\n";
 	print "    -h --help                        Show this usage information\n";
 	print "    -v --verbose                     Turn on verbose\n";
@@ -346,28 +350,7 @@ sub print_usage_info {
 	print "    -p --procedure                   Use Postgresql stored procedure (faster!)\n";
 	print "    -V --version                     Show version and copyright\n";
 	print "    -H --host                        Database host to connect to (Default: localhost)\n";
-	print "    -f --file <detailfile>           Detail file\n";
 	print "\n";
-}
-
-# Get debugging state
-sub debug_get() {
-	return $debug;
-}
-
-# Set debugging state
-sub debug_set($) {
-	$debug = $_[0];
-}
-
-# Get verbosity state
-sub verbose_get() {
-        return $verbose;
-}
-
-# Set verbosity state
-sub verbose_set($) {
-        $verbose = $_[0];
 }
 
 sub procedure_get() {
@@ -387,7 +370,7 @@ sub main {
 	};
 
 	# See the Getopt::Long man page for details on the syntax of this line
-	@valid_opts = ("h|help", "V|version", "f|file=s", "x|debug", "v|verbose", "D|date=s", "H|host=s", "p|procedure");
+	@valid_opts = ("h|help", "V|version", "f|file=s", "x|debug", "v|verbose+" => \$verbose, "q|quiet+" => \$quiet, "D|date=s", "H|host=s", "p|procedure");
 	Getopt::Long::Configure("no_getopt_compat", "bundling", "no_ignore_case");
 	Getopt::Long::GetOptions(@valid_opts);
 
@@ -412,19 +395,24 @@ sub main {
 	        exit(SUCCESS);
 	}
 
-	&verbose_set($opt_v);
-	&debug_set($opt_x);
+	if ($opt_x) { 
+		print "DEBUG: Debug mode is enabled.\n"; 
+		$verbose = 2;
+	} elsif ($quiet) { $verbose -= $quiet; }
 	&procedure_set($opt_p);
 
-	if ($opt_f) {
+	if (@ARGV) {
 		if ($opt_H) { &db_connect($opt_H);
 		} else { &db_connect(localhost); }
 
-		&read_detailfile($opt_f);
+        	# Loop through the defined files
+	        foreach $file (@ARGV) {
+			&read_detailfile($file);
+	        }
 
 		&db_disconnect;
 	} else {
-		print "ERROR: You didn't specify a detail file.\n";
+		print "ERROR: Please specify one or more detail file(s) to import.\n";
 		exit(FAILURE);
 	}
 
