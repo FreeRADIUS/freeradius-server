@@ -155,6 +155,7 @@
 #define PW_DIGEST_NONCE_COUNT		1071
 #define PW_DIGEST_USER_NAME		1072
 #define PW_POOL_NAME			1073
+#define PW_LDAP_GROUP			1074
 
 /*
  *	Integer Translations

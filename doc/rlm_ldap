@@ -162,7 +162,6 @@ which module will actually return the information (the xlat function will return
 the host,port information does not correspond to the configured attributes).
 
 USER PROFILE ATTRIBUTE:
-
 The module can use the User-Profile attribute. If it is set, it will assume that it contains
 the DN of a profile entry containing radius attributes. This entry will _replace_ the default
 profile directive. That way we can use different profiles based on checks on the radius attributes
@@ -170,6 +169,14 @@ contained in the Access-Request packets. For example (users file):
 
 DEFAULT	Service-Type == Outbound-User, User-Profile := "uid=outbound-dialup,dc=company,dc=com"
  
+
+GROUP SUPPORT:
+The module supports searching for ldap groups by use of the Ldap-Group attribute. As long as the module
+has been instanciated it can be used to do group membership checks through other modules. For example in
+the users file:
+
+DEFAULT	Ldap-Group == "disabled", Auth-Type := Reject
+	Reply-Message = "Sorry, you are not allowed to have dialup access"
 
 DIRECTORY COMPATIBILITY NOTE:
 If you use LDAP only for authorization and authentication (e.g. you can not

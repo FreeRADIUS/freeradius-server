@@ -54,6 +54,9 @@
  *	- Fixed a bug where the ldap server will kill the idle connections from the ldap
  *	  connection pool. We now check if ldap_search returns LDAP_SERVER_DOWN and try to
  *	  reconnect if it does. Bug noted by Dan Perik <dan_perik-work@ntm.org.pg>
+ * May 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Instead of the Group attribute we now have the Ldap-Group attribute, to avoid
+ *	  collisions with other modules
  */
 static const char rcsid[] = "$Id$";
 
@@ -246,10 +249,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->check_item_map = NULL;
 	inst->conns = NULL;
 
-	paircompare_register(PW_GROUP, PW_USER_NAME, ldap_groupcmp, inst);
-#ifdef PW_GROUP_NAME /* compat */
-	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, ldap_groupcmp, inst);
-#endif
+	paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, ldap_groupcmp, inst);
 	DEBUG("conns: %p",inst->conns);
 
 	xlat_name = cf_section_name2(conf);
@@ -504,7 +504,7 @@ retry:
 
 
 /*
- * ldap_groupcmp(). Implement the Group == "group" filter
+ * ldap_groupcmp(). Implement the Ldap-Group == "group" filter
  */
 
 static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
@@ -1321,10 +1321,7 @@ ldap_detach(void *instance)
 		pair = nextpair;
 	}
 
-	paircompare_unregister(PW_GROUP, ldap_groupcmp);
-#ifdef PW_GROUP_NAME
-	paircompare_unregister(PW_GROUP_NAME, ldap_groupcmp);
-#endif
+	paircompare_unregister(PW_LDAP_GROUP, ldap_groupcmp);
 	xlat_unregister(inst->xlat_name,ldap_xlat);
 	free(inst->xlat_name);
 
