@@ -725,8 +725,81 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
+	REQUEST *fake;
 
 	DEBUG2("  TTLS: Passing reply from proxy back into the tunnel.");
+
+	/*
+	 *	If there was a fake request associated with the proxied
+	 *	request, do more processing of it.
+	 */
+	fake = (REQUEST *) request_data_get(handler->request,
+					    handler->request->proxy,
+					    REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK);
+	
+	/*
+	 *	Do the callback, if it exists, and if it was a success.
+	 */
+	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
+		VALUE_PAIR *vp;
+		REQUEST *request = handler->request;
+
+		/*
+		 *	Terrible hacks.
+		 */
+		rad_assert(fake->packet == NULL);
+		fake->packet = request->proxy;
+		request->proxy = NULL;
+
+		rad_assert(fake->reply == NULL);
+		fake->reply = request->proxy_reply;
+		request->proxy_reply = NULL;
+
+		/*
+		 *	Perform a post-auth stage for the tunneled
+		 *	session.
+		 */
+		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+		rcode = rad_postauth(fake);
+		DEBUG2("  POST-AUTH %d", rcode);
+
+#ifndef NDEBUG
+		if (debug_flag > 0) {
+			printf("  TTLS: Final reply from tunneled session code %d\n",
+			       fake->reply->code);
+			
+			for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
+				putchar('\t');vp_print(stdout, vp);putchar('\n');
+			}
+		}
+#endif
+
+		/*
+		 *	Terrible hacks.
+		 */
+		request->proxy = fake->packet;
+		fake->packet = NULL;
+		request->proxy_reply = fake->reply;
+		fake->reply = NULL;
+
+		/*
+		 *	And we're done with this request.
+		 */
+
+		switch (rcode) {
+                case RLM_MODULE_FAIL:
+			request_free(&fake);
+			eaptls_fail(handler->eap_ds, 0);
+			return 0;
+			break;
+			
+                default:  /* Don't Do Anything */
+			DEBUG2(" TTLS: Got reply %d",
+			       request->proxy_reply->code);
+			break;
+		}	
+	}
+	request_free(&fake);	/* robust if fake == NULL */
 
 	/*
 	 *	Process the reply from the home server.
@@ -766,6 +839,17 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 
 	eaptls_fail(handler->eap_ds, 0);
 	return 0;
+}
+
+
+/*
+ *	Free a request.
+ */
+static void my_request_free(void *data)
+{
+	REQUEST *request = (REQUEST *)data;
+
+	request_free(&request);
 }
 
 
@@ -1096,6 +1180,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			rad_assert(request->proxy == NULL);
 			request->proxy = fake->packet;
 			fake->packet = NULL;
+			rad_free(&fake->reply);
+			fake->reply = NULL;
 
 			/*
 			 *	Set up the callbacks for the tunnel
@@ -1114,6 +1200,20 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 						 tunnel, free);
 			rad_assert(rcode == 0);
+			
+			/*
+			 *	rlm_eap.c has taken care of associating
+			 *	the handler with the fake request.
+			 *
+			 *	So we associate the fake request with
+			 *	this request.
+			 */
+			rcode = request_data_add(request,
+						 request->proxy,
+						 REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
+						 fake, my_request_free);
+			rad_assert(rcode == 0);
+			fake = NULL;
 
 			/*
 			 *	Didn't authenticate the packet, but
