@@ -20,6 +20,8 @@ FreeRADIUS 0.9.1 ; $Date$, urgency=low
 	* Fix radrelay to notice when it's out of IDs
 	* Fix radrelay to correctly skip bad attributes
 	* Fix radrelay to not leak IDs when discarding packets
+	* Fix configure to correctly identify systems without SYSV or GNU-style
+	  gethostby{addr,name}_r.
 
 FreeRADIUS 0.9.0 ; Date: 2003/07/04 21:01:29, urgency=low
 

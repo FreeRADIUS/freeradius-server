@@ -569,7 +569,7 @@ dnl # if not, set it to define ut_xtime == ut_tv.tv_sec
 if test "x$ac_cv_header_utmpx_h" = "xyes"
 then
  AC_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
- if test "x$ac_cv_type_struct_utmpx_ut_xtime" = "x"
+ if test "x$ac_cv_type_struct_utmpx_has_ut_xtime" = "x"
  then
    AC_DEFINE(ut_xtime,ut_tv.tv_sec)
  fi
@@ -648,18 +648,18 @@ fi
 
 gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
-AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ], [
+AC_TRY_LINK([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ], [
 	AC_DEFINE(GETHOSTBYADDRRSTYLE, GNUSTYLE)
 	gethostbyaddrrstyle=GNU
 ])
 if test "x$gethostbyaddrrstyle" = "x"; then
-	AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL) ] , [
+	AC_TRY_LINK([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL) ] , [
 		AC_DEFINE(GETHOSTBYADDRRSTYLE, SYSVSTYLE)
 		gethostbyaddrrstyle=SYSV
 	])
 fi
 if test "x$gethostbyaddrrstyle" = "x"; then
-	AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr(NULL, 0, 0)  ], [
+	AC_TRY_LINK([#include <netdb.h>], [ gethostbyaddr(NULL, 0, 0)  ], [
 		AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
 		gethostbyaddrrstyle=BSD
 		AC_MSG_WARN([ ****** BSD Style gethostbyaddr might NOT be thread-safe! ****** ])
@@ -674,18 +674,18 @@ fi
 
 gethostbynamerstyle=""
 AC_MSG_CHECKING([gethostbyname_r() syntax])
-AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) ], [
+AC_TRY_LINK([#include <netdb.h>], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) ], [
 	AC_DEFINE(GETHOSTBYNAMERSTYLE, GNUSTYLE)
 	gethostbynamerstyle=GNU
 ])
 if test "x$gethostbynamerstyle" = "x"; then
-	AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL) ] , [
+	AC_TRY_LINK([#include <netdb.h>], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL) ] , [
 		AC_DEFINE(GETHOSTBYNAMERSTYLE, SYSVSTYLE)
 		gethostbynamerstyle=SYSV
 	])
 fi
 if test "x$gethostbynamerstyle" = "x"; then
-	AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyname(NULL)  ], [
+	AC_TRY_LINK([#include <netdb.h>], [ gethostbyname(NULL)  ], [
 		AC_DEFINE(GETHOSTBYNAMERSTYLE, BSDSTYLE)
 		gethostbynamerstyle=BSD
 		AC_MSG_WARN([ ****** BSD Style gethostbyname might NOT be thread-safe! ****** ])
