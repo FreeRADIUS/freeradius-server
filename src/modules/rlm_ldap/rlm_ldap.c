@@ -120,7 +120,7 @@ static CONF_PARSER module_config[] = {
 #ifdef FIELDCPY
 static void     fieldcpy(char *, char **);
 #endif
-static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *);
+static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *);
 static int     read_mappings(ldap_instance* inst);
 
@@ -407,7 +407,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	
 	}
 	DEBUG("rlm_ldap: looking for check items in directory...");
-	if ((check_tmp = ldap_pairget(inst->ld, msg, inst->check_item_map)) != NULL)
+	if ((check_tmp = ldap_pairget(inst->ld, msg, inst->check_item_map,check_pairs)) != NULL)
 		pairadd(check_pairs, check_tmp);
 
 
@@ -421,7 +421,7 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	DEBUG("rlm_ldap: looking for reply items in directory...");
 
-	if ((reply_tmp = ldap_pairget(inst->ld, msg, inst->reply_item_map)) != NULL)
+	if ((reply_tmp = ldap_pairget(inst->ld, msg, inst->reply_item_map,reply_pairs)) != NULL)
 		pairadd(reply_pairs, reply_tmp);
 
 	DEBUG("rlm_ldap: user %s authorized to use remote access",
@@ -684,7 +684,7 @@ fieldcpy(char *string, char **uptr)
 
 static VALUE_PAIR *
 ldap_pairget(LDAP * ld, LDAPMessage * entry,
-	     TLDAP_RADIUS * item_map)
+	     TLDAP_RADIUS * item_map, VALUE_PAIR **pairs)
 {
 	BerElement     *berptr;
 	char           *attr;
@@ -698,6 +698,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	char            value[64];
 	VALUE_PAIR     *pairlist;
 	VALUE_PAIR     *newpair = NULL;
+	DICT_ATTR	*dattr;
 	pairlist = NULL;
 	if ((attr = ldap_first_attribute(ld, entry, &berptr)) == NULL) {
 		DEBUG("rlm_ldap: Object has no attributes");
@@ -737,6 +738,11 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 						if ( (newpair = pairread(&ptr, &dummy)) != NULL) {
 							DEBUG("rlm_ldap: extracted attribute %s from generic item %s", 
 							      newpair->name, vals[vals_idx]);
+							if (! vals_idx){
+								dattr=dict_attrbyname(element->radius_attr);
+								if (dattr)
+									pairdelete(pairs,dattr->attr);
+							}
 							pairadd(&pairlist, newpair);
 						} else {
 							radlog(L_ERR, "rlm_ldap: parsing %s failed: %s", 
@@ -757,6 +763,11 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 						DEBUG("rlm_ldap: Adding %s as %s, value %s & op=%d", attr, element->radius_attr, value, token);
 						if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
 							continue;
+						if (! vals_idx){
+							dattr=dict_attrbyname(element->radius_attr);
+							if (dattr)
+								pairdelete(pairs,dattr->attr);
+						}
 						pairadd(&pairlist, newpair);
 					}
 				}
