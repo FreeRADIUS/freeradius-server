@@ -224,6 +224,7 @@ static void normify(VALUE_PAIR *vp, int min_length)
 	if (vp->length >= (2 * min_length)) {
 		decoded = lrad_hex2bin(vp->strvalue, buffer, vp->length >> 1);
 		if (decoded == (vp->length >> 1)) {
+			DEBUG2("rlm_pap: Normalizing %s from hex encoding", vp->name);
 			memcpy(vp->strvalue, buffer, decoded);
 			vp->length = decoded;
 			return;
@@ -237,6 +238,7 @@ static void normify(VALUE_PAIR *vp, int min_length)
 	if ((vp->length * 3) >= ((min_length * 4))) {
 		decoded = base64_decode(vp->strvalue, buffer);
 		if (decoded >= min_length) {
+			DEBUG2("rlm_pap: Normalizing %s from base64 encoding", vp->name);
 			memcpy(vp->strvalue, buffer, decoded);
 			vp->length = decoded;
 			return;
@@ -257,9 +259,57 @@ static void normify(VALUE_PAIR *vp, int min_length)
  */
 static int pap_authorize(void *instance, REQUEST *request)
 {
-	VALUE_PAIR *vp, *pw = NULL;
+	int auth_type = FALSE;
+	int found_pw = FALSE;
+	VALUE_PAIR *vp;
 
 	instance = instance;	/* -Wunused */
+
+	for (vp = request->config_items; vp != NULL; vp = vp->next) {
+		switch (vp->attribute) {
+		case PW_USER_PASSWORD:
+		case PW_CRYPT_PASSWORD:
+			break;	/* don't touch these */
+
+		case PW_MD5_PASSWORD:
+		case PW_SMD5_PASSWORD:
+		case PW_NT_PASSWORD:
+		case PW_LM_PASSWORD:
+			normify(vp, 16); /* ensure it's in the right format */
+			found_pw = TRUE;
+			break;
+
+		case PW_SHA_PASSWORD:
+		case PW_SSHA_PASSWORD:
+			normify(vp, 20); /* ensure it's in the right format */
+			found_pw = TRUE;
+			break;
+
+		case PW_AUTH_TYPE:
+			auth_type = TRUE;
+			break;
+
+		default:
+			break;	/* ignore it */
+			
+		}
+	}
+
+	/*
+	 *	Print helpful warnings if there was no password.
+	 */
+	if (!found_pw) {
+		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication will probably fail");
+		return RLM_MODULE_NOOP;
+	}
+
+	/*
+	 *	Don't touch existing Auth-Types.
+	 */
+	if (auth_type) {
+		DEBUG2("rlm_pap: Found existing Auth-Type, not changing it.");
+		return RLM_MODULE_NOOP;
+	}	
 
 	/*
 	 *	Can't do PAP if there's no password.
@@ -278,37 +328,6 @@ static int pap_authorize(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-
-	for (vp = request->config_items; vp != NULL; vp = vp->next) {
-		switch (vp->attribute) {
-		case PW_USER_PASSWORD:
-		case PW_CRYPT_PASSWORD:
-		case PW_MD5_PASSWORD:
-		case PW_SHA_PASSWORD:
-		case PW_NT_PASSWORD:
-		case PW_LM_PASSWORD:
-		case PW_SMD5_PASSWORD:
-		case PW_SSHA_PASSWORD:
-			pw = vp;
-			break;
-
-		case PW_AUTH_TYPE:
-			DEBUG2("rlm_pap: Found existing Auth-Type, not changing it.");
-			return RLM_MODULE_NOOP;
-
-		default:
-			break;	/* ignore it */
-			
-		}
-	}
-
-	/*
-	 *	Print helpful warnings if there was no password.
-	 */
-	if (!pw) {
-		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication will probably fail");
-		return RLM_MODULE_NOOP;
-	}
 
 	vp = pairmake("Auth-Type", "PAP", T_OP_SET);
 	if (!vp) return RLM_MODULE_FAIL;
