@@ -313,9 +313,9 @@ module_t rlm_exec = {
 	NULL,				/* initialization */
 	exec_instantiate,		/* instantiation */
 	{
-		NULL,			/* authentication */
+		exec_dispatch,		/* authentication */
 		exec_dispatch,	        /* authorization */
-		NULL,			/* pre-accounting */
+		exec_dispatch,		/* pre-accounting */
 		exec_dispatch,		/* accounting */
 		NULL,			/* check simul */
 		exec_dispatch,		/* pre-proxy */
