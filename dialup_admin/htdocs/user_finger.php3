@@ -22,7 +22,7 @@ if ($config[general_decode_normal_attributes] == 'yes'){
 	$k = init_decoder();
 	$decode_normal = 1;
 }
-require('../lib/functions.php3');
+require_once('../lib/functions.php3');
 require("../lib/$config[general_lib_type]/functions.php3");
 
 if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))

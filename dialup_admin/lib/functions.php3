@@ -110,4 +110,14 @@ function check_defaults($val,$op,$def)
 
 	return 0;
 }
+
+function check_ip($ipaddr) {
+    if(ereg("^([0-9]{1,3})\x2E([0-9]{1,3})\x2E([0-9]{1,3})\x2E([0-9]{1,3})$", $ipaddr,$digit)) {
+   	  if(($digit[1] <= 255) && ($digit[2] <= 255) && ($digit[3] <= 255) && ($digit[4] <= 255)) {
+        return(1);
+      }
+    }
+    return(0);
+  }
+
 ?>

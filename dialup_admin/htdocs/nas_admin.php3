@@ -122,12 +122,13 @@ if ($link){
 			$my_nas_name = $row['nasname'];
 			if ($my_nas_name != ''){
 				$num++;
-				if ($clear_fields == 0 && $selected_nas == $my_nas_name)
-					$selected[$my_nas_name] = 'selected';
 				$my_nas_list[$my_nas_name]['name'] = $my_nas_name;
 				$my_nas_list[$my_nas_name]['shortname'] = $row['shortname'];
 				$my_nas_list[$my_nas_name]['type'] = $row['type'];
-				$selected[$my_nas_list[$my_nas_name]['type']] = 'selected';
+				if ($clear_fields == 0 && $selected_nas == $my_nas_name){
+					$selected[$my_nas_name] = 'selected';
+					$selected[$my_nas_list[$my_nas_name]['type']] = 'selected';
+				}
 				$my_nas_list[$my_nas_name]['ports'] = $row['ports'];
 				$my_nas_list[$my_nas_name]['secret'] = $row['secret'];
 				$my_nas_list[$my_nas_name]['community'] = $row['community'];

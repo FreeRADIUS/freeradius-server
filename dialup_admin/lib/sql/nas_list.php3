@@ -1,5 +1,6 @@
 <?php
 require('../conf/config.php3');
+require_once('../lib/functions.php3');
 
 unset($da_name_cache);
 if (isset($_SESSION['da_name_cache']))
@@ -36,13 +37,16 @@ if ($config[sql_nas_table] != ''){
 					$nas_list[$my_nas_name]['name'] = $my_nas_name;
                                 	$nas_server = $da_name_cache[$my_nas_name];
                                 	if (!isset($nas_server)){
-                                        	$nas_server = @gethostbyname($nas_server);
+						if (!check_ip($my_nas_name))
+	                                        	$nas_server = @gethostbyname($my_nas_name);
+						else
+							$nas_server = $my_nas_name;
                                         	if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
                                                 	$da_name_cache[$my_nas_name] = $nas_server;
                                                 	session_register('da_name_cache');
                                         	}
                                 	}
-					if ($nas_server != $my_nas_name)
+					if ($nas_server != $my_nas_name || check_ip($nas_server))
 						$nas_list[$my_nas_name]['ip'] = $nas_server;
 					$nas_list[$my_nas_name]['port_num'] = $row['ports'];
 					$nas_list[$my_nas_name]['community'] = $row['community'];

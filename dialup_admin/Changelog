@@ -24,6 +24,9 @@ Ver 1.78:
 * In user_finger only set LD_LIBRARY_PATH once, not each time we call snmpfinger
 * Add support for usrhiper in snmpfinger. Patch from Nick Bright
 * urlencode() all occurrences of the $login variable when used in url's. Bug noted by Dag Landau
+* Show the correct nas type in nas_admin. Bug noted by Nick Bright
+* Correctly calculate the nas ip in lib/sql/nas_list.php3. Add a check_ip() function in lib/functions.php3
+  Bug noted by Nick Bright
 Ver 1.75:
 * A LOT of security related fixes. Now dialupadmin should hopefully be secure enough to
   be accessed by normal users (not administrators).
