@@ -407,7 +407,7 @@ int rad_authenticate(REQUEST *request)
 		 */
 		request->reply = build_reply(PW_AUTHENTICATION_REJECT, request,
 					     NULL, user_msg);
-		if (log_auth) {
+		if (auth_item != NULL && log_auth) {
 			u_char clean_buffer[1024];
 			u_char *p;
 
