@@ -103,8 +103,8 @@ int rad_accounting(REQUEST *request)
 			 *	Do look for returned VP's.
 			 */
 			rcode = radius_exec_program(exec_program, request,
-						    exec_wait,
-						    NULL, 0, &vp);
+						    exec_wait, NULL, 0,
+						    request->packet->vps, &vp);
 			free(exec_program);
 
 			/*

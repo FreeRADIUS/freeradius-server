@@ -52,8 +52,10 @@ static const char rcsid[] = "$Id$";
  *	Return -1 on fork/other errors in the parent process.
  */
 int radius_exec_program(const char *cmd, REQUEST *request,
-			int exec_wait, char *user_msg,
-			int msg_len, VALUE_PAIR **pairs)
+			int exec_wait,
+			char *user_msg, int msg_len,
+			VALUE_PAIR *input_pairs,
+			VALUE_PAIR **output_pairs)
 {
 	VALUE_PAIR *vp;
 	char answer[4096];
@@ -67,7 +69,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	int n, left, done;
 
 	if (user_msg) *user_msg = '\0';
-	if (pairs) *pairs = NULL;
+	if (output_pairs) *output_pairs = NULL;
 
 	/*
 	 *	Open a pipe for child/parent communication, if
@@ -85,7 +87,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 *	message, or VP's.
 		 */
 		user_msg = NULL;
-		pairs = NULL;
+		output_pairs = NULL;
 	}
 
 	/*
@@ -207,7 +209,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		envlen = 0;
 
-		for (vp = request->packet->vps; vp->next; vp = vp->next) {
+		for (vp = input_pairs; vp->next; vp = vp->next) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment
@@ -318,7 +320,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	if (done) {
 		n = -1;
-		if (pairs) {
+		if (output_pairs) {
 			/*
 			 *	For backwards compatibility, first check
 			 *	for plain text (user_msg).
@@ -367,7 +369,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				 *	Tell the caller about the value
 				 *	pairs.
 				 */
-				*pairs = vp;
+				*output_pairs = vp;
 			}
 		} /* else the answer was a set of VP's, not a text message */
 	} /* else we didn't read anything from the child. */

@@ -313,9 +313,10 @@ int             rad_check_return(VALUE_PAIR *list);
 int		rad_check_password(REQUEST *request);
 
 /* exec.c */
-int		radius_exec_program(const char *,  REQUEST *,
-				    int, char *user_msg,
-				    int msg_len, VALUE_PAIR **pairs);
+int		radius_exec_program(const char *,  REQUEST *, int,
+				    char *user_msg, int msg_len,
+				    VALUE_PAIR *input_pairs,
+				    VALUE_PAIR **output_pairs);
 
 /* timestr.c */
 int		timestr_match(char *, time_t);
