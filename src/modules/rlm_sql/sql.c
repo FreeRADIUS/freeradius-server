@@ -423,7 +423,7 @@ int sql_check_multi(char *name, VALUE_PAIR *request, int maxsimul) {
 	VALUE_PAIR	*fra;
 	SQL_ROW		row;
 	int		count = 0;
-	UINT4		ipno = 0;
+	uint32_t	ipno = 0;
 	int		mpp = 1;
 
 	if (!sql_checksocket("Auth"))
