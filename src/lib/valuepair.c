@@ -666,6 +666,10 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	char            *tc, *ts;
 	signed char     tag;
 	int             found_tag;
+#ifdef HAVE_REGEX_H
+	int		res;
+	regex_t		cre;
+#endif
 
 	/*
 	 *    Check for tags in 'Attribute:Tag' format.
@@ -761,7 +765,6 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	        return vp;
 		break;
 
-#ifdef HAVE_REGEX_H
 		/*
 		 *	Regular expression comparison of integer attributes
 		 *	does a STRING comparison of the names of their
@@ -772,6 +775,23 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		if (vp->type == PW_TYPE_INTEGER) {
 			return vp;
 		}
+#ifdef HAVE_REGEX_H
+		res=regcomp(&cre, value, REG_EXTENDED|REG_NOSUB);
+		if (res!=0) {
+			char	msg[128];
+
+			regerror(res, &cre, msg, sizeof(msg));               
+			librad_log("Illegal regular expression in attribute: %s: %s",        
+				vp->name, msg);                                    
+			free(vp);
+			return NULL;                                            
+		}
+		regfree(&cre);
+#else
+		librad_log("Regelar expressions not enabled in this build, error in attribute %s",
+				vp->name);
+		free(vp);
+		return NULL;
 #endif
 	}
 
