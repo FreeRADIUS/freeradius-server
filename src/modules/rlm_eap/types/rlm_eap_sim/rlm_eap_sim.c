@@ -501,6 +501,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR *vp, *vps;
 	enum eapsim_subtype subtype;
+	int success;
 
 	arg = arg; /* shut up compiler */
 
@@ -509,10 +510,13 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 	/* vps is the data from the client */
 	vps = handler->request->packet->vps;
 
-	unmap_eapsim_basictypes(handler->request->packet,
-				handler->eap_ds->response->type.data,
-				handler->eap_ds->response->type.length);
+	success= unmap_eapsim_basictypes(handler->request->packet,
+					 handler->eap_ds->response->type.data,
+					 handler->eap_ds->response->type.length);
 
+	if(!success) {
+	  return 0;
+	}
 
 	/* see what kind of message we have gotten */
 	if((vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SUBTYPE)) == NULL)
@@ -586,7 +590,10 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.7  2003-11-22 00:21:17  mcr
+ * Revision 1.8  2003-12-29 01:13:43  mcr
+ * 	if the un-marshalling fails, then fail the packet.
+ *
+ * Revision 1.7  2003/11/22 00:21:17  mcr
  * 	send the encryption keys to the AccessPoint.
  *
  * Revision 1.6  2003/11/22 00:10:18  mcr
