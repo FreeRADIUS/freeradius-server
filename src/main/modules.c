@@ -344,24 +344,23 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 	new->entry = linkto_module(module_list, module_name,
 				   "radiusd.conf", cf_section_lineno(inst_cs));
-	if(!new->entry) {
+	if (!new->entry) {
 		free(new);
 		/* linkto_module logs any errors */
 		return NULL;
 	}
 	
 	/*
-	 *	Nothing to instantiate, so no instantiation handle.
+	 *	No instance handle.
 	 */
-	if(!new->entry->module->instantiate) {
-		new->insthandle = NULL;
+	new->insthandle = NULL;
 
-
-		/*
-		 *	Else call the module's instantiation routine.
-		 */
-	} else if((new->entry->module->instantiate)(inst_cs,
-						    &new->insthandle) < 0) {
+	/*
+	 *	Call the module's instantiation routine.
+	 */
+	if ((new->entry->module->instantiate) &&
+	    ((new->entry->module->instantiate)(inst_cs,
+					       &new->insthandle) < 0)) {
 		radlog(L_ERR|L_CONS,
 		       "radiusd.conf[%d]: %s: Module instantiation failed.\n",
 		       cf_section_lineno(inst_cs), instname);
@@ -798,10 +797,7 @@ static void update_username(REQUEST *request, char *newname)
  */
 static void safe_lock(config_module_t *instance)
 {
-	if (!instance->mutex) {
-		return;
-	}
-	pthread_mutex_lock(instance->mutex);
+	if (instance->mutex) pthread_mutex_lock(instance->mutex);
 }
 
 /*
@@ -809,10 +805,7 @@ static void safe_lock(config_module_t *instance)
  */
 static void safe_unlock(config_module_t *instance)
 {
-	if (!instance->mutex) {
-		return;
-	}
-	pthread_mutex_unlock(instance->mutex);
+	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
 #else
 /*
