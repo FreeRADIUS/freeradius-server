@@ -139,3 +139,22 @@ strsep(char **stringp, const char *delim)
 	return NULL;		/* NOTREACHED, but the compiler complains */
 }
 #endif
+
+#ifndef HAVE_LOCALTIME_R
+/*
+ *	We use localtime_r() by default in the server.
+ *
+ *	For systems which do NOT have localtime_r(), we make the
+ *	assumption that localtime() is re-entrant, and returns a
+ *	per-thread data structure.
+ *
+ *	Even if localtime is NOT re-entrant, this function will
+ *	lower the possibility of race conditions.
+ */
+struct tm *localtime_r(const time_t *clock, struct tm *result)
+{
+  *result = localtime(clock);
+
+  return result;
+}
+#endif

@@ -1,3 +1,6 @@
+#ifndef _FR_MISSING_H
+#define _FR_MISSING_H
+
 /*
  * missing.h	Replacements for functions that are or can be
  *		missing on some platforms.
@@ -15,6 +18,10 @@ extern int strcasecmp(char *s1, char *s2);
 
 #ifndef HAVE_STRSEP
 extern char *strsep(char **stringp, const char *delim);
+#endif
+
+#ifndef HAVE_LOCALTIME_R
+struct tm *localtime_r(const time_t *clock, struct tm *result);
 #endif
 
 #ifdef NEED_DECLARATION_CRYPT
@@ -69,3 +76,5 @@ void endusershell(void);
 #ifndef INADDR_NONE
 #define INADDR_NONE     ((uint32_t) 0xffffffff)
 #endif
+
+#endif /* _FR_MISSING_H */

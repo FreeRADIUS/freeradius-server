@@ -516,6 +516,7 @@ AC_CHECK_FUNCS( \
 	setsid \
 	strncasecmp \
 	strcasecmp \
+	localtime_r \
 	strsep \
 	inet_aton \
 	gethostname \
