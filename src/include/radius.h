@@ -180,7 +180,8 @@
 #define PW_AUTHTYPE_SECURID		2
 #define PW_AUTHTYPE_CRYPT		3
 #define PW_AUTHTYPE_REJECT		4
-#define PW_AUTHTYPE_EAP                 252
+#define PW_AUTHTYPE_ACTIVCARD		5
+#define PW_AUTHTYPE_EAP                 6
 #define PW_AUTHTYPE_PAM			253
 #define PW_AUTHTYPE_ACCEPT		254
 

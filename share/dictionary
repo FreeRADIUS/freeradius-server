@@ -317,11 +317,12 @@ VALUE		Auth-Type		System			1
 VALUE		Auth-Type		SecurID			2
 VALUE		Auth-Type		Crypt-Local		3
 VALUE		Auth-Type		Reject			4
-VALUE		Auth-Type		ActivCard		4
+VALUE		Auth-Type		ActivCard		5
 
 #
 #	Cistron extensions
 #
+VALUE		Auth-Type		EAP			6
 VALUE		Auth-Type		Ldap			252
 VALUE		Auth-Type		Pam			253
 VALUE		Auth-Type		Accept			254
