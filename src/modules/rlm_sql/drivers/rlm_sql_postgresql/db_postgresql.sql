@@ -91,8 +91,8 @@ CREATE TABLE radcheck (
   id SERIAL,
   UserName VARCHAR(30) DEFAULT '' NOT NULL,
   Attribute VARCHAR(30),
+  op VARCHAR(2) NOT NULL,
   Value VARCHAR(40),
-  op VARCHAR(2),
   PRIMARY KEY (id)
 );
 create index radcheck_UserName on radcheck (UserName,Attribute);
@@ -104,8 +104,8 @@ CREATE TABLE radgroupcheck (
   id SERIAL,
   GroupName VARCHAR(20) DEFAULT '' NOT NULL,
   Attribute VARCHAR(40),
+  op VARCHAR(2) NOT NULL,
   Value VARCHAR(40),
-  op VARCHAR(2),
   PRIMARY KEY (id)
 );
 create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
@@ -117,8 +117,8 @@ CREATE TABLE radgroupreply (
   id SERIAL,
   GroupName VARCHAR(20) DEFAULT '' NOT NULL,
   Attribute VARCHAR(40),
+  op VARCHAR(2) NOT NULL,
   Value VARCHAR(40),
-  op VARCHAR(2),
   PRIMARY KEY (id)
 );
 create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
@@ -130,8 +130,8 @@ CREATE TABLE radreply (
   id SERIAL,
   UserName VARCHAR(30) DEFAULT '' NOT NULL,
   Attribute VARCHAR(30),
+  op VARCHAR(2) NOT NULL,
   Value VARCHAR(40),
-  op VARCHAR(2),
   PRIMARY KEY (id)
 );
 create index radreply_UserName on radreply (UserName,Attribute);
