@@ -926,23 +926,6 @@ autz_redo:
 	}
 
 	/*
-	 *	Filter (possibly multiple) Reply-Message attributes
-	 *	through radius_xlat, modifying them in place.
-	 */
-	if (user_msg == NULL) {
-		reply_item = pairfind(request->reply->vps, PW_REPLY_MESSAGE);
-		while (reply_item) {
-			radius_xlat(buf, sizeof(reply_item->strvalue),
-				    (char *)reply_item->strvalue, request, NULL);
-			strNcpy((char *)reply_item->strvalue, buf,
-				sizeof(reply_item->strvalue));
-			reply_item->length = strlen((char *)reply_item->strvalue);
-			user_msg = NULL;
-			reply_item = pairfind(reply_item->next, PW_REPLY_MESSAGE);
-		}
-	}
-
-	/*
 	 *	Set the reply to Access-Accept, if it hasn't already
 	 *	been set to something.  (i.e. Access-Challenge)
 	 */
