@@ -196,6 +196,7 @@ int rl_walk(RL_WALK_FUNC walker, void *data)
 REQUEST *rl_next(REQUEST *request)
 {
 	int id, start_id;
+	int count;
 
 	/*
 	 *	If we were passed a request, then go to the "next" one.
@@ -215,26 +216,26 @@ REQUEST *rl_next(REQUEST *request)
 			 */
 			start_id = request->packet->id + 1;
 			start_id &= 0xff;
+			count = 255;
 		}
 	} else {
 		/*
 		 *	No input request, start looking at ID 0.
 		 */
 		start_id = 0;
+		count = 256;
 	}
 
 	/*
 	 *	Check all ID's, wrapping around at 255.
 	 */
-	for (id = start_id; id < (start_id + 256); id++) {
+	for (id = start_id; id < (start_id + count); id++) {
 
 		/*
 		 *	This ID has a request, return it.
 		 */
 		if (request_list[id & 0xff].first_request) {
-			if(request != request_list[id & 0xff].first_request) {
-				return request_list[id & 0xff].first_request;
-			}
+			return request_list[id & 0xff].first_request;
 		}
 	}
 
