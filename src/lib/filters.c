@@ -343,9 +343,9 @@ static const LRAD_NAME_NUMBER filterProtoName[] = {
 };
 
 static const LRAD_NAME_NUMBER filterCompare[] = {
-	{ ">",	RAD_COMPARE_GREATER },
-	{ "=",	RAD_COMPARE_EQUAL },
 	{ "<",	RAD_COMPARE_LESS },
+	{ "=",	RAD_COMPARE_EQUAL },
+	{ ">",	RAD_COMPARE_GREATER },
 	{ "!=", RAD_COMPARE_NOT_EQUAL },
 	{ NULL, 0 },
 };
@@ -740,8 +740,8 @@ parseIpxFilter(const char *curString, RadFilter *curEntry)
                 token = strtok( NULL, " " );
 
 		if ( token ) {
-		    cmp = lrad_str2int(filterCompare, token, -1);
-		    if (cmp >= 0) {
+		    cmp = lrad_str2int(filterCompare, token, RAD_NO_COMPARE);
+		    if (cmp > RAD_NO_COMPARE) {
 		      token = strtok( NULL, " " );
 			if ( token ) {
 			    if ( tok == FILTER_IPX_DST_IPXSOCK ) {
@@ -886,8 +886,8 @@ parseIpFilter(const char *curString, RadFilter *curEntry)
 
 		token = strtok( NULL, " " );
 		if ( token ) {
-  		    cmp = lrad_str2int(filterCompare, token, -1);
-		    if (cmp >= 0) {
+  		    cmp = lrad_str2int(filterCompare, token, RAD_NO_COMPARE);
+		    if (cmp > RAD_NO_COMPARE) {
 			token = strtok( NULL, " " );
 			if ( token ) {
 			    if( isAllDigit( token ) ) {
@@ -1236,7 +1236,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       len -= i;
     }
 
-    if (filter.u.ip.dstPortComp) {
+    if (filter.u.ip.dstPortComp > RAD_NO_COMPARE) {
       i = snprintf(p, len, " dstport %s %d",
 		   lrad_int2str(filterCompare, filter.u.ip.dstPortComp, "??"),
 		   ntohs(filter.u.ip.dstport));
@@ -1244,7 +1244,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       len -= i;
     }
     
-    if (filter.u.ip.srcPortComp) {
+    if (filter.u.ip.srcPortComp > RAD_NO_COMPARE) {
       i = snprintf(p, len, " srcport %s %d",
 		   lrad_int2str(filterCompare, filter.u.ip.srcPortComp, "??"),
 		   ntohs(filter.u.ip.srcport));
@@ -1272,7 +1272,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       p += i;
       len -= i;
 
-      if (filter.u.ipx.srcSocComp) {
+      if (filter.u.ipx.srcSocComp > RAD_NO_COMPARE) {
 	i = snprintf(p, len, " srcipxsock %s 0x%04x",
 		     lrad_int2str(filterCompare, filter.u.ipx.srcSocComp, "??"),
 		     ntohs(filter.u.ipx.srcIpxSoc));
@@ -1291,7 +1291,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       p += i;
       len -= i;
 
-      if (filter.u.ipx.dstSocComp) {
+      if (filter.u.ipx.dstSocComp > RAD_NO_COMPARE) {
 	i = snprintf(p, len, " dstipxsock %s 0x%04x",
 		     lrad_int2str(filterCompare, filter.u.ipx.dstSocComp, "??"),
 		     ntohs(filter.u.ipx.dstIpxSoc));
