@@ -37,8 +37,17 @@ typedef struct module_list_t {
 
 static module_list_t *module_list = NULL;
 
-typedef struct config_module_t {
+typedef struct module_instance_t {
 	module_list_t		*entry;
+	char			name[MAX_STRING_LEN];
+        void                    *insthandle;
+	struct module_instance_t *next;
+} module_instance_t;
+
+static module_instance_t *module_instance_list = NULL;
+
+typedef struct config_module_t {
+	module_instance_t	*instance;
 	struct config_module_t	*next;
 } config_module_t;
 
@@ -60,63 +69,44 @@ static void config_list_free(config_module_t **cf)
 	*cf = NULL;
 }
 
+static void instance_list_free(module_instance_t **i)
+{
+	module_instance_t	*c, *next;
+
+	c = *i;
+	while (c) {
+		next = c->next;
+		if(c->entry->module->detach)
+			(c->entry->module->detach)(c->insthandle);
+		free(c);
+		c = next;
+	}
+	*i = NULL;
+}
+
 static void module_list_free(void)
 {
 	module_list_t *ml, *next;
 
+	config_list_free(&authenticate);
+	config_list_free(&authorize);
+	config_list_free(&preacct);
+	config_list_free(&accounting);
+
+	instance_list_free(&module_instance_list);
+
 	ml = module_list;
 	while (ml) {
 		next = ml->next;
-		if (ml->module->detach)
-			(ml->module->detach)();
+		if (ml->module->destroy)
+			(ml->module->destroy)();
 		lt_dlclose(ml->handle);	/* ignore any errors */
 		free(ml);
 		ml = next;
 	}
 
 	module_list = NULL;
-	config_list_free(&authenticate);
-	config_list_free(&authorize);
-	config_list_free(&preacct);
-	config_list_free(&accounting);
 }
-
-
-static module_list_t *find_module(module_list_t *head, char *filename)
-{
-	while (head) {
-		if (strcmp(head->filename, filename) == 0)
-			return head;
-		head = head->next;
-	}
-	return NULL;
-}
-
-
-/*
- *	Add one entry at the end of the config_module_t list.
- */
-static void add_to_list(config_module_t **head, module_list_t *entry)
-{
-	config_module_t	*node = *head;
-	config_module_t **last = head;
-
-	while (node) {
-		last = &node->next;
-		node = node->next;
-	}
-
-	node = (config_module_t *) malloc(sizeof(config_module_t));
-	if (!node) {
-		fprintf(stderr, "Out of memory\n");
-		exit(1);
-	}
-
-	node->next = NULL;
-	node->entry = entry;
-	*last = node;
-}
-
 
 /*
  *  New Auth-Type's start at a large number, and go up from there.
@@ -161,36 +151,212 @@ static int new_authtype_value(const char *name)
   return new_value->value;
 }
 
+static module_list_t *find_module(module_list_t *head, const char *filename,
+				  const char *module_name,
+				  const char *cffilename, int cflineno)
+{
+	module_list_t	**last, *node;
+	module_list_t	*new;
+	void		*handle;
+	const char	*error;
+
+	while (head) {
+		if (strcmp(head->filename, filename) == 0)
+			return head;
+		head = head->next;
+	}
+
+	last = &module_list;
+	node = module_list;
+	while (node) {
+		last = &node->next;
+		node = node->next;
+	}
+
+	/*
+	 * Keep the handle around so we can dlclose() it.
+	 * Also ensure that any further dependencies are exported,
+	 * so that PAM can work.
+	 *
+	 * i.e. rlm_pam.so links to libpam.so, which in turn dlopen()'s
+	 * pam_foo.so.  Without RTLD_GLOBAL, the functions in libpam.so
+	 * won't get exported to pam_foo.so.
+	 */
+	handle = lt_dlopenext(filename);
+	if (handle == NULL) {
+		fprintf(stderr, "%s[%d] Failed to link to module %s:"
+			" %s\n", cffilename, cflineno, filename, lt_dlerror());
+		return NULL;
+	}
+
+	/* make room for the module type */
+	new = (module_list_t *) malloc(sizeof(module_list_t));
+	if (new == NULL) {
+		fprintf(stderr, "%s[%d] Failed to allocate memory.\n",
+			cffilename, cflineno);
+		lt_dlclose(handle);	/* ignore any errors */
+		return NULL;
+	}
+
+	/* fill in the module structure */
+	new->next = NULL;
+	new->handle = handle;
+	strNcpy(new->filename, filename, sizeof(new->filename));
+
+	new->module = (module_t *) lt_dlsym(new->handle, module_name);
+	error = lt_dlerror();
+	if (!new->module) {
+		fprintf(stderr, "%s[%d] Failed linking to "
+				"%s structure in %s: %s\n",
+				cffilename, cflineno,
+				module_name, cffilename, error);
+		lt_dlclose(new->handle);	/* ignore any errors */
+		free(new);
+		return NULL;
+	}
+
+	/* If there's an authentication method, add a new Auth-Type */
+	if (new->module->authenticate)
+		new->auth_type =
+			new_authtype_value(new->module->name);
+
+	/* call the modules initialization */
+	if (new->module->init &&
+	    (new->module->init)() < 0) {
+		fprintf(stderr,
+		   "%s[%d] Module initialization failed.\n",
+			cffilename, cflineno);
+		lt_dlclose(new->handle);	/* ignore any errors */
+		free(new);
+		return NULL;
+	}
+
+	DEBUG("Module: Loaded %s ", new->module->name);
+
+	*last = new;
+
+	return new;
+}
+
+static module_instance_t *find_module_instance(module_instance_t *head,
+					       const char *instname)
+{
+	CONF_SECTION *cs, *inst_cs;
+	module_instance_t *new;
+	char library[256];
+	char module_name[256];
+
+	while (head) {
+		if (strcmp(head->name, instname) == 0)
+			return head;
+		head = head->next;
+	}
+
+	/* Instance doesn't exist yet. Try to find the corresponding config
+	 * section and create it. */
+
+	new = malloc(sizeof *new);
+	if (!new) {
+		fprintf(stderr, "Out of memory\n");
+		exit(1);
+	}
+
+	cs = cf_section_find("modules");
+	if (!cs) {
+		return NULL;
+	}
+
+	/* Module instances are declared in the modules{} block and referenced
+	 * later by their name, which is the name2 from the config section,
+	 * or name1 if there was no name2. */
+
+	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL)
+	    ; inst_cs ;
+	    inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {
+		if ( (inst_cs->name2 && !strcmp(inst_cs->name2, instname)) ||
+		     (!inst_cs->name2 && !strcmp(inst_cs->name1, instname)) )
+			break;
+	}
+	if (!inst_cs)
+		return NULL;
+
+	snprintf(library, sizeof library, "rlm_%s.so", inst_cs->name1);
+	snprintf(module_name, sizeof module_name, "rlm_%s", inst_cs->name1);
+	new->entry = find_module(module_list, library, module_name,
+				 "radiusd.conf", inst_cs->lineno);
+	if(!new->entry) {
+		free(new);
+		return NULL;
+	}
+
+	if(!new->entry->module->instantiate) {
+		new->insthandle = 0;
+	} else if((new->entry->module->instantiate)(inst_cs,
+						    &new->insthandle) < 0) {
+		fprintf(stderr,
+			"radiusd.conf[%d]: %s: Module instantiation failed.\n",
+			inst_cs->lineno, instname);
+		free(new);
+		return NULL;
+	}
+
+	strNcpy(new->name, instname, sizeof(new->name));
+	new->next = module_instance_list;
+	module_instance_list = new;
+
+	DEBUG("Module: Instantiated %s (%s) ", inst_cs->name1, new->name);
+
+	return new;
+}
+
+/*
+ *	Add one entry at the end of the config_module_t list.
+ */
+static void add_to_list(config_module_t **head, module_instance_t *instance)
+{
+	config_module_t	*node = *head;
+	config_module_t **last = head;
+
+	while (node) {
+		last = &node->next;
+		node = node->next;
+	}
+
+	node = (config_module_t *) malloc(sizeof(config_module_t));
+	if (!node) {
+		fprintf(stderr, "Out of memory\n");
+		exit(1);
+	}
+
+	node->next = NULL;
+	node->instance = instance;
+	*last = node;
+}
+
+
 /* Why is this both here and in radiusd.c:server_config? --Pac. */
 static CONF_PARSER module_config[] = {
-  { "lib_dir",            PW_TYPE_STRING_PTR, &radlib_dir,        LIBDIR },
+  { "libdir",            PW_TYPE_STRING_PTR, &radlib_dir,        LIBDIR },
 
   { NULL, -1, NULL, NULL }
 };
 
 /*
- *	Read the modules file, parse the structure into memory,
+ *	Parse the module config sections, and load
  *	and call each module's init() function.
  *
  *	Libtool makes your life a LOT easier, especially with libltdl.
  *	see: http://www.gnu.org/software/libtool/
  */
-int read_modules_file(char *filename)
+int setup_modules(void)
 {
-	FILE		*fp;
-	module_list_t	*this;
-	module_list_t	**last;
-	char		*p, *q;
-	char		buffer[1024];
-	char		control[256];
-	char		library[256];
-	char		module_name[256];
-	int		lineno = 0;
-	void		*handle;
-	const char	*error;
-	int		argc;			/* for calling the modules */
-	char		*argv[32];
+	module_instance_t *this;
+	const char	*control;
+	int		comp;
 	CONF_SECTION	*cs;
+	CONF_PAIR	*modref;
+        const char *filename="radiusd.conf";
+
 	this = NULL; /* Shut up stupid gcc */
 
 	/*
@@ -240,163 +406,85 @@ int read_modules_file(char *filename)
 		module_list_free();
 	}
 
-	/* read the modules file */
-	fp = fopen(filename, "r");
-	if (!fp)
-		return 0;			/* no modules file, it's OK */
+	for (comp=0; comp<RLM_COMPONENT_COUNT; ++comp) {
+	switch(comp) {
+		case RLM_COMPONENT_AUTZ: control="authorize"; break;
+		case RLM_COMPONENT_AUTH: control="authenticate"; break;
+		case RLM_COMPONENT_PREACCT: control="preacct"; break;
+		case RLM_COMPONENT_ACCT: control="accounting"; break;
+		default: control="unknown";
+	}
 
-	last = &module_list;
+	cs = cf_section_find(control);
+	if (!cs)
+		continue;
 
-	while (fgets(buffer, sizeof(buffer), fp)) {
+	/* These need to be subsections instead of attr/value pairs if we're
+	 * going to do failover config here. I will wait until I've figured
+	 * out the shorthand empty-subsection syntax first though.
+	 * --Pac */
+	for(modref=cf_pair_find_next(cs, NULL, NULL)
+	    ; modref ;
+	    modref=cf_pair_find_next(cs, modref, NULL)) {
 
 	/*
-	 *	Yes, we're missing one indenting TAB here.
+	 *	Yes, we're missing two indents here.
 	 *	It's yucky but otherwise it doesn't fit. That
 	 *	ofcourse means that this function should
 	 *	be split up....
 	 */
-	lineno++;
-	if ((*buffer == '#') || (*buffer <= ' ')) 
-		continue;
-
-	/* split it up */
-	if (sscanf(buffer, "%255s%255s", control, library) != 2) {
-		fprintf(stderr, "%s[%d] Parse error.\n",
-			filename, lineno);
+	this = find_module_instance(module_instance_list, cf_pair_attr(modref));
+	if (this == NULL) {
 		exit(1); /* FIXME */
 	}
 
-	this = find_module(module_list, library);
-	if (this == NULL) {
-		/*
-		 * Keep the handle around so we can dlclose() it.
-		 * Also ensure that any further dependencies are exported,
-		 * so that PAM can work.
-		 *
-		 * i.e. rlm_pam.so links to libpam.so, which in turn dlopen()'s
-		 * pam_foo.so.  Without RTLD_GLOBAL, the functions in libpam.so
-		 * won't get exported to pam_foo.so.
-		 */
-		handle = lt_dlopenext(library);
-		if (handle == NULL) {
-			fprintf(stderr, "%s[%d] Failed to link to module %s:"
-				" %s\n", filename, lineno, library, lt_dlerror());
-			exit(1); /* FIXME */
-		}
-
-		/* make room for the module type */
-		this = (module_list_t *) malloc(sizeof(module_list_t));
-		if (this == NULL) {
-			fprintf(stderr, "%s[%d] Failed to allocate memory.\n",
-				filename, lineno);
-			exit(1);
-		}
-
-		/* fill in the module structure */
-		this->next = NULL;
-		this->handle = handle;
-		strNcpy(this->filename, library, sizeof(this->filename));
-
-		/* find the structure name from the library name */
-		p = strrchr(library, '/');
-		q = module_name;
-		if (p)
-			strNcpy(q, p + 1, sizeof(module_name) - 1);
-		else
-			strNcpy(q, library, sizeof(module_name) - 1);
-		p = strchr(module_name, '.');
-		if (p) *p = '\0';
-
-		this->module = (module_t *) lt_dlsym(this->handle, module_name);
-		error = lt_dlerror();
-		if (!this->module) {
-			fprintf(stderr, "%s[%d] Failed linking to "
-					"%s structure in %s: %s\n",
-					filename, lineno, q,
-					library, error);
-			exit(1);
-		}
-
-		/* If there's an authentication method, add a new Auth-Type */
-		if (this->module->authenticate)
-			this->auth_type =
-				new_authtype_value(this->module->name);
-
-		/* split up the rest of the string into argv */
-		p = strtok(buffer, " \t");  /* find name */
-		if (p) p = strtok(NULL, " \t\r\n"); /* find library name */
-		if (p) p = strtok(NULL, " \t\r\n"); /* find trailing stuff */
-
-		argc = 0;
-		while (p) {
-			argv[argc++] = p;
-			p = strtok(NULL, " \t\r\n");
-
-			if (argc > 31) {
-				fprintf(stderr, "%s[%d]  Too many arguments "
-						"to module.\n",
-						filename, lineno);
-				exit(1);
-			}
-		}
-		argv[argc] = NULL;
-
-		/* call the modules initialization */
-		if (this->module->init &&
-		    (this->module->init)(argc, argv) < 0) {
-			fprintf(stderr,
-			   "%s[%d] Module initialization failed.\n",
-				filename, lineno);
-			exit(1);
-		}
-      
-		DEBUG("Module: Loaded %s ", this->module->name);
-
-		*last = this;
-		last = &this->next;
-	}
-
 	if (strcmp(control, "authorize") == 0) {
-		if (!this->module->authorize) {
+		if (!this->entry->module->authorize) {
 			fprintf(stderr, "%s[%d] Module %s does not contain "
 					"an 'authorize' entry\n",
-					filename, lineno, this->module->name);
+					filename, modref->lineno,
+					this->entry->module->name);
 			exit(1);
 		}
+
 		add_to_list(&authorize, this);
 	} else if (strcmp(control, "authenticate") == 0) {
-		if (!this->module->authenticate) {
+		if (!this->entry->module->authenticate) {
 			fprintf(stderr, "%s[%d] Module %s does not contain "
 					"an 'authenticate' entry\n",
-					filename, lineno, this->module->name);
+					filename, modref->lineno,
+					this->entry->module->name);
 			exit(1);
 		}
+
 		add_to_list(&authenticate, this);
 	} else if (strcmp(control, "preacct") == 0) {
-		if (!this->module->preaccounting) {
+		if (!this->entry->module->preaccounting) {
 			fprintf(stderr, "%s[%d] Module %s does not contain "
 					"a 'preacct' entry\n",
-					filename, lineno, this->module->name);
+					filename, modref->lineno,
+					this->entry->module->name);
 			exit(1);
 		}
 		add_to_list(&preacct, this);
 	} else if (strcmp(control, "accounting") == 0) {
-		if (!this->module->accounting) {
+		if (!this->entry->module->accounting) {
 			fprintf(stderr, "%s[%d] Module %s does not contain "
 					"an 'accounting' entry\n",
-					filename, lineno, this->module->name);
+					filename, modref->lineno,
+					this->entry->module->name);
 			exit(1);
 		}
+
 		add_to_list(&accounting, this);
 	} else {
 		fprintf(stderr, "%s[%d] Unknown control \"%s\".\n",
-			filename, lineno, control);
+			filename, modref->lineno, control);
 		exit(1);
 	}
 
-  	} /* YUCK */
-
-	fclose(fp);
+  	}
+	} /* YUCK */
 
 	return 0;
 }
@@ -451,9 +539,10 @@ int module_authorize(REQUEST *request,
 	rcode = RLM_MODULE_OK;
 
 	while (this && rcode == RLM_MODULE_OK) {
-		DEBUG2("  authorize: %s", this->entry->module->name);
-		rcode = (this->entry->module->authorize)
-			(request, check_items, reply_items);
+		DEBUG2("  authorize: %s", this->instance->entry->module->name);
+		rcode = (this->instance->entry->module->authorize)(
+			 this->instance->insthandle, request, check_items,
+			 reply_items);
 		this = this->next;
 	}
 
@@ -523,18 +612,19 @@ int module_authenticate(int auth_type, REQUEST *request)
 	}
 
 	this = authenticate;
-	while (this && this->entry->auth_type != auth_type)
+	while (this && this->instance->entry->auth_type != auth_type)
 		this = this->next;
 
-	if (!this || !this->entry->module->authenticate) {
+	if (!this || !this->instance->entry->module->authenticate) {
 		/*
 		 *	No such auth_type, or module auth_type not defined
 		 */
 		return RLM_MODULE_FAIL;
 	}
 
-	DEBUG2("  authenticate: %s", this->entry->module->name);
-	return (this->entry->module->authenticate)(request);
+	DEBUG2("  authenticate: %s", this->instance->entry->module->name);
+	return (this->instance->entry->module->authenticate)(
+		this->instance->insthandle, request);
 }
 
 
@@ -550,8 +640,9 @@ int module_preacct(REQUEST *request)
 	rcode = RLM_MODULE_OK;
 
 	while (this && (rcode == RLM_MODULE_OK)) {
-		DEBUG2("  preacct: %s", this->entry->module->name);
-		rcode = (this->entry->module->preaccounting)(request);
+		DEBUG2("  preacct: %s", this->instance->entry->module->name);
+		rcode = (this->instance->entry->module->preaccounting)
+				(this->instance->insthandle, request);
 		this = this->next;
 	}
 
@@ -570,8 +661,9 @@ int module_accounting(REQUEST *request)
 	rcode = RLM_MODULE_OK;
 
 	while (this && (rcode == RLM_MODULE_OK)) {
-		DEBUG2("  accounting: %s", this->entry->module->name);
-		rcode = (this->entry->module->accounting)(request);
+		DEBUG2("  accounting: %s", this->instance->entry->module->name);
+		rcode = (this->instance->entry->module->accounting)
+				(this->instance->insthandle, request);
 		this = this->next;
 	}
 

@@ -14,7 +14,6 @@
 #define RADIUS_HINTS		"hints"
 #define RADIUS_HUNTGROUPS	"huntgroups"
 #define RADIUS_REALMS		"realms"
-#define RADIUS_MODULES		"modules"
 
 #define RADUTMP			LOGDIR "/radutmp"
 #define RADWTMP			LOGDIR "/radwtmp"

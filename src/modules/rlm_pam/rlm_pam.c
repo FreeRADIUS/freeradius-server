@@ -165,11 +165,13 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
 }
 
 /* translate between function declarations */
-static int pam_auth(REQUEST *request)
+static int pam_auth(void *instance, REQUEST *request)
 {
 	int	r;
 	VALUE_PAIR *pair;
 	const char *pam_auth_string = "radiusd";
+
+	instance = instance;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -214,10 +216,12 @@ module_t rlm_pam = {
   "Pam",
   0,				/* type: reserved */
   NULL,				/* initialize */
+  NULL,				/* instantiation */
   NULL,				/* authorize */
   pam_auth,			/* authenticate */
   NULL,				/* pre-accounting */
   NULL,				/* accounting */
   NULL,				/* detach */
+  NULL,				/* destroy */
 };
 

@@ -26,6 +26,8 @@ static const char rcsid[] = "$Id$";
 #include	<time.h>
 #include	<ctype.h>
 #include	<fcntl.h>
+#include	<unistd.h>
+#include        <limits.h>
 
 #if HAVE_MALLOC_H
 #  include	<malloc.h>
@@ -41,12 +43,16 @@ static const char rcsid[] = "$Id$";
 #  include	<ndbm.h>
 #endif
 
-#ifdef WITH_NDBM
-static DBM	*dbmfile;
-#endif
-
-static PAIR_LIST	*users = NULL;
-static PAIR_LIST	*acct_users = NULL;
+struct file_instance {
+        /* autz */
+        char *usersfile;
+        PAIR_LIST *users;
+        /* preacct */
+        char *acctusersfile;
+        PAIR_LIST *acctusers;
+        /*acct*/
+        int detailperm;
+};
 
 #if defined(WITH_DBM) || defined(WITH_NDBM)
 /*
@@ -69,7 +75,7 @@ static int checkdbm(char *users, char *ext)
  *		  0 found but doesn't match.
  *		  1 found and matches.
  */
-static int dbm_find(char *name, VALUE_PAIR *request_pairs,
+static int dbm_find(DBM *dbmfile, char *name, VALUE_PAIR *request_pairs,
 		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
 	datum		named;
@@ -225,119 +231,163 @@ static void file_dynamic_log_init(void)
 
 
 }
+
+
+static int file_init(void)
+{
+	file_dynamic_log_init();
+
+	return 0;
+}
+
+
+/*
+ *	A temporary holding area for config values to be extracted
+ *	into, before they are copied into the instance data
+ */
+static struct file_instance config;
+
+static CONF_PARSER module_config[] = {
+        { "usersfile",     PW_TYPE_STRING_PTR,
+          &config.usersfile, RADIUS_USERS },
+        { "acctusersfile", PW_TYPE_STRING_PTR,
+          &config.acctusersfile, RADIUS_ACCT_USERS },
+        { "detailperm",    PW_TYPE_INTEGER,
+          &config.detailperm, "0600" },
+	{ NULL, -1, NULL, NULL }
+};
+
+static PAIR_LIST *getusersfile(const char *filename)
+{
+        PAIR_LIST *users = NULL;
+#if defined(WITH_DBM) || defined(WITH_NDBM)
+        if (!use_dbm &&
+            (checkdbm(filename, ".dir") == 0 ||
+             checkdbm(filename, ".db") == 0)) {
+                log(L_INFO|L_CONS, "DBM files found but no -b flag " "given - NOT using DBM");
+        }
+#endif
+
+        if (!use_dbm) users = pairlist_read(filename, 1);
+
+        /*
+         *	Walk through the 'users' file list, sanity checking it.
+         */
+        if (debug_flag) {
+                PAIR_LIST *entry;
+                VALUE_PAIR *vp;
+        
+                entry = users;
+                while (entry) {
+                        /*
+                         *	Look for improper use of '=' in the
+                         *	check items.  They should be using
+                         *	'==' for on-the-wire RADIUS attributes,
+                         *	and probably ':=' for server
+                         *	configuration items.
+                         */
+                        for (vp = entry->check; vp != NULL; vp = vp->next) {
+                                /*
+                                 *	Ignore attributes which are set
+                                 *	properly.
+                                 */
+                                if (vp->operator != T_OP_EQ) {
+                                        continue;
+                                }
+
+                                /*
+                                 *	If it's a vendor attribute,
+                                 *	or it's a wire protocol, 
+                                 *	ensure it has '=='.
+                                 */
+                                if (((vp->attribute & ~0xffff) != 0) ||
+                                    (vp->attribute < 0x100)) {
+                                        log_debug("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+                                                  filename, entry->lineno,
+                                                  vp->name, vp->name,
+                                                  entry->name);
+                                        continue;
+                                }
+                        }
+                
+                
+                        /*
+                         *	Look for server configuration items
+                         *	in the reply list.
+                         *
+                         *	It's a common enough mistake, that it's
+                         *	worth doing.
+                         */
+                        for (vp = entry->reply; vp != NULL; vp = vp->next) {
+                                /*
+                                 *	If it's NOT a vendor attribute,
+                                 *	and it's NOT a wire protocol
+                                 *	and we ignore Fall-Through,
+                                 *	then bitch about it, giving a
+                                 *	good warning message.
+                                 */
+                                if (!(vp->attribute & ~0xffff) &&
+                                    (vp->attribute > 0xff) &&
+                                    (vp->attribute > 1000)) {
+                                        log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
+                                                  "\tfound in reply item list for user \"%s\".\n"
+                                                  "\tThis attribute MUST go on the first line"
+                                                  " with the other check items", 
+                                                  filename, entry->lineno, vp->name,
+                                                  entry->name);
+                                }
+                        }
+                
+                        entry = entry->next;
+                }
+        
+        }
+        return users;
+}
+
 /*
  *	(Re-)read the "users" file into memory.
  */
-static int file_init(int argc, char **argv)
+static int file_instantiate(CONF_SECTION *conf, void **instance)
 {
-	char		fn[1024];
-	char		acct_fn[1024];
-	const char	*ptr;
+        struct file_instance *inst;
 
-	argc = argc; /* -Wunused */
-	file_dynamic_log_init();
+        inst=malloc(sizeof *inst);
+        if(!inst) {
+                log(L_ERR|L_CONS, "Out of memory\n");
+                return -1;
+        }
 
-	/*
-	 *  This really should be fixed to do something better...
-	 */
-	ptr = argv[0] ? argv[0] : RADIUS_USERS;
-	sprintf(fn, "%s/%s", radius_dir, ptr);
-	ptr = (argv[0] && argv[1]) ? argv[1] : RADIUS_ACCT_USERS;
-	sprintf(acct_fn, "%s/%s", radius_dir, ptr);
+        if (cf_section_parse(conf, module_config) < 0) {
+                free(inst);
+                return -1;
+        }
 
-#if defined(WITH_DBM) || defined(WITH_NDBM)
-	if (!use_dbm &&
-	    (checkdbm(ptr, ".dir") == 0 ||
-	     checkdbm(ptr, ".db") == 0)) {
-		log(L_INFO|L_CONS, "DBM files found but no -b flag "
-			"given - NOT using DBM");
-	}
-#endif
+        inst->detailperm = config.detailperm;
+        inst->usersfile = config.usersfile;
+        inst->acctusersfile = config.acctusersfile;
+        config.usersfile = NULL;
+        config.acctusersfile = NULL;
 
-	if (!use_dbm) {
-		users = pairlist_read(fn, 1);
-		acct_users = pairlist_read(acct_fn, 1);
-	}
-
-	/*
-	 *	Walk through the 'users' file list, sanity checking it.
-	 */
-	if (debug_flag) {
-		int acctfile=0;
-		PAIR_LIST *entry;
-		VALUE_PAIR *vp;
-		
-		entry = users;
-		while (entry) {
-			/*
-			 *	Look for improper use of '=' in the
-			 *	check items.  They should be using
-			 *	'==' for on-the-wire RADIUS attributes,
-			 *	and probably ':=' for server configuration
-			 *	items.
-			 */
-			for (vp = entry->check; vp != NULL; vp = vp->next) {
-				/*
-				 *	Ignore attributes which are set
-				 *	properly.
-				 */
-				if (vp->operator != T_OP_EQ) {
-					continue;
-				}
-
-				/*
-				 *	If it's a vendor attribute,
-				 *	or it's a wire protocol, 
-				 *	ensure it has '=='.
-				 */
-				if (((vp->attribute & ~0xffff) != 0) ||
-				    (vp->attribute < 0x100)) {
-					log_debug("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-						  acctfile?acct_fn:fn, entry->lineno,
-						  vp->name, vp->name,
-						  entry->name);
-					continue;
-				}
-			}
-			
-			
-			/*
-			 *	Look for server configuration items
-			 *	in the reply list.
-			 *
-			 *	It's a common enough mistake, that it's
-			 *	worth doing.
-			 */
-			for (vp = entry->reply; vp != NULL; vp = vp->next) {
-				/*
-				 *	If it's NOT a vendor attribute,
-				 *	and it's NOT a wire protocol
-				 *	and we ignore Fall-Through,
-				 *	then bitch about it, giving a
-				 *	good warning message.
-				 */
-				if (!(vp->attribute & ~0xffff) &&
-				    (vp->attribute > 0xff) &&
-				    (vp->attribute > 1000)) {
-					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
-						  "\tfound in reply item list for user \"%s\".\n"
-						  "\tThis attribute MUST go on the first line"
-						  " with the other check items", 
-						  acctfile?acct_fn:fn, entry->lineno, vp->name,
-						  entry->name);
-				}
-			}
-			
-			entry = entry->next;
-			if(!entry && !acctfile) {
-				entry=acct_users;
-				acctfile=1;
-			}
-		}
-		
-	}
-	
-	return users ? 0 : -1;
+	inst->users=getusersfile(inst->usersfile);
+        if(!inst->users) {
+                log(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
+                free(inst->usersfile);
+                free(inst->acctusersfile);
+                free(inst);
+                return -1;
+        }
+	inst->acctusers=getusersfile(inst->acctusersfile);
+        if(!inst->acctusers) {
+                log(L_ERR|L_CONS, "Errors reading %s", inst->acctusersfile);
+                pairlist_free(&inst->users);
+                free(inst->usersfile);
+                free(inst->acctusersfile);
+                free(inst);
+                return -1;
+        }
+        *instance = inst;
+        return 0;
 }
 
 /*
@@ -346,7 +396,7 @@ static int file_init(int argc, char **argv)
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static int file_authorize(REQUEST *request,
+static int file_authorize(void *instance, REQUEST *request,
 		VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
 	int		nas_port = 0;
@@ -362,6 +412,7 @@ static int file_authorize(REQUEST *request,
 	char		buffer[256];
 #endif
 	const char	*name;
+	struct file_instance *inst = instance;
 
 	request_pairs = request->packet->vps;
 
@@ -388,12 +439,11 @@ static int file_authorize(REQUEST *request,
 		/*
 		 *	FIXME: No Prefix / Suffix support for DBM.
 		 */
-		sprintf(buffer, "%s/%s", radius_dir, RADIUS_USERS);
 #ifdef WITH_DBM
-		if (dbminit(buffer) != 0)
+		if (dbminit(inst->usersfile) != 0)
 #endif
 #ifdef WITH_NDBM
-		if ((dbmfile = dbm_open(buffer, O_RDONLY, 0)) == NULL)
+		if ((dbmfile = dbm_open(inst->usersfile, O_RDONLY, 0)) == NULL)
 #endif
 		{
 			log(L_ERR|L_CONS, "cannot open dbm file %s",
@@ -401,7 +451,8 @@ static int file_authorize(REQUEST *request,
 			return RLM_MODULE_FAIL;
 		}
 
-		r = dbm_find(name, request_pairs, check_pairs, reply_pairs);
+		r = dbm_find(dbmfile, name, request_pairs, check_pairs,
+			     reply_pairs);
 		if (r > 0) found = 1;
 		if (r <= 0 || fallthrough(*reply_pairs)) {
 
@@ -409,7 +460,7 @@ static int file_authorize(REQUEST *request,
 
 			sprintf(buffer, "DEFAULT");
 			i = 0;
-			while ((r = dbm_find(buffer, request_pairs,
+			while ((r = dbm_find(dbmfile, buffer, request_pairs,
 			       check_pairs, reply_pairs)) >= 0 || i < 2) {
 				if (r > 0) {
 					found = 1;
@@ -432,7 +483,7 @@ static int file_authorize(REQUEST *request,
 	 */
 #endif
 
-	for(pl = users; pl; pl = pl->next) {
+	for(pl = inst->users; pl; pl = pl->next) {
 
 		/*
 		 *	If the current entry is NOT a default,
@@ -501,8 +552,9 @@ static int file_authorize(REQUEST *request,
 /*
  *	Authentication - unused.
  */
-static int file_authenticate(REQUEST *request)
+static int file_authenticate(void *instance, REQUEST *request)
 {
+	instance = instance;
 	request = request;
 	return RLM_MODULE_OK;
 }
@@ -537,6 +589,7 @@ static void file_write_dynamic_log(REQUEST * request)
 				if (fn[y] == '|') {
 					f = popen(&fn[y+1],logcfg[x].mode);
 				} else {
+					/* FIXME: permissions? */
 					f = fopen(fn,logcfg[x].mode);
 				}
 				if (f) {
@@ -569,13 +622,13 @@ static void file_write_dynamic_log(REQUEST * request)
  *
  *	This function is mostly a copy of file_authorize
  */
-static int file_preacct(REQUEST *request)
+static int file_preacct(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
 	const char	*name;
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	**config_pairs;
-	VALUE_PAIR	*reply_pairs=0;
+	VALUE_PAIR	*reply_pairs = NULL;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	PAIR_LIST	*pl;
@@ -584,6 +637,7 @@ static int file_preacct(REQUEST *request)
 	int		i, r;
 	char		buffer[256];
 #endif
+	struct file_instance *inst = instance;
 
 	namepair = request->username;
 	name = namepair ? (char *) namepair->strvalue : "NONE";
@@ -601,12 +655,11 @@ static int file_preacct(REQUEST *request)
 		/*
 		 *	FIXME: No Prefix / Suffix support for DBM.
 		 */
-		sprintf(buffer, "%s/%s", radius_dir, RADIUS_ACCT_USERS);
 #ifdef WITH_DBM
-		if (dbminit(buffer) != 0)
+		if (dbminit(inst->acctusersfile) != 0)
 #endif
 #ifdef WITH_NDBM
-		if ((dbmfile = dbm_open(buffer, O_RDONLY, 0)) == NULL)
+		if ((dbmfile = dbm_open(inst->acctusersfile, O_RDONLY, 0)) == NULL)
 #endif
 		{
 			log(L_ERR|L_CONS, "cannot open dbm file %s",
@@ -614,7 +667,8 @@ static int file_preacct(REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 
-		r = dbm_find(name, request_pairs, config_pairs, &reply_pairs);
+		r = dbm_find(dbmfile, name, request_pairs, config_pairs,
+			     &reply_pairs);
 		if (r > 0) found = 1;
 		if (r <= 0 || fallthrough(*reply_pairs)) {
 
@@ -622,7 +676,7 @@ static int file_preacct(REQUEST *request)
 
 			sprintf(buffer, "DEFAULT");
 			i = 0;
-			while ((r = dbm_find(buffer, request_pairs,
+			while ((r = dbm_find(dbmfile, buffer, request_pairs,
 			       config_pairs, &reply_pairs)) >= 0 || i < 2) {
 				if (r > 0) {
 					found = 1;
@@ -645,7 +699,7 @@ static int file_preacct(REQUEST *request)
 	 */
 #endif
 
-	for(pl = acct_users; pl; pl = pl->next) {
+	for(pl = inst->acctusers; pl; pl = pl->next) {
 
 		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
 			continue;
@@ -686,9 +740,10 @@ static int file_preacct(REQUEST *request)
 /*
  *	Accounting - write the detail files.
  */
-static int file_accounting(REQUEST *request)
+static int file_accounting(void *instance, REQUEST *request)
 {
-	FILE		*outfd;
+	int		outfd;
+	FILE		*outfp;
 	char		nasname[128];
 	char		buffer[512];
 	VALUE_PAIR	*pair;
@@ -697,6 +752,8 @@ static int file_accounting(REQUEST *request)
 	long		curtime;
 	int		ret = RLM_MODULE_OK;
 	struct stat	st;
+
+	struct file_instance *inst = instance;
 
 	/*
 	 *	See if we have an accounting directory. If not,
@@ -742,22 +799,27 @@ static int file_accounting(REQUEST *request)
 	 *	Write Detail file.
 	 */
 	sprintf(buffer, "%s/%s/%s", radacct_dir, nasname, "detail");
-	if ((outfd = fopen(buffer, "a")) == NULL) {
+	if ((outfd = open(buffer, O_WRONLY|O_APPEND|O_CREAT,
+			  inst->detailperm)) < 0) {
+		log(L_ERR, "Acct: Couldn't open file %s", buffer);
+		ret = RLM_MODULE_FAIL;
+	} else if ((outfp = fdopen(outfd, "a")) == NULL) {
 		log(L_ERR, "Acct: Couldn't open file %s: %s",
 		    buffer, strerror(errno));
 		ret = RLM_MODULE_FAIL;
+		close(outfd);
 	} else {
 
 		/* Post a timestamp */
-		fputs(ctime(&curtime), outfd);
+		fputs(ctime(&curtime), outfp);
 
 		/* Write each attribute/value to the log file */
 		pair = request->packet->vps;
 		while (pair) {
 			if (pair->attribute != PW_PASSWORD) {
-				fputs("\t", outfd);
-				fprint_attr_val(outfd, pair);
-				fputs("\n", outfd);
+				fputs("\t", outfp);
+				fprint_attr_val(outfp, pair);
+				fputs("\n", outfp);
 			}
 			pair = pair->next;
 		}
@@ -765,13 +827,13 @@ static int file_accounting(REQUEST *request)
 		/*
 		 *	Add non-protocol attibutes.
 		 */
-		fprintf(outfd, "\tTimestamp = %ld\n", curtime);
+		fprintf(outfp, "\tTimestamp = %ld\n", curtime);
 		if (request->packet->verified)
-			fputs("\tRequest-Authenticator = Verified\n", outfd);
+			fputs("\tRequest-Authenticator = Verified\n", outfp);
 		else
-			fputs("\tRequest-Authenticator = None\n", outfd);
-		fputs("\n", outfd);
-		fclose(outfd);
+			fputs("\tRequest-Authenticator = None\n", outfp);
+		fputs("\n", outfp);
+		fclose(outfp);
 	}
 	file_write_dynamic_log(request);
 	return ret;
@@ -781,10 +843,14 @@ static int file_accounting(REQUEST *request)
 /*
  *	Clean up.
  */
-static int file_detach(void)
+static int file_detach(void *instance)
 {
-	pairlist_free(&users);
-	pairlist_free(&acct_users);
+        struct file_instance *inst = instance;
+        pairlist_free(&inst->users);
+        pairlist_free(&inst->acctusers);
+        free(inst->usersfile);
+        free(inst->acctusersfile);
+        free(inst);
 	return 0;
 }
 
@@ -794,10 +860,12 @@ module_t rlm_files = {
 	"files",
 	0,				/* type: reserved */
 	file_init,			/* initialization */
+	file_instantiate,		/* instantiation */
 	file_authorize, 		/* authorization */
 	file_authenticate,		/* authentication */
 	file_preacct,			/* preaccounting */
 	file_accounting,		/* accounting */
 	file_detach,			/* detach */
+	NULL				/* destroy */
 };
 

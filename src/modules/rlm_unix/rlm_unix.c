@@ -104,26 +104,32 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
  *	FIXME:	We really should have an 'init' which makes
  *	System auth == Unix
  */
-static int unix_init(int argc, char **argv)
+static int unix_init(void)
 {
-	CONF_SECTION *unix_cs;
-	argc = argc; argv = argv;
-
-	/*
-	 *	Look for the module's configuration.
-	 *
-	 *	If it exists, go parse it, and die if the parse fails.
-	 */
-	unix_cs = cf_module_config_find("unix");
-	if (unix_cs &&
-	    (cf_section_parse(unix_cs, module_config) < 0)) {
-		return -1;
-	}
-	
 	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp);
 #ifdef PW_GROUP_NAME /* compat */
 	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp);
 #endif
+	return 0;
+}
+
+static int unix_instantiate(CONF_SECTION *conf, void **instance)
+{
+	/*
+	 *	Not yet multiple-instance-aware. groupcmp is a real
+	 *	obstacle.
+	 */
+	static int alreadydone=0;
+
+	if (alreadydone) {
+		log(L_ERR,
+		    "rlm_unix: can't handle multiple authentication instances");
+		return -1;
+	}
+	if (cf_section_parse(conf, module_config) < 0) {
+		return -1;
+	}
+
 	if (cache_passwd) {
 		log(L_INFO, "HASH:  Reinitializing hash structures "
 			"and lists for caching...");
@@ -139,14 +145,15 @@ static int unix_init(int argc, char **argv)
 		}
 	}
 
+	alreadydone = 1;
+	*instance = 0;
 	return 0;
 }
-
 
 /*
  *	Detach.
  */
-static int unix_detach(void)
+static int unix_destroy(void)
 {
 	paircompare_unregister(PW_GROUP, groupcmp);
 #ifdef PW_GROUP_NAME
@@ -160,7 +167,7 @@ static int unix_detach(void)
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static int unix_authenticate(REQUEST *request)
+static int unix_authenticate(void *instance, REQUEST *request)
 {
 	char *name, *passwd;
 	struct passwd	*pwd;
@@ -180,6 +187,7 @@ static int unix_authenticate(REQUEST *request)
 #ifdef HAVE_GETUSERSHELL
 	char		*shell;
 #endif
+	instance = instance;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -346,7 +354,7 @@ static char *uue(void *in)
 /*
  *	Unix accounting - write a wtmp file.
  */
-static int unix_accounting(REQUEST *request)
+static int unix_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
 	NAS		*cl;
@@ -363,6 +371,8 @@ static int unix_accounting(REQUEST *request)
 	int		nas_port = 0;
 	int		port_seen = 0;
 	int		nas_port_type = 0;
+
+	instance = instance;
 
 	/*
 	 *	Which type is this.
@@ -502,10 +512,12 @@ module_t rlm_unix = {
   "System",
   0,                            /* type: reserved */
   unix_init,                    /* initialization */
+  unix_instantiate,		/* instantiation */
   NULL,                         /* authorization */
   unix_authenticate,            /* authentication */
   NULL,                         /* preaccounting */
   unix_accounting,              /* accounting */
-  unix_detach,                  /* detach */
+  NULL,                  	/* detach */
+  unix_destroy,                  /* destroy */
 };
 

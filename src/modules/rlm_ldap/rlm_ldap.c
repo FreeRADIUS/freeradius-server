@@ -192,7 +192,7 @@ static TLDAP_RADIUS reply_item_map[] = {
  *		 and performs initialization of the modue.
  *
  *************************************************************************/
-static int rlm_ldap_init (int argc, char **argv)
+static int rlm_ldap_init (void)
 {
   CONF_SECTION *conf_ldap;
   int i;
@@ -648,7 +648,7 @@ static LDAP *rlm_ldap_connect(const char *dn, const char *password, int auth, in
  *	Detach from the LDAP server and cleanup internal state.
  *	
  *****************************************************************************/
-static int rlm_ldap_detach(void)
+static int rlm_ldap_destroy(void)
 {
   pthread_mutex_lock(&sig_mutex);
   cleanup = 1;
@@ -830,9 +830,11 @@ module_t rlm_ldap = {
   "LDAP",
   0,				/* type: reserved */
   rlm_ldap_init,		/* initialization */
+  NULL,				/* instantiation */
   rlm_ldap_authorize,           /* authorization */
   rlm_ldap_authenticate,        /* authentication */
   NULL,				/* preaccounting */
   NULL,				/* accounting */
-  rlm_ldap_detach,              /* detach */
+  NULL,    			/* detach */
+  rlm_ldap_destroy,             /* destroy */
 };

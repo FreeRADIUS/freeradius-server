@@ -17,7 +17,7 @@ static const char rcsid[] = "$Id$";
  * Of course, this RELIES on the NAS to send the SAME information
  * in ALL Accounting packets.
  */
-static int unique_accounting(REQUEST *request)
+static int unique_accounting(void *instance, REQUEST *request)
 {
   char buffer[2048];
   u_char md5_buf[16];
@@ -40,6 +40,8 @@ static int unique_accounting(REQUEST *request)
     PW_ACCT_SESSION_START_TIME,
     0				/* end of array */
   };
+
+  instance = instance; /* -Wunused */
 
   /*
    *  If there is no Acct-Session-Start-Time, then go add one.
@@ -118,9 +120,11 @@ module_t rlm_acct_unique = {
   "Acct-Unique-Session-Id",
   0,				/* type: reserved */
   NULL,				/* initialization */
+  NULL,				/* instantiation */
   NULL,				/* authorization */
   NULL,				/* authentication */
   NULL,				/* preaccounting */
   unique_accounting,		/* accounting */
   NULL,				/* detach */
+  NULL,				/* destroy */
 };

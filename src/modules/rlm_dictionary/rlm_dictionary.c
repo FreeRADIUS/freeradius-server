@@ -15,16 +15,8 @@ static const char rcsid[] = "$Id$";
  *	dictionary entries, etc.
  *
  */
-static int radius_init(int argc, char **argv)
+static int radius_init(void)
 {
-	/*
-	 *	Quiet the compiler,  This is ONLY needed if the functions
-	 *	parameters are not used anywhere in the function.  If there
-	 *	were code here, we wouldn't need these two "fake" code lines.
-	 */
-	argc = argc;
-	argv = argv;
-	
         /* Initialize the dictionary */
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
 		log(L_ERR|L_CONS, "Errors reading dictionary %s/%s: %s",
@@ -43,9 +35,11 @@ module_t rlm_dictionary = {
 	"dictionary",
 	0,				/* type: reserved */
 	radius_init,			/* initialization */
+	NULL,            		/* instantiation */
 	NULL,            		/* authorization */
 	NULL,               		/* authentication */
 	NULL,            		/* preaccounting */
 	NULL,              		/* accounting */
 	NULL,				/* detach */
+	NULL 				/* destroy */
 };

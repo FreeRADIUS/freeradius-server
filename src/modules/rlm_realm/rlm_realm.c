@@ -150,11 +150,12 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
  *
  *  This should very nearly duplicate the old proxy_send() code
  */
-static int realm_authorize(REQUEST *request,
+static int realm_authorize(void *instance, REQUEST *request,
 			   VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
 	REALM *realm;
 
+	instance = instance;
 	reply_pairs = reply_pairs; /* -Wunused */
 	
 	/*
@@ -179,10 +180,12 @@ static int realm_authorize(REQUEST *request,
  * This does the exact same thing as the realm_authorize, it's just called
  * differently.
  */
-static int realm_preacct(REQUEST *request)
+static int realm_preacct(void *instance, REQUEST *request)
 {
 	const char *name = (char *)request->username->strvalue;
 	REALM *realm;
+
+	instance = instance; /* -Wunused */
 	
 	if (!name)
 	  return RLM_MODULE_OK;
@@ -212,9 +215,11 @@ module_t rlm_realm = {
   "Realm",
   0,				/* type: reserved */
   NULL,				/* initialization */
+  NULL,				/* instantiation */
   realm_authorize,		/* authorization */
   NULL,				/* authentication */
   realm_preacct,		/* preaccounting */
   NULL,				/* accounting */
   NULL,				/* detach */
+  NULL,				/* destroy */
 };

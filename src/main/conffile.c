@@ -87,7 +87,8 @@ void cf_pair_free(CONF_PAIR *cp)
 /*
  *	Allocate a CONF_SECTION
  */
-CONF_SECTION *cf_section_alloc(const char *name1, const char *name2)
+static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
+                                      CONF_SECTION *parent)
 {
 	CONF_SECTION	*cs;
 
@@ -97,6 +98,7 @@ CONF_SECTION *cf_section_alloc(const char *name1, const char *name2)
 	memset(cs, 0, sizeof(CONF_SECTION));
 	cs->name1 = xstrdup(name1);
 	cs->name2 = (name2 && *name2) ? xstrdup(name2) : NULL;
+        cs->parent = parent;
 
 	return cs;
 }
@@ -234,9 +236,10 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
  *	Read a part of the config file.
  */
 static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
-				     const char *name1, const char *name2)
+				     const char *name1, const char *name2,
+                                     CONF_SECTION *parent)
 {
-	CONF_SECTION	*cs, *csp, *css;
+	CONF_SECTION	*cs, *csp, *css, *outercs;
 	CONF_PAIR	*cpn;
 	char		*ptr, *p, *q;
 	char		buf[8192];
@@ -269,7 +272,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	/*
 	 *	Allocate new section.
 	 */
-	cs = cf_section_alloc(name1, name2);
+	cs = cf_section_alloc(name1, name2, parent);
 	cs->lineno = *lineno;
 
 	/*
@@ -317,7 +320,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 		if (t2 == T_LCBRACE || t3 == T_LCBRACE) {
 			css = cf_section_read(cf, lineno, fp, buf1,
-						t2==T_LCBRACE ? NULL : buf2);
+					      t2==T_LCBRACE ? NULL : buf2, cs);
 			if (css == NULL) {
 				cf_section_free(cs);
 				return NULL;
@@ -384,6 +387,15 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			memcpy(buf2, ptr + 2, q - ptr - 2);
 			buf2[q - ptr - 2] = '\0';
 			cpn = cf_pair_find(cs, buf2);
+                        /* Also look recursively up the section tree,
+                         * so things like ${confdir} can be defined
+                         * there and used inside the module config
+                         * sections */
+			for (outercs=cs->parent
+                             ; !cpn && outercs ;
+                             outercs=outercs->parent) {
+				cpn = cf_pair_find(outercs, buf2);
+			}
 			if (!cpn) {
 				log(L_ERR, "%s[%d]: Unknown variable \"%s\"",
 				    cf, *lineno, buf2);
@@ -431,7 +443,7 @@ CONF_SECTION *conf_read(const char *conffile)
 		return NULL;
 	}
 
-	cs = cf_section_read(conffile, &lineno, fp, NULL, NULL);
+	cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, NULL);
 	fclose(fp);
 
 	return cs;
@@ -655,10 +667,19 @@ CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
 	}
 
 	for (cp = section->cps; cp; cp = cp->next)
-		if (strcmp(cp->attr, name) == 0)
+		if (name == NULL || strcmp(cp->attr, name) == 0)
 			break;
 
 	return cp;
+}
+
+/*
+ * Return the attr of a CONF_PAIR
+ */
+
+char *cf_pair_attr(CONF_PAIR *pair)
+{
+	return (pair ? pair->attr : NULL);
 }
 
 /*
@@ -685,7 +706,8 @@ char *cf_section_value_find(CONF_SECTION *section, const char *attr)
 
 /*
  * Return the next pair after a CONF_PAIR
- * with a certain name (char *attr)
+ * with a certain name (char *attr) If the requested
+ * attr is NULL, any attr matches.
  */
 
 CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *attr)
@@ -704,7 +726,7 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char 
 	}
 
 	for (; cp; cp = cp->next)
-		if (strcmp(cp->attr, attr) == 0)
+		if (attr == NULL || strcmp(cp->attr, attr) == 0)
 			break;
 
 	return cp;
@@ -740,7 +762,8 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION *section, const char *name)
 
 /*
  * Return the next subsection after a CONF_SECTION
- * with a certain name1 (char *name1)
+ * with a certain name1 (char *name1). If the requested
+ * name1 is NULL, any name1 matches.
  */
 
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
@@ -761,26 +784,10 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 	}
 
 	for (; cp; cp = cp->next)
-		if (strcmp(cp->name1, name1) == 0)
+		if (name1 == NULL || strcmp(cp->name1, name1) == 0)
 			break;
 
 	return cp;
-}
-
-/*
- * Find the configuration section for a module
- */
-
-CONF_SECTION *cf_module_config_find(const char *modulename)
-{
-	CONF_SECTION *cs;
-
-	for (cs = config->sub; cs; cs = cs->next)
-		if ((strcmp(cs->name1, "module") == 0)
-			&& (strcmp(cs->name2, modulename) == 0))
-			break;
-
-	return cs;
 }
 
 /* 

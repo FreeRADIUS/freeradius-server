@@ -26,7 +26,7 @@ char sccsid[] =
 
 #include	"radiusd.h"
 
-char		*progname;
+const char	*progname;
 int		debug_flag;
 char		*radius_dir;
 char		*radlog_dir;

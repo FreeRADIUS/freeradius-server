@@ -95,7 +95,7 @@ static CONF_PARSER module_config[] = {
  * start of main routines
  ***********************************************************************/
 
-static int rlm_sql_init(int argc, char **argv) {
+static int rlm_sql_init(void) {
 
 	/* Where is the flag that tells us about a HUP?*/
 	int	reload = 0;
@@ -119,7 +119,7 @@ static int rlm_sql_init(int argc, char **argv) {
        return 0;
 }
 
-static int rlm_sql_detach(void) {
+static int rlm_sql_destroy(void) {
 
   return 0;
 }
@@ -401,9 +401,11 @@ module_t rlm_sql = {
   "SQL",
   0,			/* type: reserved */
   rlm_sql_init,		/* initialization */
+  NULL,			/* instantiation */
   rlm_sql_authorize,	/* authorization */
   rlm_sql_authenticate,	/* authentication */
   NULL,			/* preaccounting */
   rlm_sql_accounting,	/* accounting */
-  rlm_sql_detach,	/* detach */
+  NULL,			/* detach */
+  rlm_sql_destroy,	/* destroy */
 };

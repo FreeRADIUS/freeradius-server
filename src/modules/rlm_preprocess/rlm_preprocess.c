@@ -29,6 +29,7 @@ static const char rcsid[] = "$Id$";
 #include	"modules.h"
 
 
+/* FIXME: should this stuff be instance data? */
 static PAIR_LIST	*huntgroups;
 static PAIR_LIST	*hints;
 
@@ -479,12 +480,9 @@ static void add_nas_attr(REQUEST *request)
 /*
  *	Initialize.
  */
-static int preprocess_init(int argc, char **argv)
+static int preprocess_init(void)
 {
 	char	buffer[256];
-
-	argc = argc;		/* shut the compiler up */
-	argv = argv;
 
 	pairlist_free(&huntgroups);
 	pairlist_free(&hints);
@@ -502,10 +500,12 @@ static int preprocess_init(int argc, char **argv)
 /*
  *	Preprocess a request.
  */
-static int preprocess_authorize(REQUEST *request,
+static int preprocess_authorize(void *instance, REQUEST *request,
 	VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
 	char buf[1024];
+
+	instance = instance;
 
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
@@ -548,8 +548,9 @@ static int preprocess_authorize(REQUEST *request,
 /*
  *	Preprocess a request before accounting
  */
-static int preprocess_preaccounting(REQUEST *request)
+static int preprocess_preaccounting(void *instance, REQUEST *request)
 {
+	instance = instance;
 	/*
 	 *  Ensure that we have the SAME user name for both
 	 *  authentication && accounting.
@@ -568,7 +569,7 @@ static int preprocess_preaccounting(REQUEST *request)
 /*
  *      Clean up.
  */
-static int preprocess_detach(void)
+static int preprocess_destroy(void)
 {
 	paircompare_unregister(PW_HUNTGROUP_NAME, huntgroup_cmp);
 	pairlist_free(&huntgroups);
@@ -582,10 +583,12 @@ module_t rlm_preprocess = {
 	"preprocess",
 	0,				/* type: reserved */
 	preprocess_init,		/* initialization */
+	NULL,				/* instantiation */
 	preprocess_authorize,		/* authorization */
 	NULL,				/* authentication */
 	preprocess_preaccounting,	/* pre-accounting */
 	NULL,				/* accounting */
-	preprocess_detach,		/* detach */
+	NULL,				/* detach */
+	preprocess_destroy,		/* destroy */
 };
 

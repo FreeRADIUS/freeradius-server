@@ -5,6 +5,8 @@
  *
  */
 
+#include "conffile.h"
+
 /*
  *	The types of the functions which are supported by each module.
  *	The functional parameters are defined here, so we don't have to
@@ -19,16 +21,25 @@ typedef int (*RLM_POST_AUTHENTICATE_FUNCP)(REQUEST *request);
 typedef int (*RLM_PRE_ACCOUNTING_FUNCP)(REQUEST *request);
 typedef int (*RLM_ACCOUNTING_FUNCP)(REQUEST *request);
 
+/* Shouldn't need these anymore */
+#define RLM_COMPONENT_AUTZ 0
+#define RLM_COMPONENT_AUTH 1
+#define RLM_COMPONENT_PREACCT 2
+#define RLM_COMPONENT_ACCT 3
+#define RLM_COMPONENT_COUNT 4 /* How many components are there */
+
 typedef struct module_t {
 	const char	*name;
 	int	type;			/* reserved */
-	int	(*init)(int argc, char **argv);
-	int	(*authorize)(REQUEST *request, 
+	int	(*init)(void);
+	int	(*instantiate)(CONF_SECTION *mod_cs, void **instance);
+	int	(*authorize)(void *instance, REQUEST *request, 
 			VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
-	int	(*authenticate)(REQUEST *request);
-	int	(*preaccounting)(REQUEST *request);
-	int	(*accounting)(REQUEST *request);
-	int	(*detach)(void);
+	int	(*authenticate)(void *instance, REQUEST *request);
+	int	(*preaccounting)(void *instance, REQUEST *request);
+	int	(*accounting)(void *instance, REQUEST *request);
+	int	(*detach)(void *instance);
+ 	int	(*destroy)(void);
 } module_t;
 
 enum {
@@ -38,7 +49,7 @@ enum {
 	RLM_MODULE_HANDLED = 1 	/* the module handled the request, so stop. */
 };
 
-int read_modules_file(char *filename);
+int setup_modules(void);
 int module_authorize(REQUEST *request, 
 	VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
 int module_authenticate(int type, REQUEST *request);
