@@ -46,7 +46,13 @@ if test x$with_[]modname != xno; then
 
 	smart_try_dir=$rlm_ldap_include_dir
 	FR_SMART_CHECK_INCLUDE(lber.h)
+	if test "$ac_cv_header_lber_h" != "yes"; then
+	  fail="$fail lber.h"
+	fi
 	FR_SMART_CHECK_INCLUDE(ldap.h)
+	if test "$ac_cv_header_ldap_h" != "yes"; then
+	  fail="$fail ldap.h"
+	fi
 
 	FR_SMART_CHECK_LIB(sasl, sasl_encode)
 	FR_SMART_CHECK_LIB(crypto, DH_new)
@@ -92,7 +98,6 @@ if test x$with_[]modname != xno; then
 	  if test "x${ac_cv_lib_ldap_ldap_int_tls_config}${ac_cv_lib_ldap_r_ldap_int_tls_config}" != "x"; then
 	     SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INT_TLS_CONFIG"
 	  fi
-
 	fi
 
 
