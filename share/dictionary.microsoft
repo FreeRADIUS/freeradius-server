@@ -14,7 +14,7 @@ ATTRIBUTE	MS-CHAP-CPW-2		4	octets
 ATTRIBUTE	MS-CHAP-LM-Enc-PW	5	octets
 ATTRIBUTE	MS-CHAP-NT-Enc-PW	6	octets
 ATTRIBUTE	MS-MPPE-Encryption-Policy 7	octets
-ATTRIBUTE	MS-MPPE-Encryption-Type  8	octets
+ATTRIBUTE	MS-MPPE-Encryption-Types  8	octets
 ATTRIBUTE	MS-RAS-Vendor		9	integer	# content is Vendor-ID
 ATTRIBUTE	MS-CHAP-Domain		10	string
 ATTRIBUTE	MS-CHAP-Challenge	11	octets

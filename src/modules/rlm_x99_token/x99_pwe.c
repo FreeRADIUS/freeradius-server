@@ -306,11 +306,7 @@ x99_pw_valid(const REQUEST *request, int attr,
 		pairadd(vps, vp);
 	    else
 		; /* choke and die */
-#if 1
-	    if ((vp = pairmake("MS-MPPE-Encryption-Type",
-#else
 	    if ((vp = pairmake("MS-MPPE-Encryption-Types",
-#endif
 			       MPPE_ENC_TYPES_RC4_128,
 			       T_OP_EQ)) != NULL)
 		pairadd(vps, vp);
@@ -657,11 +653,7 @@ x99_pw_valid(const REQUEST *request, int attr,
 		pairadd(vps, vp);
 	    else
 		; /* choke and die */
-#if 1
-	    if ((vp = pairmake("MS-MPPE-Encryption-Type",
-#else
 	    if ((vp = pairmake("MS-MPPE-Encryption-Types",
-#endif
 			       MPPE_ENC_TYPES_RC4_128,
 			       T_OP_EQ)) != NULL)
 		pairadd(vps, vp);
