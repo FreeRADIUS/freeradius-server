@@ -124,10 +124,13 @@ static int rad_check_password(REQUEST *request,
 	if ((auth_type_pair = pairfind(check_item, PW_AUTHTYPE)) != NULL)
 		auth_type = auth_type_pair->lvalue;
 
-	if (auth_type == PW_AUTHTYPE_ACCEPT)
+	if (auth_type == PW_AUTHTYPE_ACCEPT) {
+		DEBUG2("  auth: Auth-Type = Accept, accepting the user");
 		return 0;
+	}
 
 	if (auth_type == PW_AUTHTYPE_REJECT) {
+		DEBUG2("  auth: Auth-Type = Reject, rejecting the user");
 		*user_msg = NULL;
 		return -2;
 	}
@@ -139,8 +142,10 @@ static int rad_check_password(REQUEST *request,
 	 *	FIXME: add MS-CHAP support ?
 	 */
 	auth_item = request->password;
-	if (auth_item == NULL)
+	if (auth_item == NULL) {
+		DEBUG2("  auth: No password in the request");
 		return -1;
+	}
 
 	/*
 	 *	Find the password from the users file.
@@ -219,6 +224,7 @@ static int rad_check_password(REQUEST *request,
 				result = -1;
 			break;
 		default:
+			DEBUG2("  auth: Type %d", auth_type);
 			/*
 			 *	See if there is a module that handles
 			 *	this type, and turn the RLM_ return
@@ -317,7 +323,7 @@ int rad_authenticate(REQUEST *request)
 	 *	Decrypt the password, and remove trailing NULL's.
 	 */
 	auth_item = pairfind(request->packet->vps, PW_PASSWORD);
-	if (auth_item != NULL && auth_item->attribute == PW_PASSWORD) {
+	if (auth_item != NULL) {
 		int i;
 
 		/* If we proxied this, we already did pwdecode */
@@ -410,6 +416,7 @@ int rad_authenticate(REQUEST *request)
 		/*
 		 *	Failed to validate the user.
 		 */
+		DEBUG2("  auth: Failed to validate the user.");
 		request->reply = build_reply(PW_AUTHENTICATION_REJECT, request,
 					     NULL, user_msg);
 		if (auth_item != NULL && log_auth) {
