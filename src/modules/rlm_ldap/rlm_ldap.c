@@ -28,6 +28,7 @@
 #include	<ctype.h>
 #include	<strings.h>
 
+#include	<lber.h>
 #include        <ldap.h>
 
 #include	"radiusd.h"
@@ -177,7 +178,7 @@ static int rlm_ldap_init (int argc, char **argv)
  *
  *************************************************************************/
 
-static int rlm_ldap_pass(AUTH_REQ *authreq, char *name, char *passwd)
+static int rlm_ldap_pass(REQUEST *request, char *name, char *passwd)
 {
     static LDAP *ld;
     LDAPMessage *result, *msg;

@@ -5,20 +5,19 @@
 include config.mak
 
 TARGET		= rlm_ldap
-SRCS		= rlm_ldap
+SRCS		= rlm_ldap.c
 HEADERS		= config.h
 RLM_CFLAGS	= $(LIBLDAP_CFLAGS)
-LIBS		=
+LIBS		= $(LIBLDAP)
 
 # check for LDAP
-# NOTE: The following filename is WRONG for your system!
-# You'll have to replace the ' /a1/aland/src/ldap/' name
-# with something like '/usr/local/'
 #
-#  That is, would someone with LDAP installed PLEASE fix this
-# to be something sane.
+# This should be where your LDAP LIBS are installed
 #
-LDAP_LOCATION=/a1/aland/src/ldap
+# This is the default location for OpenLDAP libs
+LDAP_LOCATION=/usr/local/ldap
+# This is the default location for mozilla libs (at least on my system)
+#LDAP_LOCATION=/usr/lib
 
 ifeq ($(LIBLDAP),)
 TARGET=
