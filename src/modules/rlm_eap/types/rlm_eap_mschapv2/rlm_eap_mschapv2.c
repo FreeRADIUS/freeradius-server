@@ -416,8 +416,8 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	Ensure that we have at least enough data
 		 *	to do the following checks.
 		 *
-		 *	EAP header, EAP type, MS-CHAP opcode,
-		 *	MS-CHAP ident, MS-CHAP data length,
+		 *	EAP header (4), EAP type, MS-CHAP opcode,
+		 *	MS-CHAP ident, MS-CHAP data length (2),
 		 *	MS-CHAP value length.
 		 */
 		if (eap_ds->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
@@ -427,14 +427,25 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 
 		/*
 		 *	The 'value_size' is the size of the response,
-		 *	which is supposed to be the response plus
-		 *	1 byte of flags at the end.
+		 *	which is supposed to be the response (48
+		 *	bytes) plus 1 byte of flags at the end.
 		 */
-		if (eap_ds->response->type.data[4] != (MSCHAPV2_RESPONSE_LEN + 1)) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Response is of incorrect length");
+		if (eap_ds->response->type.data[4] != 49) {
+			radlog(L_ERR, "rlm_eap_mschapv2: Response is of incorrect length %d", eap_ds->response->type.data[4]);
 			return 0;
 		}
 
+		/*
+		 *	The MS-Length field is 5 + value_size + length
+		 *	of name, which is put after the response.
+		 */
+		if (((eap_ds->response->type.data[2] << 8) | 
+		     eap_ds->response->type.data[3]) < (5 + 49)) {
+			radlog(L_ERR, "rlm_eap_mschapv2: Response contains contradictory length %d %d",
+			      (eap_ds->response->type.data[2] << 8) | 
+			       eap_ds->response->type.data[3], 5 + 49);
+			return 0;
+		}
 		break;
 
 	case PW_EAP_MSCHAPV2_SUCCESS:
