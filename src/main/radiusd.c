@@ -1511,6 +1511,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 			switch (rcode) {
 			default:
+				break;
 				
 			/*
 			 *  There was an error trying to proxy the request.
