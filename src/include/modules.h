@@ -6,7 +6,7 @@
  */
 
 typedef struct module_t {
-	char	*name;
+	const char	*name;
 	int	type;			/* reserved */
 	int	(*init)(int argc, char **argv);
 	int	(*authorize)(REQUEST *request, char *username,

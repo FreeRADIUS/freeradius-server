@@ -11,9 +11,6 @@
 
 #define CHAP_VALUE_LENGTH               16
 
-#define PW_AUTH_UDP_PORT                1645
-#define PW_ACCT_UDP_PORT                1646
-
 typedef struct auth_req {
 	RADIUS_PACKET		*packet;
 	RADIUS_PACKET		*proxy;
