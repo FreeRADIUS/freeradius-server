@@ -100,8 +100,8 @@ the rlm_ldap module:
 		access_group = "cn=RemoteUsers,o=My Org,c=UA"
 
 #	access_attr: if attribute is specified, module checks for its existance
-#	in user object. If it exists and is set to TRUE, user is allowed to get
-#	remote access.
+#	in user object. If it exists the user is allowed to get	remote access.
+#	If it exists and is set to FALSE the user is denied remote access.
 #	default: NULL - don't check for the attribute
 		access_attr = "dialupAccess"
 

@@ -611,7 +611,6 @@ modules {
 		# identity = "cn=admin,o=My Org,c=UA"
 		# password = mypass
 		basedn = "o=My Org,c=UA"
-		# authtype = "MS-CHAP"
 		filter = "(uid=%u)"
 
 		# set this to 'yes' to use TLS encrypted connections
