@@ -245,6 +245,11 @@ static const char *policy_lex_string(const char *input,
 		
 	case '!':
 		switch (input[1]) {
+		case '=':
+			input++;
+			*token = POLICY_LEX_CMP_NOT_EQUALS;
+			break;
+
 		case '~':
 			input++;
 			*token = POLICY_LEX_RX_NOT_EQUALS;
