@@ -39,7 +39,7 @@
 /*
  *	Verify that the diameter packet is valid.
  */
-static int diameter_verify(const uint8_t *data, unsigned int data_len)
+static int diameter_verify(const uint8_t *data, int data_len)
 {
 	uint32_t attr;
 	uint32_t length;
@@ -123,8 +123,24 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 		length += 0x03;
 		length &= ~0x03;
 
-		data_len -= length;
-		data += length - offset;
+		/*
+		 *	If the rest of the diameter packet is larger than
+		 *	this attribute, continue.
+		 *
+		 *	Otherwise, if the attribute over-flows the end
+		 *	of the packet, die.
+		 */
+		if (data_len > length) {
+			data_len -= length;
+			data += length - offset;
+
+		} else if (data_len < length) {
+			DEBUG2("  rlm_eap_ttls: ERROR! Diameter attribute overflows packet!");
+			return 0;
+
+		} else {	/* equal, end of packet... */
+			break;
+		}
 	}
 
 	/*
@@ -593,7 +609,7 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 	if ((data_len & 0x0f) != 0) printf("\n");
 #endif
 
-	if (!diameter_verify(data, data_len)) {
+	if (!diameter_verify(data, (int) data_len)) {
 		return PW_AUTHENTICATION_REJECT;
 	}
 
@@ -671,7 +687,9 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 				 */
 				if (t->default_eap_type != 0) {
 					DEBUG2("  TTLS: Setting default EAP type for tunneled EAP session.");
-					vp = pairmake("EAP-Type", "0", T_OP_EQ);
+					vp = paircreate(PW_EAP_TYPE,
+							PW_TYPE_INTEGER);
+					rad_assert(vp != NULL);
 					vp->lvalue = t->default_eap_type;
 					pairadd(&fake->config_items, vp);
 				}
@@ -791,11 +809,6 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 	/*
 	 *	Note that we don't do *anything* with the reply
 	 *	attributes.
-	 *
-	 *	When we finally handle EAP, we will need to save
-	 *	the State attribute from the reply, in the 'handle',
-	 *	and add it to the next fake request which uses this
-	 *	handle.
 	 */
 #ifndef NDEBUG
 	if (debug_flag > 0) {
