@@ -505,30 +505,36 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		/*
 		 *	Perhaps this is an attribute.
 		 */
-		if (strcasecmp(keyword, "ATTRIBUTE") == 0)
+		if (strcasecmp(keyword, "ATTRIBUTE") == 0) {
 			if (process_attribute(fn, line, block_vendor, data) == -1) {
 				fclose(fp);
 				return -1;
 			}
+			continue;
+		}
 
 		/*
 		 *	Process VALUE lines.
 		 */
-		if (strcasecmp(keyword, "VALUE") == 0)
+		if (strcasecmp(keyword, "VALUE") == 0) {
 			if (process_value(fn, line, block_vendor, data) == -1) {
 				fclose(fp);
 				return -1;
 			}
+			continue;
+		}
 
 
 		/*
 		 *	Process VENDOR lines.
 		 */
-		if (strcasecmp(keyword, "VENDOR") == 0)
+		if (strcasecmp(keyword, "VENDOR") == 0) {
 			if (process_vendor(fn, line, block_vendor, data) == -1) {
 				fclose(fp);
 				return -1;
 			}
+			continue;
+		}
 
 		if (strcasecmp(keyword, "BEGIN-VENDOR") == 0) {
 			optstr[0] = 0;
