@@ -8,7 +8,6 @@
  * Version:	$Id$
  *
  */
-
 #include "autoconf.h"
 
 #ifdef HAVE_SYS_TYPES_H
@@ -184,6 +183,7 @@ int		dict_addvendor(const char *name, int value);
 int		dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS flags);
 int		dict_addvalue(const char *namestr, char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
+void		dict_free(void);
 DICT_ATTR	*dict_attrbyvalue(int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(int attr, int val);
@@ -340,6 +340,7 @@ rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
 void		rbtree_free(rbtree_t *tree);
 int		rbtree_insert(rbtree_t *tree, const void *Data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
+int		rbtree_deletebydata(rbtree_t *tree, const void *data);
 rbnode_t       *rbtree_find(rbtree_t *tree, const void *Data);
 void	       *rbtree_finddata(rbtree_t *tree, const void *Data);
 int		rbtree_num_elements(rbtree_t *tree);
@@ -347,6 +348,18 @@ void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 
 /* callback order for walking  */
 typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;
-int rbtree_walk(rbtree_t *tree, int (*callback)(void *), RBTREE_ORDER order);
+
+/*
+ *	The callback should be declared as:
+ *	int callback(void *context, void *data)
+ *
+ *	The "context" is some user-defined context.
+ *	The "data" is the pointer to the user data in the node,
+ *	  NOT the node itself.
+ *
+ *	It should return 0 if all is OK, and !0 for any error.
+ *	The walking will stop on any error.
+ */
+int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void *), void *context); 
 
 #endif /*LIBRADIUS_H*/

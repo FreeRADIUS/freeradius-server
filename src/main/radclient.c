@@ -321,10 +321,12 @@ static int filename_cmp(const void *one, const void *two)
 	return strcmp((const char *) one, (const char *) two);
 }
 
-static int filename_walk(void *data)
+static int filename_walk(void *context, void *data)
 {
 	const char	*filename = data;
 	radclient_t	*radclient;
+
+	context = context;	/* -Wunused */
 
 	/*
 	 *	Initialize the request we're about
@@ -830,6 +832,11 @@ int main(int argc, char **argv)
 		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
 		packet_code = PW_AUTHENTICATION_REQUEST;
 
+	} else if (strcmp(argv[2], "challenge") == 0) {
+		if (server_port == 0) server_port = getport("radius");
+		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
+		packet_code = PW_ACCESS_CHALLENGE;
+
 	} else if (strcmp(argv[2], "acct") == 0) {
 		if (server_port == 0) server_port = getport("radacct");
 		if (server_port == 0) server_port = PW_ACCT_UDP_PORT;
@@ -880,7 +887,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Walk over the list of filenames, creating the requests.
 	 */
-	if (rbtree_walk(filename_tree, filename_walk, InOrder) != 0) {
+	if (rbtree_walk(filename_tree, InOrder, filename_walk, NULL) != 0) {
 		exit(1);
 	}
 

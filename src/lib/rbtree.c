@@ -418,6 +418,22 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 }
 
 /*
+ *	Delete a node from the tree, based on given data, which MUST
+ *	have come from rbtree_finddata().
+ */
+int rbtree_deletebydata(rbtree_t *tree, const void *data)
+{
+	rbnode_t *node = rbtree_find(tree, data);
+	
+	if (!node) return 0;	/* false */
+
+	rbtree_delete(tree, node);
+
+	return 1;
+}
+
+
+/*
  *	Find an element in the tree, returning the data, not the node.
  */
 rbnode_t *rbtree_find(rbtree_t *tree, const void *Data)
@@ -460,20 +476,21 @@ void *rbtree_finddata(rbtree_t *tree, const void *Data)
  *	We call ourselves recursively for each function, but that's OK,
  *	as the stack is only log(N) deep, which is ~12 entries deep.
  */
-static int WalkNodePreOrder(rbnode_t *X, int (*callback)(void *))
+static int WalkNodePreOrder(rbnode_t *X,
+			    int (*callback)(void *, void *), void *context)
 {
 	int rcode;
 
-	rcode = callback(X->Data);
+	rcode = callback(context, X->Data);
 	if (rcode != 0) return rcode;
 
 	if (X->Left != NIL) {
-		rcode = WalkNodePreOrder(X->Left, callback);
+		rcode = WalkNodePreOrder(X->Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
 	if (X->Right != NIL) {
-		rcode = WalkNodePreOrder(X->Right, callback);
+		rcode = WalkNodePreOrder(X->Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
@@ -483,20 +500,21 @@ static int WalkNodePreOrder(rbnode_t *X, int (*callback)(void *))
 /*
  *	Inorder
  */
-static int WalkNodeInOrder(rbnode_t *X, int (*callback)(void *))
+static int WalkNodeInOrder(rbnode_t *X,
+			   int (*callback)(void *, void *), void *context)
 {
 	int rcode;
 
 	if (X->Left != NIL) {
-		rcode = WalkNodeInOrder(X->Left, callback);
+		rcode = WalkNodeInOrder(X->Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
-	rcode = callback(X->Data);
+	rcode = callback(context, X->Data);
 	if (rcode != 0) return rcode;
 
 	if (X->Right != NIL) {
-		rcode = WalkNodeInOrder(X->Right, callback);
+		rcode = WalkNodeInOrder(X->Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
@@ -507,21 +525,22 @@ static int WalkNodeInOrder(rbnode_t *X, int (*callback)(void *))
 /*
  *	PostOrder
  */
-static int WalkNodePostOrder(rbnode_t *X, int (*callback)(void *))
+static int WalkNodePostOrder(rbnode_t *X,
+			     int (*callback)(void *, void*), void *context)
 {
 	int rcode;
 
 	if (X->Left != NIL) {
-		rcode = WalkNodeInOrder(X->Left, callback);
+		rcode = WalkNodeInOrder(X->Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
 	if (X->Right != NIL) {
-		rcode = WalkNodeInOrder(X->Right, callback);
+		rcode = WalkNodeInOrder(X->Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
-	rcode = callback(X->Data);
+	rcode = callback(context, X->Data);
 	if (rcode != 0) return rcode;
 
 	return 0;		/* we know everything returned zero */
@@ -534,15 +553,16 @@ static int WalkNodePostOrder(rbnode_t *X, int (*callback)(void *))
  *	The callback function should return 0 to continue walking.
  *	Any other value stops the walk, and is returned.
  */
-int rbtree_walk(rbtree_t *tree, int (*callback)(void *), RBTREE_ORDER order)
+int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order,
+		int (*callback)(void *, void *), void *context)
 {
 	switch (order) {
 	case PreOrder:
-		return WalkNodePreOrder(tree->Root, callback);
+		return WalkNodePreOrder(tree->Root, callback, context);
 	case InOrder:
-		return WalkNodeInOrder(tree->Root, callback);
+		return WalkNodeInOrder(tree->Root, callback, context);
 	case PostOrder:
-		return WalkNodePostOrder(tree->Root, callback);
+		return WalkNodePostOrder(tree->Root, callback, context);
 
 	default:
 		break;
