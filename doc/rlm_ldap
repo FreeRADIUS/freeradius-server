@@ -15,10 +15,26 @@ the rlm_ldap module:
 	
 	ldap {
 
-#	server: space separated list of host[:port]
+#	server: LDAP server hostname/ip address
+#
+#	Optionaly could contain space separated list of host[:port],
+#	but redundancy/resiliency is better acheived configuring multiple 
+#	rlm_ldap module instances and invocing them in	redundand/failover
+#	configuration in authorize/authenticate sections
+#		
 #	default: settings for your system, as set in etc/openldap/ldap.conf
 #
 		server   = localhost
+
+#	port: LDAP server port
+#		
+#	If LDAP server port is set to 636 (ldaps), SSL connection is enforced.
+#	This feature is useful for LDAP servers which support SSL, but don't
+#	do TLS negotiation (like Novell eDirectory).
+#	
+#	default: 389 (ldap)
+#
+		port = 636
 
 #	net_timeout: # of seconds to wait for response of the server 
 #			(network failures)
