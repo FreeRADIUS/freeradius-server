@@ -135,13 +135,13 @@ static const char *uid_name = NULL;
 static const char *gid_name = NULL;
 static int proxy_requests = TRUE;
 int spawn_flag = TRUE;
-static struct rlimit core_limits;
 
 static void usage(void);
 
 static void sig_fatal (int);
 static void sig_hup (int);
 
+static int switch_users(void);
 static void rad_reject(REQUEST *request);
 static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST *rad_check_list(REQUEST *);
@@ -191,6 +191,59 @@ static CONF_PARSER server_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
+
+static int switch_users() {
+	
+	/*
+	 *  Set the UID and GID, but only if we're NOT running
+	 *  in debugging mode.
+	 */
+	if (!debug_flag) {
+
+		/*  Set GID.  */
+		if (gid_name != NULL) {
+			struct group *gr;
+
+			gr = getgrnam(gid_name);
+			if (gr == NULL) {
+				if (errno == ENOMEM) {
+					radlog(L_ERR|L_CONS, "Cannot switch to Group %s: out of memory", gid_name);
+				} else {
+					radlog(L_ERR|L_CONS, "Cannot switch group; %s doesn't exist", gid_name);
+				}
+				exit(1);
+			}
+			server_gid = gr->gr_gid;
+			if (setgid(server_gid) < 0) {
+				radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s", gid_name, strerror(errno));
+				exit(1);
+			}
+		}
+
+		/*  Set UID.  */
+		if (uid_name != NULL) {
+			struct passwd *pw;
+
+			pw = getpwnam(uid_name);
+			if (pw == NULL) {
+				if (errno == ENOMEM) {
+					radlog(L_ERR|L_CONS, "Cannot switch to User %s: out of memory", uid_name);
+				} else {
+					radlog(L_ERR|L_CONS, "Cannot switch user; %s doesn't exist", uid_name);
+				}
+				exit(1);
+			}
+			server_uid = pw->pw_uid;
+			if (setuid(server_uid) < 0) {
+				radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", uid_name, strerror(errno));
+				exit(1);
+			}
+		}
+	}
+	return(0);
+}
+
+
 /*
  *  Read config files.
  */
@@ -198,6 +251,7 @@ static int reread_config(int reload)
 {
 	int pid = getpid();
 	CONF_SECTION *cs;
+	struct rlimit core_limits;
 
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
@@ -212,9 +266,7 @@ static int reread_config(int reload)
 		return -1;
 	}
 
-	/*
-	 *  And parse the server's configuration values.
-	 */
+	/*  And parse the server's configuration values.  */
 	cs = cf_section_find(NULL);
 	if (cs == NULL) {
 		radlog(L_ERR|L_CONS, "No configuration information in radiusd.conf!");
@@ -222,9 +274,7 @@ static int reread_config(int reload)
 	}
 	cf_section_parse(cs, NULL, server_config);
 
-	/*
-	 *  Reload the modules.
-	 */
+	/*  Reload the modules.  */
 	DEBUG2("read_config_files:  entering modules setup");
 	if (setup_modules() < 0) {
 		radlog(L_ERR|L_CONS, "Errors setting up modules");
@@ -235,6 +285,13 @@ static int reread_config(int reload)
 	 *  Go update our behaviour, based on the configuration
 	 *  changes.
 	 */
+
+	/*  Get the current maximum for core files.  */
+	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
+		radlog(L_ERR|L_CONS, "Failed to get current core limit:  %s", strerror(errno));
+		exit(1);
+	}
+
 	if (allow_core_dumps) {
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
 			radlog(L_ERR|L_CONS, "Cannot update core dump limit: %s",
@@ -266,51 +323,13 @@ static int reread_config(int reload)
 		}
 	}
 
-	/*
-	 *  Set the UID and GID, but only if we're NOT running
-	 *  in debugging mode.
-	 */
-	if (!debug_flag) {
-
-		/*
-		 *  Set group.
-		 */
-		if (gid_name != NULL) {
-			struct group *gr;
-
-			gr = getgrnam(gid_name);
-			if (gr == NULL) {
-				radlog(L_ERR|L_CONS, "Cannot switch to Group %s: %s", gid_name, strerror(errno));
-				exit(1);
-			}
-			server_gid = gr->gr_gid;
-			if (setgid(server_gid) < 0) {
-				radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s", gid_name, strerror(errno));
-				exit(1);
-			}
-		}
-
-		/*
-		 *  Set UID.
-		 */
-		if (uid_name != NULL) {
-			struct passwd *pw;
-
-			pw = getpwnam(uid_name);
-			if (pw == NULL) {
-				radlog(L_ERR|L_CONS, "Cannot switch to User %s: %s", uid_name, strerror(errno));
-				exit(1);
-			}
-			server_uid = pw->pw_uid;
-			if (setuid(server_uid) < 0) {
-				radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", uid_name, strerror(errno));
-				exit(1);
-			}
-		}
+	if (reload) {
+		switch_users();  /* Don't do this yet, if we're just starting up. */
 	}
 
 	return 0;
 }
+
 
 /*
  *  Parse a string into a syslog facility level.
@@ -427,7 +446,7 @@ static int str2fac(const char *s)
 	return LOG_DAEMON;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
 	REQUEST *request;
 	RADIUS_PACKET *packet;
@@ -494,17 +513,13 @@ int main(int argc, char **argv)
 	signal(SIGILL, sig_fatal);
 #endif
 
-	/*
-	 *  Close unused file descriptors.
-	 */
+	/*  Close unused file descriptors.  */
 	for (t = 32; t >= 3; t--)
 		if(t!=devnull) 
 			close(t);
 
-	/*
-	 *  Process the options.
-	 */
-	while((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:p:sSvxXyz")) != EOF) {
+	/*  Process the options.  */
+	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:p:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
@@ -609,26 +624,19 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/*
-	 *  Get out PID: the configuration file reader uses it.
-	 */
+	/*  Get our PID: the configuration file reader uses it.  */
 	radius_pid = getpid();
 
-	/*
-	 *  Get the current maximum for core files.
-	 */
-	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		radlog(L_ERR|L_CONS, "Failed to get current core limit:"
-				"  %s", strerror(errno));
-		exit(1);
-	}
-
-	/*
-	 *  Read the configuration files, BEFORE doing anything else.
-	 */
+	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (reread_config(0) < 0) {
 		exit(1);
 	}
+
+	/*  We need root to do mkdir() and chown(), so we do this before giving up root.  -chad */
+	radlogdir_iswritable(uid_name); 
+
+	/*  Do this as soon as possible!  Make exceptions above here.  */
+	switch_users();
 
 #if HAVE_SYSLOG_H
 	/*
@@ -642,9 +650,7 @@ int main(int argc, char **argv)
 	/* Do you want a warning if -g is used without a -l to activate it? */
 #endif
 
-	/*
-	 *  Initialize the request list.
-	 */
+	/*  Initialize the request list.  */
 	rl_init();
 
 	/*
@@ -696,7 +702,7 @@ int main(int argc, char **argv)
 	sa->sin_addr.s_addr = myip;
 	sa->sin_port = htons(auth_port);
 
-	result = bind (authfd, & salocal, sizeof(*sa));
+	result = bind (authfd, &salocal, sizeof(*sa));
 	if (result < 0) {
 		perror ("auth bind");
 		DEBUG("  There appears to be another RADIUS server already running on the authentication port UDP %d.", auth_port);
@@ -879,17 +885,12 @@ int main(int argc, char **argv)
 				buffer, auth_port, acct_port);
 	}
 
-	/*
-	 *  Note that we NO LONGER fork an accounting process!
-	 *  We used to do it for historical reasons, but that
-	 *  is no excuse...
-	 */
 	radlog(L_INFO, "Ready to process requests.");
 
 	/*
 	 *  Receive user requests
 	 */
-	for(;;) {
+	for (;;) {
 		if (need_reload) {
 			if (reread_config(TRUE) < 0) {
 				exit(1);
@@ -955,7 +956,7 @@ int main(int argc, char **argv)
 			 *  authfd and acctfd.  Check if we know
 			 *  this proxy for proxyfd.
 			 */
-			if(fd != proxyfd) {
+			if (fd != proxyfd) {
 				RADCLIENT *cl;
 				if ((cl = client_find(packet->src_ipaddr)) == NULL) {
 					radlog(L_ERR, "Ignoring request from unknown client %s:%d",
@@ -1981,7 +1982,8 @@ void sig_cleanup(int sig)
 		 *  process group, to prevent further attacks.
 		 */
 		if (debug_flag && (WIFSIGNALED(status))) {
-			radlog(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch signal %d: killing all active servers.\n",
+			radlog(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch "
+					"signal %d: killing all active servers.\n",
 					pid, WTERMSIG(status));
 			kill(0, SIGTERM);
 			exit(1);
@@ -2223,7 +2225,7 @@ static int refresh_request(REQUEST *request, void *data)
 				 *  This request seems to have hung
 				 *   - kill it
 				 */
-#ifdef WITH_THREAD_POOL || HAVE_PTHREAD_H
+#if WITH_THREAD_POOL || HAVE_PTHREAD_H
 				radlog(L_ERR, "Killing unresponsive thread for request %d",
 				       request->number);
 				pthread_cancel(child_pid);
