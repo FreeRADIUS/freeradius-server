@@ -38,6 +38,13 @@ int inet_aton(char *cp, struct in_addr *inp);
 int gethostname(char *name, int len);
 #endif
 
+#ifndef HAVE_SETLINEBUF
+#ifdef HAVE_SETVBUF
+#define setlinebuf(x) setvbuf(x, NULL, _IOLBF, 0)
+#else
+#define setlinebuf(x)     0
+#endif
+
 #ifdef NEED_DECLARATION_SETLINEBUF
 #define setlinebuf(x)     0
 #endif
