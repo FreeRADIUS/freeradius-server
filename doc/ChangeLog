@@ -1,4 +1,4 @@
-FreeRADIUS 0.9.2 ; Date: $Date$, urgency=low
+FreeRADIUS 0.9.2 ; Date: Date: 2003/10/14 19:00:09 , urgency=low
 
 	* New rlm_ippool code to fix IP leaks
 	* New rlm_ippool_tool for manipulation of rlm_ippool databases
