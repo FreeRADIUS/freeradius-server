@@ -16,9 +16,6 @@ static const char rcsid[] = "$Id$";
 #include	<time.h>
 #include	"radiusd.h"
 
-extern char	*radlog_dir;
-
-
 /*
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
