@@ -52,20 +52,11 @@ typedef struct radius_packet_t {
 int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 {
 	VALUE_PAIR		*reply;
-	UINT4			lvalue;
 	struct	sockaddr	saremote;
 	struct	sockaddr_in	*sin;
-	int			send_buffer[PACKET_DATA_LEN / sizeof(int)];
-	int			len;
-	int			secretlen;
-	int			vendorcode, vendorpec;
-	u_short			total_length, tmp;
-	u_char			*ptr, *length_ptr;
-	u_char			digest[16];
 	char			*what;
-	radius_packet_t		*hdr;
+	u_char			ip_buffer[16];
 
-	hdr = (radius_packet_t *)send_buffer;
 	reply = packet->vps;
 
 	switch (packet->code) {
@@ -94,158 +85,203 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 	}
 
 	/*
-	 *	Build standard header
+	 *  First time through, allocate room for the packet
 	 */
-	hdr->code = packet->code;
-	hdr->id = packet->id;
-	if (packet->code == PW_ACCOUNTING_REQUEST)
-		memset(hdr->vector, 0, AUTH_VECTOR_LEN);
-	else
-		memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
+	if (!packet->data) {
+		  radius_packet_t	*hdr;
+		  UINT4			lvalue;
+		  u_char		*ptr, *length_ptr;
+		  u_char		digest[16];
+		  int			secretlen;
+		  int			vendorcode, vendorpec;
+		  u_short		total_length, tmp;
+		  int			len;
+		  
+		  hdr = (radius_packet_t *) malloc(PACKET_DATA_LEN);
+		  if (!hdr) {
+		    librad_log("Out of memory");
+		    return -1;
+		  }
+		  packet->data = (char *) hdr;
+		  
+		  /*
+		   *	Build standard header
+		   */
+		  hdr->code = packet->code;
+		  hdr->id = packet->id;
+		  if (packet->code == PW_ACCOUNTING_REQUEST)
+		    memset(hdr->vector, 0, AUTH_VECTOR_LEN);
+		  else
+		    memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
+		  
+		  DEBUG("Sending %s of id %d to %s\n",
+			what, packet->id,
+			ip_ntoa(ip_buffer, packet->dst_ipaddr));
+		  
+		  total_length = AUTH_HDR_LEN;
+		  
+		  /*
+		   *	Load up the configuration values for the user
+		   */
+		  ptr = hdr->data;
+		  while (reply != NULL) {
+		    /*
+		     *	This could be a vendor-specific attribute.
+		     */
+		    length_ptr = NULL;
+		    if ((vendorcode = VENDOR(reply->attribute)) > 0 &&
+			(vendorpec  = dict_vendorpec(vendorcode)) > 0) {
+		      *ptr++ = PW_VENDOR_SPECIFIC;
+		      length_ptr = ptr;
+		      *ptr++ = 6;
+		      lvalue = htonl(vendorpec);
+		      memcpy(ptr, &lvalue, 4);
+		      ptr += 4;
+		      total_length += 6;
+		    } else if (reply->attribute > 0xff) {
+		      /*
+		       *	Ignore attributes > 0xff
+		       */
 
-	DEBUG("Sending %s of id %d to %s\n",
-		what, packet->id,
-		inet_ntoa(*(struct in_addr *)&packet->dst_ipaddr));
-
-	total_length = AUTH_HDR_LEN;
-
-	/*
-	 *	Load up the configuration values for the user
-	 */
-	ptr = hdr->data;
-	while (reply != NULL) {
-		debug_pair(reply);
-
-		/*
-		 *	This could be a vendor-specific attribute.
-		 */
-		length_ptr = NULL;
-		if ((vendorcode = VENDOR(reply->attribute)) > 0 &&
-		    (vendorpec  = dict_vendorpec(vendorcode)) > 0) {
-			*ptr++ = PW_VENDOR_SPECIFIC;
-			length_ptr = ptr;
-			*ptr++ = 6;
-			lvalue = htonl(vendorpec);
-			memcpy(ptr, &lvalue, 4);
-			ptr += 4;
-			total_length += 6;
-		} else if (reply->attribute > 0xff) {
-			/*
-			 *	Ignore attributes > 0xff
-			 */
-			reply = reply->next;
-			continue;
-		} else
-			vendorpec = 0;
-
+		      if (librad_debug) {
+			printf("\t  ");
+			vp_print(stdout, reply);
+			printf("\n");
+		      }
+		      reply = reply->next;
+		      continue;
+		    } else
+		      vendorpec = 0;
+		    
 #ifdef ATTRIB_NMC
-		if (vendorpec == VENDORPEC_USR) {
-			lvalue = htonl(reply->attribute & 0xFFFF);
-			memcpy(ptr, &lvalue, 4);
-			total_length += 2;
-			*length_ptr  += 2;
-			ptr          += 4;
-		} else
+		    if (vendorpec == VENDORPEC_USR) {
+		      lvalue = htonl(reply->attribute & 0xFFFF);
+		      memcpy(ptr, &lvalue, 4);
+		      total_length += 2;
+		      *length_ptr  += 2;
+		      ptr          += 4;
+		    } else
 #endif
-		*ptr++ = (reply->attribute & 0xFF);
-
-		switch(reply->type) {
-
-		case PW_TYPE_STRING:
-		  	/*
-			 *	If it's a password, encode it.
-			 */
-			if (!vendorpec) {
-				if (reply->attribute == PW_PASSWORD) {
-				  rad_pwencode(reply->strvalue,
-					       &(reply->length),
-					       secret, packet->vector);
-				} else if (reply->attribute == PW_CHAP_PASSWORD) {
-				  /* FIXME: encode it with CHAP-Challenge */
-				} 
-			}
-
-			/*
-			 *	FIXME: this is just to make sure but
-			 *	should NOT be needed. In fact I have no
-			 *	idea if it is needed :)
-			 */
-			if (reply->length == 0 && reply->strvalue[0] != 0)
-				reply->length = strlen(reply->strvalue);
-
+		      *ptr++ = (reply->attribute & 0xFF);
+		    
+		    switch(reply->type) {
+		      
+		    case PW_TYPE_STRING:
+		      /*
+		       *	If it's a password, encode it.
+		       */
+		      if (!vendorpec) {
+			if (reply->attribute == PW_PASSWORD) {
+			  rad_pwencode(reply->strvalue,
+				       &(reply->length),
+				       secret, packet->vector);
+			} else if (reply->attribute == PW_CHAP_PASSWORD) {
+			  /* FIXME: encode it with CHAP-Challenge */
+			} 
+		      }
+		      
+		      /*
+		       *	FIXME: this is just to make sure but
+		       *	should NOT be needed. In fact I have no
+		       *	idea if it is needed :)
+		       */
+		      if (reply->length == 0 && reply->strvalue[0] != 0)
+			reply->length = strlen(reply->strvalue);
+		      
 #ifndef ASCEND_BINARY
-		case PW_TYPE_ABINARY:
+		    case PW_TYPE_ABINARY:
 #endif
-		case PW_TYPE_OCTETS:
-			len = reply->length;
-
-			if (len >= MAX_STRING_LEN) {
-				len = MAX_STRING_LEN - 1;
-			}
+		    case PW_TYPE_OCTETS:
+		      len = reply->length;
+		      
+		      if (len >= MAX_STRING_LEN) {
+			len = MAX_STRING_LEN - 1;
+		      }
 #ifdef ATTRIB_NMC
-			if (vendorpec != VENDORPEC_USR)
+		      if (vendorpec != VENDORPEC_USR)
 #endif
-				*ptr++ = len + 2;
-			if (length_ptr) *length_ptr += len + 2;
-			memcpy(ptr, reply->strvalue,len);
-			ptr += len;
-			total_length += len + 2;
-			break;
-
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_IPADDR:
+			*ptr++ = len + 2;
+		      if (length_ptr) *length_ptr += len + 2;
+		      memcpy(ptr, reply->strvalue,len);
+		      ptr += len;
+		      total_length += len + 2;
+		      break;
+		      
+		    case PW_TYPE_INTEGER:
+		    case PW_TYPE_IPADDR:
 #ifdef ATTRIB_NMC
-			if (vendorpec != VENDORPEC_USR)
+		      if (vendorpec != VENDORPEC_USR)
 #endif
-				*ptr++ = sizeof(UINT4) + 2;
-			if (length_ptr) *length_ptr += sizeof(UINT4)+ 2;
-			if (reply->type != PW_TYPE_IPADDR)
-				lvalue = htonl(reply->lvalue);
-			else
-				lvalue = reply->lvalue;
-			memcpy(ptr, &lvalue, sizeof(UINT4));
-			ptr += sizeof(UINT4);
-			total_length += sizeof(UINT4) + 2;
-			break;
+			*ptr++ = sizeof(UINT4) + 2;
+		      if (length_ptr) *length_ptr += sizeof(UINT4)+ 2;
+		      if (reply->type != PW_TYPE_IPADDR)
+			lvalue = htonl(reply->lvalue);
+		      else
+			lvalue = reply->lvalue;
+		      memcpy(ptr, &lvalue, sizeof(UINT4));
+		      ptr += sizeof(UINT4);
+		      total_length += sizeof(UINT4) + 2;
+		      break;
 #ifdef ASCEND_BINARY
-		case PW_TYPE_ABINARY:
-			len = reply->length;
-			if (len >= MAX_STRING_LEN) {
-				len = MAX_STRING_LEN - 1;
-			}
+		    case PW_TYPE_ABINARY:
+		      len = reply->length;
+		      if (len >= MAX_STRING_LEN) {
+			len = MAX_STRING_LEN - 1;
+		      }
 #ifdef ATTRIB_NMC
-			if (vendorpec != VENDORPEC_USR)
+		      if (vendorpec != VENDORPEC_USR)
 #endif
-				*ptr++ = len + 2;
-			if (length_ptr) *length_ptr += len + 2;
-			memcpy(ptr, reply->strvalue,len);
-			ptr += len;
-			total_length += len + 2;
-			break;
+			*ptr++ = len + 2;
+		      if (length_ptr) *length_ptr += len + 2;
+		      memcpy(ptr, reply->strvalue,len);
+		      ptr += len;
+		      total_length += len + 2;
+		      break;
 #endif
 
-		default:
-			break;
+		    default:
+		      break;
+		    }
+		    
+		    /*
+		     *	Print out ONLY the attributes which we're
+		     *	sending over the wire.  Also, pick up any hacked
+		     *  password attributes.
+		     */
+		    debug_pair(reply);
+		    reply = reply->next;
+		  }
+		  
+		  tmp = htons(total_length);
+		  memcpy(hdr->length, &tmp, sizeof(u_short));
+		  packet->data_len = total_length;
+
+		  /*
+		   *	If this is not an authentication request, we
+		   *	need to calculate the md5 hash over the entire packet
+		   *	and put it in the vector.
+		   */
+		  if (packet->code != PW_AUTHENTICATION_REQUEST) {
+		  	secretlen = strlen(secret);
+			memcpy((char *)hdr + total_length, secret, secretlen);
+			librad_md5_calc(digest, (char *)hdr,
+					total_length + secretlen);
+			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
+			memset((char *)hdr + total_length, 0, secretlen);
+		  }
+
+		  /*
+		   *	If packet->data points to data, then we print out
+		   *	the VP list again only for debugging.
+		   */
+	} else if (librad_debug) {
+	  	DEBUG("Sending %s of id %d to %s\n", what, packet->id,
+		      ip_ntoa(ip_buffer, packet->dst_ipaddr));
+		while (reply) {
+		  /* FIXME: ignore attributes > 0xff */
+		  debug_pair(reply);
+		  reply = reply->next;
 		}
-
-		reply = reply->next;
-	}
-
-	tmp = htons(total_length);
-	memcpy(hdr->length, &tmp, sizeof(u_short));
-
-	/*
-	 *	If this is not an authentication request, we
-	 *	need to calculate the md5 hash over the entire packet
-	 *	and put it in the vector.
-	 */
-	if (packet->code != PW_AUTHENTICATION_REQUEST) {
-		secretlen = strlen(secret);
-		memcpy((char *)send_buffer + total_length, secret, secretlen);
-		librad_md5_calc(digest, (char *)send_buffer,
-			total_length + secretlen);
-		memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
-		memset((char *)send_buffer + total_length, 0, secretlen);
 	}
 
 	/*
@@ -257,7 +293,7 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 	sin->sin_addr.s_addr = packet->dst_ipaddr;
 	sin->sin_port = htons(packet->dst_port);
 
-	sendto(activefd, (char *)send_buffer, (int)total_length, 0,
+	sendto(activefd, (char *)packet->data, (int)packet->data_len, 0,
 			&saremote, sizeof(struct sockaddr_in));
 
 	return 0;
@@ -339,6 +375,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	Receive the packet.
 	 */
 	salen = sizeof(saremote);
+	memset(&saremote, 0, sizeof(saremote));
 	packet->data_len = recvfrom(fd, packet->data, PACKET_DATA_LEN,
 		0, (struct sockaddr *)&saremote, &salen);
 
