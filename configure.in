@@ -51,6 +51,9 @@ if test -z "$makever"; then
 		from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing.)
 fi
 
+dnl libltdl is installable
+AC_LIBLTDL_INSTALLABLE
+
 dnl ensure that we're looking for dlopen
 AC_LIBTOOL_DLOPEN
 
@@ -611,6 +614,8 @@ dnl # Figure out where libtool is located,
 dnl #
 LIBTOOL="`pwd`/libtool"
 AC_SUBST(LIBTOOL)
+AC_SUBST(LIBLTDL)
+AC_SUBST(INCLTDL)
 
 dnl #############################################################
 dnl #

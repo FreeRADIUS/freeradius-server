@@ -39,4 +39,7 @@ RUNDIR		= @localstatedir@/run
 SBINDIR		= @sbindir@
 RADIR		= @radacctdir@
 
+LIBLTDL		= @LIBLTDL@
+INCLTDL		= @INCLTDL@
+
 BUILDDBM	= @BUILDDBM@
