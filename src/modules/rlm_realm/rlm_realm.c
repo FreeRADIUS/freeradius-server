@@ -199,16 +199,6 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
 }
 
 /*
- *  Perform the realm module initialization.  This is separate for
- *  each instance.  The main work is done in 'realm_instantiate'.
- */
-
-static int realm_init(void) 
-{
-        return 0;
-}
-
-/*
  *  Perform the realm module instantiation.  Configuration info is
  *  stored in *instance for later use.
  */
@@ -326,7 +316,7 @@ static int realm_preacct(void *instance, REQUEST *request)
 module_t rlm_realm = {
   "realm",
   0,				/* type: reserved */
-  realm_init,				/* initialization */
+  NULL,				/* initialization */
   realm_instantiate,	       	/* instantiation */
   realm_authorize,		/* authorization */
   NULL,				/* authentication */
