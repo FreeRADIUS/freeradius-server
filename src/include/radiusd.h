@@ -105,6 +105,7 @@ typedef struct pair_list {
 	VALUE_PAIR		*reply;
 	int			lineno;
 	struct pair_list	*next;
+	struct pair_list	*lastdefault;
 } PAIR_LIST;
 
 typedef struct main_config_t {
