@@ -47,12 +47,14 @@ cvs commit doc/ChangeLog
 vi configure.in
 vi redhat/freeradius.spec
 vi suse/freeradius.spec
+vi debian/changelog
+vi debian/rules
 
 #
 #  Re-build and commit the configure script
 #
 autoconf
-cvs commit configure configure.in redhat/freeradius.spec suse/freeradius.spec
+cvs commit configure configure.in redhat/freeradius.spec suse/freeradius.spec debian/changelog debian/rules
 
 #
 #  tag the files for the release,
