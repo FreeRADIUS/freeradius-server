@@ -31,6 +31,10 @@
 #include <netinet/in.h>
 #endif
 
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
 #include "radiusd.h"
 #include "rad_assert.h"
 #include "conffile.h"
@@ -233,8 +237,6 @@ static int r_mkdir(const char *part)
 		fprintf(stderr, "mkdir(%s) error: %s\n", part, strerror(errno));
 		return(1);
 	}
-
-	fprintf(stderr, "Created directory %s\n", part);
 
 	return(0);
 }
