@@ -840,7 +840,19 @@ modules {
 		#  The Client-IP-Address attribute is ALWAYS the address
 		#  of the client which sent us the request.
 		#
-		detailfile = ${radacctdir}/%{Client-IP-Address}/detail
+		#  The following line creates a new detail file for every
+		#  radius client (by IP address or hostname).  In addition,
+		#  a new detail file is created every day, so that the detail
+		#  file doesn't have to go through a 'log rotation'
+		#
+		#  If your detail files are large, you may also want to
+		#  add a ':%H' (see doc/variables.txt) to the end of it:
+		#
+		#   ..../detail-%Y%m%d:%H
+		#
+		#  This will create a new detail file for every hour.
+		#
+		detailfile = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
 		detailperm = 0600
 	}
 
