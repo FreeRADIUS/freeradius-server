@@ -626,7 +626,11 @@ int thread_pool_clean(void)
 			 *	up from the list later.
 			 */
 			if (handle->request == NULL) {
+#ifdef HAVE_PTHREAD_CANCEL
 				pthread_cancel(handle->child_pid);
+#else
+				child_kill(handle->child_pid, SIGTERM);
+#endif
 				handle->status = THREAD_CANCELLED;
 				spare--;
 			}

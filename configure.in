@@ -331,7 +331,16 @@ if test "$WITH_THREAD_POOL" = "yes"; then
 		HAVE_SEM_INIT=0)
   if test "$HAVE_SEM_INIT" != "1"; then
     AC_MSG_WARN(You do not have posix semaphores.  Disabling thread pools)
-  else
+    WITH_THREAD_POOL=no
+  fi
+
+  AC_CHECK_FUNCS(pthread_cancel)
+
+dnl #
+dnl #  Finally, after all of the checks above, we see if
+dnl #  we can REALLY use the thread pools.
+dnl #
+  if test "$WITH_THREAD_POOL" = "yes"; then
     AC_DEFINE(WITH_THREAD_POOL,1)
   fi
 fi
