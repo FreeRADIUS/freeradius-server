@@ -1097,7 +1097,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			rcode = RLM_MODULE_UPDATED;
 
 		} else {
-			DEBUG2("  TTLS: Unknown RADIUS packet type %d: rejecting tunneled user", fake->reply->code);
+			DEBUG2("  TTLS: No tunneled reply was found for request %d , and the request was not proxied: rejecting the user.",
+			       request->number);
 			rcode = RLM_MODULE_REJECT;
 		}
 		break;
