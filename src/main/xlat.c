@@ -285,7 +285,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	const char *p;
 	char *q;
 	VALUE_PAIR *tmp;
-	struct tm * TM;
+	struct tm *TM, s_TM;
 	char tmpdt[40]; /* For temporary storing of dates */
 	int openbraces=0;
 
@@ -348,7 +348,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER),PW_TYPE_STRING, func);
 				break;
 			case 'd': /* request year */
-				TM = localtime(&request->timestamp);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%d",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
@@ -365,7 +365,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				break;
 			case 'm': /* request month */
-				TM = localtime(&request->timestamp);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%m",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
@@ -395,7 +395,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				break;
 			case 'D': /* request date */
-				TM = localtime(&request->timestamp);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%Y%m%d",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
@@ -412,13 +412,13 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				break;
 			case 'S': /* request timestamp in SQL format*/
-				TM = localtime(&request->timestamp);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d %H:%M:%S",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				break;
 			case 'T': /* request timestamp */
-				TM = localtime(&request->timestamp);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d-%H.%M.%S.000000",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
@@ -434,7 +434,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				break;
 			case 'Y': /* request year */
-				TM = localtime(&request->timestamp);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				strftime(tmpdt,sizeof(tmpdt),"%Y",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);

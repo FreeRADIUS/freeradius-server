@@ -136,9 +136,9 @@ static int find_next_reset(rlm_counter_t *data, time_t timeval)
 	int ret=0;
 	unsigned int num=1;
 	char last = 0;
-	struct tm *tm=NULL;
+	struct tm *tm, s_tm;
 
-	tm = localtime(&timeval);
+	tm = localtime_r(&timeval, &s_tm);
 	tm->tm_sec = tm->tm_min = 0;
 
 	if (data->reset == NULL)

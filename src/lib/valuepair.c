@@ -448,13 +448,13 @@ static int gettime(const char *valstr, time_t *lvalue)
 {
 	int		i;
 	time_t		t;
-	struct tm	*tm;
+	struct tm	*tm, s_tm;
 	char		buf[64];
 	char		*p;
 	char		*year, *month, *day;
 
 	time(&t);
-	tm = localtime(&t);
+	tm = localtime_r(&t, &s_tm);
 
 	strNcpy(buf, valstr, sizeof(buf));
 	for (p = buf; *p; p++)

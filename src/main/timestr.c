@@ -203,7 +203,7 @@ static int week_fill(char *bitmap, char *tm)
  */
 int timestr_match(char *tmstr, time_t t)
 {
-	struct tm *tm;
+	struct tm *tm, s_tm;
 	char bitmap[WEEKMIN / 8];
 	int now, tot, i;
 	int byte, bit;
@@ -213,7 +213,7 @@ int timestr_match(char *tmstr, time_t t)
 	char null[8];
 #endif
 
-	tm = localtime(&t);
+	tm = localtime_r(&t, &s_tm);
 	now = tm->tm_wday * DAYMIN + tm->tm_hour * 60 + tm->tm_min;
 	tot = 0;
 	memset(bitmap, 0, sizeof(bitmap));
