@@ -30,15 +30,13 @@ Radius Account Unique Module
       ... stuff here ...
 
       acct_unique {
-         key = User-Name,Acct-Session-Id,NAS-IP-Address,NAS-Port-Id
+         key = "User-Name, Acct-Session-Id, NAS-IP-Address, NAS-Port-Id"
       }
       ... stuff here ...
     }
 
-    NOTE:  When you specify the key, there MUST NOT be spaces anywhere in
-    the string.  Additionally, any attribute you specify that is not found 
-    in the 'dictionary' file will cause the server to fail and exit with an
-    error.
+    NOTE:  Any attribute you specify that is not found in the 'dictionary' 
+    file will cause the server to fail and exit with an error.
 
     NOTE:  If you want the Acct-Unique-Session-Id of the Start and the
     Stop packet of a particular session to match, you must use values for
