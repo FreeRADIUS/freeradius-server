@@ -246,6 +246,16 @@ AC_ARG_WITH(threads,
   esac ]
 )
 
+dnl extra argument: --with-thread-pool
+WITH_THREAD_POOL=no
+AC_ARG_WITH(thread-pool,
+[  --with-thread-pool      Use a pool of threads for high-load systems.  (default=no) ],
+[ case "$withval" in
+    *)
+	WITH_THREAD_POOL=$withval
+  esac ]
+)
+
 dnl See what include-style is used by the make program.
 dnl AC_MSG_CHECKING(include style for make)
 dnl echo "include /dev/null" > testmake.$$
@@ -291,6 +301,7 @@ dnl #
 dnl #############################################################
 
 dnl If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
+PTHREADLIB=
 if test "$WITH_THREADS" = "yes"; then 
   AC_CHECK_HEADERS(pthread.h)
   AC_CHECK_LIB(pthread, pthread_create,
@@ -303,6 +314,18 @@ if test "$WITH_THREADS" = "yes"; then
   fi
   AC_SUBST(PTHREADLIB)
 fi
+
+dnl If using thread pools, check that threading is enabled
+if test "$WITH_THREADS" != "yes"; then
+  AC_MSG_ERROR(You must have threads enabled for thread pools to work.)
+fi
+
+dnl If using thread pools, check that we have thread libraries
+if test "X$PTHREADLIB" = "X"; then
+  AC_MSG_ERROR(You must have threading libraries for thread pools to work.)
+fi
+
+AC_DEFINE(WITH_THREAD_POOL,1)
 
 dnl Check for -lsocket
 AC_CHECK_LIB(socket, getsockname,
