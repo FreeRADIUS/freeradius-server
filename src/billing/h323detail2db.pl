@@ -82,7 +82,7 @@ sub procedure_insert {
 	if ($h323_call_type eq 'VoIP') { 
         $sth2 = $dbh->prepare("SELECT VoIPInsertRecord('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
 		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$h323_call_origin', '$h323_setup_time',
-		'$h323_connect_time','$h323_disconnect_time', '$h323_disconnect_cause', '$h323_remote_address', '$h323_voice_quality', '$h323_conf_id')");
+		'$h323_connect_time','$h323_disconnect_time', '$h323_disconnect_cause', (NULLIF('$h323_remote_address', '')::inet), '$h323_voice_quality', '$h323_conf_id')");
 	}
 	elsif ($h323_call_type eq 'Telephony') {
         $sth2 = $dbh->prepare("SELECT TelephonyInsertRecord('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
@@ -102,7 +102,7 @@ sub db_insert {
 		AcctDelayTime, H323RemoteAddress, h323callorigin, callid,
 		h323connecttime, h323disconnectcause, h323disconnecttime, h323setuptime, h323voicequality)
 		values('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
-		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$h323_remote_address',
+		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', NULLIF('$h323_remote_address', ''),
 		'$h323_call_origin', '$h323_conf_id', '$h323_connect_time', '$h323_disconnect_cause', '$h323_disconnect_time', '$h323_setup_time', '$h323_voice_quality')");
 	}
 	elsif ($h323_call_type eq 'Telephony') {
@@ -202,6 +202,7 @@ sub process_record {
 
 	# Initial cleanup of junk from the line of data
 	s/^\s+//;	# Strip leading spaces.
+	s/^Quintum-//;	# Strip leading "Quintum-".
     	chomp;		# Strip trailing CR
 
 	# Parse the line of data into variables.
