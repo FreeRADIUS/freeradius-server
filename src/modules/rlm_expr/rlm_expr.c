@@ -59,6 +59,15 @@ static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 	const char	*p;	
 	expr_token_t	this;
 	rlm_expr_t	*inst = instance;
+	char		buffer[256];
+
+	/*
+	 * Do an xlat on the provided string (nice recursive operation).
+	 */
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		return 0;
+	}
 
 	/*
 	 *  Loop over the input.
@@ -66,7 +75,7 @@ static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 	result = 0;
 	this = TOKEN_NONE;
 
-	for (p = fmt; *p != '\0'; /* nothing */) {
+	for (p = buffer; *p != '\0'; /* nothing */) {
 		if ((*p == ' ') ||
 		    (*p == '\t')) {
 			p++;
@@ -93,108 +102,25 @@ static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 			continue;
 		}
 
-		if ((p[0] == '%') && (p[1] == '{')) {
-			int openbraces;
-			char buffer[256];
-			char answer[256];
-			char *q;
-
-			openbraces = 1;
-			p += 2;
-			buffer[0] = '%';
-			buffer[1] = '{';
-
-			for (q = buffer + 2; *p != '\0'; /* nothing */) {
-				switch (*p) {
-				default:
-					break;
-
-				case '{':
-					openbraces++;
-					break;
-
-				case '}':
-					openbraces--;
-					break;
-				
-				case '\\':
-					p++;
-					if (!*p) {
-						DEBUG2("rlm_expr: Trailing escape!\n");
-						return 0;
-					}
-					
-					/*
-					 *  Copy the next character over
-					 *  verbatim.
-					 */
-					*(q++) = *(p++);
-					break;
-				}
-
-				*(q++) = *(p++);
-
-				if (openbraces <= 0) {
-					break;
-				}
-			}
-
-			*q = '\0';
-
-			if (openbraces != 0) {
-				DEBUG2("rlm_expr: Mismatched braces!");
-				return 0;
-			}
-			
-			DEBUG2("rlm_expr: Calling xlat with %s\n",
-			       buffer);
-
-			/*
-			 *  Recursive calls.
-			 */
-			radius_xlat(answer, sizeof(answer),
-				    buffer, request, func);
-			q = answer;
-
-			/*
-			 *  NOT a number: die!
-			 */
-			if ((*q < '0') || (*q > '9')) {
-				DEBUG2("rlm_expr: Not a number at \"%s\"", q);
-				return 0;
-			}
-			
-			/*
-			 *  This is doing it the hard way, but it also allows
-			 *  us to increment 'p'.
-			 */
-			x = 0;
-			while ((*q >= '0') && (*q <= '9')) {
-				x *= 10;
-				x += (*q - '0');
-				q++;
-			}
-		} else {
-			/*
-			 *  NOT a number: die!
-			 */
-			if ((*p < '0') || (*p > '9')) {
-				DEBUG2("rlm_expr: Not a number at \"%s\"", p);
-				return 0;
-			}
-			
-			/*
-			 *  This is doing it the hard way, but it also allows
-			 *  us to increment 'p'.
-			 */
-			x = 0;
-			while ((*p >= '0') && (*p <= '9')) {
-				x *= 10;
-				x += (*p - '0');
-				p++;
-			}
+		/*
+		 *  NOT a number: die!
+		 */
+		if ((*p < '0') || (*p > '9')) {
+			DEBUG2("rlm_expr: Not a number at \"%s\"", p);
+			return 0;
 		}
-
+		
+		/*
+		 *  This is doing it the hard way, but it also allows
+		 *  us to increment 'p'.
+		 */
+		x = 0;
+		while ((*p >= '0') && (*p <= '9')) {
+			x *= 10;
+			x += (*p - '0');
+			p++;
+		}
+	
 		DEBUG2("rlm_expr: %d %d\n", result, x);
 
 		switch (this) {
