@@ -77,6 +77,8 @@ void request_free(REQUEST *request)
 	if (request->reply) {
 		rad_free(request->reply);
 	}
+	if (request->proxy_reply)
+		rad_free(request->proxy_reply);
 	if (request->config_items) {
 		pairfree(request->config_items);
 	}
