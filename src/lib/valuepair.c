@@ -464,7 +464,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	char		*s;
 
 	if ((da = dict_attrbyname(attribute)) == NULL) {
-		librad_log("unknown attribute %s", attribute);
+		librad_log("Unknown attribute %s", attribute);
 		return NULL;
 	}
 
@@ -478,6 +478,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	vp->type = da->type;
 	vp->operator = (operator == 0) ? T_OP_EQ : operator;
 	strcpy(vp->name, da->name);
+	vp->next = NULL;
 
 	/*
 	 *	Even for integers, dates and ip addresses we
@@ -522,7 +523,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			}
 			else if ((dval = dict_valbyname(value)) == NULL) {
 				free(vp);
-				librad_log("unknown value %s", value);
+				librad_log("Unknown value %s for attribute %s",
+					   value, vp->name);
 				return NULL;
 			}
 			else {
