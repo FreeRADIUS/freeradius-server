@@ -6,101 +6,109 @@
 #include "radiusd.h"
 #include "modules.h"
 
+#define  BUFFERLEN  2048
+
 static const char rcsid[] = "$Id$";
 
+typedef struct unique_attr_list {
+	int		attr;
+	struct unique_attr_list *next;
+} unique_attr_list;
+
+typedef struct unique_config_t {
+	char							*key;
+	struct unique_attr_list 	*head;		
+} unique_config_t;
+
+static unique_config_t config;
+
+static CONF_PARSER module_config[] = {
+  { "key",  PW_TYPE_STRING_PTR, &config.key,  NULL },
+  { NULL, -1, NULL, NULL }    /* end the list */
+};
+
+int unique_parse_key(char *key);
+void unique_add_attr(int dictattr);
+
+static int unique_instantiate(CONF_SECTION *conf, void **instance) {
+
+	struct unique_config_t *inst;
+
+	/*
+	 *  Set up a storage area for instance data
+	 */
+	if( (inst = malloc(sizeof(struct unique_config_t))) == NULL) {
+		return -1;
+	}
+	memset((struct unique_config_t *)inst, 0, sizeof( unique_config_t));
+
+	if (cf_section_parse(conf, module_config) < 0) {
+		free(inst);
+		return -1;
+	}
+
+	inst->key = config.key;
+
+	/* 
+	 * Check to see if 'key' has something in it 
+	 */	
+	if(!inst->key) {
+		radlog(L_ERR,"unique_instantiate:  cannot find value for 'key' in radiusd.conf");
+		return -1;
+	}
+
+	/* 
+	 * Go thru the list of keys and build attr_list;
+	 */	
+	if(unique_parse_key(inst->key) < 0) {
+		return -1;
+	};
+
+	inst->head = config.head;
+	*instance = inst;
+ 	return 0;
+}
+
 /*
- *  Create a (hopefully) unique Acct-Unique-Session-Id from:
- *
- * MD5(NAS-IP-Address, NAS-Identifier, NAS-Port-Id,
- *     Acct-Session-Id, Acct-Session-Start-Time)
- *
- * Of course, this RELIES on the NAS to send the SAME information
- * in ALL Accounting packets.
+ *  Create a (hopefully) unique Acct-Unique-Session-Id from
+ *  attributes listed in 'key' from radiusd.conf
  */
 static int unique_accounting(void *instance, REQUEST *request)
 {
-  char buffer[2048];
+  char buffer[BUFFERLEN];
   u_char md5_buf[16];
 
   VALUE_PAIR *vp;
   char *p;
-  int i;
   int length, left;
-
-  /*
-   * List of elements to use for creating unique ID's
-   *
-   * This should really be user configurable at run time.
-   */
-  static int array[] = {
-    PW_NAS_IP_ADDRESS,
-    PW_NAS_IDENTIFIER,
-    PW_NAS_PORT_ID,
-    PW_ACCT_SESSION_ID,
-    PW_ACCT_SESSION_START_TIME,
-    0				/* end of array */
-  };
-
-  instance = instance; /* -Wunused */
-
-  /*
-   *  If there is no Acct-Session-Start-Time, then go add one.
-   */
-  vp = pairfind(request->packet->vps, PW_ACCT_SESSION_START_TIME);
-  if (!vp) {
-    time_t start_time;
-    
-    start_time = request->timestamp;
-
-    /*
-     *  Look for Acct-Delay-Time, and subtract it from the session
-     *  start time.
-     */
-    vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME);
-    if (vp) {
-      start_time -= vp->lvalue;
-    }
-
-    /*
-     *  Fudge the start time a little, so we're not TOO worried
-     *  about minor variations in clocks.
-     */
-    start_time &= ~0x07;	/* round it to an 8-second boundary */
-    
-    /*
-     *  Create a new Acct-Session-Start-Time attribute, and
-     *  add it to the request.
-     */
-    vp = paircreate(PW_ACCT_SESSION_START_TIME, PW_TYPE_DATE);
-    if (!vp) {
-	    radlog(L_ERR, "%s", librad_errstr);
-	    return RLM_MODULE_FAIL;
-    }
-    vp->lvalue = start_time;
-    pairadd(&request->packet->vps, vp);
-  }
+	struct unique_config_t *inst = instance;
+	struct unique_attr_list *cur;
 
   /* initialize variables */
   p = buffer;
-  left = sizeof(buffer);
-  i = 0;
+  left = BUFFERLEN;
   length = 0;
+	cur = inst->head;
 
   /* loop over items to create unique identifiers */
-  while (array[i]) {
-    vp = pairfind(request->packet->vps, array[i]);
-    length = vp_prints(p, length, vp);
+  while (cur) {
+    vp = pairfind(request->packet->vps, cur->attr);
+    length = vp_prints(p, left, vp);
     left -= length + 1;		/* account for ',' in between elements */
     p += length;
     *(p++) = ',';		/* ensure seperation of elements */
-    *p = '\0';			/* unnecessary, but possibly helpful */
+		cur = cur->next;
   }
+	buffer[BUFFERLEN-left-1] = '\0';
 
+  DEBUG2("unique_accounting:  sending '%s' to librad_md5_calc", buffer);
   /* calculate a 'unique' string based on the above information */
   librad_md5_calc(md5_buf, (u_char *)buffer, (p - buffer));
-  sprintf(buffer, "%02x%02x%02x%02x",
-	  md5_buf[0], md5_buf[1],
-	  md5_buf[2], md5_buf[3]);
+  sprintf(buffer, "%02x%02x%02x%02x%02x%02x%02x%02x",
+	  md5_buf[0], md5_buf[1], md5_buf[2], md5_buf[3],
+	  md5_buf[4], md5_buf[5], md5_buf[6], md5_buf[7]
+	);
+  DEBUG2("unique_accounting:  received '%s' from librad_md5_calc", buffer);
   
   vp = pairmake("Acct-Unique-Session-Id", buffer, 0);
   if (!vp) {
@@ -111,7 +119,61 @@ static int unique_accounting(void *instance, REQUEST *request)
   /* add the (hopefully) unique session ID to the packet */
   pairadd(&request->packet->vps, vp);
   
-  return RLM_MODULE_UPDATED;
+	/* FIXME:  Uncomment here once we iron out module_accounting() */
+  /*return RLM_MODULE_UPDATED;*/
+  return RLM_MODULE_OK;
+}
+
+void unique_add_attr(int dictattr) {
+	struct unique_attr_list 	*new;		
+	
+	if((new = malloc(sizeof(struct unique_attr_list))) == NULL) {
+		radlog(L_ERR, "unique_add_attr:  out of memory");
+	}
+	memset((struct unique_attr_list *)new, 0, sizeof(unique_attr_list));
+
+	/* Assign the attr to our new structure */
+	new->attr = dictattr;	
+
+	if(config.head) {
+		new->next = config.head;
+		config.head = new;
+	} else {
+		config.head = new;
+	}
+}
+
+int unique_parse_key(char *key) {
+	char *ptr, *prev;
+	DICT_ATTR *a;
+
+	ptr = key;
+	prev = key;
+
+	while(ptr) {
+		switch(*ptr) {
+			case ',':
+				*ptr = '\0';
+				if((a = dict_attrbyname(prev)) == NULL) {
+					radlog(L_ERR,"unique_instantiate:  cannot find '%s' in dictionary", prev);
+					return -1;
+				}
+				*ptr = ',';
+				prev = ptr+1;
+				unique_add_attr(a->attr); 
+				break;
+			case '\0':
+				if((a = dict_attrbyname(prev)) == NULL) {
+					radlog(L_ERR,"unique_instantiate:  cannot find '%s' in dictionary", prev);
+					return -1;
+				}
+				unique_add_attr(a->attr);
+				return 0;
+		}	
+		ptr++;	
+	}	
+
+	return 0;
 }
 
 /* FIXME: unique_accounting should probably be called from preacct */
@@ -120,7 +182,7 @@ module_t rlm_acct_unique = {
   "Acct-Unique-Session-Id",
   0,				/* type: reserved */
   NULL,				/* initialization */
-  NULL,				/* instantiation */
+  unique_instantiate,	/* instantiation */
   NULL,				/* authorization */
   NULL,				/* authentication */
   NULL,				/* preaccounting */
