@@ -48,7 +48,7 @@ if test x$with_[]modname != xno; then
 	[  --with-openssl-includes=DIR       Directory to look for OpenSSL include files],
 	[ case "$withval" in
 	    *)
-		rlm_eap_tls_inc_dir=$withval
+		rlm_eap_tls_inc_dir="$rlm_eap_tls_inc_dir $withval"
 		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
 		;;
 	  esac ]
@@ -61,7 +61,7 @@ if test x$with_[]modname != xno; then
 	[  --with-openssl-libraries=DIR      Directory to look for OpenSSL library files],
 	[ case "$withval" in
 	    *)
-		rlm_eap_tls_lib_dir=$withval
+		rlm_eap_tls_lib_dir="$rlm_eap_tls_lib_dir $withval"
 		SMART_LIBS="$SMART_LIBS -L$withval"
 		;;
 	  esac ]
