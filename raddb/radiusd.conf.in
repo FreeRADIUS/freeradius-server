@@ -1564,7 +1564,7 @@ $INCLUDE ${confdir}/eap.conf
 	#  for different users. The Pool-Name attribute is a *check* item not
 	#  a reply item.
 	#  The Pool-Name should be set to the ippool module instance name or to
-	#  DEFAULT to much any module.
+	#  DEFAULT to match any module.
 	#
 	# Example:
 	# radiusd.conf: ippool students { [...] }
