@@ -59,6 +59,7 @@
 #include        "md5.h"
 #include	"sha1.h"
 #include	"smbpass.h"
+#include	"rad_assert.h"
 
 #define PW_MSCHAP_RESPONSE	((311 << 16) | 1)
 #define PW_MSCHAP_CHALLENGE	((311 << 16) | 11)
@@ -406,7 +407,12 @@ static void add_reply(VALUE_PAIR** vp, unsigned char ident,
 {
 	VALUE_PAIR *reply_attr;
 	reply_attr = pairmake(name, "", T_OP_EQ);
-	*reply_attr->strvalue = ident;
+	if (!reply_attr) {
+		DEBUG("rlm_mschap: add_reply failed to create attribute %s: %s\n", name, librad_errstr);
+		return;
+	}
+
+	reply_attr->strvalue[0] = ident;
 	memcpy(reply_attr->strvalue + 1, value, len);
 	reply_attr->length = len + 1;
 	pairadd(vp, reply_attr);
@@ -417,6 +423,11 @@ static void mppe_add_reply(VALUE_PAIR** vp,
 {
        VALUE_PAIR *reply_attr;
        reply_attr = pairmake(name, "", T_OP_EQ);
+       if (!reply_attr) {
+	       DEBUG("rlm_mschap: mppe_add_reply failed to create attribute %s: %s\n", name, librad_errstr);
+	       return;
+       }
+
        memcpy(reply_attr->strvalue, value, len);
        reply_attr->length = len;
        pairadd(vp, reply_attr);
@@ -621,22 +632,26 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	if (inst->auth_type){
 		pairdelete(&request->config_items, PW_AUTHTYPE);
 		reply_attr = pairmake("Auth-Type", inst->auth_type, T_OP_EQ);
+		rad_assert(reply_attr != NULL);
 		pairadd(&request->config_items, reply_attr);
 	}
 	if (smbPasswd->smb_passwd){
 		reply_attr = pairmake("LM-Password", "", T_OP_EQ);
+		rad_assert(reply_attr != NULL);
 		reply_attr->length = 16;
 		memcpy(reply_attr->strvalue, smbPasswd->smb_passwd, 16);
 		pairadd(&request->config_items, reply_attr);
 	}
 	if (smbPasswd->smb_nt_passwd){
 		reply_attr = pairmake("NT-Password", "", T_OP_EQ);
+		rad_assert(reply_attr != NULL);
 		reply_attr->length = 16;
 		memcpy(reply_attr->strvalue, smbPasswd->smb_nt_passwd, 16);
 		pairadd(&request->config_items, reply_attr);
 	}
 
 	reply_attr = pairmake("SMB-Account-CTRL", "0", T_OP_EQ);
+	rad_assert(reply_attr != NULL);
 	reply_attr->lvalue = smbPasswd->acct_ctrl;
 	pairadd(&request->config_items, reply_attr);
 	return RLM_MODULE_OK;
@@ -827,10 +842,12 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				reply_attr = pairmake("MS-MPPE-Encryption-Policy",
 					(inst->require_encryption)? "0x00000002":"0x00000001",
 					T_OP_EQ);
+				rad_assert(reply_attr != NULL);
 				pairadd(&request->reply->vps, reply_attr);
 				reply_attr = pairmake("MS-MPPE-Encryption-Types",
 					(inst->require_strong)? "0x00000004":"0x0000006",
 					T_OP_EQ);
+				rad_assert(reply_attr != NULL);
 				pairadd(&request->reply->vps, reply_attr);
 			
 			}
