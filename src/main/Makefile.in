@@ -23,7 +23,7 @@ BINARIES	= radiusd radwho radzap raduse radclient radrelay
 # at build time.
 #
 ifneq ($(USE_SHARED_LIBS),yes)
-MODULE_LIBS	+= $(shell for x in ../modules/rlm_*/rlm_*.la;do echo -dlpreopen $$x;done)
+MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 endif
 
 all:	$(BINARIES)
