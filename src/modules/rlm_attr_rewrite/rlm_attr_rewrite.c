@@ -204,12 +204,12 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			case RLM_REGEX_INREPLY:
 				tmp = request->reply->vps;
 				break;
-			case RLM_REGEX_INPROXY:
+			case RLM_REGEX_INPROXYREPLY:
 				if (!request->proxy_reply)
 					return RLM_MODULE_NOOP;
 				tmp = request->proxy_reply->vps;
 				break;
-			case RLM_REGEX_INPROXYREPLY:
+			case RLM_REGEX_INPROXY:
 				if (!request->proxy)
 					return RLM_MODULE_NOOP;
 				tmp = request->proxy->vps;
