@@ -34,7 +34,7 @@ static const char rcsid[] = "$Id$";
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
  */
-char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
+static char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 {
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
@@ -92,6 +92,76 @@ static int check_expiration(REQUEST *request)
 	return result;
 }
 
+
+/*
+ * Make sure user/pass are clean
+ * and then log them
+ */
+static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
+
+	char clean_password[1024];
+	char clean_username[1024];
+	char buf[1024];
+
+	if (!mainconfig.log_auth)
+		return 0;
+
+	/* 
+	 *	Clean up the username
+	 */
+	if (!request->username) {
+		DEBUG2("rad_authlog:  no username found");
+		return -1;
+	}
+
+	if (request->username->strvalue) {
+		librad_safeprint((char *)request->username->strvalue,
+				 request->username->length,
+				 clean_username, sizeof(clean_username));
+	} else {
+		strcpy(clean_username, "<No Username>");
+	}
+
+	/* 
+	 *	Clean up the password
+	 */
+	if (mainconfig.log_auth_badpass || mainconfig.log_auth_goodpass) {
+		if (!request->password) {
+			DEBUG2("rad_authlog:  no password found");
+			return -1;
+		}
+
+		if (request->password->attribute == PW_CHAP_PASSWORD) {
+			strcpy(clean_password, "<CHAP-Password>");
+		} else {
+			if (request->username->strvalue) {
+				librad_safeprint((char *)request->password->strvalue,
+						 request->password->length,
+						 clean_password, sizeof(clean_password));
+			} else {
+				strcpy(clean_password, "<No Password>");
+			}
+		}
+	}
+
+	if (goodpass) {
+		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
+		       msg,	
+		       clean_username,
+		       mainconfig.log_auth_goodpass ? "/" : "",
+		       mainconfig.log_auth_goodpass ? clean_password : "",
+		       auth_name(buf, sizeof(buf), request, 1));
+	} else {
+		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
+		       msg,	
+		       clean_username,
+		       mainconfig.log_auth_badpass ? "/" : "",
+		       mainconfig.log_auth_badpass ? clean_password : "",
+		       auth_name(buf, sizeof(buf), request, 1));
+	}
+	
+	return 0;
+}
 
 /*
  *	Check password.
@@ -204,6 +274,7 @@ int rad_check_password(REQUEST *request)
 			 *	Local password is just plain text.
 	 		 */
 			if (auth_item->attribute != PW_CHAP_PASSWORD) {
+
 				/*
 				 *	Plain text password.
 				 */
@@ -224,7 +295,7 @@ int rad_check_password(REQUEST *request)
 				break;
 			}
 			rad_chap_encode(request->packet, string,
-					*auth_item->strvalue, password_pair);
+					auth_item->strvalue[0], password_pair);
 
 			/*
 			 *	Compare them
@@ -303,8 +374,7 @@ int rad_authenticate(REQUEST *request)
 	 *	This should ONLY be happening for proxy replies.
 	 */
 	if ((request->proxy_reply) && (request->config_items)) {
-	  pairfree(&request->config_items);
-	  request->config_items = NULL;
+		pairfree(&request->config_items);
 	}
 
 	/*
@@ -785,71 +855,3 @@ VALUE_PAIR *rad_getpass(REQUEST *request) {
 	return auth_item;
 }
 
-/*
- * Make sure user/pass are clean
- * and then log them
- */
-int rad_authlog(char *msg, REQUEST *request, int goodpass) {
-
-	char clean_password[1024];
-	char clean_username[1024];
-	char buf[1024];
-
-	if(!mainconfig.log_auth)
-		return 0;
-
-	/* 
-	 * Clean up the username
-	 */
-	if(!request->username) {
-		DEBUG2("rad_authlog:  no username found");
-		return -1;
-	}
-	if(request->username->strvalue) {
-		librad_safeprint((char *)request->username->strvalue,
-									   request->username->length,
-									   clean_username, sizeof(clean_username));
-	} else {
-		strcpy(clean_username, "<No Username>");
-	}
-
-	/* 
-	 * Clean up the password
-	 */
-	if(mainconfig.log_auth_badpass || mainconfig.log_auth_goodpass) {
-		if(!request->password) {
-			DEBUG2("rad_authlog:  no password found");
-			return -1;
-		}
-
-		if (request->password->attribute == PW_CHAP_PASSWORD) {
-		  strcpy(clean_password, "<CHAP-Password>");
-		} else {
-			if(request->username->strvalue) {
-		  	librad_safeprint((char *)request->password->strvalue,
-											   request->password->length,
-											   clean_password, sizeof(clean_password));
-			} else {
-		  	strcpy(clean_password, "<No Password>");
-			}
-		}
-	}
-
-	if(goodpass) {
-		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
-					msg,	
-		 	    clean_username,
-			    mainconfig.log_auth_goodpass ? "/" : "",
-			    mainconfig.log_auth_goodpass ? clean_password : "",
-			    auth_name(buf, sizeof(buf), request, 1));
-	} else {
-		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
-					msg,	
-		 	    clean_username,
-			    mainconfig.log_auth_badpass ? "/" : "",
-			    mainconfig.log_auth_badpass ? clean_password : "",
-			    auth_name(buf, sizeof(buf), request, 1));
-	}
-
-	return 0;
-}

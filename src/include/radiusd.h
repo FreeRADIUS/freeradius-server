@@ -251,7 +251,6 @@ int proxy_send(REQUEST *request);
 char		*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 VALUE_PAIR	*rad_getpass(REQUEST *request);
-int		rad_authlog(char *msg, REQUEST *request, int accept);
 
 /* exec.c */
 int		radius_exec_program(const char *,  REQUEST *,
