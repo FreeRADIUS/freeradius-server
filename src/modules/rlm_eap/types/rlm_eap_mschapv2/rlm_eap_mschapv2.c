@@ -220,6 +220,83 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 
 
 /*
+ *	Do post-proxy processing,
+ *	0 = fail
+ *	1 = OK.
+ *
+ *	Called from rlm_eap.c, eap_postproxy().
+ */
+static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
+{
+	VALUE_PAIR *response = NULL;
+	mschapv2_opaque_t *data;
+
+	data = (mschapv2_opaque_t *) handler->opaque;
+	rad_assert(data != NULL);
+
+	tunnel_data = tunnel_data; /* -Wunused */
+
+	DEBUG2("  rlm_eap_mschapv2: Passing reply from proxy back into the tunnel %p %d.",
+	       handler->request, handler->request->reply->code);
+
+	/*
+	 *	There is only a limited number of possibilities.
+	 */
+	switch (handler->request->reply->code) {
+	case PW_AUTHENTICATION_ACK:
+		DEBUG("  rlm_eap_mschapv2: Authentication succeeded.");
+		/*
+		 *	Move the attribute, so it doesn't go into
+		 *	the reply.
+		 */
+		pairmove2(&response,
+			  &handler->request->reply->vps,
+			  PW_MSCHAP2_SUCCESS);
+		break;
+
+	default:
+	case PW_AUTHENTICATION_REJECT:
+		DEBUG("  rlm_eap_mschapv2: Authentication did not succeed.");
+		return 0;
+	}
+
+	/*
+	 *	No response, die.
+	 */
+	if (!response) {
+		radlog(L_ERR, "rlm_eap_mschapv2: No MS-CHAPv2-Success or MS-CHAP-Error was found.");
+		return 0;
+	}
+
+	/*
+	 *	Done doing EAP proxy stuff.
+	 */
+	handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+	eapmschapv2_compose(handler, response);
+	data->code = PW_EAP_MSCHAPV2_SUCCESS;
+
+	/*
+	 *	Delete MPPE keys & encryption policy
+	 *
+	 *	FIXME: Use intelligent names...
+	 */
+	pairdelete(&handler->request->reply->vps, ((311 << 16) | 7));
+	pairdelete(&handler->request->reply->vps, ((311 << 16) | 8));
+	pairdelete(&handler->request->reply->vps, ((311 << 16) | 16));
+	pairdelete(&handler->request->reply->vps, ((311 << 16) | 17));
+
+	/*
+	 *	And we need to challenge the user, not ack/reject them,
+	 *	so we re-write the ACK to a challenge.  Yuck.
+	 */
+	handler->request->reply->code = PW_ACCESS_CHALLENGE;
+	pairfree(&response);
+
+	return 1;
+}
+
+
+/*
  *	Authenticate a previously sent challenge.
  */
 static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
@@ -355,6 +432,43 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	home server.
 	 */
 	if (handler->request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
+		eap_tunnel_data_t *tunnel;
+		
+		/*
+		 *	Set up the callbacks for the tunnel
+		 */
+		tunnel = rad_malloc(sizeof(*tunnel));
+		memset(tunnel, 0, sizeof(*tunnel));
+		
+		tunnel->tls_session = arg;
+		tunnel->callback = mschap_postproxy;
+		
+		/*
+		 *	Associate the callback with the request.
+		 */
+		rcode = request_data_add(handler->request,
+					 handler->request->proxy,
+					 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
+					 tunnel, free);
+		rad_assert(rcode == 0);
+
+		/*
+		 *	The State attribute is NOT supposed to
+		 *	go into the proxied packet, it will confuse
+		 *	other RADIUS servers, and they will discard
+		 *	the request.
+		 *
+		 *	The PEAP module will take care of adding
+		 *	the State attribute back, before passing
+		 *	the handler & request back into the tunnel.
+		 */
+		pairdelete(&handler->request->packet->vps, PW_STATE);
+
+		/*
+		 *	Fix the User-Name when proxying, to strip off
+		 *	the NT Domain.
+		 */
+
 		/*
 		 *	Remember that in the post-proxy stage, we've got
 		 *	to do the work below, AFTER the call to MS-CHAP
@@ -367,6 +481,15 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	This is a wild & crazy hack.
 	 */
 	rcode = module_authenticate(PW_AUTHTYPE_MS_CHAP, handler->request);
+
+	/*
+	 *	Delete MPPE keys & encryption policy.  We don't
+	 *	want these here.
+	 */
+	pairdelete(&handler->request->reply->vps, ((311 << 16) | 7));
+	pairdelete(&handler->request->reply->vps, ((311 << 16) | 8));
+	pairdelete(&handler->request->reply->vps, ((311 << 16) | 16));
+	pairdelete(&handler->request->reply->vps, ((311 << 16) | 17));
 
 	/*
 	 *	Take the response from the mschap module, and
