@@ -34,10 +34,6 @@
 
 #include "config.h"
 
-#if HAVE_MALLOC_H
-#  include <malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"radutmp.h"
 #include	"modules.h"
@@ -479,13 +475,12 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		if (r >= 0 &&  (status == PW_STATUS_START ||
 				status == PW_STATUS_ALIVE)) {
 			if (cache == NULL) {
-			   if ((cache = malloc(sizeof(NAS_PORT))) != NULL) {
-				   cache->nasaddr = ut.nas_address;
-				   cache->port = ut.nas_port;
-				   cache->offset = off;
-				   cache->next = inst->nas_port_list;
-				   inst->nas_port_list = cache;
-			   }
+			   cache = rad_malloc(sizeof(NAS_PORT));
+			   cache->nasaddr = ut.nas_address;
+			   cache->port = ut.nas_port;
+			   cache->offset = off;
+			   cache->next = inst->nas_port_list;
+			   inst->nas_port_list = cache;
 			}
 			ut.type = P_LOGIN;
 			write(fd, &ut, sizeof(u));

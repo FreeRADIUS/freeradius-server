@@ -22,10 +22,7 @@ SQLSOCK *sql_create_socket(SQL_INST *inst)
 {
 	SQLSOCK *socket;
 
-	if((socket = malloc(sizeof(SQLSOCK))) == NULL) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: no memory");
-		exit(1);
-	}
+	socket = rad_malloc(sizeof(SQLSOCK));
 
 	if(SQLAllocEnv(&socket->env_handle) != SQL_SUCCESS) {
 		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s", 
@@ -103,10 +100,7 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 
 	numfields = sql_num_fields(socket);
 
-	if( (row = (char **)malloc(sizeof(char *) * numfields)) == NULL) {
-		radlog(L_ERR, "sql_select_query:  Out of memory!");
-		return -1;
-	}
+	row = (char **) rad_malloc(sizeof(char *) * numfields);
 	memset(row, 0, (sizeof(char *) * (numfields))); 
 	row[numfields-1] = NULL;
 
@@ -118,7 +112,7 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 		/* 
 		 * Allocate space for each column 
 		 */
-		row[i-1] = (SQLCHAR*)malloc((int)len);
+		row[i-1] = (SQLCHAR*)rad_malloc((int)len);
 
 		/*
 		 * This makes me feel dirty, but, according to Microsoft, it works.

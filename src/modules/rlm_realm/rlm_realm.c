@@ -229,11 +229,7 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
         struct realm_config_t *inst;
 
         /* setup a storage area for instance data */
-        inst = malloc(sizeof(struct realm_config_t));
-        if(!inst) {
-               radlog(L_ERR|L_CONS, "Out of memory\n");
-	       return -1;
-	}
+        inst = rad_malloc(sizeof(struct realm_config_t));
 
 	if(cf_section_parse(conf, module_config) < 0) {
 	       free(inst);

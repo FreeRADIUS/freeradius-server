@@ -37,10 +37,6 @@
 
 #include	<security/pam_appl.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"modules.h"
 
@@ -66,11 +62,7 @@ static int pam_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	data = malloc(sizeof(*data));
-	if (!data) {
-		radlog(L_ERR|L_CONS, "rlm_pam: Out of memory\n");
-		return -1;
-	}
+	data = rad_malloc(sizeof(*data));
 
 	data->pam_auth_name = config.pam_auth_name;
 	config.pam_auth_name = NULL;
@@ -120,8 +112,7 @@ static int PAM_conv (int num_msg,
   int size = sizeof(struct pam_response);
   my_PAM *pam_config = (my_PAM *) appdata_ptr;
   
-#define GET_MEM if (reply) realloc(reply, size); else reply = malloc(size); \
-  if (!reply) return PAM_CONV_ERR; \
+#define GET_MEM if (reply) realloc(reply, size); else reply = rad_malloc(size); \
   size += sizeof(struct pam_response)
 #define COPY_STRING(s) ((s) ? strdup(s) : NULL)
 				     

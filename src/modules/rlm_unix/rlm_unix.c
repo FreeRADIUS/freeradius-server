@@ -35,10 +35,6 @@ static const char rcsid[] = "$Id$";
 
 #include "config.h"
 
-#if HAVE_MALLOC_H
-#  include <malloc.h>
-#endif
-
 #if HAVE_SHADOW_H
 #  include	<shadow.h>
 #endif
@@ -175,10 +171,7 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Allocate room for the instance.
 	 */
-	inst = *instance = malloc(sizeof(struct unix_instance));
-	if(!inst) {
-	      return -1;
-	}
+	inst = *instance = rad_malloc(sizeof(struct unix_instance));
 
 	/*
 	 *	Copy the configuration into the instance data

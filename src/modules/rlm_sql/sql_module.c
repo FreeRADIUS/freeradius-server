@@ -44,10 +44,7 @@ sql_create_socket(SQL_INST * inst)
 
 	SQLSOCK *sqlsocket;
 
-	if ((sqlsocket = malloc(sizeof(SQLSOCK))) == NULL) {
-		radlog(L_CONS | L_ERR, "sql_create_socket: no memory");
-		exit(1);
-	}
+	sqlsocket = rad_malloc(sizeof(SQLSOCK));
 
 	mysql_init(&(sqlsocket->conn));
 	if (!

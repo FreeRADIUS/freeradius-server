@@ -38,10 +38,6 @@
 #include	<fcntl.h>
 #include	<limits.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"modules.h"
 
@@ -111,10 +107,9 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 	 * Allocate space for hash table here
 	 */
 	memsize = sizeof(PAIR_LIST *) * inst->hashsize;
-	if( (newhash = (PAIR_LIST **)malloc(memsize)) == NULL) {
-		radlog(L_ERR, "rlm_fastusers:  Can't build hashtable, out of memory!");
-		return -1;
-	}
+
+	newhash = (PAIR_LIST **) rad_malloc(memsize);
+
 	memset((PAIR_LIST *)newhash, 0, memsize);
 
 	/* Read acct_users */
@@ -494,11 +489,8 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct fastuser_instance *inst=0;
 
-	inst = malloc(sizeof *inst);
-	if (!inst) {
-		radlog(L_ERR|L_CONS, "Out of memory\n");
-		return -1;
-	}
+	inst = rad_malloc(sizeof *inst);
+
 	memset(inst, 0, sizeof(inst));
 
 	if (cf_section_parse(conf, module_config) < 0) {

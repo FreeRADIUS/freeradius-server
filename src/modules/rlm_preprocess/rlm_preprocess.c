@@ -35,10 +35,6 @@ static const char rcsid[] = "$Id$";
 #include	<string.h>
 #include	<ctype.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"modules.h"
 
@@ -524,11 +520,7 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Allocate room to put the module's instantiation data.
 	 */
-	data = (rlm_preprocess_t *) malloc(sizeof(*data));
-	if (!data) {
-		radlog(L_ERR|L_CONS, "Out of memory\n");
-		return -1;
-	}
+	data = (rlm_preprocess_t *) rad_malloc(sizeof(*data));
 
 	/*
 	 *	Copy the configuration over to the instantiation.
@@ -597,8 +589,6 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 				    data->ascend_channels_per_line);
 	}
 
-	hints_setup(data->hints, request);
-	
 	/*
 	 *	Note that we add the Request-Src-IP-Address to the request
 	 *	structure BEFORE checking huntgroup access.  This allows
@@ -607,6 +597,8 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	 */
 	add_nas_attr(request);
 
+	hints_setup(data->hints, request);
+	
 	if (huntgroup_access(data->huntgroups, request->packet->vps) != RLM_MODULE_OK) {
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
@@ -630,12 +622,13 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	 *  authentication && accounting.
 	 */
 	rad_mangle(data, request);
-	r = hints_setup(data->hints, request);
 
 	/*
 	 *  Ensure that we log the NAS IP Address in the packet.
 	 */
 	add_nas_attr(request);
+
+	r = hints_setup(data->hints, request);
 
 	return r;
 }

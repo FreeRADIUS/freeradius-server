@@ -172,11 +172,8 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 {
 	ldap_instance  *inst;
 
-	inst = malloc(sizeof *inst);
-	if (!inst) {
-		radlog(L_ERR | L_CONS, "rlm_ldap: Out of memory\n");
-		return -1;
-	}
+	inst = rad_malloc(sizeof *inst);
+
 	if (cf_section_parse(conf, module_config) < 0) {
 		free(inst);
 		return -1;

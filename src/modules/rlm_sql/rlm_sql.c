@@ -120,25 +120,17 @@ rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 
 	SQL_INST *inst;
 
-	if ((inst = malloc(sizeof(SQL_INST))) == NULL) {
-		radlog(L_ERR | L_CONS, "sql_instantiate:  no memory");
-		return -1;
-	}
+	inst = rad_malloc(sizeof(SQL_INST));
 	memset(inst, 0, sizeof(SQL_INST));
-	if ((inst->config = malloc(sizeof(SQL_CONFIG))) == NULL) {
-		radlog(L_ERR | L_CONS, "sql_instantiate:  no memory");
-		free(inst);
-		return -1;
-	}
+
+	inst->config = rad_malloc(sizeof(SQL_CONFIG));
 	memset(inst->config, 0, sizeof(SQL_CONFIG));
 
 #if HAVE_PTHREAD_H
-	inst->lock = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
-	if (inst->lock == NULL)
-		return -1;
+	inst->lock = (pthread_mutex_t *) rad_malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(inst->lock, NULL);
 
-	inst->notfull = (pthread_cond_t *) malloc(sizeof(pthread_cond_t));
+	inst->notfull = (pthread_cond_t *) rad_malloc(sizeof(pthread_cond_t));
 	pthread_cond_init(inst->notfull, NULL);
 #endif
 

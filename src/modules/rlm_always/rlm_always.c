@@ -106,11 +106,7 @@ static int always_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	data = malloc(sizeof(*data));
-	if (!data) {
-		radlog(L_ERR, "rlm_always:  out of memory");
-		return -1;
-	}
+	data = rad_malloc(sizeof(*data));
 	
 	/*
 	 *	Copy the configuration into the instance data

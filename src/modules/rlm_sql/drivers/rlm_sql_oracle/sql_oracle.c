@@ -26,10 +26,7 @@ SQLSOCK *sql_create_socket(SQL_INST *inst)
 {
 	SQLSOCK *socket;
 
-	if ((socket = malloc(sizeof(SQLSOCK))) == NULL) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: no memory");
-		exit(1);
-	}
+	socket = rad_malloc(sizeof(SQLSOCK));
 
 	if (OCIEnvCreate(&socket->env, OCI_DEFAULT, (dvoid *)0,
 		(dvoid * (*)(dvoid *, size_t)) 0,
@@ -179,7 +176,7 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 
 	/* DEBUG2("sql_select_query(): colcount=%d",colcount); */
 
-	rowdata=(char **)malloc(sizeof(char *) * (colcount+1) );
+	rowdata=(char **)rad_malloc(sizeof(char *) * (colcount+1) );
 	memset(rowdata, 0, (sizeof(char *) * (colcount+1) ));
 
 	for (y=1; y <= colcount; y++) {
@@ -220,7 +217,7 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 					sql_error(socket));
 				return -1;
 			}
-			rowdata[y-1]=malloc(dsize+1);
+			rowdata[y-1]=rad_malloc(dsize+1);
 			break;
 		case SQLT_DAT:
 		case SQLT_INT:
@@ -229,7 +226,7 @@ int sql_select_query(SQL_INST *inst, SQLSOCK *socket, char *querystr)
 		case SQLT_PDN:
 		case SQLT_BIN:
 		case SQLT_NUM:
-			rowdata[y-1]=malloc(dsize+1);
+			rowdata[y-1]=rad_malloc(dsize+1);
 			break;
 		default:
 			dsize=0;

@@ -53,10 +53,8 @@ static CONF_PARSER module_config[] = {
 static void unique_add_attr(int dictattr) {
 	struct unique_attr_list 	*new;		
 	
-	if((new = malloc(sizeof(struct unique_attr_list))) == NULL) {
-		radlog(L_ERR, "rlm_acct_unique:  out of memory");
-		exit(1);
-	}
+	new = rad_malloc(sizeof(struct unique_attr_list));
+
 	memset((struct unique_attr_list *)new, 0, sizeof(unique_attr_list));
 
 	/* Assign the attr to our new structure */
@@ -122,10 +120,7 @@ static int unique_instantiate(CONF_SECTION *conf, void **instance) {
 	/*
 	 *  Set up a storage area for instance data
 	 */
-	if ((inst = malloc(sizeof(*inst))) == NULL) {
-		radlog(L_ERR, "rlm_acct_unique:  out of memory");
-		return -1;
-	}
+	inst = rad_malloc(sizeof(*inst));
 	memset(inst, 0, sizeof(*inst));
 	
 	if (cf_section_parse(conf, module_config) < 0) {

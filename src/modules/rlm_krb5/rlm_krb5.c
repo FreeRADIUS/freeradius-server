@@ -32,10 +32,6 @@ static const char rcsid[] = "$Id$";
 #include	<stdlib.h>
 #include	<string.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"modules.h"
 
@@ -49,11 +45,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	int r;
 	krb5_context *context;
 
-	context = malloc(sizeof(*context));
-        if (!context) {
-                radlog(L_ERR|L_CONS, "Out of memory\n");
-                return -1;
-        }
+	context = rad_malloc(sizeof(*context));
 
         if ((r = krb5_init_context(context)) ) {
 		radlog(L_AUTH, "rlm_krb5: krb5_init failed: %s",

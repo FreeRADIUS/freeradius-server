@@ -34,10 +34,6 @@
 #include	<fcntl.h>
 #include        <limits.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #ifdef HAVE_REGEX_H
 #  include      <regex.h>
 #endif
@@ -189,11 +185,7 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
         struct attr_filter_instance *inst;
 	int rcode;
 
-        inst = malloc(sizeof *inst);
-        if (!inst) {
-                radlog(L_ERR|L_CONS, "Out of memory\n");
-                return -1;
-        }
+        inst = rad_malloc(sizeof *inst);
 
         if (cf_section_parse(conf, module_config) < 0) {
                 free(inst);

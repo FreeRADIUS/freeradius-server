@@ -112,10 +112,7 @@ static int example_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	data = malloc(sizeof(*data));
-	if (!data) {
-		return -1;
-	}
+	data = rad_malloc(sizeof(*data));
 	
 	/*
 	 *	Copy the configuration into the instance data

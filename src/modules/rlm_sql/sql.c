@@ -75,7 +75,7 @@ sql_init_socketpool(SQL_INST * inst)
 		} else {
 			sqlsocket->id = i;
 #if HAVE_PTHREAD_H
-			sqlsocket->semaphore = (sem_t *) malloc(sizeof(sem_t));
+			sqlsocket->semaphore = (sem_t *) rad_malloc(sizeof(sem_t));
 			sem_init(sqlsocket->semaphore, 0, SQLSOCK_UNLOCKED);
 #else
 			sqlsocket->in_use = 0;
