@@ -1,7 +1,7 @@
 /*
  * xlat.c	Translate strings.
  *
- * Version: @(#)xlat.c	1.0  20-Sep-1999  ivanfm@ecodigit.com.br
+ * Version: $Id$
  *
  *
  * This is the first version of xlat incorporated to RADIUS
@@ -11,18 +11,12 @@
 
 #include	<sys/types.h>
 #include	<sys/time.h>
-#include	<sys/file.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
-#include	<fcntl.h>
 #include	<time.h>
 #include	<ctype.h>
-#include	<unistd.h>
-#include	<signal.h>
-#include	<errno.h>
-#include	<sys/wait.h>
 
 #include	"libradius.h"
 #include	"radiusd.h"
@@ -133,9 +127,9 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 				  *pa++ = *p++;
 				}
 				*pa = '\0';
-				if (strnicmp(attrname,"reply:",6) == 0) {
+				if (strncasecmp(attrname,"reply:",6) == 0) {
 				  q += valuebyname(q,freespace,reply,&attrname[6]);
-				} else if (strnicmp(attrname,"request:",8) == 0) {
+				} else if (strncasecmp(attrname,"request:",8) == 0) {
 				  q += valuebyname(q,freespace,request->packet->vps,&attrname[8]);
 				} else {
 				  q += valuebyname(q,freespace,request->packet->vps,attrname);
