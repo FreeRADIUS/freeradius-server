@@ -1,0 +1,12 @@
+TARGET      = @targetname@
+SRCS        = rlm_sqlcounter.c
+HEADERS     =
+RLM_CFLAGS  = @sqlcounter_cflags@
+RLM_LIBS    = @sqlcounter_ldflags@
+RLM_INSTALL =
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)
