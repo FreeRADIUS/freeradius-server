@@ -42,6 +42,8 @@ o Tune the num_sql_socks to be larger than the number of simultaneous
   authentication/accounting requests.
 o Use the sql module in the session section instead of the radutmp module.
   It works *much* quicker.
+o Create a multi column index for the (UserName,AcctStopTime) attributes especially
+  if you are using sql for double login detection.
 
 ------------ COUNTER MODULE ----------
 o Enable noatime on the counter db files.

@@ -39,7 +39,8 @@ if ($link){
 	}
 	$search = @da_sql_query($link,$config,
 	"SELECT COUNT(*),sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE
-	UserName = '$login' AND AcctStopTime LIKE '$today%';");
+	UserName = '$login' AND AcctStopTime >= '$today 00:00:00'
+	AND AcctStopTime <= '$today 23:59:59';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
 		$daily_used = time2strclock($row['sum(AcctSessionTime)']);

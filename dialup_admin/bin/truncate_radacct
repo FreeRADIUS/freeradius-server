@@ -1,13 +1,13 @@
 #!/usr/bin/perl
 #
-# Clean stale open sessions from the radacct table.
-# we only clean up sessions which are older than $back_days
+# Delete sessions from the radacct table which are older than
+# $back_days
 #
 use DBI;
 use POSIX;
 
 $conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
-$back_days = 35;
+$back_days = 90;
 
 open CONF, "<$conf"
 	or die "Could not open configuration file\n";
@@ -27,5 +27,5 @@ $date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,
 print "$date\n";
 
 $dbh = DBI->connect("DBI:mysql:$sql_database:$sql_server","$sql_username","$sql_password");
-$dbh->do("DELETE FROM $sql_accounting_table WHERE AcctStopTime = '0' AND AcctStartTime < '$date';");
+$dbh->do("DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date';");
 $dbh->disconnect();

@@ -89,7 +89,8 @@ if ($link){
 		$day = "$days[$i]";
 		$search = @da_sql_query($link,$config,
 		"SELECT $res[1],$res[2],$res[3] FROM $config[sql_accounting_table]
-		$sql_val[user] AND AcctStopTime LIKE '$day%' $s;");
+		$sql_val[user] AND AcctStopTime >= '$day 00:00:00' 
+		AND AcctStopTime <= '$day 23:59:59' $s;");
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);
 			$data[$day][1] = $row["$res[1]"];

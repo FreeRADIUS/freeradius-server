@@ -91,6 +91,7 @@ if ($link){
 	AND AcctStartTime >= '$week_str' AND AcctStartTime <= '$now_str';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
+		$weekly_used = $row['sum(AcctSessionTime)'];
 		$tot_time = time2str($row['sum(AcctSessionTime)']);
 		$tot_input = bytes2str($row['sum(AcctInputOctets)']);
 		$tot_output = bytes2str($row['sum(AcctOutputOctets)']);
@@ -114,7 +115,8 @@ if ($link){
 			continue;
 		$search = @da_sql_query($link,$config,
 		"SELECT sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE
-		UserName = '$login' AND AcctStopTime LIKE '$days[$i]%';");
+		UserName = '$login' AND AcctStopTime >= '$days[$i] 00:00:00'
+		AND AcctStopTime <= '$days[$i] 23:59:59';");
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);
 			$used[$i] = $row['sum(AcctSessionTime)'];
@@ -138,27 +140,20 @@ if ($link){
 			}
 		}
 	}
-	$search = @da_sql_query($link,$config,
-	"SELECT sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE
-	UserName = '$login' AND AcctStopTime >= '$week_start' AND
-	AcctStopTime <= '$now_str';");
-	if ($search){
-		$row = @da_sql_fetch_array($search,$config);
-		$weekly_used = $row['sum(AcctSessionTime)'];
-		if ($weekly_limit != 'none'){
-			$tmp = $weekly_limit - $weekly_used;
-			if ($tmp <=0){
-				$tmp = 0;
-				$extra_msg .= '(Out of weekly quota)';
-			}
-			if ($remaining > $tmp)
-				$remaining = $tmp;
-			$log_color = ($remaining) ? 'green' : 'red';
+	if ($weekly_limit != 'none'){
+		$tmp = $weekly_limit - $weekly_used;
+		if ($tmp <=0){
+			$tmp = 0;
+			$extra_msg .= '(Out of weekly quota)';
 		}
-		$weekly_used = time2str($weekly_used);
-		if ($weekly_limit != 'none' && !$tmp)
-			$weekly_used = "<font color=red>$weekly_used</font>";
+		if ($remaining > $tmp)
+			$remaining = $tmp;
+		$log_color = ($remaining) ? 'green' : 'red';
 	}
+	$weekly_used = time2str($weekly_used);
+	if ($weekly_limit != 'none' && !$tmp)
+		$weekly_used = "<font color=red>$weekly_used</font>";
+
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_accounting_table]
 	WHERE UserName = '$login' AND AcctStopTime = '0'
