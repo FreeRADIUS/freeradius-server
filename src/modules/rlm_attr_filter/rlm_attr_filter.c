@@ -300,9 +300,9 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 			         tmp->lvalue = check_item->lvalue;
 			         break;
 			    default:
-			         strNcpy((char *)tmp->strvalue,
-					 (char *)check_item->strvalue,
-					 sizeof(tmp->strvalue));
+			         memcpy((char *)tmp->strvalue,
+					(char *)check_item->strvalue,
+					check_item->length);
 				 tmp->length = check_item->length;
 			         break;
 			}
