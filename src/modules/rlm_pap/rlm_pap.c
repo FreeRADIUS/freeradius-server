@@ -153,7 +153,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	MD5_CTX md5_context;
 	SHA1_CTX sha1_context;
 	char digest[20];
-	char buff[21];
+	char buff[MAX_STRING_LEN];
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
 
 	/* quiet the compiler */
@@ -237,7 +237,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			MD5Update(&md5_context, request->password->strvalue, request->password->length);
 			MD5Final(digest, &md5_context);
 			pap_hexify(buff,digest,16);
-			buff[16] = '\0';
+			buff[32] = '\0';
 			if (strncmp((char *)passwd_item->strvalue, buff, passwd_item->length) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
@@ -253,7 +253,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			SHA1Update(&sha1_context, request->password->strvalue, request->password->length);
 			SHA1Final(digest,&sha1_context);
 			pap_hexify(buff,digest,20);
-			buff[21] = '\0';
+			buff[40] = '\0';
 			if (strncmp((char *)passwd_item->strvalue, buff, passwd_item->length) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
