@@ -28,7 +28,7 @@ ac_help="$ac_help
 ac_help="$ac_help
   --with-FOO-lib-dir=DIR  Dir for libraries for FOO, module dependancy."
 ac_help="$ac_help
-  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log] "
+  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log/radius] "
 ac_help="$ac_help
   --with-radacctdir=PATH  Directory for detail files [LOGDIR/radacct] "
 ac_help="$ac_help
@@ -1597,7 +1597,7 @@ if test "${with_foolibdir+set}" = set; then
 fi
 
 
-logdir='${localstatedir}/log'
+logdir='${localstatedir}/log/radius'
 echo $ac_n "checking logdir""... $ac_c" 1>&6
 echo "configure:1603: checking logdir" >&5
 # Check whether --with-logdir or --without-logdir was given.

@@ -80,10 +80,10 @@ AC_ARG_WITH(foolibdir,
 [  --with-FOO-lib-dir=DIR  Dir for libraries for FOO, module dependancy.])
 
 dnl extra argument: --with-logdir
-logdir='${localstatedir}/log'
+logdir='${localstatedir}/log/radius'
 AC_MSG_CHECKING(logdir)
 AC_ARG_WITH(logdir,
-[  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log] ],
+[  --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log/radius] ],
 [ case "$withval" in
     no)
 	AC_MSG_ERROR(Need logdir)

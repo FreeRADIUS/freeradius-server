@@ -233,6 +233,7 @@ NAS		*nas_findbyname(char *nasname);
 void		version(void);
 
 /* log.c */
+int radlogdir_iswritable(char *);
 int		radlog(int, const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
