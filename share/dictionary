@@ -79,6 +79,7 @@ $INCLUDE dictionary.itk
 $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.livingston
+$INCLUDE dictionary.localweb
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.navini
 $INCLUDE dictionary.nomadix
