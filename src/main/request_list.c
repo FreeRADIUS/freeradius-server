@@ -396,9 +396,18 @@ void rl_delete(REQUEST *request)
 
 				entry = rbtree_finddata(proxy_id_tree, &myid);
 				if (entry) {
+					DEBUG2(" proxy: de-allocating %08x:%d %d",
+					       entry->dst_ipaddr,
+					       entry->dst_port,
+					       request->proxy->id);
 					rad_assert(entry->id[request->proxy->id] == 1);
 					entry->id[request->proxy->id] = 0;
-				} /* else die? */
+				} else {
+					DEBUG2(" proxy: FAILED TO FIND %08x:%d %d",
+					       myid.dst_ipaddr,
+					       myid.dst_port,
+					       request->proxy->id);
+				}
 			}
 #endif /* PROXY_ID */
 			pthread_mutex_unlock(&proxy_mutex);
@@ -500,6 +509,10 @@ void rl_add_proxy(REQUEST *request)
 			entry->dst_port = request->proxy->dst_port;
 			entry->index = 0;
 			memset(entry->id, 0, sizeof(int) * 256);
+
+			DEBUG2(" proxy: creating %08x:%d",
+			       entry->dst_ipaddr,
+			       entry->dst_port);
 		}
 		
 		/*
@@ -524,6 +537,11 @@ void rl_add_proxy(REQUEST *request)
 
 		entry->id[found] = 1;
 		request->proxy->id = found;
+
+		DEBUG2(" proxy: allocating %08x:%d %d",
+		       entry->dst_ipaddr,
+		       entry->dst_port,
+		       request->proxy->id);
 	}
 #endif /* PROXY_ID */
 
