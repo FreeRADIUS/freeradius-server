@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 typedef struct sql_config {
+	char   *sql_driver;
 	char   *sql_server;
 	char   *sql_login;
 	char   *sql_password;
@@ -33,7 +34,12 @@ typedef struct sql_config {
 	char   *tracefile;
 	int     deletestalesessions;
 	int     num_sql_socks;
+
+	/* individual driver config */
+	void	*localcfg;
+
 } SQL_CONFIG;
+
 
 #define CHECKRAD1		"/usr/sbin/checkrad"
 #define CHECKRAD2		"/usr/local/sbin/checkrad"

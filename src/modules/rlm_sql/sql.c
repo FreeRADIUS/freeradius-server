@@ -58,9 +58,7 @@
  *	Purpose: Connect to the sql server
  *
  *************************************************************************/
-int
-sql_init_socketpool(SQL_INST * inst)
-{
+int sql_init_socketpool(SQL_INST * inst) {
 
 	SQLSOCK *sqlsocket;
 	int     i;
@@ -69,20 +67,29 @@ sql_init_socketpool(SQL_INST * inst)
 	inst->sqlpool = NULL;
 
 	for (i = 0; i < inst->config->num_sql_socks; i++) {
-		if ((sqlsocket = sql_create_socket(inst)) == NULL) {
+
+		sqlsocket = rad_malloc(sizeof(SQLSOCK));
+		if (sqlsocket == NULL) {
+			return -1;
+		}
+		sqlsocket->conn = NULL;
+		sqlsocket->id = i;
+
+#if HAVE_PTHREAD_H
+		sqlsocket->semaphore = (sem_t *) rad_malloc(sizeof(sem_t));
+		sem_init(sqlsocket->semaphore, 0, SQLSOCK_UNLOCKED);
+#else
+		sqlsocket->in_use = 0;
+#endif
+
+		if ((inst->module->sql_create_socket)(sqlsocket, inst->config) < 0) {
 			radlog(L_CONS | L_ERR, "rlm_sql:  Failed to connect sqlsocket %d", i);
 			return -1;
-		} else {
-			sqlsocket->id = i;
-#if HAVE_PTHREAD_H
-			sqlsocket->semaphore = (sem_t *) rad_malloc(sizeof(sem_t));
-			sem_init(sqlsocket->semaphore, 0, SQLSOCK_UNLOCKED);
-#else
-			sqlsocket->in_use = 0;
-#endif
-			sqlsocket->next = inst->sqlpool;
-			inst->sqlpool = sqlsocket;
 		}
+
+		/* Add this socket to the list of sockets */
+		sqlsocket->next = inst->sqlpool;
+		inst->sqlpool = sqlsocket;
 	}
 
 	return 1;
@@ -95,14 +102,12 @@ sql_init_socketpool(SQL_INST * inst)
  *     Purpose: Clean up and free sql pool
  *
  *************************************************************************/
-void
-sql_poolfree(SQL_INST * inst)
-{
+void sql_poolfree(SQL_INST * inst) {
 
 	SQLSOCK *cur;
 
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
-		sql_close_socket(cur);
+		sql_close_socket(inst, cur);
 	}
 #if HAVE_PTHREAD_H
 	pthread_mutex_destroy(inst->lock);
@@ -118,12 +123,10 @@ sql_poolfree(SQL_INST * inst)
  *	Purpose: Close and free a sql sqlsocket
  *
  *************************************************************************/
-int
-sql_close_socket(SQLSOCK * sqlsocket)
-{
+int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket) {
 
 	radlog(L_DBG, "rlm_sql: Closing sqlsocket %d", sqlsocket->id);
-	sql_close(sqlsocket);
+	(inst->module->sql_close)(sqlsocket, inst->config);
 #if HAVE_PTHREAD_H
 	sem_destroy(sqlsocket->semaphore);
 #endif
@@ -139,9 +142,7 @@ sql_close_socket(SQLSOCK * sqlsocket)
  *	Purpose: Return a SQL sqlsocket from the connection pool           
  *
  *************************************************************************/
-SQLSOCK *
-sql_get_socket(SQL_INST * inst)
-{
+SQLSOCK * sql_get_socket(SQL_INST * inst) {
 
 
 	SQLSOCK *cur;
@@ -195,9 +196,7 @@ sql_get_socket(SQL_INST * inst)
  *	Purpose: Frees a SQL sqlsocket back to the connection pool           
  *
  *************************************************************************/
-int
-sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
-{
+int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
 
 #if HAVE_PTHREAD_H
 	pthread_mutex_lock(inst->lock);
@@ -227,20 +226,13 @@ sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int
-sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode, int itemtype)
-{
+int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode, int itemtype) {
 
 	DICT_ATTR *attr;
 	VALUE_PAIR *pair, *check;
-	int     i = 0;
 
-
-	if (itemtype == PW_ITEM_REPLY)
-		i = 2;
-
-	if ((attr = dict_attrbyname(row[i])) == (DICT_ATTR *) NULL) {
-		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s", row[i]);
+	if ((attr = dict_attrbyname(row[2])) == (DICT_ATTR *) NULL) {
+		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s", row[2]);
 		return (-1);
 	}
 
@@ -255,7 +247,7 @@ sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode, int itemtype)
 			mode == PW_VP_GROUPDATA)
 		return 0;
 
-	pair = pairmake(row[i], row[i + 1], T_OP_CMP_EQ);
+	pair = pairmake(row[2], row[3], T_OP_CMP_EQ);
 	pairadd(first_pair, pair);
 
 	vp_printlist(stderr, *first_pair);
@@ -271,32 +263,29 @@ sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode, int itemtype)
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int
-sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR ** check,
-							VALUE_PAIR ** reply, char *query, int mode)
-{
+int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR ** check, VALUE_PAIR ** reply, char *query, int mode) {
 
 	SQL_ROW row;
 	int     rows = 0;
 
-	if (sql_select_query(inst, sqlsocket, query) < 0) {
+	if ((inst->module->sql_select_query)(sqlsocket, inst->config, query) < 0) {
 		radlog(L_ERR, "rlm_sql_getvpdata: database query error");
 		return -1;
 	}
-	while ((row = sql_fetch_row(sqlsocket))) {
+	while ((row = (inst->module->sql_fetch_row)(sqlsocket, inst->config))) {
 		if (sql_userparse(check, row, mode, PW_ITEM_CHECK) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
-			sql_finish_select_query(sqlsocket);
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			return -1;
 		}
 		if (sql_userparse(reply, row, mode, PW_ITEM_REPLY) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
-			sql_finish_select_query(sqlsocket);
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			return -1;
 		}
 		rows++;
 	}
-	sql_finish_select_query(sqlsocket);
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 
 	return rows;
 }
@@ -304,8 +293,7 @@ sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR ** check,
 
 static int got_alrm;
 static void
-alrm_handler()
-{
+alrm_handler() {
 	got_alrm = 1;
 }
 
@@ -316,9 +304,7 @@ alrm_handler()
  *	Purpose: Checks the terminal server for a spacific login entry
  *
  *************************************************************************/
-static int
-sql_check_ts(SQL_ROW row)
-{
+static int sql_check_ts(SQL_ROW row) {
 
 	int     pid, st, e;
 	int     n;
@@ -405,10 +391,7 @@ sql_check_ts(SQL_ROW row)
  *	Purpose: Check radius accounting for duplicate logins
  *
  *************************************************************************/
-int
-sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name,
-								VALUE_PAIR * request, int maxsimul)
-{
+int sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR * request, int maxsimul) {
 
 	char    querystr[MAX_QUERY_LEN];
 	char    authstr[256];
@@ -419,16 +402,15 @@ sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name,
 	int     mpp = 1;
 
 	sprintf(authstr, "UserName = '%s'", name);
-	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE %s AND AcctStopTime = 0",
-					inst->config->sql_acct_table, authstr);
-	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
+	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE %s AND AcctStopTime = 0", inst->config->sql_acct_table, authstr);
+	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
 		radlog(L_ERR, "sql_check_multi: database query error");
 		return -1;
 	}
 
-	row = sql_fetch_row(sqlsocket);
+	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
 	count = atoi(row[0]);
-	sql_finish_select_query(sqlsocket);
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 
 	if (count < maxsimul)
 		return 0;
@@ -440,13 +422,12 @@ sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name,
 		ipno = htonl(fra->lvalue);
 
 	count = 0;
-	sprintf(querystr, "SELECT * FROM %s WHERE %s AND AcctStopTime = 0",
-					inst->config->sql_acct_table, authstr);
-	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
+	sprintf(querystr, "SELECT * FROM %s WHERE %s AND AcctStopTime = 0", inst->config->sql_acct_table, authstr);
+	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
 		radlog(L_ERR, "sql_check_multi: database query error");
 		return -1;
 	}
-	while ((row = sql_fetch_row(sqlsocket))) {
+	while ((row = (inst->module->sql_fetch_row)(sqlsocket, inst->config))) {
 		int     check = sql_check_ts(row);
 
 		if (check == 1) {
@@ -456,8 +437,7 @@ sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name,
 				mpp = 2;
 
 		} else if (check == 2)
-			radlog(L_ERR, "rlm_sql:  Problem with checkrad [%s] (from nas %s)",
-						 name, row[4]);
+			radlog(L_ERR, "rlm_sql:  Problem with checkrad [%s] (from nas %s)", name, row[4]);
 		else {
 			/*
 			 *      False record - zap it
@@ -466,26 +446,21 @@ sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name,
 			if (inst->config->deletestalesessions) {
 				SQLSOCK *sqlsocket1;
 
-				radlog(L_ERR,
-							 "rlm_sql:  Deleteing stale session [%s] (from nas %s/%s)",
-							 row[2], row[4], row[5]);
+				radlog(L_ERR, "rlm_sql:  Deleteing stale session [%s] (from nas %s/%s)", row[2], row[4], row[5]);
 				sqlsocket1 = sql_get_socket(inst);
-				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'",
-								inst->config->sql_acct_table, row[0]);
-				sql_query(inst, sqlsocket1, querystr);
-				sql_finish_query(sqlsocket1);
+				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'", inst->config->sql_acct_table, row[0]);
+				(inst->module->sql_query)(sqlsocket1, inst->config, querystr);
+				(inst->module->sql_finish_query)(sqlsocket1, inst->config);
 				sql_release_socket(inst, sqlsocket1);
 			}
 		}
 	}
-	sql_finish_select_query(sqlsocket);
+	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 
 	return (count < maxsimul) ? 0 : mpp;
 }
 
-void
-query_log(SQL_INST * inst, char *querystr)
-{
+void query_log(SQL_INST * inst, char *querystr) {
 	FILE   *sqlfile = 0;
 
 	if (inst->config->sqltrace) {
@@ -505,9 +480,7 @@ query_log(SQL_INST * inst, char *querystr)
 	}
 }
 
-VALUE_PAIR *
-set_userattr(VALUE_PAIR * first, char *username, char *saveuser, int *savelen)
-{
+VALUE_PAIR * set_userattr(SQL_INST *inst, SQLSOCK *sqlsocket, VALUE_PAIR * first, char *username, char *saveuser, int *savelen) {
 
 	VALUE_PAIR *uservp = NULL;
 	uint8_t escaped_user[MAX_STRING_LEN];
@@ -518,9 +491,9 @@ set_userattr(VALUE_PAIR * first, char *username, char *saveuser, int *savelen)
 		if (savelen)
 			*savelen = uservp->length;
 		if (username) {
-			sql_escape_string(escaped_user, username, strlen(username));
+			(inst->module->sql_escape_string)(sqlsocket, inst->config, escaped_user, username, strlen(username));
 		} else {
-			sql_escape_string(escaped_user, uservp->strvalue, uservp->length);
+			(inst->module->sql_escape_string)(sqlsocket, inst->config, escaped_user, uservp->strvalue, uservp->length);
 		}
 		strNcpy(uservp->strvalue, escaped_user, MAX_STRING_LEN);
 		uservp->length = strlen(escaped_user);
@@ -529,9 +502,7 @@ set_userattr(VALUE_PAIR * first, char *username, char *saveuser, int *savelen)
 	return uservp;
 }
 
-void
-restore_userattr(VALUE_PAIR * uservp, char *saveuser, int savelen)
-{
+void restore_userattr(VALUE_PAIR * uservp, char *saveuser, int savelen) {
 
 	strNcpy(uservp->strvalue, saveuser, MAX_STRING_LEN);
 	uservp->length = savelen;

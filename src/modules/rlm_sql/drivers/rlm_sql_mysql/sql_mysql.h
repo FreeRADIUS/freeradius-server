@@ -5,52 +5,27 @@
 *                                                                          *
 *                                     Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
-#if HAVE_PTHREAD_H
-#include	<pthread.h>
-#include	<semaphore.h>
-#endif
 #include	<mysql/mysql.h>
-#include	"conf.h"
+#include	"rlm_sql.h"
 
-typedef MYSQL_ROW SQL_ROW;
-
-typedef struct sql_socket {
-	int     id;
-#if HAVE_PTHREAD_H
-	sem_t  *semaphore;
-#else
-	int     in_use;
-#endif
-	struct sql_socket *next;
-
-	MYSQL  *sock;
-	MYSQL   conn;
+typedef struct rlm_sql_mysql_sock {
+	MYSQL conn;
+	MYSQL *sock;
 	MYSQL_RES *result;
-} SQLSOCK;
+} rlm_sql_mysql_sock;
 
-typedef struct sql_inst {
-	int     used;
-	SQLSOCK *sqlpool;
-	SQL_CONFIG *config;
-#if HAVE_PTHREAD_H
-	pthread_mutex_t *lock;
-	pthread_cond_t *notfull;
-#endif
-} SQL_INST;
-
-SQLSOCK *sql_create_socket(SQL_INST * inst);
-int     sql_checksocket(const char *facility);
-int     sql_query(SQL_INST * inst, SQLSOCK * sqlsocket, char *querystr);
-int     sql_select_query(SQL_INST * inst, SQLSOCK * sqlsocket,
-												 char *querystr);
-int     sql_store_result(SQLSOCK * sqlsocket);
-int     sql_num_fields(SQLSOCK * sqlsocket);
-int     sql_num_rows(SQLSOCK * sqlsocket);
-SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket);
-void    sql_free_result(SQLSOCK * sqlsocket);
-char   *sql_error(SQLSOCK * sqlsocket);
-void    sql_close(SQLSOCK * sqlsocket);
-void    sql_finish_query(SQLSOCK * sqlsocket);
-void    sql_finish_select_query(SQLSOCK * sqlsocket);
-int     sql_affected_rows(SQLSOCK * sqlsocket);
-int     sql_escape_string(char *to, char *from, int length);
+int	sql_create_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+int	sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+int     sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr);
+int     sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr);
+int     sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+int     sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+int     sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+SQL_ROW sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+int    sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+char   *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+int    sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+int    sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+int    sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+int     sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+int     sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length);
