@@ -92,7 +92,8 @@ monthlycounter: the counter that resets monthly, can be used for
 limiting monthly access time (eg. 50 hours per month)
 
 You can make your own names and directives for resetting the counter
-by following src/modules/rlm_sqlcounter/README.txt 
+by reading the sample sqlcounter configuration in
+raddb/experimental.conf
 
 
 
