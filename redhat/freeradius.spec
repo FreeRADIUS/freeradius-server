@@ -1,11 +1,6 @@
-%define name freeradius-alpha-snapshot
-# FIXME: find a way of getting rid of "-" on versions ... rpm will be happy
-%define ver 22-Sep-00
-%define verX 22_Sep_00
-
-Name: %{name}
-Version: %{verX}
-Release: 0
+Name: freeradius
+Version: 0.5
+Release: 1
 
 Summary:	High-performance and highly configurable RADIUS server
 URL:		http://www.freeradius.org/
@@ -17,13 +12,13 @@ Prereq:		/sbin/chkconfig
 Requires:	libtool
 Conflicts:	cistron-radius
 
-Source:		%{name}-%{ver}.tar.gz
+Source:		%{name}-%{version}.tar.gz
 # FIXME: won't be good to include these contrib examples?
 # Source1:	http://www.ping.de/~fdc/radius/radacct-replay
 # Source2:	http://www.ping.de/~fdc/radius/radlast-0.03
 # Source3:	ftp://ftp.freeradius.org/pub/radius/contrib/radwho.cgi
 
-%define setupdir %{name}-%{ver}
+%define setupdir %{name}-%{version}
 BuildRoot: /var/tmp/%{setupdir}.root
 
 %description
@@ -43,7 +38,7 @@ much more configurable.
 %build
 CFLAGS="$RPM_OPT_FLAGS" \
 %configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
-	--mandir=/usr/man \
+	--mandir=%{_mandir} \
 	--with-threads \
 	--with-thread-pool \
 	--with-gnu-ld \
@@ -72,7 +67,7 @@ if [ "$1" = "0" ]; then
 	/sbin/chkconfig --del radiusd
 fi
 
-%postin
+%post
 if [ "$1" = "0" ]; then
 	/sbin/chkconfig --add radiusd
 fi
@@ -108,6 +103,11 @@ rm -rf $RPM_BUILD_ROOT
 #/var/log/radius/radutmp
 
 %changelog
+* Wed Feb 13 2001 Marko Myllynen
+- use %{_mandir} instead of /usr/man
+- rename %postin as %post
+- clean up name/version
+
 * Fri Jan 18 2002 Frank Cusack <frank@google.com>
 - remove (noreplace) for /etc/raddb/*
 
