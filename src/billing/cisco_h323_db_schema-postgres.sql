@@ -20,17 +20,16 @@
 
 CREATE TABLE StartVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
+	h323SetupTime		TIMESTAMP with time zone NOT NULL,
 	UserName		VARCHAR(64),
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
-	AcctTime		timestamptz NOT NULL,
+	AcctTime		TIMESTAMP with time zone,
 	CalledStationId		VARCHAR(30),
 	CallingStationId	VARCHAR(15),
 	AcctDelayTime		INTEGER,
 	H323GWID		VARCHAR(32),
 	h323CallOrigin		VARCHAR(10),
-	h323CallType		VARCHAR(64),
-	h323SetupTime		timestamp with time zone NOT NULL,
 	h323ConfID		VARCHAR(35) NOT NULL
 );
 create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
@@ -38,17 +37,16 @@ create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
 
 CREATE TABLE StartTelephony (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
+	h323SetupTime		TIMESTAMP with time zone NOT NULL,
 	UserName		VARCHAR(64),
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
-	AcctTime		timestamptz NOT NULL,
+	AcctTime		TIMESTAMP with time zone,
 	CalledStationId		VARCHAR(30),
 	CallingStationId	VARCHAR(15),
 	AcctDelayTime		INTEGER,
 	H323GWID		VARCHAR(32),
 	h323CallOrigin		VARCHAR(10),
-	h323CallType		VARCHAR(64),
-	h323SetupTime		timestamp with time zone NOT NULL,
 	h323ConfID		VARCHAR(35) NOT NULL
 );
 create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress);
@@ -60,10 +58,13 @@ create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress)
  */
 CREATE TABLE StopVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
+	H323SetupTime		TIMESTAMP with time zone NOT NULL,
+	H323ConnectTime		TIMESTAMP with time zone NOT NULL,
+	H323DisconnectTime	TIMESTAMP with time zone NOT NULL,
 	UserName		VARCHAR(32),
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
-	AcctTime		timestamptz NOT NULL,
+	AcctTime		TIMESTAMP with time zone,
 	AcctSessionTime		BIGINT,
 	AcctInputOctets		BIGINT,
 	AcctOutputOctets	BIGINT,
@@ -71,24 +72,24 @@ CREATE TABLE StopVoIP (
 	CallingStationId	VARCHAR(50),
 	AcctDelayTime		SMALLINT,
 	CiscoNASPort		BOOLEAN DEFAULT false,
-	h323CallOrigin		VARCHAR(10) DEFAULT '' NOT NULL,
-	h323SetupTime		timestamp with time zone NOT NULL,
-	h323ConnectTime		timestamp with time zone NOT NULL,
-	h323DisconnectTime	timestamp with time zone NOT NULL,
-	h323DisconnectCause	VARCHAR(2),
-	H323RemoteAddress	INET NOT NULL,
+	H323CallOrigin		VARCHAR(10),
+	H323DisconnectCause	VARCHAR(2),
+	H323RemoteAddress	INET,
 	H323VoiceQuality	INTEGER,
-	h323ConfID		VARCHAR(35) NOT NULL
+	H323ConfID		VARCHAR(35) NOT NULL
 );
 create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, h323ConfID);
 
 
 CREATE TABLE StopTelephony (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
+	H323SetupTime		TIMESTAMP with time zone NOT NULL,
+	H323ConnectTime		TIMESTAMP with time zone NOT NULL,
+	H323DisconnectTime	TIMESTAMP with time zone NOT NULL,
 	UserName		VARCHAR(32) DEFAULT '' NOT NULL,
 	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
-	AcctTime		timestamptz NOT NULL,
+	AcctTime		TIMESTAMP with time zone,
 	AcctSessionTime		BIGINT,
 	AcctInputOctets		BIGINT,
 	AcctOutputOctets	BIGINT,
@@ -96,16 +97,15 @@ CREATE TABLE StopTelephony (
 	CallingStationId	VARCHAR(50),
 	AcctDelayTime		SMALLINT,
 	CiscoNASPort		VARCHAR(16),
-	h323CallOrigin		VARCHAR(10),
-	h323SetupTime		timestamp with time zone NOT NULL,
-	h323ConnectTime		timestamp with time zone NOT NULL,
-	h323DisconnectTime	timestamp with time zone NOT NULL,
-	h323DisconnectCause	VARCHAR(2),
+	H323CallOrigin		VARCHAR(10),
+	H323DisconnectCause	VARCHAR(2),
 	H323RemoteAddress	BOOLEAN DEFAULT false,
 	H323VoiceQuality	INTEGER,
-	h323ConfID		VARCHAR(35) NOT NULL
+	H323ConfID		VARCHAR(35) NOT NULL
 );
-create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, h323ConfID);
+-- You can have more than one record that is identical except for CiscoNASPort if you have a VoIP dial peer
+-- configured for multiple PRIs.
+create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, h323ConfID, CiscoNASPort);
 
 /*
  * Table structure for 'gateways'
