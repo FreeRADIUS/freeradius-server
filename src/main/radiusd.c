@@ -2166,10 +2166,10 @@ static struct timeval *setuptimeout(struct timeval *tv)
 					smallest = difference;
 			}
 
-			if (difference == 0) break; /* short-circuit */
+			if (difference <= 0) break; /* short-circuit */
 		} /* loop over linked list for that ID */
 
-		if (difference == 0) break; /* short-circuit */
+		if (difference <= 0) break; /* short-circuit */
 	} /* loop over 256 ID's */
 
 	/*
@@ -2180,6 +2180,14 @@ static struct timeval *setuptimeout(struct timeval *tv)
 		DEBUG2("Nothing to do.  Sleeping until we see a request.");
 		return NULL;
 	}
+
+	/*
+	 *	If the server is CPU starved, then we CAN miss a time
+	 *	for servicing requests.  In which case the 'smallest'
+	 *	value will be negative.  select() doesn't like that,
+	 *	so we fix it.
+	 */
+	if (smallest < 0) smallest = 0;
 
 	/*
 	 *	Set the time (in seconds) for how long we're
