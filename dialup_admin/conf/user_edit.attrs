@@ -28,6 +28,7 @@ Port-Limit			<a href="help/port_limit_help.html" target=pl_help onclick=window.o
 #Login-LAT-Port
 #Dialup-Access			<a href="help/dialup_access_help.html" target=da_help onclick=window.open("help/dialup_access_help.html","da_help","width=560,height=200,toolbar=no,scrollbars=no,resizable=yes") title="Dialup Access Help Page"><font color="blue">Dialup Access (use FALSE to lock)</font></a>
 Dialup-Lock-Msg			<a href="help/lock_message_help.html" target=lm_help onclick=window.open("help/lock_message_help.html","lm_help","width=600,height=210,toolbar=no,scrollbars=no,resizable=yes") title="Lock Message Help Page"><font color="blue">Lock Message</font></a>
+Reply-Message			Reply Message
 #Max-Daily-Session		Daily Limit (secs)
 #Max-Weekly-Session		Weekly Limit (secs)
 #Login-Time			User Login Period <a href="help/login_time_help.html" target=lt_help onclick=window.open("help/login_time_help.html","lt_help","width=600,height=370,toolbar=no,scrollbars=no,resizable=yes") title="Login-Time Help Page"><font color="blue">(UUCP Format)</font></a>

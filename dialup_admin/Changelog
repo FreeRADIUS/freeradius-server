@@ -1,3 +1,5 @@
+Ver 1.52:
+* Add Reply-Message in conf/user_edit.attrs so that it appears in the user/group edit pages
 Ver 1.51:
 * Only call user_info.php3 in user_new.php3 when we are creating a user
 * Fix a bug with personal information attributes in user_new.php3
