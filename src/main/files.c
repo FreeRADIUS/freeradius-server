@@ -94,8 +94,6 @@ static void auth_type_fixup(VALUE_PAIR *check)
 
 	/*
 	 *	Add an Auth-Type attribute.
-	 *	FIXME: put Auth-Type _first_ (doesn't matter now,
-	 *	might matter some day).
 	 *	
 	 */
 	if ((vp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER)) == NULL) {
