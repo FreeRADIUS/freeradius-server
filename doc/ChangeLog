@@ -1,6 +1,10 @@
 FreeRADIUS 1.0.0 ; $Date$, urgency=low
 
 	* Many, many minor bug fixes and feature enhancements.
+	* Added a "listen" directive, which supersedes the old
+	  "bind_address" and "port" directives.  "listen" allows much
+	  finer-grained control over what IP's, ports, and packets the
+	  server pays attention to.
 	* Preliminary tests indicate that the server builds and runs on
 	  Interix (SFU).
 	* Regular expression matches in brackets can now be referenced
