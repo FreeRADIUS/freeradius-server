@@ -1505,6 +1505,7 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 	return pwlen;
 }
 
+static unsigned int salt_offset = 0;
 
 /*
  *	Encode Tunnel-Password attributes when sending them out on the wire.
@@ -1515,9 +1516,6 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
  *      This is per RFC-2868 which adds a two char SALT to the initial intermediate
  *      value MD5 hash.
  */
-
-static int saltoffset = 0; /* used to make all salts in a packet unique */
-
 int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
@@ -1545,10 +1543,21 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret, const char
 	len += 1;
 
 
-	/* generate salt */
-	saltoffset++;
-	salt[0] = (vector[0] ^ vector[1] ^ 0x3A ^ (char) ( (saltoffset>>8) & 0x000000ff ) ) | 0x80;
-	salt[1] = (vector[2] ^ vector[3] ^ vector[4] ^ (char) (saltoffset & 0x000000ff) );
+	/*
+	 *	Generate salt.  The RFC's say:
+	 *
+	 *	high bit of salt[0] must be set.
+	 *	each salt in a packet should be unique.
+	 *	they should be random
+	 *
+	 *	So, we set the high bit,
+	 *	add in a counter,
+	 *	and then add in some CSPRNG data.
+	 *	should be OK..
+	 */
+	salt[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
+		   (lrad_rand() & 0x07));
+	salt[1] = lrad_rand();
 	
 	/*
 	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
