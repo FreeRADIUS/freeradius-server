@@ -356,17 +356,15 @@ static KeywordStruct filterCompare[] = {
     {  NULL , NO_TOKEN },
 };
 
-static char	curString[512];
-
 static int findKey ( const char *string, KeywordStruct *list );
 static int isAllDigit ( const char *token );
 static short a2octet ( const char *tok, char *retBuf );
 static char defaultNetmask ( uint32_t address );
 static int ipAddressStringToValue ( char *string, uint32_t *ipAddress,
 					 char *netmask);
-static int parseIpFilter ( RadFilter *curEntry );
-static int parseGenericFilter ( RadFilter *curEntry );
-static int parseIpxFilter ( RadFilter *curEntry );
+static int parseIpFilter ( const char *curString, RadFilter *curEntry );
+static int parseGenericFilter ( const char *curString, RadFilter *curEntry );
+static int parseIpxFilter ( const char *curString, RadFilter *curEntry );
 static int stringToNode   ( unsigned char* dest,  unsigned char* src );
 
     /*
@@ -724,7 +722,7 @@ unsigned char*  src;
      *			
      *	cmd:		One of ">" or "<" or "=" or "!=".
      *			
-     *	value:		Socket value to be compared against, in hex.		
+     *	value:		Socket value to be compared against, in hex.
      *			
      *			
      * expects:
@@ -736,7 +734,8 @@ unsigned char*  src;
      */
 
 static int 
-parseIpxFilter(curEntry)
+parseIpxFilter(curString, curEntry)
+const char	*curString;
 RadFilter	*curEntry;
 {
     unsigned long	elements = 0l;
@@ -889,7 +888,8 @@ doneErr:
      */
 
 static int 
-parseIpFilter(curEntry)
+parseIpFilter(curString, curEntry)
+const char	*curString;
 RadFilter	*curEntry;
 {
  
@@ -1048,7 +1048,8 @@ doneErr:
      */
 
 static int
-parseGenericFilter(curEntry)
+parseGenericFilter(curString, curEntry)
+const char	*curString;
 RadFilter	*curEntry;
 {
     unsigned long	elements = 0l; 
@@ -1160,7 +1161,6 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
     char		*copied_valstr;
 
     rc = -1;
-    strcpy( curString, valstr );
 
     /*
      *  Copy the valstr, so we don't smash it in place via strtok!
@@ -1173,13 +1173,13 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
     pair->length = SIZEOF_RADFILTER;
     switch( tok ) {
       case RAD_FILTER_GENERIC:
-	rc = parseGenericFilter( &radFil );
+	rc = parseGenericFilter( valstr, &radFil );
 	break;
       case RAD_FILTER_IP:
-	rc = parseIpFilter( &radFil );
+	rc = parseIpFilter( valstr, &radFil );
 	break;
       case RAD_FILTER_IPX:
-	rc = parseIpxFilter( &radFil );
+	rc = parseIpxFilter( valstr, &radFil );
         break;
       default:
 	librad_log("filterBinary: unknown filter type \"%s\"", token);
@@ -1205,7 +1205,7 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 	    gen = &filt->u.generic;
 	    gen->more = FALSE;
 	    librad_log("filterBinary:  'more' for previous entry doesn't match: %s.\n",
-		     curString );
+		     valstr);
 	}
     }
     prevRadPair = NULL;
