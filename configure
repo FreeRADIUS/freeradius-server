@@ -562,7 +562,7 @@ fi
 
 
 
-# From configure.in Revision: 1.141 
+# From configure.in Revision: 1.142 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=5
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -4069,21 +4069,76 @@ fi
 fi
 
 
+gethostbyaddrrstyle=""
+echo $ac_n "checking gethostbyaddr_r() syntax""... $ac_c" 1>&6
+echo "configure:4075: checking gethostbyaddr_r() syntax" >&5
+cat > conftest.$ac_ext <<EOF
+#line 4077 "configure"
+#include "confdefs.h"
+#include <netdb.h>
+int main() {
+ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL)  
+; return 0; }
+EOF
+if { (eval echo configure:4084: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  
+	cat >> confdefs.h <<\EOF
+#define GETHOSTBYADDRRSTYLE SYSVSTYLE
+EOF
+
+	gethostbyaddrrstyle=SYSV
+
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+cat > conftest.$ac_ext <<EOF
+#line 4099 "configure"
+#include "confdefs.h"
+#include <netdb.h>
+int main() {
+ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) 
+; return 0; }
+EOF
+if { (eval echo configure:4106: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  
+	cat >> confdefs.h <<\EOF
+#define GETHOSTBYADDRRSTYLE GNUSTYLE
+EOF
+
+	gethostbyaddrrstyle=GNU
+
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+if test "x$gethostbyaddrrstyle" = "x"; then
+	echo "$ac_t""none!  It must not exist, here." 1>&6
+else
+	echo "$ac_t""${gethostbyaddrrstyle}-style" 1>&6
+fi
+
+
+
 	
 	
 
 echo $ac_n "checking for isql.h""... $ac_c" 1>&6
-echo "configure:4077: checking for isql.h" >&5
+echo "configure:4132: checking for isql.h" >&5
 
 cat > conftest.$ac_ext <<EOF
-#line 4080 "configure"
+#line 4135 "configure"
 #include "confdefs.h"
 #include <isql.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:4087: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:4142: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   ODBC_INCLUDE=" "
 else
@@ -4128,14 +4183,14 @@ eval "odbc_include_dir=\"\$odbc_include_dir $DIRS\""
   for try in /usr/include /usr/local/include/odbc /usr/local/odbc/include $odbc_include_dir; do
     CFLAGS="$old_CFLAGS -I$try"
     cat > conftest.$ac_ext <<EOF
-#line 4132 "configure"
+#line 4187 "configure"
 #include "confdefs.h"
 #include <isql.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:4139: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:4194: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   ODBC_INCLUDE="-I$try"
 else
@@ -4158,7 +4213,7 @@ else
   echo "$ac_t""yes" 1>&6
   
   echo $ac_n "checking for SQLConnect in -lodbc""... $ac_c" 1>&6
-echo "configure:4162: checking for SQLConnect in -lodbc" >&5
+echo "configure:4217: checking for SQLConnect in -lodbc" >&5
 
   old_LIBS="$LIBS"
 
@@ -4220,14 +4275,14 @@ eval "odbc_lib_dir=\"\$odbc_lib_dir $DIRS\""
   for try in /usr/lib /usr/lib/odbc /usr/local/lib/odbc /usr/local/odbc/lib $odbc_lib_dir; do
     LIBS="$old_LIBS -L$try -lodbc"
     cat > conftest.$ac_ext <<EOF
-#line 4224 "configure"
+#line 4279 "configure"
 #include "confdefs.h"
 extern char SQLConnect();
 int main() {
  SQLConnect()
 ; return 0; }
 EOF
-if { (eval echo configure:4231: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:4286: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   ODBC_LIBS="-L$try -lodbc"
 else

@@ -25,4 +25,4 @@ revision=0
 installed=no
 
 # Directory that this library needs to be installed in:
-libdir='/home/raghud/open/radiusd/deploy/lib'
+libdir='/usr/lib/freeradius'

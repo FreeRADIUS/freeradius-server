@@ -36,25 +36,26 @@ int		librad_debug = 0;
 char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 {
 	struct		hostent *hp;
-#ifdef HAVE_GETHOSTBYADDR_R
-	char		buffer[2048];
-	struct          hostent result;
-	int		error;
+#ifdef GETHOSTBYADDRRSTYLE
+	char buffer[2048];
+	struct hostent result;
+	int error;
 #endif
 
 	/*
 	 *	No DNS: don't look up host names
 	 */
-	if (!librad_dodns) {
+	if (librad_dodns == 0) {
 		ip_ntoa(buf, ipaddr);
 		return buf;
 	}
 
-#ifndef HAVE_GETHOSTBYADDR_R
-	hp = gethostbyaddr((char *)&ipaddr, sizeof(struct in_addr), AF_INET);
+#if GETHOSTBYADDRRSTYLE == SYSVSTYLE
+	hp = gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr), AF_INET, &result, buffer, sizeof(buffer), &error);
+#elif GETHOSTBYADDRRSTYLE == GNUSTYLE
+	gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr), AF_INET, &result, buffer, sizeof(buffer), &hp, &error);
 #else
-	hp = gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr), AF_INET,
-			     &result, buffer, sizeof(buffer), &error);
+	hp = gethostbyaddr((char *)&ipaddr, sizeof(struct in_addr), AF_INET);
 #endif
 	if ((hp == NULL) ||
 	    (strlen((char *)hp->h_name) >= buflen)) {

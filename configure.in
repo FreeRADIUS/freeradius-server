@@ -641,6 +641,24 @@ dnl #
   fi
 fi
 
+
+gethostbyaddrrstyle=""
+AC_MSG_CHECKING([gethostbyaddr_r() syntax])
+AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL) ] , [
+	AC_DEFINE(GETHOSTBYADDRRSTYLE, SYSVSTYLE)
+	gethostbyaddrrstyle=SYSV
+])
+AC_TRY_COMPILE([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ], [
+	AC_DEFINE(GETHOSTBYADDRRSTYLE, GNUSTYLE)
+	gethostbyaddrrstyle=GNU
+])
+if test "x$gethostbyaddrrstyle" = "x"; then
+	AC_MSG_RESULT([none!  It must not exist, here.])
+else
+	AC_MSG_RESULT([${gethostbyaddrrstyle}-style])
+fi
+
+
 ODBC_CHECKS
 
 dnl #############################################################
