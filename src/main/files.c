@@ -30,7 +30,15 @@ static const char rcsid[] = "$Id$";
 #include	"modules.h"
 
 CLIENT			*clients;
+#ifndef WITH_NEW_CONFIG
+static
+#endif
 REALM			*realms;
+
+#ifdef WITH_NEW_CONFIG
+extern int read_new_config_files(void);
+#endif
+
 
 
 /*
@@ -414,7 +422,10 @@ char *client_name(UINT4 ipaddr)
 /*
  *	Free a REALM list.
  */
-static void realm_free(REALM *cl)
+#ifndef WITH_NEW_CONFIG
+static
+#endif
+void realm_free(REALM *cl)
 {
 	REALM *next;
 
@@ -425,7 +436,7 @@ static void realm_free(REALM *cl)
 	}
 }
 
-
+#ifndef WITH_NEW_CONFIG
 /*
  *	Read the realms file.
  */
@@ -530,7 +541,8 @@ static int read_realms_file(const char *file)
 
 	return 0;
 }
-#endif
+#endif /* WITH_NEW_CONFIG */
+#endif /* BUILDDBM */
 
 /*
  *	Find a realm in the REALM list.
@@ -565,27 +577,34 @@ int read_config_files()
 		    librad_errstr);
 		return -1;
 	}
+
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_MODULES);
 	if (read_modules_file(buffer) < 0) {
 	        log(L_ERR|L_CONS, "Errors reading modules");
 		return -1;
 	}
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
-	if (read_clients_file(buffer) < 0) {
-	        log(L_ERR|L_CONS, "Errors reading clients");
-		return -1;
-	}
+
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
 	if (read_naslist_file(buffer) < 0) {
 	        log(L_ERR|L_CONS, "Errors reading naslist");
 		return -1;
 	}
+
+#ifndef WITH_NEW_CONFIG
+	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
+	if (read_clients_file(buffer) < 0) {
+	        log(L_ERR|L_CONS, "Errors reading clients");
+		return -1;
+	}
+
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_REALMS);
 	if (read_realms_file(buffer) < 0) {
 	        log(L_ERR|L_CONS, "Errors reading realms");
 		return -1;
 	}
-
+#else
+	read_new_config_files();
+#endif
 	return 0;
 }
 

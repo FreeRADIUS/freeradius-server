@@ -20,12 +20,15 @@
 #include "token.h"
 #include "modules.h"
 
+#ifdef WITH_NEW_CONFIG
+
 #define xalloc malloc
 #define xstrdup strdup
 
 CONF_SECTION	*config;
-REALM			*realms;
-CLIENT			*clients;
+extern CLIENT	*clients;
+extern REALM	*realms;
+extern void realm_free(REALM *cl);
 
 static int generate_realms();
 static int generate_clients();
@@ -143,7 +146,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 				const char *name1, const char *name2)
 {
 	CONF_SECTION	*cs, *csn, *csp, *css;
-	CONF_PAIR	*cp, *cpn;
+	CONF_PAIR	*cpn;
 	char		*ptr;
 	char		buf[1024];
 	char		buf1[256];
@@ -299,28 +302,15 @@ CONF_SECTION *conf_read(const char *conffile)
  * Miquel at http://www.miquels.cistron.nl/radius/
  */
 
-int read_config_files()
+int read_new_config_files(void)
 {
 	char buffer[256];
-
-	/* Initialize the dictionary */
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
-	        log(L_ERR|L_CONS, "Errors reading dictionary: %s",
-		    librad_errstr);
-		return -1;
-	}
 
 	/* Lets go for the new configuration files */
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if (conf_read(buffer) == NULL) {
 		log(L_ERR|L_CONS, "Error reading new-style configuration file");
-		return -1;
-	}
-
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_MODULES);
-	if (read_modules_file(buffer) < 0) {
-	        log(L_ERR|L_CONS, "Errors reading modules");
 		return -1;
 	}
 
@@ -346,41 +336,6 @@ int read_config_files()
 
 	return 0;	
 }
-
-/*
- * Erase the realm linked-list...
- * Usefull when reloading the configuration files
- */
-
-static void realm_free(REALM *cl)
-{
-	REALM *next;
-
-	while(cl) {
-		next = cl->next;
-		free(cl);
-		cl = next;
-	}
-}
-
-/*
- * Find a realm in the realm linked-list
- */
-
-REALM *realm_find(const char *realm)
-{
-	REALM *cl;
-
-	for(cl = realms; cl; cl = cl->next)
-		if (strcmp(cl->realm, realm) == 0)
-			break;
-	if (cl) return cl;
-	for(cl = realms; cl; cl = cl->next)
-		if (strcmp(cl->realm, "DEFAULT") == 0)
-			break;
-	return cl;
-}
-
 
 /* JLN
  * Create the linked list of realms from the new configuration type
@@ -540,36 +495,6 @@ static int generate_clients()
 	return 0;
 }
 
-/*
- *	Find a client in the CLIENTS list.
- */
-CLIENT *client_find(UINT4 ipaddr)
-{
-	CLIENT *cl;
-
-	for(cl = clients; cl; cl = cl->next)
-		if (ipaddr == cl->ipaddr)
-			break;
-
-	return cl;
-}
-
-/*
- *	Find the name of a client (prefer short name).
- */
-char *client_name(UINT4 ipaddr)
-{
-	CLIENT *cl;
-
-	if ((cl = client_find(ipaddr)) != NULL) {
-		if (cl->shortname[0])
-			return cl->shortname;
-		else
-			return cl->longname;
-	}
-	return ip_hostname(ipaddr);
-}
-
 /* 
  * Return a CONF_PAIR within a CONF_SECTION.
  */
@@ -679,3 +604,4 @@ CONF_SECTION *cf_module_config_find(const char *modulename)
 
 	return cs;
 }
+#endif
