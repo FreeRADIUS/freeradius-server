@@ -16,7 +16,8 @@ install:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 common: 
-	@for mod in rlm_eap*; do \
+	# List tls first, other modules depend on it
+	@for mod in rlm_eap_tls rlm_eap*; do \
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
