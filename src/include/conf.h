@@ -31,7 +31,7 @@
     Use at your own risk!
   -- dgreer@austintx.com
 */
-#if ASCEND_PORT_HACK
+#ifdef ASCEND_PORT_HACK
 #  ifndef ASCEND_CHANNELS_PER_LINE
 #    define ASCEND_CHANNELS_PER_LINE        23
 #  endif
