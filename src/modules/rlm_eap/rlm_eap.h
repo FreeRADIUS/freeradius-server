@@ -79,6 +79,10 @@ typedef struct rlm_eap_t {
 	char		*default_eap_type;
 	int		timer_limit;
 	int		default_eap_id;
+
+#if HAVE_PTHREAD_H
+	pthread_mutex_t	mutex;
+#endif
 } rlm_eap_t;
 
 /* function definitions */

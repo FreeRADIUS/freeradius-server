@@ -25,6 +25,7 @@
 #include "rlm_eap.h"
 #include "modules.h"
 
+static const char rcsid[] = "$Id$";
 static CONF_PARSER module_config[] = {
 	{ "default_eap_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_t, default_eap_type), NULL, "md5" },
@@ -56,6 +57,10 @@ static int eap_detach(void *instance)
 		if (inst->types[i]) eaptype_free(inst->types[i]);
 		inst->types[i] = NULL;
 	}
+
+#if HAVE_PTHREAD_H
+	pthread_mutex_destroy(&(inst->mutex));
+#endif
 
 	if (inst->default_eap_type) free(inst->default_eap_type);
 	free(inst);
@@ -144,6 +149,10 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 	/* Generate a state key, specific to eap */
 	generate_key();
+
+#if HAVE_PTHREAD_H
+	pthread_mutex_init(&(inst->mutex), NULL);
+#endif
 	
 	*instance = inst;
 	return 0;
@@ -158,6 +167,9 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	EAP_HANDLER	*handler;
 	eap_packet_t	*eap_packet;
 	int		rcode;
+#if HAVE_PTHREAD_H
+	int		locked = FALSE;
+#endif
 
 	inst = (rlm_eap_t *) instance;
 
@@ -169,10 +181,24 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	}
 
 	/*
+	 *	The EAP internals aren't currently thread-safe,
+	 *	so we need a lock against other threads, before we
+	 *	process them.
+	 */
+#if HAVE_PTHREAD_H
+	pthread_mutex_lock(&(inst->mutex));
+	locked = TRUE;		/* for recursive calls to the module */
+#endif
+
+	/*
 	 *	Create the eap handler 
 	 */
 	handler = eap_handler(inst, &eap_packet, request);
 	if (handler == NULL) {
+#if HAVE_PTHREAD_H
+		if (locked) pthread_mutex_unlock(&(inst->mutex));
+#endif
+		DEBUG2("  rlm_eap: Failed in handler");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -183,6 +209,11 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
 		eap_fail(request, handler->eap_ds);
 		eap_handler_free(&handler);
+
+#if HAVE_PTHREAD_H
+		if (locked) pthread_mutex_unlock(&(inst->mutex));
+#endif
+		DEBUG2("  rlm_eap: No user name");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -194,6 +225,11 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 		eap_fail(request, handler->eap_ds);
 		eap_handler_free(&handler);
+
+#if HAVE_PTHREAD_H
+		if (locked) pthread_mutex_unlock(&(inst->mutex));
+#endif
+		DEBUG2("  rlm_eap: Failed in EAP select");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -232,6 +268,15 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		/* handler is no more required, free it now */
 		eap_handler_free(&handler);
 	}
+
+	/*
+	 *	The next bit doesn't use EAP internals, so we can
+	 *	unlock the mutex, and let other EAP request use
+	 *	this module.
+	 */
+#if HAVE_PTHREAD_H
+	if (locked) pthread_mutex_unlock(&(inst->mutex));
+#endif
 
 	/*
 	 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
@@ -395,7 +440,7 @@ static int eap_post_proxy(void *instance, REQUEST *request)
  */
 module_t rlm_eap = {
 	"eap",
-	RLM_TYPE_THREAD_UNSAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE,		/* type */
 	eap_init,			/* initialization */
 	eap_instantiate,		/* instantiation */
 	{
