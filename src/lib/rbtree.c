@@ -232,7 +232,7 @@ static void InsertFixup(rbtree_t *tree, rbnode_t *X)
 /*
  *	Insert an element into the tree.
  */
-int rbtree_insert(rbtree_t *tree, void *Data)
+int rbtree_insert(rbtree_t *tree, const void *Data)
 {
 	rbnode_t *Current, *Parent, *X;
 
@@ -419,7 +419,7 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 /*
  *	Find an element in the tree, returning the data, not the node.
  */
-rbnode_t *rbtree_find(rbtree_t *tree, void *Data)
+rbnode_t *rbtree_find(rbtree_t *tree, const void *Data)
 {
 	/*******************************
 	 *  find node containing Data  *
@@ -443,7 +443,7 @@ rbnode_t *rbtree_find(rbtree_t *tree, void *Data)
 /*
  *	Find the user data.
  */
-void *rbtree_finddata(rbtree_t *tree, void *Data)
+void *rbtree_finddata(rbtree_t *tree, const void *Data)
 {
 	rbnode_t *X;
 

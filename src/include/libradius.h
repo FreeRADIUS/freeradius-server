@@ -343,10 +343,10 @@ rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
 			       void (*freeNode)(void *),
 			       int replace_flag);
 void		rbtree_free(rbtree_t *tree);
-int		rbtree_insert(rbtree_t *tree, void *Data);
+int		rbtree_insert(rbtree_t *tree, const void *Data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
-rbnode_t       *rbtree_find(rbtree_t *tree, void *Data);
-void	       *rbtree_finddata(rbtree_t *tree, void *Data);
+rbnode_t       *rbtree_find(rbtree_t *tree, const void *Data);
+void	       *rbtree_finddata(rbtree_t *tree, const void *Data);
 int		rbtree_num_elements(rbtree_t *tree);
 void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 
