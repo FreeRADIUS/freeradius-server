@@ -70,8 +70,11 @@ int read_naslist_file(char *file)
 	naslist = NULL;
 
 	if ((fp = fopen(file, "r")) == NULL) {
-		radlog(L_CONS|L_ERR, "cannot open %s", file);
-		return -1;
+		/* The naslist file is no longer required.  All configuration
+		   information comes from radiusd.conf.  If naslist exists it
+		   will be used, but if it doesn't exist it will be silently
+		   ignored. */
+		return 0;
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;

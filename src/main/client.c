@@ -78,8 +78,11 @@ int read_clients_file(const char *file)
 	clients = NULL;
 
 	if ((fp = fopen(file, "r")) == NULL) {
-		radlog(L_CONS|L_ERR, "cannot open %s", file);
-		return -1;
+		/* The clients file is no longer required.  All configuration
+		   information is read from radiusd.conf and friends.  If
+		   clients exists it will be used, but if it doesn't no harm
+		   done. */
+		return 0;
 	}
 
 	while(fgets(buffer, 256, fp) != NULL) {

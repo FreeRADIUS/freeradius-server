@@ -377,12 +377,11 @@ int read_realms_file(const char *file)
 	realms = NULL;
 
 	if ((fp = fopen(file, "r")) == NULL) {
-#if 1 /* For now - realms file is not obligatory */
+		/* The realms file is not mandatory.  If it exists it will
+		   be used, however, since the new style config files are
+		   more robust and flexible they are more likely to get used.
+		   So this is a non-fatal error.  */
 		return 0;
-#else
-		radlog(L_CONS|L_ERR, "cannot open %s", file);
-		return -1;
-#endif
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
