@@ -54,7 +54,6 @@ int rad_accounting(REQUEST *request)
 		 */
 		rp = build_reply(PW_ACCOUNTING_RESPONSE, request, NULL, NULL);
 		rad_send(rp, request->secret);
-		rad_free(rp);
 		reply = RLM_ACCT_OK;
 	}
 

@@ -82,6 +82,9 @@ void request_free(REQUEST *request)
 		rad_free(request->packet);
 	if (request->proxy)
 		rad_free(request->proxy);
+	if (request->reply) {
+		rad_free(request->reply);
+	}
 	free(request);
 }
 
@@ -118,6 +121,14 @@ RADIUS_PACKET *build_reply(int code, REQUEST *request,
 		vp->length = strlen(user_msg);
 		pairadd(&(rp->vps), vp);
 	}
+
+	/*
+	 *	Get rid of the old reply (if it exists)
+	 */
+	if (request->reply) {
+		rad_free(request->reply);
+	}
+	request->reply = rp;
 
 	return rp;
 }

@@ -435,7 +435,6 @@ int rad_authenticate(REQUEST *request)
 		rp = build_reply(PW_AUTHENTICATION_REJECT,
 				 request, NULL, NULL);
 		rad_send(rp, request->secret);
-		rad_free(rp);
 		request->finished = TRUE;
 		return RLM_AUTZ_NOTFOUND;
 	}
@@ -471,7 +470,6 @@ int rad_authenticate(REQUEST *request)
 			rp = build_reply(PW_AUTHENTICATION_REJECT,
 					request, NULL, NULL);
 			rad_send(rp, request->secret);
-			rad_free(rp);
 		}
 		pairfree(user_reply);
 		request->finished = TRUE;
@@ -513,7 +511,6 @@ int rad_authenticate(REQUEST *request)
 		rp = build_reply(PW_AUTHENTICATION_REJECT, request,
 			NULL, user_msg);
 		rad_send(rp, request->secret);
-		rad_free(rp);
 		if (log_auth) {
 			u_char clean_buffer[1024];
 			u_char *p;
@@ -560,7 +557,6 @@ int rad_authenticate(REQUEST *request)
 			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
 				NULL, user_msg);
 			rad_send(rp, request->secret);
-			rad_free(rp);
 		log(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
 				namepair->strvalue,
 				auth_name(request, 1),
@@ -593,7 +589,6 @@ int rad_authenticate(REQUEST *request)
 			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
 				NULL, user_msg);
 			rad_send(rp, request->secret);
-			rad_free(rp);
 			log(L_ERR, "Outside allowed timespan: [%s]"
 				   " (%s) time allowed: %s",
 					namepair->strvalue,
@@ -681,7 +676,6 @@ int rad_authenticate(REQUEST *request)
 			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
 				NULL, user_msg);
 			rad_send(rp, request->secret);
-			rad_free(rp);
 			if (log_auth) {
 				log(L_AUTH,
 					"Login incorrect: [%s] (%s) "
@@ -736,7 +730,6 @@ int rad_authenticate(REQUEST *request)
 
 	rp = build_reply(PW_AUTHENTICATION_ACK, request, user_reply, user_msg);
 	rad_send(rp, request->secret);
-	rad_free(rp);
 
 	if (log_auth) {
 		log(L_AUTH,

@@ -77,7 +77,8 @@ static void	sig_fatal (int);
 static void	sig_hup (int);
 
 static int	radrespond (REQUEST *);
-static void	rad_spawn_child (REQUEST *, FUNP);
+static int	rad_check_list(REQUEST *);
+static void	rad_spawn_child(REQUEST *, FUNP);
 
 /*
  *	Read config files.
@@ -445,6 +446,8 @@ int main(int argc, char **argv)
 			}
 			memset(request, 0, sizeof(REQUEST));
 			request->packet = packet;
+			request->proxy = NULL;
+			request->reply = NULL;
 			request->timestamp = time(NULL);
 			strcpy(request->secret, cl->secret);
 			radrespond(request);
@@ -539,14 +542,24 @@ int radrespond(REQUEST *request)
 
 	/*
 	 *	If we did select a function, execute it
-	 *	(perhaps through rad_spawn_child)
 	 */
 	if (fun) {
-		if (dospawn)
-			rad_spawn_child(request, fun);
-		else {
-			(*fun)(request);
+		/*
+		 *	Check for a duplicate, or error.
+		 *	Throw away the the request if so.
+		 */
+		if (rad_check_list(request) < 0) {
 			request_free(request);
+			request_list_busy = 0;
+			return 0;
+		}
+
+		if (dospawn) {
+			rad_spawn_child(request, fun);
+			request_list_busy = 0; /* AFTER spawning the child */
+		} else {
+			request_list_busy = 0; /* BEFORE doing the request */
+			(*fun)(request);
 		}
 	}
 
@@ -561,7 +574,7 @@ int radrespond(REQUEST *request)
  *	is only one process responding to each request (duplicate
  *	requests are filtered out).
  */
-static void rad_spawn_child(REQUEST *request, FUNP fun)
+static int rad_check_list(REQUEST *request)
 {
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
@@ -605,6 +618,19 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 			 *	if it really is the same request.
 			 */
 			if (!memcmp(curreq->packet->vector, pkt->vector, 16)) {
+			  if (curreq->reply) {
+				/*
+				 * This is a duplicate request
+				 * Send a duplicate reply.
+				 * we might not want to log this...
+				 */
+				log(L_INFO,
+				"Sending duplicate authentication reply"
+				" to client %s - ID: %d",
+				client_name(request->packet->src_ipaddr),
+				request->packet->id);
+			    rad_send(curreq->reply, curreq->secret);
+			  } else {
 				/*
 				 * This is a duplicate request - just drop it
 				 */
@@ -613,12 +639,10 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 				" from client %s - ID: %d",
 				client_name(request->packet->src_ipaddr),
 				request->packet->id);
+			  }
 
-				request_free(request);
-				request_list_busy = 0;
-				sig_cleanup(SIGCHLD);
-
-				return;
+			  sig_cleanup(SIGCHLD);
+			  return -1;
 			}
 			/*
 			 *	If the old request was completed,
@@ -663,12 +687,8 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 				"from client %s - ID: %d",
 				client_name(request->packet->src_ipaddr),
 				request->packet->id);
-		request_free(request);
-
-		request_list_busy = 0;
 		sig_cleanup(SIGCHLD);
-				
-		return;
+		return -1;
 	}
 
 	/*
@@ -682,6 +702,13 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 		first_request = request;
 	else
 		prevreq->next = request;
+
+	return 0;
+}
+
+static void rad_spawn_child(REQUEST *request, FUNP fun)
+{
+	int		child_pid;
 
 	/*
 	 *	fork our child
@@ -706,10 +733,8 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 	 */
 	request->child_pid = child_pid;
 
-	request_list_busy = 0;
 	sig_cleanup(SIGCHLD);
 }
-
 
 /*ARGSUSED*/
 void sig_cleanup(int sig)
