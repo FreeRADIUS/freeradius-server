@@ -1,7 +1,0 @@
-Pre-Proxy-Type is used to select between groupings of
-modules in the pre-proxy stanza using arbitrary attributes.
-It is functionally identical to Acct-Type, apart from
-the name of the attribute. This means that (unlike
-Autz-Type) the attribute must be set before the stanza
-is run. Changes to Pre-Proxy-Type during pre-proxy will
-have no effect.
