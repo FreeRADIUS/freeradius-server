@@ -21,7 +21,6 @@ rlm_preprocess
 rlm_radutmp
 rlm_realm
 rlm_sql
-rlm_sql_freetds
 rlm_sql_iodbc
 rlm_sql_mysql
 rlm_sql_postgresql
