@@ -272,7 +272,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	vp_printlist(stderr, check_tmp);
 	if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
 		radlog(L_INFO, "rlm_sql: Pairs do not match [%s]", sqlusername);
-		return RLM_MODULE_FAIL;
+		return RLM_MODULE_NOTFOUND;
 	}
 #endif
 
