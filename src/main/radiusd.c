@@ -110,6 +110,7 @@ int proxy_retry_delay = RETRY_DELAY;
 int proxy_retry_count = RETRY_COUNT;
 int proxy_dead_time = DEAD_TIME;
 int proxy_synchronous = FALSE;
+int proxy_fallback = FALSE;
 int need_reload = FALSE;
 struct main_config_t mainconfig;
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
@@ -166,6 +167,7 @@ static CONF_PARSER proxy_config[] = {
 	{ "retry_delay",  PW_TYPE_INTEGER, 0, &proxy_retry_delay, Stringify(RETRY_DELAY) },
 	{ "retry_count",  PW_TYPE_INTEGER, 0, &proxy_retry_count, Stringify(RETRY_COUNT) },
 	{ "synchronous",  PW_TYPE_BOOLEAN, 0, &proxy_synchronous, "no" },
+	{ "default_fallback", PW_TYPE_BOOLEAN, 0, &proxy_fallback, "no" },
 	{ "dead_time",    PW_TYPE_INTEGER, 0, &proxy_dead_time, Stringify(DEAD_TIME) },
 	{ NULL, -1, 0, NULL, NULL }
 };

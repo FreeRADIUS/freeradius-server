@@ -75,6 +75,7 @@ radlog_dest_t radlog_dest = RADLOG_FILES;
 const char *radutmp_file = NULL;
 
 int proxy_synchronous = TRUE;
+int proxy_fallback = FALSE;
 const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlib_dir = NULL;

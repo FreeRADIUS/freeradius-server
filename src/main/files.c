@@ -521,6 +521,7 @@ REALM *realm_find(const char *realm)
 	REALM *cl;
 	REALM *default_realm = NULL;
 	time_t now;
+	int dead_match = 0;
 
 	now = time(NULL);
 
@@ -544,6 +545,17 @@ REALM *realm_find(const char *realm)
 		 *	It's not alive, skip it.
 		 */
 		if (!cl->active) {
+
+			/*
+			 *	We've been asked to NOT fall through
+			 *	to the DEFAULT realm if there are
+			 *	exact matches for this realm which are
+			 *	dead.
+			 */
+			if ((!proxy_fallback) &&
+			    (strcmp(cl->realm, realm) == 0)) {
+				dead_match = 1;
+			}
 			continue;
 		}
 
@@ -564,8 +576,21 @@ REALM *realm_find(const char *realm)
 	} /* loop over all realms */
 
 	/*
-	 *	Didn't find anything that matched exactly, return
-	 *	the default.
+	 *	There WAS one or more matches which were marked dead,
+	 *	AND there were NO live matches, AND we've been asked
+	 *	to NOT fall through to the DEFAULT realm.  Therefore,
+	 *	we return NULL, which means "no match found".
+	 */
+	if (!proxy_fallback && dead_match) {
+		return NULL;
+	}
+
+	/*
+	 *	Didn't find anything that matched exactly, return the
+	 *	DEFAULT realm.  We also return the DEFAULT realm if
+	 *	all matching realms were marked dead, and we were
+	 *	asked to fall through to the DEFAULT realm in this
+	 *	case.
 	 */
 	return default_realm;
 }

@@ -191,6 +191,7 @@ extern int		proxy_port;
 extern int		proxyfd;
 extern int		proxy_retry_count;
 extern int		proxy_retry_delay;
+extern int		proxy_fallback;
 extern int		spawn_flag;
 extern const char      *radiusd_version;
 

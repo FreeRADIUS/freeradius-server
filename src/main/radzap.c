@@ -50,6 +50,7 @@ const char *radacct_dir = NULL;
 const char *radlib_dir = NULL;
 int debug_flag = 0;
 int proxy_synchronous = TRUE;
+int proxy_fallback = FALSE;
 int auth_port = 0;
 int acct_port;
 int proxy_retry_delay = RETRY_DELAY;
