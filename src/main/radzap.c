@@ -56,9 +56,10 @@ int proxy_retry_delay = RETRY_DELAY;
 int proxy_retry_count = RETRY_COUNT;
 int proxy_dead_time;
 int log_stripped_names;
-uint32_t myip = INADDR_ANY;
 radlog_dest_t radlog_dest = RADLOG_FILES;
 struct main_config_t mainconfig;
+uint32_t radiusip = INADDR_NONE;
+static void usage(void);
 
 /*
  *      A mapping of configuration file names to internal variables
@@ -136,6 +137,23 @@ static int do_accton_packet(uint32_t nasaddr);
 static int do_stop_packet(const struct radutmp *u);
 
 /*
+ *  Display the syntax for starting this program.
+ */
+static void usage(void)
+{
+        fprintf(stderr,
+                        "Usage: %s [-p acct_port] [-r servername|serverip] termserver [port] [user]\n", progname);
+        fprintf(stderr, "Options:\n\n");
+        fprintf(stderr, "  -p acct_port    Accounting port on radius server\n");
+        fprintf(stderr, "  -r radserver    Radius server name or IP address\n");
+        fprintf(stderr, "  termserver      Terminal Server (NAS) name or IP address to match, can be '' for any\n");
+        fprintf(stderr, "  [port]          Terminal Server port to match\n");
+        fprintf(stderr, "  [user]          Login account to match\n");
+        exit(1);
+}                
+
+
+/*
  *	Zap a user from the radutmp and radwtmp file.
  */
 int main(int argc, char **argv)
@@ -148,25 +166,60 @@ int main(int argc, char **argv)
 	char *s;
 	char buf[256];
 	struct radutmp u;
+	int argval;
 
 	progname = argv[0];
-	--argc, ++argv;
-	if (argc > 1 && !strcmp(argv[0], "-p")) {
-		acct_port = atoi(argv[1]);
-		argc -= 2, argv+=2;
+
+        /*  Process the options.  */
+        while ((argval = getopt(argc, argv, "p:r:")) != EOF) {
+                                
+                switch(argval) {
+                        
+                        case 'p':
+				acct_port = atoi(optarg);
+                                break;
+                                 
+                        case 'r':
+                                if ((radiusip = ip_getaddr(optarg)) == INADDR_NONE) {
+                                        fprintf(stderr, "%s: %s: radius server unknown\n",
+                                                progname, optarg);
+                                        exit(1);
+				}
+                                break;
+                               
+                        default:
+                                usage();
+                                exit(1);
+                }
+        }
+
+
+	if (argc == optind) {	/* no terminal server specified */
+		usage();
+                exit(1);
 	}
-	if (argc < 1 || argc > 3 || argv[0][0] == '-') {
-		fprintf(stderr, "Usage: radzap termserver [port] [user]\n");
-		fprintf(stderr, "       radzap is only an admin tool to clean the radutmp file!\n");
-		exit(1);
-	}
-	if (argc > 1) {
-		s = argv[1];
+
+	if (argc > optind + 1) {	/* NAS port given */
+		s = argv[optind+1];
 		if (*s == 's' || *s == 'S') s++;
 		nas_port = strtoul(s, NULL, 10);
 	}
-	if (argc > 2) 
-		user = argv[2];
+
+	if (argc > optind + 2) {	/* username (login) given */
+		user = argv[optind+2];
+	}
+
+	/*
+	 *	Find the IP address of the terminal server.
+	 */
+	if ((nas = nas_findbyname(argv[optind])) == NULL && argv[optind][0] != 0) {
+		if ((ip = ip_getaddr(argv[optind])) == INADDR_NONE) {
+			fprintf(stderr, "%s: host not found.\n", argv[optind]);
+			exit(1);
+		}
+	}
+	if (nas != NULL) 
+		ip = nas->ipaddr;
 
 	radius_dir = strdup(RADIUS_DIR);
 
@@ -183,18 +236,6 @@ int main(int argc, char **argv)
 	}
 	cf_section_parse(cs, NULL, server_config);
 
-
-	/*
-	 *	Find the IP address of the terminal server.
-	 */
-	if ((nas = nas_findbyname(argv[0])) == NULL && argv[0][0] != 0) {
-		if ((ip = ip_getaddr(argv[0])) == INADDR_NONE) {
-			fprintf(stderr, "%s: host not found.\n", argv[0]);
-			exit(1);
-		}
-	}
-	if (nas != NULL) 
-		ip = nas->ipaddr;
 
 	printf("%s: zapping termserver %s, port %u",
 		progname, ip_hostname(buf, sizeof(buf), ip), nas_port);
@@ -281,7 +322,12 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 		req->dst_port = getport("radacct");
 	if(req->dst_port == 0) 
 		req->dst_port = PW_ACCT_UDP_PORT;
-	req->dst_ipaddr = ip_getaddr("localhost");
+	if (radiusip == INADDR_NONE) {
+		req->dst_ipaddr = ip_getaddr("localhost");
+	}
+	else {
+		req->dst_ipaddr = radiusip;
+	}
 	if(!req->dst_ipaddr) 
 		req->dst_ipaddr = 0x7f000001;
 	req->vps = NULL;
