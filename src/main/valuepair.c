@@ -22,6 +22,10 @@ char valuepair2_sccsid[] =
 #  include	<malloc.h>
 #endif
 
+#ifdef HAVE_REGEX_H
+#  include	<regex.h>
+#endif
+
 #include	"radiusd.h"
 
 struct cmp {
@@ -162,6 +166,9 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 	int		result = 0;
 	int		compare;
 	int		other;
+#ifdef HAVE_REGEX_H
+	regex_t		reg;
+#endif
 
 	while (result == 0 && check_item != NULL) {
 		switch (check_item->attribute) {
@@ -230,6 +237,25 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 		  case T_OP_GE:
 		    if (compare < 0) return -1;
 		    break;
+
+#ifdef HAVE_REGEX_H
+		  case T_OP_REG_EQ:
+		    regcomp(&reg, check_item->strvalue, 0);
+		    compare = regexec(&reg, auth_item->strvalue,
+				      0, NULL, 0);
+		    regfree(&reg);
+		    if (compare != 0) return -1;
+		    break;
+
+		  case T_OP_REG_NE:
+		    regcomp(&reg, check_item->strvalue, 0);
+		    compare = regexec(&reg, auth_item->strvalue,
+				      0, NULL, 0);
+		    regfree(&reg);
+		    if (compare == 0) return -1;
+		    break;
+#endif
+
 		  }
 
 		if (result == 0)

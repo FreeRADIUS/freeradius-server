@@ -2,7 +2,7 @@
  * token.c	Read the next token from a string.
  *		Yes it's pretty primitive but effective.
  *
- * Version:	@(#)token.c  1.00  19-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
@@ -12,12 +12,16 @@
 #include <ctype.h>
 #include "token.h"
 
+static const char rcsid[] = "$Id";
+
 typedef struct {
 	char *str;
 	int token;
 } TOKEN;
 
 static TOKEN tokens[] = {
+	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
+	{ "!~", T_OP_REG_NE,	},
 	{ "{",	T_LCBRACE,	},
 	{ "}",	T_RCBRACE,	},
 	{ "(",	T_LBRACE,	},

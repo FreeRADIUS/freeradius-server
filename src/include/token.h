@@ -22,7 +22,9 @@
 #define T_OP_GT		13
 #define T_OP_LE		14
 #define T_OP_LT		15
-#define T_EQEND		15
+#define T_OP_REG_EQ    	16
+#define T_OP_REG_NE    	17
+#define T_EQEND		18
 
 int	getword (char **ptr, char *buf, int buflen);
 int	gettoken(char **ptr, char *buf, int buflen);
