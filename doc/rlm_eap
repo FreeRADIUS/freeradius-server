@@ -83,23 +83,14 @@ EAP CODE ORGANIZATION
   To add a new EAP-Type then a new directory should be created as 
   rlm_eap/types/rlm_eap_XXXX, where XXXX is EAP-Type name 
   ie for EAP-Type like ONE TIME PASSWORD (OTP) it would be rlm_eap_otp 
-  and for LEAP it would be rlm_eap_leap.
 
   src/modules/rlm_eap -- contains the basic EAP and generalized interfaces 
     to all the EAP-Types.
   rlm_eap/types -- contains all the supported EAP-Types
-  rlm_eap/types/rlm_eap_md5 -- EAP-MD5 authentication.
-  rlm_eap/types/rlm_eap_tls -- EAP-TLS based authentication.
-
+  rlm_eap/types/rlm_eap_md5  -- EAP-MD5 authentication.
+  rlm_eap/types/rlm_eap_tls  -- EAP-TLS based authentication.
+  rlm_eap/types/rlm_eap_leap -- Cisco LEAP authentication.
    
-    The LEAP protocol is not supported.  It is a Cisco proprietary
-    protocol, and no one has (as yet) submitted patches to enable
-    rlm_eap to work with LEAP.
-
-    For details on the LEAP protocol, see:
-
-	http://www.missl.cs.umd.edu/wireless/ethereal/leap.txt
-
 CONFIGURATION
 
   Add the eap configuration stanza to the modules section in radiusd.conf
@@ -109,6 +100,8 @@ CONFIGURATION
 	modules {
 		...
 		eap {
+			default_eap_type = md5
+
 			md5 {
 			}
 		    ...
@@ -116,7 +109,7 @@ CONFIGURATION
 		...
 	}
 
-  NOTE: You cannot have empty eap stanza. Atleast one EAP-Type sub-stanza  
+  NOTE: You cannot have empty eap stanza. At least one EAP-Type sub-stanza  
   should be defined as above, otherwise the server will not know what type
   of eap authentication mechanism to be used and the server will exit 
   with error.
@@ -125,9 +118,14 @@ CONFIGURATION
   EAP-Type are documented in the sample radiusd.conf that is provided 
   with the distribution.
 
+  Since the EAP requests may not contain a requested EAP type, the
+  'default_eap_type' configuration options is used by the EAP module
+  to determine which EAP type to choose for authentication.
+
   NOTE: EAP cannot authorize a user. It can only authenticate.
   Other Freeradius modules authorize the user and lets EAP to authenticate.
-  
+
+  NOTE: There can only be one instance of the EAP module.
 
 EAP CLIENTS
 
@@ -170,6 +168,12 @@ HOW DO I USE IT (FAQ/Examples)
 
 	# eap authentication takes place.
 	authenticate {
+		eap
+	}
+
+	# If you are proxying EAP-LEAP requests
+	# This is required to make LEAP work.
+        post-proxy {
 		eap
 	}
   
@@ -278,8 +282,9 @@ HOW DO I USE IT (FAQ/Examples)
 
 
 INSTALLATION
-  EAP and EAP-MD5 doesnot require any additional packages.
+  EAP, EAP-MD5, and Cisco LEAP do not require any additional packages.
   Freeradius contains all the required packages.
+
   For EAP-TLS, OPENSSL, <http://www.openssl.org/>, is required to be installed.
   Any version from 0.9.7, should fairly work with this module.
 
