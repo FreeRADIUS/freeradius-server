@@ -241,3 +241,18 @@ REQUEST *rl_next(REQUEST *request)
 	 */
 	return NULL;
 }
+
+/*
+ *	Return the number of requests in the request list.
+ */
+int rl_num_requests(void)
+{
+	int id;
+	int request_count = 0;
+
+	for (id = 0; id < 256; id++) {
+		request_count += request_list[id].request_count;
+	}
+	
+	return request_count;
+}

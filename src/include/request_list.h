@@ -30,6 +30,7 @@ extern void rl_add(REQUEST *request);
 extern REQUEST *rl_find(REQUEST *request);
 extern REQUEST *rl_find_proxy(REQUEST *request);
 extern REQUEST *rl_next(REQUEST *request);
+extern int rl_num_requests(void);
 
 #define RL_WALK_CONTINUE (0)
 #define RL_WALK_STOP     (-1)
