@@ -56,6 +56,11 @@ if test x$with_[]modname != xno; then
  	    fail="$fail libssl"
     fi
 
+AC_CHECK_HEADERS( \
+	openssl/err.h \
+	openssl/engine.h
+	)
+
 	targetname=modname
 else
 	targetname=

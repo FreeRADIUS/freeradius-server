@@ -46,8 +46,13 @@
 #include <unistd.h>
 #endif
 
+#include "config.h"
+
 #ifndef NO_OPENSSL
 #include <openssl/err.h>
+#if HAVE_OPENSSL_ENGINE_H
+#include <openssl/engine.h>
+#endif
 #include <openssl/ssl.h>
 #endif /* !defined(NO_OPENSSL) */
 
