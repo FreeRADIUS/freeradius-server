@@ -522,6 +522,7 @@ if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
   CFLAGS="$CFLAGS $devflags"
 else
   devflags="none"
+  CFLAGS="$CFLAGS -DNDEBUG"
 fi
 AC_MSG_RESULT($devflags)
 
