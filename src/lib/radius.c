@@ -174,30 +174,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		    switch(reply->type) {
 		      
 		    case PW_TYPE_STRING:
-		      /*
-		       *	If it's a password, encode it.
-		       */
-		      if (!vendorpec) {
-			if (reply->attribute == PW_PASSWORD) {
-			  rad_pwencode((char *)reply->strvalue,
-				       &(reply->length),
-				       secret, (char *)packet->vector);
-
-			  /*
-			   *	If there's a CHAP password, assume it's
-			   *    currently in clear text, and encode it
-			   *    in place.
-			   *
-			   *	The ID is taken from pseudo-random
-			   *	numbers somehow...
-			   */
-			} else if (reply->attribute == PW_CHAP_PASSWORD) {
-			  rad_chap_encode(packet, (char *)reply->strvalue,
-					  packet->id, reply);
-			  reply->length = 1 + CHAP_VALUE_LENGTH;
-			} 
-		      }
-		      
 #ifndef ASCEND_BINARY
 		    case PW_TYPE_ABINARY:
 #endif
