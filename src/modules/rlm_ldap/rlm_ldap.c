@@ -155,7 +155,8 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->bound = 0;
 	inst->reply_item_map = NULL;
 	inst->check_item_map = NULL;
-	
+	inst->ld = NULL;
+
 	if (read_mappings(inst) != 0) {
 		radlog(L_ERR, "rlm_ldap: Reading dictionary mappings from file %s failed",
 		       inst->dictionary_mapping);
