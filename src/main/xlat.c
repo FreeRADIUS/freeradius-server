@@ -575,9 +575,21 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		
 	} else {      /* module name, followed by per-module string */
 		int stop = 0;
+		int delimitbrace = *open;
 
 		rad_assert(*p == ':');
 		p++;			/* skip the ':' */
+
+		/*
+		 *  If there's a brace immediately following the colon,
+		 *  then we've chosen to delimite the per-module string,
+		 *  so keep track of that.
+		 */
+		if (*p == '{') {
+			delimitbrace = openbraces;
+			openbraces++;
+			p++;
+		}
 		
 		xlat_string = rad_malloc(strlen(p) + 1); /* always returns */
 		pa = xlat_string;
@@ -609,7 +621,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 
 			case '}':
 				openbraces--;
-				if (openbraces == *open) {
+				if (openbraces == delimitbrace) {
 					p++;
 					stop=1;
 				} else {
@@ -624,6 +636,16 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		}
 
 		*pa = '\0';
+
+		/*
+		 *	Now check to see if we're at the end of the string
+		 *	we were sent.  If we're not, check for :-
+		 */
+		if (openbraces != *open) {
+			if (p[0] == ':' && p[1] == '-') {
+				p += 2;
+			}
+		}
 		
 		/*
 		 *	Look up almost everything in the new tree of xlat
