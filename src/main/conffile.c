@@ -244,7 +244,6 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		 */
 		if ((*ptr == '$') && (ptr[1] == '{')) {
 			int up;
-			char *q;
 			CONF_PAIR *cp;
 			CONF_SECTION *cs;
 
@@ -285,6 +284,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 				}
 
 			} else {
+				const char *q;
 				/*
 				 *	${foo} is local, with
 				 *	main as lower priority
@@ -305,6 +305,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			}
 
 			while (cp == NULL) {
+				char *q;
 				/*
 				 *	Find the next section.
 				 */
