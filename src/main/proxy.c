@@ -420,9 +420,9 @@ int proxy_send(REQUEST *request)
 
 	/*
 	 *	Add the request to the list of outstanding requests.
-	 *	Note that request->proxy->id is a 16 bits value,
-	 *	while rad_send sends only the 8 least significant
-	 *	bits of that same value.
+	 *	Note that request->proxy->id is a 16 bits value, while
+	 *	the RADIUS id has only the 8 least significant bits of
+	 *	that same value.
 	 */
 	request->proxy->id = (proxy_id++) & 0xff;
 	proxy_id &= 0xffff;
@@ -466,7 +466,16 @@ int proxy_send(REQUEST *request)
 	    (rcode == RLM_MODULE_NOOP) ||
 	    (rcode == RLM_MODULE_UPDATED)) {
 		request->options |= RAD_REQUEST_OPTION_PROXIED;
-		rad_send(request->proxy, NULL, (char *)request->proxysecret);
+
+		/*
+		 *	IF it's a fake request, don't send the proxy
+		 *	packet.  The outer tunnel session will take
+		 *	care of doing that.
+		 */
+		if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0) {
+			rad_send(request->proxy, NULL,
+				 (char *)request->proxysecret);
+		}
 		rcode = RLM_MODULE_HANDLED; /* caller doesn't reply */
 	} else {
 		rcode = RLM_MODULE_FAIL; /* caller doesn't reply */

@@ -248,7 +248,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 				  rad_listen_t *listener)
 {
 	REQUEST		*curreq;
-	RAD_REQUEST_FUNP fun;
+	RAD_REQUEST_FUNP fun = NULL;
 
 	/*
 	 *	Some sanity checks, based on the packet code.
@@ -405,6 +405,15 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 
 		return fun;
 	}
+
+	/*
+	 *	"fake" requests MUST NEVER be in the request list.
+	 *
+	 *	They're used internally in the server.  Any reply
+	 *	is a reply to the local server, and any proxied packet
+	 *	gets sent outside of the tunnel.
+	 */
+	rad_assert((curreq->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0);
 
 	/*
 	 *	The current request isn't finished, which
@@ -1803,8 +1812,17 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 */
 		if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
 		    (mainconfig.reject_delay == 0)) {
-			rad_send(request->reply, request->packet,
-				 request->secret);
+			/*
+			 *	Send the response. IF it's a real request.
+			 */
+			if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0) {
+				rad_send(request->reply, request->packet,
+					 request->secret);
+			}
+			/*
+			 *	Otherwise, it's a tunneled request.
+			 *	Don't do anything.
+			 */
 		} else {
 			DEBUG2("Delaying request %d for %d seconds",
 			       request->number, mainconfig.reject_delay);
@@ -1997,6 +2015,8 @@ static void sig_hup(int sig)
 {
 	sig = sig; /* -Wunused */
 	reset_signal(SIGHUP, sig_hup);
+
+	exit(0);
 
 	/*
 	 *  Only do the reload if we're the main server, both

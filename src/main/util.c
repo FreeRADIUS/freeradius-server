@@ -519,9 +519,12 @@ void rfc_clean(RADIUS_PACKET *packet)
 	}
 
 	/*
-	 *  If a reply exists, send it.
+	 *	If a reply exists, send it.
+	 *
+	 *	But DON'T send a RADIUS packet for a fake request.
 	 */
-	if (request->reply->code != 0) {
+	if ((request->reply->code != 0) &&
+	    ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0)) {
 		/*
 		 *	If we're not delaying authentication rejects,
 		 *	then send the response immediately.  Otherwise,
@@ -530,7 +533,7 @@ void rfc_clean(RADIUS_PACKET *packet)
 		 */
 		if (mainconfig.reject_delay == 0) {
 			rad_send(request->reply, request->packet,
-				 request->secret);
+				     request->secret);
 		} else {
 			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
 		}

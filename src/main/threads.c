@@ -312,8 +312,8 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 
 	/*
 	 *	If the request is currently being processed, then that
-	 *	MAY be OK, if it's a proxy reply.  In that case, the
-	 *	rad_send() of the packet may result in a reply being
+	 *	MAY be OK, if it's a proxy reply.  In that case,
+	 *	sending the packet may result in a reply being
 	 *	received before that thread clears the child_pid.
 	 *
 	 *	In that case, we busy-wait for the request to be free.
