@@ -22,7 +22,6 @@
  */
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,8 +32,6 @@
 #include "conffile.h"
 
 #include <gdbm.h>
-
-#include "missing.h"
 
 static const char rcsid[] = "$Id$";
 
@@ -220,7 +217,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 
 
 	data->gdbm = gdbm_open(data->filename, sizeof(int),
-				   GDBM_WRCREAT | GDBM_SYNC, 0600, NULL);
+				   GDBM_WRCREAT, 0600, NULL);
 	if (data->gdbm == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 		       data->filename, strerror(errno));
@@ -266,7 +263,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 		 *	Open a completely new database.
 		 */
 		data->gdbm = gdbm_open(data->filename, sizeof(int),
-				       GDBM_NEWDB | GDBM_SYNC, 0600, NULL);
+				       GDBM_NEWDB, 0600, NULL);
 		if (data->gdbm == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 			       data->filename, strerror(errno));
