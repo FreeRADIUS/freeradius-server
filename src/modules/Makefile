@@ -9,13 +9,10 @@ include ../../Make.inc
 WHAT_TO_MAKE	= all
 
 #
-#  Build static libraries by default.  If 'DYNAMIC_MODULES' is defined
-#  to be something, then build dynamic libraries, too.
+#  Build static AND dynamic libraries by default.
+#  Later, we'll figure out how to get libtool to automagically do this.
 #
-TARGET_LIBS = static
-ifneq ($(DYNAMIC_MODULES),)
-TARGET_LIBS += dynamic
-endif
+TARGET_LIBS = static dynamic
 
 all:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
