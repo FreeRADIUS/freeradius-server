@@ -196,7 +196,7 @@ if ($link){
 			$remaining = $tmp;
 		$log_color = ($remaining) ? 'green' : 'red';
 	}
-	if ($config[counter_monthly_calculate_usage] == 'true'){
+	if ($monthly_limit != 'none' || $config[counter_monthly_calculate_usage] == 'true'){
 		$monthly_used = time2str($monthly_used);
 		if ($monthly_limit != 'none' && !$tmp)
 			$monthly_used = "<font color=red>$monthly_used</font>";
