@@ -758,6 +758,17 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				us = vp->strvalue;
 				vp->length = 0;
 
+
+				/*
+				 *	There is only one character,
+				 *	die.
+				 */
+				if ((strlen(cp) & 0x01) != 0) {
+					librad_log("Hex string is not an even length string.");
+					return NULL;
+				}
+				
+				
 				while (*cp && vp->length < MAX_STRING_LEN) {
 					unsigned int tmp;
 
