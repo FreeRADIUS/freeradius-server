@@ -1,4 +1,3 @@
-
 ( The FreeRADIUS web site is at <URL: http://www.freeradius.org/>, and
 most information referenced in this document can be found there.
 
@@ -10,11 +9,11 @@ how to code, then this is the place for you!
 
 = So you think you've found a bug in the FreeRADIUS server
 
-You should first discuss it on the users list, to see if anyone can repro-
-duce it.  Often there's a simple explanation of why the server behaves as
-it does, and it's not necessarily a bug in the code, so browse the lists'
-archives of the last two months, and if you don't see messages about it,
-ask!
+You should first discuss it on the users list, to see if anyone can
+reproduce it.  Often there's a simple explanation of why the server
+behaves as it does, and it's not necessarily a bug in the code, so
+browse the lists' archives of the last two months, and if you don't
+see messages about it, ask!
 
 If the behavior is correct but confusing, we think that's a bug too, and
 you should file a bug against our documentation.
@@ -47,7 +46,15 @@ program you were running, and the name of the operating system.
 Without this information, it's impossible for anyone to know why the
 program core dumped.
 
+
+  You can also submit the information to the bug database at:
+
+	http://bugs.freeradius.org/
+
+  Submitting it to the bug database ensures that the bug report won't
+get forgotten, and that someone will eventually respond to it.
+
 --
 
-FreeRADIUS Project, copyright 2001
+FreeRADIUS Project, copyright 2004
 $Id$
