@@ -1,0 +1,12 @@
+
+About FreeTDS
+
+ FreeTDS is an open source (or free software if you prefer) programming library,
+ a re-implementation of the Tabular Data Stream protocol. It allows programs
+ on many different operating systems to communicate with Sybase and 
+ Microsoft SQL Servers. 
+
+FreeTDS home page - http://www.freetds.org/
+
+Dmitri Ageev,
+d_ageev@ortcc.ru
