@@ -559,7 +559,7 @@ void loop(struct relay_misc *r_args)
 	struct relay_stats stats;
 	fd_set readfds;
 	char work[1030];
-	time_t now, last_rename = 0;
+	time_t now, uptime, last_rename = 0;
 	int i, n;
 	int state = STATE_RUN;
 	int id;
@@ -674,14 +674,15 @@ void loop(struct relay_misc *r_args)
 				stats.records_read++;
 				if (stats.last_print_records - stats.records_read >= r_args->records_print){
 					now = time(NULL);
+					uptime = (stats.startup == now) ? 1 : now - stats.startup;
 					fprintf(stderr, "%s: Running and Processing Records.\n",progname);
-					fprintf(stderr, "Seconds since startup: %d\n",now - stats.startup);
+					fprintf(stderr, "Seconds since startup: %ld\n",uptime);
 					fprintf(stderr, "Records Read: %d\n",stats.records_read);
 					fprintf(stderr, "Packets Sent: %d\n",stats.packets_sent);
 					fprintf(stderr, "Record Rate since startup: %.2f\n",
-						stats.records_read / (now - stats.startup));
+						(double)stats.records_read / uptime);
 					fprintf(stderr, "Packet Rate since startup: %.2f\n",
-						stats.packets_sent / (now - stats.startup));
+						(double)stats.packets_sent / uptime);
 					stats.last_print_records = stats.records_read;
 				}
 			}
@@ -1082,4 +1083,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-

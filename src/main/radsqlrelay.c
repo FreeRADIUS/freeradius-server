@@ -197,7 +197,6 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	int skip;
 	long fpos;
 	int x;
-	unsigned int i = 0;
 	size_t len;
 
 	/* Never happens */
@@ -434,13 +433,12 @@ void loop(struct relay_misc *r_args)
 	FILE *fp = NULL;
 	struct relay_request *r;
 	char work[1030];
-	time_t now, last_rename = 0;
+	time_t now, uptime, last_rename = 0;
 	struct relay_stats stats;
 	int retrans_delay = 0;
 	int retrans_num = 0;
 	int i, n, ret;
 	int state = STATE_RUN;
-	long fpos;
 
 	strNcpy(work, r_args->detail, sizeof(work) - 6);
 	strcat(work, ".work");
@@ -541,14 +539,15 @@ void loop(struct relay_misc *r_args)
 				stats.records_read++;
 				if (stats.last_print_records - stats.records_read >= r_args->records_print){
 					now = time(NULL);
+					uptime = (stats.startup == now) ? 1 : now - stats.startup;
 					fprintf(stderr, "%s: Running and Processing Records.\n",progname);
-					fprintf(stderr, "Seconds since startup: %d\n",now - stats.startup);
+					fprintf(stderr, "Seconds since startup: %ld\n",uptime);
 					fprintf(stderr, "Records Read: %d\n",stats.records_read);
 					fprintf(stderr, "Records Sent: %d\n",stats.records_sent);
 					fprintf(stderr, "Records Read Rate since startup: %.2f\n",
-						stats.records_read / (now - stats.startup));
+						(double)stats.records_read / uptime);
 					fprintf(stderr, "Records Sent Rate since startup: %.2f\n",
-						stats.records_sent / (now - stats.startup));
+						(double)stats.records_sent / uptime);
 					stats.last_print_records = stats.records_read;
 				}
 			}
@@ -705,7 +704,7 @@ struct sql_module *init_sql(struct relay_misc *r)
 		free(inst);
 		return NULL;
 	}
-	
+
 	inst->module = (module_t *) lt_dlsym(inst->handle, module_name);
 	if (!inst->module) {
 		fprintf(stderr, "%s: Failed linking to 'sql' structure: %s\n",progname,lt_dlerror());
@@ -730,8 +729,8 @@ struct sql_module *init_sql(struct relay_misc *r)
 	}
 
 	fprintf(stderr, "%s: SQL Module Initialized.\n",progname);
-	
-	return inst;	
+
+	return inst;
 }
 
 void radsqlrelay_usage(void)
@@ -751,7 +750,7 @@ void radsqlrelay_usage(void)
 	fprintf(stderr, "			we also sleep for backoff_time * packets_sent between calls to the\n");
 	fprintf(stderr, "			accounting routine. That way we don't increase the load on the sql\n");
 	fprintf(stderr, "			server on program startup and after sql server failures.\n");
-	fprintf(stderr, "			The default value is %d ms.\n",DEFAULT_BACKOFF); 
+	fprintf(stderr, "			The default value is %d ms.\n",DEFAULT_BACKOFF);
 	fprintf(stderr, " -e sleep_every	Only sleep every so many packets sent, not every time. Default: %d.\n",				DEFAULT_SLEEP_EVERY);
 	fprintf(stderr, " -M sql_module_name	Use this specific sql module instance.\n");
 	fprintf(stderr, " -x			Debug mode (-xx gives more debugging).\n");
@@ -794,7 +793,7 @@ int main(int argc, char **argv)
 		       if (strlen(optarg) > 1021) {
 				fprintf(stderr, "%s: acct_dir too long\n",progname);
 				exit(1);
-			}     
+			}
 			strncpy(r_args.detail, optarg, 1021);
 			break;
 		case 'd':
