@@ -56,6 +56,7 @@ int acct_port;
 int proxy_retry_delay = RETRY_DELAY;
 int proxy_retry_count = RETRY_COUNT;
 int proxy_dead_time;
+int max_proxies = MAX_PROXIES;
 int log_stripped_names;
 radlog_dest_t radlog_dest = RADLOG_FILES;
 const char *radutmp_file = NULL;

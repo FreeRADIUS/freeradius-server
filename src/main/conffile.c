@@ -78,6 +78,7 @@ CONF_SECTION *config = NULL;
  */
 extern RADCLIENT *clients;
 extern REALM *realms;
+extern int max_proxies;
 
 static int generate_realms(const char *filename);
 static int generate_clients(const char *filename);
@@ -914,7 +915,7 @@ static int generate_realms(const char *filename)
 	CONF_SECTION *cs;
 	REALM *my_realms = NULL;
 	REALM *c, **tail;
-	char *s, *authhost, *accthost;
+	char *s, *t, *authhost, *accthost;
 
 	tail = &my_realms;
 	for (cs = cf_subsection_find_next(config, NULL, "realm"); cs != NULL;
@@ -1034,6 +1035,25 @@ static int generate_realms(const char *filename)
 			c->notrealm = 1;
 		if ((cf_section_value_find(cs, "notsuffix")) != NULL)
 			c->notrealm = 1;
+		if ((t = cf_section_value_find(cs,"ldflag")) != NULL) {
+			if ((strcmp(t,"1") == 0) ||
+			    (strcasecmp(t,"round_robin") == 0)) {
+				c->ldflag = 1;
+			}
+			else if ((strcmp(t,"0") == 0) ||
+                                 (strcasecmp(t,"fail_over") == 0)) {
+				c->ldflag = 0;
+			}
+			else {
+				/*  set to invalid value 
+                                 *  to be caught later
+                                 */
+				c->ldflag = -1;
+			}
+		}
+		else {
+			c->ldflag = 0;
+		}
 		c->active = TRUE;
 		c->acct_active = TRUE;
 
@@ -1048,6 +1068,40 @@ static int generate_realms(const char *filename)
 	 */
 	*tail = realms;
 	realms = my_realms;
+	
+ 	/*Setup node and total info for multi-listed realms*/
+	for (c = realms; c; c = c->next) {
+		if(c->chose == 1) {
+			continue;
+		}
+		else {
+			int i = 0, b = 0;
+			REALM *rptr, *r_array[max_proxies];
+			for(rptr = c; rptr; rptr = rptr->next) {
+				/*if realm matches*/
+				if(strcasecmp(rptr->realm, c->realm) == 0) {
+					i++;
+					r_array[i] = rptr;
+					rptr->chose = 1;
+					rptr->node = i;
+				}
+			}
+			if (i > 1) {
+				for(b = 1; b <= i; b++) {
+					rptr = r_array[b];
+					rptr->total = i;
+				}
+			}
+			else {
+				c->total = 0;
+			}
+		}
+	}
+	
+	/*Set chose flag back to default (0) on all realms*/
+	for (c = realms; c; c = c->next) {
+		c->chose = 0;
+	}
 
 	return 0;
 }

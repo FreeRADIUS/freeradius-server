@@ -108,6 +108,7 @@ int proxy_port;
 int proxy_retry_delay = RETRY_DELAY;
 int proxy_retry_count = RETRY_COUNT;
 int proxy_dead_time = DEAD_TIME;
+int max_proxies = MAX_PROXIES;
 int proxy_synchronous = FALSE;
 int proxy_fallback = FALSE;
 int need_reload = FALSE;
@@ -168,6 +169,7 @@ static CONF_PARSER proxy_config[] = {
 	{ "synchronous",  PW_TYPE_BOOLEAN, 0, &proxy_synchronous, "no" },
 	{ "default_fallback", PW_TYPE_BOOLEAN, 0, &proxy_fallback, "no" },
 	{ "dead_time",    PW_TYPE_INTEGER, 0, &proxy_dead_time, Stringify(DEAD_TIME) },
+	{ "servers_per_realm",  PW_TYPE_INTEGER, 0, &max_proxies, Stringify(MAX_PROXIES) },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -789,6 +791,7 @@ int main(int argc, char *argv[])
 		/*
 		 *  Open Proxy Socket.
 		 */
+		check_proxies(max_proxies);
 		proxyfd = socket (AF_INET, SOCK_DGRAM, 0);
 		if (proxyfd < 0) {
 			perror ("proxy socket");

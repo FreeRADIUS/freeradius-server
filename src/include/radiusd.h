@@ -110,6 +110,10 @@ typedef struct _realm {
 	time_t			wakeup;
 	int			acct_active;
 	time_t			acct_wakeup;
+	int			ldflag;
+	int			chose;
+	int			node;
+	int			total;
 	struct _realm		*next;
 } REALM;
 
@@ -145,6 +149,7 @@ typedef struct main_config_t {
 #define RETRY_DELAY             5
 #define RETRY_COUNT             3
 #define DEAD_TIME               120
+#define MAX_PROXIES		15
 
 #define L_DBG			1
 #define L_AUTH			2
@@ -249,6 +254,7 @@ int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);
 int		read_realms_file(const char *file);
+extern		void check_proxies(int);
 
 /* nas.c */
 int		read_naslist_file(char *);
