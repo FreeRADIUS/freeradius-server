@@ -507,6 +507,7 @@ void realm_disable(uint32_t ipaddr)
 REALM *realm_find(const char *realm)
 {
 	REALM *cl;
+	REALM *default_realm = NULL;
 	time_t now;
 
 	now = time(NULL);
@@ -519,30 +520,41 @@ REALM *realm_find(const char *realm)
 		realm = "NULL";
 	}
 
-	for(cl = realms; cl; cl = cl->next) {
-		if (strcmp(cl->realm, realm) == 0) {
-			if (cl->active) {
-				return cl;
-			} else {
-				if (cl->wakeup <= now) {
-					cl->active = TRUE;
-					return cl;
-				}
-			}
+	for (cl = realms; cl; cl = cl->next) {
+		/*
+		 *	Wake up any sleeping realm.
+		 */
+		if (cl->wakeup <= now) {
+			cl->active = TRUE;
 		}
-	}
 
-	/*
-	 *	Loop over them again, looking for the default
-	 */
-	for (cl = realms; cl; cl = cl->next)
-		if (strcmp(cl->realm, "DEFAULT") == 0)
+		/*
+		 *	It's not alive, skip it.
+		 */
+		if (!cl->active) {
+			continue;
+		}
+
+		/*
+		 *	If it matches exactly, return it.
+		 */
+		if (strcmp(cl->realm, realm) == 0) {
 			return cl;
+			
+			/*
+			 *	No default realm, try to set one.
+			 */
+		} else if ((default_realm == NULL) &&
+			   (strcmp(cl->realm, "DEFAULT") == 0)) {
+			default_realm = cl;
+		}
+	} /* loop over all realms */
 
 	/*
-	 *	Didn't find anything that matched.
+	 *	Didn't find anything that matched exactly, return
+	 *	the default.
 	 */
-	return NULL;
+	return default_realm;
 }
 
 
