@@ -25,6 +25,7 @@ char misc_sccsid[] =
 #include	<signal.h>
 
 #include	"libradius.h"
+#include    "missing.h"
 
 int		librad_dodns = 1;
 int		librad_debug = 0;
