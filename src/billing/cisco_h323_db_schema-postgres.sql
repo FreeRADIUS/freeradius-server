@@ -1,4 +1,6 @@
 /*
+ * $Id$
+ *
  * --- Peter Nixon [ codemonkey@peternixon.net ]
  * This is a custom SQL schema for doing H323 VoIP accounting with FreeRadius and
  * Cisco gateways (I am using 5300 and 5350 series). 
@@ -18,13 +20,12 @@
 
 CREATE TABLE StartVoIP (
   RadAcctId BIGSERIAL PRIMARY KEY,
-  UserName VARCHAR(64) DEFAULT '' NOT NULL,
-  Realm VARCHAR(64) DEFAULT '',
+  UserName VARCHAR(64),
   NASIPAddress INET NOT NULL,
   AcctStartTime timestamp DEFAULT now() NOT NULL,
   CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
   CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
-  AcctDelayTime NUMERIC(3),
+  AcctDelayTime INTEGER,
   H323GWID VARCHAR(32) DEFAULT '' NOT NULL,
   h323CallOrigin VARCHAR(10) DEFAULT '' NOT NULL,
   h323CallType VARCHAR(64) DEFAULT '' NOT NULL,
@@ -36,13 +37,12 @@ create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
 
 CREATE TABLE StartTelephony (
   RadAcctId BIGSERIAL PRIMARY KEY,
-  UserName VARCHAR(64) DEFAULT '' NOT NULL,
-  Realm VARCHAR(64) DEFAULT '',
+  UserName VARCHAR(64),
   NASIPAddress INET NOT NULL,
   AcctStartTime timestamp DEFAULT now() NOT NULL,
   CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
   CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
-  AcctDelayTime NUMERIC(3),
+  AcctDelayTime INTEGER,
   H323GWID VARCHAR(32) DEFAULT '' NOT NULL,
   h323CallOrigin VARCHAR(10) DEFAULT '' NOT NULL,
   h323CallType VARCHAR(64) DEFAULT '' NOT NULL,
@@ -57,24 +57,24 @@ create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress)
  * Table structure for 'Stop' tables
  */
 CREATE TABLE StopVoIP (
-  RadAcctId BIGSERIAL PRIMARY KEY,
-  UserName VARCHAR(32) DEFAULT '' NOT NULL,
-  NASIPAddress INET NOT NULL,
-  AcctSessionTime BIGINT,
-  AcctInputOctets BIGINT,
-  AcctOutputOctets BIGINT,
-  CalledStationId VARCHAR(50) DEFAULT '' NOT NULL,
-  CallingStationId VARCHAR(50) DEFAULT '' NOT NULL,
-  AcctDelayTime SMALLINT,
-  CiscoNASPort BOOLEAN DEFAULT false,
-  h323CallOrigin varchar(10) DEFAULT '' NOT NULL,
-  h323SetupTime timestamp with time zone NOT NULL,
-  h323ConnectTime timestamp with time zone NOT NULL,
-  h323DisconnectTime timestamp with time zone NOT NULL,
-  h323DisconnectCause varchar(2) DEFAULT '' NOT NULL,
-  H323RemoteAddress INET NOT NULL,
-  H323VoiceQuality NUMERIC(2),
-  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
+	RadAcctId		BIGSERIAL PRIMARY KEY,
+	UserName		VARCHAR(32),
+	NASIPAddress		INET NOT NULL,
+	AcctSessionTime		BIGINT,
+	AcctInputOctets		BIGINT,
+	AcctOutputOctets	BIGINT,
+	CalledStationId		VARCHAR(50),
+	CallingStationId	VARCHAR(50),
+	AcctDelayTime		SMALLINT,
+	CiscoNASPort		BOOLEAN DEFAULT false,
+	h323CallOrigin		VARCHAR(10) DEFAULT '' NOT NULL,
+	h323SetupTime		timestamp with time zone NOT NULL,
+	h323ConnectTime		timestamp with time zone NOT NULL,
+	h323DisconnectTime	timestamp with time zone NOT NULL,
+	h323DisconnectCause	VARCHAR(2),
+	H323RemoteAddress	INET NOT NULL,
+	H323VoiceQuality	INTEGER,
+	h323ConfID		VARCHAR(35) NOT NULL
 );
 create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, h323ConfID);
 
@@ -96,7 +96,7 @@ CREATE TABLE StopTelephony (
   h323DisconnectTime timestamp with time zone NOT NULL,
   h323DisconnectCause varchar(2) DEFAULT '' NOT NULL,
   H323RemoteAddress BOOLEAN DEFAULT false,
-  H323VoiceQuality NUMERIC(2),
+  H323VoiceQuality		INTEGER,
   h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
 );
 create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, h323ConfID);
