@@ -109,8 +109,8 @@ static void sig_term(int sig)
  */
 static void *request_handler_thread(void *arg)
 {
-	THREAD_HANDLE *self;
-	
+	THREAD_HANDLE	*self;
+
 	self = (THREAD_HANDLE *) arg;
 	
 	/*
@@ -138,8 +138,27 @@ static void *request_handler_thread(void *arg)
 		       self->child_pid, self->request, self->request_count);
 		
 		/*
-		 *	Now that we have the semaphore,
-		 *	we can process the request.
+		 *	Decode the packet, verifying it's signature,
+		 *	and parsing the attributes into structures.
+		 *
+		 *	Note that we do this CPU-intensive work in
+		 *	a child thread, not the master.  This helps to
+		 *	spread the load a little bit.
+		 */
+		if (rad_decode(self->request->packet, self->request->secret) != 0) {
+			log(L_ERR, "%s", librad_errstr);
+			goto next_request;
+		}
+		
+		/*
+		 *	We have a User-Name attribute now, presumably.
+		 */
+		self->request->username = pairfind(self->request->packet->vps,
+						   PW_USER_NAME);
+		
+		/*
+		 *	We have the semaphore, and have decoded the packet.
+		 *	Let's process the request.
 		 */
 		(*(self->fun))(self->request);
 		
@@ -153,6 +172,7 @@ static void *request_handler_thread(void *arg)
 		 *	We're done processing the request, set the request
 		 *	to be finished, and forget about the request.
 		 */
+	next_request:
 		self->request->child_pid = NO_SUCH_CHILD_PID;
 		self->request->finished = TRUE;
 		self->request = NULL;

@@ -702,11 +702,18 @@ int main(int argc, char **argv)
 				continue;
 			}
 
+#ifndef WITH_THREAD_POOL
+			/*
+			 *	If using thread pools, this work is
+			 *	pushed onto the child threads.
+			 */
 			if (rad_decode(packet, cl->secret) != 0) {
 				log(L_ERR, "%s", librad_errstr);
 				rad_free(packet);
 				continue;
 			}
+#endif
+
 			if ((request = malloc(sizeof(REQUEST))) == NULL) {
 				log(L_ERR|L_CONS, "no memory");
 				exit(1);
