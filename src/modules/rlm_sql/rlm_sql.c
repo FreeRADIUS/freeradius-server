@@ -192,14 +192,15 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	 *	They MUST have a user name to do SQL authorization.
 	 */
 	if ((request->username == NULL) ||
-			(request->username->length == 0)) {
+	    (request->username->length == 0)) {
 		radlog(L_ERR, "zero length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
 
 	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL)
+	if (sqlsocket == NULL) {
 		return(RLM_MODULE_NOOP);
+	}
 
 	/*
 	 *  After this point, ALL 'return's MUST release the SQL socket!
@@ -229,7 +230,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-		return RLM_MODULE_INVALID;
+		return RLM_MODULE_NOOP;
 
 	} else {
 
@@ -309,8 +310,9 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	}
 
 	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL)
+	if (sqlsocket == NULL) {
 		return(RLM_MODULE_NOOP);
+	}
 
 	/*
 	 *  After this point, ALL 'return's MUST release the SQL socket!
