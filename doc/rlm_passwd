@@ -78,7 +78,7 @@ Config section parameters:
 
 4. FAQ
 
-Q: Can I use rlm_passwd to authenticate user against Linux shadow passwor
+Q: Can I use rlm_passwd to authenticate user against Linux shadow password
    file or BSD-style master.passwd?
 A: Yes, but you need RADIUS running as root. Hint: use Crypt-Password
    attribute.
