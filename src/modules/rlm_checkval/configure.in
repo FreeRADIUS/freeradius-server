@@ -30,7 +30,7 @@ fi
 
 
 AC_SUBST(checkval_cflags)
-AC_SUBST(chackval_ldflags)
+AC_SUBST(checkval_ldflags)
 
 AC_CONFIG_HEADER(config.h)  # delete if you don't want a config.h file.
 
