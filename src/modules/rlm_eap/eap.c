@@ -695,6 +695,58 @@ char *eap_identity(eap_packet_t *eap_packet)
 	return identity;
 }
 
+
+/*
+ * Create our Request-Response data structure with the eap packet
+ */
+static EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
+{
+	EAP_DS *eap_ds = NULL;
+	eap_packet_t	*eap_packet = NULL;
+	int typelen;
+	uint16_t len;
+
+	eap_packet = *eap_packet_p;
+	if (eap_packet == NULL) {
+		return NULL;
+	}
+
+	if ((eap_ds = eap_ds_alloc()) == NULL) {
+		return NULL;
+	}
+	eap_ds->response->packet = (unsigned char *)eap_packet;
+        eap_ds->response->code = eap_packet->code;
+        eap_ds->response->id = eap_packet->id;
+        eap_ds->response->type.type = eap_packet->data[0];
+
+	memcpy(&len, eap_packet->length, sizeof(uint16_t));
+	len = ntohs(len);
+	eap_ds->response->length = len;
+
+	/* First byte in eap_packet->data is *EAP-Type* */
+	/*
+	 * First 5 bytes, in eap, are code+id+length(2)+type
+	 * The rest is TypeData
+	 * skip *type* while getting typedata from data
+	 */
+	typelen = len - 5/*code+id+length+type*/;
+	if (typelen > 0) {
+		/*
+		 * Since packet contians the complete eap_packet, 
+		 * typedata will be a ptr in packet to its typedata
+		 */
+		eap_ds->response->type.data = eap_ds->response->packet + 5/*code+id+length+type*/;
+		eap_ds->response->type.length = typelen;
+	} else {
+		eap_ds->response->type.length = 0;
+		eap_ds->response->type.data = NULL;
+	}
+
+	*eap_packet_p = NULL;
+	return eap_ds;
+}
+
+
 /*
  * If identity response then create a fresh handler & fill the identity
  * else handler MUST be in our list, get that.
@@ -806,56 +858,6 @@ EAP_HANDLER *eap_handler(EAP_HANDLER **list, eap_packet_t **eap_packet_p, REQUES
 	handler->reply_vps = &(request->reply->vps);
 	handler->request = request; /* LEAP needs this */
 	return handler;
-}
-
-/*
- * Create our Request-Response data structure with the eap packet
- */
-EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
-{
-	EAP_DS *eap_ds = NULL;
-	eap_packet_t	*eap_packet = NULL;
-	int typelen;
-	uint16_t len;
-
-	eap_packet = *eap_packet_p;
-	if (eap_packet == NULL) {
-		return NULL;
-	}
-
-	if ((eap_ds = eap_ds_alloc()) == NULL) {
-		return NULL;
-	}
-	eap_ds->response->packet = (unsigned char *)eap_packet;
-        eap_ds->response->code = eap_packet->code;
-        eap_ds->response->id = eap_packet->id;
-        eap_ds->response->type.type = eap_packet->data[0];
-
-	memcpy(&len, eap_packet->length, sizeof(uint16_t));
-	len = ntohs(len);
-	eap_ds->response->length = len;
-
-	/* First byte in eap_packet->data is *EAP-Type* */
-	/*
-	 * First 5 bytes, in eap, are code+id+length(2)+type
-	 * The rest is TypeData
-	 * skip *type* while getting typedata from data
-	 */
-	typelen = len - 5/*code+id+length+type*/;
-	if (typelen > 0) {
-		/*
-		 * Since packet contians the complete eap_packet, 
-		 * typedata will be a ptr in packet to its typedata
-		 */
-		eap_ds->response->type.data = eap_ds->response->packet + 5/*code+id+length+type*/;
-		eap_ds->response->type.length = typelen;
-	} else {
-		eap_ds->response->type.length = 0;
-		eap_ds->response->type.data = NULL;
-	}
-
-	*eap_packet_p = NULL;
-	return eap_ds;
 }
 
 

@@ -108,7 +108,6 @@ int 		eap_validation(eap_packet_t *eap_msg);
 int 		eap_wireformat(EAP_PACKET *packet);
 int 		eap_compose(REQUEST *request, EAP_PACKET *reply);
 eap_packet_t 	*eap_attribute(VALUE_PAIR *vps);
-EAP_DS 		*eap_buildds(eap_packet_t **eap_msg);
 EAP_HANDLER 	*eap_handler(EAP_HANDLER **list, eap_packet_t **eap_msg, REQUEST *request);
 char 		*eap_identity(eap_packet_t *eap_packet);
 VALUE_PAIR 	*eap_useridentity(EAP_HANDLER *list, eap_packet_t *eap_packet, unsigned char id[]);
