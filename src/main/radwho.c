@@ -555,10 +555,12 @@ int main(int argc, char **argv)
 
 			switch (rt.proto) {
 				case 'S':
-					printf("Service-Type = SLIP\n");
+					printf("Service-Type = Framed-User\n");
+					printf("Framed-Protocol = SLIP\n");
 					break;
 				case 'P':
-					printf("Service-Type = PPP\n");
+					printf("Service-Type = Framed-User\n");
+					printf("Framed-Protocol = PPP\n");
 					break;
 				default:
 					printf("Service-type = Login-User\n");
