@@ -9,6 +9,8 @@
  *
  */
 
+#include "autoconf.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -143,7 +145,8 @@ void cf_section_free_all(CONF_SECTION *cs)
  *	Read a part of the config file.
  */
 static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
-				const char *name1, const char *name2)
+				      const char *name1, const char *name2,
+				      const CONF_PARSER *variables)
 {
 	CONF_SECTION	*cs, *csn, *csp, *css;
 	CONF_PAIR	*cpn;
@@ -200,7 +203,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 		 */
 
 		if (t2 == T_LCBRACE) {
-			css = conf_readsection(cf, lineno, fp, name2, buf1);
+			css = conf_readsection(cf, lineno, fp, name2, buf1, NULL);
 			if (css == NULL)
 				return NULL;
 			for (csp = cs->sub; csp && csp->next; csp = csp->next)
@@ -217,7 +220,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 		 *	Or, the beginning of a new section.
 		 */
 		if (t3 == T_LCBRACE) {
-			csn = conf_readsection(cf, lineno, fp, buf1, buf2);
+			csn = conf_readsection(cf, lineno, fp, buf1, buf2, NULL);
 			if (csn == NULL)
 				return NULL;
 			/*
@@ -254,6 +257,42 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 			return NULL;
 		}
 
+		if (variables) {
+		  int i;
+
+		  i = 0;
+		  while ((variables[i].name != NULL) &&
+			 (strcmp(variables[i].name, buf1) != 0)) {
+		    i++;
+		  }
+
+		  if (variables[i].name != NULL) {
+		    switch (variables[i].type)
+		      {
+		      case PW_TYPE_INTEGER:
+			if (strcasecmp(buf3, "yes") == 0) {
+			  *(int *)variables[i].data = 1;
+			} else if (strcasecmp(buf3, "no") == 0) {
+			  *(int *)variables[i].data = 0;
+			} else {
+			  *(int *)variables[i].data = atoi(buf3);
+			}
+			DEBUG2("Config: %s = %d", variables[i].name,
+			       *(int *)variables[i].data);
+			break;
+
+		      default:
+			log(L_ERR, "type %d not supported yet", variables[i].type);
+			break;
+		      }
+
+		    /*
+		     *  Don't add it as a CONF_PAIR.
+		     */
+		    continue;
+		  }
+		}
+
 		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
@@ -276,7 +315,7 @@ static CONF_SECTION *conf_readsection(const char *cf, int *lineno, FILE *fp,
 /*
  *	Read the config file.
  */
-CONF_SECTION *conf_read(const char *conffile)
+CONF_SECTION *conf_read(const char *conffile, const CONF_PARSER variables[])
 {
 	FILE		*fp;
 	int		lineno = 0;
@@ -290,7 +329,7 @@ CONF_SECTION *conf_read(const char *conffile)
 		return NULL;
 	}
 
-	config = conf_readsection(conffile, &lineno, fp, NULL, NULL);
+	config = conf_readsection(conffile, &lineno, fp, NULL, NULL, variables);
 	fclose(fp);
 
 	return config;
@@ -302,6 +341,7 @@ CONF_SECTION *conf_read(const char *conffile)
  * Miquel at http://www.miquels.cistron.nl/radius/
  */
 
+extern CONF_PARSER rad_config[];
 int read_new_config_files(void)
 {
 	char buffer[256];
@@ -309,7 +349,7 @@ int read_new_config_files(void)
 	/* Lets go for the new configuration files */
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
-	if (conf_read(buffer) == NULL) {
+	if (conf_read(buffer, rad_config) == NULL) {
 		log(L_ERR|L_CONS, "Error reading new-style configuration file");
 		return -1;
 	}
@@ -485,7 +525,8 @@ static int generate_clients()
 			c->ipaddr = ip_getaddr(hostnm);
 			strcpy(c->secret, secret);
 			strcpy(c->shortname, shortnm);
-			strcpy(c->longname, ip_hostname(c->ipaddr));
+			ip_hostname(c->longname, sizeof(c->longname),
+				    c->ipaddr);
 
 			c->next = clients;
 			clients = c;
@@ -503,7 +544,7 @@ CONF_PAIR *cf_pair_find(CONF_SECTION *section, const char *name)
 {
 	CONF_PAIR	*cp;
 
-	if (section = NULL) {
+	if (section == NULL) {
 	  section = config;
 	}
 
