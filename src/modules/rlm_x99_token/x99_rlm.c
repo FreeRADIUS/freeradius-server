@@ -544,9 +544,6 @@ x99_token_authenticate(void *instance, REQUEST *request)
 			"auth: bad state for [%s]: expired", username);
 		return RLM_MODULE_REJECT;
 	    }
-good_state:
-	    /* State is good! */
-
 	} else {
 	    /* This should only happen if the authorize code didn't run. */
 	    x99_log(X99_LOG_ERR, "auth: bad state for [%s]: missing "
@@ -555,6 +552,9 @@ good_state:
 	    return RLM_MODULE_FAIL;
 	}
     } /* if (!fast_sync) */
+
+good_state:
+	    /* State is good! */
 
     /* Get the time of the last authentication. */
     if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
