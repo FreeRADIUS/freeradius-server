@@ -49,6 +49,7 @@ typedef struct realm {
 	int			auth_port;
 	int			acct_port;
 	int			striprealm;
+	int			trusted;
 	struct realm		*next;
 } REALM;
 
