@@ -1,25 +1,43 @@
-.TH rlm_pap 5 "3 February 2004" "" "FreeRADIUS Module"
+.TH rlm_pap 5 "8 February 2005" "" "FreeRADIUS Module"
 .SH NAME
 rlm_pap \- FreeRADIUS Module
 .SH DESCRIPTION
-The \fIrlm_pap\fP module provides PAP functionality.
+The \fIrlm_pap\fP module authenticates RADIUS Access-Request packets
+that contain a User-Password attribute.
 .PP
-PAP authentication works with passwords stored in clear-text
-format or in an encrypted ( via crypt() ) format.
+When a RADIUS packet contains a clear-text password in the form of a
+User-Password attribute, the \fIrlm_pap\fP module may be used for
+authentication.  The module requires a "known good" password, which it
+uses to validate the password given in the RADIUS packet.  That "known
+good" password should be supplied by another module
+(e.g. \fIrlm_files\fP, \fIrlm_ldap\fP, etc.), and is usually taken
+from some kind of database.
 .PP
-The configuration item(s):
-.IP encryption_scheme
-The method used to encrypt the password.  Valid values are:
+This module understands many kinds of password hashing methods, and
+requires that the "known good" version of the password be placed into
+one of the following attributes:
+.PP
 .DS
-.br	
-	clear
 .br
-	crypt (DEFAULT)
+    User-Password           clear-text passwords
 .br
-	md5
+    Crypt-Password          Unix-style "crypt"ed passwords
 .br
-	sha1
+    MD5-Password            MD5 hashed passwords
+.br
+    SHA-Password            SHA1 hashed passwords
+.br
+    NT-Password             Windows NT hashed passwords
+.br
+    LM-Password             Windows Lan Manager (LM) passwords.
 .DE
+
+This module takes no configuration, as it automatically looks for one
+of the above "known good" passwords, and uses it for authentication.
+.PP
+For backwards compatibility, there are old configuration parameters
+which may be used.  Please see \fIradiusd.conf\fP for details.
+
 .SH SECTIONS
 .BR authenticate
 .PP
