@@ -257,8 +257,9 @@ static CONF_PARSER module_config[] = {
 	{ NULL, -1, NULL, NULL }
 };
 
-static PAIR_LIST *getusersfile(const char *filename)
+static int getusersfile(const char *filename, PAIR_LIST **pair_list)
 {
+	int rcode;
         PAIR_LIST *users = NULL;
 #if defined(WITH_DBM) || defined(WITH_NDBM)
         if (!use_dbm &&
@@ -268,7 +269,12 @@ static PAIR_LIST *getusersfile(const char *filename)
         }
 #endif
 
-        if (!use_dbm) users = pairlist_read(filename, 1);
+        if (!use_dbm) {
+		rcode = pairlist_read(filename, &users, 1);
+		if (rcode < 0) {
+			return -1;
+		}
+	}
 
         /*
          *	Walk through the 'users' file list, sanity checking it.
@@ -342,7 +348,9 @@ static PAIR_LIST *getusersfile(const char *filename)
                 }
         
         }
-        return users;
+
+	*pair_list = users;
+        return 0;
 }
 
 /*
@@ -351,9 +359,10 @@ static PAIR_LIST *getusersfile(const char *filename)
 static int file_instantiate(CONF_SECTION *conf, void **instance)
 {
         struct file_instance *inst;
+	int rcode;
 
-        inst=malloc(sizeof *inst);
-        if(!inst) {
+        inst = malloc(sizeof *inst);
+        if (!inst) {
                 log(L_ERR|L_CONS, "Out of memory\n");
                 return -1;
         }
@@ -369,16 +378,17 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
         config.usersfile = NULL;
         config.acctusersfile = NULL;
 
-	inst->users=getusersfile(inst->usersfile);
-        if(!inst->users) {
+	rcode = getusersfile(inst->usersfile, &inst->users);
+        if (rcode != 0) {
                 log(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
                 free(inst->usersfile);
                 free(inst->acctusersfile);
                 free(inst);
                 return -1;
         }
-	inst->acctusers=getusersfile(inst->acctusersfile);
-        if(!inst->acctusers) {
+
+	rcode = getusersfile(inst->acctusersfile, &inst->acctusers);
+        if (rcode != 0) {
                 log(L_ERR|L_CONS, "Errors reading %s", inst->acctusersfile);
                 pairlist_free(&inst->users);
                 free(inst->usersfile);
@@ -386,6 +396,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
                 free(inst);
                 return -1;
         }
+
         *instance = inst;
         return 0;
 }

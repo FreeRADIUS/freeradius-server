@@ -107,7 +107,7 @@ static void auth_type_fixup(VALUE_PAIR *check)
  *	Read the users, huntgroups or hints file.
  *	Return a PAIR_LIST.
  */
-PAIR_LIST *pairlist_read(const char *file, int complain)
+int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 {
 	FILE		*fp;
 	int		mode = FIND_MODE_NAME;
@@ -127,10 +127,10 @@ PAIR_LIST *pairlist_read(const char *file, int complain)
 	 *	more useful...
 	 */
 	if ((fp = fopen(file, "r")) == NULL) {
-		if (!complain) return NULL;
+		if (!complain) return -1;
 		log(L_CONS|L_ERR, "Couldn't open %s for reading: %s",
 		    file, strerror(errno));
-		return NULL;
+		return -1;
 	}
 
 	parsecode = T_EOL;
@@ -142,7 +142,7 @@ PAIR_LIST *pairlist_read(const char *file, int complain)
 		if (strchr(buffer, '\n') == NULL) {
 			log(L_ERR, "%s[%d]: line too long", file, lineno);
 			pairlist_free(&pl);
-			return NULL;
+			return -1;
 		}
 		if (buffer[0] == '#' || buffer[0] == '\n') continue;
 parse_again:
@@ -156,7 +156,7 @@ parse_again:
 					    "%s[%d]: Unexpected trailing comma for entry %s",
 					    file, lineno, entry);
 					fclose(fp);
-					return NULL;
+					return -1;
 				}
 				continue;
 			}
@@ -192,13 +192,14 @@ parse_again:
 					s = newfile;
 				}
 
-				if ((t = pairlist_read(s, 0)) == NULL) {
+				t = NULL;
+				if (pairlist_read(s, &t, 0) != 0) {
 					pairlist_free(&pl);
 					log(L_ERR|L_CONS,
 					    "%s[%d]: Could not open included file %s: %s",
 					    file, lineno, s, strerror(errno));
 					fclose(fp);
-				return NULL;
+				return -1;
 				}
 				if (last)
 					last->next = t;
@@ -223,13 +224,13 @@ parse_again:
 				"%s[%d]: Parse error (check) for entry %s: %s",
 					file, lineno, entry, librad_errstr);
 				fclose(fp);
-				return NULL;
+				return -1;
 			} else if (parsecode == T_COMMA) {
 				log(L_ERR|L_CONS,
 				    "%s[%d]: Unexpected trailing comma in check item list for entry %s",
 				    file, lineno, entry);
 				fclose(fp);
-				return NULL;
+				return -1;
 			}
 			mode = FIND_MODE_REPLY;
 			parsecode = T_COMMA;
@@ -241,7 +242,7 @@ parse_again:
 				"%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
 						file, lineno, entry);
 					fclose(fp);
-					return NULL;
+					return -1;
 				}
 
 				/*
@@ -254,7 +255,7 @@ parse_again:
 				"%s[%d]: Parse error (reply) for entry %s: %s",
 					    file, lineno, entry, librad_errstr);
 					fclose(fp);
-					return NULL;
+					return -1;
 				}
 			}
 			else {
@@ -294,7 +295,8 @@ parse_again:
 	}
 	fclose(fp);
 
-	return pl;
+	*list = pl;
+	return 0;
 }
 
 

@@ -482,15 +482,23 @@ static void add_nas_attr(REQUEST *request)
  */
 static int preprocess_init(void)
 {
+	int	rcode;
 	char	buffer[256];
 
 	pairlist_free(&huntgroups);
 	pairlist_free(&hints);
 
 	sprintf(buffer, "%s/%s", radius_dir, RADIUS_HUNTGROUPS);
-	huntgroups = pairlist_read(buffer, 0);
+	rcode = pairlist_read(buffer, &huntgroups, 0);
+	if (rcode < 0) {
+		return -1;
+	}
+
 	sprintf(buffer, "%s/%s", radius_dir, RADIUS_HINTS);
-	hints	   = pairlist_read(buffer, 0);
+	rcode = pairlist_read(buffer, &hints, 0);
+	if (rcode < 0) {
+		return -1;
+	}
 
 	paircompare_register(PW_HUNTGROUP_NAME, 0, huntgroup_cmp);
 

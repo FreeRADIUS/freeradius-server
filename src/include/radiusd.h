@@ -181,7 +181,7 @@ RADIUS_PACKET *	build_reply(int code, REQUEST *request,
 RADCLIENT	*client_find(uint32_t ipno);
 char		*client_name(uint32_t ipno);
 REALM		*realm_find(const char *);
-PAIR_LIST	*pairlist_read(const char *file, int complain);
+int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);
 
