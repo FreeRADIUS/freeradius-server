@@ -206,7 +206,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 
 
-		for(n = 32; n >= 3; n--)
+		for(n = 256; n >= 3; n--)
 			close(n);
 
 		execve(argv[0], argv, envp);
@@ -329,4 +329,3 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 	return 1;
 }
-

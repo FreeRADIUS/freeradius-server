@@ -198,7 +198,7 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	/*
 	 *	Child - exec checklogin with the right parameters.
 	 */
-	for (n = 32; n >= 3; n--)
+	for (n = 256; n >= 3; n--)
 		close(n);
 
 	ip_ntoa(address, nasaddr);
