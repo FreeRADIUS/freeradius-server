@@ -36,6 +36,8 @@
 #define MAX_CHALLENGE_LEN 32
 /* Password that means "challenge me" in fast_sync mode */
 #define CHALLENGE_REQ "challenge"
+/* Password that means "challenge me and resync" in fast_sync mode */
+#define RESYNC_REQ "resync"
 
 /* Max event window size for sync modes */
 #define MAX_EWINDOW_SIZE 10
@@ -108,7 +110,8 @@ extern int x99_mac(const char *input, des_cblock output, des_cblock keyblock);
 /* x99_state.c */
 extern int x99_gen_state(char **ascii_state, unsigned char **raw_state,
 			 const char challenge[MAX_CHALLENGE_LEN + 1],
-			 int32_t when, const unsigned char key[16]);
+			 int32_t flags, int32_t when,
+			 const unsigned char key[16]);
 
 /* x99_util.c */
 /* Character maps for generic hex and vendor specific decimal modes */

@@ -32,7 +32,6 @@
  */
 
 /*
- * TODO: add "resync" keyword (like "challenge").
  * TODO: all requests (success or fail) should take ~ the same amount of time.
  * TODO: x99_pwe: change add_vps to success_vps and fail_vps.
  * TODO: add Auth-Type config item if not present?
@@ -74,6 +73,7 @@ typedef struct x99_token_t {
     int fast_sync;	/* response-before-challenge mode                  */
     int allow_async;	/* C/R mode allowed?                               */
     char *chal_req;	/* keyword requesting challenge for fast_sync mode */
+    char *resync_req;	/* keyword requesting resync for fast_sync mode    */
     int ewindow_size;	/* sync mode event window size (right side value)  */
 #if 0
     int twindow_min;	/* sync mode time window left side                 */
@@ -105,6 +105,8 @@ static CONF_PARSER module_config[] = {
       NULL, "0" },
     { "challenge_req", PW_TYPE_STRING_PTR, offsetof(x99_token_t, chal_req),
       NULL, CHALLENGE_REQ },
+    { "resync_req", PW_TYPE_STRING_PTR, offsetof(x99_token_t, resync_req),
+      NULL, RESYNC_REQ },
     { "ewindow_size", PW_TYPE_INTEGER, offsetof(x99_token_t, ewindow_size),
       NULL, "0" },
 #if 0
@@ -244,6 +246,7 @@ x99_token_authorize(void *instance, REQUEST *request)
     x99_user_info_t user_info;
     int user_found, auth_type;
     int pwattr;
+    int32_t sflags = 0; /* flags for state */
     VALUE_PAIR *vp;
 
     /* Early exit if Auth-Type == reject */
@@ -295,7 +298,9 @@ x99_token_authorize(void *instance, REQUEST *request)
     if (inst->fast_sync &&
 	((user_info.card_id & X99_CF_SM) || !user_found)) {
 
-	if (x99_pw_valid(request, pwattr, inst->chal_req, NULL)) {
+	if ((x99_pw_valid(request, pwattr, inst->resync_req, NULL) &&
+		/* Set a bit indicating resync */ (sflags |= htonl(1))) ||
+	    x99_pw_valid(request, pwattr, inst->chal_req, NULL)) {
 	    /*
 	     * Generate a challenge if requested.  We don't test for card
 	     * support [for async] because it's tricky for unknown users.
@@ -327,6 +332,10 @@ x99_token_authorize(void *instance, REQUEST *request)
     } /* if (fast_sync && card supports sync mode) */
 
 gen_challenge:
+    /* Set the resync bit by default if the user can't request it. */
+    if (!inst->fast_sync)
+	sflags |= htonl(1);
+
     /* Generate a random challenge. */
     if (x99_get_random(rnd_fd, rawchallenge, inst->chal_len) == -1) {
 	radlog(L_ERR, "rlm_x99_token: autz: failed to obtain random data");
@@ -357,11 +366,12 @@ gen_challenge:
 	}
 	now = htonl(now);
 
-	if (x99_gen_state(&state, NULL, challenge, now, hmac_key) != 0) {
+	if (x99_gen_state(&state, NULL, challenge, sflags, now, hmac_key) != 0){
 	    radlog(L_ERR, "rlm_x99_token: autz: failed to generate state");
 	    return RLM_MODULE_FAIL;
 	}
     } else {
+	/* x2 b/c pairmake() string->octet needs even num of digits */
 	state = rad_malloc(3 + inst->chal_len * 2);
 	(void) sprintf(state, "0x%s%s", challenge, challenge);
     }
@@ -399,6 +409,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
     x99_user_info_t user_info;
     char *username;
     int i, failcount, pwattr, rc;
+    int32_t sflags = 0; /* flags from state */
     time_t last_auth;
 
     char challenge[MAX_CHALLENGE_LEN + 1];
@@ -437,7 +448,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
 	    /* Extend expected length if state should have been protected. */
 	    if (user_info.card_id & X99_CF_AM)
-		e_length += 4 + 16; /* time + hmac */
+		e_length += 4 + 4 + 16; /* sflags + time + hmac */
 
 	    if (vp->length != e_length) {
 		radlog(L_AUTH, "rlm_x99_token: auth: bad state for [%s]: "
@@ -452,8 +463,9 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	    /* Verify the state. */
 	    (void) memset(challenge, 0, sizeof(challenge));
 	    (void) memcpy(challenge, vp->strvalue, inst->chal_len);
-	    (void) memcpy(&then, vp->strvalue + inst->chal_len, 4);
-	    if (x99_gen_state(NULL, &state, challenge, then, hmac_key) != 0) {
+	    (void) memcpy(&sflags, vp->strvalue + inst->chal_len, 4);
+	    (void) memcpy(&then, vp->strvalue + inst->chal_len + 4, 4);
+	    if (x99_gen_state(NULL,&state,challenge,sflags,then,hmac_key) != 0){
 		radlog(L_ERR, "rlm_x99_token: auth: failed to generate state");
 		return RLM_MODULE_FAIL;
 	    }
@@ -591,26 +603,40 @@ good_state:
 			   "in async mode", username);
 	}
 
-	/*
-	 * Resync the card.  The sync data doesn't mean anything for
-	 * async-only cards, but we want the side effects of resetting
-	 * the failcount and the last auth time.  We "fail-out" if we
-	 * can't do this, because if we can't update the last auth time,
-	 * we will be open to replay attacks over the lifetime of the
-	 * State attribute (inst->maxdelay).
-	 */
 	rc = RLM_MODULE_OK;
-	if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
-			      1, 0, challenge, user_info.keyblock) != 0) {
-	    radlog(L_ERR, "rlm_x99_token: auth: unable to get "
-			  "sync data e:%d t:%d for [%s] (for resync)",
-			  1, 0, username);
-	    rc = RLM_MODULE_FAIL;
-	} else if (x99_set_sync_data(inst->syncdir, username, challenge,
-				     user_info.keyblock) != 0) {
-	    radlog(L_ERR, "rlm_x99_token: auth: unable to set sync "
-			  "data for [%s] (for resync)", username);
-	    rc = RLM_MODULE_FAIL;
+	if (ntohl(sflags) & 1) {
+	    /*
+	     * Resync the card.  The sync data doesn't mean anything for
+	     * async-only cards, but we want the side effects of resetting
+	     * the failcount and the last auth time.  We "fail-out" if we
+	     * can't do this, because if we can't update the last auth time,
+	     * we will be open to replay attacks over the lifetime of the
+	     * State attribute (inst->maxdelay).
+	     */
+	    if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
+				  1, 0, challenge, user_info.keyblock) != 0) {
+		radlog(L_ERR, "rlm_x99_token: auth: unable to get "
+			      "sync data e:%d t:%d for [%s] (for resync)",
+			      1, 0, username);
+		rc = RLM_MODULE_FAIL;
+	    } else if (x99_set_sync_data(inst->syncdir, username, challenge,
+					 user_info.keyblock) != 0) {
+		radlog(L_ERR, "rlm_x99_token: auth: unable to set sync "
+			      "data for [%s] (for resync)", username);
+		rc = RLM_MODULE_FAIL;
+	    }
+	} else {
+	    /* Just update last_auth, failcount. */
+	    if (x99_reset_failcount(inst->syncdir, username) != 0) {
+		radlog(L_ERR, "rlm_x99_token: auth: unable to reset failcount "
+			      "for [%s]", username);
+		/* NB: don't fail */
+	    }
+	    if (x99_upd_last_auth(inst->syncdir, username) != 0) {
+		radlog(L_ERR, "rlm_x99_token: auth: unable to update auth time "
+			      "for [%s]", username);
+		rc = RLM_MODULE_FAIL;
+	    }
 	}
 	goto return_pw_valid;
     } /* if (user authenticated async) */
@@ -700,6 +726,7 @@ x99_token_detach(void *instance)
     free(inst->syncdir);
     free(inst->chal_text);
     free(inst->chal_req);
+    free(inst->resync_req);
     free(instance);
     return 0;
 }

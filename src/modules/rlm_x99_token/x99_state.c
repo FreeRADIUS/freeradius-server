@@ -59,9 +59,11 @@ static const char rcsid[] = "$Id$";
  * track of all challenges issued over that time interval for
  * better protection.
  *
- * Our state, then, is (challenge + time + hmac(challenge + time, key)),
+ * Our state, then, is
+ *   (challenge + resync + time + hmac(challenge + resync + time, key)),
  * where '+' denotes concatentation, 'challenge' is the ASCII octets of
- * the challenge, 'time' is the 32-bit time (LSB if time_t is 64 bits)
+ * the challenge, 'flags' is a 32-bit value that can be used to record
+ * additional info, 'time' is the 32-bit time (LSB if time_t is 64 bits)
  * in network byte order, and 'key' is a random key, generated in
  * x99_token_init().  This means that only the server which generates
  * a challenge can verify it; this should be OK if your NAS's load balance
@@ -77,8 +79,8 @@ static const char rcsid[] = "$Id$";
  */
 int
 x99_gen_state(char **ascii_state, unsigned char **raw_state,
-	      const char challenge[MAX_CHALLENGE_LEN + 1], int32_t when,
-	      const unsigned char key[16])
+	      const char challenge[MAX_CHALLENGE_LEN + 1], int32_t flags,
+	      int32_t when, const unsigned char key[16])
 {
     HMAC_CTX hmac_ctx;
     unsigned char hmac[MD5_DIGEST_LENGTH];
@@ -92,16 +94,19 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
      */
     HMAC_Init(&hmac_ctx, key, sizeof(key), EVP_md5());
     HMAC_Update(&hmac_ctx, challenge, strlen(challenge));
+    HMAC_Update(&hmac_ctx, (unsigned char *) &flags, 4);
     HMAC_Update(&hmac_ctx, (unsigned char *) &when, 4);
     HMAC_Final(&hmac_ctx, hmac, NULL);
     HMAC_cleanup(&hmac_ctx);
 
     /* Fill in raw_state if requested. */
     if (raw_state) {
-	*raw_state = rad_malloc(strlen(challenge) + 4 + sizeof(hmac));
+	*raw_state = rad_malloc(strlen(challenge) + 8 + sizeof(hmac));
 	p = *raw_state;
 	(void) memcpy(p, challenge, strlen(challenge));
 	p += strlen(challenge);
+	(void) memcpy(p, &flags, 4);
+	p += 4;
 	(void) memcpy(p, &when, 4);
 	p += 4;
 	(void) memcpy(p, hmac, sizeof(hmac));
@@ -115,6 +120,7 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
     if (ascii_state) {
 	*ascii_state = rad_malloc(2 +				/* "0x"      */
 				  strlen(challenge) * 2 +	/* challenge */
+				  8 +				/* flags     */
 				  8 +				/* time      */
 				  sizeof(hmac) * 2 +		/* hmac      */
 				  1);				/* '\0'      */
@@ -133,13 +139,14 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
 	    }
 	}
 
-	/* Add the time. */
+	/* Add the flags and time. */
 	{
 	    des_cblock cblock;
-	    (void) memcpy(cblock, &when, 4);
+	    (void) memcpy(cblock, &flags, 4);
+	    (void) memcpy(&cblock[4], &when, 4);
 	    x99_keyblock_to_string(p, cblock, x99_hex_conversion);
 	}
-	p += 8; /* discard lower 8 bytes, which are junk */
+	p += 16;
 
 	/* Add the hmac. */
 	x99_keyblock_to_string(p, hmac, x99_hex_conversion);
