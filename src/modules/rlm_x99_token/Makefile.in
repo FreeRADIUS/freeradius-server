@@ -21,9 +21,9 @@
 #
 #######################################################################
 TARGET      = @targetname@
-SRCS        = x99_rlm.c x99_util.c x99_state.c x99_mac.c x99_sync.c x99_site.c
-SRCS       += x99_pwe.c
-HEADERS     = x99.h x99_sync.h x99_pwe.h
+SRCS        = x99_rlm.c x99_util.c x99_state.c x99_mac.c x99_sync.c
+SRCS       += x99_site.c x99_pwe.c x99_log.c
+HEADERS     = x99.h x99_rad.h x99_sync.h x99_pwe.h
 RLM_CFLAGS  = @x99_token_cflags@
 RLM_LIBS    = @x99_token_ldflags@
 

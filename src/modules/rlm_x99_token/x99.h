@@ -22,8 +22,6 @@
 #ifndef X99_H
 #define X99_H
 
-#include "radiusd.h"     /* REQUEST */
-#include "libradius.h"   /* VALUE_PAIR */
 #include <openssl/des.h> /* des_cblock */
 
 /*
@@ -56,37 +54,12 @@
  */
 
 
-/* struct used for instance data */
-typedef struct x99_token_t {
-    char *pwdfile;	/* file containing user:card_type:key entries      */
-    char *syncdir;	/* dir containing sync mode and state info         */
-    char *chal_text;	/* text to present challenge to user, must have %s */
-    int chal_len;	/* challenge length, min 5 digits                  */
-    int maxdelay;	/* max delay time for response, in seconds         */
-    int softfail;	/* number of auth fails before time delay starts   */
-    int hardfail;	/* number of auth fails when user is locked out    */
-    int allow_sync;	/* useful to override pwdfile card_type settings   */
-    int fast_sync;	/* response-before-challenge mode                  */
-    int allow_async;	/* C/R mode allowed?                               */
-    char *chal_req;	/* keyword requesting challenge for fast_sync mode */
-    char *resync_req;	/* keyword requesting resync for fast_sync mode    */
-    int ewindow_size;	/* sync mode event window size (right side value)  */
-    int mschapv2_mppe_policy;	/* whether or not do to mppe for mschapv2  */
-    int mschapv2_mppe_types;	/* key type/length for mschapv2/mppe       */
-    int mschap_mppe_policy;	/* whether or not do to mppe for mschap    */
-    int mschap_mppe_types;	/* key type/length for mschap/mppe         */
-#if 0
-    int twindow_min;	/* sync mode time window left side                 */
-    int twindow_max;	/* sync mode time window right side                */
-#endif
-} x99_token_t;
-
 /* Bit maps for Card Features.  It is OK to insert values at will. */
 #define X99_CF_NONE		0
 /* Vendors */
 #define X99_CF_CRYPTOCARD	0x01 << 0  /* CRYPTOCard             */
-#define X99_CF_SNK		0x01 << 1  /* Symantec ne Axent ne   */
-					   /* AssureNet Pathways ne  */
+#define X99_CF_SNK		0x01 << 1  /* Symantec nee Axent nee */
+					   /* AssureNet Pathways nee */
 					   /* Digital Pathways       */
 					   /* "SecureNet Key"        */
 #define X99_CF_ACTIVCARD	0x01 << 2  /* ActivCard              */
@@ -133,12 +106,6 @@ extern int x99_response(const char *challenge, char response[17],
 			uint32_t card_id, des_cblock keyblock);
 extern int x99_mac(const char *input, des_cblock output, des_cblock keyblock);
 
-/* x99_state.c */
-extern int x99_gen_state(char **ascii_state, unsigned char **raw_state,
-			 const char challenge[MAX_CHALLENGE_LEN + 1],
-			 int32_t flags, int32_t when,
-			 const unsigned char key[16]);
-
 /* x99_util.c */
 /* Character maps for generic hex and vendor specific decimal modes */
 extern const char x99_hex_conversion[];
@@ -174,11 +141,12 @@ extern int x99_upd_last_auth(const char *syncdir, const char *username);
 extern int x99_challenge_transform(const char *username,
 				   char challenge[MAX_CHALLENGE_LEN + 1]);
 
-/* x99_pwe.c */
-extern void x99_pwe_init(void);
-extern int x99_pw_present(const REQUEST *request);
-extern int x99_pw_valid(const REQUEST *request, x99_token_t *inst,
-			int attr, const char *password, VALUE_PAIR **vps);
+/* x99_log.c */
+extern void x99_log(int level, const char *modname, const char *format, ...);
+
+#ifdef HAVE_RADIUSD_H
+#include "x99_rad.h"
+#endif
 
 #endif /* X99_H */
 

@@ -19,9 +19,11 @@
  * Copyright 2001,2002  Google, Inc.
  */
 
+#ifdef HAVE_RADIUSD_H
 #include "autoconf.h"
 #include "libradius.h"
 #include "radiusd.h"
+#endif
 #include "x99.h"
 
 #include <string.h>

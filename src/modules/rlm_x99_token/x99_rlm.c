@@ -32,15 +32,18 @@
  */
 
 /*
+ * TODO: support max usage limit (x iterations)
  * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
 
+#ifdef HAVE_RADIUSD_H
 #include "autoconf.h"
 #include "libradius.h"
 #include "radiusd.h"
 #include "modules.h"
 #include "conffile.h"
+#endif
 #include "x99.h"
 
 #include <stdlib.h>
@@ -110,14 +113,15 @@ x99_token_init(void)
 {
     if ((rnd_fd = open(DEVURANDOM, O_RDONLY)) == -1) {
 	/* Don't bother reporting the error code, probably wrong for MT */
-	radlog(L_ERR, "rlm_x99_token: init: error opening %s", DEVURANDOM);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME, "init: error opening %s",
+		DEVURANDOM);
 	return -1;
     }
 
     /* Generate a random key, used to protect the State attribute. */
     if (x99_get_random(rnd_fd, hmac_key, sizeof(hmac_key)) == -1) {
-	radlog(L_ERR, "rlm_x99_token: init: failed to obtain random data "
-		      "for hmac_key");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"init: failed to obtain random data for hmac_key");
 	return -1;
     }
 
@@ -148,8 +152,9 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
     /* Verify ranges for those vars that are limited. */
     if (data->chal_len < 5 || data->chal_len > MAX_CHALLENGE_LEN) {
 	data->chal_len = 6;
-	radlog(L_ERR, "rlm_x99_token: invalid challenge length, range 5-%d, "
-		      "using default of 6", MAX_CHALLENGE_LEN);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"invalid challenge length, range 5-%d, using default of 6",
+		MAX_CHALLENGE_LEN);
 
     }
 
@@ -158,80 +163,84 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
     if (p == NULL || p != strrchr(data->chal_text, '%') || strncmp(p,"%s",2)) {
 	free(data->chal_text);
 	data->chal_text = strdup(CHALLENGE_TEXT);
-	radlog(L_ERR, "rlm_x99_token: invalid challenge text, "
-		      "using default of \"%s\"", CHALLENGE_TEXT);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"invalid challenge text, using default of \"%s\"",
+		CHALLENGE_TEXT);
     }
 
     if (data->softfail < 1 ) {
 	data->softfail = 5;
-	radlog(L_ERR, "rlm_x99_token: softfail must be at least 1, "
-		      "using default of 5");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"softfail must be at least 1, using default of 5");
     }
 
     if (data->hardfail < 0 ) {
 	data->hardfail = 0;
-	radlog(L_ERR, "rlm_x99_token: hardfail must be at least 1 "
-		      "(or 0 == infinite), using default of 0");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"hardfail must be at least 1 "
+		"(or 0 == infinite), using default of 0");
     }
 
     if (data->fast_sync && !data->allow_sync) {
 	data->fast_sync = 0;
-	radlog(L_INFO, "rlm_x99_token: fast_sync is yes, but allow_sync is no; "
-		       "disabling fast_sync");
+	x99_log(X99_LOG_INFO, X99_MODULE_NAME,
+		"fast_sync is yes, but allow_sync is no; disabling fast_sync");
     }
 
     if (data->ewindow_size > MAX_EWINDOW_SIZE || data->ewindow_size < 0) {
 	data->ewindow_size = 0;
-	radlog(L_ERR, "rlm_x99_token: max event window size is %d, "
-		      "using default of 0", MAX_EWINDOW_SIZE);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"max event window size is %d, using default of 0",
+		MAX_EWINDOW_SIZE);
     }
 
     if (data->mschapv2_mppe_policy > 2 || data->mschapv2_mppe_policy < 0) {
 	data->mschapv2_mppe_policy = 2;
-	radlog(L_ERR, "rlm_x99_token: invalid value for mschapv2_mppe, "
-		      "using default of 2");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"invalid value for mschapv2_mppe, using default of 2");
     }
 
     if (data->mschapv2_mppe_types > 2 || data->mschapv2_mppe_types < 0) {
 	data->mschapv2_mppe_types = 2;
-	radlog(L_ERR, "rlm_x99_token: invalid value for mschapv2_mppe_bits, "
-		      "using default of 2");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"invalid value for mschapv2_mppe_bits, using default of 2");
     }
 
     if (data->mschap_mppe_policy > 2 || data->mschap_mppe_policy < 0) {
 	data->mschap_mppe_policy = 2;
-	radlog(L_ERR, "rlm_x99_token: invalid value for mschap_mppe, "
-		      "using default of 2");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"invalid value for mschap_mppe, using default of 2");
     }
 
     if (data->mschap_mppe_types != 2) {
 	data->mschap_mppe_types = 2;
-	radlog(L_ERR, "rlm_x99_token: invalid value for mschap_mppe_bits, "
-		      "using default of 2");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"invalid value for mschap_mppe_bits, using default of 2");
     }
 
 #if 0
     if (data->twindow_max - data->twindow_min > MAX_TWINDOW_SIZE) {
 	data->twindow_min = data->twindow_max = 0;
-	radlog(L_ERR, "rlm_x99_token: max time window size is %d, "
-		      "using default of 0", MAX_TWINDOW_SIZE);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"max time window size is %d, using default of 0",
+		MAX_TWINDOW_SIZE);
     }
     if (data->twindow_min > 0 || data->twindow_max < 0 ||
 	data->twindow_max < data->twindow_min) {
 	data->twindow_min = data->twindow_max = 0;
-	radlog(L_ERR, "rlm_x99_token: invalid values for time window, "
-		      "using default of 0");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"invalid values for time window, using default of 0");
     }
 #endif
 
     if (stat(data->syncdir, &st) != 0) {
-	radlog(L_ERR, "rlm_x99_token: syncdir %s error: %s",
-	       data->syncdir, strerror(errno));
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME, "syncdir %s error: %s",
+		data->syncdir, strerror(errno));
 	return -1;
     }
     if (st.st_mode != (S_IFDIR|S_IRWXU)) {
-	radlog(L_ERR, "rlm_x99_token: syncdir %s has loose permissions",
-	       data->syncdir);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"syncdir %s has loose permissions", data->syncdir);
 	return -1;
     }
 
@@ -274,14 +283,15 @@ x99_token_authorize(void *instance, REQUEST *request)
 
     /* User-Name attribute required. */
     if (!request->username) {
-	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"User-Name\" is "
-		       "required for authentication.");
+	x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		"autz: Attribute \"User-Name\" required for authentication.");
 	return RLM_MODULE_INVALID;
     }
 
     if ((pwattr = x99_pw_present(request)) == 0) {
-	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"User-Password\" or "
-		       "equivalent required for authentication.");
+	x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		"autz: Attribute \"User-Password\" or equivalent "
+		"required for authentication.");
 	return RLM_MODULE_INVALID;
     }
 
@@ -289,14 +299,15 @@ x99_token_authorize(void *instance, REQUEST *request)
     user_found = 1;
     if ((rc = x99_get_user_info(inst->pwdfile, request->username->strvalue,
 				&user_info)) == -2) {
-	radlog(L_ERR, "rlm_x99_token: autz: error reading user [%s] info",
-	       request->username->strvalue);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"autz: error reading user [%s] info",
+		request->username->strvalue);
 	return RLM_MODULE_FAIL;
     }
     if (rc == -1) {
 	/* x99_get_user_info() also logs, but we want to record the autz bit */
-	radlog(L_AUTH, "rlm_x99_token: autz: user [%s] not found",
-	       request->username->strvalue);
+	x99_log(X99_LOG_AUTH, X99_MODULE_NAME, "autz: user [%s] not found",
+		request->username->strvalue);
 	memset(&user_info, 0, sizeof(user_info)); /* X99_CF_NONE */
 	user_found = 0;
     }
@@ -328,7 +339,7 @@ x99_token_authorize(void *instance, REQUEST *request)
 	     * to set a value, /existence/ of the vp is the signal.
 	     */
 	    if ((vp = paircreate(PW_X99_FAST, PW_TYPE_INTEGER)) == NULL) {
-		radlog(L_ERR|L_CONS, "rlm_x99_token: autz: no memory");
+		x99_log(X99_LOG_ERR, X99_MODULE_NAME, "autz: no memory");
 		return RLM_MODULE_FAIL;
 	    }
 	    pairadd(&request->config_items, vp);
@@ -349,7 +360,8 @@ gen_challenge:
 
     /* Generate a random challenge. */
     if (x99_get_random(rnd_fd, rawchallenge, inst->chal_len) == -1) {
-	radlog(L_ERR, "rlm_x99_token: autz: failed to obtain random data");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"autz: failed to obtain random data");
 	return RLM_MODULE_FAIL;
     }
 
@@ -372,13 +384,15 @@ gen_challenge:
 	time_t now = time(NULL);
 
 	if (sizeof(now) != 4 || sizeof(long) != 4) {
-	    radlog(L_ERR, "rlm_x99_token: autz: only ILP32 arch is supported");
+	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		    "autz: only ILP32 arch is supported");
 	    return RLM_MODULE_FAIL;
 	}
 	now = htonl(now);
 
 	if (x99_gen_state(&state, NULL, challenge, sflags, now, hmac_key) != 0){
-	    radlog(L_ERR, "rlm_x99_token: autz: failed to generate state");
+	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		    "autz: failed to generate state");
 	    return RLM_MODULE_FAIL;
 	}
     } else {
@@ -432,22 +446,23 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
     /* User-Name attribute required. */
     if (!request->username) {
-	radlog(L_AUTH, "rlm_x99_token: auth: Attribute \"User-Name\" is "
-		       "required for authentication.");
+	x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		"auth: Attribute \"User-Name\" required for authentication.");
 	return RLM_MODULE_INVALID;
     }
     username = request->username->strvalue;
 
     if ((pwattr = x99_pw_present(request)) == 0) {
-	radlog(L_AUTH, "rlm_x99_token: auth: Attribute \"User-Password\" or "
-		       "equivalent required for authentication.");
+	x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		"auth: Attribute \"User-Password\" or equivalent "
+		"required for authentication.");
 	return RLM_MODULE_INVALID;
     }
 
     /* Look up the user's info. */
     if (x99_get_user_info(inst->pwdfile, username, &user_info) != 0) {
-	radlog(L_AUTH, "rlm_x99_token: auth: error reading user [%s] info",
-	       username);
+	x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		"auth: error reading user [%s] info", username);
 	return RLM_MODULE_REJECT;
     }
 
@@ -465,8 +480,8 @@ x99_token_authenticate(void *instance, REQUEST *request)
 		e_length += 4 + 4 + 16; /* sflags + time + hmac */
 
 	    if (vp->length != e_length) {
-		radlog(L_AUTH, "rlm_x99_token: auth: bad state for [%s]: "
-			       "length", username);
+		x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+			"auth: bad state for [%s]: length", username);
 		return RLM_MODULE_INVALID;
 	    }
 
@@ -480,12 +495,13 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	    (void) memcpy(&sflags, vp->strvalue + inst->chal_len, 4);
 	    (void) memcpy(&then, vp->strvalue + inst->chal_len + 4, 4);
 	    if (x99_gen_state(NULL,&state,challenge,sflags,then,hmac_key) != 0){
-		radlog(L_ERR, "rlm_x99_token: auth: failed to generate state");
+		x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			"auth: failed to generate state");
 		return RLM_MODULE_FAIL;
 	    }
 	    if (memcmp(state, vp->strvalue, vp->length)) {
-		radlog(L_AUTH, "rlm_x99_token: auth: bad state for [%s]: "
-			       "hmac", username);
+		x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+			"auth: bad state for [%s]: hmac", username);
 		free(state);
 		return RLM_MODULE_REJECT;
 	    }
@@ -494,8 +510,8 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	    /* State is valid, but check expiry. */
 	    then = ntohl(then);
 	    if (then + inst->maxdelay < time(NULL)) {
-		radlog(L_AUTH, "rlm_x99_token: auth: bad state for [%s]: "
-			       "expired", username);
+		x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+			"auth: bad state for [%s]: expired", username);
 		return RLM_MODULE_REJECT;
 	    }
 good_state:
@@ -503,9 +519,10 @@ good_state:
 
 	} else {
 	    /* This should only happen if the authorize code didn't run. */
-	    radlog(L_ERR|L_CONS, "rlm_x99_token: auth: bad state for [%s]: "
-				 "missing (is x99_token listed in "
-				 "radiusd.conf's authorize stanza?)", username);
+	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		    "auth: bad state for [%s]: missing "
+		    "(is x99_token listed in radiusd.conf's authorize stanza?)",
+		    username);
 	    return RLM_MODULE_FAIL;
 	}
     } /* if (!fast_sync) */
@@ -515,21 +532,23 @@ good_state:
      * failures, we don't increment the failcount or last_auth time.
      */
     if (x99_get_failcount(inst->syncdir, username, &failcount) != 0) {
-	radlog(L_ERR, "rlm_x99_token: auth: unable to get failure count "
-		      "for [%s]", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"auth: unable to get failure count for [%s]", username);
 	return RLM_MODULE_FAIL;
     }
     if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
-	radlog(L_ERR, "rlm_x99_token: auth: unable to get last auth time "
-		      "for [%s]", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"auth: unable to get last auth time for [%s]", username);
 	return RLM_MODULE_FAIL;
     }
     if (inst->hardfail && failcount >= inst->hardfail) {
-	radlog(L_AUTH, "rlm_x99_token: auth: %d/%d failed/max authentications "
-		       "for [%s]", failcount, inst->hardfail, username);
+	x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		"auth: %d/%d failed/max authentications for [%s]",
+		failcount, inst->hardfail, username);
 	if (x99_incr_failcount(inst->syncdir, username) != 0) {
-	    radlog(L_ERR, "rlm_x99_token: auth: unable to increment failure "
-			  "count for locked out user [%s]", username);
+	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		    "auth: unable to increment failure count for "
+		    "locked out user [%s]", username);
 	}
 	return RLM_MODULE_USERLOCK;
     }
@@ -554,13 +573,14 @@ good_state:
 	fcount = failcount - inst->softfail;
 	when = last_auth + (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
 	if (time(NULL) < when) {
-	    radlog(L_AUTH, "rlm_x99_token: auth: user [%s] auth too soon "
-			   "while delayed, "
-			   "%d/%d failed/softfail authentications",
-			   username, failcount, inst->softfail);
+	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		    "auth: user [%s] auth too soon while delayed, "
+		    "%d/%d failed/softfail authentications",
+		    username, failcount, inst->softfail);
 	    if (x99_incr_failcount(inst->syncdir, username) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to increment "
-			      "failure count for delayed user [%s]", username);
+		x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			"auth: unable to increment failure count for "
+			"delayed user [%s]", username);
 	    }
 	    return RLM_MODULE_USERLOCK;
 	}
@@ -578,8 +598,8 @@ good_state:
 
     /* Perform any site-specific transforms of the challenge. */
     if (x99_challenge_transform(username, challenge) != 0) {
-	radlog(L_ERR, "rlm_x99_token: auth: challenge transform failed "
-		      "for [%s]", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"auth: challenge transform failed for [%s]", username);
 	return RLM_MODULE_FAIL;
 	/* NB: last_auth, failcount not updated. */
     }
@@ -587,9 +607,9 @@ good_state:
     /* Calculate and test the async response. */
     if (x99_response(challenge, e_response, user_info.card_id,
 		     user_info.keyblock) != 0) {
-	radlog(L_ERR, "rlm_x99_token: auth: unable to calculate async "
-		      "response for [%s], to challenge %s",
-		      username, challenge);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"auth: unable to calculate async response for [%s], "
+		"to challenge %s", username, challenge);
 	return RLM_MODULE_FAIL;
 	/* NB: last_auth, failcount not updated. */
     }
@@ -599,23 +619,23 @@ good_state:
     if (x99_pw_valid(request, inst, pwattr, e_response, &add_vps)) {
 	/* Password matches.  Is this allowed? */
 	if (!inst->allow_async) {
-	    radlog(L_AUTH, "rlm_x99_token: auth: bad async for [%s]: "
-			   "disallowed by config", username);
+	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		    "auth: bad async for [%s]: disallowed by config", username);
 	    rc = RLM_MODULE_REJECT;
 	    goto return_pw_valid;
 	    /* NB: last_auth, failcount not updated. */
 	}
 	if (last_auth + inst->maxdelay > time(NULL)) {
-	    radlog(L_AUTH, "rlm_x99_token: auth: bad async for [%s]: "
-			   "too soon", username);
+	    x99_log(X99_LOG_AUTH, X99_MODULE_NAME,
+		    "auth: bad async for [%s]: too soon", username);
 	    rc = RLM_MODULE_REJECT;
 	    goto return_pw_valid;
 	    /* NB: last_auth, failcount not updated. */
 	}
 
 	if (user_info.card_id & X99_CF_SM) {
-	    radlog(L_INFO, "rlm_x99_token: auth: [%s] authenticated "
-			   "in async mode", username);
+	    x99_log(X99_LOG_INFO, X99_MODULE_NAME,
+		    "auth: [%s] authenticated in async mode", username);
 	}
 
 	rc = RLM_MODULE_OK;
@@ -630,21 +650,22 @@ good_state:
 	     */
 	    if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
 				  1, 0, challenge, user_info.keyblock) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to get "
-			      "sync data e:%d t:%d for [%s] (for resync)",
-			      1, 0, username);
+		x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			"auth: unable to get sync data "
+			"e:%d t:%d for [%s] (for resync)", 1, 0, username);
 		rc = RLM_MODULE_FAIL;
 	    } else if (x99_set_sync_data(inst->syncdir, username, challenge,
 					 user_info.keyblock) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to set sync "
-			      "data for [%s] (for resync)", username);
+		x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			"auth: unable to set sync data for [%s] (for resync)",
+			username);
 		rc = RLM_MODULE_FAIL;
 	    }
 	} else {
 	    /* Just update last_auth, failcount. */
 	    if (x99_reset_failcount(inst->syncdir, username) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to reset failcount "
-			      "for [%s]", username);
+		x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			"auth: unable to reset failcount for [%s]", username);
 		rc = RLM_MODULE_FAIL;
 	    }
 	}
@@ -658,9 +679,9 @@ sync_response:
 	    /* Get sync challenge and key. */
 	    if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
 				  i, 0, challenge, user_info.keyblock) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to get "
-			      "sync data e:%d t:%d for [%s]",
-			      i, 0, username);
+		x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			"auth: unable to get sync data e:%d t:%d for [%s]",
+			i, 0, username);
 		return RLM_MODULE_FAIL;
 		/* NB: last_auth, failcount not updated. */
 	    }
@@ -668,9 +689,10 @@ sync_response:
 	    /* Calculate sync response. */
 	    if (x99_response(challenge, e_response, user_info.card_id,
 			     user_info.keyblock) != 0) {
-		radlog(L_ERR, "rlm_x99_token: auth: unable to calculate "
-			      "sync response e:%d t:%d for [%s], to "
-			      "challenge %s", i, 0, username, challenge);
+		x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			"auth: unable to calculate sync response "
+			"e:%d t:%d for [%s], to challenge %s",
+			i, 0, username, challenge);
 		return RLM_MODULE_FAIL;
 		/* NB: last_auth, failcount not updated. */
 	    }
@@ -690,14 +712,15 @@ sync_response:
 		rc = RLM_MODULE_OK;
 		if (x99_get_sync_data(inst->syncdir,username,user_info.card_id,
 				      1,0,challenge,user_info.keyblock) != 0) {
-		    radlog(L_ERR, "rlm_x99_token: auth: unable to get "
-				  "sync data e:%d t:%d for [%s] (for resync)",
-				  1, 0, username);
+		    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			    "auth: unable to get sync data "
+			    "e:%d t:%d for [%s] (for resync)", 1, 0, username);
 		    rc = RLM_MODULE_FAIL;
 		} else if (x99_set_sync_data(inst->syncdir, username, challenge,
 					     user_info.keyblock) != 0) {
-		    radlog(L_ERR, "rlm_x99_token: auth: unable to set sync "
-				  "data for [%s] (for resync)", username);
+		    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+			    "auth: unable to set sync data for [%s] "
+			    "(for resync)", username);
 		    rc = RLM_MODULE_FAIL;
 		}
 		goto return_pw_valid;
@@ -708,8 +731,9 @@ sync_response:
 
     /* Both async and sync mode failed. */
     if (x99_incr_failcount(inst->syncdir, username) != 0) {
-	radlog(L_ERR, "rlm_x99_token: auth: unable to increment failure "
-		      "count for user [%s]", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"auth: unable to increment failure count for user [%s]",
+		username);
     }
     return RLM_MODULE_REJECT;
 

@@ -19,8 +19,10 @@
  * Copyright 2001,2002  Google, Inc.
  */
 
+#ifdef HAVE_RADIUSD_H
 #include "autoconf.h"
 #include "radiusd.h"
+#endif
 #include "x99.h"
 
 #include <string.h>
@@ -63,7 +65,8 @@ x99_response(const char *challenge, char response[9],
 	    conversion = x99_cc_dec_conversion;
 	} else {
 	    /* This should not happen. */
-	    radlog(L_ERR, "rlm_x99_token: x99_response: bad card mode/vendor");
+	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		    "x99_response: bad card mode/vendor");
 	    return -1;
 	}
     } else {
@@ -79,7 +82,8 @@ x99_response(const char *challenge, char response[9],
 	    (void) memmove(&response[3], &response[4], 5);
 	} else {
 	    /* This should not happen. */
-	    radlog(L_ERR, "rlm_x99_token: x99_response: bad card mode/vendor");
+	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		    "x99_response: bad card mode/vendor");
 	    return -1;
 	}
     }
@@ -121,8 +125,8 @@ x99_mac(const char *input, des_cblock output, des_cblock keyblock)
      * actually profiled it.
      */
     if ((rc = des_set_key_checked((const_des_cblock *) keyblock, ks)) != 0) {
-	radlog(L_ERR, "rlm_x99_token: x99_mac: DES key %s",
-	       rc == -1 ? "has incorrect parity" : "is weak");
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME, "x99_mac: DES key %s",
+		rc == -1 ? "has incorrect parity" : "is weak");
 	return -1;
     }
 

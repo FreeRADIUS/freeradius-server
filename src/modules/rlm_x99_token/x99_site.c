@@ -34,9 +34,13 @@
  * IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT
  */
 
+#ifdef HAVE_RADIUSD_H
 #include "autoconf.h"
 #include "libradius.h"
+#endif
 #include "x99.h"
+
+#include <string.h>
 
 static const char rcsid[] = "$Id$";
 

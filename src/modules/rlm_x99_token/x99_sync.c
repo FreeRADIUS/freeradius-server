@@ -19,9 +19,11 @@
  * Copyright 2001,2002  Google, Inc.
  */
 
+#ifdef HAVE_RADIUSD_H
 #include "autoconf.h"
 #include "libradius.h"
 #include "radiusd.h"
+#endif
 #include "x99.h"
 #include "x99_sync.h"
 
@@ -285,13 +287,13 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 
     /* Verify permissions first. */
     if (stat(syncdir, &st) != 0) {
-	radlog(L_ERR, "rlm_x99_token: syncdir %s error: %s",
-	       syncdir, strerror(errno));
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME, "syncdir %s error: %s",
+		syncdir, strerror(errno));
 	return NULL;
     }
     if (st.st_mode != (S_IFDIR|S_IRUSR|S_IWUSR|S_IXUSR)) {
-	radlog(L_ERR, "rlm_x99_token: syncdir %s has loose permissions",
-	       syncdir);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"syncdir %s has loose permissions", syncdir);
 	return NULL;
     }
 
@@ -313,8 +315,9 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 	usleep(500000); /* 0.5 second */
     }
     if (fd  == -1) {
-	radlog(L_ERR, "x99_rlm_token: x99_acquire_sd_lock: unable to acquire "
-		      "lock for [%s]", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_acquire_sd_lock: unable to acquire lock for [%s]",
+		username);
 	free(lockfile);
 	return NULL;
     }
@@ -356,9 +359,9 @@ x99_get_sd(const char *syncdir, const char *username,
     /* Open sync file. */
     if ((fp = fopen(syncfile, "r")) == NULL) {
 	if (errno != ENOENT) {
-	    radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-			  "unable to open sync file %s: %s",
-			  syncfile, strerror(errno));
+	    x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		    "x99_get_sd: unable to open sync file %s: %s",
+		    syncfile, strerror(errno));
 	    return -1;
 	}
 	/*
@@ -372,9 +375,9 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Read sync data. */
     if ((fgets(syncdata, sizeof(syncdata), fp) == NULL) || !strlen(syncdata)) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "unable to read sync data from %s: %s",
-		       syncfile, strerror(errno));
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: unable to read sync data from %s: %s",
+		syncfile, strerror(errno));
 	(void) fclose(fp);
 	return -1;
     }
@@ -384,37 +387,38 @@ x99_get_sd(const char *syncdir, const char *username,
     /* Now, parse the sync data. */
     /* Eat the version. */
     if ((p = strchr(p, ':')) == NULL) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data for user %s", username);
 	return -1;
     }
     p++;
 
     /* Sanity check the username. */
     if ((q = strchr(p, ':')) == NULL) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data for user %s", username);
 	return -1;
     }
     *q++ = '\0';
     if (strcmp(p, username)) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "sync data user mismatch for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: sync data user mismatch for user %s", username);
 	return -1;
     }
     p = q;
 
     /* Get challenge. */
     if ((q = strchr(p, ':')) == NULL) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (challenge) for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data (challenge) for user %s",
+		username);
 	return -1;
     }
     *q++ = '\0';
     if (strlen(p) > MAX_CHALLENGE_LEN) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (challenge length) for user %s",
-		      username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data (challenge length) for user %s",
+		username);
 	return -1;
     }
     if (challenge)
@@ -423,36 +427,40 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Eat key. */
     if ((p = strchr(p, ':')) == NULL) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (key) for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data (key) for user %s", username);
 	return -1;
     }
     p++;
 
     /* Get failures. */
     if ((q = strchr(p, ':')) == NULL) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (failures) for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data (failures) for user %s",
+		username);
 	return -1;
     }
     *q++ = '\0';
     if (failures && (sscanf(p, "%d", failures) != 1)) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (failures) for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data (failures) for user %s",
+		username);
 	return -1;
     }
     p = q;
 
     /* Get last_auth. */
     if ((q = strchr(p, ':')) == NULL) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (last_auth) for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data (last_auth) for user %s",
+		username);
 	return -1;
     }
     *q++ = '\0';
     if (last_auth && (sscanf(p, "%ld", last_auth) != 1)) {
-	radlog(L_ERR, "rlm_x99_token: x99_get_sd: "
-		      "invalid sync data (last_auth) for user %s", username);
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_get_sd: invalid sync data (last_auth) for user %s",
+		username);
 	return -1;
     }
 
@@ -475,9 +483,9 @@ x99_set_sd(const char *syncdir, const char *username,
     syncfile[PATH_MAX] = '\0';
 
     if ((fp = fopen(syncfile, "w")) == NULL) {
-	radlog(L_ERR, "rlm_x99_token: x99_set_sd: "
-		      "unable to open sync file %s: %s",
-		      syncfile, strerror(errno));
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_set_sd: unable to open sync file %s: %s",
+		syncfile, strerror(errno));
 	return -1;
     }
 
@@ -485,9 +493,9 @@ x99_set_sd(const char *syncdir, const char *username,
     (void) fprintf(fp, "1:%s:%s:%s:%d:%ld:\n", username, challenge, "",
 		   failures, last_auth);
     if (fclose(fp) != 0) {
-	radlog(L_ERR, "rlm_x99_token: x99_set_sd: "
-		      "unable to write sync file %s: %s",
-		      syncfile, strerror(errno));
+	x99_log(X99_LOG_ERR, X99_MODULE_NAME,
+		"x99_set_sd: unable to write sync file %s: %s",
+		syncfile, strerror(errno));
 	return -1;
     }
 
