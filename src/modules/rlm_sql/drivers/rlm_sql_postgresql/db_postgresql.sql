@@ -51,7 +51,8 @@ CREATE TABLE nas (
  */
 CREATE TABLE radacct (
   RadAcctId SERIAL,
-  AcctSessionId VARCHAR(32) DEFAULT '' UNIQUE NOT NULL,
+  AcctSessionId VARCHAR(32) DEFAULT '' NOT NULL,
+  AcctUniqueId VARCHAR(32) DEFAULT '' NOT NULL,
   UserName VARCHAR(32) DEFAULT '' NOT NULL,
   Realm VARCHAR(30) DEFAULT '',
   NASIPAddress VARCHAR(15) DEFAULT '' NOT NULL,
@@ -61,7 +62,8 @@ CREATE TABLE radacct (
   AcctStopTime datetime DEFAULT now() NOT NULL,
   AcctSessionTime NUMERIC(12),
   AcctAuthentic VARCHAR(32),
-  ConnectInfo VARCHAR(32),
+  ConnectInfo_start VARCHAR(32),
+  ConnectInfo_stop VARCHAR(32),
   AcctInputOctets NUMERIC(12),
   AcctOutputOctets NUMERIC(12),
   CalledStationId VARCHAR(10) DEFAULT '' NOT NULL,
@@ -75,6 +77,8 @@ CREATE TABLE radacct (
   PRIMARY KEY (RadAcctId)
 );
 create index radacct_UserName on radacct (UserName);
+create index radacct_AcctSessionId on radacct (AcctSessionId);
+create index radacct_AcctUniqueId on radacct (AcctUniqueId);
 create index radacct_FramedIPAddress on radacct (FramedIPAddress);
 create index radacct_NASIPAddress on radacct (NASIPAddress);
 create index radacct_AcctStartTime on radacct (AcctStartTime);
