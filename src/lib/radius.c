@@ -161,7 +161,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
 	 */
-	if (packet->sockfd < 0) {
+	if (!packet || (packet->sockfd < 0)) {
 		return 0;
 	}
 
@@ -203,12 +203,33 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		   */
 		  hdr->code = packet->code;
 		  hdr->id = packet->id;
-		  if ((packet->code == PW_ACCOUNTING_REQUEST) ||
-		      (packet->code == PW_DISCONNECT_REQUEST)) {
-			  memset(hdr->vector, 0, AUTH_VECTOR_LEN);
-		  } else {
-			  memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
+
+		  /*
+		   *	Double-check some things based on packet code.
+		   */
+		  switch (packet->code) {
+		  case PW_AUTHENTICATION_ACK:
+		  case PW_AUTHENTICATION_REJECT:
+		  case PW_ACCESS_CHALLENGE:
+			  if (!original) {
+				  librad_log("ERROR: Cannot sign response packet without a request packet.");
+				  return -1;
+			  }
+			  break;
+
+			  /*
+			   *	These packet vectors start off as all zero.
+			   */
+		  case PW_ACCOUNTING_REQUEST:
+		  case PW_DISCONNECT_REQUEST:
+			  memset(packet->vector, 0, sizeof(packet->vector));
+			  break;
+
+		  default:
+			  break;
+			  
 		  }
+		  memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
 
 		  DEBUG("Sending %s of id %d to %s:%d\n",
 			what, packet->id,
@@ -225,6 +246,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		  vendorpec = 0;
 		  vsa_length_ptr = NULL;
 
+		  /*
+		   *	Loop over the reply attributes for the packet.
+		   */
 		  for (reply = packet->vps; reply; reply = reply->next) {
 			  /*
 			   *	Ignore non-wire attributes
@@ -248,12 +272,10 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			  }
 
 			  /*
-			   *	Do stuff for Message-Authenticator
+			   *	Set the Message-Authenticator to the
+			   *	correct length and initial value.
 			   */
 			  if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
-				  /*
-				   *  Set it to zero!
-				   */
 				  reply->length = AUTH_VECTOR_LEN;
 				  memset(reply->strvalue, 0, AUTH_VECTOR_LEN);
 				  msg_auth_offset = total_length;
@@ -349,7 +371,6 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				   *	All other attributes are as
 				   *	per the RFC spec.
 				   */
-
 				  *ptr++ = (reply->attribute & 0xFF);
 				  length_ptr = ptr;
 				  if (vsa_length_ptr) *vsa_length_ptr += 2;
@@ -396,10 +417,14 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				    break;
 
 				  case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+					  if (!original) {
+						  librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the reply.");
+						  return -1;
+					  }
 					  rad_tunnel_pwencode(reply->strvalue,
 							      &(reply->length),
 							      secret,
-							      packet->vector);
+							      original->vector);
 					  break;
 
 
@@ -541,78 +566,78 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		   *	and put it in the vector.
 		   */
 		  secretlen = strlen(secret);
-		  if (packet->code != PW_AUTHENTICATION_REQUEST &&
-		      packet->code != PW_STATUS_SERVER) {
-		    MD5_CTX	context;
-		      /*
-		       *	Set the Message-Authenticator attribute,
-		       *	BEFORE setting the reply authentication vector
-		       *	for CHALLENGE, ACCEPT and REJECT.
-		       */
-		      if (msg_auth_offset) {
-			      uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
-
-			      switch (packet->code) {
-			      default:
-				break;
-				
-			      case PW_AUTHENTICATION_ACK:
-			      case PW_AUTHENTICATION_REJECT:
-			      case PW_ACCESS_CHALLENGE:
-				if (original) {
-				  memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
-				}
-				break;
-			      }
-
-			      memset(packet->data + msg_auth_offset + 2, 0,
-				     AUTH_VECTOR_LEN);
-			      lrad_hmac_md5(packet->data, packet->data_len,
-					    secret, secretlen, calc_auth_vector);
-			      memcpy(packet->data + msg_auth_offset + 2,
-				     calc_auth_vector, AUTH_VECTOR_LEN);
-			      memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
-		      }
-
-		      MD5Init(&context);
-		      MD5Update(&context, packet->data, packet->data_len);
-		      MD5Update(&context, secret, strlen(secret));
-		      MD5Final(digest, &context);
-
-		      memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
-		      memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
-		  }
 
 		  /*
-		   *	Set the Message-Authenticator attribute,
-		   *	AFTER setting the authentication vector
-		   *	only for ACCESS-REQUESTS
+		   *	If there's a Message-Authenticator, update it
+		   *	now, BEFORE updating the authentication vector.
 		   */
-		  else if (msg_auth_offset) {
+		  if (msg_auth_offset) {
 			  uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
-
+			  
 			  switch (packet->code) {
 			  default:
-			    break;
-			    
+				  break;
+				  
 			  case PW_AUTHENTICATION_ACK:
 			  case PW_AUTHENTICATION_REJECT:
 			  case PW_ACCESS_CHALLENGE:
-			    if (original) {
-				    memcpy(hdr->vector, original->vector,
-					   AUTH_VECTOR_LEN);
-			    }
-			    break;
+				  /* this was checked above */
+				  memcpy(hdr->vector, original->vector,
+					 AUTH_VECTOR_LEN);
+				  break;
 			  }
-
+			  
+			  /*
+			   *	Set the authentication vector to zero,
+			   *	calculate the signature, and put it
+			   *	into the Message-Authenticator
+			   *	attribute.
+			   */
 			  memset(packet->data + msg_auth_offset + 2,
 				 0, AUTH_VECTOR_LEN);
 			  lrad_hmac_md5(packet->data, packet->data_len,
 					secret, secretlen, calc_auth_vector);
 			  memcpy(packet->data + msg_auth_offset + 2,
-				  calc_auth_vector, AUTH_VECTOR_LEN);
+				 calc_auth_vector, AUTH_VECTOR_LEN);
+
+			  /*
+			   *	Copy the original request vector back
+			   *	to the raw packet.
+			   */
 			  memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 		  }
+
+		  /*
+		   *	Switch over the packet code, deciding how to
+		   *	sign the packet.
+		   */
+		  switch (packet->code) {
+			  /*
+			   *	Request packets are not signed, bur
+			   *	have a random authentication vector.
+			   */
+		  case PW_AUTHENTICATION_REQUEST:
+		  case PW_STATUS_SERVER:
+			  break;
+
+			  /*
+			   *	Reply packets are signed with the
+			   *	authentication vector of the request.
+			   */
+		  default:
+		  	{
+				MD5_CTX	context;
+				MD5Init(&context);
+				MD5Update(&context, packet->data, packet->data_len);
+				MD5Update(&context, secret, strlen(secret));
+				MD5Final(digest, &context);
+				
+				memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
+				memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
+				break;
+			}
+		  } /* switch over packet codes */
+
 
 		  /*
 		   *	If packet->data points to data, then we print out
