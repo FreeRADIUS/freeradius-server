@@ -252,6 +252,7 @@ ATTRIBUTE	EAP-TLS-Require-Client-Cert	1019	integer
 ATTRIBUTE       EAP-Id                  1020    integer
 ATTRIBUTE	EAP-Code 		1021	integer
 ATTRIBUTE	EAP-MD5-Password	1022	string
+
 #
 #	Range:	1022-1028
 #		unused
@@ -312,9 +313,13 @@ ATTRIBUTE	Time-Of-Day		1089	string
 ATTRIBUTE	Request-Processing-Stage 1090	string
 ATTRIBUTE	Cache-No-Caching	1091	string
 ATTRIBUTE	Cache-Delete-Cache	1092	string
+ATTRIBUTE	SHA-Password		1093	string
+ATTRIBUTE	SSHA-Password		1094	string
+ATTRIBUTE	MD5-Password		1095	string
+ATTRIBUTE	SMD5-Password		1096	string
 
 #
-#	Range:	1084-1199
+#	Range:	1097-1199
 #		unused.
 #
 

@@ -195,6 +195,11 @@
 #define PW_CACHE_NO_CACHING		1091
 #define PW_CACHE_DELETE_CACHE		1092
 
+#define PW_SHA_PASSWORD			1093
+#define PW_SSHA_PASSWORD		1094
+#define PW_MD5_PASSWORD			1095
+#define PW_SMD5_PASSWORD		1096
+
 /*
  *	Integer Translations
  */
