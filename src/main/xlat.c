@@ -214,7 +214,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 	q = out;
 	for (p = fmt; *p ; p++) {
 	/* Calculate freespace in output */
-	freespace = outlen - ((int)q-(int)out);
+	freespace = outlen - (q - out);
 		if (freespace <= 1)
 			break;
 		c = *p;
@@ -281,7 +281,7 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING);
 				break;
 			case 'l': /* request timestamp */
-				sprintf(tmpdt,"%ld",request->timestamp);
+				snprintf(tmpdt, sizeof(tmpdt), "%ld",request->timestamp);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				break;

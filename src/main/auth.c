@@ -558,7 +558,7 @@ int rad_authenticate(REQUEST *request)
 				(r = module_checksimul(request, check_item->lvalue)) != 0) {
 
 			if (check_item->lvalue > 1) {
-				sprintf(umsg, 
+			  snprintf(umsg, sizeof(umsg), 
 						"\r\nYou are already logged in %d times  - access denied\r\n\n",
 						(int)check_item->lvalue);
 				user_msg = umsg;
@@ -576,9 +576,9 @@ int rad_authenticate(REQUEST *request)
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 
-			strcpy(logstr, "Multiple logins");
-			sprintf(logstr, "%s (max %d) %s", logstr, check_item->lvalue,
-					r == 2 ? "[MPP attempt]" : "");
+			snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
+				 check_item->lvalue,
+				 r == 2 ? "[MPP attempt]" : "");
 			rad_authlog(logstr, request, 1);
 
 			result = -1;
@@ -612,9 +612,8 @@ int rad_authenticate(REQUEST *request)
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 
-			strcpy(logstr, "Outside allowed timespan");
-			sprintf(logstr, "%s (time allowed %s)", logstr, 
-					check_item->strvalue);
+			snprintf(logstr, sizeof(logstr), "Outside allowed timespan (time allowed %s)", 
+				 check_item->strvalue);
 			rad_authlog(logstr, request, 1);
 
 		} else if (r > 0) {

@@ -125,10 +125,10 @@ static int ffile(const char *arg)
 	int p = 0;
 	char *s;
 
-	sprintf(fn, "%s/%.32s", FINGER_DIR, arg);
+	snprintf(fn, sizeof(fn), "%s/%.32s", FINGER_DIR, arg);
 	if (access(fn, X_OK) == 0) {
 		p = 1;
-		sprintf(fn, "exec %s/%.32s 2>&1", FINGER_DIR, arg);
+		snprintf(fn, sizeof(fn), "exec %s/%.32s 2>&1", FINGER_DIR, arg);
 		fp = safe_popen(fn, "r");
 	} else fp = fopen(fn, "r");
 
@@ -161,7 +161,7 @@ static void sys_finger(const char *l)
 	if (ffile(l) == 0)
 		exit(0);
 
-	sprintf(fn, "exec %s %s", SYS_FINGER, l);
+	snprintf(fn, sizeof(fn), "exec %s %s", SYS_FINGER, l);
 	if ((fp = safe_popen(fn, "r")) == NULL) {
 		printf("popen: %s\r\n", strerror(errno));
 		exit(1);
@@ -203,11 +203,11 @@ static const char *proto(int id, int porttype)
 		if (!strchr("ASITX", porttype))
 			porttype = ' ';
 		if (id == 'S')
-			sprintf(buf, "SLP %c", porttype);
+			snprintf(buf, sizeof(buf), "SLP %c", porttype);
 		else if (id == 'P')
-			sprintf(buf, "PPP %c", porttype);
+			snprintf(buf, sizeof(buf), "PPP %c", porttype);
 		else
-			sprintf(buf, "shl %c", porttype);
+			snprintf(buf, sizeof(buf), "shl %c", porttype);
 		return buf;
 	}
 	if (id == 'S') return "SLIP";
@@ -263,9 +263,9 @@ char *idletime(char *line)
 			min %= 60;
 			hr %= 24;
 			if (days > 0)
-				sprintf(tmp, "%dd", days);
+				snprintf(tmp, sizeof(tmp), "%dd", days);
 			else
-				sprintf(tmp, "%2d:%02d", hr, min);
+				snprintf(tmp, sizeof(tmp), "%2d:%02d", hr, min);
 		}
 	}
 	return tmp;
@@ -283,13 +283,13 @@ static const char *ttyshort(char *tty)
 
 	if (strncmp(tty, "tty", 3) == 0) {
 		if (tty[3] >= '0' && tty[3] <= '9')
-			sprintf(tmp, "v%.14s", tty + 3);
+			snprintf(tmp, sizeof(tmp), "v%.14s", tty + 3);
 		else
-			sprintf(tmp, "%.15s", tty + 3);
+			snprintf(tmp, sizeof(tmp), "%.15s", tty + 3);
 		return tmp;
 	}
 	if (strncmp(tty, "vc", 2) == 0) {
-		sprintf(tmp, "v.14%s", tty + 2);
+		snprintf(tmp, sizeof(tmp), "v.14%s", tty + 2);
 		return tmp;
 	}
 	if (strncmp(tty, "cu", 2) == 0) {
@@ -504,7 +504,7 @@ int main(int argc, char **argv)
 			if (hideshell && !strchr("PCS", rt.proto))
 				continue;
 
-			sprintf(session_id, "%.8s", rt.session_id);
+			snprintf(session_id, sizeof(session_id), "%.8s", rt.session_id);
 
 			if (!rawoutput && rt.nas_port > (showname ? 999 : 99999)) {
 				portind = ">";

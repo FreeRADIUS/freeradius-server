@@ -758,7 +758,7 @@ int read_radius_conf_file(void)
 	CONF_SECTION *cs;
 
 	/* Lets go look for the new configuration files */
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if ((cs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
 		return -1;
 	}
@@ -792,7 +792,7 @@ int read_radius_conf_file(void)
 	}
 
 	/* old-style clients file */
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
 	DEBUG2("read_config_files:  reading clients");
 	if (read_clients_file(buffer) < 0) {
 		radlog(L_ERR|L_CONS, "Errors reading clients");
@@ -802,13 +802,13 @@ int read_radius_conf_file(void)
 	/*
 	 *	Add to that, the *new* list of clients.
 	 */
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if (generate_clients(buffer) < 0) {
 		return -1;
 	}
 
 	/* old-style realms file */
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_REALMS);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_REALMS);
 	DEBUG2("read_config_files:  reading realms");
 	if (read_realms_file(buffer) < 0) {
 		radlog(L_ERR|L_CONS, "Errors reading realms");
@@ -818,13 +818,13 @@ int read_radius_conf_file(void)
 	/*
 	 *	If there isn't any realms it isn't fatal..
 	 */
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
 	if (generate_realms(buffer) < 0) {
 		return -1;
 	}
 
 	/* old-style naslist file */
-	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
 	DEBUG2("read_config_files:  reading naslist");
 	if (read_naslist_file(buffer) < 0) {
 		radlog(L_ERR|L_CONS, "Errors reading naslist");
