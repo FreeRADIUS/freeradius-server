@@ -17,6 +17,8 @@
 #include <netinet/in.h>
 #endif
 
+#include <string.h>
+
 #define EAP_START		2
 
 #define PW_EAP_REQUEST		1
