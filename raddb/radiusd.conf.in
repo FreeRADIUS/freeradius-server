@@ -89,7 +89,7 @@ pidfile = ${run_dir}/radiusd.pid
 #
 #   If these are commented out, the server will run as the user/group
 #   that started it.  In order to change to a different user/group, you
-#   WILL need to be root ( or have root privleges ) to start the server.
+#   MUST be root ( or have root privleges ) to start the server.
 #
 #   We STRONGLY recommend that you run the server with as few permissions
 #   as possible.  That is, if you're not using shadow passwords, the
@@ -202,10 +202,13 @@ port = 0
 
 #  hostname_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
-#  The default is 'off' because it'd be overall better for the net if people
-#  had to knowingly turn this feature on, since enabling it means that
-#  each client request will result in AT LEAST one lookup request to the
-#  nameserver.
+#
+#  The default is 'off' because it would be overall better for the net
+#  if people had to knowingly turn this feature on, since enabling it
+#  means that each client request will result in AT LEAST one lookup
+#  request to the nameserver.   Enabling hostname_lookups will also
+#  mean that your server may stop randomly for 30 seconds from time
+#  to time, if the DNS requests take too long.
 #
 #  Turning hostname lookups off also means that the server won't block
 #  for 30 seconds, if it sees an IP address which has no name associated
@@ -260,18 +263,17 @@ log_auth_goodpass = no
 usercollide = no
 
 # lower_user / lower_pass:  
-# Lowercase the username/password "before" or "after"
+# Lower case the username/password "before" or "after"
 # attempting to authenticate.  
 #
-# If "before", the server will first modify the request
-# and then try to auth the user.  If "after", the server
-# will first auth using the values provided by the
-# user.  If that fails it will reprocess the request
-# after modifying it as you specify below.
-# 
-# This is as close as we can get to case insensitivity.  It is
-# the admin's job to ensure that the username on the auth
-# db side is *also* lowercase to make this work
+#  If "before", the server will first modify the request and then try
+#  to auth the user.  If "after", the server will first auth using the
+#  values provided by the user.  If that fails it will reprocess the
+#  request after modifying it as you specify below.
+#
+#  This is as close as we can get to case insensitivity.  It is the
+#  admin's job to ensure that the username on the auth db side is
+#  *also* lowercase to make this work
 #
 # Default is 'no' (don't lowercase values)
 # Valid values = "before" / "after" / "no"
@@ -280,9 +282,10 @@ lower_user = no
 lower_pass = no
 
 # nospace_user / nospace_pass:
-# Some users like to enter spaces in their username or
-# password incorrectly.  To save yourself the tech support
-# call, you can eliminate those spaces here:
+#
+#  Some users like to enter spaces in their username or password
+#  incorrectly.  To save yourself the tech support call, you can
+#  eliminate those spaces here:
 #
 # Default is 'no' (don't remove spaces)
 # Valid values = "before" / "after" / "no" (explanation above)
@@ -290,7 +293,7 @@ lower_pass = no
 nospace_user = no
 nospace_pass = no
 
-#  Which program to execute check doing concurrency checks.
+#  The program to execute to do concurrency checks.
 checkrad = ${sbindir}/checkrad
 
 # SECURITY CONFIGURATION
@@ -353,10 +356,16 @@ $INCLUDE  ${confdir}/proxy.conf
 
 # CLIENTS CONFIGURATION
 #
-#  Client configuration is defined in "clients.conf".  If you don't
-#  use the "clients.conf", you can comment the following.  The use of
-#  "clients.conf" is recommended over the old "clients", though both
-#  are supported.
+#  Client configuration is defined in "clients.conf".  
+#
+
+#  The 'clients.conf' file contains all of the information from the old
+#  'clients' and 'naslist' configuration files.  We recommend that you
+#  do NOT use 'client's or 'naslist', although they are still
+#  supported.
+#
+#  Anything listed in 'clients.conf' will take precedence over the
+#  information from the old-style configuration files.
 #
 $INCLUDE  ${confdir}/clients.conf
 
@@ -373,7 +382,6 @@ $INCLUDE  ${confdir}/snmp.conf
 #
 #  The thread pool is a long-lived group of threads which
 #  take turns (round-robin) handling any incoming requests.
-#
 #
 #  You probably want to have a few spare threads around,
 #  so that high-load situations can be handled immediately.  If you
@@ -401,10 +409,16 @@ thread pool {
 	#  You may find that the server is regularly reaching the
 	#  'max_servers' number of threads, and that increasing
 	#  'max_servers' doesn't seem to make much difference.
-	#   If this is the case, then the problem is MOST LIKELY that
-	#   your back-end databases are taking too long to respond, and
-	#   are preventing the server from responding in a timely manner.
-	#   For more information, see 'max_request_time', above.
+	#
+	#  If this is the case, then the problem is MOST LIKELY that
+	#  your back-end databases are taking too long to respond, and
+	#  are preventing the server from responding in a timely manner.
+	#
+	#  The solution is NOT do keep increasing the 'max_servers'
+	#  value, but instead to fix the underlying cause of the
+	#  problem: slow database, or 'hostname_lookups=yes'.
+	#
+	#  For more information, see 'max_request_time', above.
 	#
 	max_servers = 32
 
@@ -458,7 +472,7 @@ modules {
 
 	# CHAP module
 	#
-	#  To authenticate requests containing a CHAP-Password
+	#  To authenticate requests containing a CHAP-Password attribute.
 	#
 	chap {
 		authtype = CHAP
@@ -476,28 +490,27 @@ modules {
 		#  for it's configuration.  See 'redhat/radiusd-pam'
 		#  for a sample PAM configuration file.
 		#
-		#  Note that any Pam-Auth attribute set in the 'users'
-		#  file over-rides this one.
+		#  Note that any Pam-Auth attribute set in the 'authorize'
+		#  section will over-ride this one.
 		#
 		pam_auth = radiusd
 	}
 
 	# Unix /etc/passwd style authentication
 	#
-	#
 	unix {
 		#
 		#  Cache /etc/passwd, /etc/shadow, and /etc/group
 		#
-		#  The default is to cache them.
+		#  The default is to NOT cache them.
 		#
 		#  For FreeBSD, you do NOT want to enable the cache,
 		#  as it's password lookups are done via a database, so
 		#  set this value to 'no'.
 		#
 		#  Some systems (e.g. RedHat Linux with pam_pwbd) can
-		#  take *seconds* to check a password, if the password
-		#  file contains 1000's of entries.  For those systems,
+		#  take *seconds* to check a password, from a passwd
+		#  file containing 1000's of entries.  For those systems,
 		#  you should set the cache value to 'yes', and set
 		#  the locations of the 'passwd', 'shadow', and 'group'
 		#  files, below.
@@ -516,9 +529,11 @@ modules {
 		#  systems have shadow passwords.
 		#
 		#  To force the module to use the system password functions,
-		#  instead of reading the files, comment out the 'passwd'
-		#  and 'shadow' configuration entries.  This is required
-		#  for some systems, like FreeBSD, and Mac OSX.
+		#  instead of reading the files, leave the following entries
+		#  commented out.
+		#
+		#  This is required for some systems, like FreeBSD,
+		#  and Mac OSX.
 		#
 		#	passwd = /etc/passwd
 		#	shadow = /etc/shadow
@@ -527,7 +542,10 @@ modules {
 
 		#
 		#  Where the 'wtmp' file is located.
-		#  This will be moved to it's own module soon..
+		#  This should be moved to it's own module soon.
+		#
+		#  The only use for 'radlast'.  If you don't use
+		#  'radlast', then you can comment out this item.
 		#
 		radwtmp = ${logdir}/radwtmp
 	}
@@ -538,19 +556,19 @@ modules {
 	eap {
 		# Invoke the default supported EAP type when
 		# EAP-Identity response is received
-		#   default_eap_type = md5
+		#	default_eap_type = md5
 
 		# Default expiry time to clean the EAP list,
 		# It is maintained to co-relate the
 		# EAP-response for each EAP-request sent.
-		#   timer_expire     = 60
+		#	timer_expire     = 60
 
 		# Supported EAP-types
 		md5 {
 		}
 
-		## FIXME: EAP-TLS is highly experimental EAP-Type at the moment.  
-		#	Please give feedback.
+		## EAP-TLS is highly experimental EAP-Type at the moment.  
+		#	Please give feedback on the mailing list.
 		#tls {
 		#	private_key_password = password
 		#	private_key_file = /path/filename
@@ -561,10 +579,10 @@ modules {
 		#	certificate_file = /path/filename
 
 		#	Trusted Root CA list
-		#	CA_file = /path/filename
+			#CA_file = /path/filename
 
 		#	dh_file = /path/filename
-		#	random_file = /path/filename
+			#random_file = /path/filename
 		#
 		# 	This can never exceed MAX_RADIUS_LEN (4096)
 		#	preferably half the MAX_RADIUS_LEN, to
@@ -572,14 +590,16 @@ modules {
 		#	On most APs the MAX packet length is configured
 		#	between 1500 - 1600. In these cases, fragment
 		#	size should be <= 1024.
-		#	fragment_size = 1024
 		#
+		#		fragment_size = 1024
+
 		#	include_length is a flag which is by default set to yes
 		#	If set to yes, Total Length of the message is included
 		#	in EVERY packet we send.
 		#	If set to no, Total Length of the message is included
 		#	ONLY in the First packet of a fragment series.
-		#	include_length = yes
+		#
+		#		include_length = yes
 		#}
 	}
 
@@ -590,25 +610,17 @@ modules {
 	#  using the 'passwd' module, below, as it's more general.
 	#
 	mschap {
-		# if given, passwd shows location of
-		# SAMBA passwd file
+		# Location of the SAMBA passwd file
 		#	passwd = /etc/smbpasswd
-		# please note that smbpasswd authorization in
-		# mschap is for compatibility only. It works
-		# slow and shouldn't be used.
-		# use rlm_passwd module instead in authorize section
-		# you can find configuration example for
-		# passwd etc_smbpasswd
-		# below
 
 		# authtype value, if present, will be used
 		# to overwrite (or add) Auth-Type during
 		# authorization. Normally should be MS-CHAP
 		authtype = MS-CHAP
 		
-		# if ignore_password set to yes mschap will
-		# ignore password set by any other module during
-		# authorization and will always use password file
+		# If ignore_password is set to yes mschap will
+		# ignore the password set by any other module during
+		# authorization and will always use the SAMBA password file
 		#	ignore_password = yes  
 
 		# if use_mppe is not set to no mschap will
@@ -647,6 +659,7 @@ modules {
 		# LDAP database by passing the LDAP_OPT_X_TLS_TRY option to
 		# the ldap library.
 		tls_mode = no
+
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
 		# profile_attribute = "radiusProfileDn"
 		access_attr = "dialupAccess"
@@ -750,17 +763,19 @@ modules {
 	}
 	
 	#  rewrite arbitrary packets.  Useful in accounting and authorization.
-	## FIXME:  This is highly experimental at the moment.  Please give 
-	## feedback.
 	#
-	# The module can also use the Rewrite-Rule attribute. If it is set and
-	# matches the name of the module instance, then that module instance
-	# will be the only one which runs.
+	## This module is highly experimental at the moment.  Please give 
+	## feedback to the mailing list.
 	#
-	# Also if new_attribute is set to yes then a new attribute will be
-	# created containing the value replacewith and it will be added to
-	# searchin (packet, reply or config).
+	#  The module can also use the Rewrite-Rule attribute. If it
+	#  is set and matches the name of the module instance, then
+	#  that module instance will be the only one which runs.
+	#
+	#  Also if new_attribute is set to yes then a new attribute
+	#  will be created containing the value replacewith and it
+	#  will be added to searchin (packet, reply or config).
 	# searchfor,ignore_case and max_matches will be ignored in that case.
+
 	#
 	#attr_rewrite sanecallerid {
 	#	attribute = Called-Station-Id
@@ -839,61 +854,63 @@ modules {
 		compat = no
 	}
 
-	# See doc/rlm_fastusers before using this
-	# module or changing these values.
-	#
-	fastusers {
-		usersfile = ${confdir}/users_fast
-		hashsize = 1000
-		compat = no
-		# Reload the hash every 600 seconds (10mins)
-		hash_reload = 600
-	}
-	
 	# Write a detailed log of all accounting records received.
 	#
 	detail {
-		#  Note that we do NOT use NAS-IP-Address here, as that
-		#  attribute MAY BE from the originating NAS, and NOT
-		#  from the proxy which actually sent us the request.
-		#  The Client-IP-Address attribute is ALWAYS the address
-		#  of the client which sent us the request.
+		#  Note that we do NOT use NAS-IP-Address here, as
+		#  that attribute MAY BE from the originating NAS, and
+		#  NOT from the proxy which actually sent us the
+		#  request.  The Client-IP-Address attribute is ALWAYS
+		#  the address of the client which sent us the
+		#  request.
 		#
-		#  The following line creates a new detail file for every
-		#  radius client (by IP address or hostname).  In addition,
-		#  a new detail file is created every day, so that the detail
-		#  file doesn't have to go through a 'log rotation'
+		#  The following line creates a new detail file for
+		#  every radius client (by IP address or hostname).
+		#  In addition, a new detail file is created every
+		#  day, so that the detail file doesn't have to go
+		#  through a 'log rotation'
 		#
-		#  If your detail files are large, you may also want to
-		#  add a ':%H' (see doc/variables.txt) to the end of it:
+		#  If your detail files are large, you may also want
+		#  to add a ':%H' (see doc/variables.txt) to the end
+		#  of it, to create a new detail file every hour, e.g.:
 		#
 		#   ..../detail-%Y%m%d:%H
 		#
 		#  This will create a new detail file for every hour.
 		#
 		detailfile = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
+
+		#
+		#  The Unix-style permissions on the 'detail' file.
+		#
+		#  The detail file often contains secret or private
+		#  information about users.  So by keeping the file
+		#  permissions restrictive, we can prevent unwanted
+		#  people from seeing that information.
 		detailperm = 0600
 	}
 
-	# Create a unique accounting session Id, as many NASes re-use
-	# or repeat values for Acct-Session-Id, causing no end of confusion.
+	# Create a unique accounting session Id.  Many NASes re-use or
+	# repeat values for Acct-Session-Id, causing no end of
+	# confusion.
 	#
 	#  This module will add a (probably) unique session id 
 	#  to an accounting packet based on the attributes listed
-	#  below found in the packet.  see doc/rlm_acct_unique
+	#  below found in the packet.  See doc/rlm_acct_unique for
+	#  more information.
 	#
 	acct_unique {
 		key = "User-Name, Acct-Session-Id, NAS-IP-Address, Client-IP-Address, NAS-Port-Id"
 	}
 
 
-	# Include another file that has SQL-related stuff in it.  
+	# Include another file that has the SQL-related configuration.
 	# This is another file solely because it tends to be big.
 	#
 	#  The following configuration file is for use with MySQL.
 	#
-	# For Postgresql, use ${confdir}/postgresql.conf
-	# For MS-SQL, use ${confdir}/mssql.conf
+	# For Postgresql, use:		${confdir}/postgresql.conf
+	# For MS-SQL, use:	 	${confdir}/mssql.conf
 	#
 	$INCLUDE  ${confdir}/sql.conf
 
@@ -906,6 +923,7 @@ modules {
 		# Set the file permissions, as the contents of this file
 		# are usually private.
 		perm = 0600
+
 		callerid = "yes"
 	}
 
@@ -948,34 +966,38 @@ modules {
 	#  reset = 12  (reset every 12 days)
 	#
 	#
-	#  The check-name attribute defines an attribute which will be registered
-	#  by the counter module and can be used to set the maximum allowed value
-	#  for the counter after which the user is rejected.
+	#  The check-name attribute defines an attribute which will be
+	#  registered by the counter module and can be used to set the
+	#  maximum allowed value for the counter after which the user
+	#  is rejected.
 	#  Something like:
 	#
 	#  DEFAULT Max-Daily-Session := 36000
 	#          Fall-Through = 1
 	#
-	#  You should add the counter module in the instantiate section so that it
-	#  registers check-name before the files module reads the users file.
+	#  You should add the counter module in the instantiate
+	#  section so that it registers check-name before the files
+	#  module reads the users file.
 	#
-	#  If check-name is set and the user is to be rejected then we send back a
-	#  Reply-Message and we log a Failure-Message in the radius.log
+	#  If check-name is set and the user is to be rejected then we
+	#  send back a Reply-Message and we log a Failure-Message in
+	#  the radius.log
 	#
 	#  The counter-name can also be used like below:
 	#
 	#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
 	#      Reply-Message = "You've used up more than one hour today"
 	#
-	# The allowed-servicetype attribute can be used to only take
-	# into account specific sessions. For example if a user first
-	# logs in through a login menu and then selects ppp there will
-	# be two sessions. One for Login-User and one for Framed-User
-	# service type. We only need to take into account the second one.
+	#  The allowed-servicetype attribute can be used to only take
+	#  into account specific sessions. For example if a user first
+	#  logs in through a login menu and then selects ppp there will
+	#  be two sessions. One for Login-User and one for Framed-User
+	#  service type. We only need to take into account the second one.
 	#
-	# The module should be added in the instantiate,authorize and accounting sections.
-	# Make sure that in the authorize section it comes after any module which
-	# sets check-name
+	#  The module should be added in the instantiate, authorize and
+	#  accounting sections.  Make sure that in the authorize
+	#  section it comes after any module which sets the
+	#  'check-name' attribute.
 	#
 	counter {
 		filename = ${raddbdir}/db.counter
@@ -988,8 +1010,9 @@ modules {
 		cache-size = 5000
 	}
 
-	# The "always" module is here for debugging purposes. Each instance
-	# simply returns the same result, always, without doing anything.
+	# The "always" module is here for debugging purposes. Each
+	# instance simply returns the same result, always, without
+	# doing anything.
 	always fail {
 		rcode = fail
 	}
@@ -1004,7 +1027,6 @@ modules {
 
 	#
 	#  The 'expression' module current has no configuration.
-	#
 	expr {
 	}
 
@@ -1015,19 +1037,19 @@ modules {
 
 # Instantiation
 #
-# This section orders the loading of the modules.  Modules
-# listed here will get loaded BEFORE the later sections like
-# authorize, authenticate, etc. get examined.
+#  This section orders the loading of the modules.  Modules
+#  listed here will get loaded BEFORE the later sections like
+#  authorize, authenticate, etc. get examined.
 #
-# This section is not strictly needed.  When a section like
-# authorize refers to a module, it's automatically loaded and
-# initialized.  However, some modules may not be listed in any
-# of the following sections, so they can be listed here.
+#  This section is not strictly needed.  When a section like
+#  authorize refers to a module, it's automatically loaded and
+#  initialized.  However, some modules may not be listed in any
+#  of the following sections, so they can be listed here.
 #
-# Also, listing modules here ensures that you have control over
-# the order in which they are initalized.  If one module needs
-# something defined by another module, you can list them in order
-# here, and ensure that the configuration will be OK.
+#  Also, listing modules here ensures that you have control over
+#  the order in which they are initalized.  If one module needs
+#  something defined by another module, you can list them in order
+#  here, and ensure that the configuration will be OK.
 #
 instantiate {
 	#
@@ -1038,35 +1060,44 @@ instantiate {
 	#	Session-Timeout = `%{expr:2 + 3}`
 	#
 	#  So the module needs to be instantiated, but CANNOT be
-	#  listed in any other section.
+	#  listed in any other section.  See 'doc/rlm_expr' for
+	#  more information.
 	#
 	expr
 }
 
-# Authorization. First preprocess (hints and huntgroups files),
-# then realms, and finally look in the "users" file.
-# The order of the realm modules will determine the order that
-# we try to find a matching realm.
-# Make *sure* that 'preprocess' comes before any realm if you 
-# need to setup hints for the remote radius server
+#  Authorization. First preprocess (hints and huntgroups files),
+#  then realms, and finally look in the "users" file.
+#
+#  The order of the realm modules will determine the order that
+#  we try to find a matching realm.
+#
+#  Make *sure* that 'preprocess' comes before any realm if you 
+#  need to setup hints for the remote radius server
 authorize {
 	#
-	# The preprocess module takes care of sanitizing some bizarre
-	# attributes in the request, and turning them into attributes
-	# which are more standard.
+	#  The preprocess module takes care of sanitizing some bizarre
+	#  attributes in the request, and turning them into attributes
+	#  which are more standard.
 	#
-	# It takes care of processing the 'raddb/hints' and the
-	# 'raddb/huntgroups' files.
+	#  It takes care of processing the 'raddb/hints' and the
+	#  'raddb/huntgroups' files.
 	#
-	# It also adds a Client-IP-Address attribute to the request.
-	#
+	#  It also adds a Client-IP-Address attribute to the request.
 	preprocess
 	
 	#
-	# The chap module will set 'Auth-Type := CHAP' if we are
-	# handling a CHAP request and Auth-Type has not already been set
-	#
+	#  The chap module will set 'Auth-Type := CHAP' if we are
+	#  handling a CHAP request and Auth-Type has not already been set
 	chap
+
+	#
+	#  If the users are logging in with an MS-CHAP-Challenge
+	#  attribute for authentication, the mschap module will find
+	#  the MS-CHAP-Challenge attribute, and add 'Auth-Type := MS-CHAP'
+	#  to the request, which will cause the server to then use
+	#  the mschap module for authentication.
+	mschap
 
 #	counter
 #	attr_filter
@@ -1075,14 +1106,6 @@ authorize {
 	files
 #	etc_smbpasswd
 
-	#
-	#  Uncomment 'mschap' if the users are logging in with an
-	#  MS-CHAP-Challenge attribute for authentication.  The mschap
-	#  module will find the MS-CHAP-Challenge attribute, and add
-	#  'Auth-Type := MS-CHAP' to the request, which makes it use
-	#  the mschap module for authentication.
-	#
-#	mschap
 
 # The ldap module will set Auth-Type to LDAP if it has not already been set
 #	ldap
@@ -1091,13 +1114,13 @@ authorize {
 
 # Authentication.
 #
-# This section lists which modules are available for authentication.
-# Note that it does NOT mean 'try each module in order'.  It means
-# that you have to have a module from the 'authorize' section add
-# a configuration attribute 'Auth-Type := FOO'.  That authentication type
-# is then used to pick the apropriate module from the list below.
+#  This section lists which modules are available for authentication.
+#  Note that it does NOT mean 'try each module in order'.  It means
+#  that you have to have a module from the 'authorize' section add
+#  a configuration attribute 'Auth-Type := FOO'.  That authentication type
+#  is then used to pick the apropriate module from the list below.
 #
-# The default Auth-Type is Local.  That is, whatever is not included inside
+#  The default Auth-Type is Local.  That is, whatever is not included inside
 # an authtype section will be called only if Auth-Type is set to Local.
 #
 # So you should do the following:
@@ -1106,35 +1129,51 @@ authorize {
 # - After that create corresponding authtype sections in the
 #   authenticate section below and call the appropriate modules.
 authenticate {
+	#
+	#  PAP authentication, when a back-end database listed
+	#  in the 'authorize' section supplies a password.  The
+	#  password can be clear-text, or encrypted.
+	authtype PAP {
+		pap
+	}
+
+	#
+	#  Most people want CHAP authentication
+	#  A back-end database listed in the 'authorize' section
+	#  MUST supply a CLEAR TEXT password.  Encrypted passwords
+	#  won't work.
+	authtype CHAP {
+		chap
+	}
+
+	#
+	#  MSCHAP authentication.
+	authtype MS-CHAP {
+		mschap
+	}
+
 #	pam
+
+	#
+	#  See 'man getpwent' for information on how the 'unix'
+	#  module checks the users password.  Note that packets
+	#  containing CHAP-Password attributes CANNOT be authenticated
+	#  against /etc/passwd!  See the FAQ for details.
+	#  
 	unix
 
 	# Uncomment it if you want to use ldap for authentication
 #	authtype LDAP {
 #		ldap
 #	}
-#	mschap
+
+
 #	eap
-
-	# Most people want CHAP authentication
-	# A back-end database listed in the 'authorize' section
-	# MUST supply a CLEAR TEXT password.  Encrypted passwords
-	# won't work.
-	authtype CHAP {
-		chap
-	}
-
-	# PAP authentication, when a back-end database listed
-	# in the 'authorize' section supplies a password.  The
-	# password can be clear-text, or encrypted.
-	authtype PAP {
-		pap
-	}
 }
 
 
-# Pre-accounting. Look for proxy realm in order of realms, then 
-# acct_users file, then preprocess (hints file).
+#  Pre-accounting. Look for proxy realm in order of realms, then 
+#  acct_users file, then preprocess (hints file).
 preacct {
 	preprocess
 	suffix
@@ -1142,28 +1181,31 @@ preacct {
 }
 
 
-# Accounting. Log to detail file, and to the radwtmp file, and maintain
-# radutmp.
+#  Accounting. Log to detail file, and to the radwtmp file, and maintain
+#  radutmp.
 accounting {
-#	acct_unique
+	acct_unique
 	detail
 #	counter
-	unix
+	unix		# wtmp file
 	radutmp
 #	sradutmp
 }
 
 
-# Session database, used for checking Simultaneous-Use. Either the radutmp 
-# or rlm_sql module can handle this.
-# The rlm_sql module is *much* faster
+#  Session database, used for checking Simultaneous-Use. Either the radutmp 
+#  or rlm_sql module can handle this.
+#  The rlm_sql module is *much* faster
 session {
 	radutmp
 #	sql
 }
 
 
-# Post-Auth. Run the ippool module.
+#  Post-Authentication
+#  Once we KNOW that the user has been authenticated, there are
+#  additional steps we can take.
 post-auth {
-#	main_pool
+	  #  Get an address from the IP Pool.
+	  #main_pool
 }
