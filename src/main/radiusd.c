@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000,2001  The FreeRADIUS server project
+ * Copyright 2000,2001,2002,2003,2004  The FreeRADIUS server project
  * Copyright 1999,2000  Miquel van Smoorenburg <miquels@cistron.nl>
  * Copyright 2000  Alan DeKok <aland@ox.org>
  * Copyright 2000  Alan Curry <pacman-radius@cqc.com>
@@ -371,24 +371,129 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 	}
 
 	/*
-	 *	If there is no existing request of id, code, etc., then
-	 *	we can return, and let it be processed.
+	 *	If there is no existing request of id, code, etc.,
+	 *	then we can return, and let it be processed.
 	 */
 	if ((curreq = rl_find(packet)) == NULL) {
+		/*
+		 *	Count the total number of requests, to see if
+		 *	there are too many.  If so, return with an
+		 *	error.
+		 */
+		if (mainconfig.max_requests) {
+			int request_count = rl_num_requests();
+			
+			/*
+			 *	This is a new request.  Let's see if
+			 *	it makes us go over our configured
+			 *	bounds.
+			 */
+			if (request_count > mainconfig.max_requests) {
+				radlog(L_ERR, "Dropping request (%d is too many): "
+				       "from client %s:%d - ID: %d", request_count, 
+				       client_name(packet->src_ipaddr),
+				       packet->src_port, packet->id);
+				radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n"
+				       "\tThe value for 'max_requests' is probably set too low.\n");
+				return NULL;
+			} /* else there were a small number of requests */
+		} /* else there was no configured limit for requests */
+
+		/*
+		 *	FIXME: Add checks for system load.  If the
+		 *	system is busy, start dropping requests...
+		 *
+		 *	We can probably keep some statistics
+		 *	ourselves...  if there are more requests
+		 *	coming in than we can handle, start dropping
+		 *	some.
+		 */
+
 		return fun;
 	}
-
+	
 	/*
 	 *	The current request isn't finished, which
 	 *	means that the NAS sent us a new packet, while
-	 *	we were waiting for a proxy response.
-	 *
-	 *	In that case, it doesn't matter if the vectors
-	 *	are the same, as deleting the un-finished request
-	 *	would mean that the (eventual) proxy response would
-	 *	be associated with the wrong NAS request.
+	 *	we are still processing the old request.
 	 */
 	if (!curreq->finished) {
+		/*
+		 *	If the authentication vectors are identical,
+		 *	then the NAS is re-transmitting it, trying to
+		 *	kick us into responding to the request.
+		 */
+		if (memcmp(curreq->packet->vector, packet->vector,
+			   sizeof(packet->vector)) == 0) {
+			RAD_SNMP_INC(rad_snmp.auth.total_dup_requests);
+
+			/*
+			 *	It's not finished because the request
+			 *	was proxied, but there was no reply
+			 *	from the home server.
+			 */
+			if (curreq->proxy && !curreq->proxy_reply) {
+				/*
+				 *	We're taking care of sending
+				 *	duplicate proxied packets, so
+				 *	we ignore any duplicate
+				 *	requests from the NAS.
+				 *
+				 *	FIXME: Make it ALWAYS synchronous!
+				 */
+				if (!mainconfig.proxy_synchronous) {
+					RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
+					
+					DEBUG2("Ignoring duplicate packet from client "
+					       "%s:%d - ID: %d, due to outstanding proxied request %d.",
+					       client_name(packet->src_ipaddr),
+					       packet->src_port, packet->id,
+					       curreq->number);
+					return NULL;
+
+					/*
+					 *	We ARE proxying the request,
+					 *	and we have NOT received a
+					 *	proxy reply yet, and we ARE
+					 *	doing synchronous proxying.
+					 *
+					 *	In that case, go kick
+					 *	the home RADIUS server
+					 *	again.
+					 */
+				} else {
+					char buffer[64];
+					
+					DEBUG2("Sending duplicate proxied request to home server %s:%d - ID: %d",
+					       ip_ntoa(buffer, curreq->proxy->dst_ipaddr),
+					       curreq->proxy->dst_port,
+					       
+					       curreq->proxy->id);
+				}
+				curreq->proxy_next_try = time_now + mainconfig.proxy_retry_delay;
+				rad_send(curreq->proxy, curreq->packet,
+					 curreq->proxysecret);
+				return NULL;
+			} /* else the packet was not proxied */
+
+			/*
+			 *	Someone's still working on it, so we
+			 *	ignore the duplicate request.
+			 */
+			radlog(L_ERR, "Discarding duplicate request from "
+			       "client %s:%d - ID: %d due to unfinished request %d",
+			       client_name(packet->src_ipaddr),
+			       packet->src_port, packet->id,
+			       curreq->number);
+			return NULL;
+		} /* else the authentication vectors were different */
+
+		/*
+		 *	The authentication vectors are different, so
+		 *	the NAS has given up on us, as we've taken too
+		 *	long to process the request.  This is a
+		 *	SERIOUS problem!
+		 */
 		RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
 
 		radlog(L_ERR, "Dropping conflicting packet from "
@@ -400,19 +505,18 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 	}
 
 	/*
-	 *	We now check the authentication vectors.  If the
-	 *	client has sent us a request with identical code &&
-	 *	ID, but different vector, then they MUST have gotten
-	 *	our response, so we can delete the original request,
-	 *	and process the new one.
+	 *	The old request is finished.  We now check the
+	 *	authentication vectors.  If the client has sent us a
+	 *	request with identical code && ID, but different
+	 *	vector, then they MUST have gotten our response, so we
+	 *	can delete the original request, and process the new
+	 *	one.
 	 *
 	 *	If the vectors are the same, then it's a duplicate
 	 *	request, and we can send a duplicate reply.
 	 */
 	if (memcmp(curreq->packet->vector, packet->vector,
 		   sizeof(packet->vector)) == 0) {
-		rad_assert(curreq->reply != NULL);
-		
 		RAD_SNMP_INC(rad_snmp.auth.total_dup_requests);
 
 		/*
@@ -445,85 +549,16 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 			rad_send(curreq->reply, curreq->packet, curreq->secret);
 			return NULL;
 		}
-		
+
 		/*
-		 *	At this point, there isn't a live thread
-		 *	handling the old request.  The old request
-		 *	isn't finished, AND there's no reply for it.
+		 *	Else we never sent a reply to the NAS,
+		 *	as we decided somehow we didn't like the request.
 		 *
-		 *	Therefore, we MUST be waiting for a reply from
-		 *	the proxy.
-		 *
-		 *	If not, then it's an Accounting-Request which
-		 *	we tried to "reject", which means that we
-		 *	silently drop the response.  We want to give
-		 *	the same response for the duplicate request,
-		 *	so we silently drop it, too.
+		 *	This shouldn't happen, in general...
 		 */
-		if (!curreq->proxy) {
-			RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
-
-			radlog(L_ERR, "Dropping packet from client "
-			       "%s:%d - ID: %d due to dead request %d",
-			       client_name(packet->src_ipaddr),
-			       packet->src_port, packet->id,
-			       curreq->number);
-			return NULL;
-		}
-
-		/*
-		 *	If there IS a reply from the proxy, then
-		 *	curreq SHOULD be marked alive, OR there should
-		 *	have been a reply sent to the NAS.  If none of
-		 *	these is true, then we don't know what to do,
-		 *	so we drop the request.
-		 */
-		if (curreq->proxy_reply) {
-			RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
-
-			radlog(L_ERR, "Dropping packet from client "
-			       "%s:%d - ID: %d due to confused proxied request %d",
-			       client_name(packet->src_ipaddr),
-			       packet->src_port, packet->id,
-			       curreq->number);
-			return NULL;
-		}
-		
-		/*
-		 *	We're taking care of sending duplicate proxied
-		 *	packets, so we ignore any duplicate requests
-		 *	from the NAS.
-		 */
-		if (!mainconfig.proxy_synchronous) {
-			RAD_SNMP_FD_INC(packet->sockfd, total_packets_dropped);
-
-			DEBUG2("Ignoring duplicate packet from client "
-			       "%s:%d - ID: %d, due to outstanding proxied request %d.",
-			       client_name(packet->src_ipaddr),
-			       packet->src_port, packet->id,
-			       curreq->number);
-			return NULL;
-		}
-		
-		/*
-		 *	We ARE proxying the request, and we have NOT
-		 *	received a proxy reply yet, and we ARE doing
-		 *	synchronous proxying.
-		 *
-		 *	In that case, go kick the home RADIUS
-		 *	server again.
-		 */
-		{
-			char buffer[64];
-			
-			DEBUG2("Sending duplicate proxied request to home server %s:%d - ID: %d",
-			       ip_ntoa(buffer, curreq->proxy->dst_ipaddr),
-			       curreq->proxy->dst_port,
-			       
-			       curreq->proxy->id);
-		}
-		curreq->proxy_next_try = time_now + mainconfig.proxy_retry_delay;
-		rad_send(curreq->proxy, curreq->packet, curreq->proxysecret);
+		DEBUG2("Discarding duplicate request from client %s:%d - ID: %d",
+		       client_name(packet->src_ipaddr),
+		       packet->src_port, packet->id);
 		return NULL;
 	} /* else the vectors were different, so we discard the old request. */
 	
@@ -537,29 +572,11 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet)
 	rl_delete(curreq);
 	
 	/*
-	 *	Count the total number of requests, to see if there
-	 *	are too many.  If so, return with an error.
-	 */
-	if (mainconfig.max_requests) {
-		int request_count = rl_num_requests();
-		
-		/*
-		 *  This is a new request.  Let's see if it
-		 *  makes us go over our configured bounds.
-		 */
-		if (request_count > mainconfig.max_requests) {
-			radlog(L_ERR, "Dropping request (%d is too many): "
-			       "from client %s:%d - ID: %d", request_count, 
-			       client_name(packet->src_ipaddr),
-			       packet->src_port, packet->id);
-			radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n"
-			       "\tThe value for 'max_requests' is probably set too low.\n");
-			return NULL;
-		} /* else there were a small number of requests */
-	} /* else there was no configured limit for requests */
-
-	/*
 	 *	The request is OK.  We can process it...
+	 *
+	 *	Don't bother checking the maximum nubmer of requests
+	 *	here.  we've just deleted one, so we KNOW we're under
+	 *	the limit if we add one more.
 	 */
 	return fun;
 }
@@ -2118,7 +2135,7 @@ static int rad_status_server(REQUEST *request)
 	 *	interesting reply attributes, such as server uptime.
 	 */
 	t = request->timestamp - start_time;
-	sprintf(reply_msg, "FreeRadius up %d day%s, %02d:%02d",
+	sprintf(reply_msg, "FreeRADIUS up %d day%s, %02d:%02d",
 		(int)(t / 86400), (t / 86400) == 1 ? "" : "s",
 		(int)((t / 3600) % 24), (int)(t / 60) % 60);
 	request->reply->code = PW_AUTHENTICATION_ACK;
