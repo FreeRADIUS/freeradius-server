@@ -23,6 +23,7 @@ Ver 1.78:
   long time ago. Bug noted by Nick Bright
 * In user_finger only set LD_LIBRARY_PATH once, not each time we call snmpfinger
 * Add support for usrhiper in snmpfinger. Patch from Nick Bright
+* urlencode() all occurrences of the $login variable when used in url's. Bug noted by Dag Landau
 Ver 1.75:
 * A LOT of security related fixes. Now dialupadmin should hopefully be secure enough to
   be accessed by normal users (not administrators).

@@ -153,6 +153,7 @@ if ($link){
 			$num++;
 			$id = $row[id];
 			$user = "$row[username]";
+			$User = urlencode($user);
 			$date = "$row[date]";
 			$reason = "$row[reason]";
 			$admin = "$row[admin]";
@@ -167,7 +168,7 @@ if ($link){
 			echo <<<EOM
 			<tr align=center>
 				<td>$num</td>
-				<td><a href="user_admin.php3?login=$user" title="Edit user $user">$user</a></td>
+				<td><a href="user_admin.php3?login=$User" title="Edit user $user">$user</a></td>
 				<td>$date</td>
 				<td>$admin</td>
 				<td>$reason</td>

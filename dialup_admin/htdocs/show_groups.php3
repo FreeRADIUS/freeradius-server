@@ -75,10 +75,11 @@ include_once("../lib/$config[general_lib_type]/group_info.php3");
 if (isset($existing_groups)){
 	foreach ($existing_groups as $group => $num_members){
 		$num++;
+		$Group = urlencode($group);
 		echo <<<EOM
 		<tr align=center>
 			<td>$num</td>
-			<td><a href="group_admin.php3?login=$group" title="Edit group $group">$group</a></td>
+			<td><a href="group_admin.php3?login=$Group" title="Edit group $group">$group</a></td>
 			<td>$num_members</td>
 		</tr>
 EOM;

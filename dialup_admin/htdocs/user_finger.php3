@@ -184,13 +184,14 @@ EOM;
 		$user = $finger_info[$j][$k][user];
 		if ($user == '')
 			$user = '&nbsp;';
+		$User = urlencode($user);
 		$time = $finger_info[$j][$k][session_time];
 		$ip = $finger_info[$j][$k][ip];
 		$cid = $finger_info[$j][$k][callerid];
 		$inf = $user_info[$user];
 		echo <<<EOM
 	<tr align=center>
-	<td>$k</td><td><a href="user_admin.php3?login=$user" title="Edit User $user">$user</a></td>
+	<td>$k</td><td><a href="user_admin.php3?login=$User" title="Edit User $user">$user</a></td>
 EOM;
 if ($acct_attrs['uf'][4] != '') echo "<td>$ip</td>\n";
 if ($acct_attrs['uf'][9] != '') echo "<td>$cid</td>\n";

@@ -120,8 +120,10 @@ if ($link){
 			$acct_login = $row[username];
 			if ($acct_login == '')
 				$acct_login = '-';
-			else
-				$acct_login = "<a href=\"user_admin.php3?login=$acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
+			else{
+				$Acct_login = urlencode($acct_login);
+				$acct_login = "<a href=\"user_admin.php3?login=$Acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
+			}
 			$acct_time = $row[conntotduration];
 			$acct_time = time2str($acct_time);
 			$acct_conn_num = $row[connnum];

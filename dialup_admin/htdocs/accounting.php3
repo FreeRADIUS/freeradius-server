@@ -281,8 +281,10 @@ echo "</tr>\n";
 				if ($info == '')
 					$info = '-';
 				$info = $sql_attrs[$val][func]($info);
-				if ($val == 'username')
-					$info = "<a href=\"user_admin.php3?login=$info\" title=\"Edit user $info\">$info<a/>";
+				if ($val == 'username'){
+					$Info = urlencode($info);
+					$info = "<a href=\"user_admin.php3?login=$Info\" title=\"Edit user $info\">$info<a/>";
+				}
 				echo <<<EOM
 			<td>$info</td>
 EOM;
