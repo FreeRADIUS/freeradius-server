@@ -84,10 +84,10 @@ typedef enum {
 } RadFilterComparison;
 
 /*
- * RadIpFilter:
+ *	ascend_ip_filter_t
  *
- * The binary format of an IP filter.  ALL fields are stored in
- * network byte order.
+ *	The binary format of an IP filter.  ALL fields are stored in
+ *	network byte order.
  *
  *	srcip:		The source IP address.
  *
@@ -109,11 +109,13 @@ typedef enum {
  *
  *	dstport:	TCP or UDP destination port number.
  *
- *	srcPortCmp:	One of the values of the RadFilterComparison enumeration
- *			specifying how to compare the srcport value.
+ *	srcPortCmp:	One of the values of the RadFilterComparison
+ *			enumeration, specifying how to compare the
+ *			srcport value.
  *
- *	dstPortCmp:	One of the values of the RadFilterComparison enumeration
- *			specifying how to compare the dstport value.
+ *	dstPortCmp:	One of the values of the RadFilterComparison
+ *			enumeration, specifying how to compare the
+ *			dstport value.
  *
  *	fill:		Round things out to a int16_t boundary.
  */
@@ -164,31 +166,31 @@ typedef struct radipx {
 	uint8_t		dstSocComp;
 } RadIpxFilter;
 
-    /*
-     * RadGenericFilter:
-     *
-     * The binary format of a GENERIC filter.  ALL fields are stored in
-     * network byte order.
-     *
-     *	offset:		Number of bytes into packet to start comparison.
-     *
-     *	len:		Number of bytes to mask and compare.  May not
-     *			exceed RAD_MAX_FILTER_LEN.
-     *
-     *	more:		Boolean.  If non-zero the next filter entry is
-     *			also to be applied to a packet.
-     *
-     *	mask:		A bit mask specifying the bits to compare.
-     *
-     *	value:		A value to compare against the masked bits at
-     *			offset in a users packet.
-     *			
-     *	compNeq:	Defines type of comarison (Equal or Notequal)
-     *			default is Equal.
-     *
-     *	fill:		Round things out to a dword boundary
-     */
-typedef struct radgeneric {
+/*
+ *	ascend_generic_filter_t
+ *
+ *	The binary format of a GENERIC filter.  ALL fields are stored in
+ *	network byte order.
+ *
+ *	offset:		Number of bytes into packet to start comparison.
+ *
+ *	len:		Number of bytes to mask and compare.  May not
+ *			exceed RAD_MAX_FILTER_LEN.
+ *
+ *	more:		Boolean.  If non-zero the next filter entry is
+ *			also to be applied to a packet.
+ *
+ *	mask:		A bit mask specifying the bits to compare.
+ *
+ *	value:		A value to compare against the masked bits at
+ *			offset in a users packet.
+ *			
+ *	compNeq:	Defines type of comarison (Equal or Notequal)
+ *			default is Equal.
+ *
+ *	fill:		Round things out to a dword boundary
+ */
+typedef struct ascend_generic_filter_t {
 	uint16_t	offset;
 	uint16_t	len;
 	uint16_t	more;
@@ -196,29 +198,31 @@ typedef struct radgeneric {
 	uint8_t		value[ RAD_MAX_FILTER_LEN ];
 	uint8_t		compNeq;
 	uint8_t       fill[3];        /* used to be fill[1] */
-} RadGenericFilter;
+} ascend_generic_filter_t;
 
-    /*
-     * RadFilter:
-     *
-     * A binary filter element.  Contains either a RadIpFilter or a
-     * RadGenericFilter.  All fields are stored in network byte order.
-     *
-     *	type:		Either RAD_FILTER_GENERIC or RAD_FILTER_IP.
-     *
-     *	forward:	TRUE if we should forward packets that match this
-     *			filter, FALSE if we should drop packets that match
-     *			this filter.
-     *
-     *	indirection:	TRUE if this is an input filter, FALSE if this is
-     *			an output filter.
-     *
-     *	fill:		Round things out to a dword boundary.
-     *
-     *	u:		A union of
-     *			ip:		An ip filter entry
-     *			generic:	A generic filter entry
-     */
+/*
+ *	ascend_filter_t
+ *
+ *	A binary filter element.  Contains one of ascend_ip_filter_t,
+ *	ascend_ipx_filter_t, or ascend_generic_filter_t.
+ *
+ *	All fields are stored in network byte order.
+ *
+ *	type:		Either RAD_FILTER_GENERIC or RAD_FILTER_IP.
+ *
+ *	forward:	TRUE if we should forward packets that match this
+ *			filter, FALSE if we should drop packets that match
+ *			this filter.
+ *
+ *	direction:	TRUE if this is an input filter, FALSE if this is
+ *			an output filter.
+ *
+ *	fill:		Round things out to a dword boundary.
+ *
+ *	u:		A union of
+ *			ip:		An ip filter entry
+ *			generic:	A generic filter entry
+ */
 typedef struct ascend_filter_t {
 	uint8_t 	type;
 	uint8_t		forward;
@@ -227,7 +231,7 @@ typedef struct ascend_filter_t {
 	union {
 		ascend_ip_filter_t   	 ip;
 		RadIpxFilter   	 ipx;
-		RadGenericFilter generic;
+		ascend_generic_filter_t	generic;
 	} u;
 } ascend_filter_t;
 #define SIZEOF_RADFILTER 32
@@ -364,12 +368,12 @@ static const LRAD_NAME_NUMBER filterCompare[] = {
  *	String split routine.  Splits an input string IN PLACE
  *	into pieces, based on spaces.
  */
-static int str2argv(char *str, char **argv)
+static int str2argv(char *str, char **argv, int max_argc)
 {
 	int argc = 0;
 
 	while (*str) {
-		if (argc >= 32) return argc;
+		if (argc >= max_argc) return argc;
 
 		while (*str == ' ') *(str++) = '\0';
 
@@ -386,98 +390,6 @@ static int str2argv(char *str, char **argv)
 
 
 #if 0
-/*
- * isAllDigit:
- *
- * Routine checks a string to make sure all values are digits.
- *
- *	token:			Pointer to sting to check.
- *
- * 	returns:		TRUE if all digits, or FALSE.
- *
- */
-static int
-isAllDigit(const char *token)
-{
-    int i;
-
-    i = strlen( token );
-    while( i-- ) {
-	if( isdigit( (int) *token ) ) {
-	    token++;
-	} else {
-	    break;
-	}
-    }
-    if( i > 0 ) {
-	return( FALSE );
-    } 
-
-    return( TRUE );
-}
-
-/*
- * a2octet:
- *
- * Converts the ascii mask and value for generic filters into octets.
- * It also does a sanity check to see if the string is greater than
- * MAX_FILTER_LEN. It assumes the sting is hex with NO leading "0x"
- *
- *	tok:			Pointer to the string.
- *
- *  retBuf:			Pointer to place the octets.
- *
- *	returns:		Number of octects or -1 for error.
- * 
- */
-static short
-a2octet(const char *tok, char *retBuf)
-{
-    short	rc, len, val, retLen, i;
-    char	buf[ RAD_MAX_FILTER_LEN *2 ];
-    char	*octet = buf;
-
-    rc = -1;
-    retLen = 0;
-
-    if( ( len = strlen( tok ) ) <= ( RAD_MAX_FILTER_LEN*2 ) ) {
-	retLen = len/2;
-	if( len % 2 ) {
-	    retLen++;
-	}
-	memset( buf, '\0', RAD_MAX_FILTER_LEN * 2 );
-	for( ; len; len-- ) {
-	    if( *tok <= '9' && *tok >= '0' ) {
-		val = '0';
-	        *octet++ = *tok++ - val;
-	    } else if( isxdigit( (int) *tok ) ) {
-		if( *tok > 'Z' ) {
-		    val = 'a';
-		} else {
-		    val = 'A';
-		}
-	        *octet++ = ( *tok++ - val ) + 10;
-	    } else {
-		break;	
-	    }
-	}
-	if( !len ) {
-	    /* merge the values */
-	    for( i = 0; i < RAD_MAX_FILTER_LEN*2; i+=2 ) {
-		*retBuf++ = (buf[i] << 4) | buf[i+1];
-	    }
-	}
-    }
-
-    if( len ) {
-	rc = -1;
-    } else {
-	rc = retLen;
-    }
-    return( rc );
-}
-
-
 /*
  * Convert a 12 digit string representation of a hex data field to a
  * value.
@@ -804,16 +716,15 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 
 
 /*
- * ascend_parse_ip:
+ *	ascend_parse_ip:
  *
- * This routine parses an IP filter string from a RADIUS
- * reply. The format of the string is:
+ *	This routine parses an IP filter string from a RADIUS
+ *	reply. The format of the string is:
  *
  *	ip dir action [ dstip n.n.n.n/nn ] [ srcip n.n.n.n/nn ]
  *	    [ proto [ dstport cmp value ] [ srcport cmd value ] [ est ] ] 
  *
- * Fields in [...] are optional.
- *	where:
+ *	Fields in [...] are optional.
  *
  *	dstip:		Keyword for destination IP address.
  *			n.n.n.n = IP address. /nn - netmask. 
@@ -834,12 +745,6 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
  *			
  *	est:		Keyword for TCP established. Valid only for tcp.
  *			
- * expects:
- *
- *	curEntry:	Pointer to place the filter structure
- *
- *	returns:	-1 for error or 0 for OK
- *	
  */
 static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 {
@@ -894,7 +799,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			} else {
 				token = lrad_str2int(filterProtoName, argv[0], -1);
 				if (token == -1) {
-					librad_log("Unknown IP protocol \"%s\" in data filter",
+					librad_log("Unknown IP protocol \"%s\" in Ip data filter",
 						   argv[0]);
 					return -1;
 				}
@@ -962,8 +867,8 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			 *	Unknown thingy.
 			 */
 		default:
-			librad_log("Unknown string \"%s\" in data filter %d",
-				   argv[0], flags);
+			librad_log("Unknown string \"%s\" in Ip data filter",
+				   argv[0]);
 			return -1;
 			break;
 		}
@@ -973,7 +878,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 	 *	We should have parsed everything by now.
 	 */
 	if (argc != 0) {
-			librad_log("Unknown extra string \"%s\" in data filter",
+			librad_log("Unknown extra string \"%s\" in Ip data filter",
 				   argv[0]);
 			return -1;
 	}
@@ -981,64 +886,58 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 	return 0;
 }
 
-#if 0
-static int 
-parseIpFilter(const char *curString, RadFilter *curEntry)
-{
- 
-    unsigned long	elements = 0l;
-    int			tok; 
-    char*		token;
-    RadIpFilter*	ip;
-
-    while( token ) {
-
-	    case FILTER_IP_DST_PORT:
-	    case FILTER_IP_SRC_PORT:
-	    {
-		RadFilterComparison cmp;
-		short		 port;
-
-		token = strtok( NULL, " " );
-		if ( token ) {
-  		    cmp = lrad_str2int(filterCompare, token, RAD_NO_COMPARE);
-		    if (cmp > RAD_NO_COMPARE) {
-			token = strtok( NULL, " " );
-			if ( token ) {
-			    if( isAllDigit( token ) ) {
-				port = atoi( (char *) token );
-			    } else {
-  		    	        port = lrad_str2int(filterPortType, token, -1);
-			    }
-			    if (port >= 0) {
-				if( tok == FILTER_IP_DST_PORT ) {
-				    ip->dstPortComp = cmp;
-				    ip->dstport = htons( port );
-				} else {
-				    ip->srcPortComp = cmp;
-				    ip->srcport = htons( port );
-				}
-				break;
-			    }
-			}
-		    }
-		}
-		librad_log( "ip filter error: do not recognize \"%s\" in \"%s\"n",
-			  token, curString );
-		goto doneErr;
-		break;
-	    }
 
 /*
- * parseGenericFilter:
+ *	hex2bin converts hexadecimal strings into binary
  *
- * This routine parses a Generic filter string from a RADIUS
- * reply. The format of the string is:
+ *	Hmm... there are a number of such functions in the source.
+ *	maybe we want to make a library function?
+ */
+static int hex2bin(const char *str, uint8_t *bin, int length)
+{
+	int		len;
+	const		char *letters = "0123456789ABCDEFabcdef";
+
+	/*
+	 *	Must be byte aligned, not nibble aligned.
+	 */
+	len = strlen(str);
+	if ((len & 0x01) != 0) return -1;
+
+	/*
+	 *	Input string is too long to fit.  Don't even bother
+	 *	trying.
+	 */
+	if ((len / 2) > length) return -1;
+
+	/*
+	 *	Input string contains non-hex characters, die.
+	 */
+	if (strspn(str, letters) != len) return -1;
+
+	len = 0;
+	while (*str) {
+		char	*c1, *c2;
+
+		c1 = memchr(letters, toupper((int) *(str++)), 16);
+		c2 = memchr(letters, toupper((int) *(str++)), 16);
+
+		*(bin++) = ((c1-letters)<<4) + (c2-letters);
+		len++;
+	}
+
+        return len;
+}
+
+/*
+ *	ascend_parse_generic
  *
- *	GENERIC dir action offset mask value [== or != ] [more]
+ *	This routine parses a Generic filter string from a RADIUS
+ *	reply. The format of the string is:
  *
- * Fields in [...] are optional.
- *	where:
+ *	generic dir action offset mask value [== or != ] [more]
+ *
+ *	Fields in [...] are optional.
  *
  *	offset:		A Number. Specifies an offset into a frame 
  *			to start comparing.
@@ -1052,102 +951,96 @@ parseIpFilter(const char *curString, RadFilter *curEntry)
  *			
  *	more:		Optional keyword MORE, to represent the attachment
  *			to the next entry.
- *
- * expects:
- *
- *	curEntry:	Pointer to place the filter structure
- *
- *	returns:	-1 for error or 0 for OK
- *	
  */
-static int
-parseGenericFilter(const char *curString, RadFilter *curEntry)
+static int ascend_parse_generic(int argc, char **argv,
+				ascend_generic_filter_t *filter)
 {
-    unsigned long	elements = 0l; 
-    int			tok; 
-    int			gstate = FILTER_GENERIC_OFFSET;
-    char*		token;
-    short		valLen, maskLen;
-    RadGenericFilter*	gen;
+	int rcode;
+	int token;
+	int flags;
 
-    token = strtok( NULL, " " ); 
+	/*
+	 *	We may have nothing, in which case we simply return.
+	 */
+	if (argc == 0) return 0;
 
-    maskLen = 0;
-    memset( (char *)curEntry, '\0', sizeof( RadFilter ) );
-    curEntry->type = RAD_FILTER_GENERIC;
-    gen = &curEntry->u.generic;
-    gen->more = FALSE; 
-    gen->compNeq = FALSE;	
+	/*
+	 *	We need at least "offset mask value"
+	 */
+	if (argc < 3) return -1;
 
-    while( token ) {
-  	tok = lrad_str2int(filterKeywords, token, -1);
-	switch( tok ) {
-	    case FILTER_IN:
-	    case FILTER_OUT:
-		curEntry->indirection = tok == FILTER_IN ? TRUE: FALSE;
-	        elements |= (1 << FILTER_DIRECTION );
-		break;
-	    case FILTER_FORWARD:
-	    case FILTER_DROP:
-	        elements |= (1 << FILTER_DISPOSITION );
-		if( tok == FILTER_FORWARD ) {
-		    curEntry->forward = TRUE;
-		} else {
-		    curEntry->forward = FALSE;
+	/*
+	 *	No more than optional comparison and "more"
+	 */
+	if (argc > 5) return -1;
+
+	/*
+	 *	Offset is a uint16_t number.
+	 */
+	if (strspn(argv[0], "0123456789") != strlen(argv[0])) return -1;
+
+	rcode = atoi(argv[0]);
+	if (rcode > 65535) return -1;
+
+	filter->offset = rcode;
+	filter->offset = htons(filter->offset);
+
+	rcode = hex2bin(argv[1], filter->mask, sizeof(filter->mask));
+	if (rcode < 0) return -1;
+
+	token = hex2bin(argv[2], filter->value, sizeof(filter->value));
+	if (token < 0) return -1;
+
+	/*
+	 *	The mask and value MUST be the same length.
+	 */
+	if (rcode != token) return -1;
+
+	filter->len = rcode;
+	filter->len = htons(filter->len);
+
+	/*
+	 *	Nothing more.  Exit.
+	 */
+	if (argc == 3) return 0;
+
+	argc -= 3;
+	argv += 3;
+	flags = 0;
+
+	while (argc >= 1) {
+		token = lrad_str2int(filterKeywords, argv[0], -1);
+		switch (token) {
+		case FILTER_GENERIC_COMPNEQ:
+			if (flags & 0x01) return -1;
+			filter->compNeq = TRUE;
+			flags |= 0x01;
+			break;
+		case FILTER_GENERIC_COMPEQ:
+			if (flags & 0x01) return -1;
+			filter->compNeq = FALSE;
+			flags |= 0x01;
+			break;
+			
+		case FILTER_MORE:
+			if (flags & 0x02) return -1;
+			filter->more = htons( 1 );
+			flags |= 0x02;
+			break;
+
+		default:
+			librad_log("Invalid string \"%s\" in generic data filter",
+				   argv[0]);
+			return -1;
 		}
-		break;
-	    case FILTER_GENERIC_COMPNEQ:
-		gen->compNeq = TRUE;
-		break;
-	    case FILTER_GENERIC_COMPEQ:
-		gen->compNeq = FALSE;
-		break;
-	    case FILTER_MORE:
-		gen->more = htons( TRUE );
-		break;
-	    default:
-	        elements |= ( 1 << gstate );
-		switch( gstate ) {
-		    case FILTER_GENERIC_OFFSET:
-			gstate = FILTER_GENERIC_MASK;
-			gen->offset = htons( atoi( (char *) token ) );
-			break;
-		    case FILTER_GENERIC_MASK:
-			gstate = FILTER_GENERIC_VALUE;
-			maskLen = a2octet( token, (char *)gen->mask );
-			if( maskLen == (short) -1 ) {
-			    librad_log("filter mask error: %s \n", curString );
-			    goto doneErr;
-			}
-			break;
-		    case FILTER_GENERIC_VALUE:
-			gstate ++;
-			valLen = a2octet( token, (char *)gen->value );
-			if( valLen != maskLen ) {
-			    librad_log("filter value size is not the same size as the filter mask: %s \n", 
-				     curString );
-			    goto doneErr;
-			}
-			gen->len = htons( valLen );
-			break;
-		    default:
-			librad_log("filter: do not know %s in %s \n",
-				 token, curString );
-			goto doneErr;    
-		}
+
+		argc--;
+		argv++;
 	}
-        token = strtok( NULL, " " ); 
-    }
 
-    if( elements == GENERIC_FILTER_COMPLETE ) {
-	return( 0 );
-    }
-
-doneErr:
-    return( -1 );
+	return 0;
 }
-#endif
-		       
+
 
 /*
  * filterBinary:
@@ -1182,7 +1075,7 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 	/*
 	 *	Tokenize the input string.
 	 */
-	argc = str2argv(copied_valstr, argv);
+	argc = str2argv(copied_valstr, argv, 32);
 	if (argc < 3) return -1;
 	
 	/*
@@ -1250,11 +1143,10 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 
 
 	switch (type) {
-#if 0
 	case RAD_FILTER_GENERIC:
-		rc = parseGenericFilter( valstr, &radFil );
+		rcode = ascend_parse_generic(argc - 3, &argv[3],
+					  &filter.u.generic);
 		break;
-#endif
 	case RAD_FILTER_IP:
 		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.u.ip);
 		break;
@@ -1457,7 +1349,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   } else if (filter.type == RAD_FILTER_GENERIC) {
     int count;
 
-    i = snprintf(p, len, " %d ", filter.u.generic.offset);
+    i = snprintf(p, len, " %u ", (unsigned int) ntohs(filter.u.generic.offset));
     p += i;
     i -= len;
 
@@ -1482,6 +1374,12 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
     i = snprintf(p, len, " %s", (filter.u.generic.compNeq) ? "!=" : "==");
     p += i;
     len -= i;
+
+    if (filter.u.generic.more != 0) {
+      i = snprintf(p, len, " more");
+      p += i;
+      len -= i;
+    }
   }
 
   *(p++) = '"';
