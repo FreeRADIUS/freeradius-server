@@ -670,23 +670,28 @@ static int do_mschap(rlm_mschap_t *inst,
 {
 	int		do_ntlm_auth = 0;
 	uint8_t		calculated[24];
-	VALUE_PAIR	*ntlm_auth = NULL;
+	VALUE_PAIR	*vp = NULL;
+
+	/*
+	 *	If we have ntlm_auth configured, use it unless told
+	 *	otherwise
+	 */
+	if (inst->ntlm_auth) do_ntlm_auth = 1;
 
 	/*
 	 *	If we have an ntlm_auth configuration, then we may
 	 *	want to use it.
 	 */
-	ntlm_auth = pairfind(request->config_items,
-			     PW_MS_CHAP_USE_NTLM_AUTH);
-	if (ntlm_auth) do_ntlm_auth = ntlm_auth->lvalue;
+	vp = pairfind(request->config_items,
+		      PW_MS_CHAP_USE_NTLM_AUTH);
+	if (vp) do_ntlm_auth = vp->lvalue;
 
 	/*
 	 *	No ntlm_auth configured, attribute to tell us to
 	 *	use it exists, and we're told to use it.  We don't
 	 *	know what to do...
 	 */
-	if (!inst->ntlm_auth && ntlm_auth &&
-	    (ntlm_auth->lvalue != 0)) {
+	if (!inst->ntlm_auth && do_ntlm_auth) {
 		DEBUG2("  rlm_mschap: Asked to use ntlm_auth, but it was not configured in the mschap{} section.");
 		return -1;
 	}
