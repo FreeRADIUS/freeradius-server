@@ -195,7 +195,7 @@ struct timeval *proxy_setuptimeout(struct timeval *);
 void proxy_retry(void);
 
 /* auth.c */
-char		*auth_name(REQUEST *request, int do_cli);
+char		*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 
 /* exec.c */

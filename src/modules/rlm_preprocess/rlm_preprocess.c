@@ -462,6 +462,8 @@ static int preprocess_init(int argc, char **argv)
 static int preprocess_authorize(REQUEST *request,
 	VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
 {
+	char buf[1024];
+
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
@@ -483,7 +485,8 @@ static int preprocess_authorize(REQUEST *request,
 	hints_setup(request);
 	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
 		log(L_AUTH, "No huntgroup access: [%s] (%s)",
-			request->username->strvalue, auth_name(request, 1));
+		    request->username->strvalue,
+		    auth_name(buf, sizeof(buf), request, 1));
 		return RLM_AUTZ_REJECT;
 	}
 

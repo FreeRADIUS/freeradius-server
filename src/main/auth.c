@@ -45,9 +45,8 @@ static const char rcsid[] = "$Id$";
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
  */
-char *auth_name(REQUEST *request, int do_cli)
+char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 {
-	static char	buf[300];
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
 	int		port = 0;
@@ -57,9 +56,9 @@ char *auth_name(REQUEST *request, int do_cli)
 	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
 		port = pair->lvalue;
 
-	sprintf(buf, "from nas %.128s/S%d%s%.128s",
-		nas_name2(request->packet), port,
-		(do_cli ? " cli " : ""), (do_cli ? (char *)cli->strvalue : ""));
+	snprintf(buf, buflen, "from nas %.128s/S%d%s%.128s",
+		 nas_name2(request->packet), port,
+		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->strvalue : ""));
 
 	return buf;
 }
@@ -268,6 +267,7 @@ int rad_authenticate(REQUEST *request)
 	char		*exec_program;
 	int		exec_wait;
 	int		seen_callback_id;
+	char		buf[1024];
 
 	user_reply = NULL;
 	password = "";
@@ -359,7 +359,7 @@ int rad_authenticate(REQUEST *request)
 				  namepair->strvalue,
 				  log_auth_pass ? "/" : "",
 				  log_auth_pass ? password : "",
-				  auth_name(request, 1));
+				  auth_name(buf, sizeof(buf), request, 1));
 			  request->reply = build_reply(PW_AUTHENTICATION_REJECT,
 						       request, NULL, NULL);
 		  }
@@ -421,7 +421,7 @@ int rad_authenticate(REQUEST *request)
 			log(L_AUTH,
 				"Login incorrect: [%s/%s] (%s)%s",
 				namepair->strvalue, clean_buffer,
-				auth_name(request, 1),
+				auth_name(buf, sizeof(buf), request, 1),
 				((result == -2) ? " reject" : ""));
 			/* double check: maybe the secret is wrong? */
 			if (debug_flag > 1) {
@@ -459,7 +459,7 @@ int rad_authenticate(REQUEST *request)
 						     request, NULL, user_msg);
 		log(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
 				namepair->strvalue,
-				auth_name(request, 1),
+				auth_name(buf, sizeof(buf), request, 1),
 				check_item->lvalue,
 				r == 2 ? " [MPP attempt]" : "");
 			result = -1;
@@ -491,7 +491,7 @@ int rad_authenticate(REQUEST *request)
 			log(L_ERR, "Outside allowed timespan: [%s]"
 				   " (%s) time allowed: %s",
 					namepair->strvalue,
-					auth_name(request, 1),
+					auth_name(buf, sizeof(buf), request, 1),
 					check_item->strvalue);
 		} else if (r > 0) {
 
@@ -558,10 +558,10 @@ int rad_authenticate(REQUEST *request)
 	seen_callback_id = 0;
 	if ((auth_item = pairfind(user_reply, PW_CALLBACK_ID)) != NULL) {
 		seen_callback_id = 1;
-		radius_xlate(umsg, sizeof(auth_item->strvalue),
+		radius_xlate(buf, sizeof(auth_item->strvalue),
 			     auth_item->strvalue,
 			     request->packet->vps, user_reply);
-		strNcpy(auth_item->strvalue, umsg, sizeof(auth_item->strvalue));
+		strNcpy(auth_item->strvalue, buf, sizeof(auth_item->strvalue));
 		auth_item->length = strlen(auth_item->strvalue);
 	}
 
@@ -587,7 +587,7 @@ int rad_authenticate(REQUEST *request)
 					"Login incorrect: [%s] (%s) "
 					"(external check failed)",
 					namepair->strvalue,
-					auth_name(request, 1));
+					auth_name(buf, sizeof(buf), request, 1));
 			}
 			pairfree(user_reply);
 			return 0;
@@ -623,10 +623,10 @@ int rad_authenticate(REQUEST *request)
 	if (user_msg == NULL) {
 	  reply_item = pairfind(user_reply, PW_REPLY_MESSAGE);
 	  while (reply_item) {
-	  	radius_xlate(umsg, sizeof(reply_item->strvalue),
+	  	radius_xlate(buf, sizeof(reply_item->strvalue),
 			     reply_item->strvalue,
 			     request->packet->vps, user_reply);
-		strNcpy(reply_item->strvalue, umsg, sizeof(reply_item->strvalue));
+		strNcpy(reply_item->strvalue, buf, sizeof(reply_item->strvalue));
 		reply_item->length = strlen(reply_item->strvalue);
 		user_msg = NULL;
 		reply_item = pairfind(reply_item->next, PW_REPLY_MESSAGE);
@@ -642,7 +642,7 @@ int rad_authenticate(REQUEST *request)
 			namepair->strvalue,
 			log_auth_pass ? "/" : "",
 			log_auth_pass ? password : "",
-			auth_name(request, 0));
+			auth_name(buf, sizeof(buf), request, 0));
 	}
 	if (exec_program && !exec_wait) {
 		/*
