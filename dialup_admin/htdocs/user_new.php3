@@ -14,6 +14,11 @@ require('../lib/defaults.php3');
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+
+<?php
+include("password_generator.jsc");
+?>
+
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>
@@ -136,6 +141,8 @@ EOM;
 <input type=submit class=button value="Create" OnClick="this.form.create.value=1">
 <br><br>
 <input type=submit class=button value="Show User" OnClick="this.form.show.value=1">
+<br><br>
+<input type="button" class=button value="Auto/Password" OnClick="generatepassword(this.form.passwd,8);">
 </form>
 	</td></tr>
 </table>

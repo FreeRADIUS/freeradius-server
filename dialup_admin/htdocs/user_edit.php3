@@ -12,6 +12,11 @@ echo <<<EOM
 <link rel="stylesheet" href="style.css">
 </head>
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">
+EOM;
+
+include("password_generator.jsc");
+
+echo <<<EOM
 <center>
 <table border=0 width=550 cellpadding=0 cellspacing=0>
 <tr valign=top>
@@ -125,6 +130,8 @@ EOM;
 <input type=submit class=button value=Change OnClick="this.form.change.value=1">
 <br><br>
 <input type=submit class=button value="Add to Badusers" OnClick="this.form.badusers.value=1">
+<br><br>
+<input type="button" class=button value="Auto/Password" OnClick="generatepassword(this.form.passwd,8);">
 </form>
 	</td></tr>
 </table>
