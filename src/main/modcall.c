@@ -226,6 +226,14 @@ static int call_modgroup(int component, modgroup *g, REQUEST *request,
 	int myresultpref;
 	modcallable *p;
 
+	/*
+	 *	Catch people who have issues.
+	 */
+	if (!g->children) {
+		DEBUG2("  WARNING! Asked to process empty group.  Returning %s.", lrad_int2str(rcode_table, myresult, "??"));
+		return default_result;
+	}
+
 	/* Assign the lowest possible preference to the default return code */
 	myresultpref = 0;
 
