@@ -17,7 +17,14 @@ if test x$with_[]modname != xno; then
 		[ $pam_ldflags ]
 	)
 
-	AC_CHECK_HEADERS(security/pam_appl.h,pam/pam_appl.h)
+dnl #	
+dnl #	Yes, these DO have to be on seperate lines,
+dnl #	otherwise autoheader won't pick them up.
+dnl #	
+	AC_CHECK_HEADERS( \
+			security/pam_appl.h \
+			pam/pam_appl.h \
+			)
 	pam_cflags="-I."
 	
 	targetname=modname
