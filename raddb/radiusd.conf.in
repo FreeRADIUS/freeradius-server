@@ -267,6 +267,42 @@ lower_pass = no
 nospace_user = no
 nospace_pass = no
 
+# SECURITY CONFIGURATION
+#
+#  There may be multiple methods of attacking on the server.  This
+#  section holds the configuration items which minimize the impact
+#  of those attacks
+#
+security {
+	#
+	#  max_attributes: The maximum number of attributes
+	#  permitted in a RADIUS packet.  Packets which have MORE
+	#  than this number of attributes in them will be dropped.
+	#
+	#  If this number is set too low, then no radius packets
+	#  will be accepted.
+	#
+	#  If this number is set too high, then an attacker may be
+	#  able to send a small number of packets which will cause
+	#  the RADIUS server to use all available memory.
+	#
+	#  Setting this number to 0 means "allow any number of attributes"
+	max_attributes = 200
+
+	#
+	#  delayed_reject: When sending an Access-Reject, it can be
+	#  delayed for a few seconds.  This may help slow down a DoS
+	#  attack.  It also helps to slow down people trying to brute-force
+	#  crack a users password.
+	#
+	#  Setting this number to 0 means "send rejects immediately"
+	#
+	#  If this number is set higher than "cleanup_delay", then the
+	#  rejects will be sent after 'cleanup_delay".
+	#
+	#  Useful ranges: 1 to 5
+	reject_delay = 1
+}
 
 # PROXY CONFIGURATION
 #
