@@ -193,6 +193,7 @@ for(;;){
 					$ctx->add($time);
 					$ctx->add('badlogin');
 					$uniqueid = $ctx->hexdigest;
+					print TMP "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
 #DEBUG#					print "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');\n";
 					print TMP "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');\n";
 					close TMP;

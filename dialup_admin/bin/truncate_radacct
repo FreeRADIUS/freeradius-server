@@ -46,9 +46,11 @@ $query .= "UNLOCK TABLES;" if ($sql_type eq 'mysql');
 print "$query\n";
 open TMP, ">/tmp/truncate_radacct.query"
         or die "Could not open tmp file\n";
+print TMP "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
 print TMP $query;
 close TMP;
 $command = "$sqlcmd -h$sql_server -u$sql_username $sql_password $sql_database </tmp/truncate_radacct.query" if ($sql_type eq 'mysql');
 $command = "$sqlcmd  -U $sql_username -f /tmp/truncate_radacct.query $sql_database" if ($sql_type eq 'pg');
+$command = "$sqlcmd  $sql_username/$pass" . "@" . "$sql_database <$tmpfile.$server" if ($sql_type eq 'oracle');
 $command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' </tmp/truncate_radacct.query" if ($sql_type eq 'sqlrelay');
 `$command`;

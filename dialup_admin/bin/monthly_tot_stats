@@ -53,10 +53,12 @@ print "$query1\n";
 print "$query2\n";
 open TMP, ">/tmp/tot_stats.query"
 	or die "Could not open tmp file\n";
+print TMP "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
 print TMP $query1;
 print TMP $query2;
 close TMP;
 $command = "$sqlcmd -h $sql_server -u $sql_username $sql_password $sql_database </tmp/tot_stats.query" if ($sql_type eq 'mysql');
 $command = "$sqlcmd  -U $sql_username -f /tmp/tot_stats.query $sql_database" if ($sql_type eq 'pg');
+$command = "$sqlcmd  $sql_username/$pass" . "@" . "$sql_database <$tmpfile.$server" if ($sql_type eq 'oracle');
 $command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' </tmp/tot_stats.query" if ($sql_type eq 'sqlrelay');
 `$command`;
