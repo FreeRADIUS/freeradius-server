@@ -1,4 +1,4 @@
-.TH RADIUSD 8 "23 June 2003" "" "FreeRADIUS Daemon"
+.TH RADIUSD 8 "23 June 2004" "" "FreeRADIUS Daemon"
 .SH NAME
 radiusd - Authentication, Authorization and Accounting server
 .SH SYNOPSIS
@@ -30,9 +30,43 @@ radiusd - Authentication, Authorization and Accounting server
 This is the FreeRADIUS implementation of the well known
 .B radius
 server program.  Even though this program is largely compatible with
-\fILivingston's\fP radius version 2.0, it's \fBnot\fP based on any
+\fILivingston's\fP radius version 2.0, it is \fBnot\fP based on any
 part of that code.
 .PP
+FreeRADIUS is a high-performance and highly configurable RADIUS
+server.  As a result, it can be difficult to configure in systems with
+complex requirements.  Our suggestion is to proceed via the following
+steps:
+.PP
+1) Always run the server in debugging mode (
+.B radiusd -X
+).  We cannot emphasize this enough.  If you are not running the
+server in debugging mode, you \fIwill not\fP be able to see what is
+doing, and you \fIwill not\fP be able to correct any problems.
+.PP
+2) When editing the \fIradiusd.conf\fP file, change as little as
+possible, especially in the \fIauthorize{}\fP section.  The ordering
+of the modules is critical for the server to be able to
+"automatically" figure out how to handle the request.  Changing the
+order of the modules ensures that the server will not work.
+.PP
+3) When testing, start off by configuring a user and password in the
+\fIusers\fP file.  So long as the server knows about a user, and has a
+clear-text password for that user, \fBalmost all of the authentication
+methods will "just work"\fP.
+.PP
+4) Gradually add more complex configurations to the server, while
+testing them as you go.  If you start off by configuring the server in
+a complex configuration, you will never be able to debug it.
+.PP
+5) Ask questions on the mailing list
+(freeradius-users@lists.freeradius.org).  When asking questions,
+include the output from debugging mode (
+.B radiusd -X
+).  This information will allow people to help you.  Without it, your
+message will get ignored.
+
+.SH BACKGROUND
 \fBRADIUS\fP is a protocol spoken between an access server, typically
 a device connected to several modems or ISDN lines, and a \fBradius\fP
 server. When a user connects to the access server, (s)he is asked for
@@ -45,6 +79,7 @@ The access server also sends login and logout records to the \fBradius\fP
 server so accounting can be done. These records are kept for each terminal
 server seperately in a file called \fBdetail\fP, and in the \fIwtmp\fP
 compatible logfile \fB/var/log/radwtmp\fP.
+
 .SH OPTIONS
 
 .IP \-A
@@ -211,4 +246,5 @@ users, and their passwords, in this file.
 radiusd.conf(5), users(5), huntgroups(5), hints(5),
 clients(5), dictionary(5).
 .SH AUTHOR
-Miquel van Smoorenburg, miquels@cistron.nl, and others.
+The FreeRADIUS Server Project (http://www.freeradius.org)
+
