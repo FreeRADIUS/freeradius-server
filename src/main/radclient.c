@@ -58,12 +58,10 @@ static int retries = 10;
 static float timeout = 3;
 static const char *secret = NULL;
 static int do_output = 1;
-static int do_summary = 0;
 static int filedone = 0;
 static int totalapp = 0;
 static int totaldeny = 0;
 static int totallost = 0;
-static char filesecret[256];
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
@@ -182,20 +180,123 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	return 0;
 }
 
+/*
+ *	Send request.
+ */
+void send_request(RADIUS_PACKET *req, FILE *fp, int count)
+{
+	int loop;
+	char password[256];
+	VALUE_PAIR *vp;
+	RADIUS_PACKET *rep = NULL;
+
+	if ((req->sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+		perror("radclient: socket: ");
+		exit(1);
+	}
+
+	while(!filedone) {
+
+		if(req->vps) pairfree(&req->vps);
+
+		req->vps = readvp(fp);
+		if (req->vps == NULL) {
+			break;
+		}
+
+		/*
+		 *	Keep a copy of the the User-Password attribute.
+		 */
+		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
+			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+		/*
+		 *	Otherwise keep a copy of the CHAP-Password attribute.
+		 */
+		} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
+			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+		} else {
+			*password = '\0';
+		}
+
+		/*
+		 *  Fix up Digest-Attributes issues
+		 */
+		for (vp = req->vps; vp != NULL; vp = vp->next) {
+		  switch (vp->attribute) {
+		  default:
+		    break;
+
+		  case PW_DIGEST_REALM:
+		  case PW_DIGEST_NONCE:
+		  case PW_DIGEST_METHOD:
+		  case PW_DIGEST_URI:
+		  case PW_DIGEST_QOP:
+		  case PW_DIGEST_ALGORITHM:
+		  case PW_DIGEST_BODY_DIGEST:
+		  case PW_DIGEST_CNONCE:
+		  case PW_DIGEST_NONCE_COUNT:
+		  case PW_DIGEST_USER_NAME:
+		    /* overlapping! */
+		    memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
+		    vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
+		    vp->length += 2;
+		    vp->strvalue[1] = vp->length;
+		    vp->attribute = PW_DIGEST_ATTRIBUTES;
+		    break;
+		  }
+		}
+
+		/*
+		 *	Loop, sending the packet N times.
+		 */
+		for (loop = 0; loop < count; loop++) {
+			req->id++;
+
+			/*
+			 *	If we've already sent a packet, free up the old
+			 *	one, and ensure that the next packet has a unique
+			 *	ID and authentication vector.
+			 */
+			if (req->data) {
+				free(req->data);
+				req->data = NULL;
+			}
+
+			librad_md5_calc(req->vector, req->vector,
+					sizeof(req->vector));
+
+			if (*password != '\0') {
+				if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
+					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
+					vp->length = strlen(password);
+
+				} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
+					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
+					vp->length = strlen(password);
+
+					rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
+					vp->length = 17;
+				}
+			} /* there WAS a password */
+
+			send_packet(req, &rep);
+			if (rep != NULL) rad_free(&rep);
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	RADIUS_PACKET *req;
-	RADIUS_PACKET *rep = NULL;
 	char *p;
 	int c;
 	int port = 0;
 	const char *radius_dir = RADDBDIR;
 	char *filename = NULL;
+	char filesecret[256];
 	FILE *fp;
 	int count = 1;
-	int loop;
-	char password[256];
-	VALUE_PAIR *vp;
+	int do_summary = 0;
 	int id;
 
 	id = ((int)getpid() & 0xff);
@@ -367,102 +468,9 @@ int main(int argc, char **argv)
 		fp = stdin;
 	}
 	
-	/*
-	 *	Send request.
-	 */
-	if ((req->sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("radclient: socket: ");
-		exit(1);
-	}
+	send_request(req, fp, count);
 
-	if (req->code != PW_STATUS_SERVER) while(!filedone) {
-		if(req->vps) pairfree(&req->vps);
-
-		if ((req->vps = readvp(fp)) == NULL) {
-			break;
-		}
-	
-
-		/*
-		 *	Keep a copy of the the User-Password attribute.
-		 */
-		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
-			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
-		/*
-		 *	Otherwise keep a copy of the CHAP-Password attribute.
-		 */
-		} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
-			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
-		} else {
-			*password = '\0';
-		}
-	
-		/*
-		 *  Fix up Digest-Attributes issues
-		 */
-		for (vp = req->vps; vp != NULL; vp = vp->next) {
-		  switch (vp->attribute) {
-		  default:
-		    break;
-
-		  case PW_DIGEST_REALM:
-		  case PW_DIGEST_NONCE:
-		  case PW_DIGEST_METHOD:
-		  case PW_DIGEST_URI:
-		  case PW_DIGEST_QOP:
-		  case PW_DIGEST_ALGORITHM:
-		  case PW_DIGEST_BODY_DIGEST:
-		  case PW_DIGEST_CNONCE:
-		  case PW_DIGEST_NONCE_COUNT:
-		  case PW_DIGEST_USER_NAME:
-		    /* overlapping! */
-		    memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
-		    vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
-		    vp->length += 2;
-		    vp->strvalue[1] = vp->length;
-		    vp->attribute = PW_DIGEST_ATTRIBUTES;
-		    break;
-		  }
-		}
-
-		/*
-		 *	Loop, sending the packet N times.
-		 */
-		for (loop = 0; loop < count; loop++) {
-			req->id++;
-	
-			/*
-			 *	If we've already sent a packet, free up the old
-			 *	one, and ensure that the next packet has a unique
-			 *	ID and authentication vector.
-			 */
-			if (req->data) {
-				free(req->data);
-				req->data = NULL;
-			}
-
-			librad_md5_calc(req->vector, req->vector,
-					sizeof(req->vector));
-				
-			if (*password != '\0') {
-				if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
-					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
-					vp->length = strlen(password);
-					
-				} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
-					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
-					vp->length = strlen(password);
-					
-					rad_chap_encode(req, (char *) vp->strvalue, req->id, vp);
-					vp->length = 17;
-				}
-			} /* there WAS a password */
-
-			send_packet(req, &rep);
-			if (rep != NULL) rad_free(&rep);
-		}
-	}
-	if(do_summary) {
+	if (do_summary) {
 		printf("\n\t   Total approved auths:  %d\n", totalapp);
 		printf("\t     Total denied auths:  %d\n", totaldeny);
 		printf("\t       Total lost auths:  %d\n", totallost);
