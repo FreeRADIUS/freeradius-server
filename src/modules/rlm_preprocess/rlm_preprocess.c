@@ -164,7 +164,7 @@ static int matches(char *name, PAIR_LIST *pl, char *matchpart)
  *	Add hints to the info sent by the terminal server
  *	based on the pattern of the username.
  */
-static int hints_setup(VALUE_PAIR *request_pairs)
+static int hints_setup(REQUEST *request)
 {
 	char		newname[MAX_STRING_LEN];
 	char		*name;
@@ -173,6 +173,9 @@ static int hints_setup(VALUE_PAIR *request_pairs)
 	VALUE_PAIR	*tmp;
 	PAIR_LIST	*i;
 	int		do_strip;
+	VALUE_PAIR *request_pairs;
+
+	request_pairs = request->packet->vps;
 
 	if (hints == NULL || request_pairs == NULL)
 		return RLM_AUTZ_OK;
@@ -219,11 +222,24 @@ static int hints_setup(VALUE_PAIR *request_pairs)
 		do_strip = 0;
 
 	if (do_strip) {
-		tmp = pairfind(request_pairs, PW_USER_NAME);
+		tmp = pairfind(request_pairs, PW_STRIPPED_USER_NAME);
 		if (tmp) {
 			strcpy(tmp->strvalue, newname);
 			tmp->length = strlen(tmp->strvalue);
+		} else {
+			/*
+			 *	No Stripped-User-Name exists: add one.
+			 */
+			tmp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+			if (!tmp) {
+				log(L_ERR|L_CONS, "no memory");
+				exit(1);
+			}
+			strcpy(tmp->strvalue, newname);
+			tmp->length = strlen(tmp->strvalue);
+			pairadd(&request_pairs, tmp);
 		}
+		request->name = tmp;
 	}
 
 	/*
@@ -342,7 +358,7 @@ static int preprocess_authorize(REQUEST *request, char *name,
 	reply_pairs = reply_pairs;
 	name = name;
 
-	hints_setup(request->packet->vps);
+	hints_setup(request);
 	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
 		log(L_AUTH, "No huntgroup access: [%s] (%s)",
 			request->username, auth_name(request, 1));

@@ -408,7 +408,15 @@ int rad_authenticate(REQUEST *request)
 					     request, NULL, NULL);
 		return RLM_AUTZ_NOTFOUND;
 	}
-		
+
+	/*
+	 *	Prefer Stripped-User-Name to User-Name
+	 */
+	tmp = pairfind(request->packet->vps, PW_USER_NAME);
+	if (tmp) {
+		namepair = tmp;
+	}
+
 	/*
 	 *	Decrypt the password, and remove trailing NULL's.
 	 */
@@ -435,6 +443,7 @@ int rad_authenticate(REQUEST *request)
 		auth_item = pairfind(request->packet->vps, PW_CHAP_PASSWORD);
 	}
 	request->password = auth_item;
+	request->name = namepair;
 
 	/*
 	 *	Get the user's authorization information from the database

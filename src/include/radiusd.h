@@ -32,6 +32,7 @@ typedef struct auth_req {
 	RADIUS_PACKET		*reply;
 	VALUE_PAIR		*config_items;
 	char			username[MAX_STRING_LEN];
+	VALUE_PAIR		*name;
 	VALUE_PAIR		*password;
 	char			secret[32];
 	child_pid_t    		child_pid;

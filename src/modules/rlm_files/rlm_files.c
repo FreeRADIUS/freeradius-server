@@ -334,6 +334,12 @@ static int file_authorize(REQUEST *request, char *name,
 	request_pairs = request->packet->vps;
 
 	/*
+	 *	over-ride whatever we're given with the canonical
+	 *	user name.
+	 */
+	name = request->name->strvalue;
+
+	/*
 	 *	Find the NAS port ID.
 	 */
 	if ((tmp = pairfind(request_pairs, PW_NAS_PORT_ID)) != NULL)
