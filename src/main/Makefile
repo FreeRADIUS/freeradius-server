@@ -27,7 +27,8 @@ endif
 all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
-	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen $(LDFLAGS) -o $@ \
+	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen \
+		$(CFLAGS) $(LDFLAGS) -o $@ \
 		$(SERVER_OBJS) $(LIBS) $(LDBM) $(LCRYPT) $(PTHREADLIB) \
 		$(MODULE_LIBS)
 
@@ -74,7 +75,7 @@ xlat.o: xlat.c $(INCLUDES)
 	$(CC) $(CFLAGS) -o xlat.o -c xlat.c
 
 radclient: radclient.o ../lib/libradius.a
-	$(CC) $(LDFLAGS) -o radclient radclient.o $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radclient radclient.o $(LIBS)
 
 radclient.o: radclient.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radclient.c
@@ -89,7 +90,7 @@ radwho: radwho.o util.o
 	$(CC) $(LDFLAGS) -o radwho radwho.o util.o $(LIBS)
 
 raduse: raduse.o
-	$(CC) $(LDFLAGS) -o raduse raduse.o $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o raduse raduse.o $(LIBS)
 
 modules_static.h: modules_static.h.in
 	rm -f modules_static.h
@@ -97,7 +98,7 @@ modules_static.h: modules_static.h.in
 	./makemodules.sh static $(MODULES) >> modules_static.h
 
 radzap: radzap.o util.o nas.o radutmp.o log.o
-	$(CC) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o $(LIBS)
 
 clean:
 	rm -f *.o *.so *~ modules_static.h radiusd radwho raduse \
