@@ -364,7 +364,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		return RLM_MODULE_NOTFOUND;
 	}
 
-	if(do_usercollide) {
+	if(mainconfig.do_usercollide) {
 		/* Save the orginal config items */
 		check_save = paircopy(request->config_items);
 
@@ -399,8 +399,8 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 	DEBUG2("  fastusers: Matched %s at %d", user->name, user->lineno);
 	
-	/* We've already done this above if(do_usercollide) */
-	if(!do_usercollide) {
+	/* We've already done this above if(mainconfig.do_usercollide) */
+	if(!mainconfig.do_usercollide) {
 		check_tmp = paircopy(user->check);
 		pairmove(check_pairs, &check_tmp);
 		pairfree(check_tmp); 

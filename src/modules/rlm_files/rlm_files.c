@@ -472,7 +472,7 @@ static int file_authorize(void *instance, REQUEST *request)
 		 */
 		if ((paircmp(request_pairs, pl->check, reply_pairs) == 0)) {
 
-			if((do_usercollide) && (strcmp(pl->name, "DEFAULT"))) {
+			if((mainconfig.do_usercollide) && (strcmp(pl->name, "DEFAULT"))) {
 
 				/* 
 				 * We have to make sure the password

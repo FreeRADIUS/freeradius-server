@@ -507,7 +507,7 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 	 */
 	if (encrypted_pass[0] == 0) return 0;
 
-	if(do_usercollide) {
+	if(mainconfig.do_usercollide) {
 		while(pwd) {
 			/* 
 		 	 * Make sure same user still.  If not, return as if wrong pass given 
