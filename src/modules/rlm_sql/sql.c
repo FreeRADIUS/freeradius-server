@@ -226,7 +226,7 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket) {
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode, int itemtype) {
+int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode) {
 
 	DICT_ATTR *attr;
 	VALUE_PAIR *pair, *check;
@@ -263,7 +263,7 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode, int itemtype)
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR ** check, VALUE_PAIR ** reply, char *query, int mode) {
+int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query, int mode) {
 
 	SQL_ROW row;
 	int     rows = 0;
@@ -273,12 +273,7 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR ** check, VAL
 		return -1;
 	}
 	while ((row = (inst->module->sql_fetch_row)(sqlsocket, inst->config))) {
-		if (sql_userparse(check, row, mode, PW_ITEM_CHECK) != 0) {
-			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			return -1;
-		}
-		if (sql_userparse(reply, row, mode, PW_ITEM_REPLY) != 0) {
+		if (sql_userparse(pair, row, mode) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			return -1;

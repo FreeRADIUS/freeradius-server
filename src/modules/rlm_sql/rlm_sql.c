@@ -71,8 +71,10 @@ static CONF_PARSER module_config[] = {
 	{"sqltracefile", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,tracefile), NULL, SQLTRACEFILE},
 	{"deletestalesessions", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,deletestalesessions), NULL, "0"},
 	{"num_sql_socks", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
-	{"authorize_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_query), NULL, ""},
-	{"authorize_group_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_query), NULL, ""},
+	{"authorize_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
+	{"authorize_reply_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_reply_query), NULL, ""},
+	{"authorize_group_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
+	{"authorize_group_reply_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_reply_query), NULL, ""},
 	{"authenticate_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authenticate_query), NULL, ""},
 	{"accounting_onoff_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_onoff_query), NULL, ""},
 	{"accounting_update_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,accounting_update_query), NULL, ""},
@@ -207,14 +209,18 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		return -1;
 	}
 
-	radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_query, request);
-	found = sql_getvpdata(inst, sqlsocket, &check_tmp, &reply_tmp, querystr, PW_VP_USERDATA);
+	radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_check_query, request);
+	found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_USERDATA);
 	/*
 	 *      Find the entry for the user.
 	 */
 	if (found > 0) {
-		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_query, request);
-		sql_getvpdata(inst, sqlsocket, &check_tmp, &reply_tmp, querystr, PW_VP_GROUPDATA);
+		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request);
+		sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
+		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_reply_query, request);
+		sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_USERDATA);
+		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request);
+		sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
 	} else if (found < 0) {
 		radlog(L_ERR, "rlm_sql:  SQL query error; rejecting user");
 		sql_release_socket(inst, sqlsocket);
@@ -230,8 +236,10 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		 * for a DEFAULT entry
 		 */
 		set_userattr(inst, sqlsocket, uservp, "DEFAULT", NULL, NULL);
-		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_query, request);
-		gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, &reply_tmp, querystr, PW_VP_GROUPDATA);
+		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request);
+		gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
+		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request);
+		gcheck = sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
 		if (gcheck)
 			found = 1;
 	}
