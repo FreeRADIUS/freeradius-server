@@ -20,6 +20,7 @@
  * Copyright 2000  The FreeRADIUS server project
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include "radiusd.h"
