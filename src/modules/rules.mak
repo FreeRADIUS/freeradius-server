@@ -134,6 +134,7 @@ endif
 clean:
 	@rm -f *.a *.o *.lo *.la *~
 	@rm -rf .libs _libs
+	@rm -f config.cache config.log
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
 
 distclean:
