@@ -1,5 +1,30 @@
 FreeRADIUS 0.9 ; $Date$, urgency=low
 
+	* Many, many, bug fixes and feature enhancements.
+	* More checks for thread-safe functions.
+	* Fix CHAP related buffer overflow (ouch!), thanks to Masao NISHIKU.
+	* Issue warnings if deprecated configuration files are used.
+	* rlm_passwd can now add items to the reply.
+	* The rlm_digest, rlm_exec, and rlm_ippool modules are now marked
+	  as 'stable', and included in the default build.
+	* Removed 'raduse'.  No one has used it for years.
+	* Massive fixes for Debian packaging.
+	* radclient can now send "disconnect" packets, to NASes which
+	  support it.  The server, however, CANNOT send disconnect packets.
+	* Made Auth-Type, Acct-Type, etc. names consistent across
+	  dictionary files and radiusd.conf.  The old (inconsistent) names
+	  are still allowed for backwards compatibility.
+	* Cleaned up problems with the rlm_sql module.
+	* Updates to the rlm_ldap module.
+	* rlm_mschap no longer reads SMB password files.  See rlm_passwd,
+	  instead.
+	* Changed default entry in the 'users' file to 'Auth-Type = System',
+	  to allow EAP and Digest authentication to work automagically.
+	* Support for Cisco LEAP.
+	* Added many new dictionaries (Extreme, Wispr, ERX, Netscreen...)
+	* Removed support for ATTRIB_NMC.  It is now handled (better)
+	  in a different manner.
+	* Dictionaries have been moved from /etc/raddb to /usr/share/freeradius
 	* Many documentation updates
 	* Ignore whitespace-only lines in the 'users' file.
 	* Patch to fix 'rlm_realm' from returning the DEFAULT entry when
