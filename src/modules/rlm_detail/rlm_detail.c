@@ -25,13 +25,16 @@ static const char rcsid[] = "$Id$";
 
 struct detail_instance {
 	/* detail file */
-	char *detailfile;
+	const char *detailfile;
 
         /* detail file permissions */
         int detailperm;
 
 	/* directory permissions */
 	int dirperm;
+
+	/* last made directory */
+	const char *last_made_directory;
 };
 
 static int detail_init(void)
@@ -73,6 +76,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
         inst->detailfile = config.detailfile;
         inst->detailperm = config.detailperm;
 	inst->dirperm = config.dirperm;
+	inst->last_made_directory = NULL;
 	config.detailfile = NULL;
 
         *instance = inst;
@@ -132,25 +136,62 @@ static int detail_accounting(void *instance, REQUEST *request)
 	strNcpy(filename, inst->detailfile, sizeof(filename));
 	p = strrchr(filename,'/');
 
-	if (p) *p = '\0';
-
-	radius_xlat2(buffer, sizeof(buffer), filename, request,
-		     request->reply->vps);
-	if ((mkdir(buffer, inst->dirperm) == -1) && errno != EEXIST) {
-		radlog(L_ERR, "Detail: Couldn't create %s: %s",
-		       buffer, strerror(errno));
-		return RLM_MODULE_FAIL;
-	}
-	
 	/*
-	 *	Write Detail file.
-	 *
-	 *	Generate the filename for the detail file.  Use the
-	 *	radius_xlat2() function to allow for variable detail
-	 *	filenames.
+	 *	There WAS a directory delimiter there, so let's
+	 *	go create the relevant directories.
 	 */
-	radius_xlat2(buffer, sizeof(buffer), inst->detailfile,
-		     request, request->reply->vps);
+	if (p) {
+		*p = '\0';
+		
+		radius_xlat2(buffer, sizeof(buffer), filename, request,
+			     request->reply->vps);
+
+		/*
+		 *	FIXME: Sanitize the directory name for security!
+		 */
+
+		/*
+		 *	NO previously cached directory name, so we've
+		 *	got to create a new one.
+		 *
+		 *	OR the new directory name is different than the old,
+		 *	so we've got to create a new one.
+		 */
+		if ((inst->last_made_directory == NULL) ||
+		    (strcmp(inst->last_made_directory, buffer) != 0)) {
+			
+			/*
+			 *	Free any previously cached name.
+			 */
+			if (inst->last_made_directory != NULL) {
+				free((char *) inst->last_made_directory);
+				inst->last_made_directory = NULL;
+			}
+			
+			/*
+			 *	Try to create the new directory.
+			 */
+			if ((mkdir(buffer, inst->dirperm) == -1) &&
+			    (errno != EEXIST)) {
+				radlog(L_ERR, "Detail: Couldn't create %s: %s",
+				       buffer, strerror(errno));
+				
+				return RLM_MODULE_FAIL;
+			}
+			
+			/*
+			 *	Save a copy of the directory name that
+			 *	we just created.
+			 */
+			inst->last_made_directory = strdup(buffer);
+		}
+		
+		/*
+		 *	Re-create the file name, by replacing the
+		 *	directory delimiter that we removed above.
+		 */
+		*p = '/';
+	} /* else there was no directory delimiter. */
 
 	/*
 	 *	Open & create the file, with the given permissions.
@@ -203,7 +244,10 @@ static int detail_accounting(void *instance, REQUEST *request)
 static int detail_detach(void *instance)
 {
         struct detail_instance *inst = instance;
-	free(inst->detailfile);
+	free((char *) inst->detailfile);
+
+	if (inst->last_made_directory)
+		free((char*) inst->last_made_directory);
         free(inst);
 	return 0;
 }
