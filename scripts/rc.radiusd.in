@@ -7,12 +7,12 @@
 #		execute "update-rc.d radiusd defaults 50".
 #
 
-prefix		= @prefix@
-exec_prefix	= @exec_prefix@
-sbindir		= @sbindir@
-localstatedir	= @localstatedir@
-logdir		= @logdir@
-rundir		= ${localstatedir}/run
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+sbindir=@sbindir@
+localstatedir=@localstatedir@
+logdir=@logdir@
+rundir=${localstatedir}/run
 
 RADIUSD=$sbindir/radiusd
 WATCHER=$sbindir/radwatch

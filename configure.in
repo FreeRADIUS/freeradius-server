@@ -687,8 +687,10 @@ AC_OUTPUT(\
 	./src/main/radtest \
 	./scripts/rc.radiusd \
 	./scripts/radwatch \
+	./scripts/check-radiusd-config
 )
 
 AC_OUTPUT_COMMANDS([echo timestamp > src/include/stamp-h])
 AC_OUTPUT_COMMANDS([(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_OUTPUT_COMMANDS([(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
+AC_OUTPUT_COMMANDS([(cd ./scripts    && chmod +x rc.radiusd radwatch check-radiusd-config)])

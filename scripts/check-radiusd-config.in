@@ -1,0 +1,65 @@
+#!/bin/sh
+#
+#  Check the RADIUS server configuration files.
+#
+#  If everything is OK, this script exits without an error.
+#  
+#  If there was an error parsing the configuration files, this script
+#  prints the errors to the screen, and exits with an error.
+#
+#  This process presumes, of course, that there weren't any DNS
+#  problems causing the server to wait forever on startup.
+#
+#  AUTHOR: Alan DeKok <aland@ox.org>
+#          Wed Apr 12 15:21:51 EDT 2000
+#
+
+prefix=@prefix@
+sbindir=@sbindir@
+sysconfdir=@sysconfdir@
+raddbdir=@raddbdir@
+
+if [ "$1" = "-h" ]; then
+    echo
+    echo Usage: check-radiusd-config
+    echo
+    echo  Checks the radius daemon server configuration for errors.
+    exit 0
+fi
+
+#
+#  Run the server as a background process, picking a high port
+#  that (we hope) no one else is using.
+#
+#  Note that you might have to add a '-d raddb' to the command line
+#  options, if your database is somewhere other than /etc/raddb
+#
+$sbindir/radiusd -X -p 32768 > startup.log 2>&1 &
+
+#
+#  Remember what it's process ID was.
+#
+RADIUSD_PID=$!
+
+#
+#  The server will run in the background until it's killed, so
+#  we need another background job to kill it, after it's read
+#  the configuration files, and is (possibly) running in debug mode.
+#
+(sleep 2 && kill -9 $RADIUSD_PID) > /dev/null 2>&1 &
+
+#
+#  Wait for it to exit with an error (1), or from being killed (137)
+#
+wait $RADIUSD_PID
+RADIUSD_STATUS=$?
+
+#
+#  If the server died with an error, then show the startup error log.
+#
+if test "$RADIUSD_STATUS" = "1"; then
+  cat startup.log
+  exit 1
+fi
+echo Radius server configuration looks OK.
+exit 0
