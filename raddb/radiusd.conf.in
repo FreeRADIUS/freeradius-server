@@ -597,7 +597,7 @@ modules {
 	#  clear: Clear text
 	#  crypt: Unix crypt
 	#    md5: MD5 ecnryption
-	#   sha1: SHA1 encryption. Not yet implemented
+	#   sha1: SHA1 encryption.
 	#  DEFAULT: crypt
 	#pap {
 	#	encryption_scheme = crypt
