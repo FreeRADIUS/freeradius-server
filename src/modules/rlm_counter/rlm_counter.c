@@ -549,7 +549,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 		free(count_datum.dptr);
 	}
 
-	if (count_vp->type == PW_TYPE_DATE) {
+	if (data->count_attr == PW_ACCT_SESSION_TIME) {
 		/*
 		 *	If session time < diff then the user got in after the
 		 *	last reset. So add his session time, otherwise add the
