@@ -49,7 +49,8 @@ static: $(TARGET).a
 dynamic: $(TARGET).la
 
 clean:
-	rm -f *.o $(TARGET).a $(TARGET).la
+	rm -f *.o *.lo $(TARGET).a $(TARGET).la
+	rm -rf .libs
 
 install: static dynamic
 	$(LIBTOOL) --mode=install $(INSTALL) -c \
