@@ -198,6 +198,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	long fpos;
 	int x;
 	unsigned int i = 0;
+	size_t len;
 
 	/* Never happens */
 	if (r_req->state == STATE_FULL)
@@ -206,22 +207,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	if (r_req->state == STATE_EMPTY)
 		r_req->state = STATE_BUSY1;
 
-
-	/*
-	 * Try to lock the detail-file.
-	 * If lockf is used we want to lock the _whole_ file, hence the
-	 * fseek to the start of the file.
-	 */
 	fpos = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
-	do {
-		x = rad_lockfd_nonblock(fileno(fp), 0);
-		if (x == -1)
-			ms_sleep(100);
-	} while (x == -1 && i++ < 20);
-
-	if (x == -1)
-		return 0;
 
 redo:
 	s = NULL;
@@ -236,15 +222,28 @@ redo:
 		 * being flushed properly. Things should be ok next time
 		 * around.
 		 */
-		if (!strlen(buf)) {
+		len = strlen(buf);
+		if (len == 0) {
 			fprintf(stdout, "%s: read_one: ZERO BYTE\n",progname);
-                       fseek(fp, fpos + 1, SEEK_SET);
-                       break;
-               } else if (buf[strlen(buf) - 1] != '\n') {
-			fprintf(stdout, "%s: read_one: BROKEN ATTRIBUTE\n",progname);
-			fseek(fp, fpos + strlen(buf), SEEK_SET);
+			break;
+		} else if (buf[len - 1] != '\n') {
+			if (len >= sizeof(buf) - 1) {
+				/* Skip the whole line */
+				fprintf(stdout, "%s: read_one: LINE TOO LONG\n",progname);
+				do x = fgetc(fp);
+				while (x != '\n' && x != EOF);
+			}else if (feof(fp)) {
+				/* The last line is incomplete */
+				fseek(fp, fpos, SEEK_SET);
+				ms_sleep(100);
+			} else {
+				/* This should never happen */
+				fprintf(stdout, "%s: read_one: BROKEN ATTRIBUTE\n",progname);
+				fseek(fp, fpos + len, SEEK_SET);
+			}
 			break;
 		}
+
 		if (r_req->state == STATE_BUSY1) {
 			if (isdateline(buf)) {
 				r_req->state = STATE_BUSY2;
@@ -331,11 +330,6 @@ redo:
 		if (r_req->state == STATE_EMPTY || r_req->state == STATE_FULL)
 			return EOF;
 	}
-
-	fpos = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
-	rad_unlockfd(fileno(fp), 0);
-	fseek(fp, fpos, SEEK_SET);
 
 	return 0;
 }
@@ -445,7 +439,6 @@ void loop(struct relay_misc *r_args)
 	int retrans_delay = 0;
 	int retrans_num = 0;
 	int i, n, ret;
-	int fd;
 	int state = STATE_RUN;
 	long fpos;
 
@@ -493,7 +486,6 @@ void loop(struct relay_misc *r_args)
 				perror("fopen");
 				return;
 			}
-			fd = fileno(fp);
 		}
 
 		/*
@@ -522,10 +514,6 @@ void loop(struct relay_misc *r_args)
 				 */
 				now = time(NULL);
 				if (ftell(fp) == 0 || now < last_rename + 10) {
-					fpos = ftell(fp);
-					fseek(fp, 0L, SEEK_SET);
-					rad_unlockfd(fd, 0);
-					fseek(fp, fpos, SEEK_SET);
 					state = STATE_WAIT;
 					break;
 				}
@@ -548,10 +536,6 @@ void loop(struct relay_misc *r_args)
 					ms_sleep(1000);
 					state = STATE_BACKLOG;
 				}
-				fpos = ftell(fp);
-				fseek(fp, 0L, SEEK_SET);
-				rad_unlockfd(fd, 0);
-				fseek(fp, fpos, SEEK_SET);
 			} while(0);
 			if (r_args->records_print && state == STATE_RUN){
 				stats.records_read++;
@@ -933,4 +917,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
