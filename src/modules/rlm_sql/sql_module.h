@@ -11,7 +11,7 @@ typedef MYSQL_RES	SQL_RES;
 
 typedef struct {
 	MYSQL		*conn;
-	SQL_RES		*result;
+	MYSQL_RES	*result;
 } SQLSOCK;
 
 

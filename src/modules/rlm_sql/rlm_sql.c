@@ -330,17 +330,15 @@ static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
 	   return RLM_AUTH_REJECT;
 
 	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", sql->config.sql_authcheck_table, user);
-	sql_query(sql->AcctSock, querystr);
-	if ((result = sql_store_result(sql->AcctSock)) && sql_num_fields(sql->AcctSock)) {
-		row = sql_fetch_row(result);
-		sql_free_result(result);
+	sql_select_query(sql->AcctSock, querystr);
+	row = sql_fetch_row(sql->AcctSock);
+	sql_finsih_query(sql->AcctSock);
 
-		if (strncmp(strlen(password), password, row[0]) != 0) {
-			return RLM_AUTH_REJECT;
-		} else
-			return RLM_AUTH_OK;
+	if (strncmp(strlen(password), password, row[0]) != 0)
+		return RLM_AUTH_REJECT;
+	else
+		return RLM_AUTH_OK;
 
-	} 	
 
 
 
