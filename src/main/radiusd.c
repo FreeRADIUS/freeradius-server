@@ -998,7 +998,7 @@ static void usage(void)
 #if defined(WITH_DBM) || defined(WITH_NDBM)
 		"b"
 #endif
-		"AcfnsSvXxyz\n", progname);
+		"AcfnsSvXxyz]\n", progname);
 	fprintf(stderr, "Options:\n\n");
 	fprintf(stderr, "  -a acct_dir     use accounting directory 'acct_dir'.\n");
 	fprintf(stderr, "  -A              Log auth detail.\n");
