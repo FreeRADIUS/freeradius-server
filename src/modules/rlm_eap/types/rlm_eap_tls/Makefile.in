@@ -1,6 +1,6 @@
 TARGET      = @targetname@
 SRCS        = rlm_eap_tls.c eap_tls.c cb.c tls.c mppe_keys.c
-RLM_CFLAGS  = $(INCLTDL) -I../.. @eap_tls_cflags@
+RLM_CFLAGS  = $(INCLTDL) -I../.. @eap_tls_cflags@ -DOPENSSL_NO_KRB5
 HEADERS     = eap_tls.h
 RLM_INSTALL = 
 RLM_LIBS    += @eap_tls_ldflags@
