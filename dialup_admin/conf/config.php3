@@ -26,8 +26,8 @@ if (!isset($config)){
 			$val=$config[$matches[1]];
 			$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
 		}
-		if (preg_match("/^general_nas(\d+)_(\w+)$/",$key,$matches))
-			$nas_list[$matches[2]][$matches[1]] = $key;
+		if (preg_match("/^nas(\d+)_(\w+)$/",$key,$matches))
+			$nas_list[$matches[1]][$matches[2]] = $v;
 		if ($key == 'INCLUDE'){
 			if (is_readable($v))
 				array_push($EXTRA_ARR,file($v));
@@ -47,8 +47,8 @@ if (!isset($config)){
 				$val=$config[$matches[1]];
 				$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
 			}
-			if (preg_match("/^general_nas(\d+)_(\w+)$/",$key,$matches))
-				$nas_list[$matches[2]][$matches[1]] = $key;
+			if (preg_match("/^nas(\d+)_(\w+)$/",$key,$matches))
+				$nas_list[$matches[1]][$matches[2]] = $v;
 			$config["$key"]="$v";
 		}
 	}
