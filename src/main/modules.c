@@ -547,13 +547,6 @@ int setup_modules(void)
 	 *	No current list of modules: Go initialize libltdl.
 	 */
 	if (!module_list) {
-		if (lt_dlinit() != 0) {
-			radlog(L_ERR|L_CONS, "Failed to initialize libraries: %s\n",
-				lt_dlerror());
-			exit(1); /* FIXME */
-			
-		}
-
 		/*
 		 *	Set the default list of preloaded symbols.
 		 *	This is used to initialize libltdl's list of
@@ -562,6 +555,13 @@ int setup_modules(void)
 		 *	i.e. Static modules.
 		 */
 		LTDL_SET_PRELOADED_SYMBOLS();
+
+		if (lt_dlinit() != 0) {
+			radlog(L_ERR|L_CONS, "Failed to initialize libraries: %s\n",
+				lt_dlerror());
+			exit(1); /* FIXME */
+			
+		}
 
 		/*
 		 *	Set the search path to ONLY our library directory.
