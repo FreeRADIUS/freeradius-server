@@ -29,6 +29,10 @@
 #include "modules.h"
 #include "modcall.h"
 
+/* mutually-recursive static functions need a prototype up front */
+static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,
+					int, int);
+
 /* Actions may be a positive integer (the highest one returned in the group
  * will be returned), or the keyword "return", represented here by
  * MOD_ACTION_RETURN, to cause an immediate return. */
@@ -646,8 +650,26 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 
 	if(cf_item_is_section(ci)) {
 		CONF_SECTION *cs = cf_itemtosection(ci);
+
 		lineno = cf_section_lineno(cs);
 		modrefname = cf_section_name1(cs);
+
+		/* group{}, redundant{}, or append{} may appear where a
+		 * single module instance was expected - in that case, we
+		 * hand it off to compile_modgroup */
+		if(!strcmp(modrefname, "group")) {
+			*modname = "UnnamedGroup";
+			return do_compile_modgroup(component, cs, filename,
+						   GROUPTYPE_SIMPLEGROUP, grouptype);
+		} else if(!strcmp(modrefname, "redundant")) {
+			*modname = "UnnamedGroup";
+			return do_compile_modgroup(component, cs, filename,
+						   GROUPTYPE_REDUNDANT, grouptype);
+		} else if(!strcmp(modrefname, "append")) {
+			*modname = "UnnamedGroup";
+			return do_compile_modgroup(component, cs, filename,
+						   GROUPTYPE_APPEND, grouptype);
+		}
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
 		lineno = cf_pair_lineno(cp);
@@ -683,8 +705,11 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 modcallable *compile_modsingle(int component, CONF_ITEM *ci,
 			       const char *filename, const char **modname)
 {
-	return do_compile_modsingle(component, ci, filename,
-				    GROUPTYPE_SIMPLEGROUP, modname);
+	modcallable *ret = do_compile_modsingle(component, ci, filename,
+						GROUPTYPE_SIMPLEGROUP,
+						modname);
+	/*dump_tree(component, ret);*/
+	return ret;
 }
 
 static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
@@ -707,40 +732,11 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 
 	for(ci=cf_item_find_next(cs, NULL); ci; ci=cf_item_find_next(cs, ci)) {
 		if(cf_item_is_section(ci)) {
-			CONF_SECTION *scs = cf_itemtosection(ci);
-			const char *name1;
-			modcallable *childgroup;
-
-			name1 = cf_section_name1(scs);
-
-			/* subsections may be group{}, redundant{}, or
-			 * append{}... */
-			if(!strcmp(name1, "group")) {
-				childgroup = do_compile_modgroup(component,
-					scs, filename, GROUPTYPE_SIMPLEGROUP,
-					grouptype);
-				add_child(g, childgroup);
-			} else if(!strcmp(name1, "redundant")) {
-				childgroup = do_compile_modgroup(component,
-					scs, filename, GROUPTYPE_REDUNDANT,
-					grouptype);
-				add_child(g, childgroup);
-			} else if(!strcmp(name1, "append")) {
-				childgroup = do_compile_modgroup(component,
-					scs, filename, GROUPTYPE_APPEND,
-					grouptype);
-				add_child(g, childgroup);
-			} else {
-				/* ...or a module instance with some actions
-				 * specified. */
-				modcallable *single;
-				const char *junk;
-
-				single = do_compile_modsingle(component,
-						cf_sectiontoitem(scs), filename,
-						grouptype, &junk);
-				add_child(g, single);
-			}
+			const char *junk;
+			modcallable *single;
+			single = do_compile_modsingle(component, ci, filename,
+						      grouptype, &junk);
+			add_child(g, single);
 		} else {
 			const char *attr, *value;
 			CONF_PAIR *cp = cf_itemtopair(ci);
