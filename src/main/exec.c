@@ -84,9 +84,9 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		buf = answer;
 
 		/*
-		 *	XXX FIXME: This is debugging info.
+		 *	Log the command if we are debugging something
 		 */
-		radlog(L_INFO, "Exec-Program: %s", buf);
+		DEBUG("Exec-Program: %s", buf);
 
 		/*
 		 *	Build vector list and execute.
