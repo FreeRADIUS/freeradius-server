@@ -46,7 +46,7 @@
 
 struct fastuser_instance {
 	char *compat_mode;
-	int	 hash_reload;
+	int hash_reload;
 
 	/* hash table */
 	long hashsize;
@@ -200,7 +200,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 		 *	configuration items.
 		 */
 		for (vp = entry->check; vp != NULL; vp = vp->next) {
- 			/*
+			/*
 			 *	Ignore attributes which are set
 			 *	properly.
 			 */
@@ -344,13 +344,13 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 
 /* Hashes the username sent to it and returns index into hashtable */
 int fastuser_hash(const char *s, long hashtablesize) {
-     unsigned long hash = 0;
+	unsigned long hash = 0;
 
-     while (*s != '\0') {
-         hash = hash * 7907 + (unsigned char)*s++;
-      }
+	while (*s != '\0') {
+		hash = hash * 7907 + (unsigned char)*s++;
+	}
 
-     return (hash % hashtablesize);
+	return (hash % hashtablesize);
 }
 
 /* Stores the username sent into the hashtable */
@@ -360,14 +360,15 @@ static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *new, int idx) {
 	cur = hashtable[idx];
 	/* store new record at end of list */
 	if(cur) {
-		for(cur; cur->next; cur=cur->next);
+		while (cur->next != NULL) 
+			cur=cur->next;
 		cur->next = new;
 		new->next = NULL;
 	} else {
 		new->next = hashtable[idx];
 		hashtable[idx] = new;
 	}
-   return 1;
+	return 1;
 }
 
 /*
@@ -416,14 +417,14 @@ static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
  * Generate and log statistics about our hash table
  */
 static void fastuser_tablestats(PAIR_LIST **hashtable, long size) {
-	int i=0, count=0;
+	int i, count;
 	int countarray[256];
 	int toomany=0;
 	PAIR_LIST *cur;
 
 	memset(countarray, 0, sizeof(countarray));
 
-	for(i; i<size; i++) {
+	for(i=0; i<size; i++) {
 		count = 0;
 		for(cur=hashtable[i]; cur; cur=cur->next) {
 			count++;
@@ -565,7 +566,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		}
 	}
 
- 	/*
+	/*
 	 *	Grab the canonical user name.
 	 */
 	namepair = request->username;
@@ -574,7 +575,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	/*
 	 *	Find the entry for the user.
 	 */
-  hashidx = fastuser_hash(name, inst->hashsize);
+	hashidx = fastuser_hash(name, inst->hashsize);
 	user = inst->hashtable[hashidx];
 	if((user=fastuser_find(request, user, name))!=NULL) {
 		userfound = 1;		
@@ -785,7 +786,7 @@ static int fastuser_detach(void *instance)
 	free(inst->usersfile);
 	free(inst->acctusersfile);
 	free(inst);
-  return 0;
+	return 0;
 }
 
 /*
