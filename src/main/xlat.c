@@ -371,5 +371,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	}
 	*q = '\0';
 
+	DEBUG2("radius_xlat:  '%s'", out);
+
 	return strlen(out);
 }

@@ -109,6 +109,7 @@
 #define PW_CLIENT_IP_ADDRESS		1052
 #define LDAP_USERDN			1053
 #define PW_NS_MTA_MD5_PASSWORD		1054
+#define PW_SQL_USER_NAME  		1055
 
 /*
  *	Integer Translations
