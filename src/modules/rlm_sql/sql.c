@@ -363,39 +363,37 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 			querymode == PW_VP_GROUPDATA)
 		return 0;
 
-	ptr = row[3];
-	xlat = T_INVALID;
-	
-	/*
-	 *	Quoted strings get handled specially.
-	 *
-	 *	Unquoted strings get the old-style treatment.
-	 */
-	if ((*ptr == '\'') ||
-	    (*ptr == '"')  ||
-	    (*ptr == '`')) {
-		xlat = gettoken(&ptr, value, sizeof(value));
+	if (row[3][0] != row[3][strlen(row[3])-1]) {
+		/*
+		 * String starts and ends differently. Take it literally
+		 * */
+		pair = pairmake(row[2], row[3], pairmode);
 	} else {
-		strNcpy(&value, ptr, sizeof(value));
-	}
+		ptr = row[3];
+		xlat = gettoken(&ptr, value, sizeof(value));
+		switch (xlat) {
+			/*
+			 *	Make the full pair now.
+			 */
+		default:
+			pair = pairmake(row[2], row[3], pairmode);
+			break;
 
-	switch (xlat) {
-		/*
-		 *	Make the full pair now.
-		 */
-	default:
-		pair = pairmake(row[2], value, pairmode);
-		break;
+		case T_SINGLE_QUOTED_STRING:
+		case T_DOUBLE_QUOTED_STRING:
+			pair = pairmake(row[2], value, pairmode);
+			break;
 
-		/*
-		 *	Mark the pair to be allocated later.
-		 */
-	case T_BACK_QUOTED_STRING:
-		pair = pairmake(row[2], NULL, pairmode);
-		if (pair) {
-			pair->flags.do_xlat = 1;
-			strNcpy(pair->strvalue, value, sizeof(pair->strvalue));
-			pair->length = 0;
+			/*
+			 *	Mark the pair to be allocated later.
+			 */
+		case T_BACK_QUOTED_STRING:
+			pair = pairmake(row[2], NULL, pairmode);
+			if (pair) {
+				pair->flags.do_xlat = 1;
+				strNcpy(pair->strvalue, value, sizeof(pair->strvalue));
+				pair->length = 0;
+			}
 		}
 	}
 	pairadd(first_pair, pair);
