@@ -578,7 +578,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	}
 
 	while((vp_user_dn = pairfind(request->packet->vps, LDAP_USERDN)) == NULL) {
-		if ((res = perform_search(instance, inst->basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
+		if ((res = perform_search(instance, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
 			return (res);
 		}
 		if ((msg = ldap_first_entry(inst->ld, result)) == NULL) {
