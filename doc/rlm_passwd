@@ -61,10 +61,11 @@ Config section parameters:
  (/etc/group) contains following record: wheel:*:0:root,vlad,test
  Group-Name attribute will be added to configuration items list with value
  of "wheel".
- '=' mark can be used to add items for this field into reply-itmes instead
+ '=' mark can be used to add items for this field into reply-items instead
  of default configure-items. For example 
 	"*User-Name,Password,=Callback-Number"
  will add third field as a Callback-Number attribute to reply.
+ You can also add attribute to request-items by adding '~' modificator.
 
    
   hashsize = n (default 0)
