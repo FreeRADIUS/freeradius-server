@@ -94,6 +94,8 @@ binary-arch: stamp-build
 	dh_installdocs -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
 	dh_installexamples `find src/modules/rlm_sql/drivers -type f -name \*.sql`
 	dh_installchangelogs doc/ChangeLog
+	#Rename manpage to go with binary
+	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
 
 	# SNMP mibs
 	install -g root -m 644 mibs/*.txt $(freeradius_dir)/usr/share/snmp/mibs
