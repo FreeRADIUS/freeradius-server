@@ -191,7 +191,7 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
  *
  *************************************************************************/
 int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
-	sql_query(sqlsocket, config, querystr);
+	return sql_query(sqlsocket, config, querystr);
 }
 
 
