@@ -528,6 +528,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'a':
+				if (radacct_dir) free(radius_dir);
 				radacct_dir = strdup(optarg);
 				break;
 			
@@ -541,6 +542,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'd':
+				if (radius_dir) free(radius_dir);
 				radius_dir = strdup(optarg);
 				break;
 			
