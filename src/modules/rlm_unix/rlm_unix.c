@@ -366,7 +366,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	char *name, *passwd;
 	struct passwd	*pwd;
 	char		*encpw;
-	char		*encrypted_pass;
+	const char	*encrypted_pass;
 	int		ret;
 #if HAVE_GETSPNAM
 	shadow_pwd_t	*spwd = NULL;
