@@ -5,9 +5,9 @@
  *		separate file.
  *
  *		That, in fact, was again based on the original stuff
- *		from Jeph Blaize <jab@kiva.net> done in May 1997.
+ *		from Jeph Blaize <jblaize@kiva.net> done in May 1997.
  *
- * Version:	@(#)pam.c  1.10  14-Jul-1998  cdent@kiva.net
+ * Version:	$Id$
  *
  */
 
@@ -33,6 +33,10 @@
 #include	"radiusd.h"
 #include	"modules.h"
 
+#ifndef PW_PAM_AUTH
+#define PW_PAM_AUTH 1041
+#endif
+
 /*************************************************************************
  *
  *	Function: PAM_conv
@@ -53,6 +57,8 @@ static int PAM_conv (int num_msg,
   int count = 0, replies = 0;
   struct pam_response *reply = NULL;
   int size = sizeof(struct pam_response);
+
+  appdata_ptr = appdata_ptr;	/* shut the compiler up */
   
 #define GET_MEM if (reply) realloc(reply, size); else reply = malloc(size); \
   if (!reply) return PAM_CONV_ERR; \
@@ -151,13 +157,18 @@ static int pam_pass(char *name, char *passwd, const char *pamauth)
 static int pam_auth(REQUEST *request, char *username, char *password)
 {
 	int	r;
+	VALUE_PAIR *pair;
+	const char *pam_auth_string = "radiusd";
 
-	r = pam_pass(username, password, "radiusd");
+	pair = pairfind(request->config_items, PW_PAM_AUTH);
+	if (pair) pam_auth_string = pair->strvalue;
+
+	r = pam_pass(username, password, pam_auth_string);
 	return (r == 0) ? RLM_AUTH_OK : RLM_AUTH_REJECT;
 }
 
 module_t rlm_pam = {
-  "PAM",
+  "Pam",
   0,				/* type: reserved */
   NULL,				/* initialize */
   NULL,				/* authorize */
