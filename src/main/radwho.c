@@ -35,6 +35,9 @@ static const char rcsid[] =
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <ctype.h>
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
 
 #include "sysutmp.h"
 #include "radutmp.h"
