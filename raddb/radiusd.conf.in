@@ -560,6 +560,22 @@ modules {
 		sqltrace	= no
 	}
 
+#
+# The "always" module is here for debugging purposes. Each instance simply
+# returns the same result, always, without doing anything.
+#
+	always fail {
+		rcode = fail
+	}
+	always reject {
+		rcode = reject
+	}
+	always ok {
+		rcode = ok
+		simulcount = 0
+		mpp = no
+	}
+
 #######################################################################
 #
 #	Configuration for the example module.  Uncommenting it will cause it
