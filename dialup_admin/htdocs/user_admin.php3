@@ -162,7 +162,7 @@ if ($link){
 			$lastlog_server_port = $row['NASPortId'];
 			$lastlog_session_time = date2timediv($lastlog_time);
 			if ($daily_limit != 'none'){
-				$remaining = $daily_limit - $lastlog_session_time;
+				$remaining = $remaining - $lastlog_session_time;
 				if ($remaining < 0)
 					$remaining = 0;
 				$log_color = ($remaining) ? 'green' : 'red'; 
