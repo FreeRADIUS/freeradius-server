@@ -279,7 +279,6 @@ static int unix_authenticate(void *instance, REQUEST *request)
 #ifdef HAVE_GETUSERSHELL
 	char		*shell;
 #endif
-	instance = instance;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
