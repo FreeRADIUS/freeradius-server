@@ -98,6 +98,8 @@
 #define PW_PACKET_TYPE			1047
 #define PW_PROXY_TO_REALM      		1048
 #define PW_REPLICATE_TO_REALM  		1049
+#define PW_ACCT_SESSION_START_TIME	1050
+#define PW_ACCT_UNIQUE_SESSION_ID	1051
 
 /*
  *	Integer Translations

@@ -127,6 +127,8 @@ ATTRIBUTE	No-Such-Attribute	1046	string
 ATTRIBUTE	Packet-Type		1047	integer
 ATTRIBUTE	Proxy-To-Realm		1048	string
 ATTRIBUTE	Replicate-To-Realm	1049	string
+ATTRIBUTE	Acct-Session-Start-Time	1050	date
+ATTRIBUTE	Acct-Unique-Session-Id  1051	string
 
 #
 #	Non-Protocol Attributes
