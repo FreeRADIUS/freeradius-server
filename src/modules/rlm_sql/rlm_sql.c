@@ -43,14 +43,14 @@ static const char rcsid[] =
 #include <sys/wait.h>
 #include <string.h>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "radiusd.h"
 #include "modules.h"
 #include "conffile.h"
 #include "rlm_sql.h"
-
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 static CONF_PARSER module_config[] = {
 	{"driver",PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,sql_driver), NULL, "mysql"},
