@@ -29,7 +29,8 @@ static const char rcsid[] = "$Id$";
 struct cmp {
 	int		attribute;
 	int		otherattr;
-	COMPARE		compare;
+	void		*instance; /* module instance */
+	RAD_COMPARE_FUNC compare;
 	struct cmp	*next;
 };
 static struct cmp *cmp;
@@ -57,7 +58,7 @@ static int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
 	 */
 	for (c = cmp; c; c = c->next)
 		if (c->attribute == check->attribute)
-			return (c->compare)(request, check,
+			return (c->compare)(c->instance, request, check,
 				check_pairs, reply_pairs);
 
 	switch(check->type) {
@@ -124,7 +125,7 @@ static int otherattr(int attr)
  *	For example, PW_GROUP in a check item needs to be compared
  *	with PW_USER_NAME in the incoming request.
  */
-int paircompare_register(int attr, int compare_attr, COMPARE fun)
+int paircompare_register(int attr, int compare_attr, RAD_COMPARE_FUNC fun, void *instance)
 {
 	struct cmp	*c;
 
@@ -136,6 +137,7 @@ int paircompare_register(int attr, int compare_attr, COMPARE fun)
 	c->compare = fun;
 	c->attribute = attr;
 	c->otherattr = compare_attr;
+	c->instance = instance;
 	c->next = cmp;
 	cmp = c;
 
@@ -145,7 +147,7 @@ int paircompare_register(int attr, int compare_attr, COMPARE fun)
 /*
  *	Unregister a function.
  */
-void paircompare_unregister(int attr, COMPARE fun)
+void paircompare_unregister(int attr, RAD_COMPARE_FUNC fun)
 {
 	struct cmp	*c, *last;
 
@@ -304,7 +306,7 @@ static int connectcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 /*
  *	Compare a portno with a range.
  */
-static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
+static int portcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	char		buf[MAX_STRING_LEN];
@@ -312,6 +314,7 @@ static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	int		lo, hi;
 	int		port = request->lvalue;
 
+	instance = instance;
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
@@ -349,7 +352,7 @@ static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
  *	- if PW_STRIP_USER_NAME is not present in check_pairs,
  *	  add a PW_STRIPPED_USER_NAME to the request.
  */
-static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
+static int presufcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR	*vp;
@@ -357,7 +360,8 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	char		rest[MAX_STRING_LEN];
 	int		len, namelen;
 	int		ret = -1;
-
+	
+	instance = instance;
 	reply_pairs = reply_pairs; /* shut the compiler up */
 
 #if 0 /* DEBUG */
@@ -418,9 +422,10 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
  *	do the comparison against when the packet came in, not now,
  *	and have one less system call to do.
  */
-static int timecmp(VALUE_PAIR *request, VALUE_PAIR *check,
+static int timecmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
+	instance = instance;
 	request = request;	/* shut the compiler up */
 	check_pairs = check_pairs;
 	reply_pairs = reply_pairs;
@@ -440,13 +445,14 @@ static int timecmp(VALUE_PAIR *request, VALUE_PAIR *check,
  *	doing the lookup only ONCE, and storing the result
  *	in check->lvalue...
  */
-static int attrcmp(VALUE_PAIR *request, VALUE_PAIR *check,
+static int attrcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR *pair;
 	DICT_ATTR  *dict;
 	int attr;
 
+	instance = instance;
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
@@ -477,10 +483,10 @@ static int attrcmp(VALUE_PAIR *request, VALUE_PAIR *check,
  */
 void pair_builtincompare_init(void)
 {
-	paircompare_register(PW_NAS_PORT_ID, -1, portcmp);
-	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp);
-	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp);
-	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp);
-	paircompare_register(PW_CURRENT_TIME, 0, timecmp);
-	paircompare_register(PW_NO_SUCH_ATTRIBUTE, 0, attrcmp);
+	paircompare_register(PW_NAS_PORT_ID, -1, portcmp, NULL);
+	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp, NULL);
+	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp, NULL);
+	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, NULL);
+	paircompare_register(PW_CURRENT_TIME, 0, timecmp, NULL);
+	paircompare_register(PW_NO_SUCH_ATTRIBUTE, 0, attrcmp, NULL);
 }

@@ -147,7 +147,7 @@ typedef struct main_config_t {
 #endif
 
 /* for paircompare_register */
-typedef int (*COMPARE)(VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
+typedef int (*RAD_COMPARE_FUNC)(void *instance, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
 /*
  *	Global variables.
@@ -264,8 +264,10 @@ int		radius_exec_program(const char *, VALUE_PAIR *, VALUE_PAIR **,
 int		timestr_match(char *, time_t);
 
 /* valuepair.c */
-int		paircompare_register(int attr, int otherattr, COMPARE func);
-void		paircompare_unregister(int attr, COMPARE func);
+int		paircompare_register(int attr, int otherattr,
+				     RAD_COMPARE_FUNC func,
+				     void *instance);
+void		paircompare_unregister(int attr, RAD_COMPARE_FUNC func);
 int		paircmp(VALUE_PAIR *request, VALUE_PAIR *check,
 			VALUE_PAIR **reply);
 void		pair_builtincompare_init(void);
