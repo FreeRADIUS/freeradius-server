@@ -22,6 +22,7 @@ Ver 1.70:
 * Add da_sql_escape_string for all relevant variables in lib/sql files
 * Keep the nas list in a separate array $nas_list. Update various pages to use that one now.
 * Make nas_list actually work
+* Also allow for '-' to exist in a nas name in bin/log_badlogins
 
 Ver 1.68:
 * Huge PostgreSQL compatibility patch by Guy Fraser <guy@incentre.net>

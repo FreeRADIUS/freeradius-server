@@ -167,7 +167,7 @@ for(;;){
 				}
 				$caller='' if (!defined($caller));
 				$user =~s/[^\w\-\.\d\!\@\s]//g;
-				$nas =~s/[^\w\.]//g;
+				$nas =~s/[^\w\.\-]//g;
 				$port =~s/[^\d]//g;
 				$addr = $client_array{$nas};
 				if ($user ne '' && $realm_strip eq 'yes'){
