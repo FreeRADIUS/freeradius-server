@@ -83,6 +83,8 @@ typedef struct auth_req {
 
 	int			finished;
 	int			options; /* miscellanous options */
+	const char		*module; /* for debugging unresponsive children */
+	const char		*component; /* ditto */
 	void			*container;
 } REQUEST;
 

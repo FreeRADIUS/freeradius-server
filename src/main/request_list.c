@@ -1106,8 +1106,10 @@ static int refresh_request(REQUEST *request, void *data)
 			 */
 		} else if ((child_pid != NO_SUCH_CHILD_PID) &&
 			   ((request->options & RAD_REQUEST_OPTION_LOGGED_CHILD) == 0)) {
-			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d",
-			       (unsigned long)child_pid, number);
+			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d, in module %s in section %s",
+			       (unsigned long)child_pid, number,
+			       (request->module == NULL) ? "<none>" : request->module,
+			       (request->module == NULL) ? "<none>" : request->component);
 
 			/*
 			 *  Set the option that we've sent a log message,
