@@ -116,6 +116,7 @@ static void	sig_hup (int);
 
 static int	rad_process (REQUEST *);
 static int	rad_respond (REQUEST *);
+static void	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
 static void	rad_spawn_child(REQUEST *, FUNP);
 
@@ -582,8 +583,14 @@ int main(int argc, char **argv)
 
 		status = select(32, &readfds, NULL, NULL, tvp);
 		if (status == -1) {
-			if (errno == EINTR)
+			/*
+			 *	On interrupts, we clean up the
+			 *	request list.
+			 */
+			if (errno == EINTR) {
+				rad_clean_list();
 				continue;
+			}
 			sig_fatal(101);
 		}
 		if (status == 0)
@@ -681,6 +688,13 @@ int main(int argc, char **argv)
 			request->next = NULL;
 			strcpy(request->secret, cl->secret);
 			rad_process(request);
+
+			/*
+			 *	After processing the current request,
+			 *	check if we've got to delete old requests
+			 *	from the request list.
+			 */
+			rad_clean_list();
 		}
 	}
 }
@@ -852,6 +866,138 @@ static int rad_respond(REQUEST *request)
   return 0;
 }
 
+static void rad_clean_list(void)
+{
+	REQUEST		*curreq;
+	REQUEST		*prevreq;
+	time_t		curtime;
+	child_pid_t    	child_pid;
+	REQUEST_LIST	*request_list_entry;
+	int		id;
+	static time_t	last_cleaned_list = 0;
+	time_t		now;
+
+	now = time(NULL);
+
+	/*
+	 *  Don't bother checking the list if we've done it
+	 *  within the last second.
+	 */
+	if ((now - last_cleaned_list) == 0) {
+	  return;
+	}
+
+	DEBUG2("Cleaning up request list after %d seconds",
+	       (int) (now - last_cleaned_list));
+	
+	  
+	curtime = time(NULL);
+
+	/*
+	 *	When mucking around with the request list, we block
+	 *	asynchronous access (through the SIGCHLD handler) to
+	 *	the list - equivalent to sigblock(SIGCHLD).
+	 */
+	request_list_busy = TRUE;
+		
+	for (id = 0; id < 256; id++) {
+		request_list_entry = &request_list[id];
+		curreq = request_list_entry->first_request;
+		prevreq = NULL;
+
+		while (curreq &&
+		       (curreq->timestamp < (curtime + max_request_time))) {
+#ifdef HAVE_PTHREAD_H
+			/*
+			 *	If the child request has finished, then
+			 *	join it (to delete it's stack, etc), and
+			 *	mark it as really done.
+			 */
+			if (curreq->finished &&
+			    curreq->child_pid != NO_SUCH_CHILD_PID) {
+			  
+			  DEBUG2("Joining child thread %d\n", curreq->child_pid);
+			  pthread_join(curreq->child_pid, NULL);
+			  curreq->child_pid = NO_SUCH_CHILD_PID;
+			}
+#endif
+
+			/*
+			 *	Maybe the child process handling the request
+			 *	has hung: kill it, and continue.
+			 */
+			if (!curreq->finished && 
+			    (curreq->timestamp + max_request_time) <= curtime &&
+				curreq->child_pid != NO_SUCH_CHILD_PID) {
+				/*
+				 *	This request seems to have hung
+				 *	 - kill it
+				 */
+				child_pid = curreq->child_pid;
+				log(L_ERR, "Killing unresponsive child %d",
+				    child_pid);
+				child_kill(child_pid, SIGTERM);
+				
+				/*
+				 *	Mark the request as unsalvagable.
+				 */
+				curreq->child_pid = NO_SUCH_CHILD_PID;
+				curreq->finished = TRUE;
+				curreq->timestamp = 0;
+			}
+		
+			/*
+			 *	Delete the current request, if it's
+			 *	marked as such.  That is, the request
+			 *	must be finished, there must be no
+			 *	child associated with that request,
+			 *	and it's timestamp must be marked to
+			 *	be deleted.
+			 */
+			if (curreq->finished &&
+			    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
+			    (curreq->timestamp + cleanup_delay <= curtime)) {
+				/*
+				 *	Request completed, delete it,
+				 *	and unlink it from the
+				 *	currently 'alive' list of
+				 *	requests.
+				 */
+				DEBUG2("Cleaning up request ID %d with timestamp %08x",
+				       curreq->packet->id, curreq->timestamp);
+				prevreq = curreq->prev;
+				if (request_list_entry->request_count == 0) {
+				  DEBUG("HORRIBLE ERROR!!!");
+				} else {
+				  request_list_entry->request_count--;
+				}
+
+				if (prevreq == (REQUEST *)NULL) {
+				  request_list_entry->first_request = curreq->next;
+				  request_free(curreq);
+				  curreq = request_list_entry->first_request;
+				} else {
+				  prevreq->next = curreq->next;
+				  request_free(curreq);
+				  curreq = prevreq->next;
+				}
+				if (curreq)
+				  curreq->prev = prevreq;
+				
+			} else {	/* the request is still alive */
+			  prevreq = curreq;
+			  curreq = curreq->next;
+			}
+		}
+	} /* end of walking the request list */
+
+	/*
+	 *	We're done playing with the request list.
+	 */
+	request_list_busy = FALSE;
+	last_cleaned_list = now;
+}
+
 /*
  *	Walk through the request list, cleaning up complete child
  *	requests, and verifing that there is only one process
@@ -864,7 +1010,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	REQUEST		*prevreq;
 	RADIUS_PACKET	*pkt;
 	time_t		curtime;
-	child_pid_t    	child_pid;
 	int		request_count;
 	REQUEST_LIST	*request_list_entry;
 	int		i;
@@ -945,81 +1090,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 		    }
 		  }
 		} /* checks for duplicate packets */
-
-#ifdef HAVE_PTHREAD_H
-		/*
-		 *	If the child request has finished, then
-		 *	join it (to delete it's stack, etc), and
-		 *	mark it as really done.
-		 */
-		if (curreq->finished &&
-		    curreq->child_pid != NO_SUCH_CHILD_PID) {
-
-		  pthread_join(curreq->child_pid, NULL);
-		  curreq->child_pid = NO_SUCH_CHILD_PID;
-		}
-#endif
-
-		/*
-		 *	Maybe the child process handling the request
-		 *	has hung: kill it, and continue.
-		 */
-		if (!curreq->finished && 
-		    (curreq->timestamp + max_request_time) <= curtime &&
-		    curreq->child_pid != NO_SUCH_CHILD_PID) {
-			/*
-			 *	This request seems to have hung - kill it
-			 */
-			child_pid = curreq->child_pid;
-			log(L_ERR, "Killing unresponsive child %d",
-			    child_pid);
-			child_kill(child_pid, SIGTERM);
-
-			/*
-			 *	Mark the request as unsalvagable.
-			 */
-			curreq->child_pid = NO_SUCH_CHILD_PID;
-			curreq->finished = TRUE;
-			curreq->timestamp = 0;
-		}
-		
-		/*
-		 *	Delete the current request, if it's marked as such.
-		 *	That is, the request must be finished, there must
-		 *	be no child associated with that request, and it's
-		 *	timestamp must be marked to be deleted.
-		 */
-		if (curreq->finished &&
-		    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
-		    (curreq->timestamp + cleanup_delay <= curtime)) {
-			/*
-			 *	Request completed, delete it,
-			 *	and unlink it from the currently 'alive'
-			 *	list of requests.
-			 */
-			prevreq = curreq->prev;
-			if (request_list_entry->request_count == 0) {
-			  DEBUG("HORRIBLE ERROR!!!");
-			} else {
-			  request_list_entry->request_count--;
-			}
-
-			if (prevreq == (REQUEST *)NULL) {
-				request_list_entry->first_request = curreq->next;
-				request_free(curreq);
-				curreq = request_list_entry->first_request;
-			} else {
-				prevreq->next = curreq->next;
-				request_free(curreq);
-				curreq = prevreq->next;
-			}
-			if (curreq)
-				curreq->prev = prevreq;
-
-		} else {	/* the request is still alive */
-			prevreq = curreq;
-			curreq = curreq->next;
-		}
+		prevreq = curreq;
+		curreq = curreq->next;
 	} /* end of walking the request list */
 
 	/*
