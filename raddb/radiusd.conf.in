@@ -571,6 +571,9 @@ modules {
 		mpp = no
 	}
 
+	# ANSI X9.9 token support.  Not included by default.
+	# $INCLUDE  ${confdir}/x99.conf
+	
 	# Configuration for the example module.  Uncommenting it will cause it
 	# to get loaded and initialized, but should have no real effect as long
 	# it is not referencened in one of the autz/auth/preacct/acct sections
