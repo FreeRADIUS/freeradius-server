@@ -1,6 +1,7 @@
 <?php
 require('../conf/config.php3');
-?>
+if (!isset($usage_summary)){
+	echo <<<EOM
 <html>
 <head>
 <META HTTP-EQUIV="Refresh" CONTENT="50">
@@ -8,8 +9,9 @@ require('../conf/config.php3');
 <title>User Finger Facility</title>
 <link rel="stylesheet" href="style.css">
 </head>
+EOM;
+}
 
-<?php
 if ($config[general_decode_normal_attributes] == 'yes'){
 	if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php3"))
 		include_once("../lib/lang/$config[general_prefered_lang]/utf8.php3");
@@ -38,6 +40,7 @@ $date = strftime('%A, %e %B %Y, %T %Z');
 
 $link = @da_sql_pconnect($config);
 $link2 = connect2db($config);
+$tot_in = $tot_rem = 0;
 if ($link){
 	$h = 21;
 	$servers_num = 0;
@@ -107,10 +110,17 @@ if ($link){
 		}
 		$server_loggedin[$servers_num] = $num;
 		$server_rem[$servers_num] = ($config[$portnum]) ? ($config[$portnum] - $num) : 'unknown';
+		$tot_in += $num;
+		if (is_numeric($server_rem[$servers_num]))
+			$tot_rem += $server_rem[$servers_num];
 	}
 }
 else
 	echo "<b>Could not connect to SQL database</b><br>\n";
+if (isset($usage_summary)){
+	echo "Online: $tot_in Free: $tot_rem\n";
+	exit();
+}
 ?>
 
 <body bgcolor="#80a040" background="images/greenlines1.gif" link="black" alink="black">

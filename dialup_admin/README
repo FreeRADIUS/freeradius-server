@@ -82,6 +82,8 @@ htdocs:: user_state.php3 =>
 htdocs:: user_finger.php3 =>
 	It will finger the nas(es) and show the logged in users. If an argument server is passed then
 	it will only show users for the specific access server.
+	If an argument usage_summary is passed then it will only show a line like:
+	"Online: <num> Free: <num>" which can be used by other pages
 
 html:: Contains the html code for a few pages 
 html::user_admin.html.php3 =>

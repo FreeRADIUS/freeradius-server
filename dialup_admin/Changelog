@@ -23,6 +23,8 @@ Ver 1.63:
 * Create a AcctUniqueId before adding a row in radacct in log_badlogins.
 * Use Max-Monthly-Session not Max-Weekly-Session for the monthly limit
 * When checking the weekly limit check first that $remaining is numeric before doing any comparisons
+* Add a usage_summary parameter in user_finger. If it is passed then we only output a text like:
+  "Online: <num> Free: <num>" which can be used in outside pages
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
