@@ -170,7 +170,7 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 			/* store the number of affected rows because the sql module
 			 * calls finish_query before it retrieves the number of affected
 			 * rows from the driver */
-			pg_sock->affected_rows = PQntuples(pg_sock->result);
+			pg_sock->affected_rows = affected_rows(pg_sock->result);
 			return 0;
 		} else {
 			if ((sql_store_result(sqlsocket, config) == 0)
@@ -207,7 +207,7 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
 	pg_sock->cur_row = 0;
-	pg_sock->affected_rows = affected_rows(pg_sock->result);
+	pg_sock->affected_rows = PQntuples(pg_sock->result);
 	return 0;
 }
 
