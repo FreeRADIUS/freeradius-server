@@ -71,6 +71,9 @@ else
 # affect.
   echo no
   echo "# $DEF=$LIBS" >>config.mak
+  if [ "$CFLAGS" != "" ];then
+    echo "# ${DEF}_CFLAGS=$CFLAGS" >> config.mak
+  fi
   echo "/* #define $DEF 1 */" >> config.h
 fi
 rm -f tmp$$.c tmp$$ 
