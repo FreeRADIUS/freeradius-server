@@ -174,27 +174,6 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 }
 
 /*
- *       returncheck - Check for Auth-Type = Reject and return appropriate
- *                     module return code if it is found.
- */
-int rad_check_return(VALUE_PAIR *list)
-{
-	VALUE_PAIR	*authtype;
-
-	/* 
-	 * We check for Auth-Type = Reject here
-	 */
-
-	authtype = pairfind(list, PW_AUTHTYPE);
-	if((authtype) && authtype->lvalue == PW_AUTHTYPE_REJECT)  {
-		DEBUG2("rad_check_return:  Auth-Type is Reject");
-		return RLM_MODULE_REJECT;
-	}
-
-	return RLM_MODULE_UPDATED;
-}
-
-/*
  *	Check password.
  *
  *	Returns:	0  OK
