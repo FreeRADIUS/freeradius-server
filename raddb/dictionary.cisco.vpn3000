@@ -1,14 +1,13 @@
 #
-#	This is ANOTHER Cisco dictionary, which apparently is only
-#	used for their VPN 3000 product.  It contains attributes which
-#	conflict with the default Cisco dictionary, so it isn't normally
-#	used.
+#	 Cisco VPN 3000 Concentrator Dictionary
+#
+#	http://www.cisco.com/univercd/cc/td/doc/product/access/acs_soft/csacs4nt/csnt30/user/ad.htm
 #
 #	$Id$
 #
-VENDOR		Cisco		9
+VENDOR		Cisco-VPN	3076
 
-BEGIN-VENDOR Cisco
+BEGIN-VENDOR Cisco-VPN
 ATTRIBUTE	CVPN3000-Access-Hours			1	string
 ATTRIBUTE	CVPN3000-Simultaneous-Logins		2	integer
 ATTRIBUTE	CVPN3000-Primary-DNS			3	ipaddr
@@ -16,7 +15,7 @@ ATTRIBUTE	CVPN3000-Secondary-DNS			4	ipaddr
 ATTRIBUTE	CVPN3000-Primary-WINS			5	ipaddr
 ATTRIBUTE	CVPN3000-Secondary-WINS			6	ipaddr
 ATTRIBUTE	CVPN3000-SEP-Card-Assignment		7	ipaddr
-ATTRIBUTE	CVPN3000-Tunneling-Protocols		8	interger
+ATTRIBUTE	CVPN3000-Tunneling-Protocols		8	integer
 ATTRIBUTE	CVPN3000-IPSec-Sec-Association		9	string
 ATTRIBUTE	CVPN3000-IPSec-Authentication		10	integer
 ATTRIBUTE	CVPN3000-IPSec-Banner1			11	string
@@ -29,4 +28,4 @@ ATTRIBUTE	CVPN3000-IPSec-Mode-Config		17	integer
 ATTRIBUTE	CVPN3000-IPSec-User-Group-Lock		18	integer
 ATTRIBUTE	CVPN3000-IPSec-Through-NAT		19	integer
 ATTRIBUTE	CVPN3000-IPSec-Through-NAT-Port		20	integer
-END-VENDOR	Cisco
+END-VENDOR	Cisco-VPN
