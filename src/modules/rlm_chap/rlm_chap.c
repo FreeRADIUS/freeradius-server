@@ -99,8 +99,11 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	DEBUG("  rlm_chap: login attempt by \"%s\" with CHAP password %s", 
-		request->username->strvalue, request->password->strvalue);
+	/*
+	 *	Don't print out the CHAP password here.  It's binary crap.
+	 */
+	DEBUG("  rlm_chap: login attempt by \"%s\" with CHAP password", 
+		request->username->strvalue);
 
 	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
 		DEBUG("  rlm_chap: Could not find clear text password for user %s",request->username->strvalue);
