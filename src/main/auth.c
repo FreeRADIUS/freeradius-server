@@ -204,7 +204,7 @@ int rad_check_password(REQUEST *request)
 		}
 	}
 
-	if(auth_type_count>1) {
+	if((auth_type_count>1) && (debug_flag)) {
 		radlog(L_ERR, "Warning:  Found %d auth-types on request for user '%s'", 
 			auth_type_count, request->username->strvalue);
 	}
