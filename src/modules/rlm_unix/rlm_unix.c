@@ -202,6 +202,12 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
                 {
 			radlog(L_ERR, "HASH:  unable to create user "
 				"hash table.  disable caching and run debugs");
+			free((char *) inst->passwd_file);
+			free((char *) inst->shadow_file);
+			free((char *) inst->group_file);
+			free((char *) inst->radwtmp);
+			free(inst);
+			return -1;
 		}
 	} else {
 		inst->cache = NULL;
