@@ -615,7 +615,7 @@ modules {
 		# identity = "cn=admin,o=My Org,c=UA"
 		# password = mypass
 		basedn = "o=My Org,c=UA"
-		filter = "(uid=%u)"
+		filter = "(uid=%{Stripped-User-Name:-%{User-Name}})"
 
 		# set this to 'yes' to use TLS encrypted connections
 		# to the LDAP database.
