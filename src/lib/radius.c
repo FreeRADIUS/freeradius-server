@@ -83,7 +83,45 @@ static const char *packet_codes[] = {
   "Accounting-Message",
   "Access-Challenge",
   "Status-Server",
-  "Status-Client"
+  "Status-Client",
+  "14",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "Resource-Free-Request",
+  "Resource-Free-Response",
+  "Resource-Query-Request",
+  "Resource-Query-Response",
+  "Alternate-Resource-Reclaim-Request",
+  "NAS-Reboot-Request",
+  "NAS-Reboot-Response",
+  "28"
+  "Next-Passcode",
+  "New-Pin",
+  "Terminate-Session",
+  "Password-Expired",
+  "Event-Request",
+  "Event-Response",
+  "35",
+  "36",
+  "37",
+  "38",
+  "39",
+  "Disconnect-Request",
+  "Disconnect-ACK",
+  "Disconnect-NAK",
+  "CoF-Request",
+  "CoF-ACK",
+  "CoF-NAK",
+  "46"
+  "47"
+  "48"
+  "49"
+  "IP-Address-Allocate",
+  "IP-Address-Release"
 };
 
 /*
@@ -104,7 +142,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 	const char		*what;
 	uint8_t			ip_buffer[16];
 
-	if ((packet->code > 0) && (packet->code < 14)) {
+	if ((packet->code > 0) && (packet->code < 52)) {
 		what = packet_codes[packet->code];
 	} else {
 		what = "Reply";
