@@ -133,10 +133,12 @@ static struct timeval *rad_clean_list(time_t curtime);
 static REQUEST *rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 static int refresh_request(REQUEST *request, void *data);
-#ifndef HAVE_PTHREAD_H
-static int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
-#else
+#ifdef HAVE_PTHREAD_H
 extern int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
+#else
+#ifdef ALLOW_CHILD_FORKS
+static int rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
+#endif
 #endif
 static int rad_status_server(REQUEST *request);
 
@@ -667,6 +669,11 @@ int main(int argc, char *argv[])
 	}
 
 	rad_exec_init();
+#else
+	/*
+	 *	Without threads, we ALWAYS run in single-server mode.
+	 */
+	spawn_flag = FALSE;
 #endif
 
 	/*
@@ -1124,6 +1131,14 @@ int rad_process(REQUEST *request, int dospawn)
 	}
 
 	/*
+	 *	If we don't have threads, then the child CANNOT save
+	 *	it's state in the memory used by the main server core.
+	 *
+	 *	That is, until someone goes and implements shared
+	 *	memory across processes...
+	 */
+#ifdef HAVE_PTHREAD_H
+	/*
 	 *  If we're spawning a child thread, let it do all of
 	 *  the work of handling a request, and exit.
 	 */
@@ -1139,6 +1154,7 @@ int rad_process(REQUEST *request, int dospawn)
 		}
 		return 0;
 	}
+#endif
 
 	rad_respond(request, fun);
 	return 0;
@@ -2034,8 +2050,13 @@ static REQUEST *rad_check_list(REQUEST *request)
  *  'threads.c' replaces this one.
  *
  *  This code is NOT well tested, and should NOT be used!
+ *
+ *  Note that ALLOW_CHILD_FORKS is never defined.  This code
+ *  is here for historical purposes, so that if (or when) someone
+ *  implements shared memory between processes, that we have a template
+ *  of code to work from.
  */
-#ifndef HAVE_PTHREAD_H
+#ifdef ALLOW_CHILD_FORKS
 /*
  *  Spawns a child process or thread to perform
  *  authentication/accounting and respond to RADIUS clients.
@@ -2101,7 +2122,7 @@ void queue_sig_cleanup(int sig) {
 	needs_child_cleanup++;
 	return;
 }
-#endif /* HAVE_PTHREAD_H */
+#endif /* ALLOW_CHILD_FORKS */
 
 
 /*ARGSUSED*/
@@ -2109,7 +2130,7 @@ void sig_cleanup(int sig)
 {
 	int status;
 	child_pid_t pid;
-#ifndef HAVE_PTHREAD_H
+#ifdef ALLOW_CHILD_FORKS
 	REQUEST *curreq;
 #endif
 
@@ -2153,6 +2174,7 @@ void sig_cleanup(int sig)
 #ifdef HAVE_PTHREAD_H
 		rad_savepid(pid, status);
 #else
+#ifdef ALLOW_CHILD_FORKS
 		/*
 		 *  Loop over ALL of the active requests, looking
 		 *  for the one which caused the signal.
@@ -2160,6 +2182,7 @@ void sig_cleanup(int sig)
 		if (rl_walk(sig_cleanup_walker, (void*)pid) != 0) {
 			radlog(L_ERR, "Failed to cleanup child %d", pid);
 		}
+#endif
 #endif /* !defined HAVE_PTHREAD_H */
 	}
 }
@@ -2473,9 +2496,11 @@ static int refresh_request(REQUEST *request, void *data)
 				       request->number);
 				pthread_cancel(child_pid);
 #else
+#ifdef ALLOW_CHILD_FORKS
 				radlog(L_ERR, "Killing unresponsive child %lu for request %d",
 				       child_pid, request->number);
 				kill(child_pid, SIGTERM);
+#endif
 #endif
 			} /* else no proxy reply, quietly fail */
 		
