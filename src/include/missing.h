@@ -21,7 +21,7 @@ extern char *strsep(char **stringp, const char *delim);
 #endif
 
 #ifndef HAVE_LOCALTIME_R
-struct tm *localtime_r(const time_t *clock, struct tm *result);
+struct tm *localtime_r(const time_t *l_clock, struct tm *result);
 #endif
 
 #ifdef NEED_DECLARATION_CRYPT

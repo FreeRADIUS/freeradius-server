@@ -151,9 +151,9 @@ strsep(char **stringp, const char *delim)
  *	Even if localtime is NOT re-entrant, this function will
  *	lower the possibility of race conditions.
  */
-struct tm *localtime_r(const time_t *clock, struct tm *result)
+struct tm *localtime_r(const time_t *l_clock, struct tm *result)
 {
-  *result = localtime(clock);
+  *result = localtime(l_clock);
 
   return result;
 }
