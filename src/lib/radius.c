@@ -9,23 +9,26 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
-#include	<netinet/in.h>
-#include	<sys/socket.h>
-#include	<arpa/inet.h>
-
-#include	<stdio.h>
 #include	<stdlib.h>
 #include	<unistd.h>
 #include	<fcntl.h>
 #include	<string.h>
 #include	<ctype.h>
-#include	<errno.h>
 
 #include	"libradius.h"
 
+#if HAVE_NETINET_IN_H
+#include	<netinet/in.h>
+#endif
+
+#include	<sys/socket.h>
+
+#if HAVE_ARPA_INET_H
+#include	<arpa/inet.h>
+#endif
+
 #if HAVE_MALLOC_H
-#  include	<malloc.h>
+#include	<malloc.h>
 #endif
 
 #ifdef WIN32
