@@ -1,7 +1,7 @@
 Summary: High-performance and highly configurable RADIUS server
 URL: http://www.freeradius.org/
 Name: freeradius
-Version: 0.6
+Version: 0.8
 Release: 1
 License: GPL
 Group: Networking/Daemons
@@ -31,7 +31,6 @@ CFLAGS="$RPM_OPT_FLAGS" \
 	--with-threads \
 	--with-thread-pool \
 	--with-gnu-ld \
-	--disable-ltdl-install \
 	--with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
 	--with-rlm-krb5-include-dir=/usr/kerberos/include \
 	--with-rlm-krb5-lib-dir=/usr/kerberos/lib
@@ -111,6 +110,9 @@ fi
 %attr(0700,radiusd,radiusd) %dir /var/run/radiusd
 
 %changelog
+* Thu Aug 22 2002 Marko Myllynen
+- update for 0.7/0.8
+
 * Tue Jun 18 2002 Marko Myllynen
 - run as radiusd user instead of root
 - added some options for configure
