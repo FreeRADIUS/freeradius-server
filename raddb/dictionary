@@ -51,6 +51,7 @@ $INCLUDE dictionary.shiva
 #$INCLUDE dictionary.tunnel
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.versanet
+$INCLUDE dictionary.erx
 
 #
 #	Following are the proper new names. Use these.
