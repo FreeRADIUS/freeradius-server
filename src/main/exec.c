@@ -23,7 +23,6 @@
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <sys/file.h>
 
@@ -44,60 +43,18 @@ static const char rcsid[] = "$Id$";
 #endif
 
 #include "radiusd.h"
+#include "rad_assert.h"
 
-/*
- *	Escape magic shell characters
- */
-static int escape_shell(char *out, int outlen, const char *in)
-{
-	char *p = out;
-
-	DEBUG2("in = %s", in);
-
-	for ( ; outlen > 1 && *in; in++) {
-		switch (*in) {
-		default:
-			*(p++) = *in;
-			outlen--;
-			break;
-
-			/*
-			 *	Escape magic shell characters.
-			 */
-		case '\\':
-		case '\'':
-		case '"':
-		case '*':
-		case '!':
-		case '(':
-		case ')':
-		case '&':
-		case '$':
-		case '>':
-		case '<':
-		case '?':
-		case '[':
-		case ']':
-		case '`':
-		case ';':
-			*(p++) = '\\';
-			*(p++) = *in;
-			outlen -= 2;
-			break;
-		}
-	}
-	*p = '\0';
-
-	DEBUG2("out = %s", out);
-
-	return strlen(out);
-}
+#ifndef HAVE_PTHREAD_H
+#define rad_fork fork
+#define rad_waitpid waitpid
+#endif
 
 /*
  *	Execute a program on successful authentication.
  *	Return 0 if exec_wait == 0.
  *	Return the exit code of the called program if exec_wait != 0.
- *
+ *	Return -1 on fork/other errors in the parent process.
  */
 int radius_exec_program(const char *cmd, REQUEST *request,
 			int exec_wait, const char **user_msg)
@@ -105,72 +62,129 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	VALUE_PAIR *vp;
 	static char message[256];
 	char answer[4096];
-	char *argv[32];
+	char *argv[256];
 	char *buf, *p;
 	int pd[2];
-	pid_t pid;
+	pid_t pid, child_pid;
 	int argc = -1;
 	int comma = 0;
 	int status;
 	int n, left, done;
-	void (*oldsig)(int) = NULL;
 
 	/*
-	 *	(hs)	- Open a pipe for child/parent communication.
-	 *		- Reset the signal handler for SIGCHLD, so
-	 *		  we have a chance to notice the dead child here and
-	 *  		  not in some signal handler.
-	 *		  This has to be done for the exec_wait case only, since
-	 *		  if we don't wait we aren't interested in any
-	 *		  gone children ...
-	 */	
+	 *	Open a pipe for child/parent communication, if
+	 *	necessary.
+	 */
 	if (exec_wait) {
 		if (pipe(pd) != 0) {
-			radlog(L_ERR|L_CONS, "Couldn't open pipe: %m");
-			pd[0] = pd[1] = 0;
-		}
-		if ((oldsig = signal(SIGCHLD, SIG_DFL)) == SIG_ERR) {
-			radlog(L_ERR|L_CONS, "Can't reset SIGCHLD: %m");
-			oldsig = NULL;
+			radlog(L_ERR|L_CONS, "Couldn't open pipe: %s",
+			       strerror(errno));
+			return -1;
 		}
 	}
 
-	if ((pid = fork()) == 0) {
+	/*
+	 *	Do the translation (as the parent) of the command to
+	 *	execute.  This MAY involve calling other modules, so
+	 *	we want to do it in the parent.
+	 */
+	radius_xlat(answer, sizeof(answer), cmd, request, NULL);
+	buf = answer;
+	
+	/*
+	 *	Log the command if we are debugging something
+	 */
+	DEBUG("Exec-Program: %s", buf);
+	
+	/*
+	 *	Build vector list of arguments and execute.
+	 */
+	p = strtok(buf, " \t");
+	if (p) do {
+		argv[++argc] = p;
+		p = strtok(NULL, " \t");
+	} while(p != NULL);
+
+	argv[++argc] = p;
+	if (argc == 0) {
+		radlog(L_ERR, "Exec-Program: empty command line.");
+		return -1;
+	}
+
+	if ((pid = rad_fork(exec_wait)) == 0) {
 #define MAX_ENVP 1024
+		int i, devnull;
 		char *envp[MAX_ENVP];
 		int envlen;
 		char buffer[1024];
 
 		/*	
-		 *	Child
+		 *	Child process.
+		 *
+		 *	We try to be fail-safe here.  So if ANYTHING
+		 *	goes wrong, we exit with status 1.
 		 */
-		radius_xlat(answer, sizeof(answer), cmd, request, escape_shell);
-		buf = answer;
 
 		/*
-		 *	Log the command if we are debugging something
+		 *	Open STDIN to /dev/null
 		 */
-		DEBUG("Exec-Program: %s", buf);
-
-		/*
-		 *	Build vector list and execute.
-		 */
-		p = strtok(buf, " \t");
-		if (p) do {
-			argv[++argc] = p;
-			p = strtok(NULL, " \t");
-		} while(p != NULL);
-		argv[++argc] = p;
-		if (argc == 0) {
-			radlog(L_ERR, "Exec-Program: empty command line.");
+		devnull = open("/dev/null", O_RDWR);
+		if (devnull < 0) {
+			radlog(L_ERR|L_CONS, "Failed opening /dev/null: %s\n",
+			       strerror(errno));
 			exit(1);
 		}
+		dup2(devnull, STDIN_FILENO);
 
+		/*
+		 *	Only massage the pipe handles if the parent
+		 *	has created them.
+		 */
 		if (exec_wait) {
-			if (close(pd[0]) != 0)
-				radlog(L_ERR|L_CONS, "Can't close pipe: %m");
-			if (dup2(pd[1], 1) != 1)
-				radlog(L_ERR|L_CONS, "Can't dup stdout: %m");
+			/*
+			 *	pd[0] is the FD the child will read from,
+			 *	which we don't want.
+			 */
+			if (close(pd[0]) != 0) {
+				radlog(L_ERR|L_CONS, "Can't close pipe: %s",
+				       strerror(errno));
+				exit(1);
+			}
+			
+			/*
+			 *	pd[1] is the FD that the child will write to,
+			 *	so we make it STDOUT.
+			 */
+			if (dup2(pd[1], STDOUT_FILENO) != 1) {
+				radlog(L_ERR|L_CONS, "Can't dup stdout: %s",
+				       strerror(errno));
+				exit(1);
+			}
+
+		} else {	/* no pipe, STDOUT should be /dev/null */
+			dup2(devnull, STDOUT_FILENO);
+		}
+
+		/*
+		 *	If we're not debugging, then we can't do
+		 *	anything with the error messages, so we throw
+		 *	them away.
+		 *
+		 *	If we are debugging, then we want the error
+		 *	messages to go to the STDERR of the server.
+		 */
+		if (debug_flag == 0) {
+			dup2(devnull, STDERR_FILENO);
+		}
+		close(devnull);
+
+		/*
+		 *	The server may have MANY FD's open.  We don't
+		 *	want to leave dangling FD's for the child process
+		 *	to play funky games with, so we close them.
+		 */
+		for (i = 3; i < 256; i++) {
+			close(i);
 		}
 
 		/*
@@ -200,60 +214,89 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 			envp[envlen++] = strdup(buffer);
 		}
-
 		envp[envlen] = NULL;
-		
-
-
-
-		for(n = 256; n >= 3; n--)
-			close(n);
 
 		execve(argv[0], argv, envp);
 
-		radlog(L_ERR, "Exec-Program: %s: %m", argv[0]);
+		radlog(L_ERR, "Exec-Program: FAILED to execute %s: %s",
+		       argv[0], strerror(errno));
 		exit(1);
 	}
 
 	/*
-	 *	Parent 
+	 *	Parent process.
 	 */
 	if (pid < 0) {
-		radlog(L_ERR|L_CONS, "Couldn't fork: %m");
+		radlog(L_ERR|L_CONS, "Couldn't fork %s: %s",
+		       argv[0], strerror(errno));
 		return -1;
 	}
-	if (!exec_wait)
-		return 0;
 
 	/*
-	 *	(hs) Do we have a pipe?
-	 *	--> Close the write side of the pipe 
-	 *	--> Read from it.
+	 *	We're not waiting, exit, and ignore any child's
+	 *	status.
+	 */
+	if (!exec_wait) {
+		return 0;
+	}
+
+	/*
+	 *	Close the FD to which the child writes it's data.
+	 *
+	 *	If we can't close it, then we close pd[0], and return an
+	 *	error.
+	 */
+	if (close(pd[1]) != 0) {
+		radlog(L_ERR|L_CONS, "Can't close pipe: %s", strerror(errno));
+		close(pd[0]);
+		return -1;
+	}
+
+	/*
+	 *	Read from the pipe until we doesn't get any more or
+	 *	until the message is full.
 	 */
 	done = 0;
-	if (pd[0] || pd[1]) {
-		if (close(pd[1]) != 0)
-			radlog(L_ERR|L_CONS, "Can't close pipe: %m");
-
+	left = sizeof(answer) - 1;
+	while (1) {
+		status = read(pd[0], answer + done, left);
 		/*
-		 *	(hs) Read until we doesn't get any more
-		 *	or until the message is full.
+		 *	Nothing more to read: stop.
 		 */
-		done = 0;
-		left = sizeof(answer) - 1;
-		while ((n = read(pd[0], answer + done, left)) > 0) {
-			done += n;
-			left -= n;
-			if (left <= 0) break;
+		if (status == 0) {
+			break;
 		}
-		answer[done] = 0;
 
 		/*
-		 *	(hs) Make sure that the writer can't block
-		 *	while writing in a pipe that isn't read anymore.
+		 *	Error: See if we have to continue.
 		 */
-		close(pd[0]);
+		if (status < 0) {
+			/*
+			 *	We were interrupted: continue reading.
+			 */
+			if (errno == EINTR) {
+				continue;
+			}
+
+			/*
+			 *	There was another error.  Most likely
+			 *	The child process has finished, and
+			 *	exited.
+			 */
+			break;
+		}
+
+		done += status;
+		left -= status;
+		if (left <= 0) break;
 	}
+	answer[done] = 0;
+
+	/*
+	 *	Make sure that the writer can't block while writing to
+	 *	a pipe that no one is reading from anymore.
+	 */
+	close(pd[0]);
 
 	/*
 	 *	Parse the output, if any.
@@ -265,8 +308,9 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		vp = NULL;
 		n = userparse(answer, &vp);
-		if (vp)
+		if (vp) {
 			pairfree(&vp);
+		}
 
 		if (n < 0) {
 			radlog(L_DBG, "Exec-Program-Wait: plaintext: %s", answer);
@@ -294,35 +338,34 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			/*
 			 *  Replace any trailing comma by a NUL.
 			 */
-			if (answer[strlen(answer) - 1] == ',')
+			if (answer[strlen(answer) - 1] == ',') {
 				answer[strlen(answer) - 1] = '\0';
+			}
 
 			radlog(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
-			if (userparse(answer, &vp) < 0)
-				radlog(L_ERR,
-		"Exec-Program-Wait: %s: unparsable reply", cmd);
-			else {
+			if (userparse(answer, &vp) < 0) {
+				radlog(L_ERR, "Exec-Program-Wait: %s: unparsable reply", cmd);
+
+			} else {
+				/*
+				 *	Add the attributes to the reply.
+				 */
 				pairmove(&request->reply->vps, &vp);
 				pairfree(&vp);
 			}
-		}
-	}
-
-	while(waitpid(pid, &status, 0) != pid)
-		;
+		} /* else the answer was a set of VP's, not a text message */
+	} /* else we didn't read anything from the child. */
 
 	/*
-	 *	(hs) Now we let our cleanup_sig handler take care for
-	 *	all signals that will arise.
+	 *	Call rad_waitpid (should map to waitpid on non-threaded
+	 *	or single-server systems).
 	 */
-	if (oldsig && (signal(SIGCHLD, oldsig) == SIG_ERR))
-		radlog(L_ERR|L_CONS,
-			"Can't set SIGCHLD to the cleanup handler: %m");
-	sig_cleanup(SIGCHLD);
-
+	child_pid = rad_waitpid(pid, &status, 0);
+	rad_assert(child_pid == pid);
+	
 	if (WIFEXITED(status)) {
 		status = WEXITSTATUS(status);
-		radlog(L_INFO, "Exec-Program: returned: %d", status);
+		radlog(L_DBG, "Exec-Program: returned: %d", status);
 		return status;
 	}
 	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit (killed or coredump)");

@@ -197,8 +197,8 @@ static CONF_PARSER server_config[] = {
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &pid_file, "${run_dir}/radiusd.pid"},
 	{ "bind_address", PW_TYPE_IPADDR, 0, &myip, "*" },
-	{ "user", PW_TYPE_STRING_PTR, 0, &uid_name, "nobody"},
-	{ "group", PW_TYPE_STRING_PTR, 0, &gid_name, "nobody"},
+	{ "user", PW_TYPE_STRING_PTR, 0, &uid_name, NULL},
+	{ "group", PW_TYPE_STRING_PTR, 0, &gid_name, NULL},
 	{ "usercollide", PW_TYPE_BOOLEAN, 0, &mainconfig.do_usercollide,  "no" },
 	{ "lower_user", PW_TYPE_STRING_PTR, 0, &mainconfig.do_lower_user, "no" },
 	{ "lower_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_lower_pass, "no" },
@@ -862,6 +862,7 @@ int main(int argc, char *argv[])
 	 *  NOT the one we started with.
 	 */
 	radius_pid = getpid();
+
 
 	/*
 	 *  Only write the PID file if we're running as a daemon.
@@ -2215,7 +2216,6 @@ static int sig_cleanup_walker(REQUEST *req, void *data)
 	req->finished = TRUE;
 	return 0;
 }
-#endif /* HAVE_PTHREAD_H */
 
 /* used in critical section */
 void queue_sig_cleanup(int sig) {
@@ -2223,6 +2223,7 @@ void queue_sig_cleanup(int sig) {
 	needs_child_cleanup++;
 	return;
 }
+#endif /* HAVE_PTHREAD_H */
 
 
 /*ARGSUSED*/
@@ -2271,7 +2272,9 @@ void sig_cleanup(int sig)
 		 *	are from Exec-Program.  We don't care about them,
 		 *	so once we've grabbed their PID's, we're done.
 		 */
-#ifndef HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
+		rad_savepid(pid, status);
+#else
 		/*
 		 *  Loop over ALL of the active requests, looking
 		 *  for the one which caused the signal.
