@@ -1,7 +1,15 @@
-  EAP/TLS support is experimental.  One administrators configuration
-notes may be found at:
+EAP/TLS support is experimental.
 
-  http://www.eax.com/802/
+HOWTO setup documents to integrate & configure the following
+
+1. XSupplicant - freeradius (EAP/TLS) notes may be found at:
+
+   http://www.eax.com/802/
+   or http://www.missl.cs.umd.edu/wireless/eaptls/
+
+2. XP - freeradius (EAP/TLS) notes may be found at: 
+
+   http://www.denobula.com/EAPTLS.pdf
 
 ----------------------------------------------------------------------
   A summary of how EAP works, as posted to the list by
