@@ -188,9 +188,6 @@ MD5Transform(uint32_t state[4], const uint8_t block[MD5_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 
-#if BYTE_ORDER == LITTLE_ENDIAN
-	memcpy(in, block, sizeof(in));
-#else
 	for (a = 0; a < MD5_BLOCK_LENGTH / 4; a++) {
 		in[a] = (uint32_t)(
 		    (uint32_t)(block[a * 4 + 0]) |
@@ -198,7 +195,6 @@ MD5Transform(uint32_t state[4], const uint8_t block[MD5_BLOCK_LENGTH])
 		    (uint32_t)(block[a * 4 + 2]) << 16 |
 		    (uint32_t)(block[a * 4 + 3]) << 24);
 	}
-#endif
 
 	a = state[0];
 	b = state[1];
