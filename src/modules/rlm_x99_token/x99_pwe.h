@@ -37,6 +37,17 @@
 #define MPPE_ENC_TYPES_RC4_128    "0x00000004"
 #define MPPE_ENC_TYPES_RC4_40_128 "0x00000006"
 
+/* Translate the above into something easily usable. */
+static const char *x99_mppe_policy[3] = {
+    MPPE_ENC_POL_ENCRYPTION_FORBIDDEN,
+    MPPE_ENC_POL_ENCRYPTION_ALLOWED,
+    MPPE_ENC_POL_ENCRYPTION_REQUIRED };
+
+static const char *x99_mppe_types[3] = {
+    MPPE_ENC_TYPES_RC4_40,
+    MPPE_ENC_TYPES_RC4_128,
+    MPPE_ENC_TYPES_RC4_40_128 };
+
 static void x99_key_from_hash(des_cblock *key,const unsigned char hashbytes[7]);
 
 #endif /* X99_PWE_H */

@@ -59,27 +59,6 @@ static const char rcsid[] = "$Id$";
 static int rnd_fd;			/* fd for random device           */
 static unsigned char hmac_key[16];	/* to protect State attribute     */
 
-/* struct used for instance data */
-typedef struct x99_token_t {
-    char *pwdfile;	/* file containing user:card_type:key entries      */
-    char *syncdir;	/* dir containing sync mode and state info         */
-    char *chal_text;	/* text to present challenge to user, must have %s */
-    int chal_len;	/* challenge length, min 5 digits                  */
-    int maxdelay;	/* max delay time for response, in seconds         */
-    int softfail;	/* number of auth fails before time delay starts   */
-    int hardfail;	/* number of auth fails when user is locked out    */
-    int allow_sync;	/* useful to override pwdfile card_type settings   */
-    int fast_sync;	/* response-before-challenge mode                  */
-    int allow_async;	/* C/R mode allowed?                               */
-    char *chal_req;	/* keyword requesting challenge for fast_sync mode */
-    char *resync_req;	/* keyword requesting resync for fast_sync mode    */
-    int ewindow_size;	/* sync mode event window size (right side value)  */
-#if 0
-    int twindow_min;	/* sync mode time window left side                 */
-    int twindow_max;	/* sync mode time window right side                */
-#endif
-} x99_token_t;
-
 /* A mapping of configuration file names to internal variables. */
 static CONF_PARSER module_config[] = {
     { "pwdfile", PW_TYPE_STRING_PTR, offsetof(x99_token_t, pwdfile),
@@ -108,6 +87,14 @@ static CONF_PARSER module_config[] = {
       NULL, RESYNC_REQ },
     { "ewindow_size", PW_TYPE_INTEGER, offsetof(x99_token_t, ewindow_size),
       NULL, "0" },
+    { "mschapv2_mppe", PW_TYPE_INTEGER,
+      offsetof(x99_token_t, mschapv2_mppe_policy), NULL, "2" },
+    { "mschapv2_mppe_bits", PW_TYPE_INTEGER,
+      offsetof(x99_token_t, mschapv2_mppe_types), NULL, "2" },
+    { "mschap_mppe", PW_TYPE_INTEGER,
+      offsetof(x99_token_t, mschap_mppe_policy), NULL, "2" },
+    { "mschap_mppe_bits", PW_TYPE_INTEGER,
+      offsetof(x99_token_t, mschap_mppe_types), NULL, "2" },
 #if 0
     { "twindow_min", PW_TYPE_INTEGER, offsetof(x99_token_t, twindow_min),
       NULL, "0" },
@@ -199,6 +186,30 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 	data->ewindow_size = 0;
 	radlog(L_ERR, "rlm_x99_token: max event window size is %d, "
 		      "using default of 0", MAX_EWINDOW_SIZE);
+    }
+
+    if (data->mschapv2_mppe_policy > 2 || data->mschapv2_mppe_policy < 0) {
+	data->mschapv2_mppe_policy = 2;
+	radlog(L_ERR, "rlm_x99_token: invalid value for mschapv2_mppe, "
+		      "using default of 2");
+    }
+
+    if (data->mschapv2_mppe_types > 2 || data->mschapv2_mppe_types < 0) {
+	data->mschapv2_mppe_types = 2;
+	radlog(L_ERR, "rlm_x99_token: invalid value for mschapv2_mppe_bits, "
+		      "using default of 2");
+    }
+
+    if (data->mschap_mppe_policy > 2 || data->mschap_mppe_policy < 0) {
+	data->mschap_mppe_policy = 2;
+	radlog(L_ERR, "rlm_x99_token: invalid value for mschap_mppe, "
+		      "using default of 2");
+    }
+
+    if (data->mschap_mppe_types != 2) {
+	data->mschap_mppe_types = 2;
+	radlog(L_ERR, "rlm_x99_token: invalid value for mschap_mppe_bits, "
+		      "using default of 2");
     }
 
 #if 0
@@ -296,9 +307,9 @@ x99_token_authorize(void *instance, REQUEST *request)
     if (inst->fast_sync &&
 	((user_info.card_id & X99_CF_SM) || !user_found)) {
 
-	if ((x99_pw_valid(request, pwattr, inst->resync_req, NULL) &&
+	if ((x99_pw_valid(request, inst, pwattr, inst->resync_req, NULL) &&
 		/* Set a bit indicating resync */ (sflags |= htonl(1))) ||
-	    x99_pw_valid(request, pwattr, inst->chal_req, NULL)) {
+	    x99_pw_valid(request, inst, pwattr, inst->chal_req, NULL)) {
 	    /*
 	     * Generate a challenge if requested.  We don't test for card
 	     * support [for async] because it's tricky for unknown users.
@@ -586,7 +597,7 @@ good_state:
     DEBUG("rlm_x99_token: auth: [%s], async challenge %s, "
 	  "expecting response %s", username, challenge, e_response);
 
-    if (x99_pw_valid(request, pwattr, e_response, &add_vps)) {
+    if (x99_pw_valid(request, inst, pwattr, e_response, &add_vps)) {
 	/* Password matches.  Is this allowed? */
 	if (!inst->allow_async) {
 	    radlog(L_AUTH, "rlm_x99_token: auth: bad async for [%s]: "
@@ -673,7 +684,7 @@ sync_response:
 		  "expecting response %s", username, i, challenge, e_response);
 
 	    /* Test user-supplied password. */
-	    if (x99_pw_valid(request, pwattr, e_response, &add_vps)) {
+	    if (x99_pw_valid(request, inst, pwattr, e_response, &add_vps)) {
 		/*
 		 * Yay!  User authenticated via sync mode.  Resync.
 		 *

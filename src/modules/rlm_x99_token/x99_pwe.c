@@ -128,8 +128,8 @@ x99_pw_present(const REQUEST *request)
  * (vps is used for MPPE atttributes.)
  */
 int
-x99_pw_valid(const REQUEST *request, int attr,
-	     const char *password, VALUE_PAIR **vps)
+x99_pw_valid(const REQUEST *request, x99_token_t *inst,
+	     int attr, const char *password, VALUE_PAIR **vps)
 {
     int match = 0;
     VALUE_PAIR *chal_vp, *resp_vp;
@@ -286,7 +286,22 @@ x99_pw_valid(const REQUEST *request, int attr,
 	 * and 56-bit keys are derived from the LM hash, which besides
 	 * being deprecated, has severe security problems.
 	 */
-	if (1) {
+
+	/* First, set some related attributes. */
+	if ((vp = pairmake("MS-MPPE-Encryption-Policy",
+			   x99_mppe_policy[inst->mschap_mppe_policy],
+			   T_OP_EQ)) != NULL)
+	    pairadd(vps, vp);
+	else
+	    ; /* choke and die */
+	if ((vp = pairmake("MS-MPPE-Encryption-Types",
+			   x99_mppe_types[inst->mschap_mppe_types],
+			   T_OP_EQ)) != NULL)
+	    pairadd(vps, vp);
+	else
+	    ; /* choke and die */
+
+	if (inst->mschap_mppe_policy) {
 	    unsigned char mppe_keys[32];
 	    /*                    0x    ASCII(mppe_keys)      '\0' */
 	    char mppe_keys_string[2 + (2 * sizeof(mppe_keys)) + 1];
@@ -294,20 +309,6 @@ x99_pw_valid(const REQUEST *request, int attr,
 	    unsigned char md5_md[MD5_DIGEST_LENGTH];
 	    unsigned char encode_buf[AUTH_VECTOR_LEN + MAX_STRING_LEN];
 	    int secretlen;
-
-	    /* First, set some related attributes. */
-	    if ((vp = pairmake("MS-MPPE-Encryption-Policy",
-			       MPPE_ENC_POL_ENCRYPTION_REQUIRED,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
-	    if ((vp = pairmake("MS-MPPE-Encryption-Types",
-			       MPPE_ENC_TYPES_RC4_128,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
 
 	    /* Zero the LM-Key sub-field (and padding). */
 	    (void) memset(mppe_keys, 0, sizeof(mppe_keys));
@@ -337,15 +338,7 @@ x99_pw_valid(const REQUEST *request, int attr,
 		pairadd(vps, vp);
 	    else
 		; /* choke and die */
-	} else {
-	    /* Encryption not supported. */
-	    if ((vp = pairmake("MS-MPPE-Encryption-Policy",
-			       MPPE_ENC_POL_ENCRYPTION_FORBIDDEN,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
-	}
+	} /* if (doing mppe) */
 
     } /* case PW_MS_CHAP_RESPONSE */
     break;
@@ -548,7 +541,22 @@ x99_pw_valid(const REQUEST *request, int attr,
 	 * the desired key length.  We always generate 16 byte (128-bit)
 	 * keys, the NAS is required to truncate as needed.
 	 */
-	if (1) {
+
+	/* First, set some related attributes. */
+	if ((vp = pairmake("MS-MPPE-Encryption-Policy",
+			   x99_mppe_policy[inst->mschapv2_mppe_policy],
+			   T_OP_EQ)) != NULL)
+	    pairadd(vps, vp);
+	else
+	    ; /* choke and die */
+	if ((vp = pairmake("MS-MPPE-Encryption-Types",
+			   x99_mppe_types[inst->mschapv2_mppe_types],
+			   T_OP_EQ)) != NULL)
+	    pairadd(vps, vp);
+	else
+	    ; /* choke and die */
+
+	if (inst->mschapv2_mppe_policy) {
 	    /* These constants and key vars are named from RFC 3079. */
 	    /* "This is the MPPE Master Key" */
 	    unsigned char Magic1[27] =
@@ -608,20 +616,6 @@ x99_pw_valid(const REQUEST *request, int attr,
 	    unsigned char mppe_key_string[2 + (2 * sizeof(salt)) +
 	    /*				  (   ASCII(mppe_key)  )  \0 */
 					  (2 * sizeof(mppe_key)) + 1];
-
-	    /* First, set some related attributes. */
-	    if ((vp = pairmake("MS-MPPE-Encryption-Policy",
-			       MPPE_ENC_POL_ENCRYPTION_REQUIRED,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
-	    if ((vp = pairmake("MS-MPPE-Encryption-Types",
-			       MPPE_ENC_TYPES_RC4_128,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
 
 	    (void) memset(mppe_key, 0, 32);
 	    mppe_key[0] = 16; /* length (s/rant//) */
@@ -720,15 +714,7 @@ x99_pw_valid(const REQUEST *request, int attr,
 	    else
 		; /* choke and die */
 
-	} else {
-	    /* Encryption not supported. */
-	    if ((vp = pairmake("MS-MPPE-Encryption-Policy",
-			       MPPE_ENC_POL_ENCRYPTION_FORBIDDEN,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
-	}
+	} /* if (doing mppe) */
 
     } /* case PW_MS_CHAP2_RESPONSE */
     break;
