@@ -207,7 +207,9 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
 	return RLM_MODULE_OK;
 }
 
-static int rlm_sql_authenticate(REQUEST *request) {
+static int rlm_sql_authenticate(REQUEST *request,
+	VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
+{
 	
 	SQL_ROW		row;
 	SQLSOCK		*socket;

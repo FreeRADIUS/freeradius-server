@@ -127,7 +127,8 @@ static int radius_authorize(void *instance, REQUEST *request,
 /*
  *	Authenticate the user with the given password.
  */
-static int radius_authenticate(void *instance, REQUEST *request)
+static int radius_authenticate(void *instance, REQUEST *request,
+	VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
 {
 	/* quiet the compiler */
 	instance = instance;

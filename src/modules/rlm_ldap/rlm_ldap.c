@@ -514,7 +514,8 @@ static int rlm_ldap_authorize(void *instance, REQUEST *request,
  *	Purpose: Check the user's password against ldap database 
  *
  *****************************************************************************/
-static int rlm_ldap_authenticate(void *instance, REQUEST *request)
+static int rlm_ldap_authenticate(void *instance, REQUEST *request,
+	VALUE_PAIR **check_items, VALUE_PAIR **reply_items);
 {
     LDAP *ld_user;
     LDAPMessage *result, *msg;
