@@ -62,6 +62,7 @@ Ver 1.55:
 * Add a user find page. User can be searched based on the full name, department or RADIUS attribute.
   The radius attribute should be included in the _user_ profile, not in a group/regular/default profile.
 * Add support for the user ldap regular profile attribute in user_edit.attrs
+* Fix a stupid bug in accounting.php3. We should not use the show_attrs array.
 Ver 1.54:
 * Add attributes for the sql group tables in admin.conf. Now SQL group support should really work!
 Ver 1.53:

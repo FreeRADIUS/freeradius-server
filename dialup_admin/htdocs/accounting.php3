@@ -22,7 +22,7 @@ EOM;
 	exit();
 }
 
-$operators=array( '<', '>', '=', '>=', '<=' );
+$operators=array( '=','<', '>', '<=', '>=' );
 
 $link = @da_sql_pconnect ($config) or die('cannot connect to sql databse');
 $fields = @da_sql_list_fields($config[sql_accounting_table],$link,$config);
@@ -110,7 +110,7 @@ if(!$queryflag) {
 <tr>
 <td>
 <b>Show the following attributes:</b><br>
-<select name="show_attrs[]" size=5 multiple>
+<select name="accounting_show_attrs[]" size=5 multiple>
 EOM;
 foreach($items as $key => $val)
 	echo <<<EOM
@@ -202,10 +202,10 @@ while (${"item_of_w$i"}){
 
 $order = ($order_by != '') ? "$order_by" : 'UserName';
 
-foreach ($show_attrs as $val)
+foreach ($accounting_show_attrs as $val)
 	$query_view .= $val . ',';
 $query_view = ereg_replace(',$','',$query_view);
-$query="SELECT $query_view FROM $config[sql_accounting_table] $where ORDER BY $order LIMIT $maxresults";
+$query="SELECT $query_view FROM $config[sql_accounting_table] $where ORDER BY $order LIMIT $maxresults;";
 
 echo <<<EOM
 <html>
@@ -232,18 +232,18 @@ echo <<<EOM
 	<tr bgcolor="#d0ddb0">
 	</tr>
 EOM;
-foreach($show_attrs as $val){
+foreach($accounting_show_attrs as $val){
 	$desc = $sql_attrs[$val][desc];
 	echo "<th>$desc</th>\n";
 }
 echo "</tr>\n";
 
-	$search = @da_sql_query($link,$config,"$query");
+	$search = @da_sql_query($link,$config,$query);
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
 			echo "<tr align=center>\n";
-			foreach($show_attrs as $val){
+			foreach($accounting_show_attrs as $val){
 				$info = $row[$val];
 				if ($info == '')
 					$info = '-';
