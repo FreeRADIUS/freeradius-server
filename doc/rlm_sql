@@ -19,15 +19,74 @@
   and the examples in the 'users' file.
 
 
-1. Miscellaneous configuration
+1. Schema and usage
 
-  The SQL module has little documentation, sorry.  A helpful
-  web page is:
+  The SQL module employs two sets of check and reply item tables for
+  processing in the authorization stage.  One set of tables (radcheck and
+  radreply) are specific to a single user.  The other set of tables
+  (radgroupcheck and radgroupreply) is used to apply check and reply items
+  to users that are members of a certain SQL group.  The usergroup table
+  provides the list of groups each user is a member of along with a priority
+  field to control the order in which groups are processed.
+
+  When a request comes into the server and is processed by the SQL module,
+  the flow goes something like this:
+
+  1. Search the radcheck table for any check attributes specific to the user
+  2. If check attributes are found, and there's a match, pull the reply items
+     from the radreply table for this user and add them to the reply
+  3. Group processing then begins if any of the following conditions are met:
+     a. The user IS NOT found in radcheck
+     b. The user IS found in radcheck, but the check items don't match
+     c. The user IS found in radcheck, the check items DO match AND
+        Fall-Through is set in the radreply table
+     d. The user IS found in radcheck, the check items DO match AND
+	the read_groups directive is set to 'yes'
+  4. If groups are to be processed for this user, the first thing that is
+     done is the list of groups this user is a member of is pulled from the
+     usergroup table ordered by the priority field.  The priority field of
+     the usergroup table allows us to control the order in which groups are
+     processed, so that we can emulate the ordering in the users file.  This
+     can be important in many cases.
+  5. For each group this user is a member of, the corresponding check items
+     are pulled from radgroupcheck table and compared with the request.  If
+     there is a match, the reply items for this group are pulled from the
+     radgroupreply table and applied.
+  6. Processing continues to the next group IF:
+     a. There was not a match for the last group's check items OR
+     b. Fall-Through was set in the last group's reply items
+     (The above is exactly the same as in the users file)
+  7. Finally, if the user has a User-Profile attribute set or the Default
+     Profile option is set in the sql.conf, then steps 4-6 are repeated for
+     the groups that the profile is a member of.
+
+  For any fairly complex setup, it is likely that most of the actual
+  processing will be done in the groups.  In these cases, the user entry in
+  radcheck will be of limited use except for things like setting the user's
+  password.  So, one might have the following setup:
+
+  radcheck table:
+  joeuser        User-Password      ==       somepassword
+
+  radreply table:
+  joeuser        Fall-Through       =        Yes
+
+  radgroupcheck table:
+  Check items for various connection scenarios
+
+  radgroupreply table:
+  reply items for the groups
+
+  usergroup table:
+  joeuser      WLANgroup    1(this is the priority)
+  joeuser      PPPgroup     2
+
+  A web page with some helpful documentation is:
 
 	http://www.frontios.com/freeradius.html
 
-  If anyone has comments on this (or other) documentation, PLEASE
-  email them to the freeradius-devel list, so that they may be included here.
+  NOTE: this page may be slightly out of date when dealing with the database
+        schema
 
 
 2. What NOT to do.
@@ -193,4 +252,37 @@
 	the named attribute, no matter what the value is.
 
 	Not allowed as a reply item.
+
+5. Instances
+
+  Just like any other module, multiple instances of the rlm_sql
+  module can be defined and used wherever you like.
+
+  The default .conf files for the different database types,
+  contain 1 instance without a name like so:
+  sql {
+    ...
+  }
+
+  You can create multiple named instances like so:
+  sql sql_instance1 {
+    ...
+  }
+  sql sql_instance2 {
+    ...
+  }
+
+  And then you can use a specific instance in radiusd.conf, like
+  so:
+  authorize {
+    ...
+    sql_instance1
+    ...
+  }
+  accounting {
+    ...
+    sql_instance1
+    sql_instance2
+    ...
+  }
 
