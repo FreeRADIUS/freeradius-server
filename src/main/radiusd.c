@@ -2236,6 +2236,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  kill it, and continue.
 	 */
 	if ((request->timestamp + max_request_time) <= info->now) {
+#ifndef HAVE_PTHREAD_H
 		if (request->child_pid != NO_SUCH_CHILD_PID) {
 			/*
 			 *  This request seems to have hung
@@ -2251,6 +2252,10 @@ static int refresh_request(REQUEST *request, void *data)
 		 *  Delete the request.
 		 */
 		rl_delete(request);
+#else
+		radlog(L_ERR, "WARNING: Unresponsive child %ld for request %d",
+		       child_pid, request->number);
+#endif
 		return RL_WALK_CONTINUE;
 	}
 
