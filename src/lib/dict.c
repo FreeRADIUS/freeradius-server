@@ -272,7 +272,6 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	block_vendor = 0;
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
-
 		line++;
 		if (buf[0] == '#' || buf[0] == 0 ||
 		    buf[0] == '\n' || buf[0] == '\r')
@@ -286,13 +285,14 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		if (p) *p = '\0';
 
 		keyword = strtok(buf, " \t\r\n");
-		if (keyword == NULL)
+		if (keyword == NULL) {
 			continue;
+		}
 
 		data    = strtok(NULL, "\r\n");
 		if (data == NULL || data[0] == 0) {
-			librad_log("dict_init: %s[%d]: invalid entry",
-				fn, line);
+			librad_log("dict_init: %s[%d]: invalid entry for keyword %s",
+				fn, line, keyword);
 			fclose(fp);
 			return -1;
 		}
