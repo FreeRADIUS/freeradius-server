@@ -28,8 +28,10 @@ case "$1" in
 		touch /var/log/radiusd-freeradius/radwtmp
 	fi
 
-	mkdir /var/run/radiusd
-	chown freerad:freerad /var/run/radiusd
+	if [ ! -d /var/run/radiusd ]; then
+		mkdir /var/run/radiusd
+		chown freerad:freerad /var/run/radiusd
+	fi
 
 	find /etc/raddb -type f -exec chgrp freerad {} \; -exec chmod 660 {} \;
 	find /etc/raddb -type d -exec chgrp freerad {} \; -exec chmod 2770 {} \;
