@@ -304,6 +304,7 @@ int rad_authenticate(REQUEST *request)
 	char		*exec_program;
 	int		exec_wait;
 	int		seen_callback_id;
+	int 	nas_port=0;
 	char		buf[1024];
 
 	password = "";
@@ -609,6 +610,33 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (auth_item->attribute == PW_CHAP_PASSWORD) {
 		password = "CHAP-Password";
+	}
+
+	/*
+	 *	Add the port number to the Framed-IP-Address if
+	 *	vp->addport is set, or if the Add-Port-To-IP-Address
+	 *	pair is present.
+	 *
+	 *	FIXME:  This doesn't work because PW_ADD_PORT_TO_IP_ADDRESS
+	 *	is never added to the request pairs!
+	 */
+	if ((tmp = pairfind(request->reply->vps, 
+			PW_FRAMED_IP_ADDRESS)) != NULL) {
+		VALUE_PAIR *tmp2;
+
+		/*
+		 *  Find the NAS port ID.
+		 */
+		if ((tmp = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
+			nas_port = tmp->lvalue;
+
+		if((tmp2 = pairfind(request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS)) != NULL) {
+			if (tmp->addport || (tmp2 && tmp2->lvalue)) {
+				tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
+				tmp->addport = 0;
+			}
+			pairdelete(request->reply->vps, PW_ADD_PORT_TO_IP_ADDRESS);
+		}
 	}
 
 	/*
