@@ -109,11 +109,9 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 #######################################################################
 static: $(TARGET).a  $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=static common
-	@cp $< $(top_builddir)/src/modules/lib
 
 dynamic: $(TARGET).la $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=dynamic common
-	@cp $< $(top_builddir)/src/modules/lib
 
 #######################################################################
 #
