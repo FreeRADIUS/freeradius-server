@@ -1363,6 +1363,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				 *  Tunnel-Password
 				 */
 			case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+				if (!original) {
+					librad_log("ERROR: Tunnel-Password attribute in request: Cannot decrypt it.");
+					return -1;
+				}
 			        rad_tunnel_pwdecode((char *)pair->strvalue,
 						    &pair->length, 
 						    secret,
