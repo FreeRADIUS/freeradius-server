@@ -85,7 +85,6 @@ CREATE TABLE radgroupreply (
   Attribute varchar(32)  NOT NULL default '',
   op char(2) NOT NULL DEFAULT '=',
   Value varchar(253)  NOT NULL default '',
-  prio int unsigned NOT NULL default '0',
   PRIMARY KEY  (id),
   KEY GroupName (GroupName(32))
 ) ;
@@ -110,10 +109,9 @@ CREATE TABLE radreply (
 #
 
 CREATE TABLE usergroup (
-  id int(11) unsigned NOT NULL auto_increment,
   UserName varchar(64) NOT NULL default '',
   GroupName varchar(64) NOT NULL default '',
-  PRIMARY KEY  (id),
+  priority int(11) NOT NULL,
   KEY UserName (UserName(32))
 ) ;
 
