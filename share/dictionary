@@ -53,6 +53,7 @@ $INCLUDE dictionary.versanet
 $INCLUDE dictionary.erx
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.alcatel
+$INCLUDE dictionary.juniper
 
 #
 #	Following are the proper new names. Use these.
