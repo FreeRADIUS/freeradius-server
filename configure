@@ -731,7 +731,7 @@ fi
 
 
 
-# From configure.in Revision: 1.186 
+# From configure.in Revision: 1.187 
 RADIUSD_MAJOR_VERSION=1
 RADIUSD_MINOR_VERSION=0.0-pre0
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -8074,7 +8074,6 @@ if { (eval echo configure:8070: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && t
 EOF
 
 		gethostbyaddrrstyle=BSD
-		echo "configure: warning:  ****** BSD Style gethostbyaddr might NOT be thread-safe! ****** " 1>&2
 	
 else
   echo "configure: failed program was:" >&5
@@ -8089,11 +8088,16 @@ else
 	echo "$ac_t""${gethostbyaddrrstyle}-style" 1>&6
 fi
 
+if test "x$gethostbyaddrrstyle" = "xBSD"; then
+	echo "configure: warning:  ****** BSD-style gethostbyaddr might NOT be thread-safe! ****** " 1>&2
+fi
+
+
 gethostbynamerstyle=""
 echo $ac_n "checking gethostbyname_r() syntax""... $ac_c" 1>&6
-echo "configure:8095: checking gethostbyname_r() syntax" >&5
+echo "configure:8099: checking gethostbyname_r() syntax" >&5
 cat > conftest.$ac_ext <<EOF
-#line 8097 "configure"
+#line 8101 "configure"
 #include "confdefs.h"
 
 #include <stdio.h>
@@ -8103,7 +8107,7 @@ int main() {
  gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) 
 ; return 0; }
 EOF
-if { (eval echo configure:8107: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:8111: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
@@ -8119,7 +8123,7 @@ fi
 rm -f conftest*
 if test "x$gethostbynamerstyle" = "x"; then
 	cat > conftest.$ac_ext <<EOF
-#line 8123 "configure"
+#line 8127 "configure"
 #include "confdefs.h"
 
 #include <stdio.h>
@@ -8129,7 +8133,7 @@ int main() {
  gethostbyname_r(NULL, NULL, NULL, 0, NULL)  
 ; return 0; }
 EOF
-if { (eval echo configure:8133: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:8137: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 		cat >> confdefs.h <<\EOF
@@ -8146,7 +8150,7 @@ rm -f conftest*
 fi
 if test "x$gethostbynamerstyle" = "x"; then
 	cat > conftest.$ac_ext <<EOF
-#line 8150 "configure"
+#line 8154 "configure"
 #include "confdefs.h"
 
 #include <stdio.h>
@@ -8156,7 +8160,7 @@ int main() {
  gethostbyname(NULL)  
 ; return 0; }
 EOF
-if { (eval echo configure:8160: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:8164: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   
 		cat >> confdefs.h <<\EOF
@@ -8164,7 +8168,6 @@ if { (eval echo configure:8160: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && t
 EOF
 
 		gethostbynamerstyle=BSD
-		echo "configure: warning:  ****** BSD Style gethostbyname might NOT be thread-safe! ****** " 1>&2
 	
 else
   echo "configure: failed program was:" >&5
@@ -8179,9 +8182,13 @@ else
 	echo "$ac_t""${gethostbynamerstyle}-style" 1>&6
 fi
 
+if test "x$gethostbynamerstyle" = "xBSD"; then
+	echo "configure: warning:  ****** BSD-style gethostbyname might NOT be thread-safe! ****** " 1>&2
+fi
+
 if test x"$rad_enable_largefiles" = xyes ; then
     echo $ac_n "checking for largefile linkage""... $ac_c" 1>&6
-echo "configure:8185: checking for largefile linkage" >&5
+echo "configure:8192: checking for largefile linkage" >&5
     case "$host" in
     *-aix4.01*)
         echo "$ac_t""no" 1>&6
@@ -8218,7 +8225,7 @@ EOF
         # Extract the first word of "getconf", so it can be a program name with args.
 set dummy getconf; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:8222: checking for $ac_word" >&5
+echo "configure:8229: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_path_GETCONF'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
