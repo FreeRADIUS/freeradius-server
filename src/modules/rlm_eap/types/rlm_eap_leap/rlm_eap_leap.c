@@ -154,6 +154,20 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 		}
 
 		handler->eap_ds->request->code = PW_EAP_SUCCESS;
+
+		/*
+		 *	Do this only for Success.
+		 */
+		handler->eap_ds->request->id = handler->eap_ds->response->id + 1;
+		handler->eap_ds->set_request_id = 1;
+
+		/*
+		 *	LEAP requires a challenge in stage 4, not
+		 *	an Access-Accept, which is normally returned
+		 *	by eap_compose() in eap.c, when the EAP reply code
+		 *	is EAP_SUCCESS.
+		 */
+		handler->request->reply->code = PW_ACCESS_CHALLENGE;
 		return 1;
 		break;
 

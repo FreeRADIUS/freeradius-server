@@ -437,15 +437,25 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 	 */
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	rq = (EAP_PACKET *)eap_msg->strvalue;
-	reply->id = rq->id;
 
-	switch (reply->code) {
+	/*
+	 *	The ID for the EAP packet to the NAS wasn't set.
+	 *	Do so now.
+	 */
+	if (!eap_ds->set_request_id) {
+		reply->id = rq->id;
+		
+		switch (reply->code) {
 		case PW_EAP_SUCCESS:
 		case PW_EAP_FAILURE:
 	    		break;
-
+			
 		default:
 	    		++reply->id;
+		}
+	} else {
+		DEBUG2("  rlm_eap: Underlying EAP-Type set EAP ID to %d",
+		       reply->id);
 	}
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
@@ -508,8 +518,8 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 		pairadd(&(request->reply->vps), vp);
 	}
 		
-	/* Set request reply code */
-	switch(reply->code) {
+	/* Set request reply code, but only if it's not already set. */
+	if (!request->reply->code) switch(reply->code) {
 	case PW_EAP_RESPONSE:
 	case PW_EAP_SUCCESS:
 		request->reply->code = PW_AUTHENTICATION_ACK;
