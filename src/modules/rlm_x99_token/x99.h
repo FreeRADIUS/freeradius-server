@@ -59,29 +59,34 @@
 #define X99_CF_ACTIVCARD	0x01 << 2  /* ActivCard              */
 #define X99_CF_SCOMPUTING	0x01 << 3  /* Secure Computing       */
 #define X99_CF_VASCO		0x01 << 4  /* Vasco                  */
-/* sync modes */
-#define X99_CF_ES		0x01 << 5  /* event synchronous      */
-#define X99_CF_TS		0x01 << 6  /* time synchronous       */
+/* modes */
+#define X99_CF_AM		0x01 << 5  /* async mode (chal/resp) */
+#define X99_CF_ES		0x01 << 6  /* event synchronous      */
+#define X99_CF_TS		0x01 << 7  /* time synchronous       */
 /* display modes */
-#define X99_CF_HD		0x01 << 7  /* hex display            */
-#define X99_CF_DD		0x01 << 8  /* dec display            */
-#define X99_CF_R8		0x01 << 9  /* 8 digit response       */
-#define X99_CF_R7		0x01 << 10 /* 7 digit response       */
-#define X99_CF_R6		0x01 << 11 /* 6 digit response       */
+#define X99_CF_HD		0x01 << 8  /* hex display            */
+#define X99_CF_DD		0x01 << 9  /* dec display            */
+#define X99_CF_R8		0x01 << 10 /* 8 digit response       */
+#define X99_CF_R7		0x01 << 11 /* 7 digit response       */
+#define X99_CF_R6		0x01 << 12 /* 6 digit response       */
 #define X99_CF_MAX		0x01 << 31 /* MAX placeholder        */
 
 /* mask to test for sync mode */
 #define X99_CF_SM (X99_CF_ES|X99_CF_TS)
 
 /* cards and their features */
-#define CRYPTOCARD_H8_RC (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R8)
-#define CRYPTOCARD_H7_RC (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R7)
-#define CRYPTOCARD_D8_RC (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R8)
-#define CRYPTOCARD_D7_RC (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R7)
+#define CRYPTOCARD_H8_RC (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R8|X99_CF_AM)
+#define CRYPTOCARD_H7_RC (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R7|X99_CF_AM)
+#define CRYPTOCARD_D8_RC (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R8|X99_CF_AM)
+#define CRYPTOCARD_D7_RC (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R7|X99_CF_AM)
 #define CRYPTOCARD_H8_ES (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R8|X99_CF_ES)
 #define CRYPTOCARD_H7_ES (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R7|X99_CF_ES)
 #define CRYPTOCARD_D8_ES (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R8|X99_CF_ES)
 #define CRYPTOCARD_D7_ES (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R7|X99_CF_ES)
+#define CRYPTOCARD_H8_RS (CRYPTOCARD_H8_RC|CRYPTOCARD_H8_ES)
+#define CRYPTOCARD_H7_RS (CRYPTOCARD_H7_RC|CRYPTOCARD_H7_ES)
+#define CRYPTOCARD_D8_RS (CRYPTOCARD_D8_RC|CRYPTOCARD_D8_ES)
+#define CRYPTOCARD_D7_RS (CRYPTOCARD_D7_RC|CRYPTOCARD_D7_ES)
 
 /* user-specific info */
 typedef struct x99_user_info_t {

@@ -20,10 +20,29 @@ cryptocard-h8-rc	random challenge, 8 digit hex response.
 cryptocard-d8-rc	random challenge, 8 digit decimal response.
 cryptocard-h7-rc	random challenge, 7 digit hex response.
 cryptocard-d7-rc	random challenge, 7 digit dec response.
-cryptocard-h8-es	event synchronous, 8 digit hex response.
-cryptocard-d8-es	event synchronous, 8 digit decimal response.
-cryptocard-h7-es	event synchronous, 7 digit hex response.
-cryptocard-d7-es	event synchronous, 7 digit decimal response.
+cryptocard-h8-es	event synchronous (only), 8 digit hex response.
+cryptocard-d8-es	event synchronous (only), 8 digit decimal response.
+cryptocard-h7-es	event synchronous (only), 7 digit hex response.
+cryptocard-d7-es	event synchronous (only), 7 digit decimal response.
+cryptocard-h8-rs	rc or es, 8 digit hex response.
+cryptocard-d8-rs	rc or es, 8 digit decimal response.
+cryptocard-h7-rs	rc or es, 7 digit hex response.
+cryptocard-d7-rs	rc or es, 7 digit decimal response.
+
+The -es and -rs options may require some explanation.  CRYPTOCard supports
+two event synchronous modes, one in which the challenge is presented to
+the user (so he can verify it against the challenge given to him by the
+server), and one in which the challenge is not presented.  The latter mode
+is easier to use when the user cannot be presented with a challenge, or
+if the presented challenge is not expected to match the token's displayed
+challenge (as we do), since the user is not confused as to which number
+he is supposed to enter as his password.  This mode (-es) is easier for
+the user, but it precludes the user being able to resync his token.
+
+The reason the two modes are distinguished is so that the server doesn't
+have to generate state and test if a response is an async response
+(for -es); this saves at least one DES operation and two hmac operations
+per authentication.
 
 
 STATE:

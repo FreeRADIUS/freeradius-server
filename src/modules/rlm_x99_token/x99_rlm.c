@@ -214,12 +214,11 @@ x99_token_authorize(void *instance, REQUEST *request)
 
     unsigned char rawchallenge[MAX_CHALLENGE_LEN];
     char challenge[MAX_CHALLENGE_LEN + 1];	/* +1 for '\0' terminator */
+    char *state;
     int i;
 
-#if 0
     x99_user_info_t user_info;
     int rc;
-#endif /* 0 */
 
     /* The State attribute will be present if this is a response. */
     if (pairfind(request->packet->vps, PW_STATE) != NULL) {
@@ -257,7 +256,6 @@ x99_token_authorize(void *instance, REQUEST *request)
     }
 #endif /* 0 */
 
-#if 0
     /* Look up the user's info. */
     if ((rc = x99_get_user_info(inst->pwdfile, request->username->strvalue,
 				&user_info)) == -2) {
@@ -269,7 +267,6 @@ x99_token_authorize(void *instance, REQUEST *request)
 	radlog(L_AUTH, "rlm_x99_token: autz: user not found");
 	/* if (!always_challenge) { return RLM_MODULE_INVALID; } */
     }
-#endif /* 0 */
 
     /* Generate a random challenge. */
     if (x99_get_random(rnd_fd, rawchallenge, inst->chal_len) == -1) {
@@ -285,11 +282,13 @@ x99_token_authorize(void *instance, REQUEST *request)
 
     /*
      * Create the State attribute, which will be returned to us along with
-     * the response.  We will need this to verify the response.
+     * the response.  We will need this to verify the response.  Create
+     * a strong state if the user will be able use this with their token.
+     * Otherwise, we discard it anyway, so don't "waste" time with hmac.
+     * We always create at least a trivial state, so x99_token_authorize()
+     * can easily pass on to x99_token_authenticate().
      */
-
-    {
-	char *state;
+    if (user_info.card_id & X99_CF_AM) {
 	time_t now = time(NULL);
 
 	if (sizeof(now) != 4 || sizeof(long) != 4) {
@@ -298,14 +297,16 @@ x99_token_authorize(void *instance, REQUEST *request)
 	}
 	now = htonl(now);
 
-	/* Note that x99_gen_state performs step 1 of the response algorithm. */
 	if (x99_gen_state(&state, NULL, challenge, now, hmac_key) != 0) {
 	    radlog(L_ERR, "rlm_x99_token: autz: failed to generate state");
 	    return RLM_MODULE_FAIL;
 	}
-	pairadd(&request->reply->vps, pairmake("State", state, T_OP_EQ));
-	free(state);
+    } else {
+	state = rad_malloc(3 + inst->chal_len * 2);
+	sprintf(state, "0x%s%s", challenge, challenge);
     }
+    pairadd(&request->reply->vps, pairmake("State", state, T_OP_EQ));
+    free(state);
 
     /* Add the challenge to the reply. */
     {
@@ -386,12 +387,21 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	time_t		then;
 
 	if ((vp = pairfind(request->packet->vps, PW_STATE)) != NULL) {
-	    /* 4 == 32 bits of time, 16 == hmac_md5 length */
-	    if (vp->length != inst->chal_len + 4 + 16) {
+	    int e_length = inst->chal_len;
+
+	    /* Extend expected length if state should have been protected. */
+	    if (user_info.card_id & X99_CF_AM)
+		e_length += 4 + 16; /* time + hmac */
+
+	    if (vp->length != e_length) {
 		radlog(L_AUTH, "rlm_x99_token: auth: bad state for [%s]: "
 			       "length", username);
 		return RLM_MODULE_INVALID;
 	    }
+
+	    /* Fast path if we didn't protect the state. */
+	    if (!(user_info.card_id & X99_CF_AM))
+		goto good_state;
 
 	    /* Verify the state. */
 	    (void) memset(challenge, 0, sizeof(challenge));
@@ -416,6 +426,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 			       "expired", username);
 		return RLM_MODULE_REJECT;
 	    }
+good_state:
 	    /* State is good! */
 
 	} else {
@@ -444,6 +455,10 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	}
 	return RLM_MODULE_USERLOCK;
     }
+
+    /* Don't bother to check async response if the card doesn't support it. */
+    if (!(user_info.card_id & X99_CF_AM))
+	goto sync_response;
 
     /* Perform any site-specific transforms of the challenge. */
     if (x99_challenge_transform(username, challenge) != 0) {
@@ -516,6 +531,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
     } /* if (user authenticated async) */
 
+sync_response:
     /* Calculate and test sync responses in the window. */
     if ((user_info.card_id & X99_CF_SM) && inst->allow_sync) {
 	for (i = 0; i <= inst->ewindow_size; ++i) {

@@ -52,6 +52,10 @@ static struct {
     { "cryptocard-d8-es", CRYPTOCARD_D8_ES },
     { "cryptocard-h7-es", CRYPTOCARD_H7_ES },
     { "cryptocard-d7-es", CRYPTOCARD_D7_ES },
+    { "cryptocard-h8-rs", CRYPTOCARD_H8_RS },
+    { "cryptocard-d8-rs", CRYPTOCARD_D8_RS },
+    { "cryptocard-h7-rs", CRYPTOCARD_H7_RS },
+    { "cryptocard-d7-rs", CRYPTOCARD_D7_RS },
 
     { NULL, 0 }				/* end of list */
 };
