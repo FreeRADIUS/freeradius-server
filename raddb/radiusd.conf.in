@@ -35,17 +35,25 @@ run_dir = ${localstatedir}/run
 #   with an 'undefined symbol' error, then you can use the libdir
 #   directive to work around the problem.
 #
-#   The cause is that a library has been installed on your system
-#   in a place where the dynamic linker CANNOT find it.  When executing
-#   as root (or another user), your personal environment MAY be set up
-#   to allow the dynamic linker to find the library.  When executing
-#   as a daemon, FreeRADIUS MAY NOT have the same personalized configuration.
+#   The cause is usually that a library has been installed on your
+#   system in a place where the dynamic linker CANNOT find it.  When
+#   executing as root (or another user), your personal environment MAY
+#   be set up to allow the dynamic linker to find the library.  When
+#   executing as a daemon, FreeRADIUS MAY NOT have the same
+#   personalized configuration.
 #
 #   To work around the problem, find out which library contains that symbol,
 #   and add the directory containing that library to the end of 'libdir',
 #   with a colon separating the directory names.  NO spaces are allowed.
 #
 #   e.g. libdir = /usr/local/lib:/opt/package/lib
+#
+#   If that does not work, then you can re-configure and re-build the
+#   server to NOT use shared libraries, via:
+#
+#	./configure --disable-shared
+#	make
+#	make install
 #
 libdir = @libdir@
 
