@@ -12,7 +12,7 @@ INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../in
 
 CFLAGS		+= -I../include $(SNMP_INCLUDE) 
 LDFLAGS		+= -L../lib
-LIBS		+= $(SNMP_LIBS)
+LIBS		+= -lradius $(SNMP_LIBS)
 MODULE_LIBS	= $(STATIC_MODULES)
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
