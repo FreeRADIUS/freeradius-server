@@ -599,14 +599,9 @@ static int presufcmp(void *instance,
 
 /*
  *	Compare the current time to a range.
- *	Hmm... it would save work, and probably be better,
- *	if we were passed the REQUEST data structure, so we
- *	could use it's 'timestamp' element.  That way, we could
- *	do the comparison against when the packet came in, not now,
- *	and have one less system call to do.
  */
 static int timecmp(void *instance,
-		   REQUEST *req UNUSED,
+		   REQUEST *req,
 		   VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
@@ -615,7 +610,11 @@ static int timecmp(void *instance,
 	check_pairs = check_pairs;
 	reply_pairs = reply_pairs;
 
-	if (timestr_match((char *)check->strvalue, time(NULL)) >= 0) {
+	/*
+	 *	If there's a request, use that timestamp.
+	 */
+	if (timestr_match((char *)check->strvalue,
+			  req ? req->timestamp : time(NULL)) >= 0) {
 		return 0;
 	}
 	return -1;
