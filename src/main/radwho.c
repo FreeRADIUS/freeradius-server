@@ -72,14 +72,6 @@ int debug_flag = 0;
 const char *progname = "radwho";
 const char *radlog_dir = "stdout";
 
-static int              max_request_time = MAX_REQUEST_TIME;
-static int              cleanup_delay = CLEANUP_DELAY;
-static int              max_requests = MAX_REQUESTS;
-static int              allow_core_dumps = FALSE;
-static const char       *pid_file = NULL;
-static const char       *uid_name = NULL;
-static const char       *gid_name = NULL;
-static int              proxy_requests = TRUE;
 int                     proxy_synchronous = TRUE;
 const char              *radius_dir = NULL;
 const char              *radacct_dir = NULL;
@@ -92,50 +84,12 @@ int                     proxy_retry_count = RETRY_COUNT;
 int                     log_stripped_names;
 struct  main_config_t   mainconfig;
 
-
-static CONF_PARSER proxy_config[] = {
-  { "retry_delay",  PW_TYPE_INTEGER,
-    0, &proxy_retry_delay, Stringify(RETRY_DELAY) },
-  { "retry_count",  PW_TYPE_INTEGER,
-    0, &proxy_retry_count, Stringify(RETRY_COUNT) },
-  { "synchronous",  PW_TYPE_BOOLEAN, 0, &proxy_synchronous, "yes" },
-
-  { NULL, -1, 0, NULL, NULL }
-};
-
 /*
  *	A mapping of configuration file names to internal variables
  */
 static CONF_PARSER server_config[] = {
-  { "max_request_time",   PW_TYPE_INTEGER,
-    0, &max_request_time,    Stringify(MAX_REQUEST_TIME) },
-  { "cleanup_delay",      PW_TYPE_INTEGER,
-    0, &cleanup_delay,       Stringify(CLEANUP_DELAY) },
-  { "max_requests",       PW_TYPE_INTEGER,
-    0, &max_requests,        Stringify(MAX_REQUESTS) },
-  { "port",               PW_TYPE_INTEGER,
-    0, &auth_port,           Stringify(PW_AUTH_UDP_PORT) },
-  { "allow_core_dumps",   PW_TYPE_BOOLEAN,    0, &allow_core_dumps,  "no" },
-  { "log_stripped_names", PW_TYPE_BOOLEAN,    0, &log_stripped_names,"no" },
-  { "log_auth",           PW_TYPE_BOOLEAN,    0, &mainconfig.log_auth,   "no" },
-  { "log_auth_badpass",   PW_TYPE_BOOLEAN,    0, &mainconfig.log_auth_badpass,  "no" },
-  { "log_auth_goodpass",  PW_TYPE_BOOLEAN,    0, &mainconfig.log_auth_goodpass, "no" },
-  { "pidfile",            PW_TYPE_STRING_PTR, 0, &pid_file,          "${run_dir}/radiusd.pid"},
-  { "bind_address",       PW_TYPE_IPADDR,     0, &myip,              "*" },
-  { "user",           PW_TYPE_STRING_PTR, 0, &uid_name,  "nobody"},
-  { "group",          PW_TYPE_STRING_PTR, 0, &gid_name,  "nobody"},
-  { "usercollide",   PW_TYPE_BOOLEAN,    0, &mainconfig.do_usercollide,  "no" },
-  { "lower_user",     PW_TYPE_STRING_PTR,    0, &mainconfig.do_lower_user, "no" },
-  { "lower_pass",     PW_TYPE_STRING_PTR,    0, &mainconfig.do_lower_pass, "no" },
-  { "nospace_user",   PW_TYPE_STRING_PTR,    0, &mainconfig.do_nospace_user, "no" },
-  { "nospace_pass",   PW_TYPE_STRING_PTR,    0, &mainconfig.do_nospace_pass, "no" },
-
-  { "proxy_requests", PW_TYPE_BOOLEAN,    0, &proxy_requests,    "yes" },
-  { "proxy",          PW_TYPE_SUBSECTION, 0, proxy_config,       NULL },
   { NULL, -1, 0, NULL, NULL }
 };
-
-
 
 /*
  *	Safe popen. Ugh.
