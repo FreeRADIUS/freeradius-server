@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include 	"radiusd.h"
+#include  "rlm_sql.h"
 #include	"sql_iodbc.h"
 
 /*************************************************************************
@@ -325,8 +326,12 @@ int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *      Purpose: Esacpe "'" and any other wierd charactors
  *
- *************************************************************************/
+ *************************************************************************
+ * Unused.  Now provided in rlm_sql main module.
+ * But left in here just in case...
+ *
 int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length) {
+>>>>>>> 1.6
 	int x, y;
 
 	for(x=0, y=0; (x < length) && (from[x]!='\0'); x++) {
@@ -367,6 +372,7 @@ int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *fr
 
 	return 0;
 }
+*/
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_iodbc = {

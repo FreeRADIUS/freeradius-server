@@ -514,9 +514,13 @@ int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *      Purpose: Esacpe "'" and any other wierd charactors
  *
- *************************************************************************/
-int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length) {
-
+<<<<<<< sql_oracle.c
+ *************************************************************************
+ * Unused.  Now provided in rlm_sql main module.
+ * But left in here just in case...
+ * 
+int sql_escape_string(char *to, char *from, int length)
+{
 	int x;
 	int y;
 
@@ -530,6 +534,7 @@ int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *fr
 
 	return 0;
 }
+*/
 
 /*************************************************************************
  *

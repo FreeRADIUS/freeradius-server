@@ -475,30 +475,88 @@ void query_log(SQL_INST * inst, char *querystr) {
 	}
 }
 
-VALUE_PAIR * set_userattr(SQL_INST *inst, SQLSOCK *sqlsocket, VALUE_PAIR * first, char *username, char *saveuser, int *savelen) {
+int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, char *username) {
+	VALUE_PAIR *vp=NULL;
+	char    tmpuser[MAX_STRING_LEN];
 
-	VALUE_PAIR *uservp = NULL;
-	uint8_t escaped_user[MAX_STRING_LEN];
+	tmpuser[0]=0;
+	sqlusername[0]=0;
 
-	if ((uservp = pairfind(first, PW_USER_NAME)) != NULL) {
-		if (saveuser)
-			strNcpy(saveuser, uservp->strvalue, MAX_STRING_LEN);
-		if (savelen)
-			*savelen = uservp->length;
-		if (username) {
-			(inst->module->sql_escape_string)(sqlsocket, inst->config, escaped_user, username, strlen(username));
-		} else {
-			(inst->module->sql_escape_string)(sqlsocket, inst->config, escaped_user, uservp->strvalue, uservp->length);
-		}
-		strNcpy(uservp->strvalue, escaped_user, MAX_STRING_LEN);
-		uservp->length = strlen(escaped_user);
+	/* Remove any user attr we added previously */
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+
+	if(username) {
+		strNcpy(tmpuser, username, MAX_STRING_LEN);
+	} else if(strlen(inst->config->query_user)) {
+		radius_xlat(tmpuser, MAX_STRING_LEN, inst->config->query_user, request, NULL);
+	} else {
+		return 0;
 	}
 
-	return uservp;
+	if(strlen(tmpuser)) {
+		sql_escape_string(sqlusername, tmpuser, MAX_STRING_LEN);
+		DEBUG2("sql_set_user:  escaped user --> '%s'", sqlusername);
+		vp = pairmake("SQL-User-Name", sqlusername, 0);
+		if (!vp) {
+			radlog(L_ERR, "%s", librad_errstr);
+			return -1;
+		}
+
+		pairadd(&request->packet->vps, vp);
+		return 0;
+	}
+	return -1;
 }
 
-void restore_userattr(VALUE_PAIR * uservp, char *saveuser, int savelen) {
+/*
+ *      Purpose: Esacpe "'" and any other wierd charactors
+ */
+int sql_escape_string(char *to, char *from, int length) {
+	int x, y;
 
-	strNcpy(uservp->strvalue, saveuser, MAX_STRING_LEN);
-	uservp->length = savelen;
+	DEBUG2("sql_escape in:  '%s'", from);
+
+	for(x=0, y=0; (x < length) && (from[x]!='\0'); x++) {
+    switch (from[x]) {
+    case 0:				
+      to[y++]= '\\';
+      to[y++]= '0';
+      break;
+    case '\n':				
+      to[y++]= '\\';
+      to[y++]= 'n';
+      break;
+    case '\r':
+      to[y++]= '\\';
+      to[y++]= 'r';
+      break;
+    case '\\':
+      to[y++]= '\\';
+      to[y++]= '\\';
+      break;
+    case '\'':
+      to[y++]= '\\';
+      to[y++]= '\'';
+      break;
+    case '"':				
+      to[y++]= '\\';
+      to[y++]= '"';
+      break;
+    case ';':				
+      to[y++]= '\\';
+      to[y++]= ';';
+      break;
+		/* Ascii file separator */
+    case '\032':			
+      to[y++]= '\\';
+      to[y++]= 'Z';
+      break;
+    default:
+      to[y++]= from[x];
+    }
+  }
+	to[y]=0;
+
+	DEBUG2("sql_escape out:  '%s'", to);
+	return 1;
 }

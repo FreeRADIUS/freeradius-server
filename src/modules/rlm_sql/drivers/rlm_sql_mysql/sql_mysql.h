@@ -28,4 +28,9 @@ int    sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 int    sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 int    sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 int     sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+/*
+ * Unused.  Now provided in rlm_sql main module.
+ * But left in here just in case...
+ *
 int     sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length);
+*/

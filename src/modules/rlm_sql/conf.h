@@ -23,6 +23,7 @@ typedef struct sql_config {
 	char   *sql_usergroup_table;
 	char   *sql_nas_table;
 	char   *sql_dict_table;
+	char   *query_user;
 	char   *authorize_check_query;
 	char   *authorize_reply_query;
 	char   *authorize_group_check_query;

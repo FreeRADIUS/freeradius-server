@@ -71,6 +71,7 @@ static CONF_PARSER module_config[] = {
 	{"sqltracefile", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,tracefile), NULL, SQLTRACEFILE},
 	{"deletestalesessions", PW_TYPE_BOOLEAN, offsetof(SQL_CONFIG,deletestalesessions), NULL, "0"},
 	{"num_sql_socks", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
+	{"sql_user_name", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,query_user), NULL, ""},
 	{"authorize_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
 	{"authorize_reply_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_reply_query), NULL, ""},
 	{"authorize_group_check_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
@@ -186,14 +187,10 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
 	int     found = 0;
-	char   *name;
 	SQLSOCK *sqlsocket;
 	SQL_INST *inst = instance;
 	char    querystr[MAX_QUERY_LEN];
-	char    saveuser[MAX_STRING_LEN];
-	int     savelen = 0;
-
-	VALUE_PAIR *uservp = NULL;
+	char   sqlusername[MAX_STRING_LEN];
 
 	/*
 	 *	They MUST have a user name to do SQL authorization.
@@ -209,9 +206,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	/*
 	 * Set, escape, and check the user attr here
 	 */
-	uservp = set_userattr(inst, sqlsocket, request->packet->vps, NULL, saveuser, &savelen);
-	name = uservp->strvalue;
-
+	if(sql_set_user(inst, request, sqlusername, 0) < 0) 
+		return RLM_MODULE_FAIL;
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_check_query, request, NULL);
 	found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_USERDATA);
 	/*
@@ -227,7 +223,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	} else if (found < 0) {
 		radlog(L_ERR, "rlm_sql:  SQL query error; rejecting user");
 		sql_release_socket(inst, sqlsocket);
-		restore_userattr(uservp, saveuser, savelen);
+		/* Remove the username we (maybe) added above */
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 		return RLM_MODULE_INVALID;
 
 	} else {
@@ -238,7 +235,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		 * We didn't find the user, so we try looking
 		 * for a DEFAULT entry
 		 */
-		set_userattr(inst, sqlsocket, uservp, "DEFAULT", NULL, NULL);
+		if(sql_set_user(inst, request, sqlusername, "DEFAULT") < 0) 
+			return RLM_MODULE_FAIL;
 		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, NULL);
 		gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
 		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, NULL);
@@ -246,12 +244,13 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		if (gcheck)
 			found = 1;
 	}
-	restore_userattr(uservp, saveuser, savelen);
+	/* Remove the username we (maybe) added above */
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
 	sql_release_socket(inst, sqlsocket);
 
 	if (!found) {
-		radlog(L_DBG, "rlm_sql: User %s not found and DEFAULT not found", name);
+		radlog(L_DBG, "rlm_sql: User %s not found and DEFAULT not found", sqlusername);
 		return RLM_MODULE_NOTFOUND;
 	}
 
@@ -265,8 +264,9 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	 vp_printlist(stderr, reply_tmp);
 	 */
 
+	vp_printlist(stderr, check_tmp);
 	if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
-		radlog(L_INFO, "rlm_sql: Pairs do not match [%s]", name);
+		radlog(L_INFO, "rlm_sql: Pairs do not match [%s]", sqlusername);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -280,12 +280,10 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 
 static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 
+	char   sqlusername[MAX_STRING_LEN];
+	char    querystr[MAX_QUERY_LEN];
 	SQL_ROW row;
 	SQLSOCK *sqlsocket;
-	char    querystr[MAX_QUERY_LEN];
-	VALUE_PAIR *uservp;
-	char    saveuser[MAX_STRING_LEN];
-	int     savelen = 0;
 	SQL_INST *inst = instance;
 
 	/*
@@ -303,11 +301,12 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	/*
 	 * 1. Set username to escaped value
 	 * 2. Translate vars in the query
-	 * 3. Replace User-Name attr with saved value
+	 * 3. Remove SQL-User-Name local attr
 	 */
-	uservp = set_userattr(inst, sqlsocket, request->packet->vps, NULL, saveuser, &savelen);
+	if(sql_set_user(inst, request, sqlusername, 0) < 0) 
+		return RLM_MODULE_FAIL;
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request, NULL);
-	restore_userattr(uservp, saveuser, savelen);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
 	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
 		radlog(L_ERR, "rlm_sql_authenticate: database query error");

@@ -55,7 +55,11 @@ typedef struct rlm_sql_module_t {
 	int (*sql_finish_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_finish_select_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_affected_rows)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+/*
+ * Unused since we moved the escape string to the
+ * main module
 	int (*sql_escape_string)(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length);
+ */
 } rlm_sql_module_t;
 
 typedef struct sql_inst {
@@ -84,5 +88,5 @@ int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
 void    query_log(SQL_INST * inst, char *querystr);
-VALUE_PAIR *set_userattr(SQL_INST *inst, SQLSOCK *sqlsocket, VALUE_PAIR * first, char *username, char *saveuser, int *savelen);
-void    restore_userattr(VALUE_PAIR * uservp, char *saveuser, int savelen);
+int     sql_escape_string(char *to, char *from, int length);
+int     sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, char *username);
