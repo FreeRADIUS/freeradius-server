@@ -3,4 +3,6 @@
 #
 checkItem       Dialup-Lock-Msg		radiuslockmsg
 checkItem	User-Password		userpassword
+checkItem	Regular-Profile		radiusProfileDn
+checkItem	Check-Item		radiusCheckItem
 replyItem	Reply-Item		radiusReplyItem
