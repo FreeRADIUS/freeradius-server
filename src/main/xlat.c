@@ -194,6 +194,33 @@ static int decode_attr_packet(const char *from, char **to, int freespace,
 	return 0;
 }
 
+/*
+ * Decode an attribute name from a particular VALUE_PAIR*
+ * into a string.
+ */
+static int decode_attr_vps(const char *from, char **to, int freespace,
+			      VALUE_PAIR *vps,
+			      RADIUS_ESCAPE_STRING func)
+
+{
+	DICT_ATTR *tmpda;
+	VALUE_PAIR *vp;
+	
+	tmpda = dict_attrbyname(from);
+	if (!tmpda) return 0;
+
+	/*
+	 *	See if the VP is defined.
+	 */
+	vp = pairfind(vps, tmpda->attr);
+	if (vp) {
+		*to += valuepair2str(*to, freespace, vp,
+				     tmpda->type, func);
+		return 1;
+	}
+
+	return 0;
+}
 
 /*
  *  Decode an attribute name into a string.
@@ -286,6 +313,13 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	} else if (strncasecmp(attrname,"request:",8) == 0) {
 		found = decode_attr_packet(&attrname[8], &q, freespace,
 					   request->packet, func);
+
+		/*
+		 *	Find an attribute from the config items.
+		 */
+	} else if (strncasecmp(attrname,"check:",6) == 0) {
+		found = decode_attr_vps(&attrname[6], &q, freespace,
+					   request->config_items, func);
 
 		/*
 		 *	Find an attribute from the proxy request.
