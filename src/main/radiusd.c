@@ -11,6 +11,8 @@ static const char rcsid[] =
 
 #include	"autoconf.h"
 
+#include	"radiusd.h"
+
 #include	<sys/socket.h>
 #include	<sys/file.h>
 
@@ -54,7 +56,6 @@ static const char rcsid[] =
 
 #include <assert.h>
 
-#include	"radiusd.h"
 #include	"conffile.h"
 
 #if WITH_SNMP

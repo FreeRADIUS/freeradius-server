@@ -9,14 +9,11 @@ static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
+#include	"radiusd.h"
+
 #include	<stdlib.h>
 #include	<string.h>
 #include	<ctype.h>
-#include <netinet/in.h>
-
-#if HAVE_MALLOC_H
-#  include <malloc.h>
-#endif
 
 #if HAVE_CRYPT_H
 #  include <crypt.h>
@@ -31,7 +28,6 @@ static const char rcsid[] = "$Id$";
 #  include	<netinet/in.h>
 #endif
 
-#include	"radiusd.h"
 #include	"modules.h"
 
 #if !HAVE_CRYPT_H
