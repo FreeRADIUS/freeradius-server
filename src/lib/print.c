@@ -81,82 +81,82 @@ void librad_safeprint(char *in, int inlen, char *out, int outlen)
  *  Print one value into a string.
  *  delimitst will define if strings and dates will be delimited by '"'
  */
-int vp_prints_value(char * out,int outlen, VALUE_PAIR *vp,int delimitst)
+int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 {
-    DICT_VALUE  *v;
-    char        buf[1024];
-    char        *a;
-    time_t      t;
+	DICT_VALUE  *v;
+	char        buf[1024];
+	char        *a;
+	time_t      t;
 
-    out[0] = 0;
-    if (!vp) return 0;
+	out[0] = 0;
+	if (!vp) return 0;
 
-    switch (vp->type) {
-        case PW_TYPE_STRING:
-            if (vp->attribute == PW_NAS_PORT_ID)
-                a = vp->strvalue;
-            else {
-                if (delimitst) {
-                  buf[0] = '"';
-                  librad_safeprint(vp->strvalue, vp->length,
-                      buf + 1, sizeof(buf) - 2);
-                  strcat(buf, "\"");
-                } else {
-                  librad_safeprint(vp->strvalue, vp->length,
-                      buf, sizeof(buf));
-                }
+	switch (vp->type) {
+		case PW_TYPE_STRING:
+			if (vp->attribute == PW_NAS_PORT_ID)
+				a = vp->strvalue;
+			else {
+				if (delimitst) {
+				  buf[0] = '"';
+				  librad_safeprint(vp->strvalue, vp->length,
+					  buf + 1, sizeof(buf) - 2);
+				  strcat(buf, "\"");
+				} else {
+				  librad_safeprint(vp->strvalue, vp->length,
+					  buf, sizeof(buf));
+				}
 
-                a = buf;
-            }
-            break;
-        case PW_TYPE_INTEGER:
-            if ((v = dict_valbyattr(vp->attribute, vp->lvalue))
-                != NULL)
-                a = v->name;
-            else {
-                sprintf(buf, "%d", vp->lvalue);
-                a = buf;
-            }
-            break;
-        case PW_TYPE_DATE:
-            t = vp->lvalue;
-            if (delimitst) {
-              strftime(buf, sizeof(buf), "\"%b %e %Y\"",gmtime(&t));
-            } else {
-              strftime(buf, sizeof(buf), "%b %e %Y",gmtime(&t));
-            }
-            a = buf;
-            break;
-        case PW_TYPE_IPADDR:
-            if (vp->strvalue[0])
-                a = vp->strvalue;
-            else
-                a = ip_ntoa(NULL, vp->lvalue);
-            break;
-        case PW_TYPE_ABINARY:
+				a = buf;
+			}
+			break;
+		case PW_TYPE_INTEGER:
+			if ((v = dict_valbyattr(vp->attribute, vp->lvalue))
+				!= NULL)
+				a = v->name;
+			else {
+				sprintf(buf, "%d", vp->lvalue);
+				a = buf;
+			}
+			break;
+		case PW_TYPE_DATE:
+			t = vp->lvalue;
+			if (delimitst) {
+			  strftime(buf, sizeof(buf), "\"%b %e %Y\"", gmtime(&t));
+			} else {
+			  strftime(buf, sizeof(buf), "%b %e %Y", gmtime(&t));
+			}
+			a = buf;
+			break;
+		case PW_TYPE_IPADDR:
+			if (vp->strvalue[0])
+				a = vp->strvalue;
+			else
+				a = ip_ntoa(NULL, vp->lvalue);
+			break;
+		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
-          a = buf;
-          print_abinary(vp, buf, sizeof(buf));
-          break;
+		  a = buf;
+		  print_abinary(vp, buf, sizeof(buf));
+		  break;
 #endif
-        case PW_TYPE_OCTETS:
-          strcpy(buf, "0x");
-          a = buf + 2;
-          for (t = 0; t < vp->length; t++) {
-            sprintf(a, "%02x", vp->strvalue[t]);
-            a += 2;
-          }
-          a = buf;
-          break;
+		case PW_TYPE_OCTETS:
+		  strcpy(buf, "0x");
+		  a = buf + 2;
+		  for (t = 0; t < vp->length; t++) {
+			sprintf(a, "%02x", vp->strvalue[t]);
+			a += 2;
+		  }
+		  a = buf;
+		  break;
 
-        default:
-            a = "UNKNOWN-TYPE";
-            break;
-    }
-    strncpy(out, a, outlen);
-    out[outlen - 1] = 0;
+		default:
+			a = "UNKNOWN-TYPE";
+			break;
+	}
+	strncpy(out, a, outlen);
+	out[outlen - 1] = 0;
 
-    return strlen(out);
+	return strlen(out);
 }
 
 
@@ -167,8 +167,8 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 {
 	int		len;
 
-    out[0] = 0;
-    if (!vp) return 0;
+	out[0] = 0;
+	if (!vp) return 0;
 
 	if (strlen(vp->name) + 3 > outlen) {
 		return 0;
@@ -176,9 +176,9 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 
 	sprintf(out, "%s = ", vp->name);
 	len = strlen(out);
-    vp_prints_value(out+len,outlen-len,vp,1);
+	vp_prints_value(out + len, outlen - len, vp, 1);
 
-    return strlen(out);
+	return strlen(out);
 }
 
 
