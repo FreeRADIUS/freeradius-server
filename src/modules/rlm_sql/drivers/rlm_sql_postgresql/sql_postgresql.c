@@ -289,7 +289,12 @@ int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 		PQclear(pg_sock->result);
 		pg_sock->result = NULL;
 	}
+#if 0
+	/*
+	 *  Commented out because it appears to free memory too early.
+	 */
 	free_result_row(pg_sock);
+#endif
 
 	return 0;
 }
