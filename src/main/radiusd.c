@@ -129,7 +129,7 @@ static int	rad_process (REQUEST *, int);
 static int	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
-static void	proxy_setuptimeout(struct timeval *);
+static struct timeval *setuptimeout(struct timeval *);
 static void	proxy_retry(void);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
@@ -852,34 +852,8 @@ int main(int argc, char **argv)
 		 */
 		tv.tv_sec = 0;
 		tv.tv_usec = 0;
-		proxy_setuptimeout(&tv);
-
-		/*
-		 *	See if we have to service the request list.
-		 *	If so, wake up one second from now to do so.
-		 *
-		 *	Yuck.  This code is ugly.  The request_list
-		 *	entries SHOULD have a 'next service' time,
-		 *	and the master request list should have a global
-		 *	request count, and minimal 'next service' time.
-		 */
-		for (i = 0; i < 256; i++) {
-			if (request_list[i].request_count != 0) {
-				tv.tv_sec = 1;
-				break;
-			}
-		}
-
-		/*
-		 *	If we're going to sleep for no time, then
-		 *	assume it means forever, versus waking up
-		 *	right now.
-		 */
-		if ((tv.tv_sec == 0) && (tv.tv_usec == 0)) {
-			status = select(32, &readfds, NULL, NULL, NULL);
-		} else {
-			status = select(32, &readfds, NULL, NULL, &tv);
-		}
+		status = select(32, &readfds, NULL, NULL,
+				setuptimeout(&tv));
 
 		if (status == -1) {
 			/*
@@ -2121,50 +2095,80 @@ static REQUEST *proxy_check_list(REQUEST *request)
  *	Set up the proxy timeouts, so that we know
  *	when to wake up and re-send a request.
  */
-static void proxy_setuptimeout(struct timeval *tv)
+static struct timeval *setuptimeout(struct timeval *tv)
 {
 	time_t now = time(NULL);
 	time_t difference, smallest = 0;
 	int foundone = FALSE;
 	int id;
-	REQUEST *p;
+	REQUEST *curreq;
 
-	if (proxy_requests) {
-		for (id = 0; id < 256; id++) {
-			for (p = request_list[id].first_request; p; p = p->next) {
-				if (!p->proxy)
-					continue;
-				if (!p->proxy_is_replicate)
-					continue;
-				difference = p->proxy_next_try - now;
-				if (!foundone) {
-					foundone = TRUE;
-					smallest = difference;
-				} else {
-					if (difference < smallest)
-						smallest = difference;
-				}
+	difference = 1;		/* initialize it to a non-zero value */
+
+	/*
+	 *	Loop over all of the outstanding requests.
+	 */
+	for (id = 0; id < 256; id++) {
+		for (curreq = request_list[id].first_request; curreq; curreq = curreq->next) {
+			if (curreq->finished) {
+				/*
+				 *	The request is finished.
+				 *	Wake up when it's time to clean
+				 *	it up.
+				 */
+				difference = (curreq->timestamp + cleanup_delay) - now;
+
+			} else if (curreq->proxy && !curreq->proxy_reply) {
+				/*
+				 *	The request is NOT finished, but there
+				 *	is an outstanding proxy request,
+				 *	with no matching proxy reply.
+				 *
+				 *	Wake up when it's time to re-send
+				 *	the proxy request.
+				 */
+				difference = curreq->proxy_next_try - now;
+
+			} else {
+				/*
+				 *	The request is NOT finished.
+				 *
+				 *	Wake up when it's time to kill
+				 *	the errant thread/process.
+				 */
+				difference = (curreq->timestamp + max_request_time) - now;
 			}
-		}
-	}
+
+			/*
+			 *	Found a valid request, with a time at which
+			 *	we're going to to wake up.
+			 */
+			if (!foundone) {
+				foundone = TRUE;
+				smallest = difference;
+			} else {
+				if (difference < smallest)
+					smallest = difference;
+			}
+			if (difference == 0) break; /* short-circuit */
+		} /* loop over linked list for that ID */
+		if (difference == 0) break; /* short-circuit */
+	} /* loop over 256 ID's */
 
 	/*
 	 *	Not found one, return without modifying the timeout.
 	 */
 	if (!foundone) {
-	  return;
+		return NULL;
 	}
-	
+
 	/*
-	 *	The resolution of our clock is pretty bad.
+	 *	Set the time (in seconds) for how long we're
+	 *	supposed to sleep.
 	 */
-	if (smallest) {
-		tv->tv_sec = smallest;
-		tv->tv_usec = 0;
-	} else {
-		tv->tv_sec = 0;
-		tv->tv_usec = 1; /* sleep for as short as possible */
-	}
+	tv->tv_sec = smallest;
+	tv->tv_usec = 0;
+	return tv;
 }
 
 /*
