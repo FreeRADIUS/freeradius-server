@@ -213,10 +213,16 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	sqlsocket = sql_get_socket(inst);
 
 	/*
+	 *  After this point, ALL 'return's MUST release the SQL socket!
+	 */
+
+	/*
 	 * Set, escape, and check the user attr here
 	 */
-	if(sql_set_user(inst, request, sqlusername, 0) < 0) 
+	if(sql_set_user(inst, request, sqlusername, 0) < 0) {
+		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
+	}
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_check_query, request, NULL);
 	found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_USERDATA);
 	/*
@@ -244,8 +250,11 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		 * We didn't find the user, so we try looking
 		 * for a DEFAULT entry
 		 */
-		if(sql_set_user(inst, request, sqlusername, "DEFAULT") < 0) 
+		if(sql_set_user(inst, request, sqlusername, "DEFAULT") < 0) {
+			sql_release_socket(inst, sqlsocket);
 			return RLM_MODULE_FAIL;
+		}
+
 		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, NULL);
 		gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
 		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, NULL);
@@ -312,12 +321,19 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	sqlsocket = sql_get_socket(inst);
 
 	/*
+	 *  After this point, ALL 'return's MUST release the SQL socket!
+	 */
+
+	/*
 	 * 1. Set username to escaped value
 	 * 2. Translate vars in the query
 	 * 3. Remove SQL-User-Name local attr
 	 */
-	if(sql_set_user(inst, request, sqlusername, 0) < 0) 
+	if(sql_set_user(inst, request, sqlusername, 0) < 0) {
+		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
+	}
+
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request, NULL);
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
@@ -371,6 +387,11 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 #endif
 
 	sqlsocket = sql_get_socket(inst);
+
+	/*
+	 *  After this point, ALL 'return's MUST release the SQL socket!
+	 */
+
 	memset(querystr, 0, MAX_QUERY_LEN);
 
 	/*
@@ -381,7 +402,8 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	} else {
 		radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  packet has no account status type.  [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
 		radlog(L_ERR, logstr);
-		return 0;
+		sql_release_socket(inst, sqlsocket);
+		return RLM_MODULE_INVALID;
 	}
 
 #ifdef CISCO_ACCOUNTING_HACK
@@ -397,7 +419,8 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	if ((acctsessiontime <= 0) && (acctstatustype == PW_STATUS_STOP)) {
 		radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session" " length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
 		radlog(L_ERR, logstr);
-		return 0;
+		sql_release_socket(inst, sqlsocket);
+		return RLM_MODULE_FAIL;
 	}
 #endif
 
@@ -444,8 +467,11 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			if(sql_set_user(inst, request, sqlusername, 0) < 0) 
+			if(sql_set_user(inst, request, sqlusername, 0) < 0) {
+				sql_release_socket(inst, sqlsocket);
 				return RLM_MODULE_FAIL;
+			}
+
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query, request, NULL);
 			query_log(inst, querystr);
 
@@ -480,8 +506,11 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			/*
 			 * Set, escape, and check the user attr here
 			 */
-			if(sql_set_user(inst, request, sqlusername, 0) < 0) 
+			if(sql_set_user(inst, request, sqlusername, 0) < 0) {
+				sql_release_socket(inst, sqlsocket);
 				return RLM_MODULE_FAIL;
+			}
+
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query, request, NULL);
 			query_log(inst, querystr);
 
