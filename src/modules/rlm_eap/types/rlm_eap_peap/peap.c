@@ -267,7 +267,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		DEBUG2("  PEAP: Tunneled authentication was successful.");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eappeap_success(handler, tls_session);
-		rcode = RLM_MODULE_OK;
+		rcode = RLM_MODULE_HANDLED;
 		
 		/*
 		 *	If we've been told to use the attributes from
