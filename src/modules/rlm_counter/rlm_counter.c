@@ -841,9 +841,12 @@ static int counter_authorize(void *instance, REQUEST *request)
 		 	*	If we are near a reset then add the next
 		 	*	limit, so that the user will not need to
 		 	*	login again
+			*	Before that set the return value to the time
+			*	remaining to next reset
 		 	*/
 			if (data->reset_time && (
 				res >= (data->reset_time - request->timestamp))) {
+				res = data->reset_time - request->timestamp;
 				res += check_vp->lvalue;
 			}
 
