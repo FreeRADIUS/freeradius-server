@@ -25,7 +25,6 @@ static const char rcsid[] =
 #include	<unistd.h>
 #include	<signal.h>
 #include	<errno.h>
-#include	<sys/resource.h>
 #if HAVE_GETOPT_H
 #  include	<getopt.h>
 #endif
@@ -55,6 +54,8 @@ static const char rcsid[] =
 
 #include	"radiusd.h"
 #include	"conffile.h"
+
+#include	<sys/resource.h>
 
 /*
  *	Global variables.
@@ -229,9 +230,6 @@ int main(int argc, char **argv)
 	RADCLIENT		*cl;
 	REQUEST			*request;
 	RADIUS_PACKET		*packet;
-#ifdef RADIUS_PID
-	FILE			*fp;
-#endif
 	unsigned char		buffer[4096];
 	struct	sockaddr	salocal;
 	struct	sockaddr_in	*sin;
@@ -613,6 +611,8 @@ int main(int argc, char **argv)
 	 *	correct PID.
 	 */
 	if (dont_fork == FALSE) {
+		FILE *fp;
+
 		fp = fopen(pid_file, "w");
 		if (fp != NULL) {
 			fprintf(fp, "%d\n", radius_pid);
