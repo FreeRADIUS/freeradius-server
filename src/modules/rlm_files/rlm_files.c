@@ -353,19 +353,23 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list)
 				 *	All others get set to '=='
 				 */
 				if (compat_mode) {
-					switch (vp->attribute) {
-					default:
-						DEBUG("\tChanging '%s =' to '%s =='",
-						      vp->name, vp->name);
-						vp->operator = T_OP_CMP_EQ;
-						break;
-						
-					case PW_SIMULTANEOUS_USE:
-					case PW_AUTHTYPE:
+					/*
+					 *	Non-wire attributes become +=
+					 *
+					 *	On the write attributes
+					 *	become ==
+					 */
+					if ((vp->attribute >= 0x100) &&
+					    (vp->attribute <= 0xffff) &&
+					    (vp->attribute != PW_HINT) &&
+					    (vp->attribute != PW_HUNTGROUP_NAME)) {
 						DEBUG("\tChanging '%s =' to '%s +='",
 						      vp->name, vp->name);
 						vp->operator = T_OP_ADD;
-						break;
+					} else {
+						DEBUG("\tChanging '%s =' to '%s =='",
+						      vp->name, vp->name);
+						vp->operator = T_OP_CMP_EQ;
 					}
 				}
 				
