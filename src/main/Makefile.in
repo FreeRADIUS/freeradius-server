@@ -149,7 +149,7 @@ radzap: radzap.o mainconfig.o util.o nas.o log.o client.o conffile.o files.o xla
 	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o mainconfig.o util.o nas.o log.o client.o conffile.o files.o xlat.o ../lib/libradius.la $(LIBS)
 
 clean:
-	rm -rf *.o *.so *~ $(BINARIES) .libs
+	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
 
 install:
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd$(EXEEXT)	$(R)$(sbindir)
