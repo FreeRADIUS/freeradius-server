@@ -47,6 +47,9 @@ Ver 1.59:
 * Only connect and bind to the ldap server if we haven't done that before.
 * Remove previous change. It was causing problems
 * In the user test page ignore comments from the auth.request file
+* Add a new config directive, ldap_write_server. If it is set then when we update the directory we try to
+  connect to that one instead of the ldap_server. That way we can read from the fast read-only replicas and
+  write to a slower master.
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
