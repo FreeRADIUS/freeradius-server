@@ -296,31 +296,274 @@ static void auth_response(const char *username, const char *nt_password,
 	bin2hex(digest, response + 2, 20);
 }
 
-struct mschap_instance {
+
+typedef struct rlm_mschap_t {
 	int use_mppe;
 	int require_encryption;
         int require_strong;
-        int with_ntdomain_hack;
+        int with_ntdomain_hack;	/* this should be in another module */
 	char *passwd_file;
-	char *auth_type;
-};
+	char *xlat_name;
+	char *auth_type;	/* I don't think this is needed... */
+} rlm_mschap_t;
+
+
+/*
+ *	Does dynamic translation of strings.
+ *
+ *	Pulls NT-Response, LM-Response, or Challenge from MSCHAP
+ *	attributes.
+ */
+static int mschap_xlat(void *instance, REQUEST *request,
+		       char *fmt, char *out, size_t outlen,
+		       RADIUS_ESCAPE_STRING func)
+{
+	int		i, data_len;
+	uint8_t		*data = NULL;
+	uint8_t		buffer[8];
+	VALUE_PAIR	*user_name;
+	VALUE_PAIR	*chap_challenge, *response;
+	rlm_mschap_t	*inst = instance;
+
+	chap_challenge = response = NULL;
+
+	func = func;		/* -Wunused */
+
+	/*
+	 *	Challenge means MS-CHAPv1 challenge, or
+	 *	hash of MS-CHAPv2 challenge, and peer challenge.
+	 */
+	if (strcasecmp(fmt, "Challenge") == 0) {
+		chap_challenge = pairfind(request->packet->vps,
+					  PW_MSCHAP_CHALLENGE);
+		if (!chap_challenge) {
+			DEBUG2("  rlm_mschap: No MS-CHAP-Challenge in the request.");
+			return 0;
+		}
+
+		/*
+		 *	MS-CHAP-Challenges are 8 octets,
+		 *	for MS-CHAPv2
+		 */
+		if (chap_challenge->length == 8) {
+			DEBUG2(" mschap1: %02x", chap_challenge->strvalue[0]);
+			data = chap_challenge->strvalue;
+			data_len = 8;
+
+			/*
+			 *	MS-CHAP-Challenges are 16 octets,
+			 *	for MS-CHAPv2.
+			 */
+		} else if (chap_challenge->length == 16) {
+			char *username_string;
+
+			DEBUG2(" mschap2: %02x", chap_challenge->strvalue[0]);
+			response = pairfind(request->packet->vps,
+					    PW_MSCHAP2_RESPONSE);
+			if (!response) {
+				DEBUG2("  rlm_mschap: MS-CHAP2-Response is required to calculate MS-CHAPv1 challenge.");
+				return 0;
+			}
+
+			/*
+			 *	Responses are 50 octets.
+			 */
+			if (response->length < 50) {
+				radlog(L_AUTH, "rlm_mschap: MS-CHAP-Response has the wrong format.");
+				return 0;
+			}
+
+			user_name = pairfind(request->packet->vps,
+					     PW_USER_NAME);
+			if (!user_name) {
+				DEBUG2("  rlm_mschap: User-Name is required to calculateMS-CHAPv1 Challenge.");
+				return 0;
+			}
+
+			/*
+			 *	with_ntdomain_hack moved here, too.
+			 */
+			if ((username_string = strchr(user_name->strvalue, '\\')) != NULL) {
+				if (inst->with_ntdomain_hack) {
+					username_string++;
+				} else {
+					DEBUG2("  rlm_mschap: NT Domain delimeter found, should we have enabled with_ntdomain_hack?");
+					username_string = user_name->strvalue;
+				}
+			} else {
+				username_string = user_name->strvalue;
+			}
+
+			/*
+			 *	Get the MS-CHAPv1 challenge
+			 *	from the MS-CHAPv2 peer challenge,
+			 *	our challenge, and the user name.
+			 */
+			challenge_hash(response->strvalue + 2,
+				       chap_challenge->strvalue,
+				       user_name->strvalue, buffer);
+			data = buffer;
+			data_len = 8;
+		} else {
+			DEBUG2("  rlm_mschap: Invalid MS-CHAP challenge length");
+			return 0;
+		}
+		
+		/*
+		 *	Get the MS-CHAPv1 response, or the MS-CHAPv2
+		 *	response.
+		 */
+	} else if (strcasecmp(fmt, "NT-Response") == 0) {
+		response = pairfind(request->packet->vps,
+				    PW_MSCHAP_RESPONSE);
+		if (!response) response = pairfind(request->packet->vps,
+						   PW_MSCHAP2_RESPONSE);
+		if (!response) {
+			DEBUG2("  rlm_mschap: No MS-CHAP-Response or MS-CHAP2-Response was found in the request.");
+			return 0;
+		}
+
+		/*
+		 *	For MS-CHAPv1, the NT-Response exists only
+		 *	if the second octet says so.
+		 */
+		if ((response->attribute == PW_MSCHAP_RESPONSE) &&
+		    ((response->strvalue[1] & 0x01) == 0)) {
+			DEBUG2("  rlm_mschap: No NT-Response in MS-CHAP-Response");
+			return 0;
+		}
+
+		/*
+		 *	MS-CHAP-Response and MS-CHAP2-Response have
+		 *	the NT-Response at the same offset, and are
+		 *	the same length.
+		 */
+		data = response->strvalue + 26;
+		data_len = 24;
+		
+		/*
+		 *	LM-Response is deprecated, and exists only
+		 *	in MS-CHAPv1, and not often there.
+		 */
+	} else if (strcasecmp(fmt, "LM-Response") == 0) {
+		response = pairfind(request->packet->vps,
+				    PW_MSCHAP_RESPONSE);
+		if (!response) {
+			DEBUG2("  rlm_mschap: No MS-CHAP-Response was found in the request.");
+			return 0;
+		}
+
+		/*
+		 *	For MS-CHAPv1, the NT-Response exists only
+		 *	if the second octet says so.
+		 */
+		if ((response->strvalue[1] & 0x01) != 0) {
+			DEBUG2("  rlm_mschap: No LM-Response in MS-CHAP-Response");
+			return 0;
+		}
+		data = response->strvalue + 2;
+		data_len = 24;
+
+		/*
+		 *	Pull the NT-Domain out of the User-Name, if it exists.
+		 */
+	} else if (strcasecmp(fmt, "NT-Domain") == 0) {
+		char *p;
+
+		user_name = pairfind(request->packet->vps, PW_USER_NAME);
+		if (!user_name) {
+			DEBUG2("  rlm_mschap: No User-Name was found in the request.");
+			return 0;
+		}
+		
+		p = strchr(user_name->strvalue, '\\');
+		if (!p) {
+			DEBUG2("  rlm_mschap: No NT-Domain was found in the User-Name.");
+			return 0;
+		}
+
+		/*
+		 *	Hack.  This is simpler than the alternatives.
+		 */
+		*p = '\0';
+		strNcpy(out, user_name->strvalue, outlen);
+		*p = '\\';
+
+		return strlen(out);
+
+		/*
+		 *	Pull the User-Name out of the User-Name...
+		 */
+	} else if (strcasecmp(fmt, "User-Name") == 0) {
+		char *p;
+
+		user_name = pairfind(request->packet->vps, PW_USER_NAME);
+		if (!user_name) {
+			DEBUG2("  rlm_mschap: No User-Name was found in the request.");
+			return 0;
+		}
+		
+		p = strchr(user_name->strvalue, '\\');
+		if (p) {
+			p++;	/* skip the backslash */
+		} else {
+			p = user_name->strvalue; /* use the whole User-Name */
+		}
+
+		strNcpy(out, p, outlen);
+		return strlen(out);
+
+	} else {
+		DEBUG2("  rlm_mschap: Unknown expansion string \"%s\"",
+		       fmt);
+		return 0;
+	}
+
+	if (outlen == 0) return 0; /* nowhere to go, don't do anything */
+
+	/*
+	 *	Didn't set anything: this is bad.
+	 */
+	if (!data) {
+		DEBUG2("  rlm_mschap: Failed to do anything intelligent");
+		return 0;
+	}
+
+	/*
+	 *	Check the output length.
+	 */
+	if (outlen < ((data_len * 2) + 1)) {
+		data_len = (outlen - 1) / 2;
+	}
+
+	/*
+	 *	
+	 */
+	for (i = 0; i < data_len; i++) {
+		sprintf(out + (2 * i), "%02x", data[i]);
+	}
+	out[data_len * 2] = '\0';
+	
+	return data_len * 2;
+}
+
 
 static CONF_PARSER module_config[] = {
 	/*
 	 *	Cache the password by default.
 	 */
 	{ "use_mppe",    PW_TYPE_BOOLEAN,
-	  offsetof(struct mschap_instance,use_mppe), NULL, "yes" },
+	  offsetof(rlm_mschap_t,use_mppe), NULL, "yes" },
 	{ "require_encryption",    PW_TYPE_BOOLEAN,
-	  offsetof(struct mschap_instance,require_encryption), NULL, "no" },
+	  offsetof(rlm_mschap_t,require_encryption), NULL, "no" },
 	{ "require_strong",    PW_TYPE_BOOLEAN,
-	  offsetof(struct mschap_instance,require_strong), NULL, "no" },
+	  offsetof(rlm_mschap_t,require_strong), NULL, "no" },
 	{ "with_ntdomain_hack",     PW_TYPE_BOOLEAN,
-	  offsetof(struct mschap_instance,with_ntdomain_hack), NULL, "no" },
+	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "no" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
-	  offsetof(struct mschap_instance, passwd_file), NULL,  NULL },
+	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
 	{ "authtype",   PW_TYPE_STRING_PTR,
-	  offsetof(struct mschap_instance, auth_type), NULL,  NULL },
+	  offsetof(rlm_mschap_t, auth_type), NULL,  NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -330,9 +573,13 @@ static CONF_PARSER module_config[] = {
  *	mschap_instantiate()
  */
 static int mschap_detach(void *instance){
-#define inst ((struct mschap_instance *)instance)
+#define inst ((rlm_mschap_t *)instance)
 	if (inst->passwd_file) free(inst->passwd_file);
 	if (inst->auth_type) free(inst->auth_type);
+	if (inst->xlat_name) {
+		xlat_unregister(inst->xlat_name, mschap_xlat);
+		free(inst->xlat_name);
+	}
 	free(instance);
 	return 0;
 #undef inst
@@ -344,7 +591,8 @@ static int mschap_detach(void *instance){
  */
 static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 {
-	struct mschap_instance *inst;
+	const char *xlat_name;
+	rlm_mschap_t *inst;
 
 	inst = *instance = rad_malloc(sizeof(*inst));
 	if (!inst) {
@@ -367,6 +615,17 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_mschap: SMB password file is no longer supported in this module.  Use rlm_passwd module instead");
 		mschap_detach(inst);
 		return -1;
+	}
+
+	/*
+	 *	Create the dynamic translation.
+	 */
+	xlat_name = cf_section_name2(conf);
+	if (xlat_name == NULL)
+		xlat_name = cf_section_name1(conf);
+	if (xlat_name){
+		inst->xlat_name = strdup(xlat_name);
+		xlat_register(xlat_name, mschap_xlat, inst);
 	}
 
 	return 0;
@@ -536,7 +795,7 @@ static void mppe_chap2_gen_keys128(uint8_t *nt_hash,uint8_t *response,
  */
 static int mschap_authorize(void * instance, REQUEST *request)
 {
-#define inst ((struct mschap_instance *)instance)
+#define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 	VALUE_PAIR *vp;
 	const char *authtype_name = "MS-CHAP";
@@ -600,7 +859,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
  */
 static int mschap_authenticate(void * instance, REQUEST *request)
 {
-#define inst ((struct mschap_instance *)instance)
+#define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 	VALUE_PAIR *password = NULL;
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
@@ -760,6 +1019,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	 *	We also require an MS-CHAP-Response.
 	 */
 	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE);
+
 	/*
 	 *	MS-CHAP-Response, means MS-CHAPv1
 	 */
@@ -845,7 +1105,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 
 		/*
-		 *with_ntdomain_hack moved here
+		 *	with_ntdomain_hack moved here
 		 */
 		if((username_string = strchr(username->strvalue, '\\')) != NULL) {
 		        if(inst->with_ntdomain_hack) {
