@@ -95,7 +95,7 @@ EOM;
 			echo "<b>No groups available</b>\n";
 		else{
 			echo "<select name=\"existing_groups\">\n";	
-			foreach ($existing_groups as $count => $group)
+			foreach ($existing_groups as $group => $count)
 				echo "<option value=\"$group\">$group\n";
 			echo "</select>\n";
 		}
