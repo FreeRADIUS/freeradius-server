@@ -231,8 +231,19 @@ x99_token_authorize(void *instance, REQUEST *request)
     int i, rc;
 
     x99_user_info_t user_info;
-    int user_found;
+    int user_found, auth_type;
     int pwattr;
+    VALUE_PAIR *vp;
+
+    /* Early exit if Auth-Type == reject */
+    if ((vp = pairfind(request->config_items, PW_AUTHTYPE)) != NULL) {
+	auth_type = 1;
+	if (!strcmp(vp->strvalue, "Reject")) {
+	    return RLM_MODULE_NOOP;
+	}
+    } else {
+	auth_type = 0;
+    }
 
     /* The State attribute will be present if this is a response. */
     if (pairfind(request->packet->vps, PW_STATE) != NULL) {
