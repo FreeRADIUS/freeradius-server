@@ -86,15 +86,14 @@ uint32_t ip_getaddr(const char *host)
  */
 char *ip_ntoa(char *buffer, uint32_t ipaddr)
 {
-	struct in_addr	in;
-	char		*r;
+	ipaddr = ntohl(ipaddr);
 
-	in.s_addr = ipaddr;
-	r = inet_ntoa(in);
-
-	if (buffer)
-		strcpy(buffer, r);
-	return buffer ? buffer : r;
+	sprintf(buffer, "%d.%d.%d.%d",
+		(ipaddr >> 24) & 0xff,
+		(ipaddr >> 16) & 0xff,
+		(ipaddr >>  8) & 0xff,
+		(ipaddr      ) & 0xff);
+	return buffer;
 }
 
 
