@@ -39,6 +39,8 @@ static const char rcsid[] = "$Id$";
 
 #ifdef HAVE_SYSLOG_H
 #	include <syslog.h>
+/* keep track of whether we've run openlog() */
+static int openlog_run = 0;
 #endif
 
  /*
@@ -87,7 +89,18 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	} else if (mainconfig.radlog_dest == RADLOG_STDERR) {
 	        msgfd = stderr;
 
-	} else if (mainconfig.radlog_dest != RADLOG_SYSLOG) {
+#ifdef HAVE_SYSLOG_H
+	} else if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
+		/*
+		 *	Open run openlog() on the first log message
+		 */
+		if(!openlog_run) {
+			openlog(progname, LOG_PID, mainconfig.syslog_facility);
+			openlog_run = 1;
+		}
+#endif
+
+	} else {
 		/*
 		 *	No log file set.  It must go to stdout.
 		 */
