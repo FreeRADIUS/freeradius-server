@@ -985,7 +985,15 @@ ldap {
   ldap_cache_size = 0
   ldap_connections_number = 10
   #password_header = {clear}
+#While integrating FreeRADIUS with Novell eDirectory, set
+#'password_attribute = nspmpassword' in order to use the universal password
+#of the eDirectory users for RADIUS authentication. This will work only if
+#FreeRADIUS is configured to build with --with-edir option.
   password_attribute = userPassword
+#Comment out the following to disable the eDirectory account policy check and
+#intruder detection. This will work only if FreeRADIUS is configured to build
+#with --with-edir option.
+#edir_account_policy_check=no
   groupname_attribute = radiusGroupName
   groupmembership_filter = (&(uid=%{Stripped-User-Name:-%{User-Name}})
   (objectclass=radiusprofile))

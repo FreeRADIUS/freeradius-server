@@ -178,10 +178,23 @@ the rlm_ldap module:
 
 #	password_attribute: Define the attribute which contains the user
 #	password.
+#	While integrating FreeRADIUS with Novell eDirectory, set
+#	'password_attribute = nspmpassword' in order to use the universal
+#	password of the eDirectory users for RADIUS authentication. This will
+#	work only if FreeRADIUS is configured to build with --with-edir option.
 #
 #	default: NULL - don't add password
 #
 #	password_attribute = "userPassword"
+
+#	edir_account_policy_check: Specifies if the module has to enforce
+#	Novell eDirectory account policy check and intruder detection for
+#	RADIUS users.  This will work only if FreeRADIUS is configured to build
+#	with --with-edir option.
+#
+#	default: yes - eDirectory account policy check enabled
+#
+#	edir_account_policy_check = no
 
 #	groupname_attribute: The attribute containing group name in the LDAP
 #	server. It is used to search group by name.

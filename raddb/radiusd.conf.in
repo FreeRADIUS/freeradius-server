@@ -770,6 +770,13 @@ $INCLUDE ${confdir}/eap.conf
 		#  This goes for NT-Passwords stored in SQL, too.
 		#
 		# password_attribute = userPassword
+		#
+		# Un-comment the following to disable Novell eDirectory account
+		# policy check and intruder detection. This will work *only if*
+		# FreeRADIUS is configured to build with --with-edir option.
+		#
+		# edir_account_policy_check=no
+		#
 		# groupname_attribute = cn
 		# groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"
 		# groupmembership_attribute = radiusGroupName
@@ -1819,8 +1826,17 @@ post-auth {
 #	sql
 
 	#
-	#  Access-Reject packets are sent through the REJECT sub-section
-	#  of the post-auth section.
+	#  Un-comment the following if you have set
+	#  'edir_account_policy_check = yes' in the ldap module sub-section of
+	#  the 'modules' section.
+	#
+#	ldap
+	#
+	#  Access-Reject packets are sent through the REJECT sub-section of the
+	#  post-auth section.
+	#  Uncomment the following and set the module name to the ldap instance
+	#  name if you have set 'edir_account_policy_check = yes' in the ldap
+	#  module sub-section of the 'modules' section.
 	#
 #	Post-Auth-Type REJECT {
 #		insert-module-name-here
