@@ -14,7 +14,7 @@
 #include        <ctype.h>
 
 #include        "des.h"
-#include        "md5.h"
+#include        "md4.h"
 
 char * hex = "0123456789ABCDEF";
 
