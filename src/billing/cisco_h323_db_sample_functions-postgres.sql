@@ -123,10 +123,10 @@ SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, c
 FROM StopTelephony;
 
 CREATE OR REPLACE VIEW calls AS
-SELECT Date, Time, AcctSessionTime, CalledStationId, H323RemoteAddress, NASIPAddress
+SELECT Date, Time, Length, Number, cust_ip, gw_ip 
 FROM call_history
-WHERE AcctSessionTime > 0
-ORDER BY Date, Time, CalledStationId, AcctSessionTime, H323RemoteAddress ASC;
+WHERE Length > 0
+ORDER BY Date, Time, Number, Length, cust_ip ASC;
 
 CREATE OR REPLACE VIEW call_history_daily AS
 SELECT pots.h323ConnectTime, pots.AcctSessionTime, pots.CalledStationId, ip.H323RemoteAddress, pots.NASIPAddress
