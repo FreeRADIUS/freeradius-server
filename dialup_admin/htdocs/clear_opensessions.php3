@@ -100,13 +100,16 @@ if ($clear_sessions == 1){
 	$sql_servers = array();
 	if ($config[sql_extra_servers] != '')
 		$sql_servers = explode(' ',$config[sql_extra_servers]);
+	$quer = '= 0';
+	if ($config[sql_type] == 'pg')
+		$quer = 'IS NULL';
 	$sql_servers[] = $config[sql_server];
 	foreach ($sql_servers as $server){
 		$link = @da_sql_host_connect($server,$config);
 		if ($link){
 			$res = @da_sql_query($link,$config,
 			"DELETE FROM $config[sql_accounting_table]
-			WHERE username='$login' AND acctstoptime = 0 $sql_extra_query;");
+			WHERE username='$login' AND acctstoptime $quer $sql_extra_query;");
 			if ($res)
 				echo "<b>Deleted open sessions from accounting table on server $server</b><br>\n";
 			else
