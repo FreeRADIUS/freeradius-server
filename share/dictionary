@@ -280,8 +280,6 @@ ATTRIBUTE       EAP-Id                  1020    integer
 ATTRIBUTE	EAP-Code 		1021	integer
 ATTRIBUTE	EAP-MD5-Password	1022	string
 
-ATTRIBUTE	MS-CHAP-Use-NTLM-Auth	1023	integer
-
 # these are PW_EAP_X  + 1280
 ATTRIBUTE	EAP-Type-Identity	1281	string
 ATTRIBUTE	EAP-Type-Notification	1282	string
@@ -320,6 +318,8 @@ ATTRIBUTE       EAP-Sim-CHECKCODE       1670    octets
 #
 # For EAP-SIM, some attribute definitions for database interface
 #
+ATTRIBUTE	EAP-Sim-Subtype         1023    integer
+
 ATTRIBUTE	EAP-Sim-Rand1           1024	octets
 ATTRIBUTE	EAP-Sim-Rand2           1025	octets
 ATTRIBUTE	EAP-Sim-Rand3           1026	octets
@@ -327,8 +327,6 @@ ATTRIBUTE	EAP-Sim-Rand3           1026	octets
 ATTRIBUTE	EAP-Sim-SRES1           1027	octets
 ATTRIBUTE	EAP-Sim-SRES2           1028	octets
 ATTRIBUTE	EAP-Sim-SRES3           1029	octets
-
-ATTRIBUTE	EAP-Sim-Subtype         1023    integer
 
 VALUE           EAP-Sim-Subtype         Start             10
 VALUE           EAP-Sim-Subtype         Challenge         11
@@ -346,6 +344,9 @@ ATTRIBUTE	EAP-Sim-EXTRA           1034    octets
 ATTRIBUTE	EAP-Sim-KC1             1035	octets
 ATTRIBUTE	EAP-Sim-KC2             1036	octets
 ATTRIBUTE	EAP-Sim-KC3             1037	octets
+
+ATTRIBUTE	MS-CHAP-Use-NTLM-Auth	1300	integer
+
 
 #
 #	Integer Translations
