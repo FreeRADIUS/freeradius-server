@@ -112,7 +112,7 @@ static int sql_check_error(int error) {
         switch(error) {
         case PGRES_FATAL_ERROR:
         case -1:
-                radlog(L_DBG, "rlm_sql_postgresql: Postgresql check_error: %ss, returning SQL_DOWN", PQresStatus(error));
+                radlog(L_DBG, "rlm_sql_postgresql: Postgresql check_error: %s, returning SQL_DOWN", PQresStatus(error));
                 return SQL_DOWN;
                 break;
 
