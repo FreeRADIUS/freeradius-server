@@ -2,6 +2,11 @@ FreeRADIUS 0.6.0 ; $Date$, urgency=medium
 
 	* Many bug fixes.  For explicit details, see:
 		http://www.freeradius.org/cvs-log/
+	* Change to the user/group specified in the config file in all
+	  modes ( debug and daemon ).
+	* SQL sockets are rotated so that all are used, to prevent the
+	  SQL server timing out and closing unused sockets.  Patch from
+	  Todd T. Fries
 	* In SQL, look in radcheck, if not found there, try radgroupcheck.
 	  Patch from Thomas Jalsovsky.
 	* Set sql user name for ALIVE accounting packets, too.
@@ -51,8 +56,6 @@ FreeRADIUS 0.6.0 ; $Date$, urgency=medium
 	  'configure' (but radwho still doesn't read radiusd.conf)
 	* Fix bugs in tunnel (tagged attribute) code, which would prevent
 	  tagged attributes from being generated correctly in a packet.
-	* Support for Digest authentication, as per IETF Internet Draft
-	  draft-sterman-aaa-sip-00.txt
 	* Build only 'stable' modules by default.  Experimental modules
 	  require --with-experimental-modules to be passed to 'configure'
 	* New module rlm_ippool, to do server-side IP pooling.
