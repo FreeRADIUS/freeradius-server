@@ -58,21 +58,26 @@ static const char rcsid[] =
  *  status        is the thread running or exited?
  *  request_count the number of requests that this thread has handled
  *  timestamp     when the thread started executing.
- *  request       the current request that the thread is processing.
- *  fun           the function which is handling the request.
  */
 typedef struct THREAD_HANDLE {
 	struct THREAD_HANDLE *prev;
 	struct THREAD_HANDLE *next;
 	pthread_t            pthread_id;
 	int                  thread_num;
-	sem_t                semaphore;
 	int                  status;
 	unsigned int         request_count;
 	time_t               timestamp;
-	REQUEST              *request;
-	RAD_REQUEST_FUNP     fun;
+	REQUEST		     *request;
 } THREAD_HANDLE;
+
+/*
+ *	For the request queue.
+ */
+typedef struct request_queue_t {
+	REQUEST	    	  *request;
+	RAD_REQUEST_FUNP  fun;
+} request_queue_t;
+
 
 /*
  *	A data structure to manage the thread pool.  There's no real
@@ -83,18 +88,33 @@ typedef struct THREAD_POOL {
 	THREAD_HANDLE *head;
 	THREAD_HANDLE *tail;
 
-	THREAD_HANDLE *next_pick;
-	
 	int total_threads;
 	int max_thread_num;
 	int start_threads;
 	int max_threads;
 	int min_spare_threads;
 	int max_spare_threads;
-	int max_requests_per_thread;
+	unsigned int max_requests_per_thread;
 	unsigned long request_count;
 	time_t time_last_spawned;
 	int cleanup_delay;
+
+	/*
+	 *	All threads wait on this semaphore, for requests
+	 *	to enter the queue.
+	 */
+	sem_t		semaphore;
+
+	/*
+	 *	To ensure only one thread at a time touches the queue.
+	 */
+	pthread_mutex_t	mutex;
+
+	int		active_threads;
+	int		queue_head; /* first filled entry */
+	int		queue_tail; /* first empty entry */
+	int		queue_size;
+	request_queue_t *queue;
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
@@ -142,6 +162,151 @@ static const CONF_PARSER thread_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
+
+/*
+ *	Add a request to the list of waiting requests.
+ *	This function gets called ONLY from the main handler thread...
+ *
+ *	This function should never fail.
+ *
+ *	FIXME: implement some kind of "maximum #" for the waiting
+ *	requests...
+ */
+static void request_queue(REQUEST *request, RAD_REQUEST_FUNP fun)
+{
+	int num_entries;
+
+	thread_pool.request_count++;
+
+	pthread_mutex_lock(&thread_pool.mutex);
+
+	/*
+	 *	If the queue is empty, re-set the indices to zero,
+	 *	for no particular reason...
+	 */
+	if ((thread_pool.queue_head == thread_pool.queue_tail) &&
+	    (thread_pool.queue_head != 0)) {
+		thread_pool.queue_head = thread_pool.queue_tail = 0;
+	}
+
+	/*
+	 *	If the queue is full, die.
+	 *
+	 *	The math is to take into account the fact that it's a
+	 *	circular queue.
+	 */
+	num_entries = ((thread_pool.queue_tail + thread_pool.queue_size) -
+		       thread_pool.queue_head) % thread_pool.queue_size;
+	if (num_entries == (thread_pool.queue_size - 1)) {
+		/*
+		 *	FIXME: Malloc a new queue, doubled in size,
+		 *	copy the data from the current queue over to
+		 *	it, zero out the second half of the queue,
+		 *	free the old one, and replace thread_pool.queue
+		 *	with the new one.
+		 */
+		radlog(L_ERR, "QUEUE FULL!");
+		exit(1);
+	}
+
+	/*
+	 *	Add the data to the queue tail, increment the tail,
+	 *	and signal the semaphore that there's another request
+	 *	in the queue.
+	 */
+	thread_pool.queue[thread_pool.queue_tail].request = request;
+	thread_pool.queue[thread_pool.queue_tail].fun = fun;
+	thread_pool.queue_tail++;
+	thread_pool.queue_tail &= (thread_pool.queue_size - 1);
+
+	pthread_mutex_unlock(&thread_pool.mutex);
+
+	/*
+	 *	There's one more request in the queue.
+	 *
+	 *	Note that we're not touching the queue any more, so
+	 *	the semaphore post is outside of the mutex.  This also
+	 *	means that when the thread wakes up and tries to lock
+	 *	the mutex, it will be unlocked, and there won't be
+	 *	contention.
+	 */
+
+	sem_post(&thread_pool.semaphore);
+
+	return;
+}
+
+/*
+ *	Remove a request from the queue.
+ */
+static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
+{
+	pthread_mutex_lock(&thread_pool.mutex);
+
+	/*
+	 *	Head & tail are the same.  There's nothing in
+	 *	the queue.
+	 */
+	if (thread_pool.queue_head == thread_pool.queue_tail) {
+		pthread_mutex_unlock(&thread_pool.mutex);
+		*request = NULL;
+		*fun = NULL;
+		return;
+	}
+
+	*request = thread_pool.queue[thread_pool.queue_head].request;
+	*fun = thread_pool.queue[thread_pool.queue_head].fun;
+
+	rad_assert(*request != NULL);
+	rad_assert((*request)->magic == REQUEST_MAGIC);
+	rad_assert(*fun != NULL);
+
+	thread_pool.queue_head++;
+	thread_pool.queue_head &= (thread_pool.queue_size - 1);
+
+	/*
+	 *	FIXME: Check the request timestamp.  If it's more than
+	 *	"clean_delay" seconds old, then discard the request,
+	 *	log an error, and try to de-queue another request.
+	 *
+	 *	The main clean-up code won't delete the request from
+	 *	the request list, because it's not marked "finished"
+	 */
+
+	/*
+	 *	FIXME: Check request->child_pid and
+	 *	request->proxy_reply If both exist, then we received a
+	 *	reply from the home server BEFORE the proxying thread
+	 *	finished with the request.  i.e. a race condition.
+	 *
+	 *	In that case, unlock the mutex (so new requests can be
+	 *	added), (WITHOUT re-queueing the request), sleep for
+	 *	1/100 of a second, and look at it again.
+	 *
+	 *	This allows other threads to proceed, while one
+	 *	busy-waits.
+	 *
+	 *	It means that in certain rare cases, the server will
+	 *	busy-wait, but it's better than halting the whole
+	 *	server...
+	 */
+
+	/*
+	 *	The thread is currently processing a request.
+	 */
+	thread_pool.active_threads++;
+
+	/*
+	 *	Just to be paranoid...
+	 */
+	rad_assert(thread_pool.active_threads <= thread_pool.total_threads);
+
+	pthread_mutex_unlock(&thread_pool.mutex);
+
+	return;
+}
+
+
 /*
  *	The main thread handler for requests.
  *
@@ -149,7 +314,8 @@ static const CONF_PARSER thread_config[] = {
  */
 static void *request_handler_thread(void *arg)
 {
-	THREAD_HANDLE	*self = (THREAD_HANDLE *) arg;
+	RAD_REQUEST_FUNP  fun;
+	THREAD_HANDLE	  *self = (THREAD_HANDLE *) arg;
 #ifdef HAVE_PTHREAD_SIGMASK
 	sigset_t set;
 
@@ -181,13 +347,14 @@ static void *request_handler_thread(void *arg)
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       self->thread_num);
 	re_wait:
-		if (sem_wait(&self->semaphore) != 0) {
+		if (sem_wait(&thread_pool.semaphore) != 0) {
 			/*
 			 *	Interrupted system call.  Go back to
 			 *	waiting, but DON'T print out any more
 			 *	text.
 			 */
 			if (errno == EINTR) {
+				DEBUG2("Re-wait %d", self->thread_num);
 				goto re_wait;
 			}
 			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
@@ -205,25 +372,37 @@ static void *request_handler_thread(void *arg)
 			break;
 		}
 
+		DEBUG2("Thread %d got semaphore", self->thread_num);
+
 		/*
-		 *	Stupid implementations of sem_wait return on
-		 *	signals, but don't return -1.
+		 *	Try to grab a request from the queue.
+		 *
+		 *	It may be empty, in which case we fail
+		 *	gracefully.
 		 */
-		if (!self->request) {
-			continue;
-		}
+		request_dequeue(&self->request, &fun);
+		if (!self->request) continue;
+
+		self->request->child_pid = self->pthread_id;
+		self->request_count++;
 
 		DEBUG2("Thread %d handling request %d, (%d handled so far)",
-				self->thread_num, self->request->number,
-				self->request_count);
+		       self->thread_num, self->request->number,
+		       self->request_count);
 		
 		/*
-		 *  This responds, and resets request->child_pid
+		 *	Respond, and reset request->child_pid
 		 */
-		rad_respond(self->request, self->fun);
-
-		self->fun = NULL;
+		rad_respond(self->request, fun);
 		self->request = NULL;
+
+		/*
+		 *	Update the active threads.
+		 */
+		pthread_mutex_lock(&thread_pool.mutex);
+		rad_assert(thread_pool.active_threads > 0);
+		thread_pool.active_threads--;
+		pthread_mutex_unlock(&thread_pool.mutex);
 	}
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
@@ -270,20 +449,12 @@ static void delete_thread(THREAD_HANDLE *handle)
 		next->prev = prev;
 	}
 
-	/*
-	 *	Ensure that deleted threads aren't picked.
-	 */
-	if (thread_pool.next_pick == handle) {
-		thread_pool.next_pick = next;
-	}
-
 	DEBUG2("Deleting thread %d", handle->thread_num);
 
 	/*
 	 *	This thread has exited.  Delete any additional
-	 *	resources associated with it (semaphore, etc).
+	 *	resources associated with it.
 	 */
-	sem_destroy(&handle->semaphore);
 
 	/*
 	 *	Free the memory, now that we're sure the thread
@@ -325,24 +496,6 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	handle->request_count = 0;
 	handle->status = THREAD_RUNNING;
 	handle->timestamp = time(NULL);
-
-	/*
-	 *	Initialize the semaphore to be for this process only,
-	 *	and locked, so that the thread block until the server
-	 *	kicks it.
-	 */
-	rcode = sem_init(&handle->semaphore, 0, SEMAPHORE_LOCKED);
-	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "FATAL: Failed to initialize semaphore: %s",
-				strerror(errno));
-		exit(1);
-	}
-
-	/*
-	 *	The thread isn't currently handling a request.
-	 */
-	handle->request = NULL;
-	handle->fun = NULL;
 
 	/*
 	 *	Initialize the thread's attributes to detached.
@@ -426,8 +579,7 @@ int total_active_threads(void)
  */
 int thread_pool_init(void)
 {
-	int i;
-	THREAD_HANDLE	*handle;
+	int		i, rcode;
 	CONF_SECTION	*pool_cf;
 	time_t		now;
 
@@ -444,7 +596,6 @@ int thread_pool_init(void)
 		memset(&thread_pool, 0, sizeof(THREAD_POOL));
 		thread_pool.head = NULL;
 		thread_pool.tail = NULL;
-		thread_pool.next_pick = NULL;
 		thread_pool.total_threads = 0;
 		thread_pool.max_thread_num = 1;
 		thread_pool.cleanup_delay = 5;
@@ -475,17 +626,46 @@ int thread_pool_init(void)
 	}
 
 	/*
+	 *	Initialize the queue of requests.
+	 */
+	rcode = sem_init(&thread_pool.semaphore, 0, SEMAPHORE_LOCKED);
+	if (rcode != 0) {
+		radlog(L_ERR|L_CONS, "FATAL: Failed to initialize semaphore: %s",
+		       strerror(errno));
+		exit(1);
+	}
+
+	rcode = pthread_mutex_init(&thread_pool.mutex,NULL);
+	if (rcode != 0) {
+		radlog(L_ERR, "FATAL: Failed to initialize mutex: %s",
+		       strerror(errno));
+		exit(1);
+	}
+
+	/*
+	 *	Queue head & tail are set to zero by the memset,
+	 *	above.
+	 *
+	 *	Allocate an initial queue.
+	 */
+	thread_pool.queue_size = 256;
+	thread_pool.queue = rad_malloc(sizeof(*thread_pool.queue) *
+				       thread_pool.queue_size);
+	memset(thread_pool.queue, 0, (sizeof(*thread_pool.queue) *
+				      thread_pool.queue_size));
+
+	/*
 	 *	Create a number of waiting threads.
 	 *
 	 *	If we fail while creating them, do something intelligent.
 	 */
 	for (i = 0; i < thread_pool.start_threads; i++) {
-		handle = spawn_thread(now);
-		if (handle == NULL) {
+		if (spawn_thread(now) == NULL) {
 			return -1;
 		}
 	}
 
+	DEBUG2("Thread pool initialized");
 	pool_initialized = TRUE;
 	return 0;
 }
@@ -499,107 +679,23 @@ int thread_pool_init(void)
  */
 int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	THREAD_HANDLE *handle;
-	THREAD_HANDLE *found;
-	THREAD_HANDLE *start;
-
 	/*
-	 *	Loop over the active thread pool, looking for a
-	 *	waiting thread.
+	 *	If the thread pool is busy handling requests, then
+	 *	try to spawn another one.
 	 */
-	found = NULL;
-
-	/*
-	 *	Minimize the time spent searching for an empty thread,
-	 *	by starting off from the last one we found.  This also
-	 *	helps to span requests across multiple threads.
-	 */
-	start = thread_pool.next_pick;
-	if (!start) start = thread_pool.head;
-	
-	handle = start;
-	while (handle) {
-		/*
-		 *	Ignore threads which aren't running.
-		 */
-		if (handle->status != THREAD_RUNNING) {
-			goto next_handle;
-		}
-
-		/*
-		 *	If we haven't found a free thread yet, then
-		 *	check it's semaphore lock.  We don't lock it,
-		 *	so if it's locked, then the thread MUST be the
-		 *	one locking it, waiting for us to unlock it.
-		 */
-		if (handle->request == NULL) {
-			found = handle;
-			break;
-		}
-
-	next_handle:
-		/*
-		 *	There is a 'next', use it.
-		 *
-		 *	Otherwise, go back to the head of the list.
-		 */
-		if (handle->next) {
-			handle = handle->next;
-		} else {
-			handle = thread_pool.head;
-		}
-
-		/*
-		 *	Stop if we've looped back to the beginning.
-		 */
-		if (handle == start) break;
-	} /* loop over all of the threads */
-
-	/*
-	 *	If we haven't found an active thread, then spawn a new one.
-	 *
-	 *	If we can't spawn a new one, complain, and exit.
-	 */
-	if (!found) {
-		found = spawn_thread(request->timestamp);
-		if (found == NULL) {
+	if (thread_pool.active_threads == thread_pool.total_threads) {
+		if (spawn_thread(request->timestamp) == NULL) {
 			radlog(L_INFO, 
-					"The maximum number of threads (%d) are active, cannot spawn new thread to handle request", 
-					thread_pool.max_threads);
+			       "The maximum number of threads (%d) are active, cannot spawn new thread to handle request", 
+			       thread_pool.max_threads);
 			return 0;
 		}
 	}
 
 	/*
-	 *	Remember where we left off, so that we can start the
-	 *	search from here the next time.
+	 *	Add the new request to the queue.
 	 */
-	thread_pool.next_pick = found->next;
-
-	/*
-	 *	OK, now 'handle' points to a waiting thread.  We move
-	 *	it to the tail of the thread pool, so that we can
-	 *	cycle among the threads.
-	 *
-	 *	We then give it the request, signal its semaphore, and
-	 *	return.  The thread eventually wakes up, and handles
-	 *	the request.
-	 */
-	DEBUG2("Thread %d assigned request %d", found->thread_num, request->number);
-	request->child_pid = found->pthread_id;
-
-	/*
-	 *	Tell the child thread what to do.
-	 */
-	found->request = request;
-	found->fun = fun;
-	found->request_count++;
-	thread_pool.request_count++;
-
-	/*
-	 * 	Now that the child has things to do, kick it.
-	 */
-	sem_post(&found->semaphore);
+	request_queue(request, fun);
 
 	return 1;
 }
@@ -618,23 +714,12 @@ int thread_pool_clean(time_t now)
 	int active_threads;
 
 	/*
-	 *	Loop over the thread pool, incrementing the 'active'
-	 *	counter if the thread is currently processing a request.
-	 *
-	 *	At this point, we also delete 'exited' threads.
+	 *	Loop over the thread pool deleting exited threads.
 	 */
-	active_threads = 0;
 	for (handle = thread_pool.head; handle; handle = next) {
 		next = handle->next;
 
-		if (handle->request != NULL) {
-			active_threads++;
-			continue;
-		}
-
 		/*
-		 *	Handle is NULL, so it's not processing anything.
-		 *
 		 *	Maybe we've asked the thread to exit, and it
 		 *	has agreed.
 		 */
@@ -643,6 +728,13 @@ int thread_pool_clean(time_t now)
 		}
 	}
 
+	/*
+	 *	We don't need a mutex lock here, as we're reading
+	 *	the location, and not modifying it.  We want a close
+	 *	approximation of the number of active threads, and this
+	 *	is good enough.
+	 */
+	active_threads = thread_pool.active_threads;
 	spare = thread_pool.total_threads - active_threads;
 	if (debug_flag) {
 		static int old_total = -1;
@@ -713,15 +805,17 @@ int thread_pool_clean(time_t now)
 			 *	If the thread is not handling a
 			 *	request, then tell it to exit.
 			 *
-			 *	Note that we delete it from the thread
-			 *	pool BEFORE telling it to kill itself,
-			 *	as the child thread can free the 'handle'
-			 *	structure, without anyone else using it.
+			 *	It will eventually wake up, and realize
+			 *	it's been told to commit suicide.
 			 */
 			if (handle->request == NULL) {
 				handle->status = THREAD_CANCELLED;
 
-				sem_post(&handle->semaphore);
+				/*
+				 *	Post an extra semaphore, as a
+				 *	signal to wake up, and exit.
+				 */
+				sem_post(&thread_pool.semaphore);
 				spare--;
 				break;
 			}
@@ -742,7 +836,7 @@ int thread_pool_clean(time_t now)
 			if ((handle->request == NULL) &&
 			    (handle->request_count > thread_pool.max_requests_per_thread)) {
 				handle->status = THREAD_CANCELLED;
-				sem_post(&handle->semaphore);
+				sem_post(&thread_pool.semaphore);
 			}
 		}
 	}
