@@ -25,7 +25,6 @@ static const char rcsid[] =
 "$Id$";
 
 #include	<assert.h>
-#include	<malloc.h>
 #include	"autoconf.h"
 #include	"request_storage.h"
 #include	"radiusd.h"

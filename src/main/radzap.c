@@ -39,10 +39,6 @@
 #  include      <netinet/in.h>
 #endif
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"radutmp.h"
 

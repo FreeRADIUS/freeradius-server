@@ -36,10 +36,6 @@ static const char rcsid[] =
 #include <sys/utsname.h>
 #include <ctype.h>
 
-#if HAVE_MALLOC_H
-#  include <malloc.h>
-#endif
-
 #include "sysutmp.h"
 #include "radutmp.h"
 #include "radiusd.h"
