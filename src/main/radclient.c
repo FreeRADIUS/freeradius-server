@@ -283,7 +283,7 @@ int main(int argc, char **argv)
 	 */
 	req->dst_port = port;
 	req->dst_ipaddr = ip_getaddr(argv[1]);
-	if (req->dst_ipaddr == 0) {
+	if (req->dst_ipaddr == INADDR_NONE) {
 		librad_perror("radclient: %s: ", argv[1]);
 		exit(1);
 	}
