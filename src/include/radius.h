@@ -225,3 +225,13 @@
 #define PW_STATUS_ACCOUNTING_ON		7
 #define PW_STATUS_ACCOUNTING_OFF	8
 
+/*
+ *  Vendor Private Enterprise Codes
+ */
+#define VENDORPEC_FREERADIUS	11344
+
+
+/*
+ * Vendor specific attributes
+ */
+#define PW_FREERADIUS_PROXIED_TO	((VENDORPEC_FREERADIUS<<16)|1)
