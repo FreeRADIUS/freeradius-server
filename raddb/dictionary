@@ -169,7 +169,6 @@ ATTRIBUTE	SQL-User-Name	 1055	string
 #	Non-Protocol Attributes
 #	These attributes are used internally by the server
 #
-ATTRIBUTE	Expiration		  21	date
 ATTRIBUTE	Auth-Type		1000	integer
 ATTRIBUTE	Menu			1001	string
 ATTRIBUTE	Termination-Menu	1002	string
@@ -180,6 +179,7 @@ ATTRIBUTE	Crypt-Password		1006	string
 ATTRIBUTE	Connect-Rate		1007	integer
 ATTRIBUTE	Add-Prefix		1008	string
 ATTRIBUTE	Add-Suffix		1009	string
+ATTRIBUTE	Expiration		1010	date
 
 #
 #	Integer Translations

@@ -452,7 +452,7 @@ static int gettime(const char *valstr, time_t *lvalue)
 
 	tm->tm_mon = 12;
 	for (i = 0; i < 12; i++) {
-		if (strncmp(months[i], month, 3) == 0) {
+		if (strncasecmp(months[i], month, 3) == 0) {
 			tm->tm_mon = i;
 			break;
 		}
@@ -462,6 +462,10 @@ static int gettime(const char *valstr, time_t *lvalue)
 	if (tm->tm_mon == 12) return -1;
 
 	tm->tm_mday = atoi(day);
+	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
+		return -1;
+	}
+
 	tm->tm_year = atoi(year);
 	if (tm->tm_year >= 1900) tm->tm_year -= 1900;
 

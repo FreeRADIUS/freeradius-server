@@ -529,6 +529,31 @@ static int attrcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 }
 
 /*
+ *	Compare the expiration date.
+ */
+static int expirecmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
+		     VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+{
+	time_t now;
+
+	instance = instance;
+	request = request;	/* shut the compiler up */
+	check_pairs = check_pairs;
+	reply_pairs = reply_pairs;
+
+	/*
+	 *  FIXME!  This should be request->timestamp!
+	 */
+	now = time(NULL);
+
+	if (now <= check->lvalue) {
+		return 0;
+	}
+
+	return +1;
+}
+
+/*
  *	Register server-builtin special attributes.
  */
 void pair_builtincompare_init(void)
@@ -539,4 +564,5 @@ void pair_builtincompare_init(void)
 	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, NULL);
 	paircompare_register(PW_CURRENT_TIME, 0, timecmp, NULL);
 	paircompare_register(PW_NO_SUCH_ATTRIBUTE, 0, attrcmp, NULL);
+	paircompare_register(PW_EXPIRATION, 0, expirecmp, NULL);
 }

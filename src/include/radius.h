@@ -47,7 +47,12 @@
 #define PW_REPLY_MESSAGE		18
 #define PW_CALLBACK_NUMBER		19
 #define PW_CALLBACK_ID			20
+#if 0
+/*
+ *  Deprecated, and no longer used.
+ */
 #define PW_EXPIRATION			21
+#endif
 #define PW_FRAMED_ROUTE			22
 #define PW_FRAMED_IPXNET		23
 #define PW_STATE			24
@@ -92,6 +97,7 @@
 #define PW_CONNECT_RATE			1007
 #define PW_ADD_PREFIX			1008
 #define PW_ADD_SUFFIX			1009
+#define PW_EXPIRATION			1010
 #define PW_USER_CATEGORY		1029
 #define PW_GROUP_NAME			1030
 #define PW_HUNTGROUP_NAME		1031
