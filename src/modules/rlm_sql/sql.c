@@ -364,7 +364,21 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 		return 0;
 
 	ptr = row[3];
-	xlat = gettoken(&ptr, value, sizeof(value));
+	xlat = T_INVALID;
+	
+	/*
+	 *	Quoted strings get handled specially.
+	 *
+	 *	Unquoted strings get the old-style treatment.
+	 */
+	if ((*ptr == '\'') ||
+	    (*ptr == '"')  ||
+	    (*ptr == '`')) {
+		xlat = gettoken(&ptr, value, sizeof(value));
+	} else {
+		strNcpy(&value, ptr, sizeof(value));
+	}
+
 	switch (xlat) {
 		/*
 		 *	Make the full pair now.
