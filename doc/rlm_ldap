@@ -177,7 +177,7 @@ the rlm_ldap module:
 #	based on the groupname_attribute and groupmembership_filter has failed.
 #	default: NULL - don't search for a group based on attributes in the user entry.
 #
-#	groupmembership_attribute = "memberof"
+#	groupmembership_attribute = "radiusGroupName"
 
 	}
 }
