@@ -1,4 +1,0 @@
-/* config.h.in.  Generated automatically from configure.in by autoheader.  */
-
-/* Define if you have the <regex.h> header file.  */
-#undef HAVE_REGEX_H
