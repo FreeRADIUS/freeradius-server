@@ -441,6 +441,9 @@ static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
 
 	mppe_chap2_get_keys128(nt_hashhash,response,enckey1,enckey2);
 
+/*	Not requiered, because encoding will be performed by
+	tunnel_pwencode
+
 	salt[0] = (vector[0] ^ vector[1] ^ 0x3A) | 0x80;
 	salt[1] = (vector[2] ^ vector[3] ^ vector[4]);
 
@@ -450,6 +453,9 @@ static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
 	salt[1] = (vector[5] ^ vector[6] ^ vector[7]);
 
 	mppe_gen_respkey(secret,vector,salt,enckey2,recvkey);
+*/
+	memcpy (sendkey, enckey1, 16);
+	memcpy (recvkey, enckey2, 16);
 }
 
 static void mppe_chap2_get_keys128(uint8_t *nt_hashhash,uint8_t *nt_response,
@@ -853,10 +859,18 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						smbPasswd.smb_nt_passwd,
 						response->strvalue + 26,
 						mppe_sendkey,mppe_recvkey);
+
+					mppe_add_reply( &request->reply->vps,
+						"MS-MPPE-Recv-Key",mppe_recvkey,16);
+					mppe_add_reply( &request->reply->vps,
+						"MS-MPPE-Send-Key",mppe_sendkey,16);
+
+/*
 					mppe_add_reply( &request->reply->vps,
 						"MS-MPPE-Recv-Key",mppe_recvkey,34);
 					mppe_add_reply( &request->reply->vps,
 						"MS-MPPE-Send-Key",mppe_sendkey,34);
+*/
 				}
 				reply_attr = pairmake("MS-MPPE-Encryption-Policy",
 					(inst->require_encryption)? "0x00000002":"0x00000001",
