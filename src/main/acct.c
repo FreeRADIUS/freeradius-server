@@ -52,22 +52,24 @@ int rad_accounting(REQUEST *request)
 				reply != RLM_MODULE_UPDATED)
 			return reply;
 		
-		/*
-		 *	Maybe one of the preacct modules has decided
-		 *	that a proxy should be used. If so, get out of
-		 *	here and send the packet.
-		 */
-		if(pairfind(request->config_items, PW_PROXY_TO_REALM))
-			return reply;
 	}
 
 	reply = RLM_MODULE_OK;
-	if (!request->proxy) {
-		/*
-		 *	Do accounting and if OK, reply.
-		 */
-		reply = module_accounting(request);
+
+	/*
+	 *	Do accounting
+	 */
+	reply = module_accounting(request);
+	
+	/*
+	 *	Maybe one of the preacct modules has decided
+	 *	that a proxy should be used. If so, get out of
+	 *	here and send the packet.
+	 */
+	if(pairfind(request->config_items, PW_PROXY_TO_REALM)) {
+	        return reply;
 	}
+
 	if (reply == RLM_MODULE_NOOP ||
 			reply == RLM_MODULE_OK ||
 			reply == RLM_MODULE_UPDATED) {
