@@ -527,7 +527,17 @@ int rad_authenticate(REQUEST *request)
 			r != RLM_MODULE_OK &&
 			r != RLM_MODULE_UPDATED) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
-			rad_authlog("Invalid user", request, 0);
+			VALUE_PAIR *module_msg;
+
+			if ((module_msg = pairfind(request->packet->vps,
+					PW_MODULE_MESSAGE)) != NULL){
+				char msg[MAX_STRING_LEN+16];
+				snprintf(msg, sizeof(msg), "Invalid user (%s)",
+					 module_msg->strvalue);
+				rad_authlog(msg,request,0);
+			} else {
+				rad_authlog("Invalid user", request, 0);
+			}
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
 		/*
@@ -574,11 +584,20 @@ int rad_authenticate(REQUEST *request)
 	 *	wants to send back.
 	 */
 	if (result < 0) {
+		VALUE_PAIR *module_msg;
 
 		DEBUG2("auth: Failed to validate the user.");
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		
-		rad_authlog("Login incorrect", request, 0);
+		if ((module_msg = pairfind(request->packet->vps,PW_MODULE_MESSAGE)) != NULL){
+			char msg[MAX_STRING_LEN+19];
+
+			snprintf(msg, sizeof(msg), "Login incorrect (%s)",
+				 module_msg->strvalue);
+			rad_authlog(msg, request, 0);
+		} else {
+			rad_authlog("Login incorrect", request, 0);
+		}
 
 		/* double check: maybe the secret is wrong? */
 		if ((debug_flag > 1) && (auth_item != NULL) &&
