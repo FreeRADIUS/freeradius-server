@@ -64,7 +64,7 @@ uint32_t ip_getaddr(const char *host)
 	struct hostent	*hp;
 	uint32_t	 a;
 
-	if ((a = ip_addr(host)) != 0)
+	if ((a = ip_addr(host)) != INADDR_NONE)
 		return a;
 
 	if ((hp = gethostbyname(host)) == NULL)
