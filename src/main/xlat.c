@@ -325,7 +325,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'S': /* request timestamp in SQL format*/
 				TM = localtime(&request->timestamp);
-				strftime(tmpdt,sizeof(tmpdt),"%Y%m%d%H%M%S",TM);
+				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d %H:%M:%S",TM);
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				break;
