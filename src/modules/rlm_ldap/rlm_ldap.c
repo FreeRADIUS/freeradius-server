@@ -517,7 +517,7 @@ static int rlm_ldap_authorize(void *instance, REQUEST *request)
  *	Purpose: Check the user's password against ldap database 
  *
  *****************************************************************************/
-static int rlm_ldap_authenticate(void *instance, REQUEST *request);
+static int rlm_ldap_authenticate(void *instance, REQUEST *request)
 {
     LDAP *ld_user;
     LDAPMessage *result, *msg;
@@ -595,7 +595,7 @@ static LDAP *rlm_ldap_connect(const char *dn, const char *password, int auth, in
     }
     
     if (timeout != NULL && ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT, (void *)timeout) != LDAP_OPT_SUCCESS) {
-      radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %d.%d", timeout->tv_sec, timeout->tv_usec);
+      radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %ld.%ld", timeout->tv_sec, timeout->tv_usec);
     }
    
     if (ldap_timelimit != -1 && ldap_set_option(ld, LDAP_OPT_TIMELIMIT, (void *) &ldap_timelimit) != LDAP_OPT_SUCCESS ){
