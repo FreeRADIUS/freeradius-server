@@ -5,10 +5,10 @@ else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
 }
-if ($config[sql_use_operator] == 'true'){
+if ($config[sql_use_operators] == 'true'){
 	$text1 = ',op';
 	$text2  = ",':='";
-	$text3 = "AND op = ':='";
+	$text3 = ", op = ':='";
 }
 else{
 	$text1 = '';
