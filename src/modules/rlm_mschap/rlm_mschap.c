@@ -340,6 +340,8 @@ static void auth_response(struct smb_passwd * smbPasswd, char *ntresponse,
 struct mschap_instance {
 	int ignore_password;
 	int use_mppe;
+	int require_encryption;
+	int require_strong;
 	char *passwd_file;
 	char *auth_type;
 };
@@ -352,6 +354,10 @@ static CONF_PARSER module_config[] = {
 	  offsetof(struct mschap_instance,ignore_password), NULL, "no" },
 	{ "use_mppe",    PW_TYPE_BOOLEAN,
 	  offsetof(struct mschap_instance,use_mppe), NULL, "yes" },
+	{ "require_encryption",    PW_TYPE_BOOLEAN,
+	  offsetof(struct mschap_instance,require_encryption), NULL, "no" },
+	{ "require_strong",    PW_TYPE_BOOLEAN,
+	  offsetof(struct mschap_instance,require_strong), NULL, "no" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
 	  offsetof(struct mschap_instance, passwd_file), NULL,  NULL },
 	{ "authtype",   PW_TYPE_STRING_PTR,
@@ -668,8 +674,10 @@ static int mschap_authorize(void * instance, REQUEST *request)
  */
 static int mschap_authenticate(void * instance, REQUEST *request)
 {
+#define inst ((struct mschap_instance *)instance)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 	VALUE_PAIR *password = NULL;
+	VALUE_PAIR *reply_attr;
 	uint8_t calculated[32];
 	uint8_t msch2resp[42];
         uint8_t mppe_sendkey[34];
@@ -720,11 +728,11 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		else return RLM_MODULE_REJECT;
 	}
 	else if ( (challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE)) ){
-		res = RLM_MODULE_REJECT;
 		/*
 		 *	We need an MS-CHAP-Challenge attribute to calculate
 		 *	the response.
 		 */
+		res = RLM_MODULE_REJECT;
 		if ( (response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE)) ){
 			if (response->length < 50 || challenge->length < 8) {
 				radlog(L_AUTH, "rlm_mschap: Attribute \"MS-CHAP-Response\" has wrong format.");
@@ -755,7 +763,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				}
 	    		}
 	    		if (res == RLM_MODULE_OK) {
-				if (((struct mschap_instance *)instance)->use_mppe) {
+				if (inst->use_mppe) {
 					memset (mppe_sendkey, 0, 32);
 					if (smbPasswd.smb_passwd) 
 						memcpy(mppe_sendkey, smbPasswd.smb_passwd, 8);
@@ -767,7 +775,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					mppe_add_reply( &request->reply->vps,
 						"MS-CHAP-MPPE-Keys",mppe_recvkey,len);
 				}
-				return res;
 			}
 		}
 		else if ( (response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE)) ){
@@ -789,7 +796,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						msch2resp);
 					add_reply( &request->reply->vps, *response->strvalue,
 						"MS-CHAP2-Success", msch2resp, 42);
-					if (((struct mschap_instance *)instance)->use_mppe) {
+					if (inst->use_mppe) {
 						mppe_chap2_gen_keys128(request->secret,request->packet->vector,
 							smbPasswd.smb_nt_passwd,
 							response->strvalue + 26,
@@ -801,7 +808,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					}
 
 
-					return RLM_MODULE_OK;
+					res = RLM_MODULE_OK;
 				}
 			}
 		}
@@ -809,12 +816,26 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog(L_AUTH, "rlm_mschap: Response attribute not found");
 			return RLM_MODULE_INVALID;
 		}
+		if (res == RLM_MODULE_OK){
+			if (inst->use_mppe) {
+				reply_attr = pairmake("MS-MPPE-Encryption-Policy",
+					(inst->require_encryption)? "0x00000002":"0x00000001",
+					T_OP_EQ);
+				pairadd(&request->reply->vps, reply_attr);
+				reply_attr = pairmake("MS-MPPE-Encryption-Types",
+					(inst->require_strong)? "0x00000004":"0x0000006",
+					T_OP_EQ);
+				pairadd(&request->reply->vps, reply_attr);
+			
+			}
+			return res;
+		}
 	}
 	
 	add_reply( &request->reply->vps, *response->strvalue,
 		"MS-CHAP-Error", "E=691 R=1", 9);
 	return RLM_MODULE_REJECT;
-
+#undef inst
 }
 
 module_t rlm_mschap = {
