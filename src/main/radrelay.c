@@ -248,12 +248,13 @@ redo:
 		 * being flushed properly. Things should be ok next time
 		 * around.
 		 */
-		if (buf[strlen(buf) - 1] != '\n') {
+		if (strlen(buf)) {
+			fprintf(stdout, "read_one: ZERO BYTE\n");
+                       fseek(fp, fpos + 1, SEEK_SET);
+                       break;
+               } else if (buf[strlen(buf) - 1] != '\n') {
 			fprintf(stdout, "read_one: BROKEN ATTRIBUTE\n");
-			if (strlen(buf))
-				fseek(fp, fpos + strlen(buf), SEEK_SET);
-			else
-				fseek(fp, fpos + 1, SEEK_SET);
+			fseek(fp, fpos + strlen(buf), SEEK_SET);
 			break;
 		}
 		if (r_req->state == STATE_BUSY1) {
