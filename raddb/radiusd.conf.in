@@ -392,7 +392,15 @@ modules {
 		# if use_mppe is not set to no mschap will
 		# add MS-CHAP-MPPE-Keys for MS-CHAPv1 and
 		# MS-MPPE-Recv-Key/MS-MPPE-Send-Key for MS-CHAPv2
-		use_mppe = no
+		#	use_mppe = no
+
+		# if mppe is enabled require_encryption makes
+		# encryption moderate
+		#	require_encryption = yes
+
+		# require_strong always requires 128 bit key
+		# encryption
+		#	require_strong = yes
 	}
 
 	# PAP module to authenticate users based on their stored password
