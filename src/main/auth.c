@@ -429,11 +429,19 @@ int rad_authenticate(REQUEST *request)
 		}
 
 		/*
+		 *	Challenges are punted back to the NAS
+		 *	without any further processing.
+		 */
+		if (request->proxy_reply->code == PW_ACCESS_CHALLENGE) {
+			request->reply->code = PW_ACCESS_CHALLENGE;
+			return RLM_MODULE_HANDLED;
+		}
+
+		/*
 		 *	Reply of ACCEPT means accept, ALL other
 		 *	replies mean reject.  This is fail-safe.
 		 */
-		if ((request->proxy_reply->code == PW_AUTHENTICATION_ACK) ||
-		    (request->proxy_reply->code == PW_ACCESS_CHALLENGE))
+		if (request->proxy_reply->code == PW_AUTHENTICATION_ACK)
 			tmp->lvalue = PW_AUTHTYPE_ACCEPT;
 		else
 			tmp->lvalue = PW_AUTHTYPE_REJECT;
