@@ -239,6 +239,26 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		return NULL;
 	}
 
+	/*
+	 *      If this request has arrived from another freeradius server
+	 *      that has already proxied the request, we don't need to do
+	 *      it again.
+	 */
+	for (vp = request->packet->vps; vp; vp = vp->next) {
+		if (vp->attribute == PW_FREERADIUS_PROXIED_TO) {
+			if (request->packet->code == PW_AUTHENTICATION_REQUEST &&
+			    vp->lvalue == realm->ipaddr) {
+				DEBUG2("rlm_realm: Request not proxied due to Freeradius-Proxied-To");
+				return NULL;
+			}
+			if (request->packet->code == PW_ACCOUNTING_REQUEST &&
+			    vp->lvalue == realm->acct_ipaddr) {
+				DEBUG2("rlm_realm: Request not proxied due to Freeradius-Proxied-To");
+				return NULL;
+			}
+		}
+        }
+
 	return realm;
 }
 

@@ -35,7 +35,9 @@ char radrelay_rcsid[] =
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#if HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -47,11 +49,32 @@ char radrelay_rcsid[] =
 #include <errno.h>
 #include <string.h>
 
+#include "radiusd.h"
 #include "conf.h"
 #include "radpaths.h"
 #include "missing.h"
+#include "conffile.h"
 
 const char *progname;
+
+int debug_flag = 0;
+const char *radlog_dir = NULL;
+radlog_dest_t radlog_dest = RADLOG_FILES;
+const char *radutmp_file = NULL;
+
+int proxy_synchronous = TRUE;
+int proxy_fallback = FALSE;
+const char *radius_dir = NULL;
+const char *radacct_dir = NULL;
+const char *radlib_dir = NULL;
+int auth_port = 0;
+int acct_port;
+uint32_t myip = INADDR_ANY;
+int proxy_retry_delay = RETRY_DELAY;
+int proxy_retry_count = RETRY_COUNT;
+int proxy_dead_time;
+int log_stripped_names;
+struct main_config_t mainconfig;
 
 /*
  *	Possible states for request->state
@@ -92,6 +115,12 @@ struct relay_misc {
 	char		f_secret[256];			/* File secret */
 };
 
+/*
+ * Used for reading the client configurations from the config files.
+ */
+char *c_secret = NULL;
+char *c_shortname = NULL;
+
 struct relay_request slots[NR_SLOTS];
 int request_head;
 int radius_id;
@@ -107,6 +136,7 @@ int do_recv(struct relay_misc *r_args);
 int do_send(struct relay_request *r, char *secret);
 int detail_move(char *from, char *to);
 void loop(struct relay_misc *r_args);
+int find_shortname(char *shortname, char **host, char **secret);
 void usage(void);
 
 
@@ -584,17 +614,66 @@ void loop(struct relay_misc *r_args)
 	}
 }
 
+/*
+ * Search through the "client" config sections (usually in clients.conf).
+ * This is an easy way to find a secret and an host.
+ */
+int find_shortname(char *shortname, char **host, char **secret)
+{
+	CONF_SECTION *cs;
+
+	if (read_radius_conf_file() < 0) {
+		fprintf(stderr, "Error reading radiusd.conf\n");
+		exit(1);
+	}
+
+	/*
+	 * Find the first 'client' section.
+	 */
+	cs = cf_section_find("client");
+	if (cs) {
+		c_shortname = cf_section_value_find(cs, "shortname");
+		c_secret = cf_section_value_find(cs, "secret");
+		/*
+		 * Keep searching for 'client' sections until they run out
+		 * or we find one that matches.
+		 */
+		while (cs && strcmp(shortname, c_shortname)) {
+			free(c_shortname);
+			free(c_secret);
+			cs = cf_subsection_find_next(cs, cs, "client");
+			if (cs) {
+				c_shortname = cf_section_value_find(cs, "shortname");
+				c_secret = cf_section_value_find(cs, "secret");
+			}
+		};
+	};
+
+	if (cs) {
+		*host = cf_section_name2(cs);
+		*secret = c_secret;
+		if (host && secret)
+			return 0;
+	}
+
+	return -1;
+}
+
 void usage(void)
 {
-	fprintf(stderr, "Usage: radrelay [-a accounting_dir] [-i local_ip] <[-s secret]\n");
-	fprintf(stderr, "[-S secret_file]> [-fx] remote-server[:port] detailfile\n");
-	fprintf(stderr, " -a accounting_dir     Base accounting directory\n");
-	fprintf(stderr, " -f                    Stay in the foreground (don't fork)\n");
-	fprintf(stderr, " -h                    This help\n");
-	fprintf(stderr, " -i local_ip           Use local_ip as source address\n");
-	fprintf(stderr, " -s secret             Server secret\n");
-	fprintf(stderr, " -S secret_file        Read server secret from file\n");
-	fprintf(stderr, " -x                    Debug mode\n");
+	fprintf(stderr, "Usage: radrelay [-a accounting_dir] [-d radius_dir] [-i local_ip] [-s secret]\n");
+	fprintf(stderr, "[-S secret_file] [-fx] <[-n shortname] [-r remote-server[:port]]> detailfile\n");
+	fprintf(stderr, " -a accounting_dir     Base accounting directory.\n");
+	fprintf(stderr, " -d radius_dir         Base radius (raddb) directory.\n");
+	fprintf(stderr, " -f                    Stay in the foreground (don't fork).\n");
+	fprintf(stderr, " -h                    This help.\n");
+	fprintf(stderr, " -i local_ip           Use local_ip as source address.\n");
+	fprintf(stderr, " -n shortname          Use the [shortname] entry from clients.conf for\n");
+	fprintf(stderr, "                       ip-adress and secret.\n");
+	fprintf(stderr, " -r remote-server      The destination address/hostname.\n");
+	fprintf(stderr, " -s secret             Server secret.\n");
+	fprintf(stderr, " -S secret_file        Read server secret from file.\n");
+	fprintf(stderr, " -x                    Debug mode (-xx gives more debugging).\n");
 
 	exit(1);
 }
@@ -603,8 +682,8 @@ int main(int argc, char **argv)
 {
 	struct servent *svp;
 	char *server_name;
+	char *shortname;
 	char *p;
-	const char *radius_dir = RADDBDIR;
 	int c;
 	int dontfork = 0;
 	struct relay_misc r_args;
@@ -620,6 +699,11 @@ int main(int argc, char **argv)
 	memset((char *) r_args.f_secret, 0, 256);
 	r_args.secret = NULL;
 
+	shortname = NULL;
+	server_name = NULL;
+
+	radius_dir = strdup(RADIUS_DIR);
+
 	librad_debug = 0;
 
 	/*
@@ -631,7 +715,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while ((c = getopt(argc, argv, "a:d:fhi:s:S:x")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "a:d:fhi:n:r:s:S:x")) != EOF) switch(c) {
 		case 'a':
 			if (strlen(optarg) > 1021) {
 				fprintf(stderr, "%s: acct_dir to long\n", progname);
@@ -640,21 +724,31 @@ int main(int argc, char **argv)
 			strncpy(r_args.detail, optarg, 1021);
 			break;
 		case 'd':
-			radius_dir = optarg;
+			if (radius_dir)
+				free(radius_dir);
+			radius_dir = strdup(optarg);
 			break;
 		case 'f':
 			dontfork = 1;
+			break;
+		case 'n':
+			shortname = optarg;
+			break;
+		case 'r':
+			server_name = optarg;
 			break;
 		case 's':
 			r_args.secret = optarg;
 			break;
 		case 'x':
 			/*
-			 * The variable debug should be set if we want radrelay internal
-			 * debugging, not used yet.
+			 * If -x is called once we enable internal radrelay
+			 * debugging, if it's called twice we also active
+			 * lib_rad debugging (fairly verbose).
 			 */
+			if (debug == 1)
+				librad_debug = 1;
 			debug = 1;
-			librad_debug = 1;
 			dontfork = 1;
 			break;
 		case 'S':
@@ -700,12 +794,28 @@ int main(int argc, char **argv)
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
-	if (argc != 3) usage();
+	if (shortname && server_name)
+		usage();
+	if (!shortname && !server_name)
+		usage();
+	if (r_args.secret != NULL && shortname != NULL)
+		usage();
 
 	/*
-	 *	Find servers IP address and port.
+	 * If we've been given a shortname, try to fetch the secret and
+	 * adress from the config files.
 	 */
-	server_name = argv[1];
+	if (shortname != NULL) {
+		if (find_shortname(shortname, &server_name, &r_args.secret) == -1) {
+			fprintf(stderr, "Couldn't find %s in configuration files.\n", shortname);
+			exit(1);
+		}
+	}
+
+	/*
+	 * server_name should already be set either by the -r or the -s
+	 * commandline argument.
+	 */
 	if ((p = strrchr(server_name, ':')) != NULL) {
 		*p = 0;
 		p++;
@@ -717,7 +827,7 @@ int main(int argc, char **argv)
 	} else {
 		r_args.dst_port = ntohs(r_args.dst_port);
 	}
-	r_args.dst_addr = ip_getaddr(argv[1]);
+	r_args.dst_addr = ip_getaddr(server_name);
 	if (r_args.dst_addr == 0) {
 		fprintf(stderr, "%s: unknown host\n",
 			server_name);
@@ -747,13 +857,14 @@ int main(int argc, char **argv)
 		perror("chdir");
 		exit(1);
 	}
-	if (strlen(argv[2]) + strlen(r_args.detail) > 1023) {
+
+	if (strlen(argv[1]) + strlen(r_args.detail) > 1023) {
 		fprintf(stderr, "Detail file path to long");
 		exit(1);
 	} else {
 		if (r_args.detail[strlen(r_args.detail) - 1] != '/')
 			r_args.detail[strlen(r_args.detail)] = '/';
-		strncat (r_args.detail, argv[2], 1023 - strlen(r_args.detail));
+		strncat (r_args.detail, argv[1], 1023 - strlen(r_args.detail));
 	}
 
 	/*

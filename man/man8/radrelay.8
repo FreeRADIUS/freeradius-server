@@ -5,15 +5,21 @@ radrelay -- replicate accounting data to another RADIUS server
 .B radrelay
 .RB [ \-a
 .IR accounting_dir ]
+.RB [ \-d
+.IR radius_dir ]
 .RB [ \-f ]
 .RB [ \-i
 .IR source_ip ]
+.RB [ \-n
+.IR shortname ]
+.RB [ \-r
+.IR remote-server ]
 .RB [ \-s
 .IR secret ]
 .RB [ \-S
 .IR secret_file ]
 .RB [ \-x ]
-\fIserver detailfile\fP
+\fIdetailfile\fP
 .SH DESCRIPTION
 \fBRadrelay\fP reads a file in the \fIdetail\fP file format,
 reconstructs radius packets from it and sends them to a remote
@@ -27,11 +33,24 @@ the file, and starts over again.
 .IP "\-a \fIaccounting_directory\fP"
 The base directory to use to read the detail file from.
 
+.IP "\-d \fIradius_directory\fP"
+The base radius (raddb) directory, where the config files live.
+
 .IP \-f
 Do \fInot\fP fork and run in the background as a daemon.
 
 .IP "\-i \fIsource_ip\fP"
 The source IP address to use for sending radius packets.
+
+.IP "\-n \fIshortname\fP"
+The radius configuration files (most probably clients.conf), will be
+searched for a client section with 'shortname' set to the used argument.
+Both the server secret and the remote-server address are obtained in
+this way. Do not use the -r, -s or -S parameters in combination with -n.
+
+.IP "\-r \fIremote-server\fP"
+The remote server that will be recieving the accounting packets.
+The -r parameter can't be used in combination with -n.
 
 .IP "\-s \fIsecret\fP"
 Remote server secret.
@@ -41,7 +60,8 @@ Read remote server secret from file, the file should contain
 nothing other then the plain-text secret.
 
 .IP \-x
-Enable debug mode.
+Enable debug mode, -x will activate radrelay internal debugging, -xx will
+also activate librad debugging.
 
 .IP "server[:port]"
 The hostname or IP address of the remote server. Optionally a UDP port

@@ -200,6 +200,21 @@ int rad_lockfd(int fd, int lock_len)
 }
 
 /*
+ *	Internal wrapper for locking, to minimize the number of ifdef's
+ *
+ *	Lock an fd, prefer lockf() over flock()
+ *	Nonblocking version.
+ */
+int rad_lockfd_nonblock(int fd, int lock_len)
+{
+#if defined(F_LOCK) && !defined(BSD)
+	return lockf(fd, F_TLOCK, lock_len);
+#else
+	return flock(fd, LOCK_EX | LOCK_NB);
+#endif
+}
+
+/*
  *	Internal wrapper for unlocking, to minimize the number of ifdef's
  *	in the source.
  *

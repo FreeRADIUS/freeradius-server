@@ -256,6 +256,7 @@ char		*strNcpy(char *dest, const char *src, int n);
 void		rad_lowercase(char *str);
 void		rad_rmspace(char *str);
 int		rad_lockfd(int fd, int lock_len);
+int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
 
 #ifdef ASCEND_BINARY

@@ -106,8 +106,8 @@ radclient: radclient.o ../lib/libradius.a
 radclient.o: radclient.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radclient.c
 
-radrelay: radrelay.o ../lib/libradius.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o radrelay radrelay.o $(LIBS)
+radrelay: radrelay.o util.o nas.o client.o log.o conffile.o files.o xlat.o ../lib/libradius.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o radrelay radrelay.o util.o nas.o client.o log.o conffile.o files.o xlat.o $(LIBS)
 
 radrelay.o: radrelay.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radrelay.c

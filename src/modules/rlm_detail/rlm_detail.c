@@ -25,6 +25,7 @@ static const char rcsid[] = "$Id$";
 #include	"libradius.h"
 
 #include	<sys/stat.h>
+#include	<sys/select.h>
 
 #include	<stdlib.h>
 #include	<string.h>
@@ -47,6 +48,9 @@ struct detail_instance {
 
 	/* last made directory */
 	char *last_made_directory;
+
+	/* if we want file locking */
+	int locking;
 };
 
 static CONF_PARSER module_config[] = {
@@ -56,6 +60,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(struct detail_instance,detailperm), NULL, "0600" },
 	{ "dirperm",       PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,dirperm),    NULL, "0755" },
+	{ "locking",       PW_TYPE_BOOLEAN,
+	  offsetof(struct detail_instance,locking),    NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -91,6 +97,11 @@ static int detail_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR	*pair;
 	int		ret = RLM_MODULE_OK;
 	struct stat	st;
+	int		locked;
+	int		lock_count;
+	struct timeval	tv;
+	REALM		*proxy_realm;
+	char		proxy_buffer[16];
 
 	struct detail_instance *inst = instance;
 
@@ -153,20 +164,63 @@ static int detail_accounting(void *instance, REQUEST *request)
 
 	/*
 	 *	Open & create the file, with the given permissions.
+	 *
+	 *	If we're not using locking, we'll just pass straight though
+	 *	the while loop.
+	 *	If we fail to aquire the filelock in 80 tries (approximately
+	 *	two seconds) we bail out.
 	 */
-	if ((outfd = open(buffer, O_WRONLY|O_APPEND|O_CREAT,
-			  inst->detailperm)) < 0) {
-		radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
-		       buffer, strerror(errno));
-		ret = RLM_MODULE_FAIL;
+	locked = 0;
+	lock_count = 0;
+	do {
+		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT,
+				  inst->detailperm)) < 0) {
+			radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
+			       buffer, strerror(errno));
+			ret = RLM_MODULE_FAIL;
+			break;
+		}
+		if (inst->locking) {
+			lseek(outfd, 0L, SEEK_SET);
+			if (rad_lockfd_nonblock(outfd, 0) < 0) {
+				close(outfd);
+				tv.tv_sec = 0;
+				tv.tv_usec = 25000;
+				select(0, NULL, NULL, NULL, &tv);
+				lock_count++;
+			} else {
+				DEBUG("rlm_detail: Aquired filelock, tried %d time(s)",
+				      lock_count + 1);
+				locked = 1;
+			}
+		}
+	} while (!locked && inst->locking && lock_count < 80);
 
-	} else if ((outfp = fdopen(outfd, "a")) == NULL) {
-		radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
-		       buffer, strerror(errno));
+	if (!locked && inst->locking && lock_count >= 80) {
+		radlog(L_ERR, "rlm_detail: Failed to aquire filelock for %s, giving up",
+		       buffer);
+		outfd = -1;
 		ret = RLM_MODULE_FAIL;
-		close(outfd);
-	} else {
+	}
+
+	outfp = NULL;
+	if (outfd > -1) {
+		if ((outfp = fdopen(outfd, "a")) == NULL) {
+			radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
+			       buffer, strerror(errno));
+			ret = RLM_MODULE_FAIL;
+			if (inst->locking) {
+				lseek(outfd, 0L, SEEK_SET);
+				rad_unlockfd(outfd, 0);
+				DEBUG("rlm_detail: Released filelock");
+			}
+			close(outfd);
+		}
+	}
+
+	if (outfd > -1 && outfp) {
 		/* Post a timestamp */
+		fseek(outfp, 0L, SEEK_END);
 		fputs(ctime_r(&request->timestamp, buffer), outfp);
 
 		/* Write each attribute/value to the log file */
@@ -183,12 +237,34 @@ static int detail_accounting(void *instance, REQUEST *request)
 		/*
 		 *	Add non-protocol attibutes.
 		 */
+		if ((pair = pairfind(request->config_items, PW_PROXY_TO_REALM))
+		    != NULL) {
+			proxy_realm = realm_find(pair->strvalue, TRUE);
+			if (proxy_realm) {
+				memset((char *) proxy_buffer, 0, 16);
+				ip_ntoa(proxy_buffer, proxy_realm->acct_ipaddr);
+				fprintf(outfp, "\tFreeradius-Proxied-To = %s\n",
+				        proxy_buffer);
+				DEBUG("rlm_detail: Freeradius-Proxied-To set to %s",
+				      proxy_buffer);
+			}
+		}
 		fprintf(outfp, "\tTimestamp = %ld\n", request->timestamp);
 		if (request->packet->verified == 2)
 			fputs("\tRequest-Authenticator = Verified\n", outfp);
 		else if (request->packet->verified == 1)
 			fputs("\tRequest-Authenticator = None\n", outfp);
+		pair = NULL;
+
 		fputs("\n", outfp);
+
+		if (inst->locking) {
+			fflush(outfp);
+			lseek(outfd, 0L, SEEK_SET);
+			rad_unlockfd(outfd, 0);
+			DEBUG("rlm_detail: Released filelock");
+		}
+	
 		fclose(outfp);
 	}
 

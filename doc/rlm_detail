@@ -28,6 +28,7 @@
 		   detailfile = %A/%{Client-IP-Address}/detail-%Y%m
 		   detailperm = 0600
 		   dirperm = 0755
+		   locking = no
 		}
 		...
 	}
@@ -47,6 +48,10 @@
 
   You can also use the dirperm option to specify the permissions of the
   directories created by the daemon when logging.
+
+  Setting locking to yes will enable filelocking of the detail file, this
+  is mostly useful in combination with the radrelay program included with
+  FreeRADIUS.
 
   Some of these are more useful then others, but all are available.  You
   can even have one detail file per Username.
