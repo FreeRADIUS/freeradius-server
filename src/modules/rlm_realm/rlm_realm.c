@@ -70,45 +70,43 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	  
 	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */
 
-	       if((realmname = strchr((const char *)username, inst->delim[0]))
-		  != (char *)NULL) {
-	            *realmname = '\0';
-	            realmname++;
-	       }
-	       break;
-	    
+		realmname = strchr(username, inst->delim[0]);		
+		if (realmname) {
+			*realmname = '\0';
+			realmname++;
+		}
+		break;
+		
 	case REALM_FORMAT_PREFIX:
-
-	  /* DEBUG2("  rlm_realm: Checking for prefix before \"%c\"", inst->delim[0]); */
-
-	       if((ptr=strchr((const char *)username, inst->delim[0])) 
-		  != (char *)NULL) {
-		     *ptr = '\0';
+		
+		/* DEBUG2("  rlm_realm: Checking for prefix before \"%c\"", inst->delim[0]); */
+		
+		ptr = strchr(username, inst->delim[0]);
+		if (ptr) {
+			*ptr = '\0';
 		     ptr++;
 		     realmname = username;
 		     username = ptr;	
-	       }
-	       break;
-
+		}
+		break;
+	       
 	default:
-	  
-	       realmname = (char *)NULL;
-	       break;
-
+		realmname = NULL;
+		break;
 	}
 
-	if(!realmname) 
-	       return NULL;
-
-	/* DEBUG2("  rlm_realm: username [ %s ] realmname [ %s ]", username, realmname ); */
-
+	/*
+	 *	Allow NULL realms.
+	 */
 	realm = realm_find(realmname);
-	if (realm == NULL)
-	  return NULL;
-
+	if (!realm) {
+		return NULL;
+	}
+	
 	/* make sure it's proxyable realm */
-	if (realm->notrealm)
-	  return NULL;
+	if (realm->notrealm) {
+		return NULL;
+	}
 
 	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
 	       username, realm->realm);
