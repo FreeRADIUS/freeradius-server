@@ -119,20 +119,14 @@
 
 4. IF IT DOESN'T WORK
 
-  You can edit the `checkrad' perl script and turn on debugging. Then
-  watch the debug file. The `radius.log' file also gives some hints.
-
   Note that you need to add the Simultaneous-Login parameter to the
   check item (first line), not the reply item.
 
-  A portmaster numbers the ports in the SNMP protocol from 1 to XX. The
-  perl script tries to find out which ones relates to S0 and calculates the
-  SNMP offset from that. However with a PM3 there is a "gap" in the S ports.
-  With a European ISDN-30 line, S30 and S31 do not exist. In the US, I think
-  that S23 might be skipped (try a `show sessions' on the portmaster). The
-  perl script catches the European situation, but needs to be adjusted for
-  the American situation. Perhaps this can be made reasonably automatic by
-  looking at what timezone we're in :)
+  You can edit the `checkrad' perl script and turn on debugging. Then
+  watch the debug file. The `radius.log' file also gives some hints.
+
+  You can also run the "checkrad" script manually, use the "-d"
+  switch to get debug output on standard output instead of in the log.
 
 5. CAVEATS
 

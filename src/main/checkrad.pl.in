@@ -12,7 +12,7 @@
 #
 # Version:	$Id$
 #
-#		livingston_snmp  1.1	Author: miquels@cistron.nl
+#		livingston_snmp  1.2	Author: miquels@cistron.nl
 #		cvx_snmp	 1.0	Author: miquels@cistron.nl
 #		portslave_finger 1.0	Author: miquels@cistron.nl
 #		max40xx_finger	 1.0	Author: costa@mdi.ca
@@ -49,14 +49,6 @@ $snmpget	= "@SNMPGET@";
 $snmpwalk	= "@SNMPWALK@";
 $rusers		= "@RUSERS@";
 $naspass	= "$raddbdir/naspasswd";
-
-#
-#	PM3:	$lv_offs is where the last S port is before one or two
-#		ports are skipped (22 or 29, for US or Europe)
-#		$lv_hole is the size of the hole (1 or 2, for US or Europe).
-#
-$lv_offs = 29;
-$lv_hole = 2;
 
 #
 #	USR-Hiper: $hiper_density is the reported port density (default 256
@@ -252,23 +244,35 @@ $lvm	 = '.iso.org.dod.internet.private.enterprises.307';
 sub livingston_snmp {
 
 	#
-	#	First find out the offset (ugly!!). Also, if the portno
-	#	is greater than 29, substract 2 (S30 and S31 don't exist).
-	#	You might need to change this to 23 and 1 for the USA.
+	#	We don't know at which ifIndex S0 is, and
+	#	there might be a hole at S23, or at S30+S31.
+	#	So we figure out dynamically which offset to use.
 	#
-	$_ = snmpget($ARGV[1], "public", "$lvm.3.2.1.1.1.2.5");
+	#	If the port < S23, probe ifIndex 5.
+	#	If the port < S30, probe IfIndex 23.
+	#	Otherwise probe ifIndex 32.
+	#
+	my $ifIndex;
+	my $test_index;
+	if ($ARGV[2] < 23) {
+		$test_index = 5;
+	} elsif ($ARGV[2] < 30) {
+		$test_index = 23;
+	} else {
+		$test_index = 32;
+	}
+	$_ = snmpget($ARGV[1], "public", "$lvm.3.2.1.1.1.2.$test_index");
 	/S([0-9]+)/;
 	$xport = $1 + 0;
-	$portidx = $ARGV[2] + (5 - $xport);
-	$portidx -= $lv_hole if ($ARGV[2] > $lv_offs);
-	chop;
-	print LOG "  using $xport offset for port / SNMPno translation\n"
+	$ifIndex = $ARGV[2] + ($test_index - $xport);
+
+	print LOG "  port S$ARGV[2] at SNMP ifIndex $ifIndex\n"
 		if ($debug);
 
 	#
 	#	Now get the session id from the terminal server.
 	#
-	$sessid = snmpget($ARGV[1], "public", "$lvm.3.2.1.1.1.5.$portidx");
+	$sessid = snmpget($ARGV[1], "public", "$lvm.3.2.1.1.1.5.$ifIndex");
 
 	print LOG "  session id at port S$ARGV[2]: $sessid\n" if ($debug);
 
@@ -996,17 +1000,30 @@ sub bay_finger {		# ARGV: 1=nas_ip, 2=nas_port, 3=login, 4=sessid
 
 ###############################################################################
 
+# Poor man's getopt (for -d)
+if ($ARGV[0] eq '-d') {
+	shift @ARGV;
+	$debug = "stdout";
+}
+
 if ($debug) {
-	open(LOG, ">>$debug");
-	$now = localtime;
-	print LOG "$now checkrad @ARGV\n";
+	if ($debug eq 'stdout') {
+		open(LOG, ">&STDOUT");
+	} elsif ($debug eq 'stderr') {
+		open(LOG, ">&STDERR");
+	} else {
+		open(LOG, ">>$debug");
+		$now = localtime;
+		print LOG "$now checkrad @ARGV\n";
+	}
 }
 
 if ($#ARGV != 4) {
 	print LOG "Usage: checkrad nas_type nas_ip " .
 			"nas_port login session_id\n" if ($debug);
 	print STDERR "Usage: checkrad nas_type nas_ip " .
-			"nas_port login session_id\n";
+			"nas_port login session_id\n"
+			unless ($debug =~ m/^(stdout|stderr)$/);
 	close LOG if ($debug);
 	exit(2);
 }
