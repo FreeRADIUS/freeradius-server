@@ -434,7 +434,9 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
 		value = variables[i].dflt;
-		if (base) {
+		if (variables[i].data) {
+			data = variables[i].data; /* prefer this. */
+		} else if (base) {
 			data = ((char *)base) + variables[i].offset;
 		} else {
 			data = variables[i].data;
