@@ -222,7 +222,8 @@ static int rad_check_password(REQUEST *request,
 				result = -1;
 			break;
 		default:
-			DEBUG2("  auth: Type %d", auth_type);
+			DEBUG2("  auth: %s",
+			       dict_valbyattr(PW_AUTHTYPE, auth_type)->name);
 			/*
 			 *	See if there is a module that handles
 			 *	this type, and turn the RLM_ return
