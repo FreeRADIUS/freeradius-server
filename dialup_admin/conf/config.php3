@@ -110,4 +110,5 @@ if (!isset($mappings) && $config[general_username_mappings_file] != ''){
 //Include missing.php3 if needed
 if (!function_exists('array_change_key_case'))
 	include_once('../lib/missing.php3');
+@header('Content-type: text/html; charset='.$config[general_charset].';');
 ?>
