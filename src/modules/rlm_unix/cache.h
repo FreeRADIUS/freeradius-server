@@ -20,7 +20,6 @@ struct mypasswd {
 	char    *pw_passwd;     /* user password */
 	uid_t   pw_uid;         /* user id */
 	gid_t   pw_gid;         /* group id */
-	int     loggedin;       /* number of logins */
 	char	*pw_gecos;	/* full name (used for class attr */
 	struct mypasswd *next;  /* next */
 };
