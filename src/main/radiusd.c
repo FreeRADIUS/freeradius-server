@@ -168,7 +168,7 @@ static CONF_PARSER server_config[] = {
   { "log_auth",           PW_TYPE_BOOLEAN,    &mainconfig.log_auth,   "no" },
   { "log_auth_badpass",   PW_TYPE_BOOLEAN,    &mainconfig.log_auth_badpass,  "no" },
   { "log_auth_goodpass",  PW_TYPE_BOOLEAN,    &mainconfig.log_auth_goodpass, "no" },
-  { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          RADIUS_PID },
+  { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          "${run_dir}/radiusd.pid"},
   { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
   { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
   { "user",           PW_TYPE_STRING_PTR, &uid_name,  NULL},
@@ -848,7 +848,6 @@ int main(int argc, char **argv)
 	 */
 	radius_pid = getpid();
 
-#ifdef RADIUS_PID
 	/*
 	 *	Only write the PID file if we're running as a daemon.
 	 *
@@ -867,7 +866,6 @@ int main(int argc, char **argv)
 			    pid_file, strerror(errno));
 		}
 	}
-#endif
 
 #if WITH_THREAD_POOL
 	/*
