@@ -1442,6 +1442,7 @@ int main(int argc, char *argv[])
 			 *	and let the thread pool take care of
 			 *	doing something with it.
 			 */
+#ifdef HAVE_PTHREAD_H
 			if (spawn_flag) {
 				if (!thread_pool_addrequest(request, fun)) {
 					/*
@@ -1451,9 +1452,9 @@ int main(int argc, char *argv[])
 					request_reject(request);
 					request->finished = TRUE;
 				}
-			} else {
+			} else
+#endif
 				rad_respond(request, fun);
-			}
 		} /* loop over listening sockets*/
 
 #ifdef WITH_SNMP
