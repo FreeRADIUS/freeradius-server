@@ -104,8 +104,6 @@ static void mypairmove(VALUE_PAIR **to, VALUE_PAIR **from, int attr)
 
 /*
  *     See if a VALUE_PAIR list contains Fall-Through = Yes
- *     
- *     FIXME: not functional at the moment
  */
 static int fallthrough(VALUE_PAIR *vp)
 {
@@ -215,7 +213,6 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR      *check_item;
 	VALUE_PAIR      *tmp;
 	PAIR_LIST	*pl;
-	int		usedefault = 1;
 	int             found = 0;
 	int             compare;
 #ifdef HAVE_REGEX_H
@@ -263,7 +260,7 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 	     *	AND the realm does NOT match the current entry,
 	     *	then skip to the next entry.
 	     */
-	    if ( ((strcmp(pl->name, "DEFAULT") != 0) && !(usedefault))
+	    if ( (strcmp(pl->name, "DEFAULT") != 0)
 		 && (strcmp(realmname, pl->name) != 0) )  {
 			continue;
 		}
@@ -278,7 +275,6 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 		DEBUG2("  attr_filter: Matched entry %s at line %d", pl->name, pl->lineno);
 
 		found = 1;
-		usedefault = fallthrough(pl->check);
 		
 		check_items = pl->check;
 
@@ -402,7 +398,9 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 		    }
 
 		}
-		
+		/* If we shouldn't fall through, break */
+		if(!fallthrough(pl->check))
+		    break;
 	}
 
 	pairfree(&request->reply->vps);
