@@ -241,6 +241,9 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			case PW_CRYPT_PASSWORD:
 			case PW_AUTH_TYPE:
 			case PW_AUTZ_TYPE:
+			case PW_ACCT_TYPE:
+			case PW_SESSION_TYPE:
+			case PW_STRIP_USER_NAME:
 				continue;
 				break;
 
