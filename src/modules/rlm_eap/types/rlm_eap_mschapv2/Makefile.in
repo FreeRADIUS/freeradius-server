@@ -1,5 +1,5 @@
 TARGET      = @targetname@
-SRCS        = rlm_eap_mschapv2.c eap_mschapv2.c
+SRCS        = rlm_eap_mschapv2.c
 RLM_CFLAGS  = $(INCLTDL) -I../..
 HEADERS     = eap_mschapv2.h
 RLM_INSTALL = 
