@@ -23,6 +23,7 @@ struct hashtable {
 	struct mypasswd **table;
 	char buffer[1024];
 	FILE *fp;
+	char *delimiter;
 };
 
 
@@ -38,7 +39,7 @@ void printpw(struct mypasswd *pw, int nfields){
 }
 #endif
 
-static int string_to_entry(const char* string, int nfields,
+static int string_to_entry(const char* string, int nfields, char delimiter,
 	struct mypasswd *passwd, int bufferlen)
 {
 	char *str;
@@ -58,7 +59,7 @@ static int string_to_entry(const char* string, int nfields,
 	str[len] = 0;
 	passwd->field[fn++] = str;
 	for(i=0; i < len; i++){
-		if (str[i] == ':') {
+		if (str[i] == delimiter) {
 			str[i] = 0;
 			passwd->field[fn++] = str + i + 1;
 			if (fn == nfields) break;
@@ -103,7 +104,7 @@ static void release_hash_table(struct hashtable * ht){
 }
 
 static struct hashtable * build_hash_table (const char * file, int nfields,
-	int keyfield, int islist, int tablesize, int ignorenis)
+	int keyfield, int islist, int tablesize, int ignorenis, char * delimiter)
 {
 #define passwd ((struct mypasswd *) ht->buffer)
 	char buffer[1024];
@@ -129,6 +130,8 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	ht->keyfield = keyfield;
 	ht->islist = islist;
 	ht->ignorenis = ignorenis;
+	if (delimiter && *delimiter) ht->delimiter = delimiter;
+	else ht->delimiter = ":";
 	if(!tablesize) return ht;
 	if(!(ht->fp = fopen(file,"r"))) return NULL;
 	memset(ht->buffer, 0, 1024);
@@ -149,7 +152,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 				ht->tablesize = 0;
 				return ht;
 			}
-			len = string_to_entry(buffer, nfields, hashentry, len);
+			len = string_to_entry(buffer, nfields, *ht->delimiter, hashentry, len);
 			if(!hashentry->field[keyfield] || *hashentry->field[keyfield] == '\0') {
 				free(hashentry);
 				continue;
@@ -212,7 +215,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 	}
 	if (!ht->fp) return NULL;
 	while (fgets(buffer, 1024,ht->fp)) {
-		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, passwd, 1024)) &&
+		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, *ht->delimiter, passwd, 1024)) &&
 			(!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
 			if(!ht->islist) {
 				if(!strcmp(passwd->field[ht->keyfield], name))
@@ -290,6 +293,7 @@ struct passwd_instance {
 	char *filename;
 	char *format;
 	char *authtype;
+	char * delimiter;
 	int allowmultiple;
 	int ignorenislike;
 	int hashsize;
@@ -307,6 +311,8 @@ static CONF_PARSER module_config[] = {
 	   offsetof(struct passwd_instance, format), NULL,  NULL },
 	{ "authtype",   PW_TYPE_STRING_PTR,
 	   offsetof(struct passwd_instance, authtype), NULL,  NULL },
+	{ "delimiter",   PW_TYPE_STRING_PTR,
+	   offsetof(struct passwd_instance, delimiter), NULL,  ":" },
 	{ "ignorenislike",   PW_TYPE_BOOLEAN,
 	   offsetof(struct passwd_instance, ignorenislike), NULL,  "yes" },
 	{ "allowmultiplekeys",   PW_TYPE_BOOLEAN,
@@ -350,7 +356,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_passwd: no field market as key in format: %s", inst->format);
 		return -1;
 	}
-	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike)) ){ 
+	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, inst->delimiter)) ){ 
 		radlog(L_ERR, "rlm_passwd: can't build hashtable from passwd file");
 		return -1;
 	}
@@ -360,7 +366,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		release_hash_table(inst->ht);
 		return -1;
 	}
-	if (!string_to_entry(inst->format, nfields, inst->pwdfmt , len)) {
+	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
 		radlog(L_ERR, "rlm_passwd: unable to convert format entry");
 		release_hash_table(inst->ht);
 		return -1;
@@ -422,6 +428,8 @@ static int passwd_authorize(void *instance, REQUEST *request)
 	struct mypasswd * pw;
 	int found = 0;
 	
+	if(!request || !request->packet ||!request->packet->vps)
+	 return RLM_MODULE_INVALID;
 	for (key = request->packet->vps;
 	 key && (key = pairfind (key, inst->keyattr));
 	  key = key->next ){
