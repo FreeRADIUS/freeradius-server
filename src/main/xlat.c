@@ -175,6 +175,9 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 			case 'u': /* User name */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING);
 				break;
+			case 'U': /* Stripped User name */
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME),PW_TYPE_STRING);
+				break;
 			case 'i': /* Calling station ID */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING);
 				break;
