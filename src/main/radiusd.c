@@ -279,7 +279,11 @@ static int reread_config(int reload)
 	/* First read radiusd.conf */
 	DEBUG2("reread_config:  reading radiusd.conf");
 	if (read_radius_conf_file() < 0) {
-		radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
+		if (debug_flag) {
+			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
+		} else {
+			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf: For more information, please read the tail end of %s/%s", radlog_dir, RADIUS_LOG);
+		}
 		return -1;
 	}
 
