@@ -29,8 +29,12 @@ static REALM *realm_proxy(REQUEST *request)
 	 *
 	 *	In that case, don't bother trying to proxy the request
 	 *	again.
+	 *
+	 *	Also, if there's no User-Name attribute, we can't
+	 *	proxy it, either.
 	 */
-	if (request->proxy != NULL) {
+	if ((request->proxy != NULL) ||
+	    (name == NULL)) {
 		return NULL;
 	}
 
