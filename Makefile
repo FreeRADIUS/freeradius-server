@@ -45,13 +45,13 @@ install:
 	$(INSTALL) -d -m 700	$(R)$(radacctdir)
 	$(INSTALL) -d -m 700	$(R)$(datadir)
 	$(INSTALL) -d -m 755	$(R)$(dictdir)
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	for i in 1 5 8; do \
 		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
 		for p in man/man$$i/*.$$i; do \
 			$(INSTALL) -m 644 $$p $(R)$(mandir)/man$$i; \
 		done \
 	done
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@echo "Installing dictionary files in $(R)$(dictdir)"; \
 	cd share; \
 	for i in dictionary*; do \
