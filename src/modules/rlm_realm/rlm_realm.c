@@ -59,15 +59,12 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 {
 	char namebuf[MAX_STRING_LEN];
 	char *username;
-	char *realmname = (char *)NULL;
+	char *realmname = NULL;
 	char *ptr;
 	VALUE_PAIR *vp;
 	REALM *realm;
 
         struct realm_config_t *inst = instance;
-
-	namebuf[0] = '\0';
-	username = namebuf;
 
 	/*
 	 *	If the request has a proxy entry, then it's a proxy
@@ -84,7 +81,12 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		return NULL;
 	}
 
-	strncpy(namebuf, request->username->strvalue, MAX_STRING_LEN-1);
+	/*
+	 *	We will be modifing this later, so we want our own copy
+	 *	of it.
+	 */
+	strNcpy(namebuf, request->username->strvalue, sizeof(namebuf));
+	username = namebuf;
 
 	switch(inst->format)
 	{
@@ -92,7 +94,6 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	case REALM_FORMAT_SUFFIX:
 	  
 	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */
-
 		realmname = strchr(username, inst->delim[0]);		
 		if (realmname) {
 			*realmname = '\0';
@@ -109,7 +110,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 			*ptr = '\0';
 		     ptr++;
 		     realmname = username;
-		     username = ptr;	
+		     username = ptr;
 		}
 		break;
 	       
@@ -126,14 +127,6 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		return NULL;
 	}
 	
-	/* make sure it's proxyable realm */
-	if (realm->notrealm) {
-		return NULL;
-	}
-
-	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
-	       username, realm->realm);
-
 	/*
 	 *	If we've been told to strip the realm off, then do so.
 	 */
@@ -143,24 +136,35 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		 *	doesn't exist.
 		 *
 		 */
-		vp = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
-		if (!vp) {
+		if (request->username->attribute != PW_STRIPPED_USER_NAME) {
 			vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
 			if (!vp) {
 				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
-			strcpy(vp->strvalue, username);
-			vp->length = strlen((char *)vp->strvalue);
 			pairadd(&request->packet->vps, vp);
-			request->username = vp;
+		} else {
+			vp = request->username;
 		}
+
+		strcpy(vp->strvalue, username);
+		vp->length = strlen((char *)vp->strvalue);
+		request->username = vp;
 	}
 
 	/*
 	 *	Don't add a 'Realm' attribute, proxy.c does
 	 *	that for us.
 	 */
+
+	/* make sure it's proxyable realm */
+	if ((realm->notrealm) ||
+	    (strcmp(realm->server, "LOCAL") == 0)) {
+		return NULL;
+	}
+
+	DEBUG2("  rlm_realm: Proxying request from user %s to realm %s",
+	       username, realm->realm);
 
 	/*
 	 *	Perhaps accounting proxying was turned off.
