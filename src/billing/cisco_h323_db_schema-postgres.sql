@@ -22,6 +22,7 @@
 CREATE TABLE StartVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	UserName		VARCHAR(64),
+	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
 	AcctStartTime		timestamp NOT NULL,
 	CalledStationId		VARCHAR(30),
@@ -39,6 +40,7 @@ create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
 CREATE TABLE StartTelephony (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	UserName		VARCHAR(64),
+	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
 	AcctStartTime		timestamp NOT NULL,
 	CalledStationId		VARCHAR(30),
@@ -60,6 +62,7 @@ create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress)
 CREATE TABLE StopVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	UserName		VARCHAR(32),
+	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
 	AcctSessionTime		BIGINT,
 	AcctInputOctets		BIGINT,
@@ -83,6 +86,7 @@ create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, h323
 CREATE TABLE StopTelephony (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	UserName		VARCHAR(32) DEFAULT '' NOT NULL,
+	RadiusServerName	VARCHAR(32),
 	NASIPAddress		INET NOT NULL,
 	AcctSessionTime		BIGINT,
 	AcctInputOctets		BIGINT,
