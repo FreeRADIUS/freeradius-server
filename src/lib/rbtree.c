@@ -405,6 +405,8 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 		if (tree->freeNode) tree->freeNode(Z->Data);
 		Z->Data = Y->Data;
 		Y->Data = NULL;
+	} else if (tree->freeNode) {
+		tree->freeNode(Z->Data);
 	}
 	if (Y->Color == Black)
 		DeleteFixup(tree, X);
