@@ -175,7 +175,7 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
-		    strchr("@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: ", *in) == NULL) {
+		    strchr("@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: =/", *in) == NULL) {
 			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
 			in++;
 			out += 3;
