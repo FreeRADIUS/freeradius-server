@@ -11,33 +11,35 @@ static const char rcsid[] =
 
 #include	"autoconf.h"
 
-#include	<sys/types.h>
 #include	<sys/socket.h>
 #include	<sys/file.h>
-#include	<netinet/in.h>
 
-#include	<stdio.h>
+#if HAVE_NETINET_IN_H
+#include	<netinet/in.h>
+#endif
+
 #include	<stdlib.h>
 #include	<string.h>
 #include	<netdb.h>
 #include	<fcntl.h>
 #include	<ctype.h>
+
+#if HAVE_UNISTD_H
 #include	<unistd.h>
-#include	<signal.h>
-#include	<errno.h>
-#if HAVE_GETOPT_H
-#  include	<getopt.h>
 #endif
+
+#include	<signal.h>
+
+#if HAVE_GETOPT_H
+#include	<getopt.h>
+#endif
+
 #if HAVE_SYS_SELECT_H
-#  include	<sys/select.h>
+#include	<sys/select.h>
 #endif
 
 #if HAVE_SYSLOG_H
 #include	<syslog.h>
-#endif
-
-#if HAVE_PTHREAD_H
-#include	<pthread.h>
 #endif
 
 #if HAVE_SYS_WAIT_H
