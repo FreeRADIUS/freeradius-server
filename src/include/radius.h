@@ -269,6 +269,7 @@
  *  Microsoft has vendor code 311.
  */
 #define PW_MSCHAP_RESPONSE	((311 << 16) | 1)
+#define PW_MSCHAP_ERROR		((311 << 16) | 2)
 #define PW_MSCHAP_CHALLENGE	((311 << 16) | 11)
 #define PW_MSCHAP2_RESPONSE	((311 << 16) | 25)
 #define PW_MSCHAP2_SUCCESS	((311 << 16) | 26)
