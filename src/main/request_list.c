@@ -1121,7 +1121,6 @@ static int refresh_request(REQUEST *request, void *data)
 			       client_name(request->packet->src_ipaddr),
 			       request->packet->src_port);
 			request_reject(request, REQUEST_FAIL_HOME_SERVER);
-			request->finished = TRUE;
 			return RL_WALK_CONTINUE;
 		}
 
@@ -1227,7 +1226,6 @@ static int refresh_request(REQUEST *request, void *data)
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 		request_reject(request, REQUEST_FAIL_HOME_SERVER2);
 		realm_disable(request->proxy->dst_ipaddr,request->proxy->dst_port);
-		request->finished = TRUE;
 		goto setup_timeout;
 	}
 
@@ -1319,10 +1317,8 @@ setup_timeout:
 			if (info->now > (request->timestamp + (mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count))) {
 				rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 				request_reject(request, REQUEST_FAIL_HOME_SERVER3);
-				
 				realm_disable(request->proxy->dst_ipaddr,
 					      request->proxy->dst_port);
-				request->finished = TRUE;
 				goto setup_timeout;
 			}
 			request->proxy_next_try = info->now + mainconfig.proxy_retry_delay;
