@@ -1,0 +1,100 @@
+#
+#	Bay Networks
+#	http://www.baynetworks.com/
+#
+#	From MegaZone <megazone@megazone.org>, as posted to the bay-isp list.
+#	Modified for libradius by Alan DeKok <aland@ox.org>
+#
+
+VENDOR		Bay-Networks	1584		# now Nortel
+
+BEGIN-VENDOR Bay-Networks
+#	Bay Networks Extensions
+
+ATTRIBUTE	Annex-Filter			28	string
+ATTRIBUTE	Annex-CLI-Command		29	string
+ATTRIBUTE	Annex-CLI-Filter		30	string
+ATTRIBUTE	Annex-Host-Restrict		31	string
+ATTRIBUTE	Annex-Host-Allow		32	string
+ATTRIBUTE	Annex-Product-Name		33	string
+ATTRIBUTE	Annex-SW-Version		34	string
+ATTRIBUTE	Annex-Local-IP-Address		35	ipaddr
+ATTRIBUTE	Annex-Callback-Portlist		36	integer
+ATTRIBUTE	Annex-Sec-Profile-Index		37	integer
+ATTRIBUTE	Annex-Tunnel-Authen-Type	38	integer
+ATTRIBUTE	Annex-Tunnel-Authen-Mode	39	integer
+ATTRIBUTE	Annex-Authen-Servers		40	string
+ATTRIBUTE	Annex-Acct-Servers		41	string
+ATTRIBUTE	Annex-User-Server-Location	42	integer
+ATTRIBUTE	Annex-Local-Username		43	string
+ATTRIBUTE	Annex-System-Disc-Reason	44	integer
+ATTRIBUTE	Annex-Modem-Disc-Reason		45	integer
+ATTRIBUTE	Annex-Disconnect-Reason		46	integer
+ATTRIBUTE	Annex-Addr-Resolution-Protocol	47	integer
+ATTRIBUTE	Annex-Addr-Resolution-Servers	48	string
+ATTRIBUTE	Annex-Domain-Name		49	string
+ATTRIBUTE	Annex-Transmit-Speed		50	integer
+ATTRIBUTE	Annex-Receive-Speed		51	integer
+ATTRIBUTE	Annex-Input-Filter		52	string
+ATTRIBUTE	Annex-Output-Filter		53	string
+ATTRIBUTE	Annex-Primary-DNS-Server	54	ipaddr
+ATTRIBUTE	Annex-Secondary-DNS-Server	55	ipaddr
+ATTRIBUTE	Annex-Primary-NBNS-Server	56	ipaddr
+ATTRIBUTE	Annex-Secondary-NBNS-Server	57	ipaddr
+ATTRIBUTE	Annex-Syslog-Tap		58	integer
+ATTRIBUTE	Annex-Keypress-Timeout		59	integer
+ATTRIBUTE	Annex-Unauthenticated-Time	60	integer
+ATTRIBUTE	Annex-Re-CHAP-Timeout		61	integer
+ATTRIBUTE	Annex-MRRU			62	integer
+ATTRIBUTE	Annex-EDO			63	string
+
+
+#	Annex Tunnel Authen Type Values
+
+VALUE	Annex-Tunnel-Authen-Type		none		0
+VALUE	Annex-Tunnel-Authen-Type		kmd5-128	1
+
+#	Annex Tunnel Authen Mode Values
+
+VALUE	Annex-Tunnel-Authen-Mode		none		0
+VALUE	Annex-Tunnel-Authen-Mode		prefix-suffix	1
+
+#	Annex User Server Location Values
+
+VALUE	Annex-User-Server-Location		local		1
+VALUE	Annex-User-Server-Location		remote		2
+
+#	Annex Addr Resolution Protocol Values
+
+VALUE	Annex-Addr-Resolution-Protocol		none		0
+VALUE	Annex-Addr-Resolution-Protocol		DHCP		1
+
+END-VENDOR Bay-Networks
+
+#
+#	Define additional Bay Networks specific values for the main
+#	RADIUS dictionary
+#
+#	Note that '0x0630' == 1584, which is the Vendor-ID for Bay Networks.
+#	Nice design, and probably the best way of adding vendor-specific
+#	VALUE extensions to the standard RADIUS attributes.
+#
+
+VALUE	Service-Type		Annex-Authorize-Only		0x06300001
+VALUE	Service-Type		Annex-Framed-Tunnel		0x06300002
+
+VALUE	Acct-Status-Type	Annex-User-Reject		0x06300001
+VALUE	Acct-Status-Type	Annex-Call-Reject		0x06300002
+VALUE	Acct-Status-Type	Annex-IPCP-Start		0x06300003
+VALUE	Acct-Status-Type	Annex-IPXCP-Start		0x06300004
+VALUE	Acct-Status-Type	Annex-ATCP-Start		0x06300005
+VALUE	Acct-Status-Type	Annex-Accounting-Restart	0x06300006
+VALUE	Acct-Status-Type	Annex-Accounting-Shutoff	0x06300007
+VALUE	Acct-Status-Type	Annex-Tunnel-Start		0x06300008
+VALUE	Acct-Status-Type	Annex-Tunnel-Stop		0x06300009
+VALUE	Acct-Status-Type	Annex-Tunnel-Reject		0x0630000a
+VALUE	Acct-Status-Type	Annex-Tunnel-Link-Start		0x0630000b
+VALUE	Acct-Status-Type	Annex-Tunnel-Link-Stop		0x0630000c
+VALUE	Acct-Status-Type	Annex-MP-Start			0x0630000d
+VALUE	Acct-Status-Type	Annex-MP-Stop			0x0630000e
+
