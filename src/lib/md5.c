@@ -50,6 +50,8 @@ documentation and/or software.
 #define S43 15
 #define S44 21
 
+void librad_md5_calc(unsigned char *output, unsigned char *input,
+		     unsigned int inputlen);
 static void MD5Transform PROTO_LIST ((UINT4 [4], unsigned char [64]));
 static void Encode PROTO_LIST
   ((unsigned char *, UINT4 *, unsigned int));
@@ -99,10 +101,8 @@ Rotation is separate from addition to prevent recomputation.
  (a) += (b); \
   }
 
-void librad_md5_calc(output, input, inlen)
-unsigned char *output;
-unsigned char *input;                                /* input block */
-unsigned int inlen;                     /* length of input block */
+void librad_md5_calc(unsigned char *output, unsigned char *input,
+		     unsigned int inlen)
 {
 	MD5_CTX	context;
 
