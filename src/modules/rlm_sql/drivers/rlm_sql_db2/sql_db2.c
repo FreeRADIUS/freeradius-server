@@ -56,9 +56,15 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 	SQLRETURN retval;
 	rlm_sql_db2_sock *sock;
 
-	/* allocatE socket */
-	sqlsocket->conn = (rlm_sql_db2_sock*)rad_malloc(sizeof(rlm_sql_db2_sock));
+	/* allocate socket */
+	if (!sqlsocket->conn) {
+		sqlsocket->conn = (rlm_sql_db2_sock*)rad_malloc(sizeof(rlm_sql_db2_sock));
+		if (!sqlsocket->conn) {
+			return -1;
+		}
+	}
 	sock = sqlsocket->conn;
+	memset(sock, 0, sizeof(*sock));
 
 	/* allocate handles */
 	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(sock->henv));

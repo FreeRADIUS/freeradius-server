@@ -159,9 +159,15 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		port = "";
 	}
 
-	sqlsocket->conn = (rlm_sql_postgres_sock *)rad_malloc(sizeof(rlm_sql_postgres_sock));
+	if (!sqlsocket->conn) {
+		sqlsocket->conn = (rlm_sql_postgres_sock *)rad_malloc(sizeof(rlm_sql_postgres_sock));
+		if (!sqlsocket->conn) {
+			return -1;
+		}
+	}
 
 	pg_sock = sqlsocket->conn;
+	memset(pg_sock, 0, sizeof(*pg_sock));
 
 	snprintf(connstring, sizeof(connstring),
 			"dbname=%s%s%s%s%s user=%s password=%s",

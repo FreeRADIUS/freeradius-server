@@ -42,9 +42,14 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_iodbc_sock *iodbc_sock;
 
-	sqlsocket->conn = (rlm_sql_iodbc_sock *)rad_malloc(sizeof(rlm_sql_iodbc_sock));
-
+	if (!sqlsocket->conn) {
+		sqlsocket->conn = (rlm_sql_iodbc_sock *)rad_malloc(sizeof(rlm_sql_iodbc_sock));
+		if (!sqlsocket->conn) {
+			return -1;
+		}
+	}
 	iodbc_sock = sqlsocket->conn;
+	memset(iodbc_sock, 0, sizeof(*iodbc_sock));
 
 	if(SQLAllocEnv(&iodbc_sock->env_handle) != SQL_SUCCESS) {
 		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s", 

@@ -102,8 +102,12 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	
 	rlm_sql_oracle_sock *oracle_sock;
 
-	sqlsocket->conn = (rlm_sql_oracle_sock *)rad_malloc(sizeof(rlm_sql_oracle_sock));
-
+	if (!sqlsocket->conn) {
+		sqlsocket->conn = (rlm_sql_oracle_sock *)rad_malloc(sizeof(rlm_sql_oracle_sock));
+		if (!sqlsocket->conn) {
+			return -1;
+		}
+	}
 	memset(sqlsocket->conn,0,sizeof(rlm_sql_oracle_sock));
 
 	oracle_sock = sqlsocket->conn;

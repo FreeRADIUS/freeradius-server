@@ -42,8 +42,14 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_unixodbc_sock *unixodbc_sock;
     long err_handle;
     
-    sqlsocket->conn = (rlm_sql_unixodbc_sock *)rad_malloc(sizeof(rlm_sql_unixodbc_sock));
-    unixodbc_sock = sqlsocket->conn;
+	if (!sqlsocket->conn) {
+		sqlsocket->conn = (rlm_sql_unixodbc_sock *)rad_malloc(sizeof(rlm_sql_unixodbc_sock));
+		if (!sqlsocket->conn) {
+			return -1;
+		}
+	}
+	unixodbc_sock = sqlsocket->conn;
+	memset(unixodbc_sock, 0, sizeof(*unixodbc_sock));
     
     /* 1. Allocate environment handle and register version */
     err_handle = SQLAllocHandle(SQL_HANDLE_ENV,SQL_NULL_HANDLE,&unixodbc_sock->env_handle);

@@ -52,8 +52,12 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock;
 
-	sqlsocket->conn = (rlm_sql_mysql_sock *)rad_malloc(sizeof(rlm_sql_mysql_sock));
-
+	if (!sqlsocket->conn) {
+		sqlsocket->conn = (rlm_sql_mysql_sock *)rad_malloc(sizeof(rlm_sql_mysql_sock));
+		if (!sqlsocket->conn) {
+			return -1;
+		}
+	}
 	mysql_sock = sqlsocket->conn;
 	memset(mysql_sock, 0, sizeof(*mysql_sock));
 
