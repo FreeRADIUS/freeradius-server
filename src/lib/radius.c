@@ -770,7 +770,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	struct sockaddr_in	saremote;
 	int			totallen;
 	socklen_t		salen;
-	u_short			len;
 	uint8_t			*attr;
 	int			count;
 	radius_packet_t		*hdr;
@@ -795,7 +794,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	memset(&saremote, 0, sizeof(saremote));
 #ifndef WITH_UDPFROMTO
 	packet->data_len = recvfrom(fd, data, sizeof(data),
-		0, (struct sockaddr *)&saremote, &salen);
+				    0, (struct sockaddr *)&saremote, &salen);
 	packet->dst_ipaddr = htonl(INADDR_ANY); /* i.e. unknown */
 #else
 	{
@@ -871,9 +870,8 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	i.e. We've received 128 bytes, and the packet header
 	 *	says it's 256 bytes long.
 	 */
+	totallen = (data[2] << 8) | data[3];
 	hdr = (radius_packet_t *)data;
-	memcpy(&len, hdr->length, sizeof(u_short));
-	totallen = ntohs(len);
 
 	/*
 	 *	Code of 0 is not understood.
@@ -1295,7 +1293,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			/*
 			 *	attrlen was checked to be >= 6, in rad_recv
 			 */
-
 			memcpy(&lvalue, ptr, 4);
 			vendorcode = ntohl(lvalue);
 
@@ -1369,7 +1366,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				 *	vendors having 4-octet attributes.
 				 */
 			} else if ((vendorcode == VENDORPEC_USR) &&
-				   ((ptr[4] == 0) && (ptr[5] == 0))) {
+				   ((ptr[4] == 0) && (ptr[5] == 0)) &&
+				   (attrlen >= 8)) {
 				DICT_ATTR *da;
 
 				da = dict_attrbyvalue((vendorcode << 16) |
