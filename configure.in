@@ -215,6 +215,16 @@ AC_ARG_WITH(dynamic-modules,
   esac ]
 )
 
+dnl extra argument: --with-threads
+WITH_THREADS=yes
+AC_ARG_WITH(threads,
+[  --with-threads          Use threads, if available.  (default=yes) ],
+[ case "$withval" in
+    *)
+	WITH_THREADS=$withval
+  esac ]
+)
+
 dnl See what include-style is used by the make program.
 dnl AC_MSG_CHECKING(include style for make)
 dnl echo "include /dev/null" > testmake.$$
@@ -267,8 +277,7 @@ AC_CHECK_HEADERS( \
 	sys/select.h \
 	dlfcn.h \
 	regex.h \
-	syslog.h \
-        pthread.h
+	syslog.h
 )
 
 AC_CHECK_FUNCS( \
@@ -295,10 +304,13 @@ AC_TRY_COMPILE([#include <sys/types.h>
 
 dnl Check for libpthread
 dnl If using pthreads...
-AC_CHECK_LIB(pthread, pthread_create,
-  PTHREADLIB="-lpthread"
-)
-AC_SUBST(PTHREADLIB)
+if [ "$WITH_THREADS" = "yes" ]; then 
+  AC_CHECK_HEADERS(pthread.h)
+  AC_CHECK_LIB(pthread, pthread_create,
+    PTHREADLIB="-lpthread"
+  )
+  AC_SUBST(PTHREADLIB)
+fi
 
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
