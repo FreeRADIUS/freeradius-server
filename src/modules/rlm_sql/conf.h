@@ -1,3 +1,5 @@
+#ifndef SQL_CONF_H
+#define SQL_CONF_H
 /***************************************************************************
 *  conf.h                             rlm_sql - FreeRADIUS SQL Module      *
 *                                                                          *
@@ -77,3 +79,5 @@ typedef struct sql_config {
 #define MAX_TABLE_LEN			20
 #define MAX_AUTH_QUERY_LEN		256
 #define AUTH_STRING_LEN			128
+
+#endif /* SQL_CONF_H */
