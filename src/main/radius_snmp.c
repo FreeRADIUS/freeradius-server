@@ -7,6 +7,9 @@
  * 02111-1307, USA.  
  */
 
+static const char rcsid[] =
+"$Id$";
+
 #include "autoconf.h"
 
 #ifdef WITH_SNMP
