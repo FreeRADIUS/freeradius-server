@@ -669,20 +669,36 @@ if test "x$WITH_SNMP" = "xyes"; then
   SNMP_CHECKS
 fi
 
+dnl Check the style of gethostbyaddr, in order of preference
+dnl GNU (_r eight args)
+dnl SYSV (_r six args)
+dnl BSD (three args, may not be thread safe)
+dnl Tru64 has BSD version, but it is thread safe
+dnl 	http://h30097.www3.hp.com/docs/base_doc/DOCUMENTATION/V51B_HTML/MAN/MAN3/1739____.HTM
+dnl We need #stdio.h to define NULL on FreeBSD (at least)
 gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
-AC_TRY_LINK([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ], [
+AC_TRY_LINK([
+#include <stdio.h>
+#include <netdb.h>
+], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ], [
 	AC_DEFINE(GETHOSTBYADDRRSTYLE, GNUSTYLE)
 	gethostbyaddrrstyle=GNU
 ])
 if test "x$gethostbyaddrrstyle" = "x"; then
-	AC_TRY_LINK([#include <netdb.h>], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL) ] , [
+	AC_TRY_LINK([
+#include <stdio.h>
+#include <netdb.h>
+], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL) ] , [
 		AC_DEFINE(GETHOSTBYADDRRSTYLE, SYSVSTYLE)
 		gethostbyaddrrstyle=SYSV
 	])
 fi
 if test "x$gethostbyaddrrstyle" = "x"; then
-	AC_TRY_LINK([#include <netdb.h>], [ gethostbyaddr(NULL, 0, 0)  ], [
+	AC_TRY_LINK([
+#include <stdio.h>
+#include <netdb.h>
+], [ gethostbyaddr(NULL, 0, 0)  ], [
 		AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
 		gethostbyaddrrstyle=BSD
 		AC_MSG_WARN([ ****** BSD Style gethostbyaddr might NOT be thread-safe! ****** ])
@@ -695,20 +711,36 @@ else
 	AC_MSG_RESULT([${gethostbyaddrrstyle}-style])
 fi
 
+dnl Check the style of gethostbyname, in order of preference
+dnl GNU (_r seven args)
+dnl SYSV (_r five args)
+dnl BSD (two args, may not be thread safe)
+dnl Tru64 has BSD version, but it _is_ thread safe
+dnl 	http://h30097.www3.hp.com/docs/base_doc/DOCUMENTATION/V51B_HTML/MAN/MAN3/1946____.HTM
+dnl We need #stdio.h to define NULL on FreeBSD (at least)
 gethostbynamerstyle=""
 AC_MSG_CHECKING([gethostbyname_r() syntax])
-AC_TRY_LINK([#include <netdb.h>], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) ], [
+AC_TRY_LINK([
+#include <stdio.h>
+#include <netdb.h>
+], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) ], [
 	AC_DEFINE(GETHOSTBYNAMERSTYLE, GNUSTYLE)
 	gethostbynamerstyle=GNU
 ])
 if test "x$gethostbynamerstyle" = "x"; then
-	AC_TRY_LINK([#include <netdb.h>], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL) ] , [
+	AC_TRY_LINK([
+#include <stdio.h>
+#include <netdb.h>
+], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL) ] , [
 		AC_DEFINE(GETHOSTBYNAMERSTYLE, SYSVSTYLE)
 		gethostbynamerstyle=SYSV
 	])
 fi
 if test "x$gethostbynamerstyle" = "x"; then
-	AC_TRY_LINK([#include <netdb.h>], [ gethostbyname(NULL)  ], [
+	AC_TRY_LINK([
+#include <stdio.h>
+#include <netdb.h>
+], [ gethostbyname(NULL)  ], [
 		AC_DEFINE(GETHOSTBYNAMERSTYLE, BSDSTYLE)
 		gethostbynamerstyle=BSD
 		AC_MSG_WARN([ ****** BSD Style gethostbyname might NOT be thread-safe! ****** ])
