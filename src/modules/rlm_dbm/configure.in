@@ -14,12 +14,16 @@ if test x$with_[]modname != xno; then
 		AC_SMART_CHECK_INCLUDE(gdbm/ndbm.h)
 		if test "x$ac_cv_header_gdbm_ndbm_h" = "xyes"; then
         	  SMART_CFLAGS="${SMART_CFLAGS} -DHAVE_GDBM_NDBM_H"
-        	fi
+        	else
+		  fail="$fail ndbm.h or gdbm/ndbm.h"
+		fi
+	else
+	  fail="$fail ndbm.h"
 	fi
 
 	AC_SMART_CHECK_LIB(ndbm, dbm_open)
 	if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
-		fail="$fail libdbm"
+		fail="$fail libndbm"
 	fi
 
 	targetname=modname
