@@ -149,7 +149,7 @@
 # First setup all accounts to be checked against the UNIX /etc/passwd.
 # (Unless a password was already given earlier in this file).
 #
-DEFAULT	Auth-Type := System
+DEFAULT	Auth-Type = System
 	Fall-Through = 1
 
 #
