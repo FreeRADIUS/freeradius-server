@@ -311,39 +311,55 @@ static REQUEST *do_rt_find(REQTREE **tree, REQUEST *reqobject) {
 static REQUEST *do_rt_next(REQUEST *reqobject) {
 	REQTREE *ptr, *next;
 	int i;
-	/* this should walk in the same order as walk() */
+	/* this should/must walk in the same order as walk() */
 
-	ptr = ((REQTREE *)reqobject->container);
-	assert(ptr != NULL);
+	if (reqobject != NULL) {
+		ptr = ((REQTREE *)reqobject->container);
+		assert(ptr != NULL);
 
-	if (ptr->parent != NULL) {
-		if ((ptr->parent->leftbranch == ptr) && 
-				(ptr->parent->rightbranch != NULL)) {
-			next = ptr->parent->rightbranch;
-			while (next->leftbranch != NULL) {
+		if (ptr->parent != NULL) {
+			if ((ptr->parent->leftbranch == ptr) && 
+					(ptr->parent->rightbranch != NULL)) {
+				next = ptr->parent->rightbranch;
+				while (next->leftbranch != NULL) {
+					next = next->leftbranch;
+				}
+				return(next->req);
+			} else {
+				return(ptr->parent->req);
+			}
+		} else {
+			i = (ptr->req->packet->id + 1) % 256;
+			while (reqtreehead[i] == NULL) {
+				i = (i + 1) % 256;
+			}
+			assert(reqtreehead[i] != NULL);
+
+			next = reqtreehead[i];
+			while (next->leftbranch) {
 				next = next->leftbranch;
 			}
-			return(next->req);
-		} else {
-			return(ptr->parent->req);
+
+			if (ptr == next) { /* we looped */
+				return(NULL);
+			} else {
+				return(next->req);
+			}
 		}
-	} else {
-		i = (ptr->req->packet->id + 1) % 256;
-		while (reqtreehead[i] == NULL) {
-			i = (i + 1) % 256;
+	} else {  /* we were passed a NULL, so we give back the first request we have. */
+		i = 0;
+		while ((reqtreehead[i] == NULL) && (i < 256)) {
+			i = i + 1;
 		}
-		assert(reqtreehead[i] != NULL);
+
+		if (reqtreehead[i] == NULL) 
+			return(NULL);
 
 		next = reqtreehead[i];
 		while (next->leftbranch) {
 			next = next->leftbranch;
 		}
-
-		if (ptr == next) { /* we looped */
-			return(NULL);
-		} else {
-			return(next->req);
-		}
+		return(next->req);
 	}
 
 	return(NULL); /* kill warnings */

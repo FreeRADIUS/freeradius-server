@@ -257,14 +257,15 @@ static int reread_config(int reload)
 	 *	in debugging mode.
 	 */
 	if (!debug_flag) {
+
 		/*
 		 *	Set group.
 		 */
-		if (gid_name) {
+		if (gid_name != NULL) {
 			struct group *gr;
 
 			gr = getgrnam(gid_name);
-			if (!gr) {
+			if (gr == NULL) {
 				radlog(L_ERR|L_CONS, "Cannot switch to Group %s: %s", gid_name, strerror(errno));
 				exit(1);
 			}
@@ -282,7 +283,7 @@ static int reread_config(int reload)
 			struct passwd *pw;
 
 			pw = getpwnam(uid_name);
-			if (!pw) {
+			if (pw == NULL) {
 				radlog(L_ERR|L_CONS, "Cannot switch to User %s: %s", uid_name, strerror(errno));
 				exit(1);
 			}
