@@ -682,7 +682,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	if (eap_msg == NULL) {
-		radlog(L_ERR, "rlm_eap: EAP-Message not found");
+		radlog(L_ERR, "rlm_eap: No EAP-Message, not doing EAP");
 		return EAP_NOOP;
 	}
 
@@ -727,7 +727,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	to match this EAP-Message to an ongoing conversation.
 	 */
 	if (eap_msg->length != EAP_START) {
-		DEBUG2("  rlm_eap: EAP Start not found");
+		DEBUG2("  rlm_eap: No EAP Start, assuming it's an on-going EAP conversation");
 
 		/*
 		 *	Add the 'EAP-Type' attribute to the request,
