@@ -169,7 +169,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	pg_sock->result=NULL;
 	pg_sock->conn=PQconnectdb(connstring);
 
-	if (PQstatus(sqlsocket->conn) == CONNECTION_BAD) {
+	if (PQstatus(pg_sock->conn) == CONNECTION_BAD) {
 		radlog(L_ERR, "rlm_sql_postgresql: Couldn't connect socket to PostgreSQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
 		radlog(L_ERR, "rlm_sql_postgresql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));
 		PQfinish(pg_sock->conn);
