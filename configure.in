@@ -378,6 +378,7 @@ dnl #############################################################
 
 AC_HEADER_DIRENT
 AC_HEADER_STDC
+AC_HEADER_TIME
 
 AC_CHECK_HEADERS( \
 	unistd.h \
@@ -394,7 +395,8 @@ AC_CHECK_HEADERS( \
 	syslog.h \
 	inttypes.h \
 	stdint.h \
-	arpa/inet.h
+	arpa/inet.h \
+	sys/time.h
 )
 
 dnl #############################################################
