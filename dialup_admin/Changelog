@@ -9,6 +9,7 @@ Ver 1.63:
   to connect to a specific sql host
 * Fix a typo in lib/sql/attrmap.php3
 * Add an entry in the FAQ about the Dialup-Access attribute
+* Add an entry in the FAQ about duplicate personal attributes in the user_admin page
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
