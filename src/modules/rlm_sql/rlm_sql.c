@@ -236,7 +236,7 @@ static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, con
 static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 
 	SQL_INST *inst;
-	lt_dlhandle *handle;
+	lt_dlhandle handle;
 	char *xlat_name;
 
 	inst = rad_malloc(sizeof(SQL_INST));
