@@ -121,6 +121,7 @@ typedef struct proxy_id_t {
 	 *	FIXME: Allocate more proxy sockets when this gets full.
 	 */
 	int		index;
+	uint32_t	mask;	/* of FD's we know about. */
 	uint32_t	id[1];	/* really id[256] */
 } proxy_id_t;
 
@@ -565,6 +566,7 @@ extern int proxy_new_listener(void);
 int rl_add_proxy(REQUEST *request)
 {
 	int		i, found, proxy;
+	uint32_t	mask;
 	proxy_id_t	myid, *entry;
 
 	myid.dst_ipaddr = request->proxy->dst_ipaddr;
@@ -586,8 +588,6 @@ int rl_add_proxy(REQUEST *request)
 	 */
 	entry = rbtree_finddata(proxy_id_tree, &myid);
 	if (!entry) {	/* allocate it */
-		uint32_t mask;
-
 		entry = rad_malloc(sizeof(*entry) + sizeof(entry->id) * 255);
 		
 		entry->dst_ipaddr = request->proxy->dst_ipaddr;
@@ -624,17 +624,25 @@ int rl_add_proxy(REQUEST *request)
 			}
 		}
 		rad_assert(mask != 0);
+
+		/*
+		 *	Set bits here indicate that the Fd is in use.
+		 */
+		entry->mask = mask;
+
 		mask = ~mask;
 
 		/*
 		 *	Set the bits which are unused (and therefore
-		 *	allocated).
+		 *	allocated).  The clear bits indicate that the Id
+		 *	for that FD is unused.
 		 */
 		for (i = 0; i < 256; i++) {
 			entry->id[i] = mask;
 		}
-	}
+	} /* else the entry already existed in the proxy Id tree */
 	
+ retry:
 	/*
 	 *	Try to find a free Id.
 	 */
@@ -655,9 +663,67 @@ int rl_add_proxy(REQUEST *request)
 	}
 	
 	/*
-	 *	No free Id.  Try to allocate a new proxy FD.
+	 *	No free Id, try to get a new FD.
 	 */
 	if (found < 0) {
+		/*
+		 *	First, see if there were FD's recently allocated,
+		 *	which we don't know about.
+		 */
+		mask = 0;
+		for (i = 0; i < 32; i++) {
+			if (proxy_fds[i] < 0) continue;
+
+			mask |= (1 << i);
+		}
+
+		/*
+		 *	There ARE more FD's than we know about.
+		 *	Update the masks for Id's, and re-try.
+		 */
+		if (entry->mask != mask) {
+			/*
+			 *	New mask always has more bits than
+			 *	the old one, but never fewer bits.
+			 */
+			rad_assert((entry->mask & mask) == entry->mask);
+
+			/*
+			 *	Clear the bits we already know about,
+			 *	and then or in those bits into the
+			 *	global mask.
+			 */
+			mask ^= entry->mask;
+			entry->mask |= mask;
+			mask = ~mask;
+			
+			/*
+			 *	Clear the bits in the Id's for the new
+			 *	FD's.
+			 */
+			for (i = 0; i < 256; i++) {
+				entry->id[i] &= mask;
+			}
+			
+			/*
+			 *	And try again to allocate an Id.
+			 */
+			goto retry;
+		} /* else no new Fd's were allocated. */
+
+		/*
+		 *	If all Fd's are allocated, die.
+		 */
+		if (~mask == 0) {
+			radlog(L_ERR|L_CONS, "ERROR: More than 8000 proxied requests outstanding for home server %08x:%d",
+			       ntohs(entry->dst_ipaddr), entry->dst_port);
+			return 0;
+		}
+		
+		/*
+		 *	Allocate a new proxy Fd.  This function adds it
+		 *	into the list of listeners.
+		 */
 		proxy = proxy_new_listener();
 		if (proxy < 0) {
 			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
@@ -679,24 +745,17 @@ int rl_add_proxy(REQUEST *request)
 				break;
 			}
 		}
+		rad_assert(found >= 0);	/* i.e. the mask had free bits. */
 
-		/*
-		 *	All 32 proxy FD's are allocated.  We can't
-		 *	use another one.  Fail.
-		 */
-		if (found < 0) {
-			radlog(L_ERR|L_CONS, "ERROR: More than 8000 proxied requests outstanding for home server %08x:%d",
-			       ntohs(entry->dst_ipaddr), entry->dst_port);
-			return 0;
-			       
-		}
-
+		mask = 1 << found;
+		entry->mask |= mask;
+		mask = ~mask;
 
 		/*
 		 *	Clear the relevant bits in the mask.
 		 */
 		for (i = 0; i < 256; i++) {
-			entry->id[i] &= ~(1 << found);
+			entry->id[i] &= mask;
 		}
 
 		/*
@@ -730,6 +789,9 @@ int rl_add_proxy(REQUEST *request)
 	 */
 	rad_assert(proxy != -1);
 
+	/*
+	 *	Mark the Id as allocated, for thei Fd.
+	 */
 	entry->id[found] |= (1 << proxy);
 	request->proxy->id = found;
 
