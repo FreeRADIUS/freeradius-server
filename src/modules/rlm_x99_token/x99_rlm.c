@@ -669,16 +669,27 @@ sync_response:
 	 * Tweak start,end for ewindow2_size logic.
 	 *
 	 * If user is in softfail, and their last response was correct,
-	 * start at the first possible response that will get them in.
-	 * Because we always start at the next response, the response
-	 * sequence 6,5,6 won't work (but 6,5,6,7 will).  That's OK;
-	 * we want to optimize for the 6,7 sequence.  The user can't
-	 * generate the 6,5,6 sequence from the token anyway.
+	 * start at that response.  We used to start at the NEXT
+	 * response (the one that will let them in), but the MS Windows
+	 * "incorrect password" dialog is confusing and users end up
+	 * reusing the same password twice; this has the effect that
+	 * ewindow2 doesn't work at all for them (they enter 1,1,2,2,3,3;
+	 * the 1,2 or 2,3 wouldn't work since the repeat would reset the
+	 * sequence).
+	 *
+	 * The response sequence 6,5,6 won't work (but 6,5,6,7 will).
+	 * That's OK; we want to optimize for the 6,7 sequence.  The user
+	 * can't generate the 6,5 sequence from the token anyway.
+	 *
+	 * If the user starts at the left edge of the window (0,1,2) they
+	 * have to enter three responses.  We don't accept the zeroeth
+	 * response as part of the sequence because we can't differentiate
+	 * between a correct entry of the zeroeth response (which stores
+	 * 0 as the last_auth_pos) and an incorrect entry (which "resets"
+	 * the last_auth_pos to 0).
 	 */
 	if (fc == FAIL_SOFT) {
 	    start = x99_get_last_auth_pos(inst->syncdir, username);
-	    if (start)
-		start++;
 	    end = inst->ewindow2_size;
 	}
 
@@ -720,7 +731,7 @@ sync_response:
 		 */
 		if (fc == FAIL_SOFT) {
 		    /* User must authenticate twice in a row, ... */
-		    if (start && (i == start) &&
+		    if (start && (i == start + 1) &&
 			/* ... within ewindow2_delay seconds. */
 			(time(NULL) - last_auth < inst->ewindow2_delay)) {
 			/* This is the 2nd of two consecutive responses. */
