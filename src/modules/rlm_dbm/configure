@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.6 
+# From configure.in Revision: 1.7 
 
 
 if test x$with_rlm_dbm != xno; then
@@ -1176,24 +1176,25 @@ fi
 	smart_try_dir=$rlm_dbm_lib_dir
 	
 
+sm_lib_safe=`echo "ndbm" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "dbm_open" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for dbm_open in -lndbm""... $ac_c" 1>&6
-echo "configure:1181: checking for dbm_open in -lndbm" >&5
+echo "configure:1183: checking for dbm_open in -lndbm" >&5
 
 smart_lib=
 smart_lib_dir=
-ac_safe=`echo "ndbm" | sed 'y%./+-%__p_%'`
 
   old_LIBS="$LIBS"
   LIBS="$LIBS -lndbm"
   cat > conftest.$ac_ext <<EOF
-#line 1190 "configure"
+#line 1191 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1197: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1198: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lndbm"
 else
@@ -1262,14 +1263,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lndbm"
 
       cat > conftest.$ac_ext <<EOF
-#line 1266 "configure"
+#line 1267 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1273: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1274: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lndbm"
 else
@@ -1286,7 +1287,7 @@ rm -f conftest*
 
         if test "x$smart_lib" != "x"; then
     echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_$ac_safe_dbm_open=yes"
+    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
     LIBS="$old_LIBS $smart_lib"
     SMART_LIBS="$SMART_LIBS $smart_lib"
   else
@@ -1296,24 +1297,25 @@ fi
 	if test "x$ac_cv_lib_ndbm_dbm_open" != "xyes"; then
 		
 
+sm_lib_safe=`echo "gdbm" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "dbm_open" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for dbm_open in -lgdbm""... $ac_c" 1>&6
-echo "configure:1301: checking for dbm_open in -lgdbm" >&5
+echo "configure:1304: checking for dbm_open in -lgdbm" >&5
 
 smart_lib=
 smart_lib_dir=
-ac_safe=`echo "gdbm" | sed 'y%./+-%__p_%'`
 
   old_LIBS="$LIBS"
   LIBS="$LIBS -lgdbm"
   cat > conftest.$ac_ext <<EOF
-#line 1310 "configure"
+#line 1312 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1317: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1319: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lgdbm"
 else
@@ -1382,14 +1384,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lgdbm"
 
       cat > conftest.$ac_ext <<EOF
-#line 1386 "configure"
+#line 1388 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1393: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1395: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lgdbm"
 else
@@ -1406,7 +1408,7 @@ rm -f conftest*
 
         if test "x$smart_lib" != "x"; then
     echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_$ac_safe_dbm_open=yes"
+    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
     LIBS="$old_LIBS $smart_lib"
     SMART_LIBS="$SMART_LIBS $smart_lib"
   else
@@ -1425,11 +1427,11 @@ else
 fi
 
 if test x"$fail" != x""; then
+	echo "configure: warning: FAILURE: rlm_dbm requires: $fail." 1>&2; 
 	if test x"${enable_strict_dependencies}" = x"yes"; then
 		{ echo "configure: error: set --without-rlm_dbm to disable it explicitly." 1>&2; exit 1; }
 	else
 		echo "configure: warning: silently not building rlm_dbm." 1>&2
-		echo "configure: warning: FAILURE: rlm_dbm requires: $fail." 1>&2; 
 		targetname=""
 	fi
 fi
