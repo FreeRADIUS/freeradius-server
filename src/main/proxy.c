@@ -169,19 +169,12 @@ int proxy_send(REQUEST *request)
 	char			*realmname;
 	int			replicating;
 
-#if 0	/* This looks bad to me... the timestamp is used below to figure the
-	 * next_try. The request needs to "hang around" until either the
-	 * other server sends a reply or the retry count has been exceeded.
-	 * Until then, it should not be eligible for the time-based cleanup.
-	 * --Pac. */
-	/*
-	 *	Ensure that the request hangs around for a little
-	 *	while longer.
-	 *
-	 *	FIXME: This is a hack... it should be more intelligent.
-	 */
-	request->timestamp += 5;
-#endif
+	/* 
+	 *	The timestamp is used below to figure the
+	 *	next_try. The request needs to "hang around" until
+	 *	either the other server sends a reply or the retry
+	 *	count has been exceeded.  Until then, it should not
+	 *	be eligible for the time-based cleanup.  --Pac. */
 
 	/* Look for proxy/replicate signs */
 	/* FIXME - What to do if multiple Proxy-To/Replicate-To attrs are
@@ -334,13 +327,10 @@ int proxy_send(REQUEST *request)
 	delaypair = pairfind(vps, PW_ACCT_DELAY_TIME);
 	request->proxy->timestamp = request->timestamp - (delaypair ? delaypair->lvalue : 0);
 
-#if 0	/* You can't do this - the pairs are needed for the retries! --Pac. */
 	/*
-	 *	We can free proxy->vps now, not needed anymore.
+	 *	Do NOT free proxy->vps, the pairs are needed for the
+	 *	retries! --Pac.
 	 */
-	pairfree(request->proxy->vps);
-	request->proxy->vps = NULL;
-#endif
 
 	return replicating?2:1;
 }
