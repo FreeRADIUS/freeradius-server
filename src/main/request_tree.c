@@ -12,6 +12,7 @@ static const char rcsid[] =
 #include	<assert.h>
 #include	<malloc.h>
 #include	"autoconf.h"
+#include	"request_storage.h"
 #include	"radiusd.h"
 
 #define forestsize 256
@@ -25,8 +26,6 @@ typedef struct REQTREE {
 
 static REQTREE *reqtreehead[256];
 static int numberrequests;
-
-typedef int (*RL_WALK_FUNC)(REQUEST *, void *);
 
 static void do_rt_add(REQTREE **, REQUEST *);
 static void do_rt_delete(REQUEST *);
@@ -54,6 +53,10 @@ int rt_init() {
 
 REQUEST *rt_find(REQUEST *item) {
 	return(do_rt_find(&(reqtreehead[item->packet->id%forestsize]), item));
+}
+
+REQUEST *rt_next(REQUEST *item) {
+	return(do_rt_next(item));
 }
 
 void rt_add(REQUEST *item) {
@@ -148,6 +151,9 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 
 	assert(self->magic == NODE_MAGIC);
 	assert((self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
+	assert((self->parent == NULL) || (self->parent->leftbranch == self) || (self->parent->rightbranch == self));
+	assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
+	assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
 
 	REQCOMPARE( cmp = -1, cmp = 1, cmp = 0 );
 
@@ -170,7 +176,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 			self->leftbranch->leftbranch = NULL;
 			self->leftbranch->rightbranch = NULL;
 			self->leftbranch->magic = NODE_MAGIC;
-			(REQTREE *)reqobject->container = self;
+			(REQTREE *)reqobject->container = self->leftbranch;
 			numberrequests += 1;
 		} else {
 			assert(self->leftbranch->magic == NODE_MAGIC);
@@ -186,7 +192,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 			self->rightbranch->leftbranch = NULL;
 			self->rightbranch->rightbranch = NULL;
 			self->rightbranch->magic = NODE_MAGIC;
-			(REQTREE *)reqobject->container = self;
+			(REQTREE *)reqobject->container = self->rightbranch;
 			numberrequests += 1;
 		} else {
 			assert(self->rightbranch->magic == NODE_MAGIC);
@@ -305,6 +311,7 @@ static REQUEST *do_rt_find(REQTREE **tree, REQUEST *reqobject) {
 static REQUEST *do_rt_next(REQUEST *reqobject) {
 	REQTREE *ptr, *next;
 	int i;
+	/* this should walk in the same order as walk() */
 
 	ptr = ((REQTREE *)reqobject->container);
 	assert(ptr != NULL);
@@ -313,7 +320,7 @@ static REQUEST *do_rt_next(REQUEST *reqobject) {
 		if ((ptr->parent->leftbranch == ptr) && 
 				(ptr->parent->rightbranch != NULL)) {
 			next = ptr->parent->rightbranch;
-			while (next->leftbranch) {
+			while (next->leftbranch != NULL) {
 				next = next->leftbranch;
 			}
 			return(next->req);
@@ -322,8 +329,10 @@ static REQUEST *do_rt_next(REQUEST *reqobject) {
 		}
 	} else {
 		i = (ptr->req->packet->id + 1) % 256;
-		while (reqtreehead[i] == NULL)
-			i++;
+		while (reqtreehead[i] == NULL) {
+			i = (i + 1) % 256;
+		}
+		assert(reqtreehead[i] != NULL);
 
 		next = reqtreehead[i];
 		while (next->leftbranch) {
