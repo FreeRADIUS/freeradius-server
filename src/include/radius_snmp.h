@@ -92,7 +92,7 @@ extern rad_snmp_t	rad_snmp;
                                      if (_fd == authfd) { \
                                        rad_snmp.auth._x++; \
 				     } else { if (_fd == acctfd) \
-                                       rad_snmp.acct._x++ } } \
+                                       rad_snmp.acct._x++; } } \
 
 
 #else
