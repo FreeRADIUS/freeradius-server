@@ -5,6 +5,7 @@
 
 SHELL=/bin/bash
 DH_COMPAT=3
+export DH_COMPAT
 
 package = freeradius
 debiandir = $(shell pwd)/debian
