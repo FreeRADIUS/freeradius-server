@@ -586,7 +586,6 @@ int eap_start(REQUEST *request)
 
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	if (eap_msg == NULL) {
-		radlog(L_ERR, "rlm_eap: EAP-Message not found");
 		return EAP_NOOP;
 	}
 
