@@ -892,7 +892,7 @@ authorize {
 	files
 #	mschap
 
-# The ldap module will set Auth-Type to Ldap if it has not already been set
+# The ldap module will set Auth-Type to LDAP if it has not already been set
 #	ldap
 }
 
@@ -910,7 +910,7 @@ authorize {
 #
 # So you should do the following:
 # Set Auth-Type to an appropriate value in the authorize section. For example chap
-# will set Auth-Type to CHAP, ldap to Ldap etc
+# will set Auth-Type to CHAP, ldap to LDAP etc
 # After that create corresponding authtype sections in the authenticate section below
 # and call the appropriate modules (chap for CHAP etc)
 authenticate {
@@ -918,7 +918,7 @@ authenticate {
 	unix
 
 # Uncomment it if you want to use ldap for authentication
-#	authtype Ldap {
+#	authtype LDAP {
 #		ldap
 #	}
 #	mschap
