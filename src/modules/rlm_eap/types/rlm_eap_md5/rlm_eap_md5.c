@@ -42,45 +42,58 @@ static int md5_attach(CONF_SECTION *conf, void **arg)
  * len = header + type + md5_typedata
  * md5_typedata = value_size + value
  */
-static int md5_initiate(void *type_arg, EAP_DS *eap_ds)
+static int md5_initiate(void *type_arg, EAP_HANDLER *handler)
 {
 	MD5_PACKET	*reply;
 
-	reply = md5_initial_request(eap_ds);
+	reply = eapmd5_initiate(handler->eap_ds);
 	if (reply == NULL)
 		return 0;
 
-	compose_md5(eap_ds, reply);
+	eapmd5_compose(handler->eap_ds, reply);
 
-	md5_free(&reply);
+	eapmd5_free(&reply);
 	return 1;
 }
 
-static int md5_authenticate(void *arg, EAP_DS *eap_ds, void *eap_arg)
+static int md5_authenticate(void *arg, EAP_HANDLER *handler)
 {
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;
 	md5_packet_t	*request;
 	char*		username;
+	VALUE_PAIR	*password;
 	EAP_DS		*temp;
 
-	if (!(packet = extract_md5(eap_ds)))
+	if (!(packet = eapmd5_extract(handler->eap_ds)))
 		return 0;
 
-	username = (char *)eap_ds->username->strvalue;
+	username = (char *)handler->username->strvalue;
 
-	temp = (EAP_DS *)eap_arg;
-	request = temp?(md5_packet_t *)(temp->request->typedata):NULL;
-	reply = process_md5(packet, eap_ds->request->id, eap_ds->username, eap_ds->password, request);
-	if (!reply) {
-		md5_free(&packet);
+	/*
+	 * Password is never sent over the wire.
+	 * Always get the configured password, for each user.
+	 */
+	password = paircopy2(handler->configured, PW_PASSWORD);
+	if (password == NULL) {
+		radlog(L_INFO, "rlm_eap_md5: No password configured for this user");
+		eapmd5_free(&packet);
 		return 0;
 	}
 
-	compose_md5(eap_ds, reply);
+	temp = (EAP_DS *)handler->prev_eapds;
+	request = temp?(md5_packet_t *)(temp->request->type.data):NULL;
+	reply = eapmd5_process(packet, handler->eap_ds->request->id,
+			 handler->username, password, request);
+	if (!reply) {
+		eapmd5_free(&packet);
+		return 0;
+	}
 
-	md5_free(&reply);
-	md5_free(&packet);
+	eapmd5_compose(handler->eap_ds, reply);
+
+	eapmd5_free(&reply);
+	eapmd5_free(&packet);
 	return 1;
 }
 
