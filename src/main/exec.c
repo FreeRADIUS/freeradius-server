@@ -44,7 +44,7 @@ char *radius_xlate(const char *str, VALUE_PAIR *request, VALUE_PAIR *reply)
 {
 	static char buf[MAX_STRING_LEN * 2];
 	int n, i = 0, c;
-	char *p;
+	const char *p;
 	VALUE_PAIR *tmp;
 
 	for (p = str; *p; p++) {
