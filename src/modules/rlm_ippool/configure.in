@@ -56,10 +56,17 @@ if test x"$fail" != x""; then
 	fi
 fi
 
+if test x"$targetname" != x""; then
+	ippool_utils="rlm_ippool_tool"
+	ippool_install="rlm_ippool_install"
+fi
+
 ippool_ldflags=$SMART_LIBS
 ippool_cflags=$SMART_CFLAGS
 AC_SUBST(ippool_ldflags)
 AC_SUBST(ippool_cflags)
 AC_SUBST(targetname)
+AC_SUBST(ippool_utils)
+AC_SUBST(ippool_install)
 AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(Makefile)
