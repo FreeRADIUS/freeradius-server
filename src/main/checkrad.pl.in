@@ -10,7 +10,7 @@
 #
 # Returns:	0 = no duplicate, 1 = duplicate, >1 = error.
 #
-# Version:	@(#)checkrad.pl  1.18  25-Jul-1999  miquels@cistron.nl
+# Version:	$Id$
 #
 #		livingston_snmp  1.1	Author: miquels@cistron.nl
 #		portslave_finger 1.0	Author: miquels@cistron.nl
@@ -674,6 +674,10 @@ sub usrhiper_snmp {
 	my ($login);
 
 	$login = snmpget($ARGV[1], "public", "$usrm.4.10.1.1.18.$oidext");
+	if ($login =~ /\"/) {
+		$login =~ /^.*\"([^"]+)\"/;
+		$login = $1;
+	}
 
 	print LOG "  user at port S$ARGV[2]: $login\n" if ($debug);
 
