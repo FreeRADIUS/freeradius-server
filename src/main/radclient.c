@@ -76,10 +76,27 @@ static int radius_id[256];
 static int last_used_id = 0;
 
 static rbtree_t *filename_tree = NULL;
-static rbtree_t *radclient_tree = NULL;
 static rbtree_t *request_tree = NULL;
 
 static int sleep_time = -1;
+
+typedef struct radclient_t {
+	struct		radclient_t *prev;
+	struct		radclient_t *next;
+
+	const char	*filename;
+	char		password[256];
+	time_t		timestamp;
+	RADIUS_PACKET	*request;
+	RADIUS_PACKET	*reply;
+	int		resend;
+	int		tries;
+	int		done;
+} radclient_t;
+
+static radclient_t *radclient_head = NULL;
+static radclient_t *radclient_tail = NULL;
+
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
@@ -109,18 +126,6 @@ static void usage(void)
 	exit(1);
 }
 
-
-typedef struct radclient_t {
-	const char	*filename;
-	char		password[256];
-	time_t		timestamp;
-	RADIUS_PACKET	*request;
-	RADIUS_PACKET	*reply;
-	int		resend;
-	int		tries;
-} radclient_t;
-
-
 /*
  *	Free a radclient struct
  */
@@ -132,6 +137,22 @@ static void radclient_free(void *data)
 
 	if (radclient->request) rad_free(&radclient->request);
 	if (radclient->reply) rad_free(&radclient->reply);
+
+	if (!radclient->prev) {
+		assert(radclient_head = radclient);
+		radclient_head = radclient->next;
+	} else {
+		assert(radclient_head != radclient);
+		radclient->prev->next = radclient->next;
+	}
+
+	if (!radclient->next) {
+		assert(radclient_tail = radclient);
+		radclient_tail = radclient->prev;
+	} else {
+		assert(radclient_tail != radclient);
+		radclient->next->prev = radclient->prev;
+	}
 
 	free(radclient);
 }
@@ -192,7 +213,6 @@ static radclient_t *radclient_init(const char *filename)
 		radclient_free(radclient);
 		return NULL;
 	}
-
 
 	/*
 	 *	Keep a copy of the the User-Password attribute.
@@ -258,10 +278,8 @@ static radclient_t *radclient_init(const char *filename)
 /*
  *	Sanity check each argument.
  */
-static int radclient_walk(void *data)
+static int radclient_sane(radclient_t *radclient)
 {
-	radclient_t *radclient = (radclient_t *) data;
-
 	if (radclient->request->dst_port == 0) {
 		radclient->request->dst_port = server_port;
 	}
@@ -303,23 +321,18 @@ static int filename_walk(void *data)
 		exit(1);
 	}
 	
-	/*
-	 *	For now, don't deal with duplicate
-	 *	filenames.
-	 */
-	rbtree_insert(radclient_tree, radclient);
+	if (!radclient_head) {
+		assert(radclient_tail == NULL);
+		radclient_head = radclient;
+		radclient_tail = radclient;
+	} else {
+		assert(radclient_tail->next == NULL);
+		radclient_tail->next = radclient;
+		radclient->prev = radclient_tail;
+		radclient_tail = radclient;
+	}
 
 	return 0;
-}
-
-
-/*
- *	For request handline.
- */
-static int radclient_cmp(const void *one, const void *two)
-{
-	return strcmp(((const radclient_t *) one)->filename,
-		      ((const radclient_t *) two)->filename);
 }
 
 
@@ -393,11 +406,9 @@ static int send_one_packet(radclient_t *radclient)
 	/*
 	 *	Sent this packet as many times as requested.
 	 *	ignore it.
-	 *
-	 *	FIXME: Mark it to be deleted, so we don't do
-	 *	too much work (not that it matters...)
 	 */
 	if (radclient->resend > resend_count) {
+		radclient->done = 1;
 		return 0;
 	}
 
@@ -626,10 +637,8 @@ static int recv_one_packet(int wait_time)
 /*
  *	Walk over the tree, sending packets.
  */
-static int radsend_walk(void *data)
+static int radclient_send(radclient_t *radclient)
 {
-	radclient_t *radclient = (radclient_t *) data;
-
 	/*
 	 *	Send the current packet.
 	 */
@@ -673,18 +682,13 @@ int main(int argc, char **argv)
 	FILE *fp;
 	int do_summary = 0;
 	int id;
+	radclient_t	*this;
 
 	id = ((int)getpid() & 0xff);
 	librad_debug = 0;
 
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);
 	if (!filename_tree) {
-		fprintf(stderr, "radclient: Out of memory\n");
-		exit(1);
-	}
-
-	radclient_tree = rbtree_create(radclient_cmp, radclient_free, 0);
-	if (!radclient_tree) {
 		fprintf(stderr, "radclient: Out of memory\n");
 		exit(1);
 	}
@@ -857,10 +861,21 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	Walk over the tree, sanity checking everything.
+	 *	No packets read.  Die.
 	 */
-	if (rbtree_walk(radclient_tree, radclient_walk, InOrder) != 0) {
+	if (!radclient_head) {
+		fprintf(stderr, "radclient: Nothing to send.\n");
 		exit(1);
+	}
+
+	/*
+	 *	Walk over the list of packets, sanity checking
+	 *	everything.
+	 */
+	for (this = radclient_head; this != NULL; this = this->next) {
+		if (radclient_sane(this) != 0) {
+			exit(1);
+		}
 	}
 
 	last_used_id = getpid() & 0xff;
@@ -875,22 +890,44 @@ int main(int argc, char **argv)
 	 *	loop.
 	 */
 	do {
+		radclient_t *next;
+
 		done = 1;
 		sleep_time = -1;
-		rbtree_walk(radclient_tree, radsend_walk, InOrder);
 
+		/*
+		 *	Walk over the packets, sending them.
+		 */
+		for (this = radclient_head; this != NULL; this = next) {
+			next = this->next;
+
+			radclient_send(this);
+			if (this->done) {
+				radclient_free(this);
+			}
+		}
+
+		/*
+		 *	Still have outstanding requests.
+		 */
 		if (rbtree_num_elements(request_tree) > 0) {
 			done = 0;
 		}
 
 		/*
 		 *	Nothing to do until we receive a request, so
-		 *	sleep until then.
+		 *	sleep until then.  Once we receive one packet,
+		 *	we go back, and walk through the whole list again,
+		 *	sending more packets (if necessary), and updating
+		 *	the sleep time.
 		 */
 		if (!done && (sleep_time > 0)) {
 			recv_one_packet(sleep_time);
 		}
 	} while (!done);
+
+	rbtree_free(filename_tree);
+	rbtree_free(request_tree);
 
 	if (do_summary) {
 		printf("\n\t   Total approved auths:  %d\n", totalapp);
