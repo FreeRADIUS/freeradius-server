@@ -1,55 +1,37 @@
-# You can use this to rotate the /var/log/radius/* files, simply copy
-# it to /etc/logrotate.d/radiusd
-
-# Last part should reload the server
-
-/var/log/radius/radacct/*/detail {
-	monthly
-	rotate 4
-	create
-	missingok
-	compress
-}
-
-/var/log/radius/checkrad.log {
-	monthly
-	rotate 4
-	create
-	missingok
-	compress
-}
+# Detail files should not be rotated here. Instead in radiusd.conf set
+#     detailfile = ${radacctdir}/%{Client-IP-Address}/%Y%m%d-detail
+# Which will cause the detail files to be automatically created every day.
 
 /var/log/radius/radius.log {
-	monthly
-	rotate 4
-	create
-	missingok
-	compress
+    compress
+    dateext
+    maxage 365
+    rotate 99
+    size=+1024k
+    notifempty
+    missingok
+    create 640 root root
 }
 
 /var/log/radius/radwatch.log {
-	monthly
-	rotate 4
-	create
-	missingok
-	compress
-}
-
-/var/log/radius/radutmp {
-	monthly
-	rotate 4
-	create
-	compress
-	missingok
+    compress
+    dateext
+    maxage 365
+    rotate 99
+    size=+1024k
+    notifempty
+    missingok
+    copytruncate
 }
 
 /var/log/radius/radwtmp {
-	monthly
-	rotate 4
-	create
-	compress
-	missingok
-	postrotate
-		/etc/rc.d/init.d/radiusd condrestart
-	endscript
+    compress
+    dateext
+    maxage 365
+    rotate 99
+    size=+2048k
+    notifempty
+    missingok
+    create 640 root root
 }
+
