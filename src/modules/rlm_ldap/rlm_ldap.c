@@ -492,13 +492,13 @@ read_mappings(ldap_instance* inst)
 		}
 
 		if (token_count == 3) {
-			operator = T_OP_INVALID; /* use defaults */
+			operator = T_INVALID; /* use defaults */
 		} else {
 			char *ptr;
 			
 			ptr = opstring;
 			operator = gettoken(&ptr, buf, sizeof(buf));
-			if ((token < T_OP_ADD) || (token > T_OP_CMP_EQ)) {
+			if ((operator < T_OP_ADD) || (operator > T_OP_CMP_EQ)) {
 				radlog(L_ERR, "rlm_ldap: file %s: skipping line %i: unknown or invalid operator %s",
 				       filename, linenumber, opstring);
 				free(pair->attr);
@@ -1843,7 +1843,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 							token = T_OP_EQ;
 						}
 
-						if (element->operator != T_OP_INVALID) {
+						if (element->operator != T_INVALID) {
 							token = element->operator;
 						}
 					} else {
