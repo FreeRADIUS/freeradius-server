@@ -35,6 +35,40 @@
 
 /*************************************************************************
  *
+ *      Internal Function: conn_cleared_and_errorfree
+ *
+ *	Purpose: makes sure that there was no error in processing the
+ *		last request
+ *
+ *************************************************************************/
+static int conn_cleared_and_errorfree(rlm_sql_postgres_sock *pg_sock) {
+	ExecStatusType status=0;
+
+	if (pg_sock->result) {
+	/* Get last result, if it has not been done yet */
+		pg_sock->result=PQgetResult(pg_sock->conn);
+	}
+
+	while (pg_sock->result) 
+		status=PQresultStatus(pg_sock->result);
+	/*
+		radlog(L_ERR, "rlm_postgresql Status: %s", PQresStatus(status));
+	*/
+		
+		if (status & (PGRES_BAD_RESPONSE | PGRES_NONFATAL_ERROR | 
+			      PGRES_FATAL_ERROR ))
+			return 0;
+		if(pg_sock->result)
+			PQclear(pg_sock->result);
+		pg_sock->result=PQgetResult(pg_sock->conn);
+
+	return 1;
+}
+
+
+
+/*************************************************************************
+ *
  *	Function: sql_create_socket
  *
  *	Purpose: Establish connection to the db
@@ -52,7 +86,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	snprintf(connstring, sizeof(connstring),"dbname=%s host=%s user=%s password=%s", config->sql_db, config->sql_server, config->sql_login, config->sql_password);
 
 	pg_sock->row=NULL;
-	pg_sock->result=NULL;
+	pg_sock->result=NULL;	 
 	pg_sock->conn=PQconnectdb(connstring);
 
 	if (PQstatus(sqlsocket->conn) == CONNECTION_BAD) {
@@ -61,6 +95,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		PQfinish(pg_sock->conn);
 		return -1;
 	}
+
 
 	PQsetnonblocking(pg_sock->conn, 1);
 	return 0;
@@ -97,15 +132,19 @@ int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 
 	if (config->sqltrace)
-		radlog(L_DBG,"query:  %s", querystr);
+		radlog(L_DBG,"query (only sucessful dispatching is checked):\n"
+			      "	%s", querystr);
 
 	if (pg_sock->conn == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return -1;
 	}
 
-	while (pg_sock->result!=NULL) 
-		pg_sock->result=PQgetResult(pg_sock->conn);
+	if (!conn_cleared_and_errorfree(pg_sock)) {
+		radlog(L_ERR, "PostgreSQL Query failed Error: %s", 
+					PQerrorMessage(pg_sock->conn));
+		return  -1;
+	}
 
 	return PQsendQuery(pg_sock->conn, querystr);
 }
@@ -130,9 +169,15 @@ int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 		return -1;
 	}
 
-	while (pg_sock->result!=NULL) 
-		pg_sock->result=PQgetResult(pg_sock->conn);
-		PQsendQuery(pg_sock->conn, querystr);
+	if (! conn_cleared_and_errorfree(pg_sock)) {
+		radlog(L_ERR, "PostgreSQL Query failed Error: %s", 
+					PQerrorMessage(pg_sock->conn));
+		return  -1;
+	}
+
+
+	if (PQsendQuery(pg_sock->conn, querystr))
+		return -1;
 
 	if (sql_store_result(sqlsocket, config) && sql_num_fields(sqlsocket, config))
 		return 0;
@@ -160,8 +205,10 @@ int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	}
 
 	pg_sock->cur_row = 0;
+	sql_free_result(pg_sock,config);
 	pg_sock->result = PQgetResult(pg_sock->conn);
 	status=PQresultStatus(pg_sock->result);
+	
 
 	if ((status!=PGRES_COMMAND_OK) && (status!=PGRES_TUPLES_OK)) {
 		radlog(L_ERR, "PostgreSQL Error: Cannot get result");

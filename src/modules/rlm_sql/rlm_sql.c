@@ -162,6 +162,8 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance) {
 
 	*instance = inst;
 
+	radlog(L_INFO, "rlm_sql: Connection to sql server established");
+
 	return RLM_MODULE_OK;
 }
 
