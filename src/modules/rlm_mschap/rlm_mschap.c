@@ -543,11 +543,7 @@ static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
        uint8_t buf[16];
        int i;
        MD5_CTX Context;
-       int slen;
-
-       for(slen=0;slen < 32;slen++) {
-               if(secret[slen] == 0) break;
-       }
+       int slen = strlen(secret);
 
        memset(key,0,34);
 
