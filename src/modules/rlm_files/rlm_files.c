@@ -667,7 +667,7 @@ static int file_authorize(void *instance, REQUEST *request)
 	 *	then exit from the module.
 	 */
 	if (!found)
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOTFOUND;
 
 	/*
 	 *	Add the port number to the Framed-IP-Address if
@@ -875,7 +875,7 @@ static int file_preacct(void *instance, REQUEST *request)
 	 *	See if we succeeded.
 	 */
 	if (!found)
-		return RLM_MODULE_OK; /* on to the next module */
+		return RLM_MODULE_NOOP; /* on to the next module */
 
 	/*
 	 *	FIXME: log a warning if there are any reply items other than
@@ -910,7 +910,7 @@ static int file_accounting(void *instance, REQUEST *request)
 	 */
 	if (stat(radacct_dir, &st) < 0) {
 		DEBUG("No accounting directory %s", radacct_dir);
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 	}
 	curtime = time(0);
 

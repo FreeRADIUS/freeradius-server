@@ -6,6 +6,8 @@
  *
  */
 
+#ifndef RADIUSD_H
+#define RADIUSD_H
 #include "libradius.h"
 #include "radpaths.h"
 #include "conf.h"
@@ -243,3 +245,4 @@ int            radius_xlat2(char * out, int outlen, char *str,
 extern		int thread_pool_init(void);
 extern		int thread_pool_clean(void);
 #endif
+#endif /*RADIUSD_H*/

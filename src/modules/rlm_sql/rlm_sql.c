@@ -172,7 +172,7 @@ static int rlm_sql_authorize(REQUEST *request)
        
        if (!found) {
 	       DEBUG2("User %s not found and DEFAULT not found", name);
-	       return RLM_MODULE_OK;
+	       return RLM_MODULE_NOTFOUND;
        }
        
        if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
@@ -226,7 +226,7 @@ static int rlm_sql_authenticate(REQUEST *request)
 	    (request->password->length == 0) ||
 	    (request->password->attribute != PW_PASSWORD)) {
 		radlog(L_AUTH, "rlm_sql: Attribute \"Password\" is required for authentication.");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 	
 	sql_escape_string(escaped_user, user, strlen(user));

@@ -5,6 +5,8 @@
  *
  */
 
+#ifndef RADIUS_MODULES_H
+#define RADIUS_MODULES_H
 #include "conffile.h"
 
 /*
@@ -19,7 +21,6 @@ typedef int (*RLM_POST_AUTHENTICATE_FUNCP)(REQUEST *request);
 typedef int (*RLM_PRE_ACCOUNTING_FUNCP)(REQUEST *request);
 typedef int (*RLM_ACCOUNTING_FUNCP)(REQUEST *request);
 
-/* Shouldn't need these anymore */
 #define RLM_COMPONENT_AUTH 0
 #define RLM_COMPONENT_AUTZ 1
 #define RLM_COMPONENT_PREACCT 2
@@ -40,10 +41,16 @@ typedef struct module_t {
 } module_t;
 
 enum {
-	RLM_MODULE_REJECT = -2,	/* reject the request */
-	RLM_MODULE_FAIL = -1,	/* module failed, don't reply */
-	RLM_MODULE_OK = 0,	/* the module is OK, continue */
-	RLM_MODULE_HANDLED = 1 	/* the module handled the request, so stop. */
+	RLM_MODULE_REJECT,	/* reject the request */
+	RLM_MODULE_FAIL,	/* module failed, don't reply */
+	RLM_MODULE_OK,		/* the module is OK, continue */
+	RLM_MODULE_HANDLED,	/* the module handled the request, so stop. */
+	RLM_MODULE_INVALID,	/* the module considers the request invalid. */
+	RLM_MODULE_USERLOCK,	/* reject the request (user is locked out) */
+	RLM_MODULE_NOTFOUND,	/* user not found */
+	RLM_MODULE_NOOP,	/* module succeeded without doing anything */
+	RLM_MODULE_UPDATED,	/* OK (pairs modified) */
+	RLM_MODULE_NUMCODES	/* How many return codes there are */
 };
 
 int setup_modules(void);
@@ -52,3 +59,4 @@ int module_authenticate(int type, REQUEST *request);
 int module_preacct(REQUEST *request);
 int module_accounting(REQUEST *request);
 
+#endif /* RADIUS_MODULES_H */

@@ -334,7 +334,7 @@ static int perform_search(char *ldap_basedn, char *filter, char **attrs, LDAPMes
   if ((ldap_count_entries(ld, *result)) != 1) {
     DEBUG("rlm_ldap: thread #%p user object not found or got ambiguous search result", pthread_self());
      ldap_msgfree(*result);
-    res = RLM_MODULE_REJECT;
+    res = RLM_MODULE_NOTFOUND;
   }
   
   DEBUG2("rlm_ldap: thread #%p locking connection flag ...", pthread_self());
@@ -387,7 +387,7 @@ static int rlm_ldap_authorize(void *instance, REQUEST *request)
      */
     if (name[0] == 0) {
           radlog(L_ERR, "rlm_ldap: zero length username not permitted\n");
-          return RLM_MODULE_FAIL;
+          return RLM_MODULE_INVALID;
     }
 
 /*  Unfortunately LDAP queries are case insensitive, so in order to provide
@@ -533,7 +533,7 @@ static int rlm_ldap_authenticate(void *instance, REQUEST *request);
      */
     if(request->password->attribute != PW_PASSWORD) {
       radlog(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
-      return RLM_MODULE_REJECT;
+      return RLM_MODULE_INVALID;
     }
 
     name = request->username->strvalue;
@@ -541,7 +541,7 @@ static int rlm_ldap_authenticate(void *instance, REQUEST *request);
 
     if(strlen(passwd) == 0) {
         radlog(L_ERR, "rlm_ldap: empty password supplied");
-	return RLM_MODULE_REJECT;
+	return RLM_MODULE_INVALID;
     }
 
     DEBUG("rlm_ldap: thread #%p login attempt by \"%s\" with password \"%s\"", pthread_self(), name, passwd);

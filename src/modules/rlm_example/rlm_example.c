@@ -118,7 +118,7 @@ static int radius_authorize(void *instance, REQUEST *request)
 	instance = instance;
 	request = request;
 	
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 /*

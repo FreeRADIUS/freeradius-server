@@ -111,7 +111,7 @@ static int unique_accounting(void *instance, REQUEST *request)
   /* add the (hopefully) unique session ID to the packet */
   pairadd(&request->packet->vps, vp);
   
-  return RLM_MODULE_OK;
+  return RLM_MODULE_UPDATED;
 }
 
 /* FIXME: unique_accounting should probably be called from preacct */

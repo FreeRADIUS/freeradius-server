@@ -287,7 +287,7 @@ static int hints_setup(REQUEST *request)
 	request_pairs = request->packet->vps;
 
 	if (hints == NULL || request_pairs == NULL)
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 
 	/* 
 	 *	Check for valid input, zero length names not permitted 
@@ -301,7 +301,7 @@ static int hints_setup(REQUEST *request)
 		/*
 		 *	No name, nothing to do.
 		 */
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 
 	for (i = hints; i; i = i->next) {
 		if (matches(name, i, newname)) {
@@ -311,7 +311,7 @@ static int hints_setup(REQUEST *request)
 		}
 	}
 
-	if (i == NULL) return RLM_MODULE_OK;
+	if (i == NULL) return RLM_MODULE_NOOP;
 
 	add = paircopy(i->reply);
 
@@ -360,7 +360,7 @@ static int hints_setup(REQUEST *request)
 		;
 	if (last) last->next = add;
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_UPDATED;
 }
 
 /*
@@ -554,20 +554,22 @@ static int preprocess_authorize(void *instance, REQUEST *request)
  */
 static int preprocess_preaccounting(void *instance, REQUEST *request)
 {
+	int r;
+
 	instance = instance;
 	/*
 	 *  Ensure that we have the SAME user name for both
 	 *  authentication && accounting.
 	 */
 	rad_mangle(request);
-	hints_setup(request);
+	r = hints_setup(request);
 
 	/*
 	 *  Ensure that we log the NAS IP Address in the packet.
 	 */
 	add_nas_attr(request);
 
-	return RLM_MODULE_OK;
+	return r;
 }
 
 /*

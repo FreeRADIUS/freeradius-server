@@ -195,7 +195,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 */
 	if (!request->username) {
 		radlog(L_AUTH, "rlm_unix: Attribute \"User-Name\" is required for authentication.");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -204,7 +204,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 */
 	if (!request->password) {
 		radlog(L_AUTH, "rlm_unix: Attribute \"Password\" is required for authentication.");
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -213,7 +213,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 */
 	if (request->password->attribute != PW_PASSWORD) {
 		radlog(L_AUTH, "rlm_unix: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_INVALID;
 	}
 
 	name = (char *)request->username->strvalue;
@@ -224,14 +224,14 @@ static int unix_authenticate(void *instance, REQUEST *request)
 
 #ifdef OSFC2
 	if ((pr_pw = getprpwnam(name)) == NULL)
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_NOTFOUND;
 	encrypted_pass = pr_pw->ufld.fd_encrypt;
 #else /* OSFC2 */
 	/*
 	 *	Get encrypted password from password file
 	 */
 	if ((pwd = getpwnam(name)) == NULL) {
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_NOTFOUND;
 	}
 	encrypted_pass = pwd->pw_passwd;
 #endif /* OSFC2 */
@@ -302,7 +302,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 */
 	if (pr_pw->uflg.fg_lock!=1) {
 		radlog(L_AUTH, "rlm_unix: [%s]: account locked", name);
-		return RLM_MODULE_REJECT;
+		return RLM_MODULE_USERLOCK;
 	}
 #endif /* OSFC2 */
 
@@ -379,7 +379,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE))==NULL) {
 		radlog(L_ERR, "Accounting: no Accounting-Status-Type record.");
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 	}
 	status = vp->lvalue;
 
@@ -388,14 +388,14 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 */
 	if (status != PW_STATUS_START &&
 	    status != PW_STATUS_STOP)
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 
 	/*
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_USER_NAME)) == NULL)
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 
 	time(&t);
 	memset(&ut, 0, sizeof(ut));
@@ -436,7 +436,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	where we didn't see a PW_NAS_PORT_ID.
 	 */
 	if (strncmp(ut.ut_name, "!root", sizeof(ut.ut_name)) == 0 || !port_seen)
-		return RLM_MODULE_OK;
+		return RLM_MODULE_NOOP;
 
 	/*
 	 *	If we didn't find out the NAS address, use the

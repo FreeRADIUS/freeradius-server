@@ -237,11 +237,17 @@ static int rad_check_password(REQUEST *request)
 			switch (result) {
 				/*
 				 *	An authentication module FAIL
-				 *	return code is the same as
-				 *	an explicit REJECT!
+				 *	return code, or any return code that
+				 *	is not expected from authentication,
+				 *	is the same as an explicit REJECT!
 				 */
 				case RLM_MODULE_FAIL:
 				case RLM_MODULE_REJECT:
+				case RLM_MODULE_USERLOCK:
+				case RLM_MODULE_INVALID:
+				case RLM_MODULE_NOTFOUND:
+				case RLM_MODULE_NOOP:
+				case RLM_MODULE_UPDATED:
 					result = -1;
 					break;
 				case RLM_MODULE_OK:
@@ -259,6 +265,9 @@ static int rad_check_password(REQUEST *request)
 
 /*
  *	Process and reply to an authentication request
+ *
+ *	The return value of this function isn't actually used right now, so
+ *	it's not entirely clear if it is returning the right things. --Pac.
  */
 int rad_authenticate(REQUEST *request)
 {
@@ -371,7 +380,10 @@ int rad_authenticate(REQUEST *request)
 	 *	Get the user's authorization information from the database
 	 */
 	r = module_authorize(request);
-	if (r != RLM_MODULE_OK) {
+	if (r != RLM_MODULE_NOTFOUND &&
+	    r != RLM_MODULE_NOOP &&
+	    r != RLM_MODULE_OK &&
+	    r != RLM_MODULE_UPDATED) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
 			radlog(L_AUTH, "Invalid user: [%s%s%s] (%s)",
 			    auth_username(namepair),
@@ -393,7 +405,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if ((request->proxy == NULL) &&
 	    (pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL)) {
-		return 0;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -410,7 +422,7 @@ int rad_authenticate(REQUEST *request)
 		result = rad_check_password(request);
 		if (result > 0) {
 			/* don't reply! */
-			return -1;
+			return RLM_MODULE_HANDLED;
 		}
 	} while(0);
 	
@@ -555,7 +567,7 @@ int rad_authenticate(REQUEST *request)
 	 *	Result should be >= 0 here - if not, we return.
 	 */
 	if (result < 0) {
-		return 0;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -629,7 +641,7 @@ int rad_authenticate(REQUEST *request)
 				       auth_username(namepair),
 				       auth_name(buf, sizeof(buf), request, 1));
 			}
-			return 0;
+			return RLM_MODULE_OK;
 		}
 	}
 
@@ -692,6 +704,6 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	if (exec_program) free(exec_program);
-	return 0;
+	return RLM_MODULE_OK;
 }
 
