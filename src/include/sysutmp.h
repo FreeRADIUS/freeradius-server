@@ -7,6 +7,16 @@
 #ifndef SYSUTMP_H_INCLUDED
 #define SYSUTMP_H_INCLUDED
 
+/*
+ *  If we have BOTH utmp.h and utmpx.h, then
+ *  we prefer to use utmp.h, but only on systems other than Solaris.
+ */
+#ifndef sun
+#ifdef HAVE_UTMP_H
+#undef HAVE_UTMPX_H
+#endif
+#endif
+
 #if defined(HAVE_UTMP_H) || defined(HAVE_UTMPX_H)
 
 /* UTMP stuff. Uses utmpx on svr4 */
