@@ -20,8 +20,6 @@ $(DYNAMIC_OBJS): $(HEADERS)
 
 # Install binary files into the bin directory
 rlm_ippool_install: rlm_ippool_tool.8
-	$(INSTALL) -m 755 -d								$(R)$(bindir)
-	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_ippool_tool	$(R)$(bindir)
-	$(INSTALL) -m 755 -d								$(R)$(mandir)/man8
-	$(INSTALL) -m 644 rlm_ippool_tool.8					$(R)$(mandir)/man8
+	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_ippool_tool$(EXEEXT) $(R)$(bindir)
+	$(INSTALL) -m 644 rlm_ippool_tool.8	$(R)$(mandir)/man8
 
