@@ -1,3 +1,5 @@
+Ver 1.54:
+* Add attributes for the sql group tables in admin.conf. Now SQL group support should really work!
 Ver 1.53:
 * html fixes in show_groups.php3
 * When reporting sql errors also print the output of da_sql_error
