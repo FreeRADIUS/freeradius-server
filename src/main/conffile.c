@@ -857,8 +857,21 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				 *	Read the directory, ignoring "." files.
 				 */
 				while ((dp = readdir(dir)) != NULL) {
+					const char *p;
+
 					if (dp->d_name[0] == '.') continue;
-					if (strchr(dp->d_name, '~') != NULL) continue;
+
+					/*
+					 *	Check for valid characters
+					 */
+					for (p = dp->d_name; *p != '\0'; p++) {
+						if (isalpha((int)*p) ||
+						    isdigit((int)*p) ||
+						    (*p == '_') ||
+						    (*p == '.')) continue;
+						break;
+					}
+					if (*p != '\0') continue;
 
 					snprintf(buf2, sizeof(buf2), "%s%s",
 						 value, dp->d_name);
