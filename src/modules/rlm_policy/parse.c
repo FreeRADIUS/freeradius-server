@@ -297,6 +297,9 @@ static const char *policy_lex_string(const char *input,
 				return POLICY_LEX_BAD;
 			}
 
+			/*
+			 *	FIXME: Embedded quotes?
+			 */
 			*(buffer++) = *(input++);
 			buflen--;
 			
@@ -510,6 +513,7 @@ const LRAD_NAME_NUMBER policy_reserved_words[] = {
 	{ "reply", POLICY_RESERVED_REPLY },
 	{ "proxy-request", POLICY_RESERVED_PROXY_REQUEST },
 	{ "proxy-reply", POLICY_RESERVED_PROXY_REPLY },
+	{ "include", POLICY_RESERVED_INCLUDE },
 	{ NULL, POLICY_RESERVED_UNKNOWN }
 };
 
@@ -548,62 +552,6 @@ static int parse_print(policy_lex_file_t *lexer, policy_item_t **tail)
 	return 1;
 }
 
-
-/*
- *	Parse debugging statements
- */
-static int parse_debug(policy_lex_file_t *lexer, policy_item_t **tail)
-{
-	int rcode = 0;
-	policy_lex_t token;
-	char buffer[32];
-
-	tail = tail;		/* -Wunused */
-
-	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
-	if (token != POLICY_LEX_BARE_WORD) {
-		fprintf(stderr, "%s[%d]: Bad debug command\n",
-			lexer->filename, lexer->lineno);
-		return 0;
-	}
-
-	if (strcasecmp(buffer, "none") == 0) {
-		lexer->debug = POLICY_DEBUG_NONE;
-		rcode = 1;
-
-	} else if (strcasecmp(buffer, "peek") == 0) {
-		lexer->debug |= POLICY_DEBUG_PEEK;
-		rcode = 1;
-
-	} else if (strcasecmp(buffer, "print_tokens") == 0) {
-		lexer->debug |= POLICY_DEBUG_PRINT_TOKENS;
-		rcode = 1;
-
-	} else if (strcasecmp(buffer, "print_policy") == 0) {
-		lexer->debug |= POLICY_DEBUG_PRINT_POLICY;
-		rcode = 1;
-
-	} else if (strcasecmp(buffer, "evaluate") == 0) {
-		lexer->debug |= POLICY_DEBUG_EVALUATE;
-		rcode = 1;
-	}
-
-	if (rcode) {
-		token = policy_lex_file(lexer, POLICY_LEX_FLAG_RETURN_EOL,
-					NULL, 0);
-		if (token != POLICY_LEX_EOL) {
-			fprintf(stderr, "%s[%d]: Expected EOL\n",
-				lexer->filename, lexer->lineno);
-			return 0;
-		}
-	} else {
-		fprintf(stderr, "%s[%d]: Bad debug command \"%s\"\n",
-			lexer->filename, lexer->lineno, buffer);
-		return 0;
-	}
-
-	return 1;
-}
 
 /*
  * (foo == bar), with nested conditionals.
@@ -857,73 +805,7 @@ static int parse_if(policy_lex_file_t *lexer, policy_item_t **tail)
 
 
 /*
- *	Parse a named policy "policy foo {...}"
- */
-static int parse_named_policy(policy_lex_file_t *lexer, policy_item_t **tail)
-{
-	int rcode;
-	policy_lex_t token;
-	char mystring[256];
-	policy_named_t *this;
-	DICT_ATTR *dattr;
-
-	tail = tail;		/* -Wunused */
-
-	debug_tokens("[POLICY] ");
-
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
-
-	this->item.type = POLICY_TYPE_NAMED_POLICY;
-	this->item.lineno = lexer->lineno;
-
-	token = policy_lex_file(lexer, 0, mystring, sizeof(mystring));
-	if (token != POLICY_LEX_BARE_WORD) {
-		fprintf(stderr, "%s[%d]: Expected policy name, got \"%s\"\n",
-			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
-		rlm_policy_free_item((policy_item_t *) this);
-		return 0;
-	}
-
-	dattr = dict_attrbyname(mystring);
-	if (dattr) {
-		fprintf(stderr, "%s[%d]: Invalid policy name \"%s\": it is already defined as a dictionary attribute\n",
-			lexer->filename, lexer->lineno, mystring);
-		rlm_policy_free_item((policy_item_t *) this);
-		return 0;
-	}
-
-	this->name = strdup(mystring);
-	rcode = parse_block(lexer, &(this->policy));
-	if (!rcode) {
-		rlm_policy_free_item((policy_item_t *) this);
-		return rcode;
-	}
-
-	/*
-	 *	And insert it into the tree of policies.
-	 *
-	 *	For now, policy names aren't scoped, they're global.
-	 */
-	if (!rlm_policy_insert(lexer->policies, this)) {
-		fprintf(stderr, "Failed to insert %s\n", this->name);
-		rlm_policy_free_item((policy_item_t *) this);
-		return 0;
-	}
-
-	/*
-	 *	Do NOT add it into the list of parsed expressions!
-	 *	The above insertion will take care of freeing it if
-	 *	anything goes wrong...
-	 */
-	return 1;
-}
-
-
-
-/*
- *	Parse a reference to a named policy "call foo"
+ *	Parse a reference to a named policy "foo()"
  */
 static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail,
 		      const char *name)
@@ -961,7 +843,6 @@ static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail,
 
 	return 1;
 }
-
 
 
 /*
@@ -1054,13 +935,6 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 			return 0;
 			break;
 			
-		case POLICY_RESERVED_DEBUG:
-			if (parse_debug(lexer, tail)) {
-				return 1;
-			}
-			return 0;
-			break;
-			
 		case POLICY_RESERVED_PRINT:
 			if (parse_print(lexer, tail)) {
 				return 1;
@@ -1068,13 +942,6 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 			return 0;
 			break;
 			
-		case POLICY_RESERVED_POLICY:
-			if (parse_named_policy(lexer, tail)) {
-				return 1;
-			}
-			return 0;
-			break;
-
 		case POLICY_RESERVED_UNKNOWN: /* wasn't a reserved word */
 			/*
 			 *	Is a named policy, parse the reference to it.
@@ -1086,15 +953,7 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 				return 1;
 			}
 
-			/*
-			 *	Maybe include another file.
-			 */
-			if (strcasecmp(lhs, "include") == 0) {
-				/*
-				 *	FIXME: add stuff
-				 */
-			} else {
-
+			{
 				const DICT_ATTR *dattr;
 				
 				/*
@@ -1231,7 +1090,7 @@ static int parse_block(policy_lex_file_t *lexer, policy_item_t **tail)
 		}
 		rad_assert(*tail != NULL);
 		/* parse_statement must fill this in */
-		if (*tail) tail = &((*tail)->next);
+		while (*tail) tail = &((*tail)->next);
 	}
 	debug_tokens("\n");
 
@@ -1243,15 +1102,153 @@ static int parse_block(policy_lex_file_t *lexer, policy_item_t **tail)
 
 
 /*
+ *	Parse debugging statements
+ */
+static int parse_debug(policy_lex_file_t *lexer)
+{
+	int rcode = 0;
+	policy_lex_t token;
+	char buffer[32];
+
+	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
+	if (token != POLICY_LEX_BARE_WORD) {
+		fprintf(stderr, "%s[%d]: Bad debug command\n",
+			lexer->filename, lexer->lineno);
+		return 0;
+	}
+
+	if (strcasecmp(buffer, "none") == 0) {
+		lexer->debug = POLICY_DEBUG_NONE;
+		rcode = 1;
+
+	} else if (strcasecmp(buffer, "peek") == 0) {
+		lexer->debug |= POLICY_DEBUG_PEEK;
+		rcode = 1;
+
+	} else if (strcasecmp(buffer, "print_tokens") == 0) {
+		lexer->debug |= POLICY_DEBUG_PRINT_TOKENS;
+		rcode = 1;
+
+	} else if (strcasecmp(buffer, "print_policy") == 0) {
+		lexer->debug |= POLICY_DEBUG_PRINT_POLICY;
+		rcode = 1;
+
+	} else if (strcasecmp(buffer, "evaluate") == 0) {
+		lexer->debug |= POLICY_DEBUG_EVALUATE;
+		rcode = 1;
+	}
+
+	if (rcode) {
+		token = policy_lex_file(lexer, POLICY_LEX_FLAG_RETURN_EOL,
+					NULL, 0);
+		if (token != POLICY_LEX_EOL) {
+			fprintf(stderr, "%s[%d]: Expected EOL\n",
+				lexer->filename, lexer->lineno);
+			return 0;
+		}
+	} else {
+		fprintf(stderr, "%s[%d]: Bad debug command \"%s\"\n",
+			lexer->filename, lexer->lineno, buffer);
+		return 0;
+	}
+
+	return 1;
+}
+
+
+/*
+ *	Parse a named policy "policy foo {...}"
+ */
+static int parse_named_policy(policy_lex_file_t *lexer)
+{
+	int rcode;
+	policy_lex_t token;
+	char mystring[256];
+	policy_named_t *this;
+	DICT_ATTR *dattr;
+
+	debug_tokens("[POLICY] ");
+
+	this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	this->item.type = POLICY_TYPE_NAMED_POLICY;
+	this->item.lineno = lexer->lineno;
+
+	token = policy_lex_file(lexer, 0, mystring, sizeof(mystring));
+	if (token != POLICY_LEX_BARE_WORD) {
+		fprintf(stderr, "%s[%d]: Expected policy name, got \"%s\"\n",
+			lexer->filename, lexer->lineno,
+			lrad_int2str(rlm_policy_tokens, token, "?"));
+		rlm_policy_free_item((policy_item_t *) this);
+		return 0;
+	}
+
+	dattr = dict_attrbyname(mystring);
+	if (dattr) {
+		fprintf(stderr, "%s[%d]: Invalid policy name \"%s\": it is already defined as a dictionary attribute\n",
+			lexer->filename, lexer->lineno, mystring);
+		rlm_policy_free_item((policy_item_t *) this);
+		return 0;
+	}
+
+	this->name = strdup(mystring);
+	rcode = parse_block(lexer, &(this->policy));
+	if (!rcode) {
+		rlm_policy_free_item((policy_item_t *) this);
+		return rcode;
+	}
+
+	/*
+	 *	And insert it into the tree of policies.
+	 *
+	 *	For now, policy names aren't scoped, they're global.
+	 */
+	if (!rlm_policy_insert(lexer->policies, this)) {
+		fprintf(stderr, "Failed to insert %s\n", this->name);
+		rlm_policy_free_item((policy_item_t *) this);
+		return 0;
+	}
+
+	/*
+	 *	Do NOT add it into the list of parsed expressions!
+	 *	The above insertion will take care of freeing it if
+	 *	anything goes wrong...
+	 */
+	return 1;
+}
+
+
+/*
+ *	Parse an "include filename" statement
+ */
+static int parse_include(policy_lex_file_t *lexer)
+{
+	policy_lex_t token;
+	char buffer[1024];
+
+	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
+	if (token != POLICY_LEX_DOUBLE_QUOTED_STRING) {
+		fprintf(stderr, "%s[%d]: Expected filename, got \"%s\"\n",
+			lexer->filename, lexer->lineno,
+			lrad_int2str(rlm_policy_tokens, token, "?"));
+		return 0;
+	}
+
+	return 1;
+}
+
+
+/*
  *	Parse data from a file into a policy language.
  */
 int rlm_policy_parse(rlm_policy_t *inst, const char *filename)
 {
-	int rcode;
 	FILE *fp;
+	policy_lex_t token;
 	policy_lex_file_t mylexer, *lexer;
-	policy_item_t *list = NULL, **tail;
-	
+	char buffer[32];
+
 	fp = fopen(filename, "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open %s: %s\n",
@@ -1267,36 +1264,57 @@ int rlm_policy_parse(rlm_policy_t *inst, const char *filename)
 	lexer->parse = NULL;	/* initial input */
 	lexer->policies = inst->policies;
 
-	tail = &list;
-	while ((rcode = parse_statement(lexer, tail)) != 0) {
-		if (rcode > 1) break;
+	do {
+		int reserved;
 
-		if (*tail) tail = &((*tail)->next);
+		token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
+		switch (token) {
+		case POLICY_LEX_BARE_WORD:
+			reserved = lrad_str2int(policy_reserved_words,
+						buffer,
+						POLICY_RESERVED_UNKNOWN);
+			switch (reserved) {
+			case POLICY_RESERVED_POLICY:
+				if (!parse_named_policy(lexer)) {
+					return 0;
+				}
+				break;
+				
+			case POLICY_RESERVED_INCLUDE:
+				if (!parse_include(lexer)) {
+					return 0;
+				}
+				break;
+				
+			case POLICY_RESERVED_DEBUG:
+				if (!parse_debug(lexer)) {
+					return 0;
+				}
+				break;
+			
+			default:
+				fprintf(stderr, "%s[%d]: Unexpected word \"%s\"\n",
+					lexer->filename, lexer->lineno,
+					buffer);
+				return 0;
+				break;
+			} /* switch over reserved words */
+
+		case POLICY_LEX_EOF:
+			break;
+
+		default:
+			fprintf(stderr, "%s[%d]: Illegal input\n",
+				lexer->filename, lexer->lineno);
+			return 0;
+		}
+
 		fflush(stdout);
-	} /* until EOF or error */
+	} while (token != POLICY_LEX_EOF);
 
-	if (rcode == 2) {
-		fprintf(stderr, "%s[%d]: Unexpected '}'\n",
-			lexer->filename, lexer->lineno);
-		return 0;
-	}
-
-	if (rcode == 0) {
-		fprintf(stderr, "Failed to parse %s\n", filename);
-		rlm_policy_free_item((policy_item_t *) list);
-		return 0;
-	}
 
 	debug_tokens("--------------------------------------------------\n");
-	if (lexer->debug & POLICY_DEBUG_PRINT_POLICY) rlm_policy_print(list);
-
-	
-	/*
-	 *	Throw away the policy outside of functions.
-	 *
-	 *	FIXME: Do more syntax checks...
-	 */
-	rlm_policy_free_item((policy_item_t *) list);
 
 	return 1;
 }
+

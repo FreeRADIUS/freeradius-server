@@ -108,6 +108,7 @@ typedef enum policy_reserved_word_t {
 	POLICY_RESERVED_DEBUG,
 	POLICY_RESERVED_PRINT,
 	POLICY_RESERVED_POLICY,
+	POLICY_RESERVED_INCLUDE,
 	POLICY_RESERVED_NUM_WORDS
 } policy_reserved_word_t;
 
