@@ -1,7 +1,3 @@
-dnl
-dnl  M4 code copyright 2000, Chad Miller and others
-dnl
-dnl
 ##
 ## radiusd.conf	-- FreeRADIUS server configuration file.
 ##
@@ -31,9 +27,9 @@ radacctdir = @radacctdir@
 #
 #  Location of config and logfiles.
 #
-confdir    = ${raddbdir}
+confdir = ${raddbdir}
 
-run_dir    = ${localstatedir}/run
+run_dir = ${localstatedir}/run
 
 #
 #  pidfile: Where to place the PID of the RADIUS server.
@@ -43,7 +39,7 @@ run_dir    = ${localstatedir}/run
 #
 #  e.g.:  kill -HUP `cat /var/run/radiusd.pid`
 #
-pidfile    = ${run_dir}/radiusd.pid
+pidfile = ${run_dir}/radiusd.pid
 
 #
 # user/group: The name (or #number) of the user/group to run httpd as.
@@ -69,7 +65,7 @@ group = nobody
 #
 #  Useful range of values: 5 to 120
 #
-max_request_time	= 30
+max_request_time = 30
 
 #
 #  cleanup_delay: The time to wait (in seconds) before cleaning up
@@ -89,7 +85,7 @@ max_request_time	= 30
 #
 #  Useful range of values: 2 to 10
 #
-cleanup_delay		= 5
+cleanup_delay = 5
 
 #
 #  max_requests: The maximum number of requests which the server keeps
@@ -109,7 +105,7 @@ cleanup_delay		= 5
 #
 #  Useful range of values: 256 to infinity
 #
-max_requests		= 1024
+max_requests = 1024
 
 #
 #  bind_address:  Make the server listen on a particular IP address, and
@@ -119,7 +115,7 @@ max_requests		= 1024
 #  It can either contain "*", or an IP address, or a fully qualified
 #  Internet domain name.  The default is "*"
 #
-bind_address            = *
+bind_address = *
 
 #
 #  port: Allows you to bind FreeRADIUS to a specific port.
@@ -142,7 +138,7 @@ port = 0
 #
 #  Which program to execute check doing concurrency checks.
 #
-checkrad   = ${sbindir}/checkrad
+checkrad = ${sbindir}/checkrad
 
 #
 #  hostname_lookups: Log the names of clients or just their IP addresses
@@ -158,7 +154,7 @@ checkrad   = ${sbindir}/checkrad
 #
 # allowed values: {no, yes}
 #
-hostname_lookups	= no
+hostname_lookups = no
 
 #
 #  Core dumps are a bad thing.  This should only be set to 'yes'
@@ -166,21 +162,21 @@ hostname_lookups	= no
 #
 # allowed values: {no, yes}
 #
-allow_core_dumps	= no
+allow_core_dumps = no
 
 #
 #  Log the full User-Name attribute, as it was found in the request.
 #
 # allowed values: {no, yes}
 #
-log_stripped_names	= no
+log_stripped_names = no
 
 #
 #  Log authentication requests to the log file.
 #
 # allowed values: {no, yes}
 #
-log_auth	= no
+log_auth = no
 
 #
 #  Log passwords with the authentication requests.
@@ -189,12 +185,12 @@ log_auth	= no
 #
 # allowed values: {no, yes}
 #
-log_auth_badpass	= no
-log_auth_goodpass	= no
+log_auth_badpass = no
+log_auth_goodpass = no
 
 # 
 # usercollide:  Turn user collision code on and off.
-#               See README.usercollide
+#		See README.usercollide
 #
 usercollide = no
 
@@ -250,7 +246,7 @@ nospace_pass = no
 #  To disable proxying, change the "yes" to "no", and comment the
 #  $INCLUDE line.
 proxy_requests  = yes
-$INCLUDE     ${confdir}/proxy.conf
+$INCLUDE  ${confdir}/proxy.conf
 
 # CLIENTS CONFIGURATION
 #
@@ -259,14 +255,14 @@ $INCLUDE     ${confdir}/proxy.conf
 #  "clients.conf" is recommended over the old "clients", though both
 #  are supported.
 #
-$INCLUDE      ${confdir}/clients.conf
+$INCLUDE  ${confdir}/clients.conf
 
 # SNMP CONFIGURATION
 #
 #  Snmp configuration is only valid if you enabled SNMP support when
 #  you compiled radius.  To enable SNMP configuration, uncomment the
 #  following line.
-$INCLUDE      ${confdir}/snmp.conf
+$INCLUDE  ${confdir}/snmp.conf
 
 
 #######################################################################
@@ -294,7 +290,7 @@ thread pool {
 #  Number of servers to start initially --- should be a reasonable ballpark
 #  figure.
 #
-	start_servers     = 5
+	start_servers = 5
 
 #
 #  Limit on the total number of servers running.
@@ -304,7 +300,7 @@ thread pool {
 #  keep a runaway server from taking the system with it as it spirals
 #  down...
 #
-	max_servers	  = 32
+	max_servers = 32
 
 #
 #  Server-pool size regulation.  Rather than making you guess how many
@@ -335,12 +331,310 @@ thread pool {
 }
 
 modules {
-PLACE_MODULES
+	pam {
+		#
+		#  The name to use for PAM authentication.
+		#  PAM looks in /etc/pam.d/${pam_auth_name}
+		#  for it's configuration.
+		#
+		#  Note that any Pam-Auth attribute set in the 'users'
+		#  file over-rides this one.
+		#
+		pam_auth = radiusd
+	}
+	unix {
+		#
+		#  Cache /etc/passwd, /etc/shadow, and /etc/group
+		#
+		#  The default is to NOT cache them.  However, caching them can
+		#  speed up system authentications by a substantial amount.
+		#
+		# allowed values: {no, yes}
+		cache = no
+
+		#
+		#  Define the locations of the normal passwd, shadow, and
+		#  group files.
+		#
+		#  'shadow' is commented out by default, because not all
+		#  systems have shadow passwords.
+		#
+		passwd = /etc/passwd
+		#	shadow = /etc/shadow
+		group = /etc/group
+
+
+		#
+		#  Where the 'wtmp' file is located.
+		#  This will be moved to it's own module soon..
+		#
+		radwtmp = ${logdir}/radwtmp
+	}
+
+	# Uncomment this if you want to use ldap (Auth-Type = LDAP)
+	# Also uncomment it in the authenticate{} block below
+	#ldap {
+	#	server = localhost
+	#	login = "cn=admin,o=My Org,c=US"
+	#	password = mypass
+	#	basedn = "o=My Org,c=US"
+	#	filter = "(uid=%u)"
+	#}
+
+	#
+	#  You can have multiple instances of the realm module to
+	#  support multiple realm syntaxs at the same time.  The
+	#  search order is defined the order in the authorize and
+	#  preacct blocks after the module config block.
+	#
+	#  Two config options:
+	#	format     -  must be 'prefix' or 'suffix'
+	#	delimiter  -  must be a single character
+	#
+	#  'username@realm'
+	#
+	realm suffix {
+		format = suffix
+		delimiter = "@"
+	}
+
+	#
+	#  'realm/username'
+	#
+	#  Using this entry, IPASS users have their realm set to "IPASS".
+	#
+	#realm prefix {
+	#	format = prefix
+	#	delimiter = "/"
+	#}
+
+	#
+	#  'username%realm'
+	#
+	#realm percent {
+	#	format = suffix
+	#	delimiter = "%"
+	#}
+	
+
+	preprocess {
+		huntgroups = ${confdir}/huntgroups
+		hints = ${confdir}/hints
+
+		#
+		# This hack changes Ascend's wierd port numberings
+		# to standard 0-??? port numbers so that the "+" works
+		# for IP address assignments.
+		#
+		with_ascend_hack = no
+		ascend_channels_per_line = 23
+
+		#
+		# Windows NT machines often authenticate themselves as
+		# NT_DOMAIN\username
+		#
+		# If this is set to 'yes', then the NT_DOMAIN portion
+		# of the user-name is silently discarded.
+		#
+		with_ntdomain_hack = no
+
+		#
+		# Specialix Jetstream 8500 24 port access server.
+		#
+		# If the user name is 10 characters or longer, a "/"
+		# and the excess characters after the 10th are
+		# appended to the user name.
+		#
+		# If you're not running that NAS, you don't need
+		# this hack.
+		#
+		with_specialix_jetstream_hack = no
+	}
+	files {
+		usersfile = ${confdir}/users
+		acctusersfile = ${confdir}/acct_users
+
+		#
+		#  If you want to use the old Cistron 'users' file
+		#  with FreeRADIUS, you should change the next line
+		#  to 'compat = cistron'.  You can the copy your 'users'
+		#  file from Cistron.
+		#
+		compat = no
+	}
+
+	# See README.rlm_fastusers before using this
+	# module or changing these values.
+	fastusers {
+		usersfile = ${confdir}/users_fast
+		hashsize = 1000
+		compat = no
+		# Reload the hash every 600 seconds (10mins)
+		reload_hash = 600
+	}
+	
+	detail {
+		detailfile = ${radacctdir}/%n/detail
+		detailperm = 0600
+	}
+
+	# This module will add a (probably) unique session id 
+	# to an accounting packet based on the attributes listed
+	# below found in the packet.  see doc/README.rlm_acct_unique
+	acct_unique {
+		key = "User-Name, Acct-Session-Id, NAS-IP-Address, NAS-Port-Id"
+	}
+
+
+	#
+	#  Configuration for the SQL module.
+	#
+	sql {
+	
+		# Connect info
+		server = "localhost"
+		login = "root"
+		password = "rootpass"
+		
+		# Database table configuration
+		radius_db = "radius"
+		acct_table = "radacct"
+		
+		authcheck_table = "radcheck"
+		authreply_table = "radreply"
+		
+		groupcheck_table = "radgroupcheck"
+		groupreply_table = "radgroupreply"
+		
+		usergroup_table = "usergroup"
+		
+		realms_table = "realms"
+		realmgroup_table = "realmgroup"
+		
+		# Check case on usernames
+		sensitiveusername = no
+	
+		# Remove stale session if checkrad does not see a double login
+		deletestalesessions = yes
+	
+		# Print all SQL statements when in debug mode (-x)
+		sqltrace = no
+		sqltracefile = ${logdir}/sqltrace.sql
+
+		# number of sql connections to make to server
+		num_sql_socks = 5
+	}
+
+	#
+	#  A second instance of the same module, with the name "sql2" to identify it
+	#
+	sql sql2 {
+	
+		# Connect info
+		server = "myothersever"
+		login = "root"
+		password = "rootpass"
+		
+		# Database table configuration
+		radius_db = "radius"
+		acct_table = "radacct"
+		
+		authcheck_table = "radcheck"
+		authreply_table = "radreply"
+		
+		groupcheck_table = "radgroupcheck"
+		groupreply_table = "radgroupreply"
+		
+		usergroup_table = "usergroup"
+		
+		realms_table = "realms"
+		realmgroup_table = "realmgroup"
+		
+		# Check case on usernames
+		sensitiveusername = no
+	
+		# Remove stale session if checkrad does not see a double login
+		deletestalesessions = yes
+	
+		# Print all SQL statements when in debug mode (-x)
+		sqltrace = no
+	}
+
+	#
+	# The "always" module is here for debugging purposes. Each instance simply
+	# returns the same result, always, without doing anything.
+	#
+	#always fail {
+	#	rcode = fail
+	#}
+	#always reject {
+	#	rcode = reject
+	#}
+	#always ok {
+	#	rcode = ok
+	#	simulcount = 0
+	#	mpp = no
+	#}
+
+	#######################################################################
+	#
+	#	Configuration for the example module.  Uncommenting it will cause it
+	#	to get loaded and initialized, but should have no real effect as long
+	#	it is not referencened in one of the autz/auth/preacct/acct sections
+	#
+	example {
+	#
+	#  Boolean variable.
+	#
+	# allowed values: {no, yes}
+	#
+		boolean = yes
+
+	#
+	#  An integer, of any value.
+	#
+		integer = 16
+
+	#
+	#  A string.
+	#
+		string = "This is an example configuration string"
+
+	#
+	# An IP address, either in dotted quad (1.2.3.4) or hostname
+	# (example.com)
+	#
+		ipaddr = 127.0.0.1
+
+	#
+	# A subsection
+	#
+		mysubsection {
+			anotherinteger = 1000
+	#
+	# They nest
+	#
+			deeply nested {
+				string = "This is a different string"
+			}
+		}
+	}
 }
 
 # Authentication types, Auth-Type = System and PAM for now.
 authenticate {
-PLACE_AUTHENTICATION
+	pam
+	unix
+# By grouping modules together in an authtype block, that authtype will be
+# tried on each module in sequence until one returns REJECT or OK. This
+# allows authentication failover if the first SQL server has crashed, for
+# example.
+#	authtype SQL {
+#		sql
+#		sql2
+#	}
+# Uncomment this if you want to use ldap (Auth-Type = LDAP)
+#	ldap
 }
 
 # Authorization. First preprocess (hints and huntgroups files),
@@ -350,22 +644,28 @@ PLACE_AUTHENTICATION
 # Make *sure* that 'preprocess' comes before any realm if you 
 # need to setup hints for the remote radius server
 authorize {
-PLACE_AUTHORIZATION
+	preprocess
+	suffix
+	files
 }
 
 # Pre-accounting. Look for proxy realm in order of realms, then 
 # acct_users file, then preprocess (hints file).
 preacct {
-PLACE_PREACCOUNTING
+	suffix
+	files
+	preprocess
 }
 
 # Accounting. Log to detail file, and to the radwtmp file.
 accounting {
-PLACE_ACCOUNTING
+	#acct_unique
+	detail
+	unix
 }
 
 # Session database, used for checking Simultaneous-Use. The radutmp module
 # handles this
 session {
-PLACE_SESSIONING
+	#radutmp
 }
