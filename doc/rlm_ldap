@@ -178,7 +178,6 @@ On user rejection rlm_ldap will return the following module messages:
 
 "rlm_ldap: User not found"
 "rlm_ldap: Access Attribute denies access"
-"rlm_ldap: User is not an access group member"
 "rlm_ldap: Bind as user failed"
 
 These messages will be visible in radius.log as aditional information in
@@ -197,6 +196,15 @@ Also, adding the host:port information SHOULD be avoided unless there are more t
 ldap module instances in which case the host,port information can be used to distinguish
 which module will actually return the information (the xlat function will return NULL if
 the host,port information does not correspond to the configured attributes).
+If there are more than one instances the module instance name can be used instead of the
+string 'ldap' before the ldap url to decide which instance will return the information.
+That is the xlat string will be of the form:
+
+%{$instance_name:ldap:///dc=comapny,dc=com?uid?sub?uid=%u}
+
+ie: ${ldap_company1:ldap:///dc=company1,dc=com?uid?sub?uid=%u}
+
+
 
 USER PROFILE ATTRIBUTE:
 The module can use the User-Profile attribute. If it is set, it will assume that it contains
