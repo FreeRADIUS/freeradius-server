@@ -1,3 +1,5 @@
+dnl This should be processed after a new module is added!
+
 dnl #############################################################
 dnl #
 dnl #  For information about autoconf, see:
@@ -60,6 +62,27 @@ AC_LIBTOOL_DLOPEN
 
 dnl Figure out how to build shared libraries
 AC_PROG_LIBTOOL
+
+dnl Put this in later, when all distributed modules use autoconf.
+dnl AC_ARG_WITH(disablemodulefoo,
+dnl [  --without-rlm_foo       Disables module compilation.  Module list:]
+dnl esyscmd([find src/modules -type d -name rlm_\* -print |\
+dnl 	sed -e 's%src/modules/.*/% (sub)- %; s%.*/%- %' |\
+dnl 	awk '{print "                            "$0}']))
+
+AC_ARG_ENABLE(rlm-best-guess,
+[  --enable-rlm-best-guess  Try to build all, but don't fail when lacking
+                                dependancies. ])
+if test x"${enable_rlm_best_guess+set}" = xset; then
+  enable_rlm_best_guess=yes
+  ac_configure_args="$ac_configure_args --enable-rlm-best-guess"
+fi
+
+AC_ARG_WITH(fooincludedir,
+[  --with-FOO-include-dir=DIR   Dir for includes for FOO, module dependancy.])
+
+AC_ARG_WITH(foolibdir,
+[  --with-FOO-lib-dir=DIR  Dir for libraries for FOO, module dependancy.])
 
 dnl extra argument: --with-logdir
 logdir='${localstatedir}/log'
@@ -185,6 +208,9 @@ AC_ARG_WITH(snmp,
   esac ]
 )
 
+
+
+dnl   move these into the mysql configure.in file
 AC_ARG_WITH(mysql-include-dir,
 [  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found ],
 [ mysql_include_dir="$withval" ]
@@ -226,8 +252,8 @@ dnl #
 dnl #  Enable developer C compiler warnings
 dnl #
 AC_ARG_ENABLE(developer,
-[  --enable-developer              Turns on super-duper-extra-compile-warnings
-                                  when using gcc.],
+[  --enable-developer      Turns on super-duper-extra-compile-warnings 
+                              when using gcc.],
 [ case "$withval" in
     *)
 	developer=no
@@ -416,8 +442,8 @@ AC_CHECK_HEADERS( \
 	syslog.h \
 	inttypes.h \
 	stdint.h \
-        stdio.h \
-        netdb.h \
+	stdio.h \
+	netdb.h \
 	arpa/inet.h \
 	netinet/in.h \
 	sys/types.h \
@@ -439,6 +465,7 @@ if test "x$ac_cv_header_regex_h" = "xyes"; then
 fi
 AC_SUBST(REGEX)
 AC_SUBST(REGEX_EXTENDED)
+
 
 dnl #############################################################
 dnl #
@@ -555,11 +582,12 @@ AC_MSG_CHECKING(for developer gcc flags)
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
   devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs"
   CFLAGS="$CFLAGS $devflags"
+  AC_MSG_RESULT(yes.  Using $devflags)
 else
   devflags="none"
   CFLAGS="$CFLAGS -DNDEBUG"
+  AC_MSG_RESULT(no.)
 fi
-AC_MSG_RESULT($devflags)
 
 dnl #############################################################
 dnl #
@@ -603,6 +631,18 @@ AC_SUBST(LIBLTDL)
 AC_SUBST(INCLTDL)
 top_builddir=`pwd`
 AC_SUBST(top_builddir)
+
+dnl #############################################################
+dnl #
+dnl #  Configure in any module directories.
+dnl #
+dnl #############################################################
+
+dnl This 'echo' is a way to get 'find' output on one line.  (Make sure that -n
+dnl    works, or the 'sed's at configure-time will fail!  Presumably, if you have
+dnl    autoconf, you have a decent echo.  :/  Maybe.)
+dnl Someone suggest a nicer way to do this!
+AC_CONFIG_SUBDIRS(esyscmd(echo -n `find src/modules -name configure -print |sed 's%configure$%%'`))
 
 dnl #############################################################
 dnl #

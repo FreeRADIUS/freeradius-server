@@ -1,0 +1,29 @@
+AC_INIT(rlm_counter.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_counter])
+
+if test x$with_[]modname != xno; then
+
+	AC_CHECK_LIB(gdbm, gdbm_open,
+		[ counter_ldflags="-lgdbm" ],
+		[ fail=yes ],
+	)
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+if test x"$fail" != "x"; then
+	if test x"${enable_rlm_best_guess+set}" = xset; then
+		AC_MSG_WARN([Silently not building ]modname[.]); 
+		targetname=""
+	else
+		AC_MSG_ERROR([set --without-]modname[ if you wish to disable it.])
+	fi
+fi
+
+AC_SUBST(counter_ldflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)

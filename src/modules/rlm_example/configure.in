@@ -1,0 +1,41 @@
+AC_INIT(rlm_example.c)  # change 'example'
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_example])  # change 'example'
+
+if test x$with_[]modname != xno; then
+
+	dnl put configuration checks here.  
+	dnl use AC_MSG_ERROR() on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+
+	AC_CHECK_LIB(c, printf,
+		[ example_ldflags="$example_ldflags -lc" ],
+		[ fail=yes ]
+	)
+
+	AC_CHECK_HEADER(stdio.h,
+		[ example_cflags="$example_cflags -I/usr/include" ],
+		[ fail=yes ]
+	)
+
+	targetname=modname     # keep this!  Don't change!
+else
+	dnl the user doesn't want this module
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+if test x"$fail" != "x"; then
+	if test x"${enable_rlm_best_guess+set}" = xset; then
+		AC_MSG_WARN([Silently not building ]modname[.]); 
+		targetname=""
+	else
+		AC_MSG_ERROR([set --without-]modname[ if you wish to disable it.])
+	fi
+fi
+
+
+AC_SUBST(example_cflags)  # change 'example'
+AC_SUBST(example_ldflags)  # change 'example'
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(Makefile)  # keep this!  Don't change!
