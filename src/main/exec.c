@@ -98,6 +98,14 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	
 	/*
 	 *	Build vector list of arguments and execute.
+	 *
+	 *	FIXME: This parsing gets excited over spaces in
+	 *	the translated strings, e.g. User-Name = "aa bb"
+	 *	is passed as two seperate arguments, instead of one.
+	 *
+	 *	What we SHOULD do instead is to split the exec program
+	 *	buffer first, and then do the translation on every
+	 *	subsequent string.
 	 */
 	p = strtok(buf, " \t");
 	if (p) do {
