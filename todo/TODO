@@ -1,20 +1,21 @@
 URGENT:
+o Add 'initialize' list in modules, so explicitely give initialization order.
+o Add a 'listen' directive, ala Apache, so that we can listen
+  on multiple ports. Hmm... if we do that, we should allow multiple
+  virtual servers, too.
 o Stop unloading modules on HUP so that we can have persistant
   handles/socketc/etc from module_init().  Alan D. and Alan C. had a good
   plan for when to load/reload modules on the list recently...I say
   run with that.
-o merge OSF/OSFIA patches from Cistron.
 o double-check Cistron 'compat' mode, so that all current users of
   Cistron can upgrade "out of the box" to FreeRADIUS
 
 MEDIUM PRIORITY
+o fix radwho to read modules{radutmp{filename = }}
 o go through all of the code and reformat it, for project standards
 o go through all of the code, removing unnecessary #include's, and
   generating a standard include file order which will work across all
   platforms.
-o fix the proxy receive code, so that we don't have to look through ALL
-  of the requests to find the matching proxy.  This might be hard to do..
-  It would also involve thread locking issues.
 o rad_malloc() fixes:  child processes/threads ALWAYS kill themselves
   if malloc() fails.  The main server process does a 'sleep' for N
   seconds, and tries again.  After T tries, it gives up, and calls exit().
@@ -23,12 +24,11 @@ LOW PRIORITY:
 o Write better documentation
 o Manual pages for the daemon, utilities and conffiles (some done)
 o Fix all FIXME's in the source.
-o Fix DBM support:
-  - Put DBM into its own module
-  - Multiple defaults (done)
-  - Fallthrough (hard for not DEFAULT entries)
 o better SNMP statistics support, for the auth/acct servers, and for
   each client.
+o fix the proxy receive code, so that we don't have to look through ALL
+  of the requests to find the matching proxy.  This might be hard to do..
+  It would also involve thread locking issues.
 
 WAIT UNTIL NEXT RELEASE:
 o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
@@ -63,6 +63,11 @@ o there should be a way that radius itself could
 	--- This work is for an external process to do ---
 
 DONE:
+o merge OSF/OSFIA patches from Cistron.
+o Fix DBM support:
+  - Put DBM into its own module
+  - Multiple defaults (done)
+  - Fallthrough (hard for not DEFAULT entries)
 o modular radutmp and radwtmp, as per Alan Curry's old patches.
 o Fix multiple/conflicting VALUE names as pointed out on the list.
    e.g. 'Rlogin' has different values when used with different ATTRIBUTEs,
