@@ -1,0 +1,130 @@
+Ver 1.28:
+* Make user_delete.php3 print something when a user is deleted
+* Cache nas hostname lookups in user_accounting
+Ver 1.27:
+* Allow for variable expansion in the configuration file. Something like:
+  general_base_dir: /usr/local/dialup_admin
+  general_default_file: %{general_base_dir}/conf/default.vals
+* Small changes in the README file
+* A few corrections in the sql drivers
+* Enlarged the textboxes in the user_edit page
+* Created a folder help
+* Added a help page for:
+   o Login-Time
+   o Simultaneous-Use
+   o Dialup-Access
+   o Framed-Compression
+   o Port-Limit
+   o Lock Message
+   o Framed-IP-Address
+Ver 1.26:
+* A few bugfixes for the general sql code (typo mistakes mostly)
+Ver 1.25:
+* Deleted a mysql_close from lib/mysql/create_user since we now have persistent sql connections
+* Removed the select_db() from accounting.php3 since it is not needed
+* A lot of html changes in accounting.php3
+* Changed the sql code to be modular. Now under lib we don't have a mysql directory but a sql directory
+  with a directory drivers which contains the database specific functions. As a result all calls to mysql*
+  functions where changed to call da_sql* functions. Right now mysql should work and postgresql *may* work
+  It is not tested though. Hopefully things will come back to being stable in a few days.
+* Added sql_port and sql_type configuration file directives
+Ver 1.20:
+* Fixed a bug in lib/ldap/change_attrs. When we modify an attribute do an ldap_mod_del($mod) and then a
+  ldap_mod_add($add_r)
+* In accounting.php3 show the attribute description instead of the attribute name.
+Ver 1.19:
+* In lib/ldap/check_password.php3 don't do a user search but use the already available user DN
+* Remove the language support from the get_user_info() functions. They are only used in the user_finger page
+* In user_state show weekly usage for the week starting from sunday 00:00, not for the last 7 days
+* Show upload/download when connected or for the last time the user connected
+* Fixed a few minor problems with the help and about pages
+Ver 1.18:
+* Fixed a small problem with total upload,download numbers in user_admin
+* Fixed a major problem in the accounting report generator when adding an attribute check. Now it
+  should be all OK.
+* Fixed a small bug in lib/mysql/functions.php3. Bug found be galileo@microsky.net
+Ver 1.17:
+* Fixed a few more problems in the mysql code
+* Updated README
+* the help page now prints the README file. It also has a common layout with the other pages
+* Changed the about page to have a common look with the other pages.
+Ver 1.16:
+* Fixed a few typing mistakes in mysql.attrmap
+* If the corresponding attribute name (in ldap or mysql) is 'none' then do not
+  edit/add it. Based on a bug report by galileo@microsky.net
+* Fixed a few errors in lib/attrshow.php3
+Ver 1.15:
+* Added user test page. It will use radclient to send a radius access-request
+  to the radius server and check the response. This page is also used to check
+  that the radius server is working fine. Added user_test.php3 and a few config
+  file parameters.
+* Support for multi valued attributes.
+* Changed cleartext encryption name from none to clear
+* Renamed the general_sql_row_limit configuration directive to sql_row_limit
+Ver 1.12:
+* Added an FAQ
+* Small changes in html code
+* Small changes in the README file
+* Fixed a small problem in delete_user from ldap
+* Removed the Base64 encode since it was causing problems
+Ver 1.11:
+* Changed all ldap_bind() to use the ldap bind DN and password. Should have been
+  the default behaviour
+* Do a Base64 encode in ldap/change_password.php3 before sending the password to
+  the ldap server
+* Added support for module messages in log_badlogins and user_accounting
+* Updated documentation
+Ver 1.10:
+* Added support for users in mysql database. All bugs are welcome. To activate
+  just use mysql as library_type
+* Added support for salt in crypt.php3
+* Added userinfo table to keep information for users (Name,Phone etc). Added two
+  corresponding values in admin.conf
+* Added mysql.attrmap for mysql support
+* Added TODO
+* Added persistent connections for mysql (mysql_pconnect())
+Ver 1.00:
+* Added password change facility in user_edit. Support for multiple
+  password encryption methods
+* Added user deletion page user_delete.php3 with corresponding ldap lib code
+* Moved the second user_info.php3 include in user_edit to the correct location. Also
+  used isset instead of == ''
+* Moved the action toolbar (show,edit,accounting...) into a separate html file
+* Added the nas model in user_finger.php3
+Ver 0.99.8:
+* Added the caller id in the finger facility
+* Changed the start date in the badusers file to 0000
+* Added the out of quota message in user_admin
+* fixed a few problems with the html code in user_admin.php3
+* calculate account status in user_admin for the last week only
+* Change font color to red if used time > corresponding limit (weekly or daily)
+* Added the user_stats.php3. It can be used by outside pages to get a quick
+  overview of the status of the user. It will return the following fields
+  separated by new lines:
+  account_status(active or inactive),lock message,weekly limit,daily limit,
+  weekly used,weekly connections,daily used,daily connections
+* fixed a bug in the subscription analysis in user_admin.php3
+* calculate weekly used from sunday 00:00:00 when the counters reset
+* added clean_radacct which will clean radacct entries which have been open
+  for more than a day. It will not do any harm even if it is incorrect since
+  when rlm_sql runs if the update operation fails then it will fall back to
+  insert (see sql.conf)
+* added log_badlogins. It will continuously read the radius.log file and log
+  to the radacct table all login incorrect and multiple logins with a
+  corresponding acctterminatecause. user_accounting.php3 is already prepared
+  for this (it will show those entries in red)
+* fix a small bug with null values in change_vals.php3 of the ldap lib
+Ver 0.99:
+* Added the badusers table
+* Added the default and regular profile from ldap for user_edit
+* Added the snmpfinger in the finger facility so that it will not
+  relly on the sql database.
+* Added the new user facility
+* Added support for the Lock Message facility
+* Various bug fixes and enhancements
+
+Ver 0.31:
+* Added the @ sign in the {mysql,ldap}_{open,close} functions so that
+  they don't show error messages
+* Changed double quotes with single quotes where applicable for performance
+  reasons

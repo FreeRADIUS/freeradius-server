@@ -1,0 +1,26 @@
+#!/usr/bin/perl
+use DBI;
+use POSIX;
+
+$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
+
+open CONF, "<$conf"
+	or die "Could not open configuration file\n";
+while(<CONF>){
+	chomp;
+	($key,$val)=(split /:\s*/,$_);
+	$sql_server = $val if ($key eq 'sql_server');
+	$sql_username = $val if ($key eq 'sql_username');
+	$sql_password = $val if ($key eq 'sql_password');
+	$sql_database = $val if ($key eq 'sql_database');
+	$sql_accounting_table = $val if ($key eq 'sql_accounting_table');
+}
+close CONF;
+
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
+$date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - 1),$mon,$year,$wday,$yday,$isdst);
+print "$date\n";
+
+$dbh = DBI->connect("DBI:mysql:$sql_database:$sql_server","$sql_username","$sql_password");
+$dbh->do("DELETE FROM $sql_accounting_table WHERE AcctStopTime = '0' AND AcctStartTime < '$date';");
+$dbh->disconnect();

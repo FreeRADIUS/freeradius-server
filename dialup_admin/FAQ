@@ -1,0 +1,28 @@
+> I was wondering if there is any more documentation about howto setup this 
+> software other than what comes in the README? 
+
+No, there isn't. It's easier for me to write code than to document it :-)
+Anyway, I always try to make better documentation.
+There's also this FAQ :-)
+
+> 
+> What tables do I need to create in the MySQL database?
+
+It depends.
+If you are using ldap for user authentication/information then you only need
+to create the freeradius sql tables (in order to create the radacct table,
+the other tables will just sit around doing nothing) which can be created from a
+sql script in the freeradius distribution. If you are runing mysql it is in
+src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
+
+If you are using mysql for user authentication/information then you will again
+need to create the freeradius sql tables and if you want you could also create
+the userinfo table to store user information (name,telephone etc)
+
+You could also create the badusers table if you want the functionality it provides.
+
+sql scripts to create the badusers and userinfo tables can be found in the
+directory sql (of dialup_admin distribution).
+
+--
+kkalev

@@ -1,0 +1,12 @@
+* Minimize database (ldap,mysql) connections.
+* Clean up html code to make it smaller
+* More messages
+* Skins
+* Other languages in html
+* Multilanguage support for ldap attributes
+* Add language attributes in user_new.php3
+* Finger facility. Should find a way to make it work with all nases. That will
+  mean that it should be made modular and fall back to simple queries to the
+  sql db if it cannot get user info from the nas server
+* Check out dbx library. It seems very promising for database independent code.
+  We 'll see where it goes.

@@ -1,0 +1,85 @@
+dialup_admin is a web based administration interface for the freeradius radius server.
+It is modular and right now it assumes that user information is stored in an ldap server
+or an sql database and accounting in an sql server.
+
+There are also a few more things included:
+
+* sql/badusers.sql: It will create a table named badusers which can be used to hold the
+  history for badusers (date,action)
+* sql/userinfo.sql: It will create a table named userinfo which contains personal information
+  for users stored in the sql database. This can be used if a sql database is used to store user profiles
+  (not ldap).
+* bin/log_badlogins: It will constantly check the radiusd.log file and add all login-incorrect,
+  invalid-user, outside of allowed login time  and multiple-login cases to the radacct table with
+  acctstarttime=acctstoptime, acctsessiontime=0 and acctterminatecause containing the reason.
+  If the failing module sent back a module message then it will also appear in the terminate cause.
+* bin/clean_radacct: It will delete all entries in the radacct table with a starttime > 1 day and
+  stoptime = 0. It will not do an harm even if it deletes valid entries since radiusd will fall
+  back to insert if update fails.
+
+The structure of the tree is:
+
+conf:: Contains various configuration files.
+conf::admin.conf=>
+	The main configuration file. The directives used should be easily
+	understood
+conf::config.php3=>
+	Just a helper php4 for reading the admin.conf file. Just make sure that it
+	opens the correct admin.conf file
+conf::default.vals=>
+	Contains the default values for check and reply items. If you also use the users
+	file except for the ldap/sql databases fill in the default values you have inserted
+	for the users.Else comment them out.
+conf::sql.attrs=>
+	Contains inmformation about the sql attributes. This is used by the accounting
+	report generator (accounting.php3).
+conf::user_edit.attrs=>
+	Contains the attributes that user_edit.php3 will show. Just uncomment those
+	which you want to be displayed.
+conf::extra.ldap-attrmap=>
+	Contains a few items not included in ldap.attrmap which are used only by dialup_admin
+	Things like User-Password and Dialup-Lock-Msg. Use none for attributes that are not known
+	by the radius or ldap server.
+conf::sql.attrmap=>
+	Contains the Attribute map for the sql database. Use none for attributes that are not known by
+	the radius server.
+conf::auth.request=>
+	Contains value pairs sent in the test packets which are sent from the test user/server pages.
+
+htdocs:: Contains the basic php files
+htdocs::index.html=>
+	The main index file. Just contains the frames tags
+htdocs::content.html=>
+	Change this file to include the greeting of your choise
+htdocs::buttons.html=>
+	The buttons html page
+htdocs::style.css=>
+	CSS style file. Change it to match your preferences
+htdocs:: user_state.php3 =>
+	It can be used by outside pages to get a quick
+	overview of the status of a user. It will return the following fields
+	separated by new lines:
+	account_status(active or inactive),lock message,weekly limit,daily limit,
+	weekly used,weekly connections,daily used,daily connections
+
+html:: Contains the html code for a few pages 
+html::user_admin.html.php3 =>
+	html code for the user_admin page
+html::stats.html.php3 =>
+	html code for the stats page
+html::user_toolbar.html.php3 =>
+	the user toolbar (show,edit,accounting...) which appears in almost all pages
+
+lib::	Contains the library items
+lib::ldap=>
+	The ldap files
+lib::lang=>
+	Allow for multiple languages to be supported
+lib::crypt=>
+	Allow for multiple encryption schemes (for user passwords)
+lib::sql=>
+	Contains the sql library files. There is also a directory drivers
+	which contains functions for various sql databases (mysql and
+	postgresql for the time being).
+
+The rest: The rest are the php4 files. Normally, you should not need to change anything in them.

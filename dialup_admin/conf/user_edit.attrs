@@ -1,0 +1,33 @@
+#Auth-Type			Auth Type
+#Simultaneous-Use		<a href="help/simultaneous_use_help.html" target=su_help onclick=window.open("help/simultaneous_use_help.html","su_help","width=560,height=170,toolbar=no,scrollbars=no,resizable=yes") title="Simultaneous Use Help Page"><font color="blue">Simultaneous Use</font></a>
+Framed-Protocol			Protocol
+Framed-IP-Address		<a href="help/framed_ip_address_help.html" target=fia_help onclick=window.open("help/framed_ip_address_help.html","fia_help","width=560,height=230,toolbar=no,scrollbars=no,resizable=yes") title="Framed-IP-Address Help Page"><font color="blue">IP Address</font></a>
+Framed-IP-Netmask		IP Netmask
+#Framed-Route		Route
+#Framed-Routing
+#Filter-Id
+Framed-MTU			MTU
+Framed-Compression		<a href="help/framed_compression_help.html" target=fc_help onclick=window.open("help/framed_compression_help.html","fc_help","width=600,height=210,toolbar=no,scrollbars=no,resizable=yes") title="Framed Compression Help Page"><font color="blue">Compression Used</font></a>
+#Login-IP-Host
+#Login-Service
+#Login-TCP-Port
+#Callback-Number
+#Callback-Id
+#Framed-IPX-Network
+#Class
+Session-Timeout			Session Timeout
+Idle-Timeout			Idle Timeout
+#Termination-Action
+#Login-LAT-Service
+#Login-LAT-Node
+#Login-LAT-Group
+#Framed-AppleTalk-Link
+#Framed-AppleTalk-Network
+#Framed-AppleTalk-Zone
+Port-Limit			<a href="help/port_limit_help.html" target=pl_help onclick=window.open("help/port_limit_help.html","pl_help","width=600,height=170,toolbar=no,scrollbars=no,resizable=yes") title="Port Limit Help Page"><font color="blue">Port Limit</font></a>
+#Login-LAT-Port
+#Dialup-Access			<a href="help/dialup_access_help.html" target=da_help onclick=window.open("help/dialup_access_help.html","da_help","width=560,height=200,toolbar=no,scrollbars=no,resizable=yes") title="Dialup Access Help Page"><font color="blue">Dialup Access (use FALSE to lock)</font></a>
+Dialup-Lock-Msg			<a href="help/lock_message_help.html" target=lm_help onclick=window.open("help/lock_message_help.html","lm_help","width=600,height=210,toolbar=no,scrollbars=no,resizable=yes") title="Lock Message Help Page"><font color="blue">Lock Message</font></a>
+#Max-Daily-Session		Daily Limit (secs)
+#Max-Weekly-Session		Weekly Limit (secs)
+#Login-Time			User Login Period <a href="help/login_time_help.html" target=lt_help onclick=window.open("help/login_time_help.html","lt_help","width=600,height=370,toolbar=no,scrollbars=no,resizable=yes") title="Login-Time Help Page"><font color="blue">(UUCP Format)</font></a>
