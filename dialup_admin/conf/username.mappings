@@ -1,0 +1,8 @@
+# Username mappings
+# Format:
+# Username:realm:query
+#
+# where realm is accounting or userdb
+#
+library-admin:accounting:AND nasipaddress = '123.123.123.123'
+library-admin:userdb:AND Admin = 'library-admin'
