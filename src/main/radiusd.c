@@ -1897,25 +1897,11 @@ typedef struct spawn_thread_t {
  */
 static void *rad_spawn_thread(void *arg)
 {
-	int replicating;
 	spawn_thread_t *data = (spawn_thread_t *)arg;
 	
 	pthread_setcancelstate(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-	
-	/*
-	 *  Keep only allowed attributes in the request.
-	 */
-	if (data->request->proxy) {
-		replicating = proxy_receive(data->request);
-		if (replicating != 0) {
-			data->request->finished = TRUE;
-			free(data);
-			return NULL;
-		}
-	}
-	
+
 	rad_respond(data->request, data->fun);
-	data->request->child_pid = NO_SUCH_CHILD_PID;
 	free(data);
 	return NULL;
 }
@@ -1942,29 +1928,39 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 #if HAVE_PTHREAD_H
 	{
-	int rcode;
-	spawn_thread_t *data;
+              int rcode;
+              spawn_thread_t *data;
+              pthread_attr_t attr;
 
-	data = (spawn_thread_t *) rad_malloc(sizeof(spawn_thread_t));
-	memset(data, 0, sizeof(data));
-	data->request = request;
-	data->fun = fun;
+              data = (spawn_thread_t *) rad_malloc(sizeof(spawn_thread_t));
+              memset(data, 0, sizeof(data));
+              data->request = request;
+              data->fun = fun;
 
-	/*
-	 *  Create a child thread, complaining on error.
-	 */
-	rcode = pthread_create(&child_pid, NULL, rad_spawn_thread, data);
-	if (rcode != 0) {
-		radlog(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
-				nas_name2(request->packet), request->packet->id, strerror(errno));
-		retval = -1;
-		goto exit_child_critsec;
-	}
+              /*
+               *      Initialize the thread's attributes to detached.
+               *
+               *      We could call pthread_detach() later, but if
+               *      the thread exits between the create & detach
+               *      calls, it will need to be joined, which will
+               *      never happen.
+               */
+              pthread_attr_init(&attr);
+              pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	/*
-	 *  Detach it, so it's state is automagically cleaned up on exit.
-	 */
-	pthread_detach(child_pid);
+              /*
+               *  Create a child thread, complaining on error.
+               */
+              rcode = pthread_create(&request->child_pid, &attr,
+                                     rad_spawn_thread, data);
+              if (rcode != 0) {
+                      radlog(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
+                             nas_name2(request->packet), request->packet->id,
+			     strerror(errno));
+                      retval = -1;
+                      goto exit_child_critsec;
+              }
+              pthread_attr_destroy(&attr);
 	}
 #else
 	/*
@@ -1988,12 +1984,12 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 		rad_respond(request, fun);
 		exit(0);
 	}
-#endif
 
 	/*
 	 *  Register the Child
 	 */
 	request->child_pid = child_pid;
+#endif
 
 exit_child_critsec:
 	signal(SIGCHLD, sig_cleanup);
