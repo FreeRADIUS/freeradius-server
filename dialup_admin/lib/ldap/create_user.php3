@@ -3,21 +3,21 @@
 	if ($ds){
 		$r = @ldap_bind($ds,"$config[ldap_binddn]",$config[ldap_bindpw]);
 		if ($r){
-			list ($givenname,$sn) = split(' ',$cn,3);
+			list ($givenname,$sn) = split(' ',$Fcn,3);
 			$dn = 'uid=' . $login . ',' . $config[ldap_default_new_entry_suffix];
 			$new_user_entry["objectclass"][0]="top";
 			$new_user_entry["objectclass"][1]="person";
 			$new_user_entry["objectclass"][2]="organizationalPerson";
 			$new_user_entry["objectclass"][3]="inetOrgPerson";
 			$new_user_entry["objectclass"][4]="radiusprofile";
-			$new_user_entry["cn"]="$cn";
+			$new_user_entry["cn"]="$Fcn";
 			$new_user_entry["sn"]="$sn";
 			$new_user_entry["givenname"]="$givenname";
-			$new_user_entry["mail"]="$mail";
-			$new_user_entry["telephonenumber"]="$telephonenumber";
-			$new_user_entry["homephone"]="$homephone";
-			$new_user_entry["mobile"]="$mobile";
-			$new_user_entry["ou"]="$ou";
+			$new_user_entry["mail"]="$Fmail";
+			$new_user_entry["telephonenumber"]="$Ftelephonenumber";
+			$new_user_entry["homephone"]="$Fhomephone";
+			$new_user_entry["mobile"]="$Fmobile";
+			$new_user_entry["ou"]="$Fou";
 			$new_user_entry["uid"]="$login";
 			if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
 				include("../lib/crypt/$config[general_encryption_method].php3");

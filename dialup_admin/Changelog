@@ -1,3 +1,6 @@
+Ver 1.51:
+* Only call user_info.php3 in user_new.php3 when we are creating a user
+* Fix a bug with personal information attributes in user_new.php3
 Ver 1.50:
 * Add support for groups in SQL. Added several new files and modified a few more.
 * Default values in SQL are now extracted from the group membership. Added a lib/sql/defaults.php3 file.

@@ -51,9 +51,9 @@ include("password_generator.jsc");
 	<tr><td>
    
 <?php
-if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-	include("../lib/$config[general_lib_type]/user_info.php3");
 if ($create == 1){
+	if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
+		include("../lib/$config[general_lib_type]/user_info.php3");
 	if ($user_exists != "no"){
 		echo <<<EOM
 <b>The username <i>$login</i> already exists in the user database</b>
@@ -89,42 +89,42 @@ EOM;
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Name (First Name Surname)
 		</td><td>
-		<input type=text name="cn" value="$cn" size=35>
+		<input type=text name="Fcn" value="$cn" size=35>
 		</td>
 	</tr>
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Mail
 		</td><td>
-		<input type=text name="mail" value="$mail" size=35>
+		<input type=text name="Fmail" value="$mail" size=35>
 		</td>
 	</tr>
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Department
 		</td><td>
-		<input type=text name="ou" value="$ou" size=35>
+		<input type=text name="Fou" value="$ou" size=35>
 		</td>
 	</tr>
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Home Phone
 		</td><td>
-		<input type=text name="homephone" value="$homephone" size=35>
+		<input type=text name="Fhomephone" value="$homephone" size=35>
 		</td>
 	</tr>
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Work Phone
 		</td><td>
-		<input type=text name="telephonenumber" value="$telephonenumber" size=35>
+		<input type=text name="Ftelephonenumber" value="$telephonenumber" size=35>
 		</td>
 	</tr>
 	<tr>
 		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Mobile Phone
 		</td><td>
-		<input type=text name="mobile" value="$mobile" size=35>
+		<input type=text name="Fmobile" value="$mobile" size=35>
 		</td>
 	</tr>
 EOM;
