@@ -289,13 +289,13 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *	No '=': must be a section or sub-section.
 		 */
 		if (strchr(ptr, '=') == NULL) {
-			t1 = gettoken(&ptr, buf1, sizeof(buf1));
-			t2 = gettoken(&ptr, buf2, sizeof(buf2));
-			t3 = gettoken(&ptr, buf3, sizeof(buf3));
+			t1 = getcftoken(&ptr, buf1, sizeof(buf1));
+			t2 = getcftoken(&ptr, buf2, sizeof(buf2));
+			t3 = getcftoken(&ptr, buf3, sizeof(buf3));
 		} else {
-			t1 = gettoken(&ptr, buf1, sizeof(buf1));
-			t2 = gettoken(&ptr, buf2, sizeof(buf2));
-			t3 = getword(&ptr, buf3, sizeof(buf3));
+			t1 = getcftoken(&ptr, buf1, sizeof(buf1));
+			t2 = getcftoken(&ptr, buf2, sizeof(buf2));
+			t3 = getcfword(&ptr, buf3, sizeof(buf3));
 		}
 
 		if (buf1[0] == 0 || buf1[0] == '#')
@@ -333,6 +333,23 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				csp->next = css;
 
 			continue;		
+		}
+
+		/*
+		 * Or an empty subsection shortcut
+		 */
+		if (t2 == T_SEMICOLON || t3 == T_SEMICOLON) {
+			css = cf_section_alloc(buf1,
+					t2==T_SEMICOLON ? NULL : buf2, cs);
+			css->lineno = *lineno;
+			for (csp = cs->sub; csp && csp->next; csp = csp->next)
+				;
+			if (csp == NULL)
+				cs->sub = css;
+			else
+				csp->next = css;
+
+                        continue;
 		}
 
 		/*

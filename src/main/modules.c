@@ -354,7 +354,7 @@ int setup_modules(void)
 	const char	*control;
 	int		comp;
 	CONF_SECTION	*cs;
-	CONF_PAIR	*modref;
+	CONF_SECTION	*modref;
         const char *filename="radiusd.conf";
 
 	this = NULL; /* Shut up stupid gcc */
@@ -419,13 +419,9 @@ int setup_modules(void)
 	if (!cs)
 		continue;
 
-	/* These need to be subsections instead of attr/value pairs if we're
-	 * going to do failover config here. I will wait until I've figured
-	 * out the shorthand empty-subsection syntax first though.
-	 * --Pac */
-	for(modref=cf_pair_find_next(cs, NULL, NULL)
+	for(modref=cf_subsection_find_next(cs, NULL, NULL)
 	    ; modref ;
-	    modref=cf_pair_find_next(cs, modref, NULL)) {
+	    modref=cf_subsection_find_next(cs, modref, NULL)) {
 
 	/*
 	 *	Yes, we're missing two indents here.
@@ -433,7 +429,7 @@ int setup_modules(void)
 	 *	ofcourse means that this function should
 	 *	be split up....
 	 */
-	this = find_module_instance(module_instance_list, cf_pair_attr(modref));
+	this = find_module_instance(module_instance_list, modref->name1);
 	if (this == NULL) {
 		exit(1); /* FIXME */
 	}

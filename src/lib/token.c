@@ -41,6 +41,17 @@ static const TOKEN tokens[] = {
 	{ NULL, 0,		},
 };
 
+static const TOKEN cftokens[] = {
+	{ "{",	T_LCBRACE,	},
+	{ "}",	T_RCBRACE,	},
+	{ ",",	T_COMMA,	},
+	{ ";",	T_SEMICOLON,	},
+	{ ":=",	T_OP_SET,	},
+	{ "=",	T_OP_EQ,	},
+	{ "#",	T_HASH,		},
+	{ NULL, 0,		},
+};
+
 /*
  *	This works only as long as special tokens
  *	are max. 2 characters, but it's fast.
@@ -56,7 +67,8 @@ static const TOKEN tokens[] = {
  *	At end-of-line, buf[0] is set to '\0'.
  *	Returns 0 or special token value.
  */
-static int getthing(char **ptr, char *buf, int buflen, int tok)
+static int getthing(char **ptr, char *buf, int buflen, int tok,
+		    const TOKEN *tokenlist)
 {
 	char	*s, *p;
 	int	quote;
@@ -79,7 +91,7 @@ static int getthing(char **ptr, char *buf, int buflen, int tok)
 	/*
 	 *	Might be a 1 or 2 character token.
 	 */
-	if (tok) for (t = tokens; t->str; t++) {
+	if (tok) for (t = tokenlist; t->str; t++) {
 		if (TOKEN_MATCH(p, t->str)) {
 			strcpy(buf, t->str);
 			p += strlen(t->str);
@@ -140,7 +152,7 @@ static int getthing(char **ptr, char *buf, int buflen, int tok)
 			if (isspace(*p))
 				break;
 			if (tok) {
-				for (t = tokens; t->str; t++)
+				for (t = tokenlist; t->str; t++)
 					if (TOKEN_MATCH(p, t->str))
 						break;
 				if (t->str != NULL)
@@ -166,7 +178,7 @@ static int getthing(char **ptr, char *buf, int buflen, int tok)
  */
 int getword(char **ptr, char *buf, int buflen)
 {
-	return getthing(ptr, buf, buflen, 0) == T_EOL ? 0 : 1;
+	return getthing(ptr, buf, buflen, 0, tokens) == T_EOL ? 0 : 1;
 }
 
 /*
@@ -174,5 +186,18 @@ int getword(char **ptr, char *buf, int buflen)
  */
 int gettoken(char **ptr, char *buf, int buflen)
 {
-	return getthing(ptr, buf, buflen, 1);
+	return getthing(ptr, buf, buflen, 1, tokens);
+}
+
+/*
+ *	Similar functions for conffile - same code, different token list
+ */
+int getcfword(char **ptr, char *buf, int buflen)
+{
+	return getthing(ptr, buf, buflen, 0, cftokens) == T_EOL ? 0 : 1;
+}
+
+int getcftoken(char **ptr, char *buf, int buflen)
+{
+	return getthing(ptr, buf, buflen, 1, cftokens);
 }
