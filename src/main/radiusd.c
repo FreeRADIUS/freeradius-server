@@ -1425,6 +1425,31 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
                      */
                     goto finished_request;
             }
+
+	} else {
+		/*
+		 *	This is the initial incoming request which
+		 *	we're processing.
+		 *
+		 *	Some requests do NOT get cached, as they
+		 *	CANNOT possibly have duplicates.  Set the
+		 *	magic option here.
+		 *
+		 *	Status-Server messages are easy to generate,
+		 *	so we toss them as soon as we see a reply.
+		 *
+		 *	Accounting-Request packets WITHOUT an
+		 *	Acct-Delay-Time attribute are NEVER
+		 *	duplicated, as RFC 2866 Section 4.1 says that
+		 *	the Acct-Delay-Time MUST be updated when the
+		 *	packet is re-sent, which means the packet
+		 *	changes, so it MUST have a new identifier and
+		 *	Request Authenticator.  */
+		if ((request->packet->code == PW_STATUS_SERVER) ||
+		    ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+		     (pairfind(request->packet->vps, PW_ACCT_DELAY_TIME) == NULL))) {
+			request->options |= RAD_REQUEST_OPTION_DONT_CACHE;
+		}
 	}
 	
 	/*
@@ -1656,10 +1681,12 @@ finished_request:
 
 	DEBUG2("Finished request %d", request->number);
 	finished = TRUE;
-	
+
 	/*
 	 *  Go to the next request, without marking
 	 *  the current one as finished.
+	 *
+	 *  Hmm... this may not be the brightest thing to do.
 	 */
 next_request:
 	DEBUG2("Going to the next request");
@@ -1993,10 +2020,12 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *	Therefore, we MUST be waiting for a reply
 			 *	from the proxy.
 			 *
-			 *	If not, then we have no clue what to
-			 *	do, so we drop the new request, and
-			 *	hope that the NAS doesn't bug us about
-			 *	it.
+			 *	If not, then it's an Accounting-Request
+			 *	which we tried to "reject", which means
+			 *	that we silently drop the response.
+			 *      We want to give the same response for the
+			 *      duplicate request, so we silently drop it,
+			 *	too.
 			 */
 			if (!curreq->proxy) {
 				radlog(L_ERR, "Dropping packet from client "
@@ -2499,15 +2528,13 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  been cleaned up, AND it's time to clean up the request,
 	 *  OR, it's an accounting request.  THEN, go delete it.
 	 *
-	 *  If this is an accounting or Status-Server request, we
-	 *  delete it immediately, as there CANNOT be duplicate
-	 *  accounting packets.  If there are, then something else is
-	 *  seriously wrong...
+	 *  If this is a request which had the "don't cache" option
+	 *  set, then delete it immediately, as it CANNOT have a
+	 *  duplicate.
 	 */
 	if (request->finished &&
 	    ((request->timestamp + mainconfig.cleanup_delay <= info->now) ||
-	     (request->packet->code == PW_STATUS_SERVER) ||
-	     (request->packet->code == PW_ACCOUNTING_REQUEST))) {
+	     ((request->options & RAD_REQUEST_OPTION_DONT_CACHE) != 0))) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 		/*
 		 *  Request completed, delete it, and unlink it
