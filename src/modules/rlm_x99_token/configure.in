@@ -29,7 +29,7 @@ if test x$with_[]modname != xno; then
 		[ x99_token_ldflags="$x99_token_ldflags -lcrypto" ],
 		AC_CHECK_LIB(crypto, des_cbc_encrypt,
 			[ x99_token_ldflags="$x99_token_ldflags -lcrypto" ],
-		[ fail="$fail des_cbc_encrypt" ]
+			[ fail="$fail des_cbc_encrypt" ]
 		)
 	)
 	LIBS="$x99_save_LIBS"
