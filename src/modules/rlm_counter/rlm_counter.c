@@ -19,7 +19,7 @@
  *
  * Copyright 2001  The FreeRADIUS server project
  * Copyright 2001  Alan DeKok <aland@ox.org>
- * Copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
+ * Copyright 2001,2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 
 #include "config.h"
@@ -75,8 +75,8 @@ typedef struct rlm_counter_t {
 	int service_val;
 	int key_attr;
 	int count_attr;
-	time_t reset_time;
-	time_t last_reset;
+	time_t reset_time;  /* The time of the next reset. */
+	time_t last_reset;  /* The time of the last reset. */
 	int dict_attr;  /* attribute number for the counter. */
 	GDBM_FILE gdbm;
 	int fd;
@@ -141,6 +141,77 @@ static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_
 	return counter - check->lvalue;
 }
 
+static int add_defaults(rlm_counter_t *data)
+{
+	datum key_datum;
+	datum time_datum;
+	const char *default1 = "DEFAULT1";
+	const char *default2 = "DEFAULT2";
+	
+	DEBUG2("rlm_counter: add_defaults: Start");
+
+	key_datum.dptr = (const char *) default1;
+	key_datum.dsize = strlen(default1);
+	time_datum.dptr = (char *) &data->reset_time;
+	time_datum.dsize = sizeof(time_t);
+
+	if (gdbm_store(data->gdbm, key_datum, time_datum, GDBM_REPLACE) < 0){
+		radlog(L_ERR, "rlm_counter: Failed storing data to %s: %s",
+				data->filename, gdbm_strerror(gdbm_errno));
+		return RLM_MODULE_FAIL;
+	}
+	DEBUG2("rlm_counter: DEFAULT1 set to %d",(int)data->reset_time);
+
+	key_datum.dptr = (const char *) default2;
+	key_datum.dsize = strlen(default2);
+	time_datum.dptr = (char *) &data->last_reset;
+	time_datum.dsize = sizeof(time_t);
+
+	if (gdbm_store(data->gdbm, key_datum, time_datum, GDBM_REPLACE) < 0){
+		radlog(L_ERR, "rlm_counter: Failed storing data to %s: %s",
+				data->filename, gdbm_strerror(gdbm_errno));
+		return RLM_MODULE_FAIL;
+	}
+	DEBUG2("rlm_counter: DEFAULT2 set to %d",(int)data->last_reset);
+	DEBUG2("rlm_counter: add_defaults: End");
+
+	return RLM_MODULE_OK;
+}
+
+static int reset_db(rlm_counter_t *data)
+{
+	int cache_size = data->cache_size;
+	int ret;
+
+	DEBUG2("rlm_counter: reset_db: Closing database");
+	gdbm_close(data->gdbm);
+
+	/*
+	 *	Open a completely new database.
+	 */
+	data->gdbm = gdbm_open(data->filename, sizeof(int),
+			GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
+	if (data->gdbm == NULL) {
+		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
+				data->filename, strerror(errno));
+		return RLM_MODULE_FAIL;
+	}
+	if (data->fd >= 0) data->fd = gdbm_fdesc(data->gdbm);
+	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
+		radlog(L_ERR, "rlm_counter: Failed to set cache size");
+	DEBUG2("rlm_counter: reset_db: Opened new database");
+
+	/*
+	 * Add defaults
+	 */
+	ret = add_defaults(data);
+	if (ret != RLM_MODULE_OK)
+		return ret;	
+
+	DEBUG2("rlm_counter: reset_db ended");
+
+	return RLM_MODULE_OK;
+}
 
 static int find_next_reset(rlm_counter_t *data, time_t timeval)
 {
@@ -223,6 +294,11 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	ATTR_FLAGS flags;
 	time_t now;
 	int cache_size;
+	int ret;
+	datum key_datum;
+	datum time_datum;
+	const char *default1 = "DEFAULT1";
+	const char *default2 = "DEFAULT2";
 	
 	/*
 	 *	Set up a storage area for instance data
@@ -317,7 +393,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	}	
 
 	/*
-	 *  Discover when next to reset the database.
+	 * Find when to reset the database.
 	 */
 	if (data->reset == NULL) {
 		radlog(L_ERR, "rlm_counter: 'reset' must be set.");
@@ -325,6 +401,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	now = time(NULL);
 	data->reset_time = 0;
+	data->last_reset = now;
 
 	if (find_next_reset(data,now) == -1)
 		return -1;
@@ -340,6 +417,52 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 				data->filename, strerror(errno));
 		return -1;
 	}
+	/*
+	 * Look for the DEFAULT1 entry. This entry if it exists contains the
+	 * time of the next database reset. This time is set each time we reset
+	 * the database. If next_reset < now then we reset the database.
+	 * That way we can overcome the problem where radiusd is down during a database
+	 * reset time. If we did not keep state information in the database then the reset
+	 * would be extended and that would create problems.
+	 *
+	 * We also store the time of the last reset in the DEFAULT2 entry.
+	 *
+	 * If DEFAULT1 and DEFAULT2 do not exist (new database) we add them to the database
+	 */
+
+	key_datum.dptr = (const char *)default1;
+	key_datum.dsize = strlen(default1);
+
+	time_datum = gdbm_fetch(data->gdbm, key_datum);
+	if (time_datum.dptr != NULL){
+		time_t next_reset = 0;
+
+		memcpy(&next_reset, time_datum.dptr, sizeof(time_t));
+		free(time_datum.dptr);
+		if (next_reset <= now){
+
+			data->last_reset = now;
+			ret = reset_db(data);
+			if (ret != RLM_MODULE_OK)
+				return -1;
+		}
+		else
+			data->reset_time = next_reset;
+		key_datum.dptr = (const char *)default2;
+		key_datum.dsize = strlen(default2);
+
+		time_datum = gdbm_fetch(data->gdbm, key_datum);	
+		if (time_datum.dptr != NULL){
+			memcpy(&data->last_reset, time_datum.dptr, sizeof(time_t));
+			free(time_datum.dptr);
+		}
+	}
+	else{
+		ret = add_defaults(data);
+		if (ret != RLM_MODULE_OK)
+			return -1;
+	}
+
 	if (data->fd >= 0) data->fd = gdbm_fdesc(data->gdbm);
 
 	if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
@@ -374,29 +497,13 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 *	the counters.
 	 */
 	if (data->reset_time && (data->reset_time <= request->timestamp)) {
-		int cache_size = data->cache_size;
+		int ret;
 
-		gdbm_close(data->gdbm);
-
-		/*
-		 *	Re-set the next time to clean the database.
-		 */
 		data->last_reset = data->reset_time;
 		find_next_reset(data,request->timestamp);
-
-		/*
-		 *	Open a completely new database.
-		 */
-		data->gdbm = gdbm_open(data->filename, sizeof(int),
-				GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
-		if (data->gdbm == NULL) {
-			radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
-					data->filename, strerror(errno));
-			return RLM_MODULE_FAIL;
-		}
-		if (data->fd >= 0) data->fd = gdbm_fdesc(data->gdbm);
-		if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
-			radlog(L_ERR, "rlm_counter: Failed to set cache size");
+		ret = reset_db(data);
+		if (ret != RLM_MODULE_OK)
+			return ret;
 	}
 	/*
 	 * Check if we need to watch out for a specific service-type. If yes then check it
@@ -505,29 +612,13 @@ static int counter_authorize(void *instance, REQUEST *request)
 	 *	the counters.
 	 */
 	if (data->reset_time && (data->reset_time <= request->timestamp)) {
-		int cache_size = data->cache_size;
+		int ret2;
 
-		gdbm_close(data->gdbm);
-
-		/*
-		 *	Re-set the next time to clean the database.
-		 */
 		data->last_reset = data->reset_time;
 		find_next_reset(data,request->timestamp);
-
-		/*
-		 *	Open a completely new database.
-		 */
-		data->gdbm = gdbm_open(data->filename, sizeof(int),
-				GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
-		if (data->gdbm == NULL) {
-			radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
-					data->filename, strerror(errno));
-			return RLM_MODULE_FAIL;
-		}
-		data->fd = gdbm_fdesc(data->gdbm);
-		if (gdbm_setopt(data->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
-			radlog(L_ERR, "rlm_counter: Failed to set cache size");
+		ret2 = reset_db(data);
+		if (ret2 != RLM_MODULE_OK)
+			return ret2;
 	}
 
 
