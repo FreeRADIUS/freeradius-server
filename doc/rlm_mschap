@@ -6,7 +6,10 @@ RADIUS MS-CHAP v1/v2 + MPPE support module
 MS-CHAPv2 protocol. To authenticate users via MS-CHAPv1, either
 NT-Password or LM-Password is required (this depends on the NAS and
 client settings).  Unless the client is some outdated system (like
-Windows for Workgroups) NT-Password is usually enough.  
+Windows for Workgroups) NT-Password is usually enough.
+
+  rlm_mschap may also be used to perform PAP authentication against
+stored NT-Password or LM-Password.
 
   Only NT-Password may be used to authenticate user via MS-CHAPv2.  NT
 and LM passwords are one way hashes taken with different algorithms
@@ -148,6 +151,12 @@ A: At current time (Wed Jul 17 18:14:34 MSD 2002) SAMBA doesn't support
    in progress. If somebody really interested it's really possible to
    create a daemon based on pwdump2 code which will dump NT/LM hashes from
    domain controller to file or to give 'em other the network by request.
+
+Q: If I store only NT-Password and LM-Password can user do PAP?
+A: Yes. Just add rlm_mschap to authenticate{} and set Auth-Type to MS-CHAP
+
+Q: If I store only NT-Password and LM-Password can user do CHAP?
+A: NO. For CHAP you have to store cleartext password.
 
 5. Acknowlegements:
 

@@ -1,0 +1,108 @@
+RADIUS rlm_passwd (passwd-like files authorization module)
+
+0. Introduction
+
+rlm_passwd allows to retrieve any account information from any
+files with passwd-like format (/etc/passwd, /etc/group, smbpasswd,
+.htpasswd, etc)
+
+1. What does it do
+
+rlm_passwd reads configuration from config.cf which contains description
+of passwd file format. Every field of passwd file may be mapped to some
+RADIUS attribute. One of field is a key field. If attribute mapped to
+the key field is found in the request all other mapped attributes are added
+to configure items (if corresponding field in passwd file is not empty). 
+
+rlm_passwd can cache information from passwd file and use hashtable for
+fast search, so it may be very effective for storing up to few thousands
+of users accounts if these accounts are rarely changed.
+
+It's also helpfull if you need to store only few accounts, in this case
+you better to turn off caching.
+
+2. How you should build and configure it
+
+First, rlm_passwd is experemental and is not built by default. To compile
+it you should add rlm_passwd to src/modules/stable before running
+./configure script or add rlm_passwd to MODULES variable in Make.inc.
+
+Second, you should configure this module (you can have multiple instances
+for different and even for same file).
+
+Config section parameters:
+
+   filename = "string" (required)
+ path to passwd file
+
+   delimiter = "x" (default ":")
+ symbol to use as a delimiter of passwd file fields
+
+   format = "string" (required)
+ describes format of passwd file fields. Fields are separated by ':' sign.
+ each field may be empty or contain name off RADIUS attribute (in this case
+ it's mapped to named attrbiute). Attribute name may be precided by
+ '*' or '*,'. '*' points to key attribute (usually key attribute for passwd
+ file is User-Name). '*,' shows that field may contain a comma-separated list
+ of values for key attribute (like /etc/group does). For example, description
+ of /etc/group file format is:
+  "Group-Name:::*,User-Name"
+ in this example we ignore gid and group's password. If request contains
+ User-Name attribute with value 'vlad' and passwd file (/etc/group)
+ contains following record:
+  wheel:*:0:root,vlad,test
+ Group-Name attribute will be added to configure itmes list with value 
+ of "wheel".
+   
+  hashsize = n (default 0)
+ size of hashtable. If 0 passwords are not cached and passwd file parsed for
+ every request. The larger hashsize means less probability of collision and
+ faster search in hashtable. Having hashsize in limits of  30-100% from number
+ of passwd file records is OK.
+
+  authtype = "string"
+ If key field is found in passwd file Auth-Type parameter will be replaced
+ with one specified in in authtype.
+
+  allowmultiplekeys = no (default)
+  allowmultiplekeys = yes
+ If allowmultiplekeys is set to yes and few records in passwd file match to
+ request attributes from all records will be added. If allowmultiplekeys = no
+ rlm_passwd will warn about duplicated records.
+
+  ignorenislike = no (default)
+  ignorenislike = yes
+ if ignorenislike = yes all records from passwd file beginning with '+' sign
+ will be ignored.
+
+4. FAQ
+
+Q: Can I use rlm_passwd to authenticate user against Linux shadow passwor
+   file or BSD-style master.passwd?
+A: Yes, but you need RADIUS running as root. Hint: use Crypt-Password
+   attribute.
+
+Q: Can I use rlm_passwd to authenticate user against SAMBA smbpasswd?
+A: Yes, you can. Hint: use LM-Password/NT-Password attribute, set 
+   authtype = MS-CHAP.
+
+Q: Can I use rlm_password to authenticate user against BLA-BLA-BLApasswd?
+A: Probably you can, if BLA-BLA-BLA stores password in some format supported
+   by RADIUS, for example cleartext, NT/LM hashes, crypt, Netscape MD5 format.
+   You have to set authtype to corresponding type, for example
+    authtype = NS-MTA-MD5
+   for Netscape MD5.
+
+Q: Is it difference difference between rlm_passwd and rlm_unix?
+A: rlm_passwd supports passwd files in any format and may be used, for
+   example, to parse FreeBSD's master.passwd or SAMBA smbpasswd files, but
+   it can't perform system authentication (for example to authenticate
+   NIS user, like rlm_unix does). If you need system authentication you
+   need rlm_unix, if you have to authenticate against files only under
+   BSD you need rlm_passwd, if you need to authenticate against files only
+   under linux you can choose between rlm_unix and rlm_passwd, probably
+   you will have nearly same results in performance (I hope :) ).
+
+5. Acknowlegements:
+
+   ZARAZA, <3APA3A@security.nnov.ru>
