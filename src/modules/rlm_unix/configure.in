@@ -1,0 +1,64 @@
+AC_INIT(rlm_unix.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_unix])
+
+if test x$with_[]modname != xno; then
+
+	AC_MSG_CHECKING(for system password file)
+	if test -f /etc/passwd; then
+		AC_MSG_RESULT(/etc/passwd)
+	else
+		AC_MSG_RESULT(no /etc/passwd file.)
+		[ fail=$fail" /etc/passwd" ],
+	fi
+
+	dnl useless?
+	AC_MSG_CHECKING(for system shadow password file)
+	if test -f /etc/shadow; then
+		AC_MSG_RESULT(/etc/shadow)
+	else
+		AC_MSG_RESULT(no /etc/shadow file.)
+	fi
+
+	AC_CHECK_FUNC(crypt, 
+		[ cryptlocation=libc ],
+		[
+			#crypt not in libc
+			AC_CHECK_LIB(crypt, crypt, 
+				[ 
+					cryptlocation=libcrypt 
+					unix_ldflags="${unix_ldflags} -lcrypt"
+				]
+			)
+		]
+	)
+	if test x$cryptlocation = x; then
+		[ fail=$fail" crypt()" ],
+	fi
+
+	AC_CHECK_HEADERS(crypt.h shadow.h)
+	AC_CHECK_FUNCS(getspnam getusershell)
+
+	AC_CHECK_LIB(shadow, getspnam, [ unix_ldflags="${unix_ldflags} -lshadow" ])
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+AC_SUBST(unix_ldflags)
+AC_SUBST(unix_cflags)
+AC_SUBST(targetname)
+AC_CONFIG_HEADER(config.h)
+AC_OUTPUT(Makefile)

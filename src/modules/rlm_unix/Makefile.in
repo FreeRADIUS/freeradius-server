@@ -1,0 +1,11 @@
+TARGET     = @targetname@
+SRCS       = rlm_unix.c cache.c
+HEADERS    =
+RLM_LIBS   = @unix_ldflags@
+RLM_CFLAGS = @unix_cflags@
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS) 
