@@ -173,7 +173,7 @@ int detach_modules(void)
  *	Find a module on disk or in memory, and link to it.
  */
 static module_list_t *linkto_module(const char *module_name,
-		const char *cffilename, int cflineno)
+				    const char *cffilename, int cflineno)
 {
 	module_list_t *node;
 	lt_dlhandle handle;
@@ -532,9 +532,9 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 	/*
 	 *	Loop over the entries in the named section.
 	 */
-	for (modref=cf_item_find_next(cs, NULL);
+	for (modref = cf_item_find_next(cs, NULL);
 	     modref != NULL;
-	     modref=cf_item_find_next(cs, modref)) {
+	     modref = cf_item_find_next(cs, modref)) {
 
 		/*
 		 *	Look for Auth-Type foo {}, which are special
@@ -550,11 +550,12 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 			scs = cf_itemtosection(modref);
 
 			sec_name = cf_section_name1(scs);
+
 			if (strcmp(sec_name,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(scs, comp,
 							       filename)) {
-					return 0; /* FIXME: memleak? */
+					return -1; /* FIXME: memleak? */
 				}
 				continue;
 			}
@@ -566,7 +567,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 				   old_section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(scs, comp,
 							       filename)) {
-					return 0; /* FIXME: memleak? */
+					return -1; /* FIXME: memleak? */
 				}
 				continue;
 			}
@@ -664,7 +665,7 @@ int setup_modules(void)
 		if (lt_dlinit() != 0) {
 			radlog(L_ERR|L_CONS, "Failed to initialize libraries: %s\n",
 					lt_dlerror());
-			exit(1); /* FIXME */
+			return -1;
 
 		}
 
@@ -758,7 +759,7 @@ int setup_modules(void)
 			 */
 			if (dict_addvalue(name2, dattr->name, my_value++) < 0) {
 				radlog(L_ERR, "%s", librad_errstr);
-				exit(1);
+				return -1;
 			}
 		} while (sub != NULL);
 
@@ -795,7 +796,7 @@ int setup_modules(void)
 			 */
 			if (dict_addvalue(name2, dattr->name, my_value++) < 0) {
 				radlog(L_ERR, "%s", librad_errstr);
-				exit(1);
+				return -1;
 			}
 		} while (cp != NULL);
 	} /* over the sections which can have redundent sub-sections */
@@ -832,7 +833,7 @@ int setup_modules(void)
 			name = cf_pair_attr(cp);
 			module = find_module_instance(name);
 			if (!module) {
-				exit(1);
+				return -1;
 			}
 		} /* loop over items in the subsection */
 	} /* if there's an 'instantiate' section. */
@@ -847,7 +848,7 @@ int setup_modules(void)
 			continue;
 
 		if (load_component_section(cs, comp, filename) < 0) {
-			exit(1);
+			return -1;
 		}
 	}
 
