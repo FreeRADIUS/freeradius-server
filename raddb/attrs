@@ -1,0 +1,102 @@
+#
+#	Please read the documentation file ../doc/README.rlm_attr_filter
+#	for more information.
+#
+#	This file contains security and configuration information
+#	for each realm.  The first field is the realm name and
+#	can be up to 253 characters in length.  This is followed (on
+#	the next line) with the list of filter rules to be used to
+#       decide what attributes we allow proxy servers to return to us
+#       for this realm.
+#
+#	When a proxy-reply request is received from a proxy server,
+#	these values are tested. Only the first match is used unless the
+#	"Fall-Through" variable is set to "Yes".  In that case the rules
+#       defined in the DEFAULT case are processed as well.
+#
+#	A special user named "DEFAULT" matches on all realm names.
+#	You can have only one DEFAULT entry. All entries are processed
+#	in the order they appear in this file. The first entry that
+#	matches the login-request will stop processing unless you use
+#	the Fall-Through variable.
+#
+#	Indented (with the tab character) lines following the first
+#	line indicate the filter rules to be used by the server to
+#
+#	You can include another `attrs' file with `$INCLUDE attrs.other'
+#
+
+#
+# This is a complete entry for "fisp". Note that there is no Fall-Through
+# entry so that no DEFAULT entry will be used, and the server will NOT
+# allow any other a/v pairs other than the ones listed here.
+#
+# These rules allow:
+#     o  Only Framed-User Service-Types ( no telnet, rlogin, tcp-clear )
+#     o  PPP sessions ( no SLIP, CSLIP, etc. )
+#     o  dynamic ip assignment ( can't assign a static ip )
+#     o  an idle timeout value set to 600 seconds (10 min) or less
+#     o  a max session time set to 28800 seconds (8 hours) or less
+#
+#fisp
+#	Service-Type == Framed-User,
+#	Framed-Protocol == PPP,
+#	Framed-IP-Address == 255.255.255.254,
+#	Idle-Timeout <= 600,
+#	Session-Timeout <= 28800
+
+
+#
+# This is a complete entry for "tisp". Note that there is no Fall-Through
+# entry so that no DEFAULT entry will be used, and the server will NOT
+# allow any other a/v pairs other than the ones listed here.
+#
+# These rules allow:
+#       o Only Login-User Service-Type ( no framed/ppp sessions )
+#       o Telnet sessions only ( no rlogin, tcp-clear )
+#       o Login hosts of either 192.168.1.1 or 192.168.1.2
+#
+#tisp
+#	Service-Type == Login-User,
+#	Login-Service == Telnet,
+#	Login-TCP-Port == 23,
+#	Login-IP-Host == 192.168.1.1
+#       Login-IP-Host == 192.168.1.2
+
+#
+# This is a complete entry for "spamrealm".  Fall-Through is used, so 
+# that the DEFAULT filter rules are used in addition to these.
+#
+# These rules allow:
+#       o Force the application of Filter-ID attribute to be returned
+#         in the proxy reply, whether the proxy sent it or not.
+#       o The standard DEFAULT rules as defined below
+#
+#spamrealm
+#	Framed-Filter-Id := "nosmtp.in",
+#	Fall-Through = Yes
+
+#
+# The rest of this file contains the DEFAULT entry.
+# DEFAULT matches with all realm names.
+#
+
+DEFAULT	
+	Service-Type == Framed-User,
+	Service-Type == Login-User,
+	Login-Service == Telnet,
+	Login-Service == Rlogin,
+	Login-Service == TCP-Clear,
+	Login-TCP-Port <= 65536,
+	Framed-IP-Address == 255.255.255.254,
+	Framed-IP-Netmask == 255.255.255.255,
+	Framed-Protocol == PPP,
+	Framed-Protocol == SLIP,
+	Framed-Compression == Van-Jacobson-TCP-IP,
+	Framed-MTU >= 576,
+	Framed-MTU <= 1500,
+	Framed-Filter-ID =~ "*",
+	Reply-Message =~ "*",
+	Session-Timeout <= 28800,
+	Idle-Timeout <= 600,
+	Port-Limit <= 2
