@@ -91,14 +91,13 @@
     on all Linux and *BSD.  For Solaris < 9, you'll need to install the
     SUNWski or ANDIrand package (look at SunSolve doc 27606).  The easiest
     way to get SUNWski is to download one of these patches:
-	- 105710-01 (sparc, intl),
-	- 106754-01 (sparc, us),
-	- 106755-01 (x86, intl), or
-	- 106756-01 (x86, us).
-    106756-01 seems to be broken as of this writing (download includes
-    just the README).  After installing SUNWski, you need to create a
-    symlink /dev/urandom -> /dev/random.  Note that SUNWski only works
-    with the 32-bit kernel.  Information for other OS's is welcome.
+	- 105710-01 (sparc, intl, free),
+	- 106754-01 (sparc, us, free),
+	- 106755-01 (x86, intl, free), or
+	- 106756-01 (x86, us, contract only).
+    After installing SUNWski, you need to create a symlink
+    /dev/urandom -> /dev/random.  Note that SUNWski only works with the
+    32-bit kernel.  Information for other OS's is welcome.
 
     This module will only work on ILP32 machines, so if you build it
     as 64-bit under Solaris, you'll find that it fails at runtime.
