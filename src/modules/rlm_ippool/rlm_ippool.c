@@ -533,7 +533,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			if (entry.active == 0){
 				datum tmp;		
 
-				tmp.dptr = (uint32_t *) &entry.ipaddr;
+				tmp.dptr = (char *) &entry.ipaddr;
 				tmp.dsize = sizeof(uint32_t);
 				pthread_mutex_lock(&data->ip_mutex);
 				data_datum = gdbm_fetch(data->ip, tmp);
