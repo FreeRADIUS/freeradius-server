@@ -601,7 +601,11 @@ int sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR **
 						table, table, inst->config->sql_realmgroup_table,
 						inst->config->sql_realmgroup_table, username,
 						inst->config->sql_realmgroup_table, table, table);
-	sql_select_query(inst, sqlsocket, querystr);
+	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
+		radlog(L_ERR,"get_vpdata: database query error");
+		return -1;
+	}
+
 
 	while ((row = sql_fetch_row(sqlsocket))) {
 		if (sql_userparse(vp, row, mode) != 0) {
@@ -612,6 +616,7 @@ int sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR **
 		rows++;
 	}
 	sql_finish_select_query(sqlsocket);
+	sql_free_result(sqlsocket);
 
 	return rows;
 
@@ -735,10 +740,15 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 		sprintf(authstr, "UserName = '%s'", name);
 	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE %s AND AcctStopTime = 0",
 					inst->config->sql_acct_table, authstr);
-	sql_select_query(inst, sqlsocket, querystr);
+	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
+		radlog(L_ERR,"sql_check_multi: database query error");
+		return -1;
+	}
+
 	row = sql_fetch_row(sqlsocket);
 	count = atoi(row[0]);
 	sql_finish_select_query(sqlsocket);
+	sql_free_result(sqlsocket);
 
 	if (count < maxsimul)
 		return 0;
@@ -752,7 +762,10 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 	count = 0;
 	sprintf(querystr, "SELECT * FROM %s WHERE %s AND AcctStopTime = 0",
 					inst->config->sql_acct_table, authstr);
-	sql_select_query(inst, sqlsocket, querystr);
+	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
+		radlog(L_ERR,"sql_check_multi: database query error");
+		return -1;
+	}
 	while ((row = sql_fetch_row(sqlsocket))) {
 		int     check = sql_check_ts(row);
 
@@ -784,6 +797,7 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 		}
 	}
 	sql_finish_select_query(sqlsocket);
+	sql_free_result(sqlsocket);
 
 	return (count < maxsimul) ? 0 : mpp;
 

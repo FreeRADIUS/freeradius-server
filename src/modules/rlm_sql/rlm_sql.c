@@ -236,6 +236,10 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		sql_getvpdata(inst, sqlsocket, inst->config->sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
 		sql_getvpdata(inst, sqlsocket, inst->config->sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
 		sql_getvpdata(inst, sqlsocket, inst->config->sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
+	} else if(found < 0) {
+		radlog(L_ERR, "rlm_sql:  SQL query error; rejecting user");
+		return -1;
+
 	} else {
 
 		int     gcheck, greply;
@@ -304,15 +308,16 @@ rlm_sql_authenticate(void *instance, REQUEST *request)
 
 	sprintf(querystr, query, inst->config->sql_authcheck_table, escaped_user);
 	sqlsocket = sql_get_socket(inst);
-	if (sql_select_query(inst, socket, querystr) < 0) {
+	if (sql_select_query(inst, sqlsocket, querystr) < 0) {
 		radlog(L_ERR,"rlm_sql_authenticate: database query error");
-		sql_release_socket(inst, socket);
+		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_REJECT;
 	}
 
 	row = sql_fetch_row(sqlsocket);
 	sql_finish_select_query(sqlsocket);
 	sql_release_socket(inst, sqlsocket);
+	sql_free_result(sqlsocket);
 	free(querystr);
 
 	if (row == NULL) {
