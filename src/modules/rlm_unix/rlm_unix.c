@@ -262,7 +262,11 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Allocate room for the instance.
 	 */
-	inst = *instance = rad_malloc(sizeof(struct unix_instance));
+	inst = *instance = rad_malloc(sizeof(*inst));
+	if (!inst) {
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
 
 	/*
 	 *	Parse the configuration, failing if we can't do so.

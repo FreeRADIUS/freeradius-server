@@ -54,11 +54,12 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	conf	 = NULL;
 	auth_type = NULL;
 
-	conf = (EAP_CONF *)malloc(sizeof(EAP_CONF));
+	conf = (EAP_CONF *)malloc(sizeof(*conf));
 	if (conf == NULL) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return -1;
 	}
+	memset(conf, 0, sizeof(*conf));
 	if (cf_section_parse(cs, conf, module_config) < 0) {
 		free(conf);
 		return -1;

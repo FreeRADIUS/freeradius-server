@@ -56,11 +56,12 @@ static int eaptls_attach(CONF_SECTION *cs, void **arg)
 	eaptls = (eap_tls_t **)arg;
 
 	/* Parse the config file & get all the configured values */
-	conf = (EAP_TLS_CONF *)malloc(sizeof(EAP_TLS_CONF));
+	conf = (EAP_TLS_CONF *)malloc(sizeof(*conf));
 	if (conf == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: out of memory");
 		return -1;
 	}
+	memset(conf, 0, sizeof(*conf));
 	if (cf_section_parse(cs, conf, module_config) < 0) {
 		free(conf);
 		return -1;
@@ -141,11 +142,14 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	handler->opaque = ((void *)ssn);
 	handler->free_opaque = session_free;
 
+	DEBUG2("  rlm_eap_tls: Initiate");
+
 	/*
 	 * TLS session initialization is over
 	 * Now handle TLS related hanshaking or Data
 	 */
 	status = eaptls_start(handler->eap_ds);
+	DEBUG2("  rlm_eap_tls: Start returned %d", status);
 	if (status == 0)
 		return 0;
 
@@ -177,6 +181,8 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 	//tls_session_t *tls_session;
 	EAPTLS_PACKET	*tlspacket;
 	eaptls_status_t	status;
+
+	DEBUG2("  rlm_eap_tls: Authenticate");
 
 	/* This case is when SSL generates Alert then we 
 	 * send that alert to the client and then send the EAP-Failure

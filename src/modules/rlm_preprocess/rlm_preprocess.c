@@ -615,6 +615,7 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Allocate room to put the module's instantiation data.
 	 */
 	data = (rlm_preprocess_t *) rad_malloc(sizeof(*data));
+	memset(data, 0, sizeof(*data));
 
 	/*
 	 *	Read this modules configuration data.
