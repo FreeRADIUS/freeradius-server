@@ -1,0 +1,78 @@
+.TH rlm_unix 5 "5 February 2004" "" "FreeRADIUS Module"
+.SH NAME
+rlm_unix \- FreeRADIUS Module
+.SH DESCRIPTION
+The \fIrlm_unix\fP module allows authentication against the 
+system password, shadow, and group files.  It also provides
+FreeRADIUS an interface into a system wtmp file when
+added to the accounting section.
+.PP
+The main configuration items to be aware of are:
+.IP cache
+This is a 'yes' or 'no' option.  If set to yes, FreeRADIUS will read
+the system files into memory, rather than perform a systemcall to
+lookup the information.  On *BSD systems, you should set this value to
+no.  On other systems, if you have a very large passwd and shadow
+files, you can try setting this to yes to increase RADIUS
+performance.  The default is no.
+.IP cache_reload
+This is the number of seconds to wait between refreshing the cached 
+files from the system.  It has no effect unless you enable caching.
+.IP passwd
+The path to the system passwd file.  Usually /etc/passwd.  If
+commented out, or not set, the server will retrieve the information
+via systemcalls.
+.IP shadow
+The path to the system shadow file.  Usually /etc/shadow.  This is not
+set by default.
+.IP group
+The path to the system group file.  Usually /etc/group.  This is not
+set by default.
+.IP radwtmp
+The path to the system wtmp file to be used for keeping the database
+of online users as read by the 'radlast' program.
+.IP usegroup
+This is a 'yes' or 'no' option.  If set to 'yes' this allows the Group
+attribute to be used as a check item.  Default is 'no'.
+.SH CONFIGURATION
+.PP
+.DS
+modules {
+  ... stuff here ...
+.br
+  unix {
+.br
+    cache = no
+.br
+    cache_reload = 600
+.br
+    #passwd = /etc/passwd
+.br
+    #shadow = /etc/shadow
+.br
+    #group = /etc/group
+.br
+    usegroup = no
+.br
+    radwtmp = ${logdir}/radwtmp
+.br
+  }
+.br
+  ... stuff here ...
+.br
+}
+.DE
+.PP
+.SH SECTIONS
+.BR authentication,
+.BR accounting
+.PP
+.SH FILES
+.I /etc/raddb/radiusd.conf,
+.PP
+.SH "SEE ALSO"
+.BR radiusd (8),
+.BR radiusd.conf (5),
+.BR radlast (1)
+.SH AUTHORS
+Chris Parker, cparker@segv.org
