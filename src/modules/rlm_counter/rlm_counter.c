@@ -670,43 +670,50 @@ static int counter_authorize(void *instance, REQUEST *request)
 	 */
 	res=check_vp->lvalue - counter;
 	if (res > 0) {
-		/*
-		 *	We are assuming that simultaneous-use=1. But
-		 *	even if that does not happen then our user
-		 *	could login at max for 2*max-usage-time Is
-		 *	that acceptable?
-		 */
+		if (data->count_attr == PW_ACCT_SESSION_TIME) {
+			/*
+			 * Do the following only if the count attribute is 
+			 * AcctSessionTime
+			 */
 
-		/*
-		 *	User is allowed, but set Session-Timeout.
-		 *	Stolen from main/auth.c
-		 */
+			/*
+		 	*	We are assuming that simultaneous-use=1. But
+		 	*	even if that does not happen then our user
+		 	*	could login at max for 2*max-usage-time Is
+		 	*	that acceptable?
+		 	*/
 
-		/*
-		 *	If we are near a reset then add the next
-		 *	limit, so that the user will not need to
-		 *	login again
-		 */
-		if (data->reset_time && (
-			res >= (data->reset_time - request->timestamp))) {
-			res += check_vp->lvalue;
-		}
+			/*
+		 	*	User is allowed, but set Session-Timeout.
+		 	*	Stolen from main/auth.c
+		 	*/
 
-		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
-		if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL) {
-			if (reply_item->lvalue > res)
-				reply_item->lvalue = res;
-		} else {
-			if ((reply_item = paircreate(PW_SESSION_TIMEOUT, PW_TYPE_INTEGER)) == NULL) {
-				radlog(L_ERR|L_CONS, "no memory");
-				return RLM_MODULE_NOOP;
+			/*
+		 	*	If we are near a reset then add the next
+		 	*	limit, so that the user will not need to
+		 	*	login again
+		 	*/
+			if (data->reset_time && (
+				res >= (data->reset_time - request->timestamp))) {
+				res += check_vp->lvalue;
 			}
-			reply_item->lvalue = res;
-			pairadd(&request->reply->vps, reply_item);
+
+			if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL) {
+				if (reply_item->lvalue > res)
+					reply_item->lvalue = res;
+			} else {
+				if ((reply_item = paircreate(PW_SESSION_TIMEOUT, PW_TYPE_INTEGER)) == NULL) {
+					radlog(L_ERR|L_CONS, "no memory");
+					return RLM_MODULE_NOOP;
+				}
+				reply_item->lvalue = res;
+				pairadd(&request->reply->vps, reply_item);
+			}
 		}
 
 		ret=RLM_MODULE_OK;
 
+		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
 		DEBUG2("rlm_counter: Authorized user %s, check_item=%d, counter=%d",
 				key_vp->strvalue,check_vp->lvalue,counter);
 		DEBUG2("rlm_counter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
