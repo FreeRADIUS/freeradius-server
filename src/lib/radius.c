@@ -98,7 +98,7 @@ static const char *packet_codes[] = {
   "Alternate-Resource-Reclaim-Request",
   "NAS-Reboot-Request",
   "NAS-Reboot-Response",
-  "28"
+  "28",
   "Next-Passcode",
   "New-Pin",
   "Terminate-Session",
@@ -116,10 +116,10 @@ static const char *packet_codes[] = {
   "CoF-Request",
   "CoF-ACK",
   "CoF-NAK",
-  "46"
-  "47"
-  "48"
-  "49"
+  "46",
+  "47",
+  "48",
+  "49",
   "IP-Address-Allocate",
   "IP-Address-Release"
 };
