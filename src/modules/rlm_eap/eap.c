@@ -594,8 +594,6 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 {
 	VALUE_PAIR *vp, *proxy;
 	VALUE_PAIR *eap_msg;
-	EAP_DS *eap_ds;
-	EAP_HANDLER handler;
 
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	if (eap_msg == NULL) {
@@ -616,22 +614,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	/*
 	 *	http://www.freeradius.org/rfc/rfc2869.html#EAP-Message
 	 *
-	 *	This is handled by rad_recv().
+	 *	Checks for Message-Authenticator are handled by rad_recv().
 	 */
-
-	/*
-	 *	We're allowed only a few codes.  Request, Response,
-	 *	Success, or Failure.
-	 */
-	if ((eap_msg->strvalue[0] == 0) ||
-	    (eap_msg->strvalue[0] > PW_EAP_MAX_CODES)) {
-		DEBUG2("  rlm_eap: Unknown EAP packet");
-	} else {
-		DEBUG2("  rlm_eap: EAP packet type %s id %d length %d",
-		       eap_codes[eap_msg->strvalue[0]],
-		       eap_msg->strvalue[1],
-		       eap_msg->length);
-	}
 
 	/*
 	 *	Check for a Proxy-To-Realm.  Don't get excited over LOCAL
@@ -652,129 +636,173 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	}
 
 	/*
-	 *	Not a start message.  Don't start anything.
+	 *	Check the length before de-referencing the contents.
 	 *
-	 *	Later EAP messages are longer than the 'start' message,
-	 *	so this function returns 'no start found', so that
-	 *	the rest of the EAP code can use the State attribute
-	 *	to match this EAP-Message to an ongoing conversation.
+	 *	Lengths of zero are required by the RFC for EAP-Start,
+	 *	but we've never seen them in practice.
+	 *
+	 *	Lengths of two are what we see in practice as
+	 *	EAP-Starts.
 	 */
-	if (eap_msg->length != EAP_START) {
-		DEBUG2("  rlm_eap: No EAP Start, assuming it's an on-going EAP conversation");
+	if ((eap_msg->length == 0) || (eap_msg->length == 2)) {
+		EAP_DS *eap_ds;
+		EAP_HANDLER handler;
 
 		/*
-		 *	Add the 'EAP-Type' attribute to the request,
-		 *	if it's part of an EAP conversation, and the
-		 *	EAP sub-type is in the EAP packet.
+		 *	It's a valid EAP-Start, but the request
+		 *	was marked as being proxied.  So we don't
+		 *	do EAP, as the home server will do it.
+		 */
+		if (proxy) {
+		do_proxy:
+			DEBUG2("  rlm_eap: Request is supposed to be proxied to Realm %s.  Not doing EAP.", proxy->strvalue);
+			return EAP_NOOP;
+		}
+		
+		DEBUG2("  rlm_eap: Got EAP_START message");
+		if ((eap_ds = eap_ds_alloc()) == NULL) {
+			DEBUG2("  rlm_eap: EAP Start failed in allocation");
+			return EAP_FAIL;
+		}
+		
+		/*
+		 *	It's an EAP-Start packet.  Tell them to stop wasting
+		 *	our time, and give us an EAP-Identity packet.
 		 *
-		 *	Store the EAP type in the request, so modules
-		 *	outside of EAP can check & use it.
+		 *	Hmm... we should probably check the contents of the
+		 *	EAP-Start packet for something...
 		 */
-		if (((eap_msg->strvalue[0] == PW_EAP_REQUEST) ||
-		     (eap_msg->strvalue[0] == PW_EAP_RESPONSE)) &&
-		    (eap_msg->length >= (EAP_HEADER_LEN + 1))) {
-			/*
-			 *	Create an EAP-Type of the type which
-			 *	was NAK'd, or of the type in the packet.
-			 */
-			vp = paircreate(PW_EAP_TYPE, PW_TYPE_INTEGER);
-			if (vp) {
-				vp->lvalue = eap_msg->strvalue[4];
-				pairadd(&(request->packet->vps), vp);
-			}
-
-			/*
-			 *	We've been told to ignore unknown EAP
-			 *	types, AND it's an unknown type.
-			 *	Return "NOOP", which will cause the
-			 *	eap_authorize() to return NOOP.
-			 *
-			 *	EAP-Identity, Notification, and NAK
-			 *	are all handled internally, so they
-			 *	never have handlers.
-			 */
-			if ((eap_msg->strvalue[4] >= PW_EAP_MD5) &&
-			    inst->ignore_unknown_eap_types &&
-			    ((eap_msg->strvalue[4] == 0) ||
-			     (eap_msg->strvalue[4] > PW_EAP_MAX_TYPES) ||
-			     (inst->types[eap_msg->strvalue[4]] == NULL))) {
-				DEBUG2("  rlm_eap:  Ignoring Unknown EAP type");
-				return EAP_NOOP;
-			}
-
-			/*
-			 *	They're NAKing the EAP type we wanted
-			 *	to use, and asking for one which we don't
-			 *	support.
-			 *
-			 *	NAK is code + id + length1 + length + NAK
-			 *             + requested EAP type.
-			 *
-			 *	We know at this point that we can't
-			 *	handle the request.  We could either
-			 *	return an EAP-Fail here, but it's not
-			 *	too critical.
-			 *
-			 *	By returning "noop", we can ensure
-			 *	that authorize() returns NOOP, and
-			 *	another module may choose to proxy
-			 *	the request.
-			 */
-			if ((eap_msg->strvalue[4] == PW_EAP_NAK) &&
-			    (eap_msg->length >= (EAP_HEADER_LEN + 2)) &&
-			    inst->ignore_unknown_eap_types &&
-			    ((eap_msg->strvalue[5] == 0) ||
-			     (eap_msg->strvalue[5] > PW_EAP_MAX_TYPES) ||
-			     (inst->types[eap_msg->strvalue[5]] == NULL))) {
-				DEBUG2("  rlm_eap: Ignoring NAK with request for unknown EAP type");
-				return EAP_NOOP;
-			}
-		} /* else it's not an EAP-Request or EAP-Response */
-
+		eap_ds->request->code = PW_EAP_REQUEST;
+		eap_ds->request->type.type = PW_EAP_IDENTITY;
+		
 		/*
-		 *	No EAP-Start found.  Proxying: return NOOP.
-		 *	Not proxying, return NOTFOUND.
+		 *	We don't have a handler, but eap_compose needs one,
+		 *	(for various reasons), so we fake it out here.
 		 */
-		if (proxy) goto do_proxy; /* 3 lines below. */
-		return EAP_NOTFOUND;
+		memset(&handler, 0, sizeof(handler));
+		handler.request = request;
+		handler.eap_ds = eap_ds;
+		
+		eap_compose(&handler);
+		
+		eap_ds_free(&eap_ds);
+		return EAP_FOUND;
+	} /* end of handling EAP-Start */
 
-	} else if (proxy) {
-	do_proxy:
-		/*
-		 *	EAP-Start, but proxied.  Don't do EAP.
-		 */
-		DEBUG2("  rlm_eap: Request is supposed to be proxied to Realm %s.  Not doing EAP.", proxy->strvalue);
-		return EAP_NOOP;
-	}
+	/*
+	 *	The EAP packet header is 4 bytes, plus one byte of
+	 *	EAP sub-type.  Short packets are discarded, unless
+	 *	we're proxying.
+	 */
+	if (eap_msg->length < (EAP_HEADER_LEN + 1)) {
+		if (proxy) goto do_proxy;
 
-	DEBUG2("  rlm_eap: Got EAP_START message");
-	if ((eap_ds = eap_ds_alloc()) == NULL) {
-		DEBUG2("  rlm_eap: EAP Start failed in allocation");
+		DEBUG2("  rlm_eap: Ignoring EAP-Message which is too short to be meaningful.");
 		return EAP_FAIL;
 	}
 
 	/*
-	 *	It's an EAP-Start packet.  Tell them to stop wasting
-	 *	our time, and give us an EAP-Identity packet.
-	 *
-	 *	Hmm... we should probably check the contents of the
-	 *	EAP-Start packet for something...
+	 *	Create an EAP-Type containing the EAP-type
+	 *	from the packet.
 	 */
-	eap_ds->request->code = PW_EAP_REQUEST;
-	eap_ds->request->type.type = PW_EAP_IDENTITY;
+	vp = paircreate(PW_EAP_TYPE, PW_TYPE_INTEGER);
+	if (vp) {
+		vp->lvalue = eap_msg->strvalue[4];
+		pairadd(&(request->packet->vps), vp);
+	}
 
 	/*
-	 *	We don't have a handler, but eap_compose needs one,
-	 *	(for various reasons), so we fake it out here.
+	 *	If the request was marked to be proxied, do it now.
+	 *	This is done after checking for a valid length
+	 *	(which may not be good), and after adding the EAP-Type
+	 *	attribute.  This lets other modules selectively cancel
+	 *	proxying based on EAP-Type.
 	 */
-	memset(&handler, 0, sizeof(handler));
-	handler.request = request;
-	handler.eap_ds = eap_ds;
+	if (proxy) goto do_proxy;
 
-	eap_compose(&handler);
+	/*
+	 *	From now on, we're supposed to be handling the
+	 *	EAP packet.  We better understand it...
+	 */
 
-	eap_ds_free(&eap_ds);
-	return EAP_FOUND;
+	/*
+	 *	We're allowed only a few codes.  Request, Response,
+	 *	Success, or Failure.
+	 */
+	if ((eap_msg->strvalue[0] == 0) ||
+	    (eap_msg->strvalue[0] > PW_EAP_MAX_CODES)) {
+		DEBUG2("  rlm_eap: Unknown EAP packet");
+	} else {
+		DEBUG2("  rlm_eap: EAP packet type %s id %d length %d",
+		       eap_codes[eap_msg->strvalue[0]],
+		       eap_msg->strvalue[1],
+		       eap_msg->length);
+	}
+
+	/*
+	 *	We handle request and responses.  The only other defined
+	 *	codes are success and fail.  The client SHOULD NOT be
+	 *	sending success/fail packets to us, as it doesn't make
+	 *	sense.
+	 */
+	if ((eap_msg->strvalue[0] != PW_EAP_REQUEST) &&
+	    (eap_msg->strvalue[0] != PW_EAP_RESPONSE)) {
+		DEBUG2("  rlm_eap: Ignoring EAP packet which we don't know how to handle.");
+		return EAP_FAIL;
+	}
+
+	/*
+	 *	We've been told to ignore unknown EAP types, AND it's
+	 *	an unknown type.  Return "NOOP", which will cause the
+	 *	eap_authorize() to return NOOP.
+	 *
+	 *	EAP-Identity, Notification, and NAK are all handled
+	 *	internally, so they never have handlers.
+	 */
+	if ((eap_msg->strvalue[4] >= PW_EAP_MD5) &&
+	    inst->ignore_unknown_eap_types &&
+	    ((eap_msg->strvalue[4] == 0) ||
+	     (eap_msg->strvalue[4] > PW_EAP_MAX_TYPES) ||
+	     (inst->types[eap_msg->strvalue[4]] == NULL))) {
+		DEBUG2("  rlm_eap:  Ignoring Unknown EAP type");
+		return EAP_NOOP;
+	}
+		
+	/*
+	 *	They're NAKing the EAP type we wanted to use, and
+	 *	asking for one which we don't support.
+	 *
+	 *	NAK is code + id + length1 + length + NAK
+	 *             + requested EAP type.
+	 *
+	 *	We know at this point that we can't handle the
+	 *	request.  We could either return an EAP-Fail here, but
+	 *	it's not too critical.
+	 *
+	 *	By returning "noop", we can ensure that authorize()
+	 *	returns NOOP, and another module may choose to proxy
+	 *	the request.
+	 */
+	if ((eap_msg->strvalue[4] == PW_EAP_NAK) &&
+	    (eap_msg->length >= (EAP_HEADER_LEN + 2)) &&
+	    inst->ignore_unknown_eap_types &&
+	    ((eap_msg->strvalue[5] == 0) ||
+	     (eap_msg->strvalue[5] > PW_EAP_MAX_TYPES) ||
+	     (inst->types[eap_msg->strvalue[5]] == NULL))) {
+		DEBUG2("  rlm_eap: Ignoring NAK with request for unknown EAP type");
+		return EAP_NOOP;
+	}
+
+	/*
+	 *	Later EAP messages are longer than the 'start'
+	 *	message, so if everything is OK, this function returns
+	 *	'no start found', so that the rest of the EAP code can
+	 *	use the State attribute to match this EAP-Message to
+	 *	an ongoing conversation.
+	 */
+	DEBUG2("  rlm_eap: No EAP Start, assuming it's an on-going EAP conversation");
+
+	return EAP_NOTFOUND;
 }
 
 /*
