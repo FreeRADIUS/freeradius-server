@@ -1,0 +1,127 @@
+.TH rlm_policy 5 "7 December 2004" "" "FreeRADIUS Module"
+.SH NAME
+rlm_policy \- FreeRADIUS Module
+.SH DESCRIPTION
+The \fBrlm_policy\fP module implements a simple "policy" language.
+.PP
+The policy language implemented by this module is simple, and specific
+to RADIUS.  It does not implement variables, arrays, loops, goto's, or
+any other feature of a real language.  If those features are needed
+for your system, we suggest using \fBrlm_perl\fP.
+.PP
+What the policy module implements is a simple way to look for
+attributes in the request packet (or other places), and to add
+attributes to the reply packet (or other places) based on those
+decisions.  Where the module shines is that it is significantly more
+flexible than the old-style \fBusers\fP file.
+.PP
+The module has one configuration item:
+.IP filename
+The file where the policy is stored.
+
+.SH POLICY LANGUAGE
+.SS Named policies
+The policy is composed of a series of named policies.  The following
+example defines a policy named "foo".
+.PP
+.DS
+policy foo {
+.br
+	...
+.br
+}
+.DE
+.PP
+Policy names MAY NOT be the same as attributes in the dictionary.
+Defining a policy with the same name as a dictionary attribute will
+cause an error message to be printed, and the policy will not be
+loaded.
+.PP
+When the policy module is listed in a module section like "authorize",
+the module calls a policy named "authorize".  The "post-auth",
+etc. sections behave the same.  These names cannot be changed.
+.PP
+.SS Referencing a named policy
+The following example references a named policy
+.DS
+foo()
+.DE
+While the brackets are required, no arguments may be passed.
+.PP
+.SS "if" statements
+are supported.
+if (condition) {
+.br
+	...
+.br
+}
+.DE
+and "else"
+if (condition) {
+.br
+	...
+.br
+} else {
+.br
+	...
+.br
+}
+.DE
+also, "else if"
+if (condition) {
+.br
+	...
+.br
+} else if (condition) {
+.br
+	...
+.br
+}
+.DE
+.PP
+.SS Conditions within "if" statements
+Always have to have brackets around them.  Sorry.
+.BR (foo)
+.BR (!(foo))
+.BR (foo == bar)
+.BR ("string" == "string")
+.BR ((condition) || (condition))
+.BR ((condition) && (condition))
+.BR && and || have equal precedence.
+.BR you can't call a function as a condition.
+.PP
+.SS Adding attributes to reply packet (or other location)
+reply .= {
+.br
+	attribute-name = value
+.br
+	...
+.br
+	attribute-name = value
+}
+.DE
+The first name can be "request", "reply", "control", "proxy-request",
+or "proxy-reply".
+.PP
+The operator can be
+.BR .= - appends attributes to end of the list
+.BR := - replaces existing list with the attributes in the list (bad idea)
+.BR = - use operators from "attribute = value" to decide what to do. (see "users")
+The block must contain only attributes and values.  Nothing else is permitted.
+
+.SH SECTIONS
+.BR authorize
+.BR post-auth
+.BR pre-proxy
+.BR post-proxy
+.PP
+.SH FILES
+.I /etc/raddb/radiusd.conf
+.PP
+.SH "SEE ALSO"
+.BR radiusd (8),
+.BR users (5),
+.BR radiusd.conf (5)
+.SH AUTHOR
+Alan DeKok <aland@ox.org>
+
