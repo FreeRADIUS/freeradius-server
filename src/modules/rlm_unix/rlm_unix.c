@@ -114,7 +114,31 @@ static struct unix_instance *group_inst;
  * file) or not ("Group=" was bound to the first instance of rlm_unix */
 static int group_inst_explicit;
 
-struct passwd *fgetpwnam(const char *fname, const char *name) {
+#if HAVE_GETSPNAM
+#if defined(M_UNIX)
+	typedef struct passwd shadow_pwd_t;
+	static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
+		if (spwd == NULL) return NULL;
+		return (spwd->pw_name);
+	}
+	static inline const char *get_shadow_encrypted_pwd(shadow_pwd_t *spwd) {
+		if (spwd == NULL) return NULL;
+		return (spwd->pw_passwd);
+	}
+#else /* M_UNIX */
+	typedef struct spwd shadow_pwd_t;
+	static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
+		if (spwd == NULL) return NULL;
+		return (spwd->sp_namp);
+	}
+	static inline const char *get_shadow_encrypted_pwd(shadow_pwd_t *spwd) {
+		if (spwd == NULL) return NULL;
+		return (spwd->sp_pwdp);
+	}
+#endif	/* M_UNIX */
+#endif	/* HAVE_GETSPNAM */
+
+static struct passwd *fgetpwnam(const char *fname, const char *name) {
 	FILE		*file = fopen(fname, "ro");
 	struct passwd	*pwd = NULL;
 
@@ -125,15 +149,18 @@ struct passwd *fgetpwnam(const char *fname, const char *name) {
 			fclose(file);
 			return NULL;
 		}
-	} while(strcmp(name, pwd->pw_name) != 0);
+	} while (strcmp(name, pwd->pw_name) != 0);
+
 	fclose(file);
 	return pwd;
 }
 
-struct passwd *fgetgrnam(const char *fname, const char *name) {
+static struct group *fgetgrnam(const char *fname, const char *name) {
 	FILE		*file = fopen(fname, "ro");
 	struct group	*grp = NULL;
+
 	if(file == NULL) return NULL;
+
 	do {
 		grp = fgetgrent(file);
 		if(grp == NULL) {
@@ -144,6 +171,26 @@ struct passwd *fgetgrnam(const char *fname, const char *name) {
 	fclose(file);
 	return grp;
 }
+
+#if HAVE_GETSPNAM
+
+static shadow_pwd_t *fgetspnam(const char *fname, const char *name) {
+	FILE		*file = fopen(fname, "ro");
+	shadow_pwd_t	*spwd = NULL;
+
+	if(file == NULL) return NULL;
+	do {
+		spwd = fgetspent(file);
+		if(spwd == NULL) {
+			fclose(file);
+			return NULL;
+		}
+	} while(strcmp(name, get_shadow_name(spwd)) != 0);
+	fclose(file);
+	return spwd;
+}
+
+#endif
 
 /*
  *	The Group = handler.
@@ -306,11 +353,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	char		*encrypted_pass;
 	int		ret;
 #if HAVE_GETSPNAM
-#if defined(M_UNIX)
-	struct passwd	*spwd;
-#else
-	struct spwd	*spwd;
-#endif
+	shadow_pwd_t	*spwd = NULL;
 #endif
 #ifdef OSFC2
 	struct pr_passwd *pr_pw;
@@ -433,8 +476,15 @@ static int unix_authenticate(void *instance, REQUEST *request)
 #else /* OSFC2 */
 	/*
 	 *	Get encrypted password from password file
+	 *
+	 *	If a password file was explicitly specified, use it,
+	 *	otherwise, use the system routines to read the
+	 *	system password file
 	 */
-	if ((pwd = getpwnam(name)) == NULL) {
+	if (inst->passwd_file != NULL) {
+		if ((pwd = fgetpwnam(inst->passwd_file, name)) == NULL)
+			return RLM_MODULE_NOTFOUND;
+	} else if ((pwd = getpwnam(name)) == NULL) {
 		return RLM_MODULE_NOTFOUND;
 	}
 	encrypted_pass = pwd->pw_passwd;
@@ -443,13 +493,25 @@ static int unix_authenticate(void *instance, REQUEST *request)
 #if HAVE_GETSPNAM
 	/*
 	 *      See if there is a shadow password.
+	 *
+	 *	If a shadow file was explicitly specified, use it,
+	 *	otherwise, use the system routines to read the
+	 *	system shadow file.
+	 *
+	 *	Also, if we explicitly specify the password file,
+	 *	only query the _system_ shadow file if the encrypted
+	 *	password from the passwd file is < 10 characters (i.e.
+	 *	a valid password would never crypt() to it).  This will
+	 *	prevents users from using NULL password fields as things
+	 *	stand right now.
 	 */
-	if ((spwd = getspnam(name)) != NULL)
-#if defined(M_UNIX)
-		encrypted_pass = spwd->pw_passwd;
-#else
-		encrypted_pass = spwd->sp_pwdp;
-#endif	/* M_UNIX */
+	if (inst->shadow_file != NULL) {
+		if ((spwd = fgetspnam(inst->shadow_file, name)) == NULL)
+			encrypted_pass = get_shadow_encrypted_pwd(spwd);
+	} else if ((encrypted_pass == NULL) || (strlen(encrypted_pass) < 10)) {
+		if ((spwd = getspnam(name)) != NULL)
+			encrypted_pass = get_shadow_encrypted_pwd(spwd);
+	}
 #endif	/* HAVE_GETSPNAM */
 
 #ifdef DENY_SHELL
