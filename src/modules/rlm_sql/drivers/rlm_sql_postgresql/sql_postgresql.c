@@ -68,6 +68,24 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 /*************************************************************************
  *
+ *	Function: sql_destroy_socket
+ *
+ *	Purpose: Free socket and any private connection data
+ *
+ *************************************************************************/
+int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
+	rlm_sql_postgres_sock *postgres_sock = sqlsocket->conn;
+
+	free(postgres_sock);
+	free(sqlsocket);
+
+	return 0;
+}
+
+
+/*************************************************************************
+ *
  *	Function: sql_query
  *
  *	Purpose: Issue a query to the database
