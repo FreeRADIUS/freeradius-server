@@ -20,11 +20,14 @@ clean:
 	@rm -f *~
 
 install:
+	$(INSTALL) -d -m 755	$(R)$(sbindir)
+	$(INSTALL) -d -m 755	$(R)$(bindir)
+	$(INSTALL) -d -m 755	$(R)$(raddbdir)
+	$(INSTALL) -d -m 755	$(R)$(mandir)
+	$(INSTALL) -d -m 755	$(R)$(RUNDIR)
+	$(INSTALL) -d -m 700	$(R)$(logdir)
+	$(INSTALL) -d -m 700	$(R)$(radacctdir)
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	$(INSTALL) -d -m 755	$(R)$(mandir);
-	$(INSTALL) -d -m 755	$(R)$(RUNDIR);
-	$(INSTALL) -d -m 700	$(R)$(logdir);
-	$(INSTALL) -d -m 700	$(R)$(radacctdir);
 	for i in 1 5 8; do \
 		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
 		for p in man/man$$i/*.$$i; do \
@@ -32,7 +35,6 @@ install:
 		done \
 	done
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
-	$(INSTALL) -d -m 755	$(R)$(raddbdir); \
 	cd raddb; \
 	for i in [a-c]* [e-z]*; do \
 		[ $$i != radiusd.conf.in -a ! -f $(R)$(raddbdir)/$$i ] && \
