@@ -26,7 +26,6 @@ typedef struct sql_socket {
 	MYSQL		*sock;
 	MYSQL		conn;
 	MYSQL_RES	*result;
-	struct timeval	tv;
 } SQLSOCK;
 
 typedef struct sql_config {

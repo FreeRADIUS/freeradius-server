@@ -178,20 +178,6 @@ SQLSOCK *sql_get_socket(SQL_INST *inst) {
  *************************************************************************/
 int sql_release_socket(SQL_INST *inst, SQLSOCK *sqlsocket) {
 
-	struct timeval tv;
-	double  start, end;
-	char    buff[24];
-
-	gettimeofday(&tv, NULL);
-	sprintf(buff, "%ld.%2ld", tv.tv_sec, tv.tv_usec);
-	end = strtod(buff, NULL);
-	sprintf(buff, "%ld %2.0ld", sqlsocket->tv.tv_sec, sqlsocket->tv.tv_usec);
-	start = strtod(buff, NULL);
-	radlog(L_DBG,"rlm_sql: Socket %d used for %.2f seconds", sqlsocket->id, end - start);
-
-	sqlsocket->tv.tv_sec = tv.tv_sec;
-	sqlsocket->tv.tv_usec = tv.tv_usec;
-
 #if HAVE_PTHREAD_H
 	pthread_mutex_lock(inst->lock);
 #endif
