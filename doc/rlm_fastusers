@@ -1,0 +1,163 @@
+
+Radius FastUsers Module
+
+0.  INTRODUCTION
+
+    The 'fastusers' module provides an interface for authentication
+    very similar to the standard RADIUS 'users' file.  However, because
+    the users are stored in a different way, there are three main
+    differences to be aware of:
+
+    a.  It's much faster than standard 'users' authentication
+    b.  Order of the entries in the file does *not* matter
+    c.  DEFAULT entries behave differently than in 'users'
+
+1.  WHAT DOES IT DO
+
+    Very simply, the module reads in the file you specify in radiusd.conf
+    into a hash table and then authenticates the users out of it.  This
+    is very similar to the way that passwd caching works (see README.cache),
+    but because of the 'users' file format, we can specify arbitrary
+    check items and reply items for each user.
+   
+2.  HOW DO I USE IT
+
+    First thing you do is declare the module in radiusd.conf.  The
+    default setting looks like this:
+
+    fastusers {
+       usersfile = ${confdir}/users_fast
+       hashsize = 1000
+       compat = no
+    }
+
+    A.  usersfile
+
+        The 'usersfile' is the path and filename of the file you want
+        fastusers to read and use to authenticate users.  The format
+        is similar to that of the standard 'users' file, but you must
+        keep the following differences in mind:
+
+        1.  Order does not matter
+ 
+            Order of the standard 'users' file is important, where in
+            fastusers it is not.  Multiple DEFAULT entries are not
+            possible (see below), so don't be surprised when things
+            don't work exactly as they would in 'users'.
+
+        2.  DEFAULT entries
+
+            While you can have multiple DEFAULT entries in the file
+            you use with fastusers, only the last one will be used.
+            Furthermore, the DEFAULT entry has a *very* different
+            purpose in fastusers than it does in 'users'.
+
+            In fastusers, if you add a DEFAULT entry, what you are
+            telling the server is:  Add the check items and reply
+            items I list for this DEFAULT entry to *every* request
+            that matches a user in this file.  Example:
+
+            test Auth-Type:=Local, Password=="test"
+                Reply-Message = "User test"
+
+            test2 Auth-Type:=Local, Password=="test2"
+                Reply-Message = "User test2"
+
+            DEFAULT Simultaneous-Use == 1
+                Service-Type = Framed-User 
+
+            Normally you would expect that if a user other than 'test'
+            or 'test2' logged in, the DEFAULT entry would apply.  This
+            is not the case in fastusers.  
+
+            NOTE:  No users other than ones listed explicitly in the file
+                   can authenticate via fastusers because DEFAULT entries
+                   do not work like they do in the 'users' file.
+
+            Now, if either test or test2 logs in with their respec-
+            tive password, when the request is passed back to the main
+            server (and to the NAS), the check item Simultaneous-Use==1
+            and the reply item Service-Type=Framed-User will be added.
+            
+            Why does it behave this way?  The reason is because if it
+            does not do this, the administrator will have to duplicate
+            the check items and reply items for every user in the file
+            unnecessarily.  This will cause the fastusers file to be
+            substantially larger than necessary, which in turn takes
+            the server long to read on startup or when it receives
+            a -HUP signal.  
+
+            This way, you need only put the necessary check and reply 
+            items on the DEFAULT entry, and then the individual users
+            will need only have the items that are *unique* to them
+            listed explicitly (ie, password, static ip address, etc).
+
+            This behaviour will probably be configurable in future
+            releases of the module.  For now, you don't have to add
+            a DEFAULT entry if you don't want one, and the attributes
+            listed for each individual will be the ones used for check
+            and reply items.
+
+            NOTE:  Because the attributes from DEFAULT are added to the
+                   user authenticating, it is best to *AVOID* listing an
+                   Auth-Type in the DEFAULT entry.  If you set one in
+                   the DEFAULT entry, it will override the one you set
+                   for the user in the file.  Just don't do it, it's not
+                   worth the confusion.
+            
+    B.  hashsize
+
+        The 'hashsize' variable controls how many 'buckets' or 'nodes'
+        the hash table will have in it.  This allows the admnistrator
+        to control how much memory is allocated to the hash table.  It
+        also allows him/her to significantly impact the performance of
+        the hash (for better or worse!!).
+
+        Each hash 'bucket' is a pointer to a list of users that fit 
+        the requirements to be in that bucket.  If the number of users
+        is very high and the 'hashsize' is very small, that means you
+        will have a large number of users per bucket.  This will 
+        *negatively* impact performance.  In an ideal world, you would
+        have exactly one user per bucket, but this is very unlikely to
+        happen.  Conversely, if you have only 10 users in listed in the
+        file and you set 'hashsize' to be 1000, you know that you have
+        100 times as many buckets as users, and are therefore wasting
+        memory.
+
+        So what should you shoot for?  Well, I'll tell you as a general
+        rule to simply take the number of users you list in the file 
+        and use that for the 'hashsize' value.  However, the frugal 
+        admin could divide that number by 5 or 10 and still achieve
+        much greater performance that that produced by 'users'.  Still,
+        if you aren't strapped for memory, I recommend going no lower
+        than 'hashsize= # of users / 3'.  It's up to you though, test
+        it with different values and see how it affects performance
+        (see README.testing).
+        
+        NOTE:  If you use value of '1' for hashsize, you will have 
+               effectively created a singly linked list, and thus
+               removed all performance benefit of using the module.
+            
+    C.  compat
+
+        This works the same as it does in the rlm_users config section.
+        It allows you to declare cistron compatibility mode when reading
+        in the 'users' file.
+            
+    Finally, you must put 'fastusers' in the 'authorize{}' section of your
+    radiusd.conf.  For example:
+
+    authorize {
+       preprocess
+       realm
+       fastusers
+    }
+
+3.  CAVEATS
+
+    *NOTE:  DEFAULT USERS DON'T WORK AS YOU MIGHT EXPECT!  SEE ABOVE!!!
+
+4.  ACKNOWLEDGEMENTS
+
+    Author - Jeff Carneal
+
