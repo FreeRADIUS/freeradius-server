@@ -1,0 +1,40 @@
+GNOME-PRODUCT-RADIUSD-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY,
+	OBJECT-IDENTITY
+		FROM SNMPv2-SMI
+	gnomeProducts
+		FROM GNOME-SMI;
+
+freeradius MODULE-IDENTITY
+	LAST-UPDATED "200009260000Z"
+	ORGANIZATION "GNOME project"
+	CONTACT-INFO
+		"GNU Network Object Model Environment project
+		
+		see http://www.gnome.org for contact persons of a particular
+		area or subproject of GNOME.
+
+		Administrative contact for MIB module:
+
+		Jochen Friedrich
+		Wingertstr. 70/1
+		68809 Neulussheim
+		Germany 
+
+		email: snmp@gnome.org"
+	DESCRIPTION
+		"The product registrations for the FreeRADIUS SNMP subagent.
+		These registrations are guaranteed to be unique and are used
+		for SMUX registration by default (if not overridden manually)."
+	::= { gnomeProducts 3 }
+
+radiusd OBJECT-IDENTITY
+	STATUS  current
+	DESCRIPTION
+		"radiusd is the RADIUS protocol deamon of the FreeRADIUS
+		project."
+	::= { freeradius 1 }
+
+END
