@@ -35,4 +35,9 @@ int    sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 int    sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 int    sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 int     sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+/*
+ * UNUSED:  Escaping has been moved to the main module
+ * code.  This left in here just in case...
+ *
 int     sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length);
+*/

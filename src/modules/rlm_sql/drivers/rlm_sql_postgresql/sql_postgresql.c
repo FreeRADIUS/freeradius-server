@@ -364,7 +364,10 @@ int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *
  *      Purpose: Esacpe "'" and any other wierd charactors
  *
- *************************************************************************/
+ *************************************************************************
+ * UNUSED:  Escaping has been moved to the main module
+ * code.  This left in here just in case...
+ *
 int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *from, int length) {
 
 	int x, y;
@@ -380,6 +383,7 @@ int sql_escape_string(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *to, char *fr
 
 	return 0;
 }
+*/
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_postgresql = {
@@ -398,5 +402,4 @@ rlm_sql_module_t rlm_sql_postgresql = {
         sql_finish_query,
         sql_finish_select_query,
         sql_affected_rows,
-        sql_escape_string
 };
