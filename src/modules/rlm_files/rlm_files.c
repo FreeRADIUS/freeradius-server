@@ -387,7 +387,7 @@ static int file_preacct(void *instance, REQUEST *request)
 	const char	*name;
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	**config_pairs;
-	VALUE_PAIR	*reply_pairs = NULL;
+	VALUE_PAIR	**reply_pairs;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	PAIR_LIST	*pl;
@@ -398,7 +398,8 @@ static int file_preacct(void *instance, REQUEST *request)
 	name = namepair ? (char *) namepair->strvalue : "NONE";
 	request_pairs = request->packet->vps;
 	config_pairs = &request->config_items;
-	
+	reply_pairs = &request->reply->vps;
+
 	/*
 	 *	Find the entry for the user.
 	 */
@@ -407,13 +408,13 @@ static int file_preacct(void *instance, REQUEST *request)
 		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
 			continue;
 
-		if (paircmp(request_pairs, pl->check, &reply_pairs) == 0) {
+		if (paircmp(request_pairs, pl->check, reply_pairs) == 0) {
 			DEBUG2("    acct_users: Matched %s at %d",
 			       pl->name, pl->lineno);
 			found = 1;
 			check_tmp = paircopy(pl->check);
 			reply_tmp = paircopy(pl->reply);
-			pairmove(&reply_pairs, &reply_tmp);
+			pairmove(reply_pairs, &reply_tmp);
 			pairmove(config_pairs, &check_tmp);
 			pairfree(&reply_tmp);
 			pairfree(&check_tmp); /* should be NULL */
@@ -430,12 +431,6 @@ static int file_preacct(void *instance, REQUEST *request)
 	 */
 	if (!found)
 		return RLM_MODULE_NOOP; /* on to the next module */
-
-	/*
-	 *	FIXME: log a warning if there are any reply items other than
-	 *	Fallthrough
-	 */
-	pairfree(&reply_pairs); /* Don't need these */
 
 	return RLM_MODULE_OK;
 }
