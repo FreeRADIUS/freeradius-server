@@ -173,6 +173,7 @@ int dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS f
 
 int dict_addvalue(const char *namestr, char *attrstr, int value)
 {
+	DICT_ATTR	*dattr;
 	DICT_VALUE	*dval;
 
 	if (strlen(namestr) > (sizeof(dval->name) -1)) {
@@ -189,16 +190,26 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 		librad_log("dict_addvalue: out of memory");
 		return -1;
 	}
-	
+
 	strcpy(dval->name, namestr);
 	strcpy(dval->attrname, attrstr);
-	dval->attr = 0;		/* ??? */
+
+	/*
+	 *	Remember which attribute is associated with this
+	 *	value, if possible.
+	 */
+	dattr = dict_attrbyname(attrstr);
+	if (dattr) {
+		dval->attr = dattr->attr;
+	} else {
+		dval->attr = 0;
+	}
 	dval->value = value;
 	
 	/* Insert at front. */
 	dval->next = dictionary_values;
 	dictionary_values = dval;
-			
+
 	return 0;
 }
 
