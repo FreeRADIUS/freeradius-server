@@ -293,6 +293,7 @@ ATTRIBUTE	Ascend-Dialed-Number		24	string  	Ascend
 ATTRIBUTE	Ascend-Inter-Arrival-Jitter	25	integer  	Ascend
 ATTRIBUTE	Ascend-Dropped-Octets		26	integer  	Ascend
 ATTRIBUTE	Ascend-Dropped-Packets		27	integer  	Ascend
+ATTRIBUTE	Ascend-Auth-Delay		28	integer		Ascend
 ATTRIBUTE	Ascend-X25-Pad-X3-Profile	29	integer  	Ascend
 ATTRIBUTE	Ascend-X25-Pad-X3-Parameters	30	string  	Ascend
 ATTRIBUTE	Ascend-Tunnel-VRouter-Name	31	string  	Ascend
