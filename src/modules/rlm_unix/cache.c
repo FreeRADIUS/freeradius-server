@@ -69,12 +69,14 @@ static int hashUserName(const char *s);
  * in memory.  Returns NULL on failure, pointer to the cache on success.
  */
 struct pwcache *unix_buildpwcache(const char *passwd_file,
-                                  const char *shadow_file)
+                                  const char *shadow_file,
+                                  const char *group_file)
 {
 	FILE *passwd;
 #if HAVE_SHADOW_H
 	FILE *shadow;
 #endif
+	FILE *group;
 	char buffer[BUFSIZE];
 	char idtmp[10];
 	char username[256];
@@ -91,6 +93,11 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 
 	if (!passwd_file) {
 		radlog(L_ERR, "rlm_unix:  You MUST specify a password file!");
+		return NULL;
+	}
+
+	if (!group_file) {
+		radlog(L_ERR, "rlm_unix:  You MUST specify a group file!");
 		return NULL;
 	}
 
@@ -278,22 +285,25 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 	/* log how many entries we stored from the passwd file */
 	radlog(L_INFO, "HASH:  Stored %d entries from %s", numread, passwd_file);
 
-	/* The remainder of this function caches the /etc/group file, so it's
-	 * one less thing we have to lookup on disk.  it uses getgrent(),
-	 * which is quite slow, but the group file is generally small enough
-	 * that it won't matter
+	/* The remainder of this function caches the /etc/group or equivalent
+	 * file, so it's one less thing we have to lookup on disk.  it uses
+	 * fgetgrent(), which is quite slow, but the group file is generally
+	 * small enough that it won't matter
 	 * As a side note, caching the user list per group was a major pain
 	 * in the ass, and I won't even need it.  I really hope that somebody
 	 * out there needs and appreciates it.
 	 */
 
-	/* Make sure to begin at beginning */
-	setgrent();
-
+	if ((group = fopen(group_file, "r")) == NULL) {
+		radlog(L_ERR, "rlm_unix:  Can't open file group file %s: %s",
+		    group_file, strerror(errno));
+		unix_freepwcache(cache);
+		return NULL;
+	}
 	numread = 0;
 
 	/* Get next entry from the group file */
-	while((grp = getgrent()) != NULL) {
+	while((grp = fgetgrent(group)) != NULL) {
 
 		/* Make new mygroup structure in mem */
 		g_new = (struct mygroup *)rad_malloc(sizeof(struct mygroup));
@@ -338,9 +348,9 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 	}
 
 	/* End */
-	endgrent();
+	fclose(group);
 
-	radlog(L_INFO, "HASH:  Stored %d entries from /etc/group", numread);
+	radlog(L_INFO, "HASH:  Stored %d entries from %s", numread, group_file);
 
 	return cache;
 }

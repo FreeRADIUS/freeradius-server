@@ -107,6 +107,37 @@ static struct unix_instance *group_inst;
  * file) or not ("Group=" was bound to the first instance of rlm_unix */
 static int group_inst_explicit;
 
+struct passwd *fgetpwnam(const char *fname, const char *name) {
+	FILE		*file = fopen(fname, "ro");
+	struct passwd	*pwd = NULL;
+
+	if(file == NULL) return NULL;
+	do {
+		pwd = fgetpwent(file);
+		if(pwd == NULL) {
+			fclose(file);
+			return NULL;
+		}
+	} while(strcmp(name, pwd->pw_name) != 0);
+	fclose(file);
+	return pwd;
+}
+
+struct passwd *fgetgrnam(const char *fname, const char *name) {
+	FILE		*file = fopen(fname, "ro");
+	struct group	*grp = NULL;
+	if(file == NULL) return NULL;
+	do {
+		grp = fgetgrent(file);
+		if(grp == NULL) {
+			fclose(file);
+			return NULL;
+		}
+	} while(strcmp(name, grp->gr_name) != 0);
+	fclose(file);
+	return grp;
+}
+
 /*
  *	The Group = handler.
  */
@@ -128,16 +159,18 @@ static int groupcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 		return 1;
 	}
 
+	radlog(L_ERR, "group = %s", group_inst->group_file);
+
 	username = (char *)request->strvalue;
 
 	if (group_inst->cache_passwd &&
 	    (retval = H_groupcmp(group_inst->cache, check, username)) != -2)
 		return retval;
 
-	if ((pwd = getpwnam(username)) == NULL)
+	if ((pwd = fgetpwnam(group_inst->passwd_file, username)) == NULL)
 		return -1;
 
-	if ((grp = getgrnam((char *)check->strvalue)) == NULL)
+	if ((grp = fgetgrnam(group_inst->group_file, (char *)check->strvalue)) == NULL)
 		return -1;
 
 	retval = (pwd->pw_gid == grp->gr_gid) ? 0 : -1;
@@ -187,7 +220,8 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_INFO, "HASH:  Reinitializing hash structures "
 			"and lists for caching...");
 		if ((inst->cache = unix_buildpwcache(inst->passwd_file,
-						     inst->shadow_file))==NULL)
+						     inst->shadow_file,
+						     inst->group_file))==NULL)
                 {
 			radlog(L_ERR, "HASH:  unable to create user "
 				"hash table.  disable caching and run debugs");

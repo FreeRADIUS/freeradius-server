@@ -36,7 +36,8 @@ struct pwcache {
 
 /* Function prototypes */
 struct pwcache *unix_buildpwcache(const char *passwd_file,
-                                  const char *shadow_file);
+                                  const char *shadow_file,
+                                  const char *group_file);
 int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
                 VALUE_PAIR **reply_items);
 int H_groupcmp(struct pwcache *cache, VALUE_PAIR *check, char *username);
