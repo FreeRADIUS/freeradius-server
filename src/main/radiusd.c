@@ -2412,6 +2412,20 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	}
 
 	/*
+	 *	If the request (duplicate or now) is currently
+	 *	being processed, then discard the new request.
+	 */
+	if (oldreq->child_pid != NO_SUCH_CHILD_PID) {
+		radlog(L_ERR, "Discarding duplicate reply from home server %s:%d - ID: %d due to live request %d",
+		       client_name(request->packet->src_ipaddr),
+		       request->packet->src_port,
+		       request->packet->id,
+		       oldreq->number);
+		request_free(&request);
+		return NULL;
+	}
+	
+	/*
 	 *	The proxy reply has arrived too late, as the original
 	 *	(old) request has timed out, been rejected, and marked
 	 *	as finished.  The client has already received a
