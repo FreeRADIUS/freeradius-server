@@ -352,6 +352,74 @@ static int eap_authorize(void *instance, REQUEST *request)
 }
 
 /*
+ *	If we're proxying EAP, then there may be magic we need
+ *	to do.
+ */
+static int eap_post_proxy(void *instance, REQUEST *request)
+{
+	int i, len, offset;
+	VALUE_PAIR *vp = request->proxy_reply->vps;
+
+	/*
+	 *	There may be more than one Cisco-AVPair.
+	 *	Ensure we find the one with the LEAP attribute.
+	 */
+	for (;;) {
+		/*
+		 *	Hmm... there's got to be a better way to
+		 *	discover codes for vendor attributes.
+		 *
+		 *	This is vendor Cisco (9), Cisco-AVPair
+		 *	attribute (1)
+		 */
+		vp = pairfind(vp, (9 << 16)  | 1);
+		if (!vp) {
+			return RLM_MODULE_NOOP;
+		}
+		
+		/*
+		 *	If it's "leap:session-key", then stop.
+		 *
+		 *	The format is VERY specific!
+		 */
+		if (strncasecmp(vp->strvalue, "leap:session-key=", 17) == 0) {
+			break;
+		}
+	}
+
+	/*
+	 *	The format is very specific.
+	 */
+	if (vp->length != 17 + 34) {
+		DEBUG2("  rlm_eap: Cisco-AVPair with leap:session-key has incorrect length %d: Expected %d",
+		       vp->length, 17 + 34);
+		return RLM_MODULE_NOOP;
+	}
+
+	/*
+	 *	Decrypt the session key, using the proxy data.
+	 */
+	i = 34;			/* starts off with 34 octets */
+	len = rad_tunnel_pwdecode(vp->strvalue + 17, &i,
+				  request->proxysecret,
+				  request->proxy->vector);
+
+	/*
+	 *	FIXME: Assert that i == 16.
+	 */
+
+	/*
+	 *	Encrypt the session key again, using the request data.
+	 */
+	rad_tunnel_pwencode(vp->strvalue + 17, &len,
+			    request->secret,
+			    request->packet->vector);
+
+	return RLM_MODULE_UPDATED;
+}
+
+
+/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
@@ -367,7 +435,7 @@ module_t rlm_eap = {
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
+		eap_post_proxy,		/* post-proxy */
 		NULL			/* post-auth */
 	},
 	eap_detach,			/* detach */
