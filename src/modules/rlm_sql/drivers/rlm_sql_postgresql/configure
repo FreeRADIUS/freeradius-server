@@ -792,7 +792,7 @@ if test "${with_rlm_sql_postgresql_include_dir+set}" = set; then
 fi
 
 
-	smart_try_dir=$rlm_sql_postgresql_include_dir
+	smart_try_dir="$rlm_sql_postgresql_include_dir /usr/local/pgsql/include"
 	
 
 ac_safe=`echo "libpq-fe.h" | sed 'y%./+-%__p_%'`
@@ -893,7 +893,7 @@ fi
 	  fail="$fail libpq-fe.h"
 	fi
 
-	smart_try_dir=$rlm_sql_postgresql_lib_dir
+	smart_try_dir="$rlm_sql_postgresql_lib_dir /usr/local/pgsql/lib"
 	
 
 echo $ac_n "checking for PQconnectdb in -lpq""... $ac_c" 1>&6
