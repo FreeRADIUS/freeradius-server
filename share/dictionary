@@ -70,6 +70,7 @@ $INCLUDE dictionary.telebit
 $INCLUDE dictionary.tunnel
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.versanet
+$INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
 
 #
