@@ -24,14 +24,20 @@ Package: radiusd-freeradius-ldap
 Architecture: any
 Depends: radiusd-freeradius, ${shlibs:Depends}
 Description: LDAP module for FreeRADIUS server.
+ The FreeRADIUS server can use LDAP to authenticate users, and this module
+ is necessary for that.
 
 Package: radiusd-freeradius-postgresql
 Architecture: any
 Depends: radiusd-freeradius, ${shlibs:Depends}
 Description: PostgreSQL module for FreeRADIUS server.
+ The FreeRADIUS server can use PostgreSQL to authenticate users and do
+ accounting, and this module is necessary for that.
 
 Package: radiusd-freeradius-mysql
 Architecture: any
 Depends: radiusd-freeradius, ${shlibs:Depends}
 Description: MySQL module for FreeRADIUS server.
+ The FreeRADIUS server can use MySQL to authenticate users and do accounting,
+ and this module is necessary for that.
 
