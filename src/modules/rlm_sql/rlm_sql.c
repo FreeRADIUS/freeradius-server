@@ -278,7 +278,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	if (sqlsocket == NULL) {
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-		return(RLM_MODULE_NOOP);
+		return(RLM_MODULE_FAIL);
 	}
 
 	found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_USERDATA);
@@ -297,7 +297,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-		return RLM_MODULE_NOOP;
+		return RLM_MODULE_FAIL;
 
 	} else {
 
@@ -438,7 +438,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
-				return(RLM_MODULE_NOOP);
+				return(RLM_MODULE_FAIL);
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0)
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for Acct On/Off packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
@@ -457,7 +457,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
-				return(RLM_MODULE_NOOP);
+				return(RLM_MODULE_FAIL);
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0)
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for ALIVE packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
@@ -482,7 +482,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
-				return(RLM_MODULE_NOOP);
+				return(RLM_MODULE_FAIL);
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting" " for START packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
@@ -522,7 +522,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 			sqlsocket = sql_get_socket(inst);
 			if (sqlsocket == NULL)
-				return(RLM_MODULE_NOOP);
+				return(RLM_MODULE_FAIL);
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
