@@ -471,7 +471,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (request->password->strvalue == 0) {
+	if (request->password->length == 0) {
 		radlog(L_ERR, "rlm_ldap: empty password supplied");
 		return RLM_MODULE_INVALID;
 	}
