@@ -4,28 +4,28 @@ rlm_expr \- FreeRADIUS Module
 .SH DESCRIPTION
 The \fIrlm_expr\fP module allows the server to perform
 limited mathematical calculations.  This module is not called
-directly in any section, it is invoked through a special 
-attribute value syntax.
+directly in any section, it is invoked through the dynamic expansion
+of strings.
 .PP
 For example, some NAS boxes send a NAS-Port attribute
 which is a 32-bit number composed of port, card, and interface, all in
 different bytes.  To see these attributes split into pieces, you can
-do something like:
+have an entry in the 'users' file like:
 
 .DS
 DEFAULT
 .br
     Vendor-Interface = `%{expr: %{NAS-Port} / (256 * 256)}`,
 .br
-    Vendor-Card += `%{expr: (%{NAS-Port} / 256) %% 256}`,
+    Vendor-Card = `%{expr: (%{NAS-Port} / 256) %% 256}`,
 .br
-    Vendor-Port += `%{expr: %{NAS-Port} %% 256}`
+    Vendor-Port = `%{expr: %{NAS-Port} %% 256}`
 .br
 
 .DE
-where the attributes Vendor-Interface, Vendor-Card, and 
-Vendor-Port are attributes created by either you or the
-vendor-supplied dictionary.
+where the attributes Vendor-Interface, Vendor-Card, and Vendor-Port
+are attributes created by either you or a vendor-supplied
+dictionary.
 
 The methematical operators supported by the expression module are:
 .TP
@@ -65,9 +65,30 @@ example.
 .PP
 All of the calculations are performed as unsigned 32-bit integers.
 .DE
-.PP
+.SH CONFIGURATION
+.DS
+modules {
+  ...
+.br
+  expr {
+.br
+  }
+.br
+  ...
+.br
+}
+.br
+ ...
+.br
+instantiate {
+  ...
+.br
+  expr
+  ...
+.br
+}
 .SH SECTIONS
-.BR instantiation
+.BR instantiate
 .PP
 .SH FILES
 .I /etc/raddb/radiusd.conf
