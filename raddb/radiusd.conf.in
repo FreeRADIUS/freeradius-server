@@ -881,6 +881,20 @@ modules {
 	#
 	#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
 	#      Reply-Message = "You've used up more than one hour today"
+	#
+	# You can also use the check-name attribute (Max-Daily-Session etc).
+	# You can use that attribute to make per user/group counter setups:
+	#
+	# DEFAULT Ldap-Group == "faculty", Max-Daily-Session := 21600
+	#
+	# DEFAULT Ldap-Group == "students", Max-Daily-Session := 10800
+	#
+	# The allowed-servicetype attribute can be used to only take into account
+	# specific sessions. For example if a user  first loges in through a login
+	# menu and then selects ppp there will be two sessions. One for Login-User and
+	# one for Framed-User service type. We only need to take into account
+	# the second one.
+	#
 	counter {
 		filename = ${raddbdir}/db.counter
 		key = User-Name
