@@ -65,17 +65,19 @@ static void dump_record(datum key,datum data)
 	putchar('\n');
 }
 
-static void usage(){
+static void usage(void)
+{
 	fprintf(stderr, "Usage: %s: [-f file] [-w] [-i number] [-l number] [-v]\n\n",progname);
 	
 	exit(1);
 }
+
 int main(int n, char **argv) {
 
-	char 	*fname = NULL;
+	const char	*fname = NULL;
 	DBM  	*pdb;
 	datum	k,d;
-	char 	ch;
+	int 	ch;
 	int 	i;
 	
 	progname = argv[0];
