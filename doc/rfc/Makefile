@@ -17,6 +17,6 @@ clean:
 
 install:
 	$(INSTALL) -d -m 755	$(R)$(datadir)/doc/freeradius-$(RADIUSD_VERSION)/rfc
-	for i in *.txt *.html; do \
+	for i in `ls -1 *.txt *.html`; do \
 		$(INSTALL) -m 644 $$i $(R)$(datadir)/doc/freeradius-$(RADIUSD_VERSION)/rfc; \
 	done
