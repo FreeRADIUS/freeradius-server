@@ -198,23 +198,40 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	num_entries = ((thread_pool.queue_tail + thread_pool.queue_size) -
 		       thread_pool.queue_head) % thread_pool.queue_size;
 	if (num_entries == (thread_pool.queue_size - 1)) {
+		request_queue_t *new_queue;
+
 		/*
-		 *	FIXME: Malloc a new queue, doubled in size,
-		 *	copy the data from the current queue over to
-		 *	it, zero out the second half of the queue,
-		 *	free the old one, and replace thread_pool.queue
-		 *	with the new one.
-		 *
-		 *	Until, of course, we hit the number of
-		 *	requests determined by the product of
-		 *	"cleanup_delay", and the average # of
-		 *	requests/second we process.  At that point,
-		 *	requests are coming in faster than we can
-		 *	process them, so we should probably panic
-		 *	about it...
+		 *	If the queue becomes larger than 65536,
+		 *	there's a serious problem.
 		 */
-		radlog(L_ERR, "QUEUE FULL!");
-		exit(1);
+		if (thread_pool.queue_size >= 65536) {
+			pthread_mutex_unlock(&thread_pool.mutex);
+
+			/*
+			 *	Mark the request as done.
+			 */
+			DEBUG("  ERROR! SERVER IS BLOCKED: Discarding new request %d", request->number);
+			
+			request->finished = TRUE;
+			return;
+		}
+
+		/*
+		 *	Malloc a new queue, doubled in size, copy the
+		 *	data from the current queue over to it, zero
+		 *	out the second half of the queue, free the old
+		 *	one, and replace thread_pool.queue with the
+		 *	new one.
+		 */
+		new_queue = rad_malloc(sizeof(*new_queue) * thread_pool.queue_size * 2);
+		memcpy(new_queue, thread_pool.queue,
+		       sizeof(*new_queue) * thread_pool.queue_size);
+		memset(new_queue + sizeof(*new_queue) * thread_pool.queue_size,
+		       0, sizeof(*new_queue) * thread_pool.queue_size);
+
+		free(thread_pool.queue);
+		thread_pool.queue = new_queue;
+		thread_pool.queue_size *= 2;
 	}
 
 	/*
@@ -710,7 +727,7 @@ int thread_pool_init(void)
 	 *	Queue head & tail are set to zero by the memset,
 	 *	above.
 	 *
-	 *	Allocate an initial queue.
+	 *	Allocate an initial queue, always as a power of 2.
 	 */
 	thread_pool.queue_size = 256;
 	thread_pool.queue = rad_malloc(sizeof(*thread_pool.queue) *
