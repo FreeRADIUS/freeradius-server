@@ -108,7 +108,7 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, char **user_msg)
  *
  *	NOTE: NOT the same as the RLM_ values !
  */
-static int rad_check_password(REQUEST *request, int activefd,
+static int rad_check_password(REQUEST *request,
 	VALUE_PAIR *check_item,
 	VALUE_PAIR *namepair,
 	char **user_msg)
@@ -123,15 +123,6 @@ static int rad_check_password(REQUEST *request, int activefd,
 	int		auth_type = -1;
 	int		i;
 	int		result;
-
-	/*
-	 *	cjd 19980706 --
-	 *	pampair contains the pair of PAM_AUTH_ATTR
-	 *	pamauth is the actual string
-	 */
-        VALUE_PAIR      *pampair;
-	char		*pamauth = NULL;
-
 	result = 0;
 
 	/*
@@ -149,17 +140,6 @@ static int rad_check_password(REQUEST *request, int activefd,
 		*user_msg = NULL;
 		return -2;
 	}
-
-	/*
-	 *	cjd 19980706 --
-	 *	Fish out the the PAM_AUTH_ATTR info for this match and
-	 *	get the string for pamauth.
-	 *	Pamauth is passed to pam_pass so we can have selective
-	 *	pam configuration.
-	 */
-        if ((pampair = pairfind(check_item, PAM_AUTH_ATTR)) != NULL) {
-		pamauth = pampair->strvalue;
-        }
 
 	/*
 	 *	Find the password sent by the user. It SHOULD be there,
@@ -399,7 +379,7 @@ int rad_mangle(REQUEST *request)
 /*
  *	Process and reply to an authentication request
  */
-int rad_authenticate(REQUEST *request, int activefd)
+int rad_authenticate(REQUEST *request)
 {
 	RADIUS_PACKET	*rp;
 	VALUE_PAIR	*namepair;
@@ -447,7 +427,21 @@ int rad_authenticate(REQUEST *request, int activefd)
 	}
 
 	/*
-	 *	Decrypt the password.
+	 *	Get the username from the request.
+	 */
+	namepair = pairfind(request->packet->vps, PW_USER_NAME);
+	if (namepair == NULL || namepair->strvalue[0] == 0) {
+		log(L_ERR, "zero length username not permitted\n");
+		rp = build_reply(PW_AUTHENTICATION_REJECT,
+				 request, NULL, NULL);
+		rad_send(rp, request->secret);
+		rad_free(rp);
+		request->finished = TRUE;
+		return RLM_AUTZ_NOTFOUND;
+	}
+		
+	/*
+	 *	Decrypt the password, and remove trailing NULL's.
 	 */
 	auth_item = pairfind(request->packet->vps, PW_PASSWORD);
 	if (auth_item != NULL && auth_item->attribute == PW_PASSWORD) {
@@ -465,20 +459,6 @@ int rad_authenticate(REQUEST *request, int activefd)
 	}
 
 	/*
-	 *	Get the username from the request.
-	 */
-	namepair = pairfind(request->packet->vps, PW_USER_NAME);
-	if (namepair == NULL || namepair->strvalue[0] == 0) {
-		log(L_ERR, "zero length username not permitted\n");
-		rp = build_reply(PW_AUTHENTICATION_REJECT,
-				 request, NULL, NULL);
-		rad_send(rp, activefd, request->secret);
-		rad_free(rp);
-		request->finished = TRUE;
-		return RLM_AUTZ_NOTFOUND;
-	}
-		
-	/*
 	 *	Get the user's authorization information from the database
 	 */
 	r = module_authorize(request, namepair->strvalue,
@@ -490,7 +470,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 				auth_name(request, 1));
 			rp = build_reply(PW_AUTHENTICATION_REJECT,
 					request, NULL, NULL);
-			rad_send(rp, activefd, request->secret);
+			rad_send(rp, request->secret);
 			rad_free(rp);
 		}
 		pairfree(user_reply);
@@ -512,7 +492,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 	do {
 		if ((result = check_expiration(user_check, umsg, &user_msg))<0)
 				break;
-		result = rad_check_password(request, activefd, user_check,
+		result = rad_check_password(request, user_check,
 			namepair, &user_msg);
 		if (result > 0) {
 			pairfree(user_reply);
@@ -532,7 +512,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 		 */
 		rp = build_reply(PW_AUTHENTICATION_REJECT, request,
 			NULL, user_msg);
-		rad_send(rp, activefd, request->secret);
+		rad_send(rp, request->secret);
 		rad_free(rp);
 		if (log_auth) {
 			u_char clean_buffer[1024];
@@ -579,7 +559,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 			}
 			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
 				NULL, user_msg);
-			rad_send(rp, activefd, request->secret);
+			rad_send(rp, request->secret);
 			rad_free(rp);
 		log(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
 				namepair->strvalue,
@@ -612,7 +592,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 			"You are calling outside your allowed timespan\r\n";
 			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
 				NULL, user_msg);
-			rad_send(rp, activefd, request->secret);
+			rad_send(rp, request->secret);
 			rad_free(rp);
 			log(L_ERR, "Outside allowed timespan: [%s]"
 				   " (%s) time allowed: %s",
@@ -700,7 +680,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 		user_msg = "\r\nAccess denied (external check failed).";
 			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
 				NULL, user_msg);
-			rad_send(rp, activefd, request->secret);
+			rad_send(rp, request->secret);
 			rad_free(rp);
 			if (log_auth) {
 				log(L_AUTH,
@@ -755,7 +735,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 	}
 
 	rp = build_reply(PW_AUTHENTICATION_ACK, request, user_reply, user_msg);
-	rad_send(rp, activefd, request->secret);
+	rad_send(rp, request->secret);
 	rad_free(rp);
 
 	if (log_auth) {

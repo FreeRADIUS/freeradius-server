@@ -5,7 +5,7 @@
  * libradius.h	Structures and prototypes
  *		for the radius library.
  *
- * Version:	@(#)libradius.h	 1.00  19-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
@@ -81,6 +81,7 @@ typedef struct value_pair {
  *	data,data_len:	Used between rad_recv and rad_decode.
  */
 typedef struct radius_packet {
+	int			sockfd;
 	UINT4			src_ipaddr;
 	UINT4			dst_ipaddr;
 	u_short			src_port;
@@ -132,7 +133,7 @@ int		dict_vendorname(char *name);
 void		librad_md5_calc(u_char *, u_char *, u_int);
 
 /* radius.c */
-int		rad_send(RADIUS_PACKET *, int fd, char *secret);
+int		rad_send(RADIUS_PACKET *, char *secret);
 RADIUS_PACKET	*rad_recv(int fd);
 int		rad_decode(RADIUS_PACKET *packet, char *secret);
 RADIUS_PACKET	*rad_alloc(int newvector);

@@ -143,7 +143,7 @@ int proxy_addrequest(REQUEST *request, int *proxy_id)
  *	          0 fail (caller falls through to normal processing)
  *		 -1 fail (we don't reply, caller returns without replying)
  */
-int proxy_send(REQUEST *request, int activefd)
+int proxy_send(REQUEST *request)
 {
 	VALUE_PAIR		*namepair;
 	VALUE_PAIR		*passpair;
@@ -245,6 +245,13 @@ int proxy_send(REQUEST *request, int activefd)
 		exit(1);
 	}
 
+	/*
+	 *	This net line works, but it's not the best thing to do.
+	 *
+	 *	Proxied requests should REALLY be sent out their own FD.
+	 */
+	request->proxy->sockfd = request->packet->sockfd;
+
 	request->proxy->code = request->packet->code;
 	request->proxy->dst_ipaddr = realm->ipaddr;
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST)
@@ -305,7 +312,7 @@ int proxy_send(REQUEST *request, int activefd)
 	/*
 	 *	Send the request.
 	 */
-	rad_send(request->proxy, activefd, client->secret);
+	rad_send(request->proxy, client->secret);
 
 	/*
 	 *	We can free proxy->vps now, not needed anymore.
@@ -323,7 +330,7 @@ int proxy_send(REQUEST *request, int activefd)
  *	Returns:   0 proxy found
  *		  -1 error don't reply
  */
-int proxy_receive(REQUEST *request, int activefd)
+int proxy_receive(REQUEST *request)
 {
 	VALUE_PAIR	*vp, *last, *prev, *x;
 	VALUE_PAIR	*allowed_pairs;

@@ -24,7 +24,7 @@ char acct_sccsid[] =
 /*
  *	rad_accounting: call modules.
  */
-int rad_accounting(REQUEST *request, int activefd)
+int rad_accounting(REQUEST *request)
 {
 	RADIUS_PACKET	*rp;
 	int		reply;
@@ -53,7 +53,7 @@ int rad_accounting(REQUEST *request, int activefd)
 		 *	Now send back an ACK to the NAS.
 		 */
 		rp = build_reply(PW_ACCOUNTING_RESPONSE, request, NULL, NULL);
-		rad_send(rp, activefd, request->secret);
+		rad_send(rp, request->secret);
 		rad_free(rp);
 		reply = RLM_ACCT_OK;
 	}

@@ -16,6 +16,7 @@
 typedef struct auth_req {
 	RADIUS_PACKET		*packet;
 	RADIUS_PACKET		*proxy;
+	RADIUS_PACKET		*reply;
 	char			username[MAX_STRING_LEN];
 	char			secret[32];
 	int			child_pid;
@@ -89,7 +90,7 @@ typedef int (*COMPARE)(VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 extern char		*progname;
 extern int		debug_flag;
 extern char		*radacct_dir;
-extern char     *radlog_dir;
+extern char		*radlog_dir;
 extern char		*radius_dir;
 extern char		*radius_libdir;
 extern UINT4		expiration_seconds;
@@ -109,7 +110,7 @@ extern int		acct_port;
  */
 
 /* acct.c */
-int		rad_accounting(REQUEST *, int);
+int		rad_accounting(REQUEST *);
 
 /* radutmp.c */
 int		radutmp_add(REQUEST *);
@@ -161,13 +162,13 @@ int		pam_pass(char *name, char *passwd, const char *pamauth);
 #endif
 
 /* proxy.c */
-int proxy_send(REQUEST *request, int activefd);
-int proxy_receive(REQUEST *request, int activefd);
+int proxy_send(REQUEST *request);
+int proxy_receive(REQUEST *request);
 
 /* auth.c */
 char		*auth_name(REQUEST *request, int do_cli);
 int		rad_mangle(REQUEST *request);
-int		rad_authenticate (REQUEST *, int);
+int		rad_authenticate (REQUEST *);
 
 /* exec.c */
 char		*radius_xlate(char *, VALUE_PAIR *req, VALUE_PAIR *reply);

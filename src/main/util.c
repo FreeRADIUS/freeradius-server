@@ -99,6 +99,7 @@ RADIUS_PACKET *build_reply(int code, REQUEST *request,
 		fprintf(stderr, "out of memory\n");
 		exit(1);
 	}
+	rp->sockfd     = request->packet->sockfd;
 	rp->dst_ipaddr = request->packet->src_ipaddr;
 	rp->dst_port   = request->packet->src_port;
 	rp->id         = request->packet->id;

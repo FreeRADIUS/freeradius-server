@@ -69,15 +69,15 @@ static REQUEST		*first_request;
 extern int	errno;
 #endif
 
-typedef		int (*FUNP)(REQUEST *, int);
+typedef		int (*FUNP)(REQUEST *);
 
 static void	usage(void);
 
 static void	sig_fatal (int);
 static void	sig_hup (int);
 
-static int	radrespond (REQUEST *, int);
-static void	rad_spawn_child (REQUEST *, int, FUNP);
+static int	radrespond (REQUEST *);
+static void	rad_spawn_child (REQUEST *, FUNP);
 
 /*
  *	Read config files.
@@ -447,7 +447,7 @@ int main(int argc, char **argv)
 			request->packet = packet;
 			request->timestamp = time(NULL);
 			strcpy(request->secret, cl->secret);
-			radrespond(request, fd);
+			radrespond(request);
 		}
 	}
 }
@@ -468,7 +468,7 @@ int main(int argc, char **argv)
  *				Relay reply back to original NAS.
  *
  */
-int radrespond(REQUEST *request, int activefd)
+int radrespond(REQUEST *request)
 {
 	int dospawn;
 	FUNP fun;
@@ -497,14 +497,14 @@ int radrespond(REQUEST *request, int activefd)
 		 *	We always call proxy_send, it returns non-zero
 		 *	if it did actually proxy the request.
 		 */
-		if (proxy_send(request, activefd) != 0)
+		if (proxy_send(request) != 0)
 			return 0;
 		break;
 
 	case PW_AUTHENTICATION_ACK:
 	case PW_AUTHENTICATION_REJECT:
 	case PW_ACCOUNTING_RESPONSE:
-		if (proxy_receive(request, activefd) < 0)
+		if (proxy_receive(request) < 0)
 			return 0;
 		break;
 	}
@@ -529,7 +529,7 @@ int radrespond(REQUEST *request, int activefd)
 		 *	FIXME: print an error message here.
 		 *	We don't support this anymore.
 		 */
-		/* rad_passchange(request, activefd); */
+		/* rad_passchange(request); */
 		break;
 	
 
@@ -543,9 +543,9 @@ int radrespond(REQUEST *request, int activefd)
 	 */
 	if (fun) {
 		if (dospawn)
-			rad_spawn_child(request, activefd, fun);
+			rad_spawn_child(request, fun);
 		else {
-			(*fun)(request, activefd);
+			(*fun)(request);
 			request_free(request);
 		}
 	}
@@ -561,7 +561,7 @@ int radrespond(REQUEST *request, int activefd)
  *	is only one process responding to each request (duplicate
  *	requests are filtered out).
  */
-static void rad_spawn_child(REQUEST *request, int activefd, FUNP fun)
+static void rad_spawn_child(REQUEST *request, FUNP fun)
 {
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
@@ -697,7 +697,7 @@ static void rad_spawn_child(REQUEST *request, int activefd, FUNP fun)
 		 */
 		request_list_busy = 0;
 		signal(SIGCHLD, SIG_DFL);
-		(*fun)(request, activefd);
+		(*fun)(request);
 		exit(0);
 	}
 
