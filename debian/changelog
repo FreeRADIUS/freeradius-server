@@ -1,4 +1,4 @@
-freeradius (1.0.cvs20041229-0) unstable; urgency=low
+freeradius (1.0.cvs20050305-0) unstable; urgency=low
 
   * Current CVS version
   * FreeRADIUS 1.1.0 is now able to use net-snmp in ucd-snmp
