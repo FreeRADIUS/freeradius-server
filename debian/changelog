@@ -1,11 +1,11 @@
-freeradius (0.9.1-cvs20030919-0) unstable; urgency=low
+freeradius (0.9.1-cvs20031013-0) unstable; urgency=low
 
   * Current CVS version
   * Added logrotate script for /var/log/freeradius/radius.log
   * Don't leave symlinks to config.{guess,sub} lying around to
     confuse dpkg-source.
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Fri, 19 Sep 2003 14:26:25 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 13 Oct 2003 22:29:27 +1000
 
 freeradius (0.9.1-0) unstable; urgency=low
 

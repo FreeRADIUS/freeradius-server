@@ -135,8 +135,8 @@ clean:
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
 	rm -rf $(freeradius_dir) $(debiandir)/$(package)-{ldap,postgresql,mysql,krb5}{,.substvars}
-	[ -f config.sub.orig ] && rm config.sub && mv config.sub.orig config.sub || true
-	[ -f config.guess.orig ] && rm config.guess && mv config.guess.orig config.guess || true
+	[ -f config.sub.dist ] && rm config.sub && mv config.sub.dist config.sub || true
+	[ -f config.guess.dist ] && rm config.guess && mv config.guess.dist config.guess || true
 
 
 binary: binary-indep binary-arch
@@ -145,8 +145,8 @@ binary: binary-indep binary-arch
 # autotools-dev (for /usr/share/misc/config.*)
 # It's also a .PHONY make target.
 autotools:
-	mv config.sub config.sub.orig
-	mv config.guess config.guess.orig
+	if [ -e config.sub.dist ]; then rm config.sub; else mv config.sub config.sub.dist; fi
+	if [ -e config.guess.dist ]; then rm config.guess; else mv config.guess config.guess.dist; fi
 	ln -s /usr/share/misc/config.sub config.sub
 	ln -s /usr/share/misc/config.guess config.guess
 
