@@ -3,12 +3,13 @@ URGENT:
 o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
   Is this a problem ? Need to fix in rlm_unix.c
 o Fix potentially long locks on radutmp file by radcheck thread
+o modular radutmp and radwtmp, as per Alan Curry's old patches.
+o configure fixes for builds on Solaris and HPUX.
 
 MEDIUM PRIORITY
 o add more support for new configuration files
-o enable server to run in threaded mode
 o enable server to run with child processes
-  (This is a little more difficult than the previous one)
+  (This is a little more difficult than the threading changes)
 
 
 LOW PRIORITY:
@@ -24,6 +25,7 @@ o there should be a way that radius itself could
   "login" records for all currently online users.
 
 DONE:
+o enable server to run in threaded mode
 o rlm_realm module for COMPLETE control of proxying on any attribute
 o re-transmits of proxied packets
 o operator support in pairmove.
