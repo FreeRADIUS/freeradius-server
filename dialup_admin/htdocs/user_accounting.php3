@@ -92,6 +92,8 @@ if ($link){
 			$tr_color='white';
 			$num++;
 			$acct_type = "$row[FramedProtocol]/$row[NASPortType]";
+			if ($acct_type == '')
+				$acct_type = '-';
 			$acct_logedin = $row[AcctStartTime];
 			$acct_sessiontime = $row[AcctSessionTime];
 			$acct_sessiontime_sum += $acct_sessiontime;

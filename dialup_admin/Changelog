@@ -28,6 +28,7 @@ Ver 1.63:
 * Use $config[sql_usergroup_table] in show_groups.php3
 * Add a config directive general_stats_use_totacct. If set we use the totacct table in the stats page instead of
   radacct
+* Small change in user_accounting.php3
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
