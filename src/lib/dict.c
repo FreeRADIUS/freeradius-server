@@ -35,6 +35,11 @@ static const char rcsid[] = "$Id$";
 #include	"libradius.h"
 #include	"missing.h"
 
+/*
+ *	There are very few vendors, and they're looked up only when we
+ *	read the dictionaries.  So it's OK to have a singly linked
+ *	list here.
+ */
 static DICT_VENDOR	*dictionary_vendors = NULL;
 
 static rbtree_t *attributes_byname = NULL;
@@ -113,7 +118,7 @@ int dict_addvendor(const char *name, int value)
 		return -1;
 	}
 
-	if (strlen(name) > (sizeof(vval->vendorname) -1)) {
+	if (strlen(name) > (sizeof(vval->name) -1)) {
 		librad_log("dict_addvendor: vendor name too long");
 		return -1;
 	}
@@ -122,7 +127,7 @@ int dict_addvendor(const char *name, int value)
 		librad_log("dict_addvendor: out of memory");
 		return -1;
 	}
-	strcpy(vval->vendorname, name);
+	strcpy(vval->name, name);
 	vval->vendorpec  = value;
 
 	/* Insert at front. */
@@ -280,7 +285,9 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 /*
  *	Process the ATTRIBUTE command
  */
-static int process_attribute(const char* fn, const int line, const int block_vendor, const char* data) {
+static int process_attribute(const char* fn, const int line,
+			     const int block_vendor, const char* data)
+{
 	int		vendor;
 	char		namestr[256];
 	char		valstr[256];
@@ -373,7 +380,7 @@ static int process_attribute(const char* fn, const int line, const int block_ven
 				s += 5;   
 			  }
 	 
-			  vendor = dict_vendorname(s);
+			  vendor = dict_vendorbyname(s);
 			  if (!vendor) {
 				librad_log( "dict_init: %s[%d]: unknown vendor %s",
 					   fn, line, optstr);
@@ -404,7 +411,8 @@ static int process_attribute(const char* fn, const int line, const int block_ven
 /*
  *	Process the VALUE command
  */
-static int process_value(const char* fn, const int line, const char* data) {
+static int process_value(const char* fn, const int line, const char* data)
+{
 	char	namestr[256];
 	char	valstr[256];
 	char	attrstr[256];
@@ -447,7 +455,8 @@ static int process_value(const char* fn, const int line, const char* data) {
 /*
  *	Process the VENDOR command
  */
-static int process_vendor(const char* fn, const int line, const char* data) {
+static int process_vendor(const char* fn, const int line, const char* data)
+{
 	char	valstr[256];
 	char	attrstr[256];
 	int	value;
@@ -483,7 +492,8 @@ static int process_vendor(const char* fn, const int line, const char* data) {
 /*
  *	Initialize the dictionary.
  */
-static int my_dict_init(const char *dir, const char *fn, const char *src_file, int src_line)
+static int my_dict_init(const char *dir, const char *fn,
+			const char *src_file, int src_line)
 {
 	FILE	*fp;
 	char 	dirtmp[256];
@@ -609,7 +619,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				return -1;
 			}
 
-			vendor = dict_vendorname(optstr);
+			vendor = dict_vendorbyname(optstr);
 			if (!vendor) {
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
@@ -631,7 +641,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				return -1;
 			}
 
-			vendor = dict_vendorname(optstr);
+			vendor = dict_vendorbyname(optstr);
 			if (!vendor) {
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
@@ -895,7 +905,7 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
 /*
  *	Get the vendor PEC based on the vendor name
  */
-int dict_vendorname(const char *name)
+int dict_vendorbyname(const char *name)
 {
 	DICT_VENDOR *v;
 
@@ -903,10 +913,30 @@ int dict_vendorname(const char *name)
 	 *	Find the vendor, if any.
 	 */
 	for (v = dictionary_vendors; v; v = v->next) {
-		if (strcasecmp(name, v->vendorname) == 0) {
+		if (strcasecmp(name, v->name) == 0) {
 			return v->vendorpec;
 		}
 	}
 
 	return 0;
+}
+
+/*
+ *	Return the vendor struct based on the PEC.
+ */
+DICT_VENDOR *dict_vendorbyvalue(int vendor)
+{
+	DICT_VENDOR *v;
+
+	/*
+	 *	Find the vendor, if any.
+	 */
+	for (v = dictionary_vendors; v; v = v->next) {
+		if (vendor == v->vendorpec) {
+			return v;
+		}
+	}
+
+	return NULL;
+
 }

@@ -75,8 +75,16 @@ VALUE_PAIR *paircreate(int attr, int type)
 	} else if (VENDOR(attr) == 0) {
 		sprintf(vp->name, "Attr-%u", attr);
 	} else {
-		sprintf(vp->name, "Vendor-%u-Attr-%u",
-			VENDOR(attr), attr & 0xffff);
+		DICT_VENDOR *v;
+
+		v = dict_vendorbyvalue(VENDOR(attr));
+		if (v) {
+			sprintf(vp->name, "%s-Attr-%u",
+				v->name, attr & 0xffff);
+		} else {
+			sprintf(vp->name, "Vendor-%u-Attr-%u",
+				VENDOR(attr), attr & 0xffff);
+		}
 	}
 	switch (vp->type) {
 		case PW_TYPE_INTEGER:
@@ -855,7 +863,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		memcpy(buffer, attribute, p - attribute);
 		buffer[p - attribute] = '\0';
 
-		vendor = dict_vendorname(buffer);
+		vendor = dict_vendorbyname(buffer);
 		if (vendor == 0) goto error;
 
 		p += 6;
