@@ -107,7 +107,7 @@ VALUE		Acc-Reason-Code		Inopportune-config-request	44
 VALUE		Acc-Reason-Code		Invalid-config-parameter	45
 VALUE		Acc-Reason-Code		Missing-config-parameter	46
 VALUE		Acc-Reason-Code		Incompatible-service-profile	47
-VALUE		Acc-Reason-Code		Administrative-reset		48
+VALUE		Acc-Reason-Code		Administrative-reset-2		48
 VALUE		Acc-Reason-Code		Administrative-reload		49
 VALUE		Acc-Reason-Code		Port-unneeded			50
 VALUE		Acc-Reason-Code		Port-preempted			51
