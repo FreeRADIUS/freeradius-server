@@ -903,7 +903,7 @@ int main(int argc, char *argv[])
 			case 'X':
 				spawn_flag = FALSE;
 				dont_fork = TRUE;
-				debug_flag = 2;
+				debug_flag += 2;
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
