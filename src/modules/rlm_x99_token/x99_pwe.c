@@ -288,18 +288,14 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	 */
 
 	/* First, set some related attributes. */
-	if ((vp = pairmake("MS-MPPE-Encryption-Policy",
-			   x99_mppe_policy[inst->mschap_mppe_policy],
-			   T_OP_EQ)) != NULL)
-	    pairadd(vps, vp);
-	else
-	    ; /* choke and die */
-	if ((vp = pairmake("MS-MPPE-Encryption-Types",
-			   x99_mppe_types[inst->mschap_mppe_types],
-			   T_OP_EQ)) != NULL)
-	    pairadd(vps, vp);
-	else
-	    ; /* choke and die */
+	vp = pairmake("MS-MPPE-Encryption-Policy",
+		      x99_mppe_policy[inst->mschap_mppe_policy], T_OP_EQ);
+	rad_assert(vp != NULL);
+	pairadd(vps, vp);
+	vp = pairmake("MS-MPPE-Encryption-Types",
+		      x99_mppe_types[inst->mschap_mppe_types], T_OP_EQ);
+	rad_assert(vp != NULL);
+	pairadd(vps, vp);
 
 	if (inst->mschap_mppe_policy) {
 	    unsigned char mppe_keys[32];
@@ -333,11 +329,9 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    mppe_keys_string[1] = 'x';
 	    for (i = 0; i < 32; ++i)
 		(void) sprintf(&mppe_keys_string[i*2+2], "%02X", mppe_keys[i]);
-	    if ((vp = pairmake("MS-CHAP-MPPE-Keys", mppe_keys_string,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
+	    vp = pairmake("MS-CHAP-MPPE-Keys", mppe_keys_string, T_OP_EQ);
+	    rad_assert(vp != NULL);
+	    pairadd(vps, vp);
 	} /* if (doing mppe) */
 
     } /* case PW_MS_CHAP_RESPONSE */
@@ -513,11 +507,9 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 		(void) sprintf(&auth_octet_string[i * 2 + 4], "%02X",
 			       auth_md_string[i]);
 
-	    if ((vp = pairmake("MS-CHAP2-Success", auth_octet_string,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
+	    vp = pairmake("MS-CHAP2-Success", auth_octet_string, T_OP_EQ);
+	    rad_assert(vp != NULL);
+	    pairadd(vps, vp);
 	} /* Generate mutual auth info. */
 
 	/*
@@ -543,18 +535,14 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	 */
 
 	/* First, set some related attributes. */
-	if ((vp = pairmake("MS-MPPE-Encryption-Policy",
-			   x99_mppe_policy[inst->mschapv2_mppe_policy],
-			   T_OP_EQ)) != NULL)
-	    pairadd(vps, vp);
-	else
-	    ; /* choke and die */
-	if ((vp = pairmake("MS-MPPE-Encryption-Types",
-			   x99_mppe_types[inst->mschapv2_mppe_types],
-			   T_OP_EQ)) != NULL)
-	    pairadd(vps, vp);
-	else
-	    ; /* choke and die */
+	vp = pairmake("MS-MPPE-Encryption-Policy",
+		      x99_mppe_policy[inst->mschapv2_mppe_policy], T_OP_EQ);
+	rad_assert(vp != NULL);
+	pairadd(vps, vp);
+	vp = pairmake("MS-MPPE-Encryption-Types",
+		      x99_mppe_types[inst->mschapv2_mppe_types], T_OP_EQ);
+	rad_assert(vp != NULL);
+	pairadd(vps, vp);
 
 	if (inst->mschapv2_mppe_policy) {
 	    /* These constants and key vars are named from RFC 3079. */
@@ -674,11 +662,9 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    (void) sprintf(&mppe_key_string[4], "%02X", salt[1]);
 	    for (i = 0; i < sizeof(mppe_key); ++i)
 		(void) sprintf(&mppe_key_string[i*2+6], "%02X", mppe_key[i]);
-	    if ((vp = pairmake("MS-MPPE-Send-Key", mppe_key_string,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
+	    vp = pairmake("MS-MPPE-Send-Key", mppe_key_string, T_OP_EQ);
+	    rad_assert(vp != NULL);
+	    pairadd(vps, vp);
 
 	    /* Generate the MS-MPPE-Recv-Key attribute. */
 
@@ -708,11 +694,9 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	    (void) sprintf(&mppe_key_string[4], "%02X", salt[1]);
 	    for (i = 0; i < sizeof(mppe_key); ++i)
 		(void) sprintf(&mppe_key_string[i*2+6], "%02X", mppe_key[i]);
-	    if ((vp = pairmake("MS-MPPE-Recv-Key", mppe_key_string,
-			       T_OP_EQ)) != NULL)
-		pairadd(vps, vp);
-	    else
-		; /* choke and die */
+	    vp = pairmake("MS-MPPE-Recv-Key", mppe_key_string, T_OP_EQ);
+	    rad_assert(vp != NULL);
+	    pairadd(vps, vp);
 
 	} /* if (doing mppe) */
 
