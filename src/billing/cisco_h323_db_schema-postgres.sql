@@ -1,11 +1,11 @@
 /*
  * --- Peter Nixon [ codemonkey@peternixon.net ]
  * This is a custom SQL schema for doing H323 VoIP accounting with FreeRadius and
- * Cisco gateways (I am using 5300 and 5350 series). 
+ * Cisco gateways (I am using 5300 and 5350 series).
  * It will scale ALOT better than the default radius schema which is designed for
  * simple dialup installations of FreeRadius.
  *
- * For this schema to work properly you MUST replace raddb/postgresql.conf 
+ * For this schema to work properly you MUST replace raddb/postgresql.conf
  * with the contents of pgsql-voip.conf
  *
  * If you wish to do RADIUS Authentication using the same database, you must use
@@ -19,37 +19,35 @@
  */
 
 CREATE TABLE StartVoIP (
-  RadAcctId BIGSERIAL PRIMARY KEY,
-  UserName VARCHAR(64) DEFAULT '' NOT NULL,
-  Realm VARCHAR(64) DEFAULT '',
-  NASIPAddress INET NOT NULL,
-  AcctStartTime timestamp DEFAULT now() NOT NULL,
-  CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
-  CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
-  AcctDelayTime NUMERIC(3),
-  H323GWID VARCHAR(32) DEFAULT '' NOT NULL,
-  h323CallOrigin VARCHAR(10) DEFAULT '' NOT NULL,
-  h323CallType VARCHAR(64) DEFAULT '' NOT NULL,
-  h323SetupTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
+	RadAcctId		BIGSERIAL PRIMARY KEY,
+	h323SetupTime		TIMESTAMP with time zone NOT NULL,
+	UserName		VARCHAR(64),
+	RadiusServerName	VARCHAR(32),
+	NASIPAddress		INET NOT NULL,
+	AcctTime		TIMESTAMP with time zone,
+	CalledStationId		VARCHAR(30),
+	CallingStationId	VARCHAR(15),
+	AcctDelayTime		INTEGER,
+	H323GWID		VARCHAR(32),
+	h323CallOrigin		VARCHAR(10),
+	h323ConfID		VARCHAR(35) NOT NULL
 );
 create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
 
 
 CREATE TABLE StartTelephony (
-  RadAcctId BIGSERIAL PRIMARY KEY,
-  UserName VARCHAR(64) DEFAULT '' NOT NULL,
-  Realm VARCHAR(64) DEFAULT '',
-  NASIPAddress INET NOT NULL,
-  AcctStartTime timestamp DEFAULT now() NOT NULL,
-  CalledStationId VARCHAR(30) DEFAULT '' NOT NULL,
-  CallingStationId VARCHAR(15) DEFAULT '' NOT NULL,
-  AcctDelayTime NUMERIC(3),
-  H323GWID VARCHAR(32) DEFAULT '' NOT NULL,
-  h323CallOrigin VARCHAR(10) DEFAULT '' NOT NULL,
-  h323CallType VARCHAR(64) DEFAULT '' NOT NULL,
-  h323SetupTime timestamp with time zone DEFAULT now() NOT NULL,
-  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
+	RadAcctId		BIGSERIAL PRIMARY KEY,
+	h323SetupTime		TIMESTAMP with time zone NOT NULL,
+	UserName		VARCHAR(64),
+	RadiusServerName	VARCHAR(32),
+	NASIPAddress		INET NOT NULL,
+	AcctTime		TIMESTAMP with time zone,
+	CalledStationId		VARCHAR(30),
+	CallingStationId	VARCHAR(15),
+	AcctDelayTime		INTEGER,
+	H323GWID		VARCHAR(32),
+	h323CallOrigin		VARCHAR(10),
+	h323ConfID		VARCHAR(35) NOT NULL
 );
 create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress);
 
@@ -59,61 +57,69 @@ create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress)
  * Table structure for 'Stop' tables
  */
 CREATE TABLE StopVoIP (
-  RadAcctId BIGSERIAL PRIMARY KEY,
-  UserName VARCHAR(32) DEFAULT '' NOT NULL,
-  NASIPAddress INET NOT NULL,
-  AcctSessionTime BIGINT,
-  AcctInputOctets BIGINT,
-  AcctOutputOctets BIGINT,
-  CalledStationId VARCHAR(50) DEFAULT '' NOT NULL,
-  CallingStationId VARCHAR(50) DEFAULT '' NOT NULL,
-  AcctDelayTime SMALLINT,
-  CiscoNASPort BOOLEAN DEFAULT false,
-  h323CallOrigin varchar(10) DEFAULT '' NOT NULL,
-  h323SetupTime timestamp with time zone NOT NULL,
-  h323ConnectTime timestamp with time zone NOT NULL,
-  h323DisconnectTime timestamp with time zone NOT NULL,
-  h323DisconnectCause varchar(2) DEFAULT '' NOT NULL,
-  H323RemoteAddress INET NOT NULL,
-  H323VoiceQuality NUMERIC(2),
-  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
+	RadAcctId		BIGSERIAL PRIMARY KEY,
+	H323SetupTime		TIMESTAMP with time zone NOT NULL,
+	H323ConnectTime		TIMESTAMP with time zone NOT NULL,
+	H323DisconnectTime	TIMESTAMP with time zone NOT NULL,
+	UserName		VARCHAR(32),
+	RadiusServerName	VARCHAR(32),
+	NASIPAddress		INET NOT NULL,
+	AcctTime		TIMESTAMP with time zone,
+	AcctSessionTime		BIGINT,
+	AcctInputOctets		BIGINT,
+	AcctOutputOctets	BIGINT,
+	CalledStationId		VARCHAR(50),
+	CallingStationId	VARCHAR(50),
+	AcctDelayTime		SMALLINT,
+	CiscoNASPort		BOOLEAN DEFAULT false,
+	H323CallOrigin		VARCHAR(10),
+	H323DisconnectCause	VARCHAR(2),
+	H323RemoteAddress	INET,
+	H323VoiceQuality	INTEGER,
+	H323ConfID		VARCHAR(35) NOT NULL
 );
 create UNIQUE index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress, h323ConfID);
 
 
 CREATE TABLE StopTelephony (
-  RadAcctId BIGSERIAL PRIMARY KEY,
-  UserName VARCHAR(32) DEFAULT '' NOT NULL,
-  NASIPAddress INET NOT NULL,
-  AcctSessionTime BIGINT,
-  AcctInputOctets BIGINT,
-  AcctOutputOctets BIGINT,
-  CalledStationId VARCHAR(50) DEFAULT '' NOT NULL,
-  CallingStationId VARCHAR(50) DEFAULT '' NOT NULL,
-  AcctDelayTime SMALLINT,
-  CiscoNASPort varchar(16) DEFAULT '' NOT NULL,
-  h323CallOrigin varchar(10) DEFAULT '' NOT NULL,
-  h323SetupTime timestamp with time zone NOT NULL,
-  h323ConnectTime timestamp with time zone NOT NULL,
-  h323DisconnectTime timestamp with time zone NOT NULL,
-  h323DisconnectCause varchar(2) DEFAULT '' NOT NULL,
-  H323RemoteAddress BOOLEAN DEFAULT false,
-  H323VoiceQuality NUMERIC(2),
-  h323ConfID VARCHAR(35) DEFAULT '' NOT NULL
+	RadAcctId		BIGSERIAL PRIMARY KEY,
+	H323SetupTime		TIMESTAMP with time zone NOT NULL,
+	H323ConnectTime		TIMESTAMP with time zone NOT NULL,
+	H323DisconnectTime	TIMESTAMP with time zone NOT NULL,
+	UserName		VARCHAR(32) DEFAULT '' NOT NULL,
+	RadiusServerName	VARCHAR(32),
+	NASIPAddress		INET NOT NULL,
+	AcctTime		TIMESTAMP with time zone,
+	AcctSessionTime		BIGINT,
+	AcctInputOctets		BIGINT,
+	AcctOutputOctets	BIGINT,
+	CalledStationId		VARCHAR(50),
+	CallingStationId	VARCHAR(50),
+	AcctDelayTime		SMALLINT,
+	CiscoNASPort		VARCHAR(16),
+	H323CallOrigin		VARCHAR(10),
+	H323DisconnectCause	VARCHAR(2),
+	H323RemoteAddress	BOOLEAN DEFAULT false,
+	H323VoiceQuality	INTEGER,
+	H323ConfID		VARCHAR(35) NOT NULL
 );
-create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, h323ConfID);
+-- You can have more than one record that is identical except for CiscoNASPort if you have a VoIP dial peer
+-- configured for multiple PRIs.
+create UNIQUE index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress, h323ConfID, CiscoNASPort);
 
 /*
  * Table structure for 'gateways'
  *
  * This table should list the IP addresses, names and locations of all your gateways
  * This can be used to make more useful reports.
+ *
+ * Note: This table should be removed in favour of using the "nas" table.
  */
 
 CREATE TABLE gateways (
-    gw_ip inet NOT NULL,
-    gw_name character varying(32) NOT NULL,
-    gw_city character varying(32)
+	gw_ip		INET NOT NULL,
+	gw_name		VARCHAR(32) NOT NULL,
+	gw_city		VARCHAR(32)
 );
 
 
@@ -125,9 +131,9 @@ CREATE TABLE gateways (
  */
 
 CREATE TABLE customers (
-    cust_id serial NOT NULL,
-    company character varying(32),
-    customer character varying(32)
+	cust_id		SERIAL NOT NULL,
+	company		VARCHAR(32),
+	customer	VARCHAR(32)
 );
 
 /*
@@ -138,15 +144,14 @@ CREATE TABLE customers (
  */
 
 CREATE TABLE cust_gw (
-    cust_gw inet NOT NULL,
-    cust_id integer NOT NULL,
-    "location" character varying(32)
+	cust_gw		INET PRIMARY KEY,
+	cust_id		INTEGER NOT NULL,
+	"location"	VARCHAR(32)
 );
 
 
 CREATE VIEW customerip AS
     SELECT gw.cust_gw AS ipaddr, cust.company, cust.customer, gw."location" FROM customers cust, cust_gw gw WHERE (cust.cust_id = gw.cust_id);
-
 
 
 /*
@@ -159,16 +164,15 @@ CREATE VIEW customerip AS
 
 CREATE OR REPLACE FUNCTION strip_dot (VARCHAR) RETURNS TIMESTAMPTZ AS '
  DECLARE
-     original_timestamp ALIAS FOR $1;
+	original_timestamp ALIAS FOR $1;
  BEGIN
-        IF substring(original_timestamp from 1 for 1) = ''.'' THEN
-          RETURN substring(original_timestamp from 2);
-        ELSE
-          RETURN original_timestamp;
-        END IF;
+	IF substring(original_timestamp from 1 for 1) = ''.'' THEN
+		RETURN substring(original_timestamp from 2);
+	ELSE
+		RETURN original_timestamp;
+	END IF;
  END;
 ' LANGUAGE 'plpgsql';
-
 
 /*
  * Table structure for 'isdn_error_codes' table
@@ -180,9 +184,9 @@ CREATE OR REPLACE FUNCTION strip_dot (VARCHAR) RETURNS TIMESTAMPTZ AS '
 
 
 CREATE TABLE isdn_error_codes (
-    error_code character varying(2) PRIMARY KEY,
-    desc_short character varying(90),
-    desc_long text
+	error_code	VARCHAR(2) PRIMARY KEY,
+	desc_short	VARCHAR(90),
+	desc_long	TEXT
 );
 
 /*
