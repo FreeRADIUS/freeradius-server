@@ -321,16 +321,16 @@ int rad_authenticate(REQUEST *request)
 		int i;
 
 		/* If we proxied this, we already did pwdecode */
-		if(!request->proxy) {
-		  rad_pwdecode(auth_item->strvalue, auth_item->length,
-			       request->secret, request->packet->vector);
+		if (request->proxy == NULL) {
+			rad_pwdecode(auth_item->strvalue, auth_item->length,
+				     request->secret, request->packet->vector);
 		}
 		for (i = auth_item->length; i >=0; i--) {
-		  if (auth_item->strvalue[i]) {
-		    break;
-		  } else {
-		    auth_item->length = i;
-		  }
+			if (auth_item->strvalue[i]) {
+				break;
+			} else {
+				auth_item->length = i;
+			}
 		}
 		password = auth_item->strvalue;
 	}
@@ -348,28 +348,32 @@ int rad_authenticate(REQUEST *request)
 	 */
 	request->password = auth_item;
 
-	if(!request->proxy) { /* Only need to do this once, before proxying */
-	  /*
-	   *	Get the user's authorization information from the database
-	   */
-	  r = module_authorize(request, &request->config_items, &user_reply);
-	  if (r != RLM_AUTZ_OK) {
-		  if (r != RLM_AUTZ_FAIL && r != RLM_AUTZ_HANDLED) {
-			  log(L_AUTH, "Invalid user: [%s%s%s] (%s)",
-				  namepair->strvalue,
-				  log_auth_pass ? "/" : "",
-				  log_auth_pass ? password : "",
-				  auth_name(buf, sizeof(buf), request, 1));
-			  request->reply = build_reply(PW_AUTHENTICATION_REJECT,
-						       request, NULL, NULL);
-		  }
-		  pairfree(user_reply);
-		  return r;
-	  }
+	/*
+	 *	Get the user's authorization information from the database
+	 */
+	r = module_authorize(request, &request->config_items, &user_reply);
+	if (r != RLM_AUTZ_OK) {
+		if (r != RLM_AUTZ_FAIL && r != RLM_AUTZ_HANDLED) {
+			log(L_AUTH, "Invalid user: [%s%s%s] (%s)",
+			    namepair->strvalue,
+			    log_auth_pass ? "/" : "",
+			    log_auth_pass ? password : "",
+			    auth_name(buf, sizeof(buf), request, 1));
+			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
+						     request, NULL, NULL);
+		}
+		pairfree(user_reply);
+		return r;
+	}
 
-	  /* Maybe one of the authorize modules has decided that a proxy
-	   * should be used. If so, get out of here and send the packet. */
-	  if(pairfind(request->config_items, PW_PROXY_TO_REALM))
+	/*
+	 *	If we haven't already proxied the packet, then check
+	 *	to see if we should.  Maybe one of the authorize
+	 *	modules has decided that a proxy should be used. If
+	 *	so, get out of here and send the packet.
+	 */
+	if ((request->proxy == NULL) &&
+	    (pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL)) {
 		  return 0;
 	}
 
