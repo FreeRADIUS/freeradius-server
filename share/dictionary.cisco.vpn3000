@@ -2,6 +2,7 @@
 #	 Cisco VPN 3000 Concentrator Dictionary
 #
 #	http://www.cisco.com/univercd/cc/td/doc/product/access/acs_soft/csacs4nt/csnt30/user/ad.htm
+#	http://www.cisco.com/univercd/cc/td/doc/product/access/acs_soft/csacs4nt/acs31/acsuser/ad.htm
 #
 #	$Id$
 #
@@ -10,22 +11,53 @@ VENDOR		Cisco-VPN3000	3076
 BEGIN-VENDOR Cisco-VPN3000
 ATTRIBUTE	CVPN3000-Access-Hours			1	string
 ATTRIBUTE	CVPN3000-Simultaneous-Logins		2	integer
-ATTRIBUTE	CVPN3000-Primary-DNS			3	ipaddr
-ATTRIBUTE	CVPN3000-Secondary-DNS			4	ipaddr
-ATTRIBUTE	CVPN3000-Primary-WINS			5	ipaddr
-ATTRIBUTE	CVPN3000-Secondary-WINS			6	ipaddr
-ATTRIBUTE	CVPN3000-SEP-Card-Assignment		7	ipaddr
-ATTRIBUTE	CVPN3000-Tunneling-Protocols		8	integer
-ATTRIBUTE	CVPN3000-IPSec-Sec-Association		9	string
-ATTRIBUTE	CVPN3000-IPSec-Authentication		10	integer
-ATTRIBUTE	CVPN3000-IPSec-Banner1			11	string
-ATTRIBUTE	CVPN3000-IPSec-Allow-Passwd-Store	12	integer
-ATTRIBUTE	CVPN3000-Use-Client-Address		13	integer
-ATTRIBUTE	CVPN3000-IPSec-Split-Tunnel-List	14	string
-ATTRIBUTE	CVPN3000-IPSec-Default-Domain		15	string
-ATTRIBUTE	CVPN3000-IPSec-Tunnel-Type		16	integer
-ATTRIBUTE	CVPN3000-IPSec-Mode-Config		17	integer
-ATTRIBUTE	CVPN3000-IPSec-User-Group-Lock		18	integer
-ATTRIBUTE	CVPN3000-IPSec-Through-NAT		19	integer
-ATTRIBUTE	CVPN3000-IPSec-Through-NAT-Port		20	integer
+ATTRIBUTE	CVPN3000-Primary-DNS			5	ipaddr
+ATTRIBUTE	CVPN3000-Secondary-DNS			6	ipaddr
+ATTRIBUTE	CVPN3000-Primary-WINS			7	ipaddr
+ATTRIBUTE	CVPN3000-Secondary-WINS			9	ipaddr
+ATTRIBUTE	CVPN3000-SEP-Card-Assignment		9	ipaddr
+ATTRIBUTE	CVPN3000-Tunneling-Protocols		11	integer
+ATTRIBUTE	CVPN3000-IPSec-Sec-Association		12	string
+ATTRIBUTE	CVPN3000-IPSec-Authentication		13	integer
+ATTRIBUTE	CVPN3000-IPSec-Banner1			15	string
+ATTRIBUTE	CVPN3000-IPSec-Allow-Passwd-Store	16	integer
+ATTRIBUTE	CVPN3000-Use-Client-Address		17	integer
+ATTRIBUTE	CVPN3000-PPTP-Encryption		20	integer
+ATTRIBUTE	CVPN3000-L2TP-Encryption		21	integer
+ATTRIBUTE	CVPN3000-IPSec-Split-Tunnel-List	27	string
+ATTRIBUTE	CVPN3000-IPSec-Default-Domain		28	string
+ATTRIBUTE	CVPN3000-IPSec-Split-DNS-Names		29	string
+ATTRIBUTE	CVPN3000-IPSec-Tunnel-Type		30	integer
+ATTRIBUTE	CVPN3000-IPSec-Mode-Config		31	integer
+ATTRIBUTE	CVPN3000-IPSec-User-Group-Lock		33	integer
+ATTRIBUTE	CVPN3000-IPSec-Over-UDP			34	integer
+ATTRIBUTE	CVPN3000-IPSec-Over-UDP-Port		35	integer
+ATTRIBUTE	CVPN3000-IPSec-Banner2			36	string
+ATTRIBUTE	CVPN3000-PPTP-MPPC-Compression		37	integer
+ATTRIBUTE	CVPN3000-L2TP-MPPC-Compression		38	integer
+ATTRIBUTE	CVPN3000-IPSec-IP-Compression		39	integer
+ATTRIBUTE	CVPN3000-IPSec-IKE-Peer-ID-Check	40	integer
+ATTRIBUTE	CVPN3000-IKE-Keep-Alives		41	integer
+ATTRIBUTE	CVPN3000-IPSec-Auth-On-Rekey		42	integer
+ATTRIBUTE	CVPN3000-Required-Client-Firewall-Vendor-Code 45 integer
+ATTRIBUTE	CVPN3000-Required-Client-Firewall-Product-Code 46 integer
+ATTRIBUTE	CVPN3000-Required-Client-Firewall-Description 47 string
+ATTRIBUTE	CVPN3000-Require-HW-Client-Auth		48	integer
+ATTRIBUTE	CVPN3000-Require-Individual-User-Auth	49	integer
+ATTRIBUTE	CVPN3000-Authenticated-User-Idle-Timeout 50	integer
+ATTRIBUTE	CVPN3000-Cisco-IP-Phone-Bypass		51	integer
+ATTRIBUTE	CVPN3000-User-Auth-Server-Name		52	string
+ATTRIBUTE	CVPN3000-User-Auth-Server-Port		53	integer
+ATTRIBUTE	CVPN3000-User-Auth-Server-Secret	54	string
+ATTRIBUTE	CVPN3000-IPSec-Split-Tunneling-Policy	55	integer
+ATTRIBUTE	CVPN3000-IPSec-Required-Client-Firewall-Capability 56 integer
+ATTRIBUTE	CVPN3000-IPSec-Client-Firewall-Filter-Name 57	string
+ATTRIBUTE	CVPN3000-IPSec-Client-Firewall-Filter-Optional 58 integer
+ATTRIBUTE	CVPN3000-IPSec-Backup-Servers		59	integer
+ATTRIBUTE	CVPN3000-IPSec-Backup-Server-List	60	string
+ATTRIBUTE	CVPN3000-MS-Client-Intercept-DHCP-Configure-Message 62 integer
+ATTRIBUTE	CVPN3000-MS-Client-Subnet-Mask		63	ipaddr
+ATTRIBUTE	CVPN3000-Allow-Network-Extension-Mode	64	integer
+ATTRIBUTE	CVPN3000-Strip-Realm			135	integer
+
 END-VENDOR	Cisco-VPN3000
