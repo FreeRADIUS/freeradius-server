@@ -604,7 +604,7 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
  *	SSL_CTX (internally) or TLS module(explicitly). If TLS module,
  *	then how to let SSL API know about these sessions.)
  */
-static void eaptls_operation(EAPTLS_PACKET *eaptls_packet,
+static void eaptls_operation(EAPTLS_PACKET *eaptls_packet UNUSED,
 			     eaptls_status_t status, EAP_HANDLER *handler)
 {
 	tls_session_t *tls_session;

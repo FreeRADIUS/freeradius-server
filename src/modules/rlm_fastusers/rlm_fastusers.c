@@ -498,7 +498,8 @@ static void fastuser_tablestats(PAIR_LIST **hashtable, long size) {
 	}
 }
 
-static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user, const char *name)
+static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user,
+			      const char *name UNUSED)
 {
 	int found=0;
 	VALUE_PAIR	*check_save;
@@ -829,7 +830,7 @@ static int fastuser_detach(void *instance)
 /*
  *	This function is unused
  */
-static int fastuser_accounting(void *instance, REQUEST *request)
+static int fastuser_accounting(void *instance UNUSED, REQUEST *request UNUSED)
 {
 	return RLM_MODULE_FAIL;
 }

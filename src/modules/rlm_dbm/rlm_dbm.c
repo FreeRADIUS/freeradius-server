@@ -280,7 +280,7 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
 	return found;
 }
 
-static int sm_postprocessor(VALUE_PAIR **reply) {
+static int sm_postprocessor(VALUE_PAIR **reply UNUSED) {
 	return 0;
 } 
 

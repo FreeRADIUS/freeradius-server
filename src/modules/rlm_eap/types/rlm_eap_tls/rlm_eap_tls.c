@@ -477,7 +477,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
+static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 {
 	eaptls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;

@@ -166,7 +166,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
  *	Fill in our 'info' with TLS data.
  */
 void cbtls_msg(int write_p, int msg_version, int content_type,
-	       const void *buf, size_t len, SSL *ssl, void *arg)
+	       const void *buf, size_t len, 
+	       SSL *ssl UNUSED, void *arg)
 {
 	tls_session_t *state = (tls_session_t *)arg;
 
@@ -188,13 +189,16 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	tls_session_information(state);
 }
 
-int cbtls_password(char *buf, int num, int rwflag, void *userdata)
+int cbtls_password(char *buf, 
+		   int num UNUSED, 
+		   int rwflag UNUSED, 
+		   void *userdata)
 {
 	strcpy(buf, (char *)userdata);
 	return(strlen((char *)userdata));
 }
 
-RSA *cbtls_rsa(SSL *s, int is_export, int keylength)
+RSA *cbtls_rsa(SSL *s UNUSED, int is_export UNUSED, int keylength)
 {
 	static RSA *rsa_tmp=NULL;
 
