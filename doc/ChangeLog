@@ -2,13 +2,13 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 
 	Non source-code changes
 	* Preliminary tests indicate that the server builds and runs on
-	  Interix (SFU).
+	  Interix (SFU on Windows XP).
 	* EAP module configuration is now in "raddb/eap.conf", as it was
 	  getting large.
 	* Updated GPL boilerplate in the source.
 	* Added new RFC's to doc/rfc/
-	* Added "man" pages for many of the modules.
-	* Added many more "man" pages for the modules.
+	* Added more "man" pages for many of the modules.  Many of the
+	  'doc/rlm_*' files have been deleted, and replaced with 'man' pages.
 	* Added many new dictionaries: 3GPP, 3GPP2, Propel, Karlnet,
 	  Sonicwall, Navini, Bristol University, Valemont, Mikrotik.
 	* doc/configurable_failover is now understandable by mere humans.
@@ -25,6 +25,10 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	  "bind_address" and "port" directives.  "listen" allows much
 	  finer-grained control over what IP's, ports, and packets the
 	  server pays attention to.
+	* The proxy code has been updated to work properly, and to
+	  allocate new sockets for proxying packets when there are more
+	  than 256 requests outstanding to a home server.  Many thanks
+	  to Stephen Jaeger for help in debugging the new feature.
 	* Regular expression matches in brackets can now be referenced
 	  as in Perl, via %{1}, %{2}, etc.
 	* added ability for mschap module to use ntlm_auth, to perform
@@ -80,15 +84,19 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	* Add support for supplementary groups of switched-to user
 	* Add support for xlat-ing backquoted reply values from SQL queries.
 	* Add Public Domain MD5 implementation by Colin Plumb
-	* Add Public Domain MD4 implementation by Colin Plumb and Todd C. Miller
-	* Remove smbdes.c from libradius, and add to rlm_mschap and rlm_eap_leap
+	* Add Public Domain MD4 implementation by Colin Plumb and
+	  Todd C. Miller
+	* Remove smbdes.c from libradius, and add to rlm_mschap and
+	  rlm_eap_leap
 	* Replace GPL'd snprintf.c in libradius with LGPL'd snprintf.[ch]
 
 	EAP-module feature improvements
 	* Allow checking of EAP identity against certificate.
 	* EAP-TLS now checks Certificate Revocation List
-	* Added EAP-TTLS support in rlm_eap.  Tested with many clients.
-	* Added EAP-PEAP support, with tunneled EAP-MSCHAP-V2.
+	* Added EAP-TTLS support in rlm_eap.  Tested with many clients,
+	  and with tunneled PAP, CHAP, MS-CHAP, MSCHAPv2, EAP-MD5,
+	  EAP-MSCHAPv2, and EAP-GTC.
+	* Added EAP-PEAP support, with tunneled EAP-MSCHAP-V2, and EAP-GTC.
 	  Patch from Masao Nishiku.  (Many, many thanks!)
 	* Added EAP-SIM.
 	* Enabled proxying of the authentication request which is tunneled
@@ -96,7 +104,7 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 
 	Utility improvements
 	* Add support to checkrad.pl for mikrotik-brand NASs over SNMP
-	* Added ippool_tool, by Edwin Groothuis.
+	* Added rlm_ippool_tool, by Edwin Groothuis.
 	* Updates to radclient, so that you can specify multiple '-f'
 	  options, and it will send those packets in parallel.  This
 	  allows for significantly higher packet rates when load testing.
