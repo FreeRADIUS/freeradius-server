@@ -195,7 +195,7 @@ for(;;){
 					$uniqueid = $ctx->hexdigest;
 					print TMP "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
 #DEBUG#					print "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');\n";
-					print TMP "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');\n";
+					print TMP "INSERT INTO $sql_accounting_table (UserName,AcctSessionId,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');\n";
 					close TMP;
 					$command = "$sqlcmd -h$server $opt -u$sql_username $pass $sql_database <$tmpfile.$server" if ($sql_type eq 'mysql');
 					$command = "$sqlcmd  -U $sql_username -f $tmpfile.$server $sql_database" if ($sql_type eq 'pg');
