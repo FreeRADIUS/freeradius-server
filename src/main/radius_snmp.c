@@ -40,7 +40,6 @@ static const char rcsid[] =
 #include "radiusd.h"
 #include "conffile.h"
 
-extern RADCLIENT *clients;
 extern int need_reload;
 
 /*
@@ -207,7 +206,7 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact) {
 
 	len = *objid_len - v->namelen;
 
-	if (!clients)
+	if (!mainconfig.clients)
 		return NULL;
 
 	if (exact) {
@@ -218,7 +217,7 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact) {
 			return NULL;
 
 		i = objid[v->namelen]-1;
-		c = clients;
+		c = mainconfig.clients;
 		while (i && c)
 		{
 			c = c->next;
@@ -232,9 +231,9 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact) {
 	*objid_len = v->namelen + 1;
 	if (!len || (objid[v->namelen] == 0)) {
 		objid[v->namelen]=1;
-		return clients;
+		return mainconfig.clients;
 	}
-	c = clients->next;
+	c = mainconfig.clients->next;
 	while (i && c) {
 		c = c->next;
 		i--;
