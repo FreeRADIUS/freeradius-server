@@ -704,15 +704,33 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	  vp->flags.tag = tag;
 	}
 
-	/*
-	 *      For =* and !* operators, the value is irrelevant
-	 *      so we return now.
-	 */
-	if ((vp->operator == T_OP_CMP_TRUE) ||
-	    (vp->operator == T_OP_CMP_FALSE)) {
+	switch (vp->operator) {
+	default:
+		break;
+
+		/*
+		 *      For =* and !* operators, the value is irrelevant
+		 *      so we return now.
+		 */
+	case T_OP_CMP_TRUE:
+	case T_OP_CMP_FALSE:
 		vp->strvalue[0] = '\0';
 		vp->length = 0;
 	        return vp;
+		break;
+
+#ifdef HAVE_REGEX_H
+		/*
+		 *	Regular expression comparison of integer attributes
+		 *	does a STRING comparison of the names of their
+		 *	integer attributes.
+		 */
+	case T_OP_REG_EQ:	/* =~ */
+	case T_OP_REG_NE:	/* !~ */
+		if (vp->type == PW_TYPE_INTEGER) {
+			return vp;
+		}
+#endif
 	}
 
 	if (value && (pairparsevalue(vp, value) == NULL)) {
