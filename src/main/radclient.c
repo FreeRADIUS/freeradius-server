@@ -45,7 +45,7 @@ VALUE_PAIR *readvp(FILE *fp)
 
 	list = NULL;
 
-	while (!error && fgets(buf, 128, fp) != NULL) {
+	while (!error && fgets(buf, sizeof(buf), fp) != NULL) {
 
 		p = buf;
 		do {
