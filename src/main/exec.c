@@ -46,7 +46,7 @@ static const char rcsid[] = "$Id$";
 #include "rad_assert.h"
 
 #ifndef HAVE_PTHREAD_H
-#define rad_fork fork
+#define rad_fork(n) fork()
 #define rad_waitpid waitpid
 #endif
 
