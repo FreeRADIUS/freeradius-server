@@ -604,10 +604,24 @@ modules {
 		#
 		default_eap_type = md5
 
-		# Default expiry time to clean the EAP list,
-		# It is maintained to correlate the
-		# EAP-response for each EAP-request sent.
+		#  Default expiry time to clean the EAP list, It is
+		#  maintained to correlate the EAP-Response for each
+		#  EAP-request sent.
 		timer_expire     = 60
+
+		#  There are many EAP types, but the server has support
+		#  for only a limited subset.  If the server receives
+		#  a request for an EAP type it does not support, then
+		#  it normally rejects the request.  By setting this
+		#  value to "yes", you can tell the server to instead
+		#  keep processing the request.  Another module MUST
+		#  then be configured to proxy the request to another
+		#  RADIUS server which supports that EAP type.
+		#
+		#  If another module is NOT configured to handle the
+		#  request, then the request will still end up being
+		#  rejected.
+		ignore_unknown_eap_types = no
 
 		# Supported EAP-types
 		md5 {
