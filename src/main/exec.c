@@ -45,11 +45,6 @@ static const char rcsid[] = "$Id$";
 #include "radiusd.h"
 #include "rad_assert.h"
 
-#ifndef HAVE_PTHREAD_H
-#define rad_fork(n) fork()
-#define rad_waitpid waitpid
-#endif
-
 /*
  *	Execute a program on successful authentication.
  *	Return 0 if exec_wait == 0.

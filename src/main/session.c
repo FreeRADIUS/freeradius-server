@@ -182,12 +182,12 @@ static void alrm_handler(int s)
 int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 		 const char *session_id)
 {
-	int	pid, st, e;
+	pid_t	pid, child_pid;
+	int	status;
 	int	n;
 	NAS	*nas;
 	char	address[16];
 	char	port[8];
-	void	(*handler)(int);
 
 	/*
 	 *	Find NAS type.
@@ -204,38 +204,45 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	/*
 	 *	Fork.
 	 */
-	handler = signal(SIGCHLD, SIG_DFL);
-	if ((pid = fork()) < 0) {
+	if ((pid = rad_fork(1)) < 0) { /* do wait for the fork'd result */
 		radlog(L_ERR, "Accounting: fork: %s", strerror(errno));
-		signal(SIGCHLD, handler);
 		return -1;
 	}
 
 	if (pid > 0) {
+		int found = 0;
+
 		/*
 		 *	Parent - Wait for checkrad to terminate.
 		 *	We timeout in 10 seconds.
 		 */
-		got_alrm = 0;
-		signal(SIGALRM, alrm_handler);
-		alarm(10);
-		while((e = waitpid(pid, &st, 0)) != pid)
-			if (e < 0 && (errno != EINTR || got_alrm))
+		for (n = 0; n < 10; n++) {
+			sleep(1);
+			child_pid = rad_waitpid(pid, &status, WNOHANG);
+			if ((child_pid <= 0) || (child_pid == pid)) {
+				found = 1;
 				break;
-		alarm(0);
-		signal(SIGCHLD, handler);
-		if (got_alrm) {
+			}
+		}
+
+		/*
+		 *  It's taking too long.  Kill it.
+		 */
+		if (!found) {
 			kill(pid, SIGTERM);
 			sleep(1);
 			kill(pid, SIGKILL);
 			radlog(L_ERR, "Check-TS: timeout waiting for checkrad");
+			rad_waitpid(pid, &status, WNOHANG); /* to be safe */
 			return 2;
 		}
-		if (e < 0) {
+
+		if (child_pid < 0) {
 			radlog(L_ERR, "Check-TS: unknown error in waitpid()");
 			return 2;
 		}
-		return WEXITSTATUS(st);
+
+		return WEXITSTATUS(status);
 	}
 
 	/*
