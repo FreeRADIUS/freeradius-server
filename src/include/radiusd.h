@@ -87,7 +87,7 @@ typedef int (*COMPARE)(VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 /*
  *	Global variables.
  */
-extern char		*progname;
+extern const char	*progname;
 extern int		debug_flag;
 extern const char	*radacct_dir;
 extern const char	*radlog_dir;
