@@ -15,6 +15,8 @@ ac_help="$ac_help
   --with-rlm-x99-token-lib-dir directory for x99_token libs"
 ac_help="$ac_help
   --with-rlm-x99-token-include-dir directory for x99_token includes"
+ac_help="$ac_help
+  --with-openssl-includes=DIR       Directory to look for OpenSSL include files"
 
 # Initialize some variables set by options.
 # The variables have the same names as the options, with
@@ -525,14 +527,15 @@ else
 fi
 
 
-# From configure.in Revision: 1.7
+# From configure.in Revision: 1.10 
 
 
+SMART_CFLAGS=
 if test x$with_rlm_x99_token != xno; then
 
 			
 		echo $ac_n "checking how to run the C preprocessor""... $ac_c" 1>&6
-echo "configure:536: checking how to run the C preprocessor" >&5
+echo "configure:539: checking how to run the C preprocessor" >&5
 # On Suns, sometimes $CPP names a directory.
 if test -n "$CPP" && test -d "$CPP"; then
   CPP=
@@ -547,13 +550,13 @@ else
   # On the NeXT, cc -E runs the code through the compiler's parser,
   # not just through cpp.
   cat > conftest.$ac_ext <<EOF
-#line 551 "configure"
+#line 554 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:557: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:560: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -564,13 +567,13 @@ else
   rm -rf conftest*
   CPP="${CC-cc} -E -traditional-cpp"
   cat > conftest.$ac_ext <<EOF
-#line 568 "configure"
+#line 571 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:574: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:577: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -581,13 +584,13 @@ else
   rm -rf conftest*
   CPP="${CC-cc} -nologo -E"
   cat > conftest.$ac_ext <<EOF
-#line 585 "configure"
+#line 588 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:591: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:594: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -613,17 +616,17 @@ echo "$ac_t""$CPP" 1>&6
 
 ac_safe=`echo "inttypes.h" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for inttypes.h""... $ac_c" 1>&6
-echo "configure:617: checking for inttypes.h" >&5
+echo "configure:620: checking for inttypes.h" >&5
 if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 622 "configure"
+#line 625 "configure"
 #include "confdefs.h"
 #include <inttypes.h>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:627: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:630: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*
@@ -660,10 +663,22 @@ if test "${with_rlm_x99_token_include_dir+set}" = set; then
 fi
 
 
+				# Check whether --with-openssl-includes or --without-openssl-includes was given.
+if test "${with_openssl_includes+set}" = set; then
+  withval="$with_openssl_includes"
+   case "$withval" in
+	    *)
+		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
+		;;
+	  esac 
+	
+fi
+
+
 		x99_save_LIBS="$LIBS"
 	LIBS="$LIBS $x99_token_ldflags"
-       echo $ac_n "checking for DES_cbc_encrypt in -lcrypto""... $ac_c" 1>&6
-echo "configure:667: checking for DES_cbc_encrypt in -lcrypto" >&5
+		echo $ac_n "checking for DES_cbc_encrypt in -lcrypto""... $ac_c" 1>&6
+echo "configure:682: checking for DES_cbc_encrypt in -lcrypto" >&5
 ac_lib_var=`echo crypto'_'DES_cbc_encrypt | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -671,7 +686,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lcrypto  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 675 "configure"
+#line 690 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -682,7 +697,7 @@ int main() {
 DES_cbc_encrypt()
 ; return 0; }
 EOF
-if { (eval echo configure:686: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:701: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -697,11 +712,11 @@ LIBS="$ac_save_LIBS"
 fi
 if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
   echo "$ac_t""yes" 1>&6
-   x99_token_ldflags="$x99_token_ldflags -lcrypto"
+   x99_token_ldflags="$x99_token_ldflags -lcrypto" 
 else
   echo "$ac_t""no" 1>&6
 echo $ac_n "checking for des_cbc_encrypt in -lcrypto""... $ac_c" 1>&6
-echo "configure:705: checking for des_cbc_encrypt in -lcrypto" >&5
+echo "configure:720: checking for des_cbc_encrypt in -lcrypto" >&5
 ac_lib_var=`echo crypto'_'des_cbc_encrypt | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -709,7 +724,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lcrypto  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 713 "configure"
+#line 728 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -720,7 +735,7 @@ int main() {
 des_cbc_encrypt()
 ; return 0; }
 EOF
-if { (eval echo configure:724: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:739: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -739,7 +754,7 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
 else
   echo "$ac_t""no" 1>&6
  fail="$fail des_cbc_encrypt" 
-
+		
 fi
 
 	
@@ -763,7 +778,7 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-x99_token_cflags="$x99_token_cflags -DX99_MODULE_NAME=\\\"rlm_x99_token\\\""
+x99_token_cflags="$x99_token_cflags -DX99_MODULE_NAME=\\\"rlm_x99_token\\\" $SMART_CFLAGS"
 x99_token_cflags="$x99_token_cflags -DFREERADIUS"
 
 
