@@ -806,7 +806,7 @@ sub cyclades_telnet {
 			#	realm from $user check to see if
 			#	$ARGV[3] matches.
 			#
-			if($ARGV[3] eq strip_username($user)) {
+			if(strip_username($ARGV[3]) eq strip_username($user)) {
 				print LOG "  User '$ARGV[3]' found on '$ARGV[1]:$port'.\n" if ($debug);
 				return 1;
 			}
