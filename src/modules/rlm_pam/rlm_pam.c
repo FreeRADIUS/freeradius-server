@@ -44,11 +44,18 @@
  *	Purpose: Dialogue between RADIUS and PAM modules.
  *
  * jab - stolen from pop3d
+ *
+ * Alan DeKok: modified to use PAM's appdata_ptr, so that we're
+ *             multi-threaded safe, and don't have any nasty static
+ *             variables hanging around.
+ *
  *************************************************************************/
 
-static char *PAM_username;
-static char *PAM_password;
-static int PAM_error =0;
+typedef struct my_PAM {
+  const char *username;
+  const char *password;
+  int         error;
+} my_PAM;
 
 static int PAM_conv (int num_msg,
                      const struct pam_message **msg,
@@ -57,26 +64,25 @@ static int PAM_conv (int num_msg,
   int count = 0, replies = 0;
   struct pam_response *reply = NULL;
   int size = sizeof(struct pam_response);
-
-  appdata_ptr = appdata_ptr;	/* shut the compiler up */
+  my_PAM *pam_config = (my_PAM *) appdata_ptr;
   
 #define GET_MEM if (reply) realloc(reply, size); else reply = malloc(size); \
   if (!reply) return PAM_CONV_ERR; \
   size += sizeof(struct pam_response)
-#define COPY_STRING(s) (s) ? strdup(s) : NULL
+#define COPY_STRING(s) ((s) ? strdup(s) : NULL)
 				     
   for (count = 0; count < num_msg; count++) {
     switch (msg[count]->msg_style) {
     case PAM_PROMPT_ECHO_ON:
       GET_MEM;
       reply[replies].resp_retcode = PAM_SUCCESS;
-      reply[replies++].resp = COPY_STRING(PAM_username);
+      reply[replies++].resp = COPY_STRING(pam_config->username);
       /* PAM frees resp */
       break;
     case PAM_PROMPT_ECHO_OFF:
       GET_MEM;
       reply[replies].resp_retcode = PAM_SUCCESS;
-      reply[replies++].resp = COPY_STRING(PAM_password);
+      reply[replies++].resp = COPY_STRING(pam_config->password);
       /* PAM frees resp */
       break;
     case PAM_TEXT_INFO:
@@ -86,7 +92,7 @@ static int PAM_conv (int num_msg,
     default:
       /* Must be an error of some sort... */
       free (reply);
-      PAM_error = 1;
+      pam_config->error = 1;
       return PAM_CONV_ERR;
     }
   }
@@ -94,11 +100,6 @@ static int PAM_conv (int num_msg,
 
   return PAM_SUCCESS;
 }
-
-struct pam_conv conv = {
-  PAM_conv,
-  NULL
-};
 
 /*************************************************************************
  *
@@ -116,13 +117,21 @@ struct pam_conv conv = {
  * allows you to have multiple authentication types (i.e. multiple
  * files associated with radius in /etc/pam.d)
  */
-static int pam_pass(char *name, char *passwd, const char *pamauth)
+static int pam_pass(const char *name, const char *passwd, const char *pamauth)
 {
     pam_handle_t *pamh=NULL;
     int retval;
+    my_PAM pam_config;
+    struct pam_conv conv;
 
-    PAM_username = name;
-    PAM_password = passwd;
+    /*
+     *  Initialize the structures.
+     */
+    conv.conv = PAM_conv;
+    conv.appdata_ptr = &pam_config;
+    pam_config.username = name;
+    pam_config.password = passwd;
+    pam_config.error = 0;
 
     DEBUG("pam_pass: using pamauth string <%s> for pam.conf lookup", pamauth);
     retval = pam_start(pamauth, name, &conv, &pamh);
