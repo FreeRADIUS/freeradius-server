@@ -64,7 +64,6 @@ typedef struct rlm_pap_t {
 	char norm_passwd;
 } rlm_pap_t;
 
-
 /*
  *      A mapping of configuration file names to internal variables.
  *
@@ -142,6 +141,113 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 
         return 0;
 }
+
+
+/*
+ *	Decode one base64 chunk
+ */
+static int decode_it(const char *src, uint8_t *dst)
+{
+	int i;
+	unsigned int x = 0;
+
+	for(i = 0; i < 4; i++) {
+		if (src[i] >= 'A' && src[i] <= 'Z')
+			x = (x << 6) + (unsigned int)(src[i] - 'A' + 0);
+		else if (src[i] >= 'a' && src[i] <= 'z')
+			 x = (x << 6) + (unsigned int)(src[i] - 'a' + 26);
+		else if(src[i] >= '0' && src[i] <= '9') 
+			 x = (x << 6) + (unsigned int)(src[i] - '0' + 52);
+		else if(src[i] == '+')
+			x = (x << 6) + 62;
+		else if (src[i] == '/')
+			x = (x << 6) + 63;
+		else if (src[i] == '=')
+			x = (x << 6);
+		else return 0;
+	}
+	
+	dst[2] = (unsigned char)(x & 255); x >>= 8;
+	dst[1] = (unsigned char)(x & 255); x >>= 8;
+	dst[0] = (unsigned char)(x & 255); x >>= 8;
+	
+	return 1;
+}
+
+
+/*
+ *	Base64 decoding.
+ */
+static int base64_decode (const char *src, uint8_t *dst)
+{
+	int length, equals;
+	int i, num;
+	char last[3];
+
+	length = equals = 0;
+	while (src[length] && src[length] != '=') length++;
+
+	if (src[length] != '=') return 0; /* no trailing '=' */
+
+	while (src[length + equals] == '=') equals++;
+
+	num = (length + equals) / 4;
+	
+	for (i = 0; i < num - 1; i++) {
+		if (!decode_it(src, dst)) return 0;
+		src += 4;
+		dst += 3;
+	}
+
+	decode_it(src, last);
+	for (i = 0; i < (3 - equals); i++) {
+		dst[i] = last[i];
+	}
+
+	return (num * 3) - equals;
+}
+
+
+/*
+ *	Hex or base64 or bin auto-discovery.
+ */
+static void normify(VALUE_PAIR *vp, int min_length)
+{
+	int decoded;
+	char buffer[64];
+	
+	if (min_length >= sizeof(buffer)) return; /* paranoia */
+
+	/*
+	 *	Hex encoding.
+	 */
+	if (vp->length >= (2 * min_length)) {
+		decoded = lrad_hex2bin(vp->strvalue, buffer, vp->length >> 1);
+		if (decoded == (vp->length >> 1)) {
+			memcpy(vp->strvalue, buffer, decoded);
+			vp->length = decoded;
+			return;
+		}
+	}
+
+	/*
+	 *	Base 64 encoding.  It's at least 4/3 the original size,
+	 *	and we want to avoid division...
+	 */
+	if ((vp->length * 3) >= ((min_length * 4))) {
+		decoded = base64_decode(vp->strvalue, buffer);
+		if (decoded >= min_length) {
+			memcpy(vp->strvalue, buffer, decoded);
+			vp->length = decoded;
+			return;
+		}
+	}
+
+	/*
+	 *	Else unknown encoding, or already binary.  Leave it.
+	 */
+}
+
 
 /*
  *	Find the named user in this modules database.  Create the set
@@ -281,9 +387,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_md5:
 		DEBUG("rlm_pap: Using MD5 encryption.");
 
-		if (vp->length == 32) {
-			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue, 16);
-		}
+		normify(vp, 16);
 		if (vp->length != 16) {
 		DEBUG("rlm_pap: Configured MD5 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured MD5 password has incorrect length");
@@ -305,10 +409,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_smd5:
 		DEBUG("rlm_pap: Using SMD5 encryption.");
 
-		if (vp->length >= 32) {
-			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue,
-						  vp->length / 2);
-		}
+		normify(vp, 16);
 		if (vp->length <= 16) {
 			DEBUG("rlm_pap: Configured SMD5 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SMD5 password has incorrect length");
@@ -335,9 +436,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_sha:
 		DEBUG("rlm_pap: Using SHA1 encryption.");
 		
-		if (vp->length == 40) {
-			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue, 20);
-		}
+		normify(vp, 20);
 		if (vp->length != 20) {
 			DEBUG("rlm_pap: Configured SHA1 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SHA1 password has incorrect length");
@@ -359,10 +458,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_ssha:
 		DEBUG("rlm_pap: Using SSHA encryption.");
 		
-		if (vp->length >= 40) {
-			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue,
-				vp->length / 2);
-		}
+		normify(vp, 20);
 		if (vp->length <= 20) {
 			DEBUG("rlm_pap: Configured SSHA password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SHA password has incorrect length");
@@ -386,9 +482,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_nt:
 		DEBUG("rlm_pap: Using NT encryption.");
 
-		if  (vp->length == 32) {
-			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue, 16);
-		}
+		normify(vp, 16);
 		if (vp->length != 16) {
 			DEBUG("rlm_pap: Configured NT-Password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NT-Password has incorrect length");
@@ -414,9 +508,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_lm:
 		DEBUG("rlm_pap: Using LM encryption.");
 		
-		if  (vp->length == 32) {
-			vp->length = lrad_hex2bin(vp->strvalue, vp->strvalue, 16);
-		}
+		normify(vp, 16);
 		if (vp->length != 16) {
 			DEBUG("rlm_pap: Configured LM-Password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured LM-Password has incorrect length");
