@@ -421,7 +421,7 @@ int rad_authenticate(REQUEST *request)
 	 *	pairs from the server to the initial reply.
 	 */
 	if ((request->proxy_reply) &&
-			(request->packet->code == PW_AUTHENTICATION_REQUEST)) {
+	    (request->packet->code == PW_AUTHENTICATION_REQUEST)) {
 		tmp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
 		if (tmp == NULL) {
 			radlog(L_ERR|L_CONS, "no memory");
@@ -454,6 +454,7 @@ int rad_authenticate(REQUEST *request)
 		 *	done by the server, by rejecting them here.
 		 */
 		if (request->proxy_reply->code != PW_AUTHENTICATION_ACK) {
+			rad_authlog("Home server says invalid user", request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			return RLM_MODULE_REJECT;
 		}
