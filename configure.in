@@ -238,6 +238,7 @@ AC_CHECK_HEADERS( \
 	malloc.h \
 	utmp.h \
 	sys/select.h \
+	dlfcn.h \
 )
 
 AC_CHECK_FUNCS( \
