@@ -16,8 +16,8 @@ typedef struct unique_attr_list {
 } unique_attr_list;
 
 typedef struct unique_config_t {
-	char							*key;
-	struct unique_attr_list 	*head;		
+	char			*key;
+	struct unique_attr_list *head;		
 } unique_config_t;
 
 static unique_config_t config;
@@ -27,8 +27,80 @@ static CONF_PARSER module_config[] = {
   { NULL, -1, NULL, NULL }    /* end the list */
 };
 
-int unique_parse_key(char *key);
-void unique_add_attr(int dictattr);
+/*
+ *	Add an attribute to the list.
+ */
+static void unique_add_attr(int dictattr) {
+	struct unique_attr_list 	*new;		
+	
+	if((new = malloc(sizeof(struct unique_attr_list))) == NULL) {
+		radlog(L_ERR, "rlm_acct_unique:  out of memory");
+		exit(1);
+	}
+	memset((struct unique_attr_list *)new, 0, sizeof(unique_attr_list));
+
+	/* Assign the attr to our new structure */
+	new->attr = dictattr;	
+
+	if (config.head) {
+		new->next = config.head;
+		config.head = new;
+	} else {
+		config.head = new;
+	}
+}
+
+/*
+ *	Parse a key.
+ */
+static int unique_parse_key(char *key) {
+	char *ptr, *prev, *keyptr;
+	DICT_ATTR *a;
+	
+	keyptr = key;
+	ptr = key;
+	prev = key;
+	
+	/* Let's remove spaces in the string */
+	while(ptr && *ptr!='\0') {
+		while(*ptr == ' ') 
+			ptr++;
+		*keyptr = *ptr;
+		keyptr++;
+		ptr++;
+	}
+	*keyptr = '\0';
+	
+	ptr = key;
+	while(ptr) {
+		switch(*ptr) {
+		case ',':
+			*ptr = '\0';
+			if((a = dict_attrbyname(prev)) == NULL) {
+				radlog(L_ERR, "rlm_acct_unique: Cannot find attribute '%s' in dictionary", prev);
+				return -1;
+			}
+			*ptr = ',';
+			prev = ptr+1;
+			unique_add_attr(a->attr); 
+			break;
+		case '\0':
+			if((a = dict_attrbyname(prev)) == NULL) {
+				radlog(L_ERR, "rlm_acct_unique: Cannot find '%s' in dictionary", prev);
+				return -1;
+			}
+			unique_add_attr(a->attr);
+			return 0;
+			break;
+		case ' ':
+			continue;
+			break;
+		}
+		ptr++;	
+	}	
+	
+	return 0;
+}
 
 static int unique_instantiate(CONF_SECTION *conf, void **instance) {
 
@@ -37,38 +109,39 @@ static int unique_instantiate(CONF_SECTION *conf, void **instance) {
 	/*
 	 *  Set up a storage area for instance data
 	 */
-	if( (inst = malloc(sizeof(struct unique_config_t))) == NULL) {
+	if ((inst = malloc(sizeof(*inst))) == NULL) {
 		return -1;
 	}
-	memset((struct unique_config_t *)inst, 0, sizeof( unique_config_t));
-
+	memset(inst, 0, sizeof(*inst));
+	
 	if (cf_section_parse(conf, module_config) < 0) {
 		free(inst);
 		return -1;
 	}
 
+	/*
+	 *	Grab the key.
+	 */
 	inst->key = config.key;
+	config.key = NULL;
 
 	/* 
-	 * Check to see if 'key' has something in it 
+	 *	Check to see if 'key' has something in it 
 	 */	
-	if(!inst->key) {
-		radlog(L_ERR,"unique_instantiate:  cannot find value for 'key' in radiusd.conf");
+	if (!inst->key) {
+		radlog(L_ERR,"rlm_acct_unique: Cannot find value for 'key' in configuration.");
 		return -1;
 	}
 
 	/* 
 	 * Go thru the list of keys and build attr_list;
 	 */	
-	if(unique_parse_key(inst->key) < 0) {
+	if (unique_parse_key(inst->key) < 0) {
 		return -1;
 	};
 
 	inst->head = config.head;
 	*instance = inst;
-
-	/* so it doesn't get free()'ed in cf_section_parse */
-	config.key = 0;
 
  	return 0;
 }
@@ -85,34 +158,34 @@ static int unique_accounting(void *instance, REQUEST *request)
   VALUE_PAIR *vp;
   char *p;
   int length, left;
-	struct unique_config_t *inst = instance;
-	struct unique_attr_list *cur;
-
+  struct unique_config_t *inst = instance;
+  struct unique_attr_list *cur;
+  
   /* initialize variables */
   p = buffer;
   left = BUFFERLEN;
   length = 0;
-	cur = inst->head;
-
+  cur = inst->head;
+  
   /* loop over items to create unique identifiers */
   while (cur) {
-    vp = pairfind(request->packet->vps, cur->attr);
-    length = vp_prints(p, left, vp);
-    left -= length + 1;		/* account for ',' in between elements */
-    p += length;
-    *(p++) = ',';		/* ensure seperation of elements */
-		cur = cur->next;
+	  vp = pairfind(request->packet->vps, cur->attr);
+	  length = vp_prints(p, left, vp);
+	  left -= length + 1;	/* account for ',' in between elements */
+	  p += length;
+	  *(p++) = ',';		/* ensure seperation of elements */
+	  cur = cur->next;
   }
-	buffer[BUFFERLEN-left-1] = '\0';
+  buffer[BUFFERLEN-left-1] = '\0';
 
-  DEBUG2("unique_accounting:  sending '%s' to librad_md5_calc", buffer);
+  DEBUG2("rlm_acct_unique: Hashing '%s'", buffer);
   /* calculate a 'unique' string based on the above information */
   librad_md5_calc(md5_buf, (u_char *)buffer, (p - buffer));
   sprintf(buffer, "%02x%02x%02x%02x%02x%02x%02x%02x",
 	  md5_buf[0], md5_buf[1], md5_buf[2], md5_buf[3],
-	  md5_buf[4], md5_buf[5], md5_buf[6], md5_buf[7]
-	);
-  DEBUG2("unique_accounting:  received '%s' from librad_md5_calc", buffer);
+	  md5_buf[4], md5_buf[5], md5_buf[6], md5_buf[7]);
+
+  DEBUG2("rlm_acct_unique: Acct-Unique-Session-ID = \"%s\".", buffer);
   
   vp = pairmake("Acct-Unique-Session-Id", buffer, 0);
   if (!vp) {
@@ -123,75 +196,9 @@ static int unique_accounting(void *instance, REQUEST *request)
   /* add the (hopefully) unique session ID to the packet */
   pairadd(&request->packet->vps, vp);
   
-	/* FIXME:  Uncomment here once we iron out module_accounting() */
+  /* FIXME:  Uncomment here once we iron out module_accounting() */
   /*return RLM_MODULE_UPDATED;*/
   return RLM_MODULE_OK;
-}
-
-void unique_add_attr(int dictattr) {
-	struct unique_attr_list 	*new;		
-	
-	if((new = malloc(sizeof(struct unique_attr_list))) == NULL) {
-		radlog(L_ERR, "unique_add_attr:  out of memory");
-	}
-	memset((struct unique_attr_list *)new, 0, sizeof(unique_attr_list));
-
-	/* Assign the attr to our new structure */
-	new->attr = dictattr;	
-
-	if(config.head) {
-		new->next = config.head;
-		config.head = new;
-	} else {
-		config.head = new;
-	}
-}
-
-int unique_parse_key(char *key) {
-	char *ptr, *prev, *keyptr;
-	DICT_ATTR *a;
-
-	keyptr = key;
-	ptr = key;
-	prev = key;
-
-	/* Let's remove spaces in the string */
-	while(ptr && *ptr!='\0') {
-		while(*ptr == ' ') 
-			ptr++;
-		*keyptr = *ptr;
-		keyptr++;
-		ptr++;
-	}
-	*keyptr = '\0';
-
-	ptr = key;
-	while(ptr) {
-		switch(*ptr) {
-			case ',':
-				*ptr = '\0';
-				if((a = dict_attrbyname(prev)) == NULL) {
-					radlog(L_ERR,"unique_instantiate:  cannot find '%s' in dictionary", prev);
-					return -1;
-				}
-				*ptr = ',';
-				prev = ptr+1;
-				unique_add_attr(a->attr); 
-				break;
-			case '\0':
-				if((a = dict_attrbyname(prev)) == NULL) {
-					radlog(L_ERR,"unique_instantiate:  cannot find '%s' in dictionary", prev);
-					return -1;
-				}
-				unique_add_attr(a->attr);
-				return 0;
-			case ' ':
-				continue;
-		}	
-		ptr++;	
-	}	
-
-	return 0;
 }
 
 static int unique_detach(void *instance) {
@@ -216,12 +223,12 @@ module_t rlm_acct_unique = {
   "Acct-Unique-Session-Id",
   0,				/* type: reserved */
   NULL,				/* initialization */
-  unique_instantiate,	/* instantiation */
+  unique_instantiate,		/* instantiation */
   NULL,				/* authorization */
   NULL,				/* authentication */
   NULL,				/* preaccounting */
   unique_accounting,		/* accounting */
   NULL,				/* checksimul */
-  unique_detach,				/* detach */
+  unique_detach,		/* detach */
   NULL,				/* destroy */
 };
