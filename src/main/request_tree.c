@@ -29,10 +29,18 @@ static int numberrequests;
 typedef int (*RL_WALK_FUNC)(REQUEST *, void *);
 
 static void do_rt_add(REQTREE **, REQUEST *);
-static void do_rt_delete(REQTREE **, REQUEST *);
+static void do_rt_delete(REQUEST *);
 static REQUEST *do_rt_find(REQTREE **, REQUEST *);
 static void do_rt_walk(REQTREE **, RL_WALK_FUNC, void *);
+static REQUEST *do_rt_next(REQUEST *);
 
+int rt_init(void);
+REQUEST *rt_find(REQUEST *);
+void rt_add(REQUEST *);
+void rt_delete(REQUEST *);
+void rt_walk(RL_WALK_FUNC, void *);
+int rt_num_requests(void);
+REQUEST *rt_next(REQUEST *);
 
 /* put in main() */
 int rt_init() {
@@ -133,7 +141,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 		self->leftbranch = NULL;
 		self->rightbranch = NULL;
 		self->parent = NULL;
-		reqobject->container = self;
+		(REQTREE *)reqobject->container = self;
 		numberrequests += 1;
 		return;
 	}
@@ -162,7 +170,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 			self->leftbranch->leftbranch = NULL;
 			self->leftbranch->rightbranch = NULL;
 			self->leftbranch->magic = NODE_MAGIC;
-			reqobject->container = self;
+			(REQTREE *)reqobject->container = self;
 			numberrequests += 1;
 		} else {
 			assert(self->leftbranch->magic == NODE_MAGIC);
@@ -178,7 +186,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 			self->rightbranch->leftbranch = NULL;
 			self->rightbranch->rightbranch = NULL;
 			self->rightbranch->magic = NODE_MAGIC;
-			reqobject->container = self;
+			(REQTREE *)reqobject->container = self;
 			numberrequests += 1;
 		} else {
 			assert(self->rightbranch->magic == NODE_MAGIC);
@@ -191,7 +199,6 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 
 
 static void do_rt_delete(REQUEST *reqobject) {
-	int cmp;
 	REQTREE *doppelganger;
 	REQTREE **tree; /* we find this in a moment */
 
@@ -296,24 +303,39 @@ static REQUEST *do_rt_find(REQTREE **tree, REQUEST *reqobject) {
 
 
 static REQUEST *do_rt_next(REQUEST *reqobject) {
-	REQTREE *ptr;
+	REQTREE *ptr, *next;
 	int i;
 
 	ptr = ((REQTREE *)reqobject->container);
 	assert(ptr != NULL);
 
-	if (ptr->leftbranch != NULL) 
-		return(ptr->leftbranch->req);
+	if (ptr->parent != NULL) {
+		if ((ptr->parent->leftbranch == ptr) && 
+				(ptr->parent->rightbranch != NULL)) {
+			next = ptr->parent->rightbranch;
+			while (next->leftbranch) {
+				next = next->leftbranch;
+			}
+			return(next->req);
+		} else {
+			return(ptr->parent->req);
+		}
+	} else {
+		i = (ptr->req->packet->id + 1) % 256;
+		while (reqtreehead[i] == NULL)
+			i++;
 
-	if (ptr->rightbranch != NULL) 
-		return(ptr->rightbranch->req);
+		next = reqtreehead[i];
+		while (next->leftbranch) {
+			next = next->leftbranch;
+		}
 
-	if (ptr->parent == NULL) {
-		for (
-			i = (ptr->req->packet->id + 1) % 256;
-			ptr->reqtreehead[i] == NULL;
-			i++
-		) { }
+		if (ptr == next) { /* we looped */
+			return(NULL);
+		} else {
+			return(next->req);
+		}
 	}
 
+	return(NULL); /* kill warnings */
 }
