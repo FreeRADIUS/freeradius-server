@@ -121,6 +121,10 @@ static CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
 	{"simul_verify_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
+	{"postauth_table", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,sql_postauth_table), NULL, "radpostauth"},
+	{"postauth_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,postauth_query), NULL, ""},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -1072,6 +1076,47 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 
 }
 
+/*
+ *	Execute postauth_query after authentication
+ */
+static int rlm_sql_postauth(void *instance, REQUEST *request) {
+	SQLSOCK 	*sqlsocket = NULL;
+	SQL_INST	*inst = instance;
+	char		querystr[MAX_QUERY_LEN];
+
+	DEBUG("rlm_sql (%s): Processing sql_postauth", inst->config->xlat_name);
+
+	/* If postauth_query is not defined, we stop here */
+	if (inst->config->postauth_query[0] == '\0')
+		return RLM_MODULE_NOOP;
+
+	/* Expand variables in the query */
+	memset(querystr, 0, MAX_QUERY_LEN);
+	radius_xlat(querystr, sizeof(querystr), inst->config->postauth_query,
+		    request, sql_escape_func);
+	query_log(request, inst, querystr);
+	DEBUG2("rlm_sql (%s) in sql_postauth: query is %s",
+	       inst->config->xlat_name, querystr);
+
+	/* Initialize the sql socket */
+	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL)
+		return RLM_MODULE_FAIL;
+
+	/* Process the query */
+	if (rlm_sql_query(sqlsocket, inst, querystr)) {
+		radlog(L_ERR, "rlm_sql (%s) in sql_postauth: Database query error - %s",
+		       inst->config->xlat_name,
+		       (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+		sql_release_socket(inst, sqlsocket);
+		return RLM_MODULE_FAIL;
+	}
+	(inst->module->sql_finish_query)(sqlsocket, inst->config);
+
+	sql_release_socket(inst, sqlsocket);
+	return RLM_MODULE_OK;
+}
+
 /* globally exported name */
 module_t rlm_sql = {
 	"SQL",
@@ -1086,7 +1131,7 @@ module_t rlm_sql = {
 		rlm_sql_checksimul,	/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		rlm_sql_postauth	/* post-auth */
 	},
 	rlm_sql_detach,		/* detach */
 	rlm_sql_destroy,	/* destroy */

@@ -117,6 +117,19 @@ CREATE TABLE usergroup (
   KEY UserName (UserName(32))
 ) ;
 
+#
+# Table structure for table 'radpostauth'
+#
+
+CREATE TABLE radpostauth (
+  id int(11) NOT NULL auto_increment,
+  user varchar(64) NOT NULL default '',
+  pass varchar(64) NOT NULL default '',
+  reply varchar(32) NOT NULL default '',
+  date timestamp(14) NOT NULL,
+  PRIMARY KEY  (id)
+) ;
+
 ######################################################################
 #
 #  The next two tables are commented out because they are not
