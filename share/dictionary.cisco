@@ -72,6 +72,10 @@ ATTRIBUTE	Cisco-Maximum-Channels          235     integer		Cisco
 ATTRIBUTE	Cisco-Data-Filter               242     integer		Cisco
 ATTRIBUTE	Cisco-Call-Filter               243     integer		Cisco
 ATTRIBUTE	Cisco-Idle-Limit                244     integer		Cisco
+ATTRIBUTE	Cisco-Account-Info		250	string		Cisco
+ATTRIBUTE	Cisco-Service-Info		251	string		Cisco
+ATTRIBUTE	Cisco-Command-Code		252	string		Cisco
+ATTRIBUTE	Cisco- Control-Info		253	string		Cisco
 ATTRIBUTE	Cisco-Xmit-Rate                 255     integer		Cisco
 
 VALUE		Cisco-Disconnect-Cause        Unknown                 2
