@@ -71,8 +71,6 @@ typedef struct TLDAP_RADIUS TLDAP_RADIUS;
  * passed to the module with every request.
  */
 
-static struct timeval *timeout = NULL;
-
 typedef struct {
 	char           *server;
 	int             port;
@@ -283,7 +281,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 		inst->bound = 1;
 	}
 	DEBUG2("rlm_ldap: performing search in %s, with filter %s", search_basedn, filter);
-	switch (ldap_search_st(inst->ld, search_basedn, scope, filter, attrs, 0, timeout, result)) {
+	switch (ldap_search_st(inst->ld, search_basedn, scope, filter, attrs, 0, instance->timeout, result)) {
 	case LDAP_SUCCESS:
 		break;
 
