@@ -2231,7 +2231,7 @@ static void proxy_retry(void)
 	 *	requests, then don't bother walking through the list.
 	 */
 	if (!proxy_requests ||
-	    (proxy_retry_delay = 0)) {
+	    (proxy_retry_delay == 0)) {
 		return;
 	}
 	
