@@ -93,22 +93,35 @@ static pthread_mutex_t	proxy_mutex;
 #define pthread_mutex_lock(_x)
 #define pthread_mutex_unlock(_x)
 #endif
+
+/*
+ *	We keep track of packets we're proxying, keyed by
+ *	source socket, and destination ip/port, and Id.
+ */
 static rbtree_t		*proxy_tree;
 
-#ifdef PROXY_ID
+/*
+ *	We keep track of free/used Id's, by destination ip/port.
+ *
+ *	We need a different tree than above, because this one is NOT
+ *	keyed by Id.  Instead, we use this one to allocate Id's.
+ */
 static rbtree_t		*proxy_id_tree;
 
 /*
  *	We can use 256 RADIUS Id's per dst ipaddr/port, per server
  *	socket.  So, to allocate them, we key off of dst ipaddr/port,
  *	and then search the RADIUS Id's, looking for an unused socket.
+ *
+ *	We do NOT key off of socket fd's, here, either.  Instead,
+ *	we look for a free Id from a sockfd, any sockfd.
  */
 typedef struct proxy_id_t {
 	uint32_t	dst_ipaddr;
 	int		dst_port;
 
 	/*
-	 *	FIXME: Do stuff when this gets full...
+	 *	FIXME: Allocate more proxy sockets when this gets full.
 	 */
 	int		index;
 	int		id[1];	/* really id[256] */
@@ -138,7 +151,6 @@ static int proxy_id_cmp(const void *one, const void *two)
 	 */
 	return 0;
 }
-#endif /* PROXY_ID */
 
 
 /*
@@ -225,6 +237,11 @@ static int proxy_cmp(const void *one, const void *two)
 	if (a->proxy->dst_port > b->proxy->dst_port) return +1;
 
 	/*
+	 *	FIXME: Check the Proxy-State attribute, too.
+	 *	This will help cut down on duplicates.
+	 */
+
+	/*
 	 *	Everything's equal.  Say so.
 	 */
 	return 0;
@@ -236,17 +253,10 @@ static int proxy_cmp(const void *one, const void *two)
  */
 int rl_init(void)
 {
-	int i;
-
 	/*
 	 *	Initialize the request_list[] array.
 	 */
-	for (i = 0; i < 256; i++) {
-		request_list[i].first_request = NULL;
-		request_list[i].last_request = NULL;
-		request_list[i].request_count = 0;
-		request_list[i].last_cleaned_list = 0;
-	}
+	memset(request_list, 0, sizeof(request_list));
 
 	request_tree = rbtree_create(request_cmp, NULL, 0);
 	if (!request_tree) {
@@ -254,15 +264,14 @@ int rl_init(void)
 	}
 
 	/*
-	 *	FIXME: Key off of mainconfig.proxy_requests,
-	 *	so we don't allocate things we won't use.
+	 *	Create the tree for managing proxied requests and
+	 *	responses.
 	 */
-	proxy_tree = rbtree_create(proxy_cmp, NULL, 0);
+	proxy_tree = rbtree_create(proxy_cmp, NULL, 1);
 	if (!proxy_tree) {
 		rad_assert("FAIL" == NULL);
 	}
 
-#ifdef PROXY_ID
 	/*
 	 *	Create the tree for allocating proxy ID's.
 	 */
@@ -270,7 +279,6 @@ int rl_init(void)
 	if (!proxy_id_tree) {
 		rad_assert("FAIL" == NULL);
 	}
-#endif /* PROXY_ID */
 
 #ifdef HAVE_PTHREAD_H
 	/*
@@ -285,8 +293,47 @@ int rl_init(void)
 	}
 #endif
 
-	return 0;
+	return 1;
 }
+
+
+/*
+ *	Delete a request from the proxy trees.
+ */
+static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
+{
+	proxy_id_t	myid, *entry;
+
+	rad_assert(node != NULL);
+
+	rbtree_delete(proxy_tree, node);
+	
+	myid.dst_ipaddr = request->proxy->dst_ipaddr;
+	myid.dst_port = request->proxy->dst_port;
+
+	/*
+	 *	Find the Id in the array of allocated Id's,
+	 *	and delete it.
+	 */
+	entry = rbtree_finddata(proxy_id_tree, &myid);
+	if (entry) {
+		DEBUG3(" proxy: de-allocating %08x:%d %d",
+		       entry->dst_ipaddr,
+		       entry->dst_port,
+		       request->proxy->id);
+		rad_assert(entry->id[request->proxy->id] == 1);
+		entry->id[request->proxy->id] = 0;
+	} else {
+		/*
+		 *	Hmm... not sure what to do here.
+		 */
+		DEBUG3(" proxy: FAILED TO FIND %08x:%d %d",
+		       myid.dst_ipaddr,
+		       myid.dst_port,
+		       request->proxy->id);
+	}
+}
+
 
 /*
  *	Delete a particular request.
@@ -388,34 +435,7 @@ void rl_delete(REQUEST *request)
 		if (request->proxy && !request->proxy_reply) {
 			pthread_mutex_lock(&proxy_mutex);
 			node = rbtree_find(proxy_tree, request);
-
-#ifndef PROXY_ID
-			if (node) rbtree_delete(proxy_tree, node);
-#else
-			if (node) {
-				proxy_id_t	myid, *entry;
-
-				rbtree_delete(proxy_tree, node);
-				
-				myid.dst_ipaddr = request->proxy->dst_ipaddr;
-				myid.dst_port = request->proxy->dst_port;
-
-				entry = rbtree_finddata(proxy_id_tree, &myid);
-				if (entry) {
-					DEBUG2(" proxy: de-allocating %08x:%d %d",
-					       entry->dst_ipaddr,
-					       entry->dst_port,
-					       request->proxy->id);
-					rad_assert(entry->id[request->proxy->id] == 1);
-					entry->id[request->proxy->id] = 0;
-				} else {
-					DEBUG2(" proxy: FAILED TO FIND %08x:%d %d",
-					       myid.dst_ipaddr,
-					       myid.dst_port,
-					       request->proxy->id);
-				}
-			}
-#endif /* PROXY_ID */
+			rl_delete_proxy(request, node);
 			pthread_mutex_unlock(&proxy_mutex);
 		}
 	}
@@ -493,80 +513,90 @@ REQUEST *rl_find(RADIUS_PACKET *packet)
  */
 void rl_add_proxy(REQUEST *request)
 {
+	int i, found;
+	proxy_id_t	myid, *entry;
+
+	myid.dst_ipaddr = request->proxy->dst_ipaddr;
+	myid.dst_port = request->proxy->dst_port;
+
+	/*
+	 *	Proxied requests get sent out the proxy FD ONLY.
+	 *
+	 *	FIXME: Once we allocate multiple proxy FD's, move this
+	 *	code to below, so we can have more than 256 requests
+	 *	outstanding.
+	 */
+	request->proxy->sockfd = proxyfd;
+	request->proxy_outstanding = 1;
+
 	pthread_mutex_lock(&proxy_mutex);
 
-#ifdef PROXY_ID
 	/*
 	 *	Assign a proxy ID.
 	 */
-	{
-		int i, found;
-
-		proxy_id_t	myid, *entry;
-
-		myid.dst_ipaddr = request->proxy->dst_ipaddr;
-		myid.dst_port = request->proxy->dst_port;
+	entry = rbtree_finddata(proxy_id_tree, &myid);
+	if (!entry) {	/* allocate it */
+		entry = rad_malloc(sizeof(*entry) + sizeof(entry->id) * 255);
 		
-		entry = rbtree_finddata(proxy_id_tree, &myid);
-		if (!entry) {	/* allocate it */
-			entry = rad_malloc(sizeof(*entry) + sizeof(int) * 255);
-
-			entry->dst_ipaddr = request->proxy->dst_ipaddr;
-			entry->dst_port = request->proxy->dst_port;
-			entry->index = 0;
-			memset(entry->id, 0, sizeof(int) * 256);
-
-			DEBUG2(" proxy: creating %08x:%d",
-			       entry->dst_ipaddr,
-			       entry->dst_port);
-
-			/*
-			 *	Insert the new home server entry into
-			 *	the tree.
-			 *
-			 *	FIXME: We don't (currently) delete the
-			 *	entries, so this is technically a
-			 *	memory leak.
-			 */
-			if (rbtree_insert(proxy_id_tree, entry) == 0) {
-			  rad_assert("FAIL" == NULL);
-			}
-		}
+		entry->dst_ipaddr = request->proxy->dst_ipaddr;
+		entry->dst_port = request->proxy->dst_port;
+		entry->index = 0;
+		memset(entry->id, 0, sizeof(entry->id) * 256);
 		
-		/*
-		 *	Try to find a free Id.
-		 */
-		found = -1;
-		for (i = 0; i < 256; i++) {
-			if (entry->id[(i + entry->index) & 0xff] == 0) {
-				found = (i + entry->index) & 0xff;
-				break;
-			}
-		}
-
-		if (found < 0) {
-			rad_assert("FAILED TO ALLOCATE ID" == NULL);
-		}
-
-		/*
-		 *	Mark next (hopefully unused) entry.
-		 */
-		entry->index = (found + 1) & 0xff;
-
-		entry->id[found] = 1;
-		request->proxy->id = found;
-
-		DEBUG2(" proxy: allocating %08x:%d %d",
+		DEBUG3(" proxy: creating %08x:%d",
 		       entry->dst_ipaddr,
-		       entry->dst_port,
-		       request->proxy->id);
+		       entry->dst_port);
+		
+		/*
+		 *	Insert the new home server entry into
+		 *	the tree.
+		 *
+		 *	FIXME: We don't (currently) delete the
+		 *	entries, so this is technically a
+		 *	memory leak.
+		 */
+		if (rbtree_insert(proxy_id_tree, entry) == 0) {
+			rad_assert("FAIL" == NULL);
+		}
 	}
-#endif /* PROXY_ID */
+	
+	/*
+	 *	Try to find a free Id.
+	 */
+	found = -1;
+	for (i = 0; i < 256; i++) {
+		if (entry->id[(i + entry->index) & 0xff] == 0) {
+			found = (i + entry->index) & 0xff;
+			break;
+		}
 
+		/*
+		 *	Hmm... do we want to re-use Id's, when we
+		 *	haven't seen all of the responses?
+		 */
+	}
+	
+	if (found < 0) {
+		rad_assert("FAILED TO ALLOCATE ID" == NULL);
+	}
+	
+	/*
+	 *	Mark next (hopefully unused) entry.
+	 */
+	entry->index = (found + 1) & 0xff;
+	
+	entry->id[found] = 1;
+	request->proxy->id = found;
+	
+	DEBUG3(" proxy: allocating %08x:%d %d",
+	       entry->dst_ipaddr,
+	       entry->dst_port,
+	       request->proxy->id);
+	
 	if (!rbtree_insert(proxy_tree, request)) {
 		rad_assert("FAILED" == 0);
 	}
-
+	
 	pthread_mutex_unlock(&proxy_mutex);
 }
 
@@ -583,13 +613,9 @@ void rl_add_proxy(REQUEST *request)
  */
 REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 {
-	REQUEST myrequest, *maybe = NULL;
-	RADIUS_PACKET myproxy;
-	rbnode_t *node;
-
-	myrequest.proxy = &myproxy;
-
-	myproxy.id = packet->id;
+	rbnode_t	*node;
+	REQUEST		myrequest, *maybe = NULL;
+	RADIUS_PACKET	myproxy;
 
 	/*
 	 *	If we use the socket FD as an indicator,
@@ -598,37 +624,30 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 	 *	to use that in the comparisons.
 	 */
 	myproxy.sockfd = packet->sockfd;
+	myproxy.id = packet->id;
 	myproxy.dst_ipaddr = packet->src_ipaddr;
 	myproxy.dst_port = packet->src_port;
 
-	pthread_mutex_lock(&proxy_mutex);
+	myrequest.proxy = &myproxy;
 
-	node = rbtree_find(proxy_tree, &myrequest);
+	pthread_mutex_lock(&proxy_mutex);
+        node = rbtree_find(proxy_tree, &myrequest);
+
 	if (node) {
 		maybe = rbtree_node2data(proxy_tree, node);
-		rbtree_delete(proxy_tree, node);
-
-#ifdef PROXY_ID
+		rad_assert(maybe->proxy_outstanding > 0);
+		maybe->proxy_outstanding--;
+		
 		/*
-		 *	Find the entry in the Id tree, and mark
-		 *	it as unused, too.
+		 *	Received all of the replies we expect.
+		 *	delete it from both trees.
 		 */
-		{
-			proxy_id_t	myid, *entry;
-			
-			myid.dst_ipaddr = packet->src_ipaddr;
-			myid.dst_port = packet->src_port;
-			
-			entry = rbtree_finddata(proxy_id_tree, &myid);
-			if (entry) {
-				rad_assert(entry->id[packet->id] == 1);
-				entry->id[packet->id] = 0;
-			} /* else die? */
+		if (maybe->proxy_outstanding == 0) {
+			rl_delete_proxy(&myrequest, node);
 		}
-#endif /* PROXY_ID */
 	}
-
 	pthread_mutex_unlock(&proxy_mutex);
+
 	return maybe;
 }
 
@@ -725,7 +744,7 @@ REQUEST *rl_next(REQUEST *request)
 	/*
 	 *	No requests at all in the list. Nothing to do.
 	 */
-	DEBUG2("rl_next:  returning NULL");
+	DEBUG3("rl_next:  returning NULL");
 	return NULL;
 }
 
@@ -996,6 +1015,7 @@ static int refresh_request(REQUEST *request, void *data)
 	/*
 	 *  Send the proxy packet.
 	 */
+	request->proxy_outstanding++;
 	rad_send(request->proxy, NULL, request->proxysecret);
 
 setup_timeout:

@@ -43,8 +43,6 @@ static const char rcsid[] = "$Id$";
 #include "modules.h"
 #include "request_list.h"
 
-static uint32_t proxy_id = 1;
-
 /*
  *	We received a response from a remote radius server.
  *	Find the original request, then return.
@@ -405,11 +403,6 @@ int proxy_send(REQUEST *request)
 		request->proxy->vps = vps;
 	}
 
-	/*
-	 *	Proxied requests get sent out the proxy FD ONLY.
-	 */
-	request->proxy->sockfd = proxyfd;
-
 	request->proxy->code = request->packet->code;
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->proxy->dst_port = realm->auth_port;
@@ -420,17 +413,11 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
-	 *	Add the request to the list of outstanding requests.
-	 *	Note that request->proxy->id is a 16 bits value, while
-	 *	the RADIUS id has only the 8 least significant bits of
-	 *	that same value.
-	 */
-	request->proxy->id = (proxy_id++) & 0xff;
-	proxy_id &= 0xffff;
-
-	/*
 	 *	Add PROXY_STATE attribute, before pre-proxy stage,
 	 *	so the pre-proxy modules have access to it.
+	 *
+	 *	Note that, at this point, the proxied request HAS NOT
+	 *	been assigned a RADIUS Id.
 	 */
 	proxy_addinfo(request);
 

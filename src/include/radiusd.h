@@ -28,6 +28,14 @@ typedef pid_t child_pid_t;
 #define child_kill kill
 #endif
 
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
 #define NO_SUCH_CHILD_PID (child_pid_t) (0)
 
 #ifndef NDEBUG
@@ -66,6 +74,7 @@ typedef struct auth_req {
 	 */
 	char			proxysecret[32];
 	int			proxy_try_count;
+	int			proxy_outstanding;
 	time_t			proxy_next_try;
 
 	int                     simul_max;
