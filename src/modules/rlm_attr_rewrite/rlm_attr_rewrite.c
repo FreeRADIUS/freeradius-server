@@ -341,7 +341,7 @@ to_do_again:
 				pairadd(&request->packet->vps,attr_vp);
 				break;
 		}
-		DEBUG2("rlm_attr_rewrite: Added attribute %s with value '%s'",data->attribute,attr_vp->strvalue);
+		DEBUG2("rlm_attr_rewrite: Added attribute %s with value '%s'",data->attribute,replace_STR);
 		ret = RLM_MODULE_OK;
 	}
 				
