@@ -1937,24 +1937,26 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 *	are too many.  If so, stop counting immediately,
 	 *	and return with an error.
 	 */
-	request_count = 0;
-	for (i = 0; i < 256; i++) {
-		request_count += request_list[i].request_count;
+	if(max_requests) {
+		request_count = 0;
+		for (i = 0; i < 256; i++) {
+			request_count += request_list[i].request_count;
 
-		/*
-		 *	This is a new request.  Let's see if it
-		 *	makes us go over our configured bounds.
-		 */
-		if (request_count > max_requests) {
-			radlog(L_ERR, "Dropping request (%d is too many): "
-			    "from client %s:%d - ID: %d", request_count, 
-			    client_name(request->packet->src_ipaddr),
-			    request->packet->src_port,
-			    request->packet->id);
-			radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n\tThe value for 'max_requests' is probably set too low.\n");
-			request_free(request);
-			request_list_busy = FALSE;
-			return NULL;
+			/*
+			 *	This is a new request.  Let's see if it
+			 *	makes us go over our configured bounds.
+			 */
+			if (request_count > max_requests) {
+				radlog(L_ERR, "Dropping request (%d is too many): "
+				    "from client %s:%d - ID: %d", request_count, 
+				    client_name(request->packet->src_ipaddr),
+				    request->packet->src_port,
+				    request->packet->id);
+				radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n\tThe value for 'max_requests' is probably set too low.\n");
+				request_free(request);
+				request_list_busy = FALSE;
+				return NULL;
+			}
 		}
 	}
 
