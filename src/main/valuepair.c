@@ -386,18 +386,22 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 		return ret;
 
 	if (pairfind(check_pairs, PW_STRIP_USER_NAME)) {
+		/*
+		 *	I don't think we want to update the User-Name
+		 *	attribute in place... - atd
+		 */
 		strcpy(request->strvalue, rest);
 		request->length = strlen(rest);
 	} else {
 		if ((vp = pairfind(check_pairs, PW_STRIPPED_USER_NAME)) != NULL){
 			strcpy(vp->strvalue, rest);
-			request->length = strlen(rest);
+			vp->length = strlen(rest);
 		} else if ((vp = paircreate(PW_STRIPPED_USER_NAME,
 			    PW_TYPE_STRING)) != NULL) {
 			strcpy(vp->strvalue, rest);
 			vp->length = strlen(rest);
 			pairadd(&request, vp);
-		}
+		} /* else no memory! Die, die!: FIXME!! */
 	}
 
 	return ret;
