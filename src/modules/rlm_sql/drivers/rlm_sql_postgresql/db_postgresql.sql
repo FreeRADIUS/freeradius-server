@@ -17,8 +17,8 @@ CREATE TABLE radacct (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	AcctSessionId		VARCHAR(32) NOT NULL,
 	AcctUniqueId		VARCHAR(32) NOT NULL,
-	UserName		VARCHAR(32),
-	Realm			VARCHAR(30),
+	UserName		VARCHAR(64),
+	Realm			VARCHAR(64),
 	NASIPAddress		INET NOT NULL,
 	NASPortId		INTEGER,
 	NASPortType		VARCHAR(32),
@@ -75,10 +75,10 @@ CREATE INDEX radacct_start_user_idx ON radacct (acctStartTime, UserName);
  */
 CREATE TABLE radcheck (
 	id		SERIAL PRIMARY KEY,
-	UserName	VARCHAR(30) DEFAULT '' NOT NULL,
-	Attribute	VARCHAR(30),
-	op VARCHAR(2)	NOT NULL DEFAULT '==',
-	Value		VARCHAR(40)
+	UserName	VARCHAR(64) NOT NULL DEFAULT '',
+	Attribute	VARCHAR(64) NOT NULL DEFAULT '',
+	op		VARCHAR(2) NOT NULL DEFAULT '==',
+	Value		VARCHAR(253) NOT NULL DEFAULT ''
 );
 create index radcheck_UserName on radcheck (UserName,Attribute);
 
@@ -87,10 +87,10 @@ create index radcheck_UserName on radcheck (UserName,Attribute);
  */
 CREATE TABLE radgroupcheck (
 	id		SERIAL PRIMARY KEY,
-	GroupName	VARCHAR(20) DEFAULT '' NOT NULL,
-	Attribute	VARCHAR(40),
+	GroupName	VARCHAR(64) NOT NULL DEFAULT '',
+	Attribute	VARCHAR(64) NOT NULL DEFAULT '',
 	op		VARCHAR(2) NOT NULL DEFAULT '==',
-	Value		VARCHAR(40)
+	Value		VARCHAR(253) NOT NULL DEFAULT ''
 );
 create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
 
@@ -99,10 +99,10 @@ create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
  */
 CREATE TABLE radgroupreply (
 	id		SERIAL PRIMARY KEY,
-	GroupName	VARCHAR(20) DEFAULT '' NOT NULL,
-	Attribute	VARCHAR(40),
+	GroupName	VARCHAR(64) NOT NULL DEFAULT '',
+	Attribute	VARCHAR(64) NOT NULL DEFAULT '',
 	op		VARCHAR(2) NOT NULL DEFAULT '=',
-	Value		VARCHAR(40)
+	Value		VARCHAR(253) NOT NULL DEFAULT ''
 );
 create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
 
@@ -111,10 +111,10 @@ create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
  */
 CREATE TABLE radreply (
 	id		SERIAL PRIMARY KEY,
-	UserName	VARCHAR(30) DEFAULT '' NOT NULL,
-	Attribute	VARCHAR(30),
+	UserName	VARCHAR(64) NOT NULL DEFAULT '',
+	Attribute	VARCHAR(64) NOT NULL DEFAULT '',
 	op		VARCHAR(2) NOT NULL DEFAULT '=',
-	Value		VARCHAR(40)
+	Value		VARCHAR(253) NOT NULL DEFAULT ''
 );
 create index radreply_UserName on radreply (UserName,Attribute);
 
@@ -122,33 +122,34 @@ create index radreply_UserName on radreply (UserName,Attribute);
  * Table structure for table 'usergroup'
  */
 CREATE TABLE usergroup (
-	id		SERIAL PRIMARY KEY,
-	UserName	VARCHAR(30) DEFAULT '' NOT NULL,
-	GroupName	VARCHAR(30)
+	UserName	VARCHAR(64) NOT NULL DEFAULT '',
+	GroupName	VARCHAR(64) NOT NULL DEFAULT '',
+	priority	INTEGER NOT NULL DEFAULT 0
 );
 create index usergroup_UserName on usergroup (UserName);
 
 /*
  * Table structure for table 'realmgroup'
+ * Commented out because currently not used
  */
-CREATE TABLE realmgroup (
-	id		SERIAL PRIMARY KEY,
-	RealmName	VARCHAR(30) DEFAULT '' NOT NULL,
-	GroupName	VARCHAR(30)
-);
-create index realmgroup_RealmName on realmgroup (RealmName);
+--CREATE TABLE realmgroup (
+--	id		SERIAL PRIMARY KEY,
+--	RealmName	VARCHAR(30) DEFAULT '' NOT NULL,
+--	GroupName	VARCHAR(30)
+--);
+--create index realmgroup_RealmName on realmgroup (RealmName);
 
 /*
  * Table structure for table 'realms'
  * This is not yet used by FreeRADIUS 
  */
-CREATE TABLE realms (
-	id		SERIAL PRIMARY KEY,
-	realmname	VARCHAR(64),
-	nas		VARCHAR(128),
-	authport	int4,
-	options		VARCHAR(128) DEFAULT ''
-);
+--CREATE TABLE realms (
+--	id		SERIAL PRIMARY KEY,
+--	realmname	VARCHAR(64),
+--	nas		VARCHAR(128),
+--	authport	int4,
+--	options		VARCHAR(128) DEFAULT ''
+--);
 
 /*
  * Table structure for table 'nas'
