@@ -233,10 +233,19 @@ static int eappeap_check_tlv(const uint8_t *data)
 {
 	const eap_packet_t *eap_packet = (const eap_packet_t *) data;
 
+	/*
+	 *	Look for success or failure.
+	 */
 	if ((eap_packet->code == PW_EAP_RESPONSE) &&
-	    (eap_packet->data[0] == PW_EAP_TLV) &&
-	    (data[10] == EAP_TLV_SUCCESS)) {
-		return 1;
+	    (eap_packet->data[0] == PW_EAP_TLV)) {
+		if (data[10] == EAP_TLV_SUCCESS) {
+			return 1;
+		}
+
+		if (data[10] == EAP_TLV_FAILURE) {
+			DEBUG2("  rlm_eap_peap: Client rejected our response.  The password is probably incorrect.");
+			return 0;
+		}
 	}
 
 	return 0;
@@ -340,10 +349,11 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			DEBUG2("  rlm_eap_peap: Success");
 			return RLM_MODULE_OK;
 		}
-		    
+
 		return RLM_MODULE_REJECT;
 
 	} else if (t->status == PEAP_STATUS_SENT_TLV_FAILURE) {
+		DEBUG2("  rlm_eap_peap:  Had sent TLV failure, rejecting.");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -353,6 +363,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	fake->packet->vps = eap2vp(eap_ds, data, data_len);
 	if (!fake->packet->vps) {
+		DEBUG2("  rlm_eap_peap: Unable to convert tunneled EAP packet to internal server data structures");
 		return PW_AUTHENTICATION_REJECT;
 	}
 
