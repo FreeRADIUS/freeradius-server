@@ -65,7 +65,6 @@ static CONF_PARSER module_config[] = {
  */
 static REALM *check_for_realm(void *instance, REQUEST *request)
 {
-	int is_local;
 	char namebuf[MAX_STRING_LEN];
 	char *username;
 	char *realmname = NULL;
@@ -203,7 +202,6 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	/*
 	 *	Figure out what to do with the request.
 	 */
-	is_local = FALSE;
 	switch (request->packet->code) {
 	default:
 		DEBUG2("rlm_realm: Unknown packet code %d\n",
@@ -216,7 +214,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	case PW_ACCOUNTING_REQUEST:
 		if (realm->acct_ipaddr == htonl(INADDR_NONE)) {
 			DEBUG2("rlm_realm:  Accounting realm is LOCAL.");
-			is_local = TRUE;
+			return NULL;
 		}
 
 		if (realm->acct_port == 0) {
@@ -231,7 +229,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	case PW_AUTHENTICATION_REQUEST:
 		if (realm->ipaddr == htonl(INADDR_NONE)) {
 			DEBUG2("rlm_realm:  Authentication realm is LOCAL.");
-			is_local = TRUE;
+			return NULL;
 		}
 
 		if (realm->auth_port == 0) {
@@ -239,13 +237,6 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 			return NULL;
 		}
 		break;
-	}
-
-	/*
-	 *	Local realm, don't proxy it.
-	 */
-	if (is_local) {
-		return NULL;
 	}
 
 	/*
