@@ -1,7 +1,3 @@
-/*
- * mysql.c	MySQL routines. Used bt ICRADIUS 0.7 extensions
- *
- */
 
 #include	<sys/types.h>
 #include	<sys/socket.h>
@@ -36,6 +32,8 @@
  *************************************************************************/
 int sql_conenct(SQL *sql) {
 
+#ifdef RLM_SQL_MYSQL
+
 	MYSQL MyAuthConn;
 	MYSQL MyAcctConn;
 	
@@ -53,6 +51,8 @@ int sql_conenct(SQL *sql) {
 		sql->AcctSock = NULL;
 		return 0;
 	}
+#endif
+
 }
 
 

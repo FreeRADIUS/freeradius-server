@@ -10,30 +10,6 @@
 #include "rlm_sql.h"
 
 
-#ifdef ASCEND_PORT_HACK
-/*
- *	dgreer --
- *	This hack changes Ascend's wierd port numberings
- *      to standard 0-??? port numbers so that the "+" works
- *      for IP address assignments.
- */
-static int ascend_port_number(int nas_port)
-{
-	int service;
-	int line;
-	int channel;
-
-	if (nas_port > 9999) {
-		service = nas_port/10000; /* 1=digital 2=analog */
-		line = (nas_port - (10000 * service)) / 100;
-		channel = nas_port-((10000 * service)+(100 * line));
-		nas_port =
-			(channel - 1) + (line - 1) * ASCEND_CHANNELS_PER_LINE;
-	}
-	return nas_port;
-}
-#endif
-
 
 /***********************************************************************
  * start of main routines
@@ -255,13 +231,13 @@ static int rlm_sql_init(int rehup) {
        return 0;
 }
 
-static int icradius_detach(void)
-{
+static int rlm_sql_detach(void) {
+
   return 0;
 }
 
 
-static int icradius_authorize(REQUEST *request, char *name, VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs) {
+static int rlm_sql_authorize(REQUEST *request, char *name, VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs) {
 
 	int		nas_port = 0;
 	VALUE_PAIR	*check_tmp = NULL;
@@ -307,11 +283,11 @@ static int icradius_authorize(REQUEST *request, char *name, VALUE_PAIR **check_p
 #endif /* NT_DOMAIN_HACK */
 
 
-	if ((found = mysql_getvpdata(mysql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) <= 0)
+	if ((found = sql_getvpdata(sql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) <= 0)
 		return -1;
-	mysql_getvpdata(mysql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
-	mysql_getvpdata(mysql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
-	mysql_getvpdata(mysql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
+	sql_getvpdata(sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
+	sql_getvpdata(sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
+	sql_getvpdata(sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
 
 	pairmove(reply_pairs, &reply_tmp);
 	pairmove(check_pairs, &check_tmp);
@@ -345,11 +321,11 @@ static int icradius_authorize(REQUEST *request, char *name, VALUE_PAIR **check_p
 	return 0;
 }
 
-static int icradius_authenticate(REQUEST *request, char *user, char *password)
+static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
 {
 	VALUE_PAIR	*auth_pair;
-	MYSQL_RES	*result;
-	MYSQL_ROW	row;
+	SQL_RES		*result;
+	SQL_ROW		row;
 	char		querystr[256];
 
 	if ((auth_pair = pairfind(request->packet->vps, PW_AUTHTYPE)) == NULL)
@@ -379,7 +355,7 @@ static int icradius_authenticate(REQUEST *request, char *user, char *password)
 
 }
 
-static int icradius_accounting(REQUEST *request) {
+static int rlm_sql_accounting(REQUEST *request) {
 
 	time_t		nowtime;
 	struct tm	*tim;
@@ -389,8 +365,8 @@ static int icradius_accounting(REQUEST *request) {
 	FILE		*backupfile;
 	struct stat	backup;
 	char		*valbuf;
-	MYSQLREC sqlrecord = {"", "", "", "", 0, "", "", 0, "", 0, "", "", 0, 0, "", "", "", "", "", "", 0};
-	MYSQLREC backuprecord = {"", "", "",  "", 0, "", "", 0, "", 0, "", "", 0, 0, "", "", "", "", "", "", 0};
+	SQLREC 		sqlrecord = {"", "", "", "", 0, "", "", 0, "", 0, "", "", 0, 0, "", "", "", "", "", "", 0};
+	SQLREC 		backuprecord = {"", "", "",  "", 0, "", "", 0, "", 0, "", "", 0, 0, "", "", "", "", "", "", 0};
 	VALUE_PAIR	*pair;
 
 
