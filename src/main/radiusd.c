@@ -44,6 +44,8 @@ static const char rcsid[] =
 #include	<pthread.h>
 #endif
 
+#include <assert.h>
+
 #include	"radiusd.h"
 
 #ifdef WITH_NEW_CONFIG
@@ -894,7 +896,7 @@ int rad_process(REQUEST *request, int dospawn)
 	 */
 	(*fun)(request);
 	rad_respond(request);
-	
+
 	/*
 	 *	And the request is in the REQUEST_LIST, so we can't
 	 *	delete it...
@@ -998,8 +1000,9 @@ static int rad_clean_list(int force)
 		curreq = request_list[id].first_request;
 		prevreq = NULL;
 
-		while (curreq &&
-		       (curreq->timestamp < (curtime + max_request_time))) {
+		while (curreq != NULL) {
+			assert((curreq->finished == FALSE) ||
+			       (curreq->reply != NULL));
 			/*
 			 *	We don't join threads which are in the pool.
 			 */
@@ -1072,14 +1075,14 @@ static int rad_clean_list(int force)
 				  cleaned = TRUE;
 				}
 
-				if (prevreq == (REQUEST *)NULL) {
-				  request_list[id].first_request = curreq->next;
-				  request_free(curreq);
-				  curreq = request_list[id].first_request;
+				if (prevreq == NULL) {
+					request_list[id].first_request = curreq->next;
+					request_free(curreq);
+					curreq = request_list[id].first_request;
 				} else {
-				  prevreq->next = curreq->next;
-				  request_free(curreq);
-				  curreq = prevreq->next;
+					prevreq->next = curreq->next;
+					request_free(curreq);
+					curreq = prevreq->next;
 				}
 				if (curreq)
 					curreq->prev = prevreq;
@@ -1133,7 +1136,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 	if (request->packet->sockfd == proxyfd) {
 		return proxy_check_list(request);
 
-
 		/*
 		 *	If the request already has a proxy packet,
 		 *	then it obviously is not a new request, either.
@@ -1143,9 +1145,15 @@ static REQUEST *rad_check_list(REQUEST *request)
 	}
 
 	request_list_entry = &request_list[request->packet->id];
+
+	assert((request_list_entry->first_request == NULL) ||
+	       (request_list_entry->request_count != 0));
+	assert((request_list_entry->first_request != NULL) ||
+	       (request_list_entry->request_count == 0));
 	curreq = request_list_entry->first_request;
 	prevreq = NULL;
 	pkt = request->packet;
+	request_count = 0;
 
 	/*
 	 *	When mucking around with the request list, we block
@@ -1154,7 +1162,10 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 */
 	request_list_busy = TRUE;
 
-	while (curreq != (REQUEST *)NULL) {
+	while (curreq != NULL) {
+		assert(curreq->packet->id == pkt->id);
+		request_count++;
+
 		/*
 		 *	Let's see if we received a duplicate of
 		 *	a packet we already have in our list.
@@ -1163,9 +1174,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 *	the packet code, and ID.
 		 */
 		if ((curreq->packet->src_ipaddr == pkt->src_ipaddr) &&
-		    (curreq->packet->code == pkt->code) &&
-		    (curreq->packet->id == pkt->id)) {
-
+		    (curreq->packet->code == pkt->code)) {
 		  /*
 		   *	We now check the authentication vectors.
 		   *	If the client has sent us a request with
@@ -1197,6 +1206,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 				 */
 			} else if (curreq->proxy_reply != NULL) {
 				/* FIXME: kick the remote server again ? */
+				DEBUG2("DUPLICATE got proxy reply???");
 			} else {
 				log(L_ERR,
 				"Dropping duplicate authentication packet"
@@ -1214,17 +1224,25 @@ static REQUEST *rad_check_list(REQUEST *request)
 			request = NULL;
 			break;
 		  } else {
-		  	/*
-			 *	The packet vectors are different, so
-			 *	we can mark the old request to be
-			 *	deleted from the list.
-			 */
-		    if (curreq->finished) {
-				curreq->timestamp = 0;
-				break;
-		    }
+			  /*
+			   *	The packet vectors are different, so
+			   *	we can mark the old request to be
+			   *	deleted from the list.
+			   *
+			   *	Note that we don't actually delete it...
+			   *	Maybe we should?
+			   */
+			  if (curreq->finished) {
+				  curreq->timestamp = 0;
+			  } else {
+				  /*
+				   *	??? the client sent us a new request
+				   *	with the same ID, while we were processing
+				   *	the old one!  What should we do?
+				   */
+			  }
 		  }
-		} /* checks for duplicate packets */
+		}
 
 		prevreq = curreq;
 		curreq = curreq->next;
@@ -1237,6 +1255,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 		request_list_busy = FALSE;
 		return NULL;
 	}
+
+	assert(request_list_entry->request_count == request_count);
 
 	/*
 	 *	Count the total number of requests, to see if there
@@ -1275,18 +1295,23 @@ static REQUEST *rad_check_list(REQUEST *request)
 		}
 	}
 
+ add_to_list:
 	/*
 	 *	Add this request to the list
 	 */
 	request->prev = prevreq;
-	request->next = (REQUEST *)NULL;
+	request->next = NULL;
 	request->child_pid = NO_SUCH_CHILD_PID;
 	request_list_entry->request_count++;
 
-	if (prevreq == (REQUEST *)NULL)
+	if (prevreq == NULL) {
+		assert(request_list_entry->first_request == NULL);
+		assert(request_list_entry->request_count == 1);
 		request_list_entry->first_request = request;
-	else
+	} else {
+		assert(request_list_entry->first_request != NULL);
 		prevreq->next = request;
+	}
 
 	/*
 	 *	And return the request to be handled.
@@ -1556,10 +1581,33 @@ static REQUEST *proxy_check_list(REQUEST *request)
 		for (oldreq = request_list[id].first_request ;
 		     oldreq != NULL ;
 		     oldreq = oldreq->next) {
+			
+			/*
+			 *	See if this reply packet matches a proxy
+			 *	packet which we sent.
+			 */
 			if (oldreq->proxy &&
 			    (oldreq->proxy->dst_ipaddr == pkt->src_ipaddr) &&
 			    (oldreq->proxy->dst_port == pkt->src_port) &&
 			    (oldreq->proxy->id == pkt->id)) {
+				/*
+				 *	If there is already a reply,
+				 *	maybe the new one is a duplicate?
+				 */
+				if (oldreq->proxy_reply) {
+					if (memcmp(oldreq->proxy_reply->vector,
+						   request->packet->vector,
+						   sizeof(oldreq->proxy_reply->vector)) == 0) {
+						DEBUG2("Ignoring duplicate proxy reply");
+						request_free(request);
+						return NULL;
+					} else {
+						/*
+						 *	got other stuff...
+						 */
+						continue;
+					}
+				} /* else no reply, this one must match */
 				break;
 			}
 		}
@@ -1582,7 +1630,6 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	oldreq->timestamp += 5;
 	oldreq->proxy_reply = request->packet;
 	request->packet = NULL;
-
 	request_free(request);
 	return oldreq;
 }
