@@ -39,8 +39,8 @@ if ($config[ldap_default_dn] != ''){
 										if (!isset($default_vals["$key"]))
 											$default_vals["$key"] = array();
 										if ($attrmap[generic]["$key"] == 'generic'){
-											for($i=0;$i<$info2[0]["$val"][count];$i++)
-												$default_vals["$key"][] = $info2[0]["$val"][$i];
+											for($j=0;$j<$info2[0]["$val"][count];$j++)
+												$default_vals["$key"][] = $info2[0]["$val"][$j];
 											$default_vals["$key"][count] += $info2[0]["$val"][count];
 										}
 										else
