@@ -36,7 +36,6 @@ typedef struct CONF_PARSER {
 #define XStringify(x) #x
 #define Stringify(x) XStringify(x)
 
-CONF_SECTION	*conf_read(const char *conffile);
 void		cf_pair_free(CONF_PAIR *cp);
 void		cf_section_free(CONF_SECTION *cp);
 int		cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables);
