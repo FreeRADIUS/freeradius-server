@@ -881,6 +881,21 @@ static REQUEST *rad_check_list(REQUEST *request)
 			curreq->timestamp = 0;
 		}
 		
+#ifdef HAVE_PTHREAD_H
+		/*
+		 *  Join the child thread
+		 */
+		if (curreq->finished &&
+		    curreq->child_pid != NO_SUCH_CHILD_PID) {
+
+		  DEBUG("joining child %d", curreq->child_pid);
+		  pthread_join(curreq->child_pid, NULL);
+
+		  DEBUG("successfully joined child %d", curreq->child_pid);
+		  curreq->child_pid = NO_SUCH_CHILD_PID;
+		}
+#endif
+
 		/*
 		 *	Delete the current request, if it's marked as such.
 		 *	That is, the request must be finished, there must
@@ -973,6 +988,26 @@ void remove_from_request_list(REQUEST *request)
   }
 }
 
+#ifdef HAVE_PTHREAD_H
+typedef struct spawn_thread_t {
+  REQUEST *request;
+  FUNP fun;
+} spawn_thread_t;
+
+static void *rad_spawn_thread(void *arg)
+{
+  spawn_thread_t *data = (spawn_thread_t *)arg;
+
+  DEBUG("child %d handling request", pthread_self());
+
+  (*data->fun)(data->request);
+  rad_respond(data->request);
+  DEBUG("child %d request is done", pthread_self());
+
+  return NULL;
+}
+#endif
+
 /*
  *	Spawns a child process or thread to perform
  *	authentication/accounting and respond to RADIUS clients.
@@ -982,27 +1017,27 @@ static void rad_spawn_child(REQUEST *request, FUNP fun,
 {
 	child_pid_t		child_pid;
 
-#if 0
-	/*
-	 *	FIXME!!!
-	 *
-	 *	When threading is done, wrap with
-	 * #ifdef HAVE_PTHREAD_H, etc.
-	 **/
+#ifdef HAVE_PTHREAD_H
 	int rcode;
+	spawn_thread_t data;
+
+	data.request = request;
+	data.fun = fun;
 
 	/*
 	 *	Create a child thread, complaining on error.
 	 */
-	rcode = pthread_create(&child_pid, NULL, fun, request);
+	rcode = pthread_create(&child_pid, NULL, rad_spawn_thread, &data);
 	if (rcode != 0) {
-		log(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
-				nas_name2(request->packet),
-				request->packet->id,
-		                strerror(errno));
+	  log(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
+	      nas_name2(request->packet),
+	      request->packet->id,
+	      strerror(errno));
+	} else {
+	  DEBUG("spawned child %d to handle request", child_pid);
 	}
-	/* respond to the request ??? */
-#endif
+
+#else
 	/*
 	 *	fork our child
 	 */
@@ -1012,7 +1047,9 @@ static void rad_spawn_child(REQUEST *request, FUNP fun,
 				nas_name2(request->packet),
 				request->packet->id);
 	}
+
 	if (child_pid == 0) {
+
 		/*
 		 *	This is the child, it should go ahead and respond
 		 */
@@ -1022,6 +1059,7 @@ static void rad_spawn_child(REQUEST *request, FUNP fun,
 		rad_respond(request);
 		exit(0);
 	}
+#endif
 
 	/*
 	 *	Register the Child

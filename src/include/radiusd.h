@@ -13,16 +13,10 @@
 
 #include <sys/time.h>
 
-#if 0
 #if HAVE_PTHREAD_H
 #include	<pthread.h>
 typedef pthread_t child_pid_t ;
 #else
-typedef pid_t child_pid_t;
-#endif
-
-#else
-/* FIX when threading is done! */
 typedef pid_t child_pid_t;
 #endif
 
@@ -167,7 +161,6 @@ RADIUS_PACKET *	build_reply(int code, REQUEST *request,
 /* files.c */
 RADCLIENT	*client_find(uint32_t ipno);
 char		*client_name(uint32_t ipno);
-int		read_clients_file(const char *);
 REALM		*realm_find(const char *);
 PAIR_LIST	*pairlist_read(const char *file, int complain);
 void		pairlist_free(PAIR_LIST **);
