@@ -778,6 +778,9 @@ int main(int argc, char **argv)
 				exit(1);
 			}
 			memset(request, 0, sizeof(REQUEST));
+#ifndef NDEBUG
+			request->magic = REQUEST_MAGIC;
+#endif
 			request->packet = packet;
 			request->proxy = NULL;
 			request->reply = NULL;
@@ -823,6 +826,8 @@ int rad_process(REQUEST *request, int dospawn)
 	RAD_REQUEST_FUNP fun;
 
 	fun = NULL;
+
+	assert(request->magic == REQUEST_MAGIC);
 
 	switch(request->packet->code) {
 
@@ -877,6 +882,8 @@ int rad_process(REQUEST *request, int dospawn)
 		}
 		break;
 	}
+
+	assert(request->magic == REQUEST_MAGIC);
 
 	/*
 	 *	Select the required function and indicate if
@@ -935,6 +942,8 @@ int rad_process(REQUEST *request, int dospawn)
 		return 0;
 	}
 	
+	assert(request->magic == REQUEST_MAGIC);
+
 	/*
 	 *	If we're spawning a child thread, let it do all of
 	 *	the work of handling a request, and exit.
@@ -1015,6 +1024,8 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		secret = request->secret;
 		original = NULL;
 	}
+
+	assert(request->magic == REQUEST_MAGIC);
 	
 	/*
 	 *	Decode the packet, verifying it's signature,
@@ -1053,6 +1064,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	We have the semaphore, and have decoded the packet.
 	 *	Let's process the request.
 	 */
+	assert(request->magic == REQUEST_MAGIC);
 	(*fun)(request);
 	
 	/*
@@ -1089,6 +1101,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	/*
 	 *	If there's a reply, send it to the NAS.
 	 */
+	assert(request->magic == REQUEST_MAGIC);
 	if (request->reply)
 		rad_send(request->reply, request->secret);
 	
@@ -1203,6 +1216,8 @@ static int rad_clean_list(void)
 		prevreq = NULL;
 
 		while (curreq != NULL) {
+			assert(curreq->magic == REQUEST_MAGIC);
+
 			/*
 			 *	Maybe the child process handling the request
 			 *	has hung: kill it, and continue.

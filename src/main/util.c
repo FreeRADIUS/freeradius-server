@@ -80,6 +80,9 @@ void request_free(REQUEST *request)
 	if (request->config_items) {
 		pairfree(request->config_items);
 	}
+#ifndef NDEBUG
+	request->magic = 0x01020304;	/* set the request to be nonsense */
+#endif
 	free(request);
 }
 

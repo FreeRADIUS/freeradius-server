@@ -22,7 +22,14 @@ typedef pid_t child_pid_t;
 
 #define NO_SUCH_CHILD_PID (0)
 
+#ifndef NDEBUG
+#define REQUEST_MAGIC (0xdeadbeef)
+#endif
+
 typedef struct auth_req {
+#ifndef NDEBUG
+	uint32_t		magic; /* for debugging only */
+#endif
 	RADIUS_PACKET		*packet;
 	RADIUS_PACKET		*proxy;
 	RADIUS_PACKET		*reply;
