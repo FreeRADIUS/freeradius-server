@@ -702,18 +702,6 @@ int main(int argc, char **argv)
 				continue;
 			}
 
-#ifndef WITH_THREAD_POOL
-			/*
-			 *	If using thread pools, this work is
-			 *	pushed onto the child threads.
-			 */
-			if (rad_decode(packet, cl->secret) != 0) {
-				log(L_ERR, "%s", librad_errstr);
-				rad_free(packet);
-				continue;
-			}
-#endif
-
 			if ((request = malloc(sizeof(REQUEST))) == NULL) {
 				log(L_ERR|L_CONS, "no memory");
 				exit(1);
@@ -886,30 +874,7 @@ int rad_process(REQUEST *request, int dospawn)
 		return 0;
 	}
 
-#ifndef WITH_THREAD_POOL
-	/*
-	 *	Keep only allowed attributes in the request.
-	 */
-	if (request->proxy) {
-		replicating = proxy_receive(request);
-		if (replicating != 0) {
-			request->finished = TRUE;
-			return 0;
-		}
-	}
-#endif
-	/*
-	 *	We're the one who's supposed to handle the request,
-	 *	as everyone else gave up on it.  Let's do so.
-	 */
-	(*fun)(request);
-	rad_respond(request);
-
-	/*
-	 *	And the request is in the REQUEST_LIST, so we can't
-	 *	delete it...
-	 */
-
+	rad_respond(request, fun);
 	return 0;
 }
 
@@ -920,8 +885,64 @@ int rad_process(REQUEST *request, int dospawn)
  *	Maybe we proxy the request to another server, or else maybe
  *	we replicate it to another server.
  */
-int rad_respond(REQUEST *request)
+int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
+	RADIUS_PACKET	*packet;
+	const char	*secret;
+	int		replicating;
+	
+	/*
+	 *	Put the decoded packet into it's proper place.
+	 */
+	if (request->proxy_reply != NULL) {
+		packet = request->proxy_reply;
+		secret = request->proxysecret;
+	} else {
+		packet = request->packet;
+		secret = request->secret;
+	}
+	
+	/*
+	 *	Decode the packet, verifying it's signature,
+	 *	and parsing the attributes into structures.
+	 *
+	 *	Note that we do this CPU-intensive work in
+	 *	a child thread, not the master.  This helps to
+	 *	spread the load a little bit.
+	 */
+	if (rad_decode(packet, secret) != 0) {
+		log(L_ERR, "%s", librad_errstr);
+		/*
+		 *	Send a reject?
+		 */
+		goto finished_request;
+	}
+	
+	/*
+	 *	For proxy replies, remove non-allowed
+	 *	attributes from the list of VP's.
+	 */
+	if (request->proxy) {
+		replicating = proxy_receive(request);
+		if (replicating != 0) {
+			goto next_request;
+		}
+	}
+	
+	/*
+	 *	We should have a User-Name attribute now.
+	 */
+	if (request->username == NULL) {
+		request->username = pairfind(request->packet->vps,
+					     PW_USER_NAME);
+	}
+	
+	/*
+	 *	We have the semaphore, and have decoded the packet.
+	 *	Let's process the request.
+	 */
+	(*fun)(request);
+	
 	/*
 	 *	If we don't already have a proxy
 	 *	packet for this request, we MIGHT have
@@ -930,35 +951,41 @@ int rad_respond(REQUEST *request)
 	if (request->proxy == NULL) {
 		int sent;
 		sent = proxy_send(request);
-
+		
 		/*
 		 *	sent==1 means it's been proxied.  The child
 		 *	is done handling the request, but the request
 		 *	is NOT finished!
 		 */
 		if (sent == 1) {
-#ifdef WITH_THREAD_POOL
-			request->child_pid = NO_SUCH_CHILD_PID;
-#endif
-			return 0;
+			goto next_request;
 		}
-
-#if 0
-	} else {
-		if (replicating != 0) {
-			/* ??? */
-		}
-#endif
 	}
 	
+	/*
+	 *	If there's a reply, send it to the NAS.
+	 */
 	if (request->reply)
 		rad_send(request->reply, request->secret);
 	
+	/*
+	 *	We're done processing the request, set the
+	 *	request to be finished, clean up as necessary,
+	 *	and forget about the request.
+	 */
+ finished_request:
+	DEBUG2("Finished request");
+	request->finished = TRUE;
+	
+	/*
+	 *	Go to the next request, without marking
+	 *	the current one as finished.
+	 */
+ next_request:
 #ifdef WITH_THREAD_POOL
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
-	request->finished = TRUE;
-	return 0;
+	DEBUG2("Going to the next request");
 }
 
 /*
@@ -989,9 +1016,6 @@ static int rad_clean_list(void)
 		return FALSE;
 	}
 
-	DEBUG2("Cleaning up request list after %d seconds",
-	       (int) (curtime - last_cleaned_list));
-	
 #ifdef WITH_THREAD_POOL
 	thread_pool_clean();
 #endif
@@ -1010,25 +1034,6 @@ static int rad_clean_list(void)
 		while (curreq != NULL) {
 			assert((curreq->finished == FALSE) ||
 			       (curreq->reply != NULL));
-			/*
-			 *	We don't join threads which are in the pool.
-			 */
-#ifndef WITH_THREAD_POOL
-#ifdef HAVE_PTHREAD_H
-			/*
-			 *	If the child request has finished, then
-			 *	join it (to delete it's stack, etc), and
-			 *	mark it as really done.
-			 */
-			if (curreq->finished &&
-			    curreq->child_pid != NO_SUCH_CHILD_PID) {
-			  
-			  DEBUG2("Joining child thread %d\n", curreq->child_pid);
-			  pthread_join(curreq->child_pid, NULL);
-			  curreq->child_pid = NO_SUCH_CHILD_PID;
-			}
-#endif
-#endif
 
 			/*
 			 *	Maybe the child process handling the request
@@ -1105,7 +1110,18 @@ static int rad_clean_list(void)
 	for (id = 0; id < 256; id++) {
 		request_count += request_list[id].request_count;
 	}
-	DEBUG2("%d requests left in the list", request_count);
+	
+	/*
+	 *	Only print this if anything's changed.
+	 */
+	{
+		static int old_request_count = -1;
+
+		if (request_count != old_request_count) {
+			DEBUG2("%d requests left in the list", request_count);
+			old_request_count = request_count;
+		}
+	}
 
 	/*
 	 *	We're done playing with the request list.
@@ -1413,8 +1429,8 @@ static void *rad_spawn_thread(void *arg)
 		}
 	}
 	
-	(*(data->fun))(data->request);
-	rad_respond(data->request);
+	rad_respond(data->request, data->fun);
+	data->request->child_pid = NO_SUCH_CHILD_PID;
 	free(data);
 	return NULL;
 }
@@ -1454,6 +1470,11 @@ static void rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	      strerror(errno));
 	}
 
+	/*
+	 *	Detach it, so it's state is automagically cleaned up on exit.
+	 */
+	pthread_detach(child_pid);
+
 #else
 	/*
 	 *	fork our child
@@ -1471,8 +1492,7 @@ static void rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	This is the child, it should go ahead and respond
 		 */
 		signal(SIGCHLD, SIG_DFL);
-		(*fun)(request);
-		rad_respond(request);
+		rad_respond(request, fun);
 		exit(0);
 	}
 #endif

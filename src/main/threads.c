@@ -104,11 +104,6 @@ static CONF_PARSER thread_config[] = {
 static void *request_handler_thread(void *arg)
 {
 	THREAD_HANDLE	*self;
-	REQUEST		*request;
-	RAD_REQUEST_FUNP fun;
-	RADIUS_PACKET	*packet;
-	const char	*secret;
-	int		replicating;
 
 	self = (THREAD_HANDLE *) arg;
 	
@@ -136,100 +131,7 @@ static void *request_handler_thread(void *arg)
 		DEBUG2("Thread %d handling request %08x, number %d",
 		       self->child_pid, self->request, self->request_count);
 		
-		request = self->request;
-		fun = self->fun;
-
-		/*
-		 *	Put the decoded packet into it's proper place.
-		 */
-		if (request->proxy_reply != NULL) {
-			packet = request->proxy_reply;
-			secret = request->proxysecret;
-		} else {
-			packet = request->packet;
-			secret = request->secret;
-		}
-
-		/*
-		 *	Decode the packet, verifying it's signature,
-		 *	and parsing the attributes into structures.
-		 *
-		 *	Note that we do this CPU-intensive work in
-		 *	a child thread, not the master.  This helps to
-		 *	spread the load a little bit.
-		 */
-		if (rad_decode(packet, secret) != 0) {
-		    log(L_ERR, "%s", librad_errstr);
-		    /*
-		     *	Send a reject?
-		     */
-		    goto finished_request;
-		}
-
-		/*
-		 *	For proxy replies, remove non-allowed
-		 *	attributes from the list of VP's.
-		 */
-		if (request->proxy) {
-			replicating = proxy_receive(request);
-			if (replicating != 0) {
-				goto next_request;
-			}
-		}
-		
-		/*
-		 *	We should have a User-Name attribute now.
-		 */
-		if (request->username == NULL) {
-			request->username = pairfind(request->packet->vps,
-						     PW_USER_NAME);
-		}
-
-		/*
-		 *	We have the semaphore, and have decoded the packet.
-		 *	Let's process the request.
-		 */
-		(*fun)(request);
-		
-		/*
-		 *	If we don't already have a proxy
-		 *	packet for this request, we MIGHT have
-		 *	to go proxy it.
-		 */
-		if (request->proxy == NULL) {
-			int sent;
-			sent = proxy_send(request);
-			
-			/*
-			 *	sent==1 means it's been proxied.  The child
-			 *	is done handling the request, but the request
-			 *	is NOT finished!
-			 */
-			if (sent == 1) {
-				goto next_request;
-			}
-		}
-
-		/*
-		 *	If there's a reply, send it to the NAS.
-		 */
-		if (request->reply)
-			rad_send(request->reply, request->secret);
-		
-		/*
-		 *	We're done processing the request, set the
-		 *	request to be finished, clean up as necessary,
-		 *	and forget about the request.
-		 */
-	finished_request:
-		request->finished = TRUE;
-		
-		/*
-		 *	Go to the next request, without marking
-		 *	the current one as finished.
-		 */
-	next_request:
-		request->child_pid = NO_SUCH_CHILD_PID;
+		rad_respond(self->request, self->fun);
 		self->request = NULL;
 
 		/*

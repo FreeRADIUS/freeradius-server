@@ -159,7 +159,7 @@ void		debug_pair(FILE *, VALUE_PAIR *);
 int		log_err (char *);
 void		sig_cleanup(int);
 void		remove_from_request_list(REQUEST *);
-int		rad_respond (REQUEST *);
+int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
 
 /* util.c */
 void (*reset_signal(int signo, void (*func)(int)))(int);
