@@ -12,7 +12,7 @@ rlm_ippool_tool: rlm_ippool_tool.o
 	$(LIBTOOL) --mode=link $(CC) $^ $(LIBS) $(RLM_LIBS) -o $@
 
 rlm_ippool_tool.8: rlm_ippool_tool.pod
-	pod2man --release=" " --date="October 2nd, 2003" --center="FreeRADIUS Daemon" --section=8 rlm_ippool_tool.pod rlm_ippool_tool.8
+	pod2man --release=" " --date="October 2nd, 2003" --center="FreeRADIUS Daemon" --section=8 rlm_ippool_tool.pod > rlm_ippool_tool.8
 
 $(STATIC_OBJS): $(HEADERS)
 
