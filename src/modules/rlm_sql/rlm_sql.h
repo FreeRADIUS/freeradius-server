@@ -42,7 +42,7 @@ typedef struct sqlrec {
 } SQLACCTREC;
 
 int     sql_init_socketpool(SQL_INST *inst);
-int     sql_poolfree(SQL_INST *inst);
+void	sql_poolfree(SQL_INST *inst);
 int     sql_close_socket(SQLSOCK *sqlsocket);
 SQLSOCK *sql_get_socket(SQL_INST *inst);
 int     sql_release_socket(SQL_INST *inst, SQLSOCK *sqlsocket);

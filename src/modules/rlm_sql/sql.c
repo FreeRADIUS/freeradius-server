@@ -93,7 +93,7 @@ int sql_init_socketpool(SQL_INST *inst) {
  *     Purpose: Clean up and free sql pool
  *
  *************************************************************************/
-int sql_poolfree(SQL_INST *inst) {
+void sql_poolfree(SQL_INST *inst) {
 
 	SQLSOCK *cur;
 
@@ -723,16 +723,16 @@ int sql_check_multi(SQL_INST *inst, SQLSOCK *sqlsocket, char *name, VALUE_PAIR *
 			 */
 
 			if (inst->config->deletestalesessions) {
-				SQLSOCK *sqlsocket;
+				SQLSOCK *sqlsocket1;
 
 				radlog(L_ERR, "rlm_sql:  Deleteing stale session [%s] (from nas %s/%s)", row[2],
 							 row[4], row[5]);
-				sqlsocket = sql_get_socket(inst);
+				sqlsocket1 = sql_get_socket(inst);
 				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'",
 								inst->config->sql_acct_table, row[0]);
-				sql_query(inst, sqlsocket, querystr);
-				sql_finish_query(sqlsocket);
-				sql_close_socket(sqlsocket);
+				sql_query(inst, sqlsocket1, querystr);
+				sql_finish_query(sqlsocket1);
+				sql_release_socket(inst, sqlsocket1);
 			}
 		}
 	}
