@@ -90,6 +90,8 @@
  *	- Remember to free groupmembership_attribute in ldap_detach
  *	- Don't delete existing generic attributes in ldap_pairget when adding new ones. Since generic attributes
  *	  have operators we don't need to try to be cleaver.
+ * Sep 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Fix a crash in ldap_pairget when the attribute value is larger than the buffer size
  */
 static const char rcsid[] = "$Id$";
 
@@ -1074,6 +1076,8 @@ ldap_authorize(void *instance, REQUEST * request)
 	if (inst->profile_attr){
 		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL && strlen(vals[0])) {
 			strncpy(filter,"(objectclass=radiusprofile)",MAX_AUTH_QUERY_LEN);
+			if (inst->cache_timeout >0)
+				ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
 			if ((res = perform_search(instance, conn,
 				vals[0], LDAP_SCOPE_BASE, 
 				filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
@@ -1528,7 +1532,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 	TLDAP_RADIUS   *element;
 	LRAD_TOKEN      token;
 	int             is_generic_attribute;
-	char            value[64];
+	char            value[256];
 	VALUE_PAIR     *pairlist = NULL;
 	VALUE_PAIR     *newpair = NULL;
 
@@ -1565,11 +1569,11 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 					}
 				} else {
 					/* this is a one-to-one-mapped attribute */
-					token = gettoken(&ptr, value, sizeof(value));
+					token = gettoken(&ptr, value, sizeof(value) - 1);
 					if (token < T_EQSTART || token > T_EQEND) {
 						token = T_OP_EQ;
 					} else {
-						gettoken(&ptr, value, sizeof(value));
+						gettoken(&ptr, value, sizeof(value) - 1);
 					}
 					if (value[0] == 0) {
 						DEBUG("rlm_ldap: Attribute %s has no value", element->attr);
