@@ -986,18 +986,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	}
 
 	/*
-	 *	If we've seen an EAP-Message attribute without a
-	 *	Message-Authenticator attribute, it's invalid.
-	 */
-	if (((seen_eap & PW_EAP_MESSAGE) == PW_EAP_MESSAGE) &&
-	    ((seen_eap & PW_MESSAGE_AUTHENTICATOR) != PW_MESSAGE_AUTHENTICATOR)) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: Contains EAP-Message, but no Message-Authenticator",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
-		free(packet);
-		return NULL;
-	}
-
-	/*
 	 *	If we're configured to look for a maximum number of
 	 *	attributes, and we've seen more than that maximum,
 	 *	then throw the packet away, as a possible DoS.
@@ -1108,7 +1096,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (memcmp(calc_auth_vector, msg_auth_vector,
 				    sizeof(calc_auth_vector)) != 0) {
 				char buffer[32];
-				librad_log("Received packet from %s with invalid Message-Authenticator!",
+				librad_log("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
 					   ip_ntoa(buffer, packet->src_ipaddr));
 				return 1;
 			} /* else the message authenticator was good */
@@ -1141,7 +1129,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (calc_acctdigest(packet, secret) > 1) {
 				char buffer[32];
 				librad_log("Received Accounting-Request packet "
-				    "from %s with invalid signature!",
+				    "from %s with invalid signature!  (Shared secret is incorrect.)",
 				    ip_ntoa(buffer, packet->src_ipaddr));
 				return 1;
 			}
@@ -1154,7 +1142,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (calc_replydigest(packet, original, secret) > 1) {
 				char buffer[32];
 				librad_log("Received %s packet "
-					   "from %s with invalid signature!",
+					   "from %s with invalid signature!  (Shared secret is incorrect.)",
 					   packet_codes[packet->code],
 					   ip_ntoa(buffer, packet->src_ipaddr));
 				return 1;
