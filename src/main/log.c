@@ -281,3 +281,20 @@ int radlog(int lvl, const char *msg, ...)
 
 	return r;
 }
+
+
+/*
+ *      Dump a whole list of attributes to DEBUG2
+ */                     
+void vp_listdebug(VALUE_PAIR *vp)
+{       
+        char tmpPair[70];  
+        for (; vp; vp = vp->next) {
+                vp_prints(tmpPair, sizeof(tmpPair), vp);
+                DEBUG2("     %s", tmpPair);
+        }               
+}
+   
+
+ 
+        

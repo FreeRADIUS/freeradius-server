@@ -261,7 +261,7 @@ NAS		*nas_findbyname(char *nasname);
 void		version(void);
 
 /* log.c */
-int radlogdir_iswritable(const char *);
+int 		radlogdir_iswritable(const char *);
 int		vradlog(int, const char *, va_list ap);
 int		radlog(int, const char *, ...)
 #ifdef __GNUC__
@@ -273,6 +273,7 @@ int		log_debug(const char *, ...)
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
+void 		vp_listdebug(VALUE_PAIR *vp);
 
 /* proxy.c */
 int proxy_receive(REQUEST *request);
