@@ -353,7 +353,7 @@ rlm_sql_module_t rlm_sql_db2 = {
 	sql_select_query,
 	not_implemented, /* sql_store_result */
 	sql_num_fields,
-	not_implemented,
+	not_implemented, /* sql_num_rows */
 	sql_fetch_row,
 	sql_free_result,
 	sql_error,
