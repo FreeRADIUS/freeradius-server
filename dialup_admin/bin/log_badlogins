@@ -93,7 +93,12 @@ close CLIENTS;
 
 $realm_del = '@' if ($realm_del eq '');
 $realm_for = 'suffix' if ($realm_for eq '');
-$pass = ($sql_password ne '') ? "-p$sql_password" : '';
+if ($sql_type eq 'mysql'){
+	$pass = ($sql_password ne '') ? "-p$sql_password" : '';
+}
+else{
+	$pass = $sql_password;
+}
 $pass =~ s/(\W)/\\$1/g;
 die "SQL server not defined\n" if ($sql_server eq '');
 
@@ -193,6 +198,7 @@ for(;;){
 					close TMP;
 					$command = "$sqlcmd -h$server $opt -u$sql_username $pass $sql_database <$tmpfile.$server" if ($sql_type eq 'mysql');
 					$command = "$sqlcmd  -U $sql_username -f $tmpfile.$server $sql_database" if ($sql_type eq 'pg');
+					$command = "$sqlcmd '$server' '$sql_port' '' '$sql_username' '$sql_pass' <$tmpfile.$server" if ($sql_type eq 'sqlrelay');
 					`$command`;
 
 					$exit = $? >> 8;

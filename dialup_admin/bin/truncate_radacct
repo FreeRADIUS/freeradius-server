@@ -28,7 +28,9 @@ close CONF;
 die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
 die "Could not find sql binary. Please make sure that the \$sqlcmd variable points to the right location\n" if (! -x $sqlcmd);
 
-$sql_password = ($sql_password eq '') ? '' : "-p$sql_password";
+if ($sql_type eq 'mysql'){
+	$sql_password = ($sql_password eq '') ? '' : "-p$sql_password";
+}
 $sql_password =~ s/(\W)/\\$1/g;
 
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
@@ -48,4 +50,5 @@ print TMP $query;
 close TMP;
 $command = "$sqlcmd -h$sql_server -u$sql_username $sql_password $sql_database </tmp/truncate_radacct.query" if ($sql_type eq 'mysql');
 $command = "$sqlcmd  -U $sql_username -f /tmp/truncate_radacct.query $sql_database" if ($sql_type eq 'pg');
+$command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' </tmp/truncate_radacct.query" if ($sql_type eq 'sqlrelay');
 `$command`;
