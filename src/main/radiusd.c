@@ -162,6 +162,37 @@ static void reread_config(int reload)
 	int pid = getpid();
 	CONF_SECTION *cs;
 
+	if (!reload) {
+		log(L_INFO, "Starting - reading configuration files ...");
+	} else if (pid == radius_pid) {
+		log(L_INFO, "Reloading configuration files.");
+	}
+
+	/* Read users file etc. */
+	if (res == 0 && read_config_files() != 0)
+		res = -1;
+
+	if (res != 0) {
+	  if (pid == radius_pid) {
+			log(L_ERR|L_CONS,
+				"Errors reading config file - EXITING");
+		}
+		exit(1);
+	}
+
+	/*
+	 *	And parse the server's configuration values.
+	 */
+	cs = cf_section_find("main");
+	if (!cs)
+		return;
+
+	cf_section_parse(cs, server_config);
+
+	/*
+	 *	Go update our behaviour, based on the configuration
+	 *	changes.
+	 */
 	if (allow_core_dumps) {
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
 			log(L_ERR|L_CONS, "Cannot update core dump limit: %s",
@@ -190,32 +221,6 @@ static void reread_config(int reload)
 		}
 	}
 
-	if (!reload) {
-		log(L_INFO, "Starting - reading configuration files ...");
-	} else if (pid == radius_pid) {
-		log(L_INFO, "Reloading configuration files.");
-	}
-
-	/* Read users file etc. */
-	if (res == 0 && read_config_files() != 0)
-		res = -1;
-
-	if (res != 0) {
-	  if (pid == radius_pid) {
-			log(L_ERR|L_CONS,
-				"Errors reading config file - EXITING");
-		}
-		exit(1);
-	}
-
-	/*
-	 *	And parse the server's configuration values.
-	 */
-	cs = cf_section_find("main");
-	if (!cs)
-		return;
-
-	cf_section_parse(cs, server_config);
 }
 
 
@@ -386,7 +391,7 @@ int main(int argc, char **argv)
 			librad_debug = 2;
 			log_auth = TRUE;
 			log_auth_pass = TRUE;
-			radlog_dir = "stdout";
+			radlog_dir = strdup("stdout");
 			break;
 
 		case 'x':
@@ -413,6 +418,15 @@ int main(int argc, char **argv)
 	 */
 	radius_pid = getpid();
 
+	/*
+	 *	Get the current maximum for core files.
+	 */
+	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
+		log(L_ERR|L_CONS, "Failed to get current core limit:"
+		    "  %s", strerror(errno));
+		exit(1);
+	}
+		
 	/*
 	 *	Read the configuration files, BEFORE doing anything else.
 	 */
@@ -540,15 +554,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	/*
-	 *	Get the current maximum for core files.
-	 */
-	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		log(L_ERR|L_CONS, "Failed to get current core limit:"
-		    "  %s", strerror(errno));
-		exit(1);
-	}
-		
 	/*
 	 *	Register built-in compare functions.
 	 */
