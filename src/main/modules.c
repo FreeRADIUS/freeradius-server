@@ -269,6 +269,7 @@ static module_list_t *linkto_module(const char *module_name,
 	DEBUG("Module: Loaded %s ", node->module->name);
 
 	node->next = module_list;
+	module_list = node;
 
 	return node;
 }
