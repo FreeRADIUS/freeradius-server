@@ -280,10 +280,3 @@
     a user with a sync mode card that used async authentication.  You
     may wish to reprogram these users' cards.
 
-
-8.  ACKNOWLEDGEMENTS
-
-    Author: Frank Cusack <frank@google.com>
-    I would like to thank Google for allowing (encouraging) me to release
-    this code.
-
