@@ -85,7 +85,8 @@ static void	usage(void);
 static void	sig_fatal (int);
 static void	sig_hup (int);
 
-static int	radrespond (REQUEST *);
+static int	rad_process (REQUEST *);
+static int	rad_respond (REQUEST *);
 static int	rad_check_list(REQUEST *);
 static void	rad_spawn_child(REQUEST *, FUNP);
 
@@ -556,14 +557,14 @@ int main(int argc, char **argv)
 			request->password = NULL;
 			request->timestamp = time(NULL);
 			strcpy(request->secret, cl->secret);
-			radrespond(request);
+			rad_process(request);
 		}
 	}
 }
 
 
 /*
- *	Respond to supported requests:
+ *	Process supported requests:
  *
  *		PW_AUTHENTICATION_REQUEST - Authentication request from
  *				a client network access server.
@@ -577,7 +578,7 @@ int main(int argc, char **argv)
  *				Relay reply back to original NAS.
  *
  */
-int radrespond(REQUEST *request)
+int rad_process(REQUEST *request)
 {
 	int dospawn;
 	FUNP fun;
@@ -705,30 +706,46 @@ int radrespond(REQUEST *request)
 		} else {
 			request_list_busy = 0; /* BEFORE doing the request */
 			(*fun)(request);
+			rad_respond(request);
 		}
 	}
 
 	return 0;
 }
 
+/*
+ *	Respond to a request packet.
+ *
+ *	Maybe we reply, maybe we don't.
+ *	Maybe we proxy the request to another server, or else maybe
+ *	we replicate it to another server.
+ */
+static int rad_respond(REQUEST *request)
+{
+  if (request->reply)
+  	rad_send(request->reply, request->secret);
+
+  request->finished = TRUE;
+  return 0;
+}
+
 
 /*
- *	Spawns child processes to perform authentication/accounting
- *	and respond to RADIUS clients.  This functions also
- *	cleans up complete child requests, and verifies that there
- *	is only one process responding to each request (duplicate
- *	requests are filtered out).
+ *	Walk through the request list, cleaning up complete child
+ *	requests, and verifing that there is only one process
+ *	responding to each request (duplicate requests are filtered
+ *	out).
  */
 static int rad_check_list(REQUEST *request)
 {
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
 	RADIUS_PACKET	*pkt;
-	UINT4		curtime;
+	time_t		curtime;
 	int		request_count;
 	int		child_pid;
 
-	curtime = (UINT4)time(NULL);
+	curtime = time(NULL);
 	request_count = 0;
 	curreq = first_request;
 	prevreq = (REQUEST *)NULL;
@@ -741,9 +758,9 @@ static int rad_check_list(REQUEST *request)
 	 */
 	request_list_busy = 1;
 
-	while(curreq != (REQUEST *)NULL) {
-		if (curreq->child_pid == -1 &&
-		    curreq->timestamp + CLEANUP_DELAY <= curtime) {
+	while (curreq != (REQUEST *)NULL) {
+		if ((curreq->child_pid == -1) &&
+		    (curreq->timestamp + CLEANUP_DELAY <= curtime)) {
 			/*
 			 *	Request completed, delete it
 			 */
@@ -822,7 +839,7 @@ static int rad_check_list(REQUEST *request)
 			curreq = curreq->next;
 			request_count++;
 		}
-	}
+	} /* end of walking the request list */
 
 	/*
 	 *	This is a new request
@@ -851,6 +868,10 @@ static int rad_check_list(REQUEST *request)
 	return 0;
 }
 
+/*
+ *	Spawns a child process or thread to perform
+ *	authentication/accounting and respond to RADIUS clients.
+ */
 static void rad_spawn_child(REQUEST *request, FUNP fun)
 {
 	int		child_pid;
@@ -870,6 +891,7 @@ static void rad_spawn_child(REQUEST *request, FUNP fun)
 		request_list_busy = 0;
 		signal(SIGCHLD, SIG_DFL);
 		(*fun)(request);
+		rad_respond(request);
 		exit(0);
 	}
 

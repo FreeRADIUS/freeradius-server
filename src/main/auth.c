@@ -350,7 +350,6 @@ int rad_mangle(REQUEST *request)
  */
 int rad_authenticate(REQUEST *request)
 {
-	RADIUS_PACKET	*rp;
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*check_item;
 	VALUE_PAIR	*reply_item;
@@ -405,10 +404,8 @@ int rad_authenticate(REQUEST *request)
 	namepair = pairfind(request->packet->vps, PW_USER_NAME);
 	if (namepair == NULL || namepair->strvalue[0] == 0) {
 		log(L_ERR, "zero length username not permitted\n");
-		rp = build_reply(PW_AUTHENTICATION_REJECT,
-				 request, NULL, NULL);
-		rad_send(rp, request->secret);
-		request->finished = TRUE;
+		request->reply = build_reply(PW_AUTHENTICATION_REJECT,
+					     request, NULL, NULL);
 		return RLM_AUTZ_NOTFOUND;
 	}
 		
@@ -451,12 +448,10 @@ int rad_authenticate(REQUEST *request)
 				log_auth_pass ? "/" : "",
 				log_auth_pass ? password : "",
 				auth_name(request, 1));
-			rp = build_reply(PW_AUTHENTICATION_REJECT,
-					request, NULL, NULL);
-			rad_send(rp, request->secret);
+			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
+						     request, NULL, NULL);
 		}
 		pairfree(user_reply);
-		request->finished = TRUE;
 		return r;
 	}
 
@@ -477,13 +472,13 @@ int rad_authenticate(REQUEST *request)
 		result = rad_check_password(request, request->config_items,
 			namepair, &user_msg);
 		if (result > 0) {
+			/* don't reply! */
 			pairfree(user_reply);
-			request->finished = TRUE;
 			return -1;
 		}
 		if (result == -2) {
-			if ((reply_item = pairfind(user_reply,
-			     PW_REPLY_MESSAGE)) != NULL)
+			reply_item = pairfind(user_reply, PW_REPLY_MESSAGE);
+			if (reply_item != NULL)
 				user_msg = reply_item->strvalue;
 		}
 	} while(0);
@@ -492,9 +487,8 @@ int rad_authenticate(REQUEST *request)
 		/*
 		 *	Failed to validate the user.
 		 */
-		rp = build_reply(PW_AUTHENTICATION_REJECT, request,
-			NULL, user_msg);
-		rad_send(rp, request->secret);
+		request->reply = build_reply(PW_AUTHENTICATION_REJECT, request,
+					     NULL, user_msg);
 		if (log_auth) {
 			u_char clean_buffer[1024];
 			u_char *p;
@@ -543,9 +537,8 @@ int rad_authenticate(REQUEST *request)
 				user_msg =
 		"\r\nYou are already logged in - access denied\r\n\n";
 			}
-			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
-				NULL, user_msg);
-			rad_send(rp, request->secret);
+			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
+						     request, NULL, user_msg);
 		log(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
 				namepair->strvalue,
 				auth_name(request, 1),
@@ -575,9 +568,8 @@ int rad_authenticate(REQUEST *request)
 			result = -1;
 			user_msg =
 			"You are calling outside your allowed timespan\r\n";
-			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
-				NULL, user_msg);
-			rad_send(rp, request->secret);
+			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
+						     request, NULL, user_msg);
 			log(L_ERR, "Outside allowed timespan: [%s]"
 				   " (%s) time allowed: %s",
 					namepair->strvalue,
@@ -610,7 +602,6 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (result < 0) {
 		pairfree(user_reply);
-		request->finished = TRUE;
 		return 0;
 	}
 
@@ -670,9 +661,8 @@ int rad_authenticate(REQUEST *request)
 			 */
 			if (user_msg == NULL)
 		user_msg = "\r\nAccess denied (external check failed).";
-			rp = build_reply(PW_AUTHENTICATION_REJECT, request,
-				NULL, user_msg);
-			rad_send(rp, request->secret);
+			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
+						     request, NULL, user_msg);
 			if (log_auth) {
 				log(L_AUTH,
 					"Login incorrect: [%s] (%s) "
@@ -681,7 +671,6 @@ int rad_authenticate(REQUEST *request)
 					auth_name(request, 1));
 			}
 			pairfree(user_reply);
-			request->finished = TRUE;
 			return 0;
 		}
 	}
@@ -726,8 +715,8 @@ int rad_authenticate(REQUEST *request)
 	  }
 	}
 
-	rp = build_reply(PW_AUTHENTICATION_ACK, request, user_reply, user_msg);
-	rad_send(rp, request->secret);
+	request->reply = build_reply(PW_AUTHENTICATION_ACK, request,
+				     user_reply, user_msg);
 
 	if (log_auth) {
 		log(L_AUTH,
@@ -747,7 +736,6 @@ int rad_authenticate(REQUEST *request)
 
 	if (exec_program) free(exec_program);
 	pairfree(user_reply);
-	request->finished = TRUE;
 	return 0;
 }
 
