@@ -34,7 +34,7 @@ typedef struct md5_packet_t {
 typedef struct md5_packet {
 	unsigned char	code;
 	unsigned char	id;
-	unsigned int	length;
+	unsigned short	length;
 	unsigned char	value_size;
 	unsigned char	*value;
 	char		*name;

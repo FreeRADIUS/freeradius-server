@@ -82,7 +82,7 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 {
 	md5_packet_t	*data;
 	MD5_PACKET	*packet;
-	int 		name_len;
+	unsigned short	name_len;
 
 	if (!eap_ds 						|| 
 		!eap_ds->response 				|| 
@@ -163,10 +163,10 @@ int eapmd5_challenge(unsigned char *value, int len)
 int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password, 
 		md5_packet_t *challenge)
 {
-	int		len;
 	char	*ptr;
 	char	string[MAX_STRING_LEN*2];
 	unsigned char output[MAX_STRING_LEN];
+	unsigned short len;
 
 	if ((password == NULL) || (challenge == NULL)) {
 		return 0;
@@ -290,7 +290,7 @@ MD5_PACKET *eapmd5_initiate(EAP_DS *eap_ds)
 int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 {
 	uint8_t *ptr;
-	int name_len;
+	unsigned short name_len;
 
 	if (reply->code < 3) {
 

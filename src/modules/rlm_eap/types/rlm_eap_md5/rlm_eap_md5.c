@@ -74,7 +74,7 @@ static int md5_authenticate(void *arg, EAP_HANDLER *handler)
 	 * Password is never sent over the wire.
 	 * Always get the configured password, for each user.
 	 */
-	password = paircopy2(handler->configured, PW_PASSWORD);
+	password = pairfind(handler->configured, PW_PASSWORD);
 	if (password == NULL) {
 		radlog(L_INFO, "rlm_eap_md5: No password configured for this user");
 		eapmd5_free(&packet);
