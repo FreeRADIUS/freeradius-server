@@ -118,6 +118,7 @@ PAIR_LIST *pairlist_read(const char *file, int complain)
 	PAIR_LIST	*pl = NULL, *last = NULL, *t;
 	int		lineno = 0;
 	int		old_lineno = 0;
+	int		parsecode;
 
 	/*
 	 *	Open the table
@@ -128,6 +129,7 @@ PAIR_LIST *pairlist_read(const char *file, int complain)
 		return NULL;
 	}
 
+	parsecode = T_EOL;
 	/*
 	 *	Read the entire file into memory for speed.
 	 */
@@ -144,7 +146,16 @@ parse_again:
 			/*
 			 *	Find the entry starting with the users name
 			 */
-			if (isspace(buffer[0])) continue;
+			if (isspace(buffer[0]))  {
+				if (parsecode != T_EOL) {
+					log(L_ERR|L_CONS,
+					    "%s[%d]: Unexpected trailing comma for entry %s",
+					    file, lineno, entry);
+					fclose(fp);
+					return NULL;
+				}
+				continue;
+			}
 
 			ptr = buffer;
 			getword(&ptr, entry, sizeof(entry));
@@ -178,22 +189,39 @@ parse_again:
 			check_tmp = NULL;
 			reply_tmp = NULL;
 			old_lineno = lineno;
-			if(userparse(ptr, &check_tmp) != 0) {
+			parsecode = userparse(ptr, &check_tmp);
+			if (parsecode < 0) {
 				pairlist_free(&pl);
 				log(L_ERR|L_CONS,
 				"%s[%d]: Parse error (check) for entry %s: %s",
 					file, lineno, entry, librad_errstr);
 				fclose(fp);
 				return NULL;
+			} else if (parsecode == T_COMMA) {
+				log(L_ERR|L_CONS,
+				    "%s[%d]: Unexpected trailing comma in check item list for entry %s",
+				    file, lineno, entry);
+				fclose(fp);
+				return NULL;
 			}
 			mode = FIND_MODE_REPLY;
+			parsecode = T_COMMA;
 		}
 		else {
 			if(*buffer == ' ' || *buffer == '\t') {
+				if (parsecode != T_COMMA) {
+					log(L_ERR|L_CONS,
+				"%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
+						file, lineno, entry);
+					fclose(fp);
+					return NULL;
+				}
+
 				/*
 				 *	Parse the reply values
 				 */
-				if (userparse(buffer, &reply_tmp)!=0) {
+				parsecode = userparse(buffer, &reply_tmp);
+				if (parsecode < 0) {
 					pairlist_free(&pl);
 					log(L_ERR|L_CONS,
 				"%s[%d]: Parse error (reply) for entry %s: %s",
@@ -532,11 +560,11 @@ static int read_realms_file(const char *file)
 		 */
 		strcpy(c->realm, realm);
 		strcpy(c->server, hostnm);
-		c->striprealm = 1;
+		c->striprealm = TRUE;
 
 		while (getword(&p, opts, sizeof(opts))) {
 			if (strcmp(opts, "nostrip") == 0)
-				c->striprealm = 0;
+				c->striprealm = FALSE;
 			if (strstr(opts, "noacct") != NULL)
 				c->acct_port = 0;
 			if (strstr(opts, "trusted") != NULL)

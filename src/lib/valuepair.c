@@ -631,15 +631,9 @@ VALUE_PAIR *pairread(char **ptr, int *eol)
 		return NULL;
 	}
 
+	*eol = t;
 	if (t == T_COMMA) {
 		*ptr = p;
-		/*
-		 *	HACK: should peek again, taking shortcut :)
-		 */
-		if (*p == 0)
-			*eol = 1;
-	} else {
-		*eol = 1;
 	}
 
 	return pairmake(attr, value, token);
@@ -653,7 +647,7 @@ int userparse(char *buffer, VALUE_PAIR **first_pair)
 {
 	VALUE_PAIR	*vp;
 	char		*p;
-	int		eol = 0;
+	int		last_token = 0;
 
 	/*
 	 *	We allow an empty line.
@@ -663,11 +657,14 @@ int userparse(char *buffer, VALUE_PAIR **first_pair)
 
 	p = buffer;
 	do {
-		if ((vp = pairread(&p, &eol)) == NULL)
+		if ((vp = pairread(&p, &last_token)) == NULL)
 			return -1;
 		pairadd(first_pair, vp);
-	} while (!eol);
+	} while (*p && (last_token == T_COMMA));
 
-	return 0;
+	/*
+	 *	And return the last token which we read.
+	 */
+	return last_token;
 }
 
