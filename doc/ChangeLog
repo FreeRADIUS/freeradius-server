@@ -1,5 +1,67 @@
 FreeRADIUS 1.0.0 ; $Date$, urgency=low
-	* EAP-TTLS support in rlm_eap
+
+	* Many, many minor bug fixes and feature enhancements.
+	* Added many new dictionaries: 3GPP, 3GPP2, Propel, Karlnet,
+	  Sonicwall, Navini, Bristol University, Valemont, Mikrotik.
+	* Added red-black tree implementation to src/lib.  The
+	  dictionaries now use it, rather than singly linked lists.  Tests
+	  indicate that the server is up to 30% faster.
+	* Updated MSCHAP module to be able to better deal with Windows
+	  machines which put a username with domain into User-Name, but
+	  which use only the username to create the MS-CHAP-Response.
+	* Added many more "man" pages for the modules.
+	* Made "hints" file more generic and flexible, without changing
+	  old functionality.
+	* Correct error condition in rlm_krb5.  Patch from Jon Moore.
+	* Added demo certs.
+	* Updates to configure scripts for MySQL.
+	* Enhanced configuration file variable handling.  See
+	  doc/variables.txt for details.
+	* doc/configurable_failover is now understandable by mere humans.
+	* Updates for 64-bit systems.
+	* Update scripts/rc.radiusd with examples of how to deal with
+	  shared library issues.
+	* Checks for OpenSSL now enforce version number, and are common
+	  across all modules, rather than being duplicated.
+	* Patch to make ctime_r work on non-compliant platforms.
+	  Patch from Oliver Graf.
+	* Implement "udpfromto", which allows the server to work better in
+	  LVS.  Code from Jan Berkel and Miquel van Smoorenburg.  To use
+	  it, do:   ./configure --with-udpfromto=yes
+	* Re-arranged "walk over cached requests" code for clarity.
+	* The server now keeps more SNMP statistics about the packets it
+	  has processed.
+	* De-coupled the queue of input requests from the pool of threads.
+	  This allows "spikes" of requests to be queued, even though all
+	  threads are busy.  This change significantly increases the
+	  servers ability to process large numbers of requests on a
+	  multi-CPU machine.
+	* Re-arranged the internal "core" request handling code, to
+	  make a little more sense.
+	* Removed support for Replicate-To-Realm.  Use radrelay.
+	* Print & parse unknown attributes as Attr-%d, Vendor-%d-Attr-%d,
+	  or VendorName-Attr-%d.
+	* Updated doc/tuning_guide, with comments about SQL.
+	* Added EAP-SIM.
+	* Enabled proxying of the authentication request which is tunneled
+	  inside of PEAP and TTLS.
+	* rlm_passwd is now marked "stable", and has many bugs fixed.
+	* More flexible configuration for rlm_ldap.
+	* Added EAP-PEAP support, with tunneled EAP-MSCHAP-V2.
+	  Patch from Masao Nishiku.  (Many, many thanks!)
+	* Updates to rlm_ippool for stability.
+	* Added ippool_tool, by Edwin Groothuis.
+	* Catch packets which are just about 4K in size.
+	   Bug found by Nils-Henner Krueger.
+	* New implementation of parser for Ascend's data filter
+	  attributes, that is now thread-safe and GPL'd.
+	* EAP-TLS now checks Certificate Revocation List
+	* Preliminary (not entirely complete) support for IPv6 attributes,
+	  including IFID.
+	* Updated GPL boilerplate in the source.
+	* Added new RFC's to doc/rfc/
+	* Many fixes to the SQL module & sub-modules.
+	* Added EAP-TTLS support in rlm_eap
 	* Added support for rejected packets to run an Post-Auth-Type REJECT
 	  stanza instead of skipping post-auth entirely.
 	* Added support for %{*:Packet-Type} translation. (Not for %{check:})
