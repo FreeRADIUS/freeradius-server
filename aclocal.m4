@@ -4030,6 +4030,8 @@ dnl #######################################################################
 dnl #
 dnl #  Look for a header file in a number of places.
 dnl #
+dnl #  AC_SMART_CHECK_INCLUDE(foo.h, [ #include <other.h> ])
+dnl #
 AC_DEFUN(AC_SMART_CHECK_INCLUDE, [
 
 ac_safe=`echo "$1" | sed 'y%./+-%__p_%'`
@@ -4042,7 +4044,8 @@ dnl #
 dnl #  Try to link it first, using the default includes
 dnl #
   old_CFLAGS="$CFLAGS"
-  AC_TRY_COMPILE([#include <$1>],
+  AC_TRY_COMPILE([$2
+		  #include <$1>],
                  [ int a = 1;],
                  smart_include=" ",
                  smart_include=)
