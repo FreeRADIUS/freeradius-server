@@ -604,4 +604,35 @@ CONF_SECTION *cf_module_config_find(const char *modulename)
 
 	return cs;
 }
+
+/* 
+ * JMG dump_config tries to dump the config structure in a readable format
+ * 
+*/
+
+int dump_config() 
+{
+	CONF_SECTION	*cs, *scs;
+
+	CONF_PAIR	*cp;
+
+	for (cs = config; cs; cs = cs->next) {
+		DEBUG("%s %s {", cs->name1, cs->name2);
+
+	for (cp = cs->cps; cp; cp = cp->next) 
+		DEBUG("\t%s = %s", cp->attr, cp->value);
+
+	for (scs = cs->sub; scs; scs = scs->next) {
+		DEBUG("\t\t%s {", scs->name2);
+		for (cp = scs->cps; cp; cp = cp->next)
+			DEBUG("\t\t\t%s = %s", cp->attr, cp->value);
+			DEBUG("\t\t\t}");
+	}
+	DEBUG("}");
+
+	}
+
+	return 0;
+}
+
 #endif
