@@ -149,7 +149,7 @@ int get_radius_id()
 		if (id_map[id] == 0)
 			break;
 	}
-	if (id == 255 && id_map[id] != 0){
+	if (id == 256 || id_map[id] != 0){
 		fprintf(stdout, "get_radius_id(): No IDs available. Something is very wrong\n");
 		return -1;
 	}
