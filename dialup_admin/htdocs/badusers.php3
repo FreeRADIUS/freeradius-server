@@ -31,6 +31,10 @@ $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
 $login = ($login != '') ? $login : 'anyone';
 $usercheck = ($login == 'anyone') ? "LIKE '%'" : "= '$login'";
+$order = ($order != '') ? $order : $config[general_accounting_info_order];
+if ($order != 'desc' && $order != 'asc')
+	$order = 'desc';
+$selected[$order] = 'selected';
 
 echo <<<EOM
 <head>
@@ -90,7 +94,7 @@ if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_badusers_table]
 	WHERE UserName $usercheck AND Date <= '$now_str'
-	AND Date >= '$prev_str' ORDER BY Date ASC $limit;");
+	AND Date >= '$prev_str' ORDER BY Date $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
@@ -125,7 +129,7 @@ echo <<<EOM
 <tr><td align="center">
 	<form action="badusers.php3" method="get" name="master">
 	<table border=0>
-		<tr><td colspan=5></td>
+		<tr><td colspan=6></td>
 			<td rowspan=3 valign="bottom">
 				<small>
 				the <b>from</b> date matches any login after the 00:00 that day,
@@ -134,7 +138,7 @@ echo <<<EOM
 			</td>
 		</tr>
 		<tr valign="bottom">
-			<td><small><b>user</td><td><small><b>from date</td><td><small><b>to date</td><td><small><b>pagesize</td><td>
+			<td><small><b>user</td><td><small><b>from date</td><td><small><b>to date</td><td><small><b>pagesize</td><td><b>order</td>
 &nbsp;</td>
 	<tr valign="middle"><td>
 <input type="text" name="login" size="11" value="$login"></td>
@@ -148,6 +152,11 @@ echo <<<EOM
 <option $selected[40] value="40">40
 <option $selected[80] value="80">80
 <option $selected[all] value="all">all
+</select>
+</td>
+<td><select name="order">
+<option $selected[asc] value="asc">older first
+<option $selected[desc] value="desc">recent first
 </select>
 </td>
 EOM;

@@ -54,6 +54,7 @@ Ver 1.63:
 * Fix a small bug in bytes2str. It will now also show GBs if appropriate
 * Add an entry about the failed_logins page
 * Update the help page for the lock message attribute
+* Update the badusers page to also use the general_accounting_info_order directive
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
