@@ -17,6 +17,7 @@ Ver 1.72:
 * Add debug statements in sql connect functions
 * Add a missing.php3 file with functions that may be missing from the PHP version used. Include it
   if a function is missing. Currently only array_change_key_case() is included
+* Set general_restrict_nasadmin_access to no by default. It causes confusion.
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for
