@@ -61,6 +61,21 @@ static int paircompare(VALUE_PAIR *request, VALUE_PAIR *check,
 				check_pairs, reply_pairs);
 
 	switch(check->type) {
+#ifdef ASCEND_BINARY
+		/*
+		 *	Ascend binary attributes can be treated
+		 *	as opaque objects, I guess...
+		 */
+		case PW_TYPE_ABINARY:
+#endif
+		case PW_TYPE_OCTETS:
+			if (request->length != check->length) {
+				ret = 1; /* NOT equal */
+				break;
+			}
+			ret = memcmp(request->strvalue, check->strvalue,
+				     request->length);
+			break;
 		case PW_TYPE_STRING:
 			ret = strcmp(request->strvalue, check->strvalue);
 			break;
