@@ -226,18 +226,6 @@ static void challenge_hash( const char *peer_challenge,
 	memcpy(challenge, hash, 8);
 }
 
-static void mschap2(const char *peer_challenge, const char *auth_challenge,
-		    const char *user_name, const char *nt_password,
-		    char *response)
-{
-	char challenge[8];
-
-	challenge_hash(peer_challenge, auth_challenge, user_name,
-		       challenge);
-
-	lrad_mschap(nt_password, challenge, response);
-}
-
 /*
  *	auth_response() generates MS-CHAP v2 SUCCESS response
  *	according to RFC 2759 GenerateAuthenticatorResponse()
@@ -279,11 +267,11 @@ static void auth_response(const char *username,
 	SHA1Final(digest, &Context);
 
 	/*
-	 * Encode the value of 'Digest' as "S=" followed by
-	 * 40 ASCII hexadecimal digits and return it in
-	 * AuthenticatorResponse.
-	 * For example,
-	 *   "S=0123456789ABCDEF0123456789ABCDEF01234567"
+	 *	Encode the value of 'Digest' as "S=" followed by
+	 *	40 ASCII hexadecimal digits and return it in
+	 *	AuthenticatorResponse.
+	 *	For example,
+	 *	"S=0123456789ABCDEF0123456789ABCDEF01234567"
 	 */
  	response[0] = 'S';
 	response[1] = '=';
@@ -663,6 +651,40 @@ static void mppe_add_reply(VALUE_PAIR** vp,
        pairadd(vp, reply_attr);
 }
 
+
+/*
+ *	Do the MS-CHAP stuff.
+ *
+ *	This function is here so that all of the MS-CHAP related
+ *	authentication is in one place, and we can perhaps later replace
+ *	it with code to call winbindd, or something similar.
+ */
+static int do_mschap(VALUE_PAIR *password,
+		     uint8_t	*challenge,
+		     uint8_t	*response)
+{
+	uint8_t		calculated[32];
+
+	/*
+	 *	No password: can't do authentication.
+	 */
+	if (!password) {
+		DEBUG2("  rlm_mschap: FAILED: No NT/LM-Password.  Cannot perform authentication.");
+		return -1;
+	}
+
+	lrad_mschap(password->strvalue, challenge, calculated);
+	if (memcmp(response, calculated, 24) != 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/*
+ *	Data for the hashes.
+ */
 static const uint8_t SHSpad1[40] =
                { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -859,7 +881,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
 	VALUE_PAIR *username;
 	VALUE_PAIR *reply_attr;
-	uint8_t calculated[32];
+	uint8_t nthashhash[32];
 	uint8_t msch2resp[42];
         uint8_t mppe_sendkey[34];
         uint8_t mppe_recvkey[34];
@@ -965,44 +987,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 	}
 
-	/*
-	 *	No NT or LM Passwords, die.
-	 */
-	if (!lm_password && !nt_password) {
-		DEBUG2("  rlm_mschap: No LM-Password or NT-Password attribute found.  Cannot perform MS-CHAP authentication.");
-		return RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	We MAY be asked to take a User-Password attribute from
-	 *	the packet, and compare it to passwords retrieved from
-	 *	an SMB Password file.
-	 */
-	password = pairfind(request->packet->vps, PW_PASSWORD);
-	if (password) {
-		if (lm_password) {
-			lrad_lmpwdhash(calculated,
-				       password->strvalue);
-			if (memcmp(calculated,
-				   lm_password->strvalue, 16) == 0) {
-				DEBUG2("  rlm_mschap: User-Password matches LM-Password.");
-				return RLM_MODULE_OK;
-			} else {
-				DEBUG2("  rlm_mschap: FAILED: User-Password does NOT match LM-Password.");
-			}
-		} else if (nt_password) {
-			ntpwdhash(calculated, password->strvalue);
-			if (memcmp(calculated,
-				   nt_password->strvalue, 16) == 0) {
-				DEBUG2("  rlm_mschap: User-Password matches NT-Password.");
-				return RLM_MODULE_OK;
-			} else {
-				DEBUG2("  rlm_mschap: FAILED: User-Password does NOT match NT-Password.");
-			}
-		}
-		return RLM_MODULE_REJECT;
-	} /* compare User-Password in packet to configured NT/LM-Password */
-
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
 	if (!challenge) {
 		DEBUG2("  rlm_mschap: No MS-CHAP-Challenge in the request");
@@ -1051,27 +1035,21 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 
 		/*
-		 *	No password configured.  Die.
+		 *	Do the MS-CHAP authentication.
 		 */
-		if (!password) {
-			DEBUG2("  rlm_mschap: FAILED: No NT/LM-Password");
+		if (do_mschap(password, challenge->strvalue,
+			      response->strvalue + offset) < 0) {
+			DEBUG2("  rlm_mschap: MS-CHAP-Response is incorrect.");
+			add_reply(&request->reply->vps, *response->strvalue,
+				  "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_REJECT;
-		}
-
-		/*
-		 *	Calculate the expected response.
-		 */
-		lrad_mschap(password->strvalue, challenge->strvalue,
-			    calculated);
-		if (memcmp(response->strvalue + offset,
-			   calculated, 24) != 0) {
-			DEBUG("  rlm_mschap: FAILED: MS-CHAP-Response is incorrect");
-			return RLM_MODULE_FAIL;
 		}
 
 		chap = 1;
 
 	} else if ((response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE)) != NULL) {
+		uint8_t	mschapv1_challenge[16];
+
 		/*
 		 *	MS-CHAPv2 challenges are 16 octets.
 		 */
@@ -1102,10 +1080,10 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	with_ntdomain_hack moved here
 		 */
 		if ((username_string = strchr(username->strvalue, '\\')) != NULL) {
-		        if(inst->with_ntdomain_hack) {
+		        if (inst->with_ntdomain_hack) {
 			        username_string++;
 			} else {
-			        DEBUG2("  rlm_mschap: NT Domain delimeter found, should we have enabled with_ntdomain_hack?");
+				DEBUG2("  rlm_mschap: NT Domain delimeter found, should we have enabled with_ntdomain_hack?");
 				username_string = username->strvalue;
 			}
 		} else {
@@ -1113,19 +1091,21 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 
 		/*
-		 *	We are doing MS-CHAPv2
-		 *	We need NT hash for it to calculate response
+		 *	The old "mschapv2" function has been moved to
+		 *	here.
+		 *
+		 *	MS-CHAPv2 takes some additional data to create an
+		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
-		if (!nt_password) {
-			DEBUG2("  rlm_mschap: No NT-Password configured.  Cannot perform MS-CHAPv2 authentication.");
-			return RLM_MODULE_INVALID;
-		}
-
+		challenge_hash(response->strvalue + 2, /* peer challenge */
+			       challenge->strvalue, /* our challenge */
+			       username_string,	/* user name */
+			       mschapv1_challenge); /* resulting challenge */
+		
 		DEBUG2("  rlm_mschap: doing MS-CHAPv2 with NT-Password");
-		mschap2(response->strvalue + 2, challenge->strvalue,
-			username_string, nt_password->strvalue,
-			calculated);
-		if (memcmp(response->strvalue + 26, calculated, 24) != 0) {
+
+		if (do_mschap(nt_password, mschapv1_challenge,
+			      response->strvalue + 26) < 0) {
 			DEBUG2("  rlm_mschap: FAILED: MS-CHAP2-Response is incorrect");
 			add_reply(&request->reply->vps, *response->strvalue,
 				  "MS-CHAP-Error", "E=691 R=1", 9);
@@ -1135,10 +1115,10 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	Get the NT-hash-hash
 		 */
-		md4_calc(calculated, nt_password->strvalue, 16);
+		md4_calc(nthashhash, nt_password->strvalue, 16);
 
 		auth_response(username_string, /* without the domain */
-			      calculated, /* nt-hash-hash */
+			      nthashhash, /* nt-hash-hash */
 			      response->strvalue + 26, /* peer response */
 			      response->strvalue + 2, /* peer challenge */
 			      challenge->strvalue, /* our challenge */
