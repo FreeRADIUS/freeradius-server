@@ -23,7 +23,7 @@
 #define X99_PWE_H
 
 /* Some hardcoding here ... because not all types have #defines */
-#if 1
+#if 0
 /* 0.3 */
 #define PW_MS_CHAP_CHALLENGE  ((6 << 16) | 11)
 #define PW_MS_CHAP_RESPONSE   ((6 << 16) | 1)
