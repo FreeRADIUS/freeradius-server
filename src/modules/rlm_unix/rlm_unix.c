@@ -84,7 +84,7 @@ static CONF_PARSER module_config[] = {
 	 *	Cache the password by default.
 	 */
 	{ "cache",    PW_TYPE_BOOLEAN,
-	  offsetof(struct unix_instance,cache_passwd), NULL, "yes" },
+	  offsetof(struct unix_instance,cache_passwd), NULL, "no" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
 	  offsetof(struct unix_instance,passwd_file), NULL,  NULL },
 	{ "shadow",   PW_TYPE_STRING_PTR,
@@ -92,7 +92,7 @@ static CONF_PARSER module_config[] = {
 	{ "group",    PW_TYPE_STRING_PTR,
 	  offsetof(struct unix_instance,group_file), NULL,   NULL },
 	{ "radwtmp",  PW_TYPE_STRING_PTR,
-	  offsetof(struct unix_instance,radwtmp), NULL,   "${logdir}/radwtmp" },
+	  offsetof(struct unix_instance,radwtmp), NULL,   "NULL" },
 	{ "usegroup", PW_TYPE_BOOLEAN,
 	  offsetof(struct unix_instance,usegroup), NULL,     "no" },
 	{ "cache_reload", PW_TYPE_INTEGER,
@@ -287,7 +287,7 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 			free((char *) inst->passwd_file);
 			free((char *) inst->shadow_file);
 			free((char *) inst->group_file);
-			free((char *) inst->radwtmp);
+			if (inst->radwtmp) free((char *) inst->radwtmp);
 			free(inst);
 			return -1;
 		}
@@ -328,7 +328,7 @@ static int unix_detach(void *instance)
 	free((char *) inst->passwd_file);
 	free((char *) inst->shadow_file);
 	free((char *) inst->group_file);
-	free((char *) inst->radwtmp);
+	if (inst->radwtmp) free((char *) inst->radwtmp);
 	if (inst->cache) {
 		unix_freepwcache(inst->cache);
 	}
@@ -652,6 +652,14 @@ static int unix_accounting(void *instance, REQUEST *request)
 	int		port_seen = 0;
 	int		nas_port_type = 0;
 	struct unix_instance *inst = (struct unix_instance *) instance;
+
+	/*
+	 *	No radwtmp.  Don't do anything.
+	 */
+	if (!inst->radwtmp) {
+		DEBUG2("rlm_unix: No radwtmp file configured.  Ignoring accounting request.");
+		return RLM_MODULE_NOOP;
+	}
 
 	/*
 	 *	Which type is this.
