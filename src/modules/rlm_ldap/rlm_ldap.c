@@ -264,6 +264,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	int		ldap_errno = 0;
 	ldap_instance  *inst = instance;
 
+	*result = NULL;
 	if (!inst->bound) {
 		DEBUG2("rlm_ldap: attempting LDAP reconnection");
 		if (inst->ld){
@@ -284,17 +285,15 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	default:
 		ldap_get_option(inst->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "rlm_ldap: ldap_search() failed: %s", ldap_err2string(ldap_errno));
-/*
-		if(*result != NULL)
-			ldap_msgfree(*result);
-*/
 		inst->bound = 0;
+		ldap_msgfree(*result);	
 		return (RLM_MODULE_FAIL);
 	}
 
 	if ((ldap_count_entries(inst->ld, *result)) != 1) {
 		DEBUG("rlm_ldap: object not found or got ambiguous search result");
 		res = RLM_MODULE_NOTFOUND;
+		ldap_msgfree(*result);	
 	}
 	return res;
 }
@@ -309,17 +308,19 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 static int 
 ldap_authorize(void *instance, REQUEST * request)
 {
-	LDAPMessage    *result, *msg, *gr_result;
-	ldap_instance  *inst = instance;
-	char           *user_dn;
-	char           *attrs[] = {"*", NULL};
+	LDAPMessage	*result = NULL;
+	LDAPMessage	*msg = NULL;
+	LDAPMessage	*gr_result = NULL;
+	ldap_instance	*inst = instance;
+	char		*user_dn = NULL;
+	char		*attrs[] = {"*", NULL};
 	static char	filter[MAX_AUTH_QUERY_LEN];
 	static char 	*filt_patt = "(| (& (objectClass=GroupOfNames) (member=%{Ldap-UserDn})) (& (objectClass=GroupOfUniqueNames) (uniquemember=%{Ldap-UserDn})))"; 
-	VALUE_PAIR     *check_tmp;
-	VALUE_PAIR     *reply_tmp;
-	int             res;
-	VALUE_PAIR    **check_pairs, **reply_pairs;
-	char          **vals;
+	VALUE_PAIR	*check_tmp;
+	VALUE_PAIR	*reply_tmp;
+	int		res;
+	VALUE_PAIR	**check_pairs, **reply_pairs;
+	char		**vals;
 
 	DEBUG("rlm_ldap: - authorize");
 
@@ -394,18 +395,16 @@ ldap_authorize(void *instance, REQUEST * request)
 		if(!radius_xlat(filter, MAX_AUTH_QUERY_LEN, filt_patt,
 			        request, NULL)) 
 			radlog (L_ERR, "rlm_ldap: unable to create filter.\n"); 
- 
-		res = perform_search(instance, inst->access_group, LDAP_SCOPE_BASE, filter, NULL, &gr_result);
-		ldap_msgfree(gr_result);
 
-
-		if (res != RLM_MODULE_OK) {
+		if ((res = perform_search(instance, inst->access_group, LDAP_SCOPE_BASE, filter, NULL, &gr_result)) != RLM_MODULE_OK) {
 			ldap_msgfree(result);
 			if (res == RLM_MODULE_NOTFOUND)
 				return (RLM_MODULE_USERLOCK);
 			else
 				return (res);
-		}
+		} else 
+			ldap_msgfree(gr_result);
+	
 	}
 	DEBUG("rlm_ldap: looking for check items in directory...");
 	if ((check_tmp = ldap_pairget(inst->ld, msg, inst->check_item_map)) != NULL)
