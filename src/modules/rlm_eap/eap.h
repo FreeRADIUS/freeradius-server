@@ -36,6 +36,7 @@
 #include <stdlib.h>
 
 #include "radiusd.h"
+#include "modules.h"
 
 
 #define PW_EAP_REQUEST		1
