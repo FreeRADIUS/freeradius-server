@@ -499,6 +499,32 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	VALUE_PAIR	*vp;
 	char		*p, *s=0;
 	const char	*cp, *cs;
+	char            *tc, *ts;
+	signed char     tag;
+	int             found_tag;
+
+	/*
+	 *    Check for tags in 'Attribute:Tag' format.
+	 */
+	found_tag = 0;
+	tag = 0;
+
+	ts = strrchr( attribute, ':' );
+	if (ts && ts[1]) {
+	         /* Colon found with something behind it */
+	         if (ts[1] == '*' && ts[2] == 0) {
+		         /* Wildcard tag for check items */
+		         tag = TAG_ANY;
+			 *ts = 0;
+		 } else {
+		         /* It's not a wild card tag */
+		         tag = strtol(ts + 1, &tc, 0);
+			 if (tc && !*tc && TAG_VALID_ZERO(tag))
+			        *ts = 0;
+			 else tag = 0;
+		 }
+		 found_tag = 1;
+	}
 
 	if ((da = dict_attrbyname(attribute)) == NULL) {
 		librad_log("Unknown attribute %s", attribute);
@@ -515,8 +541,40 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	vp->type = da->type;
 	vp->operator = (operator == 0) ? T_OP_EQ : operator;
 	strcpy(vp->name, da->name);
+	vp->flags = da->flags;
 	vp->next = NULL;
 
+	/*      Check for a tag in the 'Merit' format of:
+	 *      :Tag:Value.  Print an error if we already found
+	 *      a tag in the Attribute.
+	 */
+
+	if (*value == ':' && da->flags.has_tag) {
+	        /* If we already found a tag, this is invalid */
+	        if(found_tag) {
+		        free(vp);
+			librad_log("Duplicate tag %s for attribute %s",
+				   value, vp->name);
+			DEBUG("Duplicate tag %s for attribute %s\n",
+				   value, vp->name);
+			return NULL;
+
+		}
+	        /* Colon found and attribute allows a tag */
+	        if (value[1] == '*' && value[2] == ':') {
+		       /* Wildcard tag for check items */
+		       tag = TAG_ANY;
+		       value += 3;
+		} else {
+	               /* Real tag */
+		       tag = strtol(value + 1, &tc, 0);
+		       if (tc && *tc==':' && TAG_VALID_ZERO(tag))
+			    value = tc + 1;
+		       else tag = 0;
+		}
+		found_tag = 1;
+	}	
+	
 	/*
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->strvalue.
@@ -626,6 +684,9 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			free(vp);
 			librad_log("unknown attribute type %d", da->type);
 			return NULL;
+	}
+	if(found_tag) {
+	  vp->flags.tag = tag;
 	}
 	return vp;
 }
