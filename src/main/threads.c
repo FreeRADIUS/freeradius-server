@@ -1089,8 +1089,8 @@ pid_t rad_fork(int exec_wait)
 		 */
 		forkers[found].status = -1;
 		forkers[found].child_pid = child_pid;
-		forkers[i].thread_id = pthread_self();
-		forkers[i].time_forked = now;
+		forkers[found].thread_id = pthread_self();
+		forkers[found].time_forked = now;
 		sem_init(&forkers[found].child_done, 0, SEMAPHORE_LOCKED);
 		pthread_mutex_unlock(&fork_mutex);
 	}
