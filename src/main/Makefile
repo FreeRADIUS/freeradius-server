@@ -8,7 +8,7 @@ SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
 		  modules.o modcall.o session.o xlat.o threads.o smux.o \
 		  radius_snmp.o client.o request_list.o
-INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/autoconf.h
+INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
 
 CFLAGS		+= -I../include $(SNMP_INCLUDE) 
 LDFLAGS		+= -L../lib
@@ -16,6 +16,7 @@ LIBS		+= -lradius $(SNMP_LIBS)
 MODULE_LIBS	= $(STATIC_MODULES)
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
+BINARIES	= radiusd radwho radzap raduse radclient radrelay
 
 #
 #  Not using shared libraries, add in ALL known static modules
@@ -25,7 +26,7 @@ ifneq ($(USE_SHARED_LIBS),yes)
 MODULE_LIBS	+= $(shell for x in ../modules/rlm_*/rlm_*.la;do echo -dlpreopen $$x;done)
 endif
 
-all:	radiusd radwho radzap raduse radclient radrelay
+all:	$(BINARIES)
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
@@ -133,8 +134,7 @@ radzap: radzap.o util.o nas.o log.o client.o conffile.o files.o xlat.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o log.o client.o conffile.o files.o xlat.o $(LIBS)
 
 clean:
-	rm -rf *.o *.so *~ modules_static.h radiusd radwho raduse \
-		radclient radrelay radzap builddbm .libs
+	rm -rf *.o *.so *~ $(BINARIES) .libs
 
 install:
 	$(INSTALL) -d -m 755			$(R)$(sbindir)
