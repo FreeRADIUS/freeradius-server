@@ -539,12 +539,22 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
  */
 int eap_start(REQUEST *request)
 {
+	VALUE_PAIR *vp;
 	VALUE_PAIR *eap_msg;
 	EAP_DS *eapstart;
 
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	if (eap_msg == NULL) {
 		radlog(L_ERR, "rlm_eap: EAP-Message not found");
+		return EAP_NOOP;
+	}
+
+	/*
+	 *  http://www.freeradius.org/rfc/rfc2869.html#EAP-Message
+	 */
+	vp = pairfind(request->packet->vps, PW_MESSAGE_AUTHENTICATOR);
+	if (!vp) {
+		radlog(L_ERR, "rlm_eap: EAP-Message without Message-Authenticator: Ignoring the request due to RFC 2869 Section 5.13 requirements");
 		return EAP_NOOP;
 	}
 
