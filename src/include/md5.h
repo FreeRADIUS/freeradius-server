@@ -1,3 +1,8 @@
+#ifndef _LRAD_MD5_H
+#define _LRAD_MD5_H
+
+#ifndef _LRAD_PROTO_H
+#define _LRAD_PROTO_H
 /* GLOBAL.H - RSAREF types and constants
  */
 
@@ -52,6 +57,7 @@ typedef unsigned long int UINT4;
 #else
 #define PROTO_LIST(list) ()
 #endif
+#endif /* _LRAD_PROTO_H */
 
 /* MD5.H - header file for MD5C.C
  */
@@ -89,3 +95,4 @@ void MD5Init PROTO_LIST ((MD5_CTX *));
 void MD5Update PROTO_LIST
   ((MD5_CTX *, const unsigned char *, unsigned int));
 void MD5Final PROTO_LIST ((unsigned char [16], MD5_CTX *));
+#endif /* _LRAD_MD5_H */

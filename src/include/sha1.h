@@ -1,5 +1,5 @@
-#ifndef RLM_MSCHAP_SHA1_H
-#define RLM_MSCHAP_SHA1_H
+#ifndef _LRAD_SHA1_H
+#define _LRAD_SHA1_H
 
 typedef struct {
     unsigned long state[5];
@@ -12,4 +12,4 @@ void SHA1Init(SHA1_CTX* context);
 void SHA1Update(SHA1_CTX* context, const unsigned char* data, unsigned int len);
 void SHA1Final(unsigned char digest[20], SHA1_CTX* context);
 
-#endif
+#endif /* _LRAD_SHA1_H */

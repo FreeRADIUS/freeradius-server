@@ -1,3 +1,8 @@
+#ifndef _LRAD_MD4_H
+#define _LRAD_MD4_H
+
+#ifndef _LRAD_PROTO_H
+#define _LRAD_PROTO_H
 /* GLOBAL.H - RSAREF types and constants
  */
 
@@ -39,6 +44,7 @@ typedef unsigned long int UINT4;
 #else
 #define PROTO_LIST(list) ()
 #endif
+#endif /* _LRAD_PROTO_H */
 
 /* MD4.H - header file for MD4C.C
  */
@@ -77,3 +83,5 @@ void MD4Init PROTO_LIST ((MD4_CTX *));
 void MD4Update PROTO_LIST
   ((MD4_CTX *, unsigned char *, unsigned int));
 void MD4Final PROTO_LIST ((unsigned char [16], MD4_CTX *));
+
+#endif /* _LRAD_MD4_H */
