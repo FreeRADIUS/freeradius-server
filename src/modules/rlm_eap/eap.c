@@ -741,6 +741,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	when it's a local realm.
 	 */
 	if (pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL) {
+		DEBUG2("  rlm_eap: Request is supposed to be proxied.  Not doing EAP.");
 	  	return EAP_NOOP;
 	}
 
@@ -791,6 +792,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 			    ((eap_msg->strvalue[4] == 0) ||
 			     (eap_msg->strvalue[4] > PW_EAP_MAX_TYPES) ||
 			     (inst->types[eap_msg->strvalue[4]] == NULL))) {
+				DEBUG2("  rlm_eap:  Ignoring Unknown EAP type");
 				return EAP_NOOP;
 			}
 
@@ -818,6 +820,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 			    ((eap_msg->strvalue[5] == 0) ||
 			     (eap_msg->strvalue[5] > PW_EAP_MAX_TYPES) ||
 			     (inst->types[eap_msg->strvalue[5]] == NULL))) {
+				DEBUG2("  rlm_eap: Ignoring NAK with request for unknown EAP type");
 				return EAP_NOOP;
 			}
 		} /* else it's not an EAP-Request or EAP-Response */
