@@ -617,9 +617,9 @@ void loop(struct relay_misc *r_args)
  */
 int find_shortname(char *shortname, char **host, char **secret)
 {
-	CONF_SECTION *cs;
+	CONF_SECTION *maincs, *cs;
 
-	if (read_radius_conf_file() < 0) {
+	if ((maincs = read_radius_conf_file()) == NULL) {
 		fprintf(stderr, "Error reading radiusd.conf\n");
 		exit(1);
 	}
@@ -627,7 +627,7 @@ int find_shortname(char *shortname, char **host, char **secret)
 	/*
 	 * Find the first 'client' section.
 	 */
-	cs = cf_section_find("client");
+	cs = cf_section_sub_find(maincs, "client");
 	if (cs) {
 		c_shortname = cf_section_value_find(cs, "shortname");
 		c_secret = cf_section_value_find(cs, "secret");

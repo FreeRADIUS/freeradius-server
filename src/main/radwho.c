@@ -339,7 +339,7 @@ static void usage(void)
  */
 int main(int argc, char **argv)
 {
-	CONF_SECTION *cs;
+	CONF_SECTION *maincs, *cs;
 	FILE *fp;
 	struct radutmp rt;
 	struct utmp ut;
@@ -400,13 +400,13 @@ int main(int argc, char **argv)
 	}
 
 	/* Read radiusd.conf */
-	if (read_radius_conf_file() < 0) {
+	if ((maincs = read_radius_conf_file()) == NULL) {
 		fprintf(stderr, "%s: Errors reading radiusd.conf\n", argv[0]);
 		exit(1);
 	}
 
 	/* Read the radutmp section of radiusd.conf */
-	cs = cf_section_sub_find(cf_section_find("modules"), "radutmp");
+	cs = cf_section_sub_find(cf_section_sub_find(maincs, "modules"), "radutmp");
 	if(!cs) {
 		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
 			argv[0]);

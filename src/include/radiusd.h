@@ -358,5 +358,5 @@ extern struct main_config_t mainconfig;
 
 int read_mainconfig(int reload);
 int free_mainconfig(void);
-int read_radius_conf_file(void); /* for radwho and friends. */
+CONF_SECTION *read_radius_conf_file(void); /* for radwho and friends. */
 #endif /*RADIUSD_H*/
