@@ -271,8 +271,10 @@ int             simplepaircmp(VALUE_PAIR *, VALUE_PAIR *);
 void		pair_builtincompare_init(void);
 
 /* xlat.c */
-int            radius_xlat2(char * out, int outlen, const char *fmt,
-                            REQUEST * request);
+typedef int (*RADIUS_ESCAPE_STRING)(char *out, int outlen, const char *in);
+
+int            radius_xlat(char * out, int outlen, const char *fmt,
+			   REQUEST * request, RADIUS_ESCAPE_STRING func);
 
 #ifdef WITH_THREAD_POOL
 /* threads.c */

@@ -195,6 +195,15 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 
 	VALUE_PAIR *uservp = NULL;
 
+	/*
+	 *	They MUST have a user name to do SQL authorization.
+	 */
+	if ((!request->username) ||
+	    (request->username->length == 0)) {
+		radlog(L_ERR, "zero length username not permitted\n");
+		return RLM_MODULE_INVALID;
+	}
+
 	sqlsocket = sql_get_socket(inst);
 
 	/*
@@ -202,30 +211,24 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	 */
 	uservp = set_userattr(inst, sqlsocket, request->packet->vps, NULL, saveuser, &savelen);
 	name = uservp->strvalue;
-	if (name[0] == 0) {
-		radlog(L_ERR, "zero length username not permitted\n");
-		sql_release_socket(inst, sqlsocket);
-		restore_userattr(uservp, saveuser, savelen);
-		return -1;
-	}
 
-	radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_check_query, request);
+	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_check_query, request, NULL);
 	found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_USERDATA);
 	/*
 	 *      Find the entry for the user.
 	 */
 	if (found > 0) {
-		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request);
+		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, NULL);
 		sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
-		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_reply_query, request);
+		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_reply_query, request, NULL);
 		sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_USERDATA);
-		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request);
+		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, NULL);
 		sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
 	} else if (found < 0) {
 		radlog(L_ERR, "rlm_sql:  SQL query error; rejecting user");
 		sql_release_socket(inst, sqlsocket);
 		restore_userattr(uservp, saveuser, savelen);
-		return -1;
+		return RLM_MODULE_INVALID;
 
 	} else {
 
@@ -236,9 +239,9 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		 * for a DEFAULT entry
 		 */
 		set_userattr(inst, sqlsocket, uservp, "DEFAULT", NULL, NULL);
-		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request);
+		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, NULL);
 		gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
-		radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request);
+		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, NULL);
 		gcheck = sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
 		if (gcheck)
 			found = 1;
@@ -303,7 +306,7 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	 * 3. Replace User-Name attr with saved value
 	 */
 	uservp = set_userattr(inst, sqlsocket, request->packet->vps, NULL, saveuser, &savelen);
-	radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request);
+	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request, NULL);
 	restore_userattr(uservp, saveuser, savelen);
 
 	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
@@ -363,7 +366,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL) {
 		acctstatustype = pair->lvalue;
 	} else {
-		radius_xlat2(logstr, MAX_QUERY_LEN, "rlm_sql:  packet has no account status type.  [user '%{User-Name}', nas '%{NAS-IP-Address}']", request);
+		radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  packet has no account status type.  [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
 		radlog(L_ERR, logstr);
 		return 0;
 	}
@@ -379,7 +382,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		acctsessiontime = pair->lvalue;
 
 	if ((acctsessiontime <= 0) && (acctstatustype == PW_STATUS_STOP)) {
-		radius_xlat2(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session" " length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request);
+		radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session" " length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
 		radlog(L_ERR, logstr);
 		return 0;
 	}
@@ -393,7 +396,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		case PW_STATUS_ACCOUNTING_ON:
 		case PW_STATUS_ACCOUNTING_OFF:
 			radlog(L_INFO, "rlm_sql:  received Acct On/Off packet");
-			radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->accounting_onoff_query, request);
+			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_onoff_query, request, NULL);
 			query_log(inst, querystr);
 
 			if (querystr) {
@@ -409,7 +412,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			 */
 		case PW_STATUS_ALIVE:
 
-			radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->accounting_update_query, request);
+			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_update_query, request, NULL);
 			query_log(inst, querystr);
 
 			if (querystr) {
@@ -425,7 +428,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			 */
 		case PW_STATUS_START:
 
-			radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query, request);
+			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query, request, NULL);
 			query_log(inst, querystr);
 
 			if (querystr) {
@@ -438,7 +441,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					 * the stop record came before the start.  We try an
 					 * our alternate query now (typically an UPDATE)
 					 */
-					radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query_alt, request);
+					radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query_alt, request, NULL);
 					query_log(inst, querystr);
 
 					if (querystr) {
@@ -456,7 +459,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			 */
 		case PW_STATUS_STOP:
 
-			radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query, request);
+			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query, request, NULL);
 			query_log(inst, querystr);
 
 			if (querystr) {
@@ -474,7 +477,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				 * matching Start record.  So we have to
 				 * insert this stop rather than do an update
 				 */
-				radius_xlat2(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query_alt, request);
+				radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query_alt, request, NULL);
 				query_log(inst, querystr);
 
 				if (querystr) {

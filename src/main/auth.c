@@ -710,8 +710,8 @@ int rad_authenticate(REQUEST *request)
 	seen_callback_id = 0;
 	if ((auth_item = pairfind(request->reply->vps, PW_CALLBACK_ID)) != NULL) {
 		seen_callback_id = 1;
-		radius_xlat2(buf, sizeof(auth_item->strvalue),
-				(char *)auth_item->strvalue, request);
+		radius_xlat(buf, sizeof(auth_item->strvalue),
+			    (char *)auth_item->strvalue, request, NULL);
 		strNcpy((char *)auth_item->strvalue, buf,
 			sizeof(auth_item->strvalue));
 		auth_item->length = strlen((char *)auth_item->strvalue);
@@ -769,13 +769,13 @@ int rad_authenticate(REQUEST *request)
 
 	/*
 	 *	Filter (possibly multiple) Reply-Message attributes
-	 *	through radius_xlat2, modifying them in place.
+	 *	through radius_xlat, modifying them in place.
 	 */
 	if (user_msg == NULL) {
 		reply_item = pairfind(request->reply->vps, PW_REPLY_MESSAGE);
 		while (reply_item) {
-			radius_xlat2(buf, sizeof(reply_item->strvalue),
-					(char *)reply_item->strvalue, request);
+		  radius_xlat(buf, sizeof(reply_item->strvalue),
+			      (char *)reply_item->strvalue, request, NULL);
 		strNcpy((char *)reply_item->strvalue, buf,
 				sizeof(reply_item->strvalue));
 		reply_item->length = strlen((char *)reply_item->strvalue);

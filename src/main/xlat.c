@@ -167,9 +167,6 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
 
 
 /*
- *	Based on radius_xlat from exec.c
- *	After testing will replace the radius_xlat
- *
  *	Replace %<whatever> in a string.
  *
  *	%a	 Protocol (SLIP/PPP)
@@ -201,7 +198,8 @@ static void decode_attribute(const char **from, char **to, int freespace, int *o
  *	${reply:AttributeName}		Corresponding value for AttributeName in reply
  */
 
-int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
+int radius_xlat(char *out, int outlen, const char *fmt,
+		REQUEST *request, RADIUS_ESCAPE_STRING func)
 {
 	int i, c,freespace;
 	const char *p;

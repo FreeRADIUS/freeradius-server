@@ -96,7 +96,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		/*	
 		 *	Child
 		 */
-		radius_xlat2(answer, sizeof(answer), cmd, request);
+		radius_xlat(answer, sizeof(answer), cmd, request, NULL);
 		buf = answer;
 
 		/*

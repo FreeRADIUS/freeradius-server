@@ -99,10 +99,10 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *
 	 *	Generate the path for the detail file.  Use the
 	 *	same format, but truncate at the last /.  Then
-	 *	feed it through radius_xlat2() to expand the
+	 *	feed it through radius_xlat() to expand the
 	 *	variables.
 	 */
-	radius_xlat2(buffer, sizeof(buffer), inst->detailfile, request);
+	radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, NULL);
 	DEBUG2("rlm_detail: %s expands to %s", inst->detailfile, buffer);
 
 	/*
