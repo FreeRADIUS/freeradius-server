@@ -26,15 +26,17 @@ static:
 dynamic:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
+install:
+	install -d -m 755 $(libdir)
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	[ "lib/*rlm_*" != "" ] && install -m 755 lib/*rlm_* $(libdir)
+
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@rm -f *~ lib/[0-9a-z]* lib/STATIC_MODULE_LDFLAGS
 
-install:
-	install -d -m 755 $(libdir)
+distclean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	[ "lib/*.a" != "" ] && install -m 755 lib/*.a $(libdir)
-	[ "lib/*.la" != "" ] && install -m 755 lib/*.la $(libdir)
 
 common:
 	@[ -d lib/ ] || mkdir lib
