@@ -305,7 +305,7 @@ static int reread_config(int reload)
 	 *	If we ARE debugging, don't trap them, so we can
 	 *	dump core.
 	 */
-	if (debug_flag == 0) {
+	if ((allow_core_dumps == FALSE) && (debug_flag == 0)) {
 #ifdef SIGTRAP
 		signal(SIGTRAP, sig_fatal);
 #endif
@@ -950,6 +950,13 @@ int main(int argc, char *argv[])
 #endif
 
 		status = select(32, &readfds, NULL, NULL, tv);
+
+		/*
+		 *	Reap any children
+		 */
+		while (waitpid(-1, &i, WNOHANG) > 0)
+			/* do nothing */;
+
 		if (status == -1) {
 			/*
 			 *  On interrupts, we clean up the
@@ -2041,9 +2048,9 @@ void queue_sig_cleanup(int sig) {
 /*ARGSUSED*/
 void sig_cleanup(int sig)
 {
-#ifndef HAVE_PTHREAD_H
 	int status;
 	child_pid_t pid;
+#ifndef HAVE_PTHREAD_H
 	REQUEST *curreq;
 #endif
 
@@ -2059,10 +2066,8 @@ void sig_cleanup(int sig)
 	reset_signal(SIGCHLD, sig_cleanup);
 	
 	/*
-	 *  If we're using pthreads, then there are NO child processes,
-	 *  so the waitpid() call, and the following code, is useless.
+	 *	Wait for the child, without hanging.
 	 */
-#ifndef HAVE_PTHREAD_H
 	for (;;) {
 		pid = waitpid((pid_t)-1, &status, WNOHANG);
 		if (pid <= 0)
@@ -2082,15 +2087,20 @@ void sig_cleanup(int sig)
 		}
 
 		/*
+		 *	If we have pthreads, then the only children
+		 *	are from Exec-Program.  We don't care about them,
+		 *	so once we've grabbed their PID's, we're done.
+		 */
+#ifndef HAVE_PTHREAD_H
+		/*
 		 *  Loop over ALL of the active requests, looking
 		 *  for the one which caused the signal.
 		 */
 		if (rl_walk(sig_cleanup_walker, (void*)pid) != 0) {
 			radlog(L_ERR, "Failed to cleanup child %d", pid);
 		}
-
-	}
 #endif /* !defined HAVE_PTHREAD_H */
+	}
 }
 
 /*

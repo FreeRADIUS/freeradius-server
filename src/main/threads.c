@@ -136,7 +136,6 @@ static void *request_handler_thread(void *arg)
 	sigaddset(&set, SIGHUP);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGQUIT);
-	sigaddset(&set, SIGCHLD);
 	pthread_sigmask(SIG_BLOCK, &set, NULL);
 #endif
 	
@@ -177,7 +176,6 @@ static void *request_handler_thread(void *arg)
 		 */
 	}
 
- thread_exit:
 	/*
 	 *	This thread is exiting.  Delete any additional resources
 	 *	associated with it (semaphore, etc), and free the thread
