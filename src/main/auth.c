@@ -385,7 +385,7 @@ int rad_check_password(REQUEST *request)
  *	sent to the NAS. It can receive both Access-Accept and Access-Reject
  *	replies.
  */
-static int rad_postauth(REQUEST *request)
+int rad_postauth(REQUEST *request)
 {
 	int	result;
 	int	postauth_type = 0;
@@ -460,6 +460,9 @@ int rad_authenticate(REQUEST *request)
 	 *	to add an initial Auth-Type: Auth-Accept for success,
 	 *	Auth-Reject for fail. We also need to add the reply
 	 *	pairs from the server to the initial reply.
+	 *
+	 *	Huh?  If the request wasn't an authentication request,
+	 *	WTF are we doing here?
 	 */
 	if ((request->proxy_reply) &&
 	    (request->packet->code == PW_AUTHENTICATION_REQUEST)) {
@@ -775,7 +778,7 @@ autz_redo:
 	/*
 	 *	Result should be >= 0 here - if not, it means the user
 	 *	is rejected, so we overwrite the Post-Auth-Type with
-	 *	the value REJECT and cal the post-authentication
+	 *	the value REJECT and call the post-authentication
 	 *	step.
 	 */
 	if (result < 0) {
