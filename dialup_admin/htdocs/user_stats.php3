@@ -40,6 +40,7 @@ else
 	$order_attr = 'ConnNum';
 if ($server != '' && $server != 'all')
 	$server_str = "AND NASIPAddress = '$server'";
+$login_str = ($login) ? "AND UserName = '$login' " : '';
 
 $selected[$order] = 'selected';
 $selected[$sortby] = 'selected';
@@ -90,7 +91,7 @@ $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_total_accounting_table]
-	WHERE AcctDate >= '$start' AND AcctDate <= '$stop' $server_str
+	WHERE AcctDate >= '$start' AND AcctDate <= '$stop' $server_str $login_str
 	ORDER BY $order_attr $order $limit;");
 
 	if ($search){
@@ -176,7 +177,9 @@ EOM;
 <td><input type="submit" class=button value="show"></td></tr>
 <tr><td>
 <b>On Access Server:</b>
-</td></tr><tr><td>
+</td>
+<td><b>User</b></td></tr>
+<tr><td>
 <select name="server">
 <?php
 while(1){
@@ -196,7 +199,9 @@ if ($server == '' || $server == 'all')
 	echo "<option selected value=\"all\">all\n";
 ?>
 </select>
-</td></tr>
+</td>
+<td><input type="text" name="login" size="11" value="<?php echo $login ?>"></td>
+</tr>
 </table></td></tr></form>
 </table>
 </tr>

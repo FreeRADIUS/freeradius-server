@@ -29,7 +29,7 @@ $date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,
 print "$date\n";
 
 $query = "LOCK TABLES $sql_accounting_table WRITE;";
-$query .= "DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date';";
+$query .= "DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date' AND AcctStopTime != 0;";
 $query .= "UNLOCK TABLES;";
 print "$query\n";
 open TMP, ">/tmp/truncate_radacct.query"
