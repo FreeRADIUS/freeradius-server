@@ -61,7 +61,7 @@ dnl		AC_LOCATE_DIR(iodbc_include_dir,[isql.h])
 		AC_DEFINE(HAVE_IODBC_H)
 
   
-		AC_MSG_CHECKING([for SQLConnect in -lodbc])
+		AC_MSG_CHECKING([for SQLConnect in -liodbc])
 
 		old_LIBS="$LIBS"
 
@@ -69,9 +69,9 @@ dnl		AC_LOCATE_DIR(iodbc_lib_dir,[libodbc${libltdl_cv_shlibext}])
 dnl		AC_LOCATE_DIR(iodbc_lib_dir,[libodbc.a])
 
 		for try in /usr/lib /usr/lib/iodbc /usr/local/lib/iodbc /usr/local/iodbc/lib/iodbc $iodbc_lib_dir; do
-			LIBS="$old_LIBS -L$try -lodbc"
+			LIBS="$old_LIBS -L$try -liodbc"
 			AC_TRY_LINK([extern char SQLConnect();], [SQLConnect()],
-				IODBC_LIBS="-L$try -lodbc",
+				IODBC_LIBS="-L$try -liodbc",
 				IODBC_LIBS=
 			)
 			if test "x$IODBC_LIBS" != "x"; then
