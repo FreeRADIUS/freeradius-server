@@ -121,6 +121,13 @@ the rlm_ldap module:
 #
 #	groupname_attribute = "cn"
 
+#	compare_check_items: Specifies if the module will do a comparison on the check items extracted
+#	from the ldap with the corresponding items present in the incoming request.
+#	default: no - don't do any comparisons
+#
+#	compare_check_items = yes
+	
+
 #	groupmembership_filter: The filter to search for group membership of a particular user
 #	after we have found the DN for the group.
 #	default: (|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))

@@ -59,6 +59,9 @@
  *	  collisions with other modules
  *	- If perform_search fails check the ld != NULL before using it. Based on a bug report
  *	  by John <jhogenmiller@pennswoods.net>
+ * June 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Add the ability to do a paircmp on the check items. Add a compare_check_items boolean
+ *	  configuration directive which defaults to no. If it is set then we will do a compare
  */
 static const char rcsid[] = "$Id$";
 
@@ -122,6 +125,7 @@ typedef struct {
 	int		num_conns;
 	int		cache_timeout;
 	int		cache_size;
+	int		do_comp;
 	char           *login;
 	char           *password;
 	char           *filter;
@@ -172,6 +176,7 @@ static CONF_PARSER module_config[] = {
 	{"dictionary_mapping", PW_TYPE_STRING_PTR, offsetof(ldap_instance,dictionary_mapping), NULL, "${confdir}/ldap.attrmap"},
 	{"ldap_debug", PW_TYPE_INTEGER, offsetof(ldap_instance,ldap_debug), NULL, "0x0000"},
 	{"ldap_connections_number", PW_TYPE_INTEGER, offsetof(ldap_instance,num_conns), NULL, "5"},
+	{"compare_check_items", PW_TYPE_BOOLEAN, offsetof(ldap_instance,do_comp), NULL, "no"},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -1021,19 +1026,27 @@ ldap_authorize(void *instance, REQUEST * request)
 		pairadd(check_pairs, check_tmp);
 
 
+	DEBUG("rlm_ldap: looking for reply items in directory...");
+
+
+	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs)) != NULL)
+		pairadd(reply_pairs, reply_tmp);
+
+       if (inst->do_comp && paircmp(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
+		DEBUG("rlm_ldap: Pairs do not match. Rejecting user.");
+		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Pairs do not match");
+		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_fmsg_vp);
+
+		return RLM_MODULE_REJECT;
+	}
+
 	/*
  	 * Module should default to LDAP authentication if no Auth-Type
 	 * specified
 	 */
 	if (pairfind(*check_pairs, PW_AUTHTYPE) == NULL)
 		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
-
-
-	DEBUG("rlm_ldap: looking for reply items in directory...");
-
-
-	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs)) != NULL)
-		pairadd(reply_pairs, reply_tmp);
 
 
 	DEBUG("rlm_ldap: user %s authorized to use remote access",
