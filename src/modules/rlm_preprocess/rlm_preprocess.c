@@ -451,6 +451,28 @@ static void add_nas_attr(REQUEST *request)
 		nas->lvalue = request->packet->src_ipaddr;
 		pairadd(&request->packet->vps, nas);
 	}
+
+	/*
+	 *	Add in a Request-Src-IP-Address, to tell the user
+	 *	the source IP of the request.  That is, the client,
+	 *	but Client-IP-Address is too close to the old
+	 *	Client-FOO names, which I KNOW would confuse a lot
+	 *	of people.
+	 *
+	 *	Note that this MAY BE different from the NAS-IP-Address,
+	 *	especially if the request is being proxied.
+	 *
+	 *	Note also that this is a server configuration item,
+	 *	and will NOT make it to any packets being sent from
+	 *	the server.
+	 */
+	nas = paircreate(PW_REQUEST_SRC_IP_ADDRESS, PW_TYPE_IPADDR);
+	if (!nas) {
+	  log(L_ERR, "No memory");
+	  exit(1);
+	}
+	nas->lvalue = request->packet->src_ipaddr;
+	pairadd(&request->packet->vps, nas);
 }
 
 
@@ -504,14 +526,21 @@ static int preprocess_authorize(REQUEST *request,
 #endif
 
 	hints_setup(request);
+	
+	/*
+	 *	Note that we add the Request-Src-IP-Address to the request
+	 *	structure BEFORE checking huntgroup access.  This allows
+	 *	the Request-Src-IP-Address to be used for huntgroup
+	 *	comparisons.
+	 */
+	add_nas_attr(request);
+
 	if (huntgroup_access(request->packet->vps) != RLM_AUTZ_OK) {
 		log(L_AUTH, "No huntgroup access: [%s] (%s)",
 		    request->username->strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
 		return RLM_AUTZ_REJECT;
 	}
-
-	add_nas_attr(request);
 
 	return RLM_AUTZ_NOTFOUND; /* Meaning: try next autorization module */
 }
