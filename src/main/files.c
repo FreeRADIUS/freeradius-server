@@ -540,13 +540,14 @@ REALM *realm_find(const char *realm)
 		 */
 		if (strcmp(cl->realm, realm) == 0) {
 			return cl;
-			
-			/*
-			 *	No default realm, try to set one.
-			 */
-		} else if ((default_realm == NULL) &&
-			   (strcmp(cl->realm, "DEFAULT") == 0)) {
-			default_realm = cl;
+		}
+
+		/*
+		 *	No default realm, try to set one.
+		 */
+		if ((default_realm == NULL) &&
+		    (strcmp(cl->realm, "DEFAULT") == 0)) {
+		  default_realm = cl;
 		}
 	} /* loop over all realms */
 
@@ -565,9 +566,17 @@ REALM *realm_findbyaddr(uint32_t ipaddr)
 {
 	REALM *cl;
 
+	/*
+	 *	Note that we do NOT check for inactive realms!
+	 *
+	 *	If we get a packet from an end server, then we mark it
+	 *	as active, and return the realm.
+	 */
 	for(cl = realms; cl != NULL; cl = cl->next)
-		if (ipaddr == cl->ipaddr)
+		if (ipaddr == cl->ipaddr) {
+			cl->active = TRUE;
 			return cl;
+		}
 
 	return NULL;
 }
