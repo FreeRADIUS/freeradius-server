@@ -20,7 +20,7 @@ MODULE_LIBS	= $(STATIC_MODULES)
 MODULE_OBJS	=
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
-BINARIES	= radiusd radwho radzap radclient radrelay 
+BINARIES	= radiusd radwho radzap radclient radrelay radsqlrelay
 LT_BIN_FLAGS	=
 
 #
@@ -137,6 +137,12 @@ radrelay: radrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o
 radrelay.o: radrelay.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radrelay.c
 
+radsqlrelay: radsqlrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o valuepair.o ../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self $(CFLAGS) $(LDFLAGS) -o radsqlrelay radsqlrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o valuepair.o $(LIBLTDL) $(LCRYPT) $(LIBS)
+
+radsqlrelay.o: radsqlrelay.c $(INCLUDES)
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radsqlrelay.c
+
 radwho.o: radwho.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
 
@@ -159,5 +165,6 @@ install:
 	$(INSTALL) -m 755    radlast			$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755    radclient$(EXEEXT)		$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755    radrelay$(EXEEXT)		$(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755    radsqlrelay$(EXEEXT)		$(R)$(bindir)
 	$(INSTALL) -m 755    radtest 			$(R)$(bindir)
 	$(INSTALL) -m 755    checkrad.pl		$(R)$(sbindir)/checkrad
