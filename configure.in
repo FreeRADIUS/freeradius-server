@@ -555,7 +555,7 @@ if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
   INSTALLSTRIP=""
   AC_MSG_RESULT(yes.  Using $devflags)
 else
-  devflags="none"
+  devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP="-s"
   AC_MSG_RESULT(no.)

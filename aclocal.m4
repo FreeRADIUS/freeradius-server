@@ -746,7 +746,7 @@ AC_TRY_COMPILE([
 #endif
 #include <asn1.h>],
                [ int a = 1;],
-               SNMP_INCLUDE=" ",
+               SNMP_INCLUDE="",
                SNMP_INCLUDE=)
 
 dnl #

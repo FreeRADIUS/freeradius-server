@@ -562,7 +562,7 @@ fi
 
 
 
-# From configure.in Revision: 1.123 
+# From configure.in Revision: 1.124 
 RADIUSD_VERSION=0.2
 
 
@@ -3498,7 +3498,7 @@ if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
   INSTALLSTRIP=""
   echo "$ac_t""yes.  Using $devflags" 1>&6
 else
-  devflags="none"
+  devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP="-s"
   echo "$ac_t""no." 1>&6
@@ -3640,7 +3640,7 @@ int main() {
 EOF
 if { (eval echo configure:3642: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
-  SNMP_INCLUDE=" "
+  SNMP_INCLUDE=""
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5
