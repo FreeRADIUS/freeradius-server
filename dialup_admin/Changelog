@@ -30,6 +30,7 @@ Ver 1.65:
 * Add a general_nas_type and a per nas type directive and pass that to snmpfinger. Updated snmpfinger to also
   support lucent equipment apart from cisco
 * Update the HOWTO file with a few comments on the general_nas_type directive
+* Use the User-Password attribute instead of Password in user_test.php3
 Ver 1.63:
 * Do an eval on the attribute description strings in the user_edit page. That will allow the login-time creation
   page to work properly.

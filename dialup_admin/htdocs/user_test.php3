@@ -83,13 +83,13 @@ if ($test_user == 1){
 		if ($test_login){
 			$test=1;
 			fwrite($fp, "User-Name = \"$config[general_test_account_login]\"\n");
-			fwrite($fp, "Password = \"$config[general_test_account_password]\"\n");
+			fwrite($fp, "User-Password = \"$config[general_test_account_password]\"\n");
 			pclose($fp);
 		}
 		else{
 			fwrite($fp, "User-Name = \"$login\"\n");
 			if ($auth_proto == 'pap')
-				fwrite($fp, "Password = \"$passwd\"\n");
+				fwrite($fp, "User-Password = \"$passwd\"\n");
 			else if ($auth_proto == 'chap')
 				fwrite($fp, "CHAP-Password = \"$passwd\"\n");
 			if (strlen($extra))
