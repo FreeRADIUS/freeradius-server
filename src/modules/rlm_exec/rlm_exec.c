@@ -63,7 +63,7 @@ static CONF_PARSER module_config[] = {
 	{ "input_pairs", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,input), NULL, "request" },
 	{ "output_pairs",  PW_TYPE_STRING_PTR,
-	  offsetof(rlm_exec_t,output), NULL, "reply" },
+	  offsetof(rlm_exec_t,output), NULL, NULL },
 	{ "packet_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,packet_type), NULL, NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
@@ -228,6 +228,15 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_exec: Cannot read output pairs if wait=no");
 		exec_detach(inst);
 		return -1;
+	}
+
+	/*
+	 *	Sanity check the config.  If we're told to wait,
+	 *	then the output pairs should be defined.
+	 */
+	if (inst->wait &&
+	    (inst->output == NULL)) {
+		radlog(L_INFO, "rlm_exec: Wait=yes but no output defined. Did you mean output=none?");
 	}
 
 	/*
