@@ -21,6 +21,7 @@ struct mypasswd {
 	uid_t   pw_uid;         /* user id */
 	gid_t   pw_gid;         /* group id */
 	int     loggedin;       /* number of logins */
+	char	*pw_gecos;	/* full name (used for class attr */
 	struct mypasswd *next;  /* next */
 };
 
@@ -36,5 +37,5 @@ struct mygroup {
 int unix_buildHashTable(const char *passwd_file, const char *shadow_file);
 int unix_buildGrpList(void);
 int unix_hashradutmp(void);
-int H_unix_pass(char *name, char *passwd);
+int H_unix_pass(char *name, char *passwd, VALUE_PAIR **reply_items);
 int H_groupcmp(VALUE_PAIR *check, char *username);

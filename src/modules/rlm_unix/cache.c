@@ -84,6 +84,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 				next = cur->next;
 				free(cur->pw_name);	
 				free(cur->pw_passwd);	
+				free(cur->pw_gecos);	
 				free(cur);	
 				cur = next;
 			}
@@ -155,7 +156,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 #endif /* !HAVE_SHADOW_H */  
 
 			/* 
-		    * Put uid into structure.  Not sure why, but 
+		    	 * Put uid into structure.  Not sure why, but 
 			 * at least we'll have it later if we need it
 			 */
 			ptr++;
@@ -168,7 +169,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			new->pw_uid = (uid_t)atoi(idtmp);	
 
 			/* 
-		    * Put gid into structure.  
+		    	 * Put gid into structure.  
 			 */
 			ptr++;
 			bufptr = ptr;
@@ -180,7 +181,23 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 			new->pw_gid = (gid_t)atoi(idtmp);	
 
 			/* 
-			 * We're skipping name, home dir, and shell
+		    	 * Put name into structure.  
+			 */
+			ptr++;
+			bufptr = ptr;
+			while(*ptr!=':')
+				ptr++;
+
+			len = ptr - bufptr;
+			if((new->pw_gecos = (char *)malloc(len+1)) == NULL) {
+				radlog(L_ERR, "HASH:  Out of memory!");
+				return -1;
+			}
+			strncpy(new->pw_gecos, bufptr, len);
+			new->pw_gecos[len] = '\0';
+				
+			/* 
+			 * We'll skip home dir and shell
 			 * as I can't think of any use for storing them
 			 */
 
@@ -222,6 +239,24 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 				radlog(L_ERR, "HASH:  Username %s in shadow but not passwd??", username);
 				continue;
 			}
+#ifdef WITH_USERCOLLIDE
+			/* 
+			 * In order to put passwd in correct structure, we have
+			 * to skip any struct that has a passwd already for that user
+			 */ 
+			cur = new;
+			while(new && (strcmp(new->pw_name, username)<=0) && (new->pw_passwd == NULL)) {
+				cur = new;
+				new = new->next;
+			}		
+			/* Go back one, we passed it in the above loop */
+			new = cur;
+
+			/*
+			 * When we get here, we should be at the last duplicate user structure
+			 * in this hash bucket
+			 */ 
+#endif
 
 			/* Put passwords into struct from shadow file */
 			ptr++;
@@ -243,7 +278,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
 
 	/* Finally, let's look at radutmp and make a record of everyone
 	 * that's logged in currently */
-	unix_hashradutmp();
+	/*unix_hashradutmp();*/
 
 	/* log how many entries we stored from the passwd file */
 	radlog(L_INFO, "HASH:  Stored %d entries from %s", numread, passwd_file);
@@ -453,7 +488,7 @@ int unix_hashradutmp(void) {
  * return -1 on failure
  * return -2 on error (let caller fall back to old method)
  */
-int H_unix_pass(char *name, char *passwd) {
+int H_unix_pass(char *name, char *passwd, VALUE_PAIR **reply_items) {
 	struct mypasswd	*pwd;
 	char *encrypted_pass;
 	char *encpw;
@@ -472,12 +507,48 @@ int H_unix_pass(char *name, char *passwd) {
 	 */
 	if (encrypted_pass[0] == 0) return 0;
 
+#ifdef WITH_USERCOLLIDE
+	while(pwd) {
+		/* 
+	 	 * Make sure same user still.  If not, return as if wrong pass given 
+		 */
+		if(strcmp(name, pwd->pw_name)) 
+			return -1;	
+
+		/* 
+	 	 * Could still be null passwd
+		 */
+		encrypted_pass = pwd->pw_passwd;
+		if (encrypted_pass[0] == (char *)0) {
+			return 0;
+		}
+
+		encpw = (char *)crypt(passwd, encrypted_pass);
+		/* 
+	 	 * Check password
+		 */
+		if(strcmp(encpw, encrypted_pass) == 0) {
+			/* 
+			 * Add 'Class' pair here with value of full name from passwd
+			 */
+			pairadd(reply_items, pairmake("Class", pwd->pw_gecos, T_OP_EQ));
+			return 0;	
+		}
+		pwd = pwd->next;
+	}
+	/* 
+	 * If we get here, pwd is null, and no users matched 
+	 */
+	return -1;
+#else 
 	/*
 	 *	Check encrypted password.
 	 */
 	encpw = (char *)crypt(passwd, encrypted_pass);
+
 	if (strcmp(encpw, encrypted_pass))
 		return -1;
+#endif
 
 	return 0;
 }
