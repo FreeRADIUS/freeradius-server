@@ -121,7 +121,11 @@ AC_ARG_WITH(ascend-hack,
 	;;
     yes)
 	AC_DEFINE(WITH_ASCEND_HACK)
-  esac ]
+	dnl if they haven't said to use it, do so.
+	if test "${with_ascend_cpl+set}" != "set"; then
+		with_ascend_cpl=1
+	fi
+    esac ]
 )
 
 dnl extra argument: --with-ascend-cpl=N
@@ -374,7 +378,7 @@ if test "$DYNAMIC_MODULES" != ""; then
         )
 
 dnl *** Bret Watson <Bret.Watson@ticm.com> says HP ld uses '-b -B deferred'
-	if test "$MODULE_LDFLAGS" = ""; then
+	if test -z "$MODULE_LDFLAGS"; then
           LDFLAGS="$LDFLAGS_orig -b -B deferred"
           AC_TRY_LINK(,[ return 0; ],
                   [ MODULE_LDFLAGS="-b -B deferred" ],
