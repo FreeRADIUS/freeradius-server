@@ -90,6 +90,7 @@ EAP CODE ORGANIZATION
   rlm_eap/types/rlm_eap_md5  -- EAP-MD5 authentication.
   rlm_eap/types/rlm_eap_tls  -- EAP-TLS based authentication.
   rlm_eap/types/rlm_eap_leap -- Cisco LEAP authentication.
+  rlm_eap/types/rlm_eap_sim  -- EAP-SIM (GSM) based authentication
    
 CONFIGURATION
 
@@ -127,6 +128,33 @@ CONFIGURATION
 
   NOTE: There can only be one instance of the EAP module.
 
+EAP SIM server
+
+  To configure EAP-SIM authentication, the following attributes must be
+  set in the server. This can be done in the users file, but in many cases
+  will be taken from a database server, via one of the SQL interface.
+
+  If one has SIM cards that one controls (i.e. whose share secret you know), 
+  one should be able to write a module to generate these attributes
+  (the triplets) in the server. 
+
+  If one has access to the SS7 based settlement network, then a module to
+  fetch appropriate triplets could be written. This module would act as
+  an authorization only module.
+
+  The attributes are:
+	EAP-Sim-Rand1 		16 bytes
+	EAP-Sim-SRES1 		 4 bytes
+	EAP-Sim-KC1 		 8 bytes
+	EAP-Sim-Rand2 		16 bytes
+	EAP-Sim-SRES2 		 4 bytes
+	EAP-Sim-KC2 		 8 bytes
+	EAP-Sim-Rand3 		16 bytes
+	EAP-Sim-SRES3 		 4 bytes
+	EAP-Sim-KC3 		 8 bytes
+
+  EAP-SIM will send WEP attributes to the resquestor.
+
 EAP CLIENTS
 
   1. XSupplicant - freeradius (EAP/TLS) notes may be found at:
@@ -141,6 +169,13 @@ EAP CLIENTS
   2. XP - freeradius (EAP/TLS) notes may be found at: 
 
    http://www.denobula.com/EAPTLS.pdf
+
+  3. Freeradius has an "radeapclient" that can do EAP-MD5 (passwords),
+     as well as EAP-SIM. It is in modules/rlm_eap/radeapclient.
+
+TESTING
+
+  You will find several test cases in src/tests/ for the EAP-SIM code.
 
 
 HOW DO I USE IT (FAQ/Examples)
@@ -288,6 +323,8 @@ INSTALLATION
   For EAP-TLS, OPENSSL, <http://www.openssl.org/>, is required to be installed.
   Any version from 0.9.7, should fairly work with this module.
 
+  EAP-SIM should not require any additional packages.
+
 
 CAVEATS
     It probably still has bugs.  Most notably, there is a small memory
@@ -362,4 +399,9 @@ HOW EAP WORKS
 
 ACKNOWLEDGEMENTS
    Primary author - Raghu <raghud@mail.com>
+
+   EAP-SIM	 - Michael Richardson <mcr@sandelman.ottawa.on.ca>
+		    The development of the EAP/SIM support was funded by
+		    Internet Foundation Austria (http://www.nic.at/ipa).
+
 
