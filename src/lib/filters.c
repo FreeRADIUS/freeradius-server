@@ -530,7 +530,7 @@ uint32_t	address;
 }
 
 		
-static char ipAddressDigits[] = "1234567890./";
+static const char ipAddressDigits[] = "1234567890./";
     /*
      * This functions attempts to convert an IP address in ASCII dot
      * with an optional netmask part to a pair of IpAddress.  Note:
