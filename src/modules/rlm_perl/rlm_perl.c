@@ -169,7 +169,7 @@ static XS(XS_radiusd_radlog)
        int     level;
        char    *msg;
        
-       level = *(int *) SvIV(ST(0));
+       level = (int) SvIV(ST(0));
        msg   = (char *) SvPV(ST(1), PL_na);
        
        /*
