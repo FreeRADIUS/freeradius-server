@@ -582,8 +582,8 @@ static int file_authorize(void *instance, REQUEST *request)
 		 *	check pairs, then add the reply pairs from the
 		 *	entry to the current list of reply pairs.
 		 */
-#ifdef WITH_USERCOLLIDE
 		if ((paircmp(request_pairs, pl->check, reply_pairs) == 0)) {
+#ifdef WITH_USERCOLLIDE
 			/* 
 			 *	We don't compare pass on default users
 			 *	or they never match.  Oops.
@@ -658,8 +658,8 @@ static int file_authorize(void *instance, REQUEST *request)
 					break;
 #ifdef WITH_USERCOLLIDE
 			}
-		}
 #endif
+		}
 	}
 	
 	/*
