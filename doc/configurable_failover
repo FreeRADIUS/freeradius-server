@@ -114,7 +114,7 @@ section".
 	fail		the module failed
 	reject		the module rejected the user
 	userlock	the user was locked out
-	invalid		the users configuration entry was invilad
+	invalid		the user's configuration entry was invalid
 	handled		the module has done everything to handle the request
 	
   In a configurable fail-over section, each of these codes may be
