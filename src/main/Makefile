@@ -6,7 +6,7 @@ include ../../Make.inc
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o conffile.o \
-		  modules.o radutmp.o xlat.o threads.o
+		  modules.o radutmp.o xlat.o threads.o smux.o radius_snmp.o
 INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/modules.h \
 		  ../include/autoconf.h
 
@@ -19,11 +19,11 @@ all:	radiusd radwho radzap raduse radclient $(BUILDDBM)
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
-		$(SERVER_OBJS) $(LIBS) $(LDBM) $(LCRYPT) $(PTHREADLIB) \
-		$(MODULE_LIBS) $(LIBLTDL)
+		$(SERVER_OBJS) $(LIBS) $(LDBM) $(SNMPLIB) $(LCRYPT) \
+		$(PTHREADLIB) $(MODULE_LIBS) $(LIBLTDL)
 
 radiusd.o: radiusd.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c radiusd.c
+	$(CC) $(CFLAGS) $(SNMPINC) -c radiusd.c
 
 acct.o: acct.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c acct.c
@@ -75,6 +75,12 @@ xlat.o: xlat.c $(INCLUDES)
 
 threads.o: threads.c $(INCLUDES)
 	$(CC) $(CFLAGS) -o threads.o -c threads.c
+
+smux.o: smux.c $(INCLUDES)
+	$(CC) $(CFLAGS) $(SNMPINC) -o smux.o -c smux.c
+
+radius_snmp.o: radius_snmp.c $(INCLUDES)
+	$(CC) $(CFLAGS) $(SNMPINC) -o radius_snmp.o -c radius_snmp.c
 
 radclient: radclient.o ../lib/libradius.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o radclient radclient.o $(LIBS)
