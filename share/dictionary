@@ -255,6 +255,12 @@ ATTRIBUTE	Post-Proxy-Type		1016	integer
 ATTRIBUTE	Pre-Acct-Type		1017	integer
 
 #
+#	This is the EAP type of authentication, which is set
+#	by the EAP module, for informational purposed only.
+#
+ATTRIBUTE	EAP-Type		1018	integer
+
+#
 #	Integer Translations
 #
 
@@ -518,3 +524,54 @@ VALUE		Response-Packet-Type	Accounting-Message		10
 VALUE		Response-Packet-Type	Access-Challenge		11
 VALUE		Response-Packet-Type	Status-Server			12
 VALUE		Response-Packet-Type	Status-Client			13
+
+#
+#	EAP Sub-types, inside of Request and Response packets
+#
+#	http://www.iana.org/assignments/ppp-numbers
+#		"PPP EAP REQUEST/RESPONSE TYPES"
+#	
+#
+#	See dictionary.microsoft, MS-Acct-EAP-Type for similar definitions
+#
+VALUE		EAP-Type	Identity		1
+VALUE		EAP-Type	Notification		2
+VALUE		EAP-Type	NAK			3
+VALUE		EAP-Type	MD5-Challenge		4
+VALUE		EAP-Type	One-Time-Password	5
+VALUE		EAP-Type	Generic-Token-Card	6
+VALUE		EAP-Type	RSA-Public-Key		9
+VALUE		EAP-Type	DSS-Unilateral		10
+VALUE		EAP-Type	KEA			11
+VALUE		EAP-Type	KEA-Validate		12
+VALUE		EAP-Type	KEA			11
+VALUE		EAP-Type	EAP-TLS			13
+VALUE		EAP-Type	Defender-Token		14
+VALUE		EAP-Type	RSA-SecurID-EAP		15
+VALUE		EAP-Type	Arcot-Systems-EAP	16
+VALUE		EAP-Type	Cisco-LEAP		17
+VALUE		EAP-Type	Nokia-IP-Smart-Card	18
+VALUE		EAP-Type	SRP-SHA1-Part-1		19
+VALUE		EAP-Type	SRP-SHA1-Part-2		20
+VALUE		EAP-Type	EAP-TTLS		21
+VALUE		EAP-Type	Remote-Access-Service	22
+VALUE		EAP-Type	UMTS			23
+VALUE		EAP-Type	EAP-3Com-Wireless	24
+VALUE		EAP-Type	PEAP			25
+VALUE		EAP-Type	MS-EAP-Authentication	26
+VALUE		EAP-Type	MAKE			27
+VALUE		EAP-Type	CRYPTOCard		28
+VALUE		EAP-Type	EAP-MSCHAP-V2		29
+VALUE		EAP-Type	DynamID			30
+VALUE		EAP-Type	Rob-EAP			31
+VALUE		EAP-Type	SecurID-EAP		32
+VALUE		EAP-Type	MS-Authentication-TLV	33
+VALUE		EAP-Type	SentriNET		34
+VALUE		EAP-Type	EAP-Actiontec-Wireless	35
+VALUE		EAP-Type	Cogent-Biomentric-EAP	36
+VALUE		EAP-Type	AirFortress-EAP		37
+VALUE		EAP-Type	EAP-HTTP-Digest		38
+VALUE		EAP-Type	SecuriSuite-EAP		39
+VALUE		EAP-Type	DeviceConnect-EAP	40
+VALUE		EAP-Type	EAP-SPEKE		41
+VALUE		EAP-Type	EAP-MOBAC		42
