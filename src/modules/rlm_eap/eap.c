@@ -594,7 +594,7 @@ VALUE_PAIR *eap_useridentity(EAP_HANDLER *list, eap_packet_t *eap_packet, unsign
 	}
 
 	/* Get the handler from the list, if present */
-	handler = eap_findhandler(list, id);
+	handler = eaplist_findhandler(list, id);
 	if (handler)
 		return pairmake("User-Name", handler->identity, T_OP_EQ);
 	return NULL;

@@ -51,7 +51,7 @@ typedef struct md5_list {
 
 /* function declarations here */
 
-MD5_PACKET 	*eapmd5_alloc();
+MD5_PACKET 	*eapmd5_alloc(void);
 void 		eapmd5_free(MD5_PACKET **md5_packet_ptr);
 MD5_PACKET 	*eapmd5_extract(EAP_DS *auth);
 int 		eapmd5_compose(EAP_DS *auth, MD5_PACKET *reply);

@@ -195,24 +195,21 @@ void	    	eaptype_freelist(EAP_TYPES **tl);
 int  		eap_start(REQUEST *request);
 void 		eap_fail(REQUEST *request, EAP_PACKET *reply);
 void 		eap_success(REQUEST *request, EAP_PACKET *reply);
-EAP_HANDLER 	*eap_handler(EAP_HANDLER **list, eap_packet_t **eap_msg, REQUEST *request);
-char 		*eap_identity(eap_packet_t *eap_packet);
-eap_packet_t 	*eap_attribute(VALUE_PAIR *vps);
+int 		eap_validation(eap_packet_t *eap_msg);
 int 		eap_wireformat(EAP_PACKET *packet);
 int 		eap_compose(REQUEST *request, EAP_PACKET *reply);
-
-int 		eap_validation(eap_packet_t *eap_msg);
+eap_packet_t 	*eap_attribute(VALUE_PAIR *vps);
+EAP_DS 		*eap_buildds(eap_packet_t **eap_msg);
+EAP_HANDLER 	*eap_handler(EAP_HANDLER **list, eap_packet_t **eap_msg, REQUEST *request);
+char 		*eap_identity(eap_packet_t *eap_packet);
+VALUE_PAIR 	*eap_useridentity(EAP_HANDLER *list, eap_packet_t *eap_packet, unsigned char id[]);
 unsigned char 	*eap_generateid(REQUEST *request, unsigned char response_id);
 unsigned char 	*eap_regenerateid(REQUEST *request, unsigned char response_id);
-EAP_DS 		*eap_buildds(eap_packet_t **eap_msg);
-char 		*eap_identity(eap_packet_t *eap_msg);
-VALUE_PAIR 	*eap_useridentity(EAP_HANDLER *list, eap_packet_t *eap_msg, unsigned char id[]);
-EAP_HANDLER 	*eap_findhandler(EAP_HANDLER *list, unsigned char id[]);
 
 /* Memory Management */
-EAP_PACKET  	*eap_packet_alloc();
-EAP_DS      	*eap_ds_alloc();
-EAP_HANDLER 	*eap_handler_alloc();
+EAP_PACKET  	*eap_packet_alloc(void);
+EAP_DS      	*eap_ds_alloc(void);
+EAP_HANDLER 	*eap_handler_alloc(void);
 void	    	eap_packet_free(EAP_PACKET **eap_packet);
 void	    	eap_ds_free(EAP_DS **eap_ds);
 void	    	eap_handler_free(EAP_HANDLER **handler);
@@ -221,10 +218,11 @@ int 	    	eaplist_add(EAP_HANDLER **list, EAP_HANDLER *handler);
 void	    	eaplist_clean(EAP_HANDLER **list, time_t limit);
 void	    	eaplist_free(EAP_HANDLER **list);
 EAP_HANDLER 	*eaplist_isreply(EAP_HANDLER **list, unsigned char id[]);
+EAP_HANDLER 	*eaplist_findhandler(EAP_HANDLER *list, unsigned char id[]);
 
 /* State */
-void	    	generate_key();
-VALUE_PAIR  	*generate_state();
+void	    	generate_key(void);
+VALUE_PAIR  	*generate_state(void);
 int	    	verify_state(VALUE_PAIR *state);
 
 #endif /*_EAP_H*/

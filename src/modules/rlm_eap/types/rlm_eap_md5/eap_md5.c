@@ -43,7 +43,7 @@
 /*
  *      Allocate a new MD5_PACKET
  */
-MD5_PACKET *eapmd5_alloc()
+MD5_PACKET *eapmd5_alloc(void)
 {
         MD5_PACKET   *rp;
 

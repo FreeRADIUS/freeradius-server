@@ -148,7 +148,7 @@ static void generate_random(uint8_t *vector, int length)
 			sizeof(random_vector_pool));
 }
 
-void generate_key()
+void generate_key(void)
 {
 	generate_random(state_key, AUTH_VECTOR_LEN);
 }
@@ -156,7 +156,7 @@ void generate_key()
 /*
  * Our state, is (challenge + time + hmac(challenge + time, key))
  */
-VALUE_PAIR *generate_state()
+VALUE_PAIR *generate_state(void)
 {
 	unsigned char challenge[AUTH_VECTOR_LEN];
 	unsigned char hmac[AUTH_VECTOR_LEN];
