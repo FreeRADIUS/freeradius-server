@@ -158,6 +158,7 @@ static int rlm_sql_init(void) {
  */
 static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
 static int generate_sql_clients(SQL_INST *inst);
+static int sql_escape_func(char *out, int outlen, const char *in);
 
 /*
  *	sql xlat function. Right now only SELECTs are supported. Only
@@ -184,7 +185,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(querystr, sizeof(querystr), fmt, request, func)) {
+	if (!radius_xlat(querystr, sizeof(querystr), fmt, request, sql_escape_func)) {
 		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
 		       inst->config->xlat_name);
 		return 0;
@@ -517,7 +518,7 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 	 */
 	if (sql_set_user(inst, req, sqlusername, 0) < 0)
 		return 1;
-	if (!radius_xlat(querystr, sizeof(querystr), inst->config->groupmemb_query, req, NULL)){
+	if (!radius_xlat(querystr, sizeof(querystr), inst->config->groupmemb_query, req, sql_escape_func)){
 		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
 		       inst->config->xlat_name);
 		/* Remove the username we (maybe) added above */
@@ -1149,7 +1150,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	if(sql_set_user(inst, request, sqlusername, 0) <0)
 		return RLM_MODULE_FAIL;
 
-	radius_xlat(querystr, sizeof(querystr), inst->config->simul_count_query, request, NULL);
+	radius_xlat(querystr, sizeof(querystr), inst->config->simul_count_query, request, sql_escape_func);
 
 	/* initialize the sql socket */
 	sqlsocket = sql_get_socket(inst);
@@ -1193,7 +1194,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 		return RLM_MODULE_OK;
 	}
 
-	radius_xlat(querystr, sizeof(querystr), inst->config->simul_verify_query, request, NULL);
+	radius_xlat(querystr, sizeof(querystr), inst->config->simul_verify_query, request, sql_escape_func);
 	if(rlm_sql_select_query(sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "rlm_sql (%s): sql_checksimul: Database query error", inst->config->xlat_name);
 		sql_release_socket(inst, sqlsocket);
