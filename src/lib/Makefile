@@ -51,5 +51,8 @@ dynamic: $(TARGET).la
 clean:
 	rm -f *.o $(TARGET).a $(TARGET).la
 
-install:
-
+install: static dynamic
+	$(LIBTOOL) --mode=install $(INSTALL) -c \
+		$(TARGET).la $(R)$(libdir)/$(TARGET).la;
+	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
+	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
