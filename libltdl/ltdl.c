@@ -1,5 +1,5 @@
 /* ltdl.c -- system independent dlopen wrapper
-   Copyright (C) 1998, 1999, 2000 Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2004 Free Software Foundation, Inc.
    Originally by Thomas Tanner <tanner@ffii.org>
    This file is part of GNU Libtool.
 
@@ -37,8 +37,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #  include <stdio.h>
 #endif
 
+/* Include the header defining malloc.  On K&R C compilers,
+   that's <malloc.h>, on ANSI C and ISO C compilers, that's <stdlib.h>.  */
 #if HAVE_STDLIB_H
 #  include <stdlib.h>
+#else
+#  if HAVE_MALLOC_H
+#    include <malloc.h>
+#  endif
 #endif
 
 #if HAVE_STRING_H
@@ -53,10 +59,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #  include <ctype.h>
 #endif
 
-#if HAVE_MALLOC_H
-#  include <malloc.h>
-#endif
-
 #if HAVE_MEMORY_H
 #  include <memory.h>
 #endif
@@ -65,20 +67,52 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #  include <errno.h>
 #endif
 
-#if HAVE_DIRENT_H
+
+#ifndef __WINDOWS__
+#  ifdef __WIN32__
+#    define __WINDOWS__
+#  endif
+#endif
+
+
+#undef LT_USE_POSIX_DIRENT
+#ifdef HAVE_CLOSEDIR
+#  ifdef HAVE_OPENDIR
+#    ifdef HAVE_READDIR
+#      ifdef HAVE_DIRENT_H
+#        define LT_USE_POSIX_DIRENT
+#      endif /* HAVE_DIRENT_H */
+#    endif /* HAVE_READDIR */
+#  endif /* HAVE_OPENDIR */
+#endif /* HAVE_CLOSEDIR */
+
+
+#undef LT_USE_WINDOWS_DIRENT_EMULATION
+#ifndef LT_USE_POSIX_DIRENT
+#  ifdef __WINDOWS__
+#    define LT_USE_WINDOWS_DIRENT_EMULATION
+#  endif /* __WINDOWS__ */
+#endif /* LT_USE_POSIX_DIRENT */
+
+
+#ifdef LT_USE_POSIX_DIRENT
 #  include <dirent.h>
 #  define LT_D_NAMLEN(dirent) (strlen((dirent)->d_name))
 #else
-#  define dirent direct
-#  define LT_D_NAMLEN(dirent) ((dirent)->d_namlen)
-#  if HAVE_SYS_NDIR_H
-#    include <sys/ndir.h>
-#  endif
-#  if HAVE_SYS_DIR_H
-#    include <sys/dir.h>
-#  endif
-#  if HAVE_NDIR_H
-#    include <ndir.h>
+#  ifdef LT_USE_WINDOWS_DIRENT_EMULATION
+#    define LT_D_NAMLEN(dirent) (strlen((dirent)->d_name))
+#  else
+#    define dirent direct
+#    define LT_D_NAMLEN(dirent) ((dirent)->d_namlen)
+#    if HAVE_SYS_NDIR_H
+#      include <sys/ndir.h>
+#    endif
+#    if HAVE_SYS_DIR_H
+#      include <sys/dir.h>
+#    endif
+#    if HAVE_NDIR_H
+#      include <ndir.h>
+#    endif
 #  endif
 #endif
 
@@ -93,6 +127,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #endif
 
 #include "ltdl.h"
+
+#if WITH_DMALLOC
+#  include <dmalloc.h>
+#endif
 
 
 
@@ -114,7 +152,28 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
 #  define LT_READTEXT_MODE "r"
 #endif
 
+#ifdef LT_USE_WINDOWS_DIRENT_EMULATION
 
+#include <windows.h>
+
+#define dirent lt_dirent
+#define DIR lt_DIR
+
+struct dirent
+{
+  char d_name[2048];
+  int  d_namlen;
+};
+
+typedef struct _DIR
+{
+  HANDLE hSearch;
+  WIN32_FIND_DATA Win32FindData;
+  BOOL firsttime;
+  struct dirent file_info;
+} DIR;
+
+#endif /* LT_USE_WINDOWS_DIRENT_EMULATION */
 
 
 /* --- MANIFEST CONSTANTS --- */
@@ -154,7 +213,8 @@ static char   *lt_estrdup	LT_PARAMS((const char *str));
 static lt_ptr lt_emalloc	LT_PARAMS((size_t size));
 static lt_ptr lt_erealloc	LT_PARAMS((lt_ptr addr, size_t size));
 
-static lt_ptr rpl_realloc	LT_PARAMS((lt_ptr ptr, size_t size));
+/* static lt_ptr rpl_realloc	LT_PARAMS((lt_ptr ptr, size_t size)); */
+#define rpl_realloc realloc
 
 /* These are the pointers that can be changed by the caller:  */
 LT_GLOBAL_DATA lt_ptr (*lt_dlmalloc)	LT_PARAMS((size_t size))
@@ -166,16 +226,30 @@ LT_GLOBAL_DATA void   (*lt_dlfree)	LT_PARAMS((lt_ptr ptr))
 
 /* The following macros reduce the amount of typing needed to cast
    assigned memory.  */
+#if WITH_DMALLOC
+
+#define LT_DLMALLOC(tp, n)	((tp *) xmalloc ((n) * sizeof(tp)))
+#define LT_DLREALLOC(tp, p, n)	((tp *) xrealloc ((p), (n) * sizeof(tp)))
+#define LT_DLFREE(p)						\
+	LT_STMT_START { if (p) (p) = (xfree (p), (lt_ptr) 0); } LT_STMT_END
+
+#define LT_EMALLOC(tp, n)	((tp *) xmalloc ((n) * sizeof(tp)))
+#define LT_EREALLOC(tp, p, n)	((tp *) xrealloc ((p), (n) * sizeof(tp)))
+
+#else
+
 #define LT_DLMALLOC(tp, n)	((tp *) lt_dlmalloc ((n) * sizeof(tp)))
-#define LT_DLREALLOC(tp, p, n)	((tp *) rpl_realloc ((p), (n) * sizeof(tp)))
+#define LT_DLREALLOC(tp, p, n)	((tp *) lt_dlrealloc ((p), (n) * sizeof(tp)))
 #define LT_DLFREE(p)						\
 	LT_STMT_START { if (p) (p) = (lt_dlfree (p), (lt_ptr) 0); } LT_STMT_END
 
 #define LT_EMALLOC(tp, n)	((tp *) lt_emalloc ((n) * sizeof(tp)))
 #define LT_EREALLOC(tp, p, n)	((tp *) lt_erealloc ((p), (n) * sizeof(tp)))
 
+#endif
+
 #define LT_DLMEM_REASSIGN(p, q)			LT_STMT_START {	\
-	if ((p) != (q)) { lt_dlfree (p); (p) = (q); (q) = 0; }	\
+	if ((p) != (q)) { if (p) lt_dlfree (p); (p) = (q); (q) = 0; }	\
 						} LT_STMT_END
 
 
@@ -187,7 +261,7 @@ LT_GLOBAL_DATA void   (*lt_dlfree)	LT_PARAMS((lt_ptr ptr))
 
 static char *strdup LT_PARAMS((const char *str));
 
-char *
+static char *
 strdup(str)
      const char *str;
 {
@@ -213,7 +287,7 @@ strdup(str)
 
 static int strcmp LT_PARAMS((const char *str1, const char *str2));
 
-int
+static int
 strcmp (str1, str2)
      const char *str1;
      const char *str2;
@@ -245,7 +319,7 @@ strcmp (str1, str2)
 
 static const char *strchr LT_PARAMS((const char *str, int ch));
 
-const char*
+static const char*
 strchr(str, ch)
      const char *str;
      int ch;
@@ -271,7 +345,7 @@ strchr(str, ch)
 
 static const char *strrchr LT_PARAMS((const char *str, int ch));
 
-const char*
+static const char*
 strrchr(str, ch)
      const char *str;
      int ch;
@@ -305,17 +379,19 @@ strrchr(str, ch)
 
 static lt_ptr memcpy LT_PARAMS((lt_ptr dest, const lt_ptr src, size_t size));
 
-lt_ptr
+static lt_ptr
 memcpy (dest, src, size)
      lt_ptr dest;
      const lt_ptr src;
      size_t size;
 {
-  size_t i = 0;
+  const char *	s = src;
+  char *	d = dest;
+  size_t	i = 0;
 
   for (i = 0; i < size; ++i)
     {
-      dest[i] = src[i];
+      d[i] = s[i];
     }
 
   return dest;
@@ -329,23 +405,27 @@ memcpy (dest, src, size)
 
 static lt_ptr memmove LT_PARAMS((lt_ptr dest, const lt_ptr src, size_t size));
 
-lt_ptr
+static lt_ptr
 memmove (dest, src, size)
      lt_ptr dest;
      const lt_ptr src;
      size_t size;
 {
-  size_t i;
+  const char *	s = src;
+  char *	d = dest;
+  size_t	i;
 
-  if (dest < src)
+  if (d < s)
     for (i = 0; i < size; ++i)
       {
-	dest[i] = src[i];
+	d[i] = s[i];
       }
-  else if (dest > src)
-    for (i = size -1; i >= 0; --i)
+  else if (d > s && size > 0)
+    for (i = size -1; ; --i)
       {
-	dest[i] = src[i];
+	d[i] = s[i];
+	if (i == 0)
+	  break;
       }
 
   return dest;
@@ -353,6 +433,76 @@ memmove (dest, src, size)
 
 #endif /* !HAVE_MEMMOVE */
 
+#ifdef LT_USE_WINDOWS_DIRENT_EMULATION
+
+static void closedir LT_PARAMS((DIR *entry));
+
+static void
+closedir(entry)
+  DIR *entry;
+{
+  assert(entry != (DIR *) NULL);
+  FindClose(entry->hSearch);
+  lt_dlfree((lt_ptr)entry);
+}
+
+
+static DIR * opendir LT_PARAMS((const char *path));
+
+static DIR*
+opendir (path)
+  const char *path;
+{
+  char file_specification[LT_FILENAME_MAX];
+  DIR *entry;
+
+  assert(path != (char *) NULL);
+  (void) strncpy(file_specification,path,LT_FILENAME_MAX-1);
+  (void) strcat(file_specification,"\\");
+  entry = LT_DLMALLOC (DIR,sizeof(DIR));
+  if (entry != (DIR *) 0)
+    {
+      entry->firsttime = TRUE;
+      entry->hSearch = FindFirstFile(file_specification,&entry->Win32FindData);
+    }
+  if (entry->hSearch == INVALID_HANDLE_VALUE)
+    {
+      (void) strcat(file_specification,"\\*.*");
+      entry->hSearch = FindFirstFile(file_specification,&entry->Win32FindData);
+      if (entry->hSearch == INVALID_HANDLE_VALUE)
+        {
+          LT_DLFREE (entry);
+          return (DIR *) 0;
+        }
+    }
+  return(entry);
+}
+
+
+static struct dirent *readdir LT_PARAMS((DIR *entry));
+
+static struct dirent *readdir(entry)
+  DIR *entry;
+{
+  int
+    status;
+
+  if (entry == (DIR *) 0)
+    return((struct dirent *) 0);
+  if (!entry->firsttime)
+    {
+      status = FindNextFile(entry->hSearch,&entry->Win32FindData);
+      if (status == 0)
+        return((struct dirent *) 0);
+    }
+  entry->firsttime = FALSE;
+  (void) strncpy(entry->file_info.d_name,entry->Win32FindData.cFileName,
+    LT_FILENAME_MAX-1);
+  entry->file_info.d_namlen = strlen(entry->file_info.d_name);
+  return(&entry->file_info);
+}
+
+#endif /* LT_USE_WINDOWS_DIRENT_EMULATION */
 
 /* According to Alexandre Oliva <oliva@lsd.ic.unicamp.br>,
     ``realloc is not entirely portable''
@@ -361,15 +511,22 @@ memmove (dest, src, size)
    Instead implement our own version (with known boundary conditions)
    using lt_dlmalloc and lt_dlfree. */
 
-#undef realloc
-#define realloc rpl_realloc
+/* #undef realloc
+   #define realloc rpl_realloc
+*/
+#if 0
+  /* You can't (re)define realloc unless you also (re)define malloc.
+     Right now, this code uses the size of the *destination* to decide
+     how much to copy.  That's not right, but you can't know the size
+     of the source unless you know enough about, or wrote malloc.  So
+     this code is disabled... */
 
-lt_ptr
+static lt_ptr
 realloc (ptr, size)
      lt_ptr ptr;
      size_t size;
 {
-  if (size <= 0)
+  if (size == 0)
     {
       /* For zero or less bytes, free the original memory */
       if (ptr != 0)
@@ -400,6 +557,7 @@ realloc (ptr, size)
       return mem;
     }
 }
+#endif
 
 
 #if ! HAVE_ARGZ_APPEND
@@ -408,7 +566,7 @@ realloc (ptr, size)
 static error_t argz_append LT_PARAMS((char **pargz, size_t *pargz_len,
 					const char *buf, size_t buf_len));
 
-error_t
+static error_t
 argz_append (pargz, pargz_len, buf, buf_len)
      char **pargz;
      size_t *pargz_len;
@@ -450,7 +608,7 @@ argz_append (pargz, pargz_len, buf, buf_len)
 static error_t argz_create_sep LT_PARAMS((const char *str, int delim,
 					    char **pargz, size_t *pargz_len));
 
-error_t
+static error_t
 argz_create_sep (str, delim, pargz, pargz_len)
      const char *str;
      int delim;
@@ -513,7 +671,7 @@ argz_create_sep (str, delim, pargz, pargz_len)
 static error_t argz_insert LT_PARAMS((char **pargz, size_t *pargz_len,
 					char *before, const char *entry));
 
-error_t
+static error_t
 argz_insert (pargz, pargz_len, before, entry)
      char **pargz;
      size_t *pargz_len;
@@ -524,11 +682,6 @@ argz_insert (pargz, pargz_len, before, entry)
   assert (pargz_len);
   assert (entry && *entry);
 
-  /* Either PARGZ/PARGZ_LEN is empty and BEFORE is NULL,
-     or BEFORE points into an address within the ARGZ vector.  */
-  assert ((!*pargz && !*pargz_len && !before)
-	  || ((*pargz <= before) && (before < (*pargz + *pargz_len))));
-
   /* No BEFORE address indicates ENTRY should be inserted after the
      current last element.  */
   if (!before)
@@ -537,7 +690,7 @@ argz_insert (pargz, pargz_len, before, entry)
   /* This probably indicates a programmer error, but to preserve
      semantics, scan back to the start of an entry if BEFORE points
      into the middle of it.  */
-  while ((before >= *pargz) && (before[-1] != LT_EOS_CHAR))
+  while ((before > *pargz) && (before[-1] != LT_EOS_CHAR))
     --before;
 
   {
@@ -575,7 +728,7 @@ argz_insert (pargz, pargz_len, before, entry)
 static char *argz_next LT_PARAMS((char *argz, size_t argz_len,
 				    const char *entry));
 
-char *
+static char *
 argz_next (argz, argz_len, entry)
      char *argz;
      size_t argz_len;
@@ -620,7 +773,7 @@ argz_next (argz, argz_len, entry)
 static void argz_stringify LT_PARAMS((char *argz, size_t argz_len,
 				       int sep));
 
-void
+static void
 argz_stringify (argz, argz_len, sep)
      char *argz;
      size_t argz_len;
@@ -856,7 +1009,7 @@ lt_dlseterror (errindex)
   return errors;
 }
 
-lt_ptr
+static lt_ptr
 lt_emalloc (size)
      size_t size;
 {
@@ -866,25 +1019,25 @@ lt_emalloc (size)
   return mem;
 }
 
-lt_ptr
+static lt_ptr
 lt_erealloc (addr, size)
      lt_ptr addr;
      size_t size;
 {
-  lt_ptr mem = realloc (addr, size);
+  lt_ptr mem = lt_dlrealloc (addr, size);
   if (size && !mem)
     LT_DLMUTEX_SETERROR (LT_DLSTRERROR (NO_MEMORY));
   return mem;
 }
 
-char *
+static char *
 lt_estrdup (str)
      const char *str;
 {
-  char *dup = strdup (str);
-  if (LT_STRLEN (str) && !dup)
+  char *copy = strdup (str);
+  if (LT_STRLEN (str) && !copy)
     LT_DLMUTEX_SETERROR (LT_DLSTRERROR (NO_MEMORY));
-  return dup;
+  return copy;
 }
 
 
@@ -893,11 +1046,7 @@ lt_estrdup (str)
 /* --- DLOPEN() INTERFACE LOADER --- */
 
 
-/* The Cygwin dlopen implementation prints a spurious error message to
-   stderr if its call to LoadLibrary() fails for any reason.  We can
-   mitigate this by not using the Cygwin implementation, and falling
-   back to our own LoadLibrary() wrapper. */
-#if HAVE_LIBDL && !defined(__CYGWIN__)
+#if HAVE_LIBDL
 
 /* dynamic linking with dlopen/dlsym */
 
@@ -1434,7 +1583,350 @@ static struct lt_user_dlloader sys_dld = {
 
 #endif /* HAVE_DLD */
 
+/* --- DYLD() MACOSX/DARWIN INTERFACE LOADER --- */
+#if HAVE_DYLD
 
+
+#if HAVE_MACH_O_DYLD_H
+#if !defined(__APPLE_CC__) && !defined(__MWERKS__) && !defined(__private_extern__)
+/* Is this correct? Does it still function properly? */
+#define __private_extern__ extern
+#endif
+# include <mach-o/dyld.h>
+#endif
+#include <mach-o/getsect.h>
+
+/* We have to put some stuff here that isn't in older dyld.h files */
+#ifndef ENUM_DYLD_BOOL
+# define ENUM_DYLD_BOOL
+# undef FALSE
+# undef TRUE
+ enum DYLD_BOOL {
+    FALSE,
+    TRUE
+ };
+#endif
+#ifndef LC_REQ_DYLD
+# define LC_REQ_DYLD 0x80000000
+#endif
+#ifndef LC_LOAD_WEAK_DYLIB
+# define LC_LOAD_WEAK_DYLIB (0x18 | LC_REQ_DYLD)
+#endif
+static const struct mach_header * (*ltdl_NSAddImage)(const char *image_name, unsigned long options) = 0;
+static NSSymbol (*ltdl_NSLookupSymbolInImage)(const struct mach_header *image,const char *symbolName, unsigned long options) = 0;
+static enum DYLD_BOOL (*ltdl_NSIsSymbolNameDefinedInImage)(const struct mach_header *image, const char *symbolName) = 0;
+static enum DYLD_BOOL (*ltdl_NSMakePrivateModulePublic)(NSModule module) = 0;
+
+#ifndef NSADDIMAGE_OPTION_NONE
+#define NSADDIMAGE_OPTION_NONE                          0x0
+#endif
+#ifndef NSADDIMAGE_OPTION_RETURN_ON_ERROR
+#define NSADDIMAGE_OPTION_RETURN_ON_ERROR               0x1
+#endif
+#ifndef NSADDIMAGE_OPTION_WITH_SEARCHING
+#define NSADDIMAGE_OPTION_WITH_SEARCHING                0x2
+#endif
+#ifndef NSADDIMAGE_OPTION_RETURN_ONLY_IF_LOADED
+#define NSADDIMAGE_OPTION_RETURN_ONLY_IF_LOADED         0x4
+#endif
+#ifndef NSADDIMAGE_OPTION_MATCH_FILENAME_BY_INSTALLNAME
+#define NSADDIMAGE_OPTION_MATCH_FILENAME_BY_INSTALLNAME 0x8
+#endif
+#ifndef NSLOOKUPSYMBOLINIMAGE_OPTION_BIND
+#define NSLOOKUPSYMBOLINIMAGE_OPTION_BIND            0x0
+#endif
+#ifndef NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW
+#define NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW        0x1
+#endif
+#ifndef NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_FULLY
+#define NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_FULLY      0x2
+#endif
+#ifndef NSLOOKUPSYMBOLINIMAGE_OPTION_RETURN_ON_ERROR
+#define NSLOOKUPSYMBOLINIMAGE_OPTION_RETURN_ON_ERROR 0x4
+#endif
+
+
+static const char *
+lt_int_dyld_error(othererror)
+	char* othererror;
+{
+/* return the dyld error string, or the passed in error string if none */
+	NSLinkEditErrors ler;
+	int lerno;
+	const char *errstr;
+	const char *file;
+	NSLinkEditError(&ler,&lerno,&file,&errstr);
+	if (!errstr || !strlen(errstr)) errstr = othererror;
+	return errstr;
+}
+
+static const struct mach_header *
+lt_int_dyld_get_mach_header_from_nsmodule(module)
+	NSModule module;
+{
+/* There should probably be an apple dyld api for this */
+	int i=_dyld_image_count();
+	int j;
+	const char *modname=NSNameOfModule(module);
+	const struct mach_header *mh=NULL;
+	if (!modname) return NULL;
+	for (j = 0; j < i; j++)
+	{
+		if (!strcmp(_dyld_get_image_name(j),modname))
+		{
+			mh=_dyld_get_image_header(j);
+			break;
+		}
+	}
+	return mh;
+}
+
+static const char* lt_int_dyld_lib_install_name(mh)
+	const struct mach_header *mh;
+{
+/* NSAddImage is also used to get the loaded image, but it only works if the lib
+   is installed, for uninstalled libs we need to check the install_names against
+   each other. Note that this is still broken if DYLD_IMAGE_SUFFIX is set and a
+   different lib was loaded as a result
+*/
+	int j;
+	struct load_command *lc;
+	unsigned long offset = sizeof(struct mach_header);
+	const char* retStr=NULL;
+	for (j = 0; j < mh->ncmds; j++)
+	{
+		lc = (struct load_command*)(((unsigned long)mh) + offset);
+		if (LC_ID_DYLIB == lc->cmd)
+		{
+			retStr=(char*)(((struct dylib_command*)lc)->dylib.name.offset +
+									(unsigned long)lc);
+		}
+		offset += lc->cmdsize;
+	}
+	return retStr;
+}
+
+static const struct mach_header *
+lt_int_dyld_match_loaded_lib_by_install_name(const char *name)
+{
+	int i=_dyld_image_count();
+	int j;
+	const struct mach_header *mh=NULL;
+	const char *id=NULL;
+	for (j = 0; j < i; j++)
+	{
+		id=lt_int_dyld_lib_install_name(_dyld_get_image_header(j));
+		if ((id) && (!strcmp(id,name)))
+		{
+			mh=_dyld_get_image_header(j);
+			break;
+		}
+	}
+	return mh;
+}
+
+static NSSymbol
+lt_int_dyld_NSlookupSymbolInLinkedLibs(symbol,mh)
+	const char *symbol;
+	const struct mach_header *mh;
+{
+	/* Safe to assume our mh is good */
+	int j;
+	struct load_command *lc;
+	unsigned long offset = sizeof(struct mach_header);
+	NSSymbol retSym = 0;
+	const struct mach_header *mh1;
+	if ((ltdl_NSLookupSymbolInImage) && NSIsSymbolNameDefined(symbol) )
+	{
+		for (j = 0; j < mh->ncmds; j++)
+		{
+			lc = (struct load_command*)(((unsigned long)mh) + offset);
+			if ((LC_LOAD_DYLIB == lc->cmd) || (LC_LOAD_WEAK_DYLIB == lc->cmd))
+			{
+				mh1=lt_int_dyld_match_loaded_lib_by_install_name((char*)(((struct dylib_command*)lc)->dylib.name.offset +
+										(unsigned long)lc));
+				if (!mh1)
+				{
+					/* Maybe NSAddImage can find it */
+					mh1=ltdl_NSAddImage((char*)(((struct dylib_command*)lc)->dylib.name.offset +
+										(unsigned long)lc),
+										NSADDIMAGE_OPTION_RETURN_ONLY_IF_LOADED +
+										NSADDIMAGE_OPTION_WITH_SEARCHING +
+										NSADDIMAGE_OPTION_RETURN_ON_ERROR );
+				}
+				if (mh1)
+				{
+					retSym = ltdl_NSLookupSymbolInImage(mh1,
+											symbol,
+											NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW
+											| NSLOOKUPSYMBOLINIMAGE_OPTION_RETURN_ON_ERROR
+											);
+					if (retSym) break;
+				}
+			}
+			offset += lc->cmdsize;
+		}
+	}
+	return retSym;
+}
+
+static int
+sys_dyld_init()
+{
+	int retCode = 0;
+	int err = 0;
+	if (!_dyld_present()) {
+		retCode=1;
+	}
+	else {
+      err = _dyld_func_lookup("__dyld_NSAddImage",(unsigned long*)&ltdl_NSAddImage);
+      err = _dyld_func_lookup("__dyld_NSLookupSymbolInImage",(unsigned long*)&ltdl_NSLookupSymbolInImage);
+      err = _dyld_func_lookup("__dyld_NSIsSymbolNameDefinedInImage",(unsigned long*)&ltdl_NSIsSymbolNameDefinedInImage);
+      err = _dyld_func_lookup("__dyld_NSMakePrivateModulePublic",(unsigned long*)&ltdl_NSMakePrivateModulePublic);
+    }
+ return retCode;
+}
+
+static lt_module
+sys_dyld_open (loader_data, filename)
+     lt_user_data loader_data;
+     const char *filename;
+{
+	lt_module   module   = 0;
+	NSObjectFileImage ofi = 0;
+	NSObjectFileImageReturnCode ofirc;
+
+  	if (!filename)
+  		return (lt_module)-1;
+	ofirc = NSCreateObjectFileImageFromFile(filename, &ofi);
+	switch (ofirc)
+	{
+		case NSObjectFileImageSuccess:
+			module = NSLinkModule(ofi, filename,
+						NSLINKMODULE_OPTION_RETURN_ON_ERROR
+						 | NSLINKMODULE_OPTION_PRIVATE
+						 | NSLINKMODULE_OPTION_BINDNOW);
+			NSDestroyObjectFileImage(ofi);
+			if (module)
+				ltdl_NSMakePrivateModulePublic(module);
+			break;
+		case NSObjectFileImageInappropriateFile:
+		    if (ltdl_NSIsSymbolNameDefinedInImage && ltdl_NSLookupSymbolInImage)
+		    {
+				module = (lt_module)ltdl_NSAddImage(filename, NSADDIMAGE_OPTION_RETURN_ON_ERROR);
+				break;
+			}
+		default:
+			LT_DLMUTEX_SETERROR (lt_int_dyld_error(LT_DLSTRERROR(CANNOT_OPEN)));
+			return 0;
+	}
+	if (!module) LT_DLMUTEX_SETERROR (lt_int_dyld_error(LT_DLSTRERROR(CANNOT_OPEN)));
+  return module;
+}
+
+static int
+sys_dyld_close (loader_data, module)
+     lt_user_data loader_data;
+     lt_module module;
+{
+	int retCode = 0;
+	int flags = 0;
+	if (module == (lt_module)-1) return 0;
+#ifdef __BIG_ENDIAN__
+  	if (((struct mach_header *)module)->magic == MH_MAGIC)
+#else
+    if (((struct mach_header *)module)->magic == MH_CIGAM)
+#endif
+	{
+	  LT_DLMUTEX_SETERROR("Can not close a dylib");
+	  retCode = 1;
+	}
+	else
+	{
+#if 1
+/* Currently, if a module contains c++ static destructors and it is unloaded, we
+   get a segfault in atexit(), due to compiler and dynamic loader differences of
+   opinion, this works around that.
+*/
+		if ((const struct section *)NULL !=
+		   getsectbynamefromheader(lt_int_dyld_get_mach_header_from_nsmodule(module),
+		   "__DATA","__mod_term_func"))
+		{
+			flags += NSUNLINKMODULE_OPTION_KEEP_MEMORY_MAPPED;
+		}
+#endif
+#ifdef __ppc__
+			flags += NSUNLINKMODULE_OPTION_RESET_LAZY_REFERENCES;
+#endif
+		if (!NSUnLinkModule(module,flags))
+		{
+			retCode=1;
+			LT_DLMUTEX_SETERROR (lt_int_dyld_error(LT_DLSTRERROR(CANNOT_CLOSE)));
+		}
+	}
+
+ return retCode;
+}
+
+static lt_ptr
+sys_dyld_sym (loader_data, module, symbol)
+     lt_user_data loader_data;
+     lt_module module;
+     const char *symbol;
+{
+	lt_ptr address = 0;
+  	NSSymbol *nssym = 0;
+  	void *unused;
+  	const struct mach_header *mh=NULL;
+  	char saveError[256] = "Symbol not found";
+  	if (module == (lt_module)-1)
+  	{
+  		_dyld_lookup_and_bind(symbol,(unsigned long*)&address,&unused);
+  		return address;
+  	}
+#ifdef __BIG_ENDIAN__
+  	if (((struct mach_header *)module)->magic == MH_MAGIC)
+#else
+    if (((struct mach_header *)module)->magic == MH_CIGAM)
+#endif
+  	{
+  	    if (ltdl_NSIsSymbolNameDefinedInImage && ltdl_NSLookupSymbolInImage)
+  	    {
+  	    	mh=module;
+			if (ltdl_NSIsSymbolNameDefinedInImage((struct mach_header*)module,symbol))
+			{
+				nssym = ltdl_NSLookupSymbolInImage((struct mach_header*)module,
+											symbol,
+											NSLOOKUPSYMBOLINIMAGE_OPTION_BIND_NOW
+											| NSLOOKUPSYMBOLINIMAGE_OPTION_RETURN_ON_ERROR
+											);
+			}
+	    }
+
+  	}
+  else {
+	nssym = NSLookupSymbolInModule(module, symbol);
+	}
+	if (!nssym)
+	{
+		strncpy(saveError, lt_int_dyld_error(LT_DLSTRERROR(SYMBOL_NOT_FOUND)), 255);
+		saveError[255] = 0;
+		if (!mh) mh=lt_int_dyld_get_mach_header_from_nsmodule(module);
+		nssym = lt_int_dyld_NSlookupSymbolInLinkedLibs(symbol,mh);
+	}
+	if (!nssym)
+	{
+		LT_DLMUTEX_SETERROR (saveError);
+		return NULL;
+	}
+	return NSAddressOfSymbol(nssym);
+}
+
+static struct lt_user_dlloader sys_dyld =
+  { "_", sys_dyld_open, sys_dyld_close, sys_dyld_sym, 0, 0 };
+
+
+#endif /* HAVE_DYLD */
 
 
 /* --- DLPREOPEN() INTERFACE LOADER --- */
@@ -1685,9 +2177,17 @@ static	int	lt_argz_insert	      LT_PARAMS((char **pargz,
 static	int	lt_argz_insertinorder LT_PARAMS((char **pargz,
 						 size_t *pargz_len,
 						 const char *entry));
+static	int	lt_argz_insertdir     LT_PARAMS((char **pargz,
+						 size_t *pargz_len,
+						 const char *dirnam,
+						 struct dirent *dp));
 static	int	lt_dlpath_insertdir   LT_PARAMS((char **ppath,
 						 char *before,
 						 const char *dir));
+static	int	list_files_by_dir     LT_PARAMS((const char *dirnam,
+						 char **pargz,
+						 size_t *pargz_len));
+static	int	file_not_found	      LT_PARAMS((void));
 
 static	char	       *user_search_path= 0;
 static	lt_dlloader    *loaders		= 0;
@@ -1708,7 +2208,7 @@ lt_dlinit ()
       handles = 0;
       user_search_path = 0; /* empty search path */
 
-#if HAVE_LIBDL && !defined(__CYGWIN__)
+#if HAVE_LIBDL
       errors += lt_dlloader_add (lt_dlloader_next (0), &sys_dl, "dlopen");
 #endif
 #if HAVE_SHL_LOAD
@@ -1722,6 +2222,10 @@ lt_dlinit ()
 #endif
 #if HAVE_DLD
       errors += lt_dlloader_add (lt_dlloader_next (0), &sys_dld, "dld");
+#endif
+#if HAVE_DYLD
+       errors += lt_dlloader_add (lt_dlloader_next (0), &sys_dyld, "dyld");
+       errors += sys_dyld_init();
 #endif
       errors += lt_dlloader_add (lt_dlloader_next (0), &presym, "dlpreload");
 
@@ -1893,6 +2397,18 @@ tryall_dlopen (handle, filename)
   cur = *handle;
   if (filename)
     {
+      /* Comment out the check of file permissions using access.
+	 This call seems to always return -1 with error EACCES.
+      */
+      /* We need to catch missing file errors early so that
+	 file_not_found() can detect what happened.
+      if (access (filename, R_OK) != 0)
+	{
+	  LT_DLMUTEX_SETERROR (LT_DLSTRERROR (FILE_NOT_FOUND));
+	  ++errors;
+	  goto done;
+	} */
+
       cur->info.filename = lt_estrdup (filename);
       if (!cur->info.filename)
 	{
@@ -1955,8 +2471,9 @@ tryall_dlopen_module (handle, prefix, dirname, dlname)
   assert (strchr (dirname, LT_DIRSEP_CHAR) == 0);
 #endif
 
-  if (dirname[dirname_len -1] == '/')
-    --dirname_len;
+  if (dirname_len > 0)
+    if (dirname[dirname_len -1] == '/')
+      --dirname_len;
   filename_len = dirname_len + 1 + LT_STRLEN (dlname);
 
   /* Allocate memory, and combine DIRNAME and MODULENAME into it.
@@ -2138,11 +2655,11 @@ foreach_dirinpath (search_path, base_name, func, data1, data2)
 {
   int	 result		= 0;
   int	 filenamesize	= 0;
-  int	 lenbase	= LT_STRLEN (base_name);
+  size_t lenbase	= LT_STRLEN (base_name);
   size_t argz_len	= 0;
-  char * argz		= 0;
-  char * filename	= 0;
-  char * canonical	= 0;
+  char *argz		= 0;
+  char *filename	= 0;
+  char *canonical	= 0;
 
   LT_DLMUTEX_LOCK ();
 
@@ -2162,7 +2679,7 @@ foreach_dirinpath (search_path, base_name, func, data1, data2)
     char *dir_name = 0;
     while ((dir_name = argz_next (argz, argz_len, dir_name)))
       {
-	int lendir = LT_STRLEN (dir_name);
+	size_t lendir = LT_STRLEN (dir_name);
 
 	if (lendir +1 +lenbase >= filenamesize)
 	{
@@ -2173,7 +2690,9 @@ foreach_dirinpath (search_path, base_name, func, data1, data2)
 	    goto cleanup;
 	}
 
-	strncpy (filename, dir_name, lendir);
+	assert (filenamesize > lendir);
+	strcpy (filename, dir_name);
+
 	if (base_name && *base_name)
 	  {
 	    if (filename[lendir -1] != '/')
@@ -2249,11 +2768,11 @@ find_handle_callback (filename, data, ignored)
      lt_ptr data;
      lt_ptr ignored;
 {
-  lt_dlhandle  *handle	= (lt_dlhandle *) data;
-  int		got_access_error	= access (filename, R_OK);
+  lt_dlhandle  *handle		= (lt_dlhandle *) data;
+  int		notfound	= access (filename, R_OK);
 
   /* Bail out if file cannot be read...  */
-  if (got_access_error)
+  if (notfound)
     return 0;
 
   /* Try to dlopen the file, but do not continue searching in any
@@ -2473,7 +2992,7 @@ trim (dest, str)
   /* remove the leading and trailing "'" from str
      and store the result in dest */
   const char *end   = strrchr (str, '\'');
-  int	len	    = LT_STRLEN (str);
+  size_t len	    = LT_STRLEN (str);
   char *tmp;
 
   LT_DLFREE (*dest);
@@ -2511,7 +3030,7 @@ free_vars (dlname, oldname, libdir, deplibs)
   return 0;
 }
 
-int
+static int
 try_dlopen (phandle, filename)
      lt_dlhandle *phandle;
      const char *filename;
@@ -2598,7 +3117,6 @@ try_dlopen (phandle, filename)
       char *	deplibs	 = 0;
       char *    line	 = 0;
       size_t	line_len;
-      int	i;
 
       /* if we can't find the installed flag, it is probably an
 	 installed libtool archive, produced with an old version
@@ -2614,23 +3132,26 @@ try_dlopen (phandle, filename)
 	}
 
       /* canonicalize the module name */
-      for (i = 0; i < ext - base_name; ++i)
-	{
-	  if (isalnum ((int)(base_name[i])))
-	    {
-	      name[i] = base_name[i];
-	    }
-	  else
-	    {
-	      name[i] = '_';
-	    }
-	}
-      name[ext - base_name] = LT_EOS_CHAR;
+      {
+        size_t i;
+        for (i = 0; i < ext - base_name; ++i)
+	  {
+	    if (isalnum ((int)(base_name[i])))
+	      {
+	        name[i] = base_name[i];
+	      }
+	    else
+	      {
+	        name[i] = '_';
+	      }
+	  }
+        name[ext - base_name] = LT_EOS_CHAR;
+      }
 
-    /* Now try to open the .la file.  If there is no directory name
-       component, try to find it first in user_search_path and then other
-       prescribed paths.  Otherwise (or in any case if the module was not
-       yet found) try opening just the module name as passed.  */
+      /* Now try to open the .la file.  If there is no directory name
+         component, try to find it first in user_search_path and then other
+         prescribed paths.  Otherwise (or in any case if the module was not
+         yet found) try opening just the module name as passed.  */
       if (!dir)
 	{
 	  const char *search_path;
@@ -2689,17 +3210,17 @@ try_dlopen (phandle, filename)
       /* read the .la file */
       while (!feof (file))
 	{
-	  if (!fgets (line, line_len, file))
+	  if (!fgets (line, (int) line_len, file))
 	    {
 	      break;
 	    }
 
 	  /* Handle the case where we occasionally need to read a line
 	     that is longer than the initial buffer size.  */
-	  while (line[LT_STRLEN(line) -1] != '\n')
+	  while ((line[LT_STRLEN(line) -1] != '\n') && (!feof (file)))
 	    {
 	      line = LT_DLREALLOC (char, line, line_len *2);
-	      if (!fgets (&line[line_len -1], line_len +1, file))
+	      if (!fgets (&line[line_len -1], (int) line_len +1, file))
 		{
 		  break;
 		}
@@ -2847,7 +3368,10 @@ try_dlopen (phandle, filename)
 #endif
 		   )))
 	{
-	  tryall_dlopen (&newhandle, filename);
+          if (tryall_dlopen (&newhandle, filename) != 0)
+            {
+              newhandle = NULL;
+            }
 	}
 
       if (!newhandle)
@@ -2898,7 +3422,7 @@ lt_dlopen (filename)
 
 /* If the last error messge store was `FILE_NOT_FOUND', then return
    non-zero.  */
-int
+static int
 file_not_found ()
 {
   const char *error = 0;
@@ -2921,9 +3445,8 @@ lt_dlopenext (filename)
   lt_dlhandle	handle		= 0;
   char *	tmp		= 0;
   char *	ext		= 0;
-  int		len;
+  size_t	len;
   int		errors		= 0;
-  int		file_found	= 1; /* until proven otherwise */
 
   if (!filename)
     {
@@ -2987,7 +3510,7 @@ lt_dlopenext (filename)
 
   /* As before, if the file was found but loading failed, return now
      with the current error message.  */
-  if (handle || ((errors > 0) && file_not_found ()))
+  if (handle || ((errors > 0) && !file_not_found ()))
     {
       LT_DLFREE (tmp);
       return handle;
@@ -3002,7 +3525,7 @@ lt_dlopenext (filename)
 }
 
 
-int
+static int
 lt_argz_insert (pargz, pargz_len, before, entry)
      char **pargz;
      size_t *pargz_len;
@@ -3028,7 +3551,7 @@ lt_argz_insert (pargz, pargz_len, before, entry)
   return 0;
 }
 
-int
+static int
 lt_argz_insertinorder (pargz, pargz_len, entry)
      char **pargz;
      size_t *pargz_len;
@@ -3052,7 +3575,7 @@ lt_argz_insertinorder (pargz, pargz_len, entry)
   return lt_argz_insert (pargz, pargz_len, before, entry);
 }
 
-int
+static int
 lt_argz_insertdir (pargz, pargz_len, dirnam, dp)
      char **pargz;
      size_t *pargz_len;
@@ -3118,7 +3641,7 @@ lt_argz_insertdir (pargz, pargz_len, dirnam, dp)
   return errors;
 }
 
-int
+static int
 list_files_by_dir (dirnam, pargz, pargz_len)
      const char *dirnam;
      char **pargz;
@@ -3285,6 +3808,9 @@ lt_dlclose (handle)
       errors += handle->loader->module_close (data, handle->module);
       errors += unload_deplibs(handle);
 
+      /* It is up to the callers to free the data itself.  */
+      LT_DLFREE (handle->caller_data);
+
       LT_DLFREE (handle->info.filename);
       LT_DLFREE (handle->info.name);
       LT_DLFREE (handle);
@@ -3309,7 +3835,7 @@ lt_dlsym (handle, symbol)
      lt_dlhandle handle;
      const char *symbol;
 {
-  int	lensym;
+  size_t lensym;
   char	lsym[LT_SYMBOL_LENGTH];
   char	*sym;
   lt_ptr address;
@@ -3406,10 +3932,10 @@ lt_dlerror ()
   LT_DLMUTEX_GETERROR (error);
   LT_DLMUTEX_SETERROR (0);
 
-  return error ? error : LT_DLSTRERROR (UNKNOWN);
+  return error ? error : NULL;
 }
 
-int
+static int
 lt_dlpath_insertdir (ppath, before, dir)
      char **ppath;
      char *before;

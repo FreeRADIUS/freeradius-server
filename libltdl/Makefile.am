@@ -27,7 +27,7 @@ libltdlc_la_LIBADD = $(LIBADD_DL)
 ## Because we do not have automatic dependency tracking:
 ltdl.lo: ltdl.h config.h
 
-$(OBJECTS): libtool
+$(libltdl_la_OBJECTS) $(libltdlc_la_OBJECTS): libtool
 libtool: $(LIBTOOL_DEPS)
 	$(SHELL) ./config.status --recheck
 
@@ -38,6 +38,9 @@ local-install-files: $(DISTFILES)
 	-rm -rf $(DESTDIR)$(datadir)/libtool/libltdl
 	$(mkinstalldirs) $(DESTDIR)$(datadir)/libtool/libltdl
 	@for file in $(DISTFILES); do \
+	  case $$file in \
+	    $(srcdir)/*) file=`echo "$$file" | sed "s|^$(srcdir)/||"`;; \
+	  esac; \
 	  d=$(srcdir); \
 	  if test -d $$d/$$file; then \
 	    cp -r $$d/$$file $(DESTDIR)$(datadir)/libtool/libltdl/$$file; \
