@@ -303,11 +303,6 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 */
 	thread_pool.active_threads++;
 
-	/*
-	 *	Just to be paranoid...
-	 */
-	rad_assert(thread_pool.active_threads <= thread_pool.total_threads);
-
 	pthread_mutex_unlock(&thread_pool.mutex);
 
 	/*
