@@ -516,7 +516,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	DEBUG2("Thread %d assigned request %d", found->thread_num, request->number);
 	move2tail(found);
-	request->child_pid = handle->pthread_id;
+	request->child_pid = found->pthread_id;
 	found->request = request;
 	found->fun = fun;
 	found->request_count++;
