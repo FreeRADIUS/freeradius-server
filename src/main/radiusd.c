@@ -406,6 +406,19 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	/*
+	 *	If we're NOT debugging, trap fatal signals, so we can
+	 *	easily clean up after ourselves.
+	 *
+	 *	If we ARE debugging, don't trap them, so we can
+	 *	dump core.
+	 */
+	if ((mainconfig.allow_core_dumps == FALSE) && (debug_flag == 0)) {
+#ifdef SIGSEGV
+		signal(SIGSEGV, sig_fatal);
+#endif
+	}
+
 	/*  Reload the modules.  */
 	DEBUG2("radiusd:  entering modules setup");
 	if (setup_modules() < 0) {
