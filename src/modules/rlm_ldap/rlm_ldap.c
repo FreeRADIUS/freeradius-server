@@ -101,6 +101,8 @@
  * Oct 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Disable cache after searching for the default profile
  *	- Use the MAX_FAILED_CONNS_* in ldap_authenticate() when calling ldap_connect()
+ * Nov 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Set LDAP version to V3 before binding. Now freeradius should work with openldap21
  */
 static const char rcsid[] = "$Id$";
 
@@ -1357,6 +1359,10 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	if (inst->ldap_debug && ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &(inst->ldap_debug)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", inst->ldap_debug);
 	}
+	ldap_version = LDAP_VERSION3;
+	if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) != LDAP_OPT_SUCCESS) {
+		radlog(L_ERR, "rlm_ldap: Could not set LDAP version to V3");
+	}
 #ifdef HAVE_LDAP_START_TLS
         if(inst->tls_mode) {
 		DEBUG("rlm_ldap: setting TLS mode to %d", inst->tls_mode);
@@ -1369,17 +1375,14 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 
 	if (inst->start_tls) {
 		DEBUG("rlm_ldap: starting TLS");
-		ldap_version = LDAP_VERSION3;
-		if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION, &ldap_version) == LDAP_SUCCESS) {
-			rc = ldap_start_tls_s(ld, NULL, NULL);
-			if (rc != LDAP_SUCCESS) {
-				DEBUG("rlm_ldap: ldap_start_tls_s()");
-				ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-				radlog(L_ERR, "rlm_ldap: could not start TLS %s", ldap_err2string(ldap_errno));
-				*result = RLM_MODULE_FAIL;
-				ldap_unbind_s(ld);
-				return (NULL);
-			}
+		rc = ldap_start_tls_s(ld, NULL, NULL);
+		if (rc != LDAP_SUCCESS) {
+			DEBUG("rlm_ldap: ldap_start_tls_s()");
+			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+			radlog(L_ERR, "rlm_ldap: could not start TLS %s", ldap_err2string(ldap_errno));
+			*result = RLM_MODULE_FAIL;
+			ldap_unbind_s(ld);
+			return (NULL);
 		}
 	}
 #endif /* HAVE_LDAP_START_TLS */
