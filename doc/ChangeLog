@@ -1,4 +1,8 @@
 FreeRADIUS 1.0.2 ; $Date$, urgency=medium
+	* Novell eDirectoty support.  Patch from Novell.
+	* localweb & Trapeze dictionary updates.
+	* EAP-SIM fixes.
+	* Make "Strip-User-Name = No" work.
 	* Don't declare zero-length arrays in rlm_passwd
 	* Bug fix to make udpfromto code work
 	* radrelay shouldn't dump core if it can't read a VP from the
