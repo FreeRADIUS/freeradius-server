@@ -1189,7 +1189,7 @@ LRAD_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
 	do {
 		previous_token = last_token;
 		if ((vp = pairread(&p, &last_token)) == NULL) {
-			return T_INVALID;
+			return last_token;
 		}
 		pairadd(first_pair, vp);
 	} while (*p && (last_token == T_COMMA));
@@ -1209,12 +1209,13 @@ LRAD_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
+ *
+ *	Hmm... this function is only used by radclient..
  */
 VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 {
 	char buf[8192];
-	LRAD_TOKEN last_token;
-	char *p;
+	LRAD_TOKEN last_token = T_EOL;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *list;
 	int error = 0;
@@ -1222,28 +1223,30 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 	list = NULL;
 
 	while (!error && fgets(buf, sizeof(buf), fp) != NULL) {
+		/*
+		 *	Comments get ignored
+		 */
+		if (buf[0] == '#') continue;
 
-		p = buf;
-
-		/* If we get a '\n' by itself, we assume that's the end of that VP */
-		if((buf[0] == '\n') && (list)) {
-			return error ? NULL: list;
-		} 
-		if((buf[0] == '\n') && (!list))
-			continue;
-		if(buf[0] == '#') {
-			continue;
-		} else {
-			do {
-				if ((vp = pairread(&p, &last_token)) == NULL) {
-					librad_perror(errprefix);
-					error = 1;
-					break;
-				}
-				pairadd(&list, vp);
-			} while (last_token == T_COMMA);
+		/*
+		 *	Read all of the attributes on the current line.
+		 */
+		vp = NULL;
+		last_token = userparse(buf, &vp);
+		if (!vp) {
+			if (last_token != T_EOL) {
+				librad_perror(errprefix);
+				error = 1;
+				break;
+			}
+			break;
 		}
+		
+		pairadd(&list, vp);
+		buf[0] = '\0';
 	}
+
+	if (error) pairfree(&list);
 
 	*pfiledone = 1;
 
