@@ -178,6 +178,11 @@ static void *request_handler_thread(void *arg)
 #endif
 	
 	/*
+	 *  We're about to wait for the mutex.
+	 */
+	pthread_mutex_lock(&self->lock);
+
+	/*
 	 *	Loop forever, until told to exit.
 	 */
 	for (;;) {
@@ -188,9 +193,9 @@ static void *request_handler_thread(void *arg)
 		 *	waits for the condition.  Once it receives
 		 *	the condition, it locks the mutex again.
 		 */
+
 		DEBUG2("Thread %d waiting to be assigned a request",
-				self->thread_num);
-		pthread_mutex_lock(&self->lock);
+		       self->thread_num);
 		if (pthread_cond_wait(&self->cond, &self->lock) != 0) {
 			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
 			       self->thread_num, strerror(errno));
@@ -218,14 +223,6 @@ static void *request_handler_thread(void *arg)
 
 		self->fun = NULL;
 		self->request = NULL;
-
-		/*
-		 *  Now that we're no longer processing the request,
-		 *  AND we've said so by setting 'request' to NULL,
-		 *  unlock the mutex, so that the main thread can
-		 *  play with it.
-		 */
-		pthread_mutex_unlock(&self->lock);
 	}
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
