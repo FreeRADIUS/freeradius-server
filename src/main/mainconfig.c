@@ -851,14 +851,19 @@ static int listen_bind(rad_listen_t *this)
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
  */
-static rad_listen_t *listen_init(const char *filename)
+static int listen_init(const char *filename, rad_listen_t **head)
 {
 	CONF_SECTION	*cs;
-	rad_listen_t	*list = NULL;
 	rad_listen_t	**last;
 	char		buffer[32];
+	rad_listen_t	*this;
 
-	last = &list;
+	/*
+	 *	Add to the end of the list.
+	 */
+	for (last = head; *last != NULL; last = &((*last)->next)) {
+		/* do nothing */
+	}
 
     	/*
 	 *	Find the first one (if any).
@@ -868,8 +873,6 @@ static rad_listen_t *listen_init(const char *filename)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(mainconfig.config,
 					  cs, "listen")) {
-		rad_listen_t *this;
-
 		memset(&listen_inst, 0, sizeof(listen_inst));
 		
 		/*
@@ -878,7 +881,7 @@ static rad_listen_t *listen_init(const char *filename)
 		if (cf_section_parse(cs, &listen_inst, listen_config) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing listen section.",
 			       filename, cf_section_lineno(cs));
-			return NULL; /* FIXME: leaks list */
+			return -1;
 		}
 
 		if (listen_type) {
@@ -888,7 +891,7 @@ static rad_listen_t *listen_init(const char *filename)
 		if (listen_inst.type == RAD_LISTEN_NONE) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
 			       filename, cf_section_lineno(cs));
-			return NULL; /* FIXME: leaks list */
+			return -1;
 		}
 
 		this = rad_malloc(sizeof(*this));
@@ -901,24 +904,87 @@ static rad_listen_t *listen_init(const char *filename)
 			radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s:%d",
 			       filename, cf_section_lineno(cs),
 			       ip_ntoa(buffer, this->ipaddr), this->port);
-			return NULL; /* FIXME: leaks list */
+			free(this);
+			return -1;
 		}
 
 		*last = this;
-		last = &(this->next);
+		last = &(this->next);		
 	}
 
-	return list;
+	/*
+	 *	If we're proxying requests, open the proxy FD.
+	 *	Otherwise, don't do anything.
+	 */
+	if (mainconfig.proxy_requests == TRUE) {
+		int		port = -1;
+		rad_listen_t	*auth;
+
+		/*
+		 *	Find the first authentication port,
+		 *	and use it
+		 */
+		for (auth = *head; auth != NULL; auth = auth->next) {
+			if (auth->type == RAD_LISTEN_AUTH) {
+				port = auth->port + 2;
+				break;
+			}
+		}
+
+		/*
+		 *	Not found, pick an accounting port.
+		 */
+		if (port < 0) for (auth = *head; auth != NULL; auth = auth->next) {
+			if (auth->type == RAD_LISTEN_ACCT) {
+				port = auth->port + 1;
+				break;
+			}
+		}
+
+		/*
+		 *	Still no port.  Don't do anything.
+		 */
+		if (port < 0) {
+			return 0;
+		}
+
+		this = rad_malloc(sizeof(*this));
+		memset(this, 0, sizeof(*this));
+		
+		/*
+		 *	Create the proxy socket.
+		 */
+		this->ipaddr = mainconfig.myip;
+		this->type = RAD_LISTEN_PROXY;
+
+		/*
+		 *	Try to find a proxy port (value doesn't matter)
+		 */
+		for (this->port = port;
+		     this->port < 64000;
+		     this->port++) {
+			if (listen_bind(this) == 0) {
+				*last = this;
+				return 0;
+			}
+		}
+
+		radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
+		free(this);
+		return -1;
+	}
+
+	return 0;
 }
 
 
 /*
  *	Hack the OLD way of listening on a socket.
  */
-static int old_listen_init(rad_listen_t **list)
+static int old_listen_init(rad_listen_t **head)
 {
 	CONF_PAIR	*cp;
-	rad_listen_t 	*this;
+	rad_listen_t 	*this, **last;
 
 	/*
 	 *	No "bind_address": all listen directives
@@ -927,6 +993,8 @@ static int old_listen_init(rad_listen_t **list)
 	cp = cf_pair_find(mainconfig.config, "bind_address");
 	if (!cp) return 0;
 	
+	last = head;
+
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
 
@@ -942,8 +1010,9 @@ static int old_listen_init(rad_listen_t **list)
 		free(this);
 		return -1;
 	}
-	this->next = *list;
-	*list = this;
+	auth_port = this->port;	/* may have been updated in listen_bind */
+	*last = this;
+	last = &(this->next);
 
 	/*
 	 *  Open Accounting Socket.
@@ -961,47 +1030,14 @@ static int old_listen_init(rad_listen_t **list)
 	 */
        	this->ipaddr = mainconfig.myip;
 	this->type = RAD_LISTEN_ACCT;
-	this->port = (*list)->port + 1;
+	this->port = auth_port + 1;
 
 	if (listen_bind(this) < 0) {
 		radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", this->port);
 		free(this);
 		return -1;
 	}
-	this->next = *list;
-	*list = this;
-
-	/*
-	 *	If we're proxying requests, open the proxy FD.
-	 *	Otherwise, don't do anything.
-	 */
-	if (mainconfig.proxy_requests == TRUE) {
-		this = rad_malloc(sizeof(*this));
-		memset(this, 0, sizeof(*this));
-		
-		/*
-		 *	Create the proxy socket.
-		 */
-		this->ipaddr = mainconfig.myip;
-		this->type = RAD_LISTEN_PROXY;
-
-		/*
-		 *	Try to find a proxy port (value doesn't matter)
-		 */
-		for (this->port = (*list)->port + 1;
-		     this->port < 64000;
-		     this->port++) {
-			if (listen_bind(this) == 0) {
-				this->next = *list;
-				*list = this;
-				return 0;
-			}
-		}
-
-		radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
-		free(this);
-		return -1;
-	}
+	*last = this;
 
 	return 0;
 }
@@ -1218,11 +1254,18 @@ int read_mainconfig(int reload)
 	}
 
 	/*
+	 *	Initialize the old "bind_address" and "port", first.
+	 */
+	listener = NULL;
+	if (old_listen_init(&listener) < 0) {
+		exit(1);
+	}
+
+	/*
 	 *	Read the list of listeners.
 	 */
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
-	listener = listen_init(buffer);
-	if (old_listen_init(&listener) < 0) {
+	if (listen_init(buffer, &listener) < 0) {
 		exit(1);
 	}
 
