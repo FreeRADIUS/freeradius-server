@@ -51,7 +51,13 @@ case "$1" in
 	status radiusd
 	RETVAL=$?
         ;;
-  reload|restart)
+  reload)
+	echo -n $"Reloading RADIUS server: "
+	killproc $RADIUSD -HUP
+	RETVAL=$?
+	echo
+	;;
+  restart)
 	$0 stop
 	sleep 3
 	$0 start
