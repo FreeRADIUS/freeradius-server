@@ -214,10 +214,11 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	/* okay, we got the challenges! Put them into an attribute */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND,
 			   PW_TYPE_OCTETS);
-	memcpy(newvp->strvalue+ 0, ess->keys.rand[0], 16);
-	memcpy(newvp->strvalue+16, ess->keys.rand[1], 16);
-	memcpy(newvp->strvalue+32, ess->keys.rand[2], 16);
-	newvp->length = 48;
+	memset(newvp->strvalue,    0, 2); /* clear reserved bytes */
+	memcpy(newvp->strvalue+2+EAPSIM_RAND_SIZE*0, ess->keys.rand[0], EAPSIM_RAND_SIZE);
+	memcpy(newvp->strvalue+2+EAPSIM_RAND_SIZE*1, ess->keys.rand[1], EAPSIM_RAND_SIZE);
+	memcpy(newvp->strvalue+2+EAPSIM_RAND_SIZE*2, ess->keys.rand[2], EAPSIM_RAND_SIZE);
+	newvp->length = 2+EAPSIM_RAND_SIZE*3;
 	pairadd(outvps, newvp);
 
 	/* make a copy of the identity */
@@ -535,7 +536,11 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.3  2003-11-06 15:45:12  aland
+ * Revision 1.4  2003-11-21 19:02:19  mcr
+ * 	pack the RAND attribute properly - should have 2 bytes
+ * reserved.
+ *
+ * Revision 1.3  2003/11/06 15:45:12  aland
  * 	u_int -> uint
  *
  * Revision 1.2  2003/10/31 22:33:45  mcr
