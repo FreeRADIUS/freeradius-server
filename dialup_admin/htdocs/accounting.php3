@@ -238,7 +238,9 @@ unset($sql_extra_query);
 if ($config[sql_accounting_extra_query] != '')
 	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
 	$sql_extra_query = da_sql_escape_string($sql_extra_query);
-$query="SELECT $query_view FROM $config[sql_accounting_table] $where $sql_extra_query ORDER BY $order LIMIT $maxresults;";
+$query="SELECT da_sql_limit($maxresults,0,$config) $query_view FROM $config[sql_accounting_table]
+	$where $sql_extra_query da_sql_limit($maxresults,1,$config)
+	ORDER BY $order da_sql_limit($maxresults,2,$config);";
 
 echo <<<EOM
 <html>

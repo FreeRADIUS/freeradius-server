@@ -1,4 +1,15 @@
 <?php
+function da_sql_limit($limit,$point,$config)
+{
+	switch($point){
+		case 0:
+			return '';
+		case 1:
+			return '';
+		case 2:
+			return "LIMIT $limit";
+	}
+}
 function da_sql_host_connect($server,$config)
 {
 	if ($config[sql_use_http_credentials] == 'yes'){

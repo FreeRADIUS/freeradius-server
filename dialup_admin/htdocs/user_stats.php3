@@ -37,7 +37,7 @@ if (!is_numeric($pagesize) && $pagesize != 'all')
 	$pagezise = 10;
 if ($pagesize > 100)
 	$pagesize = 100;
-$limit = ($pagesize == 'all') ? 'LIMIT 100' : "LIMIT $pagesize";
+$limit = ($pagesize == 'all') ? '100' : "$pagesize";
 $selected[$pagesize] = 'selected';
 $order = ($order) ? $order : $config[general_accounting_info_order];
 if ($order != 'desc' && $order != 'asc')
@@ -110,9 +110,9 @@ EOM;
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT * FROM $config[sql_total_accounting_table]
-	WHERE acctdate >= '$start' AND acctdate <= '$stop' $server_str $login_str $sql_extra_query
-	ORDER BY $order_attr $order $limit;");
+	"SELECT da_sql_limit($limit,0,$config) * FROM $config[sql_total_accounting_table]
+	WHERE acctdate >= '$start' AND acctdate <= '$stop' $server_str $login_str $sql_extra_query da_sql_limit($limit,1,$config)
+	ORDER BY $order_attr $order da_sql_limit($limit,2,$config);");
 
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){

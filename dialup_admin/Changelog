@@ -2,6 +2,8 @@ Ver 1.80:
 * Remove snmp_clearsession. It is replaced by clearsession which supports both snmp and telnet
   methods of removing a user from an access server. Add corresponding configuration directives
   general_sessionclear_method and nasXX_sessionclear_method
+* Create a new function da_sql_limit() and use that to pass LIMIT arguments to the database layer
+  since the syntax is different between db vendors
 Ver 1.78:
 * Add a snmp_clearsession which can disconnect a user by using the Cisco AAA Session MIB
 * Add a configuration directive general_sessionclear_bin

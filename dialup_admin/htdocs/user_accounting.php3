@@ -31,7 +31,7 @@ $num = 0;
 $pagesize = ($pagesize) ? $pagesize : 10;
 if (!is_numeric($pagesize) && $pagesize != 'all')
 	$pagesize = 10;
-$limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
+$limit = ($pagesize == 'all') ? '' : "$pagesize";
 $selected[$pagesize] = 'selected';
 $order = ($order != '') ? $order : $config[general_accounting_info_order];
 if ($order != 'desc' && $order != 'asc')
@@ -102,9 +102,10 @@ if ($config[sql_accounting_extra_query] != '')
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT * FROM $config[sql_accounting_table]
+	"SELECT da_sql_limit($limit,0,$config) * FROM $config[sql_accounting_table]
 	WHERE username = '$login' AND acctstarttime <= '$now_str'
-	AND acctstarttime >= '$prev_str' $sql_extra_query ORDER BY acctstarttime $order $limit;");
+	AND acctstarttime >= '$prev_str' $sql_extra_query da_sql_limit($limit,1,$config)
+	ORDER BY acctstarttime $order da_sql_limit($limit,2,$config);");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$tr_color='white';
