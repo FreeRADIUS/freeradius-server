@@ -46,7 +46,7 @@ struct fastuser_instance {
 	int hash_reload;
 
 	/* hash table */
-	long hashsize;
+	int hashsize;
 	PAIR_LIST **hashtable;
 	PAIR_LIST *defaults;
 	PAIR_LIST *acctusers;
@@ -65,11 +65,11 @@ static int fastuser_buildhash(struct fastuser_instance *inst);
 static int fastuser_getfile(struct fastuser_instance *inst, const char *filename,
 														PAIR_LIST **default_list, PAIR_LIST **pair_list,
 														int isacctfile);
-static int fastuser_hash(const char *s, long hashtablesize);
+static int fastuser_hash(const char *s, int hashtablesize);
 static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *entry, int idx);
 static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 																const char *username);
-static void fastuser_tablestats(PAIR_LIST **hashtable, long size);
+static void fastuser_tablestats(PAIR_LIST **hashtable, int size);
 static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user, const char *name);
 
 static CONF_PARSER module_config[] = {
@@ -120,7 +120,7 @@ static int rad_check_return(VALUE_PAIR *list)
 }
 
 static int fastuser_buildhash(struct fastuser_instance *inst) {
-	long memsize=0;
+	int memsize=0;
 	int rcode, hashindex;
 	PAIR_LIST **newhash=NULL, **oldhash=NULL;
 	PAIR_LIST *newdefaults=NULL, *newacctusers, *cur=NULL;
@@ -223,7 +223,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 	int compat_mode = FALSE;
 	VALUE_PAIR *vp=NULL;
 	int hashindex = 0;
-	long numdefaults = 0, numusers=0;
+	int numdefaults = 0, numusers=0;
 
 	radlog(L_INFO, " fastusers:  Reading %s", filename);
 	rcode = pairlist_read(filename, &users, 1);
@@ -383,7 +383,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 
 	if(!isacctfile && (default_list)) {
 		*default_list = defaults;
-		radlog(L_INFO, "rlm_fastusers:  Loaded %ld users and %ld defaults",
+		radlog(L_INFO, "rlm_fastusers:  Loaded %d users and %d defaults",
 					numusers, numdefaults);
 	} else {
 		*pair_list = users;
@@ -393,8 +393,8 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 }
 
 /* Hashes the username sent to it and returns index into hashtable */
-int fastuser_hash(const char *s, long hashtablesize) {
-	unsigned long hash = 0;
+int fastuser_hash(const char *s, int hashtablesize) {
+	unsigned int hash = 0;
 
 	while (*s != '\0') {
 		hash = hash * 7907 + (unsigned char)*s++;
@@ -466,7 +466,7 @@ static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 /*
  * Generate and log statistics about our hash table
  */
-static void fastuser_tablestats(PAIR_LIST **hashtable, long size) {
+static void fastuser_tablestats(PAIR_LIST **hashtable, int size) {
 	int i, count;
 	int countarray[256];
 	int toomany=0;
