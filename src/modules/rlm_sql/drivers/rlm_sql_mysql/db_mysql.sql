@@ -111,7 +111,7 @@ CREATE TABLE radreply (
 CREATE TABLE usergroup (
   UserName varchar(64) NOT NULL default '',
   GroupName varchar(64) NOT NULL default '',
-  priority int(11) NOT NULL,
+  priority int(11) NOT NULL default '1',
   KEY UserName (UserName(32))
 ) ;
 

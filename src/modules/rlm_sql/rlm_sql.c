@@ -77,6 +77,8 @@ static CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,sql_groupreply_table), NULL, "radgroupreply"},
 	{"usergroup_table", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_usergroup_table), NULL, "usergroup"},
+	{"read_groups", PW_TYPE_BOOLEAN,
+	 offsetof(SQL_CONFIG,read_groups), NULL, "yes"},
 	{"nas_table", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_nas_table), NULL, "nas"},
 	{"dict_table", PW_TYPE_STRING_PTR,
@@ -999,7 +1001,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 				pairfree(&reply_tmp);
 				return RLM_MODULE_FAIL;
 			}
-			dofallthrough = fallthrough(reply_tmp);
+			if (!inst->config->read_groups)
+				dofallthrough = fallthrough(reply_tmp);
 			pairxlatmove(request, &request->reply->vps, &reply_tmp);
 			pairxlatmove(request, &request->config_items, &check_tmp);
 		}

@@ -42,6 +42,7 @@ typedef struct sql_config {
 	char   *groupmemb_query;
 	int     sqltrace;
 	int	do_clients;
+	int	read_groups;
 	char   *tracefile;
 	char   *xlat_name;
 	int     deletestalesessions;
