@@ -464,7 +464,11 @@ int main(int argc, char **argv)
 					sizeof(req->vector));
 				
 			if (*password != '\0') {
-				if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
+				if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
+					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
+					vp->length = strlen(password);
+					
+				} else if ((vp = pairfind(req->vps, PW_CHAP_PASSWORD)) != NULL) {
 					strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
 					vp->length = strlen(password);
 					
@@ -472,6 +476,7 @@ int main(int argc, char **argv)
 					vp->length = 17;
 				}
 			} /* there WAS a password */
+
 			send_packet(req, &rep);
 			rad_free(&rep);
 		}
