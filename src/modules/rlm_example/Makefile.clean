@@ -1,0 +1,20 @@
+#
+#  This file is just like 'Makefile', but with the comments stripped out.
+#  It shows just how small the 'Makefile' really can be.
+#
+include config.mak
+
+TARGET		= rlm_example
+SRCS		= rlm_example.c other.c
+HEADERS		= config.h other.h
+RLM_CFLAGS	=
+LIBS		=
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)
+
+config.mak config.h:
+	@../checkconfig -l HAVE_STRCPY strcpy -lc
