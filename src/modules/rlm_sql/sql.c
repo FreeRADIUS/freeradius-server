@@ -162,6 +162,8 @@ void sql_poolfree(SQL_INST * inst)
 		next = cur->next;
 		sql_close_socket(inst, cur);
 	}
+
+	inst->sqlpool = NULL;
 }
 
 
@@ -176,8 +178,12 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
 {
 	radlog(L_DBG, "rlm_sql (%s): Closing sqlsocket %d",
 	       inst->config->xlat_name, sqlsocket->id);
-	if (sqlsocket->state == sockconnected)
+	if (sqlsocket->state == sockconnected) {
 		(inst->module->sql_close)(sqlsocket, inst->config);
+	}
+	if (inst->module->sql_destroy_socket) {
+		(inst->module->sql_destroy_socket)(sqlsocket, inst->config);
+	}
 #if HAVE_PTHREAD_H
 	pthread_mutex_destroy(&sqlsocket->mutex);
 #endif
