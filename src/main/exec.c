@@ -492,7 +492,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 *	Parse the output, if any.
 	 */
 	if (done) {
-		n = T_INVALID;
+		n = T_OP_INVALID;
 		if (output_pairs) {
 			/*
 			 *	For backwards compatibility, first check
@@ -505,7 +505,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			}
 		}
 
-		if (n == T_INVALID) {
+		if (n == T_OP_INVALID) {
 			DEBUG("Exec-Program-Wait: plaintext: %s", answer);
 			if (user_msg) {
 				strNcpy(user_msg, answer, msg_len);
@@ -534,7 +534,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			}
 
 			radlog(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
-			if (userparse(answer, &vp) == T_INVALID) {
+			if (userparse(answer, &vp) == T_OP_INVALID) {
 				radlog(L_ERR, "Exec-Program-Wait: %s: unparsable reply", cmd);
 
 			} else {

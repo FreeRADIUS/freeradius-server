@@ -213,7 +213,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
  *  This is a hack, and has to be kept in sync with tokens.h
  */
 static const char *vp_tokens[] = {
-  "?",				/* T_INVALID */
+  "?",				/* T_OP_INVALID */
   "EOL",			/* T_EOL */
   "{",
   "}",
@@ -258,7 +258,7 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 		return 0;
 	}
 
-	if ((vp->operator > T_INVALID) &&
+	if ((vp->operator > T_OP_INVALID) &&
 	    (vp->operator < T_TOKEN_LAST)) {
 		token = vp_tokens[vp->operator];
 	} else {

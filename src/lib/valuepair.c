@@ -1178,7 +1178,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	LRAD_TOKEN	token, t, xlat;
 	VALUE_PAIR	*vp;
 
-	*eol = T_INVALID;
+	*eol = T_OP_INVALID;
 
 	/* Get attribute. */
 	token = gettoken(ptr, attr, sizeof(attr));
@@ -1242,7 +1242,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		if (p) {
 			vp = pairmake(attr, NULL, token);
 			if (!vp) {
-				*eol = T_INVALID;
+				*eol = T_OP_INVALID;
 				return NULL;
 			}
 
@@ -1261,7 +1261,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	case T_BACK_QUOTED_STRING:
 		vp = pairmake(attr, NULL, token);
 		if (!vp) {
-			*eol = T_INVALID;
+			*eol = T_OP_INVALID;
 			return NULL;
 		}
 
@@ -1282,7 +1282,7 @@ LRAD_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
 {
 	VALUE_PAIR	*vp;
 	char		*p;
-	LRAD_TOKEN	last_token = T_INVALID;
+	LRAD_TOKEN	last_token = T_OP_INVALID;
 	LRAD_TOKEN	previous_token;
 
 	/*

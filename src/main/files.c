@@ -198,7 +198,7 @@ parse_again:
 			reply_tmp = NULL;
 			old_lineno = lineno;
 			parsecode = userparse(ptr, &check_tmp);
-			if (parsecode == T_INVALID) {
+			if (parsecode == T_OP_INVALID) {
 				pairlist_free(&pl);
 				radlog(L_ERR|L_CONS,
 				"%s[%d]: Parse error (check) for entry %s: %s",
