@@ -113,32 +113,39 @@ void dict_free(void)
 }
 
 /*
+ *	This should be lots
+ */
+#define DICT_VENDOR_MAX_NAME_LEN (1024)
+
+/*
  *	Add vendor to the list.
  */
 int dict_addvendor(const char *name, int value)
 {
-	DICT_VENDOR *vval;
+	size_t length;
+	DICT_VENDOR *dv;
 
 	if (value >= (1 << 16)) {
 	       	librad_log("dict_addvendor: Cannot handle vendor ID larger than 65535");
 		return -1;
 	}
 
-	if (strlen(name) > (sizeof(vval->name) -1)) {
+	if ((length = strlen(name)) >= DICT_VENDOR_MAX_NAME_LEN) {
+		fprintf(stderr, "SHIT %d\n", length);
 		librad_log("dict_addvendor: vendor name too long");
 		return -1;
 	}
-
-	if ((vval =(DICT_VENDOR *)malloc(sizeof(DICT_VENDOR))) == NULL) {
+	
+	if ((dv = malloc(sizeof(*dv) + length)) == NULL) {
 		librad_log("dict_addvendor: out of memory");
 		return -1;
 	}
-	strcpy(vval->name, name);
-	vval->vendorpec  = value;
+	strcpy(dv->name, name);
+	dv->vendorpec  = value;
 
 	/* Insert at front. */
-	vval->next = dictionary_vendors;
-	dictionary_vendors = vval;
+	dv->next = dictionary_vendors;
+	dictionary_vendors = dv;
 
 	return 0;
 }
@@ -185,6 +192,12 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		return -1;
 	}
 
+	if (vendor && !dict_vendorbyvalue(vendor)) {
+		librad_log("dict_addattr: Unknown vendor");
+		return -1;
+	}
+
+
 	/*
 	 *	Create a new attribute for the list
 	 */
@@ -192,13 +205,14 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		librad_log("dict_addattr: out of memory");
 		return -1;
 	}
+
 	strcpy(attr->name, name);
 	attr->attr = value;
+	attr->attr |= (vendor << 16); /* FIXME: hack */
 	attr->type = type;
 	attr->flags = flags;
 	attr->vendor = vendor;
 
-	if (vendor) attr->attr |= (vendor << 16);
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
@@ -218,10 +232,10 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 			}
 
 			/*
-			 *	Same name, same attr, maybe the
-			 *	flags and/or type is different.
-			 *	Let the new value over-ride the
-			 *	old one.
+			 *	Same name, same vendor, same attr,
+			 *	maybe the flags and/or type is
+			 *	different.  Let the new value
+			 *	over-ride the old one.
 			 */
 		}
 	}
@@ -503,10 +517,10 @@ static int process_value(const char* fn, const int line, const char* data)
 static int process_vendor(const char* fn, const int line, const char* data)
 {
 	char	valstr[256];
-	char	attrstr[256];
+	char	name[DICT_VENDOR_MAX_NAME_LEN];
 	int	value;
 
-	if (sscanf(data, "%s%s", attrstr, valstr) != 2) {
+	if (sscanf(data, "%s%s", name, valstr) != 2) {
 		librad_log(
 		"dict_init: %s[%d] invalid VENDOR entry",
 			fn, line);
@@ -524,7 +538,7 @@ static int process_vendor(const char* fn, const int line, const char* data)
 	value = atoi(valstr);
 
 	/* Create a new VENDOR entry for the list */
-	if (dict_addvendor(attrstr, value) < 0) {
+	if (dict_addvendor(name, value) < 0) {
 		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
 		return -1;
@@ -1015,6 +1029,8 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
 
 /*
  *	Get the vendor PEC based on the vendor name
+ *
+ *	This is efficient only for small numbers of vendors.
  */
 int dict_vendorbyname(const char *name)
 {

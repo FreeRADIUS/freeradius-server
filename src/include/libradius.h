@@ -124,9 +124,9 @@ typedef struct dict_value {
 } DICT_VALUE;
 
 typedef struct dict_vendor {
-	char			name[40];
-	int			vendorpec;
 	struct dict_vendor	*next;
+	int			vendorpec;
+	char			name[1];
 } DICT_VENDOR;
 
 typedef struct value_pair {
