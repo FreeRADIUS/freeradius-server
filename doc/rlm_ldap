@@ -93,7 +93,7 @@ the rlm_ldap module:
 #	password_header = "{clear}"
 
 #	password_attribute: Define the attribute which contains the user password.
-#	default: userPassword
+#	default: NULL - don't add password
 #
 #	password_attribute = "userPassword"
 
