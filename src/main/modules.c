@@ -83,11 +83,11 @@ static void module_list_free(void)
 	ml = module_list;
 	while (ml) {
 		next = ml->next;
+		if (ml->module->detach)
+			(ml->module->detach)();
 #ifdef HAVE_DLOPEN
 		dlclose(ml->handle);	/* ignore any errors */
 #endif
-		if (ml->module->detach)
-			(ml->module->detach)();
 		free(ml);
 		ml = next;
 	}
