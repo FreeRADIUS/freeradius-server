@@ -1,6 +1,14 @@
 FreeRADIUS 1.0.0 ; $Date$, urgency=low
 
 	* Many, many minor bug fixes and feature enhancements.
+	* Fix a bug in the attr_filter module, which would throw away
+	  the tag from tagged attributes.
+	* Added "reject" action in configurable failover for modules
+	* Bug fixes to thread handling from Malcolm Caldwell.
+	* added ability for mschap module to use ntlm_auth, to perform
+	  MS-CHAPv1 and MS-CHAPv2 authentication against a Windows
+	  Domain Controller.
+	* Allow checking of EAP identity against certificate.
 	* Added a "listen" directive, which supersedes the old
 	  "bind_address" and "port" directives.  "listen" allows much
 	  finer-grained control over what IP's, ports, and packets the
@@ -8,7 +16,7 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	* Preliminary tests indicate that the server builds and runs on
 	  Interix (SFU).
 	* Regular expression matches in brackets can now be referenced
-	  as in Perl, via %{1}, %{2}, etc.  Support is incomplete.
+	  as in Perl, via %{1}, %{2}, etc.
 	* Check return value from registered xlat functions. If return
 	  value is 0, treat the attribute as not found.  This lets things
 	  like %{sql: select... :-FAILED} work.
