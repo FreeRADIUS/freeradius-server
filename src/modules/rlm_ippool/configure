@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.9 
+# From configure.in Revision: 1.1 
 
 
 if test x$with_rlm_ippool != xno; then
@@ -831,7 +831,7 @@ echo "$ac_t""$CPP" 1>&6
 
 	
 
-ac_safe=`echo "gdbm.h" | sed 'y%./+-%__p_%'`
+ac_safe=`echo "gdbm.h" | sed 'y%./+-%__pm%'`
 echo $ac_n "checking for gdbm.h""... $ac_c" 1>&6
 echo "configure:837: checking for gdbm.h" >&5
 
@@ -842,12 +842,13 @@ smart_include_dir=
   cat > conftest.$ac_ext <<EOF
 #line 844 "configure"
 #include "confdefs.h"
-#include <gdbm.h>
+
+		  #include <gdbm.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:851: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:852: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include=" "
 else
@@ -891,14 +892,15 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
       CFLAGS="$old_CFLAGS -I$try"
 
       cat > conftest.$ac_ext <<EOF
-#line 895 "configure"
+#line 896 "configure"
 #include "confdefs.h"
-#include <gdbm.h>
+
+		       #include <gdbm.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:902: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:904: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include="-I$try"
 else
@@ -930,7 +932,7 @@ fi
 sm_lib_safe=`echo "gdbm" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "gdbm_open" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for gdbm_open in -lgdbm""... $ac_c" 1>&6
-echo "configure:934: checking for gdbm_open in -lgdbm" >&5
+echo "configure:936: checking for gdbm_open in -lgdbm" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -938,14 +940,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lgdbm"
   cat > conftest.$ac_ext <<EOF
-#line 942 "configure"
+#line 944 "configure"
 #include "confdefs.h"
 extern char gdbm_open();
 int main() {
  gdbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:949: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:951: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lgdbm"
 else
@@ -1014,14 +1016,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lgdbm"
 
       cat > conftest.$ac_ext <<EOF
-#line 1018 "configure"
+#line 1020 "configure"
 #include "confdefs.h"
 extern char gdbm_open();
 int main() {
  gdbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1025: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1027: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lgdbm"
 else
@@ -1051,9 +1053,9 @@ fi
 
 	if test "x$fail" = "x"; then
 		echo $ac_n "checking to see GDBM_SYNC status""... $ac_c" 1>&6
-echo "configure:1055: checking to see GDBM_SYNC status" >&5
+echo "configure:1057: checking to see GDBM_SYNC status" >&5
 		cat > conftest.$ac_ext <<EOF
-#line 1057 "configure"
+#line 1059 "configure"
 #include "confdefs.h"
 
 #include <gdbm.h>
@@ -1088,12 +1090,12 @@ rm -f conftest*
 	old_LIBS=$LIBS
 	LIBS="$LIBS $SMART_LIBS"
 	echo $ac_n "checking for gdbm_fdesc""... $ac_c" 1>&6
-echo "configure:1092: checking for gdbm_fdesc" >&5
+echo "configure:1094: checking for gdbm_fdesc" >&5
 if eval "test \"`echo '$''{'ac_cv_func_gdbm_fdesc'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 1097 "configure"
+#line 1099 "configure"
 #include "confdefs.h"
 /* System header to define __stub macros and hopefully few prototypes,
     which can conflict with char gdbm_fdesc(); below.  */
@@ -1116,7 +1118,7 @@ gdbm_fdesc();
 
 ; return 0; }
 EOF
-if { (eval echo configure:1120: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1122: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_func_gdbm_fdesc=yes"
 else
