@@ -1,5 +1,5 @@
 /*
- * cache.c		Offers ability to cache /etc/group, /etc/passwd, 
+ * cache.c	Offers ability to cache /etc/group, /etc/passwd, 
  * 		/etc/shadow,
  *
  * 		All users in the passwd/shadow files are stored in a hash table.
@@ -275,11 +275,12 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 
 			/* 
 			 * In order to put passwd in correct structure, we have
-			 * to skip any struct that has a passwd already for that user
+			 * to skip any struct that has a passwd already for that
+			 * user
 			 */ 
 			cur = new;
 			while(new && (strcmp(new->pw_name, username)<=0) 
-								&& (new->pw_passwd == NULL)) {
+						&& (new->pw_passwd == NULL)) {
 				cur = new;
 				new = new->next;
 			}		
@@ -287,8 +288,8 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 			new = cur;
 
 			/*
-			 * When we get here, we should be at the last duplicate user structure
-			 * in this hash bucket
+			 * When we get here, we should be at the last duplicate
+			 * user structure in this hash bucket
 			 */ 
 
 			/* Put passwords into struct from shadow file */
@@ -499,13 +500,13 @@ static int storeHashUser(struct pwcache *cache, struct mypasswd *new, int idx)
 
 /* Hashes the username sent to it and returns index into hashtable */
 static int hashUserName(const char *s) {
-     unsigned long hash = 0;
+	unsigned long hash = 0;
 
-     while (*s != '\0') {
-         hash = hash * 7907 + (unsigned char)*s++;
-		}
+	while (*s != '\0') {
+		hash = hash * 7907 + (unsigned char)*s++;
+	}
 
-     return (hash % HASHTABLESIZE);
+	return (hash % HASHTABLESIZE);
 }              
 
 /*
@@ -534,12 +535,13 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 	/*
 	 *	We might have a passwordless account.
 	 */
-	if (encrypted_pass == NULL) return 0;
+	if(encrypted_pass == NULL) return 0;
 
 	if(mainconfig.do_usercollide) {
 		while(pwd) {
 			/* 
-		 	 * Make sure same user still.  If not, return as if wrong pass given 
+		 	 * Make sure same user still.  If not, return as if
+			 * wrong pass given 
 			 */
 			if(strcmp(name, pwd->pw_name)) 
 				return -1;	
@@ -558,7 +560,8 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 			 */
 			if(strcmp(encpw, encrypted_pass) == 0) {
 				/* 
-				 * Add 'Class' pair here with value of full name from passwd
+				 * Add 'Class' pair here with value of full
+				 * name from passwd
 				 */
 				if(strlen(pwd->pw_gecos))
 					pairadd(reply_items, pairmake("Class", pwd->pw_gecos, T_OP_EQ));
