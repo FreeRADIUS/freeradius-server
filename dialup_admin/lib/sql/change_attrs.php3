@@ -46,6 +46,7 @@ if ($link){
 			if ($use_ops){
 				$op_val = $$op_name;
 				if ($op_val != ''){
+					$op_val = da_sql_escape_string($op_val);
 					if (check_operator($op_val,$type) == -1){
 						echo "<b>Invalid operator ($op_val) for attribute $key</b><br>\n";
 						continue;
@@ -53,10 +54,8 @@ if ($link){
 					$op_val2 = ",'$op_val'";
 				}
 			}
-			$op_val = da_sql_escape_string($op_val);
 			$sql_attr = da_sql_escape_string($sql_attr);
 			$val = da_sql_escape_string($val);
-			$op_val2 = da_sql_escape_string($op_val2);
 	// if we have operators, the operator has changed and the corresponding value exists then update
 			if ($use_ops && isset($item_vals["$key"][operator][$j]) &&
 				$op_val != $item_vals["$key"][operator][$j] ){
