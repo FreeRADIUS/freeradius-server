@@ -337,7 +337,7 @@ dnl #
 dnl #  Check for sem_init all by itself
 dnl #
   AC_CHECK_FUNC(sem_init)
-  if test "X$ac_cv_func_sem_init" = "X"; then
+  if test "X$ac_cv_func_sem_init" = "Xno"; then
 
 dnl #
 dnl #  If not found, sem_init is in -lposix4 on Solaris
