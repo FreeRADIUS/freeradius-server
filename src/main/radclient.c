@@ -320,9 +320,8 @@ int main(int argc, char **argv)
 	}
 
 	while(!filedone) {
-		if(req->vps) {
-			pairfree(req->vps);
-		}
+		if(req->vps) pairfree(&req->vps);
+
 		if ((req->vps = readvp(fp)) == NULL) {
 			break;
 		}
@@ -362,8 +361,7 @@ int main(int argc, char **argv)
 						sizeof(req->vector));
 			}
 			send_packet(req, &rep);
-			rad_free(rep);
-			rep = NULL;
+			rad_free(&rep);
 		}
 	}
 	if(do_summary) {
