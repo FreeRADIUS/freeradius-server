@@ -256,6 +256,7 @@ fi
 AC_PATH_PROG(SNMPGET, snmpget, /usr/local/bin/snmpget)
 AC_PATH_PROG(SNMPWALK, snmpwalk, /usr/local/bin/snmpwalk)
 AC_PATH_PROG(RUSERS, rusers, /usr/bin/rusers)
+AC_CHECK_PROG(M4, m4, m4, /bin/false)
 
 dnl FIXME This is truly gross.
 missing_dir=`cd $ac_aux_dir && pwd`
@@ -611,10 +612,11 @@ AC_OUTPUT(\
 	./scripts/rc.radiusd \
 	./scripts/radwatch \
 	./scripts/check-radiusd-config \
-	./raddb/radiusd.conf
+	./raddb/radiusd.conf.m4
 )
 
 AC_OUTPUT_COMMANDS([echo timestamp > src/include/stamp-h])
 AC_OUTPUT_COMMANDS([(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_OUTPUT_COMMANDS([(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
 AC_OUTPUT_COMMANDS([(cd ./scripts    && chmod +x rc.radiusd radwatch check-radiusd-config)])
+AC_OUTPUT_COMMANDS([(cd ./raddb      && ${M4} ../processradconf.m4 ../src/modules/rlm_*/selfconfig.m4 radiusd.conf.m4 >radiusd.conf.new && mv radiusd.conf.new radiusd.conf)])
