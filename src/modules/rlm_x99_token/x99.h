@@ -54,6 +54,31 @@
  */
 
 
+/* struct used for instance data */
+typedef struct x99_token_t {
+    char *pwdfile;	/* file containing user:card_type:key entries      */
+    char *syncdir;	/* dir containing sync mode and state info         */
+    char *chal_text;	/* text to present challenge to user, must have %s */
+    int chal_len;	/* challenge length, min 5 digits                  */
+    int maxdelay;	/* max delay time for response, in seconds         */
+    int softfail;	/* number of auth fails before time delay starts   */
+    int hardfail;	/* number of auth fails when user is locked out    */
+    int allow_sync;	/* useful to override pwdfile card_type settings   */
+    int fast_sync;	/* response-before-challenge mode                  */
+    int allow_async;	/* C/R mode allowed?                               */
+    char *chal_req;	/* keyword requesting challenge for fast_sync mode */
+    char *resync_req;	/* keyword requesting resync for fast_sync mode    */
+    int ewindow_size;	/* sync mode event window size (right side value)  */
+    int mschapv2_mppe_policy;	/* whether or not do to mppe for mschapv2  */
+    int mschapv2_mppe_types;	/* key type/length for mschapv2/mppe       */
+    int mschap_mppe_policy;	/* whether or not do to mppe for mschap    */
+    int mschap_mppe_types;	/* key type/length for mschap/mppe         */
+#if 0
+    int twindow_min;	/* sync mode time window left side                 */
+    int twindow_max;	/* sync mode time window right side                */
+#endif
+} x99_token_t;
+
 /* Bit maps for Card Features.  It is OK to insert values at will. */
 #define X99_CF_NONE		0
 /* Vendors */
