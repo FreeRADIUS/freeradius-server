@@ -85,7 +85,7 @@ rad_recv: Access-Challenge packet from host 127.0.0.1:1812, id=999, length=129
 	EAP-Sim-State = 1
 	EAP-Sim-Subtype = Start
 	EAP-Sim-SELECTED_VERSION = 0x0001
-	EAP-Sim-NONCE_MT = 0x00003aa644401247ed3b344772fdf03022a7
+	EAP-Sim-NONCE_MT = 0x0000b1ff1961cf02c57fbcb37b1441b68c35
 	EAP-Sim-IDENTITY = 0x000665617073696d
 	EAP-Id = YY
 	EAP-Message = 0x02XX
@@ -123,7 +123,7 @@ rad_recv: Access-Challenge packet from host 127.0.0.1:1812, id=999, length=189
 	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
 	EAP-Id = YY
 	EAP-Code = Request
-	EAP-Type-SIM = 0x0b0000010dabcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab00000b0500004b8c642ac65cd17bcfed5c195b4bb97f
+	EAP-Type-SIM = 0x0b0000010dabcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab00000b050000da25ca2ee3ac308d39c9e42f59e2caaa
 <+++ EAP-sim decoded packet:
 	Service-Type = Framed-User
 	Framed-Protocol = PPP
@@ -138,13 +138,13 @@ rad_recv: Access-Challenge packet from host 127.0.0.1:1812, id=999, length=189
 	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
 	EAP-Id = YY
 	EAP-Code = Request
-	EAP-Type-SIM = 0x0b0000010dabcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab00000b0500004b8c642ac65cd17bcfed5c195b4bb97f
+	EAP-Type-SIM = 0x0b0000010dabcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab00000b050000da25ca2ee3ac308d39c9e42f59e2caaa
 	EAP-Sim-Subtype = Challenge
 	EAP-Sim-RAND = 0xabcd1234abcd1234abcd1234abcd1234bcd1234abcd1234abcd1234abcd1234acd1234abcd1234abcd1234abcd1234ab0000
-	EAP-Sim-MAC = 0x00004b8c642ac65cd17bcfed5c195b4bb97f
+	EAP-Sim-MAC = 0x0000da25ca2ee3ac308d39c9e42f59e2caaa
 Input was: 
    identity: (len=6)65617073696d
-   nonce_mt: 3aa644401247ed3b344772fdf03022a7
+   nonce_mt: b1ff1961cf02c57fbcb37b1441b68c35
    rand0: 00000000000000000000000000000000
    rand1: 00000000000000000000000000000000
    rand2: 00000000000000000000000000000000
@@ -154,22 +154,22 @@ Input was:
    Kc0: 0011223344556677
    Kc1: 1021324354657687
    Kc2: 30415263748596a7
-   versionlist[4]: 00010001
+   versionlist[2]: 0001
    select 00 01
 
 
 Output
-mk:         cc80677e_508728f5_90346242_c0d0b4f5_ac5cecf5
-K_aut:      071a58f4_0228d127_12a63ee8_7f61c5cf
-K_encr:     f04451c1_15019844_3d58254a_bad87efe
-msk:        f2dc5015_fdd4d940_93baee54_ddb7d0a2_8fd120a2
-            3e974beb_e91ac675_24c95a09_6904aad3_f654eb62
-            0ccb7db7_95c9e4eb_f6d9ecbe_afe54593_d9cb759a
-            45d6549e
-emsk:       f9d51894_4f8d1352_545c94ce_1229dbd8_129a7c6f
-            75d930a9_446dd777_dcbfd036_86e0285e_46adc60c
-            af4de700_388d307d_95b59d07_b9773f8a_3dc60f26
-            8a28fe3d
+mk:         8079d0df_46055144_0d0ef855_02b9bd63_896a5b73
+K_aut:      8f912c22_cf578996_fe8bd542_9fc1e252
+K_encr:     4d27225f_8ac41089_10537076_f447bf9f
+msk:        8e3eb19e_33a8f302_a4788c9e_170ae7fa_9b2ddde3
+            e3536cf0_819fc763_773d172a_6562c760_22c1940c
+            be320c6a_4e10f704_6cc71d70_5dde3f03_f90e7de0
+            b5c253cb
+emsk:       6aa409be_4766550b_98d9ab2a_2da47588_8aae8ac8
+            f73a1238_546fe395_c4ea20ec_b1bc8542_77393fea
+            28325d7e_effd357a_10374843_bb003365_469a538f
+            54f7040e
 MAC check succeed
 
 +++> About to send encoded packet:
@@ -192,7 +192,7 @@ MAC check succeed
 	EAP-Id = YY
 	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
 	EAP-Sim-MAC = 0x1234abcd234abcd134abcd12
-	EAP-Sim-KEY = 0x071a58f40228d12712a63ee87f61c5cf
+	EAP-Sim-KEY = 0x8f912c22cf578996fe8bd5429fc1e252
 	EAP-Message = 0x02XX
 Sending Access-Request of id 999 to 127.0.0.1:1812
 	User-Name = "eapsim"

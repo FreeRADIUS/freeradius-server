@@ -389,7 +389,7 @@ int unmap_eapsim_types(RADIUS_PACKET *r)
  */
 int
 eapsim_checkmac(VALUE_PAIR *rvps,
-		uint8_t key[EAPSIM_NONCEMT_SIZE],
+		uint8_t key[EAPSIM_Kc_SIZE],
 		uint8_t *extra, int extralen,
 		uint8_t calcmac[20])
 {
@@ -462,7 +462,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 		
 	/* now, HMAC-SHA1 it with the key. */
 	lrad_hmac_sha1(buffer, len,
-		       key, 16,
+		       key, 8,
 		       calcmac);
 
 	if(memcmp(&mac->strvalue[2], calcmac, 16) == 0)	{
@@ -610,8 +610,9 @@ main(int argc, char *argv[])
 
 			/* find the EAP-Message, copy it to req2 */
 
+			memset(calcmac, 0, sizeof(calcmac));
 			printf("Confirming MAC...");
-			if(eapsim_checkmac(req2, vpkey->strvalue,
+			if(eapsim_checkmac(req2->vps, vpkey->strvalue,
 					   vpextra->strvalue, vpextra->length,
 					   calcmac)) {
 				printf("succeed\n");
