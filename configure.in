@@ -399,7 +399,7 @@ dnl #
 if test "x$WITH_SNMP" = "xyes"; then
   AC_CHECK_LIB(snmp, snmp_build_var_op)
   if test "x$ac_cv_lib_snmp_snmp_build_var_op" != "xyes"; then
-    old_LIBS=$LIBSXXX
+    old_LIBS=$LIBS
     LIBS="$LIBS -lcrypto"
     AC_CHECK_LIB(snmp, snmp_build_var_op)
     if test "x$ac_cv_lib_snmp_snmp_build_var_op" != "xyes"; then
@@ -411,8 +411,8 @@ fi
 
 POSTGRESQL_CHECKS
 MYSQL_CHECKS
-ODBC_CHECKS
-ORACLE_CHECKS
+dnl ODBC_CHECKS
+dnl ORACLE_CHECKS
 
 dnl #############################################################
 dnl #
