@@ -1,9 +1,9 @@
-: This is a LDAPv3 schema for RADIUS attributes.
-: Tested on OpenLDAP 2.0.7
-: Posted by Javier Fernandez-Sanguino Pena <jfernandez@sgi.es>
-: LDAP v3 version by Jochen Friedrich <jochen@scram.de>
-: Updates by Adrian Pavlykevych <pam@polynet.lviv.ua>
-::::::::::::::
+# This is a LDAPv3 schema for RADIUS attributes.
+# Tested on OpenLDAP 2.0.7
+# Posted by Javier Fernandez-Sanguino Pena <jfernandez@sgi.es>
+# LDAP v3 version by Jochen Friedrich <jochen@scram.de>
+# Updates by Adrian Pavlykevych <pam@polynet.lviv.ua>
+##############
 
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.1
@@ -537,7 +537,7 @@ attributetype
 objectclass
    ( 1.3.6.1.4.1.3317.4.3.2.1
       NAME 'radiusprofile'
-      SUP top STRUCTURAL
+      SUP top AUXILIARY
       DESC ''
       MUST cn
       MAY ( radiusArapFeatures $ radiusArapSecurity $ radiusArapZoneAccess $
