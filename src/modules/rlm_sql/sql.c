@@ -120,7 +120,9 @@ int sql_init_socketpool(SQL_INST * inst) {
 		inst->sqlpool = sqlsocket;
 	}
 
+#if HAVE_PTHREAD_H
 	pthread_mutex_init(&inst->mutex, NULL);
+#endif
 
 	return 1;
 }
@@ -139,7 +141,9 @@ void sql_poolfree(SQL_INST * inst) {
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
 		sql_close_socket(inst, cur);
 	}
+#if HAVE_PTHREAD_H
 	pthread_mutex_destroy(&inst->mutex);
+#endif
 }
 
 
@@ -182,7 +186,10 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 	 * Rotating the socket so that all get used and none get closed due to
 	 * inactivity from the SQL server ( such as mySQL ).
 	 */
+#if HAVE_PTHREAD_H
 	pthread_mutex_lock(&inst->mutex);
+#endif
+
 	if(inst->socknr == 0) {
 	        inst->socknr = inst->config->num_sql_socks;
 	}
@@ -191,7 +198,9 @@ SQLSOCK * sql_get_socket(SQL_INST * inst) {
 	while (inst->socknr != cur2->id) {
 	        cur2 = cur2->next;
 	}
+#if HAVE_PTHREAD_H
 	pthread_mutex_unlock(&inst->mutex);
+#endif
 
 	for (cur = cur2; cur; cur = cur->next) {
 
