@@ -30,6 +30,7 @@
 #		bay_finger	 1.0	Author: chris@shenton.org
 #		cisco_l2tp	 1.14	Author: paul@distributel.net
 #		mikrotik_telnet  1.0    Author: Evren Yurtesen <yurtesen@ispro.net.tr>
+#		redback_telnet          Author: Eduardo Roldan
 #
 #	Config: $debug is the file you want to put debug messages in
 #		$snmpget is the location of your ``snmpget'' program
@@ -1227,6 +1228,54 @@ sub mikrotik_telnet {
   }
 }
 
+sub redback_telnet {
+    #Localize all variables first.
+    my ($terminalserver, $login, $password);
+    my ($user, $context, $operprompt, $adminprompt, $t);
+    return 2 unless (check_net_telnet());
+    $terminalserver = $ARGV[1];
+    ($user, $context) = split /@/, $ARGV[3];
+    if (not $user) {
+	print LOG " Error: No user defined\n" if ($debug);
+	return 2;
+    }
+    if (not $context) {
+	print LOG " Error: No context defined\n" if ($debug);
+	return 2;
+    }
+    
+    # Get loggin information
+    ($root, $password) = naspasswd($terminalserver, 1);
+    return 2 if ($password eq "");
+    
+    $operprompt = '/\[.*\].*>$/';
+    $adminprompt = '/\[.*\].*#$/';
+    
+    # Logging to the RedBack NAS
+    $t = new Net::Telnet (Timeout => 5, Prompt => $operprompt);
+    $t->input_log("./debug");
+    $t->open($terminalserver);
+    $t->login($root, $password);
+    
+    #Enable us
+    $t->print('ena');
+    $t->waitfor('/Password/');
+    $t->print($password);
+    $t->waitfor($adminprompt);
+    $t->prompt($adminprompt);
+    
+    #Switch context
+    $t->cmd(String => "context $context");
+    
+    #Ask the question
+    @lines = $t->cmd(String => "show subscribers active
+$user\@$context");
+    if ($lines[0] =~ /subscriber $user\@$context/ ) {
+	return 1;
+    }
+    return 0;
+}
+
 ###############################################################################
 
 # Poor man's getopt (for -d)
@@ -1297,6 +1346,8 @@ if ($ARGV[0] eq 'livingston') {
         $ret = &cisco_l2tp_snmp;
 } elsif ($ARGV[0] eq 'mikrotik'){
         $ret = &mikrotik_telnet;
+} elsif ($ARGV[0] eq 'redback'){
+        $ret = &redback_telnet;
 } elsif ($ARGV[0] eq 'other') {
 	$ret = 1;
 } else {
