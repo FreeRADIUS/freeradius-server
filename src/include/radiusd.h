@@ -13,14 +13,14 @@
 
 #if HAVE_PTHREAD_H
 #include	<pthread.h>
-typedef pthread_t child_pid_t ;
+typedef pthread_t child_pid_t;
 #define child_kill pthread_kill
 #else
 typedef pid_t child_pid_t;
 #define child_kill kill
 #endif
 
-#define NO_SUCH_CHILD_PID (0)
+#define NO_SUCH_CHILD_PID (child_pid_t) (0)
 
 #ifndef NDEBUG
 #define REQUEST_MAGIC (0xdeadbeef)
