@@ -325,6 +325,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 		 */
 		if (result != 0) {
 			auth_item = auth_item->next;
+			result = 0;
 			goto try_again;
 		}
 
