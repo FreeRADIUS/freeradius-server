@@ -34,16 +34,15 @@ require Getopt::Long;
 $GZCAT = "/usr/bin/zcat";
 # zcat - 'cat for .Z / compressed files'
 $ZCAT = "/usr/bin/zcat";
+# bzcat - 'cat for .bz2 files'
 $BZCAT = "/usr/bin/bzcat";
 
 
 # Default Variables
 $database    = "radius";
-$default_hostname    = "localhost";
 $port        = "3306";
 $user        = "postgres";
 $password    = "";
-#$default_detailfile = "detail";
 
 
 
@@ -71,8 +70,15 @@ sub read_record {
 sub db_connect {
 	my $hostname = shift;
 	if (&debug_get()) { print "DEBUG: Connecting to Database Host: $hostname\n" }
-	$dbh = DBI->connect("DBI:Pg:dbname=$database;host=$hostname", "$user", "$password")
-                or die "Couldn't connect to database: " . DBI->errstr;
+	if ($hostname eq 'localhost') {
+	if (&debug_get()) { print "DEBUG: localhost connection so using UNIX socket instead of network socket.\n" }
+		$dbh = DBI->connect("DBI:Pg:dbname=$database", "$user", "$password")
+        	        or die "Couldn't connect to database: " . DBI->errstr;
+	}
+	else {
+		$dbh = DBI->connect("DBI:Pg:dbname=$database;host=$hostname", "$user", "$password")
+        	        or die "Couldn't connect to database: " . DBI->errstr;
+	}
 }
 
 sub db_disconnect {
@@ -84,18 +90,35 @@ sub db_disconnect {
 
 sub db_insert {
 	print " Seconds: $AcctSessionTime  ";
-        my $sth2= $dbh->prepare("INSERT into Stop$h323_call_type (RadiusServerName, AcctSessionId, AcctUniqueId,
+	if ($h323_call_type eq 'VoIP') { 
+        $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (RadiusServerName, AcctSessionId, AcctUniqueId,
 		UserName, Realm, NASIPAddress, NASPortType, AcctSessionTime, AcctAuthentic, ConnectInfo_start,
 		ConnectInfo_stop, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
-		AcctTerminateCause, ServiceType, FramedProtocol, FramedIPAddress, AcctStartDelay, AcctStopDelay,
+		AcctTerminateCause, ServiceType, FramedProtocol, AcctStartDelay, AcctStopDelay,
 		H323RemoteAddress, AcctStatusType, CiscoNASPort, h323calltype, h323callorigin, h323confid,
 		h323connecttime, h323disconnectcause, h323disconnecttime, h323gwid, h323setuptime)
 		values('girne-rad1', '$AcctSessionId', '', '$UserName', '', '$NasIPAddress', '$NasPortType',
 		'$AcctSessionTime', '', '', '$ConnectInfo', '$AcctInputOctets', '$AcctOutputOctets',
 		'$Called_Station_Id', '', '$AcctTerminateCause', '$ServiceType', '$FramedProtocol',
-		'$FramedIPAddress', '0', '$AcctDelayTime', '$h323_remote_address', 'Stop', '$Cisco_NAS_Port',
+		'0', '$AcctDelayTime', '$h323_remote_address', 'Stop', '$Cisco_NAS_Port',
 		'$h323_call_type', '', '$h323_conf_id', '$h323_connect_time', '$h323_disconnect_cause',
 		'$h323_disconnect_time', '$h323_gw_id', '$h323_setup_time')");
+	}
+	elsif ($h323_call_type eq 'Telephony') {
+        $sth2 = $dbh->prepare("INSERT into Stop$h323_call_type (RadiusServerName, AcctSessionId, AcctUniqueId,
+                UserName, Realm, NASIPAddress, NASPortType, AcctSessionTime, AcctAuthentic, ConnectInfo_start,
+                ConnectInfo_stop, AcctInputOctets, AcctOutputOctets, CalledStationId, CallingStationId,
+                AcctTerminateCause, ServiceType, FramedProtocol, AcctStartDelay, AcctStopDelay,
+                AcctStatusType, CiscoNASPort, h323calltype, h323callorigin, h323confid,
+                h323connecttime, h323disconnectcause, h323disconnecttime, h323gwid, h323setuptime)
+                values('girne-rad1', '$AcctSessionId', '', '$UserName', '', '$NasIPAddress', '$NasPortType',
+                '$AcctSessionTime', '', '', '$ConnectInfo', '$AcctInputOctets', '$AcctOutputOctets',
+                '$Called_Station_Id', '', '$AcctTerminateCause', '$ServiceType', '$FramedProtocol',
+                '0', '$AcctDelayTime', 'Stop', '$Cisco_NAS_Port',
+                '$h323_call_type', '', '$h323_conf_id', '$h323_connect_time', '$h323_disconnect_cause',
+                '$h323_disconnect_time', '$h323_gw_id', '$h323_setup_time')");
+	} else { print "ERROR: Unsupported h323calltype \"$h323_call_type\"\n" }
+
 	$sth2->execute();
 	#my $returned_rows = $sth2->rows;
 	print "added to DB\n";
@@ -122,12 +145,11 @@ sub db_update {
 sub db_read {
 	$passno++;
         print "Record: $passno) Conf ID: $h323_conf_id   Connect Time: $h323_connect_time  Call Length: $AcctSessionTime   ";
-	my $sth = $dbh->prepare("SELECT * FROM Stop$h323_call_type
-		WHERE AcctSessionId = '$AcctSessionId'
+	my $sth = $dbh->prepare("SELECT RadAcctId FROM Stop$h323_call_type
+		WHERE h323SetupTime = '$h323_setup_time'
+		AND AcctSessionId = '$AcctSessionId'
 		AND NASIPAddress = '$NasIPAddress'
-		AND UserName = '$UserName'
-		AND h323confid = '$h323_conf_id'
-		AND h323SetupTime = '$h323_setup_time'")
+		AND h323confid = '$h323_conf_id'")
                 or die "Couldn't prepare statement: " . $dbh->errstr;
 
           my @data;
@@ -138,11 +160,12 @@ sub db_read {
           if ($sth->rows == 0) {
 		&db_insert;
           } elsif ($sth->rows == 1) {
-                while (@data = $sth->fetchrow_array()) {
-                my $dbAcctSessionId = $data[1];
                 print "Exists in DB.\n";
-		#&db_update;
-                }
+		# FIXME: Make updates an option!
+                #while (@data = $sth->fetchrow_array()) {
+                #my $dbAcctSessionId = $data[1];
+		##&db_update;
+                #}
           } else {
 		$double_match_no++;
 		# FIXME: Log this somewhere!
@@ -357,7 +380,7 @@ sub main {
 
 	if ($opt_f) {
 		if ($opt_H) { &db_connect($opt_H);
-		} else { &db_connect($default_hostname); }
+		} else { &db_connect(localhost); }
 
 		&read_detailfile($opt_f);
 
