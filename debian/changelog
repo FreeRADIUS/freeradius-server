@@ -1,3 +1,9 @@
+radiusd-freeradius (?) unstable; urgency=low
+
+  * Updated config.{guess,sub} to recent versions.  (closes: Bug#98183)
+
+ -- Chad Miller <cmiller@debian.org>  [TBA]
+
 radiusd-freeradius (0.1+20010517-1) unstable; urgency=low
 
   * Moved package to non-US to allow in Kerberos and PostgreSQL.
