@@ -28,8 +28,9 @@ typedef struct ttls_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
 	int		authenticated;
-	int		use_tunneled_reply;
 	int		default_eap_type;
+	int		copy_request_to_tunnel;
+	int		use_tunneled_reply;
 } ttls_tunnel_t;
 
 /*

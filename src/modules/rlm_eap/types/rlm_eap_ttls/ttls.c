@@ -703,6 +703,39 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
 
+	/*
+	 *	If this is set, we copy SOME of the request attributes
+	 *	from outside of the tunnel to inside of the tunnel.
+	 *
+	 *	We copy ONLY those attributes which do NOT already
+	 *	exist in the tunneled request.
+	 */
+	if (t->copy_request_to_tunnel) {
+		VALUE_PAIR *copy;
+
+		for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
+			/*
+			 *	The outside attribute is already in the
+			 *	tunnel, don't copy it.
+			 *
+			 *	This works for BOTH attributes which
+			 *	are originally in the tunneled request,
+			 *	AND attributes which are copied there
+			 *	from below.
+			 */
+			if (pairfind(fake->packet->vps, vp->attribute)) {
+				continue;
+			}
+
+			/*
+			 *	Don't copy from the head, we've already
+			 *	checked it.
+			 */
+			copy = paircopy2(vp, vp->attribute);
+			pairadd(&fake->packet->vps, copy);
+		}
+	}
+
 #ifndef NDEBUG
 	if (debug_flag > 0) {
 	  printf("  TTLS: Sending tunneled request\n");
