@@ -33,10 +33,6 @@
 #include	"radiusd.h"
 #include	"modules.h"
 
-#ifndef PW_PAM_AUTH
-#define PW_PAM_AUTH 1041
-#endif
-
 /*************************************************************************
  *
  *	Function: PAM_conv
@@ -169,7 +165,7 @@ static int pam_auth(REQUEST *request, char *username, char *password)
 	VALUE_PAIR *pair;
 	const char *pam_auth_string = "radiusd";
 
-	pair = pairfind(request->config_items, PW_PAM_AUTH);
+	pair = pairfind(request->config_items, PAM_AUTH_ATTR);
 	if (pair) pam_auth_string = pair->strvalue;
 
 	r = pam_pass(username, password, pam_auth_string);
