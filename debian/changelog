@@ -1,4 +1,4 @@
-freeradius (0.9.0-cvs20030828-0) unstable; urgency=low
+freeradius (0.9.0-cvs20030903-0) unstable; urgency=low
 
   * Current CVS version
   * Renamed radiusd(8) to freeradius(8) to match binary
