@@ -189,3 +189,55 @@ int rl_walk(RL_WALK_FUNC walker, void *data)
 
 	return 0;
 }
+
+/*
+ *	Walk from one request to the next.
+ */
+REQUEST *rl_next(REQUEST *request)
+{
+	int id, start_id;
+
+	/*
+	 *	If we were passed a request, then go to the "next" one.
+	 */
+	if (request) {
+		assert(request->magic == REQUEST_MAGIC);
+
+		/*
+		 *	It has a "next", return it.
+		 */
+		if (request->next) {
+			return request->next;
+		} else {
+			/*
+			 *	No "next", increment the ID, and look
+			 *	at that one.
+			 */
+			start_id = request->packet->id + 1;
+			start_id &= 0xff;
+		}
+	} else {
+		/*
+		 *	No input request, start looking at ID 0.
+		 */
+		start_id = 0;
+	}
+
+	/*
+	 *	Check all ID's, wrapping around at 255.
+	 */
+	for (id = start_id; id < (start_id + 256); id++) {
+
+		/*
+		 *	This ID has a request, return it.
+		 */
+		if (request_list[id & 0xff].first_request) {
+			return request_list[id & 0xff].first_request;
+		}
+	}
+
+	/*
+	 *	No requests at all in the list. Nothing to do.
+	 */
+	return NULL;
+}
