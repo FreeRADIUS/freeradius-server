@@ -173,7 +173,7 @@ VALUE_PAIR *paircopy(VALUE_PAIR *vp)
  */
 void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 {
-	VALUE_PAIR **tailto, *i, *next;
+	VALUE_PAIR **tailto, *i, *j, *next;
 	VALUE_PAIR *tailfrom = NULL;
 	VALUE_PAIR *found;
 	int has_password = 0;
@@ -240,8 +240,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 						 *	deleted...
 						 */
 						tailto = to;
-						for(i = *to; i; i = i->next) {
-							tailto = &i->next;
+						for(j = *to; j; j = j->next) {
+							tailto = &j->next;
 						}
 					}
 				}
@@ -313,8 +313,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					 *	deleted...
 					 */
 					tailto = to;
-					for(i = *to; i; i = i->next) {
-						tailto = &i->next;
+					for(j = *to; j; j = j->next) {
+						tailto = &j->next;
 					}
 				}
 				break;
