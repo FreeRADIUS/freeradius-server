@@ -20,10 +20,6 @@
 #define SQLSOCK_LOCKED		0
 #define SQLSOCK_UNLOCKED	1
 
-#define PW_VP_USERDATA		1
-#define PW_VP_GROUPDATA		2
-#define PW_VP_REALMDATA		3
-
 #define PW_ITEM_CHECK			0
 #define PW_ITEM_REPLY			1
 
@@ -69,15 +65,20 @@ typedef struct sql_inst {
 	rlm_sql_module_t *module;
 } SQL_INST;
 
+typedef struct sql_grouplist {
+	char			groupname[MAX_STRING_LEN];
+	struct sql_grouplist	*next;
+} SQL_GROUPLIST;
+
 
 int     sql_init_socketpool(SQL_INST * inst);
 void    sql_poolfree(SQL_INST * inst);
 int     sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket);
 SQLSOCK *sql_get_socket(SQL_INST * inst);
 int     sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket);
-int     sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode);
+int     sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row);
 int     sql_read_realms(SQLSOCK * sqlsocket);
-int     sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query, int mode);
+int     sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query);
 int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);

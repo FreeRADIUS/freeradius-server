@@ -324,10 +324,10 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
+int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 {
 	DICT_ATTR *attr;
-	VALUE_PAIR *pair, *check;
+	VALUE_PAIR *pair;
 	char *ptr;
 	char buf[128];
 	char value[256];
@@ -351,17 +351,6 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 		radlog(L_ERR, "rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect.");
 	}
 	if (pairmode <= T_EOL) pairmode = T_OP_CMP_EQ;
-
-	/*
-	 * If attribute is already there, skip it because we checked usercheck first
-	 * and we want user settings to over ride group settings
-	 */
-	if (pairmode != T_OP_ADD && (check = pairfind(*first_pair, attr->attr)) != NULL &&
-#ifdef ASCEND_BINARY
-			attr->type != PW_TYPE_ABINARY &&
-#endif
-			querymode == PW_VP_GROUPDATA)
-		return 0;
 
 	/*
 	 *	If we have a new-style quoted string, where the
@@ -546,7 +535,7 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query, int mode)
+int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query)
 {
 	SQL_ROW row;
 	int     rows = 0;
@@ -566,7 +555,7 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 		row = sqlsocket->row;
 		if (!row)
 			break;
-		if (sql_userparse(pair, row, mode) != 0) {
+		if (sql_userparse(pair, row) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			return -1;
