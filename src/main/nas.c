@@ -87,7 +87,7 @@ int read_naslist_file(char *file)
 
 		p = buffer;
 		if (!getword(&p, hostnm, sizeof(hostnm)) ||
-				!getword(&p, shortnm, sizeof(shortnm))) {
+		    !getword(&p, shortnm, sizeof(shortnm))) {
 			radlog(L_ERR, "%s[%d]: unexpected end of line", file, lineno);
 			continue;
 		}
@@ -119,6 +119,7 @@ int read_naslist_file(char *file)
 		 *	It should be OK now, let's create the buffer.
 		 */
 		nas = rad_malloc(sizeof(NAS));
+		memset(nas, 0, sizeof(*nas));
 
 		strcpy(nas->nastype, nastype);
 		strcpy(nas->shortname, shortnm);

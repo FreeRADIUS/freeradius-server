@@ -166,6 +166,7 @@ int read_clients_file(const char *file)
 		 *	It should be OK now, let's create the buffer.
 		 */
 		c = rad_malloc(sizeof(RADCLIENT));
+		memset(c, 0, sizeof(*c));
 
 		c->ipaddr = ip_getaddr(hostnm);
 		if (c->ipaddr == INADDR_NONE) {
