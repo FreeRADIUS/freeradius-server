@@ -197,16 +197,6 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	attr->type = type;
 	attr->flags = flags;
 
-	if (vendor) {
-		attr->attr |= (vendor << 16);
-	} else if ((attr->attr >= 0) && (attr->attr < 256)) {
-		/*
-		 *	If it's an on-the-wire base attribute,
-		 *	then keep a quick reference to it, for speed.
-		 */
-		base_attributes[attr->attr] = attr;
-	}
-
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
@@ -218,13 +208,29 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		 *	ignore the duplicate.
 		 */
 		a = rbtree_finddata(attributes_byname, attr);
-		if (a->attr == attr->attr) {
-			free(attr);
-			return 0;
-		}
+		if (a && (strcasecmp(a->name, attr->name) == 0)) {
+			if (a->attr != attr->attr) {
+				librad_log("dict_addattr: Duplicate attribute name %s", name);
+				return -1;
+			}
 
-		librad_log("dict_addattr: Duplicate attribute %s", name);
-		return -1;
+			/*
+			 *	Same name, same attr, maybe the
+			 *	flags and/or type is different.
+			 *	Let the new value over-ride the
+			 *	old one.
+			 */
+		}
+	}
+
+	if (vendor) {
+		attr->attr |= (vendor << 16);
+	} else if ((attr->attr >= 0) && (attr->attr < 256)) {
+		/*
+		 *	If it's an on-the-wire base attribute,
+		 *	then keep a quick reference to it, for speed.
+		 */
+		base_attributes[attr->attr] = attr;
 	}
 
 	/*
