@@ -2393,55 +2393,67 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	REQUEST *oldreq;
 	
 	/*
-	 *  Find the original request in the request list
+	 *	Find the original request in the request list
 	 */
 	oldreq = rl_find_proxy(request);
-	if (oldreq) {
-		/*
-		 *  If there is already a reply,
-		 *  maybe the new one is a duplicate?
-		 */
-		if (oldreq->proxy_reply) {
-			if (memcmp(oldreq->proxy_reply->vector,
-					request->packet->vector,
-					sizeof(oldreq->proxy_reply->vector)) == 0) {
-				DEBUG2("Ignoring duplicate proxy reply");
-				request_free(&request);
-				return NULL;
-			} else {
+
+	/*
+	 *	If we haven't found the original request which was
+	 *	sent, to get this reply.  Complain, and discard this
+	 *	request, as there's no way for us to send it to a NAS.
+	 */
+	if (!oldreq) {
+		radlog(L_PROXY, "No matching request was found for proxy reply from server %s:%d - ID %d",
+		       client_name(request->packet->src_ipaddr),
+		       request->packet->src_port,
+		       request->packet->id);
+		request_free(&request);
+		return NULL;
+	}
+
+	/*
+	 *	The proxy reply has arrived too late, as the original
+	 *	(old) request has timed out, been rejected, and marked
+	 *	as finished.  The client has already received a
+	 *	response, so there is nothing that can be done. Delete
+	 *	the tardy reply from the home server, and return NULL.
+	 */
+	if ((oldreq->reply->code != 0) ||
+	    (oldreq->finished)) {
+		radlog(L_ERR, "Reply from home server %s:%d arrived too late for request %d. Try increasing 'retry_delay' or 'max_request_time'",
+		       client_name(request->packet->src_ipaddr),
+		       request->packet->src_port,
+		       oldreq->number);
+		request_free(&request);
+		return NULL;
+	}
+	
+	/*
+	 *	If there is already a reply, maybe this one is a
+	 *	duplicate?
+	 */
+	if (oldreq->proxy_reply) {
+		if (memcmp(oldreq->proxy_reply->vector,
+			   request->packet->vector,
+			   sizeof(oldreq->proxy_reply->vector)) == 0) {
+			DEBUG2("Ignoring duplicate proxy reply");
+		} else {
 				/*
 				 *  ??? The home server gave us a new
 				 *  proxy reply, which doesn't match
 				 *  the old one.  Delete it!
 				 */
-				DEBUG2("Ignoring conflicting proxy reply");
-				request_free(&request);
-				return NULL;
-			}
-		} else if ((oldreq->reply->code != 0) ||
-			   (oldreq->finished)) {
-			/*
-			 *	The proxy reply has arrived too late,
-			 *	the old request has timed out and is
-			 *	finished.  The client has received a
-			 *	response, so there is nothing that can
-			 *	be done. Delete the reply, and return
-			 *	NULL.
-			 */
-			radlog(L_ERR, "Proxy reply arrived too late. Try increasing retry_delay");
-			request_free(&request);
-			return NULL;
- 		}
-	} else {
+			DEBUG2("Ignoring conflicting proxy reply");
+		}
+		
 		/*
-		 *  If we haven't found the old request, complain.
+		 *	We've already received a reply, so
+		 *	we discard this one, as we don't want
+		 *	to do duplicate work.
 		 */
-		radlog(L_PROXY, "No request found for proxy reply from server %s - ID %d",
-				client_name(request->packet->src_ipaddr),
-				request->packet->id);
 		request_free(&request);
 		return NULL;
-	}
+	} /* else there wasn't a proxy reply yet, so we can process it */
 
 	/*
 	 *  Refresh the old request, and update it with the proxy reply.
@@ -2532,15 +2544,32 @@ static int refresh_request(REQUEST *request, void *data)
 		number = request->number;
 
 		/*
-		 *  If the request is NOT finished, AND it's taken too
-		 *  long, THEN assert that there isn't a reply packet.
-		 *
-		 *  If there IS a reply packet, then it means that the
-		 *  reply was sent, the thread was finished, but that the
-		 *  server did NOT mark up the request as finished!
+		 *	There MUST be a RAD_PACKET reply.
 		 */
 		rad_assert(request->reply != NULL);
-		rad_assert(request->reply->data != NULL);
+
+		/*
+		 *	If we've tried to proxy the request, and
+		 *	the proxy server hasn't responded, then
+		 *	we send a REJECT back to the caller.
+		 *
+		 *	For safety, we assert that there is no child
+		 *	handling the request.  If the assertion fails,
+		 *	it means that we've sent a proxied request to
+		 *	the home server, and the child thread is still
+		 *	sitting on the request!
+		 */
+		if (request->proxy && !request->proxy_reply) {
+			rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+			
+			radlog(L_ERR, "Rejecting request %d due to lack of any response from home server %s:%d",
+			       client_name(request->packet->src_ipaddr),
+			       request->packet->src_port,
+			       request->number);
+			rad_reject(request);
+			request->finished = TRUE;
+			return RL_WALK_CONTINUE;
+		}
 
 		if (kill_unresponsive_children) {
 			if (child_pid != NO_SUCH_CHILD_PID) {
