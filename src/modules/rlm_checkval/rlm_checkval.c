@@ -217,28 +217,24 @@ static int do_checkval(void *instance, REQUEST *request)
 	
 	if (!(item_vp = pairfind(request->packet->vps, data->item_attr))){
 		DEBUG2("rlm_checkval: Could not find item named %s in request", data->item_name);
-		if (data->notfound_reject){
-			char module_fmsg[MAX_STRING_LEN];
-			VALUE_PAIR *module_fmsg_vp;
-
-			snprintf(module_fmsg,sizeof(module_fmsg), 
-				"rlm_checkval: Could not find item named %s in request", data->item_name);
-			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-
-			return RLM_MODULE_REJECT;
-		}
+		if (data->notfound_reject)
+			ret = RLM_MODULE_REJECT;
 		else
-			return RLM_MODULE_NOTFOUND;
+			ret = RLM_MODULE_NOTFOUND;
 	}
-	DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->strvalue);
+	if (item_vp)
+		DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->strvalue);
 	tmp = request->config_items;
 	do{
 		if (!(chk_vp = pairfind(tmp, data->chk_attr))){
-			if (!found)
+			if (!found){
 				DEBUG2("rlm_checkval: Could not find attribute named %s in check pairs",data->check_name);
+				ret = RLM_MODULE_NOTFOUND;
+			}
 			break;
 		}
+		if (!item_vp)
+			break;
 		DEBUG2("rlm_checkval: Value Name: %s, Value: %s",data->check_name, chk_vp->strvalue);
 
 		/*
@@ -291,12 +287,24 @@ static int do_checkval(void *instance, REQUEST *request)
 		 tmp != NULL);
 
 	if (ret == RLM_MODULE_REJECT) {
-		char module_fmsg[MAX_STRING_LEN];
-		VALUE_PAIR *module_fmsg_vp;
+		if (!item_vp && data->notfound_reject){
+			char module_fmsg[MAX_STRING_LEN];
+			VALUE_PAIR *module_fmsg_vp;
 
-		snprintf(module_fmsg,sizeof(module_fmsg), "rlm_checkval: This %s is not allowed for the user", data->item_name);
-		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_fmsg_vp);
+			snprintf(module_fmsg,sizeof(module_fmsg), 
+				"rlm_checkval: Could not find item named %s in request", data->item_name);
+			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+			pairadd(&request->packet->vps, module_fmsg_vp);
+		}
+		else{
+			char module_fmsg[MAX_STRING_LEN];
+			VALUE_PAIR *module_fmsg_vp;
+
+			snprintf(module_fmsg,sizeof(module_fmsg),
+				"rlm_checkval: This %s is not allowed for the user", data->item_name);
+			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+			pairadd(&request->packet->vps, module_fmsg_vp);
+		}
 	}
 
 
