@@ -30,7 +30,8 @@ install:
 	install -d -m 755	$(raddbdir); \
 	cd raddb; \
 	for i in [a-c]* [e-z]*; do \
-		[ ! -f $(raddbdir)/$$i ] && install -m 644 $$i $(raddbdir); \
+		[ $$i != radiusd.conf.in -a ! -f $(raddbdir)/$$i ] && \
+                install -m 644 $$i $(raddbdir); \
 	done; \
 	for i in dictionary*; do \
 		[ ! -f $(raddbdir)/$$i ] && install -m 644 $$i $(raddbdir); \

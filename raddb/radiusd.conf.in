@@ -13,14 +13,23 @@
 #  	modules that ask for it.
 #
 
+# Stuff from autoconf
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+sysconfdir = @sysconfdir@
+localstatedir = @localstatedir@
+sbindir = @sbindir@
+logdir = @logdir@
+raddbdir = @raddbdir@
+radacctdir = @radacctdir@
+
 #
 #  Location of config and logfiles.
 #
-confdir    = /etc/raddb
+confdir    = ${raddbdir}
 
-log_dir	   = /var/log
-acct_dir   = ${log_dir}/radacct
-run_dir    = /var/run
+log_dir	   = ${logdir}
+run_dir    = ${localstatedir}/run
 
 #
 #  pidfile: Where to place the PID of the RADIUS server.
@@ -103,12 +112,12 @@ wtmpfile   = ${log_dir}/radutmp
 #
 #  Each NAS may be given it's own 'detail' directory.
 #
-detailfile = /var/log/radacct/%n/detail
+detailfile = ${radacctdir}/%n/detail
 
 #
 #  Which program to execute check doing concurrency checks.
 #
-checkrad   = /usr/local/sbin/checkrad
+checkrad   = ${sbindir}/checkrad
 
 #
 #  Core dumps are a bad thing.  This should only be set to 'yes'

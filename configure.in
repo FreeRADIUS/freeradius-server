@@ -624,7 +624,8 @@ AC_OUTPUT(\
 	./src/main/radtest \
 	./scripts/rc.radiusd \
 	./scripts/radwatch \
-	./scripts/check-radiusd-config
+	./scripts/check-radiusd-config \
+	./raddb/radiusd.conf
 )
 
 AC_OUTPUT_COMMANDS([echo timestamp > src/include/stamp-h])
