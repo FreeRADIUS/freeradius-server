@@ -100,6 +100,38 @@ the rlm_ldap module:
 #
 #	deafault: base_filter = "(objectclass=radiusprofile)"
 
+		filter   = "(uid=%u)"
+
+#	start_tls: When set to "yes" the StartTLS extended operation is used to
+#	start TLS transport encryption.
+		start_tls = no
+
+#	tls_cacertfile: A PEM-encoded file that contains the CA Certificates that
+#	you trust
+		tls_cacertfile = /path/to/cacert.pem
+
+#	tls_cacertdir: Path the a directory of CA Certificates that you trust, the
+#	directory must be in "hash format" (see openssl verify)
+		tls_cacertdir = /path/to/ca/dir/
+
+#	tls_certfile: The PEM Encoded certificate file that we should present to
+#	clients connecting
+		tls_certfile = /path/to/radius.crt
+
+#	tls_keyfile: The PEM Encoded private key that we should use to encrypt the
+#	session
+		tls_keyfile = /path/to/radius.key
+
+#	tls_randfile: A file containing random data to seed the OpenSSL PRNG.  Not
+#	needed if your OpenSSL is already properly random.
+		tls_randfile = /path/to/rnd
+
+#	tls_require_cert: Certificate Verification requirements.  Can be "never"
+#	(don't even bother trying), "allow" (try, but don't fail if the cerificate
+#	can't be verified), or "demand" (fail if the certificate doesn't verify.)
+#	The default is "allow"
+		tls_require_cert = "allow"
+
 #	default_profile: DN of a LDAP object, which contains default RADIUS
 #	attributes.  default: NULL - use only user specific attributes or
 #	attributes, supplied by other modules.

@@ -79,6 +79,19 @@ if test x$with_[]modname != xno; then
 	  if test "x${ac_cv_lib_ldap_ldap_start_tls_s}${ac_cv_lib_ldap_r_ldap_start_tls_s}" != "x"; then
 	     SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_START_TLS"
 	  fi
+      
+	  AC_SMART_CHECK_LIB("$libldap", ldap_initialize)
+
+	  if test "x${ac_cv_lib_ldap_ldap_initialize}${ac_cv_lib_ldap_r_ldap_initialize}" != "x"; then
+	     SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INITIALIZE"
+	  fi
+      
+	  AC_SMART_CHECK_LIB("$libldap", ldap_int_tls_config)
+
+	  if test "x${ac_cv_lib_ldap_ldap_int_tls_config}${ac_cv_lib_ldap_r_ldap_int_tls_config}" != "x"; then
+	     SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INT_TLS_CONFIG"
+	  fi
+
 	fi
 
 

@@ -841,6 +841,13 @@ modules {
 		# ldap connections instead of using ldaps (port 689) connections
 		start_tls = no
 
+		# tls_cacertfile	= /path/to/cacert.pem
+		# tls_cacertdir		= /path/to/ca/dir/
+		# tls_certfile		= /path/to/radius.crt
+		# tls_keyfile		= /path/to/radius.key
+		# tls_randfile		= /path/to/rnd
+		# tls_require_cert	= "demand"
+
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
 		# profile_attribute = "radiusProfileDn"
 		access_attr = "dialupAccess"

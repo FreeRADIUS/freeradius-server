@@ -142,6 +142,9 @@
  *	  on the radius attributes, else we fall back to the plain old pairadd. That way people
  *	  can fall back on the 0.8.1 behaviour without making changes to their ldap database or
  *	  gain a little performance by not using pairxlatmove
+ * Dec 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Add a patch from Jon Miner <miner@doit.wisc.edu> to add the ability to configure
+ *	  various LDAP TLS options
  */
 static const char rcsid[] = "$Id$";
 
@@ -268,7 +271,16 @@ typedef struct {
 	LDAP_CONN	*conns;
 	int             ldap_debug; /* Debug flag for LDAP SDK */
 	char		*xlat_name; /* name used to xlat */
+	char		*tls_cacertfile;
+	char		*tls_cacertdir;
+	char		*tls_certfile;
+	char		*tls_keyfile;
+	char		*tls_randfile;
+	char		*tls_require_cert;
 }               ldap_instance;
+
+/* The default setting for TLS Certificate Verification */
+#define TLS_DEFAULT_VERIFY "allow"
 
 static CONF_PARSER module_config[] = {
 	{"server", PW_TYPE_STRING_PTR, offsetof(ldap_instance,server), NULL, "localhost"},
@@ -281,6 +293,12 @@ static CONF_PARSER module_config[] = {
 	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "20"},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance,start_tls), NULL, "no"},
+	{"tls_cacertfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,tls_cacertfile), NULL, NULL},
+	{"tls_cacertdir", PW_TYPE_STRING_PTR, offsetof(ldap_instance,tls_cacertdir), NULL, NULL},
+	{"tls_certfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,tls_certfile), NULL, NULL},
+	{"tls_keyfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,tls_keyfile), NULL, NULL},
+	{"tls_randfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,tls_randfile), NULL, NULL},
+	{"tls_require_cert", PW_TYPE_STRING_PTR, offsetof(ldap_instance,tls_require_cert), NULL, TLS_DEFAULT_VERIFY},
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, ""},
 	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, "o=notexist"},
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
@@ -1508,6 +1526,82 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	  	           (void *) &(inst->tls_mode)) != LDAP_OPT_SUCCESS) {
 			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
  			radlog(L_ERR, "rlm_ldap: could not set LDAP_OPT_X_TLS option %s", ldap_err2string(ldap_errno));
+		}
+	}
+
+	if(inst->tls_cacertfile != NULL) {
+		DEBUG("rlm_ldap: setting TLS CACert File to %s", inst->tls_cacertfile);
+
+		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CACERTFILE,
+							  (void *) inst->tls_cacertfile )
+			 != LDAP_OPT_SUCCESS) {
+			radlog(L_ERR, "rlm_ldap: could not set "
+				   "LDAP_OPT_X_TLS_CACERTFILE option to %s", inst->tls_cacertfile);
+		}
+	}
+
+	if(inst->tls_cacertdir != NULL) {
+		DEBUG("rlm_ldap: setting TLS CACert File to %s", inst->tls_cacertdir);
+
+		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CACERTDIR,
+							  (void *) inst->tls_cacertdir )
+			 != LDAP_OPT_SUCCESS) {
+			radlog(L_ERR, "rlm_ldap: could not set "
+				   "LDAP_OPT_X_TLS_CACERTDIR option to %s", inst->tls_cacertdir);
+		}
+	}
+
+	if( strcmp( TLS_DEFAULT_VERIFY, inst->tls_require_cert ) != 0 ) {
+		DEBUG("rlm_ldap: setting TLS Require Cert to %s",
+			  inst->tls_require_cert);
+	}
+
+
+#ifdef HAVE_INT_TLS_CONFIG
+
+	if ( ldap_int_tls_config( NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
+							  (inst->tls_require_cert) )
+		 != LDAP_OPT_SUCCESS) {
+		radlog(L_ERR, "rlm_ldap: could not set "
+			   "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s",
+			   inst->tls_require_cert);
+	}
+
+#endif
+
+	if(inst->tls_certfile != NULL) {
+		DEBUG("rlm_ldap: setting TLS Cert File to %s", inst->tls_certfile);
+
+		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CERTFILE,
+							  (void *) inst->tls_certfile )
+			 != LDAP_OPT_SUCCESS) {
+			radlog(L_ERR, "rlm_ldap: could not set "
+				   "LDAP_OPT_X_TLS_CERTFILE option to %s",
+				   inst->tls_certfile);
+		}
+	}
+
+	if(inst->tls_keyfile != NULL) {
+		DEBUG("rlm_ldap: setting TLS Key File to %s", inst->tls_keyfile);
+
+		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_KEYFILE,
+							  (void *) inst->tls_keyfile )
+			 != LDAP_OPT_SUCCESS) {
+			radlog(L_ERR, "rlm_ldap: could not set "
+				   "LDAP_OPT_X_TLS_KEYFILE option to %s",
+				   inst->tls_keyfile);
+		}
+	}
+
+	if(inst->tls_randfile != NULL) {
+		DEBUG("rlm_ldap: setting TLS Key File to %s", inst->tls_randfile);
+
+		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_RANDOM_FILE,
+							  (void *) inst->tls_randfile )
+			 != LDAP_OPT_SUCCESS) {
+			radlog(L_ERR, "rlm_ldap: could not set "
+				   "LDAP_OPT_X_TLS_RANDOM_FILE option to %s",
+				   inst->tls_randfile);
 		}
 	}
 	if (inst->start_tls) {
