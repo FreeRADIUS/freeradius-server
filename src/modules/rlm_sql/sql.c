@@ -54,14 +54,17 @@
 
 
 /*
- * Connect to a server.  If error, set this socket's state to be "sockunconnected"
- * and set a grace period, during which we won't try connecting again (to prevent unduly
- * lagging the server and being impolite to a DB server that may be having other 
- * issues).  If successful in connecting, set state to sockconnected.   - chad
+ * Connect to a server.  If error, set this socket's state to be
+ * "sockunconnected" and set a grace period, during which we won't try
+ * connecting again (to prevent unduly lagging the server and being
+ * impolite to a DB server that may be having other issues).  If
+ * successful in connecting, set state to sockconnected.
+ * - chad
  */
 static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst) {
-	radlog(L_DBG, "rlm_sql (%s): Attempting to connect #%d",
-	       inst->config->xlat_name, sqlsocket->id);
+	radlog(L_DBG, "rlm_sql (%s): Attempting to connect %s #%d",
+	       inst->config->xlat_name, inst->module->name, sqlsocket->id);
+
 	if ((inst->module->sql_init_socket)(sqlsocket, inst->config) < 0) {
 		radlog(L_CONS | L_ERR, "rlm_sql (%s): Failed to connect DB handle #%d", inst->config->xlat_name, sqlsocket->id);
 		inst->connect_after = time(NULL) + inst->config->connect_failure_retry_delay;
@@ -294,6 +297,13 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode) {
 	if (row[4] != NULL && strlen(row[4]) > 0) {
 		ptr = row[4];
 		pairmode = gettoken(&ptr, buf, sizeof(buf));
+	} else {
+		/*
+		 *  'op' fields of NULL are a plague, and a bane on the
+		 *  existence of mankind.
+		 */
+		radlog(L_ERR, "rlm_sql: The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
+		radlog(L_ERR, "rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect.");
 	}
 	if (pairmode <= T_EOL) pairmode = T_OP_CMP_EQ;
 
