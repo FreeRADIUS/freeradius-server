@@ -721,7 +721,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	datum key_datum;
 	datum count_datum;
 	rad_counter counter;
-	unsigned int res=0;
+	int res=0;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
@@ -791,8 +791,10 @@ static int counter_authorize(void *instance, REQUEST *request)
 	/*
 	 * Check if check item > counter
 	 */
+	DEBUG("rlm_counter: Check item = %d, Count = %d",check_vp->lvalue,counter.user_counter);
 	res=check_vp->lvalue - counter.user_counter;
 	if (res > 0) {
+		DEBUG("rlm_counter: res is greater than zero");
 		if (data->count_attr == PW_ACCT_SESSION_TIME) {
 			/*
 			 * Do the following only if the count attribute is 
