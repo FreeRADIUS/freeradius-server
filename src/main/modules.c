@@ -52,11 +52,7 @@ typedef struct config_module_t {
 	struct config_module_t	*next;
 } config_module_t;
 
-static config_module_t *authorize = NULL;
-static config_module_t *authenticate = NULL;
-static config_module_t *preacct = NULL;
-static config_module_t *accounting = NULL;
-static config_module_t *session = NULL;
+static config_module_t *components[RLM_COMPONENT_COUNT];
 
 static void config_list_free(config_module_t **cf)
 {
@@ -99,12 +95,14 @@ static void instance_list_free(module_instance_t **i)
 static void module_list_free(void)
 {
 	module_list_t *ml, *next;
+	int i;
 
-	config_list_free(&authenticate);
-	config_list_free(&authorize);
-	config_list_free(&preacct);
-	config_list_free(&accounting);
-	config_list_free(&session);
+	/*
+	 *	Delete the internal component pointers.
+	 */
+	for (i = 0; i < RLM_COMPONENT_COUNT; i++) {
+		config_list_free(&components[i]);
+	}
 
 	instance_list_free(&module_instance_list);
 
@@ -346,14 +344,17 @@ static module_instance_t *find_module_instance(module_instance_t *head,
 /*
  *	Add one entry at the end of the config_module_t list.
  */
-static void add_to_list(config_module_t **head, module_instance_t *instance, int index)
+static void add_to_list(int comp, module_instance_t *instance, int index)
 {
-	config_module_t	*node = *head;
-	config_module_t **last = head;
+	config_module_t	*node;
+	config_module_t **last;
+	config_module_t **head;
+	
+	head = &components[comp];
+	last = head;
 
-	while (node) {
+	for (node = *head; node != NULL; node = node->next) {
 		last = &node->next;
-		node = node->next;
 	}
 
 	node = (config_module_t *) rad_malloc(sizeof(config_module_t));
@@ -435,7 +436,7 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 					this->entry->module->name);
 				exit(1);
 			}
-			add_to_list(&authenticate, this, new_authtype_value(this->name));
+			add_to_list(RLM_COMPONENT_AUTH, this, new_authtype_value(this->name));
 			break;
 		case RLM_COMPONENT_AUTZ:
 			if (!this->entry->module->authorize) {
@@ -446,7 +447,7 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 					this->entry->module->name);
 				exit(1);
 			}
-			add_to_list(&authorize, this, 0);
+			add_to_list(RLM_COMPONENT_AUTZ, this, 0);
 			break;
 		case RLM_COMPONENT_PREACCT:
 			if (!this->entry->module->preaccounting) {
@@ -457,7 +458,7 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 					this->entry->module->name);
 				exit(1);
 			}
-			add_to_list(&preacct, this, 0);
+			add_to_list(RLM_COMPONENT_PREACCT, this, 0);
 			break;
 		case RLM_COMPONENT_ACCT:
 			if (!this->entry->module->accounting) {
@@ -468,7 +469,7 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
 					this->entry->module->name);
 				exit(1);
 			}
-			add_to_list(&accounting, this, 0);
+			add_to_list(RLM_COMPONENT_ACCT, this, 0);
 			break;
 		case RLM_COMPONENT_SESS:
 			if (!this->entry->module->checksimul) {
@@ -479,7 +480,7 @@ static void load_module_section(CONF_SECTION *cs, int comp, const char *filename
  					this->entry->module->name);
  				exit(1);
 			}
-			add_to_list(&session, this, 0);
+			add_to_list(RLM_COMPONENT_SESS, this, 0);
 			break;
 		default:
 			radlog(L_ERR|L_CONS, "%s[%d] Unknown component %d.\n",
@@ -531,6 +532,10 @@ int setup_modules(void)
 		
 		DEBUG2("Module: Library search path is %s",
 		       lt_dlgetsearchpath());
+
+		for (comp = 0; comp < RLM_COMPONENT_COUNT; comp++) {
+			components[comp] = NULL;
+		}
 
 	} else {
 		module_list_free();
@@ -625,7 +630,7 @@ int module_authorize(REQUEST *request)
 	config_module_t	*this;
 	int		rcode = RLM_MODULE_OK;
 
-	this = authorize;
+	this = components[RLM_COMPONENT_AUTZ];
 	rcode = RLM_MODULE_OK;
 
 	while (this && rcode == RLM_MODULE_OK) {
@@ -704,7 +709,7 @@ int module_authenticate(int auth_type, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	this = lookup_by_index(authenticate, auth_type);
+	this = lookup_by_index(components[RLM_COMPONENT_AUTH], auth_type);
 
 	while (this && rcode == RLM_MODULE_FAIL) {
 		DEBUG2("  authenticate: %s",
@@ -727,7 +732,7 @@ int module_preacct(REQUEST *request)
 	config_module_t	*this;
 	int		rcode;
 
-	this = preacct;
+	this = components[RLM_COMPONENT_PREACCT];
 	rcode = RLM_MODULE_OK;
 
 	while (this && (rcode == RLM_MODULE_OK)) {
@@ -750,7 +755,7 @@ int module_accounting(REQUEST *request)
 	config_module_t	*this;
 	int		rcode;
 
-	this = accounting;
+	this = components[RLM_COMPONENT_ACCT];
 	rcode = RLM_MODULE_OK;
 
 	while (this && (rcode == RLM_MODULE_OK)) {
@@ -775,7 +780,7 @@ int module_checksimul(REQUEST *request, int maxsimul)
 	config_module_t	*this;
 	int		rcode;
 
-	if(!session)
+	if(!components[RLM_COMPONENT_SESS])
 		return 0;
 
 	if(!request->username)
@@ -785,7 +790,7 @@ int module_checksimul(REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	this = session;
+	this = components[RLM_COMPONENT_SESS];
 	rcode = RLM_MODULE_FAIL;
 
 	while (this && (rcode == RLM_MODULE_FAIL)) {
