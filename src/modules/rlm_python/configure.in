@@ -1,0 +1,87 @@
+AC_INIT(rlm_python.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_python])
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	dnl extra argument: --with-rlm-python-include-dir
+	rlm_python_version=2.2
+	AC_ARG_WITH(rlm-python-version,
+	[  --with-rlm-python-version=[0-9].[0-9]   Version of Python to use [2.2]],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-python-version)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_python_version="$withval"
+		;;
+	  esac ]
+	)
+
+	dnl extra argument: --with-rlm-python-lib-dir
+	rlm_python_lib_dir=
+	AC_ARG_WITH(rlm-python-lib-dir,
+	[  --with-rlm-python-lib-dir=DIR       Directory for Python library files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-python-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_python_lib_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	dnl extra argument: --with-rlm-python-include-dir
+	rlm_python_inc_dir=
+	AC_ARG_WITH(rlm-python-include-dir,
+	[  --with-rlm-python-include-dir=DIR   Directory for Python include files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-python-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_python_include_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	smart_try_dir=$rlm_python_include_dir
+	AC_SMART_CHECK_INCLUDE(Python.h)
+
+	smart_try_dir=$rlm_python_lib_dir
+	AC_SMART_CHECK_LIB(python$rlm_python_version, Py_Initialize, 
+		[ python_ldflags="-L$smart_lib_dir -lpython$rlm_python_version $python_ldflags" ],
+		[ fail=$fail" libpython$rlm_python_version" ],
+		[ $python_ldflags ]
+	)
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+AC_SUBST(python_ldflags)
+AC_SUBST(python_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
