@@ -971,25 +971,31 @@ signal(SIGINT, sig_fatal);
 #endif
 
 		status = select(max_fd + 1, &readfds, NULL, NULL, tv);
+
+		/*
+		 *	If we've been told to exit, then do so,
+		 *	even if we have data waiting.
+		 */
+		if (do_exit) {
+			DEBUG("Exiting...");
+			detach_modules();
+			
+			/*
+			 *	SIGTERM gets do_exit=0,
+			 *	and we want to exit cleanly.
+			 *
+			 *	Other signals make us exit
+			 *	with an error status.
+			 */
+			exit(do_exit - 1);
+		}
+
 		if (status == -1) {
 			/*
 			 *  On interrupts, we clean up the
 			 *  request list.
 			 */
 			if (errno == EINTR) {
-				if (do_exit) {
-					DEBUG("Exiting...");
-					detach_modules();
-
-					/*
-					 *	SIGTERM gets do_exit=0,
-					 *	and we want to exit cleanly.
-					 *
-					 *	Other signals make us exit
-					 *	with an error status.
-					 */
-					exit(do_exit - 1);
-				}
 				tv = rad_clean_list(time(NULL));
 				continue;
 			}
