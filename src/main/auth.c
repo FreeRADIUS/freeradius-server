@@ -2,11 +2,10 @@
  * auth.c	User authentication.
  *
  *
- * Version:	@(#)auth.c  1.87  08-Aug-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
-char auth_sccsid[] =
-"@(#)auth.c	1.87 Copyright 1998-1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -112,7 +111,7 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, char **user_msg)
 static int rad_check_password(REQUEST *request, int activefd,
 	VALUE_PAIR *check_item,
 	VALUE_PAIR *namepair,
-	char **user_msg, u_char *userpass, int *userpass_len)
+	char **user_msg)
 {
 	VALUE_PAIR	*auth_type_pair;
 	VALUE_PAIR	*password_pair;
@@ -134,8 +133,6 @@ static int rad_check_password(REQUEST *request, int activefd,
 	char		*pamauth = NULL;
 
 	result = 0;
-	userpass[0] = 0;
-	string[0] = 0;
 
 	/*
 	 *	Look for matching check items. We skip the whole lot
@@ -197,17 +194,6 @@ static int rad_check_password(REQUEST *request, int activefd,
 			auth_type = PW_AUTHTYPE_LOCAL;
 	}
 
-	/*
-	 *	Decrypt the password.
-	 */
-	if (auth_item != NULL && auth_item->attribute == PW_PASSWORD) {
-		memcpy(string, auth_item->strvalue, auth_item->length);
-		rad_pwdecode(string, auth_item->length,
-			     request->secret, request->packet->vector);
-		strncpy(userpass, string, auth_item->length + 1);
-		*userpass_len = auth_item->length;
-	}
-
 #if 0 /* DEBUG */
 	printf("auth_type=%d, string=%s, namepair=%s, password_pair=%s\n",
 		auth_type, string,
@@ -219,11 +205,12 @@ static int rad_check_password(REQUEST *request, int activefd,
 		case PW_AUTHTYPE_CRYPT:
 			DEBUG2("  auth: Crypt");
 			if (password_pair == NULL) {
-				result = string[0] ? -1 : 0;
+				result = auth_item->strvalue ? -1 : 0;
 				break;
 			}
 			if (strcmp(password_pair->strvalue,
-			    crypt(string, password_pair->strvalue)) != 0)
+			    crypt(auth_item->strvalue,
+				  password_pair->strvalue)) != 0)
 					result = -1;
 			break;
 		case PW_AUTHTYPE_LOCAL:
@@ -236,7 +223,8 @@ static int rad_check_password(REQUEST *request, int activefd,
 				 *	Plain text password.
 				 */
 				if (password_pair == NULL ||
-				    strcmp(password_pair->strvalue, string)!=0)
+				    strcmp(password_pair->strvalue,
+					   auth_item->strvalue)!=0)
 					result = -1;
 				break;
 			}
@@ -250,7 +238,6 @@ static int rad_check_password(REQUEST *request, int activefd,
 			 *	we use vp->length, and Ascend gear likes
 			 *	to send an extra '\0' in the string!
 			 */
-			strcpy(string, "{chap-password}");
 			if (password_pair == NULL) {
 				result= -1;
 				break;
@@ -284,8 +271,6 @@ static int rad_check_password(REQUEST *request, int activefd,
 			if (memcmp(chap_digest, auth_item->strvalue + 1,
 					CHAP_VALUE_LENGTH) != 0)
 				result = -1;
-			else
-				strcpy(userpass, password_pair->strvalue);
 			break;
 		default:
 			/*
@@ -295,7 +280,7 @@ static int rad_check_password(REQUEST *request, int activefd,
 			 *	the top of this function.
 			 */
 			result = module_authenticate(auth_type, request,
-				namepair->strvalue, string);
+				namepair->strvalue, auth_item->strvalue);
 			switch (result) {
 				case RLM_AUTH_FAIL:
 					result = 1;
@@ -425,14 +410,12 @@ int rad_authenticate(REQUEST *request, int activefd)
 	VALUE_PAIR	*user_reply;
 	VALUE_PAIR	*tmp;
 	int		result, r;
-	u_char		userpass[MAX_STRING_LEN + 1];
 	char		umsg[MAX_STRING_LEN + 1];
 	char		*user_msg;
 	char		*ptr;
 	char		*exec_program;
 	int		exec_wait;
 	int		seen_callback_id;
-	int		userpass_len;
 
 	user_check = NULL;
 	user_reply = NULL;
@@ -464,23 +447,46 @@ int rad_authenticate(REQUEST *request, int activefd)
 	}
 
 	/*
+	 *	Decrypt the password.
+	 */
+	auth_item = pairfind(request->packet->vps, PW_PASSWORD);
+	if (auth_item != NULL && auth_item->attribute == PW_PASSWORD) {
+		int i;
+
+		rad_pwdecode(auth_item->strvalue, auth_item->length,
+			     request->secret, request->packet->vector);
+		for (i = auth_item->length; i >=0; i--) {
+		  if (auth_item->strvalue[i]) {
+		    break;
+		  } else {
+		    auth_item->length = i;
+		  }
+		}
+	}
+
+	/*
 	 *	Get the username from the request.
 	 */
 	namepair = pairfind(request->packet->vps, PW_USER_NAME);
 	if (namepair == NULL || namepair->strvalue[0] == 0) {
 		log(L_ERR, "zero length username not permitted\n");
-		r = RLM_AUTZ_NOTFOUND;
-	} else {
-		/*
-		 *	Get the user from the database
-		 */
-		r = module_authorize(request, namepair->strvalue,
-			&user_check, &user_reply);
+		rp = build_reply(PW_AUTHENTICATION_REJECT,
+				 request, NULL, NULL);
+		rad_send(rp, activefd, request->secret);
+		rad_free(rp);
+		request->finished = TRUE;
+		return RLM_AUTZ_NOTFOUND;
 	}
+		
+	/*
+	 *	Get the user's authorization information from the database
+	 */
+	r = module_authorize(request, namepair->strvalue,
+			     &user_check, &user_reply);
 	if (r != RLM_AUTZ_OK) {
 		if (r != RLM_AUTZ_FAIL && r != RLM_AUTZ_HANDLED) {
 			log(L_AUTH, "Invalid user: [%s] (%s)",
-				namepair ? namepair->strvalue : "",
+				namepair->strvalue,
 				auth_name(request, 1));
 			rp = build_reply(PW_AUTHENTICATION_REJECT,
 					request, NULL, NULL);
@@ -495,19 +501,19 @@ int rad_authenticate(REQUEST *request, int activefd)
 	/*
 	 *	Perhaps there is a Stripped-User-Name now.
 	 */
-	if ((tmp=pairfind(request->packet->vps, PW_STRIPPED_USER_NAME)) != NULL)
+	tmp=pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
+	if (tmp != NULL)
 		namepair = tmp;
 
 	/*
 	 *	Validate the user
 	 */
 	user_msg = NULL;
-	userpass[0] = 0;
 	do {
 		if ((result = check_expiration(user_check, umsg, &user_msg))<0)
 				break;
 		result = rad_check_password(request, activefd, user_check,
-			namepair, &user_msg, userpass, &userpass_len);
+			namepair, &user_msg);
 		if (result > 0) {
 			pairfree(user_reply);
 			request->finished = TRUE;
@@ -531,10 +537,9 @@ int rad_authenticate(REQUEST *request, int activefd)
 		if (log_auth) {
 			u_char clean_buffer[1024];
 			u_char *p;
-			p = userpass + userpass_len;
-			while ((p >= userpass) &&
-			       (*p == '\0')) p--;
-			librad_safeprint(userpass, p - userpass + 1,
+
+			librad_safeprint(auth_item->strvalue,
+					 auth_item->length,
 					 clean_buffer, sizeof(clean_buffer));
 			log(L_AUTH,
 				"Login incorrect: [%s/%s] (%s)",
@@ -542,7 +547,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 				auth_name(request, 1));
 			/* double check: maybe the secret is wrong? */
 			if (debug_flag > 1) {
-			  p = userpass;
+			  p = auth_item->strvalue;
 			  while (*p) {
 			    if (!isprint(*p)) {
 			      log_debug("  WARNING: Unprintable characters in the password.\n           Double-check the shared secret on the server and the NAS!");
@@ -758,7 +763,7 @@ int rad_authenticate(REQUEST *request, int activefd)
 			"Login OK: [%s%s%s] (%s)",
 			namepair->strvalue,
 			log_auth_pass ? "/" : "",
-			log_auth_pass ? userpass : "",
+			log_auth_pass ? "password" : "",
 			auth_name(request, 0));
 	}
 	if (exec_program && !exec_wait) {
