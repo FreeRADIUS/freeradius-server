@@ -65,7 +65,6 @@ const char	        *radius_dir = NULL;
 const char		*radacct_dir = NULL;
 const char		*radlog_dir = NULL;
 int			log_stripped_names;
-int 			cache_passwd = FALSE;
 int			debug_flag;
 int			use_dbm	= FALSE;
 uint32_t		myip = INADDR_ANY;
@@ -354,7 +353,7 @@ int main(int argc, char **argv)
 			break;
 #endif
 		case 'c':
-			cache_passwd = TRUE;
+			/* ignore for backwards compatibility with Cistron */
 			break;
 
 		case 'd':
@@ -1749,7 +1748,6 @@ static void usage(void)
 #if defined(WITH_DBM) || defined(WITH_NDBM)
 	fprintf(stderr, "  -b              Use DBM.\n");
 #endif
-	fprintf(stderr, "  -c              Cache /etc/passwd, /etc/shadow, and /etc/group.\n");
 	fprintf(stderr, "  -d db_dir       Use database directory 'db_dir'.\n");
 	fprintf(stderr, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(stderr, "  -h              Print this help message.\n");

@@ -135,7 +135,6 @@ extern uint32_t		expiration_seconds;
 extern pid_t		radius_pid;
 extern int		use_dbm;
 extern int		log_stripped_names;
-extern int		cache_passwd;
 extern uint32_t		myip;
 extern int		log_auth_detail;
 extern int		log_auth;
