@@ -7,7 +7,7 @@ if test x$with_[]modname != xno; then
 	AC_SMART_CHECK_INCLUDE(gdbm.h)
 	AC_SMART_CHECK_LIB(gdbm, gdbm_open)
 	if test "x$ac_cv_lib_gdbm_gdbm_open" != "xyes"; then
-          fail="$fail liblber"
+          fail="$fail libgdbm"
         fi
 
 	targetname=modname
