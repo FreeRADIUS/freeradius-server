@@ -180,6 +180,9 @@ REQUEST *rl_find_proxy(REQUEST *request)
 		} /* loop over all requests for this id. */
 	} /* loop over all id's... this is horribly inefficient */
 
+	if (curreq == NULL)
+		return(NULL);
+
 	return curreq->req;
 }
 /*

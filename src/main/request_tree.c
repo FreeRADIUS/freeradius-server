@@ -49,11 +49,12 @@ REQUEST *rt_find(REQUEST *item) {
 }
 
 void rt_add(REQUEST *item) {
+	assert(item->container == NULL);
 	do_rt_add(&(reqtreehead[item->packet->id%forestsize]), item);
 }
 
 void rt_delete(REQUEST *item) {
-	do_rt_delete(&(reqtreehead[item->packet->id%forestsize]), item);
+	do_rt_delete(item); /* duh.  consistency. */
 }
 
 void rt_walk(RL_WALK_FUNC func, void *data) {
@@ -132,6 +133,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 		self->leftbranch = NULL;
 		self->rightbranch = NULL;
 		self->parent = NULL;
+		reqobject->container = self;
 		numberrequests += 1;
 		return;
 	}
@@ -160,6 +162,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 			self->leftbranch->leftbranch = NULL;
 			self->leftbranch->rightbranch = NULL;
 			self->leftbranch->magic = NODE_MAGIC;
+			reqobject->container = self;
 			numberrequests += 1;
 		} else {
 			assert(self->leftbranch->magic == NODE_MAGIC);
@@ -175,6 +178,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 			self->rightbranch->leftbranch = NULL;
 			self->rightbranch->rightbranch = NULL;
 			self->rightbranch->magic = NODE_MAGIC;
+			reqobject->container = self;
 			numberrequests += 1;
 		} else {
 			assert(self->rightbranch->magic == NODE_MAGIC);
@@ -186,17 +190,16 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 }
 
 
-static void do_rt_delete(REQTREE **tree, REQUEST *reqobject) {
+static void do_rt_delete(REQUEST *reqobject) {
 	int cmp;
+	REQTREE *doppelganger;
+	REQTREE **tree; /* we find this in a moment */
 
 	if (reqobject == NULL) {
 		return;
 	}
 
-	if (self == NULL) {
-		/* one shouldn't delete what isn't in the tree. */
-		return;
-	}
+	self = (REQTREE *)reqobject->container;
 
 	assert(self != NULL);
 	assert(self->magic == NODE_MAGIC);
@@ -209,81 +212,71 @@ static void do_rt_delete(REQTREE **tree, REQUEST *reqobject) {
 	assert((self->rightbranch == NULL) || (self->leftbranch == NULL) || (self->leftbranch->req->packet->code <= self->rightbranch->req->packet->code));
 
 	assert(reqobject != NULL);  
-	if (reqobject->packet == self->req->packet) { /* found */
-		REQTREE *doppelganger;
 
-		doppelganger = self;
+	doppelganger = self;
 
-		assert(self != NULL);  
-		if ((self->rightbranch == NULL) || (self->leftbranch == NULL)) { /* easy -- link-up only child */
-			REQTREE *onlychild;
-			onlychild = (self->rightbranch == NULL) ? self->leftbranch : self->rightbranch;
+	assert(self != NULL);  
+	if ((self->rightbranch == NULL) || (self->leftbranch == NULL)) { /* easy -- link-up only child */
+		REQTREE *onlychild;
+		onlychild = (self->rightbranch == NULL) ? self->leftbranch : self->rightbranch;
 
-			if (onlychild != NULL) {  /* perhaps BOTH are NULL */
-				onlychild->parent = self->parent;
-			}
-
-			if (self->parent != NULL) {  
-				assert(self->parent != self);
-				if (self->parent->rightbranch == self) {
-					self->parent->rightbranch = onlychild;
-				} else {
-					self->parent->leftbranch = onlychild;
-				}
-			} else {  /* funny case of being the root */
-				reqtreehead[self->req->packet->id] = onlychild;
-			}
-
-		} else { /* we have to do this the ugly way */
-			REQTREE *graftpoint;
-
-			graftpoint = self->rightbranch;
-			while (graftpoint->leftbranch != NULL) {
-				graftpoint = graftpoint->leftbranch;
-			}
-
-			assert(graftpoint != NULL);
-			assert(graftpoint->leftbranch == NULL);
-
-			/* reattach left side to right's leftmost free spot */
-			self->leftbranch->parent = graftpoint;
-			graftpoint->leftbranch = self->leftbranch;
-
-			/* link up right side */
-			self->rightbranch->parent = self->parent;
-			if (self->parent != NULL) {  
-				assert(self->parent != self);
-				if (self->parent->rightbranch == self) {
-					self->parent->rightbranch = self->rightbranch;
-				} else {
-					self->parent->leftbranch = self->rightbranch;
-				}
-			} else {  /* funny case of being the root */
-				reqtreehead[self->req->packet->id] = self->rightbranch;
-			}
+		if (onlychild != NULL) {  /* perhaps BOTH are NULL */
+			onlychild->parent = self->parent;
 		}
 
-		assert((self == NULL) || (self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
-		assert((self == NULL) || (self->rightbranch == NULL) || (self->rightbranch->magic == NODE_MAGIC));
-		assert((self == NULL) || (self->leftbranch == NULL) || (self->leftbranch->magic == NODE_MAGIC));
+		if (self->parent != NULL) {  
+			assert(self->parent != self);
+			if (self->parent->rightbranch == self) {
+				self->parent->rightbranch = onlychild;
+			} else {
+				self->parent->leftbranch = onlychild;
+			}
+		} else {  /* funny case of being the root */
+			reqtreehead[self->req->packet->id] = onlychild;
+		}
 
-		assert(doppelganger->magic == NODE_MAGIC);
+	} else { /* we have to do this the ugly way */
+		REQTREE *graftpoint;
 
-		numberrequests -= 1;
+		graftpoint = self->rightbranch;
+		while (graftpoint->leftbranch != NULL) {
+			graftpoint = graftpoint->leftbranch;
+		}
 
-		/* free structure */
-		doppelganger->magic -= 1; 
-		free(doppelganger);
+		assert(graftpoint != NULL);
+		assert(graftpoint->leftbranch == NULL);
 
-	} else {
-		REQCOMPARE( cmp = -1, cmp = 1, cmp = 0 );
-		assert(cmp != 0);
-		if (cmp < 0) {
-			do_rt_delete(&(self->leftbranch), reqobject);
-		} else {
-			do_rt_delete(&(self->rightbranch), reqobject);
+		/* reattach left side to right's leftmost free spot */
+		self->leftbranch->parent = graftpoint;
+		graftpoint->leftbranch = self->leftbranch;
+
+		/* link up right side */
+		self->rightbranch->parent = self->parent;
+		if (self->parent != NULL) {  
+			assert(self->parent != self);
+			if (self->parent->rightbranch == self) {
+				self->parent->rightbranch = self->rightbranch;
+			} else {
+				self->parent->leftbranch = self->rightbranch;
+			}
+		} else {  /* funny case of being the root */
+			reqtreehead[self->req->packet->id] = self->rightbranch;
 		}
 	}
+
+	assert((self == NULL) || (self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
+	assert((self == NULL) || (self->rightbranch == NULL) || (self->rightbranch->magic == NODE_MAGIC));
+	assert((self == NULL) || (self->leftbranch == NULL) || (self->leftbranch->magic == NODE_MAGIC));
+
+	assert(doppelganger->magic == NODE_MAGIC);
+
+	numberrequests -= 1;
+
+	/* free structure */
+	doppelganger->magic -= 1; 
+	free(doppelganger);
+
+	/* free request?  Alan's request_list does. */
 }
 
 
@@ -299,4 +292,28 @@ static REQUEST *do_rt_find(REQTREE **tree, REQUEST *reqobject) {
 	REQCOMPARE( do_rt_find(&(self->leftbranch), reqobject), do_rt_find(&(self->rightbranch), reqobject), return(self->req) );
 
 	return(NULL); /* avoid compiler warnings */
+}
+
+
+static REQUEST *do_rt_next(REQUEST *reqobject) {
+	REQTREE *ptr;
+	int i;
+
+	ptr = ((REQTREE *)reqobject->container);
+	assert(ptr != NULL);
+
+	if (ptr->leftbranch != NULL) 
+		return(ptr->leftbranch->req);
+
+	if (ptr->rightbranch != NULL) 
+		return(ptr->rightbranch->req);
+
+	if (ptr->parent == NULL) {
+		for (
+			i = (ptr->req->packet->id + 1) % 256;
+			ptr->reqtreehead[i] == NULL;
+			i++
+		) { }
+	}
+
 }
