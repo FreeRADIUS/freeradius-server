@@ -415,7 +415,7 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*check_item;
 	VALUE_PAIR	*reply_item;
 	VALUE_PAIR	*auth_item;
-	VALUE_PAIR	*tmp;
+	VALUE_PAIR	*tmp = NULL;
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
 	const char	*user_msg = NULL;
@@ -727,7 +727,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (((tmp = pairfind(request->reply->vps, 
 			    PW_FRAMED_IP_ADDRESS)) != NULL) &&
-	    (tmp->addport != 0)) {
+	    (tmp->flags.addport != 0)) {
 		VALUE_PAIR *vpPortId;
 		
 		/*
@@ -736,7 +736,7 @@ int rad_authenticate(REQUEST *request)
 		if ((vpPortId = pairfind(request->packet->vps,
 					 PW_NAS_PORT_ID)) != NULL) {
 		  tmp->lvalue = htonl(ntohl(tmp->lvalue) + vpPortId->lvalue);
-		  tmp->addport = 0;
+		  tmp->flags.addport = 0;
 		}
 	}
 

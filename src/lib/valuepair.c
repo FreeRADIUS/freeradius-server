@@ -528,7 +528,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 				cs = s = strdup(value);
 				p = strrchr(s, '+');
 				*p = 0;
-				vp->addport = 1;
+				vp->flags.addport = 1;
 			} else {
 				p = NULL;
 				cs = value;
@@ -623,7 +623,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
  *	Read a valuepair from a buffer, and advance pointer.
  *	Sets *eol to T_EOL if end of line was encountered.
  */
-VALUE_PAIR *pairread(char **ptr, int *eol)
+VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 {
 	char		buf[64];
 	char		attr[64];

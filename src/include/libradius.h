@@ -75,6 +75,14 @@
 				} while(0)
 #endif
 
+typedef struct attr_flags {
+	char			addport;	/* Add port to IP address */
+	char			has_tag;	/* attribute allows tags */
+	signed char		tag;
+	char			encrypt;	/* encryption method */
+	signed char		len_disp;	/* length displacement */
+} ATTR_FLAGS;
+
 typedef struct dict_attr {
 	char			name[40];
 	int			attr;
@@ -103,8 +111,8 @@ typedef struct value_pair {
 	int			type;
 	int			length; /* of strvalue */
 	uint32_t		lvalue;
+	ATTR_FLAGS		flags;
 	LRAD_TOKEN		operator;
-	int			addport;
 	uint8_t			strvalue[MAX_STRING_LEN];
 	struct value_pair	*next;
 } VALUE_PAIR;
@@ -202,7 +210,7 @@ VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
-VALUE_PAIR	*pairread(char **ptr, int *eol);
+VALUE_PAIR	*pairread(char **ptr, LRAD_TOKEN *eol);
 LRAD_TOKEN	userparse(char *buffer, VALUE_PAIR **first_pair);
 
 /*
