@@ -17,10 +17,10 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2001  The FreeRADIUS server project
  * Copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
  * Copyright 2000  Alan DeKok <aland@ox.org>
- * Copyright 2000  Chad Miller <cmiller@surfsouth.com>
+ * Copyright 2001  Chad Miller <cmiller@surfsouth.com>
  */
 
 static const char rcsid[] = "$Id$";
@@ -31,12 +31,78 @@ static const char rcsid[] = "$Id$";
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #include "radiusd.h"
 
 #if HAVE_SYSLOG_H
 #	include <syslog.h>
 #endif
+
+static int r_mkdir(const char *);
+
+
+static int r_mkdir(const char *part) {
+	char *ptr, parentdir[500];
+	struct stat st;
+
+	if (stat(part, &st) == 0)
+		return(0);
+
+	ptr = strrchr(part, '/');
+
+	if (ptr == part)
+		return(0);
+
+	snprintf(parentdir, (ptr - part)+1, "%s", part);
+
+	if (r_mkdir(parentdir) != 0)
+		return(1);
+
+	if (mkdir(part, 0770) != 0) {
+		fprintf(stderr, "mkdir(%s) error: %s\n", part, strerror(errno));
+		return(1);
+	}
+
+	fprintf(stderr, "Created directory %s\n", part);
+
+	return(0);
+}
+		
+
+int radlogdir_iswritable(char *effectiveuser) {
+	struct passwd *pwent;
+
+	if (radlog_dir[0] != '/')
+		return(0);
+
+	if (r_mkdir(radlog_dir) != 0)
+		return(1);
+
+	/* FIXME: do we have this function? */
+	if (strstr(radlog_dir, "radius") == NULL)
+		return(0);
+
+	/* we have a logdir that mentions 'radius', so it's probably 
+	 * safe to chown the immediate directory to be owned by the normal 
+	 * process owner. we gotta do it before we give up root.  -chad
+	 */
+	
+	pwent = getpwnam(effectiveuser);
+
+	if (pwent == NULL) /* uh oh! */
+		return(1);
+
+	if (chown(radlog_dir, pwent->pw_uid, -1) != 0)
+		return(1);
+
+	return(0);
+}
+
 
 /*
  *	Log the message to the logfile. Include the severity and
@@ -53,32 +119,30 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 #if HAVE_SYSLOG_H
 	int use_syslog = FALSE;
 #endif
-	if ((lvl & L_CONS) || radlog_dir == NULL || debug_flag) {
-		lvl &= ~L_CONS;
-		if (!debug_flag) 
-			fprintf(stdout, "%s: ", progname);
-		vfprintf(stdout, fmt, ap);
-		fprintf(stdout, "\n");
-	}
-	if (radlog_dir == NULL || debug_flag) 
-		return 0;
 
-	if (strcmp(radlog_dir, "stdout") == 0) {
-		msgfd = stdout;
+	if (radlog_dir != NULL) {
+		if (debug_flag || (strcmp(radlog_dir, "stdout") == 0)) {
+			msgfd = stdout;
 
-	} else if (strcmp(radlog_dir, "stderr") == 0) {
-		msgfd = stderr;
+		} else if (strcmp(radlog_dir, "stderr") == 0) {
+			msgfd = stderr;
 
 #if HAVE_SYSLOG_H
-	} else if (strcmp(radlog_dir, "syslog") == 0) {
-		use_syslog = TRUE;
+		} else if (strcmp(radlog_dir, "syslog") == 0) {
+			use_syslog = TRUE;
 #endif
-	} else {
-		sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
-		if ((msgfd = fopen(buffer, "a")) == NULL) {
-			fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-					progname, buffer, strerror(errno));
-			return -1;
+		} else {
+
+			sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
+			if ((msgfd = fopen(buffer, "a")) == NULL) {
+				fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
+						progname, buffer, strerror(errno));
+
+				fprintf(stderr, "  (");
+				vfprintf(stderr, fmt, ap);  /* the message that caused the log */
+				fprintf(stderr, ")\n");
+				return -1;
+			}
 		}
 	}
 
@@ -89,7 +153,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	else {
 		strcpy(buffer, ctime(&timeval));
 
-		switch(lvl) {
+		switch(lvl & ~L_CONS) {
 			case L_DBG:
 				s = ": Debug: ";
 				break;
@@ -131,6 +195,16 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	}
 	strcat(buffer, "\n");
 
+	if ((lvl & L_CONS) || radlog_dir == NULL || debug_flag) {
+		if (!debug_flag) 
+			fprintf(stdout, "%s: ", progname);
+		fprintf(stdout, "%s", buffer+len);
+	}
+
+	if (radlog_dir == NULL || debug_flag) 
+		return 0;
+
+
 #if HAVE_SYSLOG_H
 	if (!use_syslog) {
 		fputs(buffer, msgfd);
@@ -145,7 +219,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 
 #if HAVE_SYSLOG_H
 	} else {
-		switch(lvl) {
+		switch(lvl & ~L_CONS) {
 			case L_DBG:
 				lvl = LOG_DEBUG;
 				break;
