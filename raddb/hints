@@ -21,28 +21,28 @@
 #
 #		The following is how most ISPs want to setup this stuff.
 #
-# Version:	@(#)  hints  1.10  20-Jun-1997  miquels@cistron.nl
+# Version:	$Id$
 #
 
 
-DEFAULT	Prefix = "U", Strip-User-Name = No
-	Hint = "UUCP"
+#DEFAULT	Prefix = "U", Strip-User-Name = No
+#	Hint = "UUCP"
 
-DEFAULT	Prefix = "P", Strip-User-Name = Yes
-	Hint = "PPP",
-	Service-Type = Framed-User,
-	Framed-Protocol = PPP
+#DEFAULT	Prefix = "P", Strip-User-Name = Yes
+#	Hint = "PPP",
+#	Service-Type = Framed-User,
+#	Framed-Protocol = PPP
 
-DEFAULT	Prefix = "S", Strip-User-Name = Yes
-	Hint = "SLIP",
-	Service-Type = Framed-User,
-	Framed-Protocol = SLIP
+#DEFAULT	Prefix = "S", Strip-User-Name = Yes
+#	Hint = "SLIP",
+#	Service-Type = Framed-User,
+#	Framed-Protocol = SLIP
 
-DEFAULT	Prefix = "C", Strip-User-Name = Yes
-	Hint = "CSLIP",
-	Service-Type = Framed-User,
-	Framed-Protocol = SLIP,
-	Framed-Compression = Van-Jacobson-TCP-IP
+#DEFAULT	Prefix = "C", Strip-User-Name = Yes
+#	Hint = "CSLIP",
+#	Service-Type = Framed-User,
+#	Framed-Protocol = SLIP,
+#	Framed-Compression = Van-Jacobson-TCP-IP
 
 DEFAULT	Suffix = ".ppp", Strip-User-Name = Yes
 	Hint = "PPP",
