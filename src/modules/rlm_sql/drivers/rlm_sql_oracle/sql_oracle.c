@@ -31,6 +31,33 @@ typedef struct rlm_sql_oracle_sock {
 
 /*************************************************************************
  *
+ *	Function: sql_error
+ *
+ *	Purpose: database specific error. Returns error associated with
+ *               connection
+ *
+ *************************************************************************/
+static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
+	static char	msgbuf[512];
+	sb4		errcode = 0;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
+ 
+	memset((void *) msgbuf, (int)'\0', sizeof(msgbuf));
+
+	OCIErrorGet((dvoid *) oracle_sock->errHandle, (ub4) 1, (text *) NULL,
+		&errcode, msgbuf, (ub4) sizeof(msgbuf), (ub4) OCI_HTYPE_ERROR);
+	if (errcode) {
+		return msgbuf;
+	}
+	else {
+		return NULL;
+	}
+}
+
+
+/*************************************************************************
+ *
  *	Function: sql_init_socket
  *
  *	Purpose: Establish connection to the db
@@ -98,6 +125,33 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	free(sqlsocket);
 	return 0;
+}
+
+/*************************************************************************
+ *
+ *	Function: sql_num_fields
+ *
+ *	Purpose: database specific num_fields function. Returns number
+ *               of columns from query
+ *
+ *************************************************************************/
+static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
+	ub4		count;
+	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
+
+	/* get the number of columns in the select list */ 
+	if (OCIAttrGet ((dvoid *)oracle_sock->queryHandle,
+			(ub4)OCI_HTYPE_STMT,
+			(dvoid *) &count,
+			(ub4 *) 0,
+			(ub4)OCI_ATTR_PARAM_COUNT,
+			oracle_sock->errHandle)) {
+		radlog(L_ERR,"sql_num_fields: error retrieving colun count: %s",
+			sql_error(sqlsocket, config));
+		return -1;
+	}
+	return count;
 }
 
 /*************************************************************************
@@ -313,33 +367,6 @@ static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 /*************************************************************************
  *
- *	Function: sql_num_fields
- *
- *	Purpose: database specific num_fields function. Returns number
- *               of columns from query
- *
- *************************************************************************/
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
-	ub4		count;
-	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
-
-	/* get the number of columns in the select list */ 
-	if (OCIAttrGet ((dvoid *)oracle_sock->queryHandle,
-			(ub4)OCI_HTYPE_STMT,
-			(dvoid *) &count,
-			(ub4 *) 0,
-			(ub4)OCI_ATTR_PARAM_COUNT,
-			oracle_sock->errHandle)) {
-		radlog(L_ERR,"sql_num_fields: error retrieving colun count: %s",
-			sql_error(sqlsocket, config));
-		return -1;
-	}
-	return count;
-}
-
-/*************************************************************************
- *
  *	Function: sql_num_rows
  *
  *	Purpose: database specific num_rows. Returns number of rows in
@@ -430,33 +457,6 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return 0;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_error
- *
- *	Purpose: database specific error. Returns error associated with
- *               connection
- *
- *************************************************************************/
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
-	static char	msgbuf[512];
-	sb4		errcode = 0;
-	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
- 
-	memset((void *) msgbuf, (int)'\0', sizeof(msgbuf));
-
-	OCIErrorGet((dvoid *) oracle_sock->errHandle, (ub4) 1, (text *) NULL,
-		&errcode, msgbuf, (ub4) sizeof(msgbuf), (ub4) OCI_HTYPE_ERROR);
-	if (errcode) {
-		return msgbuf;
-	}
-	else {
-		return NULL;
-	}
-}
 
 
 /*************************************************************************
