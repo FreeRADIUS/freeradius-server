@@ -24,7 +24,7 @@ EOM;
 
 $now = time();
 $now_str = ($now_str != '') ? "$now_str" : date($config[sql_date_format],$now + 86400);
-$prev_str = ($prev_str != '') ? "$prev_str" : "0000-00-00 00:00:00";
+$prev_str = ($prev_str != '') ? "$prev_str" : "0001-01-01 00:00:00";
 $num = 0;
 $pagesize = ($pagesize) ? $pagesize : 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
@@ -93,15 +93,15 @@ $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_badusers_table]
-	WHERE UserName $usercheck AND Date <= '$now_str'
-	AND Date >= '$prev_str' ORDER BY Date $order $limit;");
+	WHERE username $usercheck AND date <= '$now_str'
+	AND date >= '$prev_str' ORDER BY date $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
-			$user = "$row[UserName]";
-			$date = "$row[Date]";
-			$reason = "$row[Reason]";
-			$admin = "$row[Admin]";
+			$user = "$row[username]";
+			$date = "$row[date]";
+			$reason = "$row[reason]";
+			$admin = "$row[admin]";
 			if ($admin == '')
 				$admin = '-';
 			if ($reason == '')

@@ -91,51 +91,51 @@ $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_accounting_table]
-	WHERE UserName = '$login' AND AcctStartTime <= '$now_str'
-	AND AcctStartTime >= '$prev_str' ORDER BY AcctStartTime $order $limit;");
+	WHERE username = '$login' AND acctstarttime <= '$now_str'
+	AND acctstarttime >= '$prev_str' ORDER BY acctstarttime $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$tr_color='white';
 			$num++;
-			$acct_type = "$row[FramedProtocol]/$row[NASPortType]";
+			$acct_type = "$row[framedprotocol]/$row[nasporttype]";
 			if ($acct_type == '')
 				$acct_type = '-';
-			$acct_logedin = $row[AcctStartTime];
-			$acct_sessiontime = $row[AcctSessionTime];
+			$acct_logedin = $row[acctstarttime];
+			$acct_sessiontime = $row[acctsessiontime];
 			$acct_sessiontime_sum += $acct_sessiontime;
 			$acct_sessiontime = time2str($acct_sessiontime);
-			$acct_ip = $row[FramedIPAddress];
+			$acct_ip = $row[framedipaddress];
 			if ($acct_ip == '')
 				$acct_ip = '-';
-			$acct_upload = $row[AcctInputOctets];
+			$acct_upload = $row[acctinputoctets];
 			$acct_upload_sum += $acct_upload;
 			$acct_upload = bytes2str($acct_upload);
-			$acct_download = $row[AcctOutputOctets];
+			$acct_download = $row[acctoutputoctets];
 			$acct_download_sum += $acct_download;
 			$acct_download = bytes2str($acct_download);
-			$acct_server = $row[NASIPAddress];
+			$acct_server = $row[nasipaddress];
 			if ($acct_server != ''){
-				$acct_server = $da_name_cache[$row[NASIPAddress]];
+				$acct_server = $da_name_cache[$row[nasipaddress]];
 				if (!isset($acct_server)){
-					$acct_server = @gethostbyaddr($row[NASIPAddress]);
+					$acct_server = @gethostbyaddr($row[nasipaddress]);
 					if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
-						$da_name_cache[$row[NASIPAddress]] = $acct_server;
+						$da_name_cache[$row[nasipaddress]] = $acct_server;
 						session_register('da_name_cache');
 					}
 					else
-						$da_name_cache[$row[NASIPAddress]] = $acct_server;
+						$da_name_cache[$row[nasipaddress]] = $acct_server;
 				}
 			}
 			else
 				$acct_server = '-';
-			$acct_server = "$acct_server:$row[NASPortId]";
-			$acct_terminate_cause = "$row[AcctTerminateCause]";
+			$acct_server = "$acct_server:$row[nasportid]";
+			$acct_terminate_cause = "$row[acctterminatecause]";
 			if ($acct_terminate_cause == '')
 				$acct_terminate_cause = '-';
 			if (ereg('Login-Incorrect',$acct_terminate_cause) ||
 				ereg('Multiple-Logins', $acct_terminate_cause) || ereg('Invalid-User',$acct_terminate_cause))
 				$tr_color='#ffe8e0';
-			$acct_callerid = "$row[CallingStationId]";
+			$acct_callerid = "$row[callingstationid]";
 			if ($acct_callerid == '')
 				$acct_callerid = '-';
 			echo <<<EOM

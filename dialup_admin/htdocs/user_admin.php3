@@ -88,51 +88,56 @@ $used = array('-','-','-','-','-','-','-');
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT sum(AcctSessionTime),sum(AcctInputOctets),sum(AcctOutputOctets),
-	avg(AcctSessionTime),avg(AcctInputOctets),avg(AcctOutputOctets),COUNT(*) FROM
-	$config[sql_accounting_table] WHERE UserName = '$login'
-	AND AcctStartTime >= '$week_str' AND AcctStartTime <= '$now_str';");
+	"SELECT sum(acctsessiontime) AS sum_sess_time,
+	sum(acctinputoctets) AS sum_in_octets,
+	sum(acctoutputoctets) AS sum_out_octets,
+	avg(acctsessiontime) AS avg_sess_time,
+	avg(acctinputoctets) AS avg_in_octets,
+	avg(acctoutputoctets) AS avg_out_octets,
+	COUNT(*) as counter FROM
+	$config[sql_accounting_table] WHERE username = '$login'
+	AND acctstarttime >= '$week_str' AND acctstarttime <= '$now_str';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
-		$tot_time = time2str($row['sum(AcctSessionTime)']);
-		$tot_input = bytes2str($row['sum(AcctInputOctets)']);
-		$tot_output = bytes2str($row['sum(AcctOutputOctets)']);
-		$avg_time = time2str($row['avg(AcctSessionTime)']);
-		$avg_input = bytes2str($row['avg(AcctInputOctets)']);
-		$avg_output = bytes2str($row['avg(AcctOutputOctets)']);
-		$tot_conns = $row['COUNT(*)'];
+		$tot_time = time2str($row[sum_sess_time]);
+		$tot_input = bytes2str($row[sum_in_octets]);
+		$tot_output = bytes2str($row[sum_out_octets]);
+		$avg_time = time2str($row[avg_sess_time]);
+		$avg_input = bytes2str($row[avg_in_octets]);
+		$avg_output = bytes2str($row[avg_out_octets]);
+		$tot_conns = $row[counter];
 	}
 	else
 		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	$search = @da_sql_query($link,$config,
-	"SELECT sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE UserName = '$login'
-	AND AcctStartTime >= '$week_start' AND AcctStartTime <= '$now_str';");
+	"SELECT sum(acctsessiontime) AS sum_sess_time FROM $config[sql_accounting_table] WHERE username = '$login'
+	AND acctstarttime >= '$week_start' AND acctstarttime <= '$now_str';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
-		$weekly_used = $row['sum(AcctSessionTime)'];
+		$weekly_used = $row[sum_sess_time];
 	}
 	else
 		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	if ($monthly_limit != 'none' || $config[counter_monthly_calculate_usage] == 'true'){
 		$search = @da_sql_query($link,$config,
-		"SELECT sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE UserName = '$login'
-		AND AcctStartTime >= '$month_start' AND AcctStartTime <= '$now_str';");
+		"SELECT sum(acctsessiontime) AS sum_sess_time FROM $config[sql_accounting_table] WHERE username = '$login'
+		AND acctstarttime >= '$month_start' AND acctstarttime <= '$now_str';");
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);
-			$monthly_used = $row['sum(AcctSessionTime)'];
+			$monthly_used = $row[sum_sess_time];
 		}
 		else
 			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	}
 	$search = @da_sql_query($link,$config,
-	"SELECT COUNT(*) FROM $config[sql_accounting_table] WHERE UserName = '$login'
-	AND AcctStopTime >= '$week_str' AND AcctStopTime <= '$now_str'
-	AND (AcctTerminateCause LIKE 'Login-Incorrect%' OR
-	AcctTerminateCause LIKE 'Invalid-User%' OR
-	AcctTerminateCause LIKE 'Multiple-Logins%');");
+	"SELECT COUNT(*) AS counter FROM $config[sql_accounting_table] WHERE username = '$login'
+	AND acctstoptime >= '$week_str' AND acctstoptime <= '$now_str'
+	AND (acctterminatecause LIKE 'Login-Incorrect%' OR
+	acctterminatecause LIKE 'Invalid-User%' OR
+	acctterminatecause LIKE 'Multiple-Logins%');");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
-		$tot_badlogins = $row['COUNT(*)'];
+		$tot_badlogins = $row[counter];
 	}
 	else
 		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
@@ -140,18 +145,18 @@ if ($link){
 		if ($days[$i] == '')
 			continue;
 		$search = @da_sql_query($link,$config,
-		"SELECT sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE
-		UserName = '$login' AND AcctStopTime >= '$days[$i] 00:00:00'
-		AND AcctStopTime <= '$days[$i] 23:59:59';");
+		"SELECT sum(acctsessiontime) AS sum_sess_time FROM $config[sql_accounting_table] WHERE
+		username = '$login' AND acctstoptime >= '$days[$i] 00:00:00'
+		AND acctstoptime <= '$days[$i] 23:59:59';");
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);
-			$used[$i] = $row['sum(AcctSessionTime)'];
+			$used[$i] = $row[sum_sess_time];
 			if ($daily_limit != 'none' && $used[$i] > $daily_limit)
 				$used[$i] = "<font color=red>" . time2str($used[$i]) . "</font>";
 			else
 				$used[$i] = time2str($used[$i]);
 			if ($today == $i){
-				$daily_used = $row['sum(AcctSessionTime)'];
+				$daily_used = $row[sum_sess_time];
 				if ($daily_limit != 'none'){
 					$remaining = $daily_limit - $daily_used;
 					if ($remaining <=0)
@@ -210,15 +215,15 @@ if ($link){
 
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_accounting_table]
-	WHERE UserName = '$login' AND AcctStopTime IS NULL
-	ORDER BY AcctStartTime DESC LIMIT 1;");
+	WHERE username = '$login' AND acctstoptime IS NULL
+	ORDER BY acctstarttime DESC LIMIT 1;");
 	if ($search){
 		if (@da_sql_num_rows($search,$config)){
 			$logged_now = 1;
 			$row = @da_sql_fetch_array($search,$config);
-			$lastlog_time = $row['AcctStartTime'];
-			$lastlog_server_ip = $row['NASIPAddress'];
-			$lastlog_server_port = $row['NASPortId'];
+			$lastlog_time = $row['acctstarttime'];
+			$lastlog_server_ip = $row['nasipaddress'];
+			$lastlog_server_port = $row['nasportid'];
 			$lastlog_session_time = date2timediv($lastlog_time,0);
 			if ($daily_limit != 'none'){
 				$remaining = $remaining - $lastlog_session_time;
@@ -228,18 +233,18 @@ if ($link){
 			}
 			$lastlog_session_time_jvs = 1000 * $lastlog_session_time;
 			$lastlog_session_time = time2strclock($lastlog_session_time);
-			$lastlog_client_ip = $row['FramedIPAddress'];	
+			$lastlog_client_ip = $row['framedipaddress'];	
 			$lastlog_server_name = @gethostbyaddr($lastlog_server_ip);
 			$lastlog_client_name = @gethostbyaddr($lastlog_client_ip);
-			$lastlog_callerid = $row['CallingStationId'];
+			$lastlog_callerid = $row['callingstationid'];
 			if ($lastlog_callerid == '')
 				$lastlog_callerid = 'not available';
-			$lastlog_input = $row['AcctInputOctets'];
+			$lastlog_input = $row['acctinputoctets'];
 			if ($lastlog_input)
 				$lastlog_input = bytes2str($lastlog_input);
 			else
 				$lastlog_input = 'not available';
-			$lastlog_output = $row['AcctOutputOctets'];
+			$lastlog_output = $row['acctoutputoctets'];
 			if ($lastlog_output)
 				$lastlog_input = bytes2str($lastlog_output);
 			else
@@ -251,24 +256,24 @@ if ($link){
 	if (! $logged_now){
 		$search = @da_sql_query($link,$config,
 		"SELECT * FROM $config[sql_accounting_table]
-		WHERE UserName = '$login' AND AcctSessionTime != '0'
-		ORDER BY AcctStopTime DESC LIMIT 1;");
+		WHERE username = '$login' AND acctsessiontime != '0'
+		ORDER BY acctstoptime DESC LIMIT 1;");
 		if ($search){
 			if (@da_sql_num_rows($search,$config)){
 				$row = @da_sql_fetch_array($search,$config);
-				$lastlog_time = $row['AcctStartTime'];
-				$lastlog_server_ip = $row['NASIPAddress'];
-				$lastlog_server_port = $row['NASPortId'];
-				$lastlog_session_time = time2str($row['AcctSessionTime']);
-				$lastlog_client_ip = $row['FramedIPAddress'];	
+				$lastlog_time = $row['acctstarttime'];
+				$lastlog_server_ip = $row['nasipaddress'];
+				$lastlog_server_port = $row['nasportid'];
+				$lastlog_session_time = time2str($row['acctsessiontime']);
+				$lastlog_client_ip = $row['framedipaddress'];	
 		$lastlog_server_name = ($lastlog_server_ip != '') ? @gethostbyaddr($lastlog_server_ip) : '-';
 		$lastlog_client_name = ($lastlog_client_ip != '') ? @gethostbyaddr($lastlog_client_ip) : '-';
-				$lastlog_callerid = $row['CallingStationId'];
+				$lastlog_callerid = $row['callingstationid'];
 				if ($lastlog_callerid == '')
 					$lastlog_callerid = 'not available';
-				$lastlog_input = $row['AcctInputOctets'];
+				$lastlog_input = $row['acctinputoctets'];
 				$lastlog_input = bytes2str($lastlog_input);
-				$lastlog_output = $row['AcctOutputOctets'];
+				$lastlog_output = $row['acctoutputoctets'];
 				$lastlog_output = bytes2str($lastlog_output);
 			}
 			else

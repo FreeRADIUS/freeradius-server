@@ -18,7 +18,7 @@ if ($link){
 	if (!empty($Members)){
 		foreach ($Members as $member){
 			$res = @da_sql_query($link,$config,
-			"INSERT INTO $config[sql_usergroup_table] (UserName,GroupName)
+			"INSERT INTO $config[sql_usergroup_table] (username,groupname)
 			VALUES ('$member','$login');");
 			if (!$res || !@da_sql_affected_rows($link,$res,$config)){
 				echo "<b>Unable to add user $member in group $login: " . da_sql_error($link,$config) . "</b><br>\n";
@@ -56,7 +56,7 @@ if ($link){
 			if ($val == '' || check_defaults($val,$op_val,$default_vals["$key"]))
 				continue;
 			$res = @da_sql_query($link,$config,
-			"INSERT INTO $table (Attribute,Value,GroupName $text)
+			"INSERT INTO $table (attribute,value,groupname $text)
 			VALUES ('$attrmap[$key]','$val','$login' $op_val2);");
 			if (!$res || !@da_sql_affected_rows($link,$res,$config))
 				echo "<b>Query failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";

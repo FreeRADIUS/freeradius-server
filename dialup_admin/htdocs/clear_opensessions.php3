@@ -63,7 +63,7 @@ if ($clear_sessions == 1){
 	if ($link){
 		$res = @da_sql_query($link,$config,
 		"DELETE FROM $config[sql_accounting_table]
-		WHERE UserName='$login' AND AcctStopTime = 0;");
+		WHERE username='$login' AND acctstoptime = 0;");
 		if ($res)
 			echo "<b>Deleted open sessions from accounting table</b><br>\n";
 		else
@@ -85,11 +85,11 @@ else{
 	$link = @da_sql_pconnect($config);
 	if ($link){
 		$search = @da_sql_query($link,$config,
-		"SELECT COUNT(*) FROM $config[sql_accounting_table]
-		WHERE UserName = '$login' AND AcctStopTime IS NULL;");
+		"SELECT COUNT(*) AS counter FROM $config[sql_accounting_table]
+		WHERE username = '$login' AND acctstoptime IS NULL;");
 		if ($search){
 			if ($row = @da_sql_fetch_array($search,$config))
-				$open_sessions = $row['COUNT(*)'];
+				$open_sessions = $row[counter];
 		}
 		else
 			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";

@@ -7,9 +7,9 @@ if (!isset($sql_attrs)){
 		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
 			continue;
 		list($key,$desc,$show,$func)=split("\t+",$val);
-		$sql_attrs["$key"][desc] = "$desc";
-		$sql_attrs["$key"][show] = "$show";
-		$sql_attrs["$key"][func] = ($func == "") ? "nothing" : "$func";
+		$sql_attrs[strtolower($key)][desc] = "$desc";
+		$sql_attrs[strtolower($key)][show] = "$show";
+		$sql_attrs[strtolower($key)][func] = ($func == "") ? "nothing" : "$func";
 	}
 	if ($config[general_use_session] == 'yes')
 		session_register('sql_attrs');

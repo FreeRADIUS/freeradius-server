@@ -24,13 +24,16 @@ EOM;
 }
 
 $operators=array( '=','<', '>', '<=', '>=', 'regexp', 'like' );
+if ($config[sql_type] == 'pg'){
+	$operators=array( '=','<', '>', '<=', '>=', '~', 'like', '~*', '~~*', '<<=' );
+}
 
 $link = @da_sql_pconnect ($config) or die('cannot connect to sql databse');
 $fields = @da_sql_list_fields($config[sql_accounting_table],$link,$config);
 $no_fields = @da_sql_num_fields($fields,$config);
 
 for($i=0;$i<$no_fields;$i++){
-	$key = @da_sql_field_name($fields,$i,$config);
+	$key = strtolower(@da_sql_field_name($fields,$i,$config));
 	$val = $sql_attrs[$key][desc];
 	if ($val == '')
 		continue;
@@ -130,7 +133,7 @@ echo <<<EOM
 EOM;
 
 foreach($items as $key => $val)
-	if ($val == 'UserName')
+	if ($val == 'username')
 		echo <<<EOM
 	<option selected value="$key">$val</option>
 EOM;
@@ -200,12 +203,12 @@ EOM;
 if ($queryflag == 1){
 $i = 1;
 while (${"item_of_w$i"}){
-	$where .= ($i == 1) ? ' WHERE ' . ${"item_of_w$i"} . ${"operator_of_w$i"} . "'" . ${"value_of_w$i"} . "'" :
-				' AND ' . ${"item_of_w$i"} . ${"operator_of_w$i"} . "'" . ${"value_of_w$i"} . "'" ;
+	$where .= ($i == 1) ? ' WHERE ' . ${"item_of_w$i"} . ' ' . ${"operator_of_w$i"} . " '" . ${"value_of_w$i"} . "'" :
+				' AND ' . ${"item_of_w$i"} . ' ' . ${"operator_of_w$i"} . " '" . ${"value_of_w$i"} . "'" ;
 	$i++;
 }
 
-$order = ($order_by != '') ? "$order_by" : 'UserName';
+$order = ($order_by != '') ? "$order_by" : 'username';
 
 foreach ($accounting_show_attrs as $val)
 	$query_view .= $val . ',';
@@ -253,7 +256,7 @@ echo "</tr>\n";
 				if ($info == '')
 					$info = '-';
 				$info = $sql_attrs[$val][func]($info);
-				if ($val == 'UserName')
+				if ($val == 'username')
 					$info = "<a href=\"user_admin.php3?login=$info\" title=\"Edit user $info\">$info<a/>";
 				echo <<<EOM
 			<td>$info</td>

@@ -18,7 +18,7 @@ if ($link){
 		include("../lib/crypt/$config[general_encryption_method].php3");
 		$passwd = da_encrypt($passwd);
 		$res = @da_sql_query($link,$config,
-		"INSERT INTO $config[sql_check_table] (Attribute,Value,UserName $text)
+		"INSERT INTO $config[sql_check_table] (attribute,value,username $text)
 		VALUES ('$config[sql_password_attribute]','$passwd','$login' $passwd_op);");
 		if (!$res || !@da_sql_affected_rows($link,$res,$config)){
 			echo "<b>Unable to add user $login: " . da_sql_error($link,$config) . "</b><br>\n";
@@ -26,13 +26,13 @@ if ($link){
 		}
 		if ($config[sql_use_user_info_table] == 'true' && !$da_abort){
 			$res = @da_sql_query($link,$config,
-			"SELECT UserName FROM $config[sql_user_info_table] WHERE
-			UserName = '$login';");
+			"SELECT username FROM $config[sql_user_info_table] WHERE
+			username = '$login';");
 			if ($res){
 				if (!@da_sql_num_rows($res,$config)){
 					$res = @da_sql_query($link,$config,
 					"INSERT INTO $config[sql_user_info_table]
-					(UserName,Name,Mail,Department,HomePhone,WorkPhone,Mobile) VALUES
+					(username,name,mail,department,homephone,workphone,mobile) VALUES
 					('$login','$Fcn','$Fmail','$Fou','$Fhomephone','$Ftelephonenumber','$Fmobile');");
 					if (!$res || !@da_sql_affected_rows($link,$res,$config))
 						echo "<b>Could not add user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
@@ -45,13 +45,13 @@ if ($link){
 		}
 		if ($Fgroup != ''){
 			$res = @da_sql_query($link,$config,
-			"SELECT UserName FROM $config[sql_usergroup_table]
-			WHERE UserName = '$login' AND GroupName = '$Fgroup';");
+			"SELECT username FROM $config[sql_usergroup_table]
+			WHERE username = '$login' AND groupname = '$Fgroup';");
 			if ($res){
 				if (!@da_sql_num_rows($res,$config)){
 					$res = @da_sql_query($link,$config,
 					"INSERT INTO $config[sql_usergroup_table]
-					(UserName,GroupName) VALUES ('$login','$Fgroup');");
+					(username,groupname) VALUES ('$login','$Fgroup');");
 					if (!$res || !@da_sql_affected_rows($link,$res,$config))
 						echo "<b>Could not add user to group $Fgroup. SQL Error</b><br>\n";
 				}
@@ -93,7 +93,7 @@ if ($link){
 				if ($val == '' || check_defaults($val,$op_val,$default_vals["$key"]))
 					continue;
 				$res = @da_sql_query($link,$config,
-				"INSERT INTO $table (Attribute,Value,UserName $text)
+				"INSERT INTO $table (attribute,value,username $text)
 				VALUES ('$attrmap[$key]','$val','$login' $op_val2);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Query failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";

@@ -70,9 +70,9 @@ function da_sql_fetch_array($result,$config)
 {
 	$row = @pg_fetch_array($result,$config[tmp_pg_array_num][$result]++,PGSQL_ASSOC);
 	if ($row && $config[sql_debug] == 'true'){
-		print "<b>DEBUG(SQL,PG DRIVER): Query Result: ";
+		print "<b>DEBUG(SQL,PG DRIVER): Query Result: <pre>";
 		print_r($row);
-		print  "</b><br>\n";
+		print  "</b></pre>\n";
 	}
 	if (!$row)
 		$config[tmp_pg_array_num][$result] = 0;

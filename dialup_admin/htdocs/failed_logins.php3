@@ -36,9 +36,9 @@ if ($order != 'desc' && $order != 'asc')
 	$order = 'desc';
 $selected[$order] = 'selected';
 if ($callerid != '')
-	$callerid_str = "AND CallingStationId = '$callerid'";
+	$callerid_str = "AND callingstationid = '$callerid'";
 if ($server != '' && $server != 'all')
-	$server_str = "AND NASIPAddress = '$server'";
+	$server_str = "AND nasipaddress = '$server'";
 
 ?>
 
@@ -92,43 +92,43 @@ if ($acct_attrs['fl'][9] != '') echo "<th>" . $acct_attrs['fl'][9] . "</th>\n";
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT AcctStopTime,UserName,NASIPAddress,NASPortId,AcctTerminateCause,CallingStationId
+	"SELECT acctstoptime,username,nasipaddress,nasportid,acctterminatecause,callingstationid
 	FROM $config[sql_accounting_table]
-	WHERE AcctStopTime <= '$now_str' AND AcctStopTime >= '$prev_str'
-	AND (AcctTerminateCause LIKE 'Login-Incorrect%' OR
-	AcctTerminateCause LIKE 'Invalid-User%' OR
-	AcctTerminateCause LIKE 'Multiple-Logins%') $callerid_str $server_str
-	ORDER BY AcctStopTime $order $limit;");
+	WHERE acctstoptime <= '$now_str' AND acctstoptime >= '$prev_str'
+	AND (acctterminatecause LIKE 'Login-Incorrect%' OR
+	acctterminatecause LIKE 'Invalid-User%' OR
+	acctterminatecause LIKE 'Multiple-Logins%') $callerid_str $server_str
+	ORDER BY acctstoptime $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
-			$acct_login = $row[UserName];
+			$acct_login = $row[username];
 			if ($acct_login == '')
 				$acct_login = '-';
 			else
 				$acct_login = "<a href=\"user_admin.php3?login=$acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
-			$acct_time = $row[AcctStopTime];
-			$acct_server = $row[NASIPAddress];
+			$acct_time = $row[acctstoptime];
+			$acct_server = $row[nasipaddress];
 			if ($acct_server != ''){
 				$acct_server = $da_name_cache[$acct_server];
 				if (!isset($acct_server)){
-					$acct_server = $row[NASIPAddress];
+					$acct_server = $row[nasipaddress];
 					$acct_server = @gethostbyaddr($acct_server);
 					if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
-						$da_name_cache[$row[NASIPAddress]] = $acct_server;
+						$da_name_cache[$row[nasipaddress]] = $acct_server;
 						session_register('da_name_cache');
 					}
 					else
-						$da_name_cache[$row[NASIPAddress]] = $acct_server;
+						$da_name_cache[$row[nasipaddress]] = $acct_server;
 				}
 			}
 			else
 				$acct_server = '-';
-			$acct_server = "$acct_server:$row[NASPortId]";
-			$acct_terminate_cause = "$row[AcctTerminateCause]";
+			$acct_server = "$acct_server:$row[nasportid]";
+			$acct_terminate_cause = "$row[acctterminatecause]";
 			if ($acct_terminate_cause == '')
 				$acct_terminate_cause = '-';
-			$acct_callerid = "$row[CallingStationId]";
+			$acct_callerid = "$row[callingstationid]";
 			if ($acct_callerid == '')
 				$acct_callerid = '-';
 			echo <<<EOM

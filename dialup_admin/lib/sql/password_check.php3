@@ -11,14 +11,16 @@ if ($action == 'checkpass'){
 	$link = @da_sql_pconnect($config);
 	if ($link){
 		$res = @da_sql_query($link,$config,
-			"SELECT Value FROM $config[sql_check_table] WHERE UserName = '$login'
-			AND Attribute = '$config[sql_password_attribute]';");
+			"SELECT attribute,value FROM $config[sql_check_table] WHERE username = '$login'
+			AND (attribute = 'User-Password' OR attribute = 'Crypt-Password');");
 		if ($res){
 			$row = @da_sql_fetch_array($res,$config);
 			if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
 				include("../lib/crypt/$config[general_encryption_method].php3");
-				$enc_passwd = $row[Value];
-				$passwd = da_encrypt($passwd,$enc_passwd);
+				$enc_passwd = $row[value];
+				if ($row[attribute] == 'Crypt-Password') {
+					$passwd = da_encrypt($passwd,$enc_passwd);
+				}
 				if ($passwd == $enc_passwd)
 					$msg = '<font color=blue><b>YES It is that</b></font>';
 				else

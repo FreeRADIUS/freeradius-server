@@ -58,24 +58,24 @@ $message['usage'] = 'total usage time';
 $message['upload'] = 'uploads';
 $message['download'] = 'downloads';
 if ($config[general_stats_use_totacct] == 'yes'){
-	$sql_val['sessions'] = 'ConnNum';
-	$sql_val['usage'] = 'ConnTotDuration';
-	$sql_val['upload'] = 'InputOctets';
-	$sql_val['download'] = 'OutputOctets';
+	$sql_val['sessions'] = 'connnum';
+	$sql_val['usage'] = 'conntotduration';
+	$sql_val['upload'] = 'inputoctets';
+	$sql_val['download'] = 'outputoctets';
 }
 else{
-	$sql_val['usage'] = 'AcctSessionTime';
-	$sql_val['upload'] = 'AcctInputOctets';
-	$sql_val['download'] = 'AcctOutputOctets';
+	$sql_val['usage'] = 'acctsessiontime';
+	$sql_val['upload'] = 'acctinputoctets';
+	$sql_val['download'] = 'acctoutputoctets';
 }
 $fun['sessions'] = nothing;
 $fun['usage'] = time2strclock;
 $fun['upload'] = bytes2str;
 $fun['download'] = bytes2str;
-$sql_val['user'] = ($login == '') ? "WHERE UserName LIKE '%'" : "WHERE UserName = '$login'";
+$sql_val['user'] = ($login == '') ? "WHERE username LIKE '%'" : "WHERE username = '$login'";
 for ($j = 1; $j <= 3; $j++){
 	$tmp = "{$sql_val[$column[$j]]}";
-	$res[$j] = ($tmp == "") ? 'COUNT(RadAcctId)' : "sum($tmp)";
+	$res[$j] = ($tmp == "") ? "COUNT(radacctid) AS res_$j" : "sum($tmp) AS res_$j";
 }
 $i = 1;
 $servers[all] = 'all';
@@ -90,7 +90,7 @@ while(1){
 	$i++;
 }
 if ($server != 'all' && $server != '')
-	$s = "AND NASIPAddress = '$server'";
+	$s = "AND nasipaddress = '$server'";
 
 $link = @da_sql_pconnect($config);
 if ($link){
@@ -99,22 +99,22 @@ if ($link){
 		if ($config[general_stats_use_totacct] == 'yes')
 			$search = @da_sql_query($link,$config,
 			"SELECT $res[1],$res[2],$res[3] FROM $config[sql_total_accounting_table]
-			$sql_val[user] AND AcctDate = '$day' $s;");
+			$sql_val[user] AND acctdate = '$day' $s;");
 		else
 			$search = @da_sql_query($link,$config,
 			"SELECT $res[1],$res[2],$res[3] FROM $config[sql_accounting_table]
-			$sql_val[user] AND AcctStopTime >= '$day 00:00:00' 
-			AND AcctStopTime <= '$day 23:59:59' $s;");
+			$sql_val[user] AND acctstoptime >= '$day 00:00:00' 
+			AND acctstoptime <= '$day 23:59:59' $s;");
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);
-			$data[$day][1] = $row["$res[1]"];
-			$data[sum][1] += $row["$res[1]"];
+			$data[$day][1] = $row[res_1];
+			$data[sum][1] += $row[res_1];
 			$num[1] = ($data[$day][1]) ? $num[1] + 1 : $num[1];
-			$data[$day][2] = $row["$res[2]"];
-			$data[sum][2] += $row["$res[2]"];
+			$data[$day][2] = $row[res_2];
+			$data[sum][2] += $row[res_2];
 			$num[2] = ($data[$day][2]) ? $num[2] + 1 : $num[2];
-			$data[$day][3] = $row["$res[3]"];
-			$data[sum][3] += $row["$res[3]"];
+			$data[$day][3] = $row[res_3];
+			$data[sum][3] += $row[res_3];
 			$num[3] = ($data[$day][3]) ? $num[3] + 1 : $num[3];
 		}
 		else

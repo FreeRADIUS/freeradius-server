@@ -10,13 +10,13 @@ $fail = 0;
 if ($link){
 	if ($config[sql_use_user_info_table] == 'true'){
 		$res = @da_sql_query($link,$config,
-		"SELECT UserName FROM $config[sql_user_info_table] WHERE
-		UserName = '$login';");
+		"SELECT username FROM $config[sql_user_info_table] WHERE
+		username = '$login';");
 		if ($res){
 			if (!@da_sql_num_rows($res,$config)){
 				$res = @da_sql_query($link,$config,
 				"INSERT INTO $config[sql_user_info_table]
-				(UserName,Name,Mail,Department,HomePhone,WorkPhone,Mobile) VALUES
+				(username,name,mail,department,homephone,workphone,mobile) VALUES
 				('$login','$Fcn','$Fmail','$Fou','$Ftelephonenumber','$Fhomephone','$Fmobile');");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config)){
 					echo "<b>Could not add user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
@@ -25,9 +25,9 @@ if ($link){
 			}
 			else{
 				$res = @da_sql_query($link,$config,
-				"UPDATE $config[sql_user_info_table] SET Name = '$Fcn',Mail = '$Fmail',
-				Department = '$Fou', HomePhone = '$Fhomephone', WorkPhone = '$Ftelephonenumber',
-				Mobile = '$Fmobile' WHERE UserName = '$login';");
+				"UPDATE $config[sql_user_info_table] SET name = '$Fcn',Mail = '$Fmail',
+				department = '$Fou', homephone = '$Fhomephone', workphone = '$Ftelephonenumber',
+				mobile = '$Fmobile' WHERE username = '$login';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config)){
 					echo "<b>Could not update user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
 					$fail = 1;

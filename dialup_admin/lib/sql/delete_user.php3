@@ -8,18 +8,18 @@ else{
 $link = @da_sql_pconnect($config);
 if ($link){
 	$res = @da_sql_query($link,$config,
-		"DELETE FROM $config[sql_reply_table] WHERE UserName = '$login';");
+		"DELETE FROM $config[sql_reply_table] WHERE username = '$login';");
 	if ($res){
 		$res = @da_sql_query($link,$config,
-			"DELETE FROM $config[sql_check_table] WHERE UserName = '$login';");
+			"DELETE FROM $config[sql_check_table] WHERE username = '$login';");
 		if ($res){
 			$res = @da_sql_query($link,$config,
-				"DELETE FROM $config[sql_usergroup_table] WHERE UserName = '$login';");
+				"DELETE FROM $config[sql_usergroup_table] WHERE username = '$login';");
 			if (!$res)
 				echo "<b>Error deleting user $login from user group table: " . da_sql_error($link,$config) . "</b><br>\n";
 			if ($config[sql_use_user_info_table] == 'true'){
 				$res = @da_sql_query($link,$config,
-				"DELETE FROM $config[sql_user_info_table] WHERE UserName = '$login';");
+				"DELETE FROM $config[sql_user_info_table] WHERE username = '$login';");
 				if ($res)
 					echo "<b>User $login deleted successfully</b><br>\n";
 				else

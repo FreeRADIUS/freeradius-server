@@ -39,13 +39,13 @@ unset($tmp);
 $link = @da_sql_pconnect($config);
 if ($link){
 	$res = @da_sql_query($link,$config,
-	"SELECT Attribute,Value $op FROM $config[sql_check_table] WHERE UserName = '$login';");
+	"SELECT attribute,value $op FROM $config[sql_check_table] WHERE username = '$login';");
 	if ($res){
 		if (@da_sql_num_rows($res,$config))
 			$user_exists = 'yes';
 		while(($row = @da_sql_fetch_array($res,$config))){
-			$attr = $row[Attribute];
-			$val = $row[Value];
+			$attr = $row[attribute];
+			$val = $row[value];
 			if ($attr == $config[sql_password_attribute] && $val != '')
 				$user_password_exists = 'yes';
 			if ($use_op){
@@ -56,13 +56,13 @@ if ($link){
 			$tmp["$attr"][count]++;
 		}
 		$res = @da_sql_query($link,$config,
-		"SELECT Attribute,Value $op FROM $config[sql_reply_table] WHERE UserName = '$login';");
+		"SELECT attribute,value $op FROM $config[sql_reply_table] WHERE username = '$login';");
 		if ($res){
 			if (@da_sql_num_rows($res,$config))
 				$user_exists = 'yes';
 			while(($row = @da_sql_fetch_array($res,$config))){
-				$attr = $row[Attribute];
-				$val = $row[Value];
+				$attr = $row[attribute];
+				$val = $row[value];
 				if ($use_op){
 					$oper = $row[op];
 					$tmp["$attr"][operator][]="$oper";
@@ -72,19 +72,19 @@ if ($link){
 			}
 			if ($config[sql_use_user_info_table] == 'true'){
 				$res = @da_sql_query($link,$config,
-				"SELECT * FROM $config[sql_user_info_table] WHERE UserName = '$login';");
+				"SELECT * FROM $config[sql_user_info_table] WHERE username = '$login';");
 				if ($res){
 					if (@da_sql_num_rows($res,$config)){
 						$user_exists = 'yes';
 						$user_info = 1;
 					}
 					if (($row = @da_sql_fetch_array($res,$config))){	
-						$cn = ($row[Name] != '') ? $row[Name] : '-';
-						$telephonenumber = ($row[WorkPhone] != '') ? $row[WorkPhone] : '-';
-						$homephone = ($row[HomePhone] != '') ? $row[HomePhone] : '-';
-						$ou = ($row[Department] != '') ? $row[Department] : '-';
-						$mail = ($row[Mail] != '') ? $row[Mail] : '-';
-						$mobile = ($row[Mobile] != '') ? $row[Mobile] : '-';
+						$cn = ($row[name] != '') ? $row[name] : '-';
+						$telephonenumber = ($row[workphone] != '') ? $row[workphone] : '-';
+						$homephone = ($row[homephone] != '') ? $row[homephone] : '-';
+						$ou = ($row[department] != '') ? $row[department] : '-';
+						$mail = ($row[mail] != '') ? $row[mail] : '-';
+						$mobile = ($row[mobile] != '') ? $row[mobile] : '-';
 					}
 				}			
 				else

@@ -17,11 +17,11 @@ function get_user_info($link,$user,$config)
 {
 	if ($link && $config[sql_use_user_info_table] == 'true'){
 		$res=@da_sql_query($link,$config,
-		"SELECT Name FROM $config[sql_user_info_table] WHERE UserName = '$user';");
+		"SELECT name FROM $config[sql_user_info_table] WHERE username = '$user';");
 		if ($res){
 			$row = @da_sql_fetch_array($res,$config);
 			if ($row)
-				return $row[Name];
+				return $row[name];
 		}	
 	}
 }

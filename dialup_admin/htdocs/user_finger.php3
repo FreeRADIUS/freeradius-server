@@ -87,27 +87,27 @@ if ($link){
 
 			$users=exec("$config[general_snmpfinger_bin] $name_data $community_data $nas_type");
 			if (strlen($users))
-				$extra = "AND UserName IN ($users)";
+				$extra = "AND username IN ($users)";
 		}
 		$search = @da_sql_query($link,$config,
-		"SELECT DISTINCT UserName,AcctStartTime,FramedIPAddress,CallingStationId
+		"SELECT DISTINCT username,acctstarttime,framedipaddress,callingstationid
 		FROM $config[sql_accounting_table] WHERE
-		AcctStopTime IS NULL AND NASIPAddress = '$name_data' $extra
-		GROUP BY UserName ORDER BY AcctStartTime;");
+		acctstoptime IS NULL AND nasipaddress = '$name_data' $extra
+		GROUP BY username ORDER BY acctstarttime;");
 		if ($search){
 			$now = time();
 			while($row = @da_sql_fetch_array($search,$config)){
 				$num++;
 				$h += 21;
-				$user = $row['UserName'];
-				$finger_info[$servers_num][$num]['ip'] = $row['FramedIPAddress'];
+				$user = $row['username'];
+				$finger_info[$servers_num][$num]['ip'] = $row['framedipaddress'];
 				if ($finger_info[$servers_num][$num]['ip'] == '')
 					$finger_info[$servers_num][$num]['ip'] = '-';
-				$session_time = $row['AcctStartTime'];
+				$session_time = $row['acctstarttime'];
 				$session_time = date2timediv($session_time,$now);
 				$finger_info[$servers_num][$num]['session_time'] = time2strclock($session_time);
 				$finger_info[$servers_num][$num]['user'] = $user;
-				$finger_info[$servers_num][$num]['callerid'] = $row['CallingStationId'];
+				$finger_info[$servers_num][$num]['callerid'] = $row['callingstationid'];
 				if ($finger_info[$servers_num][$num]['callerid'] == '')
 					$finger_info[$servers_num][$num]['callerid'] = '-';
 				if ($user_info["$user"] == ''){

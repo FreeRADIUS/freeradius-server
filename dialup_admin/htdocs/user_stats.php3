@@ -35,12 +35,12 @@ $order = ($order) ? $order : $config[general_accounting_info_order];
 if ($order != 'desc' && $order != 'asc')
 	$order = 'desc';
 if ($sortby != '')
-	$order_attr = ($sortby == 'num') ? 'ConnNum' : 'ConnTotDuration';
+	$order_attr = ($sortby == 'num') ? 'connnum' : 'conntotduration';
 else
-	$order_attr = 'ConnNum';
+	$order_attr = 'connnum';
 if ($server != '' && $server != 'all')
-	$server_str = "AND NASIPAddress = '$server'";
-$login_str = ($login) ? "AND UserName = '$login' " : '';
+	$server_str = "AND nasipaddress = '$server'";
+$login_str = ($login) ? "AND username = '$login' " : '';
 
 $selected[$order] = 'selected';
 $selected[$sortby] = 'selected';
@@ -91,34 +91,34 @@ $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_total_accounting_table]
-	WHERE AcctDate >= '$start' AND AcctDate <= '$stop' $server_str $login_str
+	WHERE acctdate >= '$start' AND acctdate <= '$stop' $server_str $login_str
 	ORDER BY $order_attr $order $limit;");
 
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
-			$acct_login = $row[UserName];
+			$acct_login = $row[username];
 			if ($acct_login == '')
 				$acct_login = '-';
 			else
 				$acct_login = "<a href=\"user_admin.php3?login=$acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
-			$acct_time = $row[ConnTotDuration];
+			$acct_time = $row[conntotduration];
 			$acct_time = time2str($acct_time);
-			$acct_conn_num = $row[ConnNum];
-			$acct_date = $row[AcctDate];
-			$acct_upload = $row[InputOctets];
-			$acct_download = $row[OutputOctets];
+			$acct_conn_num = $row[connnum];
+			$acct_date = $row[acctdate];
+			$acct_upload = $row[inputoctets];
+			$acct_download = $row[outputoctets];
 			$acct_upload = bytes2str($acct_upload);
 			$acct_download = bytes2str($acct_download);
-			$acct_server = $da_name_cache[$row[NASIPAddress]];
+			$acct_server = $da_name_cache[$row[nasipaddress]];
 			if (!isset($acct_server)){
-				$acct_server = @gethostbyaddr($row[NASIPAddress]);
+				$acct_server = @gethostbyaddr($row[nasipaddress]);
 				if (!isset($da_name_cache) && $config[general_use_session] == 'yes'){
-					$da_name_cache[$row[NASIPAddress]] = $acct_server;
+					$da_name_cache[$row[nasipaddress]] = $acct_server;
 					session_register('da_name_cache');
 				}
 				else
-					$da_name_cache[$row[NASIPAddress]] = $acct_server;
+					$da_name_cache[$row[nasipaddress]] = $acct_server;
 			}
 			if ($acct_server == '')
 				$acct_server = '-';

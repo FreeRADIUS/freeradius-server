@@ -21,20 +21,20 @@ if ($link){
 		include("../lib/crypt/$config[general_encryption_method].php3");
 		$passwd = da_encrypt($passwd);
 		$res = @da_sql_query($link,$config,
-			"SELECT Value FROM $config[sql_check_table] WHERE UserName = '$login'
-			AND Attribute = '$config[sql_password_attribute]';");
+			"SELECT value FROM $config[sql_check_table] WHERE username = '$login'
+			AND attribute = '$config[sql_password_attribute]';");
 		if ($res){
 			$row = @da_sql_fetch_array($res,$config);
 			if ($row){
 				$res = @da_sql_query($link,$config,
-				"UPDATE $config[sql_check_table] SET Value = '$passwd' $text3 WHERE
-				Attribute = '$config[sql_password_attribute]' AND UserName = '$login';");
+				"UPDATE $config[sql_check_table] SET value = '$passwd' $text3 WHERE
+				attribute = '$config[sql_password_attribute]' AND username = '$login';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Error while changing password: " . da_sql_error($link,$config) . "</b><br>\n";	
 			}
 			else{
 				$res = @da_sql_query($link,$config,
-					"INSERT INTO $config[sql_check_table] (Attribute,Value,UserName $text1)
+					"INSERT INTO $config[sql_check_table] (attribute,value,username $text1)
 					VALUES ('$config[sql_password_attribute]','$passwd','$login' $text2);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Error while changing password: " . da_sql_error($link,$config) . "</b><br>\n";

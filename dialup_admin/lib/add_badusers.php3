@@ -23,7 +23,7 @@ else{
 		$link = @da_sql_host_connect($server,$config);
 		if ($link){
 			$r = da_sql_query($link,$config,
-			"INSERT INTO $config[sql_badusers_table] (UserName,Date,Admin,Reason)
+			"INSERT INTO $config[sql_badusers_table] (username,date,admin,reason)
 			VALUES ('$login','$date','$admin','$msg');");
 			if (!$r)
 				echo "<b>SQL Error:" . da_sql_error($link,$config) . "</b><br>\n";

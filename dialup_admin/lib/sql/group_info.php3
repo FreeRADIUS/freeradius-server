@@ -20,13 +20,13 @@ unset($group_members);
 $link = @da_sql_pconnect($config);
 if ($link){
 	$res = @da_sql_query($link,$config,
-	"SELECT Attribute,Value $op FROM $config[sql_groupcheck_table] WHERE GroupName = '$login';");
+	"SELECT attribute,value $op FROM $config[sql_groupcheck_table] WHERE groupname = '$login';");
 	if ($res){
 		if (@da_sql_num_rows($res,$config))
 			$group_exists = 'yes';
 		while(($row = @da_sql_fetch_array($res,$config))){
-			$attr = $row[Attribute];
-			$val = $row[Value];
+			$attr = $row[attribute];
+			$val = $row[value];
 			if ($use_op){
 				$oper = $row[op];
 				$tmp["$attr"][operator][]="$oper";
@@ -35,13 +35,13 @@ if ($link){
 			$tmp["$attr"][count]++;
 		}
 		$res = @da_sql_query($link,$config,
-		"SELECT Attribute,Value $op FROM $config[sql_groupreply_table] WHERE GroupName = '$login';");
+		"SELECT attribute,value $op FROM $config[sql_groupreply_table] WHERE groupname = '$login';");
 		if ($res){
 			if (@da_sql_num_rows($res,$config))
 				$group_exists = 'yes';
 			while(($row = @da_sql_fetch_array($res,$config))){
-				$attr = $row[Attribute];
-				$val = $row[Value];
+				$attr = $row[attribute];
+				$val = $row[value];
 				if ($use_op){
 					$oper = $row[op];
 					$tmp["$attr"][operator][]="$oper";
@@ -53,12 +53,12 @@ if ($link){
 		else
 			echo "<b>Database query failed partially: " . da_sql_error($link,$config) . "</b><br>\n";
 		$res = @da_sql_query($link,$config,
-		"SELECT UserName FROM $config[sql_usergroup_table] WHERE GroupName = '$login' ORDER BY UserName;");
+		"SELECT username FROM $config[sql_usergroup_table] WHERE groupname = '$login' ORDER BY username;");
 		if ($res){
 			if (@da_sql_num_rows($res,$config))
 				$group_exists = 'yes';
 			while(($row = @da_sql_fetch_array($res,$config))){
-				$member = $row[UserName];
+				$member = $row[username];
 				$group_members[] = "$member";
 			}
 		}	

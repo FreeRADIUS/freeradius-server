@@ -70,11 +70,12 @@ function da_sql_num_rows($result,$config)
 
 function da_sql_fetch_array($result,$config)
 {
-	$row = @mysql_fetch_array($result);
+	$row = array_change_key_case(@mysql_fetch_array($result,
+		MYSQL_ASSOC),CASE_LOWER);
 	if ($config[sql_debug] == 'true'){
-		print "<b>DEBUG(SQL,MYSQL DRIVER): Query Result: ";
+		print "<b>DEBUG(SQL,MYSQL DRIVER): Query Result: <pre>";
 		print_r($row);
-		print "</b><br>\n";
+		print "</b></pre>\n";
 	}
 	return $row;
 }

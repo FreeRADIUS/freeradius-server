@@ -25,10 +25,10 @@ if ($login != ''){
 		$link = @da_sql_pconnect($config);
 		if ($link){
 			$res = @da_sql_query($link,$config,
-			"SELECT GroupName FROM $config[sql_usergroup_table] WHERE UserName = '$login';");
+			"SELECT groupname FROM $config[sql_usergroup_table] WHERE username = '$login';");
 			if ($res){
 				while(($row = @da_sql_fetch_array($res,$config)))
-					$member_groups[] = $row[GroupName];
+					$member_groups[] = $row[groupname];
 			}
 			if (isset($member_groups)){
 				$in = '(';
@@ -37,12 +37,12 @@ if ($login != ''){
 				$in = substr($in,0,-1);
 				$in .= ')';	
 				$res = @da_sql_query($link,$config,
-				"SELECT Attribute,Value $op FROM $config[sql_groupcheck_table]
-				WHERE GroupName IN $in;");
+				"SELECT attribute,value $op FROM $config[sql_groupcheck_table]
+				WHERE groupname IN $in;");
 				if ($res){
 					while(($row = @da_sql_fetch_array($res,$config))){
-						$attr = $row[Attribute];
-						$val = $row[Value];
+						$attr = $row[attribute];
+						$val = $row[value];
 						if ($use_op){
 							$oper = $row[op];
 							$tmp["$attr"][operator][]="$oper";
@@ -51,12 +51,12 @@ if ($login != ''){
 						$tmp["$attr"][count]++;
 					}
 					$res = @da_sql_query($link,$config,
-					"SELECT Attribute,Value $op FROM $config[sql_groupreply_table]
-					WHERE GroupName IN $in;");
+					"SELECT attribute,value $op FROM $config[sql_groupreply_table]
+					WHERE groupname IN $in;");
 					if ($res){
 						while(($row = @da_sql_fetch_array($res,$config))){
-							$attr = $row[Attribute];
-							$val = $row[Value];
+							$attr = $row[attribute];
+							$val = $row[value];
 							if ($use_op){
 								$oper = $row[op];
 								$tmp["$attr"][operator][]="$oper";
@@ -121,10 +121,10 @@ else{
 	$link = @da_sql_pconnect($config);
 	if ($link){
 		$res = @da_sql_query($link,$config,
-		"SELECT DISTINCT GroupName FROM $config[sql_usergroup_table];");
+		"SELECT DISTINCT groupname FROM $config[sql_usergroup_table];");
 		if ($res){
 			while(($row = @da_sql_fetch_array($res,$config)))
-				$member_groups[] = $row[GroupName];
+				$member_groups[] = $row[groupname];
 		}
 		else
 			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";

@@ -8,13 +8,13 @@ else{
 $link = @da_sql_pconnect($config);
 if ($link){
 	$res = @da_sql_query($link,$config,
-		"DELETE FROM $config[sql_groupreply_table] WHERE GroupName = '$login';");
+		"DELETE FROM $config[sql_groupreply_table] WHERE groupname = '$login';");
 	if ($res){
 		$res = @da_sql_query($link,$config,
-			"DELETE FROM $config[sql_groupcheck_table] WHERE GroupName = '$login';");
+			"DELETE FROM $config[sql_groupcheck_table] WHERE groupname = '$login';");
 		if ($res){
 			$res = @da_sql_query($link,$config,
-				"DELETE FROM $config[sql_usergroup_table] WHERE GroupName = '$login';");
+				"DELETE FROM $config[sql_usergroup_table] WHERE groupname = '$login';");
 				if ($res)
 					echo "<b>Group $login deleted successfully</b><br>\n";
 				else

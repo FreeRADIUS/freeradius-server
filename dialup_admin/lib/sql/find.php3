@@ -9,13 +9,13 @@ else{
 $link = @da_sql_pconnect($config);
 if ($link){
 	if (($search_IN == 'name' || $search_IN == 'ou') && $config[sql_use_user_info_table] == 'true'){
-		$attr = ($search_IN == 'name') ? 'Name' : 'Department';
+		$attr = ($search_IN == 'name') ? 'name' : 'department';
 		$res = @da_sql_query($link,$config,
-		"SELECT UserName FROM $config[sql_user_info_table] WHERE
-		$attr LIKE '%$search%' LIMIT $max_results;");
+		"SELECT username FROM $config[sql_user_info_table] WHERE
+		lower($attr) LIKE '%$search%' LIMIT $max_results;");
 		if ($res){
 			while(($row = @da_sql_fetch_array($res,$config)))
-				$found_users[] = $row[UserName];
+				$found_users[] = $row[username];
 		}
 		else
 			"<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
@@ -29,10 +29,10 @@ if ($link){
 		$table = ($attr_type[$radius_attr] == 'checkItem') ? $config[sql_check_table] : $config[sql_reply_table];
 		$attr = $attrmap[$radius_attr];
 		$res = @da_sql_query($link,$config,
-		"SELECT UserName FROM $table WHERE Attribute = '$attr' AND Value LIKE '%$search%' LIMIT $max_results;");
+		"SELECT username FROM $table WHERE attribute = '$attr' AND value LIKE '%$search%' LIMIT $max_results;");
 		if ($res){
 			while(($row = @da_sql_fetch_array($res,$config)))
-				$found_users[] = $row[UserName];
+				$found_users[] = $row[username];
 		}
 		else
 			"<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";

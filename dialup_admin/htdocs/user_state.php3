@@ -29,22 +29,22 @@ $today = date("$config[sql_date_format]",$now);
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT COUNT(*), sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE
-	UserName = '$login' AND AcctStopTime >= '$week_str' AND
-	AcctStopTime <= '$now_str';");
+	"SELECT COUNT(*) AS counter, sum(acctsessiontime) AS sum_sess_time FROM $config[sql_accounting_table] WHERE
+	username = '$login' AND acctstoptime >= '$week_str' AND
+	acctstoptime <= '$now_str';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
-		$weekly_used = time2strclock($row['sum(AcctSessionTime)']);
-		$weekly_conns = $row['COUNT(*)'];
+		$weekly_used = time2strclock($row[sum_sess_time]);
+		$weekly_conns = $row[counter];
 	}
 	$search = @da_sql_query($link,$config,
-	"SELECT COUNT(*),sum(AcctSessionTime) FROM $config[sql_accounting_table] WHERE
-	UserName = '$login' AND AcctStopTime >= '$today 00:00:00'
-	AND AcctStopTime <= '$today 23:59:59';");
+	"SELECT COUNT(*) AS counter,sum(acctsessiontime) AS sum_sess_time FROM $config[sql_accounting_table] WHERE
+	username = '$login' AND acctstoptime >= '$today 00:00:00'
+	AND acctstoptime <= '$today 23:59:59';");
 	if ($search){
 		$row = @da_sql_fetch_array($search,$config);
-		$daily_used = time2strclock($row['sum(AcctSessionTime)']);
-		$daily_conns = $row['COUNT(*)'];
+		$daily_used = time2strclock($row[sum_sess_time]);
+		$daily_conns = $row[counter];
 	}
 }
 
