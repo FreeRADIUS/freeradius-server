@@ -424,10 +424,9 @@ static int str2fac(const char *s)
 
 int main(int argc, char **argv)
 {
-	RADCLIENT		*cl;
-	REALM                   *rl;
 	REQUEST			*request;
 	RADIUS_PACKET		*packet;
+	u_char                  *secret;
 	unsigned char		buffer[4096];
 	struct	sockaddr	salocal;
 	struct	sockaddr_in	*sa;
@@ -928,18 +927,25 @@ int main(int argc, char **argv)
 			 *      Check if we know this proxy for proxyfd.
 			 */
 			if(fd != proxyfd) {
+			        RADCLIENT    *cl;
 			        if ((cl = client_find(packet->src_ipaddr)) == NULL) {
 			              radlog(L_ERR, "Ignoring request from unknown client %s:%d",
 				      buffer, packet->src_port);
 				      rad_free(packet);
 				      continue;
+				} else {
+				      secret = cl->secret;
 				}
+				
 			} else {    /* It came in on the proxy port */
+			        REALM         *rl;
 			        if ((rl = realm_findbyaddr(packet->src_ipaddr)) == NULL) {
 				      radlog(L_ERR, "Ignoring request from unknown proxy %s:%d",
 				      buffer, packet->src_port);
 				      rad_free(packet);
 				      continue;
+				} else {
+				      secret = rl->secret;
 				}
 			}      
 
@@ -974,11 +980,7 @@ int main(int argc, char **argv)
 			request->child_pid = NO_SUCH_CHILD_PID;
 			request->prev = NULL;
 			request->next = NULL;
-			if(fd != proxyfd) {
-			        strNcpy(request->secret, (char *)cl->secret, sizeof(request->secret));
-			} else {
-			        strNcpy(request->secret, (char *)rl->secret, sizeof(request->secret));
-			}
+			strNcpy(request->secret, secret, sizeof(request->secret));
 			rad_process(request, spawn_flag);
 		} /* loop over authfd, acctfd, proxyfd */
 
