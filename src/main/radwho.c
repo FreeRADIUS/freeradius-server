@@ -196,16 +196,16 @@ static void sys_finger(const char *l)
 /*
  *	Get fullname of a user.
  */
-static char *fullname(char *login)
+static char *fullname(char *username)
 {
 	struct passwd *pwd;
 	char *s;
 
-	if ((pwd = getpwnam(login)) != NULL) {
+	if ((pwd = getpwnam(username)) != NULL) {
 		if ((s = strchr(pwd->pw_gecos, ',')) != NULL) *s = 0;
 		return pwd->pw_gecos;
 	}
-	return login;
+	return username;
 }
 
 /*
@@ -384,7 +384,8 @@ int main(int argc, char **argv)
 	int hideshell = 0;
 	int showsid = 0;
 	int rawoutput = 0;
-	char *p, *q, *portind;
+	char *p, *q;
+	const char *portind;
 	int c, portno;
 
 	while((c = getopt(argc, argv, "flhnsipcr")) != EOF) switch(c) {

@@ -257,16 +257,16 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 
 #ifdef HAVE_REGEX_H
 		  case T_OP_REG_EQ:
-		    regcomp(&reg, check_item->strvalue, 0);
-		    compare = regexec(&reg, auth_item->strvalue,
+		    regcomp(&reg, (char *)check_item->strvalue, 0);
+		    compare = regexec(&reg, (char *)auth_item->strvalue,
 				      0, NULL, 0);
 		    regfree(&reg);
 		    if (compare != 0) return -1;
 		    break;
 
 		  case T_OP_REG_NE:
-		    regcomp(&reg, check_item->strvalue, 0);
-		    compare = regexec(&reg, auth_item->strvalue,
+		    regcomp(&reg, (char *)check_item->strvalue, 0);
+		    compare = regexec(&reg, (char *)auth_item->strvalue,
 				      0, NULL, 0);
 		    regfree(&reg);
 		    if (compare == 0) return -1;
@@ -294,7 +294,7 @@ static int connectcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
-	rate = atoi(request->strvalue);
+	rate = atoi((char *)request->strvalue);
 	return rate - check->lvalue;
 }
 
@@ -351,7 +351,7 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR	*vp;
-	char		*name = request->strvalue;
+	char		*name = (char *)request->strvalue;
 	char		rest[MAX_STRING_LEN];
 	int		len, namelen;
 	int		ret = -1;
@@ -363,7 +363,7 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 		name, check->strvalue, check->attribute);
 #endif
 
-	len = strlen(check->strvalue);
+	len = strlen((char *)check->strvalue);
 	switch (check->attribute) {
 		case PW_PREFIX:
 			ret = strncmp(name, check->strvalue, len);
@@ -418,7 +418,7 @@ static int timecmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	check_pairs = check_pairs;
 	reply_pairs = reply_pairs;
 
-	if (timestr_match(check->strvalue, time(NULL)) >= 0) {
+	if (timestr_match((char *)check->strvalue, time(NULL)) >= 0) {
 		return 0;
 	}
 	return -1;
@@ -444,7 +444,7 @@ static int attrcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	reply_pairs = reply_pairs;
 
 	if (check->lvalue == 0) {
-		dict = dict_attrbyname(check->strvalue);
+		dict = dict_attrbyname((char *)check->strvalue);
 		if (!dict) {
 			return -1;
 		}

@@ -259,7 +259,7 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
  * print a string passing by the radius_xlat2
  *
  */
-void printf_xlat(char *str, REQUEST * request, VALUE_PAIR *reply)
+static void printf_xlat(char *str, REQUEST * request, VALUE_PAIR *reply)
 {
   char * p;
   p = malloc(4096);

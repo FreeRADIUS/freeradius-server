@@ -49,7 +49,8 @@ static const char rcsid[] = "$Id$";
 char *radius_xlate(char *output, size_t outputlen, const char *fmt,
 		   VALUE_PAIR *request, VALUE_PAIR *reply)
 {
-	int n, i = 0, c;
+	int n, c;
+	size_t i = 0;
 	const char *p, *q;
 	char buffer[256];
 	VALUE_PAIR *tmp;
@@ -274,8 +275,6 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 		envlen = 0;
 
 		for (vp = request; vp->next; vp = vp->next) {
-			char *p;
-
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment

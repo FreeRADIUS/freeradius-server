@@ -76,8 +76,9 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	char		**member;
 	char		*username;
 	int		retval;
+	check_pairs = check_pairs; reply_pairs = reply_pairs;
 
-	username = request->strvalue;
+	username = (char *)request->strvalue;
 
 	if (cache_passwd && (retval = H_groupcmp(check, username)) != -2)
 		return retval;
@@ -85,7 +86,7 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	if ((pwd = getpwnam(username)) == NULL)
 		return -1;
 
-	if ((grp = getgrnam(check->strvalue)) == NULL)
+	if ((grp = getgrnam((char *)check->strvalue)) == NULL)
 		return -1;
 
 	retval = (pwd->pw_gid == grp->gr_gid) ? 0 : -1;
@@ -106,6 +107,7 @@ static int groupcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 static int unix_init(int argc, char **argv)
 {
 	CONF_SECTION *unix_cs;
+	argc = argc; argv = argv;
 
 	/*
 	 *	Look for the module's configuration.
@@ -206,8 +208,8 @@ static int unix_authenticate(REQUEST *request)
 		return RLM_MODULE_REJECT;
 	}
 
-	name = request->username->strvalue;
-	passwd = request->password->strvalue;
+	name = (char *)request->username->strvalue;
+	passwd = (char *)request->password->strvalue;
 
 	if (cache_passwd && (ret = H_unix_pass(name, passwd)) != -2)
 		return (ret == 0) ? RLM_MODULE_OK : RLM_MODULE_REJECT;
@@ -314,14 +316,14 @@ static int unix_authenticate(REQUEST *request)
 
 /*
  *	UUencode 4 bits base64. We use this to turn a 4 byte field
- *	(an IP adres) into 6 bytes of ASCII. This is used for the
+ *	(an IP address) into 6 bytes of ASCII. This is used for the
  *	wtmp file if we didn't find a short name in the naslist file.
  */
 static char *uue(void *in)
 {
 	int i;
 	static unsigned char res[7];
-	unsigned char *data = (char *)in;
+	unsigned char *data = (unsigned char *)in;
 
 	res[0] = ENC( data[0] >> 2 );
 	res[1] = ENC( ((data[0] << 4) & 060) + ((data[1] >> 4) & 017) );
@@ -337,7 +339,7 @@ static char *uue(void *in)
 		if (res[i] < 32 || res[i] > 127)
 			printf("uue: protocol error ?!\n");
 	}
-	return res;
+	return (char *)res;
 }
 
 
@@ -394,7 +396,7 @@ static int unix_accounting(REQUEST *request)
 	for (vp = request->packet->vps; vp; vp = vp->next) {
 		switch (vp->attribute) {
 			case PW_USER_NAME:
-				strNcpy(ut.ut_name, vp->strvalue, sizeof(ut.ut_name));
+				strNcpy(ut.ut_name, (char *)vp->strvalue, sizeof(ut.ut_name));
 				break;
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:

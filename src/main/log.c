@@ -28,7 +28,7 @@ static const char rcsid[] = "$Id$";
 static int do_log(int lvl, const char *fmt, va_list ap)
 {
 	FILE	*msgfd = NULL;
-	const unsigned char  *s = ": ";
+	const char  *s = ": ";
 	unsigned char *p;
 	char	buffer[2048];
 	time_t	timeval;
@@ -101,7 +101,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	/*
 	 *	Filter out characters not in Latin-1.
 	 */
-	for (p = buffer; *p; p++) {
+	for (p = (unsigned char *)buffer; *p; p++) {
 		if (*p == '\r' || *p == '\n')
 			*p = ' ';
 		else if (*p < 32 || (*p >= 128 && *p <= 160))

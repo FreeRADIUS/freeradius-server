@@ -28,7 +28,7 @@ void librad_safeprint(char *in, int inlen, char *out, int outlen)
 	int		done = 0;
 	int		sp = 0;
 
-	if (inlen < 0) inlen = strlen(str);
+	if (inlen < 0) inlen = strlen(in);
 
 	while (inlen-- > 0 && (done + 3) < outlen) {
 		/*
@@ -92,16 +92,16 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 	switch (vp->type) {
 		case PW_TYPE_STRING:
 			if (vp->attribute == PW_NAS_PORT_ID)
-				a = vp->strvalue;
+				a = (char *)vp->strvalue;
 			else {
 				if (delimitst) {
 				  buf[0] = '"';
-				  librad_safeprint(vp->strvalue, vp->length,
-					  buf + 1, sizeof(buf) - 2);
+				  librad_safeprint((char *)vp->strvalue,
+					  vp->length, buf + 1, sizeof(buf) - 2);
 				  strcat(buf, "\"");
 				} else {
-				  librad_safeprint(vp->strvalue, vp->length,
-					  buf, sizeof(buf));
+				  librad_safeprint((char *)vp->strvalue,
+					  vp->length, buf, sizeof(buf));
 				}
 
 				a = buf;
@@ -127,16 +127,16 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			break;
 		case PW_TYPE_IPADDR:
 			if (vp->strvalue[0])
-				a = vp->strvalue;
+				a = (char *)vp->strvalue;
 			else
-				a = ip_hostname(vp->strvalue,
+				a = ip_hostname((char *)vp->strvalue,
 						sizeof(vp->strvalue),
 						vp->lvalue);
 			break;
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
 		  a = buf;
-		  print_abinary(vp, buf, sizeof(buf));
+		  print_abinary(vp, (unsigned char *)buf, sizeof(buf));
 		  break;
 #else
 		  /* FALL THROUGH */
@@ -152,10 +152,10 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		  break;
 
 		default:
-			a = "UNKNOWN-TYPE";
+			a = 0;
 			break;
 	}
-	strncpy(out, a, outlen);
+	strncpy(out, a?a:"UNKNOWN-TYPE", outlen);
 	out[outlen - 1] = 0;
 
 	return strlen(out);
@@ -172,7 +172,7 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 	out[0] = 0;
 	if (!vp) return 0;
 
-	if (strlen(vp->name) + 3 > outlen) {
+	if (strlen(vp->name) + 3 > (size_t)outlen) {
 		return 0;
 	}
 

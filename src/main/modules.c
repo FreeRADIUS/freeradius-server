@@ -448,7 +448,7 @@ static void update_username(REQUEST *request, char *newname)
 		}
 		DEBUG2("  authorize: Creating Stripped-User-Name of %s", newname);
 		strcpy(vp->strvalue, newname);
-		vp->length = strlen(vp->strvalue);
+		vp->length = strlen((char *)vp->strvalue);
 		pairadd(&request->packet->vps, vp);
 		request->username = vp;
 		return;
@@ -461,7 +461,7 @@ static void update_username(REQUEST *request, char *newname)
 	DEBUG2("  authorize: Updating Stripped-User-Name from %s to %s",
 	       vp->strvalue, newname);
 	strcpy(vp->strvalue, newname);
-	vp->length = strlen(vp->strvalue);
+	vp->length = strlen((char *)vp->strvalue);
 }
 
 /*
@@ -503,26 +503,26 @@ int module_authorize(REQUEST *request,
 				break;
 				
 			case PW_ADD_PREFIX:
-				if ((vp->length + request->username->length) > sizeof(vp->strvalue)) {
+				if ((size_t)(vp->length + request->username->length) > sizeof(vp->strvalue)) {
 					DEBUG2("\"%s\"+\"%s\" too long",
 					       vp->strvalue,
 					       request->username->strvalue);
 					continue;
 				}
 				strcpy(newname, vp->strvalue);
-				strcat(newname, request->username->strvalue);
+				strcat(newname, (char *)request->username->strvalue);
 				update_username(request, newname);
 				break;
 				
 			case PW_ADD_SUFFIX:
-				if ((vp->length + request->username->length) > sizeof(vp->strvalue)) {
+				if ((size_t)(vp->length + request->username->length) > sizeof(vp->strvalue)) {
 					DEBUG2("\"%s\"+\"%s\" too long",
 					       request->username->strvalue,
 					       vp->strvalue);
 					continue;
 				}
 				strcpy(newname, request->username->strvalue);
-				strcat(newname, vp->strvalue);
+				strcat(newname, (char *)vp->strvalue);
 				update_username(request, newname);
 				break;
 			}

@@ -52,7 +52,7 @@ static const char rcsid[] = "$Id$";
  */
 static void chgLoggedin(char *user, int diff);
 static struct mypasswd *findHashUser(const char *user);
-static int storeHashUser(struct mypasswd *new, int index);
+static int storeHashUser(struct mypasswd *new, int idx);
 static int hashUserName(const char *s);
 
 /* Make the tables global since so many functions rely on them */
@@ -261,7 +261,7 @@ int unix_buildHashTable(const char *passwd_file, const char *shadow_file) {
  */
 int unix_buildGrpList(void) {
 
-	int len, len2, index, numread=0;
+	int len, len2, idx, numread=0;
 	struct group *grp;
 	struct mygroup *new, *cur, *next;
 	char **member;
@@ -328,13 +328,13 @@ int unix_buildGrpList(void) {
 		/* Now go back and copy individual users into it */
 		for(member = grp->gr_mem; *member; member++) {
 			len2 = strlen(*member);
-			index = member - grp->gr_mem;
-			if((new->gr_mem[index] = (char *)malloc(len2+1)) == NULL) {
+			idx = member - grp->gr_mem;
+			if((new->gr_mem[idx] = (char *)malloc(len2+1)) == NULL) {
 				log(L_ERR, "HASH:  (buildGrplist) Out of memory!");
 				return -1;
 			}
-			strncpy(new->gr_mem[index], *member, len2);
-			new->gr_mem[index][len2] = '\0';
+			strncpy(new->gr_mem[idx], *member, len2);
+			new->gr_mem[idx][len2] = '\0';
 		}
 		/* Make sure last entry in user list is 0 so we can loop thru it */
 		new->gr_mem[len] = 0;
@@ -379,19 +379,19 @@ static void chgLoggedin(char *user, int diff) {
 static struct mypasswd *findHashUser(const char *user) {
 
 	struct mypasswd *cur;
-	int index;
+	int idx;
 
 	/* first hash the username and get the index into the hashtable */
-	index = hashUserName(user);
+	idx = hashUserName(user);
 
-	cur = hashtable[index];
+	cur = hashtable[idx];
 
 	while((cur != NULL) && (strcmp(cur->pw_name, user))) {
 		cur = cur->next;
 	}
 
 	if(cur) {
-		DEBUG2("  HASH:  user %s found in hashtable bucket %d", user, index);
+		DEBUG2("  HASH:  user %s found in hashtable bucket %d", user, idx);
 		return cur;
 	}
 
@@ -400,11 +400,11 @@ static struct mypasswd *findHashUser(const char *user) {
 }
 
 /* Stores the username sent into the hashtable */
-static int storeHashUser(struct mypasswd *new, int index) {
+static int storeHashUser(struct mypasswd *new, int idx) {
 
 	/* store new record at beginning of list */
-	new->next = hashtable[index];
-	hashtable[index] = new;
+	new->next = hashtable[idx];
+	hashtable[idx] = new;
 
 	return 1;
 }

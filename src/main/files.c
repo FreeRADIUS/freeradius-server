@@ -328,7 +328,7 @@ static void debug_pair_list(PAIR_LIST *pl)
 /*
  *	Free a RADCLIENT list.
  */
-void clients_free(RADCLIENT *cl)
+static void clients_free(RADCLIENT *cl)
 {
 	RADCLIENT *next;
 
@@ -343,7 +343,7 @@ void clients_free(RADCLIENT *cl)
 /*
  *	Read the clients file.
  */
-int read_clients_file(const char *file)
+static int read_clients_file(const char *file)
 {
 	FILE	*fp;
 	RADCLIENT	*c;
@@ -474,7 +474,7 @@ char *client_name(uint32_t ipaddr)
 /*
  *	Free a REALM list.
  */
-void realm_free(REALM *cl)
+static void realm_free(REALM *cl)
 {
 	REALM *next;
 

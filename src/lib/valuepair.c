@@ -454,8 +454,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	DICT_ATTR	*da;
 	DICT_VALUE	*dval;
 	VALUE_PAIR	*vp;
-	u_char		*p;
-	char		*s;
+	char		*p, *s=0;
+	const char	*cp, *cs;
 
 	if ((da = dict_attrbyname(attribute)) == NULL) {
 		librad_log("Unknown attribute %s", attribute);
@@ -478,7 +478,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->strvalue.
 	 */
-	strNcpy(vp->strvalue, value, MAX_STRING_LEN);
+	strNcpy((char *)vp->strvalue, value, MAX_STRING_LEN);
 
 	switch(da->type) {
 		case PW_TYPE_STRING:
@@ -493,18 +493,18 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			 *	cannot be resolved, or resolve later!
 			 */
 			if ((p = strrchr(value, '+')) != NULL && !p[1]) {
-				s = strdup(value);
+				cs = s = strdup(value);
 				p = strrchr(s, '+');
 				*p = 0;
 				vp->addport = 1;
 			} else {
 				p = NULL;
-				s = value;
+				cs = value;
 			}
-			vp->lvalue = librad_dodns ? ip_getaddr(s) :
-						    ip_addr(s);
+			vp->lvalue = librad_dodns ? ip_getaddr(cs) :
+						    ip_addr(cs);
 			vp->length = 4;
-			if (s != value) free(s);
+			if (s) free(s);
 			break;
 		case PW_TYPE_INTEGER:
 			/*
@@ -560,17 +560,18 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		case PW_TYPE_OCTETS:
 		  vp->length = 0;
 		  if (strncasecmp(value, "0x", 2) == 0) {
-		    p = value + 2;
-		    s = vp->strvalue;
-		    while (*p && vp->length < MAX_STRING_LEN) {
+		    u_char *us;
+		    cp = value + 2;
+		    us = vp->strvalue;
+		    while (*cp && vp->length < MAX_STRING_LEN) {
 		      unsigned int tmp;
 
-		      if (sscanf(p, "%02x", &tmp) != 1) break;
-		      p += 2;
-		      *(s++) = tmp;
+		      if (sscanf(cp, "%02x", &tmp) != 1) break;
+		      cp += 2;
+		      *(us++) = tmp;
 		      vp->length++;
 		    }
-		    *s = '\0';
+		    *us = '\0';
 		  }
 		  break;
 

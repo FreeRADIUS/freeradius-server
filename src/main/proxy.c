@@ -98,7 +98,7 @@ int proxy_receive(REQUEST *request)
 		return -1;
 	}
 
-	realmname=realmpair->strvalue;
+	realmname=(char *)realmpair->strvalue;
         realm = realm_find(realmname);
 	allowed_pairs = NULL;
 
@@ -145,8 +145,8 @@ static void proxy_addinfo(REQUEST *request)
 		log(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
-	sprintf(proxy_pair->strvalue, "%d", request->packet->id);
-	proxy_pair->length = strlen(proxy_pair->strvalue);
+	sprintf((char *)proxy_pair->strvalue, "%d", request->packet->id);
+	proxy_pair->length = strlen((char *)proxy_pair->strvalue);
 
 	pairadd(&request->proxy->vps, proxy_pair);
 }
@@ -200,7 +200,7 @@ int proxy_send(REQUEST *request)
 		return 0;
 	}
 
-	realmname = realmpair->strvalue;
+	realmname = (char *)realmpair->strvalue;
 
 	/*
 	 *	Look for the realm, letting realm_find take care
@@ -322,7 +322,7 @@ int proxy_send(REQUEST *request)
 	/*
 	 *	Send the request.
 	 */
-	rad_send(request->proxy, realm->secret);
+	rad_send(request->proxy, (char *)realm->secret);
 	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
 	request->proxy_is_replicate = replicating;
 	request->proxy_try_count = RETRY_COUNT - 1;

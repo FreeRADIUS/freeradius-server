@@ -42,7 +42,7 @@ static const char rcsid[] = "$Id$";
 static const char *auth_username(VALUE_PAIR *namepair)
 {
 	if (namepair) {
-		return namepair->strvalue;
+		return (char *)namepair->strvalue;
 	}
 	return "<NONE>";
 }
@@ -76,6 +76,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 static int check_expiration(VALUE_PAIR *check_item, char *umsg, const char **user_msg)
 {
 	int result;
+	umsg = umsg; /* -Wunused */
 
 	result = 0;
 	while (result == 0 && check_item != (VALUE_PAIR *)NULL) {
@@ -327,8 +328,9 @@ int rad_authenticate(REQUEST *request)
 
 		/* If we proxied this, we already did pwdecode */
 		if (request->proxy == NULL) {
-			rad_pwdecode(auth_item->strvalue, auth_item->length,
-				     request->secret, request->packet->vector);
+			rad_pwdecode((char *)auth_item->strvalue,
+				     auth_item->length, request->secret,
+				     (char *)request->packet->vector);
 		}
 		for (i = auth_item->length; i >=0; i--) {
 			if (auth_item->strvalue[i]) {
@@ -337,7 +339,7 @@ int rad_authenticate(REQUEST *request)
 				auth_item->length = i;
 			}
 		}
-		password = auth_item->strvalue;
+		password = (char *)auth_item->strvalue;
 	}
 
 	/*
@@ -407,7 +409,7 @@ int rad_authenticate(REQUEST *request)
 		if (result == -2) {
 			reply_item = pairfind(user_reply, PW_REPLY_MESSAGE);
 			if (reply_item != NULL)
-				user_msg = reply_item->strvalue;
+				user_msg = (char *)reply_item->strvalue;
 		}
 	} while(0);
 
@@ -419,13 +421,13 @@ int rad_authenticate(REQUEST *request)
 		request->reply = build_reply(PW_AUTHENTICATION_REJECT, request,
 					     NULL, user_msg);
 		if (auth_item != NULL && log_auth) {
-			u_char clean_buffer[1024];
+			char clean_buffer[1024];
 			u_char *p;
 
 			if (auth_item->attribute == PW_CHAP_PASSWORD) {
 			  strcpy(clean_buffer, "CHAP-Password");
 			} else {
-			  librad_safeprint(auth_item->strvalue,
+			  librad_safeprint((char *)auth_item->strvalue,
 					   auth_item->length,
 					   clean_buffer, sizeof(clean_buffer));
 			}
@@ -456,7 +458,7 @@ int rad_authenticate(REQUEST *request)
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (namepair &&
-		    (r = radutmp_checksimul(namepair->strvalue,
+		    (r = radutmp_checksimul((char *)namepair->strvalue,
 		    request->packet->vps, check_item->lvalue)) != 0) {
 
 			if (check_item->lvalue > 1) {
@@ -486,7 +488,8 @@ int rad_authenticate(REQUEST *request)
 		 *	Authentication is OK. Now see if this
 		 *	user may login at this time of the day.
 		 */
-		r = timestr_match(check_item->strvalue, request->timestamp);
+		r = timestr_match((char *)check_item->strvalue,
+				  request->timestamp);
 		/*
 		 *	Session-Timeout needs to be at least
 		 *	60 seconds, some terminal servers
@@ -572,10 +575,11 @@ int rad_authenticate(REQUEST *request)
 	if ((auth_item = pairfind(user_reply, PW_CALLBACK_ID)) != NULL) {
 		seen_callback_id = 1;
 		radius_xlate(buf, sizeof(auth_item->strvalue),
-			     auth_item->strvalue,
+			     (char *)auth_item->strvalue,
 			     request->packet->vps, user_reply);
-		strNcpy(auth_item->strvalue, buf, sizeof(auth_item->strvalue));
-		auth_item->length = strlen(auth_item->strvalue);
+		strNcpy((char *)auth_item->strvalue, buf,
+			sizeof(auth_item->strvalue));
+		auth_item->length = strlen((char *)auth_item->strvalue);
 	}
 
 
@@ -637,10 +641,11 @@ int rad_authenticate(REQUEST *request)
 	  reply_item = pairfind(user_reply, PW_REPLY_MESSAGE);
 	  while (reply_item) {
 	  	radius_xlate(buf, sizeof(reply_item->strvalue),
-			     reply_item->strvalue,
+			     (char *)reply_item->strvalue,
 			     request->packet->vps, user_reply);
-		strNcpy(reply_item->strvalue, buf, sizeof(reply_item->strvalue));
-		reply_item->length = strlen(reply_item->strvalue);
+		strNcpy((char *)reply_item->strvalue, buf,
+			sizeof(reply_item->strvalue));
+		reply_item->length = strlen((char *)reply_item->strvalue);
 		user_msg = NULL;
 		reply_item = pairfind(reply_item->next, PW_REPLY_MESSAGE);
 	  }

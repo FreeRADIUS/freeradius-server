@@ -199,10 +199,10 @@ static int pam_auth(REQUEST *request)
 	}
 
 	pair = pairfind(request->config_items, PAM_AUTH_ATTR);
-	if (pair) pam_auth_string = pair->strvalue;
+	if (pair) pam_auth_string = (char *)pair->strvalue;
 
-	r = pam_pass(request->username->strvalue,
-		     request->password->strvalue,
+	r = pam_pass((char *)request->username->strvalue,
+		     (char *)request->password->strvalue,
 		     pam_auth_string);
 	if (r == 0) {
 		return RLM_MODULE_OK;

@@ -57,7 +57,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 {
 	VALUE_PAIR		*reply;
 	struct	sockaddr	saremote;
-	struct	sockaddr_in	*sin;
+	struct	sockaddr_in	*sa;
 	const char		*what;
 	uint8_t			ip_buffer[16];
 
@@ -120,7 +120,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		  
 		  DEBUG("Sending %s of id %d to %s\n",
 			what, packet->id,
-			ip_ntoa(ip_buffer, packet->dst_ipaddr));
+			ip_ntoa((char *)ip_buffer, packet->dst_ipaddr));
 		  
 		  total_length = AUTH_HDR_LEN;
 		  
@@ -176,9 +176,9 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		       */
 		      if (!vendorpec) {
 			if (reply->attribute == PW_PASSWORD) {
-			  rad_pwencode(reply->strvalue,
+			  rad_pwencode((char *)reply->strvalue,
 				       &(reply->length),
-				       secret, packet->vector);
+				       secret, (char *)packet->vector);
 
 			  /*
 			   *	If there's a CHAP password, assume it's
@@ -189,8 +189,8 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 			   *	numbers somehow...
 			   */
 			} else if (reply->attribute == PW_CHAP_PASSWORD) {
-			  rad_chap_encode(packet, reply->strvalue, packet->id,
-					  reply);
+			  rad_chap_encode(packet, (char *)reply->strvalue,
+					  packet->id, reply);
 			  reply->length = 1 + CHAP_VALUE_LENGTH;
 			} 
 		      }
@@ -271,7 +271,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		  if (packet->code != PW_AUTHENTICATION_REQUEST) {
 		  	secretlen = strlen(secret);
 			memcpy((char *)hdr + total_length, secret, secretlen);
-			librad_md5_calc(digest, (char *)hdr,
+			librad_md5_calc(digest, (unsigned char *)hdr,
 					total_length + secretlen);
 			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
 			memset((char *)hdr + total_length, 0, secretlen);
@@ -283,7 +283,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 		   */
 	} else if (librad_debug) {
 	  	DEBUG("Sending %s of id %d to %s\n", what, packet->id,
-		      ip_ntoa(ip_buffer, packet->dst_ipaddr));
+		      ip_ntoa((char *)ip_buffer, packet->dst_ipaddr));
 		while (reply) {
 		  /* FIXME: ignore attributes > 0xff */
 		  debug_pair(reply);
@@ -294,11 +294,11 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 	/*
 	 *	And send it on it's way.
 	 */
-	sin = (struct sockaddr_in *) &saremote;
-        memset ((char *) sin, '\0', sizeof (saremote));
-	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = packet->dst_ipaddr;
-	sin->sin_port = htons(packet->dst_port);
+	sa = (struct sockaddr_in *) &saremote;
+        memset ((char *) sa, '\0', sizeof (saremote));
+	sa->sin_family = AF_INET;
+	sa->sin_addr.s_addr = packet->dst_ipaddr;
+	sa->sin_port = htons(packet->dst_port);
 
 	sendto(packet->sockfd, packet->data, (int)packet->data_len, 0,
 			&saremote, sizeof(struct sockaddr_in));
@@ -314,7 +314,7 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 int calc_acctdigest(RADIUS_PACKET *packet, const char *secret, char *recvbuf, int len)
 {
 	int		secretlen;
-	char		digest[AUTH_VECTOR_LEN];
+	u_char		digest[AUTH_VECTOR_LEN];
 
 	/*
 	 *	Older clients have the authentication vector set to
@@ -335,7 +335,7 @@ int calc_acctdigest(RADIUS_PACKET *packet, const char *secret, char *recvbuf, in
 	secretlen = strlen(secret);
 	memset(recvbuf + 4, 0, AUTH_VECTOR_LEN);
 	memcpy(recvbuf + len, secret, secretlen);
-	librad_md5_calc(digest, recvbuf, len + secretlen);
+	librad_md5_calc(digest, (u_char *)recvbuf, len + secretlen);
 
 	/*
 	 *	Return 0 if OK, 2 if not OK.
@@ -358,7 +358,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original, cons
 	memcpy(recvbuf + 4, original->vector, sizeof(original->vector));
 	secretlen = strlen(secret);
 	memcpy(recvbuf + len, secret, secretlen);
-	librad_md5_calc(calc_digest, recvbuf, len + secretlen);
+	librad_md5_calc(calc_digest, (u_char *)recvbuf, len + secretlen);
 
 	/*
 	 *	Return 0 if OK, 2 if not OK.
@@ -377,7 +377,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	RADIUS_PACKET		*packet;
 	struct sockaddr_in	saremote;
 	int			totallen;
-	int			salen;
+	socklen_t		salen;
 	u_short			len;
 	uint8_t			*attr;
 	int			count;
@@ -544,7 +544,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			break;
 		case PW_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret,
-			    packet->data, length) > 1) {
+			    (char *)packet->data, length) > 1) {
 				char buffer[32];
 				librad_log("Received accounting packet "
 				    "from %s with invalid signature!",
@@ -557,7 +557,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		case PW_AUTHENTICATION_ACK:
 		case PW_AUTHENTICATION_REJECT:
 			if (calc_replydigest(packet, original, secret,
-					     packet->data, length) > 1) {
+					     (char *)packet->data,
+					     length) > 1) {
 				char buffer[32];
 				librad_log("Received authentication reply packet "
 					   "from %s with invalid signature!",
@@ -744,8 +745,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	if ((random_vector_pool[0] & 0x1f) == 0x00) {
 	  memcpy((char *) random_vector_pool + AUTH_VECTOR_LEN,
 		 (char *) packet->vector, AUTH_VECTOR_LEN);
-	  librad_md5_calc((char *) random_vector_pool,
-			  (char *) random_vector_pool,
+	  librad_md5_calc((u_char *)random_vector_pool,
+			  (u_char *)random_vector_pool,
 			  sizeof(random_vector_pool));
 	} else {
 	  random_vector_pool[random_vector_pool[1] & 0x1f] ^= 
@@ -793,7 +794,7 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vecto
 	secretlen = strlen(secret);
 	strcpy(buffer, secret);
 	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-	librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN);
+	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN);
 
 	/*
 	 *	Now we can encode the password *in place*
@@ -809,7 +810,7 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vecto
 	 */
 	for (n = 0; n < 128 && n <= (len - 16); n += 16) { 
 		memcpy(buffer + secretlen, passwd + n, 16);
-		librad_md5_calc(digest, buffer, secretlen + 16);
+		librad_md5_calc((u_char *)digest, buffer, secretlen + 16);
 		for (i = 0; i < 16; i++)
 			passwd[i + n + 16] ^= digest[i];
 	}
@@ -835,7 +836,7 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 	secretlen = strlen(secret);
 	strcpy(buffer, secret);
 	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-	librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN);
+	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN);
 
 	/*
 	 *	Now we can decode the password *in place*
@@ -858,7 +859,7 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector
 	for (n = rlen; n > 0; n -= 16 ) { 
 		s = (n == 16) ? r : (passwd + n - 16);
 		memcpy(buffer + secretlen, s, 16);
-		librad_md5_calc(digest, buffer, secretlen + 16);
+		librad_md5_calc((u_char *)digest, buffer, secretlen + 16);
 		for (i = 0; i < 16 && (i + n) < pwlen; i++)
 			passwd[i + n] ^= digest[i];
 	}
@@ -918,7 +919,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *pas
 	}
 
 	*output = id;
-	librad_md5_calc(output + 1, string, i);
+	librad_md5_calc((u_char *)output + 1, (u_char *)string, i);
 
 	return 0;
 }
@@ -977,12 +978,12 @@ static void random_vector(char *vector)
 		 *	Now that we have a bad random seed, let's
 		 *	make it a little better by MD5'ing it.
 		 */
-		for (i = 0; i < sizeof(random_vector_pool); i++) {
+		for (i = 0; i < (int)sizeof(random_vector_pool); i++) {
 			random_vector_pool[i] ^= rand() & 0xff;
 		}
 
-		librad_md5_calc((char *) random_vector_pool,
-				(char *) random_vector_pool,
+		librad_md5_calc((u_char *) random_vector_pool,
+				(u_char *) random_vector_pool,
 				sizeof(random_vector_pool));
 
 		did_srand = 1;
@@ -998,8 +999,8 @@ static void random_vector(char *vector)
 	random_vector_pool[AUTH_VECTOR_LEN + 1] ^= ((counter >> 8) & 0xff);
 	random_vector_pool[AUTH_VECTOR_LEN + 2] ^= ((counter >> 16) & 0xff);
 	random_vector_pool[AUTH_VECTOR_LEN + 3] ^= ((counter >> 24) & 0xff);
-	librad_md5_calc((char *) random_vector_pool,
-			(char *) random_vector_pool,
+	librad_md5_calc((u_char *) random_vector_pool,
+			(u_char *) random_vector_pool,
 			sizeof(random_vector_pool));
 
 	/*
@@ -1008,8 +1009,8 @@ static void random_vector(char *vector)
 	 *	user has a random vector, without us giving them
 	 *	and exact image of what's in the random pool.
 	 */
-	librad_md5_calc((char *) vector,
-			(char *) random_vector_pool,
+	librad_md5_calc((u_char *) vector,
+			(u_char *) random_vector_pool,
 			sizeof(random_vector_pool));
 }
 
@@ -1025,7 +1026,7 @@ RADIUS_PACKET *rad_alloc(int newvector)
 		return NULL;
 	memset(rp, 0, sizeof(RADIUS_PACKET));
 	if (newvector)
-		random_vector(rp->vector);
+		random_vector((char *)rp->vector);
 
 	return rp;
 }

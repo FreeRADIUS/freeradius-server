@@ -602,7 +602,7 @@ ipAddressStringToValue(char *string, uint32_t *ipAddress,
     dst = (u_char *) ipAddress;
     cp = string;
 
-    for ( i = 0; i < sizeof( *ipAddress ); i++ ) {
+    for ( i = 0; i < (int)sizeof( *ipAddress ); i++ ) {
 	value = strtol( cp, &cp, 10 );
 	if (( value < 0 ) || ( value > 255 )) {
 	    return( FALSE );
@@ -656,7 +656,7 @@ unsigned char*  src;
 
     /* skip any leading 0x or 0X 's */
     temp = strlen( (char*) src1 );
-    if( strlen( (unsigned char*) src1 ) != ( IPX_NODE_ADDR_LEN * 2 ) ) {
+    if( strlen( (char*) src1 ) != ( IPX_NODE_ADDR_LEN * 2 ) ) {
         return( FALSE );
     }
 
@@ -806,7 +806,7 @@ RadFilter	*curEntry;
 
 		if ( token ) {
 		    cmp = findKey( token, filterCompare );
-		    if( cmp != NO_TOKEN ) {
+		    if( cmp != (RadFilterComparison)NO_TOKEN ) {
 		    token = strtok( NULL, " " );
 			if ( token ) {
 			    if ( tok == FILTER_IPX_DST_IPXSOCK ) {
@@ -954,7 +954,7 @@ RadFilter	*curEntry;
 		token = strtok( NULL, " " );
 		if ( token ) {
   		    cmp = findKey( token, filterCompare );
-		    if( cmp != NO_TOKEN ) {
+		    if( cmp != (RadFilterComparison)NO_TOKEN ) {
 			token = strtok( NULL, " " );
 			if ( token ) {
 			    if( isAllDigit( token ) ) {
@@ -1231,7 +1231,7 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
  *  the GPL, and not under the previous Ascend license.
  */
 
-static const char *FindValue(int value, const KeywordStruct *list)
+static const char *FindValue(unsigned int value, const KeywordStruct *list)
 {
   const KeywordStruct	*entry;
 
@@ -1263,7 +1263,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   static const char *action[] = {"drop", "forward"};
   static const char *direction[] = {"output", "input"};
   
-  p = buffer;
+  p = (char *)buffer;
 
   /*
    *  Just for paranoia: wrong size filters get printed as octets

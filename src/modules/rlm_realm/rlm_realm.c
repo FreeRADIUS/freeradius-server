@@ -38,7 +38,7 @@ static REALM *check_for_realm(REQUEST *request)
 		return NULL;
 	}
 
-	name = request->username->strvalue;
+	name = (char *)request->username->strvalue;
 	realmname = strrchr(name, '@');
 	if (realmname != NULL)
 	  realmname++;
@@ -68,7 +68,7 @@ static REALM *check_for_realm(REQUEST *request)
 				exit(1);
 			}
 			strcpy(vp->strvalue, name);
-			vp->length = strlen(vp->strvalue);
+			vp->length = strlen((char *)vp->strvalue);
 			pairadd(&request->packet->vps, vp);
 			request->username = vp;
 		}
@@ -76,10 +76,10 @@ static REALM *check_for_realm(REQUEST *request)
 		/*
 		 *	Let's strip the Stripped-User-Name attribute.
 		 */
-		realmname = strrchr(vp->strvalue, '@');
+		realmname = strrchr((char *)vp->strvalue, '@');
 		if (realmname != NULL) {
 			*realmname = '\0';
-			vp->length = strlen(vp->strvalue);
+			vp->length = strlen((char *)vp->strvalue);
 		}
 	}
 
@@ -181,7 +181,7 @@ static int realm_authorize(REQUEST *request,
  */
 static int realm_preacct(REQUEST *request)
 {
-	const char *name = request->username->strvalue;
+	const char *name = (char *)request->username->strvalue;
 	REALM *realm;
 	
 	if (!name)

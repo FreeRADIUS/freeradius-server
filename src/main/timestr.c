@@ -14,6 +14,8 @@ static const char rcsid[] = "$Id$";
 #include <ctype.h>
 #include	"libradius.h"
 
+#include "radiusd.h"
+
 static const char *days[] =
 	{ "su", "mo", "tu", "we", "th", "fr", "sa", "wk", "any", "al" };
 
@@ -30,9 +32,10 @@ static const char *days[] =
 /*
  *	String code.
  */
-static int strcode (char **str)
+static int strcode (const char **str)
 {
-	int		i, l;
+	int		i;
+	size_t		l;
 
 	xprintf("strcode %s called\n", *str);
 
@@ -54,7 +57,7 @@ static int strcode (char **str)
 /*
  *	Fill bitmap with hours/mins.
  */
-static int hour_fill(char *bitmap, char *tm)
+static int hour_fill(char *bitmap, const char *tm)
 {
 	char		*p;
 	int		start, end;
@@ -108,9 +111,9 @@ static int hour_fill(char *bitmap, char *tm)
 /*
  *	Call the fill bitmap function for every day listed.
  */
-static int day_fill(char *bitmap, char *tm)
+static int day_fill(char *bitmap, const char *tm)
 {
-	char		*hr;
+	const char	*hr;
 	int		n;
 	int		start, end;
 
@@ -185,7 +188,7 @@ int timestr_match(char *tmstr, time_t t)
 	char		bitmap[WEEKMIN / 8];
 	int		now, tot, i;
 	int		byte, bit;
-#if DEBUG2
+#ifdef DEBUG2
 	int		y;
 	char		*s;
 	char		null[8];
@@ -197,7 +200,7 @@ int timestr_match(char *tmstr, time_t t)
 	memset(bitmap, 0, sizeof(bitmap));
 	week_fill(bitmap, tmstr);
 
-#if DEBUG2
+#ifdef DEBUG2
 	memset(null, 0, 8);
 	for (i = 0; i < 7; i++) {
 		printf("%d: ", i);

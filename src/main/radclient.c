@@ -299,7 +299,7 @@ int main(int argc, char **argv)
 
 	vp = pairfind(req->vps, PW_PASSWORD);
 	if (vp) {
-	  strNcpy(password, vp->strvalue, sizeof(vp->length));
+	  strNcpy(password, (char *)vp->strvalue, sizeof(vp->length));
 	} else {
 	  *password = '\0';
 	}
@@ -321,7 +321,8 @@ int main(int argc, char **argv)
 			if (*password != '\0') {
 			  vp = pairfind(req->vps, PW_PASSWORD);
 			  if (vp) {
-			    strNcpy(vp->strvalue, password, sizeof(password));
+			    strNcpy((char *)vp->strvalue, password,
+				    sizeof(password));
 			    vp->length = strlen(password);
 			  }
 			}

@@ -173,7 +173,7 @@ static int logcnt;
 /*
  * Initialize dynamic logging
  */
-void file_getline(FILE *f,char * buff,int len)
+static void file_getline(FILE *f,char * buff,int len)
 {
 	char tmp[2048];
 	int i;
@@ -193,7 +193,7 @@ void file_getline(FILE *f,char * buff,int len)
 	}
 }
 
-void file_dynamic_log_init(void )
+static void file_dynamic_log_init(void)
 {
 	FILE * f;
 	char fn[1024];
@@ -232,8 +232,9 @@ static int file_init(int argc, char **argv)
 {
 	char		fn[1024];
 	char		acct_fn[1024];
-	char		*ptr;
+	const char	*ptr;
 
+	argc = argc; /* -Wunused */
 	file_dynamic_log_init();
 
 	/*
@@ -360,7 +361,7 @@ static int file_authorize(REQUEST *request,
 	int		i, r;
 	char		buffer[256];
 #endif
-	char		*name;
+	const char	*name;
 
 	request_pairs = request->packet->vps;
 
@@ -516,7 +517,7 @@ static int file_authenticate(REQUEST *request)
 /*
  * Write the dynamic log files
  */
-void file_write_dynamic_log(REQUEST * request)
+static void file_write_dynamic_log(REQUEST * request)
 {
 	char fn[1024];
 	char buffer[4096];

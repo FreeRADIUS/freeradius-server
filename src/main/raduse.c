@@ -17,6 +17,7 @@
 #include "libradius.h"
 
 #ifdef HAVE_UTMPX_H
+#  undef ut_time
 #  define ut_time ut_xtime
 #endif
 
@@ -69,7 +70,7 @@ static void listnas(void)
 	first = 0;
 
 	/* Read struct and see if we have to stop. */
-	if (ftell(fp) < UTSIZE) break;
+	if (ftell(fp) < (long)UTSIZE) break;
 	fread(&ut, UTSIZE, 1, fp);
 	if (ut.ut_time < stop) break;
 
@@ -125,7 +126,7 @@ static int fillstruct(int offset, const char *nas)
 	first = 0;
 
 	/* Read struct and see if we have to stop. */
-	if (ftell(fp) < UTSIZE) break;
+	if (ftell(fp) < (long)UTSIZE) break;
 	fread(&ut, UTSIZE, 1, fp);
 	if (ut.ut_time < stop) break;
 

@@ -115,7 +115,7 @@ RADIUS_PACKET *build_reply(int code, REQUEST *request,
 		pairadd(&(rp->vps), vp);
 
 	if (user_msg && (vp = paircreate(PW_REPLY_MESSAGE, PW_TYPE_STRING))) {
-		strNcpy(vp->strvalue, user_msg, sizeof(vp->strvalue));
+		strNcpy((char *)vp->strvalue, user_msg, sizeof(vp->strvalue));
 		vp->length = strlen(user_msg);
 		pairadd(&(rp->vps), vp);
 	}

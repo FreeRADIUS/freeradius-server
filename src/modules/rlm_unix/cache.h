@@ -34,7 +34,7 @@ struct mygroup {
 
 /* Function prototypes */
 int unix_buildHashTable(const char *passwd_file, const char *shadow_file);
-int unix_buildGrpList();
+int unix_buildGrpList(void);
 int unix_hashradutmp(void);
 int H_unix_pass(char *name, char *passwd);
 int H_groupcmp(VALUE_PAIR *check, char *username);

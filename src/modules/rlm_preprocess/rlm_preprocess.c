@@ -181,7 +181,7 @@ static int presufcmp(VALUE_PAIR *check, char *name, char *rest)
 		name, check->strvalue, check->attribute);
 #endif
 
-	len = strlen(check->strvalue);
+	len = strlen((char *)check->strvalue);
 	switch (check->attribute) {
 		case PW_PREFIX:
 			ret = strncmp(name, check->strvalue, len);
@@ -294,7 +294,7 @@ static int hints_setup(REQUEST *request)
 	if ((tmp = pairfind(request_pairs, PW_USER_NAME)) == NULL)
 		name = NULL;
 	else
-		name = tmp->strvalue;
+		name = (char *)tmp->strvalue;
 
 	if (name == NULL || name[0] == 0)
 		/*
@@ -333,7 +333,7 @@ static int hints_setup(REQUEST *request)
 		tmp = pairfind(request_pairs, PW_STRIPPED_USER_NAME);
 		if (tmp) {
 			strcpy(tmp->strvalue, newname);
-			tmp->length = strlen(tmp->strvalue);
+			tmp->length = strlen((char *)tmp->strvalue);
 		} else {
 			/*
 			 *	No Stripped-User-Name exists: add one.
@@ -344,7 +344,7 @@ static int hints_setup(REQUEST *request)
 				exit(1);
 			}
 			strcpy(tmp->strvalue, newname);
-			tmp->length = strlen(tmp->strvalue);
+			tmp->length = strlen((char *)tmp->strvalue);
 			pairadd(&request_pairs, tmp);
 		}
 		request->username = tmp;
@@ -375,7 +375,7 @@ static int huntgroup_cmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
-	huntgroup = check->strvalue;
+	huntgroup = (char *)check->strvalue;
 
 	for (i = huntgroups; i; i = i->next) {
 		if (strcmp(i->name, huntgroup) != 0)

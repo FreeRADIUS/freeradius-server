@@ -61,9 +61,9 @@ static const char rcsid[] =
  *	Global variables.
  */
 const char		*progname = NULL;
-const char	        *radius_dir = NULL;
-const char		*radacct_dir = NULL;
-const char		*radlog_dir = NULL;
+char	        	*radius_dir = NULL;
+char			*radacct_dir = NULL;
+char			*radlog_dir = NULL;
 const char		*radlib_dir = NULL;
 int			log_stripped_names;
 int			debug_flag;
@@ -262,7 +262,7 @@ int main(int argc, char **argv)
 	RADIUS_PACKET		*packet;
 	unsigned char		buffer[4096];
 	struct	sockaddr	salocal;
-	struct	sockaddr_in	*sin;
+	struct	sockaddr_in	*sa;
 	struct	servent		*svp;
 	fd_set			readfds;
 	struct timeval		tv, *tvp;
@@ -503,13 +503,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	sin = (struct sockaddr_in *) & salocal;
-        memset ((char *) sin, '\0', sizeof (salocal));
-	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = myip;
-	sin->sin_port = htons(auth_port);
+	sa = (struct sockaddr_in *) & salocal;
+        memset ((char *) sa, '\0', sizeof (salocal));
+	sa->sin_family = AF_INET;
+	sa->sin_addr.s_addr = myip;
+	sa->sin_port = htons(auth_port);
 
-	result = bind (authfd, & salocal, sizeof (*sin));
+	result = bind (authfd, & salocal, sizeof (*sa));
 	if (result < 0) {
 		perror ("auth bind");
 		exit(1);
@@ -533,13 +533,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	sin = (struct sockaddr_in *) & salocal;
-        memset ((char *) sin, '\0', sizeof (salocal));
-	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = myip;
-	sin->sin_port = htons(acct_port);
+	sa = (struct sockaddr_in *) & salocal;
+        memset ((char *) sa, '\0', sizeof (salocal));
+	sa->sin_family = AF_INET;
+	sa->sin_addr.s_addr = myip;
+	sa->sin_port = htons(acct_port);
 
-	result = bind (acctfd, & salocal, sizeof (*sin));
+	result = bind (acctfd, & salocal, sizeof (*sa));
 	if (result < 0) {
 		perror ("acct bind");
 		exit(1);
@@ -559,18 +559,18 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 		
-		sin = (struct sockaddr_in *) & salocal;
-		memset ((char *) sin, '\0', sizeof (salocal));
-		sin->sin_family = AF_INET;
-		sin->sin_addr.s_addr = myip;
+		sa = (struct sockaddr_in *) & salocal;
+		memset ((char *) sa, '\0', sizeof (salocal));
+		sa->sin_family = AF_INET;
+		sa->sin_addr.s_addr = myip;
 		
 		/*
 		 *	Set the proxy port to be one more than the
 		 *	accounting port.
 		 */
 		for (proxy_port = acct_port + 1; proxy_port < 64000; proxy_port++) {
-			sin->sin_port = htons(proxy_port);
-			result = bind (proxyfd, & salocal, sizeof (*sin));
+			sa->sin_port = htons(proxy_port);
+			result = bind (proxyfd, & salocal, sizeof (*sa));
 			if (result == 0) {
 				break;
 			}
@@ -682,7 +682,7 @@ int main(int argc, char **argv)
 	if (myip == 0) {
 		strcpy(buffer, "*");
 	} else {
-		ip_ntoa(buffer, myip);
+		ip_ntoa((char *)buffer, myip);
 	}
 
 	if (proxy_requests) {
@@ -1706,6 +1706,7 @@ void sig_cleanup(int sig)
 	int		status;
         pid_t		pid;
 	REQUEST		*curreq;
+	sig = sig; /* -Wunused */
  
 	/*
 	 *	request_list_busy is a lock on the request list
@@ -1837,6 +1838,7 @@ static void sig_fatal(int sig)
 /*ARGSUSED*/
 static void sig_hup(int sig)
 {
+	sig = sig; /* -Wunused */
 	reset_signal(SIGHUP, sig_hup);
 
 	/*

@@ -5,4 +5,4 @@
 
 void other_function(void);
 
-#endif _OTHER_H
+#endif /*_OTHER_H*/

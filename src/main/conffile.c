@@ -33,8 +33,8 @@ CONF_SECTION	*config = NULL;
 extern RADCLIENT *clients;
 extern REALM	 *realms;
 
-static int generate_realms();
-static int generate_clients();
+static int generate_realms(void);
+static int generate_clients(void);
 
 #ifndef RADIUS_CONFIG
 #define RADIUS_CONFIG "radiusd.conf"
@@ -509,7 +509,7 @@ int read_radius_conf_file(void)
  * This way we don't have to change to much in the other source-files
  */
 
-static int generate_realms() 
+static int generate_realms(void)
 {
 	CONF_SECTION	*cs;
 	REALM		*c;
@@ -592,7 +592,7 @@ static int generate_realms()
  * This way we don't have to change to much in the other source-files
  */
 
-static int generate_clients() 
+static int generate_clients(void)
 {
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
@@ -761,7 +761,7 @@ CONF_SECTION *cf_module_config_find(const char *modulename)
  * 
 */
 
-int dump_config() 
+int dump_config(void)
 {
 	CONF_SECTION	*cs, *scs;
 

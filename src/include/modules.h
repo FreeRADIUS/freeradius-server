@@ -35,7 +35,7 @@ enum {
 	RLM_MODULE_REJECT = -2,	/* reject the request */
 	RLM_MODULE_FAIL = -1,	/* module failed, don't reply */
 	RLM_MODULE_OK = 0,	/* the module is OK, continue */
-	RLM_MODULE_HANDLED = 1,	/* the module handled the request, so stop. */
+	RLM_MODULE_HANDLED = 1 	/* the module handled the request, so stop. */
 };
 
 int read_modules_file(char *filename);

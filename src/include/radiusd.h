@@ -134,13 +134,12 @@ typedef int (*COMPARE)(VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
  */
 extern const char	*progname;
 extern int		debug_flag;
-extern const char	*radacct_dir;
-extern const char	*radlog_dir;
+extern char		*radacct_dir;
+extern char		*radlog_dir;
 extern const char	*radlib_dir;
-extern const char	*radius_dir;
+extern char		*radius_dir;
 extern const char	*radius_libdir;
 extern uint32_t		expiration_seconds;
-extern pid_t		radius_pid;
 extern int		use_dbm;
 extern int		log_stripped_names;
 extern uint32_t		myip;

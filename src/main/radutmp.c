@@ -448,6 +448,7 @@ int radutmp_add(REQUEST *request)
 static int got_alrm;
 static void alrm_handler(int sig)
 {
+	sig = sig; /* -Wunused */
 	got_alrm = 1;
 }
 

@@ -20,7 +20,7 @@ static const char rcsid[] = "$Id$";
 static int unique_accounting(REQUEST *request)
 {
   char buffer[2048];
-  char md5_buf[16];
+  u_char md5_buf[16];
 
   VALUE_PAIR *vp;
   char *p;
@@ -95,7 +95,7 @@ static int unique_accounting(REQUEST *request)
   }
 
   /* calculate a 'unique' string based on the above information */
-  librad_md5_calc(md5_buf, buffer, (p - buffer));
+  librad_md5_calc(md5_buf, (u_char *)buffer, (p - buffer));
   sprintf(buffer, "%02x%02x%02x%02x",
 	  md5_buf[0], md5_buf[1],
 	  md5_buf[2], md5_buf[3]);
