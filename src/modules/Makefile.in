@@ -13,17 +13,15 @@ all:
 
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f *~
+	@rm -f *~ lib/*
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 common:
-	@for mod in $(MODULES); do \
-		dir=`echo $$mod | sed -e 's/\..*$$//'`; \
+	@for mod in rlm_*; do \
 		what=$(WHAT_TO_MAKE); \
-		[ "$$what" = "all" ] && what=$$mod; \
-		echo "Making $$what in $$dir..."; \
-		(cd $$dir ; $(MAKE) $(MFLAGS) $$what) || exit 1;\
+		[ "$$what" = "all" ] && what="static dynamic"; \
+		echo "Making $$what in $$mod..."; \
+		(cd $$mod ; $(MAKE) $(MFLAGS) $$what) || exit 1;\
 	done
-
