@@ -31,7 +31,7 @@
 struct radutmp {
   char login[32];		/* Loginname */
 				/* FIXME: extend to 48 or 64 bytes */
-  int  nas_port;		/* Port on the terminal server (32 bits). */
+  unsigned int nas_port;	/* Port on the terminal server (32 bits). */
   char session_id[8];		/* Radius session ID (first 8 bytes at least)*/
 				/* FIXME: extend to 16 or 32 bytes */
   unsigned int nas_address;	/* IP of portmaster. */

@@ -43,7 +43,7 @@
 #include	"modules.h"
 
 /* End a session by faking a Stop packet to all accounting modules */
-int session_zap(int sockfd, uint32_t nasaddr, int port, const char *user,
+int session_zap(int sockfd, uint32_t nasaddr, unsigned int port, const char *user,
 		const char *sessionid, uint32_t cliaddr, char proto, time_t t)
 {
 	static unsigned char id = 0;
@@ -169,7 +169,7 @@ int session_zap(int sockfd, uint32_t nasaddr, int port, const char *user,
 /*
  *	Check one terminal server to see if a user is logged in.
  */
-int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
+int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 		 const char *session_id)
 {
 	pid_t	pid, child_pid;
@@ -261,7 +261,7 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	 */
 
 	ip_ntoa(address, nasaddr);
-	sprintf(port, "%d", portnum);
+	sprintf(port, "%u", portnum);
 
 #ifdef __EMX__
 	/* OS/2 can't directly execute scripts then we call the command

@@ -49,7 +49,7 @@ static const char porttypes[] = "ASITX";
  */
 typedef struct nas_port {
 	uint32_t		nasaddr;
-	int			port;
+	unsigned int	port;
 	off_t			offset;
 	struct nas_port 	*next;
 } NAS_PORT;
@@ -165,7 +165,7 @@ static int radutmp_zap(rlm_radutmp_t *inst,
 /*
  *	Lookup a NAS_PORT in the nas_port_list
  */
-static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, int port)
+static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsigned int port)
 {
 	NAS_PORT	*cl;
 
@@ -386,7 +386,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	if (status != PW_STATUS_START &&
 	    status != PW_STATUS_STOP &&
 	    status != PW_STATUS_ALIVE) {
-		radlog(L_ERR, "rlm_radutmp: NAS %s port %d unknown packet type %d)",
+		radlog(L_ERR, "rlm_radutmp: NAS %s port %u unknown packet type %d)",
 		       nas, ut.nas_port, status);
 		return RLM_MODULE_NOOP;
 	}
@@ -462,7 +462,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			 *	send _only_ logout records).
 			 */
 			if (u.type == P_LOGIN)
-				radlog(L_ERR, "rlm_radutmp: Logout entry for NAS %s port %d has wrong ID",
+				radlog(L_ERR, "rlm_radutmp: Logout entry for NAS %s port %u has wrong ID",
 				       nas, u.nas_port);
 			r = -1;
 			break;
@@ -473,12 +473,12 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			    sizeof(u.session_id)) == 0  &&
 		    u.time >= ut.time) {
 			if (u.type == P_LOGIN) {
-				radlog(L_INFO, "rlm_radutmp: Login entry for NAS %s port %d duplicate",
+				radlog(L_INFO, "rlm_radutmp: Login entry for NAS %s port %u duplicate",
 				       nas, u.nas_port);
 				r = -1;
 				break;
 			}
-			radlog(L_ERR, "rlm_radutmp: Login entry for NAS %s port %d wrong order",
+			radlog(L_ERR, "rlm_radutmp: Login entry for NAS %s port %u wrong order",
 			       nas, u.nas_port);
 			r = -1;
 			break;
@@ -545,7 +545,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			u.delay = ut.delay;
 			write(fd, &u, sizeof(u));
 		} else if (r == 0) {
-			radlog(L_ERR, "rlm_radutmp: Logout for NAS %s port %d, but no Login record",
+			radlog(L_ERR, "rlm_radutmp: Logout for NAS %s port %u, but no Login record",
 			       nas, ut.nas_port);
 			r = -1;
 		}

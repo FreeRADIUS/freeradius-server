@@ -239,9 +239,9 @@ extern const char      *radiusd_version;
 int		rad_accounting(REQUEST *);
 
 /* session.c */
-int		rad_check_ts(uint32_t nasaddr, int port, const char *user,
+int		rad_check_ts(uint32_t nasaddr, unsigned int port, const char *user,
 			     const char *sessionid);
-int		session_zap(int fd, uint32_t nasaddr, int port, const char *user,
+int		session_zap(int fd, uint32_t nasaddr, unsigned int port, const char *user,
 			    const char *sessionid, uint32_t cliaddr,
 			    char proto, time_t t);
 

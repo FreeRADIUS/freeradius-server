@@ -99,7 +99,7 @@ typedef struct ippool_info {
 
 typedef struct ippool_key {
 	char nas[MAX_NAS_NAME_SIZE];
-	int port;
+	unsigned int port;
 } ippool_key;
 
 /*
@@ -141,7 +141,8 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	ippool_key key;
 	datum key_datum;
 	datum data_datum;
-	int i,j;
+	int i;
+	unsigned j;
 	const char *cli = "0";
 	char *pool_name = NULL;
 	
@@ -212,7 +213,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 		const char *nas_init = "NOT_EXIST";
 
 		DEBUG("rlm_ippool: Initializing database");
-		for(i=data->range_start,j=-1;i<=data->range_stop;i++,j--){
+		for(i=data->range_start,j=~0;i<=data->range_stop;i++,j--){
 
 			/*
 			 * Net and Broadcast addresses are excluded
@@ -276,7 +277,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	datum key_datum;
 	datum data_datum;
 	int acctstatustype = 0;
-	int port = -1;
+	unsigned int port = ~0;
 	int rcode;
 	char nas[MAX_NAS_NAME_SIZE];
 	ippool_info entry;
@@ -320,7 +321,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	memset(key.nas,0,MAX_NAS_NAME_SIZE);
 	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
 	key.port = port;
-	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",key.nas,key.port);
+	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%u",key.nas,key.port);
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
@@ -334,7 +335,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		 */
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);
-		DEBUG("rlm_ippool: Deallocated entry for ip/port: %s/%d",ip_ntoa(str,entry.ipaddr),port);
+		DEBUG("rlm_ippool: Deallocated entry for ip/port: %s/%u",ip_ntoa(str,entry.ipaddr),port);
 		entry.active = 0;
 
 		data_datum.dptr = (char *) &entry;
@@ -385,7 +386,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 static int ippool_postauth(void *instance, REQUEST *request)
 {
 	rlm_ippool_t *data = (rlm_ippool_t *) instance;
-	int port = 0;
+	unsigned int port = 0;
 	int delete = 0;
 	int rcode;
 	int num = 0;
@@ -450,7 +451,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	memset(key.nas,0,MAX_NAS_NAME_SIZE);
 	strncpy(key.nas,nas,MAX_NAS_NAME_SIZE -1 );
 	key.port = port;	
-	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%d",key.nas,key.port);
+	DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%u",key.nas,key.port);
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
@@ -465,7 +466,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);
 		if (entry.active){
-			DEBUG("rlm_ippool: Found a stale entry for ip/port: %s/%d",ip_ntoa(str,entry.ipaddr),port);
+			DEBUG("rlm_ippool: Found a stale entry for ip/port: %s/%u",ip_ntoa(str,entry.ipaddr),port);
 			entry.active = 0;
 
 			data_datum.dptr = (char *) &entry;
@@ -601,7 +602,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		key_datum.dptr = (char *) &key;
 		key_datum.dsize = sizeof(ippool_key);
 		
-		DEBUG2("rlm_ippool: Allocating ip to nas/port: %s/%d",key.nas,key.port);
+		DEBUG2("rlm_ippool: Allocating ip to nas/port: %s/%u",key.nas,key.port);
 		pthread_mutex_lock(&data->session_mutex);
 		rcode = gdbm_store(data->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		pthread_mutex_unlock(&data->session_mutex);
@@ -635,7 +636,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		}
 			
 
-		DEBUG("rlm_ippool: Allocated ip %s to client on nas %s,port %d",ip_ntoa(str,entry.ipaddr),
+		DEBUG("rlm_ippool: Allocated ip %s to client on nas %s,port %u",ip_ntoa(str,entry.ipaddr),
 				key.nas,port);
 		if ((vp = paircreate(PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR)) == NULL) {
 			radlog(L_ERR|L_CONS, "no memory");
