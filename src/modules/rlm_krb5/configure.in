@@ -7,6 +7,43 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
+	dnl extra argument: --with-rlm-krb5-lib-dir
+	rlm_krb5_lib_dir=
+	AC_ARG_WITH(rlm-krb5-lib-dir,
+	[  --with-rlm-krb5-lib-dir=DIR       Directory for krb5 library files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-krb5-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_krb5_lib_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	dnl extra argument: --with-rlm-krb5-include-dir
+	rlm_krb5_inc_dir=
+	AC_ARG_WITH(rlm-krb5-include-dir,
+	[  --with-rlm-krb5-include-dir=DIR   Directory for krb5 include files []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-krb5-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		rlm_krb5_include_dir="$withval"
+		;;
+	  esac ]
+	)
+
+	smart_try_dir=$rlm_krb5_include_dir
+	AC_SMART_CHECK_INCLUDE(krb5.h)
+
+	smart_try_dir=$rlm_krb5_lib_dir
+
 	AC_CHECK_LIB(k5crypto, krb5_encrypt_data,
 		[ krb5libcrypto="-lk5crypto" ],
 	)
