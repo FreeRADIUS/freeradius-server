@@ -10,6 +10,11 @@ HEADERS		= config.h other.h
 RLM_CFLAGS	=
 LIBS		=
 
+ifeq ($(LIBC_STRCPY),)
+TARGET=
+endif
+
+# over-ride the previous assignment if we're not building anything
 include ../rules.mak
 
 $(STATIC_OBJS): $(HEADERS)
@@ -17,4 +22,4 @@ $(STATIC_OBJS): $(HEADERS)
 $(DYNAMIC_OBJS): $(HEADERS)
 
 config.mak config.h:
-	@../checkconfig -l HAVE_STRCPY strcpy -lc
+	@../checkconfig -l LIBC_STRCPY strcpy -lc

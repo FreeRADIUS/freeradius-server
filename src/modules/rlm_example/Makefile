@@ -41,6 +41,15 @@ LIBS		=
 
 #######################################################################
 #
+# over-ride the previous assignment if we're not building anything
+#
+#######################################################################
+ifeq ($(LIBC_STRCPY),)
+TARGET=
+endif
+
+#######################################################################
+#
 #  Grab the generic rules file for making everything.
 #
 #######################################################################
@@ -68,4 +77,4 @@ $(DYNAMIC_OBJS): $(HEADERS)
 #
 #######################################################################
 config.mak config.h:
-	@../checkconfig -l HAVE_STRCPY strcpy -lc
+	@../checkconfig -l LIBC_STRCPY strcpy -lc
