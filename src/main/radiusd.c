@@ -73,9 +73,9 @@ static const char rcsid[] =
  *	Global variables.
  */
 const char		*progname = NULL;
-char	        	*radius_dir = NULL;
-char			*radacct_dir = NULL;
-char			*radlog_dir = NULL;
+const char	        *radius_dir = NULL;
+const char		*radacct_dir = NULL;
+const char		*radlog_dir = NULL;
 const char		*radlib_dir = NULL;
 int			log_stripped_names;
 int			debug_flag;
@@ -502,7 +502,6 @@ int main(int argc, char **argv)
 			break;
 
 		case 'a':
-			if (radacct_dir) free(radacct_dir);
 			radacct_dir = strdup(optarg);
 			break;
 		
@@ -516,7 +515,6 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			if (radius_dir) free(radius_dir);
 			radius_dir = strdup(optarg);
 			break;
 		
@@ -537,7 +535,6 @@ int main(int argc, char **argv)
 			break;
 		
 		case 'l':
-			if (radlog_dir) free(radlog_dir);
 			radlog_dir = strdup(optarg);
 			break;
 		
