@@ -13,4 +13,4 @@ VENDOR	Garderos	16108
 #    Standard attribute
 #
 ATTRIBUTE	Garderos-Location-Name		1	string	Garderos
-
+ATTRIBUTE	Garderos-Service-Name		2	string	Garderos
