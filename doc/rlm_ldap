@@ -95,6 +95,11 @@ the rlm_ldap module:
 #	
 #	default: filter   = "(uid=%u)"
 
+#	base_filter: The LDAP search filter used for base scope searches, like
+#	when searching for the default or regular profiles
+#
+#	deafault: base_filter = "(objectclass=radiusprofile)"
+
 #	default_profile: DN of a LDAP object, which contains default RADIUS
 #	attributes.  default: NULL - use only user specific attributes or
 #	attributes, supplied by other modules.

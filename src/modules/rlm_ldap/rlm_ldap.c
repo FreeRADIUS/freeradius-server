@@ -134,6 +134,9 @@
  *	- In case of a bad search filter, print out the corresponding filter
  * Sep 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Compile even if we don't have pthread's
+ * Oct 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Add a new configuration directive, base_filter which is used for base scope searches
+ *	  (When searching for the default/regular profiles for example)
  */
 static const char rcsid[] = "$Id$";
 
@@ -242,6 +245,7 @@ typedef struct {
 	char           *login;
 	char           *password;
 	char           *filter;
+	char           *base_filter;
 	char           *basedn;
 	char           *default_profile;
 	char           *profile_attr;
@@ -274,6 +278,7 @@ static CONF_PARSER module_config[] = {
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, ""},
 	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, "o=notexist"},
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
+	{"base_filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,base_filter), NULL, "(objectclass=radiusprofile)"},
 	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,default_profile), NULL, NULL},
 	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,profile_attr), NULL, NULL},
 	{"password_header", PW_TYPE_STRING_PTR, offsetof(ldap_instance,passwd_hdr), NULL, NULL},
@@ -1151,7 +1156,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	if (inst->default_profile || user_profile){
 		char *profile = inst->default_profile;
 
-		strNcpy(filter,"(objectclass=radiusprofile)",sizeof(filter));
+		strNcpy(filter,inst->base_filter,sizeof(filter));
 		if (user_profile)
 			profile = user_profile->strvalue;
 		if (profile && strlen(profile)){
@@ -1186,7 +1191,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	if (inst->profile_attr){
 		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL) {
 			unsigned int i=0;
-			strNcpy(filter,"(objectclass=radiusprofile)",sizeof(filter));
+			strNcpy(filter,inst->base_filter,sizeof(filter));
 			while(vals[i] != NULL && strlen(vals[i])){
 				if ((res = perform_search(instance, conn,
 					vals[i], LDAP_SCOPE_BASE, 
@@ -1594,6 +1599,8 @@ ldap_detach(void *instance)
 		free(inst->dictionary_mapping);
 	if (inst->filter)
 		free((char *) inst->filter);
+	if (inst->base_filter)
+		free((char *) inst->base_filter);
 	if (inst->passwd_hdr)
 		free((char *) inst->passwd_hdr);
 	if (inst->passwd_attr)

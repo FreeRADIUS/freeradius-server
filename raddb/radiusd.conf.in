@@ -826,6 +826,7 @@ modules {
 		# password = mypass
 		basedn = "o=My Org,c=UA"
 		filter = "(uid=%{Stripped-User-Name:-%{User-Name}})"
+		# base_filter = "(objectclass=radiusprofile)"
 
 		# set this to 'yes' to use TLS encrypted connections
 		# to the LDAP database by using the StartTLS extended
