@@ -61,6 +61,10 @@ Config section parameters:
  (/etc/group) contains following record: wheel:*:0:root,vlad,test
  Group-Name attribute will be added to configuration items list with value
  of "wheel".
+ '=' mark can be used to add items for this field into reply-itmes instead
+ of default configure-items. For example 
+	"*User-Name,Password,=Callback-Number"
+ will add third field as a Callback-Number attribute to reply.
 
    
   hashsize = n (default 0)
@@ -135,3 +139,4 @@ A: In case you configured realm to strip username, User-Password attribute
 5. Acknowlegements:
 
    ZARAZA, <3APA3A@security.nnov.ru>
+   Michael Chernyakhovsky <mike@mgn.ru> - reply-itmes support
