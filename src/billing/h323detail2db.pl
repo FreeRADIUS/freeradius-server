@@ -50,8 +50,8 @@ $progname = "H323 Detail2DB";
 $version = 2.2;
 
 # Set up some basic variables
-$passno = 0; $double_match_no = 0; $verbose = 0;
-$starttime = time();
+my $passno = 0; my $duplicates = 0; my $verbose = 0; my %duplicate_records = ();
+my $starttime = time();
 
 
 sub db_connect {
@@ -68,14 +68,25 @@ sub db_connect {
 }
 
 sub db_disconnect {
+	my $hostname = shift;
 	if ($verbose > 1) { print "DEBUG: Disconnecting from Database Host: $hostname\n" }
 	$dbh->disconnect		# Disconnect from the database
 	    or warn "Disconnection failed: $DBI::errstr\n";
 }
 
+sub process_duplicates {
+	if ($verbose > 1) { print "DEBUG: Now processing $duplicates duplicate records\n" }
+	foreach my $a1 ( keys %duplicate_records ) {
+		print "$a1:\n";
+		for my $a2 ( keys %{ $duplicate_records{$a1} } ) {
+			print "\t$a2 = $duplicate_records{$a1}{$a2}\n";
+		}
+	print "\n";
+	}
+}
+
 
 sub procedure_insert {		# FIXME: Does not work with current SQL schema. Use standard method
-	$passno++;
 	if ($verbose > 0) { print "Record: $passno) Conf ID: $h323_conf_id   Setup Time: $h323_setup_time  Call Length: $AcctSessionTime   "; }
 	if ($h323_call_type eq 'VoIP') { 
         $sth2 = $dbh->prepare("SELECT VoIPInsertRecord('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
@@ -142,7 +153,6 @@ sub db_update {
 }
 
 sub db_read {
-	$passno++;
 	if ($verbose > 0) { print "Record: $passno) ConfID: $h323_conf_id Timestamp: $radius_record_timestamp Length: $AcctSessionTime"; }
 	my $sth = $dbh->prepare("SELECT RadAcctId FROM Stop$h323_call_type
 		WHERE AcctStopTime = '$radius_record_timestamp'
@@ -156,7 +166,7 @@ sub db_read {
 	my $returned_rows = $sth->rows;
 
           if ($sth->rows == 0) {
-		&db_insert;
+		&db_insert;	# It's a new record. All systems go.
           } elsif ($sth->rows == 1) {
                 if ($verbose > 0) { print "Exists in DB.\n"; }
 		# FIXME: Make updates an option!
@@ -165,26 +175,11 @@ sub db_read {
 		##&db_update;
                 #}
           } else {
-		$double_match_no++;
-		# FIXME: Log this somewhere!
+		$duplicates++;	 # FIXME: Log this somewhere!
                 print "********* More than One Match! We have a problem!\n";
           }
 
 	$sth->finish;
-}
-
-sub read_record {
-	my $keepreading = 1;
-	@record = ();
-	while ($keepreading) {
-		$_ = <DETAIL>;
-		print "$_" if ($verbose > 1);
-		if ( /^$/ ) {
-			$keepreading = 0;
-		} else {
-			$record[++$#record] = $_;
-		}
-	}
 }
 
 sub process_record {
@@ -311,9 +306,26 @@ sub process_record {
 	# If its a valid record continue onto the database functions
 	# FIXME: More checks needed here.
 	if ($h323_call_type) { 
+		$passno++;
+		#@duplicate_records{$passno} += @record;
 		if (&procedure_get()) { &procedure_insert; }
 		else { &db_read; }
 	} else { if ($verbose > 1) { print "DEBUG: Skipping non-h323 record\n"; } }
+}
+
+sub read_record {
+	my $keepreading = 1;
+	@record = ();
+	while ($keepreading) {
+		$_ = <DETAIL>;
+		print "$_" if ($verbose > 1);
+		if ( /^$/ ) {
+			$keepreading = 0;	# End of record
+		} else {
+			$record[++$#record] = $_;
+		}
+	}
+	&process_record;
 }
 
 sub read_detailfile {
@@ -339,7 +351,6 @@ sub read_detailfile {
 		$valid_input = 0 if (eof(DETAIL));
 		if ($verbose > 1) { print "DEBUG: Reading Record\n"; }
 		&read_record;
-		&process_record;
 	}
 	my $runtime = (time() - $starttime);
 	if ($runtime > 0) { 
@@ -399,8 +410,8 @@ sub main {
 		$rcs_info =~ s/\$\s*Author: (\S+) \$ /$1/;
 
 		print "\n";
-		print "$progname Version $version by Peter Nixon <codemonkey\@peternixon.net>\n";
-		print "Copyright (c) 2002-2004, 2004 Peter Nixon\n";
+		print "$progname Version $version by Peter Nixon - http://www.peternixon.net/\n";
+		print "Copyright (c) 2002-2004 Peter Nixon\n";
 		print "  ($rcs_info)\n";
 		print "\n";
 		return SUCCESS;
@@ -420,15 +431,17 @@ sub main {
 	}
 
 	if (@ARGV) {
-		if ($opt_H) { &db_connect($opt_H);
-		} else { &db_connect(localhost); }
+		my $db_host;
+		if ($opt_H) { $db_host = $opt_H; }
+		else { $db_host = "localhost"; }
+		&db_connect($db_host);
 
         	# Loop through the defined files
 	        foreach $file (@ARGV) {
 			&read_detailfile($file);
 	        }
-
-		&db_disconnect;
+		&process_duplicates;
+		&db_disconnect($db_host);
 	} else {
 		print "ERROR: Please specify one or more detail file(s) to import.\n";
 		exit(FAILURE);
