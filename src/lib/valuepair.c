@@ -79,7 +79,7 @@ void pairfree(VALUE_PAIR *pair)
 
 
 /*
- *	Find the pair with the mathing attribute
+ *	Find the pair with the matching attribute
  */
 VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr)
 {
@@ -90,7 +90,7 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr)
 
 
 /*
- *	Delete the pair(s) with the mathing attribute
+ *	Delete the pair(s) with the matching attribute
  */
 void pairdelete(VALUE_PAIR **first, int attr)
 {
