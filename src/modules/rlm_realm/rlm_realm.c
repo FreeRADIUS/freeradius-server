@@ -94,7 +94,7 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	case REALM_FORMAT_SUFFIX:
 	  
 	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */
-		realmname = strchr(username, inst->delim[0]);		
+		realmname = strrchr(username, inst->delim[0]);		
 		if (realmname) {
 			*realmname = '\0';
 			realmname++;
