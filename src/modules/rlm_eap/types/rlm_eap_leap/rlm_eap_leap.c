@@ -121,8 +121,9 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 	 *	Always get the configured password, for each user.
 	 */
 	password = pairfind(handler->configured, PW_PASSWORD);
-	if (password == NULL) {
-		radlog(L_INFO, "rlm_eap_leap: No password configured for this user");
+	if (!password) password = pairfind(handler->configured, PW_NT_PASSWORD);
+	if (!password) {
+		radlog(L_INFO, "rlm_eap_leap: No User-Password or NT-Password configured for this user");
 		eapleap_free(&packet);
 		return 0;
 	}

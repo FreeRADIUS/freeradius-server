@@ -207,22 +207,27 @@ int eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password,
 		return 0;
 	}
 
-	/*
-	 *	Convert the password to NT's weird Unicode format.
-	 */
-	memset(unicode, 0, sizeof(unicode));
-	for (i = 0; i < password->length; i++) {
+	if (password->attribute == PW_PASSWORD) {
 		/*
-		 *  Yes, the *even* bytes have the values,
-		 *  and the *odd* bytes are zero.
+		 *	Convert the password to NT's weird Unicode format.
 		 */
-		unicode[(i << 1)] = password->strvalue[i];
-	}
+		memset(unicode, 0, sizeof(unicode));
+		for (i = 0; i < password->length; i++) {
+			/*
+			 *  Yes, the *even* bytes have the values,
+			 *  and the *odd* bytes are zero.
+			 */
+			unicode[(i << 1)] = password->strvalue[i];
+		}
+		
+		/*
+		 *  Get the NT Password hash.
+		 */
+		md4_calc(ntpwdhash, unicode, password->length * 2);
 
-	/*
-	 *  Get the NT Password hash.
-	 */
-	md4_calc(ntpwdhash, unicode, password->length * 2);
+	} else {
+		memcpy(ntpwdhash, password->strvalue, 16);
+	}
 
 	/*
 	 *	Calculate and verify the CHAP challenge.
