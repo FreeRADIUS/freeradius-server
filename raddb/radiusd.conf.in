@@ -403,11 +403,12 @@ modules {
 	# and sample authorize{} and authenticate{} blocks 
 	ldap {
 		server = "ldap.your.domain"
-		# identity = "cn=admin,o=My Org,c=US"
+		# identity = "cn=admin,o=My Org,c=UA"
 		# password = mypass
-		basedn = "o=My Org,c=US"
+		basedn = "o=My Org,c=UA"
 		filter = "(uid=%u)"
-		access_group = "cn=clients,ou=dialup,o=My Org,c=US"
+		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
+		access_group = "cn=clients,ou=dialup,o=My Org,c=UA"
 		access_attr = "dialupAccess"
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
 		timeout = 4
