@@ -364,7 +364,7 @@ dnl # HP/UX requires linking with librt, too, to get the sem_* symbols.  :\
 	dnl    chumminess with the autoconf internals.  -chad
 	dnl PTHREADLIB="$PTHREADLIB $ac_cv_search_sem_init"
 	],
-	[],
+	[AC_MSG_ERROR(-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz)],
 	"-lpthread"
   )
 
@@ -443,6 +443,8 @@ AC_CHECK_HEADERS( \
 	sys/time.h \
 	sys/wait.h \
 	sys/security.h \
+	fcntl.h \
+	sys/fcntl.h \
 	prot.h \
 	sia.h \
 	siad.h
