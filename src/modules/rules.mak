@@ -69,7 +69,7 @@ ifneq ($(TARGET),)
 #
 #######################################################################
 $(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) -release $(RADIUSD_VERSION) \
+	$(LIBTOOL) --mode=link $(LD) \
 	-module -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
 
 #
