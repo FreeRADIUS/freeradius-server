@@ -104,8 +104,10 @@ static void mppe_GetMasterKey(uint8_t *nt_hashhash,uint8_t *nt_response,
 static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
                                int keylen,int issend);
 
+#if 0
 static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
                        uint8_t* salt,uint8_t* enckey,uint8_t* key);
+#endif
 
 void md4_calc (unsigned char *, unsigned char *, unsigned int);
 
@@ -440,10 +442,7 @@ static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
 	md4_calc(nt_hashhash,nt_hash,16);
 
 	mppe_chap2_get_keys128(nt_hashhash,response,enckey1,enckey2);
-
-/*	Not requiered, because encoding will be performed by
-	tunnel_pwencode
-
+#if 0
 	salt[0] = (vector[0] ^ vector[1] ^ 0x3A) | 0x80;
 	salt[1] = (vector[2] ^ vector[3] ^ vector[4]);
 
@@ -453,7 +452,7 @@ static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
 	salt[1] = (vector[5] ^ vector[6] ^ vector[7]);
 
 	mppe_gen_respkey(secret,vector,salt,enckey2,recvkey);
-*/
+#endif
 	memcpy (sendkey, enckey1, 16);
 	memcpy (recvkey, enckey2, 16);
 }
@@ -550,6 +549,10 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
        memcpy(sesskey,digest,keylen);
 }
 
+
+#if 0
+/*	Not requiered, because encoding will be performed by
+	tunnel_pwencode */
 static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
                        uint8_t* salt,uint8_t* enckey,uint8_t* key)
 {
@@ -587,6 +590,7 @@ static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
        memcpy(key,salt,2);
        memcpy(key + 2,plain,32);
 }
+#endif /* 0 */
 
 
 /*
