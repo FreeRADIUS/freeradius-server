@@ -271,6 +271,7 @@ typedef struct policy_state_t {
 	rlm_policy_t	*inst;
 	REQUEST		*request; /* so it's not passed on the C stack */
 	int		rcode;	/* for functions, etc. */
+	int		component; /* for calling other modules */
 	int		depth;
 	const policy_item_t *stack[POLICY_MAX_STACK];
 } policy_state_t;
@@ -981,6 +982,15 @@ static int evaluate_module(policy_state_t *state, const policy_item_t *item)
 
 	this = (const policy_module_t *) item;
 
+	/*
+	 *	Just to be paranoid.  Maybe we want to loosen this
+	 *	restriction in the future?
+	 */
+	if (this->component != state->component) {
+		DEBUG2("rlm_policy: Cannot mix & match components");
+		return 0;
+	}
+
 	DEBUG2("rlm_policy: begin nested call");
 	state->rcode = modcall(this->component, this->mc, state->request);
 	DEBUG2("rlm_policy: end nested call");
@@ -1071,6 +1081,8 @@ int rlm_policy_evaluate(rlm_policy_t *inst, REQUEST *request, const char *name)
 	state->request = request;
 	state->inst = inst;
 	state->rcode = RLM_MODULE_OK;
+	state->component = lrad_str2int(policy_component_names, name,
+					RLM_COMPONENT_COUNT);
 
 	rcode = policy_evaluate_name(state, name);
 
