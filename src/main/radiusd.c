@@ -73,9 +73,8 @@ static const char rcsid[] =
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
-#include <assert.h>
-
 #include "radiusd.h"
+#include "rad_assert.h"
 #include "conffile.h"
 #include "modules.h"
 #include "request_list.h"
@@ -1073,7 +1072,7 @@ int rad_process(REQUEST *request, int dospawn)
 
 	fun = NULL;
 
-	assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->magic == REQUEST_MAGIC);
 
 	switch(request->packet->code) {
 		default:
@@ -1161,7 +1160,7 @@ int rad_process(REQUEST *request, int dospawn)
 		return 0;
 	}
 	
-	assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->magic == REQUEST_MAGIC);
 
 	/*
 	 *  The request passes many of our sanity checks.  From
@@ -1336,7 +1335,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		original = NULL;
 	}
 
-	assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->magic == REQUEST_MAGIC);
 	
 	/*
 	 *  Decode the packet, verifying it's signature,
@@ -1387,7 +1386,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *  We have the semaphore, and have decoded the packet.
 	 *  Let's process the request.
 	 */
-	assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->magic == REQUEST_MAGIC);
 
 	/* 
 	 *  FIXME:  All this lowercase/nospace junk will be moved
@@ -1469,7 +1468,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *  attributes from the request to the tail of the reply,
 	 *  and send the packet.
 	 */
-	assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->magic == REQUEST_MAGIC);
 	if (request->reply->code != 0) {
 		VALUE_PAIR *vp = NULL;
 
@@ -2188,7 +2187,7 @@ static int refresh_request(REQUEST *request, void *data)
 	time_t difference;
 	child_pid_t child_pid;
 
-	assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->magic == REQUEST_MAGIC);
 
 	/*
 	 *  If the request has finished processing,
@@ -2358,7 +2357,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  If we HAVE seen it, then we SHOULD NOT be bugging the
 	 *  home server!
 	 */
-	assert(request->proxy_reply == NULL);
+	rad_assert(request->proxy_reply == NULL);
 
 	/*
 	 *  Send the proxy packet.

@@ -29,9 +29,9 @@ static const char rcsid[] = "$Id$";
 
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "radiusd.h"
+#include "rad_assert.h"
 #include "request_list.h"
 
 /*
@@ -113,7 +113,7 @@ void rl_add(REQUEST *request)
 {
 	int id = request->packet->id;
 
-	assert(request->container == NULL);
+	rad_assert(request->container == NULL);
 
 	request->container = rad_malloc(sizeof(REQNODE));
 	((REQNODE *)request->container)->req = request;
@@ -122,12 +122,12 @@ void rl_add(REQUEST *request)
 	((REQNODE *)request->container)->next = NULL;
 
 	if (!request_list[id].first_request) {
-		assert(request_list[id].request_count == 0);
+		rad_assert(request_list[id].request_count == 0);
 
 		request_list[id].first_request = (REQNODE *)request->container;
 		request_list[id].last_request = (REQNODE *)request->container;
 	} else {
-		assert(request_list[id].request_count != 0);
+		rad_assert(request_list[id].request_count != 0);
 
 		((REQNODE *)request->container)->prev = request_list[id].last_request;
 		request_list[id].last_request->next = (REQNODE *)request->container;
@@ -244,7 +244,7 @@ REQUEST *rl_next(REQUEST *request)
 	 *	If we were passed a request, then go to the "next" one.
 	 */
 	if (request != NULL) {
-		assert(request->magic == REQUEST_MAGIC);
+		rad_assert(request->magic == REQUEST_MAGIC);
 
 		/*
 		 *	It has a "next", return it.
@@ -277,7 +277,7 @@ REQUEST *rl_next(REQUEST *request)
 		 *	This ID has a request, return it.
 		 */
 		if (request_list[id & 0xff].first_request != NULL) {
-			assert(request_list[id&0xff].first_request->req != request);
+			rad_assert(request_list[id&0xff].first_request->req != request);
 
 			return request_list[id & 0xff].first_request->req;
 		}

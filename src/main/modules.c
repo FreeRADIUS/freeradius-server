@@ -30,7 +30,6 @@ static const char rcsid[] = "$Id$";
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "radiusd.h"
 #include "modpriv.h"

@@ -29,10 +29,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <semaphore.h>
-#include <assert.h>
 #include <signal.h>
 
 #include "radiusd.h"
+#include "rad_assert.h"
 #include "conffile.h"
 
 static const char rcsid[] =
@@ -193,22 +193,22 @@ static void delete_thread(THREAD_HANDLE *handle)
 	THREAD_HANDLE *prev;
 	THREAD_HANDLE *next;
 
-	assert(handle->request == NULL);
+	rad_assert(handle->request == NULL);
 
 	prev = handle->prev;
 	next = handle->next;
-	assert(thread_pool.total_threads > 0);
+	rad_assert(thread_pool.total_threads > 0);
 	thread_pool.total_threads--;
 
 	if (prev == NULL) {
-		assert(thread_pool.head == handle);
+		rad_assert(thread_pool.head == handle);
 		thread_pool.head = next;
 	} else {
 		prev->next = next;
 	}
   
 	if (next == NULL) {
-		assert(thread_pool.tail == handle);
+		rad_assert(thread_pool.tail == handle);
 		thread_pool.tail = prev;
 	} else {
 		next->prev = prev;
@@ -231,8 +231,8 @@ static void move2tail(THREAD_HANDLE *handle)
 	 *	Empty list: add it to the head.
 	 */
 	if (thread_pool.head == NULL) {
-		assert(thread_pool.tail == NULL);
-		assert(thread_pool.total_threads == 1);
+		rad_assert(thread_pool.tail == NULL);
+		rad_assert(thread_pool.total_threads == 1);
 
 		handle->prev = NULL;
 		handle->next = NULL;
@@ -241,7 +241,7 @@ static void move2tail(THREAD_HANDLE *handle)
 		return;
 	}
 
-	assert(thread_pool.total_threads >= 1);
+	rad_assert(thread_pool.total_threads >= 1);
 	prev = handle->prev;
 	next = handle->next;
   
@@ -256,7 +256,7 @@ static void move2tail(THREAD_HANDLE *handle)
 		 *	there's no more work to do.
 		 */
 		if (next == NULL) {
-			assert(thread_pool.tail == handle);
+			rad_assert(thread_pool.tail == handle);
 			return;
 		}
 
@@ -264,7 +264,7 @@ static void move2tail(THREAD_HANDLE *handle)
 		 *	Maybe it's at the head of the list?
 		 */
 		if (prev == NULL) {
-			assert(thread_pool.head == handle);
+			rad_assert(thread_pool.head == handle);
 			thread_pool.head = next;
 			next->prev = NULL;
 
@@ -273,8 +273,8 @@ static void move2tail(THREAD_HANDLE *handle)
 			 *	Unlink it, then.
 			 */
 		} else {
-			assert(prev != NULL); /* be explicit about it. */
-			assert(next != NULL); /* be explicit about it. */
+			rad_assert(prev != NULL); /* be explicit about it. */
+			rad_assert(next != NULL); /* be explicit about it. */
 
 			prev->next = next;
 			next->prev = prev;
@@ -286,7 +286,7 @@ static void move2tail(THREAD_HANDLE *handle)
 	 */
 	handle->next = NULL;
 	prev = thread_pool.tail;
-	assert(prev->next == NULL);
+	rad_assert(prev->next == NULL);
 
 	thread_pool.tail = handle;
 	handle->prev = prev;

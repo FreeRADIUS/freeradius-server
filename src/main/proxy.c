@@ -37,9 +37,9 @@ static const char rcsid[] = "$Id$";
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include <assert.h>
 
 #include "radiusd.h"
+#include "rad_assert.h"
 
 
 static uint32_t proxy_id = 1;
@@ -254,7 +254,7 @@ int proxy_send(REQUEST *request)
 		request->proxy->dst_port = realm->auth_port;
 	else
 		request->proxy->dst_port = realm->acct_port;
-	assert(request->proxy->vps == NULL);
+	rad_assert(request->proxy->vps == NULL);
 	request->proxy->vps = vps;
 
 	/*

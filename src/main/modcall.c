@@ -20,10 +20,10 @@
  * Copyright 2000  The FreeRADIUS server project
  */
 
-#include <assert.h>
 #include <string.h>
 #include <stdarg.h>
 #include "radiusd.h"
+#include "rad_assert.h"
 #include "conffile.h"
 #include "modpriv.h"
 #include "modules.h"
@@ -61,12 +61,12 @@ typedef struct {
  * so we often want to go back and forth between them. */
 static modsingle *mod_callabletosingle(modcallable *p)
 {
-	assert(p->type==MOD_SINGLE);
+	rad_assert(p->type==MOD_SINGLE);
 	return (modsingle *)p;
 }
 static modgroup *mod_callabletogroup(modcallable *p)
 {
-	assert(p->type==MOD_GROUP);
+	rad_assert(p->type==MOD_GROUP);
 	return (modgroup *)p;
 }
 static modcallable *mod_singletocallable(modsingle *p)
@@ -90,7 +90,7 @@ static void add_child(modgroup *g, modcallable *c)
 		node = node->next;
 	}
 
-	assert(c->next == NULL);
+	rad_assert(c->next == NULL);
 	*last = c;
 }
 
@@ -619,7 +619,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	memcpy(csingle->actions,
 			defaultactions[component][grouptype],
 			sizeof csingle->actions);
-	assert(modrefname != NULL);
+	rad_assert(modrefname != NULL);
 	csingle->name = modrefname;
 	csingle->type = MOD_SINGLE;
 
@@ -665,7 +665,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 	memcpy(c->actions, defaultactions[component][parentgrouptype],
 		sizeof c->actions);
 	c->name = cf_section_name1(cs);
-	assert(c->name != NULL);
+	rad_assert(c->name != NULL);
 	c->type = MOD_GROUP;
 	g->children = NULL;
 
@@ -733,7 +733,7 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 		memcpy(c->actions,
 				defaultactions[component][GROUPTYPE_SIMPLEGROUP],
 				sizeof c->actions);
-		assert(name != NULL);
+		rad_assert(name != NULL);
 		c->name = name;
 		c->type = MOD_GROUP;
 		g->children = NULL;

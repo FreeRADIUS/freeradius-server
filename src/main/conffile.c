@@ -31,13 +31,13 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #if HAVE_NETINET_IN_H
 #	include <netinet/in.h>
 #endif
 
 #include "radiusd.h"
+#include "rad_assert.h"
 #include "conffile.h"
 #include "token.h"
 #include "modules.h"
@@ -95,14 +95,14 @@ CONF_PAIR *cf_itemtopair(CONF_ITEM *ci)
 {
 	if (ci == NULL)
 		return NULL;
-	assert(ci->type == CONF_ITEM_PAIR);
+	rad_assert(ci->type == CONF_ITEM_PAIR);
 	return (CONF_PAIR *)ci;
 }
 CONF_SECTION *cf_itemtosection(CONF_ITEM *ci)
 {
 	if (ci == NULL)
 		return NULL;
-	assert(ci->type == CONF_ITEM_SECTION);
+	rad_assert(ci->type == CONF_ITEM_SECTION);
 	return (CONF_SECTION *)ci;
 }
 CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp)

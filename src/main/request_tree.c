@@ -24,10 +24,10 @@
 static const char rcsid[] =
 "$Id$";
 
-#include <assert.h>
 #include "autoconf.h"
 #include "request_storage.h"
 #include "radiusd.h"
+#include "rad_assert.h"
 
 #define forestsize 256
 #define NODE_MAGIC 0xfedfeeb0
@@ -74,7 +74,7 @@ REQUEST *rt_next(REQUEST *item) {
 }
 
 void rt_add(REQUEST *item) {
-	assert(item->container == NULL);
+	rad_assert(item->container == NULL);
 	do_rt_add(&(reqtreehead[item->packet->id%forestsize]), item);
 }
 
@@ -132,15 +132,15 @@ static void do_rt_walk(REQTREE **tree, RL_WALK_FUNC fun, void *data) {
 	if (self == NULL)
 		return;
 
-	assert(self->magic == NODE_MAGIC);
+	rad_assert(self->magic == NODE_MAGIC);
 
 	if (self->leftbranch != NULL) {
-		assert(self->leftbranch->parent == self);
+		rad_assert(self->leftbranch->parent == self);
 		do_rt_walk(&(self->leftbranch), fun, data);
 	}
 
 	if (self->rightbranch != NULL) {
-		assert(self->rightbranch->parent == self);
+		rad_assert(self->rightbranch->parent == self);
 		do_rt_walk(&(self->rightbranch), fun, data);
 	}
 
@@ -163,11 +163,11 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 		return;
 	}
 
-	assert(self->magic == NODE_MAGIC);
-	assert((self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
-	assert((self->parent == NULL) || (self->parent->leftbranch == self) || (self->parent->rightbranch == self));
-	assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
-	assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
+	rad_assert(self->magic == NODE_MAGIC);
+	rad_assert((self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
+	rad_assert((self->parent == NULL) || (self->parent->leftbranch == self) || (self->parent->rightbranch == self));
+	rad_assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
+	rad_assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
 
 	REQCOMPARE( cmp = -1, cmp = 1, cmp = 0 );
 
@@ -180,7 +180,7 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 		printf("ERROR: attempted insert of request with same values -- %d, %d, %d\n", reqobject->packet->code, reqobject->packet->src_port, reqobject->packet->src_ipaddr);
 		return;
 	}  /* or */   /* FIXME -- decide which to do */
-	assert(cmp != 0);  /* these aren't allowed */
+	rad_assert(cmp != 0);  /* these aren't allowed */
 
 	if (cmp < 0) {
 		if (self->leftbranch == NULL) {
@@ -193,9 +193,9 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 			(REQTREE *)reqobject->container = self->leftbranch;
 			numberrequests += 1;
 		} else {
-			assert(self->leftbranch->magic == NODE_MAGIC);
-			assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
-			assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
+			rad_assert(self->leftbranch->magic == NODE_MAGIC);
+			rad_assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
+			rad_assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
 			do_rt_add(&(self->leftbranch), reqobject);
 		}
 	} else {
@@ -209,9 +209,9 @@ static void do_rt_add(REQTREE **tree, REQUEST *reqobject) {
 			(REQTREE *)reqobject->container = self->rightbranch;
 			numberrequests += 1;
 		} else {
-			assert(self->rightbranch->magic == NODE_MAGIC);
-			assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
-			assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
+			rad_assert(self->rightbranch->magic == NODE_MAGIC);
+			rad_assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
+			rad_assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
 			do_rt_add(&(self->rightbranch), reqobject);
 		}
 	}
@@ -228,21 +228,21 @@ static void do_rt_delete(REQUEST *reqobject) {
 
 	self = (REQTREE *)reqobject->container;
 
-	assert(self != NULL);
-	assert(self->magic == NODE_MAGIC);
-	assert((self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
-	assert((self->parent == NULL) || ((self->parent->rightbranch == self) || (self->parent->leftbranch == self)));
-	assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
-	assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
-	assert((self->leftbranch == NULL) || (self->leftbranch->req->packet->code <= self->req->packet->code));
-	assert((self->rightbranch == NULL) || (self->req->packet->code <= self->rightbranch->req->packet->code));
-	assert((self->rightbranch == NULL) || (self->leftbranch == NULL) || (self->leftbranch->req->packet->code <= self->rightbranch->req->packet->code));
+	rad_assert(self != NULL);
+	rad_assert(self->magic == NODE_MAGIC);
+	rad_assert((self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
+	rad_assert((self->parent == NULL) || ((self->parent->rightbranch == self) || (self->parent->leftbranch == self)));
+	rad_assert((self->rightbranch == NULL) || (self->rightbranch->parent == self));
+	rad_assert((self->leftbranch == NULL) || (self->leftbranch->parent == self));
+	rad_assert((self->leftbranch == NULL) || (self->leftbranch->req->packet->code <= self->req->packet->code));
+	rad_assert((self->rightbranch == NULL) || (self->req->packet->code <= self->rightbranch->req->packet->code));
+	rad_assert((self->rightbranch == NULL) || (self->leftbranch == NULL) || (self->leftbranch->req->packet->code <= self->rightbranch->req->packet->code));
 
-	assert(reqobject != NULL);  
+	rad_assert(reqobject != NULL);  
 
 	doppelganger = self;
 
-	assert(self != NULL);  
+	rad_assert(self != NULL);  
 	if ((self->rightbranch == NULL) || (self->leftbranch == NULL)) { /* easy -- link-up only child */
 		REQTREE *onlychild;
 		onlychild = (self->rightbranch == NULL) ? self->leftbranch : self->rightbranch;
@@ -252,7 +252,7 @@ static void do_rt_delete(REQUEST *reqobject) {
 		}
 
 		if (self->parent != NULL) {  
-			assert(self->parent != self);
+			rad_assert(self->parent != self);
 			if (self->parent->rightbranch == self) {
 				self->parent->rightbranch = onlychild;
 			} else {
@@ -270,8 +270,8 @@ static void do_rt_delete(REQUEST *reqobject) {
 			graftpoint = graftpoint->leftbranch;
 		}
 
-		assert(graftpoint != NULL);
-		assert(graftpoint->leftbranch == NULL);
+		rad_assert(graftpoint != NULL);
+		rad_assert(graftpoint->leftbranch == NULL);
 
 		/* reattach left side to right's leftmost free spot */
 		self->leftbranch->parent = graftpoint;
@@ -280,7 +280,7 @@ static void do_rt_delete(REQUEST *reqobject) {
 		/* link up right side */
 		self->rightbranch->parent = self->parent;
 		if (self->parent != NULL) {  
-			assert(self->parent != self);
+			rad_assert(self->parent != self);
 			if (self->parent->rightbranch == self) {
 				self->parent->rightbranch = self->rightbranch;
 			} else {
@@ -291,11 +291,11 @@ static void do_rt_delete(REQUEST *reqobject) {
 		}
 	}
 
-	assert((self == NULL) || (self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
-	assert((self == NULL) || (self->rightbranch == NULL) || (self->rightbranch->magic == NODE_MAGIC));
-	assert((self == NULL) || (self->leftbranch == NULL) || (self->leftbranch->magic == NODE_MAGIC));
+	rad_assert((self == NULL) || (self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
+	rad_assert((self == NULL) || (self->rightbranch == NULL) || (self->rightbranch->magic == NODE_MAGIC));
+	rad_assert((self == NULL) || (self->leftbranch == NULL) || (self->leftbranch->magic == NODE_MAGIC));
 
-	assert(doppelganger->magic == NODE_MAGIC);
+	rad_assert(doppelganger->magic == NODE_MAGIC);
 
 	numberrequests -= 1;
 
@@ -313,8 +313,8 @@ static REQUEST *do_rt_find(REQTREE **tree, REQUEST *reqobject) {
 		return(NULL);
 	}
 
-	assert(self->magic == NODE_MAGIC);
-	assert((self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
+	rad_assert(self->magic == NODE_MAGIC);
+	rad_assert((self->parent == NULL) || (self->parent->magic == NODE_MAGIC));
 
 	REQCOMPARE( do_rt_find(&(self->leftbranch), reqobject), do_rt_find(&(self->rightbranch), reqobject), return(self->req) );
 
@@ -329,7 +329,7 @@ static REQUEST *do_rt_next(REQUEST *reqobject) {
 
 	if (reqobject != NULL) {
 		ptr = ((REQTREE *)reqobject->container);
-		assert(ptr != NULL);
+		rad_assert(ptr != NULL);
 
 		if (ptr->parent != NULL) {
 			if ((ptr->parent->leftbranch == ptr) && 
@@ -347,7 +347,7 @@ static REQUEST *do_rt_next(REQUEST *reqobject) {
 			while (reqtreehead[i] == NULL) {
 				i = (i + 1) % 256;
 			}
-			assert(reqtreehead[i] != NULL);
+			rad_assert(reqtreehead[i] != NULL);
 
 			next = reqtreehead[i];
 			while (next->leftbranch) {

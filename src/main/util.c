@@ -203,3 +203,14 @@ void xfree(const char *ptr)
 {
 	free((char *)ptr);
 }
+
+/*
+ *	Logs an error message and aborts the program
+ *
+ */
+
+void rad_assert_fail (const char *file, unsigned int line)
+{
+	radlog(L_ERR|L_CONS, "Assertion failed in %s, line %u", file, line);
+	abort();
+}
