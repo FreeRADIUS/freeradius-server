@@ -25,7 +25,9 @@ AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
 dnl # The version of the software, 0.5
-RADIUSD_VERSION=0.5
+RADIUSD_MAJOR_VERSION=0
+RADIUSD_MINOR_VERSION=5
+RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
 
 dnl #############################################################
 dnl #
