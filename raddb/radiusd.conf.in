@@ -398,13 +398,17 @@ modules {
 		delimiter = "@"
 	}
 
+	#
 	#  'realm/username'
+	#
+	#  Using this entry, IPASS users have their realm set to "IPASS".
 	#
 	#realm prefix {
 	#	format = prefix
 	#	delimiter = "/"
 	#}
 
+	#
 	#  'username%realm'
 	#
 	#realm percent {
@@ -412,6 +416,7 @@ modules {
 	#	delimiter = "%"
 	#}
 	
+
 	preprocess {
 		huntgroups = ${confdir}/huntgroups
 		hints = ${confdir}/hints
@@ -646,5 +651,5 @@ accounting {
 # Session database, used for checking Simultaneous-Use. The radutmp module
 # handles this
 session {
-       radutmp
+#       radutmp
 }
