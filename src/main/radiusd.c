@@ -935,7 +935,7 @@ int rad_respond(REQUEST *request)
 		 *	is done handling the request, but the request
 		 *	is NOT finished!
 		 */
-		if (sent != 0 || sent != 2) {
+		if (sent == 1) {
 #ifdef WITH_THREAD_POOL
 			request->child_pid = NO_SUCH_CHILD_PID;
 #endif
