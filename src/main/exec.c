@@ -209,7 +209,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		envlen = 0;
 
-		for (vp = input_pairs; vp->next; vp = vp->next) {
+		for (vp = input_pairs; vp && vp->next; vp = vp->next) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment
@@ -230,9 +230,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			envp[envlen++] = strdup(buffer);
 		}
 		envp[envlen] = NULL;
-
 		execve(argv[0], argv, envp);
-
 		radlog(L_ERR, "Exec-Program: FAILED to execute %s: %s",
 		       argv[0], strerror(errno));
 		exit(1);
@@ -313,7 +311,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	close(pd[0]);
 
-	DEBUG2("ANSWER %s", answer);
+	DEBUG2("Exec-Program output: %s", answer);
 
 	/*
 	 *	Parse the output, if any.
@@ -387,6 +385,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		}
 	}
 
-	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit");
+	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit: %s",
+	       strerror(errno));
 	return 1;
 }
