@@ -95,16 +95,16 @@ for(;;){
 					($year,$mon,$mday,$hour,$min,$sec)=UnixDate($date2,'%Y','%m','%d','%H','%M','%S');
 				}
 				$time = "$year-$mon-$mday $hour:$min:$sec";
-				if (/\[([\w\-\.\!]+?)\]\s+\(from (.+?)\)/){
+				if (/\[([\w\-\.\!\@]+?)\]\s+\(from (.+?)\)/){
 					$user = $1;
 					($nas,$port,$caller) = (split /\s+/,$2)[1,3,5];
 				}
-				elsif (/\[([\w\-\.\!]+?)\/.+?\]\s+\(from (.+?)\)/){
+				elsif (/\[([\w\-\.\!\@]+?)\/.+?\]\s+\(from (.+?)\)/){
 					$user = $1;
 					($nas,$port,$caller) = (split /\s+/,$2)[1,3,5];
 				}
 				$caller='' if (!defined($caller));
-				$user =~s/[^\w\-\.\d\!]//g;
+				$user =~s/[^\w\-\.\d\!\@]//g;
 				$nas =~s/[^\w\.]//g;
 				if ($nas ne 'localhost' && $nas !~ /\.$domain$/){
 					$nas .= ".$domain";

@@ -59,6 +59,7 @@ Ver 1.62:
 * Add a few comments in the tot_stats and monthly_tot_stats scripts
 * Add support for ! in usernames in log_badlogins
 * Call gethostbyaddr with an @ in front to suppress error messages
+* Also add support for @ in usernames in log_badlogins
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
