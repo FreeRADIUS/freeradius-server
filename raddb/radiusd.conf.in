@@ -1677,6 +1677,11 @@ preacct {
 	preprocess
 
 	#
+	#  Ensure that we have a semi-unique identifier for every
+	#  request, and many NAS boxes are broken.
+	acct_unique
+
+	#
 	#  Look for IPASS-style 'realm/', and if not found, look for
 	#  '@realm', and decide whether or not to proxy, based on
 	#  that.
@@ -1695,11 +1700,6 @@ preacct {
 #  Accounting.  Log the accounting data.
 #
 accounting {
-	#
-	#  Ensure that we have a semi-unique identifier for every
-	#  request, and many NAS boxes are broken.
-	acct_unique
-
 	#
 	#  Create a 'detail'ed log of the packets.
 	#  Note that accounting requests which are proxied

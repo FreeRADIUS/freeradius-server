@@ -138,9 +138,11 @@ int rad_accounting(REQUEST *request)
 	 *	We get here IF we're not proxying, OR if we've
 	 *	received the accounting reply from the end server,
 	 *	THEN we can reply to the NAS.
+	 *      If the accounting module returns NOOP, the data
+	 *      storage did not succeed, so radiusd should not send
+	 *      Accounting-Response.
 	 */
-	if (reply == RLM_MODULE_NOOP ||
-	    reply == RLM_MODULE_OK ||
+	if (reply == RLM_MODULE_OK ||
 	    reply == RLM_MODULE_UPDATED) {
 
 		/*
