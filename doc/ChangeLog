@@ -1,4 +1,11 @@
-FreeRADIUS 1.0.1 ; $Date$, urgency=high
+FreeRADIUS 1.0.2 ; $Date$, urgency=medium
+	* Bug fix to make udpfromto code work
+	* radrelay shouldn't dump core if it can't read a VP from the
+	  detail file.
+	* Only initialize the random pool once.
+	* In rlm_sql, don't escape characters twice.
+	
+FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03 , urgency=high
 	Denial-of-Service Security Fix
 	* Fix two remote crashes and a memory leak in RADIUS packet
 	  decoding.
