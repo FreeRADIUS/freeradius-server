@@ -156,8 +156,8 @@ SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	/*
 	 * set the message callback to identify the type of message.
 	 * For every new session, there can be a different callback argument
-	 */
 	SSL_CTX_set_msg_callback(ctx, cbtls_msg);
+	 */
 
 	/* Set Info callback */
 	SSL_CTX_set_info_callback(ctx, cbtls_info);
@@ -323,6 +323,8 @@ int tls_handshake_recv(tls_session_t *ssn)
 		} else {
 			radlog(L_ERR, "rlm_eap_tls: BIO_read Error");
 			int_ssl_check(ssn->ssl, err);
+			record_init(&ssn->dirty_in);
+			return 0;
 		}
 	} else {
 		radlog(L_INFO, "rlm_eap_tls: Application Data");

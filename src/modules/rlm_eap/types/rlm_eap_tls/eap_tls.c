@@ -218,7 +218,10 @@ eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 	tls_session_t *tls_session;
 
 	tls_session = (tls_session_t *)handler->opaque;
-	if ((tls_session == NULL) || (tls_session->info.origin == 0)) {
+	if ((tls_session == NULL) || 
+		(tls_session->fragment == 0) || 
+		(tls_session->info.origin == 0)) {
+
 		radlog(L_ERR, "rlm_eap_tls: Unexpected ACK received");
 		return EAPTLS_NOOP;
 	}
@@ -583,9 +586,12 @@ void eaptls_operation(EAPTLS_PACKET *eaptls_packet, eaptls_status_t status, EAP_
 		 * Authenticate the user and send Success/Failure
 		 * If more info is required then send another request.
 		 */
-		tls_handshake_recv(tls_session);
-		eaptls_request(handler->eap_ds, tls_session);
-		record_init(&tls_session->dirty_in);
+		if (tls_handshake_recv(tls_session)) {
+			eaptls_request(handler->eap_ds, tls_session);
+		} else {
+			eaptls_fail(handler->eap_ds);
+		}
+		//record_init(&tls_session->dirty_in);
 	}
 	return;
 }
