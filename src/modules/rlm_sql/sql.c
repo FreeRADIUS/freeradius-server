@@ -324,16 +324,45 @@ int sql_save_acct(SQL_INST *inst, SQLSOCK *sqlsocket, SQLACCTREC *sqlrecord) {
 		 * Insert new record with blank stop time until stop record is got 
 		 */
 		snprintf(querystr, 2048,
-						 "INSERT INTO %s VALUES (0, '%s', '%s', '%s', '%s', '%s', %ld, '%s', '%s', 0, 0, '%s', '%s', '', 0, 0, '%s', '%s', '', '%s', '%s', '%s', %ld, 0)",
-						 inst->config->sql_acct_table, sqlrecord->AcctSessionId, 
-						 sqlrecord->AcctUniqueId, sqlrecord->UserName, 
-						 sqlrecord->Realm, sqlrecord->NASIPAddress,
-						 sqlrecord->NASPortId, sqlrecord->NASPortType,
-						 sqlrecord->AcctTimeStamp, sqlrecord->AcctAuthentic,
-						 sqlrecord->ConnectInfo, sqlrecord->CalledStationId,
-						 sqlrecord->CallingStationId, sqlrecord->ServiceType,
-						 sqlrecord->FramedProtocol, sqlrecord->FramedIPAddress,
-						 sqlrecord->AcctDelayTime);
+            "INSERT INTO %s ("
+            "radacctid,"
+            "acctsessionid,"
+            "acctuniqueid,"
+            "username,"
+            "realm,"
+            "nasipaddress,"
+            "nasportid,"
+            "nasporttype,"
+            "acctstarttime,"
+            "acctstoptime,"
+            "acctsessiontime,"
+            "acctauthentic,"
+            "connectinfo_start,"
+            "connectinfo_stop,"
+            "acctinputoctets,"
+            "acctoutputoctets,"
+            "calledstationid,"
+            "callingstationid,"
+            "acctterminatecause,"
+            "servicetype,"
+            "framedprotocol,"
+            "framedipaddress,"
+            "acctstartdelay,"
+            "acctstopdelay) "
+            "VALUES (0,"
+            "'%s', '%s', '%s', '%s', '%s', %ld, '%s', '%s',NULL,"
+            "0, '%s', '%s', '', 0, 0,"
+            "'%s', '%s', '', '%s', '%s', '%s', %ld, 0)",
+            inst->config->sql_acct_table, sqlrecord->AcctSessionId, 
+            sqlrecord->AcctUniqueId, sqlrecord->UserName, 
+            sqlrecord->Realm, sqlrecord->NASIPAddress,
+            sqlrecord->NASPortId, sqlrecord->NASPortType,
+            sqlrecord->AcctTimeStamp, sqlrecord->AcctAuthentic,
+            sqlrecord->ConnectInfo, sqlrecord->CalledStationId,
+            sqlrecord->CallingStationId, sqlrecord->ServiceType,
+            sqlrecord->FramedProtocol, sqlrecord->FramedIPAddress,
+            sqlrecord->AcctDelayTime);
+
 
 		if (sql_query(inst, sqlsocket, querystr) < 0) {
 			radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting START record - %s",
@@ -425,18 +454,47 @@ int sql_save_acct(SQL_INST *inst, SQLSOCK *sqlsocket, SQLACCTREC *sqlrecord) {
 			 * Insert record with no start time until matching start record comes 
 			 */
 			snprintf(querystr, 2048,
-							 "INSERT INTO %s VALUES (0, '%s', '%s', '%s', '%s', '%s', %ld, '%s', 0, '%s', '%lu', '%s', '', '%s', '%lu', '%lu', '%s', '%s', '%s', '%s', '%s', '%s', 0, %ld)",
-							 inst->config->sql_acct_table, sqlrecord->AcctSessionId,
-							 sqlrecord->AcctUniqueId, sqlrecord->UserName, 
-							 sqlrecord->Realm, sqlrecord->NASIPAddress,
-							 sqlrecord->NASPortId, sqlrecord->NASPortType,
-							 sqlrecord->AcctTimeStamp, sqlrecord->AcctSessionTime,
-							 sqlrecord->AcctAuthentic, sqlrecord->ConnectInfo,
-							 sqlrecord->AcctInputOctets, sqlrecord->AcctOutputOctets,
-							 sqlrecord->CalledStationId, sqlrecord->CallingStationId,
-							 sqlrecord->AcctTerminateCause, sqlrecord->ServiceType,
-							 sqlrecord->FramedProtocol, sqlrecord->FramedIPAddress,
-							 sqlrecord->AcctDelayTime);
+              "INSERT INTO %s ("
+              "radacctid,"
+              "acctsessionid,"
+              "acctuniqueid,"
+              "username,"
+              "realm,"
+              "nasipaddress,"
+              "nasportid,"
+              "nasporttype,"
+              "acctstarttime,"
+              "acctstoptime,"
+              "acctsessiontime,"
+              "acctauthentic,"
+              "connectinfo_start,"
+              "connectinfo_stop,"
+              "acctinputoctets,"
+              "acctoutputoctets,"
+              "calledstationid,"
+              "callingstationid,"
+              "acctterminatecause,"
+              "servicetype,"
+              "framedprotocol,"
+              "framedipaddress,"
+              "acctstartdelay,"
+              "acctstopdelay) "
+              "VALUES ("
+              "0, '%s', '%s', '%s', '%s', '%s', %ld, '%s', NULL,"
+              "'%s', '%lu', '%s', '', '%s', '%lu', '%lu', '%s',"
+              "'%s', '%s', '%s', '%s', '%s', 0, %ld)",
+              inst->config->sql_acct_table, sqlrecord->AcctSessionId,
+              sqlrecord->AcctUniqueId, sqlrecord->UserName, 
+              sqlrecord->Realm, sqlrecord->NASIPAddress,
+              sqlrecord->NASPortId, sqlrecord->NASPortType,
+              sqlrecord->AcctTimeStamp, sqlrecord->AcctSessionTime,
+              sqlrecord->AcctAuthentic, sqlrecord->ConnectInfo,
+              sqlrecord->AcctInputOctets, sqlrecord->AcctOutputOctets,
+              sqlrecord->CalledStationId, sqlrecord->CallingStationId,
+              sqlrecord->AcctTerminateCause, sqlrecord->ServiceType,
+              sqlrecord->FramedProtocol, sqlrecord->FramedIPAddress,
+              sqlrecord->AcctDelayTime);
+
 
 			if (sql_query(inst, sqlsocket, querystr) < 0)
 				radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s",
@@ -506,7 +564,7 @@ int sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR **
 	char    authstr[256];
 	char    username[AUTH_STRING_LEN * 2 + 1];
 	SQL_ROW row;
-	int     rows;
+	int     rows=0;
 	int     length;
 
 	if (strlen(user) > AUTH_STRING_LEN)
@@ -544,14 +602,14 @@ int sql_getvpdata(SQL_INST *inst, SQLSOCK *sqlsocket, char *table, VALUE_PAIR **
 						inst->config->sql_realmgroup_table, username,
 						inst->config->sql_realmgroup_table, table, table);
 	sql_select_query(inst, sqlsocket, querystr);
-	rows = sql_num_rows(sqlsocket);
-	while ((row = sql_fetch_row(sqlsocket))) {
 
+	while ((row = sql_fetch_row(sqlsocket))) {
 		if (sql_userparse(vp, row, mode) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql:  Error getting data from database");
 			sql_finish_select_query(sqlsocket);
 			return -1;
 		}
+		rows++;
 	}
 	sql_finish_select_query(sqlsocket);
 

@@ -304,20 +304,30 @@ rlm_sql_authenticate(void *instance, REQUEST *request)
 
 	sprintf(querystr, query, inst->config->sql_authcheck_table, escaped_user);
 	sqlsocket = sql_get_socket(inst);
-	sql_select_query(inst, sqlsocket, querystr);
+	if (sql_select_query(inst, socket, querystr) < 0) {
+		radlog(L_ERR,"rlm_sql_authenticate: database query error");
+		sql_release_socket(inst, socket);
+		return RLM_MODULE_REJECT;
+	}
+
 	row = sql_fetch_row(sqlsocket);
 	sql_finish_select_query(sqlsocket);
 	sql_release_socket(inst, sqlsocket);
 	free(querystr);
 
-	if (row == NULL)
+	if (row == NULL) {
+		radlog(L_ERR,"rlm_sql_authenticate: no rows returned from query (no such user)");
 		return RLM_MODULE_REJECT;
+	}
 
-	if (strncmp(request->password->strvalue, row[0], request->password->length)
-			!= 0)
-		return RLM_MODULE_REJECT;
-	else
-		return RLM_MODULE_OK;
+	/* Just compare the two */
+	if (strncmp(request->password->strvalue,
+		row[0],
+		request->password->length) != 0) {
+			return RLM_MODULE_REJECT;
+	}
+	return RLM_MODULE_OK;
+
 }
 
 /*
