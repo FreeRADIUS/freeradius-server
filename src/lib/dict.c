@@ -234,7 +234,6 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	int	type;
 	int	vendor;
 	int	block_vendor;
-	int	is_attrib;
 	int	vendor_usr_seen = 0;
 	ATTR_FLAGS  flags;
 
@@ -311,12 +310,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		/*
 		 *	Perhaps this is an attribute.
 		 */
-		is_attrib = 0;
-		if (strcasecmp(keyword, "ATTRIBUTE") == 0)
-			is_attrib = 1;
-
-		if (is_attrib) {
-
+		if (strcasecmp(keyword, "ATTRIBUTE") == 0) {
 			vendor = 0;
 			optstr[0] = 0;
 			if(sscanf(data, "%s%s%s%s", namestr,
