@@ -79,6 +79,88 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
 	}
 }
 
+static void decode_attribute(char **from, char **to, int freespace, int *open, REQUEST *request) {
+
+	DICT_ATTR *tmpda;
+	VALUE_PAIR *tmppair;
+	char attrname[256];
+	char *p, *q, *pa;
+	int stop=0, found=0;
+	int openbraces = *open;
+
+	p = *from;
+	q = *to;
+	pa = &attrname[0];
+
+	/* 
+	 * Skip the '}' at the front of 'p' 
+	 * Increment open braces 
+	 */ 
+	p++;
+	openbraces++;
+
+	while ((*p) && (!stop)) {
+		switch(*p) {
+			case '}':
+				openbraces--;
+				stop=1;
+				break;
+
+			case ':':
+				if(*(p+1) && (*(p+1) == '-')) {
+					p+=2;
+					stop=1;
+				}
+				break;
+
+			default:
+				*pa++ = *p++;
+		}
+	}
+	*pa = '\0';
+
+	if (strncasecmp(attrname,"reply:",6) == 0) {
+		if((tmpda = dict_attrbyname(&attrname[6])) && 
+			(tmppair = pairfind(request->reply->vps, tmpda->attr))) {
+	  	q += valuepair2str(q,freespace,tmppair,tmpda->type);
+			found = 1;
+		}
+	} else if (strncasecmp(attrname,"request:",8) == 0) {
+		if((tmpda = dict_attrbyname(&attrname[8])) && 
+			(tmppair = pairfind(request->packet->vps, tmpda->attr))) {
+	  	q += valuepair2str(q,freespace,tmppair,tmpda->type);
+			found = 1;
+		}
+	} else {
+		if((tmpda = dict_attrbyname(attrname)) && 
+			(tmppair = pairfind(request->packet->vps,tmpda->attr))) {
+	  	q += valuepair2str(q,freespace,tmppair,tmpda->type);
+			found = 1;
+		}
+	} 
+
+	/*
+	 * Skip to last '}' if attr is found
+	 * The rest of the stuff within the braces is
+	 * useless if we found we we need
+	 */
+	if(found) {
+		while((*p) && (openbraces)) {
+			if(*p == '}') 
+				openbraces--;
+			if(openbraces)
+				p++;
+		}
+	} else {
+		p--;
+	}
+
+	*open = openbraces;
+	*from = p;
+	*to = q;
+
+}
+
 
 /*
  *	Based on radius_xlat from exec.c
@@ -96,14 +178,15 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
  *	%n	 NAS IP address
  *	%p	 Port number
  *	%s	 Speed (PW_CONNECT_INFO)
- *	%t	 MTU
+ *	%t	 request in ctime format
  *	%u	 User name
  *	%A	 radacct_dir
  *	%C	 clientname
  *	%D	 request date (YYYYMMDD)
- *	%I	 request in ctime format
  *	%L	 radlog_dir
+ *	%M	 MTU
  *	%R	 radius_dir
+ *	%S	 request timestamp in database format (w/ spaces)
  *	%T	 request timestamp in database format
  *	%U	 Stripped User name
  *	%V	 Request-Authenticator (Verified/None)
@@ -116,14 +199,13 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
 
 int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 {
-	char attrname[128];
-	char *pa;
 	int i, c,freespace;
 	const char *p;
 	char *q;
 	VALUE_PAIR *tmp;
 	struct tm * TM;
 	char tmpdt[40]; /* For temporary storing of dates */
+	int openbraces=0;
 
 	q = out;
 	for (p = fmt; *p ; p++) {
@@ -133,6 +215,15 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 		  break;
 		c = *p;
 		if ((c != '%') && (c != '$') && (c != '\\')) {
+			/*
+			 * We check if we're inside an open brace.  If we are
+			 * then we assume this brace is NOT literal, but is
+			 * a closing brace and apply it 
+			 */
+			if((c == '}') && openbraces) {
+				openbraces--;
+				continue;
+			}
 			*q++ = *p;
 			continue;
 		}
@@ -153,28 +244,15 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 				break;
 		} else if (c == '$') switch(*p) {
 			case '{': /* Attribute by Name */
-		decode_attribute: 
-			pa = &attrname[0];
-				p++;
-				while (*p && (*p != '}')) {
-				  *pa++ = *p++;
-				}
-				*pa = '\0';
-				if (strncasecmp(attrname,"reply:",6) == 0) {
-				  q += valuebyname(q,freespace,request->reply->vps,&attrname[6]);
-				} else if (strncasecmp(attrname,"request:",8) == 0) {
-				  q += valuebyname(q,freespace,request->packet->vps,&attrname[8]);
-				} else {
-				  q += valuebyname(q,freespace,request->packet->vps,attrname);
-				}
-				break;
+				decode_attribute((char **)&p, &q, freespace, &openbraces, request);
 			default:
 				*q++ = c;
 				*q++ = *p;
 				break;
+
 		} else if (c == '%') switch(*p) {
 			case '{':
-				goto decode_attribute;
+				decode_attribute((char **)&p, &q, freespace, &openbraces, request);
 				break;
 
 			case '%':
@@ -218,8 +296,9 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 			case 's': /* Speed */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING);
 				break;
-			case 't': /* MTU */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU),PW_TYPE_INTEGER);
+			case 't': /* request timestamp */
+				strNcpy(q,ctime(&request->timestamp),freespace);
+				q += strlen(q);
 				break;
 			case 'u': /* User name */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING);
@@ -238,16 +317,21 @@ int radius_xlat2(char * out,int outlen, const char *fmt, REQUEST * request)
 				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				break;
-			case 'I': /* request timestamp */
-				strNcpy(q,ctime(&request->timestamp),freespace);
-				q += strlen(q);
-				break;
 			case 'L': /* radlog_dir */
 				strNcpy(q,radlog_dir,freespace-1);
 				q += strlen(q);
 				break;
+			case 'M': /* MTU */
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU),PW_TYPE_INTEGER);
+				break;
 			case 'R': /* radius_dir */
 				strNcpy(q,radius_dir,freespace-1);
+				q += strlen(q);
+				break;
+			case 'S': /* request timestamp in SQL format*/
+				TM = localtime(&request->timestamp);
+				strftime(tmpdt,sizeof(tmpdt),"%Y%m%d%H%M%S",TM);
+				strNcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				break;
 			case 'T': /* request timestamp */
