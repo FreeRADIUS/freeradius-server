@@ -116,7 +116,7 @@ static void	sig_fatal (int);
 static void	sig_hup (int);
 
 static int	rad_process (REQUEST *, int);
-static int	rad_clean_list(int);
+static int	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 #ifndef WITH_THREAD_POOL
@@ -626,14 +626,14 @@ int main(int argc, char **argv)
 			 *	request list.
 			 */
 			if (errno == EINTR) {
-				rad_clean_list(FALSE);
+				rad_clean_list();
 				continue;
 			}
 			sig_fatal(101);
 		}
 		if (status == 0) {
 			proxy_retry();
-			rad_clean_list(FALSE);
+			rad_clean_list();
 		}
 		for (i = 0; i < 3; i++) {
 
@@ -742,7 +742,7 @@ int main(int argc, char **argv)
 			 *	check if we've got to delete old requests
 			 *	from the request list.
 			 */
-			rad_clean_list(FALSE);
+			rad_clean_list();
 		}
 	}
 }
@@ -973,7 +973,7 @@ int rad_respond(REQUEST *request)
  *	- killing any processes which are NOT finished after a delay
  *	- deleting any requests which are finished, and expired
  */
-static int rad_clean_list(int force)
+static int rad_clean_list(void)
 {
 	REQUEST		*curreq;
 	REQUEST		*prevreq;
@@ -989,8 +989,7 @@ static int rad_clean_list(int force)
 	 *  Don't bother checking the list if we've done it
 	 *  within the last second.
 	 */
-	if ((force == FALSE) &&
-	    ((curtime - last_cleaned_list) == 0)) {
+	if ((curtime - last_cleaned_list) == 0) {
 		return FALSE;
 	}
 
@@ -1139,6 +1138,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 	int		request_count;
 	REQUEST_LIST	*request_list_entry;
 	int		i;
+	time_t		curtime;
+	int		id;
 
 	/*
 	 *	If the request has come in on the proxy FD, then
@@ -1166,6 +1167,8 @@ static REQUEST *rad_check_list(REQUEST *request)
 	prevreq = NULL;
 	pkt = request->packet;
 	request_count = 0;
+	curtime = time(NULL);
+	id = pkt->id;
 
 	/*
 	 *	When mucking around with the request list, we block
@@ -1176,7 +1179,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 
 	while (curreq != NULL) {
 		assert(curreq->packet->id == pkt->id);
-		request_count++;
 
 		/*
 		 *	Let's see if we received a duplicate of
@@ -1256,10 +1258,55 @@ static REQUEST *rad_check_list(REQUEST *request)
 		  }
 		}
 
-		prevreq = curreq;
-		curreq = curreq->next;
-	} /* end of walking the request list */
+		/*
+		 *	Ugh... duplicated code is bad...
+		 */
 
+		/*
+		 *	Delete the current request, if it's
+		 *	marked as such.  That is, the request
+		 *	must be finished, there must be no
+		 *	child associated with that request,
+		 *	and it's timestamp must be marked to
+		 *	be deleted.
+		 */
+		if (curreq->finished &&
+		    (curreq->child_pid == NO_SUCH_CHILD_PID) &&
+		    (curreq->timestamp + cleanup_delay <= curtime)) {
+				/*
+				 *	Request completed, delete it,
+				 *	and unlink it from the
+				 *	currently 'alive' list of
+				 *	requests.
+				 */
+			DEBUG2("Cleaning up request ID %d with timestamp %08x",
+			       curreq->packet->id, curreq->timestamp);
+			prevreq = curreq->prev;
+			if (request_list[id].request_count == 0) {
+				DEBUG("HORRIBLE ERROR!!!");
+			} else {
+				request_list[id].request_count--;
+			}
+			
+			if (prevreq == NULL) {
+				request_list[id].first_request = curreq->next;
+				request_free(curreq);
+				curreq = request_list[id].first_request;
+			} else {
+				prevreq->next = curreq->next;
+				request_free(curreq);
+				curreq = prevreq->next;
+			}
+			if (curreq)
+				curreq->prev = prevreq;
+			
+		} else {	/* the request is still alive */
+			prevreq = curreq;
+			curreq = curreq->next;
+			request_count++;
+		}
+	} /* end of walking the request list */
+	
 	/*
 	 *	If we've received a duplicate packet, 'request' is NULL.
 	 */
@@ -1292,7 +1339,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *
 			 *	If we can't, then die horribly.
 			 */
-			if (rad_clean_list(TRUE) == TRUE) {
+			if (rad_clean_list() == TRUE) {
 				return rad_check_list(request);
 			}
 
