@@ -46,6 +46,10 @@ static const char rcsid[] =
 
 #include	"radiusd.h"
 
+#ifdef WITH_NEW_CONFIG
+#include	"conffile.h"
+#endif
+
 /*
  *	Global variables.
  */
@@ -101,21 +105,19 @@ static REQUEST	*rad_check_list(REQUEST *);
 static void	rad_spawn_child(REQUEST *, FUNP, int);
 
 #ifdef WITH_NEW_CONFIG
-typedef struct config2int_t {
-  const char	*name;
-  int		*value;
-} config2int_t;
-
 /*
  *	A mapping of configuration file names to internal integers
  */
-config2int_t config2int[] = {
-  { "max_request_time", &max_request_time },
-  { "cleanup_delay",    &cleanup_delay    },
-  { "max_requests",     &max_requests     },
-  { "allow_core_dumps", &allow_core_dumps },
-
-  { NULL, NULL}
+CONF_PARSER rad_config[] = {
+  { "max_request_time",   PW_TYPE_INTEGER, &max_request_time },
+  { "cleanup_delay",      PW_TYPE_INTEGER, &cleanup_delay    },
+  { "max_requests",       PW_TYPE_INTEGER, &max_requests     },
+  { "allow_core_dumps",   PW_TYPE_INTEGER, &allow_core_dumps },
+  { "log_stripped_names", PW_TYPE_INTEGER, &log_stripped_names },
+  { "log_auth",           PW_TYPE_INTEGER, &log_auth },
+  { "log_auth_pass",      PW_TYPE_INTEGER, &log_auth_pass },
+  
+  { NULL, -1, NULL}
 };
 #endif
 
@@ -126,10 +128,6 @@ static void reread_config(int reload)
 {
 	int res = 0;
 	int pid = getpid();
-#ifdef WITH_NEW_CONFIG
-	int i;
-	CONF_PAIR *cp;
-#endif
 
 	if (allow_core_dumps) {
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
@@ -176,21 +174,6 @@ static void reread_config(int reload)
 		}
 		exit(1);
 	}
-
-#ifdef WITH_NEW_CONFIG
-	for (i = 0; config2int[i].name != NULL; i++) {
-	  cp = cf_pair_find(NULL, config2int[i].name);
-	  if (cp) {
-	    if (!isdigit(cp->value[0])) {
-	      /* complain */
-	      continue;
-	    }
-	    DEBUG2("Setting %s = %s\n", config2int[i].name, cp->value);
-	    *config2int[i].value = atoi(cp->value);
-	  }
-	}
-#endif;
-
 }
 
 
