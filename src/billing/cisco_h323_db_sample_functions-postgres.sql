@@ -1,22 +1,18 @@
-
 /*
- * Function 'strip_dot'
- * removes "." from the start of time fields (Cisco devices that have lost ntp timesync temporarily)
- *  * Used as:
- *      insert into mytable values (strip_dot('.16:46:02.356 EET Wed Dec 11 2002'));
+ * Old Function 'strip_dot' Now replaced by one written plpgsql
  *
  * Note: On SuSE Linux 8.0 and 8.1 you need to do the following from the command line before
  *       plperl functions will work.
  *
  * # ln -s /usr/lib/perl5/5.8.0/i586-linux-thread-multi/CORE/libperl.so /usr/lib/libperl.so
  * # createlang -U postgres plperl radius
+ *
+ *	CREATE OR REPLACE FUNCTION strip_dot_in_perl (text) returns timestamp AS '
+ *	        my $datetime = $_[0];
+ *		$datetime =~ s/^\\.*//;
+ *	        return $datetime;
+ *	' language 'plperl';
  */
-
-CREATE OR REPLACE FUNCTION strip_dot (text) returns timestamp AS '
-        my $datetime = $_[0];
-	$datetime =~ s/^\\.*//;
-        return $datetime;
-' language 'plperl';
 
 
 CREATE OR REPLACE FUNCTION chop_number(VARCHAR) RETURNS VARCHAR AS '
