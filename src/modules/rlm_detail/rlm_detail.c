@@ -60,7 +60,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 
         inst = malloc(sizeof *inst);
         if (!inst) {
-                radlog(L_ERR|L_CONS, "Out of memory\n");
+                radlog(L_ERR|L_CONS, "rlm_detail: Out of memory\n");
                 return -1;
         }
 
@@ -124,7 +124,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 */
 
 	if (strstr(buffer, "..")) {
-		radlog(L_ERR, "Detail: Directory \"%s\" contains \"..\" which is not valid.",
+		radlog(L_ERR, "rlm_detail: Directory \"%s\" contains \"..\" which is not valid.",
 			buffer);
 		return RLM_MODULE_FAIL;
 	}
@@ -176,7 +176,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 			 */
 			if ((mkdir(buffer, inst->dirperm) == -1) &&
 			    (errno != EEXIST)) {
-				radlog(L_ERR, "Detail: Couldn't create %s: %s",
+				radlog(L_ERR, "rlm_detail: Couldn't create %s: %s",
 				       buffer, strerror(errno));
 				
 				return RLM_MODULE_FAIL;
@@ -201,12 +201,12 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 */
 	if ((outfd = open(buffer, O_WRONLY|O_APPEND|O_CREAT,
 			  inst->detailperm)) < 0) {
-		radlog(L_ERR, "Detail: Couldn't open file %s: %s",
+		radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
 		       buffer, strerror(errno));
 		ret = RLM_MODULE_FAIL;
 
 	} else if ((outfp = fdopen(outfd, "a")) == NULL) {
-		radlog(L_ERR, "Detail: Couldn't open file %s: %s",
+		radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
 		       buffer, strerror(errno));
 		ret = RLM_MODULE_FAIL;
 		close(outfd);
