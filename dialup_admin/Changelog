@@ -21,6 +21,9 @@ Ver 1.62:
   on the sql database).
 * Add more error messages when interacting with the SQL database
 * Add sql_connect_timeout and sql_extra_servers configuration directives to be used by the log_badlogins script
+* In log_badlogins create a separate sql input file for each sql server and append sql commands to it. If the
+  sql command succeeds we delete the corresponding input file. That way if an sql server is down we store the
+  accounting info in the input file and then send it all when it comes back up.
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
