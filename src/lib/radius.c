@@ -1456,7 +1456,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *pas
 
 	/*
 	 *	Note that the password VP can be EITHER
-	 *	a Password attribute (from a check-item list),
+	 *	a User-Password attribute (from a check-item list),
 	 *	or a CHAP-Password attribute (the client asking
 	 *	the library to encode it).
 	 */

@@ -48,9 +48,9 @@ for ($num=0; $num<$numusers; $num++) {
 
 	printf PASS "$username:%s:1001:1001:Name:/dev/null:/dev/null\n", crypt($password, $password);
 	printf SHAD "$username:%s:1000:0:99999:7:::\n", crypt($password, $password);
-	printf RAD  "User-Name=$username, Password=$password,NAS-IP-Address=127.0.0.1,NAS-Port-Id=0\n\n";
+	printf RAD  "User-Name=$username, User-Password=$password,NAS-IP-Address=127.0.0.1,NAS-Port-Id=0\n\n";
 	print NOCRYPT "$username:$password\n";
-	print USERS "$username  Auth-Type:=Local, Password==\"$password\"\n\tClass=\"0x$num\"\n\n";
+	print USERS "$username  Auth-Type:=Local, User-Password==\"$password\"\n\tClass=\"0x$num\"\n\n";
 } 
 	
 close(PASS);

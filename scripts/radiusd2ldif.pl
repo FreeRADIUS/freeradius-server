@@ -211,7 +211,7 @@ while ($line=<STDIN>) {
 	}
 	# Start line is hardcoded must be uid followed by password
 	# this could be changed to use any other parameter however
-	if ( $line =~ /^(\w+)\s*\t*Password=(\w+)/ ) { 
+	if ( $line =~ /^(\w+)\s*\t*(?:User-)?Password=(\w+)/ ) { 
 		$uid = $1;
 		$password= $2;
 		$password = $passwords{$password} if $opt_f;

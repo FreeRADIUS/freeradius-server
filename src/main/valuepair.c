@@ -235,9 +235,9 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			/*
 			 *	IF the password attribute exists, THEN
 			 *	we can do comparisons against it.  If not,
-			 *	then the request did NOT contain a Password
-			 *	attribute, so we CANNOT do comparisons
-			 *	against it.
+			 *	then the request did NOT contain a
+			 *	User-Password attribute, so we CANNOT do
+			 *	comparisons against it.
 			 *
 			 *	This hack makes CHAP-Password work..
 			 */

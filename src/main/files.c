@@ -65,7 +65,7 @@ void pairlist_free(PAIR_LIST **pl)
 
 /*
  *	Fixup a check line.
- *	If Password or Crypt-Password is set, but there is no
+ *	If User-Password or Crypt-Password is set, but there is no
  *	Auth-Type, add one (kludge!).
  */
 static void auth_type_fixup(VALUE_PAIR *check)

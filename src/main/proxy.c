@@ -275,7 +275,7 @@ int proxy_send(REQUEST *request)
 	proxy_addinfo(request);
 
 	/*
-	 *	Encrypt the Password with the proxy server's secret.
+	 *	Encrypt the User-Password with the proxy server's secret.
 	 */
 	if ((vp = pairfind(vps, PW_PASSWORD)) != NULL) {
 

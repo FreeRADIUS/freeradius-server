@@ -382,7 +382,7 @@ int main(int argc, char **argv)
 	
 
 		/*
-		 *	Keep a copy of the the Password attribute.
+		 *	Keep a copy of the the User-Password attribute.
 		 */
 		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
 			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));

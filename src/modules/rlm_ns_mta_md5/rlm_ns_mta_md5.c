@@ -124,10 +124,10 @@ static int module_auth(void *instance, REQUEST *request)
 	
 	/*
 	 *	We can only authenticate user requests which HAVE
-	 *	a Password attribute.
+	 *	a User-Password attribute.
 	 */
 	if (!request->password) {
-		radlog(L_AUTH, "rlm_ns_m5a_md5: Attribute \"Password\" is required for authentication.");
+		radlog(L_AUTH, "rlm_ns_mta_md5: Attribute \"User-Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -136,7 +136,7 @@ static int module_auth(void *instance, REQUEST *request)
 	 *  and not anything else.
 	 */
 	if (request->password->attribute != PW_PASSWORD) {
-		radlog(L_AUTH, "rlm_ns_mta_md5: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+		radlog(L_AUTH, "rlm_ns_mta_md5: Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_INVALID;
 	}
 

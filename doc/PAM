@@ -10,7 +10,7 @@
 
 1. USAGE
 
-   Use Auth-Type = Pam in the users file.  You cannot use Password = "PAM"
+   Use Auth-Type = Pam in the users file.  You cannot use User-Password = "PAM"
    as in other radius servers. Sorry.
 
    You can also use ``Pam-Auth = "somestring"'' to specify an entry in

@@ -1039,12 +1039,12 @@ ldap_authenticate(void *instance, REQUEST * request)
 	}
 
 	if (!request->password){
-		radlog(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication.");
+		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
 	if(request->password->attribute != PW_PASSWORD) {
-		radlog(L_AUTH, "rlm_ldap: Attribute \"Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
+		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_INVALID;
 	}
 

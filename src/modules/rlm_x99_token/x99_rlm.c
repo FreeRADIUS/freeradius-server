@@ -271,7 +271,7 @@ x99_token_authorize(void *instance, REQUEST *request)
     }
 
     if ((pwattr = x99_pw_present(request)) == 0) {
-	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"Password\" or "
+	radlog(L_AUTH, "rlm_x99_token: autz: Attribute \"User-Password\" or "
 		       "equivalent required for authentication.");
 	return RLM_MODULE_INVALID;
     }
@@ -430,7 +430,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
     username = request->username->strvalue;
 
     if ((pwattr = x99_pw_present(request)) == 0) {
-	radlog(L_AUTH, "rlm_x99_token: auth: Attribute \"Password\" or "
+	radlog(L_AUTH, "rlm_x99_token: auth: Attribute \"User-Password\" or "
 		       "equivalent required for authentication.");
 	return RLM_MODULE_INVALID;
     }

@@ -144,7 +144,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	 */
 	if (mainconfig.log_auth_badpass || mainconfig.log_auth_goodpass) {
 		if (!request->password) {
-			strcpy(clean_password, "<no Password attribute>");
+			strcpy(clean_password, "<no User-Password attribute>");
 		} else if (request->password->attribute == PW_CHAP_PASSWORD) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
@@ -265,7 +265,7 @@ int rad_check_password(REQUEST *request)
 	 *	password to see if it is the magic value
 	 *	UNIX or PAM if auth_type was not set.
 	 *
-	 *	This allows the admin to just put a 'Password' in, and
+	 *	This allows the admin to just put a 'User-Password' in, and
 	 *	have it work.
 	 */
 	if (auth_type < 0) {
@@ -297,7 +297,7 @@ int rad_check_password(REQUEST *request)
 			 */
 			auth_item = request->password;
 			if (auth_item == NULL) {
-				DEBUG2("auth: No Password or CHAP-Password attribute in the request");
+				DEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
 				return -1;
 			}
 
@@ -323,7 +323,7 @@ int rad_check_password(REQUEST *request)
 			 */
 			auth_item = request->password;
 			if (auth_item == NULL) {
-				DEBUG2("auth: No Password or CHAP-Password attribute in the request");
+				DEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
 				return -1;
 			}
 
@@ -331,8 +331,8 @@ int rad_check_password(REQUEST *request)
 			 *	Plain text password.
 			 */
 			if (password_pair == NULL) {
-				DEBUG2("auth: No Password configured for the user");
-				rad_authlog("No Password configured for the user", request, 0);
+				DEBUG2("auth: No password configured for the user");
+				rad_authlog("No password configured for the user", request, 0);
 				return -1;
 			}
 
@@ -344,12 +344,12 @@ int rad_check_password(REQUEST *request)
 					   (char *)auth_item->strvalue) != 0) {
 					return -1;
 				}
-				DEBUG2("auth: user supplied Password matches local Password");
+				DEBUG2("auth: user supplied User-Password matches local User-Password");
 				break;
 
 			} else if (auth_item->attribute != PW_CHAP_PASSWORD) {
-				DEBUG2("The user did not supply a Password or a CHAP-Password attribute");
-				rad_authlog("The user did not supply a Password or a CHAP-Password attribute", request, 0);
+				DEBUG2("The user did not supply a User-Password or a CHAP-Password attribute");
+				rad_authlog("The user did not supply a User-Password or a CHAP-Password attribute", request, 0);
 				return -1;
 			}
 
@@ -362,7 +362,7 @@ int rad_check_password(REQUEST *request)
 			if (memcmp(string + 1, auth_item->strvalue + 1,
 					CHAP_VALUE_LENGTH) != 0)
 				result = -1;
-			DEBUG2("auth: user supplied CHAP-Password matches local Password");
+			DEBUG2("auth: user supplied CHAP-Password matches local User-Password");
 			break;
 		default:
 			DEBUG2("auth: type \"%s\"",

@@ -59,7 +59,7 @@ x99_pwe_init(void)
     memset(pwattr, 0, sizeof(pwattr));
 
     /* PAP */
-    if ((da = dict_attrbyname("Password")) != NULL) {
+    if ((da = dict_attrbyname("User-Password")) != NULL) {
 	pwattr[i++] = da->attr;
 	pwattr[i++] = da->attr;
     }

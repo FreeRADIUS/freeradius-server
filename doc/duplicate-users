@@ -100,10 +100,10 @@ User Collision in FreeRadius
 
     For example:
 
-    foo Auth-Type := Local, Password == "bar"
+    foo Auth-Type := Local, User-Password == "bar"
     Class = 0x0001
 
-    foo Auth-Type := Local, Password == "bleah"
+    foo Auth-Type := Local, User-Password == "bleah"
     Class = 0x0002
 
     Now, you'd add other attributes as well, but let's just start with

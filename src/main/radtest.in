@@ -43,7 +43,7 @@ fi
 
 (
 	echo "User-Name = \"$1\""
-	echo "Password = \"$2\""
+	echo "User-Password = \"$2\""
 	echo "NAS-IP-Address = $nas"
 	echo "NAS-Port-Id = $4"
 	if [ "$6" ]
