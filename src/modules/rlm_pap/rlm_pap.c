@@ -269,6 +269,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD:
 		case PW_CRYPT_PASSWORD:
+			found_pw = TRUE;
 			break;	/* don't touch these */
 
 		case PW_MD5_PASSWORD:
