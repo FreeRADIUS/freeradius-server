@@ -35,7 +35,7 @@ $now_str = da_sql_escape_string($now_str);
 $prev_str = da_sql_escape_string($prev_str);
 
 $pagesize = ($pagesize) ? $pagesize : 10;
-if (!is_int($pagesize))
+if (!is_numeric($pagesize))
 	$pagesize = 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';

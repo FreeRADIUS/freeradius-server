@@ -59,7 +59,7 @@ EOM;
 <?php
 if ($server == '' || !preg_match('/^[\w\.]+$/',$server))
 	$server = $config[general_radius_server];
-if ($port == 0 || !is_int($port))
+if ($port == 0 || !is_numeric($port))
 	$port = $config[general_radius_server_port];
 if ($auth_proto == '')
 	$auth_proto = $config[general_radius_server_auth_proto];

@@ -33,7 +33,7 @@ if ($start == '' && $stop == ''){
 $start = da_sql_escape_string($start);
 $stop = da_sql_escape_string($stop);
 $pagesize = ($pagesize) ? $pagesize : 10;
-if (!is_int($pagesize))
+if (!is_numeric($pagesize))
 	$pagezise = 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';

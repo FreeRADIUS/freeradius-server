@@ -9,6 +9,7 @@ Ver 1.72:
 * Don't use nas_list in nas_admin
 * Add postgresql specific sql schema by apellido jr., wilfredo p. Move each sql schema to a
   separate directory (mysql and postgresql)
+* Change is_int to is_numeric. This closes Bug #90
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for
