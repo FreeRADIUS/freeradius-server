@@ -4,6 +4,7 @@ radiusd-freeradius (?) unstable; urgency=low
   * Fixed broken/reversed auth comparisons in SQL module.
   * Sucked out CPPness from inside a printf, as printf is a macro in newer
     compilers (gcc3.0, e.g.).  (closes: Bug#100889)
+  * Sundry LDAP configuration, unresponsive thread, and proxying fixes.
 
  -- Chad Miller <cmiller@debian.org>  [TBA]
 
