@@ -23,38 +23,6 @@
 
 
 
-/*************************************************************************
- *
- *	Function: sql_connect
- *
- *	Purpose: Connect to the SQL dataase 
- *
- *************************************************************************/
-int sql_conenct(SQL *sql) {
-
-#ifdef RLM_SQL_MYSQL
-
-	MYSQL MyAuthConn;
-	MYSQL MyAcctConn;
-	
-	/* Connect to the database server */
-	mysql_init(&MyAuthConn);
-	if (!(sql->AuthSock = mysql_real_connect(&MyAuthConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
-		log(L_ERR, "Init: Couldn't connect authentication socket to SQL server %s@%s", sql->config.sql_login, sql->config.sql_server);
-		sql->AuthSock = NULL;
-		return 0;
-	}
-	mysql_init(&MyAcctConn);
-
-	if (!(sql->AcctSock = mysql_real_connect(&MyAcctConn, sql->config.sql_server, sql->config.sql_login, sql->config.sql_password, sql->config.sql_db, 0, NULL, 0))) {
-		log(L_ERR, "Init: Couldn't connect accounting socket to SQL server %s@%s", sql->config.sql_login, sql->config.sql_server);
-		sql->AcctSock = NULL;
-		return 0;
-	}
-#endif
-
-}
-
 
 /*************************************************************************
  *
@@ -64,7 +32,7 @@ int sql_conenct(SQL *sql) {
  *
  *************************************************************************/
 
-int sql_save_acct(SQL *sql) {
+int sql_save_acct() {
 
 	char		querystr[2048];
 	FILE		*mysqlfile;
@@ -478,16 +446,16 @@ int mysql_checksocket(const char *facility) {
 
 /*************************************************************************
  *
- *	Function: mysql_getvpdata
+ *	Function: sql_getvpdata
  *
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int mysql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode) {
+int sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode) {
 
 	char		querystr[256];
-	MYSQL_RES	*result;
-	MYSQL_ROW	row;
+	SQL_RES		*result;
+	SQL_ROW		row;
 	int		rows;
 
 	if (mode == PW_VP_USERDATA)
@@ -496,18 +464,11 @@ int mysql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode) {
 		sprintf(querystr, "SELECT %s.* FROM %s, %s WHERE %s.UserName = '%s' AND %s.GroupName = %s.GroupName ORDER BY %s.id", table, table, mysql_usergroup_table, mysql_usergroup_table, user, mysql_usergroup_table, table, table);
 	else if (mode == PW_VP_REALMDATA)
 		sprintf(querystr, "SELECT %s.* FROM %s, %s WHERE %s.RealmName = '%s' AND %s.GroupName = %s.GroupName ORDER BY %s.id", table, table, mysql_realmgroup_table, mysql_realmgroup_table, user, mysql_realmgroup_table, table, table);
-	if (sqltrace)
-		DEBUG(querystr);
-        mysql_checksocket("Auth");
-	mysql_query(MyAuthSock, querystr);
-	if (!(result = mysql_store_result(MyAuthSock)) && mysql_num_fields(MyAuthSock)) {
-   		log(L_ERR,"MYSQL Error: Cannot get result");
-   		log(L_ERR,"MYSQL error: %s",mysql_error(MyAuthSock));
-   		mysql_close(MyAuthSock);
-  		MyAuthSock = NULL;
-	} else {
-		rows = mysql_num_rows(result);
-		while ((row = mysql_fetch_row(result))) {
+        sql_checksocket("Auth");
+	sql_query(sql->AuthSock, querystr);
+	if ((result = sql_store_result(sql->AuthSock)) && sql_num_fields(sql->AuthSock)) {
+		rows = sql_num_rows(result);
+		while ((row = sql_fetch_row(result))) {
 
 			if (mysql_userparse(vp, row) != 0) {
 		 		log(L_ERR|L_CONS, "Error getting data from MySQL");

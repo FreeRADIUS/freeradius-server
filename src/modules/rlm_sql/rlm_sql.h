@@ -71,8 +71,8 @@ typedef struct sql {
 #define SQL_LOCK_LEN sizeof(SQLREC)
 
 int		sql_start();
-int		sql_save_acct(MYSQLREC *sqlrecord);
-int		sql_userparse(VALUE_PAIR **first_pair, MYSQL_ROW row);
+int		sql_save_acct(void);
+int		sql_userparse(VALUE_PAIR **first_pair, SQL_ROW row);
 int		sql_checksocket(const char *facility);
 int		sql_getvpdata(char *table, VALUE_PAIR **vp, char *user, int mode);
 int		sql_check_multi(char *name, VALUE_PAIR *request, int maxsimul);

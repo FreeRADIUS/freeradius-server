@@ -226,7 +226,7 @@ static int rlm_sql_init(int rehup) {
        sql->config.sql_db);
 
        if (sql_keepopen)
-	   sql_connect(sql);
+	   sql_connect();
            
        return 0;
 }
@@ -331,18 +331,11 @@ static int rlm_sql_authenticate(REQUEST *request, char *user, char *password)
 	if ((auth_pair = pairfind(request->packet->vps, PW_AUTHTYPE)) == NULL)
 	   return RLM_AUTH_REJECT;
 
-	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", mysql_authcheck_table, user);
-	if (sqltrace)
-		DEBUG(querystr);
-	mysql_query(sql->AcctSock, querystr);
-	if (!(result = mysql_store_result(sql->AcctSock)) && mysql_num_fields(sql->AcctSock)) {
-		log(L_ERR,"MYSQL Error: Cannot get result");
-		log(L_ERR,"MYSQL error: %s",mysql_error(sql->AcctSock));
-		mysql_close(sql->AcctSock);
-		sql->AcctSock = NULL;
-	} else {
-		row = mysql_fetch_row(result);
-		mysql_free_result(result);
+	sprintf(querystr, "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'", sql->config.sql_authcheck_table, user);
+	sql_query(sql->AcctSock, querystr);
+	if ((result = sql_store_result(sql->AcctSock)) && sql_num_fields(sql->AcctSock)) {
+		row = sql_fetch_row(result);
+		sql_free_result(result);
 
 		if (strncmp(strlen(password), password, row[0]) != 0) {
 			return RLM_AUTH_REJECT;
@@ -365,13 +358,16 @@ static int rlm_sql_accounting(REQUEST *request) {
 	FILE		*backupfile;
 	struct stat	backup;
 	char		*valbuf;
-	SQLREC 		sqlrecord = {"", "", "", "", 0, "", "", 0, "", 0, "", "", 0, 0, "", "", "", "", "", "", 0};
-	SQLREC 		backuprecord = {"", "", "",  "", 0, "", "", 0, "", 0, "", "", 0, 0, "", "", "", "", "", "", 0};
 	VALUE_PAIR	*pair;
 
 
+	if ((sql->sqlrecord = malloc(sizeof(SQLREC))) == NULL) {
+		log(L_ERR|L_CONS, "no memory");
+		exit(1);	
+	}
+	
 	pair = request->packet->vps;
-	strcpy(sqlrecord.Realm, "");
+	strcpy(sql->sqlrecord->Realm, "");
 	while(pair != (VALUE_PAIR *)NULL) {
 
 				
@@ -379,71 +375,71 @@ static int rlm_sql_accounting(REQUEST *request) {
            /* Check the pairs to see if they are anything we are interested in. */
             switch(pair->attribute) {
                 case PW_ACCT_SESSION_ID:
-                	strncpy(sqlrecord.AcctSessionId, pair->strvalue, SQLBIGREC);
+                	strncpy(sql->sqlrecord->AcctSessionId, pair->strvalue, SQLBIGREC);
                 	break;
                 	
                 case PW_USER_NAME:
-                	strncpy(sqlrecord.UserName, pair->strvalue, SQLBIGREC);
+                	strncpy(sql->sqlrecord->UserName, pair->strvalue, SQLBIGREC);
                 	break;
                 	
                 case PW_NAS_IP_ADDRESS:
-						ipaddr2str(sqlrecord.NASIPAddress, pair->lvalue);
+						ipaddr2str(sql->sqlrecord->NASIPAddress, pair->lvalue);
                 	break;
 
                 case PW_NAS_PORT_ID:
-                	sqlrecord.NASPortId = pair->lvalue;
+                	sql->sqlrecord->NASPortId = pair->lvalue;
                 	break;
 
                 case PW_NAS_PORT_TYPE:
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
 						if(valbuf != (char *)NULL) {
-                		strncpy(sqlrecord.NASPortType, valbuf, SQLBIGREC);
+                		strncpy(sql->sqlrecord->NASPortType, valbuf, SQLBIGREC);
 						}
 						break;
 
                 case PW_ACCT_STATUS_TYPE:
-       						sqlrecord.AcctStatusTypeId = pair->lvalue;
+       						sql->sqlrecord->AcctStatusTypeId = pair->lvalue;
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
 						if(valbuf != (char *)NULL) {
-                		strncpy(sqlrecord.AcctStatusType, valbuf, SQLBIGREC);
+                		strncpy(sql->sqlrecord->AcctStatusType, valbuf, SQLBIGREC);
 						}
 						break;
 
                 case PW_ACCT_SESSION_TIME:
-                	sqlrecord.AcctSessionTime = pair->lvalue;
+                	sql->sqlrecord->AcctSessionTime = pair->lvalue;
                 	break;
 
                 case PW_ACCT_AUTHENTIC:
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
 						if(valbuf != (char *)NULL) {
-                		strncpy(sqlrecord.AcctAuthentic, valbuf, SQLBIGREC);
+                		strncpy(sql->sqlrecord->AcctAuthentic, valbuf, SQLBIGREC);
 						}
 						break;
 
                 case PW_CONNECT_INFO:
-                	strncpy(sqlrecord.ConnectInfo, pair->strvalue, SQLBIGREC);
+                	strncpy(sql->sqlrecord->ConnectInfo, pair->strvalue, SQLBIGREC);
                 	break;
 
                 case PW_ACCT_INPUT_OCTETS:
-                	sqlrecord.AcctInputOctets = pair->lvalue;
+                	sql->sqlrecord->AcctInputOctets = pair->lvalue;
                 	break;
 
                 case PW_ACCT_OUTPUT_OCTETS:
-                	sqlrecord.AcctOutputOctets = pair->lvalue;
+                	sql->sqlrecord->AcctOutputOctets = pair->lvalue;
                 	break;
 
                 case PW_CALLED_STATION_ID:
-                	strncpy(sqlrecord.CalledStationId, pair->strvalue, SQLLILREC);
+                	strncpy(sql->sqlrecord->CalledStationId, pair->strvalue, SQLLILREC);
                 	break;
 
                 case PW_CALLING_STATION_ID:
-                	strncpy(sqlrecord.CallingStationId, pair->strvalue, SQLLILREC);
+                	strncpy(sql->sqlrecord->CallingStationId, pair->strvalue, SQLLILREC);
                 	break;
 
 /*                case PW_ACCT_TERMINATE_CAUSE:
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
 						if(valbuf != (char *)NULL) {
-                		strncpy(sqlrecord.AcctTerminateCause, valbuf, SQLBIGREC);
+                		strncpy(sql->sqlrecord->AcctTerminateCause, valbuf, SQLBIGREC);
 						}
 						break;
 */
@@ -451,23 +447,23 @@ static int rlm_sql_accounting(REQUEST *request) {
                 case PW_SERVICE_TYPE:
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
 						if(valbuf != (char *)NULL) {
-                		strncpy(sqlrecord.ServiceType, valbuf, SQLBIGREC);
+                		strncpy(sql->sqlrecord->ServiceType, valbuf, SQLBIGREC);
 						}
 						break;
 
                 case PW_FRAMED_PROTOCOL:
 						valbuf = (char *)dict_valgetname(pair->lvalue, pair->name);
 						if(valbuf != (char *)NULL) {
-                		strncpy(sqlrecord.FramedProtocol, valbuf, SQLBIGREC);
+                		strncpy(sql->sqlrecord->FramedProtocol, valbuf, SQLBIGREC);
 						}
 						break;
 
                 case PW_FRAMED_IP_ADDRESS:
-						ipaddr2str(sqlrecord.FramedIPAddress, pair->lvalue);
+						ipaddr2str(sql->sqlrecord->FramedIPAddress, pair->lvalue);
                 	break;
 
                 case PW_ACCT_DELAY_TIME:
-                	sqlrecord.AcctDelayTime = pair->lvalue;
+                	sql->sqlrecord->AcctDelayTime = pair->lvalue;
                 	break;
 
                 default:
@@ -478,11 +474,11 @@ static int rlm_sql_accounting(REQUEST *request) {
 	}
 
 
-        nowtime = time(0) - sqlrecord.AcctDelayTime;
+        nowtime = time(0) - sql->sqlrecord->AcctDelayTime;
         tim = localtime(&nowtime);
         strftime(datebuf, sizeof(datebuf), "%Y%m%d%H%M%S", tim);
 
-        strncpy(sqlrecord.AcctTimeStamp, datebuf, 20);
+        strncpy(sql->sqlrecord->AcctTimeStamp, datebuf, 20);
        
 
 	/* If backup file exists we know the database was down */
