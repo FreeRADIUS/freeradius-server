@@ -180,11 +180,29 @@ static int unix_authenticate(REQUEST *request)
 #endif
 
 	/*
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Name attribute.
+	 */
+	if (!request->username) {
+		log(L_AUTH, "rlm_unix: Attribute \"User-Name\" is required for authentication.");
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
+	 *	We can only authenticate user requests which HAVE
+	 *	a Password attribute.
+	 */
+	if (!request->password) {
+		log(L_AUTH, "rlm_unix: Attribute \"Password\" is required for authentication.");
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
 	 *  Ensure that we're being passed a plain-text password,
 	 *  and not anything else.
 	 */
 	if (request->password->attribute != PW_PASSWORD) {
-		log(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+		log(L_AUTH, "rlm_unix: Attribute \"Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_REJECT;
 	}
 
