@@ -82,8 +82,21 @@ typedef struct rlm_counter_t {
 	time_t last_reset;	/* The time of the last reset. */
 	int dict_attr;		/* attribute number for the counter. */
 	GDBM_FILE gdbm;		/* The gdbm file handle */
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t mutex;	/* A mutex to lock the gdbm file for only one reader/writer */
+#endif
 } rlm_counter_t;
+
+#ifndef HAVE_PTHREAD_H
+/*
+ *	This is a lot simpler than putting ifdef's around
+ *	every use of the pthread functions.
+ */
+#define pthread_mutex_lock(a)
+#define pthread_mutex_unlock(a)
+#define pthread_mutex_init(a,b)
+#define pthread_mutex_destroy(a)
+#endif
 
 typedef struct rad_counter {
 	unsigned int user_counter;
