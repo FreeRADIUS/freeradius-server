@@ -470,6 +470,23 @@ modules {
 		# this hack.
 		#
 		with_specialix_jetstream_hack = no
+
+		#
+		# Cisco sends it's VSA attributes with the attribute
+		# name *again* in the string, like:
+		#
+		#   H323-Attribute = "h323-attribute=value".
+		#
+		# If this configuration item is set to 'yes', then
+		# the redundant data in the the attribute text is stripped
+		# out.  The result is:
+		#
+		#  H323-Attribute = "value"
+		#
+		# If you're not running a Cisco NAS, you don't need
+		# this hack.
+		#
+		with_cisco_vsa_hack = no
 	}
 
 	files {
