@@ -281,4 +281,19 @@ int snprintf(char *str, size_t count, const char *fmt, ...);
 int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
 #endif
 
+/* random numbers in isaac.c */
+/* context of random number generator */
+typedef struct lrad_randctx {
+  uint32_t randcnt;
+  uint32_t randrsl[256];
+  uint32_t randmem[256];
+  uint32_t randa;
+  uint32_t randb;
+  uint32_t randc;
+} lrad_randctx;
+
+void lrad_isaac(lrad_randctx *ctx);
+void lrad_randinit(lrad_randctx *ctx, int flag);
+
+
 #endif /*LIBRADIUS_H*/
