@@ -288,6 +288,8 @@ int proxy_send(REQUEST *request)
 	     (realm->ipaddr == htonl(INADDR_NONE))) ||
 	    ((request->packet->code == PW_ACCOUNTING_REQUEST) &&	    
 	     (realm->acct_ipaddr == htonl(INADDR_NONE)))) {
+		DEBUG2(" WARNING: Cancelling proxy to Realm %s, as the realm is local.",
+		       realm->realm);
 		return RLM_MODULE_NOOP;
 	}
 	

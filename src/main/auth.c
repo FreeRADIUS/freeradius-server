@@ -441,7 +441,6 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*auth_item;
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
-	VALUE_PAIR	*autz_type_item = NULL;
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
 	const char	*user_msg = NULL;
@@ -567,6 +566,7 @@ autz_redo:
 		return r;
 	}
 	if (!autz_retry){
+		VALUE_PAIR	*autz_type_item = NULL;
 		autz_type_item = pairfind(request->config_items, PW_AUTZ_TYPE);
 		if (autz_type_item){
 			autz_type = autz_type_item->lvalue;
@@ -575,7 +575,6 @@ autz_redo:
 		}
 	}
 
-
 	/*
 	 *	If we haven't already proxied the packet, then check
 	 *	to see if we should.  Maybe one of the authorize
@@ -583,8 +582,23 @@ autz_redo:
 	 *	so, get out of here and send the packet.
 	 */
 	if ((request->proxy == NULL) &&
-			(pairfind(request->config_items, PW_PROXY_TO_REALM) != NULL)) {
-		return RLM_MODULE_OK;
+	    ((tmp = pairfind(request->config_items, PW_PROXY_TO_REALM)) != NULL)) {
+		REALM *realm;
+
+		/*
+		 *	Catch users who set Proxy-To-Realm to a LOCAL
+		 *	realm (sigh).
+		 */
+		realm = realm_find(tmp->strvalue, 0);
+		if (realm && (realm->ipaddr == htonl(INADDR_NONE))) {
+			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->realm);
+		} else {
+			/*
+			 *	Don't authenticate, as the request is
+			 *	proxied.
+			 */
+			return RLM_MODULE_OK;
+		}
 	}
 
 	/*
