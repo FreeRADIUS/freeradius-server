@@ -143,6 +143,20 @@ applied to string attributes.
 .br
 Not allowed as a reply item.
 
+.TP 0.5i
+.B "Attribute =* Value"
+As a check item, it matches if the request contains the named
+attribute, no matter what the value is.
+.br
+Not allowed as a reply item.
+
+.TP 0.5i
+.B "Attribute !* Value"
+As a check item, it matches if the request does not contain the named
+attribute, no matter what the value is.
+.br
+Not allowed as a reply item.
+
 .SH EXAMPLES
 
 .DS
