@@ -641,45 +641,11 @@ modules {
 	# Unix /etc/passwd style authentication
 	#
 	unix {
+		#  As of 1.1.0, the Unix module no longer reads,
+		#  or caches /etc/passwd, /etc/shadow, or /etc/group.
+		#  If you wish to cache those files, see the passwd
+		#  module, above.
 		#
-		#  Cache /etc/passwd, /etc/shadow, and /etc/group
-		#
-		#  The default is to NOT cache them.
-		#
-		#  For FreeBSD and NetBSD, you do NOT want to enable
-		#  the cache, as it's password lookups are done via a
-		#  database, so set this value to 'no'.
-		#
-		#  Some systems (e.g. RedHat Linux with pam_pwbd) can
-		#  take *seconds* to check a password, when th passwd
-		#  file containing 1000's of entries.  For those systems,
-		#  you should set the cache value to 'yes', and set
-		#  the locations of the 'passwd', 'shadow', and 'group'
-		#  files, below.
-		#
-		# allowed values: {no, yes}
-		cache = no
-
-		# Reload the cache every 600 seconds (10mins). 0 to disable.
-		cache_reload = 600
-
-		#
-		#  Define the locations of the normal passwd, shadow, and
-		#  group files.
-		#
-		#  'shadow' is commented out by default, because not all
-		#  systems have shadow passwords.
-		#
-		#  To force the module to use the system password functions,
-		#  instead of reading the files, leave the following entries
-		#  commented out.
-		#
-		#  This is required for some systems, like FreeBSD,
-		#  and Mac OSX.
-		#
-		#	passwd = /etc/passwd
-		#	shadow = /etc/shadow
-		#	group = /etc/group
 
 		#
 		#  The location of the "wtmp" file.

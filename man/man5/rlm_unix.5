@@ -1,43 +1,27 @@
-.TH rlm_unix 5 "5 February 2004" "" "FreeRADIUS Module"
+.TH rlm_unix 5 "17 February 2005" "" "FreeRADIUS Module"
 .SH NAME
 rlm_unix \- FreeRADIUS Module
 .SH DESCRIPTION
-The \fIrlm_unix\fP module allows authentication against the system
-password, shadow, and group files.  It also provides FreeRADIUS an
-interface into a radwtmp file (used by "radlast") when added to the
-accounting section.
+The \fIrlm_unix\fP module reads crypt(3) passwords from the system
+password file, and allows the server to use them for authentication.
+The module also provides FreeRADIUS an interface into a radwtmp file
+(used by "radlast") when added to the accounting section.
 .PP
-The \fIrlm_unix\fP module provides the functionality for "Auth-Type =
-System", rather than "Auth-Type = Unix".  The "System" name is used
-for historical reasons.
+The \fIrlm_unix\fP module does provides the functionality for
+"Auth-Type = System".  The module should be listed in the
+"authenticate" section.  Please see the default \fIradiusd.conf\fP
+shipped with the server for an example of the correct usage of this
+module.
+.PP
+As of FreeRADIUS 1.1.0, the module no longer reads, or caches
+/etc/passwd, /etc/shadow, or /etc/group.  If you wish to cache those
+files, see \fIrlm_passwd\fP.  Most, if not all, configurations should
+not need those files to be cached.
 .PP
 The main configuration items to be aware of are:
-.IP cache
-This is a 'yes' or 'no' option.  If set to yes, FreeRADIUS will read
-the system files into memory, rather than perform a system call to
-lookup the information.  On *BSD systems, you should set this value to
-no.  On other systems, if you have a very large passwd and shadow
-files, you can try setting this to yes, which may increase the servers
-performance.  The default is no.
-.IP cache_reload
-This is the number of seconds to wait between refreshing the cached 
-files from the system.  It has no effect unless you enable caching.
-.IP passwd
-The path to the system passwd file.  Usually /etc/passwd.  If
-commented out, or not set, the server will retrieve the information
-via systemcalls.
-.IP shadow
-The path to the system shadow file.  Usually /etc/shadow.  This is not
-set by default.
-.IP group
-The path to the system group file.  Usually /etc/group.  This is not
-set by default.
 .IP radwtmp
 The path to the system wtmp file to be used for keeping the database
 of online users as read by the 'radlast' program.
-.IP usegroup
-This is a 'yes' or 'no' option.  If set to 'yes' this allows the Group
-attribute to be used as a check item.  Default is 'no'.
 .SH CONFIGURATION
 .PP
 .DS
@@ -45,18 +29,6 @@ modules {
   ...
 .br
   unix {
-.br
-    cache = no
-.br
-    cache_reload = 600
-.br
-    #passwd = /etc/passwd
-.br
-    #shadow = /etc/shadow
-.br
-    #group = /etc/group
-.br
-    usegroup = no
 .br
     radwtmp = ${logdir}/radwtmp
 .br
@@ -77,6 +49,7 @@ modules {
 .SH "SEE ALSO"
 .BR radiusd (8),
 .BR radiusd.conf (5),
+.BR rlm_passwd (5),
 .BR radlast (1)
 .SH AUTHORS
 Chris Parker, cparker@segv.org
