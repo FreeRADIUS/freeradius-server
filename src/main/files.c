@@ -637,6 +637,21 @@ REALM *realm_find(const char *realm)
 }
 
 
+/*
+ *	Find a realm for a proxy reply by proxy's IP
+ */
+REALM *realm_findbyaddr(uint32_t ipaddr)
+{
+	REALM *cl;
+
+	for(cl = realms; cl; cl = cl->next)
+		if (ipaddr = cl->ipaddr)
+			break;
+
+	return cl;
+}
+
+
 #ifndef BUILDDBM /* HACK HACK */
 
 /*
