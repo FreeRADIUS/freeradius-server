@@ -820,7 +820,10 @@ int setup_modules(void)
 		/*
 		 *  Loop over the items in the 'instantiate' section.
 		 */
-		for (ci=cf_item_find_next(cs, NULL); ci != NULL; ci=cf_item_find_next(cs, ci)) {
+		for (ci=cf_item_find_next(cs, NULL);
+		     ci != NULL;
+		     ci=cf_item_find_next(cs, ci)) {
+
 			if (cf_item_is_section(ci)) {
 				radlog(L_ERR|L_CONS,
 				       "%s[%d] Subsection for module instantiate is not allowed\n", filename,
