@@ -235,8 +235,9 @@ void		librad_perror(const char *, ...)
 #endif
 ;
 extern char	librad_errstr[];
-extern int	librad_dodns;
-extern int	librad_debug;
+extern int	librad_dodns;	/* 0 = no dns lookups */
+extern int	librad_debug;	/* 0 = no debugging information */
+extern int	librad_max_attributes; /* per incoming packet */
 
 /*
  *	Several handy miscellaneous functions.
