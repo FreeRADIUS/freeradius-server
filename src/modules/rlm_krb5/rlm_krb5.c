@@ -27,21 +27,18 @@ static const char rcsid[] = "$Id$";
 #include <com_err.h>
 
 /* module globals */
-krb5_context context;
+static krb5_context context;
 
 /* initialize */
-static int krb5_init(void *instance)
+static int krb5_init(void)
 {
 	int r;
 
-        if ( (r = krb5_init_context(&context)) )
-        {
+        if ( (r = krb5_init_context(&context)) ) {
 		radlog(L_AUTH, "rlm_krb5: krb5_init failed: %s",
 			error_message(r));
                 return 1;
-        }
-	else
-	{
+        } else {
 		radlog(L_AUTH, "rlm_krb5: krb5_init ok");
 	}
 	return 0;
