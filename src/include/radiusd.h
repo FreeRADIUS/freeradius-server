@@ -137,8 +137,8 @@ int		rad_put_username(REQUEST *request, char *username, int length);
 /* files.c */
 CLIENT		*client_find(UINT4 ipno);
 char		*client_name(UINT4 ipno);
-int		read_clients_file(char *);
-REALM		*realm_find(char *);
+int		read_clients_file(const char *);
+REALM		*realm_find(const char *);
 PAIR_LIST	*pairlist_read(const char *file, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);

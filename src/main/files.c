@@ -108,7 +108,7 @@ static void auth_type_fixup(VALUE_PAIR *check)
  *	Read the users, huntgroups or hints file.
  *	Return a PAIR_LIST.
  */
-PAIR_LIST *pairlist_read(char *file, int complain)
+PAIR_LIST *pairlist_read(const char *file, int complain)
 {
 	FILE		*fp;
 	int		mode = FIND_MODE_NAME;
@@ -133,7 +133,7 @@ PAIR_LIST *pairlist_read(char *file, int complain)
 	/*
 	 *	Read the entire file into memory for speed.
 	 */
-	while(fgets(buffer, sizeof(buffer), fp) != (char *)NULL) {
+	while(fgets(buffer, sizeof(buffer), fp) != NULL) {
 		lineno++;
 		if (strchr(buffer, '\n') == NULL) {
 			log(L_ERR, "%s[%d]: line too long", file, lineno);
@@ -290,7 +290,7 @@ static void clients_free(CLIENT *cl)
 /*
  *	Read the clients file.
  */
-int read_clients_file(char *file)
+int read_clients_file(const char *file)
 {
 	FILE	*fp;
 	CLIENT	*c;
@@ -424,7 +424,7 @@ static void realm_free(REALM *cl)
 /*
  *	Read the realms file.
  */
-int read_realms_file(char *file)
+static int read_realms_file(const char *file)
 {
 	FILE	*fp;
 	char	buffer[256];
@@ -521,7 +521,7 @@ int read_realms_file(char *file)
 /*
  *	Find a realm in the REALM list.
  */
-REALM *realm_find(char *realm)
+REALM *realm_find(const char *realm)
 {
 	REALM *cl;
 
