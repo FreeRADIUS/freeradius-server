@@ -167,16 +167,6 @@ int session_zap(int sockfd, uint32_t nasaddr, int port, const char *user,
 
 
 /*
- *	Timeout handler (10 secs)
- */
-static volatile int got_alrm;
-static void alrm_handler(int s)
-{
-	(void)s;
-	got_alrm = 1;
-}
-
-/*
  *	Check one terminal server to see if a user is logged in.
  */
 int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
@@ -185,19 +175,26 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	pid_t	pid, child_pid;
 	int	status;
 	int	n;
-	NAS	*nas;
 	char	address[16];
 	char	port[8];
+	RADCLIENT *cl;
 
 	/*
 	 *	Find NAS type.
 	 */
-	if ((nas = nas_find(nasaddr)) == NULL) {
-	/*	radlog(L_ERR, "Accounting: unknown NAS, so trusting radutmp");	*/
+	cl = client_find(nasaddr);
+	if (!cl) {
+		/*
+		 *  Unknown NAS, so trusting radutmp.
+		 */
 		return 1;
 	}
-	if (nas->nastype == "other") {
-	/*	radlog(L_ERR, "Accounting: NAS type is 'other', so trusting radutmp");	*/
+
+	/*
+	 *  No nastype, or nas type 'other', trust radutmp.
+	 */
+	if ((cl->nastype[0] == '\0') ||
+	    (strcmp(cl->nastype, "other") == 0)) {
 		return 1;
 	}
 
@@ -216,6 +213,7 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 		 *	Parent - Wait for checkrad to terminate.
 		 *	We timeout in 10 seconds.
 		 */
+		child_pid = -1;
 		for (n = 0; n < 10; n++) {
 			sleep(1);
 			child_pid = rad_waitpid(pid, &status, WNOHANG);
@@ -258,10 +256,10 @@ int rad_check_ts(uint32_t nasaddr, int portnum, const char *user,
 	/* OS/2 can't directly execute scripts then we call the command
 	   processor to execute checkrad
 	*/
-	execl(getenv("COMSPEC"), "", "/C","checkrad",nas->nastype, address, port,
+	execl(getenv("COMSPEC"), "", "/C","checkrad", cl->nastype, address, port,
 		user, session_id, NULL);
 #else
-	execl(mainconfig.checkrad, "checkrad",nas->nastype, address, port,
+	execl(mainconfig.checkrad, "checkrad", cl->nastype, address, port,
 		user, session_id, NULL);
 #endif
 	radlog(L_ERR, "Check-TS: exec %s: %s", mainconfig.checkrad, strerror(errno));
