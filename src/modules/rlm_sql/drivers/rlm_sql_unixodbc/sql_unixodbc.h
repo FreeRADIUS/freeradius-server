@@ -8,8 +8,6 @@
 #ifndef SQL_UNIXODBC_H
 #define SQL_UNIXODBC_H
 
-#include <sql.h>
-#include <sqlext.h>
 #include <sqltypes.h>
 #include "rlm_sql.h"
 
