@@ -51,6 +51,7 @@
 #	in the logfiles, INSTEAD OF the new names.
 #
 $INCLUDE dictionary.compat	# compability issues
+$INCLUDE dictionary.3com
 $INCLUDE dictionary.3gpp
 $INCLUDE dictionary.acc
 $INCLUDE dictionary.alcatel
@@ -81,6 +82,7 @@ $INCLUDE dictionary.redback
 $INCLUDE dictionary.redcreek
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
+$INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.tunnel

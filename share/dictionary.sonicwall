@@ -1,0 +1,16 @@
+#
+#	3com SuperStack Firewall dictionary
+#	Bought from Sonicwall, apparently, from Enterprise number 8741.
+#
+#		$Id$
+#
+
+VENDOR	Sonicwall	8741
+
+ATTRIBUTE	SS3-Firewall-User-Privilege	1	integer	Sonicwall
+VALUE		SS3-Firewall-User-Privilege	Remote-Access  		1
+VALUE		SS3-Firewall-User-Privilege	Bypass-Filters		2
+VALUE		SS3-Firewall-User-Privilege	VPN-Client-Access	3
+VALUE		SS3-Firewall-User-Privilege	Access-To-VPN		4
+VALUE		SS3-Firewall-User-Privilege	Limited-Management	5
+VALUE		SS3-Firewall-User-Privilege	L2TP-Client-Access	6
