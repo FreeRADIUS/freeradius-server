@@ -163,6 +163,7 @@ ATTRIBUTE	Client-IP-Address	1052	ipaddr
 ATTRIBUTE	Ldap-UserDn		1053	string
 ATTRIBUTE	NS-MTA-MD5-Password	1054	string
 ATTRIBUTE	SQL-User-Name	 1055	string
+ATTRIBUTE	Module-Message		1056	string
 
 #
 #	Non-Protocol Attributes
