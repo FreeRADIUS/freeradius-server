@@ -30,7 +30,7 @@
 struct mypasswd {
 	struct mypasswd *next;
 	char *listflag;
-	char *field[0];
+	char *field[1];
 };
 
 struct hashtable {
