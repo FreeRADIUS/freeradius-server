@@ -49,7 +49,7 @@ static int conn_cleared_and_errorfree(rlm_sql_postgres_sock *pg_sock) {
 		pg_sock->result=PQgetResult(pg_sock->conn);
 	}
 
-	while (pg_sock->result) 
+	while (pg_sock->result) {
 		status=PQresultStatus(pg_sock->result);
 	/*
 		radlog(L_ERR, "rlm_postgresql Status: %s", PQresStatus(status));
@@ -61,6 +61,7 @@ static int conn_cleared_and_errorfree(rlm_sql_postgres_sock *pg_sock) {
 		if(pg_sock->result)
 			PQclear(pg_sock->result);
 		pg_sock->result=PQgetResult(pg_sock->conn);
+	}
 
 	return 1;
 }
