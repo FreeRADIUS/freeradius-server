@@ -31,6 +31,11 @@ the rlm_ldap module:
 #
 		timeout = 2
 
+#	ldap_debug: debug flag for LDAP SDK (see OpenLDAP documentation)
+#	default: 0x0000 (no debugging messages)
+#	Example:(LDAP_DEBUG_FILTER+LDAP_DEBUG_CONNS)
+		ldap_debug = 0x0028 
+
 #	identity: DN under which LDAP searches are done
 #	password: pasword which authenticate this DN
 #	default: anonymous bind, no password required
