@@ -153,6 +153,7 @@ rm -rf $RPM_BUILD_ROOT/usr/share/doc/freeradius*
 %attr(640,root,root) %config(noreplace) /etc/raddb/sql.conf
 %attr(640,root,root) %config(noreplace) /etc/raddb/users
 %config(noreplace) /etc/raddb/x99.conf
+%config(noreplace) /etc/raddb/eap.conf
 %attr(640,root,root) %config(noreplace) /etc/raddb/x99passwd.sample
 %dir /etc/raddb/certs
 %config /etc/raddb/certs/README
