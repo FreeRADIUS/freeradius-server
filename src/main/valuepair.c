@@ -201,7 +201,7 @@ void paircompare_unregister(int attr, RAD_COMPARE_FUNC fun)
  */
 int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 {
-	VALUE_PAIR *check_item = check;
+	VALUE_PAIR *check_item;
 	VALUE_PAIR *auth_item;
 	int result = 0;
 	int compare;
@@ -210,7 +210,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 	regex_t reg;
 #endif
 
-	while (result == 0 && check_item != NULL) {
+	for (check_item = check; check_item != NULL; check_item = check_item->next) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
@@ -218,7 +218,6 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 		 */
 		if ((check_item->operator == T_OP_SET) ||
 		    (check_item->operator == T_OP_ADD)) {
-			check_item = check_item->next;
 			continue;
 		}
 
@@ -228,7 +227,6 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			 *	These are "server" check items.
 			 */
 			case PW_CRYPT_PASSWORD:
-				check_item = check_item->next;
 				continue;
 				break;
 
@@ -243,7 +241,6 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 			 */
 			case PW_PASSWORD:
 				if (pairfind(request, PW_PASSWORD) == NULL) {
-					check_item = check_item->next;
 					continue;
 				}
 				break;
@@ -254,14 +251,17 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 		 */
 		other = otherattr(check_item->attribute);
 		auth_item = request;
+	try_again:
 		for (; auth_item != NULL; auth_item = auth_item->next) {
 			if (auth_item->attribute == other || other == 0)
 				break;
 		}
 
+		/*
+		 *	Not found, it's not a match.
+		 */
 		if (auth_item == NULL) {
-			result = -1;
-			continue;
+			return -1;
 		}
 
 		/*
@@ -276,27 +276,27 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 						"reverting to '=='", check_item->name);
 				/*FALLTHRU*/
 			case T_OP_CMP_EQ:
-				if (compare != 0) return -1;
+				if (compare != 0) result = -1;
 				break;
 
 			case T_OP_NE:
-				if (compare == 0) return -1;
+				if (compare == 0) result = -1;
 				break;
 
 			case T_OP_LT:
-				if (compare >= 0) return -1;
+				if (compare >= 0) result = -1;
 				break;
 
 			case T_OP_GT:
-				if (compare <= 0) return -1;
+				if (compare <= 0) result = -1;
 				break;
 		    
 			case T_OP_LE:
-				if (compare > 0) return -1;
+				if (compare > 0) result = -1;
 				break;
 
 			case T_OP_GE:
-				if (compare < 0) return -1;
+				if (compare < 0) result = -1;
 				break;
 
 #ifdef HAVE_REGEX_H
@@ -305,7 +305,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				compare = regexec(&reg, (char *)auth_item->strvalue,
 						0, NULL, 0);
 				regfree(&reg);
-				if (compare != 0) return -1;
+				if (compare != 0) result = -1;
 				break;
 
 			case T_OP_REG_NE:
@@ -313,17 +313,24 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				compare = regexec(&reg, (char *)auth_item->strvalue,
 						0, NULL, 0);
 				regfree(&reg);
-				if (compare == 0) return -1;
+				if (compare == 0) result = -1;
 				break;
 #endif
 
+		} /* switch over the operator of the check item */
+
+		/*
+		 *	This attribute didn't match, but maybe there's
+		 *	another of the same attribute, which DOES match.
+		 */
+		if (result != 0) {
+			auth_item = auth_item->next;
+			goto try_again;
 		}
 
-		if (result == 0)
-			check_item = check_item->next;
-	}
+	} /* for every entry in the check item list */
 
-	return result;
+	return 0;		/* it matched */
 }
 
 /*
