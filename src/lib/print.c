@@ -115,7 +115,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 				!= NULL)
 				a = v->name;
 			else {
-				snprintf(buf, sizeof(buf), "%d", vp->lvalue);
+				snprintf(buf, sizeof(buf), "%u", vp->lvalue);
 				a = buf;
 			}
 			break;
