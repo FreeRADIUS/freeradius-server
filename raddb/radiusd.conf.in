@@ -655,8 +655,13 @@ modules {
 		leap {
 		}
 
-		## EAP-TLS is highly experimental EAP-Type at the moment.  
-		#	Please give feedback on the mailing list.
+		## EAP-TLS
+		#
+		#  To generate certificates, see: ../scripts/CA.all
+		#
+		#  The documents on http://www.freeradius.org/doc
+		#  are old, but are helpful.
+		#
 		#tls {
 		#	private_key_password = password
 		#	private_key_file = /path/filename
@@ -952,7 +957,7 @@ modules {
 	#  'realm/username'
 	#
 	#  Using this entry, IPASS users have their realm set to "IPASS".
-	realm realmslash {
+	realm IPASS {
 		format = prefix
 		delimiter = "/"
 	}
@@ -1586,7 +1591,7 @@ authorize {
 	#  Look for IPASS style 'realm/', and if not found, look for
 	#  '@realm', and decide whether or not to proxy, based on
 	#  that.
-#	realmslash
+#	IPASS
 	suffix
 
 	#
@@ -1696,7 +1701,7 @@ preacct {
 	#
 	#  Accounting requests are generally proxied to the same
 	#  home server as authentication requests.
-#	realmslash
+#	IPASS
 	suffix
 
 	#
@@ -1796,7 +1801,7 @@ post-proxy {
 #	attr_filter
 
 	#
-	#  If you are proxing LEAP, you MUST configure the EAP
+	#  If you are proxying LEAP, you MUST configure the EAP
 	#  module, and you MUST list it here, in the post-proxy
 	#  stage.
 	#
