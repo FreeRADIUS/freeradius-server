@@ -384,7 +384,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			 */
 			challenge_hash(response->strvalue + 2,
 				       chap_challenge->strvalue,
-				       user_name->strvalue, buffer);
+				       username_string, buffer);
 			data = buffer;
 			data_len = 8;
 		} else {
@@ -1188,7 +1188,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			       username_string,	/* user name */
 			       mschapv1_challenge); /* resulting challenge */
 		
-		DEBUG2("  rlm_mschap: doing MS-CHAPv2 with NT-Password");
+		DEBUG2("  rlm_mschap: doing MS-CHAPv2 for %s with NT-Password",
+		       username_string);
 
 		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
 			      response->strvalue + 26, nthashhash) < 0) {
