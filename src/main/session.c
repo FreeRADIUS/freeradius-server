@@ -99,7 +99,7 @@ int session_zap(int sockfd, uint32_t nasaddr, int port, const char *user,
 	INTPAIR(PW_ACCT_DELAY_TIME, 0);
 	STRINGPAIR(PW_USER_NAME, user);
 	userpair = vp;
-	INTPAIR(PW_NAS_PORT_ID, port);
+	INTPAIR(PW_NAS_PORT, port);
 	STRINGPAIR(PW_ACCT_SESSION_ID, sessionid);
 	if(proto == 'P') {
 		INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);

@@ -326,7 +326,7 @@ static int do_packet(int allports, uint32_t nasaddr, const struct radutmp *u)
 		IPPAIR(PW_NAS_IP_ADDRESS, u->nas_address);
 		INTPAIR(PW_ACCT_DELAY_TIME, 0);
 		STRINGPAIR(PW_USER_NAME, login);
-		INTPAIR(PW_NAS_PORT_ID, u->nas_port);
+		INTPAIR(PW_NAS_PORT, u->nas_port);
 		STRINGPAIR(PW_ACCT_SESSION_ID, session_id);
 		if(u->proto=='P') {
 			INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);

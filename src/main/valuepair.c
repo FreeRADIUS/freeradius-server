@@ -630,7 +630,7 @@ static int responsecmp(void *instance, REQUEST *req, VALUE_PAIR *request,
  */
 void pair_builtincompare_init(void)
 {
-	paircompare_register(PW_NAS_PORT_ID, -1, portcmp, NULL);
+	paircompare_register(PW_NAS_PORT, -1, portcmp, NULL);
 	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp, NULL);
 	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp, NULL);
 	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, NULL);

@@ -53,7 +53,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
 
 	if ((cli = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) == NULL)
 		do_cli = 0;
-	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
+	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
 		port = pair->lvalue;
 
 	snprintf(buf, buflen, "from client %.128s port %d%s%.128s",
@@ -736,7 +736,7 @@ autz_redo:
 		 *  Find the NAS port ID.
 		 */
 		if ((vpPortId = pairfind(request->packet->vps,
-					 PW_NAS_PORT_ID)) != NULL) {
+					 PW_NAS_PORT)) != NULL) {
 		  tmp->lvalue = htonl(ntohl(tmp->lvalue) + vpPortId->lvalue);
 		  tmp->flags.addport = 0;
 		  ip_ntoa(tmp->strvalue, tmp->lvalue);
