@@ -1054,8 +1054,8 @@ modules {
 	#  section it comes after any module which sets the
 	#  'check-name' attribute.
 	#
-	counter {
-		filename = ${raddbdir}/db.counter
+	counter daily {
+		filename = ${raddbdir}/db.daily
 		key = User-Name
 		count-attribute = Acct-Session-Time
 		reset = daily
@@ -1119,6 +1119,11 @@ instantiate {
 	#  more information.
 	#
 	expr
+	#
+	# We add the counter module here so that it registers
+	# the check-name attribute before any module which sets
+	# it
+#	daily
 }
 
 #  Authorization. First preprocess (hints and huntgroups files),
@@ -1163,7 +1168,7 @@ authorize {
 
 # The ldap module will set Auth-Type to LDAP if it has not already been set
 #	ldap
-#	counter
+#	daily
 }
 
 
@@ -1241,7 +1246,7 @@ preacct {
 accounting {
 	acct_unique
 	detail
-#	counter
+#	daily
 	unix		# wtmp file
 	radutmp
 #	sradutmp
