@@ -106,7 +106,7 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, const char **use
  *	NOTE: NOT the same as the RLM_ values !
  */
 static int rad_check_password(REQUEST *request,
-	VALUE_PAIR *check_item,
+	VALUE_PAIR *check_item, VALUE_PAIR *user_reply, 
 	const char **user_msg)
 {
 	VALUE_PAIR	*auth_type_pair;
@@ -226,7 +226,7 @@ static int rad_check_password(REQUEST *request,
 			 *	status into the values as defined at
 			 *	the top of this function.
 			 */
-			result = module_authenticate(auth_type, request);
+			result = module_authenticate(auth_type, request, &request->config_items, &user_reply);
 			switch (result) {
 				/*
 				 *	An authentication module FAIL
@@ -409,7 +409,7 @@ int rad_authenticate(REQUEST *request)
 	do {
 		if ((result = check_expiration(request->config_items, umsg, &user_msg))<0)
 				break;
-		result = rad_check_password(request, request->config_items,
+		result = rad_check_password(request, request->config_items, user_reply, 
 			&user_msg);
 		if (result > 0) {
 			/* don't reply! */
