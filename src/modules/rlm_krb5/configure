@@ -15,6 +15,8 @@ ac_help="$ac_help
   --with-rlm-krb5-lib-dir=DIR       Directory for krb5 library files []"
 ac_help="$ac_help
   --with-rlm-krb5-include-dir=DIR   Directory for krb5 include files []"
+ac_help="$ac_help
+  --enable-heimdal-krb5             Enable if you have heimdal krb5"
 
 # Initialize some variables set by options.
 # The variables have the same names as the options, with
@@ -525,7 +527,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.5 
+# From configure.in Revision: 1.6 
 
 
 if test x$with_rlm_krb5 != xno; then
@@ -533,7 +535,7 @@ if test x$with_rlm_krb5 != xno; then
 	# Extract the first word of "gcc", so it can be a program name with args.
 set dummy gcc; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:537: checking for $ac_word" >&5
+echo "configure:539: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -563,7 +565,7 @@ if test -z "$CC"; then
   # Extract the first word of "cc", so it can be a program name with args.
 set dummy cc; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:567: checking for $ac_word" >&5
+echo "configure:569: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -614,7 +616,7 @@ fi
       # Extract the first word of "cl", so it can be a program name with args.
 set dummy cl; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:618: checking for $ac_word" >&5
+echo "configure:620: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -646,7 +648,7 @@ fi
 fi
 
 echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works""... $ac_c" 1>&6
-echo "configure:650: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works" >&5
+echo "configure:652: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works" >&5
 
 ac_ext=c
 # CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
@@ -657,12 +659,12 @@ cross_compiling=$ac_cv_prog_cc_cross
 
 cat > conftest.$ac_ext << EOF
 
-#line 661 "configure"
+#line 663 "configure"
 #include "confdefs.h"
 
 main(){return(0);}
 EOF
-if { (eval echo configure:666: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:668: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   ac_cv_prog_cc_works=yes
   # If we can't run a trivial program, we are probably using a cross compiler.
   if (./conftest; exit) 2>/dev/null; then
@@ -688,12 +690,12 @@ if test $ac_cv_prog_cc_works = no; then
   { echo "configure: error: installation or configuration problem: C compiler cannot create executables." 1>&2; exit 1; }
 fi
 echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler""... $ac_c" 1>&6
-echo "configure:692: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler" >&5
+echo "configure:694: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler" >&5
 echo "$ac_t""$ac_cv_prog_cc_cross" 1>&6
 cross_compiling=$ac_cv_prog_cc_cross
 
 echo $ac_n "checking whether we are using GNU C""... $ac_c" 1>&6
-echo "configure:697: checking whether we are using GNU C" >&5
+echo "configure:699: checking whether we are using GNU C" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_gcc'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -702,7 +704,7 @@ else
   yes;
 #endif
 EOF
-if { ac_try='${CC-cc} -E conftest.c'; { (eval echo configure:706: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; } | egrep yes >/dev/null 2>&1; then
+if { ac_try='${CC-cc} -E conftest.c'; { (eval echo configure:708: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; } | egrep yes >/dev/null 2>&1; then
   ac_cv_prog_gcc=yes
 else
   ac_cv_prog_gcc=no
@@ -721,7 +723,7 @@ ac_test_CFLAGS="${CFLAGS+set}"
 ac_save_CFLAGS="$CFLAGS"
 CFLAGS=
 echo $ac_n "checking whether ${CC-cc} accepts -g""... $ac_c" 1>&6
-echo "configure:725: checking whether ${CC-cc} accepts -g" >&5
+echo "configure:727: checking whether ${CC-cc} accepts -g" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_cc_g'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -753,7 +755,7 @@ else
 fi
 
 	echo $ac_n "checking how to run the C preprocessor""... $ac_c" 1>&6
-echo "configure:757: checking how to run the C preprocessor" >&5
+echo "configure:759: checking how to run the C preprocessor" >&5
 # On Suns, sometimes $CPP names a directory.
 if test -n "$CPP" && test -d "$CPP"; then
   CPP=
@@ -768,13 +770,13 @@ else
   # On the NeXT, cc -E runs the code through the compiler's parser,
   # not just through cpp.
   cat > conftest.$ac_ext <<EOF
-#line 772 "configure"
+#line 774 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:778: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:780: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -785,13 +787,13 @@ else
   rm -rf conftest*
   CPP="${CC-cc} -E -traditional-cpp"
   cat > conftest.$ac_ext <<EOF
-#line 789 "configure"
+#line 791 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:795: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:797: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -802,13 +804,13 @@ else
   rm -rf conftest*
   CPP="${CC-cc} -nologo -E"
   cat > conftest.$ac_ext <<EOF
-#line 806 "configure"
+#line 808 "configure"
 #include "confdefs.h"
 #include <assert.h>
 Syntax Error
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:812: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:814: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   :
@@ -869,19 +871,31 @@ if test "${with_rlm_krb5_include_dir+set}" = set; then
 fi
 
 
+              # Check whether --enable-heimdal-krb5 or --disable-heimdal-krb5 was given.
+if test "${enable_heimdal_krb5+set}" = set; then
+  enableval="$enable_heimdal_krb5"
+   case "$enableval" in
+               yes)
+                       krb5_h_cflags="-DHEIMDAL_KRB5"
+                       ;;
+         esac 
+       
+fi
+
+
 	smart_try_dir=$rlm_krb5_include_dir
 	
 
 ac_safe=`echo "krb5.h" | sed 'y%./+-%__pm%'`
 echo $ac_n "checking for krb5.h""... $ac_c" 1>&6
-echo "configure:878: checking for krb5.h" >&5
+echo "configure:892: checking for krb5.h" >&5
 
 smart_include=
 smart_include_dir=
 
   old_CFLAGS="$CFLAGS"
   cat > conftest.$ac_ext <<EOF
-#line 885 "configure"
+#line 899 "configure"
 #include "confdefs.h"
 
 		  #include <krb5.h>
@@ -889,7 +903,7 @@ int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:893: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:907: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include=" "
 else
@@ -933,7 +947,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
       CFLAGS="$old_CFLAGS -I$try"
 
       cat > conftest.$ac_ext <<EOF
-#line 937 "configure"
+#line 951 "configure"
 #include "confdefs.h"
 
 		       #include <krb5.h>
@@ -941,7 +955,7 @@ int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:945: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:959: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include="-I$try"
 else
@@ -976,7 +990,7 @@ fi
 sm_lib_safe=`echo "k5crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_encrypt_data" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for krb5_encrypt_data in -lk5crypto""... $ac_c" 1>&6
-echo "configure:980: checking for krb5_encrypt_data in -lk5crypto" >&5
+echo "configure:994: checking for krb5_encrypt_data in -lk5crypto" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -984,14 +998,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lk5crypto"
   cat > conftest.$ac_ext <<EOF
-#line 988 "configure"
+#line 1002 "configure"
 #include "confdefs.h"
 extern char krb5_encrypt_data();
 int main() {
  krb5_encrypt_data()
 ; return 0; }
 EOF
-if { (eval echo configure:995: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1009: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lk5crypto"
 else
@@ -1060,14 +1074,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lk5crypto"
 
       cat > conftest.$ac_ext <<EOF
-#line 1064 "configure"
+#line 1078 "configure"
 #include "confdefs.h"
 extern char krb5_encrypt_data();
 int main() {
  krb5_encrypt_data()
 ; return 0; }
 EOF
-if { (eval echo configure:1071: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1085: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lk5crypto"
 else
@@ -1100,7 +1114,7 @@ fi
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
-echo "configure:1104: checking for DH_new in -lcrypto" >&5
+echo "configure:1118: checking for DH_new in -lcrypto" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -1108,14 +1122,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lcrypto"
   cat > conftest.$ac_ext <<EOF
-#line 1112 "configure"
+#line 1126 "configure"
 #include "confdefs.h"
 extern char DH_new();
 int main() {
  DH_new()
 ; return 0; }
 EOF
-if { (eval echo configure:1119: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1133: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lcrypto"
 else
@@ -1184,14 +1198,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lcrypto"
 
       cat > conftest.$ac_ext <<EOF
-#line 1188 "configure"
+#line 1202 "configure"
 #include "confdefs.h"
 extern char DH_new();
 int main() {
  DH_new()
 ; return 0; }
 EOF
-if { (eval echo configure:1195: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1209: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lcrypto"
 else
@@ -1228,7 +1242,7 @@ fi
 sm_lib_safe=`echo "com_err" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "set_com_err_hook" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for set_com_err_hook in -lcom_err""... $ac_c" 1>&6
-echo "configure:1232: checking for set_com_err_hook in -lcom_err" >&5
+echo "configure:1246: checking for set_com_err_hook in -lcom_err" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -1236,14 +1250,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lcom_err"
   cat > conftest.$ac_ext <<EOF
-#line 1240 "configure"
+#line 1254 "configure"
 #include "confdefs.h"
 extern char set_com_err_hook();
 int main() {
  set_com_err_hook()
 ; return 0; }
 EOF
-if { (eval echo configure:1247: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1261: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lcom_err"
 else
@@ -1312,14 +1326,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lcom_err"
 
       cat > conftest.$ac_ext <<EOF
-#line 1316 "configure"
+#line 1330 "configure"
 #include "confdefs.h"
 extern char set_com_err_hook();
 int main() {
  set_com_err_hook()
 ; return 0; }
 EOF
-if { (eval echo configure:1323: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1337: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lcom_err"
 else
@@ -1352,7 +1366,7 @@ fi
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_init_context" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for krb5_init_context in -lkrb5""... $ac_c" 1>&6
-echo "configure:1356: checking for krb5_init_context in -lkrb5" >&5
+echo "configure:1370: checking for krb5_init_context in -lkrb5" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -1360,14 +1374,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lkrb5"
   cat > conftest.$ac_ext <<EOF
-#line 1364 "configure"
+#line 1378 "configure"
 #include "confdefs.h"
 extern char krb5_init_context();
 int main() {
  krb5_init_context()
 ; return 0; }
 EOF
-if { (eval echo configure:1371: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1385: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lkrb5"
 else
@@ -1436,14 +1450,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lkrb5"
 
       cat > conftest.$ac_ext <<EOF
-#line 1440 "configure"
+#line 1454 "configure"
 #include "confdefs.h"
 extern char krb5_init_context();
 int main() {
  krb5_init_context()
 ; return 0; }
 EOF
-if { (eval echo configure:1447: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1461: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lkrb5"
 else
@@ -1488,7 +1502,7 @@ if test x"$fail" != x""; then
 fi
 
 krb5_ldflags=$SMART_LIBS
-krb5_cflags=$SMART_CFLAGS
+krb5_cflags="${krb5_h_cflags} $SMART_CFLAGS"
 
 
 

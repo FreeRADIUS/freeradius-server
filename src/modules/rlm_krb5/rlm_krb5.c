@@ -39,6 +39,7 @@ static const char rcsid[] = "$Id$";
 #include <krb5.h>
 #include <com_err.h>
 
+#ifndef HEIMDAL_KRB5
 static int verify_krb5_tgt(krb5_context context, const char *user,
                            krb5_ccache ccache)
 {
@@ -113,6 +114,7 @@ cleanup:
 		krb5_free_data_contents(context, &packet);
 	return r;
 }
+#endif
 
 /* instantiate */
 static int krb5_instantiate(CONF_SECTION *conf, void **instance)
@@ -142,9 +144,12 @@ static int krb5_detach(void *instance)
 }
 
 /* validate userid/passwd */
+/* MIT case */
+#ifndef HEIMDAL_KRB5
 static int krb5_auth(void *instance, REQUEST *request)
 {
 	int r;
+
         krb5_data tgtname = {
                 0,
                 KRB5_TGS_NAME_SIZE,
@@ -153,6 +158,7 @@ static int krb5_auth(void *instance, REQUEST *request)
         krb5_creds kcreds;
 	krb5_ccache ccache;
 	char cache_name[L_tmpnam + 8];
+
 	krb5_context context = *(krb5_context *) instance; /* copy data */
 	const char *user, *pass;
 
@@ -217,6 +223,9 @@ static int krb5_auth(void *instance, REQUEST *request)
 		return RLM_MODULE_REJECT;
 	}
 
+	/*
+	 * MIT krb5 verification
+	 */
 	if ( (r = krb5_build_principal_ext(context, &kcreds.server,
 		krb5_princ_realm(context, kcreds.client)->length,
 		krb5_princ_realm(context, kcreds.client)->data,
@@ -249,6 +258,85 @@ static int krb5_auth(void *instance, REQUEST *request)
 	return RLM_MODULE_REJECT;
 }
 
+#else /* HEIMDAL_KRB5 */
+
+/* validate user/pass, heimdal krb5 way */
+static int krb5_auth(void *instance, REQUEST *request)
+{
+	int r;
+	krb5_error_code ret;
+	krb5_ccache id;
+	krb5_principal userP;
+
+	krb5_context context = *(krb5_context *) instance; /* copy data */
+	const char *user, *pass;
+
+	/*
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Name attribute.
+	 */
+	if (!request->username) {
+		radlog(L_AUTH, "rlm_krb5: Attribute \"User-Name\" is required for authentication.");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Password attribute.
+	 */
+	if (!request->password) {
+		radlog(L_AUTH, "rlm_krb5: Attribute \"User-Password\" is required for authentication.");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *  Ensure that we're being passed a plain-text password,
+	 *  and not anything else.
+	 */
+	if (request->password->attribute != PW_PASSWORD) {
+		radlog(L_AUTH, "rlm_krb5: Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	shortcuts
+	 */
+	user = request->username->strvalue;
+	pass = request->password->strvalue;
+
+	if ( (r = krb5_parse_name(context, user, &userP)) ) {
+		radlog(L_AUTH, "rlm_krb5: [%s] krb5_parse_name failed: %s",
+		       user, error_message(r));
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
+	 * Heimdal krb5 verification
+	 */
+	radlog(L_AUTH, "rlm_krb5: Parsed name is: %s@%s\n",
+	       *userP->name.name_string.val,
+	       userP->realm);
+
+	krb5_cc_default(context, &id);
+	
+	ret = krb5_verify_user(context,
+			       userP,
+			       id,
+			       pass, 1, "radius");
+
+       if (ret == 0)
+	 return RLM_MODULE_OK;
+
+       radlog(L_AUTH, "rlm_krb5: failed verify_user: %s (%s@%s )",
+	      error_message(ret),
+	      *userP->name.name_string.val,
+	      userP->realm);
+
+       return RLM_MODULE_REJECT;
+}
+
+#endif /* HEIMDAL_KRB5 */
+
 module_t rlm_krb5 = {
   "Kerberos",
   RLM_TYPE_THREAD_UNSAFE,	/* type: not thread safe */
@@ -259,10 +347,7 @@ module_t rlm_krb5 = {
 	  NULL,			/* authorize */
 	  NULL,			/* pre-accounting */
 	  NULL,			/* accounting */
-	  NULL,			/* checksimul */
-	  NULL,			/* pre-proxy */
-	  NULL,			/* post-proxy */
-	  NULL			/* post-auth */
+	  NULL			/* checksimul */
   },
   krb5_detach,			/* detach */
   NULL,				/* destroy */

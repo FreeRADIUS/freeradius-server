@@ -39,6 +39,16 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
+       dnl extra argument: --enable-heimdal-krb5
+       AC_ARG_ENABLE(heimdal-krb5,
+       [  --enable-heimdal-krb5             Enable if you have heimdal krb5],
+       [ case "$enableval" in
+               yes)
+                       krb5_h_cflags="-DHEIMDAL_KRB5"
+                       ;;
+         esac ]
+       )
+
 	smart_try_dir=$rlm_krb5_include_dir
 	AC_SMART_CHECK_INCLUDE(krb5.h)
 
@@ -85,7 +95,7 @@ if test x"$fail" != x""; then
 fi
 
 krb5_ldflags=$SMART_LIBS
-krb5_cflags=$SMART_CFLAGS
+krb5_cflags="${krb5_h_cflags} $SMART_CFLAGS"
 
 AC_SUBST(krb5_cflags)
 AC_SUBST(krb5_ldflags)
