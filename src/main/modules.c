@@ -461,8 +461,11 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 {
 	int idx;
 	indexed_modcallable *subcomp;
+	modcallable *ml;
 
 	static int meaningless_counter = 1;
+
+	ml = compile_modgroup(comp, cs, filename);
 
 	/* We must assign a numeric index to this subcomponent. For
 	 * auth, it is generated and placed in the dictionary by
@@ -482,10 +485,11 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp, const char *fi
 				"%s[%d] %s %s already configured - skipping",
 				filename, cf_section_lineno(cs),
 				subcomponent_names[comp], cf_section_name2(cs));
+		modcallable_free(&ml);
 		return;
 	}
 
-	subcomp->modulelist = compile_modgroup(comp, cs, filename);
+	subcomp->modulelist = ml;
 }
 
 static void load_component_section(CONF_SECTION *cs, int comp, const char *filename)
