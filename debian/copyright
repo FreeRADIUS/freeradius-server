@@ -1,9 +1,16 @@
 This package was debianized by Chad Miller <cmiller@debian.org> on
 Fri, 24 Nov 2000 16:25:57 -0500.
+The packaging was rearranged by Paul Hampson <Paul.Hampson@anu.edu.au> on
+Sun,  4 May 2003 03:51:20 +1000
 
-It was downloaded from http://freeradius.org/
+It was downloaded from http://www.freeradius.org/
 
-Copyright 2000,  The FreeRADIUS Project.
+Copyright (C) 2000-2003 The FreeRADIUS Server Project
+Copyright (C) 1997-1999 Cistron Internet Services B.V.
+
+--
+Except for /usr/lib/freeradius/libradius*, this package is licensed
+under the GNU GPL version 2.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
@@ -12,3 +19,14 @@ version.
 
 On Debian systems, the complete text of the GNU General Public License can be
 found in /usr/share/common-licenses/GPL file.
+
+--
+/usr/lib/freeradius/libradius* is under the GNU LGPL version 2.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+On Debian systems, the complete text of the GNU Lesser General Public
+License can be found in /usr/share/common-licenses/LGPL.
