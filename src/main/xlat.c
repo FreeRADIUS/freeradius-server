@@ -232,7 +232,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	char attrname[256];
 	const char *p;
 	char *q, *pa;
-	int stop=0, found=0;
+	int stop=0, found=0, retlen=0;
 	int openbraces = *open;
 	struct xlat_cmp *c;
 
@@ -341,8 +341,14 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	} else if ((c = find_xlat_func(attrname)) != NULL) {
 		DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
 		      c->module, attrname+ c->length + 1);
-		q += c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
-		found = 1;
+		retlen = c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
+		/* If retlen is 0, treat it as not found */
+		if (retlen == 0) {
+			found = 0;
+		} else {
+			found = 1;
+			q += retlen;
+		}
 
 		/*
 		 *	Nothing else, it MUST be a bare attribute name.
