@@ -1344,6 +1344,21 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
+			/*
+			 *	If the destination IP is unknown, check
+			 *	if the listener has a known IP.  If so,
+			 *	use that.
+			 */
+			if ((packet->dst_ipaddr == htonl(INADDR_ANY)) &&
+			    (packet->dst_ipaddr != listener->ipaddr)) {
+				packet->dst_ipaddr = listener->ipaddr;
+			}
+
+			/*
+			 *	Fill in the destination port.
+			 */
+			packet->dst_port = listener->port;
+
 			RAD_SNMP_TYPE_INC(listener, total_requests);
 
 			/*
