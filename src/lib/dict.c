@@ -13,7 +13,7 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 #include	<string.h>
 
-#if HAVE_MALLOC_H
+#ifdef HAVE_MALLOC_H
 #include	<malloc.h>
 #endif
 

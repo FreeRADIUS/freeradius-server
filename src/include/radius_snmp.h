@@ -5,11 +5,11 @@
  * Version:	$Id$
  */
 
-#if HAVE_ASN1_SNMP_SNMPIMPL_H
+#ifdef HAVE_ASN1_SNMP_SNMPIMPL_H
 #include	<asn1.h>
 #include	<snmp.h>
 #include	<snmp_impl.h>
-#elif HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
+#elifdef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
 #include	<ucd-snmp/asn1.h>
 #include	<ucd-snmp/snmp.h>
 #include	<ucd-snmp/snmp_impl.h>

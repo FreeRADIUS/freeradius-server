@@ -163,7 +163,7 @@ static const char *comp2str[] = {
 	"post-auth"
 };
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 /*
  *	Lock the mutex for the module
  */

@@ -27,7 +27,7 @@ extern int DEBUGLEVEL;
 #include <string.h>
 
 #include <string.h>
-#if HAVE_SYS_VFS_H
+#ifdef HAVE_SYS_VFS_H
 #include <sys/vfs.h>
 #endif
 

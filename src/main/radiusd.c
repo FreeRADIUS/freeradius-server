@@ -35,7 +35,7 @@ static const char rcsid[] =
 #include <sys/socket.h>
 #include <sys/file.h>
 
-#if HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IN_H
 #	include <netinet/in.h>
 #endif
 
@@ -45,25 +45,25 @@ static const char rcsid[] =
 #include <fcntl.h>
 #include <ctype.h>
 
-#if HAVE_UNISTD_H
+#ifdef HAVE_UNISTD_H
 #	include <unistd.h>
 #endif
 
 #include <signal.h>
 
-#if HAVE_GETOPT_H
+#ifdef HAVE_GETOPT_H
 #	include <getopt.h>
 #endif
 
-#if HAVE_SYS_SELECT_H
+#ifdef HAVE_SYS_SELECT_H
 #	include <sys/select.h>
 #endif
 
-#if HAVE_SYSLOG_H
+#ifdef HAVE_SYSLOG_H
 #	include <syslog.h>
 #endif
 
-#if HAVE_SYS_WAIT_H
+#ifdef HAVE_SYS_WAIT_H
 #	include <sys/wait.h>
 #endif
 #ifndef WEXITSTATUS
@@ -445,7 +445,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-#if HAVE_SYSLOG_H
+#ifdef HAVE_SYSLOG_H
 	/*
 	 *  If they asked for syslog, then give it to them.
 	 *  Also, initialize the logging facility with the
@@ -622,7 +622,7 @@ int main(int argc, char *argv[])
 		if(pid > 0) {
 			exit(0);
 		}
-#if HAVE_SETSID
+#ifdef HAVE_SETSID
 		setsid();
 #endif
 	}
@@ -677,7 +677,7 @@ int main(int argc, char *argv[])
 		close(devnull);
 	}
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *  If we're spawning children, set up the thread pool.
 	 */
@@ -835,7 +835,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (need_reload) {
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 			/*
 			 *	Threads: wait for all threads to stop
 			 *	processing before re-loading the
@@ -1724,7 +1724,7 @@ next_request:
 	DEBUG2("Going to the next request");
 
 postpone_request:
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *  We are finished with the child thread.  The thread is detached,
 	 *  so that when it exits, there's nothing more for the server
@@ -1840,7 +1840,7 @@ static struct timeval *rad_clean_list(time_t now)
 	last_request = NULL;
 	DEBUG2("--- Walking the entire request list ---");
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *  Only clean the thread pool if we've spawned child threads.
 	 */
@@ -2642,7 +2642,7 @@ static int refresh_request(REQUEST *request, void *data)
 				 *  This request seems to have hung
 				 *   - kill it
 				 */
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 				radlog(L_ERR, "Killing unresponsive thread for request %d",
 				       request->number);
 				pthread_cancel(child_pid);

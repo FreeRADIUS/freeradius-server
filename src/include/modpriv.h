@@ -26,7 +26,7 @@ typedef struct module_instance_t {
 	char			name[MAX_STRING_LEN];
 	module_list_t		*entry;
 	void                    *insthandle;
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		*mutex;
 #endif
 } module_instance_t;

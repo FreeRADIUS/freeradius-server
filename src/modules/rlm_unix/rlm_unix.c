@@ -37,7 +37,7 @@ static const char rcsid[] = "$Id$";
 
 #include "config.h"
 
-#if HAVE_SHADOW_H
+#ifdef HAVE_SHADOW_H
 #  include	<shadow.h>
 #endif
 
@@ -111,7 +111,7 @@ static struct unix_instance *group_inst;
  * file) or not ("Group=" was bound to the first instance of rlm_unix */
 static int group_inst_explicit;
 
-#if HAVE_GETSPNAM
+#ifdef HAVE_GETSPNAM
 #if defined(M_UNIX)
 static inline const char *get_shadow_name(shadow_pwd_t *spwd) {
 	if (spwd == NULL) return NULL;
@@ -168,7 +168,7 @@ static struct group *fgetgrnam(const char *fname, const char *name) {
 	return grp;
 }
 
-#if HAVE_GETSPNAM
+#ifdef HAVE_GETSPNAM
 
 static shadow_pwd_t *fgetspnam(const char *fname, const char *name) {
 	FILE		*file = fopen(fname, "ro");
@@ -373,7 +373,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	struct passwd	*pwd;
 	const char	*encrypted_pass;
 	int		ret;
-#if HAVE_GETSPNAM
+#ifdef HAVE_GETSPNAM
 	shadow_pwd_t	*spwd = NULL;
 #endif
 #ifdef OSFC2
@@ -511,7 +511,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	encrypted_pass = pwd->pw_passwd;
 #endif /* OSFC2 */
 
-#if HAVE_GETSPNAM
+#ifdef HAVE_GETSPNAM
 	/*
 	 *      See if there is a shadow password.
 	 *
@@ -546,7 +546,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	}
 #endif
 
-#if HAVE_GETUSERSHELL
+#ifdef HAVE_GETUSERSHELL
 	/*
 	 *	Check /etc/shells for a valid shell. If that file
 	 *	contains /RADIUSD/ANY/SHELL then any shell will do.

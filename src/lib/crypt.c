@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 
 /*
@@ -29,7 +29,7 @@ int lrad_crypt_check(const char *key, const char *crypted)
 	char *passwd;
 	int cmp = 0;
 	
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
 	 */
@@ -52,7 +52,7 @@ int lrad_crypt_check(const char *key, const char *crypted)
 		cmp = strcmp(crypted, passwd);
 	}
 	
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_unlock(&lrad_crypt_mutex);
 #endif
 	

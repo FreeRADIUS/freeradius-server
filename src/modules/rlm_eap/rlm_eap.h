@@ -81,7 +81,7 @@ typedef struct rlm_eap_t {
 	int		default_eap_type;
 	int		ignore_unknown_eap_types;
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
 	pthread_mutex_t	module_mutex;
 #endif

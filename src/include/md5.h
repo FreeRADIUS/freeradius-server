@@ -1,3 +1,10 @@
+/*
+ * md5.h        Structures and prototypes for md5.
+ *
+ * Version:     $Id$
+ *
+ */
+
 #ifndef _LRAD_MD5_H
 #define _LRAD_MD5_H
 
@@ -5,15 +12,15 @@
 #define _LRAD_PROTO_H
 #include "autoconf.h"
 
-#if HAVE_INTTYPES_H
+#ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
 
-#if HAVE_SYS_TYPES_H
+#ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
 
-#if HAVE_STDINT_H
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
 

@@ -46,7 +46,7 @@
 #endif
 
 
-#if HAVE_SYSLOG_H
+#ifdef HAVE_SYSLOG_H
 #include	<syslog.h>
 #endif
 
@@ -274,7 +274,7 @@ static int pam_auth(void *instance, REQUEST *request)
 		     (char *)request->password->strvalue,
 		     pam_auth_string);
 
-#if HAVE_SYSLOG_H
+#ifdef HAVE_SYSLOG_H
 	if (!strcmp(radlog_dir, "syslog")) {
 		openlog(progname, LOG_PID, syslog_facility);
 	}

@@ -62,7 +62,7 @@ static int eap_detach(void *instance)
 		inst->types[i] = NULL;
 	}
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&(inst->session_mutex));
 	pthread_mutex_destroy(&(inst->module_mutex));
 #endif
@@ -170,7 +170,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	/* Generate a state key, specific to eap */
 	generate_key();
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&(inst->session_mutex), NULL);
 	pthread_mutex_init(&(inst->module_mutex), NULL);
 #endif
@@ -188,7 +188,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	EAP_HANDLER	*handler;
 	eap_packet_t	*eap_packet;
 	int		rcode;
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	int		locked = FALSE;
 #endif
 
@@ -235,7 +235,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		}
 	}
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	else {			/* it's a normal request from a NAS */
 		/*
 		 *	The OpenSSL code isn't strictly thread-safe,
@@ -258,7 +258,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 */
 	rcode = eaptype_select(inst, handler);
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	if (locked) pthread_mutex_unlock(&(inst->module_mutex));
 #endif
 

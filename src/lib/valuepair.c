@@ -18,11 +18,11 @@ static const char rcsid[] = "$Id$";
 
 #include	"libradius.h"
 
-#if HAVE_MALLOC_H
+#ifdef HAVE_MALLOC_H
 #  include	<malloc.h>
 #endif
 
-#if HAVE_REGEX_H
+#ifdef HAVE_REGEX_H
 #  include	<regex.h>
 #endif
 

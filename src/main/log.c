@@ -37,7 +37,7 @@ static const char rcsid[] = "$Id$";
 
 #include "radiusd.h"
 
-#if HAVE_SYSLOG_H
+#ifdef HAVE_SYSLOG_H
 #	include <syslog.h>
 #endif
 
@@ -110,7 +110,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		}
 	}
 
-#if HAVE_SYSLOG_H
+#ifdef HAVE_SYSLOG_H
 	if (radlog_dest == RADLOG_SYSLOG) {
 		*buffer = '\0';
 		len = 0;
@@ -164,7 +164,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		p = buffer;
 	}
 
-#if HAVE_SYSLOG_H
+#ifdef HAVE_SYSLOG_H
 	if (radlog_dest != RADLOG_SYSLOG)
 #endif
 	{
@@ -177,7 +177,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 			fclose(msgfd);
 		}
 	}
-#if HAVE_SYSLOG_H
+#ifdef HAVE_SYSLOG_H
 	else {			/* it was syslog */
 		switch(lvl & ~L_CONS) {
 			case L_DBG:

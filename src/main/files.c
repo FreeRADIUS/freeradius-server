@@ -29,7 +29,7 @@ static const char rcsid[] = "$Id$";
 
 #include <sys/stat.h>
 
-#if HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IN_H
 #	include <netinet/in.h>
 #endif
 

@@ -7,7 +7,7 @@
 #ifndef _COMPAT_H
 #define _COMPAT_H
 
-#if HAVE_GETSPNAM
+#ifdef HAVE_GETSPNAM
 #if defined(M_UNIX)
 
 	typedef struct passwd shadow_pwd_t;

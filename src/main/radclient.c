@@ -29,7 +29,7 @@ static const char rcsid[] = "$Id$";
 #include <stdio.h>
 #include <stdlib.h>
 
-#if HAVE_UNISTD_H
+#ifdef HAVE_UNISTD_H
 #	include <unistd.h>
 #endif
 
@@ -38,15 +38,15 @@ static const char rcsid[] = "$Id$";
 #include <netdb.h>
 #include <sys/socket.h>
 
-#if HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IN_H
 #	include <netinet/in.h>
 #endif
 
-#if HAVE_SYS_SELECT_H
+#ifdef HAVE_SYS_SELECT_H
 #	include <sys/select.h>
 #endif
 
-#if HAVE_GETOPT_H
+#ifdef HAVE_GETOPT_H
 #	include <getopt.h>
 #endif
 

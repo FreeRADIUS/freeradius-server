@@ -31,7 +31,7 @@ int RFCNB_saved_errno = 0;
 
 #include "std-includes.h"
 
-#if HAVE_NETINET_TCP_H
+#ifdef HAVE_NETINET_TCP_H
 #include <netinet/tcp.h>
 #endif
 

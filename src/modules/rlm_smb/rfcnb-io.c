@@ -28,11 +28,11 @@
 #include "rfcnb-util.h"
 #include "rfcnb-io.h"
 
-#if HAVE_SYS_UIO_H
+#ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
 #endif
 
-#if HAVE_SYS_SIGNAL_H
+#ifdef HAVE_SYS_SIGNAL_H
 #include <sys/signal.h>
 #endif
 

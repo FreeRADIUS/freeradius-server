@@ -35,7 +35,7 @@ char radrelay_rcsid[] =
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#if HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
 
@@ -953,7 +953,7 @@ int main(int argc, char **argv)
 		signal(SIGHUP,  SIG_IGN);
 		signal(SIGINT,  SIG_IGN);
 		signal(SIGQUIT, SIG_IGN);
-#if HAVE_SETSID
+#ifdef HAVE_SETSID
 		setsid();
 #endif
 	}

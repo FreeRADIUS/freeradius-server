@@ -8,7 +8,7 @@
 #ifndef _RLM_SQL_H
 #define _RLM_SQL_H
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 #include        <pthread.h>
 #endif
 
@@ -31,7 +31,7 @@ typedef char** SQL_ROW;
 
 typedef struct sql_socket {
 	int     id;
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t mutex;
 #endif
 	struct sql_socket *next;

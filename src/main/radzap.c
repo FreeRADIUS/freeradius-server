@@ -35,7 +35,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#if HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
 #endif
 

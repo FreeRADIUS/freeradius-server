@@ -15,11 +15,11 @@
 
 #include <stdarg.h>
 
-#if HAVE_UNISTD_H
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 typedef pthread_t child_pid_t;
 #define child_kill pthread_kill

@@ -209,7 +209,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	handler->src_ipaddr = handler->request->packet->src_ipaddr;
 	handler->eap_id = handler->eap_ds->request->id;
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Playing with a data structure shared among threads
 	 *	means that we need a lock, to avoid conflict.
@@ -229,7 +229,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	
 	*last = handler;
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_unlock(&(inst->session_mutex));
 #endif
 
@@ -276,7 +276,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		return NULL;
 	}
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Playing with a data structure shared among threads
 	 *	means that we need a lock, to avoid conflict.
@@ -355,7 +355,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		}
 	}
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_unlock(&(inst->session_mutex));
 #endif
 

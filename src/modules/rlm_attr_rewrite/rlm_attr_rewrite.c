@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "config.h"
-#if HAVE_REGEX_H
+#ifdef HAVE_REGEX_H
 #	include <regex.h>
 #endif
 

@@ -55,7 +55,7 @@
  */
 #define OPENSSL_NO_KRB5
 #include <openssl/err.h>
-#if HAVE_OPENSSL_ENGINE_H
+#ifdef HAVE_OPENSSL_ENGINE_H
 #include <openssl/engine.h>
 #endif
 #include <openssl/ssl.h>

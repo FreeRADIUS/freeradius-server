@@ -48,7 +48,7 @@
 #include	"conffile.h"
 #include	"rlm_sql.h"
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 #endif
 
@@ -113,7 +113,7 @@ int sql_init_socketpool(SQL_INST * inst)
 		sqlsocket->id = i;
 		sqlsocket->state = sockunconnected;
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 		rcode = pthread_mutex_init(&sqlsocket->mutex,NULL);
 		if (rcode != 0) {
 			radlog(L_ERR, "rlm_sql: Failed to init lock: %s",
@@ -184,7 +184,7 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
 	if (inst->module->sql_destroy_socket) {
 		(inst->module->sql_destroy_socket)(sqlsocket, inst->config);
 	}
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&sqlsocket->mutex);
 #endif
 	free(sqlsocket);
@@ -214,7 +214,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 	cur = start;
 
 	while (cur) {
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 		/*
 		 *	If this socket is in use by another thread,
 		 *	skip it, and try another socket.
@@ -242,7 +242,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		if (cur->state == sockunconnected) {
 			radlog(L_DBG, "rlm_sql (%s): Ignoring unconnected handle %d..", inst->config->xlat_name, cur->id);
 		        unconnected++;
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 			pthread_mutex_unlock(&cur->mutex);
 #endif
 			goto next;
@@ -306,7 +306,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
  *************************************************************************/
 int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
 {
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_unlock(&sqlsocket->mutex);
 #endif
 

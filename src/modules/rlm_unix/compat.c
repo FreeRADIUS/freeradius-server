@@ -35,7 +35,7 @@ static const char rcsid[] = "$Id$";
 
 #include "config.h"
 
-#if HAVE_SHADOW_H
+#ifdef HAVE_SHADOW_H
 #  include <shadow.h>
 #endif
 

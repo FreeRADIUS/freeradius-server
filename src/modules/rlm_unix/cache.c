@@ -46,7 +46,7 @@ static const char rcsid[] = "$Id$";
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#if HAVE_SHADOW_H
+#ifdef HAVE_SHADOW_H
 #  include <shadow.h>
 #endif
 
@@ -69,7 +69,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
                                   const char *group_file)
 {
 	FILE *passwd;
-#if HAVE_SHADOW_H
+#ifdef HAVE_SHADOW_H
 	FILE *shadow;
 #endif
 	FILE *group;
@@ -97,7 +97,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 		return NULL;
 	}
 
-#if HAVE_SHADOW_H
+#ifdef HAVE_SHADOW_H
 	if (!shadow_file) {
 		radlog(L_ERR, "rlm_unix:  You MUST specify a shadow password file!");
 		return NULL;
@@ -214,7 +214,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 	}	/* End while(fgets(buffer, BUFSIZE , passwd) != (char *)NULL) */
 	fclose(passwd);
 
-#if HAVE_SHADOW_H
+#ifdef HAVE_SHADOW_H
 	/*
 	 *	FIXME: Check for password expiry!
 	 */

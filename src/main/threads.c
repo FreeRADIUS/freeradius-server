@@ -23,14 +23,14 @@
 
 #include "libradius.h"
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 
 #include <stdlib.h>
 #include <string.h>
 #include <semaphore.h>
 #include <signal.h>
 
-#if HAVE_SYS_WAIT_H
+#ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
 
@@ -155,7 +155,7 @@ static const CONF_PARSER thread_config[] = {
 static void *request_handler_thread(void *arg)
 {
 	THREAD_HANDLE	*self = (THREAD_HANDLE *) arg;
-#if HAVE_PTHREAD_SIGMASK
+#ifdef HAVE_PTHREAD_SIGMASK
 	sigset_t set;
 
 	/*

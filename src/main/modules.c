@@ -128,7 +128,7 @@ static void instance_list_free(module_instance_t **i)
 		next = c->next;
 		if(c->entry->module->detach)
 			(c->entry->module->detach)(c->insthandle);
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 		if (c->mutex) {
 			/*
 			 *	FIXME
@@ -371,7 +371,7 @@ module_instance_t *find_module_instance(const char *instname)
 	 */
 	strNcpy(node->name, instname, sizeof(node->name));
 
-#if HAVE_PTHREAD_H
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	If we're threaded, check if the module is thread-safe.
 	 *

@@ -12,7 +12,7 @@ static const char rcsid[] = "$Id$";
 
 #include	<stdlib.h>
 
-#if HAVE_UNISTD_H
+#ifdef HAVE_UNISTD_H
 #include	<unistd.h>
 #endif
 
@@ -22,17 +22,17 @@ static const char rcsid[] = "$Id$";
 
 #include	"libradius.h"
 
-#if HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IN_H
 #include	<netinet/in.h>
 #endif
 
 #include	<sys/socket.h>
 
-#if HAVE_ARPA_INET_H
+#ifdef HAVE_ARPA_INET_H
 #include	<arpa/inet.h>
 #endif
 
-#if HAVE_MALLOC_H
+#ifdef HAVE_MALLOC_H
 #include	<malloc.h>
 #endif
 
