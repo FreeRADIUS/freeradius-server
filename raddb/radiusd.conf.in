@@ -356,6 +356,22 @@ modules {
 		radwtmp = ${logdir}/radwtmp
 	}
 
+	# EAP module for all EAP related authentications 
+	eap {
+		# Invoke the default supported EAP type when
+		# EAP-Identity response is received
+		#   default_eap_type = md5
+
+		# Default expiry time to clean the EAP list,
+		# It is maintained to co-relate the
+		# EAP-response for each EAP-request sent.
+		#   timer_expire     = 60
+
+		# Supported EAP-types
+		md5 {
+		}
+	}
+
 	#  This module supports SAMBA passwd file authorization
 	#  and MS-CHAP, MS-CHAPv2 authentication
 	mschap {
@@ -640,6 +656,7 @@ authorize {
 	preprocess
 #	counter
 #	attr_filter
+#	eap
 	suffix
 	files
 #	mschap
@@ -666,6 +683,7 @@ authenticate {
 #	}
 #	ldap
 #	mschap
+#	eap
 }
 
 
