@@ -4,7 +4,7 @@
 #	$Id$
 #
 
-VENDOR-ID	Microsoft	311
+VENDOR		Microsoft	311
 
 BEGIN-VENDOR Microsoft
 ATTRIBUTE	MS-CHAP-Response	1	octets
@@ -86,3 +86,5 @@ VALUE		MS-Acct-EAP-Type	MD5		4
 VALUE		MS-Acct-EAP-Type	OTP		5
 VALUE		MS-Acct-EAP-Type	Generic-Token-Card	6
 VALUE		MS-Acct-EAP-Type	TLS		13
+
+END-VENDOR Microsoft
