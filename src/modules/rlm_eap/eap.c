@@ -468,15 +468,9 @@ int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 	ptr = (unsigned char *)eap_packet;
 
 	do {
-		/* TODO: Fix it in radius.c
-
-		if (eap_len > MAX_STRING_LEN) {
-			len = MAX_STRING_LEN;
-			eap_len -= MAX_STRING_LEN;
-		*/
-		if (eap_len > 252) {
-			len = 252;
-			eap_len -= 252;
+		if (eap_len > 253) {
+			len = 253;
+			eap_len -= 253;
 		} else {
 			len = eap_len;
 			eap_len = 0;
