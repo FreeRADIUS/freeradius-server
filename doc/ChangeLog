@@ -2,7 +2,11 @@ FreeRADIUS 0.5.0 ; urgency=low
 
 	* Preliminary EAP Module with MD5 support
 	  Contributed by Raghu <raghud@hereuare.com>
-	* Password = "UNIX" or "PAM" backwards compabilitity removed.
+	* Password = "UNIX" or "PAM" backwards compatibility removed.
+	* Attribute 'Password' deprecated in favor of 'User-Password'.
+	* MS-CHAP and MS-CHAPv2 MPPE support added.
+	  Contributed by Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp>.
+	* X9.9 token enhancements (several).
 
 FreeRADIUS 0.4.0 ; urgency=low
 
