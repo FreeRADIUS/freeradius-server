@@ -93,6 +93,7 @@ $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tunnel
 $INCLUDE dictionary.usr
+$INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
