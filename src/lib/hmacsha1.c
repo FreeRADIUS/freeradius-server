@@ -133,6 +133,26 @@ lrad_hmac_sha1(const unsigned char *text, int text_len,
         SHA1Update(&context, digest, 20);     /* then results of 1st
                                               * hash */
         SHA1Final(digest, &context);          /* finish up 2nd pass */
+
+#ifdef HMAC_SHA1_DATA_PROBLEMS
+	if(sha1_data_problems)
+	{
+	  int j;
+
+		printf("\nhmac-sha1 mac(20): ");
+		j=0;
+		for (i = 0; i < 20; i++) {
+			if(j==4) {
+				printf("_");
+				j=0;
+			}
+			j++;
+			
+			printf("%02x", digest[i]);
+		}
+		printf("\n");
+	}
+#endif
 }
 
 /*
