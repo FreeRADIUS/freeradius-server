@@ -145,7 +145,7 @@ smux_oid_dump (char *prefix, oid *oid, size_t oid_len)
   DEBUG2 ("%s: %s", prefix, buf); 
 }
 
-int
+static int
 smux_sock ()
 {
   int ret;
@@ -157,6 +157,7 @@ smux_sock ()
   struct sockaddr_in serv;
   struct servent *sp;
 #endif
+  int fd;
 
 #ifdef HAVE_IPV6
   memset(&hints, 0, sizeof(hints));
@@ -176,28 +177,28 @@ smux_sock ()
     }
   for(res=res0; res; res=res->ai_next)
     {
-      smuxfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (smuxfd < 0)
+      fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+      if (fd < 0)
 	continue;
-      setsockopt (smuxfd, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof (on));
+      setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof (on));
 #ifdef SO_REUSEPORT
-      setsockopt (smuxfd, SOL_SOCKET, SO_REUSEPORT, (void *)&on, sizeof (on));
+      setsockopt (fd, SOL_SOCKET, SO_REUSEPORT, (void *)&on, sizeof (on));
 #endif
-      ret = connect (smuxfd, res->ai_addr, res->ai_addrlen);
+      ret = connect (fd, res->ai_addr, res->ai_addrlen);
       if (ret < 0)
 	{
-	  close(smuxfd);
-	  smuxfd = -1;
+	  close(fd);
+	  fd = -1;
 	  continue;
 	}
       break;
     }
   freeaddrinfo(res0);
-  if (smuxfd < 0)
+  if (fd < 0)
     DEBUG ("Can't connect to SNMP agent with SMUX");
 #else
-  smuxfd = socket (AF_INET, SOCK_STREAM, 0);
-  if (smuxfd < 0)
+  fd = socket (AF_INET, SOCK_STREAM, 0);
+  if (fd < 0)
     {
       DEBUG ("Can't make socket for SNMP");
       return -1;
@@ -217,20 +218,20 @@ smux_sock ()
 
   serv.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
 
-  setsockopt (smuxfd, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof (on));
+  setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, (void *)&on, sizeof (on));
 #ifdef SO_REUSEPORT
-  setsockopt (smuxfd, SOL_SOCKET, SO_REUSEPORT, (void *)&on, sizeof (on));
+  setsockopt (fd, SOL_SOCKET, SO_REUSEPORT, (void *)&on, sizeof (on));
 #endif
 
-  ret = connect (smuxfd, (struct sockaddr *) &serv, sizeof (struct sockaddr_in));
+  ret = connect (fd, (struct sockaddr *) &serv, sizeof (struct sockaddr_in));
   if (ret < 0)
     {
-      close (smuxfd);
-      DEBUG ("Can't connect to SNMP agent with SMUX");
+      close (fd);
+      DEBUG ("Can't connect to SNMP agent with SMUX: %s", strerror(errno));
       smuxfd = -1;
     }
 #endif
-  return smuxfd;
+  return fd;
 }
 
 void
@@ -971,7 +972,7 @@ smux_connect ()
   DEBUG2 ("SMUX connect try %d", fail + 1);
 
   /* Make socket.  Try to connect. */
-  smux_sock ();
+  smux_fd = smux_sock ();
   if (smuxfd < 0)
     {
       if (++fail < SMUX_MAX_FAILURE)
@@ -1137,5 +1138,6 @@ void
 smux_start(void)
 {
   smux_event=SMUX_CONNECT;
+  smux_connect();
 }
 #endif /* WITH_SNMP */

@@ -24,7 +24,6 @@
 #include <snmp_impl.h>
 
 #include "smux.h"
-#include "version.h"
 
 extern int snmp_acctotalrequests;
 extern int snmp_authtotalrequests;
@@ -34,9 +33,9 @@ extern int snmp_authtotalrequests;
 #define RADAUTHOID 1,3,6,1,2,1,67,1,1,1,1
 #define RADIUSOID 1,3,6,1,4,1,3317,1,3,1
 
-oid radacc_oid [] = { RADACCOID };
-oid radauth_oid [] = { RADAUTHOID };
-oid radius_oid [] = { RADIUSOID };
+static oid radacc_oid [] = { RADACCOID };
+static oid radauth_oid [] = { RADAUTHOID };
+static oid radius_oid [] = { RADIUSOID };
 
 #define COUNTER ASN_COUNTER
 #define INTEGER ASN_INTEGER
@@ -103,7 +102,7 @@ static u_char *radAccEntry ();
 static u_char *radAuthServ ();
 static u_char *radAuthEntry ();
 
-struct variable radiusacc_variables[] = 
+static struct variable radiusacc_variables[] = 
 {
   {RADIUSACCSERVIDENT, STRING, RONLY, radAccServ, 1, {1}},
   {RADIUSACCSERVUPTIME, TIMETICKS, RONLY, radAccServ, 1, {2}},
@@ -130,7 +129,7 @@ struct variable radiusacc_variables[] =
   {RADIUSACCSERVUNKNOWNTYPES, COUNTER, RONLY, radAccEntry, 3, {14,1,11}},
 };
 
-struct variable radiusauth_variables[] =
+static struct variable radiusauth_variables[] =
 {
   {RADIUSAUTHSERVIDENT, STRING, RONLY, radAuthServ, 1, {1}},
   {RADIUSAUTHSERVUPTIME, TIMETICKS, RONLY, radAuthServ, 1, {2}},
@@ -181,8 +180,8 @@ radAccServ(struct variable *vp,
     switch (vp->magic) {
 
     case RADIUSACCSERVIDENT:
-        *var_len = strlen(VERSION);
-        return (unsigned char *) VERSION;
+        *var_len = strlen("0.1.0");
+        return (unsigned char *) "0.1.0";
 
     case RADIUSACCSERVUPTIME:
         return (unsigned char *) NULL;
@@ -404,7 +403,7 @@ write_radiusAuthServConfigReset_stub(int action,
 
 /* Register RADIUS MIBs. */
 void
-radius_snmp_init ()
+radius_snmp_init (void)
 {
   smux_init (radius_oid, sizeof (radius_oid) / sizeof (oid));
   REGISTER_MIB("mibII/radius-acc-server", radiusacc_variables, variable, radacc_oid);
