@@ -93,6 +93,35 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 /*************************************************************************
  *
+ *	Function: sql_check_error
+ *
+ *	Purpose: check the error to see if the server is down
+ *
+ *************************************************************************/
+static int sql_check_error(int error) {
+	switch(error) {
+	case CR_SERVER_GONE_ERROR:
+	case CR_SERVER_LOST:
+	case -1:
+		radlog(L_DBG, "rlm_sql_mysql: MYSQL check_error: %d, returning SQL_DOWN", error);
+		return SQL_DOWN;
+		break;
+	case 0:
+		return 0;
+		break;
+	case CR_OUT_OF_MEMORY:
+	case CR_COMMANDS_OUT_OF_SYNC:
+	case CR_UNKNOWN_ERROR:
+	default:
+		radlog(L_DBG, "rlm_sql_mysql: MYSQL check_error: %d received", error);
+		return -1;
+		break;
+	}
+}
+
+
+/*************************************************************************
+ *
  *	Function: sql_query
  *
  *	Purpose: Issue a query to the database
@@ -111,35 +140,6 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	mysql_query(mysql_sock->sock, querystr);
 	return sql_check_error(mysql_errno(mysql_sock->sock));
-}
-
-
-/*************************************************************************
- *
- *	Function: sql_select_query
- *
- *	Purpose: Issue a select query to the database
- *
- *************************************************************************/
-static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
-
-	int ret;
-
-	ret = sql_query(sqlsocket, config, querystr);
-	if(ret)
-		return ret;
-	ret = sql_store_result(sqlsocket, config);
-	if (ret) {
-		return ret;
-	}
-
-	/* Why? Per http://www.mysql.com/doc/n/o/node_591.html,
-	 * this cannot return an error.  Perhaps just to complain if no
-	 * fields are found?
-	 */
-	sql_num_fields(sqlsocket, config);
-
-	return ret;
 }
 
 
@@ -196,6 +196,35 @@ static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 
 /*************************************************************************
  *
+ *	Function: sql_select_query
+ *
+ *	Purpose: Issue a select query to the database
+ *
+ *************************************************************************/
+static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+
+	int ret;
+
+	ret = sql_query(sqlsocket, config, querystr);
+	if(ret)
+		return ret;
+	ret = sql_store_result(sqlsocket, config);
+	if (ret) {
+		return ret;
+	}
+
+	/* Why? Per http://www.mysql.com/doc/n/o/node_591.html,
+	 * this cannot return an error.  Perhaps just to complain if no
+	 * fields are found?
+	 */
+	sql_num_fields(sqlsocket, config);
+
+	return ret;
+}
+
+
+/*************************************************************************
+ *
  *	Function: sql_num_rows
  *
  *	Purpose: database specific num_rows. Returns number of rows in
@@ -233,36 +262,6 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 	}
 	return 0;
 }
-
-
-/*************************************************************************
- *
- *	Function: sql_check_error
- *
- *	Purpose: check the error to see if the server is down
- *
- *************************************************************************/
-static int sql_check_error(int error) {
-	switch(error) {
-	case CR_SERVER_GONE_ERROR:
-	case CR_SERVER_LOST:
-	case -1:
-		radlog(L_DBG, "rlm_sql_mysql: MYSQL check_error: %d, returning SQL_DOWN", error);
-		return SQL_DOWN;
-		break;
-	case 0:
-		return 0;
-		break;
-	case CR_OUT_OF_MEMORY:
-	case CR_COMMANDS_OUT_OF_SYNC:
-	case CR_UNKNOWN_ERROR:
-	default:
-		radlog(L_DBG, "rlm_sql_mysql: MYSQL check_error: %d received", error);
-		return -1;
-		break;
-	}
-}
-
 
 
 /*************************************************************************
