@@ -7,6 +7,10 @@
 #	comm server port number, protocol type (perhaps set by the "hints"
 #	file), and huntgroup name (set by the "huntgroups" file).
 #
+#	If you are not sure why a particular reply is being sent by the
+#	server, then run the server in debugging mode (radiusd -X), and
+#	you will see which entries in this file are matched.
+#
 #	When an authentication request is received from the comm server,
 #	these values are tested. Only the first match is used unless the
 #	"Fall-Through" variable is set to "Yes".
@@ -35,8 +39,30 @@
 #
 
 #
+# Deny access for a specific user.  Note that this entry MUST
+# be before any other 'Auth-Type' attribute which results in the user
+# being authenticated.
+#
+# Note that there is NO 'Fall-Through' attribute, so the user will not
+# be given any additional resources.
+#
+#lameuser	Auth-Type := Reject
+#		Reply-Message = "Your account has been disabled."
+
+#
+# Deny access for a group of users.
+#
+# Note that there is NO 'Fall-Through' attribute, so the user will not
+# be given any additional resources.
+#
+#DEFAULT	Group == "disabled", Auth-Type := Reject
+#		Reply-Message = "Your account has been disabled."
+#
+
+#
 # This is a complete entry for "steve". Note that there is no Fall-Through
-# entry so that no DEFAULT entry will be used.
+# entry so that no DEFAULT entry will be used, and the user will NOT
+# get any attributes in addition to the ones listed here.
 #
 #steve	Auth-Type := Local, Password == "testing"
 #	Service-Type = Framed-User,
@@ -52,8 +78,8 @@
 # This is an entry for a user with a space in their name.
 # Note the double quotes surrounding the name.
 #
-#"John Doe"	Password == "hello", Auth-Type := Local
-#		Reply-Message = "Hello, John."
+#"John Doe"	Auth-Type := Local, Password == "hello"
+#		Reply-Message = "Hello, %u"
 
 #
 # Dial user back and telnet to the default host for that port
@@ -63,7 +89,7 @@
 #	Login-IP-Host = 0.0.0.0,
 #	Callback-Number = "9,5551212",
 #	Login-Service = Telnet,
-#	Login-TCP-Port = 23
+#	Login-TCP-Port = Telnet
 
 #
 # Another complete entry. After the user "dialbk" has logged in, the
@@ -79,27 +105,24 @@
 #
 # user "swilson" will only get a static IP number if he logs in with
 # a framed protocol on a terminal server in Alphen (see the huntgroups file).
-# Note that by setting "Fall-Through" the rest will be gotten from the
-# appropriate DEFAULT entry.
+#
+# Note that by setting "Fall-Through", other attributes will be added from
+# the following DEFAULT entries
 #
 #swilson	Service-Type == Framed-User, Huntgroup-Name == "alphen"
 #		Framed-IP-Address = 192.168.1.65,
 #		Fall-Through = Yes
 
 #
-# Deny access for a specific user.  Note that this entry MUST
-# be before any other 'Auth-Type' attribute which results in the user
-# being authenticated.
+# If the user logs in as 'username.shell', then authenticate them
+# against the system database, give them shell access, and stop processing
+# the rest of the file.
 #
-#lameuser	Auth-Type := Reject
-#		Reply-Message = "Your account has been disabled."
+#DEFAULT	Suffix == ".shell", Auth-Type := System
+#		Service-Type = Login-User,
+#		Login-Service = Telnet,
+#		Login-IP-Host = your.shell.machine
 
-#
-# Deny access for a group of users.
-#
-#DEFAULT	Group == "disabled", Auth-Type := Reject
-#		Reply-Message = "Your account has been disabled."
-#
 
 #
 # The rest of this file contains the several DEFAULT entries.
