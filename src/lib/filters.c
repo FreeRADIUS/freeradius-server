@@ -14,6 +14,14 @@
 
 /* $Id$ */
 
+/*
+ *  Alan DeKok's comments:  This code SUCKS.  Having a static string
+ *  instead of passing function parameters is a STUPID thing to do.
+ *
+ *  This code should be re-written to get rid of Ascend's copyright,
+ *  and to fix all of the horrible crap of the current implementation.
+ */
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
@@ -24,8 +32,6 @@
 #include <sys/time.h>	/* gettimeofday() */
 
 #include "libradius.h"
-
-#define PRINTF( x ) if (librad_debug) librad_log x
 
 #define NO_TOKEN -1
 
@@ -233,7 +239,6 @@ typedef struct {
      * Used for filtering on a port type.
      *
      */
-
 static KeywordStruct filterPortType[] = {
     { "ftp-data", 20 },
     { "ftp", 21 },
@@ -254,6 +259,13 @@ static KeywordStruct filterPortType[] = {
     { "cmd", 514 },
     { "talk", 517 },
     {  NULL , NO_TOKEN },
+};
+
+static KeywordStruct filterType[] = {
+    { "generic",RAD_FILTER_GENERIC},
+    { "ip", 	RAD_FILTER_IP},
+    { "ipx", 	RAD_FILTER_IPX},
+    { NULL, 	NO_TOKEN},
 };
 
 typedef enum {
@@ -328,7 +340,7 @@ static KeywordStruct filterKeywords[] = {
      * Ascii name of protocols used for filtering.
      *
      */
-static KeywordStruct _filterProtoName[] = {
+static KeywordStruct filterProtoName[] = {
     { "tcp",  6 },
     { "udp",  17 },
     { "ospf", 89 },
@@ -747,15 +759,11 @@ RadFilter	*curEntry;
 	    case FILTER_IN:
 	    case FILTER_OUT:
 		curEntry->indirection = tok == FILTER_IN ? TRUE: FALSE;
-		PRINTF((" got FILTER %s ", tok == FILTER_IN?"IN":"OUT"));
 	        elements |= (1 << FILTER_DIRECTION );
 		break;
 
 	    case FILTER_FORWARD:
 	    case FILTER_DROP:
-		PRINTF((" got FILTER %s ",
-			tok == FILTER_DROP? "DROP":"FORWARD"));
-
 	        elements |= (1 << FILTER_DISPOSITION );
 		if( tok == FILTER_FORWARD ) {
 		    curEntry->forward = TRUE;
@@ -766,17 +774,13 @@ RadFilter	*curEntry;
 
 	    case FILTER_IPX_DST_IPXNET:
 	    case FILTER_IPX_SRC_IPXNET:
-                PRINTF((" got FILTER_IPX %s IPXNET ",
-                        tok == FILTER_IPX_DST_IPXNET ? "DST":"SRC"));
 		token = (char *) strtok( NULL, " " );
 
 		if ( token ) {
 		    if( tok == FILTER_IPX_DST_IPXNET ) {
 			ipx->dstIpxNet = ntohl( strtol( token, 0, 16 ));
-			PRINTF(("D.Net: %08lX  token: %s \n", htonl(ipx->dstIpxNet), token));
 		    } else {
 			ipx->srcIpxNet = ntohl( strtol( token, 0, 16 ));
-			PRINTF(("S Net: %08lX token: %s \n", htonl(ipx->srcIpxNet), token));
 		    }
 		    break;
 		} 
@@ -784,21 +788,13 @@ RadFilter	*curEntry;
 
             case FILTER_IPX_DST_IPXNODE:
             case FILTER_IPX_SRC_IPXNODE:
-                PRINTF((" got FILTER_IPX %s IPXNODE ",
-			tok == FILTER_IPX_DST_IPXNODE ? "DST":"SRC"));
 		token = (char *) strtok( NULL, " " );
 
 		if ( token ) {
 		    if ( tok == FILTER_IPX_DST_IPXNODE) {
 			stringToNode( (unsigned char *)ipx->dstIpxNode, (unsigned char*)token );
-			PRINTF(("D. Node: %08lX%04X \n", 
-				htonl((*(int *)(ipx->dstIpxNode))),
-				htons((*(short *)(ipx->dstIpxNode+4)))));
 		    } else {
 			stringToNode( (unsigned char *)ipx->srcIpxNode, (unsigned char*)token );
-			PRINTF(("S. Node: %08lX%04X \n", 
-				htonl((*(int *)(ipx->srcIpxNode))),
-				htons((*(short *)(ipx->srcIpxNode+4)))));
 		    }
 		    break;
 		}
@@ -809,13 +805,10 @@ RadFilter	*curEntry;
 	    {
 		RadFilterComparison cmp;
 
-                PRINTF((" got FILTER_IPX %s IPXSOCK",
-			tok == FILTER_IPX_DST_IPXSOCK ? "DST":"SRC"));
                 token = (char *) strtok( NULL, " " );
 
 		if ( token ) {
 		    cmp = findKey( token, filterCompare );
-		    PRINTF((" cmp value = %d \n", cmp ));
 		    if( cmp != NO_TOKEN ) {
 		    token = (char *) strtok( NULL, " " );
 			if ( token ) {
@@ -823,12 +816,10 @@ RadFilter	*curEntry;
 				ipx->dstSocComp = cmp;
 				ipx->dstIpxSoc = 
 			    ntohs( (IpxSocket) strtol( token, NULL, 16 ));
-				PRINTF(("%X \n", htons(ipx->dstIpxSoc)));
 			    } else {
 				ipx->srcSocComp = cmp;
 				ipx->srcIpxSoc 
 				    = ntohs( (IpxSocket) strtol( token, NULL, 16 ));
-				PRINTF(("%X \n", htons(ipx->srcIpxSoc)));
 			    }
 			    break;
 			}
@@ -849,7 +840,6 @@ RadFilter	*curEntry;
     }
 
 doneErr:
-    PRINTF(( "RADIF: IPX Filter syntax error %s \n", token ));
     librad_log("ipx filter error: do not recognize %s in %s \n",
 	      token, curString );
     return( -1 );
@@ -913,27 +903,21 @@ RadFilter	*curEntry;
 
     token = (char *) strtok( NULL, " " ); 
 
-    PRINTF((" in ip  filter \n")); 
-
     memset( curEntry, '\0', sizeof( RadFilter ) );
     curEntry->type = RAD_FILTER_IP; 
     ip = &curEntry->u.ip;
     ip->established = FALSE;
  
     while( token ) {
-	PRINTF((" token %s ", token ));
   	tok = findKey( token, filterKeywords );
 	switch( tok ) {
 	    case FILTER_IN:
 	    case FILTER_OUT:
 		curEntry->indirection = tok == FILTER_IN ? TRUE: FALSE;
-		PRINTF((" got %s ", tok == FILTER_IN?"FILTER_IN":"FILTER_OUT"));
 	        elements |= (1 << FILTER_DIRECTION );
 		break;
 	    case FILTER_FORWARD:
 	    case FILTER_DROP:
-		PRINTF((" got %s ", tok == FILTER_DROP?
-			"FILTER_DROP":"FILTER_FORWARD"));
 	        elements |= (1 << FILTER_DISPOSITION );
 		if( tok == FILTER_FORWARD ) {
 		    curEntry->forward = TRUE;
@@ -943,29 +927,22 @@ RadFilter	*curEntry;
 		break;
 	    case FILTER_IP_DST:
 	    case FILTER_IP_SRC:
-		PRINTF((" got %s ", tok == FILTER_IP_DST?
-			"FILTER_IP_DST":"FILTER_IP_SRC"));
 		token = (char *) strtok( NULL, " " );
 		if ( token ) {
 		    if( tok == FILTER_IP_DST ) {
 			
 		        if( ipAddressStringToValue( (char*)token, 
 				 &ip->dstip, (char *)&ip->dstmask ) ) {
-			    PRINTF((" ip %lx netmask %lx \n", ip->dstip, 
-				     ip->dstmask ));
 			    break;
 			}
 		    } else {
 		        if( ipAddressStringToValue( (char *)token, 
 				&ip->srcip, (char *)&ip->srcmask ) ) {
-			    PRINTF((" ip %lx netmask %lx \n", ip->srcip,
-				     ip->srcmask ));
 			    break;
 			}
 		    }
 		} 
 
-		PRINTF(( "RADIF: IP Filter syntax error %s \n", token ));
 		librad_log("ip filter error: do not recognize %s in %s \n",
 			  token, curString );
 		goto doneErr ;
@@ -976,12 +953,9 @@ RadFilter	*curEntry;
 		RadFilterComparison cmp;
 		short		 port;
 
-		PRINTF((" got %s ", tok == FILTER_IP_DST_PORT?
-			"FILTER_IP_DST_PORT":"FILTER_IP_SRC_PORT"));
 		token = (char *) strtok( NULL, " " );
 		if ( token ) {
   		    cmp = findKey( token, filterCompare );
-		    PRINTF((" cmp value = %d \n", cmp ));
 		    if( cmp != NO_TOKEN ) {
 			token = (char *) strtok( NULL, " " );
 			if ( token ) {
@@ -991,7 +965,6 @@ RadFilter	*curEntry;
   		    	        port = findKey( token, filterPortType );
 			    }
 			    if( port != (short) NO_TOKEN ) {
-		    	    	PRINTF((" port = %d \n", port ));
 				if( tok == FILTER_IP_DST_PORT ) {
 				    ip->dstPortComp = cmp;
 				    ip->dstport = htons( port );
@@ -1006,12 +979,10 @@ RadFilter	*curEntry;
 		}
 		librad_log( "ip filter error: do not recognize %s in %s \n",
 			  token, curString );
-		PRINTF(( "RADIF: IP Filter syntax error %s \n", token ));
 		goto doneErr;
 		break;
 	    }
 	    case FILTER_EST:
-		PRINTF((" got est %s ", token ));
 		ip->established = TRUE;
 		break;
 	    default:
@@ -1019,17 +990,15 @@ RadFilter	*curEntry;
 		if( isAllDigit( token ) ) {
 		    tok = atoi( (char *) token );
 		} else {
-		    tok = findKey( token, _filterProtoName );
+		    tok = findKey( token, filterProtoName );
 
 		    if( tok == NO_TOKEN ) {
-			PRINTF(( "RADIF: IP proto error %s \n", token ));
 			librad_log("ip filter error: do not recognize %s in %s \n",
 			     token, curString );
 			goto doneErr;
 		    }
 		}
 		ip->proto = tok;
-		PRINTF(("ip proto cmd = %d ", tok));
 	}
         token = (char *) strtok( NULL, " " ); 
     } 
@@ -1039,7 +1008,6 @@ RadFilter	*curEntry;
     }
 
 doneErr:
-    PRINTF((" done err \n"));
     return( -1 );
 }
 
@@ -1095,8 +1063,6 @@ RadFilter	*curEntry;
 
     token = (char *) strtok( NULL, " " ); 
 
-    PRINTF((" in parse generic filter \n")); 
-
     maskLen = 0;
     memset( (char *)curEntry, '\0', sizeof( RadFilter ) );
     curEntry->type = RAD_FILTER_GENERIC;
@@ -1105,21 +1071,16 @@ RadFilter	*curEntry;
     gen->compNeq = FALSE;	
 
     while( token ) {
-	PRINTF((" token %s ", token ));
   	tok = findKey( token, filterKeywords );
-   	PRINTF(("tok %d ", tok));
 	switch( tok ) {
 	    case FILTER_IN:
 	    case FILTER_OUT:
 		curEntry->indirection = tok == FILTER_IN ? TRUE: FALSE;
 	        elements |= (1 << FILTER_DIRECTION );
-		PRINTF((" got %s ", tok == FILTER_IN?"FILTER_IN":"FILTER_OUT"));
 		break;
 	    case FILTER_FORWARD:
 	    case FILTER_DROP:
 	        elements |= (1 << FILTER_DISPOSITION );
-		PRINTF((" got %s ", tok == FILTER_DROP?
-			"FILTER_DROP":"FILTER_FORWARD"));
 		if( tok == FILTER_FORWARD ) {
 		    curEntry->forward = TRUE;
 		} else {
@@ -1128,15 +1089,12 @@ RadFilter	*curEntry;
 		break;
 	    case FILTER_GENERIC_COMPNEQ:
 		gen->compNeq = TRUE;
-		PRINTF((" got compare %s ", token));
 		break;
 	    case FILTER_GENERIC_COMPEQ:
 		gen->compNeq = FALSE;
-		PRINTF((" got compare %s ", token));
 		break;
 	    case FILTER_MORE:
 		gen->more = htons( TRUE );
-		PRINTF((" got more %s ", token ));
 		break;
 	    default:
 	        elements |= ( 1 << gstate );
@@ -1152,11 +1110,6 @@ RadFilter	*curEntry;
 			    librad_log("filter mask error: %s \n", curString );
 			    goto doneErr;
 			}
-			PRINTF((" octet retlen = %d ", maskLen ));
-			for( tok = 0; tok < maskLen; tok++) {
-        		    PRINTF(("%2x", gen->mask[tok]));
-		        }
-			PRINTF(("\n"));
 			break;
 		    case FILTER_GENERIC_VALUE:
 			gstate ++;
@@ -1167,16 +1120,10 @@ RadFilter	*curEntry;
 			    goto doneErr;
 			}
 			gen->len = htons( valLen );
-			PRINTF((" octet retlen = %d ", maskLen ));
-			for( tok = 0; tok < maskLen; tok++) {
-        		    PRINTF(("%2x", gen->value[tok]));
-		        }
-			PRINTF(("\n"));
 			break;
 		    default:
 			librad_log("filter: do not know %s in %s \n",
 				 token, curString );
-			PRINTF(( "RADIF: Filter syntax error %s \n", token ));
 			goto doneErr;    
 		}
 	}
@@ -1188,7 +1135,6 @@ RadFilter	*curEntry;
     }
 
 doneErr:
-    PRINTF((" done err \n"));
     return( -1 );
 }
 		       
@@ -1214,24 +1160,26 @@ filterBinary(VALUE_PAIR *pair, char *valstr)
     RadFilter		radFil, *filt;
     RadGenericFilter*	gen;
     static VALUE_PAIR	*prevRadPair = NULL;
-
-
     rc = -1;
     strcpy( curString, valstr );
 
     token = (char *) strtok( (char *)valstr, " " );
-    tok = findKey( token, filterKeywords );
+    tok = findKey( token, filterType );
     pair->length = SIZEOF_RADFILTER;
     switch( tok ) {
-      case FILTER_IP_TYPE:
-	rc = parseIpFilter( &radFil );
-	break;
-      case FILTER_GENERIC_TYPE:
+      case RAD_FILTER_GENERIC:
 	rc = parseGenericFilter( &radFil );
 	break;
-      case  FILTER_IPX_TYPE:
+      case RAD_FILTER_IP:
+	rc = parseIpFilter( &radFil );
+	break;
+      case RAD_FILTER_IPX:
 	rc = parseIpxFilter( &radFil );
         break;
+      default:
+	librad_log("filterBinary: unknown filter type \"%s\"", token);
+	return -1;
+	break;
     }
 
     /*
@@ -1289,43 +1237,52 @@ static const char *FindValue(int value, KeywordStruct *list)
   return "???";
 }
 
+/*
+ *	Print an Ascend binary filter attribute to a string,
+ *	Grrr... Ascend makes the server do this work, instead
+ *	of doing it on the NAS.
+ *
+ *	Note we don't bother checking 'len' after the snprintf's.
+ *	This function should ONLY be called with a large (~1k) buffer.
+ */
 void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 {
   int i;
   char *p;
   RadFilter	filter;
   
-  static char *filter_type[] = {"generic", "ip", "ipx"};
   static char *action[] = {"drop", "forward"};
   static char *direction[] = {"output", "input"};
   
   p = buffer;
 
-  *(p++) = '"';
-
   /*
-   *  Just for paranoia
+   *  Just for paranoia: wrong size filters get printed as octets
    */
   if (vp->length != SIZEOF_RADFILTER) {
+    strcpy(p, "0x");
+    p += 2;
     for (i = 0; i < vp->length; i++) {
       sprintf(p, " %02x", vp->strvalue[i]);
       p += 3;
     }
-    strcpy(p, "\"");
     return;
   }
 
-  memcpy(&filter, vp->strvalue, SIZEOF_RADFILTER);
-  len -= 2;
+  memcpy(&filter, vp->strvalue, SIZEOF_RADFILTER); /* alignment issues */
+  *(p++) = '"';
+  len -= 3;			/* account for leading & trailing quotes */
 
   i = snprintf(p, len, "%s %s %s",
-	       filter_type[filter.type],
+	       FindValue(filter.type, filterType),
 	       action[filter.forward & 0x01],
 	       direction[filter.indirection & 0x01]);
   p += i;
   len -= i;
-    
 
+  /*
+   *	Handle IP filters
+   */
   if (filter.type == RAD_FILTER_IP) {
     if (filter.u.ip.dstip) {
       i = snprintf(p, len, " dstip %d.%d.%d.%d/%d",
@@ -1368,6 +1325,10 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       p += i;
       len -= i;
     }
+
+    /*
+     *	Handle IPX filters
+     */
   } else if (filter.type == RAD_FILTER_IPX) {
     /* print for source */
     if (filter.u.ipx.srcIpxNet) {
@@ -1408,8 +1369,36 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
     }
 
 
+  } else if (filter.type == RAD_FILTER_GENERIC) {
+    int count;
+
+    i = snprintf(p, len, " %d ", filter.u.generic.offset);
+    p += i;
+    i -= len;
+
+    /* show the mask */
+    for (count = 0; count < ntohs(filter.u.generic.len); count++) {
+      i = snprintf(p, len, "%02x", filter.u.generic.mask[count]);
+      p += i;
+      len -= i;
+    }
+
+    strcpy(p, " ");
+    p++;
+    len--;
+
+    /* show the value */
+    for (count = 0; count < ntohs(filter.u.generic.len); count++) {
+      i = snprintf(p, len, "%02x", filter.u.generic.value[count]);
+      p += i;
+      len -= i;
+    }
+
+    i = snprintf(p, len, " %s", (filter.u.generic.compNeq) ? "!=" : "==");
+    p += i;
+    len -= i;
   }
-  
+
   *(p++) = '"';
   *p = '\0';
 }
