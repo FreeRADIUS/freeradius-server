@@ -94,8 +94,8 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	pairadd(vps, newvp);
 
 	/* record it in the ess */
-	ess->keys.versionlistlen = 4;
-	memcpy(ess->keys.versionlist, words, ess->keys.versionlistlen);
+	ess->keys.versionlistlen = 2;
+	memcpy(ess->keys.versionlist, words+1, ess->keys.versionlistlen);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ,
@@ -126,8 +126,8 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 		DEBUG2("   eap-sim can not find sim-challenge%d",chalno+1);
 		return 0;
 	}
-	if(vp->length != 16) {
-		DEBUG2("   eap-sim chal%d is not 16-bytes: %d", chalno+1,
+	if(vp->length != EAPSIM_RAND_SIZE) {
+		DEBUG2("   eap-sim chal%d is not 8-bytes: %d", chalno+1,
 		       vp->length);
 		return 0;
 	}
@@ -152,7 +152,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 		DEBUG2("   eap-sim can not find sim-kc%d",chalno+1);
 		return 0;
 	}
-	if(vp->length != 8) {
+	if(vp->length != EAPSIM_Kc_SIZE) {
 		DEBUG2("   eap-sim kc%d is not 8-bytes: %d", chalno+1,
 		       vp->length);
 		return 0;
@@ -535,7 +535,12 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.1  2003-10-29 02:49:19  mcr
+ * Revision 1.2  2003-10-31 22:33:45  mcr
+ * 	fixes for version list length types.
+ * 	do not include length in hash.
+ * 	use defines rather than constant sizes.
+ *
+ * Revision 1.1  2003/10/29 02:49:19  mcr
  * 	initial commit of eap-sim
  *
  * Revision 1.3  2003/09/14 00:44:42  mcr
