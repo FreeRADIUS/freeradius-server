@@ -749,6 +749,17 @@ int setup_modules(void)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
+	/*
+	 *	We have a proxied packet, and we've been told
+	 *	to NOT pass proxied packets through 'authorize'
+	 *	a second time.  So stop.
+	 */
+	if ((request->proxy != NULL &&
+	     mainconfig.post_proxy_authorize == FALSE)) {
+		DEBUG2(" authorize: Skipping authorize in post-proxy stage");
+		return RLM_MODULE_NOOP;
+	}
+
 	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
@@ -797,7 +808,7 @@ int module_checksimul(REQUEST *request, int maxsimul)
 
 	rcode = indexed_modcall(RLM_COMPONENT_SESS, 0, request);
 
-	if(rcode != RLM_MODULE_OK) {
+	if (rcode != RLM_MODULE_OK) {
 		/* FIXME: Good spot for a *rate-limited* warning to the log */
 		return 0;
 	}
