@@ -601,7 +601,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 /* globally exported name */
 module_t rlm_unix = {
   "System",
-  0,                            /* type: reserved */
+  RLM_TYPE_THREAD_UNSAFE,        /* type: reserved */
   unix_init,                    /* initialization */
   unix_instantiate,		/* instantiation */
   {
