@@ -12,7 +12,7 @@ if ($link){
 			$res = @da_sql_query($link,$config,
 			"DELETE FROM $config[sql_usergroup_table] WHERE UserName = '$del' AND GroupName = '$login';");
 			if (!$res)
-				echo "<b>Could not delete user $del from group. SQL Error</b><br>\n";
+				echo "<b>Could not delete user $del from group: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
 	}
 	if ($new_members != ''){
@@ -30,11 +30,11 @@ if ($link){
 						"INSERT INTO $config[sql_usergroup_table] (GroupName,UserName)
 						VALUES ('$login','$new_member');");
 						if (!$res)
-							echo "<b>Error while adding user $new_member to group</b><br>\n";
+							echo "<b>Error while adding user $new_member to group: " . da_sql_error($link,$config) . "</b><br>\n";
 					}
 				}
 				else
-					echo "<b>Could not add new member $new_member. SQL Error</b><br>\n";
+					echo "<b>Could not add new member $new_member: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
 		}
 	}

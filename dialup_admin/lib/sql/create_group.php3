@@ -20,7 +20,7 @@ if ($link){
 			"INSERT INTO $config[sql_usergroup_table] (UserName,GroupName)
 			VALUES ('$member','$login');");
 			if (!$res || !@da_sql_affected_rows($link,$res,$config)){
-				echo "<b>Unable to add user $member in group $login. SQL error</b><br>\n";
+				echo "<b>Unable to add user $member in group $login: " . da_sql_error($link,$config) . "</b><br>\n";
 				$da_abort=1;
 			}
 		}
@@ -53,7 +53,7 @@ if ($link){
 			"INSERT INTO $table (Attribute,Value,GroupName $text)
 			VALUES ('$attrmap[$key]','$val','$login' $op_val);");
 			if (!$res || !@da_sql_affected_rows($link,$res,$config))
-				echo "<b>Query failed for attribute $key</b><br>\n";
+				echo "<b>Query failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
 	}
 	echo "<b>Group created successfully</b><br>\n";

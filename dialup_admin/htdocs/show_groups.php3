@@ -74,8 +74,10 @@ EOM;
 			echo "<b>Could not find any groups</b><br>\n";
 	}
 	else
-		echo "<b>Search failed. SQL Error</b><br>\n";
+		echo "<b>Search failed. SQL Error: " . da_sql_error($link,$config) . "</b><br>\n";
 }
+else
+	echo "<b>Could not connect to SQL database</b><br>\n";
 ?>
 	</table>
 </table>

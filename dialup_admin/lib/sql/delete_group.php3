@@ -18,13 +18,13 @@ if ($link){
 				if ($res)
 					echo "<b>Group $login deleted successfully</b><br>\n";
 				else
-					echo "<b>Error deleting group $login from usergroup table</b><br>\n";
+					echo "<b>Error deleting group $login from usergroup table: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
 		else
-			echo "<b>Error deleting group $login from group check table</b><br>\n";
+			echo "<b>Error deleting group $login from group check table: " . da_sql_error($link,$config) . "</b><br>\n";
 	}
 	else
-		echo "<b>Error deleting group $login from group reply table</b><br>\n";
+		echo "<b>Error deleting group $login from group reply table: " . da_sql_error($link,$config) . "</b><br>\n";
 }
 else
 	echo "<b>Could not connect to database</b><br>\n";

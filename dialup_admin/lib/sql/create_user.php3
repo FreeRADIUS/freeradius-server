@@ -20,7 +20,7 @@ if ($link){
 		"INSERT INTO $config[sql_check_table] (Attribute,Value,UserName $text)
 		VALUES ('$config[sql_password_attribute]','$passwd','$login' $passwd_op);");
 		if (!$res || !@da_sql_affected_rows($link,$res,$config)){
-			echo "<b>Unable to add user $login. SQL error</b><br>\n";
+			echo "<b>Unable to add user $login: " . da_sql_error($link,$config) . "</b><br>\n";
 			$da_abort=1;
 		}
 		if ($config[sql_use_user_info_table] == 'true' && !$da_abort){
@@ -34,13 +34,13 @@ if ($link){
 					(UserName,Name,Mail,Department,HomePhone,WorkPhone,Mobile) VALUES
 					('$login','$Fcn','$Fmail','$Fou','$Fhomephone','$Ftelephonenumber','$Fmobile');");
 					if (!$res || !@da_sql_affected_rows($link,$res,$config))
-						echo "<b>Could not add user information in user info table</b><br>\n";
+						echo "<b>Could not add user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
 				}
 				else
 					echo "<b>User already exists in user info table.</b><br>\n";
 			}
 			else
-				echo "<b>Could not add user information in user info table</b><br>\n";
+				echo "<b>Could not add user information in user info table: " . da_sql_error($link,config) . "</b><br>\n";
 		}
 		if ($Fgroup != ''){
 			$res = @da_sql_query($link,$config,
@@ -58,7 +58,7 @@ if ($link){
 					echo "<b>User already is a member of group $Fgroup</b><br>\n";
 			}
 			else
-				echo "<b>Could not add user to group $Fgroup. SQL Error</b><br>\n";
+				echo "<b>Could not add user to group $Fgroup: " . da_sql_error($link,$config) . "</b><br>\n";
 		}
 		if (!$da_abort){
 			foreach($show_attrs as $key => $attr){
@@ -88,7 +88,7 @@ if ($link){
 				"INSERT INTO $table (Attribute,Value,UserName $text)
 				VALUES ('$attrmap[$key]','$val','$login' $op_val);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
-					echo "<b>Query failed for attribute $key</b><br>\n";
+					echo "<b>Query failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
 		}
 		echo "<b>User created successfully</b><br>\n";

@@ -21,6 +21,6 @@ else{
 			echo "<b>SQL Error:" . da_sql_error($link) . "</b><br>\n";
 	}
 	else
-		echo "<b>SQL Error: Could not connect to sql server(" . da_sql_error($link) . ")</b><br>\n";
+		echo "<b>SQL Error: Could not connect to SQL database</b><br>\n";
 }
 ?>

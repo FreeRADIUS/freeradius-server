@@ -25,18 +25,18 @@ if ($link){
 				"UPDATE $config[sql_check_table] SET Value = '$passwd' $text3 WHERE
 				Attribute = '$config[sql_password_attribute]' AND UserName = '$login';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
-					echo "<b>Error while changing password</b><br>\n";	
+					echo "<b>Error while changing password: " . da_sql_error($link,$config) . "</b><br>\n";	
 			}
 			else{
 				$res = @da_sql_query($link,$config,
 					"INSERT INTO $config[sql_check_table] (Attribute,Value,UserName $text1)
 					VALUES ('$config[sql_password_attribute]','$passwd','$login' $text2);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
-					echo "<b>Error while changing password</b><br>\n";
+					echo "<b>Error while changing password: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
 		}
 		else
-			echo "<b>Error while executing query</b><br>\n";
+			echo "<b>Error while executing query: " . da_sql_error($link,$config) . "</b><br>\n";
 	}
 	else
 		echo "<b>Could not open encryption library file</b><br>\n";

@@ -19,7 +19,7 @@ if ($link){
 				(UserName,Name,Mail,Department,HomePhone,WorkPhone,Mobile) VALUES
 				('$login','$Fcn','$Fmail','$Fou','$Ftelephonenumber','$Fhomephone','$Fmobile');");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config)){
-					echo "<b>Could not add user information in user info table</b><br>\n";
+					echo "<b>Could not add user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
 					$fail = 1;
 				}
 			}
@@ -29,13 +29,13 @@ if ($link){
 				Department = '$Fou', HomePhone = '$Fhomephone', WorkPhone = '$Ftelephonenumber',
 				Mobile = '$Fmobile';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config)){
-					echo "<b>Could not update user information in user info table</b><br>\n";
+					echo "<b>Could not update user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
 					$fail = 1;
 				}
 			}
 		}
 		else{
-			echo "<b>Could not find user in user info table. SQL Error</b><br>\n";
+			echo "<b>Could not find user in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
 			$fail = 1;
 		}
 		if ($fail == 0)
