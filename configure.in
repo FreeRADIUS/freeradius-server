@@ -168,6 +168,7 @@ fi
 
 dnl extra argument: --with-threads
 WITH_THREADS=yes
+WITH_THREAD_POOL=yes
 AC_ARG_WITH(threads,
 [  --with-threads          Use threads, if available.  (default=yes) ],
 [ case "$withval" in
@@ -175,19 +176,7 @@ AC_ARG_WITH(threads,
 	;;
     *)
 	WITH_THREADS=""
-  esac ]
-)
-
-dnl extra argument: --with-thread-pool
-WITH_THREAD_POOL=yes
-AC_ARG_WITH(thread-pool,
-[  --with-thread-pool      Use a pool of threads for high-load systems.  (default=yes ],
-[ case "$withval" in
-    no)
-	WITH_THREAD_POOL=no
-	;;
-    *)
-        ;;
+        WITH_THREAD_POOL=""
   esac ]
 )
 
