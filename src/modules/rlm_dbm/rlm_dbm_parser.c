@@ -333,12 +333,12 @@ static void sm_usage(void) {
 
 int main(int n,char **argv) {
         
-	char 	*fname = NULL;
-	char	*ofile = NULL;
+	const char *fname = NULL;
+	const char *ofile = NULL;
 	FILE 	*fp;
 	int	print_stat = 1;
 	int 	ch;
-	char	* sm_radius_dir = NULL;
+	const char  *sm_radius_dir = NULL;
 	
 	progname = argv[0];
 
