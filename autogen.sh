@@ -7,6 +7,7 @@ parentdir=`pwd`
 
 libtoolize -f -c
 aclocal
+autoheader
 autoconf
 
 mysubdirs="$mysubdirs `find src/modules/ -name configure -print | sed 's%/configure%%'`"

@@ -306,6 +306,16 @@ int		ascend_parse_filter(VALUE_PAIR *pair);
 void		print_abinary(VALUE_PAIR *vp, u_char *buffer, int len);
 #endif /*ASCEND_BINARY*/
 
+#ifndef HAVE_SNPRINTF
+#define HAVE_LOCAL_SNPRINTF
+#define snprintf lrad_snprintf
+#endif
+
+#ifndef HAVE_VSNPRINTF
+#define HAVE_LOCAL_SNPRINTF
+#define vsnprintf lrad_vsnprintf
+#endif
+
 #ifdef HAVE_LOCAL_SNPRINTF
 #include <stdarg.h>
 int snprintf(char *str, size_t count, const char *fmt, ...);

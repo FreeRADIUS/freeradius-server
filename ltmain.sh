@@ -44,7 +44,7 @@ EXIT_FAILURE=1
 PROGRAM=ltmain.sh
 PACKAGE=libtool
 VERSION=1.5.6
-TIMESTAMP=" (1.1220.2.95 2004/04/11 05:50:42) Debian$Rev: 203 $"
+TIMESTAMP=" (1.1220.2.95 2004/04/11 05:50:42) Debian$Rev: 220 $"
 
 
 # Check that we have a working $echo.
@@ -1867,10 +1867,6 @@ EOF
 	    $echo "$modename: warning: \`-l' is ignored for archives/objects" 1>&2
 	    continue
 	  fi
-	  if test "$pass" = conv; then
-	    deplibs="$deplib $deplibs"
-	    continue
-	  fi
 	  name=`$echo "X$deplib" | $Xsed -e 's/^-l//'`
 	  for searchdir in $newlib_search_path $lib_search_path $sys_lib_search_path $shlib_search_path; do
 	    for search_ext in .la $std_shrext .so .a; do
@@ -2932,6 +2928,11 @@ EOF
 	    current=`expr $number_major + $number_minor - 1`
 	    age="$number_minor"
 	    revision="$number_minor"
+	    ;;
+	  *)
+	    $echo "$modename: unknown library version type \`$version_type'" 1>&2
+	    $echo "Fatal configuration error.  See the $PACKAGE docs for more information." 1>&2
+	    exit $EXIT_FAILURE
 	    ;;
 	  esac
 	  ;;

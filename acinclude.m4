@@ -107,7 +107,7 @@ AC_DEFUN(FR_CHECK_TYPE_INCLUDE,
   )
 
   if test "$ac_cv_type_$2" != "yes"; then
-         AC_DEFINE($2, $3)
+         AC_DEFINE($2, $3, $4)
   fi
 ])
 
@@ -262,10 +262,10 @@ if test "x$ucdsnmp" = "x"; then
 else
   if test "x$ucdsnmp" = "xyes"; then
     AC_MSG_RESULT((ucd-snmp)yes)
-    AC_DEFINE(HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H)
+    AC_DEFINE(HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H, [], [Define if you have the <ucd-snmp/asn1.h>, <ucd-snmp/snmp_impl.h> and <ucd-snmp/snmp.h> header file.])
   else
     AC_MSG_RESULT(yes)
-    AC_DEFINE(HAVE_ASN1_SNMP_SNMPIMPL_H)
+    AC_DEFINE(HAVE_ASN1_SNMP_SNMPIMPL_H, [], [Define if you have the <asn1.h>, <snmp_impl.h> and <snmp.h> header file.])
   fi
 dnl #
 dnl #  Now do the same thing, looking for the SNMP library directory
@@ -318,8 +318,8 @@ dnl   #
     SNMP_INCLUDE=
   else
     AC_MSG_RESULT(yes)
-    AC_DEFINE(WITH_SNMP)
-    AC_DEFINE(HAVE_LIBSNMP)
+    AC_DEFINE(WITH_SNMP, [], [Include SNMP subagent])
+    AC_DEFINE(HAVE_LIBSNMP, [], [Define if you have the snmp library (-lsnmp).])
   fi
 fi
 ])

@@ -37,6 +37,13 @@ dnl #############################################################
 
 dnl Check for GNU cc
 AC_PROG_CC
+
+dnl #
+dnl # check for AIX, to allow us to use some BSD functions
+dnl # must be before macros that call the compiler.
+dnl #
+AC_AIX
+
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
@@ -44,16 +51,13 @@ AC_PROG_RANLIB
 abs_top_builddir=`pwd`
 AC_SUBST(abs_top_builddir)
 
-dnl # autoconf 2.50 and later
-dnl # AC_SYS_LARGEFILE
+AC_SYS_LARGEFILE
 
 PACKAGE=freeradius
 
-dnl #
-dnl # check for AIX, to allow us to use some BSD functions
-dnl # must be before macros that call the compiler.
-dnl #
-AC_AIX
+dnl # check for system bytesex
+dnl # AC_DEFINES WORDS_BIGENDIAN
+AC_C_BIGENDIAN
 
 dnl Find GNU Make.
 AC_CHECK_PROG(GMAKE, gmake, yes, no)
@@ -166,7 +170,7 @@ AC_ARG_WITH(ascend-binary,
   esac ]
 )
 if test "X$ASCEND_BINARY" = "Xyes"; then
-  AC_DEFINE(ASCEND_BINARY)
+  AC_DEFINE(ASCEND_BINARY, [], [Include support for Ascend binary filter attributes])
 fi
 
 dnl extra argument: --with-threads
@@ -340,7 +344,7 @@ AC_ARG_WITH(udpfromto,
 )
 
 if test "x$WITH_UDPFROMTO" = "xyes"; then
-	AC_DEFINE(WITH_UDPFROMTO)
+	AC_DEFINE(WITH_UDPFROMTO, [], [define if you want udpfromto])
 fi
 
 dnl #############################################################
@@ -495,7 +499,7 @@ AC_CHECK_HEADERS( \
 )
 
 REGEX=no
-AC_CHECK_HEADER(regex.h, AC_DEFINE(HAVE_REGEX_H))
+AC_CHECK_HEADER(regex.h, AC_DEFINE(HAVE_REGEX_H, [], [define this if we have the <regex.h> header file]))
 if test "x$ac_cv_header_regex_h" = "xyes"; then
   REGEX_EXTENDED=no
   REGEX=yes
@@ -504,7 +508,7 @@ if test "x$ac_cv_header_regex_h" = "xyes"; then
      #ifdef REG_EXTENDED
        yes
      #endif
-     ], [AC_DEFINE(HAVE_REG_EXTENDED) REGEX_EXTENDED=yes])
+     ], [AC_DEFINE(HAVE_REG_EXTENDED, [], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes])
 fi
 AC_SUBST(REGEX)
 AC_SUBST(REGEX_EXTENDED)
@@ -514,12 +518,12 @@ dnl #  other checks which require headers
 dnl #
 if test "x$ac_cv_header_sys_security_h" = "xyes" && test "x$ac_cv_header_prot_h" = "xyes"
 then
-  AC_DEFINE(OSFC2)
+  AC_DEFINE(OSFC2, [], [define if you have OSFC2 authentication])
 fi
 
 if test "x$ac_cv_header_sia_h" = "xyes" && test "x$ac_cv_header_siad_h" = "xyes"
 then
-  AC_DEFINE(OSFSIA)
+  AC_DEFINE(OSFSIA, [], [define if you have OSFSIA authentication])
 fi
 
 smart_try_dir="$OPENSSL_INCLUDE_DIR"
@@ -529,7 +533,7 @@ FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
 OPENSSL_INCLUDE=
 OPENSSL_LIBS=
 if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
-  AC_DEFINE(HAVE_OPENSSL_SSL_H)
+  AC_DEFINE(HAVE_OPENSSL_SSL_H, [], [define if you have openssl/ssl.h])
   old_CPPFLAGS="$CPPFLAGS"
   if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
       CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
@@ -609,7 +613,7 @@ FR_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
-],socklen_t, int)
+],socklen_t, int, [socklen_t is generally 'int' on systems which don't use it])
 
 dnl check for uint8_t
 FR_CHECK_TYPE_INCLUDE([
@@ -619,7 +623,7 @@ FR_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
-],uint8_t, unsigned char)
+],uint8_t, unsigned char, [uint8_t should be the canonical 'octet' for network traffic])
 
 dnl check for uint16_t
 FR_CHECK_TYPE_INCLUDE([
@@ -629,7 +633,7 @@ FR_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
-],uint16_t, unsigned short)
+],uint16_t, unsigned short, [uint16_t should be the canonical '2 octets' for network traffic])
 
 dnl check for uint32_t
 FR_CHECK_TYPE_INCLUDE([
@@ -639,7 +643,7 @@ FR_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
-],uint32_t, unsigned int)
+],uint32_t, unsigned int, [uint32_t should be the canonical 'network integer])
 
 dnl #############################################################
 dnl #
@@ -692,7 +696,7 @@ then
  FR_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
  if test "x$ac_cv_type_struct_utmpx_has_ut_xtime" = "x"
  then
-   AC_DEFINE(ut_xtime,ut_tv.tv_sec)
+   AC_DEFINE(ut_xtime,ut_tv.tv_sec, [define to something if you don't have ut_xtime in struct utmpx])
  fi
 fi
 
@@ -700,7 +704,7 @@ dnl # struct ip_pktinfo
 FR_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in_pktinfo], ipi_addr)
 if test "x$ac_cv_type_struct_in_pktinfo_has_ipi_addr" = "xyes"
 then
-	AC_DEFINE(HAVE_IP_PKTINFO)
+	AC_DEFINE(HAVE_IP_PKTINFO, [], [define if you have IP_PKTINFO (Linux)])
 fi
 
 dnl #############################################################
@@ -759,9 +763,9 @@ AC_CHECK_LIB(crypt, crypt,
   CRYPTLIB="-lcrypt"
 )
 if test "$CRYPTLIB" != ""; then
-  AC_DEFINE(HAVE_CRYPT)
+  AC_DEFINE(HAVE_CRYPT, [], [Do we have the crypt function])
 else
-  AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT))
+  AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT, [], [Do we have the crypt function]))
 fi
 
 dnl Check for libcipher
@@ -776,8 +780,11 @@ fi
 
 dnl Check the style of gethostbyaddr, in order of preference
 dnl GNU (_r eight args)
+AC_DEFINE(GNUSTYLE, [1], [GNU-Style get*byaddr_r])
 dnl SYSV (_r six args)
+AC_DEFINE(SYSVSTYLE, [2], [SYSV-Style get*byaddr_r])
 dnl BSD (three args, may not be thread safe)
+AC_DEFINE(BSDSTYLE, [3], [BSD-Style get*byaddr_r])
 dnl Tru64 has BSD version, but it is thread safe
 dnl 	http://h30097.www3.hp.com/docs/base_doc/DOCUMENTATION/V51B_HTML/MAN/MAN3/1739____.HTM
 dnl We need #stdio.h to define NULL on FreeBSD (at least)
@@ -785,7 +792,7 @@ gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
 case "$host" in
 *-freebsd*)
-	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
+	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE, [style of gethostbyaddr_r functions ])
 	gethostbyaddrrstyle=BSD
 	AC_MSG_WARN([FreeBSD overridden to BSD-style])
 	;;
@@ -795,7 +802,7 @@ if test "x$gethostbyaddrrstyle" = "x"; then
 #include <stdio.h>
 #include <netdb.h>
 ], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) ], [
-	AC_DEFINE(GETHOSTBYADDRRSTYLE, GNUSTYLE)
+	AC_DEFINE(GETHOSTBYADDRRSTYLE, GNUSTYLE, [style of gethostbyaddr_r functions ])
 	gethostbyaddrrstyle=GNU
 ])
 fi
@@ -804,7 +811,7 @@ if test "x$gethostbyaddrrstyle" = "x"; then
 #include <stdio.h>
 #include <netdb.h>
 ], [ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL) ] , [
-		AC_DEFINE(GETHOSTBYADDRRSTYLE, SYSVSTYLE)
+		AC_DEFINE(GETHOSTBYADDRRSTYLE, SYSVSTYLE, [style of gethostbyaddr_r functions ])
 		gethostbyaddrrstyle=SYSV
 	])
 fi
@@ -813,7 +820,7 @@ if test "x$gethostbyaddrrstyle" = "x"; then
 #include <stdio.h>
 #include <netdb.h>
 ], [ gethostbyaddr(NULL, 0, 0)  ], [
-		AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
+		AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE, [style of gethostbyaddr_r functions ])
 		gethostbyaddrrstyle=BSD
 	])
 fi
@@ -841,7 +848,7 @@ AC_TRY_LINK([
 #include <stdio.h>
 #include <netdb.h>
 ], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) ], [
-	AC_DEFINE(GETHOSTBYNAMERSTYLE, GNUSTYLE)
+	AC_DEFINE(GETHOSTBYNAMERSTYLE, GNUSTYLE, [style of gethostbyname_r functions ])
 	gethostbynamerstyle=GNU
 ])
 if test "x$gethostbynamerstyle" = "x"; then
@@ -849,7 +856,7 @@ if test "x$gethostbynamerstyle" = "x"; then
 #include <stdio.h>
 #include <netdb.h>
 ], [ gethostbyname_r(NULL, NULL, NULL, 0, NULL) ] , [
-		AC_DEFINE(GETHOSTBYNAMERSTYLE, SYSVSTYLE)
+		AC_DEFINE(GETHOSTBYNAMERSTYLE, SYSVSTYLE, [style of gethostbyname_r functions ])
 		gethostbynamerstyle=SYSV
 	])
 fi
@@ -858,7 +865,7 @@ if test "x$gethostbynamerstyle" = "x"; then
 #include <stdio.h>
 #include <netdb.h>
 ], [ gethostbyname(NULL)  ], [
-		AC_DEFINE(GETHOSTBYNAMERSTYLE, BSDSTYLE)
+		AC_DEFINE(GETHOSTBYNAMERSTYLE, BSDSTYLE, [style of gethostbyname_r functions ])
 		gethostbynamerstyle=BSD
 	])
 fi
@@ -874,19 +881,21 @@ if test "x$gethostbynamerstyle" = "xBSD"; then
 fi
 
 dnl check for non-posix solaris ctime_r (extra buflen int arg)
+AC_DEFINE(POSIXSTYLE, [1], [Posix-Style ctime_r])
+AC_DEFINE(SOLARISSTYLE, [2], [Solaris-Style ctime_r])
 ctimerstyle=""
 AC_MSG_CHECKING([ctime_r() syntax])
 AC_TRY_LINK([
 #include <time.h>
 ], [ ctime_r(NULL, NULL, 0) ], [
-	AC_DEFINE(CTIMERSTYLE, SOLARISSTYLE)
+	AC_DEFINE(CTIMERSTYLE, SOLARISSTYLE, [style of ctime_r function])
 	ctimerstyle="SOLARIS"
 ])
 if test "x$ctimerstyle" = "x"; then
 	AC_TRY_LINK([
 #include <time.h>
 ], [ ctime_r(NULL, NULL) ], [
-		AC_DEFINE(CTIMERSTYLE, POSIXSTYLE)
+		AC_DEFINE(CTIMERSTYLE, POSIXSTYLE, [style of ctime_r function])
 		ctimerstyle="POSIX"
 	])
 fi
@@ -895,64 +904,6 @@ if test "x$ctimerstyle" = "x"; then
 	AC_MSG_RESULT([none!  It must not exist, here.])
 else
         AC_MSG_RESULT([${ctimerstyle}-style])
-fi
-
-
-dnl If configuring with large file support, determine the right flags to
-dnl use based on the platform.  This is the wrong approach; autoconf 2.50
-dnl comes with a macro that takes the right approach.  But this works well
-dnl enough until we switch to autoconf 2.50 or later.
-if test x"$rad_enable_largefiles" = xyes ; then
-    AC_MSG_CHECKING(for largefile linkage)
-    case "$host" in
-    *-aix4.[01]*)
-        AC_MSG_RESULT(no)
-        AC_MSG_ERROR([AIX before 4.2 does not support large files])
-        ;;
-    *-aix4*)
-        AC_MSG_RESULT(ok)
-        LFS_CFLAGS="-D_LARGE_FILES"
-        LFS_LDFLAGS=""
-        LFS_LIBS=""
-        ;;
-    *-hpux*)
-        AC_MSG_RESULT(ok)
-        LFS_CFLAGS="-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
-        LFS_LDFLAGS=""
-        LFS_LIBS=""
-        ;;
-    *-irix*)
-        AC_MSG_RESULT(no)
-        AC_MSG_ERROR([Large files not supported on this platform])
-        ;;
-    *-linux*)
-        AC_MSG_RESULT(maybe)
-        LFS_CFLAGS="-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
-        LFS_LDFLAGS=""
-        LFS_LIBS=""
-        AC_DEFINE([_GNU_SOURCE], 1,
-                  [Some versions of glibc need this defined for pread/pwrite.])
-        ;;
-    *-solaris*)
-        AC_MSG_RESULT(ok)
-        AC_PATH_PROG(GETCONF, getconf)
-        if test -z "$GETCONF" ; then
-            AC_MSG_ERROR([getconf required to configure large file support])
-        fi
-        LFS_CFLAGS=`$GETCONF LFS_CFLAGS`
-        LFS_LDFLAGS=`$GETCONF LFS_LDFLAGS`
-        LFS_LIBS=`$GETCONF LFS_LIBS`
-        ;;
-    *)
-        AC_MSG_RESULT(maybe)
-        LFS_CFLAGS="-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
-        LFS_LDFLAGS=""
-        LFS_LIBS=""
-        ;;
-    esac
-    AC_SUBST(LFS_CFLAGS)
-    AC_SUBST(LFS_LDFLAGS)
-    AC_SUBST(LFS_LIBS)
 fi
 
 AC_SUBST(HOSTINFO, $host)
