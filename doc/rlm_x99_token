@@ -14,42 +14,51 @@
 	<http://www.cryptocard.com/>
 	Full support
 
-	ActivCard (ActivCard One)
-	<http://www.activcard.com/>
-	Not supported (patented sync mode)
-
-	Symantec (Defender aka SNK)
-     <http://enterprisesecurity.symantec.com/products/products.cfm?ProductID=51>
-	Not supported
-	This product has a history of acquisition:
-	Symantec, Axent, AssureNet Pathways, Digital Pathways (name change).
-
-	Secure Computing (SafeWord)
+	Secure Computing (SafeWord (various models))
 	<http://www.securecomputing.com/index.cfm?sKey=688>
 	Not supported
 	Formerly Enigma Logic.
 
-	VASCO (DigiPass)
+	VASCO (DigiPass (various models))
 	<http://www.vasco.com/R3DEngine.asp?reference=03-01.01-01&lang=en>
 	Not supported
 
-    If you know of other vendors, please email me (frank@google.com) and
-    I'll add them to the list above.  If you own any of the above tokens
-    and would like support added (except ActivCard), and can send me
-    the docs and some sample tokens, I will be happy to add support.
+	ActivCard (ActivCard One)
+	<http://www.activcard.com/>
+	Not supported (patented sync mode)
+
+	PassGo (Defender aka SNK, Defender Plus, Defender One)
+	<http://www.passgo.com/products/defender/>
+	Not supported
+	This product has a history of acquisition:
+	PassGo, Symantec, AXENT, AssureNet Pathways (name change only),
+	Digital Pathways.  Also, to add to the fun, PassGo was acquired
+	by AXENT, whom Symantec then acquired.  The original product
+	seems to have been called "SecureNet Key" or SNK or SNK/4.
+
+    If you know of other vendors, please email me (frank@google.com)
+    and I'll add them to the list above.  If you own any of the above
+    tokens and would like support added (except ActivCard and PassGo),
+    and can send me the docs and some sample tokens, I will be happy to
+    add support.
 
     Although ActivCard has full specs, I cannot add support because their
-    synchronous algorithm is patented.  Oh, well, their loss.  If you are
-    an employee of ActivCard, please contact me.
+    synchronous algorithm is patented.  Oh, well, their loss.
+
+    The PassGo Defender One is an OEM version of the ActivCard One and
+    so it suffers from the same patent issues.  I believe the Defender Plus
+    also uses the same algorithm.  The Defender doesn't support a sync
+    mode, so support for PassGo tokens will probably never be added.
+
+    Note that I would be happy to add support for ActivCard/PassGo if
+    ActivCard will give me a license to implement and distribute code.
 
     I believe that most of the above tokens should work in "generic" mode,
     however, this is highly discouraged due to the weakness of DES.
 
     No support is available for programming tokens.  You will need to
     write this yourself, or use the vendor's programming tools and extract
-    the key information in order to use this module.  CRYPTOCard provides
-    full documentation on this, if you know of other vendors that give
-    access to this information, please let me know.
+    the key information in order to use this module.
 
     I *strongly* discourage the use of "soft tokens" or Palm tokens.  These
     are easily compromisable, since the key is insufficiently protected.
@@ -67,10 +76,11 @@
     <http://www.x9.org/TG24_1999.pdf>.
 
     The obvious fix is to not display the challenge; the attacker will
-    not have access to the plaintext.  This is possible since most
-    (all?) vendors of X9.9 tokens support a synchronous mode.  So, in
-    synchronous modes, the challenge presented to the user is NOT the
-    challenge used for response calculation.  Read on for more info.
+    not have access to the plaintext.  This is possible since most X9.9
+    tokens support a synchronous mode; the only exception I know of is
+    the PassGo Defender.  So, in synchronous modes, the challenge presented
+    to the user is NOT the challenge used for response calculation.
+    Read on for more info.
 
     The default configuration of this module effectively disables pure
     challenge/response (hereafter: async) mode.
@@ -106,10 +116,10 @@
 
     "Normally", upon login, users would enter enter the challenge into
     their token and give the server the response.  However, this is unsafe
-    given that DES is so weak.  Luckily, these tokens support a synchronous
+    given that DES is so weak.  Luckily, most tokens support a synchronous
     mode which lets the user skip the part where they enter the challenge.
-    
-    For CRYPTOCard, the token displays the synchronous challenge, which
+
+    For some tokens, the token displays the synchronous challenge, which
     typically the user would verify is the same as the challenge presented
     by the server.  Then they can safely just press "ENT" and enter the
     response.  This is very easy to use, but we're still stuck with the
@@ -120,27 +130,22 @@
     matches the token display, the user should just press "ENT" and enter
     the response.
 
-    [For ActivCard, this is pretty transparent to the user, in sync mode
-    the user doesn't go through the verification step.  For CRYPTOCard,
-    the user may be confused as to which number they should enter as
-    the response.  User training is essential.  I don't have experience
-    with other tokens.]
+    For some tokens, this is pretty transparent to the user; in sync mode
+    the user doesn't go through the verification step.  For other tokens,
+    the user may be confused as to which number they should enter as the
+    response.  User training is essential.
 
     So that takes care of sync mode -- an attacker does not see the
-    plaintext, so we avoid the vulnerability.  But we need async mode
-    for two reasons; 1) in case the token gets out of sync with the server,
-    and 2) to initially sync the token (CRYPTOCard, others?).  Strictly
-    speaking, for CRYPTOCard you don't need to do the initial sync, you
-    can determine what this is when you program the card and write a
-    state file yourself; but I don't recommend this for most sites.
-    For ActivCard, you will need to create the state file yourself,
-    but I'm not supporting ActivCard, so that solves that problem.
+    plaintext, so we avoid the vulnerability.  But we need async mode for
+    two reasons: 1) to sync/resync the token, and 2) to support multiple
+    RADIUS servers (only one can run in sync mode).  Note that only some
+    tokens support "user" sync/resync.  For others, an admin must create
+    the initial state and manual intervention is required for resync.
 
     Even if you avoid the initial sync step (ie, do it automatically),
     and you train your users to not play with the token, you will still
     need to handle the possibility of the state files on the server
-    getting corrupted, etc.  So you pretty much must enable pure
-    challenge/response mode.
+    getting corrupted, etc.
 
     Since this is unsafe, I came up with the concept of the "site-specific
     challenge transform".  For the user, this means that instead of
@@ -183,19 +188,21 @@
     now exceptionally weak.  An example of a possibly strong transform is
     to have the user enter the square of the challenge.  The VASCO
     DigiPass 500 is also a [regular] calculator, so this could be a
-    good one if you use that token.  Well, it is now another exceptionally
+    good one if you use that token.  Well, there's no support for that
+    token yet, and now that I've mentioned it, it is another exceptionally
     weak transform, but you get the idea.
 
-    Note that CRYPTOCard supports arbitrarily long challenge strings.
-    [Info on other vendors is welcomed here.]  You should take advantage
-    of this when implementing your transform.  You will still have to
-    stay under MAX_CHALLENGE_LEN digits.
+    Note that the CRYPTOCard RB-1 supports arbitrarily long challenge
+    strings.  You should take advantage of this when implementing your
+    transform.  You will still have to stay under MAX_CHALLENGE_LEN
+    digits.  (This is why MAX_CHALLENGE_LEN is set to 32 even though
+    the displayed challenge would generally be much smaller.)
 
 
 5.  CONFIGURATION
 
     Most of the configuration is documented fairly well in the sample
-    file supplied.  I will only discuss a few options here.
+    x99.conf file.  I will only discuss a few options here.
 
     ewindow_size:  This is how far out of [event] sync the server can
     get with the token.  The value is how far the user can be ahead of
@@ -212,12 +219,37 @@
     /etc/x99sync.d by default.  There is one state file per user.
     The state file contains the information needed for synchronous
     mode; also the number of consecutive failed logins and the last
-    time the user authenticated via async mode is stored here.  Look
-    at the code if you want further documentation (eg, to initialize
-    the state automatically).
+    time the user authenticated via async mode is stored here.
 
 
-7.  ACKNOWLEDGEMENTS
+7.  LOG MESSAGES
+
+    All errors contain the word/phrase "unable" or "bad".  You will want
+    to scan for these automatically or periodically.  "bad state" messages
+    indicate a problem with the State attribute, which the server uses
+    to track challenges (for async mode).  They are all of the form
+    "bad state for [%s]: <problem>", where <problem> is one of:
+
+    length:  The length is not as expected.  Could be an attempted attack,
+             but more likely a network blip.
+    hmac:    The state is protected by a cryptographic hash which was not
+             able to be verified.  This could be because you just HUP'd
+             the server.
+    expired: The state is older than maxdelay seconds.  If you get a lot
+             of these you may wish to increase the value.
+    missing: This should never happen and indicates a bug.
+
+    Another message you'll want to lookout for is
+    "%d/%d failed/max authentications" which indicates a user that is
+    locked out due to exceeding maxfail failures.  You can reset this
+    user by editing the state file (see x99passwd.sample).
+
+    Also, look for "[%s] authenticated in async mode" which indicates
+    a user with a sync mode card that used async authentication.  You
+    may wish to reprogram these users' cards.
+
+
+8.  ACKNOWLEDGEMENTS
 
     Author: Frank Cusack <frank@google.com>
     I would like to thank Google for allowing (encouraging) me to release
