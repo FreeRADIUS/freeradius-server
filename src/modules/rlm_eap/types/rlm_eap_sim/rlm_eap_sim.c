@@ -42,6 +42,26 @@ struct eap_sim_server_state {
 	
 };
 
+/*
+ * Add value pair to reply
+ */
+static void add_reply(VALUE_PAIR** vp, 
+		      const char* name, const char* value, int len)
+{
+	VALUE_PAIR *reply_attr;
+	reply_attr = pairmake(name, "", T_OP_EQ);
+	if (!reply_attr) {
+		DEBUG("rlm_eap_sim: "
+		      "add_reply failed to create attribute %s: %s\n", 
+		      name, librad_errstr);
+		return;
+	}
+
+	memcpy(reply_attr->strvalue, value, len);
+	reply_attr->length = len;
+	pairadd(vp, reply_attr);
+}
+
 static void eap_sim_state_free(void *opaque)
 {
 	struct eap_sim_server_state *ess = (struct eap_sim_server_state *)opaque;
@@ -258,6 +278,10 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	return 1;
 }
 
+#ifndef EAPTLS_MPPE_KEY_LEN 
+#define EAPTLS_MPPE_KEY_LEN     32
+#endif
+
 /*
  * this code sends the success message.
  *
@@ -265,8 +289,9 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
  * radius attributes derived from the MSK.
  *
  */
-static int eap_sim_sendchallenge(EAP_HANDLER *handler)
+static int eap_sim_sendsuccess(EAP_HANDLER *handler)
 {
+        unsigned char *p;
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR **outvps;
 
@@ -561,7 +586,10 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.6  2003-11-22 00:10:18  mcr
+ * Revision 1.7  2003-11-22 00:21:17  mcr
+ * 	send the encryption keys to the AccessPoint.
+ *
+ * Revision 1.6  2003/11/22 00:10:18  mcr
  * 	the version list attribute's length of versions is in bytes,
  * 	not entries.
  *
