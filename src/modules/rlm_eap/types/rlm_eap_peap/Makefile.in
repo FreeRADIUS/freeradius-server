@@ -4,6 +4,7 @@ RLM_CFLAGS  = $(INCLTDL) -I../.. @eap_peap_cflags@ $(OPENSSL_INCLUDE) -I../rlm_e
 HEADERS     = ../rlm_eap_tls/rlm_eap_tls.h eap_peap.h ../../eap.h ../../rlm_eap.h
 RLM_INSTALL = 
 RLM_LIBS    = ../rlm_eap_tls/rlm_eap_tls.la -L@srcdir@/../../libeap -leap @eap_peap_ldflags@ $(OPENSSL_LIBS)
+LINK_MODE   = $(RLM_EAP_LINK_MODE)
 
 $(STATIC_OBJS): $(HEADERS)
 
