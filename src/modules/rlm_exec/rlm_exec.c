@@ -108,6 +108,10 @@ static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
 		return &request->config_items;
 	}
 
+	if (strcmp(string, "none") == 0) {
+		return NULL;
+	}
+
 	return NULL;
 }
 
