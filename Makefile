@@ -21,15 +21,14 @@ clean:
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	# Install the config files
 	@echo "Creating/updating files in $(raddbdir)"; \
-	install -d -m 755	$(raddbdir) \
-	cd ../raddb; \
+	install -d -m 755	$(raddbdir); \
+	cd raddb; \
 	for i in [a-c]* [e-z]*; do \
-		[ ! -f $(raddbdir)/$$i ] && cp $$i $(raddbdir)/$$i; \
+		[ ! -f $(raddbdir)/$$i ] && install -m 644 $$i $(raddbdir); \
 	done; \
 	for i in dictionary*; do \
-		[ ! -f $(raddbdir)/$$i ] && cp $$i $(raddbdir)/$$i; \
+		[ ! -f $(raddbdir)/$$i ] && install -m 644 $$i $(raddbdir); \
 		if [ $$i -nt $(raddbdir)/$$i ]; then \
 			echo "** $(raddbdir)/$$i"; \
 			nt=1; \
