@@ -1,0 +1,84 @@
+1.   INSTALATION
+
+This module depends on OpenLDAP v2.0 SDK libraries.
+For details on obtaining source of OpenLDAP look at <http://www.openldap.org>.
+OpenLDAP SDK in turn depends on OpenSSL crypto libraries and (optionaly) on 
+Cyrus-SASL libraries.
+
+2. CONFIGURATION
+
+Add following subsection to the modules{} section of radiusd.conf to control
+the rlm_ldap module:
+
+  modules {
+	...
+	
+	ldap {
+
+#	server: space separated list of host[:port]
+#	default: settings for your system, as set in etc/openldap/ldap.conf
+#
+		server   = localhost
+
+#	net_timeout: # of seconds to wait for response of the server 
+#			(network failures)
+#	default: forever
+#
+		net_timeout = 1
+
+#	timeout: # seconds to wait for LDAP query to finish
+#	default: forever
+#
+		timeout = 2
+
+#	identity: DN under which LDAP searches are done
+#	password: pasword which authenticate this DN
+#	default: anonymous bind, no password required
+#	NOTE: searches are done now over unencrypted connection!
+#
+#	identity = "cn=admin,o=My Org,c=UA"
+#	password = mypass
+
+#	basedn = <Base of LDAP searches>
+#
+		basedn   = "o=My Org,c=UA"
+
+#	filter: LDAP search filter, to locate user object using name
+#	supplied by client during Radius authentication
+#	
+#	default: none
+		filter   = "(uid=%u)"
+
+#	access_group: membership in this group controls radius access for user
+#	default: NULL 
+#	(means all users located in the LDAP tree under specified "basedn")
+#	
+		access_group = "cn=RemoteUsers,o=My Org,c=UA"
+
+#	access_attr: if attribute is specified, module checks for its existance
+#	in user object. If it exists and is set to TRUE, user is allowed to get
+#	remote access.
+#	default: NULL - don't check for the attribute
+		access_attr = "dialupAccess"
+	}
+}
+
+NOTE:
+As LDAP is case insensitive, you should probably also set "lower_user = yes" 
+and "lower_time = before" in main section of radiusd.conf, to get limits on 
+simultaneous logins working correctly. Otherwise, users will be able get large 
+number of sessions, capitalizing parts of their login names.
+
+As attempts to standardize LDAP attributes for RADIUS has failed (or stalled),
+currently I propose to set all necessary attributes in users file with 
+following authorize section of radiusd.conf :
+
+authorize { 
+	preprocess
+	realm
+	ldap {
+		notfound = return
+	} 
+	files  
+}
+
