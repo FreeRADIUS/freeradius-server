@@ -496,7 +496,7 @@ static int read_realms_file(const char *file)
 		}
 
 		if (strcmp(hostnm, "LOCAL") == 0) {
-			c->ipaddr = htons(0x7f000001);
+			c->ipaddr = htonl(0x7f000001);
 		} else {
 			c->ipaddr = ip_getaddr(hostnm);
 		}
@@ -513,8 +513,8 @@ static int read_realms_file(const char *file)
 		 */
 		client = client_find(c->ipaddr);
 		if (client == NULL) {
-			log(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server for realm \"%s\"",
-			    file, lineno, realm);
+			log(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server %s for realm \"%s\"",
+			    file, lineno, hostnm, realm);
 			return -1;
 		}
 		memcpy(c->secret, client->secret, sizeof(c->secret));
