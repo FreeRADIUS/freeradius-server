@@ -43,12 +43,12 @@
 #define S33 11
 #define S34 15
 
-static void MD4Transform PROTO_LIST ((UINT4 [4], unsigned char [64]));
+static void MD4Transform PROTO_LIST ((UINT4 [4], const unsigned char [64]));
 static void Encode PROTO_LIST
-  ((unsigned char *, UINT4 *, unsigned int));
+  ((unsigned char *, const UINT4 *, unsigned int));
 static void Decode PROTO_LIST
-  ((UINT4 *, unsigned char *, unsigned int));
-static void MD4_memcpy PROTO_LIST ((POINTER, POINTER, unsigned int));
+  ((UINT4 *, const unsigned char *, unsigned int));
+static void MD4_memcpy PROTO_LIST ((POINTER, const POINTER, unsigned int));
 static void MD4_memset PROTO_LIST ((POINTER, int, unsigned int));
 
 static unsigned char PADDING[64] = {
@@ -85,7 +85,7 @@ static unsigned char PADDING[64] = {
 
 void md4_calc(output, input, inlen)
 unsigned char *output;
-unsigned char *input;                                /* input block */
+const unsigned char *input;                       /* input block */
 unsigned int inlen;                     /* length of input block */
 {
 	MD4_CTX	context;
@@ -116,39 +116,39 @@ MD4_CTX *context;                                        /* context */
  */
 void MD4Update (context, input, inputLen)
 MD4_CTX *context;                                        /* context */
-unsigned char *input;                                /* input block */
+const unsigned char *input;                          /* input block */
 unsigned int inputLen;                     /* length of input block */
 {
-  unsigned int i, index, partLen;
+  unsigned int i, buffindex, partLen;
 
   /* Compute number of bytes mod 64 */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3F);
+  buffindex = (unsigned int)((context->count[0] >> 3) & 0x3F);
   /* Update number of bits */
   if ((context->count[0] += ((UINT4)inputLen << 3))
       < ((UINT4)inputLen << 3))
     context->count[1]++;
   context->count[1] += ((UINT4)inputLen >> 29);
 
-  partLen = 64 - index;
+  partLen = 64 - buffindex;
 
   /* Transform as many times as possible.
    */
   if (inputLen >= partLen) {
     MD4_memcpy
-      ((POINTER)&context->buffer[index], (POINTER)input, partLen);
+      ((POINTER)&context->buffer[buffindex], (const POINTER)input, partLen);
     MD4Transform (context->state, context->buffer);
 
     for (i = partLen; i + 63 < inputLen; i += 64)
       MD4Transform (context->state, &input[i]);
 
-    index = 0;
+    buffindex = 0;
   }
   else
     i = 0;
 
   /* Buffer remaining input */
   MD4_memcpy
-    ((POINTER)&context->buffer[index], (POINTER)&input[i],
+    ((POINTER)&context->buffer[buffindex], (const POINTER)&input[i],
      inputLen-i);
 }
 
@@ -160,15 +160,15 @@ unsigned char digest[16];                         /* message digest */
 MD4_CTX *context;                                        /* context */
 {
   unsigned char bits[8];
-  unsigned int index, padLen;
+  unsigned int idx, padLen;
 
   /* Save number of bits */
   Encode (bits, context->count, 8);
 
   /* Pad out to 56 mod 64.
    */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3f);
-  padLen = (index < 56) ? (56 - index) : (120 - index);
+  idx = (unsigned int)((context->count[0] >> 3) & 0x3f);
+  padLen = (idx < 56) ? (56 - idx) : (120 - idx);
   MD4Update (context, PADDING, padLen);
 
   /* Append length (before padding) */
@@ -185,7 +185,7 @@ MD4_CTX *context;                                        /* context */
  */
 static void MD4Transform (state, block)
 UINT4 state[4];
-unsigned char block[64];
+const unsigned char block[64];
 {
   UINT4 a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
@@ -260,7 +260,7 @@ unsigned char block[64];
  */
 static void Encode (output, input, len)
 unsigned char *output;
-UINT4 *input;
+const UINT4 *input;
 unsigned int len;
 {
   unsigned int i, j;
@@ -279,7 +279,7 @@ unsigned int len;
 static void Decode (output, input, len)
 
 UINT4 *output;
-unsigned char *input;
+const unsigned char *input;
 unsigned int len;
 {
   unsigned int i, j;
@@ -293,7 +293,7 @@ unsigned int len;
  */
 static void MD4_memcpy (output, input, len)
 POINTER output;
-POINTER input;
+const POINTER input;
 unsigned int len;
 {
   unsigned int i;

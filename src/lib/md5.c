@@ -54,7 +54,7 @@ void librad_md5_calc(unsigned char *output, unsigned char *input,
 		     unsigned int inputlen);
 static void MD5Transform PROTO_LIST ((UINT4 [4], const unsigned char [64]));
 static void Encode PROTO_LIST
-  ((unsigned char *, UINT4 *, unsigned int));
+  ((unsigned char *, const UINT4 *, unsigned int));
 static void Decode PROTO_LIST
   ((UINT4 *, const unsigned char *, unsigned int));
 static void MD5_memcpy PROTO_LIST ((POINTER, CONSTPOINTER, unsigned int));
@@ -134,10 +134,10 @@ MD5_CTX *context;                                        /* context */
 const unsigned char *input;                                /* input block */
 unsigned int inputLen;                     /* length of input block */
 {
-  unsigned int i, index, partLen;
+  unsigned int i, idx, partLen;
 
   /* Compute number of bytes mod 64 */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3F);
+  idx = (unsigned int)((context->count[0] >> 3) & 0x3F);
 
   /* Update number of bits */
   if ((context->count[0] += ((UINT4)inputLen << 3))
@@ -145,26 +145,26 @@ unsigned int inputLen;                     /* length of input block */
  context->count[1]++;
   context->count[1] += ((UINT4)inputLen >> 29);
 
-  partLen = 64 - index;
+  partLen = 64 - idx;
 
   /* Transform as many times as possible.
 */
   if (inputLen >= partLen) {
  MD5_memcpy
-   ((POINTER)&context->buffer[index], (CONSTPOINTER)input, partLen);
+   ((POINTER)&context->buffer[idx], (CONSTPOINTER)input, partLen);
  MD5Transform (context->state, context->buffer);
 
  for (i = partLen; i + 63 < inputLen; i += 64)
    MD5Transform (context->state, &input[i]);
 
- index = 0;
+ idx = 0;
   }
   else
  i = 0;
 
   /* Buffer remaining input */
   MD5_memcpy
- ((POINTER)&context->buffer[index], (CONSTPOINTER)&input[i],
+ ((POINTER)&context->buffer[idx], (CONSTPOINTER)&input[i],
   inputLen-i);
 }
 
@@ -176,15 +176,15 @@ unsigned char digest[16];                         /* message digest */
 MD5_CTX *context;                                       /* context */
 {
   unsigned char bits[8];
-  unsigned int index, padLen;
+  unsigned int idx, padLen;
 
   /* Save number of bits */
   Encode (bits, context->count, 8);
 
   /* Pad out to 56 mod 64.
 */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3f);
-  padLen = (index < 56) ? (56 - index) : (120 - index);
+  idx = (unsigned int)((context->count[0] >> 3) & 0x3f);
+  padLen = (idx < 56) ? (56 - idx) : (120 - idx);
   MD5Update (context, PADDING, padLen);
 
   /* Append length (before padding) */
@@ -295,7 +295,7 @@ const unsigned char block[64];
  */
 static void Encode (output, input, len)
 unsigned char *output;
-UINT4 *input;
+const UINT4 *input;
 unsigned int len;
 {
   unsigned int i, j;

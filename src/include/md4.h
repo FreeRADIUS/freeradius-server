@@ -87,10 +87,10 @@ typedef struct {
   unsigned char buffer[64];                         /* input buffer */
 } MD4_CTX;
 
-void md4_calc (unsigned char *, unsigned char *, unsigned int);
+void md4_calc (unsigned char *, const unsigned char *, unsigned int);
 void MD4Init PROTO_LIST ((MD4_CTX *));
 void MD4Update PROTO_LIST
-  ((MD4_CTX *, unsigned char *, unsigned int));
+  ((MD4_CTX *, const unsigned char *, unsigned int));
 void MD4Final PROTO_LIST ((unsigned char [16], MD4_CTX *));
 
 #endif /* _LRAD_MD4_H */
