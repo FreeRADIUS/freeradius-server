@@ -593,15 +593,19 @@ static int unix_accounting(void *instance, REQUEST *request)
 
 	/*
 	 *	Write a RADIUS wtmp log file.
-	 *	FIXME: return correct error.
-	 *	Check if file is there. If not, we don't write the
-	 *	wtmp file. If it is, we try to write. If we fail,
+	 *
+	 *	Try to open the file if we can't, we don't write the
+	 *	wtmp file. If we can try to write. If we fail,
 	 *	return RLM_MODULE_FAIL ..
 	 */
 	if ((fp = fopen(inst->radwtmp, "a")) != NULL) {
-		fwrite(&ut, sizeof(ut), 1, fp);
+		if ((fwrite(&ut, sizeof(ut), 1, fp)) != sizeof(ut)) {
+			fclose(fp);
+			return RLM_MODULE_FAIL;
+		}
 		fclose(fp);
-	}
+	} else 
+		return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
