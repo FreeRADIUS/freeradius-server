@@ -927,8 +927,7 @@ DICT_ATTR *dict_attrbyname(const char *name)
 			p = q + 1; /* skip the '-' */
 			attr = value << 16; /* FIXME: horrid hack */
 
-		} else if (((q = strchr(name, '-')) != NULL) &&
-			   (strncasecmp(q, "-Attr-", 6) == 0)) {
+		} else if ((q = strchr(name, '-')) != NULL) {
 			/*
 			 *	myattr.name is a temporary buffer
 			 */
@@ -937,6 +936,9 @@ DICT_ATTR *dict_attrbyname(const char *name)
 			memcpy(myattr.name, name, q - name);
 			myattr.name[q - name] = '\0';
 
+			/*
+			 *	No leading vendor name, stop looking.
+			 */
 			value = dict_vendorbyname(myattr.name);
 			if (!value) return NULL;
 
@@ -952,6 +954,12 @@ DICT_ATTR *dict_attrbyname(const char *name)
 			if (*q) return NULL; /* characters after the digits */
 			if ((value <= 0) || (value > 65535)) return NULL; /* bad value */
 			attr |= value;
+
+			/*
+			 *	FIXME: If it doesn't exit, maybe we
+			 *	want to create it, and make it type
+			 *	"octets"?
+			 */
 			return dict_attrbyvalue(attr);
 		}
 
@@ -968,6 +976,10 @@ DICT_ATTR *dict_attrbyname(const char *name)
 		strNcpy(myattr.name, p, sizeof(myattr.name));
 	}
 	
+	/*
+	 *	FIXME: If it doesn't exist, maybe we want to create
+	 *	it, and make it type "octets"?
+	 */
 	return rbtree_finddata(attributes_byname, &myattr);
 }
 
