@@ -29,7 +29,6 @@ dynamic:
 install:
 	install -d -m 755 $(libdir)
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	[ "lib/*rlm_*" != "" ] && install -m 755 lib/*rlm_* $(libdir)
 
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
