@@ -1,13 +1,12 @@
 /*
  * radiusd.c	Main loop of the radius server.
  *
- * Version:	@(#)radiusd.c  1.90  22-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
 /* don't look here for the version, run radiusd -v or look in version.c */
-char radiusd_sccsid[] =
-"@(#)radiusd.c	1.90 Copyright 1999 Cistron Internet Services B.V.";
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
