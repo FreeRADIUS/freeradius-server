@@ -23,11 +23,6 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
-/*
- * If you want this code to look right, set your tabstop to 2 or 3 
- * for vi users -  :set ts=3   :set sw=3
- */
-
 static const char rcsid[] =
 	"$Id$";
 
@@ -359,7 +354,7 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	 * Otherwise we should have a plain password in DB
 	 */
 	if ((strncmp(row[1], "Crypt-Password", 14) == 0) &&
-			(strncmp(crypt(request->password->strvalue, row[0]), row[0], request->password->length)) == 0) {
+			(strncmp(crypt(request->password->strvalue, row[0]), row[0], request->password->length) == 0)) {
 		return RLM_MODULE_OK;
 	} else if (strncmp(request->password->strvalue, row[0], request->password->length) == 0) {
 		return RLM_MODULE_OK;
