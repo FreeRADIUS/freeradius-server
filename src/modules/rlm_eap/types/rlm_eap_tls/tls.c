@@ -37,7 +37,8 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 	/* We use the SSL's "app_data" to indicate a call-back */
 	SSL_set_app_data(new_tls, NULL);
 
-	state = (tls_session_t *)malloc(sizeof(tls_session_t));
+	state = (tls_session_t *)malloc(sizeof(*state));
+	memset(state, 0, sizeof(*state));
 	session_init(state);
 	state->ssl = new_tls;
 
