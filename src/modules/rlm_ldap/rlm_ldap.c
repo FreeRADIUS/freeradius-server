@@ -103,6 +103,8 @@
  *	- Use the MAX_FAILED_CONNS_* in ldap_authenticate() when calling ldap_connect()
  * Nov 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Set LDAP version to V3 before binding. Now freeradius should work with openldap21
+ * Dec 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Set default values for the server and basedn parameters
  */
 static const char rcsid[] = "$Id$";
 
@@ -223,7 +225,7 @@ typedef struct {
 }               ldap_instance;
 
 static CONF_PARSER module_config[] = {
-	{"server", PW_TYPE_STRING_PTR, offsetof(ldap_instance,server), NULL, NULL},
+	{"server", PW_TYPE_STRING_PTR, offsetof(ldap_instance,server), NULL, "localhost"},
 	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance,port), NULL, "389"},
 	/* wait forever on network activity */
 	{"net_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance,net_timeout.tv_sec), NULL, "10"},
@@ -237,7 +239,7 @@ static CONF_PARSER module_config[] = {
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance,start_tls), NULL, "no"},
 	{"tls_mode", PW_TYPE_BOOLEAN, offsetof(ldap_instance,tls_mode), NULL, "no"},
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance,password), NULL, ""},
-	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, NULL},
+	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance,basedn), NULL, "o=notexist"},
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
 	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,default_profile), NULL, NULL},
 	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance,profile_attr), NULL, NULL},
