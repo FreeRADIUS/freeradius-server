@@ -242,8 +242,7 @@ static int do_checkval(void *instance, REQUEST *request)
 	 	*/
 		found = 1;
 		if (data->dat_type == PW_TYPE_STRING ||
-		    data->dat_type == PW_TYPE_OCTETS ||
-		    data->dat_type == PW_TYPE_IPADDR) {
+		    data->dat_type == PW_TYPE_OCTETS) {
 			if (item_vp->length != chk_vp->length)
 				ret = RLM_MODULE_REJECT;
 			else{
