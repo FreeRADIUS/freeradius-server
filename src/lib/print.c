@@ -189,6 +189,10 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		  a = buf;
 		  break;
 
+		case PW_TYPE_IFID:
+			a = ifid_ntoa(buf, sizeof(buf), vp->strvalue);
+			break;
+
 		default:
 			a = 0;
 			break;

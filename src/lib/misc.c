@@ -284,3 +284,62 @@ int rad_unlockfd(int fd, int lock_len)
 	return fcntl(fd, F_UNLCK, (void *)&fl);
 #endif
 }
+
+/*
+ *	Return an interface-id in standard colon notation
+ */
+char *ifid_ntoa(char *buffer, size_t size, uint8_t *ifid)
+{
+	snprintf(buffer, size, "%x:%x:%x:%x",
+		 (ifid[0] << 8) + ifid[1], (ifid[2] << 8) + ifid[3],
+		 (ifid[4] << 8) + ifid[5], (ifid[6] << 8) + ifid[7]);
+	return buffer;
+}
+
+
+/*
+ *	Return an interface-id from
+ *	one supplied in standard colon notation.
+ */
+uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
+{
+	static const char xdigits[] = "0123456789abcdef";
+	char *p, *pch;
+	int num_id = 0, val = 0, idx = 0;
+
+	for (p = ifid_str; ; ++p) {
+		if (*p == ':' || *p == '\0') {
+			if (num_id <= 0)
+				return NULL;
+
+			/*
+			 *	Drop 'val' into the array.
+			 */
+			ifid[idx] = (val >> 8) & 0xff;
+			ifid[idx + 1] = val & 0xff;
+			if (*p == '\0') {
+				/*
+				 *	Must have all entries before
+				 *	end of the string.
+				 */
+				if (idx != 6)
+					return NULL;
+				break;
+			}
+			val = 0;
+			num_id = 0;
+			if ((idx += 2) > 6)
+				return NULL;
+		} else if ((pch = strchr(xdigits, tolower(*p))) != NULL) {
+			if (++num_id > 4)
+				return NULL;
+			/*
+			 *	Dumb version of 'scanf'
+			 */
+			val <<= 4;
+			val |= (pch - xdigits);
+		} else
+			return NULL;
+	}
+	return ifid;
+ }

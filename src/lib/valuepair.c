@@ -674,6 +674,16 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			}
 			break;
 
+		case PW_TYPE_IFID:
+			if (ifid_aton(value, vp->strvalue) == NULL) {
+				librad_log("failed to parse interface-id "
+					   "string \"%s\"", value);
+				return NULL;
+			}
+			vp->length = 8;
+			vp->strvalue[vp->length] = '\0';
+			break;
+
 			/*
 			 *  Anything else.
 			 */
