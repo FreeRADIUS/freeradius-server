@@ -339,15 +339,16 @@ int lrad_crypt_check(const char *key, const char *salt);
 typedef struct rbtree_t rbtree_t;
 typedef struct rbnode_t rbnode_t;
 
-void rbtree_free(rbtree_t *tree);
-rbtree_t *rbtree_create(int (*Compare)(const void *, const void *),
-			void (*freeNode)(void *),
-			int replace_flag);
-int rbtree_insert(rbtree_t *tree, void *Data);
-void rbtree_delete(rbtree_t *tree, rbnode_t *Z);
-rbnode_t *rbtree_find(rbtree_t *tree, void *Data);
-void *rbtree_finddata(rbtree_t *tree, void *Data);
-int rbtree_num_elements(rbtree_t *tree);
+rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
+			       void (*freeNode)(void *),
+			       int replace_flag);
+void		rbtree_free(rbtree_t *tree);
+int		rbtree_insert(rbtree_t *tree, void *Data);
+void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
+rbnode_t       *rbtree_find(rbtree_t *tree, void *Data);
+void	       *rbtree_finddata(rbtree_t *tree, void *Data);
+int		rbtree_num_elements(rbtree_t *tree);
+void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 
 /* callback order for walking  */
 typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;

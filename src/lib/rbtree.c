@@ -397,11 +397,18 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 	else
 		tree->Root = X;
 	
-	if (Y != Z) Z->Data = Y->Data;
+	if (Y != Z) {
+		/*
+		 *	Move the child's data to here, and then
+		 *	re-balance the tree.
+		 */
+		if (tree->freeNode) tree->freeNode(Z->Data);
+		Z->Data = Y->Data;
+		Y->Data = NULL;
+	}
 	if (Y->Color == Black)
 		DeleteFixup(tree, X);
 
-	if (tree->freeNode) tree->freeNode(Y->Data);
 	free(Y);
 
 	tree->num_elements--;
@@ -546,4 +553,15 @@ int rbtree_num_elements(rbtree_t *tree)
 	if (!tree) return 0;
 
 	return tree->num_elements;
+}
+
+
+/*
+ *	Given a Node, return the data.
+ */
+void *rbtree_node2data(rbtree_t *tree, rbnode_t *node)
+{
+	if (!node) return NULL;
+
+	return node->Data;
 }
