@@ -29,7 +29,7 @@ install:
 
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f *~ lib/[0-9a-z]*
+	@rm -f *~ lib/rlm_*
 
 distclean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
