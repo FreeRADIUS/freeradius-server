@@ -446,7 +446,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0)
-					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for ALIVE packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for Acct On/Off packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
 
@@ -486,8 +486,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
-					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting" " for ALIVE packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
-					(inst->module->sql_finish_query)(sqlsocket, inst->config);
+					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting" " for START packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 
 					/*
 					 * We failed the insert above.  It's probably because 
@@ -504,6 +503,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 						(inst->module->sql_finish_query)(sqlsocket, inst->config);
 					}
 				}
+				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
 			break;
 
@@ -525,46 +525,47 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 			if (querystr) {
 				if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
-					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting START record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
 				}
-				(inst->module->sql_finish_query)(sqlsocket, inst->config);
-			}
-
-			numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
-			if (numaffected < 1) {
-				/*
-				 * If our update above didn't match anything
-				 * we assume it's because we haven't seen a 
-				 * matching Start record.  So we have to
-				 * insert this stop rather than do an update
-				 */
+				else {
+					numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
+					if (numaffected < 1) {
+						/*
+						 * If our update above didn't match anything
+						 * we assume it's because we haven't seen a 
+						 * matching Start record.  So we have to
+						 * insert this stop rather than do an update
+						 */
 #ifdef CISCO_ACCOUNTING_HACK
-			        /*
-			         * If stop but zero session length AND no previous
-			         * session found, drop it as in invalid packet
-			         * This is to fix CISCO's aaa from filling our
-			         * table with bogus crap
-			         */
-			        if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME)) != NULL)
-			                acctsessiontime = pair->lvalue;
-
-			        if (acctsessiontime <= 0) {
-			                radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
-			                radlog(L_ERR, logstr);
-			                sql_release_socket(inst, sqlsocket);
-			                return RLM_MODULE_FAIL;
-			        }
+					        /*
+					         * If stop but zero session length AND no previous
+					         * session found, drop it as in invalid packet
+				        	 * This is to fix CISCO's aaa from filling our
+				        	 * table with bogus crap
+					         */
+					        if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME)) != NULL)
+					                acctsessiontime = pair->lvalue;
+	
+					        if (acctsessiontime <= 0) {
+				        	        radius_xlat(logstr, MAX_QUERY_LEN, "rlm_sql:  Stop packet with zero session length.  (user '%{User-Name}', nas '%{NAS-IP-Address}')", request, NULL);
+					                radlog(L_ERR, logstr);
+				        	        sql_release_socket(inst, sqlsocket);
+				                	return RLM_MODULE_FAIL;
+					        }
 #endif
 
-				radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query_alt, request, NULL);
-				query_log(inst, querystr);
+						radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query_alt, request, NULL);
+						query_log(inst, querystr);
 
-				if (querystr) {
-					if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
-						radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+						if (querystr) {
+							if ((inst->module->sql_query)(sqlsocket, inst->config, querystr) < 0) {
+								radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+							}
+							(inst->module->sql_finish_query)(sqlsocket, inst->config);
+						}
 					}
-					(inst->module->sql_finish_query)(sqlsocket, inst->config);
 				}
+				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
 			break;
 	}
