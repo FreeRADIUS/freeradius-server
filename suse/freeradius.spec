@@ -1,5 +1,5 @@
 #
-# spec file for package freeradius (Version 1.0.2)
+# spec file for package freeradius (Version 1.0.3)
 #
 # Copyright (c) 2004 SUSE LINUX Products GmbH, Nuernberg, Germany.
 # This file and all modifications and additions to the pristine
@@ -7,6 +7,8 @@
 #
 # Please submit bugfixes or comments via http://www.suse.de/feedback/
 #
+
+%define _oracle_support	0
 
 # neededforbuild  cyrus-sasl-devel db-devel heimdal-devel heimdal-lib mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel pam-devel postgresql postgresql-devel postgresql-libs python python-devel unixODBC unixODBC-devel
 
@@ -27,6 +29,7 @@ PreReq:       /usr/sbin/useradd /usr/sbin/groupadd
 PreReq:       %insserv_prereq %fillup_prereq
 %endif
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
+Autoreqprov:  off
 
 %description
 The FreeRADIUS server has a number of features found in other servers,
@@ -48,9 +51,36 @@ Authors:
     Alan Curry
     various other people
 
+%package oracle
+BuildRequires: oracle-instantclient-basic oracle-instantclient-devel
+Group:        Productivity/Networking/Radius/Servers
+Summary:      FreeRADIUS Oracle database support
+Requires:     oracle-instantclient-basic
+Autoreqprov:  off
+
+%description oracle
+The FreeRADIUS server has a number of features found in other servers,
+and additional features not found in any other server. Rather than
+doing a feature by feature comparison, we will simply list the features
+of the server, and let you decide if they satisfy your needs.
+
+Support for RFC and VSA Attributes Additional server configuration
+attributes Selecting a particular configuration Authentication methods
+
+%package dialupadmin
+Group:        Productivity/Networking/Radius/Servers
+Summary:      FreeRADIUS web interface
+Requires:     perl-DateManip, php4, apache2-mod_php4
+Autoreqprov:  off
+
+%description dialupadmin
+This is the FreeRADIUS web interface.
+
+
 %package devel
 Group:        Development/Libraries/C and C++
 Summary:      FreeRADIUS Development Files (static libs)
+Autoreqprov:  off
 
 %description devel
 These are the static libraries for the FreeRADIUS package.
@@ -85,9 +115,18 @@ CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing" ./configure \
 		--with-ltdl-lib=/usr/lib \
 		--with-ltdl-include=/usr/include \
 		--with-gnu-ld \
+%if %suse_version <= 920
 		--enable-heimdal-krb5 \
 		--with-rlm-krb5-include-dir=/usr/include/heimdal/ \
+%endif
 		--with-rlm-krb5-lib-dir=%{_libdir} \
+		--with-edir \
+%if %_oracle_support == 1
+		--with-rlm_sql_oracle \
+		--with-oracle-lib-dir=/usr/lib/oracle/10.1.0.3/client/lib/ \
+%else
+		--without-rlm_sql_oracle \
+%endif
 		--enable-strict-dependencies
 make
 
@@ -107,10 +146,22 @@ touch $RPM_BUILD_ROOT/var/log/radius/radutmp
 # SuSE
 install -d     $RPM_BUILD_ROOT/etc/pam.d
 install -d     $RPM_BUILD_ROOT/etc/logrotate.d
-install -m 644 suse/radiusd-pam $RPM_BUILD_ROOT/etc/pam.d/radiusd
-install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
+%if %suse_version >= 930
+   install -m 644 suse/radiusd-pam $RPM_BUILD_ROOT/etc/pam.d/radiusd
+%else
+   #install -m 644 suse/radiusd-pam-old $RPM_BUILD_ROOT/etc/pam.d/radiusd
+   install -m 644 suse/radiusd-pam $RPM_BUILD_ROOT/etc/pam.d/radiusd
+%endif
+install    -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
 install -d -m 755 $RPM_BUILD_ROOT/etc/init.d
 install    -m 744 suse/rcradiusd $RPM_BUILD_ROOT/etc/init.d/radiusd
+#install  -d  -m 744 $RPM_BUILD_ROOT/usr/share/dialup_admin
+DIALUPADMIN=$RPM_BUILD_ROOT/usr/share/freeradius-dialupadmin
+cp -R dialup_admin $DIALUPADMIN
+perl -i -pe 's/^#general_base_dir\:.*$/general_base_dir\: \/usr\/share\/freeradius-dialupadmin/'   $DIALUPADMIN/conf/admin.conf
+perl -i -pe 's/^#general_radiusd_base_dir\:.*$/general_radiusd_base_dir\: \//'   $DIALUPADMIN/conf/admin.conf
+perl -i -pe 's/^#general_snmpwalk_command\:.*$/general_snmpwalk_command\: \/usr\/bin\/snmpwalk/'   $DIALUPADMIN/conf/admin.conf
+perl -i -pe 's/^#general_snmpget_command\:.*$/general_snmpget_command\: \/usr\/bin\/snmpget/'   $DIALUPADMIN/conf/admin.conf
 ln -sf ../../etc/init.d/radiusd $RPM_BUILD_ROOT/usr/sbin/rcradiusd
 mv -v doc/README doc/README.doc
 # remove unneeded stuff
@@ -149,8 +200,7 @@ rm -rf $RPM_BUILD_ROOT/usr/share/doc/freeradius*
 %doc scripts/create-users.pl scripts/CA.* scripts/certs.sh
 %doc scripts/users2mysql.pl scripts/xpextensions
 %doc scripts/cryptpasswd scripts/exec-program-wait scripts/radiusd2ldif.pl
-%doc dialup_admin
-# SuSE
+# SUSE support scripts
 %config /etc/init.d/radiusd
 %config /etc/pam.d/radiusd
 %config /etc/logrotate.d/radiusd
@@ -193,7 +243,6 @@ rm -rf $RPM_BUILD_ROOT/usr/share/doc/freeradius*
 # shared libs
 %attr(755,root,root) %dir /usr/lib/freeradius
 %attr(755,root,root) /usr/lib/freeradius/*.so*
-%attr(644,root,root) /usr/lib/freeradius/*.la
 # man-pages
 %doc %{_mandir}/man1/*
 %doc %{_mandir}/man5/*
@@ -209,4 +258,18 @@ rm -rf $RPM_BUILD_ROOT/usr/share/doc/freeradius*
 %files devel
 %defattr(-,root,root)
 /usr/lib/freeradius/*.a
+%attr(644,root,root) /usr/lib/freeradius/*.la
+
+
+%if %_oracle_support == 1
+%files oracle
+%defattr(-,root,root)
+%attr(755,root,root) %dir /usr/lib/freeradius
+%attr(755,root,root) /usr/lib/freeradius/rlm_sql_oracle*.so*
+%endif
+
+%files dialupadmin
+%dir %attr(755,root,root) /usr/share/freeradius-dialupadmin
+%config /usr/share/freeradius-dialupadmin/conf
+/usr/share/freeradius-dialupadmin/*
 
