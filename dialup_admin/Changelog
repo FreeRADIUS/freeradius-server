@@ -14,6 +14,10 @@ Ver 1.30:
 * Pass the whole password as salt in da_encrypt() in password_check.php3
 * Refresh the online users page every 50 secs. Patch by Alexandre Strube <surak@barroco.com.br>
 * Check if the last logged in server and client ip are valid before calling gethostbyaddr
+* If the same attribute appears more than once in the user edit page then show a count of the number of
+  occurences next to the attribute name
+* Add a server argument to user_finger.php3. If it is set then the page will only show the logged in users
+  in that access server instead of all of them. Update the README with documentation for that fact.
 Ver 1.29:
 * Add general_ld_library_path directive and set LD_LIBRARY_PATH accordingly (used in snmpfinger and
   radaclient).

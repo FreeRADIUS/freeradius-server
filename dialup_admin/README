@@ -19,6 +19,7 @@ There are also a few more things included:
   stoptime = 0. It will not do an harm even if it deletes valid entries since radiusd will fall
   back to insert if update fails.
 
+
 The structure of the tree is:
 
 conf:: Contains various configuration files.
@@ -63,6 +64,9 @@ htdocs:: user_state.php3 =>
 	separated by new lines:
 	account_status(active or inactive),lock message,weekly limit,daily limit,
 	weekly used,weekly connections,daily used,daily connections
+htdocs:: user_finger.php3 =>
+	It will inger the nas(es) and show the logged in users. If an argument server is passed then
+	it will only show users for the specific access server.
 
 html:: Contains the html code for a few pages 
 html::user_admin.html.php3 =>

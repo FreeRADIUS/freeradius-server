@@ -31,6 +31,7 @@ $link = @da_sql_pconnect($config);
 $link2 = connect2db($config);
 if ($link){
 	$h = 21;
+	$servers_num = 0;
 	while(1){
 		$i++;
 		$num = 0;
@@ -45,10 +46,18 @@ if ($link){
 			$i--;
 			break;
 		}
+		if ($server != ''){
+			if ($config[$name] == $server)
+				$servers_num++;
+			else
+				continue;
+		}
+		else
+			$servers_num++;
 		$name_data = $config[$ip];
 		$community_data = $config[$community];
-		$server_name[$i] = $config[$name];
-		$server_model[$i] = $config[$model];
+		$server_name[$servers_num] = $config[$name];
+		$server_model[$servers_num] = $config[$model];
 		if ($config[general_ld_library_path] != '')
 			putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
 		$extra = "";
@@ -67,26 +76,26 @@ if ($link){
 				$num++;
 				$h += 21;
 				$user = $row['UserName'];
-				$finger_info[$i][$num]['ip'] = $row['FramedIPAddress'];
-				if ($finger_info[$i][$num]['ip'] == '')
-					$finger_info[$i][$num]['ip'] = '-';
+				$finger_info[$servers_num][$num]['ip'] = $row['FramedIPAddress'];
+				if ($finger_info[$servers_num][$num]['ip'] == '')
+					$finger_info[$servers_num][$num]['ip'] = '-';
 				$session_time = $row['AcctStartTime'];
 				$session_time = date2timediv($session_time);
-				$finger_info[$i][$num]['session_time'] = time2strclock($session_time);
-				$finger_info[$i][$num]['user'] = $user;
-				$finger_info[$i][$num]['callerid'] = $row['CallingStationId'];
-				if ($finger_info[$i][$num]['callerid'] == '')
-					$finger_info[$i][$num]['callerid'] = '-';
+				$finger_info[$servers_num][$num]['session_time'] = time2strclock($session_time);
+				$finger_info[$servers_num][$num]['user'] = $user;
+				$finger_info[$servers_num][$num]['callerid'] = $row['CallingStationId'];
+				if ($finger_info[$servers_num][$num]['callerid'] == '')
+					$finger_info[$servers_num][$num]['callerid'] = '-';
 				if ($user_info["$user"] == ''){
 					$user_info["$user"] = get_user_info($link2,$user,$config);
 					if ($user_info["$user"] == '' || $user_info["$user"] == ' ')
 						$user_info["$user"] = 'Unknown User';
 				}
 			}
-			$height[$i] = $h;
+			$height[$servers_num] = $h;
 		}
-		$server_loggedin[$i] = $num;
-		$server_rem[$i] = ($config[$portnum]) ? ($config[$portnum] - $num) : 'unknown';
+		$server_loggedin[$servers_num] = $num;
+		$server_rem[$servers_num] = ($config[$portnum]) ? ($config[$portnum] - $num) : 'unknown';
 	}
 }
 ?>
@@ -116,7 +125,7 @@ if ($link){
 echo <<<EOM
 	<b>$date</b>
 EOM;
-	for($j = 1; $j <= $i; $j++){
+	for($j = 1; $j <= $servers_num; $j++){
 		echo <<<EOM
 <p>
 	<table width=100% cellpadding=0 height=30><tr>

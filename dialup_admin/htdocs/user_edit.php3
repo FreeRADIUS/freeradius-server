@@ -119,10 +119,14 @@ User Password (changes only)
 			print <<<EOM
 <tr>
 <td align=right bgcolor="#d0ddb0">
-$desc
+EOM;
+			if ($i == 1)
+				echo "$desc\n";
+			else
+				echo "$desc ($i)\n";
+			print <<<EOM
 </td>
 EOM;
-
 			if ($show_ops)
 				print <<<EOM
 <td>
