@@ -28,17 +28,20 @@ CREATE TABLE dictionary (
 
 /*
  * Table structure for table 'nas'
+ * This is not currently used but FreeRADIUS but is usefull for reporting
+ * anyway.
  */
 CREATE TABLE nas (
   id SERIAL PRIMARY KEY,
   nasname VARCHAR(128),
-  shortname VARCHAR(32),
-  ipaddr VARCHAR(15),
+  shortname VARCHAR(32) NOT NULL,
+  ipaddr inet NOT NULL,
   type VARCHAR(30),
   ports int4,
-  secret VARCHAR(60),
+  secret VARCHAR(60) NOT NULL,
   community VARCHAR(50),
-  snmp VARCHAR(10)
+  snmp VARCHAR(10),
+  naslocation VARCHAR(32)
 );
 
 /*
