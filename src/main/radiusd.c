@@ -397,6 +397,11 @@ int main(int argc, char **argv)
 	}
 
 	/*
+	 *	Get out PID: the configuration file reader uses it.
+	 */
+	radius_pid = getpid();
+
+	/*
 	 *	Read the configuration files, BEFORE doing anything else.
 	 */
 	reread_config(0);
@@ -523,24 +528,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	radius_pid = getpid();
-#ifdef RADIUS_PID
-	/*
-	 *	Only write the PID file if we're running as a daemon.
-	 */
-	if (dont_fork == FALSE) {
-		fp = fopen(pid_file, "w");
-		if (fp != NULL) {
-			fprintf(fp, "%d\n", radius_pid);
-			fclose(fp);
-		} else {
-			log(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
-			    pid_file, strerror(errno));
-		}
-	}
-#endif
-
-
 	/*
 	 *	Get the current maximum for core files.
 	 */
@@ -594,6 +581,31 @@ int main(int argc, char **argv)
 		setsid();
 #endif
 	}
+
+	/*
+	 *	Ensure that we're using the CORRECT pid after forking,
+	 *	NOT the one we started with.
+	 */
+	radius_pid = getpid();
+
+#ifdef RADIUS_PID
+	/*
+	 *	Only write the PID file if we're running as a daemon.
+	 *
+	 *	And write it AFTER we've forked, so that we write the
+	 *	correct PID.
+	 */
+	if (dont_fork == FALSE) {
+		fp = fopen(pid_file, "w");
+		if (fp != NULL) {
+			fprintf(fp, "%d\n", radius_pid);
+			fclose(fp);
+		} else {
+			log(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
+			    pid_file, strerror(errno));
+		}
+	}
+#endif
 
 #ifdef WITH_THREAD_POOL
 	/*
