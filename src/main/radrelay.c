@@ -429,6 +429,7 @@ int do_send(struct relay_request *r, char *secret)
 	 * loop. 
 	 */
 	if (r->retrans > 0){
+		id_map[r->req->id] = 0;
 		r->req->id = get_radius_id();
 		if (r->req->data != NULL){
 			free(r->req->data);
