@@ -148,8 +148,8 @@ sub snmpwalk_prog {
 	my ($host, $community, $oid) = @_;
 	local $_;
 
-	print LOG "snpwalk: $snmpwalk -r $snmp_retries -t $snmp_timeout $host '$community' $oid\n";
-	$_ = `$snmpwalk -r $snmp_retries -t $snmp_timeout $host '$community' $oid`;
+	print LOG "snpwalk: $snmpwalk -r $snmp_retries -t $snmp_timeout -v2c -c '$community' $host $oid\n";
+	$_ = `$snmpwalk -r $snmp_retries -t $snmp_timeout -v2c -c '$community' $host $oid`;
 
 	return $_;
 }
@@ -180,8 +180,8 @@ sub snmpget_prog {
 	my ($ret);
 	local $_;
 
-	print LOG "snmpget: $snmpget -r $snmp_retries -t $snmp_timeout $host $community $oid\n";
-	$_ = `$snmpget -r $snmp_retries -t $snmp_timeout $host $community $oid`;
+	print LOG "snmpget: $snmpget -r $snmp_retries -t $snmp_timeout -v2c -c '$community' $host $oid\n";
+	$_ = `$snmpget -r $snmp_retries -t $snmp_timeout -v2c -c '$community' $host $oid`;
 	if (/^.*(\s|\")([0-9A-Za-z]{8})(\s|\"|$).*$/) {
 		# Session ID format.
 		$ret = $2;
