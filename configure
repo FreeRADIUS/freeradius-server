@@ -727,7 +727,7 @@ fi
 
 
 
-# From configure.in Revision: 1.170 
+# From configure.in Revision: 1.175 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=9-pre
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -2002,7 +2002,7 @@ else
   if { (eval echo configure:2003: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; }; then
     for file in conftest.*; do
       case $file in
-      *.c | *.o | *.obj) ;;
+      *.$ac_ext | *.c | *.o | *.obj) ;;
       *) ac_cv_exeext=`echo $file | sed -e s/conftest//` ;;
       esac
     done
@@ -7980,10 +7980,32 @@ cat > conftest.$ac_ext <<EOF
 #include "confdefs.h"
 #include <netdb.h>
 int main() {
- gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL)  
+ gethostbyaddr(NULL, 0, 0)  
 ; return 0; }
 EOF
 if { (eval echo configure:7987: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  
+	cat >> confdefs.h <<\EOF
+#define GETHOSTBYADDRRSTYLE BSDSTYLE
+EOF
+
+	gethostbyaddrrstyle=BSD
+
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+cat > conftest.$ac_ext <<EOF
+#line 8002 "configure"
+#include "confdefs.h"
+#include <netdb.h>
+int main() {
+ gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL)  
+; return 0; }
+EOF
+if { (eval echo configure:8009: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
@@ -7998,14 +8020,14 @@ else
 fi
 rm -f conftest*
 cat > conftest.$ac_ext <<EOF
-#line 8002 "configure"
+#line 8024 "configure"
 #include "confdefs.h"
 #include <netdb.h>
 int main() {
  gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) 
 ; return 0; }
 EOF
-if { (eval echo configure:8009: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8031: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
@@ -8020,22 +8042,78 @@ else
 fi
 rm -f conftest*
 
+if test "x$gethostbyaddrrstyle" = "x"; then
+	echo "$ac_t""none!  It must not exist, here." 1>&6
+else
+	echo "$ac_t""${gethostbyaddrrstyle}-style" 1>&6
+	if test "$gethostbyaddrrstyle" = "BSD"; then
+		echo "configure: warning:  ****** BSD Style gethostbyaddr might NOT be thread-safe! ****** " 1>&2
+	fi
+fi
+
+gethostbynamerstyle=""
+echo $ac_n "checking gethostbyname_r() syntax""... $ac_c" 1>&6
+echo "configure:8057: checking gethostbyname_r() syntax" >&5
 cat > conftest.$ac_ext <<EOF
-#line 8025 "configure"
+#line 8059 "configure"
 #include "confdefs.h"
 #include <netdb.h>
 int main() {
- gethostbyaddr(NULL, 0, 0)  
+ gethostbyname(NULL)  
 ; return 0; }
 EOF
-if { (eval echo configure:8032: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:8066: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   
 	cat >> confdefs.h <<\EOF
-#define GETHOSTBYADDRRSTYLE BSDSTYLE
+#define GETHOSTBYNAMERSTYLE BSDSTYLE
 EOF
 
-	gethostbyaddrrstyle=BSD
+	gethostbynamerstyle=BSD
+
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+cat > conftest.$ac_ext <<EOF
+#line 8081 "configure"
+#include "confdefs.h"
+#include <netdb.h>
+int main() {
+ gethostbyname_r(NULL, NULL, NULL, 0, NULL)  
+; return 0; }
+EOF
+if { (eval echo configure:8088: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  
+	cat >> confdefs.h <<\EOF
+#define GETHOSTBYNAMERSTYLE SYSVSTYLE
+EOF
+
+	gethostbynamerstyle=SYSV
+
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+cat > conftest.$ac_ext <<EOF
+#line 8103 "configure"
+#include "confdefs.h"
+#include <netdb.h>
+int main() {
+ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) 
+; return 0; }
+EOF
+if { (eval echo configure:8110: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  
+	cat >> confdefs.h <<\EOF
+#define GETHOSTBYNAMERSTYLE GNUSTYLE
+EOF
+
+	gethostbynamerstyle=GNU
 
 else
   echo "configure: failed program was:" >&5
@@ -8043,16 +8121,18 @@ else
 fi
 rm -f conftest*
 
-if test "x$gethostbyaddrrstyle" = "x"; then
+if test "x$gethostbynamerstyle" = "x"; then
 	echo "$ac_t""none!  It must not exist, here." 1>&6
 else
-	echo "$ac_t""${gethostbyaddrrstyle}-style" 1>&6
+	echo "$ac_t""${gethostbynamerstyle}-style" 1>&6
+	if test "$gethostbynamerstyle" = "BSD"; then
+		echo "configure: warning:  ****** BSD Style gethostbyname might NOT be thread-safe! ****** " 1>&2
+	fi
 fi
-
 
 if test x"$rad_enable_largefiles" = xyes ; then
     echo $ac_n "checking for largefile linkage""... $ac_c" 1>&6
-echo "configure:8056: checking for largefile linkage" >&5
+echo "configure:8136: checking for largefile linkage" >&5
     case "$host" in
     *-aix4.01*)
         echo "$ac_t""no" 1>&6
@@ -8089,7 +8169,7 @@ EOF
         # Extract the first word of "getconf", so it can be a program name with args.
 set dummy getconf; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:8093: checking for $ac_word" >&5
+echo "configure:8173: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_path_GETCONF'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
