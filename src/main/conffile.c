@@ -192,7 +192,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			if (*q != NULL) {
 				free(*q);
 			}
-			DEBUG2("Config: %s.%s = %s",
+			DEBUG2("Config: %s.%s = \"%s\"",
 			       cs->name1,
 			       variables[i].name,
 			       cp->value);
@@ -374,7 +374,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		p = buf;
 		ptr = buf3;
-		while (*ptr > ' ') {
+		while (*ptr >= ' ') {
 			/*
 			 *	Ignore anything other than "${"
 			 */
