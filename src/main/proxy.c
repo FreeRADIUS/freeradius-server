@@ -281,7 +281,11 @@ int proxy_send(REQUEST *request)
 		DEBUG2("Cancelling proxy as request was already rejected");
 		return RLM_MODULE_REJECT;
 	}
-
+	if (((vp = pairfind(request->config_items, PW_AUTH_TYPE)) != NULL) &&
+	    (vp->lvalue == PW_AUTHTYPE_REJECT)) {
+		DEBUG2("Cancelling proxy as request was already rejected");
+		return RLM_MODULE_REJECT;
+	}
 	/*
 	 *	Length == 0 means it exists, but there's no realm.
 	 *	Don't proxy it.
