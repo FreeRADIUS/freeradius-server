@@ -1415,6 +1415,23 @@ int main(int argc, char *argv[])
 #endif
 
 		status = select(max_fd + 1, &readfds, NULL, NULL, tv);
+		if (status == -1) {
+			/*
+			 *	On interrupts, we clean up the request
+			 *	list.  We then continue with the loop,
+			 *	so that if we're supposed to exit,
+			 *	then the code at the start of the loop
+			 *	catches that, and exits.
+			 */
+			if (errno == EINTR) {
+				tv = rl_clean_list(time(NULL));
+				continue;
+			}
+			radlog(L_ERR, "Unexpected error in select(): %s",
+					strerror(errno));
+			exit(1);
+		}
+
 		time_now = time(NULL);
 #ifndef HAVE_PTHREAD_H
 		/*
@@ -1427,23 +1444,6 @@ int main(int argc, char *argv[])
 			/* do nothing */
 		}
 #endif
-
-		if (status == -1) {
-			/*
-			 *	On interrupts, we clean up the request
-			 *	list.  We then continue with the loop,
-			 *	so that if we're supposed to exit,
-			 *	then the code at the start of the loop
-			 *	catches that, and exits.
-			 */
-			if (errno == EINTR) {
-				tv = rl_clean_list(time_now);
-				continue;
-			}
-			radlog(L_ERR, "Unexpected error in select(): %s",
-					strerror(errno));
-			exit(1);
-		}
 
 		/*
 		 *  Loop over the open socket FD's, reading any data.
