@@ -24,9 +24,9 @@ AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
-dnl # The version of the software, 0.5
+dnl # The version of the software
 RADIUSD_MAJOR_VERSION=0
-RADIUSD_MINOR_VERSION=6
+RADIUSD_MINOR_VERSION=7-pre
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
 
 dnl #############################################################
