@@ -105,8 +105,16 @@ static void auth_type_fixup(VALUE_PAIR *check)
 	vp->lvalue = n;
 	vp->operator = T_OP_ADD;
 
+#if 0
 	vp->next = c->next;
 	c->next = vp;
+#endif
+	vp->next = check;
+	check = vp;
+
+	for(vp = check; vp; vp = vp->next) {
+		DEBUG2("  auth_type_fixup: %s [%d]", vp->name, vp->attribute);
+	}
 
 }
 
