@@ -173,8 +173,8 @@ void		librad_md5_calc(u_char *, u_char *, u_int);
 
 /* hmac.c */
 
-void lrad_hmac_md5(unsigned char *text, int text_len,
-		   unsigned char *key, int key_len,
+void lrad_hmac_md5(const unsigned char *text, int text_len,
+		   const unsigned char *key, int key_len,
 		   unsigned char *digest);
 
 /* radius.c */
