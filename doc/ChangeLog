@@ -69,6 +69,13 @@ FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	  %{request:Attribute-Name} and the like.
 	* Add support to rlm_sql for post-authentication query execution.
 	
+FreeRADIUS 0.9.3 ; Date: 2003/11/20 20:15:48, urgency=high
+
+	* Change rlm_eap to not log an error if given a non-EAP packet
+	* Fix rlm_ippool's call to pod2man for perl versions before 5.6
+	* Fix a remote DoS and due to mis-handling of tagged attributes,
+	  and Tunnel-Password attribute.
+
 FreeRADIUS 0.9.2 ; Date: 2003/10/14 19:00:09, urgency=low
 
 	* New rlm_ippool code to fix IP leaks
