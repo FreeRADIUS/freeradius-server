@@ -2231,6 +2231,7 @@ static void sig_hup(int sig)
  */
 static REQUEST *proxy_check_list(REQUEST *request)
 {
+	REALM *cl;
 	REQUEST *oldreq;
 	
 	/*
@@ -2320,6 +2321,32 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	oldreq->proxy_reply = request->packet;
 	request->packet = NULL;
 	request_free(&request);
+
+	/*
+	 *	Now that we've verified the packet IS actually
+	 *	from that realm, and not forged, we can go mark the
+	 *	realms for this home server as active.
+	 *
+	 *	If we had done this check in the 'find realm by IP address'
+	 *	function, then an attacker could force us to use a home
+	 *	server which was inactive, by forging reply packets
+	 *	which didn't match any request.  We would think that
+	 *	the reply meant the home server was active, would
+	 *	re-activate the realms, and THEN bounce the packet
+	 *	as garbage.
+	 */
+	for (cl = mainconfig.realms; cl != NULL; cl = cl->next) {
+		if (oldreq->proxy_reply->src_ipaddr == cl->ipaddr) {
+			if (oldreq->proxy_reply->src_port == cl->auth_port) {
+				cl->active = TRUE;
+				cl->last_reply = oldreq->timestamp;
+			} else if (oldreq->proxy_reply->src_port == cl->acct_port) {
+				cl->acct_active = TRUE;
+				cl->last_reply = oldreq->timestamp;
+			}
+		}
+	}
+
 	return oldreq;
 }
 

@@ -99,16 +99,17 @@ typedef struct nas {
 typedef struct _realm {
 	char			realm[64];
 	char			server[64];
-	uint32_t		ipaddr;
+	uint32_t		ipaddr;	/* authentication */
 	uint32_t		acct_ipaddr;
 	u_char			secret[32];
+	time_t			last_reply; /* last time we saw a packet */
 	int			auth_port;
 	int			acct_port;
 	int			striprealm;
-	int			trusted;
+	int			trusted; /* old */
 	int			notrealm;
-	int			active;
-	time_t			wakeup;
+	int			active;	/* is it dead? */
+	time_t			wakeup;	/* when we should try it again */
 	int			acct_active;
 	time_t			acct_wakeup;
 	int			ldflag;

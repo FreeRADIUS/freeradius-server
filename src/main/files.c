@@ -500,24 +500,39 @@ void realm_disable(uint32_t ipaddr, int port)
 	time_t now;
 
 	now = time(NULL);
-	for(cl = mainconfig.realms; cl; cl = cl->next)
+	for(cl = mainconfig.realms; cl; cl = cl->next) {
 		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
+			/*
+			 *	If we've received a reply (any reply)
+			 *	from the home server in the time spent
+			 *	re-sending this request, then don't mark
+			 *	the realm as dead.
+			 */
+			if (cl->last_reply > (( now - mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count ))) {
+				continue;
+			}
+
 			cl->active = FALSE;
 			cl->wakeup = now + mainconfig.proxy_dead_time;
 			radlog(L_PROXY, "marking authentication server %s:%d for realm %s dead",
 				cl->server, port, cl->realm);
 		} else if ((ipaddr == cl->acct_ipaddr) && (port == cl->acct_port)) {
+			if (cl->last_reply > (( now - mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count ))) {
+				continue;
+			}
+
 			cl->acct_active = FALSE;
 			cl->acct_wakeup = now + mainconfig.proxy_dead_time;
 			radlog(L_PROXY, "marking accounting server %s:%d for realm %s dead",
 				cl->server, port, cl->realm);
 		}
+	}
 }
 
 /*
  *	Find a realm in the REALM list.
  */
-REALM *realm_find(const char *realm, int acct)
+REALM *realm_find(const char *realm, int accounting)
 {
 	REALM *cl, *realmptr;
 	REALM *default_realm = NULL;
@@ -550,8 +565,8 @@ REALM *realm_find(const char *realm, int acct)
 		 *	Asked for auth/acct, and the auth/acct server
 		 *	is not active.  Skip it.
 		 */
-		if ((!acct && !cl->active) ||
-		    (acct && !cl->acct_active)) {
+		if ((!accounting && !cl->active) ||
+		    (accounting && !cl->acct_active)) {
 
 			/*
 			 *	We've been asked to NOT fall through
@@ -703,25 +718,29 @@ REALM *realm_find(const char *realm, int acct)
 
 /*
  *	Find a realm for a proxy reply by proxy's IP
+ *
+ *	Note that we don't do anything else.
  */
 REALM *realm_findbyaddr(uint32_t ipaddr, int port)
 {
 	REALM *cl;
-
+	
 	/*
 	 *	Note that we do NOT check for inactive realms!
 	 *
-	 *	If we get a packet from an end server, then we mark it
-	 *	as active, and return the realm.
+	 *	The purpose of this code is simply to find a matching
+	 *	source IP/Port pair, for a home server which is allowed
+	 *	to send us proxy replies.  If we get a reply, then it
+	 *	doesn't matter if we think the realm is inactive.
 	 */
-	for(cl = mainconfig.realms; cl != NULL; cl = cl->next)
+	for (cl = mainconfig.realms; cl != NULL; cl = cl->next) {
 		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
-			cl->active = TRUE;
 			return cl;
+
 		} else if ((ipaddr == cl->acct_ipaddr) && (port == cl->acct_port)) {
-			cl->acct_active = TRUE;
 			return cl;
 		}
+	}
 
 	return NULL;
 }
