@@ -29,9 +29,9 @@ void cbtls_info(const SSL *s, int where, int ret)
 	int w;
 
 	w = where & ~SSL_ST_MASK;
-	if (w & SSL_ST_CONNECT) str="TLS_connect";
-	else if (w & SSL_ST_ACCEPT) str="TLS_accept";
-	else str="undefined";
+	if (w & SSL_ST_CONNECT) str="    TLS_connect";
+	else if (w & SSL_ST_ACCEPT) str="    TLS_accept";
+	else str="    (other)";
 
 	state = SSL_state_string_long(s);
 	state = state ? state : "NULL";
