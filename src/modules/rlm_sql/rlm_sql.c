@@ -726,8 +726,10 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	if(sqlsocket == NULL)
 		return RLM_MODULE_FAIL;
 
-	if(sql_set_user(inst, request, sqlusername, 0) <0)
+	if(sql_set_user(inst, request, sqlusername, 0) <0){
+		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
+	}
 
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->simul_count_query, request, NULL);
 	if(rlm_sql_select_query(sqlsocket, inst, querystr)) {
@@ -764,6 +766,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 
 	if (inst->config->simul_verify_query[0] == 0) {
 		/* No verify query defined, so skip verify step and rely on count query only */
+		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_OK;
 	}
 
@@ -796,6 +799,8 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
                  *      duplicate logins: Return an error.
                  */
 		if (check < 0) {
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
 			return RLM_MODULE_FAIL;
 		}
 
