@@ -136,7 +136,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 		exit(1);
 	}
 
-	if (rad_decode(*rep, secret) != 0) {
+	if (rad_decode(*rep, req, secret) != 0) {
 		librad_perror("rad_decode");
 		exit(1);
 	}
