@@ -259,6 +259,8 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
 		      c->module, attrname+ c->length + 1);
 		q += c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
+		found = 1;
+
 		/*
 		 *	Nothing else, it MUST be a bare attribute name.
 		 */
