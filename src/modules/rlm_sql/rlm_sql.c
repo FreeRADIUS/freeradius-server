@@ -256,6 +256,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		return RLM_MODULE_NOTFOUND;
 	}
 
+#if 0 /* FIXME: Debug being printed elsewhere? /*
 	/*
 	 * Uncomment these lines for debugging
 	 * Recompile, and run 'radiusd -X'
@@ -265,12 +266,15 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 	 DEBUG2("rlm_sql:  reply items");
 	 vp_printlist(stderr, reply_tmp);
 	 */
+#endif
 
+#if 0 /* FIXME: this is the *real* authorizing */
 	vp_printlist(stderr, check_tmp);
 	if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
 		radlog(L_INFO, "rlm_sql: Pairs do not match [%s]", sqlusername);
 		return RLM_MODULE_FAIL;
 	}
+#endif
 
 	pairmove(&request->reply->vps, &reply_tmp);
 	pairmove(&request->config_items, &check_tmp);
@@ -353,6 +357,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	int     acctstatustype = 0;
 	char    querystr[MAX_QUERY_LEN];
 	char    logstr[MAX_QUERY_LEN];
+	char	sqlusername[MAX_STRING_LEN];
 
 #ifdef CISCO_ACCOUNTING_HACK
 	int     acctsessiontime = 0;
@@ -429,6 +434,11 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			 */
 		case PW_STATUS_START:
 
+			/*
+			 * Set, escape, and check the user attr here
+			 */
+			if(sql_set_user(inst, request, sqlusername, 0) < 0) 
+				return RLM_MODULE_FAIL;
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_start_query, request, NULL);
 			query_log(inst, querystr);
 
@@ -460,6 +470,11 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			 */
 		case PW_STATUS_STOP:
 
+			/*
+			 * Set, escape, and check the user attr here
+			 */
+			if(sql_set_user(inst, request, sqlusername, 0) < 0) 
+				return RLM_MODULE_FAIL;
 			radius_xlat(querystr, MAX_QUERY_LEN, inst->config->accounting_stop_query, request, NULL);
 			query_log(inst, querystr);
 
