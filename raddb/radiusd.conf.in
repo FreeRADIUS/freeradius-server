@@ -453,6 +453,14 @@ modules {
 		compat = no
 	}
 
+	# This module will add a (probably) unique session id 
+	# to an accounting packet based on the attributes listed
+	# below found in the packet.  see doc/README.rlm_acct_unique
+	acct_unique {
+		key = "User-Name, Acct-Session-Id, NAS-IP-Address, NAS-Port-Id"
+	}
+
+
 #
 #  Configuration for the SQL module.
 #
@@ -585,10 +593,12 @@ authenticate {
 }
 
 # Authorization. First preprocess (hints and huntgroups files),
-# then look in the "users" file.
+# then realms, and finally look in the "users" file.
+# Make *sure* that 'preprocess' comes before 'realm' if you 
+# need to setup hints for the remote radius server
 authorize {
-	realm
 	preprocess
+	realm
 	files
 }
 
@@ -602,6 +612,7 @@ preacct {
 
 # Accounting. Log to detail file, and to the radwtmp file.
 accounting {
+	#acct_unique
 	files
 	unix
 }
