@@ -361,18 +361,27 @@ static int xlat_cmp(const void *a, const void *b)
 /*
  *	find the appropriate registered xlat function.
  */
-static xlat_t *xlat_find(const char *module)
+static const xlat_t *xlat_find(const char *module)
 {
-	char *p;
 	xlat_t my_xlat;
 
-	p = my_xlat.module;
-	my_xlat.length = 0;
-	while (*module && (*module != ':')) {
-		*(p++) = *(module++);
-		my_xlat.length++;
+	/*
+	 *	Look for dictionary attributes first.
+	 */
+	if (dict_attrbyname(module) != NULL) {
+		static const xlat_t dict_xlat = {
+			"request",
+			7,
+			&xlat_inst[1],
+			xlat_packet,
+			TRUE
+		};
+
+		return &dict_xlat;
 	}
-	*p = '\0';
+
+	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
+	my_xlat.length = strlen(my_xlat.module);
 
 	return rbtree_finddata(xlat_root, &my_xlat);
 }
@@ -509,11 +518,12 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	int	do_length = 0;
 	char	xlat_name[128];
 	char	*xlat_string = NULL; /* can be large */
+	int	free_xlat_string = FALSE;
 	const char *p;
 	char *q, *pa;
 	int found=0, retlen=0;
 	int openbraces = *open;
-	xlat_t *c;
+	const xlat_t *c;
 
 	p = *from;
 	q = *to;
@@ -555,23 +565,21 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		DEBUG("xlat: Invalid syntax in %s", *from);
 
 		/*
-		 *	%{name} is a simple attribute reference, use it.
+		 *	%{name} is a simple attribute reference,
+		 *	or regex reference.
 		 */
 	} else if (*p == '}') {
 		openbraces--;
-		p++;
 		rad_assert(openbraces == *open);
 
-		if ((retlen = xlat_packet(&xlat_inst[1], request, xlat_name,
-					  q, freespace, func)) > 0) {
-			found = 1;
-		}
+		p++;
+		xlat_string = xlat_name;
+		goto do_xlat;
+
 	} else if (p[1] == '-') { /* handle ':- */
 		p += 2;
-		if ((retlen = xlat_packet(&xlat_inst[1], request, xlat_name,
-					  q, freespace, func)) > 0) {
-			found = 1;
-		}
+		xlat_string = xlat_name;
+		goto do_xlat;
 		
 	} else {      /* module name, followed by per-module string */
 		int stop = 0;
@@ -592,6 +600,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		}
 		
 		xlat_string = rad_malloc(strlen(p) + 1); /* always returns */
+		free_xlat_string = TRUE;
 		pa = xlat_string;
 		
 		/*
@@ -641,7 +650,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		 *	Now check to see if we're at the end of the string
 		 *	we were sent.  If we're not, check for :-
 		 */
-		if (openbraces != *open) {
+		if (openbraces == delimitbrace) {
 			if (p[0] == ':' && p[1] == '-') {
 				p += 2;
 			}
@@ -651,6 +660,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		 *	Look up almost everything in the new tree of xlat
 		 *	functions.  This makes it a little quicker...
 		 */
+	do_xlat:
 		if ((c = xlat_find(xlat_name)) != NULL) {
 			if (!c->internal) DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
 						c->module, xlat_string);
@@ -712,7 +722,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	}
 	
 	done:
-	if (xlat_string) free(xlat_string);
+	if (free_xlat_string) free(xlat_string);
 
 	*open = openbraces;
 	*from = p;
