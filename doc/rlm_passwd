@@ -22,7 +22,7 @@ hashtable for fast search, so it may be very effective for storing up
 to a few thousands of users accounts if these accounts are rarely
 changed.
 
-It's also helpfull if you need to store only fa ew accounts, in this case
+It's also helpfull if you need to store only few accounts, in this case
 you should probably disable caching.
 
 
@@ -99,7 +99,9 @@ Q: Can I use rlm_passwd to authenticate user against Linux shadow password
    file or BSD-style master.passwd?
 A: Yes, but you need RADIUS running as root. Hint: use Crypt-Password
    attribute.  You probably don't want to use this module with
-   FreeBSD, as it already takes care of caching passwd file entries.
+   FreeBSD to authenticate against system file, as it already takes care
+   of caching passwd file entries, but it may be helpfull to authenticate
+   against alternate file.
 
 Q: Can I use rlm_passwd to authenticate user against SAMBA smbpasswd?
 A: Yes, you can. Hint: use LM-Password/NT-Password attribute, set 
