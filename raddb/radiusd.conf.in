@@ -356,6 +356,23 @@ modules {
 		radwtmp = ${logdir}/radwtmp
 	}
 
+	#  This module supports SAMBA passwd file authorization
+	#  and MS-CHAP, MS-CHAPv2 authentication
+	mschap {
+		# if given passwd shows location of
+		# SAMBA passwd file
+		#	passwd = /etc/smbpasswd
+
+		# authtype value, if present, will be used
+		# to overwrite (or add) Auth-Type during
+		# authorization. Normally should be MS-CHAP
+		authtype = MS-CHAP
+		
+		# if ignore_password set to yes mschap will
+		# ignore password set by any other module during
+		# authorization and will always use password file
+		#	ignore_password = yes  
+	}
 	#  This module definition allows you to use LDAP for
 	#  authorization and authentication (Auth-Type = LDAP)
 	#  See doc/rlm_ldap for description of configuration options 
@@ -625,6 +642,7 @@ authorize {
 #	attr_filter
 	suffix
 	files
+#	mschap
 }
 
 
@@ -647,6 +665,7 @@ authenticate {
 #		sql2
 #	}
 #	ldap
+#	mschap
 }
 
 
