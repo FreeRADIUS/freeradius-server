@@ -1,0 +1,12 @@
+  FreeRADIUS uses Vendor-Specific attributes to send the Ascend attributes.
+By default, Ascend NASes send the Ascend specific attributes as NON VSA's,
+which conflict with new RADIUS attributes assigned by the IETF.
+
+  If you see a large number of messages about invalid Message-Authenticator
+attribute, you most likely have this problem.  There is a configuration
+item in the Ascend NAS, which will enable them to work properly.
+
+  It is under Ethernet->Mod Config->Auth.  At the bottom of the menu,
+change Auth-Compat from "OLD" to "VSA".
+
+$Id$
