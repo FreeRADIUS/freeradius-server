@@ -210,7 +210,7 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR      **reply_items;
 	VALUE_PAIR      *reply_item;
-	VALUE_PAIR	*reply_tmp;
+	VALUE_PAIR	*reply_tmp = NULL;
 	VALUE_PAIR      *check_items;
 	VALUE_PAIR      *check_item;
 	VALUE_PAIR      *tmp;
