@@ -1155,6 +1155,12 @@ authorize {
 	#  handling a CHAP request and Auth-Type has not already been set
 	chap
 
+#	attr_filter
+#	eap
+	suffix
+	files
+#	etc_smbpasswd
+
 	#
 	#  If the users are logging in with an MS-CHAP-Challenge
 	#  attribute for authentication, the mschap module will find
@@ -1162,12 +1168,6 @@ authorize {
 	#  to the request, which will cause the server to then use
 	#  the mschap module for authentication.
 	mschap
-
-#	attr_filter
-#	eap
-	suffix
-	files
-#	etc_smbpasswd
 
 
 # The ldap module will set Auth-Type to LDAP if it has not already been set
