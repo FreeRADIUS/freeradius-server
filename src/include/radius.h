@@ -105,6 +105,7 @@
 #define PW_ACCT_UNIQUE_SESSION_ID	1051
 #define PW_REQUEST_SRC_IP_ADDRESS	1052
 #define LDAP_USERDN			1053
+#define PW_NS_MTA_MD5_PASSWORD		1054
 
 /*
  *	Integer Translations
