@@ -542,7 +542,7 @@ good_state:
 	 * a bit before he can authenticate.
 	 */
 	fcount = failcount - inst->softfail;
-	when = last_auth + fcount > 5 ? 32 * 60 : (1 << fcount) * 60;
+	when = last_auth + (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
 	if (time(NULL) < when) {
 	    radlog(L_AUTH, "rlm_x99_token: auth: user [%s] auth too soon "
 			   "while delayed, "
