@@ -45,11 +45,11 @@ char sccsid[] =
 #include <ctype.h>
 #include <string.h>
 
+#include "radiusd.h"
+
 #include "conf.h"
 #include "radpaths.h"
 #include "missing.h"
-
-#include "radiusd.h"
 
 #define	MAX_BUFF_SIZE	1024
 
