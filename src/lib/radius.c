@@ -768,7 +768,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if ((packet = malloc(sizeof(RADIUS_PACKET))) == NULL) {
 		librad_log("out of memory");
-		errno = ENOMEM;
 		return NULL;
 	}
 	memset(packet, 0, sizeof(RADIUS_PACKET));
@@ -1109,7 +1108,6 @@ RADIUS_PACKET *rad_recv(int fd)
 int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       const char *secret)
 {
-	DICT_ATTR		*attr;
 	uint32_t		lvalue;
 	uint32_t		vendorcode;
 	VALUE_PAIR		**tail;
@@ -1322,26 +1320,16 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			} /* else it was a stupid vendor format */
 		} /* else it wasn't a VSA */
 
+		pair = paircreate(attribute, PW_TYPE_OCTETS);
 		/*
-		 *	FIXME: should we us paircreate() ?
+		 *	FIXME: should we use paircreate() ?
 		 */
-		if ((pair = malloc(sizeof(VALUE_PAIR))) == NULL) {
+		if ((pair = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
 			pairfree(&packet->vps);
 			librad_log("out of memory");
-			errno = ENOMEM;
 			return -1;
 		}
 		
-		memset(pair, 0, sizeof(VALUE_PAIR));
-		if ((attr = dict_attrbyvalue(attribute)) == NULL) {
-			snprintf(pair->name, sizeof(pair->name), "Attr-%d", attribute);
-			pair->type = PW_TYPE_OCTETS;
-		} else {
-			strcpy(pair->name, attr->name);
-			pair->type = attr->type;
-			pair->flags = attr->flags;
-		}
-		pair->attribute = attribute;
 		pair->length = attrlen;
 		pair->operator = T_OP_EQ;
 		pair->next = NULL;
@@ -1487,7 +1475,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
       			memcpy(&lvalue, ptr, 4);
 
-			if (attr->type != PW_TYPE_IPADDR) {
+			if (pair->type != PW_TYPE_IPADDR) {
 				pair->lvalue = ntohl(lvalue);
 			} else {
 				 /*
@@ -1501,7 +1489,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			}
 
 			/*
-			 *  Only PW_TYPE_INTEGER should have tags.
+			 *	Tagged attributes of type integer have
+			 *	special treatment.
 			 */
 			if (pair->flags.has_tag &&
 			    pair->type == PW_TYPE_INTEGER) {
@@ -1509,7 +1498,11 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				pair->lvalue &= 0x00ffffff;
 			}
 
-			if (attr->type == PW_TYPE_INTEGER) {
+			/*
+			 *	Try to get the name for integer
+			 *	attributes.
+			 */
+			if (pair->type == PW_TYPE_INTEGER) {
 				DICT_VALUE *dval;
 				dval = dict_valbyattr(pair->attribute,
 						      pair->lvalue);
@@ -1565,7 +1558,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 		default:
 			DEBUG("    %s (Unknown Type %d)\n",
-			      attr->name,attr->type);
+			      pair->name, pair->type);
 			free(pair);
 			pair = NULL;
 			break;
