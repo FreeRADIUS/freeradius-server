@@ -28,15 +28,10 @@ static const char rcsid[] = "$Id$";
 
 #include	"radiusd.h"
 #include	"modules.h"
+#include	"conffile.h"
 
-RADCLIENT			*clients;
+RADCLIENT		*clients;
 REALM			*realms;
-
-#ifdef WITH_NEW_CONFIG
-extern int read_new_config_files(void);
-#endif
-
-
 
 /*
  *	Free a PAIR_LIST
@@ -437,7 +432,6 @@ void realm_free(REALM *cl)
 	}
 }
 
-#ifndef WITH_NEW_CONFIG
 /*
  *	Read the realms file.
  */
@@ -560,7 +554,6 @@ static int read_realms_file(const char *file)
 
 	return 0;
 }
-#endif /* WITH_NEW_CONFIG */
 #endif /* BUILDDBM */
 
 /*
@@ -605,7 +598,6 @@ int read_config_files()
 		return -1;
 	}
 
-#ifndef WITH_NEW_CONFIG
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
 	if (read_clients_file(buffer) < 0) {
 	        log(L_ERR|L_CONS, "Errors reading clients");
@@ -617,9 +609,8 @@ int read_config_files()
 	        log(L_ERR|L_CONS, "Errors reading realms");
 		return -1;
 	}
-#else
-	read_new_config_files();
-#endif
+
+	read_radius_conf_file();
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
 	if (read_naslist_file(buffer) < 0) {
@@ -637,4 +628,3 @@ int read_config_files()
 }
 
 #endif
-

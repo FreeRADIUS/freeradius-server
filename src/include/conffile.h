@@ -45,6 +45,7 @@ void		cf_pair_free(CONF_PAIR *cp);
 CONF_SECTION	*cf_section_alloc(const char *name1, const char *name2);
 void		cf_section_free(CONF_SECTION *cp);
 void		cf_section_free_all(CONF_SECTION *cp);
+int		cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables);
 
 /* JLN -- Newly added */
 		
@@ -54,5 +55,7 @@ CONF_SECTION	*cf_section_find(const char *name);
 CONF_SECTION	*cf_section_sub_find(CONF_SECTION *section, const char *name);
 CONF_SECTION	*cf_module_config_find(const char *modulename);
 char 		*cf_section_value_find(CONF_SECTION *section, const char *attr);
+
+int		read_radius_conf_file(void);
 
 #endif /* _CONFFILE_H */

@@ -47,10 +47,7 @@ static const char rcsid[] =
 #include <assert.h>
 
 #include	"radiusd.h"
-
-#ifdef WITH_NEW_CONFIG
 #include	"conffile.h"
-#endif
 
 /*
  *	Global variables.
@@ -125,7 +122,6 @@ static void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 extern void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #endif
 
-#ifdef WITH_NEW_CONFIG
 /*
  *	A mapping of configuration file names to internal integers
  */
@@ -144,7 +140,6 @@ CONF_PARSER rad_config[] = {
 
   { NULL, -1, NULL}
 };
-#endif
 
 /*
  *	Read config files.
@@ -1691,14 +1686,10 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	if (oldreq == NULL) {
 		request_free(request);
 		log(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
-			client_name(request->packet->src_ipaddr),
-			request->packet->id);
+		    client_name(request->packet->src_ipaddr),
+		    request->packet->id);
 		return NULL;
 	}
-
-	/*
-	 *	FIXME: IF replicating, then ignore the request!
-	 */
 
 	/*
 	 *	Refresh the old request,. and update it.

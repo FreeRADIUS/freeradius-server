@@ -15,10 +15,7 @@
 #endif
 
 #include	"radiusd.h"
-
-#ifdef WITH_NEW_CONFIG
 #include	"conffile.h"
-#endif
 
 static const char rcsid[] =
 "$Id$";
@@ -82,7 +79,7 @@ typedef struct THREAD_POOL {
 	int		max_requests_per_thread;
 } THREAD_POOL;
 
-static THREAD_POOL *thread_pool = NULL;
+static THREAD_POOL thread_pool;
 
 /*
  *	If the child *thread* gets a termination signal,
@@ -96,7 +93,7 @@ static void sig_term(int sig)
 	THREAD_HANDLE *handle;
 
 	child_pid = pthread_self();
-	for (handle = thread_pool->head; handle; handle = handle->next) {
+	for (handle = thread_pool.head; handle; handle = handle->next) {
 		if (pthread_equal(handle->child_pid, child_pid)) {
 			handle->status = THREAD_CANCELLED;
 			DEBUG2("Thread %d setting state to cancelled",
@@ -251,19 +248,19 @@ static void delete_thread(THREAD_HANDLE *handle)
 
 	prev = handle->prev;
 	next = handle->next;
-	assert(thread_pool->total_threads > 0);
-	thread_pool->total_threads--;
+	assert(thread_pool.total_threads > 0);
+	thread_pool.total_threads--;
 
 	if (prev == NULL) {
-		assert(thread_pool->head == handle);
-		thread_pool->head = next;
+		assert(thread_pool.head == handle);
+		thread_pool.head = next;
 	} else {
 		prev->next = next;
 	}
   
 	if (next == NULL) {
-		assert(thread_pool->tail == handle);
-		thread_pool->tail = prev;
+		assert(thread_pool.tail == handle);
+		thread_pool.tail = prev;
 	} else {
 		next->prev = prev;
 	}
@@ -292,18 +289,18 @@ static void move2tail(THREAD_HANDLE *handle)
 	/*
 	 *	Empty list: add it to the head.
 	 */
-	if (thread_pool->head == NULL) {
-		assert(thread_pool->tail == NULL);
-		assert(thread_pool->total_threads == 1);
+	if (thread_pool.head == NULL) {
+		assert(thread_pool.tail == NULL);
+		assert(thread_pool.total_threads == 1);
 
 		handle->prev = NULL;
 		handle->next = NULL;
-		thread_pool->head = handle;
-		thread_pool->tail = handle;
+		thread_pool.head = handle;
+		thread_pool.tail = handle;
 		return;
 	}
 
-	assert(thread_pool->total_threads > 1);
+	assert(thread_pool.total_threads > 1);
 	prev = handle->prev;
 	next = handle->next;
   
@@ -318,7 +315,7 @@ static void move2tail(THREAD_HANDLE *handle)
 		 *	there's no more work to do.
 		 */
 		if (next == NULL) {
-			assert(thread_pool->tail == handle);
+			assert(thread_pool.tail == handle);
 			return;
 		}
     
@@ -326,9 +323,9 @@ static void move2tail(THREAD_HANDLE *handle)
 		 *	Maybe it's at the head of the list?
 		 */
 		if (prev == NULL) {
-			assert(thread_pool->head == handle);
+			assert(thread_pool.head == handle);
       
-			thread_pool->head = next;
+			thread_pool.head = next;
 			next->prev = NULL;
       
 			/*
@@ -348,10 +345,10 @@ static void move2tail(THREAD_HANDLE *handle)
 	 *	Finally, add it to the tail, and update the pointers.
 	 */
 	handle->next = NULL;
-	prev = thread_pool->tail;
+	prev = thread_pool.tail;
 	assert(prev->next == NULL);
 
-	thread_pool->tail = handle;
+	thread_pool.tail = handle;
 	handle->prev = prev;
 	prev->next = handle;
 }
@@ -370,8 +367,8 @@ static THREAD_HANDLE *spawn_thread(void)
 	/*
 	 *	Ensure that we don't spawn too many threads.
 	 */
-	if (thread_pool->total_threads >= thread_pool->max_threads) {
-		DEBUG2("Thread spawn failed.  Maximum number of threads (%d) already running.", thread_pool->max_threads);
+	if (thread_pool.total_threads >= thread_pool.max_threads) {
+		DEBUG2("Thread spawn failed.  Maximum number of threads (%d) already running.", thread_pool.max_threads);
 		return NULL;
 	}
 
@@ -422,9 +419,9 @@ static THREAD_HANDLE *spawn_thread(void)
 	/*
 	 *	One more thread to go into the list.
 	 */
-	thread_pool->total_threads++;
+	thread_pool.total_threads++;
 	DEBUG2("Thread spawned new child %d. Total threads in pool: %d",
-	       handle->child_pid, thread_pool->total_threads);
+	       handle->child_pid, thread_pool.total_threads);
 
 	/*
 	 *	Move the thread handle to the tail of the thread pool list.
@@ -444,31 +441,25 @@ static THREAD_HANDLE *spawn_thread(void)
 int thread_pool_init(int num_threads)
 {
 	int i;
-	THREAD_HANDLE *handle;
-
-	assert(thread_pool == NULL);
-
-	/*
-	 *	Allocate and initialize the data structure.
-	 */
-	thread_pool = (THREAD_POOL *) malloc(sizeof(THREAD_POOL));
-	if (thread_pool == NULL) {
-		log(L_ERR|L_CONS, "no memory");
-		exit(1);
-	}
+	THREAD_HANDLE	*handle;
+	CONF_SECTION	*pool_cf;
+	CONF_PAIR	*cf;
 
 	/*
 	 *	Initialize the thread pool to some reasonable values.
-	 *
-	 *	We'll later pull these out of the configuration file.
 	 */
-	memset(thread_pool, 0, sizeof(THREAD_POOL));
-	thread_pool->head = NULL;
-	thread_pool->tail = NULL;
-	thread_pool->total_threads = 0;
-	thread_pool->min_spare_threads = 1;
-	thread_pool->max_spare_threads = 10;
-	thread_pool->max_threads = 32;
+	memset(&thread_pool, 0, sizeof(THREAD_POOL));
+	thread_pool.head = NULL;
+	thread_pool.tail = NULL;
+	thread_pool.total_threads = 0;
+	thread_pool.min_spare_threads = 3;
+	thread_pool.max_spare_threads = 10;
+	thread_pool.max_threads = 32;
+
+	pool_cf = cf_section_find("thread");
+	if (pool_cf) {
+		
+	}
 
 	/*
 	 *	Create a number of waiting threads.
@@ -504,7 +495,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	found = NULL;
 	active_threads = 0;
-	for (handle = thread_pool->head; handle; handle = next) {
+	for (handle = thread_pool.head; handle; handle = next) {
 		next = handle->next;
 
 		/*
@@ -514,7 +505,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 		if (handle->status == THREAD_CANCELLED) {
 			assert(handle->request == NULL);
 
-			DEBUG2("Thread joining child %d. Total threads in pool: %d", handle->child_pid, thread_pool->total_threads);
+			DEBUG2("Thread joining child %d. Total threads in pool: %d", handle->child_pid, thread_pool.total_threads);
 			pthread_join(handle->child_pid, NULL);
 			handle->child_pid = NO_SUCH_CHILD_PID;
 			delete_thread(handle);
@@ -544,7 +535,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (found == NULL) {
 		found = spawn_thread();
 		if (found == NULL) {
-			log(L_INFO, "The maximum number of threads (%d) are active, cannot spawn new thread to handle request", thread_pool->max_threads);
+			log(L_INFO, "The maximum number of threads (%d) are active, cannot spawn new thread to handle request", thread_pool.max_threads);
 			return -1;
 		}
 	}
@@ -564,7 +555,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	found->fun = fun;
 	found->request_count++;
 	sem_post(&found->semaphore);
-	thread_pool->active_threads = active_threads;
+	thread_pool.active_threads = active_threads;
 
 	return 0;
 }
@@ -586,20 +577,23 @@ int thread_pool_clean(void)
 	 *	Loop over the thread pool, doing stuff.
 	 */
 	active_threads = 0;
-	for (handle = thread_pool->head; handle; handle = handle->next) {
+	for (handle = thread_pool.head; handle; handle = handle->next) {
 		if (handle->request != NULL) {
 			active_threads++;
 		}
 	}
 
-	spare = thread_pool->total_threads - active_threads;
+	spare = thread_pool.total_threads - active_threads;
+	DEBUG2("Threads: total/Active/Spare threads = %d/%d/%d",
+	       thread_pool.total_threads, active_threads, spare);
 
 	/*
 	 *	If there are too few spare threads, create some more.
 	 */
-	if (spare < thread_pool->min_spare_threads) {
-		total = thread_pool->min_spare_threads - spare;
+	if (spare < thread_pool.min_spare_threads) {
+		total = thread_pool.min_spare_threads - spare;
 
+		DEBUG2("Threads: Spawning %d spares", total);
 		/*
 		 *	Create a number of spare threads.
 		 */
@@ -619,15 +613,16 @@ int thread_pool_clean(void)
 	/*
 	 *	If there are too many spare threads, delete some.
 	 */
-	if (spare > thread_pool->max_spare_threads) {
+	if (spare > thread_pool.max_spare_threads) {
 
-		spare -= thread_pool->max_spare_threads;
+		spare -= thread_pool.max_spare_threads;
 
+		DEBUG2("Threads: deleting %d spares", spare);
 		/*
 		 *	Walk through the thread pool, deleting the
 		 *	first N idle threads we come across.
 		 */
-		for (handle = thread_pool->head; (handle != NULL) && (spare > 0) ; handle = handle->next) {
+		for (handle = thread_pool.head; (handle != NULL) && (spare > 0) ; handle = handle->next) {
 
 			/*
 			 *	If the thread is not handling a
