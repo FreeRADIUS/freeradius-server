@@ -1043,7 +1043,9 @@ int main(int argc, char *argv[])
 			 *  packets here will make our life easier.
 			 */
 			if (packet->code > PW_ACCESS_CHALLENGE) {
-				radlog(L_ERR, "Ignoring request from client %s:%d with unknown code %d", buffer, packet->src_port, packet->code);
+				radlog(L_ERR, "Ignoring request from client %s:%d with unknown code %d",
+				       ip_ntoa((char *)buffer, packet->src_ipaddr),
+				       packet->src_port, packet->code);
 				rad_free(&packet);
 				continue;
 			}
@@ -1080,8 +1082,8 @@ int main(int argc, char *argv[])
 		 *  should be wrapped, and handled in a thread pool.
 		 */
 		if ((rad_snmp.smux_fd >= 0) &&
-				FD_ISSET(rad_snmp.smux_fd, &readfds) &&
-				(rad_snmp.smux_event == SMUX_READ)) {
+		    FD_ISSET(rad_snmp.smux_fd, &readfds) &&
+		    (rad_snmp.smux_event == SMUX_READ)) {
 			smux_read();
 		}
 		
@@ -2071,8 +2073,8 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	child_pid = fork();
 	if (child_pid < 0) {
-		radlog(L_ERR, "Fork failed for request from nas %s - ID: %d",
-				nas_name2(request->packet),
+		radlog(L_ERR, "Fork failed for request from client %s - ID: %d",
+				client_name(request->packet->src_ipaddr),
 				request->packet->id);
 		retval = -1;
 		goto exit_child_critsec;
