@@ -259,15 +259,6 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	output_pairs = decode_string(request, inst->output);
 
 	/*
-	 *	We need a place to store the returned VP's
-	 */
-	if (!output_pairs) {
-		radlog(L_ERR, "rlm_exec (%s): Nowhere to place output",
-		       inst->xlat_name);
-		return RLM_MODULE_FAIL;
-	}
-	
-	/*
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 *
@@ -289,8 +280,10 @@ static int exec_dispatch(void *instance, REQUEST *request)
 
 	/*
 	 *	Move the answer over to the output pairs.
+	 *
+	 *	If we're not waiting, then there are no output pairs.
 	 */
-	pairmove(output_pairs, &answer);
+	if (output_pairs) pairmove(output_pairs, &answer);
 
 	pairfree(&answer);
 
