@@ -38,6 +38,12 @@
  * - Make Multilink work this time
  * - Instead of locking file operations, lock transactions. That means we only keep
  *   one big transaction lock instead of per file locks (mutexes).
+ * Sep 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - Fix postauth to not leak ip's
+ *   Add an extra attribute in each entry <char extra> signifying if we need to delete this
+ *   entry in the accounting phase. This is only true in case we are doing MPPP
+ *   Various other code changes. Code comments should explain things
+ *   Highly experimental at this phase.
  */
 
 #include "config.h"
@@ -98,6 +104,7 @@ typedef struct ippool_info {
 	uint32_t	ipaddr;
 	char		active;
 	char		cli[32];
+	char		extra;
 } ippool_info;
 
 typedef struct ippool_key {
@@ -241,6 +248,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 
 			entry.ipaddr = ntohl(i);
 			entry.active = 0;
+			entry.extra = 0;
 			strcpy(entry.cli,cli);
 
 			data_datum.dptr = (char *) &entry;
@@ -282,6 +290,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	rlm_ippool_t *data = (rlm_ippool_t *)instance;
 	datum key_datum;
 	datum data_datum;
+	datum save_datum;
 	int acctstatustype = 0;
 	unsigned int port = ~0;
 	int rcode;
@@ -344,6 +353,12 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_ippool: Deallocated entry for ip/port: %s/%u",ip_ntoa(str,entry.ipaddr),port);
 		entry.active = 0;
 
+		/*
+		 * Save the reference to the entry
+		 */
+		save_datum.dptr = key_datum.dptr;
+		save_datum.dsize = key_datum.dsize;
+
 		data_datum.dptr = (char *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
 
@@ -376,6 +391,14 @@ static int ippool_accounting(void *instance, REQUEST *request)
 					pthread_mutex_unlock(&data->op_mutex);
 					return RLM_MODULE_FAIL;
 				}
+				if (num >0 && entry.extra == 1){
+					/*
+					 * We are doing MPPP and we still have nas/port entries referencing
+					 * this ip. Delete this entry so that eventually we only keep one
+					 * reference to this ip.
+					 */
+					gdbm_delete(data->gdbm,save_datum);
+				}
 			}
 		}
 		pthread_mutex_unlock(&data->op_mutex);
@@ -393,12 +416,16 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	rlm_ippool_t *data = (rlm_ippool_t *) instance;
 	unsigned int port = 0;
 	int delete = 0;
+	int found = 0;
+	int mppp = 0;
+	int extra = 0;
 	int rcode;
 	int num = 0;
 	char nas[MAX_NAS_NAME_SIZE];
 	datum key_datum;
 	datum nextkey;
 	datum data_datum;
+	datum save_datum;
 	ippool_key key;
 	ippool_info entry;
 	VALUE_PAIR *vp;
@@ -467,11 +494,18 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		 * If there is a corresponding entry in the database with active=1 it is stale.
 		 * Set active to zero
 		 */
+		found = 1;
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);
 		if (entry.active){
 			DEBUG("rlm_ippool: Found a stale entry for ip/port: %s/%u",ip_ntoa(str,entry.ipaddr),port);
 			entry.active = 0;
+
+			/*
+			 * Save the reference to the entry
+			 */
+			save_datum.dptr = key_datum.dptr;
+			save_datum.dsize = key_datum.dsize;
 
 			data_datum.dptr = (char *) &entry;
 			data_datum.dsize = sizeof(ippool_info);
@@ -502,6 +536,14 @@ static int ippool_postauth(void *instance, REQUEST *request)
 								data->ip_index, gdbm_strerror(gdbm_errno));
 						pthread_mutex_unlock(&data->op_mutex);
 						return RLM_MODULE_FAIL;
+					}
+					if (num >0 && entry.extra == 1){
+						/*
+						 * We are doing MPPP and we still have nas/port entries referencing
+						 * this ip. Delete this entry so that eventually we only keep one
+						 * reference to this ip.
+						 */
+						gdbm_delete(data->gdbm,save_datum);
 					}
 				}
 			}
@@ -546,8 +588,10 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		 		*/
 				if (strcmp(entry.cli,cli) == 0 && entry.active){
 					memcpy(&key,key_datum.dptr,sizeof(ippool_key));
-					if (!strcmp(key.nas,nas))
+					if (!strcmp(key.nas,nas)){
+						mppp = 1;
 						break;
+					}
 				}
 			}
 			nextkey = gdbm_nextkey(data->gdbm, key_datum);
@@ -608,17 +652,78 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * We keep the operation mutex locked until after we have set the corresponding entry active
 	 */
 	if (key_datum.dptr){
-		entry.active = 1;
-		data_datum.dptr = (char *) &entry;
-		data_datum.dsize = sizeof(ippool_info);
-
-		if (delete){
+		if (found && !mppp){
 			/*
-		 	 * Delete the entry so that we can change the key
-		 	 */
-			gdbm_delete(data->gdbm, key_datum);
+			 * Found == 1 means we have the nas/port combination entry in our database
+			 * We exchange the ip address between the nas/port entry and the free entry
+			 * Afterwards we will save the free ip address to the nas/port entry.
+			 * That is:
+			 *  ---------------------------------------------
+			 *  - NAS/PORT Entry  |||| Free Entry  ||| Time
+			 *  -    IP1                 IP2(Free)    BEFORE
+			 *  -    IP2(Free)           IP1          AFTER
+			 *  ---------------------------------------------
+			 *
+			 * We only do this if we are NOT doing MPPP
+			 *
+			 */
+			datum key_datum_tmp;
+			datum data_datum_tmp;
+			ippool_key key_tmp;	
+
+			memset(key_tmp.nas,0,MAX_NAS_NAME_SIZE);
+			strncpy(key_tmp.nas,nas,MAX_NAS_NAME_SIZE -1 );
+			key_tmp.port = port;
+			DEBUG("rlm_ippool: Searching for an entry for nas/port: %s/%u",key_tmp.nas,key_tmp.port);
+			key_datum_tmp.dptr = (char *) &key_tmp;
+			key_datum_tmp.dsize = sizeof(ippool_key);
+
+			data_datum_tmp = gdbm_fetch(data->gdbm, key_datum_tmp);
+			if (data_datum_tmp.dptr != NULL){
+
+				rcode = gdbm_store(data->gdbm, key_datum, data_datum_tmp, GDBM_REPLACE);
+				if (rcode < 0) {
+					radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
+						data->session_db, gdbm_strerror(gdbm_errno));
+						pthread_mutex_unlock(&data->op_mutex);
+					return RLM_MODULE_FAIL;
+				}
+				free(data_datum_tmp.dptr);
+			}
+		}
+		else{
+			/*
+			 * We have not found the nas/port combination
+			 */
+			if (delete){
+				/*
+		 	  	 * Delete the entry so that we can change the key
+			 	 * All is well. We delete one entry and we add one entry
+		 	 	 */
+				gdbm_delete(data->gdbm, key_datum);
+			}
+			else{
+				/*
+				 * We are doing MPPP. (mppp should be 1)
+				 * We don't do anything.
+				 * We will create an extra not needed entry in the database in this case
+				 * but we don't really care since we always also use the ip_index database
+				 * when we search for a free entry.
+				 * We will also delete that entry on the accounting section so that we only
+				 * have one nas/port entry referencing each ip
+				 */
+				if (mppp)
+					extra = 1;
+				if (!mppp)
+					radlog(L_ERR, "rlm_ippool: mppp is not one. Please report this behaviour.");
+			}
 		}
 		free(key_datum.dptr);
+		entry.active = 1;
+		if (extra)
+			entry.extra = 1;
+		data_datum.dptr = (char *) &entry;
+		data_datum.dsize = sizeof(ippool_info);
 		memset(key.nas,0,MAX_NAS_NAME_SIZE);
 		strncpy(key.nas,nas,MAX_NAS_NAME_SIZE - 1);
 		key.port = port;
