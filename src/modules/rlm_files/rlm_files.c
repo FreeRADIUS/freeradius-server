@@ -385,14 +385,8 @@ static int file_authorize(void *instance, REQUEST *request)
 #endif
 	const char	*name;
 	struct file_instance *inst = instance;
-#ifdef WITH_USERCOLLIDE
-	VALUE_PAIR  *auth_type_pair;
-	VALUE_PAIR  *password_pair;
-	VALUE_PAIR  *auth_item;
-	int   auth_type = -1;
-	int   result = 1;
-#endif
 	VALUE_PAIR **check_pairs, **reply_pairs;
+	VALUE_PAIR *check_save;
 
 
 	request_pairs = request->packet->vps;
@@ -461,9 +455,6 @@ static int file_authorize(void *instance, REQUEST *request)
 #endif
 
 	for(pl = inst->users; pl; pl = pl->next) {
-#ifdef WITH_USERCOLLIDE
-		result = 1;
-#endif
 		/*
 		 *	If the current entry is NOT a default,
 		 *	AND the name does NOT match the current entry,
@@ -480,66 +471,52 @@ static int file_authorize(void *instance, REQUEST *request)
 		 *	entry to the current list of reply pairs.
 		 */
 		if ((paircmp(request_pairs, pl->check, reply_pairs) == 0)) {
-#ifdef WITH_USERCOLLIDE
-			/* 
-			 *	We don't compare pass on default users
-			 *	or they never match.  Oops.
-			 */
-			if(strcmp(pl->name, "DEFAULT")) {
+
+			if((do_usercollide) && (strcmp(pl->name, "DEFAULT"))) {
+
 				/* 
-				 *	We check the pass as a config
-				 *	item with user collisions Most
-				 *	of this is stolen out of
-				 *	rad_check_password()
+				 * We have to make sure the password
+				 * matches as well
 				 */
-				if ((auth_type_pair = pairfind(pl->check, PW_AUTHTYPE)) != NULL) {
-					auth_type = auth_type_pair->lvalue;
-					DEBUG2("  file_auth (Usercollide):  auth_type %d", auth_type);
+	
+				/* Save the orginal config items */
+				check_save = paircopy(request->config_items);
+	
+				/* Copy this users check pairs to the request */
+				check_tmp = paircopy(pl->check);
+				pairmove(check_pairs, &check_tmp);
+				pairfree(check_tmp);
+	
+				DEBUG2("  users: Checking %s at %d", pl->name, pl->lineno);
+				/* Check the req to see if we matched */
+				if(rad_check_password(request)==0) {
+					DEBUG2("  users: Matched %s at %d", pl->name, pl->lineno);
+
+					found = 1;
+
+					/* Free our saved config items */
+					pairfree(check_save);
+
+					/* 
+					 * Already copied check items, so 
+					 * just copy reply here
+					 */
+					reply_tmp = paircopy(pl->reply);
+					pairmove(reply_pairs, &reply_tmp);
+					pairfree(reply_tmp);
+
+				/* We didn't match here */
+				} else {
+					/* Restore check items */
+					pairfree(request->config_items);
+					request->config_items = paircopy(check_save);
+					check_pairs = &request->config_items;
+					continue;
 				}
 	
-				/* Find pass in the REQ */
-				auth_item = request->password;
-				if (auth_item == NULL) {
-					DEBUG2("  file_auth (Usercollide): No password in the request");
-					return RLM_MODULE_OK;
-				}
+			/* No usercollide */
+			} else {
 		
-				/* Find the password from the users file. */
-				if ((password_pair = pairfind(pl->check, PW_CRYPT_PASSWORD)) != NULL)
-					auth_type = PW_AUTHTYPE_CRYPT;
-				else
-					password_pair = pairfind(pl->check, PW_PASSWORD);
-				
-				switch(auth_type) {
-				case PW_AUTHTYPE_CRYPT:
-					DEBUG2("  file_auth (Usercollide): Checking Crypt");
-					if (password_pair == NULL) {
-						result = auth_item->strvalue ? 0 : 1;
-						break;
-					}
-					if (strcmp(password_pair->strvalue,
-						   crypt(auth_item->strvalue,
-							 password_pair->strvalue)) != 0)
-						result = 0;
-					break;
-				case PW_AUTHTYPE_LOCAL:
-					DEBUG2("  file_auth (Usercollide): Checking Local");
-					if (auth_item->attribute != PW_CHAP_PASSWORD) {
-						if (password_pair == NULL ||
-						    strcmp(password_pair->strvalue,
-							   auth_item->strvalue)!=0)
-							result = 0;
-						break;
-					}
-				case PW_AUTHTYPE_ACCEPT:
-					break;	
-				default:
-					continue;
-				} /* switch(auth_type) */
-			} /* if(!default) */
-
-			if(result) { 
-#endif
 				DEBUG2("  users: Matched %s at %d", pl->name, pl->lineno);
 				found = 1;
 				check_tmp = paircopy(pl->check);
@@ -548,14 +525,12 @@ static int file_authorize(void *instance, REQUEST *request)
 				pairmove(check_pairs, &check_tmp);
 				pairfree(reply_tmp);
 				pairfree(check_tmp); /* should be NULL */
-				/*
-				 *	Fallthrough?
-				 */
-				if (!fallthrough(pl->reply))
-					break;
-#ifdef WITH_USERCOLLIDE
 			}
-#endif
+			/*
+			 *	Fallthrough?
+			 */
+			if (!fallthrough(pl->reply))
+				break;
 		}
 	}
 	

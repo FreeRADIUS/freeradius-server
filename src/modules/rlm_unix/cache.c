@@ -67,7 +67,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 	char username[MAXUSERNAME];
 	char *ptr, *bufptr;
 	int len, hashindex, numread=0;
-	struct mypasswd *new;
+	struct mypasswd *new, *cur;
 
 	int len2, idx;
 	struct group *grp;
@@ -248,13 +248,14 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 				radlog(L_ERR, "HASH:  Username %s in shadow but not passwd??", username);
 				continue;
 			}
-#ifdef WITH_USERCOLLIDE
+
 			/* 
 			 * In order to put passwd in correct structure, we have
 			 * to skip any struct that has a passwd already for that user
 			 */ 
 			cur = new;
-			while(new && (strcmp(new->pw_name, username)<=0) && (new->pw_passwd == NULL)) {
+			while(new && (strcmp(new->pw_name, username)<=0) 
+								&& (new->pw_passwd == NULL)) {
 				cur = new;
 				new = new->next;
 			}		
@@ -265,7 +266,6 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 			 * When we get here, we should be at the last duplicate user structure
 			 * in this hash bucket
 			 */ 
-#endif
 
 			/* Put passwords into struct from shadow file */
 			ptr++;
@@ -507,50 +507,52 @@ int H_unix_pass(struct pwcache *cache, char *name, char *passwd,
 	 */
 	if (encrypted_pass[0] == 0) return 0;
 
-#ifdef WITH_USERCOLLIDE
-	while(pwd) {
-		/* 
-	 	 * Make sure same user still.  If not, return as if wrong pass given 
-		 */
-		if(strcmp(name, pwd->pw_name)) 
-			return -1;	
-
-		/* 
-	 	 * Could still be null passwd
-		 */
-		encrypted_pass = pwd->pw_passwd;
-		if (encrypted_pass[0] == (char *)0) {
-			return 0;
-		}
-
-		encpw = (char *)crypt(passwd, encrypted_pass);
-		/* 
-	 	 * Check password
-		 */
-		if(strcmp(encpw, encrypted_pass) == 0) {
+	if(do_usercollide) {
+		while(pwd) {
 			/* 
-			 * Add 'Class' pair here with value of full name from passwd
+		 	 * Make sure same user still.  If not, return as if wrong pass given 
 			 */
-			pairadd(reply_items, pairmake("Class", pwd->pw_gecos, T_OP_EQ));
-			return 0;	
+			if(strcmp(name, pwd->pw_name)) 
+				return -1;	
+	
+			/* 
+		 	 * Could still be null passwd
+			 */
+			encrypted_pass = pwd->pw_passwd;
+			if (encrypted_pass[0] == NULL) {
+				return 0;
+			}
+	
+			encpw = (char *)crypt(passwd, encrypted_pass);
+			/* 
+		 	 * Check password
+			 */
+			if(strcmp(encpw, encrypted_pass) == 0) {
+				/* 
+				 * Add 'Class' pair here with value of full name from passwd
+				 */
+				if(strlen(pwd->pw_gecos))
+					pairadd(reply_items, pairmake("Class", pwd->pw_gecos, T_OP_EQ));
+				
+				return 0;	
+			}
+			pwd = pwd->next;
 		}
-		pwd = pwd->next;
-	}
-	/* 
-	 * If we get here, pwd is null, and no users matched 
-	 */
-	return -1;
-#else 
-	/*
-	 *	Check encrypted password.
-	 */
-	encpw = (char *)crypt(passwd, encrypted_pass);
-
-	if (strcmp(encpw, encrypted_pass))
+		/* 
+		 * If we get here, pwd is null, and no users matched 
+		 */
 		return -1;
-#endif
+	} else {
+		/*
+		 *	Check encrypted password.
+		 */
+		encpw = (char *)crypt(passwd, encrypted_pass);
 
-	return 0;
+		if (strcmp(encpw, encrypted_pass))
+			return -1;
+
+		return 0;
+	}
 }
 
 /*
