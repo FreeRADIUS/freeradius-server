@@ -194,6 +194,37 @@ echo <<<EOM
 <table border=0 width=540 cellpadding=1 cellspacing=1>
 <tr valign=top>
 <td width=340></td>
+<td bgcolor="black" width=250>
+	<table border=0 width=100% cellpadding=2 cellspacing=0>
+	<tr bgcolor="#907030" align=right valign=top><th>
+	<font color="white">Subscription Analysis</font>&nbsp;
+	</th></tr>
+	</table>
+</td></tr>
+<tr bgcolor="black" valign=top><td colspan=2>
+	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
+	<tr><td>
+	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
+	<tr><td align=center bgcolor="#d0ddb0">-</td><td align=center bgcolor="#d0ddb0"><b>monthly</b></td><td align=center bgcolor="#d0ddb0"><b>weekly</b></td><td align=center bgcolor="#d0ddb0"><b>daily</b></td><td align=center bgcolor="#d0ddb0"><b>per session</b></td></tr>
+	<tr><td align=center bgcolor="#d0ddb0"><b>limit</b></td><td>$monthly_limit</td><td>$weekly_limit</td><td>$daily_limit</td><td>$session_limit</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0"><b>used</b></td><td>$monthly_used</td><td>$weekly_used</td><td>$daily_used</td><td>$lastlog_session_time</td></tr>
+	</table>
+	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" va
+lign=top>
+	<tr><td align=center bgcolor="#d0ddb0"><b>day</b></td><td align=center bgcolor="#d0ddb0"><b>daily limit</b></td><td align=center bgcolor="#d0ddb0"><b>used</b></td><tr>
+	<tr><td align=center bgcolor="#d0ddb0">sunday</td><td>$daily_limit</td><td>$used[0]</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">monday</td><td>$daily_limit</td><td>$used[1]</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">tuesday</td><td>$daily_limit</td><td>$used[2]</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">wednesday</td><td>$daily_limit</td><td>$used[3]</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">thursday</td><td>$daily_limit</td><td>$used[4]</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">friday</td><td>$daily_limit</td><td>$used[5]</td></tr>
+	<tr><td align=center bgcolor="#d0ddb0">saturday</td><td>$daily_limit</td><td>$used[6]</td></tr>
+	</table></table>
+</table>
+<br>
+<table border=0 width=540 cellpadding=1 cellspacing=1>
+<tr valign=top>
+<td width=340></td>
 <td bgcolor="black" width=200>
 	<table border=0 width=100% cellpadding=2 cellspacing=0>
 	<tr bgcolor="#907030" align=right valign=top><th>
@@ -221,37 +252,6 @@ echo <<<EOM
 	$avg_output</td></tr></td></tr>	
 	</table>
 	</table>
-</table>
-<br>
-<table border=0 width=540 cellpadding=1 cellspacing=1>
-<tr valign=top>
-<td width=340></td>
-<td bgcolor="black" width=250>
-	<table border=0 width=100% cellpadding=2 cellspacing=0>
-	<tr bgcolor="#907030" align=right valign=top><th>
-	<font color="white">Subscription Analysis</font>&nbsp;
-	</th></tr>
-	</table>
-</td></tr>
-<tr bgcolor="black" valign=top><td colspan=2>
-	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
-	<tr><td>
-	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
-	<tr><td align=center bgcolor="#d0ddb0">-</td><td align=center bgcolor="#d0ddb0">monthly</td><td align=center bgcolor="#d0ddb0">weekly</td><td align=center bgcolor="#d0ddb0">daily</td><td align=center bgcolor="#d0ddb0">per session</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">limit</td><td>$monthly_limit</td><td>$weekly_limit</td><td>$daily_limit</td><td>$session_limit</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">used</td><td>$monthly_used</td><td>$weekly_used</td><td>$daily_used</td><td>$lastlog_session_time</td></tr>
-	</table>
-	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" va
-lign=top>
-	<tr><td align=center bgcolor="#d0ddb0"><b>day</b></td><td align=center bgcolor="#d0ddb0"><b>daily limit</b></td><td align=center bgcolor="#d0ddb0"><b>used</b></td><tr>
-	<tr><td align=center bgcolor="#d0ddb0">sunday</td><td>$daily_limit</td><td>$used[0]</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">monday</td><td>$daily_limit</td><td>$used[1]</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">tuesday</td><td>$daily_limit</td><td>$used[2]</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">wednesday</td><td>$daily_limit</td><td>$used[3]</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">thursday</td><td>$daily_limit</td><td>$used[4]</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">friday</td><td>$daily_limit</td><td>$used[5]</td></tr>
-	<tr><td align=center bgcolor="#d0ddb0">saturday</td><td>$daily_limit</td><td>$used[6]</td></tr>
-	</table></table>
 </table>
 <br>
 EOM;

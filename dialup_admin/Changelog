@@ -2,6 +2,8 @@ Ver 1.30:
 * Add limit of results returned in accounting.php3
 * Fix a bug in time2strclock() in lib/functions.php3. Seconds ammount more than 9 would not show.
   Bug noted by Timophey <bcloud@mail.ru>
+* Reaarange a few things in user_admin. Put Subscription Analysis and 'Account Status' second. Make a
+  few things bold.
 Ver 1.29:
 * Add general_ld_library_path directive and set LD_LIBRARY_PATH accordingly (used in snmpfinger and
   radaclient).
