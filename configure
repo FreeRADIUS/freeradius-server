@@ -562,7 +562,7 @@ fi
 
 
 
-# From configure.in Revision: 1.126 
+# From configure.in Revision: 1.127 
 RADIUSD_VERSION=0.2
 
 
@@ -4029,7 +4029,7 @@ fi
 echo "checking for PostgreSQL includes" 1>&6
 echo "configure:4031: checking for PostgreSQL includes" >&5
 
-if test -d $PGROOT ; then
+if test "x$PGROOT" != "x" ; then
 	IS_LOCAL=1
 else
 		if test -d /usr/local/pgsql ; then 
@@ -4046,7 +4046,7 @@ else
 		ISLOCAL=1
 	fi
 fi
-if test -d $PGROOT && test "x$IS_LOCAL" != "x" ; then
+if test "x$PGROOT" != "x" && test "x$IS_LOCAL" != "x" ; then
 	if test -e $PGROOT/lib/libpq${libltdl_cv_shlibext} ; then
 		if test -e $PGROOT/lib/libpq.a ; then
 			PQ_LIBS="-L$PGROOT/lib -lpq"

@@ -571,7 +571,7 @@ AC_DEFUN(POSTGRESQL_CHECKS, [
 AC_CHECKING(for PostgreSQL includes)
 
 dnl First Check for a local install
-if test -d $PGROOT ; then
+if test "x$PGROOT" != "x" ; then
 	IS_LOCAL=1
 else
 	dnl Check common local install paths
@@ -590,7 +590,7 @@ else
 	fi
 fi
 dnl If we have a local install path, check for some files
-if test -d $PGROOT && test "x$IS_LOCAL" != "x" ; then
+if test "x$PGROOT" != "x" && test "x$IS_LOCAL" != "x" ; then
 	if test -e $PGROOT/lib/libpq${libltdl_cv_shlibext} ; then
 		if test -e $PGROOT/lib/libpq.a ; then
 			PQ_LIBS="-L$PGROOT/lib -lpq"
@@ -628,7 +628,7 @@ if test "x$PGROOT" = "x" ; then
 	fi
 fi
 
-if test "$PGROOT" && test "$PQ_LIBS" && test "$PG_INCLUDE_DIR" ; then
+if test "x$PGROOT" != "x" && test "x$PQ_LIBS" != "x" && test "x$PG_INCLUDE_DIR" != "x"; then
 	echo Postgresql found in $PGROOT.
 fi
 
