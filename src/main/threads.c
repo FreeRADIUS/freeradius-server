@@ -456,16 +456,17 @@ static THREAD_HANDLE *spawn_thread(time_t now)
  *      until all threads are finished handling requests.  This returns
  *      the number of active threads to 'radiusd.c'.
  */
-int total_active_thread(void) {
-  int rcode = 0;
-  THREAD_HANDLE *pool_ptr = NULL, *next = NULL;
-  for(pool_ptr = thread_pool.head; pool_ptr; poot_ptr = next) {
-    next = pool_ptr->next;
-    if(pool_ptr->request != NULL) {
-      rcode ++;
-    }
-  }
-  return (rcode);
+int total_active_threads(void) 
+{
+        int rcode = 0;
+	THREAD_HANDLE *pool_ptr = NULL, *next = NULL;
+	for(pool_ptr = thread_pool.head; pool_ptr; pool_ptr = next) {
+	       next = pool_ptr->next;
+	       if(pool_ptr->request != NULL) {
+		 rcode ++;
+	       }
+	}
+	return (rcode);
 }
 
 /*
