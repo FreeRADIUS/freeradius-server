@@ -1,8 +1,11 @@
-freeradius (0.9.0-cvs20030819-0) unstable; urgency=low
+freeradius (0.9.0-cvs20030823-0) unstable; urgency=low
   
   * Current CVS version
+  * Renamed radiusd(8) to freeradius(8) to match binary
+  * Build-Depend on libtool1.4 | libtool (< 1.5) due to
+    new libtool 1.5 package.
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 24 Jul 2003 01:01:39 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sat, 23 Aug 2003 02:54:13 +1000
 
 freeradius (0.9.0-1) unstable; urgency=low
 
