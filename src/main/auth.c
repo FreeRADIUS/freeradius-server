@@ -68,24 +68,34 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 /*
  *	Check if account has expired, and if user may login now.
  */
-static int check_expiration(VALUE_PAIR *check_item, char *umsg, const char **user_msg)
+static int check_expiration(REQUEST *request)
 {
 	int result;
-	umsg = umsg; /* -Wunused */
+	VALUE_PAIR *check_item = request->config_items;
 
 	result = 0;
-	while (result == 0 && check_item != (VALUE_PAIR *)NULL) {
+	while (result == 0 && check_item != NULL) {
 
 		/*
 		 *	Check expiration date if we are doing password aging.
 		 */
 		if (check_item->attribute == PW_EXPIRATION) {
 			/*
-			 *	Has this user's password expired
+			 *	Has this user's password expired?
+			 *
+			 *	If so, remove ALL reply attributes,
+			 *	and add our own Reply-Message, saying
+			 *	why they're being rejected.
 			 */
 			if (check_item->lvalue < (unsigned) time(NULL)) {
+				VALUE_PAIR *vp;
+
 				result = -1;
-				*user_msg = "Password Has Expired\r\n";
+				vp = pairmake("Reply-Message",
+					      "Password Has Expired\r\n",
+					      T_OP_ADD);
+				pairfree(request->reply->vps);
+				request->reply->vps = vp;
 				break;
 			}
 		}
@@ -105,8 +115,7 @@ static int check_expiration(VALUE_PAIR *check_item, char *umsg, const char **use
  *
  *	NOTE: NOT the same as the RLM_ values !
  */
-static int rad_check_password(REQUEST *request,
-	VALUE_PAIR *check_item, const char **user_msg)
+static int rad_check_password(REQUEST *request)
 {
 	VALUE_PAIR	*auth_type_pair;
 	VALUE_PAIR	*password_pair;
@@ -121,7 +130,7 @@ static int rad_check_password(REQUEST *request,
 	 *	if the authentication type is PW_AUTHTYPE_ACCEPT or
 	 *	PW_AUTHTYPE_REJECT.
 	 */
-	if ((auth_type_pair = pairfind(check_item, PW_AUTHTYPE)) != NULL)
+	if ((auth_type_pair = pairfind(request->config_items, PW_AUTHTYPE)) != NULL)
 		auth_type = auth_type_pair->lvalue;
 
 	if (auth_type == PW_AUTHTYPE_ACCEPT) {
@@ -131,7 +140,6 @@ static int rad_check_password(REQUEST *request,
 
 	if (auth_type == PW_AUTHTYPE_REJECT) {
 		DEBUG2("  auth: Auth-Type = Reject, rejecting the user");
-		*user_msg = NULL;
 		return -2;
 	}
 
@@ -150,10 +158,10 @@ static int rad_check_password(REQUEST *request,
 	/*
 	 *	Find the password from the users file.
 	 */
-	if ((password_pair = pairfind(check_item, PW_CRYPT_PASSWORD)) != NULL)
+	if ((password_pair = pairfind(request->config_items, PW_CRYPT_PASSWORD)) != NULL)
 		auth_type = PW_AUTHTYPE_CRYPT;
 	else
-		password_pair = pairfind(check_item, PW_PASSWORD);
+		password_pair = pairfind(request->config_items, PW_PASSWORD);
 
 	/*
 	 *	For backward compatibility, we check the
@@ -246,9 +254,6 @@ static int rad_check_password(REQUEST *request,
 			break;
 	}
 
-	if (result < 0)
-		*user_msg = NULL;
-
 	return result;
 }
 
@@ -264,7 +269,7 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*tmp;
 	int		result, r;
 	char		umsg[MAX_STRING_LEN + 1];
-	const char	*user_msg;
+	const char	*user_msg = NULL;
 	const char	*password;
 	char		*exec_program;
 	int		exec_wait;
@@ -394,38 +399,32 @@ int rad_authenticate(REQUEST *request)
 	/*
 	 *	Perhaps there is a Stripped-User-Name now.
 	 */
-	tmp=pairfind(request->packet->vps, PW_STRIPPED_USER_NAME);
-	if (tmp != NULL)
-		namepair = tmp;
+	namepair = request->username;
 
 	/*
 	 *	Validate the user
 	 */
-	user_msg = NULL;
 	do {
-		if ((result = check_expiration(request->config_items, umsg, &user_msg))<0)
+		if ((result = check_expiration(request)) < 0)
 				break;
-		result = rad_check_password(request, request->config_items, 
-			&user_msg);
+		result = rad_check_password(request);
 		if (result > 0) {
 			/* don't reply! */
 			return -1;
 		}
 	} while(0);
-
+	
+	/*
+	 *	Failed to validate the user.
+	 *
+	 *	We PRESUME that the code which failed will clean up
+	 *	request->reply->vps, to be ONLY the reply items it
+	 *	wants to send back.
+	 */
 	if (result < 0) {
-		/*
-		 *	Failed to validate the user.
-		 */
 		DEBUG2("  auth: Failed to validate the user.");
 		request->reply->code = PW_AUTHENTICATION_REJECT;
-		pairfree(request->reply->vps);
-		request->reply->vps = NULL;
 		
-		/*
-		 *  FIXME! Add 'user_msg' to the reject!
-		 */
-
 		if (auth_item != NULL && log_auth) {
 			char clean_buffer[1024];
 			u_char *p;
@@ -479,12 +478,15 @@ int rad_authenticate(REQUEST *request)
 			}
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
-			pairfree(request->reply->vps);
-			request->reply->vps = NULL;
 
 			/*
-			 *  FIXME!  Add user_msg to the reject
+			 *	They're trying to log in too many times.
+			 *	Remove ALL reply attributes.
 			 */
+			pairfree(request->reply->vps);
+			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
+			request->reply->vps = tmp;
+
 			radlog(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
 			       namepair->strvalue,
 			       auth_name(buf, sizeof(buf), request, 1),
@@ -518,11 +520,10 @@ int rad_authenticate(REQUEST *request)
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			pairfree(request->reply->vps);
-			request->reply->vps = NULL;
 
-			/*
-			 *  FIXME!  Add user_msg to the reject
-			 */
+			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
+			request->reply->vps = tmp;
+
 			radlog(L_ERR, "Outside allowed timespan: [%s]"
 				   " (%s) time allowed: %s",
 					auth_username(namepair),
@@ -618,18 +619,15 @@ int rad_authenticate(REQUEST *request)
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			pairfree(request->reply->vps);
-			request->reply->vps = NULL;
-
-			/*
-			 *  FIXME!  Add user_msg to the request.
-			 */
-
+			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
+			request->reply->vps = tmp;
+			
 			if (log_auth) {
 				radlog(L_AUTH,
-					"Login incorrect: [%s] (%s) "
-					"(external check failed)",
-					auth_username(namepair),
-					auth_name(buf, sizeof(buf), request, 1));
+				       "Login incorrect: [%s] (%s) "
+				       "(external check failed)",
+				       auth_username(namepair),
+				       auth_name(buf, sizeof(buf), request, 1));
 			}
 			return 0;
 		}
@@ -676,10 +674,6 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	request->reply->code = PW_AUTHENTICATION_ACK;
-
-	/*
-	 * FIXME!  Add user_msg to the reply!
-	 */
 
 	if (log_auth) {
 		radlog(L_AUTH,
