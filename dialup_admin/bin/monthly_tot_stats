@@ -22,6 +22,8 @@ while(<CONF>){
 }
 close CONF;
 
+$sql_password = ($sql_password == '') ? '' : "-p $sql_password";
+
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
 if ($mday == 1){
 	$mon--;
@@ -44,4 +46,4 @@ open TMP, ">/tmp/tot_stats.query"
 print TMP $query1;
 print TMP $query2;
 close TMP;
-`$mysql -h $sql_server -u $sql_username -p$sql_password $sql_database </tmp/tot_stats.query`;
+`$mysql -h $sql_server -u $sql_username $sql_password $sql_database </tmp/tot_stats.query`;

@@ -22,6 +22,8 @@ while(<CONF>){
 }
 close CONF;
 
+$sql_password = ($sql_password == '') ? '' : "-p $sql_password";
+
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
 $date_start = POSIX::strftime("%Y-%m-%d %T",0,0,0,($mday - 1),$mon,$year,$wday,$yday,$isdst);
 $date_small_start = POSIX::strftime("%Y-%m-%d",0,0,0,($mday - 1),$mon,$year,$wday,$yday,$isdst);
@@ -39,4 +41,4 @@ open TMP, ">/tmp/tot_stats.query"
 	or die "Could not open tmp file\n";
 print TMP $query;
 close TMP;
-`$mysql -h $sql_server -u $sql_username -p$sql_password $sql_database </tmp/tot_stats.query`;
+`$mysql -h $sql_server -u $sql_username $sql_password $sql_database </tmp/tot_stats.query`;

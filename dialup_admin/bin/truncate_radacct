@@ -3,10 +3,10 @@
 # Delete sessions from the radacct table which are older than
 # $back_days
 #
-use DBI;
 use POSIX;
 
 $conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
+$mysql='/usr/local/mysql/bin/mysql';
 $back_days = 90;
 
 open CONF, "<$conf"
@@ -22,10 +22,18 @@ while(<CONF>){
 }
 close CONF;
 
+$sql_password = ($sql_password == '') ? '' : "-p $sql_password";
+
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
 $date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,$year,$wday,$yday,$isdst);
 print "$date\n";
 
-$dbh = DBI->connect("DBI:mysql:$sql_database:$sql_server","$sql_username","$sql_password");
-$dbh->do("LOCK TABLES $sql_accounting_table WRITE;DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date';UNLOCK TABLES;");
-$dbh->disconnect();
+$query = "LOCK TABLES $sql_accounting_table WRITE;";
+$query .= "DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date';";
+$query .= "UNLOCK TABLES;";
+print "$query\n";
+open TMP, ">/tmp/truncate_radacct.query"
+        or die "Could not open tmp file\n";
+print TMP $query;
+close TMP;
+`$mysql -h $sql_server -u $sql_username $sql_password $sql_database </tmp/truncate_radacct.query`;
