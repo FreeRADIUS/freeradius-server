@@ -129,8 +129,8 @@ static int	rad_process (REQUEST *, int);
 static int	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
-static struct timeval *proxy_setuptimeout(struct timeval *);
-static void		proxy_retry(void);
+static void	proxy_setuptimeout(struct timeval *);
+static void	proxy_retry(void);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 	struct	sockaddr_in	*sa;
 	struct	servent		*svp;
 	fd_set			readfds;
-	struct timeval		tv, *tvp;
+	struct timeval		tv;
 	int			result;
 	int			argval;
 	int			t;
@@ -846,9 +846,41 @@ int main(int argc, char **argv)
 			FD_SET(acctfd, &readfds);
 		if (proxyfd >= 0)
 			FD_SET(proxyfd, &readfds);
-		tvp = proxy_setuptimeout(&tv);
+		
+		/*
+		 *  Default to NOT waking up, ever!
+		 */
+		tv.tv_sec = 0;
+		tv.tv_usec = 0;
+		proxy_setuptimeout(&tv);
 
-		status = select(32, &readfds, NULL, NULL, tvp);
+		/*
+		 *	See if we have to service the request list.
+		 *	If so, wake up one second from now to do so.
+		 *
+		 *	Yuck.  This code is ugly.  The request_list
+		 *	entries SHOULD have a 'next service' time,
+		 *	and the master request list should have a global
+		 *	request count, and minimal 'next service' time.
+		 */
+		for (i = 0; i < 256; i++) {
+			if (request_list[i].request_count != 0) {
+				tv.tv_sec = 1;
+				break;
+			}
+		}
+
+		/*
+		 *	If we're going to sleep for no time, then
+		 *	assume it means forever, versus waking up
+		 *	right now.
+		 */
+		if ((tv.tv_sec == 0) && (tv.tv_usec == 0)) {
+			status = select(32, &readfds, NULL, NULL, NULL);
+		} else {
+			status = select(32, &readfds, NULL, NULL, &tv);
+		}
+
 		if (status == -1) {
 			/*
 			 *	On interrupts, we clean up the
@@ -2089,7 +2121,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
  *	Set up the proxy timeouts, so that we know
  *	when to wake up and re-send a request.
  */
-static struct timeval *proxy_setuptimeout(struct timeval *tv)
+static void proxy_setuptimeout(struct timeval *tv)
 {
 	time_t now = time(NULL);
 	time_t difference, smallest = 0;
@@ -2117,23 +2149,22 @@ static struct timeval *proxy_setuptimeout(struct timeval *tv)
 	}
 
 	/*
-	 *	Not found one, tell the server to wake up a second
-	 *	later anyways, so that it can service the lists.
-	 *
-	 *      FIXME: It would be better if the select() would
-	 *      actually wake up when there's something to do, and
-	 *      no sooner. Waking up _every_ second is kludgy
+	 *	Not found one, return without modifying the timeout.
 	 */
-	if ((!foundone) ||
-	    (smallest == 0)) {
-		tv->tv_sec = 1;
-		tv->tv_usec = 0;
-		return tv;
+	if (!foundone) {
+	  return;
 	}
-
-	tv->tv_sec = smallest;
-	tv->tv_usec = 0;
-	return tv;
+	
+	/*
+	 *	The resolution of our clock is pretty bad.
+	 */
+	if (smallest) {
+		tv->tv_sec = smallest;
+		tv->tv_usec = 0;
+	} else {
+		tv->tv_sec = 0;
+		tv->tv_usec = 1; /* sleep for as short as possible */
+	}
 }
 
 /*
