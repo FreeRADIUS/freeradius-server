@@ -555,22 +555,6 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 				load_subcomponent_section(scs, comp, filename);
 				continue;
 			}
-
-			/*
-			 *	Allow configurable fail-over directives.
-			 */
-			if ((strcmp(sec_name, "redundant") != 0) &&
-			    (strcmp(sec_name, "group") != 0) &&
-			    (strcmp(sec_name, "append") != 0)) {
-				/*
-				 *	It's a section, but nothing we
-				 *	recognize.  Die!
-				 */
-				radlog(L_ERR|L_CONS, "%s[%d] Unknown configuration directive \"%s\" in %s section.",
-				       filename, cf_section_lineno(cs),
-				       sec_name, component_names[comp]);
-				return -1;
-			} /* else fall through to processing it */
 		} else {
 			CONF_PAIR *cp;
 			cp = cf_itemtopair(modref);
