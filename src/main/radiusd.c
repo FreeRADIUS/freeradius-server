@@ -1467,7 +1467,7 @@ int main(int argc, char *argv[])
 			if (fd != proxyfd) {
 				RADCLIENT *cl;
 				if ((cl = client_find(packet->src_ipaddr)) == NULL) {
-					RAD_SNMP_FD_INC(fd, total_invalid__requests);
+					RAD_SNMP_FD_INC(fd, total_invalid_requests);
 
 					radlog(L_ERR, "Ignoring request from unknown client %s:%d",
 					ip_ntoa((char *)buffer, packet->src_ipaddr),
