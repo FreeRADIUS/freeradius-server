@@ -124,6 +124,7 @@ static int counter_cmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 		return -1;
 	}
 	memcpy(&counter, count_datum.dptr, sizeof(int));
+	free(count_datum.dptr);
 
 	return counter - check->lvalue;
 }
@@ -397,8 +398,10 @@ static int counter_accounting(void *instance, REQUEST *request)
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	if (count_datum.dptr == NULL)
 		counter = 0;
-	else
+	else{
 		memcpy(&counter, count_datum.dptr, sizeof(int));
+		free(count_datum.dptr);
+	}
 
 	/*
 	 * if session time < diff then the user got in after the last reset. So add his session time
@@ -501,8 +504,11 @@ static int counter_authorize(void *instance, REQUEST *request)
 	key_datum.dsize = key_vp->length;
 	
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
-	if (count_datum.dptr != NULL)
+	if (count_datum.dptr != NULL){
 		memcpy(&counter, count_datum.dptr, sizeof(int));
+		free(count_datum.dptr);
+	}
+		
 
 	/*
 	 * Check if check item > counter
