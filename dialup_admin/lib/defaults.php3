@@ -7,6 +7,7 @@ if (!isset($text_default_vals)){
 			continue;
 		list($key,$v)=split(":[[:space:]]*",$val);
 		$text_default_vals["$key"][0]="$v";
+		$text_default_vals["$key"]['count']++;
 	}
 	if (!isset($text_default_vals))
 		$text_default_vals["NOT_EXIST"][0] = '0';
