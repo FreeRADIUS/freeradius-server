@@ -1251,6 +1251,13 @@ int rad_process(REQUEST *request, int dospawn)
 static void rad_reject(REQUEST *request)
 {
 	VALUE_PAIR *vps;
+
+	/*
+	 *	Already rejected.  Don't do anything.
+	 */
+	if (request->options & RAD_REQUEST_OPTION_REJECTED) {
+		return;
+	}
 	
 	DEBUG2("Server rejecting request %d.", request->number);
 	switch (request->packet->code) {
@@ -1301,6 +1308,11 @@ static void rad_reject(REQUEST *request)
 			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
 		}
 	}
+
+	/*
+	 *	Remember that it was rejected.
+	 */
+	request->options |= RAD_REQUEST_OPTION_REJECTED;
 }
 
 /*
@@ -1523,6 +1535,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 				 pairfind(request->packet->vps, PW_PASSWORD));
 
 	(*fun)(request);
+
+	/*
+	 *	If the request took too long to process, don't do
+	 *	anything else.
+	 */
+	if (request->options & RAD_REQUEST_OPTION_REJECTED) {
+		finished = TRUE;
+		goto postpone_request;
+	}
 
 	/*
 	 *  Reprocess if we rejected last time

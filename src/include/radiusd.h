@@ -74,6 +74,7 @@ typedef struct auth_req {
 #define RAD_REQUEST_OPTION_LOGGED_CHILD    (1 << 0)
 #define RAD_REQUEST_OPTION_DELAYED_REJECT  (1 << 1)
 #define RAD_REQUEST_OPTION_DONT_CACHE      (1 << 2)
+#define RAD_REQUEST_OPTION_REJECTED        (1 << 4)
 
 /*
  *  Function handler for requests.
