@@ -481,7 +481,7 @@ modules {
 		#  The Client-IP-Address attribute is ALWAYS the address
 		#  of the client which sent us the request.
 		#
-		detailfile = ${radacctdir}/${Client-IP-Address}/detail
+		detailfile = ${radacctdir}/%{Client-IP-Address}/detail
 		detailperm = 0600
 	}
 
