@@ -88,11 +88,18 @@ builddbm: builddbm.o files_b.o log.o
 builddbm.o: builddbm.c
 	$(CC) $(CFLAGS) -c builddbm.c
 
+
+radwho.o: radwho.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c radwho.c
+
 radwho: radwho.o util.o
 	$(CC) $(LDFLAGS) -o radwho radwho.o util.o $(LIBS)
 
 raduse: raduse.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o raduse raduse.o $(LIBS)
+
+radzap.o: radzap.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c radzap.c
 
 radzap: radzap.o util.o nas.o radutmp.o log.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o util.o nas.o radutmp.o log.o $(LIBS)
