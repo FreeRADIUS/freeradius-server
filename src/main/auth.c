@@ -63,7 +63,7 @@ char *auth_name(REQUEST *request, int do_cli)
 
 	sprintf(buf, "from nas %.128s/S%d%s%.128s",
 		nas_name2(request->packet), port,
-		do_cli ? " cli " : "", do_cli ? cli->strvalue : "");
+		(do_cli ? " cli " : ""), (do_cli ? (char *)cli->strvalue : ""));
 
 	return buf;
 }

@@ -62,7 +62,7 @@ VALUE_PAIR *readvp(FILE *fp)
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [-d raddb ] [-f file] [-t timeout] [-nx] server acct|auth <secret>\n");
+	fprintf(stderr, "Usage: radclient [-d raddb ] [-f file] [-r retries] [-t timeout] [-nx]\n		server acct|auth <secret>\n");
 	exit(1);
 }
 
@@ -89,13 +89,14 @@ int main(int argc, char **argv)
 	int		c;
 	int		port = 0;
 	int		s;
-	int		timeout = 3;
+	int		retries = 10;
+	float		timeout = 3;
 	int		i;
 	char		*radius_dir = RADDBDIR;
 	char		*filename = NULL;
 	FILE		*fp;
 
-	while ((c = getopt(argc, argv, "d:f:nxt:")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:f:nt:r:x")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -108,9 +109,13 @@ int main(int argc, char **argv)
 		case 'x':
 			librad_debug = 1;
 			break;
+		case 'r':
+			if (!isdigit(*optarg)) usage();
+			retries = atoi(optarg);
+			break;
 		case 't':
 			if (!isdigit(*optarg)) usage();
-			timeout = atoi(optarg);
+			timeout = atof(optarg);
 			break;
 		default:
 			usage();
@@ -203,7 +208,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < retries; i++) {
 		fd_set		rdfdesc;
 
 		rad_send(req, s, secret);
@@ -212,8 +217,8 @@ int main(int argc, char **argv)
 		FD_ZERO(&rdfdesc);
 		FD_SET(s, &rdfdesc);
 
-		tv.tv_sec = timeout;
-		tv.tv_usec = 0;
+		tv.tv_sec = (int)timeout;
+		tv.tv_usec = 1000000 * (timeout - (int)timeout);
 
 		/* Something's wrong if we don't get exactly one fd. */
 		if (select(s+1, &rdfdesc, NULL, NULL, &tv) != 1) {
@@ -230,7 +235,7 @@ int main(int argc, char **argv)
 	}
 
 	/* No response or no data read (?) */
-	if (i == 10) {
+	if (i == retries) {
 		fprintf(stderr, "radclient: no response from server\n");
 		exit(1);
 	}

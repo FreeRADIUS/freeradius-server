@@ -3,7 +3,7 @@
  *			This is only used if the system doesn't
  *			support runtime linking of modules.
  *
- * Version:		@(#)modules_static.h  1.00  08-Aug-1999  miquels
+ * Version:		$Id$
  *
  */
 

@@ -1,11 +1,13 @@
 /*
  * sysutmp.h	Compatibility stuff for the different UTMP systems.
  *
- * Version:	@(#)sysutmp.h  1.0  01-Jul-1999
+ * Version:	$Id$
  */
 
 #ifndef SYSUTMP_H_INCLUDED
 #define SYSUTMP_H_INCLUDED
+
+#ifdef HAVE_UTMP_H
 
 /* UTMP stuff. Uses utmpx on svr4 */
 #ifdef __svr4__
@@ -29,5 +31,30 @@
 #  endif
 #  define ut_user ut_name
 #endif
+
+#else /* HAVE_UTMP_H */
+
+/*
+ *	No <utmp.h> file - define stuff ourselves (minimally).
+ */
+#define UT_LINESIZE	       16
+#define UT_NAMESIZE	       16
+#define UT_HOSTSIZE	       16
+
+#define USER_PROCESS	7
+#define DEAD_PROCESS	8
+
+struct utmp {
+	short	ut_type;
+	int	ut_pid;
+	char	ut_line[UT_LINESIZE];
+	char	ut_id[4];
+	long	ut_time;
+	char	ut_user[UT_NAMESIZE];
+	char	ut_host[UT_HOSTSIZE];
+	long	ut_addr;
+};
+
+#endif /* HAVE_UTMP_H */
 
 #endif /* SYSUTMP_H_INCLUDED */

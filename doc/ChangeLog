@@ -1,3 +1,11 @@
+1999-09-18  Miquel van Smoorenburg (miquels@cistron.nl)
+
+	* Change a couple of Makefile.ins to plain Makefiles
+	* Added missing.c and missing.h
+	* Detect <utmp.h> and define replacements in sysutmp.h if missing
+	* New mechanism in main/Makefile to detect static modules
+	* Fix warnings in lib/filters.c
+
 1999-08-23  Miquel van Smoorenburg (miquels@cistron.nl)
 
 	* src/main/auth.c: Login-Time check: set Session-Timeout to

@@ -361,8 +361,8 @@ static char	curString[512];
 static int findKey ( char *string, KeywordStruct *list );
 static int isAllDigit ( char *token );
 static short a2octet ( char *tok, char *retBuf );
-static char defaultNetmask ( unsigned long address );
-static int ipAddressStringToValue ( char *string, unsigned long *ipAddress,
+static char defaultNetmask ( UINT4 address );
+static int ipAddressStringToValue ( char *string, UINT4 *ipAddress,
 					 char *netmask);
 static int parseIpFilter ( RadFilter *curEntry );
 static int parseGenericFilter ( RadFilter *curEntry );
@@ -516,7 +516,7 @@ char	*retBuf;
      */
 static char
 defaultNetmask(address)
-unsigned long	address;
+UINT4	address;
 {
     char netmask;
 
@@ -563,7 +563,7 @@ static char ipAddressDigits[] = "1234567890./";
      */
 
 static int
-ipAddressStringToValue(char *string, unsigned long *ipAddress,
+ipAddressStringToValue(char *string, UINT4 *ipAddress,
 	char *netmask)
 {
     u_char*	dst;

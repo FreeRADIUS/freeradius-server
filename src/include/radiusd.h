@@ -2,13 +2,14 @@
  * radiusd.h	Structures, prototypes and global variables
  *		for the Cistron Radius server.
  *
- * Version:	@(#)radiusd.h  2.00  19-Jul-1999  miquels@cistron.nl
+ * Version:	$Id$
  *
  */
 
 #include "libradius.h"
 #include "radpaths.h"
 #include "conf.h"
+#include "missing.h"
 
 #define CHAP_VALUE_LENGTH               16
 

@@ -1,10 +1,10 @@
 #
 # Makefile	Makefile for the cistron-radius package.
 #
-# Version:	@(#)Makefile  1.00 01-Jul-1999  miquels@cistron.nl
+# Version:	$Id$
 #
 
-@INCLUDE@ @IQUOTE@../../Make.inc@IQUOTE@
+include ../../Make.inc
 
 WHAT_TO_MAKE	= all
 

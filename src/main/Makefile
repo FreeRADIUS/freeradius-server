@@ -1,5 +1,8 @@
 
-@INCLUDE@ @IQUOTE@../../Make.inc@IQUOTE@
+include ../../Make.inc
+
+MODULES		= $(shell ./makemodules.sh modules $(LIBDL))
+MODULE_PATHS	= $(shell ./makemodules.sh paths $(LIBDL))
 
 SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  version.o proxy.o exec.o auth.o timestr.o \

@@ -207,19 +207,6 @@ else
 fi
 AC_SUBST(LIBDL)
 
-dnl Modules to be built.
-for i in `( cd src/modules; ls -1d rlm_* )`
-do
-	if test "$HAVE_LIBDL" = ""; then
-		MODULES="$MODULES$i.a "
-		MODULE_PATHS="$MODULE_PATHS../modules/$i/$i.a "
-	else
-		MODULES="$MODULES$i.so "
-	fi
-done
-AC_SUBST(MODULES)
-AC_SUBST(MODULE_PATHS)
-
 dnl Check for programs
 AC_PATH_PROG(PERL, perl, /usr/local/bin/perl)
 if test ! -x $ac_cv_path_PERL; then
@@ -238,6 +225,7 @@ AC_CHECK_HEADERS( \
 	resource.h \
 	getopt.h \
 	malloc.h \
+	utmp.h \
 	sys/select.h \
 )
 
@@ -260,9 +248,14 @@ AC_TRY_COMPILE([#include <sys/types.h>
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
 AC_CHECK_LIB(crypt, crypt,
-  CRYPTLIB="-lcrypt",
+  CRYPTLIB="-lcrypt"
 )
 AC_SUBST(CRYPTLIB)
+if test "$CRYPTLIB" != ""; then
+  AC_DEFINE(HAVE_CRYPT)
+else
+  AC_CHECK_FUNC(crypt)
+fi
 
 dnl Check for -lsocket
 AC_CHECK_LIB(socket, getsockname,
@@ -280,15 +273,11 @@ AC_SUBST(NSLLIB)
 AC_OUTPUT(\
 	
 	./Make.inc \
-	./Makefile
-	./src/Makefile \
 	./src/include/build-radpaths-h \
 	./src/lib/Makefile \
-	./src/main/Makefile \
 	./src/main/checkrad.pl \
 	./src/main/radlast \
 	./src/main/radtest \
-	./src/modules/Makefile \
 	./raddb/Makefile \
 	./doc/Makefile \
 	./scripts/Makefile \
