@@ -134,7 +134,10 @@
 #define PW_NS_MTA_MD5_PASSWORD		1054
 #define PW_SQL_USER_NAME  		1055
 #define PW_MODULE_MESSAGE		1056
-#define PW_X99_FAST			1057
+#define PW_LM_PASSWORD			1057
+#define PW_NT_PASSWORD			1058
+#define PW_SMB_ACCOUNT_CTRL		1059
+#define PW_X99_FAST			1060
 
 /*
  *	Integer Translations

@@ -64,9 +64,6 @@
 #define PW_MSCHAP_RESPONSE	((311 << 16) | 1)
 #define PW_MSCHAP_CHALLENGE	((311 << 16) | 11)
 #define PW_MSCHAP2_RESPONSE	((311 << 16) | 25)
-#define PW_LM_PASSWORD		1057
-#define PW_NT_PASSWORD		1058
-#define PW_SMB_ACCOUNT_CTRL	1059
 
 
 typedef enum {
