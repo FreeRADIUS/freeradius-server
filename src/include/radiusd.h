@@ -131,12 +131,13 @@ typedef struct main_config_t {
 	int		log_auth_badpass;
 	int		log_auth_goodpass;
 	int		do_usercollide;
-	char 	*do_lower_user;
-	char	*do_lower_pass;
-	char	*do_nospace_user;
-	char	*do_nospace_pass;
+	char 		*do_lower_user;
+	char		*do_lower_pass;
+	char		*do_nospace_user;
+	char		*do_nospace_pass;
 	char		*nospace_time;
 	char		*log_file;
+	char		*checkrad;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug

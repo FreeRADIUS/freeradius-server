@@ -206,6 +206,7 @@ static CONF_PARSER server_config[] = {
 	{ "lower_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_lower_pass, "no" },
 	{ "nospace_user", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_user, "no" },
 	{ "nospace_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_pass, "no" },
+	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &proxy_requests, "yes" },
 	{ "proxy", PW_TYPE_SUBSECTION, 0, proxy_config, NULL },
 	{ "security", PW_TYPE_SUBSECTION, 0, security_config, NULL },
