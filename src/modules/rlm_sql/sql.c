@@ -36,70 +36,11 @@
  *
  *************************************************************************/
 
-int sql_init(int reload) {
+int sql_init(CONF_PARSER *module_config, SQL_CONFIG *config, int reload) {
 
 	CONF_SECTION *sql_cs;
-	static CONF_PARSER module_config[19];
 
-	module_config[0].name = "sensitiveusername";
-	module_config[0].type = PW_TYPE_BOOLEAN;
-	module_config[0].data = &(sql->config->sensitiveusername);
-	module_config[1].name = "deletestalesessions";
-	module_config[1].type = PW_TYPE_BOOLEAN;
-	module_config[1].data =  &(sql->config->deletestalesessions);
-	module_config[2].name = "sqltrace";
-	module_config[2].type = PW_TYPE_BOOLEAN;
-	module_config[2].data = &(sql->config->sqltrace);
-	module_config[3].name = "max_sql_socks";
-	module_config[3].type = PW_TYPE_INTEGER;
-	module_config[3].data = &(sql->config->max_sql_socks);
-	module_config[4].name = "server";
-	module_config[4].type = PW_TYPE_STRING_PTR;
-	module_config[4].data = &(sql->config->sql_server);
-	module_config[5].name = "login";
-	module_config[5].type = PW_TYPE_STRING_PTR;
-	module_config[5].data = &(sql->config->sql_login);
-	module_config[6].name = "password";
-	module_config[6].type = PW_TYPE_STRING_PTR;
-	module_config[6].data = &(sql->config->sql_password);
-	module_config[7].name = "db";
-	module_config[7].type = PW_TYPE_STRING_PTR;
-	module_config[7].data = &(sql->config->sql_db);
-	module_config[8].name = "authcheck_table";
-	module_config[8].type = PW_TYPE_STRING_PTR;
-	module_config[8].data = &(sql->config->sql_authcheck_table);
-	module_config[9].name = "authreply_table";
-	module_config[9].type = PW_TYPE_STRING_PTR;
-	module_config[9].data = &(sql->config->sql_authreply_table);
-	module_config[10].name = "groupcheck_table";
-	module_config[10].type = PW_TYPE_STRING_PTR;
-	module_config[10].data = &(sql->config->sql_groupcheck_table);
-	module_config[11].name = "groupreply_table";
-	module_config[11].type = PW_TYPE_STRING_PTR;
-	module_config[11].data = &(sql->config->sql_groupreply_table);
-	module_config[12].name = "usergroup_table";
-	module_config[12].type = PW_TYPE_STRING_PTR;
-	module_config[12].data = &(sql->config->sql_usergroup_table);
-	module_config[13].name = "realmgroup_table";
-	module_config[13].type = PW_TYPE_STRING_PTR;
-	module_config[13].data = &(sql->config->sql_realmgroup_table);
-	module_config[14].name = "acct_table";
-	module_config[14].type = PW_TYPE_STRING_PTR;
-	module_config[14].data = &(sql->config->sql_acct_table);
-	module_config[15].name = "nas_table";
-	module_config[15].type = PW_TYPE_STRING_PTR;
-	module_config[15].data = &(sql->config->sql_nas_table);
-	module_config[16].name = "realm_table";
-	module_config[16].type = PW_TYPE_STRING_PTR;
-	module_config[16].data = &(sql->config->sql_realm_table);
-	module_config[17].name = "dict_table";
-	module_config[17].type = PW_TYPE_STRING_PTR;
-	module_config[17].data = &(sql->config->sql_dict_table);
- 
-	module_config[18].name = NULL;
-	module_config[18].type = -1;
-	module_config[18].data = NULL;
-
+/*
 	strcpy(sql->config->sql_server,"localhost");
 	strcpy(sql->config->sql_login,"");
 	strcpy(sql->config->sql_password,"");
@@ -119,6 +60,7 @@ int sql_init(int reload) {
 	strcpy(sql->config->sql_realm_table, "realms");
 	strcpy(sql->config->sql_dict_table,"dictionary");
 	sql->config->max_sql_socks = MAX_SQL_SOCKS;
+*/
 
 	/*
          *      Look for the module's configuration.  If it doesn't
@@ -136,6 +78,8 @@ int sql_init(int reload) {
         if (cf_section_parse(sql_cs, module_config) < 0) {
                 return -1;
         }
+
+	sql->config = config;
 
        log(L_INFO,"SQL: Attempting to connect to %s@%s:%s", sql->config->sql_login, sql->config->sql_server, sql->config->sql_db);
 

@@ -22,11 +22,55 @@ static const char rcsid[] = "$Id$";
 
 #include "radiusd.h"
 #include "modules.h"
+#include "conffile.h"
 #include "rlm_sql.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+static SQL_CONFIG config = {
+	"localhost",
+	"root",
+	"",
+	"radius",
+	"radacct",
+	"radcheck",
+	"radreply",
+	"radgroupcheck",
+	"radgroupreply",
+	"usergroup",
+	"realm",
+	"realmgroup",
+	"nas",
+	"dictionary",
+	0,
+	0,
+	1,
+	5
+};
+
+static CONF_PARSER module_config[] = {
+        { "sensitiveusername", PW_TYPE_BOOLEAN , &config.sensitiveusername},
+        { "deletestalesessions", PW_TYPE_BOOLEAN , &config.deletestalesessions },
+        { "sqltrace", PW_TYPE_BOOLEAN , &config.sqltrace },
+        { "max_sql_socks", PW_TYPE_INTEGER , &config.max_sql_socks },
+        { "server", PW_TYPE_STRING_PTR , &config.sql_server },
+        { "login", PW_TYPE_STRING_PTR , &config.sql_login },
+        { "password", PW_TYPE_STRING_PTR , &config.sql_password },
+        { "db", PW_TYPE_STRING_PTR , &config.sql_db },
+        { "authcheck_table", PW_TYPE_STRING_PTR , &config.sql_authcheck_table },
+        { "authreply_table", PW_TYPE_STRING_PTR , &config.sql_authreply_table },
+        { "groupcheck_table", PW_TYPE_STRING_PTR , &config.sql_groupcheck_table },
+        { "groupreply_table", PW_TYPE_STRING_PTR , &config.sql_groupreply_table },
+        { "usergroup_table", PW_TYPE_STRING_PTR , &config.sql_usergroup_table },
+        { "realmgroup_table", PW_TYPE_STRING_PTR , &config.sql_realmgroup_table },
+        { "acct_table", PW_TYPE_STRING_PTR , &config.sql_acct_table },
+        { "nas_table", PW_TYPE_STRING_PTR , &config.sql_nas_table },
+        { "realm_table", PW_TYPE_STRING_PTR , &config.sql_realm_table },
+        { "dict_table", PW_TYPE_STRING_PTR , &config.sql_dict_table },
+	{ NULL, -1, NULL}
+};
 
 
 /***********************************************************************
@@ -43,14 +87,16 @@ static int rlm_sql_init(int argc, char **argv) {
 		exit(1);
 	}
 
+/*
         if (reload)
                 free(sql->config);
         if ((sql->config = malloc(sizeof(SQL_CONFIG))) == NULL) {
                 log(L_ERR|L_CONS, "no memory");
                 exit(1);
         }
+*/
 
-	sql_init(reload);
+	sql_init(module_config, &config, reload);
 
        return 0;
 }
@@ -193,6 +239,140 @@ static int rlm_sql_authenticate(REQUEST *request) {
  *	Accounting: does nothing for now.
  */
 static int rlm_sql_accounting(REQUEST *request) {
+
+	time_t          nowtime;
+        struct tm       *tim;
+        char            datebuf[20];
+        VALUE_PAIR      *pair;
+	SQLACCTREC	*sqlrecord;
+	SQLSOCK		*socket;
+	DICT_VALUE	*dval;
+
+
+        if ((sqlrecord = malloc(sizeof(SQLACCTREC))) == NULL) {
+                log(L_ERR|L_CONS, "no memory");
+                exit(1);        
+        }
+        
+        pair = request->packet->vps;
+        while(pair != (VALUE_PAIR *)NULL) {
+
+           /* Check the pairs to see if they are anything we are interested in. */
+            switch(pair->attribute) {
+                case PW_ACCT_SESSION_ID:
+                        strncpy(sqlrecord->AcctSessionId, pair->strvalue, SQLBIGREC);
+                        break;
+                        
+                case PW_USER_NAME:
+                        strncpy(sqlrecord->UserName, pair->strvalue, SQLBIGREC);
+                        break;
+                        
+                case PW_NAS_IP_ADDRESS:
+                        ip_ntoa(sqlrecord->NASIPAddress, pair->lvalue);
+                        //ipaddr2str(sqlrecord->NASIPAddress, pair->lvalue);
+                        break;
+
+                case PW_NAS_PORT_ID:
+                        sqlrecord->NASPortId = pair->lvalue;
+                        break;
+
+                case PW_NAS_PORT_TYPE:
+                                                dval = dict_valbyattr(PW_NAS_PORT_TYPE, pair->lvalue);
+                                                if(dval != NULL) {
+                                strncpy(sqlrecord->NASPortType, dval->attrname, SQLBIGREC);
+                                                }
+                                                break;
+
+                case PW_ACCT_STATUS_TYPE:
+                                                sqlrecord->AcctStatusTypeId = pair->lvalue;
+                                                dval = dict_valbyattr(PW_ACCT_STATUS_TYPE, pair->lvalue);
+                                                if(dval != NULL) {
+                                strncpy(sqlrecord->AcctStatusType, dval->attrname, SQLBIGREC);
+                                                }
+                                                break;
+
+                case PW_ACCT_SESSION_TIME:
+                        sqlrecord->AcctSessionTime = pair->lvalue;
+                        break;
+
+                case PW_ACCT_AUTHENTIC:
+                                                dval = dict_valbyattr(PW_ACCT_AUTHENTIC, pair->lvalue);
+                                                if(dval != NULL) {
+                                strncpy(sqlrecord->AcctAuthentic, dval->attrname, SQLBIGREC);
+                                                }
+                                                break;
+
+                case PW_CONNECT_INFO:
+                        strncpy(sqlrecord->ConnectInfo, pair->strvalue, SQLBIGREC);
+                        break;
+
+                case PW_ACCT_INPUT_OCTETS:
+                        sqlrecord->AcctInputOctets = pair->lvalue;
+                        break;
+
+                case PW_ACCT_OUTPUT_OCTETS:
+                        sqlrecord->AcctOutputOctets = pair->lvalue;
+                        break;
+
+                case PW_CALLED_STATION_ID:
+                        strncpy(sqlrecord->CalledStationId, pair->strvalue, SQLLILREC);
+                        break;
+
+                case PW_CALLING_STATION_ID:
+                        strncpy(sqlrecord->CallingStationId, pair->strvalue, SQLLILREC);
+                        break;
+
+/*                case PW_ACCT_TERMINATE_CAUSE:
+                                                dval = dict_valbyattr(PW_ACCT_TERMINATE_CAUSE, pair->lvalue);
+                                                if(dval != NULL) {
+                                strncpy(sqlrecord->AcctTerminateCause, dval->attrname, SQLBIGREC);
+                                                }
+                                                break;
+*/
+
+
+                case PW_SERVICE_TYPE:
+                                                dval = dict_valbyattr(PW_SERVICE_TYPE, pair->lvalue);
+                                                if(dval != NULL) {
+                                strncpy(sqlrecord->ServiceType, dval->attrname, SQLBIGREC);
+                                                }
+                                                break;
+
+                case PW_FRAMED_PROTOCOL:
+                                                dval = dict_valbyattr(PW_FRAMED_PROTOCOL, pair->lvalue);
+                                                if(dval != NULL) {
+                                strncpy(sqlrecord->FramedProtocol, dval->attrname, SQLBIGREC);
+                                                }
+                                                break;
+
+                case PW_FRAMED_IP_ADDRESS:
+                        ip_ntoa(sqlrecord->FramedIPAddress, pair->lvalue);
+                        //ipaddr2str(sqlrecord->FramedIPAddress, pair->lvalue);
+                        break;
+
+                case PW_ACCT_DELAY_TIME:
+                        sqlrecord->AcctDelayTime = pair->lvalue;
+                        break;
+
+                default:
+                        break;
+                }
+
+                pair = pair->next;
+        }
+
+
+        nowtime = time(0) - sqlrecord->AcctDelayTime;
+        tim = localtime(&nowtime);
+        strftime(datebuf, sizeof(datebuf), "%Y%m%d%H%M%S", tim);
+
+        strncpy(sqlrecord->AcctTimeStamp, datebuf, 20);
+       
+
+	socket = sql_get_socket();
+        if (sql_save_acct(socket, sqlrecord) == 0)
+                return RLM_MODULE_FAIL;
+	sql_release_socket(socket);
 
 	return RLM_MODULE_OK;
 }

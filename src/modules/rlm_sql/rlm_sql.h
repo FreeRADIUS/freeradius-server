@@ -6,6 +6,7 @@
 *                                     Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
 #include "sql_module.h"
+#include "conffile.h"
 
 #define PW_VP_USERDATA		1
 #define PW_VP_GROUPDATA		2
@@ -35,7 +36,7 @@ typedef struct sqlrec {
         unsigned long	AcctDelayTime;
 } SQLACCTREC; 
 
-int             sql_init(int reload);
+int             sql_init(CONF_PARSER *module_config, SQL_CONFIG *config, int reload);
 int             sql_init_socket(int reload);
 int             sql_close_socket(SQLSOCK *socket);
 SQLSOCK         *sql_get_socket(void);
