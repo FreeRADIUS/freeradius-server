@@ -527,7 +527,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.6 
+# From configure.in Revision: 1.7 
 
 
 # Extract the first word of "gcc", so it can be a program name with args.
@@ -863,8 +863,43 @@ if test x$with_rlm_sql_mysql != xno; then
 
 	targetname=rlm_sql_mysql   # we might change this later.
 
-	echo $ac_n "checking for compress in -lz""... $ac_c" 1>&6
-echo "configure:868: checking for compress in -lz" >&5
+	# Extract the first word of "mysql_config", so it can be a program name with args.
+set dummy mysql_config; ac_word=$2
+echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
+echo "configure:870: checking for $ac_word" >&5
+if eval "test \"`echo '$''{'ac_cv_prog_MYSQL_CONFIG'+set}'`\" = set"; then
+  echo $ac_n "(cached) $ac_c" 1>&6
+else
+  if test -n "$MYSQL_CONFIG"; then
+  ac_cv_prog_MYSQL_CONFIG="$MYSQL_CONFIG" # Let the user override the test.
+else
+  IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
+  ac_dummy="$PATH"
+  for ac_dir in $ac_dummy; do
+    test -z "$ac_dir" && ac_dir=.
+    if test -f $ac_dir/$ac_word; then
+      ac_cv_prog_MYSQL_CONFIG="yes"
+      break
+    fi
+  done
+  IFS="$ac_save_ifs"
+  test -z "$ac_cv_prog_MYSQL_CONFIG" && ac_cv_prog_MYSQL_CONFIG="no"
+fi
+fi
+MYSQL_CONFIG="$ac_cv_prog_MYSQL_CONFIG"
+if test -n "$MYSQL_CONFIG"; then
+  echo "$ac_t""$MYSQL_CONFIG" 1>&6
+else
+  echo "$ac_t""no" 1>&6
+fi
+
+	if test "x$MYSQL_CONFIG" = "xyes"
+	then
+		sql_mysql_ldflags=`mysql_config --libs`
+		sql_mysql_cflags=`mysql_config --cflags`
+	else
+		echo $ac_n "checking for compress in -lz""... $ac_c" 1>&6
+echo "configure:903: checking for compress in -lz" >&5
 ac_lib_var=`echo z'_'compress | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -872,7 +907,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lz  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 876 "configure"
+#line 911 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -883,7 +918,7 @@ int main() {
 compress()
 ; return 0; }
 EOF
-if { (eval echo configure:887: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:922: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -904,18 +939,18 @@ else
 fi
 
 
-	echo $ac_n "checking for mysql/mysql.h""... $ac_c" 1>&6
-echo "configure:909: checking for mysql/mysql.h" >&5
+		echo $ac_n "checking for mysql/mysql.h""... $ac_c" 1>&6
+echo "configure:944: checking for mysql/mysql.h" >&5
 
-	cat > conftest.$ac_ext <<EOF
-#line 912 "configure"
+		cat > conftest.$ac_ext <<EOF
+#line 947 "configure"
 #include "confdefs.h"
 #include <mysql/mysql.h>
 int main() {
 int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:919: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:954: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   MYSQL_INCLUDE=" "
 else
@@ -923,25 +958,25 @@ else
   cat conftest.$ac_ext >&5
   rm -rf conftest*
   MYSQL_INCLUDE=
-	
+		
 fi
 rm -f conftest*
 
-	if test "x$MYSQL_INCLUDE" = "x"; then
-		old_CFLAGS="$CFLAGS"
+		if test "x$MYSQL_INCLUDE" = "x"; then
+			old_CFLAGS="$CFLAGS"
 
 
-		for try in $mysql_include_dir /usr/local/include /usr/local/mysql/include ; do
-			CFLAGS="$old_CFLAGS -I$try"
-			cat > conftest.$ac_ext <<EOF
-#line 938 "configure"
+			for try in $mysql_include_dir /usr/local/include /usr/local/mysql/include ; do
+				CFLAGS="$old_CFLAGS -I$try"
+				cat > conftest.$ac_ext <<EOF
+#line 973 "configure"
 #include "confdefs.h"
 #include <mysql/mysql.h>
 int main() {
 int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:945: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:980: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   MYSQL_INCLUDE="-I$try"
 else
@@ -949,46 +984,45 @@ else
   cat conftest.$ac_ext >&5
   rm -rf conftest*
   MYSQL_INCLUDE=
-			
+				
 fi
 rm -f conftest*
-			if test "x$MYSQL_INCLUDE" != "x"; then
-				break;
-			fi
-		done
-		CFLAGS="$old_CFLAGS"
-	fi
+				if test "x$MYSQL_INCLUDE" != "x"; then
+					break;
+				fi
+			done
+			CFLAGS="$old_CFLAGS"
+		fi
 
-	if test "x$MYSQL_INCLUDE" = "x"; then
-		echo "$ac_t""no" 1>&6
-		echo "configure: warning: mysql headers not found.  Use --with-mysql-include-dir=<path>." 1>&2
-		targetname=   # disabled module
-	else
-		sql_mysql_cflags="${sql_mysql_cflags} ${MYSQL_INCLUDE}"
-		echo "$ac_t""yes" 1>&6
-		cat >> confdefs.h <<\EOF
+		if test "x$MYSQL_INCLUDE" = "x"; then
+			echo "$ac_t""no" 1>&6
+			echo "configure: warning: mysql headers not found.  Use --with-mysql-include-dir=<path>." 1>&2
+			targetname=   # disabled module
+		else
+			sql_mysql_cflags="${sql_mysql_cflags} ${MYSQL_INCLUDE}"
+			echo "$ac_t""yes" 1>&6
+			cat >> confdefs.h <<\EOF
 #define HAVE_MYSQL_H 1
 EOF
 
-
   
-		echo $ac_n "checking for mysql_init in -lmysqlclient""... $ac_c" 1>&6
-echo "configure:977: checking for mysql_init in -lmysqlclient" >&5
+			echo $ac_n "checking for mysql_init in -lmysqlclient""... $ac_c" 1>&6
+echo "configure:1011: checking for mysql_init in -lmysqlclient" >&5
 
-		old_LIBS="$LIBS"
+			old_LIBS="$LIBS"
 
 
-		for try in $mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql; do
-			LIBS="$old_LIBS -L$try -lmysqlclient"
-			cat > conftest.$ac_ext <<EOF
-#line 985 "configure"
+			for try in $mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql; do
+				LIBS="$old_LIBS -L$try -lmysqlclient"
+				cat > conftest.$ac_ext <<EOF
+#line 1019 "configure"
 #include "confdefs.h"
 extern char mysql_init();
 int main() {
 mysql_init()
 ; return 0; }
 EOF
-if { (eval echo configure:992: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1026: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   MYSQL_LIBS="-L$try -lmysqlclient $old_LIBS"
 else
@@ -996,27 +1030,27 @@ else
   cat conftest.$ac_ext >&5
   rm -rf conftest*
   MYSQL_LIBS=
-			
+				
 fi
 rm -f conftest*
-			if test "x$MYSQL_LIBS" != "x"; then
-				break;
+				if test "x$MYSQL_LIBS" != "x"; then
+					break;
+				fi
+			done
+			LIBS="$old_LIBS"
+
+									if test "x$MYSQL_LIBS" = "x"; then
+				echo "$ac_t""no" 1>&6
+				MYSQL_INCLUDE=
+				echo "configure: warning: mysql libraries not found.  Use --with-mysql-lib-dir=<path>." 1>&2
+				targetname=   # disabled module
+			else
+				echo "$ac_t""yes" 1>&6 
+				sql_mysql_ldflags="$sql_mysql_ldflags $MYSQL_LIBS"
 			fi
-		done
-		LIBS="$old_LIBS"
-
-						if test "x$MYSQL_LIBS" = "x"; then
-			echo "$ac_t""no" 1>&6
-			MYSQL_INCLUDE=
-			echo "configure: warning: mysql libraries not found.  Use --with-mysql-lib-dir=<path>." 1>&2
-			targetname=   # disabled module
-		else
-			echo "$ac_t""yes" 1>&6 
-			sql_mysql_ldflags="$sql_mysql_ldflags $MYSQL_LIBS"
 		fi
+		sql_mysql_ldflags="$sql_mysql_ldflags $LIBS"
 	fi
-
-	sql_mysql_ldflags="$sql_mysql_ldflags $LIBS"
 
 	if test "x$targetname" = "x"; then
 		echo "configure: warning: sql submodule 'mysql' disabled" 1>&2
@@ -1176,6 +1210,7 @@ s%@infodir@%$infodir%g
 s%@mandir@%$mandir%g
 s%@CC@%$CC%g
 s%@CPP@%$CPP%g
+s%@MYSQL_CONFIG@%$MYSQL_CONFIG%g
 s%@sql_mysql_ldflags@%$sql_mysql_ldflags%g
 s%@sql_mysql_cflags@%$sql_mysql_cflags%g
 s%@targetname@%$targetname%g

@@ -26,76 +26,81 @@ if test x$with_[]modname != xno; then
 
 	targetname=modname   # we might change this later.
 
-	AC_CHECK_LIB(z, compress, LIBS="$LIBS -lz")
-
-	AC_MSG_CHECKING([for mysql/mysql.h])
-
-	AC_TRY_COMPILE([#include <mysql/mysql.h>], [int a = 1;],
-		MYSQL_INCLUDE=" ",
-		MYSQL_INCLUDE=
-	)
-
-	if test "x$MYSQL_INCLUDE" = "x"; then
-		old_CFLAGS="$CFLAGS"
-
-dnl		AC_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
-
-		for try in $mysql_include_dir /usr/local/include /usr/local/mysql/include ; do
-			CFLAGS="$old_CFLAGS -I$try"
-			AC_TRY_COMPILE([#include <mysql/mysql.h>], [int a = 1;],
-				MYSQL_INCLUDE="-I$try",
-				MYSQL_INCLUDE=
-			)
-			if test "x$MYSQL_INCLUDE" != "x"; then
-				break;
-			fi
-		done
-		CFLAGS="$old_CFLAGS"
-	fi
-
-	if test "x$MYSQL_INCLUDE" = "x"; then
-		AC_MSG_RESULT(no)
-		AC_MSG_WARN([mysql headers not found.  Use --with-mysql-include-dir=<path>.])
-		targetname=   # disabled module
+	AC_CHECK_PROG(MYSQL_CONFIG, mysql_config, yes, no)
+	if test "x$MYSQL_CONFIG" = "xyes"
+	then
+		sql_mysql_ldflags=`mysql_config --libs`
+		sql_mysql_cflags=`mysql_config --cflags`
 	else
-		sql_mysql_cflags="${sql_mysql_cflags} ${MYSQL_INCLUDE}"
-		AC_MSG_RESULT(yes)
-		AC_DEFINE(HAVE_MYSQL_H)
+		AC_CHECK_LIB(z, compress, LIBS="$LIBS -lz")
 
-  
-		AC_MSG_CHECKING([for mysql_init in -lmysqlclient])
+		AC_MSG_CHECKING([for mysql/mysql.h])
 
-		old_LIBS="$LIBS"
-
-dnl		AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.so])
-dnl		AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.a])
-
-		for try in $mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql; do
-			LIBS="$old_LIBS -L$try -lmysqlclient"
-			AC_TRY_LINK([extern char mysql_init();], [mysql_init()],
-				MYSQL_LIBS="-L$try -lmysqlclient $old_LIBS",
-				MYSQL_LIBS=
-			)
-			if test "x$MYSQL_LIBS" != "x"; then
-				break;
-			fi
-		done
-		LIBS="$old_LIBS"
-
-		dnl #  If one or the other isn't found, disable them both..
-		dnl #  If both are found, enable them both.
-		if test "x$MYSQL_LIBS" = "x"; then
-			AC_MSG_RESULT(no)
+		AC_TRY_COMPILE([#include <mysql/mysql.h>], [int a = 1;],
+			MYSQL_INCLUDE=" ",
 			MYSQL_INCLUDE=
-			AC_MSG_WARN([mysql libraries not found.  Use --with-mysql-lib-dir=<path>.])
+		)
+
+		if test "x$MYSQL_INCLUDE" = "x"; then
+			old_CFLAGS="$CFLAGS"
+
+dnl			AC_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
+
+			for try in $mysql_include_dir /usr/local/include /usr/local/mysql/include ; do
+				CFLAGS="$old_CFLAGS -I$try"
+				AC_TRY_COMPILE([#include <mysql/mysql.h>], [int a = 1;],
+					MYSQL_INCLUDE="-I$try",
+					MYSQL_INCLUDE=
+				)
+				if test "x$MYSQL_INCLUDE" != "x"; then
+					break;
+				fi
+			done
+			CFLAGS="$old_CFLAGS"
+		fi
+
+		if test "x$MYSQL_INCLUDE" = "x"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_WARN([mysql headers not found.  Use --with-mysql-include-dir=<path>.])
 			targetname=   # disabled module
 		else
-			AC_MSG_RESULT(yes) 
-			sql_mysql_ldflags="$sql_mysql_ldflags $MYSQL_LIBS"
-		fi
-	fi
+			sql_mysql_cflags="${sql_mysql_cflags} ${MYSQL_INCLUDE}"
+			AC_MSG_RESULT(yes)
+			AC_DEFINE(HAVE_MYSQL_H)
+  
+			AC_MSG_CHECKING([for mysql_init in -lmysqlclient])
 
-	sql_mysql_ldflags="$sql_mysql_ldflags $LIBS"
+			old_LIBS="$LIBS"
+
+dnl			AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.so])
+dnl			AC_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.a])
+
+			for try in $mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql; do
+				LIBS="$old_LIBS -L$try -lmysqlclient"
+				AC_TRY_LINK([extern char mysql_init();], [mysql_init()],
+					MYSQL_LIBS="-L$try -lmysqlclient $old_LIBS",
+					MYSQL_LIBS=
+				)
+				if test "x$MYSQL_LIBS" != "x"; then
+					break;
+				fi
+			done
+			LIBS="$old_LIBS"
+
+			dnl #  If one or the other isn't found, disable them both..
+			dnl #  If both are found, enable them both.
+			if test "x$MYSQL_LIBS" = "x"; then
+				AC_MSG_RESULT(no)
+				MYSQL_INCLUDE=
+				AC_MSG_WARN([mysql libraries not found.  Use --with-mysql-lib-dir=<path>.])
+				targetname=   # disabled module
+			else
+				AC_MSG_RESULT(yes) 
+				sql_mysql_ldflags="$sql_mysql_ldflags $MYSQL_LIBS"
+			fi
+		fi
+		sql_mysql_ldflags="$sql_mysql_ldflags $LIBS"
+	fi
 
 	if test "x$targetname" = "x"; then
 		AC_MSG_WARN([sql submodule 'mysql' disabled])
