@@ -1307,7 +1307,8 @@ $INCLUDE ${confdir}/eap.conf
 	#  the radius.log
 	#  If the count attribute is Acct-Session-Time then on each login
 	#  we send back the remaining online time as a Session-Timeout attribute
-	#  ELSE and if the return-attribute is set, we send back that attribute
+	#  ELSE and if the return-attribute is set, we send back that attribute.
+	#  The return-attribute is set MUST be of an integer type
 	#
 	#  The counter-name can also be used instead of using the check-name
 	#  like below:
