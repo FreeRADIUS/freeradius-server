@@ -112,12 +112,8 @@ static int rad_check_password(REQUEST *request,
 	VALUE_PAIR	*auth_type_pair;
 	VALUE_PAIR	*password_pair;
 	VALUE_PAIR	*auth_item;
-	VALUE_PAIR	*tmp;
 	char		string[MAX_STRING_LEN];
-	char		chap_digest[16];
-	char		*ptr;
 	int		auth_type = -1;
-	int		i;
 	int		result;
 	result = 0;
 

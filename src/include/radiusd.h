@@ -105,6 +105,8 @@ extern int		log_auth;
 extern int		log_auth_pass;
 extern int		auth_port;
 extern int		acct_port;
+extern int		proxy_port;
+extern int		proxyfd;
 
 /*
  *	Function prototypes.

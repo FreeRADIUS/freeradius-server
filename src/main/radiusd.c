@@ -59,6 +59,8 @@ int			log_auth = 0;
 int			log_auth_pass  = 0;
 int			auth_port;
 int			acct_port;
+int			proxy_port;
+int			proxyfd;
 
 static int		got_chld = 0;
 static int		request_list_busy = 0;
@@ -360,6 +362,42 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	/*
+	 *	Open Proxy Socket.
+	 */
+	proxyfd = socket (AF_INET, SOCK_DGRAM, 0);
+	if (proxyfd < 0) {
+		perror ("proxy socket");
+		exit(1);
+	}
+
+	sin = (struct sockaddr_in *) & salocal;
+        memset ((char *) sin, '\0', sizeof (salocal));
+	sin->sin_family = AF_INET;
+	sin->sin_addr.s_addr = myip ? myip : INADDR_ANY;
+
+	/*
+	 *  Pick a pseudo-random initial proxy port,
+	 *  somewhere above 1024
+	 */
+
+	for (proxy_port = (getpid() & 0x7fff) + 1024; proxy_port < 64000; proxy_port++) {
+		sin->sin_port = htons(proxy_port);
+	  
+		result = bind (proxyfd, & salocal, sizeof (*sin));
+		if (result == 0) {
+			break;
+		}
+	}
+
+	/*
+	 *	Couldn't find a port to which we could bind.
+	 */
+	if (proxy_port == 64000) {
+		perror("proxy bind");
+		exit(1);
+	}
+
 	radius_pid = getpid();
 #ifdef RADIUS_PID
 	if ((fp = fopen(RADIUS_PID, "w")) != NULL) {
@@ -422,8 +460,8 @@ int main(int argc, char **argv)
 	 */
 	if (debug_flag) setlinebuf(stdout);
 
-	log(L_INFO, "Listening on ports %d/udp and %d/udp.",
-	    auth_port, acct_port);
+	log(L_INFO, "Listening on ports %d/udp and %d/udp, with proxy on %d/udp.",
+	    auth_port, acct_port, proxy_port);
 
 	/*
 	 *	If we are in forking mode, we will start a child
@@ -444,6 +482,8 @@ int main(int argc, char **argv)
 		else {
 			close(sockfd);
 			sockfd = -1;
+			close(proxyfd);
+			proxyfd = -1;
 		}
 	} else
 		log(L_INFO, "Ready to process requests.");
@@ -464,6 +504,8 @@ int main(int argc, char **argv)
 			FD_SET(sockfd, &readfds);
 		if (acctfd >= 0)
 			FD_SET(acctfd, &readfds);
+		if (proxyfd >= 0)
+			FD_SET(proxyfd, &readfds);
 
 		status = select(32, &readfds, NULL, NULL, NULL);
 		if (status == -1) {
@@ -471,10 +513,11 @@ int main(int argc, char **argv)
 				continue;
 			sig_fatal(101);
 		}
-		for (i = 0; i < 2; i++) {
+		for (i = 0; i < 3; i++) {
 
 			if (i == 0) fd = sockfd;
 			if (i == 1) fd = acctfd;
+			if (i == 2) fd = proxyfd;
 			if (fd < 0 || !FD_ISSET(fd, &readfds))
 				continue;
 
@@ -549,6 +592,19 @@ int radrespond(REQUEST *request)
 	case PW_AUTHENTICATION_REQUEST:
 	case PW_ACCOUNTING_REQUEST:
 		/*
+		 *	Check for requests sent to the proxy port,
+		 *	and ignore them, if so.
+		 */
+		if (request->packet->sockfd == proxyfd) {
+		  log(L_ERR, "Request packet code %d sent to proxy port from "
+		      "client %s - ID %d : IGNORED",
+		      request->packet->code,
+		      client_name(request->packet->src_ipaddr),
+		      request->packet->id);
+		  return -1;
+		}
+		
+		/*
 		 *	Setup username and stuff.
 		 */
 		if ((e = rad_mangle(request)) < 0)
@@ -567,8 +623,25 @@ int radrespond(REQUEST *request)
 	case PW_AUTHENTICATION_ACK:
 	case PW_AUTHENTICATION_REJECT:
 	case PW_ACCOUNTING_RESPONSE:
-		if (proxy_receive(request) < 0)
-			return 0;
+		/*
+		 *	Replies sent to the proxy port get passed through
+		 *	the proxy receive code.  All other replies get
+		 *	an error message logged, and the packet is dropped.
+		 */
+		if (request->packet->sockfd == proxyfd) {
+		  if (proxy_receive(request) < 0) {
+		  	return -1;
+		  }
+		  break;
+		}
+		/* NOT proxyfd: fall through to error message */
+
+		log(L_ERR, "Reply packet code %d sent to request port from "
+		    "client %s - ID %d : IGNORED",
+		    request->packet->code,
+		    client_name(request->packet->src_ipaddr),
+		    request->packet->id);
+		return -1;
 		break;
 	}
 
@@ -589,14 +662,23 @@ int radrespond(REQUEST *request)
 	
 	case PW_PASSWORD_REQUEST:
 		/*
-		 *	FIXME: print an error message here.
 		 *	We don't support this anymore.
 		 */
-		/* rad_passchange(request); */
+		log(L_ERR, "Deprecated password change request from client %s "
+		    "- ID %d : IGNORED",
+		    client_name(request->packet->src_ipaddr),
+		    request->packet->id);
+		return -1;
 		break;
 	
 
 	default:
+		log(L_ERR, "Unknown packet type %d from client %s "
+		    "- ID %d : IGNORED",
+		    request->packet->code,
+		    client_name(request->packet->src_ipaddr),
+		    request->packet->id);
+		return -1;
 		break;
 	}
 

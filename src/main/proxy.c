@@ -266,11 +266,9 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
-	 *	This net line works, but it's not the best thing to do.
-	 *
-	 *	Proxied requests should REALLY be sent out their own FD.
+	 *	Proxied requests get sent out the proxy FD ONLY.
 	 */
-	request->proxy->sockfd = request->packet->sockfd;
+	request->proxy->sockfd = proxyfd;
 
 	request->proxy->code = request->packet->code;
 	request->proxy->dst_ipaddr = realm->ipaddr;
