@@ -150,7 +150,7 @@ radsqlrelay: radsqlrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o f
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self $(CFLAGS) $(LDFLAGS) -o radsqlrelay radsqlrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o valuepair.o $(LIBLTDL) $(LCRYPT) $(LIBS)
 
 radsqlrelay.o: radsqlrelay.c $(INCLUDES)
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radsqlrelay.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c radsqlrelay.c
 
 radwho.o: radwho.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
