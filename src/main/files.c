@@ -561,7 +561,7 @@ REALM *realm_find(const char *realm, int acct)
 			 *	dead.
 			 */
 			if ((!proxy_fallback) &&
-			    (strcmp(cl->realm, realm) == 0)) {
+			    (strcasecmp(cl->realm, realm) == 0)) {
 				dead_match = 1;
 			}
 			continue;
@@ -570,7 +570,7 @@ REALM *realm_find(const char *realm, int acct)
 		/*
 		 *	If it matches exactly, return it.
 		 */
-		if (strcmp(cl->realm, realm) == 0) {
+		if (strcasecmp(cl->realm, realm) == 0) {
 			return cl;
 		}
 
