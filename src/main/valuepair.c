@@ -229,7 +229,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 		  {
 		  case T_OP_EQ:
 		  default:
-		    log(L_ERR,  "Invalid operator for item %s: "
+		    radlog(L_ERR,  "Invalid operator for item %s: "
 				"reverting to '=='", check_item->name);
 		    /*FALLTHRU*/
 		  case T_OP_CMP_EQ:

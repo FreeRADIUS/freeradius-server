@@ -190,9 +190,9 @@ static void reread_config(int reload)
 	CONF_SECTION *cs;
 
 	if (!reload) {
-		log(L_INFO, "Starting - reading configuration files ...");
+		radlog(L_INFO, "Starting - reading configuration files ...");
 	} else if (pid == radius_pid) {
-		log(L_INFO, "Reloading configuration files.");
+		radlog(L_INFO, "Reloading configuration files.");
 	}
 
 	/* Read users file etc. */
@@ -201,7 +201,7 @@ static void reread_config(int reload)
 
 	if (res != 0) {
 	  if (pid == radius_pid) {
-			log(L_ERR|L_CONS,
+			radlog(L_ERR|L_CONS,
 				"Errors reading config file - EXITING");
 		}
 		exit(1);
@@ -222,7 +222,7 @@ static void reread_config(int reload)
 	 */
 	if (allow_core_dumps) {
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-			log(L_ERR|L_CONS, "Cannot update core dump limit: %s",
+			radlog(L_ERR|L_CONS, "Cannot update core dump limit: %s",
 			    strerror(errno));
 			exit(1);
 
@@ -231,7 +231,7 @@ static void reread_config(int reload)
 			 *	dumps are enabled, log that information.
 			 */
 		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
-		  log(L_INFO, "Core dumps are enabled.");
+		  radlog(L_INFO, "Core dumps are enabled.");
 
 	} else if (!debug_flag) {
 		/*
@@ -245,7 +245,7 @@ static void reread_config(int reload)
 		limits.rlim_max = core_limits.rlim_max;
 		
 		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
-			log(L_ERR|L_CONS, "Cannot disable core dumps: %s",
+			radlog(L_ERR|L_CONS, "Cannot disable core dumps: %s",
 			    strerror(errno));
 			exit(1);
 		}
@@ -570,7 +570,7 @@ int main(int argc, char **argv)
 	 *	Get the current maximum for core files.
 	 */
 	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		log(L_ERR|L_CONS, "Failed to get current core limit:"
+		radlog(L_ERR|L_CONS, "Failed to get current core limit:"
 		    "  %s", strerror(errno));
 		exit(1);
 	}
@@ -743,7 +743,7 @@ int main(int argc, char **argv)
 	if (debug_flag == 0 && dont_fork == 0) {
 		pid = fork();
 		if(pid < 0) {
-			log(L_ERR|L_CONS, "Couldn't fork");
+			radlog(L_ERR|L_CONS, "Couldn't fork");
 			exit(1);
 		}
 
@@ -779,7 +779,7 @@ int main(int argc, char **argv)
 			fprintf(fp, "%d\n", radius_pid);
 			fclose(fp);
 		} else {
-			log(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
+			radlog(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
 			    pid_file, strerror(errno));
 		}
 	}
@@ -807,10 +807,10 @@ int main(int argc, char **argv)
 	}
 
 	if (proxy_requests) {
-		log(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp, with proxy on %d/udp.",
+		radlog(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp, with proxy on %d/udp.",
 		    buffer, auth_port, acct_port, proxy_port);
 	} else {
-		log(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp.",
+		radlog(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp.",
 		    buffer, auth_port, acct_port);
 	}
 
@@ -819,7 +819,7 @@ int main(int argc, char **argv)
 	 *	We used to do it for historical reasons, but that
 	 *	is no excuse...
 	 */
-	log(L_INFO, "Ready to process requests.");
+	radlog(L_INFO, "Ready to process requests.");
 
 	/*
 	 *	Receive user requests
@@ -852,7 +852,7 @@ int main(int argc, char **argv)
 				rad_clean_list(now);
 				continue;
 			}
-			log(L_ERR, "Unexpected error in select(): %s",
+			radlog(L_ERR, "Unexpected error in select(): %s",
 			    strerror(errno));
 			sig_fatal(101);
 		}
@@ -877,7 +877,7 @@ int main(int argc, char **argv)
 			 */
 			packet = rad_recv(fd);
 			if (packet == NULL) {
-				log(L_ERR, "%s", librad_errstr);
+				radlog(L_ERR, "%s", librad_errstr);
 				continue;
 			}
 
@@ -885,7 +885,7 @@ int main(int argc, char **argv)
 			 *	Check if we know this client.
 			 */
 			if ((cl = client_find(packet->src_ipaddr)) == NULL) {
-				log(L_ERR, "Ignoring request from unknown client %s:%d",
+				radlog(L_ERR, "Ignoring request from unknown client %s:%d",
 					buffer, packet->src_port);
 				rad_free(packet);
 				continue;
@@ -898,13 +898,13 @@ int main(int argc, char **argv)
 			 *	packets here will make our life easier.
 			 */
 			if (packet->code > PW_ACCESS_CHALLENGE) {
-				log(L_ERR, "Ignoring request from client %s:%d with unknown code %d", buffer, packet->src_port, packet->code);
+				radlog(L_ERR, "Ignoring request from client %s:%d with unknown code %d", buffer, packet->src_port, packet->code);
 				rad_free(packet);
 				continue;
 			}
 
 			if ((request = malloc(sizeof(REQUEST))) == NULL) {
-				log(L_ERR|L_CONS, "no memory");
+				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
 			memset(request, 0, sizeof(REQUEST));
@@ -967,7 +967,7 @@ int rad_process(REQUEST *request, int dospawn)
 		 *	and ignore them, if so.
 		 */
 		if (request->packet->sockfd != authfd) {
-		  log(L_ERR, "Request packet code %d sent to authentication port from "
+		  radlog(L_ERR, "Request packet code %d sent to authentication port from "
 		      "client %s:%d - ID %d : IGNORED",
 		      request->packet->code,
 		      client_name(request->packet->src_ipaddr),
@@ -984,7 +984,7 @@ int rad_process(REQUEST *request, int dospawn)
 		 *	and ignore them, if so.
 		 */
 		if (request->packet->sockfd != acctfd) {
-		  log(L_ERR, "Request packet code %d sent to accounting port from "
+		  radlog(L_ERR, "Request packet code %d sent to accounting port from "
 		      "client %s:%d - ID %d : IGNORED",
 		      request->packet->code,
 		      client_name(request->packet->src_ipaddr),
@@ -1004,7 +1004,7 @@ int rad_process(REQUEST *request, int dospawn)
 		 *	dropped.
 		 */
 		if (request->packet->sockfd != proxyfd) {
-			log(L_ERR, "Reply packet code %d sent to request port from "
+			radlog(L_ERR, "Reply packet code %d sent to request port from "
 			    "client %s:%d - ID %d : IGNORED",
 			    request->packet->code,
 			    client_name(request->packet->src_ipaddr),
@@ -1039,7 +1039,7 @@ int rad_process(REQUEST *request, int dospawn)
 		/*
 		 *	We don't support this anymore.
 		 */
-		log(L_ERR, "Deprecated password change request from client %s:%d "
+		radlog(L_ERR, "Deprecated password change request from client %s:%d "
 		    "- ID %d : IGNORED",
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->src_port,
@@ -1049,7 +1049,7 @@ int rad_process(REQUEST *request, int dospawn)
 		break;
 	
 	default:
-		log(L_ERR, "Unknown packet type %d from client %s:%d "
+		radlog(L_ERR, "Unknown packet type %d from client %s:%d "
 		    "- ID %d : IGNORED",
 		    request->packet->code,
 		    client_name(request->packet->src_ipaddr),
@@ -1171,7 +1171,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	spread the load a little bit.
 	 */
 	if (rad_decode(packet, original, secret) != 0) {
-		log(L_ERR, "%s", librad_errstr);
+		radlog(L_ERR, "%s", librad_errstr);
 		rad_reject(request);
 		goto finished_request;
 	}
@@ -1372,7 +1372,7 @@ static int rad_clean_list(time_t curtime)
 					 *	 - kill it
 					 */
 					child_pid = curreq->child_pid;
-					log(L_ERR, "Killing unresponsive child %d",
+					radlog(L_ERR, "Killing unresponsive child %d",
 					    child_pid);
 					child_kill(child_pid, SIGTERM);
 				} /* else no proxy reply, quietly fail */
@@ -1545,7 +1545,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *	re-send it.  Otherwise, just complain.
 			 */
 			if (curreq->reply) {
-				log(L_INFO,
+				radlog(L_INFO,
 				"Sending duplicate authentication reply"
 				" to client %s:%d - ID: %d",
 				client_name(request->packet->src_ipaddr),
@@ -1582,7 +1582,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 					       request->packet->id);
 				}
 			} else {
-				log(L_ERR,
+				radlog(L_ERR,
 				"Dropping duplicate authentication packet"
 				" from client %s:%d - ID: %d",
 				client_name(request->packet->src_ipaddr),
@@ -1614,7 +1614,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 				   *	with the same ID, while we were processing
 				   *	the old one!  What should we do?
 				   */
-				log(L_ERR,
+				radlog(L_ERR,
 				"Dropping conflicting authentication packet"
 				" from client %s:%d - ID: %d",
 				client_name(request->packet->src_ipaddr),
@@ -1700,7 +1700,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 *	makes us go over our configured bounds.
 		 */
 		if (request_count > max_requests) {
-			log(L_ERR, "Dropping request (%d is too many): "
+			radlog(L_ERR, "Dropping request (%d is too many): "
 			    "from client %s:%d - ID: %d", request_count, 
 			    client_name(request->packet->src_ipaddr),
 			    request->packet->src_port,
@@ -1819,7 +1819,7 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	rcode = pthread_create(&child_pid, NULL, rad_spawn_thread, data);
 	if (rcode != 0) {
-		log(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
+		radlog(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
 		    nas_name2(request->packet),
 		    request->packet->id,
 		    strerror(errno));
@@ -1837,7 +1837,7 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	child_pid = fork();
 	if (child_pid < 0) {
-		log(L_ERR, "Fork failed for request from nas %s - ID: %d",
+		radlog(L_ERR, "Fork failed for request from nas %s - ID: %d",
 				nas_name2(request->packet),
 				request->packet->id);
 		return -1;
@@ -1904,7 +1904,7 @@ void sig_cleanup(int sig)
 		 *	process group, to prevent further attacks.
 		 */
 		if (debug_flag && (WIFSIGNALED(status))) {
-			log(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch signal %d: killing all active servers.\n",
+			radlog(L_ERR|L_CONS, "MASTER: Child PID %d failed to catch signal %d: killing all active servers.\n",
 			    pid, WTERMSIG(status));
 			kill(0, SIGTERM);
 			exit(1);
@@ -1976,16 +1976,16 @@ static void sig_fatal(int sig)
 
 	switch(sig) {
 		case 100:
-			log(L_ERR, "%saccounting process died - exit.", me);
+			radlog(L_ERR, "%saccounting process died - exit.", me);
 			break;
 		case 101:
-			log(L_ERR, "%sfailed in select() - exit.", me);
+			radlog(L_ERR, "%sfailed in select() - exit.", me);
 			break;
 		case SIGTERM:
-			log(L_INFO, "%sexit.", me);
+			radlog(L_INFO, "%sexit.", me);
 			break;
 		default:
-			log(L_ERR, "%sexit on signal (%d)", me, sig);
+			radlog(L_ERR, "%sexit on signal (%d)", me, sig);
 			break;
 	}
 
@@ -2090,7 +2090,7 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	 *	If we haven't found the old request, complain.
 	 */
 	if (oldreq == NULL) {
-		log(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
+		radlog(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->id);
 		request_free(request);
@@ -2282,7 +2282,7 @@ static void proxy_retry(void)
 			if (!delaypair) {
 				delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
 				if (!delaypair) {
-					log(L_ERR|L_CONS, "no memory");
+					radlog(L_ERR|L_CONS, "no memory");
 					exit(1);
 				}
 				pairadd(&p->proxy->vps, delaypair);

@@ -302,7 +302,7 @@ int rad_authenticate(REQUEST *request)
 	    (request->packet->code == PW_AUTHENTICATION_REQUEST)) {
 		tmp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER);
 		if (tmp == NULL) {
-			log(L_ERR|L_CONS, "no memory");
+			radlog(L_ERR|L_CONS, "no memory");
 			exit(1);
 		}
 
@@ -376,7 +376,7 @@ int rad_authenticate(REQUEST *request)
 	r = module_authorize(request, &request->config_items, &user_reply);
 	if (r != RLM_MODULE_OK) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
-			log(L_AUTH, "Invalid user: [%s%s%s] (%s)",
+			radlog(L_AUTH, "Invalid user: [%s%s%s] (%s)",
 			    auth_username(namepair),
 			    log_auth_pass ? "/" : "",
 			    log_auth_pass ? password : "",
@@ -446,7 +446,7 @@ int rad_authenticate(REQUEST *request)
 					   auth_item->length,
 					   clean_buffer, sizeof(clean_buffer));
 			}
-			log(L_AUTH,
+			radlog(L_AUTH,
 				"Login incorrect: [%s%s%s] (%s)%s",
 				auth_username(namepair),
 				log_auth_pass?"/":"",
@@ -488,7 +488,7 @@ int rad_authenticate(REQUEST *request)
 			}
 			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
 						     request, NULL, user_msg);
-		log(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
+		radlog(L_ERR, "Multiple logins: [%s] (%s) max. %d%s",
 				namepair->strvalue,
 				auth_name(buf, sizeof(buf), request, 1),
 				check_item->lvalue,
@@ -520,7 +520,7 @@ int rad_authenticate(REQUEST *request)
 			"You are calling outside your allowed timespan\r\n";
 			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
 						     request, NULL, user_msg);
-			log(L_ERR, "Outside allowed timespan: [%s]"
+			radlog(L_ERR, "Outside allowed timespan: [%s]"
 				   " (%s) time allowed: %s",
 					auth_username(namepair),
 					auth_name(buf, sizeof(buf), request, 1),
@@ -538,7 +538,7 @@ int rad_authenticate(REQUEST *request)
 				if ((reply_item = paircreate(
 				    PW_SESSION_TIMEOUT,
 				    PW_TYPE_INTEGER)) == NULL) {
-					log(L_ERR|L_CONS, "no memory");
+					radlog(L_ERR|L_CONS, "no memory");
 					exit(1);
 				}
 				reply_item->lvalue = r;
@@ -616,7 +616,7 @@ int rad_authenticate(REQUEST *request)
 			request->reply = build_reply(PW_AUTHENTICATION_REJECT,
 						     request, NULL, user_msg);
 			if (log_auth) {
-				log(L_AUTH,
+				radlog(L_AUTH,
 					"Login incorrect: [%s] (%s) "
 					"(external check failed)",
 					auth_username(namepair),
@@ -671,7 +671,7 @@ int rad_authenticate(REQUEST *request)
 				     user_reply, user_msg);
 
 	if (log_auth) {
-		log(L_AUTH,
+		radlog(L_AUTH,
 			"Login OK: [%s%s%s] (%s)",
 			auth_username(namepair),
 			log_auth_pass ? "/" : "",

@@ -225,7 +225,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 				*(int *)variables[i].data = 0;
 			} else {
 				*(int *)variables[i].data = 0;
-				log(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
+				radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
 				return -1;
 			}
 			DEBUG2("Config: %s.%s = %s",
@@ -264,7 +264,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			}
 			ipaddr = ip_getaddr(value);
 			if (ipaddr == 0) {
-				log(L_ERR, "Can't find IP address for host %s", value);
+				radlog(L_ERR, "Can't find IP address for host %s", value);
 				return -1;
 			}
 			DEBUG2("Config: %s.%s = %s IP address [%s]",
@@ -275,7 +275,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			break;
 			
 		default:
-			log(L_ERR, "type %d not supported yet", variables[i].type);
+			radlog(L_ERR, "type %d not supported yet", variables[i].type);
 			return -1;
 			break;
 		} /* switch over variable type */
@@ -306,7 +306,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 *	with 'internal' names;
 	 */
 	if ((name1 != NULL) && (name1[0] == '_')) {
-		log(L_ERR, "%s[%d]: Illegal configuration section name",
+		radlog(L_ERR, "%s[%d]: Illegal configuration section name",
 		    cf, *lineno);
 		return NULL;
 	}
@@ -359,7 +359,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (t1 == T_RCBRACE) {
 			if (name1 == NULL || buf2[0]) {
-				log(L_ERR, "%s[%d]: Unexpected end of section",
+				radlog(L_ERR, "%s[%d]: Unexpected end of section",
 					cf, *lineno);
 				cf_section_free(cs);
 				return NULL;
@@ -394,7 +394,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			t2 = T_OP_EQ;
 		} else if (buf1[0] == 0 || buf2[0] == 0 || buf3[0] == 0 ||
 			  (t2 < T_EQSTART || t2 > T_EQEND)) {
-			log(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
+			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 				cf, *lineno);
 			cf_section_free(cs);
 			return NULL;
@@ -405,7 +405,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *	with 'internal' names;
 		 */
 		if (buf1[0] == '_') {
-			log(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
+			radlog(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
 				cf, *lineno, buf1);
 			cf_section_free(cs);
 			return NULL;
@@ -449,7 +449,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				cpn = cf_pair_find(outercs, buf2);
 			}
 			if (!cpn) {
-				log(L_ERR, "%s[%d]: Unknown variable \"%s\"",
+				radlog(L_ERR, "%s[%d]: Unknown variable \"%s\"",
 				    cf, *lineno, buf2);
 				cf_section_free(cs);
 				return NULL;
@@ -472,7 +472,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 *	See if EOF was unexpected ..
 	 */
 	if (name1 != NULL) {
-		log(L_ERR, "%s[%d]: unexpected end of file", cf, *lineno);
+		radlog(L_ERR, "%s[%d]: unexpected end of file", cf, *lineno);
 		cf_section_free(cs);
 		return NULL;
 	}
@@ -490,7 +490,7 @@ CONF_SECTION *conf_read(const char *conffile)
 	CONF_SECTION	*cs;
 	
 	if ((fp = fopen(conffile, "r")) == NULL) {
-		log(L_ERR, "cannot open %s: %s",
+		radlog(L_ERR, "cannot open %s: %s",
 			conffile, strerror(errno));
 		return NULL;
 	}
@@ -561,14 +561,14 @@ static int generate_realms(const char *filename)
 	     ; cs ;
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!cs->name2) {
-			log(L_CONS|L_ERR, "%s[%d]: Missing realm name", filename, cs->item.lineno);
+			radlog(L_CONS|L_ERR, "%s[%d]: Missing realm name", filename, cs->item.lineno);
 			return -1;
 		}
 		/*
 		 * We've found a realm, allocate space for it
 		 */
 		if ((c = malloc(sizeof(REALM))) == NULL) {
-			log(L_CONS|L_ERR, "Out of memory");
+			radlog(L_CONS|L_ERR, "Out of memory");
 			return -1;
 		}
 		memset(c, 0, sizeof(REALM));
@@ -576,7 +576,7 @@ static int generate_realms(const char *filename)
 		 * An authhost must exist in the configuration
 		 */
 		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
-			log(L_CONS|L_ERR, 
+			radlog(L_CONS|L_ERR, 
 			    "%s[%d]: No authhost entry in realm", 
 			    filename, cs->item.lineno);
 			return -1;
@@ -601,13 +601,13 @@ static int generate_realms(const char *filename)
 		 * Double check length, just to be sure!
 		 */
 		if (strlen(authhost) >= sizeof(c->server)) {
-			log(L_ERR, "%s[%d]: Server name of length %d is greater that allowed: %d",
+			radlog(L_ERR, "%s[%d]: Server name of length %d is greater that allowed: %d",
 			    filename, cs->item.lineno,
 			    strlen(authhost), sizeof(c->server) - 1);
 			return -1;
 		}
 		if (strlen(cs->name2) >= sizeof(c->realm)) {
-			log(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
+			radlog(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
 			    filename, cs->item.lineno,
 			    strlen(cs->name2), sizeof(c->server) - 1);
 			return -1;
@@ -618,13 +618,13 @@ static int generate_realms(const char *filename)
 
 		s = cf_section_value_find(cs, "secret");
 		if (s == NULL) {
-			log(L_ERR, "%s[%d]: No shared secret supplied for realm",
+			radlog(L_ERR, "%s[%d]: No shared secret supplied for realm",
 			    filename, cs->item.lineno);
 			return -1;
 		}
 
 		if (strlen(s) >= sizeof(c->secret)) {
-		  log(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+		  radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
 		      filename, cs->item.lineno,
 		      strlen(s), sizeof(c->secret) - 1);
 		  return -1;
@@ -663,7 +663,7 @@ static int generate_clients(const char *filename)
 	     ; cs ;
 	     cs = cf_subsection_find_next(config, cs, "client")) {
 		if (!cs->name2) {
-			log(L_CONS|L_ERR, "%s[%d]: Missing client name", filename, cs->item.lineno);
+			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name", filename, cs->item.lineno);
 			return -1;
 		}
 		/*
@@ -674,13 +674,13 @@ static int generate_clients(const char *filename)
 		shortnm = cf_section_value_find(cs, "shortname");
 
 		if (strlen(secret) >= sizeof(c->secret)) {
-			log(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
 			    filename, cs->item.lineno,
 			    strlen(secret), sizeof(c->secret) - 1);
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(c->shortname)) {
-			log(L_ERR, "%s[%d]: NAS short name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: NAS short name of length %d is greater than the allowed maximum of %d.",
 			    filename, cs->item.lineno,
 			    strlen(shortnm), sizeof(c->shortname) - 1);
 			return -1;
@@ -689,7 +689,7 @@ static int generate_clients(const char *filename)
 		 * The size is fine.. Let's create the buffer
 		 */
 		if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
-			log(L_CONS|L_ERR, "Out of memory");
+			radlog(L_CONS|L_ERR, "Out of memory");
 			return -1;
 		}
 

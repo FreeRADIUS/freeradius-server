@@ -4,9 +4,6 @@
  *		machine RADIUS runs on.
  *
  * Version:	$Id$
- *
- * Patch:	22-Apr-1999	promera@cistron.nl
- *		Added support for raw, comma seperated output
  */
 
 static const char rcsid[] =

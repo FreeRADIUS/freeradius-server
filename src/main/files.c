@@ -88,7 +88,7 @@ static void auth_type_fixup(VALUE_PAIR *check)
 	 *	
 	 */
 	if ((vp = paircreate(PW_AUTHTYPE, PW_TYPE_INTEGER)) == NULL) {
-		log(L_CONS|L_ERR, "no memory");
+		radlog(L_CONS|L_ERR, "no memory");
 		exit(1);
 	}
 	vp->lvalue = n;
@@ -128,7 +128,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	 */
 	if ((fp = fopen(file, "r")) == NULL) {
 		if (!complain) return -1;
-		log(L_CONS|L_ERR, "Couldn't open %s for reading: %s",
+		radlog(L_CONS|L_ERR, "Couldn't open %s for reading: %s",
 		    file, strerror(errno));
 		return -1;
 	}
@@ -140,7 +140,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	while(fgets(buffer, sizeof(buffer), fp) != NULL) {
 		lineno++;
 		if (strchr(buffer, '\n') == NULL) {
-			log(L_ERR, "%s[%d]: line too long", file, lineno);
+			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			pairlist_free(&pl);
 			return -1;
 		}
@@ -152,7 +152,7 @@ parse_again:
 			 */
 			if (isspace(buffer[0]))  {
 				if (parsecode != T_EOL) {
-					log(L_ERR|L_CONS,
+					radlog(L_ERR|L_CONS,
 					    "%s[%d]: Unexpected trailing comma for entry %s",
 					    file, lineno, entry);
 					fclose(fp);
@@ -195,7 +195,7 @@ parse_again:
 				t = NULL;
 				if (pairlist_read(s, &t, 0) != 0) {
 					pairlist_free(&pl);
-					log(L_ERR|L_CONS,
+					radlog(L_ERR|L_CONS,
 					    "%s[%d]: Could not open included file %s: %s",
 					    file, lineno, s, strerror(errno));
 					fclose(fp);
@@ -220,13 +220,13 @@ parse_again:
 			parsecode = userparse(ptr, &check_tmp);
 			if (parsecode < 0) {
 				pairlist_free(&pl);
-				log(L_ERR|L_CONS,
+				radlog(L_ERR|L_CONS,
 				"%s[%d]: Parse error (check) for entry %s: %s",
 					file, lineno, entry, librad_errstr);
 				fclose(fp);
 				return -1;
 			} else if (parsecode == T_COMMA) {
-				log(L_ERR|L_CONS,
+				radlog(L_ERR|L_CONS,
 				    "%s[%d]: Unexpected trailing comma in check item list for entry %s",
 				    file, lineno, entry);
 				fclose(fp);
@@ -238,7 +238,7 @@ parse_again:
 		else {
 			if(*buffer == ' ' || *buffer == '\t') {
 				if (parsecode != T_COMMA) {
-					log(L_ERR|L_CONS,
+					radlog(L_ERR|L_CONS,
 				"%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
 						file, lineno, entry);
 					fclose(fp);
@@ -251,7 +251,7 @@ parse_again:
 				parsecode = userparse(buffer, &reply_tmp);
 				if (parsecode < 0) {
 					pairlist_free(&pl);
-					log(L_ERR|L_CONS,
+					radlog(L_ERR|L_CONS,
 				"%s[%d]: Parse error (reply) for entry %s: %s",
 					    file, lineno, entry, librad_errstr);
 					fclose(fp);
@@ -360,13 +360,13 @@ static int read_clients_file(const char *file)
 	clients = NULL;
 
 	if ((fp = fopen(file, "r")) == NULL) {
-		log(L_CONS|L_ERR, "cannot open %s", file);
+		radlog(L_CONS|L_ERR, "cannot open %s", file);
 		return -1;
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
 		if (strchr(buffer, '\n') == NULL) {
-			log(L_ERR, "%s[%d]: line too long", file, lineno);
+			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			return -1;
 		}
 		if (buffer[0] == '#' || buffer[0] == '\n')
@@ -376,7 +376,7 @@ static int read_clients_file(const char *file)
 
 		if (!getword(&p, hostnm, sizeof(hostnm)) ||
 		    !getword(&p, secret, sizeof(secret))) {
-			log(L_ERR, "%s[%d]: unexpected end of line",
+			radlog(L_ERR, "%s[%d]: unexpected end of line",
 			    file, lineno);
 			return -1;
 		}
@@ -387,19 +387,19 @@ static int read_clients_file(const char *file)
 		 *	Double-check lengths to be sure they're sane
 		 */
 		if (strlen(hostnm) >= sizeof(c->longname)) {
-			log(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
 			    strlen(hostnm), sizeof(c->longname) - 1);
 			return -1;
 		}
 		if (strlen(secret) >= sizeof(c->secret)) {
-			log(L_ERR, "%s[%d]: secret of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: secret of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
 			    strlen(secret), sizeof(c->secret) - 1);
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(c->shortname)) {
-			log(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
 			    strlen(shortnm), sizeof(c->shortname) - 1);
 			return -1;
@@ -409,14 +409,14 @@ static int read_clients_file(const char *file)
 		 *	It should be OK now, let's create the buffer.
 		 */
 		if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
-			log(L_CONS|L_ERR, "%s[%d]: out of memory",
+			radlog(L_CONS|L_ERR, "%s[%d]: out of memory",
 				file, lineno);
 			return -1;
 		}
 
 		c->ipaddr = ip_getaddr(hostnm);
 		if (c->ipaddr == 0) {
-			log(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 			    file, lineno, hostnm);
 			return -1;
 		}
@@ -509,14 +509,14 @@ static int read_realms_file(const char *file)
 #if 1 /* For now - realms file is not obligatory */
 		return 0;
 #else
-		log(L_CONS|L_ERR, "cannot open %s", file);
+		radlog(L_CONS|L_ERR, "cannot open %s", file);
 		return -1;
 #endif
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
 		if (strchr(buffer, '\n') == NULL) {
-			log(L_ERR, "%s[%d]: line too long", file, lineno);
+			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			return -1;
 		}
 		if (buffer[0] == '#' || buffer[0] == '\n')
@@ -524,12 +524,12 @@ static int read_realms_file(const char *file)
 		p = buffer;
 		if (!getword(&p, realm, sizeof(realm)) ||
 		    !getword(&p, hostnm, sizeof(hostnm))) {
-			log(L_ERR, "%s[%d]: syntax error", file, lineno);
+			radlog(L_ERR, "%s[%d]: syntax error", file, lineno);
 			continue;
 		}
 
 		if ((c = malloc(sizeof(REALM))) == NULL) {
-			log(L_CONS|L_ERR, "%s[%d]: out of memory",
+			radlog(L_CONS|L_ERR, "%s[%d]: out of memory",
 				file, lineno);
 			return -1;
 		}
@@ -551,7 +551,7 @@ static int read_realms_file(const char *file)
 		}
 
 		if (c->ipaddr == 0) {
-			log(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 			    file, lineno, hostnm);
 			return -1;
 		}
@@ -562,7 +562,7 @@ static int read_realms_file(const char *file)
 		 */
 		client = client_find(c->ipaddr);
 		if (client == NULL) {
-			log(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server %s for realm \"%s\"",
+			radlog(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server %s for realm \"%s\"",
 			    file, lineno, hostnm, realm);
 			return -1;
 		}
@@ -572,13 +572,13 @@ static int read_realms_file(const char *file)
 		 *	Double-check lengths to be sure they're sane
 		 */
 		if (strlen(hostnm) >= sizeof(c->server)) {
-			log(L_ERR, "%s[%d]: server name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: server name of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
 			    strlen(hostnm), sizeof(c->server) - 1);
 			return -1;
 		}
 		if (strlen(realm) > sizeof(c->realm)) {
-			log(L_ERR, "%s[%d]: realm of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: realm of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
 			    strlen(realm), sizeof(c->realm) - 1);
 			return -1;
@@ -648,36 +648,36 @@ int read_config_files()
 
         /* Initialize the dictionary */
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
-	        log(L_ERR|L_CONS, "Errors reading dictionary: %s",
+	        radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
 		    librad_errstr);
 		return -1;
 	}
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
 	if (read_clients_file(buffer) < 0) {
-	        log(L_ERR|L_CONS, "Errors reading clients");
+	        radlog(L_ERR|L_CONS, "Errors reading clients");
 		return -1;
 	}
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_REALMS);
 	if (read_realms_file(buffer) < 0) {
-	        log(L_ERR|L_CONS, "Errors reading realms");
+	        radlog(L_ERR|L_CONS, "Errors reading realms");
 		return -1;
 	}
 
 	if (read_radius_conf_file() < 0) {
-	        log(L_ERR|L_CONS, "Errors reading radiusd.conf");
+	        radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
 		return -1;
 	}
 
 	sprintf(buffer, "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
 	if (read_naslist_file(buffer) < 0) {
-	        log(L_ERR|L_CONS, "Errors reading naslist");
+	        radlog(L_ERR|L_CONS, "Errors reading naslist");
 		return -1;
 	}
 
 	if (setup_modules() < 0) {
-		log(L_ERR|L_CONS, "Errors setting up modules");
+		radlog(L_ERR|L_CONS, "Errors setting up modules");
 		return -1;
 	}
 

@@ -57,13 +57,13 @@ int read_naslist_file(char *file)
 	naslist = NULL;
 
 	if ((fp = fopen(file, "r")) == NULL) {
-		log(L_CONS|L_ERR, "cannot open %s", file);
+		radlog(L_CONS|L_ERR, "cannot open %s", file);
 		return -1;
 	}
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
 		if (strchr(buffer, '\n') == NULL) {
-			log(L_ERR, "%s[%d]: line too long", file, lineno);
+			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			return -1;
 		}
 		if (buffer[0] == '#' || buffer[0] == '\n')
@@ -72,7 +72,7 @@ int read_naslist_file(char *file)
 		p = buffer;
 		if (!getword(&p, hostnm, sizeof(hostnm)) ||
 		    !getword(&p, shortnm, sizeof(shortnm))) {
-			log(L_ERR, "%s[%d]: unexpected end of line", file, lineno);
+			radlog(L_ERR, "%s[%d]: unexpected end of line", file, lineno);
 			continue;
 		}
 		(void)getword(&p, nastype, sizeof(nastype));
@@ -81,19 +81,19 @@ int read_naslist_file(char *file)
 		 *	Double-check lengths to be sure they're sane
 		 */
 		if (strlen(hostnm) >= sizeof(c->longname)) {
-			log(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
 			    strlen(hostnm), sizeof(c->longname) - 1);
 			return -1;
 		}
 		if (strlen(shortnm) > sizeof(c->shortname)) {
-			log(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
 			    strlen(shortnm), sizeof(c->shortname) - 1);
 			return -1;
 		}
 		if (strlen(nastype) >= sizeof(c->nastype)) {
-			log(L_ERR, "%s[%d]: NAS type of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: NAS type of length %d is greater than the allowed maximum of %d.",
 			    file, lineno,
 			    strlen(nastype), sizeof(c->nastype) - 1);
 			return -1;
@@ -103,7 +103,7 @@ int read_naslist_file(char *file)
 		 *	It should be OK now, let's create the buffer.
 		 */
 		if ((c = malloc(sizeof(NAS))) == NULL) {
-			log(L_CONS|L_ERR, "%s[%d]: out of memory",
+			radlog(L_CONS|L_ERR, "%s[%d]: out of memory",
 				file, lineno);
 			return -1;
 		}

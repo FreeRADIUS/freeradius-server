@@ -44,8 +44,8 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun);
  *  fun           the function which is handling the request.
  */
 typedef struct THREAD_HANDLE {
-	struct	THREAD_HANDLE *prev;
-	struct	THREAD_HANDLE *next;
+	struct	THREAD_HANDLE	*prev;
+	struct	THREAD_HANDLE	*next;
 	pthread_t		pthread_id;
 	int			thread_num;
 	sem_t			semaphore;
@@ -302,7 +302,7 @@ static THREAD_HANDLE *spawn_thread(void)
 	 */
 	handle = (THREAD_HANDLE *) malloc(sizeof(THREAD_HANDLE));
 	if (handle == NULL) {
-		log(L_ERR|L_CONS, "no memory");
+		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 	memset(handle, 0, sizeof(THREAD_HANDLE));
@@ -321,7 +321,7 @@ static THREAD_HANDLE *spawn_thread(void)
 	 */
 	rcode = sem_init(&handle->semaphore, 0, SEMAPHORE_LOCKED);
 	if (rcode != 0) {
-		log(L_ERR|L_CONS, "Failed to allocate semaphore: %s",
+		radlog(L_ERR|L_CONS, "Failed to allocate semaphore: %s",
 		    strerror(errno));
 		exit(1);
 	}
@@ -349,7 +349,7 @@ static THREAD_HANDLE *spawn_thread(void)
 	rcode = pthread_create(&handle->pthread_id, &attr,
 			       request_handler_thread, handle);
 	if (rcode != 0) {
-		log(L_ERR|L_CONS, "Thread create failed: %s", strerror(errno));
+		radlog(L_ERR|L_CONS, "Thread create failed: %s", strerror(errno));
 		exit(1);
 	}
 	pthread_attr_destroy(&attr);
@@ -465,7 +465,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (found == NULL) {
 		found = spawn_thread();
 		if (found == NULL) {
-			log(L_INFO, "The maximum number of threads (%d) are active, cannot spawn new thread to handle request", thread_pool.max_threads);
+			radlog(L_INFO, "The maximum number of threads (%d) are active, cannot spawn new thread to handle request", thread_pool.max_threads);
 			return -1;
 		}
 	}

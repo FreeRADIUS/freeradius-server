@@ -510,7 +510,7 @@ static void update_username(REQUEST *request, char *newname)
 	if (request->username->attribute != PW_STRIPPED_USER_NAME) {
 		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
 		if (!vp) {
-			log(L_ERR|L_CONS, "no memory");
+			radlog(L_ERR|L_CONS, "no memory");
 			exit(1);
 		}
 		DEBUG2("  authorize: Creating Stripped-User-Name of %s", newname);
@@ -686,7 +686,7 @@ void *rlm_malloc(size_t size)
 	void *ptr = malloc(size);
 	
 	if (ptr == NULL) {
-                log(L_ERR|L_CONS, "no memory");
+                radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 

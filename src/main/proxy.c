@@ -92,7 +92,7 @@ int proxy_receive(REQUEST *request)
 		realmpair=replicatepair;
 		replicating=1;
 	} else {
-		log(L_PROXY, "Proxy reply to packet with no Realm");
+		radlog(L_PROXY, "Proxy reply to packet with no Realm");
 		return -1;
 	}
 
@@ -140,7 +140,7 @@ static void proxy_addinfo(REQUEST *request)
 
 	proxy_pair = paircreate(PW_PROXY_STATE, PW_TYPE_STRING);
 	if  (proxy_pair == NULL) {
-		log(L_ERR|L_CONS, "no memory");
+		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 	sprintf((char *)proxy_pair->strvalue, "%d", request->packet->id);
@@ -237,7 +237,7 @@ int proxy_send(REQUEST *request)
 	if (strippednamepair) {
 		vp = paircreate(PW_USER_NAME, PW_TYPE_STRING);
 		if (!vp) {
-			log(L_ERR|L_CONS, "no memory");
+			radlog(L_ERR|L_CONS, "no memory");
 			exit(1);
 		}
 		memcpy(vp->strvalue, strippednamepair->strvalue,
@@ -267,7 +267,7 @@ int proxy_send(REQUEST *request)
 	 *	compare _both_ ID and vector. Right ?
 	 */
 	if ((request->proxy = rad_alloc(TRUE)) == NULL) {
-		log(L_ERR|L_CONS, "no memory");
+		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
 
@@ -308,7 +308,7 @@ int proxy_send(REQUEST *request)
 	    pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
 		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
 		if (!vp) {
-			log(L_ERR|L_CONS, "no memory");
+			radlog(L_ERR|L_CONS, "no memory");
 			exit(1);
 		}
 		vp->length = AUTH_VECTOR_LEN;

@@ -112,7 +112,7 @@ int radutmp_zap(uint32_t nasaddr, int port, char *user, time_t t)
 			 *	Match. Zap it.
 			 */
 			if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-				log(L_ERR, "Accounting: radutmp_zap: "
+				radlog(L_ERR, "Accounting: radutmp_zap: "
 					   "negative lseek!\n");
 				lseek(fd, (off_t)0, SEEK_SET);
 			}
@@ -162,7 +162,7 @@ int radutmp_add(REQUEST *request)
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) == NULL) {
-		log(L_ERR, "Accounting: no Accounting-Status-Type record.");
+		radlog(L_ERR, "Accounting: no Accounting-Status-Type record.");
 		return -1;
 	}
 	status = vp->lvalue;
@@ -193,13 +193,13 @@ int radutmp_add(REQUEST *request)
 			check2 = 1;
 		if (check1 == 0 || check2 == 0) {
 #if 0 /* Cisco sometimes sends START records without username. */
-			log(L_ERR, "Accounting: no username in record");
+			radlog(L_ERR, "Accounting: no username in record");
 			return -1;
 #else
 			break;
 #endif
 		}
-		log(L_INFO, "Accounting: converting reboot records.");
+		radlog(L_INFO, "Accounting: converting reboot records.");
 		if (status == PW_STATUS_STOP)
 			status = PW_STATUS_ACCOUNTING_OFF;
 		if (status == PW_STATUS_START)
@@ -282,13 +282,13 @@ int radutmp_add(REQUEST *request)
 	 *	See if this was a portmaster reboot.
 	 */
 	if (status == PW_STATUS_ACCOUNTING_ON && nas_address) {
-		log(L_INFO, "NAS %s restarted (Accounting-On packet seen)",
+		radlog(L_INFO, "NAS %s restarted (Accounting-On packet seen)",
 			nas_name(nas_address));
 		radutmp_zap(nas_address, -1, NULL, ut.time);
 		return 0;
 	}
 	if (status == PW_STATUS_ACCOUNTING_OFF && nas_address) {
-		log(L_INFO, "NAS %s rebooted (Accounting-Off packet seen)",
+		radlog(L_INFO, "NAS %s rebooted (Accounting-Off packet seen)",
 			nas_name(nas_address));
 		radutmp_zap(nas_address, -1, NULL, ut.time);
 		return 0;
@@ -300,7 +300,7 @@ int radutmp_add(REQUEST *request)
 	if (status != PW_STATUS_START &&
 	    status != PW_STATUS_STOP &&
 	    status != PW_STATUS_ALIVE) {
-		log(L_ERR, "NAS %s port %d unknown packet type %d)",
+		radlog(L_ERR, "NAS %s port %d unknown packet type %d)",
 			nas_name(nas_address), ut.nas_port, status);
 		return 0;
 	}
@@ -353,7 +353,7 @@ int radutmp_add(REQUEST *request)
 				 *	send _only_ logout records).
 				 */
 				if (u.type == P_LOGIN)
-					log(L_ERR,
+					radlog(L_ERR,
 		"Accounting: logout: entry for NAS %s port %d has wrong ID",
 					nas_name(nas_address), u.nas_port);
 				r = -1;
@@ -365,13 +365,13 @@ int radutmp_add(REQUEST *request)
 			     sizeof(u.session_id)) == 0  &&
 			    u.time >= ut.time) {
 				if (u.type == P_LOGIN) {
-					log(L_INFO,
+					radlog(L_INFO,
 		"Accounting: login: entry for NAS %s port %d duplicate",
 					nas_name(nas_address), u.nas_port);
 					r = -1;
 					break;
 				}
-				log(L_ERR,
+				radlog(L_ERR,
 		"Accounting: login: entry for NAS %s port %d wrong order",
 				nas_name(nas_address), u.nas_port);
 				r = -1;
@@ -396,7 +396,7 @@ int radutmp_add(REQUEST *request)
 			}
 
 			if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-				log(L_ERR, "Accounting: negative lseek!\n");
+				radlog(L_ERR, "Accounting: negative lseek!\n");
 				lseek(fd, (off_t)0, SEEK_SET);
 				off = 0;
 			} else
@@ -426,7 +426,7 @@ int radutmp_add(REQUEST *request)
 				u.delay = ut.delay;
 				write(fd, &u, sizeof(u));
 			} else if (r == 0) {
-				log(L_ERR,
+				radlog(L_ERR,
 		"Accounting: logout: login entry for NAS %s port %d not found",
 				nas_name(nas_address), ut.nas_port);
 				r = -1;
@@ -434,7 +434,7 @@ int radutmp_add(REQUEST *request)
 		}
 		close(fd);
 	} else {
-		log(L_ERR, "Accounting: %s: %s", RADUTMP, strerror(errno));
+		radlog(L_ERR, "Accounting: %s: %s", RADUTMP, strerror(errno));
 		ret = -1;
 	}
 
@@ -469,7 +469,7 @@ static int rad_check_ts(struct radutmp *ut)
 	 *	Find NAS type.
 	 */
 	if ((nas = nas_find(ut->nas_address)) == NULL) {
-		log(L_ERR, "Accounting: unknown NAS");
+		radlog(L_ERR, "Accounting: unknown NAS");
 		return -1;
 	}
 
@@ -478,7 +478,7 @@ static int rad_check_ts(struct radutmp *ut)
 	 */
 	handler = signal(SIGCHLD, SIG_DFL);
 	if ((pid = fork()) < 0) {
-		log(L_ERR, "Accounting: fork: %s", strerror(errno));
+		radlog(L_ERR, "Accounting: fork: %s", strerror(errno));
 		signal(SIGCHLD, handler);
 		return -1;
 	}
@@ -500,11 +500,11 @@ static int rad_check_ts(struct radutmp *ut)
 			kill(pid, SIGTERM);
 			sleep(1);
 			kill(pid, SIGKILL);
-			log(L_ERR, "Check-TS: timeout waiting for checkrad");
+			radlog(L_ERR, "Check-TS: timeout waiting for checkrad");
 			return 2;
 		}
 		if (e < 0) {
-			log(L_ERR, "Check-TS: unknown error in waitpid()");
+			radlog(L_ERR, "Check-TS: unknown error in waitpid()");
 			return 2;
 		}
 		return WEXITSTATUS(st);
@@ -530,7 +530,7 @@ static int rad_check_ts(struct radutmp *ut)
 	execl(CHECKRAD, "checkrad",nas->nastype, address, port,
 		ut->login, session_id, NULL);
 #endif
-	log(L_ERR, "Check-TS: exec %s: %s", CHECKRAD, strerror(errno));
+	radlog(L_ERR, "Check-TS: exec %s: %s", CHECKRAD, strerror(errno));
 
 	/*
 	 *	Exit - 2 means "some error occured".

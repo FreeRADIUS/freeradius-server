@@ -155,7 +155,7 @@ int log_debug(const char *msg, ...)
 	return r;
 }
 
-int log(int lvl, const char *msg, ...)
+int radlog(int lvl, const char *msg, ...)
 {
 	va_list ap;
 	int r;

@@ -220,11 +220,11 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 	 */	
 	if (exec_wait) {
 		if (pipe(pd) != 0) {
-			log(L_ERR|L_CONS, "Couldn't open pipe: %m");
+			radlog(L_ERR|L_CONS, "Couldn't open pipe: %m");
 			pd[0] = pd[1] = 0;
 		}
 		if ((oldsig = signal(SIGCHLD, SIG_DFL)) == SIG_ERR) {
-			log(L_ERR|L_CONS, "Can't reset SIGCHLD: %m");
+			radlog(L_ERR|L_CONS, "Can't reset SIGCHLD: %m");
 			oldsig = NULL;
 		}
 	}
@@ -244,7 +244,7 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 		/*
 		 *	XXX FIXME: This is debugging info.
 		 */
-		log(L_INFO, "Exec-Program: %s", buf);
+		radlog(L_INFO, "Exec-Program: %s", buf);
 
 		/*
 		 *	Build vector list and execute.
@@ -256,15 +256,15 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 		} while(p != NULL);
 		argv[++argc] = p;
 		if (argc == 0) {
-			log(L_ERR, "Exec-Program: empty command line.");
+			radlog(L_ERR, "Exec-Program: empty command line.");
 			exit(1);
 		}
 
 		if (exec_wait) {
 			if (close(pd[0]) != 0)
-				log(L_ERR|L_CONS, "Can't close pipe: %m");
+				radlog(L_ERR|L_CONS, "Can't close pipe: %m");
 			if (dup2(pd[1], 1) != 1)
-				log(L_ERR|L_CONS, "Can't dup stdout: %m");
+				radlog(L_ERR|L_CONS, "Can't dup stdout: %m");
 		}
 
 		/*
@@ -305,7 +305,7 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 
 		execve(argv[0], argv, envp);
 
-		log(L_ERR, "Exec-Program: %s: %m", argv[0]);
+		radlog(L_ERR, "Exec-Program: %s: %m", argv[0]);
 		exit(1);
 	}
 
@@ -313,7 +313,7 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 	 *	Parent 
 	 */
 	if (pid < 0) {
-		log(L_ERR|L_CONS, "Couldn't fork: %m");
+		radlog(L_ERR|L_CONS, "Couldn't fork: %m");
 		return -1;
 	}
 	if (!exec_wait)
@@ -327,7 +327,7 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 	done = 0;
 	if (pd[0] || pd[1]) {
 		if (close(pd[1]) != 0)
-			log(L_ERR|L_CONS, "Can't close pipe: %m");
+			radlog(L_ERR|L_CONS, "Can't close pipe: %m");
 
 		/*
 		 *	(hs) Read until we doesn't get any more
@@ -363,7 +363,7 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 		vp = NULL;
 
 		if (n != 0) {
-			log(L_DBG, "Exec-Program-Wait: plaintext: %s", answer);
+			radlog(L_DBG, "Exec-Program-Wait: plaintext: %s", answer);
 			if (user_msg) {
 				strncpy(message, answer, sizeof(message));
 				message[sizeof(message) - 1] = 0;
@@ -391,9 +391,9 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
  			if (answer[strlen(answer) - 1] == ',')
  				answer[strlen(answer) - 1] = '\0';
 
-			log(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
+			radlog(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
 			if (userparse(answer, &vp) != 0)
-				log(L_ERR,
+				radlog(L_ERR,
 		"Exec-Program-Wait: %s: unparsable reply", cmd);
 			else {
 				pairmove(reply, &vp);
@@ -410,16 +410,16 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 	 *	all signals that will arise.
 	 */
 	if (oldsig && (signal(SIGCHLD, oldsig) == SIG_ERR))
-		log(L_ERR|L_CONS,
+		radlog(L_ERR|L_CONS,
 			"Can't set SIGCHLD to the cleanup handler: %m");
 	sig_cleanup(SIGCHLD);
 
 	if (WIFEXITED(status)) {
 		status = WEXITSTATUS(status);
-		log(L_INFO, "Exec-Program: returned: %d", status);
+		radlog(L_INFO, "Exec-Program: returned: %d", status);
 		return status;
 	}
-	log(L_ERR|L_CONS, "Exec-Program: Abnormal child exit (killed or coredump)");
+	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit (killed or coredump)");
 
 	return 1;
 }
