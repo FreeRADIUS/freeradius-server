@@ -92,6 +92,7 @@ struct main_config_t mainconfig;
 struct relay_request {
 	int		state;				/* REQ_* state */
 	time_t		retrans;			/* when to retrans */
+	unsigned int	retrans_num;			/* Number of retransmissions */
 	time_t		timestamp;			/* orig recv time */
 	uint32_t	client_ip;			/* Client-IP-Addr */
 	RADIUS_PACKET	*req;				/* Radius request */
@@ -246,7 +247,7 @@ redo:
 		 * being flushed properly. Things should be ok next time
 		 * around.
 		 */
-		if (strlen(buf)) {
+		if (!strlen(buf)) {
 			fprintf(stdout, "read_one: ZERO BYTE\n");
                        fseek(fp, fpos + 1, SEEK_SET);
                        break;
@@ -318,6 +319,7 @@ redo:
 				r_req->req->data = NULL;
 			}
 			r_req->retrans = 0;
+			r_req->retrans_num = 0;
 			r_req->timestamp = 0;
 			r_req->client_ip = 0;
 			goto redo;
@@ -407,6 +409,7 @@ int do_recv(struct relay_misc *r_args)
 			}
 			r->state = 0;
 			r->retrans = 0;
+			r->retrans_num = 0;
 			r->timestamp = 0;
 			r->client_ip = 0;
 			break;
@@ -443,6 +446,7 @@ int do_send(struct relay_request *r, char *secret)
 		}
 		r->state = 0;
 		r->retrans = 0;
+		r->retrans_num = 0;
 		r->timestamp = 0;
 		r->client_ip = 0;
 		return 0;
@@ -470,8 +474,12 @@ int do_send(struct relay_request *r, char *secret)
 			free(r->req->data);
 			r->req->data = NULL;
 		}
+		r->retrans_num++;
 	}
-	r->retrans = now + 3;
+	if (r->retrans_num > 20)
+		r->retrans = now + 70;
+	else
+		r->retrans = now + 3 + (3 * r->retrans_num);
 
 	/*
 	 *	Find the Acct-Delay-Time attribute. If it's
@@ -556,6 +564,7 @@ void loop(struct relay_misc *r_args)
 		}
 		slots[i].state = 0;
 		slots[i].retrans = 0;
+		slots[i].retrans_num = 0;
 		slots[i].timestamp = 0;
 		slots[i].client_ip = 0;
 		slots[i].req->sockfd = r_args->sockfd;
