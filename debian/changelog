@@ -1,10 +1,10 @@
-freeradius (0.9.3-cvs20040118-0) unstable; urgency=low
+freeradius (0.9.3-cvs20040225-0) unstable; urgency=low
 
   * Current CVS version
   * Seperated rlm_sql_iodbc into it's own package, freeradius-iodbc
   * Imported downstream debian/ changes
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 18 Jan 2004 18:40:42 +1100
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 25 Feb 2004 00:00:03 +1100
 
 freeradius (0.9.2-4) unstable; urgency=high
 
