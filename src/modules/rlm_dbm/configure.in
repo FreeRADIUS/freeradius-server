@@ -28,12 +28,8 @@ if test x$with_[]modname != xno; then
 	fi
 
 	targetname=modname
-	dbm_utils="rlm_dbm_parser rlm_dbm_cat"
-	dbm_install="rlm_dbm_install"
 else
 	targetname=
-	dbm_utils=
-	dbm_install=
 	echo \*\*\* module modname is disabled.
 fi
 
@@ -45,6 +41,11 @@ if test x"$fail" != x""; then
 		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
 		targetname=""
 	fi
+fi
+
+if test "x$targetname" != "x"; then
+	dbm_utils="rlm_dbm_parser rlm_dbm_cat"
+	dbm_install="rlm_dbm_install"
 fi
 
 dbm_ldflags=$SMART_LIBS

@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.3 
+# From configure.in Revision: 1.4 
 
 
 if test x$with_rlm_dbm != xno; then
@@ -1274,12 +1274,8 @@ fi
 	fi
 
 	targetname=rlm_dbm
-	dbm_utils="rlm_dbm_parser rlm_dbm_cat"
-	dbm_install="rlm_dbm_install"
 else
 	targetname=
-	dbm_utils=
-	dbm_install=
 	echo \*\*\* module rlm_dbm is disabled.
 fi
 
@@ -1291,6 +1287,11 @@ if test x"$fail" != x""; then
 		echo "configure: warning: FAILURE: rlm_dbm requires: $fail." 1>&2; 
 		targetname=""
 	fi
+fi
+
+if test "x$targetname" != "x"; then
+	dbm_utils="rlm_dbm_parser rlm_dbm_cat"
+	dbm_install="rlm_dbm_install"
 fi
 
 dbm_ldflags=$SMART_LIBS
