@@ -4,7 +4,12 @@ FreeRADIUS 1.0.2 ; $Date$, urgency=medium
 	  detail file.
 	* Only initialize the random pool once.
 	* In rlm_sql, don't escape characters twice.
-	
+	* Fix MD4 calculation on big-endian machines.
+	* In rlm_ldap, only claim Auth-Type if a plain text password is present.
+	* Treat Quintium VSAs like Cisco VSAs
+	* Locking fixes in threading code
+	* rlm_krb5 includes /usr/include/et for Fedora Core
+
 FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03 , urgency=high
 	Denial-of-Service Security Fix
 	* Fix two remote crashes and a memory leak in RADIUS packet
