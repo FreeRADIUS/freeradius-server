@@ -37,6 +37,7 @@ unsigned int inlen;                     /* length of input block */
  *	Add htole32 define from http://www.squid-cache.org/mail-archive/squid-dev/200307/0130.html
  *		(The bswap32 definition in the patch.)
  *		This is only used on BIG_ENDIAN systems, so we can always swap the bits.
+ *	change BYTE_ORDER == LITTLE_ENDIAN (OpenBSD-defined) to WORDS_BIGENDIAN (autoconf-defined)
  */
 
 /*
@@ -61,7 +62,8 @@ unsigned int inlen;                     /* length of input block */
 /*#include <string.h>*/
 /*#include <md4.h>*/
 
-#if BYTE_ORDER == LITTLE_ENDIAN
+/*#if BYTE_ORDER == LITTLE_ENDIAN*/
+#ifndef WORDS_BIGENDIAN
 
 #define htole32_4(buf)		/* Nothing */
 #define htole32_14(buf)		/* Nothing */
