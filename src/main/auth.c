@@ -902,12 +902,6 @@ autz_redo:
 
 
 /*
- *	These definitions are local, and shouldn't be used by anyone else.
- */
-#define PW_ENCODED  0
-#define PW_DECODED  1
-
-/*
  * Find the password pair, decode pass if
  * needed, and return the value pair.  If
  * not found, return NULL
@@ -941,32 +935,6 @@ VALUE_PAIR *rad_getpass(REQUEST *request) {
 		 */
 		request->password = auth_item;
 	}
-
-
-	/*
-	 *	If we proxied already, it's been decoded
-	 *	Or if the decoded flag is set...just return
-	 */
-	if ((request->proxy != NULL) ||
-			(auth_item->lvalue == PW_DECODED)) {
-		return auth_item;
-	}
-
-	/* 
-	 *	If we get here, we have to decode the password.
-	 */
-	rad_pwdecode((char *)auth_item->strvalue,
-			auth_item->length, request->secret,
-			(char *)request->packet->vector);
-
-	/* 
-	 *	Set lvalue to PW_DECODED so we know not to
-	 *	decode next time we get here
-	 */
-	auth_item->lvalue = PW_DECODED;
-
-	/* ignore more than one trailing '\0' */
-	auth_item->length = strlen((char *)auth_item->strvalue);
 
 	return auth_item;
 }

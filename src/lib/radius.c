@@ -278,36 +278,45 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 			  case PW_TYPE_STRING:
 			  case PW_TYPE_OCTETS:
 				  /*
-				   *  Hmm... this is based on names
-				   *  right now.  We really shouldn't do
-				   *  this.  It should be based on the value
-				   *  of the attribute (VSA or not).
+				   *  FIXME: HACK for non-updated dictionaries.
+				   *  REMOVE in a future release.
 				   */
 				  if ((strcmp(reply->name, "Ascend-Send-Secret") == 0) ||
 				      (strcmp(reply->name, "Ascend-Receive-Secret") == 0)) {
+					  reply->flags.encrypt = FLAG_ENCRYPT_ASCEND_SECRET;
+				  }
+				  if (reply->attribute == PW_USER_PASSWORD) {
+					  reply->flags.encrypt = FLAG_ENCRYPT_USER_PASSWORD;
+				  }
+
+				  /*
+				   *  Encrypt the various password styles
+				   */
+				  switch (reply->flags.encrypt) {
+				  default:
+					  break;
+
+				  case FLAG_ENCRYPT_USER_PASSWORD:
+				    rad_pwencode((char *)reply->strvalue,
+						 &(reply->length),
+						 (char *)secret,
+						 (char *)packet->vector);
+				    break;
+
+				  case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+					  rad_tunnel_pwencode(reply->strvalue,
+							      &(reply->length),
+							      secret,
+							      packet->vector);
+					  break;
+
+
+				  case FLAG_ENCRYPT_ASCEND_SECRET:
 					  make_secret(digest, packet->vector,
 						      secret, reply->strvalue);
 					  memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
 					  reply->length = AUTH_VECTOR_LEN;
-				  }
-
-				  /* 
-				   *    Encrypt Tunnel-Password
-				   *    here -- cparker@starnetusa.net
-				   */
-
-				  /*
-				   *	Encrypt with Tunnel-Password style if needed.
-				   */
-				  if (reply->flags.encrypt == 2) {
-
-				    rad_tunnel_pwencode(reply->strvalue,
-							&(reply->length),
-							secret,
-							packet->vector);
-				    
-				  }
-			  
+				  } /* switch over encryption flags */
 
 				  len = reply->length;
 
@@ -1150,21 +1159,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_ABINARY:
 		case PW_TYPE_STRING:
-			/*
-			 *	Hmm... this is based on names right
-			 *	now.  We really shouldn't do this.
-			 *	It should be based on the value of
-			 *	the attribute (VSA or not).
-			 */
-			if ((strcmp(pair->name, "Ascend-Send-Secret") == 0) ||
-			    (strcmp(pair->name, "Ascend-Receive-Secret") == 0)) {
-				uint8_t my_digest[AUTH_VECTOR_LEN];
-				make_secret( my_digest, original->vector,
-					     secret, ptr);
-				memcpy(pair->strvalue, my_digest, AUTH_VECTOR_LEN );
-				pair->strvalue[AUTH_VECTOR_LEN] = '\0';
-				pair->length = strlen(pair->strvalue);
-			} else if (pair->flags.has_tag &&
+			if (pair->flags.has_tag &&
 				   pair->type == PW_TYPE_STRING) {
 				if(TAG_VALID(*ptr)) {
 					pair->flags.tag = *ptr++;
@@ -1192,17 +1187,69 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			        pair->flags.tag = 0;
 			}
 
-			/* FIXME: Decrypt attributes like Tunnel-Password here -cparker */
-			if(pair->flags.encrypt == 2) {
-
-			        rad_tunnel_pwdecode((char *)pair->strvalue,
-						     &pair->length, 
-						     secret,
-						     (char *)original->vector);
-
+			/*
+			 *  FIXME: HACK for non-updated dictionaries.
+			 *  REMOVE in a future release.
+			 */
+			if ((strcmp(pair->name, "Ascend-Send-Secret") == 0) ||
+			    (strcmp(pair->name, "Ascend-Receive-Secret") == 0)) {
+				pair->flags.encrypt = FLAG_ENCRYPT_ASCEND_SECRET;
+			}
+			if (pair->attribute == PW_USER_PASSWORD) {
+				pair->flags.encrypt = FLAG_ENCRYPT_USER_PASSWORD;
 			}
 
-			break;
+			/*
+			 *	Decrypt passwords here.
+			 */
+			switch (pair->flags.encrypt) {
+			default:
+				break;
+
+				/*
+				 *  User-Password
+				 */
+			case FLAG_ENCRYPT_USER_PASSWORD:
+				rad_pwdecode((char *)pair->strvalue,
+					     pair->length, secret,
+					     (char *)packet->vector);
+				pair->lvalue = 1; /* see main/auth.c */
+
+				/*
+				 *  FIXME: Allow NUL's in the password,
+				 *  too??
+				 */
+				pair->length = strlen(pair->strvalue);
+				break;
+
+				/*
+				 *  Tunnel-Password
+				 */
+			case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+			        rad_tunnel_pwdecode((char *)pair->strvalue,
+						    &pair->length, 
+						    secret,
+						    (char *)original->vector);
+				break;
+
+				/*
+				 *  Ascend-Send-Secret
+				 *  Ascend-Receive-Secret
+				 */
+			case FLAG_ENCRYPT_ASCEND_SECRET:
+				{
+					uint8_t my_digest[AUTH_VECTOR_LEN];
+					make_secret(my_digest,
+						    original->vector,
+						    secret, ptr);
+					memcpy(pair->strvalue, my_digest,
+					       AUTH_VECTOR_LEN );
+					pair->strvalue[AUTH_VECTOR_LEN] = '\0';
+					pair->length = strlen(pair->strvalue);
+				}
+				break;
+			} /* switch over encryption flags */
+			break;	/* from octets/string/abinary */
 			
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:

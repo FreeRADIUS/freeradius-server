@@ -28,6 +28,7 @@
 #define PW_STATUS_CLIENT		13
 
 #define	PW_USER_NAME			1
+#define	PW_USER_PASSWORD		2
 #define	PW_PASSWORD			2
 #define	PW_CHAP_PASSWORD		3
 #define	PW_NAS_IP_ADDRESS		4

@@ -88,10 +88,18 @@ typedef struct attr_flags {
 	char			addport;	/* Add port to IP address */
 	char			has_tag;	/* attribute allows tags */
 	signed char		tag;
-	char			encrypt;	/* encryption method */
+	uint8_t		        encrypt;	/* encryption method */
 	signed char		len_disp;	/* length displacement */
 	char			do_xlat;
 } ATTR_FLAGS;
+
+/*
+ *  Values of the encryption flags.
+ */
+#define FLAG_ENCRYPT_NONE            (0)
+#define FLAG_ENCRYPT_USER_PASSWORD   (1)
+#define FLAG_ENCRYPT_TUNNEL_PASSWORD (2)
+#define FLAG_ENCRYPT_ASCEND_SECRET   (3)
 
 typedef struct dict_attr {
 	char			name[40];

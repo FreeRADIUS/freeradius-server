@@ -278,22 +278,12 @@ int proxy_send(REQUEST *request)
 	proxy_addinfo(request);
 
 	/*
-	 *	Encrypt the User-Password with the proxy server's secret.
-	 */
-	if ((vp = pairfind(vps, PW_PASSWORD)) != NULL) {
-
-		rad_pwencode((char *)vp->strvalue,
-				&(vp->length),
-				(char *)realm->secret,
-				(char *)request->proxy->vector);
- 
-	/*
 	 *	If there is no PW_CHAP_CHALLENGE attribute but there
 	 *	is a PW_CHAP_PASSWORD we need to add it since we can't
 	 *	use the request authenticator anymore - we changed it.
 	 */
-	} else if (pairfind(vps, PW_CHAP_PASSWORD) &&
-		   pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
+	if (pairfind(vps, PW_CHAP_PASSWORD) &&
+	    pairfind(vps, PW_CHAP_CHALLENGE) == NULL) {
 		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
 		if (!vp) {
 			radlog(L_ERR|L_CONS, "no memory");
