@@ -910,12 +910,14 @@ modules {
 		attrsfile = ${confdir}/attrs
 	}
 
-	#  This module takes an attribute (count-attribute), which MUST
-	#  be an 'integer' or 'time' attribute.  It also takes a key,
-	#  and creates a counter for each unique key.  The count is
-	#  incremented when accounting packets are received by the
-	#  server.  The value of the increment is the value of the
-	#  count-attribute.
+	#  This module takes an attribute (count-attribute).
+	#  It also takes a key, and creates a counter for each unique
+	#  key.  The count is incremented when accounting packets are
+	#  received by the server.  The value of the increment depends
+	#  on the attribute type.
+	#  If the attribute is Acct-Session-Time or an integer we add the
+	#  value of the attribute. If it is anything else we increase the
+	#  counter by one.
 	#
 	#  The 'reset' parameter defines when the counters are all reset to
 	#  zero.  It can be hourly, daily, weekly, monthly or never.
@@ -926,25 +928,35 @@ modules {
 	#  reset = 10h (reset every 10 hours)
 	#  reset = 12  (reset every 12 days)
 	#
-	#  The counter-name is the name of the attribute in the 'users'
-	#  file used to access that counter.  e.g.
+	#
+	#  The check-name attribute defines an attribute which will be registered
+	#  by the counter module and can be used to set the maximum allowed value
+	#  for the counter after which the user is rejected.
+	#  Something like:
+	#
+	#  DEFAULT Max-Daily-Session := 36000
+	#          Fall-Through = 1
+	#
+	#  You should add the counter module in the instantiate section so that it
+	#  registers check-name before the files module reads the users file.
+	#
+	#  If check-name is set and the user is to be rejected then we send back a
+	#  Reply-Message and we log a Failure-Message in the radius.log
+	#
+	#  The counter-name can also be used like below:
 	#
 	#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
 	#      Reply-Message = "You've used up more than one hour today"
-	#
-	# You can also use the check-name attribute (Max-Daily-Session etc).
-	# You can use that attribute to make per user/group counter setups:
-	#
-	# DEFAULT Ldap-Group == "faculty", Max-Daily-Session := 21600
-	#
-	# DEFAULT Ldap-Group == "students", Max-Daily-Session := 10800
-	#
 	#
 	# The allowed-servicetype attribute can be used to only take
 	# into account specific sessions. For example if a user first
 	# logs in through a login menu and then selects ppp there will
 	# be two sessions. One for Login-User and one for Framed-User
 	# service type. We only need to take into account the second one.
+	#
+	# The module should be added in the instantiate,authorize and accounting sections.
+	# Make sure that in the authorize section it comes after any module which
+	# sets check-name
 	#
 	counter {
 		filename = ${raddbdir}/db.counter
