@@ -51,6 +51,8 @@ VALUE		Acct-Authentic		Local-VPN		11
 #	normal vendor-specific format would work just as well.
 #
 #
+VENDOR		USR		429
+BEGIN-VENDOR	USR
 
 ATTRIB_NMC	USR-Last-Number-Dialed-Out		0x0066	string
 ATTRIB_NMC	USR-Last-Number-Dialed-In-DNIS		0x00E8	string
@@ -1394,4 +1396,4 @@ VALUE	USR-Auth-Mode				Auth-Netware		6
 VALUE	USR-Auth-Mode				Auth-Skey		7
 VALUE	USR-Auth-Mode				Auth-EAP-Proxy		8
 VALUE	USR-Auth-Mode				Auth-UNIX-Crypt		9
-
+END-VENDOR USR
