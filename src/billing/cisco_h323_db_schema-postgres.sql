@@ -1,13 +1,12 @@
 /*
- * $Id$
- *
  * --- Peter Nixon [ codemonkey@peternixon.net ]
  * This is a custom SQL schema for doing H323 VoIP accounting with FreeRadius and
- * Cisco gateways (I am using 5300 and 5350 series). 
+ * Cisco gateways (I am using 5300 and 5350 series).
  * It will scale ALOT better than the default radius schema which is designed for
  * simple dialup installations of FreeRadius.
- * You must copy the custom SQL queries from pgsql-voip.conf to raddb/postgresql.conf
- * for it to work as intended.
+ *
+ * For this schema to work properly you MUST replace raddb/postgresql.conf
+ * with the contents of pgsql-voip.conf
  *
  * If you wish to do RADIUS Authentication using the same database, you must use
  * src/modules/rlm_sql/drivers/rlm_sql_postgresql/db_postgresql.sql as well as
