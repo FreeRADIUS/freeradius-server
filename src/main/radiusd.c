@@ -555,7 +555,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'a':
-				if (radacct_dir) free(radius_dir);
+				if (radacct_dir) free(radacct_dir);
 				radacct_dir = strdup(optarg);
 				break;
 			
