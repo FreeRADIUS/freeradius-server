@@ -89,7 +89,6 @@ if test x$with_[]modname != xno; then
 		else
 			sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
 			AC_MSG_RESULT(yes)
-			AC_DEFINE(HAVE_OCI_H)
 		fi
 	fi
 
