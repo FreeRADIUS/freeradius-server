@@ -467,7 +467,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			 * then we assume this brace is NOT literal, but is
 			 * a closing brace and apply it 
 			 */
-			if((c == '}') && openbraces) {
+			if ((c == '}') && openbraces) {
 				openbraces--;
 				p++; /* skip it */
 				continue;
@@ -476,7 +476,15 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			continue;
 		}
 
-		if (*++p == '\0') break;
+		/*
+		 *	There's nothing after this character, copy
+		 *	the last '%' or "$' or '\\' over to the output
+		 *	buffer, and exit.
+		 */
+		if (*++p == '\0') {
+			*q++ = c;
+			break;
+		}
 
 		if (c == '\\') {
 			switch(*p) {
