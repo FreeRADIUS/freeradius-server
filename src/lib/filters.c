@@ -1,25 +1,34 @@
 /*
- * ASCEND: @(#)filters.c	1.3 (95/07/25 00:55:30)
+ * filters.c	Routines to parse Ascend's filter attributes.
+ *
+ * Version:	$Id$
+ *
+ *   This library is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation; either
+ *   version 2.1 of the License, or (at your option) any later version.
+ *
+ *   This library is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *   Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this library; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
+ *
+ * Copyright 2003  The FreeRADIUS server project
+ *
+ *  The commented out code (#if 0) is:
  *
  *      Copyright (c) 1994 Ascend Communications, Inc.
  *      All rights reserved.
  *
- *	Permission to copy all or part of this material for any purpose is
- *	granted provided that the above copyright notice and this paragraph
- *	are duplicated in all copies.  THIS SOFTWARE IS PROVIDED ``AS IS''
- *	AND WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, WITHOUT
- *	LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *	FOR A PARTICULAR PURPOSE.
- */
-
-/* $Id$ */
-
-/*
- *  Alan DeKok's comments:  This code SUCKS.
  *
- *  This code should be re-written to get rid of Ascend's copyright,
- *  and to fix all of the horrible crap of the current implementation.
+ *  But we don't use it any more...
  */
+
+static const char rcsid[] = "$Id$";
 
 #include <string.h>
 #include <ctype.h>
@@ -92,7 +101,7 @@ typedef enum {
  *
  *	proto:		The IP protocol number
  *
- *	establised:	A boolean value.  TRUE when we care about the
+ *	established:	A boolean value.  TRUE when we care about the
  *			established state of a TCP connection.  FALSE when
  *			we dont care.
  *
@@ -106,9 +115,9 @@ typedef enum {
  *	dstPortCmp:	One of the values of the RadFilterComparison enumeration
  *			specifying how to compare the dstport value.
  *
- *	fill:		Round things out to a dword boundary.
+ *	fill:		Round things out to a int16_t boundary.
  */
-typedef struct radip {
+typedef struct ascend_ip_filter_t {
 	uint32_t	srcip;
 	uint32_t	dstip;
 	uint8_t 	srcmask;
@@ -120,7 +129,7 @@ typedef struct radip {
 	uint8_t		srcPortComp;
 	uint8_t		dstPortComp;
 	unsigned char   fill[4];        /* used to be fill[2] */
-} RadIpFilter;
+} ascend_ip_filter_t;
 
 /*
  * RadIpxFilter:
@@ -210,17 +219,17 @@ typedef struct radgeneric {
      *			ip:		An ip filter entry
      *			generic:	A generic filter entry
      */
-typedef struct filter {
+typedef struct ascend_filter_t {
 	uint8_t 	type;
 	uint8_t		forward;
-	uint8_t		indirection;
+	uint8_t		direction;
 	uint8_t		fill;
 	union {
-		RadIpFilter   	 ip;
+		ascend_ip_filter_t   	 ip;
 		RadIpxFilter   	 ipx;
 		RadGenericFilter generic;
 	} u;
-} RadFilter;
+} ascend_filter_t;
 #define SIZEOF_RADFILTER 32
 
 /*
@@ -254,7 +263,7 @@ static const LRAD_NAME_NUMBER filterPortType[] = {
 };
 
 static const LRAD_NAME_NUMBER filterType[] = {
-	{ "generic",RAD_FILTER_GENERIC},
+	{ "generic",	RAD_FILTER_GENERIC},
 	{ "ip", 	RAD_FILTER_IP},
 	{ "ipx", 	RAD_FILTER_IPX},
 	{ NULL, 	0},
@@ -290,28 +299,28 @@ typedef enum {
 
 
 static const LRAD_NAME_NUMBER filterKeywords[] = {
-    { "ip", 	FILTER_IP_TYPE },
-    { "generic",FILTER_GENERIC_TYPE },
-    { "in", 	FILTER_IN },
-    { "out",	FILTER_OUT },
-    { "forward",FILTER_FORWARD },
-    { "drop",	FILTER_DROP },
-    { "dstip",  FILTER_IP_DST },
-    { "srcip",  FILTER_IP_SRC },
-    { "dstport",FILTER_IP_DST_PORT },
-    { "srcport",FILTER_IP_SRC_PORT },
-    { "est",	FILTER_EST },
-    { "more",	FILTER_MORE },
-    { "!=",	FILTER_GENERIC_COMPNEQ },
-    { "==",	FILTER_GENERIC_COMPEQ  },
-    { "ipx",	FILTER_IPX_TYPE  },
-    { "dstipxnet",	FILTER_IPX_DST_IPXNET  },
-    { "dstipxnode",	FILTER_IPX_DST_IPXNODE  },
-    { "dstipxsock",	FILTER_IPX_DST_IPXSOCK  },
-    { "srcipxnet",	FILTER_IPX_SRC_IPXNET  },
-    { "srcipxnode",	FILTER_IPX_SRC_IPXNODE  },
-    { "srcipxsock",	FILTER_IPX_SRC_IPXSOCK  },
-    {  NULL , 		0},
+	{ "ip", 	FILTER_IP_TYPE },
+	{ "generic",	FILTER_GENERIC_TYPE },
+	{ "in", 	FILTER_IN },
+	{ "out",	FILTER_OUT },
+	{ "forward",	FILTER_FORWARD },
+	{ "drop",	FILTER_DROP },
+	{ "dstip",  	FILTER_IP_DST },
+	{ "srcip",  	FILTER_IP_SRC },
+	{ "dstport",	FILTER_IP_DST_PORT },
+	{ "srcport",	FILTER_IP_SRC_PORT },
+	{ "est",	FILTER_EST },
+	{ "more",	FILTER_MORE },
+	{ "!=",		FILTER_GENERIC_COMPNEQ },
+	{ "==",		FILTER_GENERIC_COMPEQ  },
+	{ "ipx",	FILTER_IPX_TYPE  },
+	{ "dstipxnet",	FILTER_IPX_DST_IPXNET  },
+	{ "dstipxnode",	FILTER_IPX_DST_IPXNODE  },
+	{ "dstipxsock",	FILTER_IPX_DST_IPXSOCK  },
+	{ "srcipxnet",	FILTER_IPX_SRC_IPXNET  },
+	{ "srcipxnode",	FILTER_IPX_SRC_IPXNODE  },
+	{ "srcipxsock",	FILTER_IPX_SRC_IPXSOCK  },
+	{  NULL , 	-1},
 };
 
 #define FILTER_DIRECTION 	0
@@ -339,7 +348,7 @@ static const LRAD_NAME_NUMBER filterProtoName[] = {
 	{ "ospf", 89 },
 	{ "icmp", 1 },
 	{ "0",	  0 },
-	{  NULL , 0 },
+	{  NULL , -1 },
 };
 
 static const LRAD_NAME_NUMBER filterCompare[] = {
@@ -350,6 +359,33 @@ static const LRAD_NAME_NUMBER filterCompare[] = {
 	{ NULL, 0 },
 };
 
+
+/*
+ *	String split routine.  Splits an input string IN PLACE
+ *	into pieces, based on spaces.
+ */
+static int str2argv(char *str, char **argv)
+{
+	int argc = 0;
+
+	while (*str) {
+		if (argc >= 32) return argc;
+
+		while (*str == ' ') *(str++) = '\0';
+
+		if (!*str) return argc;
+
+		argv[argc] = str;
+		argc++;
+		
+		while (*str && (*str != ' ')) str++;
+	}
+
+	return argc;
+}
+
+
+#if 0
 /*
  * isAllDigit:
  *
@@ -442,132 +478,6 @@ a2octet(const char *tok, char *retBuf)
 }
 
 
-
-/*
- * defaultNetmask:
- *
- *	Given an ip address this routine calculate a default netmask.
- *
- *	address:		Ip address.
- *
- *	returns:		Number of bits for the netmask
- *
- */
-static char
-defaultNetmask(uint32_t address)
-{
-    char netmask;
-
-    if ( ! address ) {
-	netmask = 0;
-    } else if (( address & htonl( 0x80000000 ) ) == 0 ) {
-	netmask = 8;
-    } else if (( address & htonl( 0xc0000000 ) ) == htonl( 0x80000000 ) ) {
-	netmask = 16;
-    } else if (( address & htonl( 0xe0000000 ) ) == htonl( 0xc0000000 ) ) {
-	netmask = 24;
-    } else {
-	netmask = 32;
-    }
-    return netmask;
-}
-
-
-/*
- * This functions attempts to convert an IP address in ASCII dot
- * with an optional netmask part to a pair of IpAddress.  Note:
- * An IpAddress is always stored in network byte order.
- *
- * Parameters:
- *
- *  string:		Pointer to a NULL terminated IP address in dot 
- *			notation followed by an optional /nn to indicate
- *			the number leading of bits in the netmask.
- * 
- *  ipAddress:	Pointer to an IpAddress where the converted
- *			address will be stored.
- *
- *	netmask:	Pointer to an IpAddress where the netmask
- *			will be stored.  If no netmask is passed as
- *			as part of the address the default netmask will
- *			be stored here.
- *
- * Returns:
- *	<>		TRUE if valid conversion, FALSE otherwise.
- *
- *	*ipAddress:	If function returns TRUE, the IP address in NBO.
- *	*netmask:	If function returns TRUE, the netmask in NBO.
- */
-static int
-ipAddressStringToValue(char *string, uint32_t *ipAddress,
-		       char *netmask)
-{
-    u_char*	dst;
-    char*	cp;
-    int		numDots;
-    int		i;
-    long	value;
-
-    if ( ! string ) {
-    	return(FALSE);
-    }
-
-    /* Allow an IP address to be blanked instead of forcing entry of
-       0.0.0.0 -- the user will like it. */
-
-    if ( *string == 0 ) {
-	*ipAddress = 0;
-	*netmask = 0;
-	return TRUE;
-    }
-
-    /* First just count the number of dots in the address.  If there
-       are more or less than three the address is invalid. */
-
-    cp = string;
-    numDots = 0;
-    while( *cp ) {
-	if( !strchr("1234567890./", *cp) ) {
-	    return( FALSE );
-	}
-	if ( *cp == '.') {
-	    ++numDots;
-	}
-	++cp;
-    }
-    if ( numDots != 3 ) {
-	return( FALSE );
-    }
-
-    dst = (u_char *) ipAddress;
-    cp = string;
-
-    for ( i = 0; i < (int)sizeof( *ipAddress ); i++ ) {
-	value = strtol( cp, &cp, 10 );
-	if (( value < 0 ) || ( value > 255 )) {
-	    return( FALSE );
-	}
-	*dst++ = (u_char) value;
-	if ( *cp == '.' ) {
-	    cp += 1;
-	}
-    }
-
-    /* If there is a netmask part, parse it, otherwise figure out the
-       default netmask for this class of address. */
-
-    if ( *cp == '/' ) {
-	value = strtol( cp + 1, &cp, 10 );
-	if (( *cp != 0 ) || ( value < 0 ) || ( value > 32 )) {
-	    return FALSE;
-	}
-	*netmask = (char) value;
-    } else {
-	*netmask = defaultNetmask( *ipAddress );
-    }
-    return TRUE;
-}
-
 /*
  * Convert a 12 digit string representation of a hex data field to a
  * value.
@@ -629,13 +539,6 @@ stringToNode(unsigned char *dest, unsigned char *src)
  *
  * Fields in [...] are optional.
  *	where:
- *
- *  ipx:		Keyword to designate an IPX filter. Actually this
- *			has been determined by parseFilter.
- *
- *	dir:		Filter direction. "IN" or "OUT"
- *
- *	action:		Filter action. "FORWARD" or "DROP"
  *
  *  srcipxnet:      Keyword for source IPX address.
  *                  nnnn = IPX Node address.
@@ -776,10 +679,132 @@ doneErr:
 	      token, curString );
     return( -1 );
 }
+#endif
+
+/*
+ *	Parse an IP address and optionally a netmask, to a uint32_t.
+ *
+ *	ipaddr should already be initialized to zero.
+ *	ipaddr is in network byte order.
+ *
+ *	Returns -1 on error, or the number of bits in the netmask, otherwise.
+ */
+static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
+{
+	int		count = 0;
+	int		ip[4];
+	uint32_t	netmask = 0;
+
+	/*
+	 *	Look for IP's.
+	 */
+	count = 0;
+	while (*str && (count < 4) && (netmask == 0)) {
+	next:
+		ip[count] = 0;
+
+		while (*str) {
+			switch (*str) {
+			case '0': case '1': case '2': case '3':
+			case '4': case '5': case '6': case '7':
+			case '8': case '9':
+				ip[count] *= 10;
+				ip[count] += (*str) - '0';
+				str++;
+				break;
+
+
+			case '.': /* dot between IP numbers. */
+				str++;
+				if (ip[count] > 255) return -1;
+
+				/*
+				 *	24, 16, 8, 0, done.
+				 */
+				*ipaddr |= (ip[count] << (8 * (3 - count)));
+				count++;
+				goto next;
+
+			case '/': /* netmask  */
+				str++;
+				netmask = atoi(str);
+				if ((netmask < 0) || (netmask > 32)) return -1;
+				break;
+			}
+		} /* loop over one character */
+	} /* loop until the count hits 4 */
+
+	if (count == 3) {
+		/*
+		 *	Do the last one, too.
+		 */
+		if (ip[count] > 255) return -1;
+		
+		/*
+		 *	24, 16, 8, 0, done.
+		 */
+		*ipaddr |= (ip[count] << (8 * (3 - count)));
+	}
+
+	/*
+	 *	We've hit the end of the IP address, and there's something
+	 *	else left over: die.
+	 */
+	if (!netmask && *str) return -1;
+
+	/*
+	 *	Set the default netmask.
+	 */
+	if (!netmask) {
+		if (!*ipaddr) {
+			netmask = 0;;
+		} else if ((*ipaddr & 0x80000000) == 0) {
+			netmask = 8;
+		} else if ((*ipaddr & 0xc0000000) == 0x80000000) {
+			netmask = 16;
+		} else if ((*ipaddr & 0xe0000000) == 0xc0000000) {
+			netmask = 24;
+		} else {
+			netmask = 32;
+		}
+	}
+
+	*ipaddr = htonl(*ipaddr);
+	return netmask;
+}
+
+/*
+ *	ascend_parse_port:  Parse a comparator and port.
+ *
+ *	Returns -1 on error, or the comparator.
+ */
+static int ascend_parse_port(uint16_t *port, char *compare, char *str)
+{
+	int rcode, token = -1;
+
+	/*
+	 *	There MUST be a comparison string.
+	 */
+	rcode = lrad_str2int(filterCompare, compare, -1);
+	if (rcode < 0) return rcode;
+
+	if (strspn(str, "0123456789") == strlen(str)) {
+		token = atoi(str);
+	} else {
+		token = lrad_str2int(filterPortType, str, -1);
+	}
+
+	if ((token < 0) || (token > 65535)) return -1;
+
+	*port = token;
+	*port = htons(*port);
+
+	return rcode;
+}
 
 
 /*
- * parseIpFilter:
+ * ascend_parse_ip:
  *
  * This routine parses an IP filter string from a RADIUS
  * reply. The format of the string is:
@@ -790,13 +815,6 @@ doneErr:
  * Fields in [...] are optional.
  *	where:
  *
- *  ip:		Keyword to designate an IP filter. Actually this
- *			has been determined by parseFilter.
- *
- *	dir:		Filter direction. "IN" or "OUT"
- *
- *	action:		Filter action. "FORWARD" or "DROP"
- *
  *	dstip:		Keyword for destination IP address.
  *			n.n.n.n = IP address. /nn - netmask. 
  *			
@@ -806,11 +824,11 @@ doneErr:
  *	proto:		Optional protocol field. Either a name or
  *			number. Known names are in FilterProtoName[].
  *			
- *	dstpost:	Keyword for destination port. Only valid with tcp
+ *	dstport:	Keyword for destination port. Only valid with tcp
  *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
  *			a name or number.
  *
- *	srcpost:	Keyword for source port. Only valid with tcp
+ *	srcport:	Keyword for source port. Only valid with tcp
  *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
  *			a name or number.
  *			
@@ -823,6 +841,147 @@ doneErr:
  *	returns:	-1 for error or 0 for OK
  *	
  */
+static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
+{
+	int rcode;
+	int token;
+	int flags;
+
+	/*
+	 *	We may have nothing, in which case we simply return.
+	 */
+	if (argc == 0) return 0;
+
+	/*
+	 *	There may, or may not, be src & dst IP's in the string.
+	 */
+	flags = 0;
+	while ((argc > 0) && (flags != 7)) {
+		token = lrad_str2int(filterKeywords, argv[0], -1);
+		switch (token) {
+		case FILTER_IP_SRC:
+			if (flags & 0x01) return -1;
+			if (argc < 2) return -1;
+
+			rcode = ascend_parse_ipaddr(&filter->srcip, argv[1]);
+			if (rcode < 0) return rcode;
+
+			filter->srcmask = rcode;
+			flags |= 0x01;
+			argv += 2;
+			argc -= 2;
+			break;
+
+		case FILTER_IP_DST:
+			if (flags & 0x02) return -1;
+			if (argc < 2) return -1;
+
+			rcode = ascend_parse_ipaddr(&filter->dstip, argv[1]);
+			if (rcode < 0) return rcode;
+
+			filter->dstmask = rcode;
+			flags |= 0x02;
+			argv += 2;
+			argc -= 2;
+			break;
+			
+			/*
+			 *	Should be protocol, ASCII or otherwise.
+			 */
+		default:
+			if (strspn(argv[0], "0123456789") == strlen(argv[0])) {
+				token = atoi(argv[0]);
+			} else {
+				token = lrad_str2int(filterProtoName, argv[0], -1);
+				if (token == -1) {
+					librad_log("Unknown IP protocol \"%s\" in data filter",
+						   argv[0]);
+					return -1;
+				}
+			}
+			filter->proto = token;
+			flags = 0x07; /* MUST have parsed everything. */
+
+			argv++;
+			argc--;
+			break;
+		}
+	} /* looking for src/dst IP, and proto */
+
+	/*
+	 *	Done looking for everything, return.
+	 */
+	if (argc == 0) return 0;
+
+	/*
+	 *	There may, or may not, be src & dst ports in the string.
+	 */
+	flags = 0;
+	while ((argc > 0) && (flags != 7)) {
+		token = lrad_str2int(filterKeywords, argv[0], -1);
+		switch (token) {
+		case FILTER_IP_SRC_PORT:
+			if (flags & 0x01) return -1;
+			if (argc < 3) return -1;
+
+			rcode = ascend_parse_port(&filter->srcport,
+						  argv[1], argv[2]);
+			if (rcode < 0) return rcode;
+			filter->srcPortComp = rcode;
+
+			flags |= 0x01;
+			argv += 3;
+			argc -= 3;
+			break;
+
+		case FILTER_IP_DST_PORT:
+			if (flags & 0x02) return -1;
+			if (argc < 3) return -1;
+
+			rcode = ascend_parse_port(&filter->dstport,
+						  argv[1], argv[2]);
+			if (rcode < 0) return rcode;
+			filter->dstPortComp = rcode;
+
+			flags |= 0x02;
+			argv += 3;
+			argc -= 3;
+			break;
+
+			/*
+			 *	Look for established connections.
+			 */
+		case FILTER_EST:
+			filter->established = 1;
+			argv++;
+			argc++;
+			flags = 0x07;
+			break;
+			
+			/*
+			 *	Unknown thingy.
+			 */
+		default:
+			librad_log("Unknown string \"%s\" in data filter %d",
+				   argv[0], flags);
+			return -1;
+			break;
+		}
+	} /* looking for src/dst port */
+
+	/*
+	 *	We should have parsed everything by now.
+	 */
+	if (argc != 0) {
+			librad_log("Unknown extra string \"%s\" in data filter",
+				   argv[0]);
+			return -1;
+	}
+
+	return 0;
+}
+
+#if 0
 static int 
 parseIpFilter(const char *curString, RadFilter *curEntry)
 {
@@ -832,51 +991,7 @@ parseIpFilter(const char *curString, RadFilter *curEntry)
     char*		token;
     RadIpFilter*	ip;
 
-    token = strtok( NULL, " " ); 
-
-    memset( curEntry, '\0', sizeof( RadFilter ) );
-    curEntry->type = RAD_FILTER_IP; 
-    ip = &curEntry->u.ip;
-    ip->established = FALSE;
- 
     while( token ) {
-  	tok = lrad_str2int(filterKeywords, token, -1);
-	switch( tok ) {
-	    case FILTER_IN:
-	    case FILTER_OUT:
-		curEntry->indirection = tok == FILTER_IN ? TRUE: FALSE;
-	        elements |= (1 << FILTER_DIRECTION );
-		break;
-	    case FILTER_FORWARD:
-	    case FILTER_DROP:
-	        elements |= (1 << FILTER_DISPOSITION );
-		if( tok == FILTER_FORWARD ) {
-		    curEntry->forward = TRUE;
-		} else {
-		    curEntry->forward = FALSE;
-		}
-		break;
-	    case FILTER_IP_DST:
-	    case FILTER_IP_SRC:
-		token = strtok( NULL, " " );
-		if ( token ) {
-		    if( tok == FILTER_IP_DST ) {
-			
-		        if( ipAddressStringToValue( token, 
-				 &ip->dstip, (char *)&ip->dstmask ) ) {
-			    break;
-			}
-		    } else {
-		        if( ipAddressStringToValue( token, 
-				&ip->srcip, (char *)&ip->srcmask ) ) {
-			    break;
-			}
-		    }
-		} 
-
-		librad_log("ip filter error: do not recognize \"%s\" in \"%s\"\n",
-			  token, curString );
-		goto doneErr ;
 
 	    case FILTER_IP_DST_PORT:
 	    case FILTER_IP_SRC_PORT:
@@ -913,33 +1028,6 @@ parseIpFilter(const char *curString, RadFilter *curEntry)
 		goto doneErr;
 		break;
 	    }
-	    case FILTER_EST:
-		ip->established = TRUE;
-		break;
-	    default:
-		/* no keyword match but may match a protocol list */
-		if( isAllDigit( token ) ) {
-		    tok = atoi( (char *) token );
-		} else {
-		    tok = lrad_str2int(filterProtoName, token, -1);
-		    if (tok == -1) {
-			librad_log("ip filter error: do not recognize \"%s\" in \"%s\"\n",
-			     token, curString );
-			goto doneErr;
-		    }
-		}
-		ip->proto = tok;
-	}
-        token = strtok( NULL, " " ); 
-    } 
-
-    if( elements == IP_FILTER_COMPLETE ) {
-	return( 0 );
-    }
-
-doneErr:
-    return( -1 );
-}
 
 /*
  * parseGenericFilter:
@@ -951,13 +1039,6 @@ doneErr:
  *
  * Fields in [...] are optional.
  *	where:
- *
- * 	generic:	Keyword to indicate a generic filter. This
- *			has been determined by parseFilter.
- *
- *	dir:		Filter direction. "IN" or "OUT"
- *
- *	action:		Filter action. "FORWARD" or "DROP"
  *
  *	offset:		A Number. Specifies an offset into a frame 
  *			to start comparing.
@@ -1065,6 +1146,7 @@ parseGenericFilter(const char *curString, RadFilter *curEntry)
 doneErr:
     return( -1 );
 }
+#endif
 		       
 
 /*
@@ -1082,45 +1164,122 @@ doneErr:
 int 
 filterBinary(VALUE_PAIR *pair, const char *valstr)
 {
+	int		token, type;
+	int	        rcode;
+	char		*copied_valstr;
+	int		argc;
+	char		*argv[32];
+	ascend_filter_t filter;
+	
+	rcode = -1;
+	
+	/*
+	 *	Copy the valstr, so we don't smash it in place via strtok!
+	 */
+	copied_valstr = strdup(valstr);
+	if (!copied_valstr) return -1;
+	
+	/*
+	 *	Tokenize the input string.
+	 */
+	argc = str2argv(copied_valstr, argv);
+	if (argc < 3) return -1;
+	
+	/*
+	 *	Decide which filter type it is: ip, ipx, or generic
+	 */
+	type = lrad_str2int(filterType, argv[0], -1);
+	memset(&filter, 0, sizeof(filter));
+	
+	/*
+	 *	Validate the filter type.
+	 */
+	switch (type) {
+	case RAD_FILTER_GENERIC:
+	case RAD_FILTER_IP:
+	case RAD_FILTER_IPX:
+		filter.type = type;
+		break;
+		
+	default:
+		librad_log("Unknown Ascend filter type \"%s\"", argv[0]);
+		free(copied_valstr);
+		return -1;
+		break;
+	}
+	
+	/*
+	 *	Parse direction
+	 */
+	token = lrad_str2int(filterKeywords, argv[1], -1);
+	switch (token) {
+	case FILTER_IN:
+		filter.direction = 1;
+		break;
 
-    char*		token;
-    unsigned long	tok;
-    int			rc;
-    RadFilter		radFil, *filt;
-    RadGenericFilter*	gen;
-    static VALUE_PAIR	*prevRadPair = NULL;
-    char		*copied_valstr;
+	case FILTER_OUT:
+		filter.direction = 0;
+		break;
 
-    rc = -1;
+	default:
+		librad_log("Unknown Ascend filter direction \"%s\"", argv[1]);
+		free(copied_valstr);
+		return -1;
+		break;
+	}
 
-    /*
-     *  Copy the valstr, so we don't smash it in place via strtok!
-     */
-    copied_valstr = strdup(valstr);
-    if (!copied_valstr) return -1;
+	/*
+	 *	Parse action
+	 */
+	token = lrad_str2int(filterKeywords, argv[2], -1);
+	switch (token) {
+	case FILTER_FORWARD:
+		filter.forward = 1;
+		break;
 
-    token = strtok(copied_valstr, " " );
-    tok = lrad_str2int(filterType, token, -1);
-    pair->length = SIZEOF_RADFILTER;
-    switch( tok ) {
-      case RAD_FILTER_GENERIC:
-	rc = parseGenericFilter( valstr, &radFil );
-	break;
-      case RAD_FILTER_IP:
-	rc = parseIpFilter( valstr, &radFil );
-	break;
-      case RAD_FILTER_IPX:
-	rc = parseIpxFilter( valstr, &radFil );
-        break;
-      default:
-	librad_log("filterBinary: unknown filter type \"%s\"", token);
+	case FILTER_DROP:
+		filter.forward = 0;
+		break;
+
+	default:
+		librad_log("Unknown Ascend filter action \"%s\"", argv[2]);
+		free(copied_valstr);
+		return -1;
+		break;
+	}
+
+
+	switch (type) {
+#if 0
+	case RAD_FILTER_GENERIC:
+		rc = parseGenericFilter( valstr, &radFil );
+		break;
+#endif
+	case RAD_FILTER_IP:
+		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.u.ip);
+		break;
+#if 0
+	case RAD_FILTER_IPX:
+		rc = parseIpxFilter( valstr, &radFil );
+		break;
+#endif
+	default:		/* should never reach here. */
+		break;
+	}
 	free(copied_valstr);
-	return -1;
-	break;
-    }
-    free(copied_valstr);
-    copied_valstr = NULL;
-
+	copied_valstr = NULL;
+	
+	/*
+	 *	Touch the VP only if everything was OK.
+	 */
+	if (rcode == 0) {
+		pair->length = SIZEOF_RADFILTER;
+		memcpy(pair->strvalue, &filter, sizeof(filter));
+	}
+	
+	return rcode;
+	
+#if 0
     /*
      * if 'more' is set then this new entry must exist, be a 
      * FILTER_GENERIC_TYPE, direction and disposition must match for 
@@ -1150,15 +1309,9 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
 	memcpy( pair->strvalue, (char *) &radFil, pair->length );
     }
     return(rc);
+
+#endif
 }
-
-/********************************************************************/
-
-/*
- *  The following code was written specifically for the FreeRADIUS
- *  server by Alan DeKok <aland@ox.org>, and as such, falls under
- *  the GPL, and not under the previous Ascend license.
- */
 
 /*
  *	Print an Ascend binary filter attribute to a string,
@@ -1170,12 +1323,12 @@ filterBinary(VALUE_PAIR *pair, const char *valstr)
  */
 void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 {
-  int i;
-  char *p;
-  RadFilter	filter;
+  int 			i;
+  char			*p;
+  ascend_filter_t	filter;
   
   static const char *action[] = {"drop", "forward"};
-  static const char *direction[] = {"output", "input"};
+  static const char *direction[] = {"out", "in"};
   
   p = (char *)buffer;
 
@@ -1198,7 +1351,7 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
 
   i = snprintf(p, len, "%s %s %s",
 	       lrad_int2str(filterType, filter.type, "??"),
-	       direction[filter.indirection & 0x01],
+	       direction[filter.direction & 0x01],
 	       action[filter.forward & 0x01]);
 
   p += i;
@@ -1209,11 +1362,17 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
    */
   if (filter.type == RAD_FILTER_IP) {
 
-    i =  snprintf(p, len, " %s", 
-		  lrad_int2str(filterProtoName, filter.u.ip.proto, "??"));
-    p += i;
-    len -= i;
-    
+    if (filter.u.ip.srcip) {
+      i = snprintf(p, len, " srcip %d.%d.%d.%d/%d",
+		   ((u_char *) &filter.u.ip.srcip)[0],
+		   ((u_char *) &filter.u.ip.srcip)[1],
+		   ((u_char *) &filter.u.ip.srcip)[2],
+		   ((u_char *) &filter.u.ip.srcip)[3],
+		   filter.u.ip.srcmask);
+      p += i;
+      len -= i;
+    }
+
     if (filter.u.ip.dstip) {
       i = snprintf(p, len, " dstip %d.%d.%d.%d/%d",
 		   ((u_char *) &filter.u.ip.dstip)[0],
@@ -1225,13 +1384,15 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       len -= i;
     }
     
-    if (filter.u.ip.srcip) {
-      i = snprintf(p, len, " srcip %d.%d.%d.%d/%d",
-		   ((u_char *) &filter.u.ip.srcip)[0],
-		   ((u_char *) &filter.u.ip.srcip)[1],
-		   ((u_char *) &filter.u.ip.srcip)[2],
-		   ((u_char *) &filter.u.ip.srcip)[3],
-		   filter.u.ip.srcmask);
+    i =  snprintf(p, len, " %s", 
+		  lrad_int2str(filterProtoName, filter.u.ip.proto, "??"));
+    p += i;
+    len -= i;
+    
+    if (filter.u.ip.srcPortComp > RAD_NO_COMPARE) {
+      i = snprintf(p, len, " srcport %s %d",
+		   lrad_int2str(filterCompare, filter.u.ip.srcPortComp, "??"),
+		   ntohs(filter.u.ip.srcport));
       p += i;
       len -= i;
     }
@@ -1244,14 +1405,6 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
       len -= i;
     }
     
-    if (filter.u.ip.srcPortComp > RAD_NO_COMPARE) {
-      i = snprintf(p, len, " srcport %s %d",
-		   lrad_int2str(filterCompare, filter.u.ip.srcPortComp, "??"),
-		   ntohs(filter.u.ip.srcport));
-      p += i;
-      len -= i;
-    }
-
     if (filter.u.ip.established) {
       i = snprintf(p, len, " est");
       p += i;
