@@ -439,12 +439,12 @@ static void fmtint (char *buffer, size_t *currlen, size_t maxlen,
   convert[place] = 0;
 
   zpadlen = max - place;
-  spadlen = min - MAX (max, place) - (signvalue ? 1 : 0);
+  spadlen = min - THEMAX (max, place) - (signvalue ? 1 : 0);
   if (zpadlen < 0) zpadlen = 0;
   if (spadlen < 0) spadlen = 0;
   if (flags & DP_F_ZERO)
   {
-    zpadlen = MAX(zpadlen, spadlen);
+    zpadlen = THEMAX(zpadlen, spadlen);
     spadlen = 0;
   }
   if (flags & DP_F_MINUS) 
