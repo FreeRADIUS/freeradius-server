@@ -88,7 +88,6 @@ int     sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket);
 int     sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int mode);
 int     sql_read_realms(SQLSOCK * sqlsocket);
 int     sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query, int mode);
-int     sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR * request, int maxsimul);
 int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
