@@ -247,8 +247,11 @@ x99_get_user_info(const char *pwdfile, const char *username,
     (void) fclose(fp);
     free(p);
     if (!found) {
+#if 0
+	/* Noisy ... let the caller report this. */
 	x99_log(X99_LOG_AUTH, "x99_get_user_info: [%s] not found in %s",
 		username, pwdfile);
+#endif
 	return -1;
     }
 

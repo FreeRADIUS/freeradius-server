@@ -315,14 +315,16 @@ x99_token_authorize(void *instance, REQUEST *request)
     user_found = 1;
     if ((rc = x99_get_user_info(inst->pwdfile, request->username->strvalue,
 				&user_info)) == -2) {
+#if 0
+	/* x99_get_user_info() logs a more useful message, this is noisy. */
 	x99_log(X99_LOG_ERR, "autz: error reading user [%s] info",
 		request->username->strvalue);
+#endif
 	return RLM_MODULE_FAIL;
     }
     if (rc == -1) {
-	/* x99_get_user_info() also logs, but we want to record the autz bit */
-	x99_log(X99_LOG_AUTH, "autz: user [%s] not found",
-		request->username->strvalue);
+	x99_log(X99_LOG_AUTH, "autz: user [%s] not found in %s",
+		request->username->strvalue, inst->pwdfile);
 	memset(&user_info, 0, sizeof(user_info)); /* X99_CF_NONE */
 	user_found = 0;
     }
@@ -473,7 +475,10 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
     /* Look up the user's info. */
     if (x99_get_user_info(inst->pwdfile, username, &user_info) != 0) {
+#if 0
+	/* x99_get_user_info() logs a more useful message, this is noisy. */
 	x99_log(X99_LOG_AUTH, "auth: error reading user [%s] info", username);
+#endif
 	return RLM_MODULE_REJECT;
     }
 
