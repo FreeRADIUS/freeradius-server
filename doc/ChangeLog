@@ -1,5 +1,24 @@
 FreeRADIUS 0.6.1 ; $Date$, urgency=high
 
+	* Added experimental SMB authentication module.
+	* More documentation for rlm_passwd, rlm_mschap, and rlm_digest.
+	* 'configure' changes to better find sem_init and friends.
+	* Allow the use of previously installed libtool, and libltdl.
+	  This appears to help a lot on FreeBSD.
+	* Fixes to work on non-threaded builds.
+	  Patch from Rainer Weikusat.
+	* SQL now re-connects to the server, if the connection is lost.
+	  Currently only MySQL is fixed, but other patches will follow.
+	  Patch from Todd T. Fries.
+	* Added experimental use of dynamicly translated variables,
+	  CallBack-Number = `%{request:Calling-Station-Id}`
+	  sets the value of the CallBack-Number attribute to the value of
+	  the Calling-Station-Id in the original request.
+	* Cute hack: Allow regex matching on IP addresses, by placing
+	  the string representation of the IP address (1.2.3.4) into
+	  the internal data structure.  This allows things like
+	  NAS-IP-Address =~ "^192\.168", which may be useful.
+	* Add documentation for experimental rlm_dbm module.
 	* Added experimental Perl module.
 	* Added the relevant IETF RFC's (standards documents) to 'doc/rfc',
 	  along with some simple perl scripts to convert them to cross-
