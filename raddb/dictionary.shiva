@@ -1,13 +1,19 @@
 #
 # Shiva dictionary.
 #
-#		Shiva Inc.
-#		http://www.shiva.com/
+#	Shiva Inc.
+#	http://www.shiva.com/
 #
-#		Enable by putting the line "$INCLUDE dictionary.shiva" into
-#		the main dictionary file.
+#	For more information on magic values for Shiva-User-Attributes,
+#	see their web page, at:
+#
+#	http://www.shiva.com/prod/kbase/mapping.html
+#
+#	Enable by putting the line "$INCLUDE dictionary.shiva" into
+#	the main dictionary file.
 #
 # Version:	1.00  27-Apr-1999  contributed by Alan DeKok
+#		$Id$
 #
 
 VENDOR	Shiva		166
@@ -15,11 +21,12 @@ VENDOR	Shiva		166
 #	Shiva Extensions
 
 #
-#	??? I don't know what this is, but it's "Acct-Link-Count"
-#	in the main dictionary.
+#	This next attribute is Shiva's attempt to create their own
+#	VSA in the main dictionary.  Don't use it.  It's a bad idea.
 #
 #ATTRIBUTE	Shiva-User-Attributes		51	string
 
+ATTRIBUTE	Shiva-User-Attributes		1	string Shiva
 ATTRIBUTE	Shiva-Called-Number		90	string Shiva
 ATTRIBUTE	Shiva-Calling-Number		91	string Shiva
 ATTRIBUTE	Shiva-Customer-Id		92	string Shiva
