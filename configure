@@ -20738,6 +20738,7 @@ done
   echo "$as_me:$LINENO: checking for OpenSSL version >= 0.9.7" >&5
 echo $ECHO_N "checking for OpenSSL version >= 0.9.7... $ECHO_C" >&6
        old_CPPFLAGS=$CPPFLAGS
+       old_LIBS="$LIBS"
        if test "x$OPENSSL_INCLUDE" != "x"; then
            CPPFLAGS="-I$OPENSSL_INCLUDE"
 	   fi
@@ -21100,6 +21101,7 @@ fi
 	     fi
            fi
        CPPFLAGS=$old_CPPFLAGS
+       LIBS="$old_LIBS"
 fi
 
 

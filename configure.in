@@ -545,6 +545,7 @@ if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
 
   AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
        old_CPPFLAGS=$CPPFLAGS
+       old_LIBS="$LIBS"
        if test "x$OPENSSL_INCLUDE" != "x"; then
            CPPFLAGS="-I$OPENSSL_INCLUDE"
 	   fi
@@ -574,6 +575,7 @@ if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
 	     fi
            fi
        CPPFLAGS=$old_CPPFLAGS
+       LIBS="$old_LIBS"
 fi
 
 dnl #############################################################
