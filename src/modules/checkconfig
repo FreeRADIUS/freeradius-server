@@ -1,4 +1,7 @@
 #!/bin/sh
+#
+#  $Id$
+#
 
 usage() {
     cat <<EOF
@@ -44,7 +47,7 @@ DEF=$2
 # If so, don't bother doing the check.
 #
 #######################################################################
-if [ -e config.mak ];then
+if [ -r config.mak ];then
   ALREADY=`grep -w ^$DEF config.mak`
   if [ "$ALREADY" != "" ];then
     exit 0
