@@ -2,9 +2,12 @@
 *  rlm_sql.c                          rlm_sql - FreeRADIUS SQL Module      *
 *                                                                          *
 *      Main SQL module file. Most ICRADIUS code is located in sql.c        *
+*      $Id$
 *                                                                          *
 *                                     Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
+static const char rcsid[] = "$Id$";
+
 #include "autoconf.h"
 
 #include <stdio.h>
@@ -48,8 +51,8 @@ static int rlm_sql_detach(void) {
 }
 
 
-static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs) {
-
+static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_PAIR **reply_pairs)
+{
 	int		nas_port = 0;
 	VALUE_PAIR	*check_tmp = NULL;
 	VALUE_PAIR	*reply_tmp = NULL;
@@ -57,11 +60,7 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
 	int		found = 0;
 	char		*name;
 	SQLSOCK		*socket;
- #ifdef NT_DOMAIN_HACK
-	char		*ptr;
-	char		newname[AUTH_STRING_LEN];
- #endif
-
+	
 	name = request->username->strvalue;
 
        /*
@@ -83,52 +82,36 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
        /*
         *      Find the entry for the user.
         */
-
- #ifdef NT_DOMAIN_HACK
-       /*
-        *      Windows NT machines often authenticate themselves as
-        *      NT_DOMAIN\username. Try to be smart about this.
-        *
-        *      FIXME: should we handle this as a REALM ?
-        */
-       if ((ptr = strchr(name, '\\')) != NULL) {
-               strncpy(newname, ptr + 1, sizeof(newname));
-               newname[sizeof(newname) - 1] = 0;
-               strcpy(name, newname);
+       if ((found = sql_getvpdata(socket, sql->config->sql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) > 0) {
+	       sql_getvpdata(socket, sql->config->sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
+	       sql_getvpdata(socket, sql->config->sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
+	       sql_getvpdata(socket, sql->config->sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
+       } else {
+	       
+	       int gcheck, greply;
+	       gcheck = sql_getvpdata(socket, sql->config->sql_groupcheck_table, &check_tmp, "DEFAULT", PW_VP_GROUPDATA);
+	       greply = sql_getvpdata(socket, sql->config->sql_groupreply_table, &reply_tmp, "DEFAULT", PW_VP_GROUPDATA);
+	       if (gcheck && greply)
+		       found = 1;
        }
- #endif /* NT_DOMAIN_HACK */
-
-
-        if ((found = sql_getvpdata(socket, sql->config->sql_authcheck_table, &check_tmp, name, PW_VP_USERDATA)) > 0) {
-                sql_getvpdata(socket, sql->config->sql_groupcheck_table, &check_tmp, name, PW_VP_GROUPDATA);
-                sql_getvpdata(socket, sql->config->sql_authreply_table, &reply_tmp, name, PW_VP_USERDATA);
-                sql_getvpdata(socket, sql->config->sql_groupreply_table, &reply_tmp, name, PW_VP_GROUPDATA);
-        } else {
- 
-                int gcheck, greply;
-                gcheck = sql_getvpdata(socket, sql->config->sql_groupcheck_table, &check_tmp, "DEFAULT", PW_VP_GROUPDATA);
-                greply = sql_getvpdata(socket, sql->config->sql_groupreply_table, &reply_tmp, "DEFAULT", PW_VP_GROUPDATA);
-                if (gcheck && greply)
-                        found = 1;
-        }
-	sql_release_socket(socket);
- 
-        if (!found) {
-                DEBUG2("User %s not found and DEFAULT not found", name);
-                return RLM_AUTZ_NOTFOUND;
-        }
-
-        if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
-		DEBUG2("Pairs do not match [%s]", name);
-		return RLM_AUTZ_NOTFOUND;
-	}
- 
-        pairmove(reply_pairs, &reply_tmp);
-        pairmove(check_pairs, &check_tmp);
-        pairfree(reply_tmp);
-        pairfree(check_tmp);
-
-
+       sql_release_socket(socket);
+       
+       if (!found) {
+	       DEBUG2("User %s not found and DEFAULT not found", name);
+	       return RLM_MODULE_OK;
+       }
+       
+       if (paircmp(request->packet->vps, check_tmp, &reply_tmp) != 0) {
+	       DEBUG2("Pairs do not match [%s]", name);
+	       return RLM_MODULE_OK;
+       }
+       
+       pairmove(reply_pairs, &reply_tmp);
+       pairmove(check_pairs, &check_tmp);
+       pairfree(reply_tmp);
+       pairfree(check_tmp);
+       
+       
        /*
         *      Fix dynamic IP address if needed.
         */
@@ -147,59 +130,62 @@ static int rlm_sql_authorize(REQUEST *request, VALUE_PAIR **check_pairs, VALUE_P
                pairdelete(reply_pairs, PW_ADD_PORT_TO_IP_ADDRESS);
        }
 
-	return RLM_AUTZ_OK;
+	return RLM_MODULE_OK;
 }
 
 static int rlm_sql_authenticate(REQUEST *request) {
-
+	
 	VALUE_PAIR	*auth_pair;
 	SQL_ROW		row;
 	SQLSOCK		*socket;
 	char		*querystr;
-	char		*escaped_user;
+	char		escaped_user[AUTH_STRING_LEN*3];
 	char		*user;
-	char		*password;
-	char		query[] = "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'";
-
+	const char	query[] = "SELECT Value FROM %s WHERE UserName = '%s' AND Attribute = 'Password'";
+	
 	user = request->username->strvalue;
-	password = request->password->strvalue;
-
-	if ((auth_pair = pairfind(request->packet->vps, PW_AUTHTYPE)) == NULL)
-	   return RLM_AUTH_REJECT;
-
-	if ((escaped_user = malloc((strlen(user)*2)+1)) == NULL) {
-                log(L_ERR|L_CONS, "no memory");
-                exit(1);
-        }
-
+	
+	/*
+	 *	Ensure that a password attribute exists.
+	 */
+	if ((request->password == NULL) ||
+	    (request->password->length == 0) ||
+	    (request->password->attribute != PW_PASSWORD)) {
+		log(L_AUTH, "rlm_sql: Attribute \"Password\" is required for authentication.");
+		return RLM_MODULE_REJECT;
+	}
+	
 	sql_escape_string(escaped_user, user, strlen(user));
-
-	if((querystr = malloc(strlen(escaped_user)+strlen(sql->config->sql_authcheck_table)+sizeof(query)))
-                == NULL) {
+	
+	/*
+	 *	This should really be replaced with a static buffer...
+	 */
+	if ((querystr = malloc(strlen(escaped_user) +
+			       strlen(sql->config->sql_authcheck_table) +
+			       sizeof(query))) == NULL) {
                 log(L_ERR|L_CONS, "no memory");
                 exit(1);
         }
-
+	
 	sprintf(querystr, query, sql->config->sql_authcheck_table, escaped_user);
-
-        free(escaped_user);
-        free(query);
-
 	socket = sql_get_socket();
-
 	sql_select_query(socket, querystr);
 	row = sql_fetch_row(socket);
 	sql_finish_select_query(socket);
-
-	if (strncmp( password, row[0],strlen(password)) != 0)
-		return RLM_AUTH_REJECT;
+        free(querystr);
+	
+	if (strncmp(request->password->strvalue, row[0], request->password->length) != 0)
+		return RLM_MODULE_REJECT;
 	else
-		return RLM_AUTH_OK;
+		return RLM_MODULE_OK;
 }
 
+/*
+ *	Accounting: does nothing for now.
+ */
 static int rlm_sql_accounting(REQUEST *request) {
 
-	return RLM_ACCT_OK;
+	return RLM_MODULE_OK;
 }
 
 
