@@ -186,13 +186,9 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
  *************************************************************************/
 SQLSOCK * sql_get_socket(SQL_INST * inst)
 {
-	SQLSOCK *cur, *cur2;
+	SQLSOCK *cur;
 	int tried_to_connect = 0;
-
-	while (inst->used == inst->config->num_sql_socks) {
-		radlog(L_ERR, "rlm_sql (%s): All sockets are being used! Please increase the maximum number of sockets!", inst->config->xlat_name);
-		return NULL;
-	}
+	int unconnected = 0;
 
 	/*
 	 * Rotating the socket so that all get used and none get closed due to
@@ -206,49 +202,76 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 	        inst->socknr = inst->config->num_sql_socks;
 	}
 	inst->socknr--;
-	cur2 = inst->sqlpool;
-	while (inst->socknr != cur2->id) {
-	        cur2 = cur2->next;
+	cur = inst->sqlpool;
+	while (inst->socknr != cur->id) {
+	        cur = cur->next;
 	}
 #if HAVE_PTHREAD_H
 	pthread_mutex_unlock(&inst->mutex);
 #endif
 
-	for (cur = cur2; cur; cur = cur->next) {
+	while (cur) {
 
-		/* if we happen upon an unconnected socket, and this instance's grace 
-		 * period on (re)connecting has expired, then try to connect it.  This 
-		 * should be really rare.  - chad
+		/*
+		 *	If we happen upon an unconnected socket, and
+		 *	this instance's grace period on
+		 *	(re)connecting has expired, then try to
+		 *	connect it.  This should be really rare.
 		 */
 		if ((cur->state == sockunconnected) && (time(NULL) > inst->connect_after)) {
-			tried_to_connect = 1;
-			radlog(L_INFO, "rlm_sql (%s): Trying to (re)connect an unconnected handle...", inst->config->xlat_name);
+			radlog(L_INFO, "rlm_sql (%s): Trying to (re)connect unconnected handle %d..", inst->config->xlat_name, cur->id);
+			tried_to_connect++;
 			connect_single_socket(cur, inst);
 		}
 
 		/* if we still aren't connected, ignore this handle */
 		if (cur->state == sockunconnected) {
-			radlog(L_DBG, "rlm_sql (%s): Ignoring unconnected handle", inst->config->xlat_name);
-			continue;
+			radlog(L_DBG, "rlm_sql (%s): Ignoring unconnected handle %d..", inst->config->xlat_name, cur->id);
+		        unconnected++;
+		} else {
+			/* should be connected, grab it */
+#if HAVE_SEMAPHORE_H
+			if (sem_trywait(cur->semaphore) == 0) {
+#else
+			if (cur->in_use == SQLSOCK_UNLOCKED) {
+#endif
+				(inst->used)++;
+#ifndef HAVE_SEMAPHORE_H
+				cur->in_use = SQLSOCK_LOCKED;
+#endif
+				radlog(L_DBG, "rlm_sql (%s): Reserving sql socket id: %d", inst->config->xlat_name, cur->id);
+				if (unconnected != 0 || tried_to_connect != 0) {
+					radlog(L_INFO, "rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
+				}
+				return cur;
+			}
 		}
 
-#if HAVE_SEMAPHORE_H
-		if (sem_trywait(cur->semaphore) == 0) {
-#else
-		if (cur->in_use == SQLSOCK_UNLOCKED) {
-#endif
-			(inst->used)++;
-#ifndef HAVE_SEMAPHORE_H
-			cur->in_use = SQLSOCK_LOCKED;
-#endif
-			radlog(L_DBG, "rlm_sql (%s): Reserving sql socket id: %d",
-			       inst->config->xlat_name, cur->id);
-			return cur;
+		/* move along the list */
+		cur = cur->next;
+
+		/*
+		 *	Because we didnt start at the start, once we
+		 *	hit the end of the linklist, we should go
+		 *	back to the beginning and work toward the
+		 *	middle!
+		 */
+		if (!cur) {
+			cur = inst->sqlpool;
+		}
+
+		/*
+		 *	we should check that after going back to the
+		 *	start of the list, remember to stop at the
+		 *	socket that we started at.
+		 */
+		if (cur->id == inst->socknr) {
+			break;
 		}
 	}
 
 	/* We get here if every DB handle is unconnected and unconnectABLE */
-	radlog((tried_to_connect == 0) ? (L_DBG) : (L_CONS | L_ERR), "rlm_sql (%s): There are no DB handles to use!", inst->config->xlat_name);
+	radlog(L_INFO, "rlm_sql (%s): There are no DB handles to use! skipped %d, tried to connect %d", inst->config->xlat_name, unconnected, tried_to_connect);
 	return NULL;
 }
 
