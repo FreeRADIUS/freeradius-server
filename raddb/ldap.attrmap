@@ -39,6 +39,7 @@ checkItem	LM-Password			sambaLmPassword
 checkItem	NT-Password			sambaNtPassword
 checkItem	SMB-Account-CTRL-TEXT		acctFlags
 checkItem	Expiration			radiusExpiration
+checkItem	NAS-IP-Address			radiusNASIpAddress
 
 replyItem	Service-Type			radiusServiceType
 replyItem	Framed-Protocol			radiusFramedProtocol
