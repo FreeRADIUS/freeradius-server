@@ -276,6 +276,11 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 		for (vp = request; vp->next; vp = vp->next) {
 			char *p;
 
+			/*
+			 *	Hmm... maybe we shouldn't pass the
+			 *	user's password in an environment
+			 *	variable...
+			 */
 			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
 			for (p = buffer; *p != '='; p++) {
 			  if (*p == '-') {
@@ -375,10 +380,17 @@ int radius_exec_program(const char *cmd, VALUE_PAIR *request,
 			for (p = answer; *p; p++) {
 				if (*p == '\n') {
 					*p = comma ? ' ' : ',';
+					p++;
 					comma = 0;
 				}
 				if (*p == ',') comma++;
 			}
+
+			/*
+			 *  Replace any trailing comma by a NUL.
+			 */
+ 			if (answer[strlen(answer) - 1] == ',')
+ 				answer[strlen(answer) - 1] = '\0';
 
 			log(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
 			if (userparse(answer, &vp) != 0)
