@@ -9,10 +9,14 @@
 #		* The second field (seperated by blanks or tabs) is the 
 #		  encryption key.
 
+
+# This file is obselete!  Please use the much-better clients.conf file!
+
+
 # Client Name		Key
 #----------------	----------
 #portmaster1.isp.com	testing123
 #portmaster2.isp.com	testing123
 #proxyradius.isp2.com	TheirKey
-localhost		testing123
+#localhost		testing123
 
