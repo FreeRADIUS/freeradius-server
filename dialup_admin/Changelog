@@ -42,6 +42,7 @@ Ver 1.59:
   shown
 * In lib/sql/defaults.php3 instead of doing a select for each group the user belongs to, do one select with
   a where in () caluse.
+* Also cache the default.vals file.
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files
