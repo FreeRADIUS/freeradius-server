@@ -39,6 +39,10 @@ static int		retries = 10;
 static float		timeout = 3;
 static const char	*secret = "secret";
 static int		do_output = 1;
+static int		do_summary = 0;
+static int		filedone = 0;
+static int		totalapp = 0;
+static int 		totaldeny = 0;
 
 /*
  *	Read valuepairs from the fp up to End-Of-File.
@@ -57,15 +61,25 @@ static VALUE_PAIR *readvp(FILE *fp)
 	while (!error && fgets(buf, sizeof(buf), fp) != NULL) {
 
 		p = buf;
-		do {
-			if ((vp = pairread(&p, &last_token)) == NULL) {
-				librad_perror("radclient:");
-				error = 1;
-				break;
-			}
-			pairadd(&list, vp);
-		} while (last_token == T_COMMA);
+
+		/* If we get a '\n' by itself, we assume that's the end of that VP */
+		if((buf[0] == '\n') && (list)) {
+			return error ? NULL: list;
+		} 
+		if((buf[0] == '\n') && (!list)) {
+			continue;
+		} else {
+			do {
+				if ((vp = pairread(&p, &last_token)) == NULL) {
+					librad_perror("radclient:");
+					error = 1;
+					break;
+				}
+				pairadd(&list, vp);
+			} while (last_token == T_COMMA);
+		}
 	}
+	filedone = 1;
 	return error ? NULL: list;
 }
 
@@ -73,13 +87,14 @@ static void usage(void)
 {
 	fprintf(stderr, "Usage: radclient [-c count] [-d raddb] [-f file] [-r retries] [-t timeout]\n		[-i id] [-qvx] server acct|auth <secret>\n");
 	
-	fprintf(stderr, " -c count    Send 'count' packets.\n");
+	fprintf(stderr, " -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, " -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, " -f file     Read packets from file, not stdin.\n");
 	fprintf(stderr, " -r retries  If timeout, retry sending the packet 'retires' times.\n");
 	fprintf(stderr, " -t timeout  Wait 'timeout' seconds before retrying.\n");
 	fprintf(stderr, " -i id       Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, " -q          Do not print anything out.\n");
+	fprintf(stderr, " -s          Print out summary information of auth results.\n");
 	fprintf(stderr, " -v          Show program version information.\n");
 	fprintf(stderr, " -x          Debugging mode.\n");
 
@@ -146,6 +161,11 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 		       (*rep)->id, (*rep)->code, (*rep)->data_len);
 		vp_printlist(stdout, (*rep)->vps);
 	}
+	if((*rep)->code == PW_AUTHENTICATION_ACK) {
+		totalapp++;
+	} else {
+		totaldeny++;
+	}
 
 	return 0;
 }
@@ -168,7 +188,7 @@ int main(int argc, char **argv)
 
 	id = ((int)getpid() & 0xff);
 
-	while ((c = getopt(argc, argv, "c:d:f:hi:qt:r:xv")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:xv")) != EOF) switch(c) {
 		case 'c':
 			if (!isdigit(*optarg)) usage();
 			count = atoi(optarg);
@@ -195,6 +215,9 @@ int main(int argc, char **argv)
 			if ((id < 0) || (id > 255)) {
 				usage();
 			}
+			break;
+		case 's':
+			do_summary = 1;
 			break;
 		case 't':
 			if (!isdigit(*optarg)) usage();
@@ -247,6 +270,7 @@ int main(int argc, char **argv)
 		if (port == 0) port = getport("radacct");
 		if (port == 0) port = PW_ACCT_UDP_PORT;
 		req->code = PW_ACCOUNTING_REQUEST;
+		do_summary = 0;
 	} else if (isdigit(argv[2][0])) {
 		if (port == 0) port = PW_AUTH_UDP_PORT;
 		port = atoi(argv[2]);
@@ -284,11 +308,7 @@ int main(int argc, char **argv)
 	} else {
 		fp = stdin;
 	}
-
-	if ((req->vps = readvp(fp)) == NULL) {
-		exit(1);
-	}
-
+	
 	/*
 	 *	Send request.
 	 */
@@ -297,44 +317,56 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	vp = pairfind(req->vps, PW_PASSWORD);
-	if (vp) {
-	  strNcpy(password, (char *)vp->strvalue, sizeof(vp->length));
-	} else {
-	  *password = '\0';
-	}
-
-	/*
-	 *	Loop, sending the packet N times.
-	 */
-	for (loop = 0; loop < count; loop++) {
-		req->id++;
-
-		/*
-		 *	If we've already sent a packet, free up the old
-		 *	one, and ensure that the next packet has a unique
-		 *	ID and authentication vector.
-		 */
-		if (req->data) {
-			free(req->data);
-			req->data = NULL;
-			if (*password != '\0') {
-			  vp = pairfind(req->vps, PW_PASSWORD);
-			  if (vp) {
-			    strNcpy((char *)vp->strvalue, password,
-				    sizeof(password));
-			    vp->length = strlen(password);
-			  }
-			}
-			
-			librad_md5_calc(req->vector, req->vector,
-					sizeof(req->vector));
+	while(!filedone) {
+		if(req->vps) {
+			pairfree(req->vps);
 		}
-		send_packet(req, &rep);
-		rad_free(rep);
-		rep = NULL;
-	}
+		if ((req->vps = readvp(fp)) == NULL) {
+			break;
+		}
+	
+		vp = pairfind(req->vps, PW_PASSWORD);
+		if (vp) {
+		  strNcpy(password, (char *)vp->strvalue, (vp->length)+1);
+		} else {
+		  *password = '\0';
+		}
+	
+		/*
+		 *	Loop, sending the packet N times.
+		 */
+		for (loop = 0; loop < count; loop++) {
+			req->id++;
+	
+			/*
+			 *	If we've already sent a packet, free up the old
+			 *	one, and ensure that the next packet has a unique
+			 *	ID and authentication vector.
+			 */
+			if (req->data) {
+				free(req->data);
+				req->data = NULL;
 
+				if (*password != '\0') {
+				  vp = pairfind(req->vps, PW_PASSWORD);
+				  if (vp) {
+				    strNcpy((char *)vp->strvalue, password,
+					    (vp->length)+1);
+				    vp->length = strlen(password);
+				  }
+				}
+
+				librad_md5_calc(req->vector, req->vector,
+						sizeof(req->vector));
+			}
+			send_packet(req, &rep);
+			rad_free(rep);
+			rep = NULL;
+		}
+	}
+	if(do_summary) {
+		printf("\n\t   Total approved auths:  %d\n", totalapp);
+		printf("\t     Total denied auths:  %d\n", totaldeny);
+	}
 	return 0;
 }
-
