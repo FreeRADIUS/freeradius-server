@@ -46,6 +46,15 @@ typedef unsigned long int UINT4;
 #endif
 #endif /* _LRAD_PROTO_H */
 
+/*
+ *  FreeRADIUS defines to ensure globally unique MD4 function names,
+ *  so that we don't pick up other MD4 libraries.
+ */
+#define MD4_CTX		librad_MD4_CTX
+#define MD4Init		librad_MD4Init
+#define MD4Update	librad_MD4Update
+#define MD4Final       	librad_MD4Final
+
 /* MD4.H - header file for MD4C.C
  */
 
