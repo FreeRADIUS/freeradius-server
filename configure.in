@@ -315,23 +315,39 @@ if test "$WITH_THREADS" = "yes"; then
   LIBS="$LIBS $PTHREADLIB"
 fi
 
+dnl #
+dnl #  Checks to ensure that the thread pool code can build.
+dnl #
 if test "$WITH_THREAD_POOL" = "yes"; then
-  dnl If using thread pools, check that threading is enabled
+  dnl #
+  dnl # If using thread pools, check that threading is enabled
+  dnl #
   if test "$WITH_THREADS" != "yes"; then
     AC_MSG_ERROR(You must have threads enabled for thread pools to work.)
   fi
 
-  dnl If using thread pools, check that we have thread libraries
+  dnl #
+  dnl # If using thread pools, check that we have thread libraries
+  dnl #
   if test "X$PTHREADLIB" = "X"; then
     AC_MSG_ERROR(You must have threading libraries for thread pools to work.)
   fi
 
-  AC_CHECK_FUNC(sem_init,
-		HAVE_SEM_INIT=1,
-		HAVE_SEM_INIT=0)
-  if test "$HAVE_SEM_INIT" != "1"; then
-    AC_MSG_WARN(You do not have posix semaphores.  Disabling thread pools)
-    WITH_THREAD_POOL=no
+dnl #
+dnl #  Check for sem_init all by itself
+dnl #
+  AC_CHECK_FUNC(sem_init)
+  if test "X$ac_cv_func_sem_init" = "X"; then
+
+dnl #
+dnl #  If not found, sem_init is in -lposix4 on Solaris
+dnl #
+    AC_CHECK_LIB(posix4, sem_init)
+
+    if test "X$ac_cv_lib_posix4_sem_init" = "X"; then
+      AC_MSG_WARN(You do not have posix semaphores.  Disabling thread pools)
+      WITH_THREAD_POOL=no
+    fi
   fi
 
   AC_CHECK_FUNCS(pthread_cancel)
