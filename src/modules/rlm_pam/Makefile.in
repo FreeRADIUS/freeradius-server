@@ -1,0 +1,11 @@
+TARGET     = @targetname@
+SRCS       = rlm_pam.c
+HEADERS    =
+RLM_LIBS   = @pam_ldflags@
+RLM_CFLAGS = @pam_cflags@
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)

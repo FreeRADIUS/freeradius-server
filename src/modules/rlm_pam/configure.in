@@ -1,0 +1,36 @@
+AC_INIT(rlm_pam.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_pam])
+
+if test x$with_[]modname != xno; then
+
+	AC_CHECK_LIB(dl, dl_open,
+		[ pam_ldflags="-ldl" ]
+	)
+
+	AC_CHECK_LIB(pam, pam_start, 
+		[ pam_ldflags="-lpam $pam_ldflags" ],
+		[ fail=$fail" libpam" ],
+		[ $pam_ldflags ]
+	)
+
+	targetname=modname
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+AC_SUBST(pam_ldflags)
+AC_SUBST(pam_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
