@@ -109,7 +109,6 @@ if ($link){
 					}
 					else
 						$da_name_cache[$row[NASIPAddress]] = $acct_server;
-					}
 				}
 			}
 			else
