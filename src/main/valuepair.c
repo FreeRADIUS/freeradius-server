@@ -295,6 +295,11 @@ static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
+	if ((strchr(check->strvalue, ',') == NULL) &&
+	    (strchr(check->strvalue, '-') == NULL)) {
+		return (request->lvalue - check->lvalue);
+	}
+
 	/* Same size */
 	strcpy(buf, check->strvalue);
 	s = strtok(buf, ",");
@@ -310,7 +315,7 @@ static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 			return 0;
 		}
 		s = strtok(NULL, ",");
-	}
+	} 
 
 	return -1;
 }
