@@ -148,6 +148,11 @@
  *	- Only call pairfree if we are using pairxlatmove not for pairadd
  * Mar 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- If we are passed an empty password log a module failure message not an error message
+ * Apr 2004, Kostas Kalveras <kkalev@noc.ntua.gr>
+ *	- Add a patch from Tarun Bhushan <tarun.bhushan@macquarie.com> to add a tls_mode boolean
+ *	  directive so that we can enable TLS connetions even if port is not set to 636
+ *	- Add an error message if ldap_initialize() is not available and we are passed a URL like
+ *	  'server' directive.
  */
 static const char rcsid[] = "$Id$";
 
@@ -295,6 +300,7 @@ static CONF_PARSER module_config[] = {
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance,timelimit), NULL, "20"},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance,login), NULL, ""},
+	{"tls_mode", PW_TYPE_BOOLEAN, offsetof(ldap_instance,tls_mode), NULL, "no"},
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance,start_tls), NULL, "no"},
 	{"tls_cacertfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance,tls_cacertfile), NULL, NULL},
 	{"tls_cacertdir", PW_TYPE_STRING_PTR, offsetof(ldap_instance,tls_cacertdir), NULL, NULL},
@@ -400,17 +406,21 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		return -1;
 	}
 	inst->is_url = 0;
-#ifdef HAVE_LDAP_INITIALIZE
 	if (ldap_is_ldap_url(inst->server)){
+#ifdef HAVE_LDAP_INITIALIZE
 		inst->is_url = 1;
 		inst->port = 0;
-	}
+#else
+		radlog(L_ERR, "rlm_ldap: 'server' directive is in URL form but ldap_initialize() is not available.");
+		free(inst);
+		return -1;
 #endif
+	}
 
 	inst->timeout.tv_usec = 0;
 	inst->net_timeout.tv_usec = 0;
 	/* workaround for servers which support LDAPS but not START TLS */
-	if(inst->port == LDAPS_PORT)
+	if(inst->port == LDAPS_PORT || inst->tls_mode)
 		inst->tls_mode = LDAP_OPT_X_TLS_HARD;
 	else
 		inst->tls_mode = 0;
