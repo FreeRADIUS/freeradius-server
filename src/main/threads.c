@@ -71,8 +71,7 @@ typedef struct THREAD_HANDLE {
 	struct THREAD_HANDLE *next;
 	pthread_t            pthread_id;
 	int                  thread_num;
-	pthread_mutex_t      lock;
-	pthread_cond_t       cond;
+	sem_t                semaphore;
 	int                  status;
 	unsigned int         request_count;
 	time_t               timestamp;
@@ -178,11 +177,6 @@ static void *request_handler_thread(void *arg)
 #endif
 	
 	/*
-	 *  We're about to wait for the mutex.
-	 */
-	pthread_mutex_lock(&self->lock);
-
-	/*
 	 *	Loop forever, until told to exit.
 	 */
 	for (;;) {
@@ -193,10 +187,9 @@ static void *request_handler_thread(void *arg)
 		 *	waits for the condition.  Once it receives
 		 *	the condition, it locks the mutex again.
 		 */
-
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       self->thread_num);
-		if (pthread_cond_wait(&self->cond, &self->lock) != 0) {
+		if (sem_wait(&self->semaphore) != 0) {
 			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
 			       self->thread_num, strerror(errno));
 			break;
@@ -226,7 +219,6 @@ static void *request_handler_thread(void *arg)
 	}
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
-	pthread_mutex_unlock(&self->lock);
 
 	/*
 	 *  Do this as the LAST thing before exiting.
@@ -283,8 +275,7 @@ static void delete_thread(THREAD_HANDLE *handle)
 	 *	This thread has exited.  Delete any additional
 	 *	resources associated with it (semaphore, etc).
 	 */
-	pthread_mutex_destroy(&handle->lock);
-	pthread_cond_destroy(&handle->cond);
+	sem_destroy(&handle->semaphore);
 
 	/*
 	 *	Free the memory, now that we're sure the thread
@@ -328,19 +319,13 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	handle->timestamp = time(NULL);
 
 	/*
-	 *	Initialize the mutex/conditional to be for this
-	 *	process only, and to have the thread block until the
-	 *	server signals it..
+	 *	Initialize the semaphore to be for this process only,
+	 *	and locked, so that the thread block until the server
+	 *	kicks it.
 	 */
-	rcode = pthread_cond_init(&handle->cond,NULL);
+	rcode = sem_init(&handle->semaphore, 0, SEMAPHORE_LOCKED);
 	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "FATAL: Failed to init cond: %s",
-				strerror(errno));
-		exit(1);
-	}
-	rcode = pthread_mutex_init(&handle->lock,NULL);
-	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "FATAL: Failed to init lock: %s",
+		radlog(L_ERR|L_CONS, "FATAL: Failed to initialize semaphore: %s",
 				strerror(errno));
 		exit(1);
 	}
@@ -595,17 +580,7 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	request->child_pid = found->pthread_id;
 
 	/*
-	 *  Lock the mutex.  If no one else is using it, then we get the
-	 *  lock immediately.  If we're in a race condition with the
-	 *  child thread (see above), then they lock it, forcing us to wait,
-	 *  they then UNLOCK it, and wait for the conditional variable.
-	 */
-	pthread_mutex_lock(&found->lock);
-
-	/*
-	 *  We can guarantee that the child thread is now waiting
-	 *  on the pthread conditional, so it's safe to set these
-	 *  variables.
+	 *  Tell the child thread what to do.
 	 */
 	found->request = request;
 	found->fun = fun;
@@ -613,17 +588,9 @@ int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	thread_pool.request_count++;
 
 	/*
-	 *  Once the variables are set, signal the pthread conditional,
-	 *  and it will try to acquire the lock again, and block.
-	 *
-	 *  We then release our hold on the mutex, and allow the child
-	 *  thread to proceed.
-	 *
-	 *  This 'back and forth' stuff is a little stupid.  Posix
-	 *  semaphores would be incomparibly simpler.
+	 *  Now that the child has things to do, kick it.
 	 */
-	pthread_cond_signal(&found->cond);
-	pthread_mutex_unlock(&found->lock);
+	sem_post(&handle->semaphore);
 
 	return 0;
 }
@@ -745,9 +712,7 @@ int thread_pool_clean(time_t now)
 			if (handle->request == NULL) {
 				handle->status = THREAD_CANCELLED;
 
-				pthread_mutex_lock(&handle->lock);
-				pthread_cond_signal(&handle->cond);
-				pthread_mutex_unlock(&handle->lock);
+				sem_post(&handle->semaphore);
 				spare--;
 				break;
 			}
@@ -768,9 +733,7 @@ int thread_pool_clean(time_t now)
 			if ((handle->request == NULL) &&
 			    (handle->request_count > thread_pool.max_requests_per_thread)) {
 				handle->status = THREAD_CANCELLED;
-				pthread_mutex_lock(&handle->lock);
-				pthread_cond_signal(&handle->cond);
-				pthread_mutex_unlock(&handle->lock);
+				sem_post(&handle->semaphore);
 			}
 		}
 	}
