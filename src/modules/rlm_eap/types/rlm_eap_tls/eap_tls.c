@@ -714,7 +714,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		 *	data" phase.
 		 */
 	case EAPTLS_OK:
-		DEBUG2("  rlm_eap_ttls: Done initial handshake");
+		DEBUG2("  rlm_eap_tls: Done initial handshake");
 
 		/*
 		 *	Get the rest of the fragments.
