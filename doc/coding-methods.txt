@@ -72,7 +72,7 @@ by the programmer to write code.
    to be doing when anything goes wrong.
 
    If it hits an assert() and calls abort(), you're a genius.  You've
-   though ahead to what MIGHT go wrong, and put in an assertion to
+   thought ahead to what MIGHT go wrong, and put in an assertion to
    ensure that it fails in a KNOWN MANNER when something DOES go
    wrong.  (As it usually does...)
 
@@ -121,11 +121,41 @@ by the programmer to write code.
     write error messages like this, too.  See #4.
 
 
-11. Test your code.
+11. Avoid UNIXisms and ASCIIisms and visualisms.
 
-    Unless you're Donald Knuth, you write buggy code.  You'll never
-    find all of the bugs in your code unless you write a test program
-    for it.
+    You don't know under what system someone will try to run your code.
+    Don't demand that others use the same OS or character set as you use.
+
+    Never assign numbers to pointers.  If foo is a char*, and you want it
+    to be be null, assign NULL, not 0.  The zeroth location is perfectly
+    as addressable as any other on plenty of OSes.  Not all the world
+    runs on Unix (though it should :) ).
+
+    Another common mistake is to assume that the zeroth character in the
+    character set is the string terminator.  Instead of terminating a
+    string with 0, use '\0', which is always right.  Similarly, memset()
+    with the appropriate value:  NULL, '\0', or 0 for pointers, chars,
+    and numbers.
+
+    Don't put tabs in string constants, either.  Always use '\t' to
+    represent a tab, instead of ASCII 9.  Literal tabs are presented to 
+    readers of your code as arbitrary whitespace, and it's easy to mess
+    up.
+
+
+12. Make conditionals explicit.
+
+    Though it's legal to test "if (foo){}", if you test against the
+    appropriate value (like NULL or '\0'), your code is prettier and
+    easier for others to read without having to eyeball your prototypes
+    continuously to figure out what you're doing (especially if your
+    variables aren't well-named).  See #2.
+
+
+13. Test your code.
+
+    Even Donald Knuth writes buggy code.  You'll never find all of the
+    bugs in your code unless you write a test program for it.
 
     This also means that you'll have to write your code so that it
     will be easily testable.  As a result, it will look better, and be
