@@ -443,6 +443,15 @@ void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
 	rbtree_delete(xlat_root, node);
 }
 
+/*
+ *	De-register all xlat functions,
+ *	used mainly for debugging.
+ */
+void xlat_free(void)
+{
+	rbtree_free(xlat_root);
+}
+
 
 /*
  *	Decode an attribute name into a string.
