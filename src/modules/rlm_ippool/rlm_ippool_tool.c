@@ -112,7 +112,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
     sessiondb=gdbm_open(sessiondbname,512,mode,0,NULL);
     indexdb=gdbm_open(indexdbname,512,mode,0,NULL);
 
-	if (inet_pton(AF_INET, ipaddress, &ipaddr) == 0)
+	if (inet_aton(ipaddress, &ipaddr) == 0)
 	{
 		printf("rlm_ippool_tool: Unable to convert IP address '%s'\n", ipaddress);
 		return;
