@@ -21,6 +21,23 @@ clean:
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	# Install the config files
+	@echo "Creating/updating files in $(raddbdir)"; \
+	cd ../raddb; \
+	for i in [a-c]* [e-z]*; do \
+		[ ! -f $(raddbdir)/$$i ] && cp $$i $(raddbdir)/$$i; \
+	done; \
+	for i in dictionary*; do \
+		[ ! -f $(raddbdir)/$$i ] && cp $$i $(raddbdir)/$$i; \
+		if [ $$i -nt $(raddbdir)/$$i ]; then \
+			echo "** $(raddbdir)/$$i"; \
+			nt=1; \
+		fi; \
+	done; \
+	if [ "$$nt" ]; then \
+		echo "** The samples in ../raddb are newer than these files";\
+		echo "** Please investigate and copy manually if appropriate";\
+	fi
 
 common:
 	@for dir in $(SUBDIRS); do \
@@ -32,6 +49,10 @@ distclean: clean
 	rm -f config.cache config.log config.status
 	-find . ! -name configure.in -name \*.in -print | \
 		sed 's/\.in$$//' | \
+		while read file; do rm -f $$file; done
+	-find src/modules -name config.mak | \
+		while read file; do rm -f $$file; done
+	-find src/modules -name config.h | \
 		while read file; do rm -f $$file; done
 
 ######################################################################
