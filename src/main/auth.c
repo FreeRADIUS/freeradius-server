@@ -19,6 +19,7 @@ char auth_sccsid[] =
 #include	<time.h>
 #include	<unistd.h>
 #include	<errno.h>
+#include	<ctype.h>
 
 #if HAVE_MALLOC_H
 #  include <malloc.h>
@@ -492,9 +493,9 @@ int rad_authenticate(REQUEST *request, int activefd)
 	}
 
 	/*
-	 *	Perhaps there is a Stripped-Username now.
+	 *	Perhaps there is a Stripped-User-Name now.
 	 */
-	if ((tmp=pairfind(request->packet->vps, PW_STRIPPED_USERNAME)) != NULL)
+	if ((tmp=pairfind(request->packet->vps, PW_STRIPPED_USER_NAME)) != NULL)
 		namepair = tmp;
 
 	/*
@@ -539,6 +540,17 @@ int rad_authenticate(REQUEST *request, int activefd)
 				"Login incorrect: [%s/%s] (%s)",
 				namepair->strvalue, clean_buffer,
 				auth_name(request, 1));
+			/* double check: maybe the secret is wrong? */
+			if (debug_flag > 1) {
+			  p = userpass;
+			  while (*p) {
+			    if (!isprint(*p)) {
+			      log_debug("  WARNING: Unprintable characters in the password.\n           Double-check the shared secret on the server and the NAS!");
+			      break;
+			    }
+			    p++;
+			  }
+			}
 		}
 	}
 

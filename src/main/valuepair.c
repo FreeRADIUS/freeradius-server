@@ -176,7 +176,7 @@ int paircmp(VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 			case PW_AUTHTYPE:
                         case PAM_AUTH_ATTR:
 			case PW_SIMULTANEOUS_USE:
-			case PW_STRIP_USERNAME:
+			case PW_STRIP_USER_NAME:
 				check_item = check_item->next;
 				continue;
 		}
@@ -287,10 +287,10 @@ static int portcmp(VALUE_PAIR *request, VALUE_PAIR *check,
  *	Compare prefix/suffix.
  *
  *	If they compare: 
- *	- if PW_STRIP_USERNAME is present in check_pairs,
+ *	- if PW_STRIP_USER_NAME is present in check_pairs,
  *	  strip the username of prefix/suffix.
- *	- if PW_STRIP_USERNAME is not present in check_pairs,
- *	  add a PW_STRIPPED_USERNAME to the request.
+ *	- if PW_STRIP_USER_NAME is not present in check_pairs,
+ *	  add a PW_STRIPPED_USER_NAME to the request.
  */
 static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
@@ -327,14 +327,14 @@ static int presufcmp(VALUE_PAIR *request, VALUE_PAIR *check,
 	if (ret != 0)
 		return ret;
 
-	if (pairfind(check_pairs, PW_STRIP_USERNAME)) {
+	if (pairfind(check_pairs, PW_STRIP_USER_NAME)) {
 		strcpy(request->strvalue, rest);
 		request->length = strlen(rest);
 	} else {
-		if ((vp = pairfind(check_pairs, PW_STRIPPED_USERNAME)) != NULL){
+		if ((vp = pairfind(check_pairs, PW_STRIPPED_USER_NAME)) != NULL){
 			strcpy(vp->strvalue, rest);
 			request->length = strlen(rest);
-		} else if ((vp = paircreate(PW_STRIPPED_USERNAME,
+		} else if ((vp = paircreate(PW_STRIPPED_USER_NAME,
 			    PW_TYPE_STRING)) != NULL) {
 			strcpy(vp->strvalue, rest);
 			request->length = strlen(rest);
