@@ -321,6 +321,12 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 		return RLM_MODULE_REJECT;
 	}
 
+	/* If this is a null the server will seg fault */
+	if (row[0] == NULL) {
+		radlog(L_ERR, "rlm_sql_authenticate: row[0] returned null.");
+		return RLM_MODULE_REJECT;
+	}
+
 	/*
 	 * Just compare the two 
 	 */
