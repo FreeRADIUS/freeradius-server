@@ -15,6 +15,9 @@
 
 #define	MAX_DATASTR_LEN	64
 
+
+sb2 indicators[5];
+
 /*************************************************************************
  *
  *	Function: sql_init_socket
@@ -254,14 +257,15 @@ int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 			break;
 		}
 
+		indicators[y-1] = 0;
 		x=OCIDefineByPos(oracle_sock->queryHandle,
 				&define,
 				oracle_sock->errHandle,
 				y,
 				(ub1 *) rowdata[y-1],
-				dsize,
+				dsize+1,
 				SQLT_STR,
-				(dvoid *) 0,
+				&indicators[y-1],
 				(dvoid *) 0,
 				(dvoid *) 0,
 				OCI_DEFAULT);
