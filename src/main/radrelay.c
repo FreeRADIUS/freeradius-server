@@ -284,6 +284,7 @@ redo:
 			if (!skip) {
 				vp = NULL;
 				if (userparse(buf, &vp) > 0 &&
+				    (vp != NULL) &&
 				    (vp->attribute < 256 ||
 				     vp->attribute > 65535) &&
 				    vp->attribute != PW_VENDOR_SPECIFIC) {
