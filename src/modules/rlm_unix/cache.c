@@ -48,7 +48,6 @@ static const char rcsid[] = "$Id$";
 /*
  *  Static prototypes
  */
-static void chgLoggedin(char *user, int diff);
 static struct mypasswd *findHashUser(struct pwcache *cache, const char *user);
 static int storeHashUser(struct pwcache *cache, struct mypasswd *new, int idx);
 static int hashUserName(const char *s);
