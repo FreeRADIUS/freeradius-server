@@ -55,7 +55,7 @@ if ($HTTP_SERVER_VARS["PHP_AUTH_USER"])
 	<a id="a14" href="find.php3" target="content" title="Find User">Find User</a>
 	</td></tr>
 	<tr align=left><td id="menu4" onmouseover='myin("4");' onmouseout='myout("4");'>
-	<a id="a4" href="user_admin.php3" target="content" title="User Account Administration">Edit User</a>
+	<a id="a4">Edit User</a>
 	<img align=top src="images/black.gif" vspace=7 hspace=0 width=1 height=1><br>
 	<input type="text" size=11 name="login" target="content">
 	</td></tr>
