@@ -765,6 +765,7 @@ dnl #
 dnl # Figure out where libtool is located,
 dnl #
 top_builddir=`pwd`
+export top_builddir
 AC_MSG_RESULT([top_builddir=$top_builddir])
 AC_SUBST(top_builddir)
 AC_SUBST(LIBLTDL)
