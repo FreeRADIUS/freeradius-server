@@ -256,7 +256,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		return RLM_MODULE_NOTFOUND;
 	}
 
-#if 0 /* FIXME: Debug being printed elsewhere? /*
+#if 0 /* FIXME: Debug being printed elsewhere? */
 	/*
 	 * Uncomment these lines for debugging
 	 * Recompile, and run 'radiusd -X'
