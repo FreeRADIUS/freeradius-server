@@ -555,12 +555,19 @@ static int counter_authorize(void *instance, REQUEST *request)
 				key_vp->strvalue,res);
 	}
 	else{
+		char module_msg[MAX_STRING_LEN];
+		VALUE_PAIR *module_msg_vp;
+
 		/*
 		 * User is denied access, send back a reply message
 		*/
 		sprintf(msg, "Your maximum %s usage time has been reached", data->reset);
 		reply_item=pairmake("Reply-Message", msg, T_OP_EQ);
 		pairadd(&request->reply->vps, reply_item);
+
+		snprintf(module_msg, sizeof(module_msg), "rlm_counter: Maximum %s usage time reached", data->reset);
+		module_msg_vp = pairmake("Module-Message", module_msg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_msg_vp);	
 
 		ret=RLM_MODULE_REJECT;
 
