@@ -277,7 +277,6 @@ extern radlog_dest_t	radlog_dest;
 extern uint32_t		expiration_seconds;
 extern int		log_stripped_names;
 extern int		log_auth_detail;
-extern int		auth_port;
 extern int		acct_port;
 extern const char      *radiusd_version;
 
