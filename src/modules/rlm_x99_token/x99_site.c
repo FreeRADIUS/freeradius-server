@@ -34,12 +34,6 @@
  * IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT
  */
 
-#ifdef FREERADIUS
-#include "autoconf.h"
-#include "libradius.h"
-#endif
-#include "x99.h"
-
 #include <string.h>
 
 static const char rcsid[] = "$Id$";
@@ -51,7 +45,7 @@ x99_challenge_transform(const char *username,
 {
     /* ARGSUSED */
 
-    strcpy(challenge, "DISABLED");
+    (void) strcpy(challenge, "DISABLED");
     return 0;
 }
 

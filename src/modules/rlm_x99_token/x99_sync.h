@@ -22,6 +22,8 @@
 #ifndef X99_SYNC_H
 #define X99_SYNC_H
 
+static int x99_get_failcount(const char *syncdir, const char *username,
+			     int *failcount);
 static char * x99_acquire_sd_lock(const char *syncdir, const char *username);
 static void x99_release_sd_lock(char *lockfile);
 

@@ -34,9 +34,6 @@
 /* Default sync dir */
 #define SYNCDIR "/etc/x99sync.d"
 
-/* Default prompt in fast_sync mode (PAM only) */
-#define FAST_PROMPT "Password: "
-
 /* Default prompt for presentation of challenge */
 #define CHALLENGE_PROMPT "Challenge: %s\n Response: "
 
@@ -80,14 +77,14 @@ typedef struct x99_token_t {
     char *chal_req;	/* keyword requesting challenge for fast_sync mode */
     char *resync_req;	/* keyword requesting resync for fast_sync mode    */
     int ewindow_size;	/* sync mode event window size (right side value)  */
-#ifdef FREERADIUS
+#if defined(FREERADIUS)
     /* freeradius-specific items */
     int maxdelay;		/* max delay time for response, in seconds */
     int mschapv2_mppe_policy;	/* whether or not do to mppe for mschapv2  */
     int mschapv2_mppe_types;	/* key type/length for mschapv2/mppe       */
     int mschap_mppe_policy;	/* whether or not do to mppe for mschap    */
     int mschap_mppe_types;	/* key type/length for mschap/mppe         */
-#else
+#elif defined(PAM)
     /* PAM specific items */
     int debug;		/* print debug info?                               */
     char *fast_prompt;	/* fast mode prompt                                */
@@ -174,8 +171,7 @@ extern int x99_get_sync_data(const char *syncdir, const char *username,
 			     des_cblock keyblock);
 extern int x99_set_sync_data(const char *syncdir, const char *username,
 			     const char *challenge, const des_cblock keyblock);
-extern int x99_get_failcount(const char *syncdir, const char *username,
-			     int *failcount);
+extern int x99_check_failcount(const char *syncdir, const x99_token_t *inst);
 extern int x99_incr_failcount(const char *syncdir, const char *username);
 extern int x99_reset_failcount(const char *syncdir, const char *username);
 extern int x99_get_last_auth(const char *syncdir, const char *username,
@@ -189,8 +185,10 @@ extern int x99_challenge_transform(const char *username,
 /* x99_log.c */
 extern void x99_log(int level, const char *format, ...);
 
-#ifdef FREERADIUS
+#if defined(FREERADIUS)
 #include "x99_rad.h"
+#elif defined(PAM)
+#include "x99_pam.h"
 #endif
 
 #endif /* X99_H */

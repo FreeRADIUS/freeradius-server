@@ -417,7 +417,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
     x99_user_info_t user_info;
     char *username;
-    int i, failcount, pwattr, rc;
+    int i, pwattr, rc;
     int32_t sflags = 0; /* flags from state */
     time_t last_auth;
 
@@ -510,64 +510,9 @@ good_state:
 	}
     } /* if (!fast_sync) */
 
-    /*
-     * Check failure count.  We "fail secure".  Note that for "internal"
-     * failures, we don't increment the failcount or last_auth time.
-     */
-    if (x99_get_failcount(inst->syncdir, username, &failcount) != 0) {
-	x99_log(X99_LOG_ERR,
-		"auth: unable to get failure count for [%s]", username);
-	return RLM_MODULE_FAIL;
-    }
-    if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
-	x99_log(X99_LOG_ERR,
-		"auth: unable to get last auth time for [%s]", username);
-	return RLM_MODULE_FAIL;
-    }
-    if (inst->hardfail && failcount >= inst->hardfail) {
-	x99_log(X99_LOG_AUTH,
-		"auth: %d/%d failed/max authentications for [%s]",
-		failcount, inst->hardfail, username);
-	if (x99_incr_failcount(inst->syncdir, username) != 0) {
-	    x99_log(X99_LOG_ERR,
-		    "auth: unable to increment failure count for "
-		    "locked out user [%s]", username);
-	}
+    /* Check failure count. */
+    if (x99_check_failcount(username, inst))
 	return RLM_MODULE_USERLOCK;
-    }
-    if (failcount >= inst->softfail) {
-	time_t when;
-	int fcount;
-
-	/*
-	 * Determine the next time this user can authenticate.
-	 *
-	 * Once we hit softfail, we introduce a 1m delay before the user
-	 * can authenticate.  For each successive failed authentication,
-	 * we double the delay time, up to a max of 32 minutes.  While in
-	 * the "delay mode" of operation, all authentication ATTEMPTS are
-	 * considered failures (we don't test if the password is correct).
-	 * Also, each attempt during the delay period restarts the clock.
-	 *
-	 * The advantage of a delay instead of a simple lockout is that an
-	 * attacker can't lock out a user as easily; the user need only wait
-	 * a bit before he can authenticate.
-	 */
-	fcount = failcount - inst->softfail;
-	when = last_auth + (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
-	if (time(NULL) < when) {
-	    x99_log(X99_LOG_AUTH,
-		    "auth: user [%s] auth too soon while delayed, "
-		    "%d/%d failed/softfail authentications",
-		    username, failcount, inst->softfail);
-	    if (x99_incr_failcount(inst->syncdir, username) != 0) {
-		x99_log(X99_LOG_ERR,
-			"auth: unable to increment failure count for "
-			"delayed user [%s]", username);
-	    }
-	    return RLM_MODULE_USERLOCK;
-	}
-    }
 
     /*
      * Don't bother to check async response if either
@@ -607,6 +552,13 @@ good_state:
 	    rc = RLM_MODULE_REJECT;
 	    goto return_pw_valid;
 	    /* NB: last_auth, failcount not updated. */
+	}
+
+	/* Make sure this isn't a replay by forcing a delay. */
+	if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
+	    x99_log(X99_LOG_ERR,
+		    "auth: unable to get last auth time for [%s]", username);
+	    return RLM_MODULE_FAIL;
 	}
 	if (last_auth + inst->maxdelay > time(NULL)) {
 	    x99_log(X99_LOG_AUTH,
@@ -655,7 +607,11 @@ good_state:
     } /* if (user authenticated async) */
 
 sync_response:
-    /* Calculate and test sync responses in the window. */
+    /*
+     * Calculate and test sync responses in the window.
+     * Note that we always accept a sync response, even
+     * if a challenge or resync was explicitly requested.
+     */
     if ((user_info.card_id & X99_CF_SM) && inst->allow_sync) {
 	for (i = 0; i <= inst->ewindow_size; ++i) {
 	    /* Get sync challenge and key. */
@@ -692,7 +648,7 @@ sync_response:
 		 */
 		rc = RLM_MODULE_OK;
 		if (x99_get_sync_data(inst->syncdir,username,user_info.card_id,
-				      1,0,challenge,user_info.keyblock) != 0) {
+				      1, 0 ,challenge,user_info.keyblock) != 0){
 		    x99_log(X99_LOG_ERR, "auth: unable to get sync data "
 			    "e:%d t:%d for [%s] (for resync)", 1, 0, username);
 		    rc = RLM_MODULE_FAIL;

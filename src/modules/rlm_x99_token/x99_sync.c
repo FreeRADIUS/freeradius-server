@@ -180,23 +180,6 @@ x99_upd_last_auth(const char *syncdir, const char *username)
 
 
 /*
- * Return the failed login count and last auth time for a user.
- * Returns 0 on success, non-zero otherwise.
- */
-int
-x99_get_failcount(const char *syncdir, const char *username, int *failcount)
-{
-    int rc;
-    char *lock;
-
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
-	return -1;
-    rc = x99_get_sd(syncdir, username, NULL, failcount, NULL);
-    x99_release_sd_lock(lock);
-    return rc;
-}
-
-/*
  * Atomically increment a user's failed login count.
  * Also updates last_auth.
  */
@@ -245,6 +228,97 @@ x99_reset_failcount(const char *syncdir, const char *username)
     if (rc == 0)
 	rc = x99_set_sd(syncdir, username, challenge, 0, time(NULL));
 
+    x99_release_sd_lock(lock);
+    return rc;
+}
+
+
+/*
+ * checks the failure counter.
+ * returns 0 if the user is allowed to authenticate, -1 otherwise.
+ * caller does not need to log failures, we do it.
+ */
+int
+x99_check_failcount(const char *username, const x99_token_t *inst)
+{
+    time_t last_auth;
+    int failcount;
+
+    if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
+	x99_log(X99_LOG_ERR,
+		"auth: unable to get last auth time for [%s]", username);
+	return -1;
+    }
+    if (x99_get_failcount(inst->syncdir, username, &failcount) != 0) {
+	x99_log(X99_LOG_ERR,
+		"auth: unable to get failure count for [%s]", username);
+	return -1;
+    }
+
+    /* Check against hardfail setting. */
+    if (inst->hardfail && failcount >= inst->hardfail) {
+	x99_log(X99_LOG_AUTH,
+		"auth: %d/%d failed/max authentications for [%s]",
+		failcount, inst->hardfail, username);
+	if (x99_incr_failcount(inst->syncdir, username) != 0) {
+	    x99_log(X99_LOG_ERR,
+		    "auth: unable to increment failure count for "
+		    "locked out user [%s]", username);
+	}
+	return -1;
+    }
+
+    /* Check against softfail setting. */
+    if (failcount >= inst->softfail) {
+	time_t when;
+	int fcount;
+
+	/*
+	 * Determine the next time this user can authenticate.
+	 *
+	 * Once we hit softfail, we introduce a 1m delay before the user
+	 * can authenticate.  For each successive failed authentication,
+	 * we double the delay time, up to a max of 32 minutes.  While in
+	 * the "delay mode" of operation, all authentication ATTEMPTS are
+	 * considered failures (we don't test if the password is correct).
+	 * Also, each attempt during the delay period restarts the clock.
+	 *
+	 * The advantage of a delay instead of a simple lockout is that an
+	 * attacker can't lock out a user as easily; the user need only wait
+	 * a bit before he can authenticate.
+	 */
+	fcount = failcount - inst->softfail;
+	when = last_auth + (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
+	if (time(NULL) < when) {
+	    x99_log(X99_LOG_AUTH,
+		    "auth: user [%s] auth too soon while delayed, "
+		    "%d/%d failed/softfail authentications",
+		    username, failcount, inst->softfail);
+	    if (x99_incr_failcount(inst->syncdir, username) != 0) {
+		x99_log(X99_LOG_ERR,
+			"auth: unable to increment failure count for "
+			"delayed user [%s]", username);
+	    }
+	    return -1;
+	}
+    }
+
+}
+
+
+/*
+ * Return the failed login count and last auth time for a user.
+ * Returns 0 on success, non-zero otherwise.
+ */
+static int
+x99_get_failcount(const char *syncdir, const char *username, int *failcount)
+{
+    int rc;
+    char *lock;
+
+    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+	return -1;
+    rc = x99_get_sd(syncdir, username, NULL, failcount, NULL);
     x99_release_sd_lock(lock);
     return rc;
 }
