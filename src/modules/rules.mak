@@ -70,7 +70,7 @@ ifneq ($(TARGET),)
 #
 #######################################################################
 $(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) -static $(CFLAGS) $(RLM_CFLAGS) $(RLM_LIBS) $^ -o $@ 
+	$(LIBTOOL) --mode=link $(LD) -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
 
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic $(CFLAGS) \
@@ -94,6 +94,7 @@ static: $(TARGET).a
 
 dynamic: $(TARGET).la
 	@cp $< ../lib
+	@[ -f .libs/$(TARGET).so ] && cp .libs/$(TARGET).so ../../../raddb
 
 #######################################################################
 #
