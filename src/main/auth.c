@@ -521,9 +521,9 @@ int rad_authenticate(REQUEST *request)
 autz_redo:
 	r = module_authorize(autz_type, request);
 	if (r != RLM_MODULE_NOTFOUND &&
-			r != RLM_MODULE_NOOP &&
-			r != RLM_MODULE_OK &&
-			r != RLM_MODULE_UPDATED) {
+	    r != RLM_MODULE_NOOP &&
+	    r != RLM_MODULE_OK &&
+	    r != RLM_MODULE_UPDATED) {
 		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
 			if ((module_msg = pairfind(request->packet->vps,
 					PW_MODULE_FAILURE_MESSAGE)) != NULL){
@@ -820,7 +820,7 @@ autz_redo:
 		pairmove(&request->reply->vps, &tmp);
 		pairfree(&tmp);
 
-		if (r < 0) {
+		if (r != 0) {
 			/*
 			 *	Error. radius_exec_program() returns -1 on
 			 *	fork/exec errors, or >0 if the exec'ed program
@@ -839,7 +839,7 @@ autz_redo:
 			rad_authlog("Login incorrect (external check failed)", 
 					request, 0);
 
-			return RLM_MODULE_OK;
+			return RLM_MODULE_REJECT;
 		}
 	}
 
