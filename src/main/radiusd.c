@@ -1853,8 +1853,12 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 			 */
 			case RLM_MODULE_HANDLED:
 				/*
-				 *  rad_send??
+				 *	Add the proxied request to the
+				 *	list of outstanding proxied
+				 *	requests.
 				 */
+				rl_add_proxy(request);
+
 				goto postpone_request;
 				break;
 			}

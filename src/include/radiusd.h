@@ -224,6 +224,8 @@ typedef enum radlog_dest_t {
 
 /*
  *	Global variables.
+ *
+ *	We really shouldn't have this many.
  */
 extern const char	*progname;
 extern int		debug_flag;

@@ -63,6 +63,7 @@ typedef struct REQUESTINFO {
 
 static REQUESTINFO	request_list[256];
 
+#undef  WITH_RBTREE
 #ifdef WITH_RBTREE
 
 /*
@@ -75,6 +76,17 @@ static REQUESTINFO	request_list[256];
  *	tree for packet ID's.
  */
 static rbtree_t		*request_tree;
+
+#ifdef HAVE_PTHREAD_H
+static pthread_mutex_t	proxy_mutex;
+#else
+/*
+ *	This is easier than ifdef's throughout the code.
+ */
+#define pthread_mutex_lock(_x)
+#define pthread_mutex_unlock(_x)
+#endif
+static rbtree_t		*proxy_tree;
 
 /*
  *	Compare two REQUEST data structures, based on a number
@@ -113,6 +125,53 @@ static int request_cmp(const void *one, const void *two)
 	return 0;
 }
 
+/*
+ *	Compare two REQUEST data structures, based on a number
+ *	of criteria, for proxied packets.
+ */
+static int proxy_cmp(const void *one, const void *two)
+{
+	const REQUEST *a = one;
+	const REQUEST *b = two;
+
+	rad_assert(a->proxy != NULL);
+	rad_assert(b->proxy != NULL);
+
+	/*
+	 *	The following code looks unreasonable, but it's
+	 *	the only way to make the comparisons work.
+	 */
+	if (a->proxy->id < b->proxy->id) return -1;
+	if (a->proxy->id > b->proxy->id) return +1;
+
+	/*
+	 *	Crap... we've got to check packet codes, too.
+	 */
+
+#if 0
+	/*
+	 *	FIXME: Add later, when we have multiple sockets
+	 *	for proxied requests.
+	 */
+	if (a->proxy->src_ipaddr < b->proxy->src_ipaddr) return -1;
+	if (a->proxy->src_ipaddr > b->proxy->src_ipaddr) return +1;
+
+	if (a->proxy->src_port < b->proxy->src_port) return -1;
+	if (a->proxy->src_port > b->proxy->src_port) return +1;
+#endif
+
+	if (a->proxy->dst_ipaddr < b->proxy->dst_ipaddr) return -1;
+	if (a->proxy->dst_ipaddr > b->proxy->dst_ipaddr) return +1;
+
+	if (a->proxy->dst_port < b->proxy->dst_port) return -1;
+	if (a->proxy->dst_port > b->proxy->dst_port) return +1;
+
+	/*
+	 *	Everything's equal.  Say so.
+	 */
+	return 0;
+}
+
 #endif
 
 /*
@@ -144,6 +203,24 @@ int rl_init(void)
 	if (!request_tree) {
 		rad_assert("FAIL" == NULL);
 	}
+
+	proxy_tree = rbtree_create(proxy_cmp, NULL, 0);
+	if (!proxy_tree) {
+		rad_assert("FAIL" == NULL);
+	}
+
+#ifndef HAVE_PTHREAD_H
+	/*
+	 *	For now, always create the mutex.
+	 *
+	 *	Later, we can only create it if there are multiple threads.
+	 */
+	if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
+		radlog(L_ERR, "FATAL: Failed to initialize proxy mutex: %s",
+		       strerror(errno));
+		exit(1);
+	}
+#endif
 #endif
 
 	return 0;
@@ -236,6 +313,27 @@ void rl_delete(REQUEST *request)
 		node = rbtree_find(request_tree, request);
 		rad_assert(node != NULL);
 		rbtree_delete(request_tree, node);
+
+
+		/*
+		 *	Delete it from the proxy tree, too.
+		 */
+		if (request->proxy) {
+			pthread_mutex_lock(&proxy_mutex);
+			node = rbtree_find(proxy_tree, request);
+			rad_assert(node != NULL);
+			rbtree_delete(proxy_tree, node);
+			pthread_mutex_unlock(&proxy_mutex);
+		}
+#if 0
+		/*
+		 *	For paranoia.  Delete when the RBTREE code
+		 *	is made live.
+		 */
+		DEBUG2(" Trees: %d %d\n",
+		       rbtree_num_elements(request_tree),
+		       rbtree_num_elements(proxy_tree));
+#endif
 	}
 #endif
 
@@ -332,6 +430,32 @@ REQUEST *rl_find(RADIUS_PACKET *packet)
 #endif
 }
 
+
+/*
+ *	Add an entry to the proxy tree.
+ */
+void rl_add_proxy(REQUEST *request)
+{
+#ifdef WITH_RBTREE
+	pthread_mutex_lock(&proxy_mutex);
+
+	/*
+	 *	FIXME: Do magic to assign ID's, etc.
+	 */
+
+	if (!rbtree_insert(proxy_tree, request)) {
+		rad_assert("FAILED" == 0);
+	}
+
+	pthread_mutex_unlock(&proxy_mutex);
+#else
+	/*
+	 *	Do nothing.
+	 */
+#endif
+}
+
+
 /*
  *	Look up a particular request, using:
  *
@@ -344,6 +468,25 @@ REQUEST *rl_find(RADIUS_PACKET *packet)
  */
 REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 {
+#ifdef WITH_RBTREE
+	REQUEST myrequest, *maybe;
+	RADIUS_PACKET myproxy;
+	
+	myrequest.proxy = &myproxy;
+	
+	myproxy.id = packet->id;
+	
+	/*
+	 *	FIXME: Look for BOTH src/dst stuff.
+	 */
+	myproxy.dst_ipaddr = packet->src_ipaddr;
+	myproxy.dst_port = packet->src_port;
+	
+	pthread_mutex_lock(&proxy_mutex);
+	maybe = rbtree_finddata(proxy_tree, &myrequest);
+	pthread_mutex_unlock(&proxy_mutex);
+	return maybe;
+#else
 	REQNODE *curreq = NULL;
 	int id;
 	
@@ -369,6 +512,7 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 	} /* loop over all id's... this is horribly inefficient */
 
 	return NULL;
+#endif
 }
 /*
  *	Walk over all requests, performing a callback for each request.
