@@ -114,7 +114,7 @@ static void usage(void)
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying.\n");
+	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
 	fprintf(stderr, "  -q          Do not print anything out.\n");
@@ -152,7 +152,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 		FD_SET(req->sockfd, &rdfdesc);
 
 		tv.tv_sec = (int)timeout;
-		tv.tv_usec = 1000000 * (timeout - (int)timeout);
+		tv.tv_usec = 1000000 * (timeout - (int) timeout);
 
 		/* Something's wrong if we don't get exactly one fd. */
 		if (select(req->sockfd + 1, &rdfdesc, NULL, NULL, &tv) != 1) {
@@ -370,7 +370,7 @@ int main(int argc, char **argv)
 	req->dst_port = port;
 	req->dst_ipaddr = ip_getaddr(argv[1]);
 	if (req->dst_ipaddr == INADDR_NONE) {
-		librad_perror("radclient: %s: ", argv[1]);
+		fprintf(stderr, "radclient: Failed to find IP address for host %s\n", argv[1]);
 		exit(1);
 	}
 
