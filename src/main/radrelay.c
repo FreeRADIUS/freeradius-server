@@ -239,8 +239,8 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	do {
 		x = rad_lockfd_nonblock(fileno(fp), 0);
 		if (x == -1)
-			ms_sleep(25);
-	} while (x == -1 && i++ < 80);
+			ms_sleep(100);
+	} while (x == -1 && i++ < 20);
 
 	if (x == -1)
 		return 0;
