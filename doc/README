@@ -257,6 +257,8 @@
   src/include	header files
   src/modules	dynamic plug-in modules  
 
+  suse/		Aditional files for a SuSE (UnitedLinux) system.
+
   todo/		TODO list and assorted files.
 
 
