@@ -13,7 +13,15 @@ INCLUDES	= ../include/radiusd.h ../include/conf.h ../include/autoconf.h
 CFLAGS		+= -I../include
 LDFLAGS		+= -L../lib
 LIBS		+= -lradius 
-MODULE_LIBS	= 
+MODULE_LIBS	= $(STATIC_MODULES)
+
+#
+#  Not using shared libraries, add in ALL known static modules
+# at build time.
+#
+ifneq ($(USE_SHARED_LIBS),yes)
+MODULE_LIBS	+= $(shell for x in ../modules/rlm_*/rlm_*.la;do echo -dlpreopen $$x;done)
+endif
 
 all:	radiusd radwho radzap raduse radclient
 

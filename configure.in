@@ -210,6 +210,18 @@ if test x"${enable_ltdl_install+set}" != xset; then
 fi
 AC_CONFIG_SUBDIRS(libltdl)
 
+dnl #
+dnl #  Allow the user to specify a list of modules to be linked
+dnl #  statically to the server.
+dnl #
+STATIC_MODULES=
+AC_ARG_WITH(static_modules,
+[  --with-static-modules=QUOTED-MODULE-LIST],[
+  for i in $withval; do
+    STATIC_MODULES="$STATIC_MODULES -dlpreopen ../modules/rlm_$i/rlm_$i.la"
+  done
+])
+
 dnl See what include-style is used by the make program.
 dnl AC_MSG_CHECKING(include style for make)
 dnl echo "include /dev/null" > testmake.$$
@@ -590,6 +602,7 @@ USE_SHARED_LIBS=$enable_shared
 AC_SUBST(USE_SHARED_LIBS)
 USE_STATIC_LIBS=$enable_static
 AC_SUBST(USE_STATIC_LIBS)
+AC_SUBST(STATIC_MODULES)
 
 AC_OUTPUT(\
 	./Make.inc \
