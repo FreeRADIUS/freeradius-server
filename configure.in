@@ -381,6 +381,8 @@ if test "x$WITH_SNMP" = "xyes"; then
   fi
 fi
 
+POSTGRESQL_CHECKS
+
 dnl #############################################################
 dnl #
 dnl #  3. Checks for header files
