@@ -30,7 +30,7 @@ restart) echo -n "Restarting $descr: "
         ;;
 reload|force-reload) 
 		echo -n "Reloading configuration files for $descr"
-		killall -HUP $prog
+		start-stop-daemon --stop --signal 1 --quiet --pidfile $pidfile
         echo "."
         ;;
 *)	echo "Usage: /etc/init.d/freeradius start|stop|restart|reload|force-reload"
