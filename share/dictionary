@@ -308,9 +308,9 @@ ATTRIBUTE       EAP-Sim-CHECKCODE       1670    octets
 #
 # For EAP-SIM, some attribute definitions for database interface
 #
-ATTRIBUTE	EAP-Sim-Chal1           1024	octets
-ATTRIBUTE	EAP-Sim-Chal2           1025	octets
-ATTRIBUTE	EAP-Sim-Chal3           1026	octets
+ATTRIBUTE	EAP-Sim-Rand1           1024	octets
+ATTRIBUTE	EAP-Sim-Rand2           1025	octets
+ATTRIBUTE	EAP-Sim-Rand3           1026	octets
 
 ATTRIBUTE	EAP-Sim-SRES1           1027	octets
 ATTRIBUTE	EAP-Sim-SRES2           1028	octets

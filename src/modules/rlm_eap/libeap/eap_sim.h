@@ -32,9 +32,9 @@
 #define ATTRIBUTE_EAP_SIM_BASE      (6*256)
 
 #define ATTRIBUTE_EAP_SIM_SUBTYPE   1023
-#define ATTRIBUTE_EAP_SIM_CHAL1           1024	
-#define ATTRIBUTE_EAP_SIM_CHAL2           1025	
-#define ATTRIBUTE_EAP_SIM_CHAL3           1026	
+#define ATTRIBUTE_EAP_SIM_RAND1           1024	
+#define ATTRIBUTE_EAP_SIM_RAND2           1025	
+#define ATTRIBUTE_EAP_SIM_RAND3           1026	
 
 #define ATTRIBUTE_EAP_SIM_SRES1           1027	
 #define ATTRIBUTE_EAP_SIM_SRES2           1028	
