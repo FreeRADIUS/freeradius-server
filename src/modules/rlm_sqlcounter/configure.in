@@ -7,39 +7,6 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_SMART_CHECK_INCLUDE(gdbm.h)
-	AC_SMART_CHECK_LIB(gdbm, gdbm_open)
-	if test "x$ac_cv_lib_gdbm_gdbm_open" != "xyes"; then
-		fail="$fail libgdbm"
-	fi
-
-	if test "x$fail" = "x"; then
-		AC_MSG_CHECKING(to see GDBM_SYNC status)
-		AC_EGREP_CPP(found-gdbm-sync, [
-#include <gdbm.h>
-#ifdef GDBM_SYNC
-	found-gdbm-sync!
-#else
-	not found.  this version must use sync by default.
-#endif
-			], [
-			AC_DEFINE(NEED_GDBM_SYNC, yes) 
-			AC_MSG_RESULT(needs it.)
-			], [
-			AC_MSG_RESULT(SYNCs by default.)
-			]
-		)
-	fi
-
-	old_LIBS=$LIBS
-	LIBS="$LIBS $SMART_LIBS"
-	AC_CHECK_FUNC(gdbm_fdesc)
-	if test "x$ac_cv_func_gdbm_fdesc" = "xyes";
-	then
-		AC_DEFINE(HAVE_GDBM_FDESC)
-	fi
-	LIBS=$old_LIBS
-
 	targetname=modname
 else
 	targetname=
