@@ -23,6 +23,8 @@ install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	$(INSTALL) -d -m 755	$(R)$(mandir);
 	$(INSTALL) -d -m 755	$(R)$(RUNDIR);
+	$(INSTALL) -d -m 700	$(R)$(logdir);
+	$(INSTALL) -d -m 700	$(R)$(radacctdir);
 	for i in 1 5 8; do \
 		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
 		for p in man/man$$i/*.$$i; do \
