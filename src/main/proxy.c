@@ -26,38 +26,6 @@ static const char rcsid[] = "$Id$";
 
 static uint32_t	proxy_id = 1;
 
-static const int allowed[] = {
-	PW_SERVICE_TYPE,
-	PW_FRAMED_PROTOCOL,
-	PW_FILTER_ID,
-	PW_FRAMED_MTU,
-	PW_FRAMED_COMPRESSION,
-	PW_LOGIN_SERVICE,
-	PW_REPLY_MESSAGE,
-	PW_SESSION_TIMEOUT,
-	PW_IDLE_TIMEOUT,
-	PW_PORT_LIMIT,
-	0,
-};
-
-static const int trusted_allowed[] = {
-	PW_SERVICE_TYPE,
-	PW_FRAMED_PROTOCOL,
-	PW_FILTER_ID,
-	PW_FRAMED_MTU,
-	PW_FRAMED_COMPRESSION,
-	PW_FRAMED_IP_ADDRESS,
-	PW_FRAMED_IP_NETMASK,
-	PW_FRAMED_ROUTING,
-	PW_FRAMED_ROUTE,
-	PW_LOGIN_SERVICE,
-	PW_REPLY_MESSAGE,
-	PW_SESSION_TIMEOUT,
-	PW_IDLE_TIMEOUT,
-	PW_PORT_LIMIT,
-	0,
-};
-
 /*
  *	We received a response from a remote radius server.
  *	Find the original request, then return.
@@ -67,7 +35,6 @@ static const int trusted_allowed[] = {
  */
 int proxy_receive(REQUEST *request)
 {
-	VALUE_PAIR	*allowed_pairs;
 	int		i;
 	VALUE_PAIR	*proxypair;
 	VALUE_PAIR	*replicatepair;
@@ -91,35 +58,11 @@ int proxy_receive(REQUEST *request)
 
 	realmname = (char *) realmpair->strvalue;
         realm = realm_find(realmname);
-	allowed_pairs = NULL;
 
-	/* FIXME - do we want to use the trusted/allowed filters on replicate
-	 * replies, which are not going to be used for anything except maybe
-	 * a log file? */
-	if (realm->trusted) {
-		/*
-		 *	Only allow some attributes to be propagated from
-		 *	the remote server back to the NAS, for security.
-		 */
-		allowed_pairs = NULL;
-		for(i = 0; trusted_allowed[i]; i++)
-			pairmove2(&allowed_pairs, &(request->proxy_reply->vps), trusted_allowed[i]);
-	} else {
-		/*
-		 *	Only allow some attributes to be propagated from
-		 *	the remote server back to the NAS, for security.
-		 */
-		allowed_pairs = NULL;
-		for(i = 0; allowed[i]; i++)
-			pairmove2(&allowed_pairs, &(request->proxy_reply->vps), allowed[i]);
-	}
-	
 	/*
-	 *	Delete the left-over attributes, and move the
-	 *	allowed ones back.
+	 *	Don't touch the reply VP's.  Assume that a module
+	 *	takes care of that...
 	 */
-	pairfree(&request->proxy_reply->vps);
-	request->proxy_reply->vps = allowed_pairs;
 
 	return replicating?1:0;
 }
