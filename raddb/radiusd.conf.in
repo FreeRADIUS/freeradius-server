@@ -1568,6 +1568,10 @@ modules {
 
 		# override: Will this ippool override a Framed-IP-Address already set
 		override = no
+
+		# maximum-timeout: If not zero specifies the maximum time in seconds an
+		# entry may be active. Default: 0
+		maximum-timeout = 0
 	}
 
 	# ANSI X9.9 token support.  Not included by default.
