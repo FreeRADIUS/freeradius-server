@@ -28,6 +28,7 @@
 
 #include "autoconf.h"
 #include "libradius.h"
+#include "rad_assert.h"
 #include "x99.h"
 #include "x99_pwe.h"
 
