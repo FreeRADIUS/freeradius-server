@@ -338,7 +338,15 @@ thread pool {
 
 modules {
 	pam {
-		# No config options for this yet
+		#
+		#  The name to use for PAM authentication.
+		#  PAM looks in /etc/pam.d/${pam_auth_name}
+		#  for it's configuration.
+		#
+		#  Note that any Pam-Auth attribute set in the 'users'
+		#  file over-rides this one.
+		#
+		pam_auth = radiusd
 	}
 	unix {
 		#
@@ -457,18 +465,18 @@ modules {
 	}
 
 	# See README.rlm_fastusers before using this
-	# module or changing these values
-  fastusers {
-    usersfile = ${confdir}/users_fast
-    hashsize = 1000
-    compat = no
+	# module or changing these values.
+	fastusers {
+		usersfile = ${confdir}/users_fast
+		hashsize = 1000
+		compat = no
 		normal_defaults = yes
 		# Reload the hash every 600 seconds (10mins)
 		reload_hash = 600
-  }
+	}
 	
 	detail {
-		detailfile = %A/%n/detail
+		detailfile = ${radacctdir}/%n/detail
 		detailperm = 0600
 	}
 
