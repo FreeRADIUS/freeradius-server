@@ -340,7 +340,7 @@ static int process_attribute(const char* fn, const int line, const int block_ven
 /*
  *	Process the VALUE command
  */
-static int process_value(const char* fn, const int line, const int block_vendor, const char* data) {
+static int process_value(const char* fn, const int line, const char* data) {
 	char	namestr[256];
 	char	valstr[256];
 	char	attrstr[256];
@@ -383,7 +383,7 @@ static int process_value(const char* fn, const int line, const int block_vendor,
 /*
  *	Process the VENDOR command
  */
-static int process_vendor(const char* fn, const int line, const int block_vendor, const char* data) {
+static int process_vendor(const char* fn, const int line, const char* data) {
 	char	valstr[256];
 	char	attrstr[256];
 	int	value;
@@ -517,19 +517,18 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		 *	Process VALUE lines.
 		 */
 		if (strcasecmp(keyword, "VALUE") == 0) {
-			if (process_value(fn, line, block_vendor, data) == -1) {
+			if (process_value(fn, line, data) == -1) {
 				fclose(fp);
 				return -1;
 			}
 			continue;
 		}
 
-
 		/*
 		 *	Process VENDOR lines.
 		 */
 		if (strcasecmp(keyword, "VENDOR") == 0) {
-			if (process_vendor(fn, line, block_vendor, data) == -1) {
+			if (process_vendor(fn, line, data) == -1) {
 				fclose(fp);
 				return -1;
 			}
