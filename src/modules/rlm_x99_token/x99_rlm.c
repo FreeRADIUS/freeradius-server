@@ -32,7 +32,10 @@
  */
 
 /*
- * TODO: add Auth-Type config item if not present.
+ * TODO: add "resync" keyword (like "challenge").
+ * TODO: all requests (success or fail) should take ~ the same amount of time.
+ * TODO: x99_pwe: change add_vps to success_vps and fail_vps.
+ * TODO: add Auth-Type config item if not present?
  * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
