@@ -174,18 +174,15 @@ static int decode_attr_packet(const char *from, char **to, int freespace,
 	switch (tmpda->attr) {
 		case PW_PACKET_TYPE:
 		{
-			ssize_t size;
 			DICT_VALUE *dval;
 
 			dval = dict_valbyattr(tmpda->attr, packet->code);
 			if (dval) {
-				size = snprintf(*to, freespace, "%s",
-						dval->name);
+				snprintf(*to, freespace, "%s", dval->name);
 			} else {
-				size = snprintf(*to, freespace, "%d",
-						packet->code);
+				snprintf(*to, freespace, "%d", packet->code);
 			}
-			*to += size;
+			*to += strlen(*to);
 			return 1;
 		}
 		break;
